@@ -4034,6 +4034,25 @@ Use spectral scaling in the radiation heating
 Default: false
 </entry>
 
+<!-- SPCAM -->
+<entry id="use_SPCAM" type="logical"  category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Turn on super parameterized CAM
+Default: false
+</entry>
+
+<entry id="use_ECPP" type="logical"  category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Turn on explicit cloud parameterized pollutants
+Default: false
+</entry>
+
+<entry id="SPCAM_microp_scheme" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="m2005, sam1mom" >
+Type of SPCAM microphysics scheme employed.
+Default: sam1mom
+</entry>
+
 <!-- Test Tracers -->
 
 <entry id="tracers_flag" type="logical" category="test_tracers"

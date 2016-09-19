@@ -1,0 +1,365 @@
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm
+END
+stat_clubb.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/stat_clubb.F90
+END
+ecppvars.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/ecppvars.F90
+END
+diffuse_mom2D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/diffuse_mom2D.F90
+END
+coriolis.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/coriolis.F90
+END
+clubbvars.F90
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/clubbvars.F90
+END
+task_init.F90
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/task_init.F90
+END
+crm_module.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/crm_module.F90
+END
+diagnose.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/diagnose.F90
+END
+buoyancy.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/buoyancy.F90
+END
+advect_scalar.F90
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/advect_scalar.F90
+END
+diffuse_mom.F90
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/diffuse_mom.F90
+END
+periodic.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/periodic.F90
+END
+setperturb.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/setperturb.F90
+END
+diffuse_scalar2D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/diffuse_scalar2D.F90
+END
+crmtracers.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/crmtracers.F90
+END
+atmosphere.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/atmosphere.F90
+END
+press_rhs.F90
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/press_rhs.F90
+END
+bound_exchange.F90
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/bound_exchange.F90
+END
+diffuse_scalar.F90
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/diffuse_scalar.F90
+END
+setparm.F90
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/setparm.F90
+END
+shear_prod3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/shear_prod3D.F90
+END
+advect_mom.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/advect_mom.F90
+END
+advect2_mom_xy.F90
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/advect2_mom_xy.F90
+END
+precip_fall.F90
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/precip_fall.F90
+END
+random.F90
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/random.F90
+END
+uvw.F90
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/uvw.F90
+END
+compress3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/compress3D.F90
+END
+advect_scalar3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/advect_scalar3D.F90
+END
+params.F90
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/params.F90
+END
+diffuse_mom3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/diffuse_mom3D.F90
+END
+adams.F90
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/adams.F90
+END
+grid.F90
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/grid.F90
+END
+forcing.F90
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/forcing.F90
+END
+sat.F90
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/sat.F90
+END
+gammafff.c
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/gammafff.c
+END
+advect2_mom_z.F90
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/advect2_mom_z.F90
+END
+press_grad.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/press_grad.F90
+END
+crmsurface.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/crmsurface.F90
+END
+boundaries.F90
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/boundaries.F90
+END
+ice_fall.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/ice_fall.F90
+END
+utils.F90
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/utils.F90
+END
+diffuse_scalar3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/diffuse_scalar3D.F90
+END
+task_util_NOMPI.F90
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/task_util_NOMPI.F90
+END
+abcoefs.F90
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/abcoefs.F90
+END
+clubb_sgs.F90
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/clubb_sgs.F90
+END
+init.F90
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/init.F90
+END
+stepout.F90
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/stepout.F90
+END
+kurant.F90
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/kurant.F90
+END
+tke_full.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/tke_full.F90
+END
+fft.F
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/fft.F
+END
+domain.F90
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/domain.F90
+END
+module_ecpp_crm_driver.F90
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/module_ecpp_crm_driver.F90
+END
+pressure.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/pressure.F90
+END
+module_ecpp_stats.F90
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/module_ecpp_stats.F90
+END
+vars.F90
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/vars.F90
+END
+shear_prod2D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/shear_prod2D.F90
+END
+bound_duvdt.F90
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/bound_duvdt.F90
+END
+damping.F90
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/damping.F90
+END
+zero.F90
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/zero.F90
+END
+advect_scalar2D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/advect_scalar2D.F90
+END

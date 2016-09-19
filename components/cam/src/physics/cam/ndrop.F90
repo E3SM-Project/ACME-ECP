@@ -296,7 +296,7 @@ end subroutine ndrop_init
 
 subroutine dropmixnuc( &
    state, ptend, dtmicro, pbuf, wsub, &
-   cldn, cldo, tendnd, factnum)
+   cldn, cldo, tendnd, factnum, dommf)     !-- mdb spcam:  add dommf
 
    ! vertical diffusion and nucleation of cloud droplets
    ! assume cloud presence controlled by cloud fraction
@@ -313,6 +313,7 @@ subroutine dropmixnuc( &
    real(r8), intent(in) :: wsub(pcols,pver)    ! subgrid vertical velocity
    real(r8), intent(in) :: cldn(pcols,pver)    ! cloud fraction
    real(r8), intent(in) :: cldo(pcols,pver)    ! cloud fraction on previous time step
+   logical,  intent(in),optional :: dommf      ! value insignificant - if variable present, is called in the mmf part.
 
    ! output arguments
    real(r8), intent(out) :: tendnd(pcols,pver) ! change in droplet number concentration (#/kg/s)
@@ -422,6 +423,20 @@ subroutine dropmixnuc( &
    real(r8), allocatable :: coltend_cw(:,:)    ! column tendency
    real(r8) :: ccn(pcols,pver,psat)    ! number conc of aerosols activated at supersat
 
+!-- mdb spcam
+!+++mhwang for gas species turbulent mixing
+   real(r8), pointer :: rgas(:, :, :)
+   real(r8), allocatable :: rgascol(:, :, :)
+   real(r8), allocatable :: coltendgas(:)
+   real(r8) :: zerogas(pver)
+   character*200 fieldnamegas
+!---mhwang
+
+   logical  :: use_SPCAM
+   logical  :: SPCAM_mmf
+   logical  :: SPCAM_notmmf
+!-- mdb spcam
+
    !-------------------------------------------------------------------------------
 
    sq2pi = sqrt(2._r8*pi)
@@ -485,6 +500,20 @@ subroutine dropmixnuc( &
          call rad_cnst_get_aer_mmr(0, m, l, 'c', state, pbuf, qqcw(mm)%fld)  ! cloud-borne aerosol
       end do
    end do
+
+!-- mdb spcam
+   call phys_getopts(use_SPCAM_out=use_SPCAM)
+   SPCAM_mmf    = (use_SPCAM .and. present(dommf)) ! SPCAM called from mmf section
+   SPCAM_notmmf = (use_SPCAM .and. .not. present(dommf)) ! SPCAM not called from mmf section
+
+   if (SPCAM_mmf) then
+#if (defined MODAL_AERO)
+           rgas  => state%q
+           allocate(rgascol(pver, pcnst, 2))
+           allocate(coltendgas(pcols))
+#endif
+   endif
+!-- mdb spcam
 
    factnum = 0._r8
    wtke    = 0._r8
@@ -562,11 +591,37 @@ subroutine dropmixnuc( &
          end do
       end do
 
+!-- mdb spcam
+      if (SPCAM_mmf) then
+!
+! In the MMF model, turbulent mixing for tracer species are turned off.
+! So the turbulent for gas species mixing are added here.
+! (Previously, it had the turbulent mixing for aerosol species)
+!
+#if (defined MODAL_AERO)
+           do m=1, pcnst
+              if(species_class(m).eq.spec_class_gas) then
+                rgascol(:,m,nsav) = rgas(i,:,m)
+!                write(0, *) 'gas species indices in dropmixnuc,  m=', m, '  name=', cnst_name(m)
+              end if
+           end do
+#endif
+      endif
+!-- mdb spcam
+
       ! droplet nucleation/aerosol activation
 
       ! tau_cld_regenerate = time scale for regeneration of cloudy air 
       !    by (horizontal) exchange with clear air
       tau_cld_regenerate = 3600.0_r8 * 3.0_r8 
+
+!-- mdb spcam
+      if (SPCAM_mmf) then
+!       when this is called  in the MMF part, no cloud regeneration and decay.
+!       set the time scale be very long so that no cloud regeneration.
+           tau_cld_regenerate = 3600.0_r8 * 24.0_r8 * 365.0_r8
+      endif
+!-- mdb spcam
 
       ! k-loop for growing/shrinking cloud calcs .............................
       ! grow_shrink_main_k_loop: &
@@ -1004,6 +1059,25 @@ subroutine dropmixnuc( &
             end do
          end do
 
+!-- mdb spcam
+         if (SPCAM_mmf) then
+!
+! turbulent mixing for gas species .
+!
+#if (defined MODAL_AERO)
+           do m=1, pcnst
+              if(species_class(m).eq.spec_class_gas) then
+                flxconv = 0.0_r8
+                zerogas(:) = 0.0_r8
+                call explmix(rgascol(1,m,nnew),zerogas,ekkp,ekkm,overlapp,overlapm,  &
+                             rgascol(1,m,nsav),zero, flxconv, pver,dtmix,&
+                               .true., zerogas)
+              end if
+           end do
+#endif
+         endif
+!-- mdb spcam
+
       end do ! old_cloud_nsubmix_loop
 
       ! evaporate particles again if no cloud
@@ -1064,17 +1138,53 @@ subroutine dropmixnuc( &
 
       end if
 
+!-- mdb spcam
+      if (SPCAM_mmf) then
+!
+! Gas tendency
+!
+#ifdef MODAL_AERO
+           do m=1, pcnst
+              if(species_class(m).eq.spec_class_gas) then
+                ptend%lq(m) = .true.
+                ptend%q(i, :, m) = (rgascol(:,m,nnew)-rgas(i,:,m)) * dtinv
+              end if
+           end do
+#endif 
+      endif
+!-- mdb spcam
+
    end do  ! overall_main_i_loop
    ! end of main loop over i/longitude ....................................
 
-   call outfld('NDROPCOL', ndropcol, pcols, lchnk)
-   call outfld('NDROPSRC', nsource,  pcols, lchnk)
-   call outfld('NDROPMIX', ndropmix, pcols, lchnk)
-   call outfld('WTKE    ', wtke,     pcols, lchnk)
+!-- mdb spcam
+   !call outfld('NDROPCOL', ndropcol, pcols, lchnk)
+   !call outfld('NDROPSRC', nsource,  pcols, lchnk)
+   !call outfld('NDROPMIX', ndropmix, pcols, lchnk)
+   !call outfld('WTKE    ', wtke,     pcols, lchnk)
+   if (SPCAM_notmmf .or. .not. use_SPCAM) then ! called in the cam part.
+        call outfld('NDROPCOL', ndropcol, pcols, lchnk)
+        call outfld('NDROPSRC', nsource,  pcols, lchnk)
+        call outfld('NDROPMIX', ndropmix, pcols, lchnk)
+        call outfld('LCLOUD  ', cldn,     pcols, lchnk)
+        call outfld('WTKE    ', wtke,     pcols, lchnk)
+   else if(SPCAM_mmf) then  ! called in the mmf part.
+        call outfld('SPNDROPCOL', ndropcol  , pcols, lchnk   )
+        call outfld('SPNDROPSRC', nsource    , pcols, lchnk   )
+        call outfld('SPNDROPMIX', ndropmix    , pcols, lchnk   )
+        call outfld('SPLCLOUD  ', cldn    , pcols, lchnk   )
+        call outfld('SPWTKE    ', wtke    , pcols, lchnk   )
+        call outfld('SPKVH     ', kvh     , pcols, lchnk   )
+   endif
+!-- mdb spcam
 
    call ccncalc(state, pbuf, cs, ccn)
    do l = 1, psat
-      call outfld(ccn_name(l), ccn(1,1,l), pcols, lchnk)
+!-- mdb spcam
+      if ( (SPCAM_mmf) .or. .not. use_SPCAM) then ! called in the MMF part only or in the standard CAM
+        call outfld(ccn_name(l), ccn(1,1,l), pcols, lchnk)
+      endif
+!-- mdb spcam
    enddo
 
    ! do column tendencies
@@ -1082,11 +1192,36 @@ subroutine dropmixnuc( &
       do m = 1, ntot_amode
          do l = 0, nspec_amode(m)
             mm = mam_idx(m,l)
-            call outfld(fieldname(mm),    coltend(:,mm),    pcols, lchnk)
-            call outfld(fieldname_cw(mm), coltend_cw(:,mm), pcols, lchnk)
+            if (SPCAM_notmmf .or. .not. use_SPCAM) then ! called in the cam part.
+              call outfld(fieldname(mm),    coltend(:,mm),    pcols, lchnk)
+              call outfld(fieldname_cw(mm), coltend_cw(:,mm), pcols, lchnk)
+            else if (SPCAM_mmf) then
+              call outfld(trim(fieldname(mm))//'sp',    coltend(:,mm),    pcols, lchnk)
+              call outfld(trim(fieldname_cw(mm))//'sp', coltend_cw(:,mm), pcols, lchnk)
+            end if
          end do
       end do
    end if
+
+!-- mdb spcam
+   if(SPCAM_mmf) then
+!
+! output column-integrated Gas tendency (this should be zero)
+!
+#ifdef MODAL_AERO
+     do m=1, pcnst
+         if(species_class(m).eq.spec_class_gas) then
+           do i=1, ncol
+              coltendgas(i) = sum( pdel(i,:)*ptend%q(i,:,m) )/gravit
+           end do
+           fieldnamegas = trim(cnst_name(m)) // '_mixnuc1sp'
+           call outfld( trim(fieldnamegas), coltendgas, pcols, lchnk)
+         end if
+     end do
+     deallocate(rgascol, coltendgas)
+#endif
+   end if
+!-- mdb spcam
 
    deallocate( &
       nact,       &

@@ -151,7 +151,11 @@
 !    use phys_debug_util,    only : phys_debug_col
 !    use time_manager,       only : is_first_step, get_nstep
     use vdiff_lu_solver,     only : lu_decomp, vd_lu_decomp, vd_lu_solve
-  
+
+!-- mdb spcam
+    use phys_control,       only : phys_getopts  
+!-- mdb spcam
+    
   ! Modification : Ideally, we should diffuse 'liquid-ice static energy' (sl), not the dry static energy.
   !                Also, vertical diffusion of cloud droplet number concentration and aerosol number
   !                concentration should be done very carefully in the future version.
@@ -298,6 +302,10 @@
     
     real(r8) :: mw_fac_loc(pcols,pver+1,ncnst)           ! Local sqrt(1/M_q + 1/M_d) for this constituent
 
+!-- mdb spcam
+    logical  :: use_SPCAM
+!-- mdb spcam
+
     !--------------------------------
     ! Variables needed for WACCM-X
     !--------------------------------
@@ -309,6 +317,10 @@
     ! ------------------------------------------------ !
     ! Parameters for implicit surface stress treatment !
     ! ------------------------------------------------ !
+
+!-- mdb spcam
+    call phys_getopts(use_SPCAM_out = use_SPCAM)
+!-- mdb spcam
 
     wsmin    = 1._r8                                     ! Minimum wind speed for ksrfturb computation        [ m/s ]
     ksrfmin  = 1.e-4_r8                                  ! Minimum surface drag coefficient                   [ kg/s/m^2 ]
@@ -637,6 +649,7 @@
   !                moist static energy,not the dry static energy.
 
     if( diffuse(fieldlist,'s') ) then
+      if (.not. use_SPCAM) then
 
       ! Add counter-gradient to input static energy profiles
 
@@ -644,7 +657,8 @@
            dse(:ncol,k) = dse(:ncol,k) + ztodt * rpdel(:ncol,k) * gravit  *                &
                                        ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgh(:ncol,k+1) &
                                        - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgh(:ncol,k  ) )
-       end do
+        end do
+      endif
 
      ! Add the explicit surface fluxes to the lowest layer
 
@@ -664,8 +678,10 @@
                           zero  , kvh  , tmpi2 , rpdel , ztodt , gravit, &
                           cc_top, ntop , nbot  , decomp )
 
-       call vd_lu_solve(  pcols , pver  , ncol  ,                         &
-                          dse   , decomp, ntop  , nbot  , cd_top )
+       if (.not. use_SPCAM) then
+         call vd_lu_solve(  pcols , pver  , ncol  ,                         &
+                            dse   , decomp, ntop  , nbot  , cd_top )
+       endif
 
      ! Calculate flux at top interface
      
@@ -719,25 +735,27 @@
     do m = 1, ncnst
 
        if( diffuse(fieldlist,'q',m) ) then
+           if (.not. use_SPCAM) then
 
-           ! Add the nonlocal transport terms to constituents in the PBL.
-           ! Check for neg q's in each constituent and put the original vertical
-           ! profile back if a neg value is found. A neg value implies that the
-           ! quasi-equilibrium conditions assumed for the countergradient term are
-           ! strongly violated.
+             ! Add the nonlocal transport terms to constituents in the PBL.
+             ! Check for neg q's in each constituent and put the original vertical
+             ! profile back if a neg value is found. A neg value implies that the
+             ! quasi-equilibrium conditions assumed for the countergradient term are
+             ! strongly violated.
 
-           qtm(:ncol,:pver) = q(:ncol,:pver,m)
+             qtm(:ncol,:pver) = q(:ncol,:pver,m)
 
-           do k = 1, pver
-              q(:ncol,k,m) = q(:ncol,k,m) + &
-                             ztodt * rpdel(:ncol,k) * gravit  * ( cflx(:ncol,m) * rrho(:ncol) ) * &
-                           ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgs(:ncol,k+1)                    &
-                           - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgs(:ncol,k  ) )
-           end do
-           lqtst(:ncol) = all(q(:ncol,1:pver,m) >= qmincg(m), 2)
-           do k = 1, pver
-              q(:ncol,k,m) = merge( q(:ncol,k,m), qtm(:ncol,k), lqtst(:ncol) )
-           end do
+             do k = 1, pver
+               q(:ncol,k,m) = q(:ncol,k,m) + &
+                              ztodt * rpdel(:ncol,k) * gravit  * ( cflx(:ncol,m) * rrho(:ncol) ) * &
+                            ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgs(:ncol,k+1)                    &
+                            - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgs(:ncol,k  ) )
+             end do
+             lqtst(:ncol) = all(q(:ncol,1:pver,m) >= qmincg(m), 2)
+             do k = 1, pver
+               q(:ncol,k,m) = merge( q(:ncol,k,m), qtm(:ncol,k), lqtst(:ncol) )
+             end do
+           endif
 
            ! Add the explicit surface fluxes to the lowest layer
 
@@ -776,8 +794,10 @@
                endif
            end if
 
-           call vd_lu_solve(  pcols , pver , ncol  ,                         &
-                              q(1,1,m) , decomp    , ntop  , nbot  , cd_top )
+           if (.not. use_SPCAM) then
+             call vd_lu_solve(  pcols , pver , ncol  ,                         &
+                                q(1,1,m) , decomp    , ntop  , nbot  , cd_top )
+           endif
        end if
     end do
 

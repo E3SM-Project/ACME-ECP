@@ -183,7 +183,7 @@ OPTIONS
                         *** Note ***
                         Either set all of -cice_bsizex, -cice_bsizey, -cice_maxblocks and cice_decomptype
                         or set -ntasks and/or -nthreads which are used to determine defaults for the
-                        cice decomposition.
+                        cmicro_mg_dcs entry should be in the if block aboveice decomposition.
                         ************
      -ntasks <n>        Number of MPI tasks.  Setting ntasks > 0 implies -spmd.  Use -nospmd to turn off
                         linking with an MPI library.  To configure for pure MPI specify "-ntasks N -nosmp".
@@ -262,6 +262,19 @@ OPTIONS
                         perl \$OSNAME variable.
      -usr_src <dir1>[,<dir2>[,<dir3>[...]]]
                         Directories containing user source code.
+
+  Options for MMF CAM:
+
+     -use_SPCAM         Build superparameterized CAM.
+     -crm_nx <n>        CRM's x-grid.
+     -crm_ny <n>        CRM's y-grid.
+     -crm_nz <n>        CRM's z-grid.
+     -crm_dx <n>        CRM's horizontal grid spacing.
+     -crm_dt <n>        CRM's timestep.
+     -SPCAM_microp_scheme <string>   CRM microphysics package name [sam1mom | m2005 ].
+     -clubb_crm         CRM with clubb treatment
+     -use_ECPP          use CRM clouds for vertical transport, aqueous chemistry and wet removable of aerosols 
+
 EOF
 }
 
@@ -320,6 +333,15 @@ GetOptions(
     "comp_intf=s"               => \$opts{'comp_intf'},
     "cosp"                      => \$opts{'cosp'},
     "cppdefs=s"                 => \$opts{'cppdefs'},
+    "use_SPCAM"                 => \$opts{'use_SPCAM'},
+    "use_ECPP"                  => \$opts{'use_ECPP'},
+    "crm_nx=s"                  => \$opts{'crm_nx'},
+    "crm_ny=s"                  => \$opts{'crm_ny'},
+    "crm_nz=s"                  => \$opts{'crm_nz'},
+    "crm_dx=s"                  => \$opts{'crm_dx'},
+    "crm_dt=s"                  => \$opts{'crm_dt'},
+    "SPCAM_microp_scheme=s"     => \$opts{'SPCAM_microp_scheme'},
+    "clubb_crm"                 => \$opts{'clubb_crm'},
     "debug"                     => \$opts{'debug'},
     "rain_evap_to_coarse_aero"  => \$opts{'rain_evap_to_coarse_aero'},
     "defaults=s"                => \$opts{'defaults'},
@@ -422,7 +444,9 @@ EOF
 # The default physics package is cam5.4.  Physics packages >=cam5 use chemistry packages
 # that include modal aerosols, i.e., the -chem value matches /_mam/.  If the chem_pkg
 # name doesn't match /_mam/ then set the default physics package to cam4.
-my $phys_pkg = 'cam5.4';
+#### mdb mod
+#my $phys_pkg = 'cam5.4';
+my $phys_pkg = 'cam5';
 if (defined $opts{'chem'} and $opts{'chem'} !~ /_mam/) {$phys_pkg = 'cam4';}
 
 if (defined $opts{'phys'}) {
@@ -1224,6 +1248,44 @@ EOF
 if ($print>=2) { print "Produce IOP file for SCAM: $camiop$eol"; }
 
 #-----------------------------------------------------------------------------------------------
+# Superparameterization mode (SPCAM)
+
+if (defined $opts{'use_SPCAM'}) {
+    if (defined $opts{'use_ECPP'})            { $cfg_ref->set('use_ECPP', 1); }
+    $cfg_ref->set('use_SPCAM', 1);
+    $cfg_ref->set('crm', 1);
+    $cfg_ref->set('crm_nx', $opts{'crm_nx'});
+    $cfg_ref->set('crm_ny', $opts{'crm_ny'});
+    $cfg_ref->set('crm_nz', $opts{'crm_nz'});
+    $cfg_ref->set('crm_dx', $opts{'crm_dx'});
+    $cfg_ref->set('crm_dt', $opts{'crm_dt'});
+    $cfg_ref->set('SPCAM_microp_scheme', $opts{'SPCAM_microp_scheme'});
+# Check that model is not using threading for SPCAM 
+    if ($nthreads > 1) {
+     die <<"EOF";
+**  ERROR: SPCAM mode may only use single thread
+**         nthreads set to $nthreads
+**         
+EOF
+    }
+
+#    print "---> $opts{'crm_nx'} $opts{'crm_ny'} $opts{'crm_nz'} $opts{'crm_dx'} $opts{'crm_dt'} $opts{'SPCAM_microp_scheme'} $eol";
+}
+
+my $crm = $cfg_ref->get('crm') ? "ON" : "OFF";
+
+# The only dycores supported in SPCAM mode are Semi-Lagrangian and Finite-Volume
+### mdb 8/2016: disable dycore check for spcam
+#if ($crm eq 'ON' and $dyn_pkg ne 'sld' and $dyn_pkg ne 'fv' and $dyn_pkg ne 'homme') {
+#    die <<"EOF";
+#**  ERROR: SPCAM mode only works with Semi-Lagrangian or Finite Volume dycores.
+#**         Requested dycore is: $dyn_pkg
+#EOF
+#}
+
+if ($print>=2) { print "Configure CAM for SPCAM (superparameterization) mode: $crm.$eol"; }
+
+#-----------------------------------------------------------------------------------------------
 # Horizontal grid parameters
 if (defined $opts{'hgrid'}) {
     $cfg_ref->set('hgrid', $opts{'hgrid'});
@@ -1231,9 +1293,10 @@ if (defined $opts{'hgrid'}) {
 elsif (defined $opts{'res'}) {
     $cfg_ref->set('hgrid', $opts{'res'});
 }
-my $hgrid = $cfg_ref->get('hgrid');
+	my $hgrid = $cfg_ref->get('hgrid');
 
 # set_horiz_grid sets the parameters for specific dycore/hgrid combinations.
+#-----------------------------------------------------------------------------------------------
 set_horiz_grid("$cfgdir/$horiz_grid_file", $cfg_ref);
 
 if ($print>=2) { print "Horizontal grid specifier: $hgrid$eol"; }
@@ -1928,6 +1991,21 @@ $cfg_cppdefs .= " -DMAXPATCH_PFT=numpft+1 -DLSMLAT=1 -DLSMLON=1";
 
 # Building for perturbation growth tests
 if ($pergro eq "ON") { $cfg_cppdefs .= " -DPERGRO"; }
+
+# Building for superparameterization
+my $crm_nx = $cfg_ref->get('crm_nx');
+my $crm_ny = $cfg_ref->get('crm_ny');
+my $crm_nz = $cfg_ref->get('crm_nz');
+my $crm_dx = $cfg_ref->get('crm_dx');
+my $crm_dt = $cfg_ref->get('crm_dt');
+my $SPCAM_microp_scheme = $cfg_ref->get('SPCAM_microp_scheme');
+my $yes3Dval = 1;
+if ($crm_ny eq 1) {$yes3Dval = 0;}
+$cfg_cppdefs .= " -D$SPCAM_microp_scheme -DYES3DVAL=$yes3Dval -DCRM_NX=$crm_nx -DCRM_NY=$crm_ny -DCRM_NZ=$crm_nz -DCRM_DX=$crm_dx -DCRM_DT=$crm_dt ";
+
+if ($crm eq "ON") { $cfg_cppdefs .= " -DCRM " }
+
+if ( defined $opts{'clubb_crm'})    { $cfg_cppdefs .= " -DCLUBB_CRM -DCLUBB_REAL_TYPE=dp"; }
 
 # Configure CAM to produce IOP files for SCAM
 if ($camiop eq 'ON') { $cfg_cppdefs .= " -DBFB_CAM_SCAM_IOP"; }
@@ -2694,6 +2772,9 @@ sub write_filepath
     # Component interface specifier
     my $comp_intf = $cfg_ref->get('comp_intf');
 
+    my $crm         = $cfg_ref->get('crm');
+    my $SPCAM_microp_scheme    = $cfg_ref->get('SPCAM_microp_scheme');
+
     # Start writing paths to the file.  *** Order is important ***  The
     # sequence of paths will be used to set the GNU Makefile's VPATH macro
     # which tells make where to search for dependencies.
@@ -2761,6 +2842,23 @@ sub write_filepath
     if ($clubb_sgs eq '1') {
        print $fh "$camsrcdir/cam/src/physics/clubb\n";
        print $fh "$camsrcdir/cam/src/physics/silhs\n";
+    }
+
+# Superparameterization
+    if ($crm) {
+        print $fh "$camsrcdir/cam/src/physics/crm\n";
+        if ($SPCAM_microp_scheme eq 'sam1mom') {
+           print $fh "$camsrcdir/cam/src/physics/crm/MICRO_SAM1MOM\n";
+        }
+        if ($SPCAM_microp_scheme eq 'm2005') {
+           print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005\n";
+        }
+        if ( defined $opts{'clubb_crm'}) {
+           print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
+        }
+        if ( defined $opts{'use_ECPP'}) {
+           print $fh "$camsrcdir/cam/src/physics/cam/ecpp\n";
+        }
     }
 
     print $fh "$camsrcdir/cam/src/dynamics/$dyn\n";

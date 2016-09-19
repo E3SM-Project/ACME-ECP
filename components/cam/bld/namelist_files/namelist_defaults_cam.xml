@@ -799,6 +799,13 @@
 <clubb_history               > .false. </clubb_history>
 <clubb_rad_history           > .false. </clubb_rad_history>
 
+<!-- SPCAM -->
+<SPCAM_microp_scheme SPCAM_microp_scheme="sam1mom">sam1mom</SPCAM_microp_scheme>
+<SPCAM_microp_scheme SPCAM_microp_scheme="m2005">m2005</SPCAM_microp_scheme>
+<use_SPCAM                                              > .false.  </use_SPCAM>
+<use_SPCAM            use_SPCAM="1"                     > .true.  </use_SPCAM>
+<use_ECPP                                               > .false.  </use_ECPP>
+<use_ECPP             use_ECPP="1"                      > .true.  </use_ECPP>
 
 <!-- Microphysics scheme -->
 <microp_scheme microphys="rk">   RK</microp_scheme>

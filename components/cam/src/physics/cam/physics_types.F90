@@ -984,7 +984,7 @@ end subroutine physics_ptend_copy
   end subroutine physics_ptend_reset
 
 !===============================================================================
-  subroutine physics_ptend_init(ptend, psetcols, name, ls, lu, lv, lq)
+  subroutine physics_ptend_init(ptend, psetcols, name, ls, lu, lv, lq, fromcrm)
 !-----------------------------------------------------------------------
 ! Allocate the fields in the structure which are specified.
 ! Initialize the parameterization tendency structure to "empty"
@@ -998,6 +998,8 @@ end subroutine physics_ptend_copy
     logical, optional                   :: lu       ! if true, then fields to support dudt are allocated
     logical, optional                   :: lv       ! if true, then fields to support dvdt are allocated
     logical, dimension(pcnst),optional  :: lq       ! if true, then fields to support dqdt are allocated
+
+    logical, optional                   :: fromcrm
     
 !-----------------------------------------------------------------------
 
@@ -1044,10 +1046,15 @@ end subroutine physics_ptend_copy
        ptend%lq(:) = .false.
     end if
 
+    !if (present(fromcrm)) write(*,*) '### call physics_ptend_init: ptend%lu,ptend%ls,ptend%lq = ',ptend%lu,ptend%ls,ptend%lq
     call physics_ptend_alloc(ptend, psetcols)
 
     call physics_ptend_reset(ptend)
 !pw call t_stopf('physics_ptend_init')
+
+    !if (present(fromcrm)) write(*,*) '### BOTTOM physics_ptend_init: shape(ptend%u) = ',shape(ptend%u)
+    !if (present(fromcrm)) write(*,*) '### BOTTOM physics_ptend_init: shape(ptend%s) = ',shape(ptend%s)
+    !if (present(fromcrm)) write(*,*) '### BOTTOM physics_ptend_init: shape(ptend%q) = ',shape(ptend%q)
 
     return
   end subroutine physics_ptend_init
@@ -1866,7 +1873,7 @@ subroutine physics_ptend_alloc(ptend,psetcols)
      if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%tauy_top')
   end if
 
-  if (any(ptend%lq)) then 
+  if (any(ptend%lq)) then      
      allocate(ptend%q(psetcols,pver,pcnst), stat=ierr)
      if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%q')
 

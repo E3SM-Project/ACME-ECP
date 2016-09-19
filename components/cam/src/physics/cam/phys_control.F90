@@ -51,12 +51,19 @@ character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion pack
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
 character(len=16) :: macrop_scheme        = unset_str  ! macrophysics package
 character(len=16) :: radiation_scheme     = unset_str  ! radiation package
+!-- mdb spcam
+character(len=16) :: SPCAM_microp_scheme  = unset_str  ! SPCAM microphysics package
+!-- mdb spcam
 integer           :: srf_flux_avg         = unset_int  ! 1 => smooth surface fluxes, 0 otherwise
 integer           :: conv_water_in_rad    = unset_int  ! 0==> No; 1==> Yes-Arithmetic average;
                                                        ! 2==> Yes-Average in emissivity.
 
 logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-columns in microphysics
 
+!-- mdb spcam
+logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
+logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
+!-- mdb spcam
 logical           :: atm_dep_flux         = .true.     ! true => deposition fluxes will be provided
                                                        ! to the coupler
 logical           :: history_amwg         = .true.     ! output the variables used by the AMWG diag package
@@ -149,8 +156,10 @@ subroutine phys_ctl_readnl(nlfile)
    character(len=*), parameter :: subname = 'phys_ctl_readnl'
 
    namelist /phys_ctl_nl/ cam_physpkg, cam_chempkg, waccmx_opt, deep_scheme, shallow_scheme, &
-      eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, srf_flux_avg, &
-      use_subcol_microp, atm_dep_flux, history_amwg, history_vdiag, history_aerosol, history_aero_optics, &
+!-- mdb spcam
+      eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, SPCAM_microp_scheme, srf_flux_avg, &
+      use_subcol_microp, use_SPCAM, use_ECPP, atm_dep_flux, history_amwg, history_vdiag, history_aerosol, history_aero_optics, &
+!-- mdb spcam
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
       conv_water_in_rad, history_clubb, do_clubb_sgs, do_tms, state_debug_checks, &
       use_hetfrz_classnuc, use_gw_oro, use_gw_front, use_gw_convect, &
@@ -186,9 +195,16 @@ subroutine phys_ctl_readnl(nlfile)
    call mpibcast(eddy_scheme,      len(eddy_scheme)      , mpichar, 0, mpicom)
    call mpibcast(microp_scheme,    len(microp_scheme)    , mpichar, 0, mpicom)
    call mpibcast(radiation_scheme, len(radiation_scheme) , mpichar, 0, mpicom)
+!-- mdb spcam
+   call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)
+!-- mdb spcam
    call mpibcast(macrop_scheme,    len(macrop_scheme)    , mpichar, 0, mpicom)
    call mpibcast(srf_flux_avg,                    1 , mpiint,  0, mpicom)
    call mpibcast(use_subcol_microp,               1 , mpilog,  0, mpicom)
+!-- mdb spcam
+   call mpibcast(use_SPCAM,                       1 , mpilog,  0, mpicom)
+   call mpibcast(use_ECPP,                        1 , mpilog,  0, mpicom)
+!-- mdb spcam
    call mpibcast(atm_dep_flux,                    1 , mpilog,  0, mpicom)
    call mpibcast(history_amwg,                    1 , mpilog,  0, mpicom)
    call mpibcast(history_vdiag,                   1 , mpilog,  0, mpicom)
@@ -296,6 +312,15 @@ subroutine phys_ctl_readnl(nlfile)
       end if
    end if
 
+!-- mdb spcam
+   ! Check settings for SPCAM_microp_scheme
+   if ( .not. (SPCAM_microp_scheme .eq. 'm2005' .or. SPCAM_microp_scheme .eq. 'sam1mom' .or. &
+               SPCAM_microp_scheme .eq. unset_str )) then
+      write(iulog,*)'phys_setopts: illegal value of SPCAM_microp_scheme:', SPCAM_microp_scheme
+      call endrun('phys_setopts: illegal value of SPCAM_microp_scheme')
+   endif
+!-- mdb spcam
+
    ! prog_modal_aero determines whether prognostic modal aerosols are present in the run.
    prog_modal_aero = (     cam_chempkg_is('trop_mam3') &
                       .or. cam_chempkg_is('trop_mam4') &
@@ -362,8 +387,10 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         convproc_do_gas_out, convproc_method_activate_out, mam_amicphys_optaa_out, &
                         liqcf_fix_out, regen_fix_out,demott_ice_nuc_out      &
                        ,l_tracer_aero_out, l_vdiff_out, l_rayleigh_out, l_gw_drag_out, l_ac_energy_chk_out  &
-                       ,l_bc_energy_fix_out, l_dry_adj_out, l_st_mac_out, l_st_mic_out, l_rad_out  &
-                        )
+                       ,l_bc_energy_fix_out, l_dry_adj_out, l_st_mac_out, l_st_mic_out, l_rad_out,  &
+!-- mdb spcam
+                        use_SPCAM_out, use_ECPP_out, SPCAM_microp_scheme_out)
+!-- mdb spcam
 
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
@@ -372,6 +399,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
 !          eddy_scheme_out   : vertical diffusion scheme
 !          microp_scheme_out : microphysics scheme
 !          radiation_scheme_out : radiation_scheme
+!	       SPCAM_microp_scheme_out : SPCAM microphysics scheme
 !-----------------------------------------------------------------------
 
    character(len=16), intent(out), optional :: deep_scheme_out
@@ -380,6 +408,11 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    character(len=16), intent(out), optional :: microp_scheme_out
    character(len=16), intent(out), optional :: radiation_scheme_out
    character(len=16), intent(out), optional :: macrop_scheme_out
+!-- mdb spcam
+   character(len=16), intent(out), optional :: SPCAM_microp_scheme_out
+   logical,           intent(out), optional :: use_SPCAM_out
+   logical,           intent(out), optional :: use_ECPP_out
+!-- mdb spcam
    logical,           intent(out), optional :: use_subcol_microp_out
    logical,           intent(out), optional :: atm_dep_flux_out
    logical,           intent(out), optional :: history_amwg_out
@@ -427,6 +460,13 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(eddy_scheme_out         ) ) eddy_scheme_out          = eddy_scheme
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
    if ( present(radiation_scheme_out    ) ) radiation_scheme_out     = radiation_scheme
+
+!-- mdb spcam
+   if ( present(SPCAM_microp_scheme_out ) ) SPCAM_microp_scheme_out  = SPCAM_microp_scheme
+
+   if ( present(use_SPCAM_out           ) ) use_SPCAM_out            = use_SPCAM
+   if ( present(use_ECPP_out            ) ) use_ECPP_out             = use_ECPP
+!-- mdb spcam
 
    if ( present(use_subcol_microp_out   ) ) use_subcol_microp_out    = use_subcol_microp
    if ( present(macrop_scheme_out       ) ) macrop_scheme_out        = macrop_scheme

@@ -146,6 +146,10 @@ subroutine phys_register
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on
 
+!-- mdb spcam
+    use crm_physics,        only: crm_physics_register
+!-- mdb spcam
+
     !---------------------------Local variables-----------------------------
     !
     integer  :: m        ! loop index
@@ -153,6 +157,11 @@ subroutine phys_register
     !-----------------------------------------------------------------------
 
     integer :: nmodes
+
+!-- mdb spcam
+    logical           :: use_SPCAM
+    character(len=16) :: SPCAM_microp_scheme
+!-- mdb spcam
 
     call phys_getopts(shallow_scheme_out       = shallow_scheme, &
                       macrop_scheme_out        = macrop_scheme,   &
@@ -162,6 +171,11 @@ subroutine phys_register
                       use_subcol_microp_out    = use_subcol_microp, &
                       state_debug_checks_out   = state_debug_checks, &
                       micro_do_icesupersat_out = micro_do_icesupersat)
+
+!-- mdb spcam
+    call phys_getopts( use_SPCAM_out = use_SPCAM )
+    call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
+!-- mdb spcam
 
     ! Initialize dyn_time_lvls
     call pbuf_init_time()
@@ -285,6 +299,10 @@ subroutine phys_register
 
        !  shallow convection
        call convect_shallow_register
+
+!-- mdb spcam
+       if (use_SPCAM) call crm_physics_register
+!-- mdb spcam
 
        ! radiation
        call radiation_register
@@ -700,6 +718,10 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use rad_solar_var,      only: rad_solar_var_init
     use nudging,            only: Nudge_Model,nudging_init
 
+!-- mdb spcam
+    use crm_physics,        only: crm_physics_init
+!-- mdb spcam
+
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
     type(physics_tend ), pointer       :: phys_tend(:)
@@ -709,9 +731,18 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     ! local variables
     integer :: lchnk
+
+!-- mdb spcam
+    logical :: use_SPCAM
+!-- mdb spcam
+
     real(r8) :: dp1 = huge(1.0_r8) !set in namelist, assigned in cloud_fraction.F90
 
     !-----------------------------------------------------------------------
+
+!-- mdb spcam
+    call phys_getopts(use_SPCAM_out     = use_SPCAM)
+!-- mdb spcam
 
     call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
 
@@ -839,6 +870,10 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     ! initiate CLUBB within CAM
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d,dp1)
+
+!-- mdb spcam
+    if (use_SPCAM) call crm_physics_init
+!-- mdb spcam
 
     call qbo_init
 
@@ -1005,6 +1040,7 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
                        phys_tend(c), phys_buffer_chunk,  fsds(1,c), landm(1,c),          &
                        sgh(1,c), sgh30(1,c), cam_out(c), cam_in(c) )
 
+          !write(*,*) '### phys_run1: maxval(cam_in(c)%ts) = ',maxval(cam_in(c)%ts)
        end do
 
        !call t_adj_detailf(-1)
@@ -1755,6 +1791,10 @@ subroutine tphysbc (ztodt,               &
     use subcol,          only: subcol_gen, subcol_ptend_avg
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
 
+!-- mdb spcam
+    use crm_physics,     only: crm_physics_tend, crm_save_state_tend
+!-- mdb spcam
+
     implicit none
 
     !
@@ -1915,6 +1955,13 @@ subroutine tphysbc (ztodt,               &
     logical :: l_rad
     !HuiWan (2014/15): added for a short-term time step convergence test ==
 
+!-- mdb spcam
+    logical           :: use_SPCAM
+    character(len=16) :: SPCAM_microp_scheme
+
+    call phys_getopts( use_SPCAM_out           = use_SPCAM )
+    call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
+!-- mdb spcam
 
     call phys_getopts( microp_scheme_out      = microp_scheme, &
                        macrop_scheme_out      = macrop_scheme, &
@@ -2078,6 +2125,11 @@ if (l_dry_adj) then
     call t_stopf('dry_adjustment')
 
 end if
+
+!-- mdb spcam
+    if (use_SPCAM) call crm_save_state_tend(state, tend, pbuf)
+!-- mdb spcam
+
     !
     !===================================================
     ! Moist convection
@@ -2451,6 +2503,65 @@ end if ! l_tracer_aero
    endif
 !>songxl 2011-09-20---------------------------------
 
+!-- mdb spcam
+   if (use_SPCAM) then
+      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out)
+
+   endif
+
+    if ( .not. deep_scheme_does_scav_trans() ) then
+
+       ! -------------------------------------------------------------------------------
+       ! 1. Wet Scavenging of Aerosols by Convective and Stratiform Precipitation.
+       ! 2. Convective Transport of Non-Water Aerosol Species.
+       !
+       !  . Aerosol wet chemistry determines scavenging fractions, and transformations
+       !  . Then do convective transport of all trace species except qv,ql,qi.
+       !  . We needed to do the scavenging first to determine the interstitial fraction.
+       !  . When UNICON is used as unified convection, we should still perform
+       !    wet scavenging but not 'convect_deep_tend2'.
+       ! -------------------------------------------------------------------------------
+
+       call t_startf('bc_aerosols')
+       if (clim_modal_aero .and. .not. prog_modal_aero) then
+          call modal_aero_calcsize_diag(state, pbuf)
+          call modal_aero_wateruptake_dr(state, pbuf)
+       endif
+       !!!call aero_model_wetdep( state, ztodt, dlf, cam_out, ptend, pbuf)
+       call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,       & !Intent-ins
+            mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
+            cam_out,                                                                 & !Intent-inout
+            pbuf,                                                                    & !Pointer
+            ptend                                                                    ) !Intent-out
+       call physics_update(state, ptend, ztodt, tend)
+
+
+       if (carma_do_wetdep) then
+          ! CARMA wet deposition
+          !
+          ! NOTE: It needs to follow aero_model_wetdep, so that cam_out%xxxwetxxx
+          ! fields have already been set for CAM aerosols and cam_out can be added
+          ! to for CARMA aerosols.
+          call t_startf ('carma_wetdep_tend')
+          call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
+          call physics_update(state, ptend, ztodt, tend)
+          call t_stopf ('carma_wetdep_tend')
+       end if
+
+       call t_startf ('convect_deep_tend2')
+       call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
+          du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
+       call physics_update(state, ptend, ztodt, tend)
+       call t_stopf ('convect_deep_tend2')
+
+       ! check tracer integrals
+       call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
+
+       call t_stopf('bc_aerosols')
+
+   endif
+
+
     !===================================================
     ! Moist physical parameteriztions complete: 
     ! send dynamical variables, and derived variables to history file
@@ -2489,8 +2600,23 @@ if (l_rad) then
     do i=1,ncol
        tend%flx_net(i) = net_flx(i)
     end do
+    
+!-- mdb spcam
+! don't add radiative tendency to GCM temperature in case of superparameterization
+! as it was added above as part of crm tendency.
+    if (use_SPCAM) ptend%s = 0.
+!-- mdb spcam
+    
     call physics_update(state, ptend, ztodt, tend)
-    call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
+    
+!-- mdb spcam
+    !call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
+    if (use_SPCAM) then
+      call check_energy_chng(state, tend, "spradheat", nstep, ztodt, zero, zero, zero, zero) 
+    else 
+      call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
+    endif
+!-- mdb spcam
 
     call t_stopf('radiation')
 

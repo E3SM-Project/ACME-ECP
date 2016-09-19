@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_SAM1MOM
+END
+precip_init.F90
+K 25
+svn:wc:ra_dav:version-url
+V 120
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_SAM1MOM/precip_init.F90
+END
+precip_proc.F90
+K 25
+svn:wc:ra_dav:version-url
+V 120
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_SAM1MOM/precip_proc.F90
+END
+cloud.F90
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_SAM1MOM/cloud.F90
+END
+micro_params.F90
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_SAM1MOM/micro_params.F90
+END
+microphysics.F90
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_SAM1MOM/microphysics.F90
+END

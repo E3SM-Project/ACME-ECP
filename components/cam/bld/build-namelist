@@ -3363,11 +3363,14 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_num_steps');
     add_default($nl, 'nucleate_ice_subgrid');
     add_default($nl, 'cld_macmic_num_steps');
+    add_default($nl, 'micro_mg_dcs');
     add_default($nl, 'micro_mg_precip_frac_method');
     add_default($nl, 'micro_mg_berg_eff_factor');
 }
-add_default($nl, 'micro_mg_dcs');
-add_default($nl, 'ice_sed_ai');
+# mdb: micro_mg_dcs entry should be in the if block above
+#add_default($nl, 'micro_mg_dcs');
+# mdb: this one i'm just commenting out
+#add_default($nl, 'ice_sed_ai');
 
 # Sub-column switches for physics packages
 # Check that a subcol_scheme is specified if use_subcol_microp is turned on (true)
@@ -3445,6 +3448,11 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_ice_deep');
    add_default($nl, 'clubb_ice_sh');
 }
+
+# SPCAM Microphysics scheme
+add_default($nl, 'SPCAM_microp_scheme');
+add_default($nl, 'use_SPCAM');
+add_default($nl, 'use_ECPP');
 
 #in-cloud scav tuning for cloud-borne aerosol
 if ($chem =~ /_mam/) {
