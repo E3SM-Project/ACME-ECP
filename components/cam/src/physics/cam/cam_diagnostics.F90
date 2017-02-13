@@ -153,9 +153,17 @@ subroutine diag_init()
   ! Declare the history fields for which this module contains outfld calls.
 
    use cam_history,        only: addfld, horiz_only, add_default
+   use cam_history_support,only: add_hist_coord
    use constituent_burden, only: constituent_burden_init
    use cam_control_mod,    only: moist_physics, ideal_phys
    use tidal_diag,         only: tidal_diag_init 
+
+!-- mdb spcam
+   use crmdims,            only: crm_nx, crm_ny, crm_nz
+#ifdef ECPP
+   use ecppvars,           only: NCLASS_CL,ncls_ecpp_in,NCLASS_PR
+#endif
+!-- mdb spcam
 
    integer :: k, m
    ! Note - this is a duplication of information in ice_constants 
@@ -164,6 +172,9 @@ subroutine diag_init()
    character(len=8), parameter :: tsnam(plevmx) = (/ 'TS1', 'TS2', 'TS3', 'TS4' /)
    integer :: ixcldice, ixcldliq ! constituent indices for cloud liquid and ice water.
    integer :: ierr
+!-- mdb spcam
+   logical :: use_SPCAM, use_ECPP
+!-- mdb spcam
 
    call phys_getopts(prog_modal_aero_out = prog_modal_aero )
 
@@ -670,6 +681,119 @@ subroutine diag_init()
   if (inithist_all) then
      call add_default ('TSICERAD&IC',0, 'I')
   end if
+
+!-- mdb spcam
+  call phys_getopts(use_SPCAM_out = use_SPCAM)
+  call phys_getopts(use_ECPP_out  = use_ECPP)
+
+  if (use_SPCAM) then
+  call addfld ('PRES    ',(/ 'lev' /), 'A', 'Pa      ','Pressure'                                )
+  call addfld ('DPRES   ',(/ 'lev' /), 'A', 'Pa      ','Pressure thickness of layer'             )
+  call addfld ('SPDT    ',(/ 'lev' /), 'A', 'K/s     ','T tendency due to CRM'                   )
+  call addfld ('SPDQ    ',(/ 'lev' /), 'A', 'kg/kg/s ','Q tendency due to CRM'                   )
+  call addfld ('SPDQC   ',(/ 'lev' /), 'A', 'kg/kg/s ','QC tendency due to CRM'                  )
+  call addfld ('SPDQI   ',(/ 'lev' /), 'A', 'kg/kg/s ','QI tendency due to CRM'                  )
+  call addfld ('SPMC    ',(/ 'lev' /), 'A', 'kg/m2/s ','Total mass flux from CRM'                )
+  call addfld ('SPMCUP  ',(/ 'lev' /), 'A', 'kg/m2/s ','Updraft mass flux from CRM'              )
+  call addfld ('SPMCDN  ',(/ 'lev' /), 'A', 'kg/m2/s ','Downdraft mass flux from CRM'            )
+  call addfld ('SPMCUUP ',(/ 'lev' /), 'A', 'kg/m2/s ','Unsaturated updraft mass flux from CRM'  )
+  call addfld ('SPMCUDN ',(/ 'lev' /), 'A', 'kg/m2/s ','Unsaturated downdraft mass flux from CRM')
+  call addfld ('SPQC    ',(/ 'lev' /), 'A', 'kg/kg   ','Cloud water from CRM'                    )
+  call addfld ('SPQI    ',(/ 'lev' /), 'A', 'kg/kg   ','Cloud ice from CRM'                      )
+  call addfld ('SPQS    ',(/ 'lev' /), 'A', 'kg/kg   ','Snow from CRM'                           )
+  call addfld ('SPQG    ',(/ 'lev' /), 'A', 'kg/kg   ','Graupel from CRM'                        )
+  call addfld ('SPQR    ',(/ 'lev' /), 'A', 'kg/kg   ','Rain from CRM'                           )
+  call addfld ('SPQTFLX ',(/ 'lev' /), 'A', 'kg/m2/s ','Nonprecip. water flux from CRM'          )
+  call addfld ('SPUFLX  ',(/ 'lev' /), 'A', 'm2/s2   ','x-momentum flux from CRM'                )
+  call addfld ('SPVFLX  ',(/ 'lev' /), 'A', 'm2/s2   ','y-momentum flux from CRM'                )
+  call addfld ('SPQTFLXS',(/ 'lev' /), 'A', 'kg/m2/s ','SGS Nonprecip. water flux from CRM'      )
+  call addfld ('SPTKE   ',(/ 'lev' /), 'A', 'kg/m/s2 ','Total TKE in CRM'                        )
+  call addfld ('SPTKES  ',(/ 'lev' /), 'A', 'kg/m/s2 ','SGS TKE in CRM'                          )
+  call addfld ('SPTK    ',(/ 'lev' /), 'A', 'm2/s    ','SGS TK in CRM'                           )
+  call addfld ('SPQPFLX ',(/ 'lev' /), 'A', 'kg/m2/s ','Precip. water flux from CRM'             )
+  call addfld ('SPPFLX  ',(/ 'lev' /), 'A', 'm/s     ','Precipitation flux from CRM'             )
+  call addfld ('SPQTLS  ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. Vapor Tendency from CRM'            )
+  call addfld ('SPQTTR  ',(/ 'lev' /), 'A', 'kg/kg/s ','Nonprec. water transport from CRM'       )
+  call addfld ('SPQPTR  ',(/ 'lev' /), 'A', 'kg/kg/s ','Prec. water transport from CRM'          )
+  call addfld ('SPQPEVP ',(/ 'lev' /), 'A', 'kg/kg/s ','Prec. water evaporation from CRM'        )
+  call addfld ('SPQPFALL',(/ 'lev' /), 'A', 'kg/kg/s ','Prec. water fall-out from CRM'           )
+  call addfld ('SPQPSRC ',(/ 'lev' /), 'A', 'kg/kg/s ','Prec. water source from CRM'             )
+  call addfld ('SPTLS   ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE Tendency from CRM'            )
+  call addfld ('TIMINGF ', horiz_only, 'A', '        ','CRM CPU usage efficiency: 1 - ideal'     )
+  call addfld ('CLOUDTOP',(/ 'lev' /), 'A', '        ','Cloud Top PDF'                           )
+! Adding crm dimensions to cam history 
+  call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
+  call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
+  call add_hist_coord('crm_nz'       ,crm_nz,  'CRM NZ')
+  call add_hist_coord('pverp'        ,pverp,     'pverp ')
+  call add_hist_coord('pver'         ,pver,      'pver  ')
+#ifdef ECPP
+      if (use_ECPP) then
+        call add_hist_coord('NCLASS_CL'    ,NCLASS_CL,'NCLASS_CL')
+        call add_hist_coord('ncls_ecpp_in' ,ncls_ecpp_in,'ncls_ecpp_in')
+        call add_hist_coord('NCLASS_PR'    ,NCLASS_PR,'NCLASS_PR')
+      endif
+#endif
+
+  call addfld ('CRM_U   ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'm/s     ', 'CRM x-wind'                          )
+  call addfld ('CRM_V   ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'm/s     ', 'CRM y-wind'                          )
+  call addfld ('CRM_W   ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'm/s     ', 'CRM z-wind'                          )
+  call addfld ('CRM_T   ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K       ', 'CRM Temperature'                     )
+  call addfld ('CRM_QV  ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'kg/kg   ', 'CRM Water Vapor'                     )
+  call addfld ('CRM_QC  ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'kg/kg   ', 'CRM Cloud Water'                     )
+  call addfld ('CRM_QI  ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'kg/kg   ', 'CRM Cloud Ice'                       )
+  call addfld ('CRM_QPC ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'kg/kg   ', 'CRM Precipitating Water'             )
+  call addfld ('CRM_QPI ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'kg/kg   ', 'CRM Precipitating Ice'               )
+  call addfld ('CRM_PREC',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Precipitation Rate'              )
+  call addfld ('CRM_QRS ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K/s     ', 'CRM Shortwave radiative heating rate')
+  call addfld ('CRM_QRL ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K/s     ', 'CRM Longwave radiative heating rate' )
+
+!-- MDB 8/2013
+  call addfld ('SPTVFLUX ',(/ 'lev' /), 'A', 'W/m2  ','Buoyancy Flux from CRM'             )
+  call addfld ('SPBUOY   ',(/ 'lev' /), 'A', 'W/m3  ','Buoyancy Term from CRM'             )
+  call addfld ('SPBUOYSD ',(/ 'lev' /), 'A', 'W/m3  ','Std Dev of Buoyancy Term from CRM'  )
+  call addfld ('SPMSEF   ',(/ 'lev' /), 'A', 'W/m2  ','Moist Static Energy Flux from CRM'  )
+  call addfld ('SPQVFLUX ',(/ 'lev' /), 'A', 'W/m2  ','Water Wapor Flux from CRM'          )
+
+      call add_default ('SPDT    ', 1, ' ')
+      call add_default ('SPDQ    ', 1, ' ')
+      call add_default ('SPDQC   ', 1, ' ')
+      call add_default ('SPDQI   ', 1, ' ')
+      call add_default ('SPMC    ', 1, ' ')
+      call add_default ('SPMCUP  ', 1, ' ')
+      call add_default ('SPMCDN  ', 1, ' ')
+      call add_default ('SPMCUUP ', 1, ' ')
+      call add_default ('SPMCUDN ', 1, ' ')
+      call add_default ('SPQC    ', 1, ' ')
+      call add_default ('SPQI    ', 1, ' ')
+      call add_default ('SPQS    ', 1, ' ')
+      call add_default ('SPQG    ', 1, ' ')
+      call add_default ('SPQR    ', 1, ' ')
+      call add_default ('SPQTFLX ', 1, ' ')
+      call add_default ('SPQTFLXS', 1, ' ')
+      call add_default ('SPTKE   ', 1, ' ')
+      call add_default ('SPTKES  ', 1, ' ')
+      call add_default ('SPTK    ', 1, ' ')
+      call add_default ('SPQPFLX ', 1, ' ')
+      call add_default ('SPPFLX  ', 1, ' ')
+      call add_default ('SPQTLS  ', 1, ' ')
+      call add_default ('SPQTTR  ', 1, ' ')
+      call add_default ('SPQPTR  ', 1, ' ')
+      call add_default ('SPQPEVP ', 1, ' ')
+      call add_default ('SPQPFALL', 1, ' ')
+      call add_default ('SPQPSRC ', 1, ' ')
+      call add_default ('SPTLS   ', 1, ' ')
+      call add_default ('CLOUDTOP', 1, ' ')
+      call add_default ('TIMINGF ', 1, ' ')
+!-- MDB 8/2013
+      call add_default ('SPTVFLUX  ', 1, ' ')
+      call add_default ('SPBUOY    ', 1, ' ')
+      call add_default ('SPBUOYSD  ', 1, ' ')
+      call add_default ('SPMSEF    ', 1, ' ')
+      call add_default ('SPQVFLUX  ', 1, ' ')
+
+endif !/* SPCAM */
+!-- mdb spcam
 
   !---------------------------------------------------------
   ! WACCM diagnostic history fields 
@@ -1572,6 +1696,7 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
        trefmnav(:ncol) =  1.0e36_r8
     endif
 
+    !write(*,*) '### diag_surf: maxval(cam_in%ts) = ',maxval(cam_in%ts)
     call outfld('TBOT',     cam_out%tbot,     pcols, lchnk)
     call outfld('TS',       cam_in%ts,        pcols, lchnk)
     call outfld('TSMN',     cam_in%ts,        pcols, lchnk)

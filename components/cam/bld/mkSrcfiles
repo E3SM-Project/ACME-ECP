@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+use Data::Dumper qw(Dumper);
 
 # Make list of files containing source code.  The source list contains all
 # .F90, .f90, .F, and .c files in a specified list of directories.  The
@@ -25,6 +26,9 @@ foreach $dir (@paths) {  # (could check that directories exist here)
     $dir =~ s!/?\s*$!!;  # remove / and any whitespace at end of directory name
     ($dir) = glob $dir;  # Expand tildes in path names.
 }
+
+### mdb debug
+print '$dir = ' . Dumper \@dir;
 
 # Loop through the directories and add each filename as a hash key.  This
 # automatically eliminates redunancies.

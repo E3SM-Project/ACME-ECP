@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_M2005
+END
+drop_activation.F90
+K 25
+svn:wc:ra_dav:version-url
+V 122
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_M2005/drop_activation.F90
+END
+README.MICRO_M2005
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_M2005/README.MICRO_M2005
+END
+microphysics.F90
+K 25
+svn:wc:ra_dav:version-url
+V 119
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_M2005/microphysics.F90
+END
+module_mp_graupel.F90
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/!svn/ver/157/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_M2005/module_mp_graupel.F90
+END
