@@ -23,7 +23,7 @@ module physpkg
   use phys_grid,        only: get_ncols_p
   use phys_gmean,       only: gmean_mass
   use ppgrid,           only: begchunk, endchunk, pcols, pver, pverp, psubcols
-  use constituents,     only: pcnst, cnst_name, cnst_get_ind
+  use constituents,     only: pcnst, cnst_name, cnst_get_ind, species_class
   use camsrfexch,       only: cam_out_t, cam_in_t
 
   use cam_control_mod,  only: ideal_phys, adiabatic
@@ -64,7 +64,10 @@ module physpkg
   integer ::  prec_sh_idx        = 0
   integer ::  snow_sh_idx        = 0
   integer ::  rice2_idx          = 0
-  integer :: species_class(pcnst)  = -1 !BSINGH: Moved from modal_aero_data.F90 as it is being used in second call to zm deep convection scheme (convect_deep_tend_2)
+
+  !BSINGH: Moved species_class from modal_aero_data.F90 as it is being used in second call to zm deep convection scheme (convect_deep_tend_2)
+  ! WH - moved this to constituents to resolve a circular dependency that arose in ACME-SP
+  ! integer :: species_class(pcnst)  = -1 
 
   save
 

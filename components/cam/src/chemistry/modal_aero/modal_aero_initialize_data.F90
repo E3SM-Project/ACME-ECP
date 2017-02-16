@@ -16,6 +16,10 @@ module modal_aero_initialize_data
   public :: modal_aero_initialize_q
 
   logical :: convproc_do_gas, convproc_do_aer 
+  
+  character(len=16)    :: microp_scheme   ! WH - acme-sp
+  integer              :: icldphy   ! WH - acme-sp
+
 contains
 
   subroutine modal_aero_register(species_class)

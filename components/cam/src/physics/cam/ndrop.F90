@@ -14,8 +14,8 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use spmd_utils,       only: masterproc
 use ppgrid,           only: pcols, pver, pverp
 use physconst,        only: pi, rhoh2o, mwh2o, r_universal, rh2o, &
-                            gravit, latvap, cpair, rair
-use constituents,     only: pcnst, cnst_get_ind
+                            gravit, latvap, cpair, rair, spec_class_gas
+use constituents,     only: pcnst, cnst_get_ind, cnst_name, species_class
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 
@@ -27,7 +27,7 @@ use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_num, rad_cnst_g
                             rad_cnst_get_aer_props, rad_cnst_get_mode_props,                &
                             rad_cnst_get_mam_mmr_idx, rad_cnst_get_mode_num_idx
 use cam_history,      only: addfld, horiz_only, add_default, fieldname_len, outfld
-use cam_abortutils,       only: endrun
+use cam_abortutils,   only: endrun
 use cam_logfile,      only: iulog
 
 implicit none
@@ -592,21 +592,21 @@ subroutine dropmixnuc( &
       end do
 
 !-- mdb spcam
-      if (SPCAM_mmf) then
+if (SPCAM_mmf) then
 !
 ! In the MMF model, turbulent mixing for tracer species are turned off.
 ! So the turbulent for gas species mixing are added here.
 ! (Previously, it had the turbulent mixing for aerosol species)
 !
 #if (defined MODAL_AERO)
-           do m=1, pcnst
-              if(species_class(m).eq.spec_class_gas) then
-                rgascol(:,m,nsav) = rgas(i,:,m)
-!                write(0, *) 'gas species indices in dropmixnuc,  m=', m, '  name=', cnst_name(m)
-              end if
-           end do
+   do m=1, pcnst
+      if(species_class(m).eq.spec_class_gas) then
+         rgascol(:,m,nsav) = rgas(i,:,m)
+!        write(0, *) 'gas species indices in dropmixnuc,  m=', m, '  name=', cnst_name(m)
+      end if
+   end do
 #endif
-      endif
+endif
 !-- mdb spcam
 
       ! droplet nucleation/aerosol activation
@@ -1060,22 +1060,22 @@ subroutine dropmixnuc( &
          end do
 
 !-- mdb spcam
-         if (SPCAM_mmf) then
+if (SPCAM_mmf) then
 !
 ! turbulent mixing for gas species .
 !
 #if (defined MODAL_AERO)
-           do m=1, pcnst
-              if(species_class(m).eq.spec_class_gas) then
-                flxconv = 0.0_r8
-                zerogas(:) = 0.0_r8
-                call explmix(rgascol(1,m,nnew),zerogas,ekkp,ekkm,overlapp,overlapm,  &
-                             rgascol(1,m,nsav),zero, flxconv, pver,dtmix,&
-                               .true., zerogas)
-              end if
-           end do
+   do m=1, pcnst
+      if(species_class(m).eq.spec_class_gas) then
+         flxconv = 0.0_r8
+         zerogas(:) = 0.0_r8
+         call explmix(rgascol(1,m,nnew),zerogas,ekkp,ekkm,overlapp,overlapm,  &
+                    rgascol(1,m,nsav),zero, flxconv, pver,dtmix,&
+                      .true., zerogas)
+      end if
+   end do
 #endif
-         endif
+endif
 !-- mdb spcam
 
       end do ! old_cloud_nsubmix_loop
@@ -1139,19 +1139,19 @@ subroutine dropmixnuc( &
       end if
 
 !-- mdb spcam
-      if (SPCAM_mmf) then
+if (SPCAM_mmf) then
 !
 ! Gas tendency
 !
 #ifdef MODAL_AERO
-           do m=1, pcnst
-              if(species_class(m).eq.spec_class_gas) then
-                ptend%lq(m) = .true.
-                ptend%q(i, :, m) = (rgascol(:,m,nnew)-rgas(i,:,m)) * dtinv
-              end if
-           end do
+   do m=1, pcnst
+      if(species_class(m).eq.spec_class_gas) then
+         ptend%lq(m) = .true.
+         ptend%q(i, :, m) = (rgascol(:,m,nnew)-rgas(i,:,m)) * dtinv
+      end if
+   end do
 #endif 
-      endif
+endif
 !-- mdb spcam
 
    end do  ! overall_main_i_loop
@@ -1204,23 +1204,23 @@ subroutine dropmixnuc( &
    end if
 
 !-- mdb spcam
-   if(SPCAM_mmf) then
+if(SPCAM_mmf) then
 !
 ! output column-integrated Gas tendency (this should be zero)
 !
 #ifdef MODAL_AERO
-     do m=1, pcnst
-         if(species_class(m).eq.spec_class_gas) then
-           do i=1, ncol
-              coltendgas(i) = sum( pdel(i,:)*ptend%q(i,:,m) )/gravit
-           end do
-           fieldnamegas = trim(cnst_name(m)) // '_mixnuc1sp'
-           call outfld( trim(fieldnamegas), coltendgas, pcols, lchnk)
-         end if
-     end do
-     deallocate(rgascol, coltendgas)
+   do m=1, pcnst
+      if(species_class(m).eq.spec_class_gas) then
+         do i=1, ncol
+            coltendgas(i) = sum( pdel(i,:)*ptend%q(i,:,m) )/gravit
+         end do
+         fieldnamegas = trim(cnst_name(m)) // '_mixnuc1sp'
+         call outfld( trim(fieldnamegas), coltendgas, pcols, lchnk)
+      end if
+   end do
+   deallocate(rgascol, coltendgas)
 #endif
-   end if
+end if
 !-- mdb spcam
 
    deallocate( &

@@ -43,6 +43,8 @@ module constituents
   character(len=16), public :: cnst_name(pcnst)     ! constituent names
   character(len=128),public :: cnst_longname(pcnst) ! long name of constituents
 
+  integer, public :: species_class(pcnst)  = -1     ! WH - moved this from physpkg to alleviate a conflict in acme-sp
+
 ! Namelist variables
   logical, public :: readtrace = .true.             ! true => obtain initial tracer data from IC file
 

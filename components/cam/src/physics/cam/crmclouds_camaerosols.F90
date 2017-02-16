@@ -20,6 +20,7 @@ module crmclouds_camaerosols
    use shr_kind_mod,    only: r8 => shr_kind_r8
    use ppgrid
    use abortutils,      only: endrun
+
    implicit none
    private
 
@@ -42,11 +43,11 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 !------------------------------------------------------------------------------------------------------
   use physics_types,    only: physics_state, physics_ptend, physics_tend, physics_ptend_init
   use physics_buffer,   only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
-  use physconst,        only: gravit, rair, karman
-  use constituents,     only: cnst_get_ind, pcnst
+  use physconst,        only: gravit, rair, karman, spec_class_gas
+  use constituents,     only: cnst_get_ind, pcnst, species_class
   use time_manager,     only: is_first_step
   use cam_history,      only: outfld
-  use ndrop,         only: dropmixnuc
+  use ndrop,            only: dropmixnuc
   use modal_aero_data
 
 ! Input 
@@ -70,6 +71,9 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   integer l,lnum,lnumcw,lmass,lmasscw
   integer :: lchnk                  ! chunk identifier
   integer :: ncol                   ! number of atmospheric columns
+
+  !WH - it seems species_class needs to be redefined here for ACME-SP
+  integer :: species_class(pcnst)  = -1
  
   real(r8) :: nc(pcols, pver)       ! droplet number concentration (#/kg)
   real(r8) :: nctend(pcols, pver)   ! change in droplet number concentration
@@ -126,6 +130,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 ! In the MMF model, turbulent mixing for tracer species are turned off in tphysac.
 ! So the turbulent for gas species mixing are added here.
 !
+
    do m=1, pcnst
       if(species_class(m).eq.spec_class_gas) then
         ptend%lq(m) = .true.

@@ -45,7 +45,7 @@ use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_r
 
 use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
-use cam_abortutils,       only: endrun
+use cam_abortutils,   only: endrun
 use perf_mod,         only: t_startf, t_stopf
 
 implicit none

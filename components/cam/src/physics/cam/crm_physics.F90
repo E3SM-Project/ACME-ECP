@@ -181,12 +181,13 @@ subroutine crm_physics_init()
 !--------------------------------------------------------------------------------------------------------
   use physics_buffer,  only: pbuf_get_index
   use physics_types,   only: physics_tend_alloc
-  use physconst,       only: mwdry, cpair
+  use physconst,       only: mwdry, cpair, spec_class_gas
   use ppgrid,          only: pcols, pver, pverp
-  use constituents,    only: pcnst, cnst_name
+  use constituents,    only: pcnst, cnst_name, species_class
   use cam_history,     only: addfld, add_default, horiz_only
   use crmdims,         only: crm_nx, crm_ny, crm_nz
   use phys_control,    only: phys_getopts
+
 #ifdef ECPP
   use module_ecpp_ppdriver2,   only: papampollu_init
   use ecppvars,   only: NCLASS_CL,ncls_ecpp_in,NCLASS_PR
@@ -197,8 +198,7 @@ subroutine crm_physics_init()
     use modal_aero_data, only:  cnst_name_cw, &
 !                               lmassptr_amode, lmassptrcw_amode, lwaterptr_amode, &
                                 lmassptr_amode, lmassptrcw_amode, &
-                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode, &
-                                species_class, spec_class_gas
+                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode
        
     integer :: l, lphase, lspec
     character(len=fieldname_len)   :: tmpname
@@ -439,7 +439,7 @@ subroutine crm_physics_init()
 
     end do   ! lspec
     end do   ! lphase
-    end do   ! m
+    end do   ! m  
 
     do m=1, pcnst
        if(species_class(m).eq.spec_class_gas) then
