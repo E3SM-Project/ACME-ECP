@@ -21,7 +21,7 @@ pows2 = (5 + b_snow) / 8.
 powg1 = (3 + b_grau) / 4.
 powg2 = (5 + b_grau) / 8.
       
-call t_startf ('precip_proc')
+!call t_startf ('precip_proc')
      
 do k=1,nzm
  qpsrc(k)=0.
@@ -130,7 +130,7 @@ enddo
     
 
 
-call t_stopf ('precip_proc')
+!call t_stopf ('precip_proc')
 
 end subroutine precip_proc
 

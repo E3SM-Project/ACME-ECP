@@ -14,8 +14,11 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use spmd_utils,       only: masterproc
 use ppgrid,           only: pcols, pver, pverp
 use physconst,        only: pi, rhoh2o, mwh2o, r_universal, rh2o, &
-                            gravit, latvap, cpair, rair
-use constituents,     only: pcnst, cnst_get_ind
+                            gravit, latvap, cpair, rair,spec_class_gas !Guangxing Lin add spec_class_gas
+!==Guangxing Lin
+!use constituents,     only: pcnst, cnst_get_ind
+use constituents,     only: pcnst, cnst_get_ind, cnst_name
+!==Guangxing Lin
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 
@@ -29,12 +32,20 @@ use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_num, rad_cnst_g
 use cam_history,      only: addfld, horiz_only, add_default, fieldname_len, outfld
 use cam_abortutils,       only: endrun
 use cam_logfile,      only: iulog
+!==Guangxing Lin 
+#if (defined MODAL_AERO)
+use modal_aero_data,  only: numptr_amode, lmassptr_amode
+#endif
+!==Guangxing Lin 
 
 implicit none
 private
 save
 
-public ndrop_init, dropmixnuc, activate_modal
+!==Guangxing Lin
+!public ndrop_init, dropmixnuc, activate_modal
+public ndrop_init, dropmixnuc, activate_modal,loadaer
+!==Guangxing Lin
 
 real(r8), allocatable :: alogsig(:)     ! natl log of geometric standard dev of aerosol
 real(r8), allocatable :: exp45logsig(:)
@@ -296,7 +307,9 @@ end subroutine ndrop_init
 
 subroutine dropmixnuc( &
    state, ptend, dtmicro, pbuf, wsub, &
-   cldn, cldo, tendnd, factnum, dommf)     !-- mdb spcam:  add dommf
+   cldn, cldo, tendnd, factnum, species_class,dommf)     !-- mdb spcam:  add dommf
+!   cldn, cldo, tendnd, factnum, dommf)     !-- mdb spcam:  add dommf
+!==Guangxing Lin, add species_class
 
    ! vertical diffusion and nucleation of cloud droplets
    ! assume cloud presence controlled by cloud fraction
@@ -314,6 +327,9 @@ subroutine dropmixnuc( &
    real(r8), intent(in) :: cldn(pcols,pver)    ! cloud fraction
    real(r8), intent(in) :: cldo(pcols,pver)    ! cloud fraction on previous time step
    logical,  intent(in),optional :: dommf      ! value insignificant - if variable present, is called in the mmf part.
+!==Guangxing Lin
+   integer, intent(in) :: species_class(:)    
+!==Guangxing Lin
 
    ! output arguments
    real(r8), intent(out) :: tendnd(pcols,pver) ! change in droplet number concentration (#/kg/s)

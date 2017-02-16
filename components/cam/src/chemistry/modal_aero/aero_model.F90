@@ -36,6 +36,18 @@ module aero_model
   public :: aero_model_emissions  ! aerosol emissions
   public :: aero_model_surfarea   ! aerosol surface area for chemistry
 
+  public :: calc_1_impact_rate
+  public :: dlndg_nimptblgrow, nimptblgrow_mind, nimptblgrow_maxd,   &
+                scavimptblnum, scavimptblvol
+!==Guangxing Lin
+!#if (defined CRM)
+!#if (defined ECPP)
+!#ifdef CRM 
+!#ifdef ECPP 
+!#endif
+!#endif 
+!==Guangxing Lin
+
  ! Misc private data 
 
   ! number of modes
@@ -2344,6 +2356,7 @@ do_lphase2_conditional: &
     use modal_aero_newnuc,     only : modal_aero_newnuc_sub
     use mo_setsox,             only : setsox, has_sox
     use modal_aero_data,       only : cnst_name_cw, qqcw_get_field
+    use phys_control,    only: phys_getopts !==Guangxing Lin
 
     !-----------------------------------------------------------------------
     !      ... dummy arguments
@@ -2390,7 +2403,12 @@ do_lphase2_conditional: &
     real(r8) :: vmrcw(ncol,pver,gas_pcnst)            ! cloud-borne aerosol (vmr)
 
     real(r8), pointer :: fldcw(:,:)
+!==Guangxing Lin
+    logical :: use_ECPP
 
+    call phys_getopts (use_ECPP_out  = use_ECPP ) 
+!==Guangxing Lin
+    
     call pbuf_get_field(pbuf, dgnum_idx,      dgnum,  start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )
     call pbuf_get_field(pbuf, dgnumwet_idx,   dgnumwet )
     call pbuf_get_field(pbuf, wetdens_ap_idx, wetdens )
@@ -2420,6 +2438,9 @@ do_lphase2_conditional: &
 !
     call qqcw2vmr( lchnk, vmrcw, mbar, ncol, loffset, pbuf )
 
+!==Guangxing Lin
+   if (.not. use_ECPP) then  ! regular CAM
+!==Guangxing Lin
     dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
     dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
 
@@ -2469,6 +2490,17 @@ do_lphase2_conditional: &
       name = 'AQ_'//trim(solsym(m))
       call outfld( name, wrk(:ncol), ncol, lchnk )
     enddo
+!==Guangxing Lin
+  else if (use_ECPP) then  ! SPCAM ECPP
+! when ECPP is used, aqueous chemistry is done in ECPP, 
+! and not updated here. 
+! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
+!
+       dvmrdt = 0.0_r8
+       dvmrcwdt = 0.0_r8
+   endif
+!==Guangxing Lin
+
 
     if (mam_amicphys_optaa <= 0) then
     ! do gas-aerosol exchange, nucleation, and coagulation using old routines

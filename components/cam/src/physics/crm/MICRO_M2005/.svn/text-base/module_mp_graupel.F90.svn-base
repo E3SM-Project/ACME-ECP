@@ -1,11 +1,10 @@
 !WRF:MODEL_LAYER:PHYSICS
-!bloss: This is version 1.4 of Hugh Morrison's two moment, five class scheme.
+!HM: This is version 2 of Hugh Morrison's two moment, five class scheme.
+!
 
-! hm, modified microphysics 8/31/11 for consistency with V3 microphysics
-! Current version is tagged as V3
-! Reference is Morrison et al. (2005), JAS, Morrison et al. (2009), MWR
-
-! changes with respect to V1.4
+! THIS MODULE CONTAINS THE TWO-MOMENT MICROPHYSICS CODE DESCRIBED BY
+!     MORRISON ET AL. (2009, MWR)
+! recent changes with respect to V1.4
 
 ! V1.5
 ! 1) more pathways to allow hail to form (only affects IHAIL=1 option), from collisions of snow/cloud water
@@ -25,13 +24,27 @@
 ! 1) bug fix to maximum-allowed particle fallspeeds (air density correction factor considered)
 ! 2) change to comments
 
-! V2.1
-! 1) addition of rain drop breakup following Verlinde and Cotton (1993)
-! 2) change to minimum allowed lambda (slope parameter) for rain
-! 3) addition of accelerated melting of graupel/hail/snow due to collision with rain
+! *** Changes incorporated from WRF: ***
+! CHANGES FOR V3.2, RELATIVE TO MOST RECENT (BUG-FIX) CODE FOR V3.1
 
-! V3
-! minor revisions by Andy Ackerman
+! 1) ADDED ACCELERATED MELTING OF GRAUPEL/SNOW DUE TO COLLISION WITH RAIN, FOLLOWING LIN ET AL. (1983)
+! 2) INCREASED MINIMUM LAMBDA FOR RAIN, AND ADDED RAIN DROP BREAKUP FOLLOWING MODIFIED VERSION
+!     OF VERLINDE AND COTTON (1993)
+! 3) CHANGE MINIMUM ALLOWED MIXING RATIOS IN DRY CONDITIONS (RH < 90%), THIS IMPROVES RADAR REFLECTIIVITY
+!     IN LOW REFLECTIVITY REGIONS
+! 4) BUG FIX TO MAXIMUM ALLOWED PARTICLE FALLSPEEDS AS A FUNCTION OF AIR DENSITY
+! 5) BUG FIX TO CALCULATION OF LIQUID WATER SATURATION VAPOR PRESSURE (CHANGE IS VERY MINOR)
+
+! bug fix, 5/12/10
+! 6) bug fix for saturation vapor pressure in low pressure, to avoid division by zero
+
+! CHANGES FOR V3.3
+! 1) MODIFY FALLSPEED BELOW THE LOWEST LEVEL OF PRECIPITATION, WHICH PREVENTS
+!      POTENTIAL FOR SPURIOUS ACCUMULATION OF PRECIPITATION DURING SUB-STEPPING FOR SEDIMENTATION
+! 2) BUG FIX TO LATENT HEAT RELEASE DUE TO COLLISIONS OF CLOUD ICE WITH RAIN
+! 3) CLEAN UP OF COMMENTS IN THE CODE
+! additional minor bug fixes and small changes, 5/30/2011 (CLUBB/SAM-CLUBB as of 5 Oct 2011)
+! minor revisions by A. Ackerman April 2011:
 ! 1) replaced kinematic with dynamic viscosity 
 ! 2) replaced scaling by air density for cloud droplet sedimentation
 !    with viscosity-dependent Stokes expression
@@ -48,11 +61,12 @@
 ! 8) BUG FIX TO LATENT HEAT RELEASE DUE TO COLLISIONS OF CLOUD ICE WITH RAIN
 ! 9) BUG FIX TO IGRAUP SWITCH FOR NO GRAUPEL/HAIL
 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! THIS SCHEME IS A BULK DOUBLE-MOMENT SCHEME THAT PREDICTS MIXING
 ! RATIOS AND NUMBER CONCENTRATIONS OF FIVE HYDROMETEOR SPECIES:
-! CLOUD DROPLETS, CLOUD (SMALL) ICE, RAIN, SNOW, AND GRAUPEL/HAIL.
+! CLOUD DROPLETS, CLOUD (SMALL) ICE, RAIN, SNOW, AND GRAUPEL.
 
 MODULE module_mp_GRAUPEL
 !bloss   USE     module_wrf_error
@@ -73,6 +87,17 @@ MODULE module_mp_GRAUPEL
 #endif
 
    IMPLICIT NONE
+
+! Adding coefficient term for clex9_oct14 case. This will reduce NNUCCD and NNUCCC
+! by some factor to allow cloud to persist at realistic time intervals.
+
+#ifdef CLUBB_CRM
+!   REAL, SAVE :: NNUCCD_REDUCE_COEF = 1.0, NNUCCC_REDUCE_COEF = 1.0
+   REAL, SAVE :: NNUCCD_REDUCE_COEF = 1.0, NNUCCC_REDUCE_COEF = 1.0e-2
+#endif
+
+! Change by Marc Pilon on 11/16/11
+
 
    REAL, PARAMETER :: PI = 3.1415926535897932384626434
    REAL, PARAMETER :: SQRTPI = 0.9189385332046727417803297
@@ -96,6 +121,14 @@ MODULE module_mp_GRAUPEL
         doarcticicenucl, &    ! use arctic parameter values for ice nucleation
         docloudedgeactivation,& ! activate cloud droplets throughout the cloud
         dofix_pgam            ! option to fix value of pgam (exponent in cloud water gamma distn)
+
+#ifdef CLUBB_CRM
+   logical, public :: doclubb_tb    ! use clubb as a turbulence scheme only +++mhwang
+                                  ! so liquid water is diagnosed based on saturaiton adjustment
+   logical, public :: doclubb_gridmean   ! if .true., grid-mean values from CLUBB feeds into 
+                                        ! Morrison microphysics
+   logical, public :: doclubb_autoin    ! in-cloud values for autoconversion 
+#endif
 
    integer, public :: &
         aerosol_mode          ! determines aerosol mode used
@@ -445,7 +478,9 @@ SUBROUTINE GRAUPEL_INIT
 ! IN TOTAL WATER VERSION.  IT NOW TAKES PLACE BEFORE M2005MICRO_GRAUPEL IS CALLED.
 
 #ifdef CLUBB_CRM
-      ISATADJ = 0 ! Enable for CLUBB
+!      ISATADJ = 0 ! Enable for CLUBB
+      ISATADJ = 1  ! When CLUBB is called, saturation adjustment is done in CLUBB, 
+                   ! so should we set ISATADJ=1 here? test by Minghuai Wang +++mhwang
 #else
       ISATADJ = 1
 #endif
@@ -1052,7 +1087,7 @@ END SUBROUTINE MP_GRAUPEL
                                             IMS,IME, JMS,JME, KMS,KME,           &
                                             ITS,ITE, JTS,JTE, KTS,KTE,           & ! ADD GRAUPEL
                         QG3DTEN,NG3DTEN,QG3D,NG3D,EFFG,QGSTEN,QRSTEN,QISTEN,QNISTEN,QCSTEN, &
-                        CF3D      &  ! Cloud fraction from clubb
+                        CF3D, CFL3D, CFI3D, RELVAR, ACCRE_ENHAN      &  ! Cloud fraction from clubb
 #ifdef ECPP
                         ,C2PREC,QSINK,CSED,ISED,SSED,GSED,RSED, RH3D   & ! mhwang added, for ECPP
 #endif /*ECPP*/
@@ -1156,9 +1191,19 @@ END SUBROUTINE MP_GRAUPEL
       REAL, DIMENSION(KMS:KME) ::  QNISTEN           ! SNOW SED TEND (KG/KG/S)
       REAL, DIMENSION(KMS:KME) ::  QCSTEN            ! CLOUD WAT SED TEND (KG/KG/S)      
 
+      REAL, DIMENSION(KMS:KME) ::  NGSTEN            ! GRAUPEL SED TEND (#KG/S)
+      REAL, DIMENSION(KMS:KME) ::  NRSTEN            ! RAIN SED TEND (#/KG/S)
+      REAL, DIMENSION(KMS:KME) ::  NISTEN            ! CLOUD ICE SED TEND (#/KG/S)
+      REAL, DIMENSION(KMS:KME) ::  NSSTEN           ! SNOW SED TEND (#/KG/S)
+      REAL, DIMENSION(KMS:KME) ::  NCSTEN            ! CLOUD WAT SED TEND (#/KG/S)   
+
 #ifdef CLUBB_CRM
 ! ADDED BY UWM JAN 7 2008
-      REAL, INTENT(IN), DIMENSION(KMS:KME) ::  CF3D  ! SUBGRID SCALE CLOUD FRACTION (%)
+      REAL, INTENT(IN), DIMENSION(KMS:KME) ::  CF3D  ! SUBGRID SCALE CLOUD FRACTION 
+      REAL, INTENT(IN), DIMENSION(KMS:KME) ::  CFL3D  ! SUBGRID SCALE LIQUID CLOUD FRACTION 
+      REAL, INTENT(IN), DIMENSION(KMS:KME) ::  CFI3D  ! SUBGRID SCALE ICE CLOUD FRACTION (total cloud fraction here) 
+      REAL, INTENT(IN), DIMENSION(KMS:KME) ::  RELVAR  ! RELATIVE LIQUID WATER VARIANCE
+      REAL, INTENT(IN), DIMENSION(KMS:KME) ::  ACCRE_ENHAN  ! ACCRETION ENHANCEMENT FACTOR 
 #endif
 ! OUTPUT VARIABLES
 
@@ -1413,6 +1458,8 @@ END SUBROUTINE MP_GRAUPEL
       REAL :: QSAT_INIT ! Temporary variable for saturation
       REAL :: TMPQSMALL ! Temporary variable for QSMALL (a lower bound in kg/kg)
       REAL :: T3D_INIT ! Temporary variable for T3D (absolute temperature in [K] )
+      REAL :: CLDMAXR(KMS:KME)  ! Maximum cloudoverlap for rain water
+      REAL :: CLDMAXALL(KMS:KME)  ! Maximum cloudoverlap for all hydrometers
 #else 
       REAL ::EP_2 ! Dry air gas constant over water vapor gas constant [-]
       EP_2 = rgas / rv
@@ -1466,6 +1513,34 @@ END SUBROUTINE MP_GRAUPEL
          NPRACS(KMS:KME) = 0.
          NGMLTG(KMS:KME) = 0.
          NGMLTR(KMS:KME) = 0.
+
+#ifdef CLUBB_CRM
+         if(doclubb_gridmean) then
+!          calculate rain fraction based on the maximum cloud overlap 
+!          This follows Morrison and Gettelman scheme in CAM5
+           CLDMAXR(KTE)=CFL3D(KTE)
+           DO K=KTE-1,KTS,-1
+             ! if rain, is smaller than threshold, set cldmax
+             ! to cloud fraction at current level
+             if(QR3D(K+1).ge.QSMALL) then 
+               CLDMAXR(K) = max(CLDMAXR(K+1), CFL3D(K))
+             else
+               CLDMAXR(K) = CFL3D(K)
+             end if
+           END DO
+
+           CLDMAXALL(KTE)=CFI3D(KTE)
+           DO K=KTE-1,KTS,-1
+             ! if rain, is smaller than threshold, set cldmax
+             ! to cloud fraction at current level
+             if(QR3D(K+1).ge.QSMALL.OR.QNI3D(K+1).ge.QSMALL.OR.QG3D(K+1).ge.QSMALL ) then
+               CLDMAXALL(K) = max(CLDMAXALL(K+1), CFI3D(K))
+             else
+               CLDMAXALL(K) = CFI3D(K)
+             end if
+           END DO
+         endif
+#endif
 
 ! ATMOSPHERIC PARAMETERS THAT VARY IN TIME AND HEIGHT
          DO K = KTS,KTE
@@ -1654,21 +1729,28 @@ END SUBROUTINE MP_GRAUPEL
       QCSTEN(K) = 0.
       QGSTEN(K) = 0.
 
+      NRSTEN(K) = 0.
+      NISTEN(K) = 0.
+      NSSTEN(K) = 0.
+      NCSTEN(K) = 0.
+      NGSTEN(K) = 0.
+
 !..................................................................
 ! MICROPHYSICS PARAMETERS VARYING IN TIME/HEIGHT
 
 ! DYNAMIC VISCOSITY OF AIR
-
+! fix 053011
             MU(K) = 1.496E-6*T3D(K)**1.5/(T3D(K)+120.)
 
 ! FALL SPEED WITH DENSITY CORRECTION (HEYMSFIELD AND BENSSEMER 2006)
 
             DUM = (RHOSU/RHO(K))**0.54
-! v3 5/27/11
+
+! fix 053011
 !            AIN(K) = DUM*AI
 ! AA revision 4/1/11: Ikawa and Saito 1991 air-density correction 
-!            AIN(K) = (RHOSU/RHO(K))**0.35
-! HM bug fix 10/32/2011
+!           AIN(K) = (RHOSU/RHO(K))**0.35
+! HM bug fix 10/32/2011 
             AIN(K) = (RHOSU/RHO(K))**0.35*AI
             ARN(K) = DUM*AR
             ASN(K) = DUM*AS
@@ -1695,7 +1777,7 @@ END SUBROUTINE MP_GRAUPEL
 
 ! THERMAL CONDUCTIVITY FOR AIR
 
-! v3 5/27/11
+! fix 053011
             KAP(K) = 1.414E3*MU(K)
 
 ! DIFFUSIVITY OF WATER VAPOR
@@ -1704,7 +1786,7 @@ END SUBROUTINE MP_GRAUPEL
 
 ! SCHMIT NUMBER
 
-! v3 5/27/11
+! fix 053011
             SC(K) = MU(K)/(RHO(K)*DV(K))
 
 ! PSYCHOMETIC CORRECTIONS
@@ -1803,7 +1885,15 @@ END SUBROUTINE MP_GRAUPEL
 
 !         DUM = PRES(K)/(R*T3D(K))
 ! V1.5
+#ifndef CLUBB_CRM
          PGAM(K)=0.0005714*(NC3D(K)/1.E6*RHO(K))+0.2714
+#else
+         if(doclubb_autoin) then
+            PGAM(K)=0.0005714*(NC3D(K)/1.E6*RHO(K)/max(CFL3D(K), cloud_frac_thresh))+0.2714
+         else
+            PGAM(K)=0.0005714*(NC3D(K)/1.E6*RHO(K))+0.2714
+         end if
+#endif
 
          PGAM(K)=1./(PGAM(K)**2)-1.
          PGAM(K)=MAX(PGAM(K),2.)
@@ -1830,13 +1920,33 @@ END SUBROUTINE MP_GRAUPEL
       IF (LAMC(K).LT.LAMMIN) THEN
       LAMC(K) = LAMMIN
 
+#ifndef CLUBB_CRM
       NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K))+              &
                 LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26
+#else
+      if(doclubb_autoin) then
+        NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K)/max(CFL3D(K), cloud_frac_thresh))+              &
+                  LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26 * max(CFL3D(K), cloud_frac_thresh)
+      else 
+        NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K))+              &
+                  LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26
+      endif
+#endif
       ELSE IF (LAMC(K).GT.LAMMAX) THEN
       LAMC(K) = LAMMAX
 
+#ifndef CLUBB_CRM
       NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K))+              &
                 LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26
+#else
+      if(doclubb_autoin) then
+        NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K)/max(CFL3D(K), cloud_frac_thresh))+              &
+                  LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26 * max(CFL3D(K), cloud_frac_thresh)
+      else
+        NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K))+              &
+                  LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26
+      end if
+#endif
 
       END IF
 
@@ -1943,6 +2053,13 @@ END SUBROUTINE MP_GRAUPEL
                 PRC(K)=1350.*QC3D(K)**2.47*  &
            (NC3D(K)/1.e6*RHO(K))**(-1.79)
 
+#ifdef CLUBB_CRM
+           if(doclubb_gridmean) then
+              PRC(K)=PRC(K) * gamma(RELVAR(K)+2.47)/(gamma(RELVAR(K))*RELVAR(K)**2.47) 
+              PRC(K)=PRC(K) * CFL3D(K)**0.32  ! CFL3D**(1.79-2.47+1)
+           end if
+#endif
+
 ! note: nprc1 is change in Nr,
 ! nprc is change in Nc
 
@@ -1982,6 +2099,7 @@ END SUBROUTINE MP_GRAUPEL
             UNR = ARN(K)*CONS6/LAMR(K)**BR
 
 ! SET REASLISTIC LIMITS ON FALLSPEEDS
+
 ! bug fix, 10/08/09
             dum=(rhosu/rho(k))**0.54
             UMS=MIN(UMS,1.2*dum)
@@ -1996,7 +2114,7 @@ END SUBROUTINE MP_GRAUPEL
                   2./(LAMS(K)**2*LAMR(K)**2)+                  &
                   0.5/(LAMS(K)*LAMR(K)**3)))
 
-! v3 5/27/11 npracs no longer used
+! fix 053011, npracs no longer subtracted from snow
 !            NPRACS(K) = CONS32*RHO(K)*(1.7*(UNR-UNS)**2+            &
 !                0.3*UNR*UNS)**0.5*N0RR(K)*N0S(K)*              &
 !                (1./(LAMR(K)**3*LAMS(K))+                      &
@@ -2062,6 +2180,12 @@ END SUBROUTINE MP_GRAUPEL
 
            DUM=(QC3D(K)*QR3D(K))
            PRA(K) = 67.*(DUM)**1.15
+#ifdef CLUBB_CRM
+           if(doclubb_gridmean) then
+             PRA(K)=PRA(K) * accre_enhan(K)*gamma(RELVAR(K)+1.15)/(gamma(RELVAR(K))*RELVAR(K)**1.15)
+             PRA(K) = PRA(K) /(max(CLDMAXR(K), cloud_frac_thresh))**1.15  !  PRA = (QC3D/CFL3D * QR3D/CLDMAXR * CFL3D)**1.15
+           end if
+#endif
            NPRA(K) = PRA(K)/(QC3D(K)/NC3D(K))
 
            ELSE IF (IRAIN.EQ.1) THEN
@@ -2086,17 +2210,15 @@ END SUBROUTINE MP_GRAUPEL
 ! v1.4, replace with seifert and beheng (2001)
 
          IF (QR3D(K).GE.1.E-8) THEN
-! v1.4
-! seifert and beheng
-! include breakup, V2.1
+! include breakup add 10/09/09
             dum1=300.e-6
             if (1./lamr(k).lt.dum1) then
             dum=1.
             else if (1./lamr(k).ge.dum1) then
             dum=2.-exp(2300.*(1./lamr(k)-dum1))
             end if
-            nragg(k) = -5.78*dum*qr3d(k)*nr3d(k)*rho(k)
-
+!            NRAGG(K) = -8.*NR3D(K)*QR3D(K)*RHO(K)
+            NRAGG(K) = -5.78*dum*NR3D(K)*QR3D(K)*RHO(K)
          END IF
 
 !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -2120,6 +2242,14 @@ END SUBROUTINE MP_GRAUPEL
            ELSE
               PRE(K) = 0.
            END IF
+#ifdef CLUBB_CRM
+           if(doclubb_gridmean) then
+               PRE(K) = PRE(K) * max(CLDMAXR(K)-CFL3D(K), 0.0)/max(CLDMAXR(K), cloud_frac_thresh)
+               if(CFL3D(K).gt.0.10) then  ! when there is enough liquid present, no evaporation is allowed
+                  PRE(K) = 0.0
+               end if
+           end if
+#endif
 
 !.......................................................................
 ! MELTING OF SNOW
@@ -2129,9 +2259,10 @@ END SUBROUTINE MP_GRAUPEL
 
           IF (QNI3D(K).GE.1.E-8) THEN
 
-! v3 5/27/11 bug fix
+! fix 053011
+! HM, MODIFY FOR V3.2, ADD ACCELERATED MELTING DUE TO COLLISION WITH RAIN
 !             DUM = -CPW/XLF(K)*T3D(K)*PRACS(K)
-!             DUM = -CPW/XLF(K)*(T3D(K)-273.15)*PRACS(K)
+!             DUM = -CPW/XLF(K)*(T3D(K)-TMELT)*PRACS(K)
              DUM = -CPW/XLF(K)*max(T3D(K)-TMELT, 0.0)*PRACS(K)     !+++mhwang 09/20/2011
 
 !             PSMLT(K)=2.*PI*N0S(K)*KAP(K)*(TMELT-T3D(K))/       &
@@ -2164,7 +2295,8 @@ END SUBROUTINE MP_GRAUPEL
 
           IF (QG3D(K).GE.1.E-8) THEN
 
-! v3 5/27/11 bug fix
+! fix 053011
+! HM, MODIFY FOR V3.2, ADD ACCELERATED MELTING DUE TO COLLISION WITH RAIN
 !             DUM = -CPW/XLF(K)*T3D(K)*PRACG(K)
 !             DUM = -CPW/XLF(K)*(T3D(K)-273.15)*PRACG(K)
              DUM = -CPW/XLF(K)*max(T3D(K)-TMELT, 0.0)*PRACG(K)     !+++mhwang 10/17/2011
@@ -2271,8 +2403,9 @@ END SUBROUTINE MP_GRAUPEL
       QR3DTEN(K) = QR3DTEN(K)+(PRE(K)+PRA(K)+PRC(K)-PSMLT(K)-PGMLT(K)+PRACS(K)+PRACG(K))
       QNI3DTEN(K) = QNI3DTEN(K)+(PSMLT(K)+EVPMS(K)-PRACS(K))
       QG3DTEN(K) = QG3DTEN(K)+(PGMLT(K)+EVPMG(K)-PRACG(K))
-! v3 5/27/11
+! fix 053011
 !      NS3DTEN(K) = NS3DTEN(K)-NPRACS(K)
+! HM, bug fix 5/12/08, npracg is subtracted from nr not ng
 !      NG3DTEN(K) = NG3DTEN(K)
       NC3DTEN(K) = NC3DTEN(K)+ (-NPRA(K)-NPRC(K))
       NR3DTEN(K) = NR3DTEN(K)+ (NPRC1(K)+NRAGG(K)-NPRACG(K))
@@ -2384,10 +2517,15 @@ END SUBROUTINE MP_GRAUPEL
          DUM = W3D(K)+WVAR(K)
 
 ! ASSUME MINIMUM EFF. SUB-GRID VELOCITY 0.10 M/S
-         DUM = MAX(DUM,0.10)
+#ifdef CLUBB_CRM
+          DUM = MAX(DUM,0.01)
+#else
+          DUM = MAX(DUM,0.10)
+#endif 
+
 
       ELSE IF (ISUB.EQ.1) THEN
-         DUM=W3D(K)
+          DUM=W3D(K)
       END IF
 
 ! ONLY ACTIVATE IN REGIONS OF UPWARD MOTION
@@ -2424,6 +2562,11 @@ END SUBROUTINE MP_GRAUPEL
             DUM2 = 0.88*C1**(2./(K1+2.))*(7.E-2*DUM**1.5)**(K1/(K1+2.))
             DUM2=DUM2*1.E6 ! CONVERT FROM CM-3 TO M-3
             DUM2=DUM2/RHO(K)  ! CONVERT FROM M-3 TO KG-1
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2462,7 +2605,11 @@ END SUBROUTINE MP_GRAUPEL
 ! MAKE SURE THIS VALUE ISN'T GREATER THAN TOTAL NUMBER OF AEROSOL
 
             DUM2 = MIN((NANEW1+NANEW2)/RHO(K),DUM2)
-
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2471,6 +2618,11 @@ END SUBROUTINE MP_GRAUPEL
               INES = 0 
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)  
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
               DUM2 = (DUM2-NC3D(K))/DT 
               DUM2 = MAX(0., DUM2)
               NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2510,6 +2662,11 @@ END SUBROUTINE MP_GRAUPEL
             DUM2=MIN(DUM2,DUMACT)
             DUM2=DUM2*1.E6 ! CONVERT FROM CM-3 TO M-3
             DUM2=DUM2/RHO(K)  ! CONVERT FROM M-3 TO KG-1
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2573,7 +2730,11 @@ END SUBROUTINE MP_GRAUPEL
 
 ! MAKE SURE ISN'T GREATER THAN NON-EQUIL. SS
             DUM2=MIN(DUM2,DUMACT)
-
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2584,6 +2745,11 @@ END SUBROUTINE MP_GRAUPEL
               SMAX = DUM3/QVS(K)
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
               DUM2 = (DUM2-NC3D(K))/DT
               DUM2 = MAX(0., DUM2)
               NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2603,6 +2769,11 @@ END SUBROUTINE MP_GRAUPEL
             DUM2 = 0.88*C1**(2./(K1+2.))*(7.E-2*DUM**1.5)**(K1/(K1+2.))
             DUM2=DUM2*1.E6 ! CONVERT FROM CM-3 TO M-3
             DUM2=DUM2/RHO(K)  ! CONVERT FROM M-3 TO KG-1
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2640,7 +2811,11 @@ END SUBROUTINE MP_GRAUPEL
 ! MAKE SURE THIS VALUE ISN'T GREATER THAN TOTAL NUMBER OF AEROSOL
 
             DUM2 = MIN((NANEW1+NANEW2)/RHO(K),DUM2)
-
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2649,6 +2824,11 @@ END SUBROUTINE MP_GRAUPEL
               INES = 0
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
               DUM2 = (DUM2-NC3D(K))/DT
               DUM2 = MAX(0., DUM2)
               NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -2763,7 +2943,16 @@ END SUBROUTINE MP_GRAUPEL
 
 !         DUM = PRES(K)/(R*T3D(K))
 ! V1.5
+#ifndef CLUBB_CRM
          PGAM(K)=0.0005714*(NC3D(K)/1.E6*RHO(K))+0.2714
+#else
+         if(doclubb_autoin) then
+            PGAM(K)=0.0005714*(NC3D(K)/1.E6*RHO(K)/max(CFL3D(K), cloud_frac_thresh))+0.2714
+         else
+            PGAM(K)=0.0005714*(NC3D(K)/1.E6*RHO(K))+0.2714
+         end if
+#endif
+
          PGAM(K)=1./(PGAM(K)**2)-1.
          PGAM(K)=MAX(PGAM(K),2.)
          PGAM(K)=MIN(PGAM(K),10.)
@@ -2789,12 +2978,33 @@ END SUBROUTINE MP_GRAUPEL
       IF (LAMC(K).LT.LAMMIN) THEN
       LAMC(K) = LAMMIN
 
+#ifndef CLUBB_CRM
       NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K))+              &
                 LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26
+#else
+      if(doclubb_autoin) then
+        NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K)/max(CFL3D(K), cloud_frac_thresh))+              &
+                  LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26 * max(CFL3D(K), cloud_frac_thresh)
+      else
+        NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K))+              &
+                  LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26
+      endif
+#endif
+
       ELSE IF (LAMC(K).GT.LAMMAX) THEN
       LAMC(K) = LAMMAX
+#ifndef CLUBB_CRM
       NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K))+              &
                 LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26
+#else
+      if(doclubb_autoin) then
+        NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K)/max(CFL3D(K), cloud_frac_thresh))+              &
+                  LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26 * max(CFL3D(K), cloud_frac_thresh)
+      else
+        NC3D(K) = EXP(3.*LOG(LAMC(K))+LOG(QC3D(K))+              &
+                  LOG(GAMMA(PGAM(K)+1.))-LOG(GAMMA(PGAM(K)+4.)))/CONS26
+      end if
+#endif
 
       END IF
 
@@ -2975,6 +3185,23 @@ END SUBROUTINE MP_GRAUPEL
 
         END IF
 
+#ifdef CLUBB_CRM
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! For the case of clex9_oct14, we need to decrease the ice    !
+! nucleation in order for the cloud to persist for realistic  !
+! lengths. It is suggested to reduce by a factor of 100       !
+! This coefficient can be changed in the subroutine           !
+! init_microphys of the microphys_driver subroutine           !
+!                                                             !
+        NNUCCC(K)=NNUCCC(K)*NNUCCC_REDUCE_COEF
+!                                                             ! 
+! Change made by Marc Pilon on 11/16/11                       !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#endif /* CLUBB_CRM */
+
+
+
+
 !.................................................................
 !.......................................................................
 ! AUTOCONVERSION OF CLOUD LIQUID WATER TO RAIN
@@ -2991,9 +3218,15 @@ END SUBROUTINE MP_GRAUPEL
 ! FROM KHAIROUTDINOV AND KOGAN 2000, MWR
 
             IF (IRAIN.EQ.0) THEN
-
                 PRC(K)=1350.*QC3D(K)**2.47*  &
            (NC3D(K)/1.e6*RHO(K))**(-1.79)
+
+#ifdef CLUBB_CRM
+           if(doclubb_gridmean) then
+             PRC(K)=PRC(K) * gamma(RELVAR(K)+2.47)/(gamma(RELVAR(K))*RELVAR(K)**2.47)
+             PRC(K)=PRC(K) * CFL3D(K)**0.32  ! CFL3D**(1.79-2.47+1)
+           end if
+#endif
 
 ! note: nprc1 is change in Nr,
 ! nprc is change in Nc
@@ -3404,6 +3637,12 @@ END SUBROUTINE MP_GRAUPEL
 
            DUM=(QC3D(K)*QR3D(K))
            PRA(K) = 67.*(DUM)**1.15
+#ifdef CLUBB_CRM
+           if(doclubb_gridmean) then
+             PRA(K)=PRA(K) * accre_enhan(K)*gamma(RELVAR(K)+1.15)/(gamma(RELVAR(K))*RELVAR(K)**1.15)
+             PRA(K) = PRA(K) /(max(CLDMAXR(K), cloud_frac_thresh))**1.15  !  PRA = (QC3D/CFL3D * QR3D/CLDMAXR * CFL3D)**1.15
+           end if
+#endif
            NPRA(K) = PRA(K)/(QC3D(K)/NC3D(K))
 
            ELSE IF (IRAIN.EQ.1) THEN
@@ -3428,17 +3667,15 @@ END SUBROUTINE MP_GRAUPEL
 ! v1.4 replace with seifert and beheng (2001)
 
          IF (QR3D(K).GE.1.E-8) THEN
-! v1.4
-! seifert and beheng
-! include breakup, V2.1
+! include breakup add 10/09/09
             dum1=300.e-6
             if (1./lamr(k).lt.dum1) then
             dum=1.
             else if (1./lamr(k).ge.dum1) then
             dum=2.-exp(2300.*(1./lamr(k)-dum1))
             end if
-            nragg(k) = -5.78*dum*qr3d(k)*nr3d(k)*rho(k)
-
+!            NRAGG(K) = -8.*NR3D(K)*QR3D(K)*RHO(K)
+            NRAGG(K) = -5.78*dum*NR3D(K)*QR3D(K)*RHO(K)
          END IF
 
 !.......................................................................
@@ -3446,7 +3683,7 @@ END SUBROUTINE MP_GRAUPEL
 ! FOLLOWING HARRINGTON ET AL. (1995) WITH MODIFICATION
 ! HERE IT IS ASSUMED THAT AUTOCONVERSION CAN ONLY OCCUR WHEN THE
 ! ICE IS GROWING, I.E. IN CONDITIONS OF ICE SUPERSATURATION
-
+#ifndef CLUBB_CRM
          IF (QI3D(K).GE.1.E-8 .AND.QVQVSI(K).GE.1.) THEN
 
 !           COFFI = 2./LAMI(K)
@@ -3458,6 +3695,35 @@ END SUBROUTINE MP_GRAUPEL
 
 !           END IF
          END IF
+#else 
+         IF(.not.doclubb_gridmean) THEN 
+           IF (QI3D(K).GE.1.E-8 .AND.QVQVSI(K).GE.1.) THEN
+
+!           COFFI = 2./LAMI(K)
+!           IF (COFFI.GE.DCS) THEN
+              NPRCI(K) = CONS21*(QV3D(K)-QVI(K))*RHO(K)                         &
+                *N0I(K)*EXP(-LAMI(K)*DCS)*DV(K)/ABI(K)
+              PRCI(K) = CONS22*NPRCI(K)
+              NPRCI(K) = MIN(NPRCI(K),NI3D(K)/DT)
+
+!           END IF
+          END IF
+        ELSE     ! doclubb_gridmean
+          IF (QI3D(K).GE.1.E-8) THEN
+!  inside liquid clouds, using QVS
+            NPRCI(k) = CONS21*(QVS(K)-QVI(K))*RHO(K)                         &
+                *N0I(K)*EXP(-LAMI(K)*DCS)*DV(K)/ABI(K) * CFL3D(K)
+!  outside liquid clouds, using ambient QV3D
+            IF(QVQVSI(K).GE.1.) THEN 
+              NPRCI(k) = NPRCI(k) + CONS21*(QV3D(K)-QVI(K))*RHO(K)                       &
+                *N0I(K)*EXP(-LAMI(K)*DCS)*DV(K)/ABI(K) * (CFI3D(K)-CFL3D(K))
+            ENDIF
+            NPRCI(K) = NPRCI(K)/max(CFI3D(K), cloud_frac_thresh)
+            PRCI(K) = CONS22*NPRCI(K)
+            NPRCI(K) = MIN(NPRCI(K),NI3D(K)/DT)
+          END IF 
+        END IF
+#endif
 
 !.......................................................................
 ! ACCRETION OF CLOUD ICE BY SNOW
@@ -3544,6 +3810,20 @@ END SUBROUTINE MP_GRAUPEL
 
          END IF
 
+#ifdef CLUBB_CRM
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! For the case of clex9_oct14, we need to decrease the ice    !
+! nucleation in order for the cloud to persist for realistic  !
+! lengths. It is suggested to reduce by a factor of 100       !
+! This coefficent can be changed in subroutine init_microphys !
+! in the microphys_driver subroutine.                         !
+!                                                             !
+        NNUCCD(K)=NNUCCD(K)*NNUCCD_REDUCE_COEF
+!
+! Change made by Marc Pilon on 11/16/11                       !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#endif /* CLUBB_CRM */
+
 !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
  101      CONTINUE
@@ -3600,6 +3880,15 @@ END SUBROUTINE MP_GRAUPEL
               IF (QI3D(K).GE.QSMALL) THEN              
               DUM=(1.-EXP(-LAMI(K)*DCS)*(1.+LAMI(K)*DCS))
               PRD(K) = EPSI*(QV3D(K)-QVI(K))/ABI(K)*DUM
+#ifdef CLUBB_CRM
+              if(doclubb_gridmean) then
+!    For ice clouds outside liquid clouds, using ambient QV         
+                PRD(K) = PRD(K) * (CFI3D(K)-CFL3D(K))
+!    For ice clouds inside liquid clouds, using saturation vapor pressure over liquid 
+                PRD(K) = PRD(K) + EPSI*(QVS(K)-QVI(K))/ABI(K)*DUM * CFL3D(K)
+                PRD(K) = PRD(K) / max(CFI3D(K), cloud_frac_thresh)
+              end if
+#endif
               ELSE
               DUM=0.
               END IF
@@ -3607,12 +3896,39 @@ END SUBROUTINE MP_GRAUPEL
               IF (QNI3D(K).GE.QSMALL) THEN
               PRDS(K) = EPSS*(QV3D(K)-QVI(K))/ABI(K)+ &
                 EPSI*(QV3D(K)-QVI(K))/ABI(K)*(1.-DUM)
+#ifdef CLUBB_CRM
+              if(doclubb_gridmean) then
+                PRDS(K) = (EPSS*(QV3D(K)-QVI(K))/ABI(K)*(CLDMAXALL(K)-CFL3D(K))+ &
+                  EPSS*(QVS(K)-QVI(K))/ABI(K) * CFL3D(K))/max(CLDMAXALL(K), cloud_frac_thresh) &
+                  + (EPSI*(QV3D(K)-QVI(K))/ABI(K)*(1.-DUM)*(CFI3D(K)-CFL3D(K))+ &
+                     EPSI*(QVS(K)-QVI(K))/ABI(K)*(1.-DUM)*CFL3D(K))/max(CFI3D(K), cloud_frac_thresh)
+              end if
+#endif
 ! OTHERWISE ADD TO CLOUD ICE
               ELSE
+#ifndef CLUBB_CRM
               PRD(K) = PRD(K)+EPSI*(QV3D(K)-QVI(K))/ABI(K)*(1.-DUM)
+#else
+              if(.not.doclubb_gridmean) then
+                PRD(K) = PRD(K)+EPSI*(QV3D(K)-QVI(K))/ABI(K)*(1.-DUM)
+              else
+                PRD(K) = PRD(K)+(EPSI*(QV3D(K)-QVI(K))/ABI(K)*(1.-DUM) * (CFI3D(K) - CFL3D(K))  &
+                       + EPSI*(QVS(K)-QVI(K))/ABI(K)*(1.-DUM) * CFL3D(K))/max(CFI3D(K), cloud_frac_thresh)
+              end if
+#endif
               END IF
+
 ! VAPOR DPEOSITION ON GRAUPEL
               PRDG(K) = EPSG*(QV3D(K)-QVI(K))/ABI(K)
+#ifdef CLUBB_CRM
+              if(doclubb_gridmean) then
+!   For graupel outside liquid clouds, using ambient QV
+                PRDG(K) = PRDG(K)*(CLDMAXALL(K)-CFL3D(K))
+!   For graueple insdie liquid clouds, using QVS
+                PRDG(K) = PRDG(K) + EPSG*(QVS(K)-QVI(K))/ABI(K) * CFL3D(K)
+                PRDG(K) = PRDG(K) / max(CLDMAXALL(K), cloud_frac_thresh) 
+              end if
+#endif
 
 ! NO CONDENSATION ONTO RAIN, ONLY EVAP
 
@@ -3622,6 +3938,17 @@ END SUBROUTINE MP_GRAUPEL
            ELSE
               PRE(K) = 0.
            END IF
+
+#ifdef CLUBB_CRM
+           if(doclubb_gridmean) then
+             PRE(K) = PRE(K) * max(CLDMAXR(K)-CFL3D(K), 0.0)/max(CLDMAXR(K), cloud_frac_thresh)
+               if(CFL3D(K).gt.0.10) then  ! when there is enough liquid present, 
+                                          ! no evaporation of rain is allowed
+                  PRE(K) = 0.0
+               end if
+
+           end if
+#endif
 
 ! MAKE SURE NOT PUSHED INTO ICE SUPERSAT/SUBSAT
 ! FORMULA FROM REISNER 2 SCHEME
@@ -3701,7 +4028,7 @@ END SUBROUTINE MP_GRAUPEL
 	    NSUBG(K) = 0.
 	    NGMLTG(K) = 0.
             NGMLTR(K) = 0.
-! v3 5/27/11
+! fix 053011
             PIACRS(K)=PIACRS(K)+PIACR(K)
             PIACR(K) = 0.
        END IF
@@ -3814,7 +4141,7 @@ END SUBROUTINE MP_GRAUPEL
 
       QV3DTEN(K) = QV3DTEN(K)+(-PRE(K)-PRD(K)-PRDS(K)-MNUCCD(K)-EPRD(K)-EPRDS(K)-PRDG(K)-EPRDG(K))
 
-! v3 5/27/11 bug fix
+! BUG FIX HM, 3/1/11, INCLUDE PIACR AND PIACRS
       T3DTEN(K) = T3DTEN(K)+(PRE(K)                                 &
                *XXLV(K)+(PRD(K)+PRDS(K)+                            &
                 MNUCCD(K)+EPRD(K)+EPRDS(K)+PRDG(K)+EPRDG(K))*XXLS(K)+         &
@@ -3960,7 +4287,11 @@ END SUBROUTINE MP_GRAUPEL
          DUM = W3D(K)+WVAR(K)
 
 ! ASSUME MINIMUM EFF. SUB-GRID VELOCITY 0.10 M/S
+#ifdef CLUBB_CRM
+         DUM = MAX(DUM,0.01)
+#else
          DUM = MAX(DUM,0.10)
+#endif
 
       ELSE IF (ISUB.EQ.1) THEN
          DUM=W3D(K)
@@ -4000,6 +4331,11 @@ END SUBROUTINE MP_GRAUPEL
             DUM2 = 0.88*C1**(2./(K1+2.))*(7.E-2*DUM**1.5)**(K1/(K1+2.))
             DUM2=DUM2*1.E6 ! CONVERT FROM CM-3 TO M-3
             DUM2=DUM2/RHO(K)  ! CONVERT FROM M-3 TO KG-1
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4038,7 +4374,11 @@ END SUBROUTINE MP_GRAUPEL
 ! MAKE SURE THIS VALUE ISN'T GREATER THAN TOTAL NUMBER OF AEROSOL
 
             DUM2 = MIN((NANEW1+NANEW2)/RHO(K),DUM2)
-
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4047,6 +4387,11 @@ END SUBROUTINE MP_GRAUPEL
               INES = 0
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
               DUM2 = (DUM2-NC3D(K))/DT
               DUM2 = MAX(0., DUM2)
               NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4106,6 +4451,11 @@ END SUBROUTINE MP_GRAUPEL
             DUM2=MIN(DUM2,DUMACT)
             DUM2=DUM2*1.E6 ! CONVERT FROM CM-3 TO M-3
             DUM2=DUM2/RHO(K)  ! CONVERT FROM M-3 TO KG-1
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4169,7 +4519,11 @@ END SUBROUTINE MP_GRAUPEL
 
 ! MAKE SURE ISN'T GREATER THAN NON-EQUIL. SS
             DUM2=MIN(DUM2,DUMACT)
-
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4181,6 +4535,11 @@ END SUBROUTINE MP_GRAUPEL
               INES = 1 
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
               DUM2 = (DUM2-NC3D(K))/DT
               DUM2 = MAX(0., DUM2)
               NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4201,6 +4560,11 @@ END SUBROUTINE MP_GRAUPEL
             DUM2 = 0.88*C1**(2./(K1+2.))*(7.E-2*DUM**1.5)**(K1/(K1+2.))
             DUM2=DUM2*1.E6 ! CONVERT FROM CM-3 TO M-3
             DUM2=DUM2/RHO(K)  ! CONVERT FROM M-3 TO KG-1
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4238,7 +4602,11 @@ END SUBROUTINE MP_GRAUPEL
 ! MAKE SURE THIS VALUE ISN'T GREATER THAN TOTAL NUMBER OF AEROSOL
 
             DUM2 = MIN((NANEW1+NANEW2)/RHO(K),DUM2)
-
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
             DUM2 = (DUM2-NC3D(K))/DT
             DUM2 = MAX(0.,DUM2)
             NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4247,6 +4615,11 @@ END SUBROUTINE MP_GRAUPEL
               INES = 0
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
+#ifdef CLUBB_CRM
+            if(doclubb_gridmean) then
+              DUM2 = DUM2 * CFL3D(K)
+            end if
+#endif
               DUM2 = (DUM2-NC3D(K))/DT
               DUM2 = MAX(0., DUM2)
               NC3DTEN(K) = NC3DTEN(K)+DUM2
@@ -4267,38 +4640,10 @@ END SUBROUTINE MP_GRAUPEL
 !        NSUBC(K) = DUM*NC3D(K)/DT
 !     END IF
 
-      IF (EPRD(K).LT.0.) THEN
-         DUM = EPRD(K)*DT/QI3D(K)
-            DUM = MAX(-1.,DUM)
-         NSUBI(K) = DUM*NI3D(K)/DT
-      END IF
-      IF (EPRDS(K).LT.0.) THEN
-         DUM = EPRDS(K)*DT/QNI3D(K)
-           DUM = MAX(-1.,DUM)
-         NSUBS(K) = DUM*NS3D(K)/DT
-      END IF
-      IF (PRE(K).LT.0.) THEN
-         DUM = PRE(K)*DT/QR3D(K)
-           DUM = MAX(-1.,DUM)
-         NSUBR(K) = DUM*NR3D(K)/DT
-      END IF
-      IF (EPRDG(K).LT.0.) THEN
-         DUM = EPRDG(K)*DT/QG3D(K)
-           DUM = MAX(-1.,DUM)
-         NSUBG(K) = DUM*NG3D(K)/DT
-      END IF
 
 !        nsubr(k)=0.
 !        nsubs(k)=0.
 !        nsubg(k)=0.
-
-! UPDATE TENDENCIES
-
-!        NC3DTEN(K) = NC3DTEN(K)+NSUBC(K)
-         NI3DTEN(K) = NI3DTEN(K)+NSUBI(K)
-         NS3DTEN(K) = NS3DTEN(K)+NSUBS(K)
-         NG3DTEN(K) = NG3DTEN(K)+NSUBG(K)
-         NR3DTEN(K) = NR3DTEN(K)+NSUBR(K)
 
          END IF !!!!!! TEMPERATURE
 
@@ -4350,6 +4695,74 @@ END SUBROUTINE MP_GRAUPEL
              NG3D(K) = NG3D(K) * CF3D(K) ! Graupel num conc
              NG3DTEN(K) = NG3DTEN(K) * CF3D(K) ! Graupel num conc time tendency
            END IF
+! +++mhwang 
+! add individual microphysical process rates
+           PRC(K) = PRC(K) * CF3D(K)
+           PRA(K) = PRA(K) * CF3D(K)
+           PSMLT(K) = PSMLT(K) * CF3D(K)
+           EVPMS(K) = EVPMS(K) * CF3D(K)
+           PRACS(K) = PRACS(K) * CF3D(K)
+           EVPMG(K) = EVPMG(K) * CF3D(K)
+           PRACG(K) = PRACG(K) * CF3D(K)
+           PRE(K) = PRE(K) * CF3D(K)
+           PGMLT(K) = PGMLT(K) * CF3D(K)
+ 
+           MNUCCC(K) = MNUCCC(K) * CF3D(K)
+           PSACWS(K) = PSACWS(K) * CF3D(K)
+           PSACWI(K) = PSACWI(k) * CF3D(K)
+           QMULTS(K) = QMULTS(K) * CF3D(K)
+           QMULTG(K) = QMULTG(K) * CF3D(K)
+           PSACWG(K) = PSACWG(K) * CF3D(K)
+           PGSACW(K) = PGSACW(K) * CF3D(K)
+
+           PRD(K) = PRD(K) * CF3D(K)
+           PRCI(K) = PRCI(K) * CF3D(K)
+           PRAI(K) = PRAI(K) * CF3D(K)
+           QMULTR(K) = QMULTR(K) * CF3D(K)
+           QMULTRG(K) = QMULTRG(K) * CF3D(K)
+           MNUCCD(K) = MNUCCD(K) * CF3D(K)
+           PRACI(K) = PRACI(K) * CF3D(K)
+           PRACIS(K) = PRACIS(K) * CF3D(K)
+           EPRD(K) = EPRD(K) * CF3D(K)
+
+           MNUCCR(K) = MNUCCR(K) * CF3D(K)
+           PIACR(K) = PIACR(K) * CF3D(K)
+           PIACRS(K) = PIACRS(K) * CF3D(K)
+           PGRACS(K) = PGRACS(K) * CF3D(K)
+
+           PRDS(K) = PRDS(K) * CF3D(K)
+           EPRDS(K) = EPRDS(K) * CF3D(K)
+           PSACR(K) = PSACR(K) * CF3D(K)
+
+           PRDG(K) = PRDG(K) * CF3D(K)
+           EPRDG(K) = EPRDG(K) * CF3D(K)
+
+!    Rain drop number process rates
+          NPRC1(K) = NPRC1(K)* CF3D(K)
+          NRAGG(K) = NRAGG(K) * CF3D(K)
+          NPRACG(K) = NPRACG(K) * CF3D(K)
+          NSUBR(K) = NSUBR(K) * CF3D(K)
+          NSMLTR(K) = NSMLTR(K) * CF3D(K)
+          NGMLTR(K) = NGMLTR(K) * CF3D(K)
+          NPRACS(K) = NPRACS(K) * CF3D(K)
+          NNUCCR(K) = NNUCCR(K) * CF3D(K)
+          NIACR(K) = NIACR(K) * CF3D(K)
+          NIACRS(K) = NIACRS(K) * CF3D(K) 
+          NGRACS(K) = NGRACS(K) * CF3D(K)
+
+! hm 7/26/11, new output
+         aut1d(k)=prc(k)
+         acc1d(k)=pra(k)
+         mlt1d(k)=-PSMLT(K)-PGMLT(K)+PRACS(K)+PRACG(K)
+         evpr1d(k)=-PRE(K)-EVPMS(K)-EVPMG(K)      
+         if (pcc(k).lt.0.) then
+           evpc1d(k)=-pcc(k)
+         else if (pcc(k).gt.0.) then
+           con1d(k)=pcc(k)
+         end if
+         sub1d(k)=-EPRD(K)-EPRDS(K)-EPRDG(K)
+         dep1d(k)=PRD(K)+PRDS(K)+MNUCCD(K)+PRDG(K)
+
          END IF ! CF3D(K) > 0.01
 #endif /*CLUBB_CRM*/
 
@@ -4628,6 +5041,12 @@ END SUBROUTINE MP_GRAUPEL
       QGSTEN(K) = QGSTEN(K)-FALTNDG/NSTEP/RHO(k)
       NG3DTEN(K) = NG3DTEN(K)-FALTNDNG/NSTEP/RHO(k)
 
+      NISTEN(K) = NISTEN(K)-FALTNDNI/NSTEP/RHO(k)
+      NSSTEN(K) = NSSTEN(K)-FALTNDNS/NSTEP/RHO(k)
+      NRSTEN(K) = NRSTEN(K)-FALTNDNR/NSTEP/RHO(k)
+      NCSTEN(K) = NCSTEN(K)-FALTNDNC/NSTEP/RHO(k)
+      NGSTEN(K) = NGSTEN(K)-FALTNDNG/NSTEP/RHO(k)
+
       DUMR(K) = DUMR(K)-FALTNDR*DT/NSTEP
       DUMI(K) = DUMI(K)-FALTNDI*DT/NSTEP
       DUMFNI(K) = DUMFNI(K)-FALTNDNI*DT/NSTEP
@@ -4663,6 +5082,12 @@ END SUBROUTINE MP_GRAUPEL
       NC3DTEN(K) = NC3DTEN(K)+FALTNDNC/NSTEP/RHO(k)
       QGSTEN(K) = QGSTEN(K)+FALTNDG/NSTEP/RHO(k)
       NG3DTEN(K) = NG3DTEN(K)+FALTNDNG/NSTEP/RHO(k)
+
+      NISTEN(K) = NISTEN(K)+FALTNDNI/NSTEP/RHO(k)
+      NSSTEN(K) = NSSTEN(K)+FALTNDNS/NSTEP/RHO(k)
+      NRSTEN(K) = NRSTEN(K)+FALTNDNR/NSTEP/RHO(k)
+      NCSTEN(K) = NCSTEN(K)+FALTNDNC/NSTEP/RHO(k)
+      NGSTEN(K) = NGSTEN(K)+FALTNDNG/NSTEP/RHO(k)
 
       DUMR(K) = DUMR(K)+FALTNDR*DT/NSTEP
       DUMI(K) = DUMI(K)+FALTNDI*DT/NSTEP
@@ -4872,7 +5297,12 @@ END SUBROUTINE MP_GRAUPEL
            QI3D(K)=QI3D(K)+QC3D(K)
            T3D(K)=T3D(K)+QC3D(K)*XLF(K)/CPM(K)
            QC3D(K)=0.
-           NI3D(K)=NI3D(K)+NC3D(K)
+#ifdef CLUBB_CRM
+!+++mhwang test how SAM_CLUBB sensitive to this
+           NI3D(K)=NI3D(K)+NC3D(K) * NNUCCC_REDUCE_COEF  !
+#else
+           NI3D(K)=NI3D(K)+NC3D(K) 
+#endif
            NC3D(K)=0.
         END IF
 

@@ -40,7 +40,9 @@ endif
 if ( $COMPILER == "intel" ) then
     module load PrgEnv-intel 
 #    module switch intel      intel/14.0.2.144  
-     module switch intel intel/15.0.1.133
+##     module switch intel intel/15.0.1.133 
+     module switch intel intel/17.0.1.132 
+##Guangxing Lin
     module rm cray-libsci
     module use /global/project/projectdirs/ccsm1/modulefiles/edison
     if( $DEBUG == "TRUE" ) then

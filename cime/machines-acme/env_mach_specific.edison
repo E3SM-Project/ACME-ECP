@@ -51,9 +51,18 @@ module load craype-ivybridge
 module load cray-libsci/13.0.3
 module load pmi/5.0.10-1.0000.11050.0.0.ari
 
+##Guangxing LIn 
+  module rm PrgEnv-intel
+module rm intel
+#module list
+##Guangxing LIn
 if ( $COMPILER == "intel" ) then
     module load PrgEnv-intel/5.2.56
-    module load intel/15.0.1.133
+  ##  module load intel/15.0.1.133 #Guangxing Lin
+  module switch intel intel/15.0.1.133 ##Guangxing Lin
+  
+##  module load intel/17.0.1.132
+# Guangxing Lin
 
     #module use /global/project/projectdirs/ccsm1/modulefiles/edison
     #if( $DEBUG == "TRUE" ) then

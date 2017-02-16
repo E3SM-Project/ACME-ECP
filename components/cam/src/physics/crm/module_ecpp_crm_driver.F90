@@ -73,7 +73,10 @@ module  module_ecpp_crm_driver
 !----------------------------------------------------------------------------------------
   use ecppvars
   use ecppvars,  only: QUI, UP1, DN1, NCLASS_TR, NCLASS_CL, CLR, CLD, NCLASS_PR, PRN, PRY
+  !Guangxing Lin
+  !use abortutils,  only: endrun
   use cam_abortutils,  only: endrun
+  !Guangxing Lin
 
   public ecpp_crm_stat
   public ecpp_crm_init
@@ -169,7 +172,14 @@ subroutine ecpp_crm_init()
   upthresh2   = 0.5   ! ...ditto, except for weaker 2nd draft type when plumetype=2
   downthresh2 = 0.5
 
+#ifdef CLUBB_CRM
+  cloudthresh = 2e-7  !Cloud mixing ratio beyond which cell is "cloudy(liquid)" (kg/kg)
+                      ! As now fractional cloudiness is used for classifying cloudy vs. clear, 
+                      ! reduce it from 1.0e-6 to 2.0e-7
+#else 
   cloudthresh = 1e-6  !Cloud mixing ratio beyond which cell is "cloudy(liquid)" (kg/kg)
+#endif
+
   prcpthresh  = 1e-6  !Preciptation rate (precr) beyond which cell is raining (kg/m2/s)
                       ! this is used to classify precipitating vs. nonprecipitating class for wet scavenging. 
 
@@ -339,7 +349,7 @@ subroutine ecpp_crm_init()
             qicesum1(nx,ny,nzm), qsnowsum1(nx,ny,nzm), qgraupsum1(nx,ny,nzm), &
             qlsinksum1(nx,ny,nzm), precrsum1(nx,ny,nzm), &
             precsolidsum1(nx,ny,nzm), precallsum1(nx,ny,nzm), &
-            altsum1(nx,ny,nzm), rhsum1(nx,ny,nzm), &
+            altsum1(nx,ny,nzm), rhsum1(nx,ny,nzm), cf3dsum1(nx,ny,nzm), &
             wwsum1(nx,ny,nzstag), wwsqsum1(nx,ny,nzstag), &
             tkesgssum1(nx, ny, nzm), qlsink_bfsum1(nx, ny, nzm), prainsum1(nx, ny, nzm), qvssum1(nx, ny, nzm) )
 
@@ -380,7 +390,7 @@ subroutine ecpp_crm_init()
                        qicesum1(:,:,:), qsnowsum1(:,:,:), qgraupsum1(:,:,:), &
                        qlsinksum1(:,:,:), precrsum1(:,:,:), &
                        precsolidsum1(:,:,:), precallsum1(:,:,:), &
-                       altsum1(:,:,:), rhsum1(:,:,:), &
+                       altsum1(:,:,:), rhsum1(:,:,:), cf3dsum1(:,:,:), &
                        wwsum1(:,:,:), wwsqsum1(:,:,:), tkesgssum1(:,:,:), &
                        qlsink_bfsum1(:,:,:), prainsum1(:,:,:), qvssum1(:,:,:) )
   ndn = ndndraft ; nup = nupdraft
@@ -429,7 +439,7 @@ subroutine ecpp_crm_cleanup ()
             qicesum1, qsnowsum1, qgraupsum1, &
             qlsinksum1, precrsum1, &
             precsolidsum1, precallsum1, &
-            altsum1, rhsum1, &
+            altsum1, rhsum1, cf3dsum1, &
             wwsum1, wwsqsum1, tkesgssum1, &
             qlsink_bfsum1, prainsum1, qvssum1 )
 
@@ -471,11 +481,13 @@ subroutine ecpp_crm_stat()
   use module_ecpp_stats
   use module_data_ecpp1, only: afrac_cut 
   use grid,  only: nx, ny, nzm, pres
-  use vars,  only: w, tabs, tk, p, tke
+  use vars,  only: w, tabs, p, CF3D
+  use sgs, only: tke, tk
   use microphysics, only: micro_field, iqv, iqci, iqr, iqs, iqg, cloudliq
   use module_mp_GRAUPEL, only: POLYSVP
 #ifdef CLUBB_CRM
   use clubbvars, only: wp2
+  use sgs, only: tk_clubb
 #endif 
   implicit none
 
@@ -533,7 +545,11 @@ subroutine ecpp_crm_stat()
      wwsq(:,:,:)   = 0.  ! subgrid vertical velocity is not used in the current version of ECPP. 
 #endif
 
+#ifdef CLUBB_CRM
+     xkhv(:,:,:)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
+#else
      xkhv(:,:,:)   = tk(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
+#endif
 
 !+++mhwangtest
 !     do ii=1, nx
@@ -564,6 +580,7 @@ subroutine ecpp_crm_stat()
                   precall,   precallsum1(:,:,:),   &
                   alt,       altsum1(:,:,:),       &
                   rh,        rhsum1(:,:,:),        &
+                  CF3D,      cf3dsum1(:,:,:),       & 
                   ww,        wwsum1(:,:,:),        &
                   wwsq,      wwsqsum1(:,:,:),      &
                   tke(1:nx,1:ny,1:nzm),       tkesgssum1(:,:,:),    & 
@@ -591,7 +608,7 @@ subroutine ecpp_crm_stat()
                                  qgraupsum1(:,:,:), &
                                  qlsinksum1(:,:,:), precrsum1(:,:,:), &
                                  precsolidsum1(:,:,:), precallsum1(:,:,:), &
-                                 altsum1(:,:,:), rhsum1(:,:,:), &
+                                 altsum1(:,:,:), rhsum1(:,:,:), cf3dsum1(:,:,:), &
                                  wwsum1(:,:,:), wwsqsum1(:,:,:), &
                                  tkesgssum1(:,:,:), qlsink_bfsum1(:,:,:), &
                                  prainsum1(:,:,:), qvssum1(:,:,:)  )
@@ -610,7 +627,7 @@ subroutine ecpp_crm_stat()
              qicesum1(:,:,:), qsnowsum1(:,:,:), qgraupsum1(:,:,:), &
              qlsinksum1(:,:,:), precrsum1(:,:,:), &
              precsolidsum1(:,:,:), precallsum1(:,:,:), &
-             altsum1(:,:,:), rhsum1(:,:,:), &
+             altsum1(:,:,:), rhsum1(:,:,:), cf3dsum1(:,:,:), &
              wwsum1(:,:,:), wwsqsum1(:,:,:), tkesgssum1(:,:,:),  &
              qlsink_bfsum1(:,:,:), prainsum1(:,:,:), &
              area_bnd_final(:,:,1:1+ndn+nup,:), area_cen_final(:,:,1:1+ndn+nup,:), &
@@ -640,7 +657,7 @@ subroutine ecpp_crm_stat()
              qicesum1(:,:,:), qsnowsum1(:,:,:), qgraupsum1(:,:,:), &
              qlsinksum1(:,:,:), precrsum1(:,:,:), &
              precsolidsum1(:,:,:), precallsum1(:,:,:), &
-             altsum1(:,:,:), rhsum1(:,:,:), &
+             altsum1(:,:,:), rhsum1(:,:,:), cf3dsum1(:,:,:), &
              wwsum1(:,:,:), wwsqsum1(:,:,:), tkesgssum1(:,:,:), &
              qlsink_bfsum1(:,:,:), prainsum1(:,:,:), qvssum1(:,:,:) )
 

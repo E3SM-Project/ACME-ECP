@@ -1,0 +1,658 @@
+15,17c15
+< #ifdef CRM3D
+<                        ultend, vltend,          &
+< #endif
+---
+>                        !ultend, vltend, qltend, qcltend, qiltend, sltend, &
+22c20
+<                        t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
+---
+>                        t_rad, qv_rad, qc_rad, qi_rad, &
+46,47d43
+<                        clubb_tk, clubb_tkh,          &
+<                        relvar, accre_enhan, qclvar,  &
+49d44
+<                        crm_tk, crm_tkh,              &
+63c58,59
+<                        taux_crm, tauy_crm, z0m, timing_factor, qtot)   
+---
+>                        taux_crm, tauy_crm, z0m, timing_factor, qtot, &
+>                        tvwle2,buoy2,buoysd2,msef2,qvw2)   
+82d77
+<         use sgs
+89,93c84,87
+< 	       apply_clubb_sgs_tndcy, apply_clubb_sgs_tndcy_scalars, apply_clubb_sgs_tndcy_mom,   & ! Subroutines
+< 	       t2thetal                 ! Functions 
+<         use clubb_sgs, only: total_energy
+< 	    use clubbvars, only: edsclr_dim, sclr_dim, rho_ds_zt, rho_ds_zm, &
+< 	        rtm_spurious_source, thlm_spurious_source
+---
+> 	  apply_clubb_sgs_tndcy, apply_clubb_sgs_tndcy_scalar, apply_clubb_sgs_tndcy_mom,   & ! Subroutines
+> 	  t2thetal                 ! Functions 
+> 	use clubbvars, only: edsclr_dim, sclr_dim, rho_ds_zt, rho_ds_zm, &
+> 	  rtm_spurious_source, thlm_spurious_source
+103,104c97
+<        use clubb_precision, only: core_rknd ! Constants
+<        use clubbvars, only: relvarg, accre_enhang, qclvarg
+---
+>     use clubb_precision, only: core_rknd ! Constants
+117c110
+<         use abortutils,     only: endrun
+---
+>         use cam_abortutils,     only: endrun
+169,173d161
+<          real(r8), intent(out)  :: clubb_tk(crm_nx, crm_ny, crm_nz)
+<          real(r8), intent(out)  :: clubb_tkh(crm_nx, crm_ny, crm_nz)
+<          real(r8), intent(out)  :: relvar(crm_nx, crm_ny, crm_nz) 
+<          real(r8), intent(out)  :: accre_enhan(crm_nx, crm_ny, crm_nz)
+<          real(r8), intent(out)  :: qclvar(crm_nx, crm_ny, crm_nz)
+175,176d162
+<          real(r8), intent(out)  :: crm_tk(crm_nx, crm_ny, crm_nz)
+<          real(r8), intent(out)  :: crm_tkh(crm_nx, crm_ny, crm_nz)
+187,190c173,174
+< #ifdef CRM3D
+<          real(r8), intent(out) :: ultend(plev) ! tendency of ul
+<          real(r8), intent(out) :: vltend(plev) ! tendency of vl
+< #endif
+---
+>          !real(r8), intent(out) :: ultend(plev) ! tendency of ul
+>          !real(r8), intent(out) :: vltend(plev) ! tendency of vl
+192,201c176,180
+< !         real(r8), intent(inout) :: u_crm  (:,:,:) ! CRM v-wind component
+< !         real(r8), intent(inout) :: v_crm  (:,:,:) ! CRM v-wind component
+< !         real(r8), intent(inout) :: w_crm  (:,:,:) ! CRM w-wind component
+< !         real(r8), intent(inout) :: t_crm  (:,:,:) ! CRM temperuture
+<          real(r8), intent(inout) :: u_crm  (crm_nx,crm_ny,crm_nz) ! CRM v-wind component
+<          real(r8), intent(inout) :: v_crm  (crm_nx,crm_ny,crm_nz) ! CRM v-wind component
+<          real(r8), intent(inout) :: w_crm  (crm_nx,crm_ny,crm_nz) ! CRM w-wind component
+<          real(r8), intent(inout) :: t_crm  (crm_nx,crm_ny,crm_nz) ! CRM temperuture
+< !         real(r8), intent(inout) :: micro_fields_crm  (:,:,:,:) ! CRM total water
+<          real(r8), intent(inout) :: micro_fields_crm  (crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
+---
+>          real(r8), intent(inout) :: u_crm  (:,:,:) ! CRM v-wind component
+>          real(r8), intent(inout) :: v_crm  (:,:,:) ! CRM v-wind component
+>          real(r8), intent(inout) :: w_crm  (:,:,:) ! CRM w-wind component
+>          real(r8), intent(inout) :: t_crm  (:,:,:) ! CRM temperuture
+>          real(r8), intent(inout) :: micro_fields_crm  (:,:,:,:) ! CRM total water
+209,210d187
+<          real(r8), intent(out) :: cld_rad(crm_nx, crm_ny, crm_nz) ! rad cloud fraction 
+<          real(r8), intent(out) :: cld3d_crm(crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
+352a330,335
+> !-- MDB 8/2013:  buoyancy flux additions
+>         real tvz(nz), tvwle(nz), tmp, tvirt(nx,ny,nzm), buoyavg(nz), buoysd(nz)
+>         real mse(nx,ny,nzm), msez(nz), msef(nz), qvz(nz), qvw(nz)
+>         real(r8), intent(out) :: tvwle2(plev), buoy2(plev), buoysd2(plev)
+>         real(r8), intent(out) :: msef2(plev), qvw2(plev)
+> 
+366,367d348
+<         real  cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
+< 
+382d362
+<         cld_rad = 0.
+403c383,404
+< 
+---
+> !        if(i.ge.40.and.lchnk.eq.708.and.icol.eq.3) then
+> !         write(i) lchnk, icol, &
+> !                       tl, ql, qccl, qiil, ul, vl, &
+> !                       ps, pmid, pdel, phis, &
+> !                       zmid, zint, dt_gl, plev, &
+> !                       ultend, vltend, qltend, qcltend, qiltend, sltend, &
+> !                       crm_buffer, qrad_crm, &
+> !                       qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
+> !                       t_rad, qv_rad, qc_rad, qi_rad, &
+> !                       precc, precl, precsc, precsl, &
+> !                       cltot, clhgh, clmed, cllow, cld, cldtop, &
+> !                       gicewp, gliqwp, &
+> !                       mc, mcup, mcdn, mcuup, mcudn, &
+> !                       crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
+> !                       tkez, tkesgsz, flux_u, flux_v, flux_qt, fluxsgs_qt,flux_qp, &
+> !                       pflx, qt_ls, qt_trans, qp_trans, qp_fall, &
+> !                       qp_evp, qp_src, t_ls, prectend, precstend, &
+> !                       ocnfrac, wnd, tau00, bflxls, &
+> !                       taux_crm, tauy_crm, z0m, timing_factor
+> !        close(i)
+> !        endif
+> !-----------------------------------------
+419c420
+< !        pi = acos(-1.)
+---
+>         pi = acos(-1.)
+421,423c422
+<         fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
+<         fcory(:) = fcor
+<         fcorzy(:) = fcorz
+---
+>         fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)  
+424a424,425
+>           fcory(j) = fcor
+>           fcorzy(j) = fcorz
+467a469,475
+> 
+> 
+>         do k=1,nzm
+>            grdf_x(k) = min(16.,dx**2/(adz(k)*dz)**2)
+>            grdf_y(k) = min(16.,dy**2/(adz(k)*dz)**2)
+>            grdf_z(k) = 1.
+>         end do
+513a522,525
+> 
+>         !write(*,*) '### tabs(1,1,:) = ',tabs(1,1,:)
+>         !write(*,*) '### micro_field(1,1,:,1) = ',micro_field(1,1,:,1)*1000.
+> 
+555,556d566
+<         CF3D(1:nx,1:ny,1:nzm) = 1.
+< 
+558,560d567
+< 
+< ! initialize sgs fields
+<         call sgs_init
+939a947,956
+> !----------------------------------------------------------
+> !      Update the subdomain's boundaries for velocity
+> 
+>      call boundaries(0)
+> 
+> !---------------------------------------------------------
+> !	SGS TKE equation:     	
+> 	   
+>      if(dosgs) call tke_full()
+> 
+953,954c970,971
+< !----------------------------------------------------------
+< !     Update scalar boundaries after large-scale processes:
+---
+> !---------------------------------------------------------
+> !        Update boundaries for scalars, sst,  SGS exchange coefficients 
+956c973
+<      call boundaries(3)
+---
+>      call boundaries(2)
+958,959c975,976
+< !---------------------------------------------------------
+< !     Update boundaries for velocities:
+---
+> !-----------------------------------------------
+> !       advection of momentum:
+961c978
+<       call boundaries(0)
+---
+>      call advect_mom()
+964c981
+< !     surface fluxes:
+---
+> !   	surface fluxes:
+966c983
+<      if(dosurface) call crmsurface(bflx)
+---
+>      if(dosurface) then
+968,969c985,992
+< !-----------------------------------------------------------
+< !  SGS physics:
+---
+>        call crmsurface(bflx)
+> 
+>      end if
+> 
+> !----------------------------------------------------------
+> !	SGS diffusion of momentum:
+> 
+>      if(dosgs) call diffuse_mom()
+971c994,997
+<      if (dosgs) call sgs_proc()
+---
+> !-----------------------------------------------------------
+> !       Coriolis force:
+> 	     
+>      if(docoriolis) call coriolis()
+973c999
+< #ifdef CLUBB_CRM_OLD   
+---
+> #ifdef CLUBB_CRM   
+1026,1028c1052,1053
+< #endif  /*CLUBB_CRM_OLD*/
+< !----------------------------------------------------------
+< !     Fill boundaries for SGS diagnostic fields:
+---
+>       ! Re-compute q/qv/qcl based on values computed in CLUBB
+>       if ( doclubb ) then
+1030,1032c1055,1075
+<      call boundaries(4)
+< !-----------------------------------------------
+< !       advection of momentum:
+---
+>           call apply_clubb_sgs_tndcy_mom &
+>                ( real( dtn, kind=time_precision), & ! in
+>                  dudt, dvdt ) ! in/out
+> 
+>           ! Calculate the vertical integrals for RTM and THLM again so
+>           ! calculate whether CLUBB is a spurious source or sink of either.
+>           ! - nielsenb UWM 4 Jun 2010
+> !          do i = 1,nx
+> !            do j = 1,ny
+> !              rtm_flux_top = rho_ds_zm(nz) * wprtp(i,j,nz)
+> !              rtm_flux_sfc = rho_ds_zm(1) * fluxbq(i,j)
+> !              rtm_column = qv(i,j,1:nzm) + qcl(i,j,1:nzm)
+> !              rtm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), & 
+> !                                           rtm_column, gr%invrs_dzt(2:nz) )
+> !+++mhwang
+> !              rtm_flux_sfc = 0.0   ! in the mmf version, flux is updated in CAM5
+> !---mwhang                                         
+> !              rtm_spurious_source(i,j) = calculate_spurious_source( rtm_integral_after(i,j), &
+> !                                                         rtm_integral_before(i,j), &
+> !                                                         rtm_flux_top, rtm_flux_sfc, &
+> !                                                         0.0_core_rknd, real( dtn, kind=core_rknd) )
+1034c1077,1081
+<      call advect_mom()
+---
+> !              thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
+> !              thlm_flux_sfc = rho_ds_zm(1) * fluxbt(i,j)
+> !+++mhwang
+> !              thlm_flux_sfc = 0.0  ! in the mmf version, flux is updated in CAM5
+> !---mwhang
+1036,1037c1083,1104
+< !----------------------------------------------------------
+< !	SGS effects on momentum:
+---
+> !              thlm_after = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
+> !                                     qcl(i,j,1:nzm), qpl(i,j,1:nzm), &
+> !                                     qci(i,j,1:nzm), qpi(i,j,1:nzm), &
+> !                                     prespot(1:nzm) )
+> !
+> !              thlm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
+> !                                                         thlm_after(1:nzm), gr%invrs_dzt(2:nz))
+>                                          
+> !              thlm_spurious_source(i,j) = calculate_spurious_source( thlm_integral_after(i,j), &
+> !                                                         thlm_integral_before(i,j), &
+> !                                                         thlm_flux_top, thlm_flux_sfc, &
+> !                                                         0.0_core_rknd, real( dtn, kind=core_rknd ))
+> !+++mwhang  examing rtm_spurisou_source and thlm_spurious_source
+> !              if(abs(rtm_spurious_source(i,j)*dtn)/rtm_integral_after(i,j).gt. 1.0e-6) then
+> !                write(0, *)  'rtm_spurious error', i, j, lchnk, icol, rtm_spurious_source(i,j)*dtn, rtm_spurious_source(i,j)*dtn /rtm_integral_after(i,j), rtm_integral_after(i,j), rtm_flux_sfc*dtn
+> !                call endrun('rtm_spurious too large')
+> !              end if
+> !              if(abs(thlm_spurious_source(i,j)*dtn)/thlm_integral_after(i,j).gt. 1.0e-6) then
+> !                write(0, *)  'thlm_spurious error', i, j, lchnk, icol, thlm_spurious_source(i,j)*dtn, thlm_spurious_source(i,j)*dtn /thlm_integral_after(i,j), thlm_integral_after(i,j), thlm_flux_sfc*dtn
+> !                call endrun('rtm_spurious too large')
+> !              end if
+> !---mwhang
+1039,1045c1106,1108
+<      if(dosgs) call sgs_mom()
+< #ifdef CLUBB_CRM_OLD
+<      if ( doclubb ) then
+< !          call apply_clubb_sgs_tndcy_mom &
+< !               ( dudt, dvdt ) ! in/out
+<      endif
+< #endif /*CLUBB_CRM_OLD*/
+---
+> !            end do
+> !          end do
+>           ! End spurious source calculation
+1047,1051c1110,1112
+< !-----------------------------------------------------------
+< !       Coriolis force:
+< 	     
+<      if(docoriolis) call coriolis()
+< 	 
+---
+>         end if ! doclubb
+> 
+> #endif	 
+1059d1119
+< !  Note that at the end of the call, the velocities are in nondimensional form.
+1064c1124
+< !     Update boundaries for all prognostic scalar fields for advection:
+---
+> !     Update boundaries for velocity fields to use for advection of scalars:
+1066c1126
+<      call boundaries(2)
+---
+>      call boundaries(1)
+1071c1131,1137
+<      call advect_all_scalars()
+---
+>      call advect_scalar(t,tadv,twle,t2leadv,t2legrad,twleadv,.true.)
+>      
+>      if(dosgs.and..not.dosmagor) then
+>       call advect_scalar(tke,dummy,tkewle,dummy,dummy,dummy,.false.)
+>      else if(doscalar) then
+>       call advect_scalar(tke,dummy,tkewle,s2leadv,s2legrad,swleadv,.true.)
+>      end if
+1073,1074c1139,1143
+< !-----------------------------------------------------------
+< !    Convert velocity back from nondimensional form:
+---
+> #ifdef CLUBB_CRM
+> ! As microphysics variables are updated in CLUBB and in micro_proc, boundaries(2) is needed
+> !  to update their values in the domain boundary  +++mhwang, 2012-02-07 (Minghuai.Wang@pnnl.gov)
+>      call boundaries(2)  
+> #endif
+1076c1145,1147
+<       call uvw()
+---
+> !
+> !    Advection of microphysics prognostics:
+> !
+1078,1079c1149,1164
+< !----------------------------------------------------------
+< !     Update boundaries for scalars to prepare for SGS effects:
+---
+>      do k = 1,nmicro_fields
+>         if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
+> #ifdef CLUBB_CRM
+> !Added preprocessor directives. - nielsenb UWM 30 July 2008
+>         .or. ( docloud .or. doclubb .or. doclubbnoninter ) .and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+> #else
+>          .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+> #endif /*CLUBB_CRM*/
+>          .or. doprecip.and.flag_precip(k).eq.1 ) &
+>            call advect_scalar(micro_field(:,:,:,k),mkadv(:,k),mkwle(:,k),dummy,dummy,dummy,.false.)
+>      end do
+> 
+> !
+> !   Precipitation fallout:
+> !
+>     if(doprecip) then
+1081c1166,1168
+<      call boundaries(3)
+---
+>        call micro_precip_fall()
+> 
+>     end if
+1084c1171,1173
+< !      SGS effects on scalars :
+---
+> !      diffusion of scalars :
+> 
+> !        Update boundaries for scalars:
+1086c1175,1200
+<      if (dosgs) call sgs_scalars()
+---
+>       if(dosgs) call boundaries(3)
+> 
+> #ifdef CLUBB_CRM     
+> ! Preprocessor directives added to keep original source as pristine as possible
+> ! -nielsenb UWM 15, July, 2008
+>       if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes)) then
+>         ! If CLUBB is being used, add in the surface flux later
+>         ! -dschanen UWM 7 June 2007 
+>         call diffuse_scalar(t,fzero,fluxtt,tdiff,twsb, &
+>                             t2lediff,t2lediss,twlediff,.true.)
+>       else
+>         call diffuse_scalar(t,fluxbt,fluxtt,tdiff,twsb, &
+>                             t2lediff,t2lediss,twlediff,.true.)
+>       end if
+> #else
+>       call diffuse_scalar(t,fluxbt,fluxtt,tdiff,twsb, &
+>                            t2lediff,t2lediss,twlediff,.true.)
+>      
+> #endif /*CLUBB_CRM*/
+>       if(.not.dosmagor) then
+>           call diffuse_scalar(tke,fzero,fzero,dummy,tkewsb, &
+>                                     dummy,dummy,dummy,.false.)
+>       else if(doscalar) then
+>           call diffuse_scalar(tke,fluxbq,fluxtq,dummy,tkewsb, &
+>                            s2lediff,s2lediss,swlediff,.true.)
+>       end if
+1088c1202,1257
+< #ifdef CLUBB_CRM_OLD
+---
+> !
+> !    diffusion of microphysics prognostics:
+> !
+>       call micro_flux()
+> 
+>       do k = 1,nmicro_fields
+>         if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
+> #ifdef CLUBB_CRM
+>         .or. ( docloud.or.doclubb.or.doclubbnoninter ).and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+> #else
+>          .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+> #endif
+>          .or. doprecip.and.flag_precip(k).eq.1 ) then
+>            fluxbtmp(1:nx,1:ny) = fluxbmk(1:nx,1:ny,k)
+>            fluxttmp(1:nx,1:ny) = fluxtmk(1:nx,1:ny,k)
+>            call diffuse_scalar(micro_field(:,:,:,k),fluxbtmp,fluxttmp, &
+>                 mkdiff(:,k),mkwsb(:,k), dummy,dummy,dummy,.false.)
+>        end if
+>       end do
+> 
+>  ! diffusion of tracers:
+> 
+>       if(dotracers) then
+> 
+>         call tracers_flux()
+> 
+>         do k = 1,ntracers
+> #ifdef CLUBB_CRM
+>           ! If CLUBB is using the high-order or eddy diffusivity scalars, then
+>           ! we should apply the flux within advance_clubb_core when
+>           ! doclubb_sfc_fluxes is set to true. -dschanen UWM 2 Mar 2010
+>           if ( ( edsclr_dim > 0 .or. sclr_dim > 0 ) .and. doclubb_sfc_fluxes ) then
+>             fluxbtmp = 0. ! Apply surface flux in CLUBB
+>           else
+>             fluxbtmp = fluxbtr(:,:,k)
+>           end if
+> #else
+>           fluxbtmp = fluxbtr(:,:,k)
+> #endif /*CLUBB_CRM*/
+>           fluxttmp = fluxttr(:,:,k)
+>           call diffuse_scalar(tracer(:,:,:,k),fluxbtmp,fluxttmp, &
+>                trdiff(:,k),trwsb(:,k), &
+>                dummy,dummy,dummy,.false.)
+> !!$          call diffuse_scalar(tracer(:,:,:,k),fluxbtr(:,:,k),fluxttr(:,:,k),trdiff(:,k),trwsb(:,k), &
+> !!$                           dummy,dummy,dummy,.false.)
+>  
+>         end do
+> 
+>       end if
+> 
+> !-----------------------------------------------------------
+> !    Convert back from Courant numbers and Updatee the velocity field:
+> 
+>       call uvw()
+> 
+> #ifdef CLUBB_CRM
+1092,1125c1261,1263
+<       ! Recalculate q, qv, qcl based on new micro_fields (updated by horizontal
+<       ! diffusion)
+<        call micro_update()
+< 
+<       ! Then Re-compute q/qv/qcl based on values computed in CLUBB
+<        call apply_clubb_sgs_tndcy_scalars &
+<             ( real( dtn, kind=time_precision), & ! in
+<               t, qv, qcl) ! in/out
+< 
+<        call micro_adjust( qv, qcl ) ! in
+< 
+<        ! Calculate the vertical integrals for RTM and THLM again so
+<        ! calculate whether CLUBB is a spurious source or sink of either.
+<        ! - nielsenb UWM 4 Jun 2010
+<        do i = 1,nx
+<          do j = 1,ny
+<            rtm_flux_top = rho_ds_zm(nz) * wprtp(i,j,nz)
+<            rtm_flux_sfc = rho_ds_zm(1) * fluxbq(i,j)
+<            rtm_column = qv(i,j,1:nzm) + qcl(i,j,1:nzm)
+<            rtm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), & 
+<                                          rtm_column, gr%invrs_dzt(2:nz) )
+<                                           
+<            rtm_spurious_source(i,j) = calculate_spurious_source( rtm_integral_after(i,j), &
+<                                                       rtm_integral_before(i,j), &
+<                                                       rtm_flux_top, rtm_flux_sfc, &
+<                                                       0.0_core_rknd, real( dtn, kind=core_rknd) )
+< 
+<            thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
+<            thlm_flux_sfc = rho_ds_zm(1) * fluxbt(i,j)
+< 
+<            thlm_after = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
+<                                   qcl(i,j,1:nzm), qpl(i,j,1:nzm), &
+<                                   qci(i,j,1:nzm), qpi(i,j,1:nzm), &
+<                                   prespot(1:nzm) )
+---
+>           call apply_clubb_sgs_tndcy_scalar &
+>                ( real( dtn, kind=time_precision), & ! in
+>                  t, qv, qcl) ! in/out
+1127,1136c1265
+<            thlm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
+<                                                       thlm_after(1:nzm), gr%invrs_dzt(2:nz))
+<                                          
+<            thlm_spurious_source(i,j) = calculate_spurious_source( thlm_integral_after(i,j), &
+<                                                           thlm_integral_before(i,j), &
+<                                                           thlm_flux_top, thlm_flux_sfc, &
+<                                                           0.0_core_rknd, real( dtn, kind=core_rknd ))
+<          end do
+<        end do
+<           ! End spurious source calculation
+---
+>           call micro_adjust( qv, qcl ) ! in
+1138,1139c1267,1269
+<      end if! doclubb
+< #endif /*CLUBB_CRM_OLD*/
+---
+>           call micro_proc() ! Update rain, etc.
+>      end if
+> #endif
+1143,1145d1272
+< #ifdef CLUBB_CRM
+<       if(docloud.or.dosmoke.or.doclubb) call micro_proc()
+< #else
+1147d1273
+< #endif /*CLUBB_CRM*/
+1180,1182d1305
+<         cltemp = 0.0; cmtemp = 0.0
+<         chtemp = 0.0; cttemp = 0.0
+< 
+1215d1337
+<            cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
+1222d1343
+<                cltemp(i,j) = max(CF3D(i,j,nz-k), cltemp(i,j))
+1225d1345
+<                chtemp(i,j) = max(CF3D(i,j,nz-k), chtemp(i,j))
+1228d1347
+<                cmtemp(i,j) = max(CF3D(i,j,nz-k), cmtemp(i,j))
+1235c1354
+<                 cld(l) = cld(l) + CF3D(i,j,k)
+---
+>                 cld(l) = cld(l) + 1.
+1237,1238c1356
+<                   mcup(l) = mcup(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
+<                   mcuup(l) = mcuup(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
+---
+>                   mcup(l) = mcup(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+1241,1242c1359
+<                   mcdn(l) = mcdn(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
+<                   mcudn(l) = mcudn(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
+---
+>                   mcdn(l) = mcdn(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+1257d1373
+<            cld_rad(i,j,k) = cld_rad(i,j,k) +  CF3D(i,j,k)
+1307,1316c1423,1426
+< !           if(cwp(i,j).gt.cwp_threshold) cltot = cltot + 1.
+< !           if(cwph(i,j).gt.cwp_threshold) clhgh = clhgh + 1.
+< !           if(cwpm(i,j).gt.cwp_threshold) clmed = clmed + 1.
+< !           if(cwpl(i,j).gt.cwp_threshold) cllow = cllow + 1.
+< !  use maxmimum cloud overlap to calcluate cltot, clhgh, 
+< !  cldmed, and cldlow   +++ mhwang
+<            if(cwp(i,j).gt.cwp_threshold) cltot = cltot + cttemp(i,j) 
+<            if(cwph(i,j).gt.cwp_threshold) clhgh = clhgh + chtemp(i,j) 
+<            if(cwpm(i,j).gt.cwp_threshold) clmed = clmed + cmtemp(i,j) 
+<            if(cwpl(i,j).gt.cwp_threshold) cllow = cllow + cltemp(i,j) 
+---
+>            if(cwp(i,j).gt.cwp_threshold) cltot = cltot + 1.
+>            if(cwph(i,j).gt.cwp_threshold) clhgh = clhgh + 1.
+>            if(cwpm(i,j).gt.cwp_threshold) clmed = clmed + 1.
+>            if(cwpl(i,j).gt.cwp_threshold) cllow = cllow + 1.
+1330d1439
+<         cld_rad = cld_rad * tmp1
+1409,1411d1517
+<        crm_tk(1:nx,1:ny,1:nzm) = tk(1:nx, 1:ny, 1:nzm)
+<        crm_tkh(1:nx,1:ny,1:nzm) = tkh(1:nx, 1:ny, 1:nzm)
+<        cld3d_crm(1:nx, 1:ny, 1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)
+1432,1436d1537
+<        clubb_tk(1:nx,1:ny,1:nzm) = tk_clubb(1:nx, 1:ny, 1:nzm)
+<        clubb_tkh(1:nx,1:ny,1:nzm) = tkh_clubb(1:nx, 1:ny, 1:nzm)
+<        relvar(1:nx, 1:ny, 1:nzm) = relvarg(1:nx, 1:ny, 1:nzm)
+<        accre_enhan(1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm) 
+<        qclvar(1:nx, 1:ny, 1:nzm) = qclvarg(1:nx, 1:ny, 1:nzm)
+1439a1541,1543
+>          tvz(k) = 0.   ! MDB 8/2013
+>          msez(k) = 0.   ! MDB 8/2013
+>          qvz(k) = 0.   ! MDB 8/2013
+1445a1550,1560
+> !-- MDB 8/2013
+>             tmp = tabs(i,j,k)*prespot(k)
+>             tvirt(i,j,k)=tmp*(1.+epsv*qv(i,j,k)-(qcl(i,j,k)+qci(i,j,k))-(qpl(i,j,k)+qpi(i,j,k)))
+>             !write(96,*)
+>             !tmp,epsv,qv(i,j,k),qcl(i,j,k),qci(i,j,k),qpl(i,j,k),qpi(i,j,k)
+>             tvz(k)=tvz(k)+tvirt(i,j,k)
+>             mse(i,j,k) = tabs(i,j,k)+gamaz(k)+fac_cond*qv(i,j,k)
+>             msez(k)=msez(k)+mse(i,j,k)
+>             qvz(k)=qvz(k)+qv(i,j,k)
+> !-- MDB 8/2013
+> 
+1459a1575,1577
+>          tvz(k) = tvz(k)*factor_xy   ! MDB 8/2013
+>          msez(k) = msez(k)*factor_xy   ! MDB 8/2013
+>          qvz(k) = qvz(k)*factor_xy   ! MDB 8/2013
+1464a1583,1613
+> !-- MDB 8/2013
+>         tvwle(1) = 0.
+>         buoyavg(1) = 0.
+>         buoysd(1) = 0.
+>         msef(1) = 0.
+>         qvw(1) = 0.
+>         do k=2,nzm
+>          tvwle(k) = 0.
+>          buoyavg(k) = 0.
+>          msef(k) = 0.
+>          qvw(k) = 0.
+>          do j=1,ny
+>           do i=1,nx
+>             tvwle(k) = tvwle(k) + 0.5*w(i,j,k)* &
+>                 (tvirt(i,j,k-1)-tvz(k-1)+tvirt(i,j,k)-tvz(k))
+>             buoyavg(k) = buoyavg(k) + buoy(i,j,k)
+>             msef(k) = msef(k) + 0.5*w(i,j,k)* &
+>                 (mse(i,j,k-1)-msez(k-1)+mse(i,j,k)-msez(k))
+>             qvw(k) = qvw(k) + 0.5*w(i,j,k)* &
+>                 (qv(i,j,k-1)-qvz(k-1)+qv(i,j,k)-qvz(k))
+>           end do
+>          end do
+>          tvwle(k) = tvwle(k)*rhow(k)*cp*factor_xy
+>          buoyavg(k) = buoyavg(k)*factor_xy
+>          !if ((sum(buoy(:,:,k)**2)*factor_xy - buoyavg(k)**2) .lt. 0.) write(*,*) '### k,buoyavg(k) = ',k,buoyavg(k),sum(buoy(:,:,k)**2)*factor_xy - buoyavg(k)**2
+>          !buoysd(k) = SQRT (sum(buoy(:,:,k)**2)*factor_xy - buoyavg(k)**2)
+>          msef(k) = msef(k)*rhow(k)*cp*factor_xy
+>          qvw(k) = qvw(k)*rhow(k)*lcond*factor_xy
+>         end do
+> !-- MDB 8/2013
+> 
+1616,1624c1765,1773
+<         if(abs(qtot(9)-qtot(1))/qtot(1).gt.1.0e-6) then
+<            write(0, *) 'in crm.F90 water before, after', igstep, lchnk, icol, qtot(1),  qtot(9), (qtot(9)-qtot(1))/qtot(1), (precc+precl)*1000 * dt_gl
+< !           write(0, *) 'in crm water middle       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(5)-qtot(4)) * ntotal_step/qtot(4),  &
+< !                                                     (qtot(6)+(precc+precl)*1000 * dt_gl-qtot(5))*ntotal_step/qtot(5)
+< !           write(0, *) 'in crm water middle2       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(8)-qtot(7)) * ntotal_step/qtot(7) 
+< !           write(0, *) 'total water (liquid+vapor)', qtot(16:19)/nstop, (qtot(17)-qtot(16)) * ntotal_step/qtot(16), &
+< !                                                     (qtot(18)-qtot(19)) * ntotal_step/qtot(19),
+< !           call endrun('water conservation in crm.F90')
+<         end if
+---
+> !        if(abs(qtot(9)-qtot(1))/qtot(1).gt.1.0e-6) then
+> !           write(0, *) 'in crm.F90 water before, after', igstep, lchnk, icol, qtot(1),  qtot(9), (qtot(9)-qtot(1))/qtot(1), (precc+precl)*1000 * dt_gl
+> !!           write(0, *) 'in crm water middle       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(5)-qtot(4)) * ntotal_step/qtot(4),  &
+> !!                                                     (qtot(6)+(precc+precl)*1000 * dt_gl-qtot(5))*ntotal_step/qtot(5)
+> !!           write(0, *) 'in crm water middle2       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(8)-qtot(7)) * ntotal_step/qtot(7) 
+> !!           write(0, *) 'total water (liquid+vapor)', qtot(16:19)/nstop, (qtot(17)-qtot(16)) * ntotal_step/qtot(16), &
+> !!                                                     (qtot(18)-qtot(19)) * ntotal_step/qtot(19),
+> !!           call endrun('water conservation in crm.F90')
+> !        end if
+1722a1872,1880
+> 
+> !-- MDB 8/2013
+>           tvwle2(l) = tvwle(k)
+>           buoy2(l) = buoyavg(k)
+>           buoysd2(l) = buoysd(k)
+>           msef2(l) = msef(k)
+>           qvw2(l) = qvw(k)
+> !-- MDB 8/2013
+> 

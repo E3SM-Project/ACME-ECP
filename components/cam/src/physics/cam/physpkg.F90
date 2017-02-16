@@ -718,6 +718,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use rad_solar_var,      only: rad_solar_var_init
     use nudging,            only: Nudge_Model,nudging_init
 
+    use cam_history,     only: addfld, add_default !Guangxing Lin debug output
 !-- mdb spcam
     use crm_physics,        only: crm_physics_init
 !-- mdb spcam
@@ -872,7 +873,8 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d,dp1)
 
 !-- mdb spcam
-    if (use_SPCAM) call crm_physics_init
+    if (use_SPCAM) call crm_physics_init(species_class)
+    !==Guangxing Lin added species_class
 !-- mdb spcam
 
     call qbo_init
@@ -913,7 +915,35 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     ! Initialize Nudging Parameters
     !--------------------------------
     if(Nudge_Model) call nudging_init
-
+    !Guangxing Lin --debug output
+    call addfld ('conc_BC_ad0    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 0')
+    call addfld ('conc_BC0    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 0')
+    call addfld ('conc_BC1    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 1')
+    call addfld ('conc_BC2    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 2')
+    call addfld ('conc_BC3    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 3')
+    call addfld ('conc_BC4    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 4')
+    call addfld ('conc_BC5    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 5')
+    call addfld ('conc_BC6    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 6')
+    call addfld ('conc_BC7    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 7')
+    call addfld ('conc_BC_ac1    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac1')
+    call addfld ('conc_BC_ac2    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac2')
+    call addfld ('conc_BC_ac3    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac3')
+    call addfld ('conc_BC_ac4    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac4')
+    call addfld ('conc_BC_ac5    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac5')
+    call addfld ('conc_BC_ac6    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac6')
+    call addfld ('conc_BC_ac7    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac7')
+    call addfld ('conc_BC_ac8    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac8')
+    call addfld ('conc_BC_ac9    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac9')
+    call addfld ('conc_BC_ac10    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac10')
+    call addfld ('conc_BC_ac11    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac11')
+    call addfld ('conc_BC_ac12    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac12')
+    call addfld ('conc_BC_ac13    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac13')
+    call addfld ('conc_BC_ac14    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac14')
+    call addfld ('conc_BC_ac15    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac15')
+    call addfld ('ptend_BC_ac7    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac7')
+    call addfld ('ptend_BC_ac8    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac8')
+    call addfld ('ptend_BC_ac9    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac9')
+    call addfld ('ptend_BC_ac11    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac11')
 end subroutine phys_init
 
   !
@@ -1334,7 +1364,7 @@ subroutine tphysac (ztodt,   cam_in,  &
     use flux_avg,           only: flux_avg_run
     use unicon_cam,         only: unicon_cam_org_diags
     use nudging,            only: Nudge_Model,Nudge_ON,nudging_timestep_tend
-
+    use cam_history,    only: outfld !==Guangxing Lin==debug output
     implicit none
 
     !
@@ -1428,6 +1458,7 @@ subroutine tphysac (ztodt,   cam_in,  &
     if (state_debug_checks) &
          call physics_state_check(state, name="before tphysac")
 
+   call outfld("conc_BC_ac1",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
     call t_startf('tphysac_init')
     ! Associate pointers with physics buffer fields
     itim_old = pbuf_old_tim_idx()
@@ -1456,17 +1487,20 @@ subroutine tphysac (ztodt,   cam_in,  &
             + cam_out%precl(i))*latvap*rhoh2o &
             + (cam_out%precsc(i) + cam_out%precsl(i))*latice*rhoh2o
     end do
+   call outfld("conc_BC_ac2",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
 if (l_tracer_aero) then
 
     ! emissions of aerosols and gas-phase chemistry constituents at surface
     call chem_emissions( state, cam_in )
+   call outfld("conc_BC_ac3",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
     if (carma_do_emission) then
        ! carma emissions
        call carma_emission_tend (state, ptend, cam_in, ztodt)
        call physics_update(state, ptend, ztodt, tend)
     end if
+   call outfld("conc_BC_ac4",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
 end if ! l_tracer_aero
 
@@ -1483,6 +1517,7 @@ end if ! l_tracer_aero
          cam_in%lhf , cam_in%cflx )
 
     call t_stopf('tphysac_init')
+   call outfld("conc_BC_ac5",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
 if (l_tracer_aero) then
     !===================================================
@@ -1493,11 +1528,14 @@ if (l_tracer_aero) then
 
     call tracers_timestep_tend(state, ptend, cam_in%cflx, cam_in%landfrac, ztodt)      
     call physics_update(state, ptend, ztodt, tend)
+   call outfld("conc_BC_ac6",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
     call check_tracers_chng(state, tracerint, "tracers_timestep_tend", nstep, ztodt,   &
          cam_in%cflx)
 
     call aoa_tracers_timestep_tend(state, ptend, cam_in%cflx, cam_in%landfrac, ztodt)      
+   !call outfld("ptend_BC_ac7",ptend%q(:,:,14),pcols, lchnk) !Guangxing Lin==debug output
     call physics_update(state, ptend, ztodt, tend)
+   call outfld("conc_BC_ac7",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
     call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
          cam_in%cflx)
 
@@ -1506,11 +1544,13 @@ if (l_tracer_aero) then
        call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, &
             pbuf,  fh2o, fsds)
 
+   call outfld("ptend_BC_ac8",ptend%q(:,:,19)*ztodt,pcols, lchnk) !Guangxing Lin==debug output
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "chem", nstep, ztodt, fh2o, zero, zero, zero)
        call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, &
             cam_in%cflx)
     end if
+   call outfld("conc_BC_ac8",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
     call t_stopf('adv_tracer_src_snk')
 
 end if ! l_tracer_aero
@@ -1546,10 +1586,12 @@ if (l_vdiff) then
        call mspd_intr (ztodt    ,state    ,ptend)
     endif
 
+   call outfld("ptend_BC_ac9",ptend%q(:,:,19)*ztodt,pcols, lchnk) !Guangxing Lin==debug output
        call physics_update(state, ptend, ztodt, tend)
        call t_stopf ('vertical_diffusion_tend')
     
     endif
+   call outfld("conc_BC_ac9",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
 end if ! l_vdiff
 
@@ -1572,14 +1614,17 @@ if (l_rayleigh) then
     call check_tracers_chng(state, tracerint, "vdiff", nstep, ztodt, cam_in%cflx)
 
 end if ! l_rayleigh
+   call outfld("conc_BC_ac10",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
 if (l_tracer_aero) then
 
     !  aerosol dry deposition processes
     call t_startf('aero_drydep')
     call aero_model_drydep( state, pbuf, obklen, surfric, cam_in, ztodt, cam_out, ptend )
+   call outfld("ptend_BC_ac11",ptend%q(:,:,19)*ztodt,pcols, lchnk) !Guangxing Lin==debug output
     call physics_update(state, ptend, ztodt, tend)
     call t_stopf('aero_drydep')
+   call outfld("conc_BC_ac11",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
    ! CARMA microphysics
    !
@@ -1682,9 +1727,11 @@ if (l_ac_energy_chk) then
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
 
+   call outfld("conc_BC_ac12",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
     if ( dycore_is('LR') .or. dycore_is('SE')) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
+   call outfld("conc_BC_ac13",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1698,6 +1745,7 @@ if (l_ac_energy_chk) then
 
     !-------------- Energy budget checks ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 end if ! l_ac_energy_chk
+   call outfld("conc_BC_ac14",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
 
     if (aqua_planet) then
@@ -1722,6 +1770,7 @@ end if ! l_ac_energy_chk
          tmp_t, qini, cldliqini, cldiceini)
 
     call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
+   call outfld("conc_BC_ac15",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 
 end subroutine tphysac
 
@@ -1994,6 +2043,7 @@ subroutine tphysbc (ztodt,               &
     itim_old = pbuf_old_tim_idx()
     ifld = pbuf_get_index('CLD')
     call pbuf_get_field(pbuf, ifld, cld, (/1,1,itim_old/),(/pcols,pver,1/))
+  call outfld("conc_BC0",state%q(:,:pver,19),pcols, lchnk) 
 
 !<songxl 2011-09-20---------------------------
 !   if(trigmem)then
@@ -2125,6 +2175,10 @@ if (l_dry_adj) then
     call t_stopf('dry_adjustment')
 
 end if
+
+!==Guangxing Lin debug output
+
+  call outfld("conc_BC1",state%q(:,:pver,19),pcols, lchnk) 
 
 !-- mdb spcam
     if (use_SPCAM) call crm_save_state_tend(state, tend, pbuf)
@@ -2269,7 +2323,7 @@ end if
             ! Aerosol Activation
             !===================================================
             call t_startf('microp_aero_run')
-            call microp_aero_run(state, ptend, cld_macmic_ztodt, pbuf, lcldo)
+            call microp_aero_run(state, ptend, cld_macmic_ztodt, pbuf, lcldo,species_class) !==Guangxing Lin added species_class
             call t_stopf('microp_aero_run')
 
             call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
@@ -2363,7 +2417,7 @@ end if
           if (.not. micro_do_icesupersat) then 
 
             call t_startf('microp_aero_run')
-            call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf, lcldo)
+            call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf, lcldo, species_class) !==Guangxing Lin added species_class
             call t_stopf('microp_aero_run')
 
           endif
@@ -2437,62 +2491,62 @@ if (l_tracer_aero) then
        snow_sed(:ncol) = snow_sed(:ncol) + snow_sed_carma(:ncol)
     end if
 
-    if ( .not. deep_scheme_does_scav_trans() ) then
+!==Guangxing Lin, we already have aero_model_wetdep after crm_physics_update, why we need that below?      
+!    if ( .not. deep_scheme_does_scav_trans() ) then
+!
+!       !===================================================
+!       !  Aerosol wet chemistry determines scavenging fractions, and transformations
+!       !
+!       !
+!       !  Then do convective transport of all trace species except water vapor and
+!       !     cloud liquid and ice (we needed to do the scavenging first
+!       !     to determine the interstitial fraction) 
+!       !===================================================
 
-       !===================================================
-       !  Aerosol wet chemistry determines scavenging fractions, and transformations
-       !
-       !
-       !  Then do convective transport of all trace species except water vapor and
-       !     cloud liquid and ice (we needed to do the scavenging first
-       !     to determine the interstitial fraction) 
-       !===================================================
+!       call t_startf('bc_aerosols')
+!       if (clim_modal_aero .and. .not. prog_modal_aero) then
+!          call modal_aero_calcsize_diag(state, pbuf)
+!          call modal_aero_wateruptake_dr(state, pbuf)
+!       endif
 
-       call t_startf('bc_aerosols')
-       if (clim_modal_aero .and. .not. prog_modal_aero) then
-          call modal_aero_calcsize_diag(state, pbuf)
-          call modal_aero_wateruptake_dr(state, pbuf)
-       endif
+!       if (do_clubb_sgs) then
+!          sh_e_ed_ratio = 0.0_r8
+!       endif
 
-       if (do_clubb_sgs) then
-          sh_e_ed_ratio = 0.0_r8
-       endif
-
-       call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,       & !Intent-ins
-            mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
-            cam_out,                                                                 & !Intent-inout
-            pbuf,                                                                    & !Pointer
-            ptend                                                                    ) !Intent-out
+       !call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,       & !Intent-ins
+       !     mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
+       !     cam_out,                                                                 & !Intent-inout
+       !     pbuf,                                                                    & !Pointer
+       !     ptend                                                                    ) !Intent-out
        
-       call physics_update(state, ptend, ztodt, tend)
+       !call physics_update(state, ptend, ztodt, tend)
 
+!       if (carma_do_wetdep) then
+!          ! CARMA wet deposition
+!          !
+!          ! NOTE: It needs to follow aero_model_wetdep, so that cam_out%xxxwetxxx
+!          ! fields have already been set for CAM aerosols and cam_out can be added
+!          ! to for CARMA aerosols.
+!          call t_startf ('carma_wetdep_tend')
+!          call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
+!          call physics_update(state, ptend, ztodt, tend)
+!          call t_stopf ('carma_wetdep_tend')
+!       end if
 
-       if (carma_do_wetdep) then
-          ! CARMA wet deposition
-          !
-          ! NOTE: It needs to follow aero_model_wetdep, so that cam_out%xxxwetxxx
-          ! fields have already been set for CAM aerosols and cam_out can be added
-          ! to for CARMA aerosols.
-          call t_startf ('carma_wetdep_tend')
-          call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
-          call physics_update(state, ptend, ztodt, tend)
-          call t_stopf ('carma_wetdep_tend')
-       end if
+!       call t_startf ('convect_deep_tend2')
+!       call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
+!          du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
+!       call t_stopf ('convect_deep_tend2')
 
-       call t_startf ('convect_deep_tend2')
-       call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
-          du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
-       call t_stopf ('convect_deep_tend2')
-
-       call physics_update(state, ptend, ztodt, tend)
+!       call physics_update(state, ptend, ztodt, tend)
 
        ! check tracer integrals
-       call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
+!       call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
 
-       call t_stopf('bc_aerosols')
-
-   endif
-end if ! l_tracer_aero
+!       call t_stopf('bc_aerosols')
+!
+!   endif
+!==Guangxing Lin
 
 !<songxl 2011-9-20---------------------------------
    if(trigmem)then
@@ -2505,11 +2559,16 @@ end if ! l_tracer_aero
 
 !-- mdb spcam
    if (use_SPCAM) then
-      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out)
-
+      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class)
+   !==Guangxing Lin added species_class
    endif
 
-    if ( .not. deep_scheme_does_scav_trans() ) then
+   call outfld("conc_BC3",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
+
+  if(use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
+     ! As ECPP is not linked with the sam1mom yet, conventional convective transport
+     ! and wet savenging are still needed for sam1mom to drive the BAM aerosol treatment
+   else if ( .not. deep_scheme_does_scav_trans() ) then
 
        ! -------------------------------------------------------------------------------
        ! 1. Wet Scavenging of Aerosols by Convective and Stratiform Precipitation.
@@ -2561,6 +2620,8 @@ end if ! l_tracer_aero
 
    endif
 
+   !call outfld("conc_BC4",state%q(:,:pver,14),pcols, lchnk) !Guangxing Lin==debug output
+end if ! l_tracer_aero
 
     !===================================================
     ! Moist physical parameteriztions complete: 
@@ -2582,6 +2643,7 @@ end if ! l_tracer_aero
     call cloud_diagnostics_calc(state, pbuf)
 
     call t_stopf('bc_cld_diag_history_write')
+   !call outfld("conc_BC5",state%q(:,:pver,14),pcols, lchnk) !Guangxing Lin==debug output
 
 if (l_rad) then
     !===================================================
@@ -2608,6 +2670,7 @@ if (l_rad) then
 !-- mdb spcam
     
     call physics_update(state, ptend, ztodt, tend)
+   !call outfld("conc_BC6",state%q(:,:pver,14),pcols, lchnk) !Guangxing Lin==debug output
     
 !-- mdb spcam
     !call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)

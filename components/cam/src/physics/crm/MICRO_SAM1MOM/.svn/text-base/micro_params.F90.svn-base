@@ -34,11 +34,17 @@ real, parameter :: a_grau = 94.5 ! Lin (1983) (rhog=400)
 real, parameter :: b_grau = 0.5  ! Fall speed exponent for graupel
 
 ! Autoconversion
-
+#ifdef CLUBB_CRM   /*microphysical tuning for CLUBB*/
+real, parameter :: qcw0 = 0.6e-3      ! Threshold for water autoconversion, g/g  
+real, parameter :: qci0 = 1.e-4     ! Threshold for ice autoconversion, g/g
+real, parameter :: alphaelq = 10.e-3  ! autoconversion of cloud water rate coef
+real, parameter :: betaelq = 6.0e-3   ! autoconversion of cloud ice rate coef
+#else 
 real, parameter :: qcw0 = 1.e-3      ! Threshold for water autoconversion, g/g  
 real, parameter :: qci0 = 1.e-4     ! Threshold for ice autoconversion, g/g
 real, parameter :: alphaelq = 1.e-3  ! autoconversion of cloud water rate coef
 real, parameter :: betaelq = 1.e-3   ! autoconversion of cloud ice rate coef
+#endif /*CLUBB_CRM*/
 
 ! Accretion
 

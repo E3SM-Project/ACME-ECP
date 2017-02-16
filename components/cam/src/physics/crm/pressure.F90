@@ -10,6 +10,7 @@ subroutine pressure
 !       For more processors for the given number of levels and 3D, use pressure_big
 
 use vars
+use params, only: dowallx, dowally, docolumn
 implicit none
 	
 

@@ -41,7 +41,7 @@ real  flagstat
 
 !--------------------------------------------------------
 
-call t_startf ('precip_fall')
+!call t_startf ('precip_fall')
 
 eps = 1.e-10
 nonos = .true.
@@ -222,7 +222,7 @@ do j=1,ny
 end do	
 	 
 
-call t_stopf ('precip_fall')
+!call t_stopf ('precip_fall')
 
 end subroutine precip_fall
 

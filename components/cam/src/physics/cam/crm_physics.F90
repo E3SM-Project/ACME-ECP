@@ -173,7 +173,11 @@ subroutine crm_physics_register()
 end subroutine crm_physics_register
 !=========================================================================================================
 
-subroutine crm_physics_init()
+!==Guangxing Lin
+!subroutine crm_physics_init()
+subroutine crm_physics_init(species_class)
+!subroutine crm_physics_init()
+!==Guangxing Lin
 !-------------------------------------------------------------------------------------------------------
 ! 
 ! Purpose: initialize some varialbes, and add necessary fileds into output fields 
@@ -181,7 +185,7 @@ subroutine crm_physics_init()
 !--------------------------------------------------------------------------------------------------------
   use physics_buffer,  only: pbuf_get_index
   use physics_types,   only: physics_tend_alloc
-  use physconst,       only: mwdry, cpair
+  use physconst,       only: mwdry, cpair, spec_class_gas !==Guangxing Lin added spec_class_gas
   use ppgrid,          only: pcols, pver, pverp
   use constituents,    only: pcnst, cnst_name
   use cam_history,     only: addfld, add_default, horiz_only
@@ -197,8 +201,12 @@ subroutine crm_physics_init()
     use modal_aero_data, only:  cnst_name_cw, &
 !                               lmassptr_amode, lmassptrcw_amode, lwaterptr_amode, &
                                 lmassptr_amode, lmassptrcw_amode, &
-                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode, &
-                                species_class, spec_class_gas
+                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode
+!==Guangxing Lin
+!                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode, &
+!                                species_class, spec_class_gas
+    integer, intent(in) :: species_class(:)
+!==Guangxing Lin
        
     integer :: l, lphase, lspec
     character(len=fieldname_len)   :: tmpname
@@ -323,7 +331,10 @@ subroutine crm_physics_init()
      call addfld ('VPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime * w prime from clubb')
      call addfld ('CRM_CLD ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'fraction',   'cloud fraction from clubb')
 #endif
-
+!==Guangxing Lin New CRM
+      call addfld ('CRM_TK', (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
+  call addfld ('CRM_TKH',  (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
+!==Guangxing Lin New CRM
 #ifdef ECPP
   if (use_ECPP) then
      call addfld ('ABND    ', (/'ilev        ','NCLASS_CL   ','ncls_ecpp_in','NCLASS_PR   '/), 'A', 'fraction', &
@@ -389,16 +400,21 @@ subroutine crm_physics_init()
   call addfld ('SPWTKE   ', (/ 'lev' /), 'A', 'm/s',      'Standard deviation of updraft velocity')
   call addfld ('SPLCLOUD  ',(/ 'lev' /), 'A', '        ', 'Liquid cloud fraction')
 
-    !call addfld ('SPNDROPMIX','#/kg/s  ',pver,  'A','Droplet number mixing',phys_decomp)
-    !call addfld ('SPNDROPSRC','#/kg/s  ',pver,  'A','Droplet number source',phys_decomp)
-    !call addfld ('SPNDROPCOL','#/m2    ',1,     'A','Column droplet number',phys_decomp)
+!==Guangxing Lin
+   ! call addfld ('SPNDROPMIX','#/kg/s  ',pver,  'A','Droplet number mixing',phys_decomp)
+   ! call addfld ('SPNDROPSRC','#/kg/s  ',pver,  'A','Droplet number source',phys_decomp)
+   ! call addfld ('SPNDROPCOL','#/m2    ',1,     'A','Column droplet number',phys_decomp)
+    call addfld ('SPNDROPMIX',(/ 'lev' /),'A','#/kg/s  ','Droplet number mixing')
+    call addfld ('SPNDROPSRC',(/ 'lev' /),'A','#/kg/s  ','Droplet number source')
+    call addfld ('SPNDROPCOL',horiz_only,'A', '#/m2    ','Column droplet number')
+!==Guangxing Lin
 
     call add_default ('SPKVH     ', 1, ' ')
     call add_default ('SPWTKE    ', 1, ' ')
     call add_default ('SPLCLOUD  ', 1, ' ')
-    !call add_default ('SPNDROPSRC', 1, ' ')
-    !call add_default ('SPNDROPMIX', 1, ' ')
-    !call add_default ('SPNDROPCOL', 1, ' ')
+    call add_default ('SPNDROPSRC', 1, ' ')
+    call add_default ('SPNDROPMIX', 1, ' ')
+    call add_default ('SPNDROPCOL', 1, ' ')
 
 #ifdef MODAL_AERO
 ! add dropmixnuc tendencies for all modal aerosol species
@@ -468,7 +484,7 @@ end subroutine crm_physics_init
 !=========================================================================================================
 
 !---------------------------------------------------------------------------------------------------------
-   subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out)
+   subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out,species_class)
 
 !------------------------------------------------------------------------------------------
 !  Purpose: to update state from CRM physics. 
@@ -524,6 +540,10 @@ end subroutine crm_physics_init
    use phys_grid,       only: get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p
    use convect_deep,    only: convect_deep_tend_2, deep_scheme_does_scav_trans
 
+!==Guangxing Lin
+   use modal_aero_wateruptake, only: modal_aero_wateruptake_dr
+   use modal_aero_calcsize,    only: modal_aero_calcsize_sub
+!==Guangxing Lin
    !!!use aerosol_intr,    only: aerosol_wet_intr
 
 
@@ -537,6 +557,10 @@ end subroutine crm_physics_init
    real(r8), intent(in) :: dlf(pcols,pver)           ! shallow+deep convective detrainment [kg/kg/s]
    type (cam_in_t), intent(in)      :: cam_in
    type (cam_out_t), intent(inout)  :: cam_out
+
+!==Guangxing Lin
+   integer, intent(in) :: species_class(:)
+!==Guangxing Lin
 
 ! convective precipitation variables
    real(r8), pointer :: prec_dp(:)                ! total precipitation from ZM convection [m/s]
@@ -579,7 +603,17 @@ end subroutine crm_physics_init
    real(r8) qpi_crm(pcols,crm_nx, crm_ny, crm_nz)
 #ifdef CLUBB_CRM
    real(r8) crm_cld(pcols,crm_nx, crm_ny, crm_nz+1)
+ !==Guangxing Lin== new crm
+   real(r8) clubb_tk(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) clubb_tkh(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) relvar(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) accre_enhan(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) qclvar(pcols,crm_nx, crm_ny, crm_nz)
 #endif
+   real(r8) crm_tk(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) crm_tkh(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) cld3d_crm(pcols, crm_nx, crm_ny, crm_nz)   ! 3D instaneous cloud fraction 
+ !==Guangxing Lin== new crm
    real(r8) prec_crm(pcols,crm_nx, crm_ny)
    real(r8) mctot(pcols,pver)        ! total cloud mass flux
    real(r8) mcup(pcols,pver)         ! cloud updraft mass flux
@@ -837,7 +871,7 @@ end subroutine crm_physics_init
      call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
      call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
      call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
-     call pbuf_get_field(pbuf, crm_cld_rad_idx, cld_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
+     !call pbuf_get_field(pbuf, crm_cld_rad_idx, cld_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/)) !Guangxing Lin new CRM
    endif
 
 #ifdef ECPP
@@ -879,8 +913,10 @@ end subroutine crm_physics_init
 
    state = state_save
    tend  = tend_save
+  
    cldo(:ncol, :) = cldo_save(:ncol, :)
-
+   !==Guangxing Lin debug output          
+   call outfld("conc_BC2",state%q(:,:pver,19),pcols, lchnk)
 #if ( defined MODAL_AERO )
    do i=1,pcnst
       qqcw   =>  qqcw_get_field(pbuf, i,lchnk, .true.)
@@ -940,6 +976,7 @@ end subroutine crm_physics_init
    call pbuf_get_field (pbuf, crm_qv_rad_idx, qv_rad)
    call pbuf_get_field (pbuf, crm_qc_rad_idx, qc_rad)
    call pbuf_get_field (pbuf, crm_qi_rad_idx, qi_rad)
+   call pbuf_get_field (pbuf, crm_cld_rad_idx, cld_rad)  !Guangxing Lin new CRM
 
 
    
@@ -1025,6 +1062,7 @@ end subroutine crm_physics_init
              qv_rad (i,:,:,k)      = state%q(i,m,1)
              qc_rad (i,:,:,k)      = 0.
              qi_rad (i,:,:,k)      = 0.
+             cld_rad(i,:,:,k)      = 0.  !Guangxing Lin new CRM
 #ifdef m2005
              if (SPCAM_microp_scheme .eq. 'm2005') then
                 nc_rad(i,:,:,k) = 0.
@@ -1091,6 +1129,8 @@ end subroutine crm_physics_init
           dep_crm_a(:,:) = 0.
           con_crm_a(:,:) = 0.
        endif 
+    cld3d_crm (:,:,:,:) = 0. !Guangxing Lin --new CRM
+
        flux_qt(:,:) = 0.
        flux_u(:,:) = 0.
        flux_v(:,:) = 0.
@@ -1337,13 +1377,15 @@ end subroutine crm_physics_init
              ul(:),                   vl(:),                                                                                               &
              state%ps(i),             state%pmid(i,:),          state%pdel(i,:),       state%phis(i),                                      &
              state%zm(i,:),           state%zi(i,:),            ztodt,                 pver,                                               &
-             !ptend%u(i,:),            ptend%v(i,:),                                                                                        &
+#ifdef CRM3D           
+             ptend%u(i,:),            ptend%v(i,:), &  !==Guangxing Lin new crm 
+#endif   
              ptend%q(i,:,1),          ptend%q(i,:,ixcldliq),    ptend%q(i,:,ixcldice), ptend%s(i,:),                                       &
              crm_u(i,:,:,:),          crm_v(i,:,:,:),           crm_w(i,:,:,:),        crm_t(i,:,:,:),          crm_micro(i,:,:,:,:),      &
              crm_qrad(i,:,:,:),                                                                                                            &
              qc_crm(i,:,:,:),         qi_crm(i,:,:,:),          qpc_crm(i,:,:,:),      qpi_crm(i,:,:,:),                                   &
              prec_crm(i,:,:),         t_rad(i,:,:,:),           qv_rad(i,:,:,:),                                                           &
-             qc_rad(i,:,:,:),         qi_rad(i,:,:,:),                                                                                     &
+             qc_rad(i,:,:,:),         qi_rad(i,:,:,:),          cld_rad(i,:,:,:),   cld3d_crm(i,:,:,:),                                   &  !Guangxing Lin new crm
 #ifdef m2005
              nc_rad(i,:,:,:),         ni_rad(i,:,:,:),          qs_rad(i,:,:,:),       ns_rad(i,:,:,:),         wvar_crm(i,:,:,:),         &
              aut_crm(i,:,:,:),        acc_crm(i,:,:,:),         evpc_crm(i,:,:,:),     evpr_crm(i,:,:,:),       mlt_crm(i,:,:,:),          &
@@ -1365,7 +1407,10 @@ end subroutine crm_physics_init
 #ifdef CLUBB_CRM
              clubb_buffer(i,:,:,:,:),                                                                                                      &
              crm_cld(i,:, :, :),                                                                                                           &
+             clubb_tk(i, :, :, :), clubb_tkh(i, :, :, :),                                                                                  & !GuangxingLin new crm
+             relvar(i,:, :, :),  accre_enhan(i, :, :, :),  qclvar(i, :, :, :),                                                             & !Guangxing Lin new crm
 #endif
+             crm_tk(i, :, :, :), crm_tkh(i, :, :, :),      & !Guangxing Lin new crm
              mu_crm(i,:),             md_crm(i,:),              du_crm(i,:),           eu_crm(i,:),                                        & 
              ed_crm(i,:),             jt_crm(i),                mx_crm(i),                                                                 &
 #ifdef ECPP
@@ -1382,8 +1427,8 @@ end subroutine crm_physics_init
              qp_evp(i,:),             qp_src(i,:),              t_ls(i,:),             prectend(i),             precstend(i),              &
              cam_in%ocnfrac(i),       wnd,                      tau00,                 bflx,                                               & 
              fluxu0,                  fluxv0,                   fluxt0,                fluxq0,                                             & 
-             taux_crm(i),             tauy_crm(i),              z0m(i),                timing_factor(i),        qtotcrm(i, :),             &
-             tvwle(i,:),buoy(i,:),buoysd(i,:),msef(i,:),qvw(i,:) )   ! MDB 8/2013  
+             taux_crm(i),             tauy_crm(i),              z0m(i),                timing_factor(i),        qtotcrm(i, :) ) !Guangxing Lin new crm
+!             tvwle(i,:),buoy(i,:),buoysd(i,:),msef(i,:),qvw(i,:) )   ! MDB 8/2013  
            if (SPCAM_microp_scheme .eq. 'sam1mom') then
               crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
               crm_qp(i,:,:,:) = crm_micro(i,:,:,:,2)
@@ -1467,6 +1512,8 @@ end subroutine crm_physics_init
        call outfld('CRM_QPC ',qpc_crm  ,pcols   ,lchnk   )
        call outfld('CRM_QPI ',qpi_crm  ,pcols   ,lchnk   )
        call outfld('CRM_PREC',prec_crm       ,pcols   ,lchnk   )
+       call outfld('CRM_TK ', crm_tk(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
+       call outfld('CRM_TKH', crm_tkh(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
 
 #ifdef m2005
        if (SPCAM_microp_scheme .eq. 'm2005') then
@@ -1523,6 +1570,14 @@ end subroutine crm_physics_init
        call outfld('UPWP    ', clubb_buffer(:, :, :, :, 10)  ,pcols   ,lchnk   )
        call outfld('VPWP    ', clubb_buffer(:, :, :, :, 11)  ,pcols   ,lchnk   )
        call outfld('CRM_CLD ', clubb_buffer(:, :, :, :, 12)  ,pcols   ,lchnk   )
+!==Guangxing Lin new crm
+       call outfld('CLUBB_TK ', clubb_tk(:, :, :, :)  ,pcols   ,lchnk   )
+       call outfld('CLUBB_TKH', clubb_tkh(:, :, :, :)  ,pcols   ,lchnk   )
+       call outfld('RELVAR', relvar(:, :, :, :)  ,pcols   ,lchnk   )
+       call outfld('ACCRE_ENHAN', accre_enhan(:, :, :, :)  ,pcols   ,lchnk   )
+       call outfld('QCLVAR', qclvar(:, :, :, :)  ,pcols   ,lchnk   )
+!==Guangxing Lin new crm
+
 #endif
 
        ifld = pbuf_get_index('QRL')
@@ -1778,6 +1833,7 @@ end subroutine crm_physics_init
 ! so doese this mean state is updated twice??? -Minghuai Wang (minghuai@pnl.gov).
        !!!call physics_update(state, tend, ptend, ztodt)
        call physics_update(state, ptend, ztodt, tend)
+   call outfld("conc_BC4",state%q(:,:pver,19),pcols, lchnk)!Guangxing Lin==debug output
 
        if(SPCAM_microp_scheme .eq. 'm2005') then
 ! calculate column water of rain, snow and graupel 
@@ -1865,10 +1921,10 @@ end subroutine crm_physics_init
 ! to check water conservations
              if(abs((qtot(i,2)+(precc(i)+precl(i))*1000*ztodt)-qtot(i,1))/qtot(i,1).gt.1.0e-5) then 
                 write(0, *) 'water before crm call', i, lchnk, qtot(i,1), qtv(i,1), qt_cloud(i,1), qt_hydro(i,1)
-                write(0, *) 'water after crm call', i, lchnk, qtot(i,2)+(precc(i)+precl(i))*1000*ztodt, qtv(i,2), qt_cloud(i,2), qt_hydro(i,2), (precc(i)+precl(i))*1000*ztodt
-                write(0, *) 'water, nstep, crm call2', nstep, i, lchnk, ((qtot(i,2)+(precc(i)+precl(i))*1000*ztodt)-qtot(i,1))/qtot(i,1)
-                write(0, *) 'water, calcualted in crm.F90', i, lchnk, qtotcrm(i, 1), qtotcrm(i, 9), qtot(i, 3)+(precc(i)+precl(i))*1000*ztodt, qt_cloud(i, 3), qtv(i,2)+qt_cloud(i,2)
-                write(0, *) 'water, temperature', i, lchnk, state%t(i,pver)
+                !write(0, *) 'water after crm call', i, lchnk, qtot(i,2)+(precc(i)+precl(i))*1000*ztodt, qtv(i,2), qt_cloud(i,2), qt_hydro(i,2), (precc(i)+precl(i))*1000*ztodt
+                !write(0, *) 'water, nstep, crm call2', nstep, i, lchnk, ((qtot(i,2)+(precc(i)+precl(i))*1000*ztodt)-qtot(i,1))/qtot(i,1)
+                !write(0, *) 'water, calcualted in crm.F90', i, lchnk, qtotcrm(i, 1), qtotcrm(i, 9), qtot(i, 3)+(precc(i)+precl(i))*1000*ztodt, qt_cloud(i, 3), qtv(i,2)+qt_cloud(i,2)
+                !write(0, *) 'water, temperature', i, lchnk, state%t(i,pver)
 !               call endrun('water conservation error in crm_physics')
              end if
           end do ! end i
@@ -1898,7 +1954,8 @@ end subroutine crm_physics_init
         do jj=1, crm_ny
          do m=1, crm_nz
           if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).gt.1.0e-10) then
-            cld_rad(i,ii,jj,m) = 1.0_r8
+            !cld_rad(i,ii,jj,m) = 1.0_r8
+             cld_rad(i,ii,jj,m) = cld_rad(i,ii,jj,m) !Guangxing Lin new crm
           else
             cld_rad(i,ii,jj,m) = 0.0_r8
           endif
@@ -1907,12 +1964,24 @@ end subroutine crm_physics_init
        enddo
        enddo
       !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
+!==Guangxing Lin
+       ! temporarily turn on all lq, so it is allocated
+       lq(:) = .true.
+       call physics_ptend_init(ptend, state%psetcols, 'crm_physics', lq=lq)
 
+       ! set all ptend%lq to false as they will be set in modal_aero_calcsize_sub
+       ptend%lq(:) = .false.
+       call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
+       call modal_aero_wateruptake_dr(state, pbuf)
+
+!===Guangxing Lin
+        
 ! When ECPP is included, wet deposition is done ECPP,
 ! So tendency from wet depostion is not updated in mz_aero_wet_intr (mz_aerosols_intr.F90)
 ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
       !!!call physics_update (state, tend, ptend, ztodt)
       call physics_update (state, ptend, ztodt, tend)
+   call outfld("conc_BC5",state%q(:,:pver,19),pcols, lchnk)!Guangxing Lin==debug output
 
 
 #ifdef ECPP
@@ -1940,10 +2009,12 @@ end subroutine crm_physics_init
           if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
             call t_startf('crmclouds_mixnuc')
             call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
-                        wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd)
+                        wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)
+            !==Guangxing Lin added species_class
             !!!call physics_update(state, tend, ptend, dtstep_pp)
             call physics_update(state, ptend, dtstep_pp, tend)
             call t_stopf('crmclouds_mixnuc')
+   call outfld("conc_BC6",state%q(:,:pver,19),pcols, lchnk)!Guangxing Lin==debug output
 
             call t_startf('ecpp')
             call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
@@ -1952,6 +2023,11 @@ end subroutine crm_physics_init
             !!!call physics_update(state, tend, ptend, dtstep_pp)
             call physics_update(state, ptend, dtstep_pp, tend)
             call t_stopf ('ecpp')
+   call outfld("conc_BC7",state%q(:,:pver,19),pcols, lchnk)!Guangxing Lin==debug output
+
+            !Guangxing Lin--debug output
+             !call outfld("tend4",ptend%q(:ncol,:pver,14),pcols, lchnk) 
+             !call outfld("conc_BC4",state%q(:ncol,:pver,14),pcols, lchnk) 
           end if
       endif ! /*ECPP*/
 #endif
