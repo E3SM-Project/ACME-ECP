@@ -873,8 +873,14 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d,dp1)
 
 !-- mdb spcam
-    if (use_SPCAM) call crm_physics_init(species_class)
+    if (use_SPCAM) then
+#ifdef MODAL_AERO       
+       call crm_physics_init(species_class)
     !==Guangxing Lin added species_class
+#else
+       call crm_physics_init()
+#endif
+     end if
 !-- mdb spcam
 
     call qbo_init
@@ -2559,8 +2565,12 @@ if (l_tracer_aero) then
 
 !-- mdb spcam
    if (use_SPCAM) then
+#ifdef MODAL_AERO
       call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class)
    !==Guangxing Lin added species_class
+#else
+      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out)
+#endif
    endif
 
    call outfld("conc_BC3",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output

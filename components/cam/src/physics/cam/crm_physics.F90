@@ -175,7 +175,15 @@ end subroutine crm_physics_register
 
 !==Guangxing Lin
 !subroutine crm_physics_init()
+#ifdef MODAL_AERO
+
 subroutine crm_physics_init(species_class)
+
+#else
+
+subroutine crm_physics_init()
+
+#endif
 !subroutine crm_physics_init()
 !==Guangxing Lin
 !-------------------------------------------------------------------------------------------------------
@@ -484,8 +492,14 @@ end subroutine crm_physics_init
 !=========================================================================================================
 
 !---------------------------------------------------------------------------------------------------------
-   subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out,species_class)
+#ifdef MODAL_AERO
+  
+ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out,species_class)
 
+#else
+ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out)
+
+#endif
 !------------------------------------------------------------------------------------------
 !  Purpose: to update state from CRM physics. 
 ! 
@@ -559,7 +573,9 @@ end subroutine crm_physics_init
    type (cam_out_t), intent(inout)  :: cam_out
 
 !==Guangxing Lin
+#if (defined MODAL_AERO)  
    integer, intent(in) :: species_class(:)
+#endif
 !==Guangxing Lin
 
 ! convective precipitation variables

@@ -406,7 +406,7 @@ subroutine parampollu_tdx_cldchem(               &
               lnumcw = numptr_aer(im, in, cw_phase)
               do k=kts, ktecen
                 km=ktecen-k+1
-                cldnum(1,k) = cldnum(1,k)+chem_tmpb(iccpp,k,jcls,lnumcw)           
+                cldnum(1,k) = cldnum(1,k)+chem_tmpb(iccpp,km,jcls,lnumcw) !Guangxing Lin should be km, not k           
               end do
             end do
           end do
