@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/!svn/ver/48952/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE
+END
+diffuse_mom2D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/diffuse_mom2D.F90
+END
+diffuse_mom3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/diffuse_mom3D.F90
+END
+tke_full.F90
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/tke_full.F90
+END
+diffuse_scalar.F90
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/diffuse_scalar.F90
+END
+sgs.F90
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/!svn/ver/48952/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/sgs.F90
+END
+shear_prod2D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/shear_prod2D.F90
+END
+diffuse_mom.F90
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/diffuse_mom.F90
+END
+shear_prod3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/shear_prod3D.F90
+END
+diffuse_scalar2D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/diffuse_scalar2D.F90
+END
+diffuse_scalar3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/SGS_TKE/diffuse_scalar3D.F90
+END

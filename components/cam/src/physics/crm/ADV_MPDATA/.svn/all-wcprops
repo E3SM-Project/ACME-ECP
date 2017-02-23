@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/ADV_MPDATA
+END
+advect_scalar3D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/ADV_MPDATA/advect_scalar3D.F90
+END
+advect_scalar.F90
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/ADV_MPDATA/advect_scalar.F90
+END
+advection.F90
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/ADV_MPDATA/advection.F90
+END
+advect_scalar2D.F90
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/!svn/ver/48944/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/ADV_MPDATA/advect_scalar2D.F90
+END

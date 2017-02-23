@@ -4,6 +4,7 @@ subroutine press_rhs
 !       right-hand-side of the Poisson equation for pressure
 
 use vars
+use params, only: dowallx, dowally
 
 implicit none
          

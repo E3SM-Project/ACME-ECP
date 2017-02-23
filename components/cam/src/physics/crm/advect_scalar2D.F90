@@ -4,6 +4,7 @@ subroutine advect_scalar2D (f, u, w, rho, rhow, flux)
 !     positively definite monotonic advection with non-oscillatory option
 
 use grid
+use params
 implicit none
 
 

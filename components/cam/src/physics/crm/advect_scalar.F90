@@ -4,6 +4,7 @@ subroutine advect_scalar (f,fadv,flux,f2leadv,f2legrad,fwleadv,doit)
 !     positively definite monotonic advection with non-oscillatory option
 
 use grid
+use params, only: docolumn
 use vars, only: u, v, w, rho, rhow
 
 implicit none
@@ -19,7 +20,7 @@ if(docolumn) flux = 0.
 
 if(docolumn) return
 
-call t_startf ('advect_scalars')
+! call t_startf ('advect_scalars')
 
 df(:,:,:) = f(:,:,:)
 
@@ -38,7 +39,7 @@ do k=1,nzm
     end do
 end do
 
-call t_stopf ('advect_scalars')
+! call t_stopf ('advect_scalars')
 
 end subroutine advect_scalar
 

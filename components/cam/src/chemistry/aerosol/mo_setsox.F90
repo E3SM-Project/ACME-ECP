@@ -4,6 +4,10 @@ module MO_SETSOX
   use shr_kind_mod, only : r8 => shr_kind_r8
   use cam_logfile,  only : iulog
 
+!==Guangxing Lin
+  use phys_control, only: phys_getopts
+!==Guangxing Lin
+
   private
   public :: sox_inti, setsox
   public :: has_sox
@@ -275,6 +279,10 @@ contains
     real(r8), pointer :: xno3c(:,:)
     type(cldaero_conc_t), pointer :: cldconc
 
+!==Guangxing Lin
+     logical :: use_SPCAM, use_ECPP
+!==Guangxing Lin
+
     real(r8) :: fact1_hno3, fact2_hno3, fact3_hno3
     real(r8) :: fact1_so2, fact2_so2, fact3_so2, fact4_so2
     real(r8) :: fact1_nh3, fact2_nh3, fact3_nh3
@@ -283,6 +291,12 @@ contains
     real(r8) :: tmp_neg, tmp_pos
     real(r8) :: yph, yph_lo, yph_hi
     real(r8) :: ynetpos, ynetpos_lo, ynetpos_hi
+
+
+!==Guangxing Lin
+     call phys_getopts (use_SPCAM_out = use_SPCAM)
+        call phys_getopts (use_ECPP_out  = use_ECPP)
+!==Guangxing Lin
 
     !-----------------------------------------------------------------
     !       ... NOTE: The press array is in pascals and must be
@@ -513,6 +527,13 @@ contains
                 end if
                 ! calc current [H+] from ph
                 xph(i,k) = 10.0_r8**(-yph)
+!==Guangxing Lin
+                    if(use_SPCAM .and. use_ECPP) then
+                       ! in the MMF model, for ECPP, ph value is fixed at 4.5  +++mhwang
+                       xph(i,k) = 10.0_r8**(-4.5_r8)    !+++mhwangtest
+                    end if
+!==Guangxing Lin
+
 
                 !-----------------------------------------------------------------
                 !        ... hno3
@@ -858,7 +879,7 @@ contains
           endif
        end do
     end do
-    call outfld( 'XPH_LWC', xphlwc(:ncol,:), ncol , lchnk )
+    !call outfld( 'XPH_LWC', xphlwc(:ncol,:), ncol , lchnk )!Guangxing Lin
 
     call sox_cldaero_destroy_obj(cldconc)
 

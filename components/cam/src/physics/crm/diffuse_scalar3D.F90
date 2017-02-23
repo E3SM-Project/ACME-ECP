@@ -1,7 +1,10 @@
 subroutine diffuse_scalar3D (field,fluxb,fluxt,tkh,rho,rhow,flux)
 
 use grid
+use params
+use sgs, only: grdf_x,grdf_y,grdf_z
 implicit none
+
 ! input	
 real field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
 real tkh(0:nxp1,1-YES3D:nyp1,nzm)	! eddy conductivity

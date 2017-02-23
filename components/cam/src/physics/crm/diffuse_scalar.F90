@@ -2,7 +2,8 @@ subroutine diffuse_scalar (f,fluxb,fluxt, &
                           fdiff,flux,f2lediff,f2lediss,fwlediff,doit)
 
 use grid
-use vars, only: tkh, rho, rhow
+use vars, only: rho, rhow
+use sgs, only: tkh
 implicit none
 
 ! input:	
@@ -17,7 +18,7 @@ logical doit
 real df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
 integer i,j,k
 
-call t_startf ('diffuse_scalars')
+! call t_startf ('diffuse_scalars')
 
 df(:,:,:) = f(:,:,:)
 
@@ -36,6 +37,6 @@ do k=1,nzm
    end do
 end do
 
-call t_stopf ('diffuse_scalars')
+! call t_stopf ('diffuse_scalars')
 
 end subroutine diffuse_scalar 

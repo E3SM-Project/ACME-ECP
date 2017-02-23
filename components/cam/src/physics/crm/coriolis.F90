@@ -22,7 +22,7 @@ do k=1,nzm
     w_av=0.25*(w(i,j,kc)+w(ib,j,kc)+w(i,j,k)+w(ib,j,k))
     dudt(i,j,k,na)=dudt(i,j,k,na)+fcory(j)*(v_av-vg0(k))-fcorzy(j)*w_av
     u_av=0.25*(u(i,j,k)+u(ic,j,k)+u(i,jb,k)+u(ic,jb,k))
-    dvdt(i,j,k,na)=dvdt(i,j,k,na)-fcory(j)*(u_av-ug0(k))
+    dvdt(i,j,k,na)=dvdt(i,j,k,na)-0.5*(fcory(j)+fcory(jb))*(u_av-ug0(k))
   end do ! i
  end do ! j
 end do ! k

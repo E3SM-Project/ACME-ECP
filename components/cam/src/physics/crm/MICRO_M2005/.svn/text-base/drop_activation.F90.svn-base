@@ -101,7 +101,8 @@ subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
 
       use physconst, only: rair, epsilo, cpair, rh2o, latvap, gravit,   &
                                  rhoh2o, mwh2o, r_universal
-      use wv_saturation, only: estblf, epsqs
+      use wv_saturation, only: estblf
+      use physconst, only: epsqs => epsilo
       use error_function, only: erf
       use modal_aero_data
       use vars,   only: naer, vaer, hgaer
@@ -342,7 +343,6 @@ end subroutine drop_activation_Ghan
          if(eta(m).gt.1.e-20_r8)then
             g1=zeta(m)/eta(m)
             g1sqrt=sqrt(g1)
-            g1=g1sqrt*g1
             g1=g1sqrt*g1
             g2=smc(m)/sqrt(eta(m)+3._r8*zeta(m))
             g2sqrt=sqrt(g2)

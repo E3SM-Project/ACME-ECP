@@ -4,6 +4,8 @@ subroutine diffuse_mom2D
 !        momentum tendency due to SGS diffusion
 
 use vars
+use sgs
+use params, only: docolumn
 implicit none
 
 real rdx2,rdz2,rdz,rdx25,rdz25,rdx21,rdx251

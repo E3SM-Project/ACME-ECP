@@ -1,6 +1,8 @@
 subroutine diffuse_scalar2D (field,fluxb,fluxt,tkh,rho,rhow,flux)
 
 use grid
+use params
+use sgs, only: grdf_x,grdf_y,grdf_z
 implicit none
 	
 ! input

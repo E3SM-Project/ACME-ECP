@@ -24,6 +24,7 @@ subroutine init()
   tstor = 0.
   ustor = 0.
   vstor = 0.
+  qtostor = 0.
 
   radlwup = 0.
   radlwdn = 0.

@@ -4,6 +4,7 @@ subroutine diffuse_mom3D
 !        momentum tendency due to SGS diffusion
 
 use vars
+use sgs
 implicit none
 
 real rdx2,rdy2,rdz2,rdz,rdx25,rdy25

@@ -6,6 +6,7 @@ subroutine tke_full
 use vars
 !use micro_params
 use params
+use sgs     ! WH - variables like tke are defined in the sgs module
 implicit none
 
 real def2(nx,ny,nzm)	
@@ -15,7 +16,7 @@ real lstarn, lstarp, bbb, omn, omp
 real qsatt,dqsat
 integer i,j,k,kc,kb
 
-call t_startf('tke_full')
+! call t_startf('tke_full')
 
 !Cs = 0.1944
 Cs = 0.15
@@ -108,7 +109,8 @@ do k=1,nzm
    if(dosmagor) then
 
      tk(i,j,k)=sqrt(Ck**3/Cee*max(0.,def2(i,j,k)-Pr*buoy_sgs))*smix**2
-     if(.not.doscalar) tke(i,j,k) = (tk(i,j,k)/(Ck*smix))**2
+     ! if(.not.doscalar) tke(i,j,k) = (tk(i,j,k)/(Ck*smix))**2 ! WH - doscalar doesn't seem to be relevant in the current implementation
+     tke(i,j,k) = (tk(i,j,k)/(Ck*smix))**2  ! WH
      a_prod_sh=(tk(i,j,k)+0.001)*def2(i,j,k)
      a_prod_bu=-(tk(i,j,k)+0.001)*Pr*buoy_sgs
      a_diss=a_prod_sh+a_prod_bu
@@ -139,7 +141,7 @@ do k=1,nzm
 
 end do ! k
 
-call t_stopf('tke_full')
+! call t_stopf('tke_full')
 
 end
 

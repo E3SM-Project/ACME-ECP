@@ -24,6 +24,8 @@ module module_ecpp_stats
 #ifdef ECPP
 
   use ecppvars, only: QUI, UP1, DN1, NCLASS_TR, NCLASS_CL, CLR, CLD, NCLASS_PR, PRN, PRY
+  !==Guangxing Lin
+  !use abortutils, only: endrun
   use cam_abortutils, only: endrun
   implicit none
 
@@ -117,6 +119,7 @@ subroutine rsums1( qcloud,    qcloudsum1,    &
                    precall,   precallsum1,   &
                    alt,       altsum1,       &
                    rh,        rhsum1,        &
+                   cf3d,      cf3dsum1,      &
                    ww,        wwsum1,        &
                    wwsq,      wwsqsum1,      &
                    tkesgs,    tkesgssum1,    &
@@ -132,12 +135,12 @@ subroutine rsums1( qcloud,    qcloudsum1,    &
   real, dimension(:,:,:), intent(in) :: &
        qcloud, qcloud_bf, qrain, qice, qsnow, qgraup, &
        qlsink, precr, precsolid, precall, &
-       alt, rh, ww, wwsq, tkesgs, qlsink_bf, prain, qvs
+       alt, rh, cf3d, ww, wwsq, tkesgs, qlsink_bf, prain, qvs
   real, dimension(:,:,:), intent(inout) :: &
        qcloudsum1, qcloud_bfsum1, qrainsum1, &
        qicesum1, qsnowsum1, qgraupsum1, &
        qlsinksum1, precrsum1, precsolidsum1, precallsum1, &
-       altsum1, rhsum1, wwsum1, wwsqsum1, tkesgssum1, &
+       altsum1, rhsum1, cf3dsum1, wwsum1, wwsqsum1, tkesgssum1, &
        qlsink_bfsum1, prainsum1, qvssum1
 
   qcloudsum1    = qcloudsum1 + qcloud
@@ -152,6 +155,7 @@ subroutine rsums1( qcloud,    qcloudsum1,    &
   precallsum1   = precallsum1 + precall
   altsum1       = altsum1 + alt
   rhsum1        = rhsum1 + rh
+  cf3dsum1      = cf3dsum1 + cf3d
   wwsum1        = wwsum1 + ww
   wwsqsum1      = wwsqsum1 + wwsq
   tkesgssum1    = tkesgssum1 + tkesgs
@@ -166,7 +170,7 @@ end subroutine rsums1
 subroutine rsums1ToAvg( nt, qcloudsum, qcloud_bfsum, qrainsum, &
      qicesum, qsnowsum, qgraupsum, &
      qlsinksum, precrsum, precsolidsum, precallsum, &
-     altsum, rhsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum )
+     altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum )
 ! Turns the columns of running sums into averages for the level one time
 ! period.
 ! William.Gustafson@pnl.gov; 20-Jul-2006
@@ -176,7 +180,7 @@ subroutine rsums1ToAvg( nt, qcloudsum, qcloud_bfsum, qrainsum, &
   real, dimension(:,:,:), intent(inout) :: &
        qcloudsum, qcloud_bfsum, qrainsum, qicesum, qsnowsum, qgraupsum, &
        qlsinksum, precrsum, precsolidsum, precallsum, &
-       altsum, rhsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum 
+       altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum 
 
   real :: ncount
 
@@ -196,6 +200,7 @@ subroutine rsums1ToAvg( nt, qcloudsum, qcloud_bfsum, qrainsum, &
   precallsum   = precallsum/ncount
   altsum       = altsum/ncount
   rhsum        = rhsum/ncount
+  cf3dsum      = cf3dsum/ncount
   wwsum        = wwsum/ncount
   wwsqsum      = wwsqsum/ncount
   tkesgssum    = tkesgssum/ncount
@@ -377,7 +382,7 @@ end subroutine zero_out_areas
 subroutine zero_out_sums1( qcloudsum, qcloud_bfsum, qrainsum,                         &
                            qicesum, qsnowsum, qgraupsum,                &
                            qlsink, precr, precsolid, precall,           &
-                           altsum, rhsum, wwsum, wwsqsum, tkesgssum,    &
+                           altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum,    &
                            qlsink_bfsum, prainsum, qvssum     )
 ! Zeros out running sum arrays that are averaged every ntavg1_mm minutes.
 ! William.Gustafson@pnl.gov; 20-Jul-2006
@@ -386,7 +391,7 @@ subroutine zero_out_sums1( qcloudsum, qcloud_bfsum, qrainsum,                   
   real,dimension(:,:,:), intent(out) :: &
        qcloudsum, qcloud_bfsum, qrainsum, qicesum, qsnowsum, qgraupsum, &
        qlsink, precr, precsolid, precall, &
-       altsum, rhsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum
+       altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum
 
   qcloudsum=0.
   qcloud_bfsum=0.
@@ -400,6 +405,7 @@ subroutine zero_out_sums1( qcloudsum, qcloud_bfsum, qrainsum,                   
   precall=0.
   altsum=0.
   rhsum=0.
+  cf3dsum=0.
   wwsum=0.
   wwsqsum=0.
   tkesgssum=0.
@@ -481,7 +487,7 @@ subroutine categorization_stats( domass, &
      updraftbase, updrafttop, dndraftbase, dndrafttop, &
      qcloud, qcloud_bf, qrain, qice, qsnow, qgraup, &
      qlsink, precr, precsolid, precall, &
-     alt, rh, ww, wwsq, tkesgs, &
+     alt, rh, cf3d, ww, wwsq, tkesgs, &
      qlsink_bf, prain, &
      area_bnd_final, area_cen_final, &
      area_bnd_sum, area_cen_sum, ent_bnd_sum, mass_bnd_sum, &
@@ -517,7 +523,7 @@ subroutine categorization_stats( domass, &
   real, dimension(:,:,:), intent(in) :: &
        qcloud, qcloud_bf, qrain, qice, qsnow, qgraup, &
        qlsink, precr, precsolid, precall, &
-       alt, rh, ww, wwsq, tkesgs, qlsink_bf, prain, qvs
+       alt, rh, cf3d, ww, wwsq, tkesgs, qlsink_bf, prain, qvs
   real, dimension(:,:,:,:), intent(inout) :: & 
        area_bnd_final, area_cen_final, &
        area_bnd_sum, area_cen_sum, ent_bnd_sum, mass_bnd_sum, &
@@ -670,7 +676,7 @@ thresh_calc_loop: &
 
   call setup_class_masks( &
        nx, ny, nz, nupdraft, ndndraft, ndraft_max, &
-       cloudmixr, precall, ww, &
+       cloudmixr, cf3d, precall, ww, &
        wdown_thresh_k, wup_thresh_k, &
        cloudthresh, prcpthresh, &
        mask_bnd, mask_cen,  &
@@ -1400,7 +1406,7 @@ end subroutine determine_transport_thresh
 !------------------------------------------------------------------------
 subroutine setup_class_masks( &
      nx, ny, nz, nupdraft, ndndraft, ndraft_max, &
-     cloudmixr, precall, ww, &
+     cloudmixr, cf3d, precall, ww, &
      wdown_thresh_k, wup_thresh_k, &
      cloudthresh, prcpthresh, &
      mask_bnd, mask_cen,  &
@@ -1425,7 +1431,7 @@ subroutine setup_class_masks( &
 !
   integer, intent(in) :: nx, ny, nz, nupdraft, ndndraft, ndraft_max
   real, dimension(:,:,:), intent(in) :: &
-       cloudmixr, precall, ww
+       cloudmixr, cf3d, precall, ww 
   real, dimension(nz+1,2), intent(in) :: wdown_thresh_k, wup_thresh_k
   real, intent(in) :: cloudthresh, prcpthresh
   real, dimension(nx,ny,nz+1,NCLASS_CL,ndraft_max,NCLASS_PR), &
@@ -1643,7 +1649,15 @@ subroutine setup_class_masks( &
 
            !We have all the class indices determined so now we can set
            !the correct mask location to 1.
-           mask_bnd(i,j,k,icl,itr,ipr) = 1.
+!           mask_bnd(i,j,k,icl,itr,ipr) = 1.
+! use fractioal cloudiness in SAM
+           if(icl.eq.CLR) then
+             mask_bnd(i,j,k,icl,itr,ipr) = 1.
+           else if(icl.eq.CLD) then
+             mask_bnd(i,j,k,CLD,itr,ipr) = (cf3d(i,j,max(k-1,1))+cf3d(i,j,min(k, nz)))*0.5 
+             mask_bnd(i,j,k,CLR,itr,ipr) = 1. - (cf3d(i,j,max(k-1,1))+cf3d(i,j,min(k, nz)))*0.5
+           end if
+
 
         end do !k-loop mask for boundaries
 !
@@ -1689,7 +1703,14 @@ subroutine setup_class_masks( &
 
            !We have what we need for the cell bottom classes so increment
            !the center mask for the bottom half...
-           mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5
+!           mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5
+! Use fractional cloudiness at SAM
+           if(icl.eq.CLR) then
+             mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5
+           else if(icl.eq.CLD) then
+             mask_cen(i,j,k,CLD,itr,ipr) =  mask_cen(i,j,k,CLD,itr,ipr) + (cf3d(i,j,k))*0.5
+             mask_cen(i,j,k,CLR,itr,ipr) =  mask_cen(i,j,k,CLR,itr,ipr) + (1. - cf3d(i,j,k)) * 0.5
+           end if
 
            !Next, look at the top boundary and determine it's
            !contribution to the cell center transport class.
@@ -1707,14 +1728,21 @@ subroutine setup_class_masks( &
 ! In the clear, and non-precipitating class, it is classified as quiescent class in the MMF simulation. 
 ! If this is classed as updraft or downdraft in mode 16, this would lead to too much upraft and downdraft mass fluxes.
 ! Minghuai Wang, 2010-01-18 (Minghuai.Wang@pnl.gov)
-           if(icl.eq.CLR .and. ipr.eq.PRN) then
-             itr = QUI
-           end if
+!           if(icl.eq.CLR .and. ipr.eq.PRN) then
+!             itr = QUI
+!           end if
 !---mhwang
 
            !We have what we need for the cell top classes so increment
            !the center mask for the top half...
-           mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5           
+!           mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5           
+! use fractional cloudiness in SAM
+           if(icl.eq.CLR) then
+             mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5
+           else if(icl.eq.CLD) then
+             mask_cen(i,j,k,CLD,itr,ipr) =  mask_cen(i,j,k,CLD,itr,ipr) + (cf3d(i,j,k))*0.5
+             mask_cen(i,j,k,CLR,itr,ipr) =  mask_cen(i,j,k,CLR,itr,ipr) + (1. - cf3d(i,j,k)) * 0.5
+           end if
 
         end do !k-loop mask for centers
 

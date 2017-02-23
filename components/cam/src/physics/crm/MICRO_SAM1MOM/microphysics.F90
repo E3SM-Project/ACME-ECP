@@ -4,6 +4,7 @@ module microphysics
 ! Marat Khairoutdinov, 2006
 
 use grid, only: nx,ny,nzm,nz, dimx1_s,dimx2_s,dimy1_s,dimy2_s ! subdomain grid information 
+use params, only: doprecip, docloud, doclubb
 use micro_params
 implicit none
 
@@ -37,6 +38,7 @@ real mkwsb(nz,1:nmicro_fields)  ! SGS vertical flux
 real mkadv(nz,1:nmicro_fields)  ! tendency due to vertical advection
 real mklsadv(nz,1:nmicro_fields)  ! tendency due to large-scale vertical advection
 real mkdiff(nz,1:nmicro_fields)  ! tendency due to vertical diffusion
+real mstor(nz,1:nmicro_fields)  ! storage terms of microphysical variables
 
 !======================================================================
 ! UW ADDITIONS
@@ -85,26 +87,28 @@ end subroutine micro_setparm
 subroutine micro_init()
 
 #ifdef CLUBB_CRM  
-  use vars, only: q0, docloud, doprecip, nrestart, dosmoke, &
-    doclubb, doclubbnoninter ! dschanen UWM 21 May 2008
-  use grid, only: nclubb
-#else
-  use vars, only: q0, docloud, doprecip, nrestart, dosmoke
+  use params, only: doclubb, doclubbnoninter ! dschanen UWM 21 May 2008
+  use params, only: nclubb
 #endif
-  integer k
+  use grid, only: nrestart
+  use vars, only: q0
+  use params, only: dosmoke
+  integer k, n
 #ifdef CLUBB_CRM  
-  if ( nclubb /= 1 ) then
-    write(0,*) "The namelist parameter nclubb is not equal to 1,",  &
-      " but SAM single moment microphysics is enabled."
-    write(0,*) "This will create unrealistic results in subsaturated grid boxes. ", &
-      "Exiting..."
-    call task_abort()
-  end if
+!  if ( nclubb /= 1 ) then
+!    write(0,*) "The namelist parameter nclubb is not equal to 1,",  &
+!      " but SAM single moment microphysics is enabled."
+!    write(0,*) "This will create unrealistic results in subsaturated grid boxes. ", &
+!      "Exiting..."
+!    call task_abort()
+!  end if
 #endif
 
   a_bg = 1./(tbgmax-tbgmin)
   a_pr = 1./(tprmax-tprmin)
   a_gr = 1./(tgrmax-tgrmin)
+
+! if(doprecip) call precip_init() 
 
   if(nrestart.eq.0) then
 
@@ -139,6 +143,8 @@ subroutine micro_init()
   mkwsb = 0.
   mkadv = 0.
   mkdiff = 0.
+  mklsadv = 0.
+  mstor = 0.
 
   qpsrc = 0.
   qpevp = 0.
@@ -153,6 +159,13 @@ subroutine micro_init()
   mkunits(2) = 'g/kg'
   mkoutputscale(2) = 1.e3
 
+! set mstor to be the inital microphysical mixing ratios    
+ do n=1, nmicro_fields
+   do k=1, nzm
+      mstor(k, n) = SUM(micro_field(1:nx,1:ny,k,n))
+   end do
+ end do
+
 end subroutine micro_init
 
 !----------------------------------------------------------------------
@@ -164,19 +177,17 @@ subroutine micro_flux()
 
 #ifdef CLUBB_CRM
   ! Added by dschanen UWM
-  use grid, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
-  if ( .not. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
-    fluxbmk(:,:,index_water_vapor) = fluxbq(:,:)
-    fluxtmk(:,:,index_water_vapor) = fluxtq(:,:)
-  else
+  use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
+  if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
     ! Add this in later
     fluxbmk(:,:,index_water_vapor) = 0.0
-    fluxtmk(:,:,index_water_vapor) = 0.0
+  else
+    fluxbmk(:,:,index_water_vapor) = fluxbq(:,:)
   end if
 #else
   fluxbmk(:,:,index_water_vapor) = fluxbq(:,:)
-  fluxtmk(:,:,index_water_vapor) = fluxtq(:,:)
 #endif /*CLUBB_CRM*/
+  fluxtmk(:,:,index_water_vapor) = fluxtq(:,:)
 
 end subroutine micro_flux
 
@@ -185,12 +196,14 @@ end subroutine micro_flux
 !
 subroutine micro_proc()
 
+   use grid, only: nstep,dt,icycle
+   use params, only: dosmoke
 #ifdef CLUBB_CRM
-   use vars, only: nstep,dt,icycle,docloud,doprecip,dosmoke &
-     , doclubb, doclubbnoninter ! dschanen UWM 21 May 2008
-#else
-   use vars, only: nstep,dt,icycle,docloud,doprecip,dosmoke
-#endif /*CLUBB_CRM*/
+   use params, only: doclubb, doclubbnoninter ! dschanen UWM 21 May 2008
+   use clubbvars, only: cloud_frac
+   use vars, only:  CF3D
+   use grid, only: nzm
+#endif
 
    ! Update bulk coefficient
    if(doprecip.and.icycle.eq.1) call precip_init() 
@@ -205,7 +218,10 @@ subroutine micro_proc()
    end if
 #ifdef CLUBB_CRM
    if ( doclubb ) then ! -dschanen UWM 21 May 2008
-     if(doprecip) call precip_proc()
+      CF3D(:,:, 1:nzm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb, 
+                                                 ! so it is set here first  +++mhwang
+!     if(doprecip) call precip_proc()
+     if(doprecip) call precip_proc_clubb()
      call micro_diagnose()
    end if
 #endif /*CLUBB_CRM*/
@@ -252,8 +268,10 @@ subroutine micro_update()
 ! dschanen UWM 7 Jul 2008
 !---------------------------------------------------------------------
 
-   call cloud()
-   call micro_diagnose()
+!   call cloud()
+!   call micro_diagnose()
+
+   call micro_diagnose_clubb()
 
 end subroutine micro_update
 
@@ -276,15 +294,59 @@ subroutine micro_adjust( new_qv, new_qc )
 
   real, dimension(nx,ny,nzm), intent(in) :: &
   new_qv, & ! Water vapor mixing ratio that has been adjusted by CLUBB [kg/kg]
-  new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg]
+  new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg]. 
+            ! For the single moment microphysics, it is liquid + ice
 
-  q(1:nx,1:ny,1:nzm) = new_qv + new_qc + qci ! Vapor + Liquid + Ice
-  qn(1:nx,1:ny,1:nzm) = new_qc + qci ! Liquid + Ice
+  q(1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
+  qn(1:nx,1:ny,1:nzm) = new_qc ! Liquid + Ice
 
   return
 end subroutine micro_adjust
-#endif /*CLUBB_CRM*/
 
+subroutine micro_diagnose_clubb()
+
+   use vars
+   use constants_clubb, only: fstderr, zero_threshold
+   use error_code, only: clubb_at_least_debug_level ! Procedur
+
+   real omn, omp
+   integer i,j,k
+
+   do k=1,nzm
+    do j=1,ny
+     do i=1,nx
+! For CLUBB,  water vapor and liquid water is used 
+! so set qcl to qn while qci to zero. This also allows us to call CLUBB
+! every nclubb th time step  (see sgs_proc in sgs.F90)
+
+       qv(i,j,k) = q(i,j,k) - qn(i,j,k)
+      ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
+      ! static energy should be conserved, so updating temperature is not
+      ! needed here. -dschanen 31 August 2011
+       if ( qv(i,j,k) < zero_threshold ) then
+         qn(i,j,k) = qn(i,j,k) + qv(i,j,k)
+         qv(i,j,k) = zero_threshold
+         if ( qn(i,j,k) < zero_threshold ) then
+           if ( clubb_at_least_debug_level( 1 ) ) then
+             write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &
+               "Applying non-conservative hard clipping."
+           end if
+           qn(i,j,k) = zero_threshold
+         end if ! cloud_liq < 0
+       end if ! qv < 0
+
+       qcl(i,j,k) = qn(i,j,k) 
+       qci(i,j,k) = 0.0 
+       omp = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
+       qpl(i,j,k) = qp(i,j,k)*omp
+       qpi(i,j,k) = qp(i,j,k)*(1.-omp)
+     end do
+    end do
+   end do
+
+end subroutine micro_diagnose_clubb
+
+#endif /*CLUBB_CRM*/
 !----------------------------------------------------------------------
 !!! function to compute terminal velocity for precipitating variables:
 ! In this particular case there is only one precipitating variable.
@@ -348,12 +410,6 @@ subroutine micro_precip_fall()
 
  call precip_fall(qp, term_vel_qp, 2, omega, ind)
 
- do j=1,ny
-   do i=1,nx
-     if(qp(i,j,1).gt.1.e-6) s_ar=s_ar+dtfactor
-   end do
- end do
-
 
 end subroutine micro_precip_fall
 
@@ -388,6 +444,17 @@ real(8) function total_water()
   end do
 
 end function total_water
+
+! -------------------------------------------------------------------------------
+! dummy effective radius functions:
+
+function Get_reffc() ! liquid water
+  real, pointer, dimension(:,:,:) :: Get_reffc
+end function Get_reffc
+
+function Get_reffi() ! ice
+  real, pointer, dimension(:,:,:) :: Get_reffi
+end function Get_reffi
 
 
 end module microphysics

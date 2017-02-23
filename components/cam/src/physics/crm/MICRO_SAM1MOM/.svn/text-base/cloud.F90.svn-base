@@ -25,7 +25,7 @@ fac1 = fac_cond+(1+bp)*fac_fus
 fac2 = fac_fus*ap
 ag = 1./(tgrmax-tgrmin)	
 
-call t_startf ('cloud')
+!call t_startf ('cloud')
 
 do k = 1, nzm
  do j = 1, ny
@@ -127,7 +127,7 @@ do k = 1, nzm
  end do
 end do
 
-call t_stopf ('cloud')
+!call t_stopf ('cloud')
 
 end subroutine cloud
 

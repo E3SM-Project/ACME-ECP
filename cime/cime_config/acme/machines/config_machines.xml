@@ -1481,12 +1481,12 @@
         <command name="rm">cray-mpich</command>
         <command name="rm">cray-mpich2</command>
         <command name="rm">cray-libsci</command>
-        <command name="rm">esmf</command>
+        <!-- <command name="rm">esmf</command> -->
         <command name="rm">atp</command>
         <command name="rm">cudatoolkit</command>
         <command name="rm">xt-libsci</command>
         <command name="rm">cray-netcdf</command>
-        <command name="rm">cray-netcdf-hdf5parallel</command>
+        <!-- <command name="rm">cray-netcdf-hdf5parallel</command> -->
         <command name="rm">cray-parallel-netcdf</command>
         <command name="rm">subversion</command>
         <command name="rm">cmake</command>
@@ -1494,26 +1494,37 @@
         <command name="load">python/2.7.9</command>
         <command name="load">subversion</command>
         <command name="load">cmake/2.8.10.2</command>
-        -->
+        <!--  -->
       </modules>
 
       <modules compiler="pgiacc"> <!-- changing pgi_acc to pgiacc -->
         <command name="use">/ccs/home/norton/.modules</command>
-	<command name="load">PrgEnv-pgi</command>
-	<command name="switch">pgi pgi/15.9.lustre</command>
-        <command name="load">cray-mpich/7.4.0</command>
+	      <command name="load">PrgEnv-pgi</command>
+	      <!-- <command name="switch">pgi pgi/15.9.lustre</command> -->
+        <!-- <command name="switch">pgi pgi/16.10.0</command> -->
+        <command name="load">pgi/16.10.0</command>
+        <!-- <command name="load">cray-mpich/7.4.0</command> -->
+        <command name="load">cray-mpich/7.5.2</command>
         <command name="load">cray-libsci/16.06.1</command>
         <command name="load">esmf/5.2.0rp2</command>
-        <command name="load">atp/2.0.2</command>
+        <!-- <command name="load">atp/2.0.2</command> -->
+        <command name="load">atp/2.0.5</command>
         <command name="load">cudatoolkit</command>
       </modules>
       <modules compiler="pgi">
         <command name="load">PrgEnv-pgi</command>
-        <command name="switch">pgi pgi/15.7.0</command>
-        <command name="load">cray-mpich/7.4.0</command>
+        <!-- <command name="switch">pgi pgi/15.7.0</command> -->
+        <!-- <command name="switch">pgi pgi/16.10.0</command> -->
+        <command name="load">pgi/16.10.0</command>
+        <!-- <command name="load">cray-mpich/7.4.0</command> -->
+        <command name="load">cray-mpich/7.5.2</command>
         <command name="load">cray-libsci/16.06.1</command>
         <command name="load">esmf/5.2.0rp2</command>
-        <command name="load">atp/2.0.2</command>
+        <!-- <command name="load">esmf/6.2.0_with-lapack+netcdf_O</command> -->
+        <!-- <command name="load">atp/2.0.2</command> -->
+        <command name="load">atp/2.0.5</command>
+        <command name="load">cray-netcdf-hdf5parallel</command>
+        <command name="load">xalt</command>
       </modules>
       <modules compiler="intel">
         <command name="rm">PrgEnv-pgi</command>
@@ -1521,14 +1532,18 @@
         <!-- command name="switch">intel intel/15.0.2.164</command -->
         <command name="load">intel/15.0.2.164</command>
         <command name="load">cray-libsci/16.06.1</command>
-        <command name="load">cray-mpich/7.4.0</command>
-        <command name="load">atp/2.0.2</command>
+        <!-- <command name="load">cray-mpich/7.4.0</command> -->
+        <command name="load">cray-mpich/7.5.2</command>
+        <!-- <command name="load">atp/2.0.2</command> -->
+        <command name="load">atp/2.0.5</command>
       </modules>
       <modules compiler="cray">
         <command name="rm">PrgEnv-pgi</command>
         <command name="load">PrgEnv-cray</command>
         <command name="load">cce/8.5.0</command>
-        <command name="load">cray-mpich/7.4.0</command>
+        <!-- <command name="load">cray-mpich/7.4.0</command> -->
+        <command name="load">cray-mpich/7.5.2</command>
+        <command name="load">esmf/5.2.0rp2</command>
       </modules>
       <!-- mpi lib settings -->
       <modules mpilib="mpi-serial">

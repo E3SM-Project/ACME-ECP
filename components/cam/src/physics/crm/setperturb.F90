@@ -7,6 +7,7 @@ subroutine setperturb(iseed)
 !  of the dependence of the SPCAM reulst on pcols. 
 
 use vars
+use sgs, only: setperturb_sgs
 
 implicit none
 
@@ -26,6 +27,8 @@ allocate(rndm_seed(rndm_seed_sz))
 rndm_seed = iseed
 call random_seed(put=rndm_seed)
 
+call setperturb_sgs(0)  ! set sgs fields
+
 t02 = 0.0
 tke02 = 0.0
 do k=1,nzm
@@ -36,13 +39,7 @@ do k=1,nzm
     if(k.le.5) then
       t(i,j,k)=t(i,j,k)+0.02*rrr*(6-k)
     endif
-
-    if(k.le.4.and..not.dosmagor) then
-      tke(i,j,k)=tke(i,j,k)+0.04*(5-k)
-    endif
-
     t02(k) = t02(k) + t(i,j,k)/(nx*ny)
-    tke02(k) = tke02(k) + tke(i,j,k)/(nx*ny)
   end do
  end do
 
@@ -51,8 +48,7 @@ do k=1,nzm
   do i=1, nx
     if(k.le.5) then
       t(i,j,k) = t(i,j,k) * t0(k)/t02(k)
-    end if
-! how about tke? 
+    end if 
   end do
  end do
 end do

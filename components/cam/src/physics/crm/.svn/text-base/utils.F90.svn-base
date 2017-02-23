@@ -91,10 +91,8 @@ do k=1,dimz
  else
    fmn(k) = 1.e30
    fmx(k) =-1.e30
-!   do j=1,ny
-!    do i=1,nx
-   do j=dimy1,dimy2
-    do i=dimx1,dimx2
+   do j=1,ny
+    do i=1,nx
      fmn(k) = min(fmn(k),f(i,j,k))
      fmx(k) = max(fmx(k),f(i,j,k))
     end do
@@ -129,3 +127,19 @@ do k=1,n
  f(k)=f0
 end do
 end
+
+! determine number of byte in a record in direct access files (can be anything, from 1 to 8):
+! can't assume 1 as it is compiler and computer dependent
+integer function bytes_in_rec()
+implicit none
+character*8 str
+integer n, err
+open(1,status ='scratch',access ='direct',recl=1)
+do n = 1,8
+ write(1,rec=1,iostat=err) str(1:n)
+ if (err.ne.0) exit
+ bytes_in_rec = n
+enddo
+close(1,status='delete')
+end
+

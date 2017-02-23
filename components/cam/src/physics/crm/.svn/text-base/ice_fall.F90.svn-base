@@ -37,7 +37,7 @@ end do
 
 if(index_cloud_ice.eq.-1) return
 
-call t_startf ('ice_fall')
+!call t_startf ('ice_fall')
 
 fz = 0.
 
@@ -118,7 +118,7 @@ do j=1,ny
    end do
 end do
 
-call t_stopf ('ice_fall')
+!call t_stopf ('ice_fall')
 
 end subroutine ice_fall
 

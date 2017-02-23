@@ -33,7 +33,7 @@ module ecppvars
   real,dimension(:,:,:),allocatable :: &
        qcloudsum1, qcloud_bfsum1, qrainsum1, qicesum1, qsnowsum1, qgraupsum1, &
        qlsinksum1, qlsink_bfsum1, prainsum1, precrsum1, precsolidsum1, precallsum1, &
-       altsum1, rhsum1, wwsum1, wwsqsum1, tkesgssum1, qvssum1 
+       altsum1, rhsum1, cf3dsum1, wwsum1, wwsqsum1, tkesgssum1, qvssum1 
 
 ! dim1 = z
   real,dimension(:),allocatable :: &

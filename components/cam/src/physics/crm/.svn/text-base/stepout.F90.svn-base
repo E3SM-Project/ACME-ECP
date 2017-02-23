@@ -2,17 +2,24 @@ subroutine stepout(nstatsteps)
 
 use vars
 !use rad, only: qrad
+use sgs, only: tk, sgs_print
 use crmtracers
 use microphysics, only: micro_print
 use params
 implicit none	
 	
 integer i,j,k,ic,jc,nstatsteps
+integer n
 real div, divmax, divmin
 real rdx, rdy, rdz, coef
 integer im,jm,km
 real wmax, qnmax(1), qnmax1(1)
-real(8) xbuffer(5), xbuffer1(5)
+real(8) buffer(6), buffer1(6)
+real(8) qi0(nzm)
+
+#ifdef CLUBB_CRM
+real(8) buffer_e(7), buffer1_e(7)
+#endif
 
 
 
@@ -20,7 +27,7 @@ real(8) xbuffer(5), xbuffer1(5)
 !------------------------------------------------------------------------------
 ! Print stuff out:
 
-call t_startf ('print_out')
+!call t_startf ('print_out')
 
 if(masterproc) print *,'NSTEP = ',nstep,'    NCYCLE=',ncycle
 
@@ -72,33 +79,59 @@ if(mod(nstep,nprint).eq.0) then
  end do
 
  if(dompi) then
-   xbuffer(1) = total_water_before
-   xbuffer(2) = total_water_after
-   xbuffer(3) = total_water_evap
-   xbuffer(4) = total_water_prec
-   xbuffer(5) = total_water_ls
-   call task_sum_real8(xbuffer, xbuffer1,5)
-   total_water_before = xbuffer1(1)
-   total_water_after = xbuffer1(2)
-   total_water_evap = xbuffer1(3)
-   total_water_prec = xbuffer1(4)
-   total_water_ls = xbuffer1(5)
+   buffer(1) = total_water_before
+   buffer(2) = total_water_after
+   buffer(3) = total_water_evap
+   buffer(4) = total_water_prec
+   buffer(5) = total_water_ls
+#ifdef CLUBB_CRM
+   buffer(6) = total_water_clubb
+
+   buffer_e(1) = total_energy_before
+   buffer_e(2) = total_energy_after
+   buffer_e(3) = total_energy_evap
+   buffer_e(4) = total_energy_prec
+   buffer_e(5) = total_energy_ls
+   buffer_e(6) = total_energy_clubb
+   buffer_e(7) = total_energy_rad
+#endif
+   call task_sum_real8(buffer, buffer1,6)
+   total_water_before = buffer1(1)
+   total_water_after = buffer1(2)
+   total_water_evap = buffer1(3)
+   total_water_prec = buffer1(4)
+   total_water_ls = buffer1(5)
+#ifdef CLUBB_CRM
+   total_water_clubb = buffer1(6)
+
+   call task_sum_real8(buffer_e, buffer1_e,7)
+   total_energy_before = buffer1_e(1)
+   total_energy_after = buffer1_e(2)
+   total_energy_evap = buffer1_e(3)
+   total_energy_prec = buffer1_e(4)
+   total_energy_ls = buffer1_e(5)
+   total_energy_clubb = buffer1_e(6)
+   total_energy_rad = buffer1_e(7)
+#endif
  end if
 
 !print*,rank,minval(u(1:nx,1:ny,:)),maxval(u(1:nx,1:ny,:))
 !print*,rank,'min:',minloc(u(1:nx,1:ny,:))
 !print*,rank,'max:',maxloc(u(1:nx,1:ny,:))
 
-!if(rank.eq.2) then
+!if(masterproc) then
 
-!print*,'p:'
-!write(6,'(16f7.2)')((p(i,13,k),i=1,16),k=30,1,-1)
-!print*,'u:'
-!write(6,'(16f7.2)')((u(i,13,k),i=1,16),k=30,1,-1)
-!print*,'v:'
-!write(6,'(16f7.2)')((v(i,13,k),i=1,16),k=30,1,-1)
-!print*,'w:'
-!write(6,'(16f7.2)')((w(i,13,k),i=1,16),k=30,1,-1)
+!print*,'--->',tk(27,1,1)
+!print*,'tk->:'
+!write(6,'(16f7.2)')((tk(i,1,k),i=1,16),k=nzm,1,-1)
+!print*,'p->:'
+!write(6,'(16f7.2)')((p(i,1,k),i=1,16),k=nzm,1,-1)
+!print*,'u->:'
+!write(6,'(16f7.2)')((u(i,1,k),i=1,16),k=nzm,1,-1)
+!print*,'v->:'
+!write(6,'(16f7.2)')((v(i,1,k),i=1,16),k=nzm,1,-1)
+!print*,'w->:'
+!write(6,'(16f7.2)')((w(i,1,k),i=1,16),k=nzm,1,-1)
 !print*,'qcl:'
 !write(6,'(16f7.2)')((qcl(i,13,k)*1000.,i=1,16),k=30,1,-1)
 !print*,'qpl:'
@@ -118,7 +151,8 @@ if(mod(nstep,nprint).eq.0) then
     print*,'DAY = ',day	
     write(6,*) 'NSTEP=',nstep
     write(6,*) 'div:',divmax,divmin
-    write(6,*) 'SST=',tabs_s, '  surface pressure=',pres0
+    if(.not.dodynamicocean) write(6,*) 'SST=',tabs_s 
+    write(6,*) 'surface pressure=',pres0
 
  endif
 
@@ -129,9 +163,7 @@ if(mod(nstep,nprint).eq.0) then
  call fminmax_print('t:',t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
  call fminmax_print('tabs:',tabs,1,nx,1,ny,nzm)
  call fminmax_print('qv:',qv,1,nx,1,ny,nzm)
- call fminmax_print('tke:',tke,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
- call fminmax_print('tk:',tk,0,nxp1,1-YES3D,nyp1,nzm)
- call fminmax_print('tkh:',tkh,0,nxp1,1-YES3D,nyp1,nzm)
+ if(dosgs) call sgs_print()
 #ifdef CLUBB_CRM
  if(docloud.or.doclubb) then
 #else
@@ -151,14 +183,14 @@ if(mod(nstep,nprint).eq.0) then
      call fminmax_print(trim(tracername(k))//':',tracer(:,:,:,k),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
    end do
  end if
- call fminmax_print('shf:',fluxbt*cp*rho(1),1,nx,1,ny,1)
- call fminmax_print('lhf:',fluxbq*lcond*rho(1),1,nx,1,ny,1)
+ call fminmax_print('shf:',fluxbt*cp*rhow(1),1,nx,1,ny,1)
+ call fminmax_print('lhf:',fluxbq*lcond*rhow(1),1,nx,1,ny,1)
  call fminmax_print('uw:',fluxbu,1,nx,1,ny,1)
  call fminmax_print('vw:',fluxbv,1,nx,1,ny,1)
  call fminmax_print('sst:',sstxy,0,nx,1-YES3D,ny,1)
 
 end if ! (mod(nstep,nprint).eq.0)
 
-call t_stopf ('print_out')
+!call t_stopf ('print_out')
 
 end

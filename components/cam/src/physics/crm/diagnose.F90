@@ -4,10 +4,11 @@ subroutine diagnose
 
 use vars
 use params
+use sgs, only: sgs_diagnose
 implicit none
 	
 integer i,j,k,kb,kc,k200,k500,k850
-real(8) coef, coef1, buffer(nzm,9), buffer1(nzm,9)
+real(8) coef, coef1, buffer(nzm,9), buffer1(nzm,8)
 real omn, omp, tmp_lwp
 
 coef = 1./float(nx*ny)
@@ -26,7 +27,6 @@ do k=1,nzm
   qn0(k)=0.
   qp0(k)=0.
   p0(k)=0.
-  tke0(k)=0.
   kc=min(nzm,k+1)
   kb=max(1,k-1)
   if(pres(kc).le.200..and.pres(kb).gt.200.) k200=k
@@ -43,7 +43,6 @@ do k=1,nzm
      q0(k)=q0(k)+qv(i,j,k)+qcl(i,j,k)+qci(i,j,k)
      qn0(k) = qn0(k) + qcl(i,j,k) + qci(i,j,k)
      qp0(k) = qp0(k) + qpl(i,j,k) + qpi(i,j,k)
-     tke0(k)=tke0(k)+tke(i,j,k)
 
      pw_xy(i,j) = pw_xy(i,j)+qv(i,j,k)*coef1
      cw_xy(i,j) = cw_xy(i,j)+qcl(i,j,k)*coef1
@@ -59,12 +58,12 @@ do k=1,nzm
   qn0(k)=qn0(k)*coef
   qp0(k)=qp0(k)*coef
   p0(k)=p0(k)*coef
-  tke0(k)=tke0(k)*coef
 
 end do ! k
 
 k500 = nzm
 do k = 1,nzm
+   kc=min(nzm,k+1)
    if((pres(kc).le.500.).and.(pres(k).gt.500.)) then
       if ((500.-pres(kc)).lt.(pres(k)-500.))then
          k500=kc
@@ -95,11 +94,10 @@ if(dompi) then
     buffer(k,4) = q0(k)
     buffer(k,5) = p0(k)
     buffer(k,6) = tabs0(k)
-    buffer(k,7) = tke0(k)
-    buffer(k,8) = qn0(k)
-    buffer(k,9) = qp0(k)
+    buffer(k,7) = qn0(k)
+    buffer(k,8) = qp0(k)
   end do
-  call task_sum_real8(buffer,buffer1,nzm*9)
+  call task_sum_real8(buffer,buffer1,nzm*8)
   do k=1,nzm
     u0(k)=buffer1(k,1)*coef1
     v0(k)=buffer1(k,2)*coef1
@@ -107,9 +105,8 @@ if(dompi) then
     q0(k)=buffer1(k,4)*coef1
     p0(k)=buffer1(k,5)*coef1
     tabs0(k)=buffer1(k,6)*coef1
-    tke0(k)=buffer1(k,7)*coef1
-    qn0(k)=buffer1(k,8)*coef1
-    qp0(k)=buffer1(k,9)*coef1
+    qn0(k)=buffer1(k,7)*coef1
+    qp0(k)=buffer1(k,8)*coef1
   end do
 
 end if ! dompi
@@ -171,6 +168,7 @@ do j = 1,ny
          if (tmp_lwp.gt.0.01) then
             cloudtopheight(i,j) = z(k)
             cloudtoptemp(i,j) = tabs(i,j,k)
+            cld_xy(i,j) = cld_xy(i,j) + dtfactor
             EXIT
          end if
       end do
@@ -186,6 +184,13 @@ end do
 
 ! END UW ADDITIONS
 !=====================================================
+
+!-----------------
+! compute some sgs diagnostics:
+
+call sgs_diagnose()
+
+!-----------------
 
 ! recompute pressure levels, except at restart (saved levels are used).
 !if(dtfactor.ge.0.) call pressz()   ! recompute pressure levels

@@ -1,19 +1,15 @@
 10
 
 dir
-162
-https://svn-ccsm-release.cgd.ucar.edu/model_development_releases/spcam2_0-cesm1_1_1/models/atm/cam/src/physics/crm/MICRO_SAM1MOM
-https://svn-ccsm-release.cgd.ucar.edu
+83227
+https://svn-ccsm-models.cgd.ucar.edu/cam1/branches/spcam1_5_00_cam5_2_09_pnnl/models/atm/cam/src/physics/crm/MICRO_SAM1MOM
+https://svn-ccsm-models.cgd.ucar.edu
 
 
 
-2013-02-27T17:20:09.005085Z
-157
-jshollen
-
-
-
-
+2014-09-17T19:15:45.823126Z
+63604
+minghuai.wang@pnl.gov
 
 
 
@@ -24,7 +20,11 @@ jshollen
 
 
 
-6ec7379f-1bbc-4938-b9b9-58fa9e6a5fe1
+
+
+
+
+fe37f545-8307-0410-aea5-b40df96820b5
 
 precip_init.F90
 file
@@ -32,11 +32,11 @@ file
 
 
 
-2013-08-28T14:12:37.754123Z
+2017-02-07T00:48:54.392347Z
 8812cfa19b22ff5437746015393631ac
-2013-02-27T17:20:09.005085Z
-157
-jshollen
+2012-03-14T16:13:25.152860Z
+35435
+cacraig@ucar.edu
 
 
 
@@ -66,11 +66,11 @@ file
 
 
 
-2013-08-28T14:12:37.755041Z
-a96d8ce360ce2d123ca9536d6bdacc86
-2013-02-27T17:20:09.005085Z
-157
-jshollen
+2017-02-07T00:48:54.416368Z
+876db874c5d51316916d4b22d7e06ada
+2013-07-12T16:03:28.234285Z
+48944
+minghuai.wang@pnl.gov
 
 
 
@@ -92,7 +92,7 @@ jshollen
 
 
 
-3600
+3602
 
 cloud.F90
 file
@@ -100,11 +100,11 @@ file
 
 
 
-2013-08-28T14:12:37.756415Z
-2ba7ca5ee2144f459e685bcc3a30a398
-2013-02-27T17:20:09.005085Z
-157
-jshollen
+2017-02-07T00:48:54.425382Z
+b25919625f5d1acadd73844202634378
+2013-07-12T16:03:28.234285Z
+48944
+minghuai.wang@pnl.gov
 
 
 
@@ -126,7 +126,7 @@ jshollen
 
 
 
-2516
+2518
 
 micro_params.F90
 file
@@ -134,11 +134,11 @@ file
 
 
 
-2013-08-28T14:12:37.757415Z
-d595b488c11f6b27b2086aeee5c1cf12
-2013-02-27T17:20:09.005085Z
-157
-jshollen
+2017-02-07T00:48:54.364767Z
+53300d5d6e5beb39320ae05002fe2f65
+2014-09-17T19:15:45.823126Z
+63604
+minghuai.wang@pnl.gov
 
 
 
@@ -160,7 +160,7 @@ jshollen
 
 
 
-3271
+3668
 
 microphysics.F90
 file
@@ -168,11 +168,11 @@ file
 
 
 
-2013-08-28T14:12:37.758384Z
-c476fb21efdf0293620567308a4f27d3
-2013-02-27T17:20:09.005085Z
-157
-jshollen
+2017-02-07T00:48:54.374531Z
+6b3c69355b5e6cd07576463417eea4a5
+2014-09-17T19:15:45.823126Z
+63604
+minghuai.wang@pnl.gov
 
 
 
@@ -194,5 +194,39 @@ jshollen
 
 
 
-10933
+13158
+
+precip_proc_clubb.F90
+file
+
+
+
+
+2017-02-07T00:48:54.383670Z
+474c253e555cf609f2c7cfaa2b489b5e
+2014-09-17T19:15:45.823126Z
+63604
+minghuai.wang@pnl.gov
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5881
 

@@ -4,6 +4,7 @@ subroutine press_grad
 !       pressure term of the momentum equations
 
 use vars
+use params, only: dowallx, dowally
 implicit none
 	
 real *8 rdx,rdy,rdz
@@ -27,8 +28,8 @@ do k=1,nzm
 end do ! k
 
 do k=1,nzm
- do j=1,ny
-  do i=1,nx
+ do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.               
+  do i=0,nx                                                                      
     p(i,j,k)=p(i,j,k)*rho(k)  ! convert p'/rho to p'
   end do
  end do 

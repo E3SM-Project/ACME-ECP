@@ -412,6 +412,11 @@ contains
        real(r8), parameter :: huge_r8 = huge(1._r8)
        character(len=*), parameter :: routine='modal_aero_initialize'
        logical  :: use_SPCAM
+!==Guangxing Lin
+         integer  :: icldphy     ! index for cloud physic species (water vapor and cloud hydrometers)
+       character(len=16) :: microp_scheme  ! microphysics scheme
+!==Guangxing Lin
+
        !-----------------------------------------------------------------------
 
        pi = 4._r8*atan(1._r8)    
