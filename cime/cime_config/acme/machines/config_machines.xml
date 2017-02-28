@@ -1525,6 +1525,7 @@
         <command name="load">atp/2.0.5</command>
         <command name="load">cray-netcdf-hdf5parallel</command>
         <command name="load">xalt</command>
+        <command name="load">alps</command>
       </modules>
       <modules compiler="intel">
         <command name="rm">PrgEnv-pgi</command>

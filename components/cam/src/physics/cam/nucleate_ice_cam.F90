@@ -287,8 +287,10 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in)
 
       ! Check that required mode specie types were found
       if ( coarse_dust_idx == -1 .or. coarse_nacl_idx == -1) then
-         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:', &
-            coarse_dust_idx, coarse_nacl_idx
+         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:'!, &
+            ! coarse_dust_idx, coarse_nacl_idx
+         write(iulog,*) routine//'      coarse_dust_idx : ',coarse_dust_idx   ! WH
+         write(iulog,*) routine//'      coarse_nacl_idx : ',coarse_nacl_idx   ! WH
          call endrun(routine//': ERROR required mode-species type not found')
       end if
 

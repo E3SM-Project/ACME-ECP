@@ -1285,9 +1285,9 @@ end function chem_is_active
     !-----------------------------------------------------------------------
     ! Advance the linoz data
     !-----------------------------------------------------------------------
+write(iulog,*) "----- WH ------ linoz_data_adv  " ! wH
     call linoz_data_adv(pbuf2d, phys_state)
     call chlorine_loading_advance()
-
     if ( ghg_chem ) then
        call ghg_chem_timestep_init(phys_state)
     endif
@@ -1328,6 +1328,7 @@ end function chem_is_active
        call update_cfc11star( pbuf2d, phys_state )
 
     endif
+write(iulog,*) "----- WH ------  END " ! wH
 
   end subroutine chem_timestep_init
 
