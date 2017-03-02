@@ -17,8 +17,8 @@ module modal_aero_initialize_data
 
   logical :: convproc_do_gas, convproc_do_aer 
   
-  character(len=16)    :: microp_scheme   ! WH - acme-sp
-  integer              :: icldphy   ! WH - acme-sp
+  ! character(len=16)    :: microp_scheme   ! whannah - acme-sp
+  ! integer              :: icldphy         ! whannah - acme-sp
 
 contains
 
