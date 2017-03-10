@@ -345,7 +345,7 @@ contains
        fmactlongname(m) = 'Fraction mass activated for mode'//trnum(2:3)
     end do
 
-       if (masterproc) write(iulog,9230)
+    if (masterproc) write(iulog,9230)
 9230   format( // '*** init_aer_modes mode definitions' )
 9231   format( 'mode = ', i4, ' = "', a, '"' )
 9232   format( 4x, a, 4(1x, i5 ) )
@@ -360,13 +360,14 @@ contains
 !-------------------------------------------------------------------
 ! register ocean input fields to the phys buffer
 !-------------------------------------------------------------------
-	  do i = 1,n_ocean_data
-	     if (masterproc) then
-	     	write(iulog,*) 'Registering '//ocean_data_names(i)
-	     end if
-       	     call pbuf_add_field(ocean_data_names(i),'physpkg',dtype_r8,(/pcols,pver/),idx)
-    	  enddo
-       end if
+      do i = 1,n_ocean_data
+        if (masterproc) then
+          write(iulog,*) 'Registering '//ocean_data_names(i)
+        end if
+        call pbuf_add_field(ocean_data_names(i),'physpkg',dtype_r8,(/pcols,pver/),idx)
+  	  enddo
+      
+    end if
 
   end subroutine modal_aero_register
 

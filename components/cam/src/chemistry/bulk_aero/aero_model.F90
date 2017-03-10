@@ -102,21 +102,22 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine aero_model_register
+  ! subroutine aero_model_register
 ! whannah - changed this for 1-moment ACME-SP configuration
-  ! subroutine aero_model_register(imozart_in, species_class_in)  ! whannah
+  subroutine aero_model_register(imozart_in, species_class_in)  ! whannah
     use mo_setsoa, only : soa_register
-    ! integer, intent(in) :: imozart_in              ! whannah - dummy
-    ! integer, intent(inout) :: species_class_in(:)  ! whannah - dummy
+    integer, intent(in) :: imozart_in              ! whannah - dummy
+    integer, intent(inout) :: species_class_in(:)  ! whannah - dummy
 
     call soa_register()
-  end subroutine aero_model_register
 
+  end subroutine aero_model_register
+  
   !=============================================================================
   !=============================================================================
-  subroutine aero_model_init( pbuf2d )
+  ! subroutine aero_model_init( pbuf2d )
   ! whannah - changed this for 1-moment ACME-SP configuration - added dummy arguments
-  ! subroutine aero_model_init( pbuf2d, species_class_in, iflagaa_in )  ! whannah
+  subroutine aero_model_init( pbuf2d, species_class_in, iflagaa_in )  ! whannah
 
     use mo_chem_utls,  only: get_inv_ndx, get_spc_ndx
     use cam_history,   only: addfld, horiz_only, add_default
@@ -130,8 +131,8 @@ contains
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    ! integer, intent(inout) :: species_class_in(:)        ! whannah - dummy
-    ! integer, intent(in) :: iflagaa_in                    ! whannah - dummy
+    integer, intent(inout) :: species_class_in(:)        ! whannah - dummy
+    integer, intent(in) :: iflagaa_in                    ! whannah - dummy
 
     ! local vars
     character(len=12), parameter :: subrname = 'aero_model_init'
