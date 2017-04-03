@@ -22,6 +22,7 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
    use physconst,    only: gravit, latvap
    use constituents, only: qmin, pcnst
    use cam_logfile,  only: iulog
+   use shr_sys_mod,  only: shr_sys_flush  ! whannah
 
    implicit none
 
@@ -87,6 +88,7 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
          end if
       end do
       write(iulog,9000) subnam,nptsexc,worst, lchnk, iw, get_lat_p(lchnk,iw),get_lon_p(lchnk,iw)
+      call shr_sys_flush(iulog) ! whannah
    end if
 !
    return

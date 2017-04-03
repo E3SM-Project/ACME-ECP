@@ -8,13 +8,14 @@ module WaterstateType
   !
   ! !USES:
   use shr_kind_mod   , only : r8 => shr_kind_r8
+  ! use shr_sys_mod    , only : shr_sys_flush
   use shr_log_mod    , only : errMsg => shr_log_errMsg
   use decompMod      , only : bounds_type
   use clm_varctl     , only : use_vancouver, use_mexicocity, use_cn, iulog
   use clm_varpar     , only : nlevgrnd, nlevurb, nlevsno   
   use clm_varcon     , only : spval
   use LandunitType   , only : lun                
-  use ColumnType     , only : col                
+  use ColumnType     , only : col        
   !
   implicit none
   save
@@ -237,7 +238,7 @@ contains
     allocate(this%vsfm_mass_col_1d(          ncells))                     ; this%vsfm_mass_col_1d       (:)   = nan
     allocate(this%vsfm_smpl_col_1d(          ncells))                     ; this%vsfm_smpl_col_1d       (:)   = nan
     allocate(this%vsfm_soilp_col_1d(         ncells))                     ; this%vsfm_soilp_col_1d      (:)   = nan
-    allocate(this%soilp_col              (begc:endc,1:nlevgrnd))          ; this%soilp_col              (:,:) = 0._r8
+    allocate(this%soilp_col   (begc:endc,1:nlevgrnd))                     ; this%soilp_col              (:,:) = 0._r8
 
   end subroutine InitAllocate
 

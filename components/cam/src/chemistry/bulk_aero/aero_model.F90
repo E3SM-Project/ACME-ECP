@@ -69,11 +69,17 @@ contains
     ! Namelist variables
     character(len=16) :: aer_wetdep_list(pcnst) = ' '
     character(len=16) :: aer_drydep_list(pcnst) = ' '
+! whannah - these variables were added because they are in the namelist by default with trop_bam
+! they are not needed for the configuration with SP 1-mom and bulk aerosolos (bam)
+! a better solution would be to change the default namelist so these values do not appear
+! but so far I'm not sure how to do this
+    logical     :: sscav_tuning
+    real(r8)    :: seasalt_emis_scale
 
-    namelist /aerosol_nl/ aer_wetdep_list, aer_drydep_list
-
+    ! namelist /aerosol_nl/ aer_wetdep_list, aer_drydep_list  
+    namelist /aerosol_nl/ aer_wetdep_list, aer_drydep_list, seasalt_emis_scale, sscav_tuning 
+    ! whannah
     !-----------------------------------------------------------------------------
-
     ! Read namelist
     if (masterproc) then
        unitn = getunit()
@@ -82,6 +88,11 @@ contains
        if (ierr == 0) then
           read(unitn, aerosol_nl, iostat=ierr)
           if (ierr /= 0) then
+             write(iulog,*) "aer_wetdep_list : ",aer_wetdep_list
+             write(iulog,*) "aer_drydep_list : ",aer_drydep_list
+             write(iulog,*) "seasalt_emis_scale : ",aer_drydep_list
+             write(iulog,*) "sscav_tuning : ",aer_drydep_list
+             write(iulog,*) "ierr : ",ierr
              call endrun(subname // ':: ERROR reading namelist')
           end if
        end if
@@ -103,8 +114,9 @@ contains
   !=============================================================================
   !=============================================================================
   ! subroutine aero_model_register
-! whannah - changed this for 1-moment ACME-SP configuration
-  subroutine aero_model_register(imozart_in, species_class_in)  ! whannah
+  ! whannah - added dummy input for ACME-SP 1-mom since this is called 
+  !           from mozart/chemistry.F90 when trop_bam is used
+  subroutine aero_model_register(imozart_in, species_class_in)  
     use mo_setsoa, only : soa_register
     integer, intent(in) :: imozart_in              ! whannah - dummy
     integer, intent(inout) :: species_class_in(:)  ! whannah - dummy
@@ -116,7 +128,8 @@ contains
   !=============================================================================
   !=============================================================================
   ! subroutine aero_model_init( pbuf2d )
-  ! whannah - changed this for 1-moment ACME-SP configuration - added dummy arguments
+  ! whannah - added dummy input for ACME-SP 1-mom since this is called 
+  !           from mozart/chemistry.F90 when trop_bam is used
   subroutine aero_model_init( pbuf2d, species_class_in, iflagaa_in )  ! whannah
 
     use mo_chem_utls,  only: get_inv_ndx, get_spc_ndx

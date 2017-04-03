@@ -1056,8 +1056,12 @@ end function chem_is_active
         enddo
      endif
 
+! whannah - avoid the second call to aero_model_init when using trop_bam (SP 1-mom)
+! #if (defined MODAL_AERO_9MODE || defined MODAL_AERO_4MODE_MOM)
+#ifdef MODAL_AERO
     ! Initialize aerosols - part 2   ! REASTER 8/4/2015
     call aero_model_init( pbuf2d, species_class, 2 ) 
+#endif 
 
   end subroutine chem_init
 

@@ -659,11 +659,9 @@
                                        - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgh(:ncol,k  ) )
         end do
       endif
-
-     ! Add the explicit surface fluxes to the lowest layer
-
-       dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
-
+#ifndef SPFLUXBYPASS
+      dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
+#endif
      ! Diffuse dry static energy
      !----------------------------------------------------------------------------------------------------
      ! In Extended WACCM, kvt is calculated rather kvh. This is because molecular diffusion operates on 
@@ -759,7 +757,16 @@
 
            ! Add the explicit surface fluxes to the lowest layer
 
-           q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m)
+#ifndef SPFLUXBYPASS 
+           q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol) ! whannah     
+! #else
+           ! if ( m .ne. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol) ! whannah     
+           
+           ! whannah - I thought this made more sense to diffuse constituents other than water vapor, 
+           ! but this leads to an error near the surface 
+           !     WARNING: Aerosol optical depth is unreasonably high in this layer.
+           ! So I guess I'm missing something about how the non-water vapor constituents are diffused....
+#endif     
 
            ! Diffuse constituents.
 

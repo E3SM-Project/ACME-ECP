@@ -1,3 +1,5 @@
+#define WH_DEBUG
+
 module cam_comp
 !-----------------------------------------------------------------------
 !
@@ -131,6 +133,7 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
 #if ( defined SPMD )
    cam_time_beg = mpi_wtime()
 #endif
+
    !
    ! Initialization needed for cam_history
    ! 
@@ -194,7 +197,6 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
    if (single_column) call scm_intht()
    call intht()
 
-
 end subroutine cam_init
 
 !
@@ -231,6 +233,11 @@ subroutine cam_run1(cam_in, cam_out)
    if (masterproc .and. print_step_cost) then
       call t_stampf (wcstart, usrstart, sysstart)
    end if
+
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run1 - 1'
+call shr_sys_flush(iulog)
+#endif
    !----------------------------------------------------------
    ! First phase of dynamics (at least couple from dynamics to physics)
    ! Return time-step for physics from dynamics.
@@ -239,6 +246,11 @@ subroutine cam_run1(cam_in, cam_out)
    call t_startf ('stepon_run1')
    call stepon_run1( dtime, phys_state, phys_tend, pbuf2d, dyn_in, dyn_out )
    call t_stopf  ('stepon_run1')
+
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run1 - 2'
+call shr_sys_flush(iulog)
+#endif
 
    !
    !----------------------------------------------------------
@@ -249,6 +261,11 @@ subroutine cam_run1(cam_in, cam_out)
    call t_startf ('phys_run1')
    call phys_run1(phys_state, dtime, phys_tend, pbuf2d,  cam_in, cam_out)
    call t_stopf  ('phys_run1')
+
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run1 - 3'
+call shr_sys_flush(iulog)
+#endif
 
 end subroutine cam_run1
 
@@ -277,6 +294,11 @@ subroutine cam_run2( cam_out, cam_in )
    type(cam_out_t), intent(inout) :: cam_out(begchunk:endchunk)
    type(cam_in_t),  intent(inout) :: cam_in(begchunk:endchunk)
 
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run2 - 1'
+call shr_sys_flush(iulog)
+#endif
+
    !
    ! Second phase of physics (after surface model update)
    !
@@ -298,6 +320,12 @@ subroutine cam_run2( cam_out, cam_in )
       call t_startf ('cam_run2_memusage')
       call t_stopf  ('cam_run2_memusage')
    end if
+
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run2 - 2'
+call shr_sys_flush(iulog)
+#endif
+
 end subroutine cam_run2
 
 !
@@ -321,6 +349,12 @@ subroutine cam_run3( cam_out )
 
    type(cam_out_t), intent(inout) :: cam_out(begchunk:endchunk)
 !-----------------------------------------------------------------------
+
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run3 - 1'
+call shr_sys_flush(iulog)
+#endif
+
    !
    ! Third phase of dynamics
    !
@@ -334,6 +368,12 @@ subroutine cam_run3( cam_out )
       call t_startf ('cam_run3_memusage')
       call t_stopf  ('cam_run3_memusage')
    end if
+
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run3 - 2'
+call shr_sys_flush(iulog)
+#endif
+
 end subroutine cam_run3
 
 !
@@ -372,6 +412,10 @@ subroutine cam_run4( cam_out, cam_in, rstwr, nlend, &
 !-----------------------------------------------------------------------
 ! print_step_cost
 
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run4 - 1'
+call shr_sys_flush(iulog)
+#endif
    !
    !----------------------------------------------------------
    ! History and restart logic: Write and/or dispose history tapes if required
@@ -414,8 +458,15 @@ subroutine cam_run4( cam_out, cam_in, rstwr, nlend, &
 
 #ifndef UNICOSMP
    call t_startf ('cam_run4_flush')
+
    call shr_sys_flush(iulog)
+
    call t_stopf  ('cam_run4_flush')
+#endif
+
+#ifdef WH_DEBUG
+write(iulog,*) 'whannah - cam_run4 - 2'
+call shr_sys_flush(iulog)
 #endif
 
 end subroutine cam_run4

@@ -138,9 +138,9 @@
 #endif
 #endif
 
-!==Guangxing Lin
-    integer, parameter :: nspec_amode_max = 6
-!==Guangxing Lin
+
+    ! integer, parameter :: nspec_amode_max = 6   !==Guangxing Lin
+
     !   input mprognum_amode, mdiagnum_amode, mprogsfc_amode, mcalcwater_amode
 #if ( defined MODAL_AERO_7MODE )
     integer, parameter ::     mprognum_amode(ntot_amode)   = (/ 1, 1, 1, 1, 1, 1, 1/)

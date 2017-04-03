@@ -304,9 +304,7 @@ end subroutine ndrop_init
 
 subroutine dropmixnuc( &
    state, ptend, dtmicro, pbuf, wsub, &
-   cldn, cldo, tendnd, factnum, species_class,dommf)     !-- mdb spcam:  add dommf
-!   cldn, cldo, tendnd, factnum, dommf)     !-- mdb spcam:  add dommf
-!==Guangxing Lin, add species_class
+   cldn, cldo, tendnd, factnum, species_class,do_mmf)  !-- mdb spcam: add do_mmf   !==Guangxing Lin, add species_class
 
    ! vertical diffusion and nucleation of cloud droplets
    ! assume cloud presence controlled by cloud fraction
@@ -323,7 +321,7 @@ subroutine dropmixnuc( &
    real(r8), intent(in) :: wsub(pcols,pver)    ! subgrid vertical velocity
    real(r8), intent(in) :: cldn(pcols,pver)    ! cloud fraction
    real(r8), intent(in) :: cldo(pcols,pver)    ! cloud fraction on previous time step
-   logical,  intent(in),optional :: dommf      ! value insignificant - if variable present, is called in the mmf part.
+   logical,  intent(in),optional :: do_mmf      ! value insignificant - if variable present, is called in the mmf part.
 !==Guangxing Lin
    integer, intent(in) :: species_class(:)    
 !==Guangxing Lin
@@ -516,16 +514,16 @@ subroutine dropmixnuc( &
 
 !-- mdb spcam
    call phys_getopts(use_SPCAM_out=use_SPCAM)
-   SPCAM_mmf    = (use_SPCAM .and. present(dommf)) ! SPCAM called from mmf section
-   SPCAM_notmmf = (use_SPCAM .and. .not. present(dommf)) ! SPCAM not called from mmf section
+   SPCAM_mmf    = (use_SPCAM .and. present(do_mmf)) ! SPCAM called from mmf section
+   SPCAM_notmmf = (use_SPCAM .and. .not. present(do_mmf)) ! SPCAM not called from mmf section
 
-   if (SPCAM_mmf) then
 #if (defined MODAL_AERO)
-           rgas  => state%q
-           allocate(rgascol(pver, pcnst, 2))
-           allocate(coltendgas(pcols))
-#endif
+   if (SPCAM_mmf) then
+      rgas  => state%q
+      allocate(rgascol(pver, pcnst, 2))
+      allocate(coltendgas(pcols))
    endif
+#endif
 !-- mdb spcam
 
    factnum = 0._r8
@@ -615,7 +613,6 @@ if (SPCAM_mmf) then
    do m=1, pcnst
       if(species_class(m).eq.spec_class_gas) then
          rgascol(:,m,nsav) = rgas(i,:,m)
-!        write(0, *) 'gas species indices in dropmixnuc,  m=', m, '  name=', cnst_name(m)
       end if
    end do
 #endif

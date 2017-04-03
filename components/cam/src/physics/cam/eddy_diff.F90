@@ -30,6 +30,7 @@
   use cam_abortutils,       only: endrun
   use spmd_utils,       only: masterproc
   use wv_saturation,    only: qsat
+  use shr_sys_mod,      only: shr_sys_flush ! whannah
 
   implicit none
   private
@@ -3602,6 +3603,10 @@
           extend_up = .true.
           if( kt .eq. ntop_turb ) then
               write(iulog,*) 'zisocl: Error: Tried to extend CL to the model top'
+              write(iulog,*) 'ncv = ',ncv  ! whannah
+              write(iulog,*) 'kt  = ',kt   ! whannah
+              write(iulog,*) 'kb  = ',kb   ! whannah
+              call shr_sys_flush(iulog)    ! whannah
               call endrun('zisocl: Error: Tried to extend CL to the model top')
           end if
 

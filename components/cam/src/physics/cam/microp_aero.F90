@@ -395,9 +395,7 @@ subroutine microp_aero_run ( &
    type(physics_ptend),         intent(out)   :: ptend
    real(r8),                    intent(in)    :: deltatin     ! time step (s)
    real(r8),                    intent(in)    :: liqcldfo(pcols,pver)  ! old liquid cloud fraction
-!==Guangxing Lin   
-   integer,                    intent(in)    :: species_class(:) 
-!==Guangxing Lin   
+   integer,                     intent(in)    :: species_class(:) !==Guangxing Lin   
    type(physics_buffer_desc),   pointer       :: pbuf(:)
 
    ! local workspace

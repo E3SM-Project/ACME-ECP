@@ -126,7 +126,7 @@ subroutine crm        (lchnk, icol, &
 
          integer, intent(in) :: lchnk    ! chunk identifier
          integer, intent(in) :: icol     ! column identifier
-         integer, intent(in) :: plev     ! number of levels
+         integer, intent(in) :: plev     ! number of levels in parent model
          real(r8), intent(in) :: ps ! Global grid surface pressure (Pa)
          real(r8), intent(in) :: pmid(plev) ! Global grid pressure (Pa)
          real(r8), intent(in) :: pdel(plev) ! Layer's pressure thickness (Pa)

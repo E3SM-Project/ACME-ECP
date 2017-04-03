@@ -237,7 +237,7 @@ module restart_physics
       integer :: dims(3), gdims(3)
       integer :: nhdims
       !-----------------------------------------------------------------------
-
+if (masterproc) write(iulog,*) 'whannah - restart_physics.F90 - write_restart_physics() - 1'
       ! Write grid vars
       call cam_grid_write_var(File, phys_decomp)
 
@@ -392,7 +392,7 @@ module restart_physics
             end do
             call pio_write_darray(File, co2diag_desc, iodesc, tmpfield, ierr)
          end if
-
+if (masterproc) write(iulog,*) 'whannah - restart_physics.F90 - write_restart_physics() - 2'
          ! cam_in components
          do m = 1, pcnst
             do i = begchunk, endchunk
@@ -401,7 +401,7 @@ module restart_physics
             end do
             call pio_write_darray(File, cflx_desc(m), iodesc, tmpfield, ierr)
          end do
-
+if (masterproc) write(iulog,*) 'whannah - restart_physics.F90 - write_restart_physics() - 3'
          do i = begchunk, endchunk
             ncol = cam_in(i)%ncol
             tmpfield(:ncol, i) = cam_in(i)%lhf(:ncol)
@@ -411,7 +411,9 @@ module restart_physics
             ncol = cam_in(i)%ncol
             tmpfield(:ncol, i) = cam_in(i)%shf(:ncol)
          end do
+if (masterproc) write(iulog,*) 'whannah - restart_physics.F90 - write_restart_physics() - 4'
          call pio_write_darray(File, shf_desc, iodesc, tmpfield, ierr)
+if (masterproc) write(iulog,*) 'whannah - restart_physics.F90 - write_restart_physics() - 5'
 
       end if
     !

@@ -28,6 +28,8 @@ module vertremap_mod_base
   !
   !**************************************************************************************
 
+  use cam_logfile, only            : iulog          ! whannah
+  use shr_sys_mod, only            : shr_sys_flush  ! whannah
   use kinds, only                  : real_kind,int_kind
   use dimensions_mod, only         : np,nlev,qsize,nlevp,npsq
   use hybvcoord_mod, only          : hvcoord_t
@@ -116,14 +118,25 @@ module vertremap_mod_base
         do i=1,np
         do j=1,np
            if (dp_star(i,j,k ) < 0) then
-              print *,'level = ',k
-              print *,"column location lat,lon (radians):",elem(ie)%spherep(i,j)%lat,elem(ie)%spherep(i,j)%lon
-           endif
+              ! print *,'level = ',k
+              ! print *,"column location lat,lon (radians):",elem(ie)%spherep(i,j)%lat,elem(ie)%spherep(i,j)%lon
+              ! whannah 
+              ! print *,"Negative Layer Thickness - Location:"
+              ! print *,'  level   = ',k
+              ! print *,'  lat rad = ',elem(ie)%spherep(i,j)%lat
+              ! print *,'  lon rad = ',elem(ie)%spherep(i,j)%lon
+              ! print *,'  lat deg = ',(elem(ie)%spherep(i,j)%lat * 180./3.14159)
+              ! print *,'  lon deg = ',(elem(ie)%spherep(i,j)%lon * 180./3.14159)
+              ! write(iulog,9000) k, elem(ie)%spherep(i,j)%lat, elem(ie)%spherep(i,j)%lon
+              write(iulog,9000) k, (elem(ie)%spherep(i,j)%lat * 180./3.14159), (elem(ie)%spherep(i,j)%lon * 180./3.14159)
+           endif 
         enddo
         enddo
         enddo
         call abortmp('negative layer thickness.  timestep or remap time too large')
      endif
+
+9000 format('Negative Layer Thickness   lev ',i5,'    lat =',f8.2,'    lon =',f8.2 )
 
      if (rsplit>0) then
         !  REMAP u,v,T from levels in dp3d() to REF levels

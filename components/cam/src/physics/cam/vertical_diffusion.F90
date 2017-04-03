@@ -1073,6 +1073,15 @@ contains
 
     call pbuf_get_field(pbuf, kvt_idx, kvt)
 
+! #ifdef SPFLUXBYPASS ! whannah
+!   ! bypass surface flux addition in vertical diffusion 
+!   ! Add them in tphysbc so CRM can diffuse these tendencies
+!   ! allow compute_eddy_dif() to use fluxes for buoyancy production
+!   ! since this is needed for diffusion of momentum
+!   shflx     = 0.
+!   cflx(:,1) = 0.
+! #endif ! whannah - SPFLUXBYPASS
+
     if( any(fieldlist_wet) ) then
 
         call compute_vdiff( state%lchnk   ,                                                                     &

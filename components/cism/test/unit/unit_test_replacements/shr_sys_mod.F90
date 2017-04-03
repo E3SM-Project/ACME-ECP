@@ -6,6 +6,7 @@ module shr_sys_mod
    use shr_kind_mod
    use shr_log_mod, only: s_loglev  => shr_log_Level
    use shr_log_mod, only: s_logunit => shr_log_Unit
+   use spmd_utils,        only: masterproc  ! whannah
 
    implicit none
    
@@ -72,6 +73,8 @@ SUBROUTINE shr_sys_flush(unit)
 
 ! WJS (12-6-11): I have reworked this from the real version, in order to allow
 ! reassonable behavior when the sysstem is not defined
+
+if (masterproc) write(iulog,*) 'whannah - shr_sys_mod.F90 - shr_sys_flush() - 1 '
 
 #if (defined AIX)
    call flush_(unit)
