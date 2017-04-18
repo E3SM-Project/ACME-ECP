@@ -2069,7 +2069,7 @@ end function radiation_nextsw_cday
 
                   ! Dump longwave radiation information to history tape buffer (diagnostics)
                   if ( (use_SPCAM .and. last_column ) .or. .not. use_SPCAM) then
-                        call outfld('QRL'//diag(icall),qrl (:ncol,:)/cpair,ncol,lchnk)
+                     call outfld('QRL'//diag(icall),qrl (:ncol,:)/cpair,ncol,lchnk)
                      call outfld('QRLC'//diag(icall),qrlc(:ncol,:)/cpair,ncol,lchnk)
                      call outfld('FLNT'//diag(icall),flnt  ,pcols,lchnk)
                      call outfld('FLUT'//diag(icall),flut  ,pcols,lchnk)

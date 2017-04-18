@@ -136,9 +136,6 @@ contains
           frac_h2osfc =>    waterstate_vars%frac_h2osfc_col  & ! Input:  [real(r8) (:)]  fraction of ground covered by surface water (0 to 1)
           )
 
-write(iulog,*) 'whannah - SurfaceResistanceMod - calc_beta_leepielke1992 1'
-call shr_sys_flush(iulog)
-
        do fc = 1,num_nolakec
           c = filter_nolakec(fc)
           l = col%landunit(c)   
@@ -159,8 +156,6 @@ call shr_sys_flush(iulog)
                 else   !when water content of ths top layer is more than that at F.C.
                    soilbeta(c) = 1._r8
                 end if
-write(iulog,*) 'whannah - SurfaceResistanceMod - calc_beta_leepielke1992 1a'
-call shr_sys_flush(iulog)
                 ! whannah - changed this if statement because of NaN values in soilp_col with ACME-SP and nlev = 72
                 ! if ( use_vsfm .and. &
                 !      ((wx < watmin(c,1)) .or. (soilp_col(c,1) < sucmin(c,1)))) then
@@ -169,11 +164,7 @@ call shr_sys_flush(iulog)
                     soilbeta(c) = 0._r8
                   end if
                 end if
-write(iulog,*) 'whannah - SurfaceResistanceMod - calc_beta_leepielke1992 1b'
-call shr_sys_flush(iulog)
              else if (col%itype(c) == icol_road_perv) then
-write(iulog,*) 'whannah - SurfaceResistanceMod - calc_beta_leepielke1992 2a'
-call shr_sys_flush(iulog)
                 if (.not. use_vsfm) then
                    soilbeta(c) = 0._r8
                 else
@@ -200,15 +191,10 @@ call shr_sys_flush(iulog)
              else if (col%itype(c) == icol_roof .or. col%itype(c) == icol_road_imperv) then
                 soilbeta(c) = 0._r8
              endif
-write(iulog,*) 'whannah - SurfaceResistanceMod - calc_beta_leepielke1992 2b'
-call shr_sys_flush(iulog)
           else
              soilbeta(c) =   1._r8
           endif
        enddo
-
-write(iulog,*) 'whannah - SurfaceResistanceMod - calc_beta_leepielke1992 LAST'
-call shr_sys_flush(iulog)
 
      end associate
 

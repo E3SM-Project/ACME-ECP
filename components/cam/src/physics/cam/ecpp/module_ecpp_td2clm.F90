@@ -4178,62 +4178,62 @@ acwxx1_k_loop: &
 !   also check and total quiescent areas are each >= a_quiescn_minaa
 	do k = kts, ktebnd
 	    do jcls = 1, ncls_use
-		abnd_tavg_use(k,0,jcls) = sum( abnd_tavg_use(k,1:2,jcls) )
-		if (k > ktecen) cycle
-		acen_tavg_use(k,0,jcls) = sum( acen_tavg_use(k,1:2,jcls) )
-		acen_tfin_use(k,0,jcls) = sum( acen_tfin_use(k,1:2,jcls) )
+			abnd_tavg_use(k,0,jcls) = sum( abnd_tavg_use(k,1:2,jcls) )
+			if (k > ktecen) cycle
+			acen_tavg_use(k,0,jcls) = sum( acen_tavg_use(k,1:2,jcls) )
+			acen_tfin_use(k,0,jcls) = sum( acen_tfin_use(k,1:2,jcls) )
 	    end do
 	    do icc = 0, 2
-		abnd_tavg_use(k,icc,0) = sum( abnd_tavg_use(k,icc,1:ncls_use) )
-		if (k > ktecen) cycle
-		acen_tavg_use(k,icc,0) = sum( acen_tavg_use(k,icc,1:ncls_use) )
-		acen_tfin_use(k,icc,0) = sum( acen_tfin_use(k,icc,1:ncls_use) )
+			abnd_tavg_use(k,icc,0) = sum( abnd_tavg_use(k,icc,1:ncls_use) )
+			if (k > ktecen) cycle
+			acen_tavg_use(k,icc,0) = sum( acen_tavg_use(k,icc,1:ncls_use) )
+			acen_tfin_use(k,icc,0) = sum( acen_tfin_use(k,icc,1:ncls_use) )
 	    end do
 
 	    do i = 1, 3
-                if ((i >= 2) .and. (k > ktecen)) cycle
-		if (i == 1) then
-		    tmpa = abnd_tavg_use(k,0,0)
-		else if (i == 2) then
-		    tmpa = acen_tavg_use(k,0,0)
-		else
-		    tmpa = acen_tfin_use(k,0,0)
-		end if
-		if (abs(tmpa-1.0_r8) < a_sum_toleraa) cycle
-		write(msg,'(2a,i5,1pe15.7)') &
-		    '*** parampollu_check_adjust_inputs - bad ', &
-		    area_name10(i), k, tmpa  
-		call ecpp_message( lunout, msg )
-		call ecpp_error_fatal( lunout, msg )
+            if ((i >= 2) .and. (k > ktecen)) cycle
+			if (i == 1) then
+			    tmpa = abnd_tavg_use(k,0,0)
+			else if (i == 2) then
+			    tmpa = acen_tavg_use(k,0,0)
+			else
+			    tmpa = acen_tfin_use(k,0,0)
+			end if
+			if (abs(tmpa-1.0_r8) < a_sum_toleraa) cycle
+			write(msg,'(2a,i5,1pe15.7)') &
+			    '*** parampollu_check_adjust_inputs - bad ', &
+			    area_name10(i), k, tmpa  
+			call ecpp_message( lunout, msg )
+			call ecpp_error_fatal( lunout, msg )
 	    end do
 
 	    tmpa = abnd_tavg_use(k,0,0)
 	    abnd_tavg_use(k,0:2,0:ncls_use) = abnd_tavg_use(k,0:2,0:ncls_use)/tmpa
 	    if (k <= ktecen) then
-		tmpa = acen_tavg_use(k,0,0)
-		acen_tavg_use(k,0:2,0:ncls_use) = acen_tavg_use(k,0:2,0:ncls_use)/tmpa
-		tmpa = acen_tfin_use(k,0,0)
-		acen_tfin_use(k,0:2,0:ncls_use) = acen_tfin_use(k,0:2,0:ncls_use)/tmpa
+			tmpa = acen_tavg_use(k,0,0)
+			acen_tavg_use(k,0:2,0:ncls_use) = acen_tavg_use(k,0:2,0:ncls_use)/tmpa
+			tmpa = acen_tfin_use(k,0,0)
+			acen_tfin_use(k,0:2,0:ncls_use) = acen_tfin_use(k,0:2,0:ncls_use)/tmpa
 	    end if
 
 	    do i = 1, 3
-		if ((i >= 2) .and. (k > ktecen)) cycle
-		jcls = jcls_qu
-		if (i == 1) then
-		    tmpa = abnd_tavg_use(k,0,jcls)
-		else if (i == 2) then
-		    tmpa = acen_tavg_use(k,0,jcls)
-		else
-		    tmpa = acen_tfin_use(k,0,jcls)
-		end if
-		msg = ' '
-		if (tmpa < a_quiescn_minaa) then
-		    write(msg,'(2a,i5,1p,2e10.2)') &
-		    '*** parampollu_check_adjust_inputs - a_quiescent(v1) too small ', &
-		    area_name10(i), k, tmpa, a_quiescn_minaa
-		    call ecpp_message( lunout, msg )
-		    call ecpp_error_fatal( lunout, msg )
-		end if
+			if ((i >= 2) .and. (k > ktecen)) cycle
+			jcls = jcls_qu
+			if (i == 1) then
+			    tmpa = abnd_tavg_use(k,0,jcls)
+			else if (i == 2) then
+			    tmpa = acen_tavg_use(k,0,jcls)
+			else
+			    tmpa = acen_tfin_use(k,0,jcls)
+			end if
+			msg = ' '
+			if (tmpa < a_quiescn_minaa) then
+			    write(msg,'(2a,i5,1p,2e10.2)') &
+			    '*** parampollu_check_adjust_inputs - a_quiescent(v1) too small ', &
+			    area_name10(i), k, tmpa, a_quiescn_minaa
+			    call ecpp_message( lunout, msg )
+			    call ecpp_error_fatal( lunout, msg )
+			end if
 	    end do
 
 	end do

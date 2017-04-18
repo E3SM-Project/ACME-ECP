@@ -353,6 +353,7 @@ CONTAINS
   !
   ! !INTERFACE:
   subroutine dyn_run( dyn_state, rc )
+  ! subroutine dyn_run( dyn_state, rc, istate, pbuf)  ! whannah
 
     ! !USES:
     use parallel_mod,     only : par
@@ -361,6 +362,11 @@ CONTAINS
     use time_mod,         only: tstep
     use hybrid_mod,       only: hybrid_create
 !    use perf_mod, only : t_startf, t_stopf
+
+    ! use physics_buffer,  only: physics_buffer_desc  ! whannah - for debugging negative thickenss error
+    ! use physics_types,   only: physics_state        ! whannah - for debugging negative thickenss error
+    ! use ppgrid,          only: begchunk, endchunk   ! whannah
+
     implicit none
 
 
@@ -368,6 +374,11 @@ CONTAINS
     type(hybrid_t) :: hybrid
 
     integer, intent(out)               :: rc      ! Return code
+
+    ! type(physics_state), intent(in) :: istate(begchunk:endchunk)
+    ! type(physics_state),intent(in)    :: istate    ! whannah - for debugging
+    ! type(physics_buffer_desc),pointer :: pbuf(:)  ! whannah - for debugging
+
     integer ::  n
     integer :: nets, nete, ithr
     integer :: ie
@@ -394,6 +405,8 @@ CONTAINS
           call t_startf("prim_run_sybcycle")
           call prim_run_subcycle(dyn_state%elem,hybrid,nets,nete,&
                tstep, TimeLevel, hvcoord, n)
+          ! call prim_run_subcycle(dyn_state%elem,hybrid,nets,nete,&
+               ! tstep, TimeLevel, hvcoord, n, istate, pbuf)   ! whannah
           call t_stopf("prim_run_sybcycle")
        end do
 

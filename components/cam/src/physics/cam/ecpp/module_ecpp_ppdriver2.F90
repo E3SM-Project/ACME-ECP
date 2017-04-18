@@ -18,6 +18,7 @@ module module_ecpp_ppdriver2
        ! use abortutils,   only: endrun
         use cam_abortutils,   only: endrun
 !==Guangxing Lin
+        use crmdims,         only: crm_nz  ! whannah
 
         use ecppvars,     only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in 
         use module_data_ecpp1 
@@ -35,7 +36,7 @@ type ptr2d_t
    real(r8), pointer :: fldcw(:,:)
 end type ptr2d_t
 
-	contains
+  contains
 
 !-----------------------------------------------------------------------------------------------
 !
@@ -418,16 +419,16 @@ end type ptr2d_t
 !==================================================================================================
 
 !--------------------------------------------------------------------------------------------------
-	subroutine parampollu_driver2(                            &
+  subroutine parampollu_driver2(                            &
                 state, ptend,  pbuf,                              &
-		dtstep_in, dtstep_pp_in,                          &
-		acen_3d, abnd_3d,                                 &
-		acen_tf_3d, abnd_tf_3d,                           &
-		massflxbnd_3d,                                    &
-		rhcen_3d, qcloudcen_3d, qlsinkcen_3d,             &
-		precrcen_3d, precsolidcen_3d,                     &
-		acldy_cen_tbeg_3d                                &
-		                          )
+    dtstep_in, dtstep_pp_in,                          &
+    acen_3d, abnd_3d,                                 &
+    acen_tf_3d, abnd_tf_3d,                           &
+    massflxbnd_3d,                                    &
+    rhcen_3d, qcloudcen_3d, qlsinkcen_3d,             &
+    precrcen_3d, precsolidcen_3d,                     &
+    acldy_cen_tbeg_3d                                &
+                              )
 
 ! modules from CAM
         use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
@@ -441,7 +442,7 @@ end type ptr2d_t
 #endif
 
 ! modules from ECPP
-	use module_ecpp_td2clm, only:  parampollu_td240clm
+  use module_ecpp_td2clm, only:  parampollu_td240clm
 
         implicit none
 
@@ -453,7 +454,7 @@ end type ptr2d_t
 !
 ! main inputs are 
 !    aerosol and trace gas mixing ratios for a subset of the
-!	host-code domain
+! host-code domain
 !    ecpp (sub-grid) cloud statistics for the same subset of domain
 ! main outputs are
 !    updated aerosol and trace gas mixing ratios, with changes due
@@ -464,7 +465,7 @@ end type ptr2d_t
 
 !   subr arguments
 
-	real(r8), intent(in) :: dtstep_in, dtstep_pp_in
+  real(r8), intent(in) :: dtstep_in, dtstep_pp_in
 !   dtstep_in - main model time step (s)
 !   dtstep_pp_in - time step (s) for "parameterized pollutants" calculations
 
@@ -472,18 +473,18 @@ end type ptr2d_t
         type(physics_ptend), intent(inout) :: ptend       ! individual parameterization
         type(physics_buffer_desc), pointer ::  pbuf(:)   ! physics buffer 
 
-	real(r8), intent(in), dimension( pcols, pverp, 1:ncc_in, 1:ncls_ecpp_in, 1:nprcp_in ) ::   &
-		abnd_3d, abnd_tf_3d, massflxbnd_3d
-	real(r8), intent(in), dimension( pcols, pver, 1:ncc_in, 1:ncls_ecpp_in, 1:nprcp_in ) ::   &
-		acen_3d, acen_tf_3d, rhcen_3d, &
-		qcloudcen_3d, qlsinkcen_3d, precrcen_3d, precsolidcen_3d
+  real(r8), intent(in), dimension( pcols, pverp, 1:ncc_in, 1:ncls_ecpp_in, 1:nprcp_in ) ::   &
+    abnd_3d, abnd_tf_3d, massflxbnd_3d
+  real(r8), intent(in), dimension( pcols, pver, 1:ncc_in, 1:ncls_ecpp_in, 1:nprcp_in ) ::   &
+    acen_3d, acen_tf_3d, rhcen_3d, &
+    qcloudcen_3d, qlsinkcen_3d, precrcen_3d, precsolidcen_3d
 !   *** note - these are not "3d" now but probably will be in the mmf code
 !   abnd_3d and abnd_tf_3d - sub-class fractional area (--) at layer bottom boundary
-!	abnd_3d    is average for full time period (=dtstep_pp_in)
-!	abnd_tf_3d is average for end-portion of time period
+! abnd_3d    is average for full time period (=dtstep_pp_in)
+! abnd_tf_3d is average for end-portion of time period
 !   acen_3d and acen_tf_3d - sub-class fractional area (--) at layer center
-!	acen_3d    is average for full time period (=dtstep_pp_in)
-!	acen_tf_3d is average for end-portion of time period
+! acen_3d    is average for full time period (=dtstep_pp_in)
+! acen_tf_3d is average for end-portion of time period
 !   massflxbnd_3d - sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
 !       *** note - These are calculated using wfull, not wprime.
 !  rhcen_3d - relative humidity (0-1) at layer center
@@ -492,33 +493,33 @@ end type ptr2d_t
 !  precrcen_3d - liquid (rain) precipitation rate (kg/m2/s) at layer center
 !  precsolidcen_3d - solid (snow,graupel,...) precipitation rate (kg/m2/s) at layer center
 
-	real(r8), intent(inout), dimension( pcols, pver)  :: acldy_cen_tbeg_3d
+  real(r8), intent(inout), dimension( pcols, pver)  :: acldy_cen_tbeg_3d
 !   acldy_cen_tbeg_3d = total (all sub-classes) cloudy fractional area
-!	on input,  = value from end of the previous time step
-!	on output, = value from end of the current  time step
+! on input,  = value from end of the previous time step
+! on output, = value from end of the current  time step
 
 !-----------------------------------------------------------------------
 !   local variables
         integer :: ncol, lchnk
         integer :: mbuf
         integer :: id
-	integer :: i, icc, ipass, ipp, itmpa, it, ichem, ichem2
-	integer :: j, jclrcld, jcls, jclsaa, jclsbb, jt
+  integer :: i, icc, ipass, ipp, itmpa, it, ichem, ichem2
+  integer :: j, jclrcld, jcls, jclsaa, jclsbb, jt
         integer :: nstep, nstep_pp
-	integer :: k, ka, kb, lk
-	integer :: l, ll, levdbg_err, levdbg_info
-	integer :: lun, lun60, lun61, lun131, lun132, lun133, lun134, lun135
-	integer :: n, ncls_ecpp, nupdraft, ndndraft
-	integer :: itmpcnt(pver+1,4)
-	integer :: idiagaa_ecpp(1:199), ldiagaa_ecpp(1:199)
+  integer :: k, ka, kb, lk
+  integer :: l, ll, levdbg_err, levdbg_info
+  integer :: lun, lun60, lun61, lun131, lun132, lun133, lun134, lun135
+  integer :: n, ncls_ecpp, nupdraft, ndndraft
+  integer :: itmpcnt(pver+1,4)
+  integer :: idiagaa_ecpp(1:199), ldiagaa_ecpp(1:199)
 
-	integer, dimension( 1:2, 1:maxcls_ecpp ) ::   &
-		kdraft_bot_ecpp, kdraft_top_ecpp,   &
-		mtype_updnenv_ecpp
-	
-	real(r8) :: dtstep, dtstep_pp
-	real(r8) :: tmpa, tmpb, tmpc, tmpd
-	real(r8) :: za, zb, zc
+  integer, dimension( 1:2, 1:maxcls_ecpp ) ::   &
+    kdraft_bot_ecpp, kdraft_top_ecpp,   &
+    mtype_updnenv_ecpp
+  
+  real(r8) :: dtstep, dtstep_pp
+  real(r8) :: tmpa, tmpb, tmpc, tmpd
+  real(r8) :: za, zb, zc
 
         integer, dimension( 1:nupdraft_in ) ::   &
                 kupdraftbase, kupdrafttop
@@ -533,28 +534,28 @@ end type ptr2d_t
 !   *** note2- these get checked/adjusted later, so simply setting k--draftbase = kts
 !       and k--drafttop = ktecen is OK
 
-	real(r8)  ::  tcen_bar   (pver)      ! temperature at layer centers (K)  
+  real(r8)  ::  tcen_bar   (pver)      ! temperature at layer centers (K)  
         real(r8)  ::  pcen_bar   (pver)      ! pressure at layer centers (K)
         real(r8)  ::  rhocen_bar (pver)      ! air density at layer centers (kg/m3)
         real(r8)  ::  dzcen      (pver)      ! layer depth (m)
         real(r8)  ::  wcen_bar   (pver)      ! vertical velocity at layer centers (m/s)
         real(r8)  ::  rhobnd_bar (pverp)      ! air density at layer boundaries (kg/m3)
         real(r8)  ::  zbnd       (pverp)     ! elevation at layer boundaries (m) ???elevation or height????
-	real(r8)  ::  wbnd_bar   (pverp)     ! vertical velocity at layer boundaries (m/s)  
+  real(r8)  ::  wbnd_bar   (pverp)     ! vertical velocity at layer boundaries (m/s)  
 
-	real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  !  mixing ratios of trace gase (ppm) and aerosol species
+  real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  !  mixing ratios of trace gase (ppm) and aerosol species
                                                                    !       (ug/kg for mass species, #/kg for number species)
 #ifdef MODAL_AERO
 !        real(r8), pointer, dimension(:, :, :) :: qqcw  ! cloud-borne aerosol
         type(ptr2d_t) :: qqcw(pcnst)
 !        real(r8) :: qqcwold(pcols, pver, pcnst)
 #endif
-	real(r8), dimension( pverp, 0:2, 0:maxcls_ecpp ) ::   &
-		abnd_tavg, abnd_tfin, mfbnd
-	real(r8), dimension( pver, 0:2, 0:maxcls_ecpp ) ::   &
-		acen_tavg, acen_tfin, acen_tbeg, acen_prec
-	real(r8), dimension( pver, 1:2, 1:maxcls_ecpp, 1:2 ) ::   &
-		rh_sub2, qcloud_sub2, qlsink_sub2, precr_sub2, precs_sub2
+  real(r8), dimension( pverp, 0:2, 0:maxcls_ecpp ) ::   &
+    abnd_tavg, abnd_tfin, mfbnd
+  real(r8), dimension( pver, 0:2, 0:maxcls_ecpp ) ::   &
+    acen_tavg, acen_tfin, acen_tbeg, acen_prec
+  real(r8), dimension( pver, 1:2, 1:maxcls_ecpp, 1:2 ) ::   &
+    rh_sub2, qcloud_sub2, qlsink_sub2, precr_sub2, precs_sub2
         real(r8), dimension(pver, 1:2, 1:maxcls_ecpp, 1:2, 1:num_chem_ecpp )  ::       &
                                   del_cldchem,             &            ! tendency of chem_sub from aqueous chemistry
                                   del_rename,              &            ! tendency of chem_sub from renaming.
@@ -610,7 +611,7 @@ end type ptr2d_t
 
         real(r8), dimension(pcols, 1:num_chem_ecpp) ::   del_chem_col_cldchem, del_chem_col_rename, del_chem_col_wetscav  ! column tendency calcuated in ECPP
 
-	character(len=100) :: msg
+  character(len=100) :: msg
 !==Guangxing Lin        
         logical ::  lq(pcnst)
 !==Guangxing Lin        
@@ -619,62 +620,62 @@ end type ptr2d_t
 !   set flags that turn diagnostic output on/off
 !
 !   for a specific output to be "on", both the 
-!	idiagaa_ecpp(--) and ldiagaa_ecpp(--) be positive
+! idiagaa_ecpp(--) and ldiagaa_ecpp(--) be positive
 !   the ldiagaa_ecpp(--) is the output unit number
 !
 !    60 -  from subr parampollu_driver2
-!	short messages on entry and exit
+! short messages on entry and exit
 !    61 -  from subr parampollu_driver2
-!	"rcetestpp diagnostics" block
+! "rcetestpp diagnostics" block
 !    62 - from subr parampollu_td240clm
-!	short messages on entry and exit, and showing sub-time-step
+! short messages on entry and exit, and showing sub-time-step
 !    63 - from subr parampollu_check_adjust_inputs 
-!	shows some summary statistics about the check/adjust process
+! shows some summary statistics about the check/adjust process
 !   115, 116, 117 - from subr parampollu_1clm_dumpaa
-!	shows various statistics on transport class and subarea
-!	fractional areas and mass fluxes
-!	116 is before    call to parampollu_check_adjust_inputs
-!	117 is after 1st call to parampollu_check_adjust_inputs
-!	115 is after 2nd call to parampollu_check_adjust_inputs
+! shows various statistics on transport class and subarea
+! fractional areas and mass fluxes
+! 116 is before    call to parampollu_check_adjust_inputs
+! 117 is after 1st call to parampollu_check_adjust_inputs
+! 115 is after 2nd call to parampollu_check_adjust_inputs
 !   118 - from subr parampollu_tdx_main_integ and parampollu_tdx_area_change
-!	diagnostics involving changes to species 9 in those subrs
+! diagnostics involving changes to species 9 in those subrs
 !   119 - from subr parampollu_tdx_cleanup
-!	diagnostics involving changes to species 9 in that subr
+! diagnostics involving changes to species 9 in that subr
 !   121 - from subr parampollu_tdx_cleanup
-!	diagnostics involving mass conservation
+! diagnostics involving mass conservation
 !   122 - from subr parampollu_tdx_entdet_sub1 and parampollu_tdx_entdet_diag01
-!	diagnostics involving entrainment/detrainment and area changes
+! diagnostics involving entrainment/detrainment and area changes
 !   123 - from subr parampollu_tdx_entdet_sub1
-!	diagnostics involving entrainment/detrainment and area changes
+! diagnostics involving entrainment/detrainment and area changes
 !   124 - from subr parampollu_tdx_main_integ
-!	diagnostics involving sub-time-step for "main integration", 
-!	related to stability and courant number
+! diagnostics involving sub-time-step for "main integration", 
+! related to stability and courant number
 !   125 - from subr parampollu_tdx_activate_intface
-!	diagnostics involving aerosol activation and associated vertical velocities
+! diagnostics involving aerosol activation and associated vertical velocities
 !   131-135 -  from subr parampollu_driver2
-!	shows various statistics on transport class and subarea
-!	fractional areas and mass fluxes
+! shows various statistics on transport class and subarea
+! fractional areas and mass fluxes
 !   141-143 -  from subr parampollu_tdx_wetscav_2
 !       diagnostics for the "new" wetscav code designed for the mmf-with-ecpp
 !   155 - from subr parampollu_check_adjust_inputs 
-!	shows "history" of acen_tavg_use thru the check/adjust process
+! shows "history" of acen_tavg_use thru the check/adjust process
 !   161, 162, 164  - from subr parampollu_tdx_startup & parampollu_tdx_partition_acw
-!	involves partitioning of cloudborne/interstitial aerosol between clear
-!	and cloudy subareas
+! involves partitioning of cloudborne/interstitial aerosol between clear
+! and cloudy subareas
 
 !
-	idiagaa_ecpp(:) = 0
+  idiagaa_ecpp(:) = 0
 !        idiagaa_ecpp(60:63) = 1
         idiagaa_ecpp(60:63) = -1 
-	idiagaa_ecpp(115:119) = 1 ; idiagaa_ecpp(118) = 111
-	idiagaa_ecpp(121:125) = 1
+  idiagaa_ecpp(115:119) = 1 ; idiagaa_ecpp(118) = 111
+  idiagaa_ecpp(121:125) = 1
         idiagaa_ecpp(131:135) = 1
         idiagaa_ecpp(141:143) = 1
 !==Guangxing Lin
-	!idiagaa_ecpp(155) = 1
-	idiagaa_ecpp(155) = -1
+  !idiagaa_ecpp(155) = 1
+  idiagaa_ecpp(155) = -1
 !==Guangxing Lin
-	idiagaa_ecpp(161) = 1 ; idiagaa_ecpp(162) = 1 ; idiagaa_ecpp(164) = 1
+  idiagaa_ecpp(161) = 1 ; idiagaa_ecpp(162) = 1 ; idiagaa_ecpp(164) = 1
 
         idiagaa_ecpp(131:135) = -1  ! not output in the MMF model
         idiagaa_ecpp(115:117) = -1  ! not dump the original field in parampollu_td240clm
@@ -688,28 +689,28 @@ end type ptr2d_t
 
         idiagaa_ecpp(121) = -1
 
-	do i = 1, 199
-	    ldiagaa_ecpp(i) = i
-	end do
-	ldiagaa_ecpp(60:69) = 6
+  do i = 1, 199
+      ldiagaa_ecpp(i) = i
+  end do
+  ldiagaa_ecpp(60:69) = 6
         ldiagaa_ecpp(62) = 62
 
 !-----------------------------------------------------------------------
 
-	lun60 = -1
-	if (idiagaa_ecpp(60) > 0) lun60 = ldiagaa_ecpp(60)
-	lun61 = -1
-	if (idiagaa_ecpp(61) > 0) lun61 = ldiagaa_ecpp(61)
-	lun131 = -1
-	if (idiagaa_ecpp(131) > 0) lun131 = ldiagaa_ecpp(131)
-	lun132 = -1
-	if (idiagaa_ecpp(132) > 0) lun132 = ldiagaa_ecpp(132)
-	lun133 = -1
-	if (idiagaa_ecpp(133) > 0) lun133 = ldiagaa_ecpp(133)
-	lun134 = -1
-	if (idiagaa_ecpp(134) > 0) lun134 = ldiagaa_ecpp(134)
-	lun135 = -1
-	if (idiagaa_ecpp(135) > 0) lun135 = ldiagaa_ecpp(135)
+  lun60 = -1
+  if (idiagaa_ecpp(60) > 0) lun60 = ldiagaa_ecpp(60)
+  lun61 = -1
+  if (idiagaa_ecpp(61) > 0) lun61 = ldiagaa_ecpp(61)
+  lun131 = -1
+  if (idiagaa_ecpp(131) > 0) lun131 = ldiagaa_ecpp(131)
+  lun132 = -1
+  if (idiagaa_ecpp(132) > 0) lun132 = ldiagaa_ecpp(132)
+  lun133 = -1
+  if (idiagaa_ecpp(133) > 0) lun133 = ldiagaa_ecpp(133)
+  lun134 = -1
+  if (idiagaa_ecpp(134) > 0) lun134 = ldiagaa_ecpp(134)
+  lun135 = -1
+  if (idiagaa_ecpp(135) > 0) lun135 = ldiagaa_ecpp(135)
 
         
         ncol = state%ncol
@@ -724,8 +725,8 @@ end type ptr2d_t
         ptend%q(:,:,:) = 0.0_r8
 !==Guangxing Lin
 
-	dtstep = dtstep_in
-	dtstep_pp = dtstep_pp_in
+  dtstep = dtstep_in
+  dtstep_pp = dtstep_pp_in
 
 !rcetestpp diagnostics --------------------------------------------------
     if (lun61 > 0) then
@@ -765,51 +766,51 @@ end type ptr2d_t
 !   *** this code should probably go into parampollu_init0 (or somewhere else)
         nstep = get_nstep()
         nstep_pp = nstep
-	if (is_first_step()) then
-	    acldy_cen_tbeg_3d(:,:) = 0.0
+  if (is_first_step()) then
+      acldy_cen_tbeg_3d(:,:) = 0.0
 
-	    do k = 1, pver
-	    do i = 1, ncol 
-		tmpa = 0.0 ; tmpb = 0.0
-		do ipp = 1, nprcp_in
-		do jcls = 1, ncls_ecpp
-		    tmpa = tmpa + max( 0.0_r8, acen_3d(i,k,1,jcls,ipp) )
-		    tmpb = tmpb + max( 0.0_r8, acen_3d(i,k,2,jcls,ipp) )
-		end do
-		end do
+      do k = 1, pver
+      do i = 1, ncol 
+        tmpa = 0.0 ; tmpb = 0.0
+        do ipp = 1, nprcp_in
+        do jcls = 1, ncls_ecpp
+            tmpa = tmpa + max( 0.0_r8, acen_3d(i,k,1,jcls,ipp) )
+            tmpb = tmpb + max( 0.0_r8, acen_3d(i,k,2,jcls,ipp) )
+        end do
+        end do
 
-		if (abs(tmpa+tmpb-1.0_r8) > 1.0e-3_r8) then
-		    write(msg,'(a,3i5,1pe15.7)') &
-			'*** parampollu_driver -- bad acen_tbeg - i,j,k,acen', &
-			i, j, k, (tmpa+tmpb)
-		    call endrun(msg)
-		end if
-		tmpa = tmpa/(tmpa+tmpb)
+        if (abs(tmpa+tmpb-1.0_r8) > 1.0e-3_r8) then
+            write(msg,'(a,3i5,1pe15.7)') &
+          '*** parampollu_driver -- bad acen_tbeg - i,j,k,acen', &
+          i, j, k, (tmpa+tmpb)
+            call endrun(msg)
+        end if
+        tmpa = tmpa/(tmpa+tmpb)
 
-		tmpa = 1.0_r8   ! force to initially clear -- might want to change this
+        tmpa = 1.0_r8   ! force to initially clear -- might want to change this
 
 !   when iflag_ecpp_test_fixed_fcloud = 2/3/4/5, force acen_tbeg 100%/0%/70%/30% clear 
-		if ((iflag_ecpp_test_fixed_fcloud >= 2) .and. &
-		    (iflag_ecpp_test_fixed_fcloud <= 5)) then
-		    if      (iflag_ecpp_test_fixed_fcloud == 2) then
-			tmpa = 1.0_r8
-		    else if (iflag_ecpp_test_fixed_fcloud == 3) then
-			tmpa = 0.0_r8
-		    else if (iflag_ecpp_test_fixed_fcloud == 4) then
-			tmpa = 0.7_r8
-		    else
-			tmpa = 0.3_r8
-		    end if
-		end if
+        if ((iflag_ecpp_test_fixed_fcloud >= 2) .and. &
+            (iflag_ecpp_test_fixed_fcloud <= 5)) then
+            if      (iflag_ecpp_test_fixed_fcloud == 2) then
+          tmpa = 1.0_r8
+            else if (iflag_ecpp_test_fixed_fcloud == 3) then
+          tmpa = 0.0_r8
+            else if (iflag_ecpp_test_fixed_fcloud == 4) then
+          tmpa = 0.7_r8
+            else
+          tmpa = 0.3_r8
+            end if
+        end if
 
-		acldy_cen_tbeg_3d(i,k) = 1.0_r8 - tmpa
-	    end do
-	    end do
-	end if
+        acldy_cen_tbeg_3d(i,k) = 1.0_r8 - tmpa
+      end do
+      end do
+  end if
 
 
 !   set some variables to their wrf-chem "standard" values
-	levdbg_err = 0
+  levdbg_err = 0
         levdbg_info = 15
 
 #ifdef MODAL_AERO
@@ -828,7 +829,7 @@ end type ptr2d_t
 #endif
 
 !   loop over columns
-	do 2910 i = 1, ncol
+  do 2910 i = 1, ncol
 !
 !   load column arrays
 !
@@ -845,15 +846,15 @@ end type ptr2d_t
          end do
 
          do k = 1, pver+1
-	    ka = max( 1, min(pver-1, k-1 ) )
-	    kb = ka + 1
-	    za = 0.5*(zbnd(ka) + zbnd(ka+1))
-	    zb = 0.5*(zbnd(kb) + zbnd(kb+1))
-	    rhobnd_bar(k) = rhocen_bar(ka)    &
-		+ (rhocen_bar(kb)-rhocen_bar(ka))*(zbnd(k)-za)/(zb-za)
+            ka = max( 1, min(pver-1, k-1 ) )
+            kb = ka + 1
+            za = 0.5*(zbnd(ka) + zbnd(ka+1))
+            zb = 0.5*(zbnd(kb) + zbnd(kb+1))
+            rhobnd_bar(k) = rhocen_bar(ka)    &
+          + (rhocen_bar(kb)-rhocen_bar(ka))*(zbnd(k)-za)/(zb-za)
          end do
 
-	chem_bar(:,:) = 0.0
+  chem_bar(:,:) = 0.0
 ! Load chem
         do k=pver, 1, -1
           do ichem = 1, num_chem_ecpp
@@ -877,63 +878,69 @@ end type ptr2d_t
 !
 
 ! load other/quiescent
-	jcls = 1
+  jcls = 1
 
         kupdraftbase = 1
         kupdrafttop  = pver
         kdndraftbase = 1
         kdndrafttop  = pver
  
-	kdraft_bot_ecpp(   1:2,jcls) = 1
-	kdraft_top_ecpp(   1:2,jcls) = pver 
-	mtype_updnenv_ecpp(1:2,jcls) = mtype_quiescn_ecpp
+  kdraft_bot_ecpp(   1:2,jcls) = 1
+  kdraft_top_ecpp(   1:2,jcls) = pver 
+  mtype_updnenv_ecpp(1:2,jcls) = mtype_quiescn_ecpp
 
 ! load updrafts
-	do n = 1, nupdraft
-	    jcls = jcls + 1
+  do n = 1, nupdraft
+      jcls = jcls + 1
 
-	    kdraft_bot_ecpp(   1:2,jcls) = max( kupdraftbase(n), 1 )
-	    kdraft_top_ecpp(   1:2,jcls) = min( kupdrafttop(n), pver )
-	    mtype_updnenv_ecpp(1:2,jcls) = mtype_updraft_ecpp
-	end do
+      kdraft_bot_ecpp(   1:2,jcls) = max( kupdraftbase(n), 1 )
+      kdraft_top_ecpp(   1:2,jcls) = min( kupdrafttop(n), pver )
+      mtype_updnenv_ecpp(1:2,jcls) = mtype_updraft_ecpp
+  end do
 
 ! load downdrafts
-	do n = 1, ndndraft
-	    jcls = jcls + 1
+  do n = 1, ndndraft
+      jcls = jcls + 1
 
-	    kdraft_bot_ecpp(   1:2,jcls) = max( kdndraftbase(n), 1 )
-	    kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
-	    mtype_updnenv_ecpp(1:2,jcls) = mtype_dndraft_ecpp
-	end do
+      kdraft_bot_ecpp(   1:2,jcls) = max( kdndraftbase(n), 1 )
+      kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
+      mtype_updnenv_ecpp(1:2,jcls) = mtype_dndraft_ecpp
+  end do
 
 ! load mfbnd and "area" arrays for all classes 
-	mfbnd(    :,:,:) = 0.0
-	abnd_tavg(:,:,:) = 0.0
-	abnd_tfin(:,:,:) = 0.0
-	acen_tavg(:,:,:) = 0.0
-	acen_tfin(:,:,:) = 0.0
+  mfbnd(    :,:,:) = 0.0
+  abnd_tavg(:,:,:) = 0.0
+  abnd_tfin(:,:,:) = 0.0
+  acen_tavg(:,:,:) = 0.0
+  acen_tfin(:,:,:) = 0.0
 
-	do jcls = 1, ncls_ecpp
-	do icc = 1, 2
-	do k = 1, pver+1 
+  do jcls = 1, ncls_ecpp
+  do icc = 1, 2
+! whannah - this was meant to make sure mass flux and area are zero above the crm
+! but then I noticed how the vertical direction is switched by lk....
+! #ifdef ECPP_LEV_MOD
+!   do k = pver-crm_nz, pver+1  ! whannah
+! #else
+  do k = 1, pver+1 
+! #endif
             lk=pver+1-k+1
-	    mfbnd(    lk,icc,jcls) = massflxbnd_3d(i, k,icc,jcls,1) &
-	                          + massflxbnd_3d(i, k,icc,jcls,2)
-	    abnd_tavg(lk,icc,jcls) = abnd_3d(i, k,icc,jcls,1) &
-	                          + abnd_3d(i, k,icc,jcls,2)
-	    abnd_tfin(lk,icc,jcls) = abnd_tf_3d(i, k,icc,jcls,1) &
-	                          + abnd_tf_3d(i, k,icc,jcls,2)
-	end do ! k
-	end do ! icc
-	end do ! jcls
+      mfbnd(    lk,icc,jcls) = massflxbnd_3d(i, k,icc,jcls,1) &
+                            + massflxbnd_3d(i, k,icc,jcls,2)
+      abnd_tavg(lk,icc,jcls) = abnd_3d(i, k,icc,jcls,1) &
+                            + abnd_3d(i, k,icc,jcls,2)
+      abnd_tfin(lk,icc,jcls) = abnd_tf_3d(i, k,icc,jcls,1) &
+                            + abnd_tf_3d(i, k,icc,jcls,2)
+  end do ! k
+  end do ! icc
+  end do ! jcls
 
 ! load these arrays
-	acen_prec(  :,:,:  ) = 0.0
-	qcloud_sub2(:,:,:,:) = 0.0
-	qlsink_sub2(:,:,:,:) = 0.0
-	precr_sub2( :,:,:,:) = 0.0
-	precs_sub2( :,:,:,:) = 0.0
-	rh_sub2(    :,:,:,:) = 0.0
+  acen_prec(  :,:,:  ) = 0.0
+  qcloud_sub2(:,:,:,:) = 0.0
+  qlsink_sub2(:,:,:,:) = 0.0
+  precr_sub2( :,:,:,:) = 0.0
+  precs_sub2( :,:,:,:) = 0.0
+  rh_sub2(    :,:,:,:) = 0.0
         do k=1, pver
           lk=pver-k+1
           acen_tavg(  lk,1:2,1:ncls_ecpp    ) = acen_3d(i, k,1:2,1:ncls_ecpp,1)+ &
@@ -953,20 +960,20 @@ end type ptr2d_t
 
 ! force kdraft_top > kdraft_bot
 ! (note:  need to change the wrf3d post-processor so this is not needed)
-	do jcls = 1, ncls_ecpp
-	do jclrcld = 1, 2
-	    kdraft_top_ecpp(jclrcld,jcls) = max( kdraft_top_ecpp(jclrcld,jcls),   &
-	                                         kdraft_bot_ecpp(jclrcld,jcls)+1 )
-	    if (kdraft_top_ecpp(jclrcld,jcls) .gt. pver) then
-		kdraft_top_ecpp(jclrcld,jcls) = pver
-		kdraft_bot_ecpp(jclrcld,jcls) = pver-1
-	    end if
-	end do
-	end do
+  do jcls = 1, ncls_ecpp
+  do jclrcld = 1, 2
+      kdraft_top_ecpp(jclrcld,jcls) = max( kdraft_top_ecpp(jclrcld,jcls),   &
+                                           kdraft_bot_ecpp(jclrcld,jcls)+1 )
+      if (kdraft_top_ecpp(jclrcld,jcls) .gt. pver) then
+    kdraft_top_ecpp(jclrcld,jcls) = pver
+    kdraft_bot_ecpp(jclrcld,jcls) = pver-1
+      end if
+  end do
+  end do
 
 !   load acen_tbeg from 3d saved values
-	acen_tbeg(:,:,:) = 0.0
-	jcls = 1
+  acen_tbeg(:,:,:) = 0.0
+  jcls = 1
         do k=1, pver
           lk=pver-k+1
           acen_tbeg(lk,2,jcls) = acldy_cen_tbeg_3d(i,k)
@@ -974,161 +981,161 @@ end type ptr2d_t
         end do
 
 !   start of temporary diagnostics ------------------------------
-	do ipass = 1, 3
+  do ipass = 1, 3
 
-	do ll = 131, 133
-	lun = -1
-	if (ll == 131) lun = lun131
-	if (ll == 132) lun = lun132
-	if (ll == 133) lun = lun133
-	if (lun <= 0) cycle
+  do ll = 131, 133
+  lun = -1
+  if (ll == 131) lun = lun131
+  if (ll == 132) lun = lun132
+  if (ll == 133) lun = lun133
+  if (lun <= 0) cycle
 
-	write(lun,*)
-	if (ipass .eq. 1) then
-	    n = nupdraft
-	    write(lun,'(a,3i5)') 'updrafts, nup, ktau', n, nstep,  nstep_pp
-	else if (ipass .eq. 2) then
-	    n = ndndraft
-	    write(lun,'(a,3i5)') 'dndrafts, nup, ktau', n, nstep, nstep_pp
-	else
-	    n = ncls_ecpp
-	    write(lun,'(a,3i5)') 'quiescents, ncls_ecpp, ktau', n, nstep, nstep_pp 
-	end if
-	end do
+  write(lun,*)
+  if (ipass .eq. 1) then
+      n = nupdraft
+      write(lun,'(a,3i5)') 'updrafts, nup, ktau', n, nstep,  nstep_pp
+  else if (ipass .eq. 2) then
+      n = ndndraft
+      write(lun,'(a,3i5)') 'dndrafts, nup, ktau', n, nstep, nstep_pp
+  else
+      n = ncls_ecpp
+      write(lun,'(a,3i5)') 'quiescents, ncls_ecpp, ktau', n, nstep, nstep_pp 
+  end if
+  end do
 
- 	do ka = (2*((pver+1)/2)-1), 1, -2
-	    tmpa = 0.0
-	    tmpb = 0.0
-	    tmpc = 0.0
-	    tmpd = 0.0
- 	    kb = ka+1
-!	    kb = ka
+  do ka = (2*((pver+1)/2)-1), 1, -2
+      tmpa = 0.0
+      tmpb = 0.0
+      tmpc = 0.0
+      tmpd = 0.0
+      kb = ka+1
+!     kb = ka
 
-	    if (ipass .eq. 1) then
-		jclsaa = 1 + 1
-		jclsbb = 1 + nupdraft
-	    else if (ipass .eq. 2) then
-		jclsaa = 1 + nupdraft + 1
-		jclsbb = 1 + nupdraft + ndndraft
-	    else
-		jclsaa = 1
-		jclsbb = 1
-	    end if
-	    do ipp = 1, 2
-	    do jcls = jclsaa, jclsbb
-		tmpa = tmpa + abnd_3d(i,ka,1,jcls,ipp) + abnd_3d(i,kb,1,jcls,ipp) 
-		tmpb = tmpb + abnd_3d(i,ka,2,jcls,ipp) + abnd_3d(i,kb,2,jcls,ipp) 
-		tmpc = tmpc + massflxbnd_3d(i,ka,1,jcls,ipp) + massflxbnd_3d(i,kb,1,jcls,ipp) 
-		tmpd = tmpd + massflxbnd_3d(i,ka,2,jcls,ipp) + massflxbnd_3d(i,kb,2,jcls,ipp) 
-	    end do
-	    end do
+      if (ipass .eq. 1) then
+    jclsaa = 1 + 1
+    jclsbb = 1 + nupdraft
+      else if (ipass .eq. 2) then
+    jclsaa = 1 + nupdraft + 1
+    jclsbb = 1 + nupdraft + ndndraft
+      else
+    jclsaa = 1
+    jclsbb = 1
+      end if
+      do ipp = 1, 2
+      do jcls = jclsaa, jclsbb
+    tmpa = tmpa + abnd_3d(i,ka,1,jcls,ipp) + abnd_3d(i,kb,1,jcls,ipp) 
+    tmpb = tmpb + abnd_3d(i,ka,2,jcls,ipp) + abnd_3d(i,kb,2,jcls,ipp) 
+    tmpc = tmpc + massflxbnd_3d(i,ka,1,jcls,ipp) + massflxbnd_3d(i,kb,1,jcls,ipp) 
+    tmpd = tmpd + massflxbnd_3d(i,ka,2,jcls,ipp) + massflxbnd_3d(i,kb,2,jcls,ipp) 
+      end do
+      end do
 
-	    tmpa = tmpa*0.5 ; tmpb = tmpb*0.5 ;
-	    tmpc = tmpc*0.5 ; tmpd = tmpd*0.5
-	    if (lun131 > 0) &
-		write(lun131,'(i3,2(3x,1p,3e10.2))') ka,   &
-		tmpa, tmpb, (tmpa+tmpb), tmpc, tmpd, (tmpc+tmpd)
+      tmpa = tmpa*0.5 ; tmpb = tmpb*0.5 ;
+      tmpc = tmpc*0.5 ; tmpd = tmpd*0.5
+      if (lun131 > 0) &
+    write(lun131,'(i3,2(3x,1p,3e10.2))') ka,   &
+    tmpa, tmpb, (tmpa+tmpb), tmpc, tmpd, (tmpc+tmpd)
 
-	    tmpa = tmpa*100.0 ; tmpb = tmpb*100.0
-	    tmpc = tmpc*100.0 ; tmpd = tmpd*100.0
-	    if (lun132 > 0) &
-		write(lun132,'(i3,2(2x,    3f8.3))') ka,   &
-		tmpa, tmpb, (tmpa+tmpb), tmpc, tmpd, (tmpc+tmpd)
+      tmpa = tmpa*100.0 ; tmpb = tmpb*100.0
+      tmpc = tmpc*100.0 ; tmpd = tmpd*100.0
+      if (lun132 > 0) &
+    write(lun132,'(i3,2(2x,    3f8.3))') ka,   &
+    tmpa, tmpb, (tmpa+tmpb), tmpc, tmpd, (tmpc+tmpd)
 
-	    if (lun133 > 0) &
-		write(lun133,'(i3,2(2x,    3f7.2))') ka,   &
-		tmpa, tmpb, (tmpa+tmpb), tmpc, tmpd, (tmpc+tmpd)
-	end do ! ka
-	end do ! ipass
-
-
-	if (lun134 > 0) then
-	do n = 1, nupdraft
-	    write(lun134,'(/a,5i5)') 'updraft -- n, kbase, ktop, ktaus',   &
-		n, kupdraftbase(n), kupdrafttop(n), nstep, nstep_pp
-	    do k = pver+1, 1, -1
-		jcls = 1 + n
-		write(lun134,'(i3,2(2x,2f10.5))') k,   &
-		    sum(abnd_3d(i,k,1,jcls,1:2))*100.0, sum(abnd_3d(i,k,2,jcls,1:2))*100.0,   &
-		    sum(massflxbnd_3d(i,k,1,jcls,1:2))*100.0,   &
-		    sum(massflxbnd_3d(i,k,2,jcls,1:2))*100.0
-	    end do
-	end do
-
-	do n = 1, ndndraft
-	    write(lun134,'(/a,5i5)') 'dndraft -- n, kbase, ktop, ktaus',   &
-		n, kdndraftbase(n), kdndrafttop(n), nstep, nstep_pp
-	    do k = pver+1, 1, -1
-		jcls = 1 + nupdraft + n
-		write(lun134,'(i3,2(2x,2f10.5))') k,   &
-		    sum(abnd_3d(i,k,1,jcls,1:2))*100.0, sum(abnd_3d(i,k,2,jcls,1:2))*100.0,   &
-		    sum(massflxbnd_3d(i,k,1,jcls,1:2))*100.0,   &
-		    sum(massflxbnd_3d(i,k,2,jcls,1:2))*100.0
-	    end do
-	end do
-	end if ! (lun134 > 0)
+      if (lun133 > 0) &
+    write(lun133,'(i3,2(2x,    3f7.2))') ka,   &
+    tmpa, tmpb, (tmpa+tmpb), tmpc, tmpd, (tmpc+tmpd)
+  end do ! ka
+  end do ! ipass
 
 
-	if (lun135 > 0) then
-	itmpcnt(:,:) = 0
-	do n = 1, nupdraft
-	    write(lun135,'(/a,5i5)') 'updraft -- n, kbase, ktop, ktaus',   &
-		n, kupdraftbase(n), kupdrafttop(n), nstep, nstep_pp
-	    do k = pver+1, 1, -1
-		jcls = 1 + n
-		tmpa = sum(abnd_3d(i,k,1,jcls,1:2))
-		tmpb = sum(abnd_3d(i,k,2,jcls,1:2))
-		tmpc = sum(massflxbnd_3d(i,k,1,jcls,1:2))
-		tmpd = sum(massflxbnd_3d(i,k,2,jcls,1:2))
-		write(lun135,'(i3,2(2x,1p,2e10.2))') k, tmpa, tmpb, tmpc, tmpd
-		if (tmpa .gt. 0.0) itmpcnt(k,1) = itmpcnt(k,1) + 1
-		if (tmpb .gt. 0.0) itmpcnt(k,2) = itmpcnt(k,2) + 1
-		if (tmpc .gt. 0.0) itmpcnt(k,3) = itmpcnt(k,3) + 1
-		if (tmpd .gt. 0.0) itmpcnt(k,4) = itmpcnt(k,4) + 1
-	    end do
-	end do
-	write(lun135,'(/a,5i5)') 'updraft non-zero counts -- ktaus',   &
-		nstep, nstep_pp
-	do k = pver+1, 1, -1
-	    write(lun135,'(i3,2(5x,2i5))') k, itmpcnt(k,1:4)
-	end do
+  if (lun134 > 0) then
+  do n = 1, nupdraft
+      write(lun134,'(/a,5i5)') 'updraft -- n, kbase, ktop, ktaus',   &
+    n, kupdraftbase(n), kupdrafttop(n), nstep, nstep_pp
+      do k = pver+1, 1, -1
+    jcls = 1 + n
+    write(lun134,'(i3,2(2x,2f10.5))') k,   &
+        sum(abnd_3d(i,k,1,jcls,1:2))*100.0, sum(abnd_3d(i,k,2,jcls,1:2))*100.0,   &
+        sum(massflxbnd_3d(i,k,1,jcls,1:2))*100.0,   &
+        sum(massflxbnd_3d(i,k,2,jcls,1:2))*100.0
+      end do
+  end do
 
-	itmpcnt(:,:) = 0
-	do n = 1, ndndraft
-	    write(lun135,'(/a,5i5)') 'dndraft -- n, kbase, ktop, ktaus',   &
-		n, kdndraftbase(n), kdndrafttop(n), nstep, nstep_pp
-	    do k = pver+1, 1, -1
-		jcls = 1 + nupdraft + n
-		tmpa = sum(abnd_3d(i,k,1,jcls,1:2))
-		tmpb = sum(abnd_3d(i,k,2,jcls,1:2))
-		tmpc = sum(massflxbnd_3d(i,k,1,jcls,1:2))
-		tmpd = sum(massflxbnd_3d(i,k,2,jcls,1:2))
-		write(lun135,'(i3,2(2x,1p,2e10.2))') k, tmpa, tmpb, tmpc, tmpd
-		if (tmpa .gt. 0.0) itmpcnt(k,1) = itmpcnt(k,1) + 1
-		if (tmpb .gt. 0.0) itmpcnt(k,2) = itmpcnt(k,2) + 1
-		if (tmpc .lt. 0.0) itmpcnt(k,3) = itmpcnt(k,3) + 1
-		if (tmpd .lt. 0.0) itmpcnt(k,4) = itmpcnt(k,4) + 1
-	    end do
-	end do
-	write(lun135,'(/a,5i5)') 'dndraft non-zero counts -- ktaus',   &
-		nstep, nstep_pp
-	do k = pver+1, 1, -1
-	    write(lun135,'(i3,2(5x,2i5))') k, itmpcnt(k,1:4)
-	end do
-	end if ! (lun135 > 0)
+  do n = 1, ndndraft
+      write(lun134,'(/a,5i5)') 'dndraft -- n, kbase, ktop, ktaus',   &
+    n, kdndraftbase(n), kdndrafttop(n), nstep, nstep_pp
+      do k = pver+1, 1, -1
+    jcls = 1 + nupdraft + n
+    write(lun134,'(i3,2(2x,2f10.5))') k,   &
+        sum(abnd_3d(i,k,1,jcls,1:2))*100.0, sum(abnd_3d(i,k,2,jcls,1:2))*100.0,   &
+        sum(massflxbnd_3d(i,k,1,jcls,1:2))*100.0,   &
+        sum(massflxbnd_3d(i,k,2,jcls,1:2))*100.0
+      end do
+  end do
+  end if ! (lun134 > 0)
+
+
+  if (lun135 > 0) then
+  itmpcnt(:,:) = 0
+  do n = 1, nupdraft
+      write(lun135,'(/a,5i5)') 'updraft -- n, kbase, ktop, ktaus',   &
+    n, kupdraftbase(n), kupdrafttop(n), nstep, nstep_pp
+      do k = pver+1, 1, -1
+    jcls = 1 + n
+    tmpa = sum(abnd_3d(i,k,1,jcls,1:2))
+    tmpb = sum(abnd_3d(i,k,2,jcls,1:2))
+    tmpc = sum(massflxbnd_3d(i,k,1,jcls,1:2))
+    tmpd = sum(massflxbnd_3d(i,k,2,jcls,1:2))
+    write(lun135,'(i3,2(2x,1p,2e10.2))') k, tmpa, tmpb, tmpc, tmpd
+    if (tmpa .gt. 0.0) itmpcnt(k,1) = itmpcnt(k,1) + 1
+    if (tmpb .gt. 0.0) itmpcnt(k,2) = itmpcnt(k,2) + 1
+    if (tmpc .gt. 0.0) itmpcnt(k,3) = itmpcnt(k,3) + 1
+    if (tmpd .gt. 0.0) itmpcnt(k,4) = itmpcnt(k,4) + 1
+      end do
+  end do
+  write(lun135,'(/a,5i5)') 'updraft non-zero counts -- ktaus',   &
+    nstep, nstep_pp
+  do k = pver+1, 1, -1
+      write(lun135,'(i3,2(5x,2i5))') k, itmpcnt(k,1:4)
+  end do
+
+  itmpcnt(:,:) = 0
+  do n = 1, ndndraft
+      write(lun135,'(/a,5i5)') 'dndraft -- n, kbase, ktop, ktaus',   &
+    n, kdndraftbase(n), kdndrafttop(n), nstep, nstep_pp
+      do k = pver+1, 1, -1
+    jcls = 1 + nupdraft + n
+    tmpa = sum(abnd_3d(i,k,1,jcls,1:2))
+    tmpb = sum(abnd_3d(i,k,2,jcls,1:2))
+    tmpc = sum(massflxbnd_3d(i,k,1,jcls,1:2))
+    tmpd = sum(massflxbnd_3d(i,k,2,jcls,1:2))
+    write(lun135,'(i3,2(2x,1p,2e10.2))') k, tmpa, tmpb, tmpc, tmpd
+    if (tmpa .gt. 0.0) itmpcnt(k,1) = itmpcnt(k,1) + 1
+    if (tmpb .gt. 0.0) itmpcnt(k,2) = itmpcnt(k,2) + 1
+    if (tmpc .lt. 0.0) itmpcnt(k,3) = itmpcnt(k,3) + 1
+    if (tmpd .lt. 0.0) itmpcnt(k,4) = itmpcnt(k,4) + 1
+      end do
+  end do
+  write(lun135,'(/a,5i5)') 'dndraft non-zero counts -- ktaus',   &
+    nstep, nstep_pp
+  do k = pver+1, 1, -1
+      write(lun135,'(i3,2(5x,2i5))') k, itmpcnt(k,1:4)
+  end do
+  end if ! (lun135 > 0)
 !   end   of temporary diagnostics ------------------------------
 
 !
 !   do parameterized pollutant calculations on current column
 !
-	itmpa = parampollu_opt
+  itmpa = parampollu_opt
 
-	if ((itmpa == 2220) .or.   &
-	    (itmpa == 2223)) then
-	    if (lun60 > 0) write(lun60,93010) &
-		 'calling parampollu_td240clm - i=', i
+  if ((itmpa == 2220) .or.   &
+      (itmpa == 2223)) then
+      if (lun60 > 0) write(lun60,93010) &
+     'calling parampollu_td240clm - i=', i
 !              write (0, *) i, lchnk, 'before parampollu_td240clm', nstep
-	      call parampollu_td240clm(                           &
+        call parampollu_td240clm(                           &
                    nstep, dtstep, nstep_pp, dtstep_pp,             &
                    idiagaa_ecpp, ldiagaa_ecpp,                       &
                    tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
@@ -1146,26 +1153,33 @@ end type ptr2d_t
                    del_activate, del_conv,                           &
                    del_chem_col_cldchem(i,:), del_chem_col_rename(i, :), del_chem_col_wetscav(i, :),       &
                    aqso4_h2o2(i), aqso4_o3(i), xphlwc,                     &
-                   i,      lchnk,      1,pver+1,pver, pbuf           &
+#ifdef ECPP_LEV_MOD
+                   ! whannah - reduce top level of ECPP calculation to match CRM levels
+                   ! i,      lchnk,  (pver-crm_nz) ,pver+1,pver, pbuf           &  
+                   ! i,      lchnk,      1,pver-crm_nz+1,pver-crm_nz, pbuf           & 
+                   i,      lchnk,      1,pver-crm_nz-1+1,pver-crm_nz-1, pbuf           & 
+#else
+                   i,      lchnk,      1,pver+1,pver, pbuf           & 
+#endif
                                     )
 !              write (0, *) i, lchnk, 'after parampollu_td240clm', nstep
 
                aqso4_h2o2(i) = aqso4_h2o2(i)/dtstep
                aqso4_o3(i) = aqso4_o3(i)/dtstep 
 
-	else 
-	end if
+  else 
+  end if
 
 
 !
 !   put selected arrays back into 3d arrays
 !
-	if (itmpa > 0) then
+  if (itmpa > 0) then
 
-	    do k = 1, pver 
+      do k = 1, pver 
                 lk=pver-k+1
-		acldy_cen_tbeg_3d(i,k) = sum( acen_tfin(lk,2,1:ncls_ecpp) )
-	    end do
+    acldy_cen_tbeg_3d(i,k) = sum( acen_tfin(lk,2,1:ncls_ecpp) )
+      end do
 
 ! Interstial species 
             ptend_qqcw(i,:,:) = 0.0
@@ -1192,9 +1206,9 @@ end type ptr2d_t
             end do
 ! cloud borne species  
 
-	end if
+  end if
 
-2910	continue
+2910  continue
 
 
         ptend_cldchem = 0.0
@@ -1397,8 +1411,8 @@ end type ptr2d_t
 ! qqcw is updated above, and q is upated in tphysbc
 !
 
-	return
-	end subroutine parampollu_driver2
+  return
+  end subroutine parampollu_driver2
 !-------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------

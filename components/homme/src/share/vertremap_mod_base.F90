@@ -28,8 +28,6 @@ module vertremap_mod_base
   !
   !**************************************************************************************
 
-  use cam_logfile, only            : iulog          ! whannah
-  use shr_sys_mod, only            : shr_sys_flush  ! whannah
   use kinds, only                  : real_kind,int_kind
   use dimensions_mod, only         : np,nlev,qsize,nlevp,npsq
   use hybvcoord_mod, only          : hvcoord_t
@@ -37,6 +35,7 @@ module vertremap_mod_base
   use perf_mod, only               : t_startf, t_stopf  ! _EXTERNAL
   use parallel_mod, only           : abortmp, parallel_t
   use control_mod, only : vert_remap_q_alg
+  
 
   public vertical_remap
 
@@ -65,7 +64,6 @@ module vertremap_mod_base
   use hybvcoord_mod,  only: hvcoord_t
   use control_mod,    only: rsplit
   use hybrid_mod,     only: hybrid_t
-
 
   type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
   type (element_t), intent(inout) :: elem(:)
@@ -114,21 +112,20 @@ module vertremap_mod_base
         endif
      enddo
      if (minval(dp_star)<0) then
+
         do k=1,nlev
         do i=1,np
         do j=1,np
            if (dp_star(i,j,k ) < 0) then
-              ! print *,'level = ',k
-              ! print *,"column location lat,lon (radians):",elem(ie)%spherep(i,j)%lat,elem(ie)%spherep(i,j)%lon
-              ! whannah 
-              ! print *,"Negative Layer Thickness - Location:"
-              ! print *,'  level   = ',k
-              ! print *,'  lat rad = ',elem(ie)%spherep(i,j)%lat
-              ! print *,'  lon rad = ',elem(ie)%spherep(i,j)%lon
-              ! print *,'  lat deg = ',(elem(ie)%spherep(i,j)%lat * 180./3.14159)
-              ! print *,'  lon deg = ',(elem(ie)%spherep(i,j)%lon * 180./3.14159)
-              ! write(iulog,9000) k, elem(ie)%spherep(i,j)%lat, elem(ie)%spherep(i,j)%lon
               write(iulog,9000) k, (elem(ie)%spherep(i,j)%lat * 180./3.14159), (elem(ie)%spherep(i,j)%lon * 180./3.14159)
+              write(iulog,*)  '    Ps  = ',elem(ie)%state%ps_v(i,j,np1)
+              write(iulog,*)  '    dp1 = ',dp(i,j,k)
+              write(iulog,*)  '    dp2 = ',dp_star(i,j,k )
+              
+              ! do kk=1,nlev
+              !   write(iulog,9001)  kk, (qrl(ie,kk)/istate%pdel(ie,k)), (qrs(ie,kk)/istate%pdel(ie,k))
+              ! enddo
+
            endif 
         enddo
         enddo
@@ -137,6 +134,7 @@ module vertremap_mod_base
      endif
 
 9000 format('Negative Layer Thickness   lev ',i5,'    lat =',f8.2,'    lon =',f8.2 )
+9001 format(i5,'    qrl / qrs : ',f12.6,f12.6 )
 
      if (rsplit>0) then
         !  REMAP u,v,T from levels in dp3d() to REF levels
@@ -656,8 +654,8 @@ subroutine remap_Q_ppm(Qdp,nx,qsize,dp1,dp2)
   real (kind=real_kind), intent(in) :: dp1(nx,nx,nlev),dp2(nx,nx,nlev)
   ! Local Variables
   integer, parameter :: gs = 2                              !Number of cells to place in the ghost region
-  real(kind=real_kind), dimension(       nlev+2 ) :: pio    !Pressure at interfaces for old grid
-  real(kind=real_kind), dimension(       nlev+1 ) :: pin    !Pressure at interfaces for new grid
+  real(kind=real_kind), dimension(       nlev+2 ) :: pi_old !Pressure at interfaces for old grid
+  real(kind=real_kind), dimension(       nlev+1 ) :: pi_new !Pressure at interfaces for new grid
   real(kind=real_kind), dimension(       nlev+1 ) :: masso  !Accumulate mass up to each interface
   real(kind=real_kind), dimension(  1-gs:nlev+gs) :: ao     !Tracer value on old grid
   real(kind=real_kind), dimension(  1-gs:nlev+gs) :: dpo    !change in pressure over a cell for old grid
@@ -672,20 +670,20 @@ subroutine remap_Q_ppm(Qdp,nx,qsize,dp1,dp2)
   do j = 1 , nx
     do i = 1 , nx
 
-      pin(1)=0
-      pio(1)=0
+      pi_new(1)=0
+      pi_old(1)=0
       do k=1,nlev
          dpn(k)=dp2(i,j,k)
          dpo(k)=dp1(i,j,k)
-         pin(k+1)=pin(k)+dpn(k)
-         pio(k+1)=pio(k)+dpo(k)
+         pi_new(k+1)=pi_new(k)+dpn(k)
+         pi_old(k+1)=pi_old(k)+dpo(k)
       enddo
 
 
 
-      pio(nlev+2) = pio(nlev+1) + 1.  !This is here to allow an entire block of k threads to run in the remapping phase.
+      pi_old(nlev+2) = pi_old(nlev+1) + 1.  !This is here to allow an entire block of k threads to run in the remapping phase.
                                       !It makes sure there's an old interface value below the domain that is larger.
-      pin(nlev+1) = pio(nlev+1)       !The total mass in a column does not change.
+      pi_new(nlev+1) = pi_old(nlev+1)       !The total mass in a column does not change.
                                       !Therefore, the pressure of that mass cannot either.
       !Fill in the ghost regions with mirrored values. if vert_remap_q_alg is defined, this is of no consequence.
       do k = 1 , gs
@@ -703,7 +701,7 @@ subroutine remap_Q_ppm(Qdp,nx,qsize,dp1,dp2)
       do k = 1 , nlev
         kk = k  !Keep from an order n^2 search operation by assuming the old cell index is close.
         !Find the index of the old grid cell in which this new cell's bottom interface resides.
-        do while ( pio(kk) <= pin(k+1) )
+        do while ( pi_old(kk) <= pi_new(k+1) )
           kk = kk + 1
         enddo
         kk = kk - 1                   !kk is now the cell index we're integrating over.
@@ -712,7 +710,7 @@ subroutine remap_Q_ppm(Qdp,nx,qsize,dp1,dp2)
         kid(k) = kk                   !Save for reuse
         z1(k) = -0.5D0                !This remapping assumes we're starting from the left interface of an old grid cell
                                       !In fact, we're usually integrating very little or almost all of the cell in question
-        z2(k) = ( pin(k+1) - ( pio(kk) + pio(kk+1) ) * 0.5 ) / dpo(kk)  !PPM interpolants are normalized to an independent
+        z2(k) = ( pi_new(k+1) - ( pi_old(kk) + pi_old(kk+1) ) * 0.5 ) / dpo(kk)  !PPM interpolants are normalized to an independent
                                                                         !coordinate domain [-0.5,0.5].
       enddo
 

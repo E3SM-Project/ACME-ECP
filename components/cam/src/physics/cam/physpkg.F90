@@ -1,5 +1,7 @@
-! #define GXL_DEBUG_OUTPUT  ! whannah - to turn on Guangling's debugging output
+! #define GXL_DEBUG_OUTPUT  ! to turn on Guangling's debugging output
+! #define WH_DEBUG_OUTPUT   ! turn on Walter's debugging output
 ! #define WH_SP_DEBUG
+
 
 module physpkg
   !-----------------------------------------------------------------------
@@ -954,6 +956,12 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call addfld ('ptend_BC_ac9    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac9')
     call addfld ('ptend_BC_ac11    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac11')
 #endif
+
+! #ifdef WH_DEBUG_OUTPUT  
+!     ! whannah -- debug output
+!     call addfld ('QRL_    ',(/ 'lev' /), 'A', 'K/s   ','debug output ...')
+! #endif
+
 end subroutine phys_init
 
   !
@@ -1475,6 +1483,7 @@ subroutine tphysac (ztodt,   cam_in,  &
 #ifdef GXL_DEBUG_OUTPUT  
    call outfld("conc_BC_ac1",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 #endif
+
     call t_startf('tphysac_init')
     ! Associate pointers with physics buffer fields
     itim_old = pbuf_old_tim_idx()
@@ -1853,6 +1862,8 @@ subroutine tphysbc (ztodt,               &
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use phys_control,    only: use_qqflx_fixer, use_mass_borrower
 
+    use crmdims,         only: crm_nz!, crm_nx, crm_ny, crm_dx, crm_dy, crm_dt
+
 !-- mdb spcam
     use crm_physics,     only: crm_physics_tend, crm_save_state_tend
 !-- mdb spcam
@@ -2017,6 +2028,8 @@ subroutine tphysbc (ztodt,               &
     logical :: l_st_mic
     logical :: l_rad
     !HuiWan (2014/15): added for a short-term time step convergence test ==
+
+    real(r8) rad_rrt(pcols,pver)  ! whannah - for debugging output
 
 !-- mdb spcam
     logical           :: use_SPCAM
@@ -2705,6 +2718,10 @@ call shr_sys_flush(iulog)
     call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class) !==Guangxing Lin added species_class
   endif
 
+! #ifdef WH_DEBUG_OUTPUT  
+!    call outfld(" ",state%q(:,:pver,19),pcols, lchnk) 
+! #endif
+
   if(use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
     ! As ECPP is not linked with the sam1mom yet, conventional convective transport
     ! and wet savenging are still needed for sam1mom to drive the BAM aerosol treatment
@@ -2805,7 +2822,30 @@ if (l_rad) then
 ! as it was added above as part of crm tendency.
     if (use_SPCAM) ptend%s = 0.
 !-- mdb spcam
-    
+
+! #ifdef WH_DEBUG_OUTPUT  
+    ! do k =1 , pver
+    !   do i = 1, ncol
+    !      rad_rrt(i,k) = ptend%s/state%pdel(i,k)
+    !   end do
+    ! end do
+!    call outfld("QR_TOT",rad_rrt(:,:pver),pcols, lchnk) 
+! #endif
+
+
+! #ifndef SP_RAD_MOD
+!     if (use_SPCAM) ptend%s = 0.
+! #else
+!     ! whannah - for ACME w/ 72 levels, retain the radiative tendencies above the CRM
+!     ! so only zero out DSE tendency for all but top 2 CRM levels
+!     ! possible fix for negative thickness errors?
+!     if (use_SPCAM) then 
+!       if (masterproc) write(iulog,*) '---- SP_RAD_MOD enabled ----'
+!       ! ptend%s(:ncol, :pver-crm_nz+2) = qrs(:ncol,:pver-crm_nz+2)+qrl(:ncol,:pver-crm_nz+2)
+!       ptend%s(:ncol,pver-crm_nz+3:pver) = 0.
+!     end if
+! #endif
+
     call physics_update(state, ptend, ztodt, tend)
     
 !-- mdb spcam

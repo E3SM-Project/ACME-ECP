@@ -1274,7 +1274,9 @@ end subroutine crm_physics_init
 
        call get_lat_all_p(lchnk, ncol, nlat)
        call get_lon_all_p(lchnk, ncol, nlon)
-
+!----------------------------------------------------------------------
+! Start ncol loop for CRM
+!----------------------------------------------------------------------
        do i = 1,ncol
           tau00 = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
           wnd = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
@@ -1445,7 +1447,6 @@ end subroutine crm_physics_init
              fluxu0,                  fluxv0,                   fluxt0,                fluxq0,                                             & 
              taux_crm(i),             tauy_crm(i),              z0m(i),                timing_factor(i),        qtotcrm(i, :) ) !Guangxing Lin new crm
 !             tvwle(i,:),buoy(i,:),buoysd(i,:),msef(i,:),qvw(i,:) )   ! MDB 8/2013  
-
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1470,8 +1471,11 @@ end subroutine crm_physics_init
           endif
 #endif
        end do ! i (loop over ncol)
-
+!----------------------------------------------------------------------
+! End ncol loop for CRM
+!----------------------------------------------------------------------
        call t_stopf('crm_call')
+
 
        ! There is no separate convective and stratiform precip for CRM:
        precc(:ncol) = precc(:ncol) + precl(:ncol)
@@ -1602,6 +1606,10 @@ end subroutine crm_physics_init
 
 #endif
 
+!----------------------------------------------------------------------
+! Add radiative heating tendency above CRM
+!----------------------------------------------------------------------
+
        ifld = pbuf_get_index('QRL')
        call pbuf_get_field(pbuf, ifld, qrl)
        ifld = pbuf_get_index('QRS')
@@ -1613,13 +1621,13 @@ end subroutine crm_physics_init
           end do
        end do
 
-! The radition tendencies in the top 4 GCM levels are set to be zero in the CRM
+! The radiation tendencies in the top 4 GCM levels are set to be zero in the CRM
 ! So add radiation tendencies to levels above CRM domain and 2 top CRM levels here
+#ifndef SPRADBYPASS
+      ! whannah - by defining SPRADBYPASS we bypass this part 
        ptend%s(:ncol, :pver-crm_nz+2) = qrs(:ncol,:pver-crm_nz+2)+qrl(:ncol,:pver-crm_nz+2)
-   
-!----------------------------------------------------------------------
-! calculate the radiative fluxes from the radiation calculation
-!----------------------------------------------------------------------
+#endif
+
 ! This will be used to check energy conservation
 !+++mhwang, 2012-02-07 (Minghuai.Wang@pnnl.gov)
        radflux(:) = 0.0_r8
@@ -2006,7 +2014,7 @@ end subroutine crm_physics_init
       !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 
     !----------------------------------------------------
-    ! Modal aerosol radius and water uptake calculation
+    ! Modal aerosol wet radius for radiative calculation
     !----------------------------------------------------
 ! whannah - added ifdef check for MODAL_AERO so 1-moment would compile
 #if defined(MODAL_AERO)  
@@ -2059,7 +2067,7 @@ end subroutine crm_physics_init
           necpp = dtstep_pp/ztodt
           if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
 
-            ! calculate aerosol tendency from dropelt activation and mixing
+            ! calculate aerosol tendency from droplet activation and mixing
             call t_startf('crmclouds_mixnuc')
             call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
                         wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class

@@ -502,11 +502,13 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    use camsrfexch,  only: cam_out_t     
    use dyn_comp,    only: dyn_run
    use time_mod,    only: tstep
+
    real(r8), intent(in) :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
+
    integer :: rc
 
    call t_barrierf('sync_dyn_run', mpicom)

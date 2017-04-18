@@ -758,7 +758,7 @@
            ! Add the explicit surface fluxes to the lowest layer
 
 #ifndef SPFLUXBYPASS 
-           q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol) ! whannah     
+           q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol) 
 ! #else
            ! if ( m .ne. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol) ! whannah     
            

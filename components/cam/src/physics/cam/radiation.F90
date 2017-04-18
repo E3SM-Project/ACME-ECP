@@ -426,6 +426,8 @@ end function radiation_nextsw_cday
     call addfld ('ICE_ICLD_VISTAU',(/ 'lev' /),    'A','1','Ice in-cloud visible sw optical depth', &
          sampling_seq='rad_lwsw',flag_xyfill=.true.)
 
+    ! call addfld ('aer_tau',(/ 'lev' /), 'A','?','Aerosol Optical Depth', sampling_seq='rad_lwsw') ! whannah
+
     ! Longwave radiation
     call addfld ('QRL',(/ 'lev' /), 'A','K/s','Longwave heating rate', sampling_seq='rad_lwsw')
     call addfld ('QRLC',(/ 'lev' /), 'A','K/s','Clearsky longwave heating rate', sampling_seq='rad_lwsw')
@@ -865,9 +867,12 @@ end function radiation_nextsw_cday
        qrs_crm=0.
        qrl_crm=0.
        tot_cld_vistau=0
-       tot_icld_vistau=0.  ; nct_tot_icld_vistau=0.
-       liq_icld_vistau_m=0.  ; nct_liq_icld_vistau=0.
-       ice_icld_vistau_m=0.  ; nct_ice_icld_vistau=0.
+       tot_icld_vistau=0.  
+       liq_icld_vistau_m=0.  
+       ice_icld_vistau_m=0.  
+       nct_tot_icld_vistau=0.
+       nct_liq_icld_vistau=0.
+       nct_ice_icld_vistau=0.
 
        crm_t_rad_idx   = pbuf_get_index('CRM_T_RAD')
        crm_qc_rad_idx  = pbuf_get_index('CRM_QC_RAD')
@@ -990,6 +995,9 @@ end function radiation_nextsw_cday
           factor_xy = 1./dble(crm_nx*crm_ny)
 
           cldn = cld  ! save to restore later
+
+          cld(1:ncol,1:pver) = 0.  ! whannah - reset cld fraction - including points above CRM
+
        end if
        
        do jj=1,crm_ny 
@@ -1058,7 +1066,22 @@ end function radiation_nextsw_cday
             call aer_rad_props_sw(0, state, pbuf,  nnite, idxnite, &
                  aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
             call t_stopf('aero_optics_sw')
+
+  ! call outfld('aer_tau     ',aer_tau  ,pcols,lchnk) ! whannah
+
           endif
+! whannah - the block below is just for temporary reference - delete it
+! subroutine radcswmx(lchnk   ,ncol    ,                         &
+!                     E_pint    ,E_pmid    ,E_h2ommr  ,E_o3mmr   , &
+!                     E_o2mmr   ,E_cld     ,E_cicewp  ,E_cliqwp  ,E_rel     , &
+!                     E_rei     ,eccf      ,E_coszrs  ,solin     , &
+!                     E_asdir   ,E_asdif   ,E_aldir   ,E_aldif   ,nmxrgn  , &
+!                     pmxrgn  ,qrs,qrsc,fsnt    ,fsntc  ,fsdtoa,  fsntoa,   &
+!                     fsutoa ,fsntoac, fsnirtoa,fsnrtoac,fsnrtoaq,fsns    , &
+!                     fsnsc   ,fsdsc   ,fsds    ,sols    ,soll    , &
+!                     solsd   ,solld   , fns     ,fcns            , &
+!                     Nday    ,Nnite   ,IdxDay  ,IdxNite, E_co2mmr, &
+!                     E_aer_tau, E_aer_tau_w, E_aer_tau_w_g, E_aer_tau_w_f, tauxcl_out, tauxci_out)
           
           call radcswmx(lchnk, &
 #ifdef CRM
