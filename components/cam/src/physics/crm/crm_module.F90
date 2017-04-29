@@ -70,6 +70,8 @@ subroutine crm        (lchnk, icol, &
 
 !---------------------------------------------------------------
 
+        use mpi
+        use dmdf
         use shr_kind_mod, only: r8 => shr_kind_r8
         use phys_grid, only: get_rlon_p, get_rlat_p, get_gcol_all_p
         use ppgrid, only: pcols
@@ -351,6 +353,8 @@ subroutine crm        (lchnk, icol, &
         integer iseed   ! seed for random perturbation
         integer gcolindex(pcols)  ! array of global latitude indices
 
+        integer :: myrank, ierr
+
 #ifdef CLUBB_CRM
 !Array indicies for spurious RTM check
 
@@ -368,6 +372,57 @@ real(kind=core_rknd), dimension(nzm) :: &
 
         real(r8), intent(out) :: qtot(20)
         real ntotal_step
+
+        call MPI_Comm_rank(MPI_COMM_WORLD,myrank,ierr)
+        if (myrank == 1) then
+          call dmdf_write(lchnk           ,myrank,'crm_dump','lchnk'                                                             ,.true. ,.false.)
+          call dmdf_write(icol            ,myrank,'crm_dump','icol'                                                              ,.false.,.false.)
+          !call dmdf_write(plev            ,myrank,'crm_dump','plev'                                                              ,.false.,.false.)
+          call dmdf_write(ps              ,myrank,'crm_dump','ps'                                                                ,.false.,.false.)
+          call dmdf_write(pmid            ,myrank,'crm_dump','pmid'            ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(pdel            ,myrank,'crm_dump','pdel'            ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(phis            ,myrank,'crm_dump','phis'                                                              ,.false.,.false.)
+          call dmdf_write(zmid            ,myrank,'crm_dump','zmid'            ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(zint            ,myrank,'crm_dump','zint'            ,(/'plev_p1'/)                                    ,.false.,.false.)
+          call dmdf_write(qrad_crm        ,myrank,'crm_dump','qrad_crm'        ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.)
+          call dmdf_write(dt_gl           ,myrank,'crm_dump','dt_gl'                                                             ,.false.,.false.)
+          call dmdf_write(ocnfrac         ,myrank,'crm_dump','ocnfrac'                                                           ,.false.,.false.)
+          call dmdf_write(tau00           ,myrank,'crm_dump','tau00'                                                             ,.false.,.false.)
+          call dmdf_write(wndls           ,myrank,'crm_dump','wndls'                                                             ,.false.,.false.)
+          call dmdf_write(bflxls          ,myrank,'crm_dump','bflxls'                                                            ,.false.,.false.)
+          call dmdf_write(fluxu00         ,myrank,'crm_dump','fluxu00'                                                           ,.false.,.false.)
+          call dmdf_write(fluxv00         ,myrank,'crm_dump','fluxv00'                                                           ,.false.,.false.)
+          call dmdf_write(fluxt00         ,myrank,'crm_dump','fluxt00'                                                           ,.false.,.false.)
+          call dmdf_write(fluxq00         ,myrank,'crm_dump','fluxq00'                                                           ,.false.,.false.)
+          call dmdf_write(tl              ,myrank,'crm_dump','tl'              ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(ql              ,myrank,'crm_dump','ql'              ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(qccl            ,myrank,'crm_dump','qccl'            ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(qiil            ,myrank,'crm_dump','qiil'            ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(ul              ,myrank,'crm_dump','ul'              ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(vl              ,myrank,'crm_dump','vl'              ,(/'plev'/)                                       ,.false.,.false.)
+#ifdef CLUBB_CRM
+          call dmdf_write(clubb_buffer    ,myrank,'crm_dump','clubb_buffer'    ,(/'crm_nx','crm_ny','crm_nz_p1','nclubbvars'/)   ,.false.,.false.)
+#endif
+          call dmdf_write(cltot           ,myrank,'crm_dump','cltot'                                                             ,.false.,.false.)
+          call dmdf_write(clhgh           ,myrank,'crm_dump','clhgh'                                                             ,.false.,.false.)
+          call dmdf_write(clmed           ,myrank,'crm_dump','clmed'                                                             ,.false.,.false.)
+          call dmdf_write(cllow           ,myrank,'crm_dump','cllow'                                                             ,.false.,.false.)
+          call dmdf_write(u_crm           ,myrank,'crm_dump','u_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.)
+          call dmdf_write(v_crm           ,myrank,'crm_dump','v_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.)
+          call dmdf_write(w_crm           ,myrank,'crm_dump','w_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.)
+          call dmdf_write(t_crm           ,myrank,'crm_dump','t_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.)
+          call dmdf_write(micro_fields_crm,myrank,'crm_dump','micro_fields_crm',(/'crm_nx','crm_ny','crm_nz','nmicro_fields_p1'/),.false.,.false.)
+#ifdef m2005
+#ifdef MODAL_AERO
+          call dmdf_write(naermod         ,myrank,'crm_dump','naermod'         ,(/'plev','ntot_amode'/)                          ,.false.,.false.)
+          call dmdf_write(vaerosol        ,myrank,'crm_dump','vaerosol'        ,(/'plev','ntot_amode'/)                          ,.false.,.false.)
+          call dmdf_write(hygro           ,myrank,'crm_dump','hygro'           ,(/'plev','ntot_amode'/)                          ,.false.,.false.)
+#endif
+#endif
+          call dmdf_write(dd_crm          ,myrank,'crm_dump','dd_crm'          ,(/'plev'/)                                       ,.false.,.false.)
+          call dmdf_write(mui_crm         ,myrank,'crm_dump','mui_crm'         ,(/'plev_p1'/)                                    ,.false.,.false.)
+          call dmdf_write(mdi_crm         ,myrank,'crm_dump','mdi_crm'         ,(/'plev_p1'/)                                    ,.false.,.true. )
+        endif
 
 !-----------------------------------------------
 
