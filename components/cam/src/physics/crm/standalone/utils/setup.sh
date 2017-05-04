@@ -6,6 +6,7 @@ function usage {
   echo "   -crm_root <path>                Absolute path to the crm source root (/[...]/crm)"
   echo "   -build_root <path>              Absolute path to the build directory root"
   echo "OPTIONAL:"
+  echo "   -nadv <n>                       Number of advective constituents (PCNST)"
   echo "   -nlev <n>                       Number of CAM vertical levels"
   echo "   -crm_nx <n>                     CRM's x-grid."
   echo "   -crm_ny <n>                     CRM's y-grid."
@@ -14,15 +15,11 @@ function usage {
   echo "   -crm_dt <n>                     CRM's timestep."
   echo "   -SPCAM_microp_scheme <string>   CRM microphysics package name [sam1mom | m2005 ]."
   echo "   -clubb_crm                      CRM with clubb treatment"
-  echo "   -use_ECPP                       Use CRM clouds for vertical transport, aqueous chemistry and wet removable of aerosols "
   echo "   -use_crm_cldfrac                Use fractional cloudiness in CRM"
   echo "   -crm_adv                        CRM advection scheme [MPDATA | UM5]"
   echo "   -h | --help                     Print help"
   exit 0
 }
-
-#$cfg_cppdefs .= " -DPLEV=$nlev -DPCNST=$nadv -DPCOLS=$pcols -DPSUBCOLS=$psubcols";
-
 
 ##########################################################################################
 ## READ IN COMMAND LINE PARAMETERS
@@ -32,6 +29,7 @@ function usage {
 BUILD_ROOT=""
 CRM_ROOT=""
 PLEV=30
+PCNST=50
 CRM_NX=32
 CRM_NY=1
 CRM_NZ=28
@@ -39,7 +37,6 @@ CRM_DX=1000
 CRM_DT=5
 MICRO=m2005
 CLUBB_CRM=0
-USE_ECPP=0
 USE_CRM_CLDFRAC=0
 ADV=MPDATA
 yes3Dval=0
@@ -55,6 +52,10 @@ case $key in
     ;;
     -build_root)
     BUILD_ROOT="$2"
+    shift # past argument
+    ;;
+    -nadv)
+    PCNST="$2"
     shift # past argument
     ;;
     -nlev)
@@ -92,9 +93,6 @@ case $key in
     -clubb_crm)
     CLUBB_CRM=1
     ;;
-    -use_ECPP)
-    USE_ECPP=1
-    ;;
     -use_crm_cldfrac)
     USE_CRM_CLDFRAC=1
     ;;
@@ -124,22 +122,17 @@ cd $BUILD_ROOT
 ##########################################################################################
 ## Create the preprocessor define flags
 ##########################################################################################
-CPPDEFS=" -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=${PLEV} -DPSUBCOLS=1 -DPCOLS=16 -DHAVE_IEEE_ARITHMETIC"
-[ "$USE_ECPP"  -eq "1" ] && CPPDEFS="${CPPDEFS} -DECPP "
+CPPDEFS=" -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=${PLEV} -DPSUBCOLS=1 -DPCOLS=16 -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC"
 [ "$CLUBB_CRM" -eq "1" ] && CPPDEFS="${CPPDEFS} -DCLUBB_CRM -DCLUBB_REAL_TYPE=dp "
 
 ##########################################################################################
 ## Determine the directories to inluce for source files
 ##########################################################################################
-echo "$CRM_ROOT"                                              >  Filepath
-echo "$CRM_ROOT/../cam"                                       >> Filepath
-echo "$CRM_ROOT/../../../../../cime/share/csm_share/shr"      >> Filepath
-echo "$CRM_ROOT/../../control"                                >> Filepath
-echo "$CRM_ROOT/../../utils"                                  >> Filepath
+echo "$CRM_ROOT"                                               > Filepath
+echo "$CRM_ROOT/standalone/src"                               >> Filepath
 [ "$CLUBB_CRM" -eq "1"  ] && echo "$CRM_ROOT/../clubb"        >> Filepath \
                           && echo "$CRM_ROOT/SGS_CLUBBkvhkvm" >> Filepath
 [ "$CLUBB_CRM" -ne "1"  ] && echo "$CRM_ROOT/SGS_TKE"         >> Filepath
-[ "$USE_ECPP"  -eq "1"  ] && echo "$CRM_ROOT/../cam/ecpp"     >> Filepath
 [ "$ADV"   == "UM5"     ] && echo "$CRM_ROOT/ADV_UM5"         >> Filepath
 [ "$ADV"   == "MPDATA"  ] && echo "$CRM_ROOT/ADV_MPDATA"      >> Filepath
 [ "$MICRO" == "sam1mom" ] && echo "$CRM_ROOT/MICRO_SAM1MOM"   >> Filepath
@@ -147,28 +140,15 @@ echo "$CRM_ROOT/../../utils"                                  >> Filepath
 [ "$MICRO" == "m2005"   ] && [ "$USE_CRM_CLDFRAC" -ne "1" ] && echo "$CRM_ROOT/MICRO_M2005"     >> Filepath
 
 ##########################################################################################
-## Define the source files based on directories, and copy to build_root
+## Copy all potentially needed source files to build_root
 ##########################################################################################
-$SCRIPTS/mkSrcfiles
 for i in `cat Filepath`
-do
-   : 
-   cp -f $i/*.f . >& /dev/null
-   cp -f $i/*.F . >& /dev/null
-   cp -f $i/*.f90 . >& /dev/null
-   cp -f $i/*.F90 . >& /dev/null
-   cp -f $i/*.c . >& /dev/null
-   cp -f $i/*.in . >& /dev/null
+  do cp -f $i/*.f $i/*.F $i/*.f90 $i/*.F90 $i/*.c $i/*.h $i/*.in $i/*.inc . >& /dev/null
 done
-
-##########################################################################################
-## Go ahead and transform the .in files to .F90 files
-##########################################################################################
-for f in *.F90.in
-do
-   :
-   $SCRIPTS/genf90.pl $f > "`basename "$f" .F90.in`.F90"
-done
+cp $CRM_ROOT/../cam/crmdims.F90 .
+cp $CRM_ROOT/../cam/ppgrid.F90 .
+cp $CRM_ROOT/../../../../../cime/share/csm_share/shr/shr_const_mod.F90 .
+cp $CRM_ROOT/../../../../../cime/share/csm_share/shr/shr_kind_mod.F90 .
 
 ##########################################################################################
 ## Define the dependencies between the source files
@@ -177,8 +157,9 @@ ls *.f *.F *.F90 *.f90 *.c > Srcfiles 2> /dev/null
 echo "." > Filepath
 $SCRIPTS/mkDepends ./Filepath ./Srcfiles > ./Depends
 
+##########################################################################################
+## WRite preprocessor directives, and copy Makefile
+##########################################################################################
 echo "CPPDEFS := ${CPPDEFS}" > make.inc
-
 cp $SCRIPTS/Makefile .
-
 

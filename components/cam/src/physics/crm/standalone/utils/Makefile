@@ -10,10 +10,10 @@ CFLAGS := -O2 ${CPPDEFS}
 SOURCES := $(shell cat Srcfiles)
 OBJS    := $(addsuffix .o, $(basename $(SOURCES)))
 
-all: crm_lib
+all: libcrm
 
-crm_lib: crm_module.o
-	$(FC) -o $@ $(OBJS) $(LDFLAGS)
+libcrm: crm_module.o
+	ar rcs libcrm.a *.o
 
 clean:
 	rm -f *.mod *.o
