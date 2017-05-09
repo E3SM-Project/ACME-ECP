@@ -24,7 +24,7 @@ module load   cray-libsci/16.06.1
 module load   atp/2.0.2
 module load   esmf/5.2.0rp2
 module load   cudatoolkit
-module load   cray-netcdf-hdf5parallel/4.4.0
+module load   cray-netcdf-hdf5parallel/4.4.1.1
 module load   cray-parallel-netcdf/1.7.0
 
 export MPICH_ENV_DISPLAY=1

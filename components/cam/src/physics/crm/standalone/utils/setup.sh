@@ -13,6 +13,8 @@ function usage {
   echo "   -crm_nz <n>                     CRM's z-grid."
   echo "   -crm_dx <n>                     CRM's horizontal grid spacing."
   echo "   -crm_dt <n>                     CRM's timestep."
+  echo "   -pcols <n>                      PCOLS"
+  echo "   -psubcols <n>                   PSUBCOLS"
   echo "   -SPCAM_microp_scheme <string>   CRM microphysics package name [sam1mom | m2005 ]."
   echo "   -clubb_crm                      CRM with clubb treatment"
   echo "   -use_crm_cldfrac                Use fractional cloudiness in CRM"
@@ -29,6 +31,8 @@ function usage {
 BUILD_ROOT=""
 CRM_ROOT=""
 PLEV=30
+PCOLS=16
+PSUBCOLS=1
 PCNST=50
 CRM_NX=32
 CRM_NY=1
@@ -58,6 +62,14 @@ case $key in
     PCNST="$2"
     shift # past argument
     ;;
+    -pcols)
+    PCOLS="$2"
+    shift # past argument
+    ;;
+    -psubcols)
+    PSUBCOLS="$2"
+    shift # past argument
+    ;;
     -nlev)
     PLEV="$2"
     shift # past argument
@@ -67,7 +79,7 @@ case $key in
     shift # past argument
     ;;
     -crm_ny)
-    CRM_NX="$2"
+    CRM_NY="$2"
     shift # past argument
     ;;
     -crm_nz)
@@ -122,7 +134,7 @@ cd $BUILD_ROOT
 ##########################################################################################
 ## Create the preprocessor define flags
 ##########################################################################################
-CPPDEFS=" -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=${PLEV} -DPSUBCOLS=1 -DPCOLS=16 -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC -DCRM_STANDALONE"
+CPPDEFS=" -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=$PLEV -DPSUBCOLS=$PSUBCOLS -DPCOLS=$PCOLS -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC -DCRM_STANDALONE"
 [ "$CLUBB_CRM" -eq "1" ] && CPPDEFS="${CPPDEFS} -DCLUBB_CRM -DCLUBB_REAL_TYPE=dp "
 
 ##########################################################################################

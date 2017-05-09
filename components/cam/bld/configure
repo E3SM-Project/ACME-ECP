@@ -2020,7 +2020,7 @@ my $SPCAM_microp_scheme = $cfg_ref->get('SPCAM_microp_scheme');
 my $crm_adv    = $cfg_ref->get('crm_adv');
 my $yes3Dval = 1;
 if ($crm_ny eq 1) {$yes3Dval = 0;}
-$cfg_cppdefs .= " -D$SPCAM_microp_scheme -DYES3DVAL=$yes3Dval -DCRM_NX=$crm_nx -DCRM_NY=$crm_ny -DCRM_NZ=$crm_nz -DCRM_DX=$crm_dx -DCRM_DT=$crm_dt ";
+$cfg_cppdefs .= " -D_$crm_adv -D$SPCAM_microp_scheme -DYES3DVAL=$yes3Dval -DCRM_NX=$crm_nx -DCRM_NY=$crm_ny -DCRM_NZ=$crm_nz -DCRM_DX=$crm_dx -DCRM_DT=$crm_dt ";
 
 if ($crm eq "ON") { $cfg_cppdefs .= " -DCRM " }
 #Added cppdef for ecpp-Guangxing Lin

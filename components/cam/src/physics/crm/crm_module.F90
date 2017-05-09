@@ -417,6 +417,27 @@ real(kind=core_rknd), dimension(nzm) :: &
 #ifdef CRM_DUMP
         call MPI_Comm_rank(MPI_COMM_WORLD,myrank,ierr)
         if (myrank == 1) then
+          if (igstep == 1) then
+            call dmdf_write_attr(CRM_NX   ,myrank,'crm_in','crm_nx'  ); _ERR(success,error_string,__LINE__)
+            call dmdf_write_attr(CRM_NY   ,myrank,'crm_in','crm_ny'  ); _ERR(success,error_string,__LINE__)
+            call dmdf_write_attr(CRM_NZ   ,myrank,'crm_in','crm_nz'  ); _ERR(success,error_string,__LINE__)
+            call dmdf_write_attr(CRM_DX   ,myrank,'crm_in','crm_dx'  ); _ERR(success,error_string,__LINE__)
+            call dmdf_write_attr(CRM_DT   ,myrank,'crm_in','crm_dt'  ); _ERR(success,error_string,__LINE__)
+#if   (defined m2005)
+            call dmdf_write_attr('m2005'  ,myrank,'crm_in','micro'   ); _ERR(success,error_string,__LINE__)
+#elif (defined sam1mom)
+            call dmdf_write_attr('sam1mom',myrank,'crm_in','micro'   ); _ERR(success,error_string,__LINE__)
+#endif
+#if   (defined _UM5)
+            call dmdf_write_attr('UM5'    ,myrank,'crm_in','crm_adv' ); _ERR(success,error_string,__LINE__)
+#elif (defined _MPDATA)
+            call dmdf_write_attr('MPDATA' ,myrank,'crm_in','crm_adv' ); _ERR(success,error_string,__LINE__)
+#endif
+            call dmdf_write_attr(PLEV     ,myrank,'crm_in','plev'    ); _ERR(success,error_string,__LINE__)
+            call dmdf_write_attr(PSUBCOLS ,myrank,'crm_in','psubcols'); _ERR(success,error_string,__LINE__)
+            call dmdf_write_attr(PCOLS    ,myrank,'crm_in','pcols'   ); _ERR(success,error_string,__LINE__)
+            call dmdf_write_attr(PCNST    ,myrank,'crm_in','pcnst'   ); _ERR(success,error_string,__LINE__)
+          endif
           !Don't output the first time because fields are initially uniform, and random noise is added. Keep stochasticity out of the standalone model
           if (igstep > 1) then
             call dmdf_write(lchnk           ,myrank,'crm_in','lchnk'                                                             ,.true. ,.false.); _ERR(success,error_string,__LINE__)
