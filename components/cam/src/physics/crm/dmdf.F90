@@ -153,6 +153,36 @@ module dmdf
     module procedure dmdf_read_int4_4d
     module procedure dmdf_read_int8_4d
     module procedure dmdf_read_log_4d
+
+    module procedure dmdf_read1_real4_scalar
+    module procedure dmdf_read1_real8_scalar
+    module procedure dmdf_read1_int4_scalar
+    module procedure dmdf_read1_int8_scalar
+    module procedure dmdf_read1_log_scalar
+
+    module procedure dmdf_read1_real4_1d
+    module procedure dmdf_read1_real8_1d
+    module procedure dmdf_read1_int4_1d
+    module procedure dmdf_read1_int8_1d
+    module procedure dmdf_read1_log_1d
+
+    module procedure dmdf_read1_real4_2d
+    module procedure dmdf_read1_real8_2d
+    module procedure dmdf_read1_int4_2d
+    module procedure dmdf_read1_int8_2d
+    module procedure dmdf_read1_log_2d
+
+    module procedure dmdf_read1_real4_3d
+    module procedure dmdf_read1_real8_3d
+    module procedure dmdf_read1_int4_3d
+    module procedure dmdf_read1_int8_3d
+    module procedure dmdf_read1_log_3d
+
+    module procedure dmdf_read1_real4_4d
+    module procedure dmdf_read1_real8_4d
+    module procedure dmdf_read1_int4_4d
+    module procedure dmdf_read1_int8_4d
+    module procedure dmdf_read1_log_4d
   end interface
 
   !dmdf_write_attr(val,rank,fprefix,aname)
@@ -165,7 +195,8 @@ module dmdf
   !dmdf_write(dat,rank,fprefix,vname,dnames,first,last)   !For array values
   public :: dmdf_write
 
-  !dmdf_read_real4(dat,fprefix,vname,ind1,ind2,first,last)
+  !dmdf_read(dat,fprefix,vname,ind1,ind2,first,last) !For multiple indices
+  !dmdf_read(dat,fprefix,vname,ind      ,first,last) !For a single index
   public :: dmdf_read
 
 
@@ -285,6 +316,111 @@ contains
   end subroutine dmdf_read_log_scalar
 
 
+  subroutine dmdf_read1_real4_scalar(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 1
+    real(4)         , intent(  out) :: dat
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, dat_read(1)
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_read,start,count) )
+    dat = dat_read(1)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real4_scalar
+
+
+  subroutine dmdf_read1_real8_scalar(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 1
+    real(8)         , intent(  out) :: dat
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, dat_read(1)
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_read,start,count) )
+    dat = dat_read(1)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real8_scalar
+
+
+  subroutine dmdf_read1_int4_scalar(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 1
+    integer(4)      , intent(  out) :: dat
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, dat_read(1)
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_read,start,count) )
+    dat = dat_read(1)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int4_scalar
+
+
+  subroutine dmdf_read1_int8_scalar(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 1
+    integer(8)      , intent(  out) :: dat
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, dat_read(1)
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_read,start,count) )
+    dat = dat_read(1)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int8_scalar
+
+
+  subroutine dmdf_read1_log_scalar(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 1
+    logical         , intent(  out) :: dat
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, dat_int(1)
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_int,start,count) )
+    dat = merge(.true.,.false.,dat_int(1) == 1)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_log_scalar
+
+
   subroutine dmdf_read_real4_1d(dat,fprefix,vname,ind1,ind2,first,last)
     implicit none
     integer, parameter :: ndims = 2
@@ -393,6 +529,111 @@ contains
     deallocate(dat_int)
     call close_file(last,ncid)                                                      ; _RET_IF_ERR
   end subroutine dmdf_read_log_1d
+
+
+  subroutine dmdf_read1_real4_1d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 2
+    real(4)         , intent(  out) :: dat(:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real4_1d
+
+
+  subroutine dmdf_read1_real8_1d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 2
+    real(8)         , intent(  out) :: dat(:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real8_1d
+
+
+  subroutine dmdf_read1_int4_1d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 2
+    integer(4)      , intent(  out) :: dat(:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int4_1d
+
+
+  subroutine dmdf_read1_int8_1d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 2
+    integer(8)      , intent(  out) :: dat(:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int8_1d
+
+
+  subroutine dmdf_read1_log_1d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 2
+    logical         , intent(  out) :: dat(:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, shp(ndims-1)
+    integer, allocatable :: dat_int(:)
+    success = .true.
+    shp = shape(dat)
+    allocate(dat_int(shp(1)))
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_int,start,count) )
+    dat = merge(.true.,.false.,dat_int == 1)
+    deallocate(dat_int)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_log_1d
 
 
   subroutine dmdf_read_real4_2d(dat,fprefix,vname,ind1,ind2,first,last)
@@ -505,6 +746,111 @@ contains
   end subroutine dmdf_read_log_2d
 
 
+  subroutine dmdf_read1_real4_2d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 3
+    real(4)         , intent(  out) :: dat(:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real4_2d
+
+
+  subroutine dmdf_read1_real8_2d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 3
+    real(8)         , intent(  out) :: dat(:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real8_2d
+
+
+  subroutine dmdf_read1_int4_2d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 3
+    integer(4)      , intent(  out) :: dat(:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int4_2d
+
+
+  subroutine dmdf_read1_int8_2d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 3
+    integer(8)      , intent(  out) :: dat(:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int8_2d
+
+
+  subroutine dmdf_read1_log_2d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 3
+    logical         , intent(  out) :: dat(:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, shp(ndims-1)
+    integer, allocatable :: dat_int(:,:)
+    success = .true.
+    shp = shape(dat)
+    allocate(dat_int(shp(1),shp(2)))
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_int,start,count) )
+    dat = merge(.true.,.false.,dat_int == 1)
+    deallocate(dat_int)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_log_2d
+
+
   subroutine dmdf_read_real4_3d(dat,fprefix,vname,ind1,ind2,first,last)
     implicit none
     integer, parameter :: ndims = 4
@@ -615,6 +961,111 @@ contains
   end subroutine dmdf_read_log_3d
 
 
+  subroutine dmdf_read1_real4_3d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 4
+    real(4)         , intent(  out) :: dat(:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real4_3d
+
+
+  subroutine dmdf_read1_real8_3d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 4
+    real(8)         , intent(  out) :: dat(:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real8_3d
+
+
+  subroutine dmdf_read1_int4_3d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 4
+    integer(4)      , intent(  out) :: dat(:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int4_3d
+
+
+  subroutine dmdf_read1_int8_3d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 4
+    integer(8)      , intent(  out) :: dat(:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int8_3d
+
+
+  subroutine dmdf_read1_log_3d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 4
+    logical         , intent(  out) :: dat(:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, shp(ndims-1)
+    integer, allocatable :: dat_int(:,:,:)
+    success = .true.
+    shp = shape(dat)
+    allocate(dat_int(shp(1),shp(2),shp(3)))
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_int,start,count) )
+    dat = merge(.true.,.false.,dat_int == 1)
+    deallocate(dat_int)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_log_3d
+
+
   subroutine dmdf_read_real4_4d(dat,fprefix,vname,ind1,ind2,first,last)
     implicit none
     integer, parameter :: ndims = 5
@@ -723,6 +1174,111 @@ contains
     deallocate(dat_int)
     call close_file(last,ncid)                                                      ; _RET_IF_ERR
   end subroutine dmdf_read_log_4d
+
+
+  subroutine dmdf_read1_real4_4d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 5
+    real(4)         , intent(  out) :: dat(:,:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real4_4d
+
+
+  subroutine dmdf_read1_real8_4d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 5
+    real(8)         , intent(  out) :: dat(:,:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_real8_4d
+
+
+  subroutine dmdf_read1_int4_4d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 5
+    integer(4)      , intent(  out) :: dat(:,:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int4_4d
+
+
+  subroutine dmdf_read1_int8_4d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 5
+    integer(8)      , intent(  out) :: dat(:,:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr
+    success = .true.
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat,start,count) )
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_int8_4d
+
+
+  subroutine dmdf_read1_log_4d(dat,fprefix,vname,ind,first,last)
+    implicit none
+    integer, parameter :: ndims = 5
+    logical         , intent(  out) :: dat(:,:,:,:)
+    character(len=*), intent(in   ) :: fprefix
+    character(len=*), intent(in   ) :: vname
+    integer         , intent(in   ) :: ind
+    logical         , intent(in   ) :: first
+    logical         , intent(in   ) :: last
+    integer :: dimids(ndims), start(ndims), count(ndims), dsizes(ndims)
+    integer :: varid, unlim_len, ierr, shp(ndims-1)
+    integer, allocatable :: dat_int(:,:,:,:)
+    success = .true.
+    shp = shape(dat)
+    allocate(dat_int(shp(1),shp(2),shp(3),shp(4)))
+    dsizes(ndims) = NF90_UNLIMITED
+    call procure_fileid(first,-1,fprefix,ncid)                                      ; _RET_IF_ERR
+    call read_process(ndims,ncid,vname,ind,ind,varid,start,count)                 ; _RET_IF_ERR
+    _NCERR( nf90_get_var(ncid,varid,dat_int,start,count) )
+    dat = merge(.true.,.false.,dat_int == 1)
+    deallocate(dat_int)
+    call close_file(last,ncid)                                                      ; _RET_IF_ERR
+  end subroutine dmdf_read1_log_4d
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

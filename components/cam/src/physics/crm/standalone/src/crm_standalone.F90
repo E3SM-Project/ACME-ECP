@@ -12,6 +12,7 @@ program crm_standalone
   use crmdims     , only: nclubbvars, crm_nx, crm_ny, crm_nz
   use shr_kind_mod, only: r8 => shr_kind_r8
   use microphysics, only: nmicro_fields
+  use setparm_mod , only: setparm
 #ifdef ECPP
   use ecppvars,  only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif
@@ -31,8 +32,8 @@ program crm_standalone
   integer  :: lchnk    
   integer  :: icol     
 #ifdef CRM_STANDALONE
-  real     :: latitude0_in
-  real     :: longitude0_in
+  real     :: latitude0
+  real     :: longitude0
 #endif
   real(r8) :: ps 
   real(r8) :: pmid(plev) 
@@ -80,7 +81,7 @@ program crm_standalone
   real(r8) :: v_crm  (crm_nx,crm_ny,crm_nz) 
   real(r8) :: w_crm  (crm_nx,crm_ny,crm_nz) 
   real(r8) :: t_crm  (crm_nx,crm_ny,crm_nz) 
-  real(r8) :: micro_fields_crm  (crm_nx,crm_ny,crm_nz,nmicro_fields+1) 
+  real(r8), allocatable :: micro_fields_crm  (:,:,:,:)
   real(r8) :: qltend(plev) 
   real(r8) :: qcltend(plev)
   real(r8) :: qiltend(plev)
@@ -204,219 +205,73 @@ program crm_standalone
 #endif
   real(r8) :: qtot(20)
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !! Allocate the array variables
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!  allocate(pmid(plev))
-!  allocate(pdel(plev))
-!  allocate(zmid(plev))
-!  allocate(zint(plev+1))
-!  allocate(qrad_crm(crm_nx, crm_ny, crm_nz))
-!  allocate(tl(plev))
-!  allocate(ql(plev))
-!  allocate(qccl(plev))
-!  allocate(qiil(plev))
-!  allocate(ul(plev))
-!  allocate(vl(plev))
-!#ifdef CLUBB_CRM
-!  allocate(clubb_buffer(crm_nx, crm_ny, crm_nz+1,1:nclubbvars))
-!  allocate(crm_cld(crm_nx, crm_ny, crm_nz+1))
-!  allocate(clubb_tk(crm_nx, crm_ny, crm_nz))
-!  allocate(clubb_tkh(crm_nx, crm_ny, crm_nz))
-!  allocate(relvar(crm_nx, crm_ny, crm_nz))
-!  allocate(accre_enhan(crm_nx, crm_ny, crm_nz))
-!  allocate(qclvar(crm_nx, crm_ny, crm_nz))
-!#endif
-!  allocate(crm_tk(crm_nx, crm_ny, crm_nz))
-!  allocate(crm_tkh(crm_nx, crm_ny, crm_nz))
-!#ifdef CRM3D
-!  allocate(ultend(plev)) 
-!  allocate(vltend(plev)) 
-!#endif
-!  allocate(sltend(plev)) 
-!  allocate(u_crm  (crm_nx,crm_ny,crm_nz)) 
-!  allocate(v_crm  (crm_nx,crm_ny,crm_nz)) 
-!  allocate(w_crm  (crm_nx,crm_ny,crm_nz)) 
-!  allocate(t_crm  (crm_nx,crm_ny,crm_nz)) 
-!  allocate(micro_fields_crm  (crm_nx,crm_ny,crm_nz,nmicro_fields+1)) 
-!  allocate(qltend(plev)) 
-!  allocate(qcltend(plev))
-!  allocate(qiltend(plev))
-!  allocate(t_rad (crm_nx, crm_ny, crm_nz)) 
-!  allocate(qv_rad(crm_nx, crm_ny, crm_nz)) 
-!  allocate(qc_rad(crm_nx, crm_ny, crm_nz)) 
-!  allocate(qi_rad(crm_nx, crm_ny, crm_nz)) 
-!  allocate(cld_rad(crm_nx, crm_ny, crm_nz)) 
-!  allocate(cld3d_crm(crm_nx, crm_ny, crm_nz)) 
-!#ifdef m2005
-!  allocate(nc_rad(crm_nx, crm_ny, crm_nz)) 
-!  allocate(ni_rad(crm_nx, crm_ny, crm_nz)) 
-!  allocate(qs_rad(crm_nx, crm_ny, crm_nz)) 
-!  allocate(ns_rad(crm_nx, crm_ny, crm_nz)) 
-!  allocate(wvar_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(aut_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(acc_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(evpc_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(evpr_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(mlt_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(sub_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(dep_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(con_crm(crm_nx, crm_ny, crm_nz)) 
-!  allocate(aut_crm_a(plev)) 
-!  allocate(acc_crm_a(plev)) 
-!  allocate(evpc_crm_a(plev)) 
-!  allocate(evpr_crm_a(plev)) 
-!  allocate(mlt_crm_a(plev)) 
-!  allocate(sub_crm_a(plev)) 
-!  allocate(dep_crm_a(plev)) 
-!  allocate(con_crm_a(plev)) 
-!#endif
-!  allocate(cld(plev))  
-!  allocate(cldtop(plev))  
-!  allocate(gicewp(plev))  
-!  allocate(gliqwp(plev))  
-!  allocate(mc(plev))   
-!  allocate(mcup(plev)) 
-!  allocate(mcdn(plev)) 
-!  allocate(mcuup(plev)) 
-!  allocate(mcudn(plev)) 
-!  allocate(crm_qc(plev))  
-!  allocate(crm_qi(plev))  
-!  allocate(crm_qs(plev))  
-!  allocate(crm_qg(plev))  
-!  allocate(crm_qr(plev))  
-!#ifdef m2005
-!  allocate(crm_nc(plev))  
-!  allocate(crm_ni(plev))  
-!  allocate(crm_ns(plev))  
-!  allocate(crm_ng(plev))  
-!  allocate(crm_nr(plev))  
-!#ifdef MODAL_AERO
-!  allocate(naermod(plev, ntot_amode))     
-!  allocate(vaerosol(plev, ntot_amode))    
-!  allocate(hygro(plev, ntot_amode))       
-!#endif 
-!#endif
-!  allocate(mu_crm (plev))             
-!  allocate(md_crm (plev))             
-!  allocate(du_crm (plev))             
-!  allocate(eu_crm (plev))             
-!  allocate(ed_crm (plev))             
-!  allocate(dd_crm (plev))             
-!  allocate(mui_crm (plev+1))             
-!  allocate(mdi_crm (plev+1))             
-!  allocate(flux_qt(plev)) 
-!  allocate(fluxsgs_qt(plev)) 
-!  allocate(tkez(plev)) 
-!  allocate(tkesgsz(plev)) 
-!  allocate(tkz(plev))  
-!  allocate(flux_u(plev)) 
-!  allocate(flux_v(plev)) 
-!  allocate(flux_qp(plev)) 
-!  allocate(pflx(plev))    
-!  allocate(qt_ls(plev)) 
-!  allocate(qt_trans(plev))
-!  allocate(qp_trans(plev)) 
-!  allocate(qp_fall(plev)) 
-!  allocate(qp_src(plev)) 
-!  allocate(qp_evp(plev)) 
-!  allocate(t_ls(plev)) 
-!  allocate(qc_crm (crm_nx, crm_ny, crm_nz))
-!  allocate(qi_crm (crm_nx, crm_ny, crm_nz))
-!  allocate(qpc_crm(crm_nx, crm_ny, crm_nz))
-!  allocate(qpi_crm(crm_nx, crm_ny, crm_nz))
-!  allocate(prec_crm(crm_nx, crm_ny))
-!#ifdef ECPP
-!  allocate(acen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))   
-!  allocate(acen_tf(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)) 
-!  allocate(rhcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))  
-!  allocate(qcloudcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))  
-!  allocate(qicecen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)) 
-!  allocate(qlsinkcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))  
-!  allocate(precrcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))   
-!  allocate(precsolidcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))   
-!  allocate(qlsink_bfcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))  
-!  allocate(qlsink_avgcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))  
-!  allocate(praincen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))  
-!  allocate(wwqui_cen(plev))                                
-!  allocate(wwqui_cloudy_cen(plev))                         
-!  allocate(abnd(plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))   
-!  allocate(abnd_tf(plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)) 
-!  allocate(massflxbnd(plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)) 
-!  allocate(wupthresh_bnd(plev+1))             
-!  allocate(wdownthresh_bnd(plev+1))           
-!  allocate(wwqui_bnd(plev+1))                                
-!  allocate(wwqui_cloudy_bnd(plev+1))                         
-!#endif
+  !I have to call setparm to get the correct value for nmicro_fields
+  call setparm()
+  allocate( micro_fields_crm  (crm_nx,crm_ny,crm_nz,nmicro_fields+1) )
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Read in the command line arguments
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   call getarg(1,fname_in)
-  call getarg(2,ind1_str)
-  call getarg(3,ind2_str)
-  read(ind1_str,fmt=*,iostat=stat) ind1
-  read(ind2_str,fmt=*,iostat=stat) ind2
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Read in Input Data from the dump file
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !dmdf_read_real4(dat,fprefix,vname,ind1,ind2,first,last)
-!  call dmdf_read(lchnk           ,trim(fname_in),'lchnk'           ,1,1,.true. ,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(icol            ,trim(fname_in),'icol'            ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(latitude0       ,trim(fname_in),'latitude0'       ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(longitude0      ,trim(fname_in),'longitude0'      ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(ps              ,trim(fname_in),'ps'              ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(pmid            ,trim(fname_in),'pmid'            ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(pdel            ,trim(fname_in),'pdel'            ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(phis            ,trim(fname_in),'phis'            ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(zmid            ,trim(fname_in),'zmid'            ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(zint            ,trim(fname_in),'zint'            ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(qrad_crm        ,trim(fname_in),'qrad_crm'        ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(dt_gl           ,trim(fname_in),'dt_gl'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(ocnfrac         ,trim(fname_in),'ocnfrac'         ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(tau00           ,trim(fname_in),'tau00'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(wndls           ,trim(fname_in),'wndls'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(bflxls          ,trim(fname_in),'bflxls'          ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(fluxu00         ,trim(fname_in),'fluxu00'         ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(fluxv00         ,trim(fname_in),'fluxv00'         ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(fluxt00         ,trim(fname_in),'fluxt00'         ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(fluxq00         ,trim(fname_in),'fluxq00'         ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(tl              ,trim(fname_in),'tl'              ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(ql              ,trim(fname_in),'ql'              ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(qccl            ,trim(fname_in),'qccl'            ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(qiil            ,trim(fname_in),'qiil'            ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(ul              ,trim(fname_in),'ul'              ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(vl              ,trim(fname_in),'vl'              ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!#ifdef CLUBB_CRM
-!  call dmdf_read(clubb_buffer    ,trim(fname_in),'clubb_buffer'    ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!#endif
-!  call dmdf_read(cltot           ,trim(fname_in),'cltot'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(clhgh           ,trim(fname_in),'clhgh'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(clmed           ,trim(fname_in),'clmed'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(cllow           ,trim(fname_in),'cllow'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(u_crm           ,trim(fname_in),'u_crm'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(v_crm           ,trim(fname_in),'v_crm'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(w_crm           ,trim(fname_in),'w_crm'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(t_crm           ,trim(fname_in),'t_crm'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(micro_fields_crm,trim(fname_in),'micro_fields_crm',1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!#ifdef m2005
-!#ifdef MODAL_AERO
-!  call dmdf_read(naermod         ,trim(fname_in),'naermod'         ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(vaerosol        ,trim(fname_in),'vaerosol'        ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(hygro           ,trim(fname_in),'hygro'           ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!#endif
-!#endif
-!  call dmdf_read(dd_crm          ,trim(fname_in),'dd_crm'          ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(mui_crm         ,trim(fname_in),'mui_crm'         ,1,1,.false.,.false.); _ERR(success,error_string,__LINE__)
-!  call dmdf_read(mdi_crm         ,trim(fname_in),'mdi_crm'         ,1,1,.false.,.true. ); _ERR(success,error_string,__LINE__)
+  call dmdf_read(lchnk           ,trim(fname_in),'lchnk'           ,1,.true. ,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(icol            ,trim(fname_in),'icol'            ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(latitude0       ,trim(fname_in),'latitude0'       ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(longitude0      ,trim(fname_in),'longitude0'      ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(ps              ,trim(fname_in),'ps'              ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(pmid            ,trim(fname_in),'pmid'            ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(pdel            ,trim(fname_in),'pdel'            ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(phis            ,trim(fname_in),'phis'            ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(zmid            ,trim(fname_in),'zmid'            ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(zint            ,trim(fname_in),'zint'            ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(qrad_crm        ,trim(fname_in),'qrad_crm'        ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(dt_gl           ,trim(fname_in),'dt_gl'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(ocnfrac         ,trim(fname_in),'ocnfrac'         ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(tau00           ,trim(fname_in),'tau00'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(wndls           ,trim(fname_in),'wndls'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(bflxls          ,trim(fname_in),'bflxls'          ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(fluxu00         ,trim(fname_in),'fluxu00'         ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(fluxv00         ,trim(fname_in),'fluxv00'         ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(fluxt00         ,trim(fname_in),'fluxt00'         ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(fluxq00         ,trim(fname_in),'fluxq00'         ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(tl              ,trim(fname_in),'tl'              ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(ql              ,trim(fname_in),'ql'              ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(qccl            ,trim(fname_in),'qccl'            ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(qiil            ,trim(fname_in),'qiil'            ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(ul              ,trim(fname_in),'ul'              ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(vl              ,trim(fname_in),'vl'              ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+#ifdef CLUBB_CRM
+  call dmdf_read(clubb_buffer    ,trim(fname_in),'clubb_buffer'    ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+#endif
+  call dmdf_read(cltot           ,trim(fname_in),'cltot'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(clhgh           ,trim(fname_in),'clhgh'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(clmed           ,trim(fname_in),'clmed'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(cllow           ,trim(fname_in),'cllow'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(u_crm           ,trim(fname_in),'u_crm'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(v_crm           ,trim(fname_in),'v_crm'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(w_crm           ,trim(fname_in),'w_crm'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(t_crm           ,trim(fname_in),'t_crm'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(micro_fields_crm,trim(fname_in),'micro_fields_crm',1,.false.,.false.); _ERR(success,error_string,__LINE__)
+#ifdef m2005
+#ifdef MODAL_AERO
+  call dmdf_read(naermod         ,trim(fname_in),'naermod'         ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(vaerosol        ,trim(fname_in),'vaerosol'        ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(hygro           ,trim(fname_in),'hygro'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+#endif
+#endif
+  call dmdf_read(dd_crm          ,trim(fname_in),'dd_crm'          ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(mui_crm         ,trim(fname_in),'mui_crm'         ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(mdi_crm         ,trim(fname_in),'mdi_crm'         ,1,.false.,.true. ); _ERR(success,error_string,__LINE__)
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Call the crm routine
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   call crm            (lchnk, icol, &
 #ifdef CRM_STANDALONE
-                       latitude0_in, longitude0_in, &
+                       latitude0, longitude0, &
 #endif
                        tl, ql, qccl, qiil, ul, vl, &
                        ps, pmid, pdel, phis, &
