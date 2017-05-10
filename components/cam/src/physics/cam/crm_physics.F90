@@ -838,6 +838,8 @@ end subroutine crm_physics_init
 
    logical :: ls, lu, lv, lq(pcnst), fromcrm
 
+   real(r8) tmp1 ! whannah: to help feed the fluxes to CRM right before the call to CRM. 
+
    zero = 0.0_r8
 !========================================================
 !========================================================
@@ -906,7 +908,7 @@ end subroutine crm_physics_init
 
 ! gas and aerosol species are updated in by shallow convective transport in CAM.
 ! Aerosol changes from dropmixnuc in cldwat2m.F90 is discarded. (When dropmixnuc
-! is called in cldwat2m.F90, the tenendcy is set to zero. See dropmixnuc for details).
+! is called in cldwat2m.F90, the tendency is set to zero. See dropmixnuc for details).
 ! Minghuai Wang, 2010-01 (Minghuai.Wang@pnl.gov)
 !
    qaer = state%q
@@ -1222,6 +1224,62 @@ end subroutine crm_physics_init
        endif
 #endif
 
+
+! whannah - SPFLUXBYPASS - only sensible and latent heat fluxes are affected
+! #if defined(SPFLUXBYPASS) && !defined(CLUBB_CRM)
+#ifdef SPFLUXBYPASS_3
+    ! lq(:) = .FALSE.
+    ! lq(1) = .TRUE.
+    ! call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS', ls=.true., lq=lq)
+    ptend%lu    = .false.
+    ptend%lv    = .false.
+    ptend%lq    = .false. 
+    ptend%ls    = .true.
+    ptend%lq(1) = .true.
+    do i=1,ncol
+      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
+      ptend%s(i,:)   = 0.
+      ptend%q(i,:,1) = 0.
+      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
+    end do
+    call physics_update(state, ptend, ztodt, tend)   
+#endif 
+
+
+! whannah - alt SPFLUXBYPASS - all constituent fluxes (and SHF) are affected
+#ifdef SPFLUXBYPASS_4
+! write(*,*) '=== SPFLUXBYPASS_4 start ==='
+    ! lq(:) = .TRUE.
+    ! call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS_2', ls=.true., lq=lq)
+    ptend%lu    = .false.
+    ptend%lv    = .false.
+    ptend%lq    = .true. 
+    ptend%ls    = .true.
+    do i=1,ncol
+      tmp1 = gravit * state%rpdel(i,pver)
+      ptend%s(i,:)   = 0.
+      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      ! whannah - add all constituent fluxes
+      do m = 1, pcnst
+        ptend%q(i,:,m) = 0.
+        ptend%q(i,pver,m) = tmp1 * cam_in%cflx(i,m)
+      end do
+    end do
+    call physics_update(state, ptend, ztodt, tend)   
+! write(*,*) '=== SPFLUXBYPASS_4 end ==='
+#endif  
+
+#if defined(SPFLUXBYPASS_3) || defined(SPFLUXBYPASS_4)
+      ! whannah - reinitialize ptend when SPFLUXBYPASS is used in this module
+      lu = .true. 
+      lv = .true.
+      ls = .true.
+      lq(:) = .true.
+      fromcrm = .true.
+      call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  ! re-initialize output physics_ptend object
+      fromcrm = .false.
+#endif
 
        ptend%q(:,:,1) = 0.  ! necessary?
        ptend%q(:,:,ixcldliq) = 0.
@@ -1621,12 +1679,9 @@ end subroutine crm_physics_init
           end do
        end do
 
-! The radiation tendencies in the top 4 GCM levels are set to be zero in the CRM
-! So add radiation tendencies to levels above CRM domain and 2 top CRM levels here
-#ifndef SPRADBYPASS
-      ! whannah - by defining SPRADBYPASS we bypass this part 
+! The radiation tendencies in the GCM levels above the CRM and the top 2 CRM levels 
+! are set to be zero in the CRM, So add radiation tendencies to these levels 
        ptend%s(:ncol, :pver-crm_nz+2) = qrs(:ncol,:pver-crm_nz+2)+qrl(:ncol,:pver-crm_nz+2)
-#endif
 
 ! This will be used to check energy conservation
 !+++mhwang, 2012-02-07 (Minghuai.Wang@pnnl.gov)

@@ -753,7 +753,7 @@ subroutine ecpp_crm_stat()
      
         end do  ! kk
 !
-! calcualte vertical velocity variance for quiescent calss at lay boundary
+! calcualte vertical velocity variance for quiescent class at layer boundary
         do kk=1, nzm+1
           if(sum(area_bnd_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR)).gt.afrac_cut) then
              wwqui_bnd_sum(kk) = wwqui_bnd_sum(kk) / sum(area_bnd_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR))

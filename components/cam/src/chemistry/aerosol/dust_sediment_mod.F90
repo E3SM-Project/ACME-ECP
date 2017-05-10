@@ -15,6 +15,8 @@ module dust_sediment_mod
   use cam_logfile,   only: iulog
   use cam_abortutils,    only: endrun
 
+  use phys_control,     only: phys_getopts  ! whannah
+
   private
   public :: dust_sediment_vel, dust_sediment_tend
 
@@ -215,7 +217,8 @@ contains
        end do
     end do
     do k = 2,pver
-       call cfint2(ncol, xw, psi, fdot, xxk(1,k), fxdot, fxdd, psistar)
+       ! call cfint2(ncol, xw, psi, fdot, xxk(1,k), fxdot, fxdd, psistar)
+       call cfint2(ncol, xw, psi, fdot, xxk(1,k), fxdot, fxdd, psistar, vel)  ! whannah
        do i = 1,ncol
           flux(i,k) = (psi(i,k)-psistar(i))
        end do
@@ -229,13 +232,17 @@ contains
 
 !##############################################################################
 
-  subroutine cfint2 (ncol, x, f, fdot, xin, fxdot, fxdd, psistar)
+  ! subroutine cfint2 (ncol, x, f, fdot, xin, fxdot, fxdd, psistar)
+  subroutine cfint2 (ncol, x, f, fdot, xin, fxdot, fxdd, psistar, vel) ! whannah - added vel for debugging
+
 
 
     implicit none
 
 ! input
     integer ncol                      ! number of colums to process
+
+    real (r8) vel(pcols,pverp) ! whannah
 
     real (r8) x(pcols, pverp)
     real (r8) f(pcols, pverp)
@@ -261,19 +268,41 @@ contains
     real (r8) cfnew
     real (r8) xins(pcols)
 
+    logical ::  use_SPCAM  ! whannah
+
 !     the minmod function 
     real (r8) a, b, c
     real (r8) minmod
     real (r8) medan
+
+    ! this whole subroutine is designed to minimize using if statements.
+    ! When it was written, if statements were extremely expensive, costing approximately 30 multiplies
+    
+    ! two wierd inline statement functions that could be easily calculated with if statements, but we want to avoid "if statements"
+    ! minmod returns the minimum of the absolute value of two input parameters a and b
     minmod(a,b) = 0.5_r8*(sign(1._r8,a) + sign(1._r8,b))*min(abs(a),abs(b))
+    ! medan returns the "median" of three input parameters a, b, and c,
+    ! that is, let minx = min(a, b, c), maxx = max(a, b, c),
+    ! medan(a,b,c) is the value of one of the three input arguments which is between minx and maxx
     medan(a,b,c) = a + minmod(b-a,c-a)
 
+    call phys_getopts( use_SPCAM_out  = use_SPCAM) ! whannah
+
+    ! x contains the values of the layer interfaces for each column i
+    ! xin(i) contains the "departure point" for column i
+    ! we are going to search for the interval "intz(i)" containing that departure point.
+    ! That is, we want to know
+    ! for each column i, is there a value k such that x(i,k) <= xin(i) <= x(i,k+1)
+
+    ! first force xins to be between the minimum and maximum interface, and set intz(i) to 0 to indicate we have not yet found the departure point interval
     do i = 1,ncol
        xins(i) = medan(x(i,1), xin(i), x(i,pverp))
        intz(i) = 0
     end do
 
-! first find the interval 
+    ! now calulate a function (xins(i)-x(i,k))*(x(i,k+1)-xins(i)
+    ! that function will only be greater than zero if x(i,k) <= xins(i) <= x(i,k+1)
+    ! when it is greater than zero, set intz(i) to that interval
     do k =  1,pverp-1
        do i = 1,ncol
           if ((xins(i)-x(i,k))*(x(i,k+1)-xins(i)).ge.0._r8) then
@@ -281,12 +310,21 @@ contains
           endif
        end do
     end do
-
+    
+    ! now check to see whether we found it for each column 
     do i = 1,ncol
-       if (intz(i).eq.0) then
-          write(iulog,*) ' interval was not found for col i ', i
-          call endrun('DUST_SEDIMENT_MOD:cfint2 -- interval was not found ')
-       endif
+      if (intz(i).eq.0) then
+          if (use_SPCAM) then  ! whannah
+            write(iulog,*) 'whannah - DUST_SEDIMENT_MOD:cfint2 -- interval was not found for col i ', i
+            write(iulog,*) 'vel     : ',vel
+            write(iulog,*) 'xin     : ',xin
+            write(iulog,*) 'xins(i) : ',xins(i)
+            intz(i) = pverp-1   ! whannah
+          else
+            write(iulog,*) ' interval was not found for col i ', i
+            call endrun('DUST_SEDIMENT_MOD:cfint2 -- interval was not found ')
+        end if
+      endif
     end do
 
 ! now interpolate

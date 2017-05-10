@@ -1387,9 +1387,10 @@ do while(nstep.lt.nstop)
         prectend=(colprec-prectend)/ggr*factor_xy * idt_gl
         precstend=(colprecs-precstend)/ggr*factor_xy * idt_gl
 
-! don't use CRM tendencies from two crm top levels
-        sltend(ptop:ptop+1) = 0.
-        qltend(ptop:ptop+1) = 0.
+! don't use CRM tendencies from two crm top levels, 
+! radiation tendencies are added back after the CRM call (see crm_physics_tend)
+        sltend( ptop:ptop+1) = 0.
+        qltend( ptop:ptop+1) = 0.
         qcltend(ptop:ptop+1) = 0.
         qiltend(ptop:ptop+1) = 0.
 !-------------------------------------------------------------

@@ -4,7 +4,7 @@ subroutine setperturb(iseed)
 !  Random noise
 !  This surboutine has been updated for SPCAM5 (Minghuai.Wang@pnnl.gov, April, 2012). 
 !  Now the random generator is seeded based on the global column id, which gets rid
-!  of the dependence of the SPCAM reulst on pcols. 
+!  of the dependence of the SPCAM results on pcols. 
 
 use vars
 use sgs, only: setperturb_sgs

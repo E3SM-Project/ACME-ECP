@@ -1480,6 +1480,7 @@ subroutine tphysac (ztodt,   cam_in,  &
     ! Validate the physics state.
     if (state_debug_checks) &
          call physics_state_check(state, name="before tphysac")
+
 #ifdef GXL_DEBUG_OUTPUT  
    call outfld("conc_BC_ac1",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
 #endif
@@ -2029,7 +2030,8 @@ subroutine tphysbc (ztodt,               &
     logical :: l_rad
     !HuiWan (2014/15): added for a short-term time step convergence test ==
 
-    real(r8) rad_rrt(pcols,pver)  ! whannah - for debugging output
+    ! real(r8) rad_rrt(pcols,pver)  ! whannah - for debugging output
+    real(r8) tmp1 ! whannah: to help feed the fluxes to CRM right before the call to CRM. 
 
 !-- mdb spcam
     logical           :: use_SPCAM
@@ -2654,9 +2656,6 @@ if (l_tracer_aero) then
 !-- mdb spcam
   if (use_SPCAM) then
 
-! defined(CLUBB_CRM) 
-! #if defined(SPFLUXBYPASS)
-#ifdef SPFLUXBYPASS
     ! whannah - The flux bypass option was originally implemented by Mike Pritchard (UCI)
     ! Without this bypass the surface flux tendencies are applied to the GCM dynamical core 
     ! as a perturbation tendency concentrated on just the lowest model layer instead of first 
@@ -2665,10 +2664,11 @@ if (l_tracer_aero) then
     ! surface fluxes of dry static energy and water vapor prior to running the CRM, and disables 
     ! the tendency addition in diffusion_solver.F90. This is a more natural progression
     ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
-#ifdef WH_SP_DEBUG
-write(iulog,*) 'whannah - SPFLUXBYPASS B1'
-call shr_sys_flush(iulog)
-#endif
+    ! note : rpdel = 1./pdel
+
+! whannah - SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
+! #if defined(SPFLUXBYPASS) && !defined(CLUBB_CRM)
+#ifdef SPFLUXBYPASS_1
     lq(:) = .FALSE.
     lq(1) = .TRUE.
     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS', ls=.true., lq=lq)
@@ -2677,43 +2677,45 @@ call shr_sys_flush(iulog)
     ptend%lq    = .false. 
     ptend%ls    = .true.
     ptend%lq(1) = .true.
-#ifdef WH_SP_DEBUG
-write(iulog,*) 'whannah - SPFLUXBYPASS B2'
-call shr_sys_flush(iulog)
-#endif
     do i=1,ncol
+      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
       ptend%s(i,:)   = 0.
       ptend%q(i,:,1) = 0.
-
-      ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
-      ptend%q(i,pver,1) = gravit / state%pdel(i,pver) * cam_in%cflx(i,1)
-
-
-      ! whannah - add all constituent fluxes??? -> causes optical thickness error
-      ! do m = 1, pcnst
-      !   ptend%q(i,pver,m) = gravit / state%pdel(i,pver) * cam_in%cflx(i,m)
-      ! end do
-
-      ! whannah - Adding all fluxes to the bottom layer seemed to cause issues when using nlev=72
-      ! so the lines below spread the surface flux tendencies across the bottom nmax layers
-      ! nmax = 2
-      ! nf = nmax
-      ! do n=0,nmax-1
-      !   ptend%s(i,pver-n)   = gravit / state%pdel(i,pver-n) * cam_in%crm_shf(i)     * 1./nf
-      !   ptend%q(i,pver-n,1) = gravit / state%pdel(i,pver-n) * cam_in%crm_cflx(i,1)  * 1./nf
-      ! end do
+      ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
+      ! ptend%q(i,pver,1) = gravit / state%pdel(i,pver) * cam_in%cflx(i,1)
+      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
     end do
-#ifdef WH_SP_DEBUG
-write(iulog,*) 'whannah - SPFLUXBYPASS B3'  
-call shr_sys_flush(iulog)
-#endif
     call physics_update(state, ptend, ztodt, tend)   
-#ifdef WH_SP_DEBUG
-write(iulog,*) 'whannah - SPFLUXBYPASS B LAST'
-call shr_sys_flush(iulog)
-#endif
+#endif 
 
-#endif ! whannah
+
+! whannah - SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
+#ifdef SPFLUXBYPASS_2
+    lq(:) = .TRUE.
+    call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS_2', ls=.true., lq=lq)
+    ptend%lu    = .false.
+    ptend%lv    = .false.
+    ptend%lq    = .true. 
+    ptend%ls    = .true.
+    do i=1,ncol
+      tmp1 = gravit * state%rpdel(i,pver)
+      ptend%s(i,:)   = 0.
+      ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
+      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      ! whannah - add all constituent fluxes
+      do m = 1, pcnst
+        ptend%q(i,:,m) = 0.
+        ! ptend%q(i,pver,m) = gravit / state%pdel(i,pver) * cam_in%cflx(i,m)
+        ptend%q(i,pver,m) = tmp1 * cam_in%cflx(i,m)
+      end do
+    end do
+    call physics_update(state, ptend, ztodt, tend)   
+#endif  
+
+
+
+
 
     call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class) !==Guangxing Lin added species_class
   endif

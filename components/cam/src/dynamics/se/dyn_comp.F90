@@ -454,7 +454,9 @@ CONTAINS
        ierr = pio_def_var(nc, 'element_corners', PIO_INT, (/dim1,dim2/),vid)
     
        ierr = pio_enddef(nc)
-       call createmetadata(par, elem, subelement_corners)
+       if (iam<par%nprocs) then
+          call createmetadata(par, elem, subelement_corners)
+       end if
 
        jj=0
        do cc=0,3

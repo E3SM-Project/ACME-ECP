@@ -294,8 +294,8 @@ contains
 
 
 !==Guangxing Lin
-     call phys_getopts (use_SPCAM_out = use_SPCAM)
-        call phys_getopts (use_ECPP_out  = use_ECPP)
+    call phys_getopts (use_SPCAM_out = use_SPCAM)
+    call phys_getopts (use_ECPP_out  = use_ECPP)
 !==Guangxing Lin
 
     !-----------------------------------------------------------------

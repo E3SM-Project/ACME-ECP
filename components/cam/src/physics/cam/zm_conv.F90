@@ -3871,7 +3871,10 @@ SUBROUTINE ientropy (rcall,icol,lchnk,s,p,qt,T,qst,Tfg)
           ' lat: ',this_lat,' lon: ',this_lon, &
           ' P(mb)= ', p, ' Tfg(K)= ', Tfg, ' qt(g/kg) = ', 1000._r8*qt, &
           ' qst(g/kg) = ', 1000._r8*qst,', s(J/kg) = ',s
+! whannah - bypass this error trap when using ACME-SP
+#ifndef CRM
      call endrun('**** ZM_CONV IENTROPY: Tmix did not converge ****')
+#endif
   end if
 
 100 format (A,I1,I4,I4,7(A,F6.2))

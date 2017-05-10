@@ -659,9 +659,28 @@
                                        - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgh(:ncol,k  ) )
         end do
       endif
-#ifndef SPFLUXBYPASS
+
       dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
+
+#ifdef SPFLUXBYPASS_1
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
 #endif
+
+
+#ifdef SPFLUXBYPASS_2
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#endif
+
+
+#ifdef SPFLUXBYPASS_3
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#endif
+
+
+#ifdef SPFLUXBYPASS_4
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#endif
+
      ! Diffuse dry static energy
      !----------------------------------------------------------------------------------------------------
      ! In Extended WACCM, kvt is calculated rather kvh. This is because molecular diffusion operates on 
@@ -733,7 +752,15 @@
     do m = 1, ncnst
 
        if( diffuse(fieldlist,'q',m) ) then
+
+! whannah - SP_DIFF_CNST was an attempt to have non-water constituents diffused 
+! in tphysac in order to solve an aerosol optical depth error near the surface 
+! in ACME-SP but it did not seem to make any difference (feel free to remove)
+! #ifndef SP_DIFF_CNST
            if (.not. use_SPCAM) then
+! #else
+!            if ( (use_SPCAM .and. m.ge.4).or.(.not. use_SPCAM) ) then
+! #endif
 
              ! Add the nonlocal transport terms to constituents in the PBL.
              ! Check for neg q's in each constituent and put the original vertical
@@ -757,16 +784,30 @@
 
            ! Add the explicit surface fluxes to the lowest layer
 
-#ifndef SPFLUXBYPASS 
-           q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol) 
+
+! #ifdef SPFLUXBYPASS
+!            if ( m .ne. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) ! whannah
 ! #else
-           ! if ( m .ne. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol) ! whannah     
-           
-           ! whannah - I thought this made more sense to diffuse constituents other than water vapor, 
-           ! but this leads to an error near the surface 
-           !     WARNING: Aerosol optical depth is unreasonably high in this layer.
-           ! So I guess I'm missing something about how the non-water vapor constituents are diffused....
-#endif     
+!            q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
+! #endif  
+
+        q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
+
+#ifdef SPFLUXBYPASS_1
+        if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
+#endif  
+
+#ifdef SPFLUXBYPASS_2
+        q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
+#endif  
+
+#ifdef SPFLUXBYPASS_3
+        if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
+#endif  
+
+#ifdef SPFLUXBYPASS_4
+        q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
+#endif  
 
            ! Diffuse constituents.
 
@@ -801,7 +842,11 @@
                endif
            end if
 
+! #ifndef SP_DIFF_CNST
            if (.not. use_SPCAM) then
+! #else
+!            if ( (use_SPCAM .and. m.ge.4).or.(.not. use_SPCAM) ) then
+! #endif
              call vd_lu_solve(  pcols , pver , ncol  ,                         &
                                 q(1,1,m) , decomp    , ntop  , nbot  , cd_top )
            endif

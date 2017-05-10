@@ -67,7 +67,7 @@ real grdf_z(nzm)! grid factor for eddy diffusion in z
 
 logical:: dosmagor   ! if true, then use Smagorinsky closure
 
-! WH 
+! whannah
 ! logical:: doscalar   ! if true, transport a passive scalar in the place of prognostic SGS TKE only if dosmagor=.true.
 
 ! Local diagnostics:
@@ -94,7 +94,7 @@ subroutine sgs_setparm()
   NAMELIST /BNCUIODSBJCB/ place_holder
 
   dosmagor = .true.  ! default 
-  ! doscalar = .false. ! default ! WH
+  ! doscalar = .false. ! default ! whannah
 
   !----------------------------------
   !  Read namelist for microphysics options from prm file:
