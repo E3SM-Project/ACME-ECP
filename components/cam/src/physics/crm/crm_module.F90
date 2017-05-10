@@ -1,13 +1,4 @@
 
-!MRN: Two new CPP defines added: CRM_DUMP and CRM_STANDALONE. CRM_DUMP is used when we wish to
-!MRN: dump out data for the standalone model to use. CRM_STANDALONE is used when we wish to run
-!MRN: in standalone mode (mostly leaving out calls to phys_grid routines).
-
-!MRN: Convenient error checking macro for dumping data to file
-#ifdef CRM_DUMP
-#define _ERR(s,e,l) if (.not. s) then; write(*,*) l,', ',trim(e); stop; endif
-#endif
-
 module crm_module
 !---------------------------------------------------------------
 !  Super-parameterization's main driver 
@@ -85,10 +76,7 @@ subroutine crm        (lchnk, icol, &
 !---------------------------------------------------------------
 
         use mpi
-!MRN: Convenience utility for dumping NetCDF data
-#ifdef CRM_DUMP
-        use dmdf
-#endif
+        use crm_dump
         use shr_kind_mod, only: r8 => shr_kind_r8
 !MRN: phys_grid is a rabbit hole of dependencies I'd rather hijack and avoid.
 !MRN: It's only used to get the longitude and latitude for each call and then
@@ -358,6 +346,7 @@ subroutine crm        (lchnk, icol, &
          real(r8), intent(out) :: wwqui_bnd(plev+1)                                ! vertical velocity variance in quiescent class (m2/s2)
          real(r8), intent(out) :: wwqui_cloudy_bnd(plev+1)                         ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
 #endif
+         real(r8), intent(out) :: qtot(20)
 
 !  Local space:
         real dummy(nz), t00(nz)
@@ -397,7 +386,6 @@ real(kind=core_rknd), dimension(nzm) :: &
 
         real  cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
 
-        real(r8), intent(out) :: qtot(20)
         real ntotal_step
 
 !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
@@ -411,91 +399,18 @@ real(kind=core_rknd), dimension(nzm) :: &
 
         igstep = get_nstep() 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! BEGIN DUMPING CRM INITIAL DATA TO NETCDF FILE
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef CRM_DUMP
-        call MPI_Comm_rank(MPI_COMM_WORLD,myrank,ierr)
-        if (myrank == 1) then
-          if (igstep == 1) then
-            call dmdf_write_attr(CRM_NX   ,myrank,'crm_in','crm_nx'  ); _ERR(success,error_string,__LINE__)
-            call dmdf_write_attr(CRM_NY   ,myrank,'crm_in','crm_ny'  ); _ERR(success,error_string,__LINE__)
-            call dmdf_write_attr(CRM_NZ   ,myrank,'crm_in','crm_nz'  ); _ERR(success,error_string,__LINE__)
-            call dmdf_write_attr(CRM_DX   ,myrank,'crm_in','crm_dx'  ); _ERR(success,error_string,__LINE__)
-            call dmdf_write_attr(CRM_DT   ,myrank,'crm_in','crm_dt'  ); _ERR(success,error_string,__LINE__)
-#if   (defined m2005)
-            call dmdf_write_attr('m2005'  ,myrank,'crm_in','micro'   ); _ERR(success,error_string,__LINE__)
-#elif (defined sam1mom)
-            call dmdf_write_attr('sam1mom',myrank,'crm_in','micro'   ); _ERR(success,error_string,__LINE__)
-#endif
-#if   (defined _UM5)
-            call dmdf_write_attr('UM5'    ,myrank,'crm_in','crm_adv' ); _ERR(success,error_string,__LINE__)
-#elif (defined _MPDATA)
-            call dmdf_write_attr('MPDATA' ,myrank,'crm_in','crm_adv' ); _ERR(success,error_string,__LINE__)
-#endif
-            call dmdf_write_attr(PLEV     ,myrank,'crm_in','plev'    ); _ERR(success,error_string,__LINE__)
-            call dmdf_write_attr(PSUBCOLS ,myrank,'crm_in','psubcols'); _ERR(success,error_string,__LINE__)
-            call dmdf_write_attr(PCOLS    ,myrank,'crm_in','pcols'   ); _ERR(success,error_string,__LINE__)
-            call dmdf_write_attr(PCNST    ,myrank,'crm_in','pcnst'   ); _ERR(success,error_string,__LINE__)
-          endif
-          !Don't output the first time because fields are initially uniform, and random noise is added. Keep stochasticity out of the standalone model
-          if (igstep > 1) then
-            call dmdf_write(lchnk           ,myrank,'crm_in','lchnk'                                                             ,.true. ,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(icol            ,myrank,'crm_in','icol'                                                              ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(latitude0       ,myrank,'crm_in','latitude0'                                                         ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(longitude0      ,myrank,'crm_in','longitude0'                                                        ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            !MRN: Cannot declare a variable with the same name as a dimension. I'll just have to look it up by dimension name, not variable name during standalone mode.
-           !call dmdf_write(plev            ,myrank,'crm_in','plev'                                                              ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(ps              ,myrank,'crm_in','ps'                                                                ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(pmid            ,myrank,'crm_in','pmid'            ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(pdel            ,myrank,'crm_in','pdel'            ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(phis            ,myrank,'crm_in','phis'                                                              ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(zmid            ,myrank,'crm_in','zmid'            ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(zint            ,myrank,'crm_in','zint'            ,(/'plev_p1'/)                                    ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(qrad_crm        ,myrank,'crm_in','qrad_crm'        ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(dt_gl           ,myrank,'crm_in','dt_gl'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(ocnfrac         ,myrank,'crm_in','ocnfrac'                                                           ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(tau00           ,myrank,'crm_in','tau00'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(wndls           ,myrank,'crm_in','wndls'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(bflxls          ,myrank,'crm_in','bflxls'                                                            ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(fluxu00         ,myrank,'crm_in','fluxu00'                                                           ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(fluxv00         ,myrank,'crm_in','fluxv00'                                                           ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(fluxt00         ,myrank,'crm_in','fluxt00'                                                           ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(fluxq00         ,myrank,'crm_in','fluxq00'                                                           ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(tl              ,myrank,'crm_in','tl'              ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(ql              ,myrank,'crm_in','ql'              ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(qccl            ,myrank,'crm_in','qccl'            ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(qiil            ,myrank,'crm_in','qiil'            ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(ul              ,myrank,'crm_in','ul'              ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(vl              ,myrank,'crm_in','vl'              ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call crm_dump_input(igstep,plev,lchnk,icol,latitude0,longitude0,ps,pmid,pdel,phis,zmid,zint,qrad_crm,dt_gl,ocnfrac,tau00,&
+                      wndls,bflxls,fluxu00,fluxv00,fluxt00,fluxq00,tl,ql,qccl,qiil,ul,vl, &
 #ifdef CLUBB_CRM
-            call dmdf_write(clubb_buffer    ,myrank,'crm_in','clubb_buffer'    ,(/'crm_nx','crm_ny','crm_nz_p1','nclubbvars'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
+                      clubb_buffer    , &
 #endif
-            call dmdf_write(cltot           ,myrank,'crm_in','cltot'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(clhgh           ,myrank,'crm_in','clhgh'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(clmed           ,myrank,'crm_in','clmed'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(cllow           ,myrank,'crm_in','cllow'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(u_crm           ,myrank,'crm_in','u_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(v_crm           ,myrank,'crm_in','v_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(w_crm           ,myrank,'crm_in','w_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(t_crm           ,myrank,'crm_in','t_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(micro_fields_crm,myrank,'crm_in','micro_fields_crm',(/'crm_nx','crm_ny','crm_nz','nmicro_fields_p1'/),.false.,.false.); _ERR(success,error_string,__LINE__)
+                      cltot,clhgh,clmed,cllow,u_crm,v_crm,w_crm,t_crm,micro_fields_crm, &
 #ifdef m2005
 #ifdef MODAL_AERO
-            call dmdf_write(naermod         ,myrank,'crm_in','naermod'         ,(/'plev','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(vaerosol        ,myrank,'crm_in','vaerosol'        ,(/'plev','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(hygro           ,myrank,'crm_in','hygro'           ,(/'plev','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
+                      naermod,vaerosol,hygro , &
 #endif
 #endif
-            call dmdf_write(dd_crm          ,myrank,'crm_in','dd_crm'          ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(mui_crm         ,myrank,'crm_in','mui_crm'         ,(/'plev_p1'/)                                    ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(mdi_crm         ,myrank,'crm_in','mdi_crm'         ,(/'plev_p1'/)                                    ,.false.,.true. ); _ERR(success,error_string,__LINE__)
-          endif
-        endif
-#endif
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! END DUMPING CRM INITIAL DATA TO NETCDF FILE
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      dd_crm,mui_crm,mdi_crm )
 
 !-----------------------------------------------
 
@@ -1921,168 +1836,25 @@ do while(nstep.lt.nstop)
        call ecpp_crm_cleanup ()
 #endif /*ECPP*/
 
-
-
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! BEGIN DUMPING CRM OUTPUT DATA TO NETCDF FILE
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef CRM_DUMP
-       if (myrank == 1) then
-         !Don't output the first time because fields are initially uniform, and random noise is added. Keep stochasticity out of the standalone model
-         if (igstep > 1) then
-           call dmdf_write(crm_tk          ,myrank,'crm_out',trim('crm_tk          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.true. ,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_tkh         ,myrank,'crm_out',trim('crm_tkh         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(cltot           ,myrank,'crm_out',trim('cltot           ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(clhgh           ,myrank,'crm_out',trim('clhgh           ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(clmed           ,myrank,'crm_out',trim('clmed           ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(cllow           ,myrank,'crm_out',trim('cllow           ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(sltend          ,myrank,'crm_out',trim('sltend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(u_crm           ,myrank,'crm_out',trim('u_crm           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(v_crm           ,myrank,'crm_out',trim('v_crm           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(w_crm           ,myrank,'crm_out',trim('w_crm           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(t_crm           ,myrank,'crm_out',trim('t_crm           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(micro_fields_crm,myrank,'crm_out',trim('micro_fields_crm'),(/'crm_nx','crm_ny','crm_nz','nmicro_fields_p1'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qltend          ,myrank,'crm_out',trim('qltend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qcltend         ,myrank,'crm_out',trim('qcltend         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qiltend         ,myrank,'crm_out',trim('qiltend         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(t_rad           ,myrank,'crm_out',trim('t_rad           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qv_rad          ,myrank,'crm_out',trim('qv_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qc_rad          ,myrank,'crm_out',trim('qc_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qi_rad          ,myrank,'crm_out',trim('qi_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(cld_rad         ,myrank,'crm_out',trim('cld_rad         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(cld3d_crm       ,myrank,'crm_out',trim('cld3d_crm       '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call crm_dump_output(igstep,plev,crm_tk,crm_tkh,cltot,clhgh,clmed,cllow,sltend,u_crm,v_crm,w_crm,t_crm,micro_fields_crm,&
+                       qltend,qcltend,qiltend,t_rad,qv_rad,qc_rad,qi_rad,cld_rad,cld3d_crm, &
 #ifdef CLUBB_CRM
-           call dmdf_write(clubb_buffer    ,myrank,'crm_out',trim('clubb_buffer    '),(/'crm_nx','crm_ny','crm_nz_p1,nclubbvars'/)        ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_cld         ,myrank,'crm_out',trim('crm_cld         '),(/'crm_nx','crm_ny','crm_nz_p1'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(clubb_tk        ,myrank,'crm_out',trim('clubb_tk        '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(clubb_tkh       ,myrank,'crm_out',trim('clubb_tkh       '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(relvar          ,myrank,'crm_out',trim('relvar          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(accre_enhan     ,myrank,'crm_out',trim('accre_enhan     '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qclvar          ,myrank,'crm_out',trim('qclvar          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+                       clubb_buffer,crm_cld,clubb_tk,clubb_tkh,relvar,accre_enhan,qclvar , &
 #endif
 #ifdef CRM3D
-           call dmdf_write(ultend          ,myrank,'crm_out',trim('ultend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(vltend          ,myrank,'crm_out',trim('vltend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
+                       ultend,vltend , &
 #endif
 #ifdef m2005
-           call dmdf_write(nc_rad          ,myrank,'crm_out',trim('nc_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(ni_rad          ,myrank,'crm_out',trim('ni_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qs_rad          ,myrank,'crm_out',trim('qs_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(ns_rad          ,myrank,'crm_out',trim('ns_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(wvar_crm        ,myrank,'crm_out',trim('wvar_crm        '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(aut_crm         ,myrank,'crm_out',trim('aut_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(acc_crm         ,myrank,'crm_out',trim('acc_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(evpc_crm        ,myrank,'crm_out',trim('evpc_crm        '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(evpr_crm        ,myrank,'crm_out',trim('evpr_crm        '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mlt_crm         ,myrank,'crm_out',trim('mlt_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(sub_crm         ,myrank,'crm_out',trim('sub_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(dep_crm         ,myrank,'crm_out',trim('dep_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(con_crm         ,myrank,'crm_out',trim('con_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(aut_crm_a       ,myrank,'crm_out',trim('aut_crm_a       '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(acc_crm_a       ,myrank,'crm_out',trim('acc_crm_a       '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(evpc_crm_a      ,myrank,'crm_out',trim('evpc_crm_a      '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(evpr_crm_a      ,myrank,'crm_out',trim('evpr_crm_a      '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mlt_crm_a       ,myrank,'crm_out',trim('mlt_crm_a       '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(sub_crm_a       ,myrank,'crm_out',trim('sub_crm_a       '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(dep_crm_a       ,myrank,'crm_out',trim('dep_crm_a       '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(con_crm_a       ,myrank,'crm_out',trim('con_crm_a       '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-#endif
-#ifdef m2005
-           call dmdf_write(crm_nc          ,myrank,'crm_out',trim('crm_nc          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_ni          ,myrank,'crm_out',trim('crm_ni          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_ns          ,myrank,'crm_out',trim('crm_ns          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_ng          ,myrank,'crm_out',trim('crm_ng          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_nr          ,myrank,'crm_out',trim('crm_nr          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
+                       nc_rad,ni_rad,qs_rad,ns_rad,wvar_crm,aut_crm,acc_crm,evpc_crm,evpr_crm,mlt_crm,sub_crm,dep_crm,con_crm,aut_crm_a,acc_crm_a,&
+                       evpc_crm_a,evpr_crm_a,mlt_crm_a,sub_crm_a,dep_crm_a,con_crm_a,crm_nc,crm_ni,crm_ns,crm_ng,crm_nr, &
 #endif
 #ifdef ECPP
-           call dmdf_write(acen            ,myrank,'crm_out',trim('acen            '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(acen_tf         ,myrank,'crm_out',trim('acen_tf         '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(rhcen           ,myrank,'crm_out',trim('rhcen           '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qcloudcen       ,myrank,'crm_out',trim('qcloudcen       '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qicecen         ,myrank,'crm_out',trim('qicecen         '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qlsinkcen       ,myrank,'crm_out',trim('qlsinkcen       '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(precrcen        ,myrank,'crm_out',trim('precrcen        '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(precsolidcen    ,myrank,'crm_out',trim('precsolidcen    '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qlsink_bfcen    ,myrank,'crm_out',trim('qlsink_bfcen    '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qlsink_avgcen   ,myrank,'crm_out',trim('qlsink_avgcen   '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(praincen        ,myrank,'crm_out',trim('praincen        '),(/'plev','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(wwqui_cen       ,myrank,'crm_out',trim('wwqui_cen       '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(wwqui_cloudy_cen,myrank,'crm_out',trim('wwqui_cloudy_cen'),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(abnd            ,myrank,'crm_out',trim('abnd            '),(/'plev_p1','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/),.false.,.false.); _ERR(success,error_string,__LINE__)  
-           call dmdf_write(abnd_tf         ,myrank,'crm_out',trim('abnd_tf         '),(/'plev_p1','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/),.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(massflxbnd      ,myrank,'crm_out',trim('massflxbnd      '),(/'plev_p1','NCLASS_CL','ncls_ecpp_in','NCLASS_PR'/),.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(wupthresh_bnd   ,myrank,'crm_out',trim('wupthresh_bnd   '),(/'plev_p1'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(wdownthresh_bnd ,myrank,'crm_out',trim('wdownthresh_bnd '),(/'plev_p1'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(wwqui_bnd       ,myrank,'crm_out',trim('wwqui_bnd       '),(/'plev_p1'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(wwqui_cloudy_bnd,myrank,'crm_out',trim('wwqui_cloudy_bnd'),(/'plev_p1'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
+                       acen,acen_tf,rhcen,qcloudcen,qicecen,qlsinkcen,precrcen,precsolidcen,qlsink_bfcen,qlsink_avgcen,praincen,wwqui_cen,wwqui_cloudy_cen,&
+                       abnd,abnd_tf,massflxbnd,wupthresh_bnd,wdownthresh_bnd,wwqui_bnd,wwqui_cloudy_bnd, &
 #endif
-           call dmdf_write(precc           ,myrank,'crm_out',trim('precc           ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(precl           ,myrank,'crm_out',trim('precl           ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(cld             ,myrank,'crm_out',trim('cld             '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(cldtop          ,myrank,'crm_out',trim('cldtop          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(gicewp          ,myrank,'crm_out',trim('gicewp          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(gliqwp          ,myrank,'crm_out',trim('gliqwp          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mc              ,myrank,'crm_out',trim('mc              '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mcup            ,myrank,'crm_out',trim('mcup            '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mcdn            ,myrank,'crm_out',trim('mcdn            '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mcuup           ,myrank,'crm_out',trim('mcuup           '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mcudn           ,myrank,'crm_out',trim('mcudn           '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_qc          ,myrank,'crm_out',trim('crm_qc          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_qi          ,myrank,'crm_out',trim('crm_qi          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_qs          ,myrank,'crm_out',trim('crm_qs          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_qg          ,myrank,'crm_out',trim('crm_qg          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(crm_qr          ,myrank,'crm_out',trim('crm_qr          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mu_crm          ,myrank,'crm_out',trim('mu_crm          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(md_crm          ,myrank,'crm_out',trim('md_crm          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(du_crm          ,myrank,'crm_out',trim('du_crm          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(eu_crm          ,myrank,'crm_out',trim('eu_crm          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(ed_crm          ,myrank,'crm_out',trim('ed_crm          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(dd_crm          ,myrank,'crm_out',trim('dd_crm          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(jt_crm          ,myrank,'crm_out',trim('jt_crm          ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mx_crm          ,myrank,'crm_out',trim('mx_crm          ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mui_crm         ,myrank,'crm_out',trim('mui_crm         '),(/'plev_p1'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(mdi_crm         ,myrank,'crm_out',trim('mdi_crm         '),(/'plev_p1'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(flux_qt         ,myrank,'crm_out',trim('flux_qt         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(fluxsgs_qt      ,myrank,'crm_out',trim('fluxsgs_qt      '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(tkez            ,myrank,'crm_out',trim('tkez            '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(tkesgsz         ,myrank,'crm_out',trim('tkesgsz         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(tkz             ,myrank,'crm_out',trim('tkz             '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(flux_u          ,myrank,'crm_out',trim('flux_u          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(flux_v          ,myrank,'crm_out',trim('flux_v          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(flux_qp         ,myrank,'crm_out',trim('flux_qp         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(pflx            ,myrank,'crm_out',trim('pflx            '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qt_ls           ,myrank,'crm_out',trim('qt_ls           '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qt_trans        ,myrank,'crm_out',trim('qt_trans        '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qp_trans        ,myrank,'crm_out',trim('qp_trans        '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qp_fall         ,myrank,'crm_out',trim('qp_fall         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qp_src          ,myrank,'crm_out',trim('qp_src          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qp_evp          ,myrank,'crm_out',trim('qp_evp          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(t_ls            ,myrank,'crm_out',trim('t_ls            '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(prectend        ,myrank,'crm_out',trim('prectend        ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(precstend       ,myrank,'crm_out',trim('precstend       ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(precsc          ,myrank,'crm_out',trim('precsc          ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(precsl          ,myrank,'crm_out',trim('precsl          ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(taux_crm        ,myrank,'crm_out',trim('taux_crm        ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(tauy_crm        ,myrank,'crm_out',trim('tauy_crm        ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(z0m             ,myrank,'crm_out',trim('z0m             ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(timing_factor   ,myrank,'crm_out',trim('timing_factor   ')                                                     ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qc_crm          ,myrank,'crm_out',trim('qc_crm          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qi_crm          ,myrank,'crm_out',trim('qi_crm          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qpc_crm         ,myrank,'crm_out',trim('qpc_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(qpi_crm         ,myrank,'crm_out',trim('qpi_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-           call dmdf_write(prec_crm        ,myrank,'crm_out',trim('prec_crm        '),(/'crm_nx','crm_ny'/)                               ,.false.,.true. ); _ERR(success,error_string,__LINE__)
-         endif
-       endif
-#endif
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! END DUMPING CRM OUTPUT DATA TO NETCDF FILE
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
+                       precc,precl,cld,cldtop,gicewp,gliqwp,mc,mcup,mcdn,mcuup,mcudn,crm_qc,crm_qi,crm_qs,crm_qg,crm_qr,mu_crm,md_crm,du_crm,eu_crm,&
+                       ed_crm,dd_crm,jt_crm,mx_crm,mui_crm,mdi_crm,flux_qt,fluxsgs_qt,tkez,tkesgsz,tkz,flux_u,flux_v,flux_qp,pflx,qt_ls,qt_trans,   &
+                       qp_trans,qp_fall,qp_src,qp_evp,t_ls,prectend,precstend,precsc,precsl,taux_crm,tauy_crm,z0m,timing_factor,qc_crm,qi_crm,qpc_crm,qpi_crm,prec_crm,qtot)
         
 end subroutine crm
 end module crm_module

@@ -154,13 +154,15 @@ echo "$CRM_ROOT/standalone/src"                               >> Filepath
 ##########################################################################################
 ## Copy all potentially needed source files to build_root
 ##########################################################################################
-for i in `cat Filepath`
-  do cp -f $i/*.f $i/*.F $i/*.f90 $i/*.F90 $i/*.c $i/*.h $i/*.in $i/*.inc . >& /dev/null
+for i in `cat Filepath` ; do
+  for f in `ls $i/*.f $i/*.F $i/*.f90 $i/*.F90 $i/*.c $i/*.h $i/*.in $i/*.inc 2> /dev/null` ; do
+    ln -s $f 2> /dev/null
+  done
 done
-cp $CRM_ROOT/../cam/crmdims.F90 .
-cp $CRM_ROOT/../cam/ppgrid.F90 .
-cp $CRM_ROOT/../../../../../cime/share/csm_share/shr/shr_const_mod.F90 .
-cp $CRM_ROOT/../../../../../cime/share/csm_share/shr/shr_kind_mod.F90 .
+ln -s $CRM_ROOT/../cam/crmdims.F90
+ln -s $CRM_ROOT/../cam/ppgrid.F90
+ln -s $CRM_ROOT/../../../../../cime/share/csm_share/shr/shr_const_mod.F90
+ln -s $CRM_ROOT/../../../../../cime/share/csm_share/shr/shr_kind_mod.F90
 
 ##########################################################################################
 ## Define the dependencies between the source files

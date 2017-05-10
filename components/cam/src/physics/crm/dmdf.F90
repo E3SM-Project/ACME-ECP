@@ -2287,7 +2287,7 @@ contains
     character(len=256) :: fname
     if (first) then
       if (rank == -1) then
-        write(fname,fmt='(A,A)') trim(fprefix) , '.nc'
+        write(fname,fmt='(A,A)') trim(fprefix)
       else
         write(fname,fmt='(A,A,I0.6,A)') trim(fprefix) , '_' , rank , '.nc'
       endif

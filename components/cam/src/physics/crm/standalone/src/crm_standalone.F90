@@ -21,7 +21,7 @@ program crm_standalone
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Standalone Variables
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  character(len=512) :: fname_in
+  character(len=512) :: fname_in, fname_out
   character(len=32)  :: ind1_str, ind2_str
   integer :: ind1, ind2, stat
   integer, parameter :: plev = PLEV
@@ -205,6 +205,15 @@ program crm_standalone
 #endif
   real(r8) :: qtot(20)
 
+
+
+  real(r8) :: u_crm_f  (crm_nx,crm_ny,crm_nz) 
+  real(r8) :: v_crm_f  (crm_nx,crm_ny,crm_nz) 
+  real(r8) :: w_crm_f  (crm_nx,crm_ny,crm_nz) 
+  real(r8) :: t_crm_f  (crm_nx,crm_ny,crm_nz) 
+
+
+
   !I have to call setparm to get the correct value for nmicro_fields
   call setparm()
   allocate( micro_fields_crm  (crm_nx,crm_ny,crm_nz,nmicro_fields+1) )
@@ -213,6 +222,7 @@ program crm_standalone
   !! Read in the command line arguments
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   call getarg(1,fname_in)
+  call getarg(2,fname_out)
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Read in Input Data from the dump file
@@ -323,6 +333,18 @@ program crm_standalone
                        ocnfrac, wndls, tau00, bflxls, &
                        fluxu00, fluxv00, fluxt00, fluxq00,    &
                        taux_crm, tauy_crm, z0m, timing_factor, qtot)   
+
+  call dmdf_read(u_crm_f           ,trim(fname_out),'u_crm'           ,1,.true. ,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(v_crm_f           ,trim(fname_out),'v_crm'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(w_crm_f           ,trim(fname_out),'w_crm'           ,1,.false.,.false.); _ERR(success,error_string,__LINE__)
+  call dmdf_read(t_crm_f           ,trim(fname_out),'t_crm'           ,1,.false.,.true. ); _ERR(success,error_string,__LINE__)
+
+write(*,*) sum(abs(u_crm-u_crm_f)) / sum(abs(u_crm_f))
+write(*,*) sum(abs(v_crm-v_crm_f)) / sum(abs(v_crm_f))
+write(*,*) sum(abs(w_crm-w_crm_f)) / sum(abs(w_crm_f))
+write(*,*) sum(abs(t_crm-t_crm_f)) / sum(abs(t_crm_f))
+
+
 
 
 end program crm_standalone
