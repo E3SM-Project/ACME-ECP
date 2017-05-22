@@ -1,11 +1,12 @@
 
 include make.inc
 
-FC := ftn
-CC := cc
-FREEFLAGS := -Mextend
-FFLAGS := -O2 ${CPPDEFS}
-CFLAGS := -O2 ${CPPDEFS}
+FC := ${FC}
+CC := ${CC}
+FREEFLAGS := ${FREEFLAGS}
+FIXEDFLAGS := ${FIXEDFLAGS}
+FFLAGS := ${FFLAGS} ${CPPDEFS}
+CFLAGS := ${CFLAGS} ${CPPDEFS}
 
 SOURCES := $(shell cat Srcfiles)
 OBJS    := $(addsuffix .o, $(basename $(SOURCES)))
@@ -16,27 +17,24 @@ standalone: crm_standalone.o task_init.o crmsurface.o kurant.o abcoefs.o zero.o 
 	${FC} -o crm_standalone *.o ${LDFLAGS}
 
 clean:
-	rm -f *.mod *.o
+	rm -f *.mod *.o crm_standalone
 
 .SUFFIXES:
-.SUFFIXES: .F .F90 .f90 .c .s .o
+.SUFFIXES: .F .F90 .f90 .c .o
 
 %.o: %.mod
 
 .F.o:
-	$(FC) -c $(FIXEDFLAGS) $(FFLAGS) $<
+	$(FC) ${INCLUDE} -c $(FIXEDFLAGS) $(FFLAGS) $<
 
 .F90.o:
-	$(FC) -c $(FREEFLAGS) $(FFLAGS) $<
+	$(FC) ${INCLUDE} -c $(FREEFLAGS) $(FFLAGS) $<
 
 .f90.o:
-	$(FC) -c $(FREEFLAGS) $(FFLAGS) $<
+	$(FC) ${INCLUDE} -c $(FREEFLAGS) $(FFLAGS) $<
 
 .c.o:
-	$(CC) -c $(CFLAGS) $<
-
-.s.o:
-	$(AS) -m  $<
+	$(CC) ${INCLUDE} -c $(CFLAGS) $<
 
 include Depends
 

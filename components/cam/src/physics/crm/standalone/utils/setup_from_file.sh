@@ -56,17 +56,17 @@ ncdump >& /dev/null || exit -1
 ##########################################################################################
 ## Gather the information we want from the netcdf dump file
 ##########################################################################################
-CRM_NX=`  ncdump -h $TFILE | grep crm_nx   | tail -n1 | cut -d ' ' -f3`
-CRM_NY=`  ncdump -h $TFILE | grep crm_ny   | tail -n1 | cut -d ' ' -f3`
-CRM_NZ=`  ncdump -h $TFILE | grep crm_nz   | tail -n1 | cut -d ' ' -f3`
-CRM_DX=`  ncdump -h $TFILE | grep crm_dx   | tail -n1 | cut -d ' ' -f3`
-CRM_DT=`  ncdump -h $TFILE | grep crm_dt   | tail -n1 | cut -d ' ' -f3`
-MICRO=`   ncdump -h $TFILE | grep micro    | tail -n1 | cut -d ' ' -f3 | cut -d '"' -f 2`
-ADV=`     ncdump -h $TFILE | grep crm_adv  | tail -n1 | cut -d ' ' -f3 | cut -d '"' -f 2`
-PLEV=`    ncdump -h $TFILE | grep plev     | tail -n1 | cut -d ' ' -f3`
-PSUBCOLS=`ncdump -h $TFILE | grep psubcols | tail -n1 | cut -d ' ' -f3`
-PCOLS=`   ncdump -h $TFILE | grep pcols    | tail -n1 | cut -d ' ' -f3`
-PCNST=`   ncdump -h $TFILE | grep pcnst    | tail -n1 | cut -d ' ' -f3`
+CRM_NX=`  ncdump -h $TFILE | grep crm_nx    | tail -n1 | cut -d ' ' -f3`
+CRM_NY=`  ncdump -h $TFILE | grep crm_ny    | tail -n1 | cut -d ' ' -f3`
+CRM_NZ=`  ncdump -h $TFILE | grep crm_nz    | tail -n1 | cut -d ' ' -f3`
+CRM_DX=`  ncdump -h $TFILE | grep crm_dx    | tail -n1 | cut -d ' ' -f3`
+CRM_DT=`  ncdump -h $TFILE | grep crm_dt    | tail -n1 | cut -d ' ' -f3`
+MICRO=`   ncdump -h $TFILE | grep micro     | tail -n1 | cut -d ' ' -f3 | cut -d '"' -f 2`
+ADV=`     ncdump -h $TFILE | grep crm_adv   | tail -n1 | cut -d ' ' -f3 | cut -d '"' -f 2`
+PLEV=`    ncdump -h $TFILE | grep plev      | tail -n1 | cut -d ' ' -f3`
+PSUBCOLS=`ncdump -h $TFILE | grep psubcols  | tail -n1 | cut -d ' ' -f3`
+PCOLS=`   ncdump -h $TFILE | grep pcols     | tail -n1 | cut -d ' ' -f3`
+PCNST=`   ncdump -h $TFILE | grep pcnst     | tail -n1 | cut -d ' ' -f3`
 
 echo "./setup.sh -crm_root $CRM_ROOT -build_root $BUILD_ROOT -nadv $PCNST -nlev $PLEV -crm_nx $CRM_NX -crm_ny $CRM_NY -crm_nz $CRM_NZ -crm_dx $CRM_DX -crm_dt $CRM_DT -pcols $PCOLS -psubcols $PSUBCOLS -SPCAM_microp_scheme $MICRO -crm_adv $ADV"
 

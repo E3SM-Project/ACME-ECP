@@ -134,7 +134,7 @@ cd $BUILD_ROOT
 ##########################################################################################
 ## Create the preprocessor define flags
 ##########################################################################################
-CPPDEFS=" -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=$PLEV -DPSUBCOLS=$PSUBCOLS -DPCOLS=$PCOLS -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC -DCRM_STANDALONE"
+CPPDEFS=" ${CPPDEFS} -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=$PLEV -DPSUBCOLS=$PSUBCOLS -DPCOLS=$PCOLS -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC -DCRM_STANDALONE "
 [ "$CLUBB_CRM" -eq "1" ] && CPPDEFS="${CPPDEFS} -DCLUBB_CRM -DCLUBB_REAL_TYPE=dp "
 
 ##########################################################################################

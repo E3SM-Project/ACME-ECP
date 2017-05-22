@@ -36,3 +36,10 @@ export CRAY_CPU_TARGET=istanbul
 export CRAY_CUDA_MPS=1
 export CRAY_CPU_TARGET=istanbul
 
+export FC=ftn
+export CC=cc
+export FFLAGS="-O2"
+export CFLAGS="-O2"
+export FREEFLAGS="-Mextend"
+export FIXEDFLAGS=""
+
