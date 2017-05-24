@@ -134,7 +134,7 @@ cd $BUILD_ROOT
 ##########################################################################################
 ## Create the preprocessor define flags
 ##########################################################################################
-CPPDEFS=" ${CPPDEFS} -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=$PLEV -DPSUBCOLS=$PSUBCOLS -DPCOLS=$PCOLS -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC -DCRM_STANDALONE "
+CPPDEFS=" ${CPPDEFS} -DHAVE_MPI -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=$PLEV -DPSUBCOLS=$PSUBCOLS -DPCOLS=$PCOLS -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC -DCRM_STANDALONE "
 [ "$CLUBB_CRM" -eq "1" ] && CPPDEFS="${CPPDEFS} -DCLUBB_CRM -DCLUBB_REAL_TYPE=dp "
 
 ##########################################################################################
@@ -142,6 +142,7 @@ CPPDEFS=" ${CPPDEFS} -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_
 ##########################################################################################
 echo "$CRM_ROOT"                                               > Filepath
 echo "$CRM_ROOT/standalone/src"                               >> Filepath
+echo "$CRM_ROOT/../../../../../cime/share/timing"             >> Filepath
 [ "$CLUBB_CRM" -eq "1"  ] && echo "$CRM_ROOT/../clubb"        >> Filepath \
                           && echo "$CRM_ROOT/SGS_CLUBBkvhkvm" >> Filepath
 [ "$CLUBB_CRM" -ne "1"  ] && echo "$CRM_ROOT/SGS_TKE"         >> Filepath
@@ -155,7 +156,7 @@ echo "$CRM_ROOT/standalone/src"                               >> Filepath
 ## Copy all potentially needed source files to build_root
 ##########################################################################################
 for i in `cat Filepath` ; do
-  for f in `ls $i/*.f $i/*.F $i/*.f90 $i/*.F90 $i/*.c $i/*.h $i/*.in $i/*.inc 2> /dev/null` ; do
+  for f in `ls $i/*.f $i/*.F $i/*.f90 $i/*.F90 $i/*.c $i/*.h $i/*.in $i/*.inc $i/*.nl 2> /dev/null` ; do
     ln -s $f 2> /dev/null
   done
 done
