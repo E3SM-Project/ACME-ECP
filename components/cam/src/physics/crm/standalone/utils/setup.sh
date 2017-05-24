@@ -177,4 +177,6 @@ $SCRIPTS/mkDepends ./Filepath ./Srcfiles > ./Depends
 ##########################################################################################
 echo "CPPDEFS := ${CPPDEFS}" > make.inc
 cp $SCRIPTS/Makefile .
+cp $SCRIPTS/collect_files.sh .
+cp $SCRIPTS/compute_diffs.sh .
 

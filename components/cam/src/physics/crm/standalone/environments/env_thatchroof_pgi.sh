@@ -17,5 +17,5 @@ export FIXEDFLAGS=""
 export LDFLAGS="-L$NETCDF_DIR/lib -lnetcdff -lnetcdf -L$HDF5_DIR/lib -lhdf5_hl -lhdf5 -L$SZIP_DIR/lib -lsz -L$ZLIB_DIR/lib -lz -ldl"
 export INCLUDE="-I$NETCDF_DIR/include"
 
-export CPPDEFS=""
+export CPPDEFS=" -DFORTRANUNDERSCORE "
 
