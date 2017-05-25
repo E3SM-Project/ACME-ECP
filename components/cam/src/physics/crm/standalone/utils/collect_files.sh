@@ -31,10 +31,10 @@ esac
 shift # past argument or value
 done
 
-[ "$MYPREFIX" == "" ] && echo "Must specify -prefix" && exit -1
+[ "$MYPREFIX" == "" ] && echo "Must specify -prefix" && usage && exit -1
 
-ncrcat --help || echo "NCO not installed / loaded. ncrcat not available"
-ncrcat --help || exit -1
+ncrcat --help >& /dev/null || echo "NCO not installed / loaded. ncrcat not available"
+ncrcat --help >& /dev/null || exit -1
 
 ncrcat ${MYPREFIX}_*.nc ${MYPREFIX}.nc && rm ${MYPREFIX}_*.nc || exit -1
 

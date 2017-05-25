@@ -233,7 +233,11 @@ program crm_standalone
   col2 = nint( nper*(globid+1) )
   ncols = col2 - col1 + 1
 
-  if (rank == 0) write(unit=*,fmt='(2(A,I7),A)') 'Processing: ',ncols,' of ',nsamp_tot,' samples.'
+  call MPI_Barrier( MPI_COMM_WORLD , ierr )
+  do i = 0 , nranks-1
+    if (rank == i) write(*,*) 'Ranks , ncols: ' , rank , ' , ' , ncols
+    call MPI_Barrier( MPI_COMM_WORLD , ierr )
+  enddo
 
   !I have to call setparm to get the correct value for nmicro_fields
   call setparm()

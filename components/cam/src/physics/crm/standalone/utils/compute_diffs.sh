@@ -36,11 +36,11 @@ esac
 shift # past argument or value
 done
 
-[ "$F1" == "" ] && echo "Must specify -f1" && exit -1
-[ "$F2" == "" ] && echo "Must specify -f2" && exit -1
+[ "$F1" == "" ] && echo "Must specify -f1" && usage && exit -1
+[ "$F2" == "" ] && echo "Must specify -f2" && usage && exit -1
 
-ncl -h || echo "NCL not installed / loaded."
-ncl -h || exit -1
+ncl -h >& /dev/null || echo "NCL not installed / loaded."
+ncl -h >& /dev/null || exit -1
 
 ncl "fn1=\"$F1\"" "fn2=\"$F2\"" diff.ncl
 
