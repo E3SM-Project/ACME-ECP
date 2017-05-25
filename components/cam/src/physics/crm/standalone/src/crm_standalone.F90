@@ -659,8 +659,8 @@ program crm_standalone
     call dmdf_write(qtot            (:,      i),rank,fprefix_out,trim('qtot            '),(/'d20'/)                                        ,.false.,.true. ); _ERR(success,error_string,__LINE__)
   enddo
 
-  call mpi_reduce((/tmin/),tred(1),1,MPI_REAL8,MPI_MIN,0,MPI_COMM_WORLD)
-  call mpi_reduce((/tmax/),tred(2),1,MPI_REAL8,MPI_MAX,0,MPI_COMM_WORLD)
+  call mpi_reduce((/tmin/),tred(1),1,MPI_REAL8,MPI_MIN,0,MPI_COMM_WORLD,ierr)
+  call mpi_reduce((/tmax/),tred(2),1,MPI_REAL8,MPI_MAX,0,MPI_COMM_WORLD,ierr)
   
   if (rank == 0) write(*,*) 'Time Min , Max , Ratio: ',tred(1),' , ',tred(2),' , ',tred(2)/tred(1)
 
