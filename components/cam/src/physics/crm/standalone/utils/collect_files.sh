@@ -36,6 +36,6 @@ done
 ncrcat --help >& /dev/null || echo "NCO not installed / loaded. ncrcat not available"
 ncrcat --help >& /dev/null || exit -1
 
-ncrcat ${MYPREFIX}_*.nc ${MYPREFIX}.nc && rm ${MYPREFIX}_*.nc || exit -1
+ncrcat --ovr ${MYPREFIX}_*.nc ${MYPREFIX}.nc && rm ${MYPREFIX}_*.nc || exit -1
 
 

@@ -223,6 +223,9 @@ program crm_standalone
   call getarg(2,fprefix_out )
   !Get the total number of netcdf records
   call dmdf_num_records(fname_in,nsamp_tot)
+#ifdef _SAMP_LIMIT
+  nsamp_tot = _SAMP_LIMIT
+#endif
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! Compute total number of columns per MPI task
