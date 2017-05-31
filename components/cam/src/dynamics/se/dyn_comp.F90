@@ -341,6 +341,7 @@ CONTAINS
 #endif
     end if
 
+
     if (inst_index == 1) then
        call write_grid_mapping(par, elem)
     end if
@@ -447,16 +448,20 @@ CONTAINS
     ! Create a CS grid mapping file for postprocessing tools
 
        ! write meta data for physics on GLL nodes
+
        call cam_pio_createfile(nc, 'SEMapping.nc', 0)
-   
+
        ierr = pio_def_dim(nc, 'ncenters', npm12*nelem, dim1)
        ierr = pio_def_dim(nc, 'ncorners', 4, dim2)
        ierr = pio_def_var(nc, 'element_corners', PIO_INT, (/dim1,dim2/),vid)
-    
+
        ierr = pio_enddef(nc)
+! whannah
+! #ifndef TEST_WH
        if (iam<par%nprocs) then
           call createmetadata(par, elem, subelement_corners)
        end if
+! #endif
 
        jj=0
        do cc=0,3
@@ -478,7 +483,7 @@ CONTAINS
        call pio_write_darray(nc, vid, iodesc, reshape(subelement_corners,(/nelemd*npm12*4/)), ierr)
        
        call pio_freedecomp(nc, iodesc)
-       
+
        call pio_closefile(nc)
 
   end subroutine write_grid_mapping

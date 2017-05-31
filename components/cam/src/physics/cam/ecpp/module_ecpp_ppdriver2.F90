@@ -14,11 +14,9 @@ module module_ecpp_ppdriver2
         use ppgrid,       only: pcols, pver, pverp 
         use constituents, only: pcnst, cnst_name
         use crmclouds_camaerosols, only: ecpp_mixnuc_tend => crmclouds_mixnuc_tend
-!==Guangxing Lin
        ! use abortutils,   only: endrun
-        use cam_abortutils,   only: endrun
-!==Guangxing Lin
-        use crmdims,         only: crm_nz  ! whannah
+        use cam_abortutils,   only: endrun  !==Guangxing Lin
+        use crmdims,         only: crm_nz   ! whannah
 
         use ecppvars,     only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in 
         use module_data_ecpp1 
@@ -716,14 +714,15 @@ end type ptr2d_t
         ncol = state%ncol
         lchnk = state%lchnk
 
-!==Guangxing Lin
-        lq(:) = .true.
-        call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
-        !call physics_ptend_init(ptend)
-        !ptend%name  = 'ecpp'
-        !ptend%lq(:) = .true.
-        ptend%q(:,:,:) = 0.0_r8
-!==Guangxing Lin
+! whannah - moved the ptend initialization up to crm_physics_tend()
+! !==Guangxing Lin
+!         lq(:) = .true.
+!         call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
+!         !call physics_ptend_init(ptend)
+!         !ptend%name  = 'ecpp'
+!         ptend%lq(:) = .true.
+!         ptend%q(:,:,:) = 0.0_r8
+! !==Guangxing Lin
 
   dtstep = dtstep_in
   dtstep_pp = dtstep_pp_in
@@ -889,11 +888,11 @@ end type ptr2d_t
   kdraft_top_ecpp(   1:2,jcls) = pver 
   mtype_updnenv_ecpp(1:2,jcls) = mtype_quiescn_ecpp
 
-#ifdef ECPP_LEV_MOD
-  kupdrafttop  = crm_nz  ! whannah
-  kdndrafttop  = crm_nz  ! whannah
-  kdraft_top_ecpp(   1:2,jcls) = crm_nz ! whannah
-#endif
+! #ifdef ECPP_LEV_MOD
+!   kupdrafttop  = crm_nz  ! whannah
+!   kdndrafttop  = crm_nz  ! whannah
+!   kdraft_top_ecpp(   1:2,jcls) = crm_nz ! whannah
+! #endif
 
 ! load updrafts
   do n = 1, nupdraft
@@ -913,13 +912,13 @@ end type ptr2d_t
       jcls = jcls + 1
 
       kdraft_bot_ecpp(   1:2,jcls) = max( kdndraftbase(n), 1 )
-! whannah
-#ifdef ECPP_LEV_MOD
-      kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), crm_nz ) ! whannah
-#else
-      kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
-#endif
-! whannah 
+! ! whannah
+! #ifdef ECPP_LEV_MOD
+!       kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), crm_nz ) ! whannah
+! #else
+!       kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
+! #endif
+! ! whannah 
       mtype_updnenv_ecpp(1:2,jcls) = mtype_dndraft_ecpp
   end do
 
@@ -974,19 +973,19 @@ end type ptr2d_t
   do jclrcld = 1, 2
       kdraft_top_ecpp(jclrcld,jcls) = max( kdraft_top_ecpp(jclrcld,jcls),   &
                                            kdraft_bot_ecpp(jclrcld,jcls)+1 )
-! whannah
-#ifdef ECPP_LEV_MOD
-      if (kdraft_top_ecpp(jclrcld,jcls) .gt. crm_nz) then
-        kdraft_top_ecpp(jclrcld,jcls) = crm_nz
-        kdraft_bot_ecpp(jclrcld,jcls) = crm_nz-1
-      end if
-#else
-      ! if (kdraft_top_ecpp(jclrcld,jcls) .gt. pver) then
-      !   kdraft_top_ecpp(jclrcld,jcls) = pver
-      !   kdraft_bot_ecpp(jclrcld,jcls) = pver-1
-      ! end if
-#endif
-! whannah
+! ! whannah
+! #ifdef ECPP_LEV_MOD
+!       if (kdraft_top_ecpp(jclrcld,jcls) .gt. crm_nz) then
+!         kdraft_top_ecpp(jclrcld,jcls) = crm_nz
+!         kdraft_bot_ecpp(jclrcld,jcls) = crm_nz-1
+!       end if
+! #else
+!       ! if (kdraft_top_ecpp(jclrcld,jcls) .gt. pver) then
+!       !   kdraft_top_ecpp(jclrcld,jcls) = pver
+!       !   kdraft_bot_ecpp(jclrcld,jcls) = pver-1
+!       ! end if
+! #endif
+! ! whannah
   end do
   end do
 
@@ -999,33 +998,33 @@ end type ptr2d_t
     acen_tbeg(lk,1,jcls) = 1.0_r8 - acen_tbeg(lk,2,jcls)
   end do
 
-! whannah - make sure there's no mass flux above CRM top
-#ifdef ECPP_LEV_MOD
-  do jcls = 1, ncls_ecpp
-  do icc = 1, 2
-  ! do k=1, pver
-  do k=1,crm_nz
-    lk=pver-k+1
-    mfbnd(    lk,icc,jcls) = 0.0
-    acen_prec(lk,icc,jcls) = 0.0
-    ! Set the area of quiescent, non-precipitating class to 1
-    if (jcls.eq.jcls_quiescn .and. icc.eq.1) then
-      abnd_tavg(lk,icc,jcls) = 1.0
-      abnd_tfin(lk,icc,jcls) = 1.0
-      acen_tbeg(lk,icc,jcls) = 1.0
-      acen_tavg(lk,icc,jcls) = 1.0
-      acen_tfin(lk,icc,jcls) = 1.0
-    else
-      abnd_tavg(lk,icc,jcls) = 0.0
-      abnd_tfin(lk,icc,jcls) = 0.0
-      acen_tbeg(lk,icc,jcls) = 0.0
-      acen_tavg(lk,icc,jcls) = 0.0
-      acen_tfin(lk,icc,jcls) = 0.0
-    end if
-  end do
-  end do
-  end do
-#endif
+! ! whannah - make sure there's no mass flux above CRM top
+! #ifdef ECPP_LEV_MOD
+!   do jcls = 1, ncls_ecpp
+!   do icc = 1, 2
+!   ! do k=1, pver
+!   do k=1,crm_nz
+!     lk=pver-k+1
+!     mfbnd(    lk,icc,jcls) = 0.0
+!     acen_prec(lk,icc,jcls) = 0.0
+!     ! Set the area of quiescent, non-precipitating class to 1
+!     if (jcls.eq.jcls_quiescn .and. icc.eq.1) then
+!       abnd_tavg(lk,icc,jcls) = 1.0
+!       abnd_tfin(lk,icc,jcls) = 1.0
+!       acen_tbeg(lk,icc,jcls) = 1.0
+!       acen_tavg(lk,icc,jcls) = 1.0
+!       acen_tfin(lk,icc,jcls) = 1.0
+!     else
+!       abnd_tavg(lk,icc,jcls) = 0.0
+!       abnd_tfin(lk,icc,jcls) = 0.0
+!       acen_tbeg(lk,icc,jcls) = 0.0
+!       acen_tavg(lk,icc,jcls) = 0.0
+!       acen_tfin(lk,icc,jcls) = 0.0
+!     end if
+!   end do
+!   end do
+!   end do
+! #endif
 
 !----------------------------------------------------------------
 !   start of temporary diagnostics ------------------------------

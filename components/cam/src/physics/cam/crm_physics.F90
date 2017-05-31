@@ -546,6 +546,8 @@ end subroutine crm_physics_init
    use convect_deep,    only: convect_deep_tend_2, deep_scheme_does_scav_trans
    !!!use aerosol_intr,    only: aerosol_wet_intr
 
+   use ieee_arithmetic   ! whannah - used for tracking down a NaN issue 
+
 
    real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
    type(physics_state), intent(inout) :: state   !  state should be intent(in), but it is changed in this subroutine,
@@ -2098,6 +2100,8 @@ end subroutine crm_physics_init
     ! pollutant transport and chemistry
     !----------------------------------------------------
 
+
+
 #ifdef ECPP
       if (use_ECPP) then
 
@@ -2122,6 +2126,16 @@ end subroutine crm_physics_init
           necpp = dtstep_pp/ztodt
           if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
 
+            lu    = .false. 
+            lv    = .false.
+            ls    = .false.
+            lq(:) = .true.
+            fromcrm = .false.
+            call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
+            ptend%lq(:) = .true.
+            ptend%q(:,:,:) = 0.0_r8
+            
+
             ! calculate aerosol tendency from droplet activation and mixing
             call t_startf('crmclouds_mixnuc')
             call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
@@ -2130,19 +2144,81 @@ end subroutine crm_physics_init
             call t_stopf('crmclouds_mixnuc')
 
             ! ECPP interface
+            ! whannah - re-initialize ptend - not sure if this is necessary
+            call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
+            ptend%lq(:) = .true.
+            ptend%q(:,:,:) = 0.0_r8
             call t_startf('ecpp')
             call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
                acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
                rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
-            call physics_update(state, ptend, dtstep_pp, tend)
-            call t_stopf ('ecpp')
 
+      do i=1,ncol
+      do k=1,pver
+      ! do m = 1, ntot_amode
+      ! k = 1
+
+        if ( ieee_is_nan( ptend%q(i,k,0)  ) ) then
+          ptend%q(i,k,0) = 0.
+        end if
+        if ( ieee_is_nan( ptend%q(i,k,1)  ) ) then
+          ptend%q(i,k,1) = 0.
+        end if
+        if ( ieee_is_nan( ptend%q(i,k,ixcldliq)  ) ) then
+          ptend%q(i,k,ixcldliq) = 0.
+        end if
+        if ( ieee_is_nan( ptend%q(i,k,ixcldice)  ) ) then
+          ptend%q(i,k,ixcldice) = 0.
+        end if
+
+
+        ! write(iulog,5001) k, state%lat(i), state%lon(i)
+        
+        ! write(iulog,*) ""
+        ! write(iulog,*) "whannah DEBUG - q tend: "
+        ! write(iulog,*) ptend%q(i,k,0)
+
+        ! if ( ieee_is_nan( ptend%s(i,k)  ) ) then
+        !   write(iulog,*) "whannah DEBUG - ptend%s(i,k) is NAN !!! "
+        ! else
+        !   write(iulog,*) ""
+        !   write(iulog,*) "whannah DEBUG - ptend%s(i,k): ?"
+        !   write(iulog,*) ptend%s(i,k) 
+        ! endif
+
+
+        ! write(iulog,*) ""
+        ! write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
+
+      ! enddo
+      enddo
+      enddo
+! write(iulog,*) "whannah DEBUG - crm_physics.F90 1.2 "        
+
+            call physics_update(state, ptend, dtstep_pp, tend)
+
+            call t_stopf ('ecpp')
           end if
       endif ! use_ECPP
 #endif
 
+! write(iulog,*) "whannah DEBUG - crm_physics.F90 3 " 
+
       call t_stopf('bc_aerosols_mmf')
    endif ! SPCAM_microp_scheme .eq. 'm2005'
+
+
+! 5001 format('whannah - ECPP tendency   lev ',i5,'    lat =',f8.2,'    lon =',f8.2  )
+5002 format('whannah - ECPP tendency   i: ',i4,    &
+                                  '    chnk: ',i4, &
+                                  '    k: ',i4, &
+                                  '    y: ',f5.1, &
+                                  '    x: ',f5.1, &
+                                  '   ',f12.2,      &
+                                  '   ',f12.2,      &
+                                  '   ',f12.2,      &
+                                  '   ',f12.2 )
+
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------

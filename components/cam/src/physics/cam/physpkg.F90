@@ -20,7 +20,7 @@ module physpkg
 
   use shr_kind_mod,     only: r8 => shr_kind_r8
   use shr_sys_mod,      only: shr_sys_flush
-  use spmd_utils,       only: masterproc
+  use spmd_utils,       only: masterproc, iam
   use physconst,        only: latvap, latice, rh2o
   use physics_types,    only: physics_state, physics_tend, physics_state_set_grid, &
        physics_ptend, physics_tend_init, physics_update,    &
@@ -398,10 +398,12 @@ subroutine phys_inidat( cam_out, pbuf2d )
        sgh = 0._r8
        sgh30 = 0._r8
        landm = 0._r8
-    else
+    else    
        fh_topo=>topo_file_get_id()
+write(iulog,*) "whannah DEBUG 2 - ",iam," phys_inidat() 1 "
        call infld('SGH', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
             sgh, found, gridname='physgrid')
+write(iulog,*) "whannah DEBUG 2 - ",iam," phys_inidat() 2 "
        if(.not. found) call endrun('ERROR: SGH not found on topo file')
 
        call infld('SGH30', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &

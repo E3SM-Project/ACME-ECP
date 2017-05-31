@@ -316,7 +316,7 @@ contains
       if (intz(i).eq.0) then
           if (use_SPCAM) then  ! whannah
             write(iulog,*) 'whannah - DUST_SEDIMENT_MOD:cfint2 -- interval was not found for col i ', i
-            write(iulog,*) 'vel     : ',vel
+            write(iulog,*) 'vel     : ',vel(i,:)
             write(iulog,*) 'xin     : ',xin
             write(iulog,*) 'xins(i) : ',xins(i)
             intz(i) = pverp-1   ! whannah

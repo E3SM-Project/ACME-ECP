@@ -176,7 +176,6 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
 #endif
    end if
 
-
    call phys_init( phys_state, phys_tend, pbuf2d,  cam_out )
 
    call bldfld ()       ! master field list (if branch, only does hash tables)

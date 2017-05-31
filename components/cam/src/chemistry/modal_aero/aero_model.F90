@@ -2825,6 +2825,8 @@ do_lphase2_conditional: &
     use physconst,     only: pi,boltz, gravit, rair
     use mo_drydep,     only: n_land_type, fraction_landuse
 
+    use ieee_arithmetic   ! whannah - used for tracking down a NaN issue 
+
     ! !ARGUMENTS:
     !
     implicit none
@@ -2935,6 +2937,25 @@ do_lphase2_conditional: &
           vlc_grv(i,k) = (4.0_r8/18.0_r8) * radius_moment(i,k)*radius_moment(i,k)*density_part(i,k)* &
                   gravit*slp_crc(i,k) / vsc_dyn_atm(i,k) ![m s-1] Stokes' settling velocity SeP97 p. 466
           vlc_grv(i,k) = vlc_grv(i,k) * dispersion
+
+          ! whannah - in SP NaN's were occurring here
+          ! the root cause was not identified, so this was added to "fix" the issue
+          ! if (ieee_is_nan(vlc_grv(i,k)))  vlc_grv(i,k) = 0.0_r8 
+
+          if ( ieee_is_nan(vlc_grv(i,k)) ) then
+            write(iulog,*) 'whannah - modal_aero_depvel_part '
+            write(iulog,*) 'i,k,pmid  : ',i,k,pmid(i,k)
+            write(iulog,*) 'T (k)     : ',t(i,k)
+            ! write(iulog,*) 'vlc_grv       : ',vlc_grv(i,k)
+            ! write(iulog,*) 'vsc_dyn_atm   : ',vsc_dyn_atm(i,k)
+            ! write(iulog,*) 'lnsig         : ',lnsig
+            ! write(iulog,*) 'sig_part      : ',sig_part(i,k)
+            ! write(iulog,*) 'radius_moment : ',radius_moment(i,k)
+            ! write(iulog,*) 'density_part  : ',density_part(i,k)
+            ! write(iulog,*) 'dispersion    : ',dispersion
+            vlc_grv(i,k) = 0.0_r8 
+            ! call endrun('modal_aero_depvel_part -- NaN values not allowed! ')
+          endif
 
           vlc_dry(i,k)=vlc_grv(i,k)
        enddo
