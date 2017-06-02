@@ -1072,8 +1072,8 @@ end subroutine physics_ptend_copy
 !-----------------------------------------------------------------------
 ! Set the grid components of the physics_state object
 !-----------------------------------------------------------------------
-    use mpishorthand, only: mpicom      ! whannah 
-    use perf_mod,     only: t_barrierf  ! whannah 
+    ! use mpishorthand, only: mpicom      ! whannah 
+    ! use perf_mod,     only: t_barrierf  ! whannah 
 
     integer,             intent(in)    :: lchnk
     type(physics_state), intent(inout) :: phys_state
@@ -1106,7 +1106,7 @@ end subroutine physics_ptend_copy
     end do
     call init_geo_unique(phys_state,ncol)
 
-    call t_barrierf('sync_physics_state_set_grid', mpicom)   ! whannah
+    ! call t_barrierf('sync_physics_state_set_grid', mpicom)   ! whannah
 
   end subroutine physics_state_set_grid
 

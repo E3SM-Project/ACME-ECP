@@ -456,12 +456,10 @@ CONTAINS
        ierr = pio_def_var(nc, 'element_corners', PIO_INT, (/dim1,dim2/),vid)
 
        ierr = pio_enddef(nc)
-! whannah
-! #ifndef TEST_WH
+       
        if (iam<par%nprocs) then
           call createmetadata(par, elem, subelement_corners)
        end if
-! #endif
 
        jj=0
        do cc=0,3
