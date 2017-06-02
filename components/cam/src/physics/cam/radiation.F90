@@ -571,6 +571,7 @@ end function radiation_nextsw_cday
 !-- mdb spcam
 
 
+
     ! Arguments
     real(r8), intent(in)    :: landfrac(pcols)  ! land fraction
     real(r8), intent(in)    :: landm(pcols)     ! land fraction ramp
@@ -902,7 +903,8 @@ end function radiation_nextsw_cday
 
     call pbuf_get_field(pbuf, rel_idx, rel    )
     call pbuf_get_field(pbuf, rei_idx, rei    )
-   
+
+
     !  For CRM, make cloud equal to input observations:
     if (single_column.and.scm_crm_mode.and.have_cld) then
        do k = 1,pver
@@ -1282,6 +1284,76 @@ end function radiation_nextsw_cday
                  liq_icld_vistau(IdxNite(i),:)  = fillvalue
                  ice_icld_vistau(IdxNite(i),:)  = fillvalue
              end do
+! whannah - not sure if I shoudl delte below to fix conflict...
+! =======
+!           do i=1,ncol
+!              solin(i) = solin(i)*cgs2mks
+!              fsds(i)  = fsds(i)*cgs2mks
+!              fsnirt(i)= fsnirt(i)*cgs2mks
+!              fsnrtc(i)= fsnrtc(i)*cgs2mks
+!              fsnirtsq(i)= fsnirtsq(i)*cgs2mks
+!              fsnt(i)  = fsnt(i) *cgs2mks
+!              fsdtoa(i)= fsdtoa(i) *cgs2mks
+!              fsns(i)  = fsns(i) *cgs2mks
+!              fsntc(i) = fsntc(i)*cgs2mks
+!              fsnsc(i) = fsnsc(i)*cgs2mks
+!              fsdsc(i) = fsdsc(i)*cgs2mks
+!              fsntoa(i)=fsntoa(i)*cgs2mks
+!              fsutoa(i)=fsutoa(i)*cgs2mks
+!              fsntoac(i)=fsntoac(i)*cgs2mks
+!              fsn200(i)  = fsn200(i)*cgs2mks
+!              fsn200c(i) = fsn200c(i)*cgs2mks
+!              swcf(i)=fsntoa(i) - fsntoac(i)
+!           end do
+!           ftem(:ncol,:pver) = qrs(:ncol,:pver)/cpair
+
+
+!           ! Dump shortwave radiation information to history buffer (diagnostics)
+!           call outfld('QRS     ',ftem  ,pcols,lchnk)
+!           ftem(:ncol,:pver) = qrsc(:ncol,:pver)/cpair
+!           call outfld('QRSC    ',ftem  ,pcols,lchnk)
+!           call outfld('SOLIN   ',solin ,pcols,lchnk)
+!           call outfld('FSDS    ',fsds  ,pcols,lchnk)
+!           call outfld('FSNIRTOA',fsnirt,pcols,lchnk)
+!           call outfld('FSNRTOAC',fsnrtc,pcols,lchnk)
+!           call outfld('FSNRTOAS',fsnirtsq,pcols,lchnk)
+!           call outfld('FSNT    ',fsnt  ,pcols,lchnk)
+!           call outfld('FSDTOA  ',fsdtoa,pcols,lchnk)
+!           call outfld('FSNS    ',fsns  ,pcols,lchnk)
+!           call outfld('FSNTC   ',fsntc ,pcols,lchnk)
+!           call outfld('FSNSC   ',fsnsc ,pcols,lchnk)
+!           call outfld('FSDSC   ',fsdsc ,pcols,lchnk)
+!           call outfld('FSNTOA  ',fsntoa,pcols,lchnk)
+!           call outfld('FSUTOA  ',fsutoa,pcols,lchnk)
+!           call outfld('FSNTOAC ',fsntoac,pcols,lchnk)
+!           call outfld('SOLS    ',cam_out%sols  ,pcols,lchnk)
+!           call outfld('SOLL    ',cam_out%soll  ,pcols,lchnk)
+!           call outfld('SOLSD   ',cam_out%solsd ,pcols,lchnk)
+!           call outfld('SOLLD   ',cam_out%solld ,pcols,lchnk)
+!           call outfld('FSN200  ',fsn200,pcols,lchnk)
+!           call outfld('FSN200C ',fsn200c,pcols,lchnk)
+!           call outfld('SWCF    ',swcf  ,pcols,lchnk)
+
+! 	  !! initialize tau_cld_vistau and tau_icld_vistau as fillvalue, they will stay fillvalue for night columns
+!           tot_icld_vistau(1:pcols,1:pver)=fillvalue
+!           tot_cld_vistau(1:pcols,1:pver)=fillvalue
+
+! 	  !! only do calcs for tot_cld_vistau and tot_icld_vistau on daytime columns
+!           do i=1,Nday
+! 	     !! sum the water and ice optical depths to get total in-cloud cloud optical depth
+!              tot_icld_vistau(IdxDay(i),1:pver)=liq_icld_vistau(IdxDay(i),1:pver)+ice_icld_vistau(IdxDay(i),1:pver)
+
+! 	     !! sum wat and ice, multiply by cloud fraction to get grid-box value
+!              tot_cld_vistau(IdxDay(i),1:pver)=(liq_icld_vistau(IdxDay(i),1:pver)+ &
+!                   ice_icld_vistau(IdxDay(i),1:pver))*cld(IdxDay(i),1:pver)
+!           end do
+
+! 	  ! add fillvalue for night columns
+!           do i = 1, Nnite
+!               liq_icld_vistau(IdxNite(i),:)  = fillvalue
+!               ice_icld_vistau(IdxNite(i),:)  = fillvalue
+!           end do
+! >>>>>>> ACME-master
 
    	     !! use idx_sw_diag, idx_sw_diag is the index to the visible band of the shortwave
              call outfld ('TOT_CLD_VISTAU    ',tot_cld_vistau  ,pcols,lchnk)

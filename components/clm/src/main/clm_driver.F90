@@ -45,7 +45,7 @@ module clm_driver
   use SurfaceAlbedoMod       , only : SurfaceAlbedo
   use UrbanAlbedoMod         , only : UrbanAlbedo
   !
-  use SurfaceRadiationMod    , only : SurfaceRadiation
+  use SurfaceRadiationMod    , only : SurfaceRadiation, CanopySunShadeFractions
   use UrbanRadiationMod      , only : UrbanRadiation
   !clm_bgc_interface
   use CNEcosystemDynMod      , only : CNEcosystemDynNoLeaching1, CNEcosystemDynNoLeaching2
@@ -65,11 +65,9 @@ module clm_driver
   use ch4Mod                 , only : ch4
   use DUSTMod                , only : DustDryDep, DustEmission
   use VOCEmissionMod         , only : VOCEmission
+  use FatesBGCDynMod         , only : FatesBGCDyn
   !
   use filterMod              , only : setFilters
-  use EDmainMod              , only : edmodel
-  use EDCLMLinkMod           , only : clm_ed_link
-  use EDtypesMod             , only : gridCellEdState
   !
   use atm2lndMod             , only : downscale_forcings
   use lnd2atmMod             , only : lnd2atm
@@ -114,9 +112,9 @@ module clm_driver
   use clm_instMod            , only : lnd2atm_vars
   use clm_instMod            , only : glc2lnd_vars
   use clm_instMod            , only : lnd2glc_vars
-  use clm_instMod            , only : EDbio_vars
   use clm_instMod            , only : soil_water_retention_curve
   use clm_instMod            , only : chemstate_vars
+  use clm_instMod            , only : alm_fates
   use betr_initializeMod     , only : betrtracer_vars
   use betr_initializeMod     , only : tracercoeff_vars
   use betr_initializeMod     , only : tracerflux_vars
@@ -135,6 +133,7 @@ module clm_driver
   use ColumnType             , only : col                
   use PatchType              , only : pft
   use shr_sys_mod            , only : shr_sys_flush
+  use shr_log_mod            , only : errMsg => shr_log_errMsg
 
   !!----------------------------------------------------------------------------
   !! bgc interface & pflotran:
@@ -227,27 +226,28 @@ contains
     ! Specified phenology
     ! ============================================================================
 
-    if (use_cn) then 
-       ! For dry-deposition need to call CLMSP so that mlaidiff is obtained
-       if ( n_drydep > 0 .and. drydep_method == DD_XLND ) then
-          call t_startf('interpMonthlyVeg')
-          call interpMonthlyVeg(bounds_proc, canopystate_vars)
-          call t_stopf('interpMonthlyVeg')
-       endif
-
-    else
-       ! Determine weights for time interpolation of monthly vegetation data.
-       ! This also determines whether it is time to read new monthly vegetation and
-       ! obtain updated leaf area index [mlai1,mlai2], stem area index [msai1,msai2],
-       ! vegetation top [mhvt1,mhvt2] and vegetation bottom [mhvb1,mhvb2]. The
-       ! weights obtained here are used in subroutine SatellitePhenology to obtain time
-       ! interpolated values.
-       if (doalb .or. ( n_drydep > 0 .and. drydep_method == DD_XLND )) then
-          call t_startf('interpMonthlyVeg')
-          call interpMonthlyVeg(bounds_proc, canopystate_vars)
-          call t_stopf('interpMonthlyVeg')
+    if (.not.use_ed) then
+       if (use_cn) then 
+          ! For dry-deposition need to call CLMSP so that mlaidiff is obtained
+          if ( n_drydep > 0 .and. drydep_method == DD_XLND ) then
+             call t_startf('interpMonthlyVeg')
+             call interpMonthlyVeg(bounds_proc, canopystate_vars)
+             call t_stopf('interpMonthlyVeg')
+          endif
+          
+       else
+          ! Determine weights for time interpolation of monthly vegetation data.
+          ! This also determines whether it is time to read new monthly vegetation and
+          ! obtain updated leaf area index [mlai1,mlai2], stem area index [msai1,msai2],
+          ! vegetation top [mhvt1,mhvt2] and vegetation bottom [mhvb1,mhvb2]. The
+          ! weights obtained here are used in subroutine SatellitePhenology to obtain time
+          ! interpolated values.
+          if (doalb .or. ( n_drydep > 0 .and. drydep_method == DD_XLND )) then
+             call t_startf('interpMonthlyVeg')
+             call interpMonthlyVeg(bounds_proc, canopystate_vars)
+             call t_stopf('interpMonthlyVeg')
+          end if
        end if
-
     end if
 
     ! ==================================================================================
@@ -338,6 +338,7 @@ contains
 
           call t_stopf('begcnbal')
        end if
+
     end do
     !$OMP END PARALLEL DO
 
@@ -467,6 +468,20 @@ contains
 
        ! Surface Radiation primarily for non-urban columns 
 
+       ! Most of the surface radiation calculations are agnostic to the forest-model
+       ! but the calculations of the fractions of sunlit and shaded canopies 
+       ! are specific, calculate them first.
+       ! The nourbanp filter is set in dySubgrid_driver (earlier in this call)
+       ! over the patch index range defined by bounds_clump%begp:bounds_proc%endp
+       
+       if(use_ed) then
+          call alm_fates%wrap_sunfrac(bounds_clump,atm2lnd_vars, canopystate_vars)
+       else
+          call CanopySunShadeFractions(filter(nc)%num_nourbanp, filter(nc)%nourbanp,    &
+                                       atm2lnd_vars, surfalb_vars, canopystate_vars,    &
+                                       solarabs_vars)
+       end if
+
        call SurfaceRadiation(bounds_clump,                                 &
             filter(nc)%num_nourbanp, filter(nc)%nourbanp,                  &
             filter(nc)%num_urbanp, filter(nc)%urbanp    ,                  &
@@ -496,7 +511,8 @@ contains
             filter(nc)%num_nolakec, filter(nc)%nolakec,                       &
             filter(nc)%num_nolakep, filter(nc)%nolakep,                       &
             atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars, &
-            waterstate_vars, waterflux_vars, energyflux_vars, temperature_vars)
+            waterstate_vars, waterflux_vars, energyflux_vars, temperature_vars, &
+            alm_fates)
        call t_stopf('bgp1')
 
        ! ============================================================================
@@ -525,7 +541,8 @@ contains
             atm2lnd_vars, canopystate_vars, cnstate_vars, energyflux_vars,               &
             frictionvel_vars, soilstate_vars, solarabs_vars, surfalb_vars,               &
             temperature_vars, waterflux_vars, waterstate_vars, ch4_vars, photosyns_vars, &
-            EDbio_vars, soil_water_retention_curve, nitrogenstate_vars,phosphorusstate_vars) 
+            soil_water_retention_curve, nitrogenstate_vars,phosphorusstate_vars,         &
+            alm_fates) 
        call t_stopf('canflux')
 
        ! Fluxes for all urban landunits
@@ -637,7 +654,8 @@ contains
             filter(nc)%num_nosnowc, filter(nc)%nosnowc,                      &
             atm2lnd_vars, soilstate_vars, energyflux_vars, temperature_vars, &
             waterflux_vars, waterstate_vars, soilhydrology_vars, aerosol_vars, &
-            soil_water_retention_curve, betrtracer_vars, tracerflux_vars, tracerstate_vars)
+            soil_water_retention_curve, betrtracer_vars, tracerflux_vars,    &
+            tracerstate_vars, alm_fates)
 
        !  Calculate column-integrated aerosol masses, and
        !  mass concentrations for radiative calculations and output
@@ -772,7 +790,7 @@ contains
                   canopystate_vars, soilstate_vars, temperature_vars, crop_vars, &
                   dgvs_vars, photosyns_vars, soilhydrology_vars, energyflux_vars,&
                   plantsoilnutrientflux_vars, phosphorusstate_vars)  
-       else       
+      else       
        
          ! FIX(SPM,032414)  push these checks into the routines below and/or make this consistent.
          if (.not. use_ed) then 
@@ -906,26 +924,11 @@ contains
                      waterstate_vars, canopystate_vars)
              end if
 
-           end if  ! end of if-use_cn
+          end if  ! end of if-use_cn
 
-         else ! use_ed
+        end if  ! end of if-use_ed
 
-           call carbonflux_vars%SetValues(&
-               filter(nc)%num_soilp, filter(nc)%soilp, 0._r8, filter(nc)%num_soilc, filter(nc)%soilc, 0._r8)
-           if ( use_c13 ) then
-             call c13_carbonflux_vars%SetValues(&
-                  filter(nc)%num_soilp, filter(nc)%soilp, 0._r8, filter(nc)%num_soilc, filter(nc)%soilc, 0._r8)
-           end if
-           if ( use_c14 ) then
-             call c14_carbonflux_vars%SetValues(&
-                  filter(nc)%num_soilp, filter(nc)%soilp, 0._r8, filter(nc)%num_soilc, filter(nc)%soilc, 0._r8)
-           end if
-           call nitrogenflux_vars%SetValues(&
-                  filter(nc)%num_soilp, filter(nc)%soilp, 0._r8, filter(nc)%num_soilc, filter(nc)%soilc, 0._r8)
-
-           call EDbio_vars%SetValues( 0._r8 )
-          
-         end if  ! end of if-use_ed
+    
 
          call t_stopf('ecosysdyn')
 
@@ -1019,6 +1022,44 @@ contains
                tracerstate_vars, tracerflux_vars,  betrtracer_vars)          
        endif          
 
+       ! Execute FATES dynamics
+       if ( use_ed ) then
+          if ( is_beg_curr_day() ) then ! run ED at the start of each day
+             
+             if ( masterproc ) then
+                write(iulog,*)  'clm: calling FATES model ', get_nstep()
+             end if
+             
+             call alm_fates%dynamics_driv( bounds_clump,               &
+                  atm2lnd_vars, soilstate_vars, temperature_vars,     &
+                  waterstate_vars, canopystate_vars, carbonflux_vars, &
+                  frictionvel_vars)
+
+             
+             ! TODO(wjs, 2016-04-01) I think this setFilters call should be replaced by a
+             ! call to reweight_wrapup, if it's needed at all.
+             ! (FATES-INTERF) Note that setFilters is commented out
+             !! call setFilters( bounds_clump, glc_behavior )
+             
+          end if
+
+          ! ------------------------------------------------------------------------------
+          ! Perform reduced capacity soil-bgc only calculations when FATES/ED is on
+          ! ------------------------------------------------------------------------------
+          
+          call FatesBGCDyn(bounds_clump,                           &
+               filter(nc)%num_soilc, filter(nc)%soilc,             &
+               filter(nc)%num_soilp, filter(nc)%soilp,             &
+               carbonflux_vars, carbonstate_vars, cnstate_vars,    &
+               c13_carbonflux_vars, c13_carbonstate_vars,          &
+               c14_carbonflux_vars, c14_carbonstate_vars,          &
+               canopystate_vars, soilstate_vars, temperature_vars, &
+               ch4_vars, nitrogenflux_vars, nitrogenstate_vars,    &
+               phosphorusstate_vars, phosphorusflux_vars,          &
+               alm_fates)
+          
+       end if
+       
        ! ============================================================================
        ! Check the energy and water balance, also carbon and nitrogen balance
        ! ============================================================================
@@ -1116,7 +1157,8 @@ contains
                filter_inactive_and_active(nc)%urbanp,           &
                nextsw_cday, declinp1,                           &
                aerosol_vars, canopystate_vars, waterstate_vars, &
-               lakestate_vars, temperature_vars, surfalb_vars)
+               lakestate_vars, temperature_vars, surfalb_vars,  &
+               alm_fates)
           call t_stopf('surfalb')
 
           ! Albedos for urban columns
@@ -1185,29 +1227,25 @@ contains
     ! FIX(SPM,032414) double check why this isn't called for ED
 
     if (nstep > 0) then
-       !
-       ! FIX(SPM, 082814) - in the ED branch RF and I comment out the if(.not.
-       ! use_ed) then statement ... double check if this is required and why
-       !
-       !if (.not. use_ed) then
-          call t_startf('accum')
+       
+       call t_startf('accum')
+       
+       call atm2lnd_vars%UpdateAccVars(bounds_proc)
+       
+       call temperature_vars%UpdateAccVars(bounds_proc)
+       
+       call canopystate_vars%UpdateAccVars(bounds_proc)
+       
+       if (use_cndv) then
+          call dgvs_vars%UpdateCNDVAccVars(bounds_proc, temperature_vars)
+       end if
+       
+       if (crop_prog) then
+          call crop_vars%UpdateAccVars(bounds_proc, temperature_vars, cnstate_vars)
+       end if
+       
+       call t_stopf('accum')
 
-          call atm2lnd_vars%UpdateAccVars(bounds_proc)
-
-          call temperature_vars%UpdateAccVars(EDBio_vars, bounds_proc)
-
-          call canopystate_vars%UpdateAccVars(bounds_proc)
-
-          if (use_cndv) then
-             call dgvs_vars%UpdateCNDVAccVars(bounds_proc, temperature_vars)
-          end if
-
-          if (crop_prog) then
-             call crop_vars%UpdateAccVars(bounds_proc, temperature_vars, cnstate_vars)
-          end if
-
-          call t_stopf('accum')
-       !end if
     end if
 
     ! ============================================================================
@@ -1252,50 +1290,6 @@ contains
        end if
        call t_stopf('d2dgvm')
     end if
-
-    ! ============================================================================
-    ! Call ED model on daily timestep
-    ! ============================================================================
-    
-    if ( use_ed ) then
-       if ( is_beg_curr_day() ) then ! run ED at the start of each day
-
-          if ( masterproc ) write(iulog,*)  'edtime ed call edmodel ',get_nstep()
-          nclumps = get_proc_clumps()
-
-          !$OMP PARALLEL DO PRIVATE (nc,bounds_clump)
-          do nc = 1,nclumps
-
-             call get_clump_bounds(nc, bounds_clump)
-
-             call edmodel( bounds_clump, & 
-                  atm2lnd_vars, soilstate_vars, temperature_vars, waterstate_vars )
-
-             ! link to CLM structures
-             call clm_ed_link( bounds_clump, gridCellEdState, &
-                  waterstate_vars, canopystate_vars, EDbio_vars, &
-                  carbonstate_vars, nitrogenstate_vars, carbonflux_vars) 
-
-             call setFilters( bounds_clump, glc2lnd_vars%icemask_grc )
-
-             !reset surface albedo fluxes in case there is a mismatch between elai and canopy absorbtion. 
-             call SurfaceAlbedo(bounds_clump,                      &
-                filter_inactive_and_active(nc)%num_nourbanc,       &
-                filter_inactive_and_active(nc)%nourbanc,           &
-                filter_inactive_and_active(nc)%num_nourbanp,       &
-                filter_inactive_and_active(nc)%nourbanp,           &
-                filter_inactive_and_active(nc)%num_urbanc,         &
-                filter_inactive_and_active(nc)%urbanc,             &
-                filter_inactive_and_active(nc)%num_urbanp,         & 
-                filter_inactive_and_active(nc)%urbanp,             &
-                nextsw_cday, declinp1,                             &
-                aerosol_vars, canopystate_vars, waterstate_vars,   &
-                lakestate_vars, temperature_vars, surfalb_vars)
-
-          end do
-          !$OMP END PARALLEL DO
-       end if
-    end if ! use_ed branch
 
     ! ============================================================================
     ! History/Restart output
@@ -1344,10 +1338,10 @@ contains
                ch4_vars, dgvs_vars, energyflux_vars, frictionvel_vars, lakestate_vars,        &
                nitrogenstate_vars, nitrogenflux_vars, photosyns_vars, soilhydrology_vars,     &
                soilstate_vars, solarabs_vars, surfalb_vars, temperature_vars,                 &
-               waterflux_vars, waterstate_vars, EDbio_vars,                                   &
+               waterflux_vars, waterstate_vars,                                               &
                phosphorusstate_vars,phosphorusflux_vars,                                      &
                betrtracer_vars, tracerstate_vars, tracerflux_vars,                            &
-               tracercoeff_vars, rdate=rdate )
+               tracercoeff_vars, alm_fates, rdate=rdate )
 
           call t_stopf('clm_drv_io_wrest')
        end if

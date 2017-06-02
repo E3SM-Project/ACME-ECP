@@ -154,6 +154,7 @@ subroutine phys_register
     use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on
+    use output_aerocom_aie, only: output_aerocom_aie_register, do_aerocom_ind3
 
 !-- mdb spcam
     use crm_physics,        only: crm_physics_register
@@ -177,6 +178,7 @@ subroutine phys_register
                       microp_scheme_out        = microp_scheme,   &
                       cld_macmic_num_steps_out = cld_macmic_num_steps, &
                       do_clubb_sgs_out         = do_clubb_sgs,     &
+                      do_aerocom_ind3_out      = do_aerocom_ind3,  &
                       use_subcol_microp_out    = use_subcol_microp, &
                       state_debug_checks_out   = state_debug_checks, &
                       micro_do_icesupersat_out = micro_do_icesupersat)
@@ -322,6 +324,9 @@ subroutine phys_register
 
        ! vertical diffusion
        if (.not. do_clubb_sgs) call vd_register()
+
+       if (do_aerocom_ind3) call output_aerocom_aie_register()
+    
     end if
 
     ! Register diagnostics PBUF
@@ -740,6 +745,8 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use solar_data,         only: solar_data_init
     use rad_solar_var,      only: rad_solar_var_init
     use nudging,            only: Nudge_Model,nudging_init
+    use output_aerocom_aie, only: output_aerocom_aie_init, do_aerocom_ind3
+
 
     use cam_history,        only: addfld, add_default !Guangxing Lin debug output
     use crm_physics,        only: crm_physics_init !-- mdb spcam
@@ -914,6 +921,8 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call sslt_rebin_init()
     call tropopause_init()
 
+    if(do_aerocom_ind3) call output_aerocom_aie_init()
+
     prec_dp_idx  = pbuf_get_index('PREC_DP')
     snow_dp_idx  = pbuf_get_index('SNOW_DP')
     prec_sh_idx  = pbuf_get_index('PREC_SH')
@@ -1005,6 +1014,7 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
 #endif
+
     !
     ! Input arguments
     !
@@ -1212,6 +1222,7 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
     ! Purpose: 
     ! Second part of atmospheric physics package after updating of surface models
     ! 
+    ! Modified by Kai Zhang 2017-03: add IEFLX fixer treatment 
     !-----------------------------------------------------------------------
     use physics_buffer,         only: physics_buffer_desc, pbuf_get_chunk, pbuf_deallocate, pbuf_update_tim_idx
     use mo_lightning,   only: lightning_no_prod
@@ -1224,6 +1235,10 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
 #if ( defined OFFLINE_DYN )
     use metdata,        only: get_met_srf2
 #endif
+    use time_manager,   only: get_nstep
+    use check_energy,   only: ieflx_gmean 
+    use check_energy,   only: check_ieflx_fix 
+    use phys_control,   only: ieflx_opt !!l_ieflx_fix
     !
     ! Input arguments
     !
@@ -1243,6 +1258,7 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
     !
     integer :: c                                 ! chunk index
     integer :: ncol                              ! number of columns
+    integer :: nstep                             ! current timestep number
 #if (! defined SPMD)
     integer  :: mpicom = 0
 #endif
@@ -1274,11 +1290,29 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
     call t_startf ('ac_physics')
     !call t_adj_detailf(+1)
 
+    nstep = get_nstep()
+
+
+    !! calculate the global mean ieflx 
+
+    if(ieflx_opt>0) then
+       call ieflx_gmean(phys_state, phys_tend, pbuf2d, cam_in, cam_out, nstep)
+    end if
+
 !$OMP PARALLEL DO PRIVATE (C, NCOL, phys_buffer_chunk)
 
     do c=begchunk,endchunk
        ncol = get_ncols_p(c)
        phys_buffer_chunk => pbuf_get_chunk(pbuf2d, c)
+
+       !! 
+       !! add the implied internal energy flux to sensible heat flux
+       !! 
+
+       if(ieflx_opt>0) then
+          call check_ieflx_fix(c, ncol, nstep, cam_in(c)%shf)
+       end if
+
        !
        ! surface diagnostics for history files
        !
@@ -1875,6 +1909,7 @@ subroutine tphysbc (ztodt,               &
     use clubb_intr,      only: clubb_tend_cam
     use sslt_rebin,      only: sslt_rebin_adv
     use tropopause,      only: tropopause_output
+    use output_aerocom_aie, only: do_aerocom_ind3, cloud_top_aerocom
     use cam_abortutils,      only: endrun
     use subcol,          only: subcol_gen, subcol_ptend_avg
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
@@ -2879,6 +2914,10 @@ if (l_rad) then
     call t_stopf('radiation')
 
 end if ! l_rad
+
+    if(do_aerocom_ind3) then
+       call cloud_top_aerocom(state, pbuf) 
+    end if
 
     ! Diagnose the location of the tropopause and its location to the history file(s).
     call t_startf('tropopause')

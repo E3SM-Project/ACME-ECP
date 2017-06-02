@@ -9,6 +9,7 @@ module SurfaceAlbedoMod
   ! !PUBLIC TYPES:
   use shr_kind_mod      , only : r8 => shr_kind_r8
   use shr_log_mod       , only : errMsg => shr_log_errMsg
+  use abortutils        , only : endrun
   use decompMod         , only : bounds_type
   use landunit_varcon   , only : istsoil, istcrop
   use clm_varcon        , only : grlnd, namep
@@ -26,7 +27,7 @@ module SurfaceAlbedoMod
   use LandunitType      , only : lun                
   use ColumnType        , only : col                
   use PatchType         , only : pft                
-  use EDSurfaceAlbedoMod, only : ED_Norman_Radiation
+
   !
   implicit none
   save
@@ -170,7 +171,8 @@ contains
         num_urbanp   , filter_urbanp,  &
         nextsw_cday  , declinp1,       &
         aerosol_vars, canopystate_vars, waterstate_vars, &
-        lakestate_vars, temperature_vars, surfalb_vars)
+        lakestate_vars, temperature_vars, surfalb_vars, &
+        alm_fates)
     !
     ! !DESCRIPTION:
     ! Surface albedo and two-stream fluxes
@@ -197,13 +199,11 @@ contains
     use clm_time_manager   , only : get_nstep
     use abortutils         , only : endrun
     use clm_varctl         , only : iulog, subgridflag, use_snicar_frc, use_ed
-    use EDSurfaceAlbedoMod
-    use EDtypesMod         , only : patch, gridCellEdState
-    use EDVecPatchtype     , only : EDpft
+    use CLMFatesInterfaceMod, only : hlm_fates_interface_type
+
     !
     ! !ARGUMENTS:
     type(bounds_type), intent(in) :: bounds    ! bounds
-    type (patch) , pointer :: currentPatch
     integer , intent(in) :: num_nourbanc       ! number of columns in non-urban filter
     integer , intent(in) :: filter_nourbanc(:) ! column filter for non-urban points
      integer                , intent(in)    :: num_nourbanp       ! number of patches in non-urban filter
@@ -220,6 +220,7 @@ contains
      type(lakestate_type)   , intent(in)    :: lakestate_vars
      type(temperature_type) , intent(in)    :: temperature_vars
      type(surfalb_type)     , intent(inout) :: surfalb_vars
+     type(hlm_fates_interface_type), intent(inout)  :: alm_fates
     !
     ! !LOCAL VARIABLES:
      integer  :: i                                                                         ! index for layers [idx]
@@ -396,29 +397,9 @@ contains
           ftid(p,ib) = 0._r8
           ftii(p,ib) = 0._r8
           
-          ! the ED_patch check has to be in a use_ed block.  Otherwise in non-ed 
-          ! compsets, some compilers correctly flag it as a non assigned pointer
-          ! at runtime.  SPM
-          if ( use_ed ) then
-             if( EDpft%ED_patch(p) == 1 )then ! We have vegetation...
-                g = pft%gridcell(p)
-                currentPatch => gridCellEdState(g)%spnt%oldest_patch
-                do while(p /= currentPatch%clm_pno)
-                   currentPatch => currentPatch%younger
-                enddo
-                currentPatch%f_sun(:,:,:) = 0._r8
-                currentPatch%fabd_sun_z(:,:,:) = 0._r8
-                currentPatch%fabd_sha_z(:,:,:) = 0._r8
-                currentPatch%fabi_sun_z(:,:,:) = 0._r8
-                currentPatch%fabi_sha_z(:,:,:) = 0._r8
-                currentPatch%fabd(:) = 0._r8
-                currentPatch%fabi(:) = 0._r8
-             end if
-          end if
- 
        end do
 
-       end do  ! end of numrad loop
+    end do  ! end of numrad loop
 
     ! SoilAlbedo called before SNICAR_RT
     ! so that reflectance of soil beneath snow column is known
@@ -935,18 +916,17 @@ contains
     ! Only perform on vegetated pfts where coszen > 0
 
     if(use_ed)then
-          
-          call ED_Norman_Radiation (bounds, filter_vegsol, num_vegsol,&
-               coszen_patch(bounds%begp:bounds%endp), surfalb_vars)      
-
+       call alm_fates%wrap_canopy_radiation(bounds, &
+            num_vegsol, filter_vegsol, &
+            coszen_patch(bounds%begp:bounds%endp), surfalb_vars)
     else
-
+       
       call TwoStream (bounds, filter_vegsol, num_vegsol, &
                coszen_patch(bounds%begp:bounds%endp), &
-         rho(bounds%begp:bounds%endp, :), &
+               rho(bounds%begp:bounds%endp, :), &
                tau(bounds%begp:bounds%endp, :), &
                canopystate_vars, temperature_vars, waterstate_vars, surfalb_vars)
-
+      
     endif	 
 
        ! Determine values for non-vegetated patches where coszen > 0

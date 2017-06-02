@@ -1624,6 +1624,7 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
    use time_manager,     only: is_end_curr_day
    use co2_cycle,        only: c_i, co2_transport
    use constituents,     only: sflxnam
+   use phys_control,     only: ieflx_opt, l_ieflx_fix
 
 !-----------------------------------------------------------------------
 !
@@ -1649,6 +1650,8 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
 !
     lchnk = cam_in%lchnk
     ncol  = cam_in%ncol
+
+    !! if l_ieflx_fix = true, SHFLX will be output in physpkg.F90 
 
     call outfld('SHFLX',    cam_in%shf,       pcols, lchnk)
     call outfld('LHFLX',    cam_in%lhf,       pcols, lchnk)

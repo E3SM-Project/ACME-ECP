@@ -98,6 +98,7 @@ integer           :: history_budget_histfile_num = 1   ! output history file num
 logical           :: history_waccm        = .true.     ! output variables of interest for WACCM runs
 logical           :: history_clubb        = .true.     ! output default CLUBB-related variables
 logical           :: do_clubb_sgs
+logical           :: do_aerocom_ind3      = .false.    ! true to write aerocom
 real(r8)          :: prc_coef1            = huge(1.0_r8)
 real(r8)          :: prc_exp              = huge(1.0_r8)
 real(r8)          :: prc_exp1             = huge(1.0_r8)
@@ -111,6 +112,9 @@ logical           :: state_debug_checks   = .false.    ! Extra checks for validi
 logical, public, protected :: use_mass_borrower    = .false.     ! switch on tracer borrower, instead of using the QNEG3 clipping
 logical, public, protected :: use_qqflx_fixer      = .false.     ! switch on water vapor fixer to compensate changes in qflx
 logical, public, protected :: print_fixer_message  = .false.     ! switch on error message printout in log file
+
+integer, public, protected :: ieflx_opt = 0
+logical, public, protected :: l_ieflx_fix = .false.
 
 ! Macro/micro-physics co-substeps
 integer           :: cld_macmic_num_steps = 1
@@ -179,7 +183,9 @@ subroutine phys_ctl_readnl(nlfile)
 !-- mdb spcam
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
       conv_water_in_rad, history_clubb, do_clubb_sgs, do_tms, state_debug_checks, &
-      use_mass_borrower, & 
+      use_mass_borrower, do_aerocom_ind3, &
+      l_ieflx_fix, &
+      ieflx_opt, &
       use_qqflx_fixer, & 
       print_fixer_message, & 
       use_hetfrz_classnuc, use_gw_oro, use_gw_front, use_gw_convect, &
@@ -237,9 +243,12 @@ subroutine phys_ctl_readnl(nlfile)
    call mpibcast(history_waccm,                   1 , mpilog,  0, mpicom)
    call mpibcast(history_clubb,                   1 , mpilog,  0, mpicom)
    call mpibcast(do_clubb_sgs,                    1 , mpilog,  0, mpicom)
+   call mpibcast(do_aerocom_ind3,                 1 , mpilog,  0, mpicom)
    call mpibcast(conv_water_in_rad,               1 , mpiint,  0, mpicom)
    call mpibcast(do_tms,                          1 , mpilog,  0, mpicom)
    call mpibcast(use_mass_borrower,               1 , mpilog,  0, mpicom)
+   call mpibcast(l_ieflx_fix,             1 , mpilog,  0, mpicom)
+   call mpibcast(ieflx_opt,               1 , mpiint,  0, mpicom)
    call mpibcast(use_qqflx_fixer,                 1 , mpilog,  0, mpicom)
    call mpibcast(print_fixer_message,             1 , mpilog,  0, mpicom)
    call mpibcast(micro_do_icesupersat,            1 , mpilog,  0, mpicom)
@@ -415,9 +424,11 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         radiation_scheme_out, use_subcol_microp_out, atm_dep_flux_out, &
                         history_amwg_out, history_vdiag_out, history_aerosol_out, history_aero_optics_out, history_eddy_out, &
                         history_budget_out, history_budget_histfile_num_out, history_waccm_out, &
-                        history_clubb_out, conv_water_in_rad_out, cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
+                        history_clubb_out, ieflx_opt_out, conv_water_in_rad_out, cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, do_tms_out, state_debug_checks_out, &
+                        do_aerocom_ind3_out,  &
                         use_mass_borrower_out, & 
+                        l_ieflx_fix_out, & 
                         use_qqflx_fixer_out, & 
                         print_fixer_message_out, & 
                         cld_macmic_num_steps_out, micro_do_icesupersat_out, &
@@ -464,12 +475,15 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    logical,           intent(out), optional :: history_waccm_out
    logical,           intent(out), optional :: history_clubb_out
    logical,           intent(out), optional :: do_clubb_sgs_out
+   logical,           intent(out), optional :: do_aerocom_ind3_out
    logical,           intent(out), optional :: micro_do_icesupersat_out
+   integer,           intent(out), optional :: ieflx_opt_out
    integer,           intent(out), optional :: conv_water_in_rad_out
    character(len=32), intent(out), optional :: cam_chempkg_out
    logical,           intent(out), optional :: prog_modal_aero_out
    logical,           intent(out), optional :: do_tms_out
    logical,           intent(out), optional :: use_mass_borrower_out
+   logical,           intent(out), optional :: l_ieflx_fix_out
    logical,           intent(out), optional :: use_qqflx_fixer_out
    logical,           intent(out), optional :: print_fixer_message_out
    logical,           intent(out), optional :: state_debug_checks_out
@@ -531,12 +545,15 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(history_waccm_out       ) ) history_waccm_out        = history_waccm
    if ( present(history_clubb_out       ) ) history_clubb_out        = history_clubb
    if ( present(do_clubb_sgs_out        ) ) do_clubb_sgs_out         = do_clubb_sgs
+   if ( present(do_aerocom_ind3_out ) ) do_aerocom_ind3_out = do_aerocom_ind3
    if ( present(micro_do_icesupersat_out )) micro_do_icesupersat_out = micro_do_icesupersat
    if ( present(conv_water_in_rad_out   ) ) conv_water_in_rad_out    = conv_water_in_rad
+   if ( present(ieflx_opt_out   ) ) ieflx_opt_out    = ieflx_opt 
    if ( present(cam_chempkg_out         ) ) cam_chempkg_out          = cam_chempkg
    if ( present(prog_modal_aero_out     ) ) prog_modal_aero_out      = prog_modal_aero
    if ( present(do_tms_out              ) ) do_tms_out               = do_tms
    if ( present(use_mass_borrower_out   ) ) use_mass_borrower_out    = use_mass_borrower
+   if ( present(l_ieflx_fix_out   ) ) l_ieflx_fix_out    = l_ieflx_fix
    if ( present(use_qqflx_fixer_out     ) ) use_qqflx_fixer_out      = use_qqflx_fixer
    if ( present(print_fixer_message_out ) ) print_fixer_message_out  = print_fixer_message
    if ( present(state_debug_checks_out  ) ) state_debug_checks_out   = state_debug_checks

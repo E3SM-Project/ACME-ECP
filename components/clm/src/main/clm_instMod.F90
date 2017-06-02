@@ -54,13 +54,13 @@ module clm_instMod
   use LandunitType               , only : lun
   use ColumnType                 , only : col
   use PatchType                  , only : pft
-  use EDEcophysConType           , only : EDecophyscon       ! ED Constants
 
-  use EDBioType                  , only : EDbio_type         ! ED type used to interact with CLM variables
-  use EDVecPatchType             , only : EDpft
-  use EDVecCohortType            , only : coh                ! unique to ED, used for domain decomp
   use clm_bgc_interface_data     , only : clm_bgc_interface_data_type
   use ChemStateType              , only : chemstate_type     ! structure for chemical indices of the soil, such as pH and Eh
+
+  use CLMFatesInterfaceMod       , only : hlm_fates_interface_type
+
+
   !
   implicit none
   save
@@ -107,14 +107,15 @@ module clm_instMod
   type(lnd2glc_type)                                  :: lnd2glc_vars
   type(glc_diagnostics_type)                          :: glc_diagnostics_vars
   class(soil_water_retention_curve_type), allocatable :: soil_water_retention_curve
-  type(EDbio_type)                                    :: EDbio_vars
   type(phosphorusstate_type)                          :: phosphorusstate_vars
   type(phosphorusflux_type)                           :: phosphorusflux_vars
   type(clm_bgc_interface_data_type)                   :: clm_bgc_data
   type(chemstate_type)                                :: chemstate_vars
+  type(hlm_fates_interface_type)                      :: alm_fates
 
   public :: clm_inst_biogeochem
   public :: clm_inst_biogeophys
+  public :: alm_fates
 
 contains
 
@@ -142,7 +143,7 @@ contains
     if (use_voc ) then
        call vocemis_vars%Init(bounds_proc)
     end if
-    if (use_cn) then
+    if (use_cn .or. use_ed) then
 
        ! Note - always initialize the memory for the c13_carbonstate_vars and
        ! c14_carbonstate_vars data structure so that they can be used in
@@ -169,7 +170,9 @@ contains
        if (use_c14) then
           call c14_carbonflux_vars%Init(bounds_proc, carbon_type='c14')
        end if
+    endif
 
+    if (use_cn) then
        call nitrogenstate_vars%Init(bounds_proc,                      &
             carbonstate_vars%leafc_patch(begp:endp),                  &
             carbonstate_vars%leafc_storage_patch(begp:endp),          &
@@ -201,11 +204,12 @@ contains
        call crop_vars%Init(bounds_proc)
 
     end if
-
-    if ( use_ed ) then
-       call EDbio_vars%Init(bounds_proc)
+    
+    ! Initialize the Functionaly Assembled Terrestrial Ecosystem Simulator (FATES)
+    if (use_ed) then
+       call alm_fates%Init(bounds_proc)
     end if
-
+       
     call hist_printflds()
 
   end subroutine clm_inst_biogeochem
@@ -222,14 +226,12 @@ contains
     use landunit_varcon                   , only : istice, istice_mec, istsoil
     use clm_varcon                        , only : h2osno_max, bdsno
     use domainMod                         , only : ldomain
-    use EDPftVarcon                       , only : EDpftvarcon_inst
     use clm_varpar                        , only : nlevsno, numpft
     use clm_varctl                        , only : single_column, fsurdat, scmlat, scmlon
     use controlMod                        , only : nlfilename
     use SoilWaterRetentionCurveFactoryMod , only : create_soil_water_retention_curve
     use fileutils                         , only : getfil
     use EcophysConType                    , only : ecophysconInit
-    use EDEcophysConType                  , only : EDecophysconInit
     use SoilorderConType                  , only : soilorderconInit
     use LakeCon                           , only : LakeConInit
     use initVerticalMod                   , only : initVertical
@@ -287,9 +289,6 @@ contains
     ! Initialize ecophys constants
 
     call ecophysconInit()
-    if (use_ed) then
-       call EDecophysconInit( EDpftvarcon_Inst, numpft)
-    end if
 
     ! Initialize soil order related constants
 

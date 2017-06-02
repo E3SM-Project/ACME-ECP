@@ -44,6 +44,7 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 
 <!-- Supplmental Nitrogen mode -->
 <suplnitro use_cn=".true." >NONE</suplnitro>
+<suplnitro use_ed=".true." >NONE</suplnitro>
 
 <!-- Albedo for glaciers -->
 <albice glc_nec="0" >0.60,0.40</albice>
@@ -69,18 +70,30 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 
 <glc_snow_persistence_max_days>7300</glc_snow_persistence_max_days>
 
-<!-- VSFM default -->
+<!-- ========================================================================================  -->
+<!-- VSFM default                                                                              -->
+<!-- ========================================================================================  -->
 <use_vsfm>.false.</use_vsfm>
+<vsfm_include_seepage_bc>.false.</vsfm_include_seepage_bc>
 <vsfm_satfunc_type>smooth_brooks_corey_bz3</vsfm_satfunc_type>
 <vsfm_use_dynamic_linesearch>.false.</vsfm_use_dynamic_linesearch>
+<vsfm_lateral_model_type>none</vsfm_lateral_model_type>
+
+<!-- ========================================================================================  -->
+<!-- PETSc-based thermal model default                                                         -->
+<!-- ========================================================================================  -->
+<use_petsc_thermal_model>.false.</use_petsc_thermal_model>
 
 <!-- ================================================================== -->
 <!-- The default filenames are given relative to the root directory
      for the CLM2 data in the CESM distribution -->
 <!-- Plant function types (relative to {csmdata}) -->
 <paramfile                 >lnd/clm2/paramdata/clm_params_c160822.nc</paramfile>
-<paramfile use_ed=".true." >lnd/clm2/paramdata/clm_params.ED.c140115.nc</paramfile>
 <paramfile use_crop=".true." >lnd/clm2/paramdata/clm_params_c160822.nc</paramfile>
+<paramfile nu_com="ECA"    >lnd/clm2/paramdata/clm_params.c160709.nc</paramfile>
+
+<fates_paramfile >lnd/clm2/paramdata/fates_params.c170331.nc</fates_paramfile>
+
 
 <!-- soil order related parameters (relative to {csmdata}) -->
 <fsoilordercon             >lnd/clm2/paramdata/CNP_parameters_c131108.nc</fsoilordercon> 
@@ -150,28 +163,28 @@ ic_tod="0" sim_year="1850"  glc_nec="0" use_crop=".false." >lnd/clm2/initdata_ma
  ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne4_qu240.5712d76.clm2.r.0021-01-01-00000.nc
 </finidat>
 
-<finidat hgrid="ne4np4"   maxpft="17"  mask="oQU240" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
- ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne4_qu240.d02c96d.clm2.r.0021-01-01-00000.nc
+<finidat hgrid="ne4np4"   maxpft="17"  mask="oQU240" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
+ ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne4_oQU240.1155ba0.clm2.r.nc
 </finidat>
 
 <!-- HOMME grid ne11 resolution -->
 
 <finidat hgrid="ne11np4"   maxpft="17"  mask="oQU240" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
- ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne11_qu240.5712d76.clm2.r.0021-01-01-00000.nc
+ ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne11_oQU240.1155ba0.clm2.r.nc
 </finidat>
 
-<finidat hgrid="ne11np4"   maxpft="17"  mask="oQU240" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
- ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne11_qu240.d02c96d.clm2.r.0021-01-01-00000.nc
+<finidat hgrid="ne11np4"   maxpft="17"  mask="oQU240" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
+ ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne11_oQU240.1155ba0.clm2.r.nc
 </finidat>
 
 <!-- HOMME grid ne16 resolution -->
 
 <finidat hgrid="ne16np4"   maxpft="17"  mask="oQU240" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
-ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne16_qu240.d02c96d.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne16_oQU240.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne16np4"   maxpft="17"  mask="oQU240" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
-ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne16_qu240.d02c96d.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne16_oQU240.1155ba0.clm2.r.nc
 </finidat>
 
 <!-- HOMME grid ne30 resolution -->
@@ -188,43 +201,43 @@ ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map
 
 <!-- Initial condition file with CLM45SP -->
 <finidat hgrid="ne30np4"   maxpft="17"  mask="gx1v6" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
-ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_g16.e61c667.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_g16.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="gx1v6" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
-ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_g16.e61c667.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_g16.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="oEC60to30" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
-ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_oEC.e61c667.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_oEC.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="oEC60to30" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
-ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_oEC.e61c667.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_oEC.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="oEC60to30v3" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
-ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_oECv3.650b665.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_oECv3.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="oEC60to30v3" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
-ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_oECv3.650b665.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_oECv3.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="oRRS30to10" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
-ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_oRRS30.43b6150.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_oRRS30.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="oRRS30to10" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
-ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_oRRS30.eced5c9.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_oRRS30.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="oQU120" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
-ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_qu120.1b78d5b.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne30_oQU120.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne30np4"   maxpft="17"  mask="oQU120" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
-ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_qu120.1b78d5b.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne30_oQU120.1155ba0.clm2.r.nc
 </finidat>
 
 <!-- HOMME grid ne120 resolution -->
@@ -235,15 +248,23 @@ ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map
 </finidat>
 
 <finidat hgrid="ne120np4"   maxpft="17"  mask="gx1v6" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
-ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne120_g16.ee1ee60.clm2.r.0021-01-01-00000.nc
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne120_g16.1155ba0.clm2.r.nc
 </finidat>
 
 <finidat hgrid="ne120np4"   maxpft="17"  mask="oRRS15to5" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
 ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.ne120_oRRS15.c7cfd71.clm2.r.0021-01-01-00000.nc
 </finidat>
 
-<finidat hgrid="ne120np4"   maxpft="17"  mask="oRRS15to5" use_cn=".false." ic_ymd="2000101" more_vertlayers=".false."
-ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne120_oRRS15.033e19d.clm2.r.0021-01-01-00000.nc
+<finidat hgrid="ne120np4"   maxpft="17"  mask="oRRS15to5" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne120_oRRS15.1155ba0.clm2.r.nc
+</finidat>
+
+<finidat hgrid="ne120np4"   maxpft="17"  mask="oRRS18to6v3" use_cn=".false." ic_ymd="18500101" more_vertlayers=".false."
+ic_tod="0" sim_year="1850" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.I1850CLM45.0521-01-01.ne120_oRRS18v3.be55494_simyr1850_c170509.nc
+</finidat>
+
+<finidat hgrid="ne120np4"   maxpft="17"  mask="oRRS18to6v3" use_cn=".false." ic_ymd="20000101" more_vertlayers=".false."
+ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".false." >lnd/clm2/initdata_map/clmi.ICRUCLM45.ne120_oRRS18v3.be55494.clm2.r.nc
 </finidat>
 
 <!-- Initial condition files with CLM45BGCDV -->
@@ -501,7 +522,7 @@ this mask will have smb calculated over the entire global land surface
 
 <!-- SNICAR (SNow, ICe, and Aerosol Radiative model) datasets -->
 <!--  ***********  Resolution independent:   ***********  -->
-<fsnowoptics >lnd/clm2/snicardata/snicar_optics_5bnd_c090915.nc</fsnowoptics>
+<fsnowoptics >lnd/clm2/snicardata/snicar_optics_5bnd_mam_c160322.nc</fsnowoptics>
 <fsnowaging  >lnd/clm2/snicardata/snicar_drdt_bst_fit_60_c070416.nc</fsnowaging>
 
 <!-- Nitrogen deposition streams namelist defaults -->
@@ -545,6 +566,7 @@ this mask will have smb calculated over the entire global land surface
 <ndepmapalgo use_cn=".true."   hgrid="1x1_asphaltjungleNJ" >nn</ndepmapalgo>
 <ndepmapalgo use_cn=".true."   hgrid="1x1_tropicAtl"       >nn</ndepmapalgo>
 <ndepmapalgo use_cn=".true."   hgrid="5x5_amazon"          >nn</ndepmapalgo>
+
 
 <!-- Phosphorus deposition streams namelist defaults -->
 <stream_year_first_pdep use_cn=".true."   sim_year="2000" >2000</stream_year_first_pdep>
@@ -1750,13 +1772,28 @@ this mask will have smb calculated over the entire global land surface
 <!-- =========================================  -->
 
 <fin_use_fsat use_cn=".true.">.true.</fin_use_fsat>
+<fin_use_fsat use_ed=".true.">.false.</fin_use_fsat>
 
+<use_aereoxid_prog use_ed=".true.">.true.</use_aereoxid_prog>
 <use_aereoxid_prog use_cn=".true.">.true.</use_aereoxid_prog>
+
+<!-- =========================================  -->
+<!-- Defaults for lateral grid connectivity     -->
+<!-- =========================================  -->
+<lateral_connectivity>.false.</lateral_connectivity>
+<domain_decomposition_method>round_robin</domain_decomposition_method>
 
 <!-- =========================================  -->
 <!-- Defaults for clm_pflotran_inparm interface -->
 <!-- =========================================  -->
 <pflotran_inputdir>pflotran</pflotran_inputdir>
 <pflotran_prefix>pflotran_clm</pflotran_prefix>
+
+<use_ed_spitfire    use_ed=".true.">.false.</use_ed_spitfire>
+<use_vertsoilc       bgc_mode="ed"  >.true.</use_vertsoilc>
+<use_century_decomp  bgc_mode="ed"  >.true.</use_century_decomp>
+<use_lch4            bgc_mode="ed"  >.false.</use_lch4>
+<use_nitrif_denitrif bgc_mode="ed"  >.false.</use_nitrif_denitrif>
+
 
 </namelist_defaults>

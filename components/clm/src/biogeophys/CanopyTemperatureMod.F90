@@ -16,8 +16,9 @@ module CanopyTemperatureMod
   use shr_const_mod        , only : SHR_CONST_PI
   use decompMod            , only : bounds_type
   use abortutils           , only : endrun
-  use clm_varctl           , only : iulog
-  use PhotosynthesisMod    , only : Photosynthesis, PhotosynthesisTotal, Fractionation
+  use clm_varctl           , only : iulog, use_ed
+  use PhotosynthesisMod    , only : Photosynthesis, PhotosynthesisTotal, Fractionation 
+  use CLMFatesInterfaceMod , only : hlm_fates_interface_type
   use SurfaceResistanceMod , only : calc_soilevap_stress
   use EcophysConType       , only : ecophyscon
   use atm2lndType          , only : atm2lnd_type
@@ -30,7 +31,7 @@ module CanopyTemperatureMod
   use WaterstateType       , only : waterstate_type
   use LandunitType         , only : lun                
   use ColumnType           , only : col                
-  use PatchType            , only : pft                
+  use PatchType            , only : pft
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -46,7 +47,8 @@ contains
   subroutine CanopyTemperature(bounds, &
        num_nolakec, filter_nolakec, num_nolakep, filter_nolakep, &
        atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars, &
-       waterstate_vars, waterflux_vars, energyflux_vars, temperature_vars)
+       waterstate_vars, waterflux_vars, energyflux_vars, temperature_vars, &
+       alm_fates)
     !
     ! !DESCRIPTION:
     ! This is the main subroutine to execute the calculation of leaf temperature
@@ -91,6 +93,7 @@ contains
     type(waterflux_type)   , intent(inout) :: waterflux_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(temperature_type) , intent(inout) :: temperature_vars
+    type(hlm_fates_interface_type) , intent(inout) :: alm_fates
     !
     ! !LOCAL VARIABLES:
     integer  :: g,l,c,p      ! indices
@@ -392,6 +395,23 @@ contains
 
       end do ! (end of columns loop)
 
+      ! Set roughness and displacement
+      ! Note that FATES passes back z0m and displa at the end
+      ! of its dynamics call.  If and when crops are
+      ! enabled simultaneously with FATES, we will 
+      ! have to apply a filter here.
+      if(use_ed) then
+         call alm_fates%TransferZ0mDisp(bounds,frictionvel_vars,canopystate_vars)
+      end if
+
+      do fp = 1,num_nolakep
+         p = filter_nolakep(fp)
+         if( .not.(pft%is_fates(p))) then
+            z0m(p)    = z0mr(pft%itype(p)) * htop(p)
+            displa(p) = displar(pft%itype(p)) * htop(p)
+         end if
+      end do
+
       ! Initialization
 
       do fp = 1,num_nolakep
@@ -427,11 +447,6 @@ contains
 
          avmuir = 1._r8
          emv(p) = 1._r8-exp(-(elai(p)+esai(p))/avmuir)
-
-         ! Roughness lengths over vegetation
-
-         z0m(p)    = z0mr(pft%itype(p)) * htop(p)
-         displa(p) = displar(pft%itype(p)) * htop(p)
 
          z0mv(p)   = z0m(p)
          z0hv(p)   = z0mv(p)
