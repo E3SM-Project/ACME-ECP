@@ -1,3 +1,4 @@
+
 module crm_module
 !---------------------------------------------------------------
 !  Super-parameterization's main driver 
@@ -9,6 +10,10 @@ use setparm_mod, only : setparm
 contains
 
 subroutine crm        (lchnk, icol, &
+!MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
+#ifdef CRM_STANDALONE
+                       latitude0_in, longitude0_in, &
+#endif
                        tl, ql, qccl, qiil, ul, vl, &
                        ps, pmid, pdel, phis, &
                        zmid, zint, dt_gl, plev, &
@@ -70,8 +75,16 @@ subroutine crm        (lchnk, icol, &
 
 !---------------------------------------------------------------
 
+        use mpi
+        use crm_dump
         use shr_kind_mod, only: r8 => shr_kind_r8
+!MRN: phys_grid is a rabbit hole of dependencies I'd rather hijack and avoid.
+!MRN: It's only used to get the longitude and latitude for each call and then
+!MRN: random seed values for perturbations to the initial temprature field on 
+!MRN: the first call to crm(...)
+#ifndef CRM_STANDALONE
         use phys_grid, only: get_rlon_p, get_rlat_p, get_gcol_all_p
+#endif
         use ppgrid, only: pcols
         use vars
         use params
@@ -126,6 +139,10 @@ subroutine crm        (lchnk, icol, &
 
          integer, intent(in) :: lchnk    ! chunk identifier
          integer, intent(in) :: icol     ! column identifier
+#ifdef CRM_STANDALONE
+         real   , intent(in) :: latitude0_in
+         real   , intent(in) :: longitude0_in
+#endif
          integer, intent(in) :: plev     ! number of levels in parent model
          real(r8), intent(in) :: ps ! Global grid surface pressure (Pa)
          real(r8), intent(in) :: pmid(plev) ! Global grid pressure (Pa)
@@ -329,6 +346,7 @@ subroutine crm        (lchnk, icol, &
          real(r8), intent(out) :: wwqui_bnd(plev+1)                                ! vertical velocity variance in quiescent class (m2/s2)
          real(r8), intent(out) :: wwqui_cloudy_bnd(plev+1)                         ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
 #endif
+         real(r8), intent(out) :: qtot(20)
 
 !  Local space:
         real dummy(nz), t00(nz)
@@ -351,6 +369,8 @@ subroutine crm        (lchnk, icol, &
         integer iseed   ! seed for random perturbation
         integer gcolindex(pcols)  ! array of global latitude indices
 
+        integer :: myrank, ierr
+
 #ifdef CLUBB_CRM
 !Array indicies for spurious RTM check
 
@@ -366,8 +386,31 @@ real(kind=core_rknd), dimension(nzm) :: &
 
         real  cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
 
-        real(r8), intent(out) :: qtot(20)
         real ntotal_step
+
+!MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
+#ifdef CRM_STANDALONE
+        latitude0  = latitude0_in
+        longitude0 = longitude0_in
+#else
+        latitude0  = get_rlat_p(lchnk, icol)*57.296_r8
+        longitude0 = get_rlon_p(lchnk, icol)*57.296_r8
+#endif
+
+        igstep = get_nstep() 
+
+  call crm_dump_input(igstep,plev,lchnk,icol,latitude0,longitude0,ps,pmid,pdel,phis,zmid,zint,qrad_crm,dt_gl,ocnfrac,tau00,&
+                      wndls,bflxls,fluxu00,fluxv00,fluxt00,fluxq00,tl,ql,qccl,qiil,ul,vl, &
+#ifdef CLUBB_CRM
+                      clubb_buffer    , &
+#endif
+                      cltot,clhgh,clmed,cllow,u_crm,v_crm,w_crm,t_crm,micro_fields_crm, &
+#ifdef m2005
+#ifdef MODAL_AERO
+                      naermod,vaerosol,hygro , &
+#endif
+#endif
+                      dd_crm,mui_crm,mdi_crm )
 
 !-----------------------------------------------
 
@@ -392,7 +435,6 @@ real(kind=core_rknd), dimension(nzm) :: &
         wnd = wndls
 
 !-----------------------------------------
-        igstep = get_nstep() 
 
 #ifdef CLUBB_CRM
         if(igstep == 1) then
@@ -415,8 +457,6 @@ real(kind=core_rknd), dimension(nzm) :: &
 !        tabs_s = tabs_s0
 !        case = case0
 
-        latitude0 = get_rlat_p(lchnk, icol)*57.296_r8
-        longitude0 = get_rlon_p(lchnk, icol)*57.296_r8
 !        pi = acos(-1.)
         if(fcor.eq.-999.) fcor= 4*pi/86400.*sin(latitude0*pi/180.)
         fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
@@ -761,10 +801,15 @@ real(kind=core_rknd), dimension(nzm) :: &
      if(doprecip) call precip_init()
 #endif
 
+!MRN: Don't want any stochasticity introduced in the standalone.
+!MRN: Need to make sure the first call to crm(...) is not dumped out
+!MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
+#ifndef CRM_STANDALONE
         call get_gcol_all_p(lchnk, pcols, gcolindex)
         iseed = gcolindex(icol)
         if(u(1,1,1).eq.u(2,1,1).and.u(3,1,2).eq.u(4,1,2)) &
                     call setperturb(iseed)
+#endif
 
 #ifndef CLUBB_CRM
 !--------------------------
@@ -1790,6 +1835,26 @@ do while(nstep.lt.nstop)
 ! Deallocate ECPP variables
        call ecpp_crm_cleanup ()
 #endif /*ECPP*/
+
+  call crm_dump_output(igstep,plev,crm_tk,crm_tkh,cltot,clhgh,clmed,cllow,sltend,u_crm,v_crm,w_crm,t_crm,micro_fields_crm,&
+                       qltend,qcltend,qiltend,t_rad,qv_rad,qc_rad,qi_rad,cld_rad,cld3d_crm, &
+#ifdef CLUBB_CRM
+                       clubb_buffer,crm_cld,clubb_tk,clubb_tkh,relvar,accre_enhan,qclvar , &
+#endif
+#ifdef CRM3D
+                       ultend,vltend , &
+#endif
+#ifdef m2005
+                       nc_rad,ni_rad,qs_rad,ns_rad,wvar_crm,aut_crm,acc_crm,evpc_crm,evpr_crm,mlt_crm,sub_crm,dep_crm,con_crm,aut_crm_a,acc_crm_a,&
+                       evpc_crm_a,evpr_crm_a,mlt_crm_a,sub_crm_a,dep_crm_a,con_crm_a,crm_nc,crm_ni,crm_ns,crm_ng,crm_nr, &
+#endif
+#ifdef ECPP
+                       acen,acen_tf,rhcen,qcloudcen,qicecen,qlsinkcen,precrcen,precsolidcen,qlsink_bfcen,qlsink_avgcen,praincen,wwqui_cen,wwqui_cloudy_cen,&
+                       abnd,abnd_tf,massflxbnd,wupthresh_bnd,wdownthresh_bnd,wwqui_bnd,wwqui_cloudy_bnd, &
+#endif
+                       precc,precl,cld,cldtop,gicewp,gliqwp,mc,mcup,mcdn,mcuup,mcudn,crm_qc,crm_qi,crm_qs,crm_qg,crm_qr,mu_crm,md_crm,du_crm,eu_crm,&
+                       ed_crm,dd_crm,jt_crm,mx_crm,mui_crm,mdi_crm,flux_qt,fluxsgs_qt,tkez,tkesgsz,tkz,flux_u,flux_v,flux_qp,pflx,qt_ls,qt_trans,   &
+                       qp_trans,qp_fall,qp_src,qp_evp,t_ls,prectend,precstend,precsc,precsl,taux_crm,tauy_crm,z0m,timing_factor,qc_crm,qi_crm,qpc_crm,qpi_crm,prec_crm,qtot)
         
 end subroutine crm
 end module crm_module
