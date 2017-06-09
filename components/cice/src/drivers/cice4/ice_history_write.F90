@@ -116,8 +116,6 @@
       real (kind=dbl_kind), dimension(nx_block,ny_block,max_blocks) :: &
          work1
 
-write(nu_diag,*) 'whannah - icecdf - START ' ! whannah
-
       if (my_task == master_task) then
 
         ltime=time/int(secday)
@@ -143,7 +141,6 @@ write(nu_diag,*) 'whannah - icecdf - START ' ! whannah
       !-----------------------------------------------------------------
       ! define dimensions
       !-----------------------------------------------------------------
-write(nu_diag,*) 'whannah - icecdf - 1 ' ! whannah
         if (hist_avg) then
           status = nf90_def_dim(ncid,'d2',2,boundid)
           if (status /= nf90_noerr) call abort_ice( &
@@ -204,7 +201,7 @@ write(nu_diag,*) 'whannah - icecdf - 1 ' ! whannah
       !-----------------------------------------------------------------
       ! Define attributes for time bounds if hist_avg is true
       !-----------------------------------------------------------------
-write(nu_diag,*) 'whannah - icecdf - 2 ' ! whannah
+      
         if (hist_avg) then
           dimid(1) = boundid
           dimid(2) = timid
@@ -226,7 +223,7 @@ write(nu_diag,*) 'whannah - icecdf - 2 ' ! whannah
       !-----------------------------------------------------------------
       ! define information for required time-invariant variables
       !-----------------------------------------------------------------
-write(nu_diag,*) 'whannah - icecdf - 3 ' ! whannah
+
       ind = 0
       ind = ind + 1
       coord_var(ind) = coord_attributes('TLON', &
@@ -296,7 +293,6 @@ write(nu_diag,*) 'whannah - icecdf - 3 ' ! whannah
       !-----------------------------------------------------------------
       ! define attributes for time-invariant variables
       !-----------------------------------------------------------------
-write(nu_diag,*) 'whannah - icecdf - 4 ' ! whannah
         dimid(1) = imtid
         dimid(2) = jmtid
         dimid(3) = timid
@@ -408,7 +404,7 @@ write(nu_diag,*) 'whannah - icecdf - 4 ' ! whannah
             status = nf90_put_att(ncid,varid,'_FillValue',spval)
             if (status /= nf90_noerr) call abort_ice( &
                'Error defining _FillValue for '//avail_hist_fields(n)%vname)
-write(nu_diag,*) 'whannah - icecdf - 5 ' ! whannah
+
       !-----------------------------------------------------------------
       ! Append ice thickness range to aicen comments
       !-----------------------------------------------------------------
@@ -451,7 +447,7 @@ write(nu_diag,*) 'whannah - icecdf - 5 ' ! whannah
 
            endif 
         enddo  ! num_avail_hist_fields
-write(nu_diag,*) 'whannah - icecdf - 6 ' ! whannah
+
       !-----------------------------------------------------------------
       ! global attributes
       !-----------------------------------------------------------------
@@ -508,14 +504,14 @@ write(nu_diag,*) 'whannah - icecdf - 6 ' ! whannah
         status = nf90_put_att(ncid,nf90_global,'history',start_time)
         if (status /= nf90_noerr) call abort_ice( &
                       'ice Error: global attribute history')
-write(nu_diag,*) 'whannah - icecdf - 7 ' ! whannah
+
       !-----------------------------------------------------------------
       ! end define mode
       !-----------------------------------------------------------------
 
         status = nf90_enddef(ncid)
         if (status /= nf90_noerr) call abort_ice('ice: Error in nf90_enddef')
-write(nu_diag,*) 'whannah - icecdf - 8 ' ! whannah
+
       !-----------------------------------------------------------------
       ! write time variable
       !-----------------------------------------------------------------
@@ -748,7 +744,6 @@ write(nu_diag,*) 'whannah - icecdf - 8 ' ! whannah
       endif
 #endif
 
-write(nu_diag,*) 'whannah - icecdf - END ' ! whannah
 
       end subroutine icecdf
 

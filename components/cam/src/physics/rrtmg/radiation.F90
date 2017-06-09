@@ -800,7 +800,6 @@ end function radiation_nextsw_cday
     ! 2004-08-30  B. Eaton         Replace chem_get_cnst by rad_constituent_get.
     ! 2007-11-05  M. Iacono        Install rrtmg_lw and sw as radiation model.
     ! 2007-12-27  M. Iacono        Modify to use CAM cloud optical properties with rrtmg.
-<<<<<<< HEAD
     ! 2009-06     Minghuai Wang,   add treatments for MMF CAM
     !              These modifications are based on the spcam3.5, which was developled
     !              by Marat Khairoutdinov (mkhairoutdin@ms.cc.sunysb.edu). The spcam3.5 
@@ -825,13 +824,7 @@ end function radiation_nextsw_cday
     !----------------------------------------------------------------------------------------------
 
 
-    use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx, pbuf_get_index
-=======
-    !-----------------------------------------------------------------------
-
-
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx, pbuf_get_index, pbuf_set_field
->>>>>>> ACME-master
     
     use phys_grid,       only: get_rlat_all_p, get_rlon_all_p
     use physics_types,   only: physics_state, physics_ptend
@@ -864,25 +857,21 @@ end function radiation_nextsw_cday
     use ebert_curry,      only: ec_ice_optics_sw, ec_ice_get_rad_props_lw
     use rad_solar_var,    only: get_variability
     use radiation_data,   only: output_rad_data
-    use rrtmg_state, only: rrtmg_state_create, rrtmg_state_update, rrtmg_state_destroy, rrtmg_state_t, num_rrtmg_levs
-    use crmdims,       only: crm_nx, crm_ny, crm_nz
-    use physconst,        only: gravit
-    use constituents,    only: cnst_get_ind
-    use radconstants,     only: idx_sw_diag
+    use rrtmg_state,      only: rrtmg_state_create, rrtmg_state_update, rrtmg_state_destroy, rrtmg_state_t, num_rrtmg_levs
+    use crmdims,              only: crm_nx, crm_ny, crm_nz
+    use physconst,            only: gravit
+    use constituents,         only: cnst_get_ind
+    use radconstants,         only: idx_sw_diag
 #ifdef CRM
-    use crm_physics,    only: m2005_effradius
+    use crm_physics,          only: m2005_effradius
 #endif
 #ifdef MODAL_AERO
-   use modal_aero_data, only: ntot_amode
+   use modal_aero_data,       only: ntot_amode
 #endif
-    use phys_control,   only: phys_getopts
-!==Guangxing Lin
-    use orbit,            only: zenith
-<<<<<<< HEAD
-!==Guangxing Lin
-=======
-    use output_aerocom_aie , only: do_aerocom_ind3
->>>>>>> ACME-master
+    use phys_control,         only: phys_getopts
+    use orbit,                only: zenith    !==Guangxing Lin
+    use output_aerocom_aie,   only: do_aerocom_ind3
+
 
     ! Arguments
     real(r8), intent(in)    :: landfrac(pcols)  ! land fraction
@@ -1291,17 +1280,12 @@ end function radiation_nextsw_cday
     call get_rlat_all_p(lchnk, ncol, clat)
     call get_rlon_all_p(lchnk, ncol, clon)
 
-!==Guangxing Lin    
     !call zenith (calday, clat, clon, coszrs, ncol)
-    call zenith (calday, clat, clon, coszrs, ncol, dt_avg)
-<<<<<<< HEAD
-!==Guangxing Lin    
-=======
+    call zenith (calday, clat, clon, coszrs, ncol, dt_avg) !==Guangxing Lin  
     
     if (swrad_off) then
        coszrs(:)=0._r8 ! coszrs is only output for zenith
     endif    
->>>>>>> ACME-master
 
     call output_rad_data(  pbuf, state, cam_in, landm, coszrs )
 
@@ -1776,7 +1760,6 @@ end function radiation_nextsw_cday
                      swcf(i)=fsntoa(i) - fsntoac(i)
                   end do
 
-<<<<<<< HEAD
                   if (use_SPCAM) then 
                      do i=1, ncol
                         qrs_m(i,:pver, icall) = qrs_m(i,:pver, icall) + qrs(i,:pver)*factor_xy
@@ -1905,7 +1888,7 @@ end function radiation_nextsw_cday
                       call outfld('FSN200C'//diag(icall),fsn200c,pcols,lchnk)
                       call outfld('SWCF'//diag(icall),swcf  ,pcols,lchnk)
                   end if
-=======
+
                   if(do_aerocom_ind3) then
                     aerindex = 0.0
                     angstrm = 0.0
@@ -1940,33 +1923,6 @@ end function radiation_nextsw_cday
                     end if
                   end if
 
-                  ! Dump shortwave radiation information to history tape buffer (diagnostics)
-                  ftem(:ncol,:pver) = qrs(:ncol,:pver)/cpair
-                  call outfld('QRS'//diag(icall),ftem  ,pcols,lchnk)
-                  ftem(:ncol,:pver) = qrsc(:ncol,:pver)/cpair
-                  call outfld('QRSC'//diag(icall),ftem  ,pcols,lchnk)
-                  call outfld('SOLIN'//diag(icall),solin ,pcols,lchnk)
-                  call outfld('FSDS'//diag(icall),fsds  ,pcols,lchnk)
-                  call outfld('FSNIRTOA'//diag(icall),fsnirt,pcols,lchnk)
-                  call outfld('FSNRTOAC'//diag(icall),fsnrtc,pcols,lchnk)
-                  call outfld('FSNRTOAS'//diag(icall),fsnirtsq,pcols,lchnk)
-                  call outfld('FSNT'//diag(icall),fsnt  ,pcols,lchnk)
-                  call outfld('FSNS'//diag(icall),fsns  ,pcols,lchnk)
-                  call outfld('FSNTC'//diag(icall),fsntc ,pcols,lchnk)
-                  call outfld('FSNSC'//diag(icall),fsnsc ,pcols,lchnk)
-                  call outfld('FSDSC'//diag(icall),fsdsc ,pcols,lchnk)
-                  call outfld('FSNTOA'//diag(icall),fsntoa,pcols,lchnk)
-                  call outfld('FSUTOA'//diag(icall),fsutoa,pcols,lchnk)
-                  call outfld('FSNTOAC'//diag(icall),fsntoac,pcols,lchnk)
-                  call outfld('FSUTOAC'//diag(icall),fsntoac,pcols,lchnk)
-                  call outfld('SOLS'//diag(icall),cam_out%sols  ,pcols,lchnk)
-                  call outfld('SOLL'//diag(icall),cam_out%soll  ,pcols,lchnk)
-                  call outfld('SOLSD'//diag(icall),cam_out%solsd ,pcols,lchnk)
-                  call outfld('SOLLD'//diag(icall),cam_out%solld ,pcols,lchnk)
-                  call outfld('FSN200'//diag(icall),fsn200,pcols,lchnk)
-                  call outfld('FSN200C'//diag(icall),fsn200c,pcols,lchnk)
-                  call outfld('SWCF'//diag(icall),swcf  ,pcols,lchnk)
->>>>>>> ACME-master
 
               end if ! (active_calls(icall))
           end do ! icall

@@ -1230,9 +1230,6 @@ end subroutine crm_physics_init
 ! whannah - SPFLUXBYPASS - only sensible and latent heat fluxes are affected
 ! #if defined(SPFLUXBYPASS) && !defined(CLUBB_CRM)
 #ifdef SPFLUXBYPASS_3
-    ! lq(:) = .FALSE.
-    ! lq(1) = .TRUE.
-    ! call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS', ls=.true., lq=lq)
     ptend%lu    = .false.
     ptend%lv    = .false.
     ptend%lq    = .false. 
@@ -1251,9 +1248,6 @@ end subroutine crm_physics_init
 
 ! whannah - alt SPFLUXBYPASS - all constituent fluxes (and SHF) are affected
 #ifdef SPFLUXBYPASS_4
-! write(*,*) '=== SPFLUXBYPASS_4 start ==='
-    ! lq(:) = .TRUE.
-    ! call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS_2', ls=.true., lq=lq)
     ptend%lu    = .false.
     ptend%lv    = .false.
     ptend%lq    = .true. 
@@ -1269,7 +1263,6 @@ end subroutine crm_physics_init
       end do
     end do
     call physics_update(state, ptend, ztodt, tend)   
-! write(*,*) '=== SPFLUXBYPASS_4 end ==='
 #endif  
 
 #if defined(SPFLUXBYPASS_3) || defined(SPFLUXBYPASS_4)
@@ -2049,50 +2042,47 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 ! Aerosol stuff...
 !----------------------------------------------------------------------
-!-- mark branson: insert ifdef m2005 block so that 1-moment microphysics will compile
-    if (SPCAM_microp_scheme .eq. 'm2005') then
-      call t_startf('bc_aerosols_mmf')
-!     calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
-!
-      do  i=1,ncol
-      do ii=1,crm_nx
-      do jj=1,crm_ny
-      do  m=1,crm_nz
-        if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).gt.1.0e-10) then
-          !cld_rad(i,ii,jj,m) = 1.0_r8
-          cld_rad(i,ii,jj,m) = cld_rad(i,ii,jj,m) !Guangxing Lin new crm
-        else
-          cld_rad(i,ii,jj,m) = 0.0_r8
-        endif
-      enddo
-      enddo
-      enddo
-      enddo
-      !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
+  !-- mark branson: insert ifdef m2005 block so that 1-moment microphysics will compile
+  if (SPCAM_microp_scheme .eq. 'm2005') then
+    call t_startf('bc_aerosols_mmf')
+
+    ! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
+    do  i=1,ncol
+    do ii=1,crm_nx
+    do jj=1,crm_ny
+    do  m=1,crm_nz
+      if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).gt.1.0e-10) then
+        !cld_rad(i,ii,jj,m) = 1.0_r8
+        cld_rad(i,ii,jj,m) = cld_rad(i,ii,jj,m) !Guangxing Lin new crm
+      else
+        cld_rad(i,ii,jj,m) = 0.0_r8
+      endif
+    enddo
+    enddo
+    enddo
+    enddo
+    !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 
     !----------------------------------------------------
     ! Modal aerosol wet radius for radiative calculation
     !----------------------------------------------------
-! whannah - added ifdef check for MODAL_AERO so 1-moment would compile
+! whannah - added ifdef check for MODAL_AERO so 1-moment will compile
 #if defined(MODAL_AERO)  
-    !==Guangxing Lin
-      ! temporarily turn on all lq, so it is allocated
-      lq(:) = .true.
-      call physics_ptend_init(ptend, state%psetcols, 'crm_physics', lq=lq)
+    !==Guangxing Lin - temporarily turn on all lq, so it is allocated
+    lq(:) = .true.
+    call physics_ptend_init(ptend, state%psetcols, 'crm_physics', lq=lq)
 
-      ! set all ptend%lq to false as they will be set in modal_aero_calcsize_sub
-      ptend%lq(:) = .false.
-      call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
-      call modal_aero_wateruptake_dr(state, pbuf)
+    ! set all ptend%lq to false as they will be set in modal_aero_calcsize_sub
+    ptend%lq(:) = .false.
+    call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
+    call modal_aero_wateruptake_dr(state, pbuf)
     !===Guangxing Lin
 
     ! When ECPP is included, wet deposition is done ECPP,
     ! So tendency from wet depostion is not updated in mz_aero_wet_intr (mz_aerosols_intr.F90)
     ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
     call physics_update (state, ptend, ztodt, tend)
-
 #endif
-! whannah
 
     !----------------------------------------------------
     ! ECPP - Explicit-Cloud Parameterized-Pollutant
@@ -2100,84 +2090,81 @@ end subroutine crm_physics_init
     ! pollutant transport and chemistry
     !----------------------------------------------------
 
-
-
 #ifdef ECPP
-      if (use_ECPP) then
+    if (use_ECPP) then
 
-          pblh_idx  = pbuf_get_index('pblh')
-          call pbuf_get_field(pbuf, pblh_idx, pblh)
+      pblh_idx  = pbuf_get_index('pblh')
+      call pbuf_get_field(pbuf, pblh_idx, pblh)
 
-    !
-    ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
-    ! So only turbulence mixing is done here.
-    !
-    !           call t_startf('crmclouds_mixnuc')
-    !           call crmclouds_mixnuc_tend (state, ptend, ztodt, cam_in%cflx, pblh, pbuf,  &
-    !                 wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd)
-    !           call physics_update(state, tend, ptend, ztodt)
-    !           call t_stopf('crmclouds_mixnuc')
+ 
+      ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
+      ! So only turbulence mixing is done here.
+      !
+      !           call t_startf('crmclouds_mixnuc')
+      !           call crmclouds_mixnuc_tend (state, ptend, ztodt, cam_in%cflx, pblh, pbuf,  &
+      !                 wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd)
+      !           call physics_update(state, tend, ptend, ztodt)
+      !           call t_stopf('crmclouds_mixnuc')
+      ! 
+      ! ECPP is called at every 3rd GCM time step.
+      ! GCM time step is 10 minutes, and ECPP time step is 30 minutes.
+      
+      dtstep_pp = dtstep_pp_input
+      necpp = dtstep_pp/ztodt
+      if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
 
-    !
-    !   ECPP is called at every 3rd GCM time step.
-    !   GCM time step is 10 minutes, and ECPP time step is 30 minutes.
-    !
-          dtstep_pp = dtstep_pp_input
-          necpp = dtstep_pp/ztodt
-          if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+        ! whannah - re-initialize ptend? - probably not necessary
+        ! lu    = .false. 
+        ! lv    = .false.
+        ! ls    = .false.
+        ! lq(:) = .true.
+        ! fromcrm = .false.
+        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
+        ! ptend%lq(:) = .true.
+        ! ptend%q(:,:,:) = 0.0_r8
 
-            ! lu    = .false. 
-            ! lv    = .false.
-            ! ls    = .false.
-            ! lq(:) = .true.
-            ! fromcrm = .false.
-            ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-            ! ptend%lq(:) = .true.
-            ! ptend%q(:,:,:) = 0.0_r8
-            
+        ! calculate aerosol tendency from droplet activation and mixing
+        call t_startf('crmclouds_mixnuc')
+        call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
+                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class
+        call physics_update(state, ptend, dtstep_pp, tend)
+        call t_stopf('crmclouds_mixnuc')
 
-            ! calculate aerosol tendency from droplet activation and mixing
-            call t_startf('crmclouds_mixnuc')
-            call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
-                        wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class
-            call physics_update(state, ptend, dtstep_pp, tend)
-            call t_stopf('crmclouds_mixnuc')
+        ! ECPP interface
 
-            ! ECPP interface
-! whannah - re-initialize ptend - not sure if this is necessary
-! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-! ptend%lq(:) = .true.
-! ptend%q(:,:,:) = 0.0_r8
-            call t_startf('ecpp')
-            call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
-               acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
-               rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
+        ! whannah - re-initialize ptend again? - probably not necessary
+        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
+        ! ptend%lq(:) = .true.
+        ! ptend%q(:,:,:) = 0.0_r8
 
-      ! do i=1,ncol
-      ! do k=1,pver
-      !   if ( ieee_is_nan( ptend%q(i,k,0)  ) ) then
-      !     ptend%q(i,k,0) = 0.
-      !   endif
-      !   ! write(iulog,*) ""
-      !   ! write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
-      ! enddo
-      ! enddo
+        call t_startf('ecpp')
+        call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
+           acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
+           rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
 
-! write(iulog,*) "whannah DEBUG - crm_physics.F90 1.2 "        
-            
-            ! ptend%q(:,:,:) = 0.0_r8 ! whannah - zero out tendency for testing - doesn't help!
+        ! whannah - debugging information for NaN issue
+        ! do i=1,ncol
+        ! do k=1,pver
+        !   if ( ieee_is_nan( ptend%q(i,k,0)  ) ) then
+        !     ptend%q(i,k,0) = 0.
+        !   endif
+        !   ! write(iulog,*) ""
+        !   ! write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
+        ! enddo
+        ! enddo
+              
+        ! ptend%q(:,:,:) = 0.0_r8 ! whannah - zero out tendency for testing - doesn't help NaN problem!
 
-            call physics_update(state, ptend, dtstep_pp, tend)
+        call physics_update(state, ptend, dtstep_pp, tend)
 
-            call t_stopf ('ecpp')
-          end if
-      endif ! use_ECPP
+        call t_stopf ('ecpp')
+      end if
+    endif ! use_ECPP
 #endif
 
-! write(iulog,*) "whannah DEBUG - crm_physics.F90 3 " 
 
-      call t_stopf('bc_aerosols_mmf')
-   endif ! SPCAM_microp_scheme .eq. 'm2005'
+    call t_stopf('bc_aerosols_mmf')
+  endif ! SPCAM_microp_scheme .eq. 'm2005'
 
 
 ! 5001 format('whannah - ECPP tendency   lev ',i5,'    lat =',f8.2,'    lon =',f8.2  )
@@ -2216,9 +2203,8 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 ! save for old CRM cloud fraction 
 !----------------------------------------------------------------------
-! In the CAM model, this is done in cldwat2m.F90.
-!
-   cldo(:ncol, :) = cld(:ncol, :)
+  ! In the CAM model, this is done in cldwat2m.F90.
+  cldo(:ncol, :) = cld(:ncol, :)
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 

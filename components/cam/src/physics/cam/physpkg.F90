@@ -369,9 +369,6 @@ subroutine phys_inidat( cam_out, pbuf2d )
     use comsrf,              only: landm, sgh, sgh30
     use cam_control_mod,     only: aqua_planet
 
-    use mpishorthand, only: mpicom      ! whannah 
-    use perf_mod,     only: t_barrierf  ! whannah 
-
     type(cam_out_t),     intent(inout) :: cam_out(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     integer :: lchnk, m, n, i, k, ncol
@@ -402,13 +399,6 @@ subroutine phys_inidat( cam_out, pbuf2d )
     end if
     call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
 
-write(iulog,*) "whannah DEBUG 2 - ",iam," phys_inidat() 1 "
-
-! #ifdef WH_MPI_TEST
-!       write(iulog,*) "whannah DEBUG 2 - ",iam," phys_inidat() 1.1 "
-!       call t_barrierf('sync_phys_inidat', mpicom)   ! whannah
-! #endif
-
     if(aqua_planet) then
        sgh = 0._r8
        sgh30 = 0._r8
@@ -417,7 +407,6 @@ write(iulog,*) "whannah DEBUG 2 - ",iam," phys_inidat() 1 "
        fh_topo=>topo_file_get_id()
        call infld('SGH', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
             sgh, found, gridname='physgrid')
-write(iulog,*) "whannah DEBUG 2 - ",iam," phys_inidat() 2 "
        if(.not. found) call endrun('ERROR: SGH not found on topo file')
 
        call infld('SGH30', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
@@ -751,9 +740,6 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use cam_history,        only: addfld, add_default !Guangxing Lin debug output
     use crm_physics,        only: crm_physics_init !-- mdb spcam
 
-    ! use mpishorthand, only: mpicom      ! whannah 
-    ! use perf_mod,     only: t_barrierf  ! whannah 
-
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -814,9 +800,6 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     if (adiabatic .or. ideal_phys) return
 
     if (nsrest .eq. 0) then
-! #ifdef WH_MPI_TEST
-!       call t_barrierf('sync_physics_state_set_grid', mpicom)   ! whannah
-! #endif
       call phys_inidat(cam_out, pbuf2d) 
     end if
     
@@ -982,11 +965,6 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call addfld ('ptend_BC_ac9    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac9')
     call addfld ('ptend_BC_ac11    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac11')
 #endif
-
-! #ifdef WH_DEBUG_OUTPUT  
-!     ! whannah -- debug output
-!     call addfld ('QRL_    ',(/ 'lev' /), 'A', 'K/s   ','debug output ...')
-! #endif
 
 end subroutine phys_init
 
