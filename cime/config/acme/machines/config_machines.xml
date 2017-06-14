@@ -1877,6 +1877,7 @@
         <command name="load">cudatoolkit</command>
       </modules>
       <modules compiler="pgi">
+        <command name="use">/ccs/home/norton/.modules</command>
         <command name="rm">PrgEnv-cray</command>
         <command name="rm">PrgEnv-gnu</command>
         <command name="rm">PrgEnv-intel</command>
