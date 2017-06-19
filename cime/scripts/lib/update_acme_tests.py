@@ -152,6 +152,7 @@ _TEST_SUITES = {
                            "SMS.ne30_oECv3_ICG.A_WCYCL1850S",
                            "SMS.f09_g16_a.MPASLIALB")
                           ),
+
     #acme tests for extra coverage
     "acme_extra_coverage" : (("acme_atm_extra_coverage",),None,
                      () ),
@@ -171,6 +172,12 @@ _TEST_SUITES = {
                           "ERS_D_Ld9.1x1_brazil.ICLM45ED",
                           "SMS_D_Lm6.1x1_brazil.ICLM45ED")
                          ),
+
+    "acme_ecp"       : (None, None,
+                        ("ERP_Ln31.ne4_oQU240.A_WCYCL2000",
+                         "ERP_Ln5.ne30_ne30.FC5AV1C",
+                         "ERP_Ln31.ne4_ne4.FC5AV1C")
+                        ),
 }
 
 ###############################################################################
