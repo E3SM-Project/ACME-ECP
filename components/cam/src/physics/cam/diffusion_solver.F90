@@ -511,13 +511,13 @@
        call vd_lu_decomp( pcols , pver , ncol  ,                         &
                           ksrf  , kvm  , tmpi2 , rpdel , ztodt , gravit, &
                           zero  , ntop , nbot  , decomp)
-
+#ifndef SPMOMTRANS
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           u     , decomp, ntop  , nbot , zero )
 
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           v     , decomp, ntop  , nbot , zero )
-
+#endif
        ! ---------------------------------------------------------------------- !
        ! Calculate 'total' ( tautotx ) and 'tms' ( tautmsx ) stresses that      !
        ! have been actually added into the atmosphere at the current time step. ! 

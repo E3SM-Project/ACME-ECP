@@ -1880,7 +1880,7 @@ end subroutine crm_physics_init
        ptend%lq(ixcldice) = .TRUE.
        ptend%lu    = .FALSE.
        ptend%lv    = .FALSE.
-#ifdef CRM3D
+#ifdef SPMOMTRANS
        ptend%lu    = .TRUE.
        ptend%lv    = .TRUE.
        call outfld('UCONVMOM',ptend%u,pcols   ,lchnk   )

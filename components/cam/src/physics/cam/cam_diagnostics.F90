@@ -721,6 +721,10 @@ subroutine diag_init()
   call addfld ('SPTLS   ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE Tendency from CRM'            )
   call addfld ('TIMINGF ', horiz_only, 'A', '        ','CRM CPU usage efficiency: 1 - ideal'     )
   call addfld ('CLOUDTOP',(/ 'lev' /), 'A', '        ','Cloud Top PDF'                           )
+#ifdef SPMOMTRANS
+   call addfld ('UCONVMOM','m/s2    ',pver, 'A','U tendency due to CRM'                   ,phys_decomp)
+   call addfld ('VCONVMOM','m/s2    ',pver, 'A','V tendency due to CRM'                   ,phys_decomp)
+#endif
 ! Adding crm dimensions to cam history 
   call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
   call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
@@ -728,11 +732,11 @@ subroutine diag_init()
   call add_hist_coord('pverp'        ,pverp,     'pverp ')
   call add_hist_coord('pver'         ,pver,      'pver  ')
 #ifdef ECPP
-      if (use_ECPP) then
-        call add_hist_coord('NCLASS_CL'    ,NCLASS_CL,'NCLASS_CL')
-        call add_hist_coord('ncls_ecpp_in' ,ncls_ecpp_in,'ncls_ecpp_in')
-        call add_hist_coord('NCLASS_PR'    ,NCLASS_PR,'NCLASS_PR')
-      endif
+   if (use_ECPP) then
+     call add_hist_coord('NCLASS_CL'    ,NCLASS_CL,'NCLASS_CL')
+     call add_hist_coord('ncls_ecpp_in' ,ncls_ecpp_in,'ncls_ecpp_in')
+     call add_hist_coord('NCLASS_PR'    ,NCLASS_PR,'NCLASS_PR')
+   endif
 #endif
 
   call addfld ('CRM_U   ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'm/s     ', 'CRM x-wind'                          )
@@ -785,6 +789,11 @@ subroutine diag_init()
       call add_default ('SPTLS   ', 1, ' ')
       call add_default ('CLOUDTOP', 1, ' ')
       call add_default ('TIMINGF ', 1, ' ')
+! whannah
+#ifdef SPMOMTRANS
+      call add_default ('UCONVMOM', 1, ' ')
+      call add_default ('VCONVMOM', 1, ' ')
+#endif
 !-- MDB 8/2013
       call add_default ('SPTVFLUX  ', 1, ' ')
       call add_default ('SPBUOY    ', 1, ' ')

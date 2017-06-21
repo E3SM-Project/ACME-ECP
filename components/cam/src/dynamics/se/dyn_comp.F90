@@ -128,6 +128,8 @@ CONTAINS
     ! Initialize the SE structure that holds the MPI decomposition information
     par=initmp(npes_se)
 
+    par%nprocs = npes_se  ! whannah - added to fix issue with large processor counts
+
     ! Read the SE specific part of the namelist
     call readnl(par, NLFileName)
 

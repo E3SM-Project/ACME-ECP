@@ -1425,6 +1425,13 @@ do while(nstep.lt.nstop)
         uln(ptop:plev) = uln(ptop:plev) * factor_xy
         vln(ptop:plev) = vln(ptop:plev) * factor_xy
 
+
+#ifdef SPMOMTRANS
+        ! whannah - SP CMT tendencies
+        ultend = (uln - ul)*idt_gl
+        vltend = (vln - vl)*idt_gl
+#endif
+
         sltend = cp * (tln - tl) * idt_gl
         qltend = (qln - ql) * idt_gl
         qcltend = (qccln - qccl) * idt_gl
