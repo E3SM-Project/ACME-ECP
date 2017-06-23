@@ -142,7 +142,7 @@ CPPDEFS=" ${CPPDEFS} -DHAVE_MPI -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CR
 ##########################################################################################
 echo "$CRM_ROOT"                                               > Filepath
 echo "$CRM_ROOT/standalone/src"                               >> Filepath
-echo "$CRM_ROOT/../../../../../cime/share/timing"             >> Filepath
+echo "$CRM_ROOT/../../../../.././cime/src/share/timing"       >> Filepath
 [ "$CLUBB_CRM" -eq "1"  ] && echo "$CRM_ROOT/../clubb"        >> Filepath \
                           && echo "$CRM_ROOT/SGS_CLUBBkvhkvm" >> Filepath
 [ "$CLUBB_CRM" -ne "1"  ] && echo "$CRM_ROOT/SGS_TKE"         >> Filepath
@@ -162,8 +162,8 @@ for i in `cat Filepath` ; do
 done
 ln -s $CRM_ROOT/../cam/crmdims.F90
 ln -s $CRM_ROOT/../cam/ppgrid.F90
-ln -s $CRM_ROOT/../../../../../cime/share/csm_share/shr/shr_const_mod.F90
-ln -s $CRM_ROOT/../../../../../cime/share/csm_share/shr/shr_kind_mod.F90
+ln -s $CRM_ROOT/../../../../../cime/src/share/util/shr_const_mod.F90
+ln -s $CRM_ROOT/../../../../../cime/src/share/util/shr_kind_mod.F90
 
 ##########################################################################################
 ## Define the dependencies between the source files
