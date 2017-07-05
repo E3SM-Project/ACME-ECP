@@ -1180,8 +1180,9 @@ end function radiation_nextsw_cday
     type(rrtmg_state_t), pointer :: r_state ! contains the atm concentratiosn in layers needed for RRTMG
 
 ! AeroCOM IND3 output +++mhwang
-    real(r8) ::  aod400(pcols)        ! AOD at 400 nm 
-    real(r8) ::  aod700(pcols)        ! AOD at 700 nm
+!MRN: Already defined above -- gives errors with GNU
+!    real(r8) ::  aod400(pcols)        ! AOD at 400 nm 
+!    real(r8) ::  aod700(pcols)        ! AOD at 700 nm
     real(r8) ::  angstrm(pcols)       ! Angstrom coefficient
     real(r8) ::  aerindex(pcols)      ! Aerosol index
     integer aod400_idx, aod700_idx, cld_tau_idx
