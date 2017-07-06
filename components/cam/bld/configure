@@ -2011,6 +2011,7 @@ $cfg_cppdefs .= " -DMAXPATCH_PFT=numpft+1 -DLSMLAT=1 -DLSMLON=1";
 if ($pergro eq "ON") { $cfg_cppdefs .= " -DPERGRO"; }
 
 # Building for superparameterization
+if (defined $opts{'use_SPCAM'}) {
   my $crm_nx = $cfg_ref->get('crm_nx');
   my $crm_ny = $cfg_ref->get('crm_ny');
   my $crm_nz = $cfg_ref->get('crm_nz');
@@ -2020,7 +2021,6 @@ if ($pergro eq "ON") { $cfg_cppdefs .= " -DPERGRO"; }
   my $crm_adv    = $cfg_ref->get('crm_adv');
   my $yes3Dval = 1;
   if ($crm_ny eq 1) {$yes3Dval = 0;}
-if (defined $opts{'use_SPCAM'}) {
   $cfg_cppdefs .= " -D_$crm_adv -D$SPCAM_microp_scheme -DYES3DVAL=$yes3Dval -DCRM_NX=$crm_nx -DCRM_NY=$crm_ny -DCRM_NZ=$crm_nz -DCRM_DX=$crm_dx -DCRM_DT=$crm_dt ";
   
   if ($crm eq "ON") { $cfg_cppdefs .= " -DCRM " }
