@@ -310,25 +310,25 @@ Switch to enable or disable fractional cloudiness in m2005 microphysics in CRM: 
 <entry id="crmmicro" valid_values="sam1mom,m2005" value="">
 Cloud microphysics type.
 </entry>
-<entry id="SPCAM_microp_scheme" valid_values="sam1mom,m2005" value="sam1mom">
+<entry id="SPCAM_microp_scheme" valid_values="sam1mom,m2005" value="m2005">
 SPCAM Cloud microphysics type.
 </entry>
 <entry id="crm_adv" valid_values="MPDATA,UM5" value="MPDATA">
 SPCAM Cloud microphysics type.
 </entry>
-<entry id="crm_nx" value="1">
+<entry id="crm_nx" value="32">
 CRM number of grid points in x
 </entry>
 <entry id="crm_ny" value="1">
 CRM number of grid points in y
 </entry>
-<entry id="crm_nz" value="2">
+<entry id="crm_nz" value="28">
 CRM number of grid points in z
 </entry>
 <entry id="crm_dx" value="1">
 CRM horizontal grid spacing, m
 </entry>
-<entry id="crm_dt" value="1">
+<entry id="crm_dt" value="10">
 CRM time step, s
 </entry>
 
