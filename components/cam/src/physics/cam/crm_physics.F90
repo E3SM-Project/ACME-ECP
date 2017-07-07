@@ -689,8 +689,8 @@ end subroutine crm_physics_init
    real(r8) clmed(pcols)                      !       "     mid  cloud cover
    real(r8) clhgh(pcols)                      !       "     hgh  cloud cover
    real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
-   real(r8) ul(pver)
-   real(r8) vl(pver)
+   real(r8) ul(pcols,pver)
+   real(r8) vl(pcols,pver)
 
    real(r8) :: mu_crm(pcols, pver)   
    real(r8) :: md_crm(pcols, pver) 
@@ -709,9 +709,9 @@ end subroutine crm_physics_init
    real(r8) na(pcols)              ! aerosol number concentration [/m3]
    real(r8) va(pcols)              ! aerosol voume concentration [m3/m3]
    real(r8) hy(pcols)              ! aerosol bulk hygroscopicity
-   real(r8) naermod(pver, ntot_amode)     ! Aerosol number concentration [/m3]
-   real(r8) vaerosol(pver, ntot_amode)    ! aerosol volume concentration [m3/m3]
-   real(r8) hygro(pver, ntot_amode)       ! hygroscopicity of aerosol mode 
+   real(r8) naermod (pcols,pver, ntot_amode)     ! Aerosol number concentration [/m3]
+   real(r8) vaerosol(pcols,pver, ntot_amode)    ! aerosol volume concentration [m3/m3]
+   real(r8) hygro   (pcols,pver, ntot_amode)       ! hygroscopicity of aerosol mode 
    !real(r8) cs(pcols, pver)                     ! air density  [kg/m3]
    integer   phase                  ! phase to determine whether it is interstitial, cloud-borne, or the sum. 
 #endif
@@ -738,9 +738,9 @@ end subroutine crm_physics_init
    real(r8) precstend(pcols) ! tendency in precipitating ice
    real(r8) wtricesink(pcols) ! sink of water vapor + cloud water + cloud ice
    real(r8) icesink(pcols) ! sink of
-   real(r8) tau00  ! surface stress
-   real(r8) wnd  ! surface wnd
-   real(r8) bflx   ! surface buoyancy flux (Km/s)
+   real(r8) tau00(pcols)  ! surface stress
+   real(r8) wnd  (pcols)  ! surface wnd
+   real(r8) bflx (pcols)  ! surface buoyancy flux (Km/s)
    real(r8) taux_crm(pcols)  ! zonal CRM surface stress perturbation
    real(r8) tauy_crm(pcols)  ! merid CRM surface stress perturbation
    real(r8) z0m(pcols)  ! surface momentum roughness length
@@ -797,10 +797,10 @@ end subroutine crm_physics_init
 #endif
 
 ! Surface fluxes +++mhwang
-   real(r8) ::  fluxu0           ! surface momenment fluxes
-   real(r8) ::  fluxv0           ! surface momenment fluxes
-   real(r8) ::  fluxt0           ! surface sensible heat fluxes
-   real(r8) ::  fluxq0           ! surface latent heat fluxes
+   real(r8) ::  fluxu0(pcols)           ! surface momenment fluxes
+   real(r8) ::  fluxv0(pcols)           ! surface momenment fluxes
+   real(r8) ::  fluxt0(pcols)           ! surface sensible heat fluxes
+   real(r8) ::  fluxq0(pcols)           ! surface latent heat fluxes
    real(r8) ::  dtstep_pp        ! time step for the ECPP (seconds)
    integer  ::  necpp            ! the number of GCM time step in which ECPP is called once.
 
@@ -1331,14 +1331,14 @@ end subroutine crm_physics_init
 ! Start ncol loop for CRM
 !----------------------------------------------------------------------
        do i = 1,ncol
-          tau00 = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
-          wnd = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
-          bflx = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
+          tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
+          wnd  (i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
+          bflx (i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
 !+++mhwang
-         fluxu0 = cam_in%wsx(i)     !N/m2
-         fluxv0 = cam_in%wsy(i)     !N/m2
-         fluxt0 = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
-         fluxq0 = cam_in%lhf(i)/latvap ! Kg/(m2 s)
+         fluxu0(i) = cam_in%wsx(i)     !N/m2
+         fluxv0(i) = cam_in%wsy(i)     !N/m2
+         fluxt0(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
+         fluxq0(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
 !---mwwang
 
 !+++mhwangtest
@@ -1411,9 +1411,9 @@ end subroutine crm_physics_init
                   state, pbuf, i, i, k, &
                   m, cs, phase, na, va, &
                   hy)
-             naermod(k, m) = na(i)
-             vaerosol(k, m) = va(i)
-             hygro(k, m) = hy(i)
+             naermod (i,k, m) = na(i)
+             vaerosol(i,k, m) = va(i)
+             hygro   (i,k, m) = hy(i)
            end do    
          end do
 #endif
@@ -1423,16 +1423,17 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 #ifdef SP_DIR_NS
          if(crm_ny.eq.1) then
-           ul(:) = state%v(i,:)  ! change orientation only if 2D CRM
-           vl(:) = state%u(i,:)
+           ul(i,:) = state%v(i,:)  ! change orientation only if 2D CRM
+           vl(i,:) = state%u(i,:)
          else
-           ul(:) = state%u(i,:)
-           vl(:) = state%v(i,:)
+           ul(i,:) = state%u(i,:)
+           vl(i,:) = state%v(i,:)
          end if
 #else
-           ul(:) = state%u(i,:)
-           vl(:) = state%v(i,:)
+           ul(i,:) = state%u(i,:)
+           vl(i,:) = state%v(i,:)
 #endif
+    enddo
 
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1441,22 +1442,23 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #ifdef CRM
-           if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ===',i
-           if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ===',i
+    if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ===',i
+    if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ===',i
+    do i=1,ncol
            call crm (lchnk,           i,                                                                                                   &
              state%t(i,:),            state%q(i,:,1),           state%q(i,:,ixcldliq), state%q(i,:,ixcldice),                              &
-             ul(:),                   vl(:),                                                                                               &
+             ul(i,:),                 vl(i,:),                                                                                             &
              state%ps(i),             state%pmid(i,:),          state%pdel(i,:),       state%phis(i),                                      &
              state%zm(i,:),           state%zi(i,:),            ztodt,                 pver,                                               &
 #ifdef CRM3D           
-             ptend%u(i,:),            ptend%v(i,:), &  !==Guangxing Lin new crm 
+             ptend%u(i,:),            ptend%v(i,:),                                                                                        &
 #endif   
              ptend%q(i,:,1),          ptend%q(i,:,ixcldliq),    ptend%q(i,:,ixcldice), ptend%s(i,:),                                       &
              crm_u(i,:,:,:),          crm_v(i,:,:,:),           crm_w(i,:,:,:),        crm_t(i,:,:,:),          crm_micro(i,:,:,:,:),      &
              crm_qrad(i,:,:,:),                                                                                                            &
              qc_crm(i,:,:,:),         qi_crm(i,:,:,:),          qpc_crm(i,:,:,:),      qpi_crm(i,:,:,:),                                   &
              prec_crm(i,:,:),         t_rad(i,:,:,:),           qv_rad(i,:,:,:),                                                           &
-             qc_rad(i,:,:,:),         qi_rad(i,:,:,:),          cld_rad(i,:,:,:),   cld3d_crm(i,:,:,:),                                   &  !Guangxing Lin new crm
+             qc_rad(i,:,:,:),         qi_rad(i,:,:,:),          cld_rad(i,:,:,:),   cld3d_crm(i,:,:,:),                                    &
 #ifdef m2005
              nc_rad(i,:,:,:),         ni_rad(i,:,:,:),          qs_rad(i,:,:,:),       ns_rad(i,:,:,:),         wvar_crm(i,:,:,:),         &
              aut_crm(i,:,:,:),        acc_crm(i,:,:,:),         evpc_crm(i,:,:,:),     evpr_crm(i,:,:,:),       mlt_crm(i,:,:,:),          &
@@ -1466,22 +1468,22 @@ end subroutine crm_physics_init
 #endif
              precc(i),                precl(i),                 precsc(i),             precsl(i),                                          &
              cltot(i),                clhgh(i),                 clmed(i),              cllow(i),                cld(i,:),    cldtop(i,:) , &
-             gicewp(i,:),             gliqwp(i,:),     &
+             gicewp(i,:),             gliqwp(i,:),                                                                                         &
              mctot(i,:),              mcup(i,:),                mcdn(i,:),             mcuup(i,:),              mcudn(i,:),                &
-             spqc(i,:),               spqi(i,:),                spqs(i,:),             spqg(i,:),               spqr(i,:),               &
+             spqc(i,:),               spqi(i,:),                spqs(i,:),             spqg(i,:),               spqr(i,:),                 &
 #ifdef m2005
-             spnc(i,:),               spni(i,:),                spns(i,:),             spng(i,:),               spnr(i,:),               &
+             spnc(i,:),               spni(i,:),                spns(i,:),             spng(i,:),               spnr(i,:),                 &
 #ifdef MODAL_AERO
-             naermod,                 vaerosol,                 hygro,                                                                     &
+             naermod(i,:,:),          vaerosol(i,:,:),          hygro(i,:,:),                                                              &
 #endif 
 #endif
 #ifdef CLUBB_CRM
              clubb_buffer(i,:,:,:,:),                                                                                                      &
              crm_cld(i,:, :, :),                                                                                                           &
-             clubb_tk(i, :, :, :), clubb_tkh(i, :, :, :),                                                                                  & !GuangxingLin new crm
-             relvar(i,:, :, :),  accre_enhan(i, :, :, :),  qclvar(i, :, :, :),                                                             & !Guangxing Lin new crm
+             clubb_tk(i, :, :, :),    clubb_tkh(i, :, :, :),                                                                               &
+             relvar(i,:, :, :),       accre_enhan(i, :, :, :),  qclvar(i, :, :, :),                                                        &
 #endif
-             crm_tk(i, :, :, :), crm_tkh(i, :, :, :),      & !Guangxing Lin new crm
+             crm_tk(i, :, :, :),      crm_tkh(i, :, :, :),                                                                                 &
              mu_crm(i,:),             md_crm(i,:),              du_crm(i,:),           eu_crm(i,:),                                        & 
              ed_crm(i,:),             jt_crm(i),                mx_crm(i),                                                                 &
 #ifdef ECPP
@@ -1496,15 +1498,16 @@ end subroutine crm_physics_init
              flux_u(i,:),             flux_v(i,:),              flux_qt(i,:),          fluxsgs_qt(i,:),         flux_qp(i,:),              &
              precflux(i,:),           qt_ls(i,:),               qt_trans(i,:),         qp_trans(i,:),           qp_fall(i,:),              &
              qp_evp(i,:),             qp_src(i,:),              t_ls(i,:),             prectend(i),             precstend(i),              &
-             cam_in%ocnfrac(i),       wnd,                      tau00,                 bflx,                                               & 
-             fluxu0,                  fluxv0,                   fluxt0,                fluxq0,                                             & 
-             taux_crm(i),             tauy_crm(i),              z0m(i),                timing_factor(i),        qtotcrm(i, :) ) !Guangxing Lin new crm
-!             tvwle(i,:),buoy(i,:),buoysd(i,:),msef(i,:),qvw(i,:) )   ! MDB 8/2013  
+             cam_in%ocnfrac(i),       wnd(i),                   tau00(i),              bflx(i),                                            & 
+             fluxu0(i),               fluxv0(i),                fluxt0(i),             fluxq0(i),                                          & 
+             taux_crm(i),             tauy_crm(i),              z0m(i),                timing_factor(i),        qtotcrm(i, :) )
+    enddo
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+    do i=1,ncol
            if (SPCAM_microp_scheme .eq. 'sam1mom') then
               crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
               crm_qp(i,:,:,:) = crm_micro(i,:,:,:,2)
