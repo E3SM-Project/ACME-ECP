@@ -841,7 +841,6 @@ end subroutine crm_physics_init
    logical :: ls, lu, lv, lq(pcnst), fromcrm
 
    real(r8) tmp1 ! whannah: to help feed the fluxes to CRM right before the call to CRM. 
-
    integer :: icol(pcols)
 
    zero = 0.0_r8
@@ -1432,8 +1431,8 @@ end subroutine crm_physics_init
            vl(i,:) = state%v(i,:)
          end if
 #else
-           ul(i,:) = state%u(i,:)
-           vl(i,:) = state%v(i,:)
+         ul(i,:) = state%u(i,:)
+         vl(i,:) = state%v(i,:)
 #endif
          icol(i) = i
     enddo
@@ -1447,63 +1446,62 @@ end subroutine crm_physics_init
 #ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm(lchnk,                   icol(:),                  pcols,                                                                     &
-             state%t(:,:),            state%q(:,:,1),           state%q(:,:,ixcldliq), state%q(:,:,ixcldice),                              &
-             ul(:,:),                 vl(:,:),                                                                                             &
-             state%ps(:),             state%pmid(:,:),          state%pdel(:,:),       state%phis(:),                                      &
-             state%zm(:,:),           state%zi(:,:),            ztodt,                 pver,                                               &
-#ifdef CRM3D           
-             ptend%u(:,:),            ptend%v(:,:),                                                                                        &
-#endif   
-             ptend%q(:,:,1),          ptend%q(:,:,ixcldliq),    ptend%q(:,:,ixcldice), ptend%s(:,:),                                       &
-             crm_u(:,:,:,:),          crm_v(:,:,:,:),           crm_w(:,:,:,:),        crm_t(:,:,:,:),          crm_micro(:,:,:,:,:),      &
-             crm_qrad(:,:,:,:),                                                                                                            &
-             qc_crm(:,:,:,:),         qi_crm(:,:,:,:),          qpc_crm(:,:,:,:),      qpi_crm(:,:,:,:),                                   &
-             prec_crm(:,:,:),         t_rad(:,:,:,:),           qv_rad(:,:,:,:),                                                           &
-             qc_rad(:,:,:,:),         qi_rad(:,:,:,:),          cld_rad(:,:,:,:),   cld3d_crm(:,:,:,:),                                    &
-#ifdef m2005
-             nc_rad(:,:,:,:),         ni_rad(:,:,:,:),          qs_rad(:,:,:,:),       ns_rad(:,:,:,:),         wvar_crm(:,:,:,:),         &
-             aut_crm(:,:,:,:),        acc_crm(:,:,:,:),         evpc_crm(:,:,:,:),     evpr_crm(:,:,:,:),       mlt_crm(:,:,:,:),          &
-             sub_crm(:,:,:,:),        dep_crm(:,:,:,:),         con_crm(:,:,:,:),                                                          &
-             aut_crm_a(:,:),          acc_crm_a(:,:),           evpc_crm_a(:,:),       evpr_crm_a(:,:),         mlt_crm_a(:,:),            &
-             sub_crm_a(:,:),          dep_crm_a(:,:),           con_crm_a(:,:),                                                            &
+    call crm ( lchnk,                       icol(:ncol),                  ncol,                                                                                      &
+               state%t(:ncol,:),            state%q(:ncol,:,1),           state%q(:ncol,:,ixcldliq), state%q(:ncol,:,ixcldice),                                      &
+               ul(:ncol,:),                 vl(:ncol,:),                                                                                                             &
+               state%ps(:ncol),             state%pmid(:ncol,:),          state%pdel(:ncol,:),       state%phis(:ncol),                                              &
+               state%zm(:ncol,:),           state%zi(:ncol,:),            ztodt,                     pver,                                                           &
+#ifdef CRM3D
+               ptend%u(:ncol,:),            ptend%v(:ncol,:),                                                                                                        &
 #endif
-             precc(:),                precl(:),                 precsc(:),             precsl(:),                                          &
-             cltot(:),                clhgh(:),                 clmed(:),              cllow(:),                cld(:,:),    cldtop(:,:) , &
-             gicewp(:,:),             gliqwp(:,:),                                                                                         &
-             mctot(:,:),              mcup(:,:),                mcdn(:,:),             mcuup(:,:),              mcudn(:,:),                &
-             spqc(:,:),               spqi(:,:),                spqs(:,:),             spqg(:,:),               spqr(:,:),                 &
+               ptend%q(:ncol,:,1),          ptend%q(:ncol,:,ixcldliq),    ptend%q(:ncol,:,ixcldice), ptend%s(:ncol,:),                                               &
+               crm_u(:ncol,:,:,:),          crm_v(:ncol,:,:,:),           crm_w(:ncol,:,:,:),        crm_t(:ncol,:,:,:),          crm_micro(:ncol,:,:,:,:),          &
+               crm_qrad(:ncol,:,:,:),                                                                                                                                &
+               qc_crm(:ncol,:,:,:),         qi_crm(:ncol,:,:,:),          qpc_crm(:ncol,:,:,:),      qpi_crm(:ncol,:,:,:),                                           &
+               prec_crm(:ncol,:,:),         t_rad(:ncol,:,:,:),           qv_rad(:ncol,:,:,:),                                                                       &
+               qc_rad(:ncol,:,:,:),         qi_rad(:ncol,:,:,:),          cld_rad(:ncol,:,:,:),      cld3d_crm(:ncol,:,:,:),                                         &
 #ifdef m2005
-             spnc(:,:),               spni(:,:),                spns(:,:),             spng(:,:),               spnr(:,:),                 &
+               nc_rad(:ncol,:,:,:),         ni_rad(:ncol,:,:,:),          qs_rad(:ncol,:,:,:),       ns_rad(:ncol,:,:,:),         wvar_crm(:ncol,:,:,:),             &
+               aut_crm(:ncol,:,:,:),        acc_crm(:ncol,:,:,:),         evpc_crm(:ncol,:,:,:),     evpr_crm(:ncol,:,:,:),       mlt_crm(:ncol,:,:,:),              &
+               sub_crm(:ncol,:,:,:),        dep_crm(:ncol,:,:,:),         con_crm(:ncol,:,:,:),                                                                      &
+               aut_crm_a(:ncol,:),          acc_crm_a(:ncol,:),           evpc_crm_a(:ncol,:),       evpr_crm_a(:ncol,:),         mlt_crm_a(:ncol,:),                &
+               sub_crm_a(:ncol,:),          dep_crm_a(:ncol,:),           con_crm_a(:ncol,:),                                                                        &
+#endif
+               precc(:ncol),                precl(:ncol),                 precsc(:ncol),             precsl(:ncol),                                                  &
+               cltot(:ncol),                clhgh(:ncol),                 clmed(:ncol),              cllow(:ncol),                cld(:ncol,:),    cldtop(:ncol,:) , &
+               gicewp(:ncol,:),             gliqwp(:ncol,:),                                                                                                         &
+               mctot(:ncol,:),              mcup(:ncol,:),                mcdn(:ncol,:),             mcuup(:ncol,:),              mcudn(:ncol,:),                    &
+               spqc(:ncol,:),               spqi(:ncol,:),                spqs(:ncol,:),             spqg(:ncol,:),               spqr(:ncol,:),                     &
+#ifdef m2005
+               spnc(:ncol,:),               spni(:ncol,:),                spns(:ncol,:),             spng(:ncol,:),               spnr(:ncol,:),                     &
 #ifdef MODAL_AERO
-             naermod(:,:,:),          vaerosol(:,:,:),          hygro(:,:,:),                                                              &
+               naermod(:ncol,:,:),          vaerosol(:ncol,:,:),          hygro(:ncol,:,:),                                                                          &
 #endif 
 #endif
 #ifdef CLUBB_CRM
-             clubb_buffer(:,:,:,:,:),                                                                                                      &
-             crm_cld(:,:, :, :),                                                                                                           &
-             clubb_tk(:, :, :, :),    clubb_tkh(:, :, :, :),                                                                               &
-             relvar(:,:, :, :),       accre_enhan(:, :, :, :),  qclvar(:, :, :, :),                                                        &
+               clubb_buffer(:ncol,:,:,:,:),                                                                                                                          &
+               crm_cld(:ncol,:, :, :),                                                                                                                               &
+               clubb_tk(:ncol, :, :, :),    clubb_tkh(:ncol, :, :, :),                                                                                               &
+               relvar(:ncol,:, :, :),       accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :),                                                                    &
 #endif
-             crm_tk(:, :, :, :),      crm_tkh(:, :, :, :),                                                                                 &
-             mu_crm(:,:),             md_crm(:,:),              du_crm(:,:),           eu_crm(:,:),                                        & 
-             ed_crm(:,:),             jt_crm(:),                mx_crm(:),                                                                 &
+               crm_tk(:ncol, :, :, :),      crm_tkh(:ncol, :, :, :),                                                                                                 &
+               mu_crm(:ncol,:),             md_crm(:ncol,:),              du_crm(:ncol,:),           eu_crm(:ncol,:),                                                & 
+               ed_crm(:ncol,:),             jt_crm(:ncol),                mx_crm(:ncol),                                                                             &
 #ifdef ECPP
-             abnd(:,:,:,:,:),         abnd_tf(:,:,:,:,:),       massflxbnd(:,:,:,:,:), acen(:,:,:,:,:),         acen_tf(:,:,:,:,:),        &
-             rhcen(:,:,:,:,:),        qcloudcen(:,:,:,:,:),     qicecen(:,:,:,:,:),    qlsink_afcen(:,:,:,:,:),                            &
-             precrcen(:,:,:,:,:),     precsolidcen(:,:,:,:,:),                                                                             &
-             qlsink_bfcen(:,:,:,:,:), qlsink_avgcen(:,:,:,:,:), praincen(:,:,:,:,:),                                                       &
-             wupthresh_bnd(:,:),      wdownthresh_bnd(:,:),                                                                                &
-             wwqui_cen(:,:),          wwqui_bnd(:,:),           wwqui_cloudy_cen(:,:), wwqui_cloudy_bnd(:,:),                              &
+               abnd(:ncol,:,:,:,:),         abnd_tf(:ncol,:,:,:,:),       massflxbnd(:ncol,:,:,:,:), acen(:ncol,:,:,:,:),         acen_tf(:ncol,:,:,:,:),            &
+               rhcen(:ncol,:,:,:,:),        qcloudcen(:ncol,:,:,:,:),     qicecen(:ncol,:,:,:,:),    qlsink_afcen(:ncol,:,:,:,:),                                    &
+               precrcen(:ncol,:,:,:,:),     precsolidcen(:ncol,:,:,:,:),                                                                                             &
+               qlsink_bfcen(:ncol,:,:,:,:), qlsink_avgcen(:ncol,:,:,:,:), praincen(:ncol,:,:,:,:),                                                                   &
+               wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:),                                                                                                &
+               wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                      &
 #endif
-             tkez(:,:),               tkesgsz(:,:),             tkz(:, :),                                                                 &
-             flux_u(:,:),             flux_v(:,:),              flux_qt(:,:),          fluxsgs_qt(:,:),         flux_qp(:,:),              &
-             precflux(:,:),           qt_ls(:,:),               qt_trans(:,:),         qp_trans(:,:),           qp_fall(:,:),              &
-             qp_evp(:,:),             qp_src(:,:),              t_ls(:,:),             prectend(:),             precstend(:),              &
-             cam_in%ocnfrac(:),       wnd(:),                   tau00(:),              bflx(:),                                            & 
-             fluxu0(:),               fluxv0(:),                fluxt0(:),             fluxq0(:),                                          & 
-             taux_crm(:),             tauy_crm(:),              z0m(:),                timing_factor(:),        qtotcrm(:, :) )
-
+               tkez(:ncol,:),               tkesgsz(:ncol,:),             tkz(:ncol, :),                                                                             &
+               flux_u(:ncol,:),             flux_v(:ncol,:),              flux_qt(:ncol,:),          fluxsgs_qt(:ncol,:),         flux_qp(:ncol,:),                  &
+               precflux(:ncol,:),           qt_ls(:ncol,:),               qt_trans(:ncol,:),         qp_trans(:ncol,:),           qp_fall(:ncol,:),                  &
+               qp_evp(:ncol,:),             qp_src(:ncol,:),              t_ls(:ncol,:),             prectend(:ncol),             precstend(:ncol),                  &
+               cam_in%ocnfrac(:ncol),       wnd(:ncol),                   tau00(:ncol),              bflx(:ncol),                                                    & 
+               fluxu0(:ncol),               fluxv0(:ncol),                fluxt0(:ncol),             fluxq0(:ncol),                                                  & 
+               taux_crm(:ncol),             tauy_crm(:ncol),              z0m(:ncol),                timing_factor(:ncol),        qtotcrm(:ncol, :) )
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
