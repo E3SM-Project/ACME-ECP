@@ -8,7 +8,7 @@ use setparm_mod, only : setparm
 
 contains
 
-  subroutine crm(      lchnk, icol, &
+  subroutine crm(      lchnk, icol, nvcols, &
                        !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
                        latitude0_in, longitude0_in, &
@@ -119,239 +119,243 @@ contains
     use time_manager          , only: get_nstep
 
     implicit none
-    integer, intent(in) :: lchnk    ! chunk identifier
-    integer, intent(in) :: icol     ! column identifier
+    integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
+    integer , intent(in   ) :: nvcols                           ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
+    integer , intent(in   ) :: plev                             ! number of levels in parent model
+    real(r8), intent(in   ) :: dt_gl                            ! global model's time step
+    integer , intent(in   ) :: icol                (nvcols)     ! column identifier (only for lat/lon and random seed)
 #ifdef CRM_STANDALONE
-    real   , intent(in) :: latitude0_in
-    real   , intent(in) :: longitude0_in
+    real    , intent(in   ) :: latitude0_in        (nvcols)
+    real    , intent(in   ) :: longitude0_in       (nvcols)
 #endif
-    integer, intent(in) :: plev     ! number of levels in parent model
-    real(r8), intent(in) :: ps ! Global grid surface pressure (Pa)
-    real(r8), intent(in) :: pmid(plev) ! Global grid pressure (Pa)
-    real(r8), intent(in) :: pdel(plev) ! Layer's pressure thickness (Pa)
-    real(r8), intent(in) :: phis ! Global grid surface geopotential (m2/s2)
-    real(r8), intent(in) :: zmid(plev) ! Global grid height (m)
-    real(r8), intent(in) :: zint(plev+1)! Global grid interface height (m)
-    real(r8), intent(in) :: qrad_crm(crm_nx, crm_ny, crm_nz) ! CRM rad. heating
-    real(r8), intent(in) :: dt_gl ! global model's time step
-    real(r8), intent(in) :: ocnfrac ! area fraction of the ocean
-    real(r8), intent(in) :: tau00  ! large-scale surface stress (N/m2)
-    real(r8), intent(in) :: wndls  ! large-scale surface wind (m/s)
-    real(r8), intent(in) :: bflxls  ! large-scale surface buoyancy flux (K m/s)
-    real(r8), intent(in) :: fluxu00  ! surface momenent fluxes [N/m2]
-    real(r8), intent(in) :: fluxv00  ! surface momenent fluxes [N/m2]
-    real(r8), intent(in) :: fluxt00  ! surface sensible heat fluxes [K Kg/ (m2 s)]
-    real(r8), intent(in) :: fluxq00  ! surface latent heat fluxes [ kg/(m2 s)]
-    real(r8), intent(in) :: tl(plev) ! Global grid temperature (K)
-    real(r8), intent(in) :: ql(plev) ! Global grid water vapor (g/g)
-    real(r8), intent(in) :: qccl(plev)! Global grid cloud liquid water (g/g)
-    real(r8), intent(in) :: qiil(plev)! Global grid cloud ice (g/g)
-    real(r8), intent(in) :: ul(plev) ! Global grid u (m/s)
-    real(r8), intent(in) :: vl(plev) ! Global grid v (m/s)
+    real(r8), intent(in   ) :: ps                  (nvcols)       ! Global grid surface pressure (Pa)
+    real(r8), intent(in   ) :: pmid                (nvcols,plev)  ! Global grid pressure (Pa)
+    real(r8), intent(in   ) :: pdel                (nvcols,plev)  ! Layer's pressure thickness (Pa)
+    real(r8), intent(in   ) :: phis                (nvcols)       ! Global grid surface geopotential (m2/s2)
+    real(r8), intent(in   ) :: zmid                (nvcols,plev)  ! Global grid height (m)
+    real(r8), intent(in   ) :: zint                (nvcols,plev+1)! Global grid interface height (m)
+    real(r8), intent(in   ) :: qrad_crm            (nvcols,crm_nx, crm_ny, crm_nz) ! CRM rad. heating
+    real(r8), intent(in   ) :: ocnfrac             (nvcols)       ! area fraction of the ocean
+    real(r8), intent(in   ) :: tau00               (nvcols)       ! large-scale surface stress (N/m2)
+    real(r8), intent(in   ) :: wndls               (nvcols)       ! large-scale surface wind (m/s)
+    real(r8), intent(in   ) :: bflxls              (nvcols)       ! large-scale surface buoyancy flux (K m/s)
+    real(r8), intent(in   ) :: fluxu00             (nvcols)       ! surface momenent fluxes [N/m2]
+    real(r8), intent(in   ) :: fluxv00             (nvcols)       ! surface momenent fluxes [N/m2]
+    real(r8), intent(in   ) :: fluxt00             (nvcols)       ! surface sensible heat fluxes [K Kg/ (m2 s)]
+    real(r8), intent(in   ) :: fluxq00             (nvcols)       ! surface latent heat fluxes [ kg/(m2 s)]
+    real(r8), intent(in   ) :: tl                  (nvcols,plev)  ! Global grid temperature (K)
+    real(r8), intent(in   ) :: ql                  (nvcols,plev)  ! Global grid water vapor (g/g)
+    real(r8), intent(in   ) :: qccl                (nvcols,plev)  ! Global grid cloud liquid water (g/g)
+    real(r8), intent(in   ) :: qiil                (nvcols,plev)  ! Global grid cloud ice (g/g)
+    real(r8), intent(in   ) :: ul                  (nvcols,plev)  ! Global grid u (m/s)
+    real(r8), intent(in   ) :: vl                  (nvcols,plev)  ! Global grid v (m/s)
 #ifdef CLUBB_CRM
-    real(r8), intent(inout), target :: clubb_buffer(crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
-    real(r8), intent(out)  :: crm_cld(crm_nx, crm_ny, crm_nz+1)
-    real(r8), intent(out)  :: clubb_tk(crm_nx, crm_ny, crm_nz)
-    real(r8), intent(out)  :: clubb_tkh(crm_nx, crm_ny, crm_nz)
-    real(r8), intent(out)  :: relvar(crm_nx, crm_ny, crm_nz) 
-    real(r8), intent(out)  :: accre_enhan(crm_nx, crm_ny, crm_nz)
-    real(r8), intent(out)  :: qclvar(crm_nx, crm_ny, crm_nz)
+    real(r8), intent(inout), target :: clubb_buffer(nvcols,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
+    real(r8), intent(  out) :: crm_cld             (nvcols,crm_nx, crm_ny, crm_nz+1)
+    real(r8), intent(  out) :: clubb_tk            (nvcols,crm_nx, crm_ny, crm_nz)
+    real(r8), intent(  out) :: clubb_tkh           (nvcols,crm_nx, crm_ny, crm_nz)
+    real(r8), intent(  out) :: relvar              (nvcols,crm_nx, crm_ny, crm_nz) 
+    real(r8), intent(  out) :: accre_enhan         (nvcols,crm_nx, crm_ny, crm_nz)
+    real(r8), intent(  out) :: qclvar              (nvcols,crm_nx, crm_ny, crm_nz)
 #endif
-    real(r8), intent(out)  :: crm_tk(crm_nx, crm_ny, crm_nz)
-    real(r8), intent(out)  :: crm_tkh(crm_nx, crm_ny, crm_nz)
-    real(r8), intent(inout) :: cltot ! shaded cloud fraction
-    real(r8), intent(inout) :: clhgh ! shaded cloud fraction
-    real(r8), intent(inout) :: clmed ! shaded cloud fraction
-    real(r8), intent(inout) :: cllow ! shaded cloud fraction
+    real(r8), intent(  out) :: crm_tk              (nvcols,crm_nx, crm_ny, crm_nz)
+    real(r8), intent(  out) :: crm_tkh             (nvcols,crm_nx, crm_ny, crm_nz)
+    real(r8), intent(inout) :: cltot               (nvcols)                        ! shaded cloud fraction
+    real(r8), intent(inout) :: clhgh               (nvcols)                        ! shaded cloud fraction
+    real(r8), intent(inout) :: clmed               (nvcols)                        ! shaded cloud fraction
+    real(r8), intent(inout) :: cllow               (nvcols)                        ! shaded cloud fraction
 #ifdef CRM3D
-    real(r8), intent(out) :: ultend(plev) ! tendency of ul
-    real(r8), intent(out) :: vltend(plev) ! tendency of vl
+    real(r8), intent(  out) :: ultend              (nvcols,plev)                   ! tendency of ul
+    real(r8), intent(  out) :: vltend              (nvcols,plev)                   ! tendency of vl
 #endif
-    real(r8), intent(out) :: sltend(plev) ! tendency of static energy
-    real(r8), intent(inout) :: u_crm  (crm_nx,crm_ny,crm_nz) ! CRM v-wind component
-    real(r8), intent(inout) :: v_crm  (crm_nx,crm_ny,crm_nz) ! CRM v-wind component
-    real(r8), intent(inout) :: w_crm  (crm_nx,crm_ny,crm_nz) ! CRM w-wind component
-    real(r8), intent(inout) :: t_crm  (crm_nx,crm_ny,crm_nz) ! CRM temperuture
-    real(r8), intent(inout) :: micro_fields_crm  (crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
-    real(r8), intent(out) :: qltend(plev) ! tendency of water vapor
-    real(r8), intent(out) :: qcltend(plev)! tendency of cloud liquid water
-    real(r8), intent(out) :: qiltend(plev)! tendency of cloud ice
-    real(r8), intent(out) :: t_rad (crm_nx, crm_ny, crm_nz) ! rad temperuture
-    real(r8), intent(out) :: qv_rad(crm_nx, crm_ny, crm_nz) ! rad vapor
-    real(r8), intent(out) :: qc_rad(crm_nx, crm_ny, crm_nz) ! rad cloud water
-    real(r8), intent(out) :: qi_rad(crm_nx, crm_ny, crm_nz) ! rad cloud ice
-    real(r8), intent(out) :: cld_rad(crm_nx, crm_ny, crm_nz) ! rad cloud fraction 
-    real(r8), intent(out) :: cld3d_crm(crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
+    real(r8), intent(  out) :: sltend              (nvcols,plev)                   ! tendency of static energy
+    real(r8), intent(  out) :: qltend              (nvcols,plev)                   ! tendency of water vapor
+    real(r8), intent(  out) :: qcltend             (nvcols,plev)                   ! tendency of cloud liquid water
+    real(r8), intent(  out) :: qiltend             (nvcols,plev)                   ! tendency of cloud ice
+    real(r8), intent(inout) :: u_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM v-wind component
+    real(r8), intent(inout) :: v_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM v-wind component
+    real(r8), intent(inout) :: w_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM w-wind component
+    real(r8), intent(inout) :: t_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM temperuture
+    real(r8), intent(inout) :: micro_fields_crm    (nvcols,crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
+    real(r8), intent(  out) :: t_rad               (nvcols,crm_nx, crm_ny, crm_nz) ! rad temperuture
+    real(r8), intent(  out) :: qv_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad vapor
+    real(r8), intent(  out) :: qc_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud water
+    real(r8), intent(  out) :: qi_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud ice
+    real(r8), intent(  out) :: cld_rad             (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud fraction 
+    real(r8), intent(  out) :: cld3d_crm           (nvcols,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
 #ifdef m2005
-    real(r8), intent(out) :: nc_rad(crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg) 
-    real(r8), intent(out) :: ni_rad(crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
-    real(r8), intent(out) :: qs_rad(crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
-    real(r8), intent(out) :: ns_rad(crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
-    real(r8), intent(out) :: wvar_crm(crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
-    real(r8), intent(out) :: aut_crm(crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
-    real(r8), intent(out) :: acc_crm(crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
-    real(r8), intent(out) :: evpc_crm(crm_nx, crm_ny, crm_nz) ! cloud water evaporation (1/s)
-    real(r8), intent(out) :: evpr_crm(crm_nx, crm_ny, crm_nz) ! rain evaporation (1/s)
-    real(r8), intent(out) :: mlt_crm(crm_nx, crm_ny, crm_nz) ! ice, snow, graupel melting (1/s)
-    real(r8), intent(out) :: sub_crm(crm_nx, crm_ny, crm_nz) ! ice, snow, graupel sublimation (1/s)
-    real(r8), intent(out) :: dep_crm(crm_nx, crm_ny, crm_nz) ! ice, snow, graupel deposition (1/s)
-    real(r8), intent(out) :: con_crm(crm_nx, crm_ny, crm_nz) ! cloud water condensation(1/s)
-    real(r8), intent(out) :: aut_crm_a(plev) ! cloud water autoconversion (1/s)
-    real(r8), intent(out) :: acc_crm_a(plev) ! cloud water accretion (1/s)
-    real(r8), intent(out) :: evpc_crm_a(plev) ! cloud water evaporation (1/s)
-    real(r8), intent(out) :: evpr_crm_a(plev) ! rain evaporation (1/s)
-    real(r8), intent(out) :: mlt_crm_a(plev) ! ice, snow, graupel melting (1/s)
-    real(r8), intent(out) :: sub_crm_a(plev) ! ice, snow, graupel sublimation (1/s)
-    real(r8), intent(out) :: dep_crm_a(plev) ! ice, snow, graupel deposition (1/s)
-    real(r8), intent(out) :: con_crm_a(plev) ! cloud water condensation(1/s)
+    real(r8), intent(  out) :: nc_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg) 
+    real(r8), intent(  out) :: ni_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
+    real(r8), intent(  out) :: qs_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
+    real(r8), intent(  out) :: ns_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
+    real(r8), intent(  out) :: wvar_crm            (nvcols,crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
+    real(r8), intent(  out) :: aut_crm             (nvcols,crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
+    real(r8), intent(  out) :: acc_crm             (nvcols,crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
+    real(r8), intent(  out) :: evpc_crm            (nvcols,crm_nx, crm_ny, crm_nz) ! cloud water evaporation (1/s)
+    real(r8), intent(  out) :: evpr_crm            (nvcols,crm_nx, crm_ny, crm_nz) ! rain evaporation (1/s)
+    real(r8), intent(  out) :: mlt_crm             (nvcols,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel melting (1/s)
+    real(r8), intent(  out) :: sub_crm             (nvcols,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel sublimation (1/s)
+    real(r8), intent(  out) :: dep_crm             (nvcols,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel deposition (1/s)
+    real(r8), intent(  out) :: con_crm             (nvcols,crm_nx, crm_ny, crm_nz) ! cloud water condensation(1/s)
+    real(r8), intent(  out) :: aut_crm_a           (nvcols,plev)  ! cloud water autoconversion (1/s)
+    real(r8), intent(  out) :: acc_crm_a           (nvcols,plev)  ! cloud water accretion (1/s)
+    real(r8), intent(  out) :: evpc_crm_a          (nvcols,plev)  ! cloud water evaporation (1/s)
+    real(r8), intent(  out) :: evpr_crm_a          (nvcols,plev)  ! rain evaporation (1/s)
+    real(r8), intent(  out) :: mlt_crm_a           (nvcols,plev)  ! ice, snow, graupel melting (1/s)
+    real(r8), intent(  out) :: sub_crm_a           (nvcols,plev)  ! ice, snow, graupel sublimation (1/s)
+    real(r8), intent(  out) :: dep_crm_a           (nvcols,plev)  ! ice, snow, graupel deposition (1/s)
+    real(r8), intent(  out) :: con_crm_a           (nvcols,plev)  ! cloud water condensation(1/s)
 #endif
-    real(r8), intent(out) :: precc ! convective precip rate (m/s)
-    real(r8), intent(out) :: precl ! stratiform precip rate (m/s)
-    real(r8), intent(out) :: cld(plev)  ! cloud fraction
-    real(r8), intent(out) :: cldtop(plev)  ! cloud top pdf
-    real(r8), intent(out) :: gicewp(plev)  ! ice water path
-    real(r8), intent(out) :: gliqwp(plev)  ! ice water path
-    real(r8), intent(out) :: mc(plev)   ! cloud mass flux
-    real(r8), intent(out) :: mcup(plev) ! updraft cloud mass flux
-    real(r8), intent(out) :: mcdn(plev) ! downdraft cloud mass flux
-    real(r8), intent(out) :: mcuup(plev) ! unsat updraft cloud mass flux
-    real(r8), intent(out) :: mcudn(plev) ! unsat downdraft cloud mass flux
-    real(r8), intent(out) :: crm_qc(plev)  ! mean cloud water
-    real(r8), intent(out) :: crm_qi(plev)  ! mean cloud ice
-    real(r8), intent(out) :: crm_qs(plev)  ! mean snow
-    real(r8), intent(out) :: crm_qg(plev)  ! mean graupel
-    real(r8), intent(out) :: crm_qr(plev)  ! mean rain
+    real(r8), intent(  out) :: precc               (nvcols)       ! convective precip rate (m/s)
+    real(r8), intent(  out) :: precl               (nvcols)       ! stratiform precip rate (m/s)
+    real(r8), intent(  out) :: cld                 (nvcols,plev)  ! cloud fraction
+    real(r8), intent(  out) :: cldtop              (nvcols,plev)  ! cloud top pdf
+    real(r8), intent(  out) :: gicewp              (nvcols,plev)  ! ice water path
+    real(r8), intent(  out) :: gliqwp              (nvcols,plev)  ! ice water path
+    real(r8), intent(  out) :: mc                  (nvcols,plev)  ! cloud mass flux
+    real(r8), intent(  out) :: mcup                (nvcols,plev)  ! updraft cloud mass flux
+    real(r8), intent(  out) :: mcdn                (nvcols,plev)  ! downdraft cloud mass flux
+    real(r8), intent(  out) :: mcuup               (nvcols,plev)  ! unsat updraft cloud mass flux
+    real(r8), intent(  out) :: mcudn               (nvcols,plev)  ! unsat downdraft cloud mass flux
+    real(r8), intent(  out) :: crm_qc              (nvcols,plev)  ! mean cloud water
+    real(r8), intent(  out) :: crm_qi              (nvcols,plev)  ! mean cloud ice
+    real(r8), intent(  out) :: crm_qs              (nvcols,plev)  ! mean snow
+    real(r8), intent(  out) :: crm_qg              (nvcols,plev)  ! mean graupel
+    real(r8), intent(  out) :: crm_qr              (nvcols,plev)  ! mean rain
 #ifdef m2005
-    real(r8), intent(out) :: crm_nc(plev)  ! mean cloud water  (#/kg)
-    real(r8), intent(out) :: crm_ni(plev)  ! mean cloud ice    (#/kg)
-    real(r8), intent(out) :: crm_ns(plev)  ! mean snow         (#/kg)
-    real(r8), intent(out) :: crm_ng(plev)  ! mean graupel      (#/kg)
-    real(r8), intent(out) :: crm_nr(plev)  ! mean rain         (#/kg)
+    real(r8), intent(  out) :: crm_nc              (nvcols,plev)  ! mean cloud water  (#/kg)
+    real(r8), intent(  out) :: crm_ni              (nvcols,plev)  ! mean cloud ice    (#/kg)
+    real(r8), intent(  out) :: crm_ns              (nvcols,plev)  ! mean snow         (#/kg)
+    real(r8), intent(  out) :: crm_ng              (nvcols,plev)  ! mean graupel      (#/kg)
+    real(r8), intent(  out) :: crm_nr              (nvcols,plev)  ! mean rain         (#/kg)
 #ifdef MODAL_AERO
-    real(r8), intent(in)  :: naermod(plev, ntot_amode)     ! Aerosol number concentration [/m3]
-    real(r8), intent(in)  :: vaerosol(plev, ntot_amode)    ! aerosol volume concentration [m3/m3]
-    real(r8), intent(in)  :: hygro(plev, ntot_amode)       ! hygroscopicity of aerosol mode 
+    real(r8), intent(in   )  :: naermod            (nvcols,plev, ntot_amode)    ! Aerosol number concentration [/m3]
+    real(r8), intent(in   )  :: vaerosol           (nvcols,plev, ntot_amode)    ! aerosol volume concentration [m3/m3]
+    real(r8), intent(in   )  :: hygro              (nvcols,plev, ntot_amode)    ! hygroscopicity of aerosol mode 
 #endif 
 #endif
-    real(r8), intent(out) :: mu_crm (plev)             ! mass flux up
-    real(r8), intent(out) :: md_crm (plev)             ! mass flux down
-    real(r8), intent(out) :: du_crm (plev)             ! mass detrainment from updraft
-    real(r8), intent(out) :: eu_crm (plev)             ! mass entrainment from updraft
-    real(r8), intent(out) :: ed_crm (plev)             ! mass detrainment from downdraft
-    real(r8)              :: dd_crm (plev)             ! mass entraiment from downdraft
-    real(r8), intent(out) :: jt_crm                    ! index of cloud (convection) top 
-    real(r8), intent(out) :: mx_crm                    ! index of cloud (convection) bottom
-    real(r8)              :: mui_crm (plev+1)             ! mass flux up at the interface
-    real(r8)              :: mdi_crm (plev+1)             ! mass flux down at the interface
-    real(r8), intent(out) :: flux_qt(plev) ! nonprecipitating water flux           [kg/m2/s]
-    real(r8), intent(out) :: fluxsgs_qt(plev) ! sgs nonprecipitating water flux    [kg/m2/s]
-    real(r8), intent(out) :: tkez(plev) ! tke profile               [kg/m/s2]
-    real(r8), intent(out) :: tkesgsz(plev) ! sgs tke profile        [kg/m/s2]
-    real(r8), intent(out) :: tkz(plev)  ! tk profile                [m2/s]
-    real(r8), intent(out) :: flux_u(plev) ! x-momentum flux          [m2/s2]
-    real(r8), intent(out) :: flux_v(plev) ! y-momentum flux          [m2/s2]
-    real(r8), intent(out) :: flux_qp(plev) ! precipitating water flux [kg/m2/s or mm/s]
-    real(r8), intent(out) :: pflx(plev)    ! precipitation flux      [m/s]
-    real(r8), intent(out) :: qt_ls(plev) ! tendency of nonprec water due to large-scale  [kg/kg/s]
-    real(r8), intent(out) :: qt_trans(plev)! tendency of nonprec water due to transport  [kg/kg/s]
-    real(r8), intent(out) :: qp_trans(plev) ! tendency of prec water due to transport [kg/kg/s]
-    real(r8), intent(out) :: qp_fall(plev) ! tendency of prec water due to fall-out   [kg/kg/s]
-    real(r8), intent(out) :: qp_src(plev) ! tendency of prec water due to conversion  [kg/kg/s]
-    real(r8), intent(out) :: qp_evp(plev) ! tendency of prec water due to evp         [kg/kg/s]
-    real(r8), intent(out) :: t_ls(plev) ! tendency of lwse  due to large-scale        [kg/kg/s] ???
-    real(r8), intent(out) :: prectend ! column integrated tendency in precipitating water+ice (kg/m2/s)
-    real(r8), intent(out) :: precstend ! column integrated tendency in precipitating ice (kg/m2/s)
-    real(r8), intent(out) :: precsc ! convective snow rate (m/s)
-    real(r8), intent(out) :: precsl ! stratiform snow rate (m/s)
-    real(r8), intent(out):: taux_crm  ! zonal CRM surface stress perturbation (N/m2)
-    real(r8), intent(out):: tauy_crm  ! merid CRM surface stress perturbation (N/m2)
-    real(r8), intent(out):: z0m ! surface stress (N/m2)
-    real(r8), intent(out):: timing_factor ! crm cpu efficiency
-    real(r8), intent(out) :: qc_crm (crm_nx, crm_ny, crm_nz)! CRM cloud water
-    real(r8), intent(out) :: qi_crm (crm_nx, crm_ny, crm_nz)! CRM cloud ice
-    real(r8), intent(out) :: qpc_crm(crm_nx, crm_ny, crm_nz)! CRM precip water
-    real(r8), intent(out) :: qpi_crm(crm_nx, crm_ny, crm_nz)! CRM precip ice
-    real(r8), intent(out) :: prec_crm(crm_nx, crm_ny)! CRM precipiation rate at layer center
+    real(r8), intent(  out) :: mu_crm              (nvcols,plev)       ! mass flux up
+    real(r8), intent(  out) :: md_crm              (nvcols,plev)       ! mass flux down
+    real(r8), intent(  out) :: du_crm              (nvcols,plev)       ! mass detrainment from updraft
+    real(r8), intent(  out) :: eu_crm              (nvcols,plev)       ! mass entrainment from updraft
+    real(r8), intent(  out) :: ed_crm              (nvcols,plev)       ! mass detrainment from downdraft
+    real(r8)                :: dd_crm              (nvcols,plev)       ! mass entraiment from downdraft
+    real(r8), intent(  out) :: jt_crm              (nvcols)            ! index of cloud (convection) top 
+    real(r8), intent(  out) :: mx_crm              (nvcols)            ! index of cloud (convection) bottom
+    real(r8)                :: mui_crm             (nvcols,plev+1)     ! mass flux up at the interface
+    real(r8)                :: mdi_crm             (nvcols,plev+1)     ! mass flux down at the interface
+    real(r8), intent(  out) :: flux_qt             (nvcols,plev)       ! nonprecipitating water flux           [kg/m2/s]
+    real(r8), intent(  out) :: fluxsgs_qt          (nvcols,plev)       ! sgs nonprecipitating water flux    [kg/m2/s]
+    real(r8), intent(  out) :: tkez                (nvcols,plev)       ! tke profile               [kg/m/s2]
+    real(r8), intent(  out) :: tkesgsz             (nvcols,plev)       ! sgs tke profile        [kg/m/s2]
+    real(r8), intent(  out) :: tkz                 (nvcols,plev)       ! tk profile                [m2/s]
+    real(r8), intent(  out) :: flux_u              (nvcols,plev)       ! x-momentum flux          [m2/s2]
+    real(r8), intent(  out) :: flux_v              (nvcols,plev)       ! y-momentum flux          [m2/s2]
+    real(r8), intent(  out) :: flux_qp             (nvcols,plev)       ! precipitating water flux [kg/m2/s or mm/s]
+    real(r8), intent(  out) :: pflx                (nvcols,plev)       ! precipitation flux      [m/s]
+    real(r8), intent(  out) :: qt_ls               (nvcols,plev)       ! tendency of nonprec water due to large-scale  [kg/kg/s]
+    real(r8), intent(  out) :: qt_trans            (nvcols,plev)       ! tendency of nonprec water due to transport  [kg/kg/s]
+    real(r8), intent(  out) :: qp_trans            (nvcols,plev)       ! tendency of prec water due to transport [kg/kg/s]
+    real(r8), intent(  out) :: qp_fall             (nvcols,plev)       ! tendency of prec water due to fall-out   [kg/kg/s]
+    real(r8), intent(  out) :: qp_src              (nvcols,plev)       ! tendency of prec water due to conversion  [kg/kg/s]
+    real(r8), intent(  out) :: qp_evp              (nvcols,plev)       ! tendency of prec water due to evp         [kg/kg/s]
+    real(r8), intent(  out) :: t_ls                (nvcols,plev)       ! tendency of lwse  due to large-scale        [kg/kg/s] ???
+    real(r8), intent(  out) :: prectend            (nvcols)            ! column integrated tendency in precipitating water+ice (kg/m2/s)
+    real(r8), intent(  out) :: precstend           (nvcols)            ! column integrated tendency in precipitating ice (kg/m2/s)
+    real(r8), intent(  out) :: precsc              (nvcols)            ! convective snow rate (m/s)
+    real(r8), intent(  out) :: precsl              (nvcols)            ! stratiform snow rate (m/s)
+    real(r8), intent(  out) :: taux_crm            (nvcols)            ! zonal CRM surface stress perturbation (N/m2)
+    real(r8), intent(  out) :: tauy_crm            (nvcols)            ! merid CRM surface stress perturbation (N/m2)
+    real(r8), intent(  out) :: z0m                 (nvcols)            ! surface stress (N/m2)
+    real(r8), intent(  out) :: timing_factor       (nvcols)            ! crm cpu efficiency
+    real(r8), intent(  out) :: qc_crm              (nvcols,crm_nx, crm_ny, crm_nz)! CRM cloud water
+    real(r8), intent(  out) :: qi_crm              (nvcols,crm_nx, crm_ny, crm_nz)! CRM cloud ice
+    real(r8), intent(  out) :: qpc_crm             (nvcols,crm_nx, crm_ny, crm_nz)! CRM precip water
+    real(r8), intent(  out) :: qpi_crm             (nvcols,crm_nx, crm_ny, crm_nz)! CRM precip ice
+    real(r8), intent(  out) :: prec_crm            (nvcols,crm_nx, crm_ny)        ! CRM precipiation rate at layer center
 #ifdef ECPP
-    real(r8), intent(out) :: acen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)   ! cloud fraction for each sub-sub class for full time period
-    real(r8), intent(out) :: acen_tf(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) ! cloud fraction for end-portion of time period
-    real(r8), intent(out) :: rhcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! relative humidity (0-1)
-    real(r8), intent(out) :: qcloudcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water (kg/kg)
-    real(r8), intent(out) :: qicecen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) ! cloud ice (kg/kg)
-    real(r8), intent(out) :: qlsinkcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (/s??)
-    real(r8), intent(out) :: precrcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)   ! liquid (rain) precipitation rate (kg/m2/s)
-    real(r8), intent(out) :: precsolidcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)   ! solid (rain) precipitation rate (kg/m2/s)
-    real(r8), intent(out) :: qlsink_bfcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated 
-                                                                                 ! cloud water before precipitatinog (/s)
-    real(r8), intent(out) :: qlsink_avgcen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated 
-                                                                                 ! from praincen and qlcoudcen averaged over 
-                                                                                 ! ntavg1_ss time step (/s??)
-    real(r8), intent(out) :: praincen(plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (kg/kg/s)
-    real(r8), intent(out) :: wwqui_cen(plev)                                ! vertical velocity variance in quiescent class (m2/s2)
-    real(r8), intent(out) :: wwqui_cloudy_cen(plev)                         ! vertical velocity variance in quiescent, and cloudy class (m2/s2) at layer boundary
-    real(r8), intent(out) :: abnd(plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)   ! cloud fraction for each sub-sub class for full time period
-    real(r8), intent(out) :: abnd_tf(plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) ! cloud fraction for end-portion of time period
-    real(r8), intent(out) :: massflxbnd(plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) ! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
-    real(r8), intent(out) :: wupthresh_bnd(plev+1)             ! vertical velocity threshold for updraft (m/s)
-    real(r8), intent(out) :: wdownthresh_bnd(plev+1)           ! vertical velocity threshold for downdraft (m/s)
-    real(r8), intent(out) :: wwqui_bnd(plev+1)                                ! vertical velocity variance in quiescent class (m2/s2)
-    real(r8), intent(out) :: wwqui_cloudy_bnd(plev+1)                         ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
+    real(r8), intent(  out) :: acen                (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for each sub-sub class for full time period
+    real(r8), intent(  out) :: acen_tf             (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for end-portion of time period
+    real(r8), intent(  out) :: rhcen               (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! relative humidity (0-1)
+    real(r8), intent(  out) :: qcloudcen           (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water (kg/kg)
+    real(r8), intent(  out) :: qicecen             (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud ice (kg/kg)
+    real(r8), intent(  out) :: qlsinkcen           (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (/s??)
+    real(r8), intent(  out) :: precrcen            (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! liquid (rain) precipitation rate (kg/m2/s)
+    real(r8), intent(  out) :: precsolidcen        (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! solid (rain) precipitation rate (kg/m2/s)
+    real(r8), intent(  out) :: qlsink_bfcen        (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated 
+                                                                                                   ! cloud water before precipitatinog (/s)
+    real(r8), intent(  out) :: qlsink_avgcen       (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated 
+                                                                                                   ! from praincen and qlcoudcen averaged over 
+                                                                                                   ! ntavg1_ss time step (/s??)
+    real(r8), intent(  out) :: praincen            (nvcols,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (kg/kg/s)
+    real(r8), intent(  out) :: wwqui_cen           (nvcols,plev)                                   ! vertical velocity variance in quiescent class (m2/s2)
+    real(r8), intent(  out) :: wwqui_cloudy_cen    (nvcols,plev)                                   ! vertical velocity variance in quiescent, and cloudy class (m2/s2) at layer boundary
+    real(r8), intent(  out) :: abnd                (nvcols,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! cloud fraction for each sub-sub class for full time period
+    real(r8), intent(  out) :: abnd_tf             (nvcols,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! cloud fraction for end-portion of time period
+    real(r8), intent(  out) :: massflxbnd          (nvcols,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
+    real(r8), intent(  out) :: wupthresh_bnd       (nvcols,plev+1)                                 ! vertical velocity threshold for updraft (m/s)
+    real(r8), intent(  out) :: wdownthresh_bnd     (nvcols,plev+1)                                 ! vertical velocity threshold for downdraft (m/s)
+    real(r8), intent(  out) :: wwqui_bnd           (nvcols,plev+1)                                 ! vertical velocity variance in quiescent class (m2/s2)
+    real(r8), intent(  out) :: wwqui_cloudy_bnd    (nvcols,plev+1)                                 ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
 #endif
-    real(r8), intent(out) :: qtot(20)
+    real(r8), intent(  out) :: qtot                (nvcols,20)
 
     !  Local space:
-    real dummy(nz), t00(nz)
-    real fluxbtmp(nx,ny), fluxttmp(nx,ny) !bloss
-    real tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
-    real cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
-    real(r8) factor_xy, idt_gl
-    real tmp1, tmp2
-    real u2z,v2z,w2z
-    integer i,j,k,l,ptop,nn,icyc, nstatsteps
-    integer kx
     real(r8), parameter :: umax = 0.5*crm_dx/crm_dt ! maxumum ampitude of the l.s. wind
-    real(r8), parameter :: wmin = 2.   ! minimum up/downdraft velocity for stat
-    real, parameter :: cwp_threshold = 0.001 ! threshold for cloud condensate for shaded fraction calculation
-    logical flag_top(nx,ny)
-    real ustar, bflx, wnd, z0_est, qsat, omg
-    real colprec,colprecs
-    real(r8) zs ! surface elevation
-    integer igstep    ! GCM time steps
-    integer iseed   ! seed for random perturbation
-    integer gcolindex(pcols)  ! array of global latitude indices
-
+    real(r8), parameter :: wmin = 2.                ! minimum up/downdraft velocity for stat
+    real    , parameter :: cwp_threshold = 0.001    ! threshold for cloud condensate for shaded fraction calculation
+    real     :: dummy(nz), t00(nz)
+    real     :: fluxbtmp(nx,ny), fluxttmp(nx,ny)    !bloss
+    real     :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
+    real     :: cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
+    real(r8) :: factor_xy, idt_gl
+    real     :: tmp1, tmp2
+    real     :: u2z,v2z,w2z
+    integer  :: i,j,k,l,ptop,nn,icyc, nstatsteps, vc
+    integer  :: kx
+    logical  :: flag_top(nx,ny)
+    real     :: ustar, bflx, wnd, z0_est, qsat, omg
+    real     :: colprec,colprecs
+    real(r8) :: zs                ! surface elevation
+    integer  :: igstep            ! GCM time steps
+    integer  :: iseed             ! seed for random perturbation
+    integer  :: gcolindex(pcols)  ! array of global latitude indices
+    real     :: cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
+    real     :: ntotal_step
 #ifdef CLUBB_CRM
     !Array indicies for spurious RTM check
-    real(kind=core_rknd) :: rtm_integral_before(nx,ny), rtm_integral_after(nx,ny), rtm_flux_top, rtm_flux_sfc
+    real(kind=core_rknd) :: rtm_integral_before (nx,ny), rtm_integral_after (nx,ny), rtm_flux_top, rtm_flux_sfc
     real(kind=core_rknd) :: thlm_integral_before(nx,ny), thlm_integral_after(nx,ny), thlm_before(nzm), thlm_after(nzm), thlm_flux_top, thlm_flux_sfc
-    real(kind=core_rknd), dimension(nzm) :: rtm_column ! Total water (vapor + liquid)     [kg/kg]
+    real(kind=core_rknd) :: rtm_column(nzm) ! Total water (vapor + liquid)     [kg/kg]
 #endif
-    real  cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
-    real ntotal_step
+
+  !Loop over "vector columns"
+  do vc = 1 , nvcols
 
     !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
 #ifdef CRM_STANDALONE
-    latitude0  = latitude0_in
-    longitude0 = longitude0_in
+    latitude0  = latitude0_in (vc)
+    longitude0 = longitude0_in(vc)
 #else
-    latitude0  = get_rlat_p(lchnk, icol)*57.296_r8
-    longitude0 = get_rlon_p(lchnk, icol)*57.296_r8
+    latitude0  = get_rlat_p(lchnk, icol(vc)) * 57.296_r8
+    longitude0 = get_rlon_p(lchnk, icol(vc)) * 57.296_r8
 #endif
 
     igstep = get_nstep()
 
-    call crm_dump_input(igstep,plev,lchnk,icol,latitude0,longitude0,ps,pmid,pdel,phis,zmid,zint,qrad_crm,dt_gl,ocnfrac,tau00,&
-                        wndls,bflxls,fluxu00,fluxv00,fluxt00,fluxq00,tl,ql,qccl,qiil,ul,vl, &
+    call crm_dump_input( igstep,plev,lchnk,icol(vc),latitude0,longitude0,ps(vc),pmid(vc,:),pdel(vc,:),phis(vc),zmid(vc,:),zint(vc,:),qrad_crm(vc,:,:,:),dt_gl, &
+                         ocnfrac(vc),tau00(vc),wndls(vc),bflxls(vc),fluxu00(vc),fluxv00(vc),fluxt00(vc),fluxq00(vc),tl(vc,:),ql(vc,:),qccl(vc,:),qiil(vc,:),   &
+                         ul(vc,:),vl(vc,:), &
 #ifdef CLUBB_CRM
-                        clubb_buffer    , &
+                         clubb_buffer(vc,:,:,:,:) , &
 #endif
-                        cltot,clhgh,clmed,cllow,u_crm,v_crm,w_crm,t_crm,micro_fields_crm, &
+                         cltot(vc),clhgh(vc),clmed(vc),cllow(vc),u_crm(vc,:,:,:),v_crm(vc,:,:,:),w_crm(vc,:,:,:),t_crm(vc,:,:,:),micro_fields_crm(vc,:,:,:,:), &
 #ifdef m2005
 #ifdef MODAL_AERO
-                        naermod,vaerosol,hygro , &
+                         naermod(vc,:,:),vaerosol(vc,:,:),hygro(vc,:,:) , &
 #endif
 #endif
-                        dd_crm,mui_crm,mdi_crm )
+                         dd_crm(vc,:),mui_crm(vc,:),mdi_crm(vc,:) )
 
 !-----------------------------------------------
 
@@ -360,20 +364,20 @@ contains
     ptop = plev-nzm+1
     factor_xy = 1._r8/dble(nx*ny)
     dummy = 0.
-    t_rad = 0.
-    qv_rad = 0.
-    qc_rad = 0.
-    qi_rad = 0.
-    cld_rad = 0.
+    t_rad  (vc,:,:,:) = 0.
+    qv_rad (vc,:,:,:) = 0.
+    qc_rad (vc,:,:,:) = 0.
+    qi_rad (vc,:,:,:) = 0.
+    cld_rad(vc,:,:,:) = 0.
 #ifdef m2005
-    nc_rad = 0.0
-    ni_rad = 0.0
-    qs_rad = 0.0
-    ns_rad = 0.0
+    nc_rad(vc,:,:,:) = 0.0
+    ni_rad(vc,:,:,:) = 0.0
+    qs_rad(vc,:,:,:) = 0.0
+    ns_rad(vc,:,:,:) = 0.0
 #endif
-    zs=phis/ggr
-    bflx = bflxls
-    wnd = wndls
+    zs=phis(vc)/ggr
+    bflx = bflxls(vc)
+    wnd = wndls(vc)
 
 !-----------------------------------------
 
@@ -399,7 +403,7 @@ contains
       enddo
     enddo
 
-    if(ocnfrac.gt.0.5) then
+    if(ocnfrac(vc).gt.0.5) then
       OCEAN = .true.
     else
       LAND = .true.
@@ -407,14 +411,14 @@ contains
 
     !Create CRM vertical grid and initialize some vertical reference arrays:
     do k = 1, nzm
-      z(k) = zmid(plev-k+1) - zint(plev+1)
-      zi(k) = zint(plev-k+2)- zint(plev+1)
-      pres(k) = pmid(plev-k+1)/100.
+      z(k) = zmid(vc,plev-k+1) - zint(vc,plev+1)
+      zi(k) = zint(vc,plev-k+2)- zint(vc,plev+1)
+      pres(k) = pmid(vc,plev-k+1)/100.
       prespot(k)=(1000./pres(k))**(rgas/cp)
-      bet(k) = ggr/tl(plev-k+1)
+      bet(k) = ggr/tl(vc,plev-k+1)
       gamaz(k)=ggr/cp*z(k)
     enddo ! k
-    zi(nz) = zint(plev-nz+2)-zint(plev+1) !+++mhwang, 2012-02-04
+    zi(nz) = zint(vc,plev-nz+2)-zint(vc,plev+1) !+++mhwang, 2012-02-04
 
     dz = 0.5*(z(1)+z(2))
     do k=2,nzm
@@ -428,12 +432,12 @@ contains
        adz(k)=(zi(k+1)-zi(k))/dz
     enddo
     do k = 1,nzm
-      rho(k) = pdel(plev-k+1)/ggr/(adz(k)*dz)
+      rho(k) = pdel(vc,plev-k+1)/ggr/(adz(k)*dz)
     enddo
     do k=2,nzm
       !+++mhwang fix the rhow bug (rhow needes to be consistent with pmid)
       !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(k) = (pmid(plev-k+2)-pmid(plev-k+1))/ggr/(adzw(k)*dz)
+      rhow(k) = (pmid(vc,plev-k+2)-pmid(vc,plev-k+1))/ggr/(adzw(k)*dz)
     enddo
     rhow(1) = 2*rhow(2) - rhow(3)
 #ifdef CLUBB_CRM /* Fix extropolation for 30 point grid */
@@ -450,28 +454,28 @@ contains
 
     !  Initialize:
     ! limit the velocity at the very first step:
-    if(u_crm(1,1,1).eq.u_crm(2,1,1).and.u_crm(3,1,2).eq.u_crm(4,1,2)) then
+    if(u_crm(vc,1,1,1).eq.u_crm(vc,2,1,1).and.u_crm(vc,3,1,2).eq.u_crm(vc,4,1,2)) then
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            u_crm(i,j,k) = min( umax, max(-umax,u_crm(i,j,k)) )
-            v_crm(i,j,k) = min( umax, max(-umax,v_crm(i,j,k)) )*YES3D
+            u_crm(vc,i,j,k) = min( umax, max(-umax,u_crm(vc,i,j,k)) )
+            v_crm(vc,i,j,k) = min( umax, max(-umax,v_crm(vc,i,j,k)) )*YES3D
           enddo
         enddo
       enddo
     endif
 
-    u(1:nx,1:ny,1:nzm) = u_crm(1:nx,1:ny,1:nzm)
-    v(1:nx,1:ny,1:nzm) = v_crm(1:nx,1:ny,1:nzm)*YES3D
-    w(1:nx,1:ny,1:nzm) = w_crm(1:nx,1:ny,1:nzm)
-    tabs(1:nx,1:ny,1:nzm) = t_crm(1:nx,1:ny,1:nzm)
-    micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(1:nx,1:ny,1:nzm,1:nmicro_fields)
+    u          (1:nx,1:ny,1:nzm                ) = u_crm           (vc,1:nx,1:ny,1:nzm                )
+    v          (1:nx,1:ny,1:nzm                ) = v_crm           (vc,1:nx,1:ny,1:nzm                )*YES3D
+    w          (1:nx,1:ny,1:nzm                ) = w_crm           (vc,1:nx,1:ny,1:nzm                )
+    tabs       (1:nx,1:ny,1:nzm                ) = t_crm           (vc,1:nx,1:ny,1:nzm                )
+    micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,1:nmicro_fields)
 #ifdef sam1mom
-    qn(1:nx,1:ny,1:nzm) =  micro_fields_crm(1:nx,1:ny,1:nzm,3)
+    qn      (1:nx,1:ny,1:nzm) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,3 )
 #endif
 
 #ifdef m2005
-    cloudliq(1:nx,1:ny,1:nzm) = micro_fields_crm(1:nx,1:ny,1:nzm,11)
+    cloudliq(1:nx,1:ny,1:nzm) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,11)
 #endif
 
 #ifdef m2005
@@ -479,9 +483,9 @@ contains
 #ifdef MODAL_AERO
       ! set aerosol data
       l=plev-k+1
-      naer(k, 1:ntot_amode) = naermod(l, 1:ntot_amode)
-      vaer(k, 1:ntot_amode) = vaerosol(l, 1:ntot_amode)
-      hgaer(k, 1:ntot_amode) = hygro(l, 1:ntot_amode)
+      naer (k, 1:ntot_amode) = naermod (vc,l, 1:ntot_amode)
+      vaer (k, 1:ntot_amode) = vaerosol(vc,l, 1:ntot_amode)
+      hgaer(k, 1:ntot_amode) = hygro   (vc,l, 1:ntot_amode)
 #endif
       do j=1, ny
         do i=1, nx
@@ -500,10 +504,10 @@ contains
     dudt(1:nx,1:ny,1:nzm,1:3) = 0.
     dvdt(1:nx,1:ny,1:nzm,1:3) = 0.
     dwdt(1:nx,1:ny,1:nz,1:3) = 0.
-    tke(1:nx,1:ny,1:nzm) = 0.
-    tk(1:nx,1:ny,1:nzm) = 0.
-    tkh(1:nx,1:ny,1:nzm) = 0.
-    p(1:nx,1:ny,1:nzm) = 0.
+    tke (1:nx,1:ny,1:nzm) = 0.
+    tk  (1:nx,1:ny,1:nzm) = 0.
+    tkh (1:nx,1:ny,1:nzm) = 0.
+    p   (1:nx,1:ny,1:nzm) = 0.
 
     CF3D(1:nx,1:ny,1:nzm) = 1.
 
@@ -530,8 +534,8 @@ contains
           t(i,j,k) = tabs(i,j,k)+gamaz(k) &
                       -fac_cond*qcl(i,j,k)-fac_sub*qci(i,j,k) &
                       -fac_cond*qpl(i,j,k)-fac_sub*qpi(i,j,k)
-          colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(plev-k+1)
-          colprecs=colprecs+qpi(i,j,k)*pdel(plev-k+1)
+          colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(vc,plev-k+1)
+          colprecs=colprecs+qpi(i,j,k)*pdel(vc,plev-k+1)
           u0(k)=u0(k)+u(i,j,k)
           v0(k)=v0(k)+v(i,j,k)
           t0(k)=t0(k)+t(i,j,k)
@@ -563,37 +567,37 @@ contains
       tv0(k) = tabs0(k)*prespot(k)*(1.+epsv*q0(k))
 #endif
       l = plev-k+1
-      uln(l) = min( umax, max(-umax,ul(l)) )
-      vln(l) = min( umax, max(-umax,vl(l)) )*YES3D
-      ttend(k) = (tl(l)+gamaz(k)- fac_cond*(qccl(l)+qiil(l))-fac_fus*qiil(l)-t00(k))*idt_gl
-      qtend(k) = (ql(l)+qccl(l)+qiil(l)-q0(k))*idt_gl
+      uln(l) = min( umax, max(-umax,ul(vc,l)) )
+      vln(l) = min( umax, max(-umax,vl(vc,l)) )*YES3D
+      ttend(k) = (tl(vc,l)+gamaz(k)- fac_cond*(qccl(vc,l)+qiil(vc,l))-fac_fus*qiil(vc,l)-t00(k))*idt_gl
+      qtend(k) = (ql(vc,l)+qccl(vc,l)+qiil(vc,l)-q0(k))*idt_gl
       utend(k) = (uln(l)-u0(k))*idt_gl
       vtend(k) = (vln(l)-v0(k))*idt_gl
       ug0(k) = uln(l)
       vg0(k) = vln(l)
-      tg0(k) = tl(l)+gamaz(k)-fac_cond*qccl(l)-fac_sub*qiil(l)
-      qg0(k) = ql(l)+qccl(l)+qiil(l)
+      tg0(k) = tl(vc,l)+gamaz(k)-fac_cond*qccl(vc,l)-fac_sub*qiil(vc,l)
+      qg0(k) = ql(vc,l)+qccl(vc,l)+qiil(vc,l)
     enddo ! k
 
     uhl = u0(1)
     vhl = v0(1)
 
     ! estimate roughness length assuming logarithmic profile of velocity near the surface:
-    ustar = sqrt(tau00/rho(1))
+    ustar = sqrt(tau00(vc)/rho(1))
     z0 = z0_est(z(1),bflx,wnd,ustar)
     z0 = max(0.00001,min(1.,z0))
 
-    timing_factor = 0.
+    timing_factor(vc) = 0.
 
-    prectend=colprec
-    precstend=colprecs
+    prectend (vc)=colprec
+    precstend(vc)=colprecs
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(:, :) = fluxu00/rhow(1)
-      fluxbv(:, :) = fluxv00/rhow(1)
-      fluxbt(:, :) = fluxt00/rhow(1)
-      fluxbq(:, :) = fluxq00/rhow(1)
+      fluxbu(:, :) = fluxu00(vc)/rhow(1)
+      fluxbv(:, :) = fluxv00(vc)/rhow(1)
+      fluxbt(:, :) = fluxt00(vc)/rhow(1)
+      fluxbq(:, :) = fluxq00(vc)/rhow(1)
     else
       fluxbu(:, :) = 0.
       fluxbv(:, :) = 0.
@@ -615,35 +619,35 @@ contains
     precssfc=0.
 
 !---------------------------------------------------
-    cld = 0.
-    cldtop = 0.
-    gicewp=0
-    gliqwp=0
-    mc = 0.
-    mcup = 0.
-    mcdn = 0.
-    mcuup = 0.
-    mcudn = 0.
-    crm_qc = 0.
-    crm_qi = 0.
-    crm_qs = 0.
-    crm_qg = 0.
-    crm_qr = 0.
+    cld   (vc,:) = 0.
+    cldtop(vc,:) = 0.
+    gicewp(vc,:) = 0
+    gliqwp(vc,:) = 0
+    mc    (vc,:) = 0.
+    mcup  (vc,:) = 0.
+    mcdn  (vc,:) = 0.
+    mcuup (vc,:) = 0.
+    mcudn (vc,:) = 0.
+    crm_qc(vc,:) = 0.
+    crm_qi(vc,:) = 0.
+    crm_qs(vc,:) = 0.
+    crm_qg(vc,:) = 0.
+    crm_qr(vc,:) = 0.
 #ifdef m2005
-    crm_nc = 0.
-    crm_ni = 0.
-    crm_ns = 0.
-    crm_ng = 0.
-    crm_nr = 0.
+    crm_nc(vc,:) = 0.
+    crm_ni(vc,:) = 0.
+    crm_ns(vc,:) = 0.
+    crm_ng(vc,:) = 0.
+    crm_nr(vc,:) = 0.
     ! hm 8/31/11 add new variables
-    aut_crm_a = 0.
-    acc_crm_a = 0.
-    evpc_crm_a = 0.
-    evpr_crm_a = 0.
-    mlt_crm_a = 0.
-    sub_crm_a = 0.
-    dep_crm_a = 0.
-    con_crm_a = 0.
+    aut_crm_a (vc,:) = 0.
+    acc_crm_a (vc,:) = 0.
+    evpc_crm_a(vc,:) = 0.
+    evpr_crm_a(vc,:) = 0.
+    mlt_crm_a (vc,:) = 0.
+    sub_crm_a (vc,:) = 0.
+    dep_crm_a (vc,:) = 0.
+    con_crm_a (vc,:) = 0.
 
     ! hm 8/31/11 add new output
     ! these are increments added to calculate gcm-grid and time-step avg
@@ -659,34 +663,34 @@ contains
     con1a = 0.
 #endif 
 
-    mu_crm = 0.
-    md_crm = 0.
-    eu_crm = 0.
-    du_crm = 0.
-    ed_crm = 0.
-    dd_crm = 0.
-    jt_crm = 0.
-    mx_crm = 0.
+    mu_crm (vc,:) = 0.
+    md_crm (vc,:) = 0.
+    eu_crm (vc,:) = 0.
+    du_crm (vc,:) = 0.
+    ed_crm (vc,:) = 0.
+    dd_crm (vc,:) = 0.
+    jt_crm (vc)   = 0.
+    mx_crm (vc)   = 0.
 
-    mui_crm = 0.
-    mdi_crm = 0.
+    mui_crm(vc,:)   = 0.
+    mdi_crm(vc,:)   = 0.
 
-    flux_qt = 0.
-    flux_u = 0.
-    flux_v = 0.
-    fluxsgs_qt = 0.
-    tkez = 0.
-    tkesgsz = 0.
-    tkz = 0.
-    flux_qp = 0.
-    pflx = 0.
-    qt_trans = 0.
-    qp_trans = 0.
-    qp_fall = 0.
-    qp_evp = 0.
-    qp_src = 0.
-    qt_ls = 0.
-    t_ls = 0.
+    flux_qt   (vc,:) = 0.
+    flux_u    (vc,:) = 0.
+    flux_v    (vc,:) = 0.
+    fluxsgs_qt(vc,:) = 0.
+    tkez      (vc,:) = 0.
+    tkesgsz   (vc,:) = 0.
+    tkz       (vc,:) = 0.
+    flux_qp   (vc,:) = 0.
+    pflx      (vc,:) = 0.
+    qt_trans  (vc,:) = 0.
+    qp_trans  (vc,:) = 0.
+    qp_fall   (vc,:) = 0.
+    qp_evp    (vc,:) = 0.
+    qp_src    (vc,:) = 0.
+    qt_ls     (vc,:) = 0.
+    t_ls      (vc,:) = 0.
 
     uwle = 0.
     uwsb = 0.
@@ -707,7 +711,7 @@ contains
     !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
 #ifndef CRM_STANDALONE
     call get_gcol_all_p(lchnk, pcols, gcolindex)
-    iseed = gcolindex(icol)
+    iseed = gcolindex(icol(vc))
     if(u(1,1,1).eq.u(2,1,1).and.u(3,1,2).eq.u(4,1,2)) &
                 call setperturb(iseed)
 #endif
@@ -724,23 +728,23 @@ contains
     !------------------------------------------------------------------
     ! Do initialization for UWM CLUBB
     !------------------------------------------------------------------
-    up2(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 1)
-    vp2(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 2)
-    wprtp(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 3)
-    wpthlp(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 4)
-    wp2(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 5)
-    wp3(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 6)
-    rtp2(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 7)
-    thlp2(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 8)
-    rtpthlp(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 9)
-    upwp(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 10)
-    vpwp(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 11)
-    cloud_frac(1:nx, 1:ny, 1:nz) = clubb_buffer(1:nx, 1:ny, 1:nz, 12)
-    t_tndcy(1:nx, 1:ny, 1:nzm) = clubb_buffer(1:nx, 1:ny, 1:nzm, 13)
-    qc_tndcy(1:nx, 1:ny, 1:nzm) = clubb_buffer(1:nx, 1:ny, 1:nzm, 14)
-    qv_tndcy(1:nx, 1:ny, 1:nzm) = clubb_buffer(1:nx, 1:ny, 1:nzm, 15)
-    u_tndcy(1:nx, 1:ny, 1:nzm) = clubb_buffer(1:nx, 1:ny, 1:nzm, 16)
-    v_tndcy(1:nx, 1:ny, 1:nzm) = clubb_buffer(1:nx, 1:ny, 1:nzm, 17)
+    up2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  1)
+    vp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  2)
+    wprtp     (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  3)
+    wpthlp    (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  4)
+    wp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  5)
+    wp3       (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  6)
+    rtp2      (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  7)
+    thlp2     (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  8)
+    rtpthlp   (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  9)
+    upwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz , 10)
+    vpwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz , 11)
+    cloud_frac(1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz , 12)
+    t_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 13)
+    qc_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 14)
+    qv_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 15)
+    u_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 16)
+    v_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 17)
 
     ! since no tracer is carried in the current version of MMF, these 
     ! tracer-related restart varialbes are set to zero. +++mhwang, 2011-08
@@ -787,21 +791,21 @@ contains
     !+++mhwangtest
     ! test water conservtion problem
     ntotal_step = 0.0
-    qtot(:) = 0.0
+    qtot(vc,:) = 0.0
     qtotmicro(:) = 0.0
     do k=1, nzm
       l=plev-k+1
       do j=1, ny
         do i=1, nx
 #ifdef m2005
-          qtot(1) = qtot(1)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * pdel(l)/ggr)/(nx*ny) 
+          qtot(vc,1) = qtot(vc,1)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * pdel(vc,l)/ggr)/(nx*ny) 
 #endif
 #ifdef sam1mom
-          qtot(1) = qtot(1)+(qpl(i,j,k)+qpi(i,j,k)) * pdel(l)/ggr/(nx*ny)
+          qtot(vc,1) = qtot(vc,1)+(qpl(i,j,k)+qpi(i,j,k)) * pdel(vc,l)/ggr/(nx*ny)
 #endif
         enddo
       enddo
-      qtot(1) = qtot(1) + (ql(l)+qccl(l)+qiil(l)) * pdel(l)/ggr
+      qtot(vc,1) = qtot(vc,1) + (ql(vc,l)+qccl(vc,l)+qiil(vc,l)) * pdel(vc,l)/ggr
     enddo
     !---mhwangtest
 
@@ -827,7 +831,7 @@ contains
       nstep = nstep + 1
       time = time + dt
       day = day0 + time/86400.
-      timing_factor = timing_factor+1
+      timing_factor(vc) = timing_factor(vc)+1
       !------------------------------------------------------------------
       !  Check if the dynamical time step should be decreased 
       !  to handle the cases when the flow being locally linearly unstable
@@ -866,7 +870,7 @@ contains
         do k=1,nzm
           do j=1,ny
             do i=1,nx
-              t(i,j,k) = t(i,j,k) + qrad_crm(i,j,k)*dtn
+              t(i,j,k) = t(i,j,k) + qrad_crm(vc,i,j,k)*dtn
             enddo
           enddo
         enddo
@@ -1127,7 +1131,7 @@ contains
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
-                cldtop(k) = cldtop(k) + 1
+                cldtop(vc,k) = cldtop(vc,k) + 1
                 flag_top(i,j) = .false.
             endif
             if(pres(nz-k).ge.700.) then
@@ -1145,37 +1149,37 @@ contains
             !     if(qcl(i,j,k)+qci(i,j,k).gt.min(1.e-5,0.01*qsat)) then
             tmp1 = rho(k)*adz(k)*dz
             if(tmp1*(qcl(i,j,k)+qci(i,j,k)).gt.cwp_threshold) then
-                 cld(l) = cld(l) + CF3D(i,j,k)
+                 cld(vc,l) = cld(vc,l) + CF3D(i,j,k)
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   mcup(l) = mcup(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   mcuup(l) = mcuup(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
+                   mcup (vc,l) = mcup (vc,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
+                   mcuup(vc,l) = mcuup(vc,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
                  endif
                  if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   mcdn(l) = mcdn(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   mcudn(l) = mcudn(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
+                   mcdn (vc,l) = mcdn (vc,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
+                   mcudn(vc,l) = mcudn(vc,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
                  endif
             else 
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   mcuup(l) = mcuup(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+                   mcuup(vc,l) = mcuup(vc,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
                  if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   mcudn(l) = mcudn(l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+                   mcudn(vc,l) = mcudn(vc,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
             endif
             
-            t_rad (i,j,k) = t_rad (i,j,k)+tabs(i,j,k)
-            qv_rad(i,j,k) = qv_rad(i,j,k)+max(0.,qv(i,j,k))
-            qc_rad(i,j,k) = qc_rad(i,j,k)+qcl(i,j,k)
-            qi_rad(i,j,k) = qi_rad(i,j,k)+qci(i,j,k)
-            cld_rad(i,j,k) = cld_rad(i,j,k) +  CF3D(i,j,k)
+            t_rad  (vc,i,j,k) = t_rad  (vc,i,j,k)+tabs(i,j,k)
+            qv_rad (vc,i,j,k) = qv_rad (vc,i,j,k)+max(0.,qv(i,j,k))
+            qc_rad (vc,i,j,k) = qc_rad (vc,i,j,k)+qcl(i,j,k)
+            qi_rad (vc,i,j,k) = qi_rad (vc,i,j,k)+qci(i,j,k)
+            cld_rad(vc,i,j,k) = cld_rad(vc,i,j,k) +  CF3D(i,j,k)
 #ifdef m2005
-            nc_rad(i,j,k) = nc_rad(i,j,k)+micro_field(i,j,k,incl)
-            ni_rad(i,j,k) = ni_rad(i,j,k)+micro_field(i,j,k,inci)
-            qs_rad(i,j,k) = qs_rad(i,j,k)+micro_field(i,j,k,iqs)
-            ns_rad(i,j,k) = ns_rad(i,j,k)+micro_field(i,j,k,ins)
+            nc_rad(vc,i,j,k) = nc_rad(vc,i,j,k)+micro_field(i,j,k,incl)
+            ni_rad(vc,i,j,k) = ni_rad(vc,i,j,k)+micro_field(i,j,k,inci)
+            qs_rad(vc,i,j,k) = qs_rad(vc,i,j,k)+micro_field(i,j,k,iqs)
+            ns_rad(vc,i,j,k) = ns_rad(vc,i,j,k)+micro_field(i,j,k,ins)
 #endif 
-            gliqwp(l)=gliqwp(l)+qcl(i,j,k)
-            gicewp(l)=gicewp(l)+qci(i,j,k)
+            gliqwp(vc,l) = gliqwp(vc,l)+qcl(i,j,k)
+            gicewp(vc,l) = gicewp(vc,l)+qci(i,j,k)
           enddo
         enddo
       enddo
@@ -1190,15 +1194,15 @@ contains
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(i,j,kx),pres(kx))
               if(qcl(i,j,kx)+qci(i,j,kx).gt.min(1.e-5,0.01*qsat)) then
-                mui_crm(l) = mui_crm(l)+rhow(k)*w(i,j,k)
+                mui_crm(vc,l) = mui_crm(vc,l)+rhow(k)*w(i,j,k)
               endif
             else if (w(i,j,k).lt.0.) then 
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(i,j,kx),pres(kx))
               if(qcl(i,j,kx)+qci(i,j,kx).gt.min(1.e-5,0.01*qsat)) then
-                mdi_crm(l) = mdi_crm(l)+rhow(k)*w(i,j,k)
+                mdi_crm(vc,l) = mdi_crm(vc,l)+rhow(k)*w(i,j,k)
               else if(qpl(i,j,kx)+qpi(i,j,kx).gt.1.0e-4) then 
-                mdi_crm(l) = mdi_crm(l)+rhow(k)*w(i,j,k) 
+                mdi_crm(vc,l) = mdi_crm(vc,l)+rhow(k)*w(i,j,k) 
               endif
             endif
           enddo
@@ -1216,16 +1220,16 @@ contains
         
       do j=1,ny
         do i=1,nx
-          !           if(cwp(i,j).gt.cwp_threshold) cltot = cltot + 1.
-          !           if(cwph(i,j).gt.cwp_threshold) clhgh = clhgh + 1.
-          !           if(cwpm(i,j).gt.cwp_threshold) clmed = clmed + 1.
-          !           if(cwpl(i,j).gt.cwp_threshold) cllow = cllow + 1.
+          !           if(cwp (i,j).gt.cwp_threshold) cltot(vc) = cltot(vc) + 1.
+          !           if(cwph(i,j).gt.cwp_threshold) clhgh(vc) = clhgh(vc) + 1.
+          !           if(cwpm(i,j).gt.cwp_threshold) clmed(vc) = clmed(vc) + 1.
+          !           if(cwpl(i,j).gt.cwp_threshold) cllow(vc) = cllow(vc) + 1.
           !  use maxmimum cloud overlap to calcluate cltot, clhgh, 
           !  cldmed, and cldlow   +++ mhwang
-          if(cwp(i,j).gt.cwp_threshold) cltot = cltot + cttemp(i,j) 
-          if(cwph(i,j).gt.cwp_threshold) clhgh = clhgh + chtemp(i,j) 
-          if(cwpm(i,j).gt.cwp_threshold) clmed = clmed + cmtemp(i,j) 
-          if(cwpl(i,j).gt.cwp_threshold) cllow = cllow + cltemp(i,j) 
+          if(cwp (i,j).gt.cwp_threshold) cltot(vc) = cltot(vc) + cttemp(i,j) 
+          if(cwph(i,j).gt.cwp_threshold) clhgh(vc) = clhgh(vc) + chtemp(i,j) 
+          if(cwpm(i,j).gt.cwp_threshold) clmed(vc) = clmed(vc) + cmtemp(i,j) 
+          if(cwpl(i,j).gt.cwp_threshold) cllow(vc) = cllow(vc) + cltemp(i,j) 
         enddo
       enddo
 
@@ -1235,25 +1239,25 @@ contains
     !----------------------------------------------------------
 
     tmp1 = 1._r8/ dble(nstop)
-    t_rad = t_rad * tmp1
-    qv_rad = qv_rad * tmp1
-    qc_rad = qc_rad * tmp1
-    qi_rad = qi_rad * tmp1
-    cld_rad = cld_rad * tmp1
+    t_rad  (vc,:,:,:) = t_rad  (vc,:,:,:) * tmp1
+    qv_rad (vc,:,:,:) = qv_rad (vc,:,:,:) * tmp1
+    qc_rad (vc,:,:,:) = qc_rad (vc,:,:,:) * tmp1
+    qi_rad (vc,:,:,:) = qi_rad (vc,:,:,:) * tmp1
+    cld_rad(vc,:,:,:) = cld_rad(vc,:,:,:) * tmp1
 #ifdef m2005
-    nc_rad = nc_rad * tmp1
-    ni_rad = ni_rad * tmp1
-    qs_rad = qs_rad * tmp1
-    ns_rad = ns_rad * tmp1
+    nc_rad(vc,:,:,:) = nc_rad(vc,:,:,:) * tmp1
+    ni_rad(vc,:,:,:) = ni_rad(vc,:,:,:) * tmp1
+    qs_rad(vc,:,:,:) = qs_rad(vc,:,:,:) * tmp1
+    ns_rad(vc,:,:,:) = ns_rad(vc,:,:,:) * tmp1
 #endif
 
     ! no CRM tendencies above its top
-    tln(1:ptop-1) = tl(1:ptop-1)
-    qln(1:ptop-1) = ql(1:ptop-1)
-    qccln(1:ptop-1)= qccl(1:ptop-1)
-    qiiln(1:ptop-1)= qiil(1:ptop-1)
-    uln(1:ptop-1) = ul(1:ptop-1)
-    vln(1:ptop-1) = vl(1:ptop-1)
+    tln(1:ptop-1) = tl(vc,1:ptop-1)
+    qln(1:ptop-1) = ql(vc,1:ptop-1)
+    qccln(1:ptop-1)= qccl(vc,1:ptop-1)
+    qiiln(1:ptop-1)= qiil(vc,1:ptop-1)
+    uln(1:ptop-1) = ul(vc,1:ptop-1)
+    vln(1:ptop-1) = vl(vc,1:ptop-1)
 
     !  Compute tendencies due to CRM:
     tln(ptop:plev) = 0.
@@ -1269,8 +1273,8 @@ contains
       l = plev-k+1
       do i=1,nx
         do j=1,ny
-          colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(plev-k+1)
-          colprecs=colprecs+qpi(i,j,k)*pdel(plev-k+1)
+          colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(vc,plev-k+1)
+          colprecs=colprecs+qpi(i,j,k)*pdel(vc,plev-k+1)
           tln(l) = tln(l)+tabs(i,j,k)
           qln(l) = qln(l)+qv(i,j,k)
           qccln(l)= qccln(l)+qcl(i,j,k)
@@ -1290,92 +1294,91 @@ contains
 
 #ifdef SPMOMTRANS
     ! whannah - SP CMT tendencies
-    ultend = (uln - ul)*idt_gl
-    vltend = (vln - vl)*idt_gl
+    ultend(vc,:) = (uln - ul(vc,:))*idt_gl
+    vltend(vc,:) = (vln - vl(vc,:))*idt_gl
 #endif
 
-    sltend = cp * (tln - tl) * idt_gl
-    qltend = (qln - ql) * idt_gl
-    qcltend = (qccln - qccl) * idt_gl
-    qiltend = (qiiln - qiil) * idt_gl
-    prectend=(colprec-prectend)/ggr*factor_xy * idt_gl
-    precstend=(colprecs-precstend)/ggr*factor_xy * idt_gl
+    sltend (vc,:) = cp * (tln   - tl  (vc,:)) * idt_gl
+    qltend (vc,:) =      (qln   - ql  (vc,:)) * idt_gl
+    qcltend(vc,:) =      (qccln - qccl(vc,:)) * idt_gl
+    qiltend(vc,:) =      (qiiln - qiil(vc,:)) * idt_gl
+    prectend (vc)=(colprec -prectend (vc))/ggr*factor_xy * idt_gl
+    precstend(vc)=(colprecs-precstend(vc))/ggr*factor_xy * idt_gl
 
     ! don't use CRM tendencies from two crm top levels, 
     ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
-    sltend( ptop:ptop+1) = 0.
-    qltend( ptop:ptop+1) = 0.
-    qcltend(ptop:ptop+1) = 0.
-    qiltend(ptop:ptop+1) = 0.
+    sltend (vc,ptop:ptop+1) = 0.
+    qltend (vc,ptop:ptop+1) = 0.
+    qcltend(vc,ptop:ptop+1) = 0.
+    qiltend(vc,ptop:ptop+1) = 0.
     !-------------------------------------------------------------
     ! 
     ! Save the last step to the permanent core:
-    u_crm  (1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
-    v_crm  (1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
-    w_crm  (1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
-    t_crm  (1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
-    micro_fields_crm(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
+    u_crm  (vc,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
+    v_crm  (vc,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
+    w_crm  (vc,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
+    t_crm  (vc,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
+    micro_fields_crm(vc,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
 #ifdef sam1mom
-    micro_fields_crm(1:nx,1:ny,1:nzm,3) = qn(1:nx,1:ny,1:nzm)
+    micro_fields_crm(vc,1:nx,1:ny,1:nzm,3) = qn(1:nx,1:ny,1:nzm)
 #endif
 #ifdef m2005
-    micro_fields_crm(1:nx,1:ny,1:nzm,11) = cloudliq(1:nx,1:ny,1:nzm)
+    micro_fields_crm(vc,1:nx,1:ny,1:nzm,11) = cloudliq(1:nx,1:ny,1:nzm)
 #endif
-    crm_tk(1:nx,1:ny,1:nzm) = tk(1:nx, 1:ny, 1:nzm)
-    crm_tkh(1:nx,1:ny,1:nzm) = tkh(1:nx, 1:ny, 1:nzm)
-    cld3d_crm(1:nx, 1:ny, 1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)
+    crm_tk   (vc,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
+    crm_tkh  (vc,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
+    cld3d_crm(vc,1:nx,1:ny,1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)
 #ifdef CLUBB_CRM
-    clubb_buffer(1:nx, 1:ny, 1:nz, 1) = up2(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 2) = vp2(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 3) = wprtp(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 4) = wpthlp(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 5) = wp2(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 6) = wp3(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 7) = rtp2(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 8) = thlp2(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 9) = rtpthlp(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 10) = upwp(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 11) = vpwp(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nz, 12) = cloud_frac(1:nx, 1:ny, 1:nz)
-    clubb_buffer(1:nx, 1:ny, 1:nzm, 13) = t_tndcy(1:nx, 1:ny, 1:nzm)
-    clubb_buffer(1:nx, 1:ny, 1:nzm, 14) = qc_tndcy(1:nx, 1:ny, 1:nzm)
-    clubb_buffer(1:nx, 1:ny, 1:nzm, 15) = qv_tndcy(1:nx, 1:ny, 1:nzm)
-    clubb_buffer(1:nx, 1:ny, 1:nzm, 16) = u_tndcy(1:nx, 1:ny, 1:nzm)
-    clubb_buffer(1:nx, 1:ny, 1:nzm, 17) = v_tndcy(1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  3) = wprtp     (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  4) = wpthlp    (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  5) = wp2       (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  6) = wp3       (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  7) = rtp2      (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  8) = thlp2     (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  9) = rtpthlp   (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz , 10) = upwp      (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz , 11) = vpwp      (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz , 12) = cloud_frac(1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 13) = t_tndcy   (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 14) = qc_tndcy  (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 15) = qv_tndcy  (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 16) = u_tndcy   (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 17) = v_tndcy   (1:nx, 1:ny, 1:nzm)
 
-    crm_cld(1:nx, 1:ny, 1:nz) = cloud_frac(1:nx, 1:ny, 1:nz)
-    clubb_tk(1:nx,1:ny,1:nzm) = tk_clubb(1:nx, 1:ny, 1:nzm)
-    clubb_tkh(1:nx,1:ny,1:nzm) = tkh_clubb(1:nx, 1:ny, 1:nzm)
-    relvar(1:nx, 1:ny, 1:nzm) = relvarg(1:nx, 1:ny, 1:nzm)
-    accre_enhan(1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm) 
-    qclvar(1:nx, 1:ny, 1:nzm) = qclvarg(1:nx, 1:ny, 1:nzm)
+    crm_cld    (vc,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
+    clubb_tk   (vc,1:nx, 1:ny, 1:nzm) = tk_clubb    (1:nx, 1:ny, 1:nzm)
+    clubb_tkh  (vc,1:nx, 1:ny, 1:nzm) = tkh_clubb   (1:nx, 1:ny, 1:nzm)
+    relvar     (vc,1:nx, 1:ny, 1:nzm) = relvarg     (1:nx, 1:ny, 1:nzm)
+    accre_enhan(vc,1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm) 
+    qclvar     (vc,1:nx, 1:ny, 1:nzm) = qclvarg     (1:nx, 1:ny, 1:nzm)
 #endif
 
     do k=1,nzm
      do j=1,ny
       do i=1,nx
-        qc_crm(i,j,k) = qcl(i,j,k)
-        qi_crm(i,j,k) = qci(i,j,k)
-        qpc_crm(i,j,k) = qpl(i,j,k)
-        qpi_crm(i,j,k) = qpi(i,j,k)
+        qc_crm (vc,i,j,k) = qcl(i,j,k)
+        qi_crm (vc,i,j,k) = qci(i,j,k)
+        qpc_crm(vc,i,j,k) = qpl(i,j,k)
+        qpi_crm(vc,i,j,k) = qpi(i,j,k)
 #ifdef m2005
-        wvar_crm(i,j,k) = wvar(i,j,k)
-        ! hm 7/26/11, new output
-        aut_crm(i,j,k) = aut1(i,j,k)
-        acc_crm(i,j,k) = acc1(i,j,k)
-        evpc_crm(i,j,k) = evpc1(i,j,k)
-        evpr_crm(i,j,k) = evpr1(i,j,k)
-        mlt_crm(i,j,k) = mlt1(i,j,k)
-        sub_crm(i,j,k) = sub1(i,j,k)
-        dep_crm(i,j,k) = dep1(i,j,k)
-        con_crm(i,j,k) = con1(i,j,k)
+        wvar_crm(vc,i,j,k) = wvar (i,j,k)
+        aut_crm (vc,i,j,k) = aut1 (i,j,k)
+        acc_crm (vc,i,j,k) = acc1 (i,j,k)
+        evpc_crm(vc,i,j,k) = evpc1(i,j,k)
+        evpr_crm(vc,i,j,k) = evpr1(i,j,k)
+        mlt_crm (vc,i,j,k) = mlt1 (i,j,k)
+        sub_crm (vc,i,j,k) = sub1 (i,j,k)
+        dep_crm (vc,i,j,k) = dep1 (i,j,k)
+        con_crm (vc,i,j,k) = con1 (i,j,k)
 #endif
         enddo
       enddo
     enddo
-    z0m = z0 
-    taux_crm = taux0 / dble(nstop)
-    tauy_crm = tauy0 / dble(nstop)
+    z0m     (vc) = z0 
+    taux_crm(vc) = taux0 / dble(nstop)
+    tauy_crm(vc) = tauy0 / dble(nstop)
 
     !---------------------------------------------------------------
     !  Diagnostics:
@@ -1385,38 +1388,38 @@ contains
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          crm_qc(l) = crm_qc(l) + qcl(i,j,k)
-          crm_qi(l) = crm_qi(l) + qci(i,j,k)
-          crm_qr(l) = crm_qr(l) + qpl(i,j,k)
+          crm_qc(vc,l) = crm_qc(vc,l) + qcl(i,j,k)
+          crm_qi(vc,l) = crm_qi(vc,l) + qci(i,j,k)
+          crm_qr(vc,l) = crm_qr(vc,l) + qpl(i,j,k)
 #ifdef sam1mom
           omg = max(0.,min(1.,(tabs(i,j,k)-tgrmin)*a_gr))
-          crm_qg(l) = crm_qg(l) + qpi(i,j,k)*omg
-          crm_qs(l) = crm_qs(l) + qpi(i,j,k)*(1.-omg)
+          crm_qg(vc,l) = crm_qg(vc,l) + qpi(i,j,k)*omg
+          crm_qs(vc,l) = crm_qs(vc,l) + qpi(i,j,k)*(1.-omg)
 #else
-          !crm_qg(l) = crm_qg(l) + qpi(i,j,k)
-          !crm_qs(l) = crm_qs(l) + 0.     ! temporerary solution
-          crm_qg(l) = crm_qg(l) + micro_field(i,j,k,iqg)
-          crm_qs(l) = crm_qs(l) + micro_field(i,j,k,iqs)
+          !crm_qg(vc,l) = crm_qg(vc,l) + qpi(i,j,k)
+          !crm_qs(vc,l) = crm_qs(vc,l) + 0.     ! temporerary solution
+          crm_qg(vc,l) = crm_qg(vc,l) + micro_field(i,j,k,iqg)
+          crm_qs(vc,l) = crm_qs(vc,l) + micro_field(i,j,k,iqs)
 
-          crm_nc(l) = crm_nc(l) + micro_field(i,j,k,incl)
-          crm_ni(l) = crm_ni(l) + micro_field(i,j,k,inci)
-          crm_nr(l) = crm_nr(l) + micro_field(i,j,k,inr)
-          crm_ng(l) = crm_ng(l) + micro_field(i,j,k,ing)
-          crm_ns(l) = crm_ns(l) + micro_field(i,j,k,ins)
+          crm_nc(vc,l) = crm_nc(vc,l) + micro_field(i,j,k,incl)
+          crm_ni(vc,l) = crm_ni(vc,l) + micro_field(i,j,k,inci)
+          crm_nr(vc,l) = crm_nr(vc,l) + micro_field(i,j,k,inr)
+          crm_ng(vc,l) = crm_ng(vc,l) + micro_field(i,j,k,ing)
+          crm_ns(vc,l) = crm_ns(vc,l) + micro_field(i,j,k,ins)
 #endif
         enddo
       enddo
     enddo
 
-    cld = min(1._r8,cld/float(nstop)*factor_xy)
-    cldtop = min(1._r8,cldtop/float(nstop)*factor_xy)
-    gicewp(:)=gicewp*pdel(:)*1000./ggr/float(nstop)*factor_xy
-    gliqwp(:)=gliqwp*pdel(:)*1000./ggr/float(nstop)*factor_xy
-    mcup = mcup / float(nstop) * factor_xy
-    mcdn = mcdn / float(nstop) * factor_xy
-    mcuup = mcuup / float(nstop) * factor_xy
-    mcudn = mcudn / float(nstop) * factor_xy
-    mc = mcup + mcdn + mcuup + mcudn
+    cld   (vc,:) = min(1._r8,cld   (vc,:)/float(nstop)*factor_xy)
+    cldtop(vc,:) = min(1._r8,cldtop(vc,:)/float(nstop)*factor_xy)
+    gicewp(vc,:) = gicewp(vc,:)*pdel(vc,:)*1000./ggr/float(nstop)*factor_xy
+    gliqwp(vc,:) = gliqwp(vc,:)*pdel(vc,:)*1000./ggr/float(nstop)*factor_xy
+    mcup  (vc,:) = mcup (vc,:) / float(nstop) * factor_xy
+    mcdn  (vc,:) = mcdn (vc,:) / float(nstop) * factor_xy
+    mcuup (vc,:) = mcuup(vc,:) / float(nstop) * factor_xy
+    mcudn (vc,:) = mcudn(vc,:) / float(nstop) * factor_xy
+    mc    (vc,:) = mcup(vc,:) + mcdn(vc,:) + mcuup(vc,:) + mcudn(vc,:)
     ! hm 9/7/11 modify for end-of-timestep instead of timestep-avg output
     !hm        crm_qc = crm_qc / float(nstop) * factor_xy
     !hm        crm_qi = crm_qi / float(nstop) * factor_xy
@@ -1430,17 +1433,17 @@ contains
     !hm        crm_ng = crm_ng / float(nstop) * factor_xy
     !hm        crm_nr = crm_nr / float(nstop) * factor_xy
 
-    crm_qc = crm_qc * factor_xy
-    crm_qi = crm_qi * factor_xy
-    crm_qs = crm_qs * factor_xy
-    crm_qg = crm_qg * factor_xy
-    crm_qr = crm_qr * factor_xy
+    crm_qc(vc,:) = crm_qc(vc,:) * factor_xy
+    crm_qi(vc,:) = crm_qi(vc,:) * factor_xy
+    crm_qs(vc,:) = crm_qs(vc,:) * factor_xy
+    crm_qg(vc,:) = crm_qg(vc,:) * factor_xy
+    crm_qr(vc,:) = crm_qr(vc,:) * factor_xy
 #ifdef m2005
-    crm_nc = crm_nc * factor_xy
-    crm_ni = crm_ni * factor_xy
-    crm_ns = crm_ns * factor_xy
-    crm_ng = crm_ng * factor_xy
-    crm_nr = crm_nr * factor_xy
+    crm_nc(vc,:) = crm_nc(vc,:) * factor_xy
+    crm_ni(vc,:) = crm_ni(vc,:) * factor_xy
+    crm_ns(vc,:) = crm_ns(vc,:) * factor_xy
+    crm_ng(vc,:) = crm_ng(vc,:) * factor_xy
+    crm_nr(vc,:) = crm_nr(vc,:) * factor_xy
 
     ! hm 8/31/11 new output, gcm-grid- and time-step avg
     ! add loop over i,j do get horizontal avg, and flip vertical array
@@ -1448,33 +1451,33 @@ contains
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          aut_crm_a (l) = aut_crm_a (l) + aut1a (i,j,k)
-          acc_crm_a (l) = acc_crm_a (l) + acc1a (i,j,k)
-          evpc_crm_a(l) = evpc_crm_a(l) + evpc1a(i,j,k)
-          evpr_crm_a(l) = evpr_crm_a(l) + evpr1a(i,j,k)
-          mlt_crm_a (l) = mlt_crm_a (l) + mlt1a (i,j,k)
-          sub_crm_a (l) = sub_crm_a (l) + sub1a (i,j,k)
-          dep_crm_a (l) = dep_crm_a (l) + dep1a (i,j,k)
-          con_crm_a (l) = con_crm_a (l) + con1a (i,j,k)
+          aut_crm_a (vc,l) = aut_crm_a (vc,l) + aut1a (i,j,k)
+          acc_crm_a (vc,l) = acc_crm_a (vc,l) + acc1a (i,j,k)
+          evpc_crm_a(vc,l) = evpc_crm_a(vc,l) + evpc1a(i,j,k)
+          evpr_crm_a(vc,l) = evpr_crm_a(vc,l) + evpr1a(i,j,k)
+          mlt_crm_a (vc,l) = mlt_crm_a (vc,l) + mlt1a (i,j,k)
+          sub_crm_a (vc,l) = sub_crm_a (vc,l) + sub1a (i,j,k)
+          dep_crm_a (vc,l) = dep_crm_a (vc,l) + dep1a (i,j,k)
+          con_crm_a (vc,l) = con_crm_a (vc,l) + con1a (i,j,k)
         enddo
       enddo
     enddo
 
     ! note, rates are divded by dt to get mean rate over step
-    aut_crm_a = aut_crm_a / dble(nstop) * factor_xy / dt
-    acc_crm_a = acc_crm_a / dble(nstop) * factor_xy / dt
-    evpc_crm_a = evpc_crm_a / dble(nstop) * factor_xy / dt
-    evpr_crm_a = evpr_crm_a / dble(nstop) * factor_xy / dt
-    mlt_crm_a = mlt_crm_a / dble(nstop) * factor_xy / dt
-    sub_crm_a = sub_crm_a / dble(nstop) * factor_xy / dt
-    dep_crm_a = dep_crm_a / dble(nstop) * factor_xy / dt
-    con_crm_a = con_crm_a / dble(nstop) * factor_xy / dt
+    aut_crm_a (vc,:) = aut_crm_a (vc,:) / dble(nstop) * factor_xy / dt
+    acc_crm_a (vc,:) = acc_crm_a (vc,:) / dble(nstop) * factor_xy / dt
+    evpc_crm_a(vc,:) = evpc_crm_a(vc,:) / dble(nstop) * factor_xy / dt
+    evpr_crm_a(vc,:) = evpr_crm_a(vc,:) / dble(nstop) * factor_xy / dt
+    mlt_crm_a (vc,:) = mlt_crm_a (vc,:) / dble(nstop) * factor_xy / dt
+    sub_crm_a (vc,:) = sub_crm_a (vc,:) / dble(nstop) * factor_xy / dt
+    dep_crm_a (vc,:) = dep_crm_a (vc,:) / dble(nstop) * factor_xy / dt
+    con_crm_a (vc,:) = con_crm_a (vc,:) / dble(nstop) * factor_xy / dt
 
 #endif
-    precc = 0.
-    precl = 0.
-    precsc = 0.
-    precsl = 0.
+    precc (vc) = 0.
+    precl (vc) = 0.
+    precsc(vc) = 0.
+    precsl(vc) = 0.
     do j=1,ny
       do i=1,nx
 #ifdef sam1mom
@@ -1490,19 +1493,19 @@ contains
         precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif
         if(precsfc(i,j).gt.10./86400.) then
-           precc = precc + precsfc(i,j)
-           precsc = precsc + precssfc(i,j)
+           precc (vc) = precc (vc) + precsfc(i,j)
+           precsc(vc) = precsc(vc) + precssfc(i,j)
         else
-           precl = precl + precsfc(i,j)
-           precsl = precsl + precssfc(i,j)
+           precl (vc) = precl (vc) + precsfc(i,j)
+           precsl(vc) = precsl(vc) + precssfc(i,j)
         endif
       enddo
     enddo
-    prec_crm = precsfc/1000.           !mm/s --> m/s
-    precc = precc*factor_xy/1000.     
-    precl = precl*factor_xy/1000.
-    precsc = precsc*factor_xy/1000.
-    precsl = precsl*factor_xy/1000.
+    prec_crm(vc,:,:) = precsfc/1000.           !mm/s --> m/s
+    precc   (vc)     = precc (vc)*factor_xy/1000.     
+    precl   (vc)     = precl (vc)*factor_xy/1000.
+    precsc  (vc)     = precsc(vc)*factor_xy/1000.
+    precsl  (vc)     = precsl(vc)*factor_xy/1000.
 
     !+++mhwangtest
     ! test water conservtion problem
@@ -1511,54 +1514,43 @@ contains
       do j=1, ny
         do i=1, nx
 #ifdef m2005
-          qtot(9) = qtot(9)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * pdel(l)/ggr)/(nx*ny)
-          qtot(9) = qtot(9)+((micro_field(i,j,k,iqv)+micro_field(i,j,k,iqci)) * pdel(l)/ggr)/(nx*ny)
+          qtot(vc,9) = qtot(vc,9)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * pdel(vc,l)/ggr)/(nx*ny)
+          qtot(vc,9) = qtot(vc,9)+((micro_field(i,j,k,iqv)+micro_field(i,j,k,iqci)) * pdel(vc,l)/ggr)/(nx*ny)
 #endif
 #ifdef sam1mom
-          qtot(9) = qtot(9)+((micro_field(i,j,k,1)+micro_field(i,j,k,2)) * pdel(l)/ggr)/(nx*ny)
+          qtot(vc,9) = qtot(vc,9)+((micro_field(i,j,k,1)+micro_field(i,j,k,2)) * pdel(vc,l)/ggr)/(nx*ny)
 #endif
         enddo
       enddo
     enddo
-    qtot(9) = qtot(9) + (precc+precl)*1000 * dt_gl
+    qtot(vc,9) = qtot(vc,9) + (precc(vc)+precl(vc))*1000 * dt_gl
 
-    !if(abs(qtot(9)-qtot(1))/qtot(1).gt.1.0e-6) then
-    !   write(0, *) 'in crm.F90 water before, after', igstep, lchnk, icol, qtot(1),  qtot(9), (qtot(9)-qtot(1))/qtot(1), (precc+precl)*1000 * dt_gl
-    !   write(0, *) 'in crm water middle       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(5)-qtot(4)) * ntotal_step/qtot(4),  &
-    !                                             (qtot(6)+(precc+precl)*1000 * dt_gl-qtot(5))*ntotal_step/qtot(5)
-    !   write(0, *) 'in crm water middle2       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(8)-qtot(7)) * ntotal_step/qtot(7) 
-    !   write(0, *) 'total water (liquid+vapor)', qtot(16:19)/nstop, (qtot(17)-qtot(16)) * ntotal_step/qtot(16), &
-    !                                             (qtot(18)-qtot(19)) * ntotal_step/qtot(19),
-    !   call endrun('water conservation in crm.F90')
-    !endif
-    !---mhwangtest
-        
-    cltot = cltot *factor_xy/nstop
-    clhgh = clhgh *factor_xy/nstop
-    clmed = clmed *factor_xy/nstop
-    cllow = cllow *factor_xy/nstop
+    cltot(vc) = cltot(vc) *factor_xy/nstop
+    clhgh(vc) = clhgh(vc) *factor_xy/nstop
+    clmed(vc) = clmed(vc) *factor_xy/nstop
+    cllow(vc) = cllow(vc) *factor_xy/nstop
 
-    jt_crm = plev * 1.0
-    mx_crm = 1.0
+    jt_crm(vc) = plev * 1.0
+    mx_crm(vc) = 1.0
     do k=1, plev 
-      mu_crm(k)=0.5*(mui_crm(k)+mui_crm(k+1))
-      md_crm(k)=0.5*(mdi_crm(k)+mdi_crm(k+1))
-      mu_crm(k)=mu_crm(k)*ggr/100.          !kg/m2/s --> mb/s
-      md_crm(k)=md_crm(k)*ggr/100.          !kg/m2/s --> mb/s
-      eu_crm(k) = 0.
-      if(mui_crm(k)-mui_crm(k+1).gt.0) then
-        eu_crm(k)=(mui_crm(k)-mui_crm(k+1))*ggr/pdel(k)    !/s
+      mu_crm(vc,k)=0.5*(mui_crm(vc,k)+mui_crm(vc,k+1))
+      md_crm(vc,k)=0.5*(mdi_crm(vc,k)+mdi_crm(vc,k+1))
+      mu_crm(vc,k)=mu_crm(vc,k)*ggr/100.          !kg/m2/s --> mb/s
+      md_crm(vc,k)=md_crm(vc,k)*ggr/100.          !kg/m2/s --> mb/s
+      eu_crm(vc,k) = 0.
+      if(mui_crm(vc,k)-mui_crm(vc,k+1).gt.0) then
+        eu_crm(vc,k)=(mui_crm(vc,k)-mui_crm(vc,k+1))*ggr/pdel(vc,k)    !/s
       else
-        du_crm(k)=-1.0*(mui_crm(k)-mui_crm(k+1))*ggr/pdel(k)   !/s
+        du_crm(vc,k)=-1.0*(mui_crm(vc,k)-mui_crm(vc,k+1))*ggr/pdel(vc,k)   !/s
       endif
-      if(mdi_crm(k+1)-mdi_crm(k).lt.0) then
-        ed_crm(k)=(mdi_crm(k)-mdi_crm(k+1))*ggr/pdel(k) ! /s
+      if(mdi_crm(vc,k+1)-mdi_crm(vc,k).lt.0) then
+        ed_crm(vc,k)=(mdi_crm(vc,k)-mdi_crm(vc,k+1))*ggr/pdel(vc,k) ! /s
       else
-        dd_crm(k)=-1.*(mdi_crm(k)-mdi_crm(k+1))*ggr/pdel(k)   !/s 
+        dd_crm(vc,k)=-1.*(mdi_crm(vc,k)-mdi_crm(vc,k+1))*ggr/pdel(vc,k)   !/s 
       endif
-      if(abs(mu_crm(k)).gt.1.0e-15.or.abs(md_crm(k)).gt.1.0e-15) then
-        jt_crm = min(k*1.0_r8, jt_crm)
-        mx_crm = max(k*1.0_r8, mx_crm)
+      if(abs(mu_crm(vc,k)).gt.1.0e-15.or.abs(md_crm(vc,k)).gt.1.0e-15) then
+        jt_crm(vc) = min(k*1.0_r8, jt_crm(vc))
+        mx_crm(vc) = max(k*1.0_r8, mx_crm(vc))
       endif
     enddo
         
@@ -1597,94 +1589,96 @@ contains
       precflux(k) = precflux(k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
-      flux_u(l) = (uwle(k) + uwsb(k))*tmp1*factor_xy/nstop
-      flux_v(l) = (vwle(k) + vwsb(k))*tmp1*factor_xy/nstop
+      flux_u    (vc,l) = (uwle(k) + uwsb(k))*tmp1*factor_xy/nstop
+      flux_v    (vc,l) = (vwle(k) + vwsb(k))*tmp1*factor_xy/nstop
 #ifdef sam1mom
-      flux_qt(l) = mkwle(k,1) + mkwsb(k,1)
-      fluxsgs_qt(l) =  mkwsb(k,1)
-      flux_qp(l) = mkwle(k,2) + mkwsb(k,2)
-      qt_trans(l) = mkadv(k,1) + mkdiff(k,1)
-      qp_trans(l) = mkadv(k,2) + mkdiff(k,2)
+      flux_qt   (vc,l) = mkwle(k,1) + mkwsb(k,1)
+      fluxsgs_qt(vc,l) = mkwsb(k,1)
+      flux_qp   (vc,l) = mkwle(k,2) + mkwsb(k,2)
+      qt_trans  (vc,l) = mkadv(k,1) + mkdiff(k,1)
+      qp_trans  (vc,l) = mkadv(k,2) + mkdiff(k,2)
 #endif
 #ifdef m2005
-      flux_qt(l) = mkwle(k,1) + mkwsb(k,1) +  &
-               mkwle(k,iqci) + mkwsb(k,iqci)
-      fluxsgs_qt(l) =  mkwsb(k,1) + mkwsb(k,iqci)
-      flux_qp(l) = mkwle(k,iqr) + mkwsb(k,iqr) +  &
-               mkwle(k,iqs) + mkwsb(k,iqs) + mkwle(k,iqg) + mkwsb(k,iqg)
-      qt_trans(l) = mkadv(k,1) + mkadv(k,iqci) + &
-               mkdiff(k,1) + mkdiff(k,iqci) 
-      qp_trans(l) = mkadv(k,iqr) + mkadv(k,iqs) + mkadv(k,iqg) + &
-               mkdiff(k,iqr) + mkdiff(k,iqs) + mkdiff(k,iqg) 
+      flux_qt   (vc,l) = mkwle(k,1   ) + mkwsb(k,1   ) +  &
+                         mkwle(k,iqci) + mkwsb(k,iqci)
+      fluxsgs_qt(vc,l) = mkwsb(k,1   ) + mkwsb(k,iqci)
+      flux_qp   (vc,l) = mkwle(k,iqr) + mkwsb(k,iqr) +  &
+                         mkwle(k,iqs) + mkwsb(k,iqs) + mkwle(k,iqg) + mkwsb(k,iqg)
+      qt_trans  (vc,l) = mkadv (k,1) + mkadv (k,iqci) + &
+                         mkdiff(k,1) + mkdiff(k,iqci) 
+      qp_trans  (vc,l) = mkadv (k,iqr) + mkadv (k,iqs) + mkadv (k,iqg) + &
+                         mkdiff(k,iqr) + mkdiff(k,iqs) + mkdiff(k,iqg) 
 #endif
-      tkesgsz(l)= rho(k)*sum(tke(1:nx,1:ny,k))*factor_xy
-      tkez(l)= rho(k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + tkesgsz(l)
-      tkz(l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
-      pflx(l) = precflux(k)/1000.       !mm/s  -->m/s
+      tkesgsz   (vc,l)= rho(k)*sum(tke(1:nx,1:ny,k))*factor_xy
+      tkez      (vc,l)= rho(k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + tkesgsz(vc,l)
+      tkz       (vc,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
+      pflx      (vc,l) = precflux(k)/1000.       !mm/s  -->m/s
 
-      qp_fall(l) = qpfall(k)
-      qp_evp(l) = qpevp(k)
-      qp_src(l) = qpsrc(k)
+      qp_fall   (vc,l) = qpfall(k)
+      qp_evp    (vc,l) = qpevp(k)
+      qp_src    (vc,l) = qpsrc(k)
 
-      qt_ls(l) = qtend(k)
-      t_ls(l) = ttend(k)
+      qt_ls     (vc,l) = qtend(k)
+      t_ls      (vc,l) = ttend(k)
     enddo
 
 #ifdef ECPP
-    abnd=0.0
-    abnd_tf=0.0
-    massflxbnd=0.0
-    acen=0.0
-    acen_tf=0.0
-    rhcen=0.0
-    qcloudcen=0.0
-    qicecen=0.0
-    qlsinkcen=0.0
-    precrcen=0.0
-    precsolidcen=0.0
-    wupthresh_bnd = 0.0
-    wdownthresh_bnd = 0.0
-    wwqui_cen = 0.0
-    wwqui_bnd = 0.0
-    wwqui_cloudy_cen = 0.0
-    wwqui_cloudy_bnd = 0.0
-    qlsink_bfcen = 0.0
-    qlsink_avgcen = 0.0
-    praincen = 0.0
+    abnd         (vc,:,:,:,:)=0.0
+    abnd_tf      (vc,:,:,:,:)=0.0
+    massflxbnd   (vc,:,:,:,:)=0.0
+    acen         (vc,:,:,:,:)=0.0
+    acen_tf      (vc,:,:,:,:)=0.0
+    rhcen        (vc,:,:,:,:)=0.0
+    qcloudcen    (vc,:,:,:,:)=0.0
+    qicecen      (vc,:,:,:,:)=0.0
+    qlsinkcen    (vc,:,:,:,:)=0.0
+    precrcen     (vc,:,:,:,:)=0.0
+    precsolidcen (vc,:,:,:,:)=0.0
+    qlsink_bfcen (vc,:,:,:,:)=0.0
+    qlsink_avgcen(vc,:,:,:,:)=0.0
+    praincen     (vc,:,:,:,:)=0.0
+
+    wupthresh_bnd   (vc,:)=0.0
+    wdownthresh_bnd (vc,:)=0.0
+    wwqui_cen       (vc,:)=0.0
+    wwqui_bnd       (vc,:)=0.0
+    wwqui_cloudy_cen(vc,:)=0.0
+    wwqui_cloudy_bnd(vc,:)=0.0
+
     ! default is clear, non-precipitating, and quiescent class
-    abnd(:,1,1,1)=1.0 
-    abnd_tf(:,1,1,1)=1.0
-    acen(:,1,1,1)=1.0
-    acen_tf(:,1,1,1)=1.0
+    abnd   (vc,:,1,1,1)=1.0 
+    abnd_tf(vc,:,1,1,1)=1.0
+    acen   (vc,:,1,1,1)=1.0
+    acen_tf(vc,:,1,1,1)=1.0
     do k=1, nzm
       l=plev-k+1
-      acen(l,:,:,:)=area_cen_sum(k,:,1:ncls_ecpp_in,:)
-      acen_tf(l,:,:,:)=area_cen_final(k,:,1:ncls_ecpp_in,:)
-      rhcen(l,:,:,:)=rh_cen_sum(k,:,1:ncls_ecpp_in,:)
-      qcloudcen(l,:,:,:)=qcloud_cen_sum(k,:,1:ncls_ecpp_in,:)
-      qicecen(l,:,:,:)=qice_cen_sum(k,:,1:ncls_ecpp_in,:)
-      qlsinkcen(l,:,:,:)=qlsink_cen_sum(k,:,1:ncls_ecpp_in,:)
-      precrcen(l,:,:,:)=precr_cen_sum(k,:,1:ncls_ecpp_in,:)
-      precsolidcen(l,:,:,:)=precsolid_cen_sum(k,:,1:ncls_ecpp_in,:)
-      wwqui_cen(l) = wwqui_cen_sum(k)
-      wwqui_cloudy_cen(l) = wwqui_cloudy_cen_sum(k)
-      qlsink_bfcen(l,:,:,:)=qlsink_bf_cen_sum(k,:,1:ncls_ecpp_in,:)
-      qlsink_avgcen(l,:,:,:)=qlsink_avg_cen_sum(k,:,1:ncls_ecpp_in,:)
-      praincen(l,:,:,:)=prain_cen_sum(k,:,1:ncls_ecpp_in,:)
+      acen            (vc,l,:,:,:) = area_cen_sum        (k,:,1:ncls_ecpp_in,:)
+      acen_tf         (vc,l,:,:,:) = area_cen_final      (k,:,1:ncls_ecpp_in,:)
+      rhcen           (vc,l,:,:,:) = rh_cen_sum          (k,:,1:ncls_ecpp_in,:)
+      qcloudcen       (vc,l,:,:,:) = qcloud_cen_sum      (k,:,1:ncls_ecpp_in,:)
+      qicecen         (vc,l,:,:,:) = qice_cen_sum        (k,:,1:ncls_ecpp_in,:)
+      qlsinkcen       (vc,l,:,:,:) = qlsink_cen_sum      (k,:,1:ncls_ecpp_in,:)
+      precrcen        (vc,l,:,:,:) = precr_cen_sum       (k,:,1:ncls_ecpp_in,:)
+      precsolidcen    (vc,l,:,:,:) = precsolid_cen_sum   (k,:,1:ncls_ecpp_in,:)
+      wwqui_cen       (vc,l)       = wwqui_cen_sum       (k)
+      wwqui_cloudy_cen(vc,l)       = wwqui_cloudy_cen_sum(k)
+      qlsink_bfcen    (vc,l,:,:,:) = qlsink_bf_cen_sum   (k,:,1:ncls_ecpp_in,:)
+      qlsink_avgcen   (vc,l,:,:,:) = qlsink_avg_cen_sum  (k,:,1:ncls_ecpp_in,:)
+      praincen        (vc,l,:,:,:) = prain_cen_sum       (k,:,1:ncls_ecpp_in,:)
     enddo
     do k=1, nzm+1
       l=plev+1-k+1
-      abnd(l,:,:,:)=area_bnd_sum(k,:,1:ncls_ecpp_in,:)
-      abnd_tf(l,:,:,:)=area_bnd_final(k,:,1:ncls_ecpp_in,:)
-      massflxbnd(l,:,:,:)=mass_bnd_sum(k,:,1:ncls_ecpp_in,:)
-      wupthresh_bnd(l)=wup_thresh(k)
-      wdownthresh_bnd(l)=wdown_thresh(k)
-      wwqui_bnd(l) = wwqui_bnd_sum(k)
-      wwqui_cloudy_bnd(l) = wwqui_cloudy_bnd_sum(k)
+      abnd            (vc,l,:,:,:) = area_bnd_sum        (k,:,1:ncls_ecpp_in,:)
+      abnd_tf         (vc,l,:,:,:) = area_bnd_final      (k,:,1:ncls_ecpp_in,:)
+      massflxbnd      (vc,l,:,:,:) = mass_bnd_sum        (k,:,1:ncls_ecpp_in,:)
+      wupthresh_bnd   (vc,l)       = wup_thresh          (k)
+      wdownthresh_bnd (vc,l)       = wdown_thresh        (k)
+      wwqui_bnd       (vc,l)       = wwqui_bnd_sum       (k)
+      wwqui_cloudy_bnd(vc,l)       = wwqui_cloudy_bnd_sum(k)
     enddo
 #endif
         
-    timing_factor = timing_factor / nstop
+    timing_factor(vc) = timing_factor(vc) / nstop
 
 #ifdef CLUBB_CRM
     ! Deallocate CLUBB variables, etc.
@@ -1696,26 +1690,33 @@ contains
     call ecpp_crm_cleanup ()
 #endif
 
-    call crm_dump_output(igstep,plev,crm_tk,crm_tkh,cltot,clhgh,clmed,cllow,sltend,u_crm,v_crm,w_crm,t_crm,micro_fields_crm,&
-                         qltend,qcltend,qiltend,t_rad,qv_rad,qc_rad,qi_rad,cld_rad,cld3d_crm, &
+    call crm_dump_output( igstep,plev,crm_tk(vc,:,:,:),crm_tkh(vc,:,:,:),cltot(vc),clhgh(vc),clmed(vc),cllow(vc),sltend(vc,:),u_crm(vc,:,:,:),v_crm(vc,:,:,:),&
+                          w_crm(vc,:,:,:),t_crm(vc,:,:,:),micro_fields_crm(vc,:,:,:,:),qltend(vc,:),qcltend(vc,:),qiltend(vc,:),t_rad(vc,:,:,:),qv_rad(vc,:,:,:),&
+                          qc_rad(vc,:,:,:),qi_rad(vc,:,:,:),cld_rad(vc,:,:,:),cld3d_crm(vc,:,:,:), &
 #ifdef CLUBB_CRM
-                         clubb_buffer,crm_cld,clubb_tk,clubb_tkh,relvar,accre_enhan,qclvar , &
+                          clubb_buffer(vc,:,:,:,:),crm_cld(vc,:,:,:),clubb_tk(vc,:,:,:),clubb_tkh(vc,:,:,:),relvar(vc,:,:,:),accre_enhan(vc,:,:,:),qclvar(vc,:,:,:) , &
 #endif
 #ifdef CRM3D
-                         ultend,vltend , &
+                          ultend(vc,:),vltend(vc,:) , &
 #endif
 #ifdef m2005
-                         nc_rad,ni_rad,qs_rad,ns_rad,wvar_crm,aut_crm,acc_crm,evpc_crm,evpr_crm,mlt_crm,sub_crm,dep_crm,con_crm,aut_crm_a,acc_crm_a,&
-                         evpc_crm_a,evpr_crm_a,mlt_crm_a,sub_crm_a,dep_crm_a,con_crm_a,crm_nc,crm_ni,crm_ns,crm_ng,crm_nr, &
+                          nc_rad(vc,:,:,:),ni_rad(vc,:,:,:),qs_rad(vc,:,:,:),ns_rad(vc,:,:,:),wvar_crm(vc,:,:,:),aut_crm(vc,:,:,:),acc_crm(vc,:,:,:),evpc_crm(vc,:,:,:), &
+                          evpr_crm(vc,:,:,:),mlt_crm(vc,:,:,:),sub_crm(vc,:,:,:),dep_crm(vc,:,:,:),con_crm(vc,:,:,:),aut_crm_a(vc,:),acc_crm_a(vc,:),evpc_crm_a(vc,:), &
+                          evpr_crm_a(vc,:),mlt_crm_a(vc,:),sub_crm_a(vc,:),dep_crm_a(vc,:),con_crm_a(vc,:),crm_nc(vc,:),crm_ni(vc,:),crm_ns(vc,:),crm_ng(vc,:),crm_nr(vc,:), &
 #endif
 #ifdef ECPP
-                         acen,acen_tf,rhcen,qcloudcen,qicecen,qlsinkcen,precrcen,precsolidcen,qlsink_bfcen,qlsink_avgcen,praincen,wwqui_cen,wwqui_cloudy_cen,&
-                         abnd,abnd_tf,massflxbnd,wupthresh_bnd,wdownthresh_bnd,wwqui_bnd,wwqui_cloudy_bnd, &
+                          acen(vc,:,:,:,:),acen_tf(vc,:,:,:,:),rhcen(vc,:,:,:,:),qcloudcen(vc,:,:,:,:),qicecen(vc,:,:,:,:),qlsinkcen(vc,:,:,:,:),precrcen(vc,:,:,:,:),&
+                          precsolidcen(vc,:,:,:,:),qlsink_bfcen(vc,:,:,:,:),qlsink_avgcen(vc,:,:,:,:),praincen(vc,:,:,:,:),wwqui_cen(vc,:),wwqui_cloudy_cen(vc,:), &
+                          abnd(vc,:,:,:,:),abnd_tf(vc,:,:,:,:),massflxbnd(vc,:,:,:,:),wupthresh_bnd(vc,:),wdownthresh_bnd(vc,:),wwqui_bnd(vc,:),wwqui_cloudy_bnd(vc,:), &
 #endif
-                         precc,precl,cld,cldtop,gicewp,gliqwp,mc,mcup,mcdn,mcuup,mcudn,crm_qc,crm_qi,crm_qs,crm_qg,crm_qr,mu_crm,md_crm,du_crm,eu_crm,&
-                         ed_crm,dd_crm,jt_crm,mx_crm,mui_crm,mdi_crm,flux_qt,fluxsgs_qt,tkez,tkesgsz,tkz,flux_u,flux_v,flux_qp,pflx,qt_ls,qt_trans,   &
-                         qp_trans,qp_fall,qp_src,qp_evp,t_ls,prectend,precstend,precsc,precsl,taux_crm,tauy_crm,z0m,timing_factor,qc_crm,qi_crm,qpc_crm,qpi_crm,prec_crm,qtot)
-        
+                          precc(vc),precl(vc),cld(vc,:),cldtop(vc,:),gicewp(vc,:),gliqwp(vc,:),mc(vc,:),mcup(vc,:),mcdn(vc,:),mcuup(vc,:),mcudn(vc,:),crm_qc(vc,:), &
+                          crm_qi(vc,:),crm_qs(vc,:),crm_qg(vc,:),crm_qr(vc,:),mu_crm(vc,:),md_crm(vc,:),du_crm(vc,:),eu_crm(vc,:),ed_crm(vc,:),dd_crm(vc,:),jt_crm(vc), &
+                          mx_crm(vc),mui_crm(vc,:),mdi_crm(vc,:),flux_qt(vc,:),fluxsgs_qt(vc,:),tkez(vc,:),tkesgsz(vc,:),tkz(vc,:),flux_u(vc,:),flux_v(vc,:),flux_qp(vc,:), &
+                          pflx(vc,:),qt_ls(vc,:),qt_trans(vc,:),qp_trans(vc,:),qp_fall(vc,:),qp_src(vc,:),qp_evp(vc,:),t_ls(vc,:),prectend(vc),precstend(vc),precsc(vc), &
+                          precsl(vc),taux_crm(vc),tauy_crm(vc),z0m(vc),timing_factor(vc),qc_crm(vc,:,:,:),qi_crm(vc,:,:,:),qpc_crm(vc,:,:,:),qpi_crm(vc,:,:,:), &
+                          prec_crm(vc,:,:),qtot(vc,:) )
+  enddo
+
   end subroutine crm
 
 

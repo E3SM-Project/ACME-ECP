@@ -492,69 +492,67 @@ program crm_standalone
   !!!$omp parallel do
   tmin = 1e10
   tmax = -1.
-  do ind = 1 , ncols
-    write(unit=*,fmt='(A,I7,A,I6,A)') '*** CALLING CRM ',ind,' from task ',rank,' ***'
-    call t_startf('crm_main')
-    t1 = MPI_Wtime()
-    call crm         ( lchnk(ind), icol(ind), &
+  write(unit=*,fmt='(A,I7,A,I6,A)') '*** CALLING CRM ',ind,' from task ',rank,' ***'
+  call t_startf('crm_main')
+  t1 = MPI_Wtime()
+  call crm           ( lchnk(1), icol(:), ncols, &
 #ifdef CRM_STANDALONE
-                       latitude0(ind), longitude0(ind), &
+                       latitude0(:), longitude0(:), &
 #endif
-                       tl(ind,:), ql(ind,:), qccl(ind,:), qiil(ind,:), ul(ind,:), vl(ind,:), &
-                       ps(ind), pmid(ind,:), pdel(ind,:), phis(ind), &
-                       zmid(ind,:), zint(ind,:), dt_gl(ind), plev, &
+                       tl(:,:), ql(:,:), qccl(:,:), qiil(:,:), ul(:,:), vl(:,:), &
+                       ps(:), pmid(:,:), pdel(:,:), phis(:), &
+                       zmid(:,:), zint(:,:), dt_gl(1), plev, &
 #ifdef CRM3D
-                       ultend(ind,:), vltend(ind,:),          &
+                       ultend(:,:), vltend(:,:),          &
 #endif
-                       qltend(ind,:), qcltend(ind,:), qiltend(ind,:), sltend(ind,:), &
-                       u_crm(ind,:,:,:), v_crm(ind,:,:,:), w_crm(ind,:,:,:), t_crm(ind,:,:,:), micro_fields_crm(ind,:,:,:,:), &
-                       qrad_crm(ind,:,:,:), &
-                       qc_crm(ind,:,:,:), qi_crm(ind,:,:,:), qpc_crm(ind,:,:,:), qpi_crm(ind,:,:,:), prec_crm(ind,:,:), &
-                       t_rad(ind,:,:,:), qv_rad(ind,:,:,:), qc_rad(ind,:,:,:), qi_rad(ind,:,:,:), cld_rad(ind,:,:,:), cld3d_crm(ind,:,:,:), &
+                       qltend(:,:), qcltend(:,:), qiltend(:,:), sltend(:,:), &
+                       u_crm(:,:,:,:), v_crm(:,:,:,:), w_crm(:,:,:,:), t_crm(:,:,:,:), micro_fields_crm(:,:,:,:,:), &
+                       qrad_crm(:,:,:,:), &
+                       qc_crm(:,:,:,:), qi_crm(:,:,:,:), qpc_crm(:,:,:,:), qpi_crm(:,:,:,:), prec_crm(:,:,:), &
+                       t_rad(:,:,:,:), qv_rad(:,:,:,:), qc_rad(:,:,:,:), qi_rad(:,:,:,:), cld_rad(:,:,:,:), cld3d_crm(:,:,:,:), &
 #ifdef m2005
-                       nc_rad(ind,:,:,:), ni_rad(ind,:,:,:), qs_rad(ind,:,:,:), ns_rad(ind,:,:,:), wvar_crm(ind,:,:,:),  &
-                       aut_crm(ind,:,:,:), acc_crm(ind,:,:,:), evpc_crm(ind,:,:,:), evpr_crm(ind,:,:,:), mlt_crm(ind,:,:,:), &
-                       sub_crm(ind,:,:,:), dep_crm(ind,:,:,:), con_crm(ind,:,:,:), &
-                       aut_crm_a(ind,:), acc_crm_a(ind,:), evpc_crm_a(ind,:), evpr_crm_a(ind,:), mlt_crm_a(ind,:), &
-                       sub_crm_a(ind,:), dep_crm_a(ind,:), con_crm_a(ind,:), &
+                       nc_rad(:,:,:,:), ni_rad(:,:,:,:), qs_rad(:,:,:,:), ns_rad(:,:,:,:), wvar_crm(:,:,:,:),  &
+                       aut_crm(:,:,:,:), acc_crm(:,:,:,:), evpc_crm(:,:,:,:), evpr_crm(:,:,:,:), mlt_crm(:,:,:,:), &
+                       sub_crm(:,:,:,:), dep_crm(:,:,:,:), con_crm(:,:,:,:), &
+                       aut_crm_a(:,:), acc_crm_a(:,:), evpc_crm_a(:,:), evpr_crm_a(:,:), mlt_crm_a(:,:), &
+                       sub_crm_a(:,:), dep_crm_a(:,:), con_crm_a(:,:), &
 #endif
-                       precc(ind), precl(ind), precsc(ind), precsl(ind), &
-                       cltot(ind), clhgh(ind), clmed(ind), cllow(ind), cld(ind,:), cldtop(ind,:), &
-                       gicewp(ind,:), gliqwp(ind,:), &
-                       mc(ind,:), mcup(ind,:), mcdn(ind,:), mcuup(ind,:), mcudn(ind,:), &
-                       crm_qc(ind,:), crm_qi(ind,:), crm_qs(ind,:), crm_qg(ind,:), crm_qr(ind,:), &
+                       precc(:), precl(:), precsc(:), precsl(:), &
+                       cltot(:), clhgh(:), clmed(:), cllow(:), cld(:,:), cldtop(:,:), &
+                       gicewp(:,:), gliqwp(:,:), &
+                       mc(:,:), mcup(:,:), mcdn(:,:), mcuup(:,:), mcudn(:,:), &
+                       crm_qc(:,:), crm_qi(:,:), crm_qs(:,:), crm_qg(:,:), crm_qr(:,:), &
 #ifdef m2005
-                       crm_nc(ind,:), crm_ni(ind,:), crm_ns(ind,:), crm_ng(ind,:), crm_nr(ind,:), &
+                       crm_nc(:,:), crm_ni(:,:), crm_ns(:,:), crm_ng(:,:), crm_nr(:,:), &
 #ifdef MODAL_AERO
-                       naermod(ind,:,:), vaerosol(ind,:,:), hygro(ind,:,:),     &
+                       naermod(:,:,:), vaerosol(:,:,:), hygro(:,:,:),     &
 #endif 
 #endif
 #ifdef CLUBB_CRM
-                       clubb_buffer(ind,:,:,:,:),                 &
-                       crm_cld(ind,:,:,:),                      &
-                       clubb_tk(ind,:,:,:), clubb_tkh(ind,:,:,:),          &
-                       relvar(ind,:,:,:), accre_enhan(ind,:,:,:), qclvar(ind,:,:,:),  &
+                       clubb_buffer(:,:,:,:,:),                 &
+                       crm_cld(:,:,:,:),                      &
+                       clubb_tk(:,:,:,:), clubb_tkh(:,:,:,:),          &
+                       relvar(:,:,:,:), accre_enhan(:,:,:,:), qclvar(:,:,:,:),  &
 #endif
-                       crm_tk(ind,:,:,:), crm_tkh(ind,:,:,:),              &
-                       mu_crm(ind,:), md_crm(ind,:), du_crm(ind,:), eu_crm(ind,:), ed_crm(ind,:), jt_crm(ind), mx_crm(ind),    &
+                       crm_tk(:,:,:,:), crm_tkh(:,:,:,:),              &
+                       mu_crm(:,:), md_crm(:,:), du_crm(:,:), eu_crm(:,:), ed_crm(:,:), jt_crm(:), mx_crm(:),    &
 #ifdef ECPP
-                       abnd(ind,:,:,:,:), abnd_tf(ind,:,:,:,:), massflxbnd(ind,:,:,:,:), acen(ind,:,:,:,:), acen_tf(ind,:,:,:,:),           &
-                       rhcen(ind,:,:,:,:), qcloudcen(ind,:,:,:,:), qicecen(ind,:,:,:,:), qlsinkcen(ind,:,:,:,:), precrcen(ind,:,:,:,:), precsolidcen(ind,:,:,:,:),  & 
-                       qlsink_bfcen(ind,:,:,:,:), qlsink_avgcen(ind,:,:,:,:), praincen(ind,:,:,:,:),     &
-                       wupthresh_bnd(ind,:), wdownthresh_bnd(ind,:),   &
-                       wwqui_cen(ind,:), wwqui_bnd(ind,:), wwqui_cloudy_cen(ind,:), wwqui_cloudy_bnd(ind,:),   &
+                       abnd(:,:,:,:,:), abnd_tf(:,:,:,:,:), massflxbnd(:,:,:,:,:), acen(:,:,:,:,:), acen_tf(:,:,:,:,:),           &
+                       rhcen(:,:,:,:,:), qcloudcen(:,:,:,:,:), qicecen(:,:,:,:,:), qlsinkcen(:,:,:,:,:), precrcen(:,:,:,:,:), precsolidcen(:,:,:,:,:),  & 
+                       qlsink_bfcen(:,:,:,:,:), qlsink_avgcen(:,:,:,:,:), praincen(:,:,:,:,:),     &
+                       wupthresh_bnd(:,:), wdownthresh_bnd(:,:),   &
+                       wwqui_cen(:,:), wwqui_bnd(:,:), wwqui_cloudy_cen(:,:), wwqui_cloudy_bnd(:,:),   &
 #endif
-                       tkez(ind,:), tkesgsz(ind,:), tkz(ind,:), flux_u(ind,:), flux_v(ind,:), flux_qt(ind,:), fluxsgs_qt(ind,:),flux_qp(ind,:), &
-                       pflx(ind,:), qt_ls(ind,:), qt_trans(ind,:), qp_trans(ind,:), qp_fall(ind,:), &
-                       qp_evp(ind,:), qp_src(ind,:), t_ls(ind,:), prectend(ind), precstend(ind), &
-                       ocnfrac(ind), wndls(ind), tau00(ind), bflxls(ind), &
-                       fluxu00(ind), fluxv00(ind), fluxt00(ind), fluxq00(ind),    &
-                       taux_crm(ind), tauy_crm(ind), z0m(ind), timing_factor(ind), qtot(ind,:) )
-    t2 = MPI_Wtime()
-    tmin = min(tmin,t2-t1)
-    tmax = max(tmax,t2-t1)
-    call t_stopf('crm_main')
-  enddo
+                       tkez(:,:), tkesgsz(:,:), tkz(:,:), flux_u(:,:), flux_v(:,:), flux_qt(:,:), fluxsgs_qt(:,:),flux_qp(:,:), &
+                       pflx(:,:), qt_ls(:,:), qt_trans(:,:), qp_trans(:,:), qp_fall(:,:), &
+                       qp_evp(:,:), qp_src(:,:), t_ls(:,:), prectend(:), precstend(:), &
+                       ocnfrac(:), wndls(:), tau00(:), bflxls(:), &
+                       fluxu00(:), fluxv00(:), fluxt00(:), fluxq00(:),    &
+                       taux_crm(:), tauy_crm(:), z0m(:), timing_factor(:), qtot(:,:) )
+  t2 = MPI_Wtime()
+  tmin = min(tmin,t2-t1)
+  tmax = max(tmax,t2-t1)
+  call t_stopf('crm_main')
 
 
   do i = 1 , ncols
