@@ -907,6 +907,14 @@ for mct, etc.
       </ADD_LDFLAGS>
 </compiler>
 
+<compiler COMPILER="pgi" MACH="thatchroof">
+  <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -L/opt/lapack3.6.1_pgi15.9/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl </ADD_LDFLAGS>
+</compiler>
+
+<compiler COMPILER="gnu" MACH="thatchroof">
+  <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl -lidn -lrtmp -lssh2 -lssl -lcrypto -lssl -lcrypto -llber -lldap -lz </ADD_LDFLAGS>
+</compiler>
+
 <compiler COMPILER="intel" MACH="titan">
   <ADD_CFLAGS DEBUG="FALSE"> -O2 </ADD_CFLAGS>
   <ADD_FFLAGS DEBUG="FALSE"> -O2 </ADD_FFLAGS>
