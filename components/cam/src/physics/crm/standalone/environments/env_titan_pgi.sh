@@ -40,11 +40,11 @@ export CRAY_CPU_TARGET=istanbul
 
 export FC=ftn
 export CC=cc
-export FFLAGS="-Mstack_arrays -Mextend -byteswapio -Mflushz -O2 -acc -ta=tesla,cc35,pinned,unroll,cuda7.5 -Minfo=accel"
-export CFLAGS="-Mstack_arrays                      -Mflushz -O2"
+export FFLAGS="-Mstack_arrays -Mextend -O2 -fdefault-real-8 -fdefault-double-8"
+export CFLAGS="-Mstack_arrays          -O2                                    "
 export FREEFLAGS="-Mextend"
 export FIXEDFLAGS=""
-export LDFLAGS=" -acc -ta=tesla,cc35,pinned,unroll,cuda7.5 -Minfo=accel "
+export LDFLAGS=""
 export INCLUDE=""
 
 export CPPDEFS=" -DFORTRANUNDERSCORE -D_SAMP_LIMIT=512"
