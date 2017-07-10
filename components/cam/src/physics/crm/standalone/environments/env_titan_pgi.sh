@@ -40,8 +40,8 @@ export CRAY_CPU_TARGET=istanbul
 
 export FC=ftn
 export CC=cc
-export FFLAGS="-Mstack_arrays -Mextend -O2 -fdefault-real-8 -fdefault-double-8"
-export CFLAGS="-Mstack_arrays          -O2                                    "
+export FFLAGS="-Mstack_arrays -Mextend -O2 -r8"
+export CFLAGS="-Mstack_arrays          -O2    "
 export FREEFLAGS="-Mextend"
 export FIXEDFLAGS=""
 export LDFLAGS=""
