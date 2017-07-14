@@ -1525,8 +1525,8 @@ end subroutine crm_physics_init
               crm_ng(i,:,:,:) = crm_micro(i,:,:,:,10)
               crm_qc(i,:,:,:) = crm_micro(i,:,:,:,11)
           endif
-#endif
        end do ! i (loop over ncol)
+#endif
 !----------------------------------------------------------------------
 ! End ncol loop for CRM
 !----------------------------------------------------------------------
