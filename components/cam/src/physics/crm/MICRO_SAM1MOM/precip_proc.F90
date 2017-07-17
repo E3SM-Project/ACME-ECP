@@ -9,10 +9,10 @@ use params
 implicit none
 
 integer i,j,k
-real autor, autos, accrr, accris, accrcs, accrig, accrcg
-real dq, omn, omp, omg, qsatt
-real pows1, pows2, powg1, powg2, powr1, powr2, tmp
-real qii, qcc, qrr, qss, qgg
+real(crm_rknd) autor, autos, accrr, accris, accrcs, accrig, accrcg
+real(crm_rknd) dq, omn, omp, omg, qsatt
+real(crm_rknd) pows1, pows2, powg1, powg2, powr1, powr2, tmp
+real(crm_rknd) qii, qcc, qrr, qss, qgg
 
 powr1 = (3 + b_rain) / 4.
 powr2 = (5 + b_rain) / 8.

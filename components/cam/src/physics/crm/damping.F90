@@ -5,13 +5,14 @@ subroutine damping
 
 use vars
 use microphysics, only: micro_field, index_water_vapor
+use params, only: crm_rknd
 implicit none
 
-real tau_min	! minimum damping time-scale (at the top)
-real tau_max    ! maxim damping time-scale (base of damping layer)
-real damp_depth ! damping depth as a fraction of the domain height
+real(crm_rknd) tau_min	! minimum damping time-scale (at the top)
+real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
+real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
 parameter(tau_min=60., tau_max=450., damp_depth=0.4)
-real tau(nzm)   
+real(crm_rknd) tau(nzm)   
 integer i, j, k, n_damp
 
 if(tau_min.lt.2*dt) then

@@ -4,17 +4,17 @@ subroutine advect_scalar3D( f, u, v, w, rho, rhow, flux )
 
 	use grid
 	use advect_um_lib
-        use params, only: dowallx, dowally
+        use params, only: dowallx, dowally, crm_rknd
 	implicit none
 
 	!	input & output
-	real, dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
-	real, dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(inout) :: u
-	real, dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm), intent(inout) :: v
-	real, dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
-	real, dimension(nzm), intent(in) :: rho
-	real, dimension(nz), intent(in) :: rhow
-	real, dimension(nz), intent(out) :: flux
+	real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
+	real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(inout) :: u
+	real(crm_rknd), dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm), intent(inout) :: v
+	real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
+	real(crm_rknd), dimension(nzm), intent(in) :: rho
+	real(crm_rknd), dimension(nz), intent(in) :: rhow
+	real(crm_rknd), dimension(nz), intent(out) :: flux
 
 	!	local
 	integer :: macho_order, i, j, k

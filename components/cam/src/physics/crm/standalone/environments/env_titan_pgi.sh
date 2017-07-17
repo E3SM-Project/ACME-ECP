@@ -40,13 +40,18 @@ export CRAY_CPU_TARGET=istanbul
 
 export FC=ftn
 export CC=cc
-export FFLAGS="-Mstack_arrays -Mextend -byteswapio -Mflushz -O2 -acc -ta=tesla,cc35,pinned,unroll,cuda7.5 -Minfo=accel"
-export CFLAGS="-Mstack_arrays                      -Mflushz -O2"
+# export FFLAGS="-Mstack_arrays -Mextend -byteswapio -Mflushz -O2 -acc -ta=tesla,cc35,pinned,unroll,cuda7.5 -Minfo=accel"
+# export FFLAGS="-Mstack_arrays -Mextend -byteswapio -Mflushz -O2 -acc -ta=tesla,cc35,pinned,unroll,cuda7.5 -Minfo=accel  -Ktrap=fp "
+export FFLAGS="-Mstack_arrays -Mextend -byteswapio -Mflushz -acc -ta=tesla,cc35,pinned,unroll,cuda7.5 -Minfo=accel"
+# export CFLAGS="-Mstack_arrays                      -Mflushz -O2"
+export CFLAGS="-Mstack_arrays                      -Mflushz "
 export FREEFLAGS="-Mextend"
 export FIXEDFLAGS=""
 export LDFLAGS=" -acc -ta=tesla,cc35,pinned,unroll,cuda7.5 -Minfo=accel "
 export INCLUDE=""
 
-export CPPDEFS=" -DFORTRANUNDERSCORE -D_SAMP_LIMIT=512"
+export CPPDEFS=" -DFORTRANUNDERSCORE -D_SAMP_LIMIT=128 "
+# export CPPDEFS=" -DFORTRANUNDERSCORE -D_SAMP_LIMIT=128 -DCRM_SINGLE_PRECISION "
+# export CPPDEFS=" -DFORTRANUNDERSCORE -D_SAMP_LIMIT=8"
 #export CPPDEFS="   -DSP_DIR_NS    -DCO2A -DMAXPATCH_PFT=numpft+1 -DLSMLAT=1 -DLSMLON=1 -D_MPDATA -Dm2005 -DYES3DVAL=0 -DCRM_NX=32 -DCRM_NY=1 -DCRM_NZ=58 -DCRM_DX=1000 -DCRM_DT=10  -DCRM  -DPLON=13826 -DPLAT=1 -DNP=4 -DNC=4 -DHAVE_F2003_PTR_BND_REMAP -DPLEV=72 -DPCNST=40 -DPCOLS=16 -DPSUBCOLS=1 -DN_RAD_CNST=30 -DPTRM=1 -DPTRN=1 -DPTRK=1 -D_MPI -DCAM  -D_WK_GRAD -D_PRIM  -DSPMD -DMODAL_AERO -DMODAL_AERO_4MODE_MOM   -DMODAL_AER  -DRAIN_EVAP_TO_COARSE_AERO  -DCLUBB_SGS -DCLUBB_CAM -DNO_LAPACK_ISNAN -DCLUBB_REAL_TYPE=dp -DHAVE_VPRINTF -DHAVE_TIMES -DHAVE_GETTIMEOFDAY -DHAVE_COMM_F2C -DHAVE_NANOTIME -DBIT64 -DHAVE_SLASHPROC -DCNL -DCPRPGI -DNDEBUG -DMCT_INTERFACE -DHAVE_MPI -DFORTRANUNDERSCORE -DNO_SHR_VMATH -DNO_R16    -DLINUX -DCRM_DUMP -DCRM_DUMP_RATIO=0.001 -DHAVE_SLASHPROC -DUSE_CONTIGUOUS"
 

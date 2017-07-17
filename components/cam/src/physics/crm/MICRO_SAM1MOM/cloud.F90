@@ -11,10 +11,10 @@ use params
 implicit none
 
 integer i,j,k, kb, kc
-real dtabs, tabs1, an, bn, ap, bp, om, ag, omp
-real fac1,fac2  
-real fff,dfff,qsatt,dqsat
-real lstarn,dlstarn,lstarp,dlstarp
+real(crm_rknd) dtabs, tabs1, an, bn, ap, bp, om, ag, omp
+real(crm_rknd) fac1,fac2  
+real(crm_rknd) fff,dfff,qsatt,dqsat
+real(crm_rknd) lstarn,dlstarn,lstarp,dlstarp
 integer niter
 
 an = 1./(tbgmax-tbgmin)	

@@ -1,5 +1,8 @@
 module ecppvars
 #ifdef ECPP
+  
+  use params, only: crm_rknd
+
   implicit none
 
   public 
@@ -28,19 +31,19 @@ module ecppvars
                      PRY = 2           !Is precipitating sub-class
 
 
-  real,dimension(:,:,:), allocatable :: qlsink, precr, precsolid, rh, qlsink_bf, prain, qcloud_bf, qvs
+  real(crm_rknd),dimension(:,:,:), allocatable :: qlsink, precr, precsolid, rh, qlsink_bf, prain, qcloud_bf, qvs
 
-  real,dimension(:,:,:),allocatable :: &
+  real(crm_rknd),dimension(:,:,:),allocatable :: &
        qcloudsum1, qcloud_bfsum1, qrainsum1, qicesum1, qsnowsum1, qgraupsum1, &
        qlsinksum1, qlsink_bfsum1, prainsum1, precrsum1, precsolidsum1, precallsum1, &
        altsum1, rhsum1, cf3dsum1, wwsum1, wwsqsum1, tkesgssum1, qvssum1 
 
 ! dim1 = z
-  real,dimension(:),allocatable :: &
+  real(crm_rknd),dimension(:),allocatable :: &
        xkhvsum, wup_thresh, wdown_thresh, wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum
 
 ! dims = (z, cloud sub-class, transport-class, precip sub-class)
-  real, dimension(:,:,:,:), allocatable :: &
+  real(crm_rknd), dimension(:,:,:,:), allocatable :: &
        area_bnd_final, area_bnd_sum, area_cen_final, area_cen_sum, &
        mass_bnd_final, mass_bnd_sum, mass_cen_final, mass_cen_sum, &
        ent_bnd_sum, rh_cen_sum, &

@@ -8,11 +8,11 @@ use sgs
 use params
 implicit none
 
-real def2(nx,ny,nzm)	
-real grd,betdz,Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs
-real buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss
-real lstarn, lstarp, bbb, omn, omp
-real qsatt,dqsat
+real(crm_rknd) def2(nx,ny,nzm)	
+real(crm_rknd) grd,betdz,Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs
+real(crm_rknd) buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss
+real(crm_rknd) lstarn, lstarp, bbb, omn, omp
+real(crm_rknd) qsatt,dqsat
 integer i,j,k,kc,kb
 
 !call t_startf('tke_full')
@@ -108,7 +108,7 @@ do k=1,nzm
 
    if(dosmagor) then
 
-     tk(i,j,k)=sqrt(Ck**3/Cee*max(0.,def2(i,j,k)-Pr*buoy_sgs))*smix**2
+     tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
      tke(i,j,k) = (tk(i,j,k)/(Ck*smix))**2
      a_prod_sh=(tk(i,j,k)+0.001)*def2(i,j,k)
      a_prod_bu=-(tk(i,j,k)+0.001)*Pr*buoy_sgs
@@ -116,11 +116,11 @@ do k=1,nzm
 
    else
 
-     tke(i,j,k)=max(0.,tke(i,j,k))
+     tke(i,j,k)=max(real(0.,crm_rknd),tke(i,j,k))
      a_prod_sh=(tk(i,j,k)+0.001)*def2(i,j,k)
      a_prod_bu=-(tk(i,j,k)+0.001)*Pr*buoy_sgs
      a_diss=min(tke(i,j,k)/(4.*dt),Cee/smix*tke(i,j,k)**1.5) ! cap the diss rate (useful for large time steps
-     tke(i,j,k)=max(0.,tke(i,j,k)+dtn*(max(0.,a_prod_sh+a_prod_bu)-a_diss))
+     tke(i,j,k)=max(real(0.,crm_rknd),tke(i,j,k)+dtn*(max(real(0.,crm_rknd),a_prod_sh+a_prod_bu)-a_diss))
      tk(i,j,k)=Ck*smix*sqrt(tke(i,j,k))
 
    end if
@@ -135,7 +135,7 @@ do k=1,nzm
   end do ! i
   end do ! j
 
-  tkelediss(k) = tkelediss(k)/float(nx*ny)
+  tkelediss(k) = tkelediss(k)/real(nx*ny,crm_rknd)
 
 
 end do ! k

@@ -6,9 +6,9 @@
 
 	implicit none
 	
-	real, intent (in) :: bflx
-	real u_h0, tau00, tauxm, tauym
-	real diag_ustar
+	real(crm_rknd), intent (in) :: bflx
+	real(crm_rknd) u_h0, tau00, tauxm, tauym
+	real(crm_rknd) diag_ustar
 	integer i,j
 
 !--------------------------------------------------------
@@ -24,7 +24,7 @@
 
           do j=1,ny
            do i=1,nx
-             u_h0 = max(1.,sqrt((0.5*(u(i+1,j,1)+u(i,j,1))+ug)**2+ &
+             u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(i+1,j,1)+u(i,j,1))+ug)**2+ &
                                    (0.5*(v(i,j+YES3D,1)+v(i,j,1))+vg)**2))
              tau00 = rho(1) * diag_ustar(z(1),bflx,u_h0,z0)**2 
              fluxbu(i,j) = -(0.5*(u(i+1,j,1)+u(i,j,1))+ug-uhl)/u_h0*tau00
@@ -70,22 +70,24 @@
 ! Code corrected 8th June 1999 (obukhov length was wrong way up,
 ! so now used as reciprocal of obukhov length)
 
-      real function diag_ustar(z,bflx,wnd,z0)
+      real(crm_rknd) function diag_ustar(z,bflx,wnd,z0)
+      
+      use params, only: crm_rknd
 
       implicit none
-      real, parameter      :: vonk =  0.4   ! von Karmans constant
-      real, parameter      :: g    = 9.81   ! gravitational acceleration
-      real, parameter      :: am   =  4.8   !   "          "         "
-      real, parameter      :: bm   = 19.3   !   "          "         "
-      real, parameter      :: eps  = 1.e-10 ! non-zero, small number
+      real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
+      real(crm_rknd), parameter      :: g    = 9.81   ! gravitational acceleration
+      real(crm_rknd), parameter      :: am   =  4.8   !   "          "         "
+      real(crm_rknd), parameter      :: bm   = 19.3   !   "          "         "
+      real(crm_rknd), parameter      :: eps  = 1.e-10 ! non-zero, small number
 
-      real, intent (in)    :: z             ! height where u locates
-      real, intent (in)    :: bflx          ! surface buoyancy flux (m^2/s^3)
-      real, intent (in)    :: wnd           ! wind speed at z
-      real, intent (in)    :: z0            ! momentum roughness height
+      real(crm_rknd), intent (in)    :: z             ! height where u locates
+      real(crm_rknd), intent (in)    :: bflx          ! surface buoyancy flux (m^2/s^3)
+      real(crm_rknd), intent (in)    :: wnd           ! wind speed at z
+      real(crm_rknd), intent (in)    :: z0            ! momentum roughness height
 
       integer :: iterate
-      real    :: lnz, klnz, c1, x, psi1, zeta, rlmo, ustar
+      real(crm_rknd)    :: lnz, klnz, c1, x, psi1, zeta, rlmo, ustar
 
       lnz   = log(z/z0) 
       klnz  = vonk/lnz              
@@ -96,7 +98,7 @@
         do iterate=1,8
           rlmo   = -bflx * vonk/(ustar**3 + eps)   !reciprocal of
                                                    !obukhov length
-          zeta  = min(1.,z*rlmo)
+          zeta  = min(real(1.,crm_rknd),z*rlmo)
           if (zeta > 0.) then
             ustar =  vonk*wnd  /(lnz + am*zeta)
           else
@@ -115,7 +117,9 @@
 
 
 
-      real function z0_est(z,bflx,wnd,ustar)
+      real(crm_rknd) function z0_est(z,bflx,wnd,ustar)
+
+      use params, only: crm_rknd
 
 !
 ! Compute z0 from buoyancy flux, wind, and friction velocity
@@ -124,29 +128,29 @@
 !
 
       implicit none
-      real, parameter      :: vonk =  0.4   ! von Karmans constant
-      real, parameter      :: g    = 9.81   ! gravitational acceleration
-      real, parameter      :: am   =  4.8   !   "          "         "
-      real, parameter      :: bm   = 19.3   !   "          "         "
-      real, parameter      :: eps  = 1.e-10 ! non-zero, small number
+      real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
+      real(crm_rknd), parameter      :: g    = 9.81   ! gravitational acceleration
+      real(crm_rknd), parameter      :: am   =  4.8   !   "          "         "
+      real(crm_rknd), parameter      :: bm   = 19.3   !   "          "         "
+      real(crm_rknd), parameter      :: eps  = 1.e-10 ! non-zero, small number
 
-      real, intent (in)    :: z             ! height where u locates
-      real, intent (in)    :: bflx          ! surface buoyancy flux (m^2/s^3)
-      real, intent (in)    :: wnd           ! wind speed at z
-      real, intent (in)    :: ustar         ! friction velocity
+      real(crm_rknd), intent (in)    :: z             ! height where u locates
+      real(crm_rknd), intent (in)    :: bflx          ! surface buoyancy flux (m^2/s^3)
+      real(crm_rknd), intent (in)    :: wnd           ! wind speed at z
+      real(crm_rknd), intent (in)    :: ustar         ! friction velocity
 
-      real    :: lnz, klnz, c1, x, psi1, zeta, rlmo
+      real(crm_rknd)    :: lnz, klnz, c1, x, psi1, zeta, rlmo
 
       c1    = 3.14159/2. - 3.*log(2.)
       rlmo   = -bflx*vonk/(ustar**3+eps)   !reciprocal of
-      zeta   = min(1.,z*rlmo)
+      zeta   = min(real(1.,crm_rknd),z*rlmo)
       if (zeta >= 0.) then
             psi1 = -am*zeta
       else
             x     = sqrt( sqrt( 1.0 - bm*zeta ) )
             psi1  = 2.*log(1.0+x) + log(1.0+x*x) - 2.*atan(x) + c1
       end if
-      lnz = max(0.,vonk*wnd/(ustar + eps) + psi1)
+      lnz = max(real(0.,crm_rknd),vonk*wnd/(ustar + eps) + psi1)
       z0_est = z*exp(-lnz)
 
       return

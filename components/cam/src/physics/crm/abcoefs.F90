@@ -4,10 +4,11 @@ subroutine abcoefs
 !      coefficients for the Adams-Bashforth scheme
 
 use grid 
+use params, only: crm_rknd
 
 implicit none
 
-real alpha, beta
+real(crm_rknd) alpha, beta
 	
 if(nstep.ge.3.and.nadams.eq.3.or.nrestart.eq.2) then
   alpha = dt3(nb) / dt3(na)

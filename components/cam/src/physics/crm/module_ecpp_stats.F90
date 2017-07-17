@@ -27,6 +27,7 @@ module module_ecpp_stats
   !==Guangxing Lin
   !use abortutils, only: endrun
   use cam_abortutils, only: endrun
+  use params, only: crm_rknd
   implicit none
 
 contains
@@ -41,11 +42,11 @@ subroutine boundary_inout( &
 ! William.Gustafson@pnl.gov; 25-Jul-2006
 !------------------------------------------------------------------------
   integer, intent(in) :: nx, ny, nz
-  real, dimension(:,:,:), intent(in) :: uu, vv
-  real, dimension(:), intent(inout) :: u_insum, u_outsum, v_insum, v_outsum
+  real(crm_rknd), dimension(:,:,:), intent(in) :: uu, vv
+  real(crm_rknd), dimension(:), intent(inout) :: u_insum, u_outsum, v_insum, v_outsum
 
   integer :: i, j, k, nxstag, nystag
-  real :: spd_in, spd_out
+  real(crm_rknd) :: spd_in, spd_out
 
   nxstag = nx+1
   nystag = ny+1
@@ -81,8 +82,8 @@ subroutine boundary_inout( &
            spd_out = spd_out + uu(nxstag,j,k)
         end if
      end do !j=ny
-     u_insum(k)  = u_insum(k)  + spd_in /real(ny)
-     u_outsum(k) = u_outsum(k) + spd_out/real(ny)
+     u_insum(k)  = u_insum(k)  + spd_in /real(ny,crm_rknd)
+     u_outsum(k) = u_outsum(k) + spd_out/real(ny,crm_rknd)
 
      spd_in  = 0.;  spd_out = 0.
      do i=1,nx
@@ -100,8 +101,8 @@ subroutine boundary_inout( &
            spd_out = spd_out + vv(i,nystag,k)
         end if
      end do !i=nx
-     v_insum(k)  = v_insum(k)  + spd_in /real(nx)
-     v_outsum(k) = v_outsum(k) + spd_out/real(nx)
+     v_insum(k)  = v_insum(k)  + spd_in /real(nx,crm_rknd)
+     v_outsum(k) = v_outsum(k) + spd_out/real(nx.crm_rknd)
 
   end do !k=nz
 end subroutine boundary_inout
@@ -132,11 +133,11 @@ subroutine rsums1( qcloud,    qcloudsum1,    &
 ! William.Gustafson@pnl.gov; 20-Jul-2006
 ! Last modified: William.Gustafson@pnl.gof; 25-Nov-2008
 !------------------------------------------------------------------------
-  real, dimension(:,:,:), intent(in) :: &
+  real(crm_rknd), dimension(:,:,:), intent(in) :: &
        qcloud, qcloud_bf, qrain, qice, qsnow, qgraup, &
        qlsink, precr, precsolid, precall, &
        alt, rh, cf3d, ww, wwsq, tkesgs, qlsink_bf, prain, qvs
-  real, dimension(:,:,:), intent(inout) :: &
+  real(crm_rknd), dimension(:,:,:), intent(inout) :: &
        qcloudsum1, qcloud_bfsum1, qrainsum1, &
        qicesum1, qsnowsum1, qgraupsum1, &
        qlsinksum1, precrsum1, precsolidsum1, precallsum1, &
@@ -177,16 +178,16 @@ subroutine rsums1ToAvg( nt, qcloudsum, qcloud_bfsum, qrainsum, &
 ! Last modified: William.Gustafson@pnl.gov; 25-Nov-2008
 !------------------------------------------------------------------------
   integer, intent(in) :: nt
-  real, dimension(:,:,:), intent(inout) :: &
+  real(crm_rknd), dimension(:,:,:), intent(inout) :: &
        qcloudsum, qcloud_bfsum, qrainsum, qicesum, qsnowsum, qgraupsum, &
        qlsinksum, precrsum, precsolidsum, precallsum, &
        altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum 
 
-  real :: ncount
+  real(crm_rknd) :: ncount
 
 !  print*,"...end of level one averaging period."
 
-  ncount = real(nt)
+  ncount = real(nt,crm_rknd)
 
   qcloudsum    = qcloudsum/ncount
   qcloud_bfsum    = qcloud_bfsum/ncount
@@ -221,9 +222,9 @@ subroutine rsums2( &
 ! Last modified: William.Gustafson@pnl.gov; 25-Nov-2008
 !------------------------------------------------------------------------
   integer, intent(in) :: nx, ny, nz
-  real, dimension(:,:,:), intent(in) :: &
+  real(crm_rknd), dimension(:,:,:), intent(in) :: &
        xkhv
-  real, dimension(:), intent(inout) :: &
+  real(crm_rknd), dimension(:), intent(inout) :: &
        xkhvsum
 
   integer :: i
@@ -262,9 +263,9 @@ subroutine rsums2ToAvg( areaavgtype, nx, ny, nt1, nt2, &
 ! Last modified: 16-Apr-2009, wig
 !------------------------------------------------------------------------
   integer, intent(in) :: areaavgtype, nx, ny, nt1, nt2
-  real, dimension(:), intent(inout) :: &
+  real(crm_rknd), dimension(:), intent(inout) :: &
        xkhvsum, wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum
-  real, dimension(:,:,:,:), intent(inout) :: &
+  real(crm_rknd), dimension(:,:,:,:), intent(inout) :: &
        area_bnd_final, area_bnd_sum, &
        area_cen_final, area_cen_sum, &
        mass_bnd_final, mass_bnd_sum, &
@@ -276,60 +277,60 @@ subroutine rsums2ToAvg( areaavgtype, nx, ny, nt1, nt2, &
        precsolid_cen_sum, precall_cen_sum, &
        qlsink_bf_cen_sum, prain_cen_sum
   integer :: i, k
-  real :: ncount2, ncountwind, thesum
+  real(crm_rknd) :: ncount2, ncountwind, thesum
 
 !  print*,"...end of level two averaging period."
 
-  ncount2     = real(nx*ny*nt2)
-  ncountwind = real((nx+1)*ny*nt2)
+  ncount2    = real(nx*ny*nt2,crm_rknd)
+  ncountwind = real((nx+1)*ny*nt2,crm_rknd)
 
   xkhvsum      = xkhvsum/ncount2
 
 ! Only touch final areas if doing averages over ntavg2
   if( areaavgtype == 2 ) then
-     area_bnd_final = area_bnd_final/real(nt1)
-     area_cen_final = area_cen_final/real(nt1)
+     area_bnd_final = area_bnd_final/real(nt1,crm_rknd)
+     area_cen_final = area_cen_final/real(nt1,crm_rknd)
   end if
 
-  area_bnd_sum       = area_bnd_sum/real(nt1)
-  area_cen_sum       = area_cen_sum/real(nt1)
-  ent_bnd_sum        = ent_bnd_sum/real(nt1)
-  mass_bnd_sum       = mass_bnd_sum/real(nt1)
-  mass_cen_sum       = mass_cen_sum/real(nt1)
-  rh_cen_sum         = rh_cen_sum/real(nt1)
-  qcloud_cen_sum     = qcloud_cen_sum/real(nt1)
-  qcloud_bf_cen_sum     = qcloud_bf_cen_sum/real(nt1)
-  qrain_cen_sum      = qrain_cen_sum/real(nt1)
-  qice_cen_sum       = qice_cen_sum/real(nt1)
-  qsnow_cen_sum      = qsnow_cen_sum/real(nt1)
-  qgraup_cen_sum     = qgraup_cen_sum/real(nt1)
+  area_bnd_sum       = area_bnd_sum   /real(nt1,crm_rknd)
+  area_cen_sum       = area_cen_sum   /real(nt1,crm_rknd)
+  ent_bnd_sum        = ent_bnd_sum    /real(nt1,crm_rknd)
+  mass_bnd_sum       = mass_bnd_sum   /real(nt1,crm_rknd)
+  mass_cen_sum       = mass_cen_sum   /real(nt1,crm_rknd)
+  rh_cen_sum         = rh_cen_sum     /real(nt1,crm_rknd)
+  qcloud_cen_sum     = qcloud_cen_sum /real(nt1,crm_rknd)
+  qcloud_bf_cen_sum  = qcloud_bf_cen_sum/real(nt1,crm_rknd)
+  qrain_cen_sum      = qrain_cen_sum  /real(nt1,crm_rknd)
+  qice_cen_sum       = qice_cen_sum   /real(nt1,crm_rknd)
+  qsnow_cen_sum      = qsnow_cen_sum  /real(nt1,crm_rknd)
+  qgraup_cen_sum     = qgraup_cen_sum /real(nt1,crm_rknd)
   do k=1,size(qlsink_cen_sum,1) !Note: must be after qcloud_cen_sum is turned into an avg
                                 ! see rsums1 where qlsink=qlsink*qcloud
      thesum = sum(qcloud_cen_sum(k,:,:,:))
      if( thesum > 1e-25 ) then
-        qlsink_cen_sum(k,:,:,:) = qlsink_cen_sum(k,:,:,:)/thesum/real(nt1)
+        qlsink_cen_sum(k,:,:,:) = qlsink_cen_sum(k,:,:,:)/thesum/real(nt1,crm_rknd)
      else
         qlsink_cen_sum(k,:,:,:) = 0.
      end if
   end do
-  precr_cen_sum      = precr_cen_sum/real(nt1)
-  precsolid_cen_sum  = precsolid_cen_sum/real(nt1)
-  precall_cen_sum    = precall_cen_sum/real(nt1)
+  precr_cen_sum      = precr_cen_sum/real(nt1,crm_rknd)
+  precsolid_cen_sum  = precsolid_cen_sum/real(nt1,crm_rknd)
+  precall_cen_sum    = precall_cen_sum/real(nt1,crm_rknd)
   do k=1,size(qlsink_bf_cen_sum,1) !Note: must be after qcloud_bf_cen_sum is turned into an avg
                                 ! see rsums1 where qlsink=qlsink*qcloud
      thesum = sum(qcloud_bf_cen_sum(k,:,:,:))
      if( thesum > 1e-25 ) then
-        qlsink_bf_cen_sum(k,:,:,:) = qlsink_bf_cen_sum(k,:,:,:)/thesum/real(nt1)
+        qlsink_bf_cen_sum(k,:,:,:) = qlsink_bf_cen_sum(k,:,:,:)/thesum/real(nt1,crm_rknd)
      else
         qlsink_bf_cen_sum(k,:,:,:) = 0.
      end if
   end do
 
-  prain_cen_sum   = prain_cen_sum/real(nt1)
-  wwqui_cen_sum =  wwqui_cen_sum / real(nt1)
-  wwqui_bnd_sum =  wwqui_bnd_sum / real(nt1)
-  wwqui_cloudy_cen_sum = wwqui_cloudy_cen_sum / real(nt1)
-  wwqui_cloudy_bnd_sum = wwqui_cloudy_bnd_sum / real(nt1)
+  prain_cen_sum   = prain_cen_sum/real(nt1,crm_rknd)
+  wwqui_cen_sum =  wwqui_cen_sum / real(nt1,crm_rknd)
+  wwqui_bnd_sum =  wwqui_bnd_sum / real(nt1,crm_rknd)
+  wwqui_cloudy_cen_sum = wwqui_cloudy_cen_sum / real(nt1,crm_rknd)
+  wwqui_cloudy_bnd_sum = wwqui_cloudy_bnd_sum / real(nt1,crm_rknd)
 
 end subroutine rsums2ToAvg
 
@@ -340,8 +341,8 @@ subroutine xyrsumof2d(xin,sumout)
 ! added to a running sum.
 ! William.Gustafson@pnl.gov; 25-Apr-2006
 !------------------------------------------------------------------------
-  real, dimension(:,:), intent(in) :: xin
-  real, intent(out) :: sumout
+  real(crm_rknd), dimension(:,:), intent(in) :: xin
+  real(crm_rknd), intent(out) :: sumout
 
   sumout = sumout + sum(xin(:,:))
 end subroutine xyrsumof2d
@@ -353,8 +354,8 @@ subroutine xyrsumof3d(xin,sumout)
 ! added to a column  to return a running sum.
 ! William.Gustafson@pnl.gov; 26-Jun-2006
 !------------------------------------------------------------------------
-  real, dimension(:,:,:), intent(in) :: xin
-  real, dimension(:), intent(out) :: sumout
+  real(crm_rknd), dimension(:,:,:), intent(in) :: xin
+  real(crm_rknd), dimension(:), intent(out) :: sumout
 
   integer :: k
 
@@ -370,7 +371,7 @@ subroutine zero_out_areas( &
 ! Zeros out the running sums of final area categories.
 ! William.Gustafson@pnl.gov; 19-Nov-2008
 !------------------------------------------------------------------------
-  real, dimension(:,:,:,:), intent(out) :: &
+  real(crm_rknd), dimension(:,:,:,:), intent(out) :: &
        area_bnd_final, area_cen_final
 
   area_bnd_final=0.
@@ -388,7 +389,7 @@ subroutine zero_out_sums1( qcloudsum, qcloud_bfsum, qrainsum,                   
 ! William.Gustafson@pnl.gov; 20-Jul-2006
 ! Last modified: William.Gustafson@pnl.gov; 25-Nov-2008
 !------------------------------------------------------------------------
-  real,dimension(:,:,:), intent(out) :: &
+  real(crm_rknd),dimension(:,:,:), intent(out) :: &
        qcloudsum, qcloud_bfsum, qrainsum, qicesum, qsnowsum, qgraupsum, &
        qlsink, precr, precsolid, precall, &
        altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum
@@ -432,9 +433,9 @@ subroutine zero_out_sums2( &
 ! William.Gustafson@pnl.gov; 20-Jul-2006
 ! Last modified: 25-Nov-2008, wig
 !------------------------------------------------------------------------
-  real,dimension(:), intent(out) :: &
+  real(crm_rknd),dimension(:), intent(out) :: &
        xkhvsum, wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum
-  real,dimension(:,:,:,:), intent(out) :: &
+  real(crm_rknd),dimension(:,:,:,:), intent(out) :: &
        area_bnd_final, area_bnd_sum, area_cen_final, area_cen_sum, &
        mass_bnd_final, mass_bnd_sum, mass_cen_final, mass_cen_sum, &
        ent_bnd_sum, rh_cen_sum, &
@@ -511,20 +512,20 @@ subroutine categorization_stats( domass, &
   integer, intent(in) :: nx, ny, nz, nupdraft, ndndraft, ndraft_max, &
        mode_updnthresh, plumetype
   logical, intent(in) :: allcomb
-  real, intent(in) :: &
+  real(crm_rknd), intent(in) :: &
        cloudthresh, prcpthresh, &
        downthresh, upthresh, &
        downthresh2, upthresh2
-  real, intent(in) :: cloudthresh_trans,  precthresh_trans
+  real(crm_rknd), intent(in) :: cloudthresh_trans,  precthresh_trans
 !  type(time), intent(in) :: ctime
   integer, dimension(:), intent(in) :: &
        updraftbase, updrafttop, &
        dndraftbase, dndrafttop
-  real, dimension(:,:,:), intent(in) :: &
+  real(crm_rknd), dimension(:,:,:), intent(in) :: &
        qcloud, qcloud_bf, qrain, qice, qsnow, qgraup, &
        qlsink, precr, precsolid, precall, &
        alt, rh, cf3d, ww, wwsq, tkesgs, qlsink_bf, prain, qvs
-  real, dimension(:,:,:,:), intent(inout) :: & 
+  real(crm_rknd), dimension(:,:,:,:), intent(inout) :: & 
        area_bnd_final, area_cen_final, &
        area_bnd_sum, area_cen_sum, ent_bnd_sum, mass_bnd_sum, &
        rh_cen_sum, &
@@ -533,27 +534,27 @@ subroutine categorization_stats( domass, &
        qlsink_cen_sum, precr_cen_sum, &
        precsolid_cen_sum, precall_cen_sum, qlsink_bf_cen_sum, prain_cen_sum
         
-  real, dimension(:), intent(inout) :: wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum
-  real, dimension(nz+1), intent(out)  :: wdown_thresh, wup_thresh
+  real(crm_rknd), dimension(:), intent(inout) :: wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum
+  real(crm_rknd), dimension(nz+1), intent(out)  :: wdown_thresh, wup_thresh
 !
 ! Local vars...
 !
-  real, dimension(nx,ny,nz+1,NCLASS_CL,ndraft_max,NCLASS_PR) :: mask_bnd
-  real, dimension(nx,ny,nz,NCLASS_CL,ndraft_max,NCLASS_PR) :: mask_cen
-  real, dimension(nz+1,2) :: wdown_thresh_k, wup_thresh_k
-  real, dimension(nx,ny,nz) :: cloudmixr, cloudmixr_total, precmixr_total
+  real(crm_rknd), dimension(nx,ny,nz+1,NCLASS_CL,ndraft_max,NCLASS_PR) :: mask_bnd
+  real(crm_rknd), dimension(nx,ny,nz,NCLASS_CL,ndraft_max,NCLASS_PR) :: mask_cen
+  real(crm_rknd), dimension(nz+1,2) :: wdown_thresh_k, wup_thresh_k
+  real(crm_rknd), dimension(nx,ny,nz) :: cloudmixr, cloudmixr_total, precmixr_total
   integer, dimension(nx,ny)  :: cloudtop
-  real, dimension(nz+1)  :: wup_rms_k, wup_bar_k, wup_stddev_k  &
+  real(crm_rknd), dimension(nz+1)  :: wup_rms_k, wup_bar_k, wup_stddev_k  &
                             , wdown_rms_k, wdown_bar_k, wdown_stddev_k
   integer  :: kup_top, kdown_top  ! defined as the maximum level that allows updraft and downdraft
-  real :: mask, wwrho_k, wwrho_km1
-  real, dimension(nz+1) :: rhoair      ! layer-averaged air density
-  real :: wlarge = 1.0e10   ! m/s
-  real :: tmpa, tmpb
-  real, dimension(nz) :: thresh_factorbb_up, thresh_factorbb_down
-  real :: acen_quiesc, acen_up, acen_down, abnd_quiesc, abnd_up, abnd_down
-  real :: acen_quiesc_minaa 
-  real :: wwqui_bar_cen(nz), wwqui_bar_bnd(nz+1), wwqui_cloudy_bar_cen(nz), wwqui_cloudy_bar_bnd(nz+1)
+  real(crm_rknd) :: mask, wwrho_k, wwrho_km1
+  real(crm_rknd), dimension(nz+1) :: rhoair      ! layer-averaged air density
+  real(crm_rknd) :: wlarge = 1.0e10   ! m/s
+  real(crm_rknd) :: tmpa, tmpb
+  real(crm_rknd), dimension(nz) :: thresh_factorbb_up, thresh_factorbb_down
+  real(crm_rknd) :: acen_quiesc, acen_up, acen_down, abnd_quiesc, abnd_up, abnd_down
+  real(crm_rknd) :: acen_quiesc_minaa 
+  real(crm_rknd) :: wwqui_bar_cen(nz), wwqui_bar_bnd(nz+1), wwqui_cloudy_bar_cen(nz), wwqui_cloudy_bar_bnd(nz+1)
 
   integer :: i, icl, ipr, itr, j, k, km0, km1, km2, nxy, nzstag
   integer :: iter
@@ -599,7 +600,7 @@ subroutine categorization_stats( domass, &
         do k=1, nzstag
          km0 = min(nz,k)
          km1 = max(1,k-1)
-         rhoair(k) = rhoair(k)+0.5*(1.0/alt(i,j,km1) + 1.0/alt(i,j,km0))/real(nxy)
+         rhoair(k) = rhoair(k)+0.5*(1.0/alt(i,j,km1) + 1.0/alt(i,j,km0))/real(nxy,crm_rknd)
         end do
      end do !i
   end do !j
@@ -696,15 +697,15 @@ thresh_calc_loop: &
   thresh_calc_not_done = .false.
   do k = 1,nz
      acen_quiesc = sum( mask_cen( 1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR) )
-     acen_quiesc = max( acen_quiesc/real(nxy), 0.0 )
+     acen_quiesc = max( acen_quiesc/real(nxy,crm_rknd), 0.0 )
      acen_up = sum( mask_cen( 1:nx, 1:ny, k, 1:NCLASS_CL, UP1, 1:NCLASS_PR) )
-     acen_up = max( acen_up/real(nxy), 0.0 )
+     acen_up = max( acen_up/real(nxy,crm_rknd), 0.0 )
      acen_down = max( (1.0 - acen_quiesc - acen_up), 0.0 )
 
      abnd_quiesc = sum( mask_bnd( 1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR) )
-     abnd_quiesc = max( abnd_quiesc/real(nxy), 0.0 )
+     abnd_quiesc = max( abnd_quiesc/real(nxy,crm_rknd), 0.0 )
      abnd_up = sum( mask_bnd( 1:nx, 1:ny, k, 1:NCLASS_CL, UP1, 1:NCLASS_PR) )
-     abnd_up = max( abnd_up/real(nxy), 0.0 )
+     abnd_up = max( abnd_up/real(nxy,crm_rknd), 0.0 )
      abnd_down = max( (1.0 - abnd_quiesc - abnd_up), 0.0 )
 
      if (min(acen_quiesc, abnd_quiesc) < acen_quiesc_minaa) then
@@ -751,7 +752,7 @@ thresh_calc_loop: &
 ! averages by class. Do this first for the cell centers...
 !
                  do k = 1,nz
-                    mask = mask_cen(i,j,k,icl,itr,ipr)/real(nxy)
+                    mask = mask_cen(i,j,k,icl,itr,ipr)/real(nxy,crm_rknd)
 
                     area_cen_final(k,icl,itr,ipr) = area_cen_final(k,icl,itr,ipr) + mask
 
@@ -787,7 +788,7 @@ thresh_calc_loop: &
 ! will also calculate the mass flux and entrainment.
 !
                  do k = 1,nzstag
-                    mask = mask_bnd(i,j,k,icl,itr,ipr)/real(nxy)
+                    mask = mask_bnd(i,j,k,icl,itr,ipr)/real(nxy,crm_rknd)
 
                     area_bnd_final(k,icl,itr,ipr) = area_bnd_final(k,icl,itr,ipr) + mask
 
@@ -828,24 +829,24 @@ thresh_calc_loop: &
 !
   do k=1, nz
     if(sum(mask_cen(1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR)).ge.0.5) then
-      wwqui_bar_cen(k) = wwqui_bar_cen(k)* real(nxy) /sum(mask_cen(1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR))
+      wwqui_bar_cen(k) = wwqui_bar_cen(k)* real(nxy,crm_rknd) /sum(mask_cen(1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR))
     else
       wwqui_bar_cen(k) = 0.0 
     end if
     if(sum(mask_cen(1:nx, 1:ny, k, CLD, QUI, 1:NCLASS_PR)).ge.0.5) then
-      wwqui_cloudy_bar_cen(k) = wwqui_cloudy_bar_cen(k)* real(nxy) /sum(mask_cen(1:nx, 1:ny, k, CLD, QUI, 1:NCLASS_PR))
+      wwqui_cloudy_bar_cen(k) = wwqui_cloudy_bar_cen(k)* real(nxy,crm_rknd) /sum(mask_cen(1:nx, 1:ny, k, CLD, QUI, 1:NCLASS_PR))
     else
       wwqui_cloudy_bar_cen(k) = 0.0
     end if
   end do
   do k=1, nzstag
     if(sum(mask_bnd(1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR)).ge.0.5) then
-      wwqui_bar_bnd(k) = wwqui_bar_bnd(k)* real(nxy) /sum(mask_bnd(1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR))
+      wwqui_bar_bnd(k) = wwqui_bar_bnd(k)* real(nxy,crm_rknd) /sum(mask_bnd(1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR))
     else
       wwqui_bar_bnd(k) = 0.0
     end if
     if(sum(mask_bnd(1:nx, 1:ny, k, CLD, QUI, 1:NCLASS_PR)).ge.0.5) then
-      wwqui_cloudy_bar_bnd(k) = wwqui_cloudy_bar_bnd(k)* real(nxy) /sum(mask_bnd(1:nx, 1:ny, k, CLD, QUI, 1:NCLASS_PR))
+      wwqui_cloudy_bar_bnd(k) = wwqui_cloudy_bar_bnd(k)* real(nxy,crm_rknd) /sum(mask_bnd(1:nx, 1:ny, k, CLD, QUI, 1:NCLASS_PR))
     else
       wwqui_cloudy_bar_bnd(k) = 0.0
     end if
@@ -857,7 +858,7 @@ thresh_calc_loop: &
               do icl = 1,NCLASS_CL
 
                  do k = 1,nz
-                    mask = mask_cen(i,j,k,icl,QUI,ipr)/real(nxy)
+                    mask = mask_cen(i,j,k,icl,QUI,ipr)/real(nxy,crm_rknd)
 
 !
 ! calculate the vertical velocity variance over the quiescent class  +++mhwang
@@ -882,7 +883,7 @@ thresh_calc_loop: &
 ! Now, we can do a similar aggregation for the cell boundaries.
 !
                  do k = 1,nzstag
-                    mask = mask_bnd(i,j,k,icl,QUI,ipr)/real(nxy)
+                    mask = mask_bnd(i,j,k,icl,QUI,ipr)/real(nxy,crm_rknd)
 
                     !NOTE: technically we should interpolate and not do a simple
                     !      average to get density at the cell interface
@@ -951,27 +952,27 @@ subroutine determine_transport_thresh( &
 ! Soubroutine arguments...
 !
   integer, intent(in) :: nx, ny, nz, mode_updnthresh
-  real, intent(in) :: &
+  real(crm_rknd), intent(in) :: &
        cloudthresh, &
        downthresh, upthresh, &
        downthresh2, upthresh2
 !  type(time), intent(in) :: ctime
-  real, dimension(:,:,:), intent(in) :: &
+  real(crm_rknd), dimension(:,:,:), intent(in) :: &
        ww  
-  real, dimension(nz+1), intent(in) :: rhoair
-  real, dimension(nz+1,2), intent(out) :: wdown_thresh_k, wup_thresh_k
+  real(crm_rknd), dimension(nz+1), intent(in) :: rhoair
+  real(crm_rknd), dimension(nz+1,2), intent(out) :: wdown_thresh_k, wup_thresh_k
   integer, dimension(nx,ny), intent(in) :: cloudtop
-  real, dimension(nz+1), intent(out) :: wup_rms_k, wup_bar_k, wup_stddev_k, wdown_bar_k, wdown_rms_k, wdown_stddev_k
+  real(crm_rknd), dimension(nz+1), intent(out) :: wup_rms_k, wup_bar_k, wup_stddev_k, wdown_bar_k, wdown_rms_k, wdown_stddev_k
   integer, intent(out) :: kup_top, kdown_top  ! defined as the maximum level that allows updraft and downdraft
 !
 ! Local vars...
 !
-  real, dimension(nz+1) :: &
+  real(crm_rknd), dimension(nz+1) :: &
        tmpveca, tmpvecb, &
 !       wdown_bar_k, wdown_rms_k, wdown_stddev_k, &
 !       wup_bar_k, wup_rms_k, wup_stddev_k, &
        wup_rms_ksmo, wdown_rms_ksmo
-  real :: tmpsuma, tmpsumb, tmpw, tmpw_minval, &
+  real(crm_rknd) :: tmpsuma, tmpsumb, tmpw, tmpw_minval, &
        wdown_bar, wdown_rms, wdown_stddev, &
        wup_bar, wup_rms, wup_stddev
   integer, dimension(nx,ny) ::  &
@@ -1430,17 +1431,17 @@ subroutine setup_class_masks( &
 ! Soubroutine arguments...
 !
   integer, intent(in) :: nx, ny, nz, nupdraft, ndndraft, ndraft_max
-  real, dimension(:,:,:), intent(in) :: &
+  real(crm_rknd), dimension(:,:,:), intent(in) :: &
        cloudmixr, cf3d, precall, ww 
-  real, dimension(nz+1,2), intent(in) :: wdown_thresh_k, wup_thresh_k
-  real, intent(in) :: cloudthresh, prcpthresh
-  real, dimension(nx,ny,nz+1,NCLASS_CL,ndraft_max,NCLASS_PR), &
+  real(crm_rknd), dimension(nz+1,2), intent(in) :: wdown_thresh_k, wup_thresh_k
+  real(crm_rknd), intent(in) :: cloudthresh, prcpthresh
+  real(crm_rknd), dimension(nx,ny,nz+1,NCLASS_CL,ndraft_max,NCLASS_PR), &
        intent(out) :: mask_bnd
-  real, dimension(nx,ny,nz,NCLASS_CL,ndraft_max,NCLASS_PR), &
+  real(crm_rknd), dimension(nx,ny,nz,NCLASS_CL,ndraft_max,NCLASS_PR), &
        intent(out) :: mask_cen
-  real, dimension( :, :, :), intent(in) :: cloudmixr_total   ! total condensate (liquid+ice)
-  real, intent(in) :: cloudthresh_trans, precthresh_trans  ! threshold for transport classes
-  real, dimension( :, :, :), intent(in) :: qvs, precmixr_total 
+  real(crm_rknd), dimension( :, :, :), intent(in) :: cloudmixr_total   ! total condensate (liquid+ice)
+  real(crm_rknd), intent(in) :: cloudthresh_trans, precthresh_trans  ! threshold for transport classes
+  real(crm_rknd), dimension( :, :, :), intent(in) :: qvs, precmixr_total 
 !
 ! Local vars...
 !
@@ -1450,7 +1451,7 @@ subroutine setup_class_masks( &
        maskcld_bnd, maskclr_bnd, maskpry_bnd, maskprn_bnd
   integer, dimension(nz) :: maskcld, maskclr, maskpry, maskprn
   integer :: i, itr, icl, ipr, j, k, m, nzstag
-  real  :: cloudthresh_trans_temp, precthresh_trans_temp
+  real(crm_rknd)  :: cloudthresh_trans_temp, precthresh_trans_temp
 
   nzstag = nz+1
 !

@@ -13,16 +13,17 @@ module crmtracers
 
 
  use grid
+ use params, only: crm_rknd
  implicit none
 
- real tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers) 
- real fluxbtr (nx, ny, 0:ntracers) ! surface flux of tracers
- real fluxttr (nx, ny, 0:ntracers) ! top boundary flux of tracers
- real trwle(nz,0:ntracers)  ! resolved vertical flux 
- real trwsb(nz,0:ntracers)  ! SGS vertical flux 
- real tradv(nz,0:ntracers)  ! tendency due to vertical advection 
- real trdiff(nz,0:ntracers)  ! tendency due to vertical diffusion 
- real trphys(nz,0:ntracers)  ! tendency due to physics 
+ real(crm_rknd) tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers) 
+ real(crm_rknd) fluxbtr (nx, ny, 0:ntracers) ! surface flux of tracers
+ real(crm_rknd) fluxttr (nx, ny, 0:ntracers) ! top boundary flux of tracers
+ real(crm_rknd) trwle(nz,0:ntracers)  ! resolved vertical flux 
+ real(crm_rknd) trwsb(nz,0:ntracers)  ! SGS vertical flux 
+ real(crm_rknd) tradv(nz,0:ntracers)  ! tendency due to vertical advection 
+ real(crm_rknd) trdiff(nz,0:ntracers)  ! tendency due to vertical diffusion 
+ real(crm_rknd) trphys(nz,0:ntracers)  ! tendency due to physics 
  character *4 tracername(0:ntracers)
  character *10 tracerunits(0:ntracers)
 

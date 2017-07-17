@@ -4,7 +4,7 @@ module sgs
 ! Marat Khairoutdinov, 2012
 
 use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s 
-use params, only: dosgs
+use params, only: dosgs, crm_rknd
 use vars, only: tke2, tk2
 implicit none
 
@@ -15,7 +15,7 @@ implicit none
 
 integer, parameter :: nsgs_fields = 1   ! total number of prognostic sgs vars
 
-real sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields)
+real(crm_rknd) sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields)
 
 !!! sgs diagnostic variables that need to exchange boundary information (via MPI):
 
@@ -24,7 +24,7 @@ integer, parameter :: nsgs_fields_diag = 2   ! total number of diagnostic sgs va
 ! diagnostic fields' boundaries:
 integer, parameter :: dimx1_d=0, dimx2_d=nxp1, dimy1_d=1-YES3D, dimy2_d=nyp1
 
-real sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag)
+real(crm_rknd) sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag)
 
 logical:: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
 logical, parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
@@ -33,36 +33,36 @@ logical, parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagno
 integer, parameter :: flag_sgs3Dout(nsgs_fields) = (/0/)
 integer, parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
 
-real fluxbsgs (nx, ny, 1:nsgs_fields) ! surface fluxes 
-real fluxtsgs (nx, ny, 1:nsgs_fields) ! top boundary fluxes 
+real(crm_rknd) fluxbsgs (nx, ny, 1:nsgs_fields) ! surface fluxes 
+real(crm_rknd) fluxtsgs (nx, ny, 1:nsgs_fields) ! top boundary fluxes 
 
 !!! these arrays may be needed for output statistics:
 
-real sgswle(nz,1:nsgs_fields)  ! resolved vertical flux
-real sgswsb(nz,1:nsgs_fields)  ! SGS vertical flux
-real sgsadv(nz,1:nsgs_fields)  ! tendency due to vertical advection
-real sgslsadv(nz,1:nsgs_fields)  ! tendency due to large-scale vertical advection
-real sgsdiff(nz,1:nsgs_fields)  ! tendency due to vertical diffusion
+real(crm_rknd) sgswle(nz,1:nsgs_fields)  ! resolved vertical flux
+real(crm_rknd) sgswsb(nz,1:nsgs_fields)  ! SGS vertical flux
+real(crm_rknd) sgsadv(nz,1:nsgs_fields)  ! tendency due to vertical advection
+real(crm_rknd) sgslsadv(nz,1:nsgs_fields)  ! tendency due to large-scale vertical advection
+real(crm_rknd) sgsdiff(nz,1:nsgs_fields)  ! tendency due to vertical diffusion
 
 !------------------------------------------------------------------
 ! internal (optional) definitions:
 
 ! make aliases for prognostic variables:
 
-real tke(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
+real(crm_rknd) tke(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
 equivalence (tke(dimx1_s,dimy1_s,1),sgs_field(dimx1_s,dimy1_s,1,1))
 
 ! make aliases for diagnostic variables:
 
-real tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
-real tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
+real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
+real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
 equivalence (tk(dimx1_d,dimy1_d,1), sgs_field_diag(dimx1_d, dimy1_d,1,1))
 equivalence (tkh(dimx1_d,dimy1_d,1), sgs_field_diag(dimx1_d, dimy1_d,1,2))
 
 
-real grdf_x(nzm)! grid factor for eddy diffusion in x
-real grdf_y(nzm)! grid factor for eddy diffusion in y
-real grdf_z(nzm)! grid factor for eddy diffusion in z
+real(crm_rknd) grdf_x(nzm)! grid factor for eddy diffusion in x
+real(crm_rknd) grdf_y(nzm)! grid factor for eddy diffusion in y
+real(crm_rknd) grdf_z(nzm)! grid factor for eddy diffusion in z
 
 
 logical:: dosmagor   ! if true, then use Smagorinsky closure
@@ -72,7 +72,7 @@ logical:: dosmagor   ! if true, then use Smagorinsky closure
 
 ! Local diagnostics:
 
-real tkesbbuoy(nz), tkesbshear(nz),tkesbdiss(nz), tkesbdiff(nz)
+real(crm_rknd) tkesbbuoy(nz), tkesbshear(nz),tkesbdiss(nz), tkesbdiff(nz)
 
 CONTAINS
 
@@ -158,8 +158,8 @@ subroutine sgs_init()
     end do
   else
     do k=1,nzm
-       grdf_x(k) = min(16.,dx**2/(adz(k)*dz)**2)
-       grdf_y(k) = min(16.,dy**2/(adz(k)*dz)**2)
+       grdf_x(k) = min( real(16.,crm_rknd), dx**2/(adz(k)*dz)**2)
+       grdf_y(k) = min( real(16.,crm_rknd), dy**2/(adz(k)*dz)**2)
        grdf_z(k) = 1.
     end do
   end if
@@ -277,10 +277,10 @@ subroutine kurant_sgs(cfl)
 use grid, only: dt, dx, dy, dz, adz, adzw
 implicit none
 
-real, intent(out) :: cfl
+real(crm_rknd), intent(out) :: cfl
 
 integer k
-real tkhmax(nz)
+real(crm_rknd) tkhmax(nz)
 
 do k = 1,nzm
  tkhmax(k) = maxval(tkh(1:nx,1:ny,k))
@@ -317,8 +317,8 @@ subroutine sgs_scalars()
   use params, only: dotracers
   implicit none
 
-    real dummy(nz)
-    real fluxbtmp(nx,ny), fluxttmp(nx,ny) !bloss
+    real(crm_rknd) dummy(nz)
+    real(crm_rknd) fluxbtmp(nx,ny), fluxttmp(nx,ny) !bloss
     integer k
 
 

@@ -6,11 +6,12 @@ subroutine compress3D (f,nx,ny,nz,name, long_name, units, &
 ! and writes the latter into a file.
 
 use grid, only: output_sep
+use params, only: crm_rknd
 	implicit none
 ! Input:
 
 integer nx,ny,nz
-real f(nx,ny,nz)
+real(crm_rknd) f(nx,ny,nz)
 character*(*) name,long_name,units
 integer rank,rrr,ttt,irank,nsubdomains
 logical savebin, dompi
@@ -18,7 +19,8 @@ logical savebin, dompi
 ! Local:
 
 integer(2), allocatable :: byte(:)
-real(4), allocatable :: byte4(:)
+! real(4), allocatable :: byte4(:)
+real(crm_rknd), allocatable :: byte4(:)
 integer size,count
 
 character(10) value_min(nz), value_max(nz)
@@ -26,7 +28,7 @@ character(7) form
 integer int_fac, integer_max, integer_min
 parameter (int_fac=2,integer_min=-32000, integer_max=32000)
 !	parameter (int_fac=1,integer_min=-127, integer_max=127)
-real f_max,f_min, f_max1, f_min1, scale
+real(crm_rknd) f_max,f_min, f_max1, f_min1, scale
 integer i,j,k,req
 
 
@@ -120,7 +122,7 @@ else
    write(value_max(k),form) f_max
    write(value_min(k),form) f_min
 
-   scale = float(integer_max-integer_min)/(f_max-f_min+1.e-20)
+   scale = real(integer_max-integer_min,crm_rknd)/(f_max-f_min+1.e-20)
 
    do j=1,ny
     do i=1,nx

@@ -4,14 +4,15 @@ subroutine bound_exchange(f,dimx1,dimx2,dimy1,dimy2,dimz,i_1, i_2, j_1, j_2, id)
 
 
 use grid
+use params, only: crm_rknd
 implicit none
 	
 integer dimx1, dimx2, dimy1, dimy2, dimz
 integer i_1, i_2, j_1, j_2
-real f(dimx1:dimx2, dimy1:dimy2, dimz)
+real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz)
 integer id   ! id of the sent field (dummy variable)
 	
-real buffer((nx+ny)*3*nz)	! buffer for sending data
+real(crm_rknd) buffer((nx+ny)*3*nz)	! buffer for sending data
 	
 integer i, j, k, n
 integer i1, i2, j1, j2

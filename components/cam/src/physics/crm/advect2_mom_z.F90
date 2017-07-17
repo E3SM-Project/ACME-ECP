@@ -4,13 +4,14 @@ subroutine advect2_mom_z
 !       momentum tendency due to the 2nd-order-central vertical advection
 
 use vars
+use params, only: crm_rknd
 
 implicit none
 
 
-real fuz(nx,ny,nz),fvz(nx,ny,nz),fwz(nx,ny,nzm)
+real(crm_rknd) fuz(nx,ny,nz),fvz(nx,ny,nz),fwz(nx,ny,nzm)
 integer i, j, k, kc, kb
-real dz2, dz25, www, rhoi
+real(crm_rknd) dz2, dz25, www, rhoi
 
 dz25=1./(4.*dz)
 dz2=dz25*2.

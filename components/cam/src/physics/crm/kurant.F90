@@ -3,13 +3,14 @@ subroutine kurant
 
 use vars
 use sgs, only: kurant_sgs
+use params, only: crm_rknd
 
 implicit none
 
 integer i, j, k, ncycle1(1),ncycle2(1)
-real wm(nz)  ! maximum vertical wind velocity
-real uhm(nz) ! maximum horizontal wind velocity
-real cfl, cfl_sgs
+real(crm_rknd) wm(nz)  ! maximum vertical wind velocity
+real(crm_rknd) uhm(nz) ! maximum horizontal wind velocity
+real(crm_rknd) cfl, cfl_sgs
 
 ncycle = 1
 	
@@ -18,8 +19,8 @@ do k = 1,nzm
  wm(k) = maxval(abs(w(1:nx,1:ny,k)))
  uhm(k) = sqrt(maxval(u(1:nx,1:ny,k)**2+YES3D*v(1:nx,1:ny,k)**2))
 end do
-w_max=max(w_max,maxval(w(1:nx,1:ny,1:nz)))
-u_max=max(u_max,maxval(uhm(1:nzm)))
+w_max=max( w_max, real(maxval(w(1:nx,1:ny,1:nz)),kind(w_max)) )
+u_max=max( u_max, real(maxval(uhm(1:nzm))       ,kind(u_max)) )
 
 cfl = 0.
 do k=1,nzm

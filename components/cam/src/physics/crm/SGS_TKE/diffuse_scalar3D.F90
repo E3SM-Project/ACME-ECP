@@ -1,22 +1,22 @@
 subroutine diffuse_scalar3D (field,fluxb,fluxt,tkh,rho,rhow,flux)
 
 use grid
-use params, only: docolumn,dowallx,dowally,dosgs
+use params, only: docolumn,dowallx,dowally,dosgs,crm_rknd
 use sgs, only: grdf_x,grdf_y,grdf_z
 implicit none
 ! input	
-real field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
-real tkh(0:nxp1,1-YES3D:nyp1,nzm)	! eddy conductivity
-real fluxb(nx,ny)		! bottom flux
-real fluxt(nx,ny)		! top flux
-real rho(nzm)
-real rhow(nz)
-real flux(nz)
+real(crm_rknd) field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
+real(crm_rknd) tkh(0:nxp1,1-YES3D:nyp1,nzm)	! eddy conductivity
+real(crm_rknd) fluxb(nx,ny)		! bottom flux
+real(crm_rknd) fluxt(nx,ny)		! top flux
+real(crm_rknd) rho(nzm)
+real(crm_rknd) rhow(nz)
+real(crm_rknd) flux(nz)
 ! local        
-real flx(0:nx,0:ny,0:nzm)
-real dfdt(nx,ny,nz)
-real rdx2,rdy2,rdz2,rdz,rdx5,rdy5,rdz5,tmp
-real dxy,dxz,dyx,dyz,dzx,dzy,tkx,tky,tkz,rhoi
+real(crm_rknd) flx(0:nx,0:ny,0:nzm)
+real(crm_rknd) dfdt(nx,ny,nz)
+real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx5,rdy5,rdz5,tmp
+real(crm_rknd) dxy,dxz,dyx,dyz,dzx,dzy,tkx,tky,tkz,rhoi
 integer i,j,k,ib,ic,jb,jc,kc,kb
 
 

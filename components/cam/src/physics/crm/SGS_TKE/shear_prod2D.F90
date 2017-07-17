@@ -2,12 +2,13 @@
 subroutine shear_prod2D(def2)
 	
 use vars
+use params, only: crm_rknd
 implicit none
 	
-real def2(nx,ny,nzm)
+real(crm_rknd) def2(nx,ny,nzm)
 	
-real rdx0,rdx,rdx_up,rdx_dn
-real rdz,rdzw_up,rdzw_dn
+real(crm_rknd) rdx0,rdx,rdx_up,rdx_dn
+real(crm_rknd) rdz,rdzw_up,rdzw_dn
 integer i,j,k,ib,ic,kb,kc
 
 rdx0=1./dx 

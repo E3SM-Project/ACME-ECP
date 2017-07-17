@@ -4,7 +4,7 @@ module microphysics
 ! Marat Khairoutdinov, 2006
 
 use grid, only: nx,ny,nzm,nz, dimx1_s,dimx2_s,dimy1_s,dimy2_s ! subdomain grid information 
-use params, only: doprecip, docloud, doclubb
+use params, only: doprecip, docloud, doclubb, crm_rknd
 use micro_params
 implicit none
 
@@ -15,7 +15,7 @@ integer, parameter :: nmicro_fields = 2   ! total number of prognostic water var
 
 !!! microphysics prognostic variables are storred in this array:
 
-real micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields)
+real(crm_rknd) micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields)
 
 integer, parameter :: flag_wmass(nmicro_fields) = (/1,1/)
 integer, parameter :: index_water_vapor = 1 ! index for variable that has water vapor
@@ -28,17 +28,17 @@ integer, parameter :: flag_number(nmicro_fields) = (/0,0/)
 ! SAM1MOM 3D microphysical fields are output by default.
 integer, parameter :: flag_micro3Dout(nmicro_fields) = (/0,0/)
 
-real fluxbmk (nx, ny, 1:nmicro_fields) ! surface flux of tracers
-real fluxtmk (nx, ny, 1:nmicro_fields) ! top boundary flux of tracers
+real(crm_rknd) fluxbmk (nx, ny, 1:nmicro_fields) ! surface flux of tracers
+real(crm_rknd) fluxtmk (nx, ny, 1:nmicro_fields) ! top boundary flux of tracers
 
 !!! these arrays are needed for output statistics:
 
-real mkwle(nz,1:nmicro_fields)  ! resolved vertical flux
-real mkwsb(nz,1:nmicro_fields)  ! SGS vertical flux
-real mkadv(nz,1:nmicro_fields)  ! tendency due to vertical advection
-real mklsadv(nz,1:nmicro_fields)  ! tendency due to large-scale vertical advection
-real mkdiff(nz,1:nmicro_fields)  ! tendency due to vertical diffusion
-real mstor(nz,1:nmicro_fields)  ! storage terms of microphysical variables
+real(crm_rknd) mkwle(nz,1:nmicro_fields)  ! resolved vertical flux
+real(crm_rknd) mkwsb(nz,1:nmicro_fields)  ! SGS vertical flux
+real(crm_rknd) mkadv(nz,1:nmicro_fields)  ! tendency due to vertical advection
+real(crm_rknd) mklsadv(nz,1:nmicro_fields)  ! tendency due to large-scale vertical advection
+real(crm_rknd) mkdiff(nz,1:nmicro_fields)  ! tendency due to vertical diffusion
+real(crm_rknd) mstor(nz,1:nmicro_fields)  ! storage terms of microphysical variables
 
 !======================================================================
 ! UW ADDITIONS
@@ -47,7 +47,7 @@ real mstor(nz,1:nmicro_fields)  ! storage terms of microphysical variables
 character*3, dimension(nmicro_fields) :: mkname
 character*80, dimension(nmicro_fields) :: mklongname
 character*10, dimension(nmicro_fields) :: mkunits
-real, dimension(nmicro_fields) :: mkoutputscale
+real(crm_rknd), dimension(nmicro_fields) :: mkoutputscale
 
 ! END UW ADDITIONS
 !======================================================================
@@ -58,17 +58,17 @@ real, dimension(nmicro_fields) :: mkoutputscale
 ! make aliases for prognostic variables:
 ! note that the aliases should be local to microphysics
 
-real q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
-real qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
+real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
+real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
 equivalence (q(dimx1_s,dimy1_s,1),micro_field(dimx1_s,dimy1_s,1,1))
 equivalence (qp(dimx1_s,dimy1_s,1),micro_field(dimx1_s,dimy1_s,1,2))
 
-real qn(nx,ny,nzm)  ! cloud condensate (liquid + ice)
+real(crm_rknd) qn(nx,ny,nzm)  ! cloud condensate (liquid + ice)
 
-real qpsrc(nz)  ! source of precipitation microphysical processes
-real qpevp(nz)  ! sink of precipitating water due to evaporation
+real(crm_rknd) qpsrc(nz)  ! source of precipitation microphysical processes
+real(crm_rknd) qpevp(nz)  ! sink of precipitating water due to evaporation
 
-real vrain, vsnow, vgrau, crain, csnow, cgrau  ! precomputed coefs for precip terminal velocity
+real(crm_rknd) vrain, vsnow, vgrau, crain, csnow, cgrau  ! precomputed coefs for precip terminal velocity
 
 CONTAINS
 
@@ -235,7 +235,7 @@ subroutine micro_diagnose()
  
    use vars
 
-   real omn, omp
+   real(crm_rknd) omn, omp
    integer i,j,k
 
    do k=1,nzm
@@ -292,7 +292,7 @@ subroutine micro_adjust( new_qv, new_qc )
 
   implicit none
 
-  real, dimension(nx,ny,nzm), intent(in) :: &
+  real(crm_rknd), dimension(nx,ny,nzm), intent(in) :: &
   new_qv, & ! Water vapor mixing ratio that has been adjusted by CLUBB [kg/kg]
   new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg]. 
             ! For the single moment microphysics, it is liquid + ice
@@ -309,7 +309,7 @@ subroutine micro_diagnose_clubb()
    use constants_clubb, only: fstderr, zero_threshold
    use error_code, only: clubb_at_least_debug_level ! Procedur
 
-   real omn, omp
+   real(crm_rknd) omn, omp
    integer i,j,k
 
    do k=1,nzm
@@ -351,11 +351,11 @@ end subroutine micro_diagnose_clubb
 !!! function to compute terminal velocity for precipitating variables:
 ! In this particular case there is only one precipitating variable.
 
-real function term_vel_qp(i,j,k,ind)
+real(crm_rknd) function term_vel_qp(i,j,k,ind)
   
   use vars
   integer, intent(in) :: i,j,k,ind
-  real wmax, omp, omg, qrr, qss, qgg
+  real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
 
   term_vel_qp = 0.
   if(qp(i,j,k).gt.qp_threshold) then
@@ -389,7 +389,7 @@ subroutine micro_precip_fall()
   use vars
   use params, only : pi
 
-  real omega(nx,ny,nzm)
+  real(crm_rknd) omega(nx,ny,nzm)
   integer ind
   integer i,j,k
 
@@ -449,11 +449,11 @@ end function total_water
 ! dummy effective radius functions:
 
 function Get_reffc() ! liquid water
-  real, pointer, dimension(:,:,:) :: Get_reffc
+  real(crm_rknd), pointer, dimension(:,:,:) :: Get_reffc
 end function Get_reffc
 
 function Get_reffi() ! ice
-  real, pointer, dimension(:,:,:) :: Get_reffi
+  real(crm_rknd), pointer, dimension(:,:,:) :: Get_reffi
 end function Get_reffi
 
 

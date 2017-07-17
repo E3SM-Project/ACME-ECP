@@ -12,16 +12,16 @@ use vars, only: CF3D
 implicit none
 
 integer i,j,k
-real autor, autos, accrr, accris, accrcs, accrig, accrcg
-real dq, omn, omp, omg, qsatt
-real pows1, pows2, powg1, powg2, powr1, powr2, tmp
-real qii, qcc, qrr, qss, qgg
+real(crm_rknd) autor, autos, accrr, accris, accrcs, accrig, accrcg
+real(crm_rknd) dq, omn, omp, omg, qsatt
+real(crm_rknd) pows1, pows2, powg1, powg2, powr1, powr2, tmp
+real(crm_rknd) qii, qcc, qrr, qss, qgg
 
-real cld3d(nx, ny, nzm), cldmax(nx, ny, nzm)
-real cld3d_temp(nx, ny, nzm)
-real cloud_frac_thresh
-real qclr
-real dqpsrc, dqpevp
+real(crm_rknd) cld3d(nx, ny, nzm), cldmax(nx, ny, nzm)
+real(crm_rknd) cld3d_temp(nx, ny, nzm)
+real(crm_rknd) cloud_frac_thresh
+real(crm_rknd) qclr
+real(crm_rknd) dqpsrc, dqpevp
 
 powr1 = (3 + b_rain) / 4.
 powr2 = (5 + b_rain) / 8.

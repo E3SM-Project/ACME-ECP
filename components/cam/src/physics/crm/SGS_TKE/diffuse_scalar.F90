@@ -4,18 +4,19 @@ subroutine diffuse_scalar (f,fluxb,fluxt, &
 use grid
 use vars, only: rho, rhow
 use sgs, only: tkh
+use params, only: crm_rknd
 implicit none
 
 ! input:	
-real f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
-real fluxb(nx,ny)		! bottom flux
-real fluxt(nx,ny)		! top flux
-real flux(nz)
-real f2lediff(nz),f2lediss(nz),fwlediff(nz)
-real fdiff(nz)
+real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
+real(crm_rknd) fluxb(nx,ny)		! bottom flux
+real(crm_rknd) fluxt(nx,ny)		! top flux
+real(crm_rknd) flux(nz)
+real(crm_rknd) f2lediff(nz),f2lediss(nz),fwlediff(nz)
+real(crm_rknd) fdiff(nz)
 logical doit
 ! Local
-real df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
+real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
 integer i,j,k
 
 !call t_startf ('diffuse_scalars')

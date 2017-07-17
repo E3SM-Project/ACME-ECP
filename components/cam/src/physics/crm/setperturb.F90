@@ -8,17 +8,18 @@ subroutine setperturb(iseed)
 
 use vars
 use sgs, only: setperturb_sgs
+use params, only: crm_rknd
 
 implicit none
 
 integer, intent(in) :: iseed
 
 integer i,j,k
-real rrr,ranf_
+real(crm_rknd) rrr,ranf_
 integer, allocatable :: rndm_seed(:)
 integer :: rndm_seed_sz
-real :: t02(nzm)
-real :: tke02(nzm)
+real(crm_rknd) :: t02(nzm)
+real(crm_rknd) :: tke02(nzm)
 
 !call ranset_(30*rank)
 call random_seed(size=rndm_seed_sz)

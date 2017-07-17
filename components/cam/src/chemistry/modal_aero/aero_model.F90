@@ -2943,9 +2943,9 @@ do_lphase2_conditional: &
           ! if (ieee_is_nan(vlc_grv(i,k)))  vlc_grv(i,k) = 0.0_r8 
 
           if ( ieee_is_nan(vlc_grv(i,k)) ) then
-            write(iulog,*) 'whannah - modal_aero_depvel_part() '
-            write(iulog,*) 'i,k,pmid  : ',i,k,pmid(i,k)
-            write(iulog,*) 'T (k)     : ',t(i,k)
+            ! write(iulog,*) 'whannah - modal_aero_depvel_part() '
+            ! write(iulog,*) 'i,k,pmid  : ',i,k,pmid(i,k)
+            ! write(iulog,*) 'T (k)     : ',t(i,k)
             ! write(iulog,*) 'vlc_grv       : ',vlc_grv(i,k)
             ! write(iulog,*) 'vsc_dyn_atm   : ',vsc_dyn_atm(i,k)
             ! write(iulog,*) 'lnsig         : ',lnsig

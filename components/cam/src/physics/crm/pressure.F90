@@ -10,7 +10,7 @@ subroutine pressure
 !       For more processors for the given number of levels and 3D, use pressure_big
 
 use vars
-use params, only: dowallx, dowally, docolumn
+use params, only: dowallx, dowally, docolumn, crm_rknd
 implicit none
 	
 
@@ -19,17 +19,17 @@ integer, parameter :: nzslab = max(1,nzm / npressureslabs)
 integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
 integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
 
-real f(nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
-real ff(nx+1,ny+2*YES3D,nzm)	! local (subdomain's) version of f
-real buff_slabs(nxp1,nyp2,nzslab,npressureslabs)
-real buff_subs(nxp1,nyp2,nzslab,nsubdomains) 
-real bufp_slabs(0:nx,1-YES3D:ny,nzslab,npressureslabs)  
-real bufp_subs(0:nx,1-YES3D:ny,nzslab,nsubdomains)  
+real(crm_rknd) f(nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
+real(crm_rknd) ff(nx+1,ny+2*YES3D,nzm)	! local (subdomain's) version of f
+real(crm_rknd) buff_slabs(nxp1,nyp2,nzslab,npressureslabs)
+real(crm_rknd) buff_subs(nxp1,nyp2,nzslab,nsubdomains) 
+real(crm_rknd) bufp_slabs(0:nx,1-YES3D:ny,nzslab,npressureslabs)  
+real(crm_rknd) bufp_subs(0:nx,1-YES3D:ny,nzslab,nsubdomains)  
 common/tmpstack/f,ff,buff_slabs,buff_subs
 equivalence (buff_slabs,bufp_slabs)
 equivalence (buff_subs,bufp_subs)
 
-real work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
+real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
 integer ifaxj(100),ifaxi(100)
 
 real(8) a(nzm),b,c(nzm),e,fff(nzm)	
@@ -157,10 +157,8 @@ end do
 ! Perform Fourier transformation for a slab:
 
 if(rank.lt.npressureslabs) then
-
  call fftfax_crm(nx_gl,ifaxi,trigxi)
  if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
-
  do k=1,nzslab
 
    call fft991_crm(f(1,1,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)

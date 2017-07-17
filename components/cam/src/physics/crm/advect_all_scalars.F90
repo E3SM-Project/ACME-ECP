@@ -10,7 +10,8 @@ subroutine advect_all_scalars()
   use params, only: dotracers
 #endif
   implicit none
-  real dummy(nz)
+  ! real dummy(nz)
+  real(crm_rknd) dummy(nz)
   integer k
 
 

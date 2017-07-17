@@ -7,7 +7,7 @@ subroutine forcing
 
         implicit none
 
-        real coef,qneg,qpoz, factor
+        real(crm_rknd) coef,qneg,qpoz, factor
         integer i,j,k,nneg
 
         coef = 1./3600.
@@ -37,7 +37,7 @@ subroutine forcing
              factor = 1. + qneg/qpoz
              do j=1,ny
               do i=1,nx
-               micro_field(i,j,k,index_water_vapor) = max(0.,micro_field(i,j,k,index_water_vapor)*factor)
+               micro_field(i,j,k,index_water_vapor) = max(real(0.,crm_rknd),micro_field(i,j,k,index_water_vapor)*factor)
               end do
              end do
             end if

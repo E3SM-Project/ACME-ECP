@@ -3,6 +3,7 @@ module advect_um_lib
 !	function & subroutine library for the 5th ULTIMATE-MACHO scheme
 
 	use grid
+	use params, only: crm_rknd
 	implicit none
 	
 	logical, parameter :: fct = .true. 	! apply FCT for monotone
@@ -13,31 +14,31 @@ module advect_um_lib
 	logical, dimension(4) :: updated_cn = .false.	! maximum icycle is 4. See kurant.f90
 
 	!	Courant number
-	real, dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm) :: cu
-	real, dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm) :: cv
-	real, dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ) :: cw
+	real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm) :: cu
+	real(crm_rknd), dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm) :: cv
+	real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ) :: cw
 	
 	!	Inverse of adz, adzw, rho and rhow*adz, common for same icycle
-	real, dimension(nzm) :: iadz, iadzw, irho, irhow
+	real(crm_rknd), dimension(nzm) :: iadz, iadzw, irho, irhow
 	
 	!	f for advective form update, face values
-	real, dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: fadv
-	real, dimension(0:nxp2,          dimy1_s:dimy2_s, nzm) :: fx
-	real, dimension(dimx1_s:dimx2_s, 0:nyp2,          nzm) :: fy
-	real, dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nz ) :: fz
+	real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: fadv
+	real(crm_rknd), dimension(0:nxp2,          dimy1_s:dimy2_s, nzm) :: fx
+	real(crm_rknd), dimension(dimx1_s:dimx2_s, 0:nyp2,          nzm) :: fy
+	real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nz ) :: fz
 	
 contains
 
 	!--------------------------------------------------------------------------------------------------
 
-	real function face_2nd( f_im1, f_i, cn )
+	real(crm_rknd) function face_2nd( f_im1, f_i, cn )
 	
 		!	Returns face value at left side of i-th control volume, f_i
 		
 		implicit none
 		
 		!	input
-		real, intent(in) :: f_im1, f_i, cn
+		real(crm_rknd), intent(in) :: f_im1, f_i, cn
 		
 		!	Face value
 		face_2nd = 0.5 * ( f_i + f_im1 - cn * ( f_i - f_im1 ) )
@@ -46,14 +47,14 @@ contains
 
 	!--------------------------------------------------------------------------------------------------
 
-	real function face_2nd_z( f_im1, f_i, cn, i )
+	real(crm_rknd) function face_2nd_z( f_im1, f_i, cn, i )
 		
 		!	Returns face value for non-uniform grid. Only used for vertial grid
 		
 		implicit none
 		
 		!	input
-		real, intent(in) :: f_im1, f_i, cn
+		real(crm_rknd), intent(in) :: f_im1, f_i, cn
 		integer, intent(in) :: i
 		
 		!	Face value
@@ -63,15 +64,15 @@ contains
 
 	!--------------------------------------------------------------------------------------------------
 
-	real function face_3rd( f_im2, f_im1, f_i, f_ip1, cn )
+	real(crm_rknd) function face_3rd( f_im2, f_im1, f_i, f_ip1, cn )
 			
 		implicit none
 		
 		!	input
-		real, intent(in) :: f_im2, f_im1, f_i, f_ip1, cn
+		real(crm_rknd), intent(in) :: f_im2, f_im1, f_i, f_ip1, cn
 	
 		!	local
-		real :: difference2, difference3
+		real(crm_rknd) :: difference2, difference3
 		
 		!	2nd & 3rd difference
 		difference2 = f_ip1 - f_i - f_im1 + f_im2
@@ -85,16 +86,16 @@ contains
 
 	!--------------------------------------------------------------------------------------------------
 
-	real function face_3rd_z( f_im2, f_im1, f_i, f_ip1, cn, i )
+	real(crm_rknd) function face_3rd_z( f_im2, f_im1, f_i, f_ip1, cn, i )
 			
 		implicit none
 		
 		!	input
-		real, intent(in) :: f_im2, f_im1, f_i, f_ip1, cn
+		real(crm_rknd), intent(in) :: f_im2, f_im1, f_i, f_ip1, cn
 		integer, intent(in) :: i
 	
 		!	local
-		real :: positive_3rd, negative_3rd
+		real(crm_rknd) :: positive_3rd, negative_3rd
 		
 		positive_3rd = 1./6. * ( cn * cn * adz(i) * adz(i) * iadzw(i) * iadzw(i-1) - 1. ) &
 			* ( adzw(i-1) * iadz(i-1) * ( f_i - f_im1 ) - adzw(i) * iadz(i-1) * ( f_im1 - f_im2 ) )
@@ -109,15 +110,15 @@ contains
 	
 	!--------------------------------------------------------------------------------------------------
 
-	real function face_5th( f_im3, f_im2, f_im1, f_i, f_ip1, f_ip2, cn )
+	real(crm_rknd) function face_5th( f_im3, f_im2, f_im1, f_i, f_ip1, f_ip2, cn )
 			
 		implicit none
 		
 		!	input
-		real, intent(in) :: f_im3, f_im2, f_im1, f_i, f_ip1, f_ip2, cn
+		real(crm_rknd), intent(in) :: f_im3, f_im2, f_im1, f_i, f_ip1, f_ip2, cn
 	
 		!	local
-		real :: difference2, difference3, difference4, difference5
+		real(crm_rknd) :: difference2, difference3, difference4, difference5
 		
 		!	2-5th difference
 		difference2 = f_ip1 - f_i - f_im1 + f_im2
@@ -134,16 +135,16 @@ contains
 
 	!--------------------------------------------------------------------------------------------------
 
-	real function face_5th_z( f_im3, f_im2, f_im1, f_i, f_ip1, f_ip2, cn, i )
+	real(crm_rknd) function face_5th_z( f_im3, f_im2, f_im1, f_i, f_ip1, f_ip2, cn, i )
 			
 		implicit none
 		
 		!	input
-		real, intent(in) :: f_im3, f_im2, f_im1, f_i, f_ip1, f_ip2, cn
+		real(crm_rknd), intent(in) :: f_im3, f_im2, f_im1, f_i, f_ip1, f_ip2, cn
 		integer, intent(in) :: i
 	
 		!	local
-		real :: positive_5th, negative_5th
+		real(crm_rknd) :: positive_5th, negative_5th
 		
 		positive_5th = 1./120. * ( cn * cn * adz(i) * adz(i) * iadzw(i) * iadzw(i-1) - 1. ) &
 			* ( cn * cn * adz(i) * adz(i) * iadzw(i+1) * iadzw(i-2) - 4. ) &
@@ -178,11 +179,11 @@ contains
 
 	!--------------------------------------------------------------------------------------------------
 	
-	real function advective_cn( cn_left, cn_right )
+	real(crm_rknd) function advective_cn( cn_left, cn_right )
 	
 		!	Returns advective courant number
 		implicit none
-		real, intent(in) :: cn_left, cn_right 
+		real(crm_rknd), intent(in) :: cn_left, cn_right 
 		
 		! original method to estimate advective velocity for advective update
 		if ( (cn_right > 0.).and.(cn_left >= 0.) ) then
@@ -359,23 +360,23 @@ contains
 		implicit none
 	
 		!	input & output
-		real, dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
+		real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
 		
 		!	input
-		real, dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(in) :: u
-		real, dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm), intent(in) :: v
-		real, dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
+		real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(in) :: u
+		real(crm_rknd), dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm), intent(in) :: v
+		real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
 			
 		!	output
-		real, dimension(nz), intent(out) :: flux
+		real(crm_rknd), dimension(nz), intent(out) :: flux
 	
 		!	local
-		real, dimension(-1:nxp3, -1:nyp2, nzm) :: flx_x
-		real, dimension(-1:nxp2, -1:nyp3, nzm) :: flx_y
-		real, dimension(-1:nxp2, -1:nyp2, nz ) :: flx_z
-		real, dimension(0:nxp1, 0:nyp1, nzm) :: mn, mx
+		real(crm_rknd), dimension(-1:nxp3, -1:nyp2, nzm) :: flx_x
+		real(crm_rknd), dimension(-1:nxp2, -1:nyp3, nzm) :: flx_y
+		real(crm_rknd), dimension(-1:nxp2, -1:nyp2, nz ) :: flx_z
+		real(crm_rknd), dimension(0:nxp1, 0:nyp1, nzm) :: mn, mx
 		integer :: i, j, k, km1, kp1
-		real, parameter :: eps = 1.e-10
+		real(crm_rknd), parameter :: eps = 1.e-10
 		
 		!	Set bottom and top vertical flux zero, also horizontal sum of vertical flux for output
 		flx_z(:,:,1)  = 0.
@@ -538,21 +539,21 @@ contains
 		implicit none
 	
 		!	input & output
-		real, dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
+		real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
 		
 		!	input
-		real, dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(in) :: u
-		real, dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
+		real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(in) :: u
+		real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
 		
 		!	input & output
-		real, dimension(nz), intent(out) :: flux
+		real(crm_rknd), dimension(nz), intent(out) :: flux
 	
 		!	local
-		real, dimension(-1:nxp3, nzm) :: flx_x
-		real, dimension(-1:nxp2, nz ) :: flx_z	
-		real, dimension(0:nxp1, nzm) :: mn, mx
+		real(crm_rknd), dimension(-1:nxp3, nzm) :: flx_x
+		real(crm_rknd), dimension(-1:nxp2, nz ) :: flx_z	
+		real(crm_rknd), dimension(0:nxp1, nzm) :: mn, mx
 		integer :: i, k, km1, kp1
-		real, parameter :: eps = 1.e-10
+		real(crm_rknd), parameter :: eps = 1.e-10
 		
 		!	Set bottom and top vertical flux zero, also horizontal sum of vertical flux for output
 		flx_z(:,1)  = 0.

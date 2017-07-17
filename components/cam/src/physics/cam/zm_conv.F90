@@ -13,29 +13,29 @@ module zm_conv
 ! Author: Byron Boville, from code in tphysbc
 !
 !---------------------------------------------------------------------------------
-  use shr_kind_mod,    only: r8 => shr_kind_r8
-  use spmd_utils,      only: masterproc
-  use ppgrid,          only: pcols, pver, pverp
-  use cloud_fraction,  only: cldfrc_fice
-  use physconst,       only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
+   use shr_kind_mod,    only: r8 => shr_kind_r8
+   use spmd_utils,      only: masterproc
+   use ppgrid,          only: pcols, pver, pverp
+   use cloud_fraction,  only: cldfrc_fice
+   use physconst,       only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
                              cpwv, cpliq, rh2o
-  use cam_abortutils,      only: endrun
-  use cam_logfile,     only: iulog
+   use cam_abortutils,      only: endrun
+   use cam_logfile,     only: iulog
 
-  implicit none
+   implicit none
 
-  save
-  private                         ! Make default type private to the module
+   save
+   private                         ! Make default type private to the module
 !
 ! PUBLIC: interfaces
 !
-  public zmconv_readnl            ! read zmconv_nl namelist
-  public zm_convi                 ! ZM schemea
-  public zm_convr                 ! ZM schemea
-  public zm_conv_evap             ! evaporation of precip from ZM schemea
-  public convtran                 ! convective transport
-  public momtran                  ! convective momentum transport
-  public trigmem                  ! true if convective memory
+   public zmconv_readnl            ! read zmconv_nl namelist
+   public zm_convi                 ! ZM schemea
+   public zm_convr                 ! ZM schemea
+   public zm_conv_evap             ! evaporation of precip from ZM schemea
+   public convtran                 ! convective transport
+   public momtran                  ! convective momentum transport
+   public trigmem                  ! true if convective memory
 
 !
 ! Private data
@@ -242,26 +242,26 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  w  * cape     convective available potential energy.
 !  wg * capeg    gathered convective available potential energy.
 !  c  * capelmt  threshold value for cape for deep convection.
-!  ic  * cpres    specific heat at constant pressure in j/kg-degk.
+!  ic  * cpres   specific heat at constant pressure in j/kg-degk.
 !  i  * dpp      
-!  ic  * delt     length of model time-step in seconds.
+!  ic  * delt    length of model time-step in seconds.
 !  wg * dp       layer thickness in mbs (between upper/lower interface).
 !  wg * dqdt     mixing ratio tendency at gathered points.
 !  wg * dsdt     dry static energy ("temp") tendency at gathered points.
 !  wg * dudt     u-wind tendency at gathered points.
 !  wg * dvdt     v-wind tendency at gathered points.
 !  wg * dsubcld  layer thickness in mbs between lcl and maxi.
-!  ic  * grav     acceleration due to gravity in m/sec2.
+!  ic  * grav    acceleration due to gravity in m/sec2.
 !  wg * du       detrainment in updraft. specified in mid-layer
 !  wg * ed       entrainment in downdraft.
 !  wg * eu       entrainment in updraft.
 !  wg * hmn      moist static energy.
 !  wg * hsat     saturated moist static energy.
 !  w  * ideep    holds position of gathered points vs longitude index.
-!  ic  * pver     number of model levels.
+!  ic  * pver    number of model levels.
 !  wg * j0       detrainment initiation level index.
 !  wg * jd       downdraft   initiation level index.
-!  ic  * jlatpr   gaussian latitude index for printing grids (if needed).
+!  ic  * jlatpr  gaussian latitude index for printing grids (if needed).
 !  wg * jt       top  level index of deep cumulus convection.
 !  w  * lcl      base level index of deep cumulus convection.
 !  wg * lclg     gathered values of lcl.
@@ -275,7 +275,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  wg * md       downward cloud mass flux (positive up).
 !  wg * mu       upward   cloud mass flux (positive up). specified
 !                at interface
-!  ic  * msg      number of missing moisture levels at the top of model.
+!  ic  * msg     number of missing moisture levels at the top of model.
 !  w  * p        grid slice of ambient mid-layer pressure in mbs.
 !  i  * pblt     row of pbl top indices.
 !  w  * pcpdh    scaled surface pressure.
@@ -284,7 +284,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  w  * q        grid slice of mixing ratio.
 !  wg * qd       grid slice of mixing ratio in downdraft.
 !  wg * qg       grid slice of gathered values of q.
-!  i/o * qh       grid slice of specific humidity.
+!  i/o * qh      grid slice of specific humidity.
 !  w  * qh0      grid slice of initial specific humidity.
 !  wg * qhat     grid slice of upper interface mixing ratio.
 !  wg * ql       grid slice of cloud liquid water.
@@ -292,7 +292,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  w  * qstp     grid slice of parcel temp. saturation mixing ratio.
 !  wg * qstpg    grid slice of gathered values of qstp.
 !  wg * qu       grid slice of mixing ratio in updraft.
-!  ic  * rgas     dry air gas constant.
+!  ic  * rgas    dry air gas constant.
 !  wg * rl       latent heat of vaporization.
 !  w  * s        grid slice of scaled dry static energy (t+gz/cp).
 !  wg * sd       grid slice of dry static energy in downdraft.
@@ -307,13 +307,13 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  wg * tlg      grid slice of gathered values of tl.
 !  w  * tp       grid slice of parcel temperatures.
 !  wg * tpg      grid slice of gathered values of tp.
-!  i/o * u        grid slice of u-wind (real).
+!  i/o * u       grid slice of u-wind (real).
 !  wg * ug       grid slice of gathered values of u.
-!  i/o * utg      grid slice of u-wind tendency (real).
-!  i/o * v        grid slice of v-wind (real).
+!  i/o * utg     grid slice of u-wind tendency (real).
+!  i/o * v       grid slice of v-wind (real).
 !  w  * va       work array re-used by called subroutines.
 !  wg * vg       grid slice of gathered values of v.
-!  i/o * vtg      grid slice of v-wind tendency (real).
+!  i/o * vtg     grid slice of v-wind tendency (real).
 !  i  * w        grid slice of diagnosed large-scale vertical velocity.
 !  w  * z        grid slice of ambient mid-layer height in metres.
 !  w  * zf       grid slice of ambient interface height in metres.

@@ -1,6 +1,6 @@
 module params
 
-use grid, only: nzm
+! use grid, only: nzm
 #ifdef CLUBB_CRM
 ! Use the CLUBB values for these constants for consistency
 use constants_clubb, only: Cp_clubb => Cp, grav_clubb => grav, Lv_clubb => Lv, Lf_clubb => Lf, &
@@ -19,84 +19,92 @@ use shr_const_mod, only: shr_const_rdair, shr_const_cpdair, shr_const_latvap, &
 
 implicit none
 
+#ifdef CRM_SINGLE_PRECISION
+integer, parameter :: crm_rknd = 4
+#else
+integer, parameter :: crm_rknd = 8  ! whannah - default precision of real - kind(1.d0)
+#endif
+
 !   Constants:
 
 #ifdef CLUBB_CRM
 ! Define Cp, ggr, etc. in module constants_clubb
-real, parameter :: cp =  Cp_clubb 
-real, parameter :: ggr =  grav_clubb 
-real, parameter :: lcond =  Lv_clubb 
-real, parameter :: lfus =  Lf_clubb 
-real, parameter :: lsub =  Ls_clubb 
-real, parameter :: rv =  Rv_clubb 
-real, parameter :: rgas=  Rd_clubb 
+real(crm_rknd), parameter :: cp    = real( Cp_clubb   ,crm_rknd)
+real(crm_rknd), parameter :: ggr   = real( grav_clubb ,crm_rknd)
+real(crm_rknd), parameter :: lcond = real( Lv_clubb   ,crm_rknd)
+real(crm_rknd), parameter :: lfus  = real( Lf_clubb   ,crm_rknd)
+real(crm_rknd), parameter :: lsub  = real( Ls_clubb   ,crm_rknd)
+real(crm_rknd), parameter :: rv    = real( Rv_clubb   ,crm_rknd)
+real(crm_rknd), parameter :: rgas  = real( Rd_clubb   ,crm_rknd)
 #else
 #ifndef CRM
-real, parameter :: cp = 1004.             ! Specific heat of air, J/kg/K
-real, parameter :: ggr = 9.81             ! Gravity acceleration, m/s2
-real, parameter :: lcond = 2.5104e+06     ! Latent heat of condensation, J/kg
-real, parameter :: lfus = 0.3336e+06      ! Latent heat of fusion, J/kg
-real, parameter :: lsub = 2.8440e+06      ! Latent heat of sublimation, J/kg
-real, parameter :: rv = 461.              ! Gas constant for water vapor, J/kg/K
-real, parameter :: rgas = 287.            ! Gas constant for dry air, J/kg/K
+real(crm_rknd), parameter :: cp    = 1004.             ! Specific heat of air, J/kg/K
+real(crm_rknd), parameter :: ggr   = 9.81             ! Gravity acceleration, m/s2
+real(crm_rknd), parameter :: lcond = 2.5104e+06     ! Latent heat of condensation, J/kg
+real(crm_rknd), parameter :: lfus  = 0.3336e+06      ! Latent heat of fusion, J/kg
+real(crm_rknd), parameter :: lsub  = 2.8440e+06      ! Latent heat of sublimation, J/kg
+real(crm_rknd), parameter :: rv    = 461.              ! Gas constant for water vapor, J/kg/K
+real(crm_rknd), parameter :: rgas  = 287.            ! Gas constant for dry air, J/kg/K
 #else
-real, parameter :: cp = shr_const_cpdair
-real, parameter :: ggr = shr_const_g
-real, parameter :: lcond = shr_const_latvap 
-real, parameter :: lfus = shr_const_latice 
-real, parameter :: lsub = lcond + lfus
-real, parameter :: rv = shr_const_rgas/shr_const_mwwv 
-real, parameter :: rgas = shr_const_rdair
+real(crm_rknd), parameter :: cp    = real( shr_const_cpdair ,crm_rknd)
+real(crm_rknd), parameter :: ggr   = real( shr_const_g      ,crm_rknd)
+real(crm_rknd), parameter :: lcond = real( shr_const_latvap ,crm_rknd)
+real(crm_rknd), parameter :: lfus  = real( shr_const_latice ,crm_rknd)
+real(crm_rknd), parameter :: lsub  = real( lcond + lfus     ,crm_rknd)
+real(crm_rknd), parameter :: rgas  = real( shr_const_rdair  ,crm_rknd)
+real(crm_rknd), parameter :: rv    = real( shr_const_rgas/shr_const_mwwv ,crm_rknd)
 #endif
 #endif
-real, parameter :: diffelq = 2.21e-05     ! Diffusivity of water vapor, m2/s
-real, parameter :: therco = 2.40e-02      ! Thermal conductivity of air, J/m/s/K
-real, parameter :: muelq = 1.717e-05      ! Dynamic viscosity of air
+real(crm_rknd), parameter :: diffelq = 2.21e-05     ! Diffusivity of water vapor, m2/s
+real(crm_rknd), parameter :: therco = 2.40e-02      ! Thermal conductivity of air, J/m/s/K
+real(crm_rknd), parameter :: muelq = 1.717e-05      ! Dynamic viscosity of air
 
-real, parameter :: fac_cond = lcond/cp 
-real, parameter :: fac_fus = lfus/cp
-real, parameter :: fac_sub = lsub/cp
+real(crm_rknd), parameter :: fac_cond = lcond/cp 
+real(crm_rknd), parameter :: fac_fus  = lfus/cp
+real(crm_rknd), parameter :: fac_sub  = lsub/cp
 
 #ifdef CLUBB_CRM
-real, parameter ::  pi =  pi_clubb 
+real(crm_rknd), parameter ::  pi =  real( pi_clubb ,crm_rknd)
 #else
-real, parameter ::  pi = 3.141592653589793
+real(crm_rknd), parameter ::  pi = 3.141592653589793
 #endif
+
+
 
 !
 ! internally set parameters:
 
-real   epsv     ! = (1-eps)/eps, where eps= Rv/Ra, or =0. if dosmoke=.true.
+real(crm_rknd)   epsv     ! = (1-eps)/eps, where eps= Rv/Ra, or =0. if dosmoke=.true.
 logical:: dosubsidence = .false.
-real fcorz      ! Vertical Coriolis parameter
-real coszrs
+real(crm_rknd) fcorz      ! Vertical Coriolis parameter
+real(crm_rknd) coszrs
 
 !----------------------------------------------
 ! Parameters set by PARAMETERS namelist:
 ! Initialized to default values.
 !----------------------------------------------
 
-real:: ug = 0.        ! Velocity of the Domain's drift in x direction
-real:: vg	= 0.        ! Velocity of the Domain's drift in y direction
-real:: fcor = -999.   ! Coriolis parameter	
-real:: longitude0 = 0.    ! latitude of the domain's center 
-real:: latitude0  = 0.    ! longitude of the domain's center 
-real:: nxco2 = 1         ! factor to modify co2 concentration
+real(crm_rknd):: ug = 0.        ! Velocity of the Domain's drift in x direction
+real(crm_rknd):: vg	= 0.        ! Velocity of the Domain's drift in y direction
+real(crm_rknd):: fcor = -999.   ! Coriolis parameter	
+real(crm_rknd):: longitude0 = 0.    ! latitude of the domain's center 
+real(crm_rknd):: latitude0  = 0.    ! longitude of the domain's center 
+real(crm_rknd):: nxco2 = 1         ! factor to modify co2 concentration
 logical:: doradlat = .false.
 logical:: doradlon = .false.
 
 real(8):: tabs_s =0.	! surface temperature,K
-real:: delta_sst = 0.   ! amplitude of sin-pattern of sst about tabs_s (ocean_type=1)
-real:: depth_slab_ocean = 2. ! thickness of the slab-ocean (m)
-real:: Szero = 0.  ! mean ocean transport (W/m2)
-real:: deltaS = 0. ! amplitude of linear variation of ocean transport (W/m2)
-real:: timesimpleocean = 0. ! time to start simple ocean
+real(crm_rknd):: delta_sst = 0.   ! amplitude of sin-pattern of sst about tabs_s (ocean_type=1)
+real(crm_rknd):: depth_slab_ocean = 2. ! thickness of the slab-ocean (m)
+real(crm_rknd):: Szero = 0.  ! mean ocean transport (W/m2)
+real(crm_rknd):: deltaS = 0. ! amplitude of linear variation of ocean transport (W/m2)
+real(crm_rknd):: timesimpleocean = 0. ! time to start simple ocean
 
-real::   fluxt0 =0.  ! surface sensible flux, Km/s
-real::   fluxq0 =0.  ! surface latent flux, m/s
-real::   tau0   =0.  ! surface stress, m2/s2
-real::   z0     =0.035	! roughness length
-real::   soil_wetness =1.! wetness coeff for soil (from 0 to 1.)
+real(crm_rknd)::   fluxt0 =0.  ! surface sensible flux, Km/s
+real(crm_rknd)::   fluxq0 =0.  ! surface latent flux, m/s
+real(crm_rknd)::   tau0   =0.  ! surface stress, m2/s2
+real(crm_rknd)::   z0     =0.035	! roughness length
+real(crm_rknd)::   soil_wetness =1.! wetness coeff for soil (from 0 to 1.)
 integer:: ocean_type =0 ! type of SST forcing
 logical:: cem =.false.    ! flag for Cloud Ensemble Model
 logical:: les =.false.    ! flag for Large-Eddy Simulation
@@ -105,14 +113,14 @@ logical:: land =.false.   ! flag indicating that surface is land
 logical:: sfc_flx_fxd =.false. ! surface sensible flux is fixed
 logical:: sfc_tau_fxd =.false.! surface drag is fixed
 
-real:: timelargescale =0. ! time to start large-scale forcing
+real(crm_rknd):: timelargescale =0. ! time to start large-scale forcing
 
 ! nudging boundaries (between z1 and z2, where z2 > z1): 
-real:: nudging_uv_z1 =-1., nudging_uv_z2 = 1000000.
-real:: nudging_t_z1 =-1., nudging_t_z2 = 1000000.
-real:: nudging_q_z1 =-1., nudging_q_z2 = 1000000.
-real:: tauls = 99999999.    ! nudging-to-large-scaler-profile time-scale
-real:: tautqls = 99999999.! nudging-to-large-scaler-profile time-scale for scalars
+real(crm_rknd):: nudging_uv_z1 =-1., nudging_uv_z2 = 1000000.
+real(crm_rknd):: nudging_t_z1 =-1., nudging_t_z2 = 1000000.
+real(crm_rknd):: nudging_q_z1 =-1., nudging_q_z2 = 1000000.
+real(crm_rknd):: tauls = 99999999.    ! nudging-to-large-scaler-profile time-scale
+real(crm_rknd):: tautqls = 99999999.! nudging-to-large-scaler-profile time-scale for scalars
 
 logical:: dodamping = .false.
 logical:: doupperbound = .false. 
@@ -157,24 +165,24 @@ logical:: notracegases = .false.
 ! Based onn Tompkins and Graig (1998)
 ! Note that if doperpetual=.true. and dosolarconstant=.false.
 ! the insolation will be set to the daily-averaged value on day0.
-real:: solar_constant = 685. ! solar constant (in W/m2)
-real:: zenith_angle = 51.7   ! zenith angle (in degrees)
+real(crm_rknd):: solar_constant = 685. ! solar constant (in W/m2)
+real(crm_rknd):: zenith_angle = 51.7   ! zenith angle (in degrees)
 
 integer:: nensemble =0   ! the number of subensemble set of perturbations
 integer:: perturb_type  = 0 ! type of initial noise in setperturb()
 integer:: nclubb = 1 ! SAM timesteps per CLUBB timestep
 ! Initial bubble parameters. Activated when perturb_type = 2
-  real:: bubble_x0 = 0.
-  real:: bubble_y0 = 0.
-  real:: bubble_z0 = 0.
-  real:: bubble_radius_hor = 0.
-  real:: bubble_radius_ver = 0.
-  real:: bubble_dtemp = 0.
-  real:: bubble_dq = 0.
+real(crm_rknd):: bubble_x0 = 0.
+real(crm_rknd):: bubble_y0 = 0.
+real(crm_rknd):: bubble_z0 = 0.
+real(crm_rknd):: bubble_radius_hor = 0.
+real(crm_rknd):: bubble_radius_ver = 0.
+real(crm_rknd):: bubble_dtemp = 0.
+real(crm_rknd):: bubble_dq = 0.
 
-real uhl        ! current large-scale velocity in x near sfc
-real vhl        ! current large-scale velocity in y near sfc
-real   taux0    ! surface stress in x, m2/s2
-real   tauy0    ! surface stress in y, m2/s2
+real(crm_rknd) uhl      ! current large-scale velocity in x near sfc
+real(crm_rknd) vhl      ! current large-scale velocity in y near sfc
+real(crm_rknd) taux0    ! surface stress in x, m2/s2
+real(crm_rknd) tauy0    ! surface stress in y, m2/s2
 
 end module params

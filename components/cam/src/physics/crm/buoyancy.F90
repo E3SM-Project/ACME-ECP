@@ -6,7 +6,7 @@ use params
 implicit none
 	
 integer i,j,k,kb
-real betu, betd
+real(crm_rknd) betu, betd
 
 if(docolumn) return
 

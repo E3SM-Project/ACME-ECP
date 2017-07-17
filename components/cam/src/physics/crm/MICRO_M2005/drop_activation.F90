@@ -15,6 +15,7 @@ module drop_activation
 !---------------------------------------------------------------------------------------------------- 
    use shr_kind_mod, only: r8 => shr_kind_r8
    use modal_aero_data, only: ntot_amode
+   use params, only: crm_rknd
 
    implicit none
    private
@@ -111,16 +112,16 @@ subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
 
 
 !   Input
-      real, intent (in)  ::    wnuc4          ! updraft velocity (m/s)
-      real, intent (in)  ::    tair4          ! air temperature (K)
-      real, intent (in)  ::    rhoair4        ! air density (kg/m3)
+      real(crm_rknd), intent (in)  ::    wnuc4          ! updraft velocity (m/s)
+      real(crm_rknd), intent (in)  ::    tair4          ! air temperature (K)
+      real(crm_rknd), intent (in)  ::    rhoair4        ! air density (kg/m3)
       integer, intent(in)  ::  ines           !  whether non-equillium saturation is used (ines=1: used).  
-      real, intent (inout)  ::    smaxinout4      ! For ines=1,  it is non-equlibrium saturation ratio (input)
+      real(crm_rknd), intent (inout)  ::    smaxinout4      ! For ines=1,  it is non-equlibrium saturation ratio (input)
                                                  ! for ines=0,  it is smax calculted from the activation parameterizaiton (output).
       integer, intent(in)  ::  k              ! the index of vertical levels. 
 
 !   Output 
-      real, intent (out) ::   ndrop4          ! activated droplet number concentration  
+      real(crm_rknd), intent (out) ::   ndrop4          ! activated droplet number concentration  
 
 
 !  Local
@@ -169,7 +170,7 @@ subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
       real(r8) z
       real(r8) etafactor1,etafactor2(ntot_amode),etafactor2max
       real(r8) wmaxf           ! maximum update velocity   [m/s] 
-      real     ndrop_act       
+      real(crm_rknd)    ndrop_act       
       integer m,n
 !      numerical integration parameters
       real(r8), parameter :: eps=0.3_r8,fmax=0.99_r8,sds=3._r8

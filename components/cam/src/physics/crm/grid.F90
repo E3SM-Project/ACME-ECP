@@ -2,6 +2,7 @@ module grid
 
 use domain
 use advection, only: NADV, NADVS
+use params, only: crm_rknd
 
 implicit none
 
@@ -48,24 +49,24 @@ integer, parameter :: ncols = nx*ny
 integer, parameter :: nadams = 3
 
 ! Vertical grid parameters:
-real z(nz)      ! height of the pressure levels above surface,m
-real pres(nzm)  ! pressure,mb at scalar levels
-real zi(nz)     ! height of the interface levels
-real presi(nz)  ! pressure,mb at interface levels
-real adz(nzm)   ! ratio of the thickness of scalar levels to dz 
-real adzw(nz)	! ratio of the thinckness of w levels to dz
-real pres0      ! Reference surface pressure, Pa
+real(crm_rknd) z(nz)      ! height of the pressure levels above surface,m
+real(crm_rknd) pres(nzm)  ! pressure,mb at scalar levels
+real(crm_rknd) zi(nz)     ! height of the interface levels
+real(crm_rknd) presi(nz)  ! pressure,mb at interface levels
+real(crm_rknd) adz(nzm)   ! ratio of the thickness of scalar levels to dz 
+real(crm_rknd) adzw(nz)	! ratio of the thinckness of w levels to dz
+real(crm_rknd) pres0      ! Reference surface pressure, Pa
 
 integer:: nstep =0! current number of performed time steps 
 integer  ncycle  ! number of subcycles over the dynamical timestep
 integer icycle  ! current subcycle 
 integer:: na=1, nb=2, nc=3 ! indeces for swapping the rhs arrays for AB scheme
-real at, bt, ct ! coefficients for the Adams-Bashforth scheme 
-real dtn	! current dynamical timestep (can be smaller than dt)
-real dt3(3) 	! dynamical timesteps for three most recent time steps
+real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme 
+real(crm_rknd) dtn	! current dynamical timestep (can be smaller than dt)
+real(crm_rknd) dt3(3) 	! dynamical timesteps for three most recent time steps
 real(8):: time=0.	! current time in sec.
-real day	! current day (including fraction)
-real dtfactor   ! dtn/dt
+real(crm_rknd) day	! current day (including fraction)
+real(crm_rknd) dtfactor   ! dtn/dt
         
 !  MPI staff:     
 integer rank   ! rank of the current subdomain task (default 0) 
@@ -96,16 +97,16 @@ logical notopenedmom ! flag to see if the statistical moment file is opened
 !-----------------------------------------
 ! Parameters controled by namelist PARAMETERS
 
-real:: dx =0. 	! grid spacing in x direction
-real:: dy =0.	! grid spacing in y direction
-real:: dz =0.	! constant grid spacing in z direction (when dz_constant=.true.)
+real(crm_rknd):: dx =0. 	! grid spacing in x direction
+real(crm_rknd):: dy =0.	! grid spacing in y direction
+real(crm_rknd):: dz =0.	! constant grid spacing in z direction (when dz_constant=.true.)
 logical:: doconstdz = .false.  ! do constant vertical grid spacing set by dz
 
 integer:: nstop =0   ! time step number to stop the integration
 integer:: nelapse =999999999! time step number to elapse before stoping
 
-real:: dt=0.	! dynamical timestep
-real:: day0=0.	! starting day (including fraction)
+real(crm_rknd):: dt=0.	! dynamical timestep
+real(crm_rknd):: day0=0.	! starting day (including fraction)
 
 integer:: nrad =1  ! frequency of calling the radiation routines
 integer:: nprint =1000	! frequency of printing a listing (steps)
@@ -138,7 +139,7 @@ integer:: nsave3Dstart =99999999! timestep to start writting 3D fields
 integer:: nsave3Dend  =99999999 ! timestep to end writting 3D fields
 logical:: save3Dbin =.false.   ! save 3D data in binary format(no 2-byte compression)
 logical:: save3Dsep =.false.   ! use separate file for each time point for2-model
-real   :: qnsave3D =0.    !threshold manimum cloud water(kg/kg) to save 3D fields
+real(crm_rknd)   :: qnsave3D =0.    !threshold manimum cloud water(kg/kg) to save 3D fields
 logical:: dogzip3D =.false.    ! gzip compress a 3D output file   
 logical:: rad3Dout = .false. ! output additional 3D radiation foelds (like reff)
 

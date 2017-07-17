@@ -10,10 +10,10 @@ implicit none
 	
 integer i,j,k,ic,jc,nstatsteps
 integer n
-real div, divmax, divmin
-real rdx, rdy, rdz, coef
+real(crm_rknd) div, divmax, divmin
+real(crm_rknd) rdx, rdy, rdz, coef
 integer im,jm,km
-real wmax, qnmax(1), qnmax1(1)
+real(crm_rknd) wmax, qnmax(1), qnmax1(1)
 real(8) buffer(6), buffer1(6)
 real(8) qi0(nzm)
 

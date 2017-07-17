@@ -5,15 +5,15 @@ subroutine diffuse_mom2D
 
 use vars
 use sgs, only: tk, grdf_x, grdf_z
-use params, only: docolumn
+use params, only: docolumn, crm_rknd
 implicit none
 
-real rdx2,rdz2,rdz,rdx25,rdz25,rdx21,rdx251
-real dxz,dzx
+real(crm_rknd) rdx2,rdz2,rdz,rdx25,rdz25,rdx21,rdx251
+real(crm_rknd) dxz,dzx
 
 integer i,j,k,ic,ib,kc,kcu
-real tkx, tkz, rhoi, iadzw, iadz
-real fu(0:nx,1,nz),fv(0:nx,1,nz),fw(0:nx,1,nz)
+real(crm_rknd) tkx, tkz, rhoi, iadzw, iadz
+real(crm_rknd) fu(0:nx,1,nz),fv(0:nx,1,nz),fw(0:nx,1,nz)
 
 rdx2=1./dx/dx
 rdx25=0.25*rdx2

@@ -77,6 +77,7 @@ module  module_ecpp_crm_driver
   !use abortutils,  only: endrun
   use cam_abortutils,  only: endrun
   !Guangxing Lin
+  use params, only: crm_rknd
 
   public ecpp_crm_stat
   public ecpp_crm_init
@@ -108,12 +109,12 @@ module  module_ecpp_crm_driver
   logical :: allcomb
                          ! true if updrafts and downdrafts have all
                          ! combinations of bases and tops.
-  real :: cloudthresh, &
+  real(crm_rknd) :: cloudthresh, &
           prcpthresh, &
           downthresh, downthresh2, &
           upthresh, upthresh2
 
-  real :: cloudthresh_trans,   &   !  the threshold total cloud water for updraft or downdraft
+  real(crm_rknd) :: cloudthresh_trans,   &   !  the threshold total cloud water for updraft or downdraft
           precthresh_trans         !  the threshold total rain, snow and graupel for clear, updraft or downdraft 
 
   integer, dimension(:),allocatable :: &
@@ -499,12 +500,12 @@ subroutine ecpp_crm_stat()
   integer :: ii, jj, kk
   integer :: icl, icls, ipr
 
-  real,dimension(nx, ny, nzm) :: &
+  real(crm_rknd),dimension(nx, ny, nzm) :: &
        qcloud, qrain, qice, qsnow, qgraup, &
        precall, alt, xkhv
-  real, dimension(nx, ny, nzstag) :: ww, wwsq
+  real(crm_rknd), dimension(nx, ny, nzstag) :: ww, wwsq
 
-  real :: EVS
+  real(crm_rknd) :: EVS
 
 !------------------------------------------------------------------------
 ! Main code section...

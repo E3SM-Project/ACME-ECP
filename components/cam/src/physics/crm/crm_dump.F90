@@ -31,6 +31,7 @@ contains
     use shr_kind_mod, only: r8 => shr_kind_r8
     use crmdims
     use microphysics, only: nmicro_fields
+    use params,       only: crm_rknd
 #ifdef MODAL_AERO
         use modal_aero_data,   only: ntot_amode
 #endif
@@ -38,8 +39,8 @@ contains
     integer , intent(in) :: igstep
     integer , intent(in) :: lchnk    ! chunk identifier
     integer , intent(in) :: icol     ! column identifier
-    real    , intent(in) :: latitude0
-    real    , intent(in) :: longitude0
+    real(crm_rknd)    , intent(in) :: latitude0
+    real(crm_rknd)    , intent(in) :: longitude0
     integer , intent(in) :: plev     ! number of levels in parent model
     real(r8), intent(in) :: ps ! Global grid surface pressure (Pa)
     real(r8), intent(in) :: pmid(plev) ! Global grid pressure (Pa)
@@ -87,7 +88,7 @@ contains
     real(r8), intent(in) :: mdi_crm (plev+1)             ! mass flux down at the interface
 
     integer :: myrank, ierr
-    real :: myrand
+    real(crm_rknd) :: myrand
 
 #ifdef CRM_DUMP
         call MPI_Comm_rank(MPI_COMM_WORLD,myrank,ierr)

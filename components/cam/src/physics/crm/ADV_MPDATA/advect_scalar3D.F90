@@ -4,35 +4,35 @@ subroutine advect_scalar3D (f, u, v, w, rho, rhow, flux)
 !     positively definite monotonic advection with non-oscillatory option
 
 use grid
-use params, only: dowallx, dowally
+use params, only: dowallx, dowally, crm_rknd
 implicit none
 
 
-real f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-real u(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
-real v(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm)
-real w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
-real rho(nzm)
-real rhow(nz)
-real flux(nz)
+real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+real(crm_rknd) u(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
+real(crm_rknd) v(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm)
+real(crm_rknd) w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
+real(crm_rknd) rho(nzm)
+real(crm_rknd) rhow(nz)
+real(crm_rknd) flux(nz)
 	
-real mx (0:nxp1,0:nyp1,nzm)
-real mn (0:nxp1,0:nyp1,nzm)
-real uuu(-1:nxp3,-1:nyp2,nzm)
-real vvv(-1:nxp2,-1:nyp3,nzm)
-real www(-1:nxp2,-1:nyp2,nz)
+real(crm_rknd) mx (0:nxp1,0:nyp1,nzm)
+real(crm_rknd) mn (0:nxp1,0:nyp1,nzm)
+real(crm_rknd) uuu(-1:nxp3,-1:nyp2,nzm)
+real(crm_rknd) vvv(-1:nxp2,-1:nyp3,nzm)
+real(crm_rknd) www(-1:nxp2,-1:nyp2,nz)
 
-real eps, dd
-real iadz(nzm),irho(nzm),irhow(nzm)
+real(crm_rknd) eps, dd
+real(crm_rknd) iadz(nzm),irho(nzm),irhow(nzm)
 integer i,j,k,ic,ib,jc,jb,kc,kb
 logical nonos
 
-real x1, x2, a, b, a1, a2, y
-real andiff,across,pp,pn
+real(crm_rknd) x1, x2, a, b, a1, a2, y
+real(crm_rknd) andiff,across,pp,pn
 andiff(x1,x2,a,b)=(abs(a)-a*a*b)*0.5*(x2-x1)
 across(x1,a1,a2)=0.03125*a1*a2*x1
-pp(y)= max(0.,y)
-pn(y)=-min(0.,y)
+pp(y)= max(real(0.,crm_rknd),y)
+pn(y)=-min(real(0.,crm_rknd),y)
 	
 nonos = .true.
 eps = 1.e-10
@@ -111,7 +111,7 @@ end if  ! nonos
  do k=1,nzm
   do j=-1,nyp2
    do i=-1,nxp3
-    uuu(i,j,k)=max(0.,u(i,j,k))*f(i-1,j,k)+min(0.,u(i,j,k))*f(i,j,k)
+    uuu(i,j,k)=max(real(0.,crm_rknd),u(i,j,k))*f(i-1,j,k)+min(real(0.,crm_rknd),u(i,j,k))*f(i,j,k)
    end do
   end do
  end do
@@ -119,7 +119,7 @@ end if  ! nonos
  do k=1,nzm
   do j=-1,nyp3
    do i=-1,nxp2
-    vvv(i,j,k)=max(0.,v(i,j,k))*f(i,j-1,k)+min(0.,v(i,j,k))*f(i,j,k)
+    vvv(i,j,k)=max(real(0.,crm_rknd),v(i,j,k))*f(i,j-1,k)+min(real(0.,crm_rknd),v(i,j,k))*f(i,j,k)
    end do
   end do
  end do
@@ -128,7 +128,7 @@ end if  ! nonos
   kb=max(1,k-1)
   do j=-1,nyp2
    do i=-1,nxp2
-    www(i,j,k)=max(0.,w(i,j,k))*f(i,j,kb)+min(0.,w(i,j,k))*f(i,j,k)
+    www(i,j,k)=max(real(0.,crm_rknd),w(i,j,k))*f(i,j,kb)+min(real(0.,crm_rknd),w(i,j,k))*f(i,j,k)
    end do
   end do
   flux(k) = 0.
@@ -251,8 +251,8 @@ if(nonos) then
   do j=1,ny
    do i=1,nxp1
     ib=i-1
-    uuu(i,j,k)=pp(uuu(i,j,k))*min(1.,mx(i,j,k), mn(ib,j,k)) &
-             - pn(uuu(i,j,k))*min(1.,mx(ib,j,k),mn(i,j,k))
+    uuu(i,j,k)=pp(uuu(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(ib,j,k)) &
+             - pn(uuu(i,j,k))*min(real(1.,crm_rknd),mx(ib,j,k),mn(i,j,k))
    end do
   end do
  end do
@@ -261,8 +261,8 @@ if(nonos) then
   do j=1,nyp1
    jb=j-1
    do i=1,nx
-    vvv(i,j,k)=pp(vvv(i,j,k))*min(1.,mx(i,j,k), mn(i,jb,k)) &
-             - pn(vvv(i,j,k))*min(1.,mx(i,jb,k),mn(i,j,k))
+    vvv(i,j,k)=pp(vvv(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(i,jb,k)) &
+             - pn(vvv(i,j,k))*min(real(1.,crm_rknd),mx(i,jb,k),mn(i,j,k))
    end do
   end do
  end do
@@ -271,8 +271,8 @@ if(nonos) then
   kb=max(1,k-1)
   do j=1,ny
    do i=1,nx
-    www(i,j,k)=pp(www(i,j,k))*min(1.,mx(i,j,k), mn(i,j,kb)) &
-             - pn(www(i,j,k))*min(1.,mx(i,j,kb),mn(i,j,k))
+    www(i,j,k)=pp(www(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(i,j,kb)) &
+             - pn(www(i,j,k))*min(real(1.,crm_rknd),mx(i,j,kb),mn(i,j,k))
     flux(k) = flux(k) + www(i,j,k)	
    end do
   end do
@@ -291,7 +291,7 @@ do k=1,nzm
  !     hydrometeor concentrations are advected. The reason for negative values is
  !     most likely truncation error.
 
-   f(i,j,k)=max(0.,f(i,j,k) -(uuu(i+1,j,k)-uuu(i,j,k)+vvv(i,j+1,k)-vvv(i,j,k) &
+   f(i,j,k)=max(real(0.,crm_rknd),f(i,j,k) -(uuu(i+1,j,k)-uuu(i,j,k)+vvv(i,j+1,k)-vvv(i,j,k) &
                      +(www(i,j,k+1)-www(i,j,k))*iadz(k))*irho(k))
   end do
  end do

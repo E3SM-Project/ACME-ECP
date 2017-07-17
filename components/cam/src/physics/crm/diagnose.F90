@@ -9,9 +9,9 @@ implicit none
 	
 integer i,j,k,kb,kc,k200,k500,k850
 real(8) coef, coef1, buffer(nzm,9), buffer1(nzm,8)
-real omn, omp, tmp_lwp
+real(crm_rknd) omn, omp, tmp_lwp
 
-coef = 1./float(nx*ny)
+coef = 1./real(nx*ny,crm_rknd)
 
 
 k200 = nzm
@@ -86,7 +86,7 @@ end do
 
 if(dompi) then
 
-  coef1 = 1./float(nsubdomains)
+  coef1 = 1./real(nsubdomains,crm_rknd)
   do k=1,nzm
     buffer(k,1) = u0(k)
     buffer(k,2) = v0(k)

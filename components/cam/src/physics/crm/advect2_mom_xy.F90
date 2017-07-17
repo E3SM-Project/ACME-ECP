@@ -4,13 +4,14 @@ subroutine advect2_mom_xy
 !        momentum tendency due to 2nd-order-central horizontal advection
 
 use vars
+use params, only: crm_rknd
 
 implicit none
 	
-real fu(0:nx,1-YES3D:ny,nzm) 
-real fv(0:nx,1-YES3D:ny,nzm)
-real fw(0:nx,1-YES3D:ny,nzm)
-real dx25, dy25, irho
+real(crm_rknd) fu(0:nx,1-YES3D:ny,nzm) 
+real(crm_rknd) fv(0:nx,1-YES3D:ny,nzm)
+real(crm_rknd) fw(0:nx,1-YES3D:ny,nzm)
+real(crm_rknd) dx25, dy25, irho
 
 integer i, j, k, kc, kcu, ic, jb, ib, jc
 

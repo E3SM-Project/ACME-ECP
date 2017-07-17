@@ -16,6 +16,7 @@ program crm_standalone
   use shr_kind_mod, only: r8 => shr_kind_r8
   use microphysics, only: nmicro_fields
   use setparm_mod , only: setparm
+  use params      , only: crm_rknd
 #ifdef ECPP
   use ecppvars,  only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif
@@ -36,8 +37,8 @@ program crm_standalone
   integer , allocatable :: lchnk(:) 
   integer , allocatable :: icol(:) 
 #ifdef CRM_STANDALONE
-  real    , allocatable :: latitude0(:) 
-  real    , allocatable :: longitude0(:) 
+  real(crm_rknd)    , allocatable :: latitude0(:) 
+  real(crm_rknd)    , allocatable :: longitude0(:) 
 #endif
   real(r8), allocatable :: ps(:) 
   real(r8), allocatable :: pmid(:,:) 
@@ -231,7 +232,7 @@ program crm_standalone
   !! Compute total number of columns per MPI task
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   globid = rank
-  nper = real(nsamp_tot)/nranks
+  nper = real(nsamp_tot,crm_rknd)/nranks
   col1 = nint( nper* globid    )+1
   col2 = nint( nper*(globid+1) )
   ncols = col2 - col1 + 1

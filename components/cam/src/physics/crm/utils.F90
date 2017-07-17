@@ -19,9 +19,10 @@ end
 subroutine averageXY(f,dimx1,dimx2,dimy1,dimy2,dimz,fm)
 	
 use grid
+use params, only: crm_rknd
 implicit none
 integer dimx1, dimx2, dimy1, dimy2, dimz
-real f(dimx1:dimx2, dimy1:dimy2, dimz),fm(nzm) 
+real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fm(nzm) 
 real(8) ff,factor
 integer i,j,k	
 factor = 1./dble(nx*ny)
@@ -33,7 +34,7 @@ do k =1,nzm
   end do
  end do
  ff = ff*factor
- fm(k) = real(ff)
+ fm(k) = real(ff,crm_rknd)
 end do 
 end
 
@@ -41,9 +42,10 @@ end
 subroutine averageXY_MPI(f,dimx1,dimx2,dimy1,dimy2,dimz,fm)
 	
 use grid
+use params, only: crm_rknd
 implicit none
 integer dimx1, dimx2, dimy1, dimy2, dimz
-real f(dimx1:dimx2, dimy1:dimy2, dimz),fm(nzm)
+real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fm(nzm)
 real(8) fm1(nzm),fm2(nzm),factor
 integer i,j,k
 factor = 1./dble(nx*ny)
@@ -62,11 +64,11 @@ if(dompi) then
  end do
  call task_sum_real8(fm2,fm1,nzm)
  do k=1,nzm
-  fm(k)=real(fm1(k)/dble(nsubdomains))
+  fm(k)=real( fm1(k)/dble(nsubdomains) ,crm_rknd)
  end do
 else
  do k=1,nzm
-  fm(k)=real(fm1(k))
+  fm(k)=real( fm1(k) ,crm_rknd)
  end do
 endif
 end
@@ -77,11 +79,12 @@ end
 subroutine fminmax_print(name,f,dimx1,dimx2,dimy1,dimy2,dimz)
 
 use grid
+use params, only: crm_rknd
 implicit none
 integer dimx1, dimx2, dimy1, dimy2, dimz
-real f(dimx1:dimx2, dimy1:dimy2, dimz),fmn(nz),fmx(nz)
+real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz),fmn(nz),fmx(nz)
 character *(*) name
-real fmin(1),fmax(1),fff(1)
+real(crm_rknd) fmin(1),fmax(1),fff(1)
 integer i,j,k
 	
 do k=1,dimz
@@ -119,9 +122,10 @@ end
 
 	
 subroutine setvalue(f,n,f0)
+use params, only: crm_rknd
 implicit none
 integer n
-real f(n), f0
+real(crm_rknd) f(n), f0
 integer k
 do k=1,n
  f(k)=f0

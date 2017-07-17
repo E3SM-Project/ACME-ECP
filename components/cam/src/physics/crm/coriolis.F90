@@ -2,10 +2,11 @@
 subroutine coriolis
 
 use vars
+use params, only: crm_rknd
 
 implicit none
 	
-real u_av, v_av, w_av
+real(crm_rknd) u_av, v_av, w_av
 integer i,j,k,ib,ic,jb,jc,kc
 	
 if(RUN3D) then

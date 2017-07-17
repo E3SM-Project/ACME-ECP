@@ -5,16 +5,16 @@ subroutine diffuse_mom3D
 
 use vars
 use sgs, only: tk, grdf_x, grdf_y, grdf_z
-use params, only: docolumn
+use params, only: docolumn, crm_rknd
 implicit none
 
-real rdx2,rdy2,rdz2,rdz,rdx25,rdy25
-real rdx21,rdy21,rdx251,rdy251,rdz25
-real dxy,dxz,dyx,dyz,dzx,dzy
+real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx25,rdy25
+real(crm_rknd) rdx21,rdy21,rdx251,rdy251,rdz25
+real(crm_rknd) dxy,dxz,dyx,dyz,dzx,dzy
 
 integer i,j,k,ic,ib,jb,jc,kc,kcu
-real tkx, tky, tkz, rhoi, iadzw, iadz
-real fu(0:nx,0:ny,nz),fv(0:nx,0:ny,nz),fw(0:nx,0:ny,nz)
+real(crm_rknd) tkx, tky, tkz, rhoi, iadzw, iadz
+real(crm_rknd) fu(0:nx,0:ny,nz),fv(0:nx,0:ny,nz),fw(0:nx,0:ny,nz)
 
 rdx2=1./(dx*dx)
 rdy2=1./(dy*dy)

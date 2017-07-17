@@ -4,10 +4,11 @@ subroutine adams
 !       Adams-Bashforth scheme
 
 use vars
+use params, only: crm_rknd
 
 implicit none
 
-real dtdx, dtdy, dtdz, rhox, rhoy, rhoz	
+real(crm_rknd) dtdx, dtdy, dtdz, rhox, rhoy, rhoz	
 integer i,j,k
 
 dtdx = dtn/dx

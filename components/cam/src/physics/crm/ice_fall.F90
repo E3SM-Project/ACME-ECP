@@ -12,9 +12,9 @@ use params
 implicit none
 
 integer i,j,k, kb, kc, kmax, kmin, ici
-real coef,dqi,lat_heat,vt_ice
-real omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
-real fz(nx,ny,nz)
+real(crm_rknd) coef,dqi,lat_heat,vt_ice
+real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
+real(crm_rknd) fz(nx,ny,nz)
 
 kmax=0
 kmin=nzm+1
@@ -62,7 +62,7 @@ do k = max(1,kmin-1),kmax
 
          ! Ice sedimentation velocity depends on ice content. The fiting is
          ! based on the data by Heymsfield (JAS,2003). -Marat
-         vt_ice = min(0.4,8.66*(max(0.,qic)+1.e-10)**0.24)   ! Heymsfield (JAS, 2003, p.2607)
+         vt_ice = min(real(0.4,crm_rknd),8.66*(max(real(0.,crm_rknd),qic)+1.e-10)**0.24)   ! Heymsfield (JAS, 2003, p.2607)
 
          ! Use MC flux limiter in computation of flux correction.
          ! (MC = monotonized centered difference).
@@ -72,7 +72,7 @@ do k = max(1,kmin-1),kmax
             tmp_phi = 0.
          else
             tmp_theta = (qiu-qic)/(qic-qid)
-            tmp_phi = max(0.,min(0.5*(1.+tmp_theta),2.,2.*tmp_theta))
+            tmp_phi = max(real(0.,crm_rknd),min(0.5*(1.+tmp_theta),real(2.,crm_rknd),2.*tmp_theta))
          end if
 
          ! Compute limited flux.

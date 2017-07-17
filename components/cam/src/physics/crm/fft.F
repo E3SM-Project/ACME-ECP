@@ -1,5 +1,8 @@
       subroutine fft991_crm(a,work,trigs,ifax,inc,jump,n,lot,isign)
-      dimension a(*),work(*),trigs(*),ifax(*)
+      use params, only: crm_rknd
+      ! dimension a(*),work(*),trigs(*),ifax(*)
+      dimension ifax(*)
+      real(crm_rknd), dimension(*) :: a, work, trigs
 c
 c     subroutine "fft991" - multiple real/half-complex periodic
 c     fast fourier transform
@@ -146,7 +149,10 @@ c
 
 
       subroutine fftfax_crm(n,ifax,trigs)
-      dimension ifax(13),trigs(1)
+      use params, only: crm_rknd
+      dimension ifax(13)
+      real(crm_rknd), dimension(1) :: trigs
+      integer :: mode
 c
 c mode 3 is used for real/half-complex transforms.  it is possible
 c to do complex/complex transforms with other values of mode, but
@@ -232,15 +238,17 @@ c     sort factors into ascending order
 
 
       subroutine fftrig_crm(trigs,n,mode)
-      dimension trigs(*)
-      pi=2.0*asin(1.0)
+      use params, only: crm_rknd
+      real(crm_rknd), dimension(*) :: trigs
+      pi=real(2.0*asin(1.0),crm_rknd)
       imode=iabs(mode)
       nn=n
-      if (imode.gt.1.and.imode.lt.6) nn=n/2
-      del=(pi+pi)/float(nn)
+      if (imode.gt.1 .and. imode.lt.6) nn=n/2
+      ! write(*,*) 'whannah - fftrig_crm() - 1 , n: ',n,' , nn: ',nn
+      del=(pi+pi)/real(nn,crm_rknd)
       l=nn+nn
       do 10 i=1,l,2
-      angle=0.5*float(i-1)*del
+      angle=0.5*real(i-1,crm_rknd)*del
       trigs(i)=cos(angle)
       trigs(i+1)=sin(angle)
    10 continue
@@ -251,7 +259,7 @@ c     sort factors into ascending order
       l=nh+nh
       la=nn+nn
       do 20 i=1,l,2
-      angle=0.5*float(i-1)*del
+      angle=0.5*real(i-1,crm_rknd)*del
       trigs(la+i)=cos(angle)
       trigs(la+i+1)=sin(angle)
    20 continue
@@ -260,14 +268,14 @@ c     sort factors into ascending order
       la=la+nn
       if (mode.eq.5) go to 40
       do 30 i=2,nn
-      angle=float(i-1)*del
+      angle=real(i-1,crm_rknd)*del
       trigs(la+i)=2.0*sin(angle)
    30 continue
       return
    40 continue
       del=0.5*del
       do 50 i=2,n
-      angle=float(i-1)*del
+      angle=real(i-1,crm_rknd)*del
       trigs(la+i)=sin(angle)
    50 continue
       return
@@ -283,7 +291,8 @@ c     sort factors into ascending order
 
 
       subroutine fft99a_crm(a,work,trigs,inc,jump,n,lot)
-      dimension a(*),work(*),trigs(*)
+      use params, only: crm_rknd
+      real(crm_rknd), dimension(*) :: a, work, trigs
 c
 c     subroutine fft99a - preprocessing step for fft99, isign=+1
 c     (spectral to gridpoint transform)
@@ -362,7 +371,8 @@ c
 
 
       subroutine fft99b_crm(work,a,trigs,inc,jump,n,lot)
-      dimension work(*),a(*),trigs(*)
+      use params, only: crm_rknd
+      real(crm_rknd), dimension(*) :: work, a, trigs
 c
 c     subroutine fft99b - postprocessing step for fft99, isign=-1
 c     (gridpoint to spectral transform)
@@ -372,7 +382,7 @@ c
       ink=inc+inc
 c
 c     a(0) and a(n/2)
-      scale=1.0/float(n)
+      scale=1.0/real(n,crm_rknd)
       ia=1
       ib=2
       ja=1
@@ -445,7 +455,8 @@ c
 
       subroutine vpassm_crm
      &   (a,b,c,d,trigs,inc1,inc2,inc3,inc4,lot,n,ifac,la)
-      dimension a(*),b(*),c(*),d(*),trigs(*)
+      use params, only: crm_rknd
+      real(crm_rknd), dimension(*) :: a, b, c, d, trigs
 c
 c     subroutine "vpassm" - multiple version of "vpassa"
 c     performs one pass through data

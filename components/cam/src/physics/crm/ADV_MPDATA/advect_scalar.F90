@@ -5,16 +5,16 @@ subroutine advect_scalar (f,fadv,flux,f2leadv,f2legrad,fwleadv,doit)
 
 use grid
 use vars, only: u, v, w, rho, rhow
-use params, only: docolumn
+use params, only: docolumn, crm_rknd
 
 implicit none
 
-real f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-real flux(nz), fadv(nz)
-real f2leadv(nz),f2legrad(nz),fwleadv(nz)
+real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+real(crm_rknd) flux(nz), fadv(nz)
+real(crm_rknd) f2leadv(nz),f2legrad(nz),fwleadv(nz)
 logical doit
 
-real df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
 integer i,j,k
 
 if(docolumn) then

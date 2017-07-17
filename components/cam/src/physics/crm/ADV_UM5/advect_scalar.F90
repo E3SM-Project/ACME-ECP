@@ -14,18 +14,18 @@ subroutine advect_scalar( f, fadv, flux, f2leadv, f2legrad, fwleadv, doit )
 
 	use grid
 	use vars, only: u, v, w, rho, rhow
-        use params, only: docolumn
+        use params, only: docolumn, crm_rknd
 	
 	implicit none
 	
 	!	input
-	real, dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
-	real, dimension(nz), intent(out) :: flux, fadv
-	real, dimension(nz), intent(out) :: f2leadv, f2legrad, fwleadv
+	real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
+	real(crm_rknd), dimension(nz), intent(out) :: flux, fadv
+	real(crm_rknd), dimension(nz), intent(out) :: f2leadv, f2legrad, fwleadv
 	logical, intent(in) :: doit
 	
 	!	local
-	real, dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: df
+	real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: df
 	integer :: i, j, k
 	
 	

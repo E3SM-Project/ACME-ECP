@@ -9,35 +9,35 @@ implicit none
 
 
 
-real qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
+real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
 integer hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
-real omega(nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
+real(crm_rknd) omega(nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
 integer ind
 
 ! Terminal velocity fnction 	
 
-real, external :: term_vel  ! terminal velocity function
+real(crm_rknd), external :: term_vel  ! terminal velocity function
 
 
 ! Local:
 
-real mx(nzm),mn(nzm), lfac(nz)
-real www(nz),fz(nz)
-real df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-real f0(nzm),df0(nzm)
-real eps
+real(crm_rknd) mx(nzm),mn(nzm), lfac(nz)
+real(crm_rknd) www(nz),fz(nz)
+real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+real(crm_rknd) f0(nzm),df0(nzm)
+real(crm_rknd) eps
 integer i,j,k,kc,kb
 logical nonos
 
-real y,pp,pn
+real(crm_rknd) y,pp,pn
 pp(y)= max(0.,y)
 pn(y)=-min(0.,y)
 
-real lat_heat, wmax
+real(crm_rknd) lat_heat, wmax
 
-real wp(nzm), tmp_qp(nzm), irhoadz(nzm), iwmax(nzm), rhofac(nzm), prec_cfl
+real(crm_rknd) wp(nzm), tmp_qp(nzm), irhoadz(nzm), iwmax(nzm), rhofac(nzm), prec_cfl
 integer nprec, iprec
-real  flagstat
+real(crm_rknd)  flagstat
 
 !--------------------------------------------------------
 
@@ -102,7 +102,7 @@ do j=1,ny
          do k = 1,nzm
             ! wp already includes factor of dt, so reduce it by a
             ! factor equal to the number of precipitation steps.
-            wp(k) = wp(k)/float(nprec) 
+            wp(k) = wp(k)/real(nprec,crm_rknd) 
          end do
       else
          nprec = 1
@@ -203,7 +203,7 @@ do j=1,ny
             do k=1,nzm
                   wp(k) = rhofac(k)*term_vel(i,j,k,ind)
                   ! Decrease precipitation velocity by factor of nprec
-                  wp(k) = -wp(k)*rhow(k)*dtn/dz/float(nprec)
+                  wp(k) = -wp(k)*rhow(k)*dtn/dz/real(nprec,crm_rknd)
                   ! Note: Don't bother checking CFL condition at each
                   ! substep since it's unlikely that the CFL will
                   ! increase very much between substeps when using

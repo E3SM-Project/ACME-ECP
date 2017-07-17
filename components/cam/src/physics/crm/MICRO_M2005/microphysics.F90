@@ -3,7 +3,7 @@ module microphysics
 ! main interface to Morrison microphysics.
 ! original implementation by Peter Blossey, UW
 
-use params, only: lcond, lsub, fac_cond, fac_sub, ggr
+use params, only: lcond, lsub, fac_cond, fac_sub, ggr, crm_rknd
 
 use grid, only: nx,ny,nzm,nz, &  !grid dimensions; nzm = nz-1 # of scalar lvls
      dimx1_s,dimx2_s,dimy1_s,dimy2_s, & ! actual scalar-array dimensions in x,y
@@ -54,23 +54,23 @@ logical :: isallocatedMICRO = .false.
 
 integer :: nmicro_fields ! total number of prognostic water vars
 
-real, allocatable, dimension(:,:,:,:) :: micro_field  ! holds mphys quantities
+real(crm_rknd), allocatable, dimension(:,:,:,:) :: micro_field  ! holds mphys quantities
 
 ! indices of water quantities in micro_field, e.g. qv = micro_field(:,:,:,iqv)
 integer :: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ins, ing
 integer :: index_water_vapor ! separate water vapor index used by SAM
 
-real, allocatable, dimension(:) :: lfac
+real(crm_rknd), allocatable, dimension(:) :: lfac
 integer, allocatable, dimension(:) :: flag_wmass, flag_precip, flag_number
 integer, allocatable, dimension(:) :: flag_micro3Dout
 
 integer, parameter :: index_cloud_ice = -1 ! historical variable (don't change)
 
-real, allocatable, dimension(:,:,:) :: fluxbmk, fluxtmk !surface/top fluxes
-real, allocatable, dimension(:,:,:) :: reffc, reffi
-real, allocatable, dimension(:,:,:) :: cloudliq
+real(crm_rknd), allocatable, dimension(:,:,:) :: fluxbmk, fluxtmk !surface/top fluxes
+real(crm_rknd), allocatable, dimension(:,:,:) :: reffc, reffi
+real(crm_rknd), allocatable, dimension(:,:,:) :: cloudliq
 
-real, allocatable, dimension(:,:) :: & ! statistical arrays
+real(crm_rknd), allocatable, dimension(:,:) :: & ! statistical arrays
      mkwle, & ! resolved vertical flux
      mkwsb, & ! SGS vertical flux
      mksed, & ! sedimentation vertical flux
@@ -83,54 +83,54 @@ real, allocatable, dimension(:,:) :: & ! statistical arrays
      mstor, & ! storage terms of microphysical variables 
      trtau    ! optical depths of various species
 
-real, allocatable, dimension(:) :: tmtend
+real(crm_rknd), allocatable, dimension(:) :: tmtend
 
-real :: sfcpcp, sfcicepcp
+real(crm_rknd) :: sfcpcp, sfcicepcp
 
 ! arrays with names/units for microphysical outputs in statistics.
 character*3, allocatable, dimension(:) :: mkname
 character*80, allocatable, dimension(:) :: mklongname
 character*10, allocatable, dimension(:) :: mkunits
-real, allocatable, dimension(:) :: mkoutputscale
+real(crm_rknd), allocatable, dimension(:) :: mkoutputscale
 logical douse_reffc, douse_reffi
 
 ! You can also have some additional, diagnostic, arrays, for example, total
 ! nonprecipitating cloud water, etc:
 
 !bloss: array which holds temperature tendency due to microphysics
-real, allocatable, dimension(:,:,:), SAVE :: tmtend3d
+real(crm_rknd), allocatable, dimension(:,:,:), SAVE :: tmtend3d
 
 #ifdef CRM
-real, allocatable, dimension(:) ::  qpevp   !sink of precipitating water due to evaporation (set to zero here)
-real, allocatable, dimension(:) ::  qpsrc   !source of precipitation microphysical processes (set to mtend)
+real(crm_rknd), allocatable, dimension(:) ::  qpevp   !sink of precipitating water due to evaporation (set to zero here)
+real(crm_rknd), allocatable, dimension(:) ::  qpsrc   !source of precipitation microphysical processes (set to mtend)
 #endif 
 
-real, allocatable, dimension(:,:,:)  :: wvar  ! the vertical velocity variance from subgrid-scale motion,
+real(crm_rknd), allocatable, dimension(:,:,:)  :: wvar  ! the vertical velocity variance from subgrid-scale motion,
                                               ! which is needed in droplet activation.
 #ifdef CRM
 ! hm 7/26/11 new output
-real, public, allocatable, dimension(:,:,:)  :: aut1  !
-real, public, allocatable, dimension(:,:,:)  :: acc1  !
-real, public, allocatable, dimension(:,:,:)  :: evpc1  !
-real, public, allocatable, dimension(:,:,:)  :: evpr1  !
-real, public, allocatable, dimension(:,:,:)  :: mlt1  !
-real, public, allocatable, dimension(:,:,:)  :: sub1  !
-real, public, allocatable, dimension(:,:,:)  :: dep1  !
-real, public, allocatable, dimension(:,:,:)  :: con1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: aut1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: acc1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: evpc1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: evpr1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: mlt1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: sub1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: dep1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: con1  !
 
-real, public, allocatable, dimension(:,:,:)  :: aut1a  !
-real, public, allocatable, dimension(:,:,:)  :: acc1a  !
-real, public, allocatable, dimension(:,:,:)  :: evpc1a  !
-real, public, allocatable, dimension(:,:,:)  :: evpr1a  !
-real, public, allocatable, dimension(:,:,:)  :: mlt1a  !
-real, public, allocatable, dimension(:,:,:)  :: sub1a  !
-real, public, allocatable, dimension(:,:,:)  :: dep1a  !
-real, public, allocatable, dimension(:,:,:)  :: con1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: aut1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: acc1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: evpc1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: evpr1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: mlt1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: sub1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: dep1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:)  :: con1a  !
 #endif
 
 !+++mhwangtest
 ! test water conservation
-real, public, allocatable, dimension(:, :) ::  sfcpcp2D  ! surface precipitation  
+real(crm_rknd), public, allocatable, dimension(:, :) ::  sfcpcp2D  ! surface precipitation  
 !---mhwangtest
 
 CONTAINS
@@ -437,7 +437,7 @@ subroutine micro_init()
   
   implicit none
   
-  real, dimension(nzm) :: qc0, qi0
+  real(crm_rknd), dimension(nzm) :: qc0, qi0
 
 ! Commented out by dschanen UWM 23 Nov 2009 to avoid a linking error
 ! real, external :: satadj_water 
@@ -634,7 +634,7 @@ use vars, only: CF3D
 #endif
 
 
-real, dimension(nzm) :: &
+real(crm_rknd), dimension(nzm) :: &
      tmpqcl, tmpqci, tmpqr, tmpqs, tmpqg, tmpqv, &
      tmpncl, tmpnci, tmpnr, tmpns, tmpng,  &
      tmpw, tmpwsub, tmppres, tmpdz, tmptabs, &
@@ -649,20 +649,20 @@ real, dimension(nzm) :: &
      effg1d, effr1d, effs1d, effc1d, effi1d
 
 #ifdef ECPP
-real, dimension(nzm) :: C2PREC,QSINK_TMP, CSED,ISED,SSED,GSED,RSED,RH3D   ! used for cloud chemistry and wet deposition in ECPP
+real(crm_rknd), dimension(nzm) :: C2PREC,QSINK_TMP, CSED,ISED,SSED,GSED,RSED,RH3D   ! used for cloud chemistry and wet deposition in ECPP
 #endif
 
 #ifdef CLUBB_CRM
 real(kind=core_rknd), dimension(nz) :: &
      qv_clip, qcl_clip
-real, dimension(nzm) :: cloud_frac_in, ice_cldfrac
-real, dimension(nzm) :: liq_cldfrac
-real, dimension(nzm) :: relvar        ! relative cloud water variance
-real, dimension(nzm) :: accre_enhan   ! optional accretion enhancement factor for MG
+real(crm_rknd), dimension(nzm) :: cloud_frac_in, ice_cldfrac
+real(crm_rknd), dimension(nzm) :: liq_cldfrac
+real(crm_rknd), dimension(nzm) :: relvar        ! relative cloud water variance
+real(crm_rknd), dimension(nzm) :: accre_enhan   ! optional accretion enhancement factor for MG
 #endif /*CLUBB_CRM*/
 
-real, dimension(nzm,nmicro_fields) :: stend1d, mtend1d
-real :: tmpc, tmpr, tmpi, tmps, tmpg
+real(crm_rknd), dimension(nzm,nmicro_fields) :: stend1d, mtend1d
+real(crm_rknd) :: tmpc, tmpr, tmpi, tmps, tmpg
 integer :: i1, i2, j1, j2, i, j, k, m, n
 
 real(8) :: tmp_total, tmptot
@@ -749,7 +749,7 @@ do j = 1,ny
       if ( doclubb .and. dosubgridw ) then
         ! Compute w_sgs.  Formula is consistent with that used with 
         ! TKE from MYJ pbl scheme in WRF (see module_mp_graupel.f90).
-        tmpwsub = sqrt( LIN_INT( real( wp2(i,j,2:nz) ), real( wp2(i,j,1:nzm) ), &
+        tmpwsub = sqrt( LIN_INT( real( wp2(i,j,2:nz) ,crm_rknd), real( wp2(i,j,1:nzm) ,crm_rknd), &
                                   zi(2:nz), zi(1:nzm), z(1:nzm) ) )
       else
 !        tmpwsub = 0.
@@ -1293,7 +1293,7 @@ use constants_clubb, only: fstderr, zero_threshold
 implicit none
 #endif
 
-real omn, omp
+real(crm_rknd) omn, omp
 integer i,j,k
 
 ! water vapor = total water - cloud liquid
@@ -1375,7 +1375,7 @@ subroutine micro_adjust( new_qv, new_qc )
 
   implicit none
 
-  real, dimension(nx,ny,nzm), intent(in) :: &
+  real(crm_rknd), dimension(nx,ny,nzm), intent(in) :: &
     new_qv, & ! Water vapor mixing ratio that has been adjusted by CLUBB [kg/kg]
     new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg]
 
@@ -1433,7 +1433,7 @@ subroutine micro_precip_fall()
 ! for hour hypothetical case, there is no mixed hydrometeor, so omega is not actually used.
 
 integer hydro_type
-real omega(nx,ny,nzm) 
+real(crm_rknd) omega(nx,ny,nzm) 
 
 integer i,j,k
 
@@ -1507,12 +1507,12 @@ subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
   implicit none
 
   integer, intent(in) :: nzm
-  real, intent(inout), dimension(nzm) :: tabs ! absolute temperature, K
-  real, intent(inout), dimension(nzm) :: qt  ! on input: qt; on output: qv
-  real, intent(out), dimension(nzm) :: qc ! cloud liquid water, kg/kg
-  real, intent(in), dimension(nzm) :: pres ! pressure, Pa
+  real(crm_rknd), intent(inout), dimension(nzm) :: tabs ! absolute temperature, K
+  real(crm_rknd), intent(inout), dimension(nzm) :: qt  ! on input: qt; on output: qv
+  real(crm_rknd), intent(out), dimension(nzm) :: qc ! cloud liquid water, kg/kg
+  real(crm_rknd), intent(in), dimension(nzm) :: pres ! pressure, Pa
 
-  real tabs1, dtabs, thresh, esat1, qsat1, fff, dfff
+  real(crm_rknd) tabs1, dtabs, thresh, esat1, qsat1, fff, dfff
   integer k, niter
 
   integer, parameter :: maxiter = 20
@@ -1523,6 +1523,7 @@ subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
     esat1 = polysvp(tabs1,0)
     qsat1 = 0.622*esat1/ (pres(k) - esat1)
     qc(k) = 0. ! no cloud unless qt > qsat
+
     
     if (qt(k).gt.qsat1) then
 
@@ -1531,14 +1532,14 @@ subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
       !    (modeled after Marat's cloud.f90).
 
       ! generate initial guess based on above calculation of qsat
-      dtabs = + fac_cond*MAX(0.,qt(k) - qsat1) &
+      dtabs = + fac_cond*MAX(real(0.,crm_rknd),qt(k) - qsat1) &
            / ( 1. + lcond**2*qsat1/(cp*rv*tabs1**2) )
       tabs1 = tabs1 + dtabs
       niter = 1
 
       ! convergence threshold: min of 0.01K and latent heating due to
       !    condensation of 1% of saturation mixing ratio.
-      thresh = MIN(0.01, 0.01*fac_cond*qsat1)
+      thresh = MIN(real(0.01,crm_rknd), 0.01*fac_cond*qsat1)
 
       ! iterate while temperature increment > thresh and niter < maxiter
       do while((ABS(dtabs).GT.thresh) .AND. (niter.lt.maxiter))
@@ -1546,7 +1547,7 @@ subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
         esat1 = polysvp(tabs1,0)
         qsat1 = 0.622*esat1/ (pres(k) - esat1) ! saturation mixing ratio
 
-        fff = tabs(k) - tabs1 + fac_cond*MAX(0.,qt(k) - qsat1)
+        fff = tabs(k) - tabs1 + fac_cond*MAX(real(0.,crm_rknd),qt(k) - qsat1)
         dfff = 1. + lcond**2*qsat1/(cp*rv*tabs1**2)
         dtabs = fff/dfff
         tabs1 = tabs1 + dtabs
@@ -1555,7 +1556,7 @@ subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
 
       end do
 
-      qc(k) = MAX( 0.,tabs1 - tabs(k) )/fac_cond ! cloud liquid mass mixing ratio
+      qc(k) = MAX( real(0.,crm_rknd), tabs1 - tabs(k) )/fac_cond ! cloud liquid mass mixing ratio
       qt(k) = qt(k) - qc(k) ! This now holds the water vapor mass mixing ratio.
       tabs(k) = tabs1 ! update temperature.
       
@@ -1593,18 +1594,18 @@ real(8) function total_water()
 
 end function total_water
 
-function Get_reffc() ! liquid water
-  real, dimension(nx,ny,nzm) :: Get_reffc
+real(crm_rknd) function Get_reffc() ! liquid water
+  real(crm_rknd), dimension(nx,ny,nzm) :: Get_reffc
   Get_reffc = reffc
 end function Get_reffc
 
-function Get_reffi() ! ice
-  real, dimension(nx,ny,nzm) :: Get_reffi
+real(crm_rknd) function Get_reffi() ! ice
+  real(crm_rknd), dimension(nx,ny,nzm) :: Get_reffi
   Get_reffi = reffi
 end function Get_reffi
 #ifdef CLUBB_CRM
 !-------------------------------------------------------------------------------
-ELEMENTAL FUNCTION LIN_INT( var_high, var_low, height_high, height_low, height_int )
+ELEMENTAL REAL(crm_rknd) FUNCTION LIN_INT( var_high, var_low, height_high, height_low, height_int )
 
 ! This function computes a linear interpolation of the value of variable.
 ! Given two known values of a variable at two height values, the value
@@ -1640,14 +1641,14 @@ ELEMENTAL FUNCTION LIN_INT( var_high, var_low, height_high, height_low, height_i
 IMPLICIT NONE
 
 ! Input Variables
-REAL, INTENT(IN):: var_high
-REAL, INTENT(IN):: var_low
-REAL, INTENT(IN):: height_high
-REAL, INTENT(IN):: height_low
-REAL, INTENT(IN):: height_int
+REAL(crm_rknd), INTENT(IN):: var_high
+REAL(crm_rknd), INTENT(IN):: var_low
+REAL(crm_rknd), INTENT(IN):: height_high
+REAL(crm_rknd), INTENT(IN):: height_low
+REAL(crm_rknd), INTENT(IN):: height_int
 
 ! Output Variable
-REAL:: LIN_INT
+REAL(crm_rknd) :: LIN_INT
 
 LIN_INT = ( var_high - var_low ) / ( height_high - height_low ) &
          * ( height_int - height_low ) + var_low

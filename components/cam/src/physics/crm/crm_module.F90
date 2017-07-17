@@ -9,68 +9,68 @@ use setparm_mod, only : setparm
 
 contains
 
-subroutine crm        (lchnk, icol, &
+subroutine crm  (lchnk, icol, &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
-                       latitude0_in, longitude0_in, &
+                latitude0_in, longitude0_in, &
 #endif
-                       tl, ql, qccl, qiil, ul, vl, &
-                       ps, pmid, pdel, phis, &
-                       zmid, zint, dt_gl, plev, &
+                tl, ql, qccl, qiil, ul, vl, &
+                ps, pmid, pdel, phis, &
+                zmid, zint, dt_gl, plev, &
 #ifdef CRM3D
-                       ultend, vltend,          &
+                ultend, vltend,          &
 #endif
-                       qltend, qcltend, qiltend, sltend, &
-                       u_crm, v_crm, w_crm, t_crm, micro_fields_crm, &
-                       qrad_crm, &
-                       qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
-                       t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
+                qltend, qcltend, qiltend, sltend, &
+                u_crm, v_crm, w_crm, t_crm, micro_fields_crm, &
+                qrad_crm, &
+                qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
+                t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
 #ifdef m2005
-                       nc_rad, ni_rad, qs_rad, ns_rad, wvar_crm,  &
+                nc_rad, ni_rad, qs_rad, ns_rad, wvar_crm,  &
 ! hm 7/26/11 new output
-                       aut_crm, acc_crm, evpc_crm, evpr_crm, mlt_crm, &
-                       sub_crm, dep_crm, con_crm, &
+                aut_crm, acc_crm, evpc_crm, evpr_crm, mlt_crm, &
+                sub_crm, dep_crm, con_crm, &
 ! hm 8/31/11 new output for gcm-grid and time-step avg process rates
-                       aut_crm_a, acc_crm_a, evpc_crm_a, evpr_crm_a, mlt_crm_a, &
-                       sub_crm_a, dep_crm_a, con_crm_a, &
+                aut_crm_a, acc_crm_a, evpc_crm_a, evpr_crm_a, mlt_crm_a, &
+                sub_crm_a, dep_crm_a, con_crm_a, &
 #endif
-                       precc, precl, precsc, precsl, &
-                       cltot, clhgh, clmed, cllow, cld, cldtop, &
-                       gicewp, gliqwp, &
-                       mc, mcup, mcdn, mcuup, mcudn, &
-                       crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
+                precc, precl, precsc, precsl, &
+                cltot, clhgh, clmed, cllow, cld, cldtop, &
+                gicewp, gliqwp, &
+                mc, mcup, mcdn, mcuup, mcudn, &
+                crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
 #ifdef m2005
-                       crm_nc, crm_ni, crm_ns, crm_ng, crm_nr, &
+                crm_nc, crm_ni, crm_ns, crm_ng, crm_nr, &
 #ifdef MODAL_AERO
-                       naermod, vaerosol, hygro,     &
+                naermod, vaerosol, hygro,     &
 #endif 
 #endif
 #ifdef CLUBB_CRM
-                       clubb_buffer,                 &
-                       crm_cld,                      &
-                       clubb_tk, clubb_tkh,          &
-                       relvar, accre_enhan, qclvar,  &
+                clubb_buffer,                 &
+                crm_cld,                      &
+                clubb_tk, clubb_tkh,          &
+                relvar, accre_enhan, qclvar,  &
 #endif
-                       crm_tk, crm_tkh,              &
-                       mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm,    &
+                crm_tk, crm_tkh,              &
+                mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm,    &
 #ifdef ECPP
-                       abnd, abnd_tf, massflxbnd, acen, acen_tf,           &
-                       rhcen, qcloudcen, qicecen, qlsinkcen, precrcen, precsolidcen,  & 
-                       qlsink_bfcen, qlsink_avgcen, praincen,     &
-                       wupthresh_bnd, wdownthresh_bnd,   &
-                       wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
+                abnd, abnd_tf, massflxbnd, acen, acen_tf,           &
+                rhcen, qcloudcen, qicecen, qlsinkcen, precrcen, precsolidcen,  & 
+                qlsink_bfcen, qlsink_avgcen, praincen,     &
+                wupthresh_bnd, wdownthresh_bnd,   &
+                wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
 #endif
-                       tkez, tkesgsz, tkz, flux_u, flux_v, flux_qt, fluxsgs_qt,flux_qp, &
-                       pflx, qt_ls, qt_trans, qp_trans, qp_fall, &
-                       qp_evp, qp_src, t_ls, prectend, precstend, &
-                       ocnfrac, wndls, tau00, bflxls, &
-                       fluxu00, fluxv00, fluxt00, fluxq00,    &
-                       taux_crm, tauy_crm, z0m, timing_factor, qtot)   
+                tkez, tkesgsz, tkz, flux_u, flux_v, flux_qt, fluxsgs_qt,flux_qp, &
+                pflx, qt_ls, qt_trans, qp_trans, qp_fall, &
+                qp_evp, qp_src, t_ls, prectend, precstend, &
+                ocnfrac, wndls, tau00, bflxls, &
+                fluxu00, fluxv00, fluxt00, fluxq00,    &
+                taux_crm, tauy_crm, z0m, timing_factor, qtot)   
 
-!            dolong, doshort, nrad0, &
-!            latitude00, longitude00, day00, pres00, tabs_s0, case0, &
-!            radlwup0, radlwdn0, radswup0, radswdn0, radqrlw0, radqrsw0, &
-!            lwnsxy,swnsxy,lwntxy,swntxy,solinxy,lwnscxy,swnscxy,lwntcxy,swntcxy,lwdsxy,swdsxy)
+           ! dolong, doshort, nrad0, &
+           ! latitude00, longitude00, day00, pres00, tabs_s0, case0, &
+           ! radlwup0, radlwdn0, radswup0, radswdn0, radqrlw0, radqrsw0, &
+           ! lwnsxy,swnsxy,lwntxy,swntxy,solinxy,lwnscxy,swnscxy,lwntcxy,swntcxy,lwdsxy,swdsxy)
 
 
 !---------------------------------------------------------------
@@ -125,23 +125,22 @@ subroutine crm        (lchnk, icol, &
         use ecppvars,  only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /*ECPP*/
 
-        !==Guangxing Lin
-         !use abortutils,     only: endrun
-        use cam_abortutils,     only: endrun
-        !==Guangxing Lin
+        ! use abortutils,     only: endrun
+        use cam_abortutils,     only: endrun        
         use time_manager,    only: get_nstep
+        ! use ieee_arithmetic  ! whannah - just for debugging
 
         implicit none
 
-!        integer, parameter :: r8 = 8
+       ! integer, parameter :: r8 = 8
 
 !  Input:
 
          integer, intent(in) :: lchnk    ! chunk identifier
          integer, intent(in) :: icol     ! column identifier
 #ifdef CRM_STANDALONE
-         real   , intent(in) :: latitude0_in
-         real   , intent(in) :: longitude0_in
+         real(crm_rknd)   , intent(in) :: latitude0_in
+         real(crm_rknd)   , intent(in) :: longitude0_in
 #endif
          integer, intent(in) :: plev     ! number of levels in parent model
          real(r8), intent(in) :: ps ! Global grid surface pressure (Pa)
@@ -160,15 +159,15 @@ subroutine crm        (lchnk, icol, &
          real(r8), intent(in) :: fluxv00  ! surface momenent fluxes [N/m2]
          real(r8), intent(in) :: fluxt00  ! surface sensible heat fluxes [K Kg/ (m2 s)]
          real(r8), intent(in) :: fluxq00  ! surface latent heat fluxes [ kg/(m2 s)]
-!         logical, intent(in)  :: doshort ! compute shortwave radiation
-!         logical, intent(in)  :: dolong ! compute longwave radiation
-!         real(r8), intent(in) :: day00 ! initial day
-!         real(r8), intent(in) :: latitude00
-!         real(r8), intent(in) :: longitude00
-!         real(r8), intent(in) :: pres00
-!         real(r8), intent(in) :: tabs_s0
-!         integer , intent(in) :: nrad0
-!         character *40 case0  ! 8-symbol id-string to identify a case-name
+        ! logical, intent(in)  :: doshort ! compute shortwave radiation
+        ! logical, intent(in)  :: dolong ! compute longwave radiation
+        ! real(r8), intent(in) :: day00 ! initial day
+        ! real(r8), intent(in) :: latitude00
+        ! real(r8), intent(in) :: longitude00
+        ! real(r8), intent(in) :: pres00
+        ! real(r8), intent(in) :: tabs_s0
+        ! integer , intent(in) :: nrad0
+        ! character *40 case0  ! 8-symbol id-string to identify a case-name
 
 
 ! tl, ql, qccl, qiil, ul, vl are not updated in this subroutine, and set to intent(in), but
@@ -207,15 +206,15 @@ subroutine crm        (lchnk, icol, &
          real(r8), intent(out) :: vltend(plev) ! tendency of vl
 #endif
          real(r8), intent(out) :: sltend(plev) ! tendency of static energy
-!         real(r8), intent(inout) :: u_crm  (:,:,:) ! CRM v-wind component
-!         real(r8), intent(inout) :: v_crm  (:,:,:) ! CRM v-wind component
-!         real(r8), intent(inout) :: w_crm  (:,:,:) ! CRM w-wind component
-!         real(r8), intent(inout) :: t_crm  (:,:,:) ! CRM temperuture
+        ! real(r8), intent(inout) :: u_crm  (:,:,:) ! CRM v-wind component
+        ! real(r8), intent(inout) :: v_crm  (:,:,:) ! CRM v-wind component
+        ! real(r8), intent(inout) :: w_crm  (:,:,:) ! CRM w-wind component
+        ! real(r8), intent(inout) :: t_crm  (:,:,:) ! CRM temperuture
          real(r8), intent(inout) :: u_crm  (crm_nx,crm_ny,crm_nz) ! CRM v-wind component
          real(r8), intent(inout) :: v_crm  (crm_nx,crm_ny,crm_nz) ! CRM v-wind component
          real(r8), intent(inout) :: w_crm  (crm_nx,crm_ny,crm_nz) ! CRM w-wind component
          real(r8), intent(inout) :: t_crm  (crm_nx,crm_ny,crm_nz) ! CRM temperuture
-!         real(r8), intent(inout) :: micro_fields_crm  (:,:,:,:) ! CRM total water
+        ! real(r8), intent(inout) :: micro_fields_crm  (:,:,:,:) ! CRM total water
          real(r8), intent(inout) :: micro_fields_crm  (crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
          real(r8), intent(out) :: qltend(plev) ! tendency of water vapor
          real(r8), intent(out) :: qcltend(plev)! tendency of cloud liquid water
@@ -349,21 +348,21 @@ subroutine crm        (lchnk, icol, &
          real(r8), intent(out) :: qtot(20)
 
 !  Local space:
-        real dummy(nz), t00(nz)
-        real fluxbtmp(nx,ny), fluxttmp(nx,ny) !bloss
-        real tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
-        real cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
+        real(crm_rknd) dummy(nz), t00(nz)
+        real(crm_rknd) fluxbtmp(nx,ny), fluxttmp(nx,ny) !bloss
+        real(crm_rknd) tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
+        real(crm_rknd) cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
         real(r8) factor_xy, idt_gl
-        real tmp1, tmp2
-        real u2z,v2z,w2z
+        real(crm_rknd) tmp1, tmp2
+        real(crm_rknd) u2z,v2z,w2z
         integer i,j,k,l,ptop,nn,icyc, nstatsteps
         integer kx
         real(r8), parameter :: umax = 0.5*crm_dx/crm_dt ! maxumum ampitude of the l.s. wind
         real(r8), parameter :: wmin = 2.   ! minimum up/downdraft velocity for stat
-        real, parameter :: cwp_threshold = 0.001 ! threshold for cloud condensate for shaded fraction calculation
+        real(crm_rknd), parameter :: cwp_threshold = 0.001 ! threshold for cloud condensate for shaded fraction calculation
         logical flag_top(nx,ny)
-        real ustar, bflx, wnd, z0_est, qsat, omg
-        real colprec,colprecs
+        real(crm_rknd) ustar, bflx, wnd, z0_est, qsat, omg
+        real(crm_rknd) colprec,colprecs
         real(r8) zs ! surface elevation
         integer igstep    ! GCM time steps
         integer iseed   ! seed for random perturbation
@@ -384,9 +383,8 @@ real(kind=core_rknd), dimension(nzm) :: &
   rtm_column ! Total water (vapor + liquid)     [kg/kg]
 #endif
 
-        real  cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
-
-        real ntotal_step
+        real(crm_rknd)  cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
+        real(crm_rknd) ntotal_step
 
 !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
 #ifdef CRM_STANDALONE
@@ -414,16 +412,16 @@ real(kind=core_rknd), dimension(nzm) :: &
 
 !-----------------------------------------------
 
-        dostatis = .false.    ! no statistics are collected. 
-        idt_gl = 1._r8/dt_gl
-        ptop = plev-nzm+1
+        dostatis  = .false.    ! no statistics are collected. 
+        idt_gl    = 1._r8/dt_gl
+        ptop      = plev-nzm+1
         factor_xy = 1._r8/dble(nx*ny)
-        dummy = 0.
-        t_rad = 0.
-        qv_rad = 0.
-        qc_rad = 0.
-        qi_rad = 0.
-        cld_rad = 0.
+        dummy     = 0.
+        t_rad     = 0.
+        qv_rad    = 0.
+        qc_rad    = 0.
+        qi_rad    = 0.
+        cld_rad   = 0.
 #ifdef m2005
         nc_rad = 0.0
         ni_rad = 0.0
@@ -494,7 +492,7 @@ real(kind=core_rknd), dimension(nzm) :: &
         do k=2,nzm
            adzw(k) = (z(k)-z(k-1))/dz
         end do
-        adzw(1) = 1.
+        adzw(1)  = 1.
         adzw(nz) = adzw(nzm)
 !        adz(1) = 1.
 !        do k=2,nzm-1
@@ -516,15 +514,15 @@ real(kind=core_rknd), dimension(nzm) :: &
 !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
            rhow(k) = (pmid(plev-k+2)-pmid(plev-k+1))/ggr/(adzw(k)*dz)
         end do
-        rhow(1) = 2*rhow(2) - rhow(3)
+        rhow(1) = 2.*rhow(2) - rhow(3)
 #ifdef CLUBB_CRM /* Fix extropolation for 30 point grid */
-        if (  2*rhow(nzm) - rhow(nzm-1) > 0. ) then
-           rhow(nz)= 2*rhow(nzm) - rhow(nzm-1)
+        if (  2.*rhow(nzm) - rhow(nzm-1) > 0. ) then
+           rhow(nz)= 2.*rhow(nzm) - rhow(nzm-1)
         else
            rhow(nz)= sqrt( rhow(nzm) )
         endif
 #else
-        rhow(nz)= 2*rhow(nzm) - rhow(nzm-1)
+        rhow(nz)= 2.*rhow(nzm) - rhow(nzm-1)
 #endif /*CLUBB_CRM*/
         colprec=0
         colprecs=0
@@ -678,7 +676,7 @@ real(kind=core_rknd), dimension(nzm) :: &
 
         ustar = sqrt(tau00/rho(1))
         z0 = z0_est(z(1),bflx,wnd,ustar)
-        z0 = max(0.00001,min(1.,z0))
+        z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
 
         timing_factor = 0.
 
@@ -940,9 +938,9 @@ do while(nstep.lt.nstop)
 
   do icyc=1,ncycle
 
-     icycle = icyc
-     dtn = dt/ncycle
-     dt3(na) = dtn
+     icycle   = icyc
+     dtn      = dt/ncycle
+     dt3(na)  = dtn
      dtfactor = dtn/dt
 
 !---------------------------------------------
@@ -1035,16 +1033,20 @@ do while(nstep.lt.nstop)
         do i = 1,nx
           do j = 1,ny
             rtm_column = qv(i,j,1:nzm) + qcl(i,j,1:nzm)
-            rtm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), & 
-                                         rtm_column, gr%invrs_dzt(2:nz) )
+            rtm_integral_before(i,j) = vertical_integral( (nz - 2 + 1),      &
+                                                          rho_ds_zt(2:nz),   & 
+                                                          rtm_column,        & 
+                                                          gr%invrs_dzt(2:nz) )
 
-            thlm_before = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
-                                 qcl(i,j,1:nzm), qpl(i,j,1:nzm), &
-                                 qci(i,j,1:nzm), qpi(i,j,1:nzm), &
-                                 prespot(1:nzm) )
+            thlm_before = t2thetal( t(i,j,1:nzm),   gamaz(1:nzm),  &
+                                    qcl(i,j,1:nzm), qpl(i,j,1:nzm), &
+                                    qci(i,j,1:nzm), qpi(i,j,1:nzm), &
+                                    prespot(1:nzm) )
 
-            thlm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                                          thlm_before(1:nzm), gr%invrs_dzt(2:nz) )
+            thlm_integral_before(i,j) = vertical_integral( (nz - 2 + 1),        &
+                                                           rho_ds_zt(2:nz),     &
+                                                           thlm_before(1:nzm),  &
+                                                           gr%invrs_dzt(2:nz)   )
           end do
         end do
         ! End vertical integral
@@ -1085,8 +1087,8 @@ do while(nstep.lt.nstop)
      if(dosgs) call sgs_mom()
 #ifdef CLUBB_CRM_OLD
      if ( doclubb ) then
-!          call apply_clubb_sgs_tndcy_mom &
-!               ( dudt, dvdt ) ! in/out
+         ! call apply_clubb_sgs_tndcy_mom &
+         !      ( dudt, dvdt ) ! in/out
      endif
 #endif /*CLUBB_CRM_OLD*/
 
@@ -1179,7 +1181,7 @@ do while(nstep.lt.nstop)
                                                           0.0_core_rknd, real( dtn, kind=core_rknd ))
          end do
        end do
-          ! End spurious source calculation
+       ! End spurious source calculation
 
      end if! doclubb
 #endif /*CLUBB_CRM_OLD*/
@@ -1216,7 +1218,7 @@ do while(nstep.lt.nstop)
        call ecpp_crm_stat()   
 #endif /*ECPP*/
 
-        cwp = 0.
+        cwp  = 0.
         cwph = 0.
         cwpm = 0.
         cwpl = 0.
@@ -1297,7 +1299,7 @@ do while(nstep.lt.nstop)
            end if
            
            t_rad (i,j,k) = t_rad (i,j,k)+tabs(i,j,k)
-           qv_rad(i,j,k) = qv_rad(i,j,k)+max(0.,qv(i,j,k))
+           qv_rad(i,j,k) = qv_rad(i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
            qc_rad(i,j,k) = qc_rad(i,j,k)+qcl(i,j,k)
            qi_rad(i,j,k) = qi_rad(i,j,k)+qci(i,j,k)
            cld_rad(i,j,k) = cld_rad(i,j,k) +  CF3D(i,j,k)
@@ -1323,13 +1325,13 @@ do while(nstep.lt.nstop)
            if(w(i,j,k).gt.0.) then
              kx=max(1, k-1)
              qsat = qsatw_crm(tabs(i,j,kx),pres(kx))
-             if(qcl(i,j,kx)+qci(i,j,kx).gt.min(1.e-5,0.01*qsat)) then
+             if(qcl(i,j,kx)+qci(i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
               mui_crm(l) = mui_crm(l)+rhow(k)*w(i,j,k)
              end if
            else if (w(i,j,k).lt.0.) then 
              kx=min(k+1, nzm)
              qsat = qsatw_crm(tabs(i,j,kx),pres(kx))
-             if(qcl(i,j,kx)+qci(i,j,kx).gt.min(1.e-5,0.01*qsat)) then
+             if(qcl(i,j,kx)+qci(i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                mdi_crm(l) = mdi_crm(l)+rhow(k)*w(i,j,k)
              else if(qpl(i,j,kx)+qpi(i,j,kx).gt.1.0e-4) then 
                mdi_crm(l) = mdi_crm(l)+rhow(k)*w(i,j,k) 
@@ -1339,21 +1341,21 @@ do while(nstep.lt.nstop)
          end do
         end do
 
-!        do k=1,nzm
-!         radlwup0(k)=radlwup0(k)+radlwup(k)
-!         radlwdn0(k)=radlwdn0(k)+radlwdn(k)
-!         radqrlw0(k)=radqrlw0(k)+radqrlw(k)
-!         radswup0(k)=radswup0(k)+radswup(k)
-!         radswdn0(k)=radswdn0(k)+radswdn(k)
-!         radqrsw0(k)=radqrsw0(k)+radqrsw(k)
-!        end do
+       ! do k=1,nzm
+       !  radlwup0(k)=radlwup0(k)+radlwup(k)
+       !  radlwdn0(k)=radlwdn0(k)+radlwdn(k)
+       !  radqrlw0(k)=radqrlw0(k)+radqrlw(k)
+       !  radswup0(k)=radswup0(k)+radswup(k)
+       !  radswdn0(k)=radswdn0(k)+radswdn(k)
+       !  radqrsw0(k)=radqrsw0(k)+radqrsw(k)
+       ! end do
         
         do j=1,ny
          do i=1,nx
-!           if(cwp(i,j).gt.cwp_threshold) cltot = cltot + 1.
-!           if(cwph(i,j).gt.cwp_threshold) clhgh = clhgh + 1.
-!           if(cwpm(i,j).gt.cwp_threshold) clmed = clmed + 1.
-!           if(cwpl(i,j).gt.cwp_threshold) cllow = cllow + 1.
+          ! if(cwp(i,j).gt.cwp_threshold) cltot = cltot + 1.
+          ! if(cwph(i,j).gt.cwp_threshold) clhgh = clhgh + 1.
+          ! if(cwpm(i,j).gt.cwp_threshold) clmed = clmed + 1.
+          ! if(cwpl(i,j).gt.cwp_threshold) cllow = cllow + 1.
 !  use maxmimum cloud overlap to calcluate cltot, clhgh, 
 !  cldmed, and cldlow   +++ mhwang
            if(cwp(i,j).gt.cwp_threshold) cltot = cltot + cttemp(i,j) 
@@ -1392,12 +1394,12 @@ do while(nstep.lt.nstop)
 
 !  Compute tendencies due to CRM:
         
-        tln(ptop:plev) = 0.
-        qln(ptop:plev) = 0.
-        qccln(ptop:plev)= 0.
-        qiiln(ptop:plev)= 0.
-        uln(ptop:plev) = 0.
-        vln(ptop:plev) = 0.
+        tln(ptop:plev)   = 0.
+        qln(ptop:plev)   = 0.
+        qccln(ptop:plev) = 0.
+        qiiln(ptop:plev) = 0.
+        uln(ptop:plev)   = 0.
+        vln(ptop:plev)   = 0.
         
         colprec=0
         colprecs=0
@@ -1418,12 +1420,12 @@ do while(nstep.lt.nstop)
         end do ! i
 
 
-        tln(ptop:plev) = tln(ptop:plev) * factor_xy
-        qln(ptop:plev) = qln(ptop:plev) * factor_xy
+        tln(ptop:plev)   = tln(ptop:plev) * factor_xy
+        qln(ptop:plev)   = qln(ptop:plev) * factor_xy
         qccln(ptop:plev) = qccln(ptop:plev) * factor_xy
         qiiln(ptop:plev) = qiiln(ptop:plev) * factor_xy
-        uln(ptop:plev) = uln(ptop:plev) * factor_xy
-        vln(ptop:plev) = vln(ptop:plev) * factor_xy
+        uln(ptop:plev)   = uln(ptop:plev) * factor_xy
+        vln(ptop:plev)   = vln(ptop:plev) * factor_xy
 
 
 #ifdef SPMOMTRANS
@@ -1432,12 +1434,16 @@ do while(nstep.lt.nstop)
         vltend = (vln - vl)*idt_gl
 #endif
 
-        sltend = cp * (tln - tl) * idt_gl
-        qltend = (qln - ql) * idt_gl
-        qcltend = (qccln - qccl) * idt_gl
-        qiltend = (qiiln - qiil) * idt_gl
-        prectend=(colprec-prectend)/ggr*factor_xy * idt_gl
-        precstend=(colprecs-precstend)/ggr*factor_xy * idt_gl
+
+
+
+        sltend    = cp * (tln - tl) * idt_gl
+        qltend    = (qln - ql) * idt_gl
+        qcltend   = (qccln - qccl) * idt_gl
+        qiltend   = (qiiln - qiil) * idt_gl
+        prectend  = (colprec-prectend)/ggr*factor_xy * idt_gl
+        precstend = (colprecs-precstend)/ggr*factor_xy * idt_gl
+
 
 ! don't use CRM tendencies from two crm top levels, 
 ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
@@ -1464,18 +1470,18 @@ do while(nstep.lt.nstop)
        crm_tkh(1:nx,1:ny,1:nzm) = tkh(1:nx, 1:ny, 1:nzm)
        cld3d_crm(1:nx, 1:ny, 1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)
 #ifdef CLUBB_CRM
-       clubb_buffer(1:nx, 1:ny, 1:nz, 1) = up2(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 2) = vp2(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 3) = wprtp(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 4) = wpthlp(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 5) = wp2(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 6) = wp3(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 7) = rtp2(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 8) = thlp2(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 9) = rtpthlp(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 10) = upwp(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 11) = vpwp(1:nx, 1:ny, 1:nz)
-       clubb_buffer(1:nx, 1:ny, 1:nz, 12) = cloud_frac(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   1) = up2(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   2) = vp2(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   3) = wprtp(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   4) = wpthlp(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   5) = wp2(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   6) = wp3(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   7) = rtp2(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   8) = thlp2(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,   9) = rtpthlp(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,  10) = upwp(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,  11) = vpwp(1:nx, 1:ny, 1:nz)
+       clubb_buffer(1:nx, 1:ny, 1:nz,  12) = cloud_frac(1:nx, 1:ny, 1:nz)
        clubb_buffer(1:nx, 1:ny, 1:nzm, 13) = t_tndcy(1:nx, 1:ny, 1:nzm)
        clubb_buffer(1:nx, 1:ny, 1:nzm, 14) = qc_tndcy(1:nx, 1:ny, 1:nzm)
        clubb_buffer(1:nx, 1:ny, 1:nzm, 15) = qv_tndcy(1:nx, 1:ny, 1:nzm)
@@ -1522,44 +1528,55 @@ do while(nstep.lt.nstop)
 
 ! hm add 9/7/11, change from GCM-time step avg to end-of-timestep
 
-        do k=1,nzm
-         l = plev-k+1
-         do j=1,ny
+      do k=1,nzm
+        l = plev-k+1
+        do j=1,ny
           do i=1,nx
 
-           crm_qc(l) = crm_qc(l) + qcl(i,j,k)
-           crm_qi(l) = crm_qi(l) + qci(i,j,k)
-           crm_qr(l) = crm_qr(l) + qpl(i,j,k)
+            crm_qc(l) = crm_qc(l) + qcl(i,j,k)
+            crm_qi(l) = crm_qi(l) + qci(i,j,k)
+            crm_qr(l) = crm_qr(l) + qpl(i,j,k)
 #ifdef sam1mom
-           omg = max(0.,min(1.,(tabs(i,j,k)-tgrmin)*a_gr))
-           crm_qg(l) = crm_qg(l) + qpi(i,j,k)*omg
-           crm_qs(l) = crm_qs(l) + qpi(i,j,k)*(1.-omg)
+            omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tgrmin)*a_gr))
+            crm_qg(l) = crm_qg(l) + qpi(i,j,k)*omg
+            crm_qs(l) = crm_qs(l) + qpi(i,j,k)*(1.-omg)
 #else
-!           crm_qg(l) = crm_qg(l) + qpi(i,j,k)
-!           crm_qs(l) = crm_qs(l) + 0.     ! temporerary solution
-           crm_qg(l) = crm_qg(l) + micro_field(i,j,k,iqg)
-           crm_qs(l) = crm_qs(l) + micro_field(i,j,k,iqs)
+            ! crm_qg(l) = crm_qg(l) + qpi(i,j,k)
+            ! crm_qs(l) = crm_qs(l) + 0.     ! temporerary solution
+            crm_qg(l) = crm_qg(l) + micro_field(i,j,k,iqg)
+            crm_qs(l) = crm_qs(l) + micro_field(i,j,k,iqs)
 
-           crm_nc(l) = crm_nc(l) + micro_field(i,j,k,incl)
-           crm_ni(l) = crm_ni(l) + micro_field(i,j,k,inci)
-           crm_nr(l) = crm_nr(l) + micro_field(i,j,k,inr)
-           crm_ng(l) = crm_ng(l) + micro_field(i,j,k,ing)
-           crm_ns(l) = crm_ns(l) + micro_field(i,j,k,ins)
+            crm_nc(l) = crm_nc(l) + micro_field(i,j,k,incl)
+            crm_ni(l) = crm_ni(l) + micro_field(i,j,k,inci)
+            crm_nr(l) = crm_nr(l) + micro_field(i,j,k,inr)
+            crm_ng(l) = crm_ng(l) + micro_field(i,j,k,ing)
+            crm_ns(l) = crm_ns(l) + micro_field(i,j,k,ins)
 #endif
 
-	  end do
-	 end do
-	end do
+    	    end do
+    	  end do
+    	end do
 
-        cld = min(1._r8,cld/float(nstop)*factor_xy)
-        cldtop = min(1._r8,cldtop/float(nstop)*factor_xy)
-        gicewp(:)=gicewp*pdel(:)*1000./ggr/float(nstop)*factor_xy
-        gliqwp(:)=gliqwp*pdel(:)*1000./ggr/float(nstop)*factor_xy
-        mcup = mcup / float(nstop) * factor_xy
-        mcdn = mcdn / float(nstop) * factor_xy
-        mcuup = mcuup / float(nstop) * factor_xy
-        mcudn = mcudn / float(nstop) * factor_xy
-        mc = mcup + mcdn + mcuup + mcudn
+      ! cld = min(1._r8,cld/float(nstop)*factor_xy)
+      ! cldtop = min(1._r8,cldtop/float(nstop)*factor_xy)
+      ! gicewp(:)=gicewp*pdel(:)*1000./ggr/float(nstop)*factor_xy
+      ! gliqwp(:)=gliqwp*pdel(:)*1000./ggr/float(nstop)*factor_xy
+      ! mcup = mcup / float(nstop) * factor_xy
+      ! mcdn = mcdn / float(nstop) * factor_xy
+      ! mcuup = mcuup / float(nstop) * factor_xy
+      ! mcudn = mcudn / float(nstop) * factor_xy
+      ! mc = mcup + mcdn + mcuup + mcudn
+
+      cld = min(1._r8,cld/real(nstop,crm_rknd)*factor_xy)
+      cldtop = min(1._r8,cldtop/real(nstop,crm_rknd)*factor_xy)
+      gicewp(:)=gicewp*pdel(:)*1000./ggr/real(nstop,crm_rknd)*factor_xy
+      gliqwp(:)=gliqwp*pdel(:)*1000./ggr/real(nstop,crm_rknd)*factor_xy
+      mcup  = mcup  / real(nstop,crm_rknd) * factor_xy
+      mcdn  = mcdn  / real(nstop,crm_rknd) * factor_xy
+      mcuup = mcuup / real(nstop,crm_rknd) * factor_xy
+      mcudn = mcudn / real(nstop,crm_rknd) * factor_xy
+      mc = mcup + mcdn + mcuup + mcudn
+
 ! hm 9/7/11 modify for end-of-timestep instead of timestep-avg output
 !hm        crm_qc = crm_qc / float(nstop) * factor_xy
 !hm        crm_qi = crm_qi / float(nstop) * factor_xy
@@ -1573,46 +1590,46 @@ do while(nstep.lt.nstop)
 !hm        crm_ng = crm_ng / float(nstop) * factor_xy
 !hm        crm_nr = crm_nr / float(nstop) * factor_xy
 
-        crm_qc = crm_qc * factor_xy
-        crm_qi = crm_qi * factor_xy
-        crm_qs = crm_qs * factor_xy
-        crm_qg = crm_qg * factor_xy
-        crm_qr = crm_qr * factor_xy
+      crm_qc = crm_qc * factor_xy
+      crm_qi = crm_qi * factor_xy
+      crm_qs = crm_qs * factor_xy
+      crm_qg = crm_qg * factor_xy
+      crm_qr = crm_qr * factor_xy
 #ifdef m2005
-        crm_nc = crm_nc * factor_xy
-        crm_ni = crm_ni * factor_xy
-        crm_ns = crm_ns * factor_xy
-        crm_ng = crm_ng * factor_xy
-        crm_nr = crm_nr * factor_xy
+      crm_nc = crm_nc * factor_xy
+      crm_ni = crm_ni * factor_xy
+      crm_ns = crm_ns * factor_xy
+      crm_ng = crm_ng * factor_xy
+      crm_nr = crm_nr * factor_xy
 
 
 ! hm 8/31/11 new output, gcm-grid- and time-step avg
 ! add loop over i,j do get horizontal avg, and flip vertical array
-        do k=1,nzm
-         l = plev-k+1
-         do j=1,ny
+      do k=1,nzm
+        l = plev-k+1
+        do j=1,ny
           do i=1,nx
-           aut_crm_a(l) = aut_crm_a(l) + aut1a(i,j,k)
-           acc_crm_a(l) = acc_crm_a(l) + acc1a(i,j,k)
-           evpc_crm_a(l) = evpc_crm_a(l) + evpc1a(i,j,k)
-           evpr_crm_a(l) = evpr_crm_a(l) + evpr1a(i,j,k)
-           mlt_crm_a(l) = mlt_crm_a(l) + mlt1a(i,j,k)
-           sub_crm_a(l) = sub_crm_a(l) + sub1a(i,j,k)
-           dep_crm_a(l) = dep_crm_a(l) + dep1a(i,j,k)
-           con_crm_a(l) = con_crm_a(l) + con1a(i,j,k)
-	  end do
-	 end do
-	end do
+            aut_crm_a(l) = aut_crm_a(l) + aut1a(i,j,k)
+            acc_crm_a(l) = acc_crm_a(l) + acc1a(i,j,k)
+            evpc_crm_a(l) = evpc_crm_a(l) + evpc1a(i,j,k)
+            evpr_crm_a(l) = evpr_crm_a(l) + evpr1a(i,j,k)
+            mlt_crm_a(l) = mlt_crm_a(l) + mlt1a(i,j,k)
+            sub_crm_a(l) = sub_crm_a(l) + sub1a(i,j,k)
+            dep_crm_a(l) = dep_crm_a(l) + dep1a(i,j,k)
+            con_crm_a(l) = con_crm_a(l) + con1a(i,j,k)
+         end do
+        end do
+      end do
 
 ! note, rates are divded by dt to get mean rate over step
-        aut_crm_a = aut_crm_a / dble(nstop) * factor_xy / dt
-        acc_crm_a = acc_crm_a / dble(nstop) * factor_xy / dt
-        evpc_crm_a = evpc_crm_a / dble(nstop) * factor_xy / dt
-        evpr_crm_a = evpr_crm_a / dble(nstop) * factor_xy / dt
-        mlt_crm_a = mlt_crm_a / dble(nstop) * factor_xy / dt
-        sub_crm_a = sub_crm_a / dble(nstop) * factor_xy / dt
-        dep_crm_a = dep_crm_a / dble(nstop) * factor_xy / dt
-        con_crm_a = con_crm_a / dble(nstop) * factor_xy / dt
+      aut_crm_a = aut_crm_a / dble(nstop) * factor_xy / dt
+      acc_crm_a = acc_crm_a / dble(nstop) * factor_xy / dt
+      evpc_crm_a = evpc_crm_a / dble(nstop) * factor_xy / dt
+      evpr_crm_a = evpr_crm_a / dble(nstop) * factor_xy / dt
+      mlt_crm_a = mlt_crm_a / dble(nstop) * factor_xy / dt
+      sub_crm_a = sub_crm_a / dble(nstop) * factor_xy / dt
+      dep_crm_a = dep_crm_a / dble(nstop) * factor_xy / dt
+      con_crm_a = con_crm_a / dble(nstop) * factor_xy / dt
 
 #endif
         precc = 0.
@@ -1627,8 +1644,8 @@ do while(nstep.lt.nstop)
 #endif
 #ifdef m2005 
 ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/s/dz
-!          precsfc(i,j) = precsfc(i,j)*dz/dble(nstop)     !mm/s/dz --> mm/s
-!          precssfc(i,j) = precssfc(i,j)*dz/dble(nstop)   !mm/s/dz --> mm/s
+         ! precsfc(i,j) = precsfc(i,j)*dz/dble(nstop)     !mm/s/dz --> mm/s
+         ! precssfc(i,j) = precssfc(i,j)*dz/dble(nstop)   !mm/s/dz --> mm/s
 ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/dz
           precsfc(i,j) = precsfc(i,j)*dz/dt/dble(nstop)     !mm/s/dz --> mm/s
           precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
@@ -1668,13 +1685,13 @@ do while(nstep.lt.nstop)
         qtot(9) = qtot(9) + (precc+precl)*1000 * dt_gl
 
         !if(abs(qtot(9)-qtot(1))/qtot(1).gt.1.0e-6) then
-        !   write(0, *) 'in crm.F90 water before, after', igstep, lchnk, icol, qtot(1),  qtot(9), (qtot(9)-qtot(1))/qtot(1), (precc+precl)*1000 * dt_gl
-!           write(0, *) 'in crm water middle       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(5)-qtot(4)) * ntotal_step/qtot(4),  &
-!                                                     (qtot(6)+(precc+precl)*1000 * dt_gl-qtot(5))*ntotal_step/qtot(5)
-!           write(0, *) 'in crm water middle2       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(8)-qtot(7)) * ntotal_step/qtot(7) 
-!           write(0, *) 'total water (liquid+vapor)', qtot(16:19)/nstop, (qtot(17)-qtot(16)) * ntotal_step/qtot(16), &
-!                                                     (qtot(18)-qtot(19)) * ntotal_step/qtot(19),
-!           call endrun('water conservation in crm.F90')
+          ! write(0, *) 'in crm.F90 water before, after', igstep, lchnk, icol, qtot(1),  qtot(9), (qtot(9)-qtot(1))/qtot(1), (precc+precl)*1000 * dt_gl
+          ! write(0, *) 'in crm water middle       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(5)-qtot(4)) * ntotal_step/qtot(4),  &
+          !                                           (qtot(6)+(precc+precl)*1000 * dt_gl-qtot(5))*ntotal_step/qtot(5)
+          ! write(0, *) 'in crm water middle2       ', igstep, lchnk, icol, qtot(2:8)/ntotal_step, (qtot(8)-qtot(7)) * ntotal_step/qtot(7) 
+          ! write(0, *) 'total water (liquid+vapor)', qtot(16:19)/nstop, (qtot(17)-qtot(16)) * ntotal_step/qtot(16), &
+          !                                           (qtot(18)-qtot(19)) * ntotal_step/qtot(19),
+          ! call endrun('water conservation in crm.F90')
        ! end if
 !---mhwangtest
         

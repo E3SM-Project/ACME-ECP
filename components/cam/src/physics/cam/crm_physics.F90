@@ -524,6 +524,7 @@ end subroutine crm_physics_init
    use physconst,       only: latvap
    use phys_control,    only: phys_getopts
    use check_energy,    only: check_energy_chng
+   use params,          only: crm_rknd
 
 ! modal_aero_data only exists if MODAL_AERO
 #if (defined  m2005 && defined MODAL_AERO)  
@@ -1530,6 +1531,71 @@ end subroutine crm_physics_init
        call t_stopf('crm_call')
 
 
+
+! write(*,*) 'whannah - after crm - nc_rad - ',(minval(nc_rad))
+! write(*,*) 'whannah - after crm - ni_rad - ',(minval(ni_rad))
+! write(*,*) 'whannah - after crm - qs_rad - ',(minval(qs_rad))
+! write(*,*) 'whannah - after crm - ns_rad - ',(minval(ns_rad))
+! write(*,*) 'whannah - after crm - precl  - ',(minval(precl))
+! write(*,*) 'whannah - after crm - precsc - ',(minval(precsc))
+! write(*,*) 'whannah - after crm - cld    - ',(minval(cld))
+! write(*,*) 'whannah - after crm - crm_tk - ',(minval(crm_tk))
+! write(*,*) 'whannah - after crm - crm_tkh- ',(minval(crm_tkh))
+! write(*,*) 'whannah - after crm - tkez   - ',(minval(tkez))
+! write(*,*) 'whannah - after crm - tkesgsz- ',(minval(tkesgsz))
+! write(*,*) 'whannah - after crm - tkz    - ',(minval(tkz))
+! write(*,*) 'whannah - after crm - flux_qt - ',(minval(flux_qt))
+! write(*,*) 'whannah - after crm - fluxsgs_qt - ',(minval(fluxsgs_qt))
+! write(*,*) 'whannah - after crm - qp_trans - ',(minval(qp_trans))
+! write(*,*) 'whannah - after crm - qp_fall - ',(minval(qp_fall))
+! write(*,*) 'whannah - after crm - qp_evp - ',(minval(qp_evp))
+! write(*,*) 'whannah - after crm - qp_src - ',(minval(qp_src))
+! write(*,*) 'whannah - after crm - taux_crm - ',(minval(taux_crm))
+! write(*,*) 'whannah - after crm - timing_factor - ',(minval(timing_factor))
+! write(*,*) 'whannah - after crm - bflx - ',(minval(bflx))
+! write(*,*) 'whannah - after crm - t_ls - ',(minval(t_ls))
+! write(*,*) 'whannah - after crm - crm_qt - ',(minval(crm_qt))
+! write(*,*) 'whannah - after crm - crm_qp - ',(minval(crm_qp))
+! write(*,*) 'whannah - after crm - crm_qn - ',(minval(crm_qn))
+! write(*,*) 'whannah - after crm - mu_crm - ',(minval(mu_crm))
+! write(*,*) 'whannah - after crm - crm_u  - ',(minval(crm_u))
+! write(*,*) 'whannah - after crm - cltot  - ',(minval(cltot))
+! write(*,*) 'whannah - after crm - precc  - ',(minval(precc))
+
+! write(*,*) 'whannah - after crm - sltend - ',(minval(ptend%s(i,:)))
+! write(*,*) 'whannah - after crm - sltend - ',(maxval(ptend%s(i,:))) 
+
+        ! whannah - debugging information for NaN issue
+        ! do i=1,ncol
+        ! do k=1,pver
+        !   if ( ieee_is_nan( ptend%s(i,k)  ) ) then
+        !     ! ptend%q(i,k,0) = 0.
+        !     ! write(iulog,*) ""
+        !     write(iulog,6000) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%s(i,k)
+        !     ! ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
+        !   endif
+        ! enddo
+        ! enddo
+
+! 6000 format('whannah - dse tend ',&
+!                               '  i: ',i4,    &
+!                               '  chnk: ',i4, &
+!                               '  k: ',i4, &
+!                               '  y: ',f5.1, &
+!                               '  x: ',f5.1, &
+!                               ' ',f12.2 )
+
+                              ! ' ',f12.2,      &
+                              ! ' ',f12.2,      &
+                              ! ' ',f12.2,      &
+                              ! ' ',f12.2 )
+
+! write(*,*) 'whannah - after crm - sltend - ',(minval(ptend%s(i,:)))
+! write(*,*) 'whannah - after crm - qltend - ',(minval(ptend%q(i,:,1)))
+! write(*,*) 'whannah - after crm - qctend - ',(minval(ptend%q(i,:,ixcldliq)))
+! write(*,*) 'whannah - after crm - qitend - ',(minval(ptend%q(i,:,ixcldice)))
+
+
        ! There is no separate convective and stratiform precip for CRM:
        precc(:ncol) = precc(:ncol) + precl(:ncol)
        precl(:ncol) = 0.
@@ -1554,16 +1620,16 @@ end subroutine crm_physics_init
        prec_pcw = 0
        snow_pcw = 0.
 
-!      print*,'ptend%s:',minval(ptend%s(:ncol,:))/cpair*86400.,maxval(ptend%s(:ncol,:))/cpair*86400.
-!      print*,'ptend%q:',minval(ptend%q(:ncol,:,1))*86400000.,maxval(ptend%q(:ncol,:,1))*86400000.
-!      print*,'ptend%qc:',minval(ptend%q(:ncol,:,ixcldliq))*86400000.,maxval(ptend%q(:ncol,:,ixcldliq))*86400000.
-!      print*,'ptend%qi:',minval(ptend%q(:ncol,:,ixcldice))*86400000.,maxval(ptend%q(:ncol,:,ixcldice))*86400000.
-!      print*,'t_rad',minval(t_rad(:ncol,:,:,:)),maxval(t_rad(:ncol,:,:,:))
-!      print*,'qv_rad',minval(qv_rad(:ncol,:,:,:))*1000.,maxval(qv_rad(:ncol,:,:,:))*1000.
-!      print*,'qc_rad',minval(qc_rad(:ncol,:,:,:))*1000.,maxval(qc_rad(:ncol,:,:,:))*1000.
-!      print*,'qi_rad',minval(qi_rad(:ncol,:,:,:))*1000.,maxval(qi_rad(:ncol,:,:,:))*1000.
-!      print*,'crm_qrad',minval(crm_qrad(:ncol,:,:,:))*86400.,maxval(crm_qrad(:ncol,:,:,:))*86400.
-!      print*,'precc:',minval(precc(:ncol))*86400000.,maxval(precc(:ncol))*86400000.
+     ! print*,'ptend%s:',minval(ptend%s(:ncol,:))/cpair*86400.,maxval(ptend%s(:ncol,:))/cpair*86400.
+     ! print*,'ptend%q:',minval(ptend%q(:ncol,:,1))*86400000.,maxval(ptend%q(:ncol,:,1))*86400000.
+     ! print*,'ptend%qc:',minval(ptend%q(:ncol,:,ixcldliq))*86400000.,maxval(ptend%q(:ncol,:,ixcldliq))*86400000.
+     ! print*,'ptend%qi:',minval(ptend%q(:ncol,:,ixcldice))*86400000.,maxval(ptend%q(:ncol,:,ixcldice))*86400000.
+     ! print*,'t_rad',minval(t_rad(:ncol,:,:,:)),maxval(t_rad(:ncol,:,:,:))
+     ! print*,'qv_rad',minval(qv_rad(:ncol,:,:,:))*1000.,maxval(qv_rad(:ncol,:,:,:))*1000.
+     ! print*,'qc_rad',minval(qc_rad(:ncol,:,:,:))*1000.,maxval(qc_rad(:ncol,:,:,:))*1000.
+     ! print*,'qi_rad',minval(qi_rad(:ncol,:,:,:))*1000.,maxval(qi_rad(:ncol,:,:,:))*1000.
+     ! print*,'crm_qrad',minval(crm_qrad(:ncol,:,:,:))*86400.,maxval(crm_qrad(:ncol,:,:,:))*86400.
+     ! print*,'precc:',minval(precc(:ncol))*86400000.,maxval(precc(:ncol))*86400000.
 
        do m=1,crm_nz
          k = pver-m+1
@@ -2168,15 +2234,15 @@ end subroutine crm_physics_init
 
 
 ! 5001 format('whannah - ECPP tendency   lev ',i5,'    lat =',f8.2,'    lon =',f8.2  )
-5002 format('whannah - ECPP tendency   i: ',i4,    &
-                                  '    chnk: ',i4, &
-                                  '    k: ',i4, &
-                                  '    y: ',f5.1, &
-                                  '    x: ',f5.1, &
-                                  '   ',f12.2,      &
-                                  '   ',f12.2,      &
-                                  '   ',f12.2,      &
-                                  '   ',f12.2 )
+! 5002 format('whannah - ECPP tendency   i: ',i4,    &
+!                                   '    chnk: ',i4, &
+!                                   '    k: ',i4, &
+!                                   '    y: ',f5.1, &
+!                                   '    x: ',f5.1, &
+!                                   '   ',f12.2,      &
+!                                   '   ',f12.2,      &
+!                                   '   ',f12.2,      &
+!                                   '   ',f12.2 )
 
 
 !----------------------------------------------------------------------
