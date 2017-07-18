@@ -175,8 +175,8 @@ _TEST_SUITES = {
 
     "acme_ecp"       : (None, None,
                         ("ERP_Ld31.ne4_oQU240.A_WCYCL2000",
-                         "ERP_Ld5.ne30_ne30.FC5AV1C",
-                         "ERP_Ld31.ne4_ne4.FC5AV1C")
+                         "ERP_Ld5.ne30_ne30.FC5AV1C-L",
+                         "ERP_Ld31.ne4_ne4.FC5AV1C-L")
                         ),
 }
 
