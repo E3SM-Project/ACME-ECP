@@ -812,7 +812,7 @@ end function radiation_nextsw_cday
     !              (liquid water, qc_rad; ice water, qi_rad; water vapor, qv_rad; 
     !              and temperature, t_rad). Several variables in pbuf are also updated 
     !              with those in CRM domain (cld, cicewp, cliqwp, csnowp, cldfsnow).  
-    !              At the end of the raidation calculation, state and those in pbuf are
+    !              At the end of the radiation calculation, state and those in pbuf are
     !              restored to the old values. 
     !              Finally, a new cloud simulator are called, which takes account of cloud fileds 
     !              from the CRM domain. 
@@ -1180,8 +1180,9 @@ end function radiation_nextsw_cday
     type(rrtmg_state_t), pointer :: r_state ! contains the atm concentratiosn in layers needed for RRTMG
 
 ! AeroCOM IND3 output +++mhwang
-    real(r8) ::  aod400(pcols)        ! AOD at 400 nm 
-    real(r8) ::  aod700(pcols)        ! AOD at 700 nm
+!MRN: Already defined above -- gives errors with GNU
+!    real(r8) ::  aod400(pcols)        ! AOD at 400 nm 
+!    real(r8) ::  aod700(pcols)        ! AOD at 700 nm
     real(r8) ::  angstrm(pcols)       ! Angstrom coefficient
     real(r8) ::  aerindex(pcols)      ! Aerosol index
     integer aod400_idx, aod700_idx, cld_tau_idx
@@ -1463,52 +1464,50 @@ end function radiation_nextsw_cday
         do ii=1,crm_nx 
 
           if (use_SPCAM) then 
-           first_column = ii.eq.1.and.jj.eq.1
-           last_column = ii.eq.crm_nx.and.jj.eq.crm_ny
+            first_column = ii.eq.1.and.jj.eq.1
+            last_column = ii.eq.crm_nx.and.jj.eq.crm_ny
 
-             do m=1,crm_nz
-               k = pver-m+1
-               do i=1,ncol
+            do m=1,crm_nz
+              k = pver-m+1
+              do i=1,ncol
 
-                 trad(i,k) = t_rad(i,ii,jj,m)
-                 qvrad(i,k) = max(1.e-9_r8,qv_rad(i,ii,jj,m))
-                 qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
-                 if(qtot.gt.1.e-9) then
-                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
-                   cld(i,k) = 0.99_r8
-                   cld_crm(i,ii,jj,m)=0.99_r8
-                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
+                trad(i,k) = t_rad(i,ii,jj,m)
+                qvrad(i,k) = max(1.e-9_r8,qv_rad(i,ii,jj,m))
+                qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
+                if(qtot.gt.1.e-9) then
+                  fice(i,k) = qi_rad(i,ii,jj,m)/qtot
+                  cld(i,k) = 0.99_r8
+                  cld_crm(i,ii,jj,m)=0.99_r8
+                  cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
                            / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
-                   cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
+                  cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
                            / max(0.01_r8,cld(i,k)) ! In-cloud liquid water path.
-                 else
-                   fice(i,k)=0.
-                   cld(i,k)=0.
-                   cld_crm(i,ii,jj,m)=0.
-                   cicewp(i,k) = 0.           ! In-cloud ice water path.
-                   cliqwp(i,k) = 0.           ! In-cloud liquid water path.
-                 end if
+                else
+                  fice(i,k)=0.
+                  cld(i,k)=0.
+                  cld_crm(i,ii,jj,m)=0.
+                  cicewp(i,k) = 0.           ! In-cloud ice water path.
+                  cliqwp(i,k) = 0.           ! In-cloud liquid water path.
+                end if
 
-!
-! snow water-related variables: 
-! snow water is an important component in m2005 microphysics, and is therefore taken
-! account in the radiative calculation (snow water path is several times larger than ice water path in m2005 globally). 
-!
-                 if( qs_rad(i, ii, jj, m).gt.1.0e-7) then
-                   cldfsnow(i,k) = 0.99_r8   
-                   csnowp(i,k) = qs_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
-                           / max(0.001_r8,cldfsnow(i,k)) ! In-cloud ice water path.
-                 else
-                   cldfsnow(i,k) = 0.0  
-                   csnowp(i,k) = 0.0
-                 end if
+                ! snow water-related variables: 
+                ! snow water is an important component in m2005 microphysics, and is therefore taken
+                ! account in the radiative calculation (snow water path is several times larger than ice water path in m2005 globally). 
 
+                if( qs_rad(i, ii, jj, m).gt.1.0e-7) then
+                  cldfsnow(i,k) = 0.99_r8   
+                  csnowp(i,k) = qs_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
+                         / max(0.001_r8,cldfsnow(i,k)) ! In-cloud ice water path.
+                else
+                  cldfsnow(i,k) = 0.0  
+                  csnowp(i,k) = 0.0
+                end if
 
-! update ice water, liquid water, water vapor, and temperature in state
-                 state%q(i,k,ixcldice) =  qi_rad(i,ii,jj,m)
-                 state%q(i,k,ixcldliq) =  qc_rad(i,ii,jj,m)
-                 state%q(i,k,1)        =  max(1.e-9_r8,qv_rad(i,ii,jj,m))
-                 state%t(i,k)          =  t_rad(i, ii, jj, m)
+                ! update ice water, liquid water, water vapor, and temperature in state
+                state%q(i,k,ixcldice) =  qi_rad(i,ii,jj,m)
+                state%q(i,k,ixcldliq) =  qc_rad(i,ii,jj,m)
+                state%q(i,k,1)        =  max(1.e-9_r8,qv_rad(i,ii,jj,m))
+                state%t(i,k)          =  t_rad(i, ii, jj, m)
 #ifdef MODAL_AERO
 !    Using CRM scale aerosol water to calculate aerosol optical depth. 
 !    Here we assume no aerosol water uptake at cloudy sky at CRM grids. 
@@ -1554,9 +1553,8 @@ end function radiation_nextsw_cday
              end do ! m
        endif !(*use_SPCAM*)
 
-!==Guangxing Lin
-!      call t_stopf ('radiation_tend_init')
-!==Guangxing Lin
+
+     ! call t_stopf ('radiation_tend_init')   !==Guangxing Lin
       
        call t_startf('cldoptics')
 
@@ -1708,9 +1706,7 @@ end function radiation_nextsw_cday
        ! Solar radiation computation
 
        if (dosw) then
-!==Guangxing Lin 
-          call t_startf ('rad_sw')
-!==Guangxing Lin 
+          call t_startf ('rad_sw')  !==Guangxing Lin 
 
           call get_variability(sfac)
 
@@ -1718,9 +1714,8 @@ end function radiation_nextsw_cday
           call rad_cnst_get_call_list(active_calls)
 
           ! The climate (icall==0) calculation must occur last.
-!==Guangxing Lin
-          call t_startf ('rad_sw_loop')
-!==Guangxing Lin
+
+          call t_startf ('rad_sw_loop')   !==Guangxing Lin
 
           do icall = N_DIAG, 0, -1
 
@@ -1731,9 +1726,9 @@ end function radiation_nextsw_cday
 
                   call aer_rad_props_sw( icall, state, pbuf, nnite, idxnite, &
                                          aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
-!==Guangxing Lin
-                  call t_startf ('rad_rrtmg_sw')
-!==Guangxing Lin
+
+                  call t_startf ('rad_rrtmg_sw')  !==Guangxing Lin
+
                   call rad_rrtmg_sw( &
                        lchnk,        ncol,         num_rrtmg_levs, r_state,                    &
                        state%pmid,   cldfprime,                                                &
@@ -1748,9 +1743,8 @@ end function radiation_nextsw_cday
                        su,           sd,                                                       &
                        E_cld_tau=c_cld_tau, E_cld_tau_w=c_cld_tau_w, E_cld_tau_w_g=c_cld_tau_w_g, E_cld_tau_w_f=c_cld_tau_w_f, &
                        old_convert = .false.)
-!==Guangxing Lin
-                    call t_stopf ('rad_rrtmg_sw') 
-!==Guangxing Lin
+
+                    call t_stopf ('rad_rrtmg_sw')   !==Guangxing Lin
                    
                   !  Output net fluxes at 200 mb
                   call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fcns, fsn200c)
@@ -1926,9 +1920,8 @@ end function radiation_nextsw_cday
 
               end if ! (active_calls(icall))
           end do ! icall
-!==Guangxing Lin
-           call t_stopf ('rad_sw_loop')
-!==Guangxing Lin
+
+           call t_stopf ('rad_sw_loop')   !==Guangxing Lin
  
           if(use_SPCAM .and. last_column) then
              do i = 1, nnite 
@@ -1987,7 +1980,7 @@ end function radiation_nextsw_cday
              tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
           endif 
 
-	  ! add fillvalue for night columns
+	        ! add fillvalue for night columns
           if ( (use_SPCAM .and. last_column) .or. .not. use_SPCAM) then
              do i = 1, Nnite
                  tot_cld_vistau(IdxNite(i),:)   = fillvalue
@@ -2007,9 +2000,9 @@ end function radiation_nextsw_cday
                 call outfld('SNOW_ICLD_VISTAU', snow_icld_vistau, pcols, lchnk)
              endif
           end if
-!==Guangxing Lin
-           call t_stopf ('rad_sw')  
-!==Guangxing Lin
+
+           call t_stopf ('rad_sw')    !==Guangxing Lin
+
        end if   ! dosw
 
        if( (use_SPCAM .and. last_column) .or. .not. use_SPCAM)  then
@@ -2021,9 +2014,8 @@ end function radiation_nextsw_cday
 
        if (dolw) then
 
-!==Guangxing Lin
-       call t_startf ('rad_lw')
-!==Guangxing Lin
+          call t_startf ('rad_lw')   !==Guangxing Lin
+
           !
           ! Convert upward longwave flux units to CGS
           !
@@ -2036,9 +2028,9 @@ end function radiation_nextsw_cday
           call rad_cnst_get_call_list(active_calls)
 
           ! The climate (icall==0) calculation must occur last.
-!==Guangxing Lin
-          call t_startf ('rad_lw_loop')
-!==Guangxing Lin
+
+          call t_startf ('rad_lw_loop')   !==Guangxing Lin
+
           do icall = N_DIAG, 0, -1
 
               if (active_calls(icall)) then
@@ -2048,9 +2040,8 @@ end function radiation_nextsw_cday
 
                   call aer_rad_props_lw(icall, state, pbuf,  aer_lw_abs)
                   
-!==Guangxing Lin
-                  call t_startf ('rad_rrtmg_lw')
-!==Guangxing Lin
+                  call t_startf ('rad_rrtmg_lw')    !==Guangxing Lin
+
                   call rad_rrtmg_lw( &
                        lchnk,        ncol,         num_rrtmg_levs,  r_state,                     &
                        state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
@@ -2058,9 +2049,8 @@ end function radiation_nextsw_cday
                        flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
                        flut,         flutc,        fnl,             fcnl,         fldsc, &
                        lu,           ld)
-!==Guangxing Lin
-                  call t_stopf ('rad_rrtmg_lw')
-!==Guangxing Lin
+
+                  call t_stopf ('rad_rrtmg_lw')   !==Guangxing Lin
 
                   if (lwrad_off) then
                      qrl(:,:) = 0._r8
@@ -2168,10 +2158,9 @@ end function radiation_nextsw_cday
               end if  ! active_calls(icall)
           end do
 
-!==Guangxing Lin
-          call t_stopf ('rad_lw_loop')
-          call t_stopf ('rad_lw')
-!==Guangxing Lin
+          call t_stopf ('rad_lw_loop')    !==Guangxing Lin
+          call t_stopf ('rad_lw')         !==Guangxing Lin
+
        end if  !dolw
 
      end do    ! end ii
@@ -2219,9 +2208,9 @@ end function radiation_nextsw_cday
 
        if ( dohirs .and. (mod(nstep-1,ihirsfq) .eq. 0) ) then
 
-!==Guangxing Lin
-         call t_startf ('dohirs')
-!==Guangxing Lin
+
+         call t_startf ('dohirs')   !==Guangxing Lin
+
           do i= 1, ncol
              ts(i) = sqrt(sqrt(cam_in%lwup(i)/stebol))
              ! Set oro (land/sea flag) for compatibility with landfrac/icefrac/ocnfrac
@@ -2247,15 +2236,13 @@ end function radiation_nextsw_cday
 
           call calc_col_mean(state, co2, co2_col_mean)
 
-!==Guangxing Lin
-          call t_startf ('hirstrm')
-!==Guangxing Lin
+          call t_startf ('hirstrm')   !==Guangxing Lin
+
           call hirsrtm( lchnk  ,ncol , &
                         pintmb ,state%t  ,sp_hum ,co2_col_mean, &
                         o3     ,ts       ,oro    ,tb_ir  ,britemp )
-!==Guangxing Lin
-          call t_stopf ('hirstrm')
-!==Guangxing Lin
+
+          call t_stopf ('hirstrm')    !==Guangxing Lin
 
           do i = 1, pnb_hirs
              call outfld(hirsname(i),tb_ir(1,i),pcols,lchnk)
@@ -2297,16 +2284,16 @@ end function radiation_nextsw_cday
               if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
                  !call should be compatible with camrt radiation.F90 interface too, should be with (in),optional
                  ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave optical depths are passed.
-!==Guangxing Lin
-                 call t_startf ('cosp_run')
-!==Guangxing Lin
+
+                 call t_startf ('cosp_run') !==Guangxing Lin
+
                  call cospsimulator_intr_run(state,  pbuf, cam_in, emis, coszrs, &
                       cld_swtau_in=cld_tau(rrtmg_sw_cloudsim_band,:,:),&
                       snow_tau_in=gb_snow_tau,snow_emis_in=gb_snow_lw)
                  cosp_cnt(lchnk) = 0  !! reset counter
-!==Guangxing Lin
-                 call t_stopf ('cosp_run')
-!==Guangxing Lin
+
+                 call t_stopf ('cosp_run')  !==Guangxing Lin
+
               end if
           end if
        endif 
@@ -2339,35 +2326,31 @@ end function radiation_nextsw_cday
              end do
           end do
        end if
-!==Guangxing Lin deleted "!DIR$ CONCURRENT"
-!==Guangxing Lin
-      !call t_stopf ('radiation_tend_init') ??
-!==Guangxing Lin
+
+      !call t_stopf ('radiation_tend_init') ??  !==Guangxing Lin
+
     end if   !  if (dosw .or. dolw) then
 
-!==Guangxing Lin
-    call t_startf ('radheat_tend')
-!==Guangxing Lin
+    call t_startf ('radheat_tend')    !==Guangxing Lin
+
     ! Compute net radiative heating tendency
     call radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
                       fsnt, flns, flnt, cam_in%asdir, net_flx)
-!==Guangxing Lin
-    call t_stopf ('radheat_tend')
-!==Guangxing Lin
+
+    call t_stopf ('radheat_tend')   !==Guangxing Lin
 
     ! Compute heating rate for dtheta/dt
-!==Guangxing Lin
-    call t_startf ('heating_rate') 
-!==Guangxing Lin
+
+    call t_startf ('heating_rate')  !==Guangxing Lin
+
     do k=1,pver
        do i=1,ncol
           ftem(i,k) = (qrs(i,k) + qrl(i,k))/cpair * (1.e5_r8/state%pmid(i,k))**cappa
        end do
     end do
 
-!==Guangxing Lin
-    call t_stopf ('heating_rate')
-!==Guangxing Lin
+    call t_stopf ('heating_rate')   !==Guangxing Lin
+
     call outfld('HR      ',ftem    ,pcols   ,lchnk   )
 
     ! convert radiative heating rates to Q*dp for energy conservation
@@ -2379,9 +2362,7 @@ end function radiation_nextsw_cday
           end do
        end do
     end if
-!==Guangxing Lin deleted "!DIR$ CONCURRENT"
 
-!==Guangxing Lin 
     ! Compute net surface radiative flux for use by surface temperature code.
     ! Note that units have already been converted to mks in RADCTL.  Since
     ! fsns and flwds are in the buffer, array values will be carried across

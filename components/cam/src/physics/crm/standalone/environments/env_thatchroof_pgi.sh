@@ -3,7 +3,7 @@
 source /usr/share/modules/init/bash
 
 module purge
-module load pgi/16.9
+module load pgi/17.4
 module load netcdf hdf5 szip zlib openmpi/pgi_1.10.2 ncl
 
 echo "mpif90=`which mpif90`"

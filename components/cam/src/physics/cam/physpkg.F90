@@ -737,7 +737,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use output_aerocom_aie, only: output_aerocom_aie_init, do_aerocom_ind3
 
 
-    use cam_history,        only: addfld, add_default !Guangxing Lin debug output
+    use cam_history,        only: addfld, add_default, horiz_only !Guangxing Lin debug output
     use crm_physics,        only: crm_physics_init !-- mdb spcam
 
 
@@ -965,6 +965,10 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call addfld ('ptend_BC_ac9    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac9')
     call addfld ('ptend_BC_ac11    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac11')
 #endif
+    
+    ! whannah - output for deveeloping ZM PE mod
+    call addfld ('ZM_AERO_SUM',horiz_only,'A','#/m3','Vertically Averaged Aerosol Number')
+
 
 end subroutine phys_init
 

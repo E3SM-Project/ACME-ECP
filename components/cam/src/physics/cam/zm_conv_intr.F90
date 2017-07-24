@@ -260,6 +260,10 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use physconst,     only: gravit
    use phys_control,  only: cam_physpkg_is
 
+#ifdef ZM_PE_MOD 
+   use ndrop,         only: loadaer       ! whannah  - for precip eff. mod
+#endif
+
    ! Arguments
 
    type(physics_state), intent(in )   :: state          ! Physics state variables
@@ -365,6 +369,19 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    logical  :: lq(pcnst)
 
+
+#ifdef ZM_PE_MOD 
+! whannah - variables for aerosol scaling of precipitation efficiency
+   integer  phase
+   integer  ntot_amode              ! number of aerosol modes
+   real(r8) rho(pcols, pver)        ! air density  [kg/m3]
+   real(r8) na(pcols)               ! aerosol number concentration [#/m3]
+   real(r8) va(pcols)               ! aerosol voume concentration [m3/m3]
+   real(r8) hy(pcols)               ! aerosol bulk hygroscopicity
+   ! real(r8) aero_sum(pcols,pver)
+   real(r8) aero_sum(pcols)
+#endif
+
    !----------------------------------------------------------------------
 
    ! initialize
@@ -413,6 +430,27 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    end if
 !<songxl 2014-05-20-----------------
 
+
+! whannah -----------------------------------------------------------
+#ifdef ZM_PE_MOD 
+   ntot_amode = 2
+   aero_sum = 0._r8      
+   phase = 1  ! phase of aerosol: 1 for interstitial, 2 for cloud-borne, 3 for sum
+   rho(1:ncol, 1:pver) = state%pmid(1:ncol,1:pver) / ( 287.15 * state%t(1:ncol, 1:pver) )
+   ! do i = 1,ncol
+   do k=1, pver
+      do m=1, ntot_amode
+         call loadaer( state, pbuf, 1, ncol, k, m, rho, phase, na, va, hy)
+         ! How should we do this? just sum the number? or use a mass weighting?
+         aero_sum(1:ncol) = aero_sum(1:ncol) + na(1:ncol)
+         ! ftem(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
+      end do    
+   end do
+   ! end do
+   call outfld ('ZM_AERO_SUM', aero_sum, pcols, lchnk )
+#endif
+! whannah -----------------------------------------------------------
+
 !
 ! Begin with Zhang-McFarlane (1996) convection parameterization
 !
@@ -425,7 +463,11 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
                     mu,md,du,eu,ed      , &
                     dp ,dsubcld ,jt,maxg,ideep   , &
-                    lengath ,ql      ,rliq  ,landfrac, hu_nm1, cnv_nm1, tm1, qm1 )  !songxl 2014-05-20   
+                    lengath ,ql      ,rliq  ,landfrac, hu_nm1, cnv_nm1, tm1, qm1 &  ! songxl 2014-05-20   
+#ifdef ZM_PE_MOD 
+                    ,aero_sum &
+#endif
+                    )  
    call t_stopf ('zm_convr')
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output

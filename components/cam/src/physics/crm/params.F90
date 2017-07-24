@@ -38,13 +38,13 @@ real(crm_rknd), parameter :: rv    = real( Rv_clubb   ,crm_rknd)
 real(crm_rknd), parameter :: rgas  = real( Rd_clubb   ,crm_rknd)
 #else
 #ifndef CRM
-real(crm_rknd), parameter :: cp    = 1004.             ! Specific heat of air, J/kg/K
-real(crm_rknd), parameter :: ggr   = 9.81             ! Gravity acceleration, m/s2
+real(crm_rknd), parameter :: cp    = 1004.          ! Specific heat of air, J/kg/K
+real(crm_rknd), parameter :: ggr   = 9.81           ! Gravity acceleration, m/s2
 real(crm_rknd), parameter :: lcond = 2.5104e+06     ! Latent heat of condensation, J/kg
-real(crm_rknd), parameter :: lfus  = 0.3336e+06      ! Latent heat of fusion, J/kg
-real(crm_rknd), parameter :: lsub  = 2.8440e+06      ! Latent heat of sublimation, J/kg
-real(crm_rknd), parameter :: rv    = 461.              ! Gas constant for water vapor, J/kg/K
-real(crm_rknd), parameter :: rgas  = 287.            ! Gas constant for dry air, J/kg/K
+real(crm_rknd), parameter :: lfus  = 0.3336e+06  	! Latent heat of fusion, J/kg
+real(crm_rknd), parameter :: lsub  = 2.8440e+06     ! Latent heat of sublimation, J/kg
+real(crm_rknd), parameter :: rv    = 461.           ! Gas constant for water vapor, J/kg/K
+real(crm_rknd), parameter :: rgas  = 287.           ! Gas constant for dry air, J/kg/K
 #else
 real(crm_rknd), parameter :: cp    = real( shr_const_cpdair ,crm_rknd)
 real(crm_rknd), parameter :: ggr   = real( shr_const_g      ,crm_rknd)

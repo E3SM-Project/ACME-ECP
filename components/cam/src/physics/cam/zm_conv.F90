@@ -319,9 +319,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  w  * zf       grid slice of ambient interface height in metres.
 !  wg * zfg      grid slice of gathered values of zf.
 !  wg * zg       grid slice of gathered values of z.
-!
 !-----------------------------------------------------------------------
-!
 ! multi-level i/o fields:
 !  i      => input arrays.
 !  i/o    => input/output arrays.
@@ -329,9 +327,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  wg     => work arrays operating only on gathered points.
 !  ic     => input data constants.
 !  c      => data constants pertaining to subroutine itself.
-!
+!-----------------------------------------------------------------------
 ! input arguments
-!
    integer, intent(in) :: lchnk                   ! chunk identifier
    integer, intent(in) :: ncol                    ! number of atmospheric columns
 
@@ -346,13 +343,10 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8), intent(in) :: pblh(pcols)
    real(r8), intent(in) :: tpert(pcols)
    real(r8), intent(in) :: landfrac(pcols) ! RBN Landfrac
-!<songxl 2014-05-20------------------
-   real(r8), intent(in) :: tm1(pcols,pver)       ! grid slice of temperature at mid-layer.
-   real(r8), intent(in) :: qm1(pcols,pver)       ! grid slice of specific humidity.
-!>songxl 2014-05-20------------------
-!
+   real(r8), intent(in) :: tm1(pcols,pver)       ! grid slice of temperature at mid-layer    !<songxl 2014-05-20
+   real(r8), intent(in) :: qm1(pcols,pver)       ! grid slice of specific humidity           !<songxl 2014-05-20
+!-----------------------------------------------------------------------
 ! output arguments
-!
    real(r8), intent(out) :: qtnd(pcols,pver)           ! specific humidity tendency (kg/kg/s)
    real(r8), intent(out) :: heat(pcols,pver)           ! heating rate (dry static energy tendency, W/kg)
    real(r8), intent(out) :: mcon(pcols,pverp)
@@ -362,8 +356,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8), intent(out) :: cape(pcols)        ! w  convective available potential energy.
    real(r8), intent(out) :: zdu(pcols,pver)
    real(r8), intent(out) :: rprd(pcols,pver)     ! rain production rate
-! move these vars from local storage to output so that convective
-! transports can be done in outside of conv_cam.
+   ! move these vars from local storage to output so that convective
+   ! transports can be done in outside of conv_cam.
    real(r8), intent(out) :: mu(pcols,pver)
    real(r8), intent(out) :: eu(pcols,pver)
    real(r8), intent(out) :: du(pcols,pver)
@@ -376,10 +370,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8), intent(out) :: prec(pcols)
    real(r8), intent(out) :: rliq(pcols) ! reserved liquid (not yet in cldliq) for energy integrals
 
-!<songxl 2014-05-20------------------
-   real(r8), intent(inout) :: hu_nm1 (pcols,pver)
-   real(r8), intent(inout) :: cnv_nm1 (pcols,pver)
-!>songxl 2014-05-20------------------
+   real(r8), intent(inout) :: hu_nm1 (pcols,pver)     !<songxl 2014-05-20
+   real(r8), intent(inout) :: cnv_nm1 (pcols,pver)    !<songxl 2014-05-20
 
    real(r8) zs(pcols)
    real(r8) dlg(pcols,pver)    ! gathrd version of the detraining cld h2o tend
@@ -391,15 +383,11 @@ subroutine zm_convr(lchnk   ,ncol    , &
    integer maxg(pcols)                        ! wg gathered values of maxi.
    integer ideep(pcols)                       ! w holds position of gathered points vs longitude index.
    integer lengath
-!     diagnostic field used by chem/wetdep codes
+   ! diagnostic field used by chem/wetdep codes
    real(r8) ql(pcols,pver)                    ! wg grid slice of cloud liquid water.
-!
    real(r8) pblt(pcols)           ! i row of pbl top indices.
 
 
-
-
-!
 !-----------------------------------------------------------------------
 !
 ! general work fields (local variables):
@@ -414,7 +402,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) qstp(pcols,pver)           ! w  grid slice of parcel temp. saturation mixing ratio.
 
    real(r8) tl(pcols)                  ! w  row of parcel temperature at lcl.
-!<songxl 2014-05-20-----------------
+   !<songxl 2014-05-20-----------------
    real(r8) tpm1(pcols,pver)           ! w parcel temperatures at n-1 time step. 
    real(r8) qstpm1(pcols,pver)         ! w parcel temp. saturation mixing ratio at n-1 time step
    real(r8) tlm1(pcols)                ! w LCL parcel Temperature at n-1 time step
@@ -424,7 +412,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
    integer lelm1(pcols)                ! w index of highest theoretical convective plume.
    integer lonm1(pcols)                ! w index of onset level for deep convection.
    integer maxim1(pcols)               ! w index of level with largest moist static energy.
-!>songxl 2014-05-20-----------------
+   !>songxl 2014-05-20-----------------
 
    integer lcl(pcols)                  ! w  base level index of deep cumulus convection.
    integer lel(pcols)                  ! w  index of highest theoretical convective plume.
@@ -433,9 +421,9 @@ subroutine zm_convr(lchnk   ,ncol    , &
    integer maxi(pcols)                 ! w  index of level with largest moist static energy.
    integer index(pcols)
    real(r8) precip
-!
+!-----------------------------------------------------------------------
 ! gathered work fields:
-!
+
    real(r8) qg(pcols,pver)             ! wg grid slice of gathered values of q.
    real(r8) tg(pcols,pver)             ! w  grid slice of temperature at interface.
    real(r8) pg(pcols,pver)             ! wg grid slice of gathered values of p.
@@ -457,12 +445,12 @@ subroutine zm_convr(lchnk   ,ncol    , &
 
    integer lclg(pcols)       ! wg gathered values of lcl.
    integer lelg(pcols)
-!
-! work fields arising from gathered calculations.
-!
+!-----------------------------------------------------------------------
+! work fields arising from gathered calculations
+
    real(r8) dqdt(pcols,pver)           ! wg mixing ratio tendency at gathered points.
    real(r8) dsdt(pcols,pver)           ! wg dry static energy ("temp") tendency at gathered points.
-!      real(r8) alpha(pcols,pver)      ! array of vertical differencing used (=1. for upstream).
+   ! real(r8) alpha(pcols,pver)      ! array of vertical differencing used (=1. for upstream).
    real(r8) sd(pcols,pver)             ! wg grid slice of dry static energy in downdraft.
    real(r8) qd(pcols,pver)             ! wg grid slice of mixing ratio in downdraft.
    real(r8) mc(pcols,pver)             ! wg net upward (scaled by mb) cloud mass flux.
@@ -476,8 +464,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) qlg(pcols,pver)
    real(r8) dudt(pcols,pver)           ! wg u-wind tendency at gathered points.
    real(r8) dvdt(pcols,pver)           ! wg v-wind tendency at gathered points.
-!      real(r8) ud(pcols,pver)
-!      real(r8) vd(pcols,pver)
+   ! real(r8) ud(pcols,pver)
+   ! real(r8) vd(pcols,pver)
 
    real(r8) mb(pcols)                  ! wg cloud base mass flux.
 
@@ -494,7 +482,15 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) qdifr
    real(r8) sdifr
 
-!
+! whannah - ZM_TAU_MOD allows tau to be height dependent
+#ifdef ZM_TAU_MOD
+   real(r8) tau_k(pver)          ! height dependent convective timscale - to counter top-heavy heating bias
+   ! real(r8) tau_k_max            ! maximum timescale for tau_k
+   real(r8) tau_k_slp            ! slope of tau profile (linear function of pressure)
+   real(r8) mb_k                 ! temporary container for modified cloud base mass flux
+#endif
+
+
 !--------------------------Data statements------------------------------
 !
 ! Set internal variable "msg" (convection limit) to "limcnv-1"
@@ -806,7 +802,34 @@ subroutine zm_convr(lchnk   ,ncol    , &
       end do
    end if
 
-
+! whannah - ZM_TAU_MOD allows tau to be height dependent
+#ifdef ZM_TAU_MOD
+   ! tau_k_max = 3600._r8 * 6._r8
+   ! tau_k_slp = (tau_k_max-tau) / ( 500. - 100.)
+   tau_k_slp = tau*(4.-1.) / 1000.  ! increase by factor of 4 over 1000 mb
+   do k=msg+1,pver
+      ! use fixed slop - linear in pressure
+      if (k <= j0(i))
+         tau_k(k) = tau + tau_k_slp * ( p(i,j0(i)) - p(i,k) )
+      else
+         tau_k(k) = tau
+      end if
+      mb_k = mb(i)/tau_k(k)
+      do i=1,lengath
+         mu   (i,k)  = mu   (i,k)  *mb_k
+         md   (i,k)  = md   (i,k)  *mb_k
+         mc   (i,k)  = mc   (i,k)  *mb_k
+         du   (i,k)  = du   (i,k)  *mb_k
+         eu   (i,k)  = eu   (i,k)  *mb_k
+         ed   (i,k)  = ed   (i,k)  *mb_k
+         cmeg (i,k)  = cmeg (i,k)  *mb_k
+         rprdg(i,k)  = rprdg(i,k)  *mb_k
+         cug  (i,k)  = cug  (i,k)  *mb_k
+         evpg (i,k)  = evpg (i,k)  *mb_k
+         pflxg(i,k+1)= pflxg(i,k+1)*mb_k*100._r8/grav
+      end do
+   end do
+#else
    do k=msg+1,pver
       do i=1,lengath
          mu   (i,k)  = mu   (i,k)*mb(i)
@@ -822,6 +845,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
          pflxg(i,k+1)= pflxg(i,k+1)*mb(i)*100._r8/grav
       end do
    end do
+#endif
 !
 ! compute temperature and moisture changes due to convection.
 !
@@ -2158,41 +2182,46 @@ subroutine cldprp(lchnk   , &
 
    real(r8), intent(in) :: landfrac(pcols) ! RBN Landfrac
 
-   integer, intent(in) :: jb(pcols)              ! updraft base level
-   integer, intent(in) :: lel(pcols)             ! updraft launch level
-   integer, intent(out) :: jt(pcols)              ! updraft plume top
-   integer, intent(out) :: jlcl(pcols)            ! updraft lifting cond level
-   integer, intent(in) :: mx(pcols)              ! updraft base level (same is jb)
-   integer, intent(out) :: j0(pcols)              ! level where updraft begins detraining
-   integer, intent(out) :: jd(pcols)              ! level of downdraft
-   integer, intent(in) :: limcnv                 ! convection limiting level
-   integer, intent(in) :: il2g                   !CORE GROUP REMOVE
-   integer, intent(in) :: msg                    ! missing moisture vals (always 0)
-   real(r8), intent(in) :: rl                    ! latent heat of vap
-   real(r8), intent(in) :: shat(pcols,pver)      ! interface values of dry stat energy
+   integer,  intent(in)  :: jb(pcols)              ! updraft base level
+   integer,  intent(in)  :: lel(pcols)             ! updraft launch level
+   integer,  intent(out) :: jt(pcols)              ! updraft plume top
+   integer,  intent(out) :: jlcl(pcols)            ! updraft lifting cond level
+   integer,  intent(in)  :: mx(pcols)              ! updraft base level (same is jb)
+   integer,  intent(out) :: j0(pcols)              ! level where updraft begins detraining
+   integer,  intent(out) :: jd(pcols)              ! level of downdraft
+   integer,  intent(in)  :: limcnv                 ! convection limiting level
+   integer,  intent(in)  :: il2g                   !CORE GROUP REMOVE
+   integer,  intent(in)  :: msg                    ! missing moisture vals (always 0)
+   real(r8), intent(in)  :: rl                     ! latent heat of vap
+   real(r8), intent(in)  :: shat(pcols,pver)       ! interface values of dry stat energy
 !
 ! output
 !
-   real(r8), intent(out) :: rprd(pcols,pver)     ! rate of production of precip at that layer
-   real(r8), intent(out) :: du(pcols,pver)       ! detrainement rate of updraft
-   real(r8), intent(out) :: ed(pcols,pver)       ! entrainment rate of downdraft
-   real(r8), intent(out) :: eu(pcols,pver)       ! entrainment rate of updraft
-   real(r8), intent(out) :: hmn(pcols,pver)      ! moist stat energy of env
-   real(r8), intent(out) :: hsat(pcols,pver)     ! sat moist stat energy of env
-   real(r8), intent(out) :: mc(pcols,pver)       ! net mass flux
-   real(r8), intent(out) :: md(pcols,pver)       ! downdraft mass flux
-   real(r8), intent(out) :: mu(pcols,pver)       ! updraft mass flux
-   real(r8), intent(out) :: pflx(pcols,pverp)    ! precipitation flux thru layer
-   real(r8), intent(out) :: qd(pcols,pver)       ! spec humidity of downdraft
-   real(r8), intent(out) :: ql(pcols,pver)       ! liq water of updraft
-   real(r8), intent(out) :: qst(pcols,pver)      ! saturation mixing ratio of env.
-   real(r8), intent(out) :: qu(pcols,pver)       ! spec hum of updraft
-   real(r8), intent(out) :: sd(pcols,pver)       ! normalized dry stat energy of downdraft
-   real(r8), intent(out) :: su(pcols,pver)       ! normalized dry stat energy of updraft
+   real(r8), intent(out) :: rprd  (pcols,pver)     ! rate of production of precip at that layer
+   real(r8), intent(out) :: du   (pcols,pver)      ! detrainement rate of updraft
+   real(r8), intent(out) :: ed   (pcols,pver)      ! entrainment rate of downdraft
+   real(r8), intent(out) :: eu   (pcols,pver)      ! entrainment rate of updraft
+   real(r8), intent(out) :: hmn  (pcols,pver)      ! moist stat energy of env
+   real(r8), intent(out) :: hsat (pcols,pver)      ! sat moist stat energy of env
+   real(r8), intent(out) :: mc   (pcols,pver)      ! net mass flux
+   real(r8), intent(out) :: md   (pcols,pver)      ! downdraft mass flux
+   real(r8), intent(out) :: mu   (pcols,pver)      ! updraft mass flux
+   real(r8), intent(out) :: pflx (pcols,pverp)     ! precipitation flux thru layer
+   real(r8), intent(out) :: qd   (pcols,pver)      ! spec humidity of downdraft
+   real(r8), intent(out) :: ql   (pcols,pver)      ! liq water of updraft
+   real(r8), intent(out) :: qst  (pcols,pver)      ! saturation mixing ratio of env.
+   real(r8), intent(out) :: qu   (pcols,pver)      ! spec hum of updraft
+   real(r8), intent(out) :: sd   (pcols,pver)      ! normalized dry stat energy of downdraft
+   real(r8), intent(out) :: su   (pcols,pver)      ! normalized dry stat energy of updraft
 
 !<songxl 2014-05-20----------------
    real(r8), intent(inout) :: hu_nm1 (pcols,pver)
 !>songxl 2014-05-20----------------
+
+! whannah - modification to make precipitation efficiency depend on aerosols
+! #IF DEFINED( ZM_PE_MOD )
+!    integer,  intent(in)  :: aero_sum(pcols)
+! #ENDIF
 
    real(r8) rd                   ! gas constant for dry air
    real(r8) grav                 ! gravity
@@ -2201,7 +2230,7 @@ subroutine cldprp(lchnk   , &
 !
 ! Local workspace
 !
-   real(r8) gamma(pcols,pver)
+   real(r8) gamma (pcols,pver)
    real(r8) dz(pcols,pver)
    real(r8) iprm(pcols,pver)
    real(r8) hu(pcols,pver)
@@ -2258,6 +2287,14 @@ subroutine cldprp(lchnk   , &
    real(r8) hu_tot(pcols)
    real(r8) hmn_tot(pcols)
 !>songxl 2014-05-20----------------
+
+
+! whannah - ZM_ED_MOD - allows detrainment below first detrainment level, net mass balance is unaffected
+! #ifdef ZM_ED_MOD
+!    real(r8) min_ed
+! #endif
+
+
 !
 !------------------------------------------------------------------------------
 !
@@ -2265,7 +2302,12 @@ subroutine cldprp(lchnk   , &
       ftemp(i) = 0._r8
       expnum(i) = 0._r8
       expdif(i) = 0._r8
+! whannah - modification to make precipitation efficiency depend on aerosols
+! #ifdef ZM_PE_MOD 
+!       c0mask(i)  =  c0_ocn - aero_sum * ???
+! #else
       c0mask(i)  = c0_ocn * (1._r8-landfrac(i)) +   c0_lnd * landfrac(i) 
+! #endif
    end do
 !
 !jr Change from msg+1 to 1 to prevent blowup
@@ -2503,14 +2545,22 @@ subroutine cldprp(lchnk   , &
          eu(i,jb(i)) = mu(i,jb(i))/dz(i,jb(i))
       end if
    end do
+  
+! whannah - ZM_ED_MOD - allows detrainment below first detrainment level, net mass balance is unaffected
+! #ifdef ZM_ED_MOD
+!    min_ed = 1.E-4_r8  ! (0.1 km-1 => 0.0001 m-1)
+! #else
+!    min_ed = 0._r8
+! #endif
+
    do k = pver,msg + 1,-1
       do i = 1,il2g
          if (eps0(i) > 0._r8 .and. (k >= jt(i) .and. k < jb(i))) then
             zuef(i) = zf(i,k) - zf(i,jb(i))
             rmue(i) = (1._r8/eps0(i))* (exp(eps(i,k+1)*zuef(i))-1._r8)/zuef(i)
             mu(i,k) = (1._r8/eps0(i))* (exp(eps(i,k  )*zuef(i))-1._r8)/zuef(i)
-            eu(i,k) = (rmue(i)-mu(i,k+1))/dz(i,k)
-            du(i,k) = (rmue(i)-mu(i,k))/dz(i,k)
+            eu(i,k) = (rmue(i)-mu(i,k+1))/dz(i,k)  ! + min_ed
+            du(i,k) = (rmue(i)-mu(i,k)  )/dz(i,k)  ! + min_ed
          end if
       end do
    end do
@@ -2524,14 +2574,14 @@ subroutine cldprp(lchnk   , &
 
 !<songxl 2014-05-20--------------
    if(trigmem)then
-    do i=1,il2g
-      hu_tot(i) = 0._r8
-      hmn_tot(i) = 0._r8
-      do k = klowest-1,khighest,-1
-         hu_tot(i) = hu_tot(i) + hu_nm1(i,k)
-         hmn_tot(i) = hmn_tot(i) + hmn(i,k)
+      do i=1,il2g
+         hu_tot(i) = 0._r8
+         hmn_tot(i) = 0._r8
+         do k = klowest-1,khighest,-1
+            hu_tot(i) = hu_tot(i) + hu_nm1(i,k)
+            hmn_tot(i) = hmn_tot(i) + hmn(i,k)
+         end do
       end do
-    end do
    endif
 !>songxl 2014-05-20--------------
 
@@ -2592,8 +2642,8 @@ subroutine cldprp(lchnk   , &
                end if
              end if
            else ! not trigmem
-  	     if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
-	       .and. mu(i,k) >= 0.02_r8) then
+        	     if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
+      	       .and. mu(i,k) >= 0.02_r8) then
                if (hu(i,k)-hsthat(i,k) < -2000._r8) then
                   jt(i) = k + 1
                   doit(i) = .false.
@@ -2605,7 +2655,7 @@ subroutine cldprp(lchnk   , &
                jt(i) = k + 1
                doit(i) = .false.
              end if
-          end if ! end trigmem
+           end if ! end trigmem
 !>songxl 2014-06-20------------------------ 
          end if
       end do
@@ -3042,7 +3092,12 @@ subroutine closure(lchnk   , &
    end do
    do i = il1g,il2g
       dltaa = -1._r8* (cape(i)-capelmt)
+! whannah - ZM_TAU_MOD allows tau to be height dependent
+#ifdef ZM_TAU_MOD
+      if (dadt(i) /= 0._r8) mb(i) = max(dltaa/dadt(i),0._r8)
+#else
       if (dadt(i) /= 0._r8) mb(i) = max(dltaa/tau/dadt(i),0._r8)
+#endif
    end do
 !
    return

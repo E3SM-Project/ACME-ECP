@@ -16,9 +16,7 @@ use cam_logfile,      only: iulog
 use ref_pres,         only: top_lev => clim_modal_aero_top_lev
 use phys_control,     only: phys_getopts
 use cam_abortutils,       only: endrun
-!==Guangxing Lin
-use crmdims,          only: crm_nx, crm_ny, crm_nz
-!==Guangxing Lin
+use crmdims,          only: crm_nx, crm_ny, crm_nz  !==Guangxing Lin
 implicit none
 private
 save
@@ -380,9 +378,9 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    do jj = 1, crm_ny
       do ii = 1, crm_nx
        
-      if (use_SPCAM) then
+        if (use_SPCAM) then
             last_column = ii .eq. crm_nx .and. jj .eq. crm_ny
-         end if
+        end if
 !==Guangxing Lin
 
    do k = top_lev, pver
