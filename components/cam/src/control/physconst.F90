@@ -23,7 +23,7 @@ module physconst
    public  :: physconst_update
    save
    
-   ! Constantants for MAM spciesi classes
+   ! Consants for MAM species classes
    integer, public, parameter :: spec_class_undefined  = 0
    integer, public, parameter :: spec_class_cldphysics = 1
    integer, public, parameter :: spec_class_aerosol    = 2

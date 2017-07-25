@@ -237,7 +237,6 @@ module restart_physics
       integer :: dims(3), gdims(3)
       integer :: nhdims
       !-----------------------------------------------------------------------
-
       ! Write grid vars
       call cam_grid_write_var(File, phys_decomp)
 
@@ -411,6 +410,7 @@ module restart_physics
             ncol = cam_in(i)%ncol
             tmpfield(:ncol, i) = cam_in(i)%shf(:ncol)
          end do
+
          call pio_write_darray(File, shf_desc, iodesc, tmpfield, ierr)
 
       end if

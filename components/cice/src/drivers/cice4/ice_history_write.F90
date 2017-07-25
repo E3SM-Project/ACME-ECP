@@ -141,7 +141,6 @@
       !-----------------------------------------------------------------
       ! define dimensions
       !-----------------------------------------------------------------
-
         if (hist_avg) then
           status = nf90_def_dim(ncid,'d2',2,boundid)
           if (status /= nf90_noerr) call abort_ice( &
@@ -202,7 +201,7 @@
       !-----------------------------------------------------------------
       ! Define attributes for time bounds if hist_avg is true
       !-----------------------------------------------------------------
-
+      
         if (hist_avg) then
           dimid(1) = boundid
           dimid(2) = timid
@@ -294,7 +293,6 @@
       !-----------------------------------------------------------------
       ! define attributes for time-invariant variables
       !-----------------------------------------------------------------
-
         dimid(1) = imtid
         dimid(2) = jmtid
         dimid(3) = timid
@@ -745,6 +743,7 @@
          write(nu_diag,*) 'Finished writing ',trim(ncfile(ns))
       endif
 #endif
+
 
       end subroutine icecdf
 

@@ -16,6 +16,10 @@ module modal_aero_initialize_data
   public :: modal_aero_initialize_q
 
   logical :: convproc_do_gas, convproc_do_aer 
+  
+  ! character(len=16)    :: microp_scheme   ! whannah - acme-sp
+  ! integer              :: icldphy         ! whannah - acme-sp
+
 contains
 
   subroutine modal_aero_register(species_class)
@@ -341,7 +345,7 @@ contains
        fmactlongname(m) = 'Fraction mass activated for mode'//trnum(2:3)
     end do
 
-       if (masterproc) write(iulog,9230)
+    if (masterproc) write(iulog,9230)
 9230   format( // '*** init_aer_modes mode definitions' )
 9231   format( 'mode = ', i4, ' = "', a, '"' )
 9232   format( 4x, a, 4(1x, i5 ) )
@@ -356,13 +360,14 @@ contains
 !-------------------------------------------------------------------
 ! register ocean input fields to the phys buffer
 !-------------------------------------------------------------------
-	  do i = 1,n_ocean_data
-	     if (masterproc) then
-	     	write(iulog,*) 'Registering '//ocean_data_names(i)
-	     end if
-       	     call pbuf_add_field(ocean_data_names(i),'physpkg',dtype_r8,(/pcols,pver/),idx)
-    	  enddo
-       end if
+      do i = 1,n_ocean_data
+        if (masterproc) then
+          write(iulog,*) 'Registering '//ocean_data_names(i)
+        end if
+        call pbuf_add_field(ocean_data_names(i),'physpkg',dtype_r8,(/pcols,pver/),idx)
+  	  enddo
+      
+    end if
 
   end subroutine modal_aero_register
 
@@ -407,6 +412,12 @@ contains
        real(r8), pointer :: qqcw(:,:)
        real(r8), parameter :: huge_r8 = huge(1._r8)
        character(len=*), parameter :: routine='modal_aero_initialize'
+       logical  :: use_SPCAM
+!==Guangxing Lin
+         integer  :: icldphy     ! index for cloud physic species (water vapor and cloud hydrometers)
+       character(len=16) :: microp_scheme  ! microphysics scheme
+!==Guangxing Lin
+
        !-----------------------------------------------------------------------
 
        pi = 4._r8*atan(1._r8)    
@@ -526,6 +537,34 @@ contains
                 species_class(i) = spec_class_gas
              end if
           end do
+
+! define species_class for gas species, and cld physics
+!
+      call phys_getopts(use_SPCAM_out     = use_SPCAM)
+      call phys_getopts(microp_scheme_out = microp_scheme)
+
+      if (use_SPCAM) then
+        if ( microp_scheme .eq. 'MG' ) then
+           icldphy = 5
+        else if ( microp_scheme .eq. 'RK' ) then
+           icldphy = 3
+        end if
+        species_class(1:icldphy) = spec_class_cldphysics
+loop:   do i=icldphy+1, pcnst
+           do m=1,ntot_amode
+              if(i==numptr_amode(m)) cycle loop
+              if(i==numptrcw_amode(m)) cycle loop
+              do l=1,nspec_amode(m)
+                 if(i==lmassptr_amode(l,m)) cycle loop
+                 if(i==lmassptrcw_amode(l,m)) cycle loop
+              enddo
+           enddo
+!
+! No other species, all species except aerosol and cloud physics are gas species.
+! This may need to chagne if additional nongas tracers are added in the future
+           species_class(i) = spec_class_gas
+        end do loop
+     endif
 
 
        !   set cnst_name_cw

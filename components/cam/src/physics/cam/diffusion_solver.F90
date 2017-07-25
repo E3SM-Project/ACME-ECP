@@ -151,7 +151,11 @@
 !    use phys_debug_util,    only : phys_debug_col
 !    use time_manager,       only : is_first_step, get_nstep
     use vdiff_lu_solver,     only : lu_decomp, vd_lu_decomp, vd_lu_solve
-  
+
+!-- mdb spcam
+    use phys_control,       only : phys_getopts  
+!-- mdb spcam
+    
   ! Modification : Ideally, we should diffuse 'liquid-ice static energy' (sl), not the dry static energy.
   !                Also, vertical diffusion of cloud droplet number concentration and aerosol number
   !                concentration should be done very carefully in the future version.
@@ -298,6 +302,10 @@
     
     real(r8) :: mw_fac_loc(pcols,pver+1,ncnst)           ! Local sqrt(1/M_q + 1/M_d) for this constituent
 
+!-- mdb spcam
+    logical  :: use_SPCAM
+!-- mdb spcam
+
     !--------------------------------
     ! Variables needed for WACCM-X
     !--------------------------------
@@ -309,6 +317,10 @@
     ! ------------------------------------------------ !
     ! Parameters for implicit surface stress treatment !
     ! ------------------------------------------------ !
+
+!-- mdb spcam
+    call phys_getopts(use_SPCAM_out = use_SPCAM)
+!-- mdb spcam
 
     wsmin    = 1._r8                                     ! Minimum wind speed for ksrfturb computation        [ m/s ]
     ksrfmin  = 1.e-4_r8                                  ! Minimum surface drag coefficient                   [ kg/s/m^2 ]
@@ -499,13 +511,13 @@
        call vd_lu_decomp( pcols , pver , ncol  ,                         &
                           ksrf  , kvm  , tmpi2 , rpdel , ztodt , gravit, &
                           zero  , ntop , nbot  , decomp)
-
+#ifndef SPMOMTRANS
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           u     , decomp, ntop  , nbot , zero )
 
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           v     , decomp, ntop  , nbot , zero )
-
+#endif
        ! ---------------------------------------------------------------------- !
        ! Calculate 'total' ( tautotx ) and 'tms' ( tautmsx ) stresses that      !
        ! have been actually added into the atmosphere at the current time step. ! 
@@ -637,6 +649,7 @@
   !                moist static energy,not the dry static energy.
 
     if( diffuse(fieldlist,'s') ) then
+      if (.not. use_SPCAM) then
 
       ! Add counter-gradient to input static energy profiles
 
@@ -644,11 +657,29 @@
            dse(:ncol,k) = dse(:ncol,k) + ztodt * rpdel(:ncol,k) * gravit  *                &
                                        ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgh(:ncol,k+1) &
                                        - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgh(:ncol,k  ) )
-       end do
+        end do
+      endif
 
-     ! Add the explicit surface fluxes to the lowest layer
+      dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
 
-       dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
+#ifdef SPFLUXBYPASS_1
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#endif
+
+
+#ifdef SPFLUXBYPASS_2
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#endif
+
+
+#ifdef SPFLUXBYPASS_3
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#endif
+
+
+#ifdef SPFLUXBYPASS_4
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#endif
 
      ! Diffuse dry static energy
      !----------------------------------------------------------------------------------------------------
@@ -664,8 +695,10 @@
                           zero  , kvh  , tmpi2 , rpdel , ztodt , gravit, &
                           cc_top, ntop , nbot  , decomp )
 
-       call vd_lu_solve(  pcols , pver  , ncol  ,                         &
-                          dse   , decomp, ntop  , nbot  , cd_top )
+       if (.not. use_SPCAM) then
+         call vd_lu_solve(  pcols , pver  , ncol  ,                         &
+                            dse   , decomp, ntop  , nbot  , cd_top )
+       endif
 
      ! Calculate flux at top interface
      
@@ -720,28 +753,61 @@
 
        if( diffuse(fieldlist,'q',m) ) then
 
-           ! Add the nonlocal transport terms to constituents in the PBL.
-           ! Check for neg q's in each constituent and put the original vertical
-           ! profile back if a neg value is found. A neg value implies that the
-           ! quasi-equilibrium conditions assumed for the countergradient term are
-           ! strongly violated.
+! whannah - SP_DIFF_CNST was an attempt to have non-water constituents diffused 
+! in tphysac in order to solve an aerosol optical depth error near the surface 
+! in ACME-SP but it did not seem to make any difference (feel free to remove)
+! #ifndef SP_DIFF_CNST
+           if (.not. use_SPCAM) then
+! #else
+!            if ( (use_SPCAM .and. m.ge.4).or.(.not. use_SPCAM) ) then
+! #endif
 
-           qtm(:ncol,:pver) = q(:ncol,:pver,m)
+             ! Add the nonlocal transport terms to constituents in the PBL.
+             ! Check for neg q's in each constituent and put the original vertical
+             ! profile back if a neg value is found. A neg value implies that the
+             ! quasi-equilibrium conditions assumed for the countergradient term are
+             ! strongly violated.
 
-           do k = 1, pver
-              q(:ncol,k,m) = q(:ncol,k,m) + &
-                             ztodt * rpdel(:ncol,k) * gravit  * ( cflx(:ncol,m) * rrho(:ncol) ) * &
-                           ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgs(:ncol,k+1)                    &
-                           - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgs(:ncol,k  ) )
-           end do
-           lqtst(:ncol) = all(q(:ncol,1:pver,m) >= qmincg(m), 2)
-           do k = 1, pver
-              q(:ncol,k,m) = merge( q(:ncol,k,m), qtm(:ncol,k), lqtst(:ncol) )
-           end do
+             qtm(:ncol,:pver) = q(:ncol,:pver,m)
+
+             do k = 1, pver
+               q(:ncol,k,m) = q(:ncol,k,m) + &
+                              ztodt * rpdel(:ncol,k) * gravit  * ( cflx(:ncol,m) * rrho(:ncol) ) * &
+                            ( rhoi(:ncol,k+1) * kvh(:ncol,k+1) * cgs(:ncol,k+1)                    &
+                            - rhoi(:ncol,k  ) * kvh(:ncol,k  ) * cgs(:ncol,k  ) )
+             end do
+             lqtst(:ncol) = all(q(:ncol,1:pver,m) >= qmincg(m), 2)
+             do k = 1, pver
+               q(:ncol,k,m) = merge( q(:ncol,k,m), qtm(:ncol,k), lqtst(:ncol) )
+             end do
+           endif
 
            ! Add the explicit surface fluxes to the lowest layer
 
-           q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m)
+
+! #ifdef SPFLUXBYPASS
+!            if ( m .ne. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) ! whannah
+! #else
+!            q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
+! #endif  
+
+        q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
+
+#ifdef SPFLUXBYPASS_1
+        if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
+#endif  
+
+#ifdef SPFLUXBYPASS_2
+        q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
+#endif  
+
+#ifdef SPFLUXBYPASS_3
+        if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
+#endif  
+
+#ifdef SPFLUXBYPASS_4
+        q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
+#endif  
 
            ! Diffuse constituents.
 
@@ -776,8 +842,14 @@
                endif
            end if
 
-           call vd_lu_solve(  pcols , pver , ncol  ,                         &
-                              q(1,1,m) , decomp    , ntop  , nbot  , cd_top )
+! #ifndef SP_DIFF_CNST
+           if (.not. use_SPCAM) then
+! #else
+!            if ( (use_SPCAM .and. m.ge.4).or.(.not. use_SPCAM) ) then
+! #endif
+             call vd_lu_solve(  pcols , pver , ncol  ,                         &
+                                q(1,1,m) , decomp    , ntop  , nbot  , cd_top )
+           endif
        end if
     end do
 

@@ -6,6 +6,7 @@ module shr_sys_mod
    use shr_kind_mod
    use shr_log_mod, only: s_loglev  => shr_log_Level
    use shr_log_mod, only: s_logunit => shr_log_Unit
+   use spmd_utils,        only: masterproc
 
    implicit none
    

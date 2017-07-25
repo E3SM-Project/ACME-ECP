@@ -128,6 +128,8 @@ CONTAINS
     ! Initialize the SE structure that holds the MPI decomposition information
     par=initmp(npes_se)
 
+    par%nprocs = npes_se  ! whannah - added to fix issue with large processor counts
+
     ! Read the SE specific part of the namelist
     call readnl(par, NLFileName)
 
@@ -346,6 +348,7 @@ CONTAINS
 #endif
     end if
 
+
     if (inst_index == 1) then
        call write_grid_mapping(par, elem)
     end if
@@ -358,6 +361,7 @@ CONTAINS
   !
   ! !INTERFACE:
   subroutine dyn_run( dyn_state, rc )
+  ! subroutine dyn_run( dyn_state, rc, istate, pbuf)  ! whannah
 
     ! !USES:
     use parallel_mod,     only : par
@@ -366,6 +370,11 @@ CONTAINS
     use time_mod,         only: tstep
     use hybrid_mod,       only: hybrid_create
 !    use perf_mod, only : t_startf, t_stopf
+
+    ! use physics_buffer,  only: physics_buffer_desc  ! whannah - for debugging negative thickenss error
+    ! use physics_types,   only: physics_state        ! whannah - for debugging negative thickenss error
+    ! use ppgrid,          only: begchunk, endchunk   ! whannah
+
     implicit none
 
 
@@ -373,6 +382,11 @@ CONTAINS
     type(hybrid_t) :: hybrid
 
     integer, intent(out)               :: rc      ! Return code
+
+    ! type(physics_state), intent(in) :: istate(begchunk:endchunk)
+    ! type(physics_state),intent(in)    :: istate    ! whannah - for debugging
+    ! type(physics_buffer_desc),pointer :: pbuf(:)  ! whannah - for debugging
+
     integer ::  n
     integer :: nets, nete, ithr
     integer :: ie
@@ -399,6 +413,8 @@ CONTAINS
           call t_startf("prim_run_sybcycle")
           call prim_run_subcycle(dyn_state%elem,hybrid,nets,nete,&
                tstep, TimeLevel, hvcoord, n)
+          ! call prim_run_subcycle(dyn_state%elem,hybrid,nets,nete,&
+               ! tstep, TimeLevel, hvcoord, n, istate, pbuf)   ! whannah
           call t_stopf("prim_run_sybcycle")
        end do
 
@@ -439,13 +455,15 @@ CONTAINS
     ! Create a CS grid mapping file for postprocessing tools
 
        ! write meta data for physics on GLL nodes
+
        call cam_pio_createfile(nc, 'SEMapping.nc', 0)
-   
+
        ierr = pio_def_dim(nc, 'ncenters', npm12*nelem, dim1)
        ierr = pio_def_dim(nc, 'ncorners', 4, dim2)
        ierr = pio_def_var(nc, 'element_corners', PIO_INT, (/dim1,dim2/),vid)
-    
+
        ierr = pio_enddef(nc)
+
        if (iam<par%nprocs) then
           call createmetadata(par, elem, subelement_corners)
        end if
@@ -470,7 +488,7 @@ CONTAINS
        call pio_write_darray(nc, vid, iodesc, reshape(subelement_corners,(/nelemd*npm12*4/)), ierr)
        
        call pio_freedecomp(nc, iodesc)
-       
+
        call pio_closefile(nc)
 
   end subroutine write_grid_mapping

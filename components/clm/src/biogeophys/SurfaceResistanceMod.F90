@@ -8,6 +8,7 @@ module SurfaceResistanceMod
   ! transported with BeTR. The surface here refers to water and soil, not including canopy
   !
   ! !USES:
+  use shr_sys_mod   , only : shr_sys_flush 
   use shr_kind_mod  , only: r8 => shr_kind_r8
   use shr_const_mod , only: SHR_CONST_TKFRZ
   use clm_varctl    , only: iulog
@@ -106,6 +107,7 @@ contains
      use ColumnType      , only : col
      use LandunitType    , only : lun
      use clm_varctl      , only : use_vsfm
+
      !
      implicit none
      type(bounds_type)     , intent(in)    :: bounds    ! bounds   
@@ -154,9 +156,13 @@ contains
                 else   !when water content of ths top layer is more than that at F.C.
                    soilbeta(c) = 1._r8
                 end if
-                if ( use_vsfm .and. &
-                     ((wx < watmin(c,1)) .or. (soilp_col(c,1) < sucmin(c,1)))) then
-                   soilbeta(c) = 0._r8
+                ! whannah - changed this if statement because of NaN values in soilp_col with ACME-SP and nlev = 72
+                ! if ( use_vsfm .and. &
+                !      ((wx < watmin(c,1)) .or. (soilp_col(c,1) < sucmin(c,1)))) then
+                if ( use_vsfm ) then
+                  if ( (wx < watmin(c,1)) .or. (soilp_col(c,1) < sucmin(c,1)) ) then
+                    soilbeta(c) = 0._r8
+                  end if
                 end if
              else if (col%itype(c) == icol_road_perv) then
                 if (.not. use_vsfm) then

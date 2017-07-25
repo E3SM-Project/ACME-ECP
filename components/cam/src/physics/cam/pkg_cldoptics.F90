@@ -150,6 +150,7 @@ contains
 ! Author: W. Collins
 ! 
 !-----------------------------------------------------------------------
+    ! use crmdims,          only: crm_nz ! whannah
 
 !
 ! Input arguments
@@ -174,6 +175,7 @@ contains
     integer i                    ! Longitude index
     integer k                    ! Level index
     integer n                    ! Max-overlap region counter
+    ! integer m                    ! whannah - for limiting the loop to only CRM levels in ACME-SP
 
     real(r8) pnm(pcols,pverp)    ! Interface pressure
 
@@ -189,7 +191,14 @@ contains
        pmxrgn(i,:) = 0.0_r8
        pnm(i,:)=pint(i,:)*10._r8
        n = 1
+       ! do k = 1, pver 
+! ! whannah
+! #if defined(CRM) && defined(SPRADFIX_3)
+!        do m=1,crm_nz
+!           k = pver-m+1
+! #else
        do k = 1, pver
+! #endif
           if (cld_layer(k) .and.  .not. cld_found) then
              cld_found = .true.
           else if ( .not. cld_layer(k) .and. cld_found) then

@@ -59,7 +59,7 @@ contains
 
 !================================================================================================
 
-  subroutine chem_register (species_class) 
+  subroutine chem_register (species_class_in) 
     use aero_model, only : aero_model_register
     !----------------------------------------------------------------------- 
     ! 
@@ -67,9 +67,11 @@ contains
     ! 
     !-----------------------------------------------------------------------
 
-    integer, intent(in) :: species_class(:) 
+    integer, intent(inout) :: species_class_in(:) 
+    integer :: imozart_dum = -1       ! index of 1st constituent ! whannah
    ! for prescribed aerosols
-    call aero_model_register()
+    ! call aero_model_register()  ! whannah
+    call aero_model_register(imozart_dum, species_class_in) ! whannah
 
   end subroutine chem_register
 
@@ -131,7 +133,8 @@ contains
     integer, intent(in) :: species_class(pcnst)  
 
    ! for prescribed aerosols
-    call aero_model_init(pbuf2d)
+   ! call aero_model_init(pbuf2d)
+   call aero_model_init( pbuf2d, species_class, -1 )  ! whannah - last 2 arguments are dummy arguments for SP
 
   end subroutine chem_init
 

@@ -437,6 +437,22 @@ contains
                     forc_lwrad_c(c) /= forc_lwrad_g(g)) then
                   write(iulog,*) subname//' ERROR: column-level forcing differs from gridcell-level forcing for urban point'
                   write(iulog,*) 'c, g = ', c, g
+                  write(iulog,*) '  forc_t_c     = ', forc_t_c(c)      ! whannah
+                  write(iulog,*) '  forc_t_g     = ', forc_t_g(g)      ! whannah
+                  write(iulog,*) '  forc_th_c    = ', forc_th_c(c)     ! whannah
+                  write(iulog,*) '  forc_th_g    = ', forc_th_g(g)     ! whannah
+                  write(iulog,*) '  forc_q_c     = ', forc_q_c(c)      ! whannah
+                  write(iulog,*) '  forc_q_g     = ', forc_q_g(g)      ! whannah
+                  write(iulog,*) '  forc_pbot_c  = ', forc_pbot_c(c)   ! whannah
+                  write(iulog,*) '  forc_pbot_g  = ', forc_pbot_g(g)   ! whannah
+                  write(iulog,*) '  forc_rho_c   = ', forc_rho_c(c)    ! whannah
+                  write(iulog,*) '  forc_rho_g   = ', forc_rho_g(g)    ! whannah
+                  write(iulog,*) '  forc_rain_c  = ', forc_rain_c(c)   ! whannah
+                  write(iulog,*) '  forc_rain_g  = ', forc_rain_g(g)   ! whannah
+                  write(iulog,*) '  forc_snow_c  = ', forc_snow_c(c)   ! whannah
+                  write(iulog,*) '  forc_snow_g  = ', forc_snow_g(g)   ! whannah
+                  write(iulog,*) '  forc_lwrad_c = ', forc_lwrad_c(c)  ! whannah
+                  write(iulog,*) '  forc_lwrad_g = ', forc_lwrad_g(g)  ! whannah
                   call endrun(msg=errMsg(__FILE__, __LINE__))
                end if  ! inequal
             end if  ! urbpoi

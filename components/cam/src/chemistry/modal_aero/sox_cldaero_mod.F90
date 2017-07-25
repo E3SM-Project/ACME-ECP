@@ -481,7 +481,7 @@ contains
                      *pdel(i,k)/gravit ! kg/m2/s
              enddo
           enddo
-          call outfld( trim(cnst_name_cw(m))//'AQSO4', sflx(:ncol), ncol, lchnk)
+      !    call outfld( trim(cnst_name_cw(m))//'AQSO4', sflx(1:ncol), ncol, lchnk) !Guangxing Lin added 1
 
           sflx(:)=0._r8
           do k=1,pver
@@ -490,7 +490,7 @@ contains
                      *pdel(i,k)/gravit ! kg/m2/s
              enddo
           enddo
-          call outfld( trim(cnst_name_cw(m))//'AQH2SO4', sflx(:ncol), ncol, lchnk)
+     !     call outfld( trim(cnst_name_cw(m))//'AQH2SO4', sflx(1:ncol), ncol, lchnk)!Guangxing Lin added 1
        endif
     end do
 
@@ -501,7 +501,7 @@ contains
                *pdel(i,k)/gravit ! kg SO4 /m2/s
        enddo
     enddo
-    call outfld( 'AQSO4_H2O2', sflx(:ncol), ncol, lchnk)
+    !call outfld( 'AQSO4_H2O2', sflx(1:ncol), ncol, lchnk) !Guangxing Lin added 1
     sflx(:)=0._r8
     do k=1,pver
        do i=1,ncol
@@ -509,7 +509,7 @@ contains
                *pdel(i,k)/gravit ! kg SO4 /m2/s
        enddo
     enddo
-    call outfld( 'AQSO4_O3', sflx(:ncol), ncol, lchnk)
+   ! call outfld( 'AQSO4_O3', sflx(1:ncol), ncol, lchnk) !Guangxing Lin added 1
 
   end subroutine sox_cldaero_update
 
