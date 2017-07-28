@@ -2,6 +2,8 @@ module ColumnType
 
   !-----------------------------------------------------------------------
   ! !DESCRIPTION:
+  !DW  Converted from ColumnType
+  !DW  Change the old function into PhysicalPropertiesType
   ! Column data type allocation and initialization
   ! -------------------------------------------------------- 
   ! column types can have values of
@@ -28,7 +30,7 @@ module ColumnType
   save
   private
   !
-  type, public :: column_type
+  type, public :: column_physical_properties_type
      ! g/l/c/p hierarchy, local g/l/c/p cells only
      integer , pointer :: landunit             (:)   ! index into landunit level quantities
      real(r8), pointer :: wtlunit              (:)   ! weight (relative to landunit)
@@ -48,6 +50,8 @@ module ColumnType
      real(r8), pointer :: n_melt               (:)   ! SCA shape parameter
      real(r8), pointer :: topo_slope           (:)   ! gridcell topographic slope
      real(r8), pointer :: topo_std             (:)   ! gridcell elevation standard deviation
+     integer, pointer  :: nlevbed             (:)   ! number of layers to bedrock
+     real(r8), pointer :: zibed                (:)   ! bedrock depth in model (interface level at nlevbed)
 
      ! vertical levels
      integer , pointer :: snl                  (:)   ! number of snow layers
@@ -61,21 +65,21 @@ module ColumnType
 
    contains
 
-     procedure, public :: Init
-     procedure, public :: Clean
+     procedure, public :: Init => col_pp_init
+     procedure, public :: Clean => col_pp_clean
 
-  end type column_type
+  end type column_physical_properties_type
 
-  type(column_type), public, target :: col !column data structure (soil/snow/canopy columns)
+  type(column_physical_properties_type), public, target :: col_pp !column data structure (soil/snow/canopy columns)
   !------------------------------------------------------------------------
 
 contains
   
   !------------------------------------------------------------------------
-  subroutine Init(this, begc, endc)
+  subroutine col_pp_init(this, begc, endc)
     !
     ! !ARGUMENTS:
-    class(column_type)  :: this
+    class(column_physical_properties_type)  :: this
     integer, intent(in) :: begc,endc
     !------------------------------------------------------------------------
 
@@ -105,14 +109,16 @@ contains
     allocate(this%n_melt      (begc:endc))                     ; this%n_melt      (:)   = nan 
     allocate(this%topo_slope  (begc:endc))                     ; this%topo_slope  (:)   = nan
     allocate(this%topo_std    (begc:endc))                     ; this%topo_std    (:)   = nan
+    allocate(this%nlevbed     (begc:endc))                     ; this%nlevbed     (:)   = ispval
+    allocate(this%zibed       (begc:endc))                     ; this%zibed       (:)   = nan
 
-  end subroutine Init
+  end subroutine col_pp_init
 
   !------------------------------------------------------------------------
-  subroutine Clean(this)
+  subroutine col_pp_clean(this)
     !
     ! !ARGUMENTS:
-    class(column_type) :: this
+    class(column_physical_properties_type) :: this
     !------------------------------------------------------------------------
 
     deallocate(this%gridcell   )
@@ -137,8 +143,10 @@ contains
     deallocate(this%n_melt     )
     deallocate(this%topo_slope )
     deallocate(this%topo_std   )
+    deallocate(this%nlevbed    )
+    deallocate(this%zibed      )
 
-  end subroutine Clean
+  end subroutine col_pp_clean
 
 
 end module ColumnType

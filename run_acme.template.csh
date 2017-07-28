@@ -39,7 +39,7 @@ set submit_run       = true
 set debug_queue      = true
 
 ### PROCESSOR CONFIGURATION
-set processor_config = M
+set processor_config = S
 
 ### STARTUP TYPE
 set model_start_type = initial
@@ -57,7 +57,7 @@ set stop_units       = ndays
 set stop_num         = 5
 set restart_units    = $stop_units
 set restart_num      = $stop_num
-set num_submits      = 1
+set num_resubmits    = 0
 set do_short_term_archiving      = false
 set do_long_term_archiving       = false
 
@@ -167,8 +167,8 @@ set cpl_hist_num   = 1
 #stop_num: The simulation length for each batch submission, in units of $stop_units.
 #restart_units: The units for how often restart files are written, eg nhours, ndays, nmonths, nyears.
 #restart_num: How often restart files are written, in units of $restart_units.
-#num_submits: After a batch job finishes successfully, a new batch job will automatically be submitted to
-#    continue the simulation.  num_submits is the total number of submissions.
+#num_resubmits: After a batch job finishes successfully, a new batch job will automatically be submitted to
+#    continue the simulation.  num_resubmits is the number of times to submit after initial completion.
 #    After the first submission, the CONTINUE_RUN flage in env_run.xml will be changed to TRUE.
 #do_short_term_archiving: If TRUE, then move simulation output to the archive directory in your scratch directory.
 #do_long_term_archiving : If TRUE, then move simulation output from the short_term_archive to the local mass storage system.
@@ -210,7 +210,7 @@ set cpl_hist_num   = 1
 #===========================================
 # VERSION OF THIS SCRIPT
 #===========================================
-set script_ver = 3.0.8
+set script_ver = 3.0.12
 
 #===========================================
 # DEFINE ALIASES
@@ -228,9 +228,9 @@ alias acme_newline "echo ''"
 set first_argument = $1
 if ( $first_argument != '' ) then
  echo 'This script does everything needed to configure/compile/run a case. As such, it'
- echo 'provides complete provenance for each run and makes sharing with newbies easy. Future'
- echo 'users should make sure that everything required for a run is in this script, the ACME'
- echo 'git repo, or the inputdata svn repo.'
+ echo 'provides complete provenance for each run and makes sharing simulation configurations easy.'
+ echo 'Users should make sure that everything required for a run is in this script, the ACME'
+ echo 'git repo, and/or the inputdata svn repo.'
  echo '** This script accepts no arguments. Please edit the script as needed and resubmit without arguments. **'
  exit 5
 endif
@@ -297,7 +297,7 @@ if ( `lowercase $case_run_dir` == default && $seconds_before_delete_run_dir >= 0
   exit 15
 endif
 
-if ( $num_submits >1 && ( $stop_units != $restart_units || $stop_num != $restart_num ) ) then
+if ( $num_resubmits >= 1 && ( $stop_units != $restart_units || $stop_num != $restart_num ) ) then
   acme_print 'WARNING: It makes no sense to have chained submissions unless the run is producing appropriate restarts!'
   acme_print '         The run length and restarts do not match exactly. '
   acme_print '         It is hard to check definitively, so stopping just in case.'
@@ -306,15 +306,15 @@ if ( $num_submits >1 && ( $stop_units != $restart_units || $stop_num != $restart
   acme_print '         $stop_num       = '$stop_num
   acme_print '         $restart_units  = '$restart_units
   acme_print '         $restart_num    = '$restart_num
-  acme_print '         $num_submits    = '$num_submits
+  acme_print '         $num_resubmits  = '$num_resubmits
   exit 16
 endif
 
-if ( `lowercase $debug_queue` == true && ( $num_submits >1 || `lowercase $do_short_term_archiving` == true ) ) then
+if ( `lowercase $debug_queue` == true && ( $num_resubmits >= 1 || `lowercase $do_short_term_archiving` == true ) ) then
   acme_print 'ERROR: Supercomputer centers generally do not allow job chaining in debug queues'
   acme_print '       You should either use a different queue, or submit a single job without archiving.'
   acme_print '       $debug_queue             = '$debug_queue
-  acme_print '       $num_submits             = '$num_submits
+  acme_print '       $num_resubmits           = '$num_resubmits
   acme_print '       $do_short_term_archiving = '$do_short_term_archiving
   exit 17
 endif
@@ -601,6 +601,9 @@ acme_newline
 if ( `lowercase $machine` == default ) then
   set machine = `$xmlquery_exe MACH --value`
 endif
+# machine is a commonly used variable; so make certain it's lowercase
+set machine = `lowercase $machine`
+
 if ( `lowercase $case_build_dir` == default ) then
   set case_build_dir = ${acme_simulations_dir}/${case_name}/bld
 endif
@@ -629,7 +632,7 @@ if ( `lowercase $walltime` == default ) then
   if ( `lowercase $debug_queue` == true ) then
     set walltime = '0:30:00'
   else
-    if ( `lowercase $machine` == 'cab' || `lowercase $machine` == 'syrah' ) then
+    if ( $machine == 'cab' || $machine == 'syrah' ) then
       set walltime = '1:29:00'
     else
       set walltime = '2:00:00'
@@ -671,18 +674,6 @@ set script_provenance_dir  = $case_scripts_dir/run_script_provenance
 set script_provenance_name = $this_script_name.`date +%F_%T_%Z`
 mkdir -p $script_provenance_dir
 cp -f $this_script_path $script_provenance_dir/$script_provenance_name
-
-#================================================
-# COPY AUTO_CHAIN_RUNS SCRIPT TO CASE_SCRIPTS_DIR
-#================================================
-
-acme_print 'copying auto_chain script, in case it is needed'
-
-set auto_chain_run_file = ./auto_chain_runs.$machine
-if ( -fx ${this_script_dir}/${auto_chain_run_file}  ) then
-  acme_print 'Copying '${auto_chain_run_file}' to '${case_scripts_dir}
-  cp ${this_script_dir}/${auto_chain_run_file} ${case_scripts_dir}/${auto_chain_run_file}
-endif
 
 #=============================================
 # CUSTOMIZE PROCESSOR CONFIGURATION
@@ -811,8 +802,19 @@ set input_data_dir = `$xmlquery_exe DIN_LOC_ROOT --value`
 #$xmlchange_exe --id CAM_CONFIG_OPTS --val "-phys cam5 -chem linoz_mam3"
 
 ## Chris Golaz: build with COSP
-#NOTE: xmlchange has a bug which requires append to be specified with quotes and a leading space
-$xmlchange_exe --id CAM_CONFIG_OPTS --append -val " -cosp"
+#NOTE: xmlchange has a bug which requires append to be specified with quotes and a leading space.
+#NOTE: The xmlchange will fail if CAM is not active, so test whether a data atmosphere (datm) is used.
+
+if ( `$xmlquery_exe --value COMP_ATM` == 'datm'  ) then 
+  acme_newline
+  acme_print 'The specified configuration uses a data atmosphere, so cannot activate COSP simulator.'
+  acme_newline
+else
+  acme_newline
+  acme_print 'Configuring ACME to use the COSP simulator.'
+  acme_newline
+  $xmlchange_exe --id CAM_CONFIG_OPTS --append --val " -cosp"
+endif
 
 #===========================
 # SET THE PARTITION OF NODES
@@ -888,7 +890,7 @@ if ( `uppercase $debug_compile` != 'TRUE' && `uppercase $debug_compile` != 'FALS
   exit 220
 endif
 
-if ( `lowercase $machine` == 'edison' && `uppercase $debug_compile` == 'TRUE' ) then
+if ( $machine == 'edison' && `uppercase $debug_compile` == 'TRUE' ) then
   acme_print 'ERROR: Edison currently has a compiler bug and crashes when compiling in debug mode (Nov 2015)'
   exit 222
 endif
@@ -912,6 +914,10 @@ $xmlchange_exe --id DEBUG --val `uppercase $debug_compile`
 cat <<EOF >> user_nl_cam
  nhtfrq = $atm_output_freq
  mfilt  = $records_per_atm_output_file
+EOF
+
+cat <<EOF >> user_nl_clm
+! finidat=''
 EOF
 
 ### NOTES ON COMMON NAMELIST OPTIONS ###
@@ -1001,20 +1007,10 @@ endif
 
 mkdir -p batch_output      ### Make directory that stdout and stderr will go into.
 
-set machine = `lowercase $machine`   # Change to lowercase, just to make the following easier to read. 
+set batch_options = ''
 
-if ( $machine == hopper ) then
-    sed -i /"#PBS \( \)*-N"/c"#PBS  -N ${job_name}"                                ${case_run_exe}
-    sed -i /"#PBS \( \)*-j oe"/a'#PBS  -o batch_output/${PBS_JOBNAME}.o${PBS_JOBID}' ${case_run_exe}
-    sed -i /"#PBS \( \)*-N"/c"#PBS  -N ST+${job_name}"                             $shortterm_archive_script
-    sed -i /"#PBS \( \)*-j oe"/a'#PBS  -o batch_output/${PBS_JOBNAME}.o${PBS_JOBID}' $shortterm_archive_script
-    sed -i /"#PBS \( \)*-N"/c"#PBS  -N LT+${job_name}"                             $longterm_archive_script
-    sed -i /"#PBS \( \)*-j oe"/a'#PBS  -o batch_output/${PBS_JOBNAME}.o${PBS_JOBID}' $longterm_archive_script
-
-else if ( $machine == cori || $machine == edison ) then
-    sed -i /"#SBATCH \( \)*--job-name"/c"#SBATCH  --job-name=${job_name}"                 ${case_run_exe}
-    sed -i /"#SBATCH \( \)*--job-name"/a"#SBATCH  --account=${project}"                   ${case_run_exe}
-    sed -i /"#SBATCH \( \)*--output"/c"#SBATCH  --output=batch_output/"${case_name}'.o%j' ${case_run_exe}
+if ( $machine == cori || $machine == edison ) then
+    set batch_options = "--job-name=${job_name} --output=batch_output/${case_name}.o%j"
 
     sed -i /"#SBATCH \( \)*--job-name"/c"#SBATCH  --job-name=ST+${job_name}"                  $shortterm_archive_script
     sed -i /"#SBATCH \( \)*--job-name"/a"#SBATCH  --account=${project}"                       $shortterm_archive_script
@@ -1033,6 +1029,20 @@ else if ( $machine == titan || $machine == eos ) then
     sed -i /"#PBS \( \)*-N"/c"#PBS  -N LT+${job_name}"                             $longterm_archive_script
     sed -i /"#PBS \( \)*-j oe"/a'#PBS  -o batch_output/${PBS_JOBNAME}.o${PBS_JOBID}' $longterm_archive_script
 
+else if ( $machine == anvil ) then
+# Priority for Anvil
+# For more information, see
+# https://acme-climate.atlassian.net/wiki/pages/viewpage.action?pageId=98992379#Anvil:ACME'sdedicatednodeshostedonBlues.-Settingthejobpriority
+# If default; use the default priority of qsub.py. Otherwise, should be from 0-5, where 0 is the highest priority
+# Note that only one user at a time is allowed to use the highest (0) priority
+# env_batch.xml must be modified by hand, as it doesn't conform to the entry-id format
+# ${xmlchange_exe} batch_submit="qsub.py "
+    set anvil_priority   = default
+    if ( `lowercase ${anvil_priority}` != default ) then
+	sed -i 's:qsub:qsub.py:g' env_batch.xml
+	set batch_options="-W x=QOS:pri${anvil_priority}"
+    endif
+
 else
     acme_print 'WARNING: This script does not have batch directives for $machine='$machine
     acme_print '         Assuming default ACME values.'
@@ -1049,10 +1059,7 @@ endif
 
 ### Only specially authorized people can use the special_acme qos on Cori or Edison. Don't uncomment unless you're one.
 #if ( `lowercase $debug_queue` == false && $machine == edison ) then
-#  set update_run = ${case_run_exe}.updated
-#  awk '/--account/{print; print "#SBATCH --qos=special_acme";next}1' ${case_run_exe} > ${update_run}
-#  mv ${update_run} ${case_run_exe}
-#  unset update_run
+#  set batch_options = "${batch_options} --qos=special_acme"
 #endif
 
 #============================================
@@ -1153,6 +1160,7 @@ else if ( $model_start_type == 'branch' ) then
   acme_print '$restart_filedate  = '$restart_filedate
 
   ### the next line gets the YYYY-MM of the month before the restart time. Needed for staging history files.
+  ### NOTE: This is broken for cases that have run for less than a month
   set restart_prevdate = `date -d "${restart_filedate} - 1 month" +%Y-%m`
 
   acme_print '$restart_prevdate  = '$restart_prevdate
@@ -1165,9 +1173,9 @@ else if ( $model_start_type == 'branch' ) then
   cp ${restart_files_dir}/${restart_case_name}.cpl.r.${restart_filedate}-00000.nc $case_run_dir
   cp ${restart_files_dir}/${restart_case_name}.mosart.r.${restart_filedate}-00000.nc $case_run_dir
   cp ${restart_files_dir}/${restart_case_name}.mosart.rh0.${restart_filedate}-00000.nc $case_run_dir
-  cp ${restart_files_dir}/rst.mpas-cice.${restart_filedate}_00.00.00.nc $case_run_dir
-  cp ${restart_files_dir}/rst.mpas-o.${restart_filedate}_00.00.00.nc $case_run_dir
-  cp ${restart_files_dir}/${restart_case_name}.cam.h0.${restart_prevdate}.nc $case_run_dir
+  cp ${restart_files_dir}/mpascice.rst.${restart_filedate}_00000.nc $case_run_dir
+  cp ${restart_files_dir}/mpaso.rst.${restart_filedate}_00000.nc $case_run_dir
+  cp ${restart_files_dir}/${restart_case_name}.cam.h0.${restart_prevdate}-*-00000.nc $case_run_dir
   cp ${restart_files_dir}/${restart_case_name}.mosart.h0.${restart_prevdate}.nc $case_run_dir
   cp ${restart_files_dir}/${restart_case_name}.clm2.h0.${restart_prevdate}.nc $case_run_dir
   cp ${restart_files_dir}/rpointer* $case_run_dir
@@ -1176,7 +1184,9 @@ else if ( $model_start_type == 'branch' ) then
   $xmlchange_exe --id RUN_REFCASE --val $restart_case_name
   $xmlchange_exe --id RUN_REFDATE --val $restart_filedate    # Model date of restart file
   $xmlchange_exe --id CONTINUE_RUN --val "FALSE"
-  $xmlchange_exe --id BRNCH_RETAIN_CASENAME --val "FALSE"  ## Only TRUE if you want to continue the run with the same name (risky)!!
+  # Currently broken in CIME
+  # Only uncomment this if you want to continue the run with the same name (risky)!!
+  # $xmlchange_exe --id BRNCH_RETAIN_CASENAME --val "TRUE"
 
 else
 
@@ -1208,35 +1218,17 @@ acme_newline
 acme_print '-------- Starting Submission to Run Queue --------'
 acme_newline
 
+if ( ${num_resubmits} > 0 ) then
+  ${xmlchange_exe} --id RESUBMIT --val ${num_resubmits}
+  acme_print 'Setting number of resubmits to be '${num_resubmits}
+  @ total_submits = ${num_resubmits} + 1
+  acme_print 'This job will submit '${total_submits}' times after completion'
+endif
+
 if ( `lowercase $submit_run` == 'true' ) then
-  if ( $num_submits == 1 ) then
-    acme_print '         SUBMITTING A SINGLE JOB.'
-    ${case_submit_exe}
-  else if ( $num_submits <= 0 ) then
-    acme_print '$num_submits <= 0 so NOT submitting a job.'
-    acme_print '$num_submits = '$num_submits
-  else if ( `lowercase $debug_queue` == 'true' && $num_submits > 1 ) then
-    acme_print 'WARNING: $num_submits > 1  and  $debug_queue = "TRUE"'
-    acme_print '         Submitting chained jobs to the debug queue is usually forbidden'
-    acme_print '         $num_submits = '$num_submits
-    acme_print '         SUBMITTING JUST A SINGLE JOB.'
-    ${case_submit_exe}
-  else if ( ! -x ./auto_chain_runs.$machine && $num_submits > 1 ) then
-    acme_print 'WARNING: $num_submits > 1  but auto_chain_runs.$machine excutable cannot be found.'
-    acme_print '         $num_submits = '$num_submits
-    acme_print '         $machine     = '$machine
-    acme_print '         SUBMITTING JUST A SINGLE JOB.'
-    ${case_submit_exe}
-  else
-    acme_print 'executing 'auto_chain_runs.$machine
-    acme_print '$num_submits = '$num_submits
-    acme_print '$do_short_term_archiving = '`uppercase $do_short_term_archiving`
-     '$do_long_term_archiving  = '`uppercase $do_long_term_archiving`
-    # To avoid the error checking in the ACME scripts, it is necessary to tell ACME the archiving is FALSE, and then implement it manually.
-    $xmlchange_exe --id DOUT_S    --val 'FALSE'
-    $xmlchange_exe --id DOUT_L_MS --val 'FALSE'
-    ./auto_chain_runs.$machine  $num_submits -1 `uppercase $do_short_term_archiving` `uppercase $do_long_term_archiving` ${case_run_exe}
-  endif
+  acme_print '         SUBMITTING JOB:'
+  acme_print ${case_submit_exe} --batch-args " ${batch_options} "
+  ${case_submit_exe} --batch-args " ${batch_options} "
 else
     acme_print 'Run NOT submitted because $submit_run = '$submit_run
 endif
@@ -1357,6 +1349,10 @@ acme_newline
 #                        Note that this breaks compatibility with older versions of CIME
 #                        Also add a fix to reenable using the special acme qos queue on Edison (MD)
 # 3.0.8    2017-05-24    Fixed minor bug when $machine contained a capital letter. Bug was introduced recently. (PJC)
+# 3.0.9    2017-06-19    Fixed branch runs. Also removed sed commands for case.run and use --batch-args in case.submit (MD)
+# 3.0.10   2017-06-14    To allow data-atm compsets to work, I added a test for CAM_CONFIG_OPTS. (PJC)
+# 3.0.11   2017-07-14    Replace auto-chaining code with ACME's resubmit feature. Also fix Edison's qos setting (again...) (MD)
+# 3.0.12   2017-07-24    Supports setting the queue priority for anvil. Also move making machine lowercase up to clean some things up (MD)
 #
 # NOTE:  PJC = Philip Cameron-Smith,  PMC = Peter Caldwell, CG = Chris Golaz, MD = Michael Deakin
 
@@ -1368,6 +1364,8 @@ acme_newline
 # +) Add a 'default' option, for which REST_OPTION='$STOP_OPTION' and REST_N='$STOP_N'.
 #    This is important if the user subsequently edits STOP_OPTION or STOP_N.      (PJC)
 # +) triggering on $acme_tag = master_detached doesn't make sense.  Fix logic. (PJC)
+# +) run_root and run_root_dir are duplicative.  Also, move logical link creation before case.setup (PJC)
+# +) change comments referring to cesm_setup to case.setup (name has changed). (PJC)
 
 ###Example sed commands
 #============================

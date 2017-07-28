@@ -140,6 +140,7 @@
 
 <ncdata dyn="se" hgrid="ne4np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami_mam3_0000-01-01_ne4np4_L30_c161102.nc</ncdata>
 <ncdata dyn="se" hgrid="ne4np4"   nlev="72"             ic_ymd="101" >atm/cam/inic/homme/cami_mam3_Linoz_ne4np4_L72_c160909.nc</ncdata>
+<ncdata dyn="se" hgrid="ne4np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami_mam3_0000-01-01_ne4np4_L30_c161102.nc</ncdata>
 <ncdata dyn="se" hgrid="ne11np4"  nlev="72"             ic_ymd="101" >atm/cam/inic/homme/cami_mam3_Linoz_ne11np4_L72_c160622.nc</ncdata>
 <ncdata dyn="se" hgrid="ne11np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01-01_ne11np4_L30_c160824.nc</ncdata>
 <ncdata dyn="se" hgrid="ne16np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/homme/cami_0000-01-01_ne16np4_L26_c120525.nc</ncdata>
@@ -1484,8 +1485,7 @@
 <finidat hgrid="ne30np4"   ic_ymd="101" sim_year="2000">lnd/clm2/initdata/clmi.BCN.2000-01-01_ne30np4_gx1v6_simyr2000_c110328.nc</finidat>
 <finidat hgrid="ne0np4_arm_x8v3_lowcon"  ic_ymd="101" sim_year="2000">lnd/clm2/initdata/clmi.armx8v3.1850-01-01.nc</finidat>
 <!-- for CLM4.0finidat hgrid="ne0np4_conus_x4v1_lowcon" ic_ymd="101" sim_year="2000">lnd/clm2/initdata/clmi.conusx4v1.2000-01-01_c141106.nc</finidat-->
-<finidat hgrid="ne0np4_conus_x4v1_lowcon" ic_ymd="101" sim_year="1850">lnd/clm2/initdata_map/clmi.I1850CLM45.conusx4v1.74e105b.clm2.r.0021-01-01-00000.nc</finidat>
-<finidat hgrid="ne0np4_conus_x4v1_lowcon" ic_ymd="101" sim_year="2000">lnd/clm2/initdata_map/clmi.ICRUCLM45.conusx4v1.74e105b.clm2.r.0021-01-01-00000.nc</finidat>
+<finidat hgrid="ne0np4_conus_x4v1_lowcon" ic_ymd="101" sim_year="2000">lnd/clm2/initdata_map/clmi.ICRUCLM45.0021-01-01.conusx4v1.0ac6464_simyr2000_c161130.nc</finidat>
 <finidat hgrid="ne0np4_svalbard_x8v1_lowcon"  ic_ymd="101" sim_year="1850">lnd/clm2/initdata/clmi.svalbardx8v1.1850-01-01.nc</finidat>
 <finidat hgrid="ne0np4_sooberingoa_x4x8v1_lowcon"  ic_ymd="101" sim_year="1850">lnd/clm2/initdata/clmi.sooberingoax4x8v1.1850-01-01_c141110.nc</finidat>
 
