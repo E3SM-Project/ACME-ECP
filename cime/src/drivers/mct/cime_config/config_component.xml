@@ -797,6 +797,15 @@
     machines.</desc>
   </entry>
 
+  <entry id="USE_MOAB">
+    <type>logical</type>
+    <valid_values>TRUE,FALSE</valid_values>
+    <default_value>FALSE</default_value>
+    <group>build_def</group>
+    <file>env_build.xml</file>
+    <desc>TRUE implies linking to the MOAB library</desc>
+  </entry>
+
   <entry id="USE_TRILINOS">
     <type>logical</type>
     <valid_values>TRUE,FALSE</valid_values>
@@ -929,15 +938,6 @@
     <group>run_flags</group>
     <file>env_run.xml</file>
     <desc>logical to diagnose model timing at the end of the run</desc>
-  </entry>
-
-
-  <entry id="TIMER_LEVEL">
-    <type>integer</type>
-    <default_value>12</default_value>
-    <group>run_flags</group>
-    <file>env_run.xml</file>
-    <desc>timer output depth</desc>
   </entry>
 
   <entry id="PROFILE_PAPI_ENABLE">
@@ -2606,6 +2606,14 @@
    <group>job_submission</group>
    <file>env_batch.xml</file>
    <desc>project for project-sensitive build and run paths, and job scripts</desc>
+ </entry>
+
+ <entry id="CHARGE_ACCOUNT">
+   <type>char</type>
+   <default_value></default_value>
+   <group>job_submission</group>
+   <file>env_batch.xml</file>
+   <desc>project to charge in scripts if different from PROJECT</desc>
  </entry>
 
  <entry id="MODEL_VERSION">

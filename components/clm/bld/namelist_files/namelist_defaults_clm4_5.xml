@@ -96,9 +96,13 @@ attributes from the config_cache.xml file (with keys converted to upper-case).
 <!-- Plant function types (relative to {csmdata}) -->
 <paramfile                 >lnd/clm2/paramdata/clm_params_c160822.nc</paramfile>
 <paramfile use_crop=".true." >lnd/clm2/paramdata/clm_params_c160822.nc</paramfile>
-<paramfile nu_com="ECA"    >lnd/clm2/paramdata/clm_params.c160709.nc</paramfile>
+<paramfile nu_com="ECA"    >lnd/clm2/paramdata/clm_params.c170828.nc</paramfile>
 
-<fates_paramfile >lnd/clm2/paramdata/fates_params.c170331.nc</fates_paramfile>
+
+<!-- ================================================================== -->
+<!-- FATES default parameter file                                       -->
+<!-- ================================================================== -->
+<fates_paramfile >lnd/clm2/paramdata/fates_params_2troppftclones.c170810.nc</fates_paramfile>
 
 
 <!-- soil order related parameters (relative to {csmdata}) -->
@@ -306,7 +310,7 @@ ic_tod="0" sim_year="2000" glc_nec="0" use_crop=".true." irrigate=".true." nu_co
 <finidat hgrid="ne0np4_conus_x4v1_lowcon" ic_ymd="101" sim_year="1850">lnd/clm2/initdata_map/clmi.I1850CLM45.conusx4v1.74e105b.clm2.r.0021-01-01-00000.nc</finidat>
 <finidat hgrid="ne0np4_conus_x4v1_lowcon" ic_ymd="101" sim_year="2000">lnd/clm2/initdata_map/clmi.ICRUCLM45.conusx4v1.74e105b.clm2.r.0021-01-01-00000.nc</finidat>
 <finidat hgrid="ne0np4_enax4v1" sim_year="2000">lnd/clm2/initdata_map/clmi.ICRUCLM45SP.2000-01-01.enax4v1_oRRS18to6_simyr2000_c170621.nc</finidat>
-
+<finidat hgrid="ne0np4_twpx4v1" ic_ymd="101" sim_year="2000">lnd/clm2/initdata_map/clmi.ICRUCLM45SP.2000-01-01.twpx4v1_oRRS18to6v3_simyr2000_c170712.nc</finidat>
 
 <!-- for present day simulations - year 2000 -->
 <fsurdat hgrid="360x720cru"   sim_year="2000" use_crop=".false." >
@@ -335,6 +339,8 @@ lnd/clm2/surfdata_map/surfdata_ne16np4_simyr2000_c160108.nc</fsurdat>
 lnd/clm2/surfdata_map/surfdata_ne11np4_simyr2000_c160614.nc</fsurdat>
 <fsurdat hgrid="ne4np4"      sim_year="2000" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_ne4np4_simyr2000_c160614.nc</fsurdat>
+<fsurdat hgrid="ne240np4"      sim_year="2000" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_ne240np4_simyr2000_c170821.nc</fsurdat>
 
 <!-- Crop surface datasets -->
 <fsurdat hgrid="1.9x2.5"   sim_year="2000" use_crop=".true." >
@@ -392,6 +398,8 @@ lnd/clm2/surfdata_map/surfdata_ne120np4_simyr1850_c160211.nc</fsurdat>
 lnd/clm2/surfdata_map/surfdata_ne11np4_simyr1850_c160614.nc</fsurdat>
 <fsurdat hgrid="ne4np4"      sim_year="1850" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_ne4np4_simyr1850_c160614.nc</fsurdat>
+<fsurdat hgrid="ne240np4"      sim_year="1850" use_crop=".false." >
+lnd/clm2/surfdata_map/surfdata_ne240np4_simyr18500_c170821.nc</fsurdat>
 
 <fsurdat hgrid="ne0np4_conus_x4v1_lowcon" sim_year="1850" use_crop=".false." >
 lnd/clm2/surfdata_map/surfdata_conusx4v1_simyr1850_c160503.nc</fsurdat>
@@ -402,6 +410,8 @@ lnd/clm2/surfdata_map/surfdata_conusx4v1_simyr2000_c160503.nc</fsurdat>
     lnd/clm2/surfdata/surfdata_enax4v1_mp24_simyr1850_c170518.nc</fsurdat>
 <fsurdat hgrid="ne0np4_enax4v1" sim_year="2000" use_crop=".false." >
     lnd/clm2/surfdata/surfdata_enax4v1_mp24_simyr2000_c170518.nc</fsurdat>
+<fsurdat hgrid="ne0np4_twpx4v1" sim_year="2000" use_crop=".false.">
+lnd/clm2/surfdata_map/surfdata_twpx4v1_simyr2000_c170706.nc</fsurdat>
 
 <!-- Regional Refinement Variable Resolution RRM 1850 and 2000-->
 <!--Not ready for clm4.5 fsurdat hgrid="ne0np4_arm_x8v3_lowcon"    sim_year="1850" irrig=".false." >
@@ -416,8 +426,8 @@ lnd/clm2/surfdata_map/surfdata_conusx4v1_simyr2000_c160503.nc</fsurdat>
     lnd/clm2/surfdata/surfdata_enax4v1_mp24_simyr1850_c170518.nc</fsurdat>
 <fsurdat hgrid="ne0np4_enax4v1" sim_year="2000" irrig=".false." >
     lnd/clm2/surfdata/surfdata_enax4v1_mp24_simyr2000_c170518.nc</fsurdat>
-
-
+<fsurdat hgrid="ne0np4_twpx4v1" sim_year="2000" irrig=".false.">
+lnd/clm2/surfdata_map/surfdata_twpx4v1_simyr2000_c170706.nc</fsurdat>
 
 <!-- Dynamic PFT surface datasets (relative to {csmdata}) -->
 
@@ -1746,6 +1756,8 @@ this mask will have smb calculated over the entire global land surface
 >lnd/clm2/mappingdata/maps/ne240np4/map_1km-merge-10min_HYDRO1K-merge-nomask_to_ne240np4_nomask_aave_da_c130405.nc</map>
 <map frm_hgrid="ne240np4"    frm_lmask="nomask" to_hgrid="0.5x0.5"   to_lmask="nomask"
 >lnd/clm2/mappingdata/maps/ne240np4/map_ne240np4_nomask_to_0.5x0.5_nomask_aave_da_c110922.nc</map>
+<map frm_hgrid="0.5x0.5"    frm_lmask="GSDTG2000"  to_hgrid="ne240np4"   to_lmask="nomask"
+>lnd/clm2/mappingdata/maps/ne240np4/map_0.5x0.5_GSDTG2000_to_ne240np4_nomask_aave_da_c170821.nc</map>
 
 <!-- mapping files for 0.125x0.125 START added on Fri Aug  1 15:44:32 2014-->
 <!-- Created by lnd/clm/bld/namelist_files/createMapEntry.pl--> 
@@ -1812,7 +1824,16 @@ this mask will have smb calculated over the entire global land surface
 <pflotran_inputdir>pflotran</pflotran_inputdir>
 <pflotran_prefix>pflotran_clm</pflotran_prefix>
 
-<use_ed_spitfire    use_ed=".true.">.false.</use_ed_spitfire>
+<!-- =========================================  -->
+<!-- Defaults for FATES interface -->
+<!-- =========================================  -->
+<use_fates_spitfire            use_ed=".true.">.false.</use_fates_spitfire>
+<use_fates_planthydro          use_ed=".true.">.false.</use_fates_planthydro>
+<use_fates_ed_st3              use_ed=".true.">.false.</use_fates_ed_st3>
+<use_fates_ed_prescribed_phys  use_ed=".true.">.false.</use_fates_ed_prescribed_phys>
+<use_fates_logging             use_ed=".true.">.false.</use_fates_logging>
+<use_fates_inventory_init      use_ed=".true.">.false.</use_fates_inventory_init>
+<fates_inventory_ctrl_filename use_ed=".true."> " " </fates_inventory_ctrl_filename>
 <use_vertsoilc       bgc_mode="ed"  >.true.</use_vertsoilc>
 <use_century_decomp  bgc_mode="ed"  >.true.</use_century_decomp>
 <use_lch4            bgc_mode="ed"  >.false.</use_lch4>

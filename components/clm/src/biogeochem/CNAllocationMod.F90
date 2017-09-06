@@ -30,7 +30,7 @@ module CNAllocationMod
   use ColumnType          , only : col_pp                
   use VegetationType           , only : veg_pp
   ! bgc interface & pflotran module switches
-  use clm_varctl          , only: use_bgc_interface,use_clm_bgc, use_pflotran, pf_cmode
+  use clm_varctl          , only: use_clm_interface,use_clm_bgc, use_pflotran, pf_cmode
   use clm_varctl          , only : nu_com
   use SoilStatetype       , only : soilstate_type
   use WaterStateType      , only : waterstate_type
@@ -46,12 +46,12 @@ module CNAllocationMod
   public :: readCNAllocParams
   public :: CNAllocationInit         ! Initialization
 !  public :: CNAllocation             ! run method
-  !!-----------------------------------------------------------------------------------------------------
-  !! CNAllocation is divided into 3 subroutines/phases:
-  public :: CNAllocation1_PlantNPDemand     !!Plant N/P Demand;       called in CNEcosystemDynNoLeaching1
-  public :: CNAllocation2_ResolveNPLimit    !!Resolve N/P Limitation; called in CNDecompAlloc
-  public :: CNAllocation3_PlantCNPAlloc     !!Plant C/N/P Allocation; called in CNDecompAlloc2
-  !!-----------------------------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------------------------------
+  ! CNAllocation is divided into 3 subroutines/phases:
+  public :: CNAllocation1_PlantNPDemand     !Plant N/P Demand;       called in CNEcosystemDynNoLeaching1
+  public :: CNAllocation2_ResolveNPLimit    !Resolve N/P Limitation; called in CNDecompAlloc
+  public :: CNAllocation3_PlantCNPAlloc     !Plant C/N/P Allocation; called in CNDecompAlloc2
+  !-----------------------------------------------------------------------------------------------------
   public :: dynamic_plant_alloc        ! dynamic plant carbon allocation based on different nutrient stress
 
   type :: CNAllocParamsType
@@ -267,8 +267,11 @@ contains
     ! phosphorus conditions of plants are needed, in order to use new fixation and phosphatase 
     ! activity subroutines, under carbon only or carbon nitrogen only mode, fixation and phosphatase
     ! activity are set to false
-    if (carbon_only .or. carbonnitrogen_only) then
+    if (carbon_only) then
         nu_com_nfix = .false.
+        nu_com_phosphatase = .false.
+    end if
+    if (carbonnitrogen_only) then
         nu_com_phosphatase = .false.
     end if
  
@@ -283,13 +286,13 @@ contains
 
   end subroutine CNAllocationInit
 
-!!-------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
   subroutine CNAllocation1_PlantNPDemand (bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
        photosyns_vars, crop_vars, canopystate_vars, cnstate_vars,             &
        carbonstate_vars, carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,  &
        nitrogenstate_vars, nitrogenflux_vars,&
        phosphorusstate_vars,phosphorusflux_vars)
-    !! PHASE-1 of CNAllocation: loop over patches to assess the total plant N demand and P demand
+    ! PHASE-1 of CNAllocation: loop over patches to assess the total plant N demand and P demand
     ! !USES:
     use shr_sys_mod      , only: shr_sys_flush
     use clm_varctl       , only: iulog,cnallocate_carbon_only,cnallocate_carbonnitrogen_only,&
@@ -717,7 +720,7 @@ contains
          gpp(p) = psnsun_to_cpool(p) + psnshade_to_cpool(p)
 
          ! carbon return of leaf C investment
-         benefit_pgpp_pleafc(p) = max(gpp(p)  / max(laisun(p)/slatop(ivt(p)) ,1e-20_r8), 0.0_r8)
+         benefit_pgpp_pleafc(p) = max(gpp(p)  / max(leafc(p),1e-20_r8), 0.0_r8)
 
          ! get the time step total maintenance respiration
          ! These fluxes should already be in gC/m2/s
@@ -1034,7 +1037,7 @@ contains
       end do
 
       ! pflotran will need an input from CN: modified 'sum_ndemand_vr' ('potential_immob' excluded).
-      if (use_bgc_interface.and.use_pflotran .and. pf_cmode) then
+      if (use_clm_interface.and.use_pflotran .and. pf_cmode) then
             do j = 1, nlevdecomp
                do fc=1, num_soilc
                   c = filter_soilc(fc)
@@ -1048,7 +1051,7 @@ contains
 
  end subroutine CNAllocation1_PlantNPDemand
 
-!!-------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
 
  subroutine CNAllocation2_ResolveNPLimit (bounds, num_soilc, filter_soilc  , &
                             num_soilp, filter_soilp                         , &
@@ -1057,18 +1060,19 @@ contains
                             nitrogenstate_vars, nitrogenflux_vars           , &
                             phosphorusstate_vars,phosphorusflux_vars        , &
                             soilstate_vars,waterstate_vars)
-    !! PHASE-2 of CNAllocation:  resolving N/P limitation
+    ! PHASE-2 of CNAllocation:  resolving N/P limitation
     ! !USES:
     use shr_sys_mod      , only: shr_sys_flush
     use clm_varctl       , only: iulog,cnallocate_carbon_only,cnallocate_carbonnitrogen_only,&
                                  cnallocate_carbonphosphorus_only
 !    use pftvarcon        , only: npcropmin, declfact, bfact, aleaff, arootf, astemf
-!    use pftvarcon        , only: arooti, fleafi, allconsl, allconss, grperc, grpnow, nsoybean !!
+!    use pftvarcon        , only: arooti, fleafi, allconsl, allconss, grperc, grpnow, nsoybean 
     use pftvarcon        , only: noveg
     use clm_varpar       , only: nlevdecomp, ndecomp_cascade_transitions
     use clm_varcon       , only: nitrif_n2o_loss_frac, secspday
 !    use landunit_varcon  , only: istsoil, istcrop
     use clm_time_manager , only: get_step_size
+    use clm_varcon       , only : zisoi
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
@@ -1076,14 +1080,9 @@ contains
     integer                  , intent(in)    :: filter_soilc(:)  ! filter for soil columns
     integer                  , intent(in)    :: num_soilp        ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:)  ! filter for soil patches
-!    type(photosyns_type)     , intent(in)    :: photosyns_vars
-!    type(crop_type)          , intent(in)    :: crop_vars
-!    type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
     type(carbonstate_type)   , intent(in)    :: carbonstate_vars
     type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-!    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-!    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
     type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
     type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
 !     !!  add phosphorus  -X.YANG
@@ -1161,10 +1160,10 @@ contains
 
     associate(                                                                                 &
          ivt                          => veg_pp%itype                                             , & ! Input:  [integer  (:) ]  pft vegetation type                                
-         !! new variables due to partition of CNAllocation to 3 subroutines: BEG
+         ! new variables due to partition of CNAllocation to 3 subroutines: BEG
          plant_ndemand_col            => nitrogenflux_vars%plant_ndemand_col                 , & ! Output:  [real(r8) (:,:) ]
          plant_pdemand_col            => phosphorusflux_vars%plant_pdemand_col               , & ! Output:  [real(r8) (:,:) ]
-         !! new variables due to partition of CNAllocation to 3 subroutines: END
+         ! new variables due to partition of CNAllocation to 3 subroutines: END
 
          fpg                          => cnstate_vars%fpg_col                                , & ! Output: [real(r8) (:)   ]  fraction of potential gpp (no units)
          fpi                          => cnstate_vars%fpi_col                                , & ! Output: [real(r8) (:)   ]  fraction of potential immobilization (no units)
@@ -1276,7 +1275,7 @@ contains
          ndep_prof                    => cnstate_vars%ndep_prof_col                            , &
          gross_pmin_vr                => phosphorusflux_vars%gross_pmin_vr_col                 , &
 
-         !!! add phosphorus variables  - X. YANG
+         !! add phosphorus variables  - X. YANG
 !         sminp_vr                     => phosphorusstate_vars%sminp_vr_col                     , & ! Input:  [real(r8) (:,:) ]  (gP/m3) soil mineral P
          solutionp_vr                 => phosphorusstate_vars%solutionp_vr_col               , & ! Input:  [real(r8) (:,:) ]  (gP/m3) soil mineral P
 
@@ -1304,7 +1303,7 @@ contains
 
       if (nu_com .eq. 'RD') then ! 'RD' : relative demand approach
 
-         !!local var = flux_type%var
+         !local var = flux_type%var
          do fc=1, num_soilc
             c = filter_soilc(fc)
             col_plant_ndemand(c) = plant_ndemand_col(c)
@@ -1397,6 +1396,8 @@ contains
                   ! plant, microbial decomposer compete for N
                   ! loop over each pft within the same column
                   ! calculate competition coefficients for N/P
+                  ! first need to convert concentration to per soil water based
+                  ! 2.76 consider soil adsorption effect on [NH4+] availability, based on Zhu et al., 2016 DOI: 10.1002/2016JG003554
                   solution_nh4conc(c,j) = sminn_vr(c,j) / (bd(c,j)*2.76 + h2osoi_vol(c,j)) ! convert to per soil water based
                   e_km_n = 0._r8
                   decompmicc(c,j) = 0.0_r8
@@ -1956,10 +1957,10 @@ contains
                   pnup_pfrootc(p) =  0.0_r8
                   if (veg_pp%active(p).and. (veg_pp%itype(p) .ne. noveg)) then
                         do j = 1, nlevdecomp
-                           ! derivative of linear function
-                           pnup_pfrootc(p) =  pnup_pfrootc(p) + plant_ndemand_vr_patch(p,j) * fpg_vr(c,j) / max(frootc(p), 1e-20_r8)
+                           pnup_pfrootc(p) = pnup_pfrootc(p) + plant_ndemand_vr_patch(p,j) / max(frootc(p) * froot_prof(p,j),1e-20_r8) * fpg_nh4_vr(c,j) / max(cn_scalar(p),1e-20_r8) / max(t_scalar(c,j),1e-20_r8) * dzsoi_decomp(j)
                         end do
                   end if
+                  pnup_pfrootc(p) =  pnup_pfrootc(p) / zisoi(nlevdecomp-1)
                end do
             end do
          end if
@@ -2084,6 +2085,8 @@ contains
                   ! (2) plant, microbial decomposer, denitrifier, (and NO3 leaching?) compete for NO3
                   ! loop over each pft within the same column
                   ! calculate competition coefficients for NH4/NO3
+                  ! first need to convert concentration to per soil water based
+                  ! 2.76 consider soil adsorption effect on [NH4+] availability, based on Zhu et al., 2016 DOI: 10.1002/2016JG003554
                   solution_nh4conc(c,j) = smin_nh4_vr(c,j) / (bd(c,j)*2.76 + h2osoi_vol(c,j)) ! convert to per soil water based
                   solution_no3conc(c,j) = smin_no3_vr(c,j) /  h2osoi_vol(c,j) ! convert to per soil water based
                   e_km_nh4 = 0._r8
@@ -2281,8 +2284,7 @@ contains
                         supplement_to_sminn_vr(c,j) = supplement_to_sminn_vr(c,j) + &
                              (col_plant_nh4demand_vr(c,j) + col_plant_no3demand_vr(c,j) - smin_no3_to_plant_vr(c,j)) - smin_nh4_to_plant_vr(c,j)
                         ! update to new values that satisfy demand
-                        smin_nh4_to_plant_vr(c,j) = col_plant_nh4demand_vr(c,j)
-                        smin_no3_to_plant_vr(c,j) = col_plant_no3demand_vr(c,j)
+                        smin_nh4_to_plant_vr(c,j) = col_plant_ndemand_vr(c,j) - col_plant_no3demand_vr(c,j)
                         sminn_to_plant_vr(c,j) = col_plant_ndemand_vr(c,j)
                      end if
                   end if
@@ -2877,11 +2879,11 @@ contains
                   pnup_pfrootc(p) =  0.0_r8
                   if (veg_pp%active(p).and. (veg_pp%itype(p) .ne. noveg)) then
                         do j = 1, nlevdecomp
-                           ! derivative of linear function
-                           pnup_pfrootc(p) =  pnup_pfrootc(p) + plant_nh4demand_vr_patch(p,j) * fpg_nh4_vr(c,j)  / max(frootc(p),1e-20_r8)
-                           pnup_pfrootc(p) =  pnup_pfrootc(p) + plant_no3demand_vr_patch(p,j) * fpg_no3_vr(c,j)  / max(frootc(p),1e-20_r8)
+                           pnup_pfrootc(p) =  pnup_pfrootc(p) + plant_nh4demand_vr_patch(p,j) / max(frootc(p) * froot_prof(p,j),1e-20_r8) * fpg_nh4_vr(c,j) / max(cn_scalar(p),1e-20_r8) / max(t_scalar(c,j),1e-20_r8) * dzsoi_decomp(j)
+                           pnup_pfrootc(p) =  pnup_pfrootc(p) + plant_no3demand_vr_patch(p,j) / max(frootc(p) * froot_prof(p,j),1e-20_r8) * fpg_no3_vr(c,j) / max(cn_scalar(p),1e-20_r8) / max(t_scalar(c,j),1e-20_r8) * dzsoi_decomp(j)
                         end do
                   end if
+                  pnup_pfrootc(p) =  pnup_pfrootc(p) / zisoi(nlevdecomp-1)
                end do
             end do
          end if
@@ -2892,7 +2894,7 @@ contains
     
  end subroutine CNAllocation2_ResolveNPLimit
 
-!!-------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
   subroutine CNAllocation3_PlantCNPAlloc (bounds            , &
         num_soilc, filter_soilc, num_soilp, filter_soilp    , &
         canopystate_vars                                    , &
@@ -2900,7 +2902,7 @@ contains
         c13_carbonflux_vars, c14_carbonflux_vars            , &
         nitrogenstate_vars, nitrogenflux_vars               , &
         phosphorusstate_vars, phosphorusflux_vars)
-    !! PHASE-3 of CNAllocation: start new pft loop to distribute the available N/P between the
+    ! PHASE-3 of CNAllocation: start new pft loop to distribute the available N/P between the
     ! competing patches on the basis of relative demand, and allocate C/N/P to new growth and storage
 
     ! !USES:
@@ -2911,10 +2913,10 @@ contains
 !    use pftvarcon        , only: arooti, fleafi, allconsl, allconss, grperc, grpnow, nsoybean
     use pftvarcon        , only: noveg
     use pftvarcon        , only:  npcropmin, grperc, grpnow
-    use clm_varpar       , only:  nlevdecomp !!nlevsoi,
+    use clm_varpar       , only:  nlevdecomp 
     use clm_varcon       , only: nitrif_n2o_loss_frac, secspday
 !    use landunit_varcon  , only: istsoil, istcrop
-!    use clm_time_manager , only: get_step_size
+    use clm_time_manager , only: get_step_size
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
@@ -2922,8 +2924,7 @@ contains
     integer                  , intent(in)    :: filter_soilc(:)  ! filter for soil columns
     integer                  , intent(in)    :: num_soilp        ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:)  ! filter for soil patches
-!    type(photosyns_type)     , intent(in)    :: photosyns_vars
-!    type(crop_type)          , intent(in)    :: crop_vars
+
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
     type(carbonstate_type)   , intent(in)    :: carbonstate_vars
@@ -2938,7 +2939,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     !
-    integer :: c,p,j         !!l,pi,                                   !indices
+    integer :: c,p,j                                                 !indices
     integer :: fp                                                    !lake filter pft index
     integer :: fc                                                    !lake filter column index
     real(r8):: mr                                                    !maintenance respiration (gC/m2/s)
@@ -2969,6 +2970,7 @@ contains
     real(r8):: cp_stoich_var=0.4    ! variability of CP ratio
     real(r8):: curmr, curmr_ratio         !xsmrpool temporary variables
     real(r8):: xsmr_ratio                 ! ratio of mr comes from non-structue carobn hydrate pool
+    real(r8):: dt
     !-----------------------------------------------------------------------
 
     associate(                                                                                 &
@@ -3139,6 +3141,8 @@ contains
 
 !
 !    !-------------------------------------------------------------------
+      ! set time steps
+      dt = real( get_step_size(), r8 )
 
       ! debug
       do fc=1,num_soilc
@@ -3883,8 +3887,8 @@ contains
       
           else     ! use_nitrif_denitrif
 
-              temp_sminn_to_plant = sminn_to_plant
-              temp_sminp_to_plant = sminp_to_plant
+              temp_sminn_to_plant(bounds%begc:bounds%endc) = sminn_to_plant(bounds%begc:bounds%endc)
+              temp_sminp_to_plant(bounds%begc:bounds%endc) = sminp_to_plant(bounds%begc:bounds%endc)
 
               call p2c(bounds,num_soilc,filter_soilc, &
                   sminn_to_npool(bounds%begp:bounds%endp), &
@@ -3926,22 +3930,22 @@ contains
       if (nu_com .eq. 'RD') then
 
         if(suplphos == suplpNon) then !!! No supplemental Phosphorus
-        call p2c(bounds,num_soilc,filter_soilc,         &
+          call p2c(bounds,num_soilc,filter_soilc,         &
                sminn_to_npool(bounds%begp:bounds%endp), &
                sminn_to_plant(bounds%begc:bounds%endc))
 
-        call calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nitrogenstate_vars, nuptake_prof)
-        do j = 1, nlevdecomp
+          call calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nitrogenstate_vars, nuptake_prof)
+          do j = 1, nlevdecomp
             do fc=1,num_soilc
                 c = filter_soilc(fc)
                 sminn_to_plant_vr(c,j) = sminn_to_plant(c) *  nuptake_prof(c,j)
             end do
-        end do
-      end if
+          end do
+        end if
 
-      !! Phosphorus
+        !! Phosphorus
 
-      if( .not. use_nitrif_denitrif) then
+        if( .not. use_nitrif_denitrif) then
 
           call p2c(bounds,num_soilc,filter_soilc,       &
               sminp_to_ppool(bounds%begp:bounds%endp), &
@@ -3955,23 +3959,25 @@ contains
               end do
           end do
 
-      else     ! use_nitrif_denitrif
+        else     ! use_nitrif_denitrif
   
-        if( .not.cnallocate_carbonphosphorus_only().and. .not.cnallocate_carbonnitrogen_only().and. .not.cnallocate_carbon_only() )then
+          if( .not.cnallocate_carbonphosphorus_only() .and. &
+              .not.cnallocate_carbonnitrogen_only().and.    &
+              .not.cnallocate_carbon_only() )then
 
-          temp_sminn_to_plant = sminn_to_plant
-          temp_sminp_to_plant = sminp_to_plant
+          temp_sminn_to_plant(bounds%begc:bounds%endc) = sminn_to_plant(bounds%begc:bounds%endc)
+          temp_sminp_to_plant(bounds%begc:bounds%endc) = sminp_to_plant(bounds%begc:bounds%endc)
 
-          call p2c(bounds,num_soilc,filter_soilc, &
+            call p2c(bounds,num_soilc,filter_soilc, &
                 sminn_to_npool(bounds%begp:bounds%endp), &
                 sminn_to_plant(bounds%begc:bounds%endc))
 
-          call p2c(bounds,num_soilc,filter_soilc, &
+            call p2c(bounds,num_soilc,filter_soilc, &
                 sminp_to_ppool(bounds%begp:bounds%endp), &
                 sminp_to_plant(bounds%begc:bounds%endc))
 
           
-          do j = 1, nlevdecomp
+            do j = 1, nlevdecomp
                do fc=1,num_soilc
                   c = filter_soilc(fc)
                   if ( temp_sminn_to_plant(c) > 0._r8) then 
@@ -3990,20 +3996,20 @@ contains
                      sminp_to_plant_vr(c,j) = 0._r8
                   endif 
                end do
-          end do             
+            end do
 
-        end if   ! carbonnitrogenphosphorus
+          end if   ! carbonnitrogenphosphorus
 
-        if( cnallocate_carbonnitrogen_only() )then
+          if( cnallocate_carbonnitrogen_only() )then
 
-          temp_sminp_to_plant = sminp_to_plant
+          temp_sminp_to_plant(bounds%begc:bounds%endc) = sminp_to_plant(bounds%begc:bounds%endc)
 
-          call p2c(bounds,num_soilc,filter_soilc, &
+            call p2c(bounds,num_soilc,filter_soilc, &
                 sminp_to_ppool(bounds%begp:bounds%endp), &
                 sminp_to_plant(bounds%begc:bounds%endc))
 
           
-          do j = 1, nlevdecomp
+            do j = 1, nlevdecomp
                do fc=1,num_soilc
                   c = filter_soilc(fc)
 
@@ -4013,11 +4019,13 @@ contains
                      sminp_to_plant_vr(c,j) = 0._r8
                   endif 
                end do
-          end do             
-        end if  ! carbonnitrogen 
+            end do
+          end if  ! carbonnitrogen
+
+        end if   ! use_nitrif_denitrif
+
       end if ! nu_com .eq. RD
          
-      end if   !  
 
       !----------------------------------------------------------------
 
@@ -4025,11 +4033,10 @@ contains
 
  end subroutine CNAllocation3_PlantCNPAlloc
 
-!!-------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
   subroutine calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nitrogenstate_vars, nuptake_prof)
-!     use clm_varcon          , only : dzsoi_decomp  !! declared in module CNAllocationMod
-    !! bgc interface & pflotran:
-    !! nuptake_prof is used in CNAllocation1, 2, 3
+    ! bgc interface & pflotran:
+    ! nuptake_prof is used in CNAllocation1, 2, 3
     ! !USES:
     use clm_varpar       , only: nlevdecomp
     ! !ARGUMENTS:
@@ -4070,7 +4077,12 @@ contains
                else
                     sminn_vr_loc(c,j) = smin_no3_vr(c,j) + smin_nh4_vr(c,j)
                end if
-               sminn_tot(c) = sminn_tot(c) + sminn_vr_loc(c,j) * dzsoi_decomp(j) !!original: if (use_nitrif_denitrif): sminn_tot(c) = sminn_tot(c) + (smin_no3_vr(c,j) + smin_nh4_vr(c,j)) * dzsoi_decomp(j)
+               if(use_pflotran .and. pf_cmode) then
+                    sminn_tot(c) = sminn_tot(c) + sminn_vr_loc(c,j) * dzsoi_decomp(j) &
+                       *(nfixation_prof(c,j)*dzsoi_decomp(j))         ! weighted by froot fractions in annual max. active layers
+               else
+                    sminn_tot(c) = sminn_tot(c) + sminn_vr_loc(c,j) * dzsoi_decomp(j) 
+               end if
             end do
          end do
 
@@ -4078,12 +4090,16 @@ contains
             do fc=1,num_soilc
                c = filter_soilc(fc)
                if (sminn_tot(c)  >  0.) then
-                  nuptake_prof(c,j) = sminn_vr_loc(c,j) / sminn_tot(c)   !!original: if (use_nitrif_denitrif): nuptake_prof(c,j) = sminn_vr(c,j) / sminn_tot(c)
+                  if(use_pflotran .and. pf_cmode) then
+                     nuptake_prof(c,j) = sminn_vr_loc(c,j) / sminn_tot(c) &
+                        *(nfixation_prof(c,j)*dzsoi_decomp(j))         ! weighted by froot fractions in annual max. active layers
+                  else
+                     nuptake_prof(c,j) = sminn_vr_loc(c,j) / sminn_tot(c)   !original: if (use_nitrif_denitrif): nuptake_prof(c,j) = sminn_vr(c,j) / sminn_tot(c)
+                  end if
                else
                   nuptake_prof(c,j) = nfixation_prof(c,j)
-               endif
-               !! sum_ndemand_vr will be calculated after calling calc_nuptake_prof
-!                sum_ndemand_vr(c,j) = col_plant_ndemand(c) * nuptake_prof(c,j) + potential_immob_vr(c,j)
+               end if
+
             end do
          end do
 
@@ -4091,11 +4107,10 @@ contains
 
  end subroutine calc_nuptake_prof
 
-!!-------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------
   subroutine calc_puptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, phosphorusstate_vars, puptake_prof)
-!     use clm_varcon          , only : dzsoi_decomp  !! declared in module CNAllocationMod
-    !! bgc interface & pflotran:
-    !! puptake_prof is used in CNAllocation1, 2, & 3
+    ! bgc interface & pflotran:
+    ! puptake_prof is used in CNAllocation1, 2, & 3
     ! !USES:
     use clm_varpar       , only: nlevdecomp
     ! !ARGUMENTS:
@@ -4114,7 +4129,7 @@ contains
 
     associate( &
          nfixation_prof               => cnstate_vars%nfixation_prof_col                     , & ! Output: [real(r8) (:,:) ]
-         solutionp_vr                 => phosphorusstate_vars%solutionp_vr_col                       & ! Input:  [real(r8) (:,:) ]  (gN/m3) soil mineral N
+         solutionp_vr                 => phosphorusstate_vars%solutionp_vr_col                 & ! Input:  [real(r8) (:,:) ]  (gN/m3) soil mineral N
          )
 
 
@@ -4139,10 +4154,9 @@ contains
                if (solutionp_tot(c)  >  0.) then
                   puptake_prof(c,j) = solutionp_vr(c,j) / solutionp_tot(c)
                else
-                  puptake_prof(c,j) = nfixation_prof(c,j)      !!!! need modifications !!!!
+                  puptake_prof(c,j) = nfixation_prof(c,j)      ! need modifications 
                endif
-               !! sum_pdemand_vr will be calculated after calling calc_puptake_prof
-!               sum_pdemand_vr(c,j) = col_plant_pdemand(c) * puptake_prof(c,j) + potential_immob_p_vr(c,j)
+
             end do
          end do
     end associate
@@ -4161,6 +4175,7 @@ contains
     ! (2) nutrient/water limited, allocate more C into root
   
     ! !USES:
+    use pftvarcon      , only : laimax
   
     !
     ! !ARGUMENTS:
@@ -4173,7 +4188,6 @@ contains
     real(r8), intent(in) :: woody
 
     !! variables
-    real(r8) :: laindex_max = 8
     real(r8) :: allocmin_leaf = 0.25
     !real(r8) :: allocmax_leaf = 0.5
     real(r8) :: alloc_r0 = 0.25     ! initial allocation to roots for unlimiting conditions
@@ -4223,7 +4237,7 @@ contains
     end if
     
     ! if lai greater than laimax then no allocation to leaf; leaf allocation goes to stem or fine root
-    if (laindex > laindex_max) then 
+    if (laindex > laimax) then 
        if (woody == 1.0_r8) then
           alloc_stem = alloc_stem + alloc_leaf - 0.01_r8
        else
