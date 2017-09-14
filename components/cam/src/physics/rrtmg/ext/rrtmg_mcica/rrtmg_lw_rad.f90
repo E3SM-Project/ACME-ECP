@@ -67,9 +67,12 @@
       use rrtmg_lw_rtrnmc, only: rtrnmc
       use rrtmg_lw_setcoef, only: setcoef
       use rrtmg_lw_taumol, only: taumol
+!      use rrtmg_lw_dump
+      use time_manager,      only: get_nstep
+
 
       implicit none
-
+      logical :: do_dump = .true.
 ! public interfaces/functions/subroutines
       public :: rrtmg_lw, inatm
 
@@ -168,11 +171,12 @@
 !     Apr 2008: M. J. Iacono, AER, Inc.
 
 ! --------- Modules ----------
-
+      use mpi
+      use dmdf
       use parrrtm, only : nbndlw, ngptlw, maxxsec, mxmol
       use rrlw_con, only: fluxfac, heatfac, oneminus, pi
       use rrlw_wvn, only: ng, ngb, nspa, nspb, wavenum1, wavenum2, delwave
-
+      use params,       only: crm_rknd
 ! ------- Declarations -------
 
 ! ----- Input -----
@@ -382,8 +386,101 @@
       real(kind=r8) :: totdclfl(0:nlay)         ! clear sky downward longwave flux (w/m2)
       real(kind=r8) :: fnetc(0:nlay)            ! clear sky net longwave flux (w/m2)
       real(kind=r8) :: htrc(0:nlay)             ! clear sky longwave heating rate (k/day)
+      integer  :: igstep                        ! GCM time steps
+      integer :: myrank, ierr
+      real(crm_rknd) :: myrand
+!#ifdef RRTMG_DUMP
+        call MPI_Comm_rank(MPI_COMM_WORLD,myrank,ierr)
+!#ifdef RRTMG_DUMP_RATIO
 
+ 
 ! Initializations
+
+
+      igstep = get_nstep()
+
+!      call rrtmg_lw_dump_input(igstep, &
+!             lchnk   ,ncol    ,nlay    ,icld    ,                   &
+!             play    ,plev    ,tlay    ,tlev    ,tsfc    ,h2ovmr  , &
+!             o3vmr   ,co2vmr  ,ch4vmr  ,o2vmr   ,n2ovmr  ,&
+!             cfc11vmr,cfc12vmr, &
+!             cfc22vmr,ccl4vmr ,emis    ,inflglw ,iceflglw,liqflglw, &
+!             cldfmcl ,taucmcl ,ciwpmcl ,clwpmcl ,reicmcl ,relqmcl , &
+!             tauaer)
+
+      call random_number(myrand)
+      do_dump = .false.
+      if (myrand < 0.01) do_dump = .true.
+
+      if(do_dump) then 
+      if(igstep.gt.1) then
+
+      call dmdf_write(lchnk    ,myrank,'rrtmg_lw_in','lchnk'   &
+                          ,.true. ,.false.)
+!      call dmdf_write(ncol     ,myrank,'rrtmg_lw_in','ncol'    &
+!                          ,.false.,.false.)
+!      call dmdf_write(nlay     ,myrank,'rrtmg_lw_in','nlay'    &
+!                          ,.false.,.false.)
+      call dmdf_write(icld     ,myrank,'rrtmg_lw_in','icld'    &
+                          ,.false.,.false.)
+      
+      call dmdf_write(play     ,myrank,'rrtmg_lw_in','play'   ,&
+      (/'ncol','nlay'/)   ,.false.,.false.)
+      call dmdf_write(plev     ,myrank,'rrtmg_lw_in','plev'   ,&
+      (/'ncol','nlay_p1'/),.false.,.false.)
+      call dmdf_write(tlay     ,myrank,'rrtmg_lw_in','tlay'   ,&
+      (/'ncol','nlay'/)   ,.false.,.false.)
+      call dmdf_write(tlev     ,myrank,'rrtmg_lw_in','tlev'   ,&
+      (/'ncol','nlay_p1'/),.false.,.false.)
+      call dmdf_write(tsfc     ,myrank,'rrtmg_lw_in','tsfc'   ,&
+      (/'ncol'/)          ,.false.,.false.)
+      call dmdf_write(h2ovmr   ,myrank,'rrtmg_lw_in','h2ovmr' ,&
+      (/'ncol','nlay'/)   ,.false.,.false.)
+      call dmdf_write(o3vmr    ,myrank,'rrtmg_lw_in','o3vmr'  ,&
+      (/'ncol','nlay'/)   ,.false.,.false.)
+      call dmdf_write(co2vmr   ,myrank,'rrtmg_lw_in','co2vmr' ,&
+      (/'ncol','nlay'/)   ,.false.,.false.)
+      call dmdf_write(ch4vmr   ,myrank,'rrtmg_lw_in','ch4vmr' ,&
+      (/'ncol','nlay'/)   ,.false.,.false.)
+      call dmdf_write(o2vmr    ,myrank,'rrtmg_lw_in','o2vmr'  ,&
+      (/'ncol','nlay'/)   ,.false.,.false.)
+      call dmdf_write(n2ovmr   ,myrank,'rrtmg_lw_in','n2ovmr' ,&
+      (/'ncol','nlay'/)   ,.false.,.false.)
+      call dmdf_write(cfc11vmr ,myrank,'rrtmg_lw_in','cfc11vmr' ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(cfc12vmr ,myrank,'rrtmg_lw_in','cfc12vmr' ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(cfc22vmr ,myrank,'rrtmg_lw_in','cfc22vmr' ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(ccl4vmr ,myrank,'rrtmg_lw_in','ccl4vmr'  ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(emis     ,myrank,'rrtmg_lw_in','emis'    ,&
+      (/'ncol','nbndlw'/),.false.,.false.)
+      call dmdf_write(inflglw  ,myrank,'rrtmg_lw_in','inflglw' ,&
+                         .false.,.false.)
+      call dmdf_write(iceflglw ,myrank,'rrtmg_lw_in','iceflglw',&
+                         .false.,.false.)
+      call dmdf_write(liqflglw ,myrank,'rrtmg_lw_in','liqflglw',&
+                         .false.,.false.)
+      call dmdf_write(cldfmcl    ,myrank,'rrtmg_lw_in','cldfmcl'   ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(ciwpmcl    ,myrank,'rrtmg_lw_in','ciwpmcl'  ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(clwpmcl    ,myrank,'rrtmg_lw_in','clwpmcl'  ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(reicmcl    ,myrank,'rrtmg_lw_in','reicmcl'   ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(relqmcl    ,myrank,'rrtmg_lw_in','relqmcl'   ,&
+      (/'ncol','nlay'/) ,.false.,.false.)
+      call dmdf_write(taucmcl    ,myrank,'rrtmg_lw_in','taucmcl'  ,&
+      (/'ngptlw','ncol','nlay'/),.false.,.false.)
+      call dmdf_write(tauaer   ,myrank,'rrtmg_lw_in','tauaer'  ,&
+      (/'ncol','nlay','nbndlw'/),.false.,.true.)
+
+
+      endif
+      endif               
+
 
       oneminus = 1._r8 - 1.e-6_r8
       pi = 2._r8 * asin(1._r8)
@@ -520,6 +617,45 @@
 
       enddo
 
+!         call rrtmg_lw_dump_output(igstep, &
+!                                 lchnk   ,ncol    ,nlay    ,icld,         &
+!                                 uflx    ,dflx    ,hr      ,uflxc   ,dflxc   ,hrc, &
+!                                 uflxs   ,dflxs )
+
+      if (do_dump) then
+      !Don't output the first time because fields are initially uniform, and random noise is added. Keep stochasticity out of the standalone model
+       if (igstep.gt.1) then
+
+           call dmdf_write(lchnk ,myrank,'rrtmg_lw_out','lchnk' ,.true. ,.false.)
+!           call dmdf_write(ncol  ,myrank,'rrtmg_lw_out','ncol'  ,.false.,.false.)
+!           call dmdf_write(nlay  ,myrank,'rrtmg_lw_out','nlay'  ,.false.,.false.)
+           call dmdf_write(icld  ,myrank,'rrtmg_lw_out','icld'  ,.false.,.false.)
+
+
+           call dmdf_write(uflx  ,myrank,'rrtmg_lw_out','uflx ',&
+           (/'ncol','nlay_p1'/)  ,.false. ,.false.)
+           call dmdf_write(uflxc ,myrank,'rrtmg_lw_out','uflxc',&
+           (/'ncol','nlay_p1'/)  ,.false. ,.false.)
+           call dmdf_write(hr    ,myrank,'rrtmg_lw_out','hr   ',&
+           (/'ncol','nlay'/)     ,.false. ,.false.)
+           call dmdf_write(uflxc ,myrank,'rrtmg_lw_out','uflxc',&
+           (/'ncol','nlay_p1'/)  ,.false. ,.false.)
+           call dmdf_write(dflxc ,myrank,'rrtmg_lw_out','dflxc',&
+           (/'ncol','nlay_p1'/)  ,.false. ,.false.)
+           call dmdf_write(hrc   ,myrank,'rrtmg_lw_out','hrc  ',&
+           (/'ncol','nlay'/)     ,.false. ,.false.)
+           call dmdf_write(uflxs ,myrank,'rrtmg_lw_out','uflxs',&
+           (/'nbndlw','ncol','nlay_p1'/) ,.false. ,.false.)
+           call dmdf_write(dflxs ,myrank,'rrtmg_lw_out','dflxs',&
+           (/'nbndlw','ncol','nlay_p1'/) ,.false. ,.true.)
+
+
+
+       endif
+      endif
+
+
+      return
       end subroutine rrtmg_lw
 
 !***************************************************************************

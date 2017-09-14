@@ -11,12 +11,13 @@ use scamMod,           only: single_column, scm_crm_mode
 use parrrtm,           only: nbndlw, ngptlw
 use rrtmg_lw_init,     only: rrtmg_lw_ini
 use rrtmg_lw_rad,      only: rrtmg_lw
+!use rrtmg_lw_dump
 use spmd_utils,        only: masterproc
 use perf_mod,          only: t_startf, t_stopf
 use cam_logfile,       only: iulog
 use cam_abortutils,        only: endrun
 use radconstants,      only: nlwbands
-
+use time_manager,      only: get_nstep
 implicit none
 
 private
@@ -47,7 +48,6 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
    use mcica_subcol_gen_lw, only: mcica_subcol_lw
    use physconst,           only: cpair
    use rrtmg_state,         only: rrtmg_state_t
-
 !------------------------------Arguments--------------------------------
 !
 ! Input arguments
@@ -59,7 +59,7 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
 !
 ! Input arguments which are only passed to other routines
 !
-    type(rrtmg_state_t), intent(in) :: r_state
+   type(rrtmg_state_t), intent(in) :: r_state
 
    real(r8), intent(in) :: pmid(pcols,pver)     ! Level pressure (Pascals)
 
@@ -135,7 +135,11 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
    real(r8) :: hrc(pcols,rrtmg_levs)     ! Clear sky longwave heating rate (K/d)
    real(r8) lwuflxs(nbndlw,pcols,pverp+1)  ! Longwave spectral flux up
    real(r8) lwdflxs(nbndlw,pcols,pverp+1)  ! Longwave spectral flux down
+   integer  :: igstep            ! GCM time steps
    !-----------------------------------------------------------------------
+
+   igstep = get_nstep()
+
 
    ! mji/rrtmg
 
@@ -218,6 +222,15 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
    if (associated(lu)) lu(1:ncol,:,:) = 0.0_r8
    if (associated(ld)) ld(1:ncol,:,:) = 0.0_r8
 
+!#ifdef RRTMG_DUMP
+!   call rrtmg_lw_dump_input(igstep,lchnk  ,ncol ,rrtmg_levs    ,icld    ,                 &
+!        r_state%pmidmb  ,r_state%pintmb  ,r_state%tlay    ,r_state%tlev    ,tsfc    ,r_state%h2ovmr, &
+!        r_state%o3vmr   ,r_state%co2vmr  ,r_state%ch4vmr  ,r_state%o2vmr   ,r_state%n2ovmr  ,r_state%cfc11vmr,r_state%cfc12vmr, &
+!        r_state%cfc22vmr,r_state%ccl4vmr ,emis    ,inflglw ,iceflglw,liqflglw, &
+!        cld_stolw,tauc_stolw,cicewp_stolw,cliqwp_stolw ,rei, rel, &
+!        taua_lw)
+!#endif
+
    call rrtmg_lw(lchnk  ,ncol ,rrtmg_levs    ,icld    ,                 &
         r_state%pmidmb  ,r_state%pintmb  ,r_state%tlay    ,r_state%tlev    ,tsfc    ,r_state%h2ovmr, &
         r_state%o3vmr   ,r_state%co2vmr  ,r_state%ch4vmr  ,r_state%o2vmr   ,r_state%n2ovmr  ,r_state%cfc11vmr,r_state%cfc12vmr, &
@@ -226,6 +239,14 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
         taua_lw, &
         uflx    ,dflx    ,hr      ,uflxc   ,dflxc   ,hrc, &
         lwuflxs, lwdflxs)
+
+
+!#ifdef RRTMG_DUMP
+!
+!   call rrtmg_lw_dump_output(igstep,lchnk  ,ncol ,rrtmg_levs    ,icld,         &
+!                             uflx    ,dflx    ,hr      ,uflxc   ,dflxc   ,hrc, lwuflxs, lwdflxs)
+!#endif
+
 
    !
    !----------------------------------------------------------------------
@@ -293,6 +314,7 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
    end if
    
    call t_stopf('rrtmg_lw')
+
 
 end subroutine rad_rrtmg_lw
 

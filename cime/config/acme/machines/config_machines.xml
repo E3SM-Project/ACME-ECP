@@ -2033,7 +2033,7 @@
     <NODENAME_REGEX>titan</NODENAME_REGEX>
     <NODE_FAIL_REGEX>Received node event ec_node</NODE_FAIL_REGEX>
     <TESTS>acme_developer</TESTS>
-    <COMPILERS>pgi,pgiacc,intel,cray</COMPILERS>
+    <COMPILERS>pgi,pgiacc,intel,cray,gnu</COMPILERS>
     <MPILIBS>mpich,mpi-serial</MPILIBS>
     <CIME_OUTPUT_ROOT>$ENV{HOME}/acme_scratch/$PROJECT</CIME_OUTPUT_ROOT>
     <RUNDIR>$ENV{MEMBERWORK}/$PROJECT/$CASE/run</RUNDIR>
@@ -2101,7 +2101,7 @@
         <command name="rm">PrgEnv-intel</command>
         <command name="rm">PrgEnv-pathscale</command>
         <command name="load">PrgEnv-pgi</command>
-        <command name="switch">pgi 17.5.lustre</command>
+        <command name="switch">pgi 17.7.0</command>
         <command name="rm">cray-mpich</command>
         <command name="rm">cray-libsci</command>
         <command name="rm">atp</command>
@@ -2120,7 +2120,7 @@
         <command name="rm">PrgEnv-intel</command>
         <command name="rm">PrgEnv-pathscale</command>
         <command name="load">PrgEnv-pgi</command>
-        <command name="switch">pgi pgi/17.5.lustre</command>
+        <command name="switch">pgi pgi/17.7.0</command>
         <command name="rm">cray-mpich</command>
         <command name="rm">cray-libsci</command>
         <command name="rm">atp</command>
@@ -2155,6 +2155,13 @@
         <command name="rm">cray-mpich</command>
         <command name="load">cce/8.5.0</command>
         <command name="load">cray-mpich/7.4.0</command>
+      </modules>
+      <modules compiler="gnu">
+        <command name="rm">PrgEnv-cray</command>
+        <command name="rm">PrgEnv-pgi</command>
+        <command name="rm">PrgEnv-intel</command>
+        <command name="rm">PrgEnv-pathscale</command>
+        <command name="load">PrgEnv-gnu</command>
       </modules>
       <!-- mpi lib settings -->
       <modules mpilib="mpi-serial">

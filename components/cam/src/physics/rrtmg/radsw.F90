@@ -16,9 +16,10 @@ use cam_logfile,     only: iulog
 use parrrsw,         only: nbndsw, ngptsw
 use rrtmg_sw_init,   only: rrtmg_sw_ini
 use rrtmg_sw_rad,    only: rrtmg_sw
+!use rrtmg_sw_dump
 use perf_mod,        only: t_startf, t_stopf
 use radconstants,    only: idx_sw_diag
-
+use time_manager,    only: get_nstep
 implicit none
 
 private
@@ -266,11 +267,14 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    real(r8) :: fdsc(pcols,pverp)  ! Downward clear-sky flux (added for CRM)
 
    integer :: kk
-
+   integer  :: igstep                     ! GCM time steps
    real(r8) :: pmidmb(pcols,rrtmg_levs)   ! Level pressure (hPa)
    real(r8) :: pintmb(pcols,rrtmg_levs+1) ! Model interface pressure (hPa)
    real(r8) :: tlay(pcols,rrtmg_levs)     ! mid point temperature
    real(r8) :: tlev(pcols,rrtmg_levs+1)   ! interface temperature
+
+
+   igstep = get_nstep()
 
    !-----------------------------------------------------------------------
    ! START OF CALCULATION
@@ -528,6 +532,19 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
 
    solvar(1:nbndsw) = sfac(1:nbndsw)
 
+
+!#ifdef RRTMG_DUMP
+!   call rrtmg_sw_dump_input(igstep,lchnk, Nday, rrtmg_levs, icld,         &
+!                 pmidmb, pintmb, tlay, tlev, tsfc, &
+!                 h2ovmr, o3vmr, co2vmr, ch4vmr, o2vmr, n2ovmr, &
+!                 asdir, asdif, aldir, aldif)
+!                 coszrs, eccf, dyofyr, solvar, &
+!                 inflgsw, iceflgsw, liqflgsw, &
+!                 cld_stosw, tauc_stosw, ssac_stosw, asmc_stosw, fsfc_stosw, &
+!                 cicewp_stosw, cliqwp_stosw, rei, rel, &
+!                 tau_aer_sw, ssa_aer_sw, asm_aer_sw)
+!#endif
+
    call rrtmg_sw(lchnk, Nday, rrtmg_levs, icld,         &
                  pmidmb, pintmb, tlay, tlev, tsfc, &
                  h2ovmr, o3vmr, co2vmr, ch4vmr, o2vmr, n2ovmr, &
@@ -539,6 +556,14 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
                  tau_aer_sw, ssa_aer_sw, asm_aer_sw, &
                  swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
                  dirdnuv, dirdnir, difdnuv, difdnir, ninflx, ninflxc, swuflxs, swdflxs)
+
+
+!#ifdef RRTMG_DUMP
+!   call rrtmg_sw_dump_output(igstep,lchnk, Nday, rrtmg_levs, icld,         &
+!                             swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
+!                             dirdnuv, dirdnir, difdnuv, difdnir, ninflx, ninflxc)
+!#endif
+
 
    ! Flux units are in W/m2 on output from rrtmg_sw and contain output for
    ! extra layer above model top with vertical indexing from bottom to top.
@@ -650,6 +675,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
       call outfld('FUSC    ',fusc,pcols,lchnk)
       call outfld('FDSC    ',fdsc,pcols,lchnk)
    endif
+
 
 end subroutine rad_rrtmg_sw
 
