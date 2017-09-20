@@ -871,6 +871,7 @@ end function radiation_nextsw_cday
     use phys_control,         only: phys_getopts
     use orbit,                only: zenith    !==Guangxing Lin
     use output_aerocom_aie,   only: do_aerocom_ind3
+    use pkg_cldoptics         ! whannah - for sam1mom microphysics
 
 
     ! Arguments
@@ -909,7 +910,7 @@ end function radiation_nextsw_cday
     real(r8),pointer :: nc_rad(:,:,:,:) ! rad cloud water droplet number (#/kg)
     real(r8),pointer :: ni_rad(:,:,:,:) ! rad cloud ice crystal nubmer (#/kg)
     real(r8),pointer :: qs_rad(:,:,:,:) ! rad cloud snow crystal mass (kg/kg)
-    real(r8),pointer :: ns_rad(:,:,:,:) ! rad cloud snow crystal nubmer (#/kg)
+    real(r8),pointer :: ns_rad(:,:,:,:) ! rad cloud snow crystal number (#/kg)
 
     real(r8),pointer :: t_rad (:,:,:,:) ! rad temperuture
     real(r8),pointer :: qv_rad(:,:,:,:) ! rad vapor
@@ -1114,16 +1115,16 @@ end function radiation_nextsw_cday
     real(r8)  dest     ! snow crystal effective diameters for optics (radiation) (micro-meter)
     real(r8), pointer, dimension(:, :) :: dei     ! ice effective diameter for optics (radiation)
     real(r8), pointer, dimension(:, :) :: mu      ! gamma parameter for optics (radiation)
-    real(r8), pointer, dimension(:, :) :: lambdac  ! slope of droplet distribution for optics (radiation)
-    real(r8), pointer, dimension(:, :) :: des     ! snow crystatl diameter for optics (mirometer, radiation)
+    real(r8), pointer, dimension(:, :) :: lambdac ! slope of droplet distribution for optics (radiation)
+    real(r8), pointer, dimension(:, :) :: des     ! snow crystal diameter for optics (mirometer, radiation)
     real(r8),allocatable ::  dei_save(:,:)
     real(r8),allocatable ::  mu_save(:,:)
     real(r8),allocatable ::  lambdac_save(:,:)
     real(r8),allocatable ::  des_save(:,:)
-    real(r8),allocatable ::  dei_crm(:,:,:,:)  ! cloud scale ice effective diameter for optics
-    real(r8),allocatable ::  mu_crm(:,:,:,:)   ! cloud scale gamma parameter for optics
-    real(r8),allocatable ::  lambdac_crm(:,:,:,:)  ! cloud scale slope of droplet distribution for optics
-    real(r8),allocatable ::  des_crm(:,:,:,:)  ! cloud scale snow crystal diameter (micro-meter)
+    real(r8),allocatable ::  dei_crm(:,:,:,:)     ! cloud scale ice effective diameter for optics
+    real(r8),allocatable ::  mu_crm(:,:,:,:)      ! cloud scale gamma parameter for optics
+    real(r8),allocatable ::  lambdac_crm(:,:,:,:) ! cloud scale slope of droplet distribution for optics
+    real(r8),allocatable ::  des_crm(:,:,:,:)     ! cloud scale snow crystal diameter (micro-meter)
 #ifdef MODAL_AERO
     real(r8), pointer, dimension(:,:,:) :: dgnumwet ! number mode diameter
     real(r8), pointer, dimension(:,:,:) :: qaerwat ! aerosol water 
@@ -1493,11 +1494,15 @@ end function radiation_nextsw_cday
                 ! snow water-related variables: 
                 ! snow water is an important component in m2005 microphysics, and is therefore taken
                 ! account in the radiative calculation (snow water path is several times larger than ice water path in m2005 globally). 
-
-                if( qs_rad(i, ii, jj, m).gt.1.0e-7) then
-                  cldfsnow(i,k) = 0.99_r8   
-                  csnowp(i,k) = qs_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
-                         / max(0.001_r8,cldfsnow(i,k)) ! In-cloud ice water path.
+                if (SPCAM_microp_scheme .eq. 'm2005') then 
+                  if( qs_rad(i, ii, jj, m).gt.1.0e-7) then
+                    cldfsnow(i,k) = 0.99_r8   
+                    csnowp(i,k) = qs_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
+                           / max(0.001_r8,cldfsnow(i,k)) ! In-cloud ice water path.
+                  else
+                    cldfsnow(i,k) = 0.0  
+                    csnowp(i,k) = 0.0
+                  end if
                 else
                   cldfsnow(i,k) = 0.0  
                   csnowp(i,k) = 0.0
@@ -1526,31 +1531,88 @@ end function radiation_nextsw_cday
              end do ! m
 
 ! update effective radius
-             do m=1,crm_nz
-               k = pver-m+1
-               do i=1,ncol
-                  if (SPCAM_microp_scheme .eq. 'm2005') then 
 #ifdef CRM
-                    call m2005_effradius(qc_rad(i,ii,jj,m), nc_rad(i,ii,jj,m), qi_rad(i,ii,jj,m), &
-                            ni_rad(i,ii,jj,m), qs_rad(i,ii,jj,m), ns_rad(i,ii,jj,m),  &
-                            1.0_r8, state%pmid(i,k), state%t(i,k), effl, effi, effl_fn, deffi, lamc, pgam, dest)
-#endif
-                    rel(i,k) = effl
-                    rei(i,k) = effi
-                    dei(i,k) = deffi
-                    mu(i,k)  = pgam 
-                    lambdac(i,k) = lamc 
-                    des(i,k) = dest
-                    dei_crm(i,ii,jj,m) = dei(i,k)
-                    mu_crm(i,ii,jj,m) = mu(i,k)
-                    lambdac_crm(i,ii,jj,m)= lambdac(i,k)
-                    des_crm(i,ii,jj,m) = des(i,k)
-                 endif
+            
+            do m=1,crm_nz
+              k = pver-m+1
+              do i=1,ncol
 
-                 rel_crm(i,ii,jj,m)=rel(i,k)
-                 rei_crm(i,ii,jj,m)=rei(i,k)
-               end do ! i
-             end do ! m
+                if (SPCAM_microp_scheme .eq. 'm2005') then 
+                  call m2005_effradius(qc_rad(i,ii,jj,m), nc_rad(i,ii,jj,m), qi_rad(i,ii,jj,m),  &
+                                       ni_rad(i,ii,jj,m), qs_rad(i,ii,jj,m), ns_rad(i,ii,jj,m),  &
+                                       1.0_r8, state%pmid(i,k), state%t(i,k), &
+                                       effl, effi, effl_fn, deffi, lamc, pgam, dest)
+                  rel(i,k) = effl
+                  rei(i,k) = effi
+                  dei(i,k) = deffi
+                  mu(i,k)  = pgam 
+                  lambdac(i,k) = lamc 
+                  des(i,k) = dest
+                  dei_crm(i,ii,jj,m) = dei(i,k)
+                  mu_crm(i,ii,jj,m) = mu(i,k)
+                  lambdac_crm(i,ii,jj,m)= lambdac(i,k)
+                  des_crm(i,ii,jj,m) = des(i,k)
+                end if
+
+                if (SPCAM_microp_scheme .eq. 'sam1mom') then 
+                  call cldefr_icol( lchnk, landfrac(i), state%t(i,k),    &
+                                    effl, effi, state%ps(i), state%pmid(i,k), &
+                                    landm(i), icefrac(i), snowh(i) )
+                  rel(i,k) = effl
+                  rei(i,k) = effi
+                end if
+
+                rel_crm(i,ii,jj,m)=rel(i,k)
+                rei_crm(i,ii,jj,m)=rei(i,k)
+
+              end do ! i
+            end do ! m
+            
+
+            !!! whannah - alternate method for old cldefr(), which operates on multiple columns
+            !!! alternatively, I just created cldefr_icol() to handle one columnat a time (see above)
+            
+            ! if (SPCAM_microp_scheme .eq. 'm2005') then 
+            !   do m=1,crm_nz
+            !     k = pver-m+1
+            !     do i=1,ncol
+            !       call m2005_effradius(qc_rad(i,ii,jj,m), nc_rad(i,ii,jj,m), qi_rad(i,ii,jj,m), &
+            !                            ni_rad(i,ii,jj,m), qs_rad(i,ii,jj,m), ns_rad(i,ii,jj,m),  &
+            !                            1.0_r8, state%pmid(i,k), state%t(i,k), effl, effi, effl_fn, deffi, lamc, pgam, dest)
+            !       rel(i,k) = effl
+            !       rei(i,k) = effi
+            !       dei(i,k) = deffi
+            !       mu(i,k)  = pgam 
+            !       lambdac(i,k) = lamc 
+            !       des(i,k) = dest
+            !       dei_crm(i,ii,jj,m) = dei(i,k)
+            !       mu_crm(i,ii,jj,m) = mu(i,k)
+            !       lambdac_crm(i,ii,jj,m)= lambdac(i,k)
+            !       des_crm(i,ii,jj,m) = des(i,k)
+                
+            !       rel_crm(i,ii,jj,m)=rel(i,k)
+            !       rei_crm(i,ii,jj,m)=rei(i,k)
+            !     end do ! i
+            !   end do ! m
+            ! endif
+
+            ! if (SPCAM_microp_scheme .eq. 'sam1mom') then 
+            !     cldefr( lchnk, ncol, landfrac, state1%t, effl, effi, state1%ps, state1%pmid, landm, icefrac, snowh )
+            !     rel(:,:) = effl
+            !     rei(:,:) = effi
+            !     do m=1,crm_nz
+            !       k = pver-m+1
+            !       rel_crm(:,ii,jj,m)=rel(:,k)
+            !       rei_crm(:,ii,jj,m)=rei(:,k)
+            !     end do ! m
+            !     ! cicewp => cicewp_loc
+            !     ! cliqwp => cliqwp_loc
+            !     ! emis   => emis_loc
+            !     ! cldtau => cldtau_loc
+            !     ! pmxrgn => pmxrgn_loc
+            !     ! nmxrgn => nmxrgn_loc
+            !   end if
+#endif
        endif !(*use_SPCAM*)
 
 

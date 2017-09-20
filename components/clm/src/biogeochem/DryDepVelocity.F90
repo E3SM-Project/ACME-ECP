@@ -565,6 +565,8 @@ CONTAINS
                   rc = 0._r8
                end if
 
+write(*,*)  "whannah - drydep_list(ispec) : ",drydep_list(ispec)
+
                select case( drydep_list(ispec) )
                case ( 'SO4' )
                   velocity(pi,ispec) = (1._r8/(ram1(pi)+rds))*100._r8
