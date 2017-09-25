@@ -1531,8 +1531,8 @@ subroutine micro_mg_tend ( &
 
         berg(:,k)=berg(:,k)*micro_mg_berg_eff_factor
 
-        where (vap_dep(:,k) < 0._r8 .and. qi(:,k) > qsmall .and. icldm(:,k) > mincld)
-           nsubi(:,k) = vap_dep(:,k) / qi(:,k) * ni(:,k) / icldm(:,k)
+        where (qi(:,k) >= qsmall)
+           nsubi(:,k) = ice_sublim(:,k) / qi(:,k) * ni(:,k) / icldm(:,k)
         elsewhere
            nsubi(:,k) = 0._r8
         end where

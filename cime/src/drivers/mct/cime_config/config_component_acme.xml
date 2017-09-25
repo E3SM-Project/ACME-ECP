@@ -34,6 +34,14 @@
 
   <entry id="TIMER_DETAIL">
     <type>integer</type>
+    <default_value>12</default_value>
+    <group>run_flags</group>
+    <file>env_run.xml</file>
+    <desc>timer output depth</desc>
+  </entry>
+
+  <entry id="TIMER_LEVEL">
+    <type>integer</type>
     <default_value>20</default_value>
     <group>run_flags</group>
     <file>env_run.xml</file>
@@ -280,6 +288,7 @@
       <value compset=".+" grid="a%ne0np4_svalbard_x8v1" >144</value>
       <value compset=".+" grid="a%ne0np4_sooberingoa_x4x8v1" >144</value>
       <value compset=".+" grid="a%ne0np4_enax4v1" >96</value>
+      <value compset=".+" grid="a%ne0np4_twpx4v1">96</value>
       <value compset=".+" grid="a%T42">72</value>
       <value compset=".+" grid="a%T85">144</value>
       <value compset=".+" grid="a%T341">288</value>

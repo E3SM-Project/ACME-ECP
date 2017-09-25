@@ -57,9 +57,9 @@
     <jobid_pattern>(\d+)</jobid_pattern>
     <depend_string> --dependencies</depend_string>
     <submit_args>
-      <arg flag="-A" name="PROJECT"/>
+      <arg flag="-A" name="$CHARGE_ACCOUNT"/>
       <arg flag="-t" name="JOB_WALLCLOCK_TIME"/>
-      <arg flag="-n" name=" $TOTALPES/$PES_PER_NODE"/>
+      <arg flag="-n" name=" ($TOTALPES + $PES_PER_NODE - 1)/$PES_PER_NODE"/>
       <arg flag="-q" name="JOB_QUEUE"/>
       <arg flag="--mode script"/>
     </submit_args>
@@ -76,7 +76,7 @@
     <submit_args>
       <arg flag="-q" name="$JOB_QUEUE"/>
       <arg flag="-W" name="$JOB_WALLCLOCK_TIME"/>
-      <arg flag="-P" name="$PROJECT"/>
+      <arg flag="-P" name="$CHARGE_ACCOUNT"/>
     </submit_args>
     <directives>
       <directive                       > -n {{ total_tasks }} </directive>
@@ -101,7 +101,7 @@
     <submit_args>
       <arg flag="-q" name="$JOB_QUEUE"/>
       <arg flag="-l walltime=" name="$JOB_WALLCLOCK_TIME"/>
-      <arg flag="-A" name="$PROJECT"/>
+      <arg flag="-A" name="$CHARGE_ACCOUNT"/>
     </submit_args>
     <directives>
       <directive> -N {{ job_id }}</directive>
@@ -122,7 +122,7 @@
     <walltime_format>%H:%M:%S</walltime_format>
     <submit_args>
       <arg flag="-l walltime=" name="$JOB_WALLCLOCK_TIME"/>
-      <arg flag="-A" name="$PROJECT"/>
+      <arg flag="-A" name="$CHARGE_ACCOUNT"/>
     </submit_args>
     <directives>
       <directive> -N {{ job_id }}</directive>
@@ -303,22 +303,24 @@
 
   <batch_system MACH="skybridge" type="slurm" >
     <queues>
-      <queue jobmin="1" jobmax="1024" walltimemax="06:00:00" default="true">batch</queue>
+      <queue jobmin="1" jobmax="512" walltimemax="04:00:00" default="true">short</queue>
+      <queue jobmin="1" jobmax="1024" walltimemax="24:00:00">batch</queue>
     </queues>
   </batch_system>
 
   <batch_system MACH="chama" type="slurm" >
     <queues>
-      <queue jobmin="1" jobmax="1024" walltimemax="06:00:00" default="true">batch</queue>
+      <queue jobmin="1" jobmax="512" walltimemax="04:00:00" default="true">short</queue>
+      <queue jobmin="1" jobmax="1024" walltimemax="24:00:00">batch</queue>
     </queues>
   </batch_system>
 
   <batch_system MACH="ghost" type="slurm" >
     <queues>
-      <queue jobmin="1" jobmax="1024" walltimemax="06:00:00" default="true">batch</queue>
+      <queue jobmin="1" jobmax="512" walltimemax="04:00:00" default="true">short</queue>
+      <queue jobmin="1" jobmax="1024" walltimemax="24:00:00">batch</queue>
     </queues>
   </batch_system>
-
 
   <batch_system MACH="mustang" type="moab" >
     <directives>

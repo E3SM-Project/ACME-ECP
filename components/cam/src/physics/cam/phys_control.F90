@@ -71,6 +71,7 @@ logical           :: use_ECPP             = .false.    ! true => use explicit cl
 logical           :: atm_dep_flux         = .true.     ! true => deposition fluxes will be provided
                                                        ! to the coupler
 logical           :: history_amwg         = .true.     ! output the variables used by the AMWG diag package
+logical           :: history_verbose      = .false.    ! produce verbose output by default
 logical           :: history_vdiag        = .false.    ! output the variables used by the AMWG variability diag package
 logical           :: history_aerosol      = .false.    ! output the MAM aerosol variables and tendencies
 logical           :: history_aero_optics  = .false.    ! output the aerosol
@@ -177,10 +178,9 @@ subroutine phys_ctl_readnl(nlfile)
    character(len=*), parameter :: subname = 'phys_ctl_readnl'
 
    namelist /phys_ctl_nl/ cam_physpkg, cam_chempkg, waccmx_opt, deep_scheme, shallow_scheme, &
-!-- mdb spcam
       eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, SPCAM_microp_scheme, srf_flux_avg, &
-      use_subcol_microp, use_SPCAM, use_ECPP, atm_dep_flux, history_amwg, history_vdiag, history_aerosol, history_aero_optics, &
-!-- mdb spcam
+      use_subcol_microp, use_SPCAM, use_ECPP, atm_dep_flux, history_amwg, history_verbose, history_vdiag, &
+      history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
       conv_water_in_rad, history_clubb, do_clubb_sgs, do_tms, state_debug_checks, &
       use_mass_borrower, do_aerocom_ind3, &
@@ -234,6 +234,7 @@ subroutine phys_ctl_readnl(nlfile)
 !-- mdb spcam
    call mpibcast(atm_dep_flux,                    1 , mpilog,  0, mpicom)
    call mpibcast(history_amwg,                    1 , mpilog,  0, mpicom)
+   call mpibcast(history_verbose,                 1 , mpilog,  0, mpicom)
    call mpibcast(history_vdiag,                   1 , mpilog,  0, mpicom)
    call mpibcast(history_eddy,                    1 , mpilog,  0, mpicom)
    call mpibcast(history_aerosol,                 1 , mpilog,  0, mpicom)
@@ -422,7 +423,8 @@ end function waccmx_is
 
 subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, microp_scheme_out, &
                         radiation_scheme_out, use_subcol_microp_out, atm_dep_flux_out, &
-                        history_amwg_out, history_vdiag_out, history_aerosol_out, history_aero_optics_out, history_eddy_out, &
+                        history_amwg_out, history_verbose_out, history_vdiag_out, &
+                        history_aerosol_out, history_aero_optics_out, history_eddy_out, &
                         history_budget_out, history_budget_histfile_num_out, history_waccm_out, &
                         history_clubb_out, ieflx_opt_out, conv_water_in_rad_out, cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, do_tms_out, state_debug_checks_out, &
@@ -466,6 +468,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    logical,           intent(out), optional :: use_subcol_microp_out
    logical,           intent(out), optional :: atm_dep_flux_out
    logical,           intent(out), optional :: history_amwg_out
+   logical,           intent(out), optional :: history_verbose_out
    logical,           intent(out), optional :: history_vdiag_out
    logical,           intent(out), optional :: history_eddy_out
    logical,           intent(out), optional :: history_aerosol_out
@@ -539,6 +542,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(history_aero_optics_out ) ) history_aero_optics_out  = history_aero_optics
    if ( present(history_budget_out      ) ) history_budget_out       = history_budget
    if ( present(history_amwg_out        ) ) history_amwg_out         = history_amwg
+   if ( present(history_verbose_out     ) ) history_verbose_out         = history_verbose
    if ( present(history_vdiag_out       ) ) history_vdiag_out        = history_vdiag
    if ( present(history_eddy_out        ) ) history_eddy_out         = history_eddy
    if ( present(history_budget_histfile_num_out ) ) history_budget_histfile_num_out = history_budget_histfile_num
