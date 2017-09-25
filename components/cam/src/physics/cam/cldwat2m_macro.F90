@@ -1814,7 +1814,7 @@ end subroutine rhcrit_calc
                  ! This case should not happen. Issue error message !
                  ! ------------------------------------------------ !
                  write(iulog,*) 'Impossible case1 in instratus_condensate' 
-                 call endrun
+                 #call endrun  #CRT 2017-09-25: commented out call endrun for UP run
              endif
          ! ------------------------------------------------ !                   
          ! This case should not happen. Issue error message !
