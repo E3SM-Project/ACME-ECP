@@ -1823,7 +1823,7 @@ end subroutine rhcrit_calc
              write(iulog,*) 'Impossible case2 in instratus_condensate' 
              write(iulog,*)  al0_st, a_sc, a_dc
              write(iulog,*)  1000*ql0_nc, 1000*(ql0+qi0)
-             #call endrun  #CRT 2017-09-25: commented out call endrun for UP run
+             !call endrun !CRT 2017-09-25: Commented out call endrun
          endif
       endif
 
