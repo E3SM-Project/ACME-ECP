@@ -282,8 +282,8 @@ subroutine crm_physics_init(species_class)
     call addfld ('A_DEP  ',(/ 'lev' /), 'A', '/s   ','Avg deposition ice snow graupel from CRM'           )
     call addfld ('A_CON  ',(/ 'lev' /), 'A', '/s   ','Avg condensation cloud water from CRM'              )
 
-    call addfld ('CRM_REL  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale droplet effective radius')
-    call addfld ('CRM_REI  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale ice crystal effective radius')
+    ! call addfld ('CRM_REL  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale droplet effective radius')
+    ! call addfld ('CRM_REI  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale ice crystal effective radius')
     call addfld ('CRM_DEI  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale Mitchell ice effective diameter')
     call addfld ('CRM_DES  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale snow effective diameter')
     call addfld ('CRM_MU   ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', &
@@ -293,6 +293,9 @@ subroutine crm_physics_init(species_class)
     call addfld ('CRM_TAU  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', '1',           'cloud scale cloud optical depth'  )
     call addfld ('CRM_WVAR' , (/'crm_nx','crm_ny','crm_nz'/), 'A', 'm/s',         'vertical velocity variance from CRM')
   endif
+
+  call addfld ('CRM_REL  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale droplet effective radius')
+  call addfld ('CRM_REI  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale ice crystal effective radius')
 
   call addfld ('CRM_FSNT',  (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net TOA shortwave fluxes at CRM grids')
   call addfld ('CRM_FSNTC', (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net TOA clear-sky shortwave fluxes at CRM grids')
@@ -319,22 +322,22 @@ subroutine crm_physics_init(species_class)
   call add_default ('AOD700',  1, ' ')
    
 #ifdef CLUBB_CRM
-     call addfld ('UP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'u prime ^2 from clubb')
-     call addfld ('VP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime ^2 from clubb')
-     call addfld ('WPRTP   ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'mkg/skg',    'w prime * rt prime from clubb')
-     call addfld ('WPTHLP  ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'mK/s',       'w prime * th_l prime from clubb')
-     call addfld ('WP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'w prime ^2 from clubb')
-     call addfld ('WP3     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^3/s^3',    'w prime ^3 from clubb')
-     call addfld ('RTP2    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', '(kg/kg)2',   'r_t prime ^2 from clubb')
-     call addfld ('THLP2   ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'K^2',        'th_l_prime ^2 from clubb')
-     call addfld ('RTPTHLP ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'kgK/kg',     'r_t prime * th_l prime  from clubb')
-     call addfld ('UPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'u prime * w prime from clubb')
-     call addfld ('VPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime * w prime from clubb')
-     call addfld ('CRM_CLD ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'fraction',   'cloud fraction from clubb')
+  call addfld ('UP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'u prime ^2 from clubb')
+  call addfld ('VP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime ^2 from clubb')
+  call addfld ('WPRTP   ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'mkg/skg',    'w prime * rt prime from clubb')
+  call addfld ('WPTHLP  ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'mK/s',       'w prime * th_l prime from clubb')
+  call addfld ('WP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'w prime ^2 from clubb')
+  call addfld ('WP3     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^3/s^3',    'w prime ^3 from clubb')
+  call addfld ('RTP2    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', '(kg/kg)2',   'r_t prime ^2 from clubb')
+  call addfld ('THLP2   ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'K^2',        'th_l_prime ^2 from clubb')
+  call addfld ('RTPTHLP ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'kgK/kg',     'r_t prime * th_l prime  from clubb')
+  call addfld ('UPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'u prime * w prime from clubb')
+  call addfld ('VPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime * w prime from clubb')
+  call addfld ('CRM_CLD ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'fraction',   'cloud fraction from clubb')
 #endif
 !==Guangxing Lin New CRM
-     call addfld ('CRM_TK',  (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
-     call addfld ('CRM_TKH', (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
+  call addfld ('CRM_TK',  (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
+  call addfld ('CRM_TKH', (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
 !==Guangxing Lin New CRM
 #ifdef ECPP
   if (use_ECPP) then
