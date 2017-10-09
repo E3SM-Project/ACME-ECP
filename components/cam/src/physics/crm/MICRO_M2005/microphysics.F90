@@ -1594,12 +1594,12 @@ real(8) function total_water()
 
 end function total_water
 
-real(crm_rknd) function Get_reffc() ! liquid water
+function Get_reffc() ! liquid water
   real(crm_rknd), dimension(nx,ny,nzm) :: Get_reffc
   Get_reffc = reffc
 end function Get_reffc
 
-real(crm_rknd) function Get_reffi() ! ice
+function Get_reffi() ! ice
   real(crm_rknd), dimension(nx,ny,nzm) :: Get_reffi
   Get_reffi = reffi
 end function Get_reffi
