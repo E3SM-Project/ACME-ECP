@@ -990,6 +990,7 @@ for mct, etc.
 </compiler>
 
 <compiler COMPILER="gnu" MACH="titan">
+  <FFLAGS_NOOPT> -O0  -mcmodel=medium -fconvert=big-endian -ffree-line-length-none -ffixed-line-length-none </FFLAGS_NOOPT>
   <ADD_CFLAGS DEBUG="FALSE"> -O2 </ADD_CFLAGS>
   <ADD_FFLAGS DEBUG="FALSE"> -O2 </ADD_FFLAGS>
   <NETCDF_PATH>$(NETCDFROOT)</NETCDF_PATH>
