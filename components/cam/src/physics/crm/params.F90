@@ -20,9 +20,10 @@ use shr_const_mod, only: shr_const_rdair, shr_const_cpdair, shr_const_latvap, &
 implicit none
 
 #ifdef CRM_SINGLE_PRECISION
-integer, parameter :: crm_rknd = 4
+integer, parameter :: crm_rknd = selected_real_kind( 6) ! 4 byte real
 #else
-integer, parameter :: crm_rknd = 8  ! whannah - default precision of real - kind(1.d0)
+! whannah - default precision of real - kind(1.d0)
+integer, parameter :: crm_rknd = selected_real_kind(12) ! 8 byte real  
 #endif
 
 !   Constants:
