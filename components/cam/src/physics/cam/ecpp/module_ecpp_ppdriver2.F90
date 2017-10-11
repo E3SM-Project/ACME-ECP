@@ -916,7 +916,7 @@ end type ptr2d_t
 ! #ifdef ECPP_LEV_MOD
 !       kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), crm_nz ) ! whannah
 ! #else
-!       kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
+      kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
 ! #endif
 ! ! whannah 
       mtype_updnenv_ecpp(1:2,jcls) = mtype_dndraft_ecpp

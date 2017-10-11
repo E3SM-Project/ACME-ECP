@@ -102,7 +102,7 @@ subroutine boundary_inout( &
         end if
      end do !i=nx
      v_insum(k)  = v_insum(k)  + spd_in /real(nx,crm_rknd)
-     v_outsum(k) = v_outsum(k) + spd_out/real(nx.crm_rknd)
+     v_outsum(k) = v_outsum(k) + spd_out/real(nx,crm_rknd)
 
   end do !k=nz
 end subroutine boundary_inout
@@ -697,16 +697,16 @@ thresh_calc_loop: &
   thresh_calc_not_done = .false.
   do k = 1,nz
      acen_quiesc = sum( mask_cen( 1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR) )
-     acen_quiesc = max( acen_quiesc/real(nxy,crm_rknd), 0.0 )
-     acen_up = sum( mask_cen( 1:nx, 1:ny, k, 1:NCLASS_CL, UP1, 1:NCLASS_PR) )
-     acen_up = max( acen_up/real(nxy,crm_rknd), 0.0 )
-     acen_down = max( (1.0 - acen_quiesc - acen_up), 0.0 )
+     acen_quiesc = max( acen_quiesc/real(nxy,crm_rknd), real(0.0,crm_rknd) )
+     acen_up     = sum( mask_cen( 1:nx, 1:ny, k, 1:NCLASS_CL, UP1, 1:NCLASS_PR) )
+     acen_up     = max( acen_up/real(nxy,crm_rknd)   , real(0.0,crm_rknd) )
+     acen_down   = max( (1.0 - acen_quiesc - acen_up), real(0.0,crm_rknd) )
 
      abnd_quiesc = sum( mask_bnd( 1:nx, 1:ny, k, 1:NCLASS_CL, QUI, 1:NCLASS_PR) )
-     abnd_quiesc = max( abnd_quiesc/real(nxy,crm_rknd), 0.0 )
-     abnd_up = sum( mask_bnd( 1:nx, 1:ny, k, 1:NCLASS_CL, UP1, 1:NCLASS_PR) )
-     abnd_up = max( abnd_up/real(nxy,crm_rknd), 0.0 )
-     abnd_down = max( (1.0 - abnd_quiesc - abnd_up), 0.0 )
+     abnd_quiesc = max( abnd_quiesc/real(nxy,crm_rknd), real(0.0,crm_rknd) )
+     abnd_up     = sum( mask_bnd( 1:nx, 1:ny, k, 1:NCLASS_CL, UP1, 1:NCLASS_PR) )
+     abnd_up     = max( abnd_up/real(nxy,crm_rknd)   , real(0.0,crm_rknd) )
+     abnd_down   = max( (1.0 - abnd_quiesc - abnd_up), real(0.0,crm_rknd) )
 
      if (min(acen_quiesc, abnd_quiesc) < acen_quiesc_minaa) then
         thresh_calc_not_done = .true.
@@ -715,14 +715,14 @@ thresh_calc_loop: &
         else if (abnd_down > abnd_up ) then
            tmpa = abnd_up/abnd_down
         else
-           tmpa = 1.0
+           tmpa = real(1.0,crm_rknd)
         end if
         if (min(acen_quiesc,abnd_quiesc) < 0.5*acen_quiesc_minaa) then
            thresh_factorbb_down(k) = thresh_factorbb_down(k)*1.5
-           thresh_factorbb_up(k) = thresh_factorbb_up(k)*max(1.5*tmpa, 1.25)
+           thresh_factorbb_up(k) = thresh_factorbb_up(k)*max(1.5*tmpa, real(1.25,crm_rknd) )
         else
            thresh_factorbb_down(k) = thresh_factorbb_down(k)*1.25
-           thresh_factorbb_up(k) = thresh_factorbb_up(k)*max(1.25*tmpa, 1.125)
+           thresh_factorbb_up(k) = thresh_factorbb_up(k)*max(1.25*tmpa, real(1.125,crm_rknd) )
         end if
         if(iter.gt.5) then
            write(0, *) 'warning: The number of iteration is larger than 5 in ecpp_stat', 'iter=', iter ,   &
@@ -803,7 +803,7 @@ thresh_calc_loop: &
 
                        area_bnd_sum(k,icl,itr,ipr) = area_bnd_sum(k,icl,itr,ipr) + mask
                        mass_bnd_sum(k,icl,itr,ipr) = mass_bnd_sum(k,icl,itr,ipr) + wwrho_k*mask
-                       ent_bnd_sum(k,icl,itr,ipr) = ent_bnd_sum(k,icl,itr,ipr) + max(0., wwrho_k-wwrho_km1)*mask
+                       ent_bnd_sum(k,icl,itr,ipr) = ent_bnd_sum(k,icl,itr,ipr) + max(real(0.,crm_rknd), wwrho_k-wwrho_km1)*mask
 
 !
 ! calculate the mean vertical velocity over the quiescent class  +++mhwang
@@ -1144,7 +1144,7 @@ subroutine determine_transport_thresh( &
         wdown_rms_ksmo(k) = wdown_rms_ksmo(k) + tmpvecb(kk)
         tmpsuma = tmpsuma + 1.0
      end do
-     tmpsuma = max(tmpsuma,1.0)
+     tmpsuma = max(tmpsuma,real(1.0,crm_rknd))
      wup_rms_ksmo(  k) = wup_rms_ksmo(  k)/tmpsuma
      wdown_rms_ksmo(k) = wdown_rms_ksmo(k)/tmpsuma
   end do
@@ -1213,7 +1213,7 @@ subroutine determine_transport_thresh( &
         do k = 1, nz
            tmpw = wup_rms_k(k)
            if (mode_updnthresh == 7) tmpw = wup_rms_ksmo(k)
-           tmpw = max(1.0e-4,tmpw)
+           tmpw = max(real(1.0e-4,crm_rknd),tmpw)
            tmpw = tmpw * rhoair(k)
            tmpsuma = tmpsuma + tmpw*k ; tmpsumb = tmpsumb + tmpw
         end do
@@ -1241,7 +1241,7 @@ subroutine determine_transport_thresh( &
         do k = 1, nz+1
            tmpw = wup_rms_k(k)
            if (mode_updnthresh == 9) tmpw = wup_rms_ksmo(k)
-           tmpw = max(1.0e-4,tmpw)
+           tmpw = max(real(1.0e-4,crm_rknd),tmpw)
            tmpw = tmpw * rhoair(k)
            tmpsuma = tmpsuma + tmpw*k ; tmpsumb = tmpsumb + tmpw
         end do
@@ -1260,7 +1260,7 @@ subroutine determine_transport_thresh( &
         do k = 1, nz+1
            tmpw = wdown_rms_k(k)
            if (mode_updnthresh == 9) tmpw = wdown_rms_ksmo(k)
-           tmpw = max(1.0e-4,tmpw)
+           tmpw = max(real(1.0e-4,crm_rknd),tmpw)
            tmpw = tmpw * rhoair(k)
            tmpsuma = tmpsuma + tmpw*k ; tmpsumb = tmpsumb + tmpw
         end do
@@ -1287,7 +1287,7 @@ subroutine determine_transport_thresh( &
         do k = 1, nz+1
            tmpw = wup_rms_k(k)
            if (mode_updnthresh == 15) tmpw = wup_rms_ksmo(k)
-           tmpw = max(1.0e-4,tmpw)
+           tmpw = max(real(1.0e-4,crm_rknd),tmpw)
            tmpw = tmpw * rhoair(k)
            tmpsuma = tmpsuma + tmpw*k ; tmpsumb = tmpsumb + tmpw
         end do
@@ -1310,7 +1310,7 @@ subroutine determine_transport_thresh( &
         do k = 1, nz+1
            tmpw = wdown_rms_k(k)
            if (mode_updnthresh == 15) tmpw = wdown_rms_ksmo(k)
-           tmpw = max(1.0e-4,tmpw)
+           tmpw = max(real(1.0e-4,crm_rknd),tmpw)
            tmpw = tmpw * rhoair(k)
            tmpsuma = tmpsuma + tmpw*k ; tmpsumb = tmpsumb + tmpw
         end do
@@ -1341,7 +1341,7 @@ subroutine determine_transport_thresh( &
         do k = 1, nz+1
            tmpw = wup_rms_k(k)
            if (mode_updnthresh == 17) tmpw = wup_rms_ksmo(k)
-           tmpw = max(1.0e-4,tmpw)
+           tmpw = max(real(1.0e-4,crm_rknd),tmpw)
            tmpw = tmpw * rhoair(k)
            tmpsuma = tmpsuma + tmpw*k ; tmpsumb = tmpsumb + tmpw
         end do
@@ -1360,7 +1360,7 @@ subroutine determine_transport_thresh( &
         do k = 1, nz+1
            tmpw = wdown_rms_k(k)
            if (mode_updnthresh == 17) tmpw = wdown_rms_ksmo(k)
-           tmpw = max(1.0e-4,tmpw)
+           tmpw = max(real(1.0e-4,crm_rknd),tmpw)
            tmpw = tmpw * rhoair(k)
            tmpsuma = tmpsuma + tmpw*k ; tmpsumb = tmpsumb + tmpw
         end do
