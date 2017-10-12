@@ -30,10 +30,7 @@ use ppgrid,          only: pcols, pver, pverp, begchunk, endchunk
 use physics_types,   only: physics_state, physics_ptend
 use physconst,       only: cpair, cappa
 use time_manager,    only: get_nstep, is_first_restart_step
-!==Guangxing Lin 
-!use abortutils,      only: endrun 
-use cam_abortutils,      only: endrun
-!==Guangxing Lin 
+use cam_abortutils,  only: endrun
 use error_messages,  only: handle_err
 use cam_control_mod, only: lambm0, obliqr, mvelpp, eccen
 use scamMod,         only: scm_crm_mode, single_column,have_cld,cldobs,&
@@ -76,6 +73,7 @@ integer :: concld_idx   = 0
 integer :: rel_idx      = 0
 integer :: rel_fn_idx   = 0 
 integer :: rei_idx      = 0
+integer :: dei_idx      = 0
 
 ! Default values for namelist variables
 
@@ -343,51 +341,45 @@ end function radiation_nextsw_cday
 ! Initialize the radiation parameterization, add fields to the history buffer
 ! 
 !-----------------------------------------------------------------------
-    use physics_buffer, only: pbuf_get_index
-!==Guangxing Lin
-    !use cam_history,    only: addfld, add_default, phys_decomp
-    use cam_history,    only: addfld, horiz_only, add_default
-!==Guangxing Lin
-    use constituents,   only: cnst_get_ind
-    use physconst,      only: gravit, cpair, epsilo, stebol, &
-                              pstd, mwdry, mwco2, mwo3
-    use phys_control,   only: phys_getopts
+    use physics_buffer,     only: pbuf_get_index
+    use cam_history,        only: addfld, horiz_only, add_default
+    use constituents,       only: cnst_get_ind
+    use physconst,          only: gravit, cpair, epsilo, stebol, &
+                                  pstd, mwdry, mwco2, mwo3
+    use phys_control,       only: phys_getopts
     use cospsimulator_intr, only: docosp, cospsimulator_intr_init
-    use radsw,          only: radsw_init
-    use radlw,          only: radlw_init
-    use hirsbt,         only: hirsbt_init
-    use hirsbtpar,      only: hirsname, msuname
-
-    use radiation_data, only: init_rad_data
-    use modal_aer_opt, only: modal_aer_opt_init
-    use rrtmg_state,   only: rrtmg_state_init
-!==Guangxing Lin
-    use time_manager,   only: get_step_size
-!==Guangxing Lin
+    use radsw,              only: radsw_init
+    use radlw,              only: radlw_init
+    use hirsbt,             only: hirsbt_init
+    use hirsbtpar,          only: hirsname, msuname
+    use radiation_data,     only: init_rad_data
+    use modal_aer_opt,      only: modal_aer_opt_init
+    use rrtmg_state,        only: rrtmg_state_init
+    use time_manager,       only: get_step_size
 
     integer :: icall, nmodes
     logical :: active_calls(0:N_DIAG)
     integer :: nstep                       ! current timestep number
-!==Guangxing Lin
     logical :: history_amwg                ! output the variables used by the AMWG diag package
     logical :: history_vdiag               ! output the variables used by the AMWG variability diag package
-!==Guangxing Lin
     logical :: history_budget              ! output tendencies and state variables for CAM4
                                            ! temperature, water vapor, cloud ice and cloud
                                            ! liquid budgets.
     integer :: history_budget_histfile_num ! output history file number for budget fields
     integer :: err
+    integer :: dtime                        ! time step
 
-!==Guangxing Lin
-    integer :: dtime
-!==Guangxing Lin
+    logical :: use_SPCAM                      ! SPCAM flag
+    character(len=16) :: SPCAM_microp_scheme  ! SPCAM microphysics scheme
     !-----------------------------------------------------------------------
     
     call rrtmg_state_init()
 
     call init_rad_data() ! initialize output fields for offline driver
 
-    call phys_getopts(microp_scheme_out=microp_scheme)
+    call phys_getopts( use_SPCAM_out           = use_SPCAM           )
+    call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme )
+    call phys_getopts( microp_scheme_out       = microp_scheme       )
 
     call radsw_init()
     call radlw_init()
@@ -725,7 +717,7 @@ end function radiation_nextsw_cday
     end if
 
     ! Heating rate needed for d(theta)/dt computation
-!    call addfld ('HR      ','K/s     ',pver, 'A','Heating rate needed for d(theta)/dt computation',phys_decomp)
+    ! call addfld ('HR      ','K/s     ',pver, 'A','Heating rate needed for d(theta)/dt computation',phys_decomp)
 !==Guangxing Lin
     call addfld ('HR',(/ 'lev' /), 'A','K/s','Heating rate needed for d(theta)/dt computation')
 
@@ -741,10 +733,10 @@ end function radiation_nextsw_cday
 
 
     ! (Almost) net radiative flux at surface, does not have lwup.
-   ! call addfld ('SRFRAD  ','W/m2    ',1,    'A','Net radiative flux at surface',phys_decomp)
-   ! call add_default ('SRFRAD  ', 1, ' ')
+    ! call addfld ('SRFRAD  ','W/m2    ',1,    'A','Net radiative flux at surface',phys_decomp)
+    ! call add_default ('SRFRAD  ', 1, ' ')
 
-   ! call phys_getopts(history_budget_out = history_budget, history_budget_histfile_num_out = history_budget_histfile_num)
+    ! call phys_getopts(history_budget_out = history_budget, history_budget_histfile_num_out = history_budget_histfile_num)
 
     if ( history_budget .and. history_budget_histfile_num > 1 ) then
        call add_default ('QRL     ', history_budget_histfile_num, ' ')
@@ -762,12 +754,17 @@ end function radiation_nextsw_cday
     rel_idx      = pbuf_get_index('REL')
     !rel_fn_idx   = pbuf_get_index('REL_FN')
     rei_idx      = pbuf_get_index('REI')
+    dei_idx      = pbuf_get_index('DEI')
+
+    if (use_SPCAM .and. SPCAM_microp_scheme .eq. 'sam1mom') then
+      cldfsnow_idx = 0
+    end if
 
     if (cldfsnow_idx > 0) then
-     !  call addfld ('CLDFSNOW','1',pver,'I','CLDFSNOW',phys_decomp,flag_xyfill=.true.)
-     !   call add_default ('CLDFSNOW',1,' ')
-     !  call addfld('SNOW_ICLD_VISTAU', '1', pver, 'A', 'Snow in-cloud extinction visible sw optical depth', phys_decomp, &
-     !                                                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
+      ! call addfld ('CLDFSNOW','1',pver,'I','CLDFSNOW',phys_decomp,flag_xyfill=.true.)
+      ! call add_default ('CLDFSNOW',1,' ')
+      ! call addfld('SNOW_ICLD_VISTAU', '1', pver, 'A', 'Snow in-cloud extinction visible sw optical depth', phys_decomp, &
+      !                                               sampling_seq='rad_lwsw', flag_xyfill=.true.)
        call addfld ('CLDFSNOW',(/ 'lev' /),'I','1','CLDFSNOW',flag_xyfill=.true.)
        call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1', 'Snow in-cloud extinction visible sw optical depth', &
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
@@ -828,10 +825,7 @@ end function radiation_nextsw_cday
     
     use phys_grid,       only: get_rlat_all_p, get_rlon_all_p
     use physics_types,   only: physics_state, physics_ptend
-!==Guangxing Lin
     use cospsimulator_intr, only: docosp, cospsimulator_intr_run,cosp_nradsteps
-!    use cosp_share, only: cosp_nradsteps
-!==Guangxing Lin
     use time_manager,    only: get_curr_calday
     use camsrfexch,      only: cam_out_t, cam_in_t
     use cam_history,     only: outfld
@@ -1192,9 +1186,7 @@ end function radiation_nextsw_cday
     character(*), parameter :: name = 'radiation_tend'
     character(len=16)       :: SPCAM_microp_scheme  ! SPCAM_microphysics scheme
 !----------------------------------------------------------------------
-!==Guangxing Lin    
-!   call t_startf ('radiation_tend_init')
-!==Guangxing Lin    
+  ! call t_startf ('radiation_tend_init')  
   
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
@@ -1220,13 +1212,12 @@ end function radiation_nextsw_cday
     endif
     call pbuf_get_field(pbuf, cld_idx,      cld,      start=(/1,1,itim/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, concld_idx,   concld,   start=(/1,1,itim/), kount=(/pcols,pver,1/)  )
-
     call pbuf_get_field(pbuf, qrs_idx,      qrs)
     call pbuf_get_field(pbuf, qrl_idx,      qrl)
-
     call pbuf_get_field(pbuf, rel_idx,      rel)
     !call pbuf_get_field(pbuf, rel_fn_idx,   rel_fn) !==Guangxing Lin
     call pbuf_get_field(pbuf, rei_idx,      rei)
+    call pbuf_get_field(pbuf, dei_idx,      dei)
 
     if (spectralflux) then
       call pbuf_get_field(pbuf, su_idx, su)
@@ -1238,7 +1229,7 @@ end function radiation_nextsw_cday
          allocate(sd_m(pcols,pverp,nswbands,0:N_DIAG))
          allocate(lu_m(pcols,pverp,nswbands,0:N_DIAG))
          allocate(ld_m(pcols,pverp,nswbands,0:N_DIAG))
-      end if
+      end if ! use_SPCAM
     end if
     
     if (use_SPCAM) then 
@@ -1250,8 +1241,8 @@ end function radiation_nextsw_cday
 #endif
 
        if (SPCAM_microp_scheme .eq. 'm2005') then
-          ifld = pbuf_get_index('DEI')
-          call pbuf_get_field(pbuf, ifld, dei)
+          ! ifld = pbuf_get_index('DEI')
+          ! call pbuf_get_field(pbuf, ifld, dei)
           ifld = pbuf_get_index('MU')
           call pbuf_get_field(pbuf, ifld, mu)
           ifld = pbuf_get_index('LAMBDAC')
@@ -1259,13 +1250,13 @@ end function radiation_nextsw_cday
           ifld = pbuf_get_index('DES')
           call pbuf_get_field(pbuf, ifld, des)
        endif
-    end if
+    end if ! use_SPCAM
  
     if (do_aerocom_ind3) then
       cld_tau_idx = pbuf_get_index('cld_tau')
     end if
    
-!  For CRM, make cloud equal to input observations:
+    ! For CRM, make cloud equal to input observations:
     if (single_column.and.scm_crm_mode.and.have_cld) then
        do k = 1,pver
           cld(:ncol,k)= cldobs(k)
@@ -1282,7 +1273,6 @@ end function radiation_nextsw_cday
     call get_rlat_all_p(lchnk, ncol, clat)
     call get_rlon_all_p(lchnk, ncol, clon)
 
-    !call zenith (calday, clat, clon, coszrs, ncol)
     call zenith (calday, clat, clon, coszrs, ncol, dt_avg) !==Guangxing Lin  
     
     if (swrad_off) then
@@ -1295,88 +1285,93 @@ end function radiation_nextsw_cday
     Nday = 0
     Nnite = 0
     do i = 1, ncol
-       if ( coszrs(i) > 0.0_r8 ) then
-          Nday = Nday + 1
-          IdxDay(Nday) = i
-       else
-          Nnite = Nnite + 1
-          IdxNite(Nnite) = i
-       end if
+      if ( coszrs(i) > 0.0_r8 ) then
+        Nday = Nday + 1
+        IdxDay(Nday) = i
+      else
+        Nnite = Nnite + 1
+        IdxNite(Nnite) = i
+      end if
     end do
 
     if (use_SPCAM) then 
-       dosw = .true. ! do it every timestep in MMF cam.
-       dolw = .true.
+      ! calculate radiation every timestep for SP
+      dosw = .true. 
+      dolw = .true.
     else
-       dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
-       dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
-    endif
+      dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
+      dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
+    endif ! use_SPCAM
 
-    if (use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then 
-       allocate(dei_save(pcols, pver))
-       allocate(mu_save(pcols, pver))
-       allocate(lambdac_save(pcols, pver))
-       allocate(des_save(pcols, pver))
-       allocate(dei_crm(pcols, crm_nx, crm_ny, crm_nz))
-       allocate(mu_crm(pcols, crm_nx, crm_ny, crm_nz))
-       allocate(lambdac_crm(pcols, crm_nx, crm_ny, crm_nz))
-       allocate(des_crm(pcols, crm_nx, crm_ny, crm_nz))
+    if (use_SPCAM) then
+      allocate(dei_save(pcols, pver))
+      allocate(dei_crm(pcols, crm_nx, crm_ny, crm_nz))
+      if (SPCAM_microp_scheme .eq. 'm2005') then 
+        ! allocate(dei_save(pcols, pver))
+        allocate(mu_save(pcols, pver))
+        allocate(lambdac_save(pcols, pver))
+        allocate(des_save(pcols, pver))
+        ! allocate(dei_crm(pcols, crm_nx, crm_ny, crm_nz))
+        allocate(mu_crm(pcols, crm_nx, crm_ny, crm_nz))
+        allocate(lambdac_crm(pcols, crm_nx, crm_ny, crm_nz))
+        allocate(des_crm(pcols, crm_nx, crm_ny, crm_nz))
+      end if
     end if
 
     if (use_SPCAM) then 
-      solin_m =0.
-      fsntoa_m =0.
-      fsutoa_m =0.
-      fsntoac_m=0.
-      fsnirt_m=0.
-      fsnrtc_m=0.
-      fsnirtsq_m=0.
-      fsntc_m=0.
-      fsnsc_m=0.
-      fsdsc_m=0.
-      flut_m=0.
-      flutc_m=0.
-      flntc_m=0.
-      flnsc_m=0.
-      fldsc_m=0.
-      flwds_m=0.
-      fsns_m=0.
-      fsnt_m=0.
-      flns_m=0.
-      flnt_m=0.
-      fsds_m=0.
-      fln200_m=0.
-      fln200c_m=0.
-      fsn200_m=0.
-      fsn200c_m=0.
-      sols_m = 0.
-      soll_m = 0.
-      solsd_m = 0.
-      solld_m = 0.
-      qrs_m=0.
-      qrl_m=0.
-      qrsc_m=0.
-      qrlc_m=0.
-      qrs_crm=0.
-      qrl_crm=0.
-      emis_crm=0.
-      cld_tau_crm=0.0
-      crm_aodvisz = 0.
+      solin_m    = 0.
+      fsntoa_m   = 0. 
+      fsutoa_m   = 0.
+      fsntoac_m  = 0.
+      fsnirt_m   = 0. 
+      fsnrtc_m   = 0.
+      fsnirtsq_m = 0.
+      fsntc_m    = 0. 
+      fsnsc_m    = 0.
+      fsdsc_m    = 0.
+      flut_m     = 0. 
+      flutc_m    = 0.
+      flntc_m    = 0. 
+      flnsc_m    = 0.
+      fldsc_m    = 0. 
+      flwds_m    = 0.
+      fsns_m     = 0. 
+      fsnt_m     = 0.
+      flns_m     = 0. 
+      flnt_m     = 0.
+      fsds_m     = 0.
+      fln200_m   = 0. 
+      fln200c_m  = 0.
+      fsn200_m   = 0. 
+      fsn200c_m  = 0.
+      sols_m     = 0.
+      soll_m     = 0.
+      solsd_m    = 0.
+      solld_m    = 0.
+      qrs_m      = 0.
+      qrl_m      = 0.
+      qrsc_m     = 0.
+      qrlc_m     = 0.
+      qrs_crm    = 0.
+      qrl_crm    = 0.
+      emis_crm   = 0.
+      cld_tau_crm= 0.
+      crm_aodvisz= 0.
       crm_aodvis = 0.
-      crm_aod400 =0. ; crm_aod700 = 0.
-      aod400 = 0.; aod700 = 0.
-      crm_fsnt=0.  ; crm_fsntc=0. 
-      crm_fsns=0.  ; crm_fsnsc=0.
-      crm_flnt=0.  ; crm_flntc=0.
-      crm_flns=0.  ; crm_flnsc=0.
-      tot_cld_vistau=0
-      tot_icld_vistau=0.  ; nct_tot_icld_vistau=0.
-      liq_icld_vistau=0.  ; nct_liq_icld_vistau=0.
-      ice_icld_vistau=0.  ; nct_ice_icld_vistau=0.
-      snow_icld_vistau=0. ; nct_snow_icld_vistau=0.
+      crm_aod400 = 0. ; crm_aod700 = 0.
+      aod400     = 0. ; aod700     = 0.
+      crm_fsnt   = 0. ; crm_fsntc  = 0. 
+      crm_fsns   = 0. ; crm_fsnsc  = 0.
+      crm_flnt   = 0. ; crm_flntc  = 0.
+      crm_flns   = 0. ; crm_flnsc  = 0.
+      tot_cld_vistau   = 0
+      tot_icld_vistau  = 0. ; nct_tot_icld_vistau  = 0.
+      liq_icld_vistau  = 0. ; nct_liq_icld_vistau  = 0.
+      ice_icld_vistau  = 0. ; nct_ice_icld_vistau  = 0.
+      snow_icld_vistau = 0. ; nct_snow_icld_vistau = 0.
       if (spectralflux) then
-        su_m=0. ; sd_m=0.
-        lu_m=0. ; ld_m=0.
+        su_m = 0. ; sd_m = 0.
+        lu_m = 0. ; ld_m = 0.
       end if
 
       i_iciwp  = pbuf_get_index('ICIWP')
@@ -1384,10 +1379,15 @@ end function radiation_nextsw_cday
       i_icswp  = pbuf_get_index('ICSWP')
       call pbuf_get_field(pbuf, i_iciwp, cicewp)
       call pbuf_get_field(pbuf, i_iclwp, cliqwp)
-      call pbuf_get_field(pbuf, i_icswp, csnowp)
+      ! call pbuf_get_field(pbuf, i_icswp, csnowp)
       cicewp_save = cicewp     ! save to restore later
       cliqwp_save = cliqwp     ! save to restore later
-      csnowp_save = csnowp     ! save to restore later
+      ! csnowp_save = csnowp     ! save to restore later
+
+      if (SPCAM_microp_scheme .eq. 'm2005') then 
+        call pbuf_get_field(pbuf, i_icswp, csnowp)
+        csnowp_save = csnowp     ! save to restore later
+      end if
 
       crm_t_rad_idx   = pbuf_get_index('CRM_T_RAD')
       crm_qc_rad_idx  = pbuf_get_index('CRM_QC_RAD')
@@ -1420,22 +1420,24 @@ end function radiation_nextsw_cday
       factor_xy = 1./dble(crm_nx*crm_ny)
 
       cld_save = cld  ! save to restore later
-      cldfsnow_save = cldfsnow ! save to restore later
       rel_save = rel  ! save to restroe later
       rei_save = rei  ! save to restore later
+      dei_save = dei  ! save to restore later
       cld = 0.0_r8
-      cldfsnow = 0.0_r8
       rel = 0.0_r8
       rei = 0.0_r8
+      dei = 0.0_r8
+      if (cldfsnow_idx > 0) then
+        cldfsnow  = 0.0_r8
+        cldfsnow_save = cldfsnow
+      end if
       if (SPCAM_microp_scheme .eq. 'm2005') then 
-        dei_save = dei
         mu_save = mu
         lambdac_save = lambdac
         des_save = des
-        dei = 0.0_r8
-        mu = 0.0_r8
-        lambdac = 0.0_r8
-        des = 0.0_r8
+        mu        = 0.0_r8
+        lambdac   = 0.0_r8
+        des       = 0.0_r8
       endif
 
 #ifdef MODAL_AERO
@@ -1446,7 +1448,7 @@ end function radiation_nextsw_cday
       dgnumwet_save = dgnumwet
       qaerwat_save = qaerwat
 #endif /*MODAL_AERO*/
-  endif ! /*SPCAM*/
+    endif ! /*SPCAM*/
 
     if (dosw .or. dolw) then
 
@@ -1463,8 +1465,9 @@ end function radiation_nextsw_cday
 
       ! calculate effective radius - moved outside of ii,jj loops for 1-moment microphysics
       if (SPCAM_microp_scheme .eq. 'sam1mom') then 
-        call cldefr( lchnk, ncol, landfrac(:ncol), state%t(:ncol,:), rel(:ncol,:), rei(:ncol,:),  &
-                     state%ps(:ncol), state%pmid(:ncol,:), landm(:ncol), icefrac(:ncol), snowh(:ncol) )
+        ! call cldefr( lchnk, ncol, landfrac(:ncol), state%t(:ncol,:), rel(:ncol,:), rei(:ncol,:),  &
+        !              state%ps(:ncol), state%pmid(:ncol,:), landm(:ncol), icefrac(:ncol), snowh(:ncol) )
+        call cldefr( lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh )
       end if
 
       do jj=1,crm_ny 
@@ -1479,7 +1482,7 @@ end function radiation_nextsw_cday
               do i=1,ncol
 
                 trad(i,k) = t_rad(i,ii,jj,m)
-                qvrad(i,k) = max(1.e-9_r8,qv_rad(i,ii,jj,m))
+                qvrad(i,k) = max(1.e-9_r8,qv_rad(i,ii,jj,m))  ! whannah - this doesn't seem to be used
                 qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
                 if(qtot.gt.1.e-9) then
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
@@ -1488,7 +1491,7 @@ end function radiation_nextsw_cday
                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
                            / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
                   cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
-                           / max(0.01_r8,cld(i,k)) ! In-cloud liquid water path.
+                           / max(0.01_r8,cld(i,k)) ! In-cloud liquid water path. 
                 else
                   fice(i,k)=0.
                   cld(i,k)=0.
@@ -1509,9 +1512,9 @@ end function radiation_nextsw_cday
                     cldfsnow(i,k) = 0.0  
                     csnowp(i,k) = 0.0
                   end if
-                else
-                  cldfsnow(i,k) = 0.0  
-                  csnowp(i,k) = 0.0
+                ! else ! SPCAM_microp_scheme .eq. 'sam1mom'
+                !   cldfsnow(i,k) = 0.0  
+                !   csnowp(i,k) = 0.0
                 end if
 
                 ! update ice water, liquid water, water vapor, and temperature in state
@@ -1525,13 +1528,13 @@ end function radiation_nextsw_cday
                 !    This is not really phyisically correct. But if we assume 100% of relative humidity for 
                 !    aerosol water uptake, this will bias 'AODVIS' to be large, since 'AODVIS' is used 
                 !    to compare with observated clear sky AOD. In the future, AODVIS is needed to be calcualted
-                !    from clear sky CRM AOD only. But before this is done, we will assume no water uptake at CCRM
+                !    from clear sky CRM AOD only. But before this is done, we will assume no water uptake at CRM
                 !    cloudy grids (The radiative effects of this assumption will be small, since in cloudy sky, 
                 !    aerosol effects is small anyway. 
                 !    -Minghuai Wang (minghuai.wang@pnl.gov)
                 ! 
-                qaerwat(i, k, 1:ntot_amode)= qaerwat_crm(i, ii, jj, m, 1:ntot_amode)
-                dgnumwet(i, k, 1:ntot_amode)= dgnumwet_crm(i, ii, jj, m, 1:ntot_amode)
+                qaerwat(i, k, 1:ntot_amode)  =  qaerwat_crm(i, ii, jj, m, 1:ntot_amode)
+                dgnumwet(i, k, 1:ntot_amode) = dgnumwet_crm(i, ii, jj, m, 1:ntot_amode)
 #endif 
               end do ! i
             end do ! m
@@ -1547,7 +1550,7 @@ end function radiation_nextsw_cday
                                        1.0_r8, state%pmid(i,k), state%t(i,k), effl, effi, effl_fn, deffi, lamc, pgam, dest)
                   rel(i,k) = effl
                   rei(i,k) = effi
-                  dei(i,k) = deffi
+                  dei(i,k) = deffi 
                   mu(i,k)  = pgam 
                   lambdac(i,k) = lamc 
                   des(i,k) = dest
@@ -1562,20 +1565,25 @@ end function radiation_nextsw_cday
               end do ! m
             endif
 
+            ! whannah 
             if (SPCAM_microp_scheme .eq. 'sam1mom') then 
               ! for sam1mom, rel and rei are calcualted above, and are the same for all CRM columns
               do m=1,crm_nz
                 k = pver-m+1
                 rel_crm(:ncol,ii,jj,m)=rel(:ncol,k)
                 rei_crm(:ncol,ii,jj,m)=rei(:ncol,k)
+                
+                dei(:ncol,k) = rei(:ncol,k) * 2.0_r8
+                ! whannah - calculation of dei below is taken from m2005_effradius()
+                ! dei(:ncol,k) = rei(:ncol,k) * 500._r8/917._r8 * 2._r8
+                dei_crm(:ncol,ii,jj,m) = dei(:ncol,k)
               end do ! m
             end if
 #endif
-      endif !(*use_SPCAM*)
+          endif ! use_SPCAM
 
 
-     ! call t_stopf ('radiation_tend_init')   !==Guangxing Lin
-      
+       ! call t_stopf ('radiation_tend_init') 
        call t_startf('cldoptics')
 
        if (dosw) then
@@ -2191,18 +2199,22 @@ end function radiation_nextsw_cday
       cld = cld_save
       cicewp = cicewp_save
       cliqwp = cliqwp_save
-      csnowp = csnowp_save
-      cldfsnow = cldfsnow_save   
+      if (cldfsnow_idx > 0) then
+        csnowp = csnowp_save
+        cldfsnow = cldfsnow_save   
+      end if
       rel = rel_save
       rei = rei_save
       state = statein_copy
+      dei = dei_save
+      deallocate(dei_save)
       if (SPCAM_microp_scheme .eq. 'm2005') then
-         dei = dei_save
          mu  = mu_save
          lambdac = lambdac_save
          des = des_save
-         deallocate (dei_save, mu_save, lambdac_save, des_save)
+         deallocate (mu_save, lambdac_save, des_save)
       endif
+      
 #ifdef MODAL_AERO
       qaerwat = qaerwat_save
       dgnumwet = dgnumwet_save
@@ -2320,14 +2332,15 @@ end function radiation_nextsw_cday
 
        if (use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
           call outfld('CRM_MU   ', mu_crm,  pcols, lchnk)
-          call outfld('CRM_DEI  ', dei_crm, pcols, lchnk)
           call outfld('CRM_DES  ', des_crm, pcols, lchnk)
           call outfld('CRM_LAMBDA', lambdac_crm, pcols, lchnk)
           call outfld('CRM_TAU  ', cld_tau_crm, pcols, lchnk)
-          deallocate(dei_crm, des_crm, mu_crm, lambdac_crm)
+          deallocate(des_crm, mu_crm, lambdac_crm)
        endif
 
        if (use_SPCAM) then 
+          call outfld('CRM_DEI  ', dei_crm, pcols, lchnk)
+          deallocate(dei_crm)
           call outfld('CRM_REL  ', rel_crm, pcols, lchnk)
           call outfld('CRM_REI  ', rei_crm, pcols, lchnk)
           call outfld('CRM_QRL  ', qrl_crm, pcols, lchnk)
