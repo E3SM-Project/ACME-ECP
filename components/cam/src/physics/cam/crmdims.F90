@@ -4,7 +4,7 @@ module crmdims
     use params, only: crm_rknd
 #endif
     implicit none
-! whannah - non-SP not compiling without this #ifdef - says it can't find params.mod - not sure how to fix
+! whannah - non-SP configuration needs to know the value of crm_rknd, so I put it here
 #ifndef CRM 
     integer, parameter :: crm_rknd = 8  
 #endif

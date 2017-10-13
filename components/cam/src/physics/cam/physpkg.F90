@@ -2917,29 +2917,6 @@ if (l_rad) then
     if (use_SPCAM) ptend%s = 0.
 !-- mdb spcam
 
-! #ifdef WH_DEBUG_OUTPUT  
-    ! do k =1 , pver
-    !   do i = 1, ncol
-    !      rad_rrt(i,k) = ptend%s/state%pdel(i,k)
-    !   end do
-    ! end do
-!    call outfld("QR_TOT",rad_rrt(:,:pver),pcols, lchnk) 
-! #endif
-
-
-! #ifndef SP_RAD_MOD
-!     if (use_SPCAM) ptend%s = 0.
-! #else
-!     ! whannah - for ACME w/ 72 levels, retain the radiative tendencies above the CRM
-!     ! so only zero out DSE tendency for all but top 2 CRM levels
-!     ! possible fix for negative thickness errors?
-!     if (use_SPCAM) then 
-!       if (masterproc) write(iulog,*) '---- SP_RAD_MOD enabled ----'
-!       ! ptend%s(:ncol, :pver-crm_nz+2) = qrs(:ncol,:pver-crm_nz+2)+qrl(:ncol,:pver-crm_nz+2)
-!       ptend%s(:ncol,pver-crm_nz+3:pver) = 0.
-!     end if
-! #endif
-
     call physics_update(state, ptend, ztodt, tend)
     
 !-- mdb spcam

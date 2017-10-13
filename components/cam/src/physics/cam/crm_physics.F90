@@ -229,114 +229,113 @@ subroutine crm_physics_init(species_class)
 
 #ifdef ECPP
   if (use_ECPP) then
-     call papampollu_init ()
+    call papampollu_init ()
   end if
 #endif
 
   if (SPCAM_microp_scheme .eq. 'm2005') then
-     call addfld ('SPNC    ',(/ 'lev' /), 'A', '/kg   ','Cloud water dropet number from CRM')
-     call addfld ('SPNI    ',(/ 'lev' /), 'A', '/kg   ','Cloud ice crystal number from CRM')
-     call addfld ('SPNS    ',(/ 'lev' /), 'A', '/kg   ','Snow particle number from CRM')
-     call addfld ('SPNG    ',(/ 'lev' /), 'A', '/kg   ','Graupel particle number from CRM')
-     call addfld ('SPNR    ',(/ 'lev' /), 'A', '/kg   ','Rain particle number from CRM')
-     call add_default ('SPNC    ', 1, ' ')
-     call add_default ('SPNI    ', 1, ' ')
-     call add_default ('SPNS    ', 1, ' ')
-     call add_default ('SPNG    ', 1, ' ')
-     call add_default ('SPNR    ', 1, ' ')
+    call addfld ('SPNC    ',(/ 'lev' /), 'A', '/kg   ','Cloud water dropet number from CRM')
+    call addfld ('SPNI    ',(/ 'lev' /), 'A', '/kg   ','Cloud ice crystal number from CRM')
+    call addfld ('SPNS    ',(/ 'lev' /), 'A', '/kg   ','Snow particle number from CRM')
+    call addfld ('SPNG    ',(/ 'lev' /), 'A', '/kg   ','Graupel particle number from CRM')
+    call addfld ('SPNR    ',(/ 'lev' /), 'A', '/kg   ','Rain particle number from CRM')
+    call add_default ('SPNC    ', 1, ' ')
+    call add_default ('SPNI    ', 1, ' ')
+    call add_default ('SPNS    ', 1, ' ')
+    call add_default ('SPNG    ', 1, ' ')
+    call add_default ('SPNR    ', 1, ' ')
 
-     call addfld ('CRM_FLIQ ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Liquid'      )
-     call addfld ('CRM_FICE ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Ice'         )
-     call addfld ('CRM_FRAIN',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Rain'        )
-     call addfld ('CRM_FSNOW',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Snow'        )
-     call addfld ('CRM_FGRAP',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Graupel'     )
+    call addfld ('CRM_FLIQ ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Liquid'      )
+    call addfld ('CRM_FICE ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Ice'         )
+    call addfld ('CRM_FRAIN',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Rain'        )
+    call addfld ('CRM_FSNOW',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Snow'        )
+    call addfld ('CRM_FGRAP',(/'crm_nx','crm_ny','crm_nz'/), 'A', '1      ','Frequency of Occurrence of Graupel'     )
 
-     call addfld ('CRM_QS  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'kg/kg   ','Snow mixing ratio from CRM'             )
-     call addfld ('CRM_QG  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'kg/kg   ','Graupel mixing ratio from CRM'          )
-     call addfld ('CRM_QR  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'kg/kg   ','Rain mixing ratio from CRM'             )
+    call addfld ('CRM_QS  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'kg/kg   ','Snow mixing ratio from CRM'             )
+    call addfld ('CRM_QG  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'kg/kg   ','Graupel mixing ratio from CRM'          )
+    call addfld ('CRM_QR  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'kg/kg   ','Rain mixing ratio from CRM'             )
 
-     call addfld ('CRM_NC  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Cloud water dropet number from CRM'     )
-     call addfld ('CRM_NI  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Cloud ice crystal number from CRM'      )
-     call addfld ('CRM_NS  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Snow particle number from CRM'          )
-     call addfld ('CRM_NG  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Graupel particle number from CRM'       )
-     call addfld ('CRM_NR  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Rain particle number from CRM'          )
+    call addfld ('CRM_NC  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Cloud water dropet number from CRM'     )
+    call addfld ('CRM_NI  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Cloud ice crystal number from CRM'      )
+    call addfld ('CRM_NS  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Snow particle number from CRM'          )
+    call addfld ('CRM_NG  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Graupel particle number from CRM'       )
+    call addfld ('CRM_NR  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/kg     ','Rain particle number from CRM'          )
 
-! hm 7/26/11, add new output
-! below is for *instantaneous* crm output
-     call addfld ('CRM_AUT  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Autoconversion cloud waterfrom CRM'     )
-     call addfld ('CRM_ACC  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Accretion cloud water from CRM'         )
-     call addfld ('CRM_EVPC ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Evaporation cloud water from CRM'       )
-     call addfld ('CRM_EVPR ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Evaporation rain from CRM'              )
-     call addfld ('CRM_MLT  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Melting ice snow graupel from CRM'      )
-     call addfld ('CRM_SUB  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Sublimation ice snow graupel from CRM'  )
-     call addfld ('CRM_DEP  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Deposition ice snow graupel from CRM'   )
-     call addfld ('CRM_CON  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Condensation cloud water from CRM'      )
+    ! hm 7/26/11, add new output
+    ! below is for *instantaneous* crm output
+    call addfld ('CRM_AUT  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Autoconversion cloud waterfrom CRM'     )
+    call addfld ('CRM_ACC  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Accretion cloud water from CRM'         )
+    call addfld ('CRM_EVPC ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Evaporation cloud water from CRM'       )
+    call addfld ('CRM_EVPR ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Evaporation rain from CRM'              )
+    call addfld ('CRM_MLT  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Melting ice snow graupel from CRM'      )
+    call addfld ('CRM_SUB  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Sublimation ice snow graupel from CRM'  )
+    call addfld ('CRM_DEP  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Deposition ice snow graupel from CRM'   )
+    call addfld ('CRM_CON  ',(/'crm_nx','crm_ny','crm_nz'/), 'A', '/s     ','Condensation cloud water from CRM'      )
 
-! hm 8/31/11
-! below is for *gcm-grid and time-step-avg* process output
-     call addfld ('A_AUT  ',(/ 'lev' /), 'A', '/s   ','Avg autoconversion cloud water from CRM'            )
-     call addfld ('A_ACC  ',(/ 'lev' /), 'A', '/s   ','Avg accretion cloud water from CRM'                 )
-     call addfld ('A_EVPC ',(/ 'lev' /), 'A', '/s   ','Avg evaporation cloud water from CRM'               )
-     call addfld ('A_EVPR ',(/ 'lev' /), 'A', '/s   ','Avg evaporation rain from CRM'                      )
-     call addfld ('A_MLT  ',(/ 'lev' /), 'A', '/s   ','Avg melting ice snow graupel from CRM'              )
-     call addfld ('A_SUB  ',(/ 'lev' /), 'A', '/s   ','Avg sublimation ice snow graupel from CRM'          )
-     call addfld ('A_DEP  ',(/ 'lev' /), 'A', '/s   ','Avg deposition ice snow graupel from CRM'           )
-     call addfld ('A_CON  ',(/ 'lev' /), 'A', '/s   ','Avg condensation cloud water from CRM'              )
+    ! hm 8/31/11 -  *gcm-grid and time-step-avg* process output
+    call addfld ('A_AUT  ',(/ 'lev' /), 'A', '/s   ','Avg autoconversion cloud water from CRM'            )
+    call addfld ('A_ACC  ',(/ 'lev' /), 'A', '/s   ','Avg accretion cloud water from CRM'                 )
+    call addfld ('A_EVPC ',(/ 'lev' /), 'A', '/s   ','Avg evaporation cloud water from CRM'               )
+    call addfld ('A_EVPR ',(/ 'lev' /), 'A', '/s   ','Avg evaporation rain from CRM'                      )
+    call addfld ('A_MLT  ',(/ 'lev' /), 'A', '/s   ','Avg melting ice snow graupel from CRM'              )
+    call addfld ('A_SUB  ',(/ 'lev' /), 'A', '/s   ','Avg sublimation ice snow graupel from CRM'          )
+    call addfld ('A_DEP  ',(/ 'lev' /), 'A', '/s   ','Avg deposition ice snow graupel from CRM'           )
+    call addfld ('A_CON  ',(/ 'lev' /), 'A', '/s   ','Avg condensation cloud water from CRM'              )
 
-     call addfld ('CRM_REL  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale droplet effective radius')
-     call addfld ('CRM_REI  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale ice crystal effective radius')
-     call addfld ('CRM_DEI  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale Mitchell ice effective diameter')
-     call addfld ('CRM_DES  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale snow effective diameter')
-     call addfld ('CRM_MU   ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', &
-                                                 'cloud scale droplet size distribution shape parameter for radiation')
-     call addfld ('CRM_LAMBDA',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers',  &
-                                                 'cloud scale slope of droplet distribution for radiation')
-     call addfld ('CRM_TAU  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', '1',           'cloud scale cloud optical depth'  )
-     call addfld ('CRM_WVAR' , (/'crm_nx','crm_ny','crm_nz'/), 'A', 'm/s',         'vertical velocity variance from CRM')
+    call addfld ('CRM_DES  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale snow effective diameter')
+    call addfld ('CRM_MU   ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', &
+                                               'cloud scale droplet size distribution shape parameter for radiation')
+    call addfld ('CRM_LAMBDA',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers',  &
+                                               'cloud scale slope of droplet distribution for radiation')
+    call addfld ('CRM_TAU  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', '1',           'cloud scale cloud optical depth'  )
+    call addfld ('CRM_WVAR' , (/'crm_nx','crm_ny','crm_nz'/), 'A', 'm/s',         'vertical velocity variance from CRM')
+  endif
 
-     call addfld ('CRM_FSNT',  (/'crm_nx','crm_ny'/),          'A',  'unitless', 'net TOA shortwave fluxes at CRM grids')
-     call addfld ('CRM_FSNTC', (/'crm_nx','crm_ny'/),          'A',  'unitless', 'net TOA clear-sky shortwave fluxes at CRM grids')
-     call addfld ('CRM_FSNS',  (/'crm_nx','crm_ny'/),          'A',  'unitless', 'net surface shortwave fluxes at CRM grids')
-     call addfld ('CRM_FSNSC', (/'crm_nx','crm_ny'/),          'A',  'unitless',  &
-                                                 'net surface clear-sky shortwave fluxes at CRM grids')
-     call addfld ('CRM_FLNT',  (/'crm_nx','crm_ny'/),          'A',  'unitless', 'net TOA longwave fluxes at CRM grids')
-     call addfld ('CRM_FLNTC', (/'crm_nx','crm_ny'/),          'A',  'unitless', 'net TOA clear-sky longwave fluxes at CRM grids')
-     call addfld ('CRM_FLNS',  (/'crm_nx','crm_ny'/),          'A',  'unitless', 'net surface longwave fluxes at CRM grids')
-     call addfld ('CRM_FLNSC', (/'crm_nx','crm_ny'/),          'A',  'unitless',  &
-                                                 'net surface clear-sky longwave fluxes at CRM grids')
+  call addfld ('CRM_DEI  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale Mitchell ice effective diameter')
+  call addfld ('CRM_REL  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale droplet effective radius')
+  call addfld ('CRM_REI  ', (/'crm_nx','crm_ny','crm_nz'/), 'A', 'micrometers', 'cloud scale ice crystal effective radius')
 
-     call addfld ('CRM_AODVIS', (/'crm_nx','crm_ny'/),          'A', 'unitless', 'Aerosol optical depth at 550nm in CRM grids',&
-                                                                                                               flag_xyfill=.true.)
-     call addfld ('CRM_AOD400', (/'crm_nx','crm_ny'/),          'A', 'unitless', 'Aerosol optical depth at 400nm in CRM grids',&
-                                                                                                               flag_xyfill=.true.)
-     call addfld ('CRM_AOD700', (/'crm_nx','crm_ny'/),          'A', 'unitless', 'Aerosol optical depth at 700nm in CRM grids', &
-                                                                                                               flag_xyfill=.true.)
-     call addfld ('CRM_AODVISZ',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'unitless',  &
-                                                  'Aerosol optical depth at each layer at 500nm in CRM grids', flag_xyfill=.true.)
-     call addfld ('AOD400',      horiz_only,                    'A', 'unitless', 'Aerosol optical depth at 400nm', &
-                                                                                                               flag_xyfill=.true.)
-     call addfld ('AOD700',      horiz_only,                    'A', 'unitless', 'Aerosol optical depth at 700nm', &
-                                                                                                               flag_xyfill=.true.)
-     call add_default ('AOD400',  1, ' ')
-     call add_default ('AOD700',  1, ' ')
-   endif
+  call addfld ('CRM_FSNT',  (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net TOA shortwave fluxes at CRM grids')
+  call addfld ('CRM_FSNTC', (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net TOA clear-sky shortwave fluxes at CRM grids')
+  call addfld ('CRM_FSNS',  (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net surface shortwave fluxes at CRM grids')
+  call addfld ('CRM_FSNSC', (/'crm_nx','crm_ny'/), 'A',  'unitless',  'net surface clear-sky shortwave fluxes at CRM grids')
+  call addfld ('CRM_FLNT',  (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net TOA longwave fluxes at CRM grids')
+  call addfld ('CRM_FLNTC', (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net TOA clear-sky longwave fluxes at CRM grids')
+  call addfld ('CRM_FLNS',  (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net surface longwave fluxes at CRM grids')
+  call addfld ('CRM_FLNSC', (/'crm_nx','crm_ny'/), 'A',  'unitless', 'net surface clear-sky longwave fluxes at CRM grids')
+
+  call addfld ('CRM_AODVIS', (/'crm_nx','crm_ny'/),          'A', 'unitless', 'Aerosol optical depth at 550nm in CRM grids',&
+                                                                                                           flag_xyfill=.true.)
+  call addfld ('CRM_AOD400', (/'crm_nx','crm_ny'/),          'A', 'unitless', 'Aerosol optical depth at 400nm in CRM grids',&
+                                                                                                           flag_xyfill=.true.)
+  call addfld ('CRM_AOD700', (/'crm_nx','crm_ny'/),          'A', 'unitless', 'Aerosol optical depth at 700nm in CRM grids', &
+                                                                                                           flag_xyfill=.true.)
+  call addfld ('CRM_AODVISZ',(/'crm_nx','crm_ny','crm_nz'/), 'A', 'unitless',  &
+                                              'Aerosol optical depth at each layer at 500nm in CRM grids', flag_xyfill=.true.)
+  call addfld ('AOD400',      horiz_only,                    'A', 'unitless', 'Aerosol optical depth at 400nm', &
+                                                                                                           flag_xyfill=.true.)
+  call addfld ('AOD700',      horiz_only,                    'A', 'unitless', 'Aerosol optical depth at 700nm', &
+                                                                                                           flag_xyfill=.true.)
+  call add_default ('AOD400',  1, ' ')
+  call add_default ('AOD700',  1, ' ')
+   
 #ifdef CLUBB_CRM
-     call addfld ('UP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'u prime ^2 from clubb')
-     call addfld ('VP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime ^2 from clubb')
-     call addfld ('WPRTP   ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'mkg/skg',    'w prime * rt prime from clubb')
-     call addfld ('WPTHLP  ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'mK/s',       'w prime * th_l prime from clubb')
-     call addfld ('WP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'w prime ^2 from clubb')
-     call addfld ('WP3     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^3/s^3',    'w prime ^3 from clubb')
-     call addfld ('RTP2    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', '(kg/kg)2',   'r_t prime ^2 from clubb')
-     call addfld ('THLP2   ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'K^2',        'th_l_prime ^2 from clubb')
-     call addfld ('RTPTHLP ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'kgK/kg',     'r_t prime * th_l prime  from clubb')
-     call addfld ('UPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'u prime * w prime from clubb')
-     call addfld ('VPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime * w prime from clubb')
-     call addfld ('CRM_CLD ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'fraction',   'cloud fraction from clubb')
+  call addfld ('UP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'u prime ^2 from clubb')
+  call addfld ('VP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime ^2 from clubb')
+  call addfld ('WPRTP   ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'mkg/skg',    'w prime * rt prime from clubb')
+  call addfld ('WPTHLP  ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'mK/s',       'w prime * th_l prime from clubb')
+  call addfld ('WP2     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'w prime ^2 from clubb')
+  call addfld ('WP3     ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^3/s^3',    'w prime ^3 from clubb')
+  call addfld ('RTP2    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', '(kg/kg)2',   'r_t prime ^2 from clubb')
+  call addfld ('THLP2   ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'K^2',        'th_l_prime ^2 from clubb')
+  call addfld ('RTPTHLP ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'kgK/kg',     'r_t prime * th_l prime  from clubb')
+  call addfld ('UPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'u prime * w prime from clubb')
+  call addfld ('VPWP    ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'm^2/s^2',    'v prime * w prime from clubb')
+  call addfld ('CRM_CLD ',    (/'crm_nx','crm_ny','crm_z1'/), 'A', 'fraction',   'cloud fraction from clubb')
 #endif
 !==Guangxing Lin New CRM
-     call addfld ('CRM_TK',  (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
-     call addfld ('CRM_TKH', (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
+  call addfld ('CRM_TK',  (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
+  call addfld ('CRM_TKH', (/'crm_nx','crm_ny','crm_nz'/), 'A','m^2/s',   'Eddy viscosity from CRM')
 !==Guangxing Lin New CRM
 #ifdef ECPP
   if (use_ECPP) then
@@ -547,52 +546,49 @@ end subroutine crm_physics_init
    use convect_deep,    only: convect_deep_tend_2, deep_scheme_does_scav_trans
    !!!use aerosol_intr,    only: aerosol_wet_intr
 
-   use ieee_arithmetic   ! whannah - used for tracking down a NaN issue 
+   ! use ieee_arithmetic   ! whannah - used for tracking down a NaN issue 
 
 
-! whannah - I had to add this to run the non-SP model, since the compiler couldn't find params.F90
+! whannah - need this for non-SP model, otherwise the compiler couldn't find params.F90
 #ifndef CRM
     integer, parameter :: crm_rknd = 8
 #endif
 
-   real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
-   type(physics_state), intent(inout) :: state   !  state should be intent(in), but it is changed in this subroutine,
-                                                ! and physics_update is also called in this subroutine. It should be changed 
-                                                ! in the future. -Minghuai Wang (Minghuai.Wang@pnl.gov). 
+   real(r8), intent(in) :: ztodt                  ! 2 delta t (model time increment)
+   type(physics_state), intent(inout) :: state    ! state should be intent(in), but it is changed in this subroutine,
+                                                  ! and physics_update is also called in this subroutine. It should be changed 
+                                                  ! in the future. -Minghuai Wang (Minghuai.Wang@pnl.gov). 
    type(physics_tend), intent(inout) :: tend
    type(physics_ptend ), intent(out) :: ptend
    type(physics_buffer_desc),pointer :: pbuf(:)
-   real(r8), intent(in) :: dlf(pcols,pver)           ! shallow+deep convective detrainment [kg/kg/s]
+   real(r8), intent(in) :: dlf(pcols,pver)        ! shallow+deep convective detrainment [kg/kg/s]
    type (cam_in_t), intent(in)      :: cam_in
    type (cam_out_t), intent(inout)  :: cam_out
 
-!==Guangxing Lin
-   integer, intent(in) :: species_class(:)
-!==Guangxing Lin
+   integer, intent(in) :: species_class(:)    !==Guangxing Lin
 
 ! convective precipitation variables
-   real(r8), pointer :: prec_dp(:)                ! total precipitation from ZM convection [m/s]
-   real(r8), pointer :: snow_dp(:)                ! snow from ZM convection                [m/s]
-   real(r8), pointer :: prec_sh(:)                ! total precipitation from Hack convection [m/s]
-   real(r8), pointer :: snow_sh(:)                ! snow from Hack convection              [m/s]
+   real(r8), pointer :: prec_dp(:)           ! total precipitation from ZM convection [m/s]
+   real(r8), pointer :: snow_dp(:)           ! snow from ZM convection                [m/s]
+   real(r8), pointer :: prec_sh(:)           ! total precipitation from Hack convection [m/s]
+   real(r8), pointer :: snow_sh(:)           ! snow from Hack convection              [m/s]
 
 ! stratiform precipitation variables
-   real(r8), pointer :: prec_pcw(:)     ! total precip from prognostic cloud scheme   [m/s]
-   real(r8), pointer :: snow_pcw(:)     ! snow from prognostic cloud scheme           [m/s]
-   real(r8), pointer :: prec_sed(:)     ! total precip from cloud sedimentation       [m/s]
-   real(r8), pointer :: snow_sed(:)     ! snow from cloud ice sedimentation           [m/s]
+   real(r8), pointer :: prec_pcw(:)         ! total precip from prognostic cloud scheme   [m/s]
+   real(r8), pointer :: snow_pcw(:)         ! snow from prognostic cloud scheme           [m/s]
+   real(r8), pointer :: prec_sed(:)         ! total precip from cloud sedimentation       [m/s]
+   real(r8), pointer :: snow_sed(:)         ! snow from cloud ice sedimentation           [m/s]
 
+   real(r8), pointer ::  nc_rad(:,:,:,:)    ! rad cloud water droplet number [#/kg]
+   real(r8), pointer ::  ni_rad(:,:,:,:)    ! rad cloud ice crystal number [#/kg]
+   real(r8), pointer ::  qs_rad(:,:,:,:)    ! rad cloud snow mass [kg/kg]
+   real(r8), pointer ::  ns_rad(:,:,:,:)    ! rad cloud snow crystal number [#/kg]
+   real(r8), pointer ::  cld_rad(:,:,:,:)   ! cloud fraction
 
-   real(r8), pointer ::  nc_rad(:,:,:,:) ! rad cloud water droplet number [#/kg]
-   real(r8), pointer ::  ni_rad(:,:,:,:) ! rad cloud ice crystal number [#/kg]
-   real(r8), pointer ::  qs_rad(:,:,:,:) ! rad cloud snow mass [kg/kg]
-   real(r8), pointer ::  ns_rad(:,:,:,:) ! rad cloud snow crystal number [#/kg]
-   real(r8), pointer ::  cld_rad(:,:,:,:)  ! cloud fraction
-
-   real(r8), pointer ::  t_rad (:,:,:,:) ! rad temperuture
-   real(r8), pointer ::  qv_rad(:,:,:,:) ! rad vapor
-   real(r8), pointer ::  qc_rad(:,:,:,:) ! rad cloud water
-   real(r8), pointer ::  qi_rad(:,:,:,:) ! rad cloud ice
+   real(r8), pointer ::  t_rad (:,:,:,:)    ! rad temperuture
+   real(r8), pointer ::  qv_rad(:,:,:,:)    ! rad vapor
+   real(r8), pointer ::  qc_rad(:,:,:,:)    ! rad cloud water
+   real(r8), pointer ::  qi_rad(:,:,:,:)    ! rad cloud ice
    real(r8), pointer ::  crm_qrad(:,:,:,:)
    real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
 ! at layer center
@@ -846,7 +842,7 @@ end subroutine crm_physics_init
 
    logical :: ls, lu, lv, lq(pcnst), fromcrm
 
-   real(r8) tmp1 ! whannah: to help feed the fluxes to CRM right before the call to CRM. 
+   real(r8) tmp1          ! whannah: to help feed the fluxes to CRM right before the call to CRM. 
    integer :: icol(pcols)
 
    zero = 0.0_r8
@@ -2140,7 +2136,7 @@ end subroutine crm_physics_init
     !----------------------------------------------------
     ! Modal aerosol wet radius for radiative calculation
     !----------------------------------------------------
-! whannah - added ifdef check for MODAL_AERO so 1-moment will compile
+! whannah - added ifdef check for MODAL_AERO so 1-moment w/o modal aerosols will compile
 #if defined(MODAL_AERO)  
     !==Guangxing Lin - temporarily turn on all lq, so it is allocated
     lq(:) = .true.
