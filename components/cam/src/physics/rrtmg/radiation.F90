@@ -1201,7 +1201,7 @@ end function radiation_nextsw_cday
     endif
 
     lchnk = state%lchnk
-    ncol = state%ncol
+    ncol  = state%ncol
 
     calday = get_curr_calday()
 
@@ -1432,12 +1432,12 @@ end function radiation_nextsw_cday
         cldfsnow_save = cldfsnow
       end if
       if (SPCAM_microp_scheme .eq. 'm2005') then 
-        mu_save = mu
+        mu_save      = mu
         lambdac_save = lambdac
-        des_save = des
-        mu        = 0.0_r8
-        lambdac   = 0.0_r8
-        des       = 0.0_r8
+        des_save     = des
+        mu      = 0.0_r8
+        lambdac = 0.0_r8
+        des     = 0.0_r8
       endif
 
 #ifdef MODAL_AERO
@@ -1465,8 +1465,6 @@ end function radiation_nextsw_cday
 
       ! calculate effective radius - moved outside of ii,jj loops for 1-moment microphysics
       if (SPCAM_microp_scheme .eq. 'sam1mom') then 
-        ! call cldefr( lchnk, ncol, landfrac(:ncol), state%t(:ncol,:), rel(:ncol,:), rei(:ncol,:),  &
-        !              state%ps(:ncol), state%pmid(:ncol,:), landm(:ncol), icefrac(:ncol), snowh(:ncol) )
         call cldefr( lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh )
       end if
 
@@ -1523,16 +1521,16 @@ end function radiation_nextsw_cday
                 state%q(i,k,1)        =  max(1.e-9_r8,qv_rad(i,ii,jj,m))
                 state%t(i,k)          =  t_rad(i, ii, jj, m)
 #ifdef MODAL_AERO
-                !    Using CRM scale aerosol water to calculate aerosol optical depth. 
-                !    Here we assume no aerosol water uptake at cloudy sky at CRM grids. 
-                !    This is not really phyisically correct. But if we assume 100% of relative humidity for 
-                !    aerosol water uptake, this will bias 'AODVIS' to be large, since 'AODVIS' is used 
-                !    to compare with observated clear sky AOD. In the future, AODVIS is needed to be calcualted
-                !    from clear sky CRM AOD only. But before this is done, we will assume no water uptake at CRM
-                !    cloudy grids (The radiative effects of this assumption will be small, since in cloudy sky, 
-                !    aerosol effects is small anyway. 
-                !    -Minghuai Wang (minghuai.wang@pnl.gov)
-                ! 
+                !!! Using CRM scale aerosol water to calculate aerosol optical depth. 
+                !!! Here we assume no aerosol water uptake at cloudy sky at CRM grids. 
+                !!! This is not really phyisically correct. But if we assume 100% of relative humidity for 
+                !!! aerosol water uptake, this will bias 'AODVIS' to be large, since 'AODVIS' is used 
+                !!! to compare with observated clear sky AOD. In the future, AODVIS is needed to be calcualted
+                !!! from clear sky CRM AOD only. But before this is done, we will assume no water uptake at CRM
+                !!! cloudy grids (The radiative effects of this assumption will be small, since in cloudy sky, 
+                !!! aerosol effects is small anyway. 
+                !!! -Minghuai Wang (minghuai.wang@pnl.gov)
+                !!! 
                 qaerwat(i, k, 1:ntot_amode)  =  qaerwat_crm(i, ii, jj, m, 1:ntot_amode)
                 dgnumwet(i, k, 1:ntot_amode) = dgnumwet_crm(i, ii, jj, m, 1:ntot_amode)
 #endif 
@@ -1548,19 +1546,19 @@ end function radiation_nextsw_cday
                   call m2005_effradius(qc_rad(i,ii,jj,m), nc_rad(i,ii,jj,m), qi_rad(i,ii,jj,m), &
                                        ni_rad(i,ii,jj,m), qs_rad(i,ii,jj,m), ns_rad(i,ii,jj,m),  &
                                        1.0_r8, state%pmid(i,k), state%t(i,k), effl, effi, effl_fn, deffi, lamc, pgam, dest)
-                  rel(i,k) = effl
-                  rei(i,k) = effi
-                  dei(i,k) = deffi 
-                  mu(i,k)  = pgam 
+                  rel(i,k)     = effl
+                  rei(i,k)     = effi
+                  dei(i,k)     = deffi 
+                  mu(i,k)      = pgam 
                   lambdac(i,k) = lamc 
-                  des(i,k) = dest
-                  dei_crm(i,ii,jj,m) = dei(i,k)
-                  mu_crm(i,ii,jj,m) = mu(i,k)
-                  lambdac_crm(i,ii,jj,m)= lambdac(i,k)
-                  des_crm(i,ii,jj,m) = des(i,k)
+                  des(i,k)     = dest
+                  dei_crm(i,ii,jj,m)     = dei(i,k)
+                  mu_crm(i,ii,jj,m)      = mu(i,k)
+                  lambdac_crm(i,ii,jj,m) = lambdac(i,k)
+                  des_crm(i,ii,jj,m)     = des(i,k)
                 
-                  rel_crm(i,ii,jj,m)=rel(i,k)
-                  rei_crm(i,ii,jj,m)=rei(i,k)
+                  rel_crm(i,ii,jj,m) = rel(i,k)
+                  rei_crm(i,ii,jj,m) = rei(i,k)
                 end do ! i
               end do ! m
             endif
@@ -2095,7 +2093,7 @@ end function radiation_nextsw_cday
                      fldsc(:) = 0._r8
                   end if !lwrad_off
 		  
-		  do i=1,ncol
+		              do i=1,ncol
                      lwcf(i)=flutc(i) - flut(i)
                   end do
 
@@ -2105,28 +2103,28 @@ end function radiation_nextsw_cday
 
                   if (use_SPCAM) then
                      do i=1, ncol
-                        qrl_m(i,:pver, icall) = qrl_m(i,:pver, icall) + qrl(i,:pver)*factor_xy
+                        qrl_m (i,:pver, icall) = qrl_m (i,:pver, icall) + qrl (i,:pver)*factor_xy
                         qrlc_m(i,:pver, icall) = qrlc_m(i,:pver, icall) + qrlc(i,:pver)*factor_xy
-                        flnt_m(i, icall)  = flnt_m(i, icall)+flnt(i) *factor_xy
-                        flut_m(i, icall)  = flut_m(i, icall)+flut(i) *factor_xy
-                        flutc_m(i, icall)  = flutc_m(i, icall)+flutc(i) *factor_xy
-                        flntc_m(i, icall)  = flntc_m(i, icall)+flntc(i) *factor_xy
-                        flns_m(i, icall)  = flns_m(i, icall)+flns(i) *factor_xy
-                        flnsc_m(i, icall)  = flnsc_m(i, icall)+flnsc(i) *factor_xy
-                        fldsc_m(i, icall)  = fldsc_m(i, icall)+fldsc(i) *factor_xy
-                        flwds_m(i, icall)  = flwds_m(i, icall)+cam_out%flwds(i) *factor_xy
-                        fln200_m(i, icall) = fln200_m(i, icall)+fln200(i) *factor_xy
-                        fln200c_m(i, icall) = fln200c_m(i, icall)+fln200c(i) *factor_xy
+                        flnt_m   (i, icall) = flnt_m   (i, icall)+flnt(i)          *factor_xy
+                        flut_m   (i, icall) = flut_m   (i, icall)+flut(i)          *factor_xy
+                        flutc_m  (i, icall) = flutc_m  (i, icall)+flutc(i)         *factor_xy
+                        flntc_m  (i, icall) = flntc_m  (i, icall)+flntc(i)         *factor_xy
+                        flns_m   (i, icall) = flns_m   (i, icall)+flns(i)          *factor_xy
+                        flnsc_m  (i, icall) = flnsc_m  (i, icall)+flnsc(i)         *factor_xy
+                        fldsc_m  (i, icall) = fldsc_m  (i, icall)+fldsc(i)         *factor_xy
+                        flwds_m  (i, icall) = flwds_m  (i, icall)+cam_out%flwds(i) *factor_xy
+                        fln200_m (i, icall) = fln200_m (i, icall)+fln200(i)        *factor_xy
+                        fln200c_m(i, icall) = fln200c_m(i, icall)+fln200c(i)       *factor_xy
                         if (spectralflux) then
                            lu_m(i,:,:,icall) = lu_m(i,:,:,icall) + lu(i,:,:)*factor_xy
                            ld_m(i,:,:,icall) = ld_m(i,:,:,icall) + ld(i,:,:)*factor_xy
                         end if
 
                         if(icall.eq.0) then  ! for the climate run
-                          crm_flnt(i, ii, jj) = flnt(i)
-                          crm_flntc(i,ii,jj)  = flntc(i)
-                          crm_flns(i, ii, jj) = flns(i)
-                          crm_flnsc(i,ii,jj)  = flnsc(i)
+                          crm_flnt (i,ii,jj) = flnt(i)
+                          crm_flntc(i,ii,jj) = flntc(i)
+                          crm_flns (i,ii,jj) = flns(i)
+                          crm_flnsc(i,ii,jj) = flnsc(i)
                           do m=1,crm_nz
                              k = pver-m+1
                              qrl_crm(:ncol,ii,jj,m) = qrl(:ncol,k) / cpair
@@ -2137,18 +2135,18 @@ end function radiation_nextsw_cday
    
                      if(last_column) then
                       do i=1, ncol
-                        qrl(i,:pver) = qrl_m(i,:pver, icall)
+                        qrl (i,:pver) = qrl_m(i,:pver, icall)
                         qrlc(i,:pver) = qrlc_m(i,:pver, icall)
-                        flnt(i)  = flnt_m(i, icall)
-                        flut(i)  = flut_m(i, icall)
-                        flutc(i)  = flutc_m(i, icall)
-                        flntc(i)  = flntc_m(i, icall)
-                        flns(i)  = flns_m(i, icall)
-                        flnsc(i)  = flnsc_m(i, icall)
+                        flnt (i) = flnt_m (i, icall)
+                        flut (i) = flut_m (i, icall)
+                        flutc(i) = flutc_m(i, icall)
+                        flntc(i) = flntc_m(i, icall)
+                        flns (i) = flns_m (i, icall)
+                        flnsc(i) = flnsc_m(i, icall)
                         fldsc(i) = fldsc_m(i, icall)
                         cam_out%flwds(i) = flwds_m(i, icall)
-                        fln200(i)  = fln200_m(i, icall)
-                        fln200c(i)  = fln200c_m(i, icall)
+                        fln200 (i) = fln200_m (i, icall)
+                        fln200c(i) = fln200c_m(i, icall)
                         if (spectralflux) then
                            lu(i,:,:) = lu_m(i,:,:,icall)
                            ld(i,:,:) = ld_m(i,:,:,icall)
@@ -2196,27 +2194,27 @@ end function radiation_nextsw_cday
 
    if (use_SPCAM) then 
 ! restore to the old values in pbuf and for state
-      cld = cld_save
+      cld    = cld_save
       cicewp = cicewp_save
       cliqwp = cliqwp_save
       if (cldfsnow_idx > 0) then
-        csnowp = csnowp_save
+        csnowp   = csnowp_save
         cldfsnow = cldfsnow_save   
       end if
-      rel = rel_save
-      rei = rei_save
+      rel   = rel_save
+      rei   = rei_save
       state = statein_copy
-      dei = dei_save
+      dei   = dei_save
       deallocate(dei_save)
       if (SPCAM_microp_scheme .eq. 'm2005') then
-         mu  = mu_save
+         mu      = mu_save
          lambdac = lambdac_save
-         des = des_save
+         des     = des_save
          deallocate (mu_save, lambdac_save, des_save)
       endif
       
 #ifdef MODAL_AERO
-      qaerwat = qaerwat_save
+      qaerwat  = qaerwat_save
       dgnumwet = dgnumwet_save
 #endif
 
