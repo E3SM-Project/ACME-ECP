@@ -51,12 +51,10 @@
       <value compset="_CAM5%AV1C-03"  >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
       <value compset="_CAM5%AV1C-04"  >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
       <value compset="_CAM5%AV1C-04P" >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
-      <value compset="_CAM5%AV1C-04P2" >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
+      <value compset="_CAM5%AV1C-04P2">-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
       <value compset="_CAM5%AV1C-L"   >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
-      <value compset="_CAM5%AV1C-SP1"   >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72 -use_SPCAM -crm_nx 32 -crm_ny 1 -crm_nz 58 -crm_dx 1000 -crm_dt 10 -SPCAM_microp_scheme sam1mom -crm_adv MPDATA</value>
-      <value compset="_CAM5%AV1C-SP2"   >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72 -use_SPCAM -crm_nx 32 -crm_ny 1 -crm_nz 58 -crm_dx 1000 -crm_dt 10 -SPCAM_microp_scheme m2005 -crm_adv MPDATA</value>
-      <value compset="_CAM5%AV1C-H01A" >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
-      <value compset="_CAM5%AV1C-H01B" >-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
+      <value compset="_CAM5%AV1C-H01A">-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
+      <value compset="_CAM5%AV1C-H01B">-clubb_sgs -microphys mg2 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero -nlev 72</value>
       <value compset="_CAM5%AV1F"     >-clubb_sgs -microphys mg2 -chem trop_mam4_resus      -rain_evap_to_coarse_aero -nlev 72</value>
       <value compset="_CAM5%AV1F-00"  >-clubb_sgs -microphys mg2 -chem trop_mam4_resus      -rain_evap_to_coarse_aero -nlev 72</value>
       <value compset="_CAM5%AV1F-01"  >-clubb_sgs -microphys mg2 -chem trop_mam4_resus_soag -rain_evap_to_coarse_aero -nlev 72</value>
@@ -93,6 +91,14 @@
       <value compset="_CAM[45]%WCBC"  >-carma bc_strat</value>
       <value compset="_CAM4%WCSF"     >-chem waccm_mozart_sulfur -carma sulfate</value>
       <value compset="_CAM[45]%WCMX"  >-waccmx</value>
+      <!-- Super-Parameterization -->
+      <value compset="_CAM%SP"        > -use_SPCAM -crm_adv MPDATA -nlev 72 -crm_nz 58 -crm_nx 64 -crm_ny 1 -crm_dx 1000 -crm_dt 10 </value>
+      <value compset="_CAM%TEST-SP"   > -use_SPCAM -crm_adv MPDATA -nlev 72 -crm_nz 58 -crm_nx  8 -crm_ny 1 -crm_dx 1000 -crm_dt 10 </value>
+      <value compset="_CAM%SP1"       > -SPCAM_microp_scheme sam1mom -rad rrtmg  -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero </value>
+      <value compset="_CAM%TEST-SP1"  > -SPCAM_microp_scheme sam1mom -rad rrtmg  -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero </value>
+      <value compset="_CAM%SP2"       > -SPCAM_microp_scheme m2005   -rad rrtmg  -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero </value>
+      <value compset="_CAM%TEST-SP2"  > -SPCAM_microp_scheme m2005   -rad rrtmg  -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero </value>
+      <!--  -->
       <value compset="GEOS_CAM"       >-offline_dyn</value>
       <value compset="GEOS_CAM4"      >-nlev 56</value>
       <value compset="GEOS_CAM5"      >-nlev 56</value>
@@ -105,8 +111,8 @@
       <value compset="_CAM.%L60"      >-nlev 60</value>
       <value compset="_CAM%IDEAL"     >-phys ideal</value>              
       <value compset="_CAM%ADIAB"     >-phys adiabatic</value>              
-      <value compset="_AQUAP"          >-ocn aquaplanet</value>              
-      <value compset="_CLM45%[^_]*BC"     >-bc_dep_to_snow_updates</value>
+      <value compset="_AQUAP"         >-ocn aquaplanet</value>              
+      <value compset="_CLM45%[^_]*BC" >-bc_dep_to_snow_updates</value>
     </values>
     <group>build_component_cam</group>
     <file>env_build.xml</file>
@@ -174,8 +180,6 @@
       <value compset="2000_CAM5.*AV1C-04P">2000_cam5_av1c-04p</value>
       <value compset="2000_CAM5.*AV1C-04P2">2000_cam5_av1c-04p2</value>
       <value compset="2000_CAM5.*AV1C-L" >2000_cam5_av1c-04p2</value>
-      <value compset="2000_CAM5.*AV1C-SP1" >2000_cam5_av1c-04p2</value>
-      <value compset="2000_CAM5.*AV1C-SP2" >2000_cam5_av1c-04p2</value>
       <value compset="2000_CAM5.*AV1C-H01A">2000_cam5_av1c-h01a</value>
       <value compset="2000_CAM5.*AV1C-H01B">2000_cam5_av1c-h01b</value>
       <value compset="2000_CAM5.*AV1F"   >2000_cam5_av1f</value>
@@ -221,6 +225,14 @@
       <value compset="AR97_CAM[45]"     >scam_arm97</value>
       <value compset="SCAM_CAM5"        >scam_generic</value>
       <value compset="PIPD_CAM5"        >1850-PD_cam5</value>
+      <!-- Super-Parameterization -->
+      <value compset="1850_CAM%SP"      >1850_cam5_av1c-04p2-SP</value>
+      <value compset="2000_CAM%SP"      >2000_cam5_av1c-04p2-SP</value>
+      <value compset="20TR_CAM%SP"      >20TR_cam5_av1c-04p2-SP</value>
+      <value compset="1850_CAM%TEST-SP" >1850_cam5_av1c-04p2-SP</value>
+      <value compset="2000_CAM%TEST-SP" >2000_cam5_av1c-04p2-SP</value>
+      <value compset="20TR_CAM%TEST-SP" >20TR_cam5_av1c-04p2-SP</value>
+      <!--  -->
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
@@ -271,8 +283,6 @@
     <desc compset="_CAM5.*AV1C-04P"  >CAM with complete set of ACME atmospheric mods for V1 (72 layers model) and ACES4BGC SOAG emissions- v04p:</desc>
     <desc compset="_CAM5.*AV1C-04P2"  >CAM with complete set of ACME atmospheric mods for V1 (72 layers model) and ACES4BGC SOAG emissions- v04p2:</desc>
     <desc compset="_CAM5.*AV1C-L"   >CAM with complete set of ACME atmospheric mods for V1 (72 layers model) and ACES4BGC SOAG emissions- v04p2:</desc>
-    <desc compset="_CAM5.*AV1C-SP1"   >SP-CAM with complete set of ACME atmospheric mods for V1 (72 layers model), SAM single-moment microphysics, and ACES4BGC SOAG emissions- v04p2:</desc>
-    <desc compset="_CAM5.*AV1C-SP2"   >SP-CAM with complete set of ACME atmospheric mods for V1 (72 layers model), SAM m2005 two-moment microphysics, and ACES4BGC SOAG emissions- v04p2:</desc>
     <desc compset="_CAM5.*AV1C-H01A"  >CAM with complete set of ACME atmospheric mods for V1 (72 layers model) and ACES4BGC SOAG emissions- vh01a:</desc>
     <desc compset="_CAM5.*AV1C-H01B"  >CAM with complete set of ACME atmospheric mods for V1 (72 layers model) and ACES4BGC SOAG emissions- vh01b:</desc>
     <desc compset="_CAM5.*AV1F"  >CAM with familiar set of ACME atmospheric mods for V1 (72 Layers model):</desc>
@@ -320,6 +330,12 @@
     <desc compset="_CAM5%MG1M"   >MG1.0 w/ modified activation:</desc>
     <desc compset="_CAM5%UNI"    >UNICON (modified mg1.0):</desc>
     <desc compset="CAM4.*_BGC%B"></desc>
+    <!-- Super-Parameterization -->
+    <desc compset="_CAM.*SP1"     >Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, and 1-moment microphsyics </desc>
+    <desc compset="_CAM.*SP2"     >Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, and 2-moment microphsyics </desc>
+    <desc compset="_CAM.*TEST-SP1">Super-parameterized E3SM with  8x1km CRM, RRTMG radiation, and 1-moment microphsyics </desc>
+    <desc compset="_CAM.*TEST-SP2">Super-parameterized E3SM with  8x1km CRM, RRTMG radiation, and 2-moment microphsyics </desc>
+    <!--  -->
   </description>
 
   <help>
