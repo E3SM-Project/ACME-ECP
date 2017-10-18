@@ -9,7 +9,7 @@ use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag, get_sw_spectral_boundaries
-use cam_abortutils,       only: endrun
+use cam_abortutils,   only: endrun
 use cam_history,      only: outfld
 
 implicit none
@@ -95,7 +95,7 @@ subroutine ec_rad_props_init()
    !call addfld('CIWPTH_NEW','Kg/m2   ',pver, 'I','In Cloud Ice Water Path',phys_decomp, sampling_seq='rad_lwsw')
    !call addfld('CIWPTH_OLD','Kg/m2   ',pver, 'I','In Cloud Ice Water Path (old)',phys_decomp, sampling_seq='rad_lwsw')
 
-    return
+   return
 
 end subroutine ec_rad_props_init
 
@@ -252,17 +252,17 @@ subroutine ec_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice
    call pbuf_get_field(pbuf, rei_idx,rei)
 
    if(oldicewp) then
-     do k=1,pver
-        do i = 1,Nday
-           cicewp(i,k) = 1000.0_r8*state%q(i,k,ixcldice)*state%pdel(i,k) /(gravit* max(0.01_r8,cldn(i,k)))
-        end do
-     end do
+      do k=1,pver
+         do i = 1,Nday
+            cicewp(i,k) = 1000.0_r8*state%q(i,k,ixcldice)*state%pdel(i,k) /(gravit* max(0.01_r8,cldn(i,k)))
+         end do
+      end do
    else
-     if (iciwp_idx<=0) then 
-        call endrun('ec_ice_optics_sw: oldicewp must be set to true since ICIWP was not found in pbuf')
-     endif
-     call pbuf_get_field(pbuf, iciwp_idx, tmpptr)
-     cicewp(1:pcols,1:pver) =  1000.0_r8*tmpptr(1:pcols,1:pver)
+      if (iciwp_idx<=0) then 
+         call endrun('ec_ice_optics_sw: oldicewp must be set to true since ICIWP was not found in pbuf')
+      endif
+      call pbuf_get_field(pbuf, iciwp_idx, tmpptr)
+      cicewp(1:pcols,1:pver) =  1000.0_r8*tmpptr(1:pcols,1:pver)
    endif
    
    call get_sw_spectral_boundaries(wavmin,wavmax,'microns')
@@ -320,7 +320,7 @@ subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
 
    type(physics_state), intent(in)   :: state
    type(physics_buffer_desc),pointer :: pbuf(:)
-    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
+   real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
    logical, intent(in) :: oldicewp
 
    real(r8) :: gicewp(pcols,pver)
@@ -335,10 +335,10 @@ subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
    real(r8), pointer, dimension(:,:) :: rei
    integer :: ncol, itim_old, lwband, i, k, lchnk
 
-    real(r8) :: kabs, kabsi
+   real(r8) :: kabs, kabsi
 
-    real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
-    parameter (kabsl = 0.090361_r8)
+   real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
+   parameter (kabsl = 0.090361_r8)
 
    real(r8), pointer, dimension(:,:) :: iclwpth, iciwpth
 
@@ -378,20 +378,20 @@ subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
    endif
 
    do k=1,pver
-       do i=1,ncol
+      do i=1,ncol
 
-          ! Note from Andrew Conley:
-          !  Optics for RK no longer supported, This is constructed to get
-          !  close to bit for bit.  Otherwise we could simply use ice water path
-          !note that optical properties for ice valid only
-          !in range of 13 > rei > 130 micron (Ebert and Curry 92)
-          kabsi = 0.005_r8 + 1._r8/min(max(13._r8,scalefactor*rei(i,k)),130._r8)
-          kabs =  kabsi*ficemr(i,k) ! kabsl*(1._r8-ficemr(i,k)) + kabsi*ficemr(i,k)
-          !emis(i,k) = 1._r8 - exp(-1.66_r8*kabs*clwp(i,k))
-          cldtau(i,k) = kabs*cwp(i,k)
-       end do
+         ! Note from Andrew Conley:
+         !  Optics for RK no longer supported, This is constructed to get
+         !  close to bit for bit.  Otherwise we could simply use ice water path
+         !note that optical properties for ice valid only
+         !in range of 13 > rei > 130 micron (Ebert and Curry 92)
+         kabsi = 0.005_r8 + 1._r8/min(max(13._r8,scalefactor*rei(i,k)),130._r8)
+         kabs =  kabsi*ficemr(i,k) ! kabsl*(1._r8-ficemr(i,k)) + kabsi*ficemr(i,k)
+         !emis(i,k) = 1._r8 - exp(-1.66_r8*kabs*clwp(i,k))
+         cldtau(i,k) = kabs*cwp(i,k)
+      end do
    end do
-!
+
    do lwband = 1,nlwbands
       abs_od(lwband,1:ncol,1:pver)=cldtau(1:ncol,1:pver)
    enddo

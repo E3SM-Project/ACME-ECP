@@ -11,7 +11,7 @@ use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag, get_sw_spectral_boundaries
-use cam_abortutils,       only: endrun
+use cam_abortutils,   only: endrun
 use cam_history,      only: outfld
 
 implicit none
@@ -194,14 +194,14 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
    real(r8),intent(out) :: liq_tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
    real(r8),intent(out) :: liq_tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
    real(r8),intent(out) :: liq_tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
-   logical, intent(in) :: oldliqwp
+   logical, intent(in)  :: oldliqwp
 
    real(r8), pointer, dimension(:,:) :: rel
    real(r8), pointer, dimension(:,:) :: cldn
    real(r8), pointer, dimension(:,:) :: tmpptr
-   real(r8), dimension(pcols,pver) :: cliqwp
-   real(r8), dimension(nswbands) :: wavmin
-   real(r8), dimension(nswbands) :: wavmax
+   real(r8), dimension(pcols,pver)   :: cliqwp
+   real(r8), dimension(nswbands)     :: wavmin
+   real(r8), dimension(nswbands)     :: wavmax
 
    ! Minimum cloud amount (as a fraction of the grid-box area) to 
    ! distinguish from clear sky
@@ -251,18 +251,18 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
    call pbuf_get_field(pbuf, rel_idx, rel)
 
    if (oldliqwp) then
-     do k=1,pver
-        do i = 1,Nday
-           cliqwp(i,k) = state%q(i,k,ixcldliq)*state%pdel(i,k)/(gravit*max(0.01_r8,cldn(i,k)))
-        end do
-     end do
+      do k=1,pver
+         do i = 1,Nday
+            cliqwp(i,k) = state%q(i,k,ixcldliq)*state%pdel(i,k)/(gravit*max(0.01_r8,cldn(i,k)))
+         end do
+      end do
    else
-     if (iclwp_idx<=0) then 
-        call endrun('slingo_liq_optics_sw: oldliqwp must be set to true since ICLWP was not found in pbuf')
-     endif
-     ! The following is the eventual target specification for in cloud liquid water path.
-     call pbuf_get_field(pbuf, iclwp_idx, tmpptr)
-     cliqwp = tmpptr
+      if (iclwp_idx<=0) then 
+         call endrun('slingo_liq_optics_sw: oldliqwp must be set to true since ICLWP was not found in pbuf')
+      endif
+      ! The following is the eventual target specification for in cloud liquid water path.
+      call pbuf_get_field(pbuf, iclwp_idx, tmpptr)
+      cliqwp = tmpptr
    endif
    
    call get_sw_spectral_boundaries(wavmin,wavmax,'microns')
@@ -316,7 +316,7 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
             liq_tau_w_f(ns,i,k) = liq_tau_w(ns,i,k) * g * g
 
          end do ! End do i=1,Nday
-      end do    ! End do k=1,pver
+      end do ! End do k=1,pver
    end do ! nswbands
 
    !call outfld('CL_OD_SW_OLD',liq_tau(idx_sw_diag,:,:), pcols, lchnk)
@@ -347,13 +347,13 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
    real(r8), pointer, dimension(:,:) :: rei
    integer :: ncol, icld, itim_old, i_rei, lwband, i, k, lchnk 
 
-    real(r8) :: kabs, kabsi
-    real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
-    parameter (kabsl = 0.090361_r8)
+   real(r8) :: kabs, kabsi
+   real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
+   parameter (kabsl = 0.090361_r8)
 
    real(r8), pointer, dimension(:,:) :: iclwpth, iciwpth
 
-    ncol=state%ncol
+   ncol=state%ncol
    lchnk = state%lchnk
 
    itim_old  =  pbuf_old_tim_idx()
@@ -361,7 +361,7 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
    call pbuf_get_field(pbuf, cld_idx,   cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
 
    if (oldliqwp) then
-     do k=1,pver
+      do k=1,pver
          do i = 1,ncol
             gicewp(i,k) = state%q(i,k,ixcldice)*state%pdel(i,k)/gravit*1000.0_r8  ! Grid box ice water path.
             gliqwp(i,k) = state%q(i,k,ixcldliq)*state%pdel(i,k)/gravit*1000.0_r8  ! Grid box liquid water path.
@@ -370,8 +370,8 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
             ficemr(i,k) = state%q(i,k,ixcldice) /                 &
                  max(1.e-10_r8,(state%q(i,k,ixcldice)+state%q(i,k,ixcldliq)))
          end do
-     end do
-     cwp(:ncol,:pver) = cicewp(:ncol,:pver) + cliqwp(:ncol,:pver)
+      end do
+      cwp(:ncol,:pver) = cicewp(:ncol,:pver) + cliqwp(:ncol,:pver)
    else
      if (iclwp_idx<=0 .or. iciwp_idx<=0) then 
         call endrun('slingo_liq_get_rad_props_lw: oldliqwp must be set to true since ICIWP and/or ICLWP were not found in pbuf')
@@ -388,16 +388,16 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
 
 
    do k=1,pver
-       do i=1,ncol
+      do i=1,ncol
 
-          ! Note from Andrew Conley:
-          !  Optics for RK no longer supported, This is constructed to get
-          !  close to bit for bit.  Otherwise we could simply use liquid water path
-          !note that optical properties for ice valid only
-          !in range of 13 > rei > 130 micron (Ebert and Curry 92)
-          kabs = kabsl*(1._r8-ficemr(i,k))
-          cldtau(i,k) = kabs*cwp(i,k)
-       end do
+         ! Note from Andrew Conley:
+         !  Optics for RK no longer supported, This is constructed to get
+         !  close to bit for bit.  Otherwise we could simply use liquid water path
+         !note that optical properties for ice valid only
+         !in range of 13 > rei > 130 micron (Ebert and Curry 92)
+         kabs = kabsl*(1._r8-ficemr(i,k))
+         cldtau(i,k) = kabs*cwp(i,k)
+      end do
    end do
 !
    do lwband = 1,nlwbands
