@@ -14,8 +14,10 @@ use rrtmg_lw_rad,      only: rrtmg_lw
 use spmd_utils,        only: masterproc
 use perf_mod,          only: t_startf, t_stopf
 use cam_logfile,       only: iulog
-use cam_abortutils,        only: endrun
+use cam_abortutils,    only: endrun
 use radconstants,      only: nlwbands
+use time_manager,      only: get_nstep
+
 
 implicit none
 
@@ -26,7 +28,8 @@ save
 
 public ::&
    radlw_init,   &! initialize constants
-   rad_rrtmg_lw   ! driver for longwave radiation code
+   rad_rrtmg_lw, &! driver for longwave radiation code
+   rrtmg_lw_dump_inout
    
 ! Private data
 integer :: ntoplw    ! top level to solve for longwave cooling
@@ -135,8 +138,10 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
    real(r8) :: hrc(pcols,rrtmg_levs)     ! Clear sky longwave heating rate (K/d)
    real(r8) lwuflxs(nbndlw,pcols,pverp+1)  ! Longwave spectral flux up
    real(r8) lwdflxs(nbndlw,pcols,pverp+1)  ! Longwave spectral flux down
+   integer  :: igstep            ! GCM time steps
    !-----------------------------------------------------------------------
 
+   igstep = get_nstep()
    ! mji/rrtmg
 
    ! Calculate cloud optical properties here if using CAM method, or if using one of the
@@ -291,9 +296,15 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
       ld(:ncol,pverp-rrtmg_levs+1:pverp,:) = reshape(lwdflxs(:,:ncol,rrtmg_levs:1:-1), &
            (/ncol,rrtmg_levs,nbndlw/), order=(/3,1,2/))
    end if
+
+   call rrtmg_lw_dump_inout(lchnk,ncol,pcols,pver,pverp,rrtmg_levs,r_state,pmid,aer_lw_abs, &
+                            cld,tauc_lw, &
+                            qrl,qrlc,flns,flnt,flut,flnsc,flntc, &
+                            flutc,flwds,fldsc,fcnl,fnl)
    
    call t_stopf('rrtmg_lw')
 
+return
 end subroutine rad_rrtmg_lw
 
 !-------------------------------------------------------------------------------
@@ -326,6 +337,128 @@ subroutine radlw_init()
    call rrtmg_lw_ini
 
 end subroutine radlw_init
+
+   subroutine rrtmg_lw_dump_inout(lchnk,ncol,pcols,pver,pverp,rrtmg_levs,r_state,pmid,aer_lw_abs, &
+                                    cld,tauc_lw, &
+                                    qrl,qrlc,flns,flnt,flut,flnsc,flntc, &
+                                    flutc,flwds,fldsc,fcnl,fnl)
+
+    use mpi
+    use dmdf
+    use shr_kind_mod, only: r8 => shr_kind_r8
+    use parrrtm,           only: nbndlw, ngptlw
+    use crmdims
+    use microphysics, only: nmicro_fields
+    use params,       only: crm_rknd
+    use time_manager,    only: get_nstep
+    use rrtmg_state,         only: rrtmg_state_t
+
+    implicit none
+    ! Input arguments
+!
+    integer, intent(in) :: lchnk                 ! chunk identifier
+    integer, intent(in) :: ncol
+    integer, intent(in) :: pcols                  ! number of atmospheric columns
+    integer, intent(in) :: pver
+    integer, intent(in) :: pverp
+    integer, intent(in) :: rrtmg_levs            ! number of levels rad is applied
+
+!
+! Input arguments which are only passed to other routines
+!
+    type(rrtmg_state_t), intent(in) :: r_state
+
+    real(r8), intent(in) :: pmid(pcols,pver)     ! Level pressure (Pascals)
+
+    real(r8), intent(in) :: aer_lw_abs (pcols,pver,nbndlw) ! aerosol absorption optics depth (LW)
+
+    real(r8), intent(in) :: cld(pcols,pver)      ! Cloud cover
+    real(r8), intent(in) :: tauc_lw(nbndlw,pcols,pver)   ! Cloud longwave optical depth by band 
+
+    real(r8), intent(in) :: qrl (pcols,pver)     ! Longwave heating rate
+    real(r8), intent(in) :: qrlc(pcols,pver)     ! Clearsky longwave heating rate
+    real(r8), intent(in) :: flns(pcols)          ! Surface cooling flux
+    real(r8), intent(in) :: flnt(pcols)          ! Net outgoing flux
+    real(r8), intent(in) :: flut(pcols)          ! Upward flux at top of model
+    real(r8), intent(in) :: flnsc(pcols)         ! Clear sky surface cooing
+    real(r8), intent(in) :: flntc(pcols)         ! Net clear sky outgoing flux
+    real(r8), intent(in) :: flutc(pcols)         ! Upward clear-sky flux at top of model
+    real(r8), intent(in) :: flwds(pcols)         ! Down longwave flux at surface
+    real(r8), intent(in) :: fldsc(pcols)         ! Down longwave clear flux at surface
+    real(r8), intent(in) :: fcnl(pcols,pverp)    ! clear sky net flux at interfaces
+    real(r8), intent(in) :: fnl(pcols,pverp)     ! net flux at interfaces
+
+
+
+    real(r8) :: pmidmb(pcols,rrtmg_levs)       ! Layer pressures (hPa, mb)
+    real(r8) :: pintmb(pcols,rrtmg_levs+1)     ! Interface pressures (hPa, mb) 
+    real(r8) :: tlay(pcols,rrtmg_levs)       ! Layer temperatures (K)
+    real(r8) :: tlev(pcols,rrtmg_levs+1)     !    Interface temperatures
+    real(r8) :: h2ovmr(pcols,rrtmg_levs)   ! h2o volume mixing ratio
+    real(r8) :: o3vmr(pcols,rrtmg_levs)    ! o3 volume mixing ratio
+    real(r8) :: co2vmr(pcols,rrtmg_levs)   ! co2 volume mixing ratio 
+    real(r8) :: ch4vmr(pcols,rrtmg_levs)   ! ch4 volume mixing ratio 
+    real(r8) :: o2vmr(pcols,rrtmg_levs)    ! o2  volume mixing ratio 
+    real(r8) :: n2ovmr(pcols,rrtmg_levs)   ! n2o volume mixing ratio 
+
+    integer :: i
+    integer  :: igstep
+    integer :: myrank, ierr
+    real(crm_rknd) :: myrand
+    logical :: do_dump = .true.
+
+    igstep = get_nstep()
+
+        do i = 1, ncol
+
+#ifdef RRTMG_DUMP
+        call MPI_Comm_rank(MPI_COMM_WORLD,myrank,ierr)
+#ifdef RRTMG_DUMP_RATIO
+        call random_number(myrand)
+        do_dump = .false.
+        if (myrand < RRTMG_DUMP_RATIO) do_dump = .true.
+#endif
+        if (do_dump) then
+          if (igstep > 1) then
+
+           call dmdf_write(lchnk          ,myrank,'rrtmg_lw_in',trim('lchnk')                                 ,.true. ,.false.)!; _ERR(success,error_string,__LINE__)
+
+           call dmdf_write(r_state%pmidmb(i,:)    ,myrank,'rrtmg_lw_in',trim('play'),      (/'nlevs'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%pintmb(i,:)    ,myrank,'rrtmg_lw_in',trim('plev'),      (/'nlevs_p1'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%tlay(i,:)      ,myrank,'rrtmg_lw_in',trim('tlay'),      (/'nlevs'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%tlev(i,:)      ,myrank,'rrtmg_lw_in',trim('tlev'),      (/'nlevs_p1'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%h2ovmr(i,:)    ,myrank,'rrtmg_lw_in',trim('h2ovmr'),    (/'nlevs'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%o3vmr(i,:)     ,myrank,'rrtmg_lw_in',trim('o3vmr'),     (/'nlevs'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%co2vmr(i,:)    ,myrank,'rrtmg_lw_in',trim('co2vmr'),    (/'nlevs'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%ch4vmr(i,:)    ,myrank,'rrtmg_lw_in',trim('ch4vmr'),    (/'nlevs'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%o2vmr(i,:)     ,myrank,'rrtmg_lw_in',trim('o2vmr'),     (/'nlevs'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%n2ovmr(i,:)    ,myrank,'rrtmg_lw_in',trim('n2ovmr'),    (/'nlevs'/)        ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+
+           call dmdf_write(pmid(i,:)              ,myrank,'rrtmg_lw_in',trim('pmid'),      (/'pver'/)         ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(aer_lw_abs(i,:,:)      ,myrank,'rrtmg_lw_in',trim('aer_lw_abs'),(/'pver','nbndlw'/) ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(cld(i,:)               ,myrank,'rrtmg_lw_in',trim('cld'),       (/'pver'/)         ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(tauc_lw(:,i,:)         ,myrank,'rrtmg_lw_in',trim('tauc_lw'),   (/'nbndlw','pver'/) ,.false. ,.true.)!; _ERR(success,error_string,__LINE__)
+
+           call dmdf_write(lchnk      ,myrank,'rrtmg_lw_out',trim('lchnk')                     ,.true. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(qrl(i,:)   ,myrank,'rrtmg_lw_out',trim('qrl'   ),       (/'pver'/)  ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(qrlc(i,:)  ,myrank,'rrtmg_lw_out',trim('qrlc'  ),       (/'pver'/)  ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(flns(i)    ,myrank,'rrtmg_lw_out',trim('flns' )                     ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(flnt(i)    ,myrank,'rrtmg_lw_out',trim('flnt' )                     ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(flut(i)    ,myrank,'rrtmg_lw_out',trim('flut' )                     ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(flnsc(i)   ,myrank,'rrtmg_lw_out',trim('flnsc' )                    ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(flntc(i)   ,myrank,'rrtmg_lw_out',trim('flntc' )                    ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(flutc(i)    ,myrank,'rrtmg_lw_out',trim('flutc' )                   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(flwds(i)    ,myrank,'rrtmg_lw_out',trim('flwds' )                   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fldsc(i)    ,myrank,'rrtmg_lw_out',trim('fldsc' )                   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fcnl(i,:)   ,myrank,'rrtmg_lw_out',trim('fcnl'  ),       (/'pverp'/),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fnl(i,:)    ,myrank,'rrtmg_lw_out',trim('fnl'   ),       (/'pverp'/),.false. ,.true.) !; _ERR(success,error_string,__LINE__)
+
+          endif
+        endif
+#endif
+        enddo
+    return
+    end subroutine
 
 !-------------------------------------------------------------------------------
 

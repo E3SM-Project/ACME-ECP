@@ -18,6 +18,8 @@ use rrtmg_sw_init,   only: rrtmg_sw_ini
 use rrtmg_sw_rad,    only: rrtmg_sw
 use perf_mod,        only: t_startf, t_stopf
 use radconstants,    only: idx_sw_diag
+use time_manager,    only: get_nstep
+
 
 implicit none
 
@@ -31,7 +33,8 @@ real(r8) :: solar_band_irrad(1:nbndsw) ! rrtmg-assumed solar irradiance in each 
 
 public ::&
    radsw_init,      &! initialize constants
-   rad_rrtmg_sw      ! driver for solar radiation code
+   rad_rrtmg_sw,    &! driver for solar radiation code
+   rrtmg_sw_dump_inout
 
 !===============================================================================
 CONTAINS
@@ -81,13 +84,15 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
 ! absorbed flux is also done for cloud forcing diagnostics.
 ! 
 !-----------------------------------------------------------------------
-
+   use mpi
+   use dmdf   
    use cmparray_mod,        only: CmpDayNite, ExpDayNite
    use phys_control,        only: phys_getopts
    use mcica_subcol_gen_sw, only: mcica_subcol_sw
    use physconst,           only: cpair
    use rrtmg_state,         only: rrtmg_state_t
-   
+   use params,              only: crm_rknd
+
    ! Minimum cloud amount (as a fraction of the grid-box area) to 
    ! distinguish from clear sky
    real(r8), parameter :: cldmin = 1.0e-80_r8
@@ -271,6 +276,9 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    real(r8) :: pintmb(pcols,rrtmg_levs+1) ! Model interface pressure (hPa)
    real(r8) :: tlay(pcols,rrtmg_levs)     ! mid point temperature
    real(r8) :: tlev(pcols,rrtmg_levs+1)   ! interface temperature
+   integer :: myrank, ierr
+   real(crm_rknd) :: myrand
+   logical :: do_dump = .true.
 
    !-----------------------------------------------------------------------
    ! START OF CALCULATION
@@ -651,6 +659,17 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
       call outfld('FDSC    ',fdsc,pcols,lchnk)
    endif
 
+   call rrtmg_sw_dump_inout(lchnk,pcols,pver,pverp,rrtmg_levs,r_state,Nday,Nnite, &
+                             IdxDay,IdxNite,E_pmid,E_cld,E_aer_tau, &
+                             E_aer_tau_w,E_aer_tau_w_g,E_aer_tau_w_f, &
+                             eccf,E_coszrs,E_asdir,E_aldir,E_asdif,E_aldif, &
+                             sfac,E_cld_tau,E_cld_tau_w,E_cld_tau_w_g,&
+                             E_cld_tau_w_f,old_convert, &
+                             solin,qrs,qrsc,fsns,fsnt,fsntoa,fsutoa,fsds,fsnsc,fsdsc, &
+                             fsntc,fsntoac,sols,soll,solsd,solld, &
+                             fsnirtoa,fsnrtoac,fsnrtoaq,fns,fcns)
+
+return
 end subroutine rad_rrtmg_sw
 
 !-------------------------------------------------------------------------------
@@ -675,6 +694,182 @@ subroutine radsw_init()
 end subroutine radsw_init
 
 
-!-------------------------------------------------------------------------------
+   subroutine rrtmg_sw_dump_inout(lchnk,pcols,pver,pverp,rrtmg_levs,r_state,Nday,Nnite, &
+                             IdxDay,IdxNite,E_pmid,E_cld,E_aer_tau, &
+                             E_aer_tau_w,E_aer_tau_w_g,E_aer_tau_w_f, &
+                             eccf,E_coszrs,E_asdir,E_aldir,E_asdif,E_aldif, &
+                             sfac,E_cld_tau,E_cld_tau_w,E_cld_tau_w_g,&
+                             E_cld_tau_w_f,old_convert, &
+                             solin,qrs,qrsc,fsns,fsnt,fsntoa,fsutoa,fsds,fsnsc,fsdsc, &
+                             fsntc,fsntoac,sols,soll,solsd,solld, &
+                             fsnirtoa,fsnrtoac,fsnrtoaq,fns,fcns)
 
+
+    use mpi
+    use dmdf
+    use shr_kind_mod, only: r8 => shr_kind_r8
+    use parrrsw,         only: nbndsw, ngptsw
+    use crmdims
+    use microphysics, only: nmicro_fields
+    use params,       only: crm_rknd
+    use time_manager,    only: get_nstep
+    use rrtmg_state,         only: rrtmg_state_t
+
+
+    implicit none
+       ! Input arguments   
+    integer, intent(in) :: lchnk             ! chunk identifier
+    integer, intent(in) :: pcols
+    integer, intent(in) :: pver
+    integer, intent(in) :: rrtmg_levs        ! number of levels rad is applied   
+    integer, intent(in) :: pverp
+    type(rrtmg_state_t), intent(in) :: r_state
+    integer, intent(in) :: Nday                      ! Number of daylight columns
+    integer, intent(in) :: Nnite                     ! Number of night columns
+    integer, intent(in), dimension(pcols) :: IdxDay  ! Indicies of daylight coumns
+    integer, intent(in), dimension(pcols) :: IdxNite ! Indicies of night coumns
+
+    real(r8), intent(in) :: E_pmid(pcols,pver)  ! Level pressure (Pascals)
+    real(r8), intent(in) :: E_cld(pcols,pver)    ! Fractional cloud cover
+
+    real(r8), intent(in) :: E_aer_tau    (pcols, 0:pver, nbndsw)      ! aerosol optical depth
+    real(r8), intent(in) :: E_aer_tau_w  (pcols, 0:pver, nbndsw)      ! aerosol OD * ssa
+    real(r8), intent(in) :: E_aer_tau_w_g(pcols, 0:pver, nbndsw)      ! aerosol OD * ssa * asm
+    real(r8), intent(in) :: E_aer_tau_w_f(pcols, 0:pver, nbndsw)      ! aerosol OD * ssa * fwd
+
+    real(r8), intent(in) :: eccf               ! Eccentricity factor (1./earth-sun dist^2)
+    real(r8), intent(in) :: E_coszrs(pcols)    ! Cosine solar zenith angle
+    real(r8), intent(in) :: E_asdir(pcols)     ! 0.2-0.7 micro-meter srfc alb: direct rad
+    real(r8), intent(in) :: E_aldir(pcols)     ! 0.7-5.0 micro-meter srfc alb: direct rad
+    real(r8), intent(in) :: E_asdif(pcols)     ! 0.2-0.7 micro-meter srfc alb: diffuse rad
+    real(r8), intent(in) :: E_aldif(pcols)     ! 0.7-5.0 micro-meter srfc alb: diffuse rad
+    real(r8), intent(in) :: sfac(nbndsw)            ! factor to account for solar variability in each band 
+
+    real(r8), optional, intent(in) :: E_cld_tau    (nbndsw, pcols, pver)      ! cloud optical depth
+   real(r8), optional, intent(in) :: E_cld_tau_w  (nbndsw, pcols, pver)      ! cloud optical 
+    real(r8), optional, intent(in) :: E_cld_tau_w_g(nbndsw, pcols, pver)      ! cloud optical 
+    real(r8), optional, intent(in) :: E_cld_tau_w_f(nbndsw, pcols, pver)      ! cloud optical 
+    logical, optional, intent(in) :: old_convert
+
+    real(r8), intent(in) :: solin(pcols)     ! Incident solar flux
+    real(r8), intent(in) :: qrs (pcols,pver) ! Solar heating rate
+    real(r8), intent(in) :: qrsc(pcols,pver) ! Clearsky solar heating rate
+    real(r8), intent(in) :: fsns(pcols)      ! Surface absorbed solar flux
+    real(r8), intent(in) :: fsnt(pcols)      ! Total column absorbed solar flux
+    real(r8), intent(in) :: fsntoa(pcols)    ! Net solar flux at TOA
+    real(r8), intent(in) :: fsutoa(pcols)    ! Upward solar flux at TOA
+    real(r8), intent(in) :: fsds(pcols)      ! Flux shortwave downwelling surface
+
+    real(r8), intent(in) :: fsnsc(pcols)     ! Clear sky surface absorbed solar flux
+    real(r8), intent(in) :: fsdsc(pcols)     ! Clear sky surface downwelling solar flux
+    real(r8), intent(in) :: fsntc(pcols)     ! Clear sky total column absorbed solar flx
+    real(r8), intent(in) :: fsntoac(pcols)   ! Clear sky net solar flx at TOA
+    real(r8), intent(in) :: sols(pcols)      ! Direct solar rad on surface (< 0.7)
+    real(r8), intent(in) :: soll(pcols)      ! Direct solar rad on surface (>= 0.7)
+    real(r8), intent(in) :: solsd(pcols)     ! Diffuse solar rad on surface (< 0.7)
+    real(r8), intent(in) :: solld(pcols)     ! Diffuse solar rad on surface (>= 0.7)
+    real(r8), intent(in) :: fsnirtoa(pcols)  ! Near-IR flux absorbed at toa
+    real(r8), intent(in) :: fsnrtoac(pcols)  ! Clear sky near-IR flux absorbed at toa
+    real(r8), intent(in) :: fsnrtoaq(pcols)  ! Net near-IR flux at toa >= 0.7 microns
+
+    real(r8), intent(in) :: fns(pcols,pverp)   ! net flux at interfaces
+    real(r8), intent(in) :: fcns(pcols,pverp)  ! net clear-sky flux at interfaces
+
+    real(r8) :: pmidmb(pcols,rrtmg_levs)       ! Layer pressures (hPa, mb)
+    real(r8) :: pintmb(pcols,rrtmg_levs+1)     ! Interface pressures (hPa, mb) 
+    real(r8) :: tlay(pcols,rrtmg_levs)       ! Layer temperatures (K)
+    real(r8) :: tlev(pcols,rrtmg_levs+1)     !    Interface temperatures
+    real(r8) :: h2ovmr(pcols,rrtmg_levs)   ! h2o volume mixing ratio
+    real(r8) :: o3vmr(pcols,rrtmg_levs)    ! o3 volume mixing ratio
+    real(r8) :: co2vmr(pcols,rrtmg_levs)   ! co2 volume mixing ratio 
+    real(r8) :: ch4vmr(pcols,rrtmg_levs)   ! ch4 volume mixing ratio 
+    real(r8) :: o2vmr(pcols,rrtmg_levs)    ! o2  volume mixing ratio 
+
+    real(r8) :: n2ovmr(pcols,rrtmg_levs)   ! n2o volume mixing ratio 
+
+    integer :: i,ix
+    integer  :: igstep
+    integer :: myrank, ierr
+    real(crm_rknd) :: myrand
+    logical :: do_dump = .true.
+
+    igstep = get_nstep()
+
+        do i = 1, pcols
+
+        if(IdxDay(i).ne.0) then
+        ix = IdxDay(i)
+
+#ifdef RRTMG_DUMP
+        call MPI_Comm_rank(MPI_COMM_WORLD,myrank,ierr)
+#ifdef RRTMG_DUMP_RATIO
+        call random_number(myrand)
+        do_dump = .false.
+        if (myrand < RRTMG_DUMP_RATIO) do_dump = .true.
+#endif
+        if (do_dump) then
+          if (igstep .lt. 10) then
+
+           call dmdf_write(lchnk,myrank,'rrtmg_sw_in',trim('lchnk'),.true. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%pmidmb(ix,:),myrank,'rrtmg_sw_in',trim('play'),  (/'nlevs'/)   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%pintmb(ix,:),myrank,'rrtmg_sw_in',trim('plev'),  (/'nlevs_p1'/),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%tlay(ix,:)  ,myrank,'rrtmg_sw_in',trim('tlay'),  (/'nlevs'/)   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%tlev(ix,:)  ,myrank,'rrtmg_sw_in',trim('tlev'),  (/'nlevs_p1'/),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%h2ovmr(ix,:),myrank,'rrtmg_sw_in',trim('h2ovmr'),(/'nlevs'/)   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%o3vmr(ix,:) ,myrank,'rrtmg_sw_in',trim('o3vmr'), (/'nlevs'/)   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%co2vmr(ix,:),myrank,'rrtmg_sw_in',trim('co2vmr'),(/'nlevs'/)   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%ch4vmr(ix,:),myrank,'rrtmg_sw_in',trim('ch4vmr'),(/'nlevs'/)   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%o2vmr(ix,:) ,myrank,'rrtmg_sw_in',trim('o2vmr'), (/'nlevs'/)   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(r_state%n2ovmr(ix,:),myrank,'rrtmg_sw_in',trim('n2ovmr'),(/'nlevs'/)   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_pmid(ix,:),myrank,'rrtmg_sw_in',trim('E_pmid'),(/'pver'/)            ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_cld(ix,:) ,myrank,'rrtmg_sw_in',trim('E_cld'), (/'pver'/)            ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_aer_tau(ix,:,:),myrank,'rrtmg_sw_in',trim('E_aer_tau'),  (/'pver_p1','nbndsw'/)  ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_aer_tau_w(ix,:,:),myrank,'rrtmg_sw_in',trim('E_aer_tau_w'),(/'pver_p1','nbndsw'/),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_aer_tau_w_g(ix,:,:),myrank,'rrtmg_sw_in',trim('E_aer_tau_w_g'),(/'pver_p1','nbndsw'/),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_aer_tau_w_f(ix,:,:),myrank,'rrtmg_sw_in',trim('E_aer_tau_w_f'),(/'pver_p1','nbndsw'/),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(eccf          ,myrank,'rrtmg_sw_in',trim('eccf')     ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_coszrs(ix)   ,myrank,'rrtmg_sw_in',trim('E_coszrs'),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_asdir(ix)    ,myrank,'rrtmg_sw_in',trim('E_asdir' ),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+
+           call dmdf_write(E_aldir(ix)    ,myrank,'rrtmg_sw_in',trim('E_aldir' ),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_asdif(ix)    ,myrank,'rrtmg_sw_in',trim('E_asdif' ),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_aldif(ix)    ,myrank,'rrtmg_sw_in',trim('E_aldif' ),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(sfac          ,myrank,'rrtmg_sw_in',trim('sfac'),       (/'nbndsw'/)                   ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_cld_tau(:,ix,:),myrank,'rrtmg_sw_in',trim('E_cld_tau'),  (/'nbndsw','pver'/)         ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_cld_tau_w(:,ix,:),myrank,'rrtmg_sw_in',trim('E_cld_tau_w'),  (/'nbndsw','pver'/)     ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_cld_tau_w_g(:,ix,:),myrank,'rrtmg_sw_in',trim('E_cld_tau_w_g'),  (/'nbndsw','pver'/) ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(E_cld_tau_w_f(:,ix,:),myrank,'rrtmg_sw_in',trim('E_cld_tau_w_f'),  (/'nbndsw','pver'/) ,.false. ,.true.)!; _ERR(success,error_string,__LINE__)
+
+
+           call dmdf_write(lchnk       ,myrank,'rrtmg_sw_out',trim('lchnk')                ,.true. ,.false.)!;  _ERR(success,error_string,__LINE__)
+           call dmdf_write(solin(ix)   ,myrank,'rrtmg_sw_out',trim('solin')               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(qrs(ix,:)   ,myrank,'rrtmg_sw_out',trim('qrs'   ),  (/'pver'/) ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(qrsc(ix,:)  ,myrank,'rrtmg_sw_out',trim('qrsc'  ),  (/'pver'/) ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsns(ix)    ,myrank,'rrtmg_sw_out',trim('fsns' )               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsnt(ix)    ,myrank,'rrtmg_sw_out',trim('fsnt' )               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsntoa(ix)  ,myrank,'rrtmg_sw_out',trim('fsntoa' )             ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsutoa(ix)  ,myrank,'rrtmg_sw_out',trim('fsutoa' )             ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsds(ix)    ,myrank,'rrtmg_sw_out',trim('fsds' )               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsnsc(ix)  ,myrank,'rrtmg_sw_out',trim('fsnsc' )               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsdsc(ix)  ,myrank,'rrtmg_sw_out',trim('fsdsc' )               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsntc(ix)  ,myrank,'rrtmg_sw_out',trim('fsntc' )               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsntoac(ix),myrank,'rrtmg_sw_out',trim('fsntoac' )             ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(sols(ix)   ,myrank,'rrtmg_sw_out',trim('sols' )                ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(soll(ix)   ,myrank,'rrtmg_sw_out',trim('soll' )                ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(solsd(ix)  ,myrank,'rrtmg_sw_out',trim('solsd' )               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(solld(ix)  ,myrank,'rrtmg_sw_out',trim('solld' )               ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsnirtoa(ix),myrank,'rrtmg_sw_out',trim('fsnirtoa' )           ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsnrtoac(ix),myrank,'rrtmg_sw_out',trim('fsnrtoac' )           ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fsnrtoaq(ix),myrank,'rrtmg_sw_out',trim('fsnrtoaq' )           ,.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fns(ix,:)   ,myrank,'rrtmg_sw_out',trim('fns'   ),  (/'pverp'/),.false. ,.false.)!; _ERR(success,error_string,__LINE__)
+           call dmdf_write(fcns(ix,:)  ,myrank,'rrtmg_sw_out',trim('fcns'  ),  (/'pverp'/),.false. ,.true.) !; _ERR(success,error_string,__LINE__)
+
+           endif
+          endif
+#endif
+         endif
+        enddo
+       return
+      end subroutine
+!-------------------------------------------------------------------------------
 end module radsw
