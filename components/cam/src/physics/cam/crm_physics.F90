@@ -72,7 +72,7 @@ subroutine crm_physics_register()
   use ppgrid,          only: pcols, pver, pverp
   use physics_buffer,  only: dyn_time_lvls, pbuf_add_field, dtype_r8, pbuf_get_index
   use phys_control,    only: phys_getopts
-  use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_dx, crm_dy, crm_dt, nclubbvars
+  use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_dx, crm_dy, crm_dt, nclubbvars, crm_nx_rad, crm_ny_rad
 #ifdef CRM
   use microphysics,    only: nmicro_fields
   use setparm_mod,     only: setparm
@@ -113,25 +113,25 @@ subroutine crm_physics_register()
   call pbuf_add_field('CRM_W',     'global', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),                crm_w_idx)
   call pbuf_add_field('CRM_T',     'global', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),                crm_t_idx)
 
-  call pbuf_add_field('CRM_T_RAD',   'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),              crm_t_rad_idx)
-  call pbuf_add_field('CRM_QV_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),              crm_qv_rad_idx)
-  call pbuf_add_field('CRM_QC_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),              crm_qc_rad_idx)
-  call pbuf_add_field('CRM_QI_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),              crm_qi_rad_idx)
-  call pbuf_add_field('CRM_CLD_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),              crm_cld_rad_idx)
-  call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),              crm_qrad_idx)
+  call pbuf_add_field('CRM_T_RAD',   'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_t_rad_idx)
+  call pbuf_add_field('CRM_QV_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qv_rad_idx)
+  call pbuf_add_field('CRM_QC_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qc_rad_idx)
+  call pbuf_add_field('CRM_QI_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qi_rad_idx)
+  call pbuf_add_field('CRM_CLD_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_cld_rad_idx)
+  call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qrad_idx)
 
 
 #ifdef MODAL_AERO
-  call pbuf_add_field('CRM_QAERWAT', 'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz, ntot_amode/),  crm_qaerwat_idx)
-  call pbuf_add_field('CRM_DGNUMWET','physpkg', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz, ntot_amode/),  crm_dgnumwet_idx)
+  call pbuf_add_field('CRM_QAERWAT', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode/),  crm_qaerwat_idx)
+  call pbuf_add_field('CRM_DGNUMWET','physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode/),  crm_dgnumwet_idx)
 #endif
 
 
   if (SPCAM_microp_scheme .eq. 'm2005') then
-    call pbuf_add_field('CRM_NC_RAD','physpkg', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_nc_rad_idx)
-    call pbuf_add_field('CRM_NI_RAD','physpkg', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_ni_rad_idx)
-    call pbuf_add_field('CRM_QS_RAD','physpkg', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qs_rad_idx)
-    call pbuf_add_field('CRM_NS_RAD','physpkg', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_ns_rad_idx)
+    call pbuf_add_field('CRM_NC_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_nc_rad_idx)
+    call pbuf_add_field('CRM_NI_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_ni_rad_idx)
+    call pbuf_add_field('CRM_QS_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_qs_rad_idx)
+    call pbuf_add_field('CRM_NS_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_ns_rad_idx)
     call pbuf_add_field('CRM_QT',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qt_idx)
     call pbuf_add_field('CRM_NC',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_nc_idx)
     call pbuf_add_field('CRM_QR',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qr_idx)
@@ -174,10 +174,7 @@ subroutine crm_physics_register()
 end subroutine crm_physics_register
 !=========================================================================================================
 
-!==Guangxing Lin
-!subroutine crm_physics_init()
 subroutine crm_physics_init(species_class)
-!==Guangxing Lin
 !-------------------------------------------------------------------------------------------------------
 ! 
 ! Purpose: initialize some varialbes, and add necessary fileds into output fields 
@@ -513,7 +510,7 @@ end subroutine crm_physics_init
    use time_manager,    only: is_first_step, get_nstep
    use cam_history,     only: outfld
    use perf_mod
-   use crmdims,         only: crm_nx, crm_ny, crm_nz
+   use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
    use physconst,       only: cpair, latvap, latice, gravit, cappa
    use constituents,    only: pcnst, qmin, cnst_get_ind, cnst_cam_outfld, bpcnst, cnst_name
 #ifdef CRM
@@ -579,13 +576,13 @@ end subroutine crm_physics_init
    real(r8), pointer :: prec_sed(:)         ! total precip from cloud sedimentation       [m/s]
    real(r8), pointer :: snow_sed(:)         ! snow from cloud ice sedimentation           [m/s]
 
-   real(r8), pointer ::  nc_rad(:,:,:,:)    ! rad cloud water droplet number [#/kg]
-   real(r8), pointer ::  ni_rad(:,:,:,:)    ! rad cloud ice crystal number [#/kg]
-   real(r8), pointer ::  qs_rad(:,:,:,:)    ! rad cloud snow mass [kg/kg]
-   real(r8), pointer ::  ns_rad(:,:,:,:)    ! rad cloud snow crystal number [#/kg]
+   real(r8), pointer ::   nc_rad(:,:,:,:)   ! rad cloud water droplet number [#/kg]
+   real(r8), pointer ::   ni_rad(:,:,:,:)   ! rad cloud ice crystal number [#/kg]
+   real(r8), pointer ::   qs_rad(:,:,:,:)   ! rad cloud snow mass [kg/kg]
+   real(r8), pointer ::   ns_rad(:,:,:,:)   ! rad cloud snow crystal number [#/kg]
    real(r8), pointer ::  cld_rad(:,:,:,:)   ! cloud fraction
 
-   real(r8), pointer ::  t_rad (:,:,:,:)    ! rad temperuture
+   real(r8), pointer ::   t_rad(:,:,:,:)    ! rad temperuture
    real(r8), pointer ::  qv_rad(:,:,:,:)    ! rad vapor
    real(r8), pointer ::  qc_rad(:,:,:,:)    ! rad cloud water
    real(r8), pointer ::  qi_rad(:,:,:,:)    ! rad cloud ice
@@ -608,14 +605,14 @@ end subroutine crm_physics_init
 #ifdef CLUBB_CRM
    real(r8) crm_cld(pcols,crm_nx, crm_ny, crm_nz+1)
  !==Guangxing Lin== new crm
-   real(r8) clubb_tk(pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) clubb_tkh(pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) relvar(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) clubb_tk   (pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) clubb_tkh  (pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) relvar     (pcols,crm_nx, crm_ny, crm_nz)
    real(r8) accre_enhan(pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) qclvar(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) qclvar     (pcols,crm_nx, crm_ny, crm_nz)
 #endif
-   real(r8) crm_tk(pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) crm_tkh(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) crm_tk   (pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) crm_tkh  (pcols,crm_nx, crm_ny, crm_nz)
    real(r8) cld3d_crm(pcols, crm_nx, crm_ny, crm_nz)   ! 3D instaneous cloud fraction 
  !==Guangxing Lin== new crm
    real(r8) prec_crm(pcols,crm_nx, crm_ny)
@@ -794,8 +791,8 @@ end subroutine crm_physics_init
 
    real(r8)             :: qaer(pcols, pver, pcnst)
 #ifdef MODAL_AERO
-   real(r8)             :: qaerwat_rad(pcols, crm_nx, crm_ny, crm_nz, ntot_amode)  ! aerosol water
-   real(r8)             :: dgnumwet_rad(pcols, crm_nx, crm_ny, crm_nz, ntot_amode) ! wet mode dimaeter
+   real(r8)             ::  qaerwat_rad(pcols, crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode)  ! aerosol water
+   real(r8)             :: dgnumwet_rad(pcols, crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode) ! wet mode dimaeter
 #endif
 
 ! Surface fluxes +++mhwang
@@ -874,10 +871,10 @@ end subroutine crm_physics_init
    ncol  = state%ncol
 
    if (SPCAM_microp_scheme .eq. 'm2005') then
-     call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
-     call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
-     call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
-     call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
+     call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      !call pbuf_get_field(pbuf, crm_cld_rad_idx, cld_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/)) !Guangxing Lin new CRM
    endif
 
@@ -983,10 +980,10 @@ end subroutine crm_physics_init
    call pbuf_get_field (pbuf, clubb_buffer_idx,  clubb_buffer)
 #endif
 
-   call pbuf_get_field (pbuf, crm_t_rad_idx,  t_rad)
-   call pbuf_get_field (pbuf, crm_qv_rad_idx, qv_rad)
-   call pbuf_get_field (pbuf, crm_qc_rad_idx, qc_rad)
-   call pbuf_get_field (pbuf, crm_qi_rad_idx, qi_rad)
+   call pbuf_get_field (pbuf, crm_t_rad_idx,     t_rad)
+   call pbuf_get_field (pbuf, crm_qv_rad_idx,   qv_rad)
+   call pbuf_get_field (pbuf, crm_qc_rad_idx,   qc_rad)
+   call pbuf_get_field (pbuf, crm_qi_rad_idx,   qi_rad)
    call pbuf_get_field (pbuf, crm_cld_rad_idx, cld_rad)  !Guangxing Lin new CRM
    
 ! Initialize stuff:
@@ -1077,20 +1074,20 @@ end subroutine crm_physics_init
              cld_rad(i,:,:,k)      = 0.  !Guangxing Lin new CRM
 #ifdef m2005
              if (SPCAM_microp_scheme .eq. 'm2005') then
-                nc_rad(i,:,:,k) = 0.
-                ni_rad(i,:,:,k) = 0.       
+                nc_rad(i,:,:,k) = 0.0
+                ni_rad(i,:,:,k) = 0.0       
                 qs_rad(i,:,:,k) = 0.0
                 ns_rad(i,:,:,k) = 0.0
                 wvar_crm(i,:,:,k) = 0.0
 ! hm 7/26/11, add new output
-                aut_crm(i,:,:,k) = 0.0
-                acc_crm(i,:,:,k) = 0.0
+                aut_crm (i,:,:,k) = 0.0
+                acc_crm (i,:,:,k) = 0.0
                 evpc_crm(i,:,:,k) = 0.0
                 evpr_crm(i,:,:,k) = 0.0
-                mlt_crm(i,:,:,k) = 0.0
-                sub_crm(i,:,:,k) = 0.0
-                dep_crm(i,:,:,k) = 0.0
-                con_crm(i,:,:,k) = 0.0
+                mlt_crm (i,:,:,k) = 0.0
+                sub_crm (i,:,:,k) = 0.0
+                dep_crm (i,:,:,k) = 0.0
+                con_crm (i,:,:,k) = 0.0
              endif
 #endif
 
@@ -1131,7 +1128,7 @@ end subroutine crm_physics_init
           spns(:,:) = 0.
           spng(:,:) = 0.
           spnr(:,:) = 0.
-! hm 8/31/11, add new output
+          ! hm 8/31/11, add new output
           aut_crm_a(:,:) = 0.
           acc_crm_a(:,:) = 0.
           evpc_crm_a(:,:) = 0.
@@ -2098,13 +2095,13 @@ end subroutine crm_physics_init
 
    end if ! (is_first_step())
 
-! ***  OLD COMMENT ******
-! physics_update is called in crm_physics. This is not a good practice. But it seems state is changed in
-! crm_physics. The physics_update should be moved to here in the future. ---Minghuai Wang (Minghuai.Wang@pnl.gov)
-!   call physics_update(state, tend, ptend, ztodt)
+   ! ***  OLD COMMENT ******
+   ! physics_update is called in crm_physics. This is not a good practice. But it seems state is changed in
+   ! crm_physics. The physics_update should be moved to here in the future. ---Minghuai Wang (Minghuai.Wang@pnl.gov)
+   !   call physics_update(state, tend, ptend, ztodt)
 
-! should the energy check are applied???? -Minghuai Wang
-!   call check_energy_chng(state, tend, "crm_physics", nstep, ztodt, zero, zero, zero, zero)
+   ! should the energy check are applied???? -Minghuai Wang
+   !   call check_energy_chng(state, tend, "crm_physics", nstep, ztodt, zero, zero, zero, zero)
 
    call t_stopf('crm')
 
@@ -2118,18 +2115,15 @@ end subroutine crm_physics_init
 
     ! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
     do  i=1,ncol
-    do ii=1,crm_nx
-    do jj=1,crm_ny
-    do  m=1,crm_nz
-      if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).gt.1.0e-10) then
-        !cld_rad(i,ii,jj,m) = 1.0_r8
-        cld_rad(i,ii,jj,m) = cld_rad(i,ii,jj,m) !Guangxing Lin new crm
-      else
-        cld_rad(i,ii,jj,m) = 0.0_r8
-      endif
-    enddo
-    enddo
-    enddo
+      do ii=1,crm_nx_rad
+        do jj=1,crm_ny_rad
+          do  m=1,crm_nz
+            if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).le.1.0e-10) then
+              cld_rad(i,ii,jj,m) = 0.0_r8
+            endif
+          enddo
+        enddo
+      enddo
     enddo
     !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 

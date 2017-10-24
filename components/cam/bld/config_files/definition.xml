@@ -331,5 +331,11 @@ CRM horizontal grid spacing, m
 <entry id="crm_dt" value="1">
 CRM time step, s
 </entry>
+<entry id="crm_nx_rad" value="1">
+CRM number of averaged columns in x for radiation
+</entry>
+<entry id="crm_ny_rad" value="1">
+CRM number of averaged columns in y for radiation
+</entry>
 
 </config_definition>

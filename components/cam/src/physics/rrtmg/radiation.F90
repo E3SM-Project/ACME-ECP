@@ -852,7 +852,7 @@ end function radiation_nextsw_cday
     use rad_solar_var,    only: get_variability
     use radiation_data,   only: output_rad_data
     use rrtmg_state,      only: rrtmg_state_create, rrtmg_state_update, rrtmg_state_destroy, rrtmg_state_t, num_rrtmg_levs
-    use crmdims,              only: crm_nx, crm_ny, crm_nz
+    use crmdims,              only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
     use physconst,            only: gravit
     use constituents,         only: cnst_get_ind
     use radconstants,         only: idx_sw_diag
@@ -991,60 +991,61 @@ end function radiation_nextsw_cday
     ! Local variables from radctl
     integer i, k                  ! index
     integer :: istat
-    real(r8) solin(pcols)         ! Solar incident flux
-    real(r8) fsntoa(pcols)        ! Net solar flux at TOA
-    real(r8) fsutoa(pcols)        ! Upwelling solar flux at TOA
-    real(r8) fsntoac(pcols)       ! Clear sky net solar flux at TOA
-    real(r8) fsnirt(pcols)        ! Near-IR flux absorbed at toa
-    real(r8) fsnrtc(pcols)        ! Clear sky near-IR flux absorbed at toa
-    real(r8) fsnirtsq(pcols)      ! Near-IR flux absorbed at toa >= 0.7 microns
-    real(r8) fsntc(pcols)         ! Clear sky total column abs solar flux
-    real(r8) fsnsc(pcols)         ! Clear sky surface abs solar flux
-    real(r8) fsdsc(pcols)         ! Clear sky surface downwelling solar flux
-    real(r8) flut(pcols)          ! Upward flux at top of model
-    real(r8) lwcf(pcols)          ! longwave cloud forcing
-    real(r8) swcf(pcols)          ! shortwave cloud forcing
-    real(r8) flutc(pcols)         ! Upward Clear Sky flux at top of model
-    real(r8) flntc(pcols)         ! Clear sky lw flux at model top
-    real(r8) flnsc(pcols)         ! Clear sky lw flux at srf (up-down)
-    real(r8) fldsc(pcols)         ! Clear sky lw flux at srf (down)
-    real(r8) fln200(pcols)        ! net longwave flux interpolated to 200 mb
-    real(r8) fln200c(pcols)       ! net clearsky longwave flux interpolated to 200 mb
-    real(r8) fns(pcols,pverp)     ! net shortwave flux
-    real(r8) fcns(pcols,pverp)    ! net clear-sky shortwave flux
-    real(r8) fsn200(pcols)        ! fns interpolated to 200 mb
-    real(r8) fsn200c(pcols)       ! fcns interpolated to 200 mb
-    real(r8) fnl(pcols,pverp)     ! net longwave flux
-    real(r8) fcnl(pcols,pverp)    ! net clear-sky longwave flux
-    real(r8) qtot, factor_xy
-    real(r8) trad(pcols,pver)
-    real(r8) qvrad(pcols,pver)
-    real(r8) cld_save(pcols,pver)
-    real(r8) fice(pcols,pver)
-    real(r8) cld_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) cliqwp_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) cicewp_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) rel_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) rei_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) cld_tau_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) emis_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) qrl_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) qrs_crm(pcols, crm_nx, crm_ny, crm_nz)
-    real(r8) crm_fsnt(pcols, crm_nx, crm_ny)   ! net shortwave fluxes at TOA at CRM grids
-    real(r8) crm_fsntc(pcols, crm_nx, crm_ny)   ! net clear-sky shortwave fluxes at TOA at CRM grids
-    real(r8) crm_fsns(pcols, crm_nx, crm_ny)   ! net shortwave fluxes at surface at CRM grids
-    real(r8) crm_fsnsc(pcols, crm_nx, crm_ny)   ! net clear-sky shortwave fluxes at surface at CRM grids
-    real(r8) crm_flnt(pcols, crm_nx, crm_ny)   ! net longwave fluxes at TOA at CRM grids
-    real(r8) crm_flntc(pcols, crm_nx, crm_ny)   ! net clear-sky longwave fluxes at TOA at CRM grids
-    real(r8) crm_flns(pcols, crm_nx, crm_ny)   ! net longwave fluxes at surface at CRM grids
-    real(r8) crm_flnsc(pcols, crm_nx, crm_ny)   ! net clear-sky longwave fluxes at surface at CRM grids
+    real(r8) solin    (pcols)       ! Solar incident flux
+    real(r8) fsntoa   (pcols)       ! Net solar flux at TOA
+    real(r8) fsutoa   (pcols)       ! Upwelling solar flux at TOA
+    real(r8) fsntoac  (pcols)       ! Clear sky net solar flux at TOA
+    real(r8) fsnirt   (pcols)       ! Near-IR flux absorbed at toa
+    real(r8) fsnrtc   (pcols)       ! Clear sky near-IR flux absorbed at toa
+    real(r8) fsnirtsq (pcols)       ! Near-IR flux absorbed at toa >= 0.7 microns
+    real(r8) fsntc    (pcols)       ! Clear sky total column abs solar flux
+    real(r8) fsnsc    (pcols)       ! Clear sky surface abs solar flux
+    real(r8) fsdsc    (pcols)       ! Clear sky surface downwelling solar flux
+    real(r8) flut     (pcols)       ! Upward flux at top of model
+    real(r8) lwcf     (pcols)       ! longwave cloud forcing
+    real(r8) swcf     (pcols)       ! shortwave cloud forcing
+    real(r8) flutc    (pcols)       ! Upward Clear Sky flux at top of model
+    real(r8) flntc    (pcols)       ! Clear sky lw flux at model top
+    real(r8) flnsc    (pcols)       ! Clear sky lw flux at srf (up-down)
+    real(r8) fldsc    (pcols)       ! Clear sky lw flux at srf (down)
+    real(r8) fln200   (pcols)       ! net longwave flux interpolated to 200 mb
+    real(r8) fln200c  (pcols)       ! net clearsky longwave flux interpolated to 200 mb
+    real(r8) fns      (pcols,pverp) ! net shortwave flux
+    real(r8) fcns     (pcols,pverp) ! net clear-sky shortwave flux
+    real(r8) fsn200   (pcols)       ! fns interpolated to 200 mb
+    real(r8) fsn200c  (pcols)       ! fcns interpolated to 200 mb
+    real(r8) fnl      (pcols,pverp) ! net longwave flux
+    real(r8) fcnl     (pcols,pverp) ! net clear-sky longwave flux
+    real(r8) qtot
+    real(r8) factor_xy
+    real(r8) trad       (pcols,pver)
+    real(r8) qvrad      (pcols,pver)
+    real(r8) cld_save   (pcols,pver)
+    real(r8) fice       (pcols,pver)
+    real(r8) cld_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) cliqwp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) cicewp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) rel_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) rei_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) cld_tau_crm(pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) emis_crm   (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) qrl_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) qrs_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) crm_fsnt   (pcols, crm_nx_rad, crm_ny_rad)   ! net shortwave fluxes at TOA at CRM grids
+    real(r8) crm_fsntc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky shortwave fluxes at TOA at CRM grids
+    real(r8) crm_fsns   (pcols, crm_nx_rad, crm_ny_rad)   ! net shortwave fluxes at surface at CRM grids
+    real(r8) crm_fsnsc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky shortwave fluxes at surface at CRM grids
+    real(r8) crm_flnt   (pcols, crm_nx_rad, crm_ny_rad)   ! net longwave fluxes at TOA at CRM grids
+    real(r8) crm_flntc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky longwave fluxes at TOA at CRM grids
+    real(r8) crm_flns   (pcols, crm_nx_rad, crm_ny_rad)   ! net longwave fluxes at surface at CRM grids
+    real(r8) crm_flnsc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky longwave fluxes at surface at CRM grids
 
-    real(r8) crm_aodvisz(pcols, crm_nx, crm_ny, crm_nz)   ! layer aerosol optical depth at 550nm at CRM grids
-    real(r8) crm_aodvis(pcols, crm_nx, crm_ny)   ! AOD at 550nm at CRM grids
-    real(r8) crm_aod400(pcols, crm_nx, crm_ny)   ! AOD at 400nm at CRM grids
-    real(r8) crm_aod700(pcols, crm_nx, crm_ny)   ! AOD at 700nm at CRM grids
-    real(r8) aod400(pcols)   ! AOD at 400nm at CRM grids
-    real(r8) aod700(pcols)   ! AOD at 700nm at CRM grids
+    real(r8) crm_aodvisz(pcols, crm_nx_rad, crm_ny_rad, crm_nz)   ! layer aerosol optical depth at 550nm at CRM grids
+    real(r8) crm_aodvis (pcols, crm_nx_rad, crm_ny_rad)   ! AOD at 550nm at CRM grids
+    real(r8) crm_aod400 (pcols, crm_nx_rad, crm_ny_rad)   ! AOD at 400nm at CRM grids
+    real(r8) crm_aod700 (pcols, crm_nx_rad, crm_ny_rad)   ! AOD at 700nm at CRM grids
+    real(r8) aod400     (pcols)   ! AOD at 400nm at CRM grids
+    real(r8) aod700     (pcols)   ! AOD at 700nm at CRM grids
 
     integer :: nct_tot_icld_vistau(pcols,pver) ! the number of CRM columns that has in-cloud visible sw optical depth 
     integer :: nct_liq_icld_vistau(pcols,pver) ! the number of CRM column that has liq in-cloud visible sw optical depth 
@@ -1292,9 +1293,19 @@ end function radiation_nextsw_cday
         Nnite = Nnite + 1
         IdxNite(Nnite) = i
       end if
-    end do
+    end do ! i
 
-    if (use_SPCAM) then 
+    if (use_SPCAM) then
+      allocate(dei_save(pcols, pver))
+      allocate(dei_crm(pcols, crm_nx_rad, crm_ny_rad, crm_nz))
+      if (SPCAM_microp_scheme .eq. 'm2005') then 
+        allocate(mu_save      (pcols, pver))
+        allocate(lambdac_save (pcols, pver))
+        allocate(des_save     (pcols, pver))
+        allocate(mu_crm       (pcols, crm_nx_rad, crm_ny_Rad, crm_nz))
+        allocate(lambdac_crm  (pcols, crm_nx_rad, crm_ny_Rad, crm_nz))
+        allocate(des_crm      (pcols, crm_nx_rad, crm_ny_Rad, crm_nz))
+      end if
       ! calculate radiation every timestep for SP
       dosw = .true. 
       dolw = .true.
@@ -1303,67 +1314,33 @@ end function radiation_nextsw_cday
       dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
     endif ! use_SPCAM
 
-    if (use_SPCAM) then
-      allocate(dei_save(pcols, pver))
-      allocate(dei_crm(pcols, crm_nx, crm_ny, crm_nz))
-      if (SPCAM_microp_scheme .eq. 'm2005') then 
-        ! allocate(dei_save(pcols, pver))
-        allocate(mu_save(pcols, pver))
-        allocate(lambdac_save(pcols, pver))
-        allocate(des_save(pcols, pver))
-        ! allocate(dei_crm(pcols, crm_nx, crm_ny, crm_nz))
-        allocate(mu_crm(pcols, crm_nx, crm_ny, crm_nz))
-        allocate(lambdac_crm(pcols, crm_nx, crm_ny, crm_nz))
-        allocate(des_crm(pcols, crm_nx, crm_ny, crm_nz))
-      end if
-    end if
-
     if (use_SPCAM) then 
-      solin_m    = 0.
-      fsntoa_m   = 0. 
-      fsutoa_m   = 0.
-      fsntoac_m  = 0.
-      fsnirt_m   = 0. 
-      fsnrtc_m   = 0.
-      fsnirtsq_m = 0.
-      fsntc_m    = 0. 
-      fsnsc_m    = 0.
-      fsdsc_m    = 0.
-      flut_m     = 0. 
-      flutc_m    = 0.
-      flntc_m    = 0. 
-      flnsc_m    = 0.
-      fldsc_m    = 0. 
-      flwds_m    = 0.
-      fsns_m     = 0. 
-      fsnt_m     = 0.
-      flns_m     = 0. 
-      flnt_m     = 0.
+      solin_m    = 0.   ; fsntoa_m   = 0. 
+      fsutoa_m   = 0.   ; fsntoac_m  = 0.
+      fsnirt_m   = 0.   ; fsnrtc_m   = 0.
+      fsnirtsq_m = 0.   ; fsntc_m    = 0. 
+      fsnsc_m    = 0.   ; fsdsc_m    = 0.
+      flut_m     = 0.   ; flutc_m    = 0.
+      flntc_m    = 0.   ; flnsc_m    = 0.
+      fldsc_m    = 0.   ; flwds_m    = 0.
+      fsns_m     = 0.   ; fsnt_m     = 0.
+      flns_m     = 0.   ; flnt_m     = 0.
       fsds_m     = 0.
-      fln200_m   = 0. 
-      fln200c_m  = 0.
-      fsn200_m   = 0. 
-      fsn200c_m  = 0.
-      sols_m     = 0.
-      soll_m     = 0.
-      solsd_m    = 0.
-      solld_m    = 0.
-      qrs_m      = 0.
-      qrl_m      = 0.
-      qrsc_m     = 0.
-      qrlc_m     = 0.
-      qrs_crm    = 0.
-      qrl_crm    = 0.
-      emis_crm   = 0.
-      cld_tau_crm= 0.
-      crm_aodvisz= 0.
-      crm_aodvis = 0.
-      crm_aod400 = 0. ; crm_aod700 = 0.
-      aod400     = 0. ; aod700     = 0.
-      crm_fsnt   = 0. ; crm_fsntc  = 0. 
-      crm_fsns   = 0. ; crm_fsnsc  = 0.
-      crm_flnt   = 0. ; crm_flntc  = 0.
-      crm_flns   = 0. ; crm_flnsc  = 0.
+      fln200_m   = 0.   ; fln200c_m  = 0.
+      fsn200_m   = 0.   ; fsn200c_m  = 0.
+      sols_m     = 0.   ; soll_m     = 0.
+      solsd_m    = 0.   ; solld_m    = 0.
+      qrs_m      = 0.   ; qrl_m      = 0.
+      qrsc_m     = 0.   ; qrlc_m     = 0.
+      qrs_crm    = 0.   ; qrl_crm    = 0.
+      emis_crm   = 0.   ; cld_tau_crm= 0.
+      crm_aodvisz= 0.   ; crm_aodvis = 0.
+      crm_aod400 = 0.   ; crm_aod700 = 0.
+      aod400     = 0.   ; aod700     = 0.
+      crm_fsnt   = 0.   ; crm_fsntc  = 0. 
+      crm_fsns   = 0.   ; crm_fsnsc  = 0.
+      crm_flnt   = 0.   ; crm_flntc  = 0.
+      crm_flns   = 0.   ; crm_flnsc  = 0.
       tot_cld_vistau   = 0
       tot_icld_vistau  = 0. ; nct_tot_icld_vistau  = 0.
       liq_icld_vistau  = 0. ; nct_liq_icld_vistau  = 0.
@@ -1403,13 +1380,13 @@ end function radiation_nextsw_cday
 
       if (SPCAM_microp_scheme .eq. 'm2005') then 
         crm_nc_rad_idx  = pbuf_get_index('CRM_NC_RAD')
-        call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
+        call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
         crm_ni_rad_idx  = pbuf_get_index('CRM_NI_RAD')
-        call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
+        call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
         crm_qs_rad_idx  = pbuf_get_index('CRM_QS_RAD')
-        call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
+        call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
         crm_ns_rad_idx  = pbuf_get_index('CRM_NS_RAD')
-        call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx, crm_ny, crm_nz/))
+        call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
       endif
 
       cicewp(1:ncol,1:pver) = 0.  
@@ -1417,7 +1394,7 @@ end function radiation_nextsw_cday
       trad(:ncol,:)  = state%t(:ncol,:)
       qvrad(:ncol,:) = state%q(:ncol,:,1)  
 
-      factor_xy = 1./dble(crm_nx*crm_ny)
+      factor_xy = 1./real( crm_nx_rad*crm_ny_rad ,r8)
 
       cld_save = cld  ! save to restore later
       rel_save = rel  ! save to restroe later
@@ -1448,7 +1425,8 @@ end function radiation_nextsw_cday
       dgnumwet_save = dgnumwet
       qaerwat_save = qaerwat
 #endif /*MODAL_AERO*/
-    endif ! /*SPCAM*/
+
+    endif ! SPCAM
 
     if (dosw .or. dolw) then
 
@@ -1468,12 +1446,12 @@ end function radiation_nextsw_cday
         call cldefr( lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh )
       end if
 
-      do jj=1,crm_ny 
-        do ii=1,crm_nx 
+      do jj=1,crm_ny_rad
+        do ii=1,crm_nx_rad
 
           if (use_SPCAM) then 
             first_column = ii.eq.1.and.jj.eq.1
-            last_column = ii.eq.crm_nx.and.jj.eq.crm_ny
+            last_column = ii.eq.crm_nx_rad.and.jj.eq.crm_ny_rad
 
             do m=1,crm_nz
               k = pver-m+1
@@ -1491,9 +1469,9 @@ end function radiation_nextsw_cday
                   cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
                            / max(0.01_r8,cld(i,k)) ! In-cloud liquid water path. 
                 else
-                  fice(i,k)=0.
-                  cld(i,k)=0.
-                  cld_crm(i,ii,jj,m)=0.
+                  fice(i,k)= 0.
+                  cld(i,k) = 0.
+                  cld_crm(i,ii,jj,m) = 0.
                   cicewp(i,k) = 0.           ! In-cloud ice water path.
                   cliqwp(i,k) = 0.           ! In-cloud liquid water path.
                 end if
@@ -1531,7 +1509,7 @@ end function radiation_nextsw_cday
                 !!! aerosol effects is small anyway. 
                 !!! -Minghuai Wang (minghuai.wang@pnl.gov)
                 !!! 
-                qaerwat(i, k, 1:ntot_amode)  =  qaerwat_crm(i, ii, jj, m, 1:ntot_amode)
+                qaerwat (i, k, 1:ntot_amode) =  qaerwat_crm(i, ii, jj, m, 1:ntot_amode)
                 dgnumwet(i, k, 1:ntot_amode) = dgnumwet_crm(i, ii, jj, m, 1:ntot_amode)
 #endif 
               end do ! i
@@ -1561,7 +1539,7 @@ end function radiation_nextsw_cday
                   rei_crm(i,ii,jj,m) = rei(i,k)
                 end do ! i
               end do ! m
-            endif
+            endif ! m2005
 
             ! whannah 
             if (SPCAM_microp_scheme .eq. 'sam1mom') then 
@@ -1576,7 +1554,7 @@ end function radiation_nextsw_cday
                 ! dei(:ncol,k) = rei(:ncol,k) * 500._r8/917._r8 * 2._r8
                 dei_crm(:ncol,ii,jj,m) = dei(:ncol,k)
               end do ! m
-            end if
+            end if ! sam1mom
 #endif
           endif ! use_SPCAM
 
@@ -1618,19 +1596,19 @@ end function radiation_nextsw_cday
                 do k=1,pver
                    cldfprime(i,k)=max(cld(i,k),cldfsnow(i,k))
                    if(cldfprime(i,k) > 0.)then
-                      c_cld_tau    (1:nbndsw,i,k)= &
-                           (cldfsnow(i,k)*snow_tau    (1:nbndsw,i,k) + cld(i,k)*cld_tau    (1:nbndsw,i,k))/cldfprime(i,k)
-                      c_cld_tau_w  (1:nbndsw,i,k)= &
-                           (cldfsnow(i,k)*snow_tau_w  (1:nbndsw,i,k) + cld(i,k)*cld_tau_w  (1:nbndsw,i,k))/cldfprime(i,k)
-                      c_cld_tau_w_g(1:nbndsw,i,k)= &
-                           (cldfsnow(i,k)*snow_tau_w_g(1:nbndsw,i,k) + cld(i,k)*cld_tau_w_g(1:nbndsw,i,k))/cldfprime(i,k)
-                      c_cld_tau_w_f(1:nbndsw,i,k)= &
-                           (cldfsnow(i,k)*snow_tau_w_f(1:nbndsw,i,k) + cld(i,k)*cld_tau_w_f(1:nbndsw,i,k))/cldfprime(i,k)
+                      c_cld_tau    (1:nbndsw,i,k) = (cldfsnow(i,k)*snow_tau    (1:nbndsw,i,k) &
+                                                        + cld(i,k)*cld_tau     (1:nbndsw,i,k))/cldfprime(i,k)
+                      c_cld_tau_w  (1:nbndsw,i,k) = (cldfsnow(i,k)*snow_tau_w  (1:nbndsw,i,k) &
+                                                        + cld(i,k)*cld_tau_w   (1:nbndsw,i,k))/cldfprime(i,k)
+                      c_cld_tau_w_g(1:nbndsw,i,k) = (cldfsnow(i,k)*snow_tau_w_g(1:nbndsw,i,k) &
+                                                        + cld(i,k)*cld_tau_w_g (1:nbndsw,i,k))/cldfprime(i,k)
+                      c_cld_tau_w_f(1:nbndsw,i,k) = (cldfsnow(i,k)*snow_tau_w_f(1:nbndsw,i,k) &
+                                                        + cld(i,k)*cld_tau_w_f (1:nbndsw,i,k))/cldfprime(i,k)
                    else
-                      c_cld_tau    (1:nbndsw,i,k)= 0._r8
-                      c_cld_tau_w  (1:nbndsw,i,k)= 0._r8
-                      c_cld_tau_w_g(1:nbndsw,i,k)= 0._r8
-                      c_cld_tau_w_f(1:nbndsw,i,k)= 0._r8
+                      c_cld_tau    (1:nbndsw,i,k) = 0._r8
+                      c_cld_tau_w  (1:nbndsw,i,k) = 0._r8
+                      c_cld_tau_w_g(1:nbndsw,i,k) = 0._r8
+                      c_cld_tau_w_f(1:nbndsw,i,k) = 0._r8
                    endif
                 enddo
              enddo
@@ -1638,15 +1616,15 @@ end function radiation_nextsw_cday
                 do m=1,crm_nz
                    k = pver-m+1
                    do i=1,ncol
-                      cld_tau_crm(i,ii,jj,m)=  cld_tau(rrtmg_sw_cloudsim_band,i,k)
+                      cld_tau_crm(i,ii,jj,m) =  cld_tau(rrtmg_sw_cloudsim_band,i,k)
                    end do ! i
                 end do ! m
              endif 
           else
-             c_cld_tau    (1:nbndsw,1:ncol,:)= cld_tau    (:,1:ncol,:)
-             c_cld_tau_w  (1:nbndsw,1:ncol,:)= cld_tau_w  (:,1:ncol,:)
-             c_cld_tau_w_g(1:nbndsw,1:ncol,:)= cld_tau_w_g(:,1:ncol,:)
-             c_cld_tau_w_f(1:nbndsw,1:ncol,:)= cld_tau_w_f(:,1:ncol,:)
+             c_cld_tau    (1:nbndsw,1:ncol,:) = cld_tau    (:,1:ncol,:)
+             c_cld_tau_w  (1:nbndsw,1:ncol,:) = cld_tau_w  (:,1:ncol,:)
+             c_cld_tau_w_g(1:nbndsw,1:ncol,:) = cld_tau_w_g(:,1:ncol,:)
+             c_cld_tau_w_f(1:nbndsw,1:ncol,:) = cld_tau_w_f(:,1:ncol,:)
           endif
 
           if(do_aerocom_ind3) then
@@ -1782,27 +1760,27 @@ end function radiation_nextsw_cday
 
                   if (use_SPCAM) then 
                      do i=1, ncol
-                        qrs_m(i,:pver, icall) = qrs_m(i,:pver, icall) + qrs(i,:pver)*factor_xy
-                        qrsc_m(i,:pver, icall) = qrsc_m(i,:pver, icall) + qrsc(i,:pver)*factor_xy
-                        solin_m(i, icall) = solin_m(i, icall)+solin(i)*factor_xy
-                        fsds_m(i, icall)  = fsds_m(i, icall)+fsds(i)*factor_xy
-                        fsnirt_m(i, icall)= fsnirt_m(i, icall)+fsnirt(i)*factor_xy
-                        fsnrtc_m(i, icall)= fsnrtc_m(i, icall)+fsnrtc(i)*factor_xy
-                        fsnirtsq_m(i, icall)= fsnirtsq_m(i, icall)+fsnirtsq(i)*factor_xy
-                        fsnt_m(i, icall)  = fsnt_m(i, icall)+fsnt(i) *factor_xy
-                        fsns_m(i, icall)  = fsns_m(i, icall)+fsns(i) *factor_xy
-                        fsntc_m(i, icall) = fsntc_m(i, icall)+fsntc(i)*factor_xy
-                        fsnsc_m(i, icall) = fsnsc_m(i, icall)+fsnsc(i)*factor_xy
-                        fsdsc_m(i, icall) = fsdsc_m(i, icall)+fsdsc(i)*factor_xy
-                        fsntoa_m(i, icall)=fsntoa_m(i, icall)+fsntoa(i)*factor_xy
-                        fsutoa_m(i, icall)=fsutoa_m(i, icall)+fsutoa(i)*factor_xy
-                        fsntoac_m(i, icall)=fsntoac_m(i, icall)+fsntoac(i)*factor_xy
-                        sols_m(i, icall)   =sols_m(i, icall)+cam_out%sols(i)*factor_xy
-                        soll_m(i, icall)   =soll_m(i, icall)+cam_out%soll(i)*factor_xy
-                        solsd_m(i, icall)   =solsd_m(i, icall)+cam_out%solsd(i)*factor_xy
-                        solld_m(i, icall)   =solld_m(i, icall)+cam_out%solld(i)*factor_xy
-                        fsn200_m(i, icall)  = fsn200_m(i, icall)+fsn200(i)*factor_xy
-                        fsn200c_m(i, icall) = fsn200c_m(i, icall)+fsn200c(i)*factor_xy
+                        qrs_m     (i,:pver, icall) =  qrs_m(i,:pver, icall) +  qrs(i,:pver)*factor_xy
+                        qrsc_m    (i,:pver, icall) = qrsc_m(i,:pver, icall) + qrsc(i,:pver)*factor_xy
+                        solin_m   (i, icall) = solin_m   (i, icall)+solin   (i)*factor_xy
+                        fsds_m    (i, icall) = fsds_m    (i, icall)+fsds    (i)*factor_xy
+                        fsnirt_m  (i, icall) = fsnirt_m  (i, icall)+fsnirt  (i)*factor_xy
+                        fsnrtc_m  (i, icall) = fsnrtc_m  (i, icall)+fsnrtc  (i)*factor_xy
+                        fsnirtsq_m(i, icall) = fsnirtsq_m(i, icall)+fsnirtsq(i)*factor_xy
+                        fsnt_m    (i, icall) = fsnt_m    (i, icall)+fsnt    (i)*factor_xy
+                        fsns_m    (i, icall) = fsns_m    (i, icall)+fsns    (i)*factor_xy
+                        fsntc_m   (i, icall) = fsntc_m   (i, icall)+fsntc   (i)*factor_xy
+                        fsnsc_m   (i, icall) = fsnsc_m   (i, icall)+fsnsc   (i)*factor_xy
+                        fsdsc_m   (i, icall) = fsdsc_m   (i, icall)+fsdsc   (i)*factor_xy
+                        fsntoa_m  (i, icall) = fsntoa_m  (i, icall)+fsntoa  (i)*factor_xy
+                        fsutoa_m  (i, icall) = fsutoa_m  (i, icall)+fsutoa  (i)*factor_xy
+                        fsntoac_m (i, icall) = fsntoac_m (i, icall)+fsntoac (i)*factor_xy
+                        sols_m    (i, icall) = sols_m    (i, icall)+cam_out%sols (i)*factor_xy
+                        soll_m    (i, icall) = soll_m    (i, icall)+cam_out%soll (i)*factor_xy
+                        solsd_m   (i, icall) = solsd_m   (i, icall)+cam_out%solsd(i)*factor_xy
+                        solld_m   (i, icall) = solld_m   (i, icall)+cam_out%solld(i)*factor_xy
+                        fsn200_m  (i, icall) = fsn200_m  (i, icall)+fsn200 (i)*factor_xy
+                        fsn200c_m (i, icall) = fsn200c_m (i, icall)+fsn200c(i)*factor_xy
                         if (spectralflux) then
                            su_m(i,:,:,icall) = su_m(i,:,:,icall) + su(i,:,:)*factor_xy
                            sd_m(i,:,:,icall) = sd_m(i,:,:,icall) + sd(i,:,:)*factor_xy
@@ -1811,10 +1789,10 @@ end function radiation_nextsw_cday
 
                      if(icall.eq.0) then  ! for the climate call
                        do i=1, ncol
-                         crm_fsnt(i, ii, jj) = fsnt(i)
-                         crm_fsntc(i,ii,jj)  = fsntc(i)
-                         crm_fsns(i, ii, jj) = fsns(i)
-                         crm_fsnsc(i,ii,jj)  = fsnsc(i)
+                         crm_fsnt  (i,ii,jj) = fsnt(i)
+                         crm_fsntc (i,ii,jj) = fsntc(i)
+                         crm_fsns  (i,ii,jj) = fsns(i)
+                         crm_fsnsc (i,ii,jj) = fsnsc(i)
                          crm_aodvis(i,ii,jj) = sum(aer_tau(i, :, idx_sw_diag))
                          crm_aod400(i,ii,jj) = sum(aer_tau(i, :, idx_sw_diag+1))
                          crm_aod700(i,ii,jj) = sum(aer_tau(i, :, idx_sw_diag-1))
@@ -1950,95 +1928,95 @@ end function radiation_nextsw_cday
            call t_stopf ('rad_sw_loop')   !==Guangxing Lin
  
           if(use_SPCAM .and. last_column) then
-             do i = 1, nnite 
-               crm_aodvis(idxnite(i), :, :) = fillvalue
-               crm_aod400(idxnite(i), :, :) = fillvalue
-               crm_aod700(idxnite(i), :, :) = fillvalue
-               aod400(idxnite(i)) = fillvalue
-               aod700(idxnite(i)) = fillvalue
-               crm_aodvisz(idxnite(i), :, :, :) = fillvalue
-             end do
-             call outfld('CRM_FSNT', crm_fsnt, pcols, lchnk)
-             call outfld('CRM_FSNTC', crm_fsntc, pcols, lchnk)
-             call outfld('CRM_FSNS', crm_fsns, pcols, lchnk)
-             call outfld('CRM_FSNSC', crm_fsnsc, pcols, lchnk)
-             call outfld('CRM_AODVIS', crm_aodvis, pcols, lchnk)
-             call outfld('CRM_AOD400', crm_aod400, pcols, lchnk)
-             call outfld('CRM_AOD700', crm_aod700, pcols, lchnk)
-             call outfld('AOD400', aod400, pcols, lchnk)
-             call outfld('AOD700', aod700, pcols, lchnk)
-             call outfld('CRM_AODVISZ', crm_aodvisz, pcols, lchnk)
+            do i = 1, nnite 
+              crm_aodvis(idxnite(i), :, :) = fillvalue
+              crm_aod400(idxnite(i), :, :) = fillvalue
+              crm_aod700(idxnite(i), :, :) = fillvalue
+              aod400(idxnite(i)) = fillvalue
+              aod700(idxnite(i)) = fillvalue
+              crm_aodvisz(idxnite(i), :, :, :) = fillvalue
+            end do
+            call outfld('CRM_FSNT', crm_fsnt, pcols, lchnk)
+            call outfld('CRM_FSNTC', crm_fsntc, pcols, lchnk)
+            call outfld('CRM_FSNS', crm_fsns, pcols, lchnk)
+            call outfld('CRM_FSNSC', crm_fsnsc, pcols, lchnk)
+            call outfld('CRM_AODVIS', crm_aodvis, pcols, lchnk)
+            call outfld('CRM_AOD400', crm_aod400, pcols, lchnk)
+            call outfld('CRM_AOD700', crm_aod700, pcols, lchnk)
+            call outfld('AOD400', aod400, pcols, lchnk)
+            call outfld('AOD700', aod700, pcols, lchnk)
+            call outfld('CRM_AODVISZ', crm_aodvisz, pcols, lchnk)
 
-             do i=1, ncol
-                do k=1, pver
-                       tot_cld_vistau(i,k) = tot_icld_vistau(i,k) *  factor_xy
-                       if(nct_tot_icld_vistau(i,k).ge.1) then
-                         tot_icld_vistau(i,k)  = tot_icld_vistau(i,k)/nct_tot_icld_vistau(i,k)
-                       else 
-                         tot_icld_vistau(i,k)  = 0.0_r8
-                       end if
-                       if(nct_liq_icld_vistau(i,k).ge.1) then
-                          liq_icld_vistau(i,k)  = liq_icld_vistau(i,k)/nct_liq_icld_vistau(i,k)
-                       else
-                          liq_icld_vistau(i,k)  = 0.0_r8
-                       end if
-                       if(nct_ice_icld_vistau(i,k).ge.1) then
-                          ice_icld_vistau(i,k)  = ice_icld_vistau(i,k)/nct_ice_icld_vistau(i,k)
-                       else
-                          ice_icld_vistau(i,k)  = 0.0_r8
-                       end if
-                       if(nct_snow_icld_vistau(i,k).ge.1) then
-                          snow_icld_vistau(i,k) = snow_icld_vistau(i,k)/nct_snow_icld_vistau(i,k)
-                       else
-                          snow_icld_vistau(i,k) = 0.0_r8
-                       end if
-                end do
-             end do
+            do i=1,ncol
+              do k=1,pver
+                tot_cld_vistau(i,k) = tot_icld_vistau(i,k) *  factor_xy
+                if(nct_tot_icld_vistau(i,k).ge.1) then
+                  tot_icld_vistau(i,k)  = tot_icld_vistau(i,k)/nct_tot_icld_vistau(i,k)
+                else 
+                  tot_icld_vistau(i,k)  = 0.0_r8
+                end if
+                if(nct_liq_icld_vistau(i,k).ge.1) then
+                  liq_icld_vistau(i,k)  = liq_icld_vistau(i,k)/nct_liq_icld_vistau(i,k)
+                else
+                  liq_icld_vistau(i,k)  = 0.0_r8
+                end if
+                if(nct_ice_icld_vistau(i,k).ge.1) then
+                  ice_icld_vistau(i,k)  = ice_icld_vistau(i,k)/nct_ice_icld_vistau(i,k)
+                else
+                  ice_icld_vistau(i,k)  = 0.0_r8
+                end if
+                if(nct_snow_icld_vistau(i,k).ge.1) then
+                  snow_icld_vistau(i,k) = snow_icld_vistau(i,k)/nct_snow_icld_vistau(i,k)
+                else
+                  snow_icld_vistau(i,k) = 0.0_r8
+                end if
+              end do ! k
+            end do ! i
           else if (.not. use_SPCAM) then
-          ! Output cloud optical depth fields for the visible band
-             tot_icld_vistau(:ncol,:)  = c_cld_tau(idx_sw_diag,:ncol,:)
-             liq_icld_vistau(:ncol,:)  = liq_tau(idx_sw_diag,:ncol,:)
-             ice_icld_vistau(:ncol,:)  = ice_tau(idx_sw_diag,:ncol,:)
-             if (cldfsnow_idx > 0) then
-                snow_icld_vistau(:ncol,:) = snow_tau(idx_sw_diag,:ncol,:)
-             endif
-             ! multiply by total cloud fraction to get gridbox value
-             tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
+            ! Output cloud optical depth fields for the visible band
+            tot_icld_vistau(:ncol,:)  = c_cld_tau(idx_sw_diag,:ncol,:)
+            liq_icld_vistau(:ncol,:)  = liq_tau(idx_sw_diag,:ncol,:)
+            ice_icld_vistau(:ncol,:)  = ice_tau(idx_sw_diag,:ncol,:)
+            if (cldfsnow_idx > 0) then
+              snow_icld_vistau(:ncol,:) = snow_tau(idx_sw_diag,:ncol,:)
+            endif
+            ! multiply by total cloud fraction to get gridbox value
+            tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
           endif 
 
 	        ! add fillvalue for night columns
           if ( (use_SPCAM .and. last_column) .or. .not. use_SPCAM) then
-             do i = 1, Nnite
-                 tot_cld_vistau(IdxNite(i),:)   = fillvalue
-                 tot_icld_vistau(IdxNite(i),:)  = fillvalue
-                 liq_icld_vistau(IdxNite(i),:)  = fillvalue
-                 ice_icld_vistau(IdxNite(i),:)  = fillvalue
-                 if (cldfsnow_idx > 0) then
-                    snow_icld_vistau(IdxNite(i),:) = fillvalue
-                 endif
-             end do
+            do i = 1, Nnite
+              tot_cld_vistau(IdxNite(i),:)   = fillvalue
+              tot_icld_vistau(IdxNite(i),:)  = fillvalue
+              liq_icld_vistau(IdxNite(i),:)  = fillvalue
+              ice_icld_vistau(IdxNite(i),:)  = fillvalue
+              if (cldfsnow_idx > 0) then
+                snow_icld_vistau(IdxNite(i),:) = fillvalue
+              endif
+            end do
 
-             call outfld('TOT_CLD_VISTAU', tot_cld_vistau, pcols, lchnk)       
-             call outfld('TOT_ICLD_VISTAU', tot_icld_vistau, pcols, lchnk)
-             call outfld('LIQ_ICLD_VISTAU', liq_icld_vistau, pcols, lchnk)
-             call outfld('ICE_ICLD_VISTAU', ice_icld_vistau, pcols, lchnk)
-             if (cldfsnow_idx > 0) then
-                call outfld('SNOW_ICLD_VISTAU', snow_icld_vistau, pcols, lchnk)
-             endif
+            call outfld('TOT_CLD_VISTAU', tot_cld_vistau, pcols, lchnk)       
+            call outfld('TOT_ICLD_VISTAU', tot_icld_vistau, pcols, lchnk)
+            call outfld('LIQ_ICLD_VISTAU', liq_icld_vistau, pcols, lchnk)
+            call outfld('ICE_ICLD_VISTAU', ice_icld_vistau, pcols, lchnk)
+            if (cldfsnow_idx > 0) then
+              call outfld('SNOW_ICLD_VISTAU', snow_icld_vistau, pcols, lchnk)
+            endif
           end if
 
-           call t_stopf ('rad_sw')    !==Guangxing Lin
+          call t_stopf ('rad_sw')    !==Guangxing Lin
 
        end if   ! dosw
 
-       if( (use_SPCAM .and. last_column) .or. .not. use_SPCAM)  then
+        if( (use_SPCAM .and. last_column) .or. .not. use_SPCAM)  then
           ! Output aerosol mmr
           call rad_cnst_out(0, state, pbuf)
-       end if  
+        end if  
 
-       ! Longwave radiation computation
+        ! Longwave radiation computation
 
-       if (dolw) then
+        if (dolw) then
 
           call t_startf ('rad_lw')   !==Guangxing Lin
 
@@ -2046,9 +2024,9 @@ end function radiation_nextsw_cday
           ! Convert upward longwave flux units to CGS
           !
           do i=1,ncol
-             lwupcgs(i) = cam_in%lwup(i)*1000._r8
-             if(single_column.and.scm_crm_mode.and.have_tg) &
-                  lwupcgs(i) = 1000*stebol*tground(1)**4
+            lwupcgs(i) = cam_in%lwup(i)*1000._r8
+            if(single_column.and.scm_crm_mode.and.have_tg) &
+              lwupcgs(i) = 1000*stebol*tground(1)**4
           end do
 
           call rad_cnst_get_call_list(active_calls)
@@ -2058,139 +2036,141 @@ end function radiation_nextsw_cday
           call t_startf ('rad_lw_loop')   !==Guangxing Lin
 
           do icall = N_DIAG, 0, -1
+            if (active_calls(icall)) then
 
-              if (active_calls(icall)) then
+              ! update the conctrations in the RRTMG state object
+              call rrtmg_state_update( state, pbuf, icall, r_state)
 
-                  ! update the conctrations in the RRTMG state object
-                  call  rrtmg_state_update( state, pbuf, icall, r_state)
+              call aer_rad_props_lw(icall, state, pbuf,  aer_lw_abs)
+              
+              call t_startf ('rad_rrtmg_lw')    !==Guangxing Lin
 
-                  call aer_rad_props_lw(icall, state, pbuf,  aer_lw_abs)
-                  
-                  call t_startf ('rad_rrtmg_lw')    !==Guangxing Lin
+              call rad_rrtmg_lw( &
+                   lchnk,        ncol,         num_rrtmg_levs,  r_state,                     &
+                   state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
+                   qrl,          qrlc,                                                       &
+                   flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
+                   flut,         flutc,        fnl,             fcnl,         fldsc, &
+                   lu,           ld)
 
-                  call rad_rrtmg_lw( &
-                       lchnk,        ncol,         num_rrtmg_levs,  r_state,                     &
-                       state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
-                       qrl,          qrlc,                                                       &
-                       flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
-                       flut,         flutc,        fnl,             fcnl,         fldsc, &
-                       lu,           ld)
+              call t_stopf ('rad_rrtmg_lw')   !==Guangxing Lin
 
-                  call t_stopf ('rad_rrtmg_lw')   !==Guangxing Lin
+              if (lwrad_off) then
+                qrl(:,:) = 0._r8
+                qrlc(:,:) = 0._r8
+                flns(:) = 0._r8
+                flnt(:) = 0._r8
+                flnsc(:) = 0._r8
+                flntc(:) = 0._r8
+                cam_out%flwds(:) = 0._r8
+                flut(:) = 0._r8
+                flutc(:) = 0._r8
+                fnl(:,:) = 0._r8
+                fcnl(:,:) = 0._r8
+                fldsc(:) = 0._r8
+              end if !lwrad_off
+  
+              do i=1,ncol
+                lwcf(i)=flutc(i) - flut(i)
+              end do
 
-                  if (lwrad_off) then
-                     qrl(:,:) = 0._r8
-                     qrlc(:,:) = 0._r8
-                     flns(:) = 0._r8
-                     flnt(:) = 0._r8
-                     flnsc(:) = 0._r8
-                     flntc(:) = 0._r8
-                     cam_out%flwds(:) = 0._r8
-                     flut(:) = 0._r8
-                     flutc(:) = 0._r8
-                     fnl(:,:) = 0._r8
-                     fcnl(:,:) = 0._r8
-                     fldsc(:) = 0._r8
-                  end if !lwrad_off
-		  
-		              do i=1,ncol
-                     lwcf(i)=flutc(i) - flut(i)
+              !  Output fluxes at 200 mb
+              call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnl,  fln200)
+              call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fcnl, fln200c)
+
+              if (use_SPCAM) then
+
+                do i=1, ncol
+                  qrl_m (i,:pver, icall) = qrl_m (i,:pver, icall) + qrl (i,:pver)*factor_xy
+                  qrlc_m(i,:pver, icall) = qrlc_m(i,:pver, icall) + qrlc(i,:pver)*factor_xy
+                  flnt_m   (i, icall) = flnt_m   (i, icall)+flnt(i)          *factor_xy
+                  flut_m   (i, icall) = flut_m   (i, icall)+flut(i)          *factor_xy
+                  flutc_m  (i, icall) = flutc_m  (i, icall)+flutc(i)         *factor_xy
+                  flntc_m  (i, icall) = flntc_m  (i, icall)+flntc(i)         *factor_xy
+                  flns_m   (i, icall) = flns_m   (i, icall)+flns(i)          *factor_xy
+                  flnsc_m  (i, icall) = flnsc_m  (i, icall)+flnsc(i)         *factor_xy
+                  fldsc_m  (i, icall) = fldsc_m  (i, icall)+fldsc(i)         *factor_xy
+                  flwds_m  (i, icall) = flwds_m  (i, icall)+cam_out%flwds(i) *factor_xy
+                  fln200_m (i, icall) = fln200_m (i, icall)+fln200(i)        *factor_xy
+                  fln200c_m(i, icall) = fln200c_m(i, icall)+fln200c(i)       *factor_xy
+                  if (spectralflux) then
+                     lu_m(i,:,:,icall) = lu_m(i,:,:,icall) + lu(i,:,:)*factor_xy
+                     ld_m(i,:,:,icall) = ld_m(i,:,:,icall) + ld(i,:,:)*factor_xy
+                  end if
+
+                  if(icall.eq.0) then  ! for the climate run
+                    crm_flnt (i,ii,jj) = flnt(i)
+                    crm_flntc(i,ii,jj) = flntc(i)
+                    crm_flns (i,ii,jj) = flns(i)
+                    crm_flnsc(i,ii,jj) = flnsc(i)
+                    do m=1,crm_nz
+                       k = pver-m+1
+                       qrl_crm(:ncol,ii,jj,m) = qrl(:ncol,k) / cpair
+                    end do
+                  end if   ! for the climate run
+
+                end do
+
+                if(last_column) then
+                  do i=1, ncol
+                    qrl (i,:pver) = qrl_m(i,:pver, icall)
+                    qrlc(i,:pver) = qrlc_m(i,:pver, icall)
+                    flnt (i) = flnt_m (i, icall)
+                    flut (i) = flut_m (i, icall)
+                    flutc(i) = flutc_m(i, icall)
+                    flntc(i) = flntc_m(i, icall)
+                    flns (i) = flns_m (i, icall)
+                    flnsc(i) = flnsc_m(i, icall)
+                    fldsc(i) = fldsc_m(i, icall)
+                    cam_out%flwds(i) = flwds_m(i, icall)
+                    fln200 (i) = fln200_m (i, icall)
+                    fln200c(i) = fln200c_m(i, icall)
+                    if (spectralflux) then
+                       lu(i,:,:) = lu_m(i,:,:,icall)
+                       ld(i,:,:) = ld_m(i,:,:,icall)
+                    end if
+                    lwcf(i)=flutc(i) - flut(i) 
                   end do
+                endif
 
-                  !  Output fluxes at 200 mb
-                  call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnl, fln200)
-                  call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fcnl, fln200c)
+              endif ! use_SPACM
 
-                  if (use_SPCAM) then
-                     do i=1, ncol
-                        qrl_m (i,:pver, icall) = qrl_m (i,:pver, icall) + qrl (i,:pver)*factor_xy
-                        qrlc_m(i,:pver, icall) = qrlc_m(i,:pver, icall) + qrlc(i,:pver)*factor_xy
-                        flnt_m   (i, icall) = flnt_m   (i, icall)+flnt(i)          *factor_xy
-                        flut_m   (i, icall) = flut_m   (i, icall)+flut(i)          *factor_xy
-                        flutc_m  (i, icall) = flutc_m  (i, icall)+flutc(i)         *factor_xy
-                        flntc_m  (i, icall) = flntc_m  (i, icall)+flntc(i)         *factor_xy
-                        flns_m   (i, icall) = flns_m   (i, icall)+flns(i)          *factor_xy
-                        flnsc_m  (i, icall) = flnsc_m  (i, icall)+flnsc(i)         *factor_xy
-                        fldsc_m  (i, icall) = fldsc_m  (i, icall)+fldsc(i)         *factor_xy
-                        flwds_m  (i, icall) = flwds_m  (i, icall)+cam_out%flwds(i) *factor_xy
-                        fln200_m (i, icall) = fln200_m (i, icall)+fln200(i)        *factor_xy
-                        fln200c_m(i, icall) = fln200c_m(i, icall)+fln200c(i)       *factor_xy
-                        if (spectralflux) then
-                           lu_m(i,:,:,icall) = lu_m(i,:,:,icall) + lu(i,:,:)*factor_xy
-                           ld_m(i,:,:,icall) = ld_m(i,:,:,icall) + ld(i,:,:)*factor_xy
-                        end if
+              ! Dump longwave radiation information to history tape buffer (diagnostics)
+              if ( (use_SPCAM .and. last_column ) .or. .not. use_SPCAM) then
+                call outfld('QRL'//diag(icall),qrl (:ncol,:)/cpair,ncol,lchnk)
+                call outfld('QRLC'//diag(icall),qrlc(:ncol,:)/cpair,ncol,lchnk)
+                call outfld('FLNT'//diag(icall),flnt  ,pcols,lchnk)
+                call outfld('FLUT'//diag(icall),flut  ,pcols,lchnk)
+                call outfld('FLUTC'//diag(icall),flutc ,pcols,lchnk)
+                call outfld('FLNTC'//diag(icall),flntc ,pcols,lchnk)
+                call outfld('FLNS'//diag(icall),flns  ,pcols,lchnk)
+            
+                call outfld('FLDSC'//diag(icall),fldsc ,pcols,lchnk)
+                call outfld('FLNSC'//diag(icall),flnsc ,pcols,lchnk)
+                call outfld('LWCF'//diag(icall),lwcf  ,pcols,lchnk)
+                call outfld('FLN200'//diag(icall),fln200,pcols,lchnk)
+                call outfld('FLN200C'//diag(icall),fln200c,pcols,lchnk)
+                call outfld('FLDS'//diag(icall),cam_out%flwds ,pcols,lchnk)
+              end if
+              if (use_SPCAM .and. last_column ) then
+                if(icall.eq.0) then  ! the climate call
+                  call outfld('CRM_FLNT', crm_flnt, pcols, lchnk)
+                  call outfld('CRM_FLNTC', crm_flntc, pcols, lchnk)
+                  call outfld('CRM_FLNS', crm_flns, pcols, lchnk)
+                  call outfld('CRM_FLNSC', crm_flnsc, pcols, lchnk)
+                end if   ! the climate call
+              end if
 
-                        if(icall.eq.0) then  ! for the climate run
-                          crm_flnt (i,ii,jj) = flnt(i)
-                          crm_flntc(i,ii,jj) = flntc(i)
-                          crm_flns (i,ii,jj) = flns(i)
-                          crm_flnsc(i,ii,jj) = flnsc(i)
-                          do m=1,crm_nz
-                             k = pver-m+1
-                             qrl_crm(:ncol,ii,jj,m) = qrl(:ncol,k) / cpair
-                          end do
-                        end if   ! for the climate run
-
-                     end do
-   
-                     if(last_column) then
-                      do i=1, ncol
-                        qrl (i,:pver) = qrl_m(i,:pver, icall)
-                        qrlc(i,:pver) = qrlc_m(i,:pver, icall)
-                        flnt (i) = flnt_m (i, icall)
-                        flut (i) = flut_m (i, icall)
-                        flutc(i) = flutc_m(i, icall)
-                        flntc(i) = flntc_m(i, icall)
-                        flns (i) = flns_m (i, icall)
-                        flnsc(i) = flnsc_m(i, icall)
-                        fldsc(i) = fldsc_m(i, icall)
-                        cam_out%flwds(i) = flwds_m(i, icall)
-                        fln200 (i) = fln200_m (i, icall)
-                        fln200c(i) = fln200c_m(i, icall)
-                        if (spectralflux) then
-                           lu(i,:,:) = lu_m(i,:,:,icall)
-                           ld(i,:,:) = ld_m(i,:,:,icall)
-                        end if
-                        lwcf(i)=flutc(i) - flut(i) 
-                      end do
-                     endif
-                  endif ! use_SPACM
-
-                  ! Dump longwave radiation information to history tape buffer (diagnostics)
-                  if ( (use_SPCAM .and. last_column ) .or. .not. use_SPCAM) then
-                     call outfld('QRL'//diag(icall),qrl (:ncol,:)/cpair,ncol,lchnk)
-                     call outfld('QRLC'//diag(icall),qrlc(:ncol,:)/cpair,ncol,lchnk)
-                     call outfld('FLNT'//diag(icall),flnt  ,pcols,lchnk)
-                     call outfld('FLUT'//diag(icall),flut  ,pcols,lchnk)
-                     call outfld('FLUTC'//diag(icall),flutc ,pcols,lchnk)
-                     call outfld('FLNTC'//diag(icall),flntc ,pcols,lchnk)
-                     call outfld('FLNS'//diag(icall),flns  ,pcols,lchnk)
-                  
-                     call outfld('FLDSC'//diag(icall),fldsc ,pcols,lchnk)
-                     call outfld('FLNSC'//diag(icall),flnsc ,pcols,lchnk)
-                     call outfld('LWCF'//diag(icall),lwcf  ,pcols,lchnk)
-                     call outfld('FLN200'//diag(icall),fln200,pcols,lchnk)
-                     call outfld('FLN200C'//diag(icall),fln200c,pcols,lchnk)
-                     call outfld('FLDS'//diag(icall),cam_out%flwds ,pcols,lchnk)
-                  end if
-                  if (use_SPCAM .and. last_column ) then
-                     if(icall.eq.0) then  ! the climate call
-                       call outfld('CRM_FLNT', crm_flnt, pcols, lchnk)
-                       call outfld('CRM_FLNTC', crm_flntc, pcols, lchnk)
-                       call outfld('CRM_FLNS', crm_flns, pcols, lchnk)
-                       call outfld('CRM_FLNSC', crm_flnsc, pcols, lchnk)
-                     end if   ! the climate call
-                  end if
-              end if  ! active_calls(icall)
-          end do
+            end if  ! active_calls(icall)
+          end do ! icall
 
           call t_stopf ('rad_lw_loop')    !==Guangxing Lin
           call t_stopf ('rad_lw')         !==Guangxing Lin
 
-       end if  !dolw
+        end if  !dolw
 
-     end do    ! end ii
-   end do      ! end jj
+      end do ! ii
+    end do ! jj
 
    if (use_SPCAM) then 
 ! restore to the old values in pbuf and for state

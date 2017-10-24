@@ -103,8 +103,8 @@ subroutine crm(lchnk, icol, nvcols, &
 #ifdef MODAL_AERO
     use modal_aero_data       , only: ntot_amode
 #endif
+    use crmdims               , only: nclubbvars, crm_nx_rad, crm_ny_rad
 #ifdef CLUBB_CRM
-    use crmdims               , only: nclubbvars
     use clubb_sgs             , only: advance_clubb_sgs, clubb_sgs_setup, clubb_sgs_cleanup, apply_clubb_sgs_tndcy, apply_clubb_sgs_tndcy_scalars, &
                                       apply_clubb_sgs_tndcy_mom, t2thetal, total_energy
     use clubb_precision       , only: time_precision, core_rknd
@@ -145,7 +145,7 @@ subroutine crm(lchnk, icol, nvcols, &
     real(r8), intent(in   ) :: phis                (nvcols)       ! Global grid surface geopotential (m2/s2)
     real(r8), intent(in   ) :: zmid                (nvcols,plev)  ! Global grid height (m)
     real(r8), intent(in   ) :: zint                (nvcols,plev+1)! Global grid interface height (m)
-    real(r8), intent(in   ) :: qrad_crm            (nvcols,crm_nx, crm_ny, crm_nz) ! CRM rad. heating
+    real(r8), intent(in   ) :: qrad_crm            (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
     real(r8), intent(in   ) :: ocnfrac             (nvcols)       ! area fraction of the ocean
     real(r8), intent(in   ) :: tau00               (nvcols)       ! large-scale surface stress (N/m2)
     real(r8), intent(in   ) :: wndls               (nvcols)       ! large-scale surface wind (m/s)
@@ -188,17 +188,17 @@ subroutine crm(lchnk, icol, nvcols, &
     real(r8), intent(inout) :: w_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM w-wind component
     real(r8), intent(inout) :: t_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM temperuture
     real(r8), intent(inout) :: micro_fields_crm    (nvcols,crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
-    real(r8), intent(  out) :: t_rad               (nvcols,crm_nx, crm_ny, crm_nz) ! rad temperuture
-    real(r8), intent(  out) :: qv_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad vapor
-    real(r8), intent(  out) :: qc_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud water
-    real(r8), intent(  out) :: qi_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud ice
-    real(r8), intent(  out) :: cld_rad             (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud fraction 
     real(r8), intent(  out) :: cld3d_crm           (nvcols,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
+    real(r8), intent(  out) :: t_rad               (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad temperuture
+    real(r8), intent(  out) :: qv_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad vapor
+    real(r8), intent(  out) :: qc_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud water
+    real(r8), intent(  out) :: qi_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice
+    real(r8), intent(  out) :: cld_rad             (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud fraction 
 #ifdef m2005
-    real(r8), intent(  out) :: nc_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg) 
-    real(r8), intent(  out) :: ni_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
-    real(r8), intent(  out) :: qs_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
-    real(r8), intent(  out) :: ns_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
+    real(r8), intent(  out) :: nc_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud droplet number (#/kg) 
+    real(r8), intent(  out) :: ni_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice crystal number (#/kg)
+    real(r8), intent(  out) :: qs_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
+    real(r8), intent(  out) :: ns_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow crystal number (#/kg)
     real(r8), intent(  out) :: wvar_crm            (nvcols,crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
     real(r8), intent(  out) :: aut_crm             (nvcols,crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
     real(r8), intent(  out) :: acc_crm             (nvcols,crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
@@ -342,6 +342,12 @@ subroutine crm(lchnk, icol, nvcols, &
     real(kind=core_rknd) :: thlm_integral_before(nx,ny), thlm_integral_after(nx,ny), thlm_before(nzm), thlm_after(nzm), thlm_flux_top, thlm_flux_sfc
     real(kind=core_rknd) :: rtm_column(nzm) ! Total water (vapor + liquid)     [kg/kg]
 #endif
+
+  real(crm_rknd) :: crm_nx_rad_fac  ! scaling factor for averaging radiative column groups = ( crm_nx_rad_fac / nx )
+  real(crm_rknd) :: crm_ny_rad_fac  ! scaling factor for averaging radiative column groups = ( crm_ny_rad_fac / ny )
+  integer        :: i_rad           ! index for looping over radiative columns
+  integer        :: j_rad           ! index for looping over radiative columns
+
 
   !Loop over "vector columns"
   do vc = 1 , nvcols
@@ -677,14 +683,14 @@ subroutine crm(lchnk, icol, nvcols, &
     ! these are increments added to calculate gcm-grid and time-step avg
     ! note - these values are also averaged over the icycle loop following
     ! the approach for precsfc
-    aut1a = 0.
-    acc1a = 0.
+    aut1a  = 0.
+    acc1a  = 0.
     evpc1a = 0.
     evpr1a = 0.
-    mlt1a = 0.
-    sub1a = 0.
-    dep1a = 0.
-    con1a = 0.
+    mlt1a  = 0.
+    sub1a  = 0.
+    dep1a  = 0.
+    con1a  = 0.
 #endif 
 
     mu_crm (vc,:) = 0.
@@ -696,8 +702,8 @@ subroutine crm(lchnk, icol, nvcols, &
     jt_crm (vc)   = 0.
     mx_crm (vc)   = 0.
 
-    mui_crm(vc,:)   = 0.
-    mdi_crm(vc,:)   = 0.
+    mui_crm(vc,:) = 0.
+    mdi_crm(vc,:) = 0.
 
     flux_qt   (vc,:) = 0.
     flux_u    (vc,:) = 0.
@@ -716,13 +722,13 @@ subroutine crm(lchnk, icol, nvcols, &
     qt_ls     (vc,:) = 0.
     t_ls      (vc,:) = 0.
 
-    uwle = 0.
-    uwsb = 0.
-    vwle = 0.
-    vwsb = 0.
-    qpsrc = 0.
-    qpevp = 0.
-    qpfall = 0.
+    uwle     = 0.
+    uwsb     = 0.
+    vwle     = 0.
+    vwsb     = 0.
+    qpsrc    = 0.
+    qpevp    = 0.
+    qpfall   = 0.
     precflux = 0.
 
 !--------------------------------------------------
@@ -739,6 +745,22 @@ subroutine crm(lchnk, icol, nvcols, &
     if(u(1,1,1).eq.u(2,1,1).and.u(3,1,2).eq.u(4,1,2)) &
                 call setperturb(iseed)
 #endif
+
+    !--------------------------
+    ! whannah - 
+    ! The new method of calculating radiation over fewer columns than in the CRM
+    ! requires that groups of columns be averaged to form "radiative groups".
+    ! This check ensures that crm_nx_rad and crm_ny_rad are integer 
+    ! multiples of crm_nx and crm_ny, to simplify the implementation.
+    ! crm_n[x,y]_rad_fac is used for averaging CRM radiative groups, 
+    ! and for determining the current radiative group index (i_rad, j_rad)
+    if ( mod(nx,crm_nx_rad)==0 .or. mod(nx,crm_nx_rad)==0  ) then
+      crm_nx_rad_fac = real(crm_nx_rad,crm_rknd)/real(nx,crm_rknd)
+      crm_ny_rad_fac = real(crm_ny_rad,crm_rknd)/real(ny,crm_rknd)
+    else
+      write(0,*) "crm_nx_rad and crm_ny_rad need to be divisible by crm_nx and crm_ny"
+      call endrun('crm main')
+    end if
 
 #ifndef CLUBB_CRM
     !--------------------------
@@ -773,10 +795,10 @@ subroutine crm(lchnk, icol, nvcols, &
     ! since no tracer is carried in the current version of MMF, these 
     ! tracer-related restart varialbes are set to zero. +++mhwang, 2011-08
     tracer_tndcy = 0.0
-    sclrp2 = 0.0
-    sclrprtp = 0.0
-    sclrpthlp = 0.0
-    wpsclrp =0.0
+    sclrp2       = 0.0
+    sclrprtp     = 0.0
+    sclrpthlp    = 0.0
+    wpsclrp      = 0.0
 
     if((doclubb.and.docloud).or.(.not.doclubb .and. .not.docloud)) then
       write(0, *) 'doclubb and docloud can not both be true or be false'
@@ -801,14 +823,14 @@ subroutine crm(lchnk, icol, nvcols, &
           ! ntavg2_ss = number of seconds to average between outputs.
           !    This must be a multiple of ntavgt1_ss.
 
-    !  ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss are set for
-    !  their values are used in ecpp_crm_init. 
+    ! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss 
+    ! are set for their values are used in ecpp_crm_init. 
     call ecpp_crm_init()
 
-    qlsink = 0.0
+    qlsink    = 0.0
     qlsink_bf = 0.0
-    prain = 0.0
-    precr = 0.0
+    prain     = 0.0
+    precr     = 0.0
     precsolid = 0.0
 #endif
 
@@ -841,7 +863,7 @@ subroutine crm(lchnk, icol, nvcols, &
     !   print *,'this is needed for output every 60 seconds'
     !   stop
     !endif
-    nstep = 0
+    nstep  = 0
     nprint = 1
     ncycle = 0
     !nrad = nstop/nrad0
@@ -894,7 +916,11 @@ subroutine crm(lchnk, icol, nvcols, &
         do k=1,nzm
           do j=1,ny
             do i=1,nx
-              t(i,j,k) = t(i,j,k) + qrad_crm(vc,i,j,k)*dtn
+              ! Pick proper group-averaged radiative heating profile to apply to each CRM column
+              ! i_rad and j_rad indicate the radiative group index
+              i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
+              j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+              t(i,j,k) = t(i,j,k) + qrad_crm(vc,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
@@ -1190,20 +1216,25 @@ subroutine crm(lchnk, icol, nvcols, &
                    mcudn(vc,l) = mcudn(vc,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
             endif
-            
-            t_rad  (vc,i,j,k) = t_rad  (vc,i,j,k)+tabs(i,j,k)
-            qv_rad (vc,i,j,k) = qv_rad (vc,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
-            qc_rad (vc,i,j,k) = qc_rad (vc,i,j,k)+qcl(i,j,k)
-            qi_rad (vc,i,j,k) = qi_rad (vc,i,j,k)+qci(i,j,k)
-            cld_rad(vc,i,j,k) = cld_rad(vc,i,j,k) +  CF3D(i,j,k)
+
+            ! Average columns in time and by radiative groups for radiation calculation
+            ! i_rad and j_rad indicate the current radiative group index.
+            i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
+            j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+
+            t_rad  (vc,i_rad,j_rad,k) = t_rad  (vc,i_rad,j_rad,k) + tabs(i,j,k)
+            qv_rad (vc,i_rad,j_rad,k) = qv_rad (vc,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k))
+            qc_rad (vc,i_rad,j_rad,k) = qc_rad (vc,i_rad,j_rad,k) + qcl(i,j,k)
+            qi_rad (vc,i_rad,j_rad,k) = qi_rad (vc,i_rad,j_rad,k) + qci(i,j,k)
+            cld_rad(vc,i_rad,j_rad,k) = cld_rad(vc,i_rad,j_rad,k) + CF3D(i,j,k)
 #ifdef m2005
-            nc_rad(vc,i,j,k) = nc_rad(vc,i,j,k)+micro_field(i,j,k,incl)
-            ni_rad(vc,i,j,k) = ni_rad(vc,i,j,k)+micro_field(i,j,k,inci)
-            qs_rad(vc,i,j,k) = qs_rad(vc,i,j,k)+micro_field(i,j,k,iqs)
-            ns_rad(vc,i,j,k) = ns_rad(vc,i,j,k)+micro_field(i,j,k,ins)
+            nc_rad(vc,i_rad,j_rad,k) = nc_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,incl)
+            ni_rad(vc,i_rad,j_rad,k) = ni_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,inci)
+            qs_rad(vc,i_rad,j_rad,k) = qs_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
+            ns_rad(vc,i_rad,j_rad,k) = ns_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,ins)
 #endif 
-            gliqwp(vc,l) = gliqwp(vc,l)+qcl(i,j,k)
-            gicewp(vc,l) = gicewp(vc,l)+qci(i,j,k)
+            gliqwp(vc,l) = gliqwp(vc,l) + qcl(i,j,k)
+            gicewp(vc,l) = gicewp(vc,l) + qci(i,j,k)
           enddo
         enddo
       enddo
@@ -1262,7 +1293,13 @@ subroutine crm(lchnk, icol, nvcols, &
     enddo ! main loop
     !----------------------------------------------------------
 
-    tmp1 = 1._r8/ dble(nstop)
+    ! tmp1 is the factor used for averaging the columns of each radiative group,
+    ! both in time and across CRM columns. ( crm_nx_rad_fac = crm_nx_rad / nx )
+
+    ! tmp1 = 1._r8/ dble(nstop)
+    ! tmp1 = 1._r8/ dble(nstop*(nx/crm_nx_rad)*(ny/crm_ny_rad))
+    tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd) 
+    
     t_rad  (vc,:,:,:) = t_rad  (vc,:,:,:) * tmp1
     qv_rad (vc,:,:,:) = qv_rad (vc,:,:,:) * tmp1
     qc_rad (vc,:,:,:) = qc_rad (vc,:,:,:) * tmp1
@@ -1276,20 +1313,20 @@ subroutine crm(lchnk, icol, nvcols, &
 #endif
 
     ! no CRM tendencies above its top
-    tln(1:ptop-1) = tl(vc,1:ptop-1)
-    qln(1:ptop-1) = ql(vc,1:ptop-1)
-    qccln(1:ptop-1)= qccl(vc,1:ptop-1)
-    qiiln(1:ptop-1)= qiil(vc,1:ptop-1)
-    uln(1:ptop-1) = ul(vc,1:ptop-1)
-    vln(1:ptop-1) = vl(vc,1:ptop-1)
+    tln  (1:ptop-1) =   tl(vc,1:ptop-1)
+    qln  (1:ptop-1) =   ql(vc,1:ptop-1)
+    qccln(1:ptop-1) = qccl(vc,1:ptop-1)
+    qiiln(1:ptop-1) = qiil(vc,1:ptop-1)
+    uln  (1:ptop-1) =   ul(vc,1:ptop-1)
+    vln  (1:ptop-1) =   vl(vc,1:ptop-1)
 
     !  Compute tendencies due to CRM:
-    tln(ptop:plev) = 0.
-    qln(ptop:plev) = 0.
-    qccln(ptop:plev)= 0.
-    qiiln(ptop:plev)= 0.
-    uln(ptop:plev) = 0.
-    vln(ptop:plev) = 0.
+    tln (ptop:plev)  = 0.
+    qln (ptop:plev)  = 0.
+    qccln(ptop:plev) = 0.
+    qiiln(ptop:plev) = 0.
+    uln (ptop:plev)  = 0.
+    vln (ptop:plev)  = 0.
     
     colprec=0
     colprecs=0
