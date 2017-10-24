@@ -189,21 +189,12 @@ subroutine crm(lchnk, icol, nvcols, &
     real(r8), intent(inout) :: t_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM temperuture
     real(r8), intent(inout) :: micro_fields_crm    (nvcols,crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
     real(r8), intent(  out) :: cld3d_crm           (nvcols,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
-    ! real(r8), intent(  out) :: t_rad               (nvcols,crm_nx, crm_ny, crm_nz) ! rad temperuture
-    ! real(r8), intent(  out) :: qv_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad vapor
-    ! real(r8), intent(  out) :: qc_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud water
-    ! real(r8), intent(  out) :: qi_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud ice
-    ! real(r8), intent(  out) :: cld_rad             (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud fraction 
     real(r8), intent(  out) :: t_rad               (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad temperuture
     real(r8), intent(  out) :: qv_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad vapor
     real(r8), intent(  out) :: qc_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud water
     real(r8), intent(  out) :: qi_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice
     real(r8), intent(  out) :: cld_rad             (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud fraction 
 #ifdef m2005
-    ! real(r8), intent(  out) :: nc_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg) 
-    ! real(r8), intent(  out) :: ni_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
-    ! real(r8), intent(  out) :: qs_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
-    ! real(r8), intent(  out) :: ns_rad              (nvcols,crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
     real(r8), intent(  out) :: nc_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud droplet number (#/kg) 
     real(r8), intent(  out) :: ni_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice crystal number (#/kg)
     real(r8), intent(  out) :: qs_rad              (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)

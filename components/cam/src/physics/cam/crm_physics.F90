@@ -2095,13 +2095,13 @@ end subroutine crm_physics_init
 
    end if ! (is_first_step())
 
-! ***  OLD COMMENT ******
-! physics_update is called in crm_physics. This is not a good practice. But it seems state is changed in
-! crm_physics. The physics_update should be moved to here in the future. ---Minghuai Wang (Minghuai.Wang@pnl.gov)
-!   call physics_update(state, tend, ptend, ztodt)
+   ! ***  OLD COMMENT ******
+   ! physics_update is called in crm_physics. This is not a good practice. But it seems state is changed in
+   ! crm_physics. The physics_update should be moved to here in the future. ---Minghuai Wang (Minghuai.Wang@pnl.gov)
+   !   call physics_update(state, tend, ptend, ztodt)
 
-! should the energy check are applied???? -Minghuai Wang
-!   call check_energy_chng(state, tend, "crm_physics", nstep, ztodt, zero, zero, zero, zero)
+   ! should the energy check are applied???? -Minghuai Wang
+   !   call check_energy_chng(state, tend, "crm_physics", nstep, ztodt, zero, zero, zero, zero)
 
    call t_stopf('crm')
 
@@ -2118,10 +2118,6 @@ end subroutine crm_physics_init
       do ii=1,crm_nx_rad
         do jj=1,crm_ny_rad
           do  m=1,crm_nz
-            ! if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).gt.1.0e-10) then
-            !   !cld_rad(i,ii,jj,m) = 1.0_r8
-            !   cld_rad(i,ii,jj,m) = cld_rad(i,ii,jj,m) !Guangxing Lin new crm
-            ! else
             if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).le.1.0e-10) then
               cld_rad(i,ii,jj,m) = 0.0_r8
             endif
