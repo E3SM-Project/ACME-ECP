@@ -1394,8 +1394,7 @@ end function radiation_nextsw_cday
       trad(:ncol,:)  = state%t(:ncol,:)
       qvrad(:ncol,:) = state%q(:ncol,:,1)  
 
-      ! factor_xy = 1./dble(crm_nx*crm_ny)
-      factor_xy = 1./dble(crm_nx_rad*crm_ny_rad)
+      factor_xy = 1./real( crm_nx_rad*crm_ny_rad ,r8)
 
       cld_save = cld  ! save to restore later
       rel_save = rel  ! save to restroe later

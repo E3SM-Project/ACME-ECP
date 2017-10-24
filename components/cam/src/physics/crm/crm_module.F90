@@ -343,12 +343,10 @@ subroutine crm(lchnk, icol, nvcols, &
     real(kind=core_rknd) :: rtm_column(nzm) ! Total water (vapor + liquid)     [kg/kg]
 #endif
 
-  ! whannah - variables for new radiation group method
-  real(crm_rknd) :: crm_nx_rad_fac
-  real(crm_rknd) :: crm_ny_rad_fac
-  integer        :: i_rad
-  integer        :: j_rad
-  
+  real(crm_rknd) :: crm_nx_rad_fac  ! scaling factor for averaging radiative column groups = ( crm_nx_rad_fac / nx )
+  real(crm_rknd) :: crm_ny_rad_fac  ! scaling factor for averaging radiative column groups = ( crm_ny_rad_fac / ny )
+  integer        :: i_rad           ! index for looping over radiative columns
+  integer        :: j_rad           ! index for looping over radiative columns
 
 
   !Loop over "vector columns"
@@ -749,13 +747,18 @@ subroutine crm(lchnk, icol, nvcols, &
 #endif
 
     !--------------------------
-    ! whannah - sanity check for new method to calculate radiation
-    ! over averaged groups of columns instead of each individually
+    ! whannah - 
+    ! The new method of calculating radiation over fewer columns than in the CRM
+    ! requires that groups of columns be averaged to form "radiative groups".
+    ! This check ensures that crm_nx_rad and crm_ny_rad are integer 
+    ! multiples of crm_nx and crm_ny, to simplify the implementation.
+    ! crm_n[x,y]_rad_fac is used for averaging CRM radiative groups, 
+    ! and for determining the current radiative group index (i_rad, j_rad)
     if ( mod(nx,crm_nx_rad)==0 .or. mod(nx,crm_nx_rad)==0  ) then
       crm_nx_rad_fac = real(crm_nx_rad,crm_rknd)/real(nx,crm_rknd)
       crm_ny_rad_fac = real(crm_ny_rad,crm_rknd)/real(ny,crm_rknd)
     else
-      write(0,*) "crm_nx_rad and crm_ny_rad need to be divisible by nx and ny"
+      write(0,*) "crm_nx_rad and crm_ny_rad need to be divisible by crm_nx and crm_ny"
       call endrun('crm main')
     end if
 
@@ -913,6 +916,8 @@ subroutine crm(lchnk, icol, nvcols, &
         do k=1,nzm
           do j=1,ny
             do i=1,nx
+              ! Pick proper group-averaged radiative heating profile to apply to each CRM column
+              ! i_rad and j_rad indicate the radiative group index
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
               t(i,j,k) = t(i,j,k) + qrad_crm(vc,i_rad,j_rad,k)*dtn
@@ -1211,20 +1216,9 @@ subroutine crm(lchnk, icol, nvcols, &
                    mcudn(vc,l) = mcudn(vc,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
             endif
-            
-!             t_rad  (vc,i,j,k) = t_rad  (vc,i,j,k)+tabs(i,j,k)
-!             qv_rad (vc,i,j,k) = qv_rad (vc,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
-!             qc_rad (vc,i,j,k) = qc_rad (vc,i,j,k)+qcl(i,j,k)
-!             qi_rad (vc,i,j,k) = qi_rad (vc,i,j,k)+qci(i,j,k)
-!             cld_rad(vc,i,j,k) = cld_rad(vc,i,j,k) +  CF3D(i,j,k)
-! #ifdef m2005
-!             nc_rad(vc,i,j,k) = nc_rad(vc,i,j,k)+micro_field(i,j,k,incl)
-!             ni_rad(vc,i,j,k) = ni_rad(vc,i,j,k)+micro_field(i,j,k,inci)
-!             qs_rad(vc,i,j,k) = qs_rad(vc,i,j,k)+micro_field(i,j,k,iqs)
-!             ns_rad(vc,i,j,k) = ns_rad(vc,i,j,k)+micro_field(i,j,k,ins)
-! #endif 
 
-            !!! whannah - new method allows for fewer radiation calculation over column groups
+            ! Average columns in time and by radiative groups for radiation calculation
+            ! i_rad and j_rad indicate the current radiative group index.
             i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
             j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
@@ -1298,6 +1292,9 @@ subroutine crm(lchnk, icol, nvcols, &
       !----------------------------------------------------------
     enddo ! main loop
     !----------------------------------------------------------
+
+    ! tmp1 is the factor used for averaging the columns of each radiative group,
+    ! both in time and across CRM columns. ( crm_nx_rad_fac = crm_nx_rad / nx )
 
     ! tmp1 = 1._r8/ dble(nstop)
     ! tmp1 = 1._r8/ dble(nstop*(nx/crm_nx_rad)*(ny/crm_ny_rad))
