@@ -1,20 +1,33 @@
-subroutine diffuse_mom
+module diffuse_mom_mod
+  use diffuse_mom2D_mod
+  use diffuse_mom3D_mod
+  implicit none
 
-!  Interface to the diffusion routines
+contains
 
-use vars
-implicit none
-integer i,j,k
+  subroutine diffuse_mom(grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
 
-!call t_startf ('diffuse_mom')
+    !  Interface to the diffusion routines
 
-if(RUN3D) then
-   call diffuse_mom3D()
-else
-   call diffuse_mom2D()
-endif
+    use vars
+    implicit none
+    integer i,j,k
+    integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
+    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
+    real(crm_rknd) grdf_x(nzm)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_y(nzm)! grid factor for eddy diffusion in y
+    real(crm_rknd) grdf_z(nzm)! grid factor for eddy diffusion in z
 
-!call t_stopf ('diffuse_mom')
+    !call t_startf ('diffuse_mom')
 
-end subroutine diffuse_mom
+    if(RUN3D) then
+      call diffuse_mom3D(grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+    else
+      call diffuse_mom2D(grdf_x,         grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+    endif
 
+    !call t_stopf ('diffuse_mom')
+
+  end subroutine diffuse_mom
+
+end module diffuse_mom_mod

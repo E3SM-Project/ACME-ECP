@@ -1,3 +1,8 @@
+module kurant_mod
+	use task_util_mod
+	implicit none
+
+contains
 
 subroutine kurant
 
@@ -13,7 +18,7 @@ real(crm_rknd) uhm(nz) ! maximum horizontal wind velocity
 real(crm_rknd) cfl, cfl_sgs
 
 ncycle = 1
-	
+
 wm(nz)=0.
 do k = 1,nzm
  wm(k) = maxval(abs(w(1:nx,1:ny,k)))
@@ -30,7 +35,7 @@ end do
 
 call kurant_sgs(cfl_sgs)
 cfl = max(cfl,cfl_sgs)
-	
+
 ncycle = max(1,ceiling(cfl/0.7))
 
 if(dompi) then
@@ -52,4 +57,6 @@ if(ncycle.gt.4) then
    call task_abort()
 end if
 
-end subroutine kurant	
+end subroutine kurant
+
+end module kurant_mod
