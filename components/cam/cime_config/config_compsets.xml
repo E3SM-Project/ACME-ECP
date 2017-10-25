@@ -580,36 +580,36 @@
 
   <compset>
     <alias>FSP1V1</alias>
-    <lname>2000_CAM%SP1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+    <lname>2000_CAM%SP1V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset> 
 
   <compset>
     <alias>FSP2V1</alias>
-    <lname>2000_CAM%SP2_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+    <lname>2000_CAM%SP2V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
   <!-- F testing compsets w/ reduced CRM dimensions -->
 
   <compset>
     <alias>FSP1V1-TEST</alias>
-    <lname>2000_CAM%TEST-SP1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+    <lname>2000_CAM%SP1V1-TEST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FSP2V1-TEST</alias>
-    <lname>2000_CAM%TEST-SP2_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+    <lname>2000_CAM%SP2V1-TEST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
   <!-- 20th century transient -->
 
   <compset>
    <alias>F20TRSP1V1</alias>
-   <lname>20TR_CAM%SP1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+   <lname>20TR_CAM%SP1V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
   
   <compset>
    <alias>F20TRSP2V1</alias>
-   <lname>20TR_CAM%SP2_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+   <lname>20TR_CAM%SP2V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
   <entries>
