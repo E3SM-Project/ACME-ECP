@@ -301,7 +301,7 @@ subroutine rad_cnst_readnl(nlfile)
    call phys_getopts( use_SPCAM_out = use_SPCAM )
    if (use_SPCAM) then
       call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme )
-      if (SPCAM_microp_scheme.eq.'sam1mom' .and. oldcldoptics.eq..false. ) then
+      if (SPCAM_microp_scheme .eq. 'sam1mom' .and. (.not. oldcldoptics) ) then
          ! call endrun(routine//": oldcloudoptics must be true with SP 1-moment and RRTMG")
          oldcldoptics = .true.
          if (masterproc) write(iulog,*) 'rad_cnst_readnl: setting oldcldoptics = .true.'

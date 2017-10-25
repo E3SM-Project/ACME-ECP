@@ -14,6 +14,8 @@ use vars, only: pres, rho, dt, dtn, w, t, tlatqi, condavg_mask, &
      ncondavg, condavgname, condavglongname
 use vars, only: tke2, tk2
 use params, only: doprecip, docloud, doclubb
+use task_util_mod
+use utils
 
 use module_mp_GRAUPEL, only: GRAUPEL_INIT, M2005MICRO_GRAUPEL, &
       doicemicro, &         ! use ice species (snow/cloud ice/graupel)
@@ -26,10 +28,10 @@ use module_mp_GRAUPEL, only: GRAUPEL_INIT, M2005MICRO_GRAUPEL, &
       domodal_aero,     &   ! use modal aerosol from the CAM
 #endif
 #ifdef CLUBB_CRM
-      doclubb_tb,       &   ! use CLUBB as turbulence scheme only, but not cloud scheme, 
+      doclubb_tb,       &   ! use CLUBB as turbulence scheme only, but not cloud scheme,
                             ! so liquid water is diagnosed from saturation adjustment
       doclubb_gridmean,  &  ! feed grid-mean CLUBB values into Morrision microphysics
-      doclubb_autoin,    &  ! use in-cloud values for autoconversion calculations 
+      doclubb_autoin,    &  ! use in-cloud values for autoconversion calculations
 #endif
       dosubgridw, &         ! input estimate of subgrid w to microphysics
       doarcticicenucl,&     ! use arctic parameter values for ice nucleation
@@ -80,7 +82,7 @@ real(crm_rknd), allocatable, dimension(:,:) :: & ! statistical arrays
      mfrac, & ! fraction of domain with microphysical quantity > 1.e-6
      stend, & ! tendency due to sedimentation
      mtend, & ! tendency due to microphysical processes (other than sedimentation)
-     mstor, & ! storage terms of microphysical variables 
+     mstor, & ! storage terms of microphysical variables
      trtau    ! optical depths of various species
 
 real(crm_rknd), allocatable, dimension(:) :: tmtend
@@ -103,7 +105,7 @@ real(crm_rknd), allocatable, dimension(:,:,:), SAVE :: tmtend3d
 #ifdef CRM
 real(crm_rknd), allocatable, dimension(:) ::  qpevp   !sink of precipitating water due to evaporation (set to zero here)
 real(crm_rknd), allocatable, dimension(:) ::  qpsrc   !source of precipitation microphysical processes (set to mtend)
-#endif 
+#endif
 
 real(crm_rknd), allocatable, dimension(:,:,:)  :: wvar  ! the vertical velocity variance from subgrid-scale motion,
                                               ! which is needed in droplet activation.
@@ -130,7 +132,7 @@ real(crm_rknd), public, allocatable, dimension(:,:,:)  :: con1a  !
 
 !+++mhwangtest
 ! test water conservation
-real(crm_rknd), public, allocatable, dimension(:, :) ::  sfcpcp2D  ! surface precipitation  
+real(crm_rknd), public, allocatable, dimension(:, :) ::  sfcpcp2D  ! surface precipitation
 !---mhwangtest
 
 CONTAINS
@@ -146,7 +148,7 @@ subroutine micro_setparm()
   implicit none
 
   integer ierr, ios, ios_missing_namelist, place_holder
-  
+
    NAMELIST /MICRO_M2005/ &
 #ifdef CLUBB_CRM
       NNUCCD_REDUCE_COEF, NNUCCC_REDUCE_COEF, &
@@ -192,17 +194,17 @@ subroutine micro_setparm()
      doclubb_gridmean = .true.
      doclubb_autoin = .false.
 #else
-     aerosol_mode = 2      
-     dosubgridw = .true.     
+     aerosol_mode = 2
+     dosubgridw = .true.
      doarcticicenucl = .false.  ! use mid-latitude parameters
-     docloudedgeactivation  = .true. 
+     docloudedgeactivation  = .true.
 #endif /*CLUBB_CRM*/
    douse_reffc = .false.  ! use computed effective radius in rad computations?
    douse_reffi = .false.  ! use computed effective radius in rad computations?
 
    Nc0 = 100. ! default droplet number concentration
-   
-   ccnconst = 120.            ! maritime value (/cm3), adapted from Rasmussen 
+
+   ccnconst = 120.            ! maritime value (/cm3), adapted from Rasmussen
    ccnexpnt = 0.4             !   et al (2002) by Hugh Morrison et al.  Values
                               !   of 1000. and 0.5 suggested for continental
 !   aer_rm1 = 0.052           ! two aerosol mode defaults from MPACE (from Hugh)
@@ -214,19 +216,19 @@ subroutine micro_setparm()
 
    aer_rm1 = 0.052           ! two aerosol mode defaults (from mhwang for testing in global models)
    aer_sig1 = 2.04
-   aer_n1 = 2500 
+   aer_n1 = 2500
    aer_rm2 = 1.3
    aer_sig2 = 2.5
    aer_n2 = 1.8
-   
+
    dofix_pgam = .false.
    pgam_fixed = 5. ! middle range value -- corresponds to radius dispersion ~ 0.4
 
   !----------------------------------
   !  Read namelist for microphysics options from prm file:
   !------------
-!  open(55,file='./'//trim(case)//'/prm', status='old',form='formatted') 
-  
+!  open(55,file='./'//trim(case)//'/prm', status='old',form='formatted')
+
   !bloss: get error code for missing namelist (by giving the name for
   !       a namelist that doesn't exist in the prm file).
 !  read (UNIT=55,NML=BNCUIODSBJCB,IOSTAT=ios_missing_namelist)
@@ -257,7 +259,7 @@ subroutine micro_setparm()
 
    ! write namelist values out to file for documentation
 !   if(masterproc) then
-!      open(unit=55,file='./'//trim(case)//'/'//trim(case)//'_'//trim(caseid)//'.options_namelist', form='formatted', position='append')    
+!      open(unit=55,file='./'//trim(case)//'/'//trim(case)//'_'//trim(caseid)//'.options_namelist', form='formatted', position='append')
 !      write (unit=55,nml=MICRO_M2005,IOSTAT=ios)
 !      write(55,*) ' '
 !      close(unit=55)
@@ -265,10 +267,10 @@ subroutine micro_setparm()
 
    ! scale values of parameters for m2005micro
    aer_rm1 = 1.e-6*aer_rm1 ! convert from um to m
-   aer_rm2 = 1.e-6*aer_rm2 
+   aer_rm2 = 1.e-6*aer_rm2
    aer_n1 = 1.e6*aer_n1 ! convert from #/cm3 to #/m3
    aer_n2 = 1.e6*aer_n2
-   
+
   nmicro_fields = 1 ! start with water vapor and cloud water mass mixing ratio
 #ifdef CLUBB_CRM
   if(docloud.or.doclubb) then
@@ -286,7 +288,7 @@ subroutine micro_setparm()
   !  *** note that not all of these may be used if(.not.doicemicro) ***
   iqv = 1   ! total water (vapor + cloud liq) mass mixing ratio [kg H2O / kg dry air]
 !bloss/qt  iqcl = 2  ! cloud water mass mixing ratio [kg H2O / kg dry air]
-  
+
 !bloss/qt: cloud liquid water no longer prognosed
   if(dopredictNc) then
      incl = 2  ! cloud water number mixing ratio [#/kg dry air]
@@ -426,7 +428,7 @@ end subroutine micro_setparm
 !----------------------------------------------------------------------
 !!! Initialize microphysics:
 !
-! this one is guaranteed to be called by SAM at the 
+! this one is guaranteed to be called by SAM at the
 !   beginning of each run, initial or restart:
 subroutine micro_init()
 
@@ -434,13 +436,13 @@ subroutine micro_init()
 #if (defined CRM && defined MODAL_AERO)
   use drop_activation, only: drop_activation_init
 #endif
-  
+
   implicit none
-  
+
   real(crm_rknd), dimension(nzm) :: qc0, qi0
 
 ! Commented out by dschanen UWM 23 Nov 2009 to avoid a linking error
-! real, external :: satadj_water 
+! real, external :: satadj_water
   integer :: k
 
   ! initialize flag arrays
@@ -492,7 +494,7 @@ subroutine micro_init()
            flag_precip = (/0,1,1/)
            flag_number = (/0,0,1/)
         else
-          !bloss/qt: only total water variable is needed for no-precip, 
+          !bloss/qt: only total water variable is needed for no-precip,
           !            fixed droplet number, warm cloud and no cloud simulations.
            flag_wmass  = (/1/)
            flag_precip = (/0/)
@@ -529,7 +531,7 @@ subroutine micro_init()
 
   if(nrestart.eq.0) then
 
-! In SPCAM,  do not need this part. 
+! In SPCAM,  do not need this part.
 #ifndef CRM
  ! compute initial profiles of liquid water - M.K.
       call satadj_liquid(nzm,tabs0,q0,qc0,pres*100.)
@@ -598,7 +600,7 @@ end subroutine micro_flux
 ! IMPORTANT: You need to use the thermodynamic constants like specific heat, or
 ! specific heat of condensation, gas constant, etc, the same as in file params.f90
 ! Also, you should assume that the conservative thermodynamic variable during these
-! proceses is the liquid/ice water static energy: t = tabs + gz - Lc (qc+qr) - Ls (qi+qs+qg) 
+! proceses is the liquid/ice water static energy: t = tabs + gz - Lc (qc+qr) - Ls (qi+qs+qg)
 ! It should not be changed during all of your point microphysical processes!
 
 subroutine micro_proc()
@@ -626,7 +628,7 @@ use clubbvars, only: wp2, cloud_frac, rho_ds_zt, rho_ds_zm, relvarg, accre_enhan
 use vars, only: qcl ! Used here and updated in micro_diagnose
 use vars, only: prespot ! exner^-1
 use module_mp_GRAUPEL, only: &
-  cloud_frac_thresh ! Threshold for using sgs cloud fraction to weight 
+  cloud_frac_thresh ! Threshold for using sgs cloud fraction to weight
                     ! microphysical quantities [%]
 use clubb_precision, only: core_rknd
 use constants_clubb, only: T_freeze_K
@@ -694,7 +696,7 @@ stend(:,:) = 0.
 mksed(:,:) = 0.
 
 !!$if(doprecip) total_water_prec = total_water_prec + total_water()
- 
+
 do j = 1,ny
    do i = 1,nx
 
@@ -741,13 +743,13 @@ do j = 1,ny
            + fac_sub  * (tmpqci(:) + tmpqs(:) + tmpqg(:)) ! ice latent energy
 
       tmpdz = adz(:)*dz
-!      tmpw = 0.5*(w(i,j,1:nzm) + w(i,j,2:nz))  ! MK: changed for stretched grids 
+!      tmpw = 0.5*(w(i,j,1:nzm) + w(i,j,2:nz))  ! MK: changed for stretched grids
       tmpw = ((zi(2:nz)-z(1:nzm))*w(i,j,1:nzm)+ &
              (z(1:nzm)-zi(1:nzm))*w(i,j,2:nz))/(zi(2:nz)-zi(1:nzm))
 #ifdef CLUBB_CRM
-      ! Added by dschanen on 4 Nov 2008 to account for w_sgs 
+      ! Added by dschanen on 4 Nov 2008 to account for w_sgs
       if ( doclubb .and. dosubgridw ) then
-        ! Compute w_sgs.  Formula is consistent with that used with 
+        ! Compute w_sgs.  Formula is consistent with that used with
         ! TKE from MYJ pbl scheme in WRF (see module_mp_graupel.f90).
         tmpwsub = sqrt( LIN_INT( real( wp2(i,j,2:nz) ,crm_rknd), real( wp2(i,j,1:nzm) ,crm_rknd), &
                                   zi(2:nz), zi(1:nzm), z(1:nzm) ) )
@@ -786,17 +788,17 @@ do j = 1,ny
       !                tmppres is unchanged on output, should be in Pa.
 #ifdef CLUBB_CRM
       ! In the CLUBB case, we want to call the microphysics on sub-saturated grid
-      ! boxes and weight by cloud fraction, therefore we use the CLUBB value of 
+      ! boxes and weight by cloud fraction, therefore we use the CLUBB value of
       ! liquid water. -dschanen 23 Nov 2009
       if ( .not. ( docloud .or. dosmoke ) ) then
         if(.not.doclubb_tb) then
          tmpqcl  = cloudliq(i,j,:) ! Liquid updated by CLUBB just prior to this
          tmpqv   = tmpqv - tmpqcl ! Vapor
          tmptabs = tmptabs + fac_cond * tmpqcl ! Update temperature
-         if(doclubb_gridmean) then  
-           cloud_frac_in(1:nzm) = 0.0  ! to use grid mean for Morrison microphysics, just 
-                                       ! simply set cloud_frac_in to be zero. 
-           liq_cldfrac(1:nzm) = cloud_frac(i,j,2:nz) 
+         if(doclubb_gridmean) then
+           cloud_frac_in(1:nzm) = 0.0  ! to use grid mean for Morrison microphysics, just
+                                       ! simply set cloud_frac_in to be zero.
+           liq_cldfrac(1:nzm) = cloud_frac(i,j,2:nz)
 
            CF3D(i, j, 1:nzm) = cloud_frac(i, j, 2:nz)
            ice_cldfrac(:)= 0.0
@@ -829,7 +831,7 @@ do j = 1,ny
 
 
 #ifdef ECPP
-! save cloud water before microphysics process for the calculation 
+! save cloud water before microphysics process for the calculation
 ! of qlsink in ECPP
       qcloud_bf(i,j,:) =  tmpqcl(:)
 #endif /*ECPP*/
@@ -865,7 +867,7 @@ do j = 1,ny
 
       sfcpcp = 0.
       sfcicepcp = 0.
-      
+
       sfcpcp2D = 0.0  !+++mhwangtest
 
       effc1d(:) = 10. ! default liquid and ice effective radii
@@ -904,7 +906,7 @@ do j = 1,ny
 
    ! ------------------------------------------------- !
    ! Optional Accretion enhancement factor             !
-   ! ------------------------------------------------- !   
+   ! ------------------------------------------------- !
 !        accre_enhan(:) = 1.+0.65*(1.0/relvar(:))
         relvar(:) = relvarg(i,j,:)
         accre_enhan(:) = accre_enhang(i,j,:)
@@ -935,7 +937,7 @@ do j = 1,ny
            ,C2PREC,QSINK_TMP,CSED,ISED,SSED,GSED,RSED,RH3D &        ! mhwang add, for ECPP
 #endif
                                         )
- 
+
       if ( doclubb ) then
         if ( any( tmpqv < 0. ) ) then
           qv_clip(2:nz) = tmpqv(1:nzm)
@@ -986,20 +988,20 @@ do j = 1,ny
 
 #ifdef CRM
 ! hm 7/26/11, new output
-      aut1(i,j,:) = tmpaut(:)      
-      acc1(i,j,:) = tmpacc(:)      
-      evpc1(i,j,:) = tmpevpc(:)      
-      evpr1(i,j,:) = tmpevpr(:)      
-      mlt1(i,j,:) = tmpmlt(:)      
-      sub1(i,j,:) = tmpsub(:)      
-      dep1(i,j,:) = tmpdep(:)      
-      con1(i,j,:) = tmpcon(:)      
+      aut1(i,j,:) = tmpaut(:)
+      acc1(i,j,:) = tmpacc(:)
+      evpc1(i,j,:) = tmpevpc(:)
+      evpr1(i,j,:) = tmpevpr(:)
+      mlt1(i,j,:) = tmpmlt(:)
+      sub1(i,j,:) = tmpsub(:)
+      dep1(i,j,:) = tmpdep(:)
+      con1(i,j,:) = tmpcon(:)
 
 ! hm 8/31/11, new output for gcm-grid and time-step avg
 ! rates are summed here over the icycle loop
 ! note: rates are multiplied by time step, and then
 ! divided by dt in crm.F90 to get mean rates
-      aut1a(i,j,:) = aut1a(i,j,:) + aut1(i,j,:)*dtn 
+      aut1a(i,j,:) = aut1a(i,j,:) + aut1(i,j,:)*dtn
       acc1a(i,j,:) = acc1a(i,j,:) + acc1(i,j,:)*dtn
       evpc1a(i,j,:) = evpc1a(i,j,:) + evpc1(i,j,:)*dtn
       evpr1a(i,j,:) = evpr1a(i,j,:) + evpr1(i,j,:)*dtn
@@ -1030,7 +1032,7 @@ do j = 1,ny
          tmpqcl(:) = tmpqcl(:) + tmpqr(:) ! add rain mass back to cloud water
          tmpncl(:) = tmpncl(:) + tmpnr(:) ! add rain number back to cloud water
 
-         ! zero out rain 
+         ! zero out rain
          tmpqr(:) = 0.
          tmpnr(:) = 0.
 
@@ -1063,7 +1065,7 @@ do j = 1,ny
             micro_field(i,j,:,iqg) = tmpqg(:)
             micro_field(i,j,:,ing) = tmpng(:)
          end if
-         reffi(i,j,:) = effi1d(:)  
+         reffi(i,j,:) = effi1d(:)
       end if
 
       !=====================================================
@@ -1145,7 +1147,7 @@ do j = 1,ny
 #ifdef CRM
          qpsrc(1:nzm) = qpsrc(1:nzm) + dtn*(mtendqr+mtendqs+mtendqg)
          qpevp(1:nzm) = 0.0
-#endif 
+#endif
 
          !bloss: temperature tendency (sensible heating) due to phase changes
          tmtend3d(i,j,1:nzm) = tmtend1d(1:nzm)
@@ -1169,10 +1171,10 @@ do j = 1,ny
         rh(i,j,k)      = RH3D(k)       !0-1
         prain(i,j,k) = C2PREC(K)    ! kg/kg/s
         if(cloudliq(i,j,k).gt.1.0e-10) then
-          qlsink(i,j,k) = min(1.0/dt, C2PREC(k)/cloudliq(i,j,k))                   
+          qlsink(i,j,k) = min(1.0/dt, C2PREC(k)/cloudliq(i,j,k))
         else
-          qlsink(i,j,k) = 0.0 
-        end if 
+          qlsink(i,j,k) = 0.0
+        end if
       end do
       precr(i,j,:)=(RSED(:))    ! kg/m2/s
       precsolid(i,j,:)=(SSED(:)+GSED(:))  !kg/m2/s leave ISED out for the momenent, and we may want to
@@ -1254,22 +1256,22 @@ if(doclubb) then
           ice_cldfrac(:) = 0.0
           do k=1, nzm
 ! Ice cloud fraction: 0 at 0 C, and 100% at -35C.
-!           ice_cldfrac(k) = -(tmptabs(k)-T_freeze_K)/35.0 
+!           ice_cldfrac(k) = -(tmptabs(k)-T_freeze_K)/35.0
 !           ice_cldfrac(k) = min(1.0, max(ice_cldfrac(k), 0.0))
-           if(micro_field(i,j,k,iqci) .gt. 1.0e-8) then 
-             ice_cldfrac(k) = 1.0   
+           if(micro_field(i,j,k,iqci) .gt. 1.0e-8) then
+             ice_cldfrac(k) = 1.0
            end if
            if(cloudliq(i,j,k) + micro_field(i,j,k,iqci) .gt.1.0e-9) then
              CF3D(i,j,k) = (CF3D(i,j,k)* cloudliq(i,j,k) + ice_cldfrac(k) * micro_field(i,j,k,iqci))  &
                            / (cloudliq(i,j,k) + micro_field(i,j,k,iqci))
-           else 
+           else
              CF3D(i,j,k) = 0.0
            end if
           end do
         end do
      end do
-   endif 
-endif 
+   endif
+endif
 #else
 if (docloud)  call micro_diagnose()   ! leave this line here
 #endif
@@ -1328,7 +1330,7 @@ qcl(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
 ! rain water
 if(doprecip) qpl(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqr)
 
-! cloud ice 
+! cloud ice
 if(doicemicro) then
    qci(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqci)
 
@@ -1348,9 +1350,9 @@ subroutine micro_update()
 
 ! Description:
 ! This subroutine essentially does what micro_proc does but does not
-! call any microphysics subroutines.  We need to do this for the 
+! call any microphysics subroutines.  We need to do this for the
 ! single-moment bulk microphysics (SAM1MOM) so that CLUBB gets a
-! properly updated value of ice fed in. 
+! properly updated value of ice fed in.
 !
 ! -dschanen UWM
 !---------------------------------------------------------------------
@@ -1384,7 +1386,7 @@ subroutine micro_adjust( new_qv, new_qc )
                                    + new_qc(1:nx,1:ny,1:nzm)
 
   ! Cloud water mixing ratio
-  cloudliq(1:nx,1:ny,1:nzm) = new_qc(1:nx,1:ny,1:nzm) 
+  cloudliq(1:nx,1:ny,1:nzm) = new_qc(1:nx,1:ny,1:nzm)
 
   return
 end subroutine micro_adjust
@@ -1394,29 +1396,29 @@ end subroutine micro_adjust
 !----------------------------------------------------------------------
 !!! functions to compute terminal velocity for precipitating variables:
 !
-! you need supply functions to compute terminal velocity for all of your 
+! you need supply functions to compute terminal velocity for all of your
 ! precipitating prognostic variables. Note that all functions should
-! compute vertical velocity given two microphysics parameters var1, var2, 
-! and temperature, and water vapor (single values, not arrays). Var1 and var2 
+! compute vertical velocity given two microphysics parameters var1, var2,
+! and temperature, and water vapor (single values, not arrays). Var1 and var2
 ! are some microphysics variables like water content and concentration.
 ! Don't change the number of arguments or their meaning!
 
 !!$real function term_vel_qr(qr,nr,tabs,rho)
-!!$! .......  
+!!$! .......
 !!$end function term_vel_qr
 !!$
 !!$real function term_vel_Nr(qr,nr,tabs,rho)
-!!$! .......  
+!!$! .......
 !!$end function term_vel_Nr
 !!$
 !!$real function term_vel_qs(qs,ns,tabs,rho)
-!!$! .......  
+!!$! .......
 !!$end function term_vel_qs
 
 ! etc.
 
 !----------------------------------------------------------------------
-!!! compute sedimentation 
+!!! compute sedimentation
 !
 !  The perpose of this subroutine is to prepare variables needed to call
 ! the precip_all() for each of the falling hydrometeor varibles
@@ -1433,7 +1435,7 @@ subroutine micro_precip_fall()
 ! for hour hypothetical case, there is no mixed hydrometeor, so omega is not actually used.
 
 integer hydro_type
-real(crm_rknd) omega(nx,ny,nzm) 
+real(crm_rknd) omega(nx,ny,nzm)
 
 integer i,j,k
 
@@ -1456,7 +1458,7 @@ return ! do not need this routine -- sedimentation done in m2005micro.
 !!$    qpfall(k)=0.
 !!$    tlat(k) = 0.
 !!$ end do
-!!$   
+!!$
 !!$! Compute sedimentation of falling variables:
 !!$
 !!$ hydro_type=0
@@ -1493,7 +1495,7 @@ end subroutine micro_print
 
 !-----------------------------------------
 subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
-  !bloss/qt: Utility routine based on cloud.f90 in 
+  !bloss/qt: Utility routine based on cloud.f90 in
   !  MICRO_SAM1MOM that was written by Marat Khairoutdinov.
   !  This routine performs a saturation adjustment for
   !  cloud liquid water only using a Newton method.
@@ -1519,16 +1521,16 @@ subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
 
   !bloss/qt: quick saturation adjustment to compute cloud liquid water content.
   do k = 1,nzm
-    tabs1 = tabs(k) 
+    tabs1 = tabs(k)
     esat1 = polysvp(tabs1,0)
     qsat1 = 0.622*esat1/ (pres(k) - esat1)
     qc(k) = 0. ! no cloud unless qt > qsat
 
-    
+
     if (qt(k).gt.qsat1) then
 
       ! if unsaturated, nothing to do (i.e., qv=qt, T=Tl) --> just exit.
-      ! if saturated, do saturation adjustment 
+      ! if saturated, do saturation adjustment
       !    (modeled after Marat's cloud.f90).
 
       ! generate initial guess based on above calculation of qsat
@@ -1559,7 +1561,7 @@ subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
       qc(k) = MAX( real(0.,crm_rknd), tabs1 - tabs(k) )/fac_cond ! cloud liquid mass mixing ratio
       qt(k) = qt(k) - qc(k) ! This now holds the water vapor mass mixing ratio.
       tabs(k) = tabs1 ! update temperature.
-      
+
       if(niter.gt.maxiter-1) write(*,*) 'Reached iteration limit in satadj_liquid'
 
     end if ! qt_in > qsat
@@ -1609,7 +1611,7 @@ ELEMENTAL REAL(crm_rknd) FUNCTION LIN_INT( var_high, var_low, height_high, heigh
 
 ! This function computes a linear interpolation of the value of variable.
 ! Given two known values of a variable at two height values, the value
-! of that variable at a height between those two height levels (rather 
+! of that variable at a height between those two height levels (rather
 ! than a height outside of those two height levels) is computed.
 !
 ! Here is a diagram:
@@ -1659,6 +1661,3 @@ END FUNCTION LIN_INT
 !------------------------------------------------------------------------------
 
 end module microphysics
-
-
-

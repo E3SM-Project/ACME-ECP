@@ -1,74 +1,82 @@
-subroutine advect_all_scalars()
+module advect_all_scalars_mod
+	use advect_scalar_mod
+	implicit none
 
-  use vars
-  use microphysics
-  use sgs
-  use crmtracers
+contains
+
+  subroutine advect_all_scalars()
+
+    use vars
+    use microphysics
+    use sgs
+    use crmtracers
 #ifdef CLUBB_CRM
-  use params, only: dotracers, doclubb, doclubbnoninter
+    use params, only: dotracers, doclubb, doclubbnoninter
 #else
-  use params, only: dotracers
+    use params, only: dotracers
 #endif
-  implicit none
-  ! real dummy(nz)
-  real(crm_rknd) dummy(nz)
-  integer k
+    implicit none
+    ! real dummy(nz)
+    real(crm_rknd) dummy(nz)
+    integer k
 
 
-!---------------------------------------------------------
-!      advection of scalars :
+    !---------------------------------------------------------
+    !      advection of scalars :
 
-     call advect_scalar(t,tadv,twle,t2leadv,t2legrad,twleadv,.true.)
-    
-!
-!    Advection of microphysics prognostics:
-!
+    call advect_scalar(t,tadv,twle,t2leadv,t2legrad,twleadv,.true.)
 
-     do k = 1,nmicro_fields
-        if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
+    !
+    !    Advection of microphysics prognostics:
+    !
+
+    do k = 1,nmicro_fields
+      if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
 #ifdef CLUBB_CRM
-!Added preprocessor directives. - nielsenb UWM 30 July 2008
-        .or. ( docloud .or. doclubb .or. doclubbnoninter ) .and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+      !Added preprocessor directives. - nielsenb UWM 30 July 2008
+      .or. ( docloud .or. doclubb .or. doclubbnoninter ) .and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #else
-         .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+      .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
-         .or. doprecip.and.flag_precip(k).eq.1 ) &
-           call advect_scalar(micro_field(:,:,:,k),mkadv(:,k),mkwle(:,k),dummy,dummy,dummy,.false.)
-     end do
+      .or. doprecip.and.flag_precip(k).eq.1 ) &
+      call advect_scalar(micro_field(:,:,:,k),mkadv(:,k),mkwle(:,k),dummy,dummy,dummy,.false.)
+    end do
 
-!
-!    Advection of sgs prognostics:
-!
+    !
+    !    Advection of sgs prognostics:
+    !
 
-     if(dosgs.and.advect_sgs) then
-       do k = 1,nsgs_fields
-           call advect_scalar(sgs_field(:,:,:,k),sgsadv(:,k),sgswle(:,k),dummy,dummy,dummy,.false.)
-       end do
-     end if
+    if(dosgs.and.advect_sgs) then
+      do k = 1,nsgs_fields
+        call advect_scalar(sgs_field(:,:,:,k),sgsadv(:,k),sgswle(:,k),dummy,dummy,dummy,.false.)
+      end do
+    end if
 
 
-!
-!   Precipitation fallout:
-!
+    !
+    !   Precipitation fallout:
+    !
     if(doprecip) then
 
-       total_water_prec = total_water_prec + total_water()
+      total_water_prec = total_water_prec + total_water()
 
-       call micro_precip_fall()
+      call micro_precip_fall()
 
-       total_water_prec = total_water_prec - total_water()
+      total_water_prec = total_water_prec - total_water()
 
 
     end if
 
- ! advection of tracers:
+    ! advection of tracers:
 
-     if(dotracers) then
+    if(dotracers) then
 
-        do k = 1,ntracers
-         call advect_scalar(tracer(:,:,:,k),tradv(:,k),trwle(:,k),dummy,dummy,dummy,.false.)
-        end do
+      do k = 1,ntracers
+        call advect_scalar(tracer(:,:,:,k),tradv(:,k),trwle(:,k),dummy,dummy,dummy,.false.)
+      end do
 
-     end if
+    end if
 
-end subroutine advect_all_scalars
+  end subroutine advect_all_scalars
+
+end module advect_all_scalars_mod

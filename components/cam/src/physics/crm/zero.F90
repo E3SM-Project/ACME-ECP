@@ -1,16 +1,22 @@
+module zero_mod
+	implicit none
 
-subroutine zero
-	
-use vars
-use microphysics, only : total_water
+contains
 
-implicit none
-	
-integer k
-	
-dudt(:,:,:,na) = 0.
-dvdt(:,:,:,na) = 0.
-dwdt(:,:,:,na) = 0.
-misc(:,:,:) = 0.
+	subroutine zero
 
-end
+		use vars
+		use microphysics, only : total_water
+
+		implicit none
+
+		integer k
+
+		dudt(:,:,:,na) = 0.
+		dvdt(:,:,:,na) = 0.
+		dwdt(:,:,:,na) = 0.
+		misc(:,:,:) = 0.
+
+	end
+
+end module zero_mod
