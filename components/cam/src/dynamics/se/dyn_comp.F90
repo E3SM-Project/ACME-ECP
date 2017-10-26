@@ -110,6 +110,7 @@ CONTAINS
 
     integer :: neltmp(3)
     integer :: npes_se
+    integer :: npes_se_stride
 
     !----------------------------------------------------------------------
 
@@ -124,9 +125,9 @@ CONTAINS
     call dyn_grid_init()
 
     ! Read in the number of tasks to be assigned to SE (needed by initmp)
-    call spmd_readnl(NLFileName, npes_se)
+    call spmd_readnl(NLFileName, npes_se, npes_se_stride)
     ! Initialize the SE structure that holds the MPI decomposition information
-    par=initmp(npes_se)
+    par=initmp(npes_se, npes_se_stride)
 
     par%nprocs = npes_se  ! whannah - added to fix issue with large processor counts
 
@@ -179,7 +180,7 @@ CONTAINS
        write(iulog,*) " "
     endif
 #endif
-    if(iam < par%nprocs) then
+    if(par%dynproc) then
        call prim_init1(elem,par,dom_mt,TimeLevel)
 
        dyn_in%elem => elem
@@ -204,7 +205,7 @@ CONTAINS
 #ifdef SPMD
        call mpibcast(neltmp, 3, mpi_integer, 0, mpicom)
 #endif
-       if (iam .ge. par%nprocs) then
+       if (.not.par%dynproc) then
           nelemdmax = neltmp(1)
           nelem     = neltmp(2)
           call set_horiz_grid_cnt_d(neltmp(3))
@@ -277,7 +278,7 @@ CONTAINS
     do k=1,nlev
        hvcoord%hybd(k) = hvcoord%hybi(k+1) - hvcoord%hybi(k)
     end do
-    if(iam < par%nprocs) then
+    if(par%dynproc) then
 
 #ifdef HORIZ_OPENMP
        if (iam==0) write (iulog,*) "dyn_init2: nthreads=",nthreads,&
@@ -393,7 +394,7 @@ CONTAINS
 
     ! !DESCRIPTION:
     !
-    if(iam < par%nprocs) then
+    if(par%dynproc) then
 #ifdef HORIZ_OPENMP
        !if (iam==0) write (iulog,*) "dyn_run: nthreads=",nthreads,&
        !                            "max_threads=",omp_get_max_threads()
@@ -464,7 +465,7 @@ CONTAINS
 
        ierr = pio_enddef(nc)
 
-       if (iam<par%nprocs) then
+       if (par%dynproc) then
           call createmetadata(par, elem, subelement_corners)
        end if
 

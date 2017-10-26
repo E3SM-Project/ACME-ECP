@@ -195,7 +195,7 @@
 <config_use_cvmix>.true.</config_use_cvmix>
 <config_cvmix_prandtl_number>1.0</config_cvmix_prandtl_number>
 <config_use_cvmix_background>.true.</config_use_cvmix_background>
-<config_cvmix_background_diffusion>1.0e-5</config_cvmix_background_diffusion>
+<config_cvmix_background_diffusion>0.0</config_cvmix_background_diffusion>
 <config_cvmix_background_viscosity>1.0e-4</config_cvmix_background_viscosity>
 <config_use_cvmix_convection>.true.</config_use_cvmix_convection>
 <config_cvmix_convective_diffusion>1.0</config_cvmix_convective_diffusion>
@@ -241,7 +241,6 @@
 <config_sw_absorption_type>'jerlov'</config_sw_absorption_type>
 <config_jerlov_water_type>3</config_jerlov_water_type>
 <config_surface_buoyancy_depth>1</config_surface_buoyancy_depth>
-<config_forcing_restart_file>'Restart_forcing_time_stamp'</config_forcing_restart_file>
 
 <!-- frazil_ice -->
 <config_use_frazil_ice_formation>.true.</config_use_frazil_ice_formation>
@@ -809,6 +808,9 @@
 
 <!-- tracer_forcing_ecosysTracers -->
 <config_use_ecosysTracers>.false.</config_use_ecosysTracers>
+<config_ecosys_atm_co2_option>none</config_ecosys_atm_co2_option>
+<config_ecosys_atm_alt_co2_option>none</config_ecosys_atm_alt_co2_option>
+<config_ecosys_atm_co2_constant_value>379.000</config_ecosys_atm_co2_constant_value>
 <config_use_ecosysTracers_surface_bulk_forcing>.false.</config_use_ecosysTracers_surface_bulk_forcing>
 <config_use_ecosysTracers_surface_restoring>.false.</config_use_ecosysTracers_surface_restoring>
 <config_use_ecosysTracers_interior_restoring>.false.</config_use_ecosysTracers_interior_restoring>
@@ -817,6 +819,11 @@
 <config_use_ecosysTracers_ttd_forcing>.false.</config_use_ecosysTracers_ttd_forcing>
 <config_use_ecosysTracers_surface_value>.false.</config_use_ecosysTracers_surface_value>
 <config_use_ecosysTracers_sea_ice_coupling>.false.</config_use_ecosysTracers_sea_ice_coupling>
+<config_ecosysTracers_diagnostic_fields_level1>.false.</config_ecosysTracers_diagnostic_fields_level1>
+<config_ecosysTracers_diagnostic_fields_level2>.false.</config_ecosysTracers_diagnostic_fields_level2>
+<config_ecosysTracers_diagnostic_fields_level3>.false.</config_ecosysTracers_diagnostic_fields_level3>
+<config_ecosysTracers_diagnostic_fields_level4>.false.</config_ecosysTracers_diagnostic_fields_level4>
+<config_ecosysTracers_diagnostic_fields_level5>.false.</config_ecosysTracers_diagnostic_fields_level5>
 
 <!-- tracer_forcing_DMSTracers -->
 <config_use_DMSTracers>.false.</config_use_DMSTracers>

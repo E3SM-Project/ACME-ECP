@@ -17,6 +17,9 @@ module CNStateType
   use ColumnType     , only : col_pp                
   use VegetationType      , only : veg_pp                
   use clm_varctl     , only: forest_fert_exp
+  use clm_varctl          , only : nu_com
+  use clm_varctl   , only:  use_ed,use_crop
+
   ! 
   ! !PUBLIC TYPES:
   implicit none
@@ -26,9 +29,11 @@ module CNStateType
   ! !PRIVATE MEMBER FUNCTIONS: 
   private :: checkDates
   ! !PUBLIC TYPES:
-  integer(r8), pointer, public :: fert_type         (:)
-  integer(r8), pointer, public :: fert_continue     (:)
+  integer    , pointer, public :: fert_type         (:)
+  integer    , pointer, public :: fert_continue     (:)
   real(r8)   , pointer, public :: fert_dose         (:,:)
+  integer    , pointer, public :: fert_start        (:)
+  integer    , pointer, public :: fert_end          (:)
   ! 
   ! !PUBLIC TYPES:
   type, public :: cnstate_type
@@ -346,6 +351,9 @@ contains
     allocate(this%secp_col                    (begc:endc))                   ; this%secp_col(:) = nan
     allocate(this%occp_col                    (begc:endc))                   ; this%occp_col(:) = nan
     allocate(this%prip_col                    (begc:endc))                   ; this%prip_col(:) = nan
+    
+    allocate(fert_start                       (begc:endc))                   ; fert_start    (:) = 0
+    allocate(fert_end                         (begc:endc))                   ; fert_end      (:) = 0
   end subroutine InitAllocate
 
   !------------------------------------------------------------------------
@@ -690,6 +698,8 @@ contains
     real(r8) ,pointer  :: secp_g (:)                       ! read in - SECONDARY_P
     real(r8) ,pointer  :: occp_g (:)                       ! read in - OCCLUDED_P
     real(r8) ,pointer  :: prip_g (:)                       ! read in - APATITE_P
+    integer     ,pointer     :: fert_start_rdin (:)
+    integer     ,pointer     :: fert_end_rdin (:)
     !-----------------------------------------------------------------------
 
     begc = bounds%begc; endc= bounds%endc
@@ -751,18 +761,24 @@ contains
     ! Read in soilorder data 
     ! --------------------------------------------------------------------
 
-    allocate(soilorder_rdin(bounds%begg:bounds%endg))
-    !call ncd_io(ncid=ncid, varname='SOIL_ORDER', flag='read',data=soilorder_rdin, dim1name=grlnd, readvar=readvar)
-    !if (.not. readvar) then
-    !   call endrun(msg=' ERROR: SOIL_ORDER NOT on surfdata file'//errMsg(__FILE__, __LINE__))
-    !end if
-    do c = bounds%begc, bounds%endc
-       g = col_pp%gridcell(c)
-!       this%isoilorder(c) = soilorder_rdin(g)
-       this%isoilorder(c) = 12
-    end do
-    deallocate(soilorder_rdin)
+    if ( (nu_com .eq. 'RD' .or. nu_com .eq. 'ECA') .and. (use_cn .and. .not. use_ed .and. .not. use_crop) )  then 
+       allocate(soilorder_rdin(bounds%begg:bounds%endg))
+       call ncd_io(ncid=ncid, varname='SOIL_ORDER', flag='read',data=soilorder_rdin, dim1name=grlnd, readvar=readvar)
+       if (.not. readvar) then
+          call endrun(msg=' ERROR: SOIL_ORDER NOT on surfdata file'//errMsg(__FILE__, __LINE__))
+       end if
+       do c = bounds%begc, bounds%endc
+          g = col_pp%gridcell(c)
+          this%isoilorder(c) = soilorder_rdin(g)
+       end do
+       deallocate(soilorder_rdin)
 
+    else
+       do c = bounds%begc, bounds%endc
+          g = col_pp%gridcell(c)
+          this%isoilorder(c) = 12
+       end do 
+    end if
 
     ! --------------------------------------------------------------------
     ! forest fertilization experiments info, Q. Z. 2017
@@ -802,7 +818,31 @@ contains
           end do
        end do
        deallocate(fert_dose_rdin)
+
+       allocate(fert_start_rdin(bounds%begg:bounds%endg))
+       call ncd_io(ncid=ncid, varname='fert_startyr', flag='read',data=fert_start_rdin, dim1name=grlnd, readvar=readvar)
+       if (.not. readvar) then
+          call endrun(msg=' ERROR: fert_start NOT on surfdata file'//errMsg(__FILE__, __LINE__))
+       end if
+       do c = bounds%begc, bounds%endc
+          g = col_pp%gridcell(c)
+          fert_start(c) = fert_start_rdin(g)
+       end do
+       deallocate(fert_start_rdin)
+
+       allocate(fert_end_rdin(bounds%begg:bounds%endg))
+       call ncd_io(ncid=ncid, varname='fert_endyr', flag='read',data=fert_end_rdin, dim1name=grlnd, readvar=readvar)
+       if (.not. readvar) then
+          call endrun(msg=' ERROR: fert_endyr NOT on surfdata file'//errMsg(__FILE__, __LINE__))
+       end if
+       do c = bounds%begc, bounds%endc
+          g = col_pp%gridcell(c)
+          fert_end(c) = fert_end_rdin(g)
+       end do
+       deallocate(fert_end_rdin)
+
     end if
+
     ! --------------------------------------------------------------------
 
     ! --------------------------------------------------------------------
