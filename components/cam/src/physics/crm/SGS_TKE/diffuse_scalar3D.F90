@@ -7,6 +7,7 @@ contains
 
     use grid
     use params
+    use task_util_mod, only: task_rank_to_index
     implicit none
     ! input
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
