@@ -2000,7 +2000,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ! 0)create ptop/ztop for gbx%pf and gbx%zlev are for the the interface, 
-!  also reverse CAM height/pressure values for input into CSOP
+!  also reverse CAM height/pressure values for input into COSP
 !  CAM state%pint from top to surface, COSP wants surface to top.
 
    ! initalize
@@ -2012,13 +2012,13 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
 
    ! assign values from top   
    do k=1,pverp-1
-        ! assign values from top
-        ptop(1:ncol,k)=state%pint(1:ncol,pverp-k)
-        ztop(1:ncol,k)=state%zi(1:ncol,pverp-k)
+      ! assign values from top
+      ptop(1:ncol,k)=state%pint(1:ncol,pverp-k)
+      ztop(1:ncol,k)=state%zi(1:ncol,pverp-k)
 
-        ! assign values from bottom           
-        pbot(1:ncol,k)=state%pint(1:ncol,pverp-k+1)
-        zbot(1:ncol,k)=state%zi(1:ncol,pverp-k+1)
+      ! assign values from bottom           
+      pbot(1:ncol,k)=state%pint(1:ncol,pverp-k+1)
+      zbot(1:ncol,k)=state%zi(1:ncol,pverp-k+1)
    end do
 
 
@@ -2045,10 +2045,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
 
    ! calculate from CAM q and t using CAM built-in functions
    call qsat_water(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
-        es(1:ncol,1:pver), qs(1:ncol,1:pver))
-
-   ! initialize rh
-   rh(1:ncol,1:pver)=0._r8
+                   es(1:ncol,1:pver), qs(1:ncol,1:pver))
 
    ! calculate rh
    do k=1,pver
@@ -2087,9 +2084,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
    ! note: reff_cosp dimensions should be same as cosp (reff_cosp has 9 hydrometeor dimension)
    ! Reff(Npoints,Nlevels,N_HYDRO)
 
-   if(cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4')) then
+   ! get precipitation fluxes
+   if(cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4') .or. cam_physpkg_is('cam5')) then
 
-      ! CAM4 settings, using precipitation fluxes as COSP inputs
+      ! using precipitation fluxes as COSP inputs
       use_precipitation_fluxes = .true.
 
       ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
@@ -2118,6 +2116,29 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
          rain_ls_interp(i,1:pver)=rain_ls_interp(i,1:pver)-snow_ls_interp(i,1:pver)
       end do
 
+      ! Make sure interpolated values are not less than 0; COSP will complain
+      ! and set small negative values to zero, so do that explicitly here
+      do k=1,pver
+         do i=1,ncol
+            if (rain_ls_interp(i,k) .lt. 0._r8) then
+               rain_ls_interp(i,k)=0._r8
+            end if
+            if (snow_ls_interp(i,k) .lt. 0._r8) then
+               snow_ls_interp(i,k)=0._r8
+            end if
+            if (rain_cv_interp(i,k) .lt. 0._r8) then
+               rain_cv_interp(i,k)=0._r8
+            end if
+            if (snow_cv_interp(i,k) .lt. 0._r8) then
+               snow_cv_interp(i,k)=0._r8
+            end if
+         end do
+      end do
+
+   end if
+
+   ! get mixing ratios (not used?)
+   if (cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4')) then
       ! CAM4 mixing ratio calculations
       do k=1,pver
          do i=1,ncol
@@ -2138,20 +2159,42 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
             end if
          end do
       end do
- 
-      !! Previously, I had set use_reff=.false.
-      !!! use_reff = .false.  !! if you use this,all sizes use DEFAULT_LIDAR_REFF = 30.0e-6 meters
+   else if (cam_physpkg_is('cam5')) then
+      ! CAM5 cloud mixing ratio calculations
+      ! Note: Although CAM5 has non-zero convective cloud mixing ratios that affect the model state, 
+      ! Convective cloud water is NOT part of radiation calculations (why?!).
+      do k=1,pver
+         do i=1,ncol
+            if (cld(i,k) .gt. 0._r8) then
+               ! note: convective mixing ratio is the sum of shallow and deep convective clouds in CAM5
+               mr_ccliq(i,k) = sh_cldliq(i,k) + dp_cldliq(i,k)
+               mr_ccice(i,k) = sh_cldice(i,k) + dp_cldice(i,k)
+               mr_lsliq(i,k) = state%q(i,k,ixcldliq)  ! state only includes stratiform (kg/kg)  
+               mr_lsice(i,k) = state%q(i,k,ixcldice)  ! state only includes stratiform (kg/kg)
+            else
+               mr_ccliq(i,k) = 0._r8
+               mr_ccice(i,k) = 0._r8
+               mr_lsliq(i,k) = 0._r8
+               mr_lsice(i,k) = 0._r8
+            end if
+         end do
+      end do
+   end if
 
-      !!! The specification of reff_cosp now follows e-mail discussion with Yuying in January 2011.
-      !!! When there is no reff COSP input, i.e. use_reff=.false., COSP uses reasonable reff defaults for the lidar/radar simulator, respectively. 
-      !!! The lidar simulator uses the default value (30 micron) for clouds, radar simulator uses different defaults.
-      !!! When input radius is 0., the simulated lidar cloud amount will be 0., but the radar simulator will use its internal defaults.
-      !!! We do have size information to give COSP from CAM so I am giving it as much as I can, and setting reff_cosp=0 when no CAM size information is available.
-      !!! Note: setting CVCLIQ=LSCLIQ and CVCICE=LSCICE is not the optimal solution, but if we set them to a specific value the radar simulator will use them
-      !!! and if we set it to 0, the lidar simulator will treat convective clouds as no clouds.  So, we are setting the convective cloud sizes to the
-      !!! large-scale cloud sizes just to have the same reasonablish values entering both the radar and lidar simulator.
+   ! get effective radii
+   if (cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4')) then
+      ! Previously had set use_reff=.false. If you use this, all sizes use 
+      ! DEFAULT_LIDAR_REFF = 30.0e-6 meters
+      ! The specification of reff_cosp now follows e-mail discussion with Yuying in January 2011.
+      ! When there is no reff COSP input, i.e. use_reff=.false., COSP uses reasonable reff defaults for the lidar/radar simulator, respectively. 
+      ! The lidar simulator uses the default value (30 micron) for clouds, radar simulator uses different defaults.
+      ! When input radius is 0., the simulated lidar cloud amount will be 0., but the radar simulator will use its internal defaults.
+      ! We do have size information to give COSP from CAM so I am giving it as much as I can, and setting reff_cosp=0 when no CAM size information is available.
+      ! Note: setting CVCLIQ=LSCLIQ and CVCICE=LSCICE is not the optimal solution, but if we set them to a specific value the radar simulator will use them
+      ! and if we set it to 0, the lidar simulator will treat convective clouds as no clouds.  So, we are setting the convective cloud sizes to the
+      ! large-scale cloud sizes just to have the same reasonablish values entering both the radar and lidar simulator.
 
-      !!! All of the values that I have assembled in the code are in microns... convert to meters here since that is what COSP wants.
+      ! All of the values that I have assembled in the code are in microns... convert to meters here since that is what COSP wants.
       use_reff = .true.
       reff_cosp(1:ncol,1:pver,1) = rel(1:ncol,1:pver)*1.e-6_r8  !! LSCLIQ
       reff_cosp(1:ncol,1:pver,2) = rei(1:ncol,1:pver)*1.e-6_r8  !! LSCICE
@@ -2163,8 +2206,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
       reff_cosp(1:ncol,1:pver,8) = 0._r8                        !! CVSNOW (using radar default reff)
       reff_cosp(1:ncol,1:pver,9) = 0._r8                        !! LSGRPL (using radar default reff)
 
-      !! Need code below for when effective radius is fillvalue, and you multiply it by 1.e-6 to convert units, and value becomes no longer fillvalue.  
-      !! Here, we set it back to zero. ## I think this should this be 0. COSP doesn't know what CAM's fillvalue is... ##2check
+      ! Need code below for when effective radius is fillvalue, and you multiply 
+      ! it by 1.e-6 to convert units, and value becomes no longer fillvalue.  
+      ! Here, we set it back to zero. 
+      ! ## I think this should this be 0. COSP doesn't know what CAM's fillvalue is... ##2check
       where (rel(1:ncol,1:pver) .eq. R_UNDEF)
          reff_cosp(1:ncol,1:pver,1) = 0._r8
       end where
@@ -2178,59 +2223,8 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
          reff_cosp(1:ncol,1:pver,6) = 0._r8
       end where
 
-   end if  ! cam4/cam3
-
-   if (cam_physpkg_is('cam5')) then
-      use_precipitation_fluxes = .true.  ! consistent with cam4 implementation.
-
-      ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
-      rain_cv(1:ncol,1:pverp) = (sh_flxprc(1:ncol,1:pverp)-sh_flxsnw(1:ncol,1:pverp)) + &
-                                (dp_flxprc(1:ncol,1:pverp)-dp_flxsnw(1:ncol,1:pverp))
-      snow_cv(1:ncol,1:pverp) = sh_flxsnw(1:ncol,1:pverp) + dp_flxsnw(1:ncol,1:pverp)
-
-      ! interpolate interface precip fluxes to mid points
-      do i=1,ncol
-         ! find weights (pressure weighting?)
-         call lininterp_init(state%zi(i,1:pverp),pverp,state%zm(i,1:pver),pver,extrap_method,interp_wgts)
-
-         ! interpolate  lininterp1d(arrin, nin, arrout, nout, interp_wgts)
-         ! note: lininterp is an interface, contains lininterp1d -- code figures out to use lininterp1d.
-         call lininterp(rain_cv(i,1:pverp),pverp,rain_cv_interp(i,1:pver),pver,interp_wgts)
-         call lininterp(snow_cv(i,1:pverp),pverp,snow_cv_interp(i,1:pver),pver,interp_wgts)
-         call lininterp(ls_flxprc(i,1:pverp),pverp,rain_ls_interp(i,1:pver),pver,interp_wgts)
-         call lininterp(ls_flxsnw(i,1:pverp),pverp,snow_ls_interp(i,1:pver),pver,interp_wgts)
-         call lininterp_finish(interp_wgts)
-
-         ! ls_flxprc is for rain+snow, find rain_ls_interp by subtracting off snow_ls_interp
-         rain_ls_interp(i,1:pver)=rain_ls_interp(i,1:pver)-snow_ls_interp(i,1:pver)
-      end do
-
-      ! CAM5 cloud mixing ratio calculations
-      ! Note: Although CAM5 has non-zero convective cloud mixing ratios that affect the model state, 
-      ! Convective cloud water is NOT part of radiation calculations (why?!).
-      do k=1,pver
-         do i=1,ncol
-            if (cld(i,k) .gt. 0._r8) then
-               ! note: convective mixing ratio is the sum of shallow and deep convective clouds in CAM5
-               mr_ccliq(i,k) = sh_cldliq(i,k) + dp_cldliq(i,k)
-               mr_ccice(i,k) = sh_cldice(i,k) + dp_cldice(i,k)
-               mr_lsliq(i,k)=state%q(i,k,ixcldliq)  ! state only includes stratiform (kg/kg)  
-               mr_lsice(i,k)=state%q(i,k,ixcldice)  ! state only includes stratiform (kg/kg)
-            else
-               mr_ccliq(i,k) = 0._r8
-               mr_ccice(i,k) = 0._r8
-               mr_lsliq(i,k) = 0._r8
-               mr_lsice(i,k) = 0._r8
-            end if
-         end do
-      end do
-
+   else if (cam_physpkg_is('cam5')) then
       ! TODO: This seems to be copied from above...combine?
-      !! Previously, I had set use_reff=.false.
-      !! use_reff = .false.  !! if you use this,all sizes use DEFAULT_LIDAR_REFF = 30.0e-6 meters
-
-      !! The specification of reff_cosp now follows e-mail discussion with Yuying in January 2011. (see above)
-      !! All of the values that I have assembled in the code are in microns... convert to meters here since that is what COSP wants.
       use_reff = .true.
       reff_cosp(1:ncol,1:pver,1) = rel(1:ncol,1:pver)*1.e-6_r8          !! LSCLIQ  (same as effc and effliq in stratiform.F90)
       reff_cosp(1:ncol,1:pver,2) = rei(1:ncol,1:pver)*1.e-6_r8          !! LSCICE  (same as effi and effice in stratiform.F90)
@@ -2242,8 +2236,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
       reff_cosp(1:ncol,1:pver,8) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  !! CVSNOW (same as stratiform per Andrew)
       reff_cosp(1:ncol,1:pver,9) = 0._r8                                !! LSGRPL (using radar default reff)
 
-      !! Need code below for when effective radius is fillvalue, and you multiply it by 1.e-6 to convert units, and value becomes no longer fillvalue.  
-      !! Here, we set it back to zero. 
+      ! TODO: clean this up
+      ! Need code below for when effective radius is fillvalue, and you multiply 
+      ! it by 1.e-6 to convert units, and value becomes no longer fillvalue.  
+      ! Here, we set it back to zero. 
       where (rel(1:ncol,1:pver) .eq. R_UNDEF)
           reff_cosp(1:ncol,1:pver,1) = 0._r8
       end where
@@ -2296,26 +2292,6 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
       end where
 
    end if  ! cam5
-
-   !! Make sure interpolated values are not less than 0 - COSP was complaining and resetting small negative values to zero.
-   !! ----- WARNING: COSP_CHECK_INPUT_2D: minimum value of rain_ls set to:      0.000000000000000 
-   !! So I set negative values to zero here...
-   do k=1,pver
-      do i=1,ncol
-         if (rain_ls_interp(i,k) .lt. 0._r8) then
-            rain_ls_interp(i,k)=0._r8
-         end if
-         if (snow_ls_interp(i,k) .lt. 0._r8) then
-            snow_ls_interp(i,k)=0._r8
-         end if
-         if (rain_cv_interp(i,k) .lt. 0._r8) then
-            rain_cv_interp(i,k)=0._r8
-         end if
-         if (snow_cv_interp(i,k) .lt. 0._r8) then
-            snow_cv_interp(i,k)=0._r8
-         end if
-      end do
-   end do
 
    ! 5) assign optical depths and emissivities needed for isccp simulator
 
