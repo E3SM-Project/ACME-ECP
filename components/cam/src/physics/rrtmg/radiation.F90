@@ -2410,42 +2410,46 @@ end function radiation_nextsw_cday
           emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,:ncol,:))
           call outfld('EMIS      ',emis    ,pcols   ,lchnk   )
 
-          !! compute grid-box mean SW and LW snow optical depth for use by COSP
-          gb_snow_tau(:,:) = 0._r8
-          gb_snow_lw(:,:) = 0._r8
-          if (cldfsnow_idx > 0) then
-             do i=1,ncol
-                do k=1,pver
-                   if(cldfsnow(i,k) > 0.)then
-                      gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k)
-                      gb_snow_lw(i,k) = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k)
-                   end if
-                enddo
-             enddo
-          end if
-
           if (docosp) then
-             !! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
-             !! advance counter for this timestep
+             !! compute grid-box mean SW and LW snow optical depth for use by COSP
+             gb_snow_tau(:,:) = 0._r8
+             gb_snow_lw(:,:) = 0._r8
+             if (cldfsnow_idx > 0) then
+                do i=1,ncol
+                   do k=1,pver
+                      if (cldfsnow(i,k) > 0.)then
+                         gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k)
+                         gb_snow_lw(i,k) = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k)
+                      end if
+                   enddo
+                enddo
+             end if
+
+             ! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
+             ! advance counter for this timestep
              cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
 
-             !! if counter is the same as cosp_nradsteps, run cosp and reset counter
-              if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
-                 !call should be compatible with camrt radiation.F90 interface too, should be with (in),optional
-                 ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave optical depths are passed.
+             ! if counter is the same as cosp_nradsteps, run cosp and reset counter
+             if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
+                ! start timer
+                call t_startf ('cosp_run')
 
-                 call t_startf ('cosp_run') !==Guangxing Lin
+                ! Call the satellite simulator driver.
+                ! For snow optical properties, the GRID-BOX MEAN 
+                ! shortwave and longwave optical depths are passed.
+                call cospsimulator_intr_run(state,  pbuf, cam_in, &
+                     cld_tau(rrtmg_sw_cloudsim_band,:,:), &
+                     emis, coszrs, &
+                     snow_tau_in=gb_snow_tau, snow_emis_in=gb_snow_lw)
 
-                 call cospsimulator_intr_run(state,  pbuf, cam_in, emis, coszrs, &
-                      cld_swtau_in=cld_tau(rrtmg_sw_cloudsim_band,:,:),&
-                      snow_tau_in=gb_snow_tau,snow_emis_in=gb_snow_lw)
-                 cosp_cnt(lchnk) = 0  !! reset counter
+                ! reset counter
+                cosp_cnt(lchnk) = 0
 
-                 call t_stopf ('cosp_run')  !==Guangxing Lin
-
-              end if
-          end if
-       endif 
+                ! end timer
+                call t_stopf ('cosp_run')
+             end if
+          end if  ! docosp
+       endif  ! not use_spcam
 
        if (use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
           call outfld('CRM_MU   ', mu_crm,  pcols, lchnk)

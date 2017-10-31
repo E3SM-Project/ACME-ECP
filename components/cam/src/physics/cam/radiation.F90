@@ -809,6 +809,8 @@ end function radiation_nextsw_cday
     
     real(r8), parameter :: rad2deg = 180._r8/pi
 
+    real(r8) :: cosp_vistau(pcols,pver)
+
 !----------------------------------------------------------------------
 !-- mdb spcam
     call phys_getopts(use_SPCAM_out = use_SPCAM)
@@ -1507,19 +1509,30 @@ end function radiation_nextsw_cday
           ! radsw can change pmxrgn and nmxrgn so cldsav needs to follow radsw
           call cloud_cover_diags_out(lchnk, ncol, cld, state%pmid, nmxrgn, pmxrgn )
 
-       if (docosp) then
-	   !! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
-	   !! advance counter for this timestep
-	   cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
+          if (docosp) then
+             ! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
+             ! advance counter for this timestep
+             cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
 
-	   !! if counter is the same as cosp_nradsteps, run cosp and reset counter
-           if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
-              !call should be compatible with rrtm radiation.F90 interface too, should be with (in),optional
-              call cospsimulator_intr_run(state,  pbuf, &
-                   cam_in, emis, coszrs, cliqwp_in=cliqwp, cicewp_in=cicewp)
-	      cosp_cnt(lchnk) = 0  !! reset counter
-           end if
-       end if
+             ! if counter is the same as cosp_nradsteps, run cosp and reset counter
+             if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
+
+                ! calculate visible optical depth (needed for COSP)
+                call calculate_cld_vistau(ncol, &
+                                          cld(1:ncol,1:pver), &
+                                          cliqwp(1:ncol,1:pver), cicewp(1:ncol,1:pver), &
+                                          rel(1:ncol,1:pver), rei(1:ncol,1:pver), &
+                                          cosp_vistau(1:ncol,1:pver))
+
+                ! call COSP driver
+                call cospsimulator_intr_run(state,  pbuf, cam_in, &
+                                            cosp_vistau, emis, coszrs, &
+                                            cliqwp_in=cliqwp, cicewp_in=cicewp)
+
+                ! reset the counter
+                cosp_cnt(lchnk) = 0
+             end if
+          end if
        end if ! use_SPCAM)
 
     else   !  if (dosw .or. dolw) then
@@ -1660,6 +1673,43 @@ subroutine calc_col_mean(state, mmr_pointer, mean_value)
    end do
 
 end subroutine calc_col_mean
+
+!===============================================================================
+
+subroutine calculate_cld_vistau(ncol, cld, clwp, ciwp, rel, rei, dtau)
+   integer, intent(in) :: ncol
+   real(r8), intent(in) :: cld(ncol,pver)
+   real(r8), intent(in) :: clwp(ncol,pver)
+   real(r8), intent(in) :: ciwp(ncol,pver)
+   real(r8), intent(in) :: rel(ncol,pver)
+   real(r8), intent(in) :: rei(ncol,pver)
+   real(r8), intent(inout) :: dtau(ncol,pver)
+
+   ! constants for optical depth calculation (from radcswmx.F90)
+   ! TODO: remove these, cloud optical depth is calculated in radiation.F90 so
+   ! just read in the values calculated there. We do not want to duplicate code.
+   real(r8), parameter :: abarl = 2.817e-02_r8  ! A coefficient for extinction optical depth
+   real(r8), parameter :: bbarl = 1.305_r8      ! b coefficient for extinction optical depth
+   real(r8), parameter :: abari = 3.448e-03_r8  ! A coefficient for extinction optical depth
+   real(r8), parameter :: bbari = 2.431_r8      ! b coefficient for extinction optical depth
+   real(r8), parameter :: cldmin = 1.0e-80_r8   ! note: cldmin much less than cldmin from cldnrh
+   real(r8), parameter :: cldeps = 0.0_r8 
+
+   ! loop variables
+   integer :: i, k
+
+   ! compute the visible optical depth for COSP (code from radcswmx)
+   do k=1,pver
+      do i=1,ncol
+         if(cld(i,k) >= cldmin .and. cld(i,k) >= cldeps) then
+            dtau(i,k) = (abarl + bbarl/rel(i,k)) * clwp(i,k) + &
+                        (abari + bbari/rei(i,k)) * ciwp(i,k)
+         else
+            dtau(i,k) = 0._r8
+         end if
+      end do
+   end do
+end subroutine calculate_cld_vistau
 
 !===============================================================================
 

@@ -1354,7 +1354,7 @@ end subroutine cospsimulator_intr_init
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicewp_in,cld_swtau_in,snow_tau_in,snow_emis_in)    
+subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,snow_tau_in,snow_emis_in)    
    
    use physics_types,    only: physics_state
    
@@ -1393,17 +1393,15 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
    
    type(physics_buffer_desc), pointer :: pbuf(:)
    type(cam_in_t),  intent(in) :: cam_in
-   ! vars calculated in subroutine param_cldoptics_calc within param_cldoptics.F90
+
+   real(r8), intent(in) :: cld_swtau(pcols,pver)  ! cloud visible optical depth
    real(r8), intent(in) :: emis(pcols,pver)             ! cloud longwave emissivity
    real(r8), intent(in) :: coszrs(pcols)                ! cosine solar zenith angle (to tell if day or night)
 
    ! make the input arguments optional because they are used differently in CAM4 and CAM5.
    ! TODO: add CRM-scale input arguments
-   real(r8), intent(in),optional :: cliqwp_in(pcols,pver)   ! in-cloud liquid water path, CAMRT uses this to calculate cld_swtau
-   real(r8), intent(in),optional :: cicewp_in(pcols,pver)    ! in-cloud ice water path CAMRT uses this to calculate cld_swtau
-   real(r8), intent(in),optional :: cld_swtau_in(pcols,pver) ! RRTM cld_swtau_in, read in using this variable
-   real(r8), intent(in),optional :: snow_tau_in(pcols,pver)  ! RRTM grid-box mean SW snow optical depth, used for CAM5 simulations 
-   real(r8), intent(in),optional :: snow_emis_in(pcols,pver) ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations 
+   real(r8), intent(in), optional :: snow_tau_in(pcols,pver)  ! RRTM grid-box mean SW snow optical depth, used for CAM5 simulations 
+   real(r8), intent(in), optional :: snow_emis_in(pcols,pver) ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations 
 
 #ifdef USE_COSP
    !
@@ -1501,16 +1499,6 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
    real(r8) :: dem_c_atrain(pcols,pver)        ! tempororary variable for atrain dem_c
    real(r8) :: dem_s_snow_atrain(pcols,pver)   ! tempororary variable for atrain dem_s_snow
 
-   ! constants for optical depth calculation (from radcswmx.F90)
-   ! TODO: remove these, cloud optical depth is calculated in radiation.F90 so
-   ! just read in the values calculated there. We do not want to duplicate code.
-   real(r8), parameter :: abarl = 2.817e-02_r8          ! A coefficient for extinction optical depth
-   real(r8), parameter :: bbarl = 1.305_r8              ! b coefficient for extinction optical depth
-   real(r8), parameter :: abari = 3.448e-03_r8          ! A coefficient for extinction optical depth
-   real(r8), parameter :: bbari = 2.431_r8              ! b coefficient for extinction optical depth
-   real(r8), parameter :: cldmin = 1.0e-80_r8           ! note: cldmin much less than cldmin from cldnrh
-   real(r8), parameter :: cldeps = 0.0_r8 
-
    ! microphysics variables
    integer, parameter :: ncnstmax=4                      ! number of constituents
    character(len=8), dimension(ncnstmax), parameter :: & ! constituent names
@@ -1574,7 +1562,6 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
    real(r8) :: rh(pcols,pver)                           ! relative_humidity_liquid_water (%)
    real(r8) :: es(pcols,pver)                           ! saturation vapor pressure
    real(r8) :: qs(pcols,pver)                           ! saturation mixing ratio (kg/kg), saturation specific humidity
-   real(r8) :: cld_swtau(pcols,pver)                    ! incloud sw tau for input to COSP
    real(r8) :: dtau_s(pcols,pver)                       ! dtau_s - Optical depth of stratiform cloud at 0.67 um
    real(r8) :: dtau_c(pcols,pver)                       ! dtau_c - Optical depth of convective cloud at 0.67 um
    real(r8) :: dtau_s_snow(pcols,pver)                  ! dtau_s_snow - Grid-box mean Optical depth of stratiform snow at 0.67 um
@@ -2296,33 +2283,6 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
    ! 5) assign optical depths and emissivities needed for isccp simulator
 
    ! initialize cld_swtau
-   cld_swtau(1:ncol,1:pver) = 0._r8
-   if (cam_physpkg_is('cam4')) then
-      ! cam4 compute the optical depth (code from radcswmx) -- code from cloudsimulator.F90 (NOW IN CAMRT's radiation.F90
-      ! TODO: read cloud optical depth from radiation interface instead; no
-      ! need to calculate here if it's calculated elsewhere. We do not want
-      ! duplicated code.
-      do k=1,pver
-         do i=1,ncol
-            if(cld(i,k) >= cldmin .and. cld(i,k) >= cldeps) then
-               cld_swtau(i,k) = (abarl + bbarl/rel(i,k)) * cliqwp_in(i,k) + &
-                                (abari + bbari/rei(i,k)) * cicewp_in(i,k)
-            else
-               cld_swtau(i,k) = 0._r8
-            end if
-         end do
-      end do
-   else if (cam_physpkg_is('cam5')) then
-      cld_swtau(1:ncol,1:pver) = cld_swtau_in(1:ncol,1:pver)
-   end if
-
-   ! initialize cosp inputs
-   dtau_s(1:ncol,1:pver) = 0._r8
-   dtau_c(1:ncol,1:pver) = 0._r8
-   dtau_s_snow(1:ncol,1:pver) = 0._r8
-   dem_s(1:ncol,1:pver) = 0._r8 
-   dem_c(1:ncol,1:pver) = 0._r8
-   dem_s_snow(1:ncol,1:pver) = 0._r8 
 
    ! assign values
    ! NOTES:
@@ -2330,17 +2290,25 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
    !    (see ISCCP_CLOUD_TYPES subroutine call in cloudsimulator.F90)
    !    I presume CAM5 is doing the same thing based on the ISCCP simulator calls within RRTM's radiation.F90
    ! 2) COSP wants in-cloud values.  CAM5 values cld_swtau are in-cloud.
-   ! 3) snow_tau_in and snow_emis_in are passed without modification to COSP
+   ! 3) snow_tau_in and snow_emis_in are passed with
+   
+   ! mean 0.67 micron optical depth of stratiform (in-cloud)out modification to COSP
+   dtau_s(1:ncol,1:pver) = cld_swtau(1:ncol,1:pver)
 
-   dtau_s(1:ncol,1:pver) = cld_swtau(1:ncol,1:pver)         ! mean 0.67 micron optical depth of stratiform (in-cloud)
-   dtau_c(1:ncol,1:pver) = cld_swtau(1:ncol,1:pver)         !  mean 0.67 micron optical depth of convective (in-cloud)
+   ! copy large-scale optical depth to convective
+   dtau_c(1:ncol,1:pver) = cld_swtau(1:ncol,1:pver)
+
+   ! longwave emissivity
    dem_s(1:ncol,1:pver) = emis(1:ncol,1:pver)               !  10.5 micron longwave emissivity of stratiform (in-cloud)
    dem_c(1:ncol,1:pver) = emis(1:ncol,1:pver)               !  10.5 micron longwave emissivity of convective (in-cloud)
 
    ! cam4 physics seg faults if this conditional is not used
-   if( cam_physpkg_is('cam5') ) then
+   if (cam_physpkg_is('cam5')) then
       dem_s_snow(1:ncol,1:pver) = snow_emis_in(1:ncol,1:pver)  ! 10.5 micron grid-box mean optical depth of stratiform snow
       dtau_s_snow(1:ncol,1:pver) = snow_tau_in(1:ncol,1:pver)  ! 0.67 micron grid-box mean optical depth of stratiform snow
+   else
+      dtau_s_snow(1:ncol,1:pver) = 0._r8
+      dem_s_snow(1:ncol,1:pver) = 0._r8 
    end if
 
 
