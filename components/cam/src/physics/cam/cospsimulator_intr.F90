@@ -1,4 +1,3 @@
-
 module cospsimulator_intr
 !----------------------------------------------------------------------------------------------------------------------
 ! Purpose: CAM interface to
@@ -252,6 +251,7 @@ module cospsimulator_intr
    logical :: csat_vgrid = .true.                       ! CloudSat vertical grid? 
                                                         ! (if .true. then the CloudSat standard grid is used. 
                                                         ! If set, overides use_vgrid.) (.true.)
+
    ! namelist variables for COSP input related to radar simulator
    real(r8) :: radar_freq = 94.0_r8                     ! CloudSat radar frequency (GHz) (94.0)
    integer :: surface_radar = 0                         ! surface=1, spaceborne=0 (0)
@@ -260,6 +260,7 @@ module cospsimulator_intr
    integer :: do_ray = 0                                ! calculate/output Rayleigh refl=1, not=0 (0)
    integer :: melt_lay = 0                              ! melting layer model off=0, on=1 (0)
    real(r8) :: k2 = -1                                  ! |K|^2, -1=use frequency dependent default (-1)
+
    ! namelist variables for COSP input related to lidar simulator
    integer, parameter :: Nprmts_max_hydro = 12          ! Max # params for hydrometeor size distributions (12)
    integer, parameter :: Naero = 1                      ! Number of aerosol species (Not used) (1)
@@ -330,7 +331,6 @@ module cospsimulator_intr
         atrainsec(:)            !  A-train minute (byte in data file)
    integer :: idxas = 0        ! index to start loop over atrain orbit
 
-
    ! pbuf indices
    integer :: cld_idx, concld_idx, lsreffrain_idx, lsreffsnow_idx, cvreffliq_idx
    integer :: cvreffice_idx, dpcldliq_idx, dpcldice_idx
@@ -365,11 +365,6 @@ subroutine setcospvalues(Nlr_in,use_vgrid_in,csat_vgrid_in,Ncolumns_in,docosp_in
          zstep = 20000.0_r8/Nlr_in  ! constant vertical spacing, top at 20 km
       end if
    end if
-
-!  if (use_vgrid_in=.false.) then    !using the model vertical height grid
-!  nht_cosp = pver
-!  htlim_cosp = (/0._r8/) ##2check##
-!  end if
 
    ! set number of sub-columns using namelist input
    nscol_cosp=Ncolumns_in
@@ -1427,8 +1422,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    real(r8) :: lon_cosp_day(pcols)      ! tempororary variable for sunlit lons
    real(r8) :: lat_cosp_day(pcols)      ! tempororary variable for sunlit lats
    real(r8) :: ptop_day(pcols,pver)     ! tempororary variable for sunlit ptop
+   real(r8) :: pbot_day(pcols,pver)     ! tempororary variable for sunlit pbot
    real(r8) :: pmid_day(pcols,pver)     ! tempororary variable for sunlit pmid
    real(r8) :: ztop_day(pcols,pver)     ! tempororary variable for sunlit ztop
+   real(r8) :: zbot_day(pcols,pver)     ! tempororary variable for sunlit ztop
    real(r8) :: zmid_day(pcols,pver)     ! tempororary variable for sunlit zmid
    real(r8) :: t_day(pcols,pver)        ! tempororary variable for sunlit t
    real(r8) :: rh_day(pcols,pver)       ! tempororary variable for sunlit rh
@@ -1468,8 +1465,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    real(r8) :: lon_cosp_atrain(pcols)          ! tempororary variable for atrain lons
    real(r8) :: lat_cosp_atrain(pcols)          ! tempororary variable for atrain lats
    real(r8) :: ptop_atrain(pcols,pver)         ! tempororary variable for atrain ptop
+   real(r8) :: pbot_atrain(pcols,pver)         ! tempororary variable for atrain pbot
    real(r8) :: pmid_atrain(pcols,pver)         ! tempororary variable for atrain pmid
    real(r8) :: ztop_atrain(pcols,pver)         ! tempororary variable for atrain ztop
+   real(r8) :: zbot_atrain(pcols,pver)         ! tempororary variable for atrain ztop
    real(r8) :: zmid_atrain(pcols,pver)         ! tempororary variable for atrain zmid
    real(r8) :: t_atrain(pcols,pver)            ! tempororary variable for atrain t
    real(r8) :: rh_atrain(pcols,pver)           ! tempororary variable for atrain rh
@@ -1568,6 +1567,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    real(r8) :: dem_s(pcols,pver)                        ! dem_s - Longwave emis of stratiform cloud at 10.5 um
    real(r8) :: dem_c(pcols,pver)                        ! dem_c - Longwave emis of convective cloud at 10.5 um
    real(r8) :: dem_s_snow(pcols,pver)                   ! dem_s_snow - Grid-box mean Optical depth of stratiform snow at 10.5 um
+   real(r8) :: sunlit(pcols)  ! sunlit flag
 
    integer, parameter :: nf_radar=6                     ! number of radar outputs
    integer, parameter :: nf_lidar=28                    ! number of lidar outputs !+cosp1.4
@@ -1997,38 +1997,30 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    zbot(1:ncol,1:pver)=0._r8
    zmid(1:ncol,1:pver)=0._r8
 
-   ! assign values from top   
+   ! assign model interface heights and pressures from top to bottom
    do k=1,pverp-1
-      ! assign values from top
+      ! upper interface for model levels
       ptop(1:ncol,k)=state%pint(1:ncol,pverp-k)
       ztop(1:ncol,k)=state%zi(1:ncol,pverp-k)
 
-      ! assign values from bottom           
+      ! lower interface for model levels
       pbot(1:ncol,k)=state%pint(1:ncol,pverp-k+1)
       zbot(1:ncol,k)=state%zi(1:ncol,pverp-k+1)
    end do
-
 
    ! add surface height (surface geopotential/gravity) to convert CAM heights 
    ! based on geopotential above surface into height above sea level
    do k=1,pver
       do i=1,ncol
-         ztop(i,k)=ztop(i,k)+state%phis(i)/gravit  
-         zbot(i,k)=zbot(i,k)+state%phis(i)/gravit
-         zmid(i,k)=state%zm(i,k)+state%phis(i)/gravit
+         ztop(i,k) = ztop(i,k) + state%phis(i) / gravit  
+         zbot(i,k) = zbot(i,k) + state%phis(i) / gravit
+         zmid(i,k) = state%zm(i,k) + state%phis(i) / gravit
       end do    
    end do
 
-   ! 1) lat/lon - convert from radians to cosp input type
-
-   ! initalize lat and lons
-   lat_cosp(1:ncol)=0._r8
-   lon_cosp(1:ncol)=0._r8
-   ! convert from radians to degrees_north and degrees_east 
-   lat_cosp=state%lat*180._r8/(pi)  ! needs to go from -90 to +90 degrees north
-   lon_cosp=state%lon*180._r8/(pi)  ! needs to go from 0 to 360 degrees east
-
-   ! 2) rh - relative_humidity_liquid_water (%)
+   ! convert latitude and longitude from radians to degrees_north and degrees_east 
+   lat_cosp = state%lat * 180._r8 / pi  ! needs to go from -90 to +90 degrees north
+   lon_cosp = state%lon * 180._r8 / pi  ! needs to go from 0 to 360 degrees east
 
    ! calculate from CAM q and t using CAM built-in functions
    call qsat_water(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
@@ -2040,8 +2032,6 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
          rh(i,k) = (q(i,k)/qs(i,k))*100
       end do
    end do
-
-   ! 3) landmask - calculate from cam_in%landfrac
 
    ! calculate landmask
    landmask(1:ncol) = 0._r8
@@ -2067,9 +2057,9 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    rain_cv_interp(1:ncol,1:pver)=0._r8
    snow_cv_interp(1:ncol,1:pver)=0._r8
 
-   reff_cosp(1:ncol,1:pver,1:nhydro)=0._r8
    ! note: reff_cosp dimensions should be same as cosp (reff_cosp has 9 hydrometeor dimension)
    ! Reff(Npoints,Nlevels,N_HYDRO)
+   reff_cosp(1:ncol,1:pver,1:nhydro)=0._r8
 
    ! get precipitation fluxes
    if(cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4') .or. cam_physpkg_is('cam5')) then
@@ -2124,7 +2114,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
 
    end if
 
-   ! get mixing ratios (not used?)
+   ! get mixing ratios
    if (cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4')) then
       ! CAM4 mixing ratio calculations
       do k=1,pver
@@ -2182,6 +2172,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
       ! large-scale cloud sizes just to have the same reasonablish values entering both the radar and lidar simulator.
 
       ! All of the values that I have assembled in the code are in microns... convert to meters here since that is what COSP wants.
+      ! TODO: do not use magic numbers here, get named index constants instead
       use_reff = .true.
       reff_cosp(1:ncol,1:pver,1) = rel(1:ncol,1:pver)*1.e-6_r8  !! LSCLIQ
       reff_cosp(1:ncol,1:pver,2) = rei(1:ncol,1:pver)*1.e-6_r8  !! LSCICE
@@ -2280,37 +2271,36 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
 
    end if  ! cam5
 
-   ! 5) assign optical depths and emissivities needed for isccp simulator
-
-   ! initialize cld_swtau
-
-   ! assign values
-   ! NOTES:
-   ! 1) CAM4 assumes same radiative properties for stratiform and convective clouds, 
-   !    (see ISCCP_CLOUD_TYPES subroutine call in cloudsimulator.F90)
-   !    I presume CAM5 is doing the same thing based on the ISCCP simulator calls within RRTM's radiation.F90
-   ! 2) COSP wants in-cloud values.  CAM5 values cld_swtau are in-cloud.
-   ! 3) snow_tau_in and snow_emis_in are passed with
-   
-   ! mean 0.67 micron optical depth of stratiform (in-cloud)out modification to COSP
+   ! mean 0.67 micron optical depth of stratiform (in-cloud)
    dtau_s(1:ncol,1:pver) = cld_swtau(1:ncol,1:pver)
 
-   ! copy large-scale optical depth to convective
+   ! use same optical depth for convective clouds as well
    dtau_c(1:ncol,1:pver) = cld_swtau(1:ncol,1:pver)
 
-   ! longwave emissivity
-   dem_s(1:ncol,1:pver) = emis(1:ncol,1:pver)               !  10.5 micron longwave emissivity of stratiform (in-cloud)
-   dem_c(1:ncol,1:pver) = emis(1:ncol,1:pver)               !  10.5 micron longwave emissivity of convective (in-cloud)
+   ! 10.5 micron longwave emissivity; use same values for stratiform and
+   ! convective. Note that COSP assumes these are in-cloud values.
+   dem_s(1:ncol,1:pver) = emis(1:ncol,1:pver)
+   dem_c(1:ncol,1:pver) = emis(1:ncol,1:pver)
 
-   ! cam4 physics seg faults if this conditional is not used
-   if (cam_physpkg_is('cam5')) then
-      dem_s_snow(1:ncol,1:pver) = snow_emis_in(1:ncol,1:pver)  ! 10.5 micron grid-box mean optical depth of stratiform snow
-      dtau_s_snow(1:ncol,1:pver) = snow_tau_in(1:ncol,1:pver)  ! 0.67 micron grid-box mean optical depth of stratiform snow
+   ! Snow optical properties: 10.5 micron grid-box mean emissivity and
+   ! 0.67 micron grid-box mean optical depth of stratiform snow
+   if (present(snow_emis_in) .and. present(snow_tau_in)) then
+      dem_s_snow(1:ncol,1:pver) = snow_emis_in(1:ncol,1:pver)
+      dtau_s_snow(1:ncol,1:pver) = snow_tau_in(1:ncol,1:pver)  
    else
       dtau_s_snow(1:ncol,1:pver) = 0._r8
       dem_s_snow(1:ncol,1:pver) = 0._r8 
    end if
 
+   ! calculate sunlit flag
+   sunlit(:) = 0._r8
+   do i = 1,ncol
+      if (coszrs(i) > 0.0_r8) then
+         sunlit(i) = 1._r8
+      else
+         sunlit(i) = 0._r8
+      end if
+   end do
 
    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2333,6 +2323,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    ! active simulators (possibly A-Train sampling). Then we can easily add logic
    ! within these blocks to handle MMF cases, if present.
    if (cosp_runall) then
+   !if (.true.) then
 
       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       !  POPULATE COSP INPUT VARIABLE ("gbx") FROM CAM VARIABLES
@@ -2392,10 +2383,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
       gbx%longitude = lon_cosp(1:ncol)                         ! lon (degrees_east)
       gbx%latitude = lat_cosp(1:ncol)                          ! lat (degrees_north)
       ! look at cosp_types.F90 in v1.3 for information on how these should be defined.
-      gbx%p = state%pmid(1:ncol,pver:1:-1)  ! Pressure at full model levels [Pa] (at model levels per yuying)
-      gbx%ph = pbot(1:ncol,1:pver)          ! Pressure at half model levels [Pa] (Bottom of model layer,flipped above)
-      gbx%zlev = zmid(1:ncol,pver:1:-1)     ! Height of model midpoint levels asl [m] (at model levels)
-      gbx%zlev_half = zbot(1:ncol,1:pver)   ! Height at half model levels asl [m] (Bottom of model layer, flipped above)
+      gbx%p = state%pmid(1:ncol,pver:1:-1)  ! Pressure at model level midpoints [Pa] (at model levels per yuying)
+      gbx%ph = pbot(1:ncol,1:pver)          ! Pressure at model level interfaces [Pa] (Bottom of model layer,flipped above)
+      gbx%zlev = zmid(1:ncol,pver:1:-1)     ! Height at model level midpoints asl [m]
+      gbx%zlev_half = zbot(1:ncol,1:pver)   ! Height at model level interfaces asl [m] (Bottom of model layer, flipped above)
       gbx%T = state%t(1:ncol,pver:1:-1)     ! air_temperature (K)
       gbx%q = rh(1:ncol,pver:1:-1)          ! relative humidity wrt water 
                                             ! note: it is confusing that it is called "q" within cosp,
@@ -2409,7 +2400,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
       gbx%mr_ozone = o3(1:ncol,pver:1:-1)   ! ozone mass mixing ratio (kg/kg)
       gbx%u_wind = state%u(1:ncol,pver)     ! surface u_wind (m/s)
       gbx%v_wind = state%v(1:ncol,pver)     ! surface v_wind (m/s)
-      gbx%sunlit = 1                        !  ??? what does this mean??
+      gbx%sunlit = sunlit(1:ncol)           !  ??? what does this mean??
       gbx%mr_hydro(:,:,I_LSCLIQ) = mr_lsliq(1:ncol,pver:1:-1)  ! mr_lsliq, mixing_ratio_large_scale_cloud_liquid (kg/kg) 
       gbx%mr_hydro(:,:,I_LSCICE) = mr_lsice(1:ncol,pver:1:-1)  ! mr_lsice - mixing_ratio_large_scale_cloud_ice (kg/kg)
       gbx%mr_hydro(:,:,I_CVCLIQ) = mr_ccliq(1:ncol,pver:1:-1)  ! mr_ccliq - mixing_ratio_convective_cloud_liquid (kg/kg)
@@ -2495,13 +2486,13 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
       end if
 
       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      !  RUN COSP on all columns
+      ! RUN COSP on all columns
       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       call cosp(overlap,ncolumns,cfg,vgrid,gbx,sgx,sgradar,sglidar,isccp,misr,modis,stradar,stlidar)
 
-      !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      !  TRANSLATE COSP OUTPUT INTO INDIVIDUAL VARIABLES FOR OUTPUT (see nc_write_cosp_1d in cosp_io.f90)
-      !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      ! TRANSLATE COSP OUTPUT INTO INDIVIDUAL VARIABLES FOR OUTPUT (see nc_write_cosp_1d in cosp_io.f90)
+      !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       ! TODO: replace with a subroutine call
       !call cospsimulator_intr_out(ncol, lchnk, gbx, sgx, &
       !                            sgradar, sglidar, &
@@ -2764,8 +2755,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
          call CmpDayNite(lon_cosp,lon_cosp_day,  Nday, IdxDay, Nno, IdxNo, 1, pcols)
          call CmpDayNite(lat_cosp,lat_cosp_day,  Nday, IdxDay, Nno, IdxNo, 1, pcols)
          call CmpDayNite(ptop, ptop_day,         Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
+         call CmpDayNite(pbot, pbot_day,         Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(state%pmid, pmid_day,   Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
-         call CmpDayNite(ztop,ztop_day,          Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
+         call CmpDayNite(ztop, ztop_day,          Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
+         call CmpDayNite(zbot, zbot_day,          Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(zmid, zmid_day, Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(state%t,t_day,          Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(rh, rh_day,             Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
@@ -2848,10 +2841,13 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
          !! variables initialzed as having 1:pcols dimension, but gbx only wants 1:Nday.
          gbx%longitude = lon_cosp_day(1:Nday)        ! lon (degrees_east)
          gbx%latitude = lat_cosp_day(1:Nday)         ! lat (degrees_north)
-         gbx%p = ptop_day(1:Nday,1:pver)             ! p_in_full_levels (Pa),upper interface (flipping done above)
-         gbx%ph = pmid_day(1:Nday,pver:1:-1)         ! p_in_half_levels (Pa)
-         gbx%zlev = ztop_day(1:Nday,1:pver)          ! height_in_full_levels (m),upper interface,asl (flipping done above)
-         gbx%zlev_half = zmid_day(1:Nday,pver:1:-1)  ! height_in_half_levels (m),asl
+         ! TODO: reconcile this!!! this is different from the TWO different
+         ! setups above! WHY?!
+         gbx%p = pmid_day(1:Nday,pver:1:-1)         ! pressure at model level midpoints (Pa)
+         gbx%ph = pbot_day(1:Nday,1:pver)           ! pressure at model level interfaces (Pa), bottom interface (flipping done above)
+         gbx%zlev = zmid_day(1:Nday,pver:1:-1)      ! height at model level midpoints (m),asl
+         gbx%zlev_half = zbot_day(1:Nday,1:pver)    ! height at model level interfaces (m), bottom interface, asl (flipping done above)
+
          gbx%T = t_day(1:Nday,pver:1:-1)             ! air_temperature (K)
          gbx%q = rh_day(1:Nday,pver:1:-1)            ! relative humidity wrt water 
                                                      ! note: it is confusing that it is called "q" within cosp,
@@ -3151,15 +3147,14 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
 
       ! Subsetting using an orbital curtain for radar and lidar simulators
       ! Note: This is a very basic implementation and should be checked with other groups.
-      !call get_subset_columns(ncol, lchnk, Natrain, Nno, IdxAtrain, IdxNo, sample_atrain=.true.)
       if (cosp_sample_atrain) then
          call get_atrain_columns(ncol, lchnk, Natrain, Nno, IdxAtrain, IdxNo)
       else
          ! assign indices for compression (note: code for day/nite from radsw.F90)
          Natrain = 0
          Nno = 0
-         do i = 1, ncol
-            ! figure out if columns meets run_cosp criterion 
+         do i = 1,ncol
+            ! figure out if column meets run_cosp criterion 
             if (run_cosp(i,lchnk)) then
                Natrain = Natrain + 1
                IdxAtrain(Natrain) = i
@@ -3173,13 +3168,17 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
       ! if a subset of columns are being run, do the below (i.e., only run it if you need to)
       Npoints = Natrain
       if (Natrain .lt. ncol) then  
+         call endrun('ERROR in cospsimulator_intr_run: A-Train sampling not tested.')
+
          ! subset/compress input arrays to only run COSP on A-Train columns
          ! (function from ..atm/cam/src/physics/cam/cmparray_mod.F90, see also radsw.F90)
          call CmpDayNite(lon_cosp, lon_cosp_atrain,      Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
          call CmpDayNite(lat_cosp, lat_cosp_atrain,      Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
          call CmpDayNite(ptop, ptop_atrain,              Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
+         call CmpDayNite(pbot, pbot_atrain,              Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(state%pmid, pmid_atrain,        Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(ztop, ztop_atrain,              Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
+         call CmpDayNite(zbot, zbot_atrain,              Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(zmid, zmid_atrain,              Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(state%t,t_atrain,               Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
          call CmpDayNite(rh, rh_atrain,                  Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
@@ -3222,8 +3221,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
          lon_cosp_atrain=lon_cosp
          lat_cosp_atrain=lat_cosp
          ptop_atrain(1:ncol,1:pver)           = ptop(1:ncol,1:pver)
+         pbot_atrain(1:ncol,1:pver)           = pbot(1:ncol,1:pver)
          pmid_atrain=state%pmid
          ztop_atrain(1:ncol,1:pver)           = ztop(1:ncol,1:pver)
+         zbot_atrain(1:ncol,1:pver)           = zbot(1:ncol,1:pver)
          zmid_atrain(1:ncol,1:pver)           = zmid(1:ncol,1:pver)
          t_atrain(1:ncol,1:pver)              = state%t(1:ncol,1:pver)
          rh_atrain(1:ncol,1:pver)             = rh(1:ncol,1:pver)
@@ -3255,7 +3256,8 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
       end if
 
       ! if not atrain sampling and there are points that fit latlon criteria or there are points to sample within atrain
-      if (((.not.cosp_sample_atrain) .and. Natrain .gt. 0) .or. ((cosp_sample_atrain) .and. Natrain .gt. 0)) then
+      !if (((.not.cosp_sample_atrain) .and. Natrain .gt. 0) .or. ((cosp_sample_atrain) .and. Natrain .gt. 0)) then
+      if (Natrain > 0) then
 
          !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
          !  POPULATE COSP INPUT VARIABLE ("gbx") FROM CAM VARIABLES for atrain columns
@@ -3299,15 +3301,17 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
                                      gbx)                            ! OUT
             call t_stopf("construct_cosp_gridbox3")
              
+            if (Npoints < ncol) then
+               call endrun('ERROR in cospsimulator_intr_run: Npoints < ncol; something went wrong')
             ! be very explicit about gbx structure sizes.
             ! flip vertical dimension from COSP convention to CAM convention
             ! Npoints can be ncol or Natrain - so here I just specify dimensions as Npoints
             gbx%longitude = lon_cosp_atrain(1:Npoints)                   ! lon (degrees_east)
             gbx%latitude = lat_cosp_atrain(1:Npoints)                    ! lat (degrees_north)
-            gbx%p = ptop_atrain(1:Npoints,1:pver)                        ! p_in_full_levels (Pa),upper interface (flipping done above)
-            gbx%ph = pmid_atrain(1:Npoints,pver:1:-1)                    ! p_in_half_levels (Pa)
-            gbx%zlev = ztop_atrain(1:Npoints,1:pver)                     ! height_in_full_levels (m),upper interface,asl (flipping done above)
-            gbx%zlev_half = zmid_atrain(1:Npoints,pver:1:-1)             ! height_in_half_levels (m),asl
+            gbx%p = pmid_atrain(1:Npoints,pver:1:-1)       ! pressure at model level midpoints (Pa)
+            gbx%ph = pbot_atrain(1:Npoints,1:pver)         ! pressure at model level interfaces (Pa), bottom interface (flipping done above)
+            gbx%zlev = zmid_atrain(1:Npoints,pver:1:-1)    ! height at model level midpoints (m), asl
+            gbx%zlev_half = zbot_atrain(1:Npoints,1:pver)  ! height at model level interfaces (m), bottom interface, asl (flipping done above)
             gbx%T = t_atrain(1:Npoints,pver:1:-1)                        ! air_temperature (K)
             gbx%q = rh_atrain(1:Npoints,pver:1:-1)                       ! relative humidity wrt water 
                                                                          ! note: it is confusing that it is called "q" within cosp,
@@ -3321,7 +3325,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
             gbx%mr_ozone  = o3_atrain(1:Npoints,pver:1:-1)               ! ozone mass mixing ratio (kg/kg)
             gbx%u_wind  = us_atrain(1:Npoints)                           ! surface u_wind (m/s)
             gbx%v_wind  = vs_atrain(1:Npoints)                           ! surface v_wind (m/s)
-            gbx%sunlit  = 1
+            gbx%sunlit  = sunlit(1:ncol)  ! TESTING
             gbx%mr_hydro(:,:,I_LSCLIQ) = mr_lsliq_atrain(1:Npoints,pver:1:-1)    ! mixing_ratio_large_scale_cloud_liquid (kg/kg)
             gbx%mr_hydro(:,:,I_LSCICE) = mr_lsice_atrain(1:Npoints,pver:1:-1)    ! mixing_ratio_large_scale_cloud_ice (kg/kg)
             gbx%mr_hydro(:,:,I_CVCLIQ) = mr_ccliq_atrain(1:Npoints,pver:1:-1)    ! mixing_ratio_convective_cloud_liquid (kg/kg)
@@ -3338,6 +3342,55 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
             gbx%dem_s = dem_s_atrain(1:Npoints,pver:1:-1)
             gbx%dem_c = dem_c_atrain(1:Npoints,pver:1:-1)
             gbx%dem_s_snow = dem_s_snow_atrain(1:Npoints,pver:1:-1)
+            
+            else
+            ! Note: GBX expects vertical ordering to be from SURFACE(1) to the TOP(nlev), while
+            ! by default CAM uses TOP(1) to SURFACE(nlev).
+            ! Also gbx is by definition of size ncol, but many variables defined as 
+            ! pcol. be explicit here, gbx = 1:ncol
+            gbx%longitude = lon_cosp(1:ncol)                         ! lon (degrees_east)
+            gbx%latitude = lat_cosp(1:ncol)                          ! lat (degrees_north)
+            ! look at cosp_types.F90 in v1.3 for information on how these should be defined.
+            gbx%p = state%pmid(1:ncol,pver:1:-1)  ! Pressure at model level midpoints [Pa]
+            gbx%ph = pbot(1:ncol,1:pver)          ! Pressure at model level interfaces [Pa] (Bottom of model layer, flipped above)
+            gbx%zlev = zmid(1:ncol,pver:1:-1)     ! Height at model level midpoints asl [m]
+            gbx%zlev_half = zbot(1:ncol,1:pver)   ! Height at model level interfaces asl [m] (Bottom of model layer, flipped above)
+            gbx%T = state%t(1:ncol,pver:1:-1)     ! air_temperature (K)
+            gbx%q = rh(1:ncol,pver:1:-1)          ! relative humidity wrt water 
+                                                  ! note: it is confusing that it is called "q" within cosp,
+                                                  ! but it is rh according to Yuying
+            gbx%sh = q(1:ncol,pver:1:-1)          ! specific humidity (kg/kg), range [0,0.019ish]
+            gbx%cca = concld(1:ncol,pver:1:-1)    ! convective_cloud_amount (0-1)
+            gbx%tca = cld(1:ncol,pver:1:-1)       ! total_cloud_amount (0-1)
+            gbx%psfc = state%ps(1:ncol)           ! surface pressure (Pa)
+            gbx%skt = cam_in%ts(1:ncol)           ! skin temperature (K)
+            gbx%land = landmask(1:ncol)           ! landmask (0 or 1)
+            gbx%mr_ozone = o3(1:ncol,pver:1:-1)   ! ozone mass mixing ratio (kg/kg)
+            gbx%u_wind = state%u(1:ncol,pver)     ! surface u_wind (m/s)
+            gbx%v_wind = state%v(1:ncol,pver)     ! surface v_wind (m/s)
+            gbx%sunlit = sunlit(1:ncol)           !  ??? what does this mean??
+            gbx%mr_hydro(:,:,I_LSCLIQ) = mr_lsliq(1:ncol,pver:1:-1)  ! mr_lsliq, mixing_ratio_large_scale_cloud_liquid (kg/kg) 
+            gbx%mr_hydro(:,:,I_LSCICE) = mr_lsice(1:ncol,pver:1:-1)  ! mr_lsice - mixing_ratio_large_scale_cloud_ice (kg/kg)
+            gbx%mr_hydro(:,:,I_CVCLIQ) = mr_ccliq(1:ncol,pver:1:-1)  ! mr_ccliq - mixing_ratio_convective_cloud_liquid (kg/kg)
+            gbx%mr_hydro(:,:,I_CVCICE) = mr_ccice(1:ncol,pver:1:-1)  ! mr_ccice - mixing_ratio_convective_cloud_ice (kg/kg)
+            gbx%rain_ls = rain_ls_interp(1:ncol,pver:1:-1)           ! midpoint gbm ls rain flux  (kg m^-2 s^-1)
+            gbx%snow_ls = snow_ls_interp(1:ncol,pver:1:-1)           ! midpoint gbm ls snow flux (kg m^-2 s^-1)      
+            gbx%grpl_ls = grpl_ls_interp(1:ncol,pver:1:-1)           ! midpoint gbm ls graupel flux (kg m^-2 s^-1)
+            gbx%rain_cv = rain_cv_interp(1:ncol,pver:1:-1)           ! midpoint gbm conv rain flux (kg m^-2 s^-1)
+            gbx%snow_cv = snow_cv_interp(1:ncol,pver:1:-1)           ! midpoint gbm conv snow flux (kg m^-2 s^-1)
+            gbx%Reff = reff_cosp(1:ncol,pver:1:-1,:)                 ! Effective radius [m]
+            gbx%dtau_s = dtau_s(1:ncol,pver:1:-1)                    ! mean 0.67 micron optical depth of stratiform
+                                                                     !  clouds in each model level
+                                                                     !  NOTE:  this the cloud optical depth of only the
+                                                                     !  cloudy part of the grid box, it is not weighted
+                                                                     !  with the 0 cloud optical depth of the clear
+                                                                     !  part of the grid box
+            gbx%dtau_c = dtau_c(1:ncol,pver:1:-1)            ! mean 0.67 micron optical depth of convective
+            gbx%dtau_s_snow = dtau_s_snow(1:ncol,pver:1:-1)  ! grid-box mean 0.67 micron optical depth of stratiform snow
+            gbx%dem_s = dem_s(1:ncol,pver:1:-1)              ! 10.5 micron longwave emissivity of stratiform cloud
+            gbx%dem_c = dem_c(1:ncol,pver:1:-1)              ! 10.5 micron longwave emissivity of convective cloud
+            gbx%dem_s_snow = dem_s_snow(1:ncol,pver:1:-1)    ! 10.5 micron grid-box mean optical depth of stratiform snow
+            end if
 
             !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             ! STARTUP RELATED TO COSP OUTPUT (see cosp.F90) for atrain columns
@@ -3372,8 +3425,8 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
             ! Populate CAM vars with COSP output (the reasoning for this is based on cosp_io.f90)
             !! steps 1) set as fill value, 2) fill in the columns calculated by COSP, 3) expand array
             ! Note: To expand to output CAM arrays, use ExpDayNite (function from ..atm/cam/src/physics/cam/cmparray_mod.F90, see also radsw.F90)
-            ! e.g.,    call ExpDayNite(solin,    Nday, IdxDay, Nno, IdxNo, 1, pcols)
-            !   call ExpDayNite(pmxrgn,  Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pverp)
+            ! e.g.,    call ExpDayNite(solin,   Nday, IdxDay, Nno, IdxNo, 1, pcols)
+            !          call ExpDayNite(pmxrgn,  Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pverp)
             if (lradar_sim) then
                if (Natrain .lt. ncol) then  
                   ! (1d variables from radar simulator)
@@ -3423,6 +3476,8 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
 
             if (llidar_sim) then
                if (Natrain < ncol) then 
+                  call endrun('ERROR in cospsimulator_intr_run: A-train sampling not supported')
+                  
                   ! (1d variables from lidar simulator)
                   cldlow_cal(1:Natrain) = stlidar%cldlayer(:,1)     ! CAM version of cllcalipso (time,profile)
                   call ExpDayNite(cldlow_cal,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
