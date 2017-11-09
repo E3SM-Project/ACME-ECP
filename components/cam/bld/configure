@@ -1095,8 +1095,7 @@ if ($rad_pkg eq 'camrt') {
 	die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
 	    "                 with aerosol package $chem_pkg\n";
     }
-}
-elsif ($rad_pkg eq 'rrtmg') {
+} elsif ($rad_pkg eq 'rrtmg') {
 
     # The rrtmg package doesn't work with the CAM3 prescribed aerosols
     if ($phys_pkg eq 'cam3') {
@@ -2866,13 +2865,16 @@ sub write_filepath
 
     print $fh "$camsrcdir/cam/src/chemistry/utils\n";
 
+    # Add source directories for selected radiation package
     if ($rad eq 'rrtmg') {
-	# These directories need to precede physics/cam/ to replace
-	# the CAM3 radiation package with RRTMG
-	print $fh "$camsrcdir/cam/src/physics/rrtmg\n";
-	print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_mcica\n";
-	print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_lw\n";
-	print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_sw\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmg\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_mcica\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_lw\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_sw\n";
+    } elsif ($rad eq 'camrt') {
+        print $fh "$camsrcdir/cam/src/physics/camrt\n";
+    } else {
+        die "No source directories to add for rad = $rad\n";
     }
 
     print $fh "$camsrcdir/cam/src/physics/cam\n";
