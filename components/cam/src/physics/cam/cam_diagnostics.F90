@@ -738,9 +738,13 @@ subroutine diag_init()
   call addfld ('SPTLS   ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE Tendency from CRM'            )
   call addfld ('TIMINGF ', horiz_only, 'A', '        ','CRM CPU usage efficiency: 1 - ideal'     )
   call addfld ('CLOUDTOP',(/ 'lev' /), 'A', '        ','Cloud Top PDF'                           )
-#ifdef SPMOMTRANS
+#if defined(SPMOMTRANS) || defined(SP_ESMT)
    call addfld ('UCONVMOM','m/s2    ',pver, 'A','U tendency due to CRM'                   ,phys_decomp)
    call addfld ('VCONVMOM','m/s2    ',pver, 'A','V tendency due to CRM'                   ,phys_decomp)
+#endif
+#if defined(SP_ESMT)
+   call addfld ('U_ESMT','m/s2    ',pver, 'A','U tendency due to CRM (ESMT)'                   ,phys_decomp)
+   call addfld ('V_ESMT','m/s2    ',pver, 'A','V tendency due to CRM (ESMT)'                   ,phys_decomp)
 #endif
 ! Adding crm dimensions to cam history 
   call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
@@ -807,10 +811,15 @@ subroutine diag_init()
       call add_default ('CLOUDTOP', 1, ' ')
       call add_default ('TIMINGF ', 1, ' ')
 ! whannah
-#ifdef SPMOMTRANS
+#if defined(SPMOMTRANS) || defined(SP_ESMT)
       call add_default ('UCONVMOM', 1, ' ')
       call add_default ('VCONVMOM', 1, ' ')
 #endif
+!whannah
+#if defined(SP_ESMT)
+      call add_default ('U_ESMT', 1, ' ')
+      call add_default ('V_ESMT', 1, ' ')
+#end if
 !-- MDB 8/2013
       call add_default ('SPTVFLUX  ', 1, ' ')
       call add_default ('SPBUOY    ', 1, ' ')

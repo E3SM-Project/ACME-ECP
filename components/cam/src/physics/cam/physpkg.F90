@@ -2348,6 +2348,17 @@ if (l_dry_adj) then
 
 end if
 
+
+! ************** whannah - not implemented yet  **************
+! ************** for now, just keep it the same ************** 
+! whannah - if either SPMOMTRANS (3D) or SP_ESMT (2D) are defined
+! Then the CRM with handle the momentum transport, and we can bypass 
+! all this stuff with the conventional convective parameterizations
+
+! #if defined(SPMOMTRANS) || defined(SP_ESMT)
+!   ! Do nothing...
+! #else
+
 !-- mdb spcam
     if (use_SPCAM) call crm_save_state_tend(state, tend, pbuf)
 !-- mdb spcam

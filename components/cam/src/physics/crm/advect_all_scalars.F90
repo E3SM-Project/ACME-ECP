@@ -15,6 +15,7 @@ contains
 #else
     use params, only: dotracers
 #endif
+    use scalar_momentum_mod
     implicit none
     ! real dummy(nz)
     real(crm_rknd) dummy(nz)
@@ -76,6 +77,15 @@ contains
       end do
 
     end if
+
+#ifdef SP_ESMT
+    
+    ! advection of scalar momentum tracers
+
+    call advect_scalar(u_esmt,u_esmt_adv,u_esmt_wle,dummy,dummy,dummy,.false.)
+    call advect_scalar(v_esmt,v_esmt_adv,v_esmt_wle,dummy,dummy,dummy,.false.)
+
+#endif
 
   end subroutine advect_all_scalars
 

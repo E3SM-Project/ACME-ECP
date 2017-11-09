@@ -695,6 +695,11 @@ end subroutine crm_physics_init
    real(r8) ul(pcols,pver)
    real(r8) vl(pcols,pver)
 
+   real(r8) u_tend_crm (pcols,pver)   ! temporary variable for CRM momentum tendency
+   real(r8) v_tend_crm (pcols,pver)   ! temporary variable for CRM momentum tendency
+   real(r8) u_tend_esmt(pcols,pver)   ! temporary variable for CRM scalar momentum tendency
+   real(r8) v_tend_esmt(pcols,pver)   ! temporary variable for CRM scalar momentum tendency
+
    real(r8) :: mu_crm(pcols, pver)   
    real(r8) :: md_crm(pcols, pver) 
    real(r8) :: du_crm(pcols, pver)
@@ -1171,6 +1176,12 @@ end subroutine crm_physics_init
        qvw(:,:) = 0.      ! MDB 8/2013
 
 
+       u_tend_crm (:,:) = 0.
+       v_tend_crm (:,:) = 0.
+       u_tend_esmt(:,:) = 0.
+       v_tend_esmt(:,:) = 0.
+
+
 #ifdef ECPP
        if (use_ECPP) then
          abnd=0.0
@@ -1407,8 +1418,13 @@ end subroutine crm_physics_init
                ul(:ncol,:),                 vl(:ncol,:),                                                                                                             &
                state%ps(:ncol),             state%pmid(:ncol,:),          state%pdel(:ncol,:),       state%phis(:ncol),                                              &
                state%zm(:ncol,:),           state%zi(:ncol,:),            ztodt,                     pver,                                                           &
+! #ifdef CRM3D
+               ! ptend%u(:ncol,:),            ptend%v(:ncol,:),                                                                                                        &
 #ifdef CRM3D
-               ptend%u(:ncol,:),            ptend%v(:ncol,:),                                                                                                        &
+               u_tend_crm (:ncol,:),        v_tend_crm (:ncol,:),                                                                                                    &
+#endif
+#ifdef SP_ESMT
+               u_tend_esmt(:ncol,:),        v_tend_esmt(:ncol,:),                                                                                                    &
 #endif
                ptend%q(:ncol,:,1),          ptend%q(:ncol,:,ixcldliq),    ptend%q(:ncol,:,ixcldice), ptend%s(:ncol,:),                                               &
                crm_u(:ncol,:,:,:),          crm_v(:ncol,:,:,:),           crm_w(:ncol,:,:,:),        crm_t(:ncol,:,:,:),          crm_micro(:ncol,:,:,:,:),          &
@@ -1906,11 +1922,31 @@ end subroutine crm_physics_init
        ptend%lq(ixcldice) = .TRUE.
        ptend%lu    = .FALSE.
        ptend%lv    = .FALSE.
+
+#ifdef SP_ESMT
+       ptend%lu    = .TRUE.
+       ptend%lv    = .TRUE.
+       call outfld('U_ESMT',u_tend_esmt,pcols   ,lchnk   )
+       call outfld('V_ESMT',v_tend_esmt,pcols   ,lchnk   )
+#ifdef SP_USE_ESMT
+       ptend%u = u_tend_esmt
+       ptend%v = v_tend_esmt
+#endif
+#endif
+
 #ifdef SPMOMTRANS
        ptend%lu    = .TRUE.
        ptend%lv    = .TRUE.
-       call outfld('UCONVMOM',ptend%u,pcols   ,lchnk   )
-       call outfld('VCONVMOM',ptend%v,pcols   ,lchnk   )
+       
+       call outfld('UCONVMOM',u_tend_crm,pcols   ,lchnk   )
+       call outfld('VCONVMOM',v_tend_crm,pcols   ,lchnk   )
+#endif
+
+#ifdef CRM3D
+#ifndef SP_USE_ESMT
+       ptend%u = u_tend_crm
+       ptend%v = v_tend_crm
+#endif
 #endif
 
        call phys_getopts(microp_scheme_out=microp_scheme)

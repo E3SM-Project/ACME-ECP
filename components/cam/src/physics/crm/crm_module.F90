@@ -42,6 +42,9 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #ifdef CRM3D
                 ultend, vltend,          &
 #endif
+#ifdef SP_ESMT
+                ultend_esmt, vltend_esmt,          &  ! whannah 
+#endif
                 qltend, qcltend, qiltend, sltend, &
                 u_crm, v_crm, w_crm, t_crm, micro_fields_crm, &
                 qrad_crm, &
@@ -103,6 +106,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     use microphysics
     use sgs
     use crmtracers
+    use scalar_momentum_mod
 
 ! whannah - Matt Norman added the more specific use statements below - however this was causing problems for the 1-moment configuration
 !
@@ -201,6 +205,10 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #ifdef CRM3D
     real(r8), intent(  out) :: ultend              (nvcols,plev)                   ! tendency of ul
     real(r8), intent(  out) :: vltend              (nvcols,plev)                   ! tendency of vl
+#endif
+#ifdef SP_ESMT
+    real(r8), intent(  out) :: ultend_esmt         (nvcols,plev)                   ! tendency of ul - whannah - temporary diagnostic fields 
+    real(r8), intent(  out) :: vltend_esmt         (nvcols,plev)                   ! tendency of vl - whannah - temporary diagnostic fields
 #endif
     real(r8), intent(  out) :: sltend              (nvcols,plev)                   ! tendency of static energy
     real(r8), intent(  out) :: qltend              (nvcols,plev)                   ! tendency of water vapor
@@ -352,6 +360,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     real(crm_rknd)  :: dummy(nz), t00(nz)
     real(crm_rknd)  :: fluxbtmp(nx,ny), fluxttmp(nx,ny)    !bloss
     real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
+    real(crm_rknd)  :: uln_esmt(plev), vln_esmt(plev)     ! whannah - for scalar momentum transport - temporary
     real(crm_rknd)  :: cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
     real(r8)        :: factor_xy, idt_gl
     real(crm_rknd)  :: tmp1, tmp2
@@ -514,7 +523,8 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     colprec=0
     colprecs=0
 
-    !  Initialize:
+    !  Initialize CRM fields:
+
     ! limit the velocity at the very first step:
     if(u_crm(vc,1,1,1).eq.u_crm(vc,2,1,1).and.u_crm(vc,3,1,2).eq.u_crm(vc,4,1,2)) then
       do k=1,nzm
@@ -527,13 +537,20 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
       enddo
     endif
 
-    u          (1:nx,1:ny,1:nzm                ) = u_crm           (vc,1:nx,1:ny,1:nzm                )
-    v          (1:nx,1:ny,1:nzm                ) = v_crm           (vc,1:nx,1:ny,1:nzm                )*YES3D
-    w          (1:nx,1:ny,1:nzm                ) = w_crm           (vc,1:nx,1:ny,1:nzm                )
-    tabs       (1:nx,1:ny,1:nzm                ) = t_crm           (vc,1:nx,1:ny,1:nzm                )
+    u   (1:nx,1:ny,1:nzm) = u_crm(vc,1:nx,1:ny,1:nzm)
+    v   (1:nx,1:ny,1:nzm) = v_crm(vc,1:nx,1:ny,1:nzm)*YES3D
+    w   (1:nx,1:ny,1:nzm) = w_crm(vc,1:nx,1:ny,1:nzm)
+    tabs(1:nx,1:ny,1:nzm) = t_crm(vc,1:nx,1:ny,1:nzm)
+
+#ifdef SP_ESMT
+    u_esmt(1:nx,1:ny,1:nzm) = u_crm(vc,1:nx,1:ny,1:nzm)
+    v_esmt(1:nx,1:ny,1:nzm) = v_crm(vc,1:nx,1:ny,1:nzm)
+#endif
+
     micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,1:nmicro_fields)
+
 #ifdef sam1mom
-    qn      (1:nx,1:ny,1:nzm) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,3 )
+    qn(1:nx,1:ny,1:nzm) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,3 )
 #endif
 
 #ifdef m2005
@@ -577,6 +594,12 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 
     ! initialize sgs fields
     call sgs_init()
+
+
+#ifdef SP_ESMT
+    ! initialize scalar momentum transport fields
+    call scalar_momentum_init()
+#endif  
 
     do k=1,nzm
       u0(k)=0.
@@ -1377,23 +1400,50 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
           qln(l) = qln(l)+qv(i,j,k)
           qccln(l)= qccln(l)+qcl(i,j,k)
           qiiln(l)= qiiln(l)+qci(i,j,k)
+! #if defined(SP_ESMT) && defined(SP_USE_ESMT)
+!           uln(l) = uln(l)+u_esmt(i,j,k)
+!           vln(l) = vln(l)+v_esmt(i,j,k)
+! #else
+!           uln(l) = uln(l)+u(i,j,k)
+!           vln(l) = vln(l)+v(i,j,k)
+! #endif
+
+#if defined(SP_ESMT)
+          uln_esmt(l) = uln_esmt(l)+u_esmt(i,j,k)
+          vln_esmt(l) = vln_esmt(l)+v_esmt(i,j,k)
+#endif
           uln(l) = uln(l)+u(i,j,k)
           vln(l) = vln(l)+v(i,j,k)
         enddo ! k
       enddo
     enddo ! i
 
-    tln(ptop:plev) = tln(ptop:plev) * factor_xy
-    qln(ptop:plev) = qln(ptop:plev) * factor_xy
+    tln  (ptop:plev) = tln  (ptop:plev) * factor_xy
+    qln  (ptop:plev) = qln  (ptop:plev) * factor_xy
     qccln(ptop:plev) = qccln(ptop:plev) * factor_xy
     qiiln(ptop:plev) = qiiln(ptop:plev) * factor_xy
-    uln(ptop:plev) = uln(ptop:plev) * factor_xy
-    vln(ptop:plev) = vln(ptop:plev) * factor_xy
+    uln  (ptop:plev) = uln  (ptop:plev) * factor_xy
+    vln  (ptop:plev) = vln  (ptop:plev) * factor_xy
 
-#ifdef SPMOMTRANS
+#ifdef SP_ESMT
+    ! ultend_esmt(vc,:) = (uln - ul(vc,:))*idt_gl
+    ! vltend_esmt(vc,:) = (vln - vl(vc,:))*idt_gl
+    ultend_esmt(vc,:) = (uln_esmt - ul(vc,:))*idt_gl
+    vltend_esmt(vc,:) = (vln_esmt - vl(vc,:))*idt_gl
+
+    ! don't use tendencies from two top levels,
+    ultend_esmt(vc,ptop:ptop+1) = 0.
+    vltend_esmt(vc,ptop:ptop+1) = 0.
+#endif
+
+#if defined(CRM3D) && defined(SPMOMTRANS)
     ! whannah - SP CMT tendencies
     ultend(vc,:) = (uln - ul(vc,:))*idt_gl
     vltend(vc,:) = (vln - vl(vc,:))*idt_gl
+
+    ! don't use tendencies from two top levels,
+    ultend(vc,ptop:ptop+1) = 0.
+    vltend(vc,ptop:ptop+1) = 0.
 #endif
 
     sltend (vc,:) = cp * (tln   - tl  (vc,:)) * idt_gl
@@ -1798,6 +1848,9 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #endif
 #ifdef CRM3D
                           ultend(vc,:),vltend(vc,:) , &
+#endif
+#ifdef SP_ESMT
+                          ultend_esmt(vc,:),vltend_esmt(vc,:) , & ! whannah - temporary diagnostic fields
 #endif
 #ifdef m2005
                           nc_rad(vc,:,:,:),ni_rad(vc,:,:,:),qs_rad(vc,:,:,:),ns_rad(vc,:,:,:),wvar_crm(vc,:,:,:),aut_crm(vc,:,:,:),acc_crm(vc,:,:,:),evpc_crm(vc,:,:,:), &
