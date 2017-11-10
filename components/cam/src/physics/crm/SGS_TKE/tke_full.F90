@@ -17,8 +17,8 @@ contains
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tkesbbuoy(nz), tkesbshear(nz), tkesbdiss(nz)
     real(crm_rknd) tke(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
-    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
-    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
+    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
+    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
 
     real(crm_rknd) def2(nx,ny,nzm)
     real(crm_rknd) grd,betdz,Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs
@@ -120,7 +120,19 @@ contains
 
           if(dosmagor) then
 
+#ifdef SP_TK_LIM
+            ! whannah - alternate limiter for eddy viscosity
+            ! limit buoyant tk production to not be negative,
+            ! and also put a hard limit on near-surface tk
+            tk(i,j,k)=sqrt(Ck**3/Cee*max(def2(i,j,k),def2(i,j,k)-Pr*buoy_sgs))*smix**2
+            if ( z(k).lt.200. ) then
+              tk(i,j,k) = max( tk(i,j,k), real(0.1,crm_rknd) ) 
+            end if
+#else
             tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
+#endif
+
+            ! tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
             tke(i,j,k) = (tk(i,j,k)/(Ck*smix))**2
             a_prod_sh=(tk(i,j,k)+0.001)*def2(i,j,k)
             a_prod_bu=-(tk(i,j,k)+0.001)*Pr*buoy_sgs
