@@ -1849,9 +1849,9 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #ifdef CRM3D
                           ultend(vc,:),vltend(vc,:) , &
 #endif
-#ifdef SP_ESMT
-                          ultend_esmt(vc,:),vltend_esmt(vc,:) , & ! whannah - temporary diagnostic fields
-#endif
+! #ifdef SP_ESMT
+!                           ultend_esmt(vc,:),vltend_esmt(vc,:) , & ! whannah - temporary diagnostic fields
+! #endif
 #ifdef m2005
                           nc_rad(vc,:,:,:),ni_rad(vc,:,:,:),qs_rad(vc,:,:,:),ns_rad(vc,:,:,:),wvar_crm(vc,:,:,:),aut_crm(vc,:,:,:),acc_crm(vc,:,:,:),evpc_crm(vc,:,:,:), &
                           evpr_crm(vc,:,:,:),mlt_crm(vc,:,:,:),sub_crm(vc,:,:,:),dep_crm(vc,:,:,:),con_crm(vc,:,:,:),aut_crm_a(vc,:),acc_crm_a(vc,:),evpc_crm_a(vc,:), &

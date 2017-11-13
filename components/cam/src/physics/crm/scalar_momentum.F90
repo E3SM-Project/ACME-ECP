@@ -20,8 +20,6 @@ module scalar_momentum_mod
    use grid
 
    implicit none
-   private      
-   save
 
    ! public scalar_momentum_init
    ! public scalar_momentum_pgf
@@ -51,6 +49,7 @@ module scalar_momentum_mod
    character*10   esmt_units
 
    contains
+   
 !==============================================================================
 !==============================================================================
 subroutine scalar_momentum_init()
@@ -454,126 +453,126 @@ end subroutine scalar_momentum_init
 !==============================================================================
 !==============================================================================
 
-subroutine esmt_fft_forward(nx,nz,dx,arr_in,k_out,arr_out)
-   !------------------------------------------------------------------
-   ! 
-   ! Purpose: calculate forward FFT transform
-   ! 
-   ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
-   ! 
-   !------------------------------------------------------------------
-   implicit none
+! subroutine esmt_fft_forward(nx,nz,dx,arr_in,k_out,arr_out)
+!    !------------------------------------------------------------------
+!    ! 
+!    ! Purpose: calculate forward FFT transform
+!    ! 
+!    ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
+!    ! 
+!    !------------------------------------------------------------------
+!    implicit none
 
-   integer, intent(in) :: nx,nz
-   real   , intent(in) :: dx
-   real , dimension(nx,nz), intent(in ) :: arr_in
-   real , dimension(nx)   , intent(out) :: k_out
-   real , dimension(nx,nz), intent(out) :: arr_out
+!    integer, intent(in) :: nx,nz
+!    real   , intent(in) :: dx
+!    real , dimension(nx,nz), intent(in ) :: arr_in
+!    real , dimension(nx)   , intent(out) :: k_out
+!    real , dimension(nx,nz), intent(out) :: arr_out
 
-   ! local variables
+!    ! local variables
 
-   integer :: lensave, ier, nh, n1, i, j, k
-   integer :: lot, jump, n, inc, lenr, lensav, lenwrk
-   real    :: pi
-   real, dimension(nx+15) :: wsave
-   real, dimension(nx,nz) :: work
+!    integer :: lensave, ier, nh, n1, i, j, k
+!    integer :: lot, jump, n, inc, lenr, lensav, lenwrk
+!    real    :: pi
+!    real, dimension(nx+15) :: wsave
+!    real, dimension(nx,nz) :: work
 
-   ! naming convention follows fftpack5 routines
+!    ! naming convention follows fftpack5 routines
 
-   n = nx
-   lot = nz
-   lensav = n+15
-   inc = 1
-   lenr = nx*nz
-   jump = nx
-   lenwrk = lenr
-   pi = 2.*asin(1.0)
+!    n = nx
+!    lot = nz
+!    lensav = n+15
+!    inc = 1
+!    lenr = nx*nz
+!    jump = nx
+!    lenwrk = lenr
+!    pi = 2.*asin(1.0)
 
-   ! initialization for FFT
-   call rfftmi(n,wsave,lensav,ier)
+!    ! initialization for FFT
+!    call rfftmi(n,wsave,lensav,ier)
    
-   if(ier /= 0) write(0,*) ' error in rfftmi ',ier
+!    if(ier /= 0) write(0,*) ' error in rfftmi ',ier
 
-   do k = 1,nz
-      do i = 1,nx
-         arr_out(i,k)=arr_in(i,k)
-      enddo
-   enddo
+!    do k = 1,nz
+!       do i = 1,nx
+!          arr_out(i,k)=arr_in(i,k)
+!       enddo
+!    enddo
 
-   !  do the forward transform
-   call rfftmf( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
-   if(ier /= 0) write(0,*) ' error in rfftmf ',ier
+!    !  do the forward transform
+!    call rfftmf( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
+!    if(ier /= 0) write(0,*) ' error in rfftmf ',ier
 
-   if(mod(n,2) == 0) then
-      nh = n/2 - 1
-   else
-      nh = (n-1)/2
-   endif
+!    if(mod(n,2) == 0) then
+!       nh = n/2 - 1
+!    else
+!       nh = (n-1)/2
+!    endif
 
-   k_out(1)=0.0
-   do j = 1,nh
-      k_out(2*j)   = 2.*pi*real(j)/(real(n)*dx)   !cos
-      k_out(2*j+1) = 2.*pi*real(j)/(real(n)*dx)   !sin
-   enddo
-   if (mod(n,2) == 0) then
-      k_out(n) =  2.*pi/(2.*dx)                  !nyquist wavelength for even n
-   end if
+!    k_out(1)=0.0
+!    do j = 1,nh
+!       k_out(2*j)   = 2.*pi*real(j)/(real(n)*dx)   !cos
+!       k_out(2*j+1) = 2.*pi*real(j)/(real(n)*dx)   !sin
+!    enddo
+!    if (mod(n,2) == 0) then
+!       k_out(n) =  2.*pi/(2.*dx)                  !nyquist wavelength for even n
+!    end if
 
-   return
+!    return
 
-end subroutine esmt_fft_forward
+! end subroutine esmt_fft_forward
 
 !==============================================================================
 !==============================================================================
 
-subroutine esmt_fft_backward(nx,nz,arr_in,arr_out)
-   !------------------------------------------------------------------
-   ! 
-   ! Purpose: calculate backward FFT transform
-   ! 
-   ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
-   ! 
-   !------------------------------------------------------------------
-   implicit none
+! subroutine esmt_fft_backward(nx,nz,arr_in,arr_out)
+!    !------------------------------------------------------------------
+!    ! 
+!    ! Purpose: calculate backward FFT transform
+!    ! 
+!    ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
+!    ! 
+!    !------------------------------------------------------------------
+!    implicit none
 
-   integer, intent(in) :: nx,nz
-   real , dimension(nx,nz), intent(in ) :: arr_in
-   real , dimension(nx,nz), intent(out) :: arr_out
+!    integer, intent(in) :: nx,nz
+!    real , dimension(nx,nz), intent(in ) :: arr_in
+!    real , dimension(nx,nz), intent(out) :: arr_out
 
-   ! local variables
+!    ! local variables
 
-   integer :: lensave, ier, nh, n1, i, k
-   integer :: lot, jump, n, inc, lenr, lensav, lenwrk
-   real, dimension(nx+15) :: wsave
-   real, dimension(nx,nz) :: work
+!    integer :: lensave, ier, nh, n1, i, k
+!    integer :: lot, jump, n, inc, lenr, lensav, lenwrk
+!    real, dimension(nx+15) :: wsave
+!    real, dimension(nx,nz) :: work
 
-   ! naming convention follows fftpack5 routines
+!    ! naming convention follows fftpack5 routines
 
-   n = nx
-   lot = nz
-   lensav = n+15
-   inc = 1
-   lenr = nx*nz
-   jump = nx
-   lenwrk = lenr
+!    n = nx
+!    lot = nz
+!    lensav = n+15
+!    inc = 1
+!    lenr = nx*nz
+!    jump = nx
+!    lenwrk = lenr
 
-   ! initialization for FFT
-   call rfftmi(n,wsave,lensav,ier)
-   if(ier /= 0) write(0,*) ' error in rfftmi ',ier
+!    ! initialization for FFT
+!    call rfftmi(n,wsave,lensav,ier)
+!    if(ier /= 0) write(0,*) ' error in rfftmi ',ier
    
-   do k = 1,nz
-      do i = 1,nx
-         arr_out(i,k)=arr_in(i,k)
-      enddo
-   enddo
+!    do k = 1,nz
+!       do i = 1,nx
+!          arr_out(i,k)=arr_in(i,k)
+!       enddo
+!    enddo
    
-   !  do the backward transform
-   call rfftmb( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
-   if(ier /= 0) write(0,*) ' error in rfftmf ',ier
+!    !  do the backward transform
+!    call rfftmb( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
+!    if(ier /= 0) write(0,*) ' error in rfftmf ',ier
 
-   return
+!    return
 
-end subroutine esmt_fft_backward
+! end subroutine esmt_fft_backward
 
 !==============================================================================
 !==============================================================================

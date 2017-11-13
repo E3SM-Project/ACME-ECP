@@ -78,7 +78,7 @@ contains
       call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
                           3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
                           4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
-#end if
+#endif
 
     endif
 
@@ -119,7 +119,7 @@ contains
       call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
                           3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
                           4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
-#end if
+#endif
 
     endif
 

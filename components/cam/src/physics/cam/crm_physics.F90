@@ -37,7 +37,7 @@ module crm_physics
    integer :: crm_nc_rad_idx, crm_ni_rad_idx, crm_qs_rad_idx, crm_ns_rad_idx, crm_qrad_idx
    integer :: crm_qaerwat_idx, crm_dgnumwet_idx
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
-   integer :: prec_sed_idx, snow_sed_idx, prec_pcw_idx, snow_pcw_idx
+   integer :: prec_sed_idx, snow_sed_idx, snow_str_idx, prec_pcw_idx, snow_pcw_idx
    integer :: cldo_idx
 
    integer :: clubb_buffer_idx
@@ -471,6 +471,7 @@ subroutine crm_physics_init(species_class)
     snow_sh_idx  =  pbuf_get_index('SNOW_SH')
     prec_sed_idx =  pbuf_get_index('PREC_SED')
     snow_sed_idx =  pbuf_get_index('SNOW_SED')
+    snow_str_idx =  pbuf_get_index('SNOW_STR')
     prec_pcw_idx =  pbuf_get_index('PREC_PCW')
     snow_pcw_idx =  pbuf_get_index('SNOW_PCW')
     
@@ -579,6 +580,7 @@ end subroutine crm_physics_init
    real(r8), pointer :: snow_pcw(:)         ! snow from prognostic cloud scheme           [m/s]
    real(r8), pointer :: prec_sed(:)         ! total precip from cloud sedimentation       [m/s]
    real(r8), pointer :: snow_sed(:)         ! snow from cloud ice sedimentation           [m/s]
+   real(r8), pointer :: snow_str(:)         ! snow from stratiform cloud                  [m/s]
 
    real(r8), pointer ::   nc_rad(:,:,:,:)   ! rad cloud water droplet number [#/kg]
    real(r8), pointer ::   ni_rad(:,:,:,:)   ! rad cloud ice crystal number [#/kg]
@@ -1583,6 +1585,7 @@ end subroutine crm_physics_init
        call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
        call pbuf_get_field(pbuf, prec_sed_idx, prec_sed )
        call pbuf_get_field(pbuf, snow_sed_idx, snow_sed )
+       call pbuf_get_field(pbuf, snow_str_idx, snow_str )
        call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw )
        call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
 
@@ -1592,6 +1595,7 @@ end subroutine crm_physics_init
        snow_sh  = 0. 
        prec_sed = 0.
        snow_sed = 0.
+       snow_str = 0.
        prec_pcw = 0
        snow_pcw = 0.
 
@@ -2109,7 +2113,7 @@ end subroutine crm_physics_init
 ! Aerosol stuff...
 !----------------------------------------------------------------------
   !-- mark branson: insert ifdef m2005 block so that 1-moment microphysics will compile
-  if (SPCAM_microp_scheme .eq. 'm2005') then
+  ! if (SPCAM_microp_scheme .eq. 'm2005') then
     call t_startf('bc_aerosols_mmf')
 
     ! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
@@ -2227,7 +2231,7 @@ end subroutine crm_physics_init
 
 
     call t_stopf('bc_aerosols_mmf')
-  endif ! SPCAM_microp_scheme .eq. 'm2005'
+  ! endif ! SPCAM_microp_scheme .eq. 'm2005'
 
 
 ! 5001 format('whannah - ECPP tendency   lev ',i5,'    lat =',f8.2,'    lon =',f8.2  )
