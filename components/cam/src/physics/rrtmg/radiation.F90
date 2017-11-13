@@ -123,8 +123,17 @@ contains
 
     use physics_buffer,  only: pbuf_add_field, dtype_r8
 
+    integer :: idx  ! dummy index for adding fields to physics buffer
+
     call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate 
     call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate 
+
+    ! Chemistry interface needs shortwave down at surface
+    call pbuf_add_field('FSDS', 'global', dtype_r8, (/pcols/), idx)
+    call pbuf_add_field('FSNS', 'global', dtype_r8, (/pcols/), idx)
+    call pbuf_add_field('FSNT', 'global', dtype_r8, (/pcols/), idx)
+    call pbuf_add_field('FLNS', 'global', dtype_r8, (/pcols/), idx)
+    call pbuf_add_field('FLNT', 'global', dtype_r8, (/pcols/), idx)
 
     ! If the namelist has been configured for preserving the spectral fluxes, then create
     ! physics buffer variables to store the results.
@@ -904,11 +913,7 @@ end function radiation_nextsw_cday
 
 !===============================================================================
   
-  subroutine radiation_tend( state, ptend,pbuf, &
-       cam_out, cam_in, &
-       landfrac,landm,icefrac,snowh, &
-       fsns,    fsnt, flns,    flnt,  &
-       fsds, net_flx, is_cmip6_volc)
+  subroutine radiation_tend(state, ptend,pbuf, cam_out, cam_in, net_flx)
 
     !----------------------------------------------------------------------- 
     ! 
@@ -996,20 +1001,7 @@ end function radiation_nextsw_cday
     use output_aerocom_aie,   only: do_aerocom_ind3
     use pkg_cldoptics,        only: cldefr          ! whannah - for sam1mom microphysics
 
-
     ! Arguments
-    logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false 
-    real(r8), intent(in)    :: landfrac(pcols)  ! land fraction
-    real(r8), intent(in)    :: landm(pcols)     ! land fraction ramp
-    real(r8), intent(in)    :: icefrac(pcols)   ! land fraction
-    real(r8), intent(in)    :: snowh(pcols)     ! Snow depth (liquid water equivalent)
-#ifdef MODAL_AERO
-#endif
-    real(r8), intent(inout) :: fsns(pcols)      ! Surface solar absorbed flux
-    real(r8), intent(inout) :: fsnt(pcols)      ! Net column abs solar flux at model top
-    real(r8), intent(inout) :: flns(pcols)      ! Srf longwave cooling (up-down) flux
-    real(r8), intent(inout) :: flnt(pcols)      ! Net outgoing lw flux at model top
-    real(r8), intent(inout) :: fsds(pcols)      ! Surface solar down flux
     real(r8), intent(inout) :: net_flx(pcols)
 
     type(physics_state), intent(inout), target :: state
@@ -1030,6 +1022,13 @@ end function radiation_nextsw_cday
     real(r8) ts(pcols)                  ! surface temperature
     real(r8) pintmb(pcols,pverp)        ! Model interface pressures (hPa)
     real(r8) oro(pcols)                 ! Land surface flag, sea=0, land=1
+
+    ! pointers to fluxes on physics buffer
+    real(r8), pointer :: fsds(:)  ! shortwave down at surface
+    real(r8), pointer :: fsns(:)
+    real(r8), pointer :: fsnt(:)
+    real(r8), pointer :: flns(:)
+    real(r8), pointer :: flnt(:)
 
     real(r8),pointer :: nc_rad(:,:,:,:) ! rad cloud water droplet number (#/kg)
     real(r8),pointer :: ni_rad(:,:,:,:) ! rad cloud ice crystal nubmer (#/kg)
@@ -1267,6 +1266,9 @@ end function radiation_nextsw_cday
     real(r8) tint(pcols,pverp)    ! Model interface temperature
     real(r8) :: sfac(1:nswbands)  ! time varying scaling factors due to Solar Spectral Irrad at 1 A.U. per band
 
+    ! land fraction ramp
+    real(r8), pointer :: landm(:)
+
     real(r8), pointer, dimension(:,:) :: o3     ! Ozone mass mixing ratio
     real(r8), pointer, dimension(:,:) :: co2    ! co2   mass mixing ratio
     real(r8), dimension(pcols) :: co2_col_mean  ! co2 column mean mmr
@@ -1276,7 +1278,7 @@ end function radiation_nextsw_cday
     real(r8), pointer, dimension(:,:,:) :: sd => NULL()  ! shortwave spectral flux down
     real(r8), pointer, dimension(:,:,:) :: lu => NULL()  ! longwave  spectral flux up
     real(r8), pointer, dimension(:,:,:) :: ld => NULL()  ! longwave  spectral flux down
-    
+
     real(r8), allocatable :: su_m(:,:,:,:)  ! shortwave spectral flux up
     real(r8), allocatable :: sd_m(:,:,:,:)  ! shortwave spectral flux down
     real(r8), allocatable :: lu_m(:,:,:,:)  ! longwave  spectral flux up
@@ -1346,6 +1348,13 @@ end function radiation_nextsw_cday
     calday = get_curr_calday()
 
     itim = pbuf_old_tim_idx()
+
+    ! get pointers to flux fields on physics buffer
+    call pbuf_get_field(pbuf, pbuf_get_index('FSDS'), fsds)
+    call pbuf_get_field(pbuf, pbuf_get_index('FSNS'), fsns)
+    call pbuf_get_field(pbuf, pbuf_get_index('FSNT'), fsnt)
+    call pbuf_get_field(pbuf, pbuf_get_index('FLNS'), flns)
+    call pbuf_get_field(pbuf, pbuf_get_index('FLNT'), flnt)
 
     if (cldfsnow_idx > 0) then
        call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
@@ -1419,7 +1428,8 @@ end function radiation_nextsw_cday
        coszrs(:)=0._r8 ! coszrs is only output for zenith
     endif    
 
-    call output_rad_data(  pbuf, state, cam_in, landm, coszrs )
+    call pbuf_get_field(pbuf, pbuf_get_index('LANDM'), landm)
+    call output_rad_data(pbuf, state, cam_in, landm, coszrs)
 
     ! Gather night/day column indices.
     Nday = 0
@@ -1582,7 +1592,12 @@ end function radiation_nextsw_cday
 
       ! calculate effective radius - moved outside of ii,jj loops for 1-moment microphysics
       if (SPCAM_microp_scheme .eq. 'sam1mom') then 
-        call cldefr( lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh )
+        ! get pointer to land fraction ramp so we can calculate effective radii
+        call pbuf_get_field(pbuf, pbuf_get_index('LANDM'), landm)
+
+        ! calculate effective radii
+        call cldefr(lchnk, ncol, cam_in%landfrac, state%t, rel, rei, state%ps, &
+                    state%pmid, landm, cam_in%icefrac, cam_in%snowhland)
       end if
 
       do jj=1,crm_ny_rad
@@ -2364,7 +2379,7 @@ end function radiation_nextsw_cday
              ts(i) = sqrt(sqrt(cam_in%lwup(i)/stebol))
              ! Set oro (land/sea flag) for compatibility with landfrac/icefrac/ocnfrac
              ! oro=0 (sea or ice); oro=1 (land)
-             if (landfrac(i).ge.0.001) then
+             if (cam_in%landfrac(i).ge.0.001) then
                 oro(i)=1.
              else
                 oro(i)=0.

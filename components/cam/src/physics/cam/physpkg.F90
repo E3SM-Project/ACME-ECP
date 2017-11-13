@@ -168,6 +168,7 @@ subroutine phys_register
     !-----------------------------------------------------------------------
 
     integer :: nmodes
+    integer :: idx  ! dummy index for physics buffer calls
 
 !-- mdb spcam
     logical           :: use_SPCAM
@@ -206,6 +207,9 @@ subroutine phys_register
        call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, &
             longname='Specific humidity', readiv=.false., is_convtran1=.true.)
     end if
+
+    ! Register land fraction ramp
+    call pbuf_add_field('LANDM', 'global', dtype_r8, (/pcols/), idx)
 
     ! Fields for physics package diagnostics
     call pbuf_add_field('TINI',      'physpkg', dtype_r8, (/pcols,pver/), tini_idx)
@@ -371,7 +375,7 @@ subroutine phys_inidat( cam_out, pbuf2d )
     use dycore,              only: dycore_is
     use polar_avg,           only: polar_average
     use short_lived_species, only: initialize_short_lived_species
-    use comsrf,              only: landm, sgh, sgh30
+    use comsrf,              only: sgh, sgh30
     use cam_control_mod,     only: aqua_planet
 
     type(cam_out_t),     intent(inout) :: cam_out(begchunk:endchunk)
@@ -379,7 +383,6 @@ subroutine phys_inidat( cam_out, pbuf2d )
     integer :: lchnk, m, n, i, k, ncol
     type(file_desc_t), pointer :: fh_ini, fh_topo
     character(len=8) :: fieldname
-    real(r8), pointer :: cldptr(:,:,:,:), convptr_3d(:,:,:,:)
     real(r8), pointer :: tptr(:,:), tptr3d(:,:,:), tptr3d_2(:,:,:)
     real(r8), pointer :: qpert(:,:)
 
@@ -391,7 +394,7 @@ subroutine phys_inidat( cam_out, pbuf2d )
     character(len=8) :: dim1name, dim2name
     integer :: ixcldice, ixcldliq
     integer                   :: grid_id  ! grid ID for data mapping
-    nullify(tptr,tptr3d,tptr3d_2,cldptr,convptr_3d)
+    nullify(tptr,tptr3d,tptr3d_2)
 
     fh_ini=>initial_file_get_id()
 
@@ -404,10 +407,14 @@ subroutine phys_inidat( cam_out, pbuf2d )
     end if
     call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
 
+    allocate(tptr(1:pcols,begchunk:endchunk))
+
     if(aqua_planet) then
        sgh = 0._r8
        sgh30 = 0._r8
-       landm = 0._r8
+
+       ! set land fraction ramp
+       call pbuf_set_field(pbuf2d, pbuf_get_index('LANDM'), 0._r8)
     else    
        fh_topo=>topo_file_get_id()
        call infld('SGH', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
@@ -422,13 +429,16 @@ subroutine phys_inidat( cam_out, pbuf2d )
           sgh30 = sgh
        end if
 
+       ! set land fraction ramp
        call infld('LANDM_COSLAT', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
-            landm, found, gridname='physgrid')
-
-       if(.not.found) call endrun(' ERROR: LANDM_COSLAT not found on topo dataset.')
+            tptr, found, gridname='physgrid')
+       if (found) then
+          call pbuf_set_field(pbuf2d, pbuf_get_index('LANDM'), tptr)
+       else
+          call endrun(' ERROR: LANDM_COSLAT not found on topo dataset.')
+       end if
     end if
 
-    allocate(tptr(1:pcols,begchunk:endchunk))
 
     call infld('PBLH', fh_ini, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
          tptr(:,:), found, gridname='physgrid')
@@ -973,7 +983,7 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
 #if (defined BFB_CAM_SCAM_IOP )
     use cam_history,    only: outfld
 #endif
-    use comsrf,         only: fsns, fsnt, flns, sgh, sgh30, flnt, landm, fsds
+    use comsrf,         only: sgh, sgh30
     use cam_abortutils,     only: endrun
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
@@ -1075,9 +1085,9 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
           call diag_physvar_ic ( c,  phys_buffer_chunk, cam_out(c), cam_in(c) )
           call t_stopf ('diag_physvar_ic')
 
-          call tphysbc (ztodt, fsns(1,c), fsnt(1,c), flns(1,c), flnt(1,c), phys_state(c),        &
-                       phys_tend(c), phys_buffer_chunk,  fsds(1,c), landm(1,c),          &
-                       sgh(1,c), sgh30(1,c), cam_out(c), cam_in(c) )
+          call tphysbc (ztodt, phys_state(c),        &
+                        phys_tend(c), phys_buffer_chunk,            &
+                        sgh(1,c), sgh30(1,c), cam_out(c), cam_in(c) )
 
           !write(*,*) '### phys_run1: maxval(cam_in(c)%ts) = ',maxval(cam_in(c)%ts)
        end do
@@ -1193,7 +1203,7 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
 
 
     use cam_diagnostics,only: diag_deallocate, diag_surf
-    use comsrf,         only: trefmxav, trefmnav, sgh, sgh30, fsds 
+    use comsrf,         only: trefmxav, trefmnav, sgh, sgh30
     use physconst,      only: stebol, latvap
     use carma_intr,     only: carma_accumulate_stats
 #if ( defined OFFLINE_DYN )
@@ -1285,8 +1295,7 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
 
        call tphysac(ztodt, cam_in(c),  &
             sgh(1,c), sgh30(1,c), cam_out(c),                              &
-            phys_state(c), phys_tend(c), phys_buffer_chunk,&
-            fsds(1,c))
+            phys_state(c), phys_tend(c), phys_buffer_chunk)
     end do                    ! Chunk loop
 
     !call t_adj_detailf(-1)
@@ -1344,8 +1353,7 @@ end subroutine phys_final
 
 subroutine tphysac (ztodt,   cam_in,  &
        sgh,     sgh30,                                     &
-       cam_out,  state,   tend,    pbuf,            &
-       fsds    )
+       cam_out,  state,   tend,    pbuf)
     !----------------------------------------------------------------------- 
     ! 
     ! Purpose: 
@@ -1409,7 +1417,6 @@ subroutine tphysac (ztodt,   cam_in,  &
     ! Arguments
     !
     real(r8), intent(in) :: ztodt                  ! Two times model timestep (2 delta-t)
-    real(r8), intent(in) :: fsds(pcols)            ! down solar flux
     real(r8), intent(in) :: sgh(pcols)             ! Std. deviation of orography for gwd
     real(r8), intent(in) :: sgh30(pcols)           ! Std. deviation of 30s orography for tms
 
@@ -1453,6 +1460,9 @@ subroutine tphysac (ztodt,   cam_in,  &
 
     ! physics buffer fields for total energy and mass adjustment
     integer itim_old, ifld
+
+    ! downward solar flux needed for chemistry tendencies
+    real(r8), pointer :: fsds(:)  ! down solar flux
 
     real(r8), pointer, dimension(:,:) :: tini
     real(r8), pointer, dimension(:,:) :: cld
@@ -1599,6 +1609,10 @@ if (l_tracer_aero) then
 
     ! Chemistry calculation
     if (chem_is_active()) then
+
+       ! fluxes for chemistry interface
+       call pbuf_get_field(pbuf, pbuf_get_index('FSDS'), fsds)
+
        call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, &
             pbuf,  fh2o, fsds)
        call physics_update(state, ptend, ztodt, tend)
@@ -1861,10 +1875,8 @@ end if ! l_ac_energy_chk
 
 end subroutine tphysac
 
-subroutine tphysbc (ztodt,               &
-       fsns,    fsnt,    flns,    flnt,    state,   &
-       tend,    pbuf,     fsds,    landm,            &
-       sgh, sgh30, cam_out, cam_in )
+subroutine tphysbc(ztodt, state, tend, pbuf, sgh, sgh30, cam_out, cam_in)
+                    
     !----------------------------------------------------------------------- 
     ! 
     ! Purpose: 
@@ -1943,12 +1955,6 @@ subroutine tphysbc (ztodt,               &
     ! Arguments
     !
     real(r8), intent(in) :: ztodt                            ! 2 delta t (model time increment)
-    real(r8), intent(inout) :: fsns(pcols)                   ! Surface solar absorbed flux
-    real(r8), intent(inout) :: fsnt(pcols)                   ! Net column abs solar flux at model top
-    real(r8), intent(inout) :: flns(pcols)                   ! Srf longwave cooling (up-down) flux
-    real(r8), intent(inout) :: flnt(pcols)                   ! Net outgoing lw flux at model top
-    real(r8), intent(inout) :: fsds(pcols)                   ! Surface solar down flux
-    real(r8), intent(in) :: landm(pcols)                     ! land fraction ramp
     real(r8), intent(in) :: sgh(pcols)                       ! Std. deviation of orography
     real(r8), intent(in) :: sgh30(pcols)                     ! Std. deviation of 30 s orography for tms
 
@@ -2016,6 +2022,8 @@ subroutine tphysbc (ztodt,               &
 
     real(r8), pointer, dimension(:,:,:) :: fracis  ! fraction of transported species that are insoluble
 
+    real(r8), pointer :: landm(:)  ! land fraction ramp
+
     ! convective precipitation variables
     real(r8),pointer :: prec_dp(:)                ! total precipitation from ZM convection
     real(r8),pointer :: snow_dp(:)                ! snow from ZM convection
@@ -2038,7 +2046,6 @@ subroutine tphysbc (ztodt,               &
     real(r8),pointer :: prec_sed(:)     ! total precip from cloud sedimentation
     real(r8),pointer :: snow_sed(:)     ! snow from cloud ice sedimentation
     real(r8) :: sh_e_ed_ratio(pcols,pver)       ! shallow conv [ent/(ent+det)] ratio  
-
 
     ! Local copies for substepping
     real(r8) :: prec_pcw_macmic(pcols)
@@ -2437,6 +2444,9 @@ end if
       call pbuf_get_field(pbuf, prec_str_idx, prec_str_sc, col_type=col_type_subcol)
       call pbuf_get_field(pbuf, snow_str_idx, snow_str_sc, col_type=col_type_subcol)
     end if
+
+    ! get pointer to land fraction ramp
+    call pbuf_get_field(pbuf, pbuf_get_index('LANDM'), landm)
 
     ! Check energy integrals, including "reserved liquid"
     flx_cnd(:ncol) = prec_dp(:ncol) + rliq(:ncol)
@@ -2883,37 +2893,33 @@ if (l_rad) then
     !===================================================
     ! Radiation computations
     !===================================================
+
+    ! Beginning of radiative transfer calculations; start the timer
     call t_startf('radiation')
 
-
-    call radiation_tend(state,ptend, pbuf, &
-         cam_out, cam_in, &
-         cam_in%landfrac,landm,cam_in%icefrac, cam_in%snowhland, &
-         fsns,    fsnt, flns,    flnt,  &
-         fsds, net_flx,is_cmip6_volc)
+    ! Calculate radiative tendencies
+    call radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
 
     ! Set net flux used by spectral dycores
     do i=1,ncol
        tend%flx_net(i) = net_flx(i)
     end do
     
-    !-- mdb spcam
-    ! don't add radiative tendency to GCM temperature in case of superparameterization
-    ! as it was added above as part of crm tendency.
+    ! Do not add radiative tendency to GCM temperature in case of 
+    ! superparameterization as it was added above as part of crm tendency.
     if (use_SPCAM) ptend%s = 0.
-    !-- mdb spcam
 
+    ! Update tendencies
     call physics_update(state, ptend, ztodt, tend)
     
-    !-- mdb spcam
-    !call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
+    ! Check for conservation of energy
     if (use_SPCAM) then
       call check_energy_chng(state, tend, "spradheat", nstep, ztodt, zero, zero, zero, zero) 
     else 
       call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
     endif
-    !-- mdb spcam
 
+    ! Done with radiative transfer; stop the timer
     call t_stopf('radiation')
 
 end if ! l_rad

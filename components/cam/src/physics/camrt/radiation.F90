@@ -95,8 +95,17 @@ contains
 
     use physics_buffer,  only: pbuf_add_field, dtype_r8
 
+    integer :: idx  ! dummy index for adding fields to physics buffer
+
     call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate 
     call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate 
+
+    ! Chemistry interface needs shortwave down at surface
+    call pbuf_add_field('FSDS', 'global', dtype_r8, (/pcols/), idx)
+    call pbuf_add_field('FSNS', 'global', dtype_r8, (/pcols/), idx)
+    call pbuf_add_field('FSNT', 'global', dtype_r8, (/pcols/), idx)
+    call pbuf_add_field('FLNS', 'global', dtype_r8, (/pcols/), idx)
+    call pbuf_add_field('FLNT', 'global', dtype_r8, (/pcols/), idx)
 
   end subroutine radiation_register
 
@@ -518,12 +527,8 @@ end function radiation_nextsw_cday
   end subroutine radiation_init
 
 !===============================================================================
-  
-  subroutine radiation_tend(state,ptend, pbuf, &
-       cam_out, cam_in, &
-       landfrac,landm,icefrac,snowh, &
-       fsns,    fsnt, flns,    flnt,  &
-       fsds, net_flx, is_cmip6_volc)
+
+  subroutine radiation_tend(state,ptend, pbuf, cam_out, cam_in, net_flx)
 
     !----------------------------------------------------------------------- 
     ! 
@@ -570,9 +575,8 @@ end function radiation_nextsw_cday
     use pkg_cldoptics,    only: cldems, cldovrlap, cldefr
 !-- mdb spcam
 
-
-
     ! Arguments
+<<<<<<< 85602bf0da67632b7d1ed5a2ccbf8c1c1e71f67d
     logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false
     real(r8), intent(in)    :: landfrac(pcols)  ! land fraction
     real(r8), intent(in)    :: landm(pcols)     ! land fraction ramp
@@ -583,6 +587,8 @@ end function radiation_nextsw_cday
     real(r8), intent(inout) :: flns(pcols)      ! Srf longwave cooling (up-down) flux
     real(r8), intent(inout) :: flnt(pcols)      ! Net outgoing lw flux at model top
     real(r8), intent(inout) :: fsds(pcols)      ! Surface solar down flux
+=======
+>>>>>>> Simplify calls to radiation_tend
     real(r8), intent(inout) :: net_flx(pcols)
 
     type(physics_state), intent(in), target :: state
@@ -601,6 +607,13 @@ end function radiation_nextsw_cday
                                                !    0->pmxrgn(i,1) is range of pressure for
                                                !    1st region,pmxrgn(i,1)->pmxrgn(i,2) for
                                                !    2nd region, etc
+
+    ! fluxes
+    real(r8), pointer :: fsds(:)
+    real(r8), pointer :: fsns(:)
+    real(r8), pointer :: fsnt(:)
+    real(r8), pointer :: flns(:)
+    real(r8), pointer :: flnt(:)
 
 !-- mdb spcam
     integer, target :: nmxrgn_loc(pcols)       ! pbuf pointer to Number of maximally overlapped regions - used for SPCAM
@@ -785,6 +798,9 @@ end function radiation_nextsw_cday
     real(r8), dimension(pcols) :: co2_col_mean  ! co2 column mean mmr
     real(r8), pointer, dimension(:,:) :: sp_hum ! specific humidity
 
+    ! land fraction ramp needed for effective radii calculation
+    real(r8), pointer :: landm(:)
+
     ! Aerosol shortwave radiative properties
     real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
     real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
@@ -905,6 +921,12 @@ end function radiation_nextsw_cday
     call pbuf_get_field(pbuf, rel_idx, rel    )
     call pbuf_get_field(pbuf, rei_idx, rei    )
 
+    ! get pointers to flux fields on physics buffer
+    call pbuf_get_field(pbuf, pbuf_get_index('FSDS'), fsds)
+    call pbuf_get_field(pbuf, pbuf_get_index('FSNS'), fsns)
+    call pbuf_get_field(pbuf, pbuf_get_index('FSNT'), fsnt)
+    call pbuf_get_field(pbuf, pbuf_get_index('FLNS'), flns)
+    call pbuf_get_field(pbuf, pbuf_get_index('FLNT'), flnt)
 
     !  For CRM, make cloud equal to input observations:
     if (single_column.and.scm_crm_mode.and.have_cld) then
@@ -918,7 +940,8 @@ end function radiation_nextsw_cday
     call get_rlon_all_p(lchnk, ncol, clon)
     call zenith (calday, clat, clon, coszrs, ncol, dt_avg)
 
-    call output_rad_data(  pbuf, state, cam_in, landm, coszrs )
+    call pbuf_get_field(pbuf, pbuf_get_index('LANDM'), landm)
+    call output_rad_data(pbuf, state, cam_in, landm, coszrs)
 
     ! Gather night/day column indices.
     Nday = 0
@@ -949,7 +972,9 @@ end function radiation_nextsw_cday
 
        if (use_SPCAM) then
           ! Compute effective sizes
-          call cldefr(lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh)
+          call pbuf_get_field(pbuf, pbuf_get_index('LANDM'), landm)
+          call cldefr(lchnk, ncol, cam_in%landfrac, state%t, rel, rei, state%ps, &
+                      state%pmid, landm, cam_in%icefrac, cam_in%snowhland)
           cicewp => cicewp_loc
           cliqwp => cliqwp_loc
           emis   => emis_loc
@@ -1073,18 +1098,6 @@ end function radiation_nextsw_cday
   ! call outfld('aer_tau     ',aer_tau  ,pcols,lchnk) ! whannah
 
           endif
-! whannah - the block below is just for temporary reference - delete it
-! subroutine radcswmx(lchnk   ,ncol    ,                         &
-!                     E_pint    ,E_pmid    ,E_h2ommr  ,E_o3mmr   , &
-!                     E_o2mmr   ,E_cld     ,E_cicewp  ,E_cliqwp  ,E_rel     , &
-!                     E_rei     ,eccf      ,E_coszrs  ,solin     , &
-!                     E_asdir   ,E_asdif   ,E_aldir   ,E_aldif   ,nmxrgn  , &
-!                     pmxrgn  ,qrs,qrsc,fsnt    ,fsntc  ,fsdtoa,  fsntoa,   &
-!                     fsutoa ,fsntoac, fsnirtoa,fsnrtoac,fsnrtoaq,fsns    , &
-!                     fsnsc   ,fsdsc   ,fsds    ,sols    ,soll    , &
-!                     solsd   ,solld   , fns     ,fcns            , &
-!                     Nday    ,Nnite   ,IdxDay  ,IdxNite, E_co2mmr, &
-!                     E_aer_tau, E_aer_tau_w, E_aer_tau_w_g, E_aer_tau_w_f, tauxcl_out, tauxci_out)
           
           call radcswmx(lchnk, &
 #ifdef CRM
