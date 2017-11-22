@@ -1,4 +1,5 @@
 module setparm_mod
+        use task_util_mod !++ crjones, at suggestion of hannah6
 	implicit none
 
 contains

@@ -1,5 +1,3 @@
-#define SP_DIR_NS
-
 module crm_physics
 !-----------------------------------------------------------------------
 ! Purpose: 
@@ -962,7 +960,8 @@ end subroutine crm_physics_init
       call pbuf_get_field (pbuf, crm_qt_idx,        crm_qt)
       call pbuf_get_field (pbuf, crm_qp_idx,        crm_qp)
       call pbuf_get_field (pbuf, crm_qn_idx,        crm_qn)
-   else if (SPCAM_microp_scheme .eq. 'm2005') then
+   endif
+#ifdef m2005
       call pbuf_get_field (pbuf, crm_qt_idx,        crm_qt)
       call pbuf_get_field (pbuf, crm_nc_idx,        crm_nc)
       call pbuf_get_field (pbuf, crm_qr_idx,        crm_qr)
@@ -974,7 +973,7 @@ end subroutine crm_physics_init
       call pbuf_get_field (pbuf, crm_qg_idx,        crm_qg)
       call pbuf_get_field (pbuf, crm_ng_idx,        crm_ng)
       call pbuf_get_field (pbuf, crm_qc_idx,        crm_qc)
-   end if
+#endif
    call pbuf_get_field (pbuf, crm_qrad_idx,      crm_qrad)
 #ifdef CLUBB_CRM
    call pbuf_get_field (pbuf, clubb_buffer_idx,  clubb_buffer)
@@ -1025,8 +1024,8 @@ end subroutine crm_physics_init
                   crm_micro(i,:,:,k,1) = crm_qt(i,:,:,k)
                   crm_micro(i,:,:,k,2) = crm_qp(i,:,:,k)
                   crm_micro(i,:,:,k,3) = crm_qn(i,:,:,k)
-
-               else if (SPCAM_microp_scheme .eq. 'm2005') then
+	       endif
+#ifdef m2005
                   crm_qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)
                   crm_nc(i,:,:,k) = 0.0_r8
                   crm_qr(i,:,:,k) = 0.0_r8
@@ -1050,7 +1049,7 @@ end subroutine crm_physics_init
                   crm_micro(i,:,:,k,9)  = crm_qg(i,:,:,k)
                   crm_micro(i,:,:,k,10) = crm_ng(i,:,:,k)
                   crm_micro(i,:,:,k,11) = crm_qc(i,:,:,k)
-               endif
+#endif
 #endif
 
 #ifdef CLUBB_CRM
@@ -1211,7 +1210,8 @@ end subroutine crm_physics_init
           crm_micro(:,:,:,:,1) = crm_qt(:,:,:,:)
           crm_micro(:,:,:,:,2) = crm_qp(:,:,:,:)
           crm_micro(:,:,:,:,3) = crm_qn(:,:,:,:)
-       else if (SPCAM_microp_scheme .eq. 'm2005') then
+       endif
+#ifdef m2005
           crm_micro(:,:,:,:,1)  = crm_qt(:,:,:,:)
           crm_micro(:,:,:,:,2)  = crm_nc(:,:,:,:)
           crm_micro(:,:,:,:,3)  = crm_qr(:,:,:,:)
@@ -1223,7 +1223,7 @@ end subroutine crm_physics_init
           crm_micro(:,:,:,:,9)  = crm_qg(:,:,:,:)
           crm_micro(:,:,:,:,10) = crm_ng(:,:,:,:)
           crm_micro(:,:,:,:,11) = crm_qc(:,:,:,:)
-       endif
+#endif
 #endif
 
 
@@ -1511,7 +1511,8 @@ end subroutine crm_physics_init
               crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
               crm_qp(i,:,:,:) = crm_micro(i,:,:,:,2)
               crm_qn(i,:,:,:) = crm_micro(i,:,:,:,3)
-           else if (SPCAM_microp_scheme .eq. 'm2005') then 
+	   endif
+#ifdef m2005
               crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
               crm_nc(i,:,:,:) = crm_micro(i,:,:,:,2)
               crm_qr(i,:,:,:) = crm_micro(i,:,:,:,3)
@@ -1523,7 +1524,7 @@ end subroutine crm_physics_init
               crm_qg(i,:,:,:) = crm_micro(i,:,:,:,9)
               crm_ng(i,:,:,:) = crm_micro(i,:,:,:,10)
               crm_qc(i,:,:,:) = crm_micro(i,:,:,:,11)
-          endif
+#endif
        end do ! i (loop over ncol)
 #endif
 !----------------------------------------------------------------------

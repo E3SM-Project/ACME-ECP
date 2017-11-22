@@ -1,5 +1,6 @@
 module tke_full_mod
   use shear_prod2D_mod
+  use shear_prod3D_mod
   use sat_mod
   implicit none
 

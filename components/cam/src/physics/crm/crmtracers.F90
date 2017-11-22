@@ -13,6 +13,7 @@ module crmtracers
 
   use grid
   use params, only: crm_rknd
+  use utils, only: lenstr   !++ crjones
   implicit none
 
   real(crm_rknd) tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers)
@@ -32,7 +33,7 @@ CONTAINS
 
     integer k,ntr
     character *2 ntrchar
-    integer, external :: lenstr
+    ! integer, external :: lenstr  !++ crjones
 
     tracer = 0.
     fluxbtr = 0.
