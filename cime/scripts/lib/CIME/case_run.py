@@ -1,6 +1,6 @@
 from CIME.XML.standard_module_setup import *
 from CIME.case_submit               import submit
-from CIME.utils                     import gzip_existing_file, new_lid, run_and_log_case_status, get_timestamp
+from CIME.utils                     import gzip_existing_file, new_lid, run_and_log_case_status, get_timestamp, run_sub_or_cmd
 from CIME.check_lockedfiles         import check_lockedfiles
 from CIME.get_timing                import get_timing
 from CIME.provenance                import save_prerun_provenance, save_postrun_provenance
@@ -12,10 +12,14 @@ import shutil, time, sys, os, glob
 logger = logging.getLogger(__name__)
 
 ###############################################################################
-def pre_run_check(case, lid, skip_pnl=False):
+def pre_run_check(case, lid, skip_pnl=False, da_cycle=0):
 ###############################################################################
 
     # Pre run initialization code..
+    if da_cycle > 0:
+        create_namelists(case, component='cpl')
+        return
+
     caseroot = case.get_value("CASEROOT")
     din_loc_root = case.get_value("DIN_LOC_ROOT")
     batchsubmit = case.get_value("BATCHSUBMIT")
@@ -77,10 +81,10 @@ def pre_run_check(case, lid, skip_pnl=False):
     logger.info("-------------------------------------------------------------------------")
 
 ###############################################################################
-def _run_model_impl(case, lid, skip_pnl=False):
+def _run_model_impl(case, lid, skip_pnl=False, da_cycle=0):
 ###############################################################################
 
-    pre_run_check(case, lid, skip_pnl=skip_pnl)
+    pre_run_check(case, lid, skip_pnl=skip_pnl, da_cycle=da_cycle)
 
     model = case.get_value("MODEL")
 
@@ -102,7 +106,11 @@ def _run_model_impl(case, lid, skip_pnl=False):
 
     while loop:
         loop = False
-        stat = run_cmd(cmd, from_dir=rundir)[0]
+
+        save_prerun_provenance(case)
+        run_func = lambda: run_cmd(cmd, from_dir=rundir)[0]
+        stat = run_and_log_case_status(run_func, "model execution", caseroot=case.get_value("CASEROOT"))
+
         model_logfile = os.path.join(rundir, model + ".log." + lid)
         # Determine if failure was due to a failed node, if so, try to restart
         if stat != 0:
@@ -141,9 +149,9 @@ def _run_model_impl(case, lid, skip_pnl=False):
     return lid
 
 ###############################################################################
-def run_model(case, lid, skip_pnl=False):
+def run_model(case, lid, skip_pnl=False, da_cycle=0):
 ###############################################################################
-    functor = lambda: _run_model_impl(case, lid, skip_pnl=skip_pnl)
+    functor = lambda: _run_model_impl(case, lid, skip_pnl=skip_pnl, da_cycle=da_cycle)
     return run_and_log_case_status(functor, "case.run", caseroot=case.get_value("CASEROOT"))
 
 ###############################################################################
@@ -206,12 +214,12 @@ def resubmit_check(case):
     # Note that Mira requires special logic
 
     dout_s = case.get_value("DOUT_S")
-    logger.warn("dout_s {} ".format(dout_s))
+    logger.warning("dout_s {} ".format(dout_s))
     mach = case.get_value("MACH")
-    logger.warn("mach {} ".format(mach))
+    logger.warning("mach {} ".format(mach))
     testcase = case.get_value("TESTCASE")
     resubmit_num = case.get_value("RESUBMIT")
-    logger.warn("resubmit_num {}".format(resubmit_num))
+    logger.warning("resubmit_num {}".format(resubmit_num))
     # If dout_s is True than short-term archiving handles the resubmit
     # If dout_s is True and machine is mira submit the st_archive script
     resubmit = False
@@ -233,20 +241,18 @@ def resubmit_check(case):
 ###############################################################################
 def do_external(script_name, caseroot, rundir, lid, prefix):
 ###############################################################################
+    expect(os.path.isfile(script_name), "External script {} not found".format(script_name))
     filename = "{}.external.log.{}".format(prefix, lid)
     outfile = os.path.join(rundir, filename)
-    cmd = script_name + " 1> {} {} 2>&1".format(outfile, caseroot)
-    logger.info("running {}".format(script_name))
-    run_cmd_no_fail(cmd)
+    run_sub_or_cmd(script_name, [caseroot], os.path.basename(script_name), [caseroot], logfile=outfile,combine_output=True)
 
 ###############################################################################
 def do_data_assimilation(da_script, caseroot, cycle, lid, rundir):
 ###############################################################################
+    expect(os.path.isfile(da_script), "Data Assimilation script {} not found".format(da_script))
     filename = "da.log.{}".format(lid)
     outfile = os.path.join(rundir, filename)
-    cmd = da_script + " 1> {} {} {:d} 2>&1".format(outfile, caseroot, cycle)
-    logger.info("running {}".format(da_script))
-    run_cmd_no_fail(cmd)
+    run_sub_or_cmd(da_script, [caseroot, cycle], os.path.basename(da_script), [caseroot, cycle], logfile=outfile,combine_output=True)
 
 ###############################################################################
 def case_run(case, skip_pnl=False):
@@ -273,7 +279,11 @@ def case_run(case, skip_pnl=False):
     # set up the LID
     lid = new_lid()
 
-    save_prerun_provenance(case)
+    if prerun_script:
+        case.flush()
+        do_external(prerun_script, case.get_value("CASEROOT"), case.get_value("RUNDIR"),
+                    lid, prefix="prerun")
+        case.read_xml()
 
     for cycle in range(data_assimilation_cycles):
         # After the first DA cycle, runs are restart runs
@@ -281,14 +291,8 @@ def case_run(case, skip_pnl=False):
             case.set_value("CONTINUE_RUN", "TRUE")
             lid = new_lid()
 
-        if prerun_script:
-            case.flush()
-            do_external(prerun_script, case.get_value("CASEROOT"), case.get_value("RUNDIR"),
-                        lid, prefix="prerun")
-            case.read_xml()
+        lid = run_model(case, lid, skip_pnl, da_cycle=cycle)
 
-        lid = run_model(case, lid, skip_pnl)
-        save_logs(case, lid)       # Copy log files back to caseroot
         if case.get_value("CHECK_TIMING") or case.get_value("SAVE_TIMING"):
             get_timing(case, lid)     # Run the getTiming script
 
@@ -298,15 +302,19 @@ def case_run(case, skip_pnl=False):
                                  case.get_value("RUNDIR"))
             case.read_xml()
 
-        if postrun_script:
-            case.flush()
-            do_external(postrun_script, case.get_value("CASEROOT"), case.get_value("RUNDIR"),
-                        lid, prefix="postrun")
-            case.read_xml()
+        save_logs(case, lid)       # Copy log files back to caseroot
 
         save_postrun_provenance(case)
 
-    logger.warn("check for resubmit")
+    if postrun_script:
+        case.flush()
+        do_external(postrun_script, case.get_value("CASEROOT"), case.get_value("RUNDIR"),
+                    lid, prefix="postrun")
+        case.read_xml()
+
+    save_logs(case, lid)       # Copy log files back to caseroot
+
+    logger.warning("check for resubmit")
     resubmit_check(case)
 
     return True
