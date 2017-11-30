@@ -205,7 +205,7 @@ subroutine crm(lchnk, icol, nvcols, &
     real(r8), intent(  out) :: qltend              (nvcols,plev)                   ! tendency of water vapor
     real(r8), intent(  out) :: qcltend             (nvcols,plev)                   ! tendency of cloud liquid water
     real(r8), intent(  out) :: qiltend             (nvcols,plev)                   ! tendency of cloud ice
-    real(r8), intent(inout) :: u_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM v-wind component
+    real(r8), intent(inout) :: u_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM u-wind component
     real(r8), intent(inout) :: v_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM v-wind component
     real(r8), intent(inout) :: w_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM w-wind component
     real(r8), intent(inout) :: t_crm               (nvcols,crm_nx,crm_ny,crm_nz)   ! CRM temperuture

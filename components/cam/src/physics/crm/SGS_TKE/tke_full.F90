@@ -125,7 +125,7 @@ contains
             ! limit buoyant tk production to not be negative,
             ! and also put a hard limit on near-surface tk
             tk(i,j,k)=sqrt(Ck**3/Cee*max(def2(i,j,k),def2(i,j,k)-Pr*buoy_sgs))*smix**2
-            if ( z(k).lt.200. ) then
+            if ( z(k).lt.1000. ) then
               tk(i,j,k) = max( tk(i,j,k), real(0.1,crm_rknd) ) 
             end if
 #else

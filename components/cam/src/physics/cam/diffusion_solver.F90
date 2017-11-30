@@ -306,10 +306,6 @@
     logical  :: use_SPCAM
 !-- mdb spcam
 
-    integer , parameter :: nmax = 4    ! # of levs to spread sfc flux (SP_FLUX_MOD2) - whannah
-    real(r8) sp_flux_nfac              ! scaling factor               (SP_FLUX_MOD2) - whannah
-    integer  n                         ! extra loop variable          (SP_FLUX_MOD2) - whannah
-
     !--------------------------------
     ! Variables needed for WACCM-X
     !--------------------------------
