@@ -565,10 +565,14 @@ end subroutine crm_physics_init
    integer, intent(in) :: species_class(:)    !==Guangxing Lin
 
 ! convective precipitation variables
-   real(r8), pointer :: prec_dp(:)           ! total precipitation from ZM convection [m/s]
-   real(r8), pointer :: snow_dp(:)           ! snow from ZM convection                [m/s]
-   real(r8), pointer :: prec_sh(:)           ! total precipitation from Hack convection [m/s]
-   real(r8), pointer :: snow_sh(:)           ! snow from Hack convection              [m/s]
+   real(r8), pointer :: prec_dp(:)          ! total precip from deep convection (ZM)    [m/s]
+   real(r8), pointer :: snow_dp(:)          ! snow from deep convection (ZM)            [m/s]
+   real(r8), pointer :: prec_sh(:)          ! total precip from shallow convection      [m/s]
+   real(r8), pointer :: snow_sh(:)          ! snow from shallow convection              [m/s]
+
+   ! whannah - tmp variables for check_energy_chng()
+   ! real(r8), dimension(pcols) :: chk_prec_dp      ! 
+   ! real(r8), dimension(pcols) :: chk_snow_dp      ! 
 
 ! stratiform precipitation variables
    real(r8), pointer :: prec_pcw(:)         ! total precip from prognostic cloud scheme   [m/s]
@@ -1354,15 +1358,15 @@ end subroutine crm_physics_init
              k=pver-m+1
              do ii=1, crm_nx
              do jj=1, crm_ny
-               qt_hydro(i,1) = qt_hydro(i,1)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit 
+               qt_hydro(i,1)  =  qt_hydro(i,1)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit 
                qli_hydro(i,1) = qli_hydro(i,1)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
-               qi_hydro(i,1) = qi_hydro(i,1)+(crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
+               qi_hydro(i,1)  =  qi_hydro(i,1)+(crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
              end do
              end do 
            end do
-           qt_hydro(i,1) = qt_hydro(i,1)/(crm_nx*crm_ny)
+           qt_hydro(i,1)  =  qt_hydro(i,1)/(crm_nx*crm_ny)
            qli_hydro(i,1) = qli_hydro(i,1)/(crm_nx*crm_ny)
-           qi_hydro(i,1) = qi_hydro(i,1)/(crm_nx*crm_ny)
+           qi_hydro(i,1)  =  qi_hydro(i,1)/(crm_nx*crm_ny)
 
             ! total cloud water and total water vapor
             qt_cloud(i,1) = 0._r8
@@ -1385,12 +1389,12 @@ end subroutine crm_physics_init
              do jj=1, crm_ny
                sfactor = max(0._r8,min(1._r8,(crm_t(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
                qli_hydro(i,1) = qli_hydro(i,1)+crm_qp(i,ii,jj,m) * state%pdel(i,k)/gravit
-               qi_hydro(i,1) = qi_hydro(i,1)+crm_qp(i,ii,jj,m) * (1-sfactor) * state%pdel(i,k)/gravit
+               qi_hydro(i,1)  =  qi_hydro(i,1)+crm_qp(i,ii,jj,m) * (1-sfactor) * state%pdel(i,k)/gravit
              end do
              end do
            end do
            qli_hydro(i,1) = qli_hydro(i,1)/(crm_nx*crm_ny)
-           qi_hydro(i,1) = qi_hydro(i,1)/(crm_nx*crm_ny)    
+           qi_hydro(i,1)  =  qi_hydro(i,1)/(crm_nx*crm_ny)    
 
             ! total cloud water and total water vapor, and energy
             qt_cloud(i,1) = 0._r8
@@ -2006,37 +2010,37 @@ end subroutine crm_physics_init
               k=pver-m+1
               do ii=1, crm_nx
               do jj=1, crm_ny
-                 qt_hydro(i,2) = qt_hydro(i,2)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit 
+                 qt_hydro(i,2)  =  qt_hydro(i,2)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit 
                  qli_hydro(i,2) = qli_hydro(i,2)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
-                 qi_hydro(i,2) = qi_hydro(i,2)+(crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
-                 qtot(i, 3) = qtot(i,3)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit     &
-                      +(crm_qt(i,ii,jj,m)+crm_qi(i,ii,jj,m)) * state%pdel(i,k)/gravit
-                 qt_cloud(i, 3) = qt_cloud(i, 3) + (crm_qt(i,ii,jj,m)+crm_qi(i,ii,jj,m)) * state%pdel(i,k)/gravit 
+                 qi_hydro(i,2)  =  qi_hydro(i,2)+(crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
+                 qt_cloud(i, 3) =  qt_cloud(i,3)+(crm_qt(i,ii,jj,m)+crm_qi(i,ii,jj,m)) * state%pdel(i,k)/gravit 
+                 qtot(i, 3)     =      qtot(i,3)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit     &
+                                 +(crm_qt(i,ii,jj,m)+crm_qi(i,ii,jj,m)) * state%pdel(i,k)/gravit
               end do
               end do
             end do
-            qt_hydro(i,2) = qt_hydro(i,2)/(crm_nx*crm_ny)
+            qt_hydro(i,2)  =  qt_hydro(i,2)/(crm_nx*crm_ny)
             qli_hydro(i,2) = qli_hydro(i,2)/(crm_nx*crm_ny)
-            qi_hydro(i,2) = qi_hydro(i,2)/(crm_nx*crm_ny)
-            qtot(i, 3) = qtot(i, 3)/(crm_nx*crm_ny)
-            qt_cloud(i, 3) = qt_cloud(i, 3)/(crm_nx*crm_ny)
+            qi_hydro(i,2)  =  qi_hydro(i,2)/(crm_nx*crm_ny)
+            qt_cloud(i, 3) =  qt_cloud(i,3)/(crm_nx*crm_ny)
+            qtot(i, 3)     =      qtot(i,3)/(crm_nx*crm_ny)
          end do 
        else if(SPCAM_microp_scheme .eq. 'sam1mom') then 
          do i=1, ncol
             qli_hydro(i, 2) = 0.0_r8
-            qi_hydro(i, 2) = 0.0_r8
+            qi_hydro(i, 2)  = 0.0_r8
             do m=1, crm_nz
               k=pver-m+1
               do ii=1, crm_nx
               do jj=1, crm_ny
                 sfactor = max(0._r8,min(1._r8,(crm_t(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
                 qli_hydro(i,2) = qli_hydro(i,2)+crm_qp(i,ii,jj,m) * state%pdel(i,k)/gravit
-                qi_hydro(i,2) = qi_hydro(i,2)+crm_qp(i,ii,jj,m) * (1-sfactor) * state%pdel(i,k)/gravit
+                qi_hydro(i,2)  =  qi_hydro(i,2)+crm_qp(i,ii,jj,m) * (1-sfactor) * state%pdel(i,k)/gravit
               end do
               end do
             end do
             qli_hydro(i,2) = qli_hydro(i,2)/(crm_nx*crm_ny)
-            qi_hydro(i,2) = qi_hydro(i,2)/(crm_nx*crm_ny)
+            qi_hydro(i,2)  =  qi_hydro(i,2)/(crm_nx*crm_ny)
 
             ! total cloud water and total water vapor, and energy
             qt_cloud(i,2) = 0._r8
@@ -2053,11 +2057,15 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 ! check water and energy conservation
 !----------------------------------------------------------------------
-       call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero, prec_dp+(qli_hydro(:,2)-qli_hydro(:,1))/ztodt/1000._r8,  &
-                snow_dp+(qi_hydro(:,2)-qi_hydro(:,1))/ztodt/1000., radflux)
-!         call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero, prec_dp,  &
-!                snow_dp, zero)
-!         call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero, zero, zero, zero)
+       ! chk_prec_dp = prec_dp+(qli_hydro(:,2)-qli_hydro(:,1))/ztodt/1000._r8
+       ! chk_snow_dp = snow_dp+( qi_hydro(:,2)- qi_hydro(:,1))/ztodt/1000._r8
+       call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero, &
+                              prec_dp(:ncol)+(qli_hydro(:ncol,2)-qli_hydro(:ncol,1))/ztodt/1000._r8, &
+                              snow_dp(:ncol)+( qi_hydro(:ncol,2)- qi_hydro(:ncol,1))/ztodt/1000._r8, &
+                              radflux)
+        ! call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero,   &
+        !        prec_dp, snow_dp, zero)
+        ! call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero, zero, zero, zero)
 
 !+++mhwangtest
 !

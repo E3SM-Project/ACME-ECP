@@ -992,6 +992,28 @@ for mct, etc.
   <ADD_LDFLAGS>-ta=tesla,pinned,cuda7.5,cc35</ADD_LDFLAGS>
 </compiler>
 
+<compiler COMPILER="gnu" MACH="titan">
+  <FFLAGS_NOOPT> -O0  -mcmodel=medium -fconvert=big-endian -ffree-line-length-none -ffixed-line-length-none </FFLAGS_NOOPT>
+  <ADD_CFLAGS DEBUG="FALSE"> -O2 </ADD_CFLAGS>
+  <ADD_FFLAGS DEBUG="FALSE"> -O2 </ADD_FFLAGS>
+  <NETCDF_PATH>$(NETCDFROOT)</NETCDF_PATH>
+  <PNETCDF_PATH>$(PNETCDFROOT)</PNETCDF_PATH>
+  <CONFIG_ARGS></CONFIG_ARGS>
+  <PIO_FILESYSTEM_HINTS>lustre</PIO_FILESYSTEM_HINTS>
+  <ADD_SLIBS> $(shell nf-config --flibs) </ADD_SLIBS>
+  <TRILINOS_PATH>/lustre/atlas/world-shared/cli900/cesm/software/Trilinos/Trilinos-11.12.1_gptl/titan-gnu-ci-nophal/install</TRILINOS_PATH>
+  <GPTL_CPPDEFS> -DHAVE_NANOTIME -DBIT64 -DHAVE_SLASHPROC -DHAVE_GETTIMEOFDAY</GPTL_CPPDEFS>
+  <MPIFC>ftn</MPIFC>
+  <MPICC>cc</MPICC>
+  <MPICXX>CC</MPICXX>
+  <ALBANY_PATH>/ccs/proj/cli106/AlbanyTrilinos/Albany/build/install</ALBANY_PATH>
+</compiler>
+
+  <!-- <FFLAGS> -mcmodel=medium -fconvert=big-endian -ffree-line-length-none -ffixed-line-length-none </FFLAGS> -->
+  <!-- <CFLAGS> -mcmodel=medium </CFLAGS> -->
+  <!-- <CXX_LIBS> -lfmpich -lmpichf90_pgi $(PGI_PATH)/linux86-64/$(PGI_VERSION)/lib/f90main.o /opt/gcc/default/snos/lib64/libstdc++.a  </CXX_LIBS> -->
+  <!-- <SUPPORTS_CXX>TRUE</SUPPORTS_CXX> -->
+
 <compiler COMPILER="ibm" OS="AIX">
   <CONFIG_SHELL> /usr/bin/bash </CONFIG_SHELL>
   <SFC> xlf2003_r </SFC>
