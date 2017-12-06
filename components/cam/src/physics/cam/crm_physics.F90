@@ -837,8 +837,11 @@ end subroutine crm_physics_init
    character(len=16) :: SPCAM_microp_scheme
 
 !-- MDB 8/2013
-   real(r8) tvwle(pcols,pver),buoy(pcols,pver),buoysd(pcols,pver)
-   real(r8) msef(pcols,pver),qvw(pcols,pver)
+   real(r8) tvwle (pcols,pver)
+   real(r8) buoy  (pcols,pver)
+   real(r8) buoysd(pcols,pver)
+   real(r8) msef  (pcols,pver)
+   real(r8) qvw   (pcols,pver)
 
    logical :: ls, lu, lv, lq(pcnst), fromcrm
 
@@ -1759,11 +1762,12 @@ end subroutine crm_physics_init
        call outfld('SPTLS   ',t_ls           ,pcols   ,lchnk   )
 
 !-- MDB 8/2013
-       call outfld('SPTVFLUX',tvwle          ,pcols   ,lchnk   )
-       call outfld('SPBUOY  ',buoy           ,pcols   ,lchnk   )
-       call outfld('SPBUOYSD',buoysd         ,pcols   ,lchnk   )
-       call outfld('SPMSEF  ',msef           ,pcols   ,lchnk   )
-       call outfld('SPQVFLUX',qvw            ,pcols   ,lchnk   )
+       ! whannah - these fields don't seem to contain anything...?
+       ! call outfld('SPTVFLUX',tvwle          ,pcols   ,lchnk   )
+       ! call outfld('SPBUOY  ',buoy           ,pcols   ,lchnk   )
+       ! call outfld('SPBUOYSD',buoysd         ,pcols   ,lchnk   )
+       ! call outfld('SPMSEF  ',msef           ,pcols   ,lchnk   )
+       ! call outfld('SPQVFLUX',qvw            ,pcols   ,lchnk   )
 
        call outfld('CLOUD   ',cld,  pcols,lchnk)
        call outfld('CLDTOT  ',cltot  ,pcols,lchnk)

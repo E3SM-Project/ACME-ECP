@@ -2961,7 +2961,7 @@ entdet_main_kloop_aa: &
     iphase_of_aerosol(:) = 0
     isize_of_aerosol(:) = 0
     itype_of_aerosol(:) = 0
-    laicwpair_of_aerosol(:) = -9998887777
+    laicwpair_of_aerosol(:) = -999888777
     inmw_of_aerosol(:) = 0
 
     do j = 1, nphase_aer
@@ -2969,7 +2969,7 @@ entdet_main_kloop_aa: &
     do m = 1, nsize_aer(n)
     do ll = 0, ncomp_aer(n)
 
-        l = -9998887777
+        l = -999888777
         if (ll == 0) then
         l = numptr_aer(m,n,j)
         else if (ll <= ncomp_aer(n)) then
