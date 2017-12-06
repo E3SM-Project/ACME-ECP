@@ -514,6 +514,9 @@
     <lname>AR97_CAM5%SCAM_CLM45%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <!-- *********************************** -->
+  <!-- aqua-planet / idealized / adiabatic -->
+  <!-- *********************************** -->
 
   <compset>
     <alias>FC4AQUAP</alias>
@@ -534,8 +537,10 @@
     <alias>FADIAB</alias>
     <lname>2000_CAM%ADIAB_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
-
+  
+  <!-- *********** -->
   <!-- FG compsets -->
+  <!-- *********** -->
 
   <compset>
     <alias>FGCN</alias>
@@ -545,7 +550,7 @@
   <compset>
     <alias>FG1850CN</alias>
     <lname>1850_CAM4_CLM40%CN_CICE%PRES_DOCN%DOM_SROF_CISM1_SWAV</lname>
-  </compset> 	 
+  </compset>   
 
   <compset>
     <alias>FGCNIS2</alias>
@@ -567,94 +572,146 @@
     <lname>SCAM_CAM5%SCAM_CLM45%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>   
 
+  <!-- ******************************* -->
+  <!-- super-parameterization compsets -->
+  <!-- ******************************* -->
+
+  <!-- F compset -->
+
+  <compset>
+    <alias>FSP1V1</alias>
+    <lname>2000_CAM5%SP1V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset> 
+
+  <compset>
+    <alias>FSP2V1</alias>
+    <lname>2000_CAM5%SP2V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <!-- F testing compsets w/ reduced CRM dimensions -->
+
+  <compset>
+    <alias>FSP1V1-TEST</alias>
+    <lname>2000_CAM5%SP1V1-TEST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FSP2V1-TEST</alias>
+    <lname>2000_CAM5%SP2V1-TEST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <!-- 20th century transient -->
+
+  <compset>
+   <alias>F20TRSP1V1</alias>
+   <lname>20TR_CAM5%SP1V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+  
+  <compset>
+   <alias>F20TRSP2V1</alias>
+   <lname>20TR_CAM5%SP2V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
   <entries>
 
     <entry id="RUN_STARTDATE"> 
       <values>
-	<value  compset="20TR_CAM">1850-01-01</value> 
-	<value  compset="AMIP_CAM">1979-01-01</value> 
-	<value  compset="HIST_CAM">1850-01-01</value> 
-	<value  compset="PIPD_CAM">1850-01-01</value> 
-	<value  compset="7905_CAM">1979-01-01</value>
-	<value  compset="5505_CAM">1955-01-01</value> 
-	<value  compset="1996_CAM\d+%WCMX">1996-01-01</value>
-	<value  compset="2000_CAM\d+%WCMX">2000-01-01</value>
-	<value  compset="2000_CAM\d+%WCXI">2000-01-01</value>
-	<value  compset="2013_CAM\d+%WCBC">2013-01-01</value> 
-	<value  compset="GEOS_CAM\d+%WCCM">2005-01-01</value> 
-	<value  compset="GEOS_CAM\d+%WTSM">1990-01-01</value> 
-	<value  compset="GEOS_CAM\d+%WCSF">2010-01-01</value> 
-	<value  compset="GEOS_CAM\d+%TMOZ">2008-01-01</value> 
-	<value  compset="GEOS_CAM\d+%TBAM">2008-01-01</value>
-	<value  compset="GEOS_CAM\d+%S">2005-01-01</value>
-	<value  compset="RCP[2468]_CAM\d+">2005-01-01</value>
-	<value  compset="C2R[68]_CAM">1950-01-01</value> 
-	<value  compset="C2R4_CAM">2004-01-01</value>
-	<value  compset="AR95_CAM">1995-07-18</value>
-	<value  compset="AR97_CAM">1997-06-19</value>
+        <value  compset="20TR_CAM">1850-01-01</value> 
+        <value  compset="AMIP_CAM">1979-01-01</value> 
+        <value  compset="HIST_CAM">1850-01-01</value> 
+        <value  compset="PIPD_CAM">1850-01-01</value> 
+        <value  compset="7905_CAM">1979-01-01</value>
+        <value  compset="5505_CAM">1955-01-01</value> 
+        <value  compset="1996_CAM\d+%WCMX">1996-01-01</value>
+        <value  compset="2000_CAM\d+%WCMX">2000-01-01</value>
+        <value  compset="2000_CAM\d+%WCXI">2000-01-01</value>
+        <value  compset="2013_CAM\d+%WCBC">2013-01-01</value> 
+        <value  compset="GEOS_CAM\d+%WCCM">2005-01-01</value> 
+        <value  compset="GEOS_CAM\d+%WTSM">1990-01-01</value> 
+        <value  compset="GEOS_CAM\d+%WCSF">2010-01-01</value> 
+        <value  compset="GEOS_CAM\d+%TMOZ">2008-01-01</value> 
+        <value  compset="GEOS_CAM\d+%TBAM">2008-01-01</value>
+        <value  compset="GEOS_CAM\d+%S">2005-01-01</value>
+        <value  compset="RCP[2468]_CAM\d+">2005-01-01</value>
+        <value  compset="C2R[68]_CAM">1950-01-01</value> 
+        <value  compset="C2R4_CAM">2004-01-01</value>
+        <value  compset="AR95_CAM">1995-07-18</value>
+        <value  compset="AR97_CAM">1997-06-19</value>
       </values>
     </entry>
 
     <entry id="CALENDAR"> 
       <values>
-	<value  compset="GEOS_">GREGORIAN</value>
+  <value  compset="GEOS_">GREGORIAN</value>
       </values>
     </entry>
 
     <entry id="START_TOD"> 
       <values>
-	<value  compset="AR95_CAM">19800</value>
-	<value  compset="AR97_CAM">84585</value>
+  <value  compset="AR95_CAM">19800</value>
+  <value  compset="AR97_CAM">84585</value>
       </values>
     </entry>
 
     <entry id="RUN_TYPE"> 
       <values>
-	<value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6"	compset="AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV"	 >hybrid</value>
+  <value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6"  compset="AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV"   >hybrid</value>
       </values>
     </entry>
 
     <entry id="RUN_REFCASE"> 
       <values>
-	<value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6"	compset="AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV"	 >b40_20th_2d_r07c5cn_161jp</value>
+  <value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6"  compset="AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV"   >b40_20th_2d_r07c5cn_161jp</value>
       </values>
     </entry>
 
     <entry id="RUN_REFDATE">
       <values>
-	<value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6"	compset="AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV"	 >1979-01-01</value>
+  <value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6"  compset="AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV"   >1979-01-01</value>
       </values>
     </entry>
 
     <entry id="RUN_REFDIR">
       <values>
-	<value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6"	compset="AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV"	 >ccsm4_init</value>
+  <value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_m%gx1v6"  compset="AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV"   >ccsm4_init</value>
       </values>
     </entry>
 
     <entry id="STOP_OPTION"> 
       <values>
-	<value compset="AR95_CAM">ndays</value>
-	<value compset="AR97_CAM">ndays</value>
+  <value compset="AR95_CAM">ndays</value>
+  <value compset="AR97_CAM">ndays</value>
       </values>
     </entry>
 
     <entry id="STOP_N"> 
       <values>
-	<value compset="AR95_CAM">2</value>
-	<value compset="AR97_CAM">29</value>
+  <value compset="AR95_CAM">2</value>
+  <value compset="AR97_CAM">29</value>
       </values>
     </entry>
   
     <entry id="MASK_GRID"> 
       <values>
-	<value compset="AR97_CAM">USGS</value>
+  <value compset="AR97_CAM">USGS</value>
       </values>
     </entry>    
 
     <entry id="GET_REFCASE"> 
       <values>
-	<value compset="AMIP_CAM">TRUE</value>
+  <value compset="AMIP_CAM">TRUE</value>
+      </values>
+    </entry>
+
+    <entry id="PTS_LAT">
+      <values>
+        <value compset="AR9[57]_CAM">36.6</value>
+      </values>
+    </entry>
+
+    <entry id="PTS_LON">
+      <values>
+        <value compset="AR9[57]_CAM">262.5</value>
       </values>
     </entry>
 

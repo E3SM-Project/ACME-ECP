@@ -21,7 +21,7 @@ def _get_batch_job_id_for_syslog(case):
             return os.environ["PBS_JOBID"]
         elif mach in ['edison', 'cori-haswell', 'cori-knl']:
             return os.environ["SLURM_JOB_ID"]
-        elif mach == 'mira':
+        elif mach in ['mira', 'theta']:
             return os.environ["COBALT_JOBID"]
     except:
         pass
@@ -127,6 +127,14 @@ def _save_prerun_timing_acme(case, lid):
                 filename = "%s.%s" % (filename, lid)
                 run_cmd_no_fail(cmd, arg_stdout=filename, from_dir=full_timing_dir)
                 gzip_existing_file(os.path.join(full_timing_dir, filename))
+        elif mach == "theta":
+            for cmd, filename in [("qstat -l --header JobID:JobName:User:Project:WallTime:QueuedTime:Score:RunTime:TimeRemaining:Nodes:State:Location:Mode:Command:Args:Procs:Queue:StartTime:attrs:Geometry", "qstatf"), 
+                                  ("qstat -lf %s" % job_id, "qstatf_jobid"),
+                                  ("xtnodestat", "xtnodestat"),
+                                  ("xtprocadmin", "xtprocadmin")]:
+                filename = "%s.%s" % (filename, lid)
+                run_cmd_no_fail(cmd, arg_stdout=filename, from_dir=full_timing_dir)
+                gzip_existing_file(os.path.join(full_timing_dir, filename))
         elif mach in ["edison", "cori-haswell", "cori-knl"]:
             for cmd, filename in [("sinfo -a -l", "sinfol"), ("sqs -f %s" % job_id, "sqsf_jobid"),
                                   # ("sqs -f", "sqsf"),
@@ -191,8 +199,28 @@ def _save_prerun_timing_acme(case, lid):
         for item in glob.glob(os.path.join(blddir, blddir_glob_to_copy)):
             copy_umask(item, os.path.join(full_timing_dir, os.path.basename(item) + "." + lid))
 
+    # Save state of repo
+    if os.path.exists(os.path.join(cimeroot, ".git")):
+        run_cmd_no_fail("git describe", arg_stdout=os.path.join(full_timing_dir, "GIT_DESCRIBE.{}".format(lid)), from_dir=cimeroot)
+    else:
+        run_cmd_no_fail("git describe", arg_stdout=os.path.join(full_timing_dir, "GIT_DESCRIBE.{}".format(lid)), from_dir=os.path.dirname(cimeroot))
+
     # What this block does is mysterious to me (JGF)
     if job_id is not None:
+
+        # Kill mach_syslog from previous run if one exists
+        syslog_jobid_path = os.path.join(rundir, "syslog_jobid.{}".format(job_id))
+        if os.path.exists(syslog_jobid_path):
+            try:
+                with open(syslog_jobid_path, "r") as fd:
+                    syslog_jobid = int(fd.read().strip())
+                os.kill(syslog_jobid, signal.SIGTERM)
+            except (ValueError, OSError) as e:
+                logger.warning("Failed to kill syslog: {}".format(e))
+            finally:
+                os.remove(syslog_jobid_path)
+
+        # If requested, spawn a mach_syslog process to monitor job progress
         sample_interval = case.get_value("SYSLOG_N")
         if sample_interval > 0:
             archive_checkpoints = os.path.join(full_timing_dir, "checkpoints.{}".format(lid))
@@ -202,12 +230,6 @@ def _save_prerun_timing_acme(case, lid):
                                            from_dir=os.path.join(caseroot, "Tools"))
             with open(os.path.join(rundir, "syslog_jobid.{}".format(job_id)), "w") as fd:
                 fd.write("{}\n".format(syslog_jobid))
-
-    # Save state of repo
-    if os.path.exists(os.path.join(cimeroot, ".git")):
-        run_cmd_no_fail("git describe", arg_stdout=os.path.join(full_timing_dir, "GIT_DESCRIBE.{}".format(lid)), from_dir=cimeroot)
-    else:
-        run_cmd_no_fail("git describe", arg_stdout=os.path.join(full_timing_dir, "GIT_DESCRIBE.{}".format(lid)), from_dir=os.path.dirname(cimeroot))
 
 def _save_prerun_provenance_acme(case, lid):
     if case.get_value("SAVE_TIMING"):
@@ -296,7 +318,8 @@ def _save_postrun_timing_acme(case, lid):
             globs_to_copy.append("%s*OU" % job_id)
         elif mach == "anvil":
             globs_to_copy.append("/home/%s/%s*OU" % (getpass.getuser(), job_id))
-        elif mach == "mira":
+        elif mach in ["mira", "theta"]:
+            globs_to_copy.append("%s*error" % job_id)
             globs_to_copy.append("%s*output" % job_id)
             globs_to_copy.append("%s*cobaltlog" % job_id)
         elif mach in ["edison", "cori-haswell", "cori-knl"]:
