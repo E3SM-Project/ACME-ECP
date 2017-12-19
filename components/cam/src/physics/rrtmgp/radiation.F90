@@ -1,5 +1,4 @@
 module radiation
-
 !---------------------------------------------------------------------------------
 ! Purpose:
 !
@@ -25,19 +24,37 @@ module radiation
 ! Nov 2017, B. Hillman,    Modify extensively for use with RRTMGP
 !---------------------------------------------------------------------------------
 
+! E3SM-specific modules that are used throughout this module. An effort was made
+! to keep imports as local as possible, so we only load a few of these at the
+! module (rather than the subroutine) level.
 use shr_kind_mod,     only: r8=>shr_kind_r8, cl=>shr_kind_cl
 use ppgrid,           only: pcols, pver, pverp, begchunk, endchunk
 use cam_abortutils,   only: endrun
 use scamMod,          only: scm_crm_mode, single_column, swrad_off
 use rad_constituents, only: N_DIAG
 
-! RRTMGP modules
+! RRTMGP gas optics object to store coefficient information. This is imported
+! here so that we can make the k_dist objects module data and only load them
+! once.
 use mo_gas_optics_specification, only: ty_gas_optics_specification
 
 implicit none
 private
 save
 
+! Public routines provided by this module.
+! TODO: radiation_defaultopts, radiation_setops, and radiation_printops exist
+! only because the radiation namelist has traditionally been read at the driver
+! level by runtime_opts. I am not sure this is the best solution, and in fact
+! CESM seems to have gone away from this practice altogether, opting instead for
+! individual modules to be responsible for reading their own namelists. This
+! might be a better practice going forward, and would simplify the logic here
+! somewhat. To do this, we would need to use the radiation_readnl routine
+! (copied below), and add a line in runtime_opts that calls this routine, and
+! then remove the code in runtime_opts that reads the radiation namelist
+! variables from the CAM namelist. The calls to radiation_defaultopts,
+! radiation_setops, and radiation_printops would also then need to be removed
+! from runtime_ops.
 public :: &
    radiation_register,    &! registers radiation physics buffer fields
    radiation_defaultopts, &! set default values of namelist variables in runtime_opts
@@ -48,6 +65,11 @@ public :: &
    radiation_init,        &! calls radini
    radiation_tend          ! moved from radctl.F90
 
+! Counter variables for use with the CFMIP Observation Simulator Package (COSP).
+! TODO: This seems like somewhat of an awkward way of determining when to run
+! COSP, and it might make more sense to implement a more elegant routine to call
+! that determines whether or not to run COSP at a given timestep (similar to the
+! radiation_do routine in this module).
 integer, public, allocatable :: cosp_cnt(:)       ! counter for cosp
 integer, public              :: cosp_cnt_init = 0 ! initial value for cosp counter
 
@@ -66,38 +88,76 @@ integer :: rel_fn_idx   = 0
 integer :: rei_idx      = 0
 integer :: dei_idx      = 0
 
-! Default values for namelist variables
-integer :: iradsw = -1     ! freq. of shortwave radiation calc in time steps (positive)
-                           ! or hours (negative).
-integer :: iradlw = -1     ! frequency of longwave rad. calc. in time steps (positive)
-                           ! or hours (negative).
-integer :: irad_always = 0 ! Specifies length of time in timesteps (positive)
-                           ! or hours (negative) SW/LW radiation will be
-                           ! run continuously from the start of an
-                           ! initial or restart run
-logical :: spectralflux  = .false. ! calculate fluxes (up and down) per band.
+! Declare namelist variables as module data. This also sets default values for
+! namelist variables.
+integer :: iradsw = -1  ! freq. of shortwave radiation calc in time steps (positive)
+                        ! or hours (negative).
+integer :: iradlw = -1  ! frequency of longwave rad. calc. in time steps (positive)
+                        ! or hours (negative).
+integer :: irad_always = 0  ! Specifies length of time in timesteps (positive)
+                            ! or hours (negative) SW/LW radiation will be
+                            ! run continuously from the start of an
+                            ! initial or restart run
 
-! if true, uses the radiation dt for all cosz calculations
+! The spectralflux flag determines whether or not spectral (per band) fluxes are
+! calculated. If true, upward and downward fluxes are calculated per band,
+! otherwise just broadband "shortwave" and "longwave" fluxes are calculated.
+! TODO: while it seems that setting spectralflux = .true. add spectral fluxes to
+! the physics buffer, I do not see where these fields are added to the history
+! buffer. It might be that the output of these fields are just handled by the
+! physics buffer output routines (they are declared with "global" scope, so
+! written on restart files at least), but it would be good to include them on
+! the history buffer too so that we can annotate them with a description of what
+! they are, rather than expecting the user to know what they are from the pbuf
+! fields.
+logical :: spectralflux  = .false.  ! calculate fluxes (up and down) per band.
+
+! Flag to indicate whether or not to use the radiation timestep for solar zenith
+! angle calculations. If true, use the radiation timestep for all solar zenith 
+! angle (cosz) calculations.
+! TODO: How does this differ if value is .false.?
 logical :: use_rad_dt_cosz  = .false. 
 
+! Model data that is not controlled by namelist fields specifically follows
+! below.
 character(len=16) :: microp_scheme  ! microphysics scheme
 
-character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ','_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
+character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ', &
+                                      '_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
 
-logical :: dohirs = .false. ! diagnostic  brightness temperatures at the top of the
-                            ! atmosphere for 7 TOVS/HIRS channels (2,4,6,8,10,11,12) and 4 TOVS/MSU 
-                            ! channels (1,2,3,4).
+! Output diagnostic brightness temperatures at the top of the
+! atmosphere for 7 TOVS/HIRS channels (2,4,6,8,10,11,12) and 4 TOVS/MSU 
+! channels (1,2,3,4).
+! TODO: where are these options set?
+logical :: dohirs = .false. 
 integer :: ihirsfq = 1      ! frequency (timesteps) of brightness temperature calcs
 
 ! time step to use for the shr_orb_cosz calculation, if use_rad_dt_cosz set to true
+! TODO: where is this set, and what is shr_orb_cosz? Alternative solar zenith
+! angle calculation? What is the other behavior?
 real(r8) :: dt_avg = 0.0_r8  
 
-! k-distribution coefficients
+! k-distribution coefficients. These will be populated by reading from the
+! RRTMGP coefficients files, specified by coefficients_file_sw and
+! coefficients_file_lw in the radiation namelist. They exist as module data
+! because we only want to load those files once.
 class(ty_gas_optics_specification) :: k_dist_sw, k_dist_lw
 
 ! k-distribution coefficients files to read from. These are set via namelist
 ! variables.
 character(len=cl) :: coefficients_file_sw, coefficients_file_lw
+
+! Number of shortwave and longwave bands in use by the RRTMGP radiation code.
+! This information will be stored in the k_dist_sw and k_dist_lw objects and may
+! be retrieved using the k_dist_sw%get_nbands() and k_dist_lw%get_nbands()
+! methods, but I think we need to save these as private module data so that we
+! can automatically allocate arrays later in subroutine headers, i.e.:
+!
+!     real(r8) :: cld_tau(pcols,pver,nswbands)
+!
+! and so forth. Previously some of this existed in radconstants.F90, but I do
+! not think we need to use that.
+integer :: nswbands, nlwbands
 
 !===============================================================================
 
@@ -106,13 +166,15 @@ contains
 !===============================================================================
 
 subroutine radiation_readnl(nlfile)
-
-   ! Purpose: Read radiation_nl namelist group.
+!-------------------------------------------------------------------------------
+! Purpose: Read radiation_nl namelist group.
+!-------------------------------------------------------------------------------
 
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical, &
                               mpi_character
+   use mpishorthand
 
    ! File containing namelist input
    character(len=*), intent(in) :: nlfile
@@ -131,11 +193,12 @@ subroutine radiation_readnl(nlfile)
    namelist /rrtmgp_nl/ rrtmgp_coefficients_file_lw, rrtmgp_coefficients_file_sw, &
                         rrtmgp_iradsw, rrtmgp_iradlw, rrtmgp_irad_always, &
                         rrtmgp_use_rad_dt_cosz, rrtmgp_spectralflux
-   !-----------------------------------------------------------------------------
 
+   ! Read the namelist, only if called from master process
+   ! TODO: better documentation and cleaner logic here?
    if (masterproc) then
       unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
+      open(unitn, file=trim(nlfile), status='old')
       call find_group_name(unitn, 'rrtmgp_nl', status=ierr)
       if (ierr == 0) then
          read(unitn, rrtmgp_nl, iostat=ierr)
@@ -148,24 +211,17 @@ subroutine radiation_readnl(nlfile)
    end if
 
    ! Broadcast namelist variables
-   call mpi_bcast(rrtmgp_coefficients_file_lw, cl, mpi_character, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_coefficients_file_lw")
-   call mpi_bcast(rrtmgp_coefficients_file_sw, cl, mpi_character, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_coefficients_file_sw")
-   call mpi_bcast(rrtmgp_iradsw, 1, mpi_integer, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_iradsw")
-   call mpi_bcast(rrtmgp_iradlw, 1, mpi_integer, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_iradlw")
-   call mpi_bcast(rrtmgp_irad_always, 1, mpi_integer, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_irad_always")
-   call mpi_bcast(rrtmgp_use_rad_dt_cosz, 1, mpi_logical, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_use_rad_dt_cosz")
-   call mpi_bcast(rrtmgp_spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_spectralflux")
+   call mpibcast(rrtmgp_coefficients_file_lw, cl, mpi_character, mstrid, mpicom, ierr)
+   call mpibcast(rrtmgp_coefficients_file_sw, cl, mpi_character, mstrid, mpicom, ierr)
+   call mpibcast(rrtmgp_iradsw, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(rrtmgp_iradlw, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(rrtmgp_irad_always, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(rrtmgp_use_rad_dt_cosz, 1, mpi_logical, mstrid, mpicom, ierr)
+   call mpibcast(rrtmgp_spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
 
    ! Set module data
-   coefficients_file_lw   = rrtmgp_coefficients_file_lw
-   coefficients_file_sw   = rrtmgp_coefficients_file_sw
+   coefficients_file_lw = rrtmgp_coefficients_file_lw
+   coefficients_file_sw = rrtmgp_coefficients_file_sw
    iradsw          = rrtmgp_iradsw
    iradlw          = rrtmgp_iradlw
    irad_always     = rrtmgp_irad_always
@@ -294,7 +350,7 @@ subroutine radiation_setopts(dtime, nhtfrq, iradsw_in, iradlw_in, iradae_in, &
    logical, intent(in), optional :: use_rad_dt_cosz_in
    
    ! Local namespace
-   integer :: iradae   ! not used by RRTMG
+   integer :: iradae   ! not used by RRTMGP
 
    ! Check for optional arguments and set corresponding module data if present
    if (present(iradsw_in)) iradsw = iradsw_in
@@ -488,6 +544,11 @@ subroutine radiation_init()
    ! objects.
    call rrtmgp_load_coefficients(k_dist_sw, coefficients_file_sw)
    call rrtmgp_load_coefficients(k_dist_lw, coefficients_file_lw
+
+   ! Get number of bands used in shortwave and longwave and set module data
+   ! appropriately so that these sizes can be used to allocate array sizes.
+   nswbands = k_dist_sw%get_nbands()
+   nlwbands = k_dist_lw%get_nbands()
 
    ! Initialize the shortwave and longwave drivers
    error_message = rrtmgp_sw_init()
@@ -850,46 +911,31 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
 ! 2017-11     Ben Hillman: Adapted for use with RRTMGP
 !----------------------------------------------------------------------------------------------
 
+   ! Performance module needed for timing functions
    use perf_mod,        only: t_startf, t_stopf
-   use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
-                             pbuf_old_tim_idx, pbuf_get_index, pbuf_set_field
-   use phys_grid,       only: get_rlat_all_p, get_rlon_all_p
-   use physics_types,   only: physics_state, physics_ptend
-   use cospsimulator_intr, only: docosp, cospsimulator_intr_run,cosp_nradsteps
-   use time_manager,    only: get_curr_calday
+
+   ! CAM derived types; needed for surface exchange fields, physics state, and
+   ! tendency fields
    use camsrfexch,      only: cam_out_t, cam_in_t
-   use cam_history_support, only: fillvalue
-   use parrrtm,         only: nbndlw
-   use parrrsw,         only: nbndsw
-   use hirsbt,          only: hirsrtm
-   use hirsbtpar,       only: pnb_hirs, pnf_msu, hirsname, msuname
+   use physics_types,   only: physics_state, physics_ptend
+
+   ! Utilities for interacting with the physics buffer
+   use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, &
+                              pbuf_get_index
+
+   ! For calculating radiative heating tendencies?
    use radheat,         only: radheat_tend
-   use ppgrid
-   use pspect
-   use rad_constituents, only: oldcldoptics, liqcldoptics, icecldoptics
-   use aer_rad_props,    only: aer_rad_props_sw, aer_rad_props_lw
-   use interpolate_data, only: vertinterp
-   use radiation_data,   only: output_rad_data
 
-   use crmdims,              only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
-   use physconst,            only: cpair, cappa
-   use constituents,         only: cnst_get_ind
-#ifdef CRM
-   use crm_physics,          only: m2005_effradius
-#endif
-#ifdef MODAL_AERO
-  use modal_aero_data,       only: ntot_amode
-#endif
-   use phys_control,         only: phys_getopts
-   use orbit,                only: zenith
-   use output_aerocom_aie,   only: do_aerocom_ind3
-   use pkg_cldoptics,        only: cldefr
+   use physconst,       only: cpair, cappa
 
-   ! TODO: implement RRTMGP counterparts to these
-   !use rrtmg_state,      only: rrtmg_state_create, rrtmg_state_update, &
-   !                            rrtmg_state_destroy, rrtmg_state_t, num_rrtmg_levs
-   use mo_rrtmgp_clr_all_sky, only: &
-         rrtmgp_sw=>rte_sw, rrtmgp_lw=>rte_lw
+   ! These are needed for calculating solar zenith angle
+   use phys_grid,       only: get_rlat_all_p, get_rlon_all_p
+   use time_manager,    only: get_curr_calday
+   use orbit,           only: zenith
+
+   ! RRTMGP radiation drivers
+   use mo_rrtmgp_clr_all_sky, only: rrtmgp_sw=>rte_sw, rrtmgp_lw=>rte_lw
+
    !use cloud_rad_props,  only: get_ice_optics_sw, get_liquid_optics_sw, &
    !                            liquid_cloud_get_rad_props_lw, &
    !                            ice_cloud_get_rad_props_lw, cloud_rad_props_get_lw, &
@@ -926,55 +972,49 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
 
    ! Combined cloud radiative parameters (liquid, ice, and possibly snow). Note
    ! that these are "in cloud" not "in cell"
-   real(r8) :: c_cld_tau    (nbndsw,pcols,pver) ! cloud extinction optical depth
-   real(r8) :: c_cld_tau_w  (nbndsw,pcols,pver) ! cloud single scattering albedo * tau
-   real(r8) :: c_cld_tau_w_g(nbndsw,pcols,pver) ! cloud assymetry parameter * w * tau
-   real(r8) :: c_cld_tau_w_f(nbndsw,pcols,pver) ! cloud forward scattered fraction * w * tau
-   real(r8) :: c_cld_lw_abs (nbndlw,pcols,pver) ! cloud absorption optics depth (LW)
+   real(r8) :: c_cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
+   real(r8) :: c_cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
+   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
+   real(r8) :: c_cld_tau_w_f(nswbands,pcols,pver) ! cloud forward scattered fraction * w * tau
+   real(r8) :: c_cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
 
    ! Cloud radiative parameters (liquid and ice cloud). Note that these are are
    ! "in cloud" not "in cell"
-   real(r8) :: cld_tau    (nbndsw,pcols,pver) ! cloud extinction optical depth
-   real(r8) :: cld_tau_w  (nbndsw,pcols,pver) ! cloud single scattering albedo * tau
-   real(r8) :: cld_tau_w_g(nbndsw,pcols,pver) ! cloud assymetry parameter * w * tau
-   real(r8) :: cld_tau_w_f(nbndsw,pcols,pver) ! cloud forward scattered fraction * w * tau
-   real(r8) :: cld_lw_abs (nbndlw,pcols,pver) ! cloud absorption optics depth (LW)
+   real(r8) :: cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
+   real(r8) :: cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
+   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
+   real(r8) :: cld_tau_w_f(nswbands,pcols,pver) ! cloud forward scattered fraction * w * tau
+   real(r8) :: cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
 
    ! Ice cloud radiative parameters. Note that these are "in cloud" not "in cell".
-   real(r8) :: ice_tau    (nbndsw,pcols,pver) ! ice extinction optical depth
-   real(r8) :: ice_tau_w  (nbndsw,pcols,pver) ! ice single scattering albedo * tau
-   real(r8) :: ice_tau_w_g(nbndsw,pcols,pver) ! ice assymetry parameter * tau * w
-   real(r8) :: ice_tau_w_f(nbndsw,pcols,pver) ! ice forward scattered fraction * tau * w
-   real(r8) :: ice_lw_abs (nbndlw,pcols,pver) ! ice absorption optics depth (LW)
+   real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
+   real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! ice single scattering albedo * tau
+   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice assymetry parameter * tau * w
+   real(r8) :: ice_tau_w_f(nswbands,pcols,pver) ! ice forward scattered fraction * tau * w
+   real(r8) :: ice_lw_abs (nlwbands,pcols,pver) ! ice absorption optics depth (LW)
 
    ! "Snow" cloud radiative parameters. Note that these are "in cloud" not "in cell".
-   real(r8) :: snow_tau    (nbndsw,pcols,pver) ! snow extinction optical depth
-   real(r8) :: snow_tau_w  (nbndsw,pcols,pver) ! snow single scattering albedo * tau
-   real(r8) :: snow_tau_w_g(nbndsw,pcols,pver) ! snow assymetry parameter * tau * w
-   real(r8) :: snow_tau_w_f(nbndsw,pcols,pver) ! snow forward scattered fraction * tau * w
-   real(r8) :: snow_lw_abs (nbndlw,pcols,pver) ! snow absorption optics depth (LW)
+   real(r8) :: snow_tau    (nswbands,pcols,pver) ! snow extinction optical depth
+   real(r8) :: snow_tau_w  (nswbands,pcols,pver) ! snow single scattering albedo * tau
+   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
+   real(r8) :: snow_tau_w_f(nswbands,pcols,pver) ! snow forward scattered fraction * tau * w
+   real(r8) :: snow_lw_abs (nlwbands,pcols,pver) ! snow absorption optics depth (LW)
 
    ! Liquid cloud radiative parameters. Note that these are "in cloud" not "in cell".
-   real(r8) :: liq_tau    (nbndsw,pcols,pver) ! liquid extinction optical depth
-   real(r8) :: liq_tau_w  (nbndsw,pcols,pver) ! liquid single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nbndsw,pcols,pver) ! liquid assymetry parameter * tau * w
-   real(r8) :: liq_tau_w_f(nbndsw,pcols,pver) ! liquid forward scattered fraction * tau * w
-   real(r8) :: liq_lw_abs (nbndlw,pcols,pver) ! liquid absorption optics depth (LW)
+   real(r8) :: liq_tau    (nswbands,pcols,pver) ! liquid extinction optical depth
+   real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! liquid single scattering albedo * tau
+   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid assymetry parameter * tau * w
+   real(r8) :: liq_tau_w_f(nswbands,pcols,pver) ! liquid forward scattered fraction * tau * w
+   real(r8) :: liq_lw_abs (nlwbands,pcols,pver) ! liquid absorption optics depth (LW)
 
-   ! Aerosol radiative properties
-   real(r8) :: aer_tau    (pcols,0:pver,nbndsw) ! aerosol extinction optical depth
-   real(r8) :: aer_tau_w  (pcols,0:pver,nbndsw) ! aerosol single scattering albedo * tau
-   real(r8) :: aer_tau_w_g(pcols,0:pver,nbndsw) ! aerosol assymetry parameter * w * tau
-   real(r8) :: aer_tau_w_f(pcols,0:pver,nbndsw) ! aerosol forward scattered fraction * w * tau
-   real(r8) :: aer_lw_abs (pcols,pver,nbndlw)   ! aerosol absorption optics depth (LW)
-
-   ! Stuff for output fields on history files
-   ! TODO: move these to a subroutine
-   real(r8) :: tot_cld_vistau(pcols,pver)  ! tot gbx cloud visible sw optical depth for output on history files
-   real(r8) :: tot_icld_vistau(pcols,pver) ! tot in-cloud visible sw optical depth for output on history files
-   real(r8) :: liq_icld_vistau(pcols,pver) ! liq in-cloud visible sw optical depth for output on history files
-   real(r8) :: ice_icld_vistau(pcols,pver) ! ice in-cloud visible sw optical depth for output on history files
-   real(r8) :: snow_icld_vistau(pcols,pver) ! snow in-cloud visible sw optical depth for output on history files
+   ! Aerosol radiative properties; why the heck are these ordered differently
+   ! from the cloud radiative properties? Is this a carry-over from old RRTMG
+   ! that we no longer need to perpetuate?
+   real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
+   real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
+   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+   real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
+   real(r8) :: aer_lw_abs (pcols,pver,nlwbands)   ! aerosol absorption optics depth (LW)
 
    ! Pointers to heating rates on physics buffer
    real(r8), pointer :: qrs(:,:) => null()  ! shortwave radiative heating rate 
@@ -1024,8 +1064,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
    ! do the shortwave radiative transfer during the daytime to save
    ! computational cost (and because RRTMGP will fail for cosine solar zenith
    ! angles less than or equal to zero)
-   ! TODO: this seems naive on RRTMGP's part. Should it not just return a
-   ! fillvalue for non-day columns?
    n_daytime_columns = 0
    n_nighttime_columns = 0
    do i = 1, state%ncol
@@ -1049,29 +1087,29 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
       if (dosw) then
          ! Do shortwave cloud optics calculations
          call t_startf('shortwave cloud optics')
-         call set_cloud_optics_sw(state, pbuf, cloud_sw)
+         !call set_cloud_optics_sw(state, pbuf, cloud_sw)
          call t_stopf('shortwave cloud optics')
 
          ! Get shortwave gas optics
          call t_startf('shortwave gas concentrations')
-         call set_gas_optics_sw(state, pbuf, gas_concentrations_sw)
+         !call set_gas_optics_sw(state, pbuf, gas_concentrations_sw)
          call t_stopf('shortwave gas concentrations')
 
          ! Get shortwave aerosol optics
          call t_startf('shortwave aerosol optics')
-         call set_aerosol_optics_sw(state, pbuf, aerosol_sw)
+         !call set_aerosol_optics_sw(state, pbuf, aerosol_sw)
          call t_stopf('shortwave aerosol optics')
 
          ! Subset optical properties to get only daytime columns
-         call subset_daytime_optics()
+         !call subset_daytime_optics()
 
          ! Do shortwave radiative transfer calculations
          call t_startf('shortwave radiation calculations')
-         errmsg = rrtmgp_sw(k_dist_sw, gas_concentrations_sw, &
-                            pmid_day, t_day, pint_day, &
-                            coszrs_day, alb_dir, alb_dif, cloud_sw, &
-                            allsky_fluxes_sw, clrsky_fluxes_sw, &
-                            aer_props=aerosol_sw)
+         !errmsg = rrtmgp_sw(k_dist_sw, gas_concentrations_sw, &
+         !                   pmid_day, t_day, pint_day, &
+         !                   coszrs_day, alb_dir, alb_dif, cloud_sw, &
+         !                   allsky_fluxes_sw, clrsky_fluxes_sw, &
+         !                   aer_props=aerosol_sw)
          call t_stopf('shortwave radiation calculations')
 
          ! Map RRTMGP outputs to CAM outputs
@@ -1084,25 +1122,25 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
 
          ! Do longwave cloud optics calculations
          call t_startf('longwave cloud optics')
-         call set_cloud_optics_lw(state, pbuf, cloud_lw)
+         !call set_cloud_optics_lw(state, pbuf, cloud_lw)
          call t_stopf('longwave cloud optics')
 
          ! Get longwave gas optics
          call t_startf('longwave gas concentrations')
-         call set_gas_optics_lw(state, pbuf, gas_concentrations_lw)
+         !call set_gas_optics_lw(state, pbuf, gas_concentrations_lw)
          call t_stopf('longwave gas concentrations')
 
          ! Get longwave aerosol optics
          call t_startf('longwave aerosol optics')
-         call set_aerosol_optics_lw(state, pbuf, aerosol_lw)
+         !call set_aerosol_optics_lw(state, pbuf, aerosol_lw)
          call t_stopf('longwave aerosol optics')
 
          ! Do longwave radiative transfer calculations
          call t_startf('longwave radiation calculations')
-         errmsg = rrtmgp_lw(kdist_lw, gas_concentrations_lw, &
-                            pmid_rad, t_day, pint_rad, &
-                            t_sfc, emis_sfc, cloud_lw, flw, flwc, &
-                            aer_props=aerosol_lw)
+         !errmsg = rrtmgp_lw(kdist_lw, gas_concentrations_lw, &
+         !                   pmid_rad, t_day, pint_rad, &
+         !                   t_sfc, emis_sfc, cloud_lw, flw, flwc, &
+         !                   aer_props=aerosol_lw)
          call t_stopf('longwave radiation calculations')
 
          ! Map RRTMGP outputs to CAM outputs
@@ -1123,11 +1161,12 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
 
    ! Compute net radiative heating tendency
    call t_startf('radheat_tend')
-   call radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
-                     fsnt, flns, flnt, cam_in%asdir, net_flx)
+   !call radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
+   !                  fsnt, flns, flnt, cam_in%asdir, net_flx)
    call t_stopf('radheat_tend')
 
    ! Compute net heating rate for dtheta/dt
+   ! TODO: how is this different than above?
    call t_startf('heating_rate')
    do k=1,pver
       do i = 1,state%ncol
@@ -1137,6 +1176,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
    call t_stopf('heating_rate')
 
    ! convert radiative heating rates to Q*dp for energy conservation
+   ! TODO: this gets converted back here? what is going on here?
    if (conserve_energy) then
       do k = 1,pver
          do i = 1,state%ncol
@@ -1147,7 +1187,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
    end if
 
    ! copy net sw flux to cam_out structure
-   cam_out%netsw(:state%ncol) = fsns(:state%ncol)
+   !cam_out%netsw(:state%ncol) = fsns(:state%ncol)
 
 end subroutine radiation_tend
 
@@ -1162,17 +1202,17 @@ subroutine set_cloud_optics_sw(state, pbuf, cloud_sw)
    type(physics_buffer_desc), intent(in) :: pbuf
    type(ty_optical_props_2str), intent(out) :: cloud_sw
 
-   if (use_SPCAM) then
-      ! get cloud optics from resolved fields
-      call get_spcam_optics(state, pbuf, cloud_sw)
-   else
-      call get_optics_sw(state, pbuf, cld_tau, cld_tau_w, &
-                         cld_tau_w_g, cld_tau_w_f)
+   !if (use_SPCAM) then
+   !   ! get cloud optics from resolved fields
+   !   call get_spcam_optics(state, pbuf, cloud_sw)
+   !else
+   !   !call get_optics_sw(state, pbuf, cld_tau, cld_tau_w, &
+   !                      cld_tau_w_g, cld_tau_w_f)
 
-      ! Do MCICA sampling
-      call do_mcica_cloud_sampling(cld_tau, cld_tau_w, cld_tau_w_g, &
-                                   cld_tau_w_f, cloud_sw)
-   end if
+   !   ! Do MCICA sampling
+   !   call do_mcica_cloud_sampling(cld_tau, cld_tau_w, cld_tau_w_g, &
+   !                                cld_tau_w_f, cloud_sw)
+   !end if
 
 end subroutine set_cloud_optics_sw
 
@@ -1207,28 +1247,6 @@ subroutine output_radiation_diagnostics()
    real(r8) trad       (pcols,pver)
    real(r8) qvrad      (pcols,pver)
    real(r8) fice       (pcols,pver)
-   real(r8) cld_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) cliqwp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) cicewp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) rel_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) rei_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) cld_tau_crm(pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) emis_crm   (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) qrl_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) qrs_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-   real(r8) crm_fsnt   (pcols, crm_nx_rad, crm_ny_rad)   ! net shortwave fluxes at TOA at CRM grids
-   real(r8) crm_fsntc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky shortwave fluxes at TOA at CRM grids
-   real(r8) crm_fsns   (pcols, crm_nx_rad, crm_ny_rad)   ! net shortwave fluxes at surface at CRM grids
-   real(r8) crm_fsnsc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky shortwave fluxes at surface at CRM grids
-   real(r8) crm_flnt   (pcols, crm_nx_rad, crm_ny_rad)   ! net longwave fluxes at TOA at CRM grids
-   real(r8) crm_flntc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky longwave fluxes at TOA at CRM grids
-   real(r8) crm_flns   (pcols, crm_nx_rad, crm_ny_rad)   ! net longwave fluxes at surface at CRM grids
-   real(r8) crm_flnsc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky longwave fluxes at surface at CRM grids
-
-   real(r8) crm_aodvisz(pcols, crm_nx_rad, crm_ny_rad, crm_nz)   ! layer aerosol optical depth at 550nm at CRM grids
-   real(r8) crm_aodvis (pcols, crm_nx_rad, crm_ny_rad)   ! AOD at 550nm at CRM grids
-   real(r8) crm_aod400 (pcols, crm_nx_rad, crm_ny_rad)   ! AOD at 400nm at CRM grids
-   real(r8) crm_aod700 (pcols, crm_nx_rad, crm_ny_rad)   ! AOD at 700nm at CRM grids
    real(r8) aod400     (pcols)   ! AOD at 400nm at CRM grids
    real(r8) aod700     (pcols)   ! AOD at 700nm at CRM grids
 
@@ -1271,4 +1289,3 @@ end subroutine initialize_gas_optics
 
 
 end module radiation
-
