@@ -154,7 +154,7 @@ OPTIONS
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
                         Currently available: DST,SSLT,SO4,GHG,OC,BC,CARBON16
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
-     -rad <name>        Specify the radiation package [rrtmg | camrt]
+     -rad <name>        Specify the radiation package [rrtmgp | rrtmg | camrt]
      -res <name>        Specify horizontal grid.  ***DEPRECATED***  Use the -hgrid option.
      -unicon            Switch to turn on the UNICON scheme. Default: off.
      -usr_mech_infile   Path and file name of the user supplied chemistry mechanism file.
@@ -1095,7 +1095,7 @@ if ($rad_pkg eq 'camrt') {
 	die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
 	    "                 with aerosol package $chem_pkg\n";
     }
-} elsif ($rad_pkg eq 'rrtmg') {
+} elsif ($rad_pkg eq 'rrtmg' or $rad_pkg eq 'rrtmgp') {
 
     # The rrtmg package doesn't work with the CAM3 prescribed aerosols
     if ($phys_pkg eq 'cam3') {
@@ -2871,6 +2871,15 @@ sub write_filepath
         print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_mcica\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_lw\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmg/ext/rrtmg_sw\n";
+    } elsif ($rad eq 'rrtmgp') {
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/extensions\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/extensions/rng\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rrtmgp\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rrtmgp/kernels\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rte\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rte/kernels\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/util\n";
     } elsif ($rad eq 'camrt') {
         print $fh "$camsrcdir/cam/src/physics/camrt\n";
     } else {
@@ -2883,40 +2892,43 @@ sub write_filepath
        print $fh "$camsrcdir/cam/src/physics/silhs\n";
     }
 
-# Superparameterization
+    # Super-parameterization
     if ($crm) {
+
+        # Add base CRM source
         print $fh "$camsrcdir/cam/src/physics/crm\n";
+
+        # Options for microphysics, either sam1mom or m2005
         if ($SPCAM_microp_scheme eq 'sam1mom') {
            print $fh "$camsrcdir/cam/src/physics/crm/MICRO_SAM1MOM\n";
+        } elsif ($SPCAM_microp_scheme eq 'm2005') {
+            # m2005 microphysics has additional option to use crm cldfrac
+            if(defined $opts{'use_crm_cldfrac'}) {
+                print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005FRAC\n";
+            } else {
+                print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005\n";
+            }
         }
-        if ($SPCAM_microp_scheme eq 'm2005') {
-          ##Guangxing Lin add for new SAM 
-          if(defined $opts{'use_crm_cldfrac'}) {
-              print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005FRAC\n"; }
-           else {
-              print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005\n";
-           }
-        }
+        
+        # Add source for CLUBB if using CLUBB for SGS, otherwise use old TKE scheme
         if ( defined $opts{'clubb_crm'}) {
-           print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
-          ##Guangxing Lin add for new SAM 
-           print $fh "$camsrcdir/cam/src/physics/crm/SGS_CLUBBkvhkvm\n";
-        }
-          ##Guangxing Lin add for new SAM 
-         else {
-           print $fh "$camsrcdir/cam/src/physics/crm/SGS_TKE\n";
+            print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
+            print $fh "$camsrcdir/cam/src/physics/crm/SGS_CLUBBkvhkvm\n";
+        } else {
+            print $fh "$camsrcdir/cam/src/physics/crm/SGS_TKE\n";
         }
 
-        if ( defined $opts{'use_ECPP'}) {
-           print $fh "$camsrcdir/cam/src/physics/cam/ecpp\n";
+        # Add source for ECPP
+        if (defined $opts{'use_ECPP'}) {
+            print $fh "$camsrcdir/cam/src/physics/cam/ecpp\n";
         }
-          ##Guangxing Lin add for new SAM 
+
+        # Select advection scheme for SAM and add appropriate source directory
         if ($crm_adv eq 'UM5') {
-           print $fh "$camsrcdir/cam/src/physics/crm/ADV_UM5\n"; }
-        else {
-           print $fh "$camsrcdir/cam/src/physics/crm/ADV_MPDATA\n";
-           }
-
+            print $fh "$camsrcdir/cam/src/physics/crm/ADV_UM5\n"; 
+        } else {
+            print $fh "$camsrcdir/cam/src/physics/crm/ADV_MPDATA\n";
+        }
     }
 
     print $fh "$camsrcdir/cam/src/dynamics/$dyn\n";

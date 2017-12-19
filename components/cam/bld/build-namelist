@@ -839,6 +839,14 @@ if ($rad_pkg eq 'camrt') {
     # Only needed for CAM3/4 RT code
     # Absorptivity and emissivity data
     add_default($nl, 'absems_data');
+} elsif ($rad_pkg eq 'rrtmgp') {
+    my @nlvars = qw(rrtmgp_coefs_lw_file rrtmgp_coefs_sw_file
+                    rrtmgp_iradsw  rrtmgp_iradlw  rrtmgp_irad_always
+                    rrtmgp_use_rad_dt_cosz  rrtmgp_spectralflux);
+
+    foreach my $nlvar (@nlvars) {
+        add_default($nl, $nlvar);
+    }
 }
 
 # Solar irradiance
@@ -856,7 +864,7 @@ if (defined $nl->get_value('solar_const') and
 
 }
 
-if ($rad_pkg eq 'rrtmg' or $chem =~ /waccm_mozart/) {
+if ($rad_pkg eq 'rrtmg' or $rad_pkg eq 'rrtmgp' or $chem =~ /waccm_mozart/) {
 
    if (defined $nl->get_value('solar_const')) {
       die "$ProgName - ERROR: Specifying solar_const with RRTMG or WACCM is not allowed.\n"
@@ -1481,8 +1489,8 @@ if ($aer_model eq 'mam' ) {
 
   if ($rad_prog_sslt) {
     if ($rrtmg) {
-	push(@aero_names, "SSLT01", "SSLT02", "SSLT03", "SSLT04");
-	push(@aerosources, "A:", "A:", "A:", "A:" );
+	    push(@aero_names, "SSLT01", "SSLT02", "SSLT03", "SSLT04");
+	    push(@aerosources, "A:", "A:", "A:", "A:" );
     } else {
 	push(@aero_names, "SSLTA", "SSLTC");
 	push(@aerosources, "N:", "N:");
