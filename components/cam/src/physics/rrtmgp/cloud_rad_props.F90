@@ -7,16 +7,15 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
-use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag
-use cam_abortutils,       only: endrun
-use rad_constituents, only: iceopticsfile, liqopticsfile
-use oldcloud,         only: oldcloud_lw, old_liq_get_rad_props_lw, old_ice_get_rad_props_lw, oldcloud_init
 
-use ebert_curry,      only: scalefactor
-use cam_logfile,      only: iulog
+use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag
+use rad_constituents, only: iceopticsfile, liqopticsfile
 
 use interpolate_data, only: interp_type, lininterp_init, lininterp, &
-     extrap_method_bndry, lininterp_finish
+                            extrap_method_bndry, lininterp_finish
+
+use cam_logfile,      only: iulog
+use cam_abortutils,   only: endrun
 
 implicit none
 private
@@ -24,14 +23,12 @@ save
 
 public :: &
    cloud_rad_props_init,          &
-   cloud_rad_props_get_sw,        & ! return SW optical props of total bulk aerosols
-   cloud_rad_props_get_lw,        & ! return LW optical props of total bulk aerosols
    get_ice_optics_sw,             & ! return Mitchell SW ice radiative properties
    ice_cloud_get_rad_props_lw,    & ! Mitchell LW ice rad props
    get_liquid_optics_sw,          & ! return Conley SW rad props
    liquid_cloud_get_rad_props_lw, & ! return Conley LW rad props
-   snow_cloud_get_rad_props_lw,   &
-   get_snow_optics_sw
+   get_snow_optics_sw,            &
+   snow_cloud_get_rad_props_lw
 
 integer :: nmu, nlambda
 real(r8), allocatable :: g_mu(:)           ! mu samples on grid
@@ -73,8 +70,6 @@ subroutine cloud_rad_props_init()
    use mpishorthand
 #endif
    use constituents,   only: cnst_get_ind
-   use slingo,         only: slingo_rad_props_init
-   use ebert_curry,    only: ec_rad_props_init, scalefactor
 
    character(len=256) :: liquidfile 
    character(len=256) :: icefile 
@@ -94,10 +89,6 @@ subroutine cloud_rad_props_init()
 
    liquidfile = liqopticsfile 
    icefile = iceopticsfile
-
-   call slingo_rad_props_init
-   call ec_rad_props_init
-   call oldcloud_init
 
    i_dei    = pbuf_get_index('DEI',errcode=err)
    i_mu     = pbuf_get_index('MU',errcode=err)
@@ -272,180 +263,6 @@ end subroutine cloud_rad_props_init
 
 !==============================================================================
 
-subroutine cloud_rad_props_get_sw(state, pbuf, &
-                                  tau, tau_w, tau_w_g, tau_w_f,&
-                                  diagnosticindex, oldliq, oldice)
-
-! return totaled (across all species) layer tau, omega, g, f 
-! for all spectral interval for aerosols affecting the climate
-
-   ! Arguments
-   type(physics_state), intent(in)   :: state
-   type(physics_buffer_desc),pointer :: pbuf(:)
-   integer, optional,   intent(in) :: diagnosticindex      ! index (if present) to radiation diagnostic information
-
-   real(r8), intent(out) :: tau    (nswbands,pcols,pver) ! aerosol extinction optical depth
-   real(r8), intent(out) :: tau_w  (nswbands,pcols,pver) ! aerosol single scattering albedo * tau
-   real(r8), intent(out) :: tau_w_g(nswbands,pcols,pver) ! aerosol assymetry parameter * tau * w
-   real(r8), intent(out) :: tau_w_f(nswbands,pcols,pver) ! aerosol forward scattered fraction * tau * w
-
-   logical, optional, intent(in) :: oldliq,oldice
-
-   ! Local variables
-
-   integer :: ncol
-   integer :: lchnk
-   integer :: k, i    ! lev and daycolumn indices
-   integer :: iswband ! sw band indices
-
-   ! optical props for each aerosol
-   real(r8), pointer :: h_ext(:,:)
-   real(r8), pointer :: h_ssa(:,:)
-   real(r8), pointer :: h_asm(:,:)
-   real(r8), pointer :: n_ext(:)
-   real(r8), pointer :: n_ssa(:)
-   real(r8), pointer :: n_asm(:)
-
-   ! rad properties for liquid clouds
-   real(r8) :: liq_tau    (nswbands,pcols,pver) ! aerosol extinction optical depth
-   real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! aerosol single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! aerosol assymetry parameter * tau * w
-   real(r8) :: liq_tau_w_f(nswbands,pcols,pver) ! aerosol forward scattered fraction * tau * w
-
-   ! rad properties for ice clouds
-   real(r8) :: ice_tau    (nswbands,pcols,pver) ! aerosol extinction optical depth
-   real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! aerosol single scattering albedo * tau
-   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! aerosol assymetry parameter * tau * w
-   real(r8) :: ice_tau_w_f(nswbands,pcols,pver) ! aerosol forward scattered fraction * tau * w
-
-   !-----------------------------------------------------------------------------
-
-   ncol  = state%ncol
-   lchnk = state%lchnk
-
-   ! initialize to conditions that would cause failure
-   tau     (:,:,:) = -100._r8
-   tau_w   (:,:,:) = -100._r8
-   tau_w_g (:,:,:) = -100._r8
-   tau_w_f (:,:,:) = -100._r8
-
-   ! initialize layers to accumulate od's
-   tau    (:,1:ncol,:) = 0._r8
-   tau_w  (:,1:ncol,:) = 0._r8
-   tau_w_g(:,1:ncol,:) = 0._r8
-   tau_w_f(:,1:ncol,:) = 0._r8
-
-
-   call get_liquid_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f)
-
-   call get_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f)
-
-   tau    (:,1:ncol,:) =  liq_tau    (:,1:ncol,:) + ice_tau    (:,1:ncol,:)
-   tau_w  (:,1:ncol,:) =  liq_tau_w  (:,1:ncol,:) + ice_tau_w  (:,1:ncol,:)
-   tau_w_g(:,1:ncol,:) =  liq_tau_w_g(:,1:ncol,:) + ice_tau_w_g(:,1:ncol,:)
-   tau_w_f(:,1:ncol,:) =  liq_tau_w_f(:,1:ncol,:) + ice_tau_w_f(:,1:ncol,:)
-
-end subroutine cloud_rad_props_get_sw
-!==============================================================================
-
-subroutine cloud_rad_props_get_lw(state, pbuf, cld_abs_od, diagnosticindex, oldliq, oldice, oldcloud)
-
-! Purpose: Compute cloud longwave absorption optical depth
-!    cloud_rad_props_get_lw() is called by radlw() 
-
-   ! Arguments
-   type(physics_state), intent(in)  :: state
-   type(physics_buffer_desc),pointer:: pbuf(:)
-   real(r8),            intent(out) :: cld_abs_od(nlwbands,pcols,pver) ! [fraction] absorption optical depth, per layer
-   integer, optional,   intent(in)  :: diagnosticindex
-   logical, optional,   intent(in)  :: oldliq  ! use old liquid optics
-   logical, optional,   intent(in)  :: oldice  ! use old ice optics
-   logical, optional,   intent(in)  :: oldcloud  ! use old optics for both (b4b)
-
-   ! Local variables
-
-   integer :: bnd_idx     ! LW band index
-   integer :: i           ! column index
-   integer :: k           ! lev index
-   integer :: ncol        ! number of columns
-   integer :: lchnk
-
-   ! rad properties for liquid clouds
-   real(r8) :: liq_tau_abs_od(nlwbands,pcols,pver) ! liquid cloud absorption optical depth
-
-   ! rad properties for ice clouds
-   real(r8) :: ice_tau_abs_od(nlwbands,pcols,pver) ! ice cloud absorption optical depth
-
-   !-----------------------------------------------------------------------------
-
-   ncol = state%ncol
-   lchnk = state%lchnk
-
-   ! compute optical depths cld_absod 
-   cld_abs_od = 0._r8
-
-   if(present(oldcloud))then
-      if(oldcloud) then
-         ! make diagnostic calls to these first to output ice and liq OD's
-         !call old_liq_get_rad_props_lw(state, pbuf, liq_tau_abs_od, oldliqwp=.false.)
-         !call old_ice_get_rad_props_lw(state, pbuf, ice_tau_abs_od, oldicewp=.false.)
-         ! This affects climate (cld_abs_od)
-         call oldcloud_lw(state,pbuf,cld_abs_od,oldwp=.false.)
-         return
-      endif
-   endif
-
-   if(present(oldliq))then
-      if(oldliq) then
-         call old_liq_get_rad_props_lw(state, pbuf, liq_tau_abs_od, oldliqwp=.false.)
-      else
-         call liquid_cloud_get_rad_props_lw(state, pbuf, liq_tau_abs_od)
-      endif
-   else
-      call liquid_cloud_get_rad_props_lw(state, pbuf, liq_tau_abs_od)
-   endif
-
-   if(present(oldice))then
-      if(oldice) then
-         call old_ice_get_rad_props_lw(state, pbuf, ice_tau_abs_od, oldicewp=.false.)
-      else
-         call ice_cloud_get_rad_props_lw(state, pbuf, ice_tau_abs_od)
-      endif
-   else
-      call ice_cloud_get_rad_props_lw(state, pbuf, ice_tau_abs_od)
-   endif
-      
-   cld_abs_od(:,1:ncol,:) = liq_tau_abs_od(:,1:ncol,:) + ice_tau_abs_od(:,1:ncol,:) 
-
-end subroutine cloud_rad_props_get_lw
-
-!==============================================================================
-
-subroutine get_snow_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
-   type(physics_state), intent(in)   :: state
-   type(physics_buffer_desc),pointer :: pbuf(:)
-
-   real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
-   real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
-   real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
-
-   real(r8), pointer :: icswpth(:,:), des(:,:)
-
-   ! This does the same thing as get_ice_optics_sw, except with a different
-   ! water path and effective diameter.
-   call pbuf_get_field(pbuf, i_icswp, icswpth)
-   call pbuf_get_field(pbuf, i_des,   des)
-
-   call interpolate_ice_optics_sw(state%ncol, icswpth, des, tau, tau_w, &
-        tau_w_g, tau_w_f)
-
-end subroutine get_snow_optics_sw   
-
-!==============================================================================
-! Private methods
-!==============================================================================
-
 subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    type(physics_state), intent(in)   :: state
    type(physics_buffer_desc),pointer :: pbuf(:)
@@ -469,54 +286,21 @@ end subroutine get_ice_optics_sw
 
 !==============================================================================
 
-subroutine interpolate_ice_optics_sw(ncol, iciwpth, dei, tau, tau_w, &
-     tau_w_g, tau_w_f)
+subroutine ice_cloud_get_rad_props_lw(state, pbuf, abs_od)
+   type(physics_state), intent(in)     :: state
+   type(physics_buffer_desc), pointer  :: pbuf(:)
+   real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
 
-  integer, intent(in) :: ncol
-  real(r8), intent(in) :: iciwpth(pcols,pver)
-  real(r8), intent(in) :: dei(pcols,pver)
+   real(r8), pointer :: iciwpth(:,:), dei(:,:)
 
-  real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
-  real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-  real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
-  real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
+   ! Get relevant pbuf fields, and interpolate optical properties from
+   ! the lookup tables.
+   call pbuf_get_field(pbuf, i_iciwp, iciwpth)
+   call pbuf_get_field(pbuf, i_dei,   dei)
 
-  type(interp_type) :: dei_wgts
+   call interpolate_ice_optics_lw(state%ncol,iciwpth, dei, abs_od)
 
-  integer :: i, k, swband
-  real(r8) :: ext(nswbands), ssa(nswbands), asm(nswbands)
-
-  do k = 1,pver
-     do i = 1,ncol
-        if( iciwpth(i,k) < 1.e-80_r8 .or. dei(i,k) == 0._r8) then
-           ! if ice water path is too small, OD := 0
-           tau    (:,i,k) = 0._r8
-           tau_w  (:,i,k) = 0._r8
-           tau_w_g(:,i,k) = 0._r8
-           tau_w_f(:,i,k) = 0._r8
-        else
-           ! for each cell interpolate to find weights in g_d_eff grid.
-           call lininterp_init(g_d_eff, n_g_d, dei(i:i,k), 1, &
-                extrap_method_bndry, dei_wgts)
-           ! interpolate into grid and extract radiative properties
-           do swband = 1, nswbands
-              call lininterp(ext_sw_ice(:,swband), n_g_d, &
-                   ext(swband:swband), 1, dei_wgts)
-              call lininterp(ssa_sw_ice(:,swband), n_g_d, &
-                   ssa(swband:swband), 1, dei_wgts)
-              call lininterp(asm_sw_ice(:,swband), n_g_d, &
-                   asm(swband:swband), 1, dei_wgts)
-           end do
-           tau    (:,i,k) = iciwpth(i,k) * ext
-           tau_w  (:,i,k) = tau(:,i,k) * ssa
-           tau_w_g(:,i,k) = tau_w(:,i,k) * asm
-           tau_w_f(:,i,k) = tau_w_g(:,i,k) * asm
-           call lininterp_finish(dei_wgts)
-        endif
-     enddo
-  enddo
-
-end subroutine interpolate_ice_optics_sw
+end subroutine ice_cloud_get_rad_props_lw
 
 !==============================================================================
 
@@ -589,6 +373,30 @@ subroutine liquid_cloud_get_rad_props_lw(state, pbuf, abs_od)
    enddo
 
 end subroutine liquid_cloud_get_rad_props_lw
+
+!==============================================================================
+
+subroutine get_snow_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+   type(physics_state), intent(in)   :: state
+   type(physics_buffer_desc),pointer :: pbuf(:)
+
+   real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
+   real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
+
+   real(r8), pointer :: icswpth(:,:), des(:,:)
+
+   ! This does the same thing as get_ice_optics_sw, except with a different
+   ! water path and effective diameter.
+   call pbuf_get_field(pbuf, i_icswp, icswpth)
+   call pbuf_get_field(pbuf, i_des,   des)
+
+   call interpolate_ice_optics_sw(state%ncol, icswpth, des, tau, tau_w, &
+        tau_w_g, tau_w_f)
+
+end subroutine get_snow_optics_sw   
+
 !==============================================================================
 
 subroutine snow_cloud_get_rad_props_lw(state, pbuf, abs_od)
@@ -608,22 +416,57 @@ subroutine snow_cloud_get_rad_props_lw(state, pbuf, abs_od)
 end subroutine snow_cloud_get_rad_props_lw
 
 !==============================================================================
+! Private methods
+!==============================================================================
 
-subroutine ice_cloud_get_rad_props_lw(state, pbuf, abs_od)
-   type(physics_state), intent(in)     :: state
-   type(physics_buffer_desc), pointer  :: pbuf(:)
-   real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
+subroutine interpolate_ice_optics_sw(ncol, iciwpth, dei, tau, tau_w, &
+     tau_w_g, tau_w_f)
 
-   real(r8), pointer :: iciwpth(:,:), dei(:,:)
+  integer, intent(in) :: ncol
+  real(r8), intent(in) :: iciwpth(pcols,pver)
+  real(r8), intent(in) :: dei(pcols,pver)
 
-   ! Get relevant pbuf fields, and interpolate optical properties from
-   ! the lookup tables.
-   call pbuf_get_field(pbuf, i_iciwp, iciwpth)
-   call pbuf_get_field(pbuf, i_dei,   dei)
+  real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
+  real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
+  real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+  real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
-   call interpolate_ice_optics_lw(state%ncol,iciwpth, dei, abs_od)
+  type(interp_type) :: dei_wgts
 
-end subroutine ice_cloud_get_rad_props_lw
+  integer :: i, k, swband
+  real(r8) :: ext(nswbands), ssa(nswbands), asm(nswbands)
+
+  do k = 1,pver
+     do i = 1,ncol
+        if( iciwpth(i,k) < 1.e-80_r8 .or. dei(i,k) == 0._r8) then
+           ! if ice water path is too small, OD := 0
+           tau    (:,i,k) = 0._r8
+           tau_w  (:,i,k) = 0._r8
+           tau_w_g(:,i,k) = 0._r8
+           tau_w_f(:,i,k) = 0._r8
+        else
+           ! for each cell interpolate to find weights in g_d_eff grid.
+           call lininterp_init(g_d_eff, n_g_d, dei(i:i,k), 1, &
+                extrap_method_bndry, dei_wgts)
+           ! interpolate into grid and extract radiative properties
+           do swband = 1, nswbands
+              call lininterp(ext_sw_ice(:,swband), n_g_d, &
+                   ext(swband:swband), 1, dei_wgts)
+              call lininterp(ssa_sw_ice(:,swband), n_g_d, &
+                   ssa(swband:swband), 1, dei_wgts)
+              call lininterp(asm_sw_ice(:,swband), n_g_d, &
+                   asm(swband:swband), 1, dei_wgts)
+           end do
+           tau    (:,i,k) = iciwpth(i,k) * ext
+           tau_w  (:,i,k) = tau(:,i,k) * ssa
+           tau_w_g(:,i,k) = tau_w(:,i,k) * asm
+           tau_w_f(:,i,k) = tau_w_g(:,i,k) * asm
+           call lininterp_finish(dei_wgts)
+        endif
+     enddo
+  enddo
+
+end subroutine interpolate_ice_optics_sw
 
 !==============================================================================
 
@@ -655,11 +498,6 @@ subroutine interpolate_ice_optics_lw(ncol, iciwpth, dei, abs_od)
                    absor(lwband:lwband), 1, dei_wgts)
            enddo
            abs_od(:,i,k) = iciwpth(i,k) * absor
-!!== KZ_BUGFIX_20161011 
-!!         Limit the snow/ice optical depths fix the case where there are large masses 
-!!         of snow at high altitudes
-           where(abs_od(:,i,k) > 50.0_r8) abs_od(:,i,k) = 50.0_r8
-!!== KZ_BUGFIX_20161011 
            call lininterp_finish(dei_wgts)
         endif
      enddo

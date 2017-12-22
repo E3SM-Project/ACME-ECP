@@ -3950,7 +3950,7 @@ Default: .true.
 
 <!-- Radiation -->
 <entry id="radiation_scheme" type="char*16" category="radiation"
-       group="phys_ctl_nl" valid_values="rrtmg,camrt" >
+       group="phys_ctl_nl" valid_values="rrtmg,rrtmgp,camrt" >
 Type of radiation scheme employed. 
 Default: set by build-namelist
 </entry>
@@ -4164,6 +4164,14 @@ filepath and name for liquid cloud (gamma distributed) optics data for rrtmg
 Default: none
 </entry>
 
+<entry id="rrtmgp_coefficients_file_lw" type="char*256" category="radiation"
+       group="radiation_nl" valid_values="">
+File path for RRTMGP longwave coefficient file.
+</entry>
+<entry id="rrtmgp_coefficients_file_sw" type="char*256" category="radiation"
+       group="radiation_nl" valid_values="">
+File path for RRTMGP shortwave coefficient file.
+</entry>
 
 <!-- Rayleigh Friction Parameterization -->
 

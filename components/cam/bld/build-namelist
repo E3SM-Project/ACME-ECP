@@ -840,9 +840,7 @@ if ($rad_pkg eq 'camrt') {
     # Absorptivity and emissivity data
     add_default($nl, 'absems_data');
 } elsif ($rad_pkg eq 'rrtmgp') {
-    my @nlvars = qw(rrtmgp_coefs_lw_file rrtmgp_coefs_sw_file
-                    rrtmgp_iradsw  rrtmgp_iradlw  rrtmgp_irad_always
-                    rrtmgp_use_rad_dt_cosz  rrtmgp_spectralflux);
+    my @nlvars = qw(rrtmgp_coefficients_file_lw rrtmgp_coefficients_file_sw);
 
     foreach my $nlvar (@nlvars) {
         add_default($nl, $nlvar);

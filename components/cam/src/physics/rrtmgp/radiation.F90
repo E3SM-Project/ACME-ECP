@@ -36,7 +36,18 @@ use rad_constituents, only: N_DIAG
 ! RRTMGP gas optics object to store coefficient information. This is imported
 ! here so that we can make the k_dist objects module data and only load them
 ! once.
-use mo_gas_optics_specification, only: ty_gas_optics_specification
+use mo_gas_optics, only: ty_gas_optics_specification
+
+! PIO libraries needed for reading netcdf files
+use cam_pio_utils, only: cam_pio_openfile
+use pio, only: file_desc_t, var_desc_t,               &
+               PIO_NOERR, PIO_INTERNAL_ERROR,         &
+               pio_seterrorhandling, PIO_BCAST_ERROR, &
+               pio_inq_dimlen, pio_inq_dimid,         &
+               pio_inq_varid, pio_def_var,            &
+               pio_put_var, pio_get_var,              &
+               PIO_NOWRITE, pio_closefile
+
 
 implicit none
 private
@@ -120,7 +131,6 @@ logical :: use_rad_dt_cosz  = .false.
 
 ! Model data that is not controlled by namelist fields specifically follows
 ! below.
-character(len=16) :: microp_scheme  ! microphysics scheme
 
 character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ', &
                                       '_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
@@ -141,7 +151,7 @@ real(r8) :: dt_avg = 0.0_r8
 ! RRTMGP coefficients files, specified by coefficients_file_sw and
 ! coefficients_file_lw in the radiation namelist. They exist as module data
 ! because we only want to load those files once.
-class(ty_gas_optics_specification) :: k_dist_sw, k_dist_lw
+type(ty_gas_optics_specification) :: k_dist_sw, k_dist_lw
 
 ! k-distribution coefficients files to read from. These are set via namelist
 ! variables.
@@ -159,9 +169,78 @@ character(len=cl) :: coefficients_file_sw, coefficients_file_lw
 ! not think we need to use that.
 integer :: nswbands, nlwbands
 
+! These are used in the set_gases routines to convert between mmr and vmr
+real(r8), parameter :: amdw = 1.607793_r8    ! Molecular weight of dry air / water vapor
+real(r8), parameter :: amdc = 0.658114_r8    ! Molecular weight of dry air / carbon dioxide
+real(r8), parameter :: amdo = 0.603428_r8    ! Molecular weight of dry air / ozone
+real(r8), parameter :: amdm = 1.805423_r8    ! Molecular weight of dry air / methane
+real(r8), parameter :: amdn = 0.658090_r8    ! Molecular weight of dry air / nitrous oxide
+real(r8), parameter :: amdo2 = 0.905140_r8   ! Molecular weight of dry air / oxygen
+real(r8), parameter :: amdc1 = 0.210852_r8   ! Molecular weight of dry air / CFC11
+real(r8), parameter :: amdc2 = 0.239546_r8   ! Molecular weight of dry air / CFC12
+
+! Indices for copying data between cam and rrtmgp arrays
+! Assume the rrtmgp vertical index goes bottom to top of atm
+integer :: ktopcamm ! cam index of top layer
+integer :: ktopradm ! rrtmgp index of layer corresponding to ktopcamm
+integer :: ktopcami ! cam index of top interface
+integer :: ktopradi ! rrtmgp index of interface corresponding to ktopcami
+
+type, private :: gas_optics_coefficients
+   character(32), dimension(:),  allocatable :: gas_names
+   integer,  dimension(:,:,:),   allocatable :: key_species
+   integer,  dimension(:,:),     allocatable :: bnd_limits_gpt
+   real(r8), dimension(:,:),     allocatable :: bnd_limits_wavenumber
+   real(r8), dimension(:),       allocatable :: press_ref, temp_ref
+   real(r8)                                  :: press_ref_trop
+   real(r8)                                  :: absorption_coefficient_ref_T
+   real(r8)                                  :: absorption_coefficient_ref_P
+   real(r8), dimension(:,:,:),   allocatable :: vmr_ref
+   real(r8), dimension(:,:,:,:), allocatable :: kmajor
+   real(r8), dimension(:,:,:),   allocatable :: wv_self, wv_for
+   real(r8), dimension(:,:,:,:), allocatable :: kminor_lower, kminor_upper
+   real(r8), dimension(:,:),     allocatable :: totplnk
+   real(r8), dimension(:,:,:,:), allocatable :: planck_fraction
+   real(r8), dimension(:), allocatable :: solar_src
+   real(r8), dimension(:,:,:), allocatable :: rayl_lower, rayl_upper
+
+contains
+   procedure, public :: load_from_file=>coefficients_load_from_file
+   procedure, public :: free_allocated_memory=>coefficients_free_allocated_memory
+
+end type gas_optics_coefficients
+
+type(gas_optics_coefficients) :: coefficients_sw, coefficients_lw
+
+! give this module a name
+character(len=*), parameter :: module_name = 'radiation'
+
 !===============================================================================
 
 contains
+
+function coefficients_free_allocated_memory(this) result(error_message)
+   class(gas_optics_coefficients), intent(inout) :: this
+   character(len=128) :: error_message
+
+   ! Naively deallocate; TODO: better to check if allocated like below
+   deallocate(this%gas_names, this%key_species, this%bnd_limits_gpt, &
+              this%bnd_limits_wavenumber, this%press_ref, &
+              this%temp_ref, &
+              this%vmr_ref, this%kmajor, this%wv_self, this%wv_for, &
+              this%kminor_lower, this%kminor_upper)
+
+   ! These may or may not be allocated
+   if (allocated(this%totplnk)) deallocate(this%totplnk)
+   if (allocated(this%planck_fraction)) deallocate(this%planck_fraction)
+   if (allocated(this%solar_src)) deallocate(this%solar_src)
+   if (allocated(this%rayl_lower)) deallocate(this%rayl_lower)
+   if (allocated(this%rayl_upper)) deallocate(this%rayl_upper)
+
+   ! Return empty string for no errors
+   error_message = ""
+
+end function coefficients_free_allocated_memory
 
 !===============================================================================
 
@@ -172,9 +251,13 @@ subroutine radiation_readnl(nlfile)
 
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
+#ifdef SPMD
+   !use mpishorthand,    only: mpicom, mpilog, mpiint, mpichar
+#endif
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical, &
-                              mpi_character
-   use mpishorthand
+                              mpi_character, masterproc
+   use time_manager, only: get_step_size
+   use cam_logfile, only: iulog
 
    ! File containing namelist input
    character(len=*), intent(in) :: nlfile
@@ -203,7 +286,7 @@ subroutine radiation_readnl(nlfile)
       if (ierr == 0) then
          read(unitn, rrtmgp_nl, iostat=ierr)
          if (ierr /= 0) then
-            call endrun(sub // ':: ERROR reading namelist')
+            call endrun(subroutine_name // ':: ERROR reading namelist')
          end if
       end if
       close(unitn)
@@ -261,12 +344,16 @@ subroutine radiation_register()
    !----------------------------------------------------------------------------
 
    use physics_buffer, only: pbuf_add_field, dtype_r8
-   use radconstants,   only: nswbands, nlwbands
+   !use radconstants,   only: nswbands, nlwbands
 
    integer :: idx  ! dummy index for adding fields to physics buffer
 
    ! Heating rate profiles; QRS is the shortwave radiative heating rate, and QRL
    ! is the longwave radiative heating rate
+   ! TODO: Do QRS and QRL need to be set to "global" scope on the physics
+   ! buffer? Doing so forces them to be written to restart files, but is this
+   ! needed? It does not look like their values get read anywhere in this
+   ! module, just overwritten, so they may not need to be written to restarts.
    call pbuf_add_field('QRS', 'global', dtype_r8, (/pcols,pver/), qrs_idx)
    call pbuf_add_field('QRL', 'global', dtype_r8, (/pcols,pver/), qrl_idx)
 
@@ -285,6 +372,7 @@ subroutine radiation_register()
    !     SD: shortwave down
    !     LU: longwave up
    !     LD: longwave down
+   ! TODO: Do these need to be "global"? Why not "physpkg"?
    if (spectralflux) then
       call pbuf_add_field('SU', 'global', dtype_r8, (/pcols,pverp,nswbands/), su_idx)
       call pbuf_add_field('SD', 'global', dtype_r8, (/pcols,pverp,nswbands/), sd_idx)
@@ -431,8 +519,7 @@ function radiation_do(op, timestep)
    ! timestep? Move this to build/configure step to enable this.
    call phys_getopts(use_SPCAM_out=use_SPCAM)
    if (use_SPCAM) then
-      dosw = .true. 
-      dolw = .true.
+      radiation_do = .true. 
    else
       select case (op)
          case ('sw') ! do a shortwave heating calc this timestep?
@@ -511,7 +598,7 @@ subroutine radiation_init()
    use hirsbt,             only: hirsbt_init
    use hirsbtpar,          only: hirsname, msuname
    use modal_aer_opt,      only: modal_aer_opt_init
-   use time_manager,       only: get_step_size, is_first_restart_step
+   use time_manager,       only: get_nstep, get_step_size, is_first_restart_step
    use radiation_data,     only: init_rad_data
 
    ! RRTMGP modules
@@ -519,7 +606,8 @@ subroutine radiation_init()
          rrtmgp_sw_init=>rte_sw_init, &
          rrtmgp_lw_init=>rte_lw_init
    use mo_load_coefficients, only: rrtmgp_load_coefficients=>load_and_init
-   
+   use mo_gas_concentrations, only: ty_gas_concs
+
    integer :: icall, nmodes
    logical :: active_calls(0:N_DIAG)
    integer :: nstep                       ! current timestep number
@@ -533,22 +621,42 @@ subroutine radiation_init()
    integer :: dtime  ! time step
 
    logical :: use_SPCAM  ! SPCAM flag
-   character(len=16) :: SPCAM_microp_scheme  ! SPCAM microphysics scheme
+
+   character(len=128) :: error_message
+
+   type(ty_gas_concs) :: gas_concentrations_sw, gas_concentrations_lw
+
    !-----------------------------------------------------------------------
-    
-   call init_rad_data() ! initialize output fields for offline driver
 
-   call phys_getopts(microp_scheme_out = microp_scheme)
+   ! Initialize output fields for offline driver.
+   ! TODO: do we need to keep this functionality? Where is the offline driver?
+   ! Do we need to write a new offline driver for RRTMGP?
+   call init_rad_data() 
 
-   ! Read k-distribution coefficients from file and initialize k-distribution
+   ! Initialize gas concentrations. This is needed here because the
+   ! initialization routine for the kdist objects need information about what
+   ! gases are available. Generally, the _set_gases_ routines here grab gas
+   ! concentrations for arbitrary values of icall (the climate/diagnostic calls;
+   ! i.e., various loops over the radiation for different diagnostics?), but we
+   ! just set this equal to 0 here to get the gases that affect the climate.
+   ! TODO: it might be better to instead implement a function that just reads
+   ! the coefficients files, and stores the fields in a derived type, and then
+   ! to use these routines below just in the radiation_tend subroutine for each
+   ! loop over the climate/diagnostic icall just before setting up the rrtmgp
+   ! objects for the radiative transfer calls. 
+   !icall = 0
+   !call rrtmgp_set_gases(icall, state, pbuf, pver, gas_concentrations_sw)
+   !call rrtmgp_set_gases(icall, state, pbuf, pver, gas_concentrations_lw)
+
+   ! Read gas optics coefficients from file, but do *not* initialize k_dist
    ! objects.
-   call rrtmgp_load_coefficients(k_dist_sw, coefficients_file_sw)
-   call rrtmgp_load_coefficients(k_dist_lw, coefficients_file_lw
+   call coefficients_lw%load_from_file(coefficients_file_lw)
+   call coefficients_sw%load_from_file(coefficients_file_sw)
 
    ! Get number of bands used in shortwave and longwave and set module data
    ! appropriately so that these sizes can be used to allocate array sizes.
-   nswbands = k_dist_sw%get_nbands()
-   nlwbands = k_dist_lw%get_nbands()
+   !nswbands = k_dist_sw%get_nband()
+   !nlwbands = k_dist_lw%get_nband()
 
    ! Initialize the shortwave and longwave drivers
    error_message = rrtmgp_sw_init()
@@ -853,12 +961,6 @@ subroutine radiation_init()
    rei_idx      = pbuf_get_index('REI')
    dei_idx      = pbuf_get_index('DEI')
 
-   call phys_getopts(use_SPCAM_out = use_SPCAM)
-   call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
-   if (use_SPCAM .and. SPCAM_microp_scheme .eq. 'sam1mom') then
-      cldfsnow_idx = 0
-   end if
-
    if (cldfsnow_idx > 0) then
       call addfld ('CLDFSNOW',(/ 'lev' /),'I','1','CLDFSNOW',flag_xyfill=.true.)
       call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1', &
@@ -970,51 +1072,51 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
 
    real(r8) :: heating_rate(pcols,pver)  ! Net heating rate
 
-   ! Combined cloud radiative parameters (liquid, ice, and possibly snow). Note
-   ! that these are "in cloud" not "in cell"
-   real(r8) :: c_cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
-   real(r8) :: c_cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
-   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
-   real(r8) :: c_cld_tau_w_f(nswbands,pcols,pver) ! cloud forward scattered fraction * w * tau
-   real(r8) :: c_cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
-
-   ! Cloud radiative parameters (liquid and ice cloud). Note that these are are
-   ! "in cloud" not "in cell"
-   real(r8) :: cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
-   real(r8) :: cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
-   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
-   real(r8) :: cld_tau_w_f(nswbands,pcols,pver) ! cloud forward scattered fraction * w * tau
-   real(r8) :: cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
-
-   ! Ice cloud radiative parameters. Note that these are "in cloud" not "in cell".
-   real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
-   real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! ice single scattering albedo * tau
-   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice assymetry parameter * tau * w
-   real(r8) :: ice_tau_w_f(nswbands,pcols,pver) ! ice forward scattered fraction * tau * w
-   real(r8) :: ice_lw_abs (nlwbands,pcols,pver) ! ice absorption optics depth (LW)
-
-   ! "Snow" cloud radiative parameters. Note that these are "in cloud" not "in cell".
-   real(r8) :: snow_tau    (nswbands,pcols,pver) ! snow extinction optical depth
-   real(r8) :: snow_tau_w  (nswbands,pcols,pver) ! snow single scattering albedo * tau
-   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
-   real(r8) :: snow_tau_w_f(nswbands,pcols,pver) ! snow forward scattered fraction * tau * w
-   real(r8) :: snow_lw_abs (nlwbands,pcols,pver) ! snow absorption optics depth (LW)
-
-   ! Liquid cloud radiative parameters. Note that these are "in cloud" not "in cell".
-   real(r8) :: liq_tau    (nswbands,pcols,pver) ! liquid extinction optical depth
-   real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! liquid single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid assymetry parameter * tau * w
-   real(r8) :: liq_tau_w_f(nswbands,pcols,pver) ! liquid forward scattered fraction * tau * w
-   real(r8) :: liq_lw_abs (nlwbands,pcols,pver) ! liquid absorption optics depth (LW)
-
-   ! Aerosol radiative properties; why the heck are these ordered differently
-   ! from the cloud radiative properties? Is this a carry-over from old RRTMG
-   ! that we no longer need to perpetuate?
-   real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
-   real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
-   real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
-   real(r8) :: aer_lw_abs (pcols,pver,nlwbands)   ! aerosol absorption optics depth (LW)
+!   ! Combined cloud radiative parameters (liquid, ice, and possibly snow). Note
+!   ! that these are "in cloud" not "in cell"
+!   real(r8) :: c_cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
+!   real(r8) :: c_cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
+!   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
+!   real(r8) :: c_cld_tau_w_f(nswbands,pcols,pver) ! cloud forward scattered fraction * w * tau
+!   real(r8) :: c_cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
+!
+!   ! Cloud radiative parameters (liquid and ice cloud). Note that these are are
+!   ! "in cloud" not "in cell"
+!   real(r8) :: cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
+!   real(r8) :: cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
+!   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
+!   real(r8) :: cld_tau_w_f(nswbands,pcols,pver) ! cloud forward scattered fraction * w * tau
+!   real(r8) :: cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
+!
+!   ! Ice cloud radiative parameters. Note that these are "in cloud" not "in cell".
+!   real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
+!   real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! ice single scattering albedo * tau
+!   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice assymetry parameter * tau * w
+!   real(r8) :: ice_tau_w_f(nswbands,pcols,pver) ! ice forward scattered fraction * tau * w
+!   real(r8) :: ice_lw_abs (nlwbands,pcols,pver) ! ice absorption optics depth (LW)
+!
+!   ! "Snow" cloud radiative parameters. Note that these are "in cloud" not "in cell".
+!   real(r8) :: snow_tau    (nswbands,pcols,pver) ! snow extinction optical depth
+!   real(r8) :: snow_tau_w  (nswbands,pcols,pver) ! snow single scattering albedo * tau
+!   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
+!   real(r8) :: snow_tau_w_f(nswbands,pcols,pver) ! snow forward scattered fraction * tau * w
+!   real(r8) :: snow_lw_abs (nlwbands,pcols,pver) ! snow absorption optics depth (LW)
+!
+!   ! Liquid cloud radiative parameters. Note that these are "in cloud" not "in cell".
+!   real(r8) :: liq_tau    (nswbands,pcols,pver) ! liquid extinction optical depth
+!   real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! liquid single scattering albedo * tau
+!   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid assymetry parameter * tau * w
+!   real(r8) :: liq_tau_w_f(nswbands,pcols,pver) ! liquid forward scattered fraction * tau * w
+!   real(r8) :: liq_lw_abs (nlwbands,pcols,pver) ! liquid absorption optics depth (LW)
+!
+!   ! Aerosol radiative properties; why the heck are these ordered differently
+!   ! from the cloud radiative properties? Is this a carry-over from old RRTMG
+!   ! that we no longer need to perpetuate?
+!   real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
+!   real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
+!   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+!   real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
+!   real(r8) :: aer_lw_abs (pcols,pver,nlwbands)   ! aerosol absorption optics depth (LW)
 
    ! Pointers to heating rates on physics buffer
    real(r8), pointer :: qrs(:,:) => null()  ! shortwave radiative heating rate 
@@ -1046,7 +1148,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
 
    !----------------------------------------------------------------------
    
-   ! pointers to heating rates
+   ! Set pointers to heating rates stored on physics buffer
    call pbuf_get_field(pbuf, pbuf_get_index('QRS'), qrs)
    call pbuf_get_field(pbuf, pbuf_get_index('QRL'), qrl)
   
@@ -1076,12 +1178,22 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
       end if
    end do
 
+   ! Check if we are supposed to do shortwave and longwave stuff at this
+   ! timestep, and if we are then we begin setting optical properties and then
+   ! doing the radiative transfer separately for shortwave and longwave.
    dosw = radiation_do('sw')
    dolw = radiation_do('lw')
    if (dosw .or. dolw) then
 
       ! initialize RRTMGP state
       ! TODO
+
+      ! Read k-distribution coefficients from file and initialize k-distribution
+      ! objects.
+      !call rrtmgp_load_coefficients(k_dist_sw, coefficients_file_sw, &
+      !                              gas_concentrations_sw)
+      !call rrtmgp_load_coefficients(k_dist_lw, coefficients_file_lw, &
+      !                              gas_concentrations_lw)
 
       ! Do shortwave stuff...
       if (dosw) then
@@ -1199,7 +1311,7 @@ subroutine set_cloud_optics_sw(state, pbuf, cloud_sw)
    use mo_optical_props, only: ty_optical_props_2str
 
    type(physics_state), intent(in) :: state
-   type(physics_buffer_desc), intent(in) :: pbuf
+   type(physics_buffer_desc), pointer :: pbuf
    type(ty_optical_props_2str), intent(out) :: cloud_sw
 
    !if (use_SPCAM) then
@@ -1255,10 +1367,373 @@ subroutine output_radiation_diagnostics()
    integer :: nct_ice_icld_vistau(pcols,pver) ! the number of CRM column that has ice in-cloud visible sw optical depth 
    integer :: nct_snow_icld_vistau(pcols,pver) ! the number of CRM column that has snow in-cloud visible sw optical depth 
  
-end subroutine output_radiation_diagnostics()
+end subroutine output_radiation_diagnostics
 
 !===============================================================================
+subroutine rrtmgp_set_gases(icall, state, pbuf, nlay, gas_concs)
 
+   ! The gases in the LW coefficients file are:
+   ! H2O, CO2, O3, N2O, CO, CH4, O2, N2
+
+   ! The memory management for the gas_concs object is internal.  The arrays passed to it
+   ! are copied to the internally allocated memory.  Each call to the set_vmr method checks
+   ! whether the gas already has memory allocated, and if it does that memory is deallocated
+   ! and new memory is allocated.
+
+   use physics_types, only: physics_state
+   use physics_buffer, only: physics_buffer_desc
+   use rad_constituents, only: rad_cnst_get_gas
+   use mo_gas_concentrations, only: ty_gas_concs
+
+   ! arguments
+   integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
+   type(physics_state), target, intent(in)    :: state
+   type(physics_buffer_desc),   pointer       :: pbuf(:)
+   integer,                     intent(in)    :: nlay
+   type(ty_gas_concs),          intent(inout) :: gas_concs
+
+   ! local variables
+   integer :: ncol
+
+   real(r8), pointer     :: gas_mmr(:,:)
+   real(r8), allocatable :: gas_vmr(:,:)
+
+   character(len=128)          :: errmsg
+   character(len=*), parameter :: sub = 'rrtmgp_set_gases'
+   !--------------------------------------------------------------------------------
+
+   ncol = state%ncol
+
+   ! allocate array to pass to RRTMGP gas description object
+   allocate(gas_vmr(ncol,nlay))
+
+   ! Access gas mmr from CAM data structures.  Subset and convert mmr -> vmr.
+   ! If an extra layer is used copy the mixing ratios from CAM's top model layer.
+
+   ! H20
+   call rad_cnst_get_gas(icall, 'H2O', state, pbuf, gas_mmr)
+   ! water vapor represented as specific humidity in CAM
+   gas_vmr(:,:ktopradm) = (gas_mmr(:ncol,pver:ktopcamm:-1) / &
+                       (1._r8 - gas_mmr(:ncol,pver:ktopcamm:-1))) * amdw
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm)
+
+   errmsg = gas_concs%set_vmr('H2O', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting H2O: '//trim(errmsg))
+
+   ! CO2
+   call rad_cnst_get_gas(icall, 'CO2', state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdc
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('CO2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CO2: '//trim(errmsg))
+
+   ! O3
+   call rad_cnst_get_gas(icall, 'O3',  state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdo
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('O3', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting O3: '//trim(errmsg))
+
+   ! N2O
+   call rad_cnst_get_gas(icall, 'N2O', state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdn
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('N2O', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting N2O: '//trim(errmsg))
+
+   ! CO not available
+   gas_vmr  = 1.e-7_r8
+
+   errmsg = gas_concs%set_vmr('CO', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CO: '//trim(errmsg))
+
+   ! CH4
+   call rad_cnst_get_gas(icall, 'CH4', state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdm
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('CH4', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CH4: '//trim(errmsg))
+
+   ! O2
+   call rad_cnst_get_gas(icall, 'O2',  state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdo2
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('O2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting O2: '//trim(errmsg))
+
+   ! N2 not available
+   gas_vmr  = 0.7906_r8
+
+   errmsg = gas_concs%set_vmr('N2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting N2'//trim(errmsg))
+
+   ! CFCs not used?
+   !call rad_cnst_get_gas(icall, 'CFC11', state, pbuf, gas_mmr)
+   !call rad_cnst_get_gas(icall, 'CFC12', state, pbuf, gas_mmr)
+
+   deallocate(gas_vmr)
+
+end subroutine rrtmgp_set_gases
+
+
+subroutine rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs)
+
+   ! The gases in the LW coefficients file are:
+   ! H2O, CO2, O3, N2O, CO, CH4, O2, N2
+
+   ! The memory management for the gas_concs object is internal.  The arrays passed to it
+   ! are copied to the internally allocated memory.  Each call to the set_vmr method checks
+   ! whether the gas already has memory allocated, and if it does that memory is deallocated
+   ! and new memory is allocated.
+
+   use physics_types, only: physics_state
+   use physics_buffer, only: physics_buffer_desc
+   use rad_constituents, only: rad_cnst_get_gas
+   use mo_gas_concentrations, only: ty_gas_concs
+
+   ! arguments
+   integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
+   type(physics_state), target, intent(in)    :: state
+   type(physics_buffer_desc),   pointer       :: pbuf(:)
+   integer,                     intent(in)    :: nlay
+   type(ty_gas_concs),          intent(inout) :: gas_concs
+
+   ! local variables
+   integer :: ncol
+
+   real(r8), pointer     :: gas_mmr(:,:)
+   real(r8), allocatable :: gas_vmr(:,:)
+
+   character(len=128)          :: errmsg
+   character(len=*), parameter :: sub = 'rrtmgp_set_gases_lw'
+   !--------------------------------------------------------------------------------
+
+   ncol = state%ncol
+
+   ! allocate array to pass to RRTMGP gas description object
+   allocate(gas_vmr(ncol,nlay))
+
+   ! Access gas mmr from CAM data structures.  Subset and convert mmr -> vmr.
+   ! If an extra layer is used copy the mixing ratios from CAM's top model layer.
+
+   ! H20
+   call rad_cnst_get_gas(icall, 'H2O', state, pbuf, gas_mmr)
+   ! water vapor represented as specific humidity in CAM
+   gas_vmr(:,:ktopradm) = (gas_mmr(:ncol,pver:ktopcamm:-1) / &
+                       (1._r8 - gas_mmr(:ncol,pver:ktopcamm:-1))) * amdw
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm)
+
+   errmsg = gas_concs%set_vmr('H2O', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting H2O: '//trim(errmsg))
+
+   ! CO2
+   call rad_cnst_get_gas(icall, 'CO2', state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdc
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('CO2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CO2: '//trim(errmsg))
+
+   ! O3
+   call rad_cnst_get_gas(icall, 'O3',  state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdo
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('O3', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting O3: '//trim(errmsg))
+
+   ! N2O
+   call rad_cnst_get_gas(icall, 'N2O', state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdn
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('N2O', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting N2O: '//trim(errmsg))
+
+   ! CO not available
+   gas_vmr  = 1.e-7_r8
+
+   errmsg = gas_concs%set_vmr('CO', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CO: '//trim(errmsg))
+
+   ! CH4
+   call rad_cnst_get_gas(icall, 'CH4', state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdm
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('CH4', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CH4: '//trim(errmsg))
+
+   ! O2
+   call rad_cnst_get_gas(icall, 'O2',  state, pbuf, gas_mmr)
+   gas_vmr(:,:ktopradm) = gas_mmr(:ncol,pver:ktopcamm:-1)*amdo2
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('O2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting O2: '//trim(errmsg))
+
+   ! N2 not available
+   gas_vmr  = 0.7906_r8
+
+   errmsg = gas_concs%set_vmr('N2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting N2'//trim(errmsg))
+
+   ! CFCs not used?
+   !call rad_cnst_get_gas(icall, 'CFC11', state, pbuf, gas_mmr)
+   !call rad_cnst_get_gas(icall, 'CFC12', state, pbuf, gas_mmr)
+
+   deallocate(gas_vmr)
+
+end subroutine rrtmgp_set_gases_lw
+
+!==================================================================================================
+
+subroutine rrtmgp_set_gases_sw( &
+   icall, state, pbuf, nlay, nday, &
+   idxday, gas_concs)
+
+   ! The gases in the LW coefficients file are:
+   ! H2O, CO2, O3, N2O, CO, CH4, O2, N2
+
+   use physics_types, only: physics_state
+   use physics_buffer, only: physics_buffer_desc
+   use rad_constituents, only: rad_cnst_get_gas
+   use mo_gas_concentrations, only: ty_gas_concs
+
+   ! arguments
+   integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
+   type(physics_state), target, intent(in)    :: state
+   type(physics_buffer_desc),   pointer       :: pbuf(:)
+   integer,                     intent(in)    :: nlay
+   integer,                     intent(in)    :: nday
+   integer,                     intent(in)    :: idxday(:)
+   type(ty_gas_concs),          intent(inout) :: gas_concs
+
+   ! local variables
+   integer :: ncol, i
+
+   real(r8), pointer     :: gas_mmr(:,:)
+   real(r8), allocatable :: gas_vmr(:,:)
+
+   character(len=128)          :: errmsg
+   character(len=*), parameter :: sub = 'rrtmgp_set_gases'
+   !--------------------------------------------------------------------------------
+
+   ncol = state%ncol
+
+   ! allocate array to pass to RRTMGP gas description object
+   allocate(gas_vmr(nday,nlay))
+
+   ! Access gas mmr from CAM data structures.  Subset and convert mmr -> vmr.
+   ! If an extra layer is used copy the mixing ratios from CAM's top model layer.
+
+   ! H20
+   call rad_cnst_get_gas(icall, 'H2O', state, pbuf, gas_mmr)
+   do i = 1, nday
+      ! water vapor represented as specific humidity in CAM
+      gas_vmr(i,:ktopradm) = (gas_mmr(idxday(i),pver:ktopcamm:-1) / &
+                             (1._r8 - gas_mmr(idxday(i),pver:ktopcamm:-1))) * amdw
+   end do
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('H2O', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting H2O: '//trim(errmsg))
+
+   ! CO2
+   call rad_cnst_get_gas(icall, 'CO2', state, pbuf, gas_mmr)
+   do i = 1, nday
+      gas_vmr(i,:ktopradm) = gas_mmr(idxday(i),pver:ktopcamm:-1)*amdc
+   end do
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('CO2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CO2: '//trim(errmsg))
+
+   ! O3
+   call rad_cnst_get_gas(icall, 'O3',  state, pbuf, gas_mmr)
+   do i = 1, nday
+      gas_vmr(i,:ktopradm) = gas_mmr(idxday(i),pver:ktopcamm:-1)*amdo
+
+   end do
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('O3', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting O3: '//trim(errmsg))
+
+   ! N2O
+   call rad_cnst_get_gas(icall, 'N2O', state, pbuf, gas_mmr)
+   do i = 1, nday
+      gas_vmr(i,:ktopradm) = gas_mmr(idxday(i),pver:ktopcamm:-1)*amdn
+   end do
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('N2O', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting N2O: '//trim(errmsg))
+
+   ! CO not available
+   gas_vmr = 1.e-7_r8
+
+   errmsg = gas_concs%set_vmr('CO', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CO: '//trim(errmsg))
+
+   ! CH4
+   call rad_cnst_get_gas(icall, 'CH4', state, pbuf, gas_mmr)
+   do i = 1, nday
+      gas_vmr(i,:ktopradm) = gas_mmr(idxday(i),pver:ktopcamm:-1)*amdm
+   end do
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('CH4', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting CH4: '//trim(errmsg))
+
+   ! O2
+   call rad_cnst_get_gas(icall, 'O2',  state, pbuf, gas_mmr)
+   do i = 1, nday
+      gas_vmr(i,:ktopradm) = gas_mmr(idxday(i),pver:ktopcamm:-1)*amdo2
+   end do
+   if (nlay == pverp) gas_vmr(:,nlay) = gas_vmr(:,ktopradm) 
+
+   errmsg = gas_concs%set_vmr('O2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting O2: '//trim(errmsg))
+
+
+   ! N2 not available
+   gas_vmr = 0.7906_r8
+
+   errmsg = gas_concs%set_vmr('N2', gas_vmr)
+   if (len_trim(errmsg) > 0) call endrun(sub//': error setting N2'//trim(errmsg))
+
+   ! CFCs not used?
+   !call rad_cnst_get_gas(icall, 'CFC11', state, pbuf, gas_mmr)
+   !call rad_cnst_get_gas(icall, 'CFC12', state, pbuf, gas_mmr)
+
+   deallocate(gas_vmr)
+
+end subroutine rrtmgp_set_gases_sw
+
+
+#if 0
+type gas_coefficients_type
+
+end type
+subroutine read_coefficients(coefficients_file, coefficients)
+   ! My own subroutine to read coefficients *without* initializing a
+   ! ty_gas_optics_specification object, because such needs information about
+   ! the gases that may differ with icall.
+   character(len=*), intent(in) :: coefficients_file
+   type(gas_coefficients_type), intent(in) :: coefficients
+
+
+end subroutine
+#endif
+
+
+#if 0
 subroutine initialize_gas_optics(coefficients_file, gas_optics)
    ! Purpose: Read data from coefficients file.
 
@@ -1286,6 +1761,551 @@ subroutine initialize_gas_optics(coefficients_file, gas_optics)
    end if
 
 end subroutine initialize_gas_optics
+#endif
+
+
+#if 0
+subroutine coefs_init(coefs_file, kdist)
+   use cam_pio_utils, only: cam_pio_openfile
+   use pio, only: file_desc_t, var_desc_t,               &
+                  PIO_NOERR, PIO_INTERNAL_ERROR,         &
+                  pio_seterrorhandling, PIO_BCAST_ERROR, &
+                  pio_inq_dimlen, pio_inq_dimid,         &
+                  pio_inq_varid, pio_def_var,            &
+                  pio_put_var, pio_get_var,              &
+                  PIO_NOWRITE, pio_closefile
+   use ioFileMod, only: getfil
+
+
+   ! Read data from coefficients file.  Initialize the kdist object.
+
+   ! arguments
+   character(len=*),                  intent(in)  :: coefs_file
+   type(ty_gas_optics_specification), intent(out) :: kdist
+
+   ! local variables
+   type(file_desc_t)  :: file_handle    ! pio file handle
+   character(len=256) :: locfn ! path to actual file used
+
+   ! File dimensions
+   integer ::            &
+      absorber,          &
+      atmos_layer,       &
+      bnd,               &
+      pressure,          &
+      temperature,       &
+      major_absorber,    &
+      pressure_interp,   &
+      mixing_fraction,   &
+      gpt,               &
+      temperature_Planck
+   
+   integer :: i, j, k
+   integer :: did, vid
+   integer :: ierr
+
+   character(32), dimension(:),  allocatable :: gas_names
+   integer,  dimension(:,:,:),   allocatable :: key_species
+   integer,  dimension(:,:),     allocatable :: band2gpt
+   real(r8), dimension(:,:),     allocatable :: band_lim_wavenum
+   real(r8), dimension(:),       allocatable :: press_ref, temp_ref
+   real(r8)                                  :: press_ref_trop, temp_ref_t, temp_ref_p
+   real(r8), dimension(:,:,:),   allocatable :: vmr_ref
+   real(r8), dimension(:,:,:,:), allocatable :: kmajor
+   real(r8), dimension(:,:,:),   allocatable :: selfrefin, forrefin
+   real(r8), dimension(:,:,:,:), allocatable :: kminor_lower, kminor_upper
+   real(r8), dimension(:,:),     allocatable :: totplnk
+   real(r8), dimension(:,:,:,:), allocatable :: planck_frac
+   real(r8), dimension(:),       allocatable :: solar_src
+   real(r8), dimension(:,:,:),   allocatable :: rayl_lower, rayl_upper
+
+   character(len=128) :: error_msg
+
+   character(len=*), parameter :: sub = 'coefs_init'
+   !----------------------------------------------------------------------------
+
+   ! Open file
+   call getfil(coefs_file, locfn, 0)
+   call cam_pio_openfile(fh, locfn, PIO_NOWRITE)
+
+   call pio_seterrorhandling(fh, PIO_BCAST_ERROR)
+
+   ! Get dimensions and check for consistency with parameter values
+
+   ierr = pio_inq_dimid(fh, 'absorber', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': absorber not found')
+   ierr = pio_inq_dimlen(fh, did, absorber)
+
+   ierr = pio_inq_dimid(fh, 'atmos_layer', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': atmos_layer not found')
+   ierr = pio_inq_dimlen(fh, did, atmos_layer)
+
+   ierr = pio_inq_dimid(fh, 'bnd', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': bnd not found')
+   ierr = pio_inq_dimlen(fh, did, bnd)
+
+   ierr = pio_inq_dimid(fh, 'pressure', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': pressure not found')
+   ierr = pio_inq_dimlen(fh, did, pressure)
+
+   ierr = pio_inq_dimid(fh, 'temperature', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': temperature not found')
+   ierr = pio_inq_dimlen(fh, did, temperature)
+
+   ierr = pio_inq_dimid(fh, 'major_absorber', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': major_absorber not found')
+   ierr = pio_inq_dimlen(fh, did, major_absorber)
+
+   ierr = pio_inq_dimid(fh, 'pressure_interp', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': pressure_interp not found')
+   ierr = pio_inq_dimlen(fh, did, pressure_interp)
+
+   ierr = pio_inq_dimid(fh, 'mixing_fraction', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': mixing_fraction not found')
+   ierr = pio_inq_dimlen(fh, did, mixing_fraction)
+
+   ierr = pio_inq_dimid(fh, 'gpt', did)
+   if (ierr /= PIO_NOERR) call endrun(sub//': gpt not found')
+   ierr = pio_inq_dimlen(fh, did, gpt)
+
+   temperature_Planck = 0
+   ierr = pio_inq_dimid(fh, 'temperature_Planck', did)
+   if (ierr == PIO_NOERR) then
+      ierr = pio_inq_dimlen(fh, did, temperature_Planck)
+   end if
+   
+   ! Get variables
+
+   ! names of absorbing gases
+   allocate(gas_names(absorber))
+   ierr = pio_inq_varid(fh, 'gas_names', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': gas_names not found')
+   ierr = pio_get_var(fh, vid, gas_names)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading gas_names')
+
+   ! key species pair for each band
+   allocate(key_species(2,atmos_layer,bnd))
+   ierr = pio_inq_varid(fh, 'key_species', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': key_species not found')
+   ierr = pio_get_var(fh, vid, key_species)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading key_species')
+
+   ! beginning and ending gpoint for each band
+   allocate(band2gpt(2,bnd))
+   ierr = pio_inq_varid(fh, 'bnd_limits_gpt', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': bnd_limits_gpt not found')
+   ierr = pio_get_var(fh, vid, band2gpt)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading bnd_limits_gpt')
+
+   ! beginning and ending wavenumber for each band
+   allocate(band_lims_wavenum(2,bnd))
+   ierr = pio_inq_varid(fh, 'bnd_limits_wavenumber', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': bnd_limits_wavenumber not found')
+   ierr = pio_get_var(fh, vid, band_lims_wavenum)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading bnd_limits_wavenumber')
+
+   ! pressures [hPa] for reference atmosphere; press_ref(# reference layers)
+   allocate(press_ref(pressure))
+   ierr = pio_inq_varid(fh, 'press_ref', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': press_ref not found')
+   ierr = pio_get_var(fh, vid, press_ref)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading press_ref')
+
+   ! reference pressure separating the lower and upper atmosphere
+   ierr = pio_inq_varid(fh, 'press_ref_trop', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': press_ref_trop not found')
+   ierr = pio_get_var(fh, vid, press_ref_trop)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading press_ref_trop')
+
+   ! temperatures [K] for reference atmosphere; temp_ref(# reference layers)
+   allocate(temp_ref(temperature))
+   ierr = pio_inq_varid(fh, 'temp_ref', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': temp_ref not found')
+   ierr = pio_get_var(fh, vid, temp_ref)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading temp_ref')
+
+   ! standard spectroscopic reference temperature [K]
+   ierr = pio_inq_varid(fh, 'absorption_coefficient_ref_T', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': absorption_coefficient_ref_T not found')
+   ierr = pio_get_var(fh, vid, temp_ref_t)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading absorption_coefficient_ref_T')
+
+   ! standard spectroscopic reference pressure [hPa]
+   ierr = pio_inq_varid(fh, 'absorption_coefficient_ref_P', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': absorption_coefficient_ref_P not found')
+   ierr = pio_get_var(fh, vid, temp_ref_p)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading absorption_coefficient_ref_P')
+
+   ! volume mixing ratios for reference atmosphere
+   allocate(vmr_ref(atmos_layer,major_absorber,temperature))
+   ierr = pio_inq_varid(fh, 'vmr_ref', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': vmr_ref not found')
+   ierr = pio_get_var(fh, vid, vmr_ref)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading vmr_ref')
+
+   ! absorption coefficients due to major absorbing gases
+   allocate(kmajor(gpt,mixing_fraction,pressure_interp,temperature))
+   ierr = pio_inq_varid(fh, 'kmajor', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': kmajor not found')
+   ierr = pio_get_var(fh, vid, kmajor)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading kmajor')
+
+   ! absorption coefficients due to water vapor self continuum
+   allocate(selfrefin(gpt,mixing_fraction,temperature))
+   ierr = pio_inq_varid(fh, 'wv_self', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': wv_self not found')
+   ierr = pio_get_var(fh, vid, selfrefin)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading wv_self')
+
+   ! absorption coefficients due to water vapor foreign continuum
+   allocate(forrefin(gpt,mixing_fraction,temperature))
+   ierr = pio_inq_varid(fh, 'wv_for', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': wv_for not found')
+   ierr = pio_get_var(fh, vid, forrefin)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading wv_for')
+
+   ! absorption coefficients due to minor absorbing gases in lower part of atmosphere
+   allocate(kminor_lower(absorber,gpt,mixing_fraction,temperature))
+   ierr = pio_inq_varid(fh, 'kminor_lower', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': kminor_lower not found')
+   ierr = pio_get_var(fh, vid, kminor_lower)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading kminor_lower')
+
+   ! absorption coefficients due to minor absorbing gases in upper part of atmosphere
+   allocate(kminor_upper(absorber,gpt,mixing_fraction,temperature))
+   ierr = pio_inq_varid(fh, 'kminor_upper', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': kminor_upper not found')
+   ierr = pio_get_var(fh, vid, kminor_upper)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading kminor_upper')
+
+   ! integrated Planck function by band
+   ierr = pio_inq_varid(fh, 'totplnk', vid)
+   if (ierr == PIO_NOERR) then
+      allocate(totplnk(temperature_Planck,bnd))
+      ierr = pio_get_var(fh, vid, totplnk)
+      if (ierr /= PIO_NOERR) call endrun(sub//': error reading totplnk')
+   end if
+
+   ! Planck fractions
+   ierr = pio_inq_varid(fh, 'plank_fraction', vid)
+   if (ierr == PIO_NOERR) then
+      allocate(planck_frac(gpt,mixing_fraction,pressure_interp,temperature))
+      ierr = pio_get_var(fh, vid, planck_frac)
+      if (ierr /= PIO_NOERR) call endrun(sub//': error reading plank_fraction')
+   end if
+
+   ! solar_src
+   ierr = pio_inq_varid(fh, 'solar_source', vid)
+   if (ierr == PIO_NOERR) then
+      allocate(solar_src(gpt))
+      ierr = pio_get_var(fh, vid, solar_src)
+      if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source')
+   end if
+
+   ! rayleigh scattering contribution in lower part of atmosphere
+   ierr = pio_inq_varid(fh, 'rayl_lower', vid)
+   if (ierr == PIO_NOERR) then
+      allocate(rayl_lower(gpt,mixing_fraction,temperature))
+      ierr = pio_get_var(fh, vid, rayl_lower)
+      if (ierr /= PIO_NOERR) call endrun(sub//': error reading rayl_lower')
+   end if
+
+   ! rayleigh scattering contribution in upper part of atmosphere
+   ierr = pio_inq_varid(fh, 'rayl_upper', vid)
+   if (ierr == PIO_NOERR) then
+      allocate(rayl_upper(gpt,mixing_fraction,temperature))
+      ierr = pio_get_var(fh, vid, rayl_upper)
+      if (ierr /= PIO_NOERR) call endrun(sub//': error reading rayl_upper')
+   end if
+
+   ! Close file
+   call pio_closefile(fh)
+
+   if (allocated(totplnk) .and. allocated(planck_frac)) then
+      error_msg = kdist%init( &
+         gas_names, key_species, &
+         band2gpt, band_lims_wavenum, &
+         press_ref, press_ref_trop, temp_ref, &
+         temp_ref_p, temp_ref_t, vmr_ref, &
+         kmajor, selfrefin, forrefin, kminor_lower, kminor_upper, &
+         totplnk, planck_frac, rayl_lower, rayl_upper)
+   else if (allocated(solar_src)) then
+      error_msg = kdist%init( &
+         gas_names, key_species, &
+         band2gpt, band_lims_wavenum, &
+         press_ref, press_ref_trop, temp_ref, &
+         temp_ref_p, temp_ref_t, vmr_ref, &
+         kmajor, selfrefin, forrefin, kminor_lower, kminor_upper, &
+         solar_src, rayl_lower, rayl_upper)
+   else
+      error_msg = 'must supply either totplnk and planck_frac, or solar_src'
+   end if
+   if (error_msg /= ' ') call endrun(sub//': ERROR: '//trim(error_msg))
+
+   deallocate( &
+      gas_names, key_species,       &
+      band2gpt, band_lims_wavenum,    &
+      press_ref, temp_ref, vmr_ref, &
+      kmajor, selfrefin, forrefin,  &
+      kminor_lower, kminor_upper)
+   if (allocated(totplnk))     deallocate(totplnk)
+   if (allocated(planck_frac)) deallocate(planck_frac)
+   if (allocated(solar_src))   deallocate(solar_src)
+   if (allocated(rayl_lower))  deallocate(rayl_lower)
+   if (allocated(rayl_upper))  deallocate(rayl_upper)
+
+
+end subroutine coefs_init
+#endif
+
+function get_dimension_length(file_handle, dimension_name, stop_on_error) result(length)
+
+   type(file_desc_t), intent(in) :: file_handle
+   character(len=*), intent(in) :: dimension_name
+   logical, intent(in), optional :: stop_on_error
+   integer :: length
+
+   integer :: ierr, dimension_id
+   character(len=*), parameter :: sub = 'get_dimension_length'
+   character(len=128) :: error_message
+   logical :: stop_on_error_local = .true.
+
+   if (present(stop_on_error)) then
+      stop_on_error_local = stop_on_error
+   else
+      stop_on_error_local = .true.
+   end if
+
+   ! Try to read dimension size
+   ierr = pio_inq_dimid(file_handle, dimension_name, dimension_id)
+
+   ! If unsuccessful...
+   if (ierr /= PIO_NOERR) then
+      error_message = sub//': '//dimension_name//' not found'
+      if (stop_on_error_local) call endrun(error_message)
+   else
+      ierr = pio_inq_dimlen(file_handle, dimension_id, length)
+   end if
+end function get_dimension_length
+
+
+subroutine coefficients_load_from_file(this, filename)
+
+   ! Read data from coefficients file.
+
+   use cam_pio_utils, only: cam_pio_openfile
+   use pio, only: file_desc_t, var_desc_t,               &
+                  PIO_NOERR, PIO_INTERNAL_ERROR,         &
+                  pio_seterrorhandling, PIO_BCAST_ERROR, &
+                  pio_inq_dimlen, pio_inq_dimid,         &
+                  pio_inq_varid, pio_def_var,            &
+                  pio_put_var, pio_get_var,              &
+                  PIO_NOWRITE, pio_closefile
+   use ioFileMod, only: getfil
+
+   ! arguments
+   class(gas_optics_coefficients) :: this
+   character(len=*), intent(in) :: filename
+
+   ! local variables
+   type(file_desc_t)  :: file_handle    ! pio file handle
+   character(len=256) :: locfn ! path to actual file used
+
+   ! File dimensions
+   integer ::            &
+      absorber,          &
+      atmos_layer,       &
+      bnd,               &
+      pressure,          &
+      temperature,       &
+      major_absorber,    &
+      pressure_interp,   &
+      mixing_fraction,   &
+      gpt,               &
+      temperature_Planck
+   
+   integer :: i, j, k
+   integer :: did, vid
+   integer :: ierr, varid
+
+   character(len=128) :: error_msg
+
+   character(len=*), parameter :: sub = 'coefs_init'
+   !----------------------------------------------------------------------------
+
+   ! Open file
+   call getfil(filename, locfn, 0)
+   call cam_pio_openfile(file_handle, locfn, PIO_NOWRITE)
+
+   call pio_seterrorhandling(file_handle, PIO_BCAST_ERROR)
+
+   ! Get dimensions
+   absorber = get_dimension_length(file_handle, 'absorber')
+   atmos_layer = get_dimension_length(file_handle, 'atmos_layer')
+   bnd = get_dimension_length(file_handle, 'bnd')
+   pressure = get_dimension_length(file_handle, 'pressure')
+   temperature = get_dimension_length(file_handle, 'temperature')
+   major_absorber = get_dimension_length(file_handle, 'major_absorber')
+   pressure_interp = get_dimension_length(file_handle, 'pressure_interp')
+   mixing_fraction = get_dimension_length(file_handle, 'mixing_fraction')
+   gpt = get_dimension_length(file_handle, 'gpt')
+   temperature_Planck = get_dimension_length(file_handle, 'temperature_Planck', stop_on_error=.false.)
+
+   ! Get variables
+
+   ! names of absorbing gases
+   allocate(this%gas_names(absorber))
+   call handle_pio_error(pio_inq_varid(file_handle, 'gas_names', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%gas_names))
+
+   ! key species pair for each band
+   allocate(this%key_species(2,atmos_layer,bnd))
+   call handle_pio_error(pio_inq_varid(file_handle, 'key_species', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%key_species))
+
+   ! beginning and ending gpoint for each band
+   allocate(this%bnd_limits_gpt(2,bnd))
+   call handle_pio_error(pio_inq_varid(file_handle, 'bnd_limits_gpt', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%bnd_limits_gpt))
+
+   ! beginning and ending wavenumber for each band
+   allocate(this%bnd_limits_wavenumber(2,bnd))
+   call handle_pio_error(pio_inq_varid(file_handle, 'bnd_limits_wavenumber', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%bnd_limits_wavenumber))
+
+   ! pressures [hPa] for reference atmosphere; press_ref(# reference layers)
+   allocate(this%press_ref(pressure))
+   call handle_pio_error(pio_inq_varid(file_handle, 'press_ref', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%press_ref))
+
+   ! reference pressure separating the lower and upper atmosphere
+   call handle_pio_error(pio_inq_varid(file_handle, 'press_ref_trop', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%press_ref_trop))
+
+   ! temperatures [K] for reference atmosphere; temp_ref(# reference layers)
+   allocate(this%temp_ref(temperature))
+   call handle_pio_error(pio_inq_varid(file_handle, 'temp_ref', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%temp_ref))
+
+   ! standard spectroscopic reference temperature [K]
+   call handle_pio_error(pio_inq_varid(file_handle, 'absorption_coefficient_ref_T', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%absorption_coefficient_ref_T))
+
+   ! standard spectroscopic reference pressure [hPa]
+   call handle_pio_error(pio_inq_varid(file_handle, 'absorption_coefficient_ref_P', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%absorption_coefficient_ref_P))
+
+   ! volume mixing ratios for reference atmosphere
+   allocate(this%vmr_ref(atmos_layer,major_absorber,temperature))
+   call handle_pio_error(pio_inq_varid(file_handle, 'vmr_ref', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%vmr_ref))
+
+   ! absorption coefficients due to major absorbing gases
+   allocate(this%kmajor(gpt,mixing_fraction,pressure_interp,temperature))
+   call handle_pio_error(pio_inq_varid(file_handle, 'kmajor', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%kmajor))
+
+   ! absorption coefficients due to water vapor self continuum
+   allocate(this%wv_self(gpt,mixing_fraction,temperature))
+   call handle_pio_error(pio_inq_varid(file_handle, 'wv_self', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%wv_self))
+
+   ! absorption coefficients due to water vapor self continuum
+   allocate(this%wv_for(gpt,mixing_fraction,temperature))
+   call handle_pio_error(pio_inq_varid(file_handle, 'wv_for', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%wv_for))
+
+   ! absorption coefficients due to minor absorbing gases in lower part of atmosphere
+   allocate(this%kminor_lower(absorber,gpt,mixing_fraction,temperature))
+   call handle_pio_error(pio_inq_varid(file_handle, 'kminor_lower', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%kminor_lower))
+
+   ! absorption coefficients due to minor absorbing gases in upper part of atmosphere
+   allocate(this%kminor_upper(absorber,gpt,mixing_fraction,temperature))
+   call handle_pio_error(pio_inq_varid(file_handle, 'kminor_upper', varid))
+   call handle_pio_error(pio_get_var(file_handle, varid, this%kminor_upper))
+
+   ! integrated Planck function by band
+   if (var_exists(file_handle, 'totplnk')) then
+      allocate(this%totplnk(temperature_Planck,bnd))
+      call handle_pio_error(pio_inq_varid(file_handle, 'totplnk', varid))
+      call handle_pio_error(pio_get_var(file_handle, varid, this%totplnk))
+   end if
+
+   ! Planck fractions
+   if (var_exists(file_handle, 'planck_fraction')) then
+      allocate(this%planck_fraction(gpt,mixing_fraction,pressure_interp,temperature))
+      call handle_pio_error(pio_inq_varid(file_handle, 'planck_fraction', varid))
+      call handle_pio_error(pio_get_var(file_handle, varid, this%planck_fraction))
+   end if
+
+   ! solar_src
+   if (var_exists(file_handle, 'solar_src')) then
+      allocate(this%solar_src(gpt))
+      call handle_pio_error(pio_inq_varid(file_handle, 'solar_src', varid))
+      call handle_pio_error(pio_get_var(file_handle, varid, this%solar_src))
+   end if
+
+   ! rayleigh scattering contribution in lower part of atmosphere
+   if (var_exists(file_handle, 'rayl_lower')) then
+      allocate(this%rayl_lower(gpt,mixing_fraction,temperature))
+      call handle_pio_error(pio_inq_varid(file_handle, 'rayl_lower', varid))
+      call handle_pio_error(pio_get_var(file_handle, varid, this%rayl_lower))
+   end if
+
+   ! rayleigh scattering contribution in upper part of atmosphere
+   if (var_exists(file_handle, 'rayl_upper')) then
+      allocate(this%rayl_upper(gpt,mixing_fraction,temperature))
+      call handle_pio_error(pio_inq_varid(file_handle, 'rayl_upper', varid))
+      call handle_pio_error(pio_get_var(file_handle, varid, this%rayl_upper))
+   end if
+
+   ! Close file
+   call pio_closefile(file_handle)
+
+contains
+   logical function var_exists(file_handle, var_name)
+
+      type(file_desc_t), intent(in) :: file_handle
+      character(len=*), intent(in) :: var_name
+      integer :: var_id, error_status
+
+      ! try to find variable in file
+      error_status = pio_inq_varid(file_handle, var_name, var_id)
+
+      ! If variable ID query was successful, error_status will be PIO_NOERR
+      ! and we set the existence flags to .true., otherwise we set the
+      ! existence flags to .false.
+      if (error_status == PIO_NOERR) then
+         var_exists = .true.
+      else
+         var_exists = .false.
+      end if
+
+   end function var_exists
+
+   subroutine handle_pio_error(error_status, stop_on_error)
+      integer, intent(in) :: error_status
+      logical, intent(in), optional :: stop_on_error
+      logical :: stop_on_error_local = .true.
+
+      ! Allow passing of an optional flag to not stop the run if an error is
+      ! encountered. This allows this subroutine to be used when inquiring if a
+      ! variable exists without failing.
+      if (present(stop_on_error)) then
+         stop_on_error_local = stop_on_error
+      else
+         stop_on_error_local = .true.
+      end if
+
+      ! If we encounter an error, fail if we require success. Otherwise do
+      ! nothing and return silently.
+      if (error_status /= PIO_NOERR) then
+         if (stop_on_error_local) call endrun(module_name // ' PIO failure.')
+      end if
+   end subroutine handle_pio_error
+
+end subroutine coefficients_load_from_file
 
 
 end module radiation
