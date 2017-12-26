@@ -435,9 +435,9 @@ module module_ecpp_ppdriver2
     use time_manager,   only: get_nstep, is_first_step
     use constituents,   only: cnst_name
     use cam_history,    only: outfld
-  #ifdef MODAL_AERO
+#ifdef MODAL_AERO
     use modal_aero_data, only: ntot_amode, cnst_name_cw,  qqcw_get_field
-  #endif
+#endif
 
     ! modules from ECPP
     use module_ecpp_td2clm, only:  parampollu_td240clm
@@ -548,29 +548,29 @@ module module_ecpp_ppdriver2
     real(r8)  ::  wbnd_bar   (pverp)                ! vertical velocity at layer boundaries (m/s)  
     real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  ! mixing ratios of trace gase (ppm) and aerosol species
                                                         ! (ug/kg for mass species, #/kg for number species)
-  #ifdef MODAL_AERO
+#ifdef MODAL_AERO
     ! real(r8), pointer, dimension(:, :, :) :: qqcw  ! cloud-borne aerosol
     type(ptr2d_t) :: qqcw(pcnst)
     ! real(r8) :: qqcwold(pcols, pver, pcnst)
-  #endif
-    real(r8), dimension(zpverp,0:2,0:maxcls_ecpp)      :: abnd_tavg
-    real(r8), dimension( pverp,0:2,0:maxcls_ecpp)      :: abnd_tfin
-    real(r8), dimension( pverp,0:2,0:maxcls_ecpp)      :: mfbnd
-    real(r8), dimension( pver ,0:2,0:maxcls_ecpp)      :: acen_tavg
-    real(r8), dimension( pver ,0:2,0:maxcls_ecpp)      :: acen_tfin
-    real(r8), dimension( pver ,0:2,0:maxcls_ecpp)      :: acen_tbeg
-    real(r8), dimension( pver ,0:2,0:maxcls_ecpp)      :: acen_prec
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2)  :: rh_sub2
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2)  :: qcloud_sub2
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2)  :: qlsink_sub2
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2)  :: precr_sub2
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2)  :: precs_sub2
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp )  :: del_cldchem       ! tendency of chem_sub from aqueous chemistry
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp )  :: del_rename        ! tendency of chem_sub from renaming.
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp )  :: del_wetscav       ! tendency of chem_sub from wet deposition
-    real(r8), dimension( pver ,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp )  :: del_wetresu       !
-    real(r8), dimension(pver, 1:2, 1:maxcls_ecpp,    1:num_chem_ecpp )  :: del_activate      ! tendency of chem_sub from activation/resuspension
-    real(r8), dimension(pver, 1:2, 1:maxcls_ecpp,    1:num_chem_ecpp )  :: del_conv          ! tendency of chem_sub from convective transport
+#endif
+    real(r8), dimension(pverp,0:2,0:maxcls_ecpp)      :: abnd_tavg
+    real(r8), dimension(pverp,0:2,0:maxcls_ecpp)      :: abnd_tfin
+    real(r8), dimension(pverp,0:2,0:maxcls_ecpp)      :: mfbnd
+    real(r8), dimension(pver ,0:2,0:maxcls_ecpp)      :: acen_tavg
+    real(r8), dimension(pver ,0:2,0:maxcls_ecpp)      :: acen_tfin
+    real(r8), dimension(pver ,0:2,0:maxcls_ecpp)      :: acen_tbeg
+    real(r8), dimension(pver ,0:2,0:maxcls_ecpp)      :: acen_prec
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2)  :: rh_sub2
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2)  :: qcloud_sub2
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2)  :: qlsink_sub2
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2)  :: precr_sub2
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2)  :: precs_sub2
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp )  :: del_cldchem       ! tendency of chem_sub from aqueous chemistry
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp )  :: del_rename        ! tendency of chem_sub from renaming.
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp )  :: del_wetscav       ! tendency of chem_sub from wet deposition
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp )  :: del_wetresu       !
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,    1:num_chem_ecpp )  :: del_activate      ! tendency of chem_sub from activation/resuspension
+    real(r8), dimension(pver ,1:2,1:maxcls_ecpp,    1:num_chem_ecpp )  :: del_conv          ! tendency of chem_sub from convective transport
 
     real(r8), dimension(pcols,pver,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp) :: del_cldchem3d   ! tendency of chem_sub from aqueous chemistry
     real(r8), dimension(pcols,pver,1:2,1:maxcls_ecpp,1:2,1:num_chem_ecpp) :: del_rename3d    ! tendency of chem_sub from renaming.
@@ -747,8 +747,8 @@ module module_ecpp_ppdriver2
       dtstep, dtstep_pp
     end if ! (lun61 > 0)
     !rcetestpp diagnostics --------------------------------------------------
-  93010   format( a, 8(1x,i6) )
-  93020   format( a, 8(1p,e14.6) )
+93010   format( a, 8(1x,i6) )
+93020   format( a, 8(1p,e14.6) )
 
 
     if (num_chem_ecpptmp < num_chem_ecpp)  then 
@@ -826,7 +826,7 @@ module module_ecpp_ppdriver2
     levdbg_err = 0
     levdbg_info = 15
 
-  #ifdef MODAL_AERO
+#ifdef MODAL_AERO
     ! mbuf = pbuf_get_fld_idx( 'QQCW' )
     ! if ( associated(pbuf(mbuf)%fld_ptr) ) then
     !   qqcw => pbuf(mbuf)%fld_ptr( 1, 1:pcols, 1:pver, lchnk, 1:pcnst )
@@ -839,7 +839,7 @@ module module_ecpp_ppdriver2
     do i=1,pcnst
       qqcw(i)%fldcw   =>  qqcw_get_field(pbuf, i,lchnk,.true.)
     end do
-  #endif
+#endif
     
     !---------------------------------------------------------------
     ! Begin loop over columns
@@ -875,7 +875,7 @@ module module_ecpp_ppdriver2
         do ichem=1,num_chem_ecpp
           if(ichem.le.pcnst) then
             chem_bar(pver-k+1, ichem) = state%q(i, k, ichem)
-  #ifdef MODAL_AERO
+#ifdef MODAL_AERO
           else
             ! chem_bar(pver-k+1, ichem) = qqcw(i, k, ichem-pcnst)
             if(associated(qqcw(ichem-pcnst)%fldcw)) then
@@ -883,7 +883,7 @@ module module_ecpp_ppdriver2
             else
               chem_bar(pver-k+1, ichem) = 0.0
             end if
-  #endif
+#endif
           end if
         end do ! ichem=1,num_chem_ecpp
       end do ! k=pver,1,-1
@@ -915,11 +915,11 @@ module module_ecpp_ppdriver2
         jcls = jcls + 1
 
         kdraft_bot_ecpp(   1:2,jcls) = max( kupdraftbase(n), 1 )
-  #ifdef ECPP_LEV_MOD
+#ifdef ECPP_LEV_MOD
         kdraft_top_ecpp(   1:2,jcls) = min( kupdrafttop(n), crm_nz )
-  #else
+#else
         kdraft_top_ecpp(   1:2,jcls) = min( kupdrafttop(n), pver )
-  #endif
+#endif
         mtype_updnenv_ecpp(1:2,jcls) = mtype_updraft_ecpp
       end do ! n=1,nupdraft
 
