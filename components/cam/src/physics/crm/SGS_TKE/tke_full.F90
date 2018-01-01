@@ -27,6 +27,12 @@ contains
     real(crm_rknd) qsatt,dqsat
     integer i,j,k,kc,kb
 
+    real(crm_rknd) tk_min_value   ! whannah - min value for eddy viscosity (TK)
+    real(crm_rknd) tk_min_depth   ! whannah - near-surface depth to apply tk_min (meters)
+
+    tk_min_value = 0.05
+    tk_min_depth = 500.
+
     !call t_startf('tke_full')
 
     !Cs = 0.1944
@@ -120,16 +126,13 @@ contains
 
           if(dosmagor) then
 
-#ifdef SP_TK_LIM
-            ! whannah - alternate limiter for eddy viscosity
-            ! limit buoyant tk production to not be negative,
-            ! and also put a hard limit on near-surface tk
-            tk(i,j,k)=sqrt(Ck**3/Cee*max(def2(i,j,k),def2(i,j,k)-Pr*buoy_sgs))*smix**2
-            if ( z(k).lt.1000. ) then
-              tk(i,j,k) = max( tk(i,j,k), real(0.1,crm_rknd) ) 
-            end if
-#else
             tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
+
+#ifdef SP_TK_LIM
+            ! whannah - put a hard limit on near-surface tk
+            if ( z(k).lt.tk_min_depth ) then
+              tk(i,j,k) = max( tk(i,j,k), tk_min_value ) 
+            end if
 #endif
 
             ! tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
