@@ -904,11 +904,12 @@ module module_ecpp_ppdriver2
       kdraft_top_ecpp(   1:2,jcls) = pver 
       mtype_updnenv_ecpp(1:2,jcls) = mtype_quiescn_ecpp
 
-      ! #ifdef ECPP_LEV_MOD
-      !   kupdrafttop  = crm_nz  ! whannah
-      !   kdndrafttop  = crm_nz  ! whannah
-      !   kdraft_top_ecpp(   1:2,jcls) = crm_nz ! whannah
-      ! #endif
+! whannah - make sure there's no mass flux above CRM top
+! #ifdef ECPP_LEV_MOD
+!       kupdrafttop  = crm_nz  ! whannah
+!       kdndrafttop  = crm_nz  ! whannah
+!       kdraft_top_ecpp(   1:2,jcls) = crm_nz ! whannah
+! #endif
 
       ! load updrafts
       do n=1,nupdraft
@@ -928,13 +929,13 @@ module module_ecpp_ppdriver2
         jcls = jcls + 1
 
         kdraft_bot_ecpp(   1:2,jcls) = max( kdndraftbase(n), 1 )
-  ! whannah
-  ! #ifdef ECPP_LEV_MOD
-  !         kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), crm_nz ) ! whannah
-  ! #else
+! whannah - make sure there's no mass flux above CRM top
+! #ifdef ECPP_LEV_MOD
+!         kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), crm_nz ) ! whannah
+! #else
         kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
-  ! #endif
-  ! whannah 
+! #endif
+! whannah 
         mtype_updnenv_ecpp(1:2,jcls) = mtype_dndraft_ecpp
       end do ! n=1,ndndraft
 
@@ -989,19 +990,19 @@ module module_ecpp_ppdriver2
         do jclrcld=1,2
           kdraft_top_ecpp(jclrcld,jcls) = max( kdraft_top_ecpp(jclrcld,jcls),   &
                                                kdraft_bot_ecpp(jclrcld,jcls)+1 )
-  ! ! whannah
-  ! #ifdef ECPP_LEV_MOD
-  !       if (kdraft_top_ecpp(jclrcld,jcls) .gt. crm_nz) then
-  !         kdraft_top_ecpp(jclrcld,jcls) = crm_nz
-  !         kdraft_bot_ecpp(jclrcld,jcls) = crm_nz-1
-  !       end if
-  ! #else
-  !       ! if (kdraft_top_ecpp(jclrcld,jcls) .gt. pver) then
-  !       !   kdraft_top_ecpp(jclrcld,jcls) = pver
-  !       !   kdraft_bot_ecpp(jclrcld,jcls) = pver-1
-  !       ! end if
-  ! #endif
-  ! ! whannah
+! ! whannah - make sure there's no mass flux above CRM top
+! #ifdef ECPP_LEV_MOD
+!       if (kdraft_top_ecpp(jclrcld,jcls) .gt. crm_nz) then
+!         kdraft_top_ecpp(jclrcld,jcls) = crm_nz
+!         kdraft_bot_ecpp(jclrcld,jcls) = crm_nz-1
+!       end if
+! #else
+!       ! if (kdraft_top_ecpp(jclrcld,jcls) .gt. pver) then
+!       !   kdraft_top_ecpp(jclrcld,jcls) = pver
+!       !   kdraft_bot_ecpp(jclrcld,jcls) = pver-1
+!       ! end if
+! #endif
+! ! whannah
         end do ! jclrcld=1,2
       end do ! jcls=1,ncls_ecpp
 
@@ -1014,33 +1015,33 @@ module module_ecpp_ppdriver2
         acen_tbeg(lk,1,jcls) = 1.0_r8 - acen_tbeg(lk,2,jcls)
       end do
 
-  ! ! whannah - make sure there's no mass flux above CRM top
-  ! #ifdef ECPP_LEV_MOD
-  !   do jcls = 1, ncls_ecpp
-  !   do icc = 1, 2
-  !   ! do k=1, pver
-  !   do k=1,crm_nz
-  !     lk=pver-k+1
-  !     mfbnd(    lk,icc,jcls) = 0.0
-  !     acen_prec(lk,icc,jcls) = 0.0
-  !     ! Set the area of quiescent, non-precipitating class to 1
-  !     if (jcls.eq.jcls_quiescn .and. icc.eq.1) then
-  !       abnd_tavg(lk,icc,jcls) = 1.0
-  !       abnd_tfin(lk,icc,jcls) = 1.0
-  !       acen_tbeg(lk,icc,jcls) = 1.0
-  !       acen_tavg(lk,icc,jcls) = 1.0
-  !       acen_tfin(lk,icc,jcls) = 1.0
-  !     else
-  !       abnd_tavg(lk,icc,jcls) = 0.0
-  !       abnd_tfin(lk,icc,jcls) = 0.0
-  !       acen_tbeg(lk,icc,jcls) = 0.0
-  !       acen_tavg(lk,icc,jcls) = 0.0
-  !       acen_tfin(lk,icc,jcls) = 0.0
-  !     end if
-  !   end do
-  !   end do
-  !   end do
-  ! #endif
+! ! whannah - make sure there's no mass flux above CRM top
+! #ifdef ECPP_LEV_MOD
+!   do jcls = 1, ncls_ecpp
+!   do icc = 1, 2
+!   ! do k=1, pver
+!   do k=1,crm_nz
+!     lk=pver-k+1
+!     mfbnd(    lk,icc,jcls) = 0.0
+!     acen_prec(lk,icc,jcls) = 0.0
+!     ! Set the area of quiescent, non-precipitating class to 1
+!     if (jcls.eq.jcls_quiescn .and. icc.eq.1) then
+!       abnd_tavg(lk,icc,jcls) = 1.0
+!       abnd_tfin(lk,icc,jcls) = 1.0
+!       acen_tbeg(lk,icc,jcls) = 1.0
+!       acen_tavg(lk,icc,jcls) = 1.0
+!       acen_tfin(lk,icc,jcls) = 1.0
+!     else
+!       abnd_tavg(lk,icc,jcls) = 0.0
+!       abnd_tfin(lk,icc,jcls) = 0.0
+!       acen_tbeg(lk,icc,jcls) = 0.0
+!       acen_tavg(lk,icc,jcls) = 0.0
+!       acen_tfin(lk,icc,jcls) = 0.0
+!     end if
+!   end do
+!   end do
+!   end do
+! #endif
 
       !----------------------------------------------------------------
       !   start of temporary diagnostics ------------------------------
@@ -1240,6 +1241,11 @@ module module_ecpp_ppdriver2
           lk=pver-k+1
           acldy_cen_tbeg_3d(i,k) = sum( acen_tfin(lk,2,1:ncls_ecpp) )
         end do
+
+!!! print variables for deugging  
+! write(*,6540) lchnk,i,'01',(minval(chem_bar(:,:)))  ,(maxval(chem_bar(:,:))) &
+!                           ,(minval(state%q(i,:,:))) ,(maxval(state%q(i,:,:)))
+! 6540 format('whannah - ',i6,' ',i4,' - ',A3,' - min/max chem_bar/q ',f15.2,' / ',f15.2,' - ',f15.2,' / ',f15.2  )
 
         ! Interstial species 
         ptend_qqcw(i,:,:) = 0.0
