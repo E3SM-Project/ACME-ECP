@@ -662,24 +662,19 @@
 
       dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
 
-#ifdef SPFLUXBYPASS_1
-      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
-#endif
+   ! whannah - The surface flux bypass option was implemented to move the 
+   ! addition of surface fluxes to be after the dynamical core. This modification 
+   ! has been commented out because it did not improve the simulation, and would
+   ! often lead to an error to be thrown in the energy balance check.
+   !   SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
+   !   SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
 
-
-#ifdef SPFLUXBYPASS_2
-      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
-#endif
-
-
-#ifdef SPFLUXBYPASS_3
-      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
-#endif
-
-
-#ifdef SPFLUXBYPASS_4
-      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
-#endif
+! #if defined(SPFLUXBYPASS_1)
+!       dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+! #endif
+! #if defined(SPFLUXBYPASS_2)
+!       dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+! #endif
 
      ! Diffuse dry static energy
      !----------------------------------------------------------------------------------------------------
@@ -753,14 +748,7 @@
 
        if( diffuse(fieldlist,'q',m) ) then
 
-! whannah - SP_DIFF_CNST was an attempt to have non-water constituents diffused 
-! in tphysac in order to solve an aerosol optical depth error near the surface 
-! in ACME-SP but it did not seem to make any difference (feel free to remove)
-! #ifndef SP_DIFF_CNST
            if (.not. use_SPCAM) then
-! #else
-!            if ( (use_SPCAM .and. m.ge.4).or.(.not. use_SPCAM) ) then
-! #endif
 
              ! Add the nonlocal transport terms to constituents in the PBL.
              ! Check for neg q's in each constituent and put the original vertical
@@ -785,29 +773,15 @@
            ! Add the explicit surface fluxes to the lowest layer
 
 
-! #ifdef SPFLUXBYPASS
-!            if ( m .ne. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) ! whannah
-! #else
-!            q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
+      q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
+        
+
+! #ifdef SPFLUXBYPASS_1
+!         if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
 ! #endif  
-
-        q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
-
-#ifdef SPFLUXBYPASS_1
-        if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
-#endif  
-
-#ifdef SPFLUXBYPASS_2
-        q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
-#endif  
-
-#ifdef SPFLUXBYPASS_3
-        if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
-#endif  
-
-#ifdef SPFLUXBYPASS_4
-        q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) ! whannah
-#endif  
+! #ifdef SPFLUXBYPASS_2
+!         q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m)
+! #endif  
 
            ! Diffuse constituents.
 
@@ -842,11 +816,8 @@
                endif
            end if
 
-! #ifndef SP_DIFF_CNST
+
            if (.not. use_SPCAM) then
-! #else
-!            if ( (use_SPCAM .and. m.ge.4).or.(.not. use_SPCAM) ) then
-! #endif
              call vd_lu_solve(  pcols , pver , ncol  ,                         &
                                 q(1,1,m) , decomp    , ntop  , nbot  , cd_top )
            endif

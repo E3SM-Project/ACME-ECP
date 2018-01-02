@@ -994,11 +994,8 @@ end subroutine crm_physics_init
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
-
    if(is_first_step()) then
-!      call check_energy_timestep_init(state, tend, pbuf)
+       ! call check_energy_timestep_init(state, tend, pbuf)
        do i=1,ncol
          do k=1,crm_nz
                m = pver-k+1
@@ -1230,55 +1227,6 @@ end subroutine crm_physics_init
        endif
 #endif
 
-
-! whannah - SPFLUXBYPASS - only sensible and latent heat fluxes are affected
-! #if defined(SPFLUXBYPASS) && !defined(CLUBB_CRM)
-#ifdef SPFLUXBYPASS_3
-    ptend%lu    = .false.
-    ptend%lv    = .false.
-    ptend%lq    = .false. 
-    ptend%ls    = .true.
-    ptend%lq(1) = .true.
-    do i=1,ncol
-      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
-      ptend%s(i,:)   = 0.
-      ptend%q(i,:,1) = 0.
-      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
-    end do
-    call physics_update(state, ptend, ztodt, tend)   
-#endif 
-
-
-! whannah - alt SPFLUXBYPASS - all constituent fluxes (and SHF) are affected
-#ifdef SPFLUXBYPASS_4
-    ptend%lu    = .false.
-    ptend%lv    = .false.
-    ptend%lq    = .true. 
-    ptend%ls    = .true.
-    do i=1,ncol
-      tmp1 = gravit * state%rpdel(i,pver)
-      ptend%s(i,:)   = 0.
-      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-      ! whannah - add all constituent fluxes
-      do m = 1, pcnst
-        ptend%q(i,:,m) = 0.
-        ptend%q(i,pver,m) = tmp1 * cam_in%cflx(i,m)
-      end do
-    end do
-    call physics_update(state, ptend, ztodt, tend)   
-#endif  
-
-#if defined(SPFLUXBYPASS_3) || defined(SPFLUXBYPASS_4)
-      ! whannah - reinitialize ptend when SPFLUXBYPASS is used in this module
-      lu = .true. 
-      lv = .true.
-      ls = .true.
-      lq(:) = .true.
-      fromcrm = .true.
-      call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  ! re-initialize output physics_ptend object
-      fromcrm = .false.
-#endif
 
        ptend%q(:,:,1) = 0.  ! necessary?
        ptend%q(:,:,ixcldliq) = 0.

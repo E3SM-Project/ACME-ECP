@@ -17,8 +17,8 @@ contains
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tkesbbuoy(nz), tkesbshear(nz), tkesbdiss(nz)
     real(crm_rknd) tke(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
-    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
-    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
+    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
+    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
 
     real(crm_rknd) def2(nx,ny,nzm)
     real(crm_rknd) grd,betdz,Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs
@@ -26,6 +26,12 @@ contains
     real(crm_rknd) lstarn, lstarp, bbb, omn, omp
     real(crm_rknd) qsatt,dqsat
     integer i,j,k,kc,kb
+
+    real(crm_rknd) tk_min_value   ! whannah - min value for eddy viscosity (TK)
+    real(crm_rknd) tk_min_depth   ! whannah - near-surface depth to apply tk_min (meters)
+
+    tk_min_value = 0.05
+    tk_min_depth = 500.
 
     !call t_startf('tke_full')
 
@@ -121,6 +127,15 @@ contains
           if(dosmagor) then
 
             tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
+
+#ifdef SP_TK_LIM
+            ! whannah - put a hard limit on near-surface tk
+            if ( z(k).lt.tk_min_depth ) then
+              tk(i,j,k) = max( tk(i,j,k), tk_min_value ) 
+            end if
+#endif
+
+            ! tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
             tke(i,j,k) = (tk(i,j,k)/(Ck*smix))**2
             a_prod_sh=(tk(i,j,k)+0.001)*def2(i,j,k)
             a_prod_bu=-(tk(i,j,k)+0.001)*Pr*buoy_sgs
