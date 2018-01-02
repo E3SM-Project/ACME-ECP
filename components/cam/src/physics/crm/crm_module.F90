@@ -42,7 +42,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #ifdef CRM3D
                 ultend, vltend,          &
 #endif
-#ifdef SP_ESMT
+#if defined(SP_ESMT)
                 ultend_esmt, vltend_esmt,          &  ! whannah 
 #endif
                 qltend, qcltend, qiltend, sltend, &
@@ -206,7 +206,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     real(r8), intent(  out) :: ultend              (nvcols,plev)                   ! tendency of ul
     real(r8), intent(  out) :: vltend              (nvcols,plev)                   ! tendency of vl
 #endif
-#ifdef SP_ESMT
+#if defined(SP_ESMT)
     real(r8), intent(  out) :: ultend_esmt         (nvcols,plev)                   ! tendency of ul - whannah - temporary diagnostic fields 
     real(r8), intent(  out) :: vltend_esmt         (nvcols,plev)                   ! tendency of vl - whannah - temporary diagnostic fields
 #endif
@@ -542,9 +542,15 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     w   (1:nx,1:ny,1:nzm) = w_crm(vc,1:nx,1:ny,1:nzm)
     tabs(1:nx,1:ny,1:nzm) = t_crm(vc,1:nx,1:ny,1:nzm)
 
-#ifdef SP_ESMT
-    u_esmt(1:nx,1:ny,1:nzm) = u_crm(vc,1:nx,1:ny,1:nzm)
-    v_esmt(1:nx,1:ny,1:nzm) = v_crm(vc,1:nx,1:ny,1:nzm)
+#if defined(SP_ESMT)
+    ! u_esmt(1:nx,1:ny,1:nzm) = u_crm(vc,1:nx,1:ny,1:nzm)
+    ! v_esmt(1:nx,1:ny,1:nzm) = v_crm(vc,1:nx,1:ny,1:nzm)
+    do k=1,nzm
+      u_esmt(:,:,k) = ul(vc,plev-k+1)
+      v_esmt(:,:,k) = vl(vc,plev-k+1)
+    end do
+! write(*,6780) lchnk,vc,'1a',(maxval(u_esmt)),(minval(u_esmt)),(maxval(v_esmt)),(minval(v_esmt))
+! 6780 format('whannah - ',i6,' ',i4,' - ',A2,' - max/min u/v esmt ',f20.5,' / ',f20.5,' - ',f20.5,' / ',f20.5  )
 #endif
 
     micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,1:nmicro_fields)
@@ -595,8 +601,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     ! initialize sgs fields
     call sgs_init()
 
-
-#ifdef SP_ESMT
+#if defined(SP_ESMT)
     ! initialize scalar momentum transport fields
     call scalar_momentum_init()
 #endif  
@@ -923,9 +928,11 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     !nrad = nstop/nrad0
     day=day0
 
-    !------------------------------------------------------------------
+    !========================================================================================
+    !----------------------------------------------------------------------------------------
     !   Main time loop
-    !------------------------------------------------------------------
+    !----------------------------------------------------------------------------------------
+    !========================================================================================
 
     do while (nstep.lt.nstop)
       nstep = nstep + 1
@@ -941,6 +948,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
       call kurant()
 
       do icyc=1,ncycle
+
         icycle = icyc
         dtn = dt/ncycle
         dt3(na) = dtn
@@ -1062,6 +1070,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #endif
         !----------------------------------------------------------
         !     Fill boundaries for SGS diagnostic fields:
+
         call boundaries(4)
 
         !-----------------------------------------------
@@ -1160,6 +1169,12 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
           ! End spurious source calculation
         endif  ! doclubb
 #endif /*CLUBB_CRM_OLD*/
+        
+        !-----------------------------------------------------------
+        !       Calculate PGF for scalar momentum tendency
+#if defined(SP_ESMT)
+            ! call scalar_momentum_tend()
+#endif
 
         !-----------------------------------------------------------
         !       Cloud condensation/evaporation and precipitation processes:
@@ -1354,7 +1369,12 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
       !        call stepout()
       !----------------------------------------------------------
     enddo ! main loop
-    !----------------------------------------------------------
+
+    !========================================================================================
+    !----------------------------------------------------------------------------------------
+    ! End main time loop
+    !----------------------------------------------------------------------------------------
+    !========================================================================================
 
     ! tmp1 = 1._r8/ dble(nstop)
     ! tmp1 = 1._r8/ dble(nstop*(nx/crm_nx_rad)*(ny/crm_ny_rad))
@@ -1381,12 +1401,19 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     vln  (1:ptop-1) =   vl(vc,1:ptop-1)
 
     !  Compute tendencies due to CRM:
-    tln (ptop:plev)  = 0.
-    qln (ptop:plev)  = 0.
+    tln  (ptop:plev) = 0.
+    qln  (ptop:plev) = 0.
     qccln(ptop:plev) = 0.
     qiiln(ptop:plev) = 0.
-    uln (ptop:plev)  = 0.
-    vln (ptop:plev)  = 0.
+    uln  (ptop:plev) = 0.
+    vln  (ptop:plev) = 0.
+
+#if defined(SP_ESMT)
+    uln_esmt(1:ptop-1)  = ul(vc,1:ptop-1)
+    vln_esmt(1:ptop-1)  = vl(vc,1:ptop-1)
+    uln_esmt(ptop:plev) = 0.
+    vln_esmt(ptop:plev) = 0.
+#endif
 
     colprec=0
     colprecs=0
@@ -1394,12 +1421,15 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
       l = plev-k+1
       do i=1,nx
         do j=1,ny
-          colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(vc,plev-k+1)
-          colprecs=colprecs+qpi(i,j,k)*pdel(vc,plev-k+1)
-          tln(l) = tln(l)+tabs(i,j,k)
-          qln(l) = qln(l)+qv(i,j,k)
+          colprec = colprec +(qpl(i,j,k)+qpi(i,j,k))*pdel(vc,plev-k+1)
+          colprecs= colprecs+qpi(i,j,k)*pdel(vc,plev-k+1)
+          tln(l)  = tln(l)  +tabs(i,j,k)
+          qln(l)  = qln(l)  +qv(i,j,k)
           qccln(l)= qccln(l)+qcl(i,j,k)
           qiiln(l)= qiiln(l)+qci(i,j,k)
+          uln(l)  = uln(l)  +u(i,j,k)
+          vln(l)  = vln(l)  +v(i,j,k)
+
 ! #if defined(SP_ESMT) && defined(SP_USE_ESMT)
 !           uln(l) = uln(l)+u_esmt(i,j,k)
 !           vln(l) = vln(l)+v_esmt(i,j,k)
@@ -1412,11 +1442,9 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
           uln_esmt(l) = uln_esmt(l)+u_esmt(i,j,k)
           vln_esmt(l) = vln_esmt(l)+v_esmt(i,j,k)
 #endif
-          uln(l) = uln(l)+u(i,j,k)
-          vln(l) = vln(l)+v(i,j,k)
-        enddo ! k
-      enddo
-    enddo ! i
+        enddo ! j
+      enddo ! i
+    enddo ! k
 
     tln  (ptop:plev) = tln  (ptop:plev) * factor_xy
     qln  (ptop:plev) = qln  (ptop:plev) * factor_xy
@@ -1425,11 +1453,15 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     uln  (ptop:plev) = uln  (ptop:plev) * factor_xy
     vln  (ptop:plev) = vln  (ptop:plev) * factor_xy
 
-#ifdef SP_ESMT
+#if defined(SP_ESMT)
+
+    uln_esmt(ptop:plev) = uln_esmt(ptop:plev) * factor_xy
+    vln_esmt(ptop:plev) = vln_esmt(ptop:plev) * factor_xy
+
     ! ultend_esmt(vc,:) = (uln - ul(vc,:))*idt_gl
     ! vltend_esmt(vc,:) = (vln - vl(vc,:))*idt_gl
-    ultend_esmt(vc,:) = (uln_esmt - ul(vc,:))*idt_gl
-    vltend_esmt(vc,:) = (vln_esmt - vl(vc,:))*idt_gl
+    ultend_esmt(vc,:) = (uln_esmt(:) - ul(vc,:))*idt_gl
+    vltend_esmt(vc,:) = (vln_esmt(:) - vl(vc,:))*idt_gl
 
     ! don't use tendencies from two top levels,
     ultend_esmt(vc,ptop:ptop+1) = 0.
@@ -1450,8 +1482,8 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     qltend (vc,:) =      (qln   - ql  (vc,:)) * idt_gl
     qcltend(vc,:) =      (qccln - qccl(vc,:)) * idt_gl
     qiltend(vc,:) =      (qiiln - qiil(vc,:)) * idt_gl
-    prectend (vc)=(colprec -prectend (vc))/ggr*factor_xy * idt_gl
-    precstend(vc)=(colprecs-precstend(vc))/ggr*factor_xy * idt_gl
+    prectend (vc) = (colprec -prectend (vc))/ggr*factor_xy * idt_gl
+    precstend(vc) = (colprecs-precstend(vc))/ggr*factor_xy * idt_gl
 
     ! don't use CRM tendencies from two crm top levels,
     ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
@@ -1849,7 +1881,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #ifdef CRM3D
                           ultend(vc,:),vltend(vc,:) , &
 #endif
-! #ifdef SP_ESMT
+! #if defined(SP_ESMT)
 !                           ultend_esmt(vc,:),vltend_esmt(vc,:) , & ! whannah - temporary diagnostic fields
 ! #endif
 #ifdef m2005

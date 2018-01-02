@@ -374,7 +374,7 @@ CONTAINS
   end if
 
 
-#ifdef SP_ESMT
+#if defined(SP_ESMT)
     
     ! diffusion of scalar momentum tracers
 

@@ -1928,29 +1928,28 @@ end subroutine crm_physics_init
        ptend%lv    = .FALSE.
 
 #ifdef SP_ESMT
-       ptend%lu    = .TRUE.
-       ptend%lv    = .TRUE.
        call outfld('U_ESMT',u_tend_esmt,pcols   ,lchnk   )
        call outfld('V_ESMT',v_tend_esmt,pcols   ,lchnk   )
 #ifdef SP_USE_ESMT
-       ptend%u = u_tend_esmt
-       ptend%v = v_tend_esmt
+       ptend%lu = .TRUE.
+       ptend%lv = .TRUE.
+       ptend%u  = u_tend_esmt
+       ptend%v  = v_tend_esmt
+#endif
+#endif
+
+#if defined(CRM3D) && defined(SPMOMTRANS)
+#ifndef SP_USE_ESMT
+       ptend%lu = .TRUE.
+       ptend%lv = .TRUE.
+       ptend%u  = u_tend_crm
+       ptend%v  = v_tend_crm
 #endif
 #endif
 
 #ifdef SPMOMTRANS
-       ptend%lu    = .TRUE.
-       ptend%lv    = .TRUE.
-       
        call outfld('UCONVMOM',u_tend_crm,pcols   ,lchnk   )
        call outfld('VCONVMOM',v_tend_crm,pcols   ,lchnk   )
-#endif
-
-#ifdef CRM3D
-#ifndef SP_USE_ESMT
-       ptend%u = u_tend_crm
-       ptend%v = v_tend_crm
-#endif
 #endif
 
        call phys_getopts(microp_scheme_out=microp_scheme)

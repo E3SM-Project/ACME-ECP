@@ -71,12 +71,12 @@ contains
         end do
       end if
 
-#ifdef SP_ESMT
-      call bound_exchange(u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
-                          3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
+#if defined(SP_ESMT)
+      call bound_exchange(u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+                          3+NADVS,3+NADVS,3+NADVS,3+NADVS,            &
                           4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
-      call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
-                          3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
+      call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+                          3+NADVS,3+NADVS,3+NADVS,3+NADVS,            &
                           4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
 #endif
 
@@ -112,13 +112,18 @@ contains
         end do
       end if
 
-#ifdef SP_ESMT
-      call bound_exchange(u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
-                          3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
+#if defined(SP_ESMT)
+      call bound_exchange(u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,      &
                           4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
-      call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
-                          3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
+      call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,      &
                           4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+
+      ! call bound_exchange(u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
+      !                     3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
+      !                     4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
+      ! call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
+      !                     3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
+      !                     4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
 #endif
 
     endif

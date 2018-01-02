@@ -21,6 +21,8 @@ contains
     real(crm_rknd) dummy(nz)
     integer k
 
+    real(crm_rknd) esmt_offset    ! whannah - offset for advecting scalar momentum tracers
+
 
     !---------------------------------------------------------
     !      advection of scalars :
@@ -78,12 +80,25 @@ contains
 
     end if
 
-#ifdef SP_ESMT
+#if defined(SP_ESMT)
     
-    ! advection of scalar momentum tracers
+    ! whannah - the esmt_offset simply ensures that the scalar momentum  
+    ! tracers are positive definite during the advection calculation
+    esmt_offset = 1000.
 
+#if defined(SP_ESMT_ADV_FIX)
+    u_esmt(:,:,:) = u_esmt(:,:,:) + esmt_offset
+    v_esmt(:,:,:) = v_esmt(:,:,:) + esmt_offset
+#endif
+
+    ! advection of scalar momentum tracers
     call advect_scalar(u_esmt,u_esmt_adv,u_esmt_wle,dummy,dummy,dummy,.false.)
     call advect_scalar(v_esmt,v_esmt_adv,v_esmt_wle,dummy,dummy,dummy,.false.)
+
+#if defined(SP_ESMT_ADV_FIX)
+    u_esmt(:,:,:) = u_esmt(:,:,:) - esmt_offset
+    v_esmt(:,:,:) = v_esmt(:,:,:) - esmt_offset
+#endif
 
 #endif
 
