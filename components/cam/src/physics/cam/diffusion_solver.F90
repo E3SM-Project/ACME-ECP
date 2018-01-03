@@ -511,7 +511,7 @@
        call vd_lu_decomp( pcols , pver , ncol  ,                         &
                           ksrf  , kvm  , tmpi2 , rpdel , ztodt , gravit, &
                           zero  , ntop , nbot  , decomp)
-#ifndef SPMOMTRANS
+#ifdef SPMOMTRANS
 ! whannah - use the line below for ESMT
 ! #if defined(SPMOMTRANS) || defined(SP_ESMT)
       ! Do nothing...

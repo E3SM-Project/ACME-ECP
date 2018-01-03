@@ -50,8 +50,8 @@ module scalar_momentum_mod
 
    contains
    
-!==============================================================================
-!==============================================================================
+!========================================================================================
+!========================================================================================
 subroutine scalar_momentum_init()
    !------------------------------------------------------------------
    ! 
@@ -88,628 +88,450 @@ subroutine scalar_momentum_init()
 
 end subroutine scalar_momentum_init
 
-!==============================================================================
-!==============================================================================
-! subroutine scalar_momentum_tend()
-!    !------------------------------------------------------------------
-!    ! 
-!    ! Purpose: Calculate pressure gradient effects on scalar momentum
-!    ! 
-!    ! Author: Walter Hannah
-!    ! 
-!    !------------------------------------------------------------------
-!    use grid
+!========================================================================================
+!========================================================================================
 
-!    real(crm_rknd), dimension(nx,ny,nzm) :: u_esmt_pgf_3D
-!    real(crm_rknd) factor_xy 
+! whannah - ESMT_HIDE_PGF is just to hide the PGF code 
+! without commenting it out during development
+#define ESMT_HIDE_PGF
 
-!    factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
+#ifndef ESMT_HIDE_PGF
 
-!    call scalar_momentum_pgf(u_esmt,u_esmt_pgf_3D)
-!    call scalar_momentum_pgf(v_esmt,v_esmt_pgf_3D)
+subroutine scalar_momentum_tend()
+   !------------------------------------------------------------------
+   ! 
+   ! Purpose: Calculate pressure gradient effects on scalar momentum
+   ! 
+   ! Author: Walter Hannah
+   ! 
+   !------------------------------------------------------------------
+   use grid
 
-!    ! Average the PGF tendency across the CRM domain
-!    u_esmt_pgf(:) = 0.
-!    v_esmt_pgf(:) = 0.
-!    do k=1,nzm
-!       do j=1,ny
-!          do i=1,nx
-!             u_esmt_pgf(k) = u_esmt_pgf(k) + u_esmt_pgf_3D(i,j,k)
-!             v_esmt_pgf(k) = v_esmt_pgf(k) + v_esmt_pgf_3D(i,j,k)
-!          end do
-!       end do
-!       u_esmt_pgf(k) = u_esmt_pgf(k) * factor_xy 
-!       v_esmt_pgf(k) = v_esmt_pgf(k) * factor_xy 
-!    end do
+   real(crm_rknd), dimension(nx,ny,nzm) :: u_esmt_pgf_3D
+   real(crm_rknd) factor_xy 
 
-! end subroutine scalar_momentum_tend
+   factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
 
-!==============================================================================
-!==============================================================================
+   call scalar_momentum_pgf(u_esmt,u_esmt_pgf_3D)
+   call scalar_momentum_pgf(v_esmt,v_esmt_pgf_3D)
 
-! subroutine scalar_momentum_pgf_simple(var_in,u_s,u_ls,u_s_tend,w,mu,mub  &
-!                                      ,ph,phb,p,pb                                     &
-!                                      ,cf1,cf2,cf3,dn,dnw,fnm,fnp                      &
-!                                      ,xtime,cd,cda,ide,jde,kde                        &
-!                                      ,ips,ipe,jps,jpe,kps,kpe                         )
-!    !------------------------------------------------------------------
-!    ! 
-!    ! Purpose: calculate pgf for scalar momentum transport
-!    !          use a kludge for the horizontal pgf to the
-!    !          tendency of scalar momentum field 
-!    ! Author: Walter Hannah - adapted from press_grad()
-!    ! 
-!    !------------------------------------------------------------------
+   ! Average the PGF tendency across the CRM domain
+   u_esmt_pgf(:) = 0.
+   v_esmt_pgf(:) = 0.
+   do k=1,nzm
+      do j=1,ny
+         do i=1,nx
+            u_esmt_pgf(k) = u_esmt_pgf(k) + u_esmt_pgf_3D(i,j,k)
+            v_esmt_pgf(k) = v_esmt_pgf(k) + v_esmt_pgf_3D(i,j,k)
+         end do
+      end do
+      u_esmt_pgf(k) = u_esmt_pgf(k) * factor_xy 
+      v_esmt_pgf(k) = v_esmt_pgf(k) * factor_xy 
+   end do
 
-!    implicit none
+end subroutine scalar_momentum_tend
 
-!    ! type(grid_config_rec_type), intent(in) :: config_flags
+!========================================================================================
+!========================================================================================
 
-!    integer,        intent(in) :: ide
-!    integer,        intent(in) :: jde
-!    integer,        intent(in) :: jps
-!    integer,        intent(in) :: ips
-!    ! integer,        intent(in) :: ids
-!    ! integer,        intent(in) :: jds
-!    ! integer,        intent(in) :: ipe   
-!    ! integer,        intent(in) :: jpe
-!    ! integer,        intent(in) :: kds
-!    integer,        intent(in) :: kde
-!    ! integer,        intent(in) :: ims
-!    ! integer,        intent(in) :: ime
-!    ! integer,        intent(in) :: jms
-!    ! integer,        intent(in) :: jme
-!    ! integer,        intent(in) :: kms
-!    ! integer,        intent(in) :: kme
-!    integer,        intent(in) :: kps
-!    integer,        intent(in) :: kpe
-!    real(crm_rknd), intent(in) :: cf1
-!    real(crm_rknd), intent(in) :: cf2
-!    real(crm_rknd), intent(in) :: cf3
-!    real(crm_rknd), intent(in) :: xtime
-!    character,      intent(in) :: var_in
+subroutine scalar_momentum_pgf(u_s,u_s_tend,w,mu,mub  &
+                              ,ph,phb,p,pb                                     &
+                              ,cf1,cf2,cf3,dn,dnw,fnm,fnp                      &
+                              ,xtime,cd,cda,ide,jde,kde                        &
+                              ,ips,ipe,jps,jpe,kps,kpe                         )
+   !------------------------------------------------------------------
+   ! 
+   ! Purpose: calculate pgf for scalar momentum transport
+   ! 
+   ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
+   ! 
+   !------------------------------------------------------------------
+   use grid,    only: nx,nz
+   use crmdims, only: crm_dx
+   !------------------------------------------------------------------
+   implicit none
+   !------------------------------------------------------------------
 
-!    real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: fnm      ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: fnp      ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: dn       ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: dnw      ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: u_s      ! scalar momentum
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: ph       ! geophysical height?
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: phb      ! geophysical height?
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: p        ! pressure (relative to sfc?)
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: pb       ! sfc pressure?
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: w        ! vertical velocity
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: u_ls     ! sfc momentum?
-!    real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: mu       ! ?
-!    real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: mub      ! ?
-!    real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: cd       ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: cda      ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(inout) :: u_s_tend ! output tendency of scalar momentum
+   integer,        intent(in) :: ide
+   integer,        intent(in) :: jde
+   integer,        intent(in) :: jps
+   integer,        intent(in) :: ips
+   integer,        intent(in) :: kde
+   integer,        intent(in) :: kps
+   integer,        intent(in) :: kpe
+   real(crm_rknd), intent(in) :: cf1
+   real(crm_rknd), intent(in) :: cf2
+   real(crm_rknd), intent(in) :: cf3
+   real(crm_rknd), intent(in) :: xtime
 
-!    ! real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: rw              ! not needed
-!    ! real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: u_10            ! not needed
+   real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: fnm      ! used for interpolating u to w levels
+   real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: fnp      ! used for interpolating u to w levels
+   real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: dn       ! used for interpolating u to w levels
+   real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: dnw      ! used for interpolating u to w levels
+   real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: u_s      ! scalar momentum
+   real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: ph       ! geophysical height?
+   real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: phb      ! geophysical height?
+   real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: p        ! pressure (relative to sfc?)
+   real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: pb       ! sfc pressure?
+   real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: w        ! vertical velocity
+   real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: mu       ! ?
+   real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: mub      ! ?
+   real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: cd       ! used for interpolating u to w levels
+   real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: cda      ! used for interpolating u to w levels
+   real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(inout) :: u_s_tend ! output tendency of scalar momentum
 
-!    !
-!    ! local variables
-!    ! 
+   ! real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: rw              ! not needed
+   ! real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: u_10            ! not needed
+   ! real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(inout) :: hpgf_wshr_rgr   ! horz pgf regression
+   ! real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(inout) :: hpgf_wshr_cor   ! horz pgf correlation
 
-!    ! old config_flags elements
-!    ! zdamp
-!    ! avg_interval
-!    ! rk_ord
-!    ! avg_interval
+   !
+   ! local variables
+   ! 
 
-!    logical :: do_interp
-!    logical :: interp_p
-!    logical :: interp_z
-!    integer :: i,j,k,nk,jj,ij
-!    integer :: i_start,i_end,j_start,j_end,ier
-!    ! integer :: nx, nz
-!    integer :: esmt_pgf_option              ! used to select method (see below)
-!    real(crm_rknd) :: numx,xmsg
-!    real(crm_rknd) :: cft1,cft2               ! used for interpolating u to w levels
-!    real(crm_rknd) :: p1,p2,p3,p4           ! used for alternative to Poisson solver  
-!    real(crm_rknd) :: pgc1,pgc2,pgc3,pgc4   ! used for alternative to Poisson solver  
-!    real(crm_rknd) :: dt_fac,htop,hbot,dampwt,hk,pi
-!    real(crm_rknd), dimension(ips:ipe,kps:kpe)       :: u_si             ! scalar momentum on level interface
-!    real(crm_rknd), dimension(kps:kpe)               :: z_avg            ! horz avg height
-!    real(crm_rknd), dimension(kps:kpe)               :: u_si_avg         ! horizonal average of u_si
-!    ! real(crm_rknd), dimension(kps:kpe)               :: zzin, xxin      ! not used?
-!    real(crm_rknd), dimension(kps:kpe)               :: zzout, xxout     ! used for simplified method
-!    real(crm_rknd), dimension(kps:kpe-1)             :: pgcon            ! constant factor for simplified pgf method
-!    real(crm_rknd), dimension(kps:kpe-1)             :: p_avg            ! horz avg of CRM pressure
-!    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: w_i,w_hat        ! 
-!    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf_hat          ! pressure gradient force (Fourier transform space)
-!    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf              ! pressure gradient force for final tendency
-!    real(crm_rknd), dimension(1:ipe-ips)             :: k_arr            ! "zonal" wavelength from forward FFT
-!    real(crm_rknd), dimension(1:kpe-kps+1)           :: dz               ! layer thickness
-!    real(crm_rknd), dimension(1:kpe-kps)             :: a,b,c            ! used for Poisson solver boundary conditions
-!    real(crm_rknd), dimension(1:kpe-kps)             :: rhs              ! right-hand side of pressure equation
-!    real(crm_rknd), dimension(1:kpe-kps)             :: z_avg_i          ! horz avg interface height
-!    real(crm_rknd), dimension(1:kpe-kps)             :: shr              ! vertical shear of scalar momentum (i.e. du/dz)
+   ! old config_flags elements
+   ! zdamp
+   ! avg_interval
+   ! rk_ord
+   ! avg_interval
+
+   logical :: do_interp
+   logical :: interp_p
+   logical :: interp_z
+   integer :: i,j,k,nk,jj,ij
+   integer :: i_start,i_end,j_start,j_end,ier
+   ! integer :: nx, nz
+   real(crm_rknd) :: numx,xmsg
+   real(crm_rknd) :: cft1,cft2               ! used for interpolating u to w levels
+   ! real(crm_rknd) :: p1,p2,p3,p4           ! used for alternative to Poisson solver  
+   ! real(crm_rknd) :: pgc1,pgc2,pgc3,pgc4   ! used for alternative to Poisson solver  
+   ! real(crm_rknd) :: x,y,sumx,sumx2,sumy,sumy2,sumxy,n,m,r,d            ! misc variables used for calculating regression and correlation
+   real(crm_rknd) :: htop,hbot,dampwt,hk,pi
+   real(crm_rknd), dimension(ips:ipe,kps:kpe)       :: u_si             ! scalar momentum on level interface
+   real(crm_rknd), dimension(kps:kpe)               :: z_avg            ! horz avg height
+   real(crm_rknd), dimension(kps:kpe)               :: u_si_avg         ! horizonal average of u_si
+   ! real(crm_rknd), dimension(kps:kpe)               :: zzin, xxin      ! not used
+   real(crm_rknd), dimension(kps:kpe)               :: zzout, xxout     ! used for simplified method
+   real(crm_rknd), dimension(kps:kpe-1)             :: pgcon            ! constant factor for simplified pgf method
+   real(crm_rknd), dimension(kps:kpe-1)             :: p_avg            ! horz avg of CRM pressure
+   real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: w_i,w_hat        ! 
+   real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf_hat          ! pressure gradient force (Fourier transform space)
+   real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf              ! pressure gradient force for final tendency
+   real(crm_rknd), dimension(1:ipe-ips)             :: k_arr            ! "zonal" wavelength from forward FFT
+   real(crm_rknd), dimension(1:kpe-kps+1)           :: dz               ! layer thickness
+   real(crm_rknd), dimension(1:kpe-kps)             :: a,b,c            ! used for Poisson solver boundary conditions
+   real(crm_rknd), dimension(1:kpe-kps)             :: rhs              ! right-hand side of pressure equation
+   real(crm_rknd), dimension(1:kpe-kps)             :: z_avg_i          ! horz avg interface height
+   real(crm_rknd), dimension(1:kpe-kps)             :: shr              ! vertical shear of scalar momentum (i.e. du/dz)
    
-!    !------------------------------------------------------------------------
+   !------------------------------------------------------------------------
 
-!    j_start = 0
-!    i_start = 0
-!    j_end   = min(jpe,jde-1)
-!    i_end   = min(ipe,ide-1)
+   j_start = 0
+   i_start = 0
+   j_end   = min(jpe,jde-1)
+   i_end   = min(ipe,ide-1)
 
-!    numx = real(nx)
-!    nk = kpe - kps + 1
+   numx = real(nx)
+   nk = kpe - kps + 1
 
-!    cft2 = - 0.5 * dnw(kpe-1) / dn(kpe-1)
-!    cft1 = 1.0 - cft2
+   cft2 = - 0.5 * dnw(kpe-1) / dn(kpe-1)
+   cft1 = 1.0 - cft2
 
-!    pi = 2.*asin(1.0)
-!    do j = j_start,j_end
+   pi = 2.*asin(1.0)
+   do j = j_start,j_end
 
-!       do k = kps,kpe
-!          z_avg(k) = 0.0
-!          u_si_avg(k) = 0.0
-!       enddo
+      do k = kps,kpe
+         z_avg(k) = 0.0
+         u_si_avg(k) = 0.0
+      enddo
 
-!       do k = kps,kpe-1
-!          p_avg(k) = 0.0
-!       enddo
+      do k = kps,kpe-1
+         p_avg(k) = 0.0
+      enddo
 
-!       ! ********** compute horizonal average of z **********
-!       do k = kps,kpe
-!          do i = ips,ipe-1
-!             z_avg(k) = z_avg(k) + ( ph(i,k,j) + phb(i,k,j) ) / (numx*9.8)
-!          enddo
-!       enddo
+      !-----------------------------------------
+      ! compute horizonal average of z
+      !-----------------------------------------
+      do k = kps,kpe
+         do i = ips,ipe-1
+            z_avg(k) = z_avg(k) + ( ph(i,k,j) + phb(i,k,j) ) / (numx*9.8)
+         enddo
+      enddo
 
-!       ! ********** compute horizonal average of p **********
-!       do k = kps,kpe-1
-!          do i = ips,ipe-1
-!             p_avg(k) = p_avg(k) + ( p(i,k,j) + pb(i,k,j) ) / (numx*100.)
-!          enddo
-!       enddo
+      !-----------------------------------------
+      ! compute horizonal average of p 
+      !-----------------------------------------
+      do k = kps,kpe-1
+         do i = ips,ipe-1
+            p_avg(k) = p_avg(k) + ( p(i,k,j) + pb(i,k,j) ) / (numx*100.)
+         enddo
+      enddo
       
-!       ! ********** interpolate u to w levels **********
-!       do i = ips,ipe-1
-!          k = kps
-!          u_si(i,k) =  cf1*u_s(i,1,j) + &
-!                       cf2*u_s(i,2,j) + &
-!                       cf3*u_s(i,3,j)
-!          u_si(i,k) = u_s(i,k,j)*sqrt(cda(i,j)/cd(i,j))
-!          do k = kps+1,kpe-1
-!             u_si(i,k) =  fnm(k)*u_s(i,k,j) + fnp(k)*u_s(i,k-1,j)
-!          enddo
-!          k = kpe
-!          u_si(i,k) = cft1*u_s(i,k-1,j) + &
-!                      cft2*u_s(i,k-2,j)
-!       enddo
+      !-----------------------------------------
+      ! interpolate u to w levels 
+      !-----------------------------------------
+      do i = ips,ipe-1
+         k = kps
+         u_si(i,k) =  cf1*u_s(i,1,j) + &
+                      cf2*u_s(i,2,j) + &
+                      cf3*u_s(i,3,j)
+         u_si(i,k) = u_s(i,k,j)*sqrt(cda(i,j)/cd(i,j))
+         do k = kps+1,kpe-1
+            u_si(i,k) =  fnm(k)*u_s(i,k,j) + fnp(k)*u_s(i,k-1,j)
+         enddo
+         k = kpe
+         u_si(i,k) = cft1*u_s(i,k-1,j) + &
+                     cft2*u_s(i,k-2,j)
+      enddo
 
-!       ! ********** compute horizonal average of u_si **********
-!       do k = kps,kpe
-!          do i = ips,ipe-1
-!             u_si_avg(k) = u_si_avg(k) + u_si(i,k) / numx
-!          enddo
-!       enddo
+      !-----------------------------------------
+      ! compute horizonal average of u_si 
+      !-----------------------------------------
+      do k = kps,kpe
+         do i = ips,ipe-1
+            u_si_avg(k) = u_si_avg(k) + u_si(i,k) / numx
+         enddo
+      enddo
 
-!       !------------------------------------------------------------------------
-!       ! simple assumptions about the relationship between the PGF 
-!       ! and the vertical velocity field are used to diagnose the PGF 
-!       ! depending on the "esmt_pgf_option" variable
-!       !------------------------------------------------------------------------ 
-
-!       esmt_pgf_option = 2
-
-!       ! Option #1
-!       ! specified proportionality relationship between pgf and w * du_si/dz
-!       if (esmt_pgf_option .eq. 1) then !nopgf
-!          do k = kps,kpe-1
-!             pgcon(k) = 0
-!          enddo
-!       endif
-
-!       ! Option #2
-!       !relationship is independent of height
-!       if (esmt_pgf_option .eq. 2) then  
-!          do k = kps,kpe-1
-!             pgcon(k) = config_flags%sp_mom_pgcon
-!          enddo
-!       endif
-
-!       ! Option #3
-!       !relationship depends on pressure
-!       if (esmt_pgf_option .eq. 3) then  
-!          do k = kps,kpe-1
-!             if (p_avg(k) .gt. p4) then
-!                pgcon(k) =  pgc4
-!             else if ((p_avg(k) .le. p4).and.(p_avg(k).gt.p3)) then
-!                pgcon(k)=(pgc4-pgc3)*(log(p_avg(k))-log(p4))/(log(p4)-log(p3))+pgc4
-!             else if ((p_avg(k) .le. p3).and.(p_avg(k).gt.p2)) then
-!                pgcon(k)=(pgc3-pgc2)*(log(p_avg(k))-log(p3))/(log(p3)-log(p2))+pgc3
-!             else if ((p_avg(k) .le. p2).and.(p_avg(k).gt.p1)) then
-!                pgcon(k)=(pgc2-pgc1)*(log(p_avg(k))-log(p2))/(log(p2)-log(p1))+pgc2
-!             else if (p_avg(k) .le. p1) then
-!                pgcon(k) = pgc1
-!             endif
-!          enddo
-!       endif
-
-!       ! ********** compute kludge pgf **********
-!       do i = ips,ipe-1
-!          do k = kps,kpe
-!             zzout(k) = ( ph(i,k,j)+phb(i,k,j) ) / 9.8
-!             zzout(k) = z_avg(k)
-!             xxout(k) = u_si_avg(k)
-!          enddo
-!          do k = kps,kpe-1
-!             u_s_tend(i,k,j)=u_s_tend(i,k,j) + &
-!             pgcon(k)*.5*(rw(i,k,j)+rw(i,k+1,j)) * &
-!             (xxout(k+1)-xxout(k))/(zzout(k+1)-zzout(k))
-!          enddo
-!       enddo
-!       ! ****************************************
+      !------------------------------------------------------------------------
+      !------------------------------------------------------------------------
+      ! Use Poisson solver to calculate pressure gradient force (PGF)
+      ! pgf is diagnosed from w * du_si/dz 
+      ! using the poisson equation (see wu and yanai 1994)
+      !------------------------------------------------------------------------
+      !------------------------------------------------------------------------ 
+      do k = kps, kpe-1
+         do i = ips, ipe-1
+            w_i(i-ips+1,k-kps+1) = (w(i,k,j)+w(i,k+1,j))/2.
+         enddo
+         z_avg_i(k-kps+1) = (z_avg(k)+z_avg(k+1))/2.
+         shr(k-kps+1) = (u_si_avg(k+1)-u_si_avg(k))/(z_avg(k+1)-z_avg(k))
+      enddo
+      do k = 2,nz
+         dz(k) = z_avg_i(k)-z_avg_i(k-1)
+      enddo
+      dz(1) = 2.*(z_avg_i(1)-z_avg(1))
+      dz(nz+1) = 2.*(z_avg(nz+1)-z_avg_i(nz))
       
-!       !------------------------------------------------------------------------
-!       !------------------------------------------------------------------------
-     
-!    enddo ! j
+      !-----------------------------------------
+      ! compute forward fft of w
+      !-----------------------------------------
+      call esmt_fft_forward(nx,nz,crm_dx,w_i,k_arr,w_hat)
 
-!    return
+      !-----------------------------------------
+      ! solve vertical structure equation 
+      ! for each zonal wavelength (k_arr) 
+      ! solution method involves constructing 
+      ! a tridiagonal matrix
+      !-----------------------------------------
 
-! end subroutine scalar_momentum_pgf_simple
+      pgf_hat(:,:) = 0.
 
-!==============================================================================
-!==============================================================================
+      do i = 2,nx
 
-! subroutine scalar_momentum_pgf(var_in,u_s,u_ls,u_s_tend,w,mu,mub  &
-!                               ,ph,phb,p,pb                                     &
-!                               ,cf1,cf2,cf3,dn,dnw,fnm,fnp                      &
-!                               ,xtime,cd,cda,ide,jde,kde                        &
-!                               ,ips,ipe,jps,jpe,kps,kpe                         )
-!    !------------------------------------------------------------------
-!    ! 
-!    ! Purpose: calculate pgf for scalar momentum transport
-!    ! 
-!    ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
-!    ! 
-!    !------------------------------------------------------------------
-!    use module_configure, only : grid_config_rec_type
-!    use module_domain,only: domain
-!    !  this subroutine adds a kludge for the horizontal pgf to the
-!    !  tendency of scalar momentum field 
-!    !------------------------------------------------------------------
-!    implicit none
-!    !------------------------------------------------------------------
+         do k = 1,nz
+            a(k) = dz(k+1)/(dz(k+1)+dz(k))
+            ! b(k) = -.5*k_arr(i)**2*dz(k)*dz(k+1)-1.
+            b(k) = -.5*(1.+.25)*k_arr(i)**2*dz(k)*dz(k+1)-1. ! this crudely accounts for difference between 2D and 3D updraft geometry
+            c(k) = dz(k)/(dz(k+1)+dz(k))
+            rhs(k) = k_arr(i)**2*w_hat(i,k)*shr(k)*dz(k)*dz(k+1)
+         enddo ! k
 
-!    ! type(grid_config_rec_type), intent(in) :: config_flags
+         !lower boundary condition (symmetic)
+         b(1) = b(1) + a(1)
+         a(1) = 0.
 
-!    integer,        intent(in) :: ide
-!    integer,        intent(in) :: jde
-!    integer,        intent(in) :: jps
-!    integer,        intent(in) :: ips
-!    ! integer,        intent(in) :: ids
-!    ! integer,        intent(in) :: jds
-!    ! integer,        intent(in) :: ipe   
-!    ! integer,        intent(in) :: jpe
-!    ! integer,        intent(in) :: kds
-!    integer,        intent(in) :: kde
-!    ! integer,        intent(in) :: ims
-!    ! integer,        intent(in) :: ime
-!    ! integer,        intent(in) :: jms
-!    ! integer,        intent(in) :: jme
-!    ! integer,        intent(in) :: kms
-!    ! integer,        intent(in) :: kme
-!    integer,        intent(in) :: kps
-!    integer,        intent(in) :: kpe
-!    real(crm_rknd), intent(in) :: cf1
-!    real(crm_rknd), intent(in) :: cf2
-!    real(crm_rknd), intent(in) :: cf3
-!    real(crm_rknd), intent(in) :: xtime
-!    character,      intent(in) :: var_in
+         !upper boundary condition (symmetric)
+         b(nz) = b(nz) + c(nz)
+         c(nz) = 0.
 
-!    real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: fnm      ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: fnp      ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: dn       ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(kms:kme),                 intent(in   ) :: dnw      ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: u_s      ! scalar momentum
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: ph       ! geophysical height?
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: phb      ! geophysical height?
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: p        ! pressure (relative to sfc?)
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: pb       ! sfc pressure?
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: w        ! vertical velocity
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: u_ls     ! sfc momentum?
-!    real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: mu       ! ?
-!    real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: mub      ! ?
-!    real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: cd       ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: cda      ! used for interpolating u to w levels
-!    real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(inout) :: u_s_tend ! output tendency of scalar momentum
+         ! gaussian elimination with no pivoting
+         do k = 1,nz-1
+            b(k+1)=b(k+1)-a(k+1)/b(k)*c(k)
+            rhs(k+1)=rhs(k+1)-a(k+1)/b(k)*rhs(k)
+         enddo ! k
 
-!    ! real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(in   ) :: rw              ! not needed
-!    ! real(crm_rknd), dimension(ims:ime,jms:jme),         intent(in   ) :: u_10            ! not needed
-!    ! real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(inout) :: hpgf_wshr_rgr   ! horz pgf regression
-!    ! real(crm_rknd), dimension(ims:ime,kms:kme,jms:jme), intent(inout) :: hpgf_wshr_cor   ! horz pgf correlation
+         ! backward substitution
+         rhs(nz)=rhs(nz)/b(nz)
+         do k=nz-1,1,-1
+            rhs(k)=(rhs(k)-c(k)*rhs(k+1))/b(k)
+         enddo
 
-!    !
-!    ! local variables
-!    ! 
+         !backward substitution
+         rhs(nz)=rhs(nz)/b(nz)
+         do k=nz-1,1,-1
+            rhs(k) = (rhs(k)-c(k)*rhs(k+1))/b(k)
+         enddo ! k
 
-!    ! old config_flags elements
-!    ! zdamp
-!    ! avg_interval
-!    ! rk_ord
-!    ! avg_interval
+         do k = 1,nz
+            pgf_hat(i,k) = rhs(k)
+         enddo ! k
+      enddo ! i
 
-!    logical :: do_interp
-!    logical :: interp_p
-!    logical :: interp_z
-!    integer :: i,j,k,nk,jj,ij
-!    integer :: i_start,i_end,j_start,j_end,ier
-!    ! integer :: nx, nz
-!    real(crm_rknd) :: numx,xmsg
-!    real(crm_rknd) :: cft1,cft2               ! used for interpolating u to w levels
-!    ! real(crm_rknd) :: p1,p2,p3,p4           ! used for alternative to Poisson solver  
-!    ! real(crm_rknd) :: pgc1,pgc2,pgc3,pgc4   ! used for alternative to Poisson solver  
-!    ! real(crm_rknd) :: x,y,sumx,sumx2,sumy,sumy2,sumxy,n,m,r,d            ! misc variables used for calculating regression and correlation
-!    real(crm_rknd) :: dt_fac,htop,hbot,dampwt,hk,pi
-!    real(crm_rknd), dimension(ips:ipe,kps:kpe)       :: u_si             ! scalar momentum on level interface
-!    real(crm_rknd), dimension(kps:kpe)               :: z_avg            ! horz avg height
-!    real(crm_rknd), dimension(kps:kpe)               :: u_si_avg         ! horizonal average of u_si
-!    ! real(crm_rknd), dimension(kps:kpe)               :: zzin, xxin      ! not used
-!    real(crm_rknd), dimension(kps:kpe)               :: zzout, xxout     ! used for simplified method
-!    real(crm_rknd), dimension(kps:kpe-1)             :: pgcon            ! constant factor for simplified pgf method
-!    real(crm_rknd), dimension(kps:kpe-1)             :: p_avg            ! horz avg of CRM pressure
-!    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: w_i,w_hat        ! 
-!    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf_hat          ! pressure gradient force (Fourier transform space)
-!    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf              ! pressure gradient force for final tendency
-!    real(crm_rknd), dimension(1:ipe-ips)             :: k_arr            ! "zonal" wavelength from forward FFT
-!    real(crm_rknd), dimension(1:kpe-kps+1)           :: dz               ! layer thickness
-!    real(crm_rknd), dimension(1:kpe-kps)             :: a,b,c            ! used for Poisson solver boundary conditions
-!    real(crm_rknd), dimension(1:kpe-kps)             :: rhs              ! right-hand side of pressure equation
-!    real(crm_rknd), dimension(1:kpe-kps)             :: z_avg_i          ! horz avg interface height
-!    real(crm_rknd), dimension(1:kpe-kps)             :: shr              ! vertical shear of scalar momentum (i.e. du/dz)
+      if (mod(nx,2) == 0) then
+         do k=1,nz
+            pgf_hat(nx,k) = pgf_hat(nx,k)/2.
+         enddo
+      endif
+
+      !-----------------------------------------
+      ! invert fft of pgf_hat to get pgf
+      !-----------------------------------------
+      call esmt_fft_backward(nx,nz,pgf_hat,pgf)
+
+      !-----------------------------------------
+      ! Compute final tendency
+      !-----------------------------------------
+      do k = kps,kpe-1
+         dampwt = 0.
+         if (k.eq.1) dampwt=1.
+         do i=ips,ipe-1
+            u_s_tend     (i,k,j) = u_s_tend(i,k,j) - (1.-dampwt)*pgf(i-ips+1,k-kps+1)*(mu(i,j)+mub(i,j))
+         enddo ! i
+      enddo ! k
+
+      !------------------------------------------------------------------------ 
+      !------------------------------------------------------------------------
+      ! End of Possion solver
+      !------------------------------------------------------------------------ 
+      !------------------------------------------------------------------------
+
+   enddo ! j
+
+   return
+
+end subroutine  scalar_momentum_pgf
+
+!========================================================================================
+!========================================================================================
+
+subroutine esmt_fft_forward(nx,nz,dx,arr_in,k_out,arr_out)
+   !------------------------------------------------------------------
+   ! 
+   ! Purpose: calculate forward FFT transform
+   ! 
+   ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
+   ! 
+   !------------------------------------------------------------------
+   implicit none
+
+   integer, intent(in) :: nx,nz
+   real   , intent(in) :: dx
+   real , dimension(nx,nz), intent(in ) :: arr_in
+   real , dimension(nx)   , intent(out) :: k_out
+   real , dimension(nx,nz), intent(out) :: arr_out
+
+   ! local variables
+
+   integer :: lensave, ier, nh, n1, i, j, k
+   integer :: lot, jump, n, inc, lenr, lensav, lenwrk
+   real    :: pi
+   real, dimension(nx+15) :: wsave
+   real, dimension(nx,nz) :: work
+
+   ! naming convention follows fftpack5 routines
+
+   n = nx
+   lot = nz
+   lensav = n+15
+   inc = 1
+   lenr = nx*nz
+   jump = nx
+   lenwrk = lenr
+   pi = 2.*asin(1.0)
+
+   ! initialization for FFT
+   call rfftmi(n,wsave,lensav,ier)
+   if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
+
+   do k = 1,nz
+      do i = 1,nx
+         arr_out(i,k)=arr_in(i,k)
+      enddo
+   enddo
+
+   !  do the forward transform
+   call rfftmf( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
+   if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - Forward FFT error ',ier
+
+   if(mod(n,2) == 0) then
+      nh = n/2 - 1
+   else
+      nh = (n-1)/2
+   endif
+
+   k_out(1)=0.0
+   do j = 1,nh
+      k_out(2*j)   = 2.*pi*real(j)/(real(n)*dx)   !cos
+      k_out(2*j+1) = 2.*pi*real(j)/(real(n)*dx)   !sin
+   enddo
+   if (mod(n,2) == 0) then
+      k_out(n) =  2.*pi/(2.*dx)                  !nyquist wavelength for even n
+   end if
+
+   return
+
+end subroutine esmt_fft_forward
+
+!========================================================================================
+!========================================================================================
+
+subroutine esmt_fft_backward(nx,nz,arr_in,arr_out)
+   !------------------------------------------------------------------
+   ! 
+   ! Purpose: calculate backward FFT transform
+   ! 
+   ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
+   ! 
+   !------------------------------------------------------------------
+   implicit none
+
+   integer, intent(in) :: nx,nz
+   real , dimension(nx,nz), intent(in ) :: arr_in
+   real , dimension(nx,nz), intent(out) :: arr_out
+
+   ! local variables
+
+   integer :: lensave, ier, nh, n1, i, k
+   integer :: lot, jump, n, inc, lenr, lensav, lenwrk
+   real, dimension(nx+15) :: wsave
+   real, dimension(nx,nz) :: work
+
+   ! naming convention follows fftpack5 routines
+
+   n = nx
+   lot = nz
+   lensav = n+15
+   inc = 1
+   lenr = nx*nz
+   jump = nx
+   lenwrk = lenr
+
+   ! initialization for FFT
+   call rfftmi(n,wsave,lensav,ier)
+   if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
    
-!    !------------------------------------------------------------------------
+   do k = 1,nz
+      do i = 1,nx
+         arr_out(i,k)=arr_in(i,k)
+      enddo
+   enddo
+   
+   !  do the backward transform
+   call rfftmb( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
+   if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - backward FFT error ',ier
 
-!    j_start = 0
-!    i_start = 0
-!    j_end   = min(jpe,jde-1)
-!    i_end   = min(ipe,ide-1)
+   return
 
-!    numx = real(nx)
-!    nk = kpe - kps + 1
+end subroutine esmt_fft_backward
 
-!    cft2 = - 0.5 * dnw(kpe-1) / dn(kpe-1)
-!    cft1 = 1.0 - cft2
 
-!    pi = 2.*asin(1.0)
-!    do j = j_start,j_end
+! whannah - this #endif is just to hide the PGF code 
+! without commenting it out during development
+#endif
 
-!       do k = kps,kpe
-!          z_avg(k) = 0.0
-!          u_si_avg(k) = 0.0
-!       enddo
-
-!       do k = kps,kpe-1
-!          p_avg(k) = 0.0
-!       enddo
-
-!       ! ********** compute horizonal average of z **********
-!       do k = kps,kpe
-!          do i = ips,ipe-1
-!             z_avg(k) = z_avg(k) + ( ph(i,k,j) + phb(i,k,j) ) / (numx*9.8)
-!          enddo
-!       enddo
-
-!       ! ********** compute horizonal average of p **********
-!       do k = kps,kpe-1
-!          do i = ips,ipe-1
-!             p_avg(k) = p_avg(k) + ( p(i,k,j) + pb(i,k,j) ) / (numx*100.)
-!          enddo
-!       enddo
-      
-!       ! ********** interpolate u to w levels **********
-!       do i = ips,ipe-1
-!          k = kps
-!          u_si(i,k) =  cf1*u_s(i,1,j) + &
-!                       cf2*u_s(i,2,j) + &
-!                       cf3*u_s(i,3,j)
-!          u_si(i,k) = u_s(i,k,j)*sqrt(cda(i,j)/cd(i,j))
-!          do k = kps+1,kpe-1
-!             u_si(i,k) =  fnm(k)*u_s(i,k,j) + fnp(k)*u_s(i,k-1,j)
-!          enddo
-!          k = kpe
-!          u_si(i,k) = cft1*u_s(i,k-1,j) + &
-!                      cft2*u_s(i,k-2,j)
-!       enddo
-
-!       ! ********** compute horizonal average of u_si **********
-!       do k = kps,kpe
-!          do i = ips,ipe-1
-!             u_si_avg(k) = u_si_avg(k) + u_si(i,k) / numx
-!          enddo
-!       enddo
-
-!       !------------------------------------------------------------------------
-!       ! If config_flags%sp_mom_feedback == 5 then the Poisson solver is used
-!       ! otherwise, simple assumptions about the relationship between the PGF 
-!       ! and the vertical velocity field are used to diagnose the PGF 
-!       !------------------------------------------------------------------------ 
-
-!       ! if (config_flags%sp_mom_feedback .lt. 5) then
-!       !    ! specified proportionality relationship between pgf and w * du_si/dz
-!       !    if (config_flags%sp_mom_feedback .eq. 2) then !nopgf
-!       !       do k = kps,kpe-1
-!       !          pgcon(k) = 0
-!       !       enddo
-!       !    endif
-!       !    if (config_flags%sp_mom_feedback .eq. 3) then  !relationship is independent of height
-!       !       do k = kps,kpe-1
-!       !          pgcon(k) = config_flags%sp_mom_pgcon
-!       !       enddo
-!       !    endif
-!       !    if (config_flags%sp_mom_feedback .eq. 4) then  !relationship depends on pressure
-!       !       do k = kps,kpe-1
-!       !          if (p_avg(k) .gt. p4) then
-!       !             pgcon(k) =  pgc4
-!       !          else if ((p_avg(k) .le. p4).and.(p_avg(k).gt.p3)) then
-!       !             pgcon(k)=(pgc4-pgc3)*(log(p_avg(k))-log(p4))/(log(p4)-log(p3))+pgc4
-!       !          else if ((p_avg(k) .le. p3).and.(p_avg(k).gt.p2)) then
-!       !             pgcon(k)=(pgc3-pgc2)*(log(p_avg(k))-log(p3))/(log(p3)-log(p2))+pgc3
-!       !          else if ((p_avg(k) .le. p2).and.(p_avg(k).gt.p1)) then
-!       !             pgcon(k)=(pgc2-pgc1)*(log(p_avg(k))-log(p2))/(log(p2)-log(p1))+pgc2
-!       !          else if (p_avg(k) .le. p1) then
-!       !             pgcon(k) = pgc1
-!       !          endif
-!       !       enddo
-!       !    endif
-
-!       !    ! ********** compute kludge pgf **********
-!       !    do i = ips,ipe-1
-!       !       do k = kps,kpe
-!       !          zzout(k) = ( ph(i,k,j)+phb(i,k,j) ) / 9.8
-!       !          zzout(k) = z_avg(k)
-!       !          xxout(k) = u_si_avg(k)
-!       !       enddo
-!       !       do k = kps,kpe-1
-!       !          u_s_tend(i,k,j)=u_s_tend(i,k,j) + &
-!       !          pgcon(k)*.5*(rw(i,k,j)+rw(i,k+1,j)) * &
-!       !          (xxout(k+1)-xxout(k))/(zzout(k+1)-zzout(k))
-!       !       enddo
-!       !    enddo
-!       !    ! ****************************************
-      
-!       ! else ! config_flags%sp_mom_feedback .lt. 5
-
-!       !------------------------------------------------------------------------
-!       ! Use Poisson solver to calculate pressure gradient force (PGF)
-!       ! pgf is diagnosed from w * du_si/dz 
-!       ! using the poisson equation (see wu and yanai 1994)
-!       !------------------------------------------------------------------------ 
-
-!       dt_fac=dt/(config_flags%avg_interval*60.)
-!       dt_fac=dt_fac/real(config_flags%rk_ord)   !account for multiple rk steps
-
-!       ! if (amod(xtime*60.,config_flags%avg_interval*60.) .eq. 0.) then
-!       !    ! write(*,*) 'setting arrays to zero'
-!       !    do k=kps,kpe-1
-!       !       do i=ips,ipe-1
-!       !          hpgf_wshr_rgr(i,k,j)=0.
-!       !          hpgf_wshr_cor(i,k,j)=0.
-!       !       enddo
-!       !    enddo
-!       ! endif
-!       do k = kps, kpe-1
-!          do i = ips, ipe-1
-!             w_i(i-ips+1,k-kps+1) = (w(i,k,j)+w(i,k+1,j))/2.
-!          enddo
-!          z_avg_i(k-kps+1) = (z_avg(k)+z_avg(k+1))/2.
-!          shr(k-kps+1) = (u_si_avg(k+1)-u_si_avg(k))/(z_avg(k+1)-z_avg(k))
-!       enddo
-!       do k = 2,nz
-!          dz(k) = z_avg_i(k)-z_avg_i(k-1)
-!       enddo
-!       dz(1) = 2.*(z_avg_i(1)-z_avg(1))
-!       dz(nz+1) = 2.*(z_avg(nz+1)-z_avg_i(nz))
-      
-!       !------------------------------------
-!       ! compute forward fft of w
-!       call esmt_fft_forward(nx,nz,dx,w_i,k_arr,w_hat)
-
-!       !------------------------------------
-!       ! solve vertical structure equation 
-!       ! for each zonal wavelength (k_arr) 
-!       ! solution method involves constructing 
-!       ! a tridiagonal matrix
-
-!       pgf_hat(:,:) = 0.
-
-!       do i = 2,nx
-!          do k = 1,nz
-!             a(k) = dz(k+1)/(dz(k+1)+dz(k))
-!             ! b(k) = -.5*k_arr(i)**2*dz(k)*dz(k+1)-1.
-!             b(k) = -.5*(1.+.25)*k_arr(i)**2*dz(k)*dz(k+1)-1. ! this crudely accounts for difference between 2D and 3D updraft geometry
-!             c(k) = dz(k)/(dz(k+1)+dz(k))
-!             rhs(k) = k_arr(i)**2*w_hat(i,k)*shr(k)*dz(k)*dz(k+1)
-!          enddo ! k
-!          !lower boundary condition (symmetic)
-!          b(1) = b(1) + a(1)
-!          a(1) = 0.
-!          !upper boundary condition (symmetric)
-!          b(nz) = b(nz) + c(nz)
-!          c(nz) = 0.
-!          ! gaussian elimination with no pivoting
-!          do k = 1,nz-1
-!             b(k+1)=b(k+1)-a(k+1)/b(k)*c(k)
-!             rhs(k+1)=rhs(k+1)-a(k+1)/b(k)*rhs(k)
-!          enddo ! k
-!          ! backward substitution
-!          rhs(nz)=rhs(nz)/b(nz)
-!          do k=nz-1,1,-1
-!             rhs(k)=(rhs(k)-c(k)*rhs(k+1))/b(k)
-!          enddo
-!          !backward substitution
-!          rhs(nz)=rhs(nz)/b(nz)
-!          do k=nz-1,1,-1
-!             rhs(k)=(rhs(k)-c(k)*rhs(k+1))/b(k)
-!          enddo ! k
-
-!          do k = 1,nz
-!             pgf_hat(i,k) = rhs(k)
-!          enddo ! k
-!       enddo ! i
-
-!       if (mod(nx,2) == 0) then
-!          do k=1,nz
-!             pgf_hat(nx,k)=pgf_hat(nx,k)/2.
-!          enddo
-!       endif
-
-!       !------------------------------------
-!       ! invert fft of pgf_hat to get pgf
-!       call esmt_fft_backward(nx,nz,pgf_hat,pgf)
-
-!       !------------------------------------
-!       ! Compute final tendency
-!       do k = kps,kpe-1
-!          !! This stuff is used for the regression and correlation part
-!          ! sumx  = 0.d0
-!          ! sumx2 = 0.d0
-!          ! sumxy = 0.d0
-!          ! sumy  = 0.d0
-!          ! sumy2 = 0.d0
-!          ! do i=1,nx
-!          !    x = dble(w_i(i,k-kps+1))*dble(shr(k-kps+1))
-!          !    y = -dble(pgf(i,k-kps+1))
-!          !    sumx  = sumx+x
-!          !    sumx2 = sumx2+x*x
-!          !    sumy  = sumy+y
-!          !    sumy2 = sumy2+y*y
-!          !    sumxy = sumxy+x*y
-!          ! enddo ! i
-!          ! n = dble(numx)
-!          ! d = max((n * sumx2 - sumx**2),1.d-12)
-!          ! m = (n * sumxy - sumx * sumy) / d
-!          ! d = max(sqrt((sumx2 - sumx**2/n) * (sumy2 - sumy**2/n)), 1.d-12)
-!          ! r = (sumxy - sumx * sumy / n) / d
-!          dampwt = 0.
-!          if (k.eq.1) dampwt=1.
-!          do i=ips,ipe-1
-!             u_s_tend     (i,k,j) = u_s_tend(i,k,j) - (1.-dampwt)*pgf(i-ips+1,k-kps+1)*(mu(i,j)+mub(i,j))
-!             ! hpgf_wshr_rgr(i,k,j) = hpgf_wshr_rgr(i,k,j)+real(m)*dt_fac
-!             ! hpgf_wshr_cor(i,k,j) = hpgf_wshr_cor(i,k,j)+real(r)*dt_fac
-!          enddo ! i
-!       enddo ! k
-
-!       !------------------------------------------------------------------------ 
-!       ! End of Possion solver
-!       !------------------------------------------------------------------------ 
-
-!    enddo ! j
-
-!    return
-
-! end subroutine  scalar_momentum_pgf
-
-!==============================================================================
-!==============================================================================
-
+!========================================================================================
+!========================================================================================
 ! Old scheme for reference
 
 ! subroutine scalar_momentum_pgf(config_flags,var_in,u_s,u_ls,u_s_tend,w,mu,mub  &
@@ -1071,131 +893,7 @@ end subroutine scalar_momentum_init
 
 ! end subroutine  scalar_momentum_pgf
 
-!==============================================================================
-!==============================================================================
-
-! subroutine esmt_fft_forward(nx,nz,dx,arr_in,k_out,arr_out)
-!    !------------------------------------------------------------------
-!    ! 
-!    ! Purpose: calculate forward FFT transform
-!    ! 
-!    ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
-!    ! 
-!    !------------------------------------------------------------------
-!    implicit none
-
-!    integer, intent(in) :: nx,nz
-!    real   , intent(in) :: dx
-!    real , dimension(nx,nz), intent(in ) :: arr_in
-!    real , dimension(nx)   , intent(out) :: k_out
-!    real , dimension(nx,nz), intent(out) :: arr_out
-
-!    ! local variables
-
-!    integer :: lensave, ier, nh, n1, i, j, k
-!    integer :: lot, jump, n, inc, lenr, lensav, lenwrk
-!    real    :: pi
-!    real, dimension(nx+15) :: wsave
-!    real, dimension(nx,nz) :: work
-
-!    ! naming convention follows fftpack5 routines
-
-!    n = nx
-!    lot = nz
-!    lensav = n+15
-!    inc = 1
-!    lenr = nx*nz
-!    jump = nx
-!    lenwrk = lenr
-!    pi = 2.*asin(1.0)
-
-!    ! initialization for FFT
-!    call rfftmi(n,wsave,lensav,ier)
-   
-!    if(ier /= 0) write(0,*) ' error in rfftmi ',ier
-
-!    do k = 1,nz
-!       do i = 1,nx
-!          arr_out(i,k)=arr_in(i,k)
-!       enddo
-!    enddo
-
-!    !  do the forward transform
-!    call rfftmf( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
-!    if(ier /= 0) write(0,*) ' error in rfftmf ',ier
-
-!    if(mod(n,2) == 0) then
-!       nh = n/2 - 1
-!    else
-!       nh = (n-1)/2
-!    endif
-
-!    k_out(1)=0.0
-!    do j = 1,nh
-!       k_out(2*j)   = 2.*pi*real(j)/(real(n)*dx)   !cos
-!       k_out(2*j+1) = 2.*pi*real(j)/(real(n)*dx)   !sin
-!    enddo
-!    if (mod(n,2) == 0) then
-!       k_out(n) =  2.*pi/(2.*dx)                  !nyquist wavelength for even n
-!    end if
-
-!    return
-
-! end subroutine esmt_fft_forward
-
-!==============================================================================
-!==============================================================================
-
-! subroutine esmt_fft_backward(nx,nz,arr_in,arr_out)
-!    !------------------------------------------------------------------
-!    ! 
-!    ! Purpose: calculate backward FFT transform
-!    ! 
-!    ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
-!    ! 
-!    !------------------------------------------------------------------
-!    implicit none
-
-!    integer, intent(in) :: nx,nz
-!    real , dimension(nx,nz), intent(in ) :: arr_in
-!    real , dimension(nx,nz), intent(out) :: arr_out
-
-!    ! local variables
-
-!    integer :: lensave, ier, nh, n1, i, k
-!    integer :: lot, jump, n, inc, lenr, lensav, lenwrk
-!    real, dimension(nx+15) :: wsave
-!    real, dimension(nx,nz) :: work
-
-!    ! naming convention follows fftpack5 routines
-
-!    n = nx
-!    lot = nz
-!    lensav = n+15
-!    inc = 1
-!    lenr = nx*nz
-!    jump = nx
-!    lenwrk = lenr
-
-!    ! initialization for FFT
-!    call rfftmi(n,wsave,lensav,ier)
-!    if(ier /= 0) write(0,*) ' error in rfftmi ',ier
-   
-!    do k = 1,nz
-!       do i = 1,nx
-!          arr_out(i,k)=arr_in(i,k)
-!       enddo
-!    enddo
-   
-!    !  do the backward transform
-!    call rfftmb( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
-!    if(ier /= 0) write(0,*) ' error in rfftmf ',ier
-
-!    return
-
-! end subroutine esmt_fft_backward
-
-!==============================================================================
-!==============================================================================
+!========================================================================================
+!========================================================================================
 
 end module scalar_momentum_mod
