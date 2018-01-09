@@ -641,7 +641,7 @@
 
        call caleddy( pcols     , pver      , ncol      ,                     &
                      slfd      , qtfd      , qlfd      , slv      ,ufd     , &
-                     vfd       , pi        , z         , zi       ,          &
+                     vfd       , pmid      , pi        , z         , zi    , &  ! whannah - added pmid
                      qflx      , shflx     , slslope   , qtslope  ,          &
                      chu       , chs       , cmu       , cms      ,sfuh    , &
                      sflh      , n2        , s2        , ri       ,rrho    , &
@@ -1367,7 +1367,7 @@
 
     subroutine caleddy( pcols        , pver         , ncol        ,                             &
                         sl           , qt           , ql          , slv        , u            , &
-                        v            , pi           , z           , zi         ,                &
+                        v            , pmid         , pi           , z           , zi         , &
                         qflx         , shflx        , slslope     , qtslope    ,                &
                         chu          , chs          , cmu         , cms        , sfuh         , &
                         sflh         , n2           , s2          , ri         , rrho         , &
@@ -1436,6 +1436,7 @@
     real(r8), intent(in) :: slv(pcols,pver)           ! Liquid water virtual static energy, sl * ( 1 + 0.608 * qt ) [ J/kg ]
     real(r8), intent(in) :: qt(pcols,pver)            ! Total speccific humidity  qv + ql + qi [ kg/kg ] 
     real(r8), intent(in) :: ql(pcols,pver)            ! Liquid water specific humidity [ kg/kg ]
+    real(r8), intent(in) :: pmid(pcols,pver)          ! Layer midpoint pressures [ Pa ] - whannah
     real(r8), intent(in) :: pi(pcols,pver+1)          ! Interface pressures [ Pa ]
     real(r8), intent(in) :: z(pcols,pver)             ! Layer midpoint height above surface [ m ]
     real(r8), intent(in) :: zi(pcols,pver+1)          ! Interface height above surface, i.e., zi(pver+1) = 0 all over the globe
@@ -1817,7 +1818,7 @@
     ! intereface (STL) as shown at the end of 'caleddy'. Even though a 'minpblh' is
     ! passed into 'exacol', it is not used in the 'exacol'.
 
-    call exacol( pcols, pver, ncol, ri, bflxs, minpblh, zi, ktop, kbase, ncvfin )
+    call exacol( pcols, pver, ncol, ri, bflxs, minpblh, pmid, zi, ktop, kbase, ncvfin )
 
     ! Diagnostic output of CL interface indices before performing 'extending-merging'
     ! of CL regimes in 'zisocl'
@@ -3082,7 +3083,7 @@
     !                                                                               !
     !============================================================================== !
 
-    subroutine exacol( pcols, pver, ncol, ri, bflxs, minpblh, zi, ktop, kbase, ncvfin ) 
+    subroutine exacol( pcols, pver, ncol, ri, bflxs, minpblh, pmid, zi, ktop, kbase, ncvfin ) 
 
     ! ---------------------------------------------------------------------------- !
     ! Object : Find unstable CL regimes and determine the indices                  !
@@ -3105,6 +3106,7 @@
     real(r8), intent(in) :: ri(pcols,pver)         ! Moist gradient Richardson no.
     real(r8), intent(in) :: bflxs(pcols)           ! Buoyancy flux at surface
     real(r8), intent(in) :: minpblh(pcols)         ! Minimum PBL height based on surface stress
+    real(r8), intent(in) :: pmid(pcols,pver)       ! Layer midpoint pressure [Pa] - whannah
     real(r8), intent(in) :: zi(pcols,pver+1)       ! Interface heights
 
     ! ---------------- !
@@ -3124,6 +3126,12 @@
     integer              :: ncv
     real(r8)             :: rimaxentr
     real(r8)             :: riex(pver+1)           ! Column Ri profile extended to surface
+
+! do i = 1, ncol
+!   do k = 1, pver
+!     ?
+!   end do
+! end do
 
     ! ----------------------- !
     ! Main Computation Begins !
@@ -3162,25 +3170,38 @@
        
           if( riex(k) .lt. rimaxentr ) then 
 
-              ! Identify a new CL
+              ! whannah - Problems were occuring in superparameterized run where the 
+              ! UW moist turbulence scheme would try to form cloud layers near the top 
+              ! of the stratosphere. I think this was an oversight, because no one expected 
+              ! to use the UW scheme when they extended the model top of E3SM. I added the 
+              ! if statement below to avoid having cloud layers above 50 hPa to fix this.
 
-              ncv = ncv + 1
+              if (pmid(i,k-1)>5000.) then
 
-              ! First define 'kbase' as the first interface below the lower-most unstable interface
-              ! Thus, Richardson number at 'kbase' is positive.
+                ! Identify a new CL
 
-              kbase(i,ncv) = min(k+1,pver+1)
+                ncv = ncv + 1
 
-              ! Decrement k until top unstable level
+                ! First define 'kbase' as the first interface below the lower-most unstable interface
+                ! Thus, Richardson number at 'kbase' is positive.
 
-              do while( riex(k) .lt. rimaxentr .and. k .gt. ntop_turb + 1 )
-                 k = k - 1
-              end do
+                kbase(i,ncv) = min(k+1,pver+1)
 
-              ! ktop is the first interface above upper-most unstable interface
-              ! Thus, Richardson number at 'ktop' is positive. 
+                ! Decrement k until top unstable level
 
-              ktop(i,ncv) = k
+                do while( riex(k) .lt. rimaxentr .and. k .gt. ntop_turb + 1 )
+                   k = k - 1
+                end do
+
+                ! ktop is the first interface above upper-most unstable interface
+                ! Thus, Richardson number at 'ktop' is positive. 
+
+                ktop(i,ncv) = k
+
+              else
+                ! whannah - if above the imposed upper limit we need to stop iterating
+                k = 0
+              end if
              
           else
 
