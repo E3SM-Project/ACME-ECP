@@ -6,3 +6,7 @@
 
 # Ignore emacs backup files
 *~
+
+# Ignore mac OS folder attribute files
+.DS_Store
+._.DS_Store

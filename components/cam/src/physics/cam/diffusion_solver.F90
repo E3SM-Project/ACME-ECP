@@ -511,17 +511,23 @@
        call vd_lu_decomp( pcols , pver , ncol  ,                         &
                           ksrf  , kvm  , tmpi2 , rpdel , ztodt , gravit, &
                           zero  , ntop , nbot  , decomp)
-#ifdef SPMOMTRANS
+
+!  whannah - I disabled the bypass below because my 3D runs with SPMOMTRANS were crashing
+! and I thought maybe un-diffused surface stresses could be the root of the problem.
+! This might cause double counting of momentum diffusion, but I'll deal with that if turning off
+! this bypass solves my problem...
+
+! #ifdef SPMOMTRANS
 ! whannah - use the line below for ESMT
 ! #if defined(SPMOMTRANS) || defined(SP_ESMT)
       ! Do nothing...
-#else
+! #else
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           u     , decomp, ntop  , nbot , zero )
 
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           v     , decomp, ntop  , nbot , zero )
-#endif
+! #endif
        ! ---------------------------------------------------------------------- !
        ! Calculate 'total' ( tautotx ) and 'tms' ( tautmsx ) stresses that      !
        ! have been actually added into the atmosphere at the current time step. ! 

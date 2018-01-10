@@ -1420,11 +1420,7 @@ end subroutine crm_physics_init
                ul(:ncol,:),                 vl(:ncol,:),                                                                                                             &
                state%ps(:ncol),             state%pmid(:ncol,:),          state%pdel(:ncol,:),       state%phis(:ncol),                                              &
                state%zm(:ncol,:),           state%zi(:ncol,:),            ztodt,                     pver,                                                           &
-! #ifdef CRM3D
-               ! ptend%u(:ncol,:),            ptend%v(:ncol,:),                                                                                                        &
-#ifdef CRM3D
                u_tend_crm (:ncol,:),        v_tend_crm (:ncol,:),                                                                                                    &
-#endif
 #ifdef SP_ESMT
                u_tend_esmt(:ncol,:),        v_tend_esmt(:ncol,:),                                                                                                    &
 #endif
@@ -1930,27 +1926,29 @@ end subroutine crm_physics_init
 #ifdef SP_ESMT
        call outfld('U_ESMT',u_tend_esmt,pcols   ,lchnk   )
        call outfld('V_ESMT',v_tend_esmt,pcols   ,lchnk   )
-#ifdef SP_USE_ESMT
+#endif
+#ifdef SPMOMTRANS
+       call outfld('UCONVMOM',u_tend_crm,pcols   ,lchnk   )
+       call outfld('VCONVMOM',v_tend_crm,pcols   ,lchnk   )
+#endif
+
+
+#ifdef SP_USE_ESMT 
        ptend%lu = .TRUE.
        ptend%lv = .TRUE.
        ptend%u  = u_tend_esmt
        ptend%v  = v_tend_esmt
-#endif
+
 #endif
 
-#if defined(CRM3D) && defined(SPMOMTRANS)
-#ifndef SP_USE_ESMT
+#if defined(SPMOMTRANS) && !defined(SP_USE_ESMT)
        ptend%lu = .TRUE.
        ptend%lv = .TRUE.
        ptend%u  = u_tend_crm
        ptend%v  = v_tend_crm
 #endif
-#endif
 
-#ifdef SPMOMTRANS
-       call outfld('UCONVMOM',u_tend_crm,pcols   ,lchnk   )
-       call outfld('VCONVMOM',v_tend_crm,pcols   ,lchnk   )
-#endif
+
 
        call phys_getopts(microp_scheme_out=microp_scheme)
        if(microp_scheme .eq. 'MG' ) then

@@ -39,9 +39,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
                 tl, ql, qccl, qiil, ul, vl, &
                 ps, pmid, pdel, phis, &
                 zmid, zint, dt_gl, plev, &
-#ifdef CRM3D
                 ultend, vltend,          &
-#endif
 #if defined(SP_ESMT)
                 ultend_esmt, vltend_esmt,          &  ! whannah 
 #endif
@@ -202,10 +200,8 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     real(r8), intent(inout) :: clhgh               (nvcols)                        ! shaded cloud fraction
     real(r8), intent(inout) :: clmed               (nvcols)                        ! shaded cloud fraction
     real(r8), intent(inout) :: cllow               (nvcols)                        ! shaded cloud fraction
-#ifdef CRM3D
     real(r8), intent(  out) :: ultend              (nvcols,plev)                   ! tendency of ul
     real(r8), intent(  out) :: vltend              (nvcols,plev)                   ! tendency of vl
-#endif
 #if defined(SP_ESMT)
     real(r8), intent(  out) :: ultend_esmt         (nvcols,plev)                   ! tendency of ul - whannah - temporary diagnostic fields 
     real(r8), intent(  out) :: vltend_esmt         (nvcols,plev)                   ! tendency of vl - whannah - temporary diagnostic fields
@@ -543,14 +539,10 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     tabs(1:nx,1:ny,1:nzm) = t_crm(vc,1:nx,1:ny,1:nzm)
 
 #if defined(SP_ESMT)
-    ! u_esmt(1:nx,1:ny,1:nzm) = u_crm(vc,1:nx,1:ny,1:nzm)
-    ! v_esmt(1:nx,1:ny,1:nzm) = v_crm(vc,1:nx,1:ny,1:nzm)
     do k=1,nzm
       u_esmt(:,:,k) = ul(vc,plev-k+1)
       v_esmt(:,:,k) = vl(vc,plev-k+1)
     end do
-! write(*,6780) lchnk,vc,'1a',(maxval(u_esmt)),(minval(u_esmt)),(maxval(v_esmt)),(minval(v_esmt))
-! 6780 format('whannah - ',i6,' ',i4,' - ',A2,' - max/min u/v esmt ',f20.5,' / ',f20.5,' - ',f20.5,' / ',f20.5  )
 #endif
 
     micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,1:nmicro_fields)
@@ -1468,7 +1460,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     vltend_esmt(vc,ptop:ptop+1) = 0.
 #endif
 
-#if defined(CRM3D) && defined(SPMOMTRANS)
+#if defined(SPMOMTRANS)
     ! whannah - SP CMT tendencies
     ultend(vc,:) = (uln - ul(vc,:))*idt_gl
     vltend(vc,:) = (vln - vl(vc,:))*idt_gl
@@ -1878,9 +1870,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #ifdef CLUBB_CRM
                           clubb_buffer(vc,:,:,:,:),crm_cld(vc,:,:,:),clubb_tk(vc,:,:,:),clubb_tkh(vc,:,:,:),relvar(vc,:,:,:),accre_enhan(vc,:,:,:),qclvar(vc,:,:,:) , &
 #endif
-#ifdef CRM3D
                           ultend(vc,:),vltend(vc,:) , &
-#endif
 ! #if defined(SP_ESMT)
 !                           ultend_esmt(vc,:),vltend_esmt(vc,:) , & ! whannah - temporary diagnostic fields
 ! #endif
