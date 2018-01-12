@@ -1981,8 +1981,8 @@ subroutine tphysbc (ztodt,               &
     integer ierr
 
     integer  i,k,m                             ! Longitude, level, constituent indices
-    ! real(r8) sp_flux_nfac                      ! scaling factor for SP_FLUX_MOD
-    ! integer  n,nf,nmax                         ! extra loop variables for SPFLUXBYPASS - whannah
+    real(r8) sp_flux_nfac                      ! scaling factor for SP_FLUX_MOD
+    integer  n,nf,nmax                         ! extra loop variables for SP_FLUX_BYPASS - whannah
     integer :: ixcldice, ixcldliq              ! constituent indices for cloud liquid and ice water.
     ! for macro/micro co-substepping
     integer :: macmic_it                       ! iteration variables
@@ -2760,50 +2760,50 @@ if (l_tracer_aero) then
     ! the tendency addition in diffusion_solver.F90. This is a more natural progression
     ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
     ! note : rpdel = 1./pdel
-    ! SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
-    ! SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
+    ! SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
+    ! SP_FLUX_BYPASS_2 - all constituent fluxes (and SHF) are affected
     !------------------------------------------------------------------------------------------
     !------------------------------------------------------------------------------------------
 
 !!! whannah - SP_FLUX_MOD - spread fluxes over nmax layers
-! #ifdef SP_FLUX_MOD
-!     nmax = 4
-! #else
-!     nmax = 1
-! #endif
+#ifdef SP_FLUX_MOD
+    nmax = 4
+#else
+    nmax = 1
+#endif
 
-!!! whannah - SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
-! #ifdef SPFLUXBYPASS_1
-!     lq(:) = .FALSE.
-!     lq(1) = .TRUE.
-!     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS', ls=.true., lq=lq)
-!     ptend%lu    = .false.
-!     ptend%lv    = .false.
-!     ptend%lq    = .false. 
-!     ptend%ls    = .true.
-!     ptend%lq(1) = .true.
-!     sp_flux_nfac = real(1,r8) / real(nmax,r8)
-!     do i=1,ncol
-!       tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
-!       ptend%s(i,:)   = 0.
-!       ptend%q(i,:,1) = 0.
-!       ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
-!       ! ptend%q(i,pver,1) = gravit / state%pdel(i,pver) * cam_in%cflx(i,1)
-!       ! ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-!       ! ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
-!       do n=1,nmax
-!         ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i)    * sp_flux_nfac
-!         ptend%q(i,pver-n-1,1) = tmp1 * cam_in%cflx(i,1) * sp_flux_nfac
-!       end do
-!     end do
-!     call physics_update(state, ptend, ztodt, tend)   
-! #endif 
+!!! whannah - SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
+#ifdef SP_FLUX_BYPASS_1
+    lq(:) = .FALSE.
+    lq(1) = .TRUE.
+    call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SP_FLUX_BYPASS', ls=.true., lq=lq)
+    ptend%lu    = .false.
+    ptend%lv    = .false.
+    ptend%lq    = .false. 
+    ptend%ls    = .true.
+    ptend%lq(1) = .true.
+    sp_flux_nfac = real(1,r8) / real(nmax,r8)
+    do i=1,ncol
+      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
+      ptend%s(i,:)   = 0.
+      ptend%q(i,:,1) = 0.
+      ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
+      ! ptend%q(i,pver,1) = gravit / state%pdel(i,pver) * cam_in%cflx(i,1)
+      ! ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      ! ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
+      do n=1,nmax
+        ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i)    * sp_flux_nfac
+        ptend%q(i,pver-n-1,1) = tmp1 * cam_in%cflx(i,1) * sp_flux_nfac
+      end do
+    end do
+    call physics_update(state, ptend, ztodt, tend)   
+#endif 
 
 
-!!! whannah - SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
-! #ifdef SPFLUXBYPASS_2
+!!! whannah - SP_FLUX_BYPASS_2 - all constituent fluxes (and sensible heat flux) are affected
+! #ifdef SP_FLU_XBYPASS_2
 !     lq(:) = .TRUE.
-!     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS_2', ls=.true., lq=lq)
+!     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SP_FLUX_BYPASS_2', ls=.true., lq=lq)
 !     ptend%lu    = .false.
 !     ptend%lv    = .false.
 !     ptend%lq    = .true. 

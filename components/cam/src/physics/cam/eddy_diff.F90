@@ -3202,7 +3202,7 @@
                 ! whannah - if above the imposed upper limit we need to stop iterating
                 k = 0
               end if
-             
+
           else
 
               ! Search upward for a CL.

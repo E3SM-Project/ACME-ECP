@@ -666,13 +666,13 @@
    ! addition of surface fluxes to be after the dynamical core. This modification 
    ! has been commented out because it did not improve the simulation, and would
    ! often lead to an error to be thrown in the energy balance check.
-   !   SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
-   !   SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
+   !   SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
+   !   SP_FLUX_BYPASS_2 - all constituent fluxes (and SHF) are affected
 
-! #if defined(SPFLUXBYPASS_1)
-!       dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
-! #endif
-! #if defined(SPFLUXBYPASS_2)
+#if defined(SP_FLUX_BYPASS_1)
+      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#endif
+! #if defined(SP_FLUX_BYPASS_2)
 !       dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
 ! #endif
 
@@ -776,10 +776,10 @@
       q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
         
 
-! #ifdef SPFLUXBYPASS_1
-!         if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
-! #endif  
-! #ifdef SPFLUXBYPASS_2
+#ifdef SP_FLUX_BYPASS_1
+        if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
+#endif  
+! #ifdef SP_FLUX_BYPASS_2
 !         q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m)
 ! #endif  
 
