@@ -43,9 +43,9 @@ contains
           if(qn(i,j,k)+qp(i,j,k).gt.0.) then
 
 
-            omn = max(0._crm_rknd,min(1._crm_rknd,(tabs(i,j,k)-tbgmin)*a_bg))
-            omp = max(0._crm_rknd,min(1._crm_rknd,(tabs(i,j,k)-tprmin)*a_pr))
-            omg = max(0._crm_rknd,min(1._crm_rknd,(tabs(i,j,k)-tgrmin)*a_gr))
+            omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tbgmin)*a_bg))
+            omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tprmin)*a_pr))
+            omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tgrmin)*a_gr))
 
             if(qn(i,j,k).gt.0.) then
 
@@ -130,7 +130,7 @@ contains
           endif
 
           dq = qp(i,j,k)
-          qp(i,j,k)=max(0._crm_rknd,qp(i,j,k))
+          qp(i,j,k)=max(real(0.,crm_rknd),qp(i,j,k))
           q(i,j,k) = q(i,j,k) + (dq-qp(i,j,k))
 
         end do
