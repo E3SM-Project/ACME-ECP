@@ -68,6 +68,7 @@ logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-
 logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
 !-- mdb spcam
+! real(r8)          :: crm_min_tk           = huge(1.0_r8)  ! minimum near-surface eddy viscosity - still hardcoded in crm/SGS_TKE/tke_full.F90
 logical           :: atm_dep_flux         = .true.     ! true => deposition fluxes will be provided
                                                        ! to the coupler
 logical           :: history_amwg         = .true.     ! output the variables used by the AMWG diag package
@@ -222,16 +223,14 @@ subroutine phys_ctl_readnl(nlfile)
    call mpibcast(eddy_scheme,      len(eddy_scheme)      , mpichar, 0, mpicom)
    call mpibcast(microp_scheme,    len(microp_scheme)    , mpichar, 0, mpicom)
    call mpibcast(radiation_scheme, len(radiation_scheme) , mpichar, 0, mpicom)
-!-- mdb spcam
-   call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)
-!-- mdb spcam
+   ! whannah - does order matter here? I'm gonna move this down...
+   ! call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
    call mpibcast(macrop_scheme,    len(macrop_scheme)    , mpichar, 0, mpicom)
    call mpibcast(srf_flux_avg,                    1 , mpiint,  0, mpicom)
    call mpibcast(use_subcol_microp,               1 , mpilog,  0, mpicom)
-!-- mdb spcam
-   call mpibcast(use_SPCAM,                       1 , mpilog,  0, mpicom)
-   call mpibcast(use_ECPP,                        1 , mpilog,  0, mpicom)
-!-- mdb spcam
+   call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
+   call mpibcast(use_SPCAM,                       1 , mpilog,  0, mpicom) !-- mdb spcam
+   call mpibcast(use_ECPP,                        1 , mpilog,  0, mpicom) !-- mdb spcam
    call mpibcast(atm_dep_flux,                    1 , mpilog,  0, mpicom)
    call mpibcast(history_amwg,                    1 , mpilog,  0, mpicom)
    call mpibcast(history_verbose,                 1 , mpilog,  0, mpicom)

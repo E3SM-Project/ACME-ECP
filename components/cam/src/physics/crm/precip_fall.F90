@@ -37,8 +37,8 @@ contains
     logical nonos
 
     real(crm_rknd) y,pp,pn
-    pp(y)= max(0._crm_rknd,y)
-    pn(y)=-min(0._crm_rknd,y)
+    pp(y)= max(real(0.,crm_rknd),y)
+    pn(y)=-min(real(0.,crm_rknd),y)
 
     real(crm_rknd) lat_heat, wmax
 
@@ -180,8 +180,8 @@ contains
               kb=max(1,k-1)
               ! Add limited flux correction to fz(k).
               fz(k) = fz(k) &                        ! Upwind flux
-              + pp(www(k))*min(1._crm_rknd,mx(k), mn(kb)) &
-              - pn(www(k))*min(1._crm_rknd,mx(kb),mn(k)) ! Anti-diffusive flux
+              + pp(www(k))*min(real(1.,crm_rknd),mx(k), mn(kb)) &
+              - pn(www(k))*min(real(1.,crm_rknd),mx(kb),mn(k)) ! Anti-diffusive flux
             end do
 
           endif ! nonos
