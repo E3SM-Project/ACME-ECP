@@ -314,7 +314,7 @@ subroutine wetdepa_v2( ncol, deltat, &
       !-----------------------------------------------------------------------
 
 #ifdef CRM
-      use crmdims,         only: crm_nz   ! whannah - used 
+      use crmdims,         only: crm_nz   ! whannah - used for disbaling warnings above the CRM
 #endif
 
       implicit none
@@ -1059,16 +1059,13 @@ jstrcnv_loop_aa: &
             end if
          end do
 
-! whannah - I added this because my log files 
-! from SP runs were getting really large, 
-! with tiny negative values (~ -1e-300) at the 
-! top of the model, above the CRM.
 #ifdef CRM
+         ! whannah - I added this because the log files from SP runs were getting really large, 
+         ! with tiny negative values (~ -1e-300) at the top of the model, above the CRM.
          if ( found ) then
-           if ( k < (pver-crm_nz) ) then
-             found = .false.
-             tracer(i,k) = 0.
-           end if
+            if ( k < (pver-crm_nz) ) then
+               found = .false.
+            end if
          end if
 #endif
 
