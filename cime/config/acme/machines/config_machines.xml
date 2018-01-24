@@ -2228,9 +2228,9 @@
         <command name="rm">atp</command>
         <command name="rm">esmf</command>
         <command name="rm">cudatoolkit</command>
-        <command name="load">cray-mpich/7.4.0</command>
-        <command name="load">cray-libsci/16.06.1</command>
-        <command name="load">atp/2.0.2</command>
+        <command name="load">cray-mpich/7.6.3</command>
+        <command name="load">cray-libsci/16.11.1</command>
+        <command name="load">atp/2.1.1</command>
         <command name="load">esmf/5.2.0rp2</command>
         <command name="load">cudatoolkit</command>
       </modules>
@@ -2263,7 +2263,7 @@
         <command name="load">intel/17.0.0.098</command>
         <command name="load">cray-libsci/16.11.1</command>
         <command name="load">cray-mpich/7.6.3</command>
-        <command name="load">atp/2.0.2</command>
+        <command name="load">atp/2.1.1</command>
       </modules>
       <modules compiler="cray">
         <command name="rm">PrgEnv-pgi</command>
@@ -2274,7 +2274,7 @@
         <command name="rm">cce</command>
         <command name="rm">cray-mpich</command>
         <command name="load">cce/8.5.0</command>
-        <command name="load">cray-mpich/7.4.0</command>
+        <command name="load">cray-mpich/7.6.3</command>
       </modules>
       <modules compiler="gnu">
         <command name="rm">PrgEnv-pgi</command>

@@ -249,10 +249,10 @@ CONTAINS
       do j=1,ny
         do i=1,nx
           qv(i,j,k) = q(i,j,k) - qn(i,j,k)
-          omn = max(0.,min(1.,(tabs(i,j,k)-tbgmin)*a_bg))
+          omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tbgmin)*a_bg))
           qcl(i,j,k) = qn(i,j,k)*omn
           qci(i,j,k) = qn(i,j,k)*(1.-omn)
-          omp = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
+          omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tprmin)*a_pr))
           qpl(i,j,k) = qp(i,j,k)*omp
           qpi(i,j,k) = qp(i,j,k)*(1.-omp)
         end do
@@ -366,17 +366,17 @@ CONTAINS
 
     term_vel_qp = 0.
     if(qp(i,j,k).gt.qp_threshold) then
-      omp = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
+      omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tprmin)*a_pr))
       if(omp.eq.1.) then
         term_vel_qp = vrain*(rho(k)*qp(i,j,k))**crain
       elseif(omp.eq.0.) then
-        omg = max(0.,min(1.,(tabs(i,j,k)-tgrmin)*a_gr))
+        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tgrmin)*a_gr))
         qgg=omg*qp(i,j,k)
         qss=qp(i,j,k)-qgg
         term_vel_qp = (omg*vgrau*(rho(k)*qgg)**cgrau &
         +(1.-omg)*vsnow*(rho(k)*qss)**csnow)
       else
-        omg = max(0.,min(1.,(tabs(i,j,k)-tgrmin)*a_gr))
+        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tgrmin)*a_gr))
         qrr=omp*qp(i,j,k)
         qss=qp(i,j,k)-qrr
         qgg=omg*qss
@@ -411,7 +411,7 @@ CONTAINS
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          omega(i,j,k) = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
+          omega(i,j,k) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tprmin)*a_pr))
         end do
       end do
     end do
