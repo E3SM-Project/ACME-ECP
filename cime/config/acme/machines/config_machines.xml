@@ -2260,7 +2260,7 @@
         <command name="rm">cray-libsci</command>
         <command name="rm">cray-mpich</command>
         <command name="rm">atp</command>
-        <command name="load">intel/15.0.2.164</command>
+        <command name="load">intel/17.0.0.098</command>
         <command name="load">cray-libsci/16.11.1</command>
         <command name="load">cray-mpich/7.6.3</command>
         <command name="load">atp/2.1.1</command>

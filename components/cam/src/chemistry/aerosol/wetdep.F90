@@ -313,7 +313,9 @@ subroutine wetdepa_v2( ncol, deltat, &
       ! Sungsu Park. Mar.2010 : Impose consistencies with a few changes in physics.
       !-----------------------------------------------------------------------
 
-
+#ifdef CRM
+      use crmdims,         only: crm_nz   ! whannah - used for disbaling warnings above the CRM
+#endif
 
       implicit none
 
@@ -1056,6 +1058,16 @@ jstrcnv_loop_aa: &
                exit
             end if
          end do
+
+#ifdef CRM
+         ! whannah - I added this because the log files from SP runs were getting really large, 
+         ! with tiny negative values (~ -1e-300) at the top of the model, above the CRM.
+         if ( found ) then
+            if ( k < (pver-crm_nz) ) then
+               found = .false.
+            end if
+         end if
+#endif
 
          if ( found ) then
             do i = 1,ncol

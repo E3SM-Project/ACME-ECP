@@ -374,7 +374,11 @@
              call abort_ice('ice: histfreq contains illegal element')
          endif
       enddo
-      if (nstreams == 0) write (nu_diag,*) 'WARNING: No history output'
+      if (nstreams == 0) then
+        if (my_task == master_task) then
+          write (nu_diag,*) 'WARNING: No ice history output'
+        end if
+      end if
       do ns1 = 1, nstreams
          do ns2 = 1, nstreams
             if (histfreq(ns1) == histfreq(ns2) .and. ns1/=ns2 &

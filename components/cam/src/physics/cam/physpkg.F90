@@ -1,8 +1,3 @@
-! #define GXL_DEBUG_OUTPUT  ! to turn on Guangling's debugging output
-! #define WH_DEBUG_OUTPUT   ! turn on Walter's debugging output
-! #define WH_SP_DEBUG
-
-
 module physpkg
   !-----------------------------------------------------------------------
   ! Purpose:
@@ -938,37 +933,6 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     ! Initialize Nudging Parameters
     !--------------------------------
     if(Nudge_Model) call nudging_init
-#ifdef GXL_DEBUG_OUTPUT  
-    !Guangxing Lin --debug output
-    call addfld ('conc_BC_ad0    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 0')
-    call addfld ('conc_BC0    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 0')
-    call addfld ('conc_BC1    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 1')
-    call addfld ('conc_BC2    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 2')
-    call addfld ('conc_BC3    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 3')
-    call addfld ('conc_BC4    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 4')
-    call addfld ('conc_BC5    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 5')
-    call addfld ('conc_BC6    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 6')
-    call addfld ('conc_BC7    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step 7')
-    call addfld ('conc_BC_ac1    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac1')
-    call addfld ('conc_BC_ac2    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac2')
-    call addfld ('conc_BC_ac3    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac3')
-    call addfld ('conc_BC_ac4    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac4')
-    call addfld ('conc_BC_ac5    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac5')
-    call addfld ('conc_BC_ac6    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac6')
-    call addfld ('conc_BC_ac7    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac7')
-    call addfld ('conc_BC_ac8    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac8')
-    call addfld ('conc_BC_ac9    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac9')
-    call addfld ('conc_BC_ac10    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac10')
-    call addfld ('conc_BC_ac11    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac11')
-    call addfld ('conc_BC_ac12    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac12')
-    call addfld ('conc_BC_ac13    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac13')
-    call addfld ('conc_BC_ac14    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac14')
-    call addfld ('conc_BC_ac15    ',(/ 'lev' /), 'A', 'kg/kg   ','debug output for BC concetation at phys step ac15')
-    call addfld ('ptend_BC_ac7    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac7')
-    call addfld ('ptend_BC_ac8    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac8')
-    call addfld ('ptend_BC_ac9    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac9')
-    call addfld ('ptend_BC_ac11    ',(/ 'lev' /), 'A', 'kg/kg/s   ','debug output for BC tendence at phys step ac11')
-#endif
     
     ! whannah - output for deveeloping ZM PE mod
     call addfld ('ZM_AERO_SUM',horiz_only,'A','#/m3','Vertically Averaged Aerosol Number')
@@ -1516,13 +1480,15 @@ subroutine tphysac (ztodt,   cam_in,  &
        call flux_avg_run(state, cam_in,  pbuf, nstep, ztodt)
     endif
 
+! #if defined( SP_FLUX_BYPASS_1 )
+!     ! whannah - copy adjusted surface fluxes into variable for CRM input
+!     cam_in%crm_shf (1:ncol)   = cam_in%shf (1:ncol)
+!     cam_in%crm_cflx(1:ncol,:) = cam_in%cflx(1:ncol,:)
+! #endif
+
     ! Validate the physics state.
     if (state_debug_checks) &
          call physics_state_check(state, name="before tphysac")
-
-#ifdef GXL_DEBUG_OUTPUT  
-   call outfld("conc_BC_ac1",state%q(:,:pver,19),pcols, lchnk) !Guangxing Lin==debug output
-#endif
 
     call t_startf('tphysac_init')
     ! Associate pointers with physics buffer fields
@@ -1661,6 +1627,7 @@ if (l_vdiff) then
     endif
 
 end if ! l_vdiff
+
 
 if (l_rayleigh) then
     !===================================================
@@ -1982,7 +1949,7 @@ subroutine tphysbc (ztodt,               &
 
     integer  i,k,m                             ! Longitude, level, constituent indices
     ! real(r8) sp_flux_nfac                      ! scaling factor for SP_FLUX_MOD
-    ! integer  n,nf,nmax                         ! extra loop variables for SPFLUXBYPASS - whannah
+    integer  n,nf,nmax                         ! extra loop variables for SP_FLUX_BYPASS - whannah
     integer :: ixcldice, ixcldliq              ! constituent indices for cloud liquid and ice water.
     ! for macro/micro co-substepping
     integer :: macmic_it                       ! iteration variables
@@ -2130,6 +2097,13 @@ subroutine tphysbc (ztodt,               &
 
     nstep = get_nstep()
 
+#if defined( SP_FLUX_BYPASS_DEBUG )
+223 format('whannah - SPFB',i2,' - ',i6,' - ',i6,' - min/max = ',f8.4,' / ',f8.4  )
+#endif
+
+#if defined( SP_FLUX_BYPASS_DEBUG )
+write(*,223) 4,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
+#endif
 
     static_ener_ac_idx = pbuf_get_index('static_ener_ac')
     call pbuf_get_field(pbuf, static_ener_ac_idx, static_ener_ac_2d )
@@ -2165,9 +2139,6 @@ subroutine tphysbc (ztodt,               &
     itim_old = pbuf_old_tim_idx()
     ifld = pbuf_get_index('CLD')
     call pbuf_get_field(pbuf, ifld, cld, (/1,1,itim_old/),(/pcols,pver,1/))
-#ifdef GXL_DEBUG_OUTPUT  
-call outfld("conc_BC0",state%q(:,:pver,19),pcols, lchnk) 
-#endif
 
 !<songxl 2011-09-20---------------------------
 !   if(trigmem)then
@@ -2760,8 +2731,8 @@ if (l_tracer_aero) then
     ! the tendency addition in diffusion_solver.F90. This is a more natural progression
     ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
     ! note : rpdel = 1./pdel
-    ! SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
-    ! SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
+    ! SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
+    ! SP_FLUX_BYPASS_2 - all constituent fluxes (and SHF) are affected
     !------------------------------------------------------------------------------------------
     !------------------------------------------------------------------------------------------
 
@@ -2772,38 +2743,50 @@ if (l_tracer_aero) then
 !     nmax = 1
 ! #endif
 
-!!! whannah - SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
-! #ifdef SPFLUXBYPASS_1
-!     lq(:) = .FALSE.
-!     lq(1) = .TRUE.
-!     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS', ls=.true., lq=lq)
-!     ptend%lu    = .false.
-!     ptend%lv    = .false.
-!     ptend%lq    = .false. 
-!     ptend%ls    = .true.
-!     ptend%lq(1) = .true.
-!     sp_flux_nfac = real(1,r8) / real(nmax,r8)
-!     do i=1,ncol
-!       tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
-!       ptend%s(i,:)   = 0.
-!       ptend%q(i,:,1) = 0.
-!       ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
-!       ! ptend%q(i,pver,1) = gravit / state%pdel(i,pver) * cam_in%cflx(i,1)
-!       ! ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-!       ! ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
-!       do n=1,nmax
-!         ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i)    * sp_flux_nfac
-!         ptend%q(i,pver-n-1,1) = tmp1 * cam_in%cflx(i,1) * sp_flux_nfac
-!       end do
-!     end do
-!     call physics_update(state, ptend, ztodt, tend)   
-! #endif 
+#if defined( SP_FLUX_BYPASS_DEBUG )
+write(*,223) 5,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
+#endif
+
+!!! whannah - SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
+#if defined( SP_FLUX_BYPASS_1 )
+    lq(:) = .false.
+    lq(1) = .true.
+    call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', lu=.false., lv=.false., ls=.true., lq=lq)
+    ptend%lu    = .false.
+    ptend%lv    = .false.
+    ptend%lq    = .false. 
+    ptend%ls    = .true.
+    ptend%lq(1) = .true.
+    ! sp_flux_nfac = real(1,r8) / real(nmax,r8)
+! write(*,*) 'whannah - lchnk ',lchnk,' - min/max shf = ',minval(cam_in%crm_shf(:))   ,maxval(cam_in%crm_shf(:))
+! write(*,*) 'whannah - lchnk ',lchnk,' - min/max lhf = ',minval(cam_in%crm_cflx(:,1)),maxval(cam_in%crm_cflx(:,1))
+
+! write(*,5001) lchnk,nstep, minval(cam_in%shf(:))   ,maxval(cam_in%shf(:))
+! write(*,5002) lchnk,nstep, minval(cam_in%cflx(:,1)),maxval(cam_in%cflx(:,1))
+! 5001 format('whannah - SPFB - ',i5,' ',i6,' - min/max shf = ',f6.2,' / ',f6.2  )
+! 5002 format('whannah - SPFB - ',i5,' ',i6,' - min/max lhf = ',f6.2,' / ',f6.2  )
+! stop
+    do i=1,ncol
+      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
+      ptend%s(i,:)   = 0.
+      ptend%q(i,:,1) = 0.
+      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
+      ! ptend%s(i,pver)   = tmp1 * cam_in%crm_shf(i)
+      ! ptend%q(i,pver,1) = tmp1 * cam_in%crm_cflx(i,1)
+      ! do n=1,nmax
+      !   ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i)    * sp_flux_nfac
+      !   ptend%q(i,pver-n-1,1) = tmp1 * cam_in%cflx(i,1) * sp_flux_nfac
+      ! end do
+    end do
+    call physics_update(state, ptend, ztodt, tend)   
+#endif 
 
 
-!!! whannah - SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
-! #ifdef SPFLUXBYPASS_2
+!!! whannah - SP_FLUX_BYPASS_2 - all constituent fluxes (and sensible heat flux) are affected
+! #ifdef SP_FLU_XBYPASS_2
 !     lq(:) = .TRUE.
-!     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS_2', ls=.true., lq=lq)
+!     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SP_FLUX_BYPASS_2', ls=.true., lq=lq)
 !     ptend%lu    = .false.
 !     ptend%lv    = .false.
 !     ptend%lq    = .true. 
@@ -2834,12 +2817,8 @@ if (l_tracer_aero) then
 
 
 
-    call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class) !==Guangxing Lin added species_class
+    call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class)
   endif
-
-! #ifdef WH_DEBUG_OUTPUT  
-!    call outfld(" ",state%q(:,:pver,19),pcols, lchnk) 
-! #endif
 
   if(use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
     ! As ECPP is not linked with the sam1mom yet, conventional convective transport
