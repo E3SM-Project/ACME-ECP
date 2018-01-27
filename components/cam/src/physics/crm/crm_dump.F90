@@ -48,7 +48,7 @@ contains
     real(r8), intent(in) :: phis ! Global grid surface geopotential (m2/s2)
     real(r8), intent(in) :: zmid(plev) ! Global grid height (m)
     real(r8), intent(in) :: zint(plev+1)! Global grid interface height (m)
-    real(r8), intent(in) :: qrad_crm(crm_nx, crm_ny, crm_nz) ! CRM rad. heating
+    real(r8), intent(in) :: qrad_crm(crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
     real(r8), intent(in) :: dt_gl ! global model's time step
     real(r8), intent(in) :: ocnfrac ! area fraction of the ocean
     real(r8), intent(in) :: tau00  ! large-scale surface stress (N/m2)
@@ -137,7 +137,7 @@ contains
             call dmdf_write(phis            ,myrank,'crm_in','phis'                                                              ,.false.,.false.); _ERR(success,error_string,__LINE__)
             call dmdf_write(zmid            ,myrank,'crm_in','zmid'            ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
             call dmdf_write(zint            ,myrank,'crm_in','zint'            ,(/'plev_p1'/)                                    ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(qrad_crm        ,myrank,'crm_in','qrad_crm'        ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
+            call dmdf_write(qrad_crm        ,myrank,'crm_in','qrad_crm'        ,(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
             call dmdf_write(dt_gl           ,myrank,'crm_in','dt_gl'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
             call dmdf_write(ocnfrac         ,myrank,'crm_in','ocnfrac'                                                           ,.false.,.false.); _ERR(success,error_string,__LINE__)
             call dmdf_write(tau00           ,myrank,'crm_in','tau00'                                                             ,.false.,.false.); _ERR(success,error_string,__LINE__)
@@ -239,17 +239,17 @@ contains
     real(r8), intent(in) :: qltend(plev) ! tendency of water vapor
     real(r8), intent(in) :: qcltend(plev)! tendency of cloud liquid water
     real(r8), intent(in) :: qiltend(plev)! tendency of cloud ice
-    real(r8), intent(in) :: t_rad (crm_nx, crm_ny, crm_nz) ! rad temperuture
-    real(r8), intent(in) :: qv_rad(crm_nx, crm_ny, crm_nz) ! rad vapor
-    real(r8), intent(in) :: qc_rad(crm_nx, crm_ny, crm_nz) ! rad cloud water
-    real(r8), intent(in) :: qi_rad(crm_nx, crm_ny, crm_nz) ! rad cloud ice
-    real(r8), intent(in) :: cld_rad(crm_nx, crm_ny, crm_nz) ! rad cloud fraction 
+    real(r8), intent(in) :: t_rad (crm_nx_rad, crm_ny_rad, crm_nz) ! rad temperuture
+    real(r8), intent(in) :: qv_rad(crm_nx_rad, crm_ny_rad, crm_nz) ! rad vapor
+    real(r8), intent(in) :: qc_rad(crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud water
+    real(r8), intent(in) :: qi_rad(crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice
+    real(r8), intent(in) :: cld_rad(crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud fraction 
     real(r8), intent(in) :: cld3d_crm(crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
 #ifdef m2005
-    real(r8), intent(in) :: nc_rad(crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg) 
-    real(r8), intent(in) :: ni_rad(crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
-    real(r8), intent(in) :: qs_rad(crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
-    real(r8), intent(in) :: ns_rad(crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
+    real(r8), intent(in) :: nc_rad(crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud droplet number (#/kg) 
+    real(r8), intent(in) :: ni_rad(crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice crystal number (#/kg)
+    real(r8), intent(in) :: qs_rad(crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
+    real(r8), intent(in) :: ns_rad(crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow crystal number (#/kg)
     real(r8), intent(in) :: wvar_crm(crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
     real(r8), intent(in) :: aut_crm(crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
     real(r8), intent(in) :: acc_crm(crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
@@ -376,11 +376,11 @@ contains
         call dmdf_write(qltend          ,myrank,'crm_out',trim('qltend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(qcltend         ,myrank,'crm_out',trim('qcltend         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(qiltend         ,myrank,'crm_out',trim('qiltend         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(t_rad           ,myrank,'crm_out',trim('t_rad           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(qv_rad          ,myrank,'crm_out',trim('qv_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(qc_rad          ,myrank,'crm_out',trim('qc_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(qi_rad          ,myrank,'crm_out',trim('qi_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(cld_rad         ,myrank,'crm_out',trim('cld_rad         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(t_rad           ,myrank,'crm_out',trim('t_rad           '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(qv_rad          ,myrank,'crm_out',trim('qv_rad          '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(qc_rad          ,myrank,'crm_out',trim('qc_rad          '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(qi_rad          ,myrank,'crm_out',trim('qi_rad          '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(cld_rad         ,myrank,'crm_out',trim('cld_rad         '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(cld3d_crm       ,myrank,'crm_out',trim('cld3d_crm       '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
 #ifdef CLUBB_CRM
         call dmdf_write(clubb_buffer    ,myrank,'crm_out',trim('clubb_buffer    '),(/'crm_nx','crm_ny','crm_nz_p1,nclubbvars'/)        ,.false.,.false.); _ERR(success,error_string,__LINE__)
@@ -396,10 +396,10 @@ contains
         call dmdf_write(vltend          ,myrank,'crm_out',trim('vltend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
 #endif
 #ifdef m2005
-        call dmdf_write(nc_rad          ,myrank,'crm_out',trim('nc_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(ni_rad          ,myrank,'crm_out',trim('ni_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(qs_rad          ,myrank,'crm_out',trim('qs_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(ns_rad          ,myrank,'crm_out',trim('ns_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(nc_rad          ,myrank,'crm_out',trim('nc_rad          '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(ni_rad          ,myrank,'crm_out',trim('ni_rad          '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(qs_rad          ,myrank,'crm_out',trim('qs_rad          '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(ns_rad          ,myrank,'crm_out',trim('ns_rad          '),(/'crm_nx_rad','crm_ny_rad','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(wvar_crm        ,myrank,'crm_out',trim('wvar_crm        '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(aut_crm         ,myrank,'crm_out',trim('aut_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(acc_crm         ,myrank,'crm_out',trim('acc_crm         '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
