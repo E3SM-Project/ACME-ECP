@@ -10,6 +10,8 @@
 !==Guangxing Lin
         use physics_buffer, only : physics_buffer_desc
 
+        use cam_logfile, only: iulog
+
     implicit none
 
 
@@ -1517,6 +1519,18 @@ vert_topqu_iccy_loop:   &
 
 !   new mixing ratio
         chem_sub_new(k,icc,jcls,la) = tmp_ardzqa/ardz_cen_new(k,icc,jcls)
+        if (chem_sub_new(k,icc,jcls,la) < -0.1) then
+           write(iulog,*)'In ecpp_td2clm aftr ardzqA chem_sub_new=',chem_sub_new(k,icc,jcls,la)
+           write(iulog,*)'      tmp_ardzqa =',tmp_ardzqa
+           write(iulog,*)'      ardz_cen_new =',ardz_cen_new(k,icc,jcls)
+           write(iulog,*)'   Error trap initiated: exiting module'
+!           stop
+        end if
+!   ensure that chem_sub_new does not go negative
+        if (chem_sub_new(k,icc,jcls,la) < -0.00001) then
+           chem_sub_new(k,icc,jcls,la) = 0.0
+        end if
+
         if (lc > 0)   &
         chem_sub_new(k,icc,jcls,lc) = tmp_ardzqc/ardz_cen_new(k,icc,jcls)
 
