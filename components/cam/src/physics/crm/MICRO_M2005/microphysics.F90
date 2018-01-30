@@ -137,11 +137,22 @@ real(crm_rknd), public, allocatable, dimension(:, :) ::  sfcpcp2D  ! surface pre
 
 CONTAINS
 
+
+subroutine allocate_microphysics(ncrms)
+  implicit none
+  integer, intent(in) :: ncrms
+end subroutine allocate_microphysics
+
+subroutine deallocate_microphysics()
+  implicit none
+end subroutine deallocate_microphysics
+
 !----------------------------------------------------------------------
 !!! Read microphysical options from prm file and allocate variables
 !
 subroutine micro_setparm()
-  use vars
+  !use vars
+  use grid, only: rank, compute_reffc, compute_reffi
 #ifdef CLUBB_CRM
   use module_mp_graupel, only: NNUCCD_REDUCE_COEF, NNUCCC_REDUCE_COEF
 #endif
@@ -376,7 +387,8 @@ subroutine micro_setparm()
 
   ! zero out statistics variables associated with cloud ice sedimentation
   !   in Marat's default SAM microphysics
-  tlatqi = 0.
+  !MRN: This is already initialized to zero in vars.F90 when it is allocated.
+  !tlatqi = 0.
 
   ! initialize these arrays
   micro_field = 0.
