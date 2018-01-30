@@ -40,8 +40,8 @@ contains
         vwle(k) = 0.
         do j=1,ny
           do i=1,nx
-            fuz(i,j,k) = rhoi*(w(i,j,k)+w(i-1,j,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
-            fvz(i,j,k) = rhoi*(w(i,j,k)+w(i,j-1,k))*(v(icrm,i,j,k)+v(icrm,i,j,kb))
+            fuz(i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
+            fvz(i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i,j-1,k))*(v(icrm,i,j,k)+v(icrm,i,j,kb))
             uwle(k) = uwle(k)+fuz(i,j,k)
             vwle(k) = vwle(k)+fvz(i,j,k)
           end do
@@ -57,7 +57,7 @@ contains
         vwle(k) = 0.
         do j=1,ny
           do i=1,nx
-            www = rhoi*(w(i,j,k)+w(i-1,j,k))
+            www = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))
             fuz(i,j,k) = www*(u(icrm,i,j,k)+u(icrm,i,j,kb))
             fvz(i,j,k) = www*(v(icrm,i,j,k)+v(icrm,i,j,kb))
             uwle(k) = uwle(k)+fuz(i,j,k)
@@ -76,7 +76,7 @@ contains
         do i=1,nx
           dudt(i,j,k,na)=dudt(i,j,k,na)-(fuz(i,j,kc)-fuz(i,j,k))*rhoi
           dvdt(i,j,k,na)=dvdt(i,j,k,na)-(fvz(i,j,kc)-fvz(i,j,k))*rhoi
-          fwz(i,j,k)=dz25*(w(i,j,kc)*rhow(kc)+w(i,j,k)*rhow(k))*(w(i,j,kc)+w(i,j,k))
+          fwz(i,j,k)=dz25*(w(icrm,i,j,kc)*rhow(kc)+w(icrm,i,j,k)*rhow(k))*(w(icrm,i,j,kc)+w(icrm,i,j,k))
         end do
       end do
     end do

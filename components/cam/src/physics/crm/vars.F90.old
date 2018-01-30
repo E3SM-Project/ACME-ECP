@@ -13,7 +13,7 @@ module vars
 
   real(crm_rknd) u   (icrm,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm) ! x-wind
   real(crm_rknd) v   (icrm,dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm) ! y-wind
-  real(crm_rknd) w   (dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ) ! z-wind
+  real(crm_rknd) w   (icrm,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ) ! z-wind
   real(crm_rknd) t   (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! liquid/ice water static energy
 
   !--------------------------------------------------------------------

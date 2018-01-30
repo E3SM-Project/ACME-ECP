@@ -22,10 +22,10 @@ module kurant_mod
 
       wm(nz)=0.
       do k = 1,nzm
-         wm(k) = maxval(abs(w(1:nx,1:ny,k)))
+         wm(k) = maxval(abs(w(icrm,1:nx,1:ny,k)))
          uhm(k) = sqrt(maxval(u(icrm,1:nx,1:ny,k)**2+YES3D*v(icrm,1:nx,1:ny,k)**2))
       end do
-      w_max=max( w_max, real(maxval(w(1:nx,1:ny,1:nz)),kind(w_max)) )
+      w_max=max( w_max, real(maxval(w(icrm,1:nx,1:ny,1:nz)),kind(w_max)) )
       u_max=max( u_max, real(maxval(uhm(1:nzm))       ,kind(u_max)) )
 
       cfl = 0.

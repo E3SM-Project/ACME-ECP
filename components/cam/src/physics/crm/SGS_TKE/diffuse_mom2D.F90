@@ -45,7 +45,7 @@ contains
           fu(i,j,k)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
           fv(i,j,k)=-tkx*(v(icrm,ic,j,k)-v(icrm,i,j,k))
           tkx=rdx251*(tk(i,j,k)+tk(ic,j,k)+tk(i,j,kcu)+tk(ic,j,kcu))
-          fw(i,j,k)=-tkx*(w(ic,j,kc)-w(i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz)
+          fw(i,j,k)=-tkx*(w(icrm,ic,j,kc)-w(icrm,i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz)
         end do
         do i=1,nx
           ib=i-1
@@ -73,10 +73,10 @@ contains
       do i=1,nx
         ib=i-1
         tkz=rdz2*tk(i,j,k)
-        fw(i,j,kc)=-2.*tkz*(w(i,j,kc)-w(i,j,k))*rho(k)*iadz
+        fw(i,j,kc)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(k)*iadz
         tkz=rdz25*(tk(i,j,k)+tk(ib,j,k)+tk(i,j,kc)+tk(ib,j,kc))
         fu(i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + &
-        (w(i,j,kc)-w(ib,j,kc))*dzx)*rhow(kc)
+        (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(kc)
         fv(i,j,kc)=-tkz*(v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw*rhow(kc)
         uwsb(kc)=uwsb(kc)+fu(i,j,kc)
         vwsb(kc)=vwsb(kc)+fv(i,j,kc)
@@ -88,7 +88,7 @@ contains
 
     do i=1,nx
       tkz=rdz2*grdf_z(nzm)*tk(i,j,nzm)
-      fw(i,j,nz)=-2.*tkz*(w(i,j,nz)-w(i,j,nzm))/adz(nzm)*rho(nzm)
+      fw(i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm)*rho(nzm)
       fu(i,j,1)=fluxbu(i,j) * rdz * rhow(1)
       fv(i,j,1)=fluxbv(i,j) * rdz * rhow(1)
       fu(i,j,nz)=fluxtu(i,j) * rdz * rhow(nz)

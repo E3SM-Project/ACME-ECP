@@ -529,7 +529,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
     u          (icrm,1:nx,1:ny,1:nzm                ) = u_crm           (icrm,1:nx,1:ny,1:nzm                )
     v          (icrm,1:nx,1:ny,1:nzm                ) = v_crm           (icrm,1:nx,1:ny,1:nzm                )*YES3D
-    w          (1:nx,1:ny,1:nzm                ) = w_crm           (icrm,1:nx,1:ny,1:nzm                )
+    w          (icrm,1:nx,1:ny,1:nzm                ) = w_crm           (icrm,1:nx,1:ny,1:nzm                )
     tabs       (icrm,1:nx,1:ny,1:nzm                ) = t_crm           (icrm,1:nx,1:ny,1:nzm                )
     micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
 #ifdef sam1mom
@@ -561,7 +561,7 @@ subroutine crm(lchnk, icol, ncrms, &
     enddo
 #endif
 
-    w(:,:,nz)=0.
+    w(icrm,:,:,nz)=0.
     wsub (:) = 0.      !used in clubb, +++mhwang
     dudt(1:nx,1:ny,1:nzm,1:3) = 0.
     dvdt(1:nx,1:ny,1:nzm,1:3) = 0.
@@ -1229,20 +1229,20 @@ subroutine crm(lchnk, icol, ncrms, &
             tmp1 = rho(k)*adz(k)*dz
             if(tmp1*(qcl(i,j,k)+qci(i,j,k)).gt.cwp_threshold) then
                  cld(icrm,l) = cld(icrm,l) + CF3D(i,j,k)
-                 if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   mcup (icrm,l) = mcup (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
+                 if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
+                   mcup (icrm,l) = mcup (icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k)
+                   mcuup(icrm,l) = mcuup(icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(i,j,k))
                  endif
-                 if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   mcdn (icrm,l) = mcdn (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
+                 if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
+                   mcdn (icrm,l) = mcdn (icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k)
+                   mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(i,j,k))
                  endif
             else
-                 if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+                 if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
+                   mcuup(icrm,l) = mcuup(icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
                  endif
-                 if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+                 if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
+                   mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
                  endif
             endif
 
@@ -1285,19 +1285,19 @@ subroutine crm(lchnk, icol, ncrms, &
         l=plev+1-k+1
         do j=1, ny
           do i=1, nx
-            if(w(i,j,k).gt.0.) then
+            if(w(icrm,i,j,k).gt.0.) then
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx))
               if(qcl(i,j,kx)+qci(i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k)*w(i,j,k)
+                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k)*w(icrm,i,j,k)
               endif
-            else if (w(i,j,k).lt.0.) then
+            else if (w(icrm,i,j,k).lt.0.) then
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx))
               if(qcl(i,j,kx)+qci(i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(i,j,k)
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(icrm,i,j,k)
               else if(qpl(i,j,kx)+qpi(i,j,kx).gt.1.0e-4) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(i,j,k)
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(icrm,i,j,k)
               endif
             endif
           enddo
@@ -1414,7 +1414,7 @@ subroutine crm(lchnk, icol, ncrms, &
     ! Save the last step to the permanent core:
     u_crm  (icrm,1:nx,1:ny,1:nzm) = u   (icrm,1:nx,1:ny,1:nzm)
     v_crm  (icrm,1:nx,1:ny,1:nzm) = v   (icrm,1:nx,1:ny,1:nzm)
-    w_crm  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
+    w_crm  (icrm,1:nx,1:ny,1:nzm) = w   (icrm,1:nx,1:ny,1:nzm)
     t_crm  (icrm,1:nx,1:ny,1:nzm) = tabs(icrm,1:nx,1:ny,1:nzm)
     micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
 
@@ -1664,7 +1664,7 @@ subroutine crm(lchnk, icol, ncrms, &
         do i=1,nx
           u2z = u2z+(u(icrm,i,j,k)-u0(k))**2
           v2z = v2z+(v(icrm,i,j,k)-v0(k))**2
-          w2z = w2z+0.5*(w(i,j,k+1)**2+w(i,j,k)**2)
+          w2z = w2z+0.5*(w(icrm,i,j,k+1)**2+w(icrm,i,j,k)**2)
         enddo
       enddo
       !+++mhwang

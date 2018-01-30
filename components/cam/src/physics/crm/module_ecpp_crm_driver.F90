@@ -540,7 +540,7 @@ contains
       end do
     end do
 
-    ww(:,:,:)     = w(1:nx,1:ny,1:nzstag)
+    ww(:,:,:)     = w(icrm,1:nx,1:ny,1:nzstag)
 #ifdef CLUBB_CRM
     wwsq(:,:,:)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
 #else

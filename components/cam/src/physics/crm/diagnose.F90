@@ -88,7 +88,7 @@ contains
         vsfc_xy(i,j) = vsfc_xy(i,j) + v(icrm,i,j,1)*dtfactor
         u200_xy(i,j) = u200_xy(i,j) + u(icrm,i,j,k200)*dtfactor
         v200_xy(i,j) = v200_xy(i,j) + v(icrm,i,j,k200)*dtfactor
-        w500_xy(i,j) = w500_xy(i,j) + w(i,j,k500)*dtfactor
+        w500_xy(i,j) = w500_xy(i,j) + w(icrm,i,j,k500)*dtfactor
       end do
     end do
 

@@ -13,7 +13,7 @@ module vars
 
   real(crm_rknd), allocatable :: u  (:,:,:,:) !REDIM ! x-wind
   real(crm_rknd), allocatable :: v  (:,:,:,:) !REDIM ! y-wind
-  real(crm_rknd), allocatable :: w  (:,:,:) ! z-wind
+  real(crm_rknd), allocatable :: w  (:,:,:,:) !REDIM ! z-wind
   real(crm_rknd), allocatable :: t  (:,:,:) ! liquid/ice water static energy
 
   !--------------------------------------------------------------------
@@ -208,7 +208,7 @@ contains
     real(crm_rknd) :: zero
     allocate( u (ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm) ) ! x-wind
     allocate( v (ncrms,dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm) ) ! y-wind
-    allocate( w (dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ) ) ! z-wind
+    allocate( w (ncrms,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ) ) ! z-wind
     allocate( t (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ) ! liquid/ice water static energy
     allocate( p   (ncrms,0:nx, (1-YES3D):ny, nzm) )     ! perturbation pressure (from Poison eq)
     allocate( tabs(ncrms,nx, ny, nzm) )                 ! temperature

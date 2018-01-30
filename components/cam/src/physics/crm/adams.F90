@@ -30,13 +30,13 @@ contains
           dvdt(i,j,k,nc) = v(icrm,i,j,k) + dt3(na) &
           *(at*dvdt(i,j,k,na)+bt*dvdt(i,j,k,nb)+ct*dvdt(i,j,k,nc))
 
-          dwdt(i,j,k,nc) = w(i,j,k) + dt3(na) &
+          dwdt(i,j,k,nc) = w(icrm,i,j,k) + dt3(na) &
           *(at*dwdt(i,j,k,na)+bt*dwdt(i,j,k,nb)+ct*dwdt(i,j,k,nc))
 
           u(icrm,i,j,k) = 0.5*(u(icrm,i,j,k)+dudt(i,j,k,nc)) * rhox
           v(icrm,i,j,k) = 0.5*(v(icrm,i,j,k)+dvdt(i,j,k,nc)) * rhoy
-          misc(i,j,k) = 0.5*(w(i,j,k)+dwdt(i,j,k,nc))
-          w(i,j,k) = 0.5*(w(i,j,k)+dwdt(i,j,k,nc)) * rhoz
+          misc(i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(i,j,k,nc))
+          w(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(i,j,k,nc)) * rhoz
 
 
         end do

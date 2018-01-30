@@ -26,10 +26,10 @@ contains
       call bound_exchange(v(icrm,:,:,:),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
-      w(1:nx,1:ny,nz) = sstxy(1:nx,1:ny)
-      call bound_exchange(w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
-      sstxy(0:nx,1-YES3D:ny) = w(0:nx,1-YES3D:ny,nz)
-      w(0:nx+1,1-YES3D:ny+YES3D,nz) = 0.
+      w(icrm,1:nx,1:ny,nz) = sstxy(1:nx,1:ny)
+      call bound_exchange(w(icrm,:,:,:),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
+      sstxy(0:nx,1-YES3D:ny) = w(icrm,0:nx,1-YES3D:ny,nz)
+      w(icrm,0:nx+1,1-YES3D:ny+YES3D,nz) = 0.
 
     endif
 
@@ -38,7 +38,7 @@ contains
 
       call bound_exchange(u(icrm,:,:,:),dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
       call bound_exchange(v(icrm,:,:,:),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2+NADV,2+NADV,2,3,2)
-      call bound_exchange(w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
+      call bound_exchange(w(icrm,:,:,:),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
 
       call bound_exchange(t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4)
       do i = 1,nsgs_fields

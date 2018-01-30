@@ -16,7 +16,7 @@ contains
     real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) v(ncrms,dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm)
-    real(crm_rknd) w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
+    real(crm_rknd) w(ncrms,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
     real(crm_rknd) rho(nzm)
     real(crm_rknd) rhow(nz)
     real(crm_rknd) flux(nz)
@@ -133,7 +133,7 @@ contains
       kb=max(1,k-1)
       do j=-1,nyp2
         do i=-1,nxp2
-          www(i,j,k)=max(real(0.,crm_rknd),w(i,j,k))*f(i,j,kb)+min(real(0.,crm_rknd),w(i,j,k))*f(i,j,k)
+          www(i,j,k)=max(real(0.,crm_rknd),w(icrm,i,j,k))*f(i,j,kb)+min(real(0.,crm_rknd),w(icrm,i,j,k))*f(i,j,k)
         end do
       end do
       flux(k) = 0.
@@ -170,7 +170,7 @@ contains
           -(across(f(ib,jc,k)+f(i,jc,k)-f(ib,jb,k)-f(i,jb,k), &
           u(icrm,i,j,k), v(icrm,ib,j,k)+v(icrm,ib,jc,k)+v(icrm,i,jc,k)+v(icrm,i,j,k)) &
           +across(dd*(f(ib,j,kc)+f(i,j,kc)-f(ib,j,kb)-f(i,j,kb)), &
-          u(icrm,i,j,k), w(ib,j,k)+w(ib,j,kc)+w(i,j,k)+w(i,j,kc))) *irho(k)
+          u(icrm,i,j,k), w(icrm,ib,j,k)+w(icrm,ib,j,kc)+w(icrm,i,j,k)+w(icrm,i,j,kc))) *irho(k)
         end do
       end do
     end do
@@ -188,7 +188,7 @@ contains
           -(across(f(ic,jb,k)+f(ic,j,k)-f(ib,jb,k)-f(ib,j,k), &
           v(icrm,i,j,k), u(icrm,i,jb,k)+u(icrm,i,j,k)+u(icrm,ic,j,k)+u(icrm,ic,jb,k)) &
           +across(dd*(f(i,jb,kc)+f(i,j,kc)-f(i,jb,kb)-f(i,j,kb)), &
-          v(icrm,i,j,k), w(i,jb,k)+w(i,j,k)+w(i,j,kc)+w(i,jb,kc))) *irho(k)
+          v(icrm,i,j,k), w(icrm,i,jb,k)+w(icrm,i,j,k)+w(icrm,i,j,kc)+w(icrm,i,jb,kc))) *irho(k)
         end do
       end do
     end do
@@ -202,11 +202,11 @@ contains
         do i=0,nxp1
           ib=i-1
           ic=i+1
-          www(i,j,k)=andiff(f(i,j,kb),f(i,j,k),w(i,j,k),irhow(k)) &
+          www(i,j,k)=andiff(f(i,j,kb),f(i,j,k),w(icrm,i,j,k),irhow(k)) &
           -(across(f(ic,j,kb)+f(ic,j,k)-f(ib,j,kb)-f(ib,j,k), &
-          w(i,j,k), u(icrm,i,j,kb)+u(icrm,i,j,k)+u(icrm,ic,j,k)+u(icrm,ic,j,kb)) &
+          w(icrm,i,j,k), u(icrm,i,j,kb)+u(icrm,i,j,k)+u(icrm,ic,j,k)+u(icrm,ic,j,kb)) &
           +across(f(i,jc,k)+f(i,jc,kb)-f(i,jb,k)-f(i,jb,kb), &
-          w(i,j,k), v(icrm,i,j,kb)+v(icrm,i,jc,kb)+v(icrm,i,jc,k)+v(icrm,i,j,k))) *irho(k)
+          w(icrm,i,j,k), v(icrm,i,j,kb)+v(icrm,i,jc,kb)+v(icrm,i,jc,k)+v(icrm,i,j,k))) *irho(k)
         end do
       end do
     end do
