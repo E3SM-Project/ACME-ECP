@@ -59,24 +59,24 @@ module vars
   !-----------------------------------------------------------------
   ! profiles
 
-  real(crm_rknd), allocatable :: t0   (:)
-  real(crm_rknd), allocatable :: q0   (:)
-  real(crm_rknd), allocatable :: qv0  (:)
-  real(crm_rknd), allocatable :: tabs0(:)
-  real(crm_rknd), allocatable :: tl0  (:)
-  real(crm_rknd), allocatable :: tv0  (:)
-  real(crm_rknd), allocatable :: u0   (:)
-  real(crm_rknd), allocatable :: v0   (:)
-  real(crm_rknd), allocatable :: tg0  (:)
-  real(crm_rknd), allocatable :: qg0  (:)
-  real(crm_rknd), allocatable :: ug0  (:)
-  real(crm_rknd), allocatable :: vg0  (:)
-  real(crm_rknd), allocatable :: p0   (:)
-  real(crm_rknd), allocatable :: tke0 (:)
-  real(crm_rknd), allocatable :: t01  (:)
-  real(crm_rknd), allocatable :: q01  (:)
-  real(crm_rknd), allocatable :: qp0  (:)
-  real(crm_rknd), allocatable :: qn0  (:)
+  real(crm_rknd), allocatable :: t0   (:,:) !REDIM
+  real(crm_rknd), allocatable :: q0   (:,:) !REDIM
+  real(crm_rknd), allocatable :: qv0  (:,:) !REDIM
+  real(crm_rknd), allocatable :: tabs0(:,:) !REDIM
+  real(crm_rknd), allocatable :: tl0  (:,:) !REDIM
+  real(crm_rknd), allocatable :: tv0  (:,:) !REDIM
+  real(crm_rknd), allocatable :: u0   (:,:) !REDIM
+  real(crm_rknd), allocatable :: v0   (:,:) !REDIM
+  real(crm_rknd), allocatable :: tg0  (:,:) !REDIM
+  real(crm_rknd), allocatable :: qg0  (:,:) !REDIM
+  real(crm_rknd), allocatable :: ug0  (:,:) !REDIM
+  real(crm_rknd), allocatable :: vg0  (:,:) !REDIM
+  real(crm_rknd), allocatable :: p0   (:,:) !REDIM
+  real(crm_rknd), allocatable :: tke0 (:,:) !REDIM
+  real(crm_rknd), allocatable :: t01  (:,:) !REDIM
+  real(crm_rknd), allocatable :: q01  (:,:) !REDIM
+  real(crm_rknd), allocatable :: qp0  (:,:) !REDIM
+  real(crm_rknd), allocatable :: qn0  (:,:) !REDIM
 
   !-----------------------------------------------------------------
   ! reference vertical profiles:
@@ -234,24 +234,24 @@ contains
     allocate( fzero   (ncrms,nx, ny) )
     allocate( precsfc (ncrms,nx,ny) ) ! surface precip. rate
     allocate( precssfc(ncrms,nx,ny) ) ! surface ice precip. rate
-    allocate( t0   (nzm) )
-    allocate( q0   (nzm) )
-    allocate( qv0  (nzm) )
-    allocate( tabs0(nzm) )
-    allocate( tl0  (nzm) )
-    allocate( tv0  (nzm) )
-    allocate( u0   (nzm) )
-    allocate( v0   (nzm) )
-    allocate( tg0  (nzm) )
-    allocate( qg0  (nzm) )
-    allocate( ug0  (nzm) )
-    allocate( vg0  (nzm) )
-    allocate( p0   (nzm) )
-    allocate( tke0 (nzm) )
-    allocate( t01  (nzm) )
-    allocate( q01  (nzm) )
-    allocate( qp0  (nzm) )
-    allocate( qn0  (nzm) )
+    allocate( t0   (ncrms,nzm) )
+    allocate( q0   (ncrms,nzm) )
+    allocate( qv0  (ncrms,nzm) )
+    allocate( tabs0(ncrms,nzm) )
+    allocate( tl0  (ncrms,nzm) )
+    allocate( tv0  (ncrms,nzm) )
+    allocate( u0   (ncrms,nzm) )
+    allocate( v0   (ncrms,nzm) )
+    allocate( tg0  (ncrms,nzm) )
+    allocate( qg0  (ncrms,nzm) )
+    allocate( ug0  (ncrms,nzm) )
+    allocate( vg0  (ncrms,nzm) )
+    allocate( p0   (ncrms,nzm) )
+    allocate( tke0 (ncrms,nzm) )
+    allocate( t01  (ncrms,nzm) )
+    allocate( q01  (ncrms,nzm) )
+    allocate( qp0  (ncrms,nzm) )
+    allocate( qn0  (ncrms,nzm) )
     allocate( prespot  (nzm) ) ! (1000./pres)**R/cp
     allocate( rho      (nzm) ) ! air density at pressure levels,kg/m3
     allocate( rhow     (nz ) ) ! air density at vertical velocity levels,kg/m3

@@ -53,10 +53,10 @@ module vars
   !-----------------------------------------------------------------
   ! profiles
 
-  real(crm_rknd)   t0(nzm), q0(nzm), qv0(nzm), tabs0(nzm), tl0(nzm), &
-  tv0(nzm), u0(nzm), v0(nzm), &
-  tg0(nzm), qg0(nzm), ug0(nzm), vg0(nzm), p0(nzm), &
-  tke0(nzm), t01(nzm), q01(nzm), qp0(nzm), qn0(nzm)
+  real(crm_rknd)   t0(icrm,nzm), q0(icrm,nzm), qv0(icrm,nzm), tabs0(icrm,nzm), tl0(icrm,nzm), &
+  tv0(icrm,nzm), u0(icrm,nzm), v0(icrm,nzm), &
+  tg0(icrm,nzm), qg0(icrm,nzm), ug0(icrm,nzm), vg0(icrm,nzm), p0(icrm,nzm), &
+  tke0(icrm,nzm), t01(icrm,nzm), q01(icrm,nzm), qp0(icrm,nzm), qn0(icrm,nzm)
   !----------------------------------------------------------------
   ! "observed" (read from snd file) surface characteristics
 

@@ -34,7 +34,7 @@ contains
     rndm_seed = iseed
     call random_seed(put=rndm_seed)
 
-    call setperturb_sgs(0)  ! set sgs fields
+    call setperturb_sgs(0,ncrms,icrm)  ! set sgs fields
 
     t02 = 0.0
     tke02 = 0.0
@@ -54,7 +54,7 @@ contains
       do j=1, ny
         do i=1, nx
           if(k.le.5) then
-            t(icrm,i,j,k) = t(icrm,i,j,k) * t0(k)/t02(k)
+            t(icrm,i,j,k) = t(icrm,i,j,k) * t0(icrm,k)/t02(k)
           end if
         end do
       end do

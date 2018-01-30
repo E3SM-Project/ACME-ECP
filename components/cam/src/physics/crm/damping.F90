@@ -41,14 +41,14 @@ contains
     ! as t have been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
     do k=1, nzm
-      u0(k)=0.0
-      v0(k)=0.0
-      t0(k)=0.0
+      u0(icrm,k)=0.0
+      v0(icrm,k)=0.0
+      t0(icrm,k)=0.0
       do j=1, ny
         do i=1, nx
-          u0(k) = u0(k) + u(icrm,i,j,k)/(nx*ny)
-          v0(k) = v0(k) + v(icrm,i,j,k)/(nx*ny)
-          t0(k) = t0(k) + t(icrm,i,j,k)/(nx*ny)
+          u0(icrm,k) = u0(icrm,k) + u(icrm,i,j,k)/(nx*ny)
+          v0(icrm,k) = v0(icrm,k) + v(icrm,i,j,k)/(nx*ny)
+          t0(icrm,k) = t0(icrm,k) + t(icrm,i,j,k)/(nx*ny)
         end do
       end do
     end do
@@ -57,17 +57,17 @@ contains
     do k = nzm, nzm-n_damp, -1
       do j=1,ny
         do i=1,nx
-          dudt(icrm,i,j,k,na)= dudt(icrm,i,j,k,na)-(u(icrm,i,j,k)-u0(k)) * tau(k)
-          dvdt(icrm,i,j,k,na)= dvdt(icrm,i,j,k,na)-(v(icrm,i,j,k)-v0(k)) * tau(k)
+          dudt(icrm,i,j,k,na)= dudt(icrm,i,j,k,na)-(u(icrm,i,j,k)-u0(icrm,k)) * tau(k)
+          dvdt(icrm,i,j,k,na)= dvdt(icrm,i,j,k,na)-(v(icrm,i,j,k)-v0(icrm,k)) * tau(k)
           dwdt(icrm,i,j,k,na)= dwdt(icrm,i,j,k,na)-w(icrm,i,j,k) * tau(k)
-          t(icrm,i,j,k)= t(icrm,i,j,k)-dtn*(t(icrm,i,j,k)-t0(k)) * tau(k)
+          t(icrm,i,j,k)= t(icrm,i,j,k)-dtn*(t(icrm,i,j,k)-t0(icrm,k)) * tau(k)
           ! In the old version (SAM7.5?) of SAM, water vapor is the prognostic variable for the two-moment microphyscs.
           ! So the following damping approach can lead to the negative water vapor.
           !      micro_field(i,j,k,index_water_vapor)= micro_field(i,j,k,index_water_vapor)- &
-          !                                    dtn*(qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)-q0(k)) * tau(k)
+          !                                    dtn*(qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)-q0(icrm,k)) * tau(k)
           ! a simple fix (Minghuai Wang, 2011-08):
           micro_field(i,j,k,index_water_vapor)= micro_field(i,j,k,index_water_vapor)- &
-          dtn*(qv(icrm,i,j,k)-qv0(k)) * tau(k)
+          dtn*(qv(icrm,i,j,k)-qv0(icrm,k)) * tau(k)
         end do! i
       end do! j
     end do ! k

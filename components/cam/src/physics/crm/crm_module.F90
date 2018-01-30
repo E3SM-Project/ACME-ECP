@@ -579,17 +579,17 @@ subroutine crm(lchnk, icol, ncrms, &
     call sgs_init()
 
     do k=1,nzm
-      u0(k)=0.
-      v0(k)=0.
-      t0(k)=0.
+      u0(icrm,k)=0.
+      v0(icrm,k)=0.
+      t0(icrm,k)=0.
       t00(k)=0.
-      tabs0(k)=0.
-      q0(k)=0.
-      qv0(k)=0.
+      tabs0(icrm,k)=0.
+      q0(icrm,k)=0.
+      qv0(icrm,k)=0.
       !+++mhwang these are not initialized ??
-      qn0(k) = 0.0
-      qp0(k) = 0.0
-      tke0(k) = 0.0
+      qn0(icrm,k) = 0.0
+      qp0(icrm,k) = 0.0
+      tke0(icrm,k) = 0.0
       !---mhwang
       do j=1,ny
         do i=1,nx
@@ -598,53 +598,53 @@ subroutine crm(lchnk, icol, ncrms, &
                     -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
           colprec=colprec+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
           colprecs=colprecs+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
-          u0(k)=u0(k)+u(icrm,i,j,k)
-          v0(k)=v0(k)+v(icrm,i,j,k)
-          t0(k)=t0(k)+t(icrm,i,j,k)
+          u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
+          v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
+          t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
           t00(k)=t00(k)+t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
-          tabs0(k)=tabs0(k)+tabs(icrm,i,j,k)
-          q0(k)=q0(k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
-          qv0(k) = qv0(k) + qv(icrm,i,j,k)
-          qn0(k) = qn0(k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
-          qp0(k) = qp0(k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
-          tke0(k)=tke0(k)+tke(i,j,k)
+          tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
+          q0(icrm,k)=q0(icrm,k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
+          qv0(icrm,k) = qv0(icrm,k) + qv(icrm,i,j,k)
+          qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
+          qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
+          tke0(icrm,k)=tke0(icrm,k)+tke(i,j,k)
         enddo
       enddo
 
-      u0(k) = u0(k) * factor_xy
-      v0(k) = v0(k) * factor_xy
-      t0(k) = t0(k) * factor_xy
+      u0(icrm,k) = u0(icrm,k) * factor_xy
+      v0(icrm,k) = v0(icrm,k) * factor_xy
+      t0(icrm,k) = t0(icrm,k) * factor_xy
       t00(k) = t00(k) * factor_xy
-      tabs0(k) = tabs0(k) * factor_xy
-      q0(k) = q0(k) * factor_xy
-      qv0(k) = qv0(k) * factor_xy
-      qn0(k) = qn0(k) * factor_xy
-      qp0(k) = qp0(k) * factor_xy
-      tke0(k) = tke0(k) * factor_xy
+      tabs0(icrm,k) = tabs0(icrm,k) * factor_xy
+      q0(icrm,k) = q0(icrm,k) * factor_xy
+      qv0(icrm,k) = qv0(icrm,k) * factor_xy
+      qn0(icrm,k) = qn0(icrm,k) * factor_xy
+      qp0(icrm,k) = qp0(icrm,k) * factor_xy
+      tke0(icrm,k) = tke0(icrm,k) * factor_xy
 #ifdef CLUBB_CRM
       ! Update thetav for CLUBB.  This is needed when we have a higher model top
       ! than is in the sounding, because we subsequently use tv0 to initialize
       ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
       ! -dschanen UWM 11 Feb 2010
-      tv0(k) = tabs0(k)*prespot(k)*(1.+epsv*q0(k))
+      tv0(icrm,k) = tabs0(icrm,k)*prespot(k)*(1.+epsv*q0(icrm,k))
 #endif
 
       l = plev-k+1
       uln(l) = min( umax, max(-umax,ul(icrm,l)) )
       vln(l) = min( umax, max(-umax,vl(icrm,l)) )*YES3D
       ttend(k) = (tl(icrm,l)+gamaz(k)- fac_cond*(qccl(icrm,l)+qiil(icrm,l))-fac_fus*qiil(icrm,l)-t00(k))*idt_gl
-      qtend(k) = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)-q0(k))*idt_gl
-      utend(k) = (uln(l)-u0(k))*idt_gl
-      vtend(k) = (vln(l)-v0(k))*idt_gl
-      ug0(k) = uln(l)
-      vg0(k) = vln(l)
-      tg0(k) = tl(icrm,l)+gamaz(k)-fac_cond*qccl(icrm,l)-fac_sub*qiil(icrm,l)
-      qg0(k) = ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)
+      qtend(k) = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)-q0(icrm,k))*idt_gl
+      utend(k) = (uln(l)-u0(icrm,k))*idt_gl
+      vtend(k) = (vln(l)-v0(icrm,k))*idt_gl
+      ug0(icrm,k) = uln(l)
+      vg0(icrm,k) = vln(l)
+      tg0(icrm,k) = tl(icrm,l)+gamaz(k)-fac_cond*qccl(icrm,l)-fac_sub*qiil(icrm,l)
+      qg0(icrm,k) = ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)
 
     end do ! k
 
-    uhl = u0(1)
-    vhl = v0(1)
+    uhl = u0(icrm,1)
+    vhl = v0(icrm,1)
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
@@ -754,7 +754,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
 !--------------------------------------------------
 #ifdef sam1mom
-    if(doprecip) call precip_init()
+    if(doprecip) call precip_init(ncrms,icrm)
 #endif
 
     !MRN: Don't want any stochasticity introduced in the standalone.
@@ -1647,8 +1647,8 @@ subroutine crm(lchnk, icol, ncrms, &
       w2z = 0.
       do j=1,ny
         do i=1,nx
-          u2z = u2z+(u(icrm,i,j,k)-u0(k))**2
-          v2z = v2z+(v(icrm,i,j,k)-v0(k))**2
+          u2z = u2z+(u(icrm,i,j,k)-u0(icrm,k))**2
+          v2z = v2z+(v(icrm,i,j,k)-v0(icrm,k))**2
           w2z = w2z+0.5*(w(icrm,i,j,k+1)**2+w(icrm,i,j,k)**2)
         enddo
       enddo

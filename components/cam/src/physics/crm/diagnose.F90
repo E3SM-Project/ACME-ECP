@@ -25,16 +25,16 @@ contains
     k200 = nzm
 
     do k=1,nzm
-      u0(k)=0.
-      v0(k)=0.
-      t01(k) = tabs0(k)
-      q01(k) = q0(k)
-      t0(k)=0.
-      tabs0(k)=0.
-      q0(k)=0.
-      qn0(k)=0.
-      qp0(k)=0.
-      p0(k)=0.
+      u0(icrm,k)=0.
+      v0(icrm,k)=0.
+      t01(icrm,k) = tabs0(icrm,k)
+      q01(icrm,k) = q0(icrm,k)
+      t0(icrm,k)=0.
+      tabs0(icrm,k)=0.
+      q0(icrm,k)=0.
+      qn0(icrm,k)=0.
+      qp0(icrm,k)=0.
+      p0(icrm,k)=0.
       kc=min(nzm,k+1)
       kb=max(1,k-1)
       if(pres(kc).le.200..and.pres(kb).gt.200.) k200=k
@@ -43,14 +43,14 @@ contains
         do i=1,nx
           tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) +&
           fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
-          u0(k)=u0(k)+u(icrm,i,j,k)
-          v0(k)=v0(k)+v(icrm,i,j,k)
-          p0(k)=p0(k)+p(icrm,i,j,k)
-          t0(k)=t0(k)+t(icrm,i,j,k)
-          tabs0(k)=tabs0(k)+tabs(icrm,i,j,k)
-          q0(k)=q0(k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
-          qn0(k) = qn0(k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
-          qp0(k) = qp0(k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
+          u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
+          v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
+          p0(icrm,k)=p0(icrm,k)+p(icrm,i,j,k)
+          t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
+          tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
+          q0(icrm,k)=q0(icrm,k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
+          qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
+          qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
 
           pw_xy(i,j) = pw_xy(i,j)+qv(icrm,i,j,k)*coef1
           cw_xy(i,j) = cw_xy(i,j)+qcl(icrm,i,j,k)*coef1
@@ -58,14 +58,14 @@ contains
 
         end do
       end do
-      u0(k)=u0(k)*coef
-      v0(k)=v0(k)*coef
-      t0(k)=t0(k)*coef
-      tabs0(k)=tabs0(k)*coef
-      q0(k)=q0(k)*coef
-      qn0(k)=qn0(k)*coef
-      qp0(k)=qp0(k)*coef
-      p0(k)=p0(k)*coef
+      u0(icrm,k)=u0(icrm,k)*coef
+      v0(icrm,k)=v0(icrm,k)*coef
+      t0(icrm,k)=t0(icrm,k)*coef
+      tabs0(icrm,k)=tabs0(icrm,k)*coef
+      q0(icrm,k)=q0(icrm,k)*coef
+      qn0(icrm,k)=qn0(icrm,k)*coef
+      qp0(icrm,k)=qp0(icrm,k)*coef
+      p0(icrm,k)=p0(icrm,k)*coef
 
     end do ! k
 
@@ -96,25 +96,25 @@ contains
 
       coef1 = 1./real(nsubdomains,crm_rknd)
       do k=1,nzm
-        buffer(k,1) = u0(k)
-        buffer(k,2) = v0(k)
-        buffer(k,3) = t0(k)
-        buffer(k,4) = q0(k)
-        buffer(k,5) = p0(k)
-        buffer(k,6) = tabs0(k)
-        buffer(k,7) = qn0(k)
-        buffer(k,8) = qp0(k)
+        buffer(k,1) = u0(icrm,k)
+        buffer(k,2) = v0(icrm,k)
+        buffer(k,3) = t0(icrm,k)
+        buffer(k,4) = q0(icrm,k)
+        buffer(k,5) = p0(icrm,k)
+        buffer(k,6) = tabs0(icrm,k)
+        buffer(k,7) = qn0(icrm,k)
+        buffer(k,8) = qp0(icrm,k)
       end do
       call task_sum_real8(buffer,buffer1,nzm*8)
       do k=1,nzm
-        u0(k)=buffer1(k,1)*coef1
-        v0(k)=buffer1(k,2)*coef1
-        t0(k)=buffer1(k,3)*coef1
-        q0(k)=buffer1(k,4)*coef1
-        p0(k)=buffer1(k,5)*coef1
-        tabs0(k)=buffer1(k,6)*coef1
-        qn0(k)=buffer1(k,7)*coef1
-        qp0(k)=buffer1(k,8)*coef1
+        u0(icrm,k)=buffer1(k,1)*coef1
+        v0(icrm,k)=buffer1(k,2)*coef1
+        t0(icrm,k)=buffer1(k,3)*coef1
+        q0(icrm,k)=buffer1(k,4)*coef1
+        p0(icrm,k)=buffer1(k,5)*coef1
+        tabs0(icrm,k)=buffer1(k,6)*coef1
+        qn0(icrm,k)=buffer1(k,7)*coef1
+        qp0(icrm,k)=buffer1(k,8)*coef1
       end do
 
     end if ! dompi

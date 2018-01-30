@@ -242,9 +242,10 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! make some initial noise in sgs:
   !
-  subroutine setperturb_sgs(ptype)
+  subroutine setperturb_sgs(ptype,ncrms,icrm)
 
     use vars, only: q0, z
+    integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: ptype
     integer i,j,k
 
@@ -267,7 +268,7 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k).gt.6.e-3.and..not.dosmagor) then
+            if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
               tke(i,j,k)=1.
             endif
           end do
@@ -281,7 +282,7 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k).gt.0.5e-3.and..not.dosmagor) then
+            if(q0(icrm,k).gt.0.5e-3.and..not.dosmagor) then
               tke(i,j,k)=1.
             endif
           end do
@@ -320,7 +321,7 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k).gt.6.e-3.and..not.dosmagor) then
+            if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
               tke(i,j,k)=1.
             endif
           end do

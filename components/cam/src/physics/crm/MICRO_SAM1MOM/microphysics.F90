@@ -163,14 +163,14 @@ CONTAINS
     a_pr = 1./(tprmax-tprmin)
     a_gr = 1./(tgrmax-tgrmin)
 
-    ! if(doprecip) call precip_init()
+    ! if(doprecip) call precip_init(ncrms,icrm)
 
     if(nrestart.eq.0) then
 
 #ifndef CRM
       micro_field = 0.
       do k=1,nzm
-        q(:,:,k) = q0(k)
+        q(:,:,k) = q0(icrm,k)
       end do
       qn = 0.
 #endif
@@ -268,7 +268,7 @@ CONTAINS
     integer, intent(in) :: ncrms,icrm
 
     ! Update bulk coefficient
-    if(doprecip.and.icycle.eq.1) call precip_init()
+    if(doprecip.and.icycle.eq.1) call precip_init(ncrms,icrm)
 
     if(docloud) then
       call cloud(q,qn,qp,ncrms,icrm)
