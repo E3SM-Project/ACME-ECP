@@ -19,8 +19,8 @@ module vars
   !--------------------------------------------------------------------
   ! diagnostic variables:
 
-  real(crm_rknd) p      (0:nx, (1-YES3D):ny, nzm)     ! perturbation pressure (from Poison eq)
-  real(crm_rknd) tabs   (nx, ny, nzm)                 ! temperature
+  real(crm_rknd) p      (icrm,0:nx, (1-YES3D):ny, nzm)     ! perturbation pressure (from Poison eq)
+  real(crm_rknd) tabs   (icrm,nx, ny, nzm)                 ! temperature
   real(crm_rknd) qv      (nx, ny, nzm)                ! water vapor
   real(crm_rknd) qcl     (nx, ny, nzm)                ! liquid water  (condensate)
   real(crm_rknd) qpl     (nx, ny, nzm)                ! liquid water  (precipitation)

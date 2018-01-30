@@ -19,8 +19,8 @@ module vars
   !--------------------------------------------------------------------
   ! diagnostic variables:
 
-  real(crm_rknd), allocatable :: p   (:,:,:)         ! perturbation pressure (from Poison eq)
-  real(crm_rknd), allocatable :: tabs(:,:,:)         ! temperature
+  real(crm_rknd), allocatable :: p   (:,:,:,:) !REDIM       ! perturbation pressure (from Poison eq)
+  real(crm_rknd), allocatable :: tabs(:,:,:,:) !REDIM        ! temperature
   real(crm_rknd), allocatable :: qv  (:,:,:)        ! water vapor
   real(crm_rknd), allocatable :: qcl (:,:,:)        ! liquid water  (condensate)
   real(crm_rknd), allocatable :: qpl (:,:,:)        ! liquid water  (precipitation)
@@ -210,8 +210,8 @@ contains
     allocate( v (dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm) ) ! y-wind
     allocate( w (dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ) ) ! z-wind
     allocate( t (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ) ! liquid/ice water static energy
-    allocate( p   (0:nx, (1-YES3D):ny, nzm) )     ! perturbation pressure (from Poison eq)
-    allocate( tabs(nx, ny, nzm) )                 ! temperature
+    allocate( p   (ncrms,0:nx, (1-YES3D):ny, nzm) )     ! perturbation pressure (from Poison eq)
+    allocate( tabs(ncrms,nx, ny, nzm) )                 ! temperature
     allocate( qv  (nx, ny, nzm) )                ! water vapor
     allocate( qcl (nx, ny, nzm) )                ! liquid water  (condensate)
     allocate( qpl (nx, ny, nzm) )                ! liquid water  (precipitation)

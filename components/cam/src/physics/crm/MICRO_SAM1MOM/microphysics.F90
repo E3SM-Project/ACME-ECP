@@ -137,7 +137,7 @@ CONTAINS
   !!! Initialize microphysics:
 
 
-  subroutine micro_init()
+  subroutine micro_init(ncrms,icrm)
 
 #ifdef CLUBB_CRM
     use params, only: doclubb, doclubbnoninter ! dschanen UWM 21 May 2008
@@ -146,6 +146,8 @@ CONTAINS
     use grid, only: nrestart
     use vars, only: q0
     use params, only: dosmoke
+    implicit none
+    integer, intent(in) :: ncrms,icrm
     integer k, n
 #ifdef CLUBB_CRM
     !  if ( nclubb /= 1 ) then
@@ -184,10 +186,10 @@ CONTAINS
 #ifndef CRM
         call cloud(q,qn,qp)
 #endif
-        call micro_diagnose()
+        call micro_diagnose(ncrms,icrm)
       end if
       if(dosmoke) then
-        call micro_diagnose()
+        call micro_diagnose(ncrms,icrm)
       end if
 
     end if
@@ -247,7 +249,7 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute local microphysics processes (bayond advection and SGS diffusion):
   !
-  subroutine micro_proc()
+  subroutine micro_proc(ncrms,icrm)
 
     use grid, only: nstep,dt,icycle
     use params, only: dosmoke
@@ -261,25 +263,26 @@ CONTAINS
     use grid, only: nzm
 #endif
     implicit none
+    integer, intent(in) :: ncrms,icrm
 
     ! Update bulk coefficient
     if(doprecip.and.icycle.eq.1) call precip_init()
 
     if(docloud) then
-      call cloud(q,qn,qp)
-      if(doprecip) call precip_proc(qpsrc,qpevp,qp,q,qn)
-      call micro_diagnose()
+      call cloud(q,qn,qp,ncrms,icrm)
+      if(doprecip) call precip_proc(qpsrc,qpevp,qp,q,qn,ncrms,icrm)
+      call micro_diagnose(ncrms,icrm)
     end if
     if(dosmoke) then
-      call micro_diagnose()
+      call micro_diagnose(ncrms,icrm)
     end if
 #ifdef CLUBB_CRM
     if ( doclubb ) then ! -dschanen UWM 21 May 2008
       CF3D(:,:, 1:nzm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
       ! so it is set here first  +++mhwang
       !     if(doprecip) call precip_proc()
-      if(doprecip) call precip_proc_clubb()
-      call micro_diagnose()
+      if(doprecip) call precip_proc_clubb(ncrms,icrm)
+      call micro_diagnose(ncrms,icrm)
     end if
 #endif /*CLUBB_CRM*/
 
@@ -288,9 +291,11 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! Diagnose arrays nessesary for dynamical core and statistics:
   !
-  subroutine micro_diagnose()
+  subroutine micro_diagnose(ncrms,icrm)
 
     use vars
+    implicit none
+    integer, intent(in) :: ncrms,icrm
 
     real(crm_rknd) omn, omp
     integer i,j,k
@@ -299,10 +304,10 @@ CONTAINS
       do j=1,ny
         do i=1,nx
           qv(i,j,k) = q(i,j,k) - qn(i,j,k)
-          omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tbgmin)*a_bg))
+          omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
           qcl(i,j,k) = qn(i,j,k)*omn
           qci(i,j,k) = qn(i,j,k)*(1.-omn)
-          omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tprmin)*a_pr))
+          omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
           qpl(i,j,k) = qp(i,j,k)*omp
           qpi(i,j,k) = qp(i,j,k)*(1.-omp)
         end do
@@ -315,7 +320,7 @@ CONTAINS
 
 #ifdef CLUBB_CRM
   !---------------------------------------------------------------------
-  subroutine micro_update()
+  subroutine micro_update(ncrms,icrm)
 
     ! Description:
     ! This subroutine essentially does what micro_proc does but does not
@@ -328,7 +333,7 @@ CONTAINS
     !   call cloud()
     !   call micro_diagnose()
 
-    call micro_diagnose_clubb()
+    call micro_diagnose_clubb(ncrms,icrm)
 
   end subroutine micro_update
 
@@ -360,11 +365,13 @@ CONTAINS
     return
   end subroutine micro_adjust
 
-  subroutine micro_diagnose_clubb()
+  subroutine micro_diagnose_clubb(ncrms,icrm)
 
     use vars
     use constants_clubb, only: fstderr, zero_threshold
     use error_code, only: clubb_at_least_debug_level ! Procedur
+    implicit none
+    integer, intent(in) :: ncrms,icrm
 
     real(crm_rknd) omn, omp
     integer i,j,k
@@ -394,7 +401,7 @@ CONTAINS
 
           qcl(i,j,k) = qn(i,j,k)
           qci(i,j,k) = 0.0
-          omp = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
+          omp = max(0.,min(1.,(tabs(icrm,i,j,k)-tprmin)*a_pr))
           qpl(i,j,k) = qp(i,j,k)*omp
           qpi(i,j,k) = qp(i,j,k)*(1.-omp)
         end do
@@ -408,25 +415,26 @@ CONTAINS
   !!! function to compute terminal velocity for precipitating variables:
   ! In this particular case there is only one precipitating variable.
 
-  real(crm_rknd) function term_vel_qp(i,j,k,ind)
+  real(crm_rknd) function term_vel_qp(i,j,k,ind,ncrms,icrm)
 
     use vars
+    integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: i,j,k,ind
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
 
     term_vel_qp = 0.
     if(qp(i,j,k).gt.qp_threshold) then
-      omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tprmin)*a_pr))
+      omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
       if(omp.eq.1.) then
         term_vel_qp = vrain*(rho(k)*qp(i,j,k))**crain
       elseif(omp.eq.0.) then
-        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tgrmin)*a_gr))
+        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
         qgg=omg*qp(i,j,k)
         qss=qp(i,j,k)-qgg
         term_vel_qp = (omg*vgrau*(rho(k)*qgg)**cgrau &
         +(1.-omg)*vsnow*(rho(k)*qss)**csnow)
       else
-        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tgrmin)*a_gr))
+        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
         qrr=omp*qp(i,j,k)
         qss=qp(i,j,k)-qrr
         qgg=omg*qss
@@ -441,11 +449,13 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sedimentation
   !
-  subroutine micro_precip_fall()
+  subroutine micro_precip_fall(ncrms,icrm)
 
     use vars
     use params, only : pi
     use precip_fall_mod
+    implicit none
+    integer, intent(in) :: ncrms,icrm
 
     real(crm_rknd) omega(nx,ny,nzm)
     integer ind
@@ -461,12 +471,12 @@ CONTAINS
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          omega(i,j,k) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tprmin)*a_pr))
+          omega(i,j,k) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
         end do
       end do
     end do
 
-    call precip_fall(qp, term_vel_qp, 2, omega, ind)
+    call precip_fall(qp, term_vel_qp, 2, omega, ind, ncrms, icrm)
 
 
   end subroutine micro_precip_fall

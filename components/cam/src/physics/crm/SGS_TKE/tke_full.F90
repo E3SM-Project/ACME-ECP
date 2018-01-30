@@ -6,13 +6,14 @@ module tke_full_mod
 
 contains
 
-  subroutine tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor)
+  subroutine tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms, icrm)
 
     !	this subroutine solves the TKE equation
 
     use vars
     use params
     implicit none
+    integer, intent(in) :: ncrms,icrm
     logical :: dosmagor
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tkesbbuoy(nz), tkesbshear(nz), tkesbdiss(nz)
@@ -88,27 +89,27 @@ contains
             omn = qcl(i,j,k)/(qcl(i,j,k)+qci(i,j,k)+1.e-20)
             lstarn = fac_cond+(1.-omn)*fac_fus
 
-            dqsat = omn*dtqsatw_crm(tabs(i,j,k),pres(k))+ &
-            (1.-omn)*dtqsati_crm(tabs(i,j,k),pres(k))
-            qsatt = omn*qsatw_crm(tabs(i,j,k),pres(k))+(1.-omn)*qsati_crm(tabs(i,j,k),pres(k))
-            bbb = 1. + epsv*qsatt-qcl(i,j,k)-qci(i,j,k) -qpl(i,j,k)-qpi(i,j,k)+1.61*tabs(i,j,k)*dqsat
+            dqsat = omn*dtqsatw_crm(tabs(icrm,i,j,k),pres(k))+ &
+            (1.-omn)*dtqsati_crm(tabs(icrm,i,j,k),pres(k))
+            qsatt = omn*qsatw_crm(tabs(icrm,i,j,k),pres(k))+(1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k))
+            bbb = 1. + epsv*qsatt-qcl(i,j,k)-qci(i,j,k) -qpl(i,j,k)-qpi(i,j,k)+1.61*tabs(icrm,i,j,k)*dqsat
             bbb = bbb / (1.+lstarn*dqsat)
             buoy_sgs=betdz*(bbb*(t(i,j,kc)-t(i,j,kb)) &
-            +(bbb*lstarn - (1.+lstarn*dqsat)*tabs(i,j,k))* &
+            +(bbb*lstarn - (1.+lstarn*dqsat)*tabs(icrm,i,j,k))* &
             (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) &
-            + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))  &
-            + (bbb*fac_sub  - (1.+fac_sub *dqsat)*tabs(i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
-            !bloss   +(bbb*lstarp - (1.+lstarp*dqsat)*tabs(i,j,k))* &
+            + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(icrm,i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))  &
+            + (bbb*fac_sub  - (1.+fac_sub *dqsat)*tabs(icrm,i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
+            !bloss   +(bbb*lstarp - (1.+lstarp*dqsat)*tabs(icrm,i,j,k))* &
             !bloss            (qpl(i,j,kc)+qpi(i,j,kc)-qpl(i,j,kb)-qpi(i,j,kb)) )
           else
 
             bbb = 1.+epsv*qv(i,j,k)-qpl(i,j,k)-qpi(i,j,k)
             buoy_sgs=betdz*( bbb*(t(i,j,kc)-t(i,j,kb)) &
-            +epsv*tabs(i,j,k)* &
+            +epsv*tabs(icrm,i,j,k)* &
             (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) &
-            +(bbb*fac_cond-tabs(i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb)) &
-            +(bbb*fac_sub -tabs(i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
-            !bloss    +(bbb*lstarp-tabs(i,j,k))* &
+            +(bbb*fac_cond-tabs(icrm,i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb)) &
+            +(bbb*fac_sub -tabs(icrm,i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
+            !bloss    +(bbb*lstarp-tabs(icrm,i,j,k))* &
             !bloss         (qpl(i,j,kc)+qpi(i,j,kc)-qpl(i,j,kb)-qpi(i,j,kb)) )
           end if
 

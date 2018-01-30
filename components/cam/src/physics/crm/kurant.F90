@@ -4,13 +4,14 @@ module kurant_mod
 
    contains
 
-   subroutine kurant
+   subroutine kurant(ncrms,icrm)
 
       use vars
       use sgs, only: kurant_sgs
       use params, only: crm_rknd
 
       implicit none
+      integer, intent(in) :: ncrms,icrm
 
       integer i, j, k, ncycle1(1),ncycle2(1)
       real(crm_rknd) wm(nz)  ! maximum vertical wind velocity
@@ -52,14 +53,14 @@ module kurant_mod
          !    write(0, *) 'k=', k, wm(k), uhm(k)
          ! end do
          ! do i=1, nx
-         !   write(0, *) 'i=', i,  u(i, 1, 4), v(i, 1, 4), tabs(i,1,4)
+         !   write(0, *) 'i=', i,  u(i, 1, 4), v(i, 1, 4), tabs(icrm,i,1,4)
          ! end do
          !---mhwang
 
          ! whannah - formatted debug info - easier to read
          write(0, 5550) cfl, cfl_sgs, latitude(1,1), longitude(1,1)
          do k=1, nzm
-            write(0, 5551) k, wm(k), uhm(k), tabs(1,1,k)
+            write(0, 5551) k, wm(k), uhm(k), tabs(icrm,1,1,k)
          end do
 
          call task_abort()
