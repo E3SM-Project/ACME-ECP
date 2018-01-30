@@ -5,7 +5,7 @@ module periodic_mod
 
 contains
 
-  subroutine periodic(flag)
+  subroutine periodic(flag,ncrms,icrm)
 
     use vars
     use microphysics
@@ -16,12 +16,13 @@ contains
     use params, only: doclubb, doclubbnoninter
 #endif
     implicit none
+    integer, intent(in) :: ncrms,icrm
 
     integer flag, i
 
     if(flag.eq.0) then
 
-      call bound_exchange(u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,1,1,1,1,1)
+      call bound_exchange(u(icrm,:,:,:),dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,1,1,1,1,1)
       call bound_exchange(v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
@@ -35,7 +36,7 @@ contains
 
     if(flag.eq.2) then
 
-      call bound_exchange(u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
+      call bound_exchange(u(icrm,:,:,:),dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
       call bound_exchange(v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2+NADV,2+NADV,2,3,2)
       call bound_exchange(w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
 

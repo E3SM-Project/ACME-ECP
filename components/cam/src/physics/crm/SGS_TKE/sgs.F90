@@ -366,10 +366,12 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sgs diffusion of momentum:
   !
-  subroutine sgs_mom()
+  subroutine sgs_mom(ncrms,icrm)
     use diffuse_mom_mod, only: diffuse_mom
+    implicit none
+    integer, intent(in) :: ncrms,icrm
 
-    call diffuse_mom(grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+    call diffuse_mom(grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk, ncrms,icrm)
 
   end subroutine sgs_mom
 

@@ -62,7 +62,7 @@ contains
     real(r8), intent(in) :: ql(plev) ! Global grid water vapor (g/g)
     real(r8), intent(in) :: qccl(plev)! Global grid cloud liquid water (g/g)
     real(r8), intent(in) :: qiil(plev)! Global grid cloud ice (g/g)
-    real(r8), intent(in) :: ul(plev) ! Global grid u (m/s)
+    real(r8), intent(in) :: ul(plev) ! Global grid u (icrm,m/s)
     real(r8), intent(in) :: vl(plev) ! Global grid v (m/s)
 #ifdef CLUBB_CRM
     real(r8), intent(in), target :: clubb_buffer(crm_nx, crm_ny, crm_nz+1,1:nclubbvars)

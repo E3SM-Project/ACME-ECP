@@ -58,7 +58,7 @@ contains
       do j = 1,ny
         do i = 1,nx
           ! Compute cloud ice density in this cell and the ones above/below.
-          ! Since cloud ice is falling, the above cell is u (upwind),
+          ! Since cloud ice is falling, the above cell is u (icrm,upwind),
           ! this cell is c (center) and the one below is d (downwind).
 
           qiu = rho(kc)*qci(i,j,kc)

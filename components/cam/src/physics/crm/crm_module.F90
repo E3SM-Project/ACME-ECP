@@ -180,7 +180,7 @@ subroutine crm(lchnk, icol, ncrms, &
     real(r8), intent(in   ) :: ql                  (ncrms,plev)  ! Global grid water vapor (g/g)
     real(r8), intent(in   ) :: qccl                (ncrms,plev)  ! Global grid cloud liquid water (g/g)
     real(r8), intent(in   ) :: qiil                (ncrms,plev)  ! Global grid cloud ice (g/g)
-    real(r8), intent(in   ) :: ul                  (ncrms,plev)  ! Global grid u (m/s)
+    real(r8), intent(in   ) :: ul                  (ncrms,plev)  ! Global grid u (icrm,m/s)
     real(r8), intent(in   ) :: vl                  (ncrms,plev)  ! Global grid v (m/s)
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
@@ -527,7 +527,7 @@ subroutine crm(lchnk, icol, ncrms, &
       enddo
     endif
 
-    u          (1:nx,1:ny,1:nzm                ) = u_crm           (icrm,1:nx,1:ny,1:nzm                )
+    u          (icrm,1:nx,1:ny,1:nzm                ) = u_crm           (icrm,1:nx,1:ny,1:nzm                )
     v          (1:nx,1:ny,1:nzm                ) = v_crm           (icrm,1:nx,1:ny,1:nzm                )*YES3D
     w          (1:nx,1:ny,1:nzm                ) = w_crm           (icrm,1:nx,1:ny,1:nzm                )
     tabs       (icrm,1:nx,1:ny,1:nzm                ) = t_crm           (icrm,1:nx,1:ny,1:nzm                )
@@ -598,7 +598,7 @@ subroutine crm(lchnk, icol, ncrms, &
                     -fac_cond*qpl(i,j,k)-fac_sub*qpi(i,j,k)
           colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(icrm,plev-k+1)
           colprecs=colprecs+qpi(i,j,k)*pdel(icrm,plev-k+1)
-          u0(k)=u0(k)+u(i,j,k)
+          u0(k)=u0(k)+u(icrm,i,j,k)
           v0(k)=v0(k)+v(i,j,k)
           t0(k)=t0(k)+t(i,j,k)
           t00(k)=t00(k)+t(i,j,k)+fac_cond*qpl(i,j,k)+fac_sub*qpi(i,j,k)
@@ -778,7 +778,7 @@ subroutine crm(lchnk, icol, ncrms, &
 #ifndef CRM_STANDALONE
     call get_gcol_all_p(lchnk, pcols, gcolindex)
     iseed = gcolindex(icol(icrm))
-    if(u(1,1,1).eq.u(2,1,1).and.u(3,1,2).eq.u(4,1,2)) &
+    if(u(icrm,1,1,1).eq.u(icrm,2,1,1).and.u(icrm,3,1,2).eq.u(icrm,4,1,2)) &
                 call setperturb(iseed)
 #endif
 
@@ -956,7 +956,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !----------------------------------------------------------
         !   	suppress turbulence near the upper boundary (spange):
-        if (dodamping) call damping()
+        if (dodamping) call damping(ncrms,icrm)
 
         !---------------------------------------------------------
         !   Ice fall-out
@@ -973,15 +973,15 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !----------------------------------------------------------
         !     Update scalar boundaries after large-scale processes:
-        call boundaries(3)
+        call boundaries(3,ncrms,icrm)
 
         !---------------------------------------------------------
         !     Update boundaries for velocities:
-        call boundaries(0)
+        call boundaries(0,ncrms,icrm)
 
         !-----------------------------------------------
         !     surface fluxes:
-        if (dosurface) call crmsurface(bflx)
+        if (dosurface) call crmsurface(bflx,ncrms,icrm)
 
         !-----------------------------------------------------------
         !  SGS physics:
@@ -1039,16 +1039,16 @@ subroutine crm(lchnk, icol, ncrms, &
 #endif
         !----------------------------------------------------------
         !     Fill boundaries for SGS diagnostic fields:
-        call boundaries(4)
+        call boundaries(4,ncrms,icrm)
 
         !-----------------------------------------------
         !       advection of momentum:
-        call advect_mom()
+        call advect_mom(ncrms,icrm)
 
         !----------------------------------------------------------
         !	SGS effects on momentum:
 
-        if(dosgs) call sgs_mom()
+        if(dosgs) call sgs_mom(ncrms,icrm)
 #ifdef CLUBB_CRM_OLD
         if ( doclubb ) then
           !          call apply_clubb_sgs_tndcy_mom &
@@ -1058,7 +1058,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !-----------------------------------------------------------
         !       Coriolis force:
-        if (docoriolis) call coriolis()
+        if (docoriolis) call coriolis(ncrms,icrm)
 
         !---------------------------------------------------------
         !       compute rhs of the Poisson equation and solve it for pressure.
@@ -1067,11 +1067,11 @@ subroutine crm(lchnk, icol, ncrms, &
         !---------------------------------------------------------
         !       find velocity field at n+1/2 timestep needed for advection of scalars:
         !  Note that at the end of the call, the velocities are in nondimensional form.
-        call adams()
+        call adams(ncrms,icrm)
 
         !----------------------------------------------------------
         !     Update boundaries for all prognostic scalar fields for advection:
-        call boundaries(2)
+        call boundaries(2,ncrms,icrm)
 
         !---------------------------------------------------------
         !      advection of scalars :
@@ -1079,11 +1079,11 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !-----------------------------------------------------------
         !    Convert velocity back from nondimensional form:
-        call uvw()
+        call uvw(ncrms,icrm)
 
         !----------------------------------------------------------
         !     Update boundaries for scalars to prepare for SGS effects:
-        call boundaries(3)
+        call boundaries(3,ncrms,icrm)
 
         !---------------------------------------------------------
         !      SGS effects on scalars :
@@ -1377,7 +1377,7 @@ subroutine crm(lchnk, icol, ncrms, &
           qln(l) = qln(l)+qv(i,j,k)
           qccln(l)= qccln(l)+qcl(i,j,k)
           qiiln(l)= qiiln(l)+qci(i,j,k)
-          uln(l) = uln(l)+u(i,j,k)
+          uln(l) = uln(l)+u(icrm,i,j,k)
           vln(l) = vln(l)+v(i,j,k)
         enddo ! k
       enddo
@@ -1412,7 +1412,7 @@ subroutine crm(lchnk, icol, ncrms, &
     !-------------------------------------------------------------
     !
     ! Save the last step to the permanent core:
-    u_crm  (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
+    u_crm  (icrm,1:nx,1:ny,1:nzm) = u   (icrm,1:nx,1:ny,1:nzm)
     v_crm  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
     w_crm  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
     t_crm  (icrm,1:nx,1:ny,1:nzm) = tabs(icrm,1:nx,1:ny,1:nzm)
@@ -1662,7 +1662,7 @@ subroutine crm(lchnk, icol, ncrms, &
       w2z = 0.
       do j=1,ny
         do i=1,nx
-          u2z = u2z+(u(i,j,k)-u0(k))**2
+          u2z = u2z+(u(icrm,i,j,k)-u0(k))**2
           v2z = v2z+(v(i,j,k)-v0(k))**2
           w2z = w2z+0.5*(w(i,j,k+1)**2+w(i,j,k)**2)
         enddo

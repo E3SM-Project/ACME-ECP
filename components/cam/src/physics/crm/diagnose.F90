@@ -43,7 +43,7 @@ contains
         do i=1,nx
           tabs(icrm,i,j,k) = t(i,j,k)-gamaz(k)+ fac_cond * (qcl(i,j,k)+qpl(i,j,k)) +&
           fac_sub *(qci(i,j,k) + qpi(i,j,k))
-          u0(k)=u0(k)+u(i,j,k)
+          u0(k)=u0(k)+u(icrm,i,j,k)
           v0(k)=v0(k)+v(i,j,k)
           p0(k)=p0(k)+p(icrm,i,j,k)
           t0(k)=t0(k)+t(i,j,k)
@@ -84,9 +84,9 @@ contains
 
     do j=1,ny
       do i=1,nx
-        usfc_xy(i,j) = usfc_xy(i,j) + u(i,j,1)*dtfactor
+        usfc_xy(i,j) = usfc_xy(i,j) + u(icrm,i,j,1)*dtfactor
         vsfc_xy(i,j) = vsfc_xy(i,j) + v(i,j,1)*dtfactor
-        u200_xy(i,j) = u200_xy(i,j) + u(i,j,k200)*dtfactor
+        u200_xy(i,j) = u200_xy(i,j) + u(icrm,i,j,k200)*dtfactor
         v200_xy(i,j) = v200_xy(i,j) + v(i,j,k200)*dtfactor
         w500_xy(i,j) = w500_xy(i,j) + w(i,j,k500)*dtfactor
       end do
@@ -152,7 +152,7 @@ contains
         psfc_xy(i,j) = psfc_xy(i,j) + (100.*pres(1) + p(icrm,i,j,1))*dtfactor
 
         ! 850 mbar horizontal winds
-        u850_xy(i,j) = u850_xy(i,j) + u(i,j,k850)*dtfactor
+        u850_xy(i,j) = u850_xy(i,j) + u(icrm,i,j,k850)*dtfactor
         v850_xy(i,j) = v850_xy(i,j) + v(i,j,k850)*dtfactor
 
       end do

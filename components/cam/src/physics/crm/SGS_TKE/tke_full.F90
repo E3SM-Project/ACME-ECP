@@ -43,9 +43,9 @@ contains
     Ces=Ce/0.7*3.0
 
     if(RUN3D) then
-      call shear_prod3D(def2)
+      call shear_prod3D(def2, ncrms, icrm)
     else
-      call shear_prod2D(def2)
+      call shear_prod2D(def2, ncrms, icrm)
     endif
 
     do k=1,nzm

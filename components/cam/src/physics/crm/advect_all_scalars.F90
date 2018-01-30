@@ -25,7 +25,7 @@ contains
     !---------------------------------------------------------
     !      advection of scalars :
 
-    call advect_scalar(t,tadv,twle,t2leadv,t2legrad,twleadv,.true.)
+    call advect_scalar(t,tadv,twle,t2leadv,t2legrad,twleadv,.true.,ncrms,icrm)
 
     !
     !    Advection of microphysics prognostics:
@@ -40,7 +40,7 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) &
-      call advect_scalar(micro_field(:,:,:,k),mkadv(:,k),mkwle(:,k),dummy,dummy,dummy,.false.)
+      call advect_scalar(micro_field(:,:,:,k),mkadv(:,k),mkwle(:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
     end do
 
     !
@@ -49,7 +49,7 @@ contains
 
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(sgs_field(:,:,:,k),sgsadv(:,k),sgswle(:,k),dummy,dummy,dummy,.false.)
+        call advect_scalar(sgs_field(:,:,:,k),sgsadv(:,k),sgswle(:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
       end do
     end if
 
@@ -73,7 +73,7 @@ contains
     if(dotracers) then
 
       do k = 1,ntracers
-        call advect_scalar(tracer(:,:,:,k),tradv(:,k),trwle(:,k),dummy,dummy,dummy,.false.)
+        call advect_scalar(tracer(:,:,:,k),tradv(:,k),trwle(:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
       end do
 
     end if

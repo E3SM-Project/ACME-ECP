@@ -1,13 +1,14 @@
 module advect2_mom_z_mod
-	implicit none
+  implicit none
 
 contains
 
-  subroutine advect2_mom_z
+  subroutine advect2_mom_z(ncrms,icrm)
     !       momentum tendency due to the 2nd-order-central vertical advection
     use vars
     use params, only: crm_rknd
     implicit none
+    integer, intent(in) :: ncrms,icrm
 
     real(crm_rknd) fuz(nx,ny,nz),fvz(nx,ny,nz),fwz(nx,ny,nzm)
     integer i, j, k, kc, kb
@@ -39,7 +40,7 @@ contains
         vwle(k) = 0.
         do j=1,ny
           do i=1,nx
-            fuz(i,j,k) = rhoi*(w(i,j,k)+w(i-1,j,k))*(u(i,j,k)+u(i,j,kb))
+            fuz(i,j,k) = rhoi*(w(i,j,k)+w(i-1,j,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
             fvz(i,j,k) = rhoi*(w(i,j,k)+w(i,j-1,k))*(v(i,j,k)+v(i,j,kb))
             uwle(k) = uwle(k)+fuz(i,j,k)
             vwle(k) = vwle(k)+fvz(i,j,k)
@@ -57,7 +58,7 @@ contains
         do j=1,ny
           do i=1,nx
             www = rhoi*(w(i,j,k)+w(i-1,j,k))
-            fuz(i,j,k) = www*(u(i,j,k)+u(i,j,kb))
+            fuz(i,j,k) = www*(u(icrm,i,j,k)+u(icrm,i,j,kb))
             fvz(i,j,k) = www*(v(i,j,k)+v(i,j,kb))
             uwle(k) = uwle(k)+fuz(i,j,k)
             vwle(k) = vwle(k)+fvz(i,j,k)

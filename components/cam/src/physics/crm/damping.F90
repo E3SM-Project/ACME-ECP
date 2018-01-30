@@ -1,10 +1,10 @@
 module damping_mod
-	use task_util_mod
-	implicit none
+  use task_util_mod
+  implicit none
 
 contains
 
-  subroutine damping
+  subroutine damping(ncrms,icrm)
 
     !  "Spange"-layer damping at the domain top region
 
@@ -12,8 +12,9 @@ contains
     use microphysics, only: micro_field, index_water_vapor
     use params, only: crm_rknd
     implicit none
+    integer, intent(in) :: ncrms, icrm
 
-    real(crm_rknd) tau_min	! minimum damping time-scale (at the top)
+    real(crm_rknd) tau_min  ! minimum damping time-scale (at the top)
     real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
@@ -45,7 +46,7 @@ contains
       t0(k)=0.0
       do j=1, ny
         do i=1, nx
-          u0(k) = u0(k) + u(i,j,k)/(nx*ny)
+          u0(k) = u0(k) + u(icrm,i,j,k)/(nx*ny)
           v0(k) = v0(k) + v(i,j,k)/(nx*ny)
           t0(k) = t0(k) + t(i,j,k)/(nx*ny)
         end do
@@ -56,7 +57,7 @@ contains
     do k = nzm, nzm-n_damp, -1
       do j=1,ny
         do i=1,nx
-          dudt(i,j,k,na)= dudt(i,j,k,na)-(u(i,j,k)-u0(k)) * tau(k)
+          dudt(i,j,k,na)= dudt(i,j,k,na)-(u(icrm,i,j,k)-u0(k)) * tau(k)
           dvdt(i,j,k,na)= dvdt(i,j,k,na)-(v(i,j,k)-v0(k)) * tau(k)
           dwdt(i,j,k,na)= dwdt(i,j,k,na)-w(i,j,k) * tau(k)
           t(i,j,k)= t(i,j,k)-dtn*(t(i,j,k)-t0(k)) * tau(k)
