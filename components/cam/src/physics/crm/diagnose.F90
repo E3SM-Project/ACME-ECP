@@ -52,9 +52,9 @@ contains
           qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
           qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
 
-          pw_xy(i,j) = pw_xy(i,j)+qv(icrm,i,j,k)*coef1
-          cw_xy(i,j) = cw_xy(i,j)+qcl(icrm,i,j,k)*coef1
-          iw_xy(i,j) = iw_xy(i,j)+qci(icrm,i,j,k)*coef1
+          pw_xy(icrm,i,j) = pw_xy(icrm,i,j)+qv(icrm,i,j,k)*coef1
+          cw_xy(icrm,i,j) = cw_xy(icrm,i,j)+qcl(icrm,i,j,k)*coef1
+          iw_xy(icrm,i,j) = iw_xy(icrm,i,j)+qci(icrm,i,j,k)*coef1
 
         end do
       end do
@@ -84,11 +84,11 @@ contains
 
     do j=1,ny
       do i=1,nx
-        usfc_xy(i,j) = usfc_xy(i,j) + u(icrm,i,j,1)*dtfactor
-        vsfc_xy(i,j) = vsfc_xy(i,j) + v(icrm,i,j,1)*dtfactor
-        u200_xy(i,j) = u200_xy(i,j) + u(icrm,i,j,k200)*dtfactor
-        v200_xy(i,j) = v200_xy(i,j) + v(icrm,i,j,k200)*dtfactor
-        w500_xy(i,j) = w500_xy(i,j) + w(icrm,i,j,k500)*dtfactor
+        usfc_xy(icrm,i,j) = usfc_xy(icrm,i,j) + u(icrm,i,j,1)*dtfactor
+        vsfc_xy(icrm,i,j) = vsfc_xy(icrm,i,j) + v(icrm,i,j,1)*dtfactor
+        u200_xy(icrm,i,j) = u200_xy(icrm,i,j) + u(icrm,i,j,k200)*dtfactor
+        v200_xy(icrm,i,j) = v200_xy(icrm,i,j) + v(icrm,i,j,k200)*dtfactor
+        w500_xy(icrm,i,j) = w500_xy(icrm,i,j) + w(icrm,i,j,k500)*dtfactor
       end do
     end do
 
@@ -165,7 +165,7 @@ contains
 
     ! initially, zero out heights and set cloudtoptemp to SST
     cloudtopheight = 0.
-    cloudtoptemp = sstxy(1:nx,1:ny)
+    cloudtoptemp = sstxy(icrm,1:nx,1:ny)
     echotopheight = 0.
     do j = 1,ny
       do i = 1,nx
@@ -176,7 +176,7 @@ contains
           if (tmp_lwp.gt.0.01) then
             cloudtopheight(i,j) = z(k)
             cloudtoptemp(i,j) = tabs(icrm,i,j,k)
-            cld_xy(i,j) = cld_xy(i,j) + dtfactor
+            cld_xy(icrm,i,j) = cld_xy(icrm,i,j) + dtfactor
             EXIT
           end if
         end do

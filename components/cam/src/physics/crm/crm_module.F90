@@ -451,12 +451,12 @@ subroutine crm(lchnk, icol, ncrms, &
 
     if(fcor.eq.-999.) fcor= 4*pi/86400.*sin(latitude0*pi/180.)
     fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
-    fcory(:) = fcor
-    fcorzy(:) = fcorz
+    fcory(icrm,:) = fcor
+    fcorzy(icrm,:) = fcorz
     do j=1,ny
       do i=1,nx
-        latitude (i,j) = latitude0
-        longitude(i,j) = longitude0
+        latitude (icrm,i,j) = latitude0
+        longitude(icrm,i,j) = longitude0
       end do
     end do
 

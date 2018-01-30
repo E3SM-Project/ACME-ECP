@@ -121,12 +121,12 @@ module vars
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
   !
-  real(crm_rknd) sstxy(0:nx,(1-YES3D):ny)	!  surface temperature xy-distribution
-  real(crm_rknd) fcory(0:ny)      !  Coriolis parameter xy-distribution
-  real(crm_rknd) fcorzy(ny)      !  z-Coriolis parameter xy-distribution
-  real(crm_rknd) latitude(nx,ny)	     ! latitude (degrees)
-  real(crm_rknd) longitude(nx,ny)	     ! longitude(degrees)
-  real(crm_rknd) prec_xy(nx,ny) ! mean precip. rate for outout
+  real(crm_rknd) sstxy(icrm,0:nx,(1-YES3D):ny)	!  surface temperature xy-distribution
+  real(crm_rknd) fcory(icrm,0:ny)      !  Coriolis parameter xy-distribution
+  real(crm_rknd) fcorzy(icrm,ny)      !  z-Coriolis parameter xy-distribution
+  real(crm_rknd) latitude(icrm,nx,ny)	     ! latitude (icrm,degrees)
+  real(crm_rknd) longitude(icrm,nx,ny)	     ! longitude(icrm,degrees)
+  real(crm_rknd) prec_xy(icrm,nx,ny) ! mean precip. rate for outout
   real(crm_rknd) shf_xy(nx,ny) ! mean precip. rate for outout
   real(crm_rknd) lhf_xy(nx,ny) ! mean precip. rate for outout
   real(crm_rknd) lwns_xy(nx,ny) ! mean net lw at SFC
@@ -138,15 +138,15 @@ module vars
   real(crm_rknd) lwntc_xy(nx,ny) ! clear-sky mean net lw at TOA
   real(crm_rknd) swntc_xy(nx,ny) ! clear-sky mean net sw at TOA
   real(crm_rknd) solin_xy(nx,ny) ! solar TOA insolation
-  real(crm_rknd) pw_xy(nx,ny)   ! precipitable water
-  real(crm_rknd) cw_xy(nx,ny)   ! cloud water path
-  real(crm_rknd) iw_xy(nx,ny)   ! ice water path
-  real(crm_rknd) cld_xy(nx,ny)   ! cloud frequency
-  real(crm_rknd) u200_xy(nx,ny) ! u-wind at 200 mb
-  real(crm_rknd) usfc_xy(nx,ny) ! u-wind at at the surface
-  real(crm_rknd) v200_xy(nx,ny) ! v-wind at 200 mb
-  real(crm_rknd) vsfc_xy(nx,ny) ! v-wind at the surface
-  real(crm_rknd) w500_xy(nx,ny) ! w at 500 mb
+  real(crm_rknd) pw_xy(icrm,nx,ny)   ! precipitable water
+  real(crm_rknd) cw_xy(icrm,nx,ny)   ! cloud water path
+  real(crm_rknd) iw_xy(icrm,nx,ny)   ! ice water path
+  real(crm_rknd) cld_xy(icrm,nx,ny)   ! cloud frequency
+  real(crm_rknd) u200_xy(icrm,nx,ny) ! u-wind at 200 mb
+  real(crm_rknd) usfc_xy(icrm,nx,ny) ! u-wind at at the surface
+  real(crm_rknd) v200_xy(icrm,nx,ny) ! v-wind at 200 mb
+  real(crm_rknd) vsfc_xy(icrm,nx,ny) ! v-wind at the surface
+  real(crm_rknd) w500_xy(icrm,nx,ny) ! w at 500 mb
   real(crm_rknd) qocean_xy(nx,ny) ! ocean cooling in W/m2
 
   !----------------------------------------------------------------------

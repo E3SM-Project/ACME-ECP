@@ -26,9 +26,9 @@ contains
       call bound_exchange(v(icrm,:,:,:),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
-      w(icrm,1:nx,1:ny,nz) = sstxy(1:nx,1:ny)
+      w(icrm,1:nx,1:ny,nz) = sstxy(icrm,1:nx,1:ny)
       call bound_exchange(w(icrm,:,:,:),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
-      sstxy(0:nx,1-YES3D:ny) = w(icrm,0:nx,1-YES3D:ny,nz)
+      sstxy(icrm,0:nx,1-YES3D:ny) = w(icrm,0:nx,1-YES3D:ny,nz)
       w(icrm,0:nx+1,1-YES3D:ny+YES3D,nz) = 0.
 
     endif

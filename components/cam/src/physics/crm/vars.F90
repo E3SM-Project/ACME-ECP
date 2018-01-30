@@ -95,21 +95,21 @@ module vars
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
   !
-  real(crm_rknd), allocatable :: sstxy    (:,:)  !  surface temperature xy-distribution
-  real(crm_rknd), allocatable :: fcory    (:)    !  Coriolis parameter xy-distribution
-  real(crm_rknd), allocatable :: fcorzy   (:)    !  z-Coriolis parameter xy-distribution
-  real(crm_rknd), allocatable :: latitude (:,:)  ! latitude (degrees)
-  real(crm_rknd), allocatable :: longitude(:,:)  ! longitude(degrees)
-  real(crm_rknd), allocatable :: prec_xy  (:,:)  ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: pw_xy    (:,:)  ! precipitable water
-  real(crm_rknd), allocatable :: cw_xy    (:,:)  ! cloud water path
-  real(crm_rknd), allocatable :: iw_xy    (:,:)  ! ice water path
-  real(crm_rknd), allocatable :: cld_xy   (:,:)  ! cloud frequency
-  real(crm_rknd), allocatable :: u200_xy  (:,:)  ! u-wind at 200 mb
-  real(crm_rknd), allocatable :: usfc_xy  (:,:)  ! u-wind at at the surface
-  real(crm_rknd), allocatable :: v200_xy  (:,:)  ! v-wind at 200 mb
-  real(crm_rknd), allocatable :: vsfc_xy  (:,:)  ! v-wind at the surface
-  real(crm_rknd), allocatable :: w500_xy  (:,:)  ! w at 500 mb
+  real(crm_rknd), allocatable :: sstxy    (:,:,:) !REDIM  !  surface temperature xy-distribution
+  real(crm_rknd), allocatable :: fcory    (:,:)   !REDIM  !  Coriolis parameter xy-distribution
+  real(crm_rknd), allocatable :: fcorzy   (:,:)   !REDIM  !  z-Coriolis parameter xy-distribution
+  real(crm_rknd), allocatable :: latitude (:,:,:) !REDIM  ! latitude (icrm,degrees)
+  real(crm_rknd), allocatable :: longitude(:,:,:) !REDIM  ! longitude(icrm,degrees)
+  real(crm_rknd), allocatable :: prec_xy  (:,:,:) !REDIM  ! mean precip. rate for outout
+  real(crm_rknd), allocatable :: pw_xy    (:,:,:) !REDIM  ! precipitable water
+  real(crm_rknd), allocatable :: cw_xy    (:,:,:) !REDIM  ! cloud water path
+  real(crm_rknd), allocatable :: iw_xy    (:,:,:) !REDIM  ! ice water path
+  real(crm_rknd), allocatable :: cld_xy   (:,:,:) !REDIM  ! cloud frequency
+  real(crm_rknd), allocatable :: u200_xy  (:,:,:) !REDIM  ! u-wind at 200 mb
+  real(crm_rknd), allocatable :: usfc_xy  (:,:,:) !REDIM  ! u-wind at at the surface
+  real(crm_rknd), allocatable :: v200_xy  (:,:,:) !REDIM  ! v-wind at 200 mb
+  real(crm_rknd), allocatable :: vsfc_xy  (:,:,:) !REDIM  ! v-wind at the surface
+  real(crm_rknd), allocatable :: w500_xy  (:,:,:) !REDIM  ! w at 500 mb
 
   !----------------------------------------------------------------------
   !  Vertical profiles of quantities sampled for statitistics purposes:
@@ -262,21 +262,21 @@ contains
     allocate( ttend    (ncrms,nzm) ) ! Large-scale tendency for temp.
     allocate( utend    (ncrms,nzm) ) ! Large-scale tendency for u
     allocate( vtend    (ncrms,nzm) ) ! Large-scale tendency for v
-    allocate( sstxy    (0:nx,(1-YES3D):ny) ) !  surface temperature xy-distribution
-    allocate( fcory    (0:ny) )             !  Coriolis parameter xy-distribution
-    allocate( fcorzy   (ny) )               !  z-Coriolis parameter xy-distribution
-    allocate( latitude (nx,ny) )            ! latitude (degrees)
-    allocate( longitude(nx,ny) )            ! longitude(degrees)
-    allocate( prec_xy  (nx,ny) )            ! mean precip. rate for outout
-    allocate( pw_xy    (nx,ny) )            ! precipitable water
-    allocate( cw_xy    (nx,ny) )            ! cloud water path
-    allocate( iw_xy    (nx,ny) )            ! ice water path
-    allocate( cld_xy   (nx,ny) )            ! cloud frequency
-    allocate( u200_xy  (nx,ny) )            ! u-wind at 200 mb
-    allocate( usfc_xy  (nx,ny) )            ! u-wind at at the surface
-    allocate( v200_xy  (nx,ny) )            ! v-wind at 200 mb
-    allocate( vsfc_xy  (nx,ny) )            ! v-wind at the surface
-    allocate( w500_xy  (nx,ny) )            ! w at 500 mb
+    allocate( sstxy    (ncrms,0:nx,(1-YES3D):ny) ) !  surface temperature xy-distribution
+    allocate( fcory    (ncrms,0:ny) )             !  Coriolis parameter xy-distribution
+    allocate( fcorzy   (ncrms,ny) )               !  z-Coriolis parameter xy-distribution
+    allocate( latitude (ncrms,nx,ny) )            ! latitude (icrm,degrees)
+    allocate( longitude(ncrms,nx,ny) )            ! longitude(icrm,degrees)
+    allocate( prec_xy  (ncrms,nx,ny) )            ! mean precip. rate for outout
+    allocate( pw_xy    (ncrms,nx,ny) )            ! precipitable water
+    allocate( cw_xy    (ncrms,nx,ny) )            ! cloud water path
+    allocate( iw_xy    (ncrms,nx,ny) )            ! ice water path
+    allocate( cld_xy   (ncrms,nx,ny) )            ! cloud frequency
+    allocate( u200_xy  (ncrms,nx,ny) )            ! u-wind at 200 mb
+    allocate( usfc_xy  (ncrms,nx,ny) )            ! u-wind at at the surface
+    allocate( v200_xy  (ncrms,nx,ny) )            ! v-wind at 200 mb
+    allocate( vsfc_xy  (ncrms,nx,ny) )            ! v-wind at the surface
+    allocate( w500_xy  (ncrms,nx,ny) )            ! w at 500 mb
     allocate( twle     (nz) )
     allocate( twsb     (nz) )
     allocate( precflux (nz) )
@@ -483,8 +483,8 @@ contains
     deallocate( sstxy     ) !  surface temperature xy-distribution
     deallocate( fcory     )            !  Coriolis parameter xy-distribution
     deallocate( fcorzy    )            !  z-Coriolis parameter xy-distribution
-    deallocate( latitude  )            ! latitude (degrees)
-    deallocate( longitude )            ! longitude(degrees)
+    deallocate( latitude  )            ! latitude (icrm,degrees)
+    deallocate( longitude )            ! longitude(icrm,degrees)
     deallocate( prec_xy   )            ! mean precip. rate for outout
     deallocate( pw_xy     )            ! precipitable water
     deallocate( cw_xy     )            ! cloud water path

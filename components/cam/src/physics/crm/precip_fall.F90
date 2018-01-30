@@ -203,7 +203,7 @@ contains
           end do
           precsfc(icrm,i,j) = precsfc(icrm,i,j) - fz(1)*flagstat ! For statistics
           precssfc(icrm,i,j) = precssfc(icrm,i,j) - fz(1)*(1.-omega(i,j,1))*flagstat ! For statistics
-          prec_xy(i,j) = prec_xy(i,j) - fz(1)*flagstat ! For 2D output
+          prec_xy(icrm,i,j) = prec_xy(icrm,i,j) - fz(1)*flagstat ! For 2D output
 
           if (iprec.lt.nprec) then
 

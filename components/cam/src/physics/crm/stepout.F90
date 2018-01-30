@@ -194,7 +194,7 @@ contains
         call fminmax_print('lhf:',fluxbq(icrm,:,:)*lcond*rhow(icrm,1),1,nx,1,ny,1)
         call fminmax_print('uw:',fluxbu(icrm,:,:),1,nx,1,ny,1)
         call fminmax_print('vw:',fluxbv(icrm,:,:),1,nx,1,ny,1)
-        call fminmax_print('sst:',sstxy,0,nx,1-YES3D,ny,1)
+        call fminmax_print('sst:',sstxy(icrm,:,:),0,nx,1-YES3D,ny,1)
 
       end if ! (mod(nstep,nprint).eq.0)
 
