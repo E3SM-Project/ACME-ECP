@@ -147,20 +147,20 @@ module vars
 
   ! energy conservation diagnostics:
 
-  real(8) :: total_water_before 
-  real(8) :: total_water_after  
-  real(8) :: total_water_evap   
-  real(8) :: total_water_prec   
-  real(8) :: total_water_ls     
-  real(8) :: total_water_clubb  
-  real(8) :: total_energy_before
-  real(8) :: total_energy_after 
-  real(8) :: total_energy_evap  
-  real(8) :: total_energy_prec  
-  real(8) :: total_energy_ls    
-  real(8) :: total_energy_clubb 
-  real(8) :: total_energy_rad   
-  real(8), allocatable :: qtotmicro(:)  ! total water for water conservation test in microphysics +++mhwang
+  real(8), allocatable :: total_water_before (:)
+  real(8), allocatable :: total_water_after  (:)
+  real(8), allocatable :: total_water_evap   (:)
+  real(8), allocatable :: total_water_prec   (:)
+  real(8), allocatable :: total_water_ls     (:)
+  real(8), allocatable :: total_water_clubb  (:)
+  real(8), allocatable :: total_energy_before(:)
+  real(8), allocatable :: total_energy_after (:)
+  real(8), allocatable :: total_energy_evap  (:)
+  real(8), allocatable :: total_energy_prec  (:)
+  real(8), allocatable :: total_energy_ls    (:)
+  real(8), allocatable :: total_energy_clubb (:)
+  real(8), allocatable :: total_energy_rad   (:)
+  real(8), allocatable :: qtotmicro          (:,:)  ! total water for water conservation test in microphysics +++mhwang
 
 
   !===========================================================================
@@ -299,7 +299,20 @@ contains
     allocate( qpfall   (ncrms,nz) )
     allocate( w_max    (ncrms) )
     allocate( u_max    (ncrms) )
-    allocate( qtotmicro(5) )
+    allocate( total_water_before (ncrms) )
+    allocate( total_water_after  (ncrms) )
+    allocate( total_water_evap   (ncrms) )
+    allocate( total_water_prec   (ncrms) )
+    allocate( total_water_ls     (ncrms) )
+    allocate( total_water_clubb  (ncrms) )
+    allocate( total_energy_before(ncrms) )
+    allocate( total_energy_after (ncrms) )
+    allocate( total_energy_evap  (ncrms) )
+    allocate( total_energy_prec  (ncrms) )
+    allocate( total_energy_ls    (ncrms) )
+    allocate( total_energy_clubb (ncrms) )
+    allocate( total_energy_rad   (ncrms) )
+    allocate( qtotmicro(ncrms,5) )
     allocate( CF3D          (1:nx, 1:ny, 1:nzm) )
     allocate( u850_xy       (nx,ny) )
     allocate( v850_xy       (nx,ny) )
@@ -521,6 +534,19 @@ contains
     deallocate( qpfall    )
     deallocate( w_max     )
     deallocate( u_max     )
+    deallocate( total_water_before  )
+    deallocate( total_water_after   )
+    deallocate( total_water_evap    )
+    deallocate( total_water_prec    )
+    deallocate( total_water_ls      )
+    deallocate( total_water_clubb   )
+    deallocate( total_energy_before )
+    deallocate( total_energy_after  )
+    deallocate( total_energy_evap   )
+    deallocate( total_energy_prec   )
+    deallocate( total_energy_ls     )
+    deallocate( total_energy_clubb  )
+    deallocate( total_energy_rad    )
     deallocate( qtotmicro )
     deallocate( CF3D           )
     deallocate( u850_xy        )

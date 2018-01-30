@@ -854,7 +854,7 @@ subroutine crm(lchnk, icol, ncrms, &
     ! test water conservtion problem
     ntotal_step = 0.0
     qtot(icrm,:) = 0.0
-    qtotmicro(:) = 0.0
+    qtotmicro(icrm,:) = 0.0
     do k=1, nzm
       l=plev-k+1
       do j=1, ny

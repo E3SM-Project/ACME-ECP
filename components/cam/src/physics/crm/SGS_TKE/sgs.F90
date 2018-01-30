@@ -407,7 +407,7 @@ CONTAINS
     !
     call micro_flux(ncrms,icrm)
 
-    total_water_evap = total_water_evap - total_water(ncrms,icrm)
+    total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
 
     do k = 1,nmicro_fields
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
@@ -420,7 +420,7 @@ CONTAINS
     end if
   end do
 
-  total_water_evap = total_water_evap + total_water(ncrms,icrm)
+  total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
 
   ! diffusion of tracers:
 

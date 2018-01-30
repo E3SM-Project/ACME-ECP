@@ -193,7 +193,7 @@ module vars
   real(8) total_energy_evap, total_energy_prec, total_energy_ls
   real(8) total_energy_clubb, total_energy_rad
   !#endif
-  real(8)  qtotmicro(5)  ! total water for water conservation test in microphysics +++mhwang
+  real(8)  qtotmicro(icrm,5)  ! total water for water conservation test in microphysics +++mhwang
 
   !===========================================================================
   ! UW ADDITIONS

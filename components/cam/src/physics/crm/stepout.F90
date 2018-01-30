@@ -86,39 +86,39 @@ contains
       end do
 
       if(dompi) then
-        buffer(1) = total_water_before
-        buffer(2) = total_water_after
-        buffer(3) = total_water_evap
-        buffer(4) = total_water_prec
-        buffer(5) = total_water_ls
+        buffer(1) = total_water_before(icrm)
+        buffer(2) = total_water_after (icrm)
+        buffer(3) = total_water_evap  (icrm)
+        buffer(4) = total_water_prec  (icrm)
+        buffer(5) = total_water_ls    (icrm)
 #ifdef CLUBB_CRM
-        buffer(6) = total_water_clubb
+        buffer(6) = total_water_clubb (icrm)
 
-        buffer_e(1) = total_energy_before
-        buffer_e(2) = total_energy_after
-        buffer_e(3) = total_energy_evap
-        buffer_e(4) = total_energy_prec
-        buffer_e(5) = total_energy_ls
-        buffer_e(6) = total_energy_clubb
-        buffer_e(7) = total_energy_rad
+        buffer_e(1) = total_energy_before(icrm)
+        buffer_e(2) = total_energy_after(icrm)
+        buffer_e(3) = total_energy_evap(icrm)
+        buffer_e(4) = total_energy_prec(icrm)
+        buffer_e(5) = total_energy_ls(icrm)
+        buffer_e(6) = total_energy_clubb(icrm)
+        buffer_e(7) = total_energy_rad(icrm)
 #endif
         call task_sum_real8(buffer, buffer1,6)
-        total_water_before = buffer1(1)
-        total_water_after = buffer1(2)
-        total_water_evap = buffer1(3)
-        total_water_prec = buffer1(4)
-        total_water_ls = buffer1(5)
+        total_water_before(icrm) = buffer1(1)
+        total_water_after(icrm) = buffer1(2)
+        total_water_evap(icrm) = buffer1(3)
+        total_water_prec(icrm) = buffer1(4)
+        total_water_ls(icrm) = buffer1(5)
 #ifdef CLUBB_CRM
-        total_water_clubb = buffer1(6)
+        total_water_clubb(icrm) = buffer1(6)
 
         call task_sum_real8(buffer_e, buffer1_e,7)
-        total_energy_before = buffer1_e(1)
-        total_energy_after = buffer1_e(2)
-        total_energy_evap = buffer1_e(3)
-        total_energy_prec = buffer1_e(4)
-        total_energy_ls = buffer1_e(5)
-        total_energy_clubb = buffer1_e(6)
-        total_energy_rad = buffer1_e(7)
+        total_energy_before(icrm) = buffer1_e(1)
+        total_energy_after(icrm) = buffer1_e(2)
+        total_energy_evap(icrm) = buffer1_e(3)
+        total_energy_prec(icrm) = buffer1_e(4)
+        total_energy_ls(icrm) = buffer1_e(5)
+        total_energy_clubb(icrm) = buffer1_e(6)
+        total_energy_rad(icrm) = buffer1_e(7)
 #endif
       end if
 
