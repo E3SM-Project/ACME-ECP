@@ -1,4 +1,4 @@
-#define SP_DIR_NS
+! #define SP_DIR_NS
 module crm_physics
 !-----------------------------------------------------------------------
 ! Purpose: 
@@ -923,10 +923,6 @@ end subroutine crm_physics_init
   
    cldo(:ncol, :) = cldo_save(:ncol, :)
 
-#ifdef GXL_DEBUG_OUTPUT
-   call outfld("conc_BC2",state%q(:,:pver,19),pcols, lchnk)  !==Guangxing Lin debug output
-#endif
-
 
 #if ( defined MODAL_AERO )
    do i=1,pcnst
@@ -1206,6 +1202,63 @@ end subroutine crm_physics_init
 #endif
 
    else  ! not is_first_step
+
+
+!-----------------------------------------------------------------
+! SP_CRM_REINIT - option to continually re-initialize the CRM
+!-----------------------------------------------------------------
+#ifdef SP_CRM_REINIT
+      do k=1,crm_nz
+         m = pver-k+1
+         do i=1,ncol
+#ifdef SP_CRM_REINIT_UV
+            crm_u(i,:,:,k) = state%u(i,m)
+            crm_v(i,:,:,k) = state%v(i,m)
+#ifdef SP_DIR_NS
+            if(crm_ny.eq.1) then ! change domain orientation only for 2D CRM
+               crm_u(i,:,:,k) = state%v(i,m)
+               crm_v(i,:,:,k) = state%u(i,m)
+            end if
+#endif
+#endif
+
+#ifdef SP_CRM_REINIT_W
+            crm_w(i,:,:,k) = 0.
+#endif
+
+#ifdef SP_CRM_REINIT_T
+            crm_t(i,:,:,k) = state%t(i,m)
+#endif
+
+
+#ifdef SP_CRM_REINIT_Q
+            if (SPCAM_microp_scheme .eq. 'sam1mom') then
+               crm_qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
+               crm_qp(i,:,:,k) = 0.0_r8
+               crm_qn(i,:,:,k) = state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
+            endif
+#ifdef m2005
+            if (SPCAM_microp_scheme .eq. 'm2005') then
+               crm_qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)
+               crm_nc(i,:,:,k) = 0.0_r8
+               crm_qr(i,:,:,k) = 0.0_r8
+               crm_nr(i,:,:,k) = 0.0_r8
+               crm_qi(i,:,:,k) = state%q(i,m,ixcldice) 
+               crm_ni(i,:,:,k) = 0.0_r8
+               crm_qs(i,:,:,k) = 0.0_r8
+               crm_ns(i,:,:,k) = 0.0_r8
+               crm_qg(i,:,:,k) = 0.0_r8
+               crm_ng(i,:,:,k) = 0.0_r8
+               crm_qc(i,:,:,k) = state%q(i,m,ixcldliq)
+            endif
+#endif
+#endif
+         end do
+      end do
+#endif
+!-----------------------------------------------------------------
+! End SP_CRM_REINIT section
+!-----------------------------------------------------------------
 
 #ifdef CRM
        if (SPCAM_microp_scheme .eq. 'sam1mom') then
@@ -1943,9 +1996,6 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
-#ifdef GXL_DEBUG_OUTPUT
-   call outfld("conc_BC4",state%q(:,:pver,19),pcols, lchnk)!Guangxing Lin==debug output
-#endif
 
        if(SPCAM_microp_scheme .eq. 'm2005') then
          ! calculate column water of rain, snow and graupel 
