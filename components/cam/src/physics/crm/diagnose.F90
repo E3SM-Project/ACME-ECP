@@ -41,12 +41,12 @@ contains
       coef1 = rho(k)*dz*adz(k)*dtfactor
       do j=1,ny
         do i=1,nx
-          tabs(icrm,i,j,k) = t(i,j,k)-gamaz(k)+ fac_cond * (qcl(i,j,k)+qpl(i,j,k)) +&
+          tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k)+ fac_cond * (qcl(i,j,k)+qpl(i,j,k)) +&
           fac_sub *(qci(i,j,k) + qpi(i,j,k))
           u0(k)=u0(k)+u(icrm,i,j,k)
           v0(k)=v0(k)+v(icrm,i,j,k)
           p0(k)=p0(k)+p(icrm,i,j,k)
-          t0(k)=t0(k)+t(i,j,k)
+          t0(k)=t0(k)+t(icrm,i,j,k)
           tabs0(k)=tabs0(k)+tabs(icrm,i,j,k)
           q0(k)=q0(k)+qv(i,j,k)+qcl(i,j,k)+qci(i,j,k)
           qn0(k) = qn0(k) + qcl(i,j,k) + qci(i,j,k)

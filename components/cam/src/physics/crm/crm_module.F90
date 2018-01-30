@@ -593,15 +593,15 @@ subroutine crm(lchnk, icol, ncrms, &
       !---mhwang
       do j=1,ny
         do i=1,nx
-          t(i,j,k) = tabs(icrm,i,j,k)+gamaz(k) &
+          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(k) &
                     -fac_cond*qcl(i,j,k)-fac_sub*qci(i,j,k) &
                     -fac_cond*qpl(i,j,k)-fac_sub*qpi(i,j,k)
           colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(icrm,plev-k+1)
           colprecs=colprecs+qpi(i,j,k)*pdel(icrm,plev-k+1)
           u0(k)=u0(k)+u(icrm,i,j,k)
           v0(k)=v0(k)+v(icrm,i,j,k)
-          t0(k)=t0(k)+t(i,j,k)
-          t00(k)=t00(k)+t(i,j,k)+fac_cond*qpl(i,j,k)+fac_sub*qpi(i,j,k)
+          t0(k)=t0(k)+t(icrm,i,j,k)
+          t00(k)=t00(k)+t(icrm,i,j,k)+fac_cond*qpl(i,j,k)+fac_sub*qpi(i,j,k)
           tabs0(k)=tabs0(k)+tabs(icrm,i,j,k)
           q0(k)=q0(k)+qv(i,j,k)+qcl(i,j,k)+qci(i,j,k)
           qv0(k) = qv0(k) + qv(i,j,k)
@@ -779,7 +779,7 @@ subroutine crm(lchnk, icol, ncrms, &
     call get_gcol_all_p(lchnk, pcols, gcolindex)
     iseed = gcolindex(icol(icrm))
     if(u(icrm,1,1,1).eq.u(icrm,2,1,1).and.u(icrm,3,1,2).eq.u(icrm,4,1,2)) &
-                call setperturb(iseed)
+                call setperturb(iseed,ncrms,icrm)
 #endif
 
     !--------------------------
@@ -942,14 +942,14 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !------------------------------------------------------------
         !       Large-scale and surface forcing:
-        call forcing()
+        call forcing(ncrms,icrm)
 
         do k=1,nzm
           do j=1,ny
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(i,j,k) = t(i,j,k) + qrad_crm(icrm,i_rad,j_rad,k)*dtn
+              t(icrm,i,j,k) = t(icrm,i,j,k) + qrad_crm(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
@@ -1009,7 +1009,7 @@ subroutine crm(lchnk, icol, ncrms, &
               rtm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                            rtm_column, gr%invrs_dzt(2:nz) )
 
-              thlm_before = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
+              thlm_before = t2thetal( t(icrm,i,j,1:nzm), gamaz(1:nzm), &
                                    qcl(i,j,1:nzm), qpl(i,j,1:nzm), &
                                    qci(i,j,1:nzm), qpi(i,j,1:nzm), &
                                    prespot(1:nzm) )
@@ -1087,7 +1087,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !---------------------------------------------------------
         !      SGS effects on scalars :
-        if (dosgs) call sgs_scalars()
+        if (dosgs) call sgs_scalars(ncrms,icrm)
 
 #ifdef CLUBB_CRM_OLD
         ! Re-compute q/qv/qcl based on values computed in CLUBB
@@ -1120,7 +1120,7 @@ subroutine crm(lchnk, icol, ncrms, &
               thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
               thlm_flux_sfc = rho_ds_zm(1) * fluxbt(i,j)
 
-              thlm_after = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
+              thlm_after = t2thetal( t(icrm,i,j,1:nzm), gamaz(1:nzm), &
                                      qcl(i,j,1:nzm), qpl(i,j,1:nzm), &
                                      qci(i,j,1:nzm), qpi(i,j,1:nzm), &
                                      prespot(1:nzm) )

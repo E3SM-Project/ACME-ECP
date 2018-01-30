@@ -1,6 +1,6 @@
 module advect_all_scalars_mod
-	use advect_scalar_mod
-	implicit none
+  use advect_scalar_mod
+  implicit none
 
 contains
 
@@ -25,7 +25,7 @@ contains
     !---------------------------------------------------------
     !      advection of scalars :
 
-    call advect_scalar(t,tadv,twle,t2leadv,t2legrad,twleadv,.true.,ncrms,icrm)
+    call advect_scalar(t(icrm,:,:,:),tadv,twle,t2leadv,t2legrad,twleadv,.true.,ncrms,icrm)
 
     !
     !    Advection of microphysics prognostics:

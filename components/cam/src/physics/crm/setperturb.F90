@@ -4,7 +4,7 @@ module setperturb_mod
 
 contains
 
-  subroutine setperturb(iseed)
+  subroutine setperturb(iseed,ncrms,icrm)
 
     !  Random noise
     !  This surboutine has been updated for SPCAM5 (Minghuai.Wang@pnnl.gov, April, 2012).
@@ -16,6 +16,7 @@ contains
     use params, only: crm_rknd
 
     implicit none
+    integer, intent(in) :: ncrms,icrm
 
     integer, intent(in) :: iseed
 
@@ -43,9 +44,9 @@ contains
           rrr=1.-2.*ranf_()
 
           if(k.le.5) then
-            t(i,j,k)=t(i,j,k)+0.02*rrr*(6-k)
+            t(icrm,i,j,k)=t(icrm,i,j,k)+0.02*rrr*(6-k)
           endif
-          t02(k) = t02(k) + t(i,j,k)/(nx*ny)
+          t02(k) = t02(k) + t(icrm,i,j,k)/(nx*ny)
         end do
       end do
 
@@ -53,7 +54,7 @@ contains
       do j=1, ny
         do i=1, nx
           if(k.le.5) then
-            t(i,j,k) = t(i,j,k) * t0(k)/t02(k)
+            t(icrm,i,j,k) = t(icrm,i,j,k) * t0(k)/t02(k)
           end if
         end do
       end do

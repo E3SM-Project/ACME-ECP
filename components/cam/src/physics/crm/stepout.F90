@@ -167,7 +167,7 @@ contains
       call fminmax_print('v:',v(icrm,:,:,:),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm-5)
       call fminmax_print('w:',w(icrm,:,:,:),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz)
       call fminmax_print('p:',p(icrm,:,:,:),0,nx,1-YES3D,ny,nzm)
-      call fminmax_print('t:',t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
+      call fminmax_print('t:',t(icrm,:,:,:),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
       call fminmax_print('tabs:',tabs(icrm,:,:,:),1,nx,1,ny,nzm)
       call fminmax_print('qv:',qv,1,nx,1,ny,nzm)
       if(dosgs) call sgs_print()

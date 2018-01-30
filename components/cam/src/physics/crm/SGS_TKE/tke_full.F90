@@ -94,7 +94,7 @@ contains
             qsatt = omn*qsatw_crm(tabs(icrm,i,j,k),pres(k))+(1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k))
             bbb = 1. + epsv*qsatt-qcl(i,j,k)-qci(i,j,k) -qpl(i,j,k)-qpi(i,j,k)+1.61*tabs(icrm,i,j,k)*dqsat
             bbb = bbb / (1.+lstarn*dqsat)
-            buoy_sgs=betdz*(bbb*(t(i,j,kc)-t(i,j,kb)) &
+            buoy_sgs=betdz*(bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
             +(bbb*lstarn - (1.+lstarn*dqsat)*tabs(icrm,i,j,k))* &
             (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) &
             + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(icrm,i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))  &
@@ -104,7 +104,7 @@ contains
           else
 
             bbb = 1.+epsv*qv(i,j,k)-qpl(i,j,k)-qpi(i,j,k)
-            buoy_sgs=betdz*( bbb*(t(i,j,kc)-t(i,j,kb)) &
+            buoy_sgs=betdz*( bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
             +epsv*tabs(icrm,i,j,k)* &
             (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) &
             +(bbb*fac_cond-tabs(icrm,i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb)) &

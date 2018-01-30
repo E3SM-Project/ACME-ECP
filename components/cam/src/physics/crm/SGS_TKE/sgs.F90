@@ -378,21 +378,21 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sgs diffusion of scalars:
   !
-  subroutine sgs_scalars()
+  subroutine sgs_scalars(ncrms,icrm)
     use diffuse_scalar_mod, only: diffuse_scalar
-
     use vars
     use microphysics
     use crmtracers
     use params, only: dotracers
     implicit none
+    integer, intent(in) :: ncrms, icrm
 
     real(crm_rknd) dummy(nz)
     real(crm_rknd) fluxbtmp(nx,ny), fluxttmp(nx,ny) !bloss
     integer k
 
 
-    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb, &
+    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(icrm,:,:,:),fluxbt,fluxtt,tdiff,twsb, &
     t2lediff,t2lediss,twlediff,.true.)
 
     if(advect_sgs) then

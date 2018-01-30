@@ -40,7 +40,7 @@ contains
       call bound_exchange(v(icrm,:,:,:),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2+NADV,2+NADV,2,3,2)
       call bound_exchange(w(icrm,:,:,:),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
 
-      call bound_exchange(t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4)
+      call bound_exchange(t(icrm,:,:,:),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4)
       do i = 1,nsgs_fields
         if(dosgs.and.advect_sgs) &
         call bound_exchange(sgs_field(:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
@@ -70,7 +70,7 @@ contains
 
     if(flag.eq.3) then
 
-      call bound_exchange(t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4)
+      call bound_exchange(t(icrm,:,:,:),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4)
       do i = 1,nsgs_fields
         if(dosgs.and.advect_sgs) &
         call bound_exchange(sgs_field(:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+i)

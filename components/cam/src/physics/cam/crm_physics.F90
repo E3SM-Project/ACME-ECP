@@ -550,7 +550,7 @@ end subroutine crm_physics_init
     integer, parameter :: crm_rknd = 8
 #endif
 
-   real(r8), intent(in) :: ztodt                  ! 2 delta t (model time increment)
+   real(r8), intent(in) :: ztodt                  ! 2 delta t (icrm,model time increment)
    type(physics_state), intent(inout) :: state    ! state should be intent(in), but it is changed in this subroutine,
                                                   ! and physics_update is also called in this subroutine. It should be changed 
                                                   ! in the future. -Minghuai Wang (Minghuai.Wang@pnl.gov). 

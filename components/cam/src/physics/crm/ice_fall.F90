@@ -107,7 +107,7 @@ contains
           ! precipitation.  Note: use latent heat of sublimation.
           lat_heat  = (fac_cond+fac_fus)*dqi
           ! Add divergence of latent heat flux to liquid-ice static energy.
-          t(i,j,k)  = t(i,j,k)  - lat_heat
+          t(icrm,i,j,k)  = t(icrm,i,j,k)  - lat_heat
           ! Add divergence to liquid-ice static energy budget.
           tlatqi(k) = tlatqi(k) - lat_heat
         end do
