@@ -190,10 +190,10 @@ contains
             call fminmax_print(trim(tracername(k))//':',tracer(:,:,:,k),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
           end do
         end if
-        call fminmax_print('shf:',fluxbt*cp*rhow(1),1,nx,1,ny,1)
-        call fminmax_print('lhf:',fluxbq*lcond*rhow(1),1,nx,1,ny,1)
-        call fminmax_print('uw:',fluxbu,1,nx,1,ny,1)
-        call fminmax_print('vw:',fluxbv,1,nx,1,ny,1)
+        call fminmax_print('shf:',fluxbt(icrm,:,:)*cp*rhow(1),1,nx,1,ny,1)
+        call fminmax_print('lhf:',fluxbq(icrm,:,:)*lcond*rhow(1),1,nx,1,ny,1)
+        call fminmax_print('uw:',fluxbu(icrm,:,:),1,nx,1,ny,1)
+        call fminmax_print('vw:',fluxbv(icrm,:,:),1,nx,1,ny,1)
         call fminmax_print('sst:',sstxy,0,nx,1-YES3D,ny,1)
 
       end if ! (mod(nstep,nprint).eq.0)

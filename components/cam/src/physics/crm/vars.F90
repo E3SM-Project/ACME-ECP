@@ -44,17 +44,17 @@ module vars
   !------------------------------------------------------------------
   ! fluxes at the top and bottom of the domain:
 
-  real(crm_rknd), allocatable :: fluxbu  (:,:)
-  real(crm_rknd), allocatable :: fluxbv  (:,:)
-  real(crm_rknd), allocatable :: fluxbt  (:,:)
-  real(crm_rknd), allocatable :: fluxbq  (:,:)
-  real(crm_rknd), allocatable :: fluxtu  (:,:)
-  real(crm_rknd), allocatable :: fluxtv  (:,:)
-  real(crm_rknd), allocatable :: fluxtt  (:,:)
-  real(crm_rknd), allocatable :: fluxtq  (:,:)
-  real(crm_rknd), allocatable :: fzero   (:,:)
-  real(crm_rknd), allocatable :: precsfc (:,:) ! surface precip. rate
-  real(crm_rknd), allocatable :: precssfc(:,:) ! surface ice precip. rate
+  real(crm_rknd), allocatable :: fluxbu  (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: fluxbv  (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: fluxbt  (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: fluxbq  (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: fluxtu  (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: fluxtv  (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: fluxtt  (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: fluxtq  (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: fzero   (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: precsfc (:,:,:) !REDIM ! surface precip. rate
+  real(crm_rknd), allocatable :: precssfc(:,:,:) !REDIM ! surface ice precip. rate
 
   !-----------------------------------------------------------------
   ! profiles
@@ -223,17 +223,17 @@ contains
     allocate( dvdt   (ncrms,nx, nyp1, nzm, 3) )
     allocate( dwdt   (ncrms,nx, ny, nz,  3) )
     allocate( misc   (ncrms,nx, ny, nz) )
-    allocate( fluxbu (nx, ny) )
-    allocate( fluxbv (nx, ny) )
-    allocate( fluxbt (nx, ny) )
-    allocate( fluxbq (nx, ny) )
-    allocate( fluxtu (nx, ny) )
-    allocate( fluxtv (nx, ny) )
-    allocate( fluxtt (nx, ny) )
-    allocate( fluxtq (nx, ny) )
-    allocate( fzero  (nx, ny) )
-    allocate( precsfc(nx,ny) ) ! surface precip. rate
-    allocate( precssfc(nx,ny) ) ! surface ice precip. rate
+    allocate( fluxbu  (ncrms,nx, ny) )
+    allocate( fluxbv  (ncrms,nx, ny) )
+    allocate( fluxbt  (ncrms,nx, ny) )
+    allocate( fluxbq  (ncrms,nx, ny) )
+    allocate( fluxtu  (ncrms,nx, ny) )
+    allocate( fluxtv  (ncrms,nx, ny) )
+    allocate( fluxtt  (ncrms,nx, ny) )
+    allocate( fluxtq  (ncrms,nx, ny) )
+    allocate( fzero   (ncrms,nx, ny) )
+    allocate( precsfc (ncrms,nx,ny) ) ! surface precip. rate
+    allocate( precssfc(ncrms,nx,ny) ) ! surface ice precip. rate
     allocate( t0   (nzm) )
     allocate( q0   (nzm) )
     allocate( qv0  (nzm) )

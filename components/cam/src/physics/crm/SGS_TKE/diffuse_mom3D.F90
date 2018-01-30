@@ -126,10 +126,10 @@ contains
       do i=1,nx
         tkz=rdz2*grdf_z(nzm)*tk(i,j,nzm)
         fw(i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm)*rho(nzm)
-        fu(i,j,1)=fluxbu(i,j) * rdz * rhow(1)
-        fv(i,j,1)=fluxbv(i,j) * rdz * rhow(1)
-        fu(i,j,nz)=fluxtu(i,j) * rdz * rhow(nz)
-        fv(i,j,nz)=fluxtv(i,j) * rdz * rhow(nz)
+        fu(i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(1)
+        fv(i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(1)
+        fu(i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(nz)
+        fv(i,j,nz)=fluxtv(icrm,i,j) * rdz * rhow(nz)
         uwsb(1) = uwsb(1) + fu(i,j,1)
         vwsb(1) = vwsb(1) + fv(i,j,1)
       end do

@@ -392,11 +392,11 @@ CONTAINS
     integer k
 
 
-    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(icrm,:,:,:),fluxbt,fluxtt,tdiff,twsb, &
+    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(icrm,:,:,:),fluxbt(icrm,:,:),fluxtt(icrm,:,:),tdiff,twsb, &
     t2lediff,t2lediss,twlediff,.true.)
 
     if(advect_sgs) then
-      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,sgswsb, &
+      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero(icrm,:,:),fzero(icrm,:,:),dummy,sgswsb, &
       dummy,dummy,dummy,.false.)
     end if
 
@@ -404,7 +404,7 @@ CONTAINS
     !
     !    diffusion of microphysics prognostics:
     !
-    call micro_flux()
+    call micro_flux(ncrms,icrm)
 
     total_water_evap = total_water_evap - total_water()
 

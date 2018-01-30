@@ -44,11 +44,11 @@ module vars
   !------------------------------------------------------------------
   ! fluxes at the top and bottom of the domain:
 
-  real(crm_rknd) fluxbu (nx, ny), fluxbv (nx, ny), fluxbt (nx, ny)
-  real(crm_rknd) fluxbq (nx, ny), fluxtu (nx, ny), fluxtv (nx, ny)
-  real(crm_rknd) fluxtt (nx, ny), fluxtq (nx, ny), fzero  (nx, ny)
-  real(crm_rknd) precsfc(nx,ny) ! surface precip. rate
-  real(crm_rknd) precssfc(nx,ny) ! surface ice precip. rate
+  real(crm_rknd) fluxbu (icrm,nx, ny), fluxbv (icrm,nx, ny), fluxbt (icrm,nx, ny)
+  real(crm_rknd) fluxbq (icrm,nx, ny), fluxtu (icrm,nx, ny), fluxtv (icrm,nx, ny)
+  real(crm_rknd) fluxtt (icrm,nx, ny), fluxtq (icrm,nx, ny), fzero  (icrm,nx, ny)
+  real(crm_rknd) precsfc(icrm,nx,ny) ! surface precip. rate
+  real(crm_rknd) precssfc(icrm,nx,ny) ! surface ice precip. rate
 
   !-----------------------------------------------------------------
   ! profiles

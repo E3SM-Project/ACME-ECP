@@ -660,29 +660,14 @@ subroutine crm(lchnk, icol, ncrms, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(:, :) = fluxu00(icrm)/rhow(1)
-      fluxbv(:, :) = fluxv00(icrm)/rhow(1)
-      fluxbt(:, :) = fluxt00(icrm)/rhow(1)
-      fluxbq(:, :) = fluxq00(icrm)/rhow(1)
+      fluxbu(icrm,:, :) = fluxu00(icrm)/rhow(1)
+      fluxbv(icrm,:, :) = fluxv00(icrm)/rhow(1)
+      fluxbt(icrm,:, :) = fluxt00(icrm)/rhow(1)
+      fluxbq(icrm,:, :) = fluxq00(icrm)/rhow(1)
     else
-      fluxbu(:, :) = 0.
-      fluxbv(:, :) = 0.
-      fluxbt(:, :) = 0.
-      fluxbq(:, :) = 0.
     endif
 #else
-    fluxbu=0.
-    fluxbv=0.
-    fluxbt=0.
-    fluxbq=0.
 #endif
-    fluxtu=0.
-    fluxtv=0.
-    fluxtt=0.
-    fluxtq=0.
-    fzero =0.
-    precsfc=0.
-    precssfc=0.
 
 !---------------------------------------------------
     cld   (icrm,:) = 0.
@@ -1107,7 +1092,7 @@ subroutine crm(lchnk, icol, ncrms, &
           do i = 1,nx
             do j = 1,ny
               rtm_flux_top = rho_ds_zm(nz) * wprtp(i,j,nz)
-              rtm_flux_sfc = rho_ds_zm(1) * fluxbq(i,j)
+              rtm_flux_sfc = rho_ds_zm(1) * fluxbq(icrm,i,j)
               rtm_column = qv(icrm,i,j,1:nzm) + qcl(icrm,i,j,1:nzm)
               rtm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                             rtm_column, gr%invrs_dzt(2:nz) )
@@ -1118,7 +1103,7 @@ subroutine crm(lchnk, icol, ncrms, &
                                                          0.0_core_rknd, real( dtn, kind=core_rknd) )
 
               thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
-              thlm_flux_sfc = rho_ds_zm(1) * fluxbt(i,j)
+              thlm_flux_sfc = rho_ds_zm(1) * fluxbt(icrm,i,j)
 
               thlm_after = t2thetal( t(icrm,i,j,1:nzm), gamaz(1:nzm), &
                                      qcl(icrm,i,j,1:nzm), qpl(icrm,i,j,1:nzm), &
@@ -1580,27 +1565,27 @@ subroutine crm(lchnk, icol, ncrms, &
     do j=1,ny
       do i=1,nx
 #ifdef sam1mom
-        precsfc(i,j) = precsfc(i,j)*dz/dt/dble(nstop)
-        precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)
+        precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz/dt/dble(nstop)
+        precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz/dt/dble(nstop)
 #endif
 #ifdef m2005
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/s/dz
-        !          precsfc(i,j) = precsfc(i,j)*dz/dble(nstop)     !mm/s/dz --> mm/s
-        !          precssfc(i,j) = precssfc(i,j)*dz/dble(nstop)   !mm/s/dz --> mm/s
+        !          precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz/dble(nstop)     !mm/s/dz --> mm/s
+        !          precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz/dble(nstop)   !mm/s/dz --> mm/s
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/dz
-        precsfc(i,j) = precsfc(i,j)*dz/dt/dble(nstop)     !mm/s/dz --> mm/s
-        precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
+        precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz/dt/dble(nstop)     !mm/s/dz --> mm/s
+        precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif
-        if(precsfc(i,j).gt.10./86400.) then
-           precc (icrm) = precc (icrm) + precsfc(i,j)
-           precsc(icrm) = precsc(icrm) + precssfc(i,j)
+        if(precsfc(icrm,i,j).gt.10./86400.) then
+           precc (icrm) = precc (icrm) + precsfc(icrm,i,j)
+           precsc(icrm) = precsc(icrm) + precssfc(icrm,i,j)
         else
-           precl (icrm) = precl (icrm) + precsfc(i,j)
-           precsl(icrm) = precsl(icrm) + precssfc(i,j)
+           precl (icrm) = precl (icrm) + precsfc(icrm,i,j)
+           precsl(icrm) = precsl(icrm) + precssfc(icrm,i,j)
         endif
       enddo
     enddo
-    prec_crm(icrm,:,:) = precsfc/1000.           !mm/s --> m/s
+    prec_crm(icrm,:,:) = precsfc(icrm,:,:)/1000.           !mm/s --> m/s
     precc   (icrm)     = precc (icrm)*factor_xy/1000.
     precl   (icrm)     = precl (icrm)*factor_xy/1000.
     precsc  (icrm)     = precsc(icrm)*factor_xy/1000.
