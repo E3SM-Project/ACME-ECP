@@ -114,28 +114,28 @@ module vars
   !----------------------------------------------------------------------
   !  Vertical profiles of quantities sampled for statitistics purposes:
 
-  real(crm_rknd), allocatable :: twle    (:)
-  real(crm_rknd), allocatable :: twsb    (:)
-  real(crm_rknd), allocatable :: precflux(:)
-  real(crm_rknd), allocatable :: uwle    (:)
-  real(crm_rknd), allocatable :: uwsb    (:)
-  real(crm_rknd), allocatable :: vwle    (:)
-  real(crm_rknd), allocatable :: vwsb    (:)
-  real(crm_rknd)              :: w_max   
-  real(crm_rknd)              :: u_max   
-  real(crm_rknd), allocatable :: tkelediss(:)
-  real(crm_rknd), allocatable :: t2leadv  (:)
-  real(crm_rknd), allocatable :: t2legrad (:)
-  real(crm_rknd), allocatable :: t2lediff (:)
-  real(crm_rknd), allocatable :: t2lediss (:)
-  real(crm_rknd), allocatable :: twleadv  (:)
-  real(crm_rknd), allocatable :: twlediff (:)
-  real(crm_rknd), allocatable :: tadv     (:)
-  real(crm_rknd), allocatable :: tdiff    (:)
-  real(crm_rknd), allocatable :: tlat     (:)
-  real(crm_rknd), allocatable :: tlatqi   (:)
-  real(crm_rknd), allocatable :: qifall   (:)
-  real(crm_rknd), allocatable :: qpfall   (:)
+  real(crm_rknd), allocatable :: twle     (:,:) !REDIM
+  real(crm_rknd), allocatable :: twsb     (:,:) !REDIM
+  real(crm_rknd), allocatable :: precflux (:,:) !REDIM
+  real(crm_rknd), allocatable :: uwle     (:,:) !REDIM
+  real(crm_rknd), allocatable :: uwsb     (:,:) !REDIM
+  real(crm_rknd), allocatable :: vwle     (:,:) !REDIM
+  real(crm_rknd), allocatable :: vwsb     (:,:) !REDIM
+  real(crm_rknd), allocatable :: tkelediss(:,:) !REDIM
+  real(crm_rknd), allocatable :: t2leadv  (:,:) !REDIM
+  real(crm_rknd), allocatable :: t2legrad (:,:) !REDIM
+  real(crm_rknd), allocatable :: t2lediff (:,:) !REDIM
+  real(crm_rknd), allocatable :: t2lediss (:,:) !REDIM
+  real(crm_rknd), allocatable :: twleadv  (:,:) !REDIM
+  real(crm_rknd), allocatable :: twlediff (:,:) !REDIM
+  real(crm_rknd), allocatable :: tadv     (:,:) !REDIM
+  real(crm_rknd), allocatable :: tdiff    (:,:) !REDIM
+  real(crm_rknd), allocatable :: tlat     (:,:) !REDIM
+  real(crm_rknd), allocatable :: tlatqi   (:,:) !REDIM
+  real(crm_rknd), allocatable :: qifall   (:,:) !REDIM
+  real(crm_rknd), allocatable :: qpfall   (:,:) !REDIM
+  real(crm_rknd), allocatable :: w_max    (:)   !REDIM
+  real(crm_rknd), allocatable :: u_max    (:)   !REDIM
 
 
   ! register functions:
@@ -277,26 +277,28 @@ contains
     allocate( v200_xy  (ncrms,nx,ny) )            ! v-wind at 200 mb
     allocate( vsfc_xy  (ncrms,nx,ny) )            ! v-wind at the surface
     allocate( w500_xy  (ncrms,nx,ny) )            ! w at 500 mb
-    allocate( twle     (nz) )
-    allocate( twsb     (nz) )
-    allocate( precflux (nz) )
-    allocate( uwle     (nz) )
-    allocate( uwsb     (nz) )
-    allocate( vwle     (nz) )
-    allocate( vwsb     (nz) )
-    allocate( tkelediss(nz) )
-    allocate( t2leadv  (nz) )
-    allocate( t2legrad (nz) )
-    allocate( t2lediff (nz) )
-    allocate( t2lediss (nz) )
-    allocate( twleadv  (nz) )
-    allocate( twlediff (nz) )
-    allocate( tadv     (nz) )
-    allocate( tdiff    (nz) )
-    allocate( tlat     (nz) )
-    allocate( tlatqi   (nz) )
-    allocate( qifall   (nz) )
-    allocate( qpfall   (nz) )
+    allocate( twle     (ncrms,nz) )
+    allocate( twsb     (ncrms,nz) )
+    allocate( precflux (ncrms,nz) )
+    allocate( uwle     (ncrms,nz) )
+    allocate( uwsb     (ncrms,nz) )
+    allocate( vwle     (ncrms,nz) )
+    allocate( vwsb     (ncrms,nz) )
+    allocate( tkelediss(ncrms,nz) )
+    allocate( t2leadv  (ncrms,nz) )
+    allocate( t2legrad (ncrms,nz) )
+    allocate( t2lediff (ncrms,nz) )
+    allocate( t2lediss (ncrms,nz) )
+    allocate( twleadv  (ncrms,nz) )
+    allocate( twlediff (ncrms,nz) )
+    allocate( tadv     (ncrms,nz) )
+    allocate( tdiff    (ncrms,nz) )
+    allocate( tlat     (ncrms,nz) )
+    allocate( tlatqi   (ncrms,nz) )
+    allocate( qifall   (ncrms,nz) )
+    allocate( qpfall   (ncrms,nz) )
+    allocate( w_max    (ncrms) )
+    allocate( u_max    (ncrms) )
     allocate( qtotmicro(5) )
     allocate( CF3D          (1:nx, 1:ny, 1:nzm) )
     allocate( u850_xy       (nx,ny) )
@@ -405,6 +407,8 @@ contains
     tlatqi         = zero
     qifall         = zero
     qpfall         = zero
+    w_max          = zero
+    u_max          = zero
     qtotmicro      = zero
     CF3D           = zero
     u850_xy        = zero
@@ -515,6 +519,8 @@ contains
     deallocate( tlatqi    )
     deallocate( qifall    )
     deallocate( qpfall    )
+    deallocate( w_max     )
+    deallocate( u_max     )
     deallocate( qtotmicro )
     deallocate( CF3D           )
     deallocate( u850_xy        )

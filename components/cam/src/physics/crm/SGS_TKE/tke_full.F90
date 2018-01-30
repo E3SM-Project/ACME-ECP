@@ -71,7 +71,7 @@ contains
         Ce1=Ces/0.7*0.19
         Ce2=Ces/0.7*0.51
       end if
-      tkelediss(k) = 0.
+      tkelediss(icrm,k) = 0.
       tkesbdiss(k) = 0.
       tkesbshear(k)= 0.
       tkesbbuoy(k) = 0.
@@ -155,7 +155,7 @@ contains
 
           tkh(i,j,k)=Pr*tk(i,j,k)
 
-          tkelediss(k) = tkelediss(k) - a_prod_sh
+          tkelediss(icrm,k) = tkelediss(icrm,k) - a_prod_sh
           tkesbdiss(k) = tkesbdiss(k) + a_diss
           tkesbshear(k)= tkesbshear(k)+ a_prod_sh
           tkesbbuoy(k) = tkesbbuoy(k) + a_prod_bu
@@ -163,7 +163,7 @@ contains
         end do ! i
       end do ! j
 
-      tkelediss(k) = tkelediss(k)/real(nx*ny,crm_rknd)
+      tkelediss(icrm,k) = tkelediss(icrm,k)/real(nx*ny,crm_rknd)
 
 
     end do ! k

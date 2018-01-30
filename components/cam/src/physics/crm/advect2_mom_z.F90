@@ -28,22 +28,22 @@ contains
       end do
     end do
 
-    uwle(1) = 0.
-    vwle(1) = 0.
+    uwle(icrm,1) = 0.
+    vwle(icrm,1) = 0.
 
     if(RUN3D) then
 
       do k=2,nzm
         kb = k-1
         rhoi = dz25 * rhow(icrm,k)
-        uwle(k) = 0.
-        vwle(k) = 0.
+        uwle(icrm,k) = 0.
+        vwle(icrm,k) = 0.
         do j=1,ny
           do i=1,nx
             fuz(i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
             fvz(i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i,j-1,k))*(v(icrm,i,j,k)+v(icrm,i,j,kb))
-            uwle(k) = uwle(k)+fuz(i,j,k)
-            vwle(k) = vwle(k)+fvz(i,j,k)
+            uwle(icrm,k) = uwle(icrm,k)+fuz(i,j,k)
+            vwle(icrm,k) = vwle(icrm,k)+fvz(i,j,k)
           end do
         end do
       end do
@@ -53,15 +53,15 @@ contains
       do k=2,nzm
         kb = k-1
         rhoi = dz25 * rhow(icrm,k)
-        uwle(k) = 0.
-        vwle(k) = 0.
+        uwle(icrm,k) = 0.
+        vwle(icrm,k) = 0.
         do j=1,ny
           do i=1,nx
             www = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))
             fuz(i,j,k) = www*(u(icrm,i,j,k)+u(icrm,i,j,kb))
             fvz(i,j,k) = www*(v(icrm,i,j,k)+v(icrm,i,j,kb))
-            uwle(k) = uwle(k)+fuz(i,j,k)
-            vwle(k) = vwle(k)+fvz(i,j,k)
+            uwle(icrm,k) = uwle(icrm,k)+fuz(i,j,k)
+            vwle(icrm,k) = vwle(icrm,k)+fvz(i,j,k)
           end do
         end do
       end do

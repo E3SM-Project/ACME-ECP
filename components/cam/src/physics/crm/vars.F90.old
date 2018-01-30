@@ -153,8 +153,8 @@ module vars
   !	Vertical profiles of quantities sampled for statitistics purposes:
 
   real(crm_rknd) &
-  twle(nz), twsb(nz), precflux(nz), &
-  uwle(nz), uwsb(nz), vwle(nz), vwsb(nz), &
+  twle(icrm,nz), twsb(icrm,nz), precflux(icrm,nz), &
+  uwle(icrm,nz), uwsb(icrm,nz), vwle(icrm,nz), vwsb(icrm,nz), &
   radlwup(nz), radlwdn(nz), radswup(nz), radswdn(nz), &
   radqrlw(nz), radqrsw(nz), w_max, u_max, s_acld, s_acldcold, s_ar, s_arthr, s_sst, &
   s_acldl, s_acldm, s_acldh,  ncmn, nrmn, z_inv, z_cb, z_ct, z_cbmn, z_ctmn, &
@@ -166,13 +166,13 @@ module vars
   s_cldtauisccp,s_cldtaumodis,s_cldtaulmodis,s_cldtauimodis,s_cldalbisccp, &
   s_flns,s_flnt,s_flntoa,s_flnsc,s_flntoac,s_flds,s_fsns, &
   s_fsnt,s_fsntoa,s_fsnsc,s_fsntoac,s_fsds,s_solin, &
-  tkeleadv(nz), tkelepress(nz), tkelediss(nz), tkelediff(nz),tkelebuoy(nz), &
-  t2leadv(nz),t2legrad(nz),t2lediff(nz),t2leprec(nz),t2lediss(nz), &
+  tkeleadv(nz), tkelepress(nz), tkelediss(icrm,nz), tkelediff(nz),tkelebuoy(nz), &
+  t2leadv(icrm,nz),t2legrad(icrm,nz),t2lediff(icrm,nz),t2leprec(nz),t2lediss(icrm,nz), &
   q2leadv(nz),q2legrad(nz),q2lediff(nz),q2leprec(nz),q2lediss(nz), &
-  twleadv(nz),twlediff(nz),twlepres(nz),twlebuoy(nz),twleprec(nz), &
+  twleadv(icrm,nz),twlediff(icrm,nz),twlepres(nz),twlebuoy(nz),twleprec(nz), &
   qwleadv(nz),qwlediff(nz),qwlepres(nz),qwlebuoy(nz),qwleprec(nz), &
   momleadv(nz,3),momlepress(nz,3),momlebuoy(nz,3), &
-  momlediff(nz,3),tadv(nz),tdiff(nz),tlat(nz), tlatqi(nz),qifall(nz),qpfall(nz)
+  momlediff(nz,3),tadv(icrm,nz),tdiff(icrm,nz),tlat(icrm,nz), tlatqi(icrm,nz),qifall(icrm,nz),qpfall(icrm,nz)
   real(crm_rknd) tdiff_xy(nz), tdiff_z(nz), ttest0(nzm), ttest1(nz), ttest2(nz, 10)  !+++mhwang test
 
 

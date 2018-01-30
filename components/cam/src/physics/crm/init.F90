@@ -36,12 +36,12 @@ contains
     !radqrlw = 0.
     !radqrsw = 0.
 
-    tlat = 0.
-    tlatqi = 0.
-    tadv = 0.
-    tdiff = 0.
-    qifall = 0.
-    qpfall = 0.
+    tlat(icrm,:) = 0.
+    tlatqi(icrm,:) = 0.
+    tadv(icrm,:) = 0.
+    tdiff(icrm,:) = 0.
+    qifall(icrm,:) = 0.
+    qpfall(icrm,:) = 0.
 
     trwle = 0.
     trwsb = 0.

@@ -743,14 +743,14 @@ subroutine crm(lchnk, icol, ncrms, &
     qt_ls     (icrm,:) = 0.
     t_ls      (icrm,:) = 0.
 
-    uwle     = 0.
-    uwsb     = 0.
-    vwle     = 0.
-    vwsb     = 0.
+    uwle(icrm,:)     = 0.
+    uwsb(icrm,:)     = 0.
+    vwle(icrm,:)     = 0.
+    vwsb(icrm,:)     = 0.
     qpsrc    = 0.
     qpevp    = 0.
-    qpfall   = 0.
-    precflux = 0.
+    qpfall  (icrm,:) = 0.
+    precflux(icrm,:) = 0.
 
 !--------------------------------------------------
 #ifdef sam1mom
@@ -1669,12 +1669,12 @@ subroutine crm(lchnk, icol, ncrms, &
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
       qpsrc   (k) = qpsrc   (k) * factor_xy*idt_gl
       qpevp   (k) = qpevp   (k) * factor_xy*idt_gl
-      qpfall  (k) = qpfall  (k) * factor_xy*idt_gl   ! kg/kg in M2005 ---> kg/kg/s
-      precflux(k) = precflux(k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
+      qpfall  (icrm,k) = qpfall  (icrm,k) * factor_xy*idt_gl   ! kg/kg in M2005 ---> kg/kg/s
+      precflux(icrm,k) = precflux(icrm,k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
-      flux_u    (icrm,l) = (uwle(k) + uwsb(k))*tmp1*factor_xy/nstop
-      flux_v    (icrm,l) = (vwle(k) + vwsb(k))*tmp1*factor_xy/nstop
+      flux_u    (icrm,l) = (uwle(icrm,k) + uwsb(icrm,k))*tmp1*factor_xy/nstop
+      flux_v    (icrm,l) = (vwle(icrm,k) + vwsb(icrm,k))*tmp1*factor_xy/nstop
 #ifdef sam1mom
       flux_qt   (icrm,l) = mkwle(k,1) + mkwsb(k,1)
       fluxsgs_qt(icrm,l) = mkwsb(k,1)
@@ -1696,9 +1696,9 @@ subroutine crm(lchnk, icol, ncrms, &
       tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(1:nx,1:ny,k))*factor_xy
       tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + tkesgsz(icrm,l)
       tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
-      pflx      (icrm,l) = precflux(k)/1000.       !mm/s  -->m/s
+      pflx      (icrm,l) = precflux(icrm,k)/1000.       !mm/s  -->m/s
 
-      qp_fall   (icrm,l) = qpfall(k)
+      qp_fall   (icrm,l) = qpfall(icrm,k)
       qp_evp    (icrm,l) = qpevp(k)
       qp_src    (icrm,l) = qpsrc(k)
 

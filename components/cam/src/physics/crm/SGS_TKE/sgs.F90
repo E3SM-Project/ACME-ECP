@@ -393,8 +393,8 @@ CONTAINS
     integer k
 
 
-    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(icrm,:,:,:),fluxbt(icrm,:,:),fluxtt(icrm,:,:),tdiff,twsb, &
-    t2lediff,t2lediss,twlediff,.true.,ncrms,icrm)
+    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(icrm,:,:,:),fluxbt(icrm,:,:),fluxtt(icrm,:,:),tdiff(icrm,:),twsb(icrm,:), &
+    t2lediff(icrm,:),t2lediss(icrm,:),twlediff(icrm,:),.true.,ncrms,icrm)
 
     if(advect_sgs) then
       call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero(icrm,:,:),fzero(icrm,:,:),dummy,sgswsb, &
