@@ -1655,8 +1655,8 @@ contains
     if(icl.eq.CLR) then
       mask_bnd(i,j,k,icl,itr,ipr) = 1.
     else if(icl.eq.CLD) then
-      mask_bnd(i,j,k,CLD,itr,ipr) = (cf3d(i,j,max(k-1,1))+cf3d(i,j,min(k, nz)))*0.5
-      mask_bnd(i,j,k,CLR,itr,ipr) = 1. - (cf3d(i,j,max(k-1,1))+cf3d(i,j,min(k, nz)))*0.5
+      mask_bnd(i,j,k,CLD,itr,ipr) = (cf3d(icrm,i,j,max(k-1,1))+cf3d(icrm,i,j,min(k, nz)))*0.5
+      mask_bnd(i,j,k,CLR,itr,ipr) = 1. - (cf3d(icrm,i,j,max(k-1,1))+cf3d(icrm,i,j,min(k, nz)))*0.5
     end if
 
 
@@ -1709,8 +1709,8 @@ contains
     if(icl.eq.CLR) then
       mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5
     else if(icl.eq.CLD) then
-      mask_cen(i,j,k,CLD,itr,ipr) =  mask_cen(i,j,k,CLD,itr,ipr) + (cf3d(i,j,k))*0.5
-      mask_cen(i,j,k,CLR,itr,ipr) =  mask_cen(i,j,k,CLR,itr,ipr) + (1. - cf3d(i,j,k)) * 0.5
+      mask_cen(i,j,k,CLD,itr,ipr) =  mask_cen(i,j,k,CLD,itr,ipr) + (cf3d(icrm,i,j,k))*0.5
+      mask_cen(i,j,k,CLR,itr,ipr) =  mask_cen(i,j,k,CLR,itr,ipr) + (1. - cf3d(icrm,i,j,k)) * 0.5
     end if
 
     !Next, look at the top boundary and determine it's
@@ -1741,8 +1741,8 @@ contains
     if(icl.eq.CLR) then
       mask_cen(i,j,k,icl,itr,ipr) = mask_cen(i,j,k,icl,itr,ipr) + 0.5
     else if(icl.eq.CLD) then
-      mask_cen(i,j,k,CLD,itr,ipr) =  mask_cen(i,j,k,CLD,itr,ipr) + (cf3d(i,j,k))*0.5
-      mask_cen(i,j,k,CLR,itr,ipr) =  mask_cen(i,j,k,CLR,itr,ipr) + (1. - cf3d(i,j,k)) * 0.5
+      mask_cen(i,j,k,CLD,itr,ipr) =  mask_cen(i,j,k,CLD,itr,ipr) + (cf3d(icrm,i,j,k))*0.5
+      mask_cen(i,j,k,CLR,itr,ipr) =  mask_cen(i,j,k,CLR,itr,ipr) + (1. - cf3d(icrm,i,j,k)) * 0.5
     end if
 
   end do !k-loop mask for centers

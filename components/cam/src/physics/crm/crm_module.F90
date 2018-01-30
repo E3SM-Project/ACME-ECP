@@ -545,9 +545,9 @@ subroutine crm(lchnk, icol, ncrms, &
 #ifdef MODAL_AERO
       ! set aerosol data
       l=plev-k+1
-      naer (k, 1:ntot_amode) = naermod (icrm,l, 1:ntot_amode)
-      vaer (k, 1:ntot_amode) = vaerosol(icrm,l, 1:ntot_amode)
-      hgaer(k, 1:ntot_amode) = hygro   (icrm,l, 1:ntot_amode)
+      naer (icrm,k, 1:ntot_amode) = naermod (icrm,l, 1:ntot_amode)
+      vaer (icrm,k, 1:ntot_amode) = vaerosol(icrm,l, 1:ntot_amode)
+      hgaer(icrm,k, 1:ntot_amode) = hygro   (icrm,l, 1:ntot_amode)
 #endif
       do j=1, ny
         do i=1, nx
@@ -571,7 +571,7 @@ subroutine crm(lchnk, icol, ncrms, &
     tkh (1:nx,1:ny,1:nzm) = 0.
     p   (icrm,1:nx,1:ny,1:nzm) = 0.
 
-    CF3D(1:nx,1:ny,1:nzm) = 1.
+    CF3D(icrm,1:nx,1:ny,1:nzm) = 1.
 
     call micro_init(ncrms,icrm)
 
@@ -1193,34 +1193,34 @@ subroutine crm(lchnk, icol, ncrms, &
 
             tmp1 = rho(icrm,nz-k)*adz(nz-k)*dz*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
             cwp(i,j) = cwp(i,j)+tmp1
-            cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
+            cttemp(i,j) = max(CF3D(icrm,i,j,nz-k), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
                 cldtop(icrm,k) = cldtop(icrm,k) + 1
                 flag_top(i,j) = .false.
             endif
             if(pres(nz-k).ge.700.) then
                 cwpl(i,j) = cwpl(i,j)+tmp1
-                cltemp(i,j) = max(CF3D(i,j,nz-k), cltemp(i,j))
+                cltemp(i,j) = max(CF3D(icrm,i,j,nz-k), cltemp(i,j))
             else if(pres(nz-k).lt.400.) then
                 cwph(i,j) = cwph(i,j)+tmp1
-                chtemp(i,j) = max(CF3D(i,j,nz-k), chtemp(i,j))
+                chtemp(i,j) = max(CF3D(icrm,i,j,nz-k), chtemp(i,j))
             else
                 cwpm(i,j) = cwpm(i,j)+tmp1
-                cmtemp(i,j) = max(CF3D(i,j,nz-k), cmtemp(i,j))
+                cmtemp(i,j) = max(CF3D(icrm,i,j,nz-k), cmtemp(i,j))
             endif
 
             !     qsat = qsatw_crm(tabs(icrm,i,j,k),pres(k))
             !     if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.min(1.e-5,0.01*qsat)) then
             tmp1 = rho(icrm,k)*adz(k)*dz
             if(tmp1*(qcl(icrm,i,j,k)+qci(icrm,i,j,k)).gt.cwp_threshold) then
-                 cld(icrm,l) = cld(icrm,l) + CF3D(i,j,k)
+                 cld(icrm,l) = cld(icrm,l) + CF3D(icrm,i,j,k)
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
-                   mcup (icrm,l) = mcup (icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k)
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(i,j,k))
+                   mcup (icrm,l) = mcup (icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(icrm,i,j,k)
+                   mcuup(icrm,l) = mcuup(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(icrm,i,j,k))
                  endif
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
-                   mcdn (icrm,l) = mcdn (icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k)
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(i,j,k))
+                   mcdn (icrm,l) = mcdn (icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(icrm,i,j,k)
+                   mcudn(icrm,l) = mcudn(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(icrm,i,j,k))
                  endif
             else
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
@@ -1235,7 +1235,7 @@ subroutine crm(lchnk, icol, ncrms, &
 !             qv_rad (icrm,i,j,k) = qv_rad (icrm,i,j,k)+max(real(0.,crm_rknd),qv(icrm,i,j,k))
 !             qc_rad (icrm,i,j,k) = qc_rad (icrm,i,j,k)+qcl(icrm,i,j,k)
 !             qi_rad (icrm,i,j,k) = qi_rad (icrm,i,j,k)+qci(icrm,i,j,k)
-!             cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) +  CF3D(i,j,k)
+!             cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) +  CF3D(icrm,i,j,k)
 ! #ifdef m2005
 !             nc_rad(icrm,i,j,k) = nc_rad(icrm,i,j,k)+micro_field(i,j,k,incl)
 !             ni_rad(icrm,i,j,k) = ni_rad(icrm,i,j,k)+micro_field(i,j,k,inci)
@@ -1251,7 +1251,7 @@ subroutine crm(lchnk, icol, ncrms, &
             qv_rad (icrm,i_rad,j_rad,k) = qv_rad (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(icrm,i,j,k))
             qc_rad (icrm,i_rad,j_rad,k) = qc_rad (icrm,i_rad,j_rad,k) + qcl(icrm,i,j,k)
             qi_rad (icrm,i_rad,j_rad,k) = qi_rad (icrm,i_rad,j_rad,k) + qci(icrm,i,j,k)
-            cld_rad(icrm,i_rad,j_rad,k) = cld_rad(icrm,i_rad,j_rad,k) + CF3D(i,j,k)
+            cld_rad(icrm,i_rad,j_rad,k) = cld_rad(icrm,i_rad,j_rad,k) + CF3D(icrm,i,j,k)
 #ifdef m2005
             nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
             ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci)
@@ -1411,7 +1411,7 @@ subroutine crm(lchnk, icol, ncrms, &
 #endif
     crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
     crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
-    cld3d_crm(icrm,1:nx,1:ny,1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)
+    cld3d_crm(icrm,1:nx,1:ny,1:nzm) = CF3D(icrm,1:nx, 1:ny, 1:nzm)
 #ifdef CLUBB_CRM
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )

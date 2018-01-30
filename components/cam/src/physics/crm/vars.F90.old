@@ -225,22 +225,22 @@ module vars
   real(crm_rknd)   utendcor(nzm) ! coriolis acceleration of zonal velocity
   real(crm_rknd)   vtendcor(nzm) ! coriolis acceleration of meridional velocity
 
-  real(crm_rknd)   CF3D(1:nx, 1:ny, 1:nzm)  ! Cloud fraction
+  real(crm_rknd)   CF3D(icrm,1:nx, 1:ny, 1:nzm)  ! Cloud fraction
   ! =1.0 when there is no fractional cloudiness scheme
   ! = cloud fraction produced by fractioal cloudiness scheme when avaiable
 
   ! 850 mbar horizontal winds
-  real(crm_rknd) u850_xy(nx,ny) ! zonal velocity at 850 mb
-  real(crm_rknd) v850_xy(nx,ny) ! meridional velocity at 850 mb
+  real(crm_rknd) u850_xy(icrm,nx,ny) ! zonal velocity at 850 mb
+  real(crm_rknd) v850_xy(icrm,nx,ny) ! meridional velocity at 850 mb
 
   ! Surface pressure
-  real(crm_rknd) psfc_xy(nx,ny) ! pressure (in millibar) at lowest grid point
+  real(crm_rknd) psfc_xy(icrm,nx,ny) ! pressure (in millibar) at lowest grid point
 
   ! Saturated water vapor path, useful for computing column relative humidity
-  real(crm_rknd) swvp_xy(nx,ny)  ! saturated water vapor path (wrt water)
+  real(crm_rknd) swvp_xy(icrm,nx,ny)  ! saturated water vapor path (wrt water)
 
   ! Cloud and echo top heights, and cloud top temperature (instantaneous)
-  real(crm_rknd) cloudtopheight(nx,ny), echotopheight(nx,ny), cloudtoptemp(nx,ny)
+  real(crm_rknd) cloudtopheight(icrm,nx,ny), echotopheight(icrm,nx,ny), cloudtoptemp(icrm,nx,ny)
 
   ! END UW ADDITIONS
   !===========================================================================
@@ -253,9 +253,9 @@ module vars
   real(crm_rknd) bubble_dtemp
   real(crm_rknd) bubble_dq
 #if (defined CRM && defined MODAL_AERO)
-  real(crm_rknd)  naer(nzm, ntot_amode)     ! Aerosol number concentration [/m3]
-  real(crm_rknd)  vaer(nzm, ntot_amode)     ! aerosol volume concentration [m3/m3]
-  real(crm_rknd)  hgaer(nzm, ntot_amode)    ! hygroscopicity of aerosol mode
+  real(crm_rknd)  naer(icrm,nzm, ntot_amode)     ! Aerosol number concentration [/m3]
+  real(crm_rknd)  vaer(icrm,nzm, ntot_amode)     ! aerosol volume concentration [m3/m3]
+  real(crm_rknd)  hgaer(icrm,nzm, ntot_amode)    ! hygroscopicity of aerosol mode
 #endif
 
 end module vars

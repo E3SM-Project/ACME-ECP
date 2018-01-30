@@ -147,50 +147,50 @@ module vars
 
   ! energy conservation diagnostics:
 
-  real(8), allocatable :: total_water_before (:)
-  real(8), allocatable :: total_water_after  (:)
-  real(8), allocatable :: total_water_evap   (:)
-  real(8), allocatable :: total_water_prec   (:)
-  real(8), allocatable :: total_water_ls     (:)
-  real(8), allocatable :: total_water_clubb  (:)
-  real(8), allocatable :: total_energy_before(:)
-  real(8), allocatable :: total_energy_after (:)
-  real(8), allocatable :: total_energy_evap  (:)
-  real(8), allocatable :: total_energy_prec  (:)
-  real(8), allocatable :: total_energy_ls    (:)
-  real(8), allocatable :: total_energy_clubb (:)
-  real(8), allocatable :: total_energy_rad   (:)
-  real(8), allocatable :: qtotmicro          (:,:)  ! total water for water conservation test in microphysics +++mhwang
+  real(8), allocatable :: total_water_before (:) !REDIM
+  real(8), allocatable :: total_water_after  (:) !REDIM
+  real(8), allocatable :: total_water_evap   (:) !REDIM
+  real(8), allocatable :: total_water_prec   (:) !REDIM
+  real(8), allocatable :: total_water_ls     (:) !REDIM
+  real(8), allocatable :: total_water_clubb  (:) !REDIM
+  real(8), allocatable :: total_energy_before(:) !REDIM
+  real(8), allocatable :: total_energy_after (:) !REDIM
+  real(8), allocatable :: total_energy_evap  (:) !REDIM
+  real(8), allocatable :: total_energy_prec  (:) !REDIM
+  real(8), allocatable :: total_energy_ls    (:) !REDIM
+  real(8), allocatable :: total_energy_clubb (:) !REDIM
+  real(8), allocatable :: total_energy_rad   (:) !REDIM
+  real(8), allocatable :: qtotmicro          (:,:) !REDIM  ! total water for water conservation test in microphysics +++mhwang
 
 
   !===========================================================================
   ! UW ADDITIONS
 
   ! conditional average statistics, subsumes cloud_factor, core_factor, coredn_factor
-  real(crm_rknd), allocatable :: CF3D(:,:,:)  ! Cloud fraction
+  real(crm_rknd), allocatable :: CF3D(:,:,:,:) !REDIM  ! Cloud fraction
   ! =1.0 when there is no fractional cloudiness scheme
   ! = cloud fraction produced by fractioal cloudiness scheme when avaiable
 
   ! 850 mbar horizontal winds
-  real(crm_rknd), allocatable :: u850_xy(:,:) ! zonal velocity at 850 mb
-  real(crm_rknd), allocatable :: v850_xy(:,:) ! meridional velocity at 850 mb
+  real(crm_rknd), allocatable :: u850_xy(:,:,:) !REDIM ! zonal velocity at 850 mb
+  real(crm_rknd), allocatable :: v850_xy(:,:,:) !REDIM ! meridional velocity at 850 mb
 
   ! Surface pressure
-  real(crm_rknd), allocatable :: psfc_xy(:,:) ! pressure (in millibar) at lowest grid point
+  real(crm_rknd), allocatable :: psfc_xy(:,:,:) !REDIM ! pressure (in millibar) at lowest grid point
 
   ! Saturated water vapor path, useful for computing column relative humidity
-  real(crm_rknd), allocatable :: swvp_xy(:,:)  ! saturated water vapor path (wrt water)
+  real(crm_rknd), allocatable :: swvp_xy(:,:,:) !REDIM  ! saturated water vapor path (wrt water)
 
   ! Cloud and echo top heights, and cloud top temperature (instantaneous)
-  real(crm_rknd), allocatable :: cloudtopheight(:,:)
-  real(crm_rknd), allocatable :: echotopheight (:,:)
-  real(crm_rknd), allocatable :: cloudtoptemp  (:,:)
+  real(crm_rknd), allocatable :: cloudtopheight(:,:,:) !REDIM
+  real(crm_rknd), allocatable :: echotopheight (:,:,:) !REDIM
+  real(crm_rknd), allocatable :: cloudtoptemp  (:,:,:) !REDIM
 
   ! END UW ADDITIONS
 #if (defined CRM && defined MODAL_AERO)
-  real(crm_rknd), allocatable :: naer (:,:)    ! Aerosol number concentration [/m3]
-  real(crm_rknd), allocatable :: vaer (:,:)    ! aerosol volume concentration [m3/m3]
-  real(crm_rknd), allocatable :: hgaer(:,:)    ! hygroscopicity of aerosol mode
+  real(crm_rknd), allocatable :: naer (:,:,:) !REDIM    ! Aerosol number concentration [/m3]
+  real(crm_rknd), allocatable :: vaer (:,:,:) !REDIM    ! aerosol volume concentration [m3/m3]
+  real(crm_rknd), allocatable :: hgaer(:,:,:) !REDIM    ! hygroscopicity of aerosol mode
 #endif
 
   integer :: ncondavg, icondavg_cld, icondavg_cor, icondavg_cordn, &
@@ -313,18 +313,18 @@ contains
     allocate( total_energy_clubb (ncrms) )
     allocate( total_energy_rad   (ncrms) )
     allocate( qtotmicro(ncrms,5) )
-    allocate( CF3D          (1:nx, 1:ny, 1:nzm) )
-    allocate( u850_xy       (nx,ny) )
-    allocate( v850_xy       (nx,ny) )
-    allocate( psfc_xy       (nx,ny) )
-    allocate( swvp_xy       (nx,ny) )
-    allocate( cloudtopheight(nx,ny) )
-    allocate( echotopheight (nx,ny) )
-    allocate( cloudtoptemp  (nx,ny) )
+    allocate( CF3D          (ncrms,1:nx, 1:ny, 1:nzm) )
+    allocate( u850_xy       (ncrms,nx,ny) )
+    allocate( v850_xy       (ncrms,nx,ny) )
+    allocate( psfc_xy       (ncrms,nx,ny) )
+    allocate( swvp_xy       (ncrms,nx,ny) )
+    allocate( cloudtopheight(ncrms,nx,ny) )
+    allocate( echotopheight (ncrms,nx,ny) )
+    allocate( cloudtoptemp  (ncrms,nx,ny) )
 #if (defined CRM && defined MODAL_AERO)
-    allocate( naer          (nzm, ntot_amode) )
-    allocate( vaer          (nzm, ntot_amode) )
-    allocate( hgaer         (nzm, ntot_amode) )
+    allocate( naer          (ncrms,nzm, ntot_amode) )
+    allocate( vaer          (ncrms,nzm, ntot_amode) )
+    allocate( hgaer         (ncrms,nzm, ntot_amode) )
 #endif
 
     zero = 0.
@@ -422,6 +422,19 @@ contains
     qpfall         = zero
     w_max          = zero
     u_max          = zero
+    total_water_before  = zero
+    total_water_after   = zero
+    total_water_evap    = zero
+    total_water_prec    = zero
+    total_water_ls      = zero
+    total_water_clubb   = zero
+    total_energy_before = zero
+    total_energy_after  = zero
+    total_energy_evap   = zero
+    total_energy_prec   = zero
+    total_energy_ls     = zero
+    total_energy_clubb  = zero
+    total_energy_rad    = zero
     qtotmicro      = zero
     CF3D           = zero
     u850_xy        = zero

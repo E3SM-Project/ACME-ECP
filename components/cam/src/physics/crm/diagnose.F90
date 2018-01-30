@@ -141,7 +141,7 @@ contains
           ! Saturated water vapor path with respect to water. Can be used
           ! with water vapor path (= pw) to compute column-average
           ! relative humidity.
-          swvp_xy(i,j) = swvp_xy(i,j)+qsatw_crm(tabs(icrm,i,j,k),pres(k))*coef1
+          swvp_xy(icrm,i,j) = swvp_xy(icrm,i,j)+qsatw_crm(tabs(icrm,i,j,k),pres(k))*coef1
         end do
       end do
     end do ! k
@@ -149,11 +149,11 @@ contains
     ! ACCUMULATE AVERAGES OF TWO-DIMENSIONAL STATISTICS
     do j=1,ny
       do i=1,nx
-        psfc_xy(i,j) = psfc_xy(i,j) + (100.*pres(1) + p(icrm,i,j,1))*dtfactor
+        psfc_xy(icrm,i,j) = psfc_xy(icrm,i,j) + (100.*pres(1) + p(icrm,i,j,1))*dtfactor
 
         ! 850 mbar horizontal winds
-        u850_xy(i,j) = u850_xy(i,j) + u(icrm,i,j,k850)*dtfactor
-        v850_xy(i,j) = v850_xy(i,j) + v(icrm,i,j,k850)*dtfactor
+        u850_xy(icrm,i,j) = u850_xy(icrm,i,j) + u(icrm,i,j,k850)*dtfactor
+        v850_xy(icrm,i,j) = v850_xy(icrm,i,j) + v(icrm,i,j,k850)*dtfactor
 
       end do
     end do
@@ -164,9 +164,9 @@ contains
     ! WHERE THE PRECIPITATE MIXING RATIO > 0.001 G/KG.
 
     ! initially, zero out heights and set cloudtoptemp to SST
-    cloudtopheight = 0.
-    cloudtoptemp = sstxy(icrm,1:nx,1:ny)
-    echotopheight = 0.
+    cloudtopheight(icrm,:,:) = 0.
+    cloudtoptemp(icrm,:,:) = sstxy(icrm,1:nx,1:ny)
+    echotopheight(icrm,:,:) = 0.
     do j = 1,ny
       do i = 1,nx
         ! FIND CLOUD TOP HEIGHT
@@ -174,8 +174,8 @@ contains
         do k = nzm,1,-1
           tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(icrm,k)*dz*adz(k)
           if (tmp_lwp.gt.0.01) then
-            cloudtopheight(i,j) = z(k)
-            cloudtoptemp(i,j) = tabs(icrm,i,j,k)
+            cloudtopheight(icrm,i,j) = z(k)
+            cloudtoptemp(icrm,i,j) = tabs(icrm,i,j,k)
             cld_xy(icrm,i,j) = cld_xy(icrm,i,j) + dtfactor
             EXIT
           end if
@@ -183,7 +183,7 @@ contains
         ! FIND ECHO TOP HEIGHT
         do k = nzm,1,-1
           if (qpl(icrm,i,j,k)+qpi(icrm,i,j,k).gt.1.e-6) then
-            echotopheight(i,j) = z(k)
+            echotopheight(icrm,i,j) = z(k)
             EXIT
           end if
         end do
