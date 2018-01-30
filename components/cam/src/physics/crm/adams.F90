@@ -18,9 +18,9 @@ contains
     dtdz = dtn/dz
 
     do k=1,nzm
-      rhox = rho(k)*dtdx
-      rhoy = rho(k)*dtdy
-      rhoz = rhow(k)*dtdz
+      rhox = rho(icrm,k)*dtdx
+      rhoy = rho(icrm,k)*dtdy
+      rhoz = rhow(icrm,k)*dtdz
       do j=1,ny
         do i=1,nx
 

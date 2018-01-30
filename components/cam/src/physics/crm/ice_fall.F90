@@ -61,9 +61,9 @@ contains
           ! Since cloud ice is falling, the above cell is u (icrm,upwind),
           ! this cell is c (center) and the one below is d (downwind).
 
-          qiu = rho(kc)*qci(icrm,i,j,kc)
-          qic = rho(k) *qci(icrm,i,j,k)
-          qid = rho(kb)*qci(icrm,i,j,kb)
+          qiu = rho(icrm,kc)*qci(icrm,i,j,kc)
+          qic = rho(icrm,k) *qci(icrm,i,j,k)
+          qid = rho(icrm,kb)*qci(icrm,i,j,kb)
 
           ! Ice sedimentation velocity depends on ice content. The fiting is
           ! based on the data by Heymsfield (JAS,2003). -Marat
@@ -92,7 +92,7 @@ contains
     ici = index_cloud_ice
 
     do k=max(1,kmin-2),kmax
-      coef=dtn/(dz*adz(k)*rho(k))
+      coef=dtn/(dz*adz(k)*rho(icrm,k))
       do j=1,ny
         do i=1,nx
           ! The cloud ice increment is the difference of the fluxes.

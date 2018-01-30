@@ -38,10 +38,10 @@ contains
       kc=min(nzm,k+1)
       kb=max(1,k-1)
       if(pres(kc).le.200..and.pres(kb).gt.200.) k200=k
-      coef1 = rho(k)*dz*adz(k)*dtfactor
+      coef1 = rho(icrm,k)*dz*adz(k)*dtfactor
       do j=1,ny
         do i=1,nx
-          tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) +&
+          tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) +&
           fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
           u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
           v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
@@ -134,7 +134,7 @@ contains
     end do
 
     do k=1,nzm
-      coef1 = rho(k)*dz*adz(k)*dtfactor
+      coef1 = rho(icrm,k)*dz*adz(k)*dtfactor
       do j=1,ny
         do i=1,nx
 
@@ -172,7 +172,7 @@ contains
         ! FIND CLOUD TOP HEIGHT
         tmp_lwp = 0.
         do k = nzm,1,-1
-          tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(k)*dz*adz(k)
+          tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(icrm,k)*dz*adz(k)
           if (tmp_lwp.gt.0.01) then
             cloudtopheight(i,j) = z(k)
             cloudtoptemp(i,j) = tabs(icrm,i,j,k)

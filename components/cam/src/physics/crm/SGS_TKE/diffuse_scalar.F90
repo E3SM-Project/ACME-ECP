@@ -5,12 +5,13 @@ module diffuse_scalar_mod
 
 contains
 
-  subroutine diffuse_scalar (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,f,fluxb,fluxt,fdiff,flux,f2lediff,f2lediss,fwlediff,doit)
+  subroutine diffuse_scalar (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,f,fluxb,fluxt,fdiff,flux,f2lediff,f2lediss,fwlediff,doit,ncrms,icrm)
 
     use grid
     use vars, only: rho, rhow
     use params
     implicit none
+    integer, intent(in) :: ncrms,icrm
 
     ! input:
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
@@ -34,9 +35,9 @@ contains
     df(:,:,:) = f(:,:,:)
 
     if(RUN3D) then
-      call diffuse_scalar3D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
+      call diffuse_scalar3D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux,ncrms,icrm)
     else
-      call diffuse_scalar2D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,       f,fluxb,fluxt,tkh,rho,rhow,flux)
+      call diffuse_scalar2D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,       f,fluxb,fluxt,tkh,rho,rhow,flux,ncrms,icrm)
     endif
 
     do k=1,nzm

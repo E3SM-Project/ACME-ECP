@@ -54,20 +54,20 @@ contains
 
       grd=dz*adz(k)
 
-      betdz=bet(k)/dz/(adzw(kc)+adzw(k))
+      betdz=bet(icrm,k)/dz/(adzw(kc)+adzw(k))
       Ce1=Ce/0.7*0.19
       Ce2=Ce/0.7*0.51
       if(k.eq.1) then
         kb=1
         kc=2
-        betdz=bet(k)/dz/adzw(kc)
+        betdz=bet(icrm,k)/dz/adzw(kc)
         Ce1=Ces/0.7*0.19
         Ce2=Ces/0.7*0.51
       end if
       if(k.eq.nzm) then
         kb=nzm-1
         kc=nzm
-        betdz=bet(k)/dz/adzw(k)
+        betdz=bet(icrm,k)/dz/adzw(k)
         Ce1=Ces/0.7*0.19
         Ce2=Ces/0.7*0.51
       end if

@@ -55,8 +55,8 @@ contains
     nonos = .true.
 
     do k = 1,nzm
-      rhofac(k) = sqrt(1.29/rho(k))
-      irhoadz(k) = 1./(rho(k)*adz(k)) ! Useful factor
+      rhofac(k) = sqrt(1.29/rho(icrm,k))
+      irhoadz(k) = 1./(rho(icrm,k)*adz(k)) ! Useful factor
       kb = max(1,k-1)
       wmax       = dz*adz(kb)/dtn   ! Velocity equivalent to a cfl of 1.0.
       iwmax(k)   = 1./wmax
@@ -95,7 +95,7 @@ contains
 
           wp(k)=rhofac(k)*term_vel(i,j,k,ind,ncrms,icrm)
           prec_cfl = max(prec_cfl,wp(k)*iwmax(k)) ! Keep column maximum CFL
-          wp(k) = -wp(k)*rhow(k)*dtn/dz
+          wp(k) = -wp(k)*rhow(icrm,k)*dtn/dz
 
         end do  ! k
 
@@ -173,8 +173,8 @@ contains
 
             do k=1,nzm
               kc=min(nzm,k+1)
-              mx(k)=rho(k)*adz(k)*(mx(k)-tmp_qp(k))/(pn(www(kc)) + pp(www(k))+eps)
-              mn(k)=rho(k)*adz(k)*(tmp_qp(k)-mn(k))/(pp(www(kc)) + pn(www(k))+eps)
+              mx(k)=rho(icrm,k)*adz(k)*(mx(k)-tmp_qp(k))/(pn(www(kc)) + pp(www(k))+eps)
+              mn(k)=rho(icrm,k)*adz(k)*(tmp_qp(k)-mn(k))/(pp(www(kc)) + pn(www(k))+eps)
             end do
 
             do k=1,nzm
@@ -211,7 +211,7 @@ contains
             do k=1,nzm
               wp(k) = rhofac(k)*term_vel(i,j,k,ind,ncrms,icrm)
               ! Decrease precipitation velocity by factor of nprec
-              wp(k) = -wp(k)*rhow(k)*dtn/dz/real(nprec,crm_rknd)
+              wp(k) = -wp(k)*rhow(icrm,k)*dtn/dz/real(nprec,crm_rknd)
               ! Note: Don't bother checking CFL condition at each
               ! substep since it's unlikely that the CFL will
               ! increase very much between substeps when using

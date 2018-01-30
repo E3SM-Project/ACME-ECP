@@ -29,7 +29,7 @@ contains
       do k = 1,nzm
         kc= k+1
         kcu =min(kc, nzm)
-        irho = 1./(rhow(kc)*adzw(kc))
+        irho = 1./(rhow(icrm,kc)*adzw(kc))
 
         do j = 1, ny
           jb = j-1
@@ -37,8 +37,8 @@ contains
             ic = i+1
             fu(i,j,k)=dx25*(u(icrm,ic,j,k)+u(icrm,i,j,k))*(u(icrm,i,j,k)+u(icrm,ic,j,k))
             fv(i,j,k)=dx25*(u(icrm,ic,j,k)+u(icrm,ic,jb,k))*(v(icrm,i,j,k)+v(icrm,ic,j,k))
-            fw(i,j,k)=dx25*(u(icrm,ic,j,k)*rho(k)*adz(k)+ &
-            u(icrm,ic,j,kcu)*rho(kcu)*adz(kcu))*(w(icrm,i,j,kc)+w(icrm,ic,j,kc))
+            fw(i,j,k)=dx25*(u(icrm,ic,j,k)*rho(icrm,k)*adz(k)+ &
+            u(icrm,ic,j,kcu)*rho(icrm,kcu)*adz(kcu))*(w(icrm,i,j,kc)+w(icrm,ic,j,kc))
           end do
           do i = 1, nx
             ib = i-1
@@ -54,8 +54,8 @@ contains
             ib = i-1
             fu(i,j,k)=dy25*(v(icrm,i,jc,k)+v(icrm,ib,jc,k))*(u(icrm,i,j,k)+u(icrm,i,jc,k))
             fv(i,j,k)=dy25*(v(icrm,i,jc,k)+v(icrm,i,j,k))*(v(icrm,i,j,k)+v(icrm,i,jc,k))
-            fw(i,j,k)=dy25*(v(icrm,i,jc,k)*rho(k)*adz(k)+ &
-            v(icrm,i,jc,kcu)*rho(kcu)*adz(kcu))*(w(icrm,i,j,kc)+w(icrm,i,jc,kc))
+            fw(i,j,k)=dy25*(v(icrm,i,jc,k)*rho(icrm,k)*adz(k)+ &
+            v(icrm,i,jc,kcu)*rho(icrm,kcu)*adz(kcu))*(w(icrm,i,j,kc)+w(icrm,i,jc,kc))
           end do
         end do
         do j = 1,ny
@@ -77,14 +77,14 @@ contains
       do k = 1,nzm
         kc= k+1
         kcu =min(kc, nzm)
-        irho = 1./(rhow(kc)*adzw(kc))
+        irho = 1./(rhow(icrm,kc)*adzw(kc))
 
         do i = 0, nx
           ic = i+1
           fu(i,j,k)=dx25*(u(icrm,ic,j,k)+u(icrm,i,j,k))*(u(icrm,i,j,k)+u(icrm,ic,j,k))
           fv(i,j,k)=dx25*(u(icrm,ic,j,k)+u(icrm,i,j,k))*(v(icrm,i,j,k)+v(icrm,ic,j,k))
-          fw(i,j,k)=dx25*(u(icrm,ic,j,k)*rho(k)*adz(k)+ &
-          u(icrm,ic,j,kcu)*rho(kcu)*adz(kcu))*(w(icrm,i,j,kc)+w(icrm,ic,j,kc))
+          fw(i,j,k)=dx25*(u(icrm,ic,j,k)*rho(icrm,k)*adz(k)+ &
+          u(icrm,ic,j,kcu)*rho(icrm,kcu)*adz(kcu))*(w(icrm,i,j,kc)+w(icrm,ic,j,kc))
         end do
         do i = 1, nx
           ib = i-1

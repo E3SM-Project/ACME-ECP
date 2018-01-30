@@ -25,16 +25,16 @@ contains
 
       do j=1,ny
         do i=1,nx
-          t(icrm,i,j,k)=t(icrm,i,j,k) + ttend(k) * dtn
-          micro_field(i,j,k,index_water_vapor)=micro_field(i,j,k,index_water_vapor) + qtend(k) * dtn
+          t(icrm,i,j,k)=t(icrm,i,j,k) + ttend(icrm,k) * dtn
+          micro_field(i,j,k,index_water_vapor)=micro_field(i,j,k,index_water_vapor) + qtend(icrm,k) * dtn
           if(micro_field(i,j,k,index_water_vapor).lt.0.) then
             nneg = nneg + 1
             qneg = qneg + micro_field(i,j,k,index_water_vapor)
           else
             qpoz = qpoz + micro_field(i,j,k,index_water_vapor)
           end if
-          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na) + utend(k)
-          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na) + vtend(k)
+          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na) + utend(icrm,k)
+          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na) + vtend(icrm,k)
         end do
       end do
 

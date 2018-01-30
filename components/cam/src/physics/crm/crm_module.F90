@@ -471,9 +471,9 @@ subroutine crm(lchnk, icol, ncrms, &
       z(k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
       zi(k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
       pres(k) = pmid(icrm,plev-k+1)/100.
-      prespot(k)=(1000./pres(k))**(rgas/cp)
-      bet(k) = ggr/tl(icrm,plev-k+1)
-      gamaz(k)=ggr/cp*z(k)
+      prespot(icrm,k)=(1000./pres(k))**(rgas/cp)
+      bet(icrm,k) = ggr/tl(icrm,plev-k+1)
+      gamaz(icrm,k)=ggr/cp*z(k)
     end do ! k
    ! zi(nz) =  zint(plev-nz+2)
     zi(nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
@@ -491,23 +491,23 @@ subroutine crm(lchnk, icol, ncrms, &
     end do
 
     do k = 1,nzm
-      rho(k) = pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
+      rho(icrm,k) = pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
     end do
     do k=2,nzm
-    ! rhow(k) = 0.5*(rho(k)+rho(k-1))
+    ! rhow(icrm,k) = 0.5*(rho(icrm,k)+rho(icrm,k-1))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(k) = (pmid(icrm,plev-k+2)-pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
+      rhow(icrm,k) = (pmid(icrm,plev-k+2)-pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
     end do
-    rhow(1) = 2.*rhow(2) - rhow(3)
+    rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
-    if (  2.*rhow(nzm) - rhow(nzm-1) > 0. ) then
-       rhow(nz)= 2.*rhow(nzm) - rhow(nzm-1)
+    if (  2.*rhow(icrm,nzm) - rhow(icrm,nzm-1) > 0. ) then
+       rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
     else
-       rhow(nz)= sqrt( rhow(nzm) )
+       rhow(icrm,nz)= sqrt( rhow(icrm,nzm) )
     endif
 #else
-    rhow(nz)= 2.*rhow(nzm) - rhow(nzm-1)
+    rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
 
 
 #endif /*CLUBB_CRM*/
@@ -553,7 +553,7 @@ subroutine crm(lchnk, icol, ncrms, &
         do i=1, nx
           if(cloudliq(i,j,k).gt.0) then
             if(dopredictNc) then
-              if( micro_field(i,j,k,incl).eq.0) micro_field(i,j,k,incl) = 1.0e6*Nc0/rho(k)
+              if( micro_field(i,j,k,incl).eq.0) micro_field(i,j,k,incl) = 1.0e6*Nc0/rho(icrm,k)
             endif
           endif
         enddo
@@ -562,7 +562,7 @@ subroutine crm(lchnk, icol, ncrms, &
 #endif
 
     w(icrm,:,:,nz)=0.
-    wsub (:) = 0.      !used in clubb, +++mhwang
+    wsub (icrm,:) = 0.      !used in clubb, +++mhwang
     dudt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
     dvdt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
     dwdt(icrm,1:nx,1:ny,1:nz,1:3) = 0.
@@ -593,7 +593,7 @@ subroutine crm(lchnk, icol, ncrms, &
       !---mhwang
       do j=1,ny
         do i=1,nx
-          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(k) &
+          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
                     -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
                     -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
           colprec=colprec+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
@@ -626,19 +626,19 @@ subroutine crm(lchnk, icol, ncrms, &
       ! than is in the sounding, because we subsequently use tv0 to initialize
       ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
       ! -dschanen UWM 11 Feb 2010
-      tv0(icrm,k) = tabs0(icrm,k)*prespot(k)*(1.+epsv*q0(icrm,k))
+      tv0(icrm,k) = tabs0(icrm,k)*prespot(icrm,k)*(1.+epsv*q0(icrm,k))
 #endif
 
       l = plev-k+1
       uln(l) = min( umax, max(-umax,ul(icrm,l)) )
       vln(l) = min( umax, max(-umax,vl(icrm,l)) )*YES3D
-      ttend(k) = (tl(icrm,l)+gamaz(k)- fac_cond*(qccl(icrm,l)+qiil(icrm,l))-fac_fus*qiil(icrm,l)-t00(k))*idt_gl
-      qtend(k) = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)-q0(icrm,k))*idt_gl
-      utend(k) = (uln(l)-u0(icrm,k))*idt_gl
-      vtend(k) = (vln(l)-v0(icrm,k))*idt_gl
+      ttend(icrm,k) = (tl(icrm,l)+gamaz(icrm,k)- fac_cond*(qccl(icrm,l)+qiil(icrm,l))-fac_fus*qiil(icrm,l)-t00(k))*idt_gl
+      qtend(icrm,k) = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)-q0(icrm,k))*idt_gl
+      utend(icrm,k) = (uln(l)-u0(icrm,k))*idt_gl
+      vtend(icrm,k) = (vln(l)-v0(icrm,k))*idt_gl
       ug0(icrm,k) = uln(l)
       vg0(icrm,k) = vln(l)
-      tg0(icrm,k) = tl(icrm,l)+gamaz(k)-fac_cond*qccl(icrm,l)-fac_sub*qiil(icrm,l)
+      tg0(icrm,k) = tl(icrm,l)+gamaz(icrm,k)-fac_cond*qccl(icrm,l)-fac_sub*qiil(icrm,l)
       qg0(icrm,k) = ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)
 
     end do ! k
@@ -648,7 +648,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
-    ustar = sqrt(tau00(icrm)/rho(1))
+    ustar = sqrt(tau00(icrm)/rho(icrm,1))
     z0 = z0_est(z(1),bflx,wnd,ustar)
     z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
 
@@ -660,10 +660,10 @@ subroutine crm(lchnk, icol, ncrms, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(icrm,:, :) = fluxu00(icrm)/rhow(1)
-      fluxbv(icrm,:, :) = fluxv00(icrm)/rhow(1)
-      fluxbt(icrm,:, :) = fluxt00(icrm)/rhow(1)
-      fluxbq(icrm,:, :) = fluxq00(icrm)/rhow(1)
+      fluxbu(icrm,:, :) = fluxu00(icrm)/rhow(icrm,1)
+      fluxbv(icrm,:, :) = fluxv00(icrm)/rhow(icrm,1)
+      fluxbt(icrm,:, :) = fluxt00(icrm)/rhow(icrm,1)
+      fluxbq(icrm,:, :) = fluxq00(icrm)/rhow(icrm,1)
     else
     endif
 #else
@@ -994,10 +994,10 @@ subroutine crm(lchnk, icol, ncrms, &
               rtm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                            rtm_column, gr%invrs_dzt(2:nz) )
 
-              thlm_before = t2thetal( t(icrm,i,j,1:nzm), gamaz(1:nzm), &
+              thlm_before = t2thetal( t(icrm,i,j,1:nzm), gamaz(icrm,1:nzm), &
                                    qcl(icrm,i,j,1:nzm), qpl(icrm,i,j,1:nzm), &
                                    qci(icrm,i,j,1:nzm), qpi(icrm,i,j,1:nzm), &
-                                   prespot(1:nzm) )
+                                   prespot(icrm,1:nzm) )
 
               thlm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                                             thlm_before(1:nzm), gr%invrs_dzt(2:nz) )
@@ -1105,10 +1105,10 @@ subroutine crm(lchnk, icol, ncrms, &
               thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
               thlm_flux_sfc = rho_ds_zm(1) * fluxbt(icrm,i,j)
 
-              thlm_after = t2thetal( t(icrm,i,j,1:nzm), gamaz(1:nzm), &
+              thlm_after = t2thetal( t(icrm,i,j,1:nzm), gamaz(icrm,1:nzm), &
                                      qcl(icrm,i,j,1:nzm), qpl(icrm,i,j,1:nzm), &
                                      qci(icrm,i,j,1:nzm), qpi(icrm,i,j,1:nzm), &
-                                     prespot(1:nzm) )
+                                     prespot(icrm,1:nzm) )
 
               thlm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                                          thlm_after(1:nzm), gr%invrs_dzt(2:nz))
@@ -1191,7 +1191,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
             !hm#endif
 
-            tmp1 = rho(nz-k)*adz(nz-k)*dz*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
+            tmp1 = rho(icrm,nz-k)*adz(nz-k)*dz*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
@@ -1211,23 +1211,23 @@ subroutine crm(lchnk, icol, ncrms, &
 
             !     qsat = qsatw_crm(tabs(icrm,i,j,k),pres(k))
             !     if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.min(1.e-5,0.01*qsat)) then
-            tmp1 = rho(k)*adz(k)*dz
+            tmp1 = rho(icrm,k)*adz(k)*dz
             if(tmp1*(qcl(icrm,i,j,k)+qci(icrm,i,j,k)).gt.cwp_threshold) then
                  cld(icrm,l) = cld(icrm,l) + CF3D(i,j,k)
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
-                   mcup (icrm,l) = mcup (icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k)
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(i,j,k))
+                   mcup (icrm,l) = mcup (icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k)
+                   mcuup(icrm,l) = mcuup(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(i,j,k))
                  endif
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
-                   mcdn (icrm,l) = mcdn (icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k)
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(i,j,k))
+                   mcdn (icrm,l) = mcdn (icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k)
+                   mcudn(icrm,l) = mcudn(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(i,j,k))
                  endif
             else
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
+                   mcuup(icrm,l) = mcuup(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
                  endif
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
+                   mcudn(icrm,l) = mcudn(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
                  endif
             endif
 
@@ -1274,15 +1274,15 @@ subroutine crm(lchnk, icol, ncrms, &
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k)*w(icrm,i,j,k)
+                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(icrm,k)*w(icrm,i,j,k)
               endif
             else if (w(icrm,i,j,k).lt.0.) then
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(icrm,i,j,k)
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(icrm,k)*w(icrm,i,j,k)
               else if(qpl(icrm,i,j,kx)+qpi(icrm,i,j,kx).gt.1.0e-4) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(icrm,i,j,k)
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(icrm,k)*w(icrm,i,j,k)
               endif
             endif
           enddo
@@ -1658,11 +1658,11 @@ subroutine crm(lchnk, icol, ncrms, &
       ! time step.
       !---mhwang
 
-      tmp1 = dz/rhow(k)
+      tmp1 = dz/rhow(icrm,k)
       tmp2 = tmp1/dtn                        ! dtn is calculated inside of the icyc loop.
                                              ! It seems wrong to use it here ???? +++mhwang
-      mkwsb (k,:) = mkwsb (k,:) * tmp1*rhow(k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
-      mkwle (k,:) = mkwle (k,:) * tmp2*rhow(k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
+      mkwsb (k,:) = mkwsb (k,:) * tmp1*rhow(icrm,k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
+      mkwle (k,:) = mkwle (k,:) * tmp2*rhow(icrm,k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
       mkadv (k,:) = mkadv (k,:) * factor_xy*idt_gl     ! kg/kg  --> kg/kg/s
       mkdiff(k,:) = mkdiff(k,:) * factor_xy*idt_gl   ! kg/kg  --> kg/kg/s
 
@@ -1693,8 +1693,8 @@ subroutine crm(lchnk, icol, ncrms, &
       qp_trans  (icrm,l) = mkadv (k,iqr) + mkadv (k,iqs) + mkadv (k,iqg) + &
                          mkdiff(k,iqr) + mkdiff(k,iqs) + mkdiff(k,iqg)
 #endif
-      tkesgsz   (icrm,l)= rho(k)*sum(tke(1:nx,1:ny,k))*factor_xy
-      tkez      (icrm,l)= rho(k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + tkesgsz(icrm,l)
+      tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(1:nx,1:ny,k))*factor_xy
+      tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + tkesgsz(icrm,l)
       tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
       pflx      (icrm,l) = precflux(k)/1000.       !mm/s  -->m/s
 
@@ -1702,8 +1702,8 @@ subroutine crm(lchnk, icol, ncrms, &
       qp_evp    (icrm,l) = qpevp(k)
       qp_src    (icrm,l) = qpsrc(k)
 
-      qt_ls     (icrm,l) = qtend(k)
-      t_ls      (icrm,l) = ttend(k)
+      qt_ls     (icrm,l) = qtend(icrm,k)
+      t_ls      (icrm,l) = ttend(icrm,k)
     enddo
 
 #ifdef ECPP

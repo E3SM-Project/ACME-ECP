@@ -59,11 +59,11 @@ contains
     !
     if(doprecip) then
 
-      total_water_prec = total_water_prec + total_water()
+      total_water_prec = total_water_prec + total_water(ncrms,icrm)
 
       call micro_precip_fall(ncrms,icrm)
 
-      total_water_prec = total_water_prec - total_water()
+      total_water_prec = total_water_prec - total_water(ncrms,icrm)
 
 
     end if

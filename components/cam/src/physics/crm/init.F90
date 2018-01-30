@@ -4,16 +4,17 @@ module init_mod
 contains
 
   ! Initialize some arrays from vars module:
-  subroutine init()
+  subroutine init(ncrms,icrm)
     use vars
     use crmtracers
     implicit none
+    integer, intent(in) :: ncrms,icrm
 
-    fzero = 0.
+    fzero(icrm,:,:) = 0.
 
-    ttend = 0.
-    qtend = 0.
-    wsub = 0.
+    ttend(icrm,:) = 0.
+    qtend(icrm,:) = 0.
+    wsub(icrm,:) = 0.
     !unudge = 0.
     !vnudge = 0.
     !tnudge = 0.

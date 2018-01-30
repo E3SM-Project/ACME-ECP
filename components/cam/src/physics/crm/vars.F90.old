@@ -70,16 +70,16 @@ module vars
   !-----------------------------------------------------------------
   ! reference vertical profiles:
 
-  real(crm_rknd)   prespot(nzm)  ! (1000./pres)**R/cp
-  real(crm_rknd)   rho(nzm)	  ! air density at pressure levels,kg/m3
-  real(crm_rknd)   rhow(nz)   ! air density at vertical velocity levels,kg/m3
-  real(crm_rknd)   bet(nzm)	  ! = ggr/tv0
-  real(crm_rknd)   gamaz(nzm) ! ggr/cp*z
-  real(crm_rknd)   wsub(nz)   ! Large-scale subsidence velocity,m/s
-  real(crm_rknd)   qtend(nzm) ! Large-scale tendency for total water
-  real(crm_rknd)   ttend(nzm) ! Large-scale tendency for temp.
-  real(crm_rknd)   utend(nzm) ! Large-scale tendency for u
-  real(crm_rknd)   vtend(nzm) ! Large-scale tendency for v
+  real(crm_rknd)   prespot(icrm,nzm)  ! (1000./pres)**R/cp
+  real(crm_rknd)   rho(icrm,nzm)	  ! air density at pressure levels,kg/m3
+  real(crm_rknd)   rhow(icrm,nz)   ! air density at vertical velocity levels,kg/m3
+  real(crm_rknd)   bet(icrm,nzm)	  ! = ggr/tv0
+  real(crm_rknd)   gamaz(icrm,nzm) ! ggr/cp*z
+  real(crm_rknd)   wsub(icrm,nz)   ! Large-scale subsidence velocity,m/s
+  real(crm_rknd)   qtend(icrm,nzm) ! Large-scale tendency for total water
+  real(crm_rknd)   ttend(icrm,nzm) ! Large-scale tendency for temp.
+  real(crm_rknd)   utend(icrm,nzm) ! Large-scale tendency for u
+  real(crm_rknd)   vtend(icrm,nzm) ! Large-scale tendency for v
 
 
   !---------------------------------------------------------------------

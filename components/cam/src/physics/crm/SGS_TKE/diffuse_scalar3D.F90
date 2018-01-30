@@ -3,12 +3,13 @@ module diffuse_scalar3D_mod
 
 contains
 
-  subroutine diffuse_scalar3D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,field,fluxb,fluxt,tkh,rho,rhow,flux)
+  subroutine diffuse_scalar3D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,field,fluxb,fluxt,tkh,rho,rhow,flux,ncrms,icrm)
 
     use grid
     use params
     use task_util_mod, only: task_rank_to_index
     implicit none
+    integer, intent(in) :: ncrms, icrm
     ! input
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(nzm)! grid factor for eddy diffusion in x
@@ -18,8 +19,8 @@ contains
     real(crm_rknd) tkh(0:nxp1,1-YES3D:nyp1,nzm)	! eddy conductivity
     real(crm_rknd) fluxb(nx,ny)		! bottom flux
     real(crm_rknd) fluxt(nx,ny)		! top flux
-    real(crm_rknd) rho(nzm)
-    real(crm_rknd) rhow(nz)
+    real(crm_rknd) rho(ncrms,nzm)
+    real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(nz)
     ! local
     real(crm_rknd) flx(0:nx,0:ny,0:nzm)
@@ -151,8 +152,8 @@ contains
     tmp=1./adzw(nz)
     do j=1,ny
       do i=1,nx
-        flx(i,j,0)=fluxb(i,j)*rdz*rhow(1)
-        flx(i,j,nzm)=fluxt(i,j)*rdz*tmp*rhow(nz)
+        flx(i,j,0)=fluxb(i,j)*rdz*rhow(icrm,1)
+        flx(i,j,nzm)=fluxt(i,j)*rdz*tmp*rhow(icrm,nz)
         flux(1) = flux(1) + flx(i,j,0)
       end do
     end do
@@ -161,7 +162,7 @@ contains
     do k=1,nzm-1
       kc=k+1
       flux(kc)=0.
-      rhoi = rhow(kc)/adzw(kc)
+      rhoi = rhow(icrm,kc)/adzw(kc)
       rdz5=0.5*rdz2 * grdf_z(k)
       do j=1,ny
         do i=1,nx
@@ -174,7 +175,7 @@ contains
 
     do k=1,nzm
       kb=k-1
-      rhoi = 1./(adz(k)*rho(k))
+      rhoi = 1./(adz(k)*rho(icrm,k))
       do j=1,ny
         do i=1,nx
           dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)

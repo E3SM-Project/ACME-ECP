@@ -81,16 +81,16 @@ module vars
   !-----------------------------------------------------------------
   ! reference vertical profiles:
 
-  real(crm_rknd), allocatable :: prespot(:)  ! (1000./pres)**R/cp
-  real(crm_rknd), allocatable :: rho    (:)  ! air density at pressure levels,kg/m3
-  real(crm_rknd), allocatable :: rhow   (:)  ! air density at vertical velocity levels,kg/m3
-  real(crm_rknd), allocatable :: bet    (:)  ! = ggr/tv0
-  real(crm_rknd), allocatable :: gamaz  (:)  ! ggr/cp*z
-  real(crm_rknd), allocatable :: wsub   (:)  ! Large-scale subsidence velocity,m/s
-  real(crm_rknd), allocatable :: qtend  (:)  ! Large-scale tendency for total water
-  real(crm_rknd), allocatable :: ttend  (:)  ! Large-scale tendency for temp.
-  real(crm_rknd), allocatable :: utend  (:)  ! Large-scale tendency for u
-  real(crm_rknd), allocatable :: vtend  (:)  ! Large-scale tendency for v
+  real(crm_rknd), allocatable :: prespot(:,:) !REDIM ! (1000./pres)**R/cp
+  real(crm_rknd), allocatable :: rho    (:,:) !REDIM ! air density at pressure levels,kg/m3
+  real(crm_rknd), allocatable :: rhow   (:,:) !REDIM ! air density at vertical velocity levels,kg/m3
+  real(crm_rknd), allocatable :: bet    (:,:) !REDIM ! = ggr/tv0
+  real(crm_rknd), allocatable :: gamaz  (:,:) !REDIM ! ggr/cp*z
+  real(crm_rknd), allocatable :: wsub   (:,:) !REDIM ! Large-scale subsidence velocity,m/s
+  real(crm_rknd), allocatable :: qtend  (:,:) !REDIM ! Large-scale tendency for total water
+  real(crm_rknd), allocatable :: ttend  (:,:) !REDIM ! Large-scale tendency for temp.
+  real(crm_rknd), allocatable :: utend  (:,:) !REDIM ! Large-scale tendency for u
+  real(crm_rknd), allocatable :: vtend  (:,:) !REDIM ! Large-scale tendency for v
 
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
@@ -252,16 +252,16 @@ contains
     allocate( q01  (ncrms,nzm) )
     allocate( qp0  (ncrms,nzm) )
     allocate( qn0  (ncrms,nzm) )
-    allocate( prespot  (nzm) ) ! (1000./pres)**R/cp
-    allocate( rho      (nzm) ) ! air density at pressure levels,kg/m3
-    allocate( rhow     (nz ) ) ! air density at vertical velocity levels,kg/m3
-    allocate( bet      (nzm) ) ! = ggr/tv0
-    allocate( gamaz    (nzm) ) ! ggr/cp*z
-    allocate( wsub     (nz ) ) ! Large-scale subsidence velocity,m/s
-    allocate( qtend    (nzm) ) ! Large-scale tendency for total water
-    allocate( ttend    (nzm) ) ! Large-scale tendency for temp.
-    allocate( utend    (nzm) ) ! Large-scale tendency for u
-    allocate( vtend    (nzm) ) ! Large-scale tendency for v
+    allocate( prespot  (ncrms,nzm) ) ! (1000./pres)**R/cp
+    allocate( rho      (ncrms,nzm) ) ! air density at pressure levels,kg/m3
+    allocate( rhow     (ncrms,nz ) ) ! air density at vertical velocity levels,kg/m3
+    allocate( bet      (ncrms,nzm) ) ! = ggr/tv0
+    allocate( gamaz    (ncrms,nzm) ) ! ggr/cp*z
+    allocate( wsub     (ncrms,nz ) ) ! Large-scale subsidence velocity,m/s
+    allocate( qtend    (ncrms,nzm) ) ! Large-scale tendency for total water
+    allocate( ttend    (ncrms,nzm) ) ! Large-scale tendency for temp.
+    allocate( utend    (ncrms,nzm) ) ! Large-scale tendency for u
+    allocate( vtend    (ncrms,nzm) ) ! Large-scale tendency for v
     allocate( sstxy    (0:nx,(1-YES3D):ny) ) !  surface temperature xy-distribution
     allocate( fcory    (0:ny) )             !  Coriolis parameter xy-distribution
     allocate( fcorzy   (ny) )               !  z-Coriolis parameter xy-distribution

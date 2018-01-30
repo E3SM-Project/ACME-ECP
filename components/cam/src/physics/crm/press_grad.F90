@@ -37,7 +37,7 @@ contains
     do k=1,nzm
       do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
         do i=0,nx
-          p(icrm,i,j,k)=p(icrm,i,j,k)*rho(k)  ! convert p'/rho to p'
+          p(icrm,i,j,k)=p(icrm,i,j,k)*rho(icrm,k)  ! convert p'/rho to p'
         end do
       end do
     end do

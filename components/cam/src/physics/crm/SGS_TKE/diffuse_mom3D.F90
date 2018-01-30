@@ -106,13 +106,13 @@ contains
         do i=1,nx
           ib=i-1
           tkz=rdz2*tk(i,j,k)
-          fw(i,j,kc)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(k)*iadz
+          fw(i,j,kc)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(icrm,k)*iadz
           tkz=rdz25*(tk(i,j,k)+tk(ib,j,k)+tk(i,j,kc)+tk(ib,j,kc))
           fu(i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + &
-          (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(kc)
+          (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(icrm,kc)
           tkz=rdz25*(tk(i,j,k)+tk(i,jb,k)+tk(i,j,kc)+tk(i,jb,kc))
           fv(i,j,kc)=-tkz*( (v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw + &
-          (w(icrm,i,j,kc)-w(icrm,i,jb,kc))*dzy)*rhow(kc)
+          (w(icrm,i,j,kc)-w(icrm,i,jb,kc))*dzy)*rhow(icrm,kc)
           uwsb(kc)=uwsb(kc)+fu(i,j,kc)
           vwsb(kc)=vwsb(kc)+fv(i,j,kc)
         end do
@@ -125,11 +125,11 @@ contains
     do j=1,ny
       do i=1,nx
         tkz=rdz2*grdf_z(nzm)*tk(i,j,nzm)
-        fw(i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm)*rho(nzm)
-        fu(i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(1)
-        fv(i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(1)
-        fu(i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(nz)
-        fv(i,j,nz)=fluxtv(icrm,i,j) * rdz * rhow(nz)
+        fw(i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm)*rho(icrm,nzm)
+        fu(i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
+        fv(i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
+        fu(i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(icrm,nz)
+        fv(i,j,nz)=fluxtv(icrm,i,j) * rdz * rhow(icrm,nz)
         uwsb(1) = uwsb(1) + fu(i,j,1)
         vwsb(1) = vwsb(1) + fv(i,j,1)
       end do
@@ -137,7 +137,7 @@ contains
 
     do k=1,nzm
       kc=k+1
-      rhoi = 1./(rho(k)*adz(k))
+      rhoi = 1./(rho(icrm,k)*adz(k))
       do j=1,ny
         do i=1,nx
           dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,kc)-fu(i,j,k))*rhoi
@@ -147,7 +147,7 @@ contains
     end do ! k
 
     do k=2,nzm
-      rhoi = 1./(rhow(k)*adzw(k))
+      rhoi = 1./(rhow(icrm,k)*adzw(k))
       do j=1,ny
         do i=1,nx
           dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(i,j,k+1)-fw(i,j,k))*rhoi

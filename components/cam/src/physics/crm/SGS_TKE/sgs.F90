@@ -394,11 +394,11 @@ CONTAINS
 
 
     call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(icrm,:,:,:),fluxbt(icrm,:,:),fluxtt(icrm,:,:),tdiff,twsb, &
-    t2lediff,t2lediss,twlediff,.true.)
+    t2lediff,t2lediss,twlediff,.true.,ncrms,icrm)
 
     if(advect_sgs) then
       call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero(icrm,:,:),fzero(icrm,:,:),dummy,sgswsb, &
-      dummy,dummy,dummy,.false.)
+      dummy,dummy,dummy,.false.,ncrms,icrm)
     end if
 
 
@@ -407,7 +407,7 @@ CONTAINS
     !
     call micro_flux(ncrms,icrm)
 
-    total_water_evap = total_water_evap - total_water()
+    total_water_evap = total_water_evap - total_water(ncrms,icrm)
 
     do k = 1,nmicro_fields
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
@@ -416,11 +416,11 @@ CONTAINS
       fluxbtmp(1:nx,1:ny) = fluxbmk(1:nx,1:ny,k)
       fluxttmp(1:nx,1:ny) = fluxtmk(1:nx,1:ny,k)
       call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k),fluxbtmp,fluxttmp, &
-      mkdiff(:,k),mkwsb(:,k), dummy,dummy,dummy,.false.)
+      mkdiff(:,k),mkwsb(:,k), dummy,dummy,dummy,.false.,ncrms,icrm)
     end if
   end do
 
-  total_water_evap = total_water_evap + total_water()
+  total_water_evap = total_water_evap + total_water(ncrms,icrm)
 
   ! diffusion of tracers:
 
@@ -434,9 +434,9 @@ CONTAINS
       fluxttmp = fluxttr(:,:,k)
       call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,k),fluxbtmp,fluxttmp, &
       trdiff(:,k),trwsb(:,k), &
-      dummy,dummy,dummy,.false.)
+      dummy,dummy,dummy,.false.,ncrms,icrm)
       !!$          call diffuse_scalar(tracer(:,:,:,k),fluxbtr(:,:,k),fluxttr(:,:,k),trdiff(:,k),trwsb(:,k), &
-      !!$                           dummy,dummy,dummy,.false.)
+      !!$                           dummy,dummy,dummy,.false.,ncrms,icrm)
 
     end do
 

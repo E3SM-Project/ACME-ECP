@@ -16,8 +16,8 @@ contains
     real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) w(ncrms,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
-    real(crm_rknd) rho(nzm)
-    real(crm_rknd) rhow(nz)
+    real(crm_rknd) rho(ncrms,nzm)
+    real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(nz)
 
     real(crm_rknd) mx (0:nxp1,1,nzm)
@@ -95,7 +95,7 @@ contains
     end do
 
     do k=1,nzm
-      irho(k) = 1./rho(k)
+      irho(k) = 1./rho(icrm,k)
       iadz(k) = 1./adz(k)
       do i=-1,nxp2
         f(i,j,k) = f(i,j,k) - (uuu(i+1,j,k)-uuu(i,j,k) &
@@ -108,7 +108,7 @@ contains
       kc=min(nzm,k+1)
       kb=max(1,k-1)
       dd=2./(kc-kb)/adz(k)
-      irhow(k)=1./(rhow(k)*adz(k))
+      irhow(k)=1./(rhow(icrm,k)*adz(k))
       do i=0,nxp2
         ib=i-1
         uuu(i,j,k)=andiff(f(ib,j,k),f(i,j,k),u(icrm,i,j,k),irho(k)) &
@@ -145,9 +145,9 @@ contains
         kc=min(nzm,k+1)
         do i=0,nxp1
           ic=i+1
-          mx(i,j,k)=rho(k)*(mx(i,j,k)-f(i,j,k))/(pn(uuu(ic,j,k)) + pp(uuu(i,j,k))+&
+          mx(i,j,k)=rho(icrm,k)*(mx(i,j,k)-f(i,j,k))/(pn(uuu(ic,j,k)) + pp(uuu(i,j,k))+&
           iadz(k)*(pn(www(i,j,kc)) + pp(www(i,j,k)))+eps)
-          mn(i,j,k)=rho(k)*(f(i,j,k)-mn(i,j,k))/(pp(uuu(ic,j,k)) + pn(uuu(i,j,k))+&
+          mn(i,j,k)=rho(icrm,k)*(f(i,j,k)-mn(i,j,k))/(pp(uuu(ic,j,k)) + pn(uuu(i,j,k))+&
           iadz(k)*(pp(www(i,j,kc)) + pn(www(i,j,k)))+eps)
         end do
       end do
