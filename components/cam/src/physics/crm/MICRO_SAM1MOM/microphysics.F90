@@ -18,7 +18,7 @@ module microphysics
 
   !!! microphysics prognostic variables are storred in this array:
 
-  real(crm_rknd) micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields)
+  real(crm_rknd), allocatable, target :: micro_field(:,:,:,:)
 
   integer, parameter :: flag_wmass(nmicro_fields) = (/1,1/)
   integer, parameter :: index_water_vapor = 1 ! index for variable that has water vapor
@@ -31,17 +31,17 @@ module microphysics
   ! SAM1MOM 3D microphysical fields are output by default.
   integer, parameter :: flag_micro3Dout(nmicro_fields) = (/0,0/)
 
-  real(crm_rknd) fluxbmk (nx, ny, 1:nmicro_fields) ! surface flux of tracers
-  real(crm_rknd) fluxtmk (nx, ny, 1:nmicro_fields) ! top boundary flux of tracers
+  real(crm_rknd), allocatable :: fluxbmk (:,:,:) ! surface flux of tracers
+  real(crm_rknd), allocatable :: fluxtmk (:,:,:) ! top boundary flux of tracers
 
   !!! these arrays are needed for output statistics:
 
-  real(crm_rknd) mkwle(nz,1:nmicro_fields)  ! resolved vertical flux
-  real(crm_rknd) mkwsb(nz,1:nmicro_fields)  ! SGS vertical flux
-  real(crm_rknd) mkadv(nz,1:nmicro_fields)  ! tendency due to vertical advection
-  real(crm_rknd) mklsadv(nz,1:nmicro_fields)  ! tendency due to large-scale vertical advection
-  real(crm_rknd) mkdiff(nz,1:nmicro_fields)  ! tendency due to vertical diffusion
-  real(crm_rknd) mstor(nz,1:nmicro_fields)  ! storage terms of microphysical variables
+  real(crm_rknd), allocatable :: mkwle  (:,:)  ! resolved vertical flux
+  real(crm_rknd), allocatable :: mkwsb  (:,:)  ! SGS vertical flux
+  real(crm_rknd), allocatable :: mkadv  (:,:)  ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: mklsadv(:,:)  ! tendency due to large-scale vertical advection
+  real(crm_rknd), allocatable :: mkdiff (:,:)  ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: mstor  (:,:)  ! storage terms of microphysical variables
 
   !======================================================================
   ! UW ADDITIONS
@@ -61,19 +61,69 @@ module microphysics
   ! make aliases for prognostic variables:
   ! note that the aliases should be local to microphysics
 
-  real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
-  real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
-  equivalence (q(dimx1_s,dimy1_s,1),micro_field(dimx1_s,dimy1_s,1,1))
-  equivalence (qp(dimx1_s,dimy1_s,1),micro_field(dimx1_s,dimy1_s,1,2))
+  real(crm_rknd), pointer :: q (:,:,:)   ! total nonprecipitating water
+  real(crm_rknd), pointer :: qp(:,:,:)  ! total precipitating water
+  real(crm_rknd), allocatable :: qn(:,:,:)  ! cloud condensate (liquid + ice)
 
-  real(crm_rknd) qn(nx,ny,nzm)  ! cloud condensate (liquid + ice)
-
-  real(crm_rknd) qpsrc(nz)  ! source of precipitation microphysical processes
-  real(crm_rknd) qpevp(nz)  ! sink of precipitating water due to evaporation
+  real(crm_rknd), allocatable :: qpsrc(:)  ! source of precipitation microphysical processes
+  real(crm_rknd), allocatable :: qpevp(:)  ! sink of precipitating water due to evaporation
 
   real(crm_rknd) vrain, vsnow, vgrau, crain, csnow, cgrau  ! precomputed coefs for precip terminal velocity
 
 CONTAINS
+
+  subroutine allocate_microphysics(ncrms)
+    implicit none
+    integer, intent(in) :: ncrms
+    real(crm_rknd) :: zero
+    allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields) )
+    allocate( fluxbmk (nx, ny, 1:nmicro_fields) )
+    allocate( fluxtmk (nx, ny, 1:nmicro_fields) )
+    allocate( mkwle(nz,1:nmicro_fields) )
+    allocate( mkwsb(nz,1:nmicro_fields) )
+    allocate( mkadv(nz,1:nmicro_fields) )
+    allocate( mklsadv(nz,1:nmicro_fields) )
+    allocate( mkdiff(nz,1:nmicro_fields) )
+    allocate( mstor(nz,1:nmicro_fields) )
+    allocate( qn(nx,ny,nzm) )
+    allocate( qpsrc(nz) )
+    allocate( qpevp(nz) )
+    q (dimx1_s:,dimy1_s:,1:) => micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
+    qp(dimx1_s:,dimy1_s:,1:) => micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,2)
+    
+    zero = 0
+
+    micro_field = zero
+    fluxbmk  = zero
+    fluxtmk  = zero
+    mkwle = zero
+    mkwsb = zero
+    mkadv = zero
+    mklsadv = zero
+    mkdiff = zero
+    mstor = zero
+    q = zero
+    qp = zero
+    qn = zero
+    qpsrc = zero
+    qpevp = zero
+  end subroutine allocate_microphysics
+
+  subroutine deallocate_microphysics
+    implicit none
+    deallocate( micro_field )
+    deallocate( fluxbmk  )
+    deallocate( fluxtmk  )
+    deallocate( mkwle )
+    deallocate( mkwsb )
+    deallocate( mkadv )
+    deallocate( mklsadv )
+    deallocate( mkdiff )
+    deallocate( mstor )
+    deallocate( qn )
+    deallocate( qpsrc )
+    deallocate( qpevp )
+  end subroutine deallocate_microphysics
 
   ! required microphysics subroutines and function:
   !----------------------------------------------------------------------

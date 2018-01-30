@@ -381,6 +381,9 @@ subroutine crm(lchnk, icol, ncrms, &
   integer        :: j_rad
 
   call allocate_vars(ncrms)
+  call allocate_microphysics(ncrms)
+  call allocate_tracers(ncrms)
+  call allocate_sgs(ncrms)
 
   !Loop over "vector columns"
   do icrm = 1 , ncrms
@@ -1813,7 +1816,10 @@ subroutine crm(lchnk, icol, ncrms, &
                           prec_crm(icrm,:,:),qtot(icrm,:) )
   enddo
 
-  call deallocate_vars
+  call deallocate_vars()
+  call deallocate_microphysics()
+  call deallocate_tracers()
+  call deallocate_sgs()
 
   end subroutine crm
 
