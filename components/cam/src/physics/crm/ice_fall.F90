@@ -27,7 +27,7 @@ contains
     do k = 1,nzm
       do j = 1, ny
         do i = 1, nx
-          if(qcl(i,j,k)+qci(i,j,k).gt.0..and. tabs(icrm,i,j,k).lt.273.15) then
+          if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.0..and. tabs(icrm,i,j,k).lt.273.15) then
             kmin = min(kmin,k)
             kmax = max(kmax,k)
           end if
@@ -61,9 +61,9 @@ contains
           ! Since cloud ice is falling, the above cell is u (icrm,upwind),
           ! this cell is c (center) and the one below is d (downwind).
 
-          qiu = rho(kc)*qci(i,j,kc)
-          qic = rho(k) *qci(i,j,k)
-          qid = rho(kb)*qci(i,j,kb)
+          qiu = rho(kc)*qci(icrm,i,j,kc)
+          qic = rho(k) *qci(icrm,i,j,k)
+          qid = rho(kb)*qci(icrm,i,j,kb)
 
           ! Ice sedimentation velocity depends on ice content. The fiting is
           ! based on the data by Heymsfield (JAS,2003). -Marat

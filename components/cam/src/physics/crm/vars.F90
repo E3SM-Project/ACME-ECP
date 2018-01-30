@@ -21,11 +21,11 @@ module vars
 
   real(crm_rknd), allocatable :: p   (:,:,:,:) !REDIM       ! perturbation pressure (from Poison eq)
   real(crm_rknd), allocatable :: tabs(:,:,:,:) !REDIM        ! temperature
-  real(crm_rknd), allocatable :: qv  (:,:,:)        ! water vapor
-  real(crm_rknd), allocatable :: qcl (:,:,:)        ! liquid water  (condensate)
-  real(crm_rknd), allocatable :: qpl (:,:,:)        ! liquid water  (precipitation)
-  real(crm_rknd), allocatable :: qci (:,:,:)        ! ice water  (condensate)
-  real(crm_rknd), allocatable :: qpi (:,:,:)        ! ice water  (precipitation)
+  real(crm_rknd), allocatable :: qv  (:,:,:,:)        ! water vapor
+  real(crm_rknd), allocatable :: qcl (:,:,:,:)        ! liquid water  (condensate)
+  real(crm_rknd), allocatable :: qpl (:,:,:,:)        ! liquid water  (precipitation)
+  real(crm_rknd), allocatable :: qci (:,:,:,:)        ! ice water  (condensate)
+  real(crm_rknd), allocatable :: qpi (:,:,:,:)        ! ice water  (precipitation)
 
   real(crm_rknd), allocatable :: tke2(:,:,:)       ! SGS TKE
   real(crm_rknd), allocatable :: tk2 (:,:,:)     ! SGS eddyviscosity
@@ -212,11 +212,11 @@ contains
     allocate( t (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ) ! liquid/ice water static energy
     allocate( p   (ncrms,0:nx, (1-YES3D):ny, nzm) )     ! perturbation pressure (from Poison eq)
     allocate( tabs(ncrms,nx, ny, nzm) )                 ! temperature
-    allocate( qv  (nx, ny, nzm) )                ! water vapor
-    allocate( qcl (nx, ny, nzm) )                ! liquid water  (condensate)
-    allocate( qpl (nx, ny, nzm) )                ! liquid water  (precipitation)
-    allocate( qci (nx, ny, nzm) )                ! ice water  (condensate)
-    allocate( qpi (nx, ny, nzm) )                ! ice water  (precipitation)
+    allocate( qv  (ncrms,nx, ny, nzm) )                ! water vapor
+    allocate( qcl (ncrms,nx, ny, nzm) )                ! liquid water  (condensate)
+    allocate( qpl (ncrms,nx, ny, nzm) )                ! liquid water  (precipitation)
+    allocate( qci (ncrms,nx, ny, nzm) )                ! ice water  (condensate)
+    allocate( qpi (ncrms,nx, ny, nzm) )                ! ice water  (precipitation)
     allocate( tke2(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )   ! SGS TKE
     allocate( tk2 (0:nxp1, (1-YES3D):nyp1, nzm) ) ! SGS eddyviscosity
     allocate( dudt   (nxp1, ny, nzm, 3) )

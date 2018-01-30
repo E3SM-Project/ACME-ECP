@@ -21,11 +21,11 @@ module vars
 
   real(crm_rknd) p      (icrm,0:nx, (1-YES3D):ny, nzm)     ! perturbation pressure (from Poison eq)
   real(crm_rknd) tabs   (icrm,nx, ny, nzm)                 ! temperature
-  real(crm_rknd) qv      (nx, ny, nzm)                ! water vapor
-  real(crm_rknd) qcl     (nx, ny, nzm)                ! liquid water  (condensate)
-  real(crm_rknd) qpl     (nx, ny, nzm)                ! liquid water  (precipitation)
-  real(crm_rknd) qci     (nx, ny, nzm)                ! ice water  (condensate)
-  real(crm_rknd) qpi     (nx, ny, nzm)                ! ice water  (precipitation)
+  real(crm_rknd) qv      (icrm,nx, ny, nzm)                ! water vapor
+  real(crm_rknd) qcl     (icrm,nx, ny, nzm)                ! liquid water  (condensate)
+  real(crm_rknd) qpl     (icrm,nx, ny, nzm)                ! liquid water  (precipitation)
+  real(crm_rknd) qci     (icrm,nx, ny, nzm)                ! ice water  (condensate)
+  real(crm_rknd) qpi     (icrm,nx, ny, nzm)                ! ice water  (precipitation)
 
   real(crm_rknd) tke2(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
   real(crm_rknd) tk2     (0:nxp1, (1-YES3D):nyp1, nzm) ! SGS eddyviscosity

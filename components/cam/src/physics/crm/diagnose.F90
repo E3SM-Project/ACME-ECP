@@ -41,20 +41,20 @@ contains
       coef1 = rho(k)*dz*adz(k)*dtfactor
       do j=1,ny
         do i=1,nx
-          tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k)+ fac_cond * (qcl(i,j,k)+qpl(i,j,k)) +&
-          fac_sub *(qci(i,j,k) + qpi(i,j,k))
+          tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) +&
+          fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
           u0(k)=u0(k)+u(icrm,i,j,k)
           v0(k)=v0(k)+v(icrm,i,j,k)
           p0(k)=p0(k)+p(icrm,i,j,k)
           t0(k)=t0(k)+t(icrm,i,j,k)
           tabs0(k)=tabs0(k)+tabs(icrm,i,j,k)
-          q0(k)=q0(k)+qv(i,j,k)+qcl(i,j,k)+qci(i,j,k)
-          qn0(k) = qn0(k) + qcl(i,j,k) + qci(i,j,k)
-          qp0(k) = qp0(k) + qpl(i,j,k) + qpi(i,j,k)
+          q0(k)=q0(k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
+          qn0(k) = qn0(k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
+          qp0(k) = qp0(k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
 
-          pw_xy(i,j) = pw_xy(i,j)+qv(i,j,k)*coef1
-          cw_xy(i,j) = cw_xy(i,j)+qcl(i,j,k)*coef1
-          iw_xy(i,j) = iw_xy(i,j)+qci(i,j,k)*coef1
+          pw_xy(i,j) = pw_xy(i,j)+qv(icrm,i,j,k)*coef1
+          cw_xy(i,j) = cw_xy(i,j)+qcl(icrm,i,j,k)*coef1
+          iw_xy(i,j) = iw_xy(i,j)+qci(icrm,i,j,k)*coef1
 
         end do
       end do
@@ -172,7 +172,7 @@ contains
         ! FIND CLOUD TOP HEIGHT
         tmp_lwp = 0.
         do k = nzm,1,-1
-          tmp_lwp = tmp_lwp + (qcl(i,j,k)+qci(i,j,k))*rho(k)*dz*adz(k)
+          tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(k)*dz*adz(k)
           if (tmp_lwp.gt.0.01) then
             cloudtopheight(i,j) = z(k)
             cloudtoptemp(i,j) = tabs(icrm,i,j,k)
@@ -182,7 +182,7 @@ contains
         end do
         ! FIND ECHO TOP HEIGHT
         do k = nzm,1,-1
-          if (qpl(i,j,k)+qpi(i,j,k).gt.1.e-6) then
+          if (qpl(icrm,i,j,k)+qpi(icrm,i,j,k).gt.1.e-6) then
             echotopheight(i,j) = z(k)
             EXIT
           end if

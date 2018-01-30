@@ -84,33 +84,33 @@ contains
           !         - separate buoyancy contributions for precipitating water and ice.
 
 
-          if(qcl(i,j,k)+qci(i,j,k) .gt. 0.) then
+          if(qcl(icrm,i,j,k)+qci(icrm,i,j,k) .gt. 0.) then
 
-            omn = qcl(i,j,k)/(qcl(i,j,k)+qci(i,j,k)+1.e-20)
+            omn = qcl(icrm,i,j,k)/(qcl(icrm,i,j,k)+qci(icrm,i,j,k)+1.e-20)
             lstarn = fac_cond+(1.-omn)*fac_fus
 
             dqsat = omn*dtqsatw_crm(tabs(icrm,i,j,k),pres(k))+ &
             (1.-omn)*dtqsati_crm(tabs(icrm,i,j,k),pres(k))
             qsatt = omn*qsatw_crm(tabs(icrm,i,j,k),pres(k))+(1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k))
-            bbb = 1. + epsv*qsatt-qcl(i,j,k)-qci(i,j,k) -qpl(i,j,k)-qpi(i,j,k)+1.61*tabs(icrm,i,j,k)*dqsat
+            bbb = 1. + epsv*qsatt-qcl(icrm,i,j,k)-qci(icrm,i,j,k) -qpl(icrm,i,j,k)-qpi(icrm,i,j,k)+1.61*tabs(icrm,i,j,k)*dqsat
             bbb = bbb / (1.+lstarn*dqsat)
             buoy_sgs=betdz*(bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
             +(bbb*lstarn - (1.+lstarn*dqsat)*tabs(icrm,i,j,k))* &
-            (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) &
-            + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(icrm,i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))  &
-            + (bbb*fac_sub  - (1.+fac_sub *dqsat)*tabs(icrm,i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
+            (qv(icrm,i,j,kc)+qcl(icrm,i,j,kc)+qci(icrm,i,j,kc)-qv(icrm,i,j,kb)-qcl(icrm,i,j,kb)-qci(icrm,i,j,kb)) &
+            + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(icrm,i,j,k))*(qpl(icrm,i,j,kc)-qpl(icrm,i,j,kb))  &
+            + (bbb*fac_sub  - (1.+fac_sub *dqsat)*tabs(icrm,i,j,k))*(qpi(icrm,i,j,kc)-qpi(icrm,i,j,kb)) )
             !bloss   +(bbb*lstarp - (1.+lstarp*dqsat)*tabs(icrm,i,j,k))* &
-            !bloss            (qpl(i,j,kc)+qpi(i,j,kc)-qpl(i,j,kb)-qpi(i,j,kb)) )
+            !bloss            (qpl(icrm,i,j,kc)+qpi(icrm,i,j,kc)-qpl(icrm,i,j,kb)-qpi(icrm,i,j,kb)) )
           else
 
-            bbb = 1.+epsv*qv(i,j,k)-qpl(i,j,k)-qpi(i,j,k)
+            bbb = 1.+epsv*qv(icrm,i,j,k)-qpl(icrm,i,j,k)-qpi(icrm,i,j,k)
             buoy_sgs=betdz*( bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
             +epsv*tabs(icrm,i,j,k)* &
-            (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) &
-            +(bbb*fac_cond-tabs(icrm,i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb)) &
-            +(bbb*fac_sub -tabs(icrm,i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
+            (qv(icrm,i,j,kc)+qcl(icrm,i,j,kc)+qci(icrm,i,j,kc)-qv(icrm,i,j,kb)-qcl(icrm,i,j,kb)-qci(icrm,i,j,kb)) &
+            +(bbb*fac_cond-tabs(icrm,i,j,k))*(qpl(icrm,i,j,kc)-qpl(icrm,i,j,kb)) &
+            +(bbb*fac_sub -tabs(icrm,i,j,k))*(qpi(icrm,i,j,kc)-qpi(icrm,i,j,kb)) )
             !bloss    +(bbb*lstarp-tabs(icrm,i,j,k))* &
-            !bloss         (qpl(i,j,kc)+qpi(i,j,kc)-qpl(i,j,kb)-qpi(i,j,kb)) )
+            !bloss         (qpl(icrm,i,j,kc)+qpi(icrm,i,j,kc)-qpl(icrm,i,j,kb)-qpi(icrm,i,j,kb)) )
           end if
 
           if(buoy_sgs.le.0.) then

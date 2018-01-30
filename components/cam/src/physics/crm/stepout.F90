@@ -140,13 +140,13 @@ contains
       !print*,'w->:'
       !write(6,'(16f7.2)')((w(icrm,i,1,k),i=1,16),k=nzm,1,-1)
       !print*,'qcl:'
-      !write(6,'(16f7.2)')((qcl(i,13,k)*1000.,i=1,16),k=30,1,-1)
+      !write(6,'(16f7.2)')((qcl(icrm,i,13,k)*1000.,i=1,16),k=30,1,-1)
       !print*,'qpl:'
-      !write(6,'(16f7.2)')((qpl(i,13,k)*1000.,i=1,16),k=30,1,-1)
+      !write(6,'(16f7.2)')((qpl(icrm,i,13,k)*1000.,i=1,16),k=30,1,-1)
       !print*,'qrad:'
       !write(6,'(16f7.2)')((qrad(i,13,k)*3600.,i=1,16),k=30,1,-1)
       !print*,'qv:'
-      !write(6,'(16f7.2)')((qv(i,13,k)*1000.,i=1,16),k=30,1,-1)
+      !write(6,'(16f7.2)')((qv(icrm,i,13,k)*1000.,i=1,16),k=30,1,-1)
       !print*,'tabs:'
       !write(6,'(16f7.2)')((tabs(icrm,i,13,k),i=1,16),k=30,1,-1)
       !
@@ -169,20 +169,20 @@ contains
       call fminmax_print('p:',p(icrm,:,:,:),0,nx,1-YES3D,ny,nzm)
       call fminmax_print('t:',t(icrm,:,:,:),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
       call fminmax_print('tabs:',tabs(icrm,:,:,:),1,nx,1,ny,nzm)
-      call fminmax_print('qv:',qv,1,nx,1,ny,nzm)
+      call fminmax_print('qv:',qv(icrm,:,:,:),1,nx,1,ny,nzm)
       if(dosgs) call sgs_print()
 #ifdef CLUBB_CRM
       if(docloud.or.doclubb) then
 #else
         if(docloud) then
 #endif /*CLUBB_CRM*/
-          call fminmax_print('qcl:',qcl,1,nx,1,ny,nzm)
-          call fminmax_print('qci:',qci,1,nx,1,ny,nzm)
+          call fminmax_print('qcl:',qcl(icrm,:,:,:),1,nx,1,ny,nzm)
+          call fminmax_print('qci:',qci(icrm,:,:,:),1,nx,1,ny,nzm)
           call micro_print()
         end if
         if(doprecip) then
-          call fminmax_print('qpl:',qpl,1,nx,1,ny,nzm)
-          call fminmax_print('qpi:',qpi,1,nx,1,ny,nzm)
+          call fminmax_print('qpl:',qpl(icrm,:,:,:),1,nx,1,ny,nzm)
+          call fminmax_print('qpi:',qpi(icrm,:,:,:),1,nx,1,ny,nzm)
         end if
         ! if(dolongwave.or.doshortwave) call fminmax_print('qrad(K/day):',qrad*86400.,1,nx,1,ny,nzm)
         if(dotracers) then
