@@ -181,7 +181,7 @@ subroutine crm(lchnk, icol, ncrms, &
     real(r8), intent(in   ) :: qccl                (ncrms,plev)  ! Global grid cloud liquid water (g/g)
     real(r8), intent(in   ) :: qiil                (ncrms,plev)  ! Global grid cloud ice (g/g)
     real(r8), intent(in   ) :: ul                  (ncrms,plev)  ! Global grid u (icrm,m/s)
-    real(r8), intent(in   ) :: vl                  (ncrms,plev)  ! Global grid v (m/s)
+    real(r8), intent(in   ) :: vl                  (ncrms,plev)  ! Global grid v (icrm,m/s)
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
     real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
@@ -528,7 +528,7 @@ subroutine crm(lchnk, icol, ncrms, &
     endif
 
     u          (icrm,1:nx,1:ny,1:nzm                ) = u_crm           (icrm,1:nx,1:ny,1:nzm                )
-    v          (1:nx,1:ny,1:nzm                ) = v_crm           (icrm,1:nx,1:ny,1:nzm                )*YES3D
+    v          (icrm,1:nx,1:ny,1:nzm                ) = v_crm           (icrm,1:nx,1:ny,1:nzm                )*YES3D
     w          (1:nx,1:ny,1:nzm                ) = w_crm           (icrm,1:nx,1:ny,1:nzm                )
     tabs       (icrm,1:nx,1:ny,1:nzm                ) = t_crm           (icrm,1:nx,1:ny,1:nzm                )
     micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
@@ -599,7 +599,7 @@ subroutine crm(lchnk, icol, ncrms, &
           colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(icrm,plev-k+1)
           colprecs=colprecs+qpi(i,j,k)*pdel(icrm,plev-k+1)
           u0(k)=u0(k)+u(icrm,i,j,k)
-          v0(k)=v0(k)+v(i,j,k)
+          v0(k)=v0(k)+v(icrm,i,j,k)
           t0(k)=t0(k)+t(i,j,k)
           t00(k)=t00(k)+t(i,j,k)+fac_cond*qpl(i,j,k)+fac_sub*qpi(i,j,k)
           tabs0(k)=tabs0(k)+tabs(icrm,i,j,k)
@@ -1378,7 +1378,7 @@ subroutine crm(lchnk, icol, ncrms, &
           qccln(l)= qccln(l)+qcl(i,j,k)
           qiiln(l)= qiiln(l)+qci(i,j,k)
           uln(l) = uln(l)+u(icrm,i,j,k)
-          vln(l) = vln(l)+v(i,j,k)
+          vln(l) = vln(l)+v(icrm,i,j,k)
         enddo ! k
       enddo
     enddo ! i
@@ -1413,7 +1413,7 @@ subroutine crm(lchnk, icol, ncrms, &
     !
     ! Save the last step to the permanent core:
     u_crm  (icrm,1:nx,1:ny,1:nzm) = u   (icrm,1:nx,1:ny,1:nzm)
-    v_crm  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
+    v_crm  (icrm,1:nx,1:ny,1:nzm) = v   (icrm,1:nx,1:ny,1:nzm)
     w_crm  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
     t_crm  (icrm,1:nx,1:ny,1:nzm) = tabs(icrm,1:nx,1:ny,1:nzm)
     micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
@@ -1663,7 +1663,7 @@ subroutine crm(lchnk, icol, ncrms, &
       do j=1,ny
         do i=1,nx
           u2z = u2z+(u(icrm,i,j,k)-u0(k))**2
-          v2z = v2z+(v(i,j,k)-v0(k))**2
+          v2z = v2z+(v(icrm,i,j,k)-v0(k))**2
           w2z = w2z+0.5*(w(i,j,k+1)**2+w(i,j,k)**2)
         enddo
       enddo

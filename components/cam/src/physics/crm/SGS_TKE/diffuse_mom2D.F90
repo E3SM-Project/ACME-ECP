@@ -43,7 +43,7 @@ contains
           ic=i+1
           tkx=rdx21*tk(i,j,k)
           fu(i,j,k)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
-          fv(i,j,k)=-tkx*(v(ic,j,k)-v(i,j,k))
+          fv(i,j,k)=-tkx*(v(icrm,ic,j,k)-v(icrm,i,j,k))
           tkx=rdx251*(tk(i,j,k)+tk(ic,j,k)+tk(i,j,kcu)+tk(ic,j,kcu))
           fw(i,j,k)=-tkx*(w(ic,j,kc)-w(i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz)
         end do
@@ -77,7 +77,7 @@ contains
         tkz=rdz25*(tk(i,j,k)+tk(ib,j,k)+tk(i,j,kc)+tk(ib,j,kc))
         fu(i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + &
         (w(i,j,kc)-w(ib,j,kc))*dzx)*rhow(kc)
-        fv(i,j,kc)=-tkz*(v(i,j,kc)-v(i,j,k))*iadzw*rhow(kc)
+        fv(i,j,kc)=-tkz*(v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw*rhow(kc)
         uwsb(kc)=uwsb(kc)+fu(i,j,kc)
         vwsb(kc)=vwsb(kc)+fv(i,j,kc)
       end do

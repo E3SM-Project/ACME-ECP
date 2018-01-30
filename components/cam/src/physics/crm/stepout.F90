@@ -56,7 +56,7 @@ contains
             jc = j+1*YES3D
             do i=1,nx-1
               ic = i+1
-              div = (u(icrm,ic,j,k)-u(icrm,i,j,k))*rdx + (v(i,jc,k)-v(i,j,k))*rdy + &
+              div = (u(icrm,ic,j,k)-u(icrm,i,j,k))*rdx + (v(icrm,i,jc,k)-v(icrm,i,j,k))*rdy + &
               (w(i,j,k+1)*rhow(k+1)-w(i,j,k)*rhow(k))*rdz
               divmax = max(divmax,div)
               divmin = min(divmin,div)
@@ -136,7 +136,7 @@ contains
       !print*,'u->:'
       !write(6,'(16f7.2)')((u(icrm,i,1,k),i=1,16),k=nzm,1,-1)
       !print*,'v->:'
-      !write(6,'(16f7.2)')((v(i,1,k),i=1,16),k=nzm,1,-1)
+      !write(6,'(16f7.2)')((v(icrm,i,1,k),i=1,16),k=nzm,1,-1)
       !print*,'w->:'
       !write(6,'(16f7.2)')((w(i,1,k),i=1,16),k=nzm,1,-1)
       !print*,'qcl:'
@@ -164,7 +164,7 @@ contains
       endif
 
       call fminmax_print('u:',u(icrm,:,:,:),dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm)
-      call fminmax_print('v:',v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm-5)
+      call fminmax_print('v:',v(icrm,:,:,:),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm-5)
       call fminmax_print('w:',w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz)
       call fminmax_print('p:',p(icrm,:,:,:),0,nx,1-YES3D,ny,nzm)
       call fminmax_print('t:',t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)

@@ -47,7 +47,7 @@ contains
       do j=1, ny
         do i=1, nx
           u0(k) = u0(k) + u(icrm,i,j,k)/(nx*ny)
-          v0(k) = v0(k) + v(i,j,k)/(nx*ny)
+          v0(k) = v0(k) + v(icrm,i,j,k)/(nx*ny)
           t0(k) = t0(k) + t(i,j,k)/(nx*ny)
         end do
       end do
@@ -58,7 +58,7 @@ contains
       do j=1,ny
         do i=1,nx
           dudt(i,j,k,na)= dudt(i,j,k,na)-(u(icrm,i,j,k)-u0(k)) * tau(k)
-          dvdt(i,j,k,na)= dvdt(i,j,k,na)-(v(i,j,k)-v0(k)) * tau(k)
+          dvdt(i,j,k,na)= dvdt(i,j,k,na)-(v(icrm,i,j,k)-v0(k)) * tau(k)
           dwdt(i,j,k,na)= dwdt(i,j,k,na)-w(i,j,k) * tau(k)
           t(i,j,k)= t(i,j,k)-dtn*(t(i,j,k)-t0(k)) * tau(k)
           ! In the old version (SAM7.5?) of SAM, water vapor is the prognostic variable for the two-moment microphyscs.

@@ -64,7 +64,7 @@ contains
           do i=1,nx
             ic=i+1
             p(icrm,i,j,k)=(rdx*(u(icrm,ic,j,k)-u(icrm,i,j,k))+ &
-            rdy*(v(i,jc,k)-v(i,j,k))+ &
+            rdy*(v(icrm,i,jc,k)-v(icrm,i,j,k))+ &
             (w(i,j,kc)*rup-w(i,j,k)*rdn) )*dta + &
             (rdx*(dudt(ic,j,k,na)-dudt(i,j,k,na))+ &
             rdy*(dvdt(i,jc,k,na)-dvdt(i,j,k,na))+ &

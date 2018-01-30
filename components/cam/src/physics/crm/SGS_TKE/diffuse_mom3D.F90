@@ -53,7 +53,7 @@ contains
           tkx=rdx21*tk(i,j,k)
           fu(i,j,k)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
           tkx=rdx251*(tk(i,j,k)+tk(i,jb,k)+tk(ic,j,k)+tk(ic,jb,k))
-          fv(i,j,k)=-tkx*(v(ic,j,k)-v(i,j,k)+(u(icrm,ic,j,k)-u(icrm,ic,jb,k))*dxy)
+          fv(i,j,k)=-tkx*(v(icrm,ic,j,k)-v(icrm,i,j,k)+(u(icrm,ic,j,k)-u(icrm,ic,jb,k))*dxy)
           tkx=rdx251*(tk(i,j,k)+tk(ic,j,k)+tk(i,j,kcu)+tk(ic,j,kcu))
           fw(i,j,k)=-tkx*(w(ic,j,kc)-w(i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz)
         end do
@@ -70,11 +70,11 @@ contains
         do i=1,nx
           ib=i-1
           tky=rdy21*tk(i,j,k)
-          fv(i,j,k)=-2.*tky*(v(i,jc,k)-v(i,j,k))
+          fv(i,j,k)=-2.*tky*(v(icrm,i,jc,k)-v(icrm,i,j,k))
           tky=rdy251*(tk(i,j,k)+tk(ib,j,k)+tk(i,jc,k)+tk(ib,jc,k))
-          fu(i,j,k)=-tky*(u(icrm,i,jc,k)-u(icrm,i,j,k)+(v(i,jc,k)-v(ib,jc,k))*dyx)
+          fu(i,j,k)=-tky*(u(icrm,i,jc,k)-u(icrm,i,j,k)+(v(icrm,i,jc,k)-v(icrm,ib,jc,k))*dyx)
           tky=rdy251*(tk(i,j,k)+tk(i,jc,k)+tk(i,j,kcu)+tk(i,jc,kcu))
-          fw(i,j,k)=-tky*(w(i,jc,kc)-w(i,j,kc)+(v(i,jc,kcu)-v(i,jc,k))*dyz)
+          fw(i,j,k)=-tky*(w(i,jc,kc)-w(i,j,kc)+(v(icrm,i,jc,kcu)-v(icrm,i,jc,k))*dyz)
         end do
       end do
       do j=1,ny
@@ -111,7 +111,7 @@ contains
           fu(i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + &
           (w(i,j,kc)-w(ib,j,kc))*dzx)*rhow(kc)
           tkz=rdz25*(tk(i,j,k)+tk(i,jb,k)+tk(i,j,kc)+tk(i,jb,kc))
-          fv(i,j,kc)=-tkz*( (v(i,j,kc)-v(i,j,k))*iadzw + &
+          fv(i,j,kc)=-tkz*( (v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw + &
           (w(i,j,kc)-w(i,jb,kc))*dzy)*rhow(kc)
           uwsb(kc)=uwsb(kc)+fu(i,j,kc)
           vwsb(kc)=vwsb(kc)+fv(i,j,kc)
