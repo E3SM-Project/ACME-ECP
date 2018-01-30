@@ -33,8 +33,8 @@ contains
           else
             qpoz = qpoz + micro_field(i,j,k,index_water_vapor)
           end if
-          dudt(i,j,k,na)=dudt(i,j,k,na) + utend(k)
-          dvdt(i,j,k,na)=dvdt(i,j,k,na) + vtend(k)
+          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na) + utend(k)
+          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na) + vtend(k)
         end do
       end do
 

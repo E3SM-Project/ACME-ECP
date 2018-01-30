@@ -27,20 +27,20 @@ module vars
   real(crm_rknd) qci     (icrm,nx, ny, nzm)                ! ice water  (condensate)
   real(crm_rknd) qpi     (icrm,nx, ny, nzm)                ! ice water  (precipitation)
 
-  real(crm_rknd) tke2(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
-  real(crm_rknd) tk2     (0:nxp1, (1-YES3D):nyp1, nzm) ! SGS eddyviscosity
+  real(crm_rknd) tke2(icrm,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
+  real(crm_rknd) tk2     (icrm,0:nxp1, (1-YES3D):nyp1, nzm) ! SGS eddyviscosity
 
   !--------------------------------------------------------------------
   ! time-tendencies for prognostic variables
 
-  real(crm_rknd) dudt   (nxp1, ny, nzm, 3)
-  real(crm_rknd) dvdt   (nx, nyp1, nzm, 3)
-  real(crm_rknd) dwdt   (nx, ny, nz,  3)
+  real(crm_rknd) dudt   (icrm,nxp1, ny, nzm, 3)
+  real(crm_rknd) dvdt   (icrm,nx, nyp1, nzm, 3)
+  real(crm_rknd) dwdt   (icrm,nx, ny, nz,  3)
 
   !----------------------------------------------------------------
   ! Temporary storage array:
 
-  real(crm_rknd) misc(nx, ny, nz)
+  real(crm_rknd) misc(icrm,nx, ny, nz)
   !------------------------------------------------------------------
   ! fluxes at the top and bottom of the domain:
 

@@ -49,9 +49,9 @@ contains
         end do
         do i=1,nx
           ib=i-1
-          dudt(i,j,k,na)=dudt(i,j,k,na)-(fu(i,j,k)-fu(ib,j,k))
-          dvdt(i,j,k,na)=dvdt(i,j,k,na)-(fv(i,j,k)-fv(ib,j,k))
-          dwdt(i,j,kc,na)=dwdt(i,j,kc,na)-(fw(i,j,k)-fw(ib,j,k))
+          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,k)-fu(ib,j,k))
+          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(i,j,k)-fv(ib,j,k))
+          dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(fw(i,j,k)-fw(ib,j,k))
         end do
 
       end do
@@ -102,15 +102,15 @@ contains
       kc=k+1
       rhoi = 1./(rho(k)*adz(k))
       do i=1,nx
-        dudt(i,j,k,na)=dudt(i,j,k,na)-(fu(i,j,kc)-fu(i,j,k))*rhoi
-        dvdt(i,j,k,na)=dvdt(i,j,k,na)-(fv(i,j,kc)-fv(i,j,k))*rhoi
+        dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,kc)-fu(i,j,k))*rhoi
+        dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(i,j,kc)-fv(i,j,k))*rhoi
       end do
     end do ! k
 
     do k=2,nzm
       rhoi = 1./(rhow(k)*adzw(k))
       do i=1,nx
-        dwdt(i,j,k,na)=dwdt(i,j,k,na)-(fw(i,j,k+1)-fw(i,j,k))*rhoi
+        dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(i,j,k+1)-fw(i,j,k))*rhoi
       end do
     end do ! k
 

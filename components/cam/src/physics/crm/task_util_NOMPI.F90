@@ -226,7 +226,9 @@ contains
     j=0
   end
   !----------------------------------------------------------------------
-  subroutine task_bound_duvdt ()
+  subroutine task_bound_duvdt (ncrms,icrm)
+    implicit none
+    integer, intent(in) :: ncrms, icrm
     return
   end
   !----------------------------------------------------------------------

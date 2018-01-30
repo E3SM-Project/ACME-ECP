@@ -1,22 +1,23 @@
 module zero_mod
-	implicit none
+  implicit none
 
 contains
 
-	subroutine zero
+  subroutine zero(ncrms,icrm)
 
-		use vars
-		use microphysics, only : total_water
+    use vars
+    use microphysics, only : total_water
 
-		implicit none
+    implicit none
+    integer, intent(in) :: ncrms,icrm
 
-		integer k
+    integer k
 
-		dudt(:,:,:,na) = 0.
-		dvdt(:,:,:,na) = 0.
-		dwdt(:,:,:,na) = 0.
-		misc(:,:,:) = 0.
+    dudt(icrm,:,:,:,na) = 0.
+    dvdt(icrm,:,:,:,na) = 0.
+    dwdt(icrm,:,:,:,na) = 0.
+    misc(icrm,:,:,:) = 0.
 
-	end
+  end
 
 end module zero_mod

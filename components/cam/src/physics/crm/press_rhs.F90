@@ -23,7 +23,7 @@ contains
 
       do k=1,nzm
         do j=1,ny
-          dudt(1,j,k,na) = 0.
+          dudt(icrm,1,j,k,na) = 0.
         end do
       end do
 
@@ -33,7 +33,7 @@ contains
 
       do k=1,nzm
         do i=1,nx
-          dvdt(i,1,k,na) = 0.
+          dvdt(icrm,i,1,k,na) = 0.
         end do
       end do
 
@@ -41,9 +41,9 @@ contains
 
 
     if(dompi) then
-      call task_bound_duvdt()
+      call task_bound_duvdt(ncrms,icrm)
     else
-      call bound_duvdt()
+      call bound_duvdt(ncrms,icrm)
     endif
 
     dta=1./dt3(na)/at
@@ -66,15 +66,15 @@ contains
             p(icrm,i,j,k)=(rdx*(u(icrm,ic,j,k)-u(icrm,i,j,k))+ &
             rdy*(v(icrm,i,jc,k)-v(icrm,i,j,k))+ &
             (w(icrm,i,j,kc)*rup-w(icrm,i,j,k)*rdn) )*dta + &
-            (rdx*(dudt(ic,j,k,na)-dudt(i,j,k,na))+ &
-            rdy*(dvdt(i,jc,k,na)-dvdt(i,j,k,na))+ &
-            (dwdt(i,j,kc,na)*rup-dwdt(i,j,k,na)*rdn) ) + &
-            btat*(rdx*(dudt(ic,j,k,nb)-dudt(i,j,k,nb))+ &
-            rdy*(dvdt(i,jc,k,nb)-dvdt(i,j,k,nb))+ &
-            (dwdt(i,j,kc,nb)*rup-dwdt(i,j,k,nb)*rdn) ) + &
-            ctat*(rdx*(dudt(ic,j,k,nc)-dudt(i,j,k,nc))+ &
-            rdy*(dvdt(i,jc,k,nc)-dvdt(i,j,k,nc))+ &
-            (dwdt(i,j,kc,nc)*rup-dwdt(i,j,k,nc)*rdn) )
+            (rdx*(dudt(icrm,ic,j,k,na)-dudt(icrm,i,j,k,na))+ &
+            rdy*(dvdt(icrm,i,jc,k,na)-dvdt(icrm,i,j,k,na))+ &
+            (dwdt(icrm,i,j,kc,na)*rup-dwdt(icrm,i,j,k,na)*rdn) ) + &
+            btat*(rdx*(dudt(icrm,ic,j,k,nb)-dudt(icrm,i,j,k,nb))+ &
+            rdy*(dvdt(icrm,i,jc,k,nb)-dvdt(icrm,i,j,k,nb))+ &
+            (dwdt(icrm,i,j,kc,nb)*rup-dwdt(icrm,i,j,k,nb)*rdn) ) + &
+            ctat*(rdx*(dudt(icrm,ic,j,k,nc)-dudt(icrm,i,j,k,nc))+ &
+            rdy*(dvdt(icrm,i,jc,k,nc)-dvdt(icrm,i,j,k,nc))+ &
+            (dwdt(icrm,i,j,kc,nc)*rup-dwdt(icrm,i,j,k,nc)*rdn) )
             p(icrm,i,j,k)=p(icrm,i,j,k)*rho(k)
           end do
         end do
@@ -94,12 +94,12 @@ contains
           ic=i+1
           p(icrm,i,j,k)=(rdx*(u(icrm,ic,j,k)-u(icrm,i,j,k))+ &
           (w(icrm,i,j,kc)*rup-w(icrm,i,j,k)*rdn) )*dta + &
-          (rdx*(dudt(ic,j,k,na)-dudt(i,j,k,na))+ &
-          (dwdt(i,j,kc,na)*rup-dwdt(i,j,k,na)*rdn) ) + &
-          btat*(rdx*(dudt(ic,j,k,nb)-dudt(i,j,k,nb))+ &
-          (dwdt(i,j,kc,nb)*rup-dwdt(i,j,k,nb)*rdn) ) + &
-          ctat*(rdx*(dudt(ic,j,k,nc)-dudt(i,j,k,nc))+ &
-          (dwdt(i,j,kc,nc)*rup-dwdt(i,j,k,nc)*rdn) )
+          (rdx*(dudt(icrm,ic,j,k,na)-dudt(icrm,i,j,k,na))+ &
+          (dwdt(icrm,i,j,kc,na)*rup-dwdt(icrm,i,j,k,na)*rdn) ) + &
+          btat*(rdx*(dudt(icrm,ic,j,k,nb)-dudt(icrm,i,j,k,nb))+ &
+          (dwdt(icrm,i,j,kc,nb)*rup-dwdt(icrm,i,j,k,nb)*rdn) ) + &
+          ctat*(rdx*(dudt(icrm,ic,j,k,nc)-dudt(icrm,i,j,k,nc))+ &
+          (dwdt(icrm,i,j,kc,nc)*rup-dwdt(icrm,i,j,k,nc)*rdn) )
           p(icrm,i,j,k)=p(icrm,i,j,k)*rho(k)
         end do
       end do

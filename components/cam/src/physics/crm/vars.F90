@@ -21,26 +21,26 @@ module vars
 
   real(crm_rknd), allocatable :: p   (:,:,:,:) !REDIM       ! perturbation pressure (from Poison eq)
   real(crm_rknd), allocatable :: tabs(:,:,:,:) !REDIM        ! temperature
-  real(crm_rknd), allocatable :: qv  (:,:,:,:)        ! water vapor
-  real(crm_rknd), allocatable :: qcl (:,:,:,:)        ! liquid water  (condensate)
-  real(crm_rknd), allocatable :: qpl (:,:,:,:)        ! liquid water  (precipitation)
-  real(crm_rknd), allocatable :: qci (:,:,:,:)        ! ice water  (condensate)
-  real(crm_rknd), allocatable :: qpi (:,:,:,:)        ! ice water  (precipitation)
+  real(crm_rknd), allocatable :: qv  (:,:,:,:) !REDIM       ! water vapor
+  real(crm_rknd), allocatable :: qcl (:,:,:,:) !REDIM       ! liquid water  (condensate)
+  real(crm_rknd), allocatable :: qpl (:,:,:,:) !REDIM       ! liquid water  (precipitation)
+  real(crm_rknd), allocatable :: qci (:,:,:,:) !REDIM       ! ice water  (condensate)
+  real(crm_rknd), allocatable :: qpi (:,:,:,:) !REDIM       ! ice water  (precipitation)
 
-  real(crm_rknd), allocatable :: tke2(:,:,:)       ! SGS TKE
-  real(crm_rknd), allocatable :: tk2 (:,:,:)     ! SGS eddyviscosity
+  real(crm_rknd), allocatable :: tke2(:,:,:,:) !REDIM      ! SGS TKE
+  real(crm_rknd), allocatable :: tk2 (:,:,:,:) !REDIM    ! SGS eddyviscosity
 
   !--------------------------------------------------------------------
   ! time-tendencies for prognostic variables
 
-  real(crm_rknd), allocatable :: dudt(:,:,:,:)
-  real(crm_rknd), allocatable :: dvdt(:,:,:,:)
-  real(crm_rknd), allocatable :: dwdt(:,:,:,:)
+  real(crm_rknd), allocatable :: dudt(:,:,:,:,:) !REDIM
+  real(crm_rknd), allocatable :: dvdt(:,:,:,:,:) !REDIM
+  real(crm_rknd), allocatable :: dwdt(:,:,:,:,:) !REDIM
 
   !----------------------------------------------------------------
   ! Temporary storage array:
 
-  real(crm_rknd), allocatable :: misc(:,:,:)
+  real(crm_rknd), allocatable :: misc(:,:,:,:) !REDIM
   !------------------------------------------------------------------
   ! fluxes at the top and bottom of the domain:
 
@@ -217,12 +217,12 @@ contains
     allocate( qpl (ncrms,nx, ny, nzm) )                ! liquid water  (precipitation)
     allocate( qci (ncrms,nx, ny, nzm) )                ! ice water  (condensate)
     allocate( qpi (ncrms,nx, ny, nzm) )                ! ice water  (precipitation)
-    allocate( tke2(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )   ! SGS TKE
-    allocate( tk2 (0:nxp1, (1-YES3D):nyp1, nzm) ) ! SGS eddyviscosity
-    allocate( dudt   (nxp1, ny, nzm, 3) )
-    allocate( dvdt   (nx, nyp1, nzm, 3) )
-    allocate( dwdt   (nx, ny, nz,  3) )
-    allocate( misc   (nx, ny, nz) )
+    allocate( tke2(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )   ! SGS TKE
+    allocate( tk2 (ncrms,0:nxp1, (1-YES3D):nyp1, nzm) ) ! SGS eddyviscosity
+    allocate( dudt   (ncrms,nxp1, ny, nzm, 3) )
+    allocate( dvdt   (ncrms,nx, nyp1, nzm, 3) )
+    allocate( dwdt   (ncrms,nx, ny, nz,  3) )
+    allocate( misc   (ncrms,nx, ny, nz) )
     allocate( fluxbu (nx, ny) )
     allocate( fluxbv (nx, ny) )
     allocate( fluxbt (nx, ny) )

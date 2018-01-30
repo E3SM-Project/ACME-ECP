@@ -563,9 +563,9 @@ subroutine crm(lchnk, icol, ncrms, &
 
     w(icrm,:,:,nz)=0.
     wsub (:) = 0.      !used in clubb, +++mhwang
-    dudt(1:nx,1:ny,1:nzm,1:3) = 0.
-    dvdt(1:nx,1:ny,1:nzm,1:3) = 0.
-    dwdt(1:nx,1:ny,1:nz,1:3) = 0.
+    dudt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
+    dvdt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
+    dwdt(icrm,1:nx,1:ny,1:nz,1:3) = 0.
     tke (1:nx,1:ny,1:nzm) = 0.
     tk  (1:nx,1:ny,1:nzm) = 0.
     tkh (1:nx,1:ny,1:nzm) = 0.
@@ -929,7 +929,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !---------------------------------------------
         !  	initialize stuff:
-        call zero()
+        call zero(ncrms,icrm)
 
         !-----------------------------------------------------------
         !       Buoyancy term:
