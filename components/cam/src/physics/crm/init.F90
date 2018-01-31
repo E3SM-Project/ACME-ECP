@@ -43,11 +43,11 @@ contains
     qifall(icrm,:) = 0.
     qpfall(icrm,:) = 0.
 
-    trwle = 0.
-    trwsb = 0.
-    tradv = 0.
-    trdiff = 0.
-    trphys = 0.
+    trwle (icrm,:,:) = 0.
+    trwsb (icrm,:,:) = 0.
+    tradv (icrm,:,:) = 0.
+    trdiff(icrm,:,:) = 0.
+    trphys(icrm,:,:) = 0.
 
     !gamt0 = 0.
     !gamq0 = 0.

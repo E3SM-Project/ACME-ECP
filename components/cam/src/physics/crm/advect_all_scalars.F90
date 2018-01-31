@@ -73,7 +73,7 @@ contains
     if(dotracers) then
 
       do k = 1,ntracers
-        call advect_scalar(tracer(:,:,:,k),tradv(:,k),trwle(:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
+        call advect_scalar(tracer(icrm,:,:,:,k),tradv(icrm,:,k),trwle(icrm,:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
       end do
 
     end if

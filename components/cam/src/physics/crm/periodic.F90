@@ -61,7 +61,7 @@ contains
       end do
       if(dotracers) then
         do i=1,ntracers
-          call bound_exchange(tracer(:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+          call bound_exchange(tracer(icrm,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
           3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
         end do
       end if
@@ -90,7 +90,7 @@ contains
       end do
       if(dotracers) then
         do i=1,ntracers
-          call bound_exchange(tracer(:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+          call bound_exchange(tracer(icrm,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
           1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
         end do
       end if

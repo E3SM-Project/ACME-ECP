@@ -187,7 +187,7 @@ contains
         ! if(dolongwave.or.doshortwave) call fminmax_print('qrad(K/day):',qrad*86400.,1,nx,1,ny,nzm)
         if(dotracers) then
           do k=1,ntracers
-            call fminmax_print(trim(tracername(k))//':',tracer(:,:,:,k),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
+            call fminmax_print(trim(tracername(k))//':',tracer(icrm,:,:,:,k),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
           end do
         end if
         call fminmax_print('shf:',fluxbt(icrm,:,:)*cp*rhow(icrm,1),1,nx,1,ny,1)

@@ -16,14 +16,14 @@ module crmtracers
   use utils,  only: lenstr
   implicit none
 
-  real(crm_rknd), allocatable :: tracer  (:,:,:,:)
-  real(crm_rknd), allocatable :: fluxbtr (:,:,:) ! surface flux of tracers
-  real(crm_rknd), allocatable :: fluxttr (:,:,:) ! top boundary flux of tracers
-  real(crm_rknd), allocatable :: trwle   (:,:)   ! resolved vertical flux
-  real(crm_rknd), allocatable :: trwsb   (:,:)   ! SGS vertical flux
-  real(crm_rknd), allocatable :: tradv   (:,:)   ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: trdiff  (:,:)   ! tendency due to vertical diffusion
-  real(crm_rknd), allocatable :: trphys  (:,:)   ! tendency due to physics
+  real(crm_rknd), allocatable :: tracer  (:,:,:,:,:) !REDIM  
+  real(crm_rknd), allocatable :: fluxbtr (:,:,:,:)   !REDIM ! surface flux of tracers
+  real(crm_rknd), allocatable :: fluxttr (:,:,:,:)   !REDIM ! top boundary flux of tracers
+  real(crm_rknd), allocatable :: trwle   (:,:,:)     !REDIM ! resolved vertical flux
+  real(crm_rknd), allocatable :: trwsb   (:,:,:)     !REDIM ! SGS vertical flux
+  real(crm_rknd), allocatable :: tradv   (:,:,:)     !REDIM ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: trdiff  (:,:,:)     !REDIM ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: trphys  (:,:,:)     !REDIM ! tendency due to physics
   character *4 tracername(0:ntracers)
   character *10 tracerunits(0:ntracers)
 
@@ -33,14 +33,14 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers) )
-    allocate( fluxbtr (nx, ny, 0:ntracers) ) ! surface flux of tracers
-    allocate( fluxttr (nx, ny, 0:ntracers) ) ! top boundary flux of tracers
-    allocate( trwle   (nz,0:ntracers) )  ! resolved vertical flux
-    allocate( trwsb   (nz,0:ntracers) )  ! SGS vertical flux
-    allocate( tradv   (nz,0:ntracers) )  ! tendency due to vertical advection
-    allocate( trdiff  (nz,0:ntracers) )  ! tendency due to vertical diffusion
-    allocate( trphys  (nz,0:ntracers) )  ! tendency due to physics
+    allocate( tracer  (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers) )
+    allocate( fluxbtr (ncrms,nx, ny, 0:ntracers) ) ! surface flux of tracers
+    allocate( fluxttr (ncrms,nx, ny, 0:ntracers) ) ! top boundary flux of tracers
+    allocate( trwle   (ncrms,nz,0:ntracers) )  ! resolved vertical flux
+    allocate( trwsb   (ncrms,nz,0:ntracers) )  ! SGS vertical flux
+    allocate( tradv   (ncrms,nz,0:ntracers) )  ! tendency due to vertical advection
+    allocate( trdiff  (ncrms,nz,0:ntracers) )  ! tendency due to vertical diffusion
+    allocate( trphys  (ncrms,nz,0:ntracers) )  ! tendency due to physics
 
     zero = 0
 
@@ -66,15 +66,16 @@ CONTAINS
     deallocate( trphys  ) ! tendency due to physics
   end subroutine deallocate_tracers
 
-  subroutine tracers_init()
-
+  subroutine tracers_init(ncrms,icrm)
+    implicit none
+    integer, intent(in) :: ncrms,icrm
     integer k,ntr
     character *2 ntrchar
     ! integer, external :: lenstr
 
-    tracer = 0.
-    fluxbtr = 0.
-    fluxttr = 0.
+    tracer (icrm,:,:,:,:) = 0.
+    fluxbtr(icrm,:,:,:) = 0.
+    fluxttr(icrm,:,:,:) = 0.
 
     ! Add your initialization code here. Default is to set to 0 in setdata.f90.
 
@@ -109,12 +110,14 @@ CONTAINS
 
 
 
-  subroutine tracers_physics()
+  subroutine tracers_physics(ncrms,icrm)
+    implicit none
+    integer, intent(in) :: ncrms,icrm
 
     ! add here a call to a subroutine that does something to tracers besides advection and diffusion.
     ! The transport is done automatically.
 
-    trphys = 0. ! Default tendency due to physics. You code should compute this to output statistics.
+    trphys(icrm,:,:) = 0. ! Default tendency due to physics. You code should compute this to output statistics.
 
   end subroutine tracers_physics
 
