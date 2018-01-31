@@ -17,7 +17,7 @@ contains
 
 
 
-    real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
+    real(crm_rknd) qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
     integer hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
     real(crm_rknd) omega(nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
     integer ind
@@ -119,7 +119,7 @@ contains
         do iprec = 1,nprec
 
           do k = 1,nzm
-            tmp_qp(k) = qp(i,j,k) ! Temporary array for qp in this column
+            tmp_qp(k) = qp(icrm,i,j,k) ! Temporary array for qp in this column
           end do
 
           !-----------------------------------------
@@ -194,7 +194,7 @@ contains
             ! Update precipitation mass fraction.
             ! Note that fz is the total flux, including both the
             ! upwind flux and the anti-diffusive correction.
-            qp(i,j,k)=qp(i,j,k)-(fz(kc)-fz(k))*irhoadz(k)
+            qp(icrm,i,j,k)=qp(icrm,i,j,k)-(fz(kc)-fz(k))*irhoadz(k)
             qpfall(icrm,k)=qpfall(icrm,k)-(fz(kc)-fz(k))*irhoadz(k)*flagstat  ! For qp budget
             lat_heat = -(lfac(kc)*fz(kc)-lfac(k)*fz(k))*irhoadz(k)
             t(icrm,i,j,k)=t(icrm,i,j,k)-lat_heat

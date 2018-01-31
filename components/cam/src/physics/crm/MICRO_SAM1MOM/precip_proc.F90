@@ -12,8 +12,8 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms,icrm
-    real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
-    real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
+    real(crm_rknd) q(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
+    real(crm_rknd) qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
     real(crm_rknd) qn(nx,ny,nzm)  ! cloud condensate (liquid + ice)
     real(crm_rknd) qpsrc(nz)  ! source of precipitation microphysical processes
     real(crm_rknd) qpevp(nz)  ! sink of precipitating water due to evaporation
@@ -41,7 +41,7 @@ contains
 
           !-------     Autoconversion/accretion
 
-          if(qn(i,j,k)+qp(i,j,k).gt.0.) then
+          if(qn(i,j,k)+qp(icrm,i,j,k).gt.0.) then
 
 
             omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
@@ -67,13 +67,13 @@ contains
 
               accrr = 0.
               if(omp.gt.0.001) then
-                qrr = qp(i,j,k) * omp
+                qrr = qp(icrm,i,j,k) * omp
                 accrr = accrrc(k) * qrr ** powr1
               end if
               accrcs = 0.
               accris = 0.
               if(omp.lt.0.999.and.omg.lt.0.999) then
-                qss = qp(i,j,k) * (1.-omp)*(1.-omg)
+                qss = qp(icrm,i,j,k) * (1.-omp)*(1.-omg)
                 tmp = qss ** pows1
                 accrcs = accrsc(k) * tmp
                 accris = accrsi(k) * tmp
@@ -81,7 +81,7 @@ contains
               accrcg = 0.
               accrig = 0.
               if(omp.lt.0.999.and.omg.gt.0.001) then
-                qgg = qp(i,j,k) * (1.-omp)*omg
+                qgg = qp(icrm,i,j,k) * (1.-omp)*omg
                 tmp = qgg ** powg1
                 accrcg = accrgc(k) * tmp
                 accrig = accrgi(k) * tmp
@@ -91,48 +91,48 @@ contains
               dq = dtn *(accrr*qcc + autor*(qcc-qcw0)+ &
               (accris+accrig)*qii + (accrcs+accrcg)*qcc + autos*(qii-qci0))
               dq = min(dq,qn(i,j,k))
-              qp(i,j,k) = qp(i,j,k) + dq
-              q(i,j,k) = q(i,j,k) - dq
+              qp(icrm,i,j,k) = qp(icrm,i,j,k) + dq
+              q(icrm,i,j,k) = q(icrm,i,j,k) - dq
               qn(i,j,k) = qn(i,j,k) - dq
               qpsrc(k) = qpsrc(k) + dq
 
-            elseif(qp(i,j,k).gt.qp_threshold.and.qn(i,j,k).eq.0.) then
+            elseif(qp(icrm,i,j,k).gt.qp_threshold.and.qn(i,j,k).eq.0.) then
 
               qsatt = 0.
               if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(icrm,i,j,k),pres(k))
               if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k))
               dq = 0.
               if(omp.gt.0.001) then
-                qrr = qp(i,j,k) * omp
+                qrr = qp(icrm,i,j,k) * omp
                 dq = dq + evapr1(k)*sqrt(qrr) + evapr2(k)*qrr**powr2
               end if
               if(omp.lt.0.999.and.omg.lt.0.999) then
-                qss = qp(i,j,k) * (1.-omp)*(1.-omg)
+                qss = qp(icrm,i,j,k) * (1.-omp)*(1.-omg)
                 dq = dq + evaps1(k)*sqrt(qss) + evaps2(k)*qss**pows2
               end if
               if(omp.lt.0.999.and.omg.gt.0.001) then
-                qgg = qp(i,j,k) * (1.-omp)*omg
+                qgg = qp(icrm,i,j,k) * (1.-omp)*omg
                 dq = dq + evapg1(k)*sqrt(qgg) + evapg2(k)*qgg**powg2
               end if
-              dq = dq * dtn * (q(i,j,k) /qsatt-1.)
-              dq = max(-0.5*qp(i,j,k),dq)
-              qp(i,j,k) = qp(i,j,k) + dq
-              q(i,j,k) = q(i,j,k) - dq
+              dq = dq * dtn * (q(icrm,i,j,k) /qsatt-1.)
+              dq = max(-0.5*qp(icrm,i,j,k),dq)
+              qp(icrm,i,j,k) = qp(icrm,i,j,k) + dq
+              q(icrm,i,j,k) = q(icrm,i,j,k) - dq
               qpevp(k) = qpevp(k) + dq
 
             else
 
-              q(i,j,k) = q(i,j,k) + qp(i,j,k)
-              qpevp(k) = qpevp(k) - qp(i,j,k)
-              qp(i,j,k) = 0.
+              q(icrm,i,j,k) = q(icrm,i,j,k) + qp(icrm,i,j,k)
+              qpevp(k) = qpevp(k) - qp(icrm,i,j,k)
+              qp(icrm,i,j,k) = 0.
 
             endif
 
           endif
 
-          dq = qp(i,j,k)
-          qp(i,j,k)=max(real(0.,crm_rknd),qp(i,j,k))
-          q(i,j,k) = q(i,j,k) + (dq-qp(i,j,k))
+          dq = qp(icrm,i,j,k)
+          qp(icrm,i,j,k)=max(real(0.,crm_rknd),qp(icrm,i,j,k))
+          q(icrm,i,j,k) = q(icrm,i,j,k) + (dq-qp(icrm,i,j,k))
 
         end do
       enddo

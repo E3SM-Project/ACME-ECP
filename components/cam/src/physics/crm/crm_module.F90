@@ -531,7 +531,7 @@ subroutine crm(lchnk, icol, ncrms, &
     v          (icrm,1:nx,1:ny,1:nzm                ) = v_crm           (icrm,1:nx,1:ny,1:nzm                )*YES3D
     w          (icrm,1:nx,1:ny,1:nzm                ) = w_crm           (icrm,1:nx,1:ny,1:nzm                )
     tabs       (icrm,1:nx,1:ny,1:nzm                ) = t_crm           (icrm,1:nx,1:ny,1:nzm                )
-    micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
+    micro_field(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
 #ifdef sam1mom
     qn      (1:nx,1:ny,1:nzm) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3 )
 #endif
@@ -553,7 +553,7 @@ subroutine crm(lchnk, icol, ncrms, &
         do i=1, nx
           if(cloudliq(i,j,k).gt.0) then
             if(dopredictNc) then
-              if( micro_field(i,j,k,incl).eq.0) micro_field(i,j,k,incl) = 1.0e6*Nc0/rho(icrm,k)
+              if( micro_field(icrm,i,j,k,incl).eq.0) micro_field(icrm,i,j,k,incl) = 1.0e6*Nc0/rho(icrm,k)
             endif
           endif
         enddo
@@ -860,7 +860,7 @@ subroutine crm(lchnk, icol, ncrms, &
       do j=1, ny
         do i=1, nx
 #ifdef m2005
-          qtot(icrm,1) = qtot(icrm,1)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
+          qtot(icrm,1) = qtot(icrm,1)+((micro_field(icrm,i,j,k,iqr)+micro_field(icrm,i,j,k,iqs)+micro_field(icrm,i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
 #endif
 #ifdef sam1mom
           qtot(icrm,1) = qtot(icrm,1)+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k)) * pdel(icrm,l)/ggr/(nx*ny)
@@ -1180,14 +1180,14 @@ subroutine crm(lchnk, icol, ncrms, &
             !hm#else
             !           crm_qg(l) = crm_qg(l) + qpi(icrm,i,j,k)
             !           crm_qs(l) = crm_qs(l) + 0.     ! temporerary solution
-            !hm           crm_qg(l) = crm_qg(l) + micro_field(i,j,k,iqg)
-            !hm           crm_qs(l) = crm_qs(l) + micro_field(i,j,k,iqs)
+            !hm           crm_qg(l) = crm_qg(l) + micro_field(icrm,i,j,k,iqg)
+            !hm           crm_qs(l) = crm_qs(l) + micro_field(icrm,i,j,k,iqs)
 
-            !hm           crm_nc(l) = crm_nc(l) + micro_field(i,j,k,incl)
-            !hm           crm_ni(l) = crm_ni(l) + micro_field(i,j,k,inci)
-            !hm           crm_nr(l) = crm_nr(l) + micro_field(i,j,k,inr)
-            !hm           crm_ng(l) = crm_ng(l) + micro_field(i,j,k,ing)
-            !hm           crm_ns(l) = crm_ns(l) + micro_field(i,j,k,ins)
+            !hm           crm_nc(l) = crm_nc(l) + micro_field(icrm,i,j,k,incl)
+            !hm           crm_ni(l) = crm_ni(l) + micro_field(icrm,i,j,k,inci)
+            !hm           crm_nr(l) = crm_nr(l) + micro_field(icrm,i,j,k,inr)
+            !hm           crm_ng(l) = crm_ng(l) + micro_field(icrm,i,j,k,ing)
+            !hm           crm_ns(l) = crm_ns(l) + micro_field(icrm,i,j,k,ins)
 
             !hm#endif
 
@@ -1237,10 +1237,10 @@ subroutine crm(lchnk, icol, ncrms, &
 !             qi_rad (icrm,i,j,k) = qi_rad (icrm,i,j,k)+qci(icrm,i,j,k)
 !             cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) +  CF3D(icrm,i,j,k)
 ! #ifdef m2005
-!             nc_rad(icrm,i,j,k) = nc_rad(icrm,i,j,k)+micro_field(i,j,k,incl)
-!             ni_rad(icrm,i,j,k) = ni_rad(icrm,i,j,k)+micro_field(i,j,k,inci)
-!             qs_rad(icrm,i,j,k) = qs_rad(icrm,i,j,k)+micro_field(i,j,k,iqs)
-!             ns_rad(icrm,i,j,k) = ns_rad(icrm,i,j,k)+micro_field(i,j,k,ins)
+!             nc_rad(icrm,i,j,k) = nc_rad(icrm,i,j,k)+micro_field(icrm,i,j,k,incl)
+!             ni_rad(icrm,i,j,k) = ni_rad(icrm,i,j,k)+micro_field(icrm,i,j,k,inci)
+!             qs_rad(icrm,i,j,k) = qs_rad(icrm,i,j,k)+micro_field(icrm,i,j,k,iqs)
+!             ns_rad(icrm,i,j,k) = ns_rad(icrm,i,j,k)+micro_field(icrm,i,j,k,ins)
 ! #endif
 
             !!! whannah - new method allows for fewer radiation calculation over column groups
@@ -1253,10 +1253,10 @@ subroutine crm(lchnk, icol, ncrms, &
             qi_rad (icrm,i_rad,j_rad,k) = qi_rad (icrm,i_rad,j_rad,k) + qci(icrm,i,j,k)
             cld_rad(icrm,i_rad,j_rad,k) = cld_rad(icrm,i_rad,j_rad,k) + CF3D(icrm,i,j,k)
 #ifdef m2005
-            nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
-            ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci)
-            qs_rad(icrm,i_rad,j_rad,k) = qs_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
-            ns_rad(icrm,i_rad,j_rad,k) = ns_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins)
+            nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,incl)
+            ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,inci)
+            qs_rad(icrm,i_rad,j_rad,k) = qs_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,iqs)
+            ns_rad(icrm,i_rad,j_rad,k) = ns_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,ins)
 #endif
             gliqwp(icrm,l) = gliqwp(icrm,l) + qcl(icrm,i,j,k)
             gicewp(icrm,l) = gicewp(icrm,l) + qci(icrm,i,j,k)
@@ -1401,7 +1401,7 @@ subroutine crm(lchnk, icol, ncrms, &
     v_crm  (icrm,1:nx,1:ny,1:nzm) = v   (icrm,1:nx,1:ny,1:nzm)
     w_crm  (icrm,1:nx,1:ny,1:nzm) = w   (icrm,1:nx,1:ny,1:nzm)
     t_crm  (icrm,1:nx,1:ny,1:nzm) = tabs(icrm,1:nx,1:ny,1:nzm)
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
+    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
 
 #ifdef sam1mom
     micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3) = qn(1:nx,1:ny,1:nzm)
@@ -1482,14 +1482,14 @@ subroutine crm(lchnk, icol, ncrms, &
 #else
           !crm_qg(icrm,l) = crm_qg(icrm,l) + qpi(icrm,i,j,k)
           !crm_qs(icrm,l) = crm_qs(icrm,l) + 0.     ! temporerary solution
-          crm_qg(icrm,l) = crm_qg(icrm,l) + micro_field(i,j,k,iqg)
-          crm_qs(icrm,l) = crm_qs(icrm,l) + micro_field(i,j,k,iqs)
+          crm_qg(icrm,l) = crm_qg(icrm,l) + micro_field(icrm,i,j,k,iqg)
+          crm_qs(icrm,l) = crm_qs(icrm,l) + micro_field(icrm,i,j,k,iqs)
 
-          crm_nc(icrm,l) = crm_nc(icrm,l) + micro_field(i,j,k,incl)
-          crm_ni(icrm,l) = crm_ni(icrm,l) + micro_field(i,j,k,inci)
-          crm_nr(icrm,l) = crm_nr(icrm,l) + micro_field(i,j,k,inr)
-          crm_ng(icrm,l) = crm_ng(icrm,l) + micro_field(i,j,k,ing)
-          crm_ns(icrm,l) = crm_ns(icrm,l) + micro_field(i,j,k,ins)
+          crm_nc(icrm,l) = crm_nc(icrm,l) + micro_field(icrm,i,j,k,incl)
+          crm_ni(icrm,l) = crm_ni(icrm,l) + micro_field(icrm,i,j,k,inci)
+          crm_nr(icrm,l) = crm_nr(icrm,l) + micro_field(icrm,i,j,k,inr)
+          crm_ng(icrm,l) = crm_ng(icrm,l) + micro_field(icrm,i,j,k,ing)
+          crm_ns(icrm,l) = crm_ns(icrm,l) + micro_field(icrm,i,j,k,ins)
 #endif
         enddo
       enddo
@@ -1598,11 +1598,11 @@ subroutine crm(lchnk, icol, ncrms, &
       do j=1, ny
         do i=1, nx
 #ifdef m2005
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqv)+micro_field(i,j,k,iqci)) * pdel(icrm,l)/ggr)/(nx*ny)
+          qtot(icrm,9) = qtot(icrm,9)+((micro_field(icrm,i,j,k,iqr)+micro_field(icrm,i,j,k,iqs)+micro_field(icrm,i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
+          qtot(icrm,9) = qtot(icrm,9)+((micro_field(icrm,i,j,k,iqv)+micro_field(icrm,i,j,k,iqci)) * pdel(icrm,l)/ggr)/(nx*ny)
 #endif
 #ifdef sam1mom
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,1)+micro_field(i,j,k,2)) * pdel(icrm,l)/ggr)/(nx*ny)
+          qtot(icrm,9) = qtot(icrm,9)+((micro_field(icrm,i,j,k,1)+micro_field(icrm,i,j,k,2)) * pdel(icrm,l)/ggr)/(nx*ny)
 #endif
         enddo
       enddo

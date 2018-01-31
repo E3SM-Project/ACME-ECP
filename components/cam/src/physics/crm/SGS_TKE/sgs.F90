@@ -413,9 +413,9 @@ CONTAINS
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-      fluxbtmp(1:nx,1:ny) = fluxbmk(1:nx,1:ny,k)
-      fluxttmp(1:nx,1:ny) = fluxtmk(1:nx,1:ny,k)
-      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k),fluxbtmp,fluxttmp, &
+      fluxbtmp(1:nx,1:ny) = fluxbmk(icrm,1:nx,1:ny,k)
+      fluxttmp(1:nx,1:ny) = fluxtmk(icrm,1:nx,1:ny,k)
+      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(icrm,:,:,:,k),fluxbtmp,fluxttmp, &
       mkdiff(:,k),mkwsb(:,k), dummy,dummy,dummy,.false.,ncrms,icrm)
     end if
   end do

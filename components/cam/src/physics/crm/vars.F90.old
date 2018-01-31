@@ -65,7 +65,7 @@ module vars
   !  Domain top stuff:
 
   real(crm_rknd)   gamt0    ! gradient of t(icrm,) at the top,K/m
-  real(crm_rknd)   gamq0    ! gradient of q() at the top,g/g/m
+  real(crm_rknd)   gamq0    ! gradient of q(icrm,) at the top,g/g/m
 
   !-----------------------------------------------------------------
   ! reference vertical profiles:

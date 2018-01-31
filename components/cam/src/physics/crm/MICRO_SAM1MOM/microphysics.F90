@@ -18,7 +18,7 @@ module microphysics
 
   !!! microphysics prognostic variables are storred in this array:
 
-  real(crm_rknd), allocatable, target :: micro_field(:,:,:,:)
+  real(crm_rknd), allocatable, target :: micro_field(:,:,:,:,:) !REDIM
 
   integer, parameter :: flag_wmass(nmicro_fields) = (/1,1/)
   integer, parameter :: index_water_vapor = 1 ! index for variable that has water vapor
@@ -31,8 +31,8 @@ module microphysics
   ! SAM1MOM 3D microphysical fields are output by default.
   integer, parameter :: flag_micro3Dout(nmicro_fields) = (/0,0/)
 
-  real(crm_rknd), allocatable :: fluxbmk (:,:,:) ! surface flux of tracers
-  real(crm_rknd), allocatable :: fluxtmk (:,:,:) ! top boundary flux of tracers
+  real(crm_rknd), allocatable :: fluxbmk (:,:,:,:) !REDIM ! surface flux of tracers
+  real(crm_rknd), allocatable :: fluxtmk (:,:,:,:) !REDIM ! top boundary flux of tracers
 
   !!! these arrays are needed for output statistics:
 
@@ -61,8 +61,8 @@ module microphysics
   ! make aliases for prognostic variables:
   ! note that the aliases should be local to microphysics
 
-  real(crm_rknd), pointer :: q (:,:,:)   ! total nonprecipitating water
-  real(crm_rknd), pointer :: qp(:,:,:)  ! total precipitating water
+  real(crm_rknd), pointer :: q (:,:,:,:) !REDIM   ! total nonprecipitating water
+  real(crm_rknd), pointer :: qp(:,:,:,:) !REDIM  ! total precipitating water
   real(crm_rknd), allocatable :: qn(:,:,:)  ! cloud condensate (liquid + ice)
 
   real(crm_rknd), allocatable :: qpsrc(:)  ! source of precipitation microphysical processes
@@ -76,9 +76,9 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields) )
-    allocate( fluxbmk (nx, ny, 1:nmicro_fields) )
-    allocate( fluxtmk (nx, ny, 1:nmicro_fields) )
+    allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields) )
+    allocate( fluxbmk (ncrms,nx, ny, 1:nmicro_fields) )
+    allocate( fluxtmk (ncrms,nx, ny, 1:nmicro_fields) )
     allocate( mkwle(nz,1:nmicro_fields) )
     allocate( mkwsb(nz,1:nmicro_fields) )
     allocate( mkadv(nz,1:nmicro_fields) )
@@ -88,8 +88,8 @@ CONTAINS
     allocate( qn(nx,ny,nzm) )
     allocate( qpsrc(nz) )
     allocate( qpevp(nz) )
-    q (dimx1_s:,dimy1_s:,1:) => micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
-    qp(dimx1_s:,dimy1_s:,1:) => micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,2)
+    q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
+    qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,2)
     
     zero = 0
 
@@ -168,15 +168,15 @@ CONTAINS
     if(nrestart.eq.0) then
 
 #ifndef CRM
-      micro_field = 0.
+      micro_field(icrm,:,:,:,:) = 0.
       do k=1,nzm
-        q(:,:,k) = q0(icrm,k)
+        q(icrm,:,:,k) = q0(icrm,k)
       end do
       qn = 0.
 #endif
 
-      fluxbmk = 0.
-      fluxtmk = 0.
+      fluxbmk(icrm,:,:,:) = 0.
+      fluxtmk(icrm,:,:,:) = 0.
 
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
@@ -184,7 +184,7 @@ CONTAINS
       if(docloud) then
 #endif
 #ifndef CRM
-        call cloud(q,qn,qp)
+        call cloud(q,qn,qp,ncrms,icrm)
 #endif
         call micro_diagnose(ncrms,icrm)
       end if
@@ -217,7 +217,7 @@ CONTAINS
     ! set mstor to be the inital microphysical mixing ratios
     do n=1, nmicro_fields
       do k=1, nzm
-        mstor(k, n) = SUM(micro_field(1:nx,1:ny,k,n))
+        mstor(k, n) = SUM(micro_field(icrm,1:nx,1:ny,k,n))
       end do
     end do
 
@@ -237,14 +237,14 @@ CONTAINS
     use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
     if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
       ! Add this in later
-      fluxbmk(:,:,index_water_vapor) = 0.0
+      fluxbmk(icrm,:,:,index_water_vapor) = 0.0
     else
-      fluxbmk(:,:,index_water_vapor) = fluxbq(icrm,:,:)
+      fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(icrm,:,:)
     end if
 #else
-    fluxbmk(:,:,index_water_vapor) = fluxbq(icrm,:,:)
+    fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(icrm,:,:)
 #endif /*CLUBB_CRM*/
-    fluxtmk(:,:,index_water_vapor) = fluxtq(icrm,:,:)
+    fluxtmk(icrm,:,:,index_water_vapor) = fluxtq(icrm,:,:)
 
   end subroutine micro_flux
 
@@ -305,13 +305,13 @@ CONTAINS
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          qv(icrm,i,j,k) = q(i,j,k) - qn(i,j,k)
+          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(i,j,k)
           omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
           qcl(icrm,i,j,k) = qn(i,j,k)*omn
           qci(icrm,i,j,k) = qn(i,j,k)*(1.-omn)
           omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
-          qpl(icrm,i,j,k) = qp(i,j,k)*omp
-          qpi(icrm,i,j,k) = qp(i,j,k)*(1.-omp)
+          qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
+          qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
         end do
       end do
     end do
@@ -362,7 +362,7 @@ CONTAINS
     new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg].
     ! For the single moment microphysics, it is liquid + ice
 
-    q(1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
+    q(icrm,1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
     qn(1:nx,1:ny,1:nzm) = new_qc ! Liquid + Ice
 
     return
@@ -386,7 +386,7 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(icrm,i,j,k) = q(i,j,k) - qn(i,j,k)
+          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(i,j,k)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011
@@ -405,8 +405,8 @@ CONTAINS
           qcl(icrm,i,j,k) = qn(i,j,k)
           qci(icrm,i,j,k) = 0.0
           omp = max(0.,min(1.,(tabs(icrm,i,j,k)-tprmin)*a_pr))
-          qpl(icrm,i,j,k) = qp(i,j,k)*omp
-          qpi(icrm,i,j,k) = qp(i,j,k)*(1.-omp)
+          qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
+          qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
         end do
       end do
     end do
@@ -426,20 +426,20 @@ CONTAINS
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
 
     term_vel_qp = 0.
-    if(qp(i,j,k).gt.qp_threshold) then
+    if(qp(icrm,i,j,k).gt.qp_threshold) then
       omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
       if(omp.eq.1.) then
-        term_vel_qp = vrain*(rho(icrm,k)*qp(i,j,k))**crain
+        term_vel_qp = vrain*(rho(icrm,k)*qp(icrm,i,j,k))**crain
       elseif(omp.eq.0.) then
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
-        qgg=omg*qp(i,j,k)
-        qss=qp(i,j,k)-qgg
+        qgg=omg*qp(icrm,i,j,k)
+        qss=qp(icrm,i,j,k)-qgg
         term_vel_qp = (omg*vgrau*(rho(icrm,k)*qgg)**cgrau &
         +(1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow)
       else
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
-        qrr=omp*qp(i,j,k)
-        qss=qp(i,j,k)-qrr
+        qrr=omp*qp(icrm,i,j,k)
+        qss=qp(icrm,i,j,k)-qrr
         qgg=omg*qss
         qss=qss-qgg
         term_vel_qp = (omp*vrain*(rho(icrm,k)*qrr)**crain &
@@ -508,7 +508,7 @@ CONTAINS
           tmp = 0.
           do j=1,ny
             do i=1,nx
-              tmp = tmp + micro_field(i,j,k,m)
+              tmp = tmp + micro_field(icrm,i,j,k,m)
             end do
           end do
           total_water = total_water + tmp*adz(k)*dz*rho(icrm,k)

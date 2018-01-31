@@ -520,10 +520,10 @@ contains
 
     ! Get values from SAM cloud fields
     qcloud(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
-    qrain(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqr)
-    qice(1:nx,1:ny,1:nzm)   = micro_field(1:nx,1:ny,1:nzm,iqci)
-    qsnow(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqs)
-    qgraup(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqg)
+    qrain(1:nx,1:ny,1:nzm)  = micro_field(icrm,1:nx,1:ny,1:nzm,iqr)
+    qice(1:nx,1:ny,1:nzm)   = micro_field(icrm,1:nx,1:ny,1:nzm,iqci)
+    qsnow(1:nx,1:ny,1:nzm)  = micro_field(icrm,1:nx,1:ny,1:nzm,iqs)
+    qgraup(1:nx,1:ny,1:nzm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqg)
 
     precall(:,:,:)= precr(:,:,:) + precsolid(:,:,:)
 
@@ -532,7 +532,7 @@ contains
         do kk=1, nzm
           EVS = POLYSVP(tabs(icrm,ii,jj,kk),0)   ! saturation water vapor pressure (PA)
           qvs(ii,jj,kk) = .622*EVS/(pres(kk)*100.-EVS)  ! pres(kk) with unit of hPa
-          !         rh(ii,jj,kk) = micro_field(ii,jj,kk,iqv)/QVS ! unit 0-1
+          !         rh(ii,jj,kk) = micro_field(icrm,ii,jj,kk,iqv)/QVS ! unit 0-1
           !         rh(ii,jj,kk) = min(1.0, rh(ii,jj,kk))    ! RH is diagnosed in microphysics
           alt(ii,jj,kk) =  287.*tabs(icrm,ii,jj,kk)/(100.*pres(kk))
 
