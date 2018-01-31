@@ -63,10 +63,10 @@ module microphysics
 
   real(crm_rknd), pointer :: q (:,:,:,:) !REDIM   ! total nonprecipitating water
   real(crm_rknd), pointer :: qp(:,:,:,:) !REDIM  ! total precipitating water
-  real(crm_rknd), allocatable :: qn(:,:,:)  ! cloud condensate (liquid + ice)
+  real(crm_rknd), allocatable :: qn(:,:,:,:) !REDIM  ! cloud condensate (liquid + ice)
 
-  real(crm_rknd), allocatable :: qpsrc(:)  ! source of precipitation microphysical processes
-  real(crm_rknd), allocatable :: qpevp(:)  ! sink of precipitating water due to evaporation
+  real(crm_rknd), allocatable :: qpsrc(:,:) !REDIM  ! source of precipitation microphysical processes
+  real(crm_rknd), allocatable :: qpevp(:,:) !REDIM  ! sink of precipitating water due to evaporation
 
   real(crm_rknd) vrain, vsnow, vgrau, crain, csnow, cgrau  ! precomputed coefs for precip terminal velocity
 
@@ -85,9 +85,9 @@ CONTAINS
     allocate( mklsadv (ncrms,nz,1:nmicro_fields) )
     allocate( mkdiff  (ncrms,nz,1:nmicro_fields) )
     allocate( mstor   (ncrms,nz,1:nmicro_fields) )
-    allocate( qn(nx,ny,nzm) )
-    allocate( qpsrc(nz) )
-    allocate( qpevp(nz) )
+    allocate( qn      (ncrms,nx,ny,nzm) )
+    allocate( qpsrc   (ncrms,nz) )
+    allocate( qpevp   (ncrms,nz) )
     q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
     qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,2)
     
@@ -172,7 +172,7 @@ CONTAINS
       do k=1,nzm
         q(icrm,:,:,k) = q0(icrm,k)
       end do
-      qn = 0.
+      qn(icrm,:,:,:) = 0.
 #endif
 
       fluxbmk(icrm,:,:,:) = 0.
@@ -201,8 +201,8 @@ CONTAINS
     mklsadv(icrm,:,:) = 0.
     mstor  (icrm,:,:) = 0.
 
-    qpsrc = 0.
-    qpevp = 0.
+    qpsrc(icrm,:) = 0.
+    qpevp(icrm,:) = 0.
 
     mkname(1) = 'QT'
     mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'
@@ -305,10 +305,10 @@ CONTAINS
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(i,j,k)
+          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
           omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
-          qcl(icrm,i,j,k) = qn(i,j,k)*omn
-          qci(icrm,i,j,k) = qn(i,j,k)*(1.-omn)
+          qcl(icrm,i,j,k) = qn(icrm,i,j,k)*omn
+          qci(icrm,i,j,k) = qn(icrm,i,j,k)*(1.-omn)
           omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
           qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
           qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
@@ -363,7 +363,7 @@ CONTAINS
     ! For the single moment microphysics, it is liquid + ice
 
     q(icrm,1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
-    qn(1:nx,1:ny,1:nzm) = new_qc ! Liquid + Ice
+    qn(icrm,1:nx,1:ny,1:nzm) = new_qc ! Liquid + Ice
 
     return
   end subroutine micro_adjust
@@ -386,23 +386,23 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(i,j,k)
+          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011
           if ( qv(icrm,i,j,k) < zero_threshold ) then
-            qn(i,j,k) = qn(i,j,k) + qv(icrm,i,j,k)
+            qn(icrm,i,j,k) = qn(icrm,i,j,k) + qv(icrm,i,j,k)
             qv(icrm,i,j,k) = zero_threshold
-            if ( qn(i,j,k) < zero_threshold ) then
+            if ( qn(icrm,i,j,k) < zero_threshold ) then
               if ( clubb_at_least_debug_level( 1 ) ) then
                 write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &
                 "Applying non-conservative hard clipping."
               end if
-              qn(i,j,k) = zero_threshold
+              qn(icrm,i,j,k) = zero_threshold
             end if ! cloud_liq < 0
           end if ! qv < 0
 
-          qcl(icrm,i,j,k) = qn(i,j,k)
+          qcl(icrm,i,j,k) = qn(icrm,i,j,k)
           qci(icrm,i,j,k) = 0.0
           omp = max(0.,min(1.,(tabs(icrm,i,j,k)-tprmin)*a_pr))
           qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp

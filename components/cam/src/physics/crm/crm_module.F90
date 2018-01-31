@@ -533,7 +533,7 @@ subroutine crm(lchnk, icol, ncrms, &
     tabs       (icrm,1:nx,1:ny,1:nzm                ) = t_crm           (icrm,1:nx,1:ny,1:nzm                )
     micro_field(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
 #ifdef sam1mom
-    qn      (1:nx,1:ny,1:nzm) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3 )
+    qn      (icrm,1:nx,1:ny,1:nzm) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3 )
 #endif
 
 #ifdef m2005
@@ -747,8 +747,8 @@ subroutine crm(lchnk, icol, ncrms, &
     uwsb(icrm,:)     = 0.
     vwle(icrm,:)     = 0.
     vwsb(icrm,:)     = 0.
-    qpsrc    = 0.
-    qpevp    = 0.
+    qpsrc(icrm,:)    = 0.
+    qpevp(icrm,:)    = 0.
     qpfall  (icrm,:) = 0.
     precflux(icrm,:) = 0.
 
@@ -1404,7 +1404,7 @@ subroutine crm(lchnk, icol, ncrms, &
     micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
 
 #ifdef sam1mom
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3) = qn(1:nx,1:ny,1:nzm)
+    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3) = qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 #ifdef m2005
     micro_fields_crm(icrm,1:nx,1:ny,1:nzm,11) = cloudliq(1:nx,1:ny,1:nzm)
@@ -1667,8 +1667,8 @@ subroutine crm(lchnk, icol, ncrms, &
       mkdiff(icrm,k,:) = mkdiff(icrm,k,:) * factor_xy*idt_gl   ! kg/kg  --> kg/kg/s
 
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
-      qpsrc   (k) = qpsrc   (k) * factor_xy*idt_gl
-      qpevp   (k) = qpevp   (k) * factor_xy*idt_gl
+      qpsrc   (icrm,k) = qpsrc   (icrm,k) * factor_xy*idt_gl
+      qpevp   (icrm,k) = qpevp   (icrm,k) * factor_xy*idt_gl
       qpfall  (icrm,k) = qpfall  (icrm,k) * factor_xy*idt_gl   ! kg/kg in M2005 ---> kg/kg/s
       precflux(icrm,k) = precflux(icrm,k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
@@ -1699,8 +1699,8 @@ subroutine crm(lchnk, icol, ncrms, &
       pflx      (icrm,l) = precflux(icrm,k)/1000.       !mm/s  -->m/s
 
       qp_fall   (icrm,l) = qpfall(icrm,k)
-      qp_evp    (icrm,l) = qpevp(k)
-      qp_src    (icrm,l) = qpsrc(k)
+      qp_evp    (icrm,l) = qpevp(icrm,k)
+      qp_src    (icrm,l) = qpsrc(icrm,k)
 
       qt_ls     (icrm,l) = qtend(icrm,k)
       t_ls      (icrm,l) = ttend(icrm,k)
