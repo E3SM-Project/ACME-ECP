@@ -57,9 +57,9 @@ module sgs
   real(crm_rknd), pointer :: tkh(:,:,:,:) !REDIM ! SGS eddy conductivity
 
 
-  real(crm_rknd), allocatable :: grdf_x(:)! grid factor for eddy diffusion in x
-  real(crm_rknd), allocatable :: grdf_y(:)! grid factor for eddy diffusion in y
-  real(crm_rknd), allocatable :: grdf_z(:)! grid factor for eddy diffusion in z
+  real(crm_rknd), allocatable :: grdf_x(:,:) !REDIM ! grid factor for eddy diffusion in x
+  real(crm_rknd), allocatable :: grdf_y(:,:) !REDIM ! grid factor for eddy diffusion in y
+  real(crm_rknd), allocatable :: grdf_z(:,:) !REDIM ! grid factor for eddy diffusion in z
 
 
   logical:: dosmagor   ! if true, then use Smagorinsky closure
@@ -69,10 +69,10 @@ module sgs
 
   ! Local diagnostics:
 
-  real(crm_rknd), allocatable :: tkesbbuoy (:)
-  real(crm_rknd), allocatable :: tkesbshear(:)
-  real(crm_rknd), allocatable :: tkesbdiss (:)
-  real(crm_rknd), allocatable :: tkesbdiff (:)
+  real(crm_rknd), allocatable :: tkesbbuoy (:,:) !REDIM
+  real(crm_rknd), allocatable :: tkesbshear(:,:) !REDIM
+  real(crm_rknd), allocatable :: tkesbdiss (:,:) !REDIM
+  real(crm_rknd), allocatable :: tkesbdiff (:,:) !REDIM
 
 CONTAINS
 
@@ -90,13 +90,13 @@ CONTAINS
     allocate( sgsadv        (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to vertical advection
     allocate( sgslsadv      (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to large-scale vertical advection
     allocate( sgsdiff       (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to vertical diffusion
-    allocate( grdf_x        (nzm) )                   ! grid factor for eddy diffusion in x
-    allocate( grdf_y        (nzm) )                   ! grid factor for eddy diffusion in y
-    allocate( grdf_z        (nzm) )                   ! grid factor for eddy diffusion in z
-    allocate( tkesbbuoy     (nz) )
-    allocate( tkesbshear    (nz) )
-    allocate( tkesbdiss     (nz) )
-    allocate( tkesbdiff     (nz) )
+    allocate( grdf_x        (ncrms,nzm) )                   ! grid factor for eddy diffusion in x
+    allocate( grdf_y        (ncrms,nzm) )                   ! grid factor for eddy diffusion in y
+    allocate( grdf_z        (ncrms,nzm) )                   ! grid factor for eddy diffusion in z
+    allocate( tkesbbuoy     (ncrms,nz) )
+    allocate( tkesbshear    (ncrms,nz) )
+    allocate( tkesbdiss     (ncrms,nz) )
+    allocate( tkesbdiff     (ncrms,nz) )
     tke(1:,dimx1_s:,dimy1_s:,1:) => sgs_field     (1:ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s,1:nzm,1)
     tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,1)
     tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,2)
@@ -220,15 +220,15 @@ CONTAINS
 
     if(LES) then
       do k=1,nzm
-        grdf_x(k) = dx**2/(adz(k)*dz)**2
-        grdf_y(k) = dy**2/(adz(k)*dz)**2
-        grdf_z(k) = 1.
+        grdf_x(icrm,k) = dx**2/(adz(k)*dz)**2
+        grdf_y(icrm,k) = dy**2/(adz(k)*dz)**2
+        grdf_z(icrm,k) = 1.
       end do
     else
       do k=1,nzm
-        grdf_x(k) = min( real(16.,crm_rknd), dx**2/(adz(k)*dz)**2)
-        grdf_y(k) = min( real(16.,crm_rknd), dy**2/(adz(k)*dz)**2)
-        grdf_z(k) = 1.
+        grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(k)*dz)**2)
+        grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(k)*dz)**2)
+        grdf_z(icrm,k) = 1.
       end do
     end if
 
@@ -359,9 +359,9 @@ CONTAINS
     cfl = 0.
     do k=1,nzm
       cfl = max(cfl,        &
-      0.5*tkhmax(k)*grdf_z(k)*dt/(dz*adzw(k))**2, &
-      0.5*tkhmax(k)*grdf_x(k)*dt/dx**2, &
-      YES3D*0.5*tkhmax(k)*grdf_y(k)*dt/dy**2)
+      0.5*tkhmax(k)*grdf_z(icrm,k)*dt/(dz*adzw(k))**2, &
+      0.5*tkhmax(k)*grdf_x(icrm,k)*dt/dx**2, &
+      YES3D*0.5*tkhmax(k)*grdf_y(icrm,k)*dt/dy**2)
     end do
 
   end subroutine kurant_sgs

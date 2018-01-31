@@ -16,7 +16,7 @@ contains
     integer, intent(in) :: ncrms,icrm
     logical :: dosmagor
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
-    real(crm_rknd) tkesbbuoy(nz), tkesbshear(nz), tkesbdiss(nz)
+    real(crm_rknd) tkesbbuoy(ncrms,nz), tkesbshear(ncrms,nz), tkesbdiss(ncrms,nz)
     real(crm_rknd) tke (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
     real(crm_rknd) tk  (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
     real(crm_rknd) tkh (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
@@ -72,9 +72,9 @@ contains
         Ce2=Ces/0.7*0.51
       end if
       tkelediss(icrm,k) = 0.
-      tkesbdiss(k) = 0.
-      tkesbshear(k)= 0.
-      tkesbbuoy(k) = 0.
+      tkesbdiss(icrm,k) = 0.
+      tkesbshear(icrm,k)= 0.
+      tkesbbuoy(icrm,k) = 0.
       do j=1,ny
         do i=1,nx
           !  SGS buoyancy flux
@@ -156,9 +156,9 @@ contains
           tkh(icrm,i,j,k)=Pr*tk(icrm,i,j,k)
 
           tkelediss(icrm,k) = tkelediss(icrm,k) - a_prod_sh
-          tkesbdiss(k) = tkesbdiss(k) + a_diss
-          tkesbshear(k)= tkesbshear(k)+ a_prod_sh
-          tkesbbuoy(k) = tkesbbuoy(k) + a_prod_bu
+          tkesbdiss(icrm,k) = tkesbdiss(icrm,k) + a_diss
+          tkesbshear(icrm,k)= tkesbshear(icrm,k)+ a_prod_sh
+          tkesbbuoy(icrm,k) = tkesbbuoy(icrm,k) + a_prod_bu
 
         end do ! i
       end do ! j
