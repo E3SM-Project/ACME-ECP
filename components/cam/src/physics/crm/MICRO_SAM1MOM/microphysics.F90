@@ -36,12 +36,12 @@ module microphysics
 
   !!! these arrays are needed for output statistics:
 
-  real(crm_rknd), allocatable :: mkwle  (:,:)  ! resolved vertical flux
-  real(crm_rknd), allocatable :: mkwsb  (:,:)  ! SGS vertical flux
-  real(crm_rknd), allocatable :: mkadv  (:,:)  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: mklsadv(:,:)  ! tendency due to large-scale vertical advection
-  real(crm_rknd), allocatable :: mkdiff (:,:)  ! tendency due to vertical diffusion
-  real(crm_rknd), allocatable :: mstor  (:,:)  ! storage terms of microphysical variables
+  real(crm_rknd), allocatable :: mkwle  (:,:,:) !REDIM  ! resolved vertical flux
+  real(crm_rknd), allocatable :: mkwsb  (:,:,:) !REDIM  ! SGS vertical flux
+  real(crm_rknd), allocatable :: mkadv  (:,:,:) !REDIM  ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: mklsadv(:,:,:) !REDIM  ! tendency due to large-scale vertical advection
+  real(crm_rknd), allocatable :: mkdiff (:,:,:) !REDIM  ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: mstor  (:,:,:) !REDIM  ! storage terms of microphysical variables
 
   !======================================================================
   ! UW ADDITIONS
@@ -79,12 +79,12 @@ CONTAINS
     allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields) )
     allocate( fluxbmk (ncrms,nx, ny, 1:nmicro_fields) )
     allocate( fluxtmk (ncrms,nx, ny, 1:nmicro_fields) )
-    allocate( mkwle(nz,1:nmicro_fields) )
-    allocate( mkwsb(nz,1:nmicro_fields) )
-    allocate( mkadv(nz,1:nmicro_fields) )
-    allocate( mklsadv(nz,1:nmicro_fields) )
-    allocate( mkdiff(nz,1:nmicro_fields) )
-    allocate( mstor(nz,1:nmicro_fields) )
+    allocate( mkwle   (ncrms,nz,1:nmicro_fields) )
+    allocate( mkwsb   (ncrms,nz,1:nmicro_fields) )
+    allocate( mkadv   (ncrms,nz,1:nmicro_fields) )
+    allocate( mklsadv (ncrms,nz,1:nmicro_fields) )
+    allocate( mkdiff  (ncrms,nz,1:nmicro_fields) )
+    allocate( mstor   (ncrms,nz,1:nmicro_fields) )
     allocate( qn(nx,ny,nzm) )
     allocate( qpsrc(nz) )
     allocate( qpevp(nz) )
@@ -194,12 +194,12 @@ CONTAINS
 
     end if
 
-    mkwle = 0.
-    mkwsb = 0.
-    mkadv = 0.
-    mkdiff = 0.
-    mklsadv = 0.
-    mstor = 0.
+    mkwle  (icrm,:,:) = 0.
+    mkwsb  (icrm,:,:) = 0.
+    mkadv  (icrm,:,:) = 0.
+    mkdiff (icrm,:,:) = 0.
+    mklsadv(icrm,:,:) = 0.
+    mstor  (icrm,:,:) = 0.
 
     qpsrc = 0.
     qpevp = 0.
@@ -217,7 +217,7 @@ CONTAINS
     ! set mstor to be the inital microphysical mixing ratios
     do n=1, nmicro_fields
       do k=1, nzm
-        mstor(k, n) = SUM(micro_field(icrm,1:nx,1:ny,k,n))
+        mstor(icrm,k, n) = SUM(micro_field(icrm,1:nx,1:ny,k,n))
       end do
     end do
 

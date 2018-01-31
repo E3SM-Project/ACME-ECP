@@ -1653,7 +1653,7 @@ subroutine crm(lchnk, icol, ncrms, &
         enddo
       enddo
       !+++mhwang
-      ! mkwsb, mkle, mkadv, mkdiff (also flux_u, flux_v) seem not calculted correclty in the spcam3.5 codes.
+      ! mkwsb, mkle, mkadv, mkdiff (icrm,also flux_u, flux_v) seem not calculted correclty in the spcam3.5 codes.
       ! Only values at the last time step are calculated, but is averaged over the entire GCM
       ! time step.
       !---mhwang
@@ -1661,10 +1661,10 @@ subroutine crm(lchnk, icol, ncrms, &
       tmp1 = dz/rhow(icrm,k)
       tmp2 = tmp1/dtn                        ! dtn is calculated inside of the icyc loop.
                                              ! It seems wrong to use it here ???? +++mhwang
-      mkwsb (k,:) = mkwsb (k,:) * tmp1*rhow(icrm,k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
-      mkwle (k,:) = mkwle (k,:) * tmp2*rhow(icrm,k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
-      mkadv (k,:) = mkadv (k,:) * factor_xy*idt_gl     ! kg/kg  --> kg/kg/s
-      mkdiff(k,:) = mkdiff(k,:) * factor_xy*idt_gl   ! kg/kg  --> kg/kg/s
+      mkwsb (icrm,k,:) = mkwsb (icrm,k,:) * tmp1*rhow(icrm,k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
+      mkwle (icrm,k,:) = mkwle (icrm,k,:) * tmp2*rhow(icrm,k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
+      mkadv (icrm,k,:) = mkadv (icrm,k,:) * factor_xy*idt_gl     ! kg/kg  --> kg/kg/s
+      mkdiff(icrm,k,:) = mkdiff(icrm,k,:) * factor_xy*idt_gl   ! kg/kg  --> kg/kg/s
 
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
       qpsrc   (k) = qpsrc   (k) * factor_xy*idt_gl
@@ -1676,22 +1676,22 @@ subroutine crm(lchnk, icol, ncrms, &
       flux_u    (icrm,l) = (uwle(icrm,k) + uwsb(icrm,k))*tmp1*factor_xy/nstop
       flux_v    (icrm,l) = (vwle(icrm,k) + vwsb(icrm,k))*tmp1*factor_xy/nstop
 #ifdef sam1mom
-      flux_qt   (icrm,l) = mkwle(k,1) + mkwsb(k,1)
-      fluxsgs_qt(icrm,l) = mkwsb(k,1)
-      flux_qp   (icrm,l) = mkwle(k,2) + mkwsb(k,2)
-      qt_trans  (icrm,l) = mkadv(k,1) + mkdiff(k,1)
-      qp_trans  (icrm,l) = mkadv(k,2) + mkdiff(k,2)
+      flux_qt   (icrm,l) = mkwle(icrm,k,1) + mkwsb(icrm,k,1)
+      fluxsgs_qt(icrm,l) = mkwsb(icrm,k,1)
+      flux_qp   (icrm,l) = mkwle(icrm,k,2) + mkwsb(icrm,k,2)
+      qt_trans  (icrm,l) = mkadv(icrm,k,1) + mkdiff(icrm,k,1)
+      qp_trans  (icrm,l) = mkadv(icrm,k,2) + mkdiff(icrm,k,2)
 #endif
 #ifdef m2005
-      flux_qt   (icrm,l) = mkwle(k,1   ) + mkwsb(k,1   ) +  &
-                         mkwle(k,iqci) + mkwsb(k,iqci)
-      fluxsgs_qt(icrm,l) = mkwsb(k,1   ) + mkwsb(k,iqci)
-      flux_qp   (icrm,l) = mkwle(k,iqr) + mkwsb(k,iqr) +  &
-                         mkwle(k,iqs) + mkwsb(k,iqs) + mkwle(k,iqg) + mkwsb(k,iqg)
-      qt_trans  (icrm,l) = mkadv (k,1) + mkadv (k,iqci) + &
-                         mkdiff(k,1) + mkdiff(k,iqci)
-      qp_trans  (icrm,l) = mkadv (k,iqr) + mkadv (k,iqs) + mkadv (k,iqg) + &
-                         mkdiff(k,iqr) + mkdiff(k,iqs) + mkdiff(k,iqg)
+      flux_qt   (icrm,l) = mkwle(icrm,k,1   ) + mkwsb(icrm,k,1   ) +  &
+                         mkwle(icrm,k,iqci) + mkwsb(icrm,k,iqci)
+      fluxsgs_qt(icrm,l) = mkwsb(icrm,k,1   ) + mkwsb(icrm,k,iqci)
+      flux_qp   (icrm,l) = mkwle(icrm,k,iqr) + mkwsb(icrm,k,iqr) +  &
+                         mkwle(icrm,k,iqs) + mkwsb(icrm,k,iqs) + mkwle(icrm,k,iqg) + mkwsb(icrm,k,iqg)
+      qt_trans  (icrm,l) = mkadv (icrm,k,1) + mkadv (icrm,k,iqci) + &
+                         mkdiff(icrm,k,1) + mkdiff(icrm,k,iqci)
+      qp_trans  (icrm,l) = mkadv (icrm,k,iqr) + mkadv (icrm,k,iqs) + mkadv (icrm,k,iqg) + &
+                         mkdiff(icrm,k,iqr) + mkdiff(icrm,k,iqs) + mkdiff(icrm,k,iqg)
 #endif
       tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(1:nx,1:ny,k))*factor_xy
       tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + tkesgsz(icrm,l)
