@@ -152,7 +152,6 @@ _TEST_SUITES = {
                            "SMS.ne30_oECv3_ICG.A_WCYCL1850S",
                            "SMS.f09_g16_a.MPASLIALB")
                           ),
-
     #acme tests for extra coverage
     "acme_extra_coverage" : (("acme_atm_extra_coverage",),None,
                      () ),
@@ -185,9 +184,9 @@ _TEST_SUITES = {
 
     # Superparameterization tests; these tests check for changes in the full ECP
     # model configuration and test functionality of the superparameterization.
-    "acme_ecp_sp" : (None, "04:00:00",
-                     ("ERP_Ld3_PX.ne16_ne16.FSP1V1-TEST",
-                      "ERP_Ld3_PX.ne16_ne16.FSP2V1-TEST")),
+    "acme_ecp_sp" : (None, None, #"04:00:00",
+                     ("ERP_Ld5_PX.ne4_ne4.FSP1V1",
+                      "ERP_Ld5_PX.ne4_ne4.FSP2V1")),
 
     # Define the acme_ecp subset to be a superset of the ECP tests with and
     # without superparameterization (check both host model and
