@@ -15,7 +15,7 @@ module sgs
 
   integer, parameter :: nsgs_fields = 1   ! total number of prognostic sgs vars
 
-  real(crm_rknd), allocatable, target :: sgs_field(:,:,:,:)
+  real(crm_rknd), allocatable, target :: sgs_field(:,:,:,:,:) !REDIM
 
   !!! sgs diagnostic variables that need to exchange boundary information (via MPI):
 
@@ -24,7 +24,7 @@ module sgs
   ! diagnostic fields' boundaries:
   integer, parameter :: dimx1_d=0, dimx2_d=nxp1, dimy1_d=1-YES3D, dimy2_d=nyp1
 
-  real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:)
+  real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:,:) !REDIM
 
   logical:: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
   logical, parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
@@ -33,28 +33,28 @@ module sgs
   integer, parameter :: flag_sgs3Dout(nsgs_fields) = (/0/)
   integer, parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
 
-  real(crm_rknd), allocatable :: fluxbsgs (:,:,:) ! surface fluxes
-  real(crm_rknd), allocatable :: fluxtsgs (:,:,:) ! top boundary fluxes
+  real(crm_rknd), allocatable :: fluxbsgs (:,:,:,:) !REDIM ! surface fluxes
+  real(crm_rknd), allocatable :: fluxtsgs (:,:,:,:) !REDIM ! top boundary fluxes
 
   !!! these arrays may be needed for output statistics:
 
-  real(crm_rknd), allocatable :: sgswle  (:,:)  ! resolved vertical flux
-  real(crm_rknd), allocatable :: sgswsb  (:,:)  ! SGS vertical flux
-  real(crm_rknd), allocatable :: sgsadv  (:,:)  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: sgslsadv(:,:)  ! tendency due to large-scale vertical advection
-  real(crm_rknd), allocatable :: sgsdiff (:,:)  ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: sgswle  (:,:,:) !REDIM  ! resolved vertical flux
+  real(crm_rknd), allocatable :: sgswsb  (:,:,:) !REDIM  ! SGS vertical flux
+  real(crm_rknd), allocatable :: sgsadv  (:,:,:) !REDIM  ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: sgslsadv(:,:,:) !REDIM  ! tendency due to large-scale vertical advection
+  real(crm_rknd), allocatable :: sgsdiff (:,:,:) !REDIM  ! tendency due to vertical diffusion
 
   !------------------------------------------------------------------
   ! internal (optional) definitions:
 
   ! make aliases for prognostic variables:
 
-  real(crm_rknd), pointer :: tke(:,:,:)   ! SGS TKE
+  real(crm_rknd), pointer :: tke(:,:,:,:) !REDIM   ! SGS TKE
 
   ! make aliases for diagnostic variables:
 
-  real(crm_rknd), pointer :: tk (:,:,:) ! SGS eddy viscosity
-  real(crm_rknd), pointer :: tkh(:,:,:) ! SGS eddy conductivity
+  real(crm_rknd), pointer :: tk (:,:,:,:) !REDIM ! SGS eddy viscosity
+  real(crm_rknd), pointer :: tkh(:,:,:,:) !REDIM ! SGS eddy conductivity
 
 
   real(crm_rknd), allocatable :: grdf_x(:)! grid factor for eddy diffusion in x
@@ -81,15 +81,15 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( sgs_field     (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields     ) )
-    allocate( sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
-    allocate( fluxbsgs      (nx, ny, 1:nsgs_fields) ) ! surface fluxes
-    allocate( fluxtsgs      (nx, ny, 1:nsgs_fields) ) ! top boundary fluxes
-    allocate( sgswle        (nz    , 1:nsgs_fields) ) ! resolved vertical flux
-    allocate( sgswsb        (nz    , 1:nsgs_fields) ) ! SGS vertical flux
-    allocate( sgsadv        (nz    , 1:nsgs_fields) ) ! tendency due to vertical advection
-    allocate( sgslsadv      (nz    , 1:nsgs_fields) ) ! tendency due to large-scale vertical advection
-    allocate( sgsdiff       (nz    , 1:nsgs_fields) ) ! tendency due to vertical diffusion
+    allocate( sgs_field     (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields     ) )
+    allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
+    allocate( fluxbsgs      (ncrms,nx, ny, 1:nsgs_fields) ) ! surface fluxes
+    allocate( fluxtsgs      (ncrms,nx, ny, 1:nsgs_fields) ) ! top boundary fluxes
+    allocate( sgswle        (ncrms,nz    , 1:nsgs_fields) ) ! resolved vertical flux
+    allocate( sgswsb        (ncrms,nz    , 1:nsgs_fields) ) ! SGS vertical flux
+    allocate( sgsadv        (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to vertical advection
+    allocate( sgslsadv      (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to large-scale vertical advection
+    allocate( sgsdiff       (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to vertical diffusion
     allocate( grdf_x        (nzm) )                   ! grid factor for eddy diffusion in x
     allocate( grdf_y        (nzm) )                   ! grid factor for eddy diffusion in y
     allocate( grdf_z        (nzm) )                   ! grid factor for eddy diffusion in z
@@ -97,9 +97,9 @@ CONTAINS
     allocate( tkesbshear    (nz) )
     allocate( tkesbdiss     (nz) )
     allocate( tkesbdiff     (nz) )
-    tke(dimx1_s:,dimy1_s:,1:) => sgs_field     (dimx1_s:dimx2_s, dimy1_s:dimy2_s,1:nzm,1)
-    tk (dimx1_d:,dimy1_d:,1:) => sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,1)
-    tkh(dimx1_d:,dimy1_d:,1:) => sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,2)
+    tke(1:,dimx1_s:,dimy1_s:,1:) => sgs_field     (1:ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s,1:nzm,1)
+    tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,1)
+    tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,2)
 
     zero = 0
 
@@ -192,19 +192,21 @@ CONTAINS
   !!! Initialize sgs:
 
 
-  subroutine sgs_init()
+  subroutine sgs_init(ncrms,icrm)
 
     use grid, only: nrestart, dx, dy, dz, adz, masterproc
     use params, only: LES
+    implicit none
+    integer, intent(in) :: ncrms,icrm
     integer k
 
     if(nrestart.eq.0) then
 
-      sgs_field = 0.
-      sgs_field_diag = 0.
+      sgs_field(icrm,:,:,:,:) = 0.
+      sgs_field_diag(icrm,:,:,:,:) = 0.
 
-      fluxbsgs = 0.
-      fluxtsgs = 0.
+      fluxbsgs(icrm,:,:,:) = 0.
+      fluxtsgs(icrm,:,:,:) = 0.
 
     end if
 
@@ -230,11 +232,11 @@ CONTAINS
       end do
     end if
 
-    sgswle = 0.
-    sgswsb = 0.
-    sgsadv = 0.
-    sgsdiff = 0.
-    sgslsadv = 0.
+    sgswle  (icrm,:,:) = 0.
+    sgswsb  (icrm,:,:) = 0.
+    sgsadv  (icrm,:,:) = 0.
+    sgsdiff (icrm,:,:) = 0.
+    sgslsadv(icrm,:,:) = 0.
 
 
   end subroutine sgs_init
@@ -257,7 +259,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(k.le.4.and..not.dosmagor) then
-              tke(i,j,k)=0.04*(5-k)
+              tke(icrm,i,j,k)=0.04*(5-k)
             endif
           end do
         end do
@@ -269,7 +271,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
-              tke(i,j,k)=1.
+              tke(icrm,i,j,k)=1.
             endif
           end do
         end do
@@ -283,7 +285,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.0.5e-3.and..not.dosmagor) then
-              tke(i,j,k)=1.
+              tke(icrm,i,j,k)=1.
             endif
           end do
         end do
@@ -296,7 +298,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(k).le.150..and..not.dosmagor) then
-              tke(i,j,k)=0.15*(1.-z(k)/150.)
+              tke(icrm,i,j,k)=0.15*(1.-z(k)/150.)
             endif
           end do
         end do
@@ -309,7 +311,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(k).le.3000..and..not.dosmagor) then
-              tke(i,j,k)=1.-z(k)/3000.
+              tke(icrm,i,j,k)=1.-z(k)/3000.
             endif
           end do
         end do
@@ -322,7 +324,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
-              tke(i,j,k)=1.
+              tke(icrm,i,j,k)=1.
             endif
           end do
         end do
@@ -339,10 +341,11 @@ CONTAINS
   !!! Estimate Courant number limit for SGS
   !
 
-  subroutine kurant_sgs(cfl)
+  subroutine kurant_sgs(cfl,ncrms,icrm)
 
     use grid, only: dt, dx, dy, dz, adz, adzw
     implicit none
+    integer, intent(in) :: ncrms,icrm
 
     real(crm_rknd), intent(out) :: cfl
 
@@ -350,7 +353,7 @@ CONTAINS
     real(crm_rknd) tkhmax(nz)
 
     do k = 1,nzm
-      tkhmax(k) = maxval(tkh(1:nx,1:ny,k))
+      tkhmax(k) = maxval(tkh(icrm,1:nx,1:ny,k))
     end do
 
     cfl = 0.
@@ -397,7 +400,7 @@ CONTAINS
     t2lediff(icrm,:),t2lediss(icrm,:),twlediff(icrm,:),.true.,ncrms,icrm)
 
     if(advect_sgs) then
-      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero(icrm,:,:),fzero(icrm,:,:),dummy,sgswsb, &
+      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(icrm,:,:,:),fzero(icrm,:,:),fzero(icrm,:,:),dummy,sgswsb(icrm,:,:), &
       dummy,dummy,dummy,.false.,ncrms,icrm)
     end if
 
@@ -461,8 +464,8 @@ subroutine sgs_proc(ncrms,icrm)
 
   if(dosgs) call tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms, icrm)
 
-  tke2(icrm,:,:,:) = tke
-  tk2(icrm,:,:,:) = tk
+  tke2(icrm,:,:,:) = tke(icrm,:,:,:)
+  tk2(icrm,:,:,:) = tk(icrm,:,:,:)
 
 end subroutine sgs_proc
 

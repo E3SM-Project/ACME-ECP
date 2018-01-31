@@ -550,7 +550,7 @@ contains
 #ifdef CLUBB_CRM
     xkhv(:,:,:)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
 #else
-    xkhv(:,:,:)   = tk(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
+    xkhv(:,:,:)   = tk(icrm,1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
 #endif
 
     !+++mhwangtest
@@ -585,7 +585,7 @@ contains
     CF3D,      cf3dsum1(:,:,:),       &
     ww,        wwsum1(:,:,:),        &
     wwsq,      wwsqsum1(:,:,:),      &
-    tke(1:nx,1:ny,1:nzm),       tkesgssum1(:,:,:),    &
+    tke(icrm,1:nx,1:ny,1:nzm),       tkesgssum1(:,:,:),    &
     qlsink_bf, qlsink_bfsum1(:,:,:), &
     prain,     prainsum1(:,:,:),     &
     qvs,       qvssum1(:,:,:)   )

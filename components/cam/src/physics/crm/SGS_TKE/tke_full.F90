@@ -17,9 +17,9 @@ contains
     logical :: dosmagor
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tkesbbuoy(nz), tkesbshear(nz), tkesbdiss(nz)
-    real(crm_rknd) tke(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
-    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
-    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
+    real(crm_rknd) tke (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
+    real(crm_rknd) tk  (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
+    real(crm_rknd) tkh (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
 
     real(crm_rknd) def2(nx,ny,nzm)
     real(crm_rknd) grd,betdz,Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs
@@ -116,7 +116,7 @@ contains
           if(buoy_sgs.le.0.) then
             smix=grd
           else
-            smix=min(grd,max(0.1*grd, sqrt(0.76*tk(i,j,k)/Ck/sqrt(buoy_sgs+1.e-10))))
+            smix=min(grd,max(0.1*grd, sqrt(0.76*tk(icrm,i,j,k)/Ck/sqrt(buoy_sgs+1.e-10))))
           end if
 
 
@@ -127,33 +127,33 @@ contains
 
           if(dosmagor) then
 
-            tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
+            tk(icrm,i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
 
 #ifdef SP_TK_LIM
             ! whannah - put a hard limit on near-surface tk
             if ( z(k).lt.tk_min_depth ) then
-              tk(i,j,k) = max( tk(i,j,k), tk_min_value ) 
+              tk(icrm,i,j,k) = max( tk(icrm,i,j,k), tk_min_value ) 
             end if
 #endif
 
-            ! tk(i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
-            tke(i,j,k) = (tk(i,j,k)/(Ck*smix))**2
-            a_prod_sh=(tk(i,j,k)+0.001)*def2(i,j,k)
-            a_prod_bu=-(tk(i,j,k)+0.001)*Pr*buoy_sgs
+            ! tk(icrm,i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
+            tke(icrm,i,j,k) = (tk(icrm,i,j,k)/(Ck*smix))**2
+            a_prod_sh=(tk(icrm,i,j,k)+0.001)*def2(i,j,k)
+            a_prod_bu=-(tk(icrm,i,j,k)+0.001)*Pr*buoy_sgs
             a_diss=a_prod_sh+a_prod_bu
 
           else
 
-            tke(i,j,k)=max(real(0.,crm_rknd),tke(i,j,k))
-            a_prod_sh=(tk(i,j,k)+0.001)*def2(i,j,k)
-            a_prod_bu=-(tk(i,j,k)+0.001)*Pr*buoy_sgs
-            a_diss=min(tke(i,j,k)/(4.*dt),Cee/smix*tke(i,j,k)**1.5) ! cap the diss rate (useful for large time steps
-            tke(i,j,k)=max(real(0.,crm_rknd),tke(i,j,k)+dtn*(max(real(0.,crm_rknd),a_prod_sh+a_prod_bu)-a_diss))
-            tk(i,j,k)=Ck*smix*sqrt(tke(i,j,k))
+            tke(icrm,i,j,k)=max(real(0.,crm_rknd),tke(icrm,i,j,k))
+            a_prod_sh=(tk(icrm,i,j,k)+0.001)*def2(i,j,k)
+            a_prod_bu=-(tk(icrm,i,j,k)+0.001)*Pr*buoy_sgs
+            a_diss=min(tke(icrm,i,j,k)/(4.*dt),Cee/smix*tke(icrm,i,j,k)**1.5) ! cap the diss rate (useful for large time steps
+            tke(icrm,i,j,k)=max(real(0.,crm_rknd),tke(icrm,i,j,k)+dtn*(max(real(0.,crm_rknd),a_prod_sh+a_prod_bu)-a_diss))
+            tk(icrm,i,j,k)=Ck*smix*sqrt(tke(icrm,i,j,k))
 
           end if
 
-          tkh(i,j,k)=Pr*tk(i,j,k)
+          tkh(icrm,i,j,k)=Pr*tk(icrm,i,j,k)
 
           tkelediss(icrm,k) = tkelediss(icrm,k) - a_prod_sh
           tkesbdiss(k) = tkesbdiss(k) + a_diss

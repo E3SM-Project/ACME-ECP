@@ -34,7 +34,7 @@ module kurant_mod
                    max(wm(k),wm(k+1))*dt/(dz*adzw(k)) )
       end do
 
-      call kurant_sgs(cfl_sgs)
+      call kurant_sgs(cfl_sgs,ncrms,icrm)
       cfl = max(cfl,cfl_sgs)
 
       ncycle = max(1,ceiling(cfl/0.7))

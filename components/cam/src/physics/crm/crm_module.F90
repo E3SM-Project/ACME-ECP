@@ -566,9 +566,9 @@ subroutine crm(lchnk, icol, ncrms, &
     dudt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
     dvdt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
     dwdt(icrm,1:nx,1:ny,1:nz,1:3) = 0.
-    tke (1:nx,1:ny,1:nzm) = 0.
-    tk  (1:nx,1:ny,1:nzm) = 0.
-    tkh (1:nx,1:ny,1:nzm) = 0.
+    tke (icrm,1:nx,1:ny,1:nzm) = 0.
+    tk  (icrm,1:nx,1:ny,1:nzm) = 0.
+    tkh (icrm,1:nx,1:ny,1:nzm) = 0.
     p   (icrm,1:nx,1:ny,1:nzm) = 0.
 
     CF3D(icrm,1:nx,1:ny,1:nzm) = 1.
@@ -576,7 +576,7 @@ subroutine crm(lchnk, icol, ncrms, &
     call micro_init(ncrms,icrm)
 
     ! initialize sgs fields
-    call sgs_init()
+    call sgs_init(ncrms,icrm)
 
     do k=1,nzm
       u0(icrm,k)=0.
@@ -607,7 +607,7 @@ subroutine crm(lchnk, icol, ncrms, &
           qv0(icrm,k) = qv0(icrm,k) + qv(icrm,i,j,k)
           qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
           qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
-          tke0(icrm,k)=tke0(icrm,k)+tke(i,j,k)
+          tke0(icrm,k)=tke0(icrm,k)+tke(icrm,i,j,k)
         enddo
       enddo
 
@@ -1409,8 +1409,8 @@ subroutine crm(lchnk, icol, ncrms, &
 #ifdef m2005
     micro_fields_crm(icrm,1:nx,1:ny,1:nzm,11) = cloudliq(1:nx,1:ny,1:nzm)
 #endif
-    crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
-    crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
+    crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (icrm,1:nx, 1:ny, 1:nzm)
+    crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (icrm,1:nx, 1:ny, 1:nzm)
     cld3d_crm(icrm,1:nx,1:ny,1:nzm) = CF3D(icrm,1:nx, 1:ny, 1:nzm)
 #ifdef CLUBB_CRM
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
@@ -1693,9 +1693,9 @@ subroutine crm(lchnk, icol, ncrms, &
       qp_trans  (icrm,l) = mkadv (icrm,k,iqr) + mkadv (icrm,k,iqs) + mkadv (icrm,k,iqg) + &
                          mkdiff(icrm,k,iqr) + mkdiff(icrm,k,iqs) + mkdiff(icrm,k,iqg)
 #endif
-      tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(1:nx,1:ny,k))*factor_xy
+      tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(icrm,1:nx,1:ny,k))*factor_xy
       tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + tkesgsz(icrm,l)
-      tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
+      tkz       (icrm,l) = sum(tk(icrm,1:nx, 1:ny, k)) * factor_xy
       pflx      (icrm,l) = precflux(icrm,k)/1000.       !mm/s  -->m/s
 
       qp_fall   (icrm,l) = qpfall(icrm,k)

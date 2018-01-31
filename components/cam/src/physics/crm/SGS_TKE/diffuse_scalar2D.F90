@@ -14,7 +14,7 @@ contains
     real(crm_rknd) grdf_x(nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
-    real(crm_rknd) tkh(0:nxp1, 1-YES3D:nyp1, nzm)  ! eddy conductivity
+    real(crm_rknd) tkh(ncrms,0:nxp1, 1-YES3D:nyp1, nzm)  ! eddy conductivity
     real(crm_rknd) fluxb(nx,ny)    ! bottom flux
     real(crm_rknd) fluxt(nx,ny)    ! top flux
     real(crm_rknd) rho(ncrms,nzm)
@@ -65,7 +65,7 @@ contains
 
         do i=0,nx
           ic=i+1
-          tkx=rdx5*(tkh(i,j,k)+tkh(ic,j,k))
+          tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
           flx(i,j,k)=-tkx*(field(ic,j,k)-field(i,j,k))
         end do
         do i=1,nx
@@ -92,7 +92,7 @@ contains
       rhoi = rhow(icrm,kc)/adzw(kc)
       rdz5=0.5*rdz2 * grdf_z(k)
       do i=1,nx
-        tkz=rdz5*(tkh(i,j,k)+tkh(i,j,kc))
+        tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
         flx(i,j,k)=-tkz*(field(i,j,kc)-field(i,j,k))*rhoi
         flux(kc) = flux(kc) + flx(i,j,k)
       end do

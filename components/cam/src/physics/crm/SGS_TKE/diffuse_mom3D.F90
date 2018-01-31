@@ -12,7 +12,7 @@ contains
     implicit none
     integer, intent(in) :: ncrms, icrm
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
-    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
+    real(crm_rknd) tk  (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
     real(crm_rknd) grdf_x(nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y(nzm)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z(nzm)! grid factor for eddy diffusion in z
@@ -50,11 +50,11 @@ contains
         jb=j-1
         do i=0,nx
           ic=i+1
-          tkx=rdx21*tk(i,j,k)
+          tkx=rdx21*tk(icrm,i,j,k)
           fu(i,j,k)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
-          tkx=rdx251*(tk(i,j,k)+tk(i,jb,k)+tk(ic,j,k)+tk(ic,jb,k))
+          tkx=rdx251*(tk(icrm,i,j,k)+tk(icrm,i,jb,k)+tk(icrm,ic,j,k)+tk(icrm,ic,jb,k))
           fv(i,j,k)=-tkx*(v(icrm,ic,j,k)-v(icrm,i,j,k)+(u(icrm,ic,j,k)-u(icrm,ic,jb,k))*dxy)
-          tkx=rdx251*(tk(i,j,k)+tk(ic,j,k)+tk(i,j,kcu)+tk(ic,j,kcu))
+          tkx=rdx251*(tk(icrm,i,j,k)+tk(icrm,ic,j,k)+tk(icrm,i,j,kcu)+tk(icrm,ic,j,kcu))
           fw(i,j,k)=-tkx*(w(icrm,ic,j,kc)-w(icrm,i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz)
         end do
         do i=1,nx
@@ -69,11 +69,11 @@ contains
         jc=j+1
         do i=1,nx
           ib=i-1
-          tky=rdy21*tk(i,j,k)
+          tky=rdy21*tk(icrm,i,j,k)
           fv(i,j,k)=-2.*tky*(v(icrm,i,jc,k)-v(icrm,i,j,k))
-          tky=rdy251*(tk(i,j,k)+tk(ib,j,k)+tk(i,jc,k)+tk(ib,jc,k))
+          tky=rdy251*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,jc,k)+tk(icrm,ib,jc,k))
           fu(i,j,k)=-tky*(u(icrm,i,jc,k)-u(icrm,i,j,k)+(v(icrm,i,jc,k)-v(icrm,ib,jc,k))*dyx)
-          tky=rdy251*(tk(i,j,k)+tk(i,jc,k)+tk(i,j,kcu)+tk(i,jc,kcu))
+          tky=rdy251*(tk(icrm,i,j,k)+tk(icrm,i,jc,k)+tk(icrm,i,j,kcu)+tk(icrm,i,jc,kcu))
           fw(i,j,k)=-tky*(w(icrm,i,jc,kc)-w(icrm,i,j,kc)+(v(icrm,i,jc,kcu)-v(icrm,i,jc,k))*dyz)
         end do
       end do
@@ -105,12 +105,12 @@ contains
         jb=j-1
         do i=1,nx
           ib=i-1
-          tkz=rdz2*tk(i,j,k)
+          tkz=rdz2*tk(icrm,i,j,k)
           fw(i,j,kc)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(icrm,k)*iadz
-          tkz=rdz25*(tk(i,j,k)+tk(ib,j,k)+tk(i,j,kc)+tk(ib,j,kc))
+          tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,j,kc)+tk(icrm,ib,j,kc))
           fu(i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + &
           (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(icrm,kc)
-          tkz=rdz25*(tk(i,j,k)+tk(i,jb,k)+tk(i,j,kc)+tk(i,jb,kc))
+          tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,i,jb,k)+tk(icrm,i,j,kc)+tk(icrm,i,jb,kc))
           fv(i,j,kc)=-tkz*( (v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw + &
           (w(icrm,i,j,kc)-w(icrm,i,jb,kc))*dzy)*rhow(icrm,kc)
           uwsb(icrm,kc)=uwsb(icrm,kc)+fu(i,j,kc)
@@ -124,7 +124,7 @@ contains
 
     do j=1,ny
       do i=1,nx
-        tkz=rdz2*grdf_z(nzm)*tk(i,j,nzm)
+        tkz=rdz2*grdf_z(nzm)*tk(icrm,i,j,nzm)
         fw(i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm)*rho(icrm,nzm)
         fu(i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
         fv(i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)

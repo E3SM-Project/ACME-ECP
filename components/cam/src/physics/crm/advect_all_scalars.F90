@@ -49,7 +49,7 @@ contains
 
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(sgs_field(:,:,:,k),sgsadv(:,k),sgswle(:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
+        call advect_scalar(sgs_field(icrm,:,:,:,k),sgsadv(icrm,:,k),sgswle(icrm,:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
       end do
     end if
 

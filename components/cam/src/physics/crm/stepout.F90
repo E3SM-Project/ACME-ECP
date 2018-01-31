@@ -128,9 +128,9 @@ contains
 
       !if(masterproc) then
 
-      !print*,'--->',tk(27,1,1)
+      !print*,'--->',tk(icrm,27,1,1)
       !print*,'tk->:'
-      !write(6,'(16f7.2)')((tk(i,1,k),i=1,16),k=nzm,1,-1)
+      !write(6,'(16f7.2)')((tk(icrm,i,1,k),i=1,16),k=nzm,1,-1)
       !print*,'p->:'
       !write(6,'(16f7.2)')((p(icrm,i,1,k),i=1,16),k=nzm,1,-1)
       !print*,'u->:'
