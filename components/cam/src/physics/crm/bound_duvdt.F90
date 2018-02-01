@@ -13,7 +13,7 @@ contains
 
     do k=1,nzm
       do j=1,ny
-        dudt(icrm,nxp1,j,k,na) = dudt(icrm,1,j,k,na)
+        dudt(icrm,nxp1,j,k,na(icrm)) = dudt(icrm,1,j,k,na(icrm))
       end do
     end do
 
@@ -21,7 +21,7 @@ contains
 
       do k=1,nzm
         do i=1,nx
-          dvdt(icrm,i,nyp1,k,na) = dvdt(icrm,i,1,k,na)
+          dvdt(icrm,i,nyp1,k,na(icrm)) = dvdt(icrm,i,1,k,na(icrm))
         end do
       end do
 

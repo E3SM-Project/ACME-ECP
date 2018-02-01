@@ -13,9 +13,9 @@ contains
     real(crm_rknd) dtdx, dtdy, dtdz, rhox, rhoy, rhoz
     integer i,j,k
 
-    dtdx = dtn/dx
-    dtdy = dtn/dy
-    dtdz = dtn/dz(icrm)
+    dtdx = dtn(icrm)/dx
+    dtdy = dtn(icrm)/dy
+    dtdz = dtn(icrm)/dz(icrm)
 
     do k=1,nzm
       rhox = rho(icrm,k)*dtdx
@@ -24,19 +24,19 @@ contains
       do j=1,ny
         do i=1,nx
 
-          dudt(icrm,i,j,k,nc) = u(icrm,i,j,k) + dt3(na) &
-          *(at*dudt(icrm,i,j,k,na)+bt*dudt(icrm,i,j,k,nb)+ct*dudt(icrm,i,j,k,nc))
+          dudt(icrm,i,j,k,nc(icrm)) = u(icrm,i,j,k) + dt3(icrm,na(icrm)) &
+          *(at(icrm)*dudt(icrm,i,j,k,na(icrm))+bt(icrm)*dudt(icrm,i,j,k,nb(icrm))+ct(icrm)*dudt(icrm,i,j,k,nc(icrm)))
 
-          dvdt(icrm,i,j,k,nc) = v(icrm,i,j,k) + dt3(na) &
-          *(at*dvdt(icrm,i,j,k,na)+bt*dvdt(icrm,i,j,k,nb)+ct*dvdt(icrm,i,j,k,nc))
+          dvdt(icrm,i,j,k,nc(icrm)) = v(icrm,i,j,k) + dt3(icrm,na(icrm)) &
+          *(at(icrm)*dvdt(icrm,i,j,k,na(icrm))+bt(icrm)*dvdt(icrm,i,j,k,nb(icrm))+ct(icrm)*dvdt(icrm,i,j,k,nc(icrm)))
 
-          dwdt(icrm,i,j,k,nc) = w(icrm,i,j,k) + dt3(na) &
-          *(at*dwdt(icrm,i,j,k,na)+bt*dwdt(icrm,i,j,k,nb)+ct*dwdt(icrm,i,j,k,nc))
+          dwdt(icrm,i,j,k,nc(icrm)) = w(icrm,i,j,k) + dt3(icrm,na(icrm)) &
+          *(at(icrm)*dwdt(icrm,i,j,k,na(icrm))+bt(icrm)*dwdt(icrm,i,j,k,nb(icrm))+ct(icrm)*dwdt(icrm,i,j,k,nc(icrm)))
 
-          u(icrm,i,j,k) = 0.5*(u(icrm,i,j,k)+dudt(icrm,i,j,k,nc)) * rhox
-          v(icrm,i,j,k) = 0.5*(v(icrm,i,j,k)+dvdt(icrm,i,j,k,nc)) * rhoy
-          misc(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(icrm,i,j,k,nc))
-          w(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(icrm,i,j,k,nc)) * rhoz
+          u(icrm,i,j,k) = 0.5*(u(icrm,i,j,k)+dudt(icrm,i,j,k,nc(icrm))) * rhox
+          v(icrm,i,j,k) = 0.5*(v(icrm,i,j,k)+dvdt(icrm,i,j,k,nc(icrm))) * rhoy
+          misc(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(icrm,i,j,k,nc(icrm)))
+          w(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(icrm,i,j,k,nc(icrm))) * rhoz
 
 
         end do

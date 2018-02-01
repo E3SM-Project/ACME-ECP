@@ -57,16 +57,20 @@ module grid
   real(crm_rknd), allocatable :: adzw (:,:) ! nz 	! ratio of the thinckness of w levels to dz
   ! real(crm_rknd) pres0      ! Reference surface pressure, Pa
 
-  integer:: nstep =0! current number of performed time steps
-  integer  ncycle  ! number of subcycles over the dynamical timestep
-  integer icycle  ! current subcycle
-  integer:: na=1, nb=2, nc=3 ! indeces for swapping the rhs arrays for AB scheme
-  real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme
-  real(crm_rknd) dtn	! current dynamical timestep (can be smaller than dt)
-  real(crm_rknd) dt3(3) 	! dynamical timesteps for three most recent time steps
-  real(8):: time=0.	! current time in sec.
-  real(crm_rknd) day	! current day (including fraction)
-  real(crm_rknd) dtfactor   ! dtn/dt
+  integer       , allocatable :: nstep   (:)    ! current number of performed time steps
+  integer       , allocatable :: ncycle  (:)    ! number of subcycles over the dynamical timestep
+  integer       , allocatable :: icycle  (:)    ! current subcycle
+  integer       , allocatable :: na      (:)    ! indeces for swapping the rhs arrays for AB scheme
+  integer       , allocatable :: nb      (:)    ! indeces for swapping the rhs arrays for AB scheme
+  integer       , allocatable :: nc      (:)    ! indeces for swapping the rhs arrays for AB scheme
+  real(crm_rknd), allocatable :: at      (:)    ! coefficients for the Adams-Bashforth scheme
+  real(crm_rknd), allocatable :: bt      (:)    ! coefficients for the Adams-Bashforth scheme
+  real(crm_rknd), allocatable :: ct      (:)    ! coefficients for the Adams-Bashforth scheme
+  real(crm_rknd), allocatable :: dtn     (:)    ! current dynamical timestep (can be smaller than dt)
+  real(crm_rknd), allocatable :: dt3     (:,:)  ! dynamical timesteps for three most recent time steps
+  real(8)       , allocatable :: time    (:)    ! current time in sec.
+  real(crm_rknd), allocatable :: day     (:)    ! current day (including fraction)
+  real(crm_rknd), allocatable :: dtfactor(:)    ! dtn/dt
 
   !  MPI staff:
   integer rank   ! rank of the current subdomain task (default 0)
@@ -172,23 +176,52 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( z    (ncrms,nz ) )      ! height of the pressure levels above surface,m
-    allocate( pres (ncrms,nzm) )  ! pressure,mb at scalar levels
-    allocate( zi   (ncrms,nz ) )     ! height of the interface levels
-    allocate( presi(ncrms,nz ) )  ! pressure,mb at interface levels
-    allocate( adz  (ncrms,nzm) )   ! ratio of the thickness of scalar levels to dz
-    allocate( adzw (ncrms,nz ) )	! ratio of the thinckness of w levels to dz
-    allocate( dz   (ncrms    ) )
+    allocate( z       (ncrms,nz ) )      ! height of the pressure levels above surface,m
+    allocate( pres    (ncrms,nzm) )  ! pressure,mb at scalar levels
+    allocate( zi      (ncrms,nz ) )     ! height of the interface levels
+    allocate( presi   (ncrms,nz ) )  ! pressure,mb at interface levels
+    allocate( adz     (ncrms,nzm) )   ! ratio of the thickness of scalar levels to dz
+    allocate( adzw    (ncrms,nz ) )	! ratio of the thinckness of w levels to dz
+    allocate( dz      (ncrms    ) )
+
+    allocate( nstep   (ncrms) )    ! current number of performed time steps
+    allocate( ncycle  (ncrms) )    ! number of subcycles over the dynamical timestep
+    allocate( icycle  (ncrms) )    ! current subcycle
+    allocate( na      (ncrms) )    ! indeces for swapping the rhs arrays for AB scheme
+    allocate( nb      (ncrms) )    ! indeces for swapping the rhs arrays for AB scheme
+    allocate( nc      (ncrms) )    ! indeces for swapping the rhs arrays for AB scheme
+    allocate( at      (ncrms) )    ! coefficients for the Adams-Bashforth scheme
+    allocate( bt      (ncrms) )    ! coefficients for the Adams-Bashforth scheme
+    allocate( ct      (ncrms) )    ! coefficients for the Adams-Bashforth scheme
+    allocate( dtn     (ncrms) )    ! current dynamical timestep (can be smaller than dt)
+    allocate( dt3     (ncrms,3) )    ! dynamical timesteps for three most recent time steps
+    allocate( time    (ncrms) )    ! current time in sec.
+    allocate( day     (ncrms) )    ! current day (including fraction)
+    allocate( dtfactor(ncrms) )    ! dtn/dt
 
     zero = 0
 
-    z     = zero
-    pres  = zero
-    zi    = zero
-    presi = zero
-    adz   = zero
-    adzw  = zero
-    dz    = zero
+    z        = zero
+    pres     = zero
+    zi       = zero
+    presi    = zero
+    adz      = zero
+    adzw     = zero
+    dz       = zero
+    nstep    =0
+    ncycle   = zero
+    icycle   = zero
+    na       =1
+    nb       =2
+    nc       =3
+    at       = zero
+    bt       = zero
+    ct       = zero
+    dtn      = zero
+    dt3      = zero
+    time     =0.
+    day      = zero
+    dtfactor = zero
   end subroutine allocate_grid
 
   subroutine deallocate_grid

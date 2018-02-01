@@ -13,9 +13,9 @@ contains
 
     integer k
 
-    dudt(icrm,:,:,:,na) = 0.
-    dvdt(icrm,:,:,:,na) = 0.
-    dwdt(icrm,:,:,:,na) = 0.
+    dudt(icrm,:,:,:,na(icrm)) = 0.
+    dvdt(icrm,:,:,:,na(icrm)) = 0.
+    dwdt(icrm,:,:,:,na(icrm)) = 0.
     misc(icrm,:,:,:) = 0.
 
   end

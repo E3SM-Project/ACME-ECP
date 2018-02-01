@@ -18,7 +18,7 @@ module kurant_mod
       real(crm_rknd) uhm(nz) ! maximum horizontal wind velocity
       real(crm_rknd) cfl, cfl_sgs
 
-      ncycle = 1
+      ncycle(icrm) = 1
 
       wm(nz)=0.
       do k = 1,nzm
@@ -37,15 +37,15 @@ module kurant_mod
       call kurant_sgs(cfl_sgs,ncrms,icrm)
       cfl = max(cfl,cfl_sgs)
 
-      ncycle = max(1,ceiling(cfl/0.7))
+      ncycle(icrm) = max(1,ceiling(cfl/0.7))
 
       if(dompi) then
-         ncycle1(1)=ncycle
+         ncycle1(1)=ncycle(icrm)
          call task_max_integer(ncycle1,ncycle2,1)
-         ncycle=ncycle2(1)
+         ncycle(icrm)=ncycle2(1)
       end if
 
-      if(ncycle.gt.4) then
+      if(ncycle(icrm).gt.4) then
          if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
          !+++ test +++mhwang
          ! write(0, *) 'cfl', cfl, cfl_sgs, latitude(icrm,1, 1), longitude(icrm,1,1)

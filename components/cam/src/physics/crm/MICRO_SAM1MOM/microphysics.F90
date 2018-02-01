@@ -274,7 +274,7 @@ CONTAINS
     integer, intent(in) :: ncrms,icrm
 
     ! Update bulk coefficient
-    if(doprecip.and.icycle.eq.1) call precip_init(ncrms,icrm)
+    if(doprecip.and.icycle(icrm).eq.1) call precip_init(ncrms,icrm)
 
     if(docloud) then
       call cloud(q,qn,qp,ncrms,icrm)
