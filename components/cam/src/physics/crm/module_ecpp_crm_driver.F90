@@ -531,10 +531,10 @@ contains
       do jj=1, ny
         do kk=1, nzm
           EVS = POLYSVP(tabs(icrm,ii,jj,kk),0)   ! saturation water vapor pressure (PA)
-          qvs(ii,jj,kk) = .622*EVS/(pres(kk)*100.-EVS)  ! pres(kk) with unit of hPa
+          qvs(ii,jj,kk) = .622*EVS/(pres(icrm,kk)*100.-EVS)  ! pres(icrm,kk) with unit of hPa
           !         rh(ii,jj,kk) = micro_field(icrm,ii,jj,kk,iqv)/QVS ! unit 0-1
           !         rh(ii,jj,kk) = min(1.0, rh(ii,jj,kk))    ! RH is diagnosed in microphysics
-          alt(ii,jj,kk) =  287.*tabs(icrm,ii,jj,kk)/(100.*pres(kk))
+          alt(ii,jj,kk) =  287.*tabs(icrm,ii,jj,kk)/(100.*pres(icrm,kk))
 
         end do
       end do

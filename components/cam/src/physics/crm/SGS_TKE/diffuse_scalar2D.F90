@@ -31,10 +31,10 @@ contains
     if(.not.dosgs.and..not.docolumn) return
 
     rdx2=1./(dx*dx)
-    rdz2=1./(dz*dz)
-    rdz=1./dz
-    dxz=dx/dz
-    dzx=dz/dx
+    rdz2=1./(dz(icrm)*dz(icrm))
+    rdz=1./dz(icrm)
+    dxz=dx/dz(icrm)
+    dzx=dz(icrm)/dx
 
     j=1
 
@@ -78,7 +78,7 @@ contains
     end if
 
     flux(1) = 0.
-    tmp=1./adzw(nz)
+    tmp=1./adzw(icrm,nz)
     do i=1,nx
       flx(i,j,0)=fluxb(i,j)*rdz*rhow(icrm,1)
       flx(i,j,nzm)=fluxt(i,j)*rdz*tmp*rhow(icrm,nz)
@@ -89,7 +89,7 @@ contains
     do k=1,nzm-1
       kc=k+1
       flux(kc)=0.
-      rhoi = rhow(icrm,kc)/adzw(kc)
+      rhoi = rhow(icrm,kc)/adzw(icrm,kc)
       rdz5=0.5*rdz2 * grdf_z(icrm,k)
       do i=1,nx
         tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
@@ -100,7 +100,7 @@ contains
 
     do k=1,nzm
       kb=k-1
-      rhoi = 1./(adz(k)*rho(icrm,k))
+      rhoi = 1./(adz(icrm,k)*rho(icrm,k))
       do i=1,nx
         dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)
         field(i,j,k)=field(i,j,k) + dfdt(i,j,k)

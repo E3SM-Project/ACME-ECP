@@ -105,12 +105,12 @@ module params
   real(crm_rknd), allocatable ::   z0(:)    	! roughness length
   ! real(crm_rknd)::   soil_wetness =1.! wetness coeff for soil (from 0 to 1.)
   ! integer:: ocean_type =0 ! type of SST forcing
-  logical:: cem =.false.   !Read Only ! flag for Cloud Ensemble Model
-  logical:: les =.false.   !Read Only ! flag for Large-Eddy Simulation
-  logical:: ocean =.false. !Read Only ! flag indicating that surface is water
-  logical:: land =.false.  !Read Only ! flag indicating that surface is land
-  logical:: sfc_flx_fxd =.false. !read only ! surface sensible flux is fixed
-  logical:: sfc_tau_fxd =.false. !read only ! surface drag is fixed
+  logical:: cem =.false.    ! flag for Cloud Ensemble Model
+  logical:: les =.false.    ! flag for Large-Eddy Simulation
+  ! logical, allocatable :: ocean(:) =.false.  ! flag indicating that surface is water
+  ! logical, allocatable :: land (:) =.false.  ! flag indicating that surface is land
+  logical:: sfc_flx_fxd =.false.  ! surface sensible flux is fixed
+  logical:: sfc_tau_fxd =.false.  ! surface drag is fixed
 
   ! real(crm_rknd):: timelargescale =0. ! time to start large-scale forcing
 
@@ -198,6 +198,8 @@ contains
     allocate( vhl       (ncrms) )
     allocate( taux0     (ncrms) )
     allocate( tauy0     (ncrms) )
+    ! allocate( ocean     (ncrms) )
+    ! allocate( land      (ncrms) )
 
     zero = 0
 
@@ -208,6 +210,8 @@ contains
     vhl        = zero
     taux0      = zero
     tauy0      = zero
+    ! ocean      = .false.
+    ! land       = .false.
   end subroutine allocate_params
 
   subroutine deallocate_params
@@ -219,6 +223,8 @@ contains
     deallocate( vhl        )
     deallocate( taux0      )
     deallocate( tauy0      )
+    ! deallocate( ocean      )
+    ! deallocate( land       )
   end subroutine deallocate_params
 
 end module params

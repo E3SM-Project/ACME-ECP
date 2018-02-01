@@ -32,16 +32,16 @@ contains
     rdy25=0.25*rdy2
 
     dxy=dx/dy
-    dxz=dx/dz
+    dxz=dx/dz(icrm)
     dyx=dy/dx
-    dyz=dy/dz
+    dyz=dy/dz(icrm)
 
 
     do k=1,nzm
       kc=k+1
       kcu=min(kc,nzm)
-      dxz=dx/(dz*adzw(kc))
-      dyz=dy/(dz*adzw(kc))
+      dxz=dx/(dz(icrm)*adzw(icrm,kc))
+      dyz=dy/(dz(icrm)*adzw(icrm,kc))
       rdx21=rdx2    * grdf_x(icrm,k)
       rdy21=rdy2    * grdf_y(icrm,k)
       rdx251=rdx25  * grdf_x(icrm,k)
@@ -89,16 +89,16 @@ contains
     end do
 
     !-------------------------
-    rdz=1./dz
-    dzx=dz/dx
-    dzy=dz/dy
+    rdz=1./dz(icrm)
+    dzx=dz(icrm)/dx
+    dzy=dz(icrm)/dy
 
     do k=1,nzm-1
       kc=k+1
       uwsb(icrm,kc)=0.
       vwsb(icrm,kc)=0.
-      iadz = 1./adz(k)
-      iadzw= 1./adzw(kc)
+      iadz = 1./adz(icrm,k)
+      iadzw= 1./adzw(icrm,kc)
       rdz2 = rdz*rdz * grdf_z(icrm,k)
       rdz25 = 0.25*rdz2
       do j=1,ny
@@ -125,7 +125,7 @@ contains
     do j=1,ny
       do i=1,nx
         tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
-        fw(i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm)*rho(icrm,nzm)
+        fw(i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(icrm,nzm)
         fu(i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
         fv(i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
         fu(i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(icrm,nz)
@@ -137,7 +137,7 @@ contains
 
     do k=1,nzm
       kc=k+1
-      rhoi = 1./(rho(icrm,k)*adz(k))
+      rhoi = 1./(rho(icrm,k)*adz(icrm,k))
       do j=1,ny
         do i=1,nx
           dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,kc)-fu(i,j,k))*rhoi
@@ -147,7 +147,7 @@ contains
     end do ! k
 
     do k=2,nzm
-      rhoi = 1./(rhow(icrm,k)*adzw(k))
+      rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
       do j=1,ny
         do i=1,nx
           dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(i,j,k+1)-fw(i,j,k))*rhoi

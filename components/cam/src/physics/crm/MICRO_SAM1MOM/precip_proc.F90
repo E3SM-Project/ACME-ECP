@@ -99,8 +99,8 @@ contains
             elseif(qp(icrm,i,j,k).gt.qp_threshold.and.qn(icrm,i,j,k).eq.0.) then
 
               qsatt = 0.
-              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(icrm,i,j,k),pres(k))
-              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k))
+              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))
+              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(icrm,k))
               dq = 0.
               if(omp.gt.0.001) then
                 qrr = qp(icrm,i,j,k) * omp

@@ -52,22 +52,22 @@ contains
       kb=k-1
       kc=k+1
 
-      grd=dz*adz(k)
+      grd=dz(icrm)*adz(icrm,k)
 
-      betdz=bet(icrm,k)/dz/(adzw(kc)+adzw(k))
+      betdz=bet(icrm,k)/dz(icrm)/(adzw(icrm,kc)+adzw(icrm,k))
       Ce1=Ce/0.7*0.19
       Ce2=Ce/0.7*0.51
       if(k.eq.1) then
         kb=1
         kc=2
-        betdz=bet(icrm,k)/dz/adzw(kc)
+        betdz=bet(icrm,k)/dz(icrm)/adzw(icrm,kc)
         Ce1=Ces/0.7*0.19
         Ce2=Ces/0.7*0.51
       end if
       if(k.eq.nzm) then
         kb=nzm-1
         kc=nzm
-        betdz=bet(icrm,k)/dz/adzw(k)
+        betdz=bet(icrm,k)/dz(icrm)/adzw(icrm,k)
         Ce1=Ces/0.7*0.19
         Ce2=Ces/0.7*0.51
       end if
@@ -89,9 +89,9 @@ contains
             omn = qcl(icrm,i,j,k)/(qcl(icrm,i,j,k)+qci(icrm,i,j,k)+1.e-20)
             lstarn = fac_cond+(1.-omn)*fac_fus
 
-            dqsat = omn*dtqsatw_crm(tabs(icrm,i,j,k),pres(k))+ &
-            (1.-omn)*dtqsati_crm(tabs(icrm,i,j,k),pres(k))
-            qsatt = omn*qsatw_crm(tabs(icrm,i,j,k),pres(k))+(1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k))
+            dqsat = omn*dtqsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))+ &
+            (1.-omn)*dtqsati_crm(tabs(icrm,i,j,k),pres(icrm,k))
+            qsatt = omn*qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))+(1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(icrm,k))
             bbb = 1. + epsv*qsatt-qcl(icrm,i,j,k)-qci(icrm,i,j,k) -qpl(icrm,i,j,k)-qpi(icrm,i,j,k)+1.61*tabs(icrm,i,j,k)*dqsat
             bbb = bbb / (1.+lstarn*dqsat)
             buoy_sgs=betdz*(bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
@@ -131,8 +131,8 @@ contains
 
 #ifdef SP_TK_LIM
             ! whannah - put a hard limit on near-surface tk
-            if ( z(k).lt.tk_min_depth ) then
-              tk(icrm,i,j,k) = max( tk(icrm,i,j,k), tk_min_value ) 
+            if ( z(icrm,k).lt.tk_min_depth ) then
+              tk(icrm,i,j,k) = max( tk(icrm,i,j,k), tk_min_value )
             end if
 #endif
 

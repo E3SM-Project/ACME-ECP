@@ -37,8 +37,8 @@ contains
       p0(icrm,k)=0.
       kc=min(nzm,k+1)
       kb=max(1,k-1)
-      if(pres(kc).le.200..and.pres(kb).gt.200.) k200=k
-      coef1 = rho(icrm,k)*dz*adz(k)*dtfactor
+      if(pres(icrm,kc).le.200..and.pres(icrm,kb).gt.200.) k200=k
+      coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
       do j=1,ny
         do i=1,nx
           tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) +&
@@ -72,8 +72,8 @@ contains
     k500 = nzm
     do k = 1,nzm
       kc=min(nzm,k+1)
-      if((pres(kc).le.500.).and.(pres(k).gt.500.)) then
-        if ((500.-pres(kc)).lt.(pres(k)-500.))then
+      if((pres(icrm,kc).le.500.).and.(pres(icrm,k).gt.500.)) then
+        if ((500.-pres(icrm,kc)).lt.(pres(icrm,k)-500.))then
           k500=kc
         else
           k500=k
@@ -127,21 +127,21 @@ contains
     ! FIND VERTICAL INDICES OF 850MB, COMPUTE SWVP
     k850 = 1
     do k = 1,nzm
-      if(pres(k).le.850.) then
+      if(pres(icrm,k).le.850.) then
         k850 = k
         EXIT
       end if
     end do
 
     do k=1,nzm
-      coef1 = rho(icrm,k)*dz*adz(k)*dtfactor
+      coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
       do j=1,ny
         do i=1,nx
 
           ! Saturated water vapor path with respect to water. Can be used
           ! with water vapor path (= pw) to compute column-average
           ! relative humidity.
-          swvp_xy(icrm,i,j) = swvp_xy(icrm,i,j)+qsatw_crm(tabs(icrm,i,j,k),pres(k))*coef1
+          swvp_xy(icrm,i,j) = swvp_xy(icrm,i,j)+qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))*coef1
         end do
       end do
     end do ! k
@@ -149,7 +149,7 @@ contains
     ! ACCUMULATE AVERAGES OF TWO-DIMENSIONAL STATISTICS
     do j=1,ny
       do i=1,nx
-        psfc_xy(icrm,i,j) = psfc_xy(icrm,i,j) + (100.*pres(1) + p(icrm,i,j,1))*dtfactor
+        psfc_xy(icrm,i,j) = psfc_xy(icrm,i,j) + (100.*pres(icrm,1) + p(icrm,i,j,1))*dtfactor
 
         ! 850 mbar horizontal winds
         u850_xy(icrm,i,j) = u850_xy(icrm,i,j) + u(icrm,i,j,k850)*dtfactor
@@ -172,9 +172,9 @@ contains
         ! FIND CLOUD TOP HEIGHT
         tmp_lwp = 0.
         do k = nzm,1,-1
-          tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(icrm,k)*dz*adz(k)
+          tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(icrm,k)*dz(icrm)*adz(icrm,k)
           if (tmp_lwp.gt.0.01) then
-            cloudtopheight(icrm,i,j) = z(k)
+            cloudtopheight(icrm,i,j) = z(icrm,k)
             cloudtoptemp(icrm,i,j) = tabs(icrm,i,j,k)
             cld_xy(icrm,i,j) = cld_xy(icrm,i,j) + dtfactor
             EXIT
@@ -183,7 +183,7 @@ contains
         ! FIND ECHO TOP HEIGHT
         do k = nzm,1,-1
           if (qpl(icrm,i,j,k)+qpi(icrm,i,j,k).gt.1.e-6) then
-            echotopheight(icrm,i,j) = z(k)
+            echotopheight(icrm,i,j) = z(icrm,k)
             EXIT
           end if
         end do

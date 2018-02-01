@@ -15,7 +15,7 @@ contains
 
     dtdx = dtn/dx
     dtdy = dtn/dy
-    dtdz = dtn/dz
+    dtdz = dtn/dz(icrm)
 
     do k=1,nzm
       rhox = rho(icrm,k)*dtdx

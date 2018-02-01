@@ -14,7 +14,7 @@ contains
     integer i, j, k, kc, kb
     real(crm_rknd) dz2, dz25, www, rhoi
 
-    dz25=1./(4.*dz)
+    dz25=1./(4.*dz(icrm))
     dz2=dz25*2.
 
     do j=1,ny
@@ -71,7 +71,7 @@ contains
 
     do k=1,nzm
       kc = k+1
-      rhoi = 1./(rho(icrm,k)*adz(k))
+      rhoi = 1./(rho(icrm,k)*adz(icrm,k))
       do j=1,ny
         do i=1,nx
           dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fuz(i,j,kc)-fuz(i,j,k))*rhoi
@@ -83,7 +83,7 @@ contains
 
     do k=2,nzm
       kb=k-1
-      rhoi = 1./(rhow(icrm,k)*adzw(k))
+      rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
       do j=1,ny
         do i=1,nx
           dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fwz(i,j,k)-fwz(i,j,kb))*rhoi

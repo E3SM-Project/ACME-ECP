@@ -54,7 +54,7 @@ contains
       kc = min(nzm,k+1)
       kb = max(1,k-1)
       ! CFL number based on grid spacing interpolated to interface i,j,k-1/2
-      coef = dtn/(0.5*(adz(kb)+adz(k))*dz)
+      coef = dtn/(0.5*(adz(icrm,kb)+adz(icrm,k))*dz(icrm))
       do j = 1,ny
         do i = 1,nx
           ! Compute cloud ice density in this cell and the ones above/below.
@@ -92,7 +92,7 @@ contains
     ici = index_cloud_ice
 
     do k=max(1,kmin-2),kmax
-      coef=dtn/(dz*adz(k)*rho(icrm,k))
+      coef=dtn/(dz(icrm)*adz(icrm,k)*rho(icrm,k))
       do j=1,ny
         do i=1,nx
           ! The cloud ice increment is the difference of the fluxes.
@@ -114,7 +114,7 @@ contains
       end do
     end do
 
-    coef=dtn/dz
+    coef=dtn/dz(icrm)
     do j=1,ny
       do i=1,nx
         dqi=-coef*fz(i,j,1)

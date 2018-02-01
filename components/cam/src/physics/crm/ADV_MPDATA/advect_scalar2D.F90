@@ -96,7 +96,7 @@ contains
 
     do k=1,nzm
       irho(k) = 1./rho(icrm,k)
-      iadz(k) = 1./adz(k)
+      iadz(k) = 1./adz(icrm,k)
       do i=-1,nxp2
         f(i,j,k) = f(i,j,k) - (uuu(i+1,j,k)-uuu(i,j,k) &
         + (www(i,j,k+1)-www(i,j,k))*iadz(k))*irho(k)
@@ -107,8 +107,8 @@ contains
     do k=1,nzm
       kc=min(nzm,k+1)
       kb=max(1,k-1)
-      dd=2./(kc-kb)/adz(k)
-      irhow(k)=1./(rhow(icrm,k)*adz(k))
+      dd=2./(kc-kb)/adz(icrm,k)
+      irhow(k)=1./(rhow(icrm,k)*adz(icrm,k))
       do i=0,nxp2
         ib=i-1
         uuu(i,j,k)=andiff(f(ib,j,k),f(i,j,k),u(icrm,i,j,k),irho(k)) &

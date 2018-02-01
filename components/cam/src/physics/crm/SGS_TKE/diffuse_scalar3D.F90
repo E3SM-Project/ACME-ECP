@@ -34,14 +34,14 @@ contains
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
-    rdz2=1./(dz*dz)
-    rdz=1./dz
+    rdz2=1./(dz(icrm)*dz(icrm))
+    rdz=1./dz(icrm)
     dxy=dx/dy
-    dxz=dx/dz
+    dxz=dx/dz(icrm)
     dyx=dy/dx
-    dyz=dy/dz
-    dzx=dz/dx
-    dzy=dz/dy
+    dyz=dy/dz(icrm)
+    dzx=dz(icrm)/dx
+    dzy=dz(icrm)/dy
 
     dfdt(:,:,:)=0.
 
@@ -149,7 +149,7 @@ contains
     !  Vertical diffusion:
 
     flux(1) = 0.
-    tmp=1./adzw(nz)
+    tmp=1./adzw(icrm,nz)
     do j=1,ny
       do i=1,nx
         flx(i,j,0)=fluxb(i,j)*rdz*rhow(icrm,1)
@@ -162,7 +162,7 @@ contains
     do k=1,nzm-1
       kc=k+1
       flux(kc)=0.
-      rhoi = rhow(icrm,kc)/adzw(kc)
+      rhoi = rhow(icrm,kc)/adzw(icrm,kc)
       rdz5=0.5*rdz2 * grdf_z(icrm,k)
       do j=1,ny
         do i=1,nx
@@ -175,7 +175,7 @@ contains
 
     do k=1,nzm
       kb=k-1
-      rhoi = 1./(adz(k)*rho(icrm,k))
+      rhoi = 1./(adz(icrm,k)*rho(icrm,k))
       do j=1,ny
         do i=1,nx
           dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)

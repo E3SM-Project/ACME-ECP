@@ -269,8 +269,8 @@ contains
     !   in the vertical for each subdomain:
 
     do k=1,nzm
-      a(k)=rhow(icrm,k)/(adz(k)*adzw(k)*dz*dz)
-      c(k)=rhow(icrm,k+1)/(adz(k)*adzw(k+1)*dz*dz)
+      a(k)=rhow(icrm,k)/(adz(icrm,k)*adzw(icrm,k)*dz(icrm)*dz(icrm))
+      c(k)=rhow(icrm,k+1)/(adz(icrm,k)*adzw(icrm,k+1)*dz(icrm)*dz(icrm))
     end do
 
     call task_rank_to_index(rank,it,jt)

@@ -44,12 +44,12 @@ contains
       divmin=1.e20
       divmax=-1.e20
 
-      rdx = 1./dx
-      rdy = 1./dy
+      rdx = 1./dx(icrm)
+      rdy = 1./dy(icrm)
 
       wmax=0.
       do k=1,nzm
-        coef = rho(icrm,k)*adz(k)*dz
+        coef = rho(icrm,k)*adz(icrm,k)*dz
         rdz = 1./coef
         if(ny.ne.1) then
           do j=1,ny-1*YES3D
@@ -159,7 +159,7 @@ contains
         write(6,*) 'NSTEP=',nstep
         write(6,*) 'div:',divmax,divmin
         !if(.not.dodynamicocean) write(6,*) 'SST=',tabs_s
-        write(6,*) 'surface pressure=',pres0
+        ! write(6,*) 'surface pressure=',pres0
 
       endif
 

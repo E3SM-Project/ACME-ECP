@@ -90,7 +90,7 @@ CONTAINS
     allocate( qpevp   (ncrms,nz) )
     q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
     qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,2)
-    
+
     zero = 0
 
     micro_field = zero
@@ -511,7 +511,7 @@ CONTAINS
               tmp = tmp + micro_field(icrm,i,j,k,m)
             end do
           end do
-          total_water = total_water + tmp*adz(k)*dz*rho(icrm,k)
+          total_water = total_water + tmp*adz(icrm,k)*dz(icrm)*rho(icrm,k)
         end do
       end if
     end do

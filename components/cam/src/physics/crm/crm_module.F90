@@ -358,9 +358,9 @@ subroutine crm(lchnk, icol, ncrms, &
     integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, icrm
     integer         :: kx
     logical         :: flag_top(nx,ny)
-    real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
+    real(crm_rknd)  :: ustar, bflx(ncrms), wnd(ncrms), qsat, omg
     real(crm_rknd)  :: colprec,colprecs
-    real(r8)        :: zs                ! surface elevation
+    ! real(r8)        :: zs                ! surface elevation
     integer         :: igstep            ! GCM time steps
     integer         :: iseed             ! seed for random perturbation
     integer         :: gcolindex(pcols)  ! array of global latitude indices
@@ -382,17 +382,15 @@ subroutine crm(lchnk, icol, ncrms, &
   integer        :: i_rad
   integer        :: j_rad
 
+  call allocate_grid(ncrms)
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
   call allocate_microphysics(ncrms)
   call allocate_tracers(ncrms)
   call allocate_sgs(ncrms)
 
-  !Loop over "vector columns"
-  do icrm = 1 , ncrms
-
-
     !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
+  do icrm = 1 , ncrms
 #ifdef CRM_STANDALONE
     latitude0 (icrm) = latitude0_in (icrm)
     longitude0(icrm) = longitude0_in(icrm)
@@ -400,9 +398,12 @@ subroutine crm(lchnk, icol, ncrms, &
     latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
     longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
 #endif
+  enddo
 
     igstep = get_nstep()
 
+#ifdef CRM_DUMP
+  do icrm = 1 , ncrms
     call crm_dump_input( igstep,plev,lchnk,icol(icrm),latitude0(icrm),longitude0(icrm),ps(icrm),pmid(icrm,:),pdel(icrm,:),phis(icrm),zmid(icrm,:),zint(icrm,:),qrad_crm(icrm,:,:,:),dt_gl, &
                          ocnfrac(icrm),tau00(icrm),wndls(icrm),bflxls(icrm),fluxu00(icrm),fluxv00(icrm),fluxt00(icrm),fluxq00(icrm),tl(icrm,:),ql(icrm,:),qccl(icrm,:),qiil(icrm,:),   &
                          ul(icrm,:),vl(icrm,:), &
@@ -416,6 +417,8 @@ subroutine crm(lchnk, icol, ncrms, &
 #endif
 #endif
                          dd_crm(icrm,:),mui_crm(icrm,:),mdi_crm(icrm,:) )
+  enddo
+#endif
 
 !-----------------------------------------------
 
@@ -424,20 +427,22 @@ subroutine crm(lchnk, icol, ncrms, &
     ptop      = plev-nzm+1
     factor_xy = 1._r8/dble(nx*ny)
     dummy     = 0.
-    t_rad  (icrm,:,:,:) = 0.
-    qv_rad (icrm,:,:,:) = 0.
-    qc_rad (icrm,:,:,:) = 0.
-    qi_rad (icrm,:,:,:) = 0.
-    cld_rad(icrm,:,:,:) = 0.
+    t_rad  (:,:,:,:) = 0.
+    qv_rad (:,:,:,:) = 0.
+    qc_rad (:,:,:,:) = 0.
+    qi_rad (:,:,:,:) = 0.
+    cld_rad(:,:,:,:) = 0.
 #ifdef m2005
-    nc_rad(icrm,:,:,:) = 0.0
-    ni_rad(icrm,:,:,:) = 0.0
-    qs_rad(icrm,:,:,:) = 0.0
-    ns_rad(icrm,:,:,:) = 0.0
+    nc_rad(:,:,:,:) = 0.0
+    ni_rad(:,:,:,:) = 0.0
+    qs_rad(:,:,:,:) = 0.0
+    ns_rad(:,:,:,:) = 0.0
 #endif
-    zs=phis(icrm)/ggr
-    bflx = bflxls(icrm)
-    wnd = wndls(icrm)
+    ! zs=phis(icrm)/ggr
+  do icrm = 1 , ncrms
+    bflx(icrm) = bflxls(icrm)
+    wnd(icrm) = wndls(icrm)
+  enddo
 
 !-----------------------------------------
 
@@ -452,55 +457,64 @@ subroutine crm(lchnk, icol, ncrms, &
     call task_init ()
     call setparm()
 
+  do icrm = 1 , ncrms
     fcor= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
     fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
     fcory(icrm,:) = fcor
     fcorzy(icrm,:) = fcorz
-    do j=1,ny
-      do i=1,nx
+  enddo
+  do j=1,ny
+    do i=1,nx
+      do icrm = 1 , ncrms
         latitude (icrm,i,j) = latitude0 (icrm)
         longitude(icrm,i,j) = longitude0(icrm)
       end do
     end do
+  end do
 
-    if(ocnfrac(icrm).gt.0.5) then
-       OCEAN = .true.
-    else
-       LAND = .true.
-    end if
+    ! if(ocnfrac(icrm).gt.0.5) then
+    !    OCEAN(icrm) = .true.
+    ! else
+    !    LAND(icrm) = .true.
+    ! end if
 
     ! Create CRM vertical grid and initialize some vertical reference arrays:
     do k = 1, nzm
-      z(k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
-      zi(k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
-      pres(k) = pmid(icrm,plev-k+1)/100.
-      prespot(icrm,k)=(1000./pres(k))**(rgas/cp)
-      bet(icrm,k) = ggr/tl(icrm,plev-k+1)
-      gamaz(icrm,k)=ggr/cp*z(k)
+      do icrm = 1 , ncrms
+        z(icrm,k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
+        zi(icrm,k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
+        pres(icrm,k) = pmid(icrm,plev-k+1)/100.
+        prespot(icrm,k)=(1000./pres(icrm,k))**(rgas/cp)
+        bet(icrm,k) = ggr/tl(icrm,plev-k+1)
+        gamaz(icrm,k)=ggr/cp*z(icrm,k)
+      end do ! k
     end do ! k
-   ! zi(nz) =  zint(plev-nz+2)
-    zi(nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
+   ! zi(icrm,nz) =  zint(plev-nz+2)
+   do icrm = 1 , ncrms
+     zi(icrm,nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
+   enddo
+   do icrm = 1 , ncrms
 
-    dz = 0.5*(z(1)+z(2))
+    dz(icrm) = 0.5*(z(icrm,1)+z(icrm,2))
     do k=2,nzm
-      adzw(k) = (z(k)-z(k-1))/dz
+      adzw(icrm,k) = (z(icrm,k)-z(icrm,k-1))/dz(icrm)
     end do
-    adzw(1)  = 1.
-    adzw(nz) = adzw(nzm)
+    adzw(icrm,1)  = 1.
+    adzw(icrm,nz) = adzw(icrm,nzm)
     !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
     do k=1, nzm
-      adz(k)=(zi(k+1)-zi(k))/dz
+      adz(icrm,k)=(zi(icrm,k+1)-zi(icrm,k))/dz(icrm)
     end do
 
     do k = 1,nzm
-      rho(icrm,k) = pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
+      rho(icrm,k) = pdel(icrm,plev-k+1)/ggr/(adz(icrm,k)*dz(icrm))
     end do
     do k=2,nzm
     ! rhow(icrm,k) = 0.5*(rho(icrm,k)+rho(icrm,k-1))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(icrm,k) = (pmid(icrm,plev-k+2)-pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
+      rhow(icrm,k) = (pmid(icrm,plev-k+2)-pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
     end do
     rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
@@ -652,7 +666,7 @@ subroutine crm(lchnk, icol, ncrms, &
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
     ustar = sqrt(tau00(icrm)/rho(icrm,1))
-    z0(icrm) = z0_est(z(1),bflx,wnd,ustar)
+    z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar)
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
     timing_factor = 0.
@@ -969,7 +983,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !-----------------------------------------------
         !     surface fluxes:
-        if (dosurface) call crmsurface(bflx,ncrms,icrm)
+        if (dosurface) call crmsurface(bflx(icrm),ncrms,icrm)
 
         !-----------------------------------------------------------
         !  SGS physics:
@@ -1194,17 +1208,17 @@ subroutine crm(lchnk, icol, ncrms, &
 
             !hm#endif
 
-            tmp1 = rho(icrm,nz-k)*adz(nz-k)*dz*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
+            tmp1 = rho(icrm,nz-k)*adz(icrm,nz-k)*dz(icrm)*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(icrm,i,j,nz-k), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
                 cldtop(icrm,k) = cldtop(icrm,k) + 1
                 flag_top(i,j) = .false.
             endif
-            if(pres(nz-k).ge.700.) then
+            if(pres(icrm,nz-k).ge.700.) then
                 cwpl(i,j) = cwpl(i,j)+tmp1
                 cltemp(i,j) = max(CF3D(icrm,i,j,nz-k), cltemp(i,j))
-            else if(pres(nz-k).lt.400.) then
+            else if(pres(icrm,nz-k).lt.400.) then
                 cwph(i,j) = cwph(i,j)+tmp1
                 chtemp(i,j) = max(CF3D(icrm,i,j,nz-k), chtemp(i,j))
             else
@@ -1212,9 +1226,9 @@ subroutine crm(lchnk, icol, ncrms, &
                 cmtemp(i,j) = max(CF3D(icrm,i,j,nz-k), cmtemp(i,j))
             endif
 
-            !     qsat = qsatw_crm(tabs(icrm,i,j,k),pres(k))
+            !     qsat = qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))
             !     if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.min(1.e-5,0.01*qsat)) then
-            tmp1 = rho(icrm,k)*adz(k)*dz
+            tmp1 = rho(icrm,k)*adz(icrm,k)*dz(icrm)
             if(tmp1*(qcl(icrm,i,j,k)+qci(icrm,i,j,k)).gt.cwp_threshold) then
                  cld(icrm,l) = cld(icrm,l) + CF3D(icrm,i,j,k)
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
@@ -1275,13 +1289,13 @@ subroutine crm(lchnk, icol, ncrms, &
           do i=1, nx
             if(w(icrm,i,j,k).gt.0.) then
               kx=max(1, k-1)
-              qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx))
+              qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(icrm,kx))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                 mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(icrm,k)*w(icrm,i,j,k)
               endif
             else if (w(icrm,i,j,k).lt.0.) then
               kx=min(k+1, nzm)
-              qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx))
+              qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(icrm,kx))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                 mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(icrm,k)*w(icrm,i,j,k)
               else if(qpl(icrm,i,j,kx)+qpi(icrm,i,j,kx).gt.1.0e-4) then
@@ -1568,16 +1582,16 @@ subroutine crm(lchnk, icol, ncrms, &
     do j=1,ny
       do i=1,nx
 #ifdef sam1mom
-        precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz/dt/dble(nstop)
-        precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz/dt/dble(nstop)
+        precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
+        precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
 #endif
 #ifdef m2005
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/s/dz
         !          precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz/dble(nstop)     !mm/s/dz --> mm/s
         !          precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz/dble(nstop)   !mm/s/dz --> mm/s
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/dz
-        precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz/dt/dble(nstop)     !mm/s/dz --> mm/s
-        precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
+        precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
+        precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif
         if(precsfc(icrm,i,j).gt.10./86400.) then
            precc (icrm) = precc (icrm) + precsfc(icrm,i,j)
@@ -1661,7 +1675,7 @@ subroutine crm(lchnk, icol, ncrms, &
       ! time step.
       !---mhwang
 
-      tmp1 = dz/rhow(icrm,k)
+      tmp1 = dz(icrm)/rhow(icrm,k)
       tmp2 = tmp1/dtn                        ! dtn is calculated inside of the icyc loop.
                                              ! It seems wrong to use it here ???? +++mhwang
       mkwsb (icrm,k,:) = mkwsb (icrm,k,:) * tmp1*rhow(icrm,k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
@@ -1673,7 +1687,7 @@ subroutine crm(lchnk, icol, ncrms, &
       qpsrc   (icrm,k) = qpsrc   (icrm,k) * factor_xy*idt_gl
       qpevp   (icrm,k) = qpevp   (icrm,k) * factor_xy*idt_gl
       qpfall  (icrm,k) = qpfall  (icrm,k) * factor_xy*idt_gl   ! kg/kg in M2005 ---> kg/kg/s
-      precflux(icrm,k) = precflux(icrm,k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
+      precflux(icrm,k) = precflux(icrm,k) * factor_xy*dz(icrm)/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
       flux_u    (icrm,l) = (uwle(icrm,k) + uwsb(icrm,k))*tmp1*factor_xy/nstop
@@ -1804,6 +1818,7 @@ subroutine crm(lchnk, icol, ncrms, &
                           prec_crm(icrm,:,:),qtot(icrm,:) )
   enddo
 
+  call deallocate_grid()
   call deallocate_params()
   call deallocate_vars()
   call deallocate_microphysics()

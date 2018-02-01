@@ -49,13 +49,13 @@ module grid
   integer, parameter :: nadams = 3
 
   ! Vertical grid parameters:
-  real(crm_rknd) z(nz)      ! height of the pressure levels above surface,m
-  real(crm_rknd) pres(nzm)  ! pressure,mb at scalar levels
-  real(crm_rknd) zi(nz)     ! height of the interface levels
-  real(crm_rknd) presi(nz)  ! pressure,mb at interface levels
-  real(crm_rknd) adz(nzm)   ! ratio of the thickness of scalar levels to dz
-  real(crm_rknd) adzw(nz)	! ratio of the thinckness of w levels to dz
-  real(crm_rknd) pres0      ! Reference surface pressure, Pa
+  real(crm_rknd), allocatable :: z    (:,:) ! nz       ! height of the pressure levels above surface,m
+  real(crm_rknd), allocatable :: pres (:,:) ! nzm  ! pressure,mb at scalar levels
+  real(crm_rknd), allocatable :: zi   (:,:) ! nz      ! height of the interface levels
+  real(crm_rknd), allocatable :: presi(:,:) ! nz   ! pressure,mb at interface levels
+  real(crm_rknd), allocatable :: adz  (:,:) ! nzm   ! ratio of the thickness of scalar levels to dz
+  real(crm_rknd), allocatable :: adzw (:,:) ! nz 	! ratio of the thinckness of w levels to dz
+  ! real(crm_rknd) pres0      ! Reference surface pressure, Pa
 
   integer:: nstep =0! current number of performed time steps
   integer  ncycle  ! number of subcycles over the dynamical timestep
@@ -97,9 +97,9 @@ module grid
   !-----------------------------------------
   ! Parameters controled by namelist PARAMETERS
 
-  real(crm_rknd):: dx =0. 	! grid spacing in x direction
-  real(crm_rknd):: dy =0.	! grid spacing in y direction
-  real(crm_rknd):: dz =0.	! constant grid spacing in z direction (when dz_constant=.true.)
+  real(crm_rknd) :: dx =0. 	! grid spacing in x direction
+  real(crm_rknd) :: dy =0.	! grid spacing in y direction
+  real(crm_rknd), allocatable :: dz(:)	! constant grid spacing in z direction (when dz_constant=.true.)
   logical:: doconstdz = .false.  ! do constant vertical grid spacing set by dz
 
   integer:: nstop =0   ! time step number to stop the integration
@@ -165,4 +165,41 @@ module grid
   logical :: wgls_holds_omega = .false.
 
   !-----------------------------------------
+
+contains
+
+  subroutine allocate_grid(ncrms)
+    implicit none
+    integer, intent(in) :: ncrms
+    real(crm_rknd) :: zero
+    allocate( z    (ncrms,nz ) )      ! height of the pressure levels above surface,m
+    allocate( pres (ncrms,nzm) )  ! pressure,mb at scalar levels
+    allocate( zi   (ncrms,nz ) )     ! height of the interface levels
+    allocate( presi(ncrms,nz ) )  ! pressure,mb at interface levels
+    allocate( adz  (ncrms,nzm) )   ! ratio of the thickness of scalar levels to dz
+    allocate( adzw (ncrms,nz ) )	! ratio of the thinckness of w levels to dz
+    allocate( dz   (ncrms    ) )
+
+    zero = 0
+
+    z     = zero
+    pres  = zero
+    zi    = zero
+    presi = zero
+    adz   = zero
+    adzw  = zero
+    dz    = zero
+  end subroutine allocate_grid
+
+  subroutine deallocate_grid
+    implicit none
+    deallocate( z     )      ! height of the pressure levels above surface,m
+    deallocate( pres  )  ! pressure,mb at scalar levels
+    deallocate( zi    )     ! height of the interface levels
+    deallocate( presi )  ! pressure,mb at interface levels
+    deallocate( adz   )   ! ratio of the thickness of scalar levels to dz
+    deallocate( adzw  )	! ratio of the thinckness of w levels to dz
+    deallocate( dz    )
+  end subroutine deallocate_grid
+
 end module grid

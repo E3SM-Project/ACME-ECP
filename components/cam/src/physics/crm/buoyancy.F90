@@ -15,8 +15,8 @@ contains
 
     do k=2,nzm
       kb=k-1
-      betu=adz(kb)/(adz(k)+adz(kb))
-      betd=adz(k)/(adz(k)+adz(kb))
+      betu=adz(icrm,kb)/(adz(icrm,k)+adz(icrm,kb))
+      betd=adz(icrm,k)/(adz(icrm,k)+adz(icrm,kb))
       do j=1,ny
         do i=1,nx
 
