@@ -21,8 +21,8 @@ contains
 
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
 
-      uhl = uhl + dtn*utend(icrm,1)
-      vhl = vhl + dtn*vtend(icrm,1)
+      uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
+      vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
 
       tauxm = 0.
       tauym = 0.
@@ -31,16 +31,16 @@ contains
         do i=1,nx
           u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+ &
           (0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)**2))
-          tau00 = rho(icrm,1) * diag_ustar(z(1),bflx,u_h0,z0)**2
-          fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl)/u_h0*tau00
-          fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl)/u_h0*tau00
+          tau00 = rho(icrm,1) * diag_ustar(z(1),bflx,u_h0,z0(icrm))**2
+          fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
+          fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
           tauxm = tauxm + fluxbu(icrm,i,j)
           tauym = tauym + fluxbv(icrm,i,j)
         end do
       end do
 
-      taux0 = taux0 + tauxm/dble(nx*ny)
-      tauy0 = tauy0 + tauym/dble(nx*ny)
+      taux0(icrm) = taux0(icrm) + tauxm/dble(nx*ny)
+      tauy0(icrm) = tauy0(icrm) + tauym/dble(nx*ny)
 
     end if ! SFC_FLX_FXD
 

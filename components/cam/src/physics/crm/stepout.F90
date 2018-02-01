@@ -158,7 +158,7 @@ contains
         print*,'DAY = ',day
         write(6,*) 'NSTEP=',nstep
         write(6,*) 'div:',divmax,divmin
-        if(.not.dodynamicocean) write(6,*) 'SST=',tabs_s
+        !if(.not.dodynamicocean) write(6,*) 'SST=',tabs_s
         write(6,*) 'surface pressure=',pres0
 
       endif

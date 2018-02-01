@@ -109,9 +109,6 @@ contains
 		end if
 #endif
 
-		if(fcor.eq.-999.) fcor= 4*pi/86400.*sin(latitude0*pi/180.)
-		fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
-
 		if(ny.eq.1) dy=dx
 		dtn = dt
 
@@ -134,7 +131,7 @@ contains
 			nstatmomend      = 999999999
 		end if
 
-		if(tautqls.eq.99999999.) tautqls = tauls
+		! if(tautqls.eq.99999999.) tautqls = tauls
 
 		masterproc = rank.eq.0
 

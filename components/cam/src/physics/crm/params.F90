@@ -76,53 +76,52 @@ module params
   ! internally set parameters:
 
   real(crm_rknd)   epsv     ! = (1-eps)/eps, where eps= Rv/Ra, or =0. if dosmoke=.true.
-  logical:: dosubsidence = .false.
-  real(crm_rknd) fcorz      ! Vertical Coriolis parameter
-  real(crm_rknd) coszrs
+  !logical:: dosubsidence = .false.
+  !real(crm_rknd) coszrs
 
   !----------------------------------------------
   ! Parameters set by PARAMETERS namelist:
   ! Initialized to default values.
   !----------------------------------------------
 
-  real(crm_rknd):: ug = 0.        ! Velocity of the Domain's drift in x direction
-  real(crm_rknd):: vg	= 0.        ! Velocity of the Domain's drift in y direction
-  real(crm_rknd):: fcor = -999.   ! Coriolis parameter
-  real(crm_rknd):: longitude0 = 0.    ! latitude of the domain's center
-  real(crm_rknd):: latitude0  = 0.    ! longitude of the domain's center
-  real(crm_rknd):: nxco2 = 1         ! factor to modify co2 concentration
-  logical:: doradlat = .false.
-  logical:: doradlon = .false.
+  real(crm_rknd):: ug = 0.   !Read-Only     ! Velocity of the Domain's drift in x direction
+  real(crm_rknd):: vg	= 0.   !Read-Only     ! Velocity of the Domain's drift in y direction
+  real(crm_rknd), allocatable :: longitude0(:)    ! latitude of the domain's center
+  real(crm_rknd), allocatable :: latitude0 (:)    ! longitude of the domain's center
+  !real(crm_rknd):: nxco2 = 1         ! factor to modify co2 concentration
+  !logical:: doradlat = .false.
+  !logical:: doradlon = .false.
 
-  real(8):: tabs_s =0.	! surface temperature,K
-  real(crm_rknd):: delta_sst = 0.   ! amplitude of sin-pattern of sst about tabs_s (ocean_type=1)
-  real(crm_rknd):: depth_slab_ocean = 2. ! thickness of the slab-ocean (m)
-  real(crm_rknd):: Szero = 0.  ! mean ocean transport (W/m2)
-  real(crm_rknd):: deltaS = 0. ! amplitude of linear variation of ocean transport (W/m2)
-  real(crm_rknd):: timesimpleocean = 0. ! time to start simple ocean
+  !real(8):: tabs_s =0.	! surface temperature,K
+  !real(crm_rknd):: delta_sst = 0.   ! amplitude of sin-pattern of sst about tabs_s (ocean_type=1)
+  ! real(crm_rknd):: depth_slab_ocean = 2. ! thickness of the slab-ocean (m)
+  ! real(crm_rknd):: Szero = 0.  ! mean ocean transport (W/m2)
+  ! real(crm_rknd):: deltaS = 0. ! amplitude of linear variation of ocean transport (W/m2)
+  ! real(crm_rknd):: timesimpleocean = 0. ! time to start simple ocean
 
-  real(crm_rknd)::   fluxt0 =0.  ! surface sensible flux, Km/s
-  real(crm_rknd)::   fluxq0 =0.  ! surface latent flux, m/s
-  real(crm_rknd)::   tau0   =0.  ! surface stress, m2/s2
-  real(crm_rknd)::   z0     =0.035	! roughness length
-  real(crm_rknd)::   soil_wetness =1.! wetness coeff for soil (from 0 to 1.)
-  integer:: ocean_type =0 ! type of SST forcing
-  logical:: cem =.false.    ! flag for Cloud Ensemble Model
-  logical:: les =.false.    ! flag for Large-Eddy Simulation
-  logical:: ocean =.false.  ! flag indicating that surface is water
-  logical:: land =.false.   ! flag indicating that surface is land
-  logical:: sfc_flx_fxd =.false. ! surface sensible flux is fixed
-  logical:: sfc_tau_fxd =.false.! surface drag is fixed
+  ! real(crm_rknd)::   fluxt0 =0.  ! surface sensible flux, Km/s
+  ! real(crm_rknd)::   fluxq0 =0.  ! surface latent flux, m/s
+  ! real(crm_rknd)::   tau0   =0.  ! surface stress, m2/s2
+  real(crm_rknd), allocatable ::   z0(:)    	! roughness length
+  ! real(crm_rknd)::   soil_wetness =1.! wetness coeff for soil (from 0 to 1.)
+  ! integer:: ocean_type =0 ! type of SST forcing
+  logical:: cem =.false.   !Read Only ! flag for Cloud Ensemble Model
+  logical:: les =.false.   !Read Only ! flag for Large-Eddy Simulation
+  logical:: ocean =.false. !Read Only ! flag indicating that surface is water
+  logical:: land =.false.  !Read Only ! flag indicating that surface is land
+  logical:: sfc_flx_fxd =.false. !read only ! surface sensible flux is fixed
+  logical:: sfc_tau_fxd =.false. !read only ! surface drag is fixed
 
-  real(crm_rknd):: timelargescale =0. ! time to start large-scale forcing
+  ! real(crm_rknd):: timelargescale =0. ! time to start large-scale forcing
 
   ! nudging boundaries (between z1 and z2, where z2 > z1):
-  real(crm_rknd):: nudging_uv_z1 =-1., nudging_uv_z2 = 1000000.
-  real(crm_rknd):: nudging_t_z1 =-1., nudging_t_z2 = 1000000.
-  real(crm_rknd):: nudging_q_z1 =-1., nudging_q_z2 = 1000000.
-  real(crm_rknd):: tauls = 99999999.    ! nudging-to-large-scaler-profile time-scale
-  real(crm_rknd):: tautqls = 99999999.! nudging-to-large-scaler-profile time-scale for scalars
+  ! real(crm_rknd):: nudging_uv_z1 =-1., nudging_uv_z2 = 1000000.
+  ! real(crm_rknd):: nudging_t_z1 =-1., nudging_t_z2 = 1000000.
+  ! real(crm_rknd):: nudging_q_z1 =-1., nudging_q_z2 = 1000000.
+  ! real(crm_rknd):: tauls = 99999999.    ! nudging-to-large-scaler-profile time-scale
+  ! real(crm_rknd):: tautqls = 99999999.! nudging-to-large-scaler-profile time-scale for scalars
 
+  !All of these are read only
   logical:: dodamping = .false.
   logical:: doupperbound = .false.
   logical:: docloud = .false.
@@ -181,9 +180,45 @@ module params
   real(crm_rknd):: bubble_dtemp = 0.
   real(crm_rknd):: bubble_dq = 0.
 
-  real(crm_rknd) uhl      ! current large-scale velocity in x near sfc
-  real(crm_rknd) vhl      ! current large-scale velocity in y near sfc
-  real(crm_rknd) taux0    ! surface stress in x, m2/s2
-  real(crm_rknd) tauy0    ! surface stress in y, m2/s2
+  real(crm_rknd), allocatable :: uhl  (:)    ! current large-scale velocity in x near sfc
+  real(crm_rknd), allocatable :: vhl  (:)    ! current large-scale velocity in y near sfc
+  real(crm_rknd), allocatable :: taux0(:)    ! surface stress in x, m2/s2
+  real(crm_rknd), allocatable :: tauy0(:)    ! surface stress in y, m2/s2
+
+contains
+
+  subroutine allocate_params(ncrms)
+    implicit none
+    integer, intent(in) :: ncrms
+    real(crm_rknd) :: zero
+    allocate( latitude0 (ncrms) )
+    allocate( longitude0(ncrms) )
+    allocate( z0        (ncrms) )
+    allocate( uhl       (ncrms) )
+    allocate( vhl       (ncrms) )
+    allocate( taux0     (ncrms) )
+    allocate( tauy0     (ncrms) )
+
+    zero = 0
+
+    latitude0  = zero
+    longitude0 = zero
+    z0         = 0.035
+    uhl        = zero
+    vhl        = zero
+    taux0      = zero
+    tauy0      = zero
+  end subroutine allocate_params
+
+  subroutine deallocate_params
+    implicit none
+    deallocate( latitude0  )
+    deallocate( longitude0 )
+    deallocate( z0         )
+    deallocate( uhl        )
+    deallocate( vhl        )
+    deallocate( taux0      )
+    deallocate( tauy0      )
+  end subroutine deallocate_params
 
 end module params

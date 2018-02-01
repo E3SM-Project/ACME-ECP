@@ -367,6 +367,8 @@ subroutine crm(lchnk, icol, ncrms, &
     real(crm_rknd)  :: cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
     real(crm_rknd)  :: ntotal_step
     integer         :: myrank, ierr
+    real(crm_rknd)  :: fcorz      ! Vertical Coriolis parameter
+    real(crm_rknd)  :: fcor     ! Coriolis parameter
 #ifdef CLUBB_CRM
     !Array indicies for spurious RTM check
     real(kind=core_rknd) :: rtm_integral_before (nx,ny), rtm_integral_after (nx,ny), rtm_flux_top, rtm_flux_sfc
@@ -380,6 +382,7 @@ subroutine crm(lchnk, icol, ncrms, &
   integer        :: i_rad
   integer        :: j_rad
 
+  call allocate_params(ncrms)
   call allocate_vars(ncrms)
   call allocate_microphysics(ncrms)
   call allocate_tracers(ncrms)
@@ -391,16 +394,16 @@ subroutine crm(lchnk, icol, ncrms, &
 
     !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
 #ifdef CRM_STANDALONE
-    latitude0  = latitude0_in (icrm)
-    longitude0 = longitude0_in(icrm)
+    latitude0 (icrm) = latitude0_in (icrm)
+    longitude0(icrm) = longitude0_in(icrm)
 #else
-    latitude0  = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
-    longitude0 = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
+    latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
+    longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
 #endif
 
     igstep = get_nstep()
 
-    call crm_dump_input( igstep,plev,lchnk,icol(icrm),latitude0,longitude0,ps(icrm),pmid(icrm,:),pdel(icrm,:),phis(icrm),zmid(icrm,:),zint(icrm,:),qrad_crm(icrm,:,:,:),dt_gl, &
+    call crm_dump_input( igstep,plev,lchnk,icol(icrm),latitude0(icrm),longitude0(icrm),ps(icrm),pmid(icrm,:),pdel(icrm,:),phis(icrm),zmid(icrm,:),zint(icrm,:),qrad_crm(icrm,:,:,:),dt_gl, &
                          ocnfrac(icrm),tau00(icrm),wndls(icrm),bflxls(icrm),fluxu00(icrm),fluxv00(icrm),fluxt00(icrm),fluxq00(icrm),tl(icrm,:),ql(icrm,:),qccl(icrm,:),qiil(icrm,:),   &
                          ul(icrm,:),vl(icrm,:), &
 #ifdef CLUBB_CRM
@@ -449,14 +452,14 @@ subroutine crm(lchnk, icol, ncrms, &
     call task_init ()
     call setparm()
 
-    if(fcor.eq.-999.) fcor= 4*pi/86400.*sin(latitude0*pi/180.)
+    fcor= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
     fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
     fcory(icrm,:) = fcor
     fcorzy(icrm,:) = fcorz
     do j=1,ny
       do i=1,nx
-        latitude (icrm,i,j) = latitude0
-        longitude(icrm,i,j) = longitude0
+        latitude (icrm,i,j) = latitude0 (icrm)
+        longitude(icrm,i,j) = longitude0(icrm)
       end do
     end do
 
@@ -643,14 +646,14 @@ subroutine crm(lchnk, icol, ncrms, &
 
     end do ! k
 
-    uhl = u0(icrm,1)
-    vhl = v0(icrm,1)
+    uhl(icrm) = u0(icrm,1)
+    vhl(icrm) = v0(icrm,1)
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
     ustar = sqrt(tau00(icrm)/rho(icrm,1))
-    z0 = z0_est(z(1),bflx,wnd,ustar)
-    z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
+    z0(icrm) = z0_est(z(1),bflx,wnd,ustar)
+    z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
     timing_factor = 0.
 
@@ -1460,9 +1463,9 @@ subroutine crm(lchnk, icol, ncrms, &
         enddo
       enddo
     enddo
-    z0m     (icrm) = z0
-    taux_crm(icrm) = taux0 / dble(nstop)
-    tauy_crm(icrm) = tauy0 / dble(nstop)
+    z0m     (icrm) = z0(icrm)
+    taux_crm(icrm) = taux0(icrm) / dble(nstop)
+    tauy_crm(icrm) = tauy0(icrm) / dble(nstop)
 
     !---------------------------------------------------------------
     !  Diagnostics:
@@ -1801,6 +1804,7 @@ subroutine crm(lchnk, icol, ncrms, &
                           prec_crm(icrm,:,:),qtot(icrm,:) )
   enddo
 
+  call deallocate_params()
   call deallocate_vars()
   call deallocate_microphysics()
   call deallocate_tracers()
