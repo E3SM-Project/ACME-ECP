@@ -137,7 +137,7 @@ CONTAINS
   !!! Initialize microphysics:
 
 
-  subroutine micro_init(ncrms,icrm)
+  subroutine micro_init(ncrms)
 
 #ifdef CLUBB_CRM
     use params, only: doclubb, doclubbnoninter ! dschanen UWM 21 May 2008
@@ -147,8 +147,8 @@ CONTAINS
     use vars, only: q0
     use params, only: dosmoke
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer k, n
+    integer, intent(in) :: ncrms
+    integer k, n, icrm
 #ifdef CLUBB_CRM
     !  if ( nclubb /= 1 ) then
     !    write(0,*) "The namelist parameter nclubb is not equal to 1,",  &
@@ -168,15 +168,15 @@ CONTAINS
     if(nrestart.eq.0) then
 
 #ifndef CRM
-      micro_field(icrm,:,:,:,:) = 0.
+      micro_field(:,:,:,:,:) = 0.
       do k=1,nzm
-        q(icrm,:,:,k) = q0(icrm,k)
+        q(:,:,:,k) = q0(:,k)
       end do
-      qn(icrm,:,:,:) = 0.
+      qn(:,:,:,:) = 0.
 #endif
 
-      fluxbmk(icrm,:,:,:) = 0.
-      fluxtmk(icrm,:,:,:) = 0.
+      fluxbmk(:,:,:,:) = 0.
+      fluxtmk(:,:,:,:) = 0.
 
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
@@ -186,23 +186,27 @@ CONTAINS
 #ifndef CRM
         call cloud(q,qn,qp,ncrms,icrm)
 #endif
-        call micro_diagnose(ncrms,icrm)
+        do icrm = 1 , ncrms
+          call micro_diagnose(ncrms,icrm)
+        enddo
       end if
       if(dosmoke) then
-        call micro_diagnose(ncrms,icrm)
+        do icrm = 1 , ncrms
+          call micro_diagnose(ncrms,icrm)
+        enddo
       end if
 
     end if
 
-    mkwle  (icrm,:,:) = 0.
-    mkwsb  (icrm,:,:) = 0.
-    mkadv  (icrm,:,:) = 0.
-    mkdiff (icrm,:,:) = 0.
-    mklsadv(icrm,:,:) = 0.
-    mstor  (icrm,:,:) = 0.
+    mkwle  (:,:,:) = 0.
+    mkwsb  (:,:,:) = 0.
+    mkadv  (:,:,:) = 0.
+    mkdiff (:,:,:) = 0.
+    mklsadv(:,:,:) = 0.
+    mstor  (:,:,:) = 0.
 
-    qpsrc(icrm,:) = 0.
-    qpevp(icrm,:) = 0.
+    qpsrc(:,:) = 0.
+    qpevp(:,:) = 0.
 
     mkname(1) = 'QT'
     mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'
@@ -217,7 +221,9 @@ CONTAINS
     ! set mstor to be the inital microphysical mixing ratios
     do n=1, nmicro_fields
       do k=1, nzm
-        mstor(icrm,k, n) = SUM(micro_field(icrm,1:nx,1:ny,k,n))
+        do icrm = 1 , ncrms
+          mstor(icrm,k, n) = SUM(micro_field(icrm,1:nx,1:ny,k,n))
+        end do
       end do
     end do
 

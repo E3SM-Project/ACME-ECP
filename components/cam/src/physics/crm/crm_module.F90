@@ -359,7 +359,7 @@ subroutine crm(lchnk, icol, ncrms, &
     integer         :: kx
     logical         :: flag_top(nx,ny)
     real(crm_rknd)  :: ustar, bflx(ncrms), wnd(ncrms), qsat, omg
-    real(crm_rknd)  :: colprec,colprecs
+    real(crm_rknd)  :: colprec(ncrms),colprecs(ncrms)
     ! real(r8)        :: zs                ! surface elevation
     integer         :: igstep            ! GCM time steps
     integer         :: iseed             ! seed for random perturbation
@@ -389,18 +389,16 @@ subroutine crm(lchnk, icol, ncrms, &
   call allocate_tracers(ncrms)
   call allocate_sgs(ncrms)
 
-    !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
-  do icrm = 1 , ncrms
+  !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
 #ifdef CRM_STANDALONE
-    latitude0 (icrm) = latitude0_in (icrm)
-    longitude0(icrm) = longitude0_in(icrm)
+  latitude0 (:) = latitude0_in (:)
+  longitude0(:) = longitude0_in(:)
 #else
-    latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
-    longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
+  latitude0 (:) = get_rlat_p(lchnk, icol(:)) * 57.296_r8
+  longitude0(:) = get_rlon_p(lchnk, icol(:)) * 57.296_r8
 #endif
-  enddo
 
-    igstep = get_nstep()
+  igstep = get_nstep()
 
 #ifdef CRM_DUMP
   do icrm = 1 , ncrms
@@ -422,40 +420,38 @@ subroutine crm(lchnk, icol, ncrms, &
 
 !-----------------------------------------------
 
-    dostatis  = .false.    ! no statistics are collected.
-    idt_gl    = 1._r8/dt_gl
-    ptop      = plev-nzm+1
-    factor_xy = 1._r8/dble(nx*ny)
-    dummy     = 0.
-    t_rad  (:,:,:,:) = 0.
-    qv_rad (:,:,:,:) = 0.
-    qc_rad (:,:,:,:) = 0.
-    qi_rad (:,:,:,:) = 0.
-    cld_rad(:,:,:,:) = 0.
+  dostatis  = .false.    ! no statistics are collected.
+  idt_gl    = 1._r8/dt_gl
+  ptop      = plev-nzm+1
+  factor_xy = 1._r8/dble(nx*ny)
+  dummy     = 0.
+  t_rad  (:,:,:,:) = 0.
+  qv_rad (:,:,:,:) = 0.
+  qc_rad (:,:,:,:) = 0.
+  qi_rad (:,:,:,:) = 0.
+  cld_rad(:,:,:,:) = 0.
 #ifdef m2005
-    nc_rad(:,:,:,:) = 0.0
-    ni_rad(:,:,:,:) = 0.0
-    qs_rad(:,:,:,:) = 0.0
-    ns_rad(:,:,:,:) = 0.0
+  nc_rad(:,:,:,:) = 0.0
+  ni_rad(:,:,:,:) = 0.0
+  qs_rad(:,:,:,:) = 0.0
+  ns_rad(:,:,:,:) = 0.0
 #endif
-    ! zs=phis(icrm)/ggr
-  do icrm = 1 , ncrms
-    bflx(icrm) = bflxls(icrm)
-    wnd(icrm) = wndls(icrm)
-  enddo
+  ! zs=phis(icrm)/ggr
+  bflx(:) = bflxls(:)
+  wnd(:) = wndls(:)
 
 !-----------------------------------------
 
 #ifdef CLUBB_CRM
-    if(igstep == 1) then
-      lrestart_clubb = .false.
-    else
-     lrestart_clubb = .true.
-    endif
+  if(igstep == 1) then
+    lrestart_clubb = .false.
+  else
+   lrestart_clubb = .true.
+  endif
 #endif
 
-    call task_init ()
-    call setparm()
+  call task_init()
+  call setparm()
 
   do icrm = 1 , ncrms
     fcor= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
@@ -465,58 +461,52 @@ subroutine crm(lchnk, icol, ncrms, &
   enddo
   do j=1,ny
     do i=1,nx
-      do icrm = 1 , ncrms
-        latitude (icrm,i,j) = latitude0 (icrm)
-        longitude(icrm,i,j) = longitude0(icrm)
-      end do
+      latitude (:,i,j) = latitude0 (:)
+      longitude(:,i,j) = longitude0(:)
     end do
   end do
 
-    ! if(ocnfrac(icrm).gt.0.5) then
-    !    OCEAN(icrm) = .true.
-    ! else
-    !    LAND(icrm) = .true.
-    ! end if
+  ! if(ocnfrac(icrm).gt.0.5) then
+  !    OCEAN(icrm) = .true.
+  ! else
+  !    LAND(icrm) = .true.
+  ! end if
 
-    ! Create CRM vertical grid and initialize some vertical reference arrays:
-    do k = 1, nzm
-      do icrm = 1 , ncrms
-        z(icrm,k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
-        zi(icrm,k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
-        pres(icrm,k) = pmid(icrm,plev-k+1)/100.
-        prespot(icrm,k)=(1000./pres(icrm,k))**(rgas/cp)
-        bet(icrm,k) = ggr/tl(icrm,plev-k+1)
-        gamaz(icrm,k)=ggr/cp*z(icrm,k)
-      end do ! k
-    end do ! k
-   ! zi(icrm,nz) =  zint(plev-nz+2)
-   do icrm = 1 , ncrms
-     zi(icrm,nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
-   enddo
-   do icrm = 1 , ncrms
+  ! Create CRM vertical grid and initialize some vertical reference arrays:
+  do k = 1, nzm
+    z(:,k) = zmid(:,plev-k+1) - zint(:,plev+1)
+    zi(:,k) = zint(:,plev-k+2)- zint(:,plev+1)
+    pres(:,k) = pmid(:,plev-k+1)/100.
+    prespot(:,k)=(1000./pres(:,k))**(rgas/cp)
+    bet(:,k) = ggr/tl(:,plev-k+1)
+    gamaz(:,k)=ggr/cp*z(:,k)
+  end do ! k
+  ! zi(icrm,nz) =  zint(plev-nz+2)
+  zi(:,nz) = zint(:,plev-nz+2)-zint(:,plev+1) !+++mhwang, 2012-02-04
 
-    dz(icrm) = 0.5*(z(icrm,1)+z(icrm,2))
-    do k=2,nzm
-      adzw(icrm,k) = (z(icrm,k)-z(icrm,k-1))/dz(icrm)
-    end do
-    adzw(icrm,1)  = 1.
-    adzw(icrm,nz) = adzw(icrm,nzm)
-    !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
-    !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-    do k=1, nzm
-      adz(icrm,k)=(zi(icrm,k+1)-zi(icrm,k))/dz(icrm)
-    end do
+  dz(:) = 0.5*(z(:,1)+z(:,2))
+  do k=2,nzm
+    adzw(:,k) = (z(:,k)-z(:,k-1))/dz(:)
+  end do
+  adzw(:,1)  = 1.
+  adzw(:,nz) = adzw(:,nzm)
+  !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
+  !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
+  do k=1, nzm
+    adz(:,k)=(zi(:,k+1)-zi(:,k))/dz(:)
+  end do
 
-    do k = 1,nzm
-      rho(icrm,k) = pdel(icrm,plev-k+1)/ggr/(adz(icrm,k)*dz(icrm))
-    end do
-    do k=2,nzm
+  do k = 1,nzm
+    rho(:,k) = pdel(:,plev-k+1)/ggr/(adz(:,k)*dz(:))
+  end do
+  do k=2,nzm
     ! rhow(icrm,k) = 0.5*(rho(icrm,k)+rho(icrm,k-1))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(icrm,k) = (pmid(icrm,plev-k+2)-pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
-    end do
-    rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
+    rhow(:,k) = (pmid(:,plev-k+2)-pmid(:,plev-k+1))/ggr/(adzw(:,k)*dz(:))
+  end do
+  rhow(:,1) = 2.*rhow(:,2) - rhow(:,3)
+  do icrm = 1 , ncrms
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
     if (  2.*rhow(icrm,nzm) - rhow(icrm,nzm-1) > 0. ) then
        rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
@@ -525,73 +515,75 @@ subroutine crm(lchnk, icol, ncrms, &
     endif
 #else
     rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
-
-
 #endif /*CLUBB_CRM*/
-    colprec=0
-    colprecs=0
+  enddo
+  colprec=0
+  colprecs=0
 
-    !  Initialize:
-    ! limit the velocity at the very first step:
-    if(u_crm(icrm,1,1,1).eq.u_crm(icrm,2,1,1).and.u_crm(icrm,3,1,2).eq.u_crm(icrm,4,1,2)) then
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+  !  Initialize:
+  ! limit the velocity at the very first step:
+  if(u_crm(icrm,1,1,1).eq.u_crm(icrm,2,1,1).and.u_crm(icrm,3,1,2).eq.u_crm(icrm,4,1,2)) then
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             u_crm(icrm,i,j,k) = min( umax, max(-umax,u_crm(icrm,i,j,k)) )
             v_crm(icrm,i,j,k) = min( umax, max(-umax,v_crm(icrm,i,j,k)) )*YES3D
           enddo
         enddo
       enddo
-    endif
+    enddo
+  endif
 
-    u          (icrm,1:nx,1:ny,1:nzm                ) = u_crm           (icrm,1:nx,1:ny,1:nzm                )
-    v          (icrm,1:nx,1:ny,1:nzm                ) = v_crm           (icrm,1:nx,1:ny,1:nzm                )*YES3D
-    w          (icrm,1:nx,1:ny,1:nzm                ) = w_crm           (icrm,1:nx,1:ny,1:nzm                )
-    tabs       (icrm,1:nx,1:ny,1:nzm                ) = t_crm           (icrm,1:nx,1:ny,1:nzm                )
-    micro_field(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
+  u          (:,1:nx,1:ny,1:nzm                ) = u_crm           (:,1:nx,1:ny,1:nzm                )
+  v          (:,1:nx,1:ny,1:nzm                ) = v_crm           (:,1:nx,1:ny,1:nzm                )*YES3D
+  w          (:,1:nx,1:ny,1:nzm                ) = w_crm           (:,1:nx,1:ny,1:nzm                )
+  tabs       (:,1:nx,1:ny,1:nzm                ) = t_crm           (:,1:nx,1:ny,1:nzm                )
+  micro_field(:,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(:,1:nx,1:ny,1:nzm,1:nmicro_fields)
 #ifdef sam1mom
-    qn      (icrm,1:nx,1:ny,1:nzm) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3 )
+  qn      (:,1:nx,1:ny,1:nzm) = micro_fields_crm(:,1:nx,1:ny,1:nzm,3 )
 #endif
 
 #ifdef m2005
-    cloudliq(1:nx,1:ny,1:nzm) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,11)
+  cloudliq(1:nx,1:ny,1:nzm) = micro_fields_crm(:,1:nx,1:ny,1:nzm,11)
 #endif
 
 #ifdef m2005
-    do k=1, nzm
+  do k=1, nzm
 #ifdef MODAL_AERO
-      ! set aerosol data
-      l=plev-k+1
-      naer (icrm,k, 1:ntot_amode) = naermod (icrm,l, 1:ntot_amode)
-      vaer (icrm,k, 1:ntot_amode) = vaerosol(icrm,l, 1:ntot_amode)
-      hgaer(icrm,k, 1:ntot_amode) = hygro   (icrm,l, 1:ntot_amode)
+    ! set aerosol data
+    l=plev-k+1
+    naer (:,k, 1:ntot_amode) = naermod (:,l, 1:ntot_amode)
+    vaer (:,k, 1:ntot_amode) = vaerosol(:,l, 1:ntot_amode)
+    hgaer(:,k, 1:ntot_amode) = hygro   (:,l, 1:ntot_amode)
 #endif
-      do j=1, ny
-        do i=1, nx
-          if(cloudliq(i,j,k).gt.0) then
-            if(dopredictNc) then
-              if( micro_field(icrm,i,j,k,incl).eq.0) micro_field(icrm,i,j,k,incl) = 1.0e6*Nc0/rho(icrm,k)
-            endif
+    do j=1, ny
+      do i=1, nx
+        if(cloudliq(i,j,k).gt.0) then
+          if(dopredictNc) then
+            if( micro_field(:,i,j,k,incl).eq.0) micro_field(:,i,j,k,incl) = 1.0e6*Nc0/rho(:,k)
           endif
-        enddo
+        endif
       enddo
     enddo
+  enddo
 #endif
 
-    w(icrm,:,:,nz)=0.
-    wsub (icrm,:) = 0.      !used in clubb, +++mhwang
-    dudt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
-    dvdt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
-    dwdt(icrm,1:nx,1:ny,1:nz,1:3) = 0.
-    tke (icrm,1:nx,1:ny,1:nzm) = 0.
-    tk  (icrm,1:nx,1:ny,1:nzm) = 0.
-    tkh (icrm,1:nx,1:ny,1:nzm) = 0.
-    p   (icrm,1:nx,1:ny,1:nzm) = 0.
+  w(:,:,:,nz)=0.
+  wsub (:,:) = 0.      !used in clubb, +++mhwang
+  dudt(:,1:nx,1:ny,1:nzm,1:3) = 0.
+  dvdt(:,1:nx,1:ny,1:nzm,1:3) = 0.
+  dwdt(:,1:nx,1:ny,1:nz,1:3) = 0.
+  tke (:,1:nx,1:ny,1:nzm) = 0.
+  tk  (:,1:nx,1:ny,1:nzm) = 0.
+  tkh (:,1:nx,1:ny,1:nzm) = 0.
+  p   (:,1:nx,1:ny,1:nzm) = 0.
 
-    CF3D(icrm,1:nx,1:ny,1:nzm) = 1.
+  CF3D(:,1:nx,1:ny,1:nzm) = 1.
 
-    call micro_init(ncrms,icrm)
+  call micro_init(ncrms)
 
+  do icrm = 1 , ncrms
     ! initialize sgs fields
     call sgs_init(ncrms,icrm)
 
@@ -613,8 +605,8 @@ subroutine crm(lchnk, icol, ncrms, &
           t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
                     -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
                     -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
-          colprec=colprec+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
-          colprecs=colprecs+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
+          colprec(icrm)=colprec(icrm)+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
+          colprecs(icrm)=colprecs(icrm)+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
           u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
           v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
           t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
@@ -671,8 +663,8 @@ subroutine crm(lchnk, icol, ncrms, &
 
     timing_factor = 0.
 
-    prectend=colprec
-    precstend=colprecs
+    prectend=colprec(icrm)
+    precstend=colprecs(icrm)
 
 
 #ifdef CLUBB_CRM
@@ -1367,14 +1359,14 @@ subroutine crm(lchnk, icol, ncrms, &
     uln (ptop:plev)  = 0.
     vln (ptop:plev)  = 0.
 
-    colprec=0
-    colprecs=0
+    colprec(icrm)=0
+    colprecs(icrm)=0
     do k = 1,nzm
       l = plev-k+1
       do i=1,nx
         do j=1,ny
-          colprec=colprec+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
-          colprecs=colprecs+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
+          colprec(icrm)=colprec(icrm)+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
+          colprecs(icrm)=colprecs(icrm)+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
           tln(l) = tln(l)+tabs(icrm,i,j,k)
           qln(l) = qln(l)+qv(icrm,i,j,k)
           qccln(l)= qccln(l)+qcl(icrm,i,j,k)
@@ -1402,8 +1394,8 @@ subroutine crm(lchnk, icol, ncrms, &
     qltend (icrm,:) =      (qln   - ql  (icrm,:)) * idt_gl
     qcltend(icrm,:) =      (qccln - qccl(icrm,:)) * idt_gl
     qiltend(icrm,:) =      (qiiln - qiil(icrm,:)) * idt_gl
-    prectend (icrm)=(colprec -prectend (icrm))/ggr*factor_xy * idt_gl
-    precstend(icrm)=(colprecs-precstend(icrm))/ggr*factor_xy * idt_gl
+    prectend (icrm)=(colprec(icrm) -prectend (icrm))/ggr*factor_xy * idt_gl
+    precstend(icrm)=(colprecs(icrm)-precstend(icrm))/ggr*factor_xy * idt_gl
 
     ! don't use CRM tendencies from two crm top levels,
     ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
