@@ -172,16 +172,16 @@ begin
             avg_diff = avg( abs(tv2-tv1) )
             max_diff = max( abs(tv2-tv1) )
 
-            fmt1 = "%10.4f"
+            fmt1 = "%10.4e"
 
             l1_str = sprintf(fmt1,l1)
             av_str = sprintf(fmt1,avg_diff)
             xd_str = sprintf(fmt1,max_diff)
             
-            theshold = 1e-6
-            if l1.lt.theshold       then l1_str = "" end if
-            if avg_diff.lt.theshold then av_str = "" end if
-            if max_diff.lt.theshold then xd_str = "" end if
+            threshold = 1e-6
+            if l1.lt.threshold       then l1_str = "" end if
+            if avg_diff.lt.threshold then av_str = "" end if
+            if max_diff.lt.threshold then xd_str = "" end if
 
             padlen1 = 30
             padlen2 = 20
