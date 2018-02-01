@@ -164,7 +164,7 @@ contains
             call dmdf_write(v_crm           ,myrank,'crm_in','v_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
             call dmdf_write(w_crm           ,myrank,'crm_in','w_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
             call dmdf_write(t_crm           ,myrank,'crm_in','t_crm'           ,(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(micro_fields_crm,myrank,'crm_in','micro_fields_crm',(/'crm_nx','crm_ny','crm_nz','nmicro_fields_p1'/),.false.,.false.); _ERR(success,error_string,__LINE__)
+            call dmdf_write(micro_fields_crm,myrank,'crm_in','micro_fields_crm',(/'crm_nx          ','crm_ny          ','crm_nz          ','nmicro_fields_p1'/),.false.,.false.); _ERR(success,error_string,__LINE__)
 #ifdef m2005
 #ifdef MODAL_AERO
             call dmdf_write(naermod         ,myrank,'crm_in','naermod'         ,(/'plev','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
@@ -372,7 +372,7 @@ contains
         call dmdf_write(v_crm           ,myrank,'crm_out',trim('v_crm           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(w_crm           ,myrank,'crm_out',trim('w_crm           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(t_crm           ,myrank,'crm_out',trim('t_crm           '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
-        call dmdf_write(micro_fields_crm,myrank,'crm_out',trim('micro_fields_crm'),(/'crm_nx','crm_ny','crm_nz','nmicro_fields_p1'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(micro_fields_crm,myrank,'crm_out',trim('micro_fields_crm'),(/'crm_nx          ','crm_ny          ','crm_nz          ','nmicro_fields_p1'/)   ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(qltend          ,myrank,'crm_out',trim('qltend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(qcltend         ,myrank,'crm_out',trim('qcltend         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(qiltend         ,myrank,'crm_out',trim('qiltend         '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
