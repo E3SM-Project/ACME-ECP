@@ -44,12 +44,12 @@ contains
       divmin=1.e20
       divmax=-1.e20
 
-      rdx = 1./dx(icrm)
-      rdy = 1./dy(icrm)
+      rdx = 1./dx
+      rdy = 1./dy
 
       wmax=0.
       do k=1,nzm
-        coef = rho(icrm,k)*adz(icrm,k)*dz
+        coef = rho(icrm,k)*adz(icrm,k)*dz(icrm)
         rdz = 1./coef
         if(ny.ne.1) then
           do j=1,ny-1*YES3D
