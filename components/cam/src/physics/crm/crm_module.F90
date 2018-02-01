@@ -395,8 +395,10 @@ subroutine crm(lchnk, icol, ncrms, &
   latitude0 (:) = latitude0_in (:)
   longitude0(:) = longitude0_in(:)
 #else
-  latitude0 (:) = get_rlat_p(lchnk, icol(:)) * 57.296_r8
-  longitude0(:) = get_rlon_p(lchnk, icol(:)) * 57.296_r8
+  do icrm = 1 , ncrms
+    latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
+    longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
+  enddo
 #endif
 
   igstep = get_nstep()
