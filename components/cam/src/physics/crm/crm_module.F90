@@ -358,7 +358,7 @@ subroutine crm(lchnk, icol, ncrms, &
     integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, icrm
     integer         :: kx
     logical         :: flag_top(nx,ny)
-    real(crm_rknd)  :: ustar, bflx(ncrms), wnd(ncrms), qsat, omg
+    real(crm_rknd)  :: bflx(ncrms), wnd(ncrms), qsat, omg
     real(crm_rknd)  :: colprec(ncrms),colprecs(ncrms)
     ! real(r8)        :: zs                ! surface elevation
     integer         :: igstep            ! GCM time steps
@@ -657,8 +657,7 @@ subroutine crm(lchnk, icol, ncrms, &
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
   do icrm = 1 , ncrms
-    ustar = sqrt(tau00(icrm)/rho(icrm,1))
-    z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar)
+    z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),sqrt(tau00(icrm)/rho(icrm,1)))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
     timing_factor = 0.
