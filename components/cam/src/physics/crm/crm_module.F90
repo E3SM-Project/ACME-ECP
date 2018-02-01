@@ -662,8 +662,8 @@ subroutine crm(lchnk, icol, ncrms, &
 
     timing_factor = 0.
 
-    prectend=colprec(icrm)
-    precstend=colprecs(icrm)
+    prectend(icrm)=colprec(icrm)
+    precstend(icrm)=colprecs(icrm)
 
 
 #ifdef CLUBB_CRM
