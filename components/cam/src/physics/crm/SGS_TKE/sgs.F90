@@ -192,21 +192,21 @@ CONTAINS
   !!! Initialize sgs:
 
 
-  subroutine sgs_init(ncrms,icrm)
+  subroutine sgs_init(ncrms)
 
     use grid, only: nrestart, dx, dy, dz, adz, masterproc
     use params, only: LES
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer k
+    integer, intent(in) :: ncrms
+    integer k,icrm
 
     if(nrestart.eq.0) then
 
-      sgs_field(icrm,:,:,:,:) = 0.
-      sgs_field_diag(icrm,:,:,:,:) = 0.
+      sgs_field(:,:,:,:,:) = 0.
+      sgs_field_diag(:,:,:,:,:) = 0.
 
-      fluxbsgs(icrm,:,:,:) = 0.
-      fluxtsgs(icrm,:,:,:) = 0.
+      fluxbsgs(:,:,:,:) = 0.
+      fluxtsgs(:,:,:,:) = 0.
 
     end if
 
@@ -220,23 +220,23 @@ CONTAINS
 
     if(LES) then
       do k=1,nzm
-        grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
-        grdf_y(icrm,k) = dy**2/(adz(icrm,k)*dz(icrm))**2
-        grdf_z(icrm,k) = 1.
+        grdf_x(:,k) = dx**2/(adz(:,k)*dz(:))**2
+        grdf_y(:,k) = dy**2/(adz(:,k)*dz(:))**2
+        grdf_z(:,k) = 1.
       end do
     else
       do k=1,nzm
-        grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
-        grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
-        grdf_z(icrm,k) = 1.
+        grdf_x(:,k) = min( real(16.,crm_rknd), dx**2/(adz(:,k)*dz(:))**2)
+        grdf_y(:,k) = min( real(16.,crm_rknd), dy**2/(adz(:,k)*dz(:))**2)
+        grdf_z(:,k) = 1.
       end do
     end if
 
-    sgswle  (icrm,:,:) = 0.
-    sgswsb  (icrm,:,:) = 0.
-    sgsadv  (icrm,:,:) = 0.
-    sgsdiff (icrm,:,:) = 0.
-    sgslsadv(icrm,:,:) = 0.
+    sgswle  (:,:,:) = 0.
+    sgswsb  (:,:,:) = 0.
+    sgsadv  (:,:,:) = 0.
+    sgsdiff (:,:,:) = 0.
+    sgslsadv(:,:,:) = 0.
 
 
   end subroutine sgs_init

@@ -348,9 +348,9 @@ subroutine crm(lchnk, icol, ncrms, &
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001    ! threshold for cloud condensate for shaded fraction calculation
-    real(crm_rknd)  :: dummy(nz), t00(nz)
+    real(crm_rknd)  :: dummy(nz), t00(ncrms)
     real(crm_rknd)  :: fluxbtmp(nx,ny), fluxttmp(nx,ny)    !bloss
-    real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
+    real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(ncrms,plev), vln(ncrms,plev)
     real(crm_rknd)  :: cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
     real(r8)        :: factor_xy, idt_gl
     real(crm_rknd)  :: tmp1, tmp2
@@ -583,80 +583,80 @@ subroutine crm(lchnk, icol, ncrms, &
 
   call micro_init(ncrms)
 
-  do icrm = 1 , ncrms
-    ! initialize sgs fields
-    call sgs_init(ncrms,icrm)
+  ! initialize sgs fields
+  call sgs_init(ncrms)
 
-    do k=1,nzm
-      u0(icrm,k)=0.
-      v0(icrm,k)=0.
-      t0(icrm,k)=0.
-      t00(k)=0.
-      tabs0(icrm,k)=0.
-      q0(icrm,k)=0.
-      qv0(icrm,k)=0.
-      !+++mhwang these are not initialized ??
-      qn0(icrm,k) = 0.0
-      qp0(icrm,k) = 0.0
-      tke0(icrm,k) = 0.0
-      !---mhwang
-      do j=1,ny
-        do i=1,nx
-          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
-                    -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
-                    -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
-          colprec(icrm)=colprec(icrm)+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
-          colprecs(icrm)=colprecs(icrm)+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
-          u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
-          v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
-          t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
-          t00(k)=t00(k)+t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
-          tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
-          q0(icrm,k)=q0(icrm,k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
-          qv0(icrm,k) = qv0(icrm,k) + qv(icrm,i,j,k)
-          qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
-          qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
-          tke0(icrm,k)=tke0(icrm,k)+tke(icrm,i,j,k)
-        enddo
+  do k=1,nzm
+    u0(:,k)=0.
+    v0(:,k)=0.
+    t0(:,k)=0.
+    t00(:)=0.
+    tabs0(:,k)=0.
+    q0(:,k)=0.
+    qv0(:,k)=0.
+    !+++mhwang these are not initialized ??
+    qn0(:,k) = 0.0
+    qp0(:,k) = 0.0
+    tke0(:,k) = 0.0
+    !---mhwang
+    do j=1,ny
+      do i=1,nx
+        t(:,i,j,k) = tabs(:,i,j,k)+gamaz(:,k) &
+                  -fac_cond*qcl(:,i,j,k)-fac_sub*qci(:,i,j,k) &
+                  -fac_cond*qpl(:,i,j,k)-fac_sub*qpi(:,i,j,k)
+        colprec(:)=colprec(:)+(qpl(:,i,j,k)+qpi(:,i,j,k))*pdel(:,plev-k+1)
+        colprecs(:)=colprecs(:)+qpi(:,i,j,k)*pdel(:,plev-k+1)
+        u0(:,k)=u0(:,k)+u(:,i,j,k)
+        v0(:,k)=v0(:,k)+v(:,i,j,k)
+        t0(:,k)=t0(:,k)+t(:,i,j,k)
+        t00(:)=t00(:)+t(:,i,j,k)+fac_cond*qpl(:,i,j,k)+fac_sub*qpi(:,i,j,k)
+        tabs0(:,k)=tabs0(:,k)+tabs(:,i,j,k)
+        q0(:,k)=q0(:,k)+qv(:,i,j,k)+qcl(:,i,j,k)+qci(:,i,j,k)
+        qv0(:,k) = qv0(:,k) + qv(:,i,j,k)
+        qn0(:,k) = qn0(:,k) + qcl(:,i,j,k) + qci(:,i,j,k)
+        qp0(:,k) = qp0(:,k) + qpl(:,i,j,k) + qpi(:,i,j,k)
+        tke0(:,k)=tke0(:,k)+tke(:,i,j,k)
       enddo
+    enddo
 
-      u0(icrm,k) = u0(icrm,k) * factor_xy
-      v0(icrm,k) = v0(icrm,k) * factor_xy
-      t0(icrm,k) = t0(icrm,k) * factor_xy
-      t00(k) = t00(k) * factor_xy
-      tabs0(icrm,k) = tabs0(icrm,k) * factor_xy
-      q0(icrm,k) = q0(icrm,k) * factor_xy
-      qv0(icrm,k) = qv0(icrm,k) * factor_xy
-      qn0(icrm,k) = qn0(icrm,k) * factor_xy
-      qp0(icrm,k) = qp0(icrm,k) * factor_xy
-      tke0(icrm,k) = tke0(icrm,k) * factor_xy
+    u0(:,k) = u0(:,k) * factor_xy
+    v0(:,k) = v0(:,k) * factor_xy
+    t0(:,k) = t0(:,k) * factor_xy
+    t00(:) = t00(:) * factor_xy
+    tabs0(:,k) = tabs0(:,k) * factor_xy
+    q0(:,k) = q0(:,k) * factor_xy
+    qv0(:,k) = qv0(:,k) * factor_xy
+    qn0(:,k) = qn0(:,k) * factor_xy
+    qp0(:,k) = qp0(:,k) * factor_xy
+    tke0(:,k) = tke0(:,k) * factor_xy
 #ifdef CLUBB_CRM
-      ! Update thetav for CLUBB.  This is needed when we have a higher model top
-      ! than is in the sounding, because we subsequently use tv0 to initialize
-      ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
-      ! -dschanen UWM 11 Feb 2010
-      tv0(icrm,k) = tabs0(icrm,k)*prespot(icrm,k)*(1.+epsv*q0(icrm,k))
+    ! Update thetav for CLUBB.  This is needed when we have a higher model top
+    ! than is in the sounding, because we subsequently use tv0 to initialize
+    ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
+    ! -dschanen UWM 11 Feb 2010
+    tv0(:,k) = tabs0(:,k)*prespot(:,k)*(1.+epsv*q0(:,k))
 #endif
 
-      l = plev-k+1
-      uln(l) = min( umax, max(-umax,ul(icrm,l)) )
-      vln(l) = min( umax, max(-umax,vl(icrm,l)) )*YES3D
-      ttend(icrm,k) = (tl(icrm,l)+gamaz(icrm,k)- fac_cond*(qccl(icrm,l)+qiil(icrm,l))-fac_fus*qiil(icrm,l)-t00(k))*idt_gl
-      qtend(icrm,k) = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)-q0(icrm,k))*idt_gl
-      utend(icrm,k) = (uln(l)-u0(icrm,k))*idt_gl
-      vtend(icrm,k) = (vln(l)-v0(icrm,k))*idt_gl
-      ug0(icrm,k) = uln(l)
-      vg0(icrm,k) = vln(l)
-      tg0(icrm,k) = tl(icrm,l)+gamaz(icrm,k)-fac_cond*qccl(icrm,l)-fac_sub*qiil(icrm,l)
-      qg0(icrm,k) = ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)
+    l = plev-k+1
+    uln(:,l) = min( umax, max(-umax,ul(:,l)) )
+    vln(:,l) = min( umax, max(-umax,vl(:,l)) )*YES3D
+    ttend(:,k) = (tl(:,l)+gamaz(:,k)- fac_cond*(qccl(:,l)+qiil(:,l))-fac_fus*qiil(:,l)-t00(:))*idt_gl
+    qtend(:,k) = (ql(:,l)+qccl(:,l)+qiil(:,l)-q0(:,k))*idt_gl
+    utend(:,k) = (uln(:,l)-u0(:,k))*idt_gl
+    vtend(:,k) = (vln(:,l)-v0(:,k))*idt_gl
+    ug0(:,k) = uln(:,l)
+    vg0(:,k) = vln(:,l)
+    tg0(:,k) = tl(:,l)+gamaz(:,k)-fac_cond*qccl(:,l)-fac_sub*qiil(:,l)
+    qg0(:,k) = ql(:,l)+qccl(:,l)+qiil(:,l)
 
-    end do ! k
+  end do ! k
 
-    uhl(icrm) = u0(icrm,1)
-    vhl(icrm) = v0(icrm,1)
+  uhl(:) = u0(:,1)
+  vhl(:) = v0(:,1)
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
+  do icrm = 1 , ncrms
     ustar = sqrt(tau00(icrm)/rho(icrm,1))
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar)
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
@@ -1348,16 +1348,16 @@ subroutine crm(lchnk, icol, ncrms, &
     qln  (1:ptop-1) =   ql(icrm,1:ptop-1)
     qccln(1:ptop-1) = qccl(icrm,1:ptop-1)
     qiiln(1:ptop-1) = qiil(icrm,1:ptop-1)
-    uln  (1:ptop-1) =   ul(icrm,1:ptop-1)
-    vln  (1:ptop-1) =   vl(icrm,1:ptop-1)
+    uln  (icrm,1:ptop-1) =   ul(icrm,1:ptop-1)
+    vln  (icrm,1:ptop-1) =   vl(icrm,1:ptop-1)
 
     !  Compute tendencies due to CRM:
     tln (ptop:plev)  = 0.
     qln (ptop:plev)  = 0.
     qccln(ptop:plev) = 0.
     qiiln(ptop:plev) = 0.
-    uln (ptop:plev)  = 0.
-    vln (ptop:plev)  = 0.
+    uln (icrm,ptop:plev)  = 0.
+    vln (icrm,ptop:plev)  = 0.
 
     colprec(icrm)=0
     colprecs(icrm)=0
@@ -1371,8 +1371,8 @@ subroutine crm(lchnk, icol, ncrms, &
           qln(l) = qln(l)+qv(icrm,i,j,k)
           qccln(l)= qccln(l)+qcl(icrm,i,j,k)
           qiiln(l)= qiiln(l)+qci(icrm,i,j,k)
-          uln(l) = uln(l)+u(icrm,i,j,k)
-          vln(l) = vln(l)+v(icrm,i,j,k)
+          uln(icrm,l) = uln(icrm,l)+u(icrm,i,j,k)
+          vln(icrm,l) = vln(icrm,l)+v(icrm,i,j,k)
         enddo ! k
       enddo
     enddo ! i
@@ -1381,13 +1381,13 @@ subroutine crm(lchnk, icol, ncrms, &
     qln(ptop:plev) = qln(ptop:plev) * factor_xy
     qccln(ptop:plev) = qccln(ptop:plev) * factor_xy
     qiiln(ptop:plev) = qiiln(ptop:plev) * factor_xy
-    uln(ptop:plev) = uln(ptop:plev) * factor_xy
-    vln(ptop:plev) = vln(ptop:plev) * factor_xy
+    uln(icrm,ptop:plev) = uln(icrm,ptop:plev) * factor_xy
+    vln(icrm,ptop:plev) = vln(icrm,ptop:plev) * factor_xy
 
 #ifdef SPMOMTRANS
     ! whannah - SP CMT tendencies
-    ultend(icrm,:) = (uln - ul(icrm,:))*idt_gl
-    vltend(icrm,:) = (vln - vl(icrm,:))*idt_gl
+    ultend(icrm,:) = (ulnicrm, - ul(icrm,:))*idt_gl
+    vltend(icrm,:) = (vlnicrm, - vl(icrm,:))*idt_gl
 #endif
 
     sltend (icrm,:) = cp * (tln   - tl  (icrm,:)) * idt_gl
