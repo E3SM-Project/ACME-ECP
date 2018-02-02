@@ -36,9 +36,9 @@ contains
 
     !call t_startf ('print_out')
 
-    if(masterproc) print *,'NSTEP = ',nstep(icrm),'    NCYCLE=',ncycle(icrm)
+    if(masterproc) print *,'NSTEP = ',nstep,'    NCYCLE=',ncycle
 
-    if(mod(nstep(icrm),nprint).eq.0) then
+    if(mod(nstep,nprint).eq.0) then
 
 
       divmin=1.e20
@@ -155,8 +155,8 @@ contains
       !--------------------------------------------------------
       if(masterproc) then
 
-        print*,'DAY = ',day(icrm)
-        write(6,*) 'NSTEP=',nstep(icrm)
+        print*,'DAY = ',day
+        write(6,*) 'NSTEP=',nstep
         write(6,*) 'div:',divmax,divmin
         !if(.not.dodynamicocean) write(6,*) 'SST=',tabs_s
         ! write(6,*) 'surface pressure=',pres0
@@ -196,7 +196,7 @@ contains
         call fminmax_print('vw:',fluxbv(icrm,:,:),1,nx,1,ny,1)
         call fminmax_print('sst:',sstxy(icrm,:,:),0,nx,1-YES3D,ny,1)
 
-      end if ! (mod(nstep(icrm),nprint).eq.0)
+      end if ! (mod(nstep,nprint).eq.0)
 
       !call t_stopf ('print_out')
 

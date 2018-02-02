@@ -102,7 +102,7 @@ contains
       kb=k-1
       rhoi = 1./(adz(icrm,k)*rho(icrm,k))
       do i=1,nx
-        dfdt(i,j,k)=dtn(icrm)*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)
+        dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)
         field(i,j,k)=field(i,j,k) + dfdt(i,j,k)
       end do
     end do

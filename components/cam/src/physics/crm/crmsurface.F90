@@ -21,8 +21,8 @@ contains
 
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
 
-      uhl(icrm) = uhl(icrm) + dtn(icrm)*utend(icrm,1)
-      vhl(icrm) = vhl(icrm) + dtn(icrm)*vtend(icrm,1)
+      uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
+      vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
 
       tauxm = 0.
       tauym = 0.

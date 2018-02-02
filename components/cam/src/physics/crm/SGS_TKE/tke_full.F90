@@ -148,7 +148,7 @@ contains
             a_prod_sh=(tk(icrm,i,j,k)+0.001)*def2(i,j,k)
             a_prod_bu=-(tk(icrm,i,j,k)+0.001)*Pr*buoy_sgs
             a_diss=min(tke(icrm,i,j,k)/(4.*dt),Cee/smix*tke(icrm,i,j,k)**1.5) ! cap the diss rate (useful for large time steps
-            tke(icrm,i,j,k)=max(real(0.,crm_rknd),tke(icrm,i,j,k)+dtn(icrm)*(max(real(0.,crm_rknd),a_prod_sh+a_prod_bu)-a_diss))
+            tke(icrm,i,j,k)=max(real(0.,crm_rknd),tke(icrm,i,j,k)+dtn*(max(real(0.,crm_rknd),a_prod_sh+a_prod_bu)-a_diss))
             tk(icrm,i,j,k)=Ck*smix*sqrt(tke(icrm,i,j,k))
 
           end if

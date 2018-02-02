@@ -365,7 +365,7 @@ subroutine crm(lchnk, icol, ncrms, &
     integer         :: iseed             ! seed for random perturbation
     integer         :: gcolindex(pcols)  ! array of global latitude indices
     real(crm_rknd)  :: cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
-    real(crm_rknd)  :: ntotal_step(ncrms)
+    real(crm_rknd)  :: ntotal_step
     integer         :: myrank, ierr
     real(crm_rknd)  :: fcorz      ! Vertical Coriolis parameter
     real(crm_rknd)  :: fcor     ! Coriolis parameter
@@ -384,7 +384,6 @@ subroutine crm(lchnk, icol, ncrms, &
 
   call allocate_grid(ncrms)
   call allocate_params(ncrms)
-  call allocate_micro_params(ncrms)
   call allocate_vars(ncrms)
   call allocate_microphysics(ncrms)
   call allocate_tracers(ncrms)
@@ -525,18 +524,18 @@ subroutine crm(lchnk, icol, ncrms, &
 
   !  Initialize:
   ! limit the velocity at the very first step:
-  do k=1,nzm
-    do j=1,ny
-      do i=1,nx
-        do icrm = 1 , ncrms
-          if(u_crm(icrm,1,1,1).eq.u_crm(icrm,2,1,1).and.u_crm(icrm,3,1,2).eq.u_crm(icrm,4,1,2)) then
+  if(u_crm(icrm,1,1,1).eq.u_crm(icrm,2,1,1).and.u_crm(icrm,3,1,2).eq.u_crm(icrm,4,1,2)) then
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             u_crm(icrm,i,j,k) = min( umax, max(-umax,u_crm(icrm,i,j,k)) )
             v_crm(icrm,i,j,k) = min( umax, max(-umax,v_crm(icrm,i,j,k)) )*YES3D
-          endif
+          enddo
         enddo
       enddo
     enddo
-  enddo
+  endif
 
   u          (:,1:nx,1:ny,1:nzm                ) = u_crm           (:,1:nx,1:ny,1:nzm                )
   v          (:,1:nx,1:ny,1:nzm                ) = v_crm           (:,1:nx,1:ny,1:nzm                )*YES3D
@@ -662,271 +661,266 @@ subroutine crm(lchnk, icol, ncrms, &
   do icrm = 1 , ncrms
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),sqrt(tau00(icrm)/rho(icrm,1)))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
-  enddo
 
-  timing_factor = 0.
+    timing_factor = 0.
 
-  prectend(:)=colprec(:)
-  precstend(:)=colprecs(:)
+    prectend(icrm)=colprec(icrm)
+    precstend(icrm)=colprecs(icrm)
 
 
 #ifdef CLUBB_CRM
-  if(doclubb) then
-    fluxbu(:,:, :) = fluxu00(:)/rhow(:,1)
-    fluxbv(:,:, :) = fluxv00(:)/rhow(:,1)
-    fluxbt(:,:, :) = fluxt00(:)/rhow(:,1)
-    fluxbq(:,:, :) = fluxq00(:)/rhow(:,1)
-  else
-  endif
+    if(doclubb) then
+      fluxbu(icrm,:, :) = fluxu00(icrm)/rhow(icrm,1)
+      fluxbv(icrm,:, :) = fluxv00(icrm)/rhow(icrm,1)
+      fluxbt(icrm,:, :) = fluxt00(icrm)/rhow(icrm,1)
+      fluxbq(icrm,:, :) = fluxq00(icrm)/rhow(icrm,1)
+    else
+    endif
 #else
 #endif
 
 !---------------------------------------------------
-  cld   (:,:) = 0.
-  cldtop(:,:) = 0.
-  gicewp(:,:) = 0
-  gliqwp(:,:) = 0
-  mc    (:,:) = 0.
-  mcup  (:,:) = 0.
-  mcdn  (:,:) = 0.
-  mcuup (:,:) = 0.
-  mcudn (:,:) = 0.
-  crm_qc(:,:) = 0.
-  crm_qi(:,:) = 0.
-  crm_qs(:,:) = 0.
-  crm_qg(:,:) = 0.
-  crm_qr(:,:) = 0.
+    cld   (icrm,:) = 0.
+    cldtop(icrm,:) = 0.
+    gicewp(icrm,:) = 0
+    gliqwp(icrm,:) = 0
+    mc    (icrm,:) = 0.
+    mcup  (icrm,:) = 0.
+    mcdn  (icrm,:) = 0.
+    mcuup (icrm,:) = 0.
+    mcudn (icrm,:) = 0.
+    crm_qc(icrm,:) = 0.
+    crm_qi(icrm,:) = 0.
+    crm_qs(icrm,:) = 0.
+    crm_qg(icrm,:) = 0.
+    crm_qr(icrm,:) = 0.
 #ifdef m2005
-  crm_nc(:,:) = 0.
-  crm_ni(:,:) = 0.
-  crm_ns(:,:) = 0.
-  crm_ng(:,:) = 0.
-  crm_nr(:,:) = 0.
-  ! hm 8/31/11 add new variables
-  aut_crm_a (:,:) = 0.
-  acc_crm_a (:,:) = 0.
-  evpc_crm_a(:,:) = 0.
-  evpr_crm_a(:,:) = 0.
-  mlt_crm_a (:,:) = 0.
-  sub_crm_a (:,:) = 0.
-  dep_crm_a (:,:) = 0.
-  con_crm_a (:,:) = 0.
+    crm_nc(icrm,:) = 0.
+    crm_ni(icrm,:) = 0.
+    crm_ns(icrm,:) = 0.
+    crm_ng(icrm,:) = 0.
+    crm_nr(icrm,:) = 0.
+    ! hm 8/31/11 add new variables
+    aut_crm_a (icrm,:) = 0.
+    acc_crm_a (icrm,:) = 0.
+    evpc_crm_a(icrm,:) = 0.
+    evpr_crm_a(icrm,:) = 0.
+    mlt_crm_a (icrm,:) = 0.
+    sub_crm_a (icrm,:) = 0.
+    dep_crm_a (icrm,:) = 0.
+    con_crm_a (icrm,:) = 0.
 
-  ! hm 8/31/11 add new output
-  ! these are increments added to calculate gcm-grid and time-step avg
-  ! note - these values are also averaged over the icycle loop following
-  ! the approach for precsfc
-  aut1a  = 0.
-  acc1a  = 0.
-  evpc1a = 0.
-  evpr1a = 0.
-  mlt1a  = 0.
-  sub1a  = 0.
-  dep1a  = 0.
-  con1a  = 0.
+    ! hm 8/31/11 add new output
+    ! these are increments added to calculate gcm-grid and time-step avg
+    ! note - these values are also averaged over the icycle loop following
+    ! the approach for precsfc
+    aut1a  = 0.
+    acc1a  = 0.
+    evpc1a = 0.
+    evpr1a = 0.
+    mlt1a  = 0.
+    sub1a  = 0.
+    dep1a  = 0.
+    con1a  = 0.
 #endif
 
-  mu_crm (:,:) = 0.
-  md_crm (:,:) = 0.
-  eu_crm (:,:) = 0.
-  du_crm (:,:) = 0.
-  ed_crm (:,:) = 0.
-  dd_crm (:,:) = 0.
-  jt_crm (:)   = 0.
-  mx_crm (:)   = 0.
+    mu_crm (icrm,:) = 0.
+    md_crm (icrm,:) = 0.
+    eu_crm (icrm,:) = 0.
+    du_crm (icrm,:) = 0.
+    ed_crm (icrm,:) = 0.
+    dd_crm (icrm,:) = 0.
+    jt_crm (icrm)   = 0.
+    mx_crm (icrm)   = 0.
 
-  mui_crm(:,:) = 0.
-  mdi_crm(:,:) = 0.
+    mui_crm(icrm,:) = 0.
+    mdi_crm(icrm,:) = 0.
 
-  flux_qt   (:,:) = 0.
-  flux_u    (:,:) = 0.
-  flux_v    (:,:) = 0.
-  fluxsgs_qt(:,:) = 0.
-  tkez      (:,:) = 0.
-  tkesgsz   (:,:) = 0.
-  tkz       (:,:) = 0.
-  flux_qp   (:,:) = 0.
-  pflx      (:,:) = 0.
-  qt_trans  (:,:) = 0.
-  qp_trans  (:,:) = 0.
-  qp_fall   (:,:) = 0.
-  qp_evp    (:,:) = 0.
-  qp_src    (:,:) = 0.
-  qt_ls     (:,:) = 0.
-  t_ls      (:,:) = 0.
+    flux_qt   (icrm,:) = 0.
+    flux_u    (icrm,:) = 0.
+    flux_v    (icrm,:) = 0.
+    fluxsgs_qt(icrm,:) = 0.
+    tkez      (icrm,:) = 0.
+    tkesgsz   (icrm,:) = 0.
+    tkz       (icrm,:) = 0.
+    flux_qp   (icrm,:) = 0.
+    pflx      (icrm,:) = 0.
+    qt_trans  (icrm,:) = 0.
+    qp_trans  (icrm,:) = 0.
+    qp_fall   (icrm,:) = 0.
+    qp_evp    (icrm,:) = 0.
+    qp_src    (icrm,:) = 0.
+    qt_ls     (icrm,:) = 0.
+    t_ls      (icrm,:) = 0.
 
-  uwle(:,:)     = 0.
-  uwsb(:,:)     = 0.
-  vwle(:,:)     = 0.
-  vwsb(:,:)     = 0.
-  qpsrc(:,:)    = 0.
-  qpevp(:,:)    = 0.
-  qpfall  (:,:) = 0.
-  precflux(:,:) = 0.
+    uwle(icrm,:)     = 0.
+    uwsb(icrm,:)     = 0.
+    vwle(icrm,:)     = 0.
+    vwsb(icrm,:)     = 0.
+    qpsrc(icrm,:)    = 0.
+    qpevp(icrm,:)    = 0.
+    qpfall  (icrm,:) = 0.
+    precflux(icrm,:) = 0.
 
 !--------------------------------------------------
 #ifdef sam1mom
-  do icrm = 1 , ncrms
     if(doprecip) call precip_init(ncrms,icrm)
-  enddo
 #endif
 
-  !MRN: Don't want any stochasticity introduced in the standalone.
-  !MRN: Need to make sure the first call to crm(...) is not dumped out
-  !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
+    !MRN: Don't want any stochasticity introduced in the standalone.
+    !MRN: Need to make sure the first call to crm(...) is not dumped out
+    !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
 #ifndef CRM_STANDALONE
-  do icrm = 1 , ncrms
     call get_gcol_all_p(lchnk, pcols, gcolindex)
     iseed = gcolindex(icol(icrm))
-    if(u(icrm,1,1,1).eq.u(icrm,2,1,1).and.u(icrm,3,1,2).eq.u(icrm,4,1,2)) call setperturb(iseed,ncrms,icrm)
-  enddo
+    if(u(icrm,1,1,1).eq.u(icrm,2,1,1).and.u(icrm,3,1,2).eq.u(icrm,4,1,2)) &
+                call setperturb(iseed,ncrms,icrm)
 #endif
 
-  !--------------------------
-  ! whannah - sanity check for new method to calculate radiation
-  ! over averaged groups of columns instead of each individually
-  if ( mod(nx,crm_nx_rad)==0 .or. mod(nx,crm_nx_rad)==0  ) then
-    crm_nx_rad_fac = real(crm_nx_rad,crm_rknd)/real(nx,crm_rknd)
-    crm_ny_rad_fac = real(crm_ny_rad,crm_rknd)/real(ny,crm_rknd)
-  else
-    write(0,*) "crm_nx_rad and crm_ny_rad need to be divisible by nx and ny"
-    call endrun('crm main')
-  end if
+    !--------------------------
+    ! whannah - sanity check for new method to calculate radiation
+    ! over averaged groups of columns instead of each individually
+    if ( mod(nx,crm_nx_rad)==0 .or. mod(nx,crm_nx_rad)==0  ) then
+      crm_nx_rad_fac = real(crm_nx_rad,crm_rknd)/real(nx,crm_rknd)
+      crm_ny_rad_fac = real(crm_ny_rad,crm_rknd)/real(ny,crm_rknd)
+    else
+      write(0,*) "crm_nx_rad and crm_ny_rad need to be divisible by nx and ny"
+      call endrun('crm main')
+    end if
 
 #ifndef CLUBB_CRM
-  !--------------------------
-  ! do a CLUBB sanity check
-  if ( doclubb .or. doclubbnoninter ) then
-    write(0,*) "Cannot call CLUBB if -DCLUBB is not in FFLAGS"
-    call endrun('crm main')
-  endif
+    !--------------------------
+    ! do a CLUBB sanity check
+    if ( doclubb .or. doclubbnoninter ) then
+      write(0,*) "Cannot call CLUBB if -DCLUBB is not in FFLAGS"
+      call endrun('crm main')
+    endif
 #endif
 #ifdef CLUBB_CRM
-  !------------------------------------------------------------------
-  ! Do initialization for UWM CLUBB
-  !------------------------------------------------------------------
-  up2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1)
-  vp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2)
-  wprtp     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3)
-  wpthlp    (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4)
-  wp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5)
-  wp3       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6)
-  rtp2      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7)
-  thlp2     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8)
-  rtpthlp   (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9)
-  upwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10)
-  vpwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11)
-  cloud_frac(1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12)
-  t_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13)
-  qc_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14)
-  qv_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15)
-  u_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16)
-  v_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17)
+    !------------------------------------------------------------------
+    ! Do initialization for UWM CLUBB
+    !------------------------------------------------------------------
+    up2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1)
+    vp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2)
+    wprtp     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3)
+    wpthlp    (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4)
+    wp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5)
+    wp3       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6)
+    rtp2      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7)
+    thlp2     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8)
+    rtpthlp   (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9)
+    upwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10)
+    vpwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11)
+    cloud_frac(1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12)
+    t_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13)
+    qc_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14)
+    qv_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15)
+    u_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16)
+    v_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17)
 
-  ! since no tracer is carried in the current version of MMF, these
-  ! tracer-related restart varialbes are set to zero. +++mhwang, 2011-08
-  tracer_tndcy = 0.0
-  sclrp2       = 0.0
-  sclrprtp     = 0.0
-  sclrpthlp    = 0.0
-  wpsclrp      = 0.0
+    ! since no tracer is carried in the current version of MMF, these
+    ! tracer-related restart varialbes are set to zero. +++mhwang, 2011-08
+    tracer_tndcy = 0.0
+    sclrp2       = 0.0
+    sclrprtp     = 0.0
+    sclrpthlp    = 0.0
+    wpsclrp      = 0.0
 
-  if((doclubb.and.docloud).or.(.not.doclubb .and. .not.docloud)) then
-    write(0, *) 'doclubb and docloud can not both be true or be false'
-    call endrun('crm_clubb2')
-  endif
-  if((doclubb_sfc_fluxes.and.docam_sfc_fluxes)) then
-    write(0, *) 'doclubb_sfc_fluxes and dosam_sfc_fluxes can not both be true'
-    call endrun('crm_clubb_fluxes')
-  endif
+    if((doclubb.and.docloud).or.(.not.doclubb .and. .not.docloud)) then
+      write(0, *) 'doclubb and docloud can not both be true or be false'
+      call endrun('crm_clubb2')
+    endif
+    if((doclubb_sfc_fluxes.and.docam_sfc_fluxes)) then
+      write(0, *) 'doclubb_sfc_fluxes and dosam_sfc_fluxes can not both be true'
+      call endrun('crm_clubb_fluxes')
+    endif
 
-  if ( doclubb .or. doclubbnoninter ) then
-    call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                          latitude, longitude, z, rho, zi, rhow, tv0, tke )
-  endif
+    if ( doclubb .or. doclubbnoninter ) then
+      call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
+                            latitude, longitude, z, rho, zi, rhow, tv0, tke )
+    endif
 #endif
 
 #ifdef ECPP
-  !ntavg1_ss = dt_gl/3   ! one third of GCM time step, 10 minutes
-  ntavg1_ss = min(600._r8, dt_gl)       ! 10 minutes  or the GCM timestep, whichever smaller
-        ! ntavg1_ss = number of seconds to average between computing categories.
-  ntavg2_ss = dt_gl   ! GCM time step
-        ! ntavg2_ss = number of seconds to average between outputs.
-        !    This must be a multiple of ntavgt1_ss.
+    !ntavg1_ss = dt_gl/3   ! one third of GCM time step, 10 minutes
+    ntavg1_ss = min(600._r8, dt_gl)       ! 10 minutes  or the GCM timestep, whichever smaller
+          ! ntavg1_ss = number of seconds to average between computing categories.
+    ntavg2_ss = dt_gl   ! GCM time step
+          ! ntavg2_ss = number of seconds to average between outputs.
+          !    This must be a multiple of ntavgt1_ss.
 
-  ! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss
-  ! are set for their values are used in ecpp_crm_init.
-  call ecpp_crm_init()
+    ! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss
+    ! are set for their values are used in ecpp_crm_init.
+    call ecpp_crm_init()
 
-  qlsink    = 0.0
-  qlsink_bf = 0.0
-  prain     = 0.0
-  precr     = 0.0
-  precsolid = 0.0
+    qlsink    = 0.0
+    qlsink_bf = 0.0
+    prain     = 0.0
+    precr     = 0.0
+    precsolid = 0.0
 #endif
 
-  !+++mhwangtest
-  ! test water conservtion problem
-  ntotal_step(:) = 0.0
-  qtot(:,:) = 0.0
-  qtotmicro(:,:) = 0.0
-  do k=1, nzm
-    l=plev-k+1
-    do j=1, ny
-      do i=1, nx
+    !+++mhwangtest
+    ! test water conservtion problem
+    ntotal_step = 0.0
+    qtot(icrm,:) = 0.0
+    qtotmicro(icrm,:) = 0.0
+    do k=1, nzm
+      l=plev-k+1
+      do j=1, ny
+        do i=1, nx
 #ifdef m2005
-        qtot(:,1) = qtot(:,1)+((micro_field(:,i,j,k,iqr)+micro_field(:,i,j,k,iqs)+micro_field(:,i,j,k,iqg)) * pdel(:,l)/ggr)/(nx*ny)
+          qtot(icrm,1) = qtot(icrm,1)+((micro_field(icrm,i,j,k,iqr)+micro_field(icrm,i,j,k,iqs)+micro_field(icrm,i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
 #endif
 #ifdef sam1mom
-        qtot(:,1) = qtot(:,1)+(qpl(:,i,j,k)+qpi(:,i,j,k)) * pdel(:,l)/ggr/(nx*ny)
+          qtot(icrm,1) = qtot(icrm,1)+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k)) * pdel(icrm,l)/ggr/(nx*ny)
 #endif
+        enddo
       enddo
+      qtot(icrm,1) = qtot(icrm,1) + (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)) * pdel(icrm,l)/ggr
     enddo
-    qtot(:,1) = qtot(:,1) + (ql(:,l)+qccl(:,l)+qiil(:,l)) * pdel(:,l)/ggr
-  enddo
-  !---mhwangtest
+    !---mhwangtest
 
-  nstop = dt_gl/dt
-  dt = dt_gl/nstop
-  nsave3D = nint(60/dt)
-  do icrm = 1 , ncrms
+    nstop = dt_gl/dt
+    dt = dt_gl/nstop
+    nsave3D = nint(60/dt)
     !if(nint(nsave3D*dt).ne.60)then
     !   print *,'CRM: time step=',dt,' is not divisible by 60 seconds'
     !   print *,'this is needed for output every 60 seconds'
     !   stop
     !endif
-    nstep(icrm)  = 0
+    nstep  = 0
     nprint = 1
-    ncycle(icrm) = 0
+    ncycle = 0
     !nrad = nstop/nrad0
-    day(icrm)=day0
+    day=day0
 
     !------------------------------------------------------------------
     !   Main time loop
     !------------------------------------------------------------------
 
-    do while (nstep(icrm).lt.nstop)
-      nstep(icrm) = nstep(icrm) + 1
-      time(icrm) = time(icrm) + dt
-      day(icrm) = day0 + time(icrm)/86400.
+    do while (nstep.lt.nstop)
+      nstep = nstep + 1
+      time = time + dt
+      day = day0 + time/86400.
       timing_factor(icrm) = timing_factor(icrm)+1
       !------------------------------------------------------------------
       !  Check if the dynamical time step should be decreased
       !  to handle the cases when the flow being locally linearly unstable
       !------------------------------------------------------------------
-      ncycle(icrm) = 1
+      ncycle = 1
 
       call kurant(ncrms,icrm)
 
-      do icyc=1,ncycle(icrm)
-        icycle(icrm) = icyc
-        dtn(icrm) = dt/ncycle(icrm)
-        dt3(icrm,na(icrm)) = dtn(icrm)
-        dtfactor(icrm) = dtn(icrm)/dt
+      do icyc=1,ncycle
+        icycle = icyc
+        dtn = dt/ncycle
+        dt3(na) = dtn
+        dtfactor = dtn/dt
 
         !---------------------------------------------
         !  	the Adams-Bashforth scheme in time
-        call abcoefs(ncrms,icrm)
+        call abcoefs()
 
         !---------------------------------------------
         !  	initialize stuff:
@@ -938,7 +932,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !+++mhwangtest
         ! test water conservtion problem
-        ntotal_step(icrm) = ntotal_step(icrm) + 1.
+        ntotal_step = ntotal_step + 1.
         !---mhwangtest
 
         !------------------------------------------------------------
@@ -950,7 +944,7 @@ subroutine crm(lchnk, icol, ncrms, &
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(icrm,i,j,k) = t(icrm,i,j,k) + qrad_crm(icrm,i_rad,j_rad,k)*dtn(icrm)
+              t(icrm,i,j,k) = t(icrm,i,j,k) + qrad_crm(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
@@ -1027,11 +1021,11 @@ subroutine crm(lchnk, icol, ncrms, &
           ! must occur prior to adams() -dschanen 26 Aug 2008
           ! Here we call clubb only if nstep divides the current timestep,
           ! or we're on the very first timestep
-          if ( nstep(icrm) == 1 .or. mod( nstep(icrm), nclubb ) == 0 ) then
+          if ( nstep == 1 .or. mod( nstep, nclubb ) == 0 ) then
 
-            call advance_clubb_sgs( real( dtn(icrm)*real( nclubb ), kind=time_precision), & ! in
+            call advance_clubb_sgs( real( dtn*real( nclubb ), kind=time_precision), & ! in
                                     real( 0., kind=time_precision ),         & ! in
-                                    real( time(icrm), kind=time_precision ),       & ! in
+                                    real( time, kind=time_precision ),       & ! in
                                     rho, rhow, wsub, u, v, w, qpl, qci, qpi, & ! in
                                     t, qv, qcl ) ! in
           endif ! nstep == 1 .or. mod( nstep, nclubb) == 0
@@ -1097,7 +1091,7 @@ subroutine crm(lchnk, icol, ncrms, &
           call micro_update(ncrms,icrm)
 
           ! Then Re-compute q/qv/qcl based on values computed in CLUBB
-          call apply_clubb_sgs_tndcy_scalars( real( dtn(icrm), kind=time_precision), & ! in
+          call apply_clubb_sgs_tndcy_scalars( real( dtn, kind=time_precision), & ! in
                                               t, qv, qcl) ! in/out
 
           call micro_adjust( qv, qcl ,ncrms,icrm ) ! in
@@ -1116,7 +1110,7 @@ subroutine crm(lchnk, icol, ncrms, &
               rtm_spurious_source(i,j) = calculate_spurious_source( rtm_integral_after(i,j), &
                                                          rtm_integral_before(i,j), &
                                                          rtm_flux_top, rtm_flux_sfc, &
-                                                         0.0_core_rknd, real( dtn(icrm), kind=core_rknd) )
+                                                         0.0_core_rknd, real( dtn, kind=core_rknd) )
 
               thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
               thlm_flux_sfc = rho_ds_zm(1) * fluxbt(icrm,i,j)
@@ -1132,7 +1126,7 @@ subroutine crm(lchnk, icol, ncrms, &
               thlm_spurious_source(i,j) = calculate_spurious_source( thlm_integral_after(i,j), &
                                                              thlm_integral_before(i,j), &
                                                              thlm_flux_top, thlm_flux_sfc, &
-                                                             0.0_core_rknd, real( dtn(icrm), kind=core_rknd ))
+                                                             0.0_core_rknd, real( dtn, kind=core_rknd ))
             enddo
           enddo
           ! End spurious source calculation
@@ -1153,10 +1147,10 @@ subroutine crm(lchnk, icol, ncrms, &
 
         !----------------------------------------------------------
         ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
-        nn=na(icrm)
-        na(icrm)=nc(icrm)
-        nc(icrm)=nb(icrm)
-        nb(icrm)=nn
+        nn=na
+        na=nc
+        nc=nb
+        nb=nn
       enddo ! icycle
 
       !----------------------------------------------------------
@@ -1675,7 +1669,7 @@ subroutine crm(lchnk, icol, ncrms, &
       !---mhwang
 
       tmp1 = dz(icrm)/rhow(icrm,k)
-      tmp2 = tmp1/dtn(icrm)                        ! dtn is calculated inside of the icyc loop.
+      tmp2 = tmp1/dtn                        ! dtn is calculated inside of the icyc loop.
                                              ! It seems wrong to use it here ???? +++mhwang
       mkwsb (icrm,k,:) = mkwsb (icrm,k,:) * tmp1*rhow(icrm,k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
       mkwle (icrm,k,:) = mkwle (icrm,k,:) * tmp2*rhow(icrm,k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
@@ -1819,7 +1813,6 @@ subroutine crm(lchnk, icol, ncrms, &
 
   call deallocate_grid()
   call deallocate_params()
-  call deallocate_micro_params()
   call deallocate_vars()
   call deallocate_microphysics()
   call deallocate_tracers()

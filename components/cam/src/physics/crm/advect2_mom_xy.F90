@@ -42,9 +42,9 @@ contains
           end do
           do i = 1, nx
             ib = i-1
-            dudt(icrm,i,j,k,na(icrm))  = dudt(icrm,i,j,k,na(icrm))  - (fu(i,j,k)-fu(ib,j,k))
-            dvdt(icrm,i,j,k,na(icrm))  = dvdt(icrm,i,j,k,na(icrm))  - (fv(i,j,k)-fv(ib,j,k))
-            dwdt(icrm,i,j,kc,na(icrm)) = dwdt(icrm,i,j,kc,na(icrm))-irho*(fw(i,j,k)-fw(ib,j,k))
+            dudt(icrm,i,j,k,na)  = dudt(icrm,i,j,k,na)  - (fu(i,j,k)-fu(ib,j,k))
+            dvdt(icrm,i,j,k,na)  = dvdt(icrm,i,j,k,na)  - (fv(i,j,k)-fv(ib,j,k))
+            dwdt(icrm,i,j,kc,na) = dwdt(icrm,i,j,kc,na)-irho*(fw(i,j,k)-fw(ib,j,k))
           end do
         end do
 
@@ -61,9 +61,9 @@ contains
         do j = 1,ny
           jb = j-1
           do i = 1, nx
-            dudt(icrm,i,j,k,na(icrm)) = dudt(icrm,i,j,k,na(icrm)) - (fu(i,j,k) - fu(i,jb,k))
-            dvdt(icrm,i,j,k,na(icrm)) = dvdt(icrm,i,j,k,na(icrm)) - (fv(i,j,k) - fv(i,jb,k))
-            dwdt(icrm,i,j,kc,na(icrm))= dwdt(icrm,i,j,kc,na(icrm))-irho*(fw(i,j,k)-fw(i,jb,k))
+            dudt(icrm,i,j,k,na) = dudt(icrm,i,j,k,na) - (fu(i,j,k) - fu(i,jb,k))
+            dvdt(icrm,i,j,k,na) = dvdt(icrm,i,j,k,na) - (fv(i,j,k) - fv(i,jb,k))
+            dwdt(icrm,i,j,kc,na)= dwdt(icrm,i,j,kc,na)-irho*(fw(i,j,k)-fw(i,jb,k))
           end do
         end do
 
@@ -88,9 +88,9 @@ contains
         end do
         do i = 1, nx
           ib = i-1
-          dudt(icrm,i,j,k,na(icrm))  = dudt(icrm,i,j,k,na(icrm))  - (fu(i,j,k)-fu(ib,j,k))
-          dvdt(icrm,i,j,k,na(icrm))  = dvdt(icrm,i,j,k,na(icrm))  - (fv(i,j,k)-fv(ib,j,k))
-          dwdt(icrm,i,j,kc,na(icrm)) = dwdt(icrm,i,j,kc,na(icrm))-irho*(fw(i,j,k)-fw(ib,j,k))
+          dudt(icrm,i,j,k,na)  = dudt(icrm,i,j,k,na)  - (fu(i,j,k)-fu(ib,j,k))
+          dvdt(icrm,i,j,k,na)  = dvdt(icrm,i,j,k,na)  - (fv(i,j,k)-fv(ib,j,k))
+          dwdt(icrm,i,j,kc,na) = dwdt(icrm,i,j,kc,na)-irho*(fw(i,j,k)-fw(ib,j,k))
         end do
 
       end do ! k

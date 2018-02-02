@@ -38,7 +38,7 @@ contains
       kc=min(nzm,k+1)
       kb=max(1,k-1)
       if(pres(icrm,kc).le.200..and.pres(icrm,kb).gt.200.) k200=k
-      coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor(icrm)
+      coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
       do j=1,ny
         do i=1,nx
           tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) +&
@@ -84,11 +84,11 @@ contains
 
     do j=1,ny
       do i=1,nx
-        usfc_xy(icrm,i,j) = usfc_xy(icrm,i,j) + u(icrm,i,j,1)*dtfactor(icrm)
-        vsfc_xy(icrm,i,j) = vsfc_xy(icrm,i,j) + v(icrm,i,j,1)*dtfactor(icrm)
-        u200_xy(icrm,i,j) = u200_xy(icrm,i,j) + u(icrm,i,j,k200)*dtfactor(icrm)
-        v200_xy(icrm,i,j) = v200_xy(icrm,i,j) + v(icrm,i,j,k200)*dtfactor(icrm)
-        w500_xy(icrm,i,j) = w500_xy(icrm,i,j) + w(icrm,i,j,k500)*dtfactor(icrm)
+        usfc_xy(icrm,i,j) = usfc_xy(icrm,i,j) + u(icrm,i,j,1)*dtfactor
+        vsfc_xy(icrm,i,j) = vsfc_xy(icrm,i,j) + v(icrm,i,j,1)*dtfactor
+        u200_xy(icrm,i,j) = u200_xy(icrm,i,j) + u(icrm,i,j,k200)*dtfactor
+        v200_xy(icrm,i,j) = v200_xy(icrm,i,j) + v(icrm,i,j,k200)*dtfactor
+        w500_xy(icrm,i,j) = w500_xy(icrm,i,j) + w(icrm,i,j,k500)*dtfactor
       end do
     end do
 
@@ -134,7 +134,7 @@ contains
     end do
 
     do k=1,nzm
-      coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor(icrm)
+      coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
       do j=1,ny
         do i=1,nx
 
@@ -149,11 +149,11 @@ contains
     ! ACCUMULATE AVERAGES OF TWO-DIMENSIONAL STATISTICS
     do j=1,ny
       do i=1,nx
-        psfc_xy(icrm,i,j) = psfc_xy(icrm,i,j) + (100.*pres(icrm,1) + p(icrm,i,j,1))*dtfactor(icrm)
+        psfc_xy(icrm,i,j) = psfc_xy(icrm,i,j) + (100.*pres(icrm,1) + p(icrm,i,j,1))*dtfactor
 
         ! 850 mbar horizontal winds
-        u850_xy(icrm,i,j) = u850_xy(icrm,i,j) + u(icrm,i,j,k850)*dtfactor(icrm)
-        v850_xy(icrm,i,j) = v850_xy(icrm,i,j) + v(icrm,i,j,k850)*dtfactor(icrm)
+        u850_xy(icrm,i,j) = u850_xy(icrm,i,j) + u(icrm,i,j,k850)*dtfactor
+        v850_xy(icrm,i,j) = v850_xy(icrm,i,j) + v(icrm,i,j,k850)*dtfactor
 
       end do
     end do
@@ -176,7 +176,7 @@ contains
           if (tmp_lwp.gt.0.01) then
             cloudtopheight(icrm,i,j) = z(icrm,k)
             cloudtoptemp(icrm,i,j) = tabs(icrm,i,j,k)
-            cld_xy(icrm,i,j) = cld_xy(icrm,i,j) + dtfactor(icrm)
+            cld_xy(icrm,i,j) = cld_xy(icrm,i,j) + dtfactor
             EXIT
           end if
         end do

@@ -20,7 +20,7 @@ contains
       do j=1,ny
         do i=1,nx
 
-          dwdt(icrm,i,j,k,na(icrm))=dwdt(icrm,i,j,k,na(icrm)) +  &
+          dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na) +  &
           bet(icrm,k)*betu* &
           ( tabs0(icrm,k)*(epsv*(qv(icrm,i,j,k)-qv0(icrm,k))-(qcl(icrm,i,j,k)+qci(icrm,i,j,k)-qn0(icrm,k)+qpl(icrm,i,j,k)+qpi(icrm,i,j,k)-qp0(icrm,k))) &
           +(tabs(icrm,i,j,k)-tabs0(icrm,k))*(1.+epsv*qv0(icrm,k)-qn0(icrm,k)-qp0(icrm,k)) ) &

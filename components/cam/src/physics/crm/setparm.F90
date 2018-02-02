@@ -110,7 +110,7 @@ contains
 #endif
 
 		if(ny.eq.1) dy=dx
-		if (allocated(dtn)) dtn = dt
+		dtn = dt
 
 		notopened2D = .true.
 		notopened3D = .true.

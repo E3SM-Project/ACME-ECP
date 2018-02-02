@@ -57,17 +57,17 @@ contains
     do k = nzm, nzm-n_damp, -1
       do j=1,ny
         do i=1,nx
-          dudt(icrm,i,j,k,na(icrm))= dudt(icrm,i,j,k,na(icrm))-(u(icrm,i,j,k)-u0(icrm,k)) * tau(k)
-          dvdt(icrm,i,j,k,na(icrm))= dvdt(icrm,i,j,k,na(icrm))-(v(icrm,i,j,k)-v0(icrm,k)) * tau(k)
-          dwdt(icrm,i,j,k,na(icrm))= dwdt(icrm,i,j,k,na(icrm))-w(icrm,i,j,k) * tau(k)
-          t(icrm,i,j,k)= t(icrm,i,j,k)-dtn(icrm)*(t(icrm,i,j,k)-t0(icrm,k)) * tau(k)
+          dudt(icrm,i,j,k,na)= dudt(icrm,i,j,k,na)-(u(icrm,i,j,k)-u0(icrm,k)) * tau(k)
+          dvdt(icrm,i,j,k,na)= dvdt(icrm,i,j,k,na)-(v(icrm,i,j,k)-v0(icrm,k)) * tau(k)
+          dwdt(icrm,i,j,k,na)= dwdt(icrm,i,j,k,na)-w(icrm,i,j,k) * tau(k)
+          t(icrm,i,j,k)= t(icrm,i,j,k)-dtn*(t(icrm,i,j,k)-t0(icrm,k)) * tau(k)
           ! In the old version (SAM7.5?) of SAM, water vapor is the prognostic variable for the two-moment microphyscs.
           ! So the following damping approach can lead to the negative water vapor.
           !      micro_field(icrm,i,j,k,index_water_vapor)= micro_field(icrm,i,j,k,index_water_vapor)- &
           !                                    dtn*(qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)-q0(icrm,k)) * tau(k)
           ! a simple fix (Minghuai Wang, 2011-08):
           micro_field(icrm,i,j,k,index_water_vapor)= micro_field(icrm,i,j,k,index_water_vapor)- &
-          dtn(icrm)*(qv(icrm,i,j,k)-qv0(icrm,k)) * tau(k)
+          dtn*(qv(icrm,i,j,k)-qv0(icrm,k)) * tau(k)
         end do! i
       end do! j
     end do ! k
