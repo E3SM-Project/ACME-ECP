@@ -906,93 +906,99 @@ subroutine crm(lchnk, icol, ncrms, &
   !   Main time loop
   !------------------------------------------------------------------
   do while (nstep.lt.nstop)
-    do icrm = 1 , ncrms
-      if (icrm == 1) then
-        nstep = nstep + 1
-        time = time + dt
-        day = day0 + time/86400.
-      endif
+    nstep = nstep + 1
+    time = time + dt
+    day = day0 + time/86400.
 
-      timing_factor(icrm) = timing_factor(icrm)+1
-      !------------------------------------------------------------------
-      !  Check if the dynamical time step should be decreased
-      !  to handle the cases when the flow being locally linearly unstable
-      !------------------------------------------------------------------
-      ncycle = 1
+    timing_factor(:) = timing_factor(:)+1
+    !------------------------------------------------------------------
+    !  Check if the dynamical time step should be decreased
+    !  to handle the cases when the flow being locally linearly unstable
+    !------------------------------------------------------------------
+    call kurant(ncrms)
 
-      call kurant(ncrms,icrm)
+    do icyc=1,ncycle
+      icycle = icyc
+      dtn = dt/ncycle
+      dt3(na) = dtn
+      dtfactor = dtn/dt
 
-      do icyc=1,ncycle
-        icycle = icyc
-        dtn = dt/ncycle
-        dt3(na) = dtn
-        dtfactor = dtn/dt
+      !---------------------------------------------
+      !  	the Adams-Bashforth scheme in time
+      call abcoefs()
 
-        !---------------------------------------------
-        !  	the Adams-Bashforth scheme in time
-        call abcoefs()
+      !---------------------------------------------
+      !  	initialize stuff:
+      call zero(ncrms)
 
-        !---------------------------------------------
-        !  	initialize stuff:
-        call zero(ncrms,icrm)
+      !-----------------------------------------------------------
+      !       Buoyancy term:
+      call buoyancy(ncrms)
 
-        !-----------------------------------------------------------
-        !       Buoyancy term:
-        call buoyancy(ncrms,icrm)
+      !------------------------------------------------------------
+      !       Large-scale and surface forcing:
+      call forcing(ncrms)
 
-        !+++mhwangtest
-        ! test water conservtion problem
-        ! ntotal_step = ntotal_step + 1.
-        !---mhwangtest
-
-        !------------------------------------------------------------
-        !       Large-scale and surface forcing:
-        call forcing(ncrms,icrm)
-
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
-              i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
-              j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(icrm,i,j,k) = t(icrm,i,j,k) + qrad_crm(icrm,i_rad,j_rad,k)*dtn
-            enddo
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
+            j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+            t(:,i,j,k) = t(:,i,j,k) + qrad_crm(:,i_rad,j_rad,k)*dtn
           enddo
         enddo
+      enddo
 
-        !----------------------------------------------------------
-        !   	suppress turbulence near the upper boundary (spange):
-        if (dodamping) call damping(ncrms,icrm)
+      !----------------------------------------------------------
+      !   	suppress turbulence near the upper boundary (spange):
+      if (dodamping) call damping(ncrms)
 
-        !---------------------------------------------------------
-        !   Ice fall-out
-
+      !---------------------------------------------------------
+      !   Ice fall-out
 #ifdef CLUBB_CRM
-        if ( docloud .or. doclubb ) then
+      if ( docloud .or. doclubb ) then
+        do icrm = 1 , ncrms
           call ice_fall(ncrms,icrm)
-        endif
+        enddo
+      endif
 #else
-        if(docloud) then
-            call ice_fall(ncrms,icrm)
-        endif
+      if(docloud) then
+        do icrm = 1 , ncrms
+          call ice_fall(ncrms,icrm)
+        enddo
+      endif
 #endif
 
-        !----------------------------------------------------------
-        !     Update scalar boundaries after large-scale processes:
+      !----------------------------------------------------------
+      !     Update scalar boundaries after large-scale processes:
+      do icrm = 1 , ncrms
         call boundaries(3,ncrms,icrm)
+      enddo
 
-        !---------------------------------------------------------
-        !     Update boundaries for velocities:
+      !---------------------------------------------------------
+      !     Update boundaries for velocities:
+      do icrm = 1 , ncrms
         call boundaries(0,ncrms,icrm)
+      enddo
 
-        !-----------------------------------------------
-        !     surface fluxes:
-        if (dosurface) call crmsurface(bflx(icrm),ncrms,icrm)
+      !-----------------------------------------------
+      !     surface fluxes:
+      if (dosurface) then
+        do icrm = 1 , ncrms
+          call crmsurface(bflx(icrm),ncrms,icrm)
+        enddo
+      endif
 
-        !-----------------------------------------------------------
-        !  SGS physics:
-        if (dosgs) call sgs_proc(ncrms,icrm)
+      !-----------------------------------------------------------
+      !  SGS physics:
+      if (dosgs) then
+        do icrm = 1 , ncrms
+          call sgs_proc(ncrms,icrm)
+        enddo
+      endif
 
 #ifdef CLUBB_CRM_OLD
+      do icrm = 1 , ncrms
         !----------------------------------------------------------
         ! Do a timestep with CLUBB if enabled:
         ! -dschanen UWM 16 May 2008
@@ -1040,61 +1046,85 @@ subroutine crm(lchnk, icol, ncrms, &
                                     t, qv, qcl ) ! in
           endif ! nstep == 1 .or. mod( nstep, nclubb) == 0
         endif ! doclubb .or. doclubbnoninter
+      enddo
 
 #endif
-        !----------------------------------------------------------
-        !     Fill boundaries for SGS diagnostic fields:
+      !----------------------------------------------------------
+      !     Fill boundaries for SGS diagnostic fields:
+      do icrm = 1 , ncrms
         call boundaries(4,ncrms,icrm)
+      enddo
 
-        !-----------------------------------------------
-        !       advection of momentum:
+      !-----------------------------------------------
+      !       advection of momentum:
+      do icrm = 1 , ncrms
         call advect_mom(ncrms,icrm)
+      enddo
 
-        !----------------------------------------------------------
-        !	SGS effects on momentum:
+      !----------------------------------------------------------
+      !	SGS effects on momentum:
 
-        if(dosgs) call sgs_mom(ncrms,icrm)
-#ifdef CLUBB_CRM_OLD
-        if ( doclubb ) then
-          !          call apply_clubb_sgs_tndcy_mom &
-          !               ( dudt, dvdt ) ! in/out
-        endif
-#endif /*CLUBB_CRM_OLD*/
+      if(dosgs) then
+        do icrm = 1 , ncrms
+          call sgs_mom(ncrms,icrm)
+        enddo
+      endif
 
-        !-----------------------------------------------------------
-        !       Coriolis force:
-        if (docoriolis) call coriolis(ncrms,icrm)
+      !-----------------------------------------------------------
+      !       Coriolis force:
+      if (docoriolis) then
+        do icrm = 1 , ncrms
+          call coriolis(ncrms,icrm)
+        enddo
+      endif
 
-        !---------------------------------------------------------
-        !       compute rhs of the Poisson equation and solve it for pressure.
+      !---------------------------------------------------------
+      !       compute rhs of the Poisson equation and solve it for pressure.
+      do icrm = 1 , ncrms
         call pressure(ncrms,icrm)
+      enddo
 
-        !---------------------------------------------------------
-        !       find velocity field at n+1/2 timestep needed for advection of scalars:
-        !  Note that at the end of the call, the velocities are in nondimensional form.
+      !---------------------------------------------------------
+      !       find velocity field at n+1/2 timestep needed for advection of scalars:
+      !  Note that at the end of the call, the velocities are in nondimensional form.
+      do icrm = 1 , ncrms
         call adams(ncrms,icrm)
+      enddo
 
-        !----------------------------------------------------------
-        !     Update boundaries for all prognostic scalar fields for advection:
+      !----------------------------------------------------------
+      !     Update boundaries for all prognostic scalar fields for advection:
+      do icrm = 1 , ncrms
         call boundaries(2,ncrms,icrm)
+      enddo
 
-        !---------------------------------------------------------
-        !      advection of scalars :
+      !---------------------------------------------------------
+      !      advection of scalars :
+      do icrm = 1 , ncrms
         call advect_all_scalars(ncrms,icrm)
+      enddo
 
-        !-----------------------------------------------------------
-        !    Convert velocity back from nondimensional form:
+      !-----------------------------------------------------------
+      !    Convert velocity back from nondimensional form:
+      do icrm = 1 , ncrms
         call uvw(ncrms,icrm)
+      enddo
 
-        !----------------------------------------------------------
-        !     Update boundaries for scalars to prepare for SGS effects:
+      !----------------------------------------------------------
+      !     Update boundaries for scalars to prepare for SGS effects:
+      do icrm = 1 , ncrms
         call boundaries(3,ncrms,icrm)
+      enddo
 
-        !---------------------------------------------------------
-        !      SGS effects on scalars :
-        if (dosgs) call sgs_scalars(ncrms,icrm)
+      !---------------------------------------------------------
+      !      SGS effects on scalars :
+      if (dosgs) then
+        do icrm = 1 , ncrms
+          call sgs_scalars(ncrms,icrm)
+        enddo
+      endif
 
 #ifdef CLUBB_CRM_OLD
+      do icrm = 1 , ncrms
         ! Re-compute q/qv/qcl based on values computed in CLUBB
         if ( doclubb ) then
           ! Recalculate q, qv, qcl based on new micro_fields (updated by horizontal diffusion)
@@ -1141,29 +1171,40 @@ subroutine crm(lchnk, icol, ncrms, &
           enddo
           ! End spurious source calculation
         endif  ! doclubb
+      enddo
 #endif /*CLUBB_CRM_OLD*/
 
-        !-----------------------------------------------------------
-        !       Cloud condensation/evaporation and precipitation processes:
+      !-----------------------------------------------------------
+      !       Cloud condensation/evaporation and precipitation processes:
 #ifdef CLUBB_CRM
-        if(docloud.or.dosmoke.or.doclubb) call micro_proc(ncrms,icrm)
+      if(docloud.or.dosmoke.or.doclubb) then
+        do icrm = 1 , ncrms
+          call micro_proc(ncrms,icrm)
+        enddo
+      endif
 #else
-        if(docloud.or.dosmoke) call micro_proc(ncrms,icrm)
+      if(docloud.or.dosmoke) then
+        do icrm = 1 , ncrms
+          call micro_proc(ncrms,icrm)
+        enddo
+      endif
 #endif /*CLUBB_CRM*/
 
-        !-----------------------------------------------------------
-        !    Compute diagnostics fields:
-          call diagnose(ncrms,icrm)
+      !-----------------------------------------------------------
+      !    Compute diagnostics fields:
+      do icrm = 1 , ncrms
+        call diagnose(ncrms,icrm)
+      enddo
 
-        !----------------------------------------------------------
-        ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
-        if (icrm == ncrms) then
-          nn=na
-          na=nc
-          nc=nb
-          nb=nn
-        endif
-      enddo ! icycle
+      !----------------------------------------------------------
+      ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
+      nn=na
+      na=nc
+      nc=nb
+      nb=nn
+    enddo ! icycle
+
+    do icrm = 1 , ncrms
 
       !----------------------------------------------------------
       !----------------------------------------------------------

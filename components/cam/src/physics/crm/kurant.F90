@@ -4,67 +4,74 @@ module kurant_mod
 
    contains
 
-   subroutine kurant(ncrms,icrm)
-
+   subroutine kurant(ncrms)
       use vars
       use sgs, only: kurant_sgs
       use params, only: crm_rknd
-
       implicit none
-      integer, intent(in) :: ncrms,icrm
+      integer, intent(in) :: ncrms
 
-      integer i, j, k, ncycle1(1),ncycle2(1)
+      integer i, j, k, ncycle1(1),ncycle2(1), icrm, ncycle_max
       real(crm_rknd) wm(nz)  ! maximum vertical wind velocity
       real(crm_rknd) uhm(nz) ! maximum horizontal wind velocity
       real(crm_rknd) cfl, cfl_sgs
 
-      ncycle = 1
+      ncycle_max = 0
 
-      wm(nz)=0.
-      do k = 1,nzm
-         wm(k) = maxval(abs(w(icrm,1:nx,1:ny,k)))
-         uhm(k) = sqrt(maxval(u(icrm,1:nx,1:ny,k)**2+YES3D*v(icrm,1:nx,1:ny,k)**2))
-      end do
-      w_max(icrm)=max( w_max(icrm), real(maxval(w(icrm,1:nx,1:ny,1:nz)),kind(w_max(icrm))) )
-      u_max(icrm)=max( u_max(icrm), real(maxval(uhm(1:nzm))       ,kind(u_max(icrm))) )
+      do icrm = 1 , ncrms
 
-      cfl = 0.
-      do k=1,nzm
-         cfl = max(cfl,uhm(k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2), &
-                   max(wm(k),wm(k+1))*dt/(dz(icrm)*adzw(icrm,k)) )
-      end do
+        ncycle = 1
 
-      call kurant_sgs(cfl_sgs,ncrms,icrm)
-      cfl = max(cfl,cfl_sgs)
+        wm(nz)=0.
+        do k = 1,nzm
+          wm(k) = maxval(abs(w(icrm,1:nx,1:ny,k)))
+          uhm(k) = sqrt(maxval(u(icrm,1:nx,1:ny,k)**2+YES3D*v(icrm,1:nx,1:ny,k)**2))
+        end do
+        w_max(icrm)=max( w_max(icrm), real(maxval(w(icrm,1:nx,1:ny,1:nz)),kind(w_max(icrm))) )
+        u_max(icrm)=max( u_max(icrm), real(maxval(uhm(1:nzm))       ,kind(u_max(icrm))) )
 
-      ncycle = max(1,ceiling(cfl/0.7))
+        cfl = 0.
+        do k=1,nzm
+          cfl = max(cfl,uhm(k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2), &
+          max(wm(k),wm(k+1))*dt/(dz(icrm)*adzw(icrm,k)) )
+        end do
 
-      if(dompi) then
-         ncycle1(1)=ncycle
-         call task_max_integer(ncycle1,ncycle2,1)
-         ncycle=ncycle2(1)
-      end if
+        call kurant_sgs(cfl_sgs,ncrms,icrm)
+        cfl = max(cfl,cfl_sgs)
 
-      if(ncycle.gt.4) then
-         if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
-         !+++ test +++mhwang
-         ! write(0, *) 'cfl', cfl, cfl_sgs, latitude(icrm,1, 1), longitude(icrm,1,1)
-         ! do k=1, nzm
-         !    write(0, *) 'k=', k, wm(k), uhm(k)
-         ! end do
-         ! do i=1, nx
-         !   write(0, *) 'i=', i,  u(icrm,i, 1, 4), v(icrm,i, 1, 4), tabs(icrm,i,1,4)
-         ! end do
-         !---mhwang
+        ncycle = max(1,ceiling(cfl/0.7))
 
-         ! whannah - formatted debug info - easier to read
-         write(0, 5550) cfl, cfl_sgs, latitude(icrm,1,1), longitude(icrm,1,1)
-         do k=1, nzm
+        if(dompi) then
+          ncycle1(1)=ncycle
+          call task_max_integer(ncycle1,ncycle2,1)
+          ncycle=ncycle2(1)
+        end if
+
+        if(ncycle.gt.4) then
+          if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
+          !+++ test +++mhwang
+          ! write(0, *) 'cfl', cfl, cfl_sgs, latitude(icrm,1, 1), longitude(icrm,1,1)
+          ! do k=1, nzm
+          !    write(0, *) 'k=', k, wm(k), uhm(k)
+          ! end do
+          ! do i=1, nx
+          !   write(0, *) 'i=', i,  u(icrm,i, 1, 4), v(icrm,i, 1, 4), tabs(icrm,i,1,4)
+          ! end do
+          !---mhwang
+
+          ! whannah - formatted debug info - easier to read
+          write(0, 5550) cfl, cfl_sgs, latitude(icrm,1,1), longitude(icrm,1,1)
+          do k=1, nzm
             write(0, 5551) k, wm(k), uhm(k), tabs(icrm,1,1,k)
-         end do
+          end do
 
-         call task_abort()
-      end if
+          call task_abort()
+        end if
+
+        ncycle_max = max(ncycle_max,ncycle)
+      enddo
+
+      ncycle = ncycle_max
 
 ! whannah
 5550 format('kurant() - cfl: ',f12.2,'  cfl_sgs: ',f12.2,'  lat: ',f6.2,'  lon: ',f6.2)

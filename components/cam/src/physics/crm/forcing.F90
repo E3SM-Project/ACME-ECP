@@ -3,50 +3,45 @@ module forcing_mod
 
 contains
 
-  subroutine forcing(ncrms,icrm)
+  subroutine forcing(ncrms)
 
     use vars
     use params
     use microphysics, only: micro_field, index_water_vapor, total_water
 
     implicit none
-    integer, intent(in) :: ncrms, icrm
-
-    real(crm_rknd) coef,qneg,qpoz, factor
-    integer i,j,k,nneg
+    integer, intent(in) :: ncrms
+    real(crm_rknd) :: coef,qneg(ncrms),qpoz(ncrms), factor(ncrms)
+    integer i,j,k,nneg(ncrms), icrm
 
     coef = 1./3600.
 
     do k=1,nzm
-
-      qpoz = 0.
-      qneg = 0.
-      nneg = 0
+      qpoz(:) = 0.
+      qneg(:) = 0.
+      nneg(:) = 0
 
       do j=1,ny
         do i=1,nx
-          t(icrm,i,j,k)=t(icrm,i,j,k) + ttend(icrm,k) * dtn
-          micro_field(icrm,i,j,k,index_water_vapor)=micro_field(icrm,i,j,k,index_water_vapor) + qtend(icrm,k) * dtn
-          if(micro_field(icrm,i,j,k,index_water_vapor).lt.0.) then
-            nneg = nneg + 1
-            qneg = qneg + micro_field(icrm,i,j,k,index_water_vapor)
-          else
-            qpoz = qpoz + micro_field(icrm,i,j,k,index_water_vapor)
-          end if
-          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na) + utend(icrm,k)
-          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na) + vtend(icrm,k)
+          t(:,i,j,k)=t(:,i,j,k) + ttend(:,k) * dtn
+          micro_field(:,i,j,k,index_water_vapor)=micro_field(:,i,j,k,index_water_vapor) + qtend(:,k) * dtn
+          qneg(:) = qneg(:) + min( 0._crm_rknd , micro_field(:,i,j,k,index_water_vapor) )
+          qpoz(:) = qpoz(:) + max( 0._crm_rknd , micro_field(:,i,j,k,index_water_vapor) )
+          dudt(:,i,j,k,na)=dudt(:,i,j,k,na) + utend(:,k)
+          dvdt(:,i,j,k,na)=dvdt(:,i,j,k,na) + vtend(:,k)
         end do
       end do
 
-      if(nneg.gt.0.and.qpoz+qneg.gt.0.) then
-        factor = 1. + qneg/qpoz
-        do j=1,ny
-          do i=1,nx
-            micro_field(icrm,i,j,k,index_water_vapor) = max(real(0.,crm_rknd),micro_field(icrm,i,j,k,index_water_vapor)*factor)
+      factor(:) = 1. + qneg(:)/qpoz(:)
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            if(qpoz(icrm)+qneg(icrm).gt.0.) then
+              micro_field(icrm,i,j,k,index_water_vapor) = max(real(0.,crm_rknd),micro_field(icrm,i,j,k,index_water_vapor)*factor(icrm))
+            end if
           end do
         end do
-      end if
-
+      end do
     end do
 
   end subroutine forcing
