@@ -997,58 +997,6 @@ subroutine crm(lchnk, icol, ncrms, &
         enddo
       endif
 
-#ifdef CLUBB_CRM_OLD
-      do icrm = 1 , ncrms
-        !----------------------------------------------------------
-        ! Do a timestep with CLUBB if enabled:
-        ! -dschanen UWM 16 May 2008
-
-        if ( doclubb .or. doclubbnoninter ) then
-          ! In case of ice fall, we recompute qci here for the
-          ! single-moment scheme.  Also, subsidence, diffusion and advection have
-          ! been applied to micro_field but not qv/qcl so they must be updated.
-          call micro_update(ncrms,icrm)
-        endif ! doclubb .or. doclubbnoninter
-
-        if ( doclubb ) then
-          ! Calculate the vertical integrals for RTM and THLM so we can later
-          ! calculate whether CLUBB is a spurious source or sink of either.
-          ! - nielsenb UWM 4 Jun 2010
-          do i = 1,nx
-            do j = 1,ny
-              rtm_column = qv(icrm,i,j,1:nzm) + qcl(icrm,i,j,1:nzm)
-              rtm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                           rtm_column, gr%invrs_dzt(2:nz) )
-
-              thlm_before = t2thetal( t(icrm,i,j,1:nzm), gamaz(icrm,1:nzm), &
-                                   qcl(icrm,i,j,1:nzm), qpl(icrm,i,j,1:nzm), &
-                                   qci(icrm,i,j,1:nzm), qpi(icrm,i,j,1:nzm), &
-                                   prespot(icrm,1:nzm) )
-
-              thlm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                                            thlm_before(1:nzm), gr%invrs_dzt(2:nz) )
-            enddo
-          enddo
-          ! End vertical integral
-        endif ! doclubb
-
-        if ( doclubb .or. doclubbnoninter ) then
-          ! We call CLUBB here because adjustments to the wind
-          ! must occur prior to adams() -dschanen 26 Aug 2008
-          ! Here we call clubb only if nstep divides the current timestep,
-          ! or we're on the very first timestep
-          if ( nstep == 1 .or. mod( nstep, nclubb ) == 0 ) then
-
-            call advance_clubb_sgs( real( dtn*real( nclubb ), kind=time_precision), & ! in
-                                    real( 0., kind=time_precision ),         & ! in
-                                    real( time, kind=time_precision ),       & ! in
-                                    rho, rhow, wsub, u, v, w, qpl, qci, qpi, & ! in
-                                    t, qv, qcl ) ! in
-          endif ! nstep == 1 .or. mod( nstep, nclubb) == 0
-        endif ! doclubb .or. doclubbnoninter
-      enddo
-
-#endif
       !----------------------------------------------------------
       !     Fill boundaries for SGS diagnostic fields:
       do icrm = 1 , ncrms
@@ -1123,57 +1071,6 @@ subroutine crm(lchnk, icol, ncrms, &
         enddo
       endif
 
-#ifdef CLUBB_CRM_OLD
-      do icrm = 1 , ncrms
-        ! Re-compute q/qv/qcl based on values computed in CLUBB
-        if ( doclubb ) then
-          ! Recalculate q, qv, qcl based on new micro_fields (updated by horizontal diffusion)
-          call micro_update(ncrms,icrm)
-
-          ! Then Re-compute q/qv/qcl based on values computed in CLUBB
-          call apply_clubb_sgs_tndcy_scalars( real( dtn, kind=time_precision), & ! in
-                                              t, qv, qcl) ! in/out
-
-          call micro_adjust( qv, qcl ,ncrms,icrm ) ! in
-
-          ! Calculate the vertical integrals for RTM and THLM again so
-          ! calculate whether CLUBB is a spurious source or sink of either.
-          ! - nielsenb UWM 4 Jun 2010
-          do i = 1,nx
-            do j = 1,ny
-              rtm_flux_top = rho_ds_zm(nz) * wprtp(i,j,nz)
-              rtm_flux_sfc = rho_ds_zm(1) * fluxbq(icrm,i,j)
-              rtm_column = qv(icrm,i,j,1:nzm) + qcl(icrm,i,j,1:nzm)
-              rtm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                            rtm_column, gr%invrs_dzt(2:nz) )
-
-              rtm_spurious_source(i,j) = calculate_spurious_source( rtm_integral_after(i,j), &
-                                                         rtm_integral_before(i,j), &
-                                                         rtm_flux_top, rtm_flux_sfc, &
-                                                         0.0_core_rknd, real( dtn, kind=core_rknd) )
-
-              thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
-              thlm_flux_sfc = rho_ds_zm(1) * fluxbt(icrm,i,j)
-
-              thlm_after = t2thetal( t(icrm,i,j,1:nzm), gamaz(icrm,1:nzm), &
-                                     qcl(icrm,i,j,1:nzm), qpl(icrm,i,j,1:nzm), &
-                                     qci(icrm,i,j,1:nzm), qpi(icrm,i,j,1:nzm), &
-                                     prespot(icrm,1:nzm) )
-
-              thlm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                                         thlm_after(1:nzm), gr%invrs_dzt(2:nz))
-
-              thlm_spurious_source(i,j) = calculate_spurious_source( thlm_integral_after(i,j), &
-                                                             thlm_integral_before(i,j), &
-                                                             thlm_flux_top, thlm_flux_sfc, &
-                                                             0.0_core_rknd, real( dtn, kind=core_rknd ))
-            enddo
-          enddo
-          ! End spurious source calculation
-        endif  ! doclubb
-      enddo
-#endif /*CLUBB_CRM_OLD*/
-
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
 #ifdef CLUBB_CRM
@@ -1204,17 +1101,18 @@ subroutine crm(lchnk, icol, ncrms, &
       nb=nn
     enddo ! icycle
 
-    do icrm = 1 , ncrms
-
-      !----------------------------------------------------------
-      !----------------------------------------------------------
+    !----------------------------------------------------------
+    !----------------------------------------------------------
 #ifdef ECPP
-      ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
-      ! This is what the original MMF model did (t_rad, qv_rad, ...). Do we want to call ecpp_crm_stat
-      ! every subcycle time step??? +++mhwang
+    ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
+    ! This is what the original MMF model did (t_rad, qv_rad, ...). Do we want to call ecpp_crm_stat
+    ! every subcycle time step??? +++mhwang
+    do icrm = 1 , ncrms
       call ecpp_crm_stat(ncrms,icrm)
+    enddo
 #endif /*ECPP*/
 
+    do icrm = 1 , ncrms
       cwp  = 0.
       cwph = 0.
       cwpm = 0.
@@ -1229,31 +1127,6 @@ subroutine crm(lchnk, icol, ncrms, &
         l = plev-k+1
         do j=1,ny
           do i=1,nx
-            ! hm modify 9/7/11 for end of timestep, GCM-grid scale hydrometeor output
-            ! instead of time-step-averaged
-            ! I also modified this for all q and N variables as well as for sam1mom
-            ! for consistency
-            !hm           crm_qc(l) = crm_qc(l) + qcl(icrm,i,j,k)
-            !hm           crm_qi(l) = crm_qi(l) + qci(icrm,i,j,k)
-            !hm           crm_qr(l) = crm_qr(l) + qpl(icrm,i,j,k)
-            !hm#ifdef sam1mom
-            !hm           omg = max(0.,min(1.,(tabs(icrm,i,j,k)-tgrmin)*a_gr))
-            !hm           crm_qg(l) = crm_qg(l) + qpi(icrm,i,j,k)*omg
-            !hm           crm_qs(l) = crm_qs(l) + qpi(icrm,i,j,k)*(1.-omg)
-            !hm#else
-            !           crm_qg(l) = crm_qg(l) + qpi(icrm,i,j,k)
-            !           crm_qs(l) = crm_qs(l) + 0.     ! temporerary solution
-            !hm           crm_qg(l) = crm_qg(l) + micro_field(icrm,i,j,k,iqg)
-            !hm           crm_qs(l) = crm_qs(l) + micro_field(icrm,i,j,k,iqs)
-
-            !hm           crm_nc(l) = crm_nc(l) + micro_field(icrm,i,j,k,incl)
-            !hm           crm_ni(l) = crm_ni(l) + micro_field(icrm,i,j,k,inci)
-            !hm           crm_nr(l) = crm_nr(l) + micro_field(icrm,i,j,k,inr)
-            !hm           crm_ng(l) = crm_ng(l) + micro_field(icrm,i,j,k,ing)
-            !hm           crm_ns(l) = crm_ns(l) + micro_field(icrm,i,j,k,ins)
-
-            !hm#endif
-
             tmp1 = rho(icrm,nz-k)*adz(icrm,nz-k)*dz(icrm)*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(icrm,i,j,nz-k), cttemp(i,j))
@@ -1272,8 +1145,6 @@ subroutine crm(lchnk, icol, ncrms, &
                 cmtemp(i,j) = max(CF3D(icrm,i,j,nz-k), cmtemp(i,j))
             endif
 
-            !     qsat = qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))
-            !     if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.min(1.e-5,0.01*qsat)) then
             tmp1 = rho(icrm,k)*adz(icrm,k)*dz(icrm)
             if(tmp1*(qcl(icrm,i,j,k)+qci(icrm,i,j,k)).gt.cwp_threshold) then
                  cld(icrm,l) = cld(icrm,l) + CF3D(icrm,i,j,k)
@@ -1293,18 +1164,6 @@ subroutine crm(lchnk, icol, ncrms, &
                    mcudn(icrm,l) = mcudn(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
                  endif
             endif
-
-!             t_rad  (icrm,i,j,k) = t_rad  (icrm,i,j,k)+tabs(icrm,i,j,k)
-!             qv_rad (icrm,i,j,k) = qv_rad (icrm,i,j,k)+max(real(0.,crm_rknd),qv(icrm,i,j,k))
-!             qc_rad (icrm,i,j,k) = qc_rad (icrm,i,j,k)+qcl(icrm,i,j,k)
-!             qi_rad (icrm,i,j,k) = qi_rad (icrm,i,j,k)+qci(icrm,i,j,k)
-!             cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) +  CF3D(icrm,i,j,k)
-! #ifdef m2005
-!             nc_rad(icrm,i,j,k) = nc_rad(icrm,i,j,k)+micro_field(icrm,i,j,k,incl)
-!             ni_rad(icrm,i,j,k) = ni_rad(icrm,i,j,k)+micro_field(icrm,i,j,k,inci)
-!             qs_rad(icrm,i,j,k) = qs_rad(icrm,i,j,k)+micro_field(icrm,i,j,k,iqs)
-!             ns_rad(icrm,i,j,k) = ns_rad(icrm,i,j,k)+micro_field(icrm,i,j,k,ins)
-! #endif
 
             !!! whannah - new method allows for fewer radiation calculation over column groups
             i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
@@ -1352,23 +1211,8 @@ subroutine crm(lchnk, icol, ncrms, &
         enddo
       enddo
 
-      !do k=1,nzm
-      ! radlwup0(k)=radlwup0(k)+radlwup(k)
-      ! radlwdn0(k)=radlwdn0(k)+radlwdn(k)
-      ! radqrlw0(k)=radqrlw0(k)+radqrlw(k)
-      ! radswup0(k)=radswup0(k)+radswup(k)
-      ! radswdn0(k)=radswdn0(k)+radswdn(k)
-      ! radqrsw0(k)=radqrsw0(k)+radqrsw(k)
-      !enddo
-
       do j=1,ny
         do i=1,nx
-          !           if(cwp (i,j).gt.cwp_threshold) cltot(icrm) = cltot(icrm) + 1.
-          !           if(cwph(i,j).gt.cwp_threshold) clhgh(icrm) = clhgh(icrm) + 1.
-          !           if(cwpm(i,j).gt.cwp_threshold) clmed(icrm) = clmed(icrm) + 1.
-          !           if(cwpl(i,j).gt.cwp_threshold) cllow(icrm) = cllow(icrm) + 1.
-          !  use maxmimum cloud overlap to calcluate cltot, clhgh,
-          !  cldmed, and cldlow   +++ mhwang
           if(cwp (i,j).gt.cwp_threshold) cltot(icrm) = cltot(icrm) + cttemp(i,j)
           if(cwph(i,j).gt.cwp_threshold) clhgh(icrm) = clhgh(icrm) + chtemp(i,j)
           if(cwpm(i,j).gt.cwp_threshold) clmed(icrm) = clmed(icrm) + cmtemp(i,j)
@@ -1383,8 +1227,6 @@ subroutine crm(lchnk, icol, ncrms, &
   enddo ! main loop
 
   do icrm = 1 , ncrms
-    ! tmp1 = 1._r8/ dble(nstop)
-    ! tmp1 = 1._r8/ dble(nstop*(nx/crm_nx_rad)*(ny/crm_ny_rad))
     tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
 
     t_rad  (icrm,:,:,:) = t_rad  (icrm,:,:,:) * tmp1
@@ -1569,18 +1411,6 @@ subroutine crm(lchnk, icol, ncrms, &
     mcuup (icrm,:) = mcuup(icrm,:) / real(nstop,crm_rknd) * factor_xy
     mcudn (icrm,:) = mcudn(icrm,:) / real(nstop,crm_rknd) * factor_xy
     mc    (icrm,:) = mcup(icrm,:) + mcdn(icrm,:) + mcuup(icrm,:) + mcudn(icrm,:)
-    ! hm 9/7/11 modify for end-of-timestep instead of timestep-avg output
-    !hm        crm_qc = crm_qc / float(nstop) * factor_xy
-    !hm        crm_qi = crm_qi / float(nstop) * factor_xy
-    !hm        crm_qs = crm_qs / float(nstop) * factor_xy
-    !hm        crm_qg = crm_qg / float(nstop) * factor_xy
-    !hm        crm_qr = crm_qr / float(nstop) * factor_xy
-    !hm#ifdef m2005
-    !hm        crm_nc = crm_nc / float(nstop) * factor_xy
-    !hm        crm_ni = crm_ni / float(nstop) * factor_xy
-    !hm        crm_ns = crm_ns / float(nstop) * factor_xy
-    !hm        crm_ng = crm_ng / float(nstop) * factor_xy
-    !hm        crm_nr = crm_nr / float(nstop) * factor_xy
 
     crm_qc(icrm,:) = crm_qc(icrm,:) * factor_xy
     crm_qi(icrm,:) = crm_qi(icrm,:) * factor_xy
@@ -1594,7 +1424,6 @@ subroutine crm(lchnk, icol, ncrms, &
     crm_ng(icrm,:) = crm_ng(icrm,:) * factor_xy
     crm_nr(icrm,:) = crm_nr(icrm,:) * factor_xy
 
-    ! hm 8/31/11 new output, gcm-grid- and time-step avg
     ! add loop over i,j do get horizontal avg, and flip vertical array
     do k=1,nzm
       l = plev-k+1
@@ -1634,9 +1463,6 @@ subroutine crm(lchnk, icol, ncrms, &
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
 #endif
 #ifdef m2005
-        ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/s/dz
-        !          precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz/dble(nstop)     !mm/s/dz --> mm/s
-        !          precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz/dble(nstop)   !mm/s/dz --> mm/s
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/dz
         precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
@@ -1839,6 +1665,7 @@ subroutine crm(lchnk, icol, ncrms, &
     call ecpp_crm_cleanup ()
 #endif
 
+#ifdef CRM_DUMP
     call crm_dump_output( igstep,plev,crm_tk(icrm,:,:,:),crm_tkh(icrm,:,:,:),cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm),sltend(icrm,:),u_crm(icrm,:,:,:),v_crm(icrm,:,:,:),&
                           w_crm(icrm,:,:,:),t_crm(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:),qltend(icrm,:),qcltend(icrm,:),qiltend(icrm,:),t_rad(icrm,:,:,:),qv_rad(icrm,:,:,:),&
                           qc_rad(icrm,:,:,:),qi_rad(icrm,:,:,:),cld_rad(icrm,:,:,:),cld3d_crm(icrm,:,:,:), &
@@ -1864,6 +1691,7 @@ subroutine crm(lchnk, icol, ncrms, &
                           pflx(icrm,:),qt_ls(icrm,:),qt_trans(icrm,:),qp_trans(icrm,:),qp_fall(icrm,:),qp_src(icrm,:),qp_evp(icrm,:),t_ls(icrm,:),prectend(icrm),precstend(icrm),precsc(icrm), &
                           precsl(icrm),taux_crm(icrm),tauy_crm(icrm),z0m(icrm),timing_factor(icrm),qc_crm(icrm,:,:,:),qi_crm(icrm,:,:,:),qpc_crm(icrm,:,:,:),qpi_crm(icrm,:,:,:), &
                           prec_crm(icrm,:,:),qtot(icrm,:) )
+#endif
   enddo
 
   call deallocate_grid()
