@@ -200,20 +200,6 @@ contains
     deallocate( adz     )   ! ratio of the thickness of scalar levels to dz
     deallocate( adzw    ) ! ratio of the thinckness of w levels to dz
     deallocate( dz      )
-    deallocate( nstep   )    ! current number of performed time steps
-    deallocate( ncycle  )    ! number of subcycles over the dynamical timestep
-    deallocate( icycle  )    ! current subcycle
-    deallocate( na      )    ! indeces for swapping the rhs arrays for AB scheme
-    deallocate( nb      )    ! indeces for swapping the rhs arrays for AB scheme
-    deallocate( nc      )    ! indeces for swapping the rhs arrays for AB scheme
-    deallocate( at      )    ! coefficients for the Adams-Bashforth scheme
-    deallocate( bt      )    ! coefficients for the Adams-Bashforth scheme
-    deallocate( ct      )    ! coefficients for the Adams-Bashforth scheme
-    deallocate( dtn     )    ! current dynamical timestep (can be smaller than dt)
-    deallocate( dt3     )    ! dynamical timesteps for three most recent time steps
-    deallocate( time    )    ! current time in sec.
-    deallocate( day     )    ! current day (including fraction)
-    deallocate( dtfactor)    ! dtn/dt
   end subroutine deallocate_grid
 
 end module grid
