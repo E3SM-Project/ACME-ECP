@@ -397,6 +397,7 @@ subroutine crm(lchnk, icol, nvcols, &
 
     igstep = get_nstep()
 
+#ifdef CRM_DUMP
     call crm_dump_input( igstep,plev,lchnk,icol(vc),latitude0,longitude0,ps(vc),pmid(vc,:),pdel(vc,:),phis(vc),zmid(vc,:),zint(vc,:),qrad_crm(vc,:,:,:),dt_gl, &
                          ocnfrac(vc),tau00(vc),wndls(vc),bflxls(vc),fluxu00(vc),fluxv00(vc),fluxt00(vc),fluxq00(vc),tl(vc,:),ql(vc,:),qccl(vc,:),qiil(vc,:),   &
                          ul(vc,:),vl(vc,:), &
@@ -410,6 +411,7 @@ subroutine crm(lchnk, icol, nvcols, &
 #endif
 #endif
                          dd_crm(vc,:),mui_crm(vc,:),mdi_crm(vc,:) )
+#endif
 
 !-----------------------------------------------
 
@@ -1786,6 +1788,7 @@ subroutine crm(lchnk, icol, nvcols, &
     call ecpp_crm_cleanup ()
 #endif
 
+#ifdef CRM_DUMP
     call crm_dump_output( igstep,plev,crm_tk(vc,:,:,:),crm_tkh(vc,:,:,:),cltot(vc),clhgh(vc),clmed(vc),cllow(vc),sltend(vc,:),u_crm(vc,:,:,:),v_crm(vc,:,:,:),&
                           w_crm(vc,:,:,:),t_crm(vc,:,:,:),micro_fields_crm(vc,:,:,:,:),qltend(vc,:),qcltend(vc,:),qiltend(vc,:),t_rad(vc,:,:,:),qv_rad(vc,:,:,:),&
                           qc_rad(vc,:,:,:),qi_rad(vc,:,:,:),cld_rad(vc,:,:,:),cld3d_crm(vc,:,:,:), &
@@ -1811,6 +1814,7 @@ subroutine crm(lchnk, icol, nvcols, &
                           pflx(vc,:),qt_ls(vc,:),qt_trans(vc,:),qp_trans(vc,:),qp_fall(vc,:),qp_src(vc,:),qp_evp(vc,:),t_ls(vc,:),prectend(vc),precstend(vc),precsc(vc), &
                           precsl(vc),taux_crm(vc),tauy_crm(vc),z0m(vc),timing_factor(vc),qc_crm(vc,:,:,:),qi_crm(vc,:,:,:),qpc_crm(vc,:,:,:),qpi_crm(vc,:,:,:), &
                           prec_crm(vc,:,:),qtot(vc,:) )
+#endif
   enddo
 
   end subroutine crm
