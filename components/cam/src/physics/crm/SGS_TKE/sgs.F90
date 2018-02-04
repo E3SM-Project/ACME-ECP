@@ -382,72 +382,72 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sgs diffusion of scalars:
   !
-  subroutine sgs_scalars(ncrms,icrm)
+  subroutine sgs_scalars(ncrms)
     use diffuse_scalar_mod, only: diffuse_scalar
     use vars
     use microphysics
     use crmtracers
     use params, only: dotracers
     implicit none
-    integer, intent(in) :: ncrms, icrm
+    integer, intent(in) :: ncrms
 
-    real(crm_rknd) dummy(nz)
-    real(crm_rknd) fluxbtmp(nx,ny), fluxttmp(nx,ny) !bloss
-    integer k
+    real(crm_rknd) dummy(ncrms,nz)
+    real(crm_rknd) fluxbtmp(ncrms,nx,ny), fluxttmp(ncrms,nx,ny) !bloss
+    integer k, icrm
 
 
-    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(icrm,:,:,:),fluxbt(icrm,:,:),fluxtt(icrm,:,:),tdiff(icrm,:),twsb(icrm,:), &
-    t2lediff(icrm,:),t2lediss(icrm,:),twlediff(icrm,:),.true.,ncrms,icrm)
+    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,:),fluxbt(:,:,:),fluxtt(:,:,:),tdiff(:,:),twsb(:,:), &
+    t2lediff(:,:),t2lediss(:,:),twlediff(:,:),.true.,ncrms)
 
     if(advect_sgs) then
-      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(icrm,:,:,:),fzero(icrm,:,:),fzero(icrm,:,:),dummy,sgswsb(icrm,:,:), &
-      dummy,dummy,dummy,.false.,ncrms,icrm)
+      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,:),fzero(:,:,:),fzero(:,:,:),dummy(:,:),sgswsb(:,:,:), &
+      dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
     end if
 
 
     !
     !    diffusion of microphysics prognostics:
     !
-    call micro_flux(ncrms,icrm)
+    do icrm = 1 , ncrms
+      call micro_flux(ncrms,icrm)
+      total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
+    enddo
 
-    total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
 
     do k = 1,nmicro_fields
-      if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
-      .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
-      .or. doprecip.and.flag_precip(k).eq.1 ) then
-      fluxbtmp(1:nx,1:ny) = fluxbmk(icrm,1:nx,1:ny,k)
-      fluxttmp(1:nx,1:ny) = fluxtmk(icrm,1:nx,1:ny,k)
-      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(icrm,:,:,:,k),fluxbtmp,fluxttmp, &
-      mkdiff(icrm,:,k),mkwsb(icrm,:,k), dummy,dummy,dummy,.false.,ncrms,icrm)
-    end if
-  end do
-
-  total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
-
-  ! diffusion of tracers:
-
-  if(dotracers) then
-
-    call tracers_flux()
-
-    do k = 1,ntracers
-
-      fluxbtmp = fluxbtr(icrm,:,:,k)
-      fluxttmp = fluxttr(icrm,:,:,k)
-      call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(icrm,:,:,:,k),fluxbtmp,fluxttmp, &
-      trdiff(icrm,:,k),trwsb(icrm,:,k), &
-      dummy,dummy,dummy,.false.,ncrms,icrm)
-      !!$          call diffuse_scalar(tracer(icrm,:,:,:,k),fluxbtr(icrm,:,:,k),fluxttr(icrm,:,:,k),trdiff(icrm,:,k),trwsb(icrm,:,k), &
-      !!$                           dummy,dummy,dummy,.false.,ncrms,icrm)
-
+      if(   k.eq.index_water_vapor .or. docloud.and.flag_precip(k).ne.1  .or. doprecip.and.flag_precip(k).eq.1 ) then
+        fluxbtmp(:,1:nx,1:ny) = fluxbmk(:,1:nx,1:ny,k)
+        fluxttmp(:,1:nx,1:ny) = fluxtmk(:,1:nx,1:ny,k)
+        call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbtmp(:,:,:),fluxttmp(:,:,:), &
+        mkdiff(:,:,k),mkwsb(:,:,k), dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
+      end if
     end do
 
-  end if
+    do icrm = 1 , ncrms
+      total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
+    enddo
+
+    ! diffusion of tracers:
+
+    if(dotracers) then
+
+      call tracers_flux()
+
+      do k = 1,ntracers
+
+        fluxbtmp(:,:,:) = fluxbtr(:,:,:,k)
+        fluxttmp(:,:,:) = fluxttr(:,:,:,k)
+        call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,:,k),fluxbtmp(:,:,:),fluxttmp(:,:,:), &
+        trdiff(:,:,k),trwsb(:,:,k), &
+        dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
+
+      end do
+
+    end if
 
 
 
-end subroutine sgs_scalars
+  end subroutine sgs_scalars
 
 !----------------------------------------------------------------------
 !!! compute sgs processes (beyond advection):

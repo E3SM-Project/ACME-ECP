@@ -1048,9 +1048,7 @@ subroutine crm(lchnk, icol, ncrms, &
       !---------------------------------------------------------
       !      SGS effects on scalars :
       if (dosgs) then
-        do icrm = 1 , ncrms
-          call sgs_scalars(ncrms,icrm)
-        enddo
+        call sgs_scalars(ncrms)
       endif
 
       !-----------------------------------------------------------

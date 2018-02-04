@@ -2,108 +2,109 @@ module diffuse_scalar2D_mod
   implicit none
 
 contains
-  subroutine diffuse_scalar2D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_z,field,fluxb,fluxt,tkh,rho,rhow,flux,ncrms,icrm)
+  subroutine diffuse_scalar2D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_z,field,fluxb,fluxt,tkh,rho,rhow,flux,ncrms)
 
     use grid
     use params
     implicit none
-    integer, intent(in) :: ncrms, icrm
+    integer, intent(in) :: ncrms
 
     ! input
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
-    real(crm_rknd) field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
-    real(crm_rknd) tkh(ncrms,0:nxp1, 1-YES3D:nyp1, nzm)  ! eddy conductivity
-    real(crm_rknd) fluxb(nx,ny)    ! bottom flux
-    real(crm_rknd) fluxt(nx,ny)    ! top flux
-    real(crm_rknd) rho(ncrms,nzm)
-    real(crm_rknd) rhow(ncrms,nz)
-    real(crm_rknd) flux(nz)
+    real(crm_rknd) field (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
+    real(crm_rknd) tkh   (ncrms,0:nxp1, 1-YES3D:nyp1, nzm)  ! eddy conductivity
+    real(crm_rknd) fluxb (ncrms,nx,ny)    ! bottom flux
+    real(crm_rknd) fluxt (ncrms,nx,ny)    ! top flux
+    real(crm_rknd) rho   (ncrms,nzm)
+    real(crm_rknd) rhow  (ncrms,nz)
+    real(crm_rknd) flux  (ncrms,nz)
 
     ! local
     real(crm_rknd) flx(0:nx,1,0:nzm)
     real(crm_rknd) dfdt(nx,ny,nzm)
     real(crm_rknd) rdx2,rdz2,rdz,rdx5,rdz5,tmp
     real(crm_rknd) dxz,dzx,tkx,tkz,rhoi
-    integer i,j,k,ib,ic,kc,kb
+    integer i,j,k,ib,ic,kc,kb, icrm
 
     if(.not.dosgs.and..not.docolumn) return
 
-    rdx2=1./(dx*dx)
-    rdz2=1./(dz(icrm)*dz(icrm))
-    rdz=1./dz(icrm)
-    dxz=dx/dz(icrm)
-    dzx=dz(icrm)/dx
+    do icrm = 1 , ncrms
 
-    j=1
+      rdx2=1./(dx*dx)
+      rdz2=1./(dz(icrm)*dz(icrm))
+      rdz=1./dz(icrm)
+      dxz=dx/dz(icrm)
+      dzx=dz(icrm)/dx
 
-    dfdt(:,:,:)=0.
+      j=1
 
-    if(dowallx) then
+      dfdt(:,:,:)=0.
 
-      if(mod(rank,nsubdomains_x).eq.0) then
-        do k=1,nzm
-          field(0,j,k) = field(1,j,k)
-        end do
+      if(dowallx) then
+
+        if(mod(rank,nsubdomains_x).eq.0) then
+          do k=1,nzm
+            field(icrm,0,j,k) = field(icrm,1,j,k)
+          end do
+        end if
+        if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+          do k=1,nzm
+            field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
+          end do
+        end if
+
       end if
-      if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+
+      if(.not.docolumn) then
+
         do k=1,nzm
-          field(nx+1,j,k) = field(nx,j,k)
+
+          rdx5=0.5*rdx2  *grdf_x(icrm,k)
+
+          do i=0,nx
+            ic=i+1
+            tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
+            flx(i,j,k)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
+          end do
+          do i=1,nx
+            ib=i-1
+            dfdt(i,j,k)=dfdt(i,j,k)-(flx(i,j,k)-flx(ib,j,k))
+          end do
+
         end do
+
       end if
 
-    end if
+      flux(icrm,1) = 0.
+      tmp=1./adzw(icrm,nz)
+      do i=1,nx
+        flx(i,j,0)=fluxb(icrm,i,j)*rdz*rhow(icrm,1)
+        flx(i,j,nzm)=fluxt(icrm,i,j)*rdz*tmp*rhow(icrm,nz)
+        flux(icrm,1) = flux(icrm,1) + flx(i,j,0)
+      end do
 
 
-    if(.not.docolumn) then
-
+      do k=1,nzm-1
+        kc=k+1
+        flux(icrm,kc)=0.
+        rhoi = rhow(icrm,kc)/adzw(icrm,kc)
+        rdz5=0.5*rdz2 * grdf_z(icrm,k)
+        do i=1,nx
+          tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
+          flx(i,j,k)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi
+          flux(icrm,kc) = flux(icrm,kc) + flx(i,j,k)
+        end do
+      end do
 
       do k=1,nzm
-
-        rdx5=0.5*rdx2  *grdf_x(icrm,k)
-
-        do i=0,nx
-          ic=i+1
-          tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
-          flx(i,j,k)=-tkx*(field(ic,j,k)-field(i,j,k))
-        end do
+        kb=k-1
+        rhoi = 1./(adz(icrm,k)*rho(icrm,k))
         do i=1,nx
-          ib=i-1
-          dfdt(i,j,k)=dfdt(i,j,k)-(flx(i,j,k)-flx(ib,j,k))
+          dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)
+          field(icrm,i,j,k)=field(icrm,i,j,k) + dfdt(i,j,k)
         end do
-
-      end do
-
-    end if
-
-    flux(1) = 0.
-    tmp=1./adzw(icrm,nz)
-    do i=1,nx
-      flx(i,j,0)=fluxb(i,j)*rdz*rhow(icrm,1)
-      flx(i,j,nzm)=fluxt(i,j)*rdz*tmp*rhow(icrm,nz)
-      flux(1) = flux(1) + flx(i,j,0)
-    end do
-
-
-    do k=1,nzm-1
-      kc=k+1
-      flux(kc)=0.
-      rhoi = rhow(icrm,kc)/adzw(icrm,kc)
-      rdz5=0.5*rdz2 * grdf_z(icrm,k)
-      do i=1,nx
-        tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
-        flx(i,j,k)=-tkz*(field(i,j,kc)-field(i,j,k))*rhoi
-        flux(kc) = flux(kc) + flx(i,j,k)
-      end do
-    end do
-
-    do k=1,nzm
-      kb=k-1
-      rhoi = 1./(adz(icrm,k)*rho(icrm,k))
-      do i=1,nx
-        dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)
-        field(i,j,k)=field(i,j,k) + dfdt(i,j,k)
       end do
     end do
 
