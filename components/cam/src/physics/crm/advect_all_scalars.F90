@@ -4,7 +4,7 @@ module advect_all_scalars_mod
 
 contains
 
-  subroutine advect_all_scalars(ncrms,icrm)
+  subroutine advect_all_scalars(ncrms)
 
     use vars
     use microphysics
@@ -16,16 +16,16 @@ contains
     use params, only: dotracers
 #endif
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     ! real dummy(nz)
-    real(crm_rknd) dummy(nz)
-    integer k
+    real(crm_rknd) dummy(ncrms,nz)
+    integer k,icrm
 
 
     !---------------------------------------------------------
     !      advection of scalars :
 
-    call advect_scalar(t(icrm,:,:,:),tadv(icrm,:),twle(icrm,:),t2leadv(icrm,:),t2legrad(icrm,:),twleadv(icrm,:),.true.,ncrms,icrm)
+    call advect_scalar(t(:,:,:,:),tadv(:,:),twle(:,:),t2leadv(:,:),t2legrad(:,:),twleadv(:,:),.true.,ncrms)
 
     !
     !    Advection of microphysics prognostics:
@@ -40,7 +40,7 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) &
-      call advect_scalar(micro_field(icrm,:,:,:,k),mkadv(icrm,:,k),mkwle(icrm,:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
+      call advect_scalar(micro_field(:,:,:,:,k),mkadv(:,:,k),mkwle(:,:,k),dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
     end do
 
     !
@@ -49,7 +49,7 @@ contains
 
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(sgs_field(icrm,:,:,:,k),sgsadv(icrm,:,k),sgswle(icrm,:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
+        call advect_scalar(sgs_field(:,:,:,:,k),sgsadv(:,:,k),sgswle(:,:,k),dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
       end do
     end if
 
@@ -59,11 +59,11 @@ contains
     !
     if(doprecip) then
 
-      total_water_prec(icrm) = total_water_prec(icrm) + total_water(ncrms,icrm)
-
-      call micro_precip_fall(ncrms,icrm)
-
-      total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
+      do icrm = 1 , ncrms
+        total_water_prec(icrm) = total_water_prec(icrm) + total_water(ncrms,icrm)
+        call micro_precip_fall(ncrms,icrm)
+        total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
+      enddo
 
 
     end if
@@ -73,7 +73,7 @@ contains
     if(dotracers) then
 
       do k = 1,ntracers
-        call advect_scalar(tracer(icrm,:,:,:,k),tradv(icrm,:,k),trwle(icrm,:,k),dummy,dummy,dummy,.false.,ncrms,icrm)
+        call advect_scalar(tracer(:,:,:,:,k),tradv(:,:,k),trwle(:,:,k),dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
       end do
 
     end if
