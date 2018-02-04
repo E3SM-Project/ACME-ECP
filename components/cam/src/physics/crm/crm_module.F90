@@ -957,15 +957,11 @@ subroutine crm(lchnk, icol, ncrms, &
       !   Ice fall-out
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
-        do icrm = 1 , ncrms
-          call ice_fall(ncrms,icrm)
-        enddo
+        call ice_fall(ncrms)
       endif
 #else
       if(docloud) then
-        do icrm = 1 , ncrms
-          call ice_fall(ncrms,icrm)
-        enddo
+        call ice_fall(ncrms)
       endif
 #endif
 
