@@ -3,18 +3,19 @@ module bound_exchange_mod
 
 contains
 
-	subroutine bound_exchange(f,dimx1,dimx2,dimy1,dimy2,dimz,i_1, i_2, j_1, j_2, id)
+	subroutine bound_exchange(f,dimx1,dimx2,dimy1,dimy2,dimz,i_1, i_2, j_1, j_2, id, ncrms)
 		! periodic boundary exchange
 		use grid
 		use params, only: crm_rknd
 		implicit none
+    integer, intent(in) :: ncrms
 
 		integer dimx1, dimx2, dimy1, dimy2, dimz
 		integer i_1, i_2, j_1, j_2
-		real(crm_rknd) f(dimx1:dimx2, dimy1:dimy2, dimz)
+		real(crm_rknd) f(ncrms,dimx1:dimx2, dimy1:dimy2, dimz)
 		integer id   ! id of the sent field (dummy variable)
 
-		real(crm_rknd) buffer((nx+ny)*3*nz)	! buffer for sending data
+		real(crm_rknd) buffer(ncrms,(nx+ny)*3*nz)	! buffer for sending data
 
 		integer i, j, k, n
 		integer i1, i2, j1, j2
@@ -38,7 +39,7 @@ contains
 				do j=ny-j1,ny
 					do i=1,nx
 						n = n+1
-						buffer(n) = f(i,j,k)
+						buffer(:,n) = f(:,i,j,k)
 					end do
 				end do
 			end do
@@ -47,7 +48,7 @@ contains
 				do j=-j1,0
 					do i=1,nx
 						n = n+1
-						f(i,j,k) = buffer(n)
+						f(:,i,j,k) = buffer(:,n)
 					end do
 				end do
 			end do
@@ -59,7 +60,7 @@ contains
 				do j=ny-j1,ny
 					do i=nx-i1,nx
 						n = n+1
-						buffer(n) = f(i,j,k)
+						buffer(:,n) = f(:,i,j,k)
 					end do
 				end do
 			end do
@@ -68,7 +69,7 @@ contains
 				do j=-j1,0
 					do i=-i1,0
 						n = n+1
-						f(i,j,k) = buffer(n)
+						f(:,i,j,k) = buffer(:,n)
 					end do
 				end do
 			end do
@@ -80,7 +81,7 @@ contains
 				do j=1,1+j2
 					do i=nx-i1,nx
 						n = n+1
-						buffer(n) = f(i,j,k)
+						buffer(:,n) = f(:,i,j,k)
 					end do
 				end do
 			end do
@@ -89,7 +90,7 @@ contains
 				do j=nyp1,nyp1+j2
 					do i=-i1,0
 						n = n+1
-						f(i,j,k) = buffer(n)
+						f(:,i,j,k) = buffer(:,n)
 					end do
 				end do
 			end do
@@ -101,7 +102,7 @@ contains
 				do j=1,1+j2
 					do i=1,nx
 						n = n+1
-						buffer(n) = f(i,j,k)
+						buffer(:,n) = f(:,i,j,k)
 					end do
 				end do
 			end do
@@ -110,7 +111,7 @@ contains
 				do j=nyp1,nyp1+j2
 					do i=1,nx
 						n = n+1
-						f(i,j,k) = buffer(n)
+						f(:,i,j,k) = buffer(:,n)
 					end do
 				end do
 			end do
@@ -122,7 +123,7 @@ contains
 				do j=1,1+j2
 					do i=1,1+i2
 						n = n+1
-						buffer(n) = f(i,j,k)
+						buffer(:,n) = f(:,i,j,k)
 					end do
 				end do
 			end do
@@ -131,7 +132,7 @@ contains
 				do j=nyp1,nyp1+j2
 					do i=nxp1,nxp1+i2
 						n = n+1
-						f(i,j,k) = buffer(n)
+						f(:,i,j,k) = buffer(:,n)
 					end do
 				end do
 			end do
@@ -144,7 +145,7 @@ contains
 				do j=ny-j1,ny
 					do i=1,1+i2
 						n = n+1
-						buffer(n) = f(i,j,k)
+						buffer(:,n) = f(:,i,j,k)
 					end do
 				end do
 			end do
@@ -153,7 +154,7 @@ contains
 				do j=-j1,0
 					do i=nxp1,nxp1+i2
 						n = n+1
-						f(i,j,k) = buffer(n)
+						f(:,i,j,k) = buffer(:,n)
 					end do
 				end do
 			end do
@@ -168,7 +169,7 @@ contains
 			do j=1,ny
 				do i=nx-i1,nx
 					n = n+1
-					buffer(n) = f(i,j,k)
+					buffer(:,n) = f(:,i,j,k)
 				end do
 			end do
 		end do
@@ -177,7 +178,7 @@ contains
 			do j=1,ny
 				do i=-i1,0
 					n = n+1
-					f(i,j,k) = buffer(n)
+					f(:,i,j,k) = buffer(:,n)
 				end do
 			end do
 		end do
@@ -189,7 +190,7 @@ contains
 			do j=1,ny
 				do i=1,1+i2
 					n = n+1
-					buffer(n) = f(i,j,k)
+					buffer(:,n) = f(:,i,j,k)
 				end do
 			end do
 		end do
@@ -198,7 +199,7 @@ contains
 			do j=1,ny
 				do i=nxp1,nxp1+i2
 					n = n+1
-					f(i,j,k) = buffer(n)
+					f(:,i,j,k) = buffer(:,n)
 				end do
 			end do
 		end do

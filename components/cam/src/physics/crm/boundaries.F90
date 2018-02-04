@@ -5,10 +5,10 @@ module boundaries_mod
 
 contains
 
-  subroutine boundaries(flag,ncrms,icrm)
+  subroutine boundaries(flag,ncrms)
     use grid, only: dompi
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     integer flag
 
     !call t_startf ('boundaries')
@@ -16,7 +16,7 @@ contains
     if(dompi) then
       call task_boundaries(flag)
     else
-      call periodic(flag,ncrms,icrm)
+      call periodic(flag,ncrms)
     end if
 
     !call t_stopf ('boundaries')

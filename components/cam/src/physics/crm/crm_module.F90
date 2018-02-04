@@ -967,22 +967,16 @@ subroutine crm(lchnk, icol, ncrms, &
 
       !----------------------------------------------------------
       !     Update scalar boundaries after large-scale processes:
-      do icrm = 1 , ncrms
-        call boundaries(3,ncrms,icrm)
-      enddo
+      call boundaries(3,ncrms)
 
       !---------------------------------------------------------
       !     Update boundaries for velocities:
-      do icrm = 1 , ncrms
-        call boundaries(0,ncrms,icrm)
-      enddo
+      call boundaries(0,ncrms)
 
       !-----------------------------------------------
       !     surface fluxes:
       if (dosurface) then
-        do icrm = 1 , ncrms
-          call crmsurface(bflx,ncrms)
-        enddo
+        call crmsurface(bflx,ncrms)
       endif
 
       !-----------------------------------------------------------
@@ -995,9 +989,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
       !----------------------------------------------------------
       !     Fill boundaries for SGS diagnostic fields:
-      do icrm = 1 , ncrms
-        call boundaries(4,ncrms,icrm)
-      enddo
+      call boundaries(4,ncrms)
 
       !-----------------------------------------------
       !       advection of momentum:
@@ -1037,9 +1029,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
       !----------------------------------------------------------
       !     Update boundaries for all prognostic scalar fields for advection:
-      do icrm = 1 , ncrms
-        call boundaries(2,ncrms,icrm)
-      enddo
+      call boundaries(2,ncrms)
 
       !---------------------------------------------------------
       !      advection of scalars :
@@ -1055,9 +1045,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
       !----------------------------------------------------------
       !     Update boundaries for scalars to prepare for SGS effects:
-      do icrm = 1 , ncrms
-        call boundaries(3,ncrms,icrm)
-      enddo
+      call boundaries(3,ncrms)
 
       !---------------------------------------------------------
       !      SGS effects on scalars :
