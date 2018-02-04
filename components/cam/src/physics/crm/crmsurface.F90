@@ -3,44 +3,46 @@ module crmsurface_mod
 
 contains
 
-  subroutine crmsurface(bflx,ncrms,icrm)
+  subroutine crmsurface(bflx,ncrms)
 
 
     use vars
     use params
 
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
 
-    real(crm_rknd), intent (in) :: bflx
-    real(crm_rknd) u_h0, tau00, tauxm, tauym
-    integer i,j
+    real(crm_rknd), intent (in) :: bflx(ncrms)
+    real(crm_rknd) u_h0, tau00, tauxm(ncrms), tauym(ncrms)
+    integer i,j,icrm
 
     !--------------------------------------------------------
 
 
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
 
-      uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
-      vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
+      uhl(:) = uhl(:) + dtn*utend(:,1)
+      vhl(:) = vhl(:) + dtn*vtend(:,1)
 
-      tauxm = 0.
-      tauym = 0.
+      tauxm(:) = 0.
+      tauym(:) = 0.
 
       do j=1,ny
         do i=1,nx
-          u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+ &
-          (0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)**2))
-          tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx,u_h0,z0(icrm))**2
-          fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
-          fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
-          tauxm = tauxm + fluxbu(icrm,i,j)
-          tauym = tauym + fluxbv(icrm,i,j)
+          do icrm = 1 , ncrms
+            u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+&
+            (0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)**2))
+            tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm),u_h0,z0(icrm))**2
+            fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
+            fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
+            tauxm(icrm) = tauxm(icrm) + fluxbu(icrm,i,j)
+            tauym(icrm) = tauym(icrm) + fluxbv(icrm,i,j)
+          end do
         end do
       end do
 
-      taux0(icrm) = taux0(icrm) + tauxm/dble(nx*ny)
-      tauy0(icrm) = tauy0(icrm) + tauym/dble(nx*ny)
+      taux0(:) = taux0(:) + tauxm(:)/dble(nx*ny)
+      tauy0(:) = tauy0(:) + tauym(:)/dble(nx*ny)
 
     end if ! SFC_FLX_FXD
 

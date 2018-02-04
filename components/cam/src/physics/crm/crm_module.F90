@@ -981,7 +981,7 @@ subroutine crm(lchnk, icol, ncrms, &
       !     surface fluxes:
       if (dosurface) then
         do icrm = 1 , ncrms
-          call crmsurface(bflx(icrm),ncrms,icrm)
+          call crmsurface(bflx,ncrms)
         enddo
       endif
 
