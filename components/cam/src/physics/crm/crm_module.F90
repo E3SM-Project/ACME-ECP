@@ -1013,9 +1013,7 @@ subroutine crm(lchnk, icol, ncrms, &
       !---------------------------------------------------------
       !       find velocity field at n+1/2 timestep needed for advection of scalars:
       !  Note that at the end of the call, the velocities are in nondimensional form.
-      do icrm = 1 , ncrms
-        call adams(ncrms,icrm)
-      enddo
+      call adams(ncrms)
 
       !----------------------------------------------------------
       !     Update boundaries for all prognostic scalar fields for advection:
