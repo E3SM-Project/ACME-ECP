@@ -997,9 +997,7 @@ subroutine crm(lchnk, icol, ncrms, &
       !	SGS effects on momentum:
 
       if(dosgs) then
-        do icrm = 1 , ncrms
-          call sgs_mom(ncrms,icrm)
-        enddo
+        call sgs_mom(ncrms)
       endif
 
       !-----------------------------------------------------------
