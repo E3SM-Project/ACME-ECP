@@ -39,16 +39,7 @@ contains
 
     end if
 
-
-    if(dompi) then
-      do icrm = 1 , ncrms
-        call task_bound_duvdt(ncrms,icrm)
-      enddo
-    else
-      do icrm = 1 , ncrms
-        call bound_duvdt(ncrms,icrm)
-      enddo
-    endif
+    call bound_duvdt(ncrms)
 
     dta=1./dt3(na)/at
     rdx=1./dx

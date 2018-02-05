@@ -4,16 +4,18 @@ module bound_duvdt_mod
 
 contains
 
-  subroutine bound_duvdt(ncrms,icrm)
+  subroutine bound_duvdt(ncrms)
     ! Periodic boundary exchange
     use vars
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer i,j,k
+    integer, intent(in) :: ncrms
+    integer i,j,k,icrm
 
     do k=1,nzm
       do j=1,ny
-        dudt(icrm,nxp1,j,k,na) = dudt(icrm,1,j,k,na)
+        do icrm = 1 , ncrms
+          dudt(icrm,nxp1,j,k,na) = dudt(icrm,1,j,k,na)
+        end do
       end do
     end do
 
@@ -21,7 +23,9 @@ contains
 
       do k=1,nzm
         do i=1,nx
-          dvdt(icrm,i,nyp1,k,na) = dvdt(icrm,i,1,k,na)
+          do icrm = 1 , ncrms
+            dvdt(icrm,i,nyp1,k,na) = dvdt(icrm,i,1,k,na)
+          end do
         end do
       end do
 

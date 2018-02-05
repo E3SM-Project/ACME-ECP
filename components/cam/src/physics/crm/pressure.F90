@@ -27,17 +27,13 @@ contains
     integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
     integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
 
-    real(crm_rknd) f         (nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
-    real(crm_rknd) ff        (nx+1,ny+2*YES3D,nzm)  ! local (subdomain's) version of f
-    real(crm_rknd) buff_slabs(nxp1,nyp2,nzslab,npressureslabs)
-    real(crm_rknd) buff_subs (nxp1,nyp2,nzslab,nsubdomains)
-    real(crm_rknd) bufp_slabs(0:nx,1-YES3D:ny,nzslab,npressureslabs)
-    real(crm_rknd) bufp_subs (0:nx,1-YES3D:ny,nzslab,nsubdomains)
+    real(crm_rknd) :: f (ncrms,nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
+    real(crm_rknd) :: ff(ncrms,nx+1,ny+2*YES3D,nzm)  ! local (subdomain's) version of f
 
     real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
     integer ifaxj(100),ifaxi(100)
 
-    real(8) a(nzm),b,c(nzm),e,fff(nzm)
+    real(8) a(ncrms,nzm),b,c(ncrms,nzm),e,fff(nzm)
     real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty,eign
     real(8) alfa(nzm-1),beta(nzm-1)
 
@@ -95,65 +91,69 @@ contains
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
     !   for the global domain. Request sending and receiving tasks.
 
-    do icrm = 1 , ncrms
-      n = rank*nzslab
-      do k = 1,nzslab
-        do j = 1,ny
-          do i = 1,nx
-            f(i,j,k) = p(icrm,i,j,k+n)
+    n = rank*nzslab
+    do k = 1,nzslab
+      do j = 1,ny
+        do i = 1,nx
+          do icrm = 1 , ncrms
+            f(icrm,i,j,k) = p(icrm,i,j,k+n)
+          enddo
+        end do
+      end do
+    end do
+
+
+    !-------------------------------------------------
+    ! Perform Fourier transformation for a slab:
+    call fftfax_crm(nx_gl,ifaxi,trigxi)
+    if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
+    do k=1,nzslab
+      do icrm = 1 , ncrms
+        call fft991_crm(f(icrm,:,:,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
+        if(RUN3D) call fft991_crm(f(icrm,:,:,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
+      end do
+    end do
+
+    !-------------------------------------------------
+    !   Send Fourier coeffiecients back to subdomains:
+    n = rank*nzslab
+    do k = 1,nzslab
+      do j = 1,nyp22-jwall
+        do i = 1,nxp1-iwall
+          do icrm = 1 , ncrms
+            ff(icrm,i,j,k+n) = f(icrm,i+it,j+jt,k)
           end do
         end do
       end do
+    end do
 
+    !-------------------------------------------------
+    !   Solve the tri-diagonal system for Fourier coeffiecients
+    !   in the vertical for each subdomain:
 
-      !-------------------------------------------------
-      ! Perform Fourier transformation for a slab:
-      call fftfax_crm(nx_gl,ifaxi,trigxi)
-      if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
-      do k=1,nzslab
-        call fft991_crm(f(1,1,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
-        if(RUN3D) then
-          call fft991_crm(f(1,1,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
-        end if
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        a(icrm,k)=rhow(icrm,k)/(adz(icrm,k)*adzw(icrm,k)*dz(icrm)*dz(icrm))
+        c(icrm,k)=rhow(icrm,k+1)/(adz(icrm,k)*adzw(icrm,k+1)*dz(icrm)*dz(icrm))
       end do
+    end do
 
-      !-------------------------------------------------
-      !   Send Fourier coeffiecients back to subdomains:
-      n = rank*nzslab
-      do k = 1,nzslab
-        do j = 1,nyp22-jwall
-          do i = 1,nxp1-iwall
-            ff(i,j,k+n) = f(i+it,j+jt,k)
-          end do
-        end do
-      end do
-
-      !-------------------------------------------------
-      !   Solve the tri-diagonal system for Fourier coeffiecients
-      !   in the vertical for each subdomain:
-
-      do k=1,nzm
-        a(k)=rhow(icrm,k)/(adz(icrm,k)*adzw(icrm,k)*dz(icrm)*dz(icrm))
-        c(k)=rhow(icrm,k+1)/(adz(icrm,k)*adzw(icrm,k+1)*dz(icrm)*dz(icrm))
-      end do
-
-      call task_rank_to_index(rank,it,jt)
-
-      ddx2=1._8/(dx*dx)
-      ddy2=1._8/(dy*dy)
-      pii = acos(-1._8)
-      xnx=pii/nx_gl
-      xny=pii/ny_gl
-      do j=1,nyp22-jwall
-        if(dowally) then
-          jd=j+jt-1
-          facty = 1.d0
-        else
-          jd=(j+jt-0.1)/2.
-          facty = 2.d0
-        end if
-        xj=jd
-        do i=1,nxp1-iwall
+    ddx2=1._8/(dx*dx)
+    ddy2=1._8/(dy*dy)
+    pii = acos(-1._8)
+    xnx=pii/nx_gl
+    xny=pii/ny_gl
+    do j=1,nyp22-jwall
+      if(dowally) then
+        jd=j+jt-1
+        facty = 1.d0
+      else
+        jd=(j+jt-0.1)/2.
+        facty = 2.d0
+      end if
+      xj=jd
+      do i=1,nxp1-iwall
+        do icrm = 1 , ncrms
           if(dowallx) then
             id=i+it-1
             factx = 1.d0
@@ -161,87 +161,90 @@ contains
             id=(i+it-0.1)/2.
             factx = 2.d0
           end if
-          fff(1:nzm) = ff(i,j,1:nzm)
+          fff(1:nzm) = ff(icrm,i,j,1:nzm)
           xi=id
           eign=(2._8*cos(factx*xnx*xi)-2._8)*ddx2+ &
           (2._8*cos(facty*xny*xj)-2._8)*ddy2
           if(id+jd.eq.0) then
-            b=1._8/(eign*rho(icrm,1)-a(1)-c(1))
-            alfa(1)=-c(1)*b
+            b=1._8/(eign*rho(icrm,1)-a(icrm,1)-c(icrm,1))
+            alfa(1)=-c(icrm,1)*b
             beta(1)=fff(1)*b
           else
-            b=1._8/(eign*rho(icrm,1)-c(1))
-            alfa(1)=-c(1)*b
+            b=1._8/(eign*rho(icrm,1)-c(icrm,1))
+            alfa(1)=-c(icrm,1)*b
             beta(1)=fff(1)*b
           end if
           do k=2,nzm-1
-            e=1._8/(eign*rho(icrm,k)-a(k)-c(k)+a(k)*alfa(k-1))
-            alfa(k)=-c(k)*e
-            beta(k)=(fff(k)-a(k)*beta(k-1))*e
+            e=1._8/(eign*rho(icrm,k)-a(icrm,k)-c(icrm,k)+a(icrm,k)*alfa(k-1))
+            alfa(k)=-c(icrm,k)*e
+            beta(k)=(fff(k)-a(icrm,k)*beta(k-1))*e
           end do
 
-          fff(nzm)=(fff(nzm)-a(nzm)*beta(nzm-1))/ &
-          (eign*rho(icrm,nzm)-a(nzm)+a(nzm)*alfa(nzm-1))
+          fff(nzm)=(fff(nzm)-a(icrm,nzm)*beta(nzm-1))/ &
+          (eign*rho(icrm,nzm)-a(icrm,nzm)+a(icrm,nzm)*alfa(nzm-1))
 
           do k=nzm-1,1,-1
             fff(k)=alfa(k)*fff(k+1)+beta(k)
           end do
-          ff(i,j,1:nzm) = fff(1:nzm)
+          ff(icrm,i,j,1:nzm) = fff(1:nzm)
 
-        end do
+        enddo
       end do
+    end do
 
-      !-----------------------------------------------------------------
-      !   Send the Fourier coefficient to the tasks performing
-      !   the inverse Fourier transformation:
-      n = rank*nzslab
-      do k = 1,nzslab
-        do j = 1,nyp22-jwall
-          do i = 1,nxp1-iwall
-            f(i+it,j+jt,k) = ff(i,j,k+n)
+    !-----------------------------------------------------------------
+    !   Send the Fourier coefficient to the tasks performing
+    !   the inverse Fourier transformation:
+    n = rank*nzslab
+    do k = 1,nzslab
+      do j = 1,nyp22-jwall
+        do i = 1,nxp1-iwall
+          do icrm = 1 , ncrms
+            f(icrm,i+it,j+jt,k) = ff(icrm,i,j,k+n)
           end do
         end do
       end do
+    end do
 
-      !-------------------------------------------------
-      !   Perform inverse Fourier transformation:
+    !-------------------------------------------------
+    !   Perform inverse Fourier transformation:
 
-      if(rank.lt.npressureslabs) then
-        do k=1,nzslab
-          if(RUN3D) then
-            call fft991_crm(f(1,1,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
-          end if
-          call fft991_crm(f(1,1,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
+    if(rank.lt.npressureslabs) then
+      do k=1,nzslab
+        do icrm = 1 , ncrms
+          if(RUN3D) call fft991_crm(f(icrm,:,:,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
+          call fft991_crm(f(icrm,:,:,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
         end do
-      endif
-
-      !-----------------------------------------------------------------
-      !   Fill the pressure field for each subdomain:
-
-      do i=1,nx_gl
-        iii(i)=i
       end do
-      iii(0)=nx_gl
-      do j=1,ny_gl
-        jjj(j)=j
-      end do
-      jjj(0)=ny_gl
+    endif
 
-      n = rank*nzslab
-      do k = 1,nzslab
-        do j = 1-YES3D,ny
-          jj=jjj(j+jt)
-          do i = 0,nx
+    !-----------------------------------------------------------------
+    !   Fill the pressure field for each subdomain:
+
+    do i=1,nx_gl
+      iii(i)=i
+    end do
+    iii(0)=nx_gl
+    do j=1,ny_gl
+      jjj(j)=j
+    end do
+    jjj(0)=ny_gl
+
+    n = rank*nzslab
+    do k = 1,nzslab
+      do j = 1-YES3D,ny
+        jj=jjj(j+jt)
+        do i = 0,nx
+          do icrm = 1 , ncrms
             ii=iii(i+it)
-            p(icrm,i,j,k+n) = f(ii,jj,k)
+            p(icrm,i,j,k+n) = f(icrm,ii,jj,k)
           end do
         end do
       end do
+    end do
 
-      !  Add pressure gradient term to the rhs of the momentum equation:
-      call press_grad(ncrms,icrm)
-
-    enddo
+    !  Add pressure gradient term to the rhs of the momentum equation:
+    call press_grad(ncrms)
 
   end subroutine pressure
 
