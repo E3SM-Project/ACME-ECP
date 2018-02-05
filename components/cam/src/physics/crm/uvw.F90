@@ -3,18 +3,18 @@ module uvw_mod
 
 contains
 
-  subroutine uvw(ncrms,icrm)
+  subroutine uvw(ncrms)
 
     ! update the velocity field
 
     use vars
     use params
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
 
-    u(icrm,1:nx,1:ny,1:nzm) = dudt(icrm,1:nx,1:ny,1:nzm,nc)
-    v(icrm,1:nx,1:ny,1:nzm) = dvdt(icrm,1:nx,1:ny,1:nzm,nc)
-    w(icrm,1:nx,1:ny,1:nzm) = dwdt(icrm,1:nx,1:ny,1:nzm,nc)
+    u(:,1:nx,1:ny,1:nzm) = dudt(:,1:nx,1:ny,1:nzm,nc)
+    v(:,1:nx,1:ny,1:nzm) = dvdt(:,1:nx,1:ny,1:nzm,nc)
+    w(:,1:nx,1:ny,1:nzm) = dwdt(:,1:nx,1:ny,1:nzm,nc)
 
   end subroutine uvw
 

@@ -1025,9 +1025,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
       !-----------------------------------------------------------
       !    Convert velocity back from nondimensional form:
-      do icrm = 1 , ncrms
-        call uvw(ncrms,icrm)
-      enddo
+      call uvw(ncrms)
 
       !----------------------------------------------------------
       !     Update boundaries for scalars to prepare for SGS effects:
