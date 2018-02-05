@@ -1003,9 +1003,7 @@ subroutine crm(lchnk, icol, ncrms, &
       !-----------------------------------------------------------
       !       Coriolis force:
       if (docoriolis) then
-        do icrm = 1 , ncrms
-          call coriolis(ncrms,icrm)
-        enddo
+        call coriolis(ncrms)
       endif
 
       !---------------------------------------------------------
