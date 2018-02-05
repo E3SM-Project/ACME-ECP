@@ -23,10 +23,10 @@ contains
     real(crm_rknd) rhow  (ncrms,nz)
     real(crm_rknd) flux  (ncrms,nz)
     ! local
-    real(crm_rknd) flx(0:nx,0:ny,0:nzm)
-    real(crm_rknd) dfdt(nx,ny,nz)
-    real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx5,rdy5,rdz5,tmp
-    real(crm_rknd) dxy,dxz,dyx,dyz,dzx,dzy,tkx,tky,tkz,rhoi
+    real(crm_rknd) flx (ncrms,0:nx,0:ny,0:nzm)
+    real(crm_rknd) dfdt(ncrms,nx,ny,nz)
+    real(crm_rknd) rdx2,rdy2,rdz2(ncrms),rdz(ncrms),rdx5(ncrms),rdy5(ncrms),rdz5(ncrms),tmp(ncrms)
+    real(crm_rknd) dxy,dyx,tkx,tky,tkz,rhoi(ncrms)
     integer i,j,k,ib,ic,jb,jc,kc,kb, icrm
 
 
@@ -34,16 +34,12 @@ contains
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
-    rdz2=1./(dz(icrm)*dz(icrm))
-    rdz=1./dz(icrm)
+    rdz2(:)=1./(dz(:)*dz(:))
+    rdz(:)=1./dz(:)
     dxy=dx/dy
-    dxz=dx/dz(icrm)
     dyx=dy/dx
-    dyz=dy/dz(icrm)
-    dzx=dz(icrm)/dx
-    dzy=dz(icrm)/dy
 
-    dfdt(:,:,:)=0.
+    dfdt(:,:,:,:)=0.
 
     !-----------------------------------------
     if(dowallx) then
@@ -51,14 +47,18 @@ contains
       if(mod(rank,nsubdomains_x).eq.0) then
         do k=1,nzm
           do j=1,ny
-            field(icrm,0,j,k) = field(icrm,1,j,k)
+            do icrm = 1 , ncrms
+              field(icrm,0,j,k) = field(icrm,1,j,k)
+            end do
           end do
         end do
       end if
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
         do k=1,nzm
           do j=1,ny
-            field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
+            do icrm = 1 , ncrms
+              field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
+            end do
           end do
         end do
       end if
@@ -70,14 +70,18 @@ contains
       if(rank.lt.nsubdomains_x) then
         do k=1,nzm
           do i=1,nx
-            field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
+            do icrm = 1 , ncrms
+              field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
+            end do
           end do
         end do
       end if
       if(rank.gt.nsubdomains-nsubdomains_x-1) then
         do k=1,nzm
           do i=1,ny
-            field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
+            do icrm = 1 , ncrms
+              field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
+            end do
           end do
         end do
       end if
@@ -92,14 +96,18 @@ contains
       if(jb.eq.0) then
         do k=1,nzm
           do i=1,nx
-            field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
+            do icrm = 1 , ncrms
+              field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
+            end do
           end do
         end do
       end if
       if(jb.eq.nsubdomains_y-1) then
         do k=1,nzm
           do i=1,nx
-            field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
+            do icrm = 1 , ncrms
+              field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
+            end do
           end do
         end do
       end if
@@ -114,32 +122,40 @@ contains
 
     do k=1,nzm
 
-      rdx5=0.5*rdx2  * grdf_x(icrm,k)
-      rdy5=0.5*rdy2  * grdf_y(icrm,k)
+      rdx5(:)=0.5*rdx2  * grdf_x(:,k)
+      rdy5(:)=0.5*rdy2  * grdf_y(:,k)
 
       do j=1,ny
         do i=0,nx
-          ic=i+1
-          tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
-          flx(i,j,k)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
+          do icrm = 1 , ncrms
+            ic=i+1
+            tkx=rdx5(icrm)*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
+            flx(icrm,i,j,k)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
+          end do
         end do
         do i=1,nx
-          ib=i-1
-          dfdt(i,j,k)=dfdt(i,j,k)-(flx(i,j,k)-flx(ib,j,k))
+          do icrm = 1 , ncrms
+            ib=i-1
+            dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,ib,j,k))
+          end do
         end do
       end do
 
       do j=0,ny
         jc=j+1
         do i=1,nx
-          tky=rdy5*(tkh(icrm,i,j,k)+tkh(icrm,i,jc,k))
-          flx(i,j,k)=-tky*(field(icrm,i,jc,k)-field(icrm,i,j,k))
+          do icrm = 1 , ncrms
+            tky=rdy5(icrm)*(tkh(icrm,i,j,k)+tkh(icrm,i,jc,k))
+            flx(icrm,i,j,k)=-tky*(field(icrm,i,jc,k)-field(icrm,i,j,k))
+          end do
         end do
       end do
       do j=1,ny
         jb=j-1
         do i=1,nx
-          dfdt(i,j,k)=dfdt(i,j,k)-(flx(i,j,k)-flx(i,jb,k))
+          do icrm = 1 , ncrms
+            dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,i,jb,k))
+          end do
         end do
       end do
 
@@ -148,38 +164,44 @@ contains
 
     !  Vertical diffusion:
 
-    flux(icrm,1) = 0.
-    tmp=1./adzw(icrm,nz)
+    flux(:,1) = 0.
+    tmp(:)=1./adzw(:,nz)
     do j=1,ny
       do i=1,nx
-        flx(i,j,0)=fluxb(icrm,i,j)*rdz*rhow(icrm,1)
-        flx(i,j,nzm)=fluxt(icrm,i,j)*rdz*tmp*rhow(icrm,nz)
-        flux(icrm,1) = flux(icrm,1) + flx(i,j,0)
+        do icrm = 1 , ncrms
+          flx(icrm,i,j,0)=fluxb(icrm,i,j)*rdz(icrm)*rhow(icrm,1)
+          flx(icrm,i,j,nzm)=fluxt(icrm,i,j)*rdz(icrm)*tmp(icrm)*rhow(icrm,nz)
+          flux(icrm,1) = flux(icrm,1) + flx(icrm,i,j,0)
+        end do
       end do
     end do
 
 
     do k=1,nzm-1
       kc=k+1
-      flux(icrm,kc)=0.
-      rhoi = rhow(icrm,kc)/adzw(icrm,kc)
-      rdz5=0.5*rdz2 * grdf_z(icrm,k)
+      flux(:,kc)=0.
+      rhoi(:) = rhow(:,kc)/adzw(:,kc)
+      rdz5(:)=0.5*rdz2(:) * grdf_z(:,k)
       do j=1,ny
         do i=1,nx
-          tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
-          flx(i,j,k)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi
-          flux(icrm,kc) = flux(icrm,kc) + flx(i,j,k)
+          do icrm = 1 , ncrms
+            tkz=rdz5(icrm)*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
+            flx(icrm,i,j,k)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi(icrm)
+            flux(icrm,kc) = flux(icrm,kc) + flx(icrm,i,j,k)
+          end do
         end do
       end do
     end do
 
     do k=1,nzm
       kb=k-1
-      rhoi = 1./(adz(icrm,k)*rho(icrm,k))
+      rhoi(:) = 1./(adz(:,k)*rho(:,k))
       do j=1,ny
         do i=1,nx
-          dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)
-          field(icrm,i,j,k)=field(icrm,i,j,k)+dfdt(i,j,k)
+          do icrm = 1 , ncrms
+            dfdt(icrm,i,j,k)=dtn*(dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,i,j,kb))*rhoi(icrm))
+            field(icrm,i,j,k)=field(icrm,i,j,k)+dfdt(icrm,i,j,k)
+          end do
         end do
       end do
     end do
