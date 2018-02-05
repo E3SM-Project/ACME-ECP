@@ -991,9 +991,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
       !-----------------------------------------------
       !       advection of momentum:
-      do icrm = 1 , ncrms
-        call advect_mom(ncrms,icrm)
-      enddo
+      call advect_mom(ncrms)
 
       !----------------------------------------------------------
       !	SGS effects on momentum:

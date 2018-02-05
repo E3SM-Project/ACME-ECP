@@ -3,47 +3,50 @@ module advect2_mom_z_mod
 
 contains
 
-  subroutine advect2_mom_z(ncrms,icrm)
+  subroutine advect2_mom_z(ncrms)
     !       momentum tendency due to the 2nd-order-central vertical advection
     use vars
     use params, only: crm_rknd
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
 
-    real(crm_rknd) fuz(nx,ny,nz),fvz(nx,ny,nz),fwz(nx,ny,nzm)
-    integer i, j, k, kc, kb
-    real(crm_rknd) dz2, dz25, www, rhoi
+    real(crm_rknd) fuz(ncrms,nx,ny,nz)
+    real(crm_rknd) fvz(ncrms,nx,ny,nz)
+    real(crm_rknd) fwz(ncrms,nx,ny,nzm)
+    integer i, j, k, kc, kb,icrm
+    real(crm_rknd) dz2(ncrms), dz25(ncrms), www(ncrms), rhoi(ncrms)
 
-    dz25=1./(4.*dz(icrm))
-    dz2=dz25*2.
+    dz25(:)=1./(4.*dz(:))
+    dz2(:)=dz25(:)*2.
+
 
     do j=1,ny
       do i=1,nx
-        fuz(i,j,1) = 0.
-        fvz(i,j,1) = 0.
-        fuz(i,j,nz) = 0.
-        fvz(i,j,nz) = 0.
-        fwz(i,j,1) = 0.
-        fwz(i,j,nzm) = 0.
+        fuz(:,i,j,1) = 0.
+        fvz(:,i,j,1) = 0.
+        fuz(:,i,j,nz) = 0.
+        fvz(:,i,j,nz) = 0.
+        fwz(:,i,j,1) = 0.
+        fwz(:,i,j,nzm) = 0.
       end do
     end do
 
-    uwle(icrm,1) = 0.
-    vwle(icrm,1) = 0.
+    uwle(:,1) = 0.
+    vwle(:,1) = 0.
 
     if(RUN3D) then
 
       do k=2,nzm
         kb = k-1
-        rhoi = dz25 * rhow(icrm,k)
-        uwle(icrm,k) = 0.
-        vwle(icrm,k) = 0.
+        rhoi(:) = dz25(:) * rhow(:,k)
+        uwle(:,k) = 0.
+        vwle(:,k) = 0.
         do j=1,ny
           do i=1,nx
-            fuz(i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
-            fvz(i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i,j-1,k))*(v(icrm,i,j,k)+v(icrm,i,j,kb))
-            uwle(icrm,k) = uwle(icrm,k)+fuz(i,j,k)
-            vwle(icrm,k) = vwle(icrm,k)+fvz(i,j,k)
+            fuz(:,i,j,k) = rhoi(:)*(w(:,i,j,k)+w(:,i-1,j,k))*(u(:,i,j,k)+u(:,i,j,kb))
+            fvz(:,i,j,k) = rhoi(:)*(w(:,i,j,k)+w(:,i,j-1,k))*(v(:,i,j,k)+v(:,i,j,kb))
+            uwle(:,k) = uwle(:,k)+fuz(:,i,j,k)
+            vwle(:,k) = vwle(:,k)+fvz(:,i,j,k)
           end do
         end do
       end do
@@ -52,16 +55,16 @@ contains
 
       do k=2,nzm
         kb = k-1
-        rhoi = dz25 * rhow(icrm,k)
-        uwle(icrm,k) = 0.
-        vwle(icrm,k) = 0.
+        rhoi(:) = dz25(:) * rhow(:,k)
+        uwle(:,k) = 0.
+        vwle(:,k) = 0.
         do j=1,ny
           do i=1,nx
-            www = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))
-            fuz(i,j,k) = www*(u(icrm,i,j,k)+u(icrm,i,j,kb))
-            fvz(i,j,k) = www*(v(icrm,i,j,k)+v(icrm,i,j,kb))
-            uwle(icrm,k) = uwle(icrm,k)+fuz(i,j,k)
-            vwle(icrm,k) = vwle(icrm,k)+fvz(i,j,k)
+            www(:) = rhoi(:)*(w(:,i,j,k)+w(:,i-1,j,k))
+            fuz(:,i,j,k) = www(:)*(u(:,i,j,k)+u(:,i,j,kb))
+            fvz(:,i,j,k) = www(:)*(v(:,i,j,k)+v(:,i,j,kb))
+            uwle(:,k) = uwle(:,k)+fuz(:,i,j,k)
+            vwle(:,k) = vwle(:,k)+fvz(:,i,j,k)
           end do
         end do
       end do
@@ -71,22 +74,22 @@ contains
 
     do k=1,nzm
       kc = k+1
-      rhoi = 1./(rho(icrm,k)*adz(icrm,k))
+      rhoi(:) = 1./(rho(:,k)*adz(:,k))
       do j=1,ny
         do i=1,nx
-          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fuz(i,j,kc)-fuz(i,j,k))*rhoi
-          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fvz(i,j,kc)-fvz(i,j,k))*rhoi
-          fwz(i,j,k)=dz25*(w(icrm,i,j,kc)*rhow(icrm,kc)+w(icrm,i,j,k)*rhow(icrm,k))*(w(icrm,i,j,kc)+w(icrm,i,j,k))
+          dudt(:,i,j,k,na)=dudt(:,i,j,k,na)-(fuz(:,i,j,kc)-fuz(:,i,j,k))*rhoi(:)
+          dvdt(:,i,j,k,na)=dvdt(:,i,j,k,na)-(fvz(:,i,j,kc)-fvz(:,i,j,k))*rhoi(:)
+          fwz(:,i,j,k)=dz25(:)*(w(:,i,j,kc)*rhow(:,kc)+w(:,i,j,k)*rhow(:,k))*(w(:,i,j,kc)+w(:,i,j,k))
         end do
       end do
     end do
 
     do k=2,nzm
       kb=k-1
-      rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
+      rhoi(:) = 1./(rhow(:,k)*adzw(:,k))
       do j=1,ny
         do i=1,nx
-          dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fwz(i,j,k)-fwz(i,j,kb))*rhoi
+          dwdt(:,i,j,k,na)=dwdt(:,i,j,k,na)-(fwz(:,i,j,k)-fwz(:,i,j,kb))*rhoi(:)
         end do
       end do
     end do ! k
