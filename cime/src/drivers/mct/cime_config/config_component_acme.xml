@@ -295,6 +295,7 @@
       <value compset="_DLND.*_CISM\d">1</value>
       <value compset="_DATM.*_DICE.*_POP2.*_WW3">4</value>
       <value compset="_DATM.*_DICE.*_POP2.*_DWAV">4</value>
+      <value compset="SP[1,2]V1" grid="a%ne4np4">48</value>
     </values>
     <group>run_coupling</group>
     <file>env_run.xml</file>

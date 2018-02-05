@@ -171,6 +171,27 @@ _TEST_SUITES = {
                           "ERS_D_Ld9.1x1_brazil.ICLM45ED",
                           "SMS_D_Lm6.1x1_brazil.ICLM45ED")
                          ),
+
+    # Tests for ECP (MMF) development
+    #
+    # ECP tests without superparameterization; this is a limited set of tests
+    # meant just to check that basic functionality has not been affected by
+    # development, without running the full acme_developer suite.
+    "acme_ecp_nosp" : (None, None,
+                       ("ERP_Ld31.ne4_oQU240.A_WCYCL2000",
+                        "ERP_Ld5.ne30_ne30.FC5AV1C-L",
+                        "ERP_Ld5.ne4_ne4.FC5AV1C-L")),
+
+    # Superparameterization tests; these tests check for changes in the full ECP
+    # model configuration and test functionality of the superparameterization.
+    "acme_ecp_sp" : (None, None, #"04:00:00",
+                     ("ERP_Ld5_PX.ne4_ne4.FSP1V1",
+                      "ERP_Ld5_PX.ne4_ne4.FSP2V1")),
+
+    # Define the acme_ecp subset to be a superset of the ECP tests with and
+    # without superparameterization (check both host model and
+    # superparameterization functionality)
+    "acme_ecp" : (("acme_ecp_nosp", "acme_ecp_sp"), None, ()),
 }
 
 ###############################################################################
