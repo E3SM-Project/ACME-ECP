@@ -452,20 +452,20 @@ CONTAINS
 !----------------------------------------------------------------------
 !!! compute sgs processes (beyond advection):
 !
-subroutine sgs_proc(ncrms,icrm)
+subroutine sgs_proc(ncrms)
   use tke_full_mod, only: tke_full
 
   use grid, only: nstep,dt,icycle
   use params, only: dosmoke
   implicit none
-  integer, intent(in) :: ncrms,icrm
+  integer, intent(in) :: ncrms
 
   !    SGS TKE equation:
 
-  if(dosgs) call tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms, icrm)
+  if(dosgs) call tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms)
 
-  tke2(icrm,:,:,:) = tke(icrm,:,:,:)
-  tk2(icrm,:,:,:) = tk(icrm,:,:,:)
+  tke2(:,:,:,:) = tke(:,:,:,:)
+  tk2(:,:,:,:) = tk(:,:,:,:)
 
 end subroutine sgs_proc
 

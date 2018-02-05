@@ -6,14 +6,14 @@ module tke_full_mod
 
 contains
 
-  subroutine tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms, icrm)
+  subroutine tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms)
 
     !	this subroutine solves the TKE equation
 
     use vars
     use params
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     logical :: dosmagor
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tkesbbuoy(ncrms,nz), tkesbshear(ncrms,nz), tkesbdiss(ncrms,nz)
@@ -21,12 +21,12 @@ contains
     real(crm_rknd) tk  (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
     real(crm_rknd) tkh (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
 
-    real(crm_rknd) def2(nx,ny,nzm)
+    real(crm_rknd) def2(ncrms,nx,ny,nzm)
     real(crm_rknd) grd,betdz,Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs
     real(crm_rknd) buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss
     real(crm_rknd) lstarn, lstarp, bbb, omn, omp
     real(crm_rknd) qsatt,dqsat
-    integer i,j,k,kc,kb
+    integer i,j,k,kc,kb,icrm
 
     real(crm_rknd) tk_min_value   ! whannah - min value for eddy viscosity (TK)
     real(crm_rknd) tk_min_depth   ! whannah - near-surface depth to apply tk_min (meters)
@@ -42,11 +42,14 @@ contains
     Ce=Ck**3/Cs**4
     Ces=Ce/0.7*3.0
 
+
     if(RUN3D) then
-      call shear_prod3D(def2, ncrms, icrm)
+      call shear_prod3D(def2, ncrms)
     else
-      call shear_prod2D(def2, ncrms, icrm)
+      call shear_prod2D(def2, ncrms)
     endif
+
+    do icrm = 1 , ncrms
 
     do k=1,nzm
       kb=k-1
@@ -127,7 +130,7 @@ contains
 
           if(dosmagor) then
 
-            tk(icrm,i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
+            tk(icrm,i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(icrm,i,j,k)-Pr*buoy_sgs))*smix**2
 
 #ifdef SP_TK_LIM
             ! whannah - put a hard limit on near-surface tk
@@ -136,16 +139,16 @@ contains
             end if
 #endif
 
-            ! tk(icrm,i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
+            ! tk(icrm,i,j,k)=sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(icrm,i,j,k)-Pr*buoy_sgs))*smix**2
             tke(icrm,i,j,k) = (tk(icrm,i,j,k)/(Ck*smix))**2
-            a_prod_sh=(tk(icrm,i,j,k)+0.001)*def2(i,j,k)
+            a_prod_sh=(tk(icrm,i,j,k)+0.001)*def2(icrm,i,j,k)
             a_prod_bu=-(tk(icrm,i,j,k)+0.001)*Pr*buoy_sgs
             a_diss=a_prod_sh+a_prod_bu
 
           else
 
             tke(icrm,i,j,k)=max(real(0.,crm_rknd),tke(icrm,i,j,k))
-            a_prod_sh=(tk(icrm,i,j,k)+0.001)*def2(i,j,k)
+            a_prod_sh=(tk(icrm,i,j,k)+0.001)*def2(icrm,i,j,k)
             a_prod_bu=-(tk(icrm,i,j,k)+0.001)*Pr*buoy_sgs
             a_diss=min(tke(icrm,i,j,k)/(4.*dt),Cee/smix*tke(icrm,i,j,k)**1.5) ! cap the diss rate (useful for large time steps
             tke(icrm,i,j,k)=max(real(0.,crm_rknd),tke(icrm,i,j,k)+dtn*(max(real(0.,crm_rknd),a_prod_sh+a_prod_bu)-a_diss))
@@ -167,9 +170,10 @@ contains
 
 
     end do ! k
+  enddo
 
     !call t_stopf('tke_full')
 
-  end
+  end subroutine tke_full
 
 end module tke_full_mod

@@ -982,9 +982,7 @@ subroutine crm(lchnk, icol, ncrms, &
       !-----------------------------------------------------------
       !  SGS physics:
       if (dosgs) then
-        do icrm = 1 , ncrms
-          call sgs_proc(ncrms,icrm)
-        enddo
+        call sgs_proc(ncrms)
       endif
 
       !----------------------------------------------------------
