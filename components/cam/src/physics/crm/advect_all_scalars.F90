@@ -58,24 +58,17 @@ contains
     !   Precipitation fallout:
     !
     if(doprecip) then
-
-      do icrm = 1 , ncrms
-        total_water_prec(icrm) = total_water_prec(icrm) + total_water(ncrms,icrm)
-        call micro_precip_fall(ncrms,icrm)
-        total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
-      enddo
-
-
+      total_water_prec = total_water_prec + total_water(ncrms)
+      call micro_precip_fall(ncrms)
+      total_water_prec = total_water_prec - total_water(ncrms)
     end if
 
     ! advection of tracers:
 
     if(dotracers) then
-
       do k = 1,ntracers
         call advect_scalar(tracer(:,:,:,:,k),tradv(:,:,k),trwle(:,:,k),dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
       end do
-
     end if
 
   end subroutine advect_all_scalars

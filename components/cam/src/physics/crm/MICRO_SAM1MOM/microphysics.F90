@@ -282,10 +282,10 @@ CONTAINS
     end if
 #ifdef CLUBB_CRM
     if ( doclubb ) then ! -dschanen UWM 21 May 2008
+      CF3D(:,:,:, 1:nzm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
+      ! so it is set here first  +++mhwang
+      !     if(doprecip) call precip_proc()
       do icrm = 1 , ncrms
-        CF3D(icrm,:,:, 1:nzm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
-        ! so it is set here first  +++mhwang
-        !     if(doprecip) call precip_proc()
         if(doprecip) call precip_proc_clubb(ncrms,icrm)
       enddo
       call micro_diagnose(ncrms)
@@ -455,17 +455,17 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sedimentation
   !
-  subroutine micro_precip_fall(ncrms,icrm)
+  subroutine micro_precip_fall(ncrms)
 
     use vars
     use params, only : pi
     use precip_fall_mod
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
 
-    real(crm_rknd) omega(nx,ny,nzm)
+    real(crm_rknd) omega(ncrms,nx,ny,nzm)
     integer ind
-    integer i,j,k
+    integer i,j,k,icrm
 
     crain = b_rain / 4.
     csnow = b_snow / 4.
@@ -477,12 +477,16 @@ CONTAINS
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          omega(i,j,k) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
+          do icrm = 1 , ncrms
+            omega(icrm,i,j,k) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
+          end do
         end do
       end do
     end do
 
-    call precip_fall(qp, term_vel_qp, 2, omega, ind, ncrms, icrm)
+    do icrm = 1 , ncrms
+      call precip_fall(qp, term_vel_qp, 2, omega(icrm,:,:,:), ind, ncrms, icrm)
+    enddo
 
 
   end subroutine micro_precip_fall
@@ -496,25 +500,27 @@ CONTAINS
   !-----------------------------------------------------------------------
   ! Supply function that computes total water in a domain:
   !
-  real(8) function total_water(ncrms,icrm)
-
+  function total_water(ncrms)
     use vars, only : nstep,nprint,adz,dz,rho
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    real(8) tmp
-    integer i,j,k,m
+    integer, intent(in) :: ncrms
+    real(8) :: total_water(ncrms)
+    real(8) tmp(ncrms)
+    integer i,j,k,m,icrm
 
-    total_water = 0.
+    total_water(:) = 0.
     do m=1,nmicro_fields
       if(flag_wmass(m).eq.1) then
         do k=1,nzm
-          tmp = 0.
+          tmp(:) = 0.
           do j=1,ny
             do i=1,nx
-              tmp = tmp + micro_field(icrm,i,j,k,m)
+              do icrm = 1 , ncrms
+                tmp(icrm) = tmp(icrm) + micro_field(icrm,i,j,k,m)
+              enddo
             end do
           end do
-          total_water = total_water + tmp*adz(icrm,k)*dz(icrm)*rho(icrm,k)
+          total_water(:) = total_water(:) + tmp(icrm)*adz(icrm,k)*dz(icrm)*rho(icrm,k)
         end do
       end if
     end do
