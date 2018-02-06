@@ -765,14 +765,12 @@ subroutine crm(lchnk, icol, ncrms, &
 
 !--------------------------------------------------
 #ifdef sam1mom
-  do icrm = 1 , ncrms
-    if(doprecip) call precip_init(ncrms,icrm)
-  enddo
+  if(doprecip) call precip_init(ncrms)
 #endif
 
-    !MRN: Don't want any stochasticity introduced in the standalone.
-    !MRN: Need to make sure the first call to crm(...) is not dumped out
-    !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
+  !MRN: Don't want any stochasticity introduced in the standalone.
+  !MRN: Need to make sure the first call to crm(...) is not dumped out
+  !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
 #ifndef CRM_STANDALONE
   do icrm = 1 , ncrms
     call get_gcol_all_p(lchnk, pcols, gcolindex)
