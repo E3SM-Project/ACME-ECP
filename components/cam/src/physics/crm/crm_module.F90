@@ -22,6 +22,7 @@ module crm_module
   use damping_mod
   use ice_fall_mod
   use coriolis_mod
+  use micro_params
 !---------------------------------------------------------------
 !  Super-parameterization's main driver
 !  Marat Khairoutdinov, 2001-2009
@@ -387,6 +388,7 @@ subroutine crm(lchnk, icol, ncrms, &
   call allocate_microphysics(ncrms)
   call allocate_tracers(ncrms)
   call allocate_sgs(ncrms)
+  call allocate_micro_params(ncrms)
 
   !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
 #ifdef CRM_STANDALONE
@@ -1040,17 +1042,9 @@ subroutine crm(lchnk, icol, ncrms, &
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
 #ifdef CLUBB_CRM
-      if(docloud.or.dosmoke.or.doclubb) then
-        do icrm = 1 , ncrms
-          call micro_proc(ncrms,icrm)
-        enddo
-      endif
+      if(docloud.or.dosmoke.or.doclubb) call micro_proc(ncrms,icrm)
 #else
-      if(docloud.or.dosmoke) then
-        do icrm = 1 , ncrms
-          call micro_proc(ncrms,icrm)
-        enddo
-      endif
+      if(docloud.or.dosmoke) call micro_proc(ncrms,icrm)
 #endif /*CLUBB_CRM*/
 
       !-----------------------------------------------------------
@@ -1664,6 +1658,7 @@ subroutine crm(lchnk, icol, ncrms, &
   call deallocate_microphysics()
   call deallocate_tracers()
   call deallocate_sgs()
+  call deallocate_micro_params()
 
   end subroutine crm
 
