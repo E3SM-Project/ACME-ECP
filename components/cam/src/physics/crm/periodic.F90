@@ -18,7 +18,7 @@ contains
     implicit none
     integer, intent(in) :: ncrms
 
-    integer flag, i
+    integer flag, i, j, icrm
 
     if(flag.eq.0) then
 
@@ -26,10 +26,24 @@ contains
       call bound_exchange(v(:,:,:,:),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2,ncrms)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
-      w(:,1:nx,1:ny,nz) = sstxy(:,1:nx,1:ny)
+      !$acc parallel loop gang vector collapse(3)
+      do j = 1 , ny
+        do i = 1 , nx
+          do icrm = 1 , ncrms
+            w(icrm,i,j,nz) = sstxy(icrm,i,j)
+          enddo
+        enddo
+      enddo
       call bound_exchange(w(:,:,:,:),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3,ncrms)
-      sstxy(:,0:nx,1-YES3D:ny) = w(:,0:nx,1-YES3D:ny,nz)
-      w(:,0:nx+1,1-YES3D:ny+YES3D,nz) = 0.
+      !$acc parallel loop gang vector collapse(3)
+      do j = 1-YES3D,ny+YES3D
+        do i = 1 , nx+1
+          do icrm = 1 , ncrms
+            if (i <= nx .and. j <= ny) sstxy(icrm,i,j) = w(icrm,i,j,nz)
+            w(icrm,i,j,nz) = 0.
+          enddo
+        enddo
+      enddo
 
     endif
 
@@ -43,8 +57,7 @@ contains
       call bound_exchange(t(:,:,:,:),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4,ncrms)
       do i = 1,nsgs_fields
         if(dosgs.and.advect_sgs) &
-        call bound_exchange(sgs_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
-        3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+i,ncrms)
+        call bound_exchange(sgs_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+i,ncrms)
       end do
       do i = 1,nmicro_fields
         if(   i.eq.index_water_vapor             &
@@ -56,13 +69,11 @@ contains
         .or. docloud.and.flag_precip(i).ne.1    &
 #endif
         .or. doprecip.and.flag_precip(i).eq.1 ) &
-        call bound_exchange(micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
-        3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i,ncrms)
+        call bound_exchange(micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i,ncrms)
       end do
       if(dotracers) then
         do i=1,ntracers
-          call bound_exchange(tracer(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
-          3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i,ncrms)
+          call bound_exchange(tracer(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i,ncrms)
         end do
       end if
 
@@ -85,13 +96,11 @@ contains
         .or. docloud.and.flag_precip(i).ne.1    &
 #endif
         .or. doprecip.and.flag_precip(i).eq.1 ) &
-        call bound_exchange(micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
-        1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i,ncrms)
+        call bound_exchange(micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i,ncrms)
       end do
       if(dotracers) then
         do i=1,ntracers
-          call bound_exchange(tracer(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
-          1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i,ncrms)
+          call bound_exchange(tracer(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i,ncrms)
         end do
       end if
 
@@ -101,8 +110,7 @@ contains
 
       do i = 1,nsgs_fields_diag
         if(dosgs.and.do_sgsdiag_bound) &
-        call bound_exchange(sgs_field_diag(:,:,:,:,i),dimx1_d,dimx2_d,dimy1_d,dimy2_d,nzm, &
-        1+dimx1_d,dimx2_d-nx,YES3D+dimy1_d,1-YES3D+dimy2_d-ny,4+nsgs_fields+i,ncrms)
+        call bound_exchange(sgs_field_diag(:,:,:,:,i),dimx1_d,dimx2_d,dimy1_d,dimy2_d,nzm,1+dimx1_d,dimx2_d-nx,YES3D+dimy1_d,1-YES3D+dimy2_d-ny,4+nsgs_fields+i,ncrms)
       end do
 
     end if
