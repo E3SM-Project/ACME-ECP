@@ -13,20 +13,27 @@ contains
     integer, intent(in) :: ncrms
 
     real(crm_rknd), intent (in) :: bflx(ncrms)
-    real(crm_rknd) u_h0, tau00, tauxm(ncrms), tauym(ncrms)
+    real(crm_rknd) u_h0, tau00
+    real(crm_rknd), allocatable :: tauxm(:), tauym(:)
     integer i,j,icrm
+
+    allocate(tauxm(ncrms))
+    allocate(tauym(ncrms))
 
     !--------------------------------------------------------
 
 
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
 
-      uhl(:) = uhl(:) + dtn*utend(:,1)
-      vhl(:) = vhl(:) + dtn*vtend(:,1)
+      !$acc parallel loop gang vector
+      do icrm = 1 , ncrms
+        uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
+        vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
+        tauxm(icrm) = 0.
+        tauym(icrm) = 0.
+      enddo
 
-      tauxm(:) = 0.
-      tauym(:) = 0.
-
+      !$acc parallel loop gang vector collapse(3)
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms
@@ -35,18 +42,29 @@ contains
             tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm),u_h0,z0(icrm))**2
             fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
             fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
-            tauxm(icrm) = tauxm(icrm) + fluxbu(icrm,i,j)
-            tauym(icrm) = tauym(icrm) + fluxbv(icrm,i,j)
           end do
         end do
       end do
 
-      taux0(:) = taux0(:) + tauxm(:)/dble(nx*ny)
-      tauy0(:) = tauy0(:) + tauym(:)/dble(nx*ny)
+      !$acc parallel loop gang vector
+      do icrm = 1 , ncrms
+        !$acc loop seq
+        do j=1,ny
+          !$acc loop seq
+          do i=1,nx
+            tauxm(icrm) = tauxm(icrm) + fluxbu(icrm,i,j)
+            tauym(icrm) = tauym(icrm) + fluxbv(icrm,i,j)
+          enddo
+        enddo
+        taux0(icrm) = taux0(icrm) + tauxm(icrm)/dble(nx*ny)
+        tauy0(icrm) = tauy0(icrm) + tauym(icrm)/dble(nx*ny)
+      enddo
 
     end if ! SFC_FLX_FXD
 
-    return
+    deallocate(tauxm)
+    deallocate(tauym)
+
   end
 
 
@@ -82,6 +100,7 @@ contains
     use params, only: crm_rknd
 
     implicit none
+    !$acc routine seq
     real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
     real(crm_rknd), parameter      :: g    = 9.81   ! gravitational acceleration
     real(crm_rknd), parameter      :: am   =  4.8   !   "          "         "
