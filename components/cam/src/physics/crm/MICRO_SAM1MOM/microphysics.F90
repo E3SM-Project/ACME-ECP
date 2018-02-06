@@ -278,8 +278,8 @@ CONTAINS
 
     if(docloud) then
       call cloud(q,qn,qp,ncrms)
+      if(doprecip) call precip_proc(qpsrc,qpevp,qp,q,qn,ncrms)
       do icrm = 1 , ncrms
-        if(doprecip) call precip_proc(qpsrc,qpevp,qp,q,qn,ncrms,icrm)
         call micro_diagnose(ncrms,icrm)
       enddo
     end if
