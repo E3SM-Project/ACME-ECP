@@ -23,11 +23,11 @@ module crm_module
   use ice_fall_mod
   use coriolis_mod
   use micro_params
-!---------------------------------------------------------------
-!  Super-parameterization's main driver
-!  Marat Khairoutdinov, 2001-2009
-!---------------------------------------------------------------
-use setparm_mod, only : setparm
+  !---------------------------------------------------------------
+  !  Super-parameterization's main driver
+  !  Marat Khairoutdinov, 2001-2009
+  !---------------------------------------------------------------
+  use setparm_mod, only : setparm
 
 contains
 
@@ -87,300 +87,370 @@ subroutine crm(lchnk, icol, ncrms, &
                 ocnfrac, wndls, tau00, bflxls, &
                 fluxu00, fluxv00, fluxt00, fluxq00,    &
                 taux_crm, tauy_crm, z0m, timing_factor, qtot)
-        !---------------------------------------------------------------
-    use crm_dump              , only: crm_dump_input, crm_dump_output
-    use shr_kind_mod          , only: r8 => shr_kind_r8
-    !MRN: phys_grid is a rabbit hole of dependencies I'd rather hijack and avoid.
-    !MRN: It's only used to get the longitude and latitude for each call and then
-    !MRN: random seed values for perturbations to the initial temprature field on
-    !MRN: the first call to crm(...)
+  !---------------------------------------------------------------
+  use crm_dump              , only: crm_dump_input, crm_dump_output
+  use shr_kind_mod          , only: r8 => shr_kind_r8
+  !MRN: phys_grid is a rabbit hole of dependencies I'd rather hijack and avoid.
+  !MRN: It's only used to get the longitude and latitude for each call and then
+  !MRN: random seed values for perturbations to the initial temprature field on
+  !MRN: the first call to crm(...)
 
 #ifndef CRM_STANDALONE
-    use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_all_p
+  use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_all_p
 #endif
-    use ppgrid                , only: pcols
-    use vars
-    use params
-    use microphysics
-    use sgs
-    use crmtracers
-
-! whannah - Matt Norman added the more specific use statements below - however this was causing problems for the 1-moment configuration
-!
-!     use vars                  , only: crm_nx, crm_ny, crm_nz, nx, ny, nz, crm_dx, crm_dt, fcory, fcorzy, latitude, longitude, z, zi, pres, prespot, bet, gamaz, &
-!                                       adzw, adz, rho, rhow, u, v, w, tabs, dudt, dvdt, dwdt, p, wsub, cf3d, u0, v0, t0, tabs0, q0, t, qp0, tke0, qv0, qn0,  &
-!                                       tke0, ttend, qtend, utend, vtend, ug0, vg0, tg0, qg0, qtotmicro, dt3, precsfc, precssfc, qpfall, precflux, uwle, uwsb, &
-!                                       vwle, vwsb, dostatis, nzm, dz, yes3d, qcl, qci, qpl, qpi, qv, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, &
-!                                       fluxtq, fzero, uwle, uwsb, vwle, nstop, dt, nsave3d, nstep, nprint, ncycle, day, day0, time, icycle, dtn, na, dtfactor, &
-! #ifdef MODAL_AERO
-!                                       naer, vaer, hgaer, &
-! #endif
-!                                       nc, nb, qsatw_crm
-!     use params                , only: latitude0, longitude0, fcor, pi, fcorz, ocean, land, rgas, cp, fac_fus, uhl, vhl, z0, dodamping, dosurface, docoriolis, &
-!                                       taux0, tauy0, doclubb, doclubbnoninter, docloud, dosmoke, crm_rknd
-!     use microphysics          , only: nmicro_fields, micro_field, cloudliq, aut1a, acc1a, evpc1a, evpr1a, mlt1a, sub1a, dep1a, con1a, mkwsb, mkwle, mkadv, &
-!                                       mkdiff, qpsrc, qpevp, ggr, dopredictnc, incl, nc0, fac_cond, fac_sub, iqr, iqs, iqg, inci, ins, wvar, aut1, acc1,    &
-!                                       evpc1, evpr1, mlt1, sub1, dep1, con1, inr, ing, iqv, iqci, micro_init, micro_proc
-!     use sgs                   , only: tke, tk, tkh, dosgs, sgs_init, sgs_proc, sgs_mom, sgs_scalars
+  use ppgrid                , only: pcols
+  use vars
+  use params
+  use microphysics
+  use sgs
+  use crmtracers
 
 #ifdef MODAL_AERO
-    use modal_aero_data       , only: ntot_amode
+  use modal_aero_data       , only: ntot_amode
 #endif
-    use crmdims               , only: nclubbvars, crm_nx_rad, crm_ny_rad
+  use crmdims               , only: nclubbvars, crm_nx_rad, crm_ny_rad
 #ifdef CLUBB_CRM
-    use clubb_sgs             , only: advance_clubb_sgs, clubb_sgs_setup, clubb_sgs_cleanup, apply_clubb_sgs_tndcy, apply_clubb_sgs_tndcy_scalars, &
-                                      apply_clubb_sgs_tndcy_mom, t2thetal, total_energy
-    use clubb_precision       , only: time_precision, core_rknd
-    use clubbvars             , only: up2, vp2, wprtp, wpthlp, wp2, wp3, rtp2, thlp2, rtpthlp, upwp, vpwp, cloud_frac, t_tndcy, qc_tndcy, qv_tndcy, &
-                                      u_tndcy, v_tndcy, lrestart_clubb, rho_ds_zt, rho_ds_zm, thv_ds_zt, thv_ds_zm, invrs_rho_ds_zt, invrs_rho_ds_zm, &
-                                      tracer_tndcy, sclrp2, sclrprtp, sclrpthlp, wpsclrp, relvarg, accre_enhang, qclvarg, edsclr_dim, sclr_dim, rho_ds_zt, &
-                                      rho_ds_zm, rtm_spurious_source, thlm_spurious_source
-    use fill_holes            , only: vertical_integral
-    use numerical_check       , only: calculate_spurious_source
-    use grid_class            , only: gr
+  use clubb_sgs             , only: advance_clubb_sgs, clubb_sgs_setup, clubb_sgs_cleanup, apply_clubb_sgs_tndcy, apply_clubb_sgs_tndcy_scalars, &
+                                    apply_clubb_sgs_tndcy_mom, t2thetal, total_energy
+  use clubb_precision       , only: time_precision, core_rknd
+  use clubbvars             , only: up2, vp2, wprtp, wpthlp, wp2, wp3, rtp2, thlp2, rtpthlp, upwp, vpwp, cloud_frac, t_tndcy, qc_tndcy, qv_tndcy, &
+                                    u_tndcy, v_tndcy, lrestart_clubb, rho_ds_zt, rho_ds_zm, thv_ds_zt, thv_ds_zm, invrs_rho_ds_zt, invrs_rho_ds_zm, &
+                                    tracer_tndcy, sclrp2, sclrprtp, sclrpthlp, wpsclrp, relvarg, accre_enhang, qclvarg, edsclr_dim, sclr_dim, rho_ds_zt, &
+                                    rho_ds_zm, rtm_spurious_source, thlm_spurious_source
+  use fill_holes            , only: vertical_integral
+  use numerical_check       , only: calculate_spurious_source
+  use grid_class            , only: gr
 #endif
 #ifdef ECPP
-    use ecppvars              , only: qlsink, precr, precsolid, &
-                                      area_bnd_final, area_bnd_sum, area_cen_final, area_cen_sum, &
-                                      mass_bnd_final, mass_bnd_sum, rh_cen_sum, qcloud_cen_sum, qice_cen_sum, &
-                                      qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
-                                      wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
-                                      qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
-    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
-    use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
+  use ecppvars              , only: qlsink, precr, precsolid, &
+                                    area_bnd_final, area_bnd_sum, area_cen_final, area_cen_sum, &
+                                    mass_bnd_final, mass_bnd_sum, rh_cen_sum, qcloud_cen_sum, qice_cen_sum, &
+                                    qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
+                                    wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
+                                    qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
+  use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
+  use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif
-    use cam_abortutils        , only: endrun
-    use time_manager          , only: get_nstep
+  use cam_abortutils        , only: endrun
+  use time_manager          , only: get_nstep
 
-    implicit none
-    integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
-    integer , intent(in   ) :: ncrms                            ! Number of CRM instances
-    integer , intent(in   ) :: plev                             ! number of levels in parent model
-    real(r8), intent(in   ) :: dt_gl                            ! global model's time step
-    integer , intent(in   ) :: icol                (ncrms)     ! column identifier (only for lat/lon and random seed)
+  implicit none
+  integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
+  integer , intent(in   ) :: ncrms                            ! Number of CRM instances
+  integer , intent(in   ) :: plev                             ! number of levels in parent model
+  real(r8), intent(in   ) :: dt_gl                            ! global model's time step
+  integer , intent(in   ) :: icol                (ncrms)     ! column identifier (only for lat/lon and random seed)
 #ifdef CRM_STANDALONE
-    real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
-    real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
+  real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
+  real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
-    real(r8), intent(in   ) :: ps                  (ncrms)       ! Global grid surface pressure (Pa)
-    real(r8), intent(in   ) :: pmid                (ncrms,plev)  ! Global grid pressure (Pa)
-    real(r8), intent(in   ) :: pdel                (ncrms,plev)  ! Layer's pressure thickness (Pa)
-    real(r8), intent(in   ) :: phis                (ncrms)       ! Global grid surface geopotential (m2/s2)
-    real(r8), intent(in   ) :: zmid                (ncrms,plev)  ! Global grid height (m)
-    real(r8), intent(in   ) :: zint                (ncrms,plev+1)! Global grid interface height (m)
-    real(r8), intent(in   ) :: qrad_crm            (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
-    real(r8), intent(in   ) :: ocnfrac             (ncrms)       ! area fraction of the ocean
-    real(r8), intent(in   ) :: tau00               (ncrms)       ! large-scale surface stress (N/m2)
-    real(r8), intent(in   ) :: wndls               (ncrms)       ! large-scale surface wind (m/s)
-    real(r8), intent(in   ) :: bflxls              (ncrms)       ! large-scale surface buoyancy flux (K m/s)
-    real(r8), intent(in   ) :: fluxu00             (ncrms)       ! surface momenent fluxes [N/m2]
-    real(r8), intent(in   ) :: fluxv00             (ncrms)       ! surface momenent fluxes [N/m2]
-    real(r8), intent(in   ) :: fluxt00             (ncrms)       ! surface sensible heat fluxes [K Kg/ (m2 s)]
-    real(r8), intent(in   ) :: fluxq00             (ncrms)       ! surface latent heat fluxes [ kg/(m2 s)]
-    real(r8), intent(in   ) :: tl                  (ncrms,plev)  ! Global grid temperature (K)
-    real(r8), intent(in   ) :: ql                  (ncrms,plev)  ! Global grid water vapor (g/g)
-    real(r8), intent(in   ) :: qccl                (ncrms,plev)  ! Global grid cloud liquid water (g/g)
-    real(r8), intent(in   ) :: qiil                (ncrms,plev)  ! Global grid cloud ice (g/g)
-    real(r8), intent(in   ) :: ul                  (ncrms,plev)  ! Global grid u (icrm,m/s)
-    real(r8), intent(in   ) :: vl                  (ncrms,plev)  ! Global grid v (icrm,m/s)
+  real(r8), intent(in   ) :: ps                  (ncrms)       ! Global grid surface pressure (Pa)
+  real(r8), intent(in   ) :: pmid                (ncrms,plev)  ! Global grid pressure (Pa)
+  real(r8), intent(in   ) :: pdel                (ncrms,plev)  ! Layer's pressure thickness (Pa)
+  real(r8), intent(in   ) :: phis                (ncrms)       ! Global grid surface geopotential (m2/s2)
+  real(r8), intent(in   ) :: zmid                (ncrms,plev)  ! Global grid height (m)
+  real(r8), intent(in   ) :: zint                (ncrms,plev+1)! Global grid interface height (m)
+  real(r8), intent(in   ) :: qrad_crm            (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
+  real(r8), intent(in   ) :: ocnfrac             (ncrms)       ! area fraction of the ocean
+  real(r8), intent(in   ) :: tau00               (ncrms)       ! large-scale surface stress (N/m2)
+  real(r8), intent(in   ) :: wndls               (ncrms)       ! large-scale surface wind (m/s)
+  real(r8), intent(in   ) :: bflxls              (ncrms)       ! large-scale surface buoyancy flux (K m/s)
+  real(r8), intent(in   ) :: fluxu00             (ncrms)       ! surface momenent fluxes [N/m2]
+  real(r8), intent(in   ) :: fluxv00             (ncrms)       ! surface momenent fluxes [N/m2]
+  real(r8), intent(in   ) :: fluxt00             (ncrms)       ! surface sensible heat fluxes [K Kg/ (m2 s)]
+  real(r8), intent(in   ) :: fluxq00             (ncrms)       ! surface latent heat fluxes [ kg/(m2 s)]
+  real(r8), intent(in   ) :: tl                  (ncrms,plev)  ! Global grid temperature (K)
+  real(r8), intent(in   ) :: ql                  (ncrms,plev)  ! Global grid water vapor (g/g)
+  real(r8), intent(in   ) :: qccl                (ncrms,plev)  ! Global grid cloud liquid water (g/g)
+  real(r8), intent(in   ) :: qiil                (ncrms,plev)  ! Global grid cloud ice (g/g)
+  real(r8), intent(in   ) :: ul                  (ncrms,plev)  ! Global grid u (icrm,m/s)
+  real(r8), intent(in   ) :: vl                  (ncrms,plev)  ! Global grid v (icrm,m/s)
 #ifdef CLUBB_CRM
-    real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
-    real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
-    real(r8), intent(  out) :: clubb_tk            (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: clubb_tkh           (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: relvar              (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
+  real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
+  real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
+  real(r8), intent(  out) :: clubb_tk            (ncrms,crm_nx, crm_ny, crm_nz)
+  real(r8), intent(  out) :: clubb_tkh           (ncrms,crm_nx, crm_ny, crm_nz)
+  real(r8), intent(  out) :: relvar              (ncrms,crm_nx, crm_ny, crm_nz)
+  real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
+  real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif
-    real(r8), intent(  out) :: crm_tk              (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: crm_tkh             (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(inout) :: cltot               (ncrms)                        ! shaded cloud fraction
-    real(r8), intent(inout) :: clhgh               (ncrms)                        ! shaded cloud fraction
-    real(r8), intent(inout) :: clmed               (ncrms)                        ! shaded cloud fraction
-    real(r8), intent(inout) :: cllow               (ncrms)                        ! shaded cloud fraction
+  real(r8), intent(  out) :: crm_tk              (ncrms,crm_nx, crm_ny, crm_nz)
+  real(r8), intent(  out) :: crm_tkh             (ncrms,crm_nx, crm_ny, crm_nz)
+  real(r8), intent(inout) :: cltot               (ncrms)                        ! shaded cloud fraction
+  real(r8), intent(inout) :: clhgh               (ncrms)                        ! shaded cloud fraction
+  real(r8), intent(inout) :: clmed               (ncrms)                        ! shaded cloud fraction
+  real(r8), intent(inout) :: cllow               (ncrms)                        ! shaded cloud fraction
 #ifdef CRM3D
-    real(r8), intent(  out) :: ultend              (ncrms,plev)                   ! tendency of ul
-    real(r8), intent(  out) :: vltend              (ncrms,plev)                   ! tendency of vl
+  real(r8), intent(  out) :: ultend              (ncrms,plev)                   ! tendency of ul
+  real(r8), intent(  out) :: vltend              (ncrms,plev)                   ! tendency of vl
 #endif
-    real(r8), intent(  out) :: sltend              (ncrms,plev)                   ! tendency of static energy
-    real(r8), intent(  out) :: qltend              (ncrms,plev)                   ! tendency of water vapor
-    real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
-    real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
-    real(r8), intent(inout) :: u_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM u-wind component
-    real(r8), intent(inout) :: v_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM v-wind component
-    real(r8), intent(inout) :: w_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM w-wind component
-    real(r8), intent(inout) :: t_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM temperuture
-    real(r8), intent(inout) :: micro_fields_crm    (ncrms,crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
-    real(r8), intent(  out) :: cld3d_crm           (ncrms,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
-    ! real(r8), intent(  out) :: t_rad               (ncrms,crm_nx, crm_ny, crm_nz) ! rad temperuture
-    ! real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad vapor
-    ! real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud water
-    ! real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice
-    ! real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud fraction
-    real(r8), intent(  out) :: t_rad               (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad temperuture
-    real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad vapor
-    real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud water
-    real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice
-    real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud fraction
+  real(r8), intent(  out) :: sltend              (ncrms,plev)                   ! tendency of static energy
+  real(r8), intent(  out) :: qltend              (ncrms,plev)                   ! tendency of water vapor
+  real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
+  real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
+  real(r8), intent(inout) :: u_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM u-wind component
+  real(r8), intent(inout) :: v_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM v-wind component
+  real(r8), intent(inout) :: w_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM w-wind component
+  real(r8), intent(inout) :: t_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM temperuture
+  real(r8), intent(inout) :: micro_fields_crm    (ncrms,crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
+  real(r8), intent(  out) :: cld3d_crm           (ncrms,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
+  ! real(r8), intent(  out) :: t_rad               (ncrms,crm_nx, crm_ny, crm_nz) ! rad temperuture
+  ! real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad vapor
+  ! real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud water
+  ! real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice
+  ! real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud fraction
+  real(r8), intent(  out) :: t_rad               (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad temperuture
+  real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad vapor
+  real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud water
+  real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice
+  real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud fraction
 #ifdef m2005
-    ! real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg)
-    ! real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
-    ! real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
-    ! real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
-    real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud droplet number (#/kg)
-    real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice crystal number (#/kg)
-    real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
-    real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow crystal number (#/kg)
-    real(r8), intent(  out) :: wvar_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
-    real(r8), intent(  out) :: aut_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
-    real(r8), intent(  out) :: acc_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
-    real(r8), intent(  out) :: evpc_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water evaporation (1/s)
-    real(r8), intent(  out) :: evpr_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! rain evaporation (1/s)
-    real(r8), intent(  out) :: mlt_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel melting (1/s)
-    real(r8), intent(  out) :: sub_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel sublimation (1/s)
-    real(r8), intent(  out) :: dep_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel deposition (1/s)
-    real(r8), intent(  out) :: con_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water condensation(1/s)
-    real(r8), intent(  out) :: aut_crm_a           (ncrms,plev)  ! cloud water autoconversion (1/s)
-    real(r8), intent(  out) :: acc_crm_a           (ncrms,plev)  ! cloud water accretion (1/s)
-    real(r8), intent(  out) :: evpc_crm_a          (ncrms,plev)  ! cloud water evaporation (1/s)
-    real(r8), intent(  out) :: evpr_crm_a          (ncrms,plev)  ! rain evaporation (1/s)
-    real(r8), intent(  out) :: mlt_crm_a           (ncrms,plev)  ! ice, snow, graupel melting (1/s)
-    real(r8), intent(  out) :: sub_crm_a           (ncrms,plev)  ! ice, snow, graupel sublimation (1/s)
-    real(r8), intent(  out) :: dep_crm_a           (ncrms,plev)  ! ice, snow, graupel deposition (1/s)
-    real(r8), intent(  out) :: con_crm_a           (ncrms,plev)  ! cloud water condensation(1/s)
+  ! real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg)
+  ! real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
+  ! real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
+  ! real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
+  real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud droplet number (#/kg)
+  real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice crystal number (#/kg)
+  real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
+  real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow crystal number (#/kg)
+  real(r8), intent(  out) :: wvar_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
+  real(r8), intent(  out) :: aut_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
+  real(r8), intent(  out) :: acc_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
+  real(r8), intent(  out) :: evpc_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water evaporation (1/s)
+  real(r8), intent(  out) :: evpr_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! rain evaporation (1/s)
+  real(r8), intent(  out) :: mlt_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel melting (1/s)
+  real(r8), intent(  out) :: sub_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel sublimation (1/s)
+  real(r8), intent(  out) :: dep_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel deposition (1/s)
+  real(r8), intent(  out) :: con_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water condensation(1/s)
+  real(r8), intent(  out) :: aut_crm_a           (ncrms,plev)  ! cloud water autoconversion (1/s)
+  real(r8), intent(  out) :: acc_crm_a           (ncrms,plev)  ! cloud water accretion (1/s)
+  real(r8), intent(  out) :: evpc_crm_a          (ncrms,plev)  ! cloud water evaporation (1/s)
+  real(r8), intent(  out) :: evpr_crm_a          (ncrms,plev)  ! rain evaporation (1/s)
+  real(r8), intent(  out) :: mlt_crm_a           (ncrms,plev)  ! ice, snow, graupel melting (1/s)
+  real(r8), intent(  out) :: sub_crm_a           (ncrms,plev)  ! ice, snow, graupel sublimation (1/s)
+  real(r8), intent(  out) :: dep_crm_a           (ncrms,plev)  ! ice, snow, graupel deposition (1/s)
+  real(r8), intent(  out) :: con_crm_a           (ncrms,plev)  ! cloud water condensation(1/s)
 #endif
-    real(r8), intent(  out) :: precc               (ncrms)       ! convective precip rate (m/s)
-    real(r8), intent(  out) :: precl               (ncrms)       ! stratiform precip rate (m/s)
-    real(r8), intent(  out) :: cld                 (ncrms,plev)  ! cloud fraction
-    real(r8), intent(  out) :: cldtop              (ncrms,plev)  ! cloud top pdf
-    real(r8), intent(  out) :: gicewp              (ncrms,plev)  ! ice water path
-    real(r8), intent(  out) :: gliqwp              (ncrms,plev)  ! ice water path
-    real(r8), intent(  out) :: mc                  (ncrms,plev)  ! cloud mass flux
-    real(r8), intent(  out) :: mcup                (ncrms,plev)  ! updraft cloud mass flux
-    real(r8), intent(  out) :: mcdn                (ncrms,plev)  ! downdraft cloud mass flux
-    real(r8), intent(  out) :: mcuup               (ncrms,plev)  ! unsat updraft cloud mass flux
-    real(r8), intent(  out) :: mcudn               (ncrms,plev)  ! unsat downdraft cloud mass flux
-    real(r8), intent(  out) :: crm_qc              (ncrms,plev)  ! mean cloud water
-    real(r8), intent(  out) :: crm_qi              (ncrms,plev)  ! mean cloud ice
-    real(r8), intent(  out) :: crm_qs              (ncrms,plev)  ! mean snow
-    real(r8), intent(  out) :: crm_qg              (ncrms,plev)  ! mean graupel
+  real(r8), intent(  out) :: precc               (ncrms)       ! convective precip rate (m/s)
+  real(r8), intent(  out) :: precl               (ncrms)       ! stratiform precip rate (m/s)
+  real(r8), intent(  out) :: cld                 (ncrms,plev)  ! cloud fraction
+  real(r8), intent(  out) :: cldtop              (ncrms,plev)  ! cloud top pdf
+  real(r8), intent(  out) :: gicewp              (ncrms,plev)  ! ice water path
+  real(r8), intent(  out) :: gliqwp              (ncrms,plev)  ! ice water path
+  real(r8), intent(  out) :: mc                  (ncrms,plev)  ! cloud mass flux
+  real(r8), intent(  out) :: mcup                (ncrms,plev)  ! updraft cloud mass flux
+  real(r8), intent(  out) :: mcdn                (ncrms,plev)  ! downdraft cloud mass flux
+  real(r8), intent(  out) :: mcuup               (ncrms,plev)  ! unsat updraft cloud mass flux
+  real(r8), intent(  out) :: mcudn               (ncrms,plev)  ! unsat downdraft cloud mass flux
+  real(r8), intent(  out) :: crm_qc              (ncrms,plev)  ! mean cloud water
+  real(r8), intent(  out) :: crm_qi              (ncrms,plev)  ! mean cloud ice
+  real(r8), intent(  out) :: crm_qs              (ncrms,plev)  ! mean snow
+  real(r8), intent(  out) :: crm_qg              (ncrms,plev)  ! mean graupel
     real(r8), intent(  out) :: crm_qr              (ncrms,plev)  ! mean rain
 #ifdef m2005
-    real(r8), intent(  out) :: crm_nc              (ncrms,plev)  ! mean cloud water  (#/kg)
-    real(r8), intent(  out) :: crm_ni              (ncrms,plev)  ! mean cloud ice    (#/kg)
-    real(r8), intent(  out) :: crm_ns              (ncrms,plev)  ! mean snow         (#/kg)
-    real(r8), intent(  out) :: crm_ng              (ncrms,plev)  ! mean graupel      (#/kg)
-    real(r8), intent(  out) :: crm_nr              (ncrms,plev)  ! mean rain         (#/kg)
+  real(r8), intent(  out) :: crm_nc              (ncrms,plev)  ! mean cloud water  (#/kg)
+  real(r8), intent(  out) :: crm_ni              (ncrms,plev)  ! mean cloud ice    (#/kg)
+  real(r8), intent(  out) :: crm_ns              (ncrms,plev)  ! mean snow         (#/kg)
+  real(r8), intent(  out) :: crm_ng              (ncrms,plev)  ! mean graupel      (#/kg)
+  real(r8), intent(  out) :: crm_nr              (ncrms,plev)  ! mean rain         (#/kg)
 #ifdef MODAL_AERO
-    real(r8), intent(in   )  :: naermod            (ncrms,plev, ntot_amode)    ! Aerosol number concentration [/m3]
-    real(r8), intent(in   )  :: vaerosol           (ncrms,plev, ntot_amode)    ! aerosol volume concentration [m3/m3]
-    real(r8), intent(in   )  :: hygro              (ncrms,plev, ntot_amode)    ! hygroscopicity of aerosol mode
+  real(r8), intent(in   )  :: naermod            (ncrms,plev, ntot_amode)    ! Aerosol number concentration [/m3]
+  real(r8), intent(in   )  :: vaerosol           (ncrms,plev, ntot_amode)    ! aerosol volume concentration [m3/m3]
+  real(r8), intent(in   )  :: hygro              (ncrms,plev, ntot_amode)    ! hygroscopicity of aerosol mode
 #endif
 #endif
-    real(r8), intent(  out) :: mu_crm              (ncrms,plev)       ! mass flux up
-    real(r8), intent(  out) :: md_crm              (ncrms,plev)       ! mass flux down
-    real(r8), intent(  out) :: du_crm              (ncrms,plev)       ! mass detrainment from updraft
-    real(r8), intent(  out) :: eu_crm              (ncrms,plev)       ! mass entrainment from updraft
-    real(r8), intent(  out) :: ed_crm              (ncrms,plev)       ! mass detrainment from downdraft
-    real(r8)                :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
-    real(r8), intent(  out) :: jt_crm              (ncrms)            ! index of cloud (convection) top
-    real(r8), intent(  out) :: mx_crm              (ncrms)            ! index of cloud (convection) bottom
-    real(r8)                :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
-    real(r8)                :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
-    real(r8), intent(  out) :: flux_qt             (ncrms,plev)       ! nonprecipitating water flux           [kg/m2/s]
-    real(r8), intent(  out) :: fluxsgs_qt          (ncrms,plev)       ! sgs nonprecipitating water flux    [kg/m2/s]
-    real(r8), intent(  out) :: tkez                (ncrms,plev)       ! tke profile               [kg/m/s2]
-    real(r8), intent(  out) :: tkesgsz             (ncrms,plev)       ! sgs tke profile        [kg/m/s2]
-    real(r8), intent(  out) :: tkz                 (ncrms,plev)       ! tk profile                [m2/s]
-    real(r8), intent(  out) :: flux_u              (ncrms,plev)       ! x-momentum flux          [m2/s2]
-    real(r8), intent(  out) :: flux_v              (ncrms,plev)       ! y-momentum flux          [m2/s2]
-    real(r8), intent(  out) :: flux_qp             (ncrms,plev)       ! precipitating water flux [kg/m2/s or mm/s]
-    real(r8), intent(  out) :: pflx                (ncrms,plev)       ! precipitation flux      [m/s]
-    real(r8), intent(  out) :: qt_ls               (ncrms,plev)       ! tendency of nonprec water due to large-scale  [kg/kg/s]
-    real(r8), intent(  out) :: qt_trans            (ncrms,plev)       ! tendency of nonprec water due to transport  [kg/kg/s]
-    real(r8), intent(  out) :: qp_trans            (ncrms,plev)       ! tendency of prec water due to transport [kg/kg/s]
-    real(r8), intent(  out) :: qp_fall             (ncrms,plev)       ! tendency of prec water due to fall-out   [kg/kg/s]
-    real(r8), intent(  out) :: qp_src              (ncrms,plev)       ! tendency of prec water due to conversion  [kg/kg/s]
-    real(r8), intent(  out) :: qp_evp              (ncrms,plev)       ! tendency of prec water due to evp         [kg/kg/s]
-    real(r8), intent(  out) :: t_ls                (ncrms,plev)       ! tendency of lwse  due to large-scale        [kg/kg/s] ???
-    real(r8), intent(  out) :: prectend            (ncrms)            ! column integrated tendency in precipitating water+ice (kg/m2/s)
-    real(r8), intent(  out) :: precstend           (ncrms)            ! column integrated tendency in precipitating ice (kg/m2/s)
-    real(r8), intent(  out) :: precsc              (ncrms)            ! convective snow rate (m/s)
-    real(r8), intent(  out) :: precsl              (ncrms)            ! stratiform snow rate (m/s)
-    real(r8), intent(  out) :: taux_crm            (ncrms)            ! zonal CRM surface stress perturbation (N/m2)
-    real(r8), intent(  out) :: tauy_crm            (ncrms)            ! merid CRM surface stress perturbation (N/m2)
-    real(r8), intent(  out) :: z0m                 (ncrms)            ! surface stress (N/m2)
-    real(r8), intent(  out) :: timing_factor       (ncrms)            ! crm cpu efficiency
-    real(r8), intent(  out) :: qc_crm              (ncrms,crm_nx, crm_ny, crm_nz)! CRM cloud water
-    real(r8), intent(  out) :: qi_crm              (ncrms,crm_nx, crm_ny, crm_nz)! CRM cloud ice
-    real(r8), intent(  out) :: qpc_crm             (ncrms,crm_nx, crm_ny, crm_nz)! CRM precip water
-    real(r8), intent(  out) :: qpi_crm             (ncrms,crm_nx, crm_ny, crm_nz)! CRM precip ice
-    real(r8), intent(  out) :: prec_crm            (ncrms,crm_nx, crm_ny)        ! CRM precipiation rate at layer center
+  real(r8), intent(  out) :: mu_crm              (ncrms,plev)       ! mass flux up
+  real(r8), intent(  out) :: md_crm              (ncrms,plev)       ! mass flux down
+  real(r8), intent(  out) :: du_crm              (ncrms,plev)       ! mass detrainment from updraft
+  real(r8), intent(  out) :: eu_crm              (ncrms,plev)       ! mass entrainment from updraft
+  real(r8), intent(  out) :: ed_crm              (ncrms,plev)       ! mass detrainment from downdraft
+  real(r8)                :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
+  real(r8), intent(  out) :: jt_crm              (ncrms)            ! index of cloud (convection) top
+  real(r8), intent(  out) :: mx_crm              (ncrms)            ! index of cloud (convection) bottom
+  real(r8)                :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
+  real(r8)                :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
+  real(r8), intent(  out) :: flux_qt             (ncrms,plev)       ! nonprecipitating water flux           [kg/m2/s]
+  real(r8), intent(  out) :: fluxsgs_qt          (ncrms,plev)       ! sgs nonprecipitating water flux    [kg/m2/s]
+  real(r8), intent(  out) :: tkez                (ncrms,plev)       ! tke profile               [kg/m/s2]
+  real(r8), intent(  out) :: tkesgsz             (ncrms,plev)       ! sgs tke profile        [kg/m/s2]
+  real(r8), intent(  out) :: tkz                 (ncrms,plev)       ! tk profile                [m2/s]
+  real(r8), intent(  out) :: flux_u              (ncrms,plev)       ! x-momentum flux          [m2/s2]
+  real(r8), intent(  out) :: flux_v              (ncrms,plev)       ! y-momentum flux          [m2/s2]
+  real(r8), intent(  out) :: flux_qp             (ncrms,plev)       ! precipitating water flux [kg/m2/s or mm/s]
+  real(r8), intent(  out) :: pflx                (ncrms,plev)       ! precipitation flux      [m/s]
+  real(r8), intent(  out) :: qt_ls               (ncrms,plev)       ! tendency of nonprec water due to large-scale  [kg/kg/s]
+  real(r8), intent(  out) :: qt_trans            (ncrms,plev)       ! tendency of nonprec water due to transport  [kg/kg/s]
+  real(r8), intent(  out) :: qp_trans            (ncrms,plev)       ! tendency of prec water due to transport [kg/kg/s]
+  real(r8), intent(  out) :: qp_fall             (ncrms,plev)       ! tendency of prec water due to fall-out   [kg/kg/s]
+  real(r8), intent(  out) :: qp_src              (ncrms,plev)       ! tendency of prec water due to conversion  [kg/kg/s]
+  real(r8), intent(  out) :: qp_evp              (ncrms,plev)       ! tendency of prec water due to evp         [kg/kg/s]
+  real(r8), intent(  out) :: t_ls                (ncrms,plev)       ! tendency of lwse  due to large-scale        [kg/kg/s] ???
+  real(r8), intent(  out) :: prectend            (ncrms)            ! column integrated tendency in precipitating water+ice (kg/m2/s)
+  real(r8), intent(  out) :: precstend           (ncrms)            ! column integrated tendency in precipitating ice (kg/m2/s)
+  real(r8), intent(  out) :: precsc              (ncrms)            ! convective snow rate (m/s)
+  real(r8), intent(  out) :: precsl              (ncrms)            ! stratiform snow rate (m/s)
+  real(r8), intent(  out) :: taux_crm            (ncrms)            ! zonal CRM surface stress perturbation (N/m2)
+  real(r8), intent(  out) :: tauy_crm            (ncrms)            ! merid CRM surface stress perturbation (N/m2)
+  real(r8), intent(  out) :: z0m                 (ncrms)            ! surface stress (N/m2)
+  real(r8), intent(  out) :: timing_factor       (ncrms)            ! crm cpu efficiency
+  real(r8), intent(  out) :: qc_crm              (ncrms,crm_nx, crm_ny, crm_nz)! CRM cloud water
+  real(r8), intent(  out) :: qi_crm              (ncrms,crm_nx, crm_ny, crm_nz)! CRM cloud ice
+  real(r8), intent(  out) :: qpc_crm             (ncrms,crm_nx, crm_ny, crm_nz)! CRM precip water
+  real(r8), intent(  out) :: qpi_crm             (ncrms,crm_nx, crm_ny, crm_nz)! CRM precip ice
+  real(r8), intent(  out) :: prec_crm            (ncrms,crm_nx, crm_ny)        ! CRM precipiation rate at layer center
 #ifdef ECPP
-    real(r8), intent(  out) :: acen                (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for each sub-sub class for full time period
-    real(r8), intent(  out) :: acen_tf             (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for end-portion of time period
-    real(r8), intent(  out) :: rhcen               (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! relative humidity (0-1)
-    real(r8), intent(  out) :: qcloudcen           (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water (kg/kg)
-    real(r8), intent(  out) :: qicecen             (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud ice (kg/kg)
-    real(r8), intent(  out) :: qlsinkcen           (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (/s??)
-    real(r8), intent(  out) :: precrcen            (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! liquid (rain) precipitation rate (kg/m2/s)
-    real(r8), intent(  out) :: precsolidcen        (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! solid (rain) precipitation rate (kg/m2/s)
-    real(r8), intent(  out) :: qlsink_bfcen        (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated
-                                                                                                   ! cloud water before precipitatinog (/s)
-    real(r8), intent(  out) :: qlsink_avgcen       (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated
-                                                                                                   ! from praincen and qlcoudcen averaged over
-                                                                                                   ! ntavg1_ss time step (/s??)
-    real(r8), intent(  out) :: praincen            (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (kg/kg/s)
-    real(r8), intent(  out) :: wwqui_cen           (ncrms,plev)                                   ! vertical velocity variance in quiescent class (m2/s2)
-    real(r8), intent(  out) :: wwqui_cloudy_cen    (ncrms,plev)                                   ! vertical velocity variance in quiescent, and cloudy class (m2/s2) at layer boundary
-    real(r8), intent(  out) :: abnd                (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! cloud fraction for each sub-sub class for full time period
-    real(r8), intent(  out) :: abnd_tf             (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! cloud fraction for end-portion of time period
-    real(r8), intent(  out) :: massflxbnd          (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
-    real(r8), intent(  out) :: wupthresh_bnd       (ncrms,plev+1)                                 ! vertical velocity threshold for updraft (m/s)
-    real(r8), intent(  out) :: wdownthresh_bnd     (ncrms,plev+1)                                 ! vertical velocity threshold for downdraft (m/s)
-    real(r8), intent(  out) :: wwqui_bnd           (ncrms,plev+1)                                 ! vertical velocity variance in quiescent class (m2/s2)
-    real(r8), intent(  out) :: wwqui_cloudy_bnd    (ncrms,plev+1)                                 ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
+  real(r8), intent(  out) :: acen                (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for each sub-sub class for full time period
+  real(r8), intent(  out) :: acen_tf             (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for end-portion of time period
+  real(r8), intent(  out) :: rhcen               (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! relative humidity (0-1)
+  real(r8), intent(  out) :: qcloudcen           (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water (kg/kg)
+  real(r8), intent(  out) :: qicecen             (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud ice (kg/kg)
+  real(r8), intent(  out) :: qlsinkcen           (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (/s??)
+  real(r8), intent(  out) :: precrcen            (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! liquid (rain) precipitation rate (kg/m2/s)
+  real(r8), intent(  out) :: precsolidcen        (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! solid (rain) precipitation rate (kg/m2/s)
+  real(r8), intent(  out) :: qlsink_bfcen        (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated
+                                                                                                 ! cloud water before precipitatinog (/s)
+  real(r8), intent(  out) :: qlsink_avgcen       (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated
+                                                                                                 ! from praincen and qlcoudcen averaged over
+                                                                                                 ! ntavg1_ss time step (/s??)
+  real(r8), intent(  out) :: praincen            (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (kg/kg/s)
+  real(r8), intent(  out) :: wwqui_cen           (ncrms,plev)                                   ! vertical velocity variance in quiescent class (m2/s2)
+  real(r8), intent(  out) :: wwqui_cloudy_cen    (ncrms,plev)                                   ! vertical velocity variance in quiescent, and cloudy class (m2/s2) at layer boundary
+  real(r8), intent(  out) :: abnd                (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! cloud fraction for each sub-sub class for full time period
+  real(r8), intent(  out) :: abnd_tf             (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! cloud fraction for end-portion of time period
+  real(r8), intent(  out) :: massflxbnd          (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
+  real(r8), intent(  out) :: wupthresh_bnd       (ncrms,plev+1)                                 ! vertical velocity threshold for updraft (m/s)
+  real(r8), intent(  out) :: wdownthresh_bnd     (ncrms,plev+1)                                 ! vertical velocity threshold for downdraft (m/s)
+  real(r8), intent(  out) :: wwqui_bnd           (ncrms,plev+1)                                 ! vertical velocity variance in quiescent class (m2/s2)
+  real(r8), intent(  out) :: wwqui_cloudy_bnd    (ncrms,plev+1)                                 ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
 #endif
+  real(r8), intent(  out) :: qtot                (ncrms,20)
 
-!  Local space:
-    real(r8), intent(  out) :: qtot                (ncrms,20)
+  !Parameters
+  real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt ! maxumum ampitude of the l.s. wind
+  real(r8),       parameter :: wmin = 2.                ! minimum up/downdraft velocity for stat
+  real(crm_rknd), parameter :: cwp_threshold = 0.001    ! threshold for cloud condensate for shaded fraction calculation
 
-    !  Local space:
-    real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt ! maxumum ampitude of the l.s. wind
-    real(r8),       parameter :: wmin = 2.                ! minimum up/downdraft velocity for stat
-    real(crm_rknd), parameter :: cwp_threshold = 0.001    ! threshold for cloud condensate for shaded fraction calculation
-    real(crm_rknd)  :: t00(ncrms)
-    real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(ncrms,plev), vln(ncrms,plev)
-    real(crm_rknd)  :: cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
-    real(r8)        :: factor_xy, idt_gl
-    real(crm_rknd)  :: tmp1, tmp2
-    real(crm_rknd)  :: u2z,v2z,w2z
-    integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, icrm
-    integer         :: kx
-    logical         :: flag_top(nx,ny)
-    real(crm_rknd)  :: bflx(ncrms), wnd(ncrms), qsat, omg
-    real(crm_rknd)  :: colprec(ncrms),colprecs(ncrms)
-    ! real(r8)        :: zs                ! surface elevation
-    integer         :: igstep            ! GCM time steps
-    integer         :: iseed             ! seed for random perturbation
-    integer         :: gcolindex(pcols)  ! array of global latitude indices
-    real(crm_rknd)  :: cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
-    ! real(crm_rknd)  :: ntotal_step
-    integer         :: myrank, ierr
-    real(crm_rknd)  :: fcorz      ! Vertical Coriolis parameter
-    real(crm_rknd)  :: fcor     ! Coriolis parameter
+  !Arrays
+  real(crm_rknd), allocatable :: t00      (:)
+  real(crm_rknd), allocatable :: tln      (:)
+  real(crm_rknd), allocatable :: qln      (:)
+  real(crm_rknd), allocatable :: qccln    (:)
+  real(crm_rknd), allocatable :: qiiln    (:)
+  real(crm_rknd), allocatable :: uln      (:,:)
+  real(crm_rknd), allocatable :: vln      (:,:)
+  real(crm_rknd), allocatable :: cwp      (:,:)
+  real(crm_rknd), allocatable :: cwph     (:,:)
+  real(crm_rknd), allocatable :: cwpm     (:,:)
+  real(crm_rknd), allocatable :: cwpl     (:,:)
+  logical       , allocatable :: flag_top (:,:)
+  real(crm_rknd), allocatable :: bflx     (:)
+  real(crm_rknd), allocatable :: wnd      (:)
+  real(crm_rknd), allocatable :: colprec  (:)
+  real(crm_rknd), allocatable :: colprecs (:)
+  integer       , allocatable :: gcolindex(:)  ! array of global latitude indices
+  real(crm_rknd), allocatable :: cltemp   (:,:)
+  real(crm_rknd), allocatable :: cmtemp   (:,:)
+  real(crm_rknd), allocatable :: chtemp   (:,:)
+  real(crm_rknd), allocatable :: cttemp   (:,:)
 #ifdef CLUBB_CRM
-    !Array indicies for spurious RTM check
-    real(kind=core_rknd) :: rtm_integral_before (nx,ny), rtm_integral_after (nx,ny), rtm_flux_top, rtm_flux_sfc
-    real(kind=core_rknd) :: thlm_integral_before(nx,ny), thlm_integral_after(nx,ny), thlm_before(nzm), thlm_after(nzm), thlm_flux_top, thlm_flux_sfc
-    real(kind=core_rknd) :: rtm_column(nzm) ! Total water (vapor + liquid)     [kg/kg]
+  !Array indicies for spurious RTM check
+  real(kind=core_rknd), allocatable :: rtm_integral_before (:,:)
+  real(kind=core_rknd), allocatable :: rtm_integral_after  (:,:)
+  real(kind=core_rknd), allocatable :: thlm_integral_before(:,:)
+  real(kind=core_rknd), allocatable :: thlm_integral_after (:,:)
+  real(kind=core_rknd), allocatable :: thlm_before         (:)
+  real(kind=core_rknd), allocatable :: thlm_after          (:)
+  real(kind=core_rknd), allocatable :: rtm_column          (:) ! Total water (vapor + liquid)     [kg/kg]
 #endif
+
+  !Scalars
+#ifdef CLUBB_CRM
+  real(kind=core_rknd) :: rtm_flux_top, rtm_flux_sfc
+  real(kind=core_rknd) :: thlm_flux_top, thlm_flux_sfc
+#endif
+  real(r8)        :: factor_xy, idt_gl
+  real(crm_rknd)  :: tmp1, tmp2
+  real(crm_rknd)  :: u2z,v2z,w2z
+  integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, icrm
+  integer         :: kx
+  real(crm_rknd)  :: qsat, omg
+  ! real(r8)        :: zs                ! surface elevation
+  integer         :: igstep            ! GCM time steps
+  integer         :: iseed             ! seed for random perturbation
+  ! real(crm_rknd)  :: ntotal_step
+  integer         :: myrank, ierr
+  real(crm_rknd)  :: fcorz      ! Vertical Coriolis parameter
+  real(crm_rknd)  :: fcor     ! Coriolis parameter
 
   ! whannah - variables for new radiation group method
   real(crm_rknd) :: crm_nx_rad_fac
   real(crm_rknd) :: crm_ny_rad_fac
   integer        :: i_rad
   integer        :: j_rad
+
+  !Allocate local arrays
+  allocate( t00      (ncrms)      )
+  allocate( tln      (plev)       )
+  allocate( qln      (plev)       )
+  allocate( qccln    (plev)       )
+  allocate( qiiln    (plev)       )
+  allocate( uln      (ncrms,plev) )
+  allocate( vln      (ncrms,plev) )
+  allocate( cwp      (nx,ny)      )
+  allocate( cwph     (nx,ny)      )
+  allocate( cwpm     (nx,ny)      )
+  allocate( cwpl     (nx,ny)      )
+  allocate( flag_top (nx,ny)      )
+  allocate( bflx     (ncrms)      )
+  allocate( wnd      (ncrms)      )
+  allocate( colprec  (ncrms)      )
+  allocate( colprecs (ncrms)      )
+  allocate( gcolindex(pcols)      )
+  allocate( cltemp   (nx,ny)      )
+  allocate( cmtemp   (nx,ny)      )
+  allocate( chtemp   (nx,ny)      )
+  allocate( cttemp   (nx,ny)      )
+#ifdef CLUBB_CRM
+  allocate( rtm_integral_before (nx,ny) )
+  allocate( rtm_integral_after  (nx,ny) )
+  allocate( thlm_integral_before(nx,ny) )
+  allocate( thlm_integral_after (nx,ny) )
+  allocate( thlm_before         (nzm)   )
+  allocate( thlm_after          (nzm)   )
+  allocate( rtm_column          (nzm)   )
+#endif
+
+  !Initialize local arrays to zero
+  t00       = 0
+  tln       = 0
+  qln       = 0
+  qccln     = 0
+  qiiln     = 0
+  uln       = 0
+  vln       = 0
+  cwp       = 0
+  cwph      = 0
+  cwpm      = 0
+  cwpl      = 0
+  flag_top  = .false.
+  bflx      = 0
+  wnd       = 0
+  colprec   = 0
+  colprecs  = 0
+  gcolindex = 0
+  cltemp    = 0
+  cmtemp    = 0
+  chtemp    = 0
+  cttemp    = 0
+#ifdef CLUBB_CRM
+  rtm_integral_before  = 0
+  rtm_integral_after   = 0
+  thlm_integral_before = 0
+  thlm_integral_after  = 0
+  thlm_before          = 0
+  thlm_after           = 0
+  rtm_column           = 0
+#endif
 
   call allocate_grid(ncrms)
   call allocate_params(ncrms)
@@ -1657,6 +1727,37 @@ subroutine crm(lchnk, icol, ncrms, &
   call deallocate_tracers()
   call deallocate_sgs()
   call deallocate_micro_params()
+
+  deallocate( t00       )
+  deallocate( tln       )
+  deallocate( qln       )
+  deallocate( qccln     )
+  deallocate( qiiln     )
+  deallocate( uln       )
+  deallocate( vln       )
+  deallocate( cwp       )
+  deallocate( cwph      )
+  deallocate( cwpm      )
+  deallocate( cwpl      )
+  deallocate( flag_top  )
+  deallocate( bflx      )
+  deallocate( wnd       )
+  deallocate( colprec   )
+  deallocate( colprecs  )
+  deallocate( gcolindex )
+  deallocate( cltemp    )
+  deallocate( cmtemp    )
+  deallocate( chtemp    )
+  deallocate( cttemp    )
+#ifdef CLUBB_CRM
+  deallocate( rtm_integral_before  )
+  deallocate( rtm_integral_after   )
+  deallocate( thlm_integral_before )
+  deallocate( thlm_integral_after  )
+  deallocate( thlm_before          )
+  deallocate( thlm_after           )
+  deallocate( rtm_column           )
+#endif
 
   end subroutine crm
 
