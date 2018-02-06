@@ -184,7 +184,7 @@ CONTAINS
       if(docloud) then
 #endif
 #ifndef CRM
-        call cloud(q,qn,qp,ncrms,icrm)
+        call cloud(q,qn,qp,ncrms)
 #endif
         do icrm = 1 , ncrms
           call micro_diagnose(ncrms,icrm)
@@ -273,28 +273,32 @@ CONTAINS
     integer, intent(in) :: ncrms
     integer :: icrm
 
-      ! Update bulk coefficient
+    ! Update bulk coefficient
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
 
-    do icrm = 1 , ncrms
-      if(docloud) then
-        call cloud(q,qn,qp,ncrms,icrm)
+    if(docloud) then
+      call cloud(q,qn,qp,ncrms)
+      do icrm = 1 , ncrms
         if(doprecip) call precip_proc(qpsrc,qpevp,qp,q,qn,ncrms,icrm)
         call micro_diagnose(ncrms,icrm)
-      end if
-      if(dosmoke) then
+      enddo
+    end if
+    if(dosmoke) then
+      do icrm = 1 , ncrms
         call micro_diagnose(ncrms,icrm)
-      end if
+      enddo
+    end if
 #ifdef CLUBB_CRM
-      if ( doclubb ) then ! -dschanen UWM 21 May 2008
+    if ( doclubb ) then ! -dschanen UWM 21 May 2008
+      do icrm = 1 , ncrms
         CF3D(icrm,:,:, 1:nzm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
         ! so it is set here first  +++mhwang
         !     if(doprecip) call precip_proc()
         if(doprecip) call precip_proc_clubb(ncrms,icrm)
         call micro_diagnose(ncrms,icrm)
-      end if
+      enddo
+    end if
 #endif /*CLUBB_CRM*/
-    enddo
 
   end subroutine micro_proc
 
