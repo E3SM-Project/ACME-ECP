@@ -16,19 +16,26 @@ contains
     implicit none
     integer, intent(in) :: ncrms
 
-    integer i,j,k, kb, kc, kmax(ncrms), kmin(ncrms), ici, icrm
+    integer i,j,k, kb, kc, ici, icrm
+    integer, allocatable :: kmax(:), kmin(:)
     real(crm_rknd) coef,dqi,lat_heat,vt_ice
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
-    real(crm_rknd) fz(ncrms,nx,ny,nz)
+    real(crm_rknd), allocatable :: fz(:,:,:,:)
 
-    kmax(:)=0
-    kmin(:)=nzm+1
+    allocate(kmax(ncrms))
+    allocate(kmin(ncrms))
+    allocate(fz(ncrms,nx,ny,nz))
 
-
-    do k = 1,nzm
-      do j = 1, ny
-        do i = 1, nx
-          do icrm = 1 , ncrms
+    !$acc parallel loop gang vector
+    do icrm = 1 , ncrms
+      kmax(icrm)=0
+      kmin(icrm)=nzm+1
+      !$acc loop seq
+      do k = 1,nzm
+        !$acc loop seq
+        do j = 1, ny
+          !$acc loop seq
+          do i = 1, nx
             if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.0..and. tabs(icrm,i,j,k).lt.273.15) then
               kmin(icrm) = min(kmin(icrm),k)
               kmax(icrm) = max(kmax(icrm),k)
@@ -38,20 +45,33 @@ contains
       end do
     end do
 
+    !$acc parallel loop gang vector collapse(2)
     do k = 1,nzm
-      qifall(:,k) = 0.
-      tlatqi(:,k) = 0.
+      do icrm = 1 , ncrms
+        qifall(icrm,k) = 0.
+        tlatqi(icrm,k) = 0.
+      end do
     end do
 
     if(index_cloud_ice.eq.-1) return
 
     !call t_startf ('ice_fall')
 
-    fz = 0.
+    !$acc parallel loop gang vector collapse(4)
+    do k = 1 , nz
+      do j = 1 , ny
+        do i = 1 , nx
+          do icrm = 1 , ncrms
+            fz(icrm,i,j,k) = 0.
+          enddo
+        enddo
+      enddo
+    enddo
 
     ! Compute cloud ice flux (using flux limited advection scheme, as in
     ! chapter 6 of Finite Volume Methods for Hyperbolic Problems by R.J.
     ! LeVeque, Cambridge University Press, 2002).
+    !$acc parallel loop gang vector collapse(4)
     do k = 1,nzm+1
       do j = 1,ny
         do i = 1,nx
@@ -95,10 +115,19 @@ contains
         end do
       end do
     end do
-    fz(:,:,:,nz) = 0.
+
+    !$acc parallel loop gang vector collapse(3)
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          fz(icrm,i,j,nz) = 0.
+        enddo
+      enddo
+    enddo
 
     ici = index_cloud_ice
 
+    !$acc parallel loop gang vector collapse(4)
     do k=1,nzm+1
       do j=1,ny
         do i=1,nx
@@ -127,6 +156,7 @@ contains
       end do
     end do
 
+    !$acc parallel loop gang vector collapse(3)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -140,6 +170,10 @@ contains
     end do
 
     !call t_stopf ('ice_fall')
+
+    deallocate(kmax)
+    deallocate(kmin)
+    deallocate(fz)
 
   end subroutine ice_fall
 
