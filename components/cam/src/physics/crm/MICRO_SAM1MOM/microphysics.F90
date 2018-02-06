@@ -186,14 +186,10 @@ CONTAINS
 #ifndef CRM
         call cloud(q,qn,qp,ncrms)
 #endif
-        do icrm = 1 , ncrms
-          call micro_diagnose(ncrms,icrm)
-        enddo
+        call micro_diagnose(ncrms)
       end if
       if(dosmoke) then
-        do icrm = 1 , ncrms
-          call micro_diagnose(ncrms,icrm)
-        enddo
+        call micro_diagnose(ncrms)
       end if
 
     end if
@@ -279,14 +275,10 @@ CONTAINS
     if(docloud) then
       call cloud(q,qn,qp,ncrms)
       if(doprecip) call precip_proc(qpsrc,qpevp,qp,q,qn,ncrms)
-      do icrm = 1 , ncrms
-        call micro_diagnose(ncrms,icrm)
-      enddo
+      call micro_diagnose(ncrms)
     end if
     if(dosmoke) then
-      do icrm = 1 , ncrms
-        call micro_diagnose(ncrms,icrm)
-      enddo
+      call micro_diagnose(ncrms)
     end if
 #ifdef CLUBB_CRM
     if ( doclubb ) then ! -dschanen UWM 21 May 2008
@@ -295,8 +287,8 @@ CONTAINS
         ! so it is set here first  +++mhwang
         !     if(doprecip) call precip_proc()
         if(doprecip) call precip_proc_clubb(ncrms,icrm)
-        call micro_diagnose(ncrms,icrm)
       enddo
+      call micro_diagnose(ncrms)
     end if
 #endif /*CLUBB_CRM*/
 
@@ -305,31 +297,30 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! Diagnose arrays nessesary for dynamical core and statistics:
   !
-  subroutine micro_diagnose(ncrms,icrm)
+  subroutine micro_diagnose(ncrms)
 
     use vars
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
 
     real(crm_rknd) omn, omp
-    integer i,j,k
+    integer i,j,k,icrm
 
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
-          omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
-          qcl(icrm,i,j,k) = qn(icrm,i,j,k)*omn
-          qci(icrm,i,j,k) = qn(icrm,i,j,k)*(1.-omn)
-          omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
-          qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
-          qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
+          do icrm = 1 , ncrms
+            qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
+            omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
+            qcl(icrm,i,j,k) = qn(icrm,i,j,k)*omn
+            qci(icrm,i,j,k) = qn(icrm,i,j,k)*(1.-omn)
+            omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
+            qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
+            qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
+          end do
         end do
       end do
     end do
-
-
-
   end subroutine micro_diagnose
 
 #ifdef CLUBB_CRM
