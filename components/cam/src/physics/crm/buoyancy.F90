@@ -8,26 +8,29 @@ contains
     use params
     implicit none
     integer, intent(in) :: ncrms
-    integer i,j,k,kb
-    real(crm_rknd) :: betu(ncrms), betd(ncrms)
+    integer i,j,k,kb,icrm
+    real(crm_rknd) :: betu, betd
 
     if(docolumn) return
 
+    !$acc parallel loop gang vector collapse(4)
     do k=2,nzm
-      kb=k-1
-      betu(:)=adz(:,kb)/(adz(:,k)+adz(:,kb))
-      betd(:)=adz(:,k)/(adz(:,k)+adz(:,kb))
       do j=1,ny
         do i=1,nx
+          do icrm = 1 , ncrms
+            kb=k-1
+            betu=adz(icrm,kb)/(adz(icrm,k)+adz(icrm,kb))
+            betd=adz(icrm,k)/(adz(icrm,k)+adz(icrm,kb))
 
-          dwdt(:,i,j,k,na)=dwdt(:,i,j,k,na) +  &
-          bet(:,k)*betu(:)* &
-          ( tabs0(:,k)*(epsv*(qv(:,i,j,k)-qv0(:,k))-(qcl(:,i,j,k)+qci(:,i,j,k)-qn0(:,k)+qpl(:,i,j,k)+qpi(:,i,j,k)-qp0(:,k))) &
-          +(tabs(:,i,j,k)-tabs0(:,k))*(1.+epsv*qv0(:,k)-qn0(:,k)-qp0(:,k)) ) &
-          + bet(:,kb)*betd(:)* &
-          ( tabs0(:,kb)*(epsv*(qv(:,i,j,kb)-qv0(:,kb))-(qcl(:,i,j,kb)+qci(:,i,j,kb)-qn0(:,kb)+qpl(:,i,j,kb)+qpi(:,i,j,kb)-qp0(:,kb))) &
-          +(tabs(:,i,j,kb)-tabs0(:,kb))*(1.+epsv*qv0(:,kb)-qn0(:,kb)-qp0(:,kb)) )
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na) +  &
+            bet(icrm,k)*betu* &
+            ( tabs0(icrm,k)*(epsv*(qv(icrm,i,j,k)-qv0(icrm,k))-(qcl(icrm,i,j,k)+qci(icrm,i,j,k)-qn0(icrm,k)+qpl(icrm,i,j,k)+qpi(icrm,i,j,k)-qp0(icrm,k))) &
+            +(tabs(icrm,i,j,k)-tabs0(icrm,k))*(1.+epsv*qv0(icrm,k)-qn0(icrm,k)-qp0(icrm,k)) ) &
+            + bet(icrm,kb)*betd* &
+            ( tabs0(icrm,kb)*(epsv*(qv(icrm,i,j,kb)-qv0(icrm,kb))-(qcl(icrm,i,j,kb)+qci(icrm,i,j,kb)-qn0(icrm,kb)+qpl(icrm,i,j,kb)+qpi(icrm,i,j,kb)-qp0(icrm,kb))) &
+            +(tabs(icrm,i,j,kb)-tabs0(icrm,kb))*(1.+epsv*qv0(icrm,kb)-qn0(icrm,kb)-qp0(icrm,kb)) )
 
+          enddo
         end do ! i
       end do ! j
     end do ! k

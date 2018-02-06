@@ -6,15 +6,24 @@ contains
   subroutine zero(ncrms)
 
     use vars
-    use microphysics, only : total_water
 
     implicit none
     integer, intent(in) :: ncrms
+    integer :: i,j,k,icrm
 
-    dudt(:,:,:,:,na) = 0.
-    dvdt(:,:,:,:,na) = 0.
-    dwdt(:,:,:,:,na) = 0.
-    misc(:,:,:,:) = 0.
+    !$acc parallel loop gang vector collapse(4)
+    do k = 1 , nz
+      do j = 1 , nyp1
+        do i = 1 , nxp1
+          do icrm = 1 , ncrms
+            if (j <= ny .and. k <= nzm) dudt(icrm,i,j,k,na) = 0.
+            if (i <= nx .and. k <= nzm) dvdt(icrm,i,j,k,na) = 0.
+            if (i <= nx .and. j <= ny ) dwdt(icrm,i,j,k,na) = 0.
+            if (i <= nx .and. j <= ny ) misc(icrm,i,j,k) = 0.
+          enddo
+        enddo
+      enddo
+    enddo
 
   end
 

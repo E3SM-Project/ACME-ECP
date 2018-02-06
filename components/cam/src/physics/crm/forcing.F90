@@ -11,38 +11,65 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) :: coef,qneg(ncrms),qpoz(ncrms), factor(ncrms)
-    integer i,j,k,nneg(ncrms), icrm
+    real(crm_rknd) :: coef
+    real(crm_rknd), allocatable :: qneg(:,:),qpoz(:,:), factor(:,:)
+    integer i,j,k,icrm
+
+    allocate(qneg  (ncrms,nzm))
+    allocate(qpoz  (ncrms,nzm))
+    allocate(factor(ncrms,nzm))
 
     coef = 1./3600.
 
+    !$acc parallel loop gang vector collapse(4)
     do k=1,nzm
-      qpoz(:) = 0.
-      qneg(:) = 0.
-      nneg(:) = 0
-
-      do j=1,ny
-        do i=1,nx
-          t(:,i,j,k)=t(:,i,j,k) + ttend(:,k) * dtn
-          micro_field(:,i,j,k,index_water_vapor)=micro_field(:,i,j,k,index_water_vapor) + qtend(:,k) * dtn
-          qneg(:) = qneg(:) + min( 0._crm_rknd , micro_field(:,i,j,k,index_water_vapor) )
-          qpoz(:) = qpoz(:) + max( 0._crm_rknd , micro_field(:,i,j,k,index_water_vapor) )
-          dudt(:,i,j,k,na)=dudt(:,i,j,k,na) + utend(:,k)
-          dvdt(:,i,j,k,na)=dvdt(:,i,j,k,na) + vtend(:,k)
-        end do
-      end do
-
-      factor(:) = 1. + qneg(:)/qpoz(:)
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms
-            if(qpoz(icrm)+qneg(icrm).gt.0.) then
-              micro_field(icrm,i,j,k,index_water_vapor) = max(real(0.,crm_rknd),micro_field(icrm,i,j,k,index_water_vapor)*factor(icrm))
+            t(icrm,i,j,k)=t(icrm,i,j,k) + ttend(icrm,k) * dtn
+            micro_field(icrm,i,j,k,index_water_vapor)=micro_field(icrm,i,j,k,index_water_vapor) + qtend(icrm,k) * dtn
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na) + utend(icrm,k)
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na) + vtend(icrm,k)
+            if (j == 1 .and. i == 1) then
+              qpoz(icrm,k) = 0.
+              qneg(icrm,k) = 0.
+            endif
+          end do
+        end do
+      end do
+    enddo
+
+    !$acc parallel loop gang vector collapse(2)
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        !$acc loop seq
+        do j=1,ny
+          !$acc loop seq
+          do i=1,nx
+            qneg(icrm,k) = qneg(icrm,k) + min( 0._crm_rknd , micro_field(icrm,i,j,k,index_water_vapor) )
+            qpoz(icrm,k) = qpoz(icrm,k) + max( 0._crm_rknd , micro_field(icrm,i,j,k,index_water_vapor) )
+          enddo
+        enddo
+        factor(icrm,k) = 1. + qneg(icrm,k)/qpoz(icrm,k)
+      enddo
+    enddo
+
+    !$acc parallel loop gang vector collapse(4)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            if(qpoz(icrm,k)+qneg(icrm,k).gt.0.) then
+              micro_field(icrm,i,j,k,index_water_vapor) = max(real(0.,crm_rknd),micro_field(icrm,i,j,k,index_water_vapor)*factor(icrm,k))
             end if
           end do
         end do
       end do
     end do
+
+    deallocate(qneg  )
+    deallocate(qpoz  )
+    deallocate(factor)
 
   end subroutine forcing
 
