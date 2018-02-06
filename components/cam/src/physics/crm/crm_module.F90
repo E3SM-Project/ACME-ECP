@@ -1009,12 +1009,15 @@ subroutine crm(lchnk, icol, ncrms, &
       !       Large-scale and surface forcing:
       call forcing(ncrms)
 
+      !$acc parallel loop gang vector collapse(4)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
-            j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-            t(:,i,j,k) = t(:,i,j,k) + qrad_crm(:,i_rad,j_rad,k)*dtn
+            do icrm = 1 , ncrms
+              i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
+              j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+              t(icrm,i,j,k) = t(icrm,i,j,k) + qrad_crm(icrm,i_rad,j_rad,k)*dtn
+            enddo
           enddo
         enddo
       enddo
