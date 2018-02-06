@@ -516,7 +516,7 @@ CONTAINS
               enddo
             end do
           end do
-          total_water(:) = total_water(:) + tmp(icrm)*adz(icrm,k)*dz(icrm)*rho(icrm,k)
+          total_water(:) = total_water(:) + tmp(:)*adz(:,k)*dz(:)*rho(:,k)
         end do
       end if
     end do

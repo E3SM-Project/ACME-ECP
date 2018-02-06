@@ -10,8 +10,8 @@ echo "mpif90=`which mpif90`"
 
 export FC=mpif90
 export CC=mpicc
-export FFLAGS="-I$NETCDF_DIR/include -O2 -ta=nvidia,cc50,managed,ptxinfo -Minfo=accel"
-export CFLAGS="-O2"
+export FFLAGS="-I$NETCDF_DIR/include -O3 -ta=nvidia,cc50,managed,ptxinfo -Minfo=accel"
+export CFLAGS="-O3"
 export FREEFLAGS="-Mextend"
 export FIXEDFLAGS=""
 export LDFLAGS="`nf-config --flibs` `nc-config --libs` -ta=nvidia,cc50,managed,ptxinfo"

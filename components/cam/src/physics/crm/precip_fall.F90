@@ -115,7 +115,7 @@ contains
 
           do k = 1,nzm
             do icrm = 1 , ncrms
-              if (nprec(icrm) <= iprec) then
+              if (iprec <= nprec(icrm)) then
                 tmp_qp(icrm,k) = qp(icrm,i,j,k) ! Temporary array for qp in this column
               endif
             end do
@@ -127,7 +127,7 @@ contains
 
             do k=1,nzm
               do icrm = 1 , ncrms
-                if (nprec(icrm) <= iprec) then
+                if (iprec <= nprec(icrm)) then
                   kc=min(nzm,k+1)
                   kb=max(1,k-1)
                   mx(icrm,k)=max(tmp_qp(icrm,kb),tmp_qp(icrm,kc),tmp_qp(icrm,k))
@@ -142,7 +142,7 @@ contains
 
           do k=1,nzm
             do icrm = 1 , ncrms
-              if (nprec(icrm) <= iprec) then
+              if (iprec <= nprec(icrm)) then
                 ! Define upwind precipitation flux
                 fz(icrm,k)=tmp_qp(icrm,k)*wp(icrm,k)
               endif
@@ -151,7 +151,7 @@ contains
 
           do k=1,nzm
             do icrm = 1 , ncrms
-              if (nprec(icrm) <= iprec) then
+              if (iprec <= nprec(icrm)) then
                 kc=k+1
                 tmp_qp(icrm,k)=tmp_qp(icrm,k)-(fz(icrm,kc)-fz(icrm,k))*irhoadz(icrm,k) !Update temporary qp
               endif
@@ -160,7 +160,7 @@ contains
 
           do k=1,nzm
             do icrm = 1 , ncrms
-              if (nprec(icrm) <= iprec) then
+              if (iprec <= nprec(icrm)) then
                 ! Also, compute anti-diffusive correction to previous
                 ! (upwind) approximation to the flux
                 kb=max(1,k-1)
@@ -181,7 +181,7 @@ contains
 
             do k=1,nzm
               do icrm = 1 , ncrms
-                if (nprec(icrm) <= iprec) then
+                if (iprec <= nprec(icrm)) then
                   kc=min(nzm,k+1)
                   kb=max(1,k-1)
                   mx(icrm,k)=max(tmp_qp(icrm,kb),tmp_qp(icrm,kc),tmp_qp(icrm,k),mx(icrm,k))
@@ -192,7 +192,7 @@ contains
 
             do k=1,nzm
               do icrm = 1 , ncrms
-                if (nprec(icrm) <= iprec) then
+                if (iprec <= nprec(icrm)) then
                   kc=min(nzm,k+1)
                   mx(icrm,k)=rho(icrm,k)*adz(icrm,k)*(mx(icrm,k)-tmp_qp(icrm,k))/(pn(www(icrm,kc)) + pp(www(icrm,k))+eps)
                   mn(icrm,k)=rho(icrm,k)*adz(icrm,k)*(tmp_qp(icrm,k)-mn(icrm,k))/(pp(www(icrm,kc)) + pn(www(icrm,k))+eps)
@@ -202,7 +202,7 @@ contains
 
             do k=1,nzm
               do icrm = 1 , ncrms
-                if (nprec(icrm) <= iprec) then
+                if (iprec <= nprec(icrm)) then
                   kb=max(1,k-1)
                   ! Add limited flux correction to fz(icrm,k).
                   fz(icrm,k) = fz(icrm,k) &                        ! Upwind flux
@@ -218,7 +218,7 @@ contains
           ! energy using precipitation fluxes computed in this column.
           do k=1,nzm
             do icrm = 1 , ncrms
-              if (nprec(icrm) <= iprec) then
+              if (iprec <= nprec(icrm)) then
                 kc=k+1
                 ! Update precipitation mass fraction.
                 ! Note that fz is the total flux, including both the
@@ -233,39 +233,36 @@ contains
             end do
           end do
           do icrm = 1 , ncrms
-            if (nprec(icrm) <= iprec) then
+            if (iprec <= nprec(icrm)) then
               precsfc(icrm,i,j) = precsfc(icrm,i,j) - fz(icrm,1)*flagstat(icrm) ! For statistics
               precssfc(icrm,i,j) = precssfc(icrm,i,j) - fz(icrm,1)*(1.-omega(icrm,i,j,1))*flagstat(icrm) ! For statistics
               prec_xy(icrm,i,j) = prec_xy(icrm,i,j) - fz(icrm,1)*flagstat(icrm) ! For 2D output
             endif
           end do
 
-          if (iprec.lt.nprec(icrm)) then
 
-            ! Re-compute precipitation velocity using new value of qp.
-            do k=1,nzm
-              do icrm = 1 , ncrms
-                if (nprec(icrm) <= iprec) then
-                  wp(icrm,k) = rhofac(icrm,k)*term_vel(i,j,k,ind,ncrms,icrm)
-                  ! Decrease precipitation velocity by factor of nprec(icrm)
-                  wp(icrm,k) = -wp(icrm,k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec(icrm),crm_rknd)
-                  ! Note: Don't bother checking CFL condition at each
-                  ! substep since it's unlikely that the CFL will
-                  ! increase very much between substeps when using
-                  ! monotonic advection schemes.
-                endif
-              end do
-            end do
-
+          ! Re-compute precipitation velocity using new value of qp.
+          do k=1,nzm
             do icrm = 1 , ncrms
-              if (nprec(icrm) <= iprec) then
-                fz(icrm,nz)=0.
-                www(icrm,nz)=0.
-                lfac(icrm,nz)=0.
+              if (iprec.lt.nprec(icrm)) then
+                wp(icrm,k) = rhofac(icrm,k)*term_vel(i,j,k,ind,ncrms,icrm)
+                ! Decrease precipitation velocity by factor of nprec(icrm)
+                wp(icrm,k) = -wp(icrm,k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec(icrm),crm_rknd)
+                ! Note: Don't bother checking CFL condition at each
+                ! substep since it's unlikely that the CFL will
+                ! increase very much between substeps when using
+                ! monotonic advection schemes.
               endif
             end do
+          end do
 
-          end if
+          do icrm = 1 , ncrms
+            if (iprec.lt.nprec(icrm)) then
+              fz(icrm,nz)=0.
+              www(icrm,nz)=0.
+              lfac(icrm,nz)=0.
+            endif
+          end do
 
         end do !iprec
 
