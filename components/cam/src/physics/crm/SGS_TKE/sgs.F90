@@ -461,7 +461,7 @@ subroutine sgs_proc(ncrms)
   if(dosgs) call tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms)
 
   tke2(:,:,:,:) = tke(:,:,:,:)
-  tk2(:,:,:,:) = tk(:,:,:,:)
+  tk2 (:,:,:,:) = tk (:,:,:,:)
 
 end subroutine sgs_proc
 
