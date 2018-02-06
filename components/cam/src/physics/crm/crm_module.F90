@@ -1055,9 +1055,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
       !-----------------------------------------------------------
       !    Compute diagnostics fields:
-      do icrm = 1 , ncrms
-        call diagnose(ncrms,icrm)
-      enddo
+      call diagnose(ncrms)
 
       !----------------------------------------------------------
       ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
