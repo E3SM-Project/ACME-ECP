@@ -18,24 +18,31 @@ contains
     real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
-    real(crm_rknd) tau(ncrms,nzm)
-    integer i, j, k, n_damp(ncrms), max_depth, icrm
+    real(crm_rknd), allocatable :: tau(:,:)
+    integer i, j, k, max_depth, icrm
+    integer, allocatable :: n_damp(:)
+
+    allocate(n_damp(ncrms))
+    allocate(tau(ncrms,nzm))
 
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'
       call task_abort()
     end if
 
-    do k=nzm,1,-1
-      do icrm = 1 , ncrms
+    max_depth = 0
+    !$acc parallel loop gang vector reduction(max:max_depth)
+    do icrm = 1 , ncrms
+      !$acc loop seq
+      do k=nzm,1,-1
         if(z(icrm,nzm)-z(icrm,k).lt.damp_depth*z(icrm,nzm)) then
           n_damp(icrm)=nzm-k+1
         endif
       end do
+      max_depth = max(max_depth,n_damp(icrm))
     end do
 
-    max_depth = maxval(n_damp)
-
+    !$acc parallel loop gang vector collapse(2)
     do k=nzm,nzm-max_depth,-1
       do icrm = 1 , ncrms
         if (k >= (nzm-n_damp(icrm))) then
@@ -48,20 +55,26 @@ contains
     !+++mhwang recalculate grid-mean u0, v0, t0 first,
     ! as t have been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
+    !$acc parallel loop gang vector collapse(2)
     do k=1, nzm
-      u0(:,k)=0.0
-      v0(:,k)=0.0
-      t0(:,k)=0.0
-      do j=1, ny
-        do i=1, nx
-          u0(:,k) = u0(:,k) + u(:,i,j,k)/(nx*ny)
-          v0(:,k) = v0(:,k) + v(:,i,j,k)/(nx*ny)
-          t0(:,k) = t0(:,k) + t(:,i,j,k)/(nx*ny)
+      do icrm = 1 , ncrms
+        u0(icrm,k)=0.0
+        v0(icrm,k)=0.0
+        t0(icrm,k)=0.0
+        !$acc loop seq
+        do j=1, ny
+          !$acc loop seq
+          do i=1, nx
+            u0(icrm,k) = u0(icrm,k) + u(icrm,i,j,k)/(nx*ny)
+            v0(icrm,k) = v0(icrm,k) + v(icrm,i,j,k)/(nx*ny)
+            t0(icrm,k) = t0(icrm,k) + t(icrm,i,j,k)/(nx*ny)
+          end do
         end do
       end do
     end do
     !---mhwang
 
+    !$acc parallel loop gang vector collapse(4)
     do k = nzm, nzm-max_depth, -1
       do j=1,ny
         do i=1,nx
@@ -83,6 +96,10 @@ contains
         end do! i
       end do! j
     end do ! k
+
+
+    deallocate(n_damp)
+    deallocate(tau)
 
   end subroutine damping
 
