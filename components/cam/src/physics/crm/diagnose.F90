@@ -188,9 +188,7 @@ contains
     !-----------------
     ! compute some sgs diagnostics:
 
-    do icrm = 1 , ncrms
-      call sgs_diagnose()
-    enddo
+    call sgs_diagnose()
 
     !-----------------
 
