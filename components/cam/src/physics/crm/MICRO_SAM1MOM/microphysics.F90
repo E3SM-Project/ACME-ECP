@@ -484,11 +484,7 @@ CONTAINS
       end do
     end do
 
-    do icrm = 1 , ncrms
-      call precip_fall(qp, term_vel_qp, 2, omega(icrm,:,:,:), ind, ncrms, icrm)
-    enddo
-
-
+    call precip_fall(qp, term_vel_qp, 2, omega(:,:,:,:), ind, ncrms)
   end subroutine micro_precip_fall
 
   !----------------------------------------------------------------------
