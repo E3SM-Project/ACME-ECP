@@ -22,26 +22,34 @@ contains
     real(crm_rknd) flux  (ncrms,nz)
 
     ! local
-    real(crm_rknd) flx (ncrms,0:nx,1,0:nzm)
-    real(crm_rknd) dfdt(ncrms,nx,ny,nzm)
-    real(crm_rknd) rdx2,rdz2(ncrms),rdz(ncrms),rdx5(ncrms),rdz5(ncrms),tmp(ncrms)
-    real(crm_rknd) tkx,tkz,rhoi(ncrms)
+    real(crm_rknd), allocatable :: flx (:,:,:,:)
+    real(crm_rknd), allocatable :: dfdt(:,:,:,:)
+    real(crm_rknd) rdx2
+    real(crm_rknd) tkx,tkz, tmp1, tmp2
     integer i,j,k,ib,ic,kc,kb, icrm
 
     if(.not.dosgs.and..not.docolumn) return
 
+    allocate(flx (ncrms,0:nx,1,0:nzm))
+    allocate(dfdt(ncrms,nx,ny,nzm))
 
     rdx2=1./(dx*dx)
-    rdz2(:)=1./(dz(:)*dz(:))
-    rdz(:)=1./dz(:)
 
     j=1
 
-    dfdt(:,:,:,:)=0.
+    !$acc parallel loop gang vector collapse(3)
+    do k = 1 , nzm
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          dfdt(icrm,i,j,k) = 0.
+        enddo
+      enddo
+    enddo
 
     if(dowallx) then
 
       if(mod(rank,nsubdomains_x).eq.0) then
+        !$acc parallel loop gang vector collapse(2)
         do k=1,nzm
           do icrm = 1 , ncrms
             field(icrm,0,j,k) = field(icrm,1,j,k)
@@ -49,6 +57,7 @@ contains
         end do
       end if
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+        !$acc parallel loop gang vector collapse(2)
         do k=1,nzm
           do icrm = 1 , ncrms
             field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
@@ -59,59 +68,59 @@ contains
     end if
 
     if(.not.docolumn) then
+      !$acc parallel loop gang vector collapse(3)
       do k=1,nzm
-        rdx5(:)=0.5*rdx2  *grdf_x(:,k)
-        do i=0,nx
-          do icrm = 1 , ncrms
-            ic=i+1
-            tkx=rdx5(icrm)*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
-            flx(icrm,i,j,k)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
-          end do
-        end do
         do i=1,nx
           do icrm = 1 , ncrms
+            ic=i+1
             ib=i-1
-            dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,ib,j,k))
+            tmp1 = -0.5*rdx2  *grdf_x(icrm,k)*(tkh(icrm,i ,j,k)+tkh(icrm,ic,j,k))*(field(icrm,ic,j,k)-field(icrm,i ,j,k))
+            tmp2 = -0.5*rdx2  *grdf_x(icrm,k)*(tkh(icrm,ib,j,k)+tkh(icrm,i ,j,k))*(field(icrm,i ,j,k)-field(icrm,ib,j,k))
+            dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(tmp1-tmp2)
           end do
         end do
       end do
     end if
 
-    flux(:,1) = 0.
-    tmp(:)=1./adzw(:,nz)
-    do i=1,nx
+    !$acc parallel loop gang vector collapse(2)
+    do k = 1 , nz
       do icrm = 1 , ncrms
-        flx(icrm,i,j,0)=fluxb(icrm,i,j)*rdz(icrm)*rhow(icrm,1)
-        flx(icrm,i,j,nzm)=fluxt(icrm,i,j)*rdz(icrm)*tmp(icrm)*rhow(icrm,nz)
-        flux(icrm,1) = flux(icrm,1) + flx(icrm,i,j,0)
-      end do
-    end do
+        flux(icrm,k) = 0.
+      enddo
+    enddo
 
-
-    do k=1,nzm-1
-      kc=k+1
-      flux(:,kc)=0.
-      rhoi(:) = rhow(:,kc)/adzw(:,kc)
-      rdz5(:)=0.5*rdz2(:) * grdf_z(:,k)
+    !$acc parallel loop gang vector collapse(3)
+    do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
-          tkz=rdz5(icrm)*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
-          flx(icrm,i,j,k)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi(icrm)
-          flux(icrm,kc) = flux(icrm,kc) + flx(icrm,i,j,k)
+          kc=k+1
+          if (k <= nzm-1) then
+            flx(icrm,i,j,k)=-0.5*grdf_z(icrm,k)/(dz(icrm)*dz(icrm))*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhow(icrm,kc)/adzw(icrm,kc)
+            !$acc atomic update
+            flux(icrm,kc) = flux(icrm,kc) + flx(icrm,i,j,k)
+          elseif (k == nzm) then
+            flx(icrm,i,j,0)=fluxb(icrm,i,j)/dz(icrm)*rhow(icrm,1)
+            flx(icrm,i,j,nzm)=fluxt(icrm,i,j)/dz(icrm)/adzw(icrm,nz)*rhow(icrm,nz)
+            !$acc atomic update
+            flux(icrm,1) = flux(icrm,1) + flx(icrm,i,j,0)
+          endif
         end do
       end do
     end do
 
+    !$acc parallel loop gang vector collapse(3)
     do k=1,nzm
-      kb=k-1
-      rhoi(:) = 1./(adz(:,k)*rho(:,k))
       do i=1,nx
         do icrm = 1 , ncrms
-          dfdt(icrm,i,j,k)=dtn*(dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,i,j,kb))*rhoi(icrm))
+          kb=k-1
+          dfdt(icrm,i,j,k)=dtn*(dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,i,j,kb))/(adz(icrm,k)*rho(icrm,k)))
           field(icrm,i,j,k)=field(icrm,i,j,k) + dfdt(icrm,i,j,k)
         end do
       end do
     end do
+
+    deallocate(flx )
+    deallocate(dfdt)
 
   end subroutine diffuse_scalar2D
 
