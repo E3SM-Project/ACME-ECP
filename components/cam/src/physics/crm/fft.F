@@ -791,8 +791,3 @@ cdir$ ivdep
   160 continue
       return
       end
-
-
-
-
-

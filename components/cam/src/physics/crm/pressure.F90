@@ -27,25 +27,46 @@ contains
     integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
     integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
 
-    real(crm_rknd) :: f (ncrms,nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
-    real(crm_rknd) :: ff(ncrms,nx+1,ny+2*YES3D,nzm)  ! local (subdomain's) version of f
+    real(crm_rknd), allocatable :: f      (:,:,:,:) ! global rhs and array for FTP coefficeients
+    real(crm_rknd), allocatable :: ff     (:,:,:,:)  ! local (subdomain's) version of f
+    real(crm_rknd), allocatable :: work   (:,:)
+    real(crm_rknd), allocatable :: trigxi (:)
+    real(crm_rknd), allocatable :: trigxj (:)
+    integer       , allocatable :: ifaxj  (:)
+    integer       , allocatable :: ifaxi  (:)
+    real(8)       , allocatable :: a      (:,:)
+    real(8)       , allocatable :: c      (:,:)
+    real(8)       , allocatable :: fff    (:)
+    real(8)       , allocatable :: alfa   (:)
+    real(8)       , allocatable :: beta   (:)
+    integer       , allocatable :: reqs_in(:)
+    integer       , allocatable :: iii    (:)
+    integer       , allocatable :: jjj    (:)
+    logical       , allocatable :: flag   (:)
 
-    real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
-    integer ifaxj(100),ifaxi(100)
-
-    real(8) a(ncrms,nzm),b,c(ncrms,nzm),e,fff(nzm)
-    real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty,eign
-    real(8) alfa(nzm-1),beta(nzm-1)
-
-    integer reqs_in(nsubdomains)
+    real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty,eign,e,b
     integer i, j, k, id, jd, m, n, it, jt, ii, jj, tag, rf, icrm
     integer nyp22, n_in, count
-    integer iii(0:nx_gl),jjj(0:ny_gl)
-    logical flag(nsubdomains)
     integer iwall,jwall
 
-    ! check if the grid size allows the computation:
+    allocate( f      (ncrms,nx2,ny2,nzslab)      )
+    allocate( ff     (ncrms,nx+1,ny+2*YES3D,nzm) )
+    allocate( work   (nx2,ny2)                   )
+    allocate( trigxi (n3i)                       )
+    allocate( trigxj (n3j)                       )
+    allocate( ifaxj  (100)                       )
+    allocate( ifaxi  (100)                       )
+    allocate( a      (ncrms,nzm)                 )
+    allocate( c      (ncrms,nzm)                 )
+    allocate( fff    (nzm)                       )
+    allocate( alfa   (nzm-1)                     )
+    allocate( beta   (nzm-1)                     )
+    allocate( reqs_in(nsubdomains)               )
+    allocate( iii    (0:nx_gl)                   )
+    allocate( jjj    (0:ny_gl)                   )
+    allocate( flag   (nsubdomains)               )
 
+    ! check if the grid size allows the computation:
     if(nsubdomains.gt.nzm) then
       if(masterproc) print*,'pressure_orig: nzm < nsubdomains. STOP'
       call task_abort
@@ -80,7 +101,6 @@ contains
       end if
     endif
 
-
     !-----------------------------------------------------------------
     !  Compute the r.h.s. of the Poisson equation for pressure
 
@@ -92,6 +112,7 @@ contains
     !   for the global domain. Request sending and receiving tasks.
 
     n = rank*nzslab
+    !$acc parallel loop gang vector collapse(4)
     do k = 1,nzslab
       do j = 1,ny
         do i = 1,nx
@@ -117,6 +138,7 @@ contains
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
     n = rank*nzslab
+    !$acc parallel loop gang vector collapse(4)
     do k = 1,nzslab
       do j = 1,nyp22-jwall
         do i = 1,nxp1-iwall
@@ -131,6 +153,7 @@ contains
     !   Solve the tri-diagonal system for Fourier coeffiecients
     !   in the vertical for each subdomain:
 
+    !$acc parallel loop gang vector collapse(2)
     do k=1,nzm
       do icrm = 1 , ncrms
         a(icrm,k)=rhow(icrm,k)/(adz(icrm,k)*adzw(icrm,k)*dz(icrm)*dz(icrm))
@@ -144,16 +167,16 @@ contains
     xnx=pii/nx_gl
     xny=pii/ny_gl
     do j=1,nyp22-jwall
-      if(dowally) then
-        jd=j+jt-1
-        facty = 1.d0
-      else
-        jd=(j+jt-0.1)/2.
-        facty = 2.d0
-      end if
-      xj=jd
       do i=1,nxp1-iwall
         do icrm = 1 , ncrms
+          if(dowally) then
+            jd=j+jt-1
+            facty = 1.d0
+          else
+            jd=(j+jt-0.1)/2.
+            facty = 2.d0
+          end if
+          xj=jd
           if(dowallx) then
             id=i+it-1
             factx = 1.d0
@@ -196,6 +219,7 @@ contains
     !   Send the Fourier coefficient to the tasks performing
     !   the inverse Fourier transformation:
     n = rank*nzslab
+    !$acc parallel loop gang vector collapse(4)
     do k = 1,nzslab
       do j = 1,nyp22-jwall
         do i = 1,nxp1-iwall
@@ -231,11 +255,12 @@ contains
     jjj(0)=ny_gl
 
     n = rank*nzslab
+    !$acc parallel loop gang vector collapse(4)
     do k = 1,nzslab
       do j = 1-YES3D,ny
-        jj=jjj(j+jt)
         do i = 0,nx
           do icrm = 1 , ncrms
+            jj=jjj(j+jt)
             ii=iii(i+it)
             p(icrm,i,j,k+n) = f(icrm,ii,jj,k)
           end do
@@ -245,6 +270,23 @@ contains
 
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
+
+    deallocate( f       )
+    deallocate( ff      )
+    deallocate( work    )
+    deallocate( trigxi  )
+    deallocate( trigxj  )
+    deallocate( ifaxj   )
+    deallocate( ifaxi   )
+    deallocate( a       )
+    deallocate( c       )
+    deallocate( fff     )
+    deallocate( alfa    )
+    deallocate( beta    )
+    deallocate( reqs_in )
+    deallocate( iii     )
+    deallocate( jjj     )
+    deallocate( flag    )
 
   end subroutine pressure
 
