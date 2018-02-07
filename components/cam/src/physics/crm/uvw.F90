@@ -11,10 +11,20 @@ contains
     use params
     implicit none
     integer, intent(in) :: ncrms
+    integer :: i,j,k,icrm
 
-    u(:,1:nx,1:ny,1:nzm) = dudt(:,1:nx,1:ny,1:nzm,nc)
-    v(:,1:nx,1:ny,1:nzm) = dvdt(:,1:nx,1:ny,1:nzm,nc)
-    w(:,1:nx,1:ny,1:nzm) = dwdt(:,1:nx,1:ny,1:nzm,nc)
+    !$acc parallel loop gang vector collapse(4)
+    do k = 1 , nzm
+      do j = 1 , ny
+        do i = 1 , nx
+          do icrm = 1 , ncrms
+            u(icrm,i,j,k) = dudt(icrm,i,j,k,nc)
+            v(icrm,i,j,k) = dvdt(icrm,i,j,k,nc)
+            w(icrm,i,j,k) = dwdt(icrm,i,j,k,nc)
+          enddo
+        enddo
+      enddo
+    enddo
 
   end subroutine uvw
 
