@@ -455,13 +455,28 @@ subroutine sgs_proc(ncrms)
   use params, only: dosmoke
   implicit none
   integer, intent(in) :: ncrms
+  integer :: x1, x2, y1, y2, i, j, k, icrm
 
   !    SGS TKE equation:
 
   if(dosgs) call tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms)
 
-  tke2(:,:,:,:) = tke(:,:,:,:)
-  tk2 (:,:,:,:) = tk (:,:,:,:)
+  x1 = min(0,dimx1_s)
+  x2 = max(nxp1,dimx2_s)
+  y1 = min(1-YES3D,dimy1_s)
+  y2 = max(nyp1,dimy2_s)
+
+  !$acc parallel loop gang vector collapse(2)
+  do k = 1 , nzm
+    do j = y1,y1
+      do i = x1,x2
+        do icrm = 1 , ncrms
+          if (i >= dimx1_s .and. i <= dimx2_s .and. j >= dimy1_s .and. j <= dimy2_s ) tke2(icrm,i,j,k) = tke(icrm,i,j,k)
+          if (i >= 0 .and. i <= nxp1 .and. j >= 1-YES3D .and. j <= nyp1 ) tk2 (icrm,i,j,k) = tk (icrm,i,j,k)
+        enddo
+      enddo
+    enddo
+  enddo
 
 end subroutine sgs_proc
 
