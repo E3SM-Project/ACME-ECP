@@ -29,12 +29,23 @@ contains
     real(crm_rknd) fdiff   (ncrms,nz)
     logical doit
     ! Local
-    real(crm_rknd) df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
-    integer i,j,k
+    real(crm_rknd), allocatable :: df(:,:,:,:)	! scalar
+    integer i,j,k, icrm
+
+    allocate(df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm))
 
     !call t_startf ('diffuse_scalars')
 
-    df(:,:,:,:) = f(:,:,:,:)
+    !$acc parallel loop gang vector collapse(4)
+    do k = 1 , nzm
+      do j = dimy1_s,dimy2_s
+        do i = dimx1_s,dimx2_s
+          do icrm = 1 , ncrms
+            df(icrm,i,j,k) = f(icrm,i,j,k)
+          enddo
+        enddo
+      enddo
+    enddo
 
     if(RUN3D) then
       call diffuse_scalar3D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux,ncrms)
@@ -42,16 +53,23 @@ contains
       call diffuse_scalar2D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,       f,fluxb,fluxt,tkh,rho,rhow,flux,ncrms)
     endif
 
+    !$acc parallel loop gang vector collapse(2)
     do k=1,nzm
-      fdiff(:,k)=0.
-      do j=1,ny
-        do i=1,nx
-          fdiff(:,k)=fdiff(:,k)+f(:,i,j,k)-df(:,i,j,k)
+      do icrm = 1 , ncrms
+        fdiff(icrm,k)=0.
+        !$acc loop seq
+        do j=1,ny
+          !$acc loop seq
+          do i=1,nx
+            fdiff(icrm,k)=fdiff(icrm,k)+f(icrm,i,j,k)-df(icrm,i,j,k)
+          end do
         end do
       end do
     end do
 
     !call t_stopf ('diffuse_scalars')
+
+    deallocate(df)
 
   end subroutine diffuse_scalar
 
