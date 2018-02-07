@@ -306,6 +306,7 @@ CONTAINS
     real(crm_rknd) omn, omp
     integer i,j,k,icrm
 
+    !$acc parallel loop gang vector collapse(4)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
