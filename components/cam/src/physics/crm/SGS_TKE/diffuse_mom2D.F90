@@ -16,116 +16,107 @@ contains
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
 
-    real(crm_rknd) rdx2,rdz2(ncrms),rdz(ncrms),rdx25,rdz25(ncrms),rdx21(ncrms),rdx251(ncrms)
-    real(crm_rknd) dxz(ncrms),dzx(ncrms)
+    real(crm_rknd) rdx2,rdz,rdx25, tmp1, tmp2
 
     integer i,j,k,ic,ib,kc,kcu, icrm
-    real(crm_rknd) tkx, tkz, rhoi(ncrms), iadzw(ncrms), iadz(ncrms)
+    real(crm_rknd) tkz, rhoi
     real(crm_rknd) fu(ncrms,0:nx,1,nz),fv(ncrms,0:nx,1,nz),fw(ncrms,0:nx,1,nz)
 
     rdx2=1./dx/dx
     rdx25=0.25*rdx2
 
-    dxz(:)=dx/dz(:)
-
     j=1
 
     if(.not.docolumn) then
+      !$acc parallel loop gang vector collapse(3)
       do k=1,nzm
-
-        kc=k+1
-        kcu=min(kc,nzm)
-        dxz(:)=dx/(dz(:)*adzw(:,kc))
-        rdx21(:)=rdx2 * grdf_x(:,k)
-        rdx251(:)=rdx25 * grdf_x(:,k)
-
-        do i=0,nx
-          do icrm = 1 , ncrms
-            ic=i+1
-            tkx=rdx21(icrm)*tk(icrm,i,j,k)
-            fu(icrm,i,j,k)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
-            fv(icrm,i,j,k)=-tkx*(v(icrm,ic,j,k)-v(icrm,i,j,k))
-            tkx=rdx251(icrm)*(tk(icrm,i,j,k)+tk(icrm,ic,j,k)+tk(icrm,i,j,kcu)+tk(icrm,ic,j,kcu))
-            fw(icrm,i,j,k)=-tkx*(w(icrm,ic,j,kc)-w(icrm,i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz(icrm))
-          enddo
-        end do
         do i=1,nx
           do icrm = 1 , ncrms
+            kc=k+1
+            kcu=min(kc,nzm)
             ib=i-1
-            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(icrm,i,j,k)-fu(icrm,ib,j,k))
-            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(icrm,i,j,k)-fv(icrm,ib,j,k))
-            dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(fw(icrm,i,j,k)-fw(icrm,ib,j,k))
+            ic=i+1
+
+            tmp1 = -2.*rdx2*grdf_x(icrm,k)*tk(icrm,i ,j,k)*(u(icrm,ic,j,k)-u(icrm,i ,j,k))
+            tmp2 = -2.*rdx2*grdf_x(icrm,k)*tk(icrm,ib,j,k)*(u(icrm,i ,j,k)-u(icrm,ib,j,k))
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(tmp1-tmp2)
+
+            tmp1 = -rdx2*grdf_x(icrm,k)*tk(icrm,i ,j,k)*(v(icrm,ic,j,k)-v(icrm,i ,j,k))
+            tmp2 = -rdx2*grdf_x(icrm,k)*tk(icrm,ib,j,k)*(v(icrm,i ,j,k)-v(icrm,ib,j,k))
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(tmp1-tmp2)
+
+            tmp1 = -rdx25*grdf_x(icrm,k)*(tk(icrm,i ,j,k)+tk(icrm,ic,j,k)+tk(icrm,i ,j,kcu)+tk(icrm,ic,j,kcu))*(w(icrm,ic,j,kc)-w(icrm,i ,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dx/(dz(icrm)*adzw(icrm,kc)))
+            tmp2 = -rdx25*grdf_x(icrm,k)*(tk(icrm,ib,j,k)+tk(icrm,i ,j,k)+tk(icrm,ib,j,kcu)+tk(icrm,i ,j,kcu))*(w(icrm,i ,j,kc)-w(icrm,ib,j,kc)+(u(icrm,i ,j,kcu)-u(icrm,i ,j,k))*dx/(dz(icrm)*adzw(icrm,kc)))
+            dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(tmp1-tmp2)
           enddo
         end do
-
       end do
-
     end if
 
     !-------------------------
-    rdz(:)=1./dz(:)
-    dzx(:)=dz(:)/dx
 
+    !$acc parallel loop gang vector collapse(2)
+    do k = 1 , nz
+      do icrm = 1 , ncrms
+        uwsb(icrm,k) = 0.
+        vwsb(icrm,k) = 0.
+      enddo
+    enddo
+
+    !$acc parallel loop gang vector collapse(3)
     do k=1,nzm-1
-      kc=k+1
-      uwsb(:,kc)=0.
-      vwsb(:,kc)=0.
-      iadz(:) = 1./adz(:,k)
-      iadzw(:)= 1./adzw(:,kc)
-      rdz2(:)=rdz(:)*rdz(:) *grdf_z(:,k)
-      rdz25(:)=0.25*rdz2(:)
       do i=1,nx
         do icrm = 1 , ncrms
+          kc=k+1
           ib=i-1
-          tkz=rdz2(icrm)*tk(icrm,i,j,k)
-          fw(icrm,i,j,kc)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(icrm,k)*iadz(icrm)
-          tkz=rdz25(icrm)*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,j,kc)+tk(icrm,ib,j,kc))
-          fu(icrm,i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw(icrm) + &
-          (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx(icrm))*rhow(icrm,kc)
-          fv(icrm,i,j,kc)=-tkz*(v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw(icrm)*rhow(icrm,kc)
+          rdz = 1 / dz(icrm)
+          tkz=rdz*rdz *grdf_z(icrm,k)*tk(icrm,i,j,k)
+          fw(icrm,i,j,kc)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(icrm,k)/adz(icrm,k)
+          tkz=0.25*rdz*rdz *grdf_z(icrm,k)*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,j,kc)+tk(icrm,ib,j,kc))
+          fu(icrm,i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))/adzw(icrm,kc) + (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dz(icrm) / dx)*rhow(icrm,kc)
+          fv(icrm,i,j,kc)=-tkz*(v(icrm,i,j,kc)-v(icrm,i,j,k))/adzw(icrm,kc)*rhow(icrm,kc)
+          !$acc atomic update
           uwsb(icrm,kc)=uwsb(icrm,kc)+fu(icrm,i,j,kc)
+          !$acc atomic update
           vwsb(icrm,kc)=vwsb(icrm,kc)+fv(icrm,i,j,kc)
         enddo
       end do
     end do
 
-    uwsb(:,1) = 0.
-    vwsb(:,1) = 0.
 
+    !$acc parallel loop gang vector collapse(2)
     do i=1,nx
       do icrm = 1 , ncrms
-        tkz=rdz2(icrm)*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
+        rdz = 1 / dz(icrm)
+        tkz=rdz*rdz *grdf_z(icrm,nzm-1)*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
         fw(icrm,i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(icrm,nzm)
-        fu(icrm,i,j,1)=fluxbu(icrm,i,j) * rdz(icrm) * rhow(icrm,1)
-        fv(icrm,i,j,1)=fluxbv(icrm,i,j) * rdz(icrm) * rhow(icrm,1)
-        fu(icrm,i,j,nz)=fluxtu(icrm,i,j) * rdz(icrm) * rhow(icrm,nz)
-        fv(icrm,i,j,nz)=fluxtv(icrm,i,j) * rdz(icrm) * rhow(icrm,nz)
+        fu(icrm,i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
+        fv(icrm,i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
+        fu(icrm,i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(icrm,nz)
+        fv(icrm,i,j,nz)=fluxtv(icrm,i,j) * rdz * rhow(icrm,nz)
+          !$acc atomic update
         uwsb(icrm,1) = uwsb(icrm,1) + fu(icrm,i,j,1)
+          !$acc atomic update
         vwsb(icrm,1) = vwsb(icrm,1) + fv(icrm,i,j,1)
       enddo
     end do
 
 
+    !$acc parallel loop gang vector collapse(3)
     do k=1,nzm
-      kc=k+1
-      rhoi(:) = 1./(rho(:,k)*adz(:,k))
       do i=1,nx
         do icrm = 1 , ncrms
-          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(icrm,i,j,kc)-fu(icrm,i,j,k))*rhoi(icrm)
-          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(icrm,i,j,kc)-fv(icrm,i,j,k))*rhoi(icrm)
+          kc=k+1
+          rhoi = 1./(rho(icrm,k)*adz(icrm,k))
+          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(icrm,i,j,kc)-fu(icrm,i,j,k))*rhoi
+          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(icrm,i,j,kc)-fv(icrm,i,j,k))*rhoi
+          if (k >= 2) then
+            rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(icrm,i,j,k+1)-fw(icrm,i,j,k))*rhoi
+          endif
         enddo
       end do
     end do ! k
-
-    do k=2,nzm
-      rhoi(:) = 1./(rhow(:,k)*adzw(:,k))
-      do i=1,nx
-        do icrm = 1 , ncrms
-          dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(icrm,i,j,k+1)-fw(icrm,i,j,k))*rhoi(icrm)
-        enddo
-      end do
-    end do ! k
-
 
   end subroutine diffuse_mom2D
 
