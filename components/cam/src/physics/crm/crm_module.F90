@@ -1074,7 +1074,7 @@ subroutine crm(lchnk, icol, ncrms, &
       endif
 
       !-----------------------------------------------------------
-      !       Coriolis force:
+      !       Coriolis force: 
       if (docoriolis) then
         call coriolis(ncrms)
       endif
