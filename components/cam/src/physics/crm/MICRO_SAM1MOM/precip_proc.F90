@@ -33,11 +33,16 @@ contains
 
     !call t_startf ('precip_proc')
 
+    !$acc parallel loop gang vector collapse(2)
     do k=1,nzm
       do icrm = 1 , ncrms
         qpsrc(icrm,k)=0.
         qpevp(icrm,k)=0.
       enddo
+    enddo
+
+    !$acc parallel loop gang vector collapse(4)
+    do k=1,nzm
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms
@@ -97,6 +102,7 @@ contains
                 qp(icrm,i,j,k) = qp(icrm,i,j,k) + dq
                 q(icrm,i,j,k) = q(icrm,i,j,k) - dq
                 qn(icrm,i,j,k) = qn(icrm,i,j,k) - dq
+                !$acc atomic update
                 qpsrc(icrm,k) = qpsrc(icrm,k) + dq
 
               elseif(qp(icrm,i,j,k).gt.qp_threshold.and.qn(icrm,i,j,k).eq.0.) then
@@ -121,11 +127,13 @@ contains
                 dq = max(-0.5*qp(icrm,i,j,k),dq)
                 qp(icrm,i,j,k) = qp(icrm,i,j,k) + dq
                 q(icrm,i,j,k) = q(icrm,i,j,k) - dq
+                !$acc atomic update
                 qpevp(icrm,k) = qpevp(icrm,k) + dq
 
               else
 
                 q(icrm,i,j,k) = q(icrm,i,j,k) + qp(icrm,i,j,k)
+                !$acc atomic update
                 qpevp(icrm,k) = qpevp(icrm,k) - qp(icrm,i,j,k)
                 qp(icrm,i,j,k) = 0.
 
