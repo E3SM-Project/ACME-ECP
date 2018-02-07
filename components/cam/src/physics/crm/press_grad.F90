@@ -14,28 +14,30 @@ contains
     implicit none
     integer, intent(in) :: ncrms
 
-    real *8 rdx,rdy,rdz(ncrms)
+    real *8 rdx,rdy,rdz
     integer i,j,k,kb,jb,ib,icrm
 
     rdx=1./dx
     rdy=1./dy
 
+    !$acc parallel loop gang vector collapse(4)
     do k=1,nzm
-      kb=max(1,k-1)
-      rdz(:) = 1./(dz(:)*adzw(:,k))
       do j=1,ny
-        jb=j-YES3D
         do i=1,nx
           do icrm = 1 , ncrms
+            kb=max(1,k-1)
+            rdz = 1./(dz(icrm)*adzw(icrm,k))
+            jb=j-YES3D
             ib=i-1
             dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,ib,j,k))*rdx
             dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,i,jb,k))*rdy
-            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,i,j,kb))*rdz(icrm)
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,i,j,kb))*rdz
           enddo
         end do ! i
       end do ! j
     end do ! k
 
+    !$acc parallel loop gang vector collapse(4)
     do k=1,nzm
       do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
         do i=0,nx
@@ -48,6 +50,7 @@ contains
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
+      !$acc parallel loop gang vector collapse(3)
       do k=1,nzm
         do j=1,ny
           do icrm = 1 , ncrms
@@ -60,6 +63,7 @@ contains
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
+      !$acc parallel loop gang vector collapse(3)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
