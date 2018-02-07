@@ -21,8 +21,10 @@ contains
     real(crm_rknd) f2leadv(ncrms,nz),f2legrad(ncrms,nz),fwleadv(ncrms,nz)
     logical doit
 
-    real(crm_rknd) df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+    real(crm_rknd), allocatable :: df(:,:,:,:)
     integer i,j,k,icrm
+
+    allocate( df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
     if(docolumn) then
       flux = 0.
@@ -31,7 +33,16 @@ contains
 
     !call t_startf ('advect_scalars')
 
-    df(:,:,:,:) = f(:,:,:,:)
+    !$acc parallel loop gang vector collapse(4)
+    do k = 1 , nzm
+      do j = dimy1_s,dimy2_s
+        do i = dimx1_s,dimx2_s
+          do icrm = 1 , ncrms
+            df(icrm,i,j,k) = f(icrm,i,j,k)
+          enddo
+        enddo
+      enddo
+    enddo
 
     if(RUN3D) then
       call advect_scalar3D(f, u, v, w, rho, rhow, flux, ncrms)
@@ -39,16 +50,22 @@ contains
       call advect_scalar2D(f, u, w, rho, rhow, flux, ncrms)
     endif
 
+    !$acc parallel loop gang vector collapse(2)
     do k=1,nzm
-      fadv(:,k)=0.
-      do j=1,ny
-        do i=1,nx
-          fadv(:,k)=fadv(:,k)+f(:,i,j,k)-df(:,i,j,k)
+      do icrm = 1 , ncrms
+        fadv(icrm,k)=0.
+        !$acc loop seq
+        do j=1,ny
+          !$acc loop seq
+          do i=1,nx
+            fadv(icrm,k)=fadv(icrm,k)+f(icrm,i,j,k)-df(icrm,i,j,k)
+          end do
         end do
       end do
     end do
 
     !call t_stopf ('advect_scalars')
+    deallocate( df )
 
   end subroutine advect_scalar
 
