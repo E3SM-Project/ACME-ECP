@@ -12,6 +12,7 @@ contains
   real(crm_rknd) function esatw_crm(t)
     use params, only: crm_rknd
     implicit none
+    !$acc routine seq
     real(crm_rknd) t	! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
     data  a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
@@ -35,6 +36,7 @@ contains
   real(crm_rknd) function qsatw_crm(t,p)
     use params, only: crm_rknd
     implicit none
+    !$acc routine seq
     real(crm_rknd) t	! temperature (K)
     real(crm_rknd) p	! pressure    (mb)
     real(crm_rknd) esat_crm
@@ -46,6 +48,7 @@ contains
   real(crm_rknd) function dtesatw_crm(t)
     use params, only: crm_rknd
     implicit none
+    !$acc routine seq
     real(crm_rknd) t	! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
     data  a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
@@ -66,6 +69,7 @@ contains
   real(crm_rknd) function dtqsatw_crm(t,p)
     use params, only: crm_rknd
     implicit none
+    !$acc routine seq
     real(crm_rknd) t	! temperature (K)
     real(crm_rknd) p	! pressure    (mb)
     dtqsatw_crm = 0.622*dtesatw_crm(t)/p
@@ -75,6 +79,7 @@ contains
   real(crm_rknd) function esati_crm(t)
     use params, only: crm_rknd
     implicit none
+    !$acc routine seq
     real(crm_rknd) t	! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
     data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
@@ -95,6 +100,7 @@ contains
   real(crm_rknd) function qsati_crm(t,p)
     use params, only: crm_rknd
     implicit none
+    !$acc routine seq
     real(crm_rknd) t	! temperature (K)
     real(crm_rknd) p	! pressure    (mb)
     real(crm_rknd) esat_crm
@@ -106,6 +112,7 @@ contains
   real(crm_rknd) function dtesati_crm(t)
     use params, only: crm_rknd
     implicit none
+    !$acc routine seq
     real(crm_rknd) t	! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
     data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
@@ -125,6 +132,7 @@ contains
   real(crm_rknd) function dtqsati_crm(t,p)
     use params, only: crm_rknd
     implicit none
+    !$acc routine seq
     real(crm_rknd) t	! temperature (K)
     real(crm_rknd) p	! pressure    (mb)
     dtqsati_crm=0.622*dtesati_crm(t)/p

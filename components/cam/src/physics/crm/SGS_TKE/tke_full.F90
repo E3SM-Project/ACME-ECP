@@ -21,15 +21,17 @@ contains
     real(crm_rknd) tk  (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
     real(crm_rknd) tkh (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
 
-    real(crm_rknd) def2(ncrms,nx,ny,nzm)
-    real(crm_rknd) grd(ncrms),betdz(ncrms),Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs
+    real(crm_rknd), allocatable :: def2(:,:,:,:)
+    real(crm_rknd) Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs, grd, betdz
     real(crm_rknd) buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss
-    real(crm_rknd) lstarn, lstarp, bbb, omn, omp
+    real(crm_rknd) lstarn, lstarp, bbb, omn, omp, tmp
     real(crm_rknd) qsatt,dqsat
     integer i,j,k,kc,kb, icrm
 
     real(crm_rknd) tk_min_value   ! whannah - min value for eddy viscosity (TK)
     real(crm_rknd) tk_min_depth   ! whannah - near-surface depth to apply tk_min (meters)
+
+    allocate(def2(ncrms,nx,ny,nzm))
 
     tk_min_value = 0.05
     tk_min_depth = 500.
@@ -49,36 +51,43 @@ contains
       call shear_prod2D(def2, ncrms)
     endif
 
+    !$acc parallel loop gang vector collapse(2)
     do k=1,nzm
-      kb=k-1
-      kc=k+1
+      do icrm = 1 , ncrms
+        tkelediss (icrm,k) = 0.
+        tkesbdiss (icrm,k) = 0.
+        tkesbshear(icrm,k) = 0.
+        tkesbbuoy (icrm,k) = 0.
+      enddo
+    enddo
 
-      grd(:)=dz(:)*adz(:,k)
-
-      betdz(:)=bet(:,k)/dz(:)/(adzw(:,kc)+adzw(:,k))
-      Ce1=Ce/0.7*0.19
-      Ce2=Ce/0.7*0.51
-      if(k.eq.1) then
-        kb=1
-        kc=2
-        betdz(:)=bet(:,k)/dz(:)/adzw(:,kc)
-        Ce1=Ces/0.7*0.19
-        Ce2=Ces/0.7*0.51
-      end if
-      if(k.eq.nzm) then
-        kb=nzm-1
-        kc=nzm
-        betdz(:)=bet(:,k)/dz(:)/adzw(:,k)
-        Ce1=Ces/0.7*0.19
-        Ce2=Ces/0.7*0.51
-      end if
-      tkelediss(:,k) = 0.
-      tkesbdiss(:,k) = 0.
-      tkesbshear(:,k)= 0.
-      tkesbbuoy(:,k) = 0.
+    !$acc parallel loop gang vector collapse(4)
+    do k=1,nzm
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms
+            kb=k-1
+            kc=k+1
+
+            grd=dz(icrm)*adz(icrm,k)
+
+            betdz=bet(icrm,k)/dz(icrm)/(adzw(icrm,kc)+adzw(icrm,k))
+            Ce1=Ce/0.7*0.19
+            Ce2=Ce/0.7*0.51
+            if(k.eq.1) then
+              kb=1
+              kc=2
+              betdz=bet(icrm,k)/dz(icrm)/adzw(icrm,kc)
+              Ce1=Ces/0.7*0.19
+              Ce2=Ces/0.7*0.51
+            end if
+            if(k.eq.nzm) then
+              kb=nzm-1
+              kc=nzm
+              betdz=bet(icrm,k)/dz(icrm)/adzw(icrm,k)
+              Ce1=Ces/0.7*0.19
+              Ce2=Ces/0.7*0.51
+            end if
             !  SGS buoyancy flux
 
             !bloss: removed temperature diagnostics for omn.
@@ -96,7 +105,7 @@ contains
               qsatt = omn*qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))+(1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(icrm,k))
               bbb = 1. + epsv*qsatt-qcl(icrm,i,j,k)-qci(icrm,i,j,k) -qpl(icrm,i,j,k)-qpi(icrm,i,j,k)+1.61*tabs(icrm,i,j,k)*dqsat
               bbb = bbb / (1.+lstarn*dqsat)
-              buoy_sgs=betdz(icrm)*(bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
+              buoy_sgs=betdz*(bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
               +(bbb*lstarn - (1.+lstarn*dqsat)*tabs(icrm,i,j,k))* &
               (qv(icrm,i,j,kc)+qcl(icrm,i,j,kc)+qci(icrm,i,j,kc)-qv(icrm,i,j,kb)-qcl(icrm,i,j,kb)-qci(icrm,i,j,kb)) &
               + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(icrm,i,j,k))*(qpl(icrm,i,j,kc)-qpl(icrm,i,j,kb))  &
@@ -106,7 +115,7 @@ contains
             else
 
               bbb = 1.+epsv*qv(icrm,i,j,k)-qpl(icrm,i,j,k)-qpi(icrm,i,j,k)
-              buoy_sgs=betdz(icrm)*( bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
+              buoy_sgs=betdz*( bbb*(t(icrm,i,j,kc)-t(icrm,i,j,kb)) &
               +epsv*tabs(icrm,i,j,k)* &
               (qv(icrm,i,j,kc)+qcl(icrm,i,j,kc)+qci(icrm,i,j,kc)-qv(icrm,i,j,kb)-qcl(icrm,i,j,kb)-qci(icrm,i,j,kb)) &
               +(bbb*fac_cond-tabs(icrm,i,j,k))*(qpl(icrm,i,j,kc)-qpl(icrm,i,j,kb)) &
@@ -116,13 +125,13 @@ contains
             end if
 
             if(buoy_sgs.le.0.) then
-              smix=grd(icrm)
+              smix=grd
             else
-              smix=min(grd(icrm),max(0.1*grd(icrm), sqrt(0.76*tk(icrm,i,j,k)/Ck/sqrt(buoy_sgs+1.e-10))))
+              smix=min(grd,max(0.1*grd, sqrt(0.76*tk(icrm,i,j,k)/Ck/sqrt(buoy_sgs+1.e-10))))
             end if
 
 
-            ratio=smix/grd(icrm)
+            ratio=smix/grd
             Pr=1.
             !   Pr=1. +2.*ratio
             Cee=Ce1+Ce2*ratio
@@ -157,19 +166,22 @@ contains
 
             tkh(icrm,i,j,k)=Pr*tk(icrm,i,j,k)
 
-            tkelediss(icrm,k) = tkelediss(icrm,k) - a_prod_sh
-            tkesbdiss(icrm,k) = tkesbdiss(icrm,k) + a_diss
-            tkesbshear(icrm,k)= tkesbshear(icrm,k)+ a_prod_sh
-            tkesbbuoy(icrm,k) = tkesbbuoy(icrm,k) + a_prod_bu
+            tmp = a_prod_sh / real(nx*ny,crm_rknd)
+            !$acc atomic update
+            tkelediss (icrm,k) = tkelediss (icrm,k) - tmp
+            !$acc atomic update
+            tkesbdiss (icrm,k) = tkesbdiss (icrm,k) + a_diss
+            !$acc atomic update
+            tkesbshear(icrm,k) = tkesbshear(icrm,k) + a_prod_sh
+            !$acc atomic update
+            tkesbbuoy (icrm,k) = tkesbbuoy (icrm,k) + a_prod_bu
 
           enddo
         end do ! i
       end do ! j
-
-      tkelediss(:,k) = tkelediss(:,k)/real(nx*ny,crm_rknd)
-
-
     end do ! k
+
+    deallocate(def2)
 
     !call t_stopf('tke_full')
 
