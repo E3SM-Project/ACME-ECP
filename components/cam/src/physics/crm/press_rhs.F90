@@ -21,9 +21,12 @@ contains
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
+      !$acc parallel loop gang vector collapse(3)
       do k=1,nzm
         do j=1,ny
-          dudt(:,1,j,k,na) = 0.
+          do icrm = 1 , ncrms
+            dudt(icrm,1,j,k,na) = 0.
+          enddo
         end do
       end do
 
@@ -31,9 +34,12 @@ contains
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
+      !$acc parallel loop gang vector collapse(3)
       do k=1,nzm
         do i=1,nx
-          dvdt(:,i,1,k,na) = 0.
+          do icrm = 1 , ncrms
+            dvdt(icrm,i,1,k,na) = 0.
+          end do
         end do
       end do
 

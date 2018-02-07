@@ -11,6 +11,7 @@ contains
     integer, intent(in) :: ncrms
     integer i,j,k,icrm
 
+    !$acc parallel loop gang vector collapse(3)
     do k=1,nzm
       do j=1,ny
         do icrm = 1 , ncrms
@@ -21,6 +22,7 @@ contains
 
     if(RUN3D) then
 
+    !$acc parallel loop gang vector collapse(3)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
