@@ -35,6 +35,7 @@ contains
 
     !call t_startf ('cloud')
 
+    !$acc parallel loop gang vector collapse(4)
     do k = 1, nzm
       do j = 1, ny
         do i = 1, nx
