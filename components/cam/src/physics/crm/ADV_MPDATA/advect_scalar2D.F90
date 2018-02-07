@@ -20,23 +20,34 @@ contains
     real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(ncrms,nz)
 
-    real(crm_rknd) mx (ncrms,0:nxp1,1,nzm)
-    real(crm_rknd) mn (ncrms,0:nxp1,1,nzm)
-    real(crm_rknd) uuu(ncrms,-1:nxp3,1,nzm)
-    real(crm_rknd) www(ncrms,-1:nxp2,1,nz)
+    real(crm_rknd), allocatable :: mx   (:,:,:,:)
+    real(crm_rknd), allocatable :: mn   (:,:,:,:)
+    real(crm_rknd), allocatable :: uuu  (:,:,:,:)
+    real(crm_rknd), allocatable :: www  (:,:,:,:)
+    real(crm_rknd), allocatable :: dd   (:)
+    real(crm_rknd), allocatable :: iadz (:,:)
+    real(crm_rknd), allocatable :: irho (:,:)
+    real(crm_rknd), allocatable :: irhow(:,:)
 
-    real(crm_rknd) eps, dd(ncrms)
+    real(crm_rknd) eps
     integer i,j,k,ic,ib,kc,kb,icrm
     logical nonos
-    real(crm_rknd) iadz(ncrms,nzm),irho(ncrms,nzm),irhow(ncrms,nzm)
-
     real(crm_rknd) x1, x2, a, b, a1, a2, y
     real(crm_rknd) andiff,across,pp,pn
-    andiff(x1,x2,a,b)=(abs(a)-a*a*b)*0.5*(x2-x1)
-    across(x1,a1,a2)=0.03125*a1*a2*x1
-    pp(y)= max(real(0.,crm_rknd),y)
-    pn(y)=-min(real(0.,crm_rknd),y)
 
+    andiff(x1,x2,a,b)=(abs(a)-a*a*b)*0.5*(x2-x1)
+    across(x1,a1,a2) =0.03125*a1*a2*x1
+    pp    (y)        = max(real(0.,crm_rknd),y)
+    pn    (y)        =-min(real(0.,crm_rknd),y)
+
+    allocate( mx   (ncrms,0:nxp1,1,nzm)  )
+    allocate( mn   (ncrms,0:nxp1,1,nzm)  )
+    allocate( uuu  (ncrms,-1:nxp3,1,nzm) )
+    allocate( www  (ncrms,-1:nxp2,1,nz)  )
+    allocate( dd   (ncrms)               )
+    allocate( iadz (ncrms,nzm)           )
+    allocate( irho (ncrms,nzm)           )
+    allocate( irhow(ncrms,nzm)           )
 
     nonos = .true.
     eps = 1.e-10
@@ -48,6 +59,7 @@ contains
     if(dowallx) then
 
       if(mod(rank,nsubdomains_x).eq.0) then
+        !$acc parallel loop gang vector collapse(3)
         do k=1,nzm
           do i=dimx1_u,1
             do icrm = 1 , ncrms
@@ -57,6 +69,7 @@ contains
         end do
       end if
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+        !$acc parallel loop gang vector collapse(3)
         do k=1,nzm
           do i=nx+1,dimx2_u
             do icrm = 1 , ncrms
@@ -72,11 +85,12 @@ contains
 
     if(nonos) then
 
+      !$acc parallel loop gang vector collapse(3)
       do k=1,nzm
-        kc=min(nzm,k+1)
-        kb=max(1,k-1)
         do i=0,nxp1
           do icrm = 1 , ncrms
+            kc=min(nzm,k+1)
+            kb=max(1,k-1)
             ib=i-1
             ic=i+1
             mx(icrm,i,j,k)=max(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k))
@@ -208,6 +222,15 @@ contains
         end do
       end do
     end do
+
+    deallocate( mx    )
+    deallocate( mn    )
+    deallocate( uuu   )
+    deallocate( www   )
+    deallocate( dd    )
+    deallocate( iadz  )
+    deallocate( irho  )
+    deallocate( irhow )
 
   end subroutine advect_scalar2D
 
