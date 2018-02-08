@@ -381,9 +381,13 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
-    real(crm_rknd) dummy(ncrms,nz)
-    real(crm_rknd) fluxbtmp(ncrms,nx,ny), fluxttmp(ncrms,nx,ny) !bloss
-    integer k, icrm
+    real(crm_rknd), allocatable :: dummy(:,:)
+    real(crm_rknd), allocatable :: fluxbtmp(:,:,:), fluxttmp(:,:,:) !bloss
+    integer k, icrm, i, j
+
+    allocate(dummy(ncrms,nz))
+    allocate(fluxbtmp(ncrms,nx,ny))
+    allocate(fluxttmp(ncrms,nx,ny))
 
 
     call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,:),fluxbt(:,:,:),fluxtt(:,:,:),tdiff(:,:),twsb(:,:), &
@@ -404,8 +408,15 @@ CONTAINS
 
     do k = 1,nmicro_fields
       if(   k.eq.index_water_vapor .or. docloud.and.flag_precip(k).ne.1  .or. doprecip.and.flag_precip(k).eq.1 ) then
-        fluxbtmp(:,1:nx,1:ny) = fluxbmk(:,1:nx,1:ny,k)
-        fluxttmp(:,1:nx,1:ny) = fluxtmk(:,1:nx,1:ny,k)
+        !$acc parallel loop gang vector collapse(3)
+        do j = 1 , ny
+          do i = 1 , nx
+            do icrm = 1 , ncrms
+              fluxbtmp(icrm,i,j) = fluxbmk(icrm,i,j,k)
+              fluxttmp(icrm,i,j) = fluxtmk(icrm,i,j,k)
+            enddo
+          enddo
+        enddo
         call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbtmp(:,:,:),fluxttmp(:,:,:), &
         mkdiff(:,:,k),mkwsb(:,:,k), dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
       end if
@@ -420,9 +431,15 @@ CONTAINS
       call tracers_flux()
 
       do k = 1,ntracers
-
-        fluxbtmp(:,:,:) = fluxbtr(:,:,:,k)
-        fluxttmp(:,:,:) = fluxttr(:,:,:,k)
+        !$acc parallel loop gang vector collapse(3)
+        do j = 1 , ny
+          do i = 1 , nx
+            do icrm = 1 , ncrms
+              fluxbtmp(icrm,i,j) = fluxbtr(icrm,i,j,k)
+              fluxttmp(icrm,i,j) = fluxttr(icrm,i,j,k)
+            enddo
+          enddo
+        enddo
         call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,:,k),fluxbtmp(:,:,:),fluxttmp(:,:,:), &
         trdiff(:,:,k),trwsb(:,:,k), &
         dummy(:,:),dummy(:,:),dummy(:,:),.false.,ncrms)
@@ -432,6 +449,9 @@ CONTAINS
     end if
 
 
+    deallocate(dummy)
+    deallocate(fluxbtmp)
+    deallocate(fluxttmp)
 
   end subroutine sgs_scalars
 
