@@ -466,7 +466,7 @@ subroutine sgs_proc(ncrms)
   y1 = min(1-YES3D,dimy1_s)
   y2 = max(nyp1,dimy2_s)
 
-  !$acc parallel loop gang vector collapse(2)
+  !$acc parallel loop gang vector collapse(4)
   do k = 1 , nzm
     do j = y1,y1
       do i = x1,x2
