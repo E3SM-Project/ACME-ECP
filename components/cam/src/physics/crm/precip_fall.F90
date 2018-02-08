@@ -21,8 +21,8 @@ contains
     real(crm_rknd), external :: term_vel  ! terminal velocity function
 
     ! Local:
-    real(crm_rknd) mx(ncrms,nzm),mn(ncrms,nzm), lfac(ncrms,nz)
-    real(crm_rknd) www(ncrms,nz),fz(ncrms,nz)
+    real(crm_rknd), allocatable :: mx(:,:),mn(:,:), lfac(:,:)
+    real(crm_rknd), allocatable :: www(:,:),fz(:,:)
     real(crm_rknd) eps
     integer i,j,k,kc,kb,icrm
     logical nonos
@@ -32,9 +32,24 @@ contains
     pn(y)=-min(real(0.,crm_rknd),y)
 
     real(crm_rknd) lat_heat, wmax
-    real(crm_rknd) wp(ncrms,nzm), tmp_qp(ncrms,nzm), irhoadz(ncrms,nzm), iwmax(ncrms,nzm), rhofac(ncrms,nzm), prec_cfl(ncrms)
-    integer nprec(ncrms), iprec, nprec_max
-    real(crm_rknd)  flagstat(ncrms)
+    real(crm_rknd), allocatable :: wp(:,:), tmp_qp(:,:), irhoadz(:,:), iwmax(:,:), rhofac(:,:), prec_cfl(:)
+    integer, allocatable :: nprec(:)
+    integer iprec, nprec_max
+    real(crm_rknd), allocatable :: flagstat(:)
+
+    allocate(mx(ncrms,nzm))
+    allocate(mn(ncrms,nzm))
+    allocate(lfac(ncrms,nz))
+    allocate(www(ncrms,nz))
+    allocate(fz(ncrms,nz))
+    allocate(wp(ncrms,nzm))
+    allocate(tmp_qp(ncrms,nzm))
+    allocate(irhoadz(ncrms,nzm))
+    allocate(iwmax(ncrms,nzm))
+    allocate(rhofac(ncrms,nzm))
+    allocate(prec_cfl(ncrms))
+    allocate(nprec(ncrms))
+    allocate(flagstat(ncrms))
 
     !--------------------------------------------------------
     !call t_startf ('precip_fall')
@@ -268,6 +283,20 @@ contains
 
       end do
     end do
+
+    deallocate(mx)
+    deallocate(mn)
+    deallocate(lfac)
+    deallocate(www)
+    deallocate(fz)
+    deallocate(wp)
+    deallocate(tmp_qp)
+    deallocate(irhoadz)
+    deallocate(iwmax)
+    deallocate(rhofac)
+    deallocate(prec_cfl)
+    deallocate(nprec)
+    deallocate(flagstat)
 
 
     !call t_stopf ('precip_fall')

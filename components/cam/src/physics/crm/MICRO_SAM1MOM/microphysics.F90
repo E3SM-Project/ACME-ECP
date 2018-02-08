@@ -425,6 +425,7 @@ CONTAINS
   real(crm_rknd) function term_vel_qp(i,j,k,ind,ncrms,icrm)
 
     use vars
+    implicit none
     integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: i,j,k,ind
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
@@ -464,9 +465,11 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
-    real(crm_rknd) omega(ncrms,nx,ny,nzm)
+    real(crm_rknd), allocatable :: omega(:,:,:,:)
     integer ind
     integer i,j,k,icrm
+
+    allocate(omega(ncrms,nx,ny,nzm))
 
     crain = b_rain / 4.
     csnow = b_snow / 4.
@@ -475,6 +478,7 @@ CONTAINS
     vsnow = a_snow * gams3 / 6. / (pi * rhos * nzeros) ** csnow
     vgrau = a_grau * gamg3 / 6. / (pi * rhog * nzerog) ** cgrau
 
+    !$acc parallel loop gang vector collapse(4)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -486,6 +490,8 @@ CONTAINS
     end do
 
     call precip_fall(qp, term_vel_qp, 2, omega(:,:,:,:), ind, ncrms)
+
+    deallocate(omega)
   end subroutine micro_precip_fall
 
   !----------------------------------------------------------------------
