@@ -1,4 +1,5 @@
-#define SP_DIR_NS
+! #define SP_DIR_NS
+
 module crm_physics
 !-----------------------------------------------------------------------
 ! Purpose: 
@@ -856,6 +857,47 @@ end subroutine crm_physics_init
 ! Author: Marat Khairoutdinov (mkhairoutdin@ms.cc.sunysb.edu)
 !========================================================
 
+
+   !------------------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------
+   ! whannah - The flux bypass option was originally implemented by Mike Pritchard (UCI)
+   ! Without this bypass the surface flux tendencies are applied to the GCM dynamical core 
+   ! as a perturbation tendency concentrated on just the lowest model layer instead of first 
+   ! before being diffused vertically by the boundary layer turbulence as occurs without SP, 
+   ! and was intended to be the case under SP (confirmed by Marat). This fix applies the 
+   ! surface fluxes of dry static energy and water vapor prior to running the CRM, and disables 
+   ! the tendency addition in diffusion_solver.F90. This is a more natural progression
+   ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
+   ! note : rpdel = 1./pdel
+   ! SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
+   !------------------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------
+
+#if defined( SP_FLUX_BYPASS )
+   lchnk = state%lchnk
+   ncol  = state%ncol
+   
+   lq(:) = .false.
+   lq(1) = .true.
+   call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', lu=.false., lv=.false., ls=.true., lq=lq)
+   ptend%name  = "SP_FLUX_BYPASS - tphysbc"
+   ptend%lu    = .false.
+   ptend%lv    = .false.
+   ptend%lq    = .false. 
+   ptend%ls    = .true.
+   ptend%lq(1) = .true.
+   do i=1,ncol
+      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
+      ptend%s(i,:)   = 0.
+      ptend%q(i,:,1) = 0.
+      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
+   end do
+   ! call physics_update(state, ptend, ztodt, tend)  
+   call physics_update(state_save, ptend, ztodt, tend)  
+#endif
+
+
    call t_startf ('crm')
 
 !-- mdb spcam: ACME version of physics_ptend_init has additional arguments
@@ -927,10 +969,6 @@ end subroutine crm_physics_init
   
    cldo(:ncol, :) = cldo_save(:ncol, :)
 
-#ifdef GXL_DEBUG_OUTPUT
-   call outfld("conc_BC2",state%q(:,:pver,19),pcols, lchnk)  !==Guangxing Lin debug output
-#endif
-
 
 #if ( defined MODAL_AERO )
    do i=1,pcnst
@@ -939,6 +977,7 @@ end subroutine crm_physics_init
    end do
    dgnumwet = dgnumwet_save
 #endif
+ 
 
 !
 ! tracer species other than water vapor and cloud water are updated in convetional CAM.
@@ -1947,10 +1986,6 @@ end subroutine crm_physics_init
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
-
-#ifdef GXL_DEBUG_OUTPUT
-   call outfld("conc_BC4",state%q(:,:pver,19),pcols, lchnk)!Guangxing Lin==debug output
-#endif
 
        if(SPCAM_microp_scheme .eq. 'm2005') then
          ! calculate column water of rain, snow and graupel 

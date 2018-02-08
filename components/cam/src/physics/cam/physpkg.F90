@@ -1494,12 +1494,6 @@ subroutine tphysac (ztodt,   cam_in,  &
        call flux_avg_run(state, cam_in,  pbuf, nstep, ztodt)
     endif
 
-! #if defined( SP_FLUX_BYPASS_1 )
-!     ! whannah - copy adjusted surface fluxes into variable for CRM input
-!     cam_in%crm_shf (1:ncol)   = cam_in%shf (1:ncol)
-!     cam_in%crm_cflx(1:ncol,:) = cam_in%cflx(1:ncol,:)
-! #endif
-
     ! Validate the physics state.
     if (state_debug_checks) &
          call physics_state_check(state, name="before tphysac")
@@ -1556,6 +1550,7 @@ end if ! l_tracer_aero
 
     call check_qflx(state, tend, "PHYAC01", nstep, ztodt, cam_in%cflx(:,1))
 
+#ifndef SP_FLUX_BYPASS
     if(.not.use_qqflx_fixer) then 
 
        ! Check if latent heat flux exceeds the total moisture content of the
@@ -1566,6 +1561,7 @@ end if ! l_tracer_aero
             cam_in%lhf , cam_in%cflx )
 
     end if 
+#endif
 
     call check_qflx(state, tend, "PHYAC02", nstep, ztodt, cam_in%cflx(:,1))
 
@@ -1962,8 +1958,6 @@ subroutine tphysbc (ztodt,               &
     integer ierr
 
     integer  i,k,m,ihist                       ! Longitude, level, constituent indices
-    ! real(r8) sp_flux_nfac                      ! scaling factor for SP_FLUX_MOD
-    integer  n,nf,nmax                         ! extra loop variables for SP_FLUX_BYPASS - whannah
     integer :: ixcldice, ixcldliq              ! constituent indices for cloud liquid and ice water.
     ! for macro/micro co-substepping
     integer :: macmic_it                       ! iteration variables
@@ -2112,14 +2106,6 @@ subroutine tphysbc (ztodt,               &
 
     nstep = get_nstep()
 
-#if defined( SP_FLUX_BYPASS_DEBUG )
-223 format('whannah - SPFB',i2,' - ',i6,' - ',i6,' - min/max = ',f8.4,' / ',f8.4  )
-#endif
-
-#if defined( SP_FLUX_BYPASS_DEBUG )
-write(*,223) 4,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
-#endif
-
     if (pergro_test_active) then 
        !call outfld calls
        do ihist = 1 , nvars_prtrb_hist
@@ -2199,6 +2185,15 @@ write(*,223) 4,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
     call check_qflx (state, tend, "PHYBC01", nstep, ztodt, cam_in%cflx(:,1))
     call check_water(state, tend, "PHYBC01", nstep, ztodt)
 
+#if defined(SP_FLUX_BYPASS)
+    if(.not.use_qqflx_fixer) then 
+       ! Check if latent heat flux exceeds the total moisture content of the
+       ! lowest model layer, thereby creating negative moisture.
+       call qneg4('TPHYSBC '       ,lchnk               ,ncol  ,ztodt ,               &
+            state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
+            cam_in%lhf , cam_in%cflx )
+    end if 
+#endif
 
     if(use_mass_borrower) then 
 
@@ -2744,104 +2739,6 @@ if (l_tracer_aero) then
 
 !-- mdb spcam
   if (use_SPCAM) then
-
-    !------------------------------------------------------------------------------------------
-    !------------------------------------------------------------------------------------------
-    ! whannah - The flux bypass option was originally implemented by Mike Pritchard (UCI)
-    ! Without this bypass the surface flux tendencies are applied to the GCM dynamical core 
-    ! as a perturbation tendency concentrated on just the lowest model layer instead of first 
-    ! before being diffused vertically by the boundary layer turbulence as occurs without SP, 
-    ! and was intended to be the case under SP (confirmed by Marat). This fix applies the 
-    ! surface fluxes of dry static energy and water vapor prior to running the CRM, and disables 
-    ! the tendency addition in diffusion_solver.F90. This is a more natural progression
-    ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
-    ! note : rpdel = 1./pdel
-    ! SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
-    ! SP_FLUX_BYPASS_2 - all constituent fluxes (and SHF) are affected
-    !------------------------------------------------------------------------------------------
-    !------------------------------------------------------------------------------------------
-
-!!! whannah - SP_FLUX_MOD - spread fluxes over nmax layers
-! #ifdef SP_FLUX_MOD
-!     nmax = 4
-! #else
-!     nmax = 1
-! #endif
-
-#if defined( SP_FLUX_BYPASS_DEBUG )
-write(*,223) 5,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
-#endif
-
-!!! whannah - SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
-#if defined( SP_FLUX_BYPASS_1 )
-    lq(:) = .false.
-    lq(1) = .true.
-    call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', lu=.false., lv=.false., ls=.true., lq=lq)
-    ptend%lu    = .false.
-    ptend%lv    = .false.
-    ptend%lq    = .false. 
-    ptend%ls    = .true.
-    ptend%lq(1) = .true.
-    ! sp_flux_nfac = real(1,r8) / real(nmax,r8)
-! write(*,*) 'whannah - lchnk ',lchnk,' - min/max shf = ',minval(cam_in%crm_shf(:))   ,maxval(cam_in%crm_shf(:))
-! write(*,*) 'whannah - lchnk ',lchnk,' - min/max lhf = ',minval(cam_in%crm_cflx(:,1)),maxval(cam_in%crm_cflx(:,1))
-
-! write(*,5001) lchnk,nstep, minval(cam_in%shf(:))   ,maxval(cam_in%shf(:))
-! write(*,5002) lchnk,nstep, minval(cam_in%cflx(:,1)),maxval(cam_in%cflx(:,1))
-! 5001 format('whannah - SPFB - ',i5,' ',i6,' - min/max shf = ',f6.2,' / ',f6.2  )
-! 5002 format('whannah - SPFB - ',i5,' ',i6,' - min/max lhf = ',f6.2,' / ',f6.2  )
-! stop
-    do i=1,ncol
-      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
-      ptend%s(i,:)   = 0.
-      ptend%q(i,:,1) = 0.
-      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
-      ! ptend%s(i,pver)   = tmp1 * cam_in%crm_shf(i)
-      ! ptend%q(i,pver,1) = tmp1 * cam_in%crm_cflx(i,1)
-      ! do n=1,nmax
-      !   ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i)    * sp_flux_nfac
-      !   ptend%q(i,pver-n-1,1) = tmp1 * cam_in%cflx(i,1) * sp_flux_nfac
-      ! end do
-    end do
-    call physics_update(state, ptend, ztodt, tend)   
-#endif 
-
-
-!!! whannah - SP_FLUX_BYPASS_2 - all constituent fluxes (and sensible heat flux) are affected
-! #ifdef SP_FLU_XBYPASS_2
-!     lq(:) = .TRUE.
-!     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SP_FLUX_BYPASS_2', ls=.true., lq=lq)
-!     ptend%lu    = .false.
-!     ptend%lv    = .false.
-!     ptend%lq    = .true. 
-!     ptend%ls    = .true.
-!     sp_flux_nfac = real(1,r8) / real(nmax,r8)
-!     do i=1,ncol
-!       tmp1 = gravit * state%rpdel(i,pver)
-!       ptend%s(i,:)   = 0.
-!       ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
-!       ! ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-!       do n=1,nmax
-!         ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i) * sp_flux_nfac
-!       end do
-!       ! whannah - add all constituent fluxes
-!       do m = 1, pcnst
-!         ptend%q(i,:,m) = 0.
-!         ! ptend%q(i,pver,m) = gravit / state%pdel(i,pver) * cam_in%cflx(i,m)
-!         ! ptend%q(i,pver,m) = tmp1 * cam_in%cflx(i,m)
-!         do n=1,nmax
-!           ptend%q(i,pver-n-1,m) = tmp1 * cam_in%cflx(i,m) * sp_flux_nfac
-!         end do
-!       end do
-!     end do
-!     call physics_update(state, ptend, ztodt, tend)   
-! #endif  
-
-
-
-
-
     call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class)
   endif
 

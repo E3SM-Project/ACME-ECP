@@ -151,10 +151,7 @@
 !    use phys_debug_util,    only : phys_debug_col
 !    use time_manager,       only : is_first_step, get_nstep
     use vdiff_lu_solver,     only : lu_decomp, vd_lu_decomp, vd_lu_solve
-
-!-- mdb spcam
-    use phys_control,       only : phys_getopts  
-!-- mdb spcam
+    use phys_control,        only : phys_getopts  
     
   ! Modification : Ideally, we should diffuse 'liquid-ice static energy' (sl), not the dry static energy.
   !                Also, vertical diffusion of cloud droplet number concentration and aerosol number
@@ -302,9 +299,7 @@
     
     real(r8) :: mw_fac_loc(pcols,pver+1,ncnst)           ! Local sqrt(1/M_q + 1/M_d) for this constituent
 
-!-- mdb spcam
     logical  :: use_SPCAM
-!-- mdb spcam
 
     !--------------------------------
     ! Variables needed for WACCM-X
@@ -666,15 +661,11 @@
    ! addition of surface fluxes to be after the dynamical core. This modification 
    ! has been commented out because it did not improve the simulation, and would
    ! often lead to an error to be thrown in the energy balance check.
-   !   SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
-   !   SP_FLUX_BYPASS_2 - all constituent fluxes (and SHF) are affected
+   !   SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
 
-#if defined(SP_FLUX_BYPASS_1)
+#if defined( SP_FLUX_BYPASS )
       dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
 #endif
-! #if defined(SP_FLUX_BYPASS_2)
-!       dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
-! #endif
 
      ! Diffuse dry static energy
      !----------------------------------------------------------------------------------------------------
@@ -776,12 +767,9 @@
       q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
         
 
-#ifdef SP_FLUX_BYPASS_1
+#if defined( SP_FLUX_BYPASS )
         if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
 #endif  
-! #ifdef SP_FLUX_BYPASS_2
-!         q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m)
-! #endif  
 
            ! Diffuse constituents.
 
