@@ -461,7 +461,6 @@ CONTAINS
 
     use vars
     use params, only : pi
-    use precip_fall_mod
     implicit none
     integer, intent(in) :: ncrms
 
@@ -489,7 +488,7 @@ CONTAINS
       end do
     end do
 
-    call precip_fall(qp, term_vel_qp, 2, omega(:,:,:,:), ind, ncrms)
+    call precip_fall(qp, 2, omega(:,:,:,:), ind, ncrms)
 
     deallocate(omega)
   end subroutine micro_precip_fall
@@ -540,6 +539,271 @@ CONTAINS
   function Get_reffi() ! ice
     real(crm_rknd), pointer, dimension(:,:,:) :: Get_reffi
   end function Get_reffi
+
+
+
+  subroutine precip_fall(qp, hydro_type, omega, ind, ncrms)
+    !     positively definite monotonic advection with non-oscillatory option
+    !     and gravitational sedimentation
+    use vars
+    use params
+    implicit none
+    integer, intent(in) :: ncrms
+    real(crm_rknd) qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
+    integer hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
+    real(crm_rknd) omega(ncrms,nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
+    integer ind
+
+    ! Local:
+    real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
+    real(crm_rknd) :: mx(nzm),mn(nzm), lfac(nz)
+    real(crm_rknd) :: www(nz),fz(nz)
+    real(crm_rknd) eps
+    integer i,j,k,kc,kb,icrm
+    logical nonos
+
+    real(crm_rknd) y,pp,pn
+    pp(y)= max(real(0.,crm_rknd),y)
+    pn(y)=-min(real(0.,crm_rknd),y)
+
+    real(crm_rknd) lat_heat, term_vel_qp, flagstat, prec_cfl, tmp
+    real(crm_rknd) :: wp(nzm), tmp_qp(nzm), irhoadz(nzm), rhofac(nzm)
+    integer iprec, nprec
+
+    !--------------------------------------------------------
+    !call t_startf ('precip_fall')
+
+    eps = 1.e-10
+    nonos = .true.
+
+    ! 	Add sedimentation of precipitation field to the vert. vel.
+    !$acc parallel loop gang vector collapse(3) private(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,rhofac)
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          do k = 1,nzm
+            rhofac(k) = sqrt(1.29/rho(icrm,k))
+            irhoadz(k) = 1./(rho(icrm,k)*adz(icrm,k)) ! Useful factor
+          end do
+          ! Compute precipitation velocity and flux column-by-column
+          prec_cfl = 0.
+
+          do k=1,nzm
+            kb = max(1,k-1)
+
+            select case (hydro_type)
+            case(0)
+              lfac(k) = fac_cond
+              flagstat = 1.
+            case(1)
+              lfac(k) = fac_sub
+              flagstat = 1.
+            case(2)
+              lfac(k) = fac_cond + (1-omega(icrm,i,j,k))*fac_fus
+              flagstat = 1.
+            case(3)
+              lfac(k) = 0.
+              flagstat = 0.
+            case default
+              if(masterproc) then
+                print*, 'unknown hydro_type in precip_fall. exitting ...'
+                ! call task_abort
+              end if
+            end select
+
+            term_vel_qp = 0.
+            if(qp(icrm,i,j,k).gt.qp_threshold) then
+              omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
+              if(omp.eq.1.) then
+                term_vel_qp = vrain*(rho(icrm,k)*qp(icrm,i,j,k))**crain
+              elseif(omp.eq.0.) then
+                omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
+                qgg=omg*qp(icrm,i,j,k)
+                qss=qp(icrm,i,j,k)-qgg
+                term_vel_qp = (omg*vgrau*(rho(icrm,k)*qgg)**cgrau &
+                +(1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow)
+              else
+                omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
+                qrr=omp*qp(icrm,i,j,k)
+                qss=qp(icrm,i,j,k)-qrr
+                qgg=omg*qss
+                qss=qss-qgg
+                term_vel_qp = (omp*vrain*(rho(icrm,k)*qrr)**crain &
+                +(1.-omp)*(omg*vgrau*(rho(icrm,k)*qgg)**cgrau &
+                +(1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow))
+              endif
+            end if
+
+            wp(k)=rhofac(k)*term_vel_qp
+            prec_cfl = max(prec_cfl,wp(k)/(dz(icrm)*adz(icrm,kb)/dtn)) ! Keep column maximum CFL
+            wp(k) = -wp(k)*rhow(icrm,k)*dtn/dz(icrm)
+
+          end do  ! k
+
+          fz(nz)=0.
+          www(nz)=0.
+          lfac(nz)=0
+
+          ! If maximum CFL due to precipitation velocity is greater than 0.9,
+          ! take more than one advection step to maintain stability.
+          if (prec_cfl.gt.0.9) then
+            nprec = CEILING(prec_cfl/0.9)
+            do k = 1,nzm
+              ! wp already includes factor of dt, so reduce it by a
+              ! factor equal to the number of precipitation steps.
+              wp(k) = wp(k)/real(nprec,crm_rknd)
+            end do
+          else
+            nprec = 1
+          end if
+
+          do iprec = 1,nprec
+
+            do k = 1,nzm
+              tmp_qp(k) = qp(icrm,i,j,k) ! Temporary array for qp in this column
+            end do
+
+            !-----------------------------------------
+
+            if(nonos) then
+
+              do k=1,nzm
+                kc=min(nzm,k+1)
+                kb=max(1,k-1)
+                mx(k)=max(tmp_qp(kb),tmp_qp(kc),tmp_qp(k))
+                mn(k)=min(tmp_qp(kb),tmp_qp(kc),tmp_qp(k))
+              end do
+
+            end if  ! nonos
+
+            !  loop over iterations
+
+            do k=1,nzm
+              ! Define upwind precipitation flux
+              fz(k)=tmp_qp(k)*wp(k)
+            end do
+
+            do k=1,nzm
+              kc=k+1
+              tmp_qp(k)=tmp_qp(k)-(fz(kc)-fz(k))*irhoadz(k) !Update temporary qp
+            end do
+
+            do k=1,nzm
+              ! Also, compute anti-diffusive correction to previous
+              ! (upwind) approximation to the flux
+              kb=max(1,k-1)
+              ! The precipitation velocity is a cell-centered quantity,
+              ! since it is computed from the cell-centered
+              ! precipitation mass fraction.  Therefore, a reformulated
+              ! anti-diffusive flux is used here which accounts for
+              ! this and results in reduced numerical diffusion.
+              www(k) = 0.5*(1.+wp(k)*irhoadz(k)) &
+              *(tmp_qp(kb)*wp(kb) - tmp_qp(k)*wp(k)) ! works for wp(k)<0
+            end do
+
+            !---------- non-osscilatory option ---------------
+
+            if(nonos) then
+
+              do k=1,nzm
+                kc=min(nzm,k+1)
+                kb=max(1,k-1)
+                mx(k)=max(tmp_qp(kb),tmp_qp(kc),tmp_qp(k),mx(k))
+                mn(k)=min(tmp_qp(kb),tmp_qp(kc),tmp_qp(k),mn(k))
+              end do
+
+              do k=1,nzm
+                kc=min(nzm,k+1)
+                mx(k)=rho(icrm,k)*adz(icrm,k)*(mx(k)-tmp_qp(k))/(pn(www(kc)) + pp(www(k))+eps)
+                mn(k)=rho(icrm,k)*adz(icrm,k)*(tmp_qp(k)-mn(k))/(pp(www(kc)) + pn(www(k))+eps)
+              end do
+
+              do k=1,nzm
+                kb=max(1,k-1)
+                ! Add limited flux correction to fz(k).
+                fz(k) = fz(k) &                        ! Upwind flux
+                + pp(www(k))*min(real(1.,crm_rknd),mx(k), mn(kb)) &
+                - pn(www(k))*min(real(1.,crm_rknd),mx(kb),mn(k)) ! Anti-diffusive flux
+              end do
+
+            endif ! nonos
+
+            ! Update precipitation mass fraction and liquid-ice static
+            ! energy using precipitation fluxes computed in this column.
+            do k=1,nzm
+              kc=k+1
+              ! Update precipitation mass fraction.
+              ! Note that fz is the total flux, including both the
+              ! upwind flux and the anti-diffusive correction.
+              qp(icrm,i,j,k)=qp(icrm,i,j,k)-(fz(kc)-fz(k))*irhoadz(k)
+              tmp = (fz(kc)-fz(k))*irhoadz(k)*flagstat
+              !$acc atomic update
+              qpfall(icrm,k)=qpfall(icrm,k)-tmp  ! For qp budget
+              lat_heat = -(lfac(kc)*fz(kc)-lfac(k)*fz(k))*irhoadz(k)
+              t(icrm,i,j,k)=t(icrm,i,j,k)-lat_heat
+              !$acc atomic update
+              tlat(icrm,k)=tlat(icrm,k)-lat_heat            ! For energy budget
+              tmp = fz(k)*flagstat
+              !$acc atomic update
+              precflux(icrm,k) = precflux(icrm,k) - tmp   ! For statistics
+            end do
+            precsfc(icrm,i,j) = precsfc(icrm,i,j) - fz(1)*flagstat ! For statistics
+            precssfc(icrm,i,j) = precssfc(icrm,i,j) - fz(1)*(1.-omega(icrm,i,j,1))*flagstat ! For statistics
+            prec_xy(icrm,i,j) = prec_xy(icrm,i,j) - fz(1)*flagstat ! For 2D output
+
+
+            ! Re-compute precipitation velocity using new value of qp.
+            do k=1,nzm
+              if (iprec.lt.nprec) then
+
+                term_vel_qp = 0.
+                if(qp(icrm,i,j,k).gt.qp_threshold) then
+                  omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
+                  if(omp.eq.1.) then
+                    term_vel_qp = vrain*(rho(icrm,k)*qp(icrm,i,j,k))**crain
+                  elseif(omp.eq.0.) then
+                    omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
+                    qgg=omg*qp(icrm,i,j,k)
+                    qss=qp(icrm,i,j,k)-qgg
+                    term_vel_qp = (omg*vgrau*(rho(icrm,k)*qgg)**cgrau &
+                    +(1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow)
+                  else
+                    omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
+                    qrr=omp*qp(icrm,i,j,k)
+                    qss=qp(icrm,i,j,k)-qrr
+                    qgg=omg*qss
+                    qss=qss-qgg
+                    term_vel_qp = (omp*vrain*(rho(icrm,k)*qrr)**crain &
+                    +(1.-omp)*(omg*vgrau*(rho(icrm,k)*qgg)**cgrau &
+                    +(1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow))
+                  endif
+                end if
+
+                wp(k) = rhofac(k)*term_vel_qp
+                ! Decrease precipitation velocity by factor of nprec
+                wp(k) = -wp(k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
+                ! Note: Don't bother checking CFL condition at each
+                ! substep since it's unlikely that the CFL will
+                ! increase very much between substeps when using
+                ! monotonic advection schemes.
+              endif
+            end do
+
+            if (iprec.lt.nprec) then
+              fz(nz)=0.
+              www(nz)=0.
+              lfac(nz)=0.
+            endif
+
+          end do !iprec
+
+        end do
+      end do
+    end do
+
+    !call t_stopf ('precip_fall')
+
+  end subroutine precip_fall
 
 
 end module microphysics
