@@ -96,9 +96,9 @@ module micro_params
 contains
 
   subroutine allocate_micro_params(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) :: zero
     allocate( accrsc (ncrms,nzm) )
     allocate( accrsi (ncrms,nzm) )
     allocate( accrrc (ncrms,nzm) )
@@ -112,20 +112,18 @@ contains
     allocate( evapg1 (ncrms,nzm) )
     allocate( evapg2 (ncrms,nzm) )
 
-    zero = 0
-
-    accrsc  = zero
-    accrsi  = zero
-    accrrc  = zero
-    coefice = zero
-    accrgc  = zero
-    accrgi  = zero
-    evaps1  = zero
-    evaps2  = zero
-    evapr1  = zero
-    evapr2  = zero
-    evapg1  = zero
-    evapg2  = zero
+    call memzero_crm_rknd( accrsc  , product(shape(accrsc )) )
+    call memzero_crm_rknd( accrsi  , product(shape(accrsi )) )
+    call memzero_crm_rknd( accrrc  , product(shape(accrrc )) )
+    call memzero_crm_rknd( coefice , product(shape(coefice)) )
+    call memzero_crm_rknd( accrgc  , product(shape(accrgc )) )
+    call memzero_crm_rknd( accrgi  , product(shape(accrgi )) )
+    call memzero_crm_rknd( evaps1  , product(shape(evaps1 )) )
+    call memzero_crm_rknd( evaps2  , product(shape(evaps2 )) )
+    call memzero_crm_rknd( evapr1  , product(shape(evapr1 )) )
+    call memzero_crm_rknd( evapr2  , product(shape(evapr2 )) )
+    call memzero_crm_rknd( evapg1  , product(shape(evapg1 )) )
+    call memzero_crm_rknd( evapg2  , product(shape(evapg2 )) )
   end subroutine allocate_micro_params
 
   subroutine deallocate_micro_params

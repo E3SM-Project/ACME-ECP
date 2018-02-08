@@ -208,6 +208,7 @@ module vars
 contains
 
   subroutine allocate_vars(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
@@ -334,125 +335,125 @@ contains
 
     zero = 0.
 
-    u              = zero
-    v              = zero
-    w              = zero
-    t              = zero
-    p              = zero
-    tabs           = zero
-    qv             = zero
-    qcl            = zero
-    qpl            = zero
-    qci            = zero
-    qpi            = zero
-    tke2           = zero
-    tk2            = zero
-    dudt           = zero
-    dvdt           = zero
-    dwdt           = zero
-    misc           = zero
-    fluxbu         = zero
-    fluxbv         = zero
-    fluxbt         = zero
-    fluxbq         = zero
-    fluxtu         = zero
-    fluxtv         = zero
-    fluxtt         = zero
-    fluxtq         = zero
-    fzero          = zero
-    precsfc        = zero
-    precssfc       = zero
-    t0             = zero
-    q0             = zero
-    qv0            = zero
-    tabs0          = zero
-    tl0            = zero
-    tv0            = zero
-    u0             = zero
-    v0             = zero
-    tg0            = zero
-    qg0            = zero
-    ug0            = zero
-    vg0            = zero
-    p0             = zero
-    tke0           = zero
-    t01            = zero
-    q01            = zero
-    qp0            = zero
-    qn0            = zero
-    prespot        = zero
-    rho            = zero
-    rhow           = zero
-    bet            = zero
-    gamaz          = zero
-    wsub           = zero
-    qtend          = zero
-    ttend          = zero
-    utend          = zero
-    vtend          = zero
-    sstxy          = zero
-    fcory          = zero
-    fcorzy         = zero
-    latitude       = zero
-    longitude      = zero
-    prec_xy        = zero
-    pw_xy          = zero
-    cw_xy          = zero
-    iw_xy          = zero
-    cld_xy         = zero
-    u200_xy        = zero
-    usfc_xy        = zero
-    v200_xy        = zero
-    vsfc_xy        = zero
-    w500_xy        = zero
-    twle           = zero
-    twsb           = zero
-    precflux       = zero
-    uwle           = zero
-    uwsb           = zero
-    vwle           = zero
-    vwsb           = zero
-    tkelediss      = zero
-    t2leadv        = zero
-    t2legrad       = zero
-    t2lediff       = zero
-    t2lediss       = zero
-    twleadv        = zero
-    twlediff       = zero
-    tadv           = zero
-    tdiff          = zero
-    tlat           = zero
-    tlatqi         = zero
-    qifall         = zero
-    qpfall         = zero
-    w_max          = zero
-    u_max          = zero
-    total_water_before  = zero
-    total_water_after   = zero
-    total_water_evap    = zero
-    total_water_prec    = zero
-    total_water_ls      = zero
-    total_water_clubb   = zero
-    total_energy_before = zero
-    total_energy_after  = zero
-    total_energy_evap   = zero
-    total_energy_prec   = zero
-    total_energy_ls     = zero
-    total_energy_clubb  = zero
-    total_energy_rad    = zero
-    qtotmicro      = zero
-    CF3D           = zero
-    u850_xy        = zero
-    v850_xy        = zero
-    psfc_xy        = zero
-    swvp_xy        = zero
-    cloudtopheight = zero
-    echotopheight  = zero
-    cloudtoptemp   = zero
+    call memzero_crm_rknd( u                    , product(shape(u                   )) )
+    call memzero_crm_rknd( v                    , product(shape(v                   )) )
+    call memzero_crm_rknd( w                    , product(shape(w                   )) )
+    call memzero_crm_rknd( t                    , product(shape(t                   )) )
+    call memzero_crm_rknd( p                    , product(shape(p                   )) )
+    call memzero_crm_rknd( tabs                 , product(shape(tabs                )) )
+    call memzero_crm_rknd( qv                   , product(shape(qv                  )) )
+    call memzero_crm_rknd( qcl                  , product(shape(qcl                 )) )
+    call memzero_crm_rknd( qpl                  , product(shape(qpl                 )) )
+    call memzero_crm_rknd( qci                  , product(shape(qci                 )) )
+    call memzero_crm_rknd( qpi                  , product(shape(qpi                 )) )
+    call memzero_crm_rknd( tke2                 , product(shape(tke2                )) )
+    call memzero_crm_rknd( tk2                  , product(shape(tk2                 )) )
+    call memzero_crm_rknd( dudt                 , product(shape(dudt                )) )
+    call memzero_crm_rknd( dvdt                 , product(shape(dvdt                )) )
+    call memzero_crm_rknd( dwdt                 , product(shape(dwdt                )) )
+    call memzero_crm_rknd( misc                 , product(shape(misc                )) )
+    call memzero_crm_rknd( fluxbu               , product(shape(fluxbu              )) )
+    call memzero_crm_rknd( fluxbv               , product(shape(fluxbv              )) )
+    call memzero_crm_rknd( fluxbt               , product(shape(fluxbt              )) )
+    call memzero_crm_rknd( fluxbq               , product(shape(fluxbq              )) )
+    call memzero_crm_rknd( fluxtu               , product(shape(fluxtu              )) )
+    call memzero_crm_rknd( fluxtv               , product(shape(fluxtv              )) )
+    call memzero_crm_rknd( fluxtt               , product(shape(fluxtt              )) )
+    call memzero_crm_rknd( fluxtq               , product(shape(fluxtq              )) )
+    call memzero_crm_rknd( fzero                , product(shape(fzero               )) )
+    call memzero_crm_rknd( precsfc              , product(shape(precsfc             )) )
+    call memzero_crm_rknd( precssfc             , product(shape(precssfc            )) )
+    call memzero_crm_rknd( t0                   , product(shape(t0                  )) )
+    call memzero_crm_rknd( q0                   , product(shape(q0                  )) )
+    call memzero_crm_rknd( qv0                  , product(shape(qv0                 )) )
+    call memzero_crm_rknd( tabs0                , product(shape(tabs0               )) )
+    call memzero_crm_rknd( tl0                  , product(shape(tl0                 )) )
+    call memzero_crm_rknd( tv0                  , product(shape(tv0                 )) )
+    call memzero_crm_rknd( u0                   , product(shape(u0                  )) )
+    call memzero_crm_rknd( v0                   , product(shape(v0                  )) )
+    call memzero_crm_rknd( tg0                  , product(shape(tg0                 )) )
+    call memzero_crm_rknd( qg0                  , product(shape(qg0                 )) )
+    call memzero_crm_rknd( ug0                  , product(shape(ug0                 )) )
+    call memzero_crm_rknd( vg0                  , product(shape(vg0                 )) )
+    call memzero_crm_rknd( p0                   , product(shape(p0                  )) )
+    call memzero_crm_rknd( tke0                 , product(shape(tke0                )) )
+    call memzero_crm_rknd( t01                  , product(shape(t01                 )) )
+    call memzero_crm_rknd( q01                  , product(shape(q01                 )) )
+    call memzero_crm_rknd( qp0                  , product(shape(qp0                 )) )
+    call memzero_crm_rknd( qn0                  , product(shape(qn0                 )) )
+    call memzero_crm_rknd( prespot              , product(shape(prespot             )) )
+    call memzero_crm_rknd( rho                  , product(shape(rho                 )) )
+    call memzero_crm_rknd( rhow                 , product(shape(rhow                )) )
+    call memzero_crm_rknd( bet                  , product(shape(bet                 )) )
+    call memzero_crm_rknd( gamaz                , product(shape(gamaz               )) )
+    call memzero_crm_rknd( wsub                 , product(shape(wsub                )) )
+    call memzero_crm_rknd( qtend                , product(shape(qtend               )) )
+    call memzero_crm_rknd( ttend                , product(shape(ttend               )) )
+    call memzero_crm_rknd( utend                , product(shape(utend               )) )
+    call memzero_crm_rknd( vtend                , product(shape(vtend               )) )
+    call memzero_crm_rknd( sstxy                , product(shape(sstxy               )) )
+    call memzero_crm_rknd( fcory                , product(shape(fcory               )) )
+    call memzero_crm_rknd( fcorzy               , product(shape(fcorzy              )) )
+    call memzero_crm_rknd( latitude             , product(shape(latitude            )) )
+    call memzero_crm_rknd( longitude            , product(shape(longitude           )) )
+    call memzero_crm_rknd( prec_xy              , product(shape(prec_xy             )) )
+    call memzero_crm_rknd( pw_xy                , product(shape(pw_xy               )) )
+    call memzero_crm_rknd( cw_xy                , product(shape(cw_xy               )) )
+    call memzero_crm_rknd( iw_xy                , product(shape(iw_xy               )) )
+    call memzero_crm_rknd( cld_xy               , product(shape(cld_xy              )) )
+    call memzero_crm_rknd( u200_xy              , product(shape(u200_xy             )) )
+    call memzero_crm_rknd( usfc_xy              , product(shape(usfc_xy             )) )
+    call memzero_crm_rknd( v200_xy              , product(shape(v200_xy             )) )
+    call memzero_crm_rknd( vsfc_xy              , product(shape(vsfc_xy             )) )
+    call memzero_crm_rknd( w500_xy              , product(shape(w500_xy             )) )
+    call memzero_crm_rknd( twle                 , product(shape(twle                )) )
+    call memzero_crm_rknd( twsb                 , product(shape(twsb                )) )
+    call memzero_crm_rknd( precflux             , product(shape(precflux            )) )
+    call memzero_crm_rknd( uwle                 , product(shape(uwle                )) )
+    call memzero_crm_rknd( uwsb                 , product(shape(uwsb                )) )
+    call memzero_crm_rknd( vwle                 , product(shape(vwle                )) )
+    call memzero_crm_rknd( vwsb                 , product(shape(vwsb                )) )
+    call memzero_crm_rknd( tkelediss            , product(shape(tkelediss           )) )
+    call memzero_crm_rknd( t2leadv              , product(shape(t2leadv             )) )
+    call memzero_crm_rknd( t2legrad             , product(shape(t2legrad            )) )
+    call memzero_crm_rknd( t2lediff             , product(shape(t2lediff            )) )
+    call memzero_crm_rknd( t2lediss             , product(shape(t2lediss            )) )
+    call memzero_crm_rknd( twleadv              , product(shape(twleadv             )) )
+    call memzero_crm_rknd( twlediff             , product(shape(twlediff            )) )
+    call memzero_crm_rknd( tadv                 , product(shape(tadv                )) )
+    call memzero_crm_rknd( tdiff                , product(shape(tdiff               )) )
+    call memzero_crm_rknd( tlat                 , product(shape(tlat                )) )
+    call memzero_crm_rknd( tlatqi               , product(shape(tlatqi              )) )
+    call memzero_crm_rknd( qifall               , product(shape(qifall              )) )
+    call memzero_crm_rknd( qpfall               , product(shape(qpfall              )) )
+    call memzero_crm_rknd( w_max                , product(shape(w_max               )) )
+    call memzero_crm_rknd( u_max                , product(shape(u_max               )) )
+    call memzero_real8   ( total_water_before   , product(shape(total_water_before  )) )
+    call memzero_real8   ( total_water_after    , product(shape(total_water_after   )) )
+    call memzero_real8   ( total_water_evap     , product(shape(total_water_evap    )) )
+    call memzero_real8   ( total_water_prec     , product(shape(total_water_prec    )) )
+    call memzero_real8   ( total_water_ls       , product(shape(total_water_ls      )) )
+    call memzero_real8   ( total_water_clubb    , product(shape(total_water_clubb   )) )
+    call memzero_real8   ( total_energy_before  , product(shape(total_energy_before )) )
+    call memzero_real8   ( total_energy_after   , product(shape(total_energy_after  )) )
+    call memzero_real8   ( total_energy_evap    , product(shape(total_energy_evap   )) )
+    call memzero_real8   ( total_energy_prec    , product(shape(total_energy_prec   )) )
+    call memzero_real8   ( total_energy_ls      , product(shape(total_energy_ls     )) )
+    call memzero_real8   ( total_energy_clubb   , product(shape(total_energy_clubb  )) )
+    call memzero_real8   ( total_energy_rad     , product(shape(total_energy_rad    )) )
+    call memzero_crm_rknd( qtotmicro            , product(shape(qtotmicro           )) )
+    call memzero_crm_rknd( CF3D                 , product(shape(CF3D                )) )
+    call memzero_crm_rknd( u850_xy              , product(shape(u850_xy             )) )
+    call memzero_crm_rknd( v850_xy              , product(shape(v850_xy             )) )
+    call memzero_crm_rknd( psfc_xy              , product(shape(psfc_xy             )) )
+    call memzero_crm_rknd( swvp_xy              , product(shape(swvp_xy             )) )
+    call memzero_crm_rknd( cloudtopheight       , product(shape(cloudtopheight      )) )
+    call memzero_crm_rknd( echotopheight        , product(shape(echotopheight       )) )
+    call memzero_crm_rknd( cloudtoptemp         , product(shape(cloudtoptemp        )) )
 #if (defined CRM && defined MODAL_AERO)
-    naer           = zero
-    vaer           = zero
-    hgaer          = zero
+    call memzero_crm_rknd( naer  , product(shape(naer )) )
+    call memzero_crm_rknd( vaer  , product(shape(vaer )) )
+    call memzero_crm_rknd( hgaer , product(shape(hgaer)) )
 #endif
   end subroutine allocate_vars
 

@@ -1,5 +1,6 @@
 
 module crm_module
+  use openacc_utils
   use task_init_mod, only: task_init
   use abcoefs_mod, only: abcoefs
   use kurant_mod, only: kurant
@@ -421,27 +422,27 @@ subroutine crm(lchnk, icol, ncrms, &
 #endif
 
   !Initialize local arrays to zero
-  t00       = 0
-  tln       = 0
-  qln       = 0
-  qccln     = 0
-  qiiln     = 0
-  uln       = 0
-  vln       = 0
-  cwp       = 0
-  cwph      = 0
-  cwpm      = 0
-  cwpl      = 0
-  flag_top  = .false.
-  bflx      = 0
-  wnd       = 0
-  colprec   = 0
-  colprecs  = 0
-  gcolindex = 0
-  cltemp    = 0
-  cmtemp    = 0
-  chtemp    = 0
-  cttemp    = 0
+  call memzero_crm_rknd( t00       , product(shape(t00      )) )
+  call memzero_crm_rknd( tln       , product(shape(tln      )) )
+  call memzero_crm_rknd( qln       , product(shape(qln      )) )
+  call memzero_crm_rknd( qccln     , product(shape(qccln    )) )
+  call memzero_crm_rknd( qiiln     , product(shape(qiiln    )) )
+  call memzero_crm_rknd( uln       , product(shape(uln      )) )
+  call memzero_crm_rknd( vln       , product(shape(vln      )) )
+  call memzero_crm_rknd( cwp       , product(shape(cwp      )) )
+  call memzero_crm_rknd( cwph      , product(shape(cwph     )) )
+  call memzero_crm_rknd( cwpm      , product(shape(cwpm     )) )
+  call memzero_crm_rknd( cwpl      , product(shape(cwpl     )) )
+  call memzero_logical ( flag_top  , product(shape(flag_top )) )
+  call memzero_crm_rknd( bflx      , product(shape(bflx     )) )
+  call memzero_crm_rknd( wnd       , product(shape(wnd      )) )
+  call memzero_crm_rknd( colprec   , product(shape(colprec  )) )
+  call memzero_crm_rknd( colprecs  , product(shape(colprecs )) )
+  call memzero_integer ( gcolindex , product(shape(gcolindex)) )
+  call memzero_crm_rknd( cltemp    , product(shape(cltemp   )) )
+  call memzero_crm_rknd( cmtemp    , product(shape(cmtemp   )) )
+  call memzero_crm_rknd( chtemp    , product(shape(chtemp   )) )
+  call memzero_crm_rknd( cttemp    , product(shape(cttemp   )) )
 #ifdef CLUBB_CRM
   rtm_integral_before  = 0
   rtm_integral_after   = 0
@@ -497,16 +498,16 @@ subroutine crm(lchnk, icol, ncrms, &
   idt_gl    = 1._r8/dt_gl
   ptop      = plev-nzm+1
   factor_xy = 1._r8/dble(nx*ny)
-  t_rad  (:,:,:,:) = 0.
-  qv_rad (:,:,:,:) = 0.
-  qc_rad (:,:,:,:) = 0.
-  qi_rad (:,:,:,:) = 0.
-  cld_rad(:,:,:,:) = 0.
+  call memzero_crm_rknd( t_rad   , product(shape(t_rad  )) ) 
+  call memzero_crm_rknd( qv_rad  , product(shape(qv_rad )) ) 
+  call memzero_crm_rknd( qc_rad  , product(shape(qc_rad )) ) 
+  call memzero_crm_rknd( qi_rad  , product(shape(qi_rad )) ) 
+  call memzero_crm_rknd( cld_rad , product(shape(cld_rad)) ) 
 #ifdef m2005
-  nc_rad(:,:,:,:) = 0.0
-  ni_rad(:,:,:,:) = 0.0
-  qs_rad(:,:,:,:) = 0.0
-  ns_rad(:,:,:,:) = 0.0
+  icall memzero_crm_rknd( nc_rad , product(shape(nc_rad)) )
+  icall memzero_crm_rknd( ni_rad , product(shape(ni_rad)) )
+  icall memzero_crm_rknd( qs_rad , product(shape(qs_rad)) )
+  icall memzero_crm_rknd( ns_rad , product(shape(ns_rad)) )
 #endif
   ! zs=phis(icrm)/ggr
   bflx(:) = bflxls(:)
@@ -525,16 +526,20 @@ subroutine crm(lchnk, icol, ncrms, &
   call task_init()
   call setparm()
 
+  !$acc parallel loop gang vector
   do icrm = 1 , ncrms
     fcor= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
     fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
     fcory(icrm,:) = fcor
     fcorzy(icrm,:) = fcorz
   enddo
+  !$acc parallel loop gang vector collapse(3)
   do j=1,ny
     do i=1,nx
-      latitude (:,i,j) = latitude0 (:)
-      longitude(:,i,j) = longitude0(:)
+      do icrm = 1 , ncrms
+        latitude (icrm,i,j) = latitude0 (icrm)
+        longitude(icrm,i,j) = longitude0(icrm)
+      end do
     end do
   end do
 
@@ -545,40 +550,44 @@ subroutine crm(lchnk, icol, ncrms, &
   ! end if
 
   ! Create CRM vertical grid and initialize some vertical reference arrays:
+  !$acc parallel loop gang vector collapse(2)
   do k = 1, nzm
-    z(:,k) = zmid(:,plev-k+1) - zint(:,plev+1)
-    zi(:,k) = zint(:,plev-k+2)- zint(:,plev+1)
-    pres(:,k) = pmid(:,plev-k+1)/100.
-    prespot(:,k)=(1000./pres(:,k))**(rgas/cp)
-    bet(:,k) = ggr/tl(:,plev-k+1)
-    gamaz(:,k)=ggr/cp*z(:,k)
+    do icrm = 1 , ncrms
+      z(icrm,k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
+      zi(icrm,k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
+      pres(icrm,k) = pmid(icrm,plev-k+1)/100.
+      prespot(icrm,k)=(1000./pres(icrm,k))**(rgas/cp)
+      bet(icrm,k) = ggr/tl(icrm,plev-k+1)
+      gamaz(icrm,k)=ggr/cp*z(icrm,k)
+    end do ! k
   end do ! k
-  ! zi(icrm,nz) =  zint(plev-nz+2)
-  zi(:,nz) = zint(:,plev-nz+2)-zint(:,plev+1) !+++mhwang, 2012-02-04
+  !$acc parallel loop gang vector
+  do icrm = 1 , ncrms
+    zi(icrm,nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
+    dz(icrm) = 0.5*(z(icrm,1)+z(icrm,2))
+    do k=2,nzm
+      adzw(icrm,k) = (z(icrm,k)-z(icrm,k-1))/dz(icrm)
+    end do
+    adzw(icrm,1)  = 1.
+    adzw(icrm,nz) = adzw(icrm,nzm)
+  enddo
 
-  dz(:) = 0.5*(z(:,1)+z(:,2))
-  do k=2,nzm
-    adzw(:,k) = (z(:,k)-z(:,k-1))/dz(:)
-  end do
-  adzw(:,1)  = 1.
-  adzw(:,nz) = adzw(:,nzm)
   !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
   !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
+  !$acc parallel loop gang vector collapse(2)
   do k=1, nzm
-    adz(:,k)=(zi(:,k+1)-zi(:,k))/dz(:)
+    do icrm = 1 , ncrms
+      adz(icrm,k)=(zi(icrm,k+1)-zi(icrm,k))/dz(icrm)
+      rho(icrm,k) = pdel(icrm,plev-k+1)/ggr/(adz(icrm,k)*dz(icrm))
+      if (k >= 2) then
+        rhow(icrm,k) = (pmid(icrm,plev-k+2)-pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
+      endif
+    end do
   end do
 
-  do k = 1,nzm
-    rho(:,k) = pdel(:,plev-k+1)/ggr/(adz(:,k)*dz(:))
-  end do
-  do k=2,nzm
-    ! rhow(icrm,k) = 0.5*(rho(icrm,k)+rho(icrm,k-1))
-    !+++mhwang fix the rhow bug (rhow needes to be consistent with pmid)
-    !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-    rhow(:,k) = (pmid(:,plev-k+2)-pmid(:,plev-k+1))/ggr/(adzw(:,k)*dz(:))
-  end do
-  rhow(:,1) = 2.*rhow(:,2) - rhow(:,3)
+  !$acc parallel loop gang vector
   do icrm = 1 , ncrms
+    rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
     if (  2.*rhow(icrm,nzm) - rhow(icrm,nzm-1) > 0. ) then
        rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
@@ -589,11 +598,10 @@ subroutine crm(lchnk, icol, ncrms, &
     rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
 #endif /*CLUBB_CRM*/
   enddo
-  colprec=0
-  colprecs=0
 
   !  Initialize:
   ! limit the velocity at the very first step:
+  !$acc parallel loop gang vector collapse(4)
   do k=1,nzm
     do j=1,ny
       do i=1,nx
@@ -607,51 +615,68 @@ subroutine crm(lchnk, icol, ncrms, &
     enddo
   enddo
 
-  u          (:,1:nx,1:ny,1:nzm                ) = u_crm           (:,1:nx,1:ny,1:nzm                )
-  v          (:,1:nx,1:ny,1:nzm                ) = v_crm           (:,1:nx,1:ny,1:nzm                )*YES3D
-  w          (:,1:nx,1:ny,1:nzm                ) = w_crm           (:,1:nx,1:ny,1:nzm                )
-  tabs       (:,1:nx,1:ny,1:nzm                ) = t_crm           (:,1:nx,1:ny,1:nzm                )
-  micro_field(:,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(:,1:nx,1:ny,1:nzm,1:nmicro_fields)
+  !$acc parallel loop gang vector collapse(4)
+  do k = 1 , nzm
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          u          (icrm,i,j,k                ) = u_crm           (icrm,i,j,k                )
+          v          (icrm,i,j,k                ) = v_crm           (icrm,i,j,k                )*YES3D
+          w          (icrm,i,j,k                ) = w_crm           (icrm,i,j,k                )
+          tabs       (icrm,i,j,k                ) = t_crm           (icrm,i,j,k                )
+          micro_field(icrm,i,j,k,1:nmicro_fields) = micro_fields_crm(icrm,i,j,k,1:nmicro_fields)
 #ifdef sam1mom
-  qn      (:,1:nx,1:ny,1:nzm) = micro_fields_crm(:,1:nx,1:ny,1:nzm,3 )
+          qn         (icrm,i,j,k)                 = micro_fields_crm(icrm,i,j,k,3 )
 #endif
+#ifdef m2005
+          cloudliq   (icrm,i,j,k)                 = micro_fields_crm(icrm,i,j,k,11)
+#endif
+        enddo
+      enddo
+    enddo
+  enddo
+
 
 #ifdef m2005
-  cloudliq(1:nx,1:ny,1:nzm) = micro_fields_crm(:,1:nx,1:ny,1:nzm,11)
-#endif
-
-#ifdef m2005
-  do k=1, nzm
+  !$acc parallel loop gang veector collapse(3)
+  do j = 1 , ntot_amode
+    do k=1, nzm
+      do icrm = 1 , ncrms
 #ifdef MODAL_AERO
-    ! set aerosol data
-    l=plev-k+1
-    naer (:,k, 1:ntot_amode) = naermod (:,l, 1:ntot_amode)
-    vaer (:,k, 1:ntot_amode) = vaerosol(:,l, 1:ntot_amode)
-    hgaer(:,k, 1:ntot_amode) = hygro   (:,l, 1:ntot_amode)
+        ! set aerosol data
+        l=plev-k+1
+        naer (icrm,k,j) = naermod (icrm,l,j)
+        vaer (icrm,k,j) = vaerosol(icrm,l,j)
+        hgaer(icrm,k,j) = hygro   (icrm,l,j)
 #endif
+      enddo
+    enddo
+  enddo
+  !$acc parallel loop gang veector collapse(4)
+  do k=1, nzm
     do j=1, ny
       do i=1, nx
-        if(cloudliq(i,j,k).gt.0) then
-          if(dopredictNc) then
-            if( micro_field(:,i,j,k,incl).eq.0) micro_field(:,i,j,k,incl) = 1.0e6*Nc0/rho(:,k)
+        do icrm = 1 , ncrms
+          if(cloudliq(i,j,k).gt.0) then
+            if(dopredictNc) then
+              if( micro_field(icrm,i,j,k,incl).eq.0) micro_field(icrm,i,j,k,incl) = 1.0e6*Nc0/rho(icrm,k)
+            endif
           endif
-        endif
+        enddo
       enddo
     enddo
   enddo
 #endif
 
-  w(:,:,:,nz)=0.
-  wsub (:,:) = 0.      !used in clubb, +++mhwang
-  dudt(:,1:nx,1:ny,1:nzm,1:3) = 0.
-  dvdt(:,1:nx,1:ny,1:nzm,1:3) = 0.
-  dwdt(:,1:nx,1:ny,1:nz,1:3) = 0.
-  tke (:,1:nx,1:ny,1:nzm) = 0.
-  tk  (:,1:nx,1:ny,1:nzm) = 0.
-  tkh (:,1:nx,1:ny,1:nzm) = 0.
-  p   (:,1:nx,1:ny,1:nzm) = 0.
-
-  CF3D(:,1:nx,1:ny,1:nzm) = 1.
+  do k = 1 , nzm
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          CF3D(icrm,i,j,k) = 1.
+        enddo
+      enddo
+    enddo
+  enddo
 
   call micro_init(ncrms)
 

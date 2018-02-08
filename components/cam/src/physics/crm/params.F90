@@ -203,13 +203,13 @@ contains
 
     zero = 0
 
-    latitude0  = zero
-    longitude0 = zero
-    z0         = 0.035
-    uhl        = zero
-    vhl        = zero
-    taux0      = zero
-    tauy0      = zero
+    latitude0   = zero
+    longitude0  = zero
+    z0          = zero
+    uhl         = zero
+    vhl         = zero
+    taux0       = zero
+    tauy0       = zero
     ! ocean      = .false.
     ! land       = .false.
   end subroutine allocate_params

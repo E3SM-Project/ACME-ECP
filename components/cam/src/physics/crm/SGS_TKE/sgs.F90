@@ -78,9 +78,9 @@ CONTAINS
 
 
   subroutine allocate_sgs(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) :: zero
     allocate( sgs_field     (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields     ) )
     allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
     allocate( fluxbsgs      (ncrms,nx, ny, 1:nsgs_fields) ) ! surface fluxes
@@ -101,24 +101,22 @@ CONTAINS
     tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,1)
     tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,2)
 
-    zero = 0
-
-    sgs_field      = zero
-    sgs_field_diag = zero
-    fluxbsgs   = zero
-    fluxtsgs   = zero
-    sgswle     = zero
-    sgswsb     = zero
-    sgsadv     = zero
-    sgslsadv   = zero
-    sgsdiff    = zero
-    grdf_x     = zero
-    grdf_y     = zero
-    grdf_z     = zero
-    tkesbbuoy  = zero
-    tkesbshear = zero
-    tkesbdiss  = zero
-    tkesbdiff  = zero
+    call memzero_crm_rknd( sgs_field      , product(shape(sgs_field     )) )
+    call memzero_crm_rknd( sgs_field_diag , product(shape(sgs_field_diag)) )
+    call memzero_crm_rknd( fluxbsgs       , product(shape(fluxbsgs      )) )
+    call memzero_crm_rknd( fluxtsgs       , product(shape(fluxtsgs      )) )
+    call memzero_crm_rknd( sgswle         , product(shape(sgswle        )) )
+    call memzero_crm_rknd( sgswsb         , product(shape(sgswsb        )) )
+    call memzero_crm_rknd( sgsadv         , product(shape(sgsadv        )) )
+    call memzero_crm_rknd( sgslsadv       , product(shape(sgslsadv      )) )
+    call memzero_crm_rknd( sgsdiff        , product(shape(sgsdiff       )) )
+    call memzero_crm_rknd( grdf_x         , product(shape(grdf_x        )) )
+    call memzero_crm_rknd( grdf_y         , product(shape(grdf_y        )) )
+    call memzero_crm_rknd( grdf_z         , product(shape(grdf_z        )) )
+    call memzero_crm_rknd( tkesbbuoy      , product(shape(tkesbbuoy     )) )
+    call memzero_crm_rknd( tkesbshear     , product(shape(tkesbshear    )) )
+    call memzero_crm_rknd( tkesbdiss      , product(shape(tkesbdiss     )) )
+    call memzero_crm_rknd( tkesbdiff      , product(shape(tkesbdiff     )) )
   end subroutine allocate_sgs
 
 
@@ -202,12 +200,6 @@ CONTAINS
 
     if(nrestart.eq.0) then
 
-      sgs_field(:,:,:,:,:) = 0.
-      sgs_field_diag(:,:,:,:,:) = 0.
-
-      fluxbsgs(:,:,:,:) = 0.
-      fluxtsgs(:,:,:,:) = 0.
-
     end if
 
     !  if(masterproc) then
@@ -219,26 +211,24 @@ CONTAINS
     !  end if
 
     if(LES) then
+      !$acc parallel loop gang vector collapse(2)
       do k=1,nzm
-        grdf_x(:,k) = dx**2/(adz(:,k)*dz(:))**2
-        grdf_y(:,k) = dy**2/(adz(:,k)*dz(:))**2
-        grdf_z(:,k) = 1.
+        do icrm = 1 , ncrms
+          grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
+          grdf_y(icrm,k) = dy**2/(adz(icrm,k)*dz(icrm))**2
+          grdf_z(icrm,k) = 1.
+        end do
       end do
     else
+      !$acc parallel loop gang vector collapse(2)
       do k=1,nzm
-        grdf_x(:,k) = min( real(16.,crm_rknd), dx**2/(adz(:,k)*dz(:))**2)
-        grdf_y(:,k) = min( real(16.,crm_rknd), dy**2/(adz(:,k)*dz(:))**2)
-        grdf_z(:,k) = 1.
+        do icrm = 1 , ncrms
+          grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
+          grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
+          grdf_z(icrm,k) = 1.
+        end do
       end do
     end if
-
-    sgswle  (:,:,:) = 0.
-    sgswsb  (:,:,:) = 0.
-    sgsadv  (:,:,:) = 0.
-    sgsdiff (:,:,:) = 0.
-    sgslsadv(:,:,:) = 0.
-
-
   end subroutine sgs_init
 
   !----------------------------------------------------------------------

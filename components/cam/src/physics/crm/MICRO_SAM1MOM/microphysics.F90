@@ -73,9 +73,9 @@ module microphysics
 CONTAINS
 
   subroutine allocate_microphysics(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) :: zero
     allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields) )
     allocate( fluxbmk (ncrms,nx, ny, 1:nmicro_fields) )
     allocate( fluxtmk (ncrms,nx, ny, 1:nmicro_fields) )
@@ -91,22 +91,20 @@ CONTAINS
     q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
     qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,2)
 
-    zero = 0
-
-    micro_field = zero
-    fluxbmk  = zero
-    fluxtmk  = zero
-    mkwle = zero
-    mkwsb = zero
-    mkadv = zero
-    mklsadv = zero
-    mkdiff = zero
-    mstor = zero
-    q = zero
-    qp = zero
-    qn = zero
-    qpsrc = zero
-    qpevp = zero
+    call memzero_crm_rknd( micro_field , product(shape(micro_field)) )
+    call memzero_crm_rknd( fluxbmk     , product(shape(fluxbmk    )) )
+    call memzero_crm_rknd( fluxtmk     , product(shape(fluxtmk    )) )
+    call memzero_crm_rknd( mkwle       , product(shape(mkwle      )) )
+    call memzero_crm_rknd( mkwsb       , product(shape(mkwsb      )) )
+    call memzero_crm_rknd( mkadv       , product(shape(mkadv      )) )
+    call memzero_crm_rknd( mklsadv     , product(shape(mklsadv    )) )
+    call memzero_crm_rknd( mkdiff      , product(shape(mkdiff     )) )
+    call memzero_crm_rknd( mstor       , product(shape(mstor      )) )
+    call memzero_crm_rknd( q           , product(shape(q          )) )
+    call memzero_crm_rknd( qp          , product(shape(qp         )) )
+    call memzero_crm_rknd( qn          , product(shape(qn         )) )
+    call memzero_crm_rknd( qpsrc       , product(shape(qpsrc      )) )
+    call memzero_crm_rknd( qpevp       , product(shape(qpevp      )) )
   end subroutine allocate_microphysics
 
   subroutine deallocate_microphysics
@@ -175,9 +173,6 @@ CONTAINS
       qn(:,:,:,:) = 0.
 #endif
 
-      fluxbmk(:,:,:,:) = 0.
-      fluxtmk(:,:,:,:) = 0.
-
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
 #else
@@ -194,16 +189,6 @@ CONTAINS
 
     end if
 
-    mkwle  (:,:,:) = 0.
-    mkwsb  (:,:,:) = 0.
-    mkadv  (:,:,:) = 0.
-    mkdiff (:,:,:) = 0.
-    mklsadv(:,:,:) = 0.
-    mstor  (:,:,:) = 0.
-
-    qpsrc(:,:) = 0.
-    qpevp(:,:) = 0.
-
     mkname(1) = 'QT'
     mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'
     mkunits(1) = 'g/kg'
@@ -215,6 +200,7 @@ CONTAINS
     mkoutputscale(2) = 1.e3
 
     ! set mstor to be the inital microphysical mixing ratios
+    !$acc parallel loop gang vector collapse(3)
     do n=1, nmicro_fields
       do k=1, nzm
         do icrm = 1 , ncrms

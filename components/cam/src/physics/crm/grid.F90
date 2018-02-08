@@ -172,12 +172,12 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( z    (ncrms,nz ) )      ! height of the pressure levels above surface,m
+    allocate( z    (ncrms,nz ) )  ! height of the pressure levels above surface,m
     allocate( pres (ncrms,nzm) )  ! pressure,mb at scalar levels
-    allocate( zi   (ncrms,nz ) )     ! height of the interface levels
+    allocate( zi   (ncrms,nz ) )  ! height of the interface levels
     allocate( presi(ncrms,nz ) )  ! pressure,mb at interface levels
-    allocate( adz  (ncrms,nzm) )   ! ratio of the thickness of scalar levels to dz
-    allocate( adzw (ncrms,nz ) )	! ratio of the thinckness of w levels to dz
+    allocate( adz  (ncrms,nzm) )  ! ratio of the thickness of scalar levels to dz
+    allocate( adzw (ncrms,nz ) )  ! ratio of the thinckness of w levels to dz
     allocate( dz   (ncrms    ) )
 
     zero = 0

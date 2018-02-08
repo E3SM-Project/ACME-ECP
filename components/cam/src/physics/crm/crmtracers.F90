@@ -30,9 +30,9 @@ module crmtracers
 CONTAINS
 
   subroutine allocate_tracers(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) :: zero
     allocate( tracer  (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers) )
     allocate( fluxbtr (ncrms,nx, ny, 0:ntracers) ) ! surface flux of tracers
     allocate( fluxttr (ncrms,nx, ny, 0:ntracers) ) ! top boundary flux of tracers
@@ -42,16 +42,14 @@ CONTAINS
     allocate( trdiff  (ncrms,nz,0:ntracers) )  ! tendency due to vertical diffusion
     allocate( trphys  (ncrms,nz,0:ntracers) )  ! tendency due to physics
 
-    zero = 0
-
-    tracer  = zero 
-    fluxbtr = zero 
-    fluxttr = zero 
-    trwle   = zero 
-    trwsb   = zero 
-    tradv   = zero 
-    trdiff  = zero 
-    trphys  = zero 
+    call memzero_crm_rknd( tracer  , product(shape(tracer )) ) 
+    call memzero_crm_rknd( fluxbtr , product(shape(fluxbtr)) ) 
+    call memzero_crm_rknd( fluxttr , product(shape(fluxttr)) ) 
+    call memzero_crm_rknd( trwle   , product(shape(trwle  )) ) 
+    call memzero_crm_rknd( trwsb   , product(shape(trwsb  )) ) 
+    call memzero_crm_rknd( tradv   , product(shape(tradv  )) ) 
+    call memzero_crm_rknd( trdiff  , product(shape(trdiff )) ) 
+    call memzero_crm_rknd( trphys  , product(shape(trphys )) ) 
   end subroutine allocate_tracers
 
   subroutine deallocate_tracers

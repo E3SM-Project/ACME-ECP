@@ -17,5 +17,5 @@ export FIXEDFLAGS=""
 export LDFLAGS="`nf-config --flibs` `nc-config --libs` -ta=nvidia,cc50,managed,ptxinfo,fastmath,fma,unroll"
 export INCLUDE="-I$NETCDF_DIR/include"
 
-export CPPDEFS=" -DFORTRANUNDERSCORE "
+export CPPDEFS=" -DFORTRANUNDERSCORE -D_SAMP_LIMIT=1000 "
 
