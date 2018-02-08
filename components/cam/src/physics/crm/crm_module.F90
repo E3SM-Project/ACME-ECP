@@ -339,20 +339,20 @@ subroutine crm(lchnk, icol, ncrms, &
   real(crm_rknd), allocatable :: qiiln    (:)
   real(crm_rknd), allocatable :: uln      (:,:)
   real(crm_rknd), allocatable :: vln      (:,:)
-  real(crm_rknd), allocatable :: cwp      (:,:)
-  real(crm_rknd), allocatable :: cwph     (:,:)
-  real(crm_rknd), allocatable :: cwpm     (:,:)
-  real(crm_rknd), allocatable :: cwpl     (:,:)
-  logical       , allocatable :: flag_top (:,:)
+  real(crm_rknd), allocatable :: cwp      (:,:,:)
+  real(crm_rknd), allocatable :: cwph     (:,:,:)
+  real(crm_rknd), allocatable :: cwpm     (:,:,:)
+  real(crm_rknd), allocatable :: cwpl     (:,:,:)
+  logical       , allocatable :: flag_top (:,:,:)
   real(crm_rknd), allocatable :: bflx     (:)
   real(crm_rknd), allocatable :: wnd      (:)
   real(crm_rknd), allocatable :: colprec  (:)
   real(crm_rknd), allocatable :: colprecs (:)
   integer       , allocatable :: gcolindex(:)  ! array of global latitude indices
-  real(crm_rknd), allocatable :: cltemp   (:,:)
-  real(crm_rknd), allocatable :: cmtemp   (:,:)
-  real(crm_rknd), allocatable :: chtemp   (:,:)
-  real(crm_rknd), allocatable :: cttemp   (:,:)
+  real(crm_rknd), allocatable :: cltemp   (:,:,:)
+  real(crm_rknd), allocatable :: cmtemp   (:,:,:)
+  real(crm_rknd), allocatable :: chtemp   (:,:,:)
+  real(crm_rknd), allocatable :: cttemp   (:,:,:)
 #ifdef CLUBB_CRM
   !Array indicies for spurious RTM check
   real(kind=core_rknd), allocatable :: rtm_integral_before (:,:)
@@ -369,7 +369,7 @@ subroutine crm(lchnk, icol, ncrms, &
   real(kind=core_rknd) :: rtm_flux_top, rtm_flux_sfc
   real(kind=core_rknd) :: thlm_flux_top, thlm_flux_sfc
 #endif
-  real(r8)        :: factor_xy, idt_gl
+  real(r8)        :: factor_xy, idt_gl, tmp
   real(crm_rknd)  :: tmp1, tmp2
   real(crm_rknd)  :: u2z,v2z,w2z
   integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, icrm
@@ -397,20 +397,20 @@ subroutine crm(lchnk, icol, ncrms, &
   allocate( qiiln    (plev)       )
   allocate( uln      (ncrms,plev) )
   allocate( vln      (ncrms,plev) )
-  allocate( cwp      (nx,ny)      )
-  allocate( cwph     (nx,ny)      )
-  allocate( cwpm     (nx,ny)      )
-  allocate( cwpl     (nx,ny)      )
-  allocate( flag_top (nx,ny)      )
+  allocate( cwp      (ncrms,nx,ny)      )
+  allocate( cwph     (ncrms,nx,ny)      )
+  allocate( cwpm     (ncrms,nx,ny)      )
+  allocate( cwpl     (ncrms,nx,ny)      )
+  allocate( flag_top (ncrms,nx,ny)      )
   allocate( bflx     (ncrms)      )
   allocate( wnd      (ncrms)      )
   allocate( colprec  (ncrms)      )
   allocate( colprecs (ncrms)      )
   allocate( gcolindex(pcols)      )
-  allocate( cltemp   (nx,ny)      )
-  allocate( cmtemp   (nx,ny)      )
-  allocate( chtemp   (nx,ny)      )
-  allocate( cttemp   (nx,ny)      )
+  allocate( cltemp   (ncrms,nx,ny)      )
+  allocate( cmtemp   (ncrms,nx,ny)      )
+  allocate( chtemp   (ncrms,nx,ny)      )
+  allocate( cttemp   (ncrms,nx,ny)      )
 #ifdef CLUBB_CRM
   allocate( rtm_integral_before (nx,ny) )
   allocate( rtm_integral_after  (nx,ny) )
@@ -1086,116 +1086,181 @@ subroutine crm(lchnk, icol, ncrms, &
     enddo
 #endif /*ECPP*/
 
-    do icrm = 1 , ncrms
-      cwp  = 0.
-      cwph = 0.
-      cwpm = 0.
-      cwpl = 0.
+    !$acc parallel loop gang vector collapse(3)
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          cwp     (icrm,i,j) = 0.
+          cwph    (icrm,i,j) = 0.
+          cwpm    (icrm,i,j) = 0.
+          cwpl    (icrm,i,j) = 0.
+          flag_top(icrm,i,j) = .true.
+          cltemp  (icrm,i,j) = 0.
+          cmtemp  (icrm,i,j) = 0.
+          chtemp  (icrm,i,j) = 0.
+          cttemp  (icrm,i,j) = 0.
+        enddo
+      enddo
+    enddo
 
-      flag_top(:,:) = .true.
 
-      cltemp = 0.0; cmtemp = 0.0
-      chtemp = 0.0; cttemp = 0.0
-
-      do k=1,nzm
-        l = plev-k+1
-        do j=1,ny
-          do i=1,nx
+    !$acc parallel loop gang vector collapse(3)
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          do k=1,nzm
+            l = plev-k+1
             tmp1 = rho(icrm,nz-k)*adz(icrm,nz-k)*dz(icrm)*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
-            cwp(i,j) = cwp(i,j)+tmp1
-            cttemp(i,j) = max(CF3D(icrm,i,j,nz-k), cttemp(i,j))
-            if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
-                cldtop(icrm,k) = cldtop(icrm,k) + 1
-                flag_top(i,j) = .false.
+            cwp(icrm,i,j) = cwp(icrm,i,j)+tmp1
+            cttemp(icrm,i,j) = max(CF3D(icrm,i,j,nz-k), cttemp(icrm,i,j))
+            if(cwp(icrm,i,j).gt.cwp_threshold.and.flag_top(icrm,i,j)) then
+              !$acc atomic update
+              cldtop(icrm,k) = cldtop(icrm,k) + 1
+              flag_top(icrm,i,j) = .false.
             endif
             if(pres(icrm,nz-k).ge.700.) then
-                cwpl(i,j) = cwpl(i,j)+tmp1
-                cltemp(i,j) = max(CF3D(icrm,i,j,nz-k), cltemp(i,j))
+              cwpl(icrm,i,j) = cwpl(icrm,i,j)+tmp1
+              cltemp(icrm,i,j) = max(CF3D(icrm,i,j,nz-k), cltemp(icrm,i,j))
             else if(pres(icrm,nz-k).lt.400.) then
-                cwph(i,j) = cwph(i,j)+tmp1
-                chtemp(i,j) = max(CF3D(icrm,i,j,nz-k), chtemp(i,j))
+              cwph(icrm,i,j) = cwph(icrm,i,j)+tmp1
+              chtemp(icrm,i,j) = max(CF3D(icrm,i,j,nz-k), chtemp(icrm,i,j))
             else
-                cwpm(i,j) = cwpm(i,j)+tmp1
-                cmtemp(i,j) = max(CF3D(icrm,i,j,nz-k), cmtemp(i,j))
+              cwpm(icrm,i,j) = cwpm(icrm,i,j)+tmp1
+              cmtemp(icrm,i,j) = max(CF3D(icrm,i,j,nz-k), cmtemp(icrm,i,j))
             endif
 
             tmp1 = rho(icrm,k)*adz(icrm,k)*dz(icrm)
             if(tmp1*(qcl(icrm,i,j,k)+qci(icrm,i,j,k)).gt.cwp_threshold) then
-                 cld(icrm,l) = cld(icrm,l) + CF3D(icrm,i,j,k)
-                 if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
-                   mcup (icrm,l) = mcup (icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(icrm,i,j,k)
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(icrm,i,j,k))
-                 endif
-                 if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
-                   mcdn (icrm,l) = mcdn (icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(icrm,i,j,k)
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(icrm,i,j,k))
-                 endif
+              !$acc atomic update
+              cld(icrm,l) = cld(icrm,l) + CF3D(icrm,i,j,k)
+              if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
+                tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(icrm,i,j,k)
+                !$acc atomic update
+                mcup (icrm,l) = mcup (icrm,l) + tmp
+                tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(icrm,i,j,k))
+                !$acc atomic update
+                mcuup(icrm,l) = mcuup(icrm,l) + tmp
+              endif
+              if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
+                tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(icrm,i,j,k)
+                !$acc atomic update
+                mcdn (icrm,l) = mcdn (icrm,l) + tmp
+                tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(icrm,i,j,k))
+                !$acc atomic update
+                mcudn(icrm,l) = mcudn(icrm,l) + tmp
+              endif
             else
-                 if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
-                 endif
-                 if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
-                 endif
+              if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
+                tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
+                !$acc atomic update
+                mcuup(icrm,l) = mcuup(icrm,l) + tmp
+              endif
+              if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
+                tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
+                !$acc atomic update
+                mcudn(icrm,l) = mcudn(icrm,l) + tmp
+              endif
             endif
-
-            !!! whannah - new method allows for fewer radiation calculation over column groups
-            i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
-            j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-
-            t_rad  (icrm,i_rad,j_rad,k) = t_rad  (icrm,i_rad,j_rad,k) + tabs(icrm,i,j,k)
-            qv_rad (icrm,i_rad,j_rad,k) = qv_rad (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(icrm,i,j,k))
-            qc_rad (icrm,i_rad,j_rad,k) = qc_rad (icrm,i_rad,j_rad,k) + qcl(icrm,i,j,k)
-            qi_rad (icrm,i_rad,j_rad,k) = qi_rad (icrm,i_rad,j_rad,k) + qci(icrm,i,j,k)
-            cld_rad(icrm,i_rad,j_rad,k) = cld_rad(icrm,i_rad,j_rad,k) + CF3D(icrm,i,j,k)
-#ifdef m2005
-            nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,incl)
-            ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,inci)
-            qs_rad(icrm,i_rad,j_rad,k) = qs_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,iqs)
-            ns_rad(icrm,i_rad,j_rad,k) = ns_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,ins)
-#endif
+            !$acc atomic update
             gliqwp(icrm,l) = gliqwp(icrm,l) + qcl(icrm,i,j,k)
+            !$acc atomic update
             gicewp(icrm,l) = gicewp(icrm,l) + qci(icrm,i,j,k)
           enddo
         enddo
       enddo
+    enddo
 
-      ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
-      ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
-      do k=1, nzm+1
-        l=plev+1-k+1
-        do j=1, ny
-          do i=1, nx
+    !$acc parallel loop gang vector collapse(4)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            !!! whannah - new method allows for fewer radiation calculation over column groups
+            i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
+            j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+
+            !$acc atomic update
+            t_rad  (icrm,i_rad,j_rad,k) = t_rad  (icrm,i_rad,j_rad,k) + tabs(icrm,i,j,k)
+            tmp = max(real(0.,crm_rknd),qv(icrm,i,j,k))
+            !$acc atomic update
+            qv_rad (icrm,i_rad,j_rad,k) = qv_rad (icrm,i_rad,j_rad,k) + tmp
+            !$acc atomic update
+            qc_rad (icrm,i_rad,j_rad,k) = qc_rad (icrm,i_rad,j_rad,k) + qcl(icrm,i,j,k)
+            !$acc atomic update
+            qi_rad (icrm,i_rad,j_rad,k) = qi_rad (icrm,i_rad,j_rad,k) + qci(icrm,i,j,k)
+            !$acc atomic update
+            cld_rad(icrm,i_rad,j_rad,k) = cld_rad(icrm,i_rad,j_rad,k) + CF3D(icrm,i,j,k)
+#ifdef m2005
+            !$acc atomic update
+            nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,incl)
+            !$acc atomic update
+            ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,inci)
+            !$acc atomic update
+            qs_rad(icrm,i_rad,j_rad,k) = qs_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,iqs)
+            !$acc atomic update
+            ns_rad(icrm,i_rad,j_rad,k) = ns_rad(icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,ins)
+#endif
+          enddo
+        enddo
+      enddo
+    enddo
+
+    ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
+    ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
+    !$acc parallel loop gang vector collapse(4)
+    do k=1, nzm+1
+      do j=1, ny
+        do i=1, nx
+          do icrm = 1 , ncrms
+            l=plev+1-k+1
             if(w(icrm,i,j,k).gt.0.) then
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(icrm,kx))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(icrm,k)*w(icrm,i,j,k)
+                tmp = rhow(icrm,k)*w(icrm,i,j,k)
+                !$acc atomic update
+                mui_crm(icrm,l) = mui_crm(icrm,l)+tmp
               endif
             else if (w(icrm,i,j,k).lt.0.) then
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(icrm,kx))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(icrm,k)*w(icrm,i,j,k)
+                tmp = rhow(icrm,k)*w(icrm,i,j,k)
+                !$acc atomic update
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+tmp
               else if(qpl(icrm,i,j,kx)+qpi(icrm,i,j,kx).gt.1.0e-4) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(icrm,k)*w(icrm,i,j,k)
+                tmp = rhow(icrm,k)*w(icrm,i,j,k)
+                !$acc atomic update
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+tmp
               endif
             endif
           enddo
         enddo
       enddo
+    enddo
 
-      do j=1,ny
-        do i=1,nx
-          if(cwp (i,j).gt.cwp_threshold) cltot(icrm) = cltot(icrm) + cttemp(i,j)
-          if(cwph(i,j).gt.cwp_threshold) clhgh(icrm) = clhgh(icrm) + chtemp(i,j)
-          if(cwpm(i,j).gt.cwp_threshold) clmed(icrm) = clmed(icrm) + cmtemp(i,j)
-          if(cwpl(i,j).gt.cwp_threshold) cllow(icrm) = cllow(icrm) + cltemp(i,j)
+    !$acc parallel loop gang vector collapse(3)
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          if(cwp (icrm,i,j).gt.cwp_threshold) then
+            !$acc atomic update
+            cltot(icrm) = cltot(icrm) + cttemp(icrm,i,j)
+          endif
+          if(cwph(icrm,i,j).gt.cwp_threshold) then
+            !$acc atomic update
+            clhgh(icrm) = clhgh(icrm) + chtemp(icrm,i,j)
+          endif
+          if(cwpm(icrm,i,j).gt.cwp_threshold) then
+            !$acc atomic update
+            clmed(icrm) = clmed(icrm) + cmtemp(icrm,i,j)
+          endif
+          if(cwpl(icrm,i,j).gt.cwp_threshold) then
+            !$acc atomic update
+            cllow(icrm) = cllow(icrm) + cltemp(icrm,i,j)
+          endif
         enddo
       enddo
-
-      !        call stepout()
-      !----------------------------------------------------------
     enddo
     !----------------------------------------------------------
   enddo ! main loop
