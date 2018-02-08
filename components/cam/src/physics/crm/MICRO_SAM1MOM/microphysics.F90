@@ -217,23 +217,32 @@ CONTAINS
   subroutine micro_flux(ncrms)
 
     use vars, only: fluxbq, fluxtq
-    implicit none
-    integer, intent(in) :: ncrms
 
 #ifdef CLUBB_CRM
     ! Added by dschanen UWM
     use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
-    if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
-      ! Add this in later
-      fluxbmk(:,:,:,index_water_vapor) = 0.0
-    else
-      fluxbmk(:,:,:,index_water_vapor) = fluxbq(:,:,:)
-    end if
+#endif
+    implicit none
+    integer, intent(in) :: ncrms
+    integer :: i,j,icrm
+    !$acc parallel loop gang vector collapse(3)
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+#ifdef CLUBB_CRM
+          if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
+            ! Add this in later
+            fluxbmk(icrm,i,j,index_water_vapor) = 0.0
+          else
+            fluxbmk(icrm,i,j,index_water_vapor) = fluxbq(icrm,i,j)
+          end if
 #else
-    fluxbmk(:,:,:,index_water_vapor) = fluxbq(:,:,:)
+          fluxbmk(icrm,i,j,index_water_vapor) = fluxbq(icrm,i,j)
 #endif /*CLUBB_CRM*/
-    fluxtmk(:,:,:,index_water_vapor) = fluxtq(:,:,:)
-
+          fluxtmk(icrm,i,j,index_water_vapor) = fluxtq(icrm,i,j)
+        enddo
+      enddo
+    enddo
   end subroutine micro_flux
 
   !----------------------------------------------------------------------
@@ -493,22 +502,23 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     real(8) :: total_water(ncrms)
-    real(8) tmp(ncrms)
+    real(8) tmp
     integer i,j,k,m,icrm
 
     total_water(:) = 0.
     do m=1,nmicro_fields
       if(flag_wmass(m).eq.1) then
+        !$acc parallel loop gang vector collapse(4)
         do k=1,nzm
-          tmp(:) = 0.
           do j=1,ny
             do i=1,nx
               do icrm = 1 , ncrms
-                tmp(icrm) = tmp(icrm) + micro_field(icrm,i,j,k,m)
+                tmp = micro_field(icrm,i,j,k,m)*adz(icrm,k)*dz(icrm)*rho(icrm,k)
+                !$acc atomic update
+                total_water(icrm) = total_water(icrm) + tmp
               enddo
             end do
           end do
-          total_water(:) = total_water(:) + tmp(:)*adz(:,k)*dz(:)*rho(:,k)
         end do
       end if
     end do

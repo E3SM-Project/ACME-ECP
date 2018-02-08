@@ -498,11 +498,11 @@ subroutine crm(lchnk, icol, ncrms, &
   idt_gl    = 1._r8/dt_gl
   ptop      = plev-nzm+1
   factor_xy = 1._r8/dble(nx*ny)
-  call memzero_crm_rknd( t_rad   , product(shape(t_rad  )) ) 
-  call memzero_crm_rknd( qv_rad  , product(shape(qv_rad )) ) 
-  call memzero_crm_rknd( qc_rad  , product(shape(qc_rad )) ) 
-  call memzero_crm_rknd( qi_rad  , product(shape(qi_rad )) ) 
-  call memzero_crm_rknd( cld_rad , product(shape(cld_rad)) ) 
+  call memzero_crm_rknd( t_rad   , product(shape(t_rad  )) )
+  call memzero_crm_rknd( qv_rad  , product(shape(qv_rad )) )
+  call memzero_crm_rknd( qc_rad  , product(shape(qc_rad )) )
+  call memzero_crm_rknd( qi_rad  , product(shape(qi_rad )) )
+  call memzero_crm_rknd( cld_rad , product(shape(cld_rad)) )
 #ifdef m2005
   icall memzero_crm_rknd( nc_rad , product(shape(nc_rad)) )
   icall memzero_crm_rknd( ni_rad , product(shape(ni_rad)) )
@@ -683,85 +683,84 @@ subroutine crm(lchnk, icol, ncrms, &
   ! initialize sgs fields
   call sgs_init(ncrms)
 
-  do k=1,nzm
-    u0(:,k)=0.
-    v0(:,k)=0.
-    t0(:,k)=0.
-    t00(:)=0.
-    tabs0(:,k)=0.
-    q0(:,k)=0.
-    qv0(:,k)=0.
-    !+++mhwang these are not initialized ??
-    qn0(:,k) = 0.0
-    qp0(:,k) = 0.0
-    tke0(:,k) = 0.0
-    !---mhwang
-    do j=1,ny
-      do i=1,nx
-        t(:,i,j,k) = tabs(:,i,j,k)+gamaz(:,k) &
-                  -fac_cond*qcl(:,i,j,k)-fac_sub*qci(:,i,j,k) &
-                  -fac_cond*qpl(:,i,j,k)-fac_sub*qpi(:,i,j,k)
-        colprec(:)=colprec(:)+(qpl(:,i,j,k)+qpi(:,i,j,k))*pdel(:,plev-k+1)
-        colprecs(:)=colprecs(:)+qpi(:,i,j,k)*pdel(:,plev-k+1)
-        u0(:,k)=u0(:,k)+u(:,i,j,k)
-        v0(:,k)=v0(:,k)+v(:,i,j,k)
-        t0(:,k)=t0(:,k)+t(:,i,j,k)
-        t00(:)=t00(:)+t(:,i,j,k)+fac_cond*qpl(:,i,j,k)+fac_sub*qpi(:,i,j,k)
-        tabs0(:,k)=tabs0(:,k)+tabs(:,i,j,k)
-        q0(:,k)=q0(:,k)+qv(:,i,j,k)+qcl(:,i,j,k)+qci(:,i,j,k)
-        qv0(:,k) = qv0(:,k) + qv(:,i,j,k)
-        qn0(:,k) = qn0(:,k) + qcl(:,i,j,k) + qci(:,i,j,k)
-        qp0(:,k) = qp0(:,k) + qpl(:,i,j,k) + qpi(:,i,j,k)
-        tke0(:,k)=tke0(:,k)+tke(:,i,j,k)
+  !$acc parallel loop gang vector
+  do icrm = 1 , ncrms
+    do k=1,nzm
+      u0   (icrm,k) = 0.
+      v0   (icrm,k) = 0.
+      t0   (icrm,k) = 0.
+      t00  (icrm  ) = 0.
+      tabs0(icrm,k) = 0.
+      q0   (icrm,k) = 0.
+      qv0  (icrm,k) = 0.
+      qn0  (icrm,k) = 0.
+      qp0  (icrm,k) = 0.
+      tke0 (icrm,k) = 0.
+      do j=1,ny
+        do i=1,nx
+          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
+                    -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
+                    -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
+          !$acc atomic update
+          colprec (icrm  )=colprec (icrm  )+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
+          colprecs(icrm  )=colprecs(icrm  )+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
+          u0      (icrm,k)=u0      (icrm,k)+u(icrm,i,j,k)
+          v0      (icrm,k)=v0      (icrm,k)+v(icrm,i,j,k)
+          t0      (icrm,k)=t0      (icrm,k)+t(icrm,i,j,k)
+          t00     (icrm  )=t00     (icrm  )+t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
+          tabs0   (icrm,k)=tabs0   (icrm,k)+tabs(icrm,i,j,k)
+          q0      (icrm,k)=q0      (icrm,k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
+          qv0     (icrm,k)=qv0     (icrm,k)+qv(icrm,i,j,k)
+          qn0     (icrm,k)=qn0     (icrm,k)+qcl(icrm,i,j,k) + qci(icrm,i,j,k)
+          qp0     (icrm,k)=qp0     (icrm,k)+qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
+          tke0    (icrm,k)=tke0    (icrm,k)+tke(icrm,i,j,k)
+        enddo
       enddo
-    enddo
-
-    u0(:,k) = u0(:,k) * factor_xy
-    v0(:,k) = v0(:,k) * factor_xy
-    t0(:,k) = t0(:,k) * factor_xy
-    t00(:) = t00(:) * factor_xy
-    tabs0(:,k) = tabs0(:,k) * factor_xy
-    q0(:,k) = q0(:,k) * factor_xy
-    qv0(:,k) = qv0(:,k) * factor_xy
-    qn0(:,k) = qn0(:,k) * factor_xy
-    qp0(:,k) = qp0(:,k) * factor_xy
-    tke0(:,k) = tke0(:,k) * factor_xy
+      u0(icrm,k) = u0(icrm,k) * factor_xy
+      v0(icrm,k) = v0(icrm,k) * factor_xy
+      t0(icrm,k) = t0(icrm,k) * factor_xy
+      t00(icrm) = t00(icrm) * factor_xy
+      tabs0(icrm,k) = tabs0(icrm,k) * factor_xy
+      q0(icrm,k) = q0(icrm,k) * factor_xy
+      qv0(icrm,k) = qv0(icrm,k) * factor_xy
+      qn0(icrm,k) = qn0(icrm,k) * factor_xy
+      qp0(icrm,k) = qp0(icrm,k) * factor_xy
+      tke0(icrm,k) = tke0(icrm,k) * factor_xy
 #ifdef CLUBB_CRM
-    ! Update thetav for CLUBB.  This is needed when we have a higher model top
-    ! than is in the sounding, because we subsequently use tv0 to initialize
-    ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
-    ! -dschanen UWM 11 Feb 2010
-    tv0(:,k) = tabs0(:,k)*prespot(:,k)*(1.+epsv*q0(:,k))
+      ! Update thetav for CLUBB.  This is needed when we have a higher model top
+      ! than is in the sounding, because we subsequently use tv0 to initialize
+      ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
+      ! -dschanen UWM 11 Feb 2010
+      tv0(icrm,k) = tabs0(icrm,k)*prespot(icrm,k)*(1.+epsv*q0(icrm,k))
 #endif
-
-    l = plev-k+1
-    uln(:,l) = min( umax, max(-umax,ul(:,l)) )
-    vln(:,l) = min( umax, max(-umax,vl(:,l)) )*YES3D
-    ttend(:,k) = (tl(:,l)+gamaz(:,k)- fac_cond*(qccl(:,l)+qiil(:,l))-fac_fus*qiil(:,l)-t00(:))*idt_gl
-    qtend(:,k) = (ql(:,l)+qccl(:,l)+qiil(:,l)-q0(:,k))*idt_gl
-    utend(:,k) = (uln(:,l)-u0(:,k))*idt_gl
-    vtend(:,k) = (vln(:,l)-v0(:,k))*idt_gl
-    ug0(:,k) = uln(:,l)
-    vg0(:,k) = vln(:,l)
-    tg0(:,k) = tl(:,l)+gamaz(:,k)-fac_cond*qccl(:,l)-fac_sub*qiil(:,l)
-    qg0(:,k) = ql(:,l)+qccl(:,l)+qiil(:,l)
-
+      l = plev-k+1
+      uln(icrm,l) = min( umax, max(-umax,ul(icrm,l)) )
+      vln(icrm,l) = min( umax, max(-umax,vl(icrm,l)) )*YES3D
+      ttend(icrm,k) = (tl(icrm,l)+gamaz(icrm,k)- fac_cond*(qccl(icrm,l)+qiil(icrm,l))-fac_fus*qiil(icrm,l)-t00(icrm))*idt_gl
+      qtend(icrm,k) = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)-q0(icrm,k))*idt_gl
+      utend(icrm,k) = (uln(icrm,l)-u0(icrm,k))*idt_gl
+      vtend(icrm,k) = (vln(icrm,l)-v0(icrm,k))*idt_gl
+      ug0(icrm,k) = uln(icrm,l)
+      vg0(icrm,k) = vln(icrm,l)
+      tg0(icrm,k) = tl(icrm,l)+gamaz(icrm,k)-fac_cond*qccl(icrm,l)-fac_sub*qiil(icrm,l)
+      qg0(icrm,k) = ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)
+    end do ! k
+    uhl(icrm) = u0(icrm,1)
+    vhl(icrm) = v0(icrm,1)
+    prectend(icrm)=colprec(icrm)
+    precstend(icrm)=colprecs(icrm)
   end do ! k
-
-  uhl(:) = u0(:,1)
-  vhl(:) = v0(:,1)
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
+  !MRN: This is not on the GPU because it gives the wrong answer for some reason
+  ! !$acc parallel loop gang vector
   do icrm = 1 , ncrms
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),sqrt(tau00(icrm)/rho(icrm,1)))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
   enddo
 
   timing_factor = 0.
-
-  prectend(:)=colprec(:)
-  precstend(:)=colprecs(:)
 
 
 #ifdef CLUBB_CRM
@@ -774,89 +773,6 @@ subroutine crm(lchnk, icol, ncrms, &
   endif
 #else
 #endif
-
-!---------------------------------------------------
-  cld   (:,:) = 0.
-  cldtop(:,:) = 0.
-  gicewp(:,:) = 0
-  gliqwp(:,:) = 0
-  mc    (:,:) = 0.
-  mcup  (:,:) = 0.
-  mcdn  (:,:) = 0.
-  mcuup (:,:) = 0.
-  mcudn (:,:) = 0.
-  crm_qc(:,:) = 0.
-  crm_qi(:,:) = 0.
-  crm_qs(:,:) = 0.
-  crm_qg(:,:) = 0.
-  crm_qr(:,:) = 0.
-#ifdef m2005
-  crm_nc(:,:) = 0.
-  crm_ni(:,:) = 0.
-  crm_ns(:,:) = 0.
-  crm_ng(:,:) = 0.
-  crm_nr(:,:) = 0.
-  ! hm 8/31/11 add new variables
-  aut_crm_a (:,:) = 0.
-  acc_crm_a (:,:) = 0.
-  evpc_crm_a(:,:) = 0.
-  evpr_crm_a(:,:) = 0.
-  mlt_crm_a (:,:) = 0.
-  sub_crm_a (:,:) = 0.
-  dep_crm_a (:,:) = 0.
-  con_crm_a (:,:) = 0.
-
-  ! hm 8/31/11 add new output
-  ! these are increments added to calculate gcm-grid and time-step avg
-  ! note - these values are also averaged over the icycle loop following
-  ! the approach for precsfc
-  aut1a  = 0.
-  acc1a  = 0.
-  evpc1a = 0.
-  evpr1a = 0.
-  mlt1a  = 0.
-  sub1a  = 0.
-  dep1a  = 0.
-  con1a  = 0.
-#endif
-
-  mu_crm (:,:) = 0.
-  md_crm (:,:) = 0.
-  eu_crm (:,:) = 0.
-  du_crm (:,:) = 0.
-  ed_crm (:,:) = 0.
-  dd_crm (:,:) = 0.
-  jt_crm (:)   = 0.
-  mx_crm (:)   = 0.
-
-  mui_crm(:,:) = 0.
-  mdi_crm(:,:) = 0.
-
-  flux_qt   (:,:) = 0.
-  flux_u    (:,:) = 0.
-  flux_v    (:,:) = 0.
-  fluxsgs_qt(:,:) = 0.
-  tkez      (:,:) = 0.
-  tkesgsz   (:,:) = 0.
-  tkz       (:,:) = 0.
-  flux_qp   (:,:) = 0.
-  pflx      (:,:) = 0.
-  qt_trans  (:,:) = 0.
-  qp_trans  (:,:) = 0.
-  qp_fall   (:,:) = 0.
-  qp_evp    (:,:) = 0.
-  qp_src    (:,:) = 0.
-  qt_ls     (:,:) = 0.
-  t_ls      (:,:) = 0.
-
-  uwle(:,:)     = 0.
-  uwsb(:,:)     = 0.
-  vwle(:,:)     = 0.
-  vwsb(:,:)     = 0.
-  qpsrc(:,:)    = 0.
-  qpevp(:,:)    = 0.
-  qpfall  (:,:) = 0.
-  precflux(:,:) = 0.
 
 !--------------------------------------------------
 #ifdef sam1mom
@@ -1005,12 +921,16 @@ subroutine crm(lchnk, icol, ncrms, &
     time = time + dt
     day = day0 + time/86400.
 
-    timing_factor(:) = timing_factor(:)+1
+    !$acc parallel loop gang vector
+    do icrm = 1 , ncrms
+      timing_factor(icrm) = timing_factor(icrm)+1
+    enddo
     !------------------------------------------------------------------
     !  Check if the dynamical time step should be decreased
     !  to handle the cases when the flow being locally linearly unstable
     !------------------------------------------------------------------
-    call kurant(ncrms)
+    !TODO: Find a better way to handle kurant
+    ncycle = 1 ! call kurant(ncrms)
 
     do icyc=1,ncycle
       icycle = icyc
@@ -1099,7 +1019,7 @@ subroutine crm(lchnk, icol, ncrms, &
       endif
 
       !-----------------------------------------------------------
-      !       Coriolis force: 
+      !       Coriolis force:
       if (docoriolis) then
         call coriolis(ncrms)
       endif
