@@ -120,8 +120,6 @@ module camsrfexch
      real(r8), pointer, dimension(:,:) :: dstflx ! dust fluxes
      real(r8), pointer, dimension(:,:) :: meganflx ! MEGAN fluxes
 
-     ! real(r8) :: crm_shf(pcols)          ! sensible heat flux for CRM (SP_FLUX_BYPASS) - whannah
-     ! real(r8) :: crm_cflx(pcols,pcnst)   ! constituent flux   for CRM (SP_FLUX_BYPASS) - whannah
   end type cam_in_t    
 
 !===============================================================================
@@ -252,9 +250,6 @@ CONTAINS
        if (lnd_drydep .and. n_drydep>0) then
           cam_in(c)%depvel (:,:) = 0._r8
        endif
-
-       ! cam_in(c)%crm_shf      (:) = 0._r8  ! whannah - SP_FLUX_BYPASS
-       ! cam_in(c)%crm_cflx   (:,:) = 0._r8  ! whannah - SP_FLUX_BYPASS
 
     end do
 
