@@ -182,8 +182,7 @@ contains
     !
     error_msg =  optical_props%validate()
     if(len_trim(error_msg) > 0) then
-      if(len_trim(optical_props%get_name()) > 0) &
-        error_msg = trim(optical_props%get_name()) // ': ' // trim(error_msg)
+      error_msg = "rte_lw: " // trim(error_msg)
       return
     end if
 

@@ -159,11 +159,11 @@ contains
 
     select type (optical_props)
       class is (ty_optical_props_1scl) ! No scattering
-        error_msg = optical_props%init_1scl(ncol, nlay, ngpt)
+        error_msg = optical_props%init_1scl(ncol, nlay, ngpt, name="combined LW optics")
       class is (ty_optical_props_2str)
-        error_msg = optical_props%init_2str(ncol, nlay, ngpt)
+        error_msg = optical_props%init_2str(ncol, nlay, ngpt, name="combined LW optics")
       class is (ty_optical_props_nstr)
-        error_msg = optical_props%init_nstr(n_lw_streams/2, ncol, nlay, ngpt)
+        error_msg = optical_props%init_nstr(n_lw_streams/2, ncol, nlay, ngpt, name="combined LW optics")
     end select
     if (error_msg /= '') return
 
@@ -181,6 +181,7 @@ contains
                                   lay_src, lev_src_inc, lev_src_dec, sfc_src,             &
                                   col_dry, t_lev)
     if (error_msg /= '') return
+
     ! ----------------------------------------------------
     ! Clear sky is gases + aerosols (if they're supplied)
     !
@@ -198,6 +199,7 @@ contains
                                clrsky_fluxes,                   &
                                inc_flux)
     if(error_msg /= '') return
+
     ! ------------------------------------------------------------------------------------
     ! All-sky fluxes = clear skies + clouds
     !
@@ -212,6 +214,7 @@ contains
                                lay_src, lev_src_inc, lev_src_dec, sfc_emis, sfc_src, &
                                allsky_fluxes,                   &
                                inc_flux)
+    if (error_msg /= '') return
 
   end function rte_lw
   ! --------------------------------------------------

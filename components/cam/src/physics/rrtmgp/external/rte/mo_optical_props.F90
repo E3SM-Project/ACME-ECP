@@ -231,7 +231,7 @@ contains
   function init_1scl(this, ncol, nlay, ngpt, name) result(err_message)
     class(ty_optical_props_1scl)    :: this
     integer,             intent(in) :: ncol, nlay, ngpt
-    character, optional, intent(in) :: name
+    character(len=*), optional, intent(in) :: name
     character(len=128)              :: err_message
 
     err_message = "" 
@@ -365,7 +365,8 @@ contains
     err_message = ''
     if(any(this%tau <  0._wp)) & 
       err_message = "validate: tau values out of range" 
-    if(len_trim(this%name) > 0) err_message = trim(this%name) // ': ' // trim(err_message) 
+    if(len_trim(err_message) > 0 .and. len_trim(this%name) > 0) &
+      err_message = trim(this%name) // ': ' // trim(err_message) 
     
   end function validate_1scalar
   
@@ -381,7 +382,8 @@ contains
       err_message = "validate: ssa values out of range" 
     if(any(this%g   < -1._wp) .or. any(this%g   > 1._wp)) & 
       err_message = "validate: g values out of range" 
-    if(len_trim(this%name) > 0) err_message = trim(this%name) // ': ' // trim(err_message) 
+    if(len_trim(err_message) > 0 .and. len_trim(this%name) > 0) &
+      err_message = trim(this%name) // ': ' // trim(err_message) 
     
   end function validate_2stream
 
@@ -398,7 +400,8 @@ contains
     if(any(this%p(2,:,:,:) < -1._wp) .or. & 
        any(this%p(2,:,:,:) > 1._wp))      & 
       err_message = "validate: p(2,:,:,:)  = g values out of range" 
-    if(len_trim(this%name) > 0) err_message = trim(this%name) // ': ' // trim(err_message) 
+    if(len_trim(err_message) > 0 .and. len_trim(this%name) > 0) &
+      err_message = trim(this%name) // ': ' // trim(err_message) 
   end function validate_nstream
 
   ! ------------------------------------------------------------------------------------------

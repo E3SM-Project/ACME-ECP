@@ -272,6 +272,7 @@ contains
 #if ( defined OFFLINE_DYN )
    use metdata,             only: metdata_readnl
 #endif
+   use radiation, only: radiation_readnl
 
 !---------------------------Arguments-----------------------------------
 
@@ -535,6 +536,8 @@ contains
    call metdata_readnl(nlfilename)
 #endif
 
+   ! Read radiation namelist
+   call radiation_readnl(nlfilename, dtime_in=dtime)
 ! 
 ! Print cam_inparm input variables to standard output
 ! 

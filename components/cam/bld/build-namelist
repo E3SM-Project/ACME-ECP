@@ -977,7 +977,8 @@ if ($chem_rad_passive or $aqua_mode) {
 
 # The aerosol optics depend on which radiative transfer model is used due to differing
 # wavelength bands used.
-my $rrtmg = $rad_pkg eq 'rrtmg' ? 1 : 0;
+#my $rrtmg = $rad_pkg eq 'rrtmg' or $rad_pkg eq 'rrtmgp' ? 1 : 0;
+my $rrtmg = $rad_pkg =~ /rrtmg/ ? 1 : 0;
 
 # @aero_names contains the names of the entities (bulk aerosols and modes)
 # that are externally mixed in aerosol optics calculation.  These entities are all
