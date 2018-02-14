@@ -55,6 +55,7 @@ public :: &
    radiation_nextsw_cday, &! calendar day of next radiation calculation
    radiation_do,          &! query which radiation calcs are done this timestep
    radiation_init,        &! calls radini
+   radiation_readnl,      &! read namelist
    radiation_tend          ! moved from radctl.F90
 
 integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
@@ -113,6 +114,100 @@ integer :: firstblock, lastblock      ! global block indices
 !===============================================================================
 contains
 !===============================================================================
+
+subroutine radiation_readnl(nlfile, dtime_in)
+!-------------------------------------------------------------------------------
+! Purpose: Read radiation_nl namelist group.
+!-------------------------------------------------------------------------------
+
+   use namelist_utils,  only: find_group_name
+   use units,           only: getunit, freeunit
+#ifdef SPMD
+   !use mpishorthand,    only: mpicom, mpilog, mpiint, mpichar
+#endif
+   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical, &
+                              mpi_character, masterproc
+   use time_manager, only: get_step_size
+   use cam_logfile, only: iulog
+
+   ! File containing namelist input
+   character(len=*), intent(in) :: nlfile
+   integer, intent(in), optional :: dtime_in
+
+   ! Local variables
+   integer :: unitn, ierr
+   integer :: dtime  ! timestep size
+   character(len=*), parameter :: subroutine_name = 'radiation_readnl'
+
+   integer :: iradsw, iradlw, irad_always
+   logical :: use_rad_dt_cosz, spectralflux
+
+   ! Variables defined in namelist
+   ! TODO: why are these prefaced with rrtmgp instead of radiation?
+   namelist /radiation_nl/ &
+                        iradsw, iradlw, irad_always, &
+                        use_rad_dt_cosz, spectralflux
+
+   ! Read the namelist, only if called from master process
+   ! TODO: better documentation and cleaner logic here?
+   if (masterproc) then
+      unitn = getunit()
+      open(unitn, file=trim(nlfile), status='old')
+      call find_group_name(unitn, 'radiation_nl', status=ierr)
+      if (ierr == 0) then
+         read(unitn, radiation_nl, iostat=ierr)
+         if (ierr /= 0) then
+            call endrun(subroutine_name // ':: ERROR reading namelist')
+         end if
+      end if
+      close(unitn)
+      call freeunit(unitn)
+   end if
+
+   ! Broadcast namelist variables
+   call mpibcast(iradsw, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(iradlw, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(irad_always, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(use_rad_dt_cosz, 1, mpi_logical, mstrid, mpicom, ierr)
+   call mpibcast(spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
+
+   ! Set module data
+   iradsw          = iradsw
+   iradlw          = iradlw
+   irad_always     = irad_always
+   use_rad_dt_cosz = use_rad_dt_cosz
+   spectralflux    = spectralflux
+
+   ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
+   if (present(dtime_in)) then
+      dtime = dtime_in
+   else
+      dtime  = get_step_size()
+   end if
+   if (iradsw      < 0) iradsw      = nint((-iradsw     *3600._r8)/dtime)
+   if (iradlw      < 0) iradlw      = nint((-iradlw     *3600._r8)/dtime)
+   if (irad_always < 0) irad_always = nint((-irad_always*3600._r8)/dtime)
+
+   !-----------------------------------------------------------------------
+   ! Print runtime options to log.
+   !-----------------------------------------------------------------------
+
+   if (masterproc) then
+      write(iulog,*) 'RRTMGP radiation scheme parameters:'
+      write(iulog,10) iradsw, iradlw, &
+                      irad_always, use_rad_dt_cosz, spectralflux
+   end if
+
+10 format('  LW coefficents file: ',                                a/, &
+          '  SW coefficents file: ',                                a/, &
+          '  Frequency (timesteps) of Shortwave Radiation calc:  ',i5/, &
+          '  Frequency (timesteps) of Longwave Radiation calc:   ',i5/, &
+          '  SW/LW calc done every timestep for first N steps. N=',i5/, &
+          '  Use average zenith angle:                           ',l5/, &
+          '  Output spectrally resolved fluxes:                  ',l5/)
+
+end subroutine radiation_readnl
+
 
   subroutine radiation_register
 !-----------------------------------------------------------------------

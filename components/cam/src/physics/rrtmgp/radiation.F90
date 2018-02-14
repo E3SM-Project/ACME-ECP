@@ -292,14 +292,14 @@ subroutine radiation_readnl(nlfile, dtime_in)
    character(len=*), parameter :: subroutine_name = 'radiation_readnl'
 
    character(len=cl) :: rrtmgp_coefficients_file_lw, rrtmgp_coefficients_file_sw
-   integer :: rrtmgp_iradsw, rrtmgp_iradlw, rrtmgp_irad_always
-   logical :: rrtmgp_use_rad_dt_cosz, rrtmgp_spectralflux
+   integer :: iradsw, iradlw, irad_always
+   logical :: use_rad_dt_cosz, spectralflux
 
    ! Variables defined in namelist
    ! TODO: why are these prefaced with rrtmgp instead of radiation?
    namelist /radiation_nl/ rrtmgp_coefficients_file_lw, rrtmgp_coefficients_file_sw, &
-                        rrtmgp_iradsw, rrtmgp_iradlw, rrtmgp_irad_always, &
-                        rrtmgp_use_rad_dt_cosz, rrtmgp_spectralflux
+                        iradsw, iradlw, irad_always, &
+                        use_rad_dt_cosz, spectralflux
 
    ! Read the namelist, only if called from master process
    ! TODO: better documentation and cleaner logic here?
@@ -320,20 +320,20 @@ subroutine radiation_readnl(nlfile, dtime_in)
    ! Broadcast namelist variables
    call mpibcast(rrtmgp_coefficients_file_lw, cl, mpi_character, mstrid, mpicom, ierr)
    call mpibcast(rrtmgp_coefficients_file_sw, cl, mpi_character, mstrid, mpicom, ierr)
-   call mpibcast(rrtmgp_iradsw, 1, mpi_integer, mstrid, mpicom, ierr)
-   call mpibcast(rrtmgp_iradlw, 1, mpi_integer, mstrid, mpicom, ierr)
-   call mpibcast(rrtmgp_irad_always, 1, mpi_integer, mstrid, mpicom, ierr)
-   call mpibcast(rrtmgp_use_rad_dt_cosz, 1, mpi_logical, mstrid, mpicom, ierr)
-   call mpibcast(rrtmgp_spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
+   call mpibcast(iradsw, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(iradlw, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(irad_always, 1, mpi_integer, mstrid, mpicom, ierr)
+   call mpibcast(use_rad_dt_cosz, 1, mpi_logical, mstrid, mpicom, ierr)
+   call mpibcast(spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
 
    ! Set module data
    coefficients_file_lw = rrtmgp_coefficients_file_lw
    coefficients_file_sw = rrtmgp_coefficients_file_sw
-   iradsw          = rrtmgp_iradsw
-   iradlw          = rrtmgp_iradlw
-   irad_always     = rrtmgp_irad_always
-   use_rad_dt_cosz = rrtmgp_use_rad_dt_cosz
-   spectralflux    = rrtmgp_spectralflux
+   iradsw          = iradsw
+   iradlw          = iradlw
+   irad_always     = irad_always
+   use_rad_dt_cosz = use_rad_dt_cosz
+   spectralflux    = spectralflux
 
    ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
    if (present(dtime_in)) then
@@ -683,9 +683,6 @@ subroutine radiation_init()
    call rrtmgp_load_coefficients(k_dist_sw, coefficients_file_sw, available_gases)
    call rrtmgp_load_coefficients(k_dist_lw, coefficients_file_lw, available_gases)
 
-   ! TODO: check that things got loaded properly?
-
-
    ! Get number of bands used in shortwave and longwave and set module data
    ! appropriately so that these sizes can be used to allocate array sizes.
    nswbands = k_dist_sw%get_nband()
@@ -748,8 +745,8 @@ subroutine radiation_init()
    call addfld('ICE_ICLD_VISTAU', (/ 'lev' /), 'A',  '1', 'Ice in-cloud extinction visible sw optical depth', &
                                                       sampling_seq='rad_lwsw', flag_xyfill=.true.)
 
-   call add_default('TOT_CLD_VISTAU',  1, ' ')
-   call add_default('TOT_ICLD_VISTAU', 1, ' ')
+!  call add_default('TOT_CLD_VISTAU',  1, ' ')
+!  call add_default('TOT_ICLD_VISTAU', 1, ' ')
 
    ! get list of active radiation calls
    call rad_cnst_get_call_list(active_calls)
@@ -1213,6 +1210,13 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
    ! throughout this subroutine, so set once for convenience
    ncol = state%ncol
 
+   ! Set pointers to heating rates stored on physics buffer. These will be
+   ! modified in this routine.
+   call pbuf_get_field(pbuf, pbuf_get_index('QRS'), qrs)
+   call pbuf_get_field(pbuf, pbuf_get_index('QRL'), qrl)
+   qrs = 0._r8
+   qrl = 0._r8
+  
    ! Figure out which levels to use; only use those levels between the min and
    ! max of press_ref read from the coefficients file. Below code would do this
    ! on a column by column basis, but there are smarter ways of doing this, and
@@ -1250,11 +1254,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
       call endrun(module_name // ': no valid pressure levels?')
    end if
    
-   ! Set pointers to heating rates stored on physics buffer. These will be
-   ! modified in this routine.
-   call pbuf_get_field(pbuf, pbuf_get_index('QRS'), qrs)
-   call pbuf_get_field(pbuf, pbuf_get_index('QRL'), qrl)
-  
    ! Check if we are supposed to do shortwave and longwave stuff at this
    ! timestep, and if we are then we begin setting optical properties and then
    ! doing the radiative transfer separately for shortwave and longwave.
@@ -1296,12 +1295,12 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
             end if
          end do
 
-         ! State variables only as large as nday
-         allocate(t_rad(nday,play), pmid_rad(nday,play), pint_rad(nday,play+1))
+         ! State variables only as large as nday,nlay
+         allocate(t_rad(nday,nlay), pmid_rad(nday,nlay), pint_rad(nday,nlay+1))
          do i = 1,nday
-            t_rad(i,:play) = state%t(day_indices(i),ktop:kbot)
-            pmid_rad(i,:play) = state%pmid(day_indices(i),ktop:kbot)
-            pint_rad(i,:play+1) = state%pmid(day_indices(i),ktop:kbot+1)
+            t_rad(i,:nlay) = state%t(day_indices(i),ktop:kbot)
+            pmid_rad(i,:nlay) = state%pmid(day_indices(i),ktop:kbot)
+            pint_rad(i,:nlay+1) = state%pmid(day_indices(i),ktop:kbot+1)
          end do
 
          ! Do shortwave cloud optics calculations
@@ -1325,19 +1324,19 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
                ! Set gas concentrations (I believe the active gases may change
                ! for different values of icall, which is why we do this within
                ! the loop).
-               call set_gas_concentrations(icall, state, pbuf, pver, &
-                                           gas_concentrations_sw, &
-                                           n_day_indices=nday, &
-                                           day_indices=day_indices)
+               !call set_gas_concentrations(icall, state, pbuf, pver, &
+               !                            gas_concentrations_sw, &
+               !                            n_day_indices=nday, &
+               !                            day_indices=day_indices)
 
                ! Do shortwave radiative transfer calculations
-               call t_startf('shortwave radiation calculations')
+               !call t_startf('shortwave radiation calculations')
                !errmsg = rrtmgp_sw(k_dist_sw, gas_concentrations_sw, &
                !                   pmid_day, t_day, pint_day, &
                !                   coszrs_day, alb_dir, alb_dif, cloud_sw, &
                !                   allsky_fluxes_sw, clrsky_fluxes_sw, &
                !                   aer_props=aerosol_sw)
-               call t_stopf('shortwave radiation calculations')
+               !call t_stopf('shortwave radiation calculations')
 
                ! Map RRTMGP outputs to CAM outputs
                ! TODO
@@ -1373,12 +1372,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
          ! function to set appropriately yet. TODO: move this to the
          ! "set_cloud_optics_lw" routine.
          cloud_optics_lw%tau(:,:,:) = 0.0
-         call handle_rrtmgp_error(cloud_optics_lw%validate())
-
-         ! Set surface emissivity to 1 here
-         ! TODO: set this more intelligently?
-         allocate(surface_emissivity(nlwbands,ncol))
-         surface_emissivity(:,:) = 1.0_r8
 
          ! Allocate longwave outputs; why is this not part of the
          ! ty_fluxes_byband object?
@@ -1403,6 +1396,11 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
          ! the physics state from within parameterizations)
          allocate(t_rad(ncol,nlay), pmid_rad(ncol,nlay), pint_rad(ncol,nlay))
 
+         ! Set surface emissivity to 1 here
+         ! TODO: set this more intelligently?
+         allocate(surface_emissivity(nlwbands,ncol))
+         surface_emissivity(:,:) = 1.0_r8
+
          ! Loop over diagnostic calls (what does this mean?)
          do icall = N_DIAG,0,-1
             if (active_calls(icall)) then
@@ -1426,39 +1424,40 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
                pint_rad(:ncol,:nlay+1) = state%pint(:ncol,ktop:kbot+1)
 
                ! Clip temperature values in case they are out of range
-               where (t_rad <  k_dist_lw%get_temp_ref_min()) 
-                  t_rad = k_dist_lw%get_temp_ref_min()
-               endwhere
-               where (t_rad > k_dist_lw%get_temp_ref_max())
-                  t_rad = k_dist_lw%get_temp_ref_max()
-               endwhere
+               !where (t_rad <  k_dist_lw%get_temp_ref_min()) 
+               !   t_rad = k_dist_lw%get_temp_ref_min()
+               !endwhere
+               !where (t_rad > k_dist_lw%get_temp_ref_max())
+               !   t_rad = k_dist_lw%get_temp_ref_max()
+               !endwhere
 
                ! Do longwave radiative transfer calculations
-               call t_startf('longwave radiation calculations')
-               call handle_rrtmgp_error(rrtmgp_lw( &
-                  k_dist_lw, gas_concentrations_lw, &
-                  pmid_rad(:ncol,:nlay), t_rad(:ncol,:nlay), &
-                  pint_rad(:ncol,:nlay+1), cam_in%ts(:ncol), &
-                  surface_emissivity(:nlwbands,:ncol), &
-                  cloud_optics_lw, &
-                  flux_lw_allsky, flux_lw_clearsky &
-                  !aer_props=aerosol_optics_lw &
-               ))
-               call t_stopf('longwave radiation calculations')
-
-               deallocate(t_rad)
+               !call t_startf('longwave radiation calculations')
+               !call handle_rrtmgp_error(rrtmgp_lw( &
+               !   k_dist_lw, gas_concentrations_lw, &
+               !   pmid_rad(:ncol,:nlay), t_rad(:ncol,:nlay), &
+               !   pint_rad(:ncol,:nlay+1), cam_in%ts(:ncol), &
+               !   surface_emissivity(:nlwbands,:ncol), &
+               !   cloud_optics_lw, &
+               !   flux_lw_allsky, flux_lw_clearsky &
+               !   !aer_props=aerosol_optics_lw &
+               !))
+               !call t_stopf('longwave radiation calculations')
 
                ! Calculate longwave heating rate
-               call calculate_heating_rate(ktop, kbot, state, flux_lw_allsky, qrl)
+               !call calculate_heating_rate(ktop, kbot, state, flux_lw_allsky, qrl)
 
                ! Write outputs to history tapes
-               call radiation_output_lw( &
-                  icall, ktop, kbot, state, flux_lw_allsky, flux_lw_clearsky, qrl &
-               )
+               !call radiation_output_lw( &
+               !   icall, ktop, kbot, state, flux_lw_allsky, flux_lw_clearsky, qrl &
+               !)
 
             end if  ! active calls
          end do  ! loop over diagnostic calls
                
+         ! Free memory allocated to RRTMGP input state variables
+         deallocate(t_rad, pmid_rad, pint_rad, surface_emissivity)
+
       end if  ! dolw
 
    else  ! dosw .or. dolw
@@ -1473,32 +1472,34 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flx)
       end if  
    end if  ! dosw .or. dolw
 
+   print *, 'Done doing rad stuff'
+
    ! Compute net radiative heating tendency
-   call t_startf('radheat_tend')
+   !call t_startf('radheat_tend')
    !call radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
    !                  fsnt, flns, flnt, cam_in%asdir, net_flx)
-   call t_stopf('radheat_tend')
+   !call t_stopf('radheat_tend')
 
    ! Compute net heating rate for dtheta/dt
    ! TODO: how is this different than above?
-   call t_startf('heating_rate')
-   do k=1,pver
-      do i = 1,ncol
-         heating_rate(i,k) = (qrs(i,k) + qrl(i,k))/cpair * (1.e5_r8/state%pmid(i,k))**cappa
-      end do
-   end do
-   call t_stopf('heating_rate')
+   !call t_startf('heating_rate')
+   !do k=1,pver
+   !   do i = 1,ncol
+   !      heating_rate(i,k) = (qrs(i,k) + qrl(i,k))/cpair * (1.e5_r8/state%pmid(i,k))**cappa
+   !   end do
+   !end do
+   !call t_stopf('heating_rate')
 
    ! convert radiative heating rates to Q*dp for energy conservation
    ! TODO: this gets converted back here? what is going on here?
-   if (conserve_energy) then
-      do k = 1,pver
-         do i = 1,ncol
-            qrs(i,k) = qrs(i,k)*state%pdel(i,k)
-            qrl(i,k) = qrl(i,k)*state%pdel(i,k)
-         end do
-      end do
-   end if
+   !if (conserve_energy) then
+   !   do k = 1,pver
+   !      do i = 1,ncol
+   !         qrs(i,k) = qrs(i,k)*state%pdel(i,k)
+   !         qrl(i,k) = qrl(i,k)*state%pdel(i,k)
+   !      end do
+   !   end do
+   !end if
 
    ! copy net sw flux to cam_out structure
    !cam_out%netsw(:ncol) = fsns(:ncol)
