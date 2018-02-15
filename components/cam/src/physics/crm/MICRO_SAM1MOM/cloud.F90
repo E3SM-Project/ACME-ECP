@@ -38,7 +38,7 @@ contains
       do j = 1, ny
         do i = 1, nx
 
-          q(i,j,k)=max(0.,q(i,j,k))
+          q(i,j,k)=max(real(0.,crm_rknd),q(i,j,k))
 
 
           ! Initail guess for temperature assuming no cloud water/ice:
@@ -119,7 +119,7 @@ contains
             end do
 
             qsatt = qsatt + dqsat * dtabs
-            qn(i,j,k) = max(0.,q(i,j,k)-qsatt)
+            qn(i,j,k) = max(real(0.,crm_rknd),q(i,j,k)-qsatt)
 
           else
 
@@ -128,7 +128,7 @@ contains
           endif
 
           tabs(i,j,k) = tabs1
-          qp(i,j,k) = max(0.,qp(i,j,k)) ! just in case
+          qp(i,j,k) = max(real(0.,crm_rknd),qp(i,j,k)) ! just in case
 
         end do
       end do

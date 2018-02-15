@@ -843,7 +843,9 @@ real(r8) :: frztmp
 
 logical  :: do_clubb_sgs
 
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+!++ crjones: change several #ifdef A || B to if defined(A) || defined(B)
+
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
 ! Move droplet activation
 real(r8) :: ncold(pcols,pver)
 #endif
@@ -928,7 +930,7 @@ mincld=0.0001_r8
 q(1:ncol,1:pver)=qn(1:ncol,1:pver)
 t(1:ncol,1:pver)=tn(1:ncol,1:pver)
 
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
 !++ag/hm 8/17/12
 !initialize aerosol number
 dum2l(1:ncol,1:pver) = 0._r8
@@ -966,7 +968,7 @@ do k=1,pver
 
       dz(i,k)= pdel(i,k)/(rho(i,k)*g)
 
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
       ! droplet activation
       ! hm, modify 5/12/11 
       ! get provisional droplet number after activation. This is used for
@@ -1048,7 +1050,7 @@ rainrt1(1:ncol,1:pver) = 0._r8
 ! initialize precip fraction and output tendencies
 cldmax(1:ncol,1:pver)=mincld
 
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
 !++ag/hm 8/17/12: Activation moved above
 #else
 !initialize aerosol number
@@ -1639,7 +1641,7 @@ do i=1,ncol
 
          cmeout(i,k) = cmeout(i,k)+cmei(i,k)
 
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
          !--ag/hm 8/12/2012  Activation moved above.
 #else
          !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -2428,7 +2430,7 @@ do i=1,ncol
          ! include mixing timescale  (mtime)
 
          qce=(qc(i,k) - berg(i,k)*deltat)
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
          !++ag/hm 8/17/12, modify for moving activation before microphysics
          nce=nc(i,k)
 #else
@@ -2654,7 +2656,7 @@ do i=1,ncol
 
          ! multiply activation/nucleation by mtime to account for fast timescale
 
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
          !++ag/hm 8/17/12, don't include activation tendency (already included earlier)
          nctend(i,k) = nctend(i,k)+ &
 #else
@@ -2683,7 +2685,7 @@ do i=1,ncol
          ! maximum (existing N + source terms*dt), which is possible due to
          ! fast nucleation timescale
 
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
          !++ag/hm 8/17/12, don't include timescale for droplet activation - not needed with
          ! Ghan formulation based on mixing 
 #else
@@ -3321,7 +3323,7 @@ do i=1,ncol
 
    do k=top_lev,pver
 
-#ifdef MODIFY_ACTIVATE || USE_UNICON
+#if defined(MODIFY_ACTIVATE) || defined(USE_UNICON)
       !++ag/hm 8/17/12, modify for activation tendency
       ! *note: this still includes conditional on npccnin that should be removed
       nctend(i,k)=nctend(i,k)+max(0._r8,npccnin(i,k))
