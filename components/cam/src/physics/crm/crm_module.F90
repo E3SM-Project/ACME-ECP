@@ -134,6 +134,7 @@ subroutine crm(lchnk, icol, ncrms, &
 #endif
   use cam_abortutils        , only: endrun
   use time_manager          , only: get_nstep
+  use perf_mod              , only: t_startf, t_stopf
 
   implicit none
   integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
@@ -916,6 +917,7 @@ subroutine crm(lchnk, icol, ncrms, &
   !------------------------------------------------------------------
   !   Main time loop
   !------------------------------------------------------------------
+  call t_startf('main time loop')
   do while (nstep.lt.nstop)
     nstep = nstep + 1
     time = time + dt
@@ -1264,6 +1266,7 @@ subroutine crm(lchnk, icol, ncrms, &
     enddo
     !----------------------------------------------------------
   enddo ! main loop
+  call t_stopf('main time loop')
 
   do icrm = 1 , ncrms
     tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
