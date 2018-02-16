@@ -167,9 +167,9 @@ contains
             call dmdf_write(micro_fields_crm,myrank,'crm_in','micro_fields_crm',(/'crm_nx          ','crm_ny          ','crm_nz          ','nmicro_fields_p1'/),.false.,.false.); _ERR(success,error_string,__LINE__)
 #ifdef m2005
 #ifdef MODAL_AERO
-            call dmdf_write(naermod         ,myrank,'crm_in','naermod'         ,(/'plev','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(vaerosol        ,myrank,'crm_in','vaerosol'        ,(/'plev','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-            call dmdf_write(hygro           ,myrank,'crm_in','hygro'           ,(/'plev','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
+            call dmdf_write(naermod         ,myrank,'crm_in','naermod'         ,(/'plev      ','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
+            call dmdf_write(vaerosol        ,myrank,'crm_in','vaerosol'        ,(/'plev      ','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
+            call dmdf_write(hygro           ,myrank,'crm_in','hygro'           ,(/'plev      ','ntot_amode'/)                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
 #endif
 #endif
             call dmdf_write(dd_crm          ,myrank,'crm_in','dd_crm'          ,(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
