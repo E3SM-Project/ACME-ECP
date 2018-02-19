@@ -1398,15 +1398,15 @@ subroutine crm(lchnk, icol, ncrms, &
         qpc_crm(icrm,i,j,k) = qpl(icrm,i,j,k)
         qpi_crm(icrm,i,j,k) = qpi(icrm,i,j,k)
 #ifdef m2005
-        wvar_crm(icrm,i,j,k) = wvar (i,j,k)
-        aut_crm (icrm,i,j,k) = aut1 (i,j,k)
-        acc_crm (icrm,i,j,k) = acc1 (i,j,k)
-        evpc_crm(icrm,i,j,k) = evpc1(i,j,k)
-        evpr_crm(icrm,i,j,k) = evpr1(i,j,k)
-        mlt_crm (icrm,i,j,k) = mlt1 (i,j,k)
-        sub_crm (icrm,i,j,k) = sub1 (i,j,k)
-        dep_crm (icrm,i,j,k) = dep1 (i,j,k)
-        con_crm (icrm,i,j,k) = con1 (i,j,k)
+        wvar_crm(icrm,i,j,k) = wvar (icrm,i,j,k)
+        aut_crm (icrm,i,j,k) = aut1 (icrm,i,j,k)
+        acc_crm (icrm,i,j,k) = acc1 (icrm,i,j,k)
+        evpc_crm(icrm,i,j,k) = evpc1(icrm,i,j,k)
+        evpr_crm(icrm,i,j,k) = evpr1(icrm,i,j,k)
+        mlt_crm (icrm,i,j,k) = mlt1 (icrm,i,j,k)
+        sub_crm (icrm,i,j,k) = sub1 (icrm,i,j,k)
+        dep_crm (icrm,i,j,k) = dep1 (icrm,i,j,k)
+        con_crm (icrm,i,j,k) = con1 (icrm,i,j,k)
 #endif
         enddo
       enddo
@@ -1473,14 +1473,14 @@ subroutine crm(lchnk, icol, ncrms, &
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          aut_crm_a (icrm,l) = aut_crm_a (icrm,l) + aut1a (i,j,k)
-          acc_crm_a (icrm,l) = acc_crm_a (icrm,l) + acc1a (i,j,k)
-          evpc_crm_a(icrm,l) = evpc_crm_a(icrm,l) + evpc1a(i,j,k)
-          evpr_crm_a(icrm,l) = evpr_crm_a(icrm,l) + evpr1a(i,j,k)
-          mlt_crm_a (icrm,l) = mlt_crm_a (icrm,l) + mlt1a (i,j,k)
-          sub_crm_a (icrm,l) = sub_crm_a (icrm,l) + sub1a (i,j,k)
-          dep_crm_a (icrm,l) = dep_crm_a (icrm,l) + dep1a (i,j,k)
-          con_crm_a (icrm,l) = con_crm_a (icrm,l) + con1a (i,j,k)
+          aut_crm_a (icrm,l) = aut_crm_a (icrm,l) + aut1a (icrm,i,j,k)
+          acc_crm_a (icrm,l) = acc_crm_a (icrm,l) + acc1a (icrm,i,j,k)
+          evpc_crm_a(icrm,l) = evpc_crm_a(icrm,l) + evpc1a(icrm,i,j,k)
+          evpr_crm_a(icrm,l) = evpr_crm_a(icrm,l) + evpr1a(icrm,i,j,k)
+          mlt_crm_a (icrm,l) = mlt_crm_a (icrm,l) + mlt1a (icrm,i,j,k)
+          sub_crm_a (icrm,l) = sub_crm_a (icrm,l) + sub1a (icrm,i,j,k)
+          dep_crm_a (icrm,l) = dep_crm_a (icrm,l) + dep1a (icrm,i,j,k)
+          con_crm_a (icrm,l) = con_crm_a (icrm,l) + con1a (icrm,i,j,k)
         enddo
       enddo
     enddo
