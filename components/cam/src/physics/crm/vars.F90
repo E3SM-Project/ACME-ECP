@@ -193,17 +193,17 @@ module vars
   real(crm_rknd), allocatable :: hgaer(:,:,:) !REDIM    ! hygroscopicity of aerosol mode
 #endif
 
-!  integer :: ncondavg
-! integer :: icondavg_cld
-! integer :: icondavg_cor
-! integer :: icondavg_cordn
-! integer :: icondavg_satdn
-! integer :: icondavg_satup
-! integer :: icondavg_env
-! real(crm_rknd), allocatable :: condavg_factor(:,:) ! replaces cloud_factor, core_factor
-! real(crm_rknd), allocatable :: condavg_mask(:,:,:,:) ! indicator array for various conditional averages
-! character(LEN=8), allocatable :: condavgname(:) ! array of short names
-! character(LEN=25), allocatable :: condavglongname(:) ! array of long names
+integer :: ncondavg
+integer :: icondavg_cld
+integer :: icondavg_cor
+integer :: icondavg_cordn
+integer :: icondavg_satdn
+integer :: icondavg_satup
+integer :: icondavg_env
+real(crm_rknd), allocatable :: condavg_factor(:,:) ! replaces cloud_factor, core_factor
+real(crm_rknd), allocatable :: condavg_mask(:,:,:,:) ! indicator array for various conditional averages
+character(LEN=8), allocatable :: condavgname(:) ! array of short names
+character(LEN=25), allocatable :: condavglongname(:) ! array of long names
 
 contains
 
