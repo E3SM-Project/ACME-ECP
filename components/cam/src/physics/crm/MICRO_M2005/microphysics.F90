@@ -141,10 +141,164 @@ CONTAINS
 subroutine allocate_microphysics(ncrms)
   implicit none
   integer, intent(in) :: ncrms
+
+  call micro_setparm()
+
+  allocate(micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,nmicro_fields))
+  allocate(fluxbmk(nx,ny,nmicro_fields))
+  allocate(fluxtmk(nx,ny,nmicro_fields))
+  allocate(reffc(nx,ny,nzm))
+  allocate(reffi(nx,ny,nzm))
+  allocate(mkwle(nz,nmicro_fields))
+  allocate(mkwsb(nz,nmicro_fields))
+  allocate(mkadv(nz,nmicro_fields))
+  allocate(mkdiff(nz,nmicro_fields))
+  allocate(mklsadv(nz,nmicro_fields))
+  allocate(stend(nzm,nmicro_fields))
+  allocate(mtend(nzm,nmicro_fields))
+  allocate(mfrac(nzm,nmicro_fields))
+  allocate(trtau(nzm,nmicro_fields))
+  allocate(mksed(nzm,nmicro_fields))
+  allocate(tmtend(nzm))
+  allocate(mstor(nzm,nmicro_fields))
+  allocate(cloudliq(nx,ny,nzm))
+  allocate(tmtend3d(nx,ny,nzm))
+  allocate(flag_micro3Dout(nmicro_fields))
+  allocate(flag_wmass(nmicro_fields))
+  allocate(flag_precip(nmicro_fields))
+  allocate(flag_number(nmicro_fields))
+  allocate(lfac(nmicro_fields))
+  allocate(mkname(nmicro_fields))
+  allocate(mklongname(nmicro_fields))
+  allocate(mkunits(nmicro_fields))
+  allocate(mkoutputscale(nmicro_fields))
+  allocate(wvar(nx,ny,nzm))
+  allocate(sfcpcp2D(nx,ny))
+#ifdef CRM
+  allocate(qpevp(nz))
+  allocate(qpsrc(nz))
+  allocate(aut1(nx,ny,nzm))
+  allocate(acc1(nx,ny,nzm))
+  allocate(evpc1(nx,ny,nzm))
+  allocate(evpr1(nx,ny,nzm))
+  allocate(mlt1(nx,ny,nzm))
+  allocate(sub1(nx,ny,nzm))
+  allocate(dep1(nx,ny,nzm))
+  allocate(con1(nx,ny,nzm))
+  allocate(aut1a(nx,ny,nzm))
+  allocate(acc1a(nx,ny,nzm))
+  allocate(evpc1a(nx,ny,nzm))
+  allocate(evpr1a(nx,ny,nzm))
+  allocate(mlt1a(nx,ny,nzm))
+  allocate(sub1a(nx,ny,nzm))
+  allocate(dep1a(nx,ny,nzm))
+  allocate(con1a(nx,ny,nzm))
+#endif
+
+  micro_field = 0
+  fluxbmk = 0
+  fluxtmk = 0
+  reffc = 0
+  reffi = 0
+  mkwle = 0
+  mkwsb = 0
+  mkadv = 0
+  mkdiff = 0
+  mklsadv = 0
+  stend = 0
+  mtend = 0
+  mfrac = 0
+  trtau = 0
+  mksed = 0
+  tmtend = 0
+  mstor = 0
+  cloudliq = 0
+  tmtend3d = 0
+  flag_micro3Dout = 0
+  flag_wmass = 0
+  flag_precip = 0
+  flag_number = 0
+  lfac = 0
+  mkname = 0
+  mklongname = 0
+  mkunits = 0
+  mkoutputscale = 0
+  wvar = 0
+  sfcpcp2D = 0
+#ifdef CRM
+  qpevp = 0
+  qpsrc = 0
+  aut1 = 0
+  acc1 = 0
+  evpc1 = 0
+  evpr1 = 0
+  mlt1 = 0
+  sub1 = 0
+  dep1 = 0
+  con1 = 0
+  aut1a = 0
+  acc1a = 0
+  evpc1a = 0
+  evpr1a = 0
+  mlt1a = 0
+  sub1a = 0
+  dep1a = 0
+  con1a = 0
+#endif
 end subroutine allocate_microphysics
 
 subroutine deallocate_microphysics()
   implicit none
+  deallocate(micro_field)
+  deallocate(fluxbmk)
+  deallocate(fluxtmk)
+  deallocate(reffc)
+  deallocate(reffi)
+  deallocate(mkwle)
+  deallocate(mkwsb)
+  deallocate(mkadv)
+  deallocate(mkdiff)
+  deallocate(mklsadv)
+  deallocate(stend)
+  deallocate(mtend)
+  deallocate(mfrac)
+  deallocate(trtau)
+  deallocate(mksed)
+  deallocate(tmtend)
+  deallocate(mstor)
+  deallocate(cloudliq)
+  deallocate(tmtend3d)
+  deallocate(flag_micro3Dout)
+  deallocate(flag_wmass)
+  deallocate(flag_precip)
+  deallocate(flag_number)
+  deallocate(lfac)
+  deallocate(mkname)
+  deallocate(mklongname)
+  deallocate(mkunits)
+  deallocate(mkoutputscale)
+  deallocate(wvar)
+  deallocate(sfcpcp2D)
+#ifdef CRM
+  deallocate(qpevp)
+  deallocate(qpsrc)
+  deallocate(aut1)
+  deallocate(acc1)
+  deallocate(evpc1)
+  deallocate(evpr1)
+  deallocate(mlt1)
+  deallocate(sub1)
+  deallocate(dep1)
+  deallocate(con1)
+  deallocate(aut1a)
+  deallocate(acc1a)
+  deallocate(evpc1a)
+  deallocate(evpr1a)
+  deallocate(mlt1a)
+  deallocate(sub1a)
+  deallocate(dep1a)
+  deallocate(con1a)
+#endif
 end subroutine deallocate_microphysics
 
 !----------------------------------------------------------------------
@@ -328,109 +482,6 @@ subroutine micro_setparm()
      call task_abort()
   end if
   index_water_vapor = iqv ! set SAM water vapor flag
-
-  if(.not.isallocatedMICRO) then
-     ! allocate microphysical variables
-     allocate(micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,nmicro_fields), &
-          fluxbmk(nx,ny,nmicro_fields), fluxtmk(nx,ny,nmicro_fields), &
-          reffc(nx,ny,nzm), reffi(nx,ny,nzm), &
-          mkwle(nz,nmicro_fields), mkwsb(nz,nmicro_fields), &
-          mkadv(nz,nmicro_fields), mkdiff(nz,nmicro_fields), &
-          mklsadv(nz,nmicro_fields), &
-          stend(nzm,nmicro_fields), mtend(nzm,nmicro_fields), &
-          mfrac(nzm,nmicro_fields), trtau(nzm,nmicro_fields), &
-          mksed(nzm,nmicro_fields), tmtend(nzm), &
-          mstor(nzm,nmicro_fields),  &
-          cloudliq(nx,ny,nzm), &
-          tmtend3d(nx,ny,nzm), flag_micro3Dout(nmicro_fields), &
-          flag_wmass(nmicro_fields), flag_precip(nmicro_fields), &
-          flag_number(nmicro_fields), lfac(nmicro_fields), &
-          mkname(nmicro_fields), mklongname(nmicro_fields), &
-          mkunits(nmicro_fields), mkoutputscale(nmicro_fields), STAT=ierr)
-
-#ifdef CRM
-     allocate (qpevp(nz), qpsrc(nz), STAT=ierr)
-#endif
-     allocate (wvar(nx,ny,nzm), STAT=ierr)
-
-#ifdef CRM
-! hm 7/26/11, add new output
-     allocate (aut1(nx,ny,nzm), STAT=ierr)
-     allocate (acc1(nx,ny,nzm), STAT=ierr)
-     allocate (evpc1(nx,ny,nzm), STAT=ierr)
-     allocate (evpr1(nx,ny,nzm), STAT=ierr)
-     allocate (mlt1(nx,ny,nzm), STAT=ierr)
-     allocate (sub1(nx,ny,nzm), STAT=ierr)
-     allocate (dep1(nx,ny,nzm), STAT=ierr)
-     allocate (con1(nx,ny,nzm), STAT=ierr)
-
-     allocate (aut1a(nx,ny,nzm), STAT=ierr)
-     allocate (acc1a(nx,ny,nzm), STAT=ierr)
-     allocate (evpc1a(nx,ny,nzm), STAT=ierr)
-     allocate (evpr1a(nx,ny,nzm), STAT=ierr)
-     allocate (mlt1a(nx,ny,nzm), STAT=ierr)
-     allocate (sub1a(nx,ny,nzm), STAT=ierr)
-     allocate (dep1a(nx,ny,nzm), STAT=ierr)
-     allocate (con1a(nx,ny,nzm), STAT=ierr)
-#endif
-
-!+++mhwangtest
-     allocate (sfcpcp2D(nx,ny), STAT=ierr)
-!---mhwangtest
-
-     if(ierr.ne.0) then
-        write(*,*) 'Failed to allocate microphysical arrays on proc ', rank
-        call task_abort()
-     else
-        isallocatedMICRO = .true.
-     end if
-
-  ! zero out statistics variables associated with cloud ice sedimentation
-  !   in Marat's default SAM microphysics
-  !MRN: This is already initialized to zero in vars.F90 when it is allocated.
-  !tlatqi = 0.
-
-  ! initialize these arrays
-  micro_field = 0.
-  cloudliq = 0. !bloss/qt: auxially cloud liquid water variable, analogous to qn in MICRO_SAM1MOM
-  fluxbmk = 0.
-  fluxtmk = 0.
-  mkwle = 0.
-  mkwsb = 0.
-  mkadv = 0.
-  mkdiff = 0.
-  mklsadv = 0.
-  mstor =0.
-
-  wvar = 0.
-
-#ifdef CRM
-! hm 7/26/11, new output
-  aut1 = 0.
-  acc1 = 0.
-  evpc1 = 0.
-  evpr1 = 0.
-  mlt1 = 0.
-  sub1 = 0.
-  dep1 = 0.
-  con1 = 0.
-  aut1a = 0.
-  acc1a = 0.
-  evpc1a = 0.
-  evpr1a = 0.
-  mlt1a = 0.
-  sub1a = 0.
-  dep1a = 0.
-  con1a = 0.
-#endif
-
-  ! initialize flag arrays to all mass, no number, no precip
-  flag_wmass = 1
-  flag_number = 0
-  flag_precip = 0
-  flag_micro3Dout = 0
-
-  end if
 
   compute_reffc = douse_reffc
   compute_reffi = douse_reffi
