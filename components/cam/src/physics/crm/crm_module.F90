@@ -460,7 +460,9 @@ subroutine crm(lchnk, icol, ncrms, &
   call allocate_microphysics(ncrms)
   call allocate_tracers(ncrms)
   call allocate_sgs(ncrms)
+#ifdef sam1mom
   call allocate_micro_params(ncrms)
+#endif
 
   !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
 #ifdef CRM_STANDALONE
@@ -1742,7 +1744,9 @@ subroutine crm(lchnk, icol, ncrms, &
   call deallocate_microphysics()
   call deallocate_tracers()
   call deallocate_sgs()
+#ifdef sam1mom
   call deallocate_micro_params()
+#endif
 
   deallocate( t00       )
   deallocate( tln       )

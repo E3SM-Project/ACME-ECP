@@ -15,6 +15,7 @@ function usage {
   echo "   -crm_dt <n>                     CRM's timestep."
   echo "   -pcols <n>                      PCOLS"
   echo "   -psubcols <n>                   PSUBCOLS"
+  echo "   -ntot_amode <n>                 ntot_amode"
   echo "   -SPCAM_microp_scheme <string>   CRM microphysics package name [sam1mom | m2005 ]."
   echo "   -clubb_crm                      CRM with clubb treatment"
   echo "   -use_crm_cldfrac                Use fractional cloudiness in CRM"
@@ -44,6 +45,7 @@ CLUBB_CRM=0
 USE_CRM_CLDFRAC=0
 ADV=MPDATA
 yes3Dval=0
+ntot_amode=1
 
 while [[ $# -gt 0 ]]
 do
@@ -68,6 +70,10 @@ case $key in
     ;;
     -psubcols)
     PSUBCOLS="$2"
+    shift # past argument
+    ;;
+    -ntot_amode)
+    ntot_amode="$2"
     shift # past argument
     ;;
     -nlev)
@@ -134,7 +140,7 @@ cd $BUILD_ROOT
 ##########################################################################################
 ## Create the preprocessor define flags
 ##########################################################################################
-CPPDEFS=" ${CPPDEFS} -DHAVE_MPI -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=$PLEV -DPSUBCOLS=$PSUBCOLS -DPCOLS=$PCOLS -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC -DCRM_STANDALONE -DCRM_NX_RAD=1 -DCRM_NY_RAD=1 "
+CPPDEFS=" ${CPPDEFS} -DHAVE_MPI -DCRM -D$MICRO -DYES3DVAL=$yes3Dval -DCRM_NX=$CRM_NX -DCRM_NY=$CRM_NY -DCRM_NZ=$CRM_NZ -DCRM_DX=$CRM_DX -DCRM_DT=$CRM_DT -DPLEV=$PLEV -DPSUBCOLS=$PSUBCOLS -DPCOLS=$PCOLS -DPCNST=$PCNST  -DHAVE_IEEE_ARITHMETIC -DCRM_STANDALONE -DCRM_NX_RAD=1 -DCRM_NY_RAD=1 -Dntot_amode=$ntot_amode"
 [ "$CLUBB_CRM" -eq "1" ] && CPPDEFS="${CPPDEFS} -DCLUBB_CRM -DCLUBB_REAL_TYPE=dp "
 
 ##########################################################################################
