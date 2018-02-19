@@ -14,6 +14,7 @@ module crm_module
   use crmsurface_mod
 #ifdef sam1mom
   use precip_init_mod
+  use micro_params
 #endif
   use zero_mod
   use buoyancy_mod
@@ -23,7 +24,6 @@ module crm_module
   use damping_mod
   use ice_fall_mod
   use coriolis_mod
-  use micro_params
   !---------------------------------------------------------------
   !  Super-parameterization's main driver
   !  Marat Khairoutdinov, 2001-2009
@@ -505,10 +505,10 @@ subroutine crm(lchnk, icol, ncrms, &
   call memzero_crm_rknd( qi_rad  , product(shape(qi_rad )) )
   call memzero_crm_rknd( cld_rad , product(shape(cld_rad)) )
 #ifdef m2005
-  icall memzero_crm_rknd( nc_rad , product(shape(nc_rad)) )
-  icall memzero_crm_rknd( ni_rad , product(shape(ni_rad)) )
-  icall memzero_crm_rknd( qs_rad , product(shape(qs_rad)) )
-  icall memzero_crm_rknd( ns_rad , product(shape(ns_rad)) )
+  call memzero_crm_rknd( nc_rad , product(shape(nc_rad)) )
+  call memzero_crm_rknd( ni_rad , product(shape(ni_rad)) )
+  call memzero_crm_rknd( qs_rad , product(shape(qs_rad)) )
+  call memzero_crm_rknd( ns_rad , product(shape(ns_rad)) )
 #endif
   ! zs=phis(icrm)/ggr
   bflx(:) = bflxls(:)
@@ -658,7 +658,7 @@ subroutine crm(lchnk, icol, ncrms, &
     do j=1, ny
       do i=1, nx
         do icrm = 1 , ncrms
-          if(cloudliq(i,j,k).gt.0) then
+          if(cloudliq(icrm,i,j,k).gt.0) then
             if(dopredictNc) then
               if( micro_field(icrm,i,j,k,incl).eq.0) micro_field(icrm,i,j,k,incl) = 1.0e6*Nc0/rho(icrm,k)
             endif
@@ -1060,9 +1060,9 @@ subroutine crm(lchnk, icol, ncrms, &
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
 #ifdef CLUBB_CRM
-      if(docloud.or.dosmoke.or.doclubb) call micro_proc(ncrms,icrm)
+      if(docloud.or.dosmoke.or.doclubb) call micro_proc(ncrms)
 #else
-      if(docloud.or.dosmoke) call micro_proc(ncrms,icrm)
+      if(docloud.or.dosmoke) call micro_proc(ncrms)
 #endif /*CLUBB_CRM*/
 
       !-----------------------------------------------------------
@@ -1356,7 +1356,7 @@ subroutine crm(lchnk, icol, ncrms, &
     micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3) = qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 #ifdef m2005
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,11) = cloudliq(1:nx,1:ny,1:nzm)
+    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,11) = cloudliq(icrm,1:nx,1:ny,1:nzm)
 #endif
     crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (icrm,1:nx, 1:ny, 1:nzm)
     crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (icrm,1:nx, 1:ny, 1:nzm)
