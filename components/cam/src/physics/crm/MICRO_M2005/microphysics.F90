@@ -563,57 +563,56 @@ subroutine micro_init(ncrms)
      end if
   end if
 
-  do icrm = 1 , ncrms
-
-    ! output all microphysical fields to 3D output files if using more than
-    !   just docloud.  Otherwise, rely on basic SAM outputs
+  ! output all microphysical fields to 3D output files if using more than
+  !   just docloud.  Otherwise, rely on basic SAM outputs
 #ifdef CLUBB_CRM
-    if((docloud.OR.doclubb).AND.(doprecip.OR.dopredictNc)) then
+  if((docloud.OR.doclubb).AND.(doprecip.OR.dopredictNc)) then
 #else
-    if(docloud.AND.(doprecip.OR.dopredictNc)) then
+  if(docloud.AND.(doprecip.OR.dopredictNc)) then
 #endif
-       ! flag_micro3Dout = 1
-    end if
+     ! flag_micro3Dout = 1
+  end if
 
-    ! initialize factor for latent heat
-    lfac(:) = 1. ! use one as default for number species
-    lfac(iqv) = lcond
+  ! initialize factor for latent heat
+  lfac(:) = 1. ! use one as default for number species
+  lfac(iqv) = lcond
   !bloss/qt  if(docloud) lfac(iqcl) = lcond
-    if(doprecip) lfac(iqr) = lcond
-    if(doicemicro) then
-       lfac(iqci) = lsub
-       lfac(iqs) = lsub
-       if(dograupel) lfac(iqg) = lsub
-    end if
+  if(doprecip) lfac(iqr) = lcond
+  if(doicemicro) then
+     lfac(iqci) = lsub
+     lfac(iqs) = lsub
+     if(dograupel) lfac(iqg) = lsub
+  end if
 
-    call graupel_init() ! call initialization routine within mphys module
+  call graupel_init() ! call initialization routine within mphys module
 #if (defined CRM && defined MODAL_AERO)
-    call drop_activation_init
+  call drop_activation_init
 #endif
 
-    if(nrestart.eq.0) then
+  if(nrestart.eq.0) then
 
-      ! In SPCAM,  do not need this part.
+    ! In SPCAM,  do not need this part.
 #ifndef CRM
-       ! compute initial profiles of liquid water - M.K.
-       call satadj_liquid(nzm,tabs0(icrm,:),q0(icrm,:),qc0(icrm,:),pres(icrm,:)*100.)
+     ! compute initial profiles of liquid water - M.K.
+     call satadj_liquid(nzm,tabs0(icrm,:),q0(icrm,:),qc0(icrm,:),pres(icrm,:)*100.)
 
-       ! initialize microphysical quantities
-       q0 = q0 + qc0
+     ! initialize microphysical quantities
+     q0 = q0 + qc0
+     do k = 1,nzm
+        micro_field(icrm,:,:,k,iqv) = q0(k)
+        cloudliq(crm,:,:,k) = qc0(k)
+        tabs(:,:,k) = tabs0(k)
+     end do
+     if(dopredictNc) then ! initialize concentration somehow...
        do k = 1,nzm
-          micro_field(icrm,:,:,k,iqv) = q0(k)
-          cloudliq(crm,:,:,k) = qc0(k)
-          tabs(:,:,k) = tabs0(k)
+         if(q0(k).gt.0.) then
+            micro_field(icrm,:,:,k,incl) = 0.5*ccnconst*1.e6
+         end if
        end do
-       if(dopredictNc) then ! initialize concentration somehow...
-         do k = 1,nzm
-           if(q0(k).gt.0.) then
-              micro_field(icrm,:,:,k,incl) = 0.5*ccnconst*1.e6
-           end if
-         end do
-       end if
+     end if
 #endif  ! CRM
 
+  do icrm = 1 , ncrms
 #ifdef CLUBB_CRM
        if(docloud.or.doclubb)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 #else
