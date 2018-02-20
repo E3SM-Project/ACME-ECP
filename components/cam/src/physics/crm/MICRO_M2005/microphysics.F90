@@ -590,6 +590,7 @@ subroutine micro_init(ncrms)
 #endif
 
   if(nrestart.eq.0) then
+    do icrm = 1 , ncrms
 
     ! In SPCAM,  do not need this part.
 #ifndef CRM
@@ -612,14 +613,13 @@ subroutine micro_init(ncrms)
      end if
 #endif  ! CRM
 
-  do icrm = 1 , ncrms
 #ifdef CLUBB_CRM
        if(docloud.or.doclubb)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 #else
        if(docloud) call micro_diagnose(ncrms,icrm)   ! leave this here
 #endif
-    end if
-  enddo
+    enddo
+  end if
 
 end subroutine micro_init
 
