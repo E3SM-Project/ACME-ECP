@@ -248,7 +248,7 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute local microphysics processes (bayond advection and SGS diffusion):
   !
-  subroutine micro_proc(ncrms,icrm)
+  subroutine micro_proc(ncrms)
     use grid, only: nstep,dt,icycle
     use params, only: dosmoke
     use cloud_mod
@@ -262,7 +262,6 @@ CONTAINS
 #endif
     implicit none
     integer, intent(in) :: ncrms
-    integer :: icrm
 
     ! Update bulk coefficient
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
