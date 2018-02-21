@@ -71,7 +71,7 @@ NTOT_AMODE=`ncdump -h $TFILE | grep ntot_amode  | head -n1 | cut -d ' ' -f3`
 
 echo "./setup.sh -crm_root $CRM_ROOT -build_root $BUILD_ROOT -nadv $PCNST -nlev $PLEV -ntot_amode $NTOT_AMODE -crm_nx $CRM_NX -crm_ny $CRM_NY -crm_nz $CRM_NZ -crm_dx $CRM_DX -crm_dt $CRM_DT -pcols $PCOLS -psubcols $PSUBCOLS -SPCAM_microp_scheme $MICRO -crm_adv $ADV"
 
-./setup.sh -crm_root $CRM_ROOT -build_root $BUILD_ROOT -nadv $PCNST -nlev $PLEV -crm_nx $CRM_NX -crm_ny $CRM_NY -crm_nz $CRM_NZ -crm_dx $CRM_DX -crm_dt $CRM_DT -pcols $PCOLS -psubcols $PSUBCOLS -SPCAM_microp_scheme $MICRO -crm_adv $ADV
+./setup.sh -crm_root $CRM_ROOT -build_root $BUILD_ROOT -nadv $PCNST -nlev $PLEV -ntot_amode $NTOT_AMODE -crm_nx $CRM_NX -crm_ny $CRM_NY -crm_nz $CRM_NZ -crm_dx $CRM_DX -crm_dt $CRM_DT -pcols $PCOLS -psubcols $PSUBCOLS -SPCAM_microp_scheme $MICRO -crm_adv $ADV
 
 
 

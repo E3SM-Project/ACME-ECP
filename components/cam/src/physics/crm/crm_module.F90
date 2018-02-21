@@ -641,7 +641,7 @@ subroutine crm(lchnk, icol, ncrms, &
 
 
 #ifdef m2005
-  !$acc parallel loop gang veector collapse(3)
+  !$acc parallel loop gang vector collapse(3)
   do j = 1 , ntot_amode
     do k=1, nzm
       do icrm = 1 , ncrms
@@ -655,7 +655,7 @@ subroutine crm(lchnk, icol, ncrms, &
       enddo
     enddo
   enddo
-  !$acc parallel loop gang veector collapse(4)
+  !$acc parallel loop gang vector collapse(4)
   do k=1, nzm
     do j=1, ny
       do i=1, nx
