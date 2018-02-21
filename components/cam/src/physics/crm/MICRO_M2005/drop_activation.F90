@@ -82,7 +82,7 @@ end subroutine drop_activation_init
 
 !=======================================================================================================
 subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
-                          ndrop4, ines, smaxinout4, k)
+                          ndrop4, ines, smaxinout4, k, ncrms, icrm)
 !-------------------------------------------------------------------------------------------------------
 !
 !  Purpose and method:  calculates number, surface, and mass fraction of aerosols activated as CCN
@@ -109,6 +109,7 @@ subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
       use vars,   only: naer, vaer, hgaer
 
       implicit none
+      integer, intent(in) :: ncrms,icrm
 
 
 !   Input
@@ -182,9 +183,9 @@ subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
       rhoair = rhoair4
 
 ! Set aerosol fields
-      na = naer(k, :) 
-      volume = vaer(k, :)
-      hygro = hgaer(k, :) 
+      na = naer(icrm,k, :) 
+      volume = vaer(icrm,k, :)
+      hygro = hgaer(icrm,k, :) 
 
       nmode = ntot_amode
       wmaxf = 10.0

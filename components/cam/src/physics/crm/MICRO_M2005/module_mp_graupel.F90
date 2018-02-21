@@ -1097,7 +1097,7 @@ END SUBROUTINE MP_GRAUPEL
 #ifdef ECPP
                         ,C2PREC,QSINK,CSED,ISED,SSED,GSED,RSED, RH3D   & ! mhwang added, for ECPP
 #endif /*ECPP*/
-                                )
+      ,ncrms,icrm               )
 #else
       SUBROUTINE M2005MICRO_GRAUPEL(QC3DTEN,QI3DTEN,QNI3DTEN,QR3DTEN,NC3DTEN,    &
        NI3DTEN,NS3DTEN,NR3DTEN,QC3D,QI3D,QNI3D,QR3D,NC3D,NI3D,NS3D,NR3D,         &
@@ -1112,7 +1112,7 @@ END SUBROUTINE MP_GRAUPEL
 #ifdef ECPP
                         ,C2PREC,QSINK,CSED,ISED,SSED,GSED,RSED, RH3D   & ! mhwang added, for ECPP
 #endif /*ECPP*/
-                                )
+       ,ncrms,icrm              )
 #endif /*CLUBB_CRM*/
 !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 ! THIS PROGRAM IS THE MAIN TWO-MOMENT MICROPHYSICS SUBROUTINE DESCRIBED BY
@@ -1143,6 +1143,7 @@ END SUBROUTINE MP_GRAUPEL
 ! INPUT NUMBER OF GRID CELLS
 
 ! INPUT/OUTPUT PARAMETERS                                 ! DESCRIPTION (UNITS)
+      integer, intent(in) :: ncrms,icrm
       INTEGER, INTENT( IN)  :: IMS,IME, JMS,JME, KMS,KME,          &
                                ITS,ITE, JTS,JTE, KTS,KTE
 
@@ -2623,7 +2624,7 @@ END SUBROUTINE MP_GRAUPEL
             ELSE if (IACT.EQ.3) then
               INES = 0 
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
-                   DUM2, INES, SMAX, K)  
+                   DUM2, INES, SMAX, K, ncrms,icrm)  
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
               DUM2 = DUM2 * CFL3D(K)
@@ -2750,7 +2751,7 @@ END SUBROUTINE MP_GRAUPEL
 ! GET SUPERSATURATION RATIO FROM ABSOLUTE SUPERSATURATION
               SMAX = DUM3/QVS(K)
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
-                   DUM2, INES, SMAX, K)
+                   DUM2, INES, SMAX, K, ncrms,icrm)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
               DUM2 = DUM2 * CFL3D(K)
@@ -2829,7 +2830,7 @@ END SUBROUTINE MP_GRAUPEL
             ELSE if (IACT.EQ.3) then
               INES = 0
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
-                   DUM2, INES, SMAX, K)
+                   DUM2, INES, SMAX, K, ncrms,icrm)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
               DUM2 = DUM2 * CFL3D(K)
@@ -4392,7 +4393,7 @@ END SUBROUTINE MP_GRAUPEL
             ELSE if (IACT.EQ.3) then
               INES = 0
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
-                   DUM2, INES, SMAX, K)
+                   DUM2, INES, SMAX, K, ncrms,icrm)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
               DUM2 = DUM2 * CFL3D(K)
@@ -4540,7 +4541,7 @@ END SUBROUTINE MP_GRAUPEL
 
               INES = 1 
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
-                   DUM2, INES, SMAX, K)
+                   DUM2, INES, SMAX, K, ncrms,icrm)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
               DUM2 = DUM2 * CFL3D(K)
@@ -4620,7 +4621,7 @@ END SUBROUTINE MP_GRAUPEL
             ELSE if (IACT.EQ.3) then
               INES = 0
               CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
-                   DUM2, INES, SMAX, K)
+                   DUM2, INES, SMAX, K, ncrms,icrm)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
               DUM2 = DUM2 * CFL3D(K)

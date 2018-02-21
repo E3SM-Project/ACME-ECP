@@ -1009,7 +1009,7 @@ do j = 1,ny
 #ifdef ECPP
            ,C2PREC,QSINK_TMP,CSED,ISED,SSED,GSED,RSED,RH3D &        ! mhwang add, for ECPP
 #endif
-                                        )
+          ,ncrms,icrm                   )
 
       if ( doclubb ) then
         if ( any( tmpqv < 0. ) ) then
@@ -1056,7 +1056,7 @@ do j = 1,ny
 #ifdef ECPP
            ,C2PREC,QSINK_TMP,CSED,ISED,SSED,GSED,RSED,RH3D &        ! mhwang add, for ECPP
 #endif
-                                        )
+           ,ncrms,icrm                  )
 #endif
 
 #ifdef CRM

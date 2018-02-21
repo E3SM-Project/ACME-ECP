@@ -178,7 +178,7 @@ contains
 #endif /*CLUBB_CRM*/
           call fminmax_print('qcl:',qcl(icrm,:,:,:),1,nx,1,ny,nzm)
           call fminmax_print('qci:',qci(icrm,:,:,:),1,nx,1,ny,nzm)
-          call micro_print()
+          call micro_print(ncrms)
         end if
         if(doprecip) then
           call fminmax_print('qpl:',qpl(icrm,:,:,:),1,nx,1,ny,nzm)
