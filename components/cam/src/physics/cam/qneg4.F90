@@ -93,6 +93,7 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
       write(iulog,9000) subnam,nptsexc,worst, lchnk, iw, get_lat_p(lchnk,iw),get_lon_p(lchnk,iw)
       call shr_sys_flush(iulog)
    end if
+   excess = excess*latvap  ! for output var to be in W/m2
 !
    return
 9000 format(' QNEG4 WARNING from ',a8 &
