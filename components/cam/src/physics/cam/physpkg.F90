@@ -1446,7 +1446,7 @@ subroutine tphysac (ztodt,   cam_in,  &
     real(r8), pointer, dimension(:,:) :: cldiceini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction 
-
+    real(r8) :: qexcess (pcols)
     logical :: do_clubb_sgs 
 
     ! Debug physics_state.
@@ -1544,9 +1544,10 @@ end if ! l_tracer_aero
 
        call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
             state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
-            cam_in%lhf , cam_in%cflx )
+            cam_in%lhf , cam_in%cflx, qexcess )
 
     end if 
+    call outfld('QEXCESS',qexcess,pcols,lchnk)
 #endif
 
     call check_qflx(state, tend, "PHYAC02", nstep, ztodt, cam_in%cflx(:,1))
