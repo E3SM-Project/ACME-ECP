@@ -2072,7 +2072,8 @@ subroutine tphysbc (ztodt,               &
 
     ! real(r8) rad_rrt(pcols,pver)  ! whannah - for debugging output
     real(r8) tmp1 ! whannah: to help feed the fluxes to CRM right before the call to CRM. 
-
+    real(r8) :: qexcess(pcols)
+    
 !-- mdb spcam
     logical           :: use_SPCAM
     character(len=16) :: SPCAM_microp_scheme
@@ -2192,8 +2193,9 @@ subroutine tphysbc (ztodt,               &
        ! lowest model layer, thereby creating negative moisture.
        call qneg4('TPHYSBC '       ,lchnk               ,ncol  ,ztodt ,               &
             state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
-            cam_in%lhf , cam_in%cflx )
+            cam_in%lhf , cam_in%cflx ,qexcess)
     end if 
+    call outfld('QEXCESS',qexcess,pcols,lchnk)
 #endif
 
     if(use_mass_borrower) then 
