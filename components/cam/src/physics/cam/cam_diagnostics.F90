@@ -518,6 +518,7 @@ subroutine diag_init()
    call addfld ('SHFLX',horiz_only,    'A','W/m2','Surface sensible heat flux')
    call addfld ('LHFLX',horiz_only,    'A','W/m2','Surface latent heat flux')
    call addfld ('QFLX',horiz_only,    'A','kg/m2/s','Surface water flux')
+   call addfld ('QEXCESS',horiz_only,    'A','W/m2','qneg4 excess drying converted to cooling on bottom level')
 
    call addfld ('TAUX',horiz_only,    'A','N/m2','Zonal surface stress')
    call addfld ('TAUY',horiz_only,    'A','N/m2','Meridional surface stress')
