@@ -507,13 +507,12 @@ CONTAINS
     total_water(:) = 0.
     do m=1,nmicro_fields
       if(flag_wmass(m).eq.1) then
-        !$acc parallel loop gang vector collapse(4)
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
-              do icrm = 1 , ncrms
+        !$acc parallel loop gang vector
+        do icrm = 1 , ncrms
+          do k=1,nzm
+            do j=1,ny
+              do i=1,nx
                 tmp = micro_field(icrm,i,j,k,m)*adz(icrm,k)*dz(icrm)*rho(icrm,k)
-                !$acc atomic update
                 total_water(icrm) = total_water(icrm) + tmp
               enddo
             end do
