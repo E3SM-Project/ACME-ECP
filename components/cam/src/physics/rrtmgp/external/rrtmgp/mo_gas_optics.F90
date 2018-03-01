@@ -523,9 +523,18 @@ contains
     if (present(col_dry)) then
       col_dry_wk => col_dry
     else
-      idx_h2o = string_loc_in_array('h2o', terse_gas_names)
-      col_dry_arr = get_col_dry(vmr(:,:,idx_h2o), plev, tlay) ! dry air column amounts computation
-      col_dry_wk => col_dry_arr
+      ! terse_gas_names never gets allocated or assigned because the above block
+      ! of code is wrapped in an if (.false.), so we get gas names from
+      ! this%gas_names, which seems to be what corresponds with the construction
+      ! of the vmr array
+      idx_h2o = string_loc_in_array('h2o', this%gas_names)
+      if (idx_h2o > 0) then
+         col_dry_arr = get_col_dry(vmr(:,:,idx_h2o), plev, tlay) ! dry air column amounts computation
+         col_dry_wk => col_dry_arr
+      else
+         error_msg = 'compute_gas_taus: h2o not found in gas list.'
+         return
+      end if
     end if
 
     ! Make list of minor gases that are defined in specification and have available concentrations
