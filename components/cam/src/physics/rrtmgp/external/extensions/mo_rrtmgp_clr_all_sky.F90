@@ -301,11 +301,11 @@ contains
 
     select type (optical_props)
       class is (ty_optical_props_1scl) ! No scattering
-        error_msg = optical_props%init_1scl(ncol, nlay, ngpt)
+        error_msg = optical_props%init_1scl(ncol, nlay, ngpt, name='combined SW optics')
       class is (ty_optical_props_2str)
-        error_msg = optical_props%init_2str(ncol, nlay, ngpt)
+        error_msg = optical_props%init_2str(ncol, nlay, ngpt, name='combined SW optics')
       class is (ty_optical_props_nstr)
-        error_msg = optical_props%init_nstr(n_sw_streams/2, ncol, nlay, ngpt)
+        error_msg = optical_props%init_nstr(n_sw_streams/2, ncol, nlay, ngpt, name='combined SW optics')
     end select
     if (error_msg /= '') return
 
