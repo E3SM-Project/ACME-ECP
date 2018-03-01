@@ -248,7 +248,7 @@ contains
   function init_2str(this, ncol, nlay, ngpt, name) result(err_message)
     class(ty_optical_props_2str)    :: this
     integer,             intent(in) :: ncol, nlay, ngpt
-    character, optional, intent(in) :: name
+    character(len=*), optional, intent(in) :: name
     character(len=128)              :: err_message
 
     err_message = "" 
@@ -269,7 +269,7 @@ contains
     class(ty_optical_props_nstr)    :: this
     integer, intent(in)             :: nmom ! number of moments
     integer,             intent(in) :: ncol, nlay, ngpt
-    character, optional, intent(in) :: name
+    character(len=*), optional, intent(in) :: name
     character(len=128)              :: err_message
 
     err_message = "" 
