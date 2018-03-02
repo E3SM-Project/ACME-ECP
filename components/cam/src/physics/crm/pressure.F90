@@ -14,7 +14,14 @@ contains
     !       Also, used for a 2D version
     !       For more processors for the given number of levels and 3D, use pressure_big
 
-    use vars
+    use vars, only: nzm, nx_gl, ny_gl, yes3d, nsubdomains, nx, ny, masterproc, run2d, nyp2, rank, run3d, nxp1, dx, dy, &
+                    p, adz, adzw, dz, rho, rhow
+                    !p: inout
+                    !adz: in
+                    !adzw: in
+                    !dz: in
+                    !rho: in
+                    !rhow: in
     use params, only: dowallx, dowally, docolumn, crm_rknd
     use press_rhs_mod
     use press_grad_mod
