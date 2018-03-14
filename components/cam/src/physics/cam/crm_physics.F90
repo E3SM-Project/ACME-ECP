@@ -1401,7 +1401,7 @@ end subroutine crm_physics_init
 #ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm ( lchnk,                       icol(:ncol),                  ncol,                                                                                      &
+    call crm ( lchnk,                       icol(:ncol),                  ncol,                      is_first_step,                                                  &
                state%t(:ncol,:),            state%q(:ncol,:,1),           state%q(:ncol,:,ixcldliq), state%q(:ncol,:,ixcldice),                                      &
                ul(:ncol,:),                 vl(:ncol,:),                                                                                                             &
                state%ps(:ncol),             state%pmid(:ncol,:),          state%pdel(:ncol,:),       state%phis(:ncol),                                              &

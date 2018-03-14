@@ -34,7 +34,7 @@ module crm_module
 contains
 
 ! subroutine crm  (lchnk, icol, &
-subroutine crm(lchnk, icol, ncrms, &
+subroutine crm(lchnk, icol, ncrms, is_first_step, &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
@@ -98,14 +98,32 @@ subroutine crm(lchnk, icol, ncrms, &
   !MRN: the first call to crm(...)
 
 #ifndef CRM_STANDALONE
-  use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_all_p
+    use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
 #endif
-  use ppgrid                , only: pcols
-  use vars
-  use params
-  use microphysics
-  use sgs
-  use crmtracers
+    use ppgrid                , only: pcols
+    use vars
+    use params
+    use microphysics
+    use sgs
+    use crmtracers
+
+! whannah - Matt Norman added the more specific use statements below - however this was causing problems for the 1-moment configuration
+!
+!     use vars                  , only: crm_nx, crm_ny, crm_nz, nx, ny, nz, crm_dx, crm_dt, fcory, fcorzy, latitude, longitude, z, zi, pres, prespot, bet, gamaz, &
+!                                       adzw, adz, rho, rhow, u, v, w, tabs, dudt, dvdt, dwdt, p, wsub, cf3d, u0, v0, t0, tabs0, q0, t, qp0, tke0, qv0, qn0,  &
+!                                       tke0, ttend, qtend, utend, vtend, ug0, vg0, tg0, qg0, qtotmicro, dt3, precsfc, precssfc, qpfall, precflux, uwle, uwsb, &
+!                                       vwle, vwsb, dostatis, nzm, dz, yes3d, qcl, qci, qpl, qpi, qv, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, &
+!                                       fluxtq, fzero, uwle, uwsb, vwle, nstop, dt, nsave3d, nstep, nprint, ncycle, day, day0, time, icycle, dtn, na, dtfactor, &
+! #ifdef MODAL_AERO
+!                                       naer, vaer, hgaer, &
+! #endif
+!                                       nc, nb, qsatw_crm
+!     use params                , only: latitude0, longitude0, fcor, pi, fcorz, ocean, land, rgas, cp, fac_fus, uhl, vhl, z0, dodamping, dosurface, docoriolis, &
+!                                       taux0, tauy0, doclubb, doclubbnoninter, docloud, dosmoke, crm_rknd
+!     use microphysics          , only: nmicro_fields, micro_field, cloudliq, aut1a, acc1a, evpc1a, evpr1a, mlt1a, sub1a, dep1a, con1a, mkwsb, mkwle, mkadv, &
+!                                       mkdiff, qpsrc, qpevp, ggr, dopredictnc, incl, nc0, fac_cond, fac_sub, iqr, iqs, iqg, inci, ins, wvar, aut1, acc1,    &
+!                                       evpc1, evpr1, mlt1, sub1, dep1, con1, inr, ing, iqv, iqci, micro_init, micro_proc
+!     use sgs                   , only: tke, tk, tkh, dosgs, sgs_init, sgs_proc, sgs_mom, sgs_scalars
 
 #ifdef MODAL_AERO
   use modal_aero_data       , only: ntot_amode
@@ -124,25 +142,25 @@ subroutine crm(lchnk, icol, ncrms, &
   use grid_class            , only: gr
 #endif
 #ifdef ECPP
-  use ecppvars              , only: qlsink, precr, precsolid, &
-                                    area_bnd_final, area_bnd_sum, area_cen_final, area_cen_sum, &
-                                    mass_bnd_final, mass_bnd_sum, rh_cen_sum, qcloud_cen_sum, qice_cen_sum, &
-                                    qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
-                                    wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
-                                    qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
-  use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
-  use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
+    use ecppvars              , only: qlsink, precr, precsolid, &
+                                      area_bnd_final, area_bnd_sum, area_cen_final, area_cen_sum, &
+                                      mass_bnd_final, mass_bnd_sum, rh_cen_sum, qcloud_cen_sum, qice_cen_sum, &
+                                      qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
+                                      wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
+                                      qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
+    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
+    use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif
-  use cam_abortutils        , only: endrun
-  use time_manager          , only: get_nstep
-  use perf_mod              , only: t_startf, t_stopf
+    use cam_abortutils        , only: endrun
+    use time_manager          , only: get_nstep
 
-  implicit none
-  integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
-  integer , intent(in   ) :: ncrms                            ! Number of CRM instances
-  integer , intent(in   ) :: plev                             ! number of levels in parent model
-  real(r8), intent(in   ) :: dt_gl                            ! global model's time step
-  integer , intent(in   ) :: icol                (ncrms)     ! column identifier (only for lat/lon and random seed)
+    implicit none
+    integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
+    integer , intent(in   ) :: ncrms                            ! Number of crm instances
+    logical , intent(in   ) :: is_first_step                    ! flag to indicate first CRM integration - used to call setperturb()
+    integer , intent(in   ) :: plev                             ! number of levels in parent model
+    real(r8), intent(in   ) :: dt_gl                            ! global model's time step
+    integer , intent(in   ) :: icol              (ncrms)     ! column identifier (only for lat/lon and random seed)
 #ifdef CRM_STANDALONE
   real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
   real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
@@ -822,11 +840,10 @@ subroutine crm(lchnk, icol, ncrms, &
   !MRN: Need to make sure the first call to crm(...) is not dumped out
   !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
 #ifndef CRM_STANDALONE
-  do icrm = 1 , ncrms
-    call get_gcol_all_p(lchnk, pcols, gcolindex)
-    iseed = gcolindex(icol(icrm))
-    if(u(icrm,1,1,1).eq.u(icrm,2,1,1).and.u(icrm,3,1,2).eq.u(icrm,4,1,2)) call setperturb(iseed,ncrms,icrm)
-  enddo
+    if (is_first_step) then 
+        iseed = get_gcol_p(lchnk,icol(icrm))
+        call setperturb(iseed)
+    end if
 #endif
 
   !--------------------------
