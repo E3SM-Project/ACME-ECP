@@ -774,11 +774,6 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     !MRN: Need to make sure the first call to crm(...) is not dumped out
     !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
 #ifndef CRM_STANDALONE
-    !!! old method using intrinic RNG
-    ! call get_gcol_all_p(lchnk, pcols, gcolindex)
-    ! iseed = gcolindex(icol(vc))
-    ! if(u(1,1,1).eq.u(2,1,1).and.u(3,1,2).eq.u(4,1,2)) &
-    !             call setperturb(iseed)
     if (is_first_step) then 
         iseed = get_gcol_p(lchnk,icol(vc))
         call setperturb(iseed)
