@@ -739,6 +739,13 @@ subroutine diag_init()
   call addfld ('SPTLS   ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE Tendency from CRM'            )
   call addfld ('TIMINGF ', horiz_only, 'A', '        ','CRM CPU usage efficiency: 1 - ideal'     )
   call addfld ('CLOUDTOP',(/ 'lev' /), 'A', '        ','Cloud Top PDF'                           )
+
+  !!! diagnostic output for SP_CRM_SPLIT
+  call addfld ('SPDT1   ',(/ 'lev' /), 'A', 'K/s     ','T tend due to CRM in tphysbc'            )
+  call addfld ('SPDT2   ',(/ 'lev' /), 'A', 'K/s     ','T tend due to CRM in tphysac'            )
+  call addfld ('SPDQ1   ',(/ 'lev' /), 'A', 'kg/kg/s ','Q tend due to CRM in tphysbc'            )
+  call addfld ('SPDQ2   ',(/ 'lev' /), 'A', 'kg/kg/s ','Q tend due to CRM in tphysac'            )
+
 #ifdef SPMOMTRANS
    call addfld ('UCONVMOM','m/s2    ',pver, 'A','U tendency due to CRM'                   ,phys_decomp)
    call addfld ('VCONVMOM','m/s2    ',pver, 'A','V tendency due to CRM'                   ,phys_decomp)
@@ -807,6 +814,13 @@ subroutine diag_init()
       call add_default ('SPTLS   ', 1, ' ')
       call add_default ('CLOUDTOP', 1, ' ')
       call add_default ('TIMINGF ', 1, ' ')
+
+      !!! diagnostic output for SP_CRM_SPLIT
+      call add_default ('SPDT1   ', 1, ' ')
+      call add_default ('SPDT2   ', 1, ' ')
+      call add_default ('SPDQ1   ', 1, ' ')
+      call add_default ('SPDQ2   ', 1, ' ')
+
 ! whannah
 #ifdef SPMOMTRANS
       call add_default ('UCONVMOM', 1, ' ')

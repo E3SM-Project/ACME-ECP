@@ -30,8 +30,7 @@ use setparm_mod, only : setparm
 
 contains
 
-! subroutine crm  (lchnk, icol, &
-subroutine crm(lchnk, icol, nvcols, is_first_step, &
+subroutine crm(lchnk, icol, nvcols, is_first_step, phys_stage, &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
@@ -155,8 +154,9 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
     integer , intent(in   ) :: nvcols                           ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
     logical , intent(in   ) :: is_first_step                    ! flag to indicate first CRM integration - used to call setperturb()
+    integer , intent(in   ) :: phys_stage                       ! physics run stage indicator (1 or 2 = bc or ac)
     integer , intent(in   ) :: plev                             ! number of levels in parent model
-    real(r8), intent(in   ) :: dt_gl                            ! global model's time step
+    real(r8), intent(in   ) :: dt_gl                            ! global model's time step    
     integer , intent(in   ) :: icol                (nvcols)     ! column identifier (only for lat/lon and random seed)
 #ifdef CRM_STANDALONE
     real(crm_rknd)   , intent(in) :: latitude0_in  (nvcols)
@@ -349,6 +349,8 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001    ! threshold for cloud condensate for shaded fraction calculation
+    real(r8)        :: dt_crm                             ! length of CRM integration (=dt_gl*0.5 if SP_CRM_SPLIT is defined)
+    real(r8)        :: idt_crm                            ! = 1 / dt_crm
     real(crm_rknd)  :: dummy(nz), t00(nz)
     real(crm_rknd)  :: fluxbtmp(nx,ny), fluxttmp(nx,ny)    !bloss
     real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
@@ -886,19 +888,33 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     enddo
     !---mhwangtest
 
+
     nstop = dt_gl/dt
     dt = dt_gl/nstop
     nsave3D = nint(60/dt)
-    !if(nint(nsave3D*dt).ne.60)then
-    !   print *,'CRM: time step=',dt,' is not divisible by 60 seconds'
-    !   print *,'this is needed for output every 60 seconds'
-    !   stop
-    !endif
     nstep  = 0
     nprint = 1
     ncycle = 0
-    !nrad = nstop/nrad0
     day=day0
+
+#if defined( SP_CRM_SPLIT ) || defined( SP_CRM_DOUBLE_CALL )
+    nstop  = nstop * 0.5
+    dt_crm = dt_gl * 0.5
+    idt_crm = 1._r8/dt_crm
+#else
+    dt_crm  = dt_gl
+    idt_crm = 1._r8/dt_crm
+#endif
+
+
+! #ifdef WH_DEBUG
+!   call boundaries(2)
+!   if ( (minval(t(:,:,:20))<200.) .or. (maxval(t(:,:,:20))>400.) ) then 
+!     write(*,8500) vc, minval(t(:,:,:20)),maxval(t(:,:,:20))
+!   endif
+! 8500 format('whannah debug - CRM0 - vc:',i2,' - ',f6.2,' / ',f6.2)
+! 8501 format('whannah debug - CRM1 - ',i2,' - vc:',i2,' nstep:',i4,' icyc:',i2,' - ',f6.2,'  /  ',f6.2)
+! #endif
 
     !------------------------------------------------------------------
     !   Main time loop
@@ -923,6 +939,11 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
         dt3(na) = dtn
         dtfactor = dtn/dt
 
+! #ifdef WH_DEBUG
+! if ( (minval(t(:,:,:20))<200.) .or. (maxval(t(:,:,:20))>400.) ) then 
+!   write(*,8501) 1,vc,nstep,icyc, minval(t(:,:,:20)),maxval(t(:,:,:20))
+! endif
+! #endif
         !---------------------------------------------
         !  	the Adams-Bashforth scheme in time
         call abcoefs()
@@ -944,15 +965,18 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
         !       Large-scale and surface forcing:
         call forcing()
 
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
-              i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
-              j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(i,j,k) = t(i,j,k) + qrad_crm(vc,i_rad,j_rad,k)*dtn
+        !!! Apply radiative tendency
+        ! if ( phys_stage == 2 ) then
+          do k=1,nzm
+            do j=1,ny
+              do i=1,nx
+                i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
+                j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+                t(i,j,k) = t(i,j,k) + qrad_crm(vc,i_rad,j_rad,k)*dtn
+              enddo
             enddo
           enddo
-        enddo
+        ! endif
 
         !----------------------------------------------------------
         !   	suppress turbulence near the upper boundary (spange):
@@ -1257,22 +1281,27 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 !             qs_rad(vc,i,j,k) = qs_rad(vc,i,j,k)+micro_field(i,j,k,iqs)
 !             ns_rad(vc,i,j,k) = ns_rad(vc,i,j,k)+micro_field(i,j,k,ins)
 ! #endif
+          
+            !!! only collect radiative inputs during tphysbc()
+            if ( phys_stage == 1 ) then
 
-            !!! whannah - new method allows for fewer radiation calculation over column groups
-            i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
-            j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+              !!! whannah - new method allows for fewer radiation calculation over column groups
+              i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
+              j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
-            t_rad  (vc,i_rad,j_rad,k) = t_rad  (vc,i_rad,j_rad,k) + tabs(i,j,k)
-            qv_rad (vc,i_rad,j_rad,k) = qv_rad (vc,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k))
-            qc_rad (vc,i_rad,j_rad,k) = qc_rad (vc,i_rad,j_rad,k) + qcl(i,j,k)
-            qi_rad (vc,i_rad,j_rad,k) = qi_rad (vc,i_rad,j_rad,k) + qci(i,j,k)
-            cld_rad(vc,i_rad,j_rad,k) = cld_rad(vc,i_rad,j_rad,k) + CF3D(i,j,k)
+              t_rad  (vc,i_rad,j_rad,k) = t_rad  (vc,i_rad,j_rad,k) + tabs(i,j,k)
+              qv_rad (vc,i_rad,j_rad,k) = qv_rad (vc,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k))
+              qc_rad (vc,i_rad,j_rad,k) = qc_rad (vc,i_rad,j_rad,k) + qcl(i,j,k)
+              qi_rad (vc,i_rad,j_rad,k) = qi_rad (vc,i_rad,j_rad,k) + qci(i,j,k)
+              cld_rad(vc,i_rad,j_rad,k) = cld_rad(vc,i_rad,j_rad,k) + CF3D(i,j,k)
 #ifdef m2005
-            nc_rad(vc,i_rad,j_rad,k) = nc_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,incl)
-            ni_rad(vc,i_rad,j_rad,k) = ni_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,inci)
-            qs_rad(vc,i_rad,j_rad,k) = qs_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
-            ns_rad(vc,i_rad,j_rad,k) = ns_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,ins)
+              nc_rad(vc,i_rad,j_rad,k) = nc_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,incl)
+              ni_rad(vc,i_rad,j_rad,k) = ni_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,inci)
+              qs_rad(vc,i_rad,j_rad,k) = qs_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
+              ns_rad(vc,i_rad,j_rad,k) = ns_rad(vc,i_rad,j_rad,k) + micro_field(i,j,k,ins)
 #endif
+            endif
+
             gliqwp(vc,l) = gliqwp(vc,l) + qcl(i,j,k)
             gicewp(vc,l) = gicewp(vc,l) + qci(i,j,k)
           enddo
@@ -1333,21 +1362,26 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     enddo ! main loop
     !----------------------------------------------------------
 
-    ! tmp1 = 1._r8/ dble(nstop)
-    ! tmp1 = 1._r8/ dble(nstop*(nx/crm_nx_rad)*(ny/crm_ny_rad))
-    tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
+    !!! only collect radiative inputs during tphysbc()
+    if ( phys_stage == 1 ) then
 
-    t_rad  (vc,:,:,:) = t_rad  (vc,:,:,:) * tmp1
-    qv_rad (vc,:,:,:) = qv_rad (vc,:,:,:) * tmp1
-    qc_rad (vc,:,:,:) = qc_rad (vc,:,:,:) * tmp1
-    qi_rad (vc,:,:,:) = qi_rad (vc,:,:,:) * tmp1
-    cld_rad(vc,:,:,:) = cld_rad(vc,:,:,:) * tmp1
+      ! tmp1 = 1._r8/ dble(nstop)
+      ! tmp1 = 1._r8/ dble(nstop*(nx/crm_nx_rad)*(ny/crm_ny_rad))
+      tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
+
+      t_rad  (vc,:,:,:) = t_rad  (vc,:,:,:) * tmp1
+      qv_rad (vc,:,:,:) = qv_rad (vc,:,:,:) * tmp1
+      qc_rad (vc,:,:,:) = qc_rad (vc,:,:,:) * tmp1
+      qi_rad (vc,:,:,:) = qi_rad (vc,:,:,:) * tmp1
+      cld_rad(vc,:,:,:) = cld_rad(vc,:,:,:) * tmp1
 #ifdef m2005
-    nc_rad(vc,:,:,:) = nc_rad(vc,:,:,:) * tmp1
-    ni_rad(vc,:,:,:) = ni_rad(vc,:,:,:) * tmp1
-    qs_rad(vc,:,:,:) = qs_rad(vc,:,:,:) * tmp1
-    ns_rad(vc,:,:,:) = ns_rad(vc,:,:,:) * tmp1
+      nc_rad(vc,:,:,:) = nc_rad(vc,:,:,:) * tmp1
+      ni_rad(vc,:,:,:) = ni_rad(vc,:,:,:) * tmp1
+      qs_rad(vc,:,:,:) = qs_rad(vc,:,:,:) * tmp1
+      ns_rad(vc,:,:,:) = ns_rad(vc,:,:,:) * tmp1
 #endif
+    
+    endif
 
     ! no CRM tendencies above its top
     tln  (1:ptop-1) =   tl(vc,1:ptop-1)
@@ -1392,16 +1426,16 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 
 #ifdef SPMOMTRANS
     ! whannah - SP CMT tendencies
-    ultend(vc,:) = (uln - ul(vc,:))*idt_gl
-    vltend(vc,:) = (vln - vl(vc,:))*idt_gl
+    ultend(vc,:) = (uln - ul(vc,:))*idt_crm
+    vltend(vc,:) = (vln - vl(vc,:))*idt_crm
 #endif
 
-    sltend (vc,:) = cp * (tln   - tl  (vc,:)) * idt_gl
-    qltend (vc,:) =      (qln   - ql  (vc,:)) * idt_gl
-    qcltend(vc,:) =      (qccln - qccl(vc,:)) * idt_gl
-    qiltend(vc,:) =      (qiiln - qiil(vc,:)) * idt_gl
-    prectend (vc)=(colprec -prectend (vc))/ggr*factor_xy * idt_gl
-    precstend(vc)=(colprecs-precstend(vc))/ggr*factor_xy * idt_gl
+    sltend (vc,:) = cp * (tln   - tl  (vc,:)) * idt_crm
+    qltend (vc,:) =      (qln   - ql  (vc,:)) * idt_crm
+    qcltend(vc,:) =      (qccln - qccl(vc,:)) * idt_crm
+    qiltend(vc,:) =      (qiiln - qiil(vc,:)) * idt_crm
+    prectend (vc)=(colprec -prectend (vc))/ggr*factor_xy * idt_crm
+    precstend(vc)=(colprecs-precstend(vc))/ggr*factor_xy * idt_crm
 
     ! don't use CRM tendencies from two crm top levels,
     ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
@@ -1622,7 +1656,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
         enddo
       enddo
     enddo
-    qtot(vc,9) = qtot(vc,9) + (precc(vc)+precl(vc))*1000 * dt_gl
+    qtot(vc,9) = qtot(vc,9) + (precc(vc)+precl(vc))*1000 * dt_crm
 
     cltot(vc) = cltot(vc) *factor_xy/nstop
     clhgh(vc) = clhgh(vc) *factor_xy/nstop
@@ -1678,13 +1712,13 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
                                              ! It seems wrong to use it here ???? +++mhwang
       mkwsb (k,:) = mkwsb (k,:) * tmp1*rhow(k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
       mkwle (k,:) = mkwle (k,:) * tmp2*rhow(k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
-      mkadv (k,:) = mkadv (k,:) * factor_xy*idt_gl     ! kg/kg  --> kg/kg/s
-      mkdiff(k,:) = mkdiff(k,:) * factor_xy*idt_gl   ! kg/kg  --> kg/kg/s
+      mkadv (k,:) = mkadv (k,:) * factor_xy*idt_crm     ! kg/kg  --> kg/kg/s
+      mkdiff(k,:) = mkdiff(k,:) * factor_xy*idt_crm   ! kg/kg  --> kg/kg/s
 
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
-      qpsrc   (k) = qpsrc   (k) * factor_xy*idt_gl
-      qpevp   (k) = qpevp   (k) * factor_xy*idt_gl
-      qpfall  (k) = qpfall  (k) * factor_xy*idt_gl   ! kg/kg in M2005 ---> kg/kg/s
+      qpsrc   (k) = qpsrc   (k) * factor_xy*idt_crm
+      qpevp   (k) = qpevp   (k) * factor_xy*idt_crm
+      qpfall  (k) = qpfall  (k) * factor_xy*idt_crm   ! kg/kg in M2005 ---> kg/kg/s
       precflux(k) = precflux(k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
