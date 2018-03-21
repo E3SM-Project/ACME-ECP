@@ -31,7 +31,7 @@ use setparm_mod, only : setparm
 contains
 
 ! subroutine crm  (lchnk, icol, &
-subroutine crm(lchnk, icol, nvcols, &
+subroutine crm(lchnk, icol, nvcols, is_first_step, &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
@@ -95,7 +95,7 @@ subroutine crm(lchnk, icol, nvcols, &
     !MRN: the first call to crm(...)
 
 #ifndef CRM_STANDALONE
-    use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_all_p
+    use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
 #endif
     use ppgrid                , only: pcols
     use vars
@@ -154,6 +154,7 @@ subroutine crm(lchnk, icol, nvcols, &
     implicit none
     integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
     integer , intent(in   ) :: nvcols                           ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
+    logical , intent(in   ) :: is_first_step                    ! flag to indicate first CRM integration - used to call setperturb()
     integer , intent(in   ) :: plev                             ! number of levels in parent model
     real(r8), intent(in   ) :: dt_gl                            ! global model's time step
     integer , intent(in   ) :: icol                (nvcols)     ! column identifier (only for lat/lon and random seed)
@@ -775,10 +776,10 @@ subroutine crm(lchnk, icol, nvcols, &
     !MRN: Need to make sure the first call to crm(...) is not dumped out
     !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
 #ifndef CRM_STANDALONE
-    call get_gcol_all_p(lchnk, pcols, gcolindex)
-    iseed = gcolindex(icol(vc))
-    if(u(1,1,1).eq.u(2,1,1).and.u(3,1,2).eq.u(4,1,2)) &
-                call setperturb(iseed)
+    if (is_first_step) then 
+        iseed = get_gcol_p(lchnk,icol(vc))
+        call setperturb(iseed)
+    end if
 #endif
 
     !--------------------------

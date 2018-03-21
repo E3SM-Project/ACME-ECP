@@ -1,66 +1,73 @@
 module setperturb_mod
-  use random_mod
-  implicit none
+   use random_mod
+   implicit none
 
 contains
 
-  subroutine setperturb(iseed)
+   subroutine setperturb(iseed)
 
-    !  Random noise
-    !  This surboutine has been updated for SPCAM5 (Minghuai.Wang@pnnl.gov, April, 2012).
-    !  Now the random generator is seeded based on the global column id, which gets rid
-    !  of the dependence of the SPCAM results on pcols.
+      ! Add random noise near the surface to help turbulence develop
 
-    use vars
-    use sgs, only: setperturb_sgs
-    use params, only: crm_rknd
+      !  This surboutine has been updated for SPCAM5 (Minghuai.Wang@pnnl.gov, April, 2012).
+      !  Now the random generator is seeded based on the global column id, which gets rid
+      !  of the dependence of the SPCAM results on pcols.
 
-    implicit none
+      ! This module was updated to use a Mersenne Twister algorithm, because compiler deependent
+      ! issues were identified with the intrinisic random number routines (e.g. random_number())
+      ! Walter Hannah - LLNL - Mar 2018
 
-    integer, intent(in) :: iseed
+      use vars
+      use sgs, only: setperturb_sgs
+      use params, only: crm_rknd
+      use RNG_MT
 
-    integer i,j,k
-    real(crm_rknd) rrr
-    integer, allocatable :: rndm_seed(:)
-    integer :: rndm_seed_sz
-    real(crm_rknd) :: t02(nzm)
-    real(crm_rknd) :: tke02(nzm)
+      implicit none
 
-    !call ranset_(30*rank)
-    call random_seed(size=rndm_seed_sz)
-    allocate(rndm_seed(rndm_seed_sz))
+      integer, intent(in) :: iseed
 
-    rndm_seed = iseed
-    call random_seed(put=rndm_seed)
+      integer i,j,k
+      real(crm_rknd) :: rand_perturb
+      real(crm_rknd) :: t02(nzm)
 
-    call setperturb_sgs(0)  ! set sgs fields
+      integer, parameter :: num_perturb_layers = 5   ! number of layers to add noise
 
-    t02 = 0.0
-    tke02 = 0.0
-    do k=1,nzm
-      do j=1,ny
-        do i=1,nx
-          rrr=1.-2.*ranf_()
+      call setperturb_sgs(0)  ! set sgs fields
 
-          if(k.le.5) then
-            t(i,j,k)=t(i,j,k)+0.02*rrr*(6-k)
-          endif
-          t02(k) = t02(k) + t(i,j,k)/(nx*ny)
-        end do
-      end do
+      !!! set the seed (based on the global physics column index)
+      call RNG_MT_set_seed(iseed)
 
-      ! energy conservation +++mhwang (2012-06)
-      do j=1, ny
-        do i=1, nx
-          if(k.le.5) then
-            t(i,j,k) = t(i,j,k) * t0(k)/t02(k)
-          end if
-        end do
-      end do
-    end do
+      t02 = 0.0
+      do k=1,nzm
 
-    deallocate(rndm_seed)
+         do j=1,ny
+            do i=1,nx
 
-  end
+               !!! Generate a uniform random number in interval (0,1)
+               call RNG_MT_gen_rand(rand_perturb)
+
+               !!! convert perturbation range from (0,1) to (-1,1)
+               rand_perturb = 1.-2.*rand_perturb
+
+               !!! apply perturbation to temperature field
+               if(k.le.num_perturb_layers) then
+                  t(i,j,k)=t(i,j,k)+0.02*rand_perturb*(6-k)
+               endif
+               t02(k) = t02(k) + t(i,j,k)/(nx*ny)
+
+            end do ! i
+         end do ! j
+
+         !!! enforce energy conservation
+         do j=1, ny
+            do i=1, nx
+               if(k.le.num_perturb_layers) then
+                  t(i,j,k) = t(i,j,k) * t0(k)/t02(k)
+               end if
+            end do ! i
+         end do ! j
+
+      end do ! k
+
+   end subroutine setperturb
 
 end module setperturb_mod
