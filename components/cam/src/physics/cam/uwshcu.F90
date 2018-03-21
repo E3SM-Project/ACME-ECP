@@ -4837,8 +4837,17 @@ end subroutine uwshcu_readnl
        dPisdps  =  rovcp*Pis/ps 
        dlnqsdps = -1._r8/(ps - (1._r8 - ep2)*es)
        derrdps  = -qs*(dlnqsdT * dTdPis * dPisdps + dlnqsdps)
-       dps      = -err/derrdps
-       ps       =  ps + dps
+       ! whannah - added the check below after getting crash because derrdps=0
+       if (derrdps==0) then
+          write(iulog,*) 'pLCL iteration error in uwshcu.F90 - derrdps=0 - setting pLCL to psmin'
+          qsinvert = psmin
+          return
+       else
+          dps   = -err/derrdps
+          ps    =  ps + dps
+       endif
+       ! dps      = -err/derrdps
+       ! ps       =  ps + dps
        if( ps .lt. 0._r8 ) then
            write(iulog,*) 'pLCL iteration is negative and set to psmin in uwshcu.F90', qt, thl, psfc 
            qsinvert = psmin

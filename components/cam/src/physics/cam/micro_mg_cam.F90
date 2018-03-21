@@ -2108,8 +2108,8 @@ subroutine micro_mg_cam_tend(state, ptend, dtime, pbuf)
    do it = 1, num_steps
 
       ! Pack input variables that are updated during substeps.
-      packed_t = packer%pack(state_loc%t)
-      packed_q = packer%pack(state_loc%q(:,:,1))
+      packed_t  = packer%pack(state_loc%t(:,:))
+      packed_q  = packer%pack(state_loc%q(:,:,1))
       packed_qc = packer%pack(state_loc%q(:,:,ixcldliq))
       packed_nc = packer%pack(state_loc%q(:,:,ixnumliq))
       packed_qi = packer%pack(state_loc%q(:,:,ixcldice))

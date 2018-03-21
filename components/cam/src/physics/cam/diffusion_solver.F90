@@ -645,7 +645,11 @@
   !                moist static energy,not the dry static energy.
 
     if( diffuse(fieldlist,'s') ) then
+#if defined( SP_USE_DIFF )
+      if (.true.) then
+#else
       if (.not. use_SPCAM) then
+#endif
 
       ! Add counter-gradient to input static energy profiles
 
@@ -684,7 +688,11 @@
                           zero  , kvh  , tmpi2 , rpdel , ztodt , gravit, &
                           cc_top, ntop , nbot  , decomp )
 
+#if defined( SP_USE_DIFF )
+       if (.true.) then
+#else
        if (.not. use_SPCAM) then
+#endif
          call vd_lu_solve(  pcols , pver  , ncol  ,                         &
                             dse   , decomp, ntop  , nbot  , cd_top )
        endif
@@ -742,8 +750,11 @@
 
        if( diffuse(fieldlist,'q',m) ) then
 
+#if defined( SP_USE_DIFF )
+           if (.true.) then
+#else
            if (.not. use_SPCAM) then
-
+#endif
              ! Add the nonlocal transport terms to constituents in the PBL.
              ! Check for neg q's in each constituent and put the original vertical
              ! profile back if a neg value is found. A neg value implies that the
@@ -809,8 +820,11 @@
                endif
            end if
 
-
+#if defined( SP_USE_DIFF )
+           if (.true.) then
+#else
            if (.not. use_SPCAM) then
+#endif
              call vd_lu_solve(  pcols , pver , ncol  ,                         &
                                 q(1,1,m) , decomp    , ntop  , nbot  , cd_top )
            endif
