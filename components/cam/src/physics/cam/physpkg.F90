@@ -2788,12 +2788,6 @@ end if
         call crm_remember_state_tend(state, tend, pbuf)
         ! Run the CRM - for tphysbc() > phys_stage = 1
         call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, 1)
-
-
-#if defined( SP_CRM_DOUBLE_CALL )
-        call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, 1)
-#endif
-
       endif
 
 
