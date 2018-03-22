@@ -857,7 +857,7 @@ end subroutine crm_physics_init
 
    zero = 0.0_r8
 
-#if defined( SP_CRM_SPLIT ) || defined( SP_CRM_DOUBLE_CALL )
+#if defined( SP_CRM_SPLIT ) 
    dt_crm = ztodt * 0.5
 #else
    dt_crm = ztodt
