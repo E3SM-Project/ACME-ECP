@@ -349,8 +349,8 @@ subroutine crm(lchnk, icol, nvcols, phys_stage, &
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001    ! threshold for cloud condensate for shaded fraction calculation
-    real(r8)        :: dt_crm                             ! length of CRM integration (=dt_gl*0.5 if SP_CRM_SPLIT is defined)
-    real(r8)        :: idt_crm                            ! = 1 / dt_crm
+    real(r8)        :: crm_run_time                             ! length of CRM integration (=dt_gl*0.5 if SP_CRM_SPLIT is defined)
+    real(r8)        :: icrm_run_time                            ! = 1 / crm_run_time
     real(crm_rknd)  :: dummy(nz), t00(nz)
     real(crm_rknd)  :: fluxbtmp(nx,ny), fluxttmp(nx,ny)    !bloss
     real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
@@ -899,11 +899,11 @@ subroutine crm(lchnk, icol, nvcols, phys_stage, &
 
 #if defined( SP_CRM_SPLIT )
     nstop  = int( nstop * 0.5 )
-    dt_crm = dt_gl * 0.5
-    idt_crm = 1._r8/dt_crm
+    crm_run_time  = dt_gl * 0.5
+    icrm_run_time = 1._r8/crm_run_time
 #else
-    dt_crm  = dt_gl
-    idt_crm = 1._r8/dt_crm
+    crm_run_time  = dt_gl
+    icrm_run_time = 1._r8/crm_run_time
 #endif
 
 
@@ -1426,16 +1426,16 @@ subroutine crm(lchnk, icol, nvcols, phys_stage, &
 
 #ifdef SPMOMTRANS
     ! whannah - SP CMT tendencies
-    ultend(vc,:) = (uln - ul(vc,:))*idt_crm
-    vltend(vc,:) = (vln - vl(vc,:))*idt_crm
+    ultend(vc,:) = (uln - ul(vc,:))*icrm_run_time
+    vltend(vc,:) = (vln - vl(vc,:))*icrm_run_time
 #endif
 
-    sltend (vc,:) = cp * (tln   - tl  (vc,:)) * idt_crm
-    qltend (vc,:) =      (qln   - ql  (vc,:)) * idt_crm
-    qcltend(vc,:) =      (qccln - qccl(vc,:)) * idt_crm
-    qiltend(vc,:) =      (qiiln - qiil(vc,:)) * idt_crm
-    prectend (vc)=(colprec -prectend (vc))/ggr*factor_xy * idt_crm
-    precstend(vc)=(colprecs-precstend(vc))/ggr*factor_xy * idt_crm
+    sltend (vc,:) = cp * (tln   - tl  (vc,:)) * icrm_run_time
+    qltend (vc,:) =      (qln   - ql  (vc,:)) * icrm_run_time
+    qcltend(vc,:) =      (qccln - qccl(vc,:)) * icrm_run_time
+    qiltend(vc,:) =      (qiiln - qiil(vc,:)) * icrm_run_time
+    prectend (vc)=(colprec -prectend (vc))/ggr*factor_xy * icrm_run_time
+    precstend(vc)=(colprecs-precstend(vc))/ggr*factor_xy * icrm_run_time
 
     ! don't use CRM tendencies from two crm top levels,
     ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
@@ -1656,7 +1656,7 @@ subroutine crm(lchnk, icol, nvcols, phys_stage, &
         enddo
       enddo
     enddo
-    qtot(vc,9) = qtot(vc,9) + (precc(vc)+precl(vc))*1000 * dt_crm
+    qtot(vc,9) = qtot(vc,9) + (precc(vc)+precl(vc))*1000 * crm_run_time
 
     cltot(vc) = cltot(vc) *factor_xy/nstop
     clhgh(vc) = clhgh(vc) *factor_xy/nstop
@@ -1712,13 +1712,13 @@ subroutine crm(lchnk, icol, nvcols, phys_stage, &
                                              ! It seems wrong to use it here ???? +++mhwang
       mkwsb (k,:) = mkwsb (k,:) * tmp1*rhow(k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
       mkwle (k,:) = mkwle (k,:) * tmp2*rhow(k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
-      mkadv (k,:) = mkadv (k,:) * factor_xy*idt_crm     ! kg/kg  --> kg/kg/s
-      mkdiff(k,:) = mkdiff(k,:) * factor_xy*idt_crm   ! kg/kg  --> kg/kg/s
+      mkadv (k,:) = mkadv (k,:) * factor_xy*icrm_run_time     ! kg/kg  --> kg/kg/s
+      mkdiff(k,:) = mkdiff(k,:) * factor_xy*icrm_run_time   ! kg/kg  --> kg/kg/s
 
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
-      qpsrc   (k) = qpsrc   (k) * factor_xy*idt_crm
-      qpevp   (k) = qpevp   (k) * factor_xy*idt_crm
-      qpfall  (k) = qpfall  (k) * factor_xy*idt_crm   ! kg/kg in M2005 ---> kg/kg/s
+      qpsrc   (k) = qpsrc   (k) * factor_xy*icrm_run_time
+      qpevp   (k) = qpevp   (k) * factor_xy*icrm_run_time
+      qpfall  (k) = qpfall  (k) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
       precflux(k) = precflux(k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
