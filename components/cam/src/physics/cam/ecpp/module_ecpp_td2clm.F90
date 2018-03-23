@@ -1642,7 +1642,7 @@ vert_topqu_iccy_loop:   &
 
 !   calculate cloud chemistry changes to chem_sub over one time sub-step
         call t_startf('ecpp_cldchem')
-!==Guangxing Lin==test
+!==Guangxing Lin==test, debug, normally, the code sould run the subroutine below
        if(1.eq.1) then        
         call parampollu_tdx_cldchem(                     &
                 ktau, dtstep, ktau_pp, itstep_sub, dtstep_sub, &

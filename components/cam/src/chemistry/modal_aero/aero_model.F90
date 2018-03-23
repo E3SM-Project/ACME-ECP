@@ -2571,6 +2571,9 @@ do_lphase2_conditional: &
 
     else ! (mam_amicphys_optaa > 0) 
     ! do gas-aerosol exchange, nucleation, and coagulation using new routines
+        ! n = 9 !Guangxing Lin soa_a1, debug
+        ! write(*,9994) lchnk, n,  (minval(vmr(:ncol,:,n))) ,(maxval(vmr(:ncol,:,n)))
+ !9994 format('gxlin-test9994 -lchnk= ',i6,'n = ',i4,' vmr= ',e15.4,' / ',e15.4  )
 
        call t_startf('modal_aero_amicphys')
 
@@ -2608,6 +2611,9 @@ do_lphase2_conditional: &
 !           qaerwat                                  )
 
        call t_stopf('modal_aero_amicphys')
+         !n = 9 !Guangxing Lin soa_a1, debug
+         !write(*,9993) lchnk, n,  (minval(vmr(:ncol,:,n))) ,(maxval(vmr(:ncol,:,n)))
+! 9993 format('gxlin-test9993 -lchnk= ',i6,'n = ',i4,' vmr= ',e15.4,' / ',e15.4  )
 
     endif ! (mam_amicphys_optaa <= 0 OR > 0)
 

@@ -967,6 +967,8 @@ endif
       end if
       count_submix(nsubmix_bnd) = count_submix(nsubmix_bnd) + 1
       dtmix = dtmicro/nsubmix
+      !nsubmix = nsubmix *2.0_r8 !Guangxing Lin debug
+      dtmix = dtmicro/nsubmix !Guangxing Lin debug
 
       do k = top_lev, pver
          kp1 = min(k+1, pver)
@@ -1272,6 +1274,7 @@ if(SPCAM_mmf) then
       if(species_class(m).eq.spec_class_gas) then
          do i=1, ncol
             coltendgas(i) = sum( pdel(i,:)*ptend%q(i,:,m) )/gravit
+            !coltendgas(i) = sum( pdel(i,:)*(rgascol(:,m,nnew)-rgas(i,:,m)) * dtinv )/gravit  !debug Guangxing Lin
          end do
          fieldnamegas = trim(cnst_name(m)) // '_mixnuc1sp'
          call outfld( trim(fieldnamegas), coltendgas, pcols, lchnk)
@@ -1341,10 +1344,12 @@ subroutine explmix( q, src, ekkp, ekkm, overlapp, overlapm, &
             + ekkm(k)*(qold(km1) - qold(k) +     &
             qactold(km1)*(1.0_r8-overlapm(k))) )
          !        force to non-negative
-         !        if(q(k)<-1.e-30)then
-         !           write(iulog,*)'q=',q(k),' in explmix'
+                 !if(q(k)<-1.e-30.and.(src(k).eq.0.0).and.(qactold(km1).eq.0.0))then !Guangxing Lin debug
+                 !if(q(k)<-1.e-30)then !Guangxing Lin debug
+                    !write(iulog,1999)q(k),qold(k), ekkp(k), ekkm(k), dt,k
+ !1999 format('test1999 -q= ',e15.4,' qold= ',e15.4,' ekkp = ',e15.4, ' ekkm = ',e15.4, ' dt= ', e15.4, ' k= ',i4)
          q(k)=max(q(k),0._r8)
-         !        endif
+  !               endif
       end do
 
       !     diffusion loss at base of lowest layer

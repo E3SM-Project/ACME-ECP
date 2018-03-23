@@ -506,7 +506,7 @@ module module_ecpp_ppdriver2
     ! local variables
     integer :: ncol, lchnk
     integer :: mbuf
-    integer :: id
+    integer :: id, m
     integer :: i, icc, ipass, ipp, itmpa, it, ichem, ichem2
     integer :: j, jclrcld, jcls, jclsaa, jclsbb, jt
     integer :: nstep, nstep_pp
@@ -844,7 +844,13 @@ module module_ecpp_ppdriver2
       qqcw(i)%fldcw   =>  qqcw_get_field(pbuf, i,lchnk,.true.)
     end do
 #endif
-    
+   
+       !do m=1, pcnst
+        ! if(cnst_name_cw(m) == 'soa_c1') then !debug Guangxing Lin 
+         !write(*,6550) lchnk,nstep, (minval(qqcw(m)%fldcw(:ncol, :))) ,(maxval(qqcw(m)%fldcw(:ncol,:)))
+! 6550 format('gxlin-test6550 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+ !           end if
+  !      end do 
     !---------------------------------------------------------------
     ! Begin loop over columns
     !---------------------------------------------------------------
@@ -1192,11 +1198,13 @@ module module_ecpp_ppdriver2
           acldy_cen_tbeg_3d(i,k) = sum( acen_tfin(lk,2,1:ncls_ecpp) )
         end do
 
+
         ! Interstial species 
         ptend_qqcw(i,:,:) = 0.0
         do k=1, pver
           lk=pver-k+1 
           do ichem=param_first_ecpp, pcnst 
+
             ptend%q(i,k,ichem)= (chem_bar(lk, ichem)-state%q(i,k,ichem))/dtstep
             ! ptend_qqcw(i,k,ichem)=(chem_bar(lk, ichem+pcnst)-qqcw(i,k,ichem))/dtstep
             ! qqcw(i,k,ichem) = chem_bar(lk, ichem+pcnst)
@@ -1223,6 +1231,12 @@ module module_ecpp_ppdriver2
     ! End column loop
     !---------------------------------------------------------------
 
+       !do m=1, pcnst
+        ! if(cnst_name_cw(m) == 'soa_c1') then !debug Guangxing Lin 
+        ! write(*,6551) lchnk,nstep, (minval(qqcw(m)%fldcw(:ncol, :))) ,(maxval(qqcw(m)%fldcw(:ncol,:)))
+ !6551 format('gxlin-test6551 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+   !     end do 
 
     ptend_cldchem  = 0.0
     ptend_rename   = 0.0
