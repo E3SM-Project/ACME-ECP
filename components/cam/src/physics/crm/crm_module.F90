@@ -897,8 +897,8 @@ subroutine crm(lchnk, icol, nvcols, phys_stage, &
     ncycle = 0
     day=day0
 
-#if defined( SP_CRM_SPLIT ) || defined( SP_CRM_DOUBLE_CALL )
-    nstop  = nstop * 0.5
+#if defined( SP_CRM_SPLIT )
+    nstop  = int( nstop * 0.5 )
     dt_crm = dt_gl * 0.5
     idt_crm = 1._r8/dt_crm
 #else
