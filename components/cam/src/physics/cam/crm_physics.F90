@@ -608,7 +608,7 @@ end subroutine crm_physics_init
    integer ncol                               ! number of atmospheric columns
 
    integer  nstep     ! time steps
-   real(r8) dt_crm    ! length of CRM integration - usually equal to ztodt unless SP_CRM_SPLIT is defined
+   real(r8) crm_run_time    ! length of CRM integration - usually equal to ztodt unless SP_CRM_SPLIT is defined
 
    real(r8) qc_crm (pcols,crm_nx, crm_ny, crm_nz)
    real(r8) qi_crm (pcols,crm_nx, crm_ny, crm_nz)
@@ -859,9 +859,9 @@ end subroutine crm_physics_init
    zero = 0.0_r8
 
 #if defined( SP_CRM_SPLIT ) 
-   dt_crm = ztodt * 0.5
+   crm_run_time = ztodt * 0.5
 #else
-   dt_crm = ztodt
+   crm_run_time = ztodt
 #endif
 
 !========================================================
@@ -1940,8 +1940,8 @@ end subroutine crm_physics_init
                  ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_ni(i,ii,jj,k)
                end do
                end do
-               ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/dt_crm
-               ptend%q(i,m,ixnumice) = (ptend%q(i,m,ixnumice)/(crm_nx*crm_ny) - state%q(i,m,ixnumice))/dt_crm
+               ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/crm_run_time
+               ptend%q(i,m,ixnumice) = (ptend%q(i,m,ixnumice)/(crm_nx*crm_ny) - state%q(i,m,ixnumice))/crm_run_time
              end do
             end do
          endif
@@ -1950,7 +1950,7 @@ end subroutine crm_physics_init
 
 ! physics_update should be moved to tphysbc. Also, it seems, state is changed in the subroutine of crm. 
 ! so doese this mean state is updated twice??? -Minghuai Wang (minghuai@pnl.gov).
-       call physics_update(state, ptend, dt_crm, tend)
+       call physics_update(state, ptend, crm_run_time, tend)
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -2017,9 +2017,9 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
        ! chk_prec_dp = prec_dp+(qli_hydro(:,2)-qli_hydro(:,1))/ztodt/1000._r8
        ! chk_snow_dp = snow_dp+( qi_hydro(:,2)- qi_hydro(:,1))/ztodt/1000._r8
-       call check_energy_chng(state, tend, "crm_tend", nstep, dt_crm, zero, &
-                              prec_dp(:ncol)+(qli_hydro(:ncol,2)-qli_hydro(:ncol,1))/dt_crm/1000._r8, &
-                              snow_dp(:ncol)+( qi_hydro(:ncol,2)- qi_hydro(:ncol,1))/dt_crm/1000._r8, &
+       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time, zero, &
+                              prec_dp(:ncol)+(qli_hydro(:ncol,2)-qli_hydro(:ncol,1))/crm_run_time/1000._r8, &
+                              snow_dp(:ncol)+( qi_hydro(:ncol,2)- qi_hydro(:ncol,1))/crm_run_time/1000._r8, &
                               radflux)
         ! call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero,   &
         !        prec_dp, snow_dp, zero)
@@ -2046,7 +2046,7 @@ end subroutine crm_physics_init
              qtot(i,2) = qt_hydro(i,2) + qt_cloud(i,2) + qtv(i,2)
 
              ! check water conservation
-             if(abs((qtot(i,2)+(precc(i)+precl(i))*1000*dt_crm)-qtot(i,1))/qtot(i,1).gt.1.0e-5) then 
+             if(abs((qtot(i,2)+(precc(i)+precl(i))*1000*crm_run_time)-qtot(i,1))/qtot(i,1).gt.1.0e-5) then 
                 write(0, *) 'water before crm call', i, lchnk, qtot(i,1), qtv(i,1), qt_cloud(i,1), qt_hydro(i,1)
                 !write(0, *) 'water after crm call', i, lchnk, qtot(i,2)+(precc(i)+precl(i))*1000*ztodt, qtv(i,2), qt_cloud(i,2), qt_hydro(i,2), (precc(i)+precl(i))*1000*ztodt
                 !write(0, *) 'water, nstep, crm call2', nstep, i, lchnk, ((qtot(i,2)+(precc(i)+precl(i))*1000*ztodt)-qtot(i,1))/qtot(i,1)
@@ -2111,7 +2111,7 @@ end subroutine crm_physics_init
     ! When ECPP is included, wet deposition is done ECPP,
     ! So tendency from wet depostion is not updated in mz_aero_wet_intr (mz_aerosols_intr.F90)
     ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
-    call physics_update (state, ptend, dt_crm, tend)
+    call physics_update (state, ptend, crm_run_time, tend)
 #endif
 
     !----------------------------------------------------
