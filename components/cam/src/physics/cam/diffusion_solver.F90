@@ -493,9 +493,13 @@
 
          ! 2. Do 'normal stress' explicitly
 
+! whannah - bypass adding surface stress here when CRM handles subgrid momentum tendencies
+! #if defined(SPMOMTRANS) || defined(SP_USE_ESMT)
+!       ! Do nothing...
+! #else
            u(:ncol,pver) = u(:ncol,pver) + tmp1(:ncol)*taux(:ncol)
            v(:ncol,pver) = v(:ncol,pver) + tmp1(:ncol)*tauy(:ncol)
-
+! #endif
        end if  ! End of 'do iss' ( implicit surface stress )
 
        ! --------------------------------------------------------------------------------------- !
@@ -512,15 +516,9 @@
                           ksrf  , kvm  , tmpi2 , rpdel , ztodt , gravit, &
                           zero  , ntop , nbot  , decomp)
 
-!  whannah - I disabled the bypass below because my 3D runs with SPMOMTRANS were crashing
-! and I thought maybe un-diffused surface stresses could be the root of the problem.
-! This might cause double counting of momentum diffusion, but I'll deal with that if turning off
-! this bypass solves my problem...
-
-! #ifdef SPMOMTRANS
-! whannah - use the line below for ESMT
-! #if defined(SPMOMTRANS) || defined(SP_ESMT)
-      ! Do nothing...
+! whannah - bypass vertical diffusion of momentum when CRM handles subgrid momentum tendencies
+! #if defined(SPMOMTRANS) || defined(SP_USE_ESMT)
+!       ! Do nothing...
 ! #else
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           u     , decomp, ntop  , nbot , zero )

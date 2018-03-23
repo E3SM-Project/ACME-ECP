@@ -17,26 +17,26 @@ module scalar_momentum_mod
 !
 !---------------------------------------------------------------------------
    use params
-   use grid
+   use grid, only: nx,ny,nzm,dimx1_s,dimx2_s,dimy1_s,dimy2_s
 
    implicit none
 
    public scalar_momentum_init
-   ! public scalar_momentum_tend
+#ifdef SP_ESMT_PGF
+   public scalar_momentum_tend
+#endif
 
    real(crm_rknd), dimension(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm) :: u_esmt         ! scalar zonal velocity
    real(crm_rknd), dimension(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm) :: v_esmt         ! scalar meridonal velocity
    
-   real(crm_rknd), dimension(nz)        :: u_esmt_wle     ! resolved vertical flux
-   real(crm_rknd), dimension(nz)        :: v_esmt_wle     ! 
-   real(crm_rknd), dimension(nz)        :: u_esmt_sgs     ! SGS vertical flux 
-   real(crm_rknd), dimension(nz)        :: v_esmt_sgs     ! 
-   real(crm_rknd), dimension(nz)        :: u_esmt_adv     ! large-scale tendency due to vertical advection
-   real(crm_rknd), dimension(nz)        :: v_esmt_adv     ! 
-   real(crm_rknd), dimension(nz)        :: u_esmt_diff    ! large-scale tendency due to vertical diffusion
-   real(crm_rknd), dimension(nz)        :: v_esmt_diff    ! 
-   real(crm_rknd), dimension(nz)        :: u_esmt_pgf     ! large-scale tendency due to horizontal pressure gradients
-   real(crm_rknd), dimension(nz)        :: v_esmt_pgf     ! 
+   real(crm_rknd), dimension(nzm)       :: u_esmt_wle     ! resolved vertical flux
+   real(crm_rknd), dimension(nzm)       :: v_esmt_wle     ! 
+   real(crm_rknd), dimension(nzm)       :: u_esmt_sgs     ! SGS vertical flux 
+   real(crm_rknd), dimension(nzm)       :: v_esmt_sgs     ! 
+   real(crm_rknd), dimension(nzm)       :: u_esmt_adv     ! large-scale tendency due to vertical advection
+   real(crm_rknd), dimension(nzm)       :: v_esmt_adv     ! 
+   real(crm_rknd), dimension(nzm)       :: u_esmt_diff    ! large-scale tendency due to vertical diffusion
+   real(crm_rknd), dimension(nzm)       :: v_esmt_diff    ! 
 
    real(crm_rknd), dimension(nx,ny)     :: fluxb_u_esmt   ! flux of u_esmt at surface    (normally set to zero)
    real(crm_rknd), dimension(nx,ny)     :: fluxb_v_esmt   ! flux of v_esmt at surface    (normally set to zero)
@@ -61,21 +61,15 @@ subroutine scalar_momentum_init()
    ! 
    !------------------------------------------------------------------
 
-   ! if(nrestart.eq.0) then
+   u_esmt_wle (:) = 0.
+   u_esmt_sgs (:) = 0.
+   u_esmt_adv (:) = 0.
+   u_esmt_diff(:) = 0.
 
-      u_esmt_wle (:) = 0.
-      u_esmt_sgs (:) = 0.
-      u_esmt_adv (:) = 0.
-      u_esmt_diff(:) = 0.
-      u_esmt_pgf (:) = 0.
-
-      v_esmt_wle (:) = 0.
-      v_esmt_sgs (:) = 0.
-      v_esmt_adv (:) = 0.
-      v_esmt_diff(:) = 0.
-      v_esmt_pgf (:) = 0.
-
-   ! end if
+   v_esmt_wle (:) = 0.
+   v_esmt_sgs (:) = 0.
+   v_esmt_adv (:) = 0.
+   v_esmt_diff(:) = 0.
 
    fluxb_u_esmt(:,:) = 0.
    fluxb_v_esmt(:,:) = 0.
@@ -91,11 +85,7 @@ end subroutine scalar_momentum_init
 !========================================================================================
 !========================================================================================
 
-! whannah - ESMT_HIDE_PGF is just to hide the PGF code 
-! without commenting it out during development
-#define ESMT_HIDE_PGF
-
-#ifndef ESMT_HIDE_PGF
+#ifdef SP_ESMT_PGF
 
 subroutine scalar_momentum_tend()
    !------------------------------------------------------------------
@@ -108,25 +98,23 @@ subroutine scalar_momentum_tend()
    use grid
 
    real(crm_rknd), dimension(nx,ny,nzm) :: u_esmt_pgf_3D
+   real(crm_rknd), dimension(nx,ny,nzm) :: v_esmt_pgf_3D
    real(crm_rknd) factor_xy 
+   integer i,j,k
 
    factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
 
    call scalar_momentum_pgf(u_esmt,u_esmt_pgf_3D)
    call scalar_momentum_pgf(v_esmt,v_esmt_pgf_3D)
 
-   ! Average the PGF tendency across the CRM domain
-   u_esmt_pgf(:) = 0.
-   v_esmt_pgf(:) = 0.
+   ! Add PGF tendency
    do k=1,nzm
       do j=1,ny
          do i=1,nx
-            u_esmt_pgf(k) = u_esmt_pgf(k) + u_esmt_pgf_3D(i,j,k)
-            v_esmt_pgf(k) = v_esmt_pgf(k) + v_esmt_pgf_3D(i,j,k)
+            u_esmt(i,j,k) = u_esmt(i,j,k) + u_esmt_pgf_3D(i,j,k)*dtn
+            v_esmt(i,j,k) = v_esmt(i,j,k) + v_esmt_pgf_3D(i,j,k)*dtn
          end do
       end do
-      u_esmt_pgf(k) = u_esmt_pgf(k) * factor_xy 
-      v_esmt_pgf(k) = v_esmt_pgf(k) * factor_xy 
    end do
 
 end subroutine scalar_momentum_tend
@@ -142,7 +130,7 @@ subroutine scalar_momentum_pgf( u_s, tend )
    ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
    ! 
    !------------------------------------------------------------------
-   use grid,    only: nx,ny,nz,z,pres,adz
+   use grid,    only: nx,ny,nz,nzm,z,pres,zi
    use crmdims, only: crm_dx
    use vars,    only: w
    
@@ -157,75 +145,55 @@ subroutine scalar_momentum_pgf( u_s, tend )
    !------------------------------------------------------------------
    integer :: i,j,k
    real(crm_rknd) :: dampwt
-   ! real(crm_rknd), dimension(nx,ny,nzm)   :: u_si       ! scalar momentum interpolated to w levels
-   ! real(crm_rknd), dimension(nzm)         :: u_si_avg   ! horizonal average of u_si
-   real(crm_rknd), dimension(nzm)         :: u_s_avg    ! horizonal average of u_s
-   real(crm_rknd), dimension(nx,ny,nzm)   :: w_i        ! w interpolated to scalar levels
-   real(crm_rknd), dimension(nx,ny,nzm)   :: w_hat      ! w after Fourier Transform
-   real(crm_rknd), dimension(nx,ny,nzm)   :: pgf_hat    ! pressure gradient force (Fourier transform space)
-   real(crm_rknd), dimension(nx,nzm)      :: pgf        ! pressure gradient force for final tendency
-   real(crm_rknd), dimension(nx)          :: k_arr      ! "zonal" wavelength from forward FFT
-   real(crm_rknd), dimension(nzm)         :: a,b,c      ! used for Poisson solver boundary conditions
-   real(crm_rknd), dimension(nzm)         :: rhs        ! right-hand side of pressure equation
-   real(crm_rknd), dimension(nzm)         :: shr        ! vertical shear of scalar momentum (i.e. du/dz)
+   real(crm_rknd), dimension(nx)       :: k_arr      ! "zonal" wavelength from forward FFT
+   real(crm_rknd), dimension(nzm)      :: u_s_avg    ! horizonal average of u_s
+   real(crm_rknd), dimension(nzm)      :: a,b,c      ! Poisson solver boundary conditions
+   real(crm_rknd), dimension(nzm)      :: rhs        ! right-hand side of pressure equation
+   real(crm_rknd), dimension(nzm)      :: shr        ! vertical shear of scalar momentum (i.e. du/dz)
+   real(crm_rknd), dimension(nx,nzm)   :: w_i        ! w interpolated to scalar levels
+   real(crm_rknd), dimension(nx,nzm)   :: w_hat      ! w after Fourier Transform
+   real(crm_rknd), dimension(nx,nzm)   :: pgf_hat    ! pressure gradient force (Fourier transform space)
+   real(crm_rknd), dimension(nx,nzm)   :: pgf        ! pressure gradient force for final tendency
 
-   ! real(crm_rknd), dimension(nzm+1)       :: dz         ! layer thickness - replace with adz
+   real(crm_rknd), dimension(nzm+1)    :: dz         ! layer thickness 
    !------------------------------------------------------------------------
    !------------------------------------------------------------------------
-
-   !!! interpolation coefficients for WRF - not needed for SAM
-   ! cft2 = - 0.5 * dnw(kpe-1) / dn(kpe-1)
-   ! cft1 = 1.0 - cft2
 
    !!! The loop over "y" points is mostly unessary, since ESMT 
    !!! is meant for 2D CRMs, but I've left it in for comparing 
    !!! ESMT tendencies to fully resolved 3D momentum transport
+
+   ! Calculate layer thickness
+   do k = 1,nzm
+      dz(k) = zi(k+1)-zi(k)
+   enddo
+   dz(nzm+1) = dz(nzm)
 
    do j=1,ny
 
       !-----------------------------------------
       ! Initialize stuff for averaging
       !-----------------------------------------
-      ! u_si_avg(:) = 0.0
       u_s_avg(:) = 0.0
       shr(:) = 0
 
       !-----------------------------------------
-      ! interpolate u to w levels 
-      !-----------------------------------------
-      ! do i = 1,nx
-      !    !!! lowest level
-      !    k = kps         
-      !    u_si(i,k) =  cf1*u_s(i,j,1) + &
-      !                 cf2*u_s(i,j,2) + &
-      !                 cf3*u_s(i,j,3)
-      !    u_si(i,k) = u_s(i,j,k)*sqrt(cda(i,j)/cd(i,j))
-      !    !!! interpolate mid-levels
-      !    do k = kps+1,kpe-1
-      !       u_si(i,k) =  fnm(k)*u_s(i,j,k) + fnp(k)*u_s(i,j,k-1)
-      !    end do
-      !    !!! deal with top level
-      !    k = kpe
-      !    u_si(i,k) = cft1*u_s(i,j,k-1) + &
-      !                cft2*u_s(i,j,k-2)
-      ! end do
-
-      !-----------------------------------------
-      ! Calculate shear
+      ! Calculate shear of domain average profile 
+      ! defined on scalar levels
       !-----------------------------------------
       do k = 1,nzm
          do i = 1,nx
             u_s_avg(k) = u_s_avg(k) + u_s(i,j,k)
-            if k>1 then
-               w_i(i,k) = ( w(i,j,k) + w(i,j,k+1) )/2.
-            end if
+            ! note that w is on interface levels
+            w_i(i,k) = ( w(i,j,k) + w(i,j,k+1) )/2.
          end do
          u_s_avg(k) = u_s_avg(k) / real(nx,crm_rknd)
-         if k>1 then
-            shr(k) = ( u_s_avg(k+1) - u_s_avg(k-1) )/(z(k+1)-z(k-1))
-         end if
       end do
 
+      shr(1) = ( u_s_avg(2) - u_s_avg(1) )/(z(2)-z(1))      ! do we even care about first level?
+      do k = 2,nzm-1
+         shr(k) = ( u_s_avg(k+1) - u_s_avg(k-1) )/(z(k+1)-z(k-1))
+      end do
 
       !------------------------------------------------------------------------
       !------------------------------------------------------------------------
@@ -235,11 +203,10 @@ subroutine scalar_momentum_pgf( u_s, tend )
       !------------------------------------------------------------------------
       !------------------------------------------------------------------------ 
       
-      
       !-----------------------------------------
       ! compute forward fft of w
       !-----------------------------------------
-      call esmt_fft_forward(nx,nz,crm_dx,w_i,k_arr,w_hat)
+      call esmt_fft_forward(nx,nzm,crm_dx,w_i,k_arr,w_hat)
 
       !-----------------------------------------
       ! solve vertical structure equation 
@@ -253,12 +220,12 @@ subroutine scalar_momentum_pgf( u_s, tend )
       ! Loop through wavelengths
       do i = 2,nx
 
-         do k = 1,nz
-            a(k) = adz(k+1)/(adz(k+1)+adz(k))
+         do k = 1,nzm
+            a(k) = dz(k+1)/(dz(k+1)+dz(k))
             ! b(k) = -.5*k_arr(i)**2*dz(k)*dz(k+1)-1.
-            b(k) = -.5*(1.+.25)*k_arr(i)**2*adz(k)*adz(k+1)-1. ! this crudely accounts for difference between 2D and 3D updraft geometry
-            c(k) = adz(k)/(adz(k+1)+adz(k))
-            rhs(k) = k_arr(i)**2*w_hat(i,k)*shr(k)*adz(k)*adz(k+1)
+            b(k) = -.5*(1.+.25)*k_arr(i)**2*dz(k)*dz(k+1)-1. ! this crudely accounts for difference between 2D and 3D updraft geometry
+            c(k) = dz(k)/(dz(k+1)+dz(k))
+            rhs(k) = k_arr(i)**2*w_hat(i,k)*shr(k)*dz(k)*dz(k+1)
          end do ! k
 
          !lower boundary condition (symmetric)
@@ -266,43 +233,37 @@ subroutine scalar_momentum_pgf( u_s, tend )
          a(1) = 0.
 
          !upper boundary condition (symmetric)
-         b(nz) = b(nz) + c(nz)
-         c(nz) = 0.
+         b(nzm) = b(nzm) + c(nzm)
+         c(nzm) = 0.
 
          ! gaussian elimination with no pivoting
-         do k = 1,nz-1
+         do k = 1,nzm-1
             b(k+1) = b(k+1)-a(k+1)/b(k)*c(k)
             rhs(k+1) = rhs(k+1)-a(k+1)/b(k)*rhs(k)
          end do ! k
 
-         ! backward substitution
-         rhs(nz)=rhs(nz)/b(nz)
-         do k=nz-1,1,-1
-            rhs(k)=(rhs(k)-c(k)*rhs(k+1))/b(k)
+         ! backward substitution 
+         rhs(nzm)=rhs(nzm)/b(nzm)
+         do k=nzm-1,1,-1
+            rhs(k) = (rhs(k)-c(k)*rhs(k+1))/b(k)
          end do
 
-         !backward substitution
-         rhs(nz)=rhs(nz)/b(nz)
-         do k=nz-1,1,-1
-            rhs(k) = (rhs(k)-c(k)*rhs(k+1))/b(k)
-         end do ! k
-
-         do k = 1,nz
+         do k = 1,nzm
             pgf_hat(i,k) = rhs(k)
          end do ! k
       end do ! i - zonal wavelength
 
-      ! Note sure what this part does....
+      ! Note sure what this part does... something to do with the Nyquist freq?
       if (mod(nx,2) == 0) then
-         do k=1,nz
+         do k=1,nzm
             pgf_hat(nx,k) = pgf_hat(nx,k)/2.
-         end do
+         end do ! k
       end if
 
       !-----------------------------------------
       ! invert fft of pgf_hat to get pgf
       !-----------------------------------------
-      call esmt_fft_backward(nx,nz,pgf_hat,pgf)
+      call esmt_fft_backward(nx,nzm,pgf_hat,pgf)
 
       !-----------------------------------------
       ! Compute final tendency
@@ -330,54 +291,85 @@ end subroutine  scalar_momentum_pgf
 !========================================================================================
 !========================================================================================
 
-subroutine esmt_fft_forward(nx,nz,dx,arr_in,k_out,arr_out)
+subroutine esmt_fft_forward(nx,nzm,dx,arr_in,k_out,arr_out)
    !------------------------------------------------------------------
    ! 
    ! Purpose: calculate forward FFT transform
    ! 
-   ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
+   ! Author: Walter Hannah - adapted from SP-WRF code provided by Stefan Tulich
    ! 
    !------------------------------------------------------------------
+   use fftpack51D
+   
    implicit none
 
-   integer, intent(in) :: nx,nz
-   real   , intent(in) :: dx
-   real , dimension(nx,nz), intent(in ) :: arr_in
-   real , dimension(nx)   , intent(out) :: k_out
-   real , dimension(nx,nz), intent(out) :: arr_out
+   integer                          , intent(in ) :: nx
+   integer                          , intent(in ) :: nzm
+   real(crm_rknd)                   , intent(in ) :: dx
+   real(crm_rknd), dimension(nx,nzm), intent(in ) :: arr_in
+   real(crm_rknd), dimension(nx)    , intent(out) :: k_out
+   real(crm_rknd), dimension(nx,nzm), intent(out) :: arr_out
 
    ! local variables
 
+   ! real(crm_rknd), dimension(nx*nzm) :: arr_tmp  ! FFT routine requires 1 dimensional input
+
    integer :: lensave, ier, nh, n1, i, j, k
    integer :: lot, jump, n, inc, lenr, lensav, lenwrk
-   real    :: pi
-   real, dimension(nx+15) :: wsave
-   real, dimension(nx,nz) :: work
+   real(crm_rknd) :: pi
+   real(crm_rknd), dimension(nx+15)  :: wsave
+   real(crm_rknd), dimension(nx,nzm) :: work
+   ! real(crm_rknd), dimension(nx*nzm) :: work
 
    ! naming convention follows fftpack5 routines
 
-   n = nx
-   lot = nz
-   lensav = n+15
-   inc = 1
-   lenr = nx*nz
-   jump = nx
-   lenwrk = lenr
    pi = 2.*asin(1.0)
 
-   ! initialization for FFT
-   call rfftmi(n,wsave,lensav,ier)
-   if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
+   ! n = nx
+   ! lot = nzm
+   ! lensav = n+15
+   ! inc = 1
+   ! lenr = nx*nzm
+   ! jump = nx
+   ! lenwrk = lenr
+   
+   ! ! initialization for FFT
+   ! call rfftmi(n,wsave,lensav,ier)
+   ! if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
 
-   do k = 1,nz
+   ! do k = 1,nzm
+   !    do i = 1,nx
+   !       arr_out(i,k) = arr_in(i,k)
+   !       ! arr_tmp(k*(nx-1)+i) = arr_in(i,k)
+   !    enddo
+   ! enddo
+
+   ! !  do the forward transform
+   ! ! call rfftmf( lot, jump, n, inc, arr_tmp, lenr, wsave, lensav, work, lenwrk, ier )
+   ! call rfftmf( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
+   ! if(ier /= 0) write(0,*) 'ERROR: rfftmf(): ESMT - Forward FFT error ',ier
+
+   !!! Alternate - loop through levels since FFTPACK keeps throwing wierd error
+   n = nx
+   lot = 1
+   lensav = n+15
+   inc = 1
+   lenr = nx
+   jump = nx
+   lenwrk = lenr
+   !!! initialization for FFT
+   call rfft1i(n,wsave,lensav,ier)
+   if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
+   !!!  do the forward transform
+   do k = 1,nzm
       do i = 1,nx
-         arr_out(i,k)=arr_in(i,k)
+         arr_out(i,k) = arr_in(i,k)
       enddo
+      call rfft1f( n, inc, arr_out(:,k), lenr, wsave, lensav, work(:,k), lenwrk, ier )
+      if(ier /= 0) write(0,*) 'ERROR: rfftmf(): ESMT - Forward FFT error ',ier
    enddo
 
-   !  do the forward transform
-   call rfftmf( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
-   if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - Forward FFT error ',ier
+   
 
    if(mod(n,2) == 0) then
       nh = n/2 - 1
@@ -387,12 +379,18 @@ subroutine esmt_fft_forward(nx,nz,dx,arr_in,k_out,arr_out)
 
    k_out(1)=0.0
    do j = 1,nh
-      k_out(2*j)   = 2.*pi*real(j)/(real(n)*dx)   !cos
-      k_out(2*j+1) = 2.*pi*real(j)/(real(n)*dx)   !sin
+      k_out(2*j)   = 2.*pi*real(j,crm_rknd)/(real(n,crm_rknd)*dx)   !cos
+      k_out(2*j+1) = 2.*pi*real(j,crm_rknd)/(real(n,crm_rknd)*dx)   !sin
    enddo
    if (mod(n,2) == 0) then
       k_out(n) =  2.*pi/(2.*dx)                  !nyquist wavelength for even n
    end if
+
+   ! do k = 1,nzm
+   !    do i = 1,nx
+   !       arr_out(i,k) = arr_tmp(k*(nx-1)+i)
+   !    enddo
+   ! enddo
 
    return
 
@@ -401,50 +399,86 @@ end subroutine esmt_fft_forward
 !========================================================================================
 !========================================================================================
 
-subroutine esmt_fft_backward(nx,nz,arr_in,arr_out)
+subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
    !------------------------------------------------------------------
    ! 
    ! Purpose: calculate backward FFT transform
    ! 
-   ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
+   ! Author: Walter Hannah - adapted from SP-WRF code provided by Stefan Tulich
    ! 
    !------------------------------------------------------------------
+   use fftpack51D
+
    implicit none
 
-   integer, intent(in) :: nx,nz
-   real , dimension(nx,nz), intent(in ) :: arr_in
-   real , dimension(nx,nz), intent(out) :: arr_out
+   integer                         , intent(in ) :: nx
+   integer                         , intent(in ) :: nzm
+   real(crm_rknd), dimension(nx,nzm), intent(in ) :: arr_in
+   real(crm_rknd), dimension(nx,nzm), intent(out) :: arr_out
 
    ! local variables
 
+   ! real(crm_rknd), dimension(nx*nzm) :: arr_tmp  ! FFT routine requires 1 dimensional input
+
    integer :: lensave, ier, nh, n1, i, k
    integer :: lot, jump, n, inc, lenr, lensav, lenwrk
-   real, dimension(nx+15) :: wsave
-   real, dimension(nx,nz) :: work
+   real(crm_rknd), dimension(nx+15) :: wsave
+   real(crm_rknd), dimension(nx,nzm) :: work
+   ! real(crm_rknd), dimension(nx*nzm) :: work
 
    ! naming convention follows fftpack5 routines
 
+   ! n = nx
+   ! lot = nzm
+   ! lensav = n+15
+   ! inc = 1
+   ! lenr = nx*nzm
+   ! jump = nx
+   ! lenwrk = lenr
+
+   ! ! initialization for FFT
+   ! call rfftmi(n,wsave,lensav,ier)
+   ! if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
+   
+   ! do k = 1,nzm
+   !    do i = 1,nx
+   !       arr_out(i,k) = arr_in(i,k)
+   !       ! arr_tmp(k*(nx-1)+i) = arr_in(i,k)
+   !    enddo
+   ! enddo
+   
+   ! !  do the backward transform
+   ! ! call rfftmb( lot, jump, n, inc, arr_tmp, lenr, wsave, lensav, work, lenwrk, ier )
+   ! call rfftmb( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
+   ! if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - backward FFT error ',ier
+
+   !!! Alternate - loop through levels since FFTPACK keeps throwing wierd error
    n = nx
-   lot = nz
+   lot = 1
    lensav = n+15
    inc = 1
-   lenr = nx*nz
+   lenr = nx
    jump = nx
    lenwrk = lenr
-
-   ! initialization for FFT
-   call rfftmi(n,wsave,lensav,ier)
+   !!! initialization for FFT
+   call rfft1i(n,wsave,lensav,ier)
    if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
-   
-   do k = 1,nz
+   !!!  do the backward transform
+   do k = 1,nzm
       do i = 1,nx
-         arr_out(i,k)=arr_in(i,k)
+         arr_out(i,k) = arr_in(i,k)
       enddo
+      call rfft1b( n, inc, arr_out(:,k), lenr, wsave, lensav, work(:,k), lenwrk, ier )
+      if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - backward FFT error ',ier
    enddo
+
    
-   !  do the backward transform
-   call rfftmb( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
-   if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - backward FFT error ',ier
+
+   ! do k = 1,nzm
+   !    do i = 1,nx
+   !       arr_out(i,k) = arr_tmp(k*(nx-1)+i)
+   !    enddo
+   ! enddo
 
    return
 
@@ -457,7 +491,7 @@ end subroutine esmt_fft_backward
 
 !========================================================================================
 !========================================================================================
-! Old scheme for reference
+! Old scheme for reference - not identical though - I changed things for readability
 
 ! subroutine scalar_momentum_pgf(config_flags,var_in,u_s,u_ls,u_s_tend,w,mu,mub  &
 !                               ,ph,phb,p,pb                                     &
@@ -762,12 +796,6 @@ end subroutine esmt_fft_backward
 !             enddo
 
 !             ! backward substitution
-!             rhs(nz)=rhs(nz)/b(nz)
-!             do k=nz-1,1,-1
-!                rhs(k)=(rhs(k)-c(k)*rhs(k+1))/b(k)
-!             enddo
-
-!             !backward substitution
 !             rhs(nz)=rhs(nz)/b(nz)
 !             do k=nz-1,1,-1
 !                rhs(k)=(rhs(k)-c(k)*rhs(k+1))/b(k)

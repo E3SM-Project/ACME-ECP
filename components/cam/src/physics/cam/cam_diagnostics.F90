@@ -745,8 +745,6 @@ subroutine diag_init()
 #if defined(SP_ESMT)
       call addfld ('U_ESMT',(/ 'lev' /), 'A', 'm/s2 ','U tendency due to CRM (ESMT)'            )
       call addfld ('V_ESMT',(/ 'lev' /), 'A', 'm/s2 ','V tendency due to CRM (ESMT)'            )
-      ! call addfld ('U_ESMT','m/s2    ',pver, 'A','U tendency due to CRM (ESMT)'                   ,phys_decomp)
-      ! call addfld ('V_ESMT','m/s2    ',pver, 'A','V tendency due to CRM (ESMT)'                   ,phys_decomp)
 #endif
       ! Adding crm dimensions to cam history 
       call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')

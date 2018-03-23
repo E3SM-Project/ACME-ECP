@@ -84,21 +84,19 @@ contains
     
     ! whannah - the esmt_offset simply ensures that the scalar momentum  
     ! tracers are positive definite during the advection calculation
-    esmt_offset = 1000.
+    ! esmt_offset = 1000.
 
-#if defined(SP_ESMT_ADV_FIX)
+    esmt_offset = abs( minval( (/ minval(u_esmt), minval(v_esmt) /) ) ) + 50.
+
     u_esmt(:,:,:) = u_esmt(:,:,:) + esmt_offset
     v_esmt(:,:,:) = v_esmt(:,:,:) + esmt_offset
-#endif
 
     ! advection of scalar momentum tracers
     call advect_scalar(u_esmt,u_esmt_adv,u_esmt_wle,dummy,dummy,dummy,.false.)
     call advect_scalar(v_esmt,v_esmt_adv,v_esmt_wle,dummy,dummy,dummy,.false.)
 
-#if defined(SP_ESMT_ADV_FIX)
     u_esmt(:,:,:) = u_esmt(:,:,:) - esmt_offset
     v_esmt(:,:,:) = v_esmt(:,:,:) - esmt_offset
-#endif
 
 #endif
 

@@ -22,6 +22,7 @@ module crm_module
   use damping_mod
   use ice_fall_mod
   use coriolis_mod
+
 !---------------------------------------------------------------
 !  Super-parameterization's main driver
 !  Marat Khairoutdinov, 2001-2009
@@ -41,7 +42,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
                 zmid, zint, dt_gl, plev, &
                 ultend, vltend,          &
 #if defined(SP_ESMT)
-                ultend_esmt, vltend_esmt,          &  ! whannah 
+                ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah 
 #endif
                 qltend, qcltend, qiltend, sltend, &
                 u_crm, v_crm, w_crm, t_crm, micro_fields_crm, &
@@ -203,8 +204,10 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     real(r8), intent(  out) :: ultend              (nvcols,plev)                   ! tendency of ul
     real(r8), intent(  out) :: vltend              (nvcols,plev)                   ! tendency of vl
 #if defined(SP_ESMT)
-    real(r8), intent(  out) :: ultend_esmt         (nvcols,plev)                   ! tendency of ul - whannah - temporary diagnostic fields 
-    real(r8), intent(  out) :: vltend_esmt         (nvcols,plev)                   ! tendency of vl - whannah - temporary diagnostic fields
+    real(r8), intent(in   ) :: ul_esmt             (nvcols,plev)                   ! input u for ESMT
+    real(r8), intent(in   ) :: vl_esmt             (nvcols,plev)                   ! input v for ESMT
+    real(r8), intent(  out) :: ultend_esmt         (nvcols,plev)                   ! tendency of ul - diagnostic field 
+    real(r8), intent(  out) :: vltend_esmt         (nvcols,plev)                   ! tendency of vl - diagnostic field
 #endif
     real(r8), intent(  out) :: sltend              (nvcols,plev)                   ! tendency of static energy
     real(r8), intent(  out) :: qltend              (nvcols,plev)                   ! tendency of water vapor
@@ -540,8 +543,8 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 
 #if defined(SP_ESMT)
     do k=1,nzm
-      u_esmt(:,:,k) = ul(vc,plev-k+1)
-      v_esmt(:,:,k) = vl(vc,plev-k+1)
+      u_esmt(:,:,k) = ul_esmt(vc,plev-k+1)
+      v_esmt(:,:,k) = vl_esmt(vc,plev-k+1)
     end do
 #endif
 
@@ -1165,7 +1168,9 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
         !-----------------------------------------------------------
         !       Calculate PGF for scalar momentum tendency
 #if defined(SP_ESMT)
-            ! call scalar_momentum_tend()
+#ifdef SP_ESMT_PGF
+            call scalar_momentum_tend()
+#endif
 #endif
 
         !-----------------------------------------------------------
@@ -1401,8 +1406,8 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     vln  (ptop:plev) = 0.
 
 #if defined(SP_ESMT)
-    uln_esmt(1:ptop-1)  = ul(vc,1:ptop-1)
-    vln_esmt(1:ptop-1)  = vl(vc,1:ptop-1)
+    uln_esmt(1:ptop-1)  = ul_esmt(vc,1:ptop-1)
+    vln_esmt(1:ptop-1)  = vl_esmt(vc,1:ptop-1)
     uln_esmt(ptop:plev) = 0.
     vln_esmt(ptop:plev) = 0.
 #endif
@@ -1421,14 +1426,6 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
           qiiln(l)= qiiln(l)+qci(i,j,k)
           uln(l)  = uln(l)  +u(i,j,k)
           vln(l)  = vln(l)  +v(i,j,k)
-
-! #if defined(SP_ESMT) && defined(SP_USE_ESMT)
-!           uln(l) = uln(l)+u_esmt(i,j,k)
-!           vln(l) = vln(l)+v_esmt(i,j,k)
-! #else
-!           uln(l) = uln(l)+u(i,j,k)
-!           vln(l) = vln(l)+v(i,j,k)
-! #endif
 
 #if defined(SP_ESMT)
           uln_esmt(l) = uln_esmt(l)+u_esmt(i,j,k)
@@ -1452,12 +1449,13 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 
     ! ultend_esmt(vc,:) = (uln - ul(vc,:))*idt_gl
     ! vltend_esmt(vc,:) = (vln - vl(vc,:))*idt_gl
-    ultend_esmt(vc,:) = (uln_esmt(:) - ul(vc,:))*idt_gl
-    vltend_esmt(vc,:) = (vln_esmt(:) - vl(vc,:))*idt_gl
+    ultend_esmt(vc,:) = (uln_esmt(:) - ul_esmt(vc,:))*idt_gl
+    vltend_esmt(vc,:) = (vln_esmt(:) - vl_esmt(vc,:))*idt_gl
 
     ! don't use tendencies from two top levels,
     ultend_esmt(vc,ptop:ptop+1) = 0.
     vltend_esmt(vc,ptop:ptop+1) = 0.
+
 #endif
 
 #if defined(SPMOMTRANS)
