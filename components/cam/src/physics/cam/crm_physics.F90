@@ -1712,6 +1712,7 @@ end subroutine crm_physics_init
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
+#if defined( SP_CRM_SPLIT )
       !!! diagnostic output for SP_CRM_SPLIT
       if ( phys_stage == 1 ) then 
          call outfld('SPDT1   ',ftem           ,pcols   ,lchnk   )
@@ -1724,6 +1725,7 @@ end subroutine crm_physics_init
          call outfld('SPQPEVP2',qp_evp         ,pcols   ,lchnk   )
          call outfld('SPTLS2  ',t_ls           ,pcols   ,lchnk   )
       end if
+#endif
 
 
        call outfld('SPDT    ',ftem           ,pcols   ,lchnk   )
