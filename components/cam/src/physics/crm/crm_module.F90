@@ -898,7 +898,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, phys_stage, &
     day=day0
 
 #if defined( SP_CRM_SPLIT )
-    nstop  = int( nstop * 0.5 )
+    nstop  = ceiling( nstop * 0.5 )
     crm_run_time  = dt_gl * 0.5
     icrm_run_time = 1._r8/crm_run_time
 #else
