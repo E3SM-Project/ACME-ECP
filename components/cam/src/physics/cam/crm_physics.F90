@@ -1717,9 +1717,13 @@ end subroutine crm_physics_init
       if ( phys_stage == 1 ) then 
          call outfld('SPDT1   ',ftem           ,pcols   ,lchnk   )
          call outfld('SPDQ1   ',ptend%q(1,1,1) ,pcols   ,lchnk   )
+         call outfld('SPQPEVP1',qp_evp         ,pcols   ,lchnk   )
+         call outfld('SPTLS1  ',t_ls           ,pcols   ,lchnk   )
       else
          call outfld('SPDT2   ',ftem           ,pcols   ,lchnk   )
          call outfld('SPDQ2   ',ptend%q(1,1,1) ,pcols   ,lchnk   )
+         call outfld('SPQPEVP2',qp_evp         ,pcols   ,lchnk   )
+         call outfld('SPTLS2  ',t_ls           ,pcols   ,lchnk   )
       end if
 
 
