@@ -740,16 +740,25 @@ subroutine diag_init()
   call addfld ('TIMINGF ', horiz_only, 'A', '        ','CRM CPU usage efficiency: 1 - ideal'     )
   call addfld ('CLOUDTOP',(/ 'lev' /), 'A', '        ','Cloud Top PDF'                           )
 
-  !!! diagnostic output for SP_CRM_SPLIT
+#if defined( SP_CRM_SPLIT )
+  !!! diagnostic output for SP_CRM_SPLIT (tphysbc)
   call addfld ('SPDT1   ',(/ 'lev' /), 'A', 'K/s     ','T tend due to CRM in tphysbc'            )
-  call addfld ('SPDT2   ',(/ 'lev' /), 'A', 'K/s     ','T tend due to CRM in tphysac'            )
   call addfld ('SPDQ1   ',(/ 'lev' /), 'A', 'kg/kg/s ','Q tend due to CRM in tphysbc'            )
-  call addfld ('SPDQ2   ',(/ 'lev' /), 'A', 'kg/kg/s ','Q tend due to CRM in tphysac'            )
+  call addfld ('SPQPEVP1',(/ 'lev' /), 'A', 'kg/kg/s ','Prec. water evap from CRM in tphysbc'    )
+  call addfld ('SPTLS1  ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE tend from CRM in tphysbc'     )
 
-#ifdef SPMOMTRANS
+  !!! diagnostic output for SP_CRM_SPLIT (tphysac)
+  call addfld ('SPDT2   ',(/ 'lev' /), 'A', 'K/s     ','T tend due to CRM in tphysac'            )
+  call addfld ('SPDQ2   ',(/ 'lev' /), 'A', 'kg/kg/s ','Q tend due to CRM in tphysac'            )
+  call addfld ('SPQPEVP2',(/ 'lev' /), 'A', 'kg/kg/s ','Prec. water evap from CRM in tphysac'    )
+  call addfld ('SPTLS2  ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE tend from CRM in tphysac'     )
+#endif
+
+#if defined( SPMOMTRANS )
    call addfld ('UCONVMOM','m/s2    ',pver, 'A','U tendency due to CRM'                   ,phys_decomp)
    call addfld ('VCONVMOM','m/s2    ',pver, 'A','V tendency due to CRM'                   ,phys_decomp)
 #endif
+
 ! Adding crm dimensions to cam history 
   call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
   call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
@@ -815,14 +824,20 @@ subroutine diag_init()
       call add_default ('CLOUDTOP', 1, ' ')
       call add_default ('TIMINGF ', 1, ' ')
 
+#if defined( SP_CRM_SPLIT )
       !!! diagnostic output for SP_CRM_SPLIT
       call add_default ('SPDT1   ', 1, ' ')
-      call add_default ('SPDT2   ', 1, ' ')
       call add_default ('SPDQ1   ', 1, ' ')
-      call add_default ('SPDQ2   ', 1, ' ')
+      call add_default ('SPQPEVP1', 1, ' ')
+      call add_default ('SPTLS1  ', 1, ' ')
 
-! whannah
-#ifdef SPMOMTRANS
+      call add_default ('SPDT2   ', 1, ' ')
+      call add_default ('SPDQ2   ', 1, ' ')
+      call add_default ('SPQPEVP2', 1, ' ')
+      call add_default ('SPTLS2  ', 1, ' ')
+#endif
+
+#if defined( SPMOMTRANS )
       call add_default ('UCONVMOM', 1, ' ')
       call add_default ('VCONVMOM', 1, ' ')
 #endif
