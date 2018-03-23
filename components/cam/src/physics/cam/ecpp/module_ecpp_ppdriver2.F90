@@ -69,9 +69,10 @@ module module_ecpp_ppdriver2
     ! set pp options (should this be done from driver?)
     !
 
-    num_moist_ecpp = 5                ! is 5 the correct index...?
-    num_moist = 5
-    num_chem_ecpp = 2* pcnst          ! whannah - why is there a 2x here?
+    !num_moist_ecpp = 5                ! is 5 the correct index...?
+    num_moist_ecpp = 9                ! Guangxing Lin 
+    num_moist = 9 !Guangxing Lin 
+    num_chem_ecpp = 2* pcnst          ! whannah - why is there a 2x here?, because we have both interstial and cloudborne aerosol, Guangxing Lin
     num_chem = num_chem_ecpp
     param_first_ecpp = num_moist+1   ! the first index for non-water species
     p_qv = 1
@@ -505,7 +506,7 @@ module module_ecpp_ppdriver2
     ! local variables
     integer :: ncol, lchnk
     integer :: mbuf
-    integer :: id
+    integer :: id, m
     integer :: i, icc, ipass, ipp, itmpa, it, ichem, ichem2
     integer :: j, jclrcld, jcls, jclsaa, jclsbb, jt
     integer :: nstep, nstep_pp
@@ -726,15 +727,14 @@ module module_ecpp_ppdriver2
     ncol = state%ncol
     lchnk = state%lchnk
 
-    ! whannah - moved the ptend initialization up to crm_physics_tend()
-    ! !==Guangxing Lin
-    ! lq(:) = .true.
-    ! call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
-    ! !call physics_ptend_init(ptend)
-    ! !ptend%name  = 'ecpp'
-    ! ptend%lq(:) = .true.
-    ! ptend%q(:,:,:) = 0.0_r8
-    ! !==Guangxing Lin
+     !==Guangxing Lin
+     lq(:) = .true.
+     call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
+     !call physics_ptend_init(ptend)
+     !ptend%name  = 'ecpp'
+     ptend%lq(:) = .true.
+     ptend%q(:,:,:) = 0.0_r8
+     !==Guangxing Lin
 
     dtstep = dtstep_in
     dtstep_pp = dtstep_pp_in
@@ -840,7 +840,13 @@ module module_ecpp_ppdriver2
       qqcw(i)%fldcw   =>  qqcw_get_field(pbuf, i,lchnk,.true.)
     end do
 #endif
-    
+   
+       !do m=1, pcnst
+        ! if(cnst_name_cw(m) == 'soa_c1') then !debug Guangxing Lin 
+         !write(*,6550) lchnk,nstep, (minval(qqcw(m)%fldcw(:ncol, :))) ,(maxval(qqcw(m)%fldcw(:ncol,:)))
+! 6550 format('gxlin-test6550 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+ !           end if
+  !      end do 
     !---------------------------------------------------------------
     ! Begin loop over columns
     !---------------------------------------------------------------
@@ -1247,11 +1253,27 @@ module module_ecpp_ppdriver2
 !                           ,(minval(state%q(i,:,:))) ,(maxval(state%q(i,:,:)))
 ! 6540 format('whannah - ',i6,' ',i4,' - ',A3,' - min/max chem_bar/q ',f15.2,' / ',f15.2,' - ',f15.2,' / ',f15.2  )
 
+
+!          do ichem=param_first_ecpp, pcnst 
+!           if(cnst_name_cw(ichem) == 'soa_c1') then !debug Guangxing Lin
+!       write(*,6540) lchnk,i,'01',(minval(chem_bar(:,ichem+pcnst)))  ,(maxval(chem_bar(:,ichem+pcnst))) &
+!                           ,(minval(qqcw(ichem)%fldcw(i,:))) ,(maxval(qqcw(ichem)%fldcw(i,:)))
+! 6540 format('gxlin-test - ',i6,' ',i4,' - ',A3,' - min/max chem_bar/q ',e15.4,' / ',e15.4,' - ',e15.4,' / ',e15.4  )
+!            end if
+!           if(cnst_name(ichem) == 'soa_a1') then !debug Guangxing Lin
+!       write(*,6541) lchnk,i,'02',(minval(chem_bar(:,ichem)))  ,(maxval(chem_bar(:,ichem))) &
+!                           ,(minval(state%q(i,:,ichem))) ,(maxval(state%q(i,:,ichem)))
+! 6541 format('gxlin-test2 - ',i6,' ',i4,' - ',A3,' - min/max chem_bar/q ',e15.4,' / ',e15.4,' - ',e15.4,' / ',e15.4  )
+!            end if
+!           end do
+
+
         ! Interstial species 
         ptend_qqcw(i,:,:) = 0.0
         do k=1, pver
           lk=pver-k+1 
           do ichem=param_first_ecpp, pcnst 
+
             ptend%q(i,k,ichem)= (chem_bar(lk, ichem)-state%q(i,k,ichem))/dtstep
             ! ptend_qqcw(i,k,ichem)=(chem_bar(lk, ichem+pcnst)-qqcw(i,k,ichem))/dtstep
             ! qqcw(i,k,ichem) = chem_bar(lk, ichem+pcnst)
@@ -1278,6 +1300,12 @@ module module_ecpp_ppdriver2
     ! End column loop
     !---------------------------------------------------------------
 
+       !do m=1, pcnst
+        ! if(cnst_name_cw(m) == 'soa_c1') then !debug Guangxing Lin 
+        ! write(*,6551) lchnk,nstep, (minval(qqcw(m)%fldcw(:ncol, :))) ,(maxval(qqcw(m)%fldcw(:ncol,:)))
+ !6551 format('gxlin-test6551 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+   !     end do 
 
     ptend_cldchem  = 0.0
     ptend_rename   = 0.0

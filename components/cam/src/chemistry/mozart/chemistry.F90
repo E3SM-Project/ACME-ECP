@@ -1362,7 +1362,8 @@ end function chem_is_active
     use mo_drydep,           only : drydep_update
     use mo_neu_wetdep,       only : neu_wetdep_tend, do_neu_wetdep
     use aerodep_flx,         only : aerodep_flx_prescribed
-    
+   use time_manager,      only : get_nstep !Guangxing Lin
+ 
     implicit none
 
 !-----------------------------------------------------------------------
@@ -1401,6 +1402,10 @@ end function chem_is_active
     integer :: tim_ndx
 
     logical :: lq(pcnst)
+
+    integer :: nstep !Guangxing Lin
+
+    nstep = get_nstep() !Guangxing Lin
 
     if ( .not. chem_step ) return
 
@@ -1446,6 +1451,15 @@ end function chem_is_active
     call neu_wetdep_tend(lchnk,ncol,state%q,state%pmid,state%pdel,state%zi,state%t,dt, &
          prain, nevapr, cldfr, cmfdqr, ptend%q)
 
+!Guangxing Lin debug
+      !do m=1, pcnst
+       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+        ! write(*,9999) lchnk,nstep, (minval(ptend%q(:ncol,:,m)*dt)) ,(maxval(ptend%q(:ncol,:,m)*dt))
+ !9999 format('gxlin-test9999 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !       end if
+   !   end do
+
+
 !-----------------------------------------------------------------------
 ! compute tendencies and surface fluxes
 !-----------------------------------------------------------------------
@@ -1466,6 +1480,13 @@ end function chem_is_active
                           chem_name, drydepflx, cam_in%cflx, ptend%q, pbuf)
 
     call t_stopf( 'chemdr' )
+!Guangxing Lin debug
+      !do m=1, pcnst
+       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+        ! write(*,9998) lchnk,nstep, (minval(ptend%q(:ncol,:,m)*dt)) ,(maxval(ptend%q(:ncol,:,m)*dt))
+ !9998 format('gxlin-test9998 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !       end if
+   !   end do
 
 !-----------------------------------------------------------------------
 ! set flags for tracer tendencies (water and gas phase constituents)

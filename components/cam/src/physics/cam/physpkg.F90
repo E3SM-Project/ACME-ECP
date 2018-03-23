@@ -1520,6 +1520,13 @@ subroutine tphysac (ztodt,   cam_in,  &
     end do
 
 
+       !Guangxing Lin debug
+     ! do m=1, pcnst
+     !    if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+     !    write(*,6998) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6998 format('gxlin-test6998 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !       end if
+  !    end do
 if (l_tracer_aero) then
 
     ! emissions of aerosols and gas-phase chemistry constituents at surface
@@ -1532,6 +1539,13 @@ if (l_tracer_aero) then
     end if
 
 end if ! l_tracer_aero
+       !Guangxing Lin debug
+      !do m=1, pcnst
+       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+        ! write(*,6997) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+! 6997 format('gxlin-test6997 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+ !        end if
+  !    end do
 
     ! get nstep and zero array for energy checker
     zero = 0._r8
@@ -1558,6 +1572,13 @@ end if ! l_tracer_aero
 !!== KZ_WCON
 
     call t_stopf('tphysac_init')
+       !Guangxing Lin debug
+      !do m=1, pcnst
+       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+        ! write(*,6992) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6992 format('gxlin-test6992 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !       end if
+   !   end do
 
 if (l_tracer_aero) then
     !===================================================
@@ -1576,6 +1597,13 @@ if (l_tracer_aero) then
     call physics_update(state, ptend, ztodt, tend)
     call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
          cam_in%cflx)
+       !Guangxing Lin debug
+     ! do m=1, pcnst
+      !   if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+       !  write(*,6991) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+! 6991 format('gxlin-test6991 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+ !        end if
+  !    end do
 
     ! Chemistry calculation
     if (chem_is_active()) then
@@ -1589,6 +1617,13 @@ if (l_tracer_aero) then
     call t_stopf('adv_tracer_src_snk')
 
 end if ! l_tracer_aero
+       !Guangxing Lin debug
+      !do m=1, pcnst
+       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+       !  write(*,6993) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6993 format('gxlin-test6993 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !       end if
+  !    end do
 
     !===================================================
     ! Vertical diffusion/pbl calculation
@@ -1648,6 +1683,13 @@ if (l_rayleigh) then
     call check_tracers_chng(state, tracerint, "vdiff", nstep, ztodt, cam_in%cflx)
 
 end if ! l_rayleigh
+       !Guangxing Lin debug
+      !do m=1, pcnst
+       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+        ! write(*,6994) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+! 6994 format('gxlin-test6994 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+ !        end if
+  !    end do
 
 if (l_tracer_aero) then
 
@@ -1679,6 +1721,13 @@ if (l_tracer_aero) then
     call charge_fix( ncol, state%q(:,:,:) )
 
 end if ! l_tracer_aero
+       !Guangxing Lin debug
+      !do m=1, pcnst
+      !   if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+      !   write(*,6995) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+! 6995 format('gxlin-test6995 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+ !        end if
+  !    end do
 
 if (l_gw_drag) then
     !===================================================
@@ -1815,6 +1864,13 @@ end if ! l_ac_energy_chk
     end do
     water_vap_ac_2d(:ncol) = ftem(:ncol,1)
 
+       !Guangxing Lin debug
+      !do m=1, pcnst
+       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+        ! write(*,6996) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6996 format('gxlin-test6996 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !       end if
+  !    end do
 end subroutine tphysac
 
 subroutine tphysbc (ztodt,               &
@@ -2935,6 +2991,14 @@ if (l_rad) then
     call t_stopf('radiation')
 
 end if ! l_rad
+       
+       !Guangxing Lin debug
+      !do m=1, pcnst
+       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+        ! write(*,6999) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6999 format('gxlin-test6999 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !       end if
+  !    end do
 
     if(do_aerocom_ind3) then
        call cloud_top_aerocom(state, pbuf) 

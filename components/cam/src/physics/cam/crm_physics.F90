@@ -830,7 +830,7 @@ end subroutine crm_physics_init
 
    integer ii, jj, mm
    integer iii,lll
-   integer ixcldliq, ixcldice, ixnumliq, ixnumice
+   integer ixcldliq, ixcldice, ixnumliq, ixnumice,ixrain, ixsnow, ixnumrain, ixnumsnow !Guangxing Lin
    integer i, k, m
    integer ifld
    logical :: use_ECPP, use_SPCAM
@@ -923,6 +923,12 @@ end subroutine crm_physics_init
 
    state = state_save
    tend  = tend_save
+      ! do m=1, pcnst
+      !   if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+      !   write(*,6552) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m))), (minval(qaer(:ncol,:,m))), (maxval(qaer(:ncol,:,m)))
+ !6552 format('gxlin-test6552 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4,'qaer= ', e15.4, ' ',e15.4  )
+  !          end if
+   !     end do
   
    cldo(:ncol, :) = cldo_save(:ncol, :)
 
@@ -1918,10 +1924,22 @@ end subroutine crm_physics_init
          if (SPCAM_microp_scheme .eq. 'm2005') then
             call cnst_get_ind('NUMLIQ', ixnumliq)
             call cnst_get_ind('NUMICE', ixnumice)
+            call cnst_get_ind('RAINQM', ixrain)!Guangxing Lin
+            call cnst_get_ind('SNOWQM', ixsnow)!Guangxing Lin
+            call cnst_get_ind('NUMRAI', ixnumrain)!Guangxing Lin
+            call cnst_get_ind('NUMSNO', ixnumsnow)!Guangxing Lin
             ptend%lq(ixnumliq) = .TRUE.
             ptend%lq(ixnumice) = .TRUE.
+            ptend%lq(ixrain) = .TRUE. !Guangxing Lin
+            ptend%lq(ixsnow) = .TRUE. !Guangxing Lin
+            ptend%lq(ixnumrain) = .TRUE. !Guangxing Lin
+            ptend%lq(ixnumsnow) = .TRUE. !Guangxing Lin
             ptend%q(:, :, ixnumliq) = 0._r8
             ptend%q(:, :, ixnumice) = 0._r8
+            ptend%q(:, :, ixrain) = 0._r8 !Guangxing Lin
+            ptend%q(:, :, ixsnow) = 0._r8 !Guangxing Lin
+            ptend%q(:, :, ixnumrain) = 0._r8 !Guangxing Lin
+            ptend%q(:, :, ixnumsnow) = 0._r8 !Guangxing Lin
 
             do i = 1, ncol
              do k=1, crm_nz 
@@ -1930,10 +1948,18 @@ end subroutine crm_physics_init
                do jj=1, crm_ny
                  ptend%q(i,m,ixnumliq) = ptend%q(i,m,ixnumliq) + crm_nc(i,ii,jj,k) 
                  ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_ni(i,ii,jj,k)
+                 ptend%q(i,m,ixrain) = ptend%q(i,m,ixrain) + crm_qr(i,ii,jj,k) !Guangxing Lin
+                 ptend%q(i,m,ixsnow) = ptend%q(i,m,ixsnow) + crm_qs(i,ii,jj,k) !Guangxing Lin
+                 ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_nr(i,ii,jj,k) !Guangxing Lin
+                 ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_ns(i,ii,jj,k) !Guangxing Lin
                end do
                end do
                ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/ztodt
                ptend%q(i,m,ixnumice) = (ptend%q(i,m,ixnumice)/(crm_nx*crm_ny) - state%q(i,m,ixnumice))/ztodt
+               ptend%q(i,m,ixrain) = (ptend%q(i,m,ixrain)/(crm_nx*crm_ny) - state%q(i,m,ixrain))/ztodt!Guangxing Lin
+               ptend%q(i,m,ixsnow) = (ptend%q(i,m,ixsnow)/(crm_nx*crm_ny) - state%q(i,m,ixsnow))/ztodt!Guangxing Lin
+               ptend%q(i,m,ixnumrain) = (ptend%q(i,m,ixnumrain)/(crm_nx*crm_ny) - state%q(i,m,ixnumrain))/ztodt!Guangxing Lin
+               ptend%q(i,m,ixnumsnow) = (ptend%q(i,m,ixnumsnow)/(crm_nx*crm_ny) - state%q(i,m,ixnumsnow))/ztodt!Guangxing Lin
              end do
             end do
          endif
@@ -2087,6 +2113,12 @@ end subroutine crm_physics_init
         enddo
       enddo
     enddo
+       !do m=1, pcnst
+        ! if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+         !write(*,6551) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+! 6551 format('gxlin-test0 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+ !           end if
+  !      end do
     !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 
     !----------------------------------------------------
@@ -2109,6 +2141,12 @@ end subroutine crm_physics_init
     ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
     call physics_update (state, ptend, ztodt, tend)
 #endif
+       !do m=1, pcnst
+        ! if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+         !write(*,6550) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6550 format('gxlin-test1 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+   !     end do
 
     !----------------------------------------------------
     ! ECPP - Explicit-Cloud Parameterized-Pollutant
@@ -2116,7 +2154,7 @@ end subroutine crm_physics_init
     ! pollutant transport and chemistry
     !----------------------------------------------------
 
-#ifdef ECPP
+#ifdef ECPP 
     if (use_ECPP) then
 
       pblh_idx  = pbuf_get_index('pblh')
@@ -2187,6 +2225,20 @@ end subroutine crm_physics_init
       end if
     endif ! use_ECPP
 #endif
+       !do m=1, pcnst
+        ! if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+         !write(*,6549) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6549 format('gxlin-test2 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+         !if(cnst_name(m) == 'soa_a2') then !debug Guangxing Lin 
+         !write(*,6599) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6599 format('gxlin-test6599 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+   !      if(cnst_name(m) == 'soa_a3') then !debug Guangxing Lin 
+    !     write(*,6500) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6500 format('gxlin-test6500 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+        !end do
 
 
     call t_stopf('bc_aerosols_mmf')

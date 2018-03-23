@@ -165,7 +165,8 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 
    do m=1, pcnst
       if(species_class(m).eq.spec_class_gas) then
-        ptend%lq(m) = .true.
+        !ptend%lq(m) = .true. !debug, Guangxing Lin
+        ptend%lq(m) = .false. 
       end if
    end do
 #endif
