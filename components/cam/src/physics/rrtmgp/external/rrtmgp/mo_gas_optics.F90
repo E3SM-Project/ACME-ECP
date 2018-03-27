@@ -35,7 +35,7 @@ module mo_gas_optics
   ! -----------------------------------------------------------------------------------
   type, extends(ty_spectral_disc), public :: ty_gas_optics_specification
     private
-    character(32), &
+    character(256), &
               dimension(:),   allocatable :: gas_names  ! gas names
 
     integer,  dimension(:,:), allocatable :: flavor        ! major species pair; (2,nflav)
@@ -408,9 +408,9 @@ contains
                                                                         ! gas-which-are-present
 
     real(wp),          dimension(:,:,:), allocatable :: vmr             ! volume mixing ratios; (nlay,ncol,ngas)
-    character(len=32), dimension(:),     allocatable :: terse_gas_names ! The gases known to the k-distribution with
+    character(len=256), dimension(:),     allocatable :: terse_gas_names ! The gases known to the k-distribution with
                                                                         ! concentrations present
-    character(len=32), dimension(:), allocatable     :: minor_gas_list
+    character(len=256), dimension(:), allocatable     :: minor_gas_list
     integer                                          :: imnr
     ! ----------------------------------------------------------
     ! dimensions - determined from problem size
@@ -578,7 +578,7 @@ contains
                                       intent(in) :: vmr ! volume mixing ratios
     real(wp), dimension(ncol,nlay  ), intent(in) :: col_dry ! Column amount of dry air
     ! List of minor gases to be processed
-    character(len=32), dimension(:), intent(in)  :: minor_gas_list
+    character(len=256), dimension(:), intent(in)  :: minor_gas_list
 
     ! output
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: tau          ! gas absorption optical depth
@@ -667,6 +667,7 @@ contains
       col_mix,fmajor,&
       jeta,tropo,jtemp,jpress, & ! local input
       tau)
+
     call gas_optical_depths_minor( & !optical depths from minor gases in lower atmosphere, includes h2o continuum
       ncol,nlay,ngpt,ngas,nflav, & ! dimensions
       idx_h2o,&
@@ -965,27 +966,30 @@ contains
       size(vmr_ref,dim=3)))
     vmr_ref_tmp = vmr_ref
 
-    this%gas_names = gas_names
-    this%press_ref = press_ref
-    this%temp_ref  = temp_ref
-    this%vmr_ref   = vmr_ref_tmp
-    this%kmajor       = kmajor
-    this%kminor_lower = kminor_lower
-    this%kminor_upper = kminor_upper
-    this%gas_minor = gas_minor
-    this%identifier_minor = identifier_minor
-    this%minor_gases_lower = minor_gases_lower
-    this%minor_gases_upper = minor_gases_upper
-    this%minor_limits_gpt_lower = minor_limits_gpt_lower
-    this%minor_limits_gpt_upper = minor_limits_gpt_upper
-    this%minor_scales_with_density_lower = minor_scales_with_density_lower
-    this%minor_scales_with_density_upper = minor_scales_with_density_upper
-    this%scaling_gas_lower = scaling_gas_lower
-    this%scaling_gas_upper = scaling_gas_upper
-    this%scale_by_complement_lower = scale_by_complement_lower
-    this%scale_by_complement_upper = scale_by_complement_upper
-    this%kminor_start_lower = kminor_start_lower
-    this%kminor_start_upper = kminor_start_upper
+    ! Try allocating first?
+    !allocate(this%gas_names, source=gas_names) !(size(gas_names, 1)))
+    ! Allocate and initialize
+    allocate(this%gas_names, source=gas_names)
+    allocate(this%press_ref, source=press_ref)
+    allocate(this%temp_ref, source=temp_ref)
+    allocate(this%vmr_ref, source=vmr_ref_tmp)
+    allocate(this%kmajor, source=kmajor)
+    allocate(this%kminor_lower, source=kminor_lower)
+    allocate(this%kminor_upper, source=kminor_upper)
+    allocate(this%gas_minor, source=gas_minor)
+    allocate(this%identifier_minor, source=identifier_minor)
+    allocate(this%minor_gases_lower, source=minor_gases_lower)
+    allocate(this%minor_gases_upper, source=minor_gases_upper)
+    allocate(this%minor_limits_gpt_lower, source=minor_limits_gpt_lower)
+    allocate(this%minor_limits_gpt_upper, source=minor_limits_gpt_upper)
+    allocate(this%minor_scales_with_density_lower, source=minor_scales_with_density_lower)
+    allocate(this%minor_scales_with_density_upper, source=minor_scales_with_density_upper)
+    allocate(this%scaling_gas_lower, source=scaling_gas_lower)
+    allocate(this%scaling_gas_upper, source=scaling_gas_upper)
+    allocate(this%scale_by_complement_lower, source=scale_by_complement_lower)
+    allocate(this%scale_by_complement_upper, source=scale_by_complement_upper)
+    allocate(this%kminor_start_lower, source=kminor_start_lower)
+    allocate(this%kminor_start_upper, source=kminor_start_upper)
     if(allocated(rayl_lower) .neqv. allocated(rayl_upper)) then
       err_message = "rayl_lower and rayl_upper must have the same allocation status"
       return
@@ -998,6 +1002,7 @@ contains
 
     ! ---- post processing ----
     ! Incoming coefficients file has units of Pa
+    ! TODO: what is going on here?
     this%press_ref(:) = this%press_ref(:)
 
     ! creates log reference pressure
@@ -1045,8 +1050,8 @@ contains
     character(len=128)                             :: error_msg
 
     ! Local variables
-    character(len=32), dimension(count(this%is_key(:)  )) :: key_gas_names
-    integer                                               :: igas
+    character(len=256), dimension(count(this%is_key(:)  )) :: key_gas_names
+    integer                                                :: igas
     ! --------------------------------------
     error_msg = ""
     key_gas_names = pack(this%gas_names, mask=this%is_key)
@@ -1068,10 +1073,10 @@ contains
     class(ty_gas_optics_specification), intent(in)       :: this
     class(ty_gas_concs), intent(in)                      :: gas_desc
     integer, intent(in)                                  :: ngas
-    character(32), dimension(ngas), intent(in)           :: names_spec
+    character(256), dimension(ngas), intent(in)           :: names_spec
 
     ! List of minor gases to be used in gas_optics()
-    character(len=32), dimension(:), allocatable         :: get_minor_list
+    character(len=256), dimension(:), allocatable         :: get_minor_list
     ! Logical flag for minor species in specification (T = minor; F = not minor)
     logical, dimension(size(names_spec))                 :: gas_is_present
     integer                                              :: igas, icnt
@@ -1112,7 +1117,7 @@ contains
   ! return the gas names
   pure function get_gases(this)
     class(ty_gas_optics_specification), intent(in) :: this
-    character(32), dimension(this%get_ngas())     :: get_gases
+    character(256), dimension(this%get_ngas())     :: get_gases
 
     get_gases = this%gas_names
   end function get_gases
