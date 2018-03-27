@@ -149,6 +149,14 @@ contains
       idx_mnr     = string_loc_in_array(minor_gases_atm(imnr), identifier_minor)
       ! Find name of gas associated with minor species identifier (e.g. h2o)
       idx_col_gas = string_loc_in_array(gas_minor(idx_mnr),    gas_names)
+      if (idx_col_gas <= 0) then
+         print *, 'idx_col_gas = ', idx_col_gas, &
+                  'gas_minor(idx_mnr) = ', gas_minor(idx_mnr), &
+                  'idx_mnr = ', idx_mnr, &
+                  'gas_names: ', gas_names
+         stop
+      end if
+
       ! No need to keep processing if the gas isn't present
       if (.not. any(idx_col_gas == idx_gas_list)) cycle
 
