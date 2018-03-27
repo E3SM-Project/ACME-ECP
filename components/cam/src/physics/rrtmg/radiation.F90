@@ -127,8 +127,8 @@ subroutine radiation_readnl(nlfile, dtime_in)
 #endif
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical, &
                               mpi_character, masterproc
-   use time_manager, only: get_step_size
-   use cam_logfile, only: iulog
+   use time_manager,    only: get_step_size
+   use cam_logfile,     only: iulog
 
    ! File containing namelist input
    character(len=*), intent(in) :: nlfile
@@ -139,14 +139,9 @@ subroutine radiation_readnl(nlfile, dtime_in)
    integer :: dtime  ! timestep size
    character(len=*), parameter :: subroutine_name = 'radiation_readnl'
 
-   integer :: iradsw, iradlw, irad_always
-   logical :: use_rad_dt_cosz, spectralflux
-
    ! Variables defined in namelist
-   ! TODO: why are these prefaced with rrtmgp instead of radiation?
-   namelist /radiation_nl/ &
-                        iradsw, iradlw, irad_always, &
-                        use_rad_dt_cosz, spectralflux
+   namelist /radiation_nl/ iradsw, iradlw, irad_always, &
+                           use_rad_dt_cosz, spectralflux
 
    ! Read the namelist, only if called from master process
    ! TODO: better documentation and cleaner logic here?
@@ -164,19 +159,14 @@ subroutine radiation_readnl(nlfile, dtime_in)
       call freeunit(unitn)
    end if
 
+#ifdef SPMD
    ! Broadcast namelist variables
    call mpibcast(iradsw, 1, mpi_integer, mstrid, mpicom, ierr)
    call mpibcast(iradlw, 1, mpi_integer, mstrid, mpicom, ierr)
    call mpibcast(irad_always, 1, mpi_integer, mstrid, mpicom, ierr)
    call mpibcast(use_rad_dt_cosz, 1, mpi_logical, mstrid, mpicom, ierr)
    call mpibcast(spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
-
-   ! Set module data
-   iradsw          = iradsw
-   iradlw          = iradlw
-   irad_always     = irad_always
-   use_rad_dt_cosz = use_rad_dt_cosz
-   spectralflux    = spectralflux
+#endif
 
    ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
    if (present(dtime_in)) then
@@ -188,19 +178,13 @@ subroutine radiation_readnl(nlfile, dtime_in)
    if (iradlw      < 0) iradlw      = nint((-iradlw     *3600._r8)/dtime)
    if (irad_always < 0) irad_always = nint((-irad_always*3600._r8)/dtime)
 
-   !-----------------------------------------------------------------------
    ! Print runtime options to log.
-   !-----------------------------------------------------------------------
-
    if (masterproc) then
-      write(iulog,*) 'RRTMGP radiation scheme parameters:'
-      write(iulog,10) iradsw, iradlw, &
-                      irad_always, use_rad_dt_cosz, spectralflux
+      write(iulog,*) 'RRTMG radiation scheme parameters:'
+      write(iulog,10) iradsw, iradlw, irad_always, &
+                      use_rad_dt_cosz, spectralflux
    end if
-
-10 format('  LW coefficents file: ',                                a/, &
-          '  SW coefficents file: ',                                a/, &
-          '  Frequency (timesteps) of Shortwave Radiation calc:  ',i5/, &
+10 format('  Frequency (timesteps) of Shortwave Radiation calc:  ',i5/, &
           '  Frequency (timesteps) of Longwave Radiation calc:   ',i5/, &
           '  SW/LW calc done every timestep for first N steps. N=',i5/, &
           '  Use average zenith angle:                           ',l5/, &
@@ -209,7 +193,7 @@ subroutine radiation_readnl(nlfile, dtime_in)
 end subroutine radiation_readnl
 
 
-  subroutine radiation_register
+subroutine radiation_register
 !-----------------------------------------------------------------------
 ! 
 ! Register radiation fields in the physics buffer
@@ -1444,7 +1428,7 @@ end function radiation_nextsw_cday
     call zenith (calday, clat, clon, coszrs, ncol, dt_avg) !==Guangxing Lin  
 
     ! Send cosine solar zenith angle to history buffer
-    call outfld('COSZRS', coszrs, ncol, state%lchnk)
+    call outfld('COSZRS', coszrs(:ncol), ncol, state%lchnk)
     
     if (swrad_off) then
        coszrs(:)=0._r8 ! coszrs is only output for zenith
