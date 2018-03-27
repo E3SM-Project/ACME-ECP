@@ -144,20 +144,6 @@ logical :: pbuf_global_allocate       ! allocate all buffers as global (default:
 
 logical            :: print_energy_errors ! switch for diagnostic output from check_energy module
 
-! Radiative heating rate calculation options
-
-!integer :: iradsw        ! freq. of shortwave radiation calc in time steps (positive)
-!                         ! or hours (negative).  Default: -1
-!integer :: iradlw        ! frequency of longwave rad. calc. in time steps (positive)
-!                         ! or hours (negative).  Default: -1
-!integer :: iradae        ! frequency of absorp/emis calc in time steps (positive)
-!                         ! or hours (negative).  Default: -12
-!integer :: irad_always   ! Specifies length of time in timesteps (positive)
-!                         ! or hours (negative) SW/LW radiation will be run continuously
-!                         ! from the start of an initial run.  Default: 0
-!logical :: spectralflux  ! calculate fluxes (up and down) per band. Default: FALSE
-!logical :: use_rad_dt_cosz  ! if true, uses the radiation dt for all cosz calculations
-
 ! SCM Options
 logical  :: single_column
 real(r8) :: scmlat,scmlon
@@ -213,7 +199,6 @@ contains
 
    use chem_surfvals,    only: chem_surfvals_readnl
    use check_energy,     only: check_energy_defaultopts, check_energy_setopts
-   use radiation,        only: radiation_defaultopts, radiation_setopts, radiation_printopts
    use cam_restart,      only: restart_defaultopts, restart_setopts, restart_printopts
    use carma_flags_mod,  only: carma_readnl
    use co2_cycle,        only: co2_cycle_readnl
@@ -322,9 +307,6 @@ contains
   ! conservation checks
   namelist /cam_inparm/ print_energy_errors
 
-! ! radiative heating calculation options
-! namelist /cam_inparm/ iradsw, iradlw, iradae, irad_always, spectralflux, use_rad_dt_cosz
-
   ! scam
   namelist /cam_inparm/ iopfile,scm_iop_srf_prop,scm_relaxation, &
                         scm_relaxation_low, scm_relaxation_high, &
@@ -359,15 +341,6 @@ contains
    ! conservation
    call check_energy_defaultopts( &
       print_energy_errors_out = print_energy_errors )
-
-!  ! radiative heating calcs
-!  call radiation_defaultopts( &
-!     iradsw_out      = iradsw,     &
-!     iradlw_out      = iradlw,     &
-!     iradae_out      = iradae,     &
-!     irad_always_out = irad_always, &
-!     spectralflux_out = spectralflux,&
-!     use_rad_dt_cosz_out = use_rad_dt_cosz )
 
    if (present(single_column_in)) then
       call scam_default_opts(scmlat_out=scmlat,scmlon_out=scmlon, &
@@ -440,14 +413,6 @@ contains
    ! conservation
    call check_energy_setopts( &
       print_energy_errors_in = print_energy_errors )
-
-!  call radiation_setopts( dtime, nhtfrq(1), &
-!     iradsw_in      = iradsw,     &
-!     iradlw_in      = iradlw,     &
-!     iradae_in      = iradae,     &
-!     irad_always_in = irad_always, &
-!     spectralflux_in = spectralflux,&
-!     use_rad_dt_cosz_in = use_rad_dt_cosz )
 
 ! 
 ! Set runtime options for single column mode
@@ -569,8 +534,6 @@ contains
 9108 format('Lowest level for dry adiabatic adjust (NLVDRY)',i10)
 
 
-      call radiation_printopts()
-
       if ( (adiabatic .and. ideal_phys) .or. (adiabatic .and. aqua_planet) .or. &
            (ideal_phys .and. aqua_planet) ) then
          call endrun ('READ_NAMELIST: Only one of ADIABATIC, IDEAL_PHYS, or AQUA_PLANET can be .true.')
@@ -670,14 +633,6 @@ subroutine distnl
 
    ! Conservation
    call mpibcast (print_energy_errors, 1, mpilog, 0, mpicom)
-
-!  ! Radiative heating calculation
-!  call mpibcast (iradsw,     1, mpiint, 0, mpicom)
-!  call mpibcast (iradlw,     1, mpiint, 0, mpicom)
-!  call mpibcast (iradae,     1, mpiint, 0, mpicom)
-!  call mpibcast (irad_always,1, mpiint, 0, mpicom)
-!  call mpibcast (spectralflux,1, mpilog, 0, mpicom)
-!  call mpibcast (use_rad_dt_cosz,1,mpilog,0,mpicom)
 
 end subroutine distnl
 #endif
