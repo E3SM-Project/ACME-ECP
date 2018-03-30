@@ -5,7 +5,7 @@ module use /ccs/home/norton/.modules
 
 module load   python/2.7.9
 module rm     subversion
-module load   subversion/1.8.3
+module load   subversion/1.8.13
 module rm     cmake
 module load   cmake/2.8.10.2
 module rm     PrgEnv-cray
