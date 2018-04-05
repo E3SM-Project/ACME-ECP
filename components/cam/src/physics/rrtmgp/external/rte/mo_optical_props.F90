@@ -649,9 +649,9 @@ contains
     ! ----- 
     integer :: ncol, nlay, ngpt, nbnd, nmom1
     ! ----- 
-    ncol = op1%get_ncol()
-    nlay = op1%get_nlay() 
-    ngpt = op1%get_ngpt()
+    ncol = op2%get_ncol()
+    nlay = op2%get_nlay() 
+    ngpt = op2%get_ngpt()
     nbnd = size(gpt_lims, 2) 
     
     err_message = "" 
@@ -659,15 +659,35 @@ contains
     ! Rudimentary error checking -- users are responsible for ensuring consistency of 
     !   array sizes within an object of ty_optical props 
     !
-    if(any([op2%get_ncol(), op2%get_nlay()] /= [ncol, nlay])) & 
-      err_message = "ty_optical_props%increment_by: optical properties objects are inconsistently sized" 
-    if(op2%get_ngpt() /= nbnd)                           & 
+    if(any([op1%get_ncol(), op1%get_nlay()] /= [ncol, nlay])) then
+      err_message = "ty_optical_props%increment_by: " // &
+                    "optical properties objects are inconsistently sized"
+      return
+    end if
+    if(op1%get_ngpt() /= nbnd) then
       err_message = "ty_optical_props%increment_by: " // & 
-                    "number of bands not consistent between optical properties objects, g-point limits" 
-    if(minval(gpt_lims) < 1 .or. maxval(gpt_lims) > ngpt) & 
+                    "number of bands not consistent between " // &
+                    "optical properties objects, g-point limits" 
+      return
+    end if
+    if(minval(gpt_lims) < 1 .or. maxval(gpt_lims) > ngpt) then 
       err_message = "ty_optical_props%increment_by: " // & 
                     "band limits not consistent with number of gpoints" 
+      return
+    end if
     if(err_message /= "") return 
+
+    ! Validate
+    err_message = op1%validate()
+    if (err_message /= "") then
+       err_message = err_message // " (before incrementing)"
+       return
+    end if
+    err_message = op2%validate()
+    if (err_message /= "") then
+       err_message = err_message // " (before incrementing)"
+       return
+    end if
         
     select type (op2)
       class is (ty_optical_props_arry)
@@ -728,6 +748,19 @@ contains
                                               nbnd, gpt_lims)
         end select
     end select
+
+    ! Validate
+    err_message = op1%validate()
+    if (err_message /= "") then
+       err_message = err_message // " (after incrementing)"
+       return
+    end if
+    err_message = op2%validate()
+    if (err_message /= "") then
+       err_message = err_message // " (after incrementing)"
+       return
+    end if
+ 
   end function increment_arry_byband
   ! ------------------------------------------------------------------------------------------
   ! Incrementing -- adding optical properties together 

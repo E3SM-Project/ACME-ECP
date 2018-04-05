@@ -77,7 +77,8 @@ contains
                                       ! [W/m2] (ncol, nlay, ngpt)
     real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_emis         ! Surface emissivity      []
     real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_src          ! Surface source function [W/m2]
-    real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_up, flux_dn ! Fluxes [W/m2]
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_up          ! Fluxes [W/m2]
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: flux_dn        ! Fluxes [W/m2]
                                                                            ! Top level (= merge(1, nlay+1, top_is_1)
                                                                            ! must contain incident flux boundary condition
     real(wp), dimension(ncol,       ngpt), optional, &                     ! "User"-supplied integration secants    

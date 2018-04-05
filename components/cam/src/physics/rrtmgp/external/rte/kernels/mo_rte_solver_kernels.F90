@@ -49,7 +49,8 @@ contains
                                                ! Planck source at layer edge for radiation in decreasing ilay direction [W/m2]
     real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_emis         ! Surface emissivity      []
     real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_src          ! Surface source function [W/m2]
-    real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_up, flux_dn ! Radiances [W/m2-str]
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_up          ! Radiances [W/m2-str]
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: flux_dn        ! Radiances [W/m2-str]
                                                                            ! Top level must contain incident flux boundary condition
     ! Local variables
     real(wp), dimension(ncol,nlay+1,ngpt) :: radn_dn, radn_up ! Fluxes per quad angle
@@ -288,7 +289,7 @@ contains
     logical(wl),                intent( in) :: top_is_1
     real(wp), dimension(ncol,nlay,  ngpt), intent( in) :: tau          ! Absorption optical thickness []
     real(wp), dimension(ncol            ), intent( in) :: mu0          ! cosine of solar zenith angle
-    real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_dir     ! Direct-beam flux, spectral [W/m2]
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: flux_dir   ! Direct-beam flux, spectral [W/m2]
                                                                        ! Top level must contain incident flux boundary condition
     integer :: icol, ilev, igpt
     real(wp) :: mu0_inv(ncol)
@@ -333,11 +334,10 @@ contains
     real(wp), dimension(ncol            ), intent( in) :: mu0     ! cosine of solar zenith angle
     real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_alb_dir, sfc_alb_dif
                                                                   ! Spectral albedo of surface to direct and diffuse radiation
-    real(wp), dimension(ncol,nlay+1,ngpt), &
-                                           intent(out) :: flux_up, flux_dn, &  ! Fluxes [W/m2]
-                                                          flux_dir             ! Downward direct
-                                                                               ! Top level (= merge(1, nlay+1, top_is_1)
-                                                                               ! must contain incident flux boundary condition
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_up, flux_dn ! Fluxes [W/m2]
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: flux_dir       ! Downward direct
+                                                                           ! Top level (= merge(1, nlay+1, top_is_1)
+                                                                           ! must contain incident flux boundary condition
     integer :: igpt
     real(wp), dimension(ncol,nlay) :: Rdif, Tdif, Rdir, Tdir, Tnoscat
     ! ------------------------------------

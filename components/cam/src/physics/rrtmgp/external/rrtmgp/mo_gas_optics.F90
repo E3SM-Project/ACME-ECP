@@ -123,6 +123,7 @@ module mo_gas_optics
     procedure, public :: get_press_ref_max
     procedure, public :: get_temp_ref_min
     procedure, public :: get_temp_ref_max
+    procedure, public :: get_solar_source
     ! Internal procedures
     procedure, private :: init_int
     procedure, private :: init_ext
@@ -1157,6 +1158,14 @@ contains
     get_temp_ref_max = this%temp_ref_max
   end function get_temp_ref_max
 
+  !--------------------------------------------------------------------------------------------------------------------
+  ! return the solar source function if present
+  pure function get_solar_source(this)
+     class(ty_gas_optics_specification), intent(in) :: this
+     real(wp) :: get_solar_source(size(this%solar_src))
+
+     get_solar_source = this%solar_src
+  end function get_solar_source
 
   !--------------------------------------------------------------------------------------------------------------------
   ! --- gas optical depth calculations

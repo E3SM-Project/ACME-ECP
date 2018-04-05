@@ -48,10 +48,6 @@ save
 
 public :: &
    radiation_register,    &! registers radiation physics buffer fields
-   radiation_defaultopts, &! set default values of namelist variables in runtime_opts
-   radiation_setopts,     &! set namelist values from runtime_opts
-   radiation_printopts,   &! print namelist values to log
-   radiation_get,         &! provide read access to private module data
    radiation_nextsw_cday, &! calendar day of next radiation calculation
    radiation_do,          &! query which radiation calcs are done this timestep
    radiation_init,        &! calls radini
@@ -73,7 +69,6 @@ integer :: lu_idx       = 0
 integer :: ld_idx       = 0 
 integer :: cldfsnow_idx = 0 
 integer :: cld_idx      = 0 
-integer :: concld_idx   = 0
 integer :: rel_idx      = 0
 integer :: rel_fn_idx   = 0 
 integer :: rei_idx      = 0
@@ -224,128 +219,6 @@ subroutine radiation_register
     end if
 
   end subroutine radiation_register
-
-!================================================================================================
-!==Guangxing Lin
-!subroutine radiation_defaultopts(iradsw_out, iradlw_out, iradae_out, irad_always_out, spectralflux_out)
-subroutine radiation_defaultopts(iradsw_out, iradlw_out, iradae_out, irad_always_out, spectralflux_out, use_rad_dt_cosz_out) !BSINGH- Added use_rad_dt_cosz_out for slr insolation calc.
-!==Guangxing Lin
-!----------------------------------------------------------------------- 
-! Purpose: Return default runtime options
-!-----------------------------------------------------------------------
-
-   integer, intent(out), optional :: iradsw_out
-   integer, intent(out), optional :: iradlw_out
-   integer, intent(out), optional :: iradae_out
-   integer, intent(out), optional :: irad_always_out
-   logical, intent(out), optional :: spectralflux_out
-!==Guangxing Lin
-   logical, intent(out), optional :: use_rad_dt_cosz_out
-!==Guangxing Lin
-   !-----------------------------------------------------------------------
-
-   if ( present(iradsw_out) )      iradsw_out = iradsw
-   if ( present(iradlw_out) )      iradlw_out = iradlw
-   if ( present(iradae_out) )      iradae_out = -999
-   if ( present(irad_always_out) ) irad_always_out = irad_always
-   if ( present(spectralflux_out) ) spectralflux_out = spectralflux
-!==Guangxing Lin
-   if ( present(use_rad_dt_cosz_out) ) use_rad_dt_cosz_out = use_rad_dt_cosz
-!==Guangxing Lin
-end subroutine radiation_defaultopts
-
-!================================================================================================
-
-
-!==Guangxing Lin
-!subroutine radiation_setopts(dtime, nhtfrq, iradsw_in, iradlw_in, iradae_in, &
-!   irad_always_in, spectralflux_in)
-subroutine radiation_setopts(dtime, nhtfrq, iradsw_in, iradlw_in, iradae_in, &
-   irad_always_in, spectralflux_in, use_rad_dt_cosz_in)!BSINGH- Added use_rad_dt_cosz_out for slr insolation calc.
-!==Guangxing Lin
-!----------------------------------------------------------------------- 
-! Purpose: Set runtime options
-! *** NOTE *** This routine needs information about dtime (init by dycore) 
-!              and nhtfrq (init by history) to do its checking.  Being called
-!              from runtime_opts provides these values possibly before they
-!              have been set in the modules responsible for them.
-!-----------------------------------------------------------------------
-
-   integer, intent(in)           :: dtime           ! timestep size (s)
-   integer, intent(in)           :: nhtfrq          ! output frequency of primary history file
-   integer, intent(in), optional :: iradsw_in
-   integer, intent(in), optional :: iradlw_in
-   integer, intent(in), optional :: iradae_in
-   integer, intent(in), optional :: irad_always_in
-   logical, intent(in), optional :: spectralflux_in
-!==Guangxing Lin
-   logical, intent(in), optional :: use_rad_dt_cosz_in
-!==Guangxing Lin
-   
-   ! Local
-   integer :: ntspdy   ! no. timesteps per day
-   integer :: nhtfrq1  ! local copy of input arg nhtfrq
-   integer :: iradae   ! not used by RRTMG
-!-----------------------------------------------------------------------
-
-   if ( present(iradsw_in) )      iradsw = iradsw_in
-   if ( present(iradlw_in) )      iradlw = iradlw_in
-   if ( present(iradae_in) )      iradae = iradae_in
-   if ( present(irad_always_in) ) irad_always = irad_always_in
-   if ( present(spectralflux_in) ) spectralflux = spectralflux_in
-!==Guangxing Lin
-   if ( present(use_rad_dt_cosz_in) ) use_rad_dt_cosz = use_rad_dt_cosz_in
-!==Guangxing Lin
-
-   ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
-   if (iradsw      < 0) iradsw      = nint((-iradsw     *3600._r8)/dtime)
-   if (iradlw      < 0) iradlw      = nint((-iradlw     *3600._r8)/dtime)
-   if (irad_always < 0) irad_always = nint((-irad_always*3600._r8)/dtime)
-
-   ! Has user specified iradae?
-   if (iradae /= -999) then
-      call endrun('radiation_setopts: iradae not used by RRTMG.')
-   end if
-
-end subroutine radiation_setopts
-
-!===============================================================================
-
-subroutine radiation_get(iradsw_out, iradlw_out, iradae_out, irad_always_out, spectralflux_out)
-!----------------------------------------------------------------------- 
-! Purpose: Provide access to private module data.  (This should be eliminated.)
-!-----------------------------------------------------------------------
-
-   integer, intent(out), optional :: iradsw_out
-   integer, intent(out), optional :: iradlw_out
-   integer, intent(out), optional :: iradae_out
-   integer, intent(out), optional :: irad_always_out
-   logical, intent(out), optional :: spectralflux_out
-   !-----------------------------------------------------------------------
-
-   if ( present(iradsw_out) )      iradsw_out = iradsw
-   if ( present(iradlw_out) )      iradlw_out = iradlw
-   if ( present(iradae_out) )      iradae_out = -999
-   if ( present(irad_always_out) ) irad_always_out = irad_always
-   if ( present(spectralflux_out) ) spectralflux_out = spectralflux_out
-
-end subroutine radiation_get
-
-!================================================================================================
-
-subroutine radiation_printopts
-!----------------------------------------------------------------------- 
-! Purpose: Print runtime options to log.
-!-----------------------------------------------------------------------
-
-
-   if(irad_always /= 0) write(iulog,10) irad_always
-   write(iulog,20) iradsw,iradlw
-10 format(' Execute SW/LW radiation continuously for the first ',i5, ' timestep(s) of this run')
-20 format(' Frequency of Shortwave Radiation calc. (IRADSW)     ',i5/, &
-          ' Frequency of Longwave Radiation calc. (IRADLW)      ',i5)
-
-end subroutine radiation_printopts
 
 !================================================================================================
 
@@ -644,18 +517,6 @@ end function radiation_nextsw_cday
 
 
     ! Shortwave radiation
-
-!==Guangxing Lin
-!    call addfld('TOT_CLD_VISTAU',   '1', pver, 'A', 'Total gbx cloud extinction visible sw optical depth', phys_decomp, &
-!                                                       sampling_seq='rad_lwsw', flag_xyfill=.true.)
-!    call addfld('TOT_ICLD_VISTAU',  '1', pver, 'A', 'Total in-cloud extinction visible sw optical depth', phys_decomp, &
-!                                                       sampling_seq='rad_lwsw', flag_xyfill=.true.)
-!    call addfld('LIQ_ICLD_VISTAU',  '1', pver, 'A', 'Liquid in-cloud extinction visible sw optical depth', phys_decomp, &
-!                                                       sampling_seq='rad_lwsw', flag_xyfill=.true.)
-!    call addfld('ICE_ICLD_VISTAU',  '1', pver, 'A', 'Ice in-cloud extinction visible sw optical depth', phys_decomp, &
-!                                                       sampling_seq='rad_lwsw', flag_xyfill=.true.)
-!==Guangxing Lin
-
     call addfld('TOT_CLD_VISTAU', (/ 'lev' /), 'A',   '1', 'Total gbx cloud extinction visible sw optical depth', &
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
     call addfld('TOT_ICLD_VISTAU', (/ 'lev' /), 'A',  '1', 'Total in-cloud extinction visible sw optical depth', &
@@ -664,8 +525,6 @@ end function radiation_nextsw_cday
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
     call addfld('ICE_ICLD_VISTAU', (/ 'lev' /), 'A',  '1', 'Ice in-cloud extinction visible sw optical depth', &
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
-
-
 
     call add_default('TOT_CLD_VISTAU',  1, ' ')
     call add_default('TOT_ICLD_VISTAU', 1, ' ')
@@ -722,8 +581,6 @@ end function radiation_nextsw_cday
           call addfld('FSNRTOAS'//diag(icall),  horiz_only,     'A','W/m2', &
           'Net near-infrared flux (>= 0.7 microns) at top of atmosphere', sampling_seq='rad_lwsw')
           call addfld ('SWCF'//diag(icall),  horiz_only,     'A',   'W/m2', 'Shortwave cloud forcing', sampling_seq='rad_lwsw')
-
-!==Guangxing Lin
 
           if (history_amwg) then
              call add_default('SOLIN'//diag(icall),   1, ' ')
@@ -892,7 +749,6 @@ end function radiation_nextsw_cday
 
     cldfsnow_idx = pbuf_get_index('CLDFSNOW',errcode=err)
     cld_idx      = pbuf_get_index('CLD')
-    concld_idx   = pbuf_get_index('CONCLD')
     rel_idx      = pbuf_get_index('REL')
     !rel_fn_idx   = pbuf_get_index('REL_FN')
     rei_idx      = pbuf_get_index('REI')
@@ -1108,7 +964,6 @@ end function radiation_nextsw_cday
     real(r8), pointer, dimension(:,:) :: cld      ! cloud fraction
     real(r8), pointer, dimension(:,:) :: cldfsnow ! cloud fraction of just "snow clouds- whatever they are"
     real(r8) :: cldfprime(pcols,pver)             ! combined cloud fraction (snow plus regular)
-    real(r8), pointer, dimension(:,:) :: concld   ! convective cloud fraction
     real(r8), pointer, dimension(:,:) :: qrs      ! shortwave radiative heating rate 
     real(r8), pointer, dimension(:,:) :: qrl      ! longwave  radiative heating rate 
     real(r8) :: qrsc(pcols,pver)                  ! clearsky shortwave radiative heating rate 
@@ -1210,7 +1065,7 @@ end function radiation_nextsw_cday
     real(r8) fln200_m(pcols, 0:N_DIAG)        ! net longwave flux interpolated to 200 mb
     real(r8) fln200c_m(pcols, 0:N_DIAG)       ! net clearsky longwave flux interpolated to 200 mb
     real(r8) fsn200_m(pcols, 0:N_DIAG)        ! fns interpolated to 200 mb
-    real(r8) fsn200c_m(pcols, 0:N_DIAG)       ! fcns interpolated to 200 mb
+    real(r8) fsn200c_m(pcols, 0:N_DIAG)       ! fnsc interpolated to 200 mb
     real(r8) sols_m(pcols, 0:N_DIAG)          ! Solar downward visible direct  to surface
     real(r8) soll_m(pcols, 0:N_DIAG)          ! Solar downward near infrared direct  to surface
     real(r8) solsd_m(pcols, 0:N_DIAG)         ! Solar downward visible diffuse to surface
@@ -1219,6 +1074,36 @@ end function radiation_nextsw_cday
     real(r8) qrl_m(pcols,pver, 0:N_DIAG)
     real(r8) qrsc_m(pcols,pver, 0:N_DIAG)
     real(r8) qrlc_m(pcols,pver, 0:N_DIAG)
+
+    ! Additional outputs for fluxes on interfaces
+    ! TODO: move all this to a derived type and modularize?
+    real(r8) fus(pcols,pverp)  ! Shortwave up
+    real(r8) fds(pcols,pverp)  ! Shortwave down
+    real(r8) fns(pcols,pverp)  ! Shortwave net
+    real(r8) fusc(pcols,pverp) ! Clear-sky shortwave up
+    real(r8) fdsc(pcols,pverp) ! Clear-sky shortwave down
+    real(r8) fnsc(pcols,pverp) ! Clear-sky shortwave net
+    real(r8) ful(pcols,pverp)  ! All-sky longwave up
+    real(r8) fdl(pcols,pverp)  ! All-sky longwave down
+    real(r8) fnl(pcols,pverp)  ! All-sky longwave net
+    real(r8) fulc(pcols,pverp) ! Clear-sky longwave up
+    real(r8) fdlc(pcols,pverp) ! Clear-sky longwave down
+    real(r8) fnlc(pcols,pverp) ! Clear-sky longwave net
+
+    ! For averaging CRM columns
+    real(r8) fus_m(pcols,pverp,0:N_DIAG)
+    real(r8) fds_m(pcols,pverp,0:N_DIAG)
+    real(r8) fns_m(pcols,pverp,0:N_DIAG)
+    real(r8) fusc_m(pcols,pverp,0:N_DIAG)
+    real(r8) fdsc_m(pcols,pverp,0:N_DIAG)
+    real(r8) fnsc_m(pcols,pverp,0:N_DIAG)
+    real(r8) ful_m(pcols,pverp,0:N_DIAG)
+    real(r8) fdl_m(pcols,pverp,0:N_DIAG)
+    real(r8) fnl_m(pcols,pverp,0:N_DIAG)
+    real(r8) fulc_m(pcols,pverp,0:N_DIAG)
+    real(r8) fdlc_m(pcols,pverp,0:N_DIAG)
+    real(r8) fnlc_m(pcols,pverp,0:N_DIAG)
+
     logical :: first_column
     logical :: last_column
     integer ii,jj,m
@@ -1364,7 +1249,6 @@ end function radiation_nextsw_cday
        call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
     endif
     call pbuf_get_field(pbuf, cld_idx,      cld,      start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, concld_idx,   concld,   start=(/1,1,itim/), kount=(/pcols,pver,1/)  )
     call pbuf_get_field(pbuf, qrs_idx,      qrs)
     call pbuf_get_field(pbuf, qrl_idx,      qrl)
     call pbuf_get_field(pbuf, rel_idx,      rel)
@@ -1505,6 +1389,14 @@ end function radiation_nextsw_cday
         su_m = 0. ; sd_m = 0.
         lu_m = 0. ; ld_m = 0.
       end if
+
+      ! Fluxes on interfaces
+      fus_m      = 0.   ; ful_m      = 0.
+      fds_m      = 0.   ; fdl_m      = 0.
+      fns_m      = 0.   ; fnl_m      = 0.
+      fusc_m      = 0.   ; fulc_m      = 0.
+      fdsc_m      = 0.   ; fdlc_m      = 0.
+      fnsc_m      = 0.   ; fnlc_m      = 0.
 
       i_iciwp  = pbuf_get_index('ICIWP')
       i_iclwp  = pbuf_get_index('ICLWP')
@@ -1901,9 +1793,11 @@ end function radiation_nextsw_cday
                        cam_in%asdir, cam_in%asdif, cam_in%aldir, cam_in%aldif,                 &
                        qrs,          qrsc,         fsnt,         fsntc,        fsntoa, fsutoa, &
                        fsntoac,      fsnirt,       fsnrtc,       fsnirtsq,     fsns,           &
-                       fsnsc,        fsdsc,        fsds,         cam_out%sols, cam_out%soll,   &
-                       cam_out%solsd,cam_out%solld,fns,          fcns,                         &
-                       Nday,         Nnite,        IdxDay,       IdxNite,      clm_seed,       &
+                       fsnsc,        fsdsc,        fsds,                                       &
+                       cam_out%sols, cam_out%soll, cam_out%solsd,cam_out%solld,                &
+                       fus,          fds,          fns,                                        &
+                       fusc,         fdsc,         fnsc,                                       &
+                       Nday,         Nnite,        IdxDay,       IdxNite,                      &
                        su,           sd,                                                       &
                        E_cld_tau=c_cld_tau, E_cld_tau_w=c_cld_tau_w, E_cld_tau_w_g=c_cld_tau_w_g, E_cld_tau_w_f=c_cld_tau_w_f, &
                        old_convert = .false.)
@@ -1911,7 +1805,7 @@ end function radiation_nextsw_cday
                     call t_stopf ('rad_rrtmg_sw')   !==Guangxing Lin
                    
                   !  Output net fluxes at 200 mb
-                  call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fcns, fsn200c)
+                  call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnsc, fsn200c)
                   call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fns, fsn200)
 
                   do i=1,ncol
@@ -1946,6 +1840,14 @@ end function radiation_nextsw_cday
                            su_m(i,:,:,icall) = su_m(i,:,:,icall) + su(i,:,:)*factor_xy
                            sd_m(i,:,:,icall) = sd_m(i,:,:,icall) + sd(i,:,:)*factor_xy
                         end if
+
+                        ! Fluxes on interfaces
+                        fus_m(i,:pverp,icall) = fus_m(i,:pverp,icall) + fus(i,:pverp)*factor_xy
+                        fds_m(i,:pverp,icall) = fds_m(i,:pverp,icall) + fds(i,:pverp)*factor_xy
+                        fns_m(i,:pverp,icall) = fns_m(i,:pverp,icall) + fns(i,:pverp)*factor_xy
+                        fusc_m(i,:pverp,icall) = fusc_m(i,:pverp,icall) + fusc(i,:pverp)*factor_xy
+                        fdsc_m(i,:pverp,icall) = fdsc_m(i,:pverp,icall) + fdsc(i,:pverp)*factor_xy
+                        fnsc_m(i,:pverp,icall) = fnsc_m(i,:pverp,icall) + fnsc(i,:pverp)*factor_xy
                      end do
 
                      if(icall.eq.0) then  ! for the climate call
@@ -2016,7 +1918,14 @@ end function radiation_nextsw_cday
                            sd(i,:,:) = sd_m(i,:,:,icall)
                         end if
                         swcf(i)=fsntoa(i) - fsntoac(i)
-			fsutoac(i) = solin(i) - fsntoac(i)
+
+                        ! Fluxes on interfaces
+                        fus(i,:pverp) = fus_m(i,:pverp,icall) 
+                        fds(i,:pverp) = fds_m(i,:pverp,icall) 
+                        fns(i,:pverp) = fns_m(i,:pverp,icall) 
+                        fusc(i,:pverp) = fusc_m(i,:pverp,icall) 
+                        fdsc(i,:pverp) = fdsc_m(i,:pverp,icall) 
+                        fnsc(i,:pverp) = fnsc_m(i,:pverp,icall) 
                       end do
                      endif
                   end if ! (use_SPCAM)
@@ -2047,6 +1956,16 @@ end function radiation_nextsw_cday
                       call outfld('FSN200'//diag(icall),fsn200,pcols,lchnk)
                       call outfld('FSN200C'//diag(icall),fsn200c,pcols,lchnk)
                       call outfld('SWCF'//diag(icall),swcf  ,pcols,lchnk)
+
+                      ! All-sky shortwave fluxes on interfaces
+                      call outfld('FUS'//diag(icall), fus, pcols, lchnk)
+                      call outfld('FDS'//diag(icall), fds, pcols, lchnk)
+                      call outfld('FNS'//diag(icall), fns, pcols, lchnk)
+
+                      ! Clear-sky shortwave fluxes on interfaces
+                      call outfld('FUSC'//diag(icall), fusc, pcols, lchnk)
+                      call outfld('FDSC'//diag(icall), fdsc, pcols, lchnk)
+                      call outfld('FNSC'//diag(icall), fnsc, pcols, lchnk)
                   end if
 
                   if(do_aerocom_ind3) then
@@ -2207,13 +2126,15 @@ end function radiation_nextsw_cday
                   
               call t_startf ('rad_rrtmg_lw')
               call rad_rrtmg_lw( &
-                       lchnk,        ncol,         num_rrtmg_levs,  r_state,                     &
-                       state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
-                       qrl,          qrlc,                                                       &
-                       flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
-                       flut,         flutc,        fnl,             fcnl,         fldsc,         &
-                       clm_seed,     lu,           ld                                            )
-              call t_stopf ('rad_rrtmg_lw')
+                   lchnk,        ncol,         num_rrtmg_levs,  r_state,                     &
+                   state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
+                   qrl,          qrlc,                                                       &
+                   flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
+                   flut,         flutc,        fldsc,                                        &
+                   ful,          fdl,          fnl,                                          &
+                   fulc,         fdlc,         fnlc,                                         &
+                   clm_seed,     lu,           ld)
+              call t_stopf ('rad_rrtmg_lw')   !==Guangxing Lin
 
               if (lwrad_off) then
                 qrl(:,:) = 0._r8
@@ -2225,8 +2146,12 @@ end function radiation_nextsw_cday
                 cam_out%flwds(:) = 0._r8
                 flut(:) = 0._r8
                 flutc(:) = 0._r8
+                ful(:,:) = 0._r8
+                fulc(:,:) = 0._r8
+                fdl(:,:) = 0._r8
+                fdlc(:,:) = 0._r8
                 fnl(:,:) = 0._r8
-                fcnl(:,:) = 0._r8
+                fnlc(:,:) = 0._r8
                 fldsc(:) = 0._r8
               end if !lwrad_off
   
@@ -2236,7 +2161,7 @@ end function radiation_nextsw_cday
 
               !  Output fluxes at 200 mb
               call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnl,  fln200)
-              call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fcnl, fln200c)
+              call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnlc, fln200c)
 
               if (use_SPCAM) then
 
@@ -2269,6 +2194,12 @@ end function radiation_nextsw_cday
                     end do
                   end if   ! for the climate run
 
+                  ful_m(i,:pverp,icall) = ful_m(i,:pverp,icall) + ful(i,:pverp)*factor_xy
+                  fdl_m(i,:pverp,icall) = fdl_m(i,:pverp,icall) + fdl(i,:pverp)*factor_xy
+                  fnl_m(i,:pverp,icall) = fnl_m(i,:pverp,icall) + fnl(i,:pverp)*factor_xy
+                  fulc_m(i,:pverp,icall) = fulc_m(i,:pverp,icall) + fulc(i,:pverp)*factor_xy
+                  fdlc_m(i,:pverp,icall) = fdlc_m(i,:pverp,icall) + fdlc(i,:pverp)*factor_xy
+                  fnlc_m(i,:pverp,icall) = fnlc_m(i,:pverp,icall) + fnlc(i,:pverp)*factor_xy
                 end do
 
                 if(last_column) then
@@ -2290,6 +2221,13 @@ end function radiation_nextsw_cday
                        ld(i,:,:) = ld_m(i,:,:,icall)
                     end if
                     lwcf(i)=flutc(i) - flut(i) 
+
+                    ful(i,:pverp) = ful_m(i,:pverp,icall)
+                    fdl(i,:pverp) = fdl_m(i,:pverp,icall)
+                    fnl(i,:pverp) = fnl_m(i,:pverp,icall)
+                    fulc(i,:pverp) = fulc_m(i,:pverp,icall)
+                    fdlc(i,:pverp) = fdlc_m(i,:pverp,icall)
+                    fnlc(i,:pverp) = fnlc_m(i,:pverp,icall)
                   end do
                 endif
 
@@ -2311,6 +2249,16 @@ end function radiation_nextsw_cday
                 call outfld('FLN200'//diag(icall),fln200,pcols,lchnk)
                 call outfld('FLN200C'//diag(icall),fln200c,pcols,lchnk)
                 call outfld('FLDS'//diag(icall),cam_out%flwds ,pcols,lchnk)
+
+                ! Fluxes on interfaces
+                call outfld('FUL'//diag(icall), ful(:ncol,:), ncol, lchnk)
+                call outfld('FDL'//diag(icall), fdl(:ncol,:), ncol, lchnk)
+                call outfld('FNL'//diag(icall), fnl(:ncol,:), ncol, lchnk)
+
+                ! Clear-sky fluxes on interfaces
+                call outfld('FULC'//diag(icall), fulc(:ncol,:), ncol, lchnk)
+                call outfld('FDLC'//diag(icall), fdlc(:ncol,:), ncol, lchnk)
+                call outfld('FNLC'//diag(icall), fnlc(:ncol,:), ncol, lchnk)
               end if
               if (use_SPCAM .and. last_column ) then
                 if(icall.eq.0) then  ! the climate call

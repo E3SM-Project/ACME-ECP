@@ -40,10 +40,11 @@ contains
     real(wp), dimension(ncol,ngpt),  intent( in) :: sfc_alb_dir, sfc_alb_dif 
                                                                      !< surface albedo for direct and diffuse radiation 
     real(wp), dimension(ncol,nlay+1,ngpt), & 
-                                     intent(out) :: flux_up, flux_dn, &  ! Fluxes [W/m2]
-                                                    flux_dir             ! Downward direct 
-                                                                         ! Top level (= merge(1, nlay+1, top_is_1)
-                                                                         ! must contain incident flux boundary condition
+                                     intent(out) :: flux_up, flux_dn ! Fluxes [W/m2]
+
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: flux_dir ! Downward direct 
+                                                                     ! Top level (= merge(1, nlay+1, top_is_1)
+                                                                     ! must contain incident flux boundary condition
     character(len=128)                           :: sw_solver
 
     ! --------------------------------------------------

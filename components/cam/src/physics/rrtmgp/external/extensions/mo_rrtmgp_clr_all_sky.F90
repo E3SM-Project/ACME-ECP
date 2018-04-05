@@ -234,7 +234,7 @@ contains
     class(ty_fluxes),                  intent(inout) :: allsky_fluxes, clrsky_fluxes
 
     ! Optional inputs
-    class(ty_optical_props),   target, &
+    class(ty_optical_props_arry),   target, &
               optional,       intent(in ) :: aer_props   !< aerosol optical properties
     real(wp), dimension(:,:), &
               optional,       intent(in ) :: col_dry, &  !< Molecular number density (ncol, nlay)
@@ -328,14 +328,40 @@ contains
     ! Clear sky is gases + aerosols (if they're supplied)
     !
     if(present(aer_props)) then
+      ! Check values
+      error_msg = aer_props%validate()
+      if (error_msg /= '') then
+         error_msg = 'clr_all_sky rte_sw ' // error_msg
+         return
+      end if
+      error_msg = optical_props%validate()
+      if (error_msg /= '') then
+         error_msg = 'clr_all_sky rte_sw before increment' // error_msg
+         return
+      end if
+
+      ! Combine aerosol optical properties with existing
       if(aer_props%get_ngpt() == ngpt) then
         error_msg = aer_props%increment(optical_props)
       else
         error_msg = aer_props%increment(optical_props, k_dist%get_band_lims_gpoint())
       end if
+
+      ! Check values
+      error_msg = optical_props%validate()
+      if (error_msg /= '') then
+         error_msg = 'clr_all_sky rte_sw after increment' // error_msg
+         return
+      end if
     end if
     if(error_msg /= '') return
 
+   ! Check values
+   error_msg = optical_props%validate()
+   if (error_msg /= '') then
+      error_msg = 'clr_all_sky rte_sw before base_rte_sw' // error_msg
+      return
+   end if
     error_msg = base_rte_sw(optical_props, top_at_1, k_dist, &
                                mu0, toa_flux,                   &
                                sfc_alb_dir, sfc_alb_dif,        &
@@ -352,6 +378,11 @@ contains
     end if
     if(error_msg /= '') return
 
+    error_msg = optical_props%validate()
+    if (error_msg /= '') then
+      error_msg = 'clr_all_sky rte_sw after cloud_props' // error_msg
+      return
+    end if
     error_msg = base_rte_sw(optical_props, top_at_1, k_dist, &
                                mu0, toa_flux,                   &
                                sfc_alb_dir, sfc_alb_dif,        &

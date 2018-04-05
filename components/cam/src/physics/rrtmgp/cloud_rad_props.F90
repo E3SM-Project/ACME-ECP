@@ -24,11 +24,11 @@ save
 public :: &
    cloud_rad_props_init,          &
    get_ice_optics_sw,             & ! return Mitchell SW ice radiative properties
-   ice_cloud_get_rad_props_lw,    & ! Mitchell LW ice rad props
+   get_ice_optics_lw,             & ! Mitchell LW ice rad props
    get_liquid_optics_sw,          & ! return Conley SW rad props
-   liquid_cloud_get_rad_props_lw, & ! return Conley LW rad props
+   get_liquid_optics_lw,          & ! return Conley LW rad props
    get_snow_optics_sw,            &
-   snow_cloud_get_rad_props_lw
+   get_snow_optics_lw
 
 integer :: nmu, nlambda
 real(r8), allocatable :: g_mu(:)           ! mu samples on grid
@@ -46,14 +46,9 @@ real(r8), allocatable :: asm_sw_ice(:,:)
 real(r8), allocatable :: abs_lw_ice(:,:)
 
 ! 
-! indexes into pbuf for optical parameters of MG clouds
+! indices into pbuf for optical parameters of MG clouds
 ! 
    integer :: i_dei, i_mu, i_lambda, i_iciwp, i_iclwp, i_des, i_icswp
-
-! indexes into constituents for old optics
-   integer :: &
-        ixcldice,           & ! cloud ice water index
-        ixcldliq              ! cloud liquid water index
 
 
 !==============================================================================
@@ -90,17 +85,26 @@ subroutine cloud_rad_props_init()
    liquidfile = liqopticsfile 
    icefile = iceopticsfile
 
+   ! Ice effective diameter?
    i_dei    = pbuf_get_index('DEI',errcode=err)
-   i_mu     = pbuf_get_index('MU',errcode=err)
-   i_lambda = pbuf_get_index('LAMBDAC',errcode=err)
-   i_iciwp  = pbuf_get_index('ICIWP',errcode=err)
-   i_iclwp  = pbuf_get_index('ICLWP',errcode=err)
-   i_des    = pbuf_get_index('DES',errcode=err)
-   i_icswp  = pbuf_get_index('ICSWP',errcode=err)
 
-   ! old optics
-   call cnst_get_ind('CLDICE', ixcldice)
-   call cnst_get_ind('CLDLIQ', ixcldliq)
+   ! Snow effective diameter?
+   i_des    = pbuf_get_index('DES',errcode=err)
+
+   ! Shape parameter for droplet distrubtion?
+   i_mu     = pbuf_get_index('MU',errcode=err)
+
+   ! Slope of droplet distribution?
+   i_lambda = pbuf_get_index('LAMBDAC',errcode=err)
+
+   ! In-cloud ice water path
+   i_iciwp  = pbuf_get_index('ICIWP',errcode=err)
+   
+   ! In-cloud liquid water path
+   i_iclwp  = pbuf_get_index('ICLWP',errcode=err)
+
+   ! In-cloud snow water path
+   i_icswp  = pbuf_get_index('ICSWP',errcode=err)
 
    ! read liquid cloud optics
    if(masterproc) then
@@ -279,15 +283,14 @@ subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    ! the lookup tables.
    call pbuf_get_field(pbuf, i_iciwp, iciwpth)
    call pbuf_get_field(pbuf, i_dei,   dei)
-
    call interpolate_ice_optics_sw(state%ncol, iciwpth, dei, tau, tau_w, &
-        tau_w_g, tau_w_f)
+                                  tau_w_g, tau_w_f)
 
 end subroutine get_ice_optics_sw
 
 !==============================================================================
 
-subroutine ice_cloud_get_rad_props_lw(state, pbuf, abs_od)
+subroutine get_ice_optics_lw(state, pbuf, abs_od)
    type(physics_state), intent(in)     :: state
    type(physics_buffer_desc), pointer  :: pbuf(:)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
@@ -301,7 +304,7 @@ subroutine ice_cloud_get_rad_props_lw(state, pbuf, abs_od)
 
    call interpolate_ice_optics_lw(state%ncol,iciwpth, dei, abs_od)
 
-end subroutine ice_cloud_get_rad_props_lw
+end subroutine get_ice_optics_lw
 
 !==============================================================================
 
@@ -344,7 +347,7 @@ end subroutine get_liquid_optics_sw
 
 !==============================================================================
 
-subroutine liquid_cloud_get_rad_props_lw(state, pbuf, abs_od)
+subroutine get_liquid_optics_lw(state, pbuf, abs_od)
    type(physics_state), intent(in)    :: state
    type(physics_buffer_desc),pointer  :: pbuf(:)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
@@ -373,7 +376,7 @@ subroutine liquid_cloud_get_rad_props_lw(state, pbuf, abs_od)
       enddo
    enddo
 
-end subroutine liquid_cloud_get_rad_props_lw
+end subroutine get_liquid_optics_lw
 
 !==============================================================================
 
@@ -400,7 +403,7 @@ end subroutine get_snow_optics_sw
 
 !==============================================================================
 
-subroutine snow_cloud_get_rad_props_lw(state, pbuf, abs_od)
+subroutine get_snow_optics_lw(state, pbuf, abs_od)
    type(physics_state), intent(in)    :: state
    type(physics_buffer_desc), pointer :: pbuf(:)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
@@ -414,7 +417,7 @@ subroutine snow_cloud_get_rad_props_lw(state, pbuf, abs_od)
 
    call interpolate_ice_optics_lw(state%ncol,icswpth, des, abs_od)
 
-end subroutine snow_cloud_get_rad_props_lw
+end subroutine get_snow_optics_lw
 
 !==============================================================================
 ! Private methods

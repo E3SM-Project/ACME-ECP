@@ -39,8 +39,10 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
                         pmid    ,aer_lw_abs,cld       ,tauc_lw,       &
                         qrl     ,qrlc      ,                          &
                         flns    ,flnt      ,flnsc     ,flntc  ,flwds, &
-                        flut    ,flutc     ,fnl       ,fcnl   ,fldsc,clm_rand_seed, &
-                        lu      ,ld        )
+                        flut    ,flutc     ,fldsc     ,               &
+                        ful     ,fdl       ,fnl       ,               &
+                        fulc    ,fdlc      ,fnlc      ,               &
+                        clm_rand_seed,     lu      ,ld        )
 
 !-----------------------------------------------------------------------
    use cam_history,         only: outfld
@@ -82,8 +84,13 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
    real(r8), intent(out) :: flutc(pcols)         ! Upward clear-sky flux at top of model
    real(r8), intent(out) :: flwds(pcols)         ! Down longwave flux at surface
    real(r8), intent(out) :: fldsc(pcols)         ! Down longwave clear flux at surface
-   real(r8), intent(out) :: fcnl(pcols,pverp)    ! clear sky net flux at interfaces
+   real(r8), intent(out) :: fnlc(pcols,pverp)    ! clear sky net flux at interfaces
+   real(r8), intent(out) :: ful(pcols,pverp)     ! upward flux at interfaces
+   real(r8), intent(out) :: fdl(pcols,pverp)     ! downward flux at interfaces
    real(r8), intent(out) :: fnl(pcols,pverp)     ! net flux at interfaces
+   real(r8), intent(out) :: fulc(pcols,pverp)    ! clear-sky upward flux at interfaces
+   real(r8), intent(out) :: fdlc(pcols,pverp)    ! clear-sky downward flux at interfaces
+   real(r8), intent(out) :: fnlc(pcols,pverp)    ! clear-sky net flux at interfaces
 
    real(r8), pointer, dimension(:,:,:) :: lu ! longwave spectral flux up
    real(r8), pointer, dimension(:,:,:) :: ld ! longwave spectral flux down
@@ -92,11 +99,6 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
 !---------------------------Local variables-----------------------------
 !
    integer :: i, k, kk, nbnd         ! indices
-
-   real(r8) :: ful(pcols,pverp)     ! Total upwards longwave flux
-   real(r8) :: fsul(pcols,pverp)    ! Clear sky upwards longwave flux
-   real(r8) :: fdl(pcols,pverp)     ! Total downwards longwave flux
-   real(r8) :: fsdl(pcols,pverp)    ! Clear sky downwards longwv flux
 
    integer :: inflglw               ! Flag for cloud parameterization method
    integer :: iceflglw              ! Flag for ice cloud param method
@@ -251,23 +253,23 @@ subroutine rad_rrtmg_lw(lchnk   ,ncol      ,rrtmg_levs,r_state,       &
    !
    ful = 0._r8
    fdl = 0._r8
-   fsul = 0._r8
-   fsdl = 0._r8
+   fulc = 0._r8
+   fdlc = 0._r8
    ful (:ncol,pverp-rrtmg_levs+1:pverp)= uflx(:ncol,rrtmg_levs:1:-1)
    fdl (:ncol,pverp-rrtmg_levs+1:pverp)= dflx(:ncol,rrtmg_levs:1:-1)
-   fsul(:ncol,pverp-rrtmg_levs+1:pverp)=uflxc(:ncol,rrtmg_levs:1:-1)
-   fsdl(:ncol,pverp-rrtmg_levs+1:pverp)=dflxc(:ncol,rrtmg_levs:1:-1)
+   fulc(:ncol,pverp-rrtmg_levs+1:pverp)=uflxc(:ncol,rrtmg_levs:1:-1)
+   fdlc(:ncol,pverp-rrtmg_levs+1:pverp)=dflxc(:ncol,rrtmg_levs:1:-1)
 
    if (single_column.and.scm_crm_mode) then
       call outfld('FUL     ',ful,pcols,lchnk)
       call outfld('FDL     ',fdl,pcols,lchnk)
-      call outfld('FULC    ',fsul,pcols,lchnk)
-      call outfld('FDLC    ',fsdl,pcols,lchnk)
+      call outfld('FULC    ',fulc,pcols,lchnk)
+      call outfld('FDLC    ',fdlc,pcols,lchnk)
    endif
    
    fnl(:ncol,:) = ful(:ncol,:) - fdl(:ncol,:)
    ! mji/ cam excluded this?
-   fcnl(:ncol,:) = fsul(:ncol,:) - fsdl(:ncol,:)
+   fnlc(:ncol,:) = fulc(:ncol,:) - fdlc(:ncol,:)
 
    ! Pass longwave heating to CAM arrays and convert from K/d to J/kg/s
    qrl = 0._r8
