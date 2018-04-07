@@ -13,17 +13,20 @@ from collections import OrderedDict
 from CIME.XML.standard_module_setup import *
 import CIME.compare_namelists
 import CIME.utils
-from update_acme_tests import get_recommended_test_time
-from CIME.utils import append_status, append_testlog, TESTS_FAILED_ERR_CODE, parse_test_name, get_full_test_name, get_model
+import six
+from update_e3sm_tests import get_recommended_test_time
+from CIME.utils import append_status, append_testlog, TESTS_FAILED_ERR_CODE, parse_test_name, get_full_test_name, get_model, convert_to_seconds
 from CIME.test_status import *
 from CIME.XML.machines import Machines
+from CIME.XML.generic_xml import GenericXML
 from CIME.XML.env_test import EnvTest
 from CIME.XML.files import Files
 from CIME.XML.component import Component
 from CIME.XML.tests import Tests
 from CIME.case import Case
 from CIME.wait_for_tests import wait_for_tests
-from CIME.check_lockedfiles import lock_file
+from CIME.provenance import get_recommended_test_time_based_on_past
+from CIME.locked_files import lock_file
 import CIME.test_utils
 
 logger = logging.getLogger(__name__)
@@ -71,6 +74,34 @@ def _translate_test_names_for_new_pecount(test_names, force_procs, force_threads
         new_test_names.append(new_test_name)
 
     return new_test_names
+
+_TIME_CACHE = {}
+###############################################################################
+def _get_time_est(test, baseline_root, as_int=False, use_cache=False, raw=False):
+###############################################################################
+    if test in _TIME_CACHE and use_cache:
+        return _TIME_CACHE[test]
+
+    recommended_time = get_recommended_test_time_based_on_past(baseline_root, test, raw=raw)
+
+    if recommended_time is None:
+        recommended_time = get_recommended_test_time(test)
+
+    if as_int:
+        if recommended_time is None:
+            recommended_time = 9999999999
+        else:
+            recommended_time = convert_to_seconds(recommended_time)
+
+    if use_cache:
+        _TIME_CACHE[test] = recommended_time
+
+    return recommended_time
+
+###############################################################################
+def _order_tests_by_runtime(tests, baseline_root):
+###############################################################################
+    tests.sort(key=lambda x: _get_time_est(x, baseline_root, as_int=True, use_cache=True, raw=True), reverse=True)
 
 ###############################################################################
 class TestScheduler(object):
@@ -124,9 +155,6 @@ class TestScheduler(object):
         else:
             self._project = project
 
-            # Needed in case default root depends on PROJECT
-            self._machobj.set_value("PROJECT", project)
-
         # We will not use batch system if user asked for no_batch or if current
         # machine is not a batch machine
         self._no_batch = no_batch or not self._machobj.has_batch_system()
@@ -156,23 +184,23 @@ class TestScheduler(object):
 
         if parallel_jobs is None:
             self._parallel_jobs = min(len(test_names),
-                                      self._machobj.get_value("MAX_TASKS_PER_NODE"))
+                                      self._machobj.get_value("MAX_MPITASKS_PER_NODE"))
         else:
             self._parallel_jobs = parallel_jobs
 
         self._baseline_cmp_name = baseline_cmp_name # Implies comparison should be done if not None
         self._baseline_gen_name = baseline_gen_name # Implies generation should be done if not None
 
+        # Compute baseline_root
+        self._baseline_root = baseline_root if baseline_root is not None \
+                              else self._machobj.get_value("BASELINE_ROOT")
+
+        if self._project is not None:
+            self._baseline_root = self._baseline_root.replace("$PROJECT", self._project)
+
+        self._baseline_root = os.path.abspath(self._baseline_root)
+
         if baseline_cmp_name or baseline_gen_name:
-            # Compute baseline_root
-            self._baseline_root = baseline_root if baseline_root is not None \
-                else self._machobj.get_value("BASELINE_ROOT")
-
-            if self._project is not None:
-                self._baseline_root = self._baseline_root.replace("$PROJECT", self._project)
-
-            self._baseline_root = os.path.abspath(self._baseline_root)
-
             if self._baseline_cmp_name:
                 full_baseline_dir = os.path.join(self._baseline_root, self._baseline_cmp_name)
                 expect(os.path.isdir(full_baseline_dir),
@@ -186,11 +214,13 @@ class TestScheduler(object):
                     test_baseline = os.path.join(full_baseline_dir, test_name)
                     if os.path.isdir(test_baseline):
                         existing_baselines.append(test_baseline)
+
                 expect(allow_baseline_overwrite or len(existing_baselines) == 0,
                        "Baseline directories already exists {}\n" \
                        "Use -o to avoid this error".format(existing_baselines))
-        else:
-            self._baseline_root = None
+
+        if self._cime_model == "e3sm":
+            _order_tests_by_runtime(test_names, self._baseline_root)
 
         # This is the only data that multiple threads will simultaneously access
         # Each test has it's own value and setting/retrieving items from a dict
@@ -202,7 +232,7 @@ class TestScheduler(object):
 
         # Oversubscribe by 1/4
         if proc_pool is None:
-            pes = int(self._machobj.get_value("MAX_MPITASKS_PER_NODE"))
+            pes = int(self._machobj.get_value("MAX_TASKS_PER_NODE"))
             self._proc_pool = int(pes * 1.25)
         else:
             self._proc_pool = int(proc_pool)
@@ -257,6 +287,7 @@ class TestScheduler(object):
 
     ###########################################################################
     def get_testnames(self):
+    ###########################################################################
         return list(self._tests.keys())
 
     ###########################################################################
@@ -352,7 +383,9 @@ class TestScheduler(object):
             rc, output, errput = run_cmd(cmd, from_dir=from_dir)
             if rc != 0:
                 self._log_output(test,
-                                 "{} FAILED for test '{}'.\nCommand: {}\nOutput: {}\n".format(phase, test, cmd, output + "\n" + errput))
+                                 "{} FAILED for test '{}'.\nCommand: {}\nOutput: {}\n".
+                                 format(phase, test, cmd, 
+                                        output.encode('utf-8') + "\n" + errput.encode('utf-8')))
                 # Temporary hack to get around odd file descriptor use by
                 # buildnml scripts.
                 if "bad interpreter" in output:
@@ -365,7 +398,9 @@ class TestScheduler(object):
                 # succeeded was the submission.
                 phase = "SUBMIT" if phase == RUN_PHASE else phase
                 self._log_output(test,
-                                 "{} PASSED for test '{}'.\nCommand: {}\nOutput: {}\n".format(phase, test, cmd, output + "\n" + errput))
+                                 "{} PASSED for test '{}'.\nCommand: {}\nOutput: {}\n".
+                                 format(phase, test, cmd, 
+                                        output.encode('utf-8') + "\n" + errput.encode('utf-8')))
                 return True, errput
 
     ###########################################################################
@@ -395,7 +430,7 @@ class TestScheduler(object):
 
         if test_mods is not None:
             files = Files()
-            if get_model() == "acme":
+            if self._cime_model == "e3sm":
                 component = "allactive"
                 modspath = test_mods
             else:
@@ -448,10 +483,12 @@ class TestScheduler(object):
             create_newcase_cmd += " --walltime {}".format(self._walltime)
         else:
             # model specific ways of setting time
-            if get_model() == "acme":
-                recommended_time = get_recommended_test_time(test)
+            if self._cime_model == "e3sm":
+                recommended_time = _get_time_est(test, self._baseline_root)
+
                 if recommended_time is not None:
                     create_newcase_cmd += " --walltime {}".format(recommended_time)
+
             else:
                 if test in self._test_data and "options" in self._test_data[test] and \
                         "wallclock" in self._test_data[test]['options']:
@@ -498,8 +535,7 @@ class TestScheduler(object):
         envtest.set_value("TEST_ARGV", test_argv)
         envtest.set_value("CLEANUP", self._clean)
 
-        if self._baseline_gen_name or self._baseline_cmp_name:
-            envtest.set_value("BASELINE_ROOT", self._baseline_root)
+        envtest.set_value("BASELINE_ROOT", self._baseline_root)
         envtest.set_value("GENERATE_BASELINE", self._baseline_gen_name is not None)
         envtest.set_value("COMPARE_BASELINE", self._baseline_cmp_name is not None)
         envtest.set_value("CCSM_CPRNC", self._machobj.get_value("CCSM_CPRNC", resolved=False))
@@ -571,7 +607,7 @@ class TestScheduler(object):
             if self._output_root is None:
                 self._output_root = case.get_value("CIME_OUTPUT_ROOT")
             # if we are running a single test we don't need sharedlibroot
-            if len(self._tests) > 1 and get_model() != "acme":
+            if len(self._tests) > 1 and self._cime_model != "e3sm":
                 case.set_value("SHAREDLIBROOT",
                                os.path.join(self._output_root,
                                             "sharedlibroot.{}".format(self._test_id)))
@@ -656,7 +692,7 @@ class TestScheduler(object):
             return max_cores
 
         elif (phase == SHAREDLIB_BUILD_PHASE):
-            if get_model() == "cesm":
+            if self._cime_model == "cesm":
                 # Will force serialization of sharedlib builds
                 # TODO - instead of serializing, compute all library configs needed and build
                 # them all in parallel
@@ -774,6 +810,14 @@ class TestScheduler(object):
                             threads_in_flight[test] = (new_thread, procs_needed, next_phase)
                             new_thread.start()
                             num_threads_launched_this_iteration += 1
+
+                            logger.debug("  Current workload:")
+                            total_procs = 0
+                            for the_test, the_data in six.iteritems(threads_in_flight):
+                                logger.debug("    {}: {} -> {}".format(the_test, the_data[2], the_data[1]))
+                                total_procs += the_data[1]
+
+                            logger.debug("    Total procs in use: {}".format(total_procs))
                         else:
                             if not threads_in_flight:
                                 msg = "Phase '{}' for test '{}' required more processors, {:d}, than this machine can provide, {:d}".format(next_phase, test, procs_needed, self._procs_avail)
@@ -781,7 +825,11 @@ class TestScheduler(object):
                                 self._update_test_status(test, next_phase, TEST_PEND_STATUS)
                                 self._update_test_status(test, next_phase, TEST_FAIL_STATUS)
                                 self._log_output(test, msg)
-                                self._update_test_status_file(test, next_phase, TEST_FAIL_STATUS)
+                                if next_phase == RUN_PHASE:
+                                    self._update_test_status_file(test, SUBMIT_PHASE, TEST_PASS_STATUS)
+                                    self._update_test_status_file(test, next_phase, TEST_FAIL_STATUS)
+                                else:
+                                    self._update_test_status_file(test, next_phase, TEST_FAIL_STATUS)
                                 num_threads_launched_this_iteration += 1
 
             if not work_to_do:
@@ -829,7 +877,7 @@ class TestScheduler(object):
                 os.chmod(cs_submit_file,
                          os.stat(cs_submit_file).st_mode | stat.S_IXUSR | stat.S_IXGRP)
 
-            if get_model() == "cesm":
+            if self._cime_model == "cesm":
                 template_file = os.path.join(python_libs_root, "testreporter.template")
                 template = open(template_file, "r").read()
                 template = template.replace("<PATH>",
@@ -844,7 +892,11 @@ class TestScheduler(object):
             logger.warning("FAILED to set up cs files: {}".format(str(e)))
 
     ###########################################################################
-    def run_tests(self, wait=False):
+    def run_tests(self, wait=False,
+                  wait_check_throughput=False,
+                  wait_check_memory=False,
+                  wait_ignore_namelists=False,
+                  wait_ignore_memleak=False):
     ###########################################################################
         """
         Main API for this class.
@@ -861,7 +913,9 @@ class TestScheduler(object):
         # Setup cs files
         self._setup_cs_files()
 
+        GenericXML.DISABLE_CACHING = True
         self._producer()
+        GenericXML.DISABLE_CACHING = False
 
         expect(threading.active_count() == 1, "Leftover threads?")
 
@@ -869,7 +923,11 @@ class TestScheduler(object):
         if not self._no_run and not self._no_batch:
             if wait:
                 logger.info("Waiting for tests to finish")
-                rv = wait_for_tests(glob.glob(os.path.join(self._test_root, "*{}/TestStatus".format(self._test_id))))
+                rv = wait_for_tests(glob.glob(os.path.join(self._test_root, "*{}/TestStatus".format(self._test_id))),
+                                    check_throughput=wait_check_throughput,
+                                    check_memory=wait_check_memory,
+                                    ignore_namelists=wait_ignore_namelists,
+                                    ignore_memleak=wait_ignore_memleak)
                 wait_handles_report = True
             else:
                 logger.info("Due to presence of batch system, create_test will exit before tests are complete.\n" \
@@ -907,6 +965,6 @@ class TestScheduler(object):
 
                 logger.info( "    Case dir: {}".format(self._get_test_dir(test)))
 
-            logger.info( "test-scheduler took {} seconds".format(time.time() - start_time))
+        logger.info( "test-scheduler took {} seconds".format(time.time() - start_time))
 
         return rv
