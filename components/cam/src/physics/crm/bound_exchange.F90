@@ -7,6 +7,7 @@ contains
     ! periodic boundary exchange
     use grid
     use params, only: crm_rknd
+    use openacc_pool
     implicit none
     integer, intent(in) :: ncrms
 
@@ -14,12 +15,13 @@ contains
     integer i_1, i_2, j_1, j_2
     real(crm_rknd) f(ncrms,dimx1:dimx2, dimy1:dimy2, dimz)
     integer id   ! id of the sent field (dummy variable)
-    real(crm_rknd), allocatable :: buffer(:)	! buffer for sending data
+    real(crm_rknd), pointer :: buffer(:)	! buffer for sending data
 
     integer i, j, k, n, icrm
     integer i1, i2, j1, j2
 
-    allocate(buffer(ncrms*(nx+ny)*3*nz))
+    call pool_push(buffer,(/ncrms*(nx+ny)*3*nz/))
+    !allocate(buffer(ncrms*(nx+ny)*3*nz))
 
     i1 = i_1 - 1
     i2 = i_2 - 1
@@ -238,7 +240,8 @@ contains
     end do
 
 
-    deallocate(buffer)
+    ! deallocate(buffer)
+    call pool_pop()
 
 
   end subroutine bound_exchange
