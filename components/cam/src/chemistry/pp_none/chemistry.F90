@@ -130,7 +130,7 @@ contains
 
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    integer, intent(in) :: species_class(pcnst)  
+    integer, intent(inout) :: species_class(pcnst)  
 
    ! for prescribed aerosols
    ! call aero_model_init(pbuf2d)

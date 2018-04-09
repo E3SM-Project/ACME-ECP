@@ -87,10 +87,12 @@ subroutine crm_physics_register()
   integer idx
   logical           :: use_ECPP, use_SPCAM
   character(len=16) :: SPCAM_microp_scheme
+  character(len=16) :: rad_pkg
 
   call phys_getopts( use_ECPP_out            = use_ECPP)
   call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
   call phys_getopts( use_SPCAM_out           = use_SPCAM)
+  call phys_getopts(radiation_scheme_out     = rad_pkg)
 
   if(masterproc) then
       print*,'_________________________________________'
@@ -129,8 +131,10 @@ subroutine crm_physics_register()
   call pbuf_add_field('CRM_DGNUMWET','physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode/),  crm_dgnumwet_idx)
 #endif
    
-   cldo_idx = pbuf_get_index('CLDO')
-   call pbuf_add_field('CLDO',      'global',  dtype_r8, (/pcols ,pver, dyn_time_lvls/),                  cldo_idx  )
+   if (rad_pkg /= 'camrt') then
+      cldo_idx = pbuf_get_index('CLDO')
+      call pbuf_add_field('CLDO',      'global',  dtype_r8, (/pcols ,pver, dyn_time_lvls/),                  cldo_idx  )
+   endif
 
   if (SPCAM_microp_scheme .eq. 'm2005') then
     call pbuf_add_field('CRM_NC_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_nc_rad_idx)
@@ -2288,10 +2292,12 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
    real(r8), pointer, dimension(:,:) :: qqcw
    logical                           :: use_SPCAM, use_ECPP
+   character(len=16)                 :: rad_pkg
 
 
-   call phys_getopts( use_SPCAM_out = use_SPCAM )
-   call phys_getopts( use_ECPP_out  = use_ECPP  )
+   call phys_getopts( use_SPCAM_out       = use_SPCAM )
+   call phys_getopts( use_ECPP_out        = use_ECPP  )
+   call phys_getopts(radiation_scheme_out = rad_pkg   )
 
    lchnk = state%lchnk
    ncol  = state%ncol
@@ -2300,7 +2306,10 @@ subroutine crm_save_state_tend(state,tend,pbuf)
 
       itim = pbuf_old_tim_idx()
       
-      call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+      if (rad_pkg /= 'camrt') then
+         call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+         cldo_save(:ncol, :) = cldo(:ncol, :)
+      endif
 
       if (use_ECPP) then
          ifld = pbuf_get_index('CLD')
@@ -2329,7 +2338,7 @@ subroutine crm_save_state_tend(state,tend,pbuf)
       tend_save%tw_tnd(:ncol)     = tend%tw_tnd(:ncol)
       ! tend_save%flx_net(:ncol)    = tend_save%flx_net(:ncol)
 
-      cldo_save(:ncol, :) = cldo(:ncol, :)
+      
 
 #if ( defined MODAL_AERO )
       qqcw_all=0_r8
@@ -2377,10 +2386,12 @@ subroutine crm_remember_state_tend(state,tend,pbuf)
    real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
    real(r8), pointer, dimension(:,:) :: qqcw
    logical                           :: use_SPCAM, use_ECPP
+   character(len=16)                 :: rad_pkg
 
 
-   call phys_getopts( use_SPCAM_out = use_SPCAM )
-   call phys_getopts( use_ECPP_out  = use_ECPP  )
+   call phys_getopts( use_SPCAM_out       = use_SPCAM )
+   call phys_getopts( use_ECPP_out        = use_ECPP  )
+   call phys_getopts(radiation_scheme_out = rad_pkg   )
 
    lchnk = state%lchnk
    ncol  = state%ncol
@@ -2399,15 +2410,17 @@ subroutine crm_remember_state_tend(state,tend,pbuf)
       call physics_tend_dealloc(tend_save)
 
       !!! whannah - not sure why we do this...
-      if(is_first_step())then
-         do m=1,dyn_time_lvls
-            call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,m/), kount=(/pcols,pver,1/) )
-            cldo(:ncol,:) = 0
-         enddo
+      if (rad_pkg /= 'camrt') then
+         if(is_first_step())then
+            do m=1,dyn_time_lvls
+               call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,m/), kount=(/pcols,pver,1/) )
+               cldo(:ncol,:) = 0
+            enddo
+         endif
+         ! Restore cloud fraction
+         cldo(:ncol, :) = cldo_save(:ncol, :)
       endif
-  
-      ! Restore cloud fraction
-      cldo(:ncol, :) = cldo_save(:ncol, :)
+      
 
 #if ( defined MODAL_AERO )
       do i=1,pcnst

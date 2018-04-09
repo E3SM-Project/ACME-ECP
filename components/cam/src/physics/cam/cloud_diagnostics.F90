@@ -60,7 +60,7 @@ contains
     rk_clouds = microp_pgk == 'RK'
     mg_clouds = microp_pgk == 'MG'
 
-    if (rk_clouds) then
+    ! if (rk_clouds) then
        call pbuf_add_field('CLDEMIS','physpkg', dtype_r8,(/pcols,pver/), cldemis_idx)
        call pbuf_add_field('CLDTAU', 'physpkg', dtype_r8,(/pcols,pver/), cldtau_idx)
 
@@ -69,12 +69,12 @@ contains
 
        call pbuf_add_field('PMXRGN', 'physpkg', dtype_r8,(/pcols,pverp/), pmxrgn_idx)
        call pbuf_add_field('NMXRGN', 'physpkg', dtype_i4,(/pcols /),      nmxrgn_idx)
-    else if (mg_clouds) then
+    ! else if (mg_clouds) then
        ! In cloud ice water path for radiation
        call pbuf_add_field('ICIWP',      'global', dtype_r8,(/pcols,pver/), iciwp_idx)
        ! In cloud liquid water path for radiation
        call pbuf_add_field('ICLWP',      'global', dtype_r8,(/pcols,pver/), iclwp_idx)
-    endif
+    ! endif
   end subroutine cloud_diagnostics_register
 
 !===============================================================================
