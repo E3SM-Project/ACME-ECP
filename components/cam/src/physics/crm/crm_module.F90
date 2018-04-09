@@ -29,6 +29,7 @@ module crm_module
   !  Marat Khairoutdinov, 2001-2009
   !---------------------------------------------------------------
   use setparm_mod, only : setparm
+  use openacc_pool
 
 contains
 
@@ -389,6 +390,11 @@ subroutine crm(lchnk, icol, ncrms, &
   real(crm_rknd) :: crm_ny_rad_fac
   integer        :: i_rad
   integer        :: j_rad
+  integer(8)     :: pool_size
+
+  !A padded guess at how much data will be needed by the MMF
+  pool_size = nx*ny*nz*ncrms*50*8
+  call pool_init(pool_size)
 
   !Allocate local arrays
   allocate( t00      (ncrms)      )
@@ -1778,6 +1784,8 @@ subroutine crm(lchnk, icol, ncrms, &
   deallocate( thlm_after           )
   deallocate( rtm_column           )
 #endif
+
+  call pool_finalize()
 
   end subroutine crm
 

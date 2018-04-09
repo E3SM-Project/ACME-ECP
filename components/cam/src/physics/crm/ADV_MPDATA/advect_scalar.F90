@@ -12,7 +12,7 @@ contains
     use grid
     use vars, only: u, v, w, rho, rhow
     use params, only: docolumn, crm_rknd
-
+    use openacc_pool
     implicit none
     integer, intent(in) :: ncrms
 
@@ -21,10 +21,11 @@ contains
     real(crm_rknd) f2leadv(ncrms,nz),f2legrad(ncrms,nz),fwleadv(ncrms,nz)
     logical doit
 
-    real(crm_rknd), allocatable :: df(:,:,:,:)
+    real(crm_rknd), pointer :: df(:,:,:,:)
     integer i,j,k,icrm
 
-    allocate( df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+    call pool_push(df,(/1,dimx1_s,dimy1_s,1/),(/ncrms,dimx2_s,dimy2_s,nzm/))
+    !allocate( df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
     if(docolumn) then
       flux = 0.
@@ -65,7 +66,8 @@ contains
     end do
 
     !call t_stopf ('advect_scalars')
-    deallocate( df )
+    !deallocate( df )
+    call pool_pop()
 
   end subroutine advect_scalar
 
