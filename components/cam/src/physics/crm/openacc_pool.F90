@@ -125,11 +125,12 @@ module openacc_pool
   public :: pool_push
 
   !Pop one element from the stack
-  !No parameters needed
+  !call pool_pop()
   public :: pool_pop
 
   !Pop multiple elements from the stack
-  !No parameters needed
+  !call pool_pop(num)
+  !integer, intent(in) :: number of elements to pop from the stack
   public :: pool_pop_multiple
 
   !Deallocate the pool on host and device
