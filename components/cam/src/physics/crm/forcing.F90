@@ -8,16 +8,19 @@ contains
     use vars
     use params
     use microphysics, only: micro_field, index_water_vapor, total_water
-
+    use openacc_pool
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: coef
-    real(crm_rknd), allocatable :: qneg(:,:),qpoz(:,:), factor(:,:)
+    real(crm_rknd), pointer :: qneg(:,:),qpoz(:,:), factor(:,:)
     integer i,j,k,icrm
 
-    allocate(qneg  (ncrms,nzm))
-    allocate(qpoz  (ncrms,nzm))
-    allocate(factor(ncrms,nzm))
+    ! allocate(qneg  (ncrms,nzm))
+    ! allocate(qpoz  (ncrms,nzm))
+    ! allocate(factor(ncrms,nzm))
+    call pool_push(qneg,(/ncrms,nzm/))
+    call pool_push(qpoz,(/ncrms,nzm/))
+    call pool_push(factor,(/ncrms,nzm/))
 
     coef = 1./3600.
 
@@ -67,9 +70,10 @@ contains
       end do
     end do
 
-    deallocate(qneg  )
-    deallocate(qpoz  )
-    deallocate(factor)
+    ! deallocate(qneg  )
+    ! deallocate(qpoz  )
+    ! deallocate(factor)
+    call pool_pop_multiple(3)
 
   end subroutine forcing
 

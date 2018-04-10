@@ -18,7 +18,7 @@ module microphysics
 
   !!! microphysics prognostic variables are storred in this array:
 
-  real(crm_rknd), allocatable, target :: micro_field(:,:,:,:,:) !REDIM
+  real(crm_rknd), pointer :: micro_field(:,:,:,:,:) !REDIM
 
   integer, parameter :: flag_wmass(nmicro_fields) = (/1,1/)
   integer, parameter :: index_water_vapor = 1 ! index for variable that has water vapor
@@ -31,17 +31,17 @@ module microphysics
   ! SAM1MOM 3D microphysical fields are output by default.
   integer, parameter :: flag_micro3Dout(nmicro_fields) = (/0,0/)
 
-  real(crm_rknd), allocatable :: fluxbmk (:,:,:,:) !REDIM ! surface flux of tracers
-  real(crm_rknd), allocatable :: fluxtmk (:,:,:,:) !REDIM ! top boundary flux of tracers
+  real(crm_rknd), pointer :: fluxbmk (:,:,:,:) !REDIM ! surface flux of tracers
+  real(crm_rknd), pointer :: fluxtmk (:,:,:,:) !REDIM ! top boundary flux of tracers
 
   !!! these arrays are needed for output statistics:
 
-  real(crm_rknd), allocatable :: mkwle  (:,:,:) !REDIM  ! resolved vertical flux
-  real(crm_rknd), allocatable :: mkwsb  (:,:,:) !REDIM  ! SGS vertical flux
-  real(crm_rknd), allocatable :: mkadv  (:,:,:) !REDIM  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: mklsadv(:,:,:) !REDIM  ! tendency due to large-scale vertical advection
-  real(crm_rknd), allocatable :: mkdiff (:,:,:) !REDIM  ! tendency due to vertical diffusion
-  real(crm_rknd), allocatable :: mstor  (:,:,:) !REDIM  ! storage terms of microphysical variables
+  real(crm_rknd), pointer :: mkwle  (:,:,:) !REDIM  ! resolved vertical flux
+  real(crm_rknd), pointer :: mkwsb  (:,:,:) !REDIM  ! SGS vertical flux
+  real(crm_rknd), pointer :: mkadv  (:,:,:) !REDIM  ! tendency due to vertical advection
+  real(crm_rknd), pointer :: mklsadv(:,:,:) !REDIM  ! tendency due to large-scale vertical advection
+  real(crm_rknd), pointer :: mkdiff (:,:,:) !REDIM  ! tendency due to vertical diffusion
+  real(crm_rknd), pointer :: mstor  (:,:,:) !REDIM  ! storage terms of microphysical variables
 
   !======================================================================
   ! UW ADDITIONS
@@ -63,10 +63,10 @@ module microphysics
 
   real(crm_rknd), pointer :: q (:,:,:,:) !REDIM   ! total nonprecipitating water
   real(crm_rknd), pointer :: qp(:,:,:,:) !REDIM  ! total precipitating water
-  real(crm_rknd), allocatable :: qn(:,:,:,:) !REDIM  ! cloud condensate (liquid + ice)
+  real(crm_rknd), pointer :: qn(:,:,:,:) !REDIM  ! cloud condensate (liquid + ice)
 
-  real(crm_rknd), allocatable :: qpsrc(:,:) !REDIM  ! source of precipitation microphysical processes
-  real(crm_rknd), allocatable :: qpevp(:,:) !REDIM  ! sink of precipitating water due to evaporation
+  real(crm_rknd), pointer :: qpsrc(:,:) !REDIM  ! source of precipitation microphysical processes
+  real(crm_rknd), pointer :: qpevp(:,:) !REDIM  ! sink of precipitating water due to evaporation
 
   real(crm_rknd) vrain, vsnow, vgrau, crain, csnow, cgrau  ! precomputed coefs for precip terminal velocity
 
@@ -76,18 +76,31 @@ CONTAINS
     use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields) )
-    allocate( fluxbmk (ncrms,nx, ny, 1:nmicro_fields) )
-    allocate( fluxtmk (ncrms,nx, ny, 1:nmicro_fields) )
-    allocate( mkwle   (ncrms,nz,1:nmicro_fields) )
-    allocate( mkwsb   (ncrms,nz,1:nmicro_fields) )
-    allocate( mkadv   (ncrms,nz,1:nmicro_fields) )
-    allocate( mklsadv (ncrms,nz,1:nmicro_fields) )
-    allocate( mkdiff  (ncrms,nz,1:nmicro_fields) )
-    allocate( mstor   (ncrms,nz,1:nmicro_fields) )
-    allocate( qn      (ncrms,nx,ny,nzm) )
-    allocate( qpsrc   (ncrms,nz) )
-    allocate( qpevp   (ncrms,nz) )
+    ! allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields) )
+    ! allocate( fluxbmk (ncrms,nx, ny, 1:nmicro_fields) )
+    ! allocate( fluxtmk (ncrms,nx, ny, 1:nmicro_fields) )
+    ! allocate( mkwle   (ncrms,nz,1:nmicro_fields     ) )
+    ! allocate( mkwsb   (ncrms,nz,1:nmicro_fields     ) )
+    ! allocate( mkadv   (ncrms,nz,1:nmicro_fields     ) )
+    ! allocate( mklsadv (ncrms,nz,1:nmicro_fields     ) )
+    ! allocate( mkdiff  (ncrms,nz,1:nmicro_fields     ) )
+    ! allocate( mstor   (ncrms,nz,1:nmicro_fields     ) )
+    ! allocate( qn      (ncrms,nx,ny,nzm              ) )
+    ! allocate( qpsrc   (ncrms,nz                     ) )
+    ! allocate( qpevp   (ncrms,nz                     ) )
+    call pool_push(micro_field,(/1,dimx1_s,dimy1_s,1,1/),(/ncrms,dimx2_s,dimy2_s,nzm,nmicro_fields/))
+    call pool_push( fluxbmk , (/ncrms,nx, ny,nmicro_fields/) )
+    call pool_push( fluxtmk , (/ncrms,nx, ny,nmicro_fields/) )
+    call pool_push( mkwle   , (/ncrms,nz,nmicro_fields    /) )
+    call pool_push( mkwsb   , (/ncrms,nz,nmicro_fields    /) )
+    call pool_push( mkadv   , (/ncrms,nz,nmicro_fields    /) )
+    call pool_push( mklsadv , (/ncrms,nz,nmicro_fields    /) )
+    call pool_push( mkdiff  , (/ncrms,nz,nmicro_fields    /) )
+    call pool_push( mstor   , (/ncrms,nz,nmicro_fields    /) )
+    call pool_push( qn      , (/ncrms,nx,ny,nzm           /) )
+    call pool_push( qpsrc   , (/ncrms,nz                  /) )
+    call pool_push( qpevp   , (/ncrms,nz                  /) )
+
     q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
     qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,2)
 
@@ -109,18 +122,19 @@ CONTAINS
 
   subroutine deallocate_microphysics
     implicit none
-    deallocate( micro_field )
-    deallocate( fluxbmk  )
-    deallocate( fluxtmk  )
-    deallocate( mkwle )
-    deallocate( mkwsb )
-    deallocate( mkadv )
-    deallocate( mklsadv )
-    deallocate( mkdiff )
-    deallocate( mstor )
-    deallocate( qn )
-    deallocate( qpsrc )
-    deallocate( qpevp )
+    ! deallocate( micro_field )
+    ! deallocate( fluxbmk  )
+    ! deallocate( fluxtmk  )
+    ! deallocate( mkwle )
+    ! deallocate( mkwsb )
+    ! deallocate( mkadv )
+    ! deallocate( mklsadv )
+    ! deallocate( mkdiff )
+    ! deallocate( mstor )
+    ! deallocate( qn )
+    ! deallocate( qpsrc )
+    ! deallocate( qpevp )
+    call pool_pop_multiple(12)
   end subroutine deallocate_microphysics
 
   ! required microphysics subroutines and function:

@@ -6,6 +6,7 @@ module sgs
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
   use params, only: dosgs, crm_rknd
   use vars, only: tke2, tk2
+  use openacc_pool
   implicit none
 
   !----------------------------------------------------------------------
@@ -15,7 +16,7 @@ module sgs
 
   integer, parameter :: nsgs_fields = 1   ! total number of prognostic sgs vars
 
-  real(crm_rknd), allocatable, target :: sgs_field(:,:,:,:,:) !REDIM
+  real(crm_rknd), pointer :: sgs_field(:,:,:,:,:) !REDIM
 
   !!! sgs diagnostic variables that need to exchange boundary information (via MPI):
 
@@ -24,7 +25,7 @@ module sgs
   ! diagnostic fields' boundaries:
   integer, parameter :: dimx1_d=0, dimx2_d=nxp1, dimy1_d=1-YES3D, dimy2_d=nyp1
 
-  real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:,:) !REDIM
+  real(crm_rknd), pointer :: sgs_field_diag(:,:,:,:,:) !REDIM
 
   logical:: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
   logical, parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
@@ -33,16 +34,16 @@ module sgs
   integer, parameter :: flag_sgs3Dout(nsgs_fields) = (/0/)
   integer, parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
 
-  real(crm_rknd), allocatable :: fluxbsgs (:,:,:,:) !REDIM ! surface fluxes
-  real(crm_rknd), allocatable :: fluxtsgs (:,:,:,:) !REDIM ! top boundary fluxes
+  real(crm_rknd), pointer :: fluxbsgs (:,:,:,:) !REDIM ! surface fluxes
+  real(crm_rknd), pointer :: fluxtsgs (:,:,:,:) !REDIM ! top boundary fluxes
 
   !!! these arrays may be needed for output statistics:
 
-  real(crm_rknd), allocatable :: sgswle  (:,:,:) !REDIM  ! resolved vertical flux
-  real(crm_rknd), allocatable :: sgswsb  (:,:,:) !REDIM  ! SGS vertical flux
-  real(crm_rknd), allocatable :: sgsadv  (:,:,:) !REDIM  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: sgslsadv(:,:,:) !REDIM  ! tendency due to large-scale vertical advection
-  real(crm_rknd), allocatable :: sgsdiff (:,:,:) !REDIM  ! tendency due to vertical diffusion
+  real(crm_rknd), pointer :: sgswle  (:,:,:) !REDIM  ! resolved vertical flux
+  real(crm_rknd), pointer :: sgswsb  (:,:,:) !REDIM  ! SGS vertical flux
+  real(crm_rknd), pointer :: sgsadv  (:,:,:) !REDIM  ! tendency due to vertical advection
+  real(crm_rknd), pointer :: sgslsadv(:,:,:) !REDIM  ! tendency due to large-scale vertical advection
+  real(crm_rknd), pointer :: sgsdiff (:,:,:) !REDIM  ! tendency due to vertical diffusion
 
   !------------------------------------------------------------------
   ! internal (optional) definitions:
@@ -57,9 +58,9 @@ module sgs
   real(crm_rknd), pointer :: tkh(:,:,:,:) !REDIM ! SGS eddy conductivity
 
 
-  real(crm_rknd), allocatable :: grdf_x(:,:) !REDIM ! grid factor for eddy diffusion in x
-  real(crm_rknd), allocatable :: grdf_y(:,:) !REDIM ! grid factor for eddy diffusion in y
-  real(crm_rknd), allocatable :: grdf_z(:,:) !REDIM ! grid factor for eddy diffusion in z
+  real(crm_rknd), pointer :: grdf_x(:,:) !REDIM ! grid factor for eddy diffusion in x
+  real(crm_rknd), pointer :: grdf_y(:,:) !REDIM ! grid factor for eddy diffusion in y
+  real(crm_rknd), pointer :: grdf_z(:,:) !REDIM ! grid factor for eddy diffusion in z
 
 
   logical:: dosmagor   ! if true, then use Smagorinsky closure
@@ -69,10 +70,10 @@ module sgs
 
   ! Local diagnostics:
 
-  real(crm_rknd), allocatable :: tkesbbuoy (:,:) !REDIM
-  real(crm_rknd), allocatable :: tkesbshear(:,:) !REDIM
-  real(crm_rknd), allocatable :: tkesbdiss (:,:) !REDIM
-  real(crm_rknd), allocatable :: tkesbdiff (:,:) !REDIM
+  real(crm_rknd), pointer :: tkesbbuoy (:,:) !REDIM
+  real(crm_rknd), pointer :: tkesbshear(:,:) !REDIM
+  real(crm_rknd), pointer :: tkesbdiss (:,:) !REDIM
+  real(crm_rknd), pointer :: tkesbdiff (:,:) !REDIM
 
 CONTAINS
 
@@ -81,22 +82,39 @@ CONTAINS
     use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    allocate( sgs_field     (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields     ) )
-    allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
-    allocate( fluxbsgs      (ncrms,nx, ny, 1:nsgs_fields) ) ! surface fluxes
-    allocate( fluxtsgs      (ncrms,nx, ny, 1:nsgs_fields) ) ! top boundary fluxes
-    allocate( sgswle        (ncrms,nz    , 1:nsgs_fields) ) ! resolved vertical flux
-    allocate( sgswsb        (ncrms,nz    , 1:nsgs_fields) ) ! SGS vertical flux
-    allocate( sgsadv        (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to vertical advection
-    allocate( sgslsadv      (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to large-scale vertical advection
-    allocate( sgsdiff       (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to vertical diffusion
-    allocate( grdf_x        (ncrms,nzm) )                   ! grid factor for eddy diffusion in x
-    allocate( grdf_y        (ncrms,nzm) )                   ! grid factor for eddy diffusion in y
-    allocate( grdf_z        (ncrms,nzm) )                   ! grid factor for eddy diffusion in z
-    allocate( tkesbbuoy     (ncrms,nz) )
-    allocate( tkesbshear    (ncrms,nz) )
-    allocate( tkesbdiss     (ncrms,nz) )
-    allocate( tkesbdiff     (ncrms,nz) )
+    ! allocate( sgs_field     (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields     ) )
+    ! allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
+    ! allocate( fluxbsgs      (ncrms,nx, ny, 1:nsgs_fields) ) ! surface fluxes
+    ! allocate( fluxtsgs      (ncrms,nx, ny, 1:nsgs_fields) ) ! top boundary fluxes
+    ! allocate( sgswle        (ncrms,nz    , 1:nsgs_fields) ) ! resolved vertical flux
+    ! allocate( sgswsb        (ncrms,nz    , 1:nsgs_fields) ) ! SGS vertical flux
+    ! allocate( sgsadv        (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to vertical advection
+    ! allocate( sgslsadv      (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to large-scale vertical advection
+    ! allocate( sgsdiff       (ncrms,nz    , 1:nsgs_fields) ) ! tendency due to vertical diffusion
+    ! allocate( grdf_x        (ncrms,nzm) )                   ! grid factor for eddy diffusion in x
+    ! allocate( grdf_y        (ncrms,nzm) )                   ! grid factor for eddy diffusion in y
+    ! allocate( grdf_z        (ncrms,nzm) )                   ! grid factor for eddy diffusion in z
+    ! allocate( tkesbbuoy     (ncrms,nz) )
+    ! allocate( tkesbshear    (ncrms,nz) )
+    ! allocate( tkesbdiss     (ncrms,nz) )
+    ! allocate( tkesbdiff     (ncrms,nz) )
+    call pool_push( sgs_field      , (/1,dimx1_s,dimy1_s,1,1/),(/ncrms,dimx2_s,dimy2_s,nzm,nsgs_fields/))
+    call pool_push( sgs_field_diag , (/1,dimx1_d,dimy1_d,1,1/),(/ncrms,dimx2_d,dimy2_d,nzm,nsgs_fields_diag/))
+    call pool_push( fluxbsgs   , (/ncrms,nx, ny, nsgs_fields/) ) ! surface fluxes
+    call pool_push( fluxtsgs   , (/ncrms,nx, ny, nsgs_fields/) ) ! top boundary fluxes
+    call pool_push( sgswle     , (/ncrms,nz    , nsgs_fields/) ) ! resolved vertical flux
+    call pool_push( sgswsb     , (/ncrms,nz    , nsgs_fields/) ) ! SGS vertical flux
+    call pool_push( sgsadv     , (/ncrms,nz    , nsgs_fields/) ) ! tendency due to vertical advection
+    call pool_push( sgslsadv   , (/ncrms,nz    , nsgs_fields/) ) ! tendency due to large-scale vertical advection
+    call pool_push( sgsdiff    , (/ncrms,nz    , nsgs_fields/) ) ! tendency due to vertical diffusion
+    call pool_push( grdf_x     , (/ncrms,nzm                /) )                   ! grid factor for eddy diffusion in x
+    call pool_push( grdf_y     , (/ncrms,nzm                /) )                   ! grid factor for eddy diffusion in y
+    call pool_push( grdf_z     , (/ncrms,nzm                /) )                   ! grid factor for eddy diffusion in z
+    call pool_push( tkesbbuoy  , (/ncrms,nz                 /) )
+    call pool_push( tkesbshear , (/ncrms,nz                 /) )
+    call pool_push( tkesbdiss  , (/ncrms,nz                 /) )
+    call pool_push( tkesbdiff  , (/ncrms,nz                 /) )
+
     tke(1:,dimx1_s:,dimy1_s:,1:) => sgs_field     (1:ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s,1:nzm,1)
     tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,1)
     tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,2)
@@ -122,22 +140,23 @@ CONTAINS
 
   subroutine deallocate_sgs
     implicit none
-    deallocate( sgs_field )
-    deallocate( sgs_field_diag )
-    deallocate( fluxbsgs  )
-    deallocate( fluxtsgs  )
-    deallocate( sgswle )
-    deallocate( sgswsb )
-    deallocate( sgsadv )
-    deallocate( sgslsadv )
-    deallocate( sgsdiff )
-    deallocate( grdf_x     )
-    deallocate( grdf_y     )
-    deallocate( grdf_z     )
-    deallocate( tkesbbuoy  )
-    deallocate( tkesbshear )
-    deallocate( tkesbdiss  )
-    deallocate( tkesbdiff  )
+    ! deallocate( sgs_field )
+    ! deallocate( sgs_field_diag )
+    ! deallocate( fluxbsgs  )
+    ! deallocate( fluxtsgs  )
+    ! deallocate( sgswle )
+    ! deallocate( sgswsb )
+    ! deallocate( sgsadv )
+    ! deallocate( sgslsadv )
+    ! deallocate( sgsdiff )
+    ! deallocate( grdf_x     )
+    ! deallocate( grdf_y     )
+    ! deallocate( grdf_z     )
+    ! deallocate( tkesbbuoy  )
+    ! deallocate( tkesbshear )
+    ! deallocate( tkesbdiss  )
+    ! deallocate( tkesbdiff  )
+    call pool_pop_multiple(16)
   end subroutine deallocate_sgs
 
   ! required microphysics subroutines and function:
@@ -381,13 +400,16 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
-    real(crm_rknd), allocatable :: dummy(:,:)
-    real(crm_rknd), allocatable :: fluxbtmp(:,:,:), fluxttmp(:,:,:) !bloss
+    real(crm_rknd), pointer :: dummy(:,:)
+    real(crm_rknd), pointer :: fluxbtmp(:,:,:), fluxttmp(:,:,:) !bloss
     integer k, icrm, i, j
 
-    allocate(dummy(ncrms,nz))
-    allocate(fluxbtmp(ncrms,nx,ny))
-    allocate(fluxttmp(ncrms,nx,ny))
+    ! allocate(dummy(ncrms,nz))
+    ! allocate(fluxbtmp(ncrms,nx,ny))
+    ! allocate(fluxttmp(ncrms,nx,ny))
+    call pool_push(dummy,(/ncrms,nz/))
+    call pool_push(fluxbtmp,(/ncrms,nx,ny/))
+    call pool_push(fluxttmp,(/ncrms,nx,ny/))
 
 
     call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,:),fluxbt(:,:,:),fluxtt(:,:,:),tdiff(:,:),twsb(:,:), &
@@ -449,9 +471,10 @@ CONTAINS
     end if
 
 
-    deallocate(dummy)
-    deallocate(fluxbtmp)
-    deallocate(fluxttmp)
+    ! deallocate(dummy)
+    ! deallocate(fluxbtmp)
+    ! deallocate(fluxttmp)
+    call pool_pop_multiple(3)
 
   end subroutine sgs_scalars
 

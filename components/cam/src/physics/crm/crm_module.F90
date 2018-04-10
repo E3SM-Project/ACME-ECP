@@ -393,7 +393,7 @@ subroutine crm(lchnk, icol, ncrms, &
   integer(8)     :: pool_size
 
   !A padded guess at how much data will be needed by the MMF
-  pool_size = nx*ny*nz*ncrms*50*8
+  pool_size = nx*ny*nz*ncrms*75*8
   call pool_init(pool_size)
 
   !Allocate local arrays

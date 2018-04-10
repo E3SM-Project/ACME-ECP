@@ -2,6 +2,7 @@ module tke_full_mod
   use shear_prod2D_mod
   use shear_prod3D_mod
   use sat_mod
+  use openacc_pool
   implicit none
 
 contains
@@ -21,7 +22,7 @@ contains
     real(crm_rknd) tk  (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
     real(crm_rknd) tkh (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
 
-    real(crm_rknd), allocatable :: def2(:,:,:,:)
+    real(crm_rknd), pointer :: def2(:,:,:,:)
     real(crm_rknd) Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs, grd, betdz
     real(crm_rknd) buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss
     real(crm_rknd) lstarn, lstarp, bbb, omn, omp, tmp
@@ -31,7 +32,8 @@ contains
     real(crm_rknd) tk_min_value   ! whannah - min value for eddy viscosity (TK)
     real(crm_rknd) tk_min_depth   ! whannah - near-surface depth to apply tk_min (meters)
 
-    allocate(def2(ncrms,nx,ny,nzm))
+    ! allocate(def2(ncrms,nx,ny,nzm))
+    call pool_push(def2,(/ncrms,nx,ny,nzm/))
 
     tk_min_value = 0.05
     tk_min_depth = 500.
@@ -181,7 +183,8 @@ contains
       end do ! j
     end do ! k
 
-    deallocate(def2)
+    ! deallocate(def2)
+    call pool_pop()
 
     !call t_stopf('tke_full')
 

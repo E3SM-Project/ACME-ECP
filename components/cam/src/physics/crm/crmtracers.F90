@@ -14,16 +14,17 @@ module crmtracers
   use grid
   use params, only: crm_rknd
   use utils,  only: lenstr
+  use openacc_pool
   implicit none
 
-  real(crm_rknd), allocatable :: tracer  (:,:,:,:,:) !REDIM  
-  real(crm_rknd), allocatable :: fluxbtr (:,:,:,:)   !REDIM ! surface flux of tracers
-  real(crm_rknd), allocatable :: fluxttr (:,:,:,:)   !REDIM ! top boundary flux of tracers
-  real(crm_rknd), allocatable :: trwle   (:,:,:)     !REDIM ! resolved vertical flux
-  real(crm_rknd), allocatable :: trwsb   (:,:,:)     !REDIM ! SGS vertical flux
-  real(crm_rknd), allocatable :: tradv   (:,:,:)     !REDIM ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: trdiff  (:,:,:)     !REDIM ! tendency due to vertical diffusion
-  real(crm_rknd), allocatable :: trphys  (:,:,:)     !REDIM ! tendency due to physics
+  real(crm_rknd), pointer :: tracer  (:,:,:,:,:) !REDIM
+  real(crm_rknd), pointer :: fluxbtr (:,:,:,:)   !REDIM ! surface flux of tracers
+  real(crm_rknd), pointer :: fluxttr (:,:,:,:)   !REDIM ! top boundary flux of tracers
+  real(crm_rknd), pointer :: trwle   (:,:,:)     !REDIM ! resolved vertical flux
+  real(crm_rknd), pointer :: trwsb   (:,:,:)     !REDIM ! SGS vertical flux
+  real(crm_rknd), pointer :: tradv   (:,:,:)     !REDIM ! tendency due to vertical advection
+  real(crm_rknd), pointer :: trdiff  (:,:,:)     !REDIM ! tendency due to vertical diffusion
+  real(crm_rknd), pointer :: trphys  (:,:,:)     !REDIM ! tendency due to physics
   character *4 tracername(0:ntracers)
   character *10 tracerunits(0:ntracers)
 
@@ -33,35 +34,44 @@ CONTAINS
     use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    allocate( tracer  (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers) )
-    allocate( fluxbtr (ncrms,nx, ny, 0:ntracers) ) ! surface flux of tracers
-    allocate( fluxttr (ncrms,nx, ny, 0:ntracers) ) ! top boundary flux of tracers
-    allocate( trwle   (ncrms,nz,0:ntracers) )  ! resolved vertical flux
-    allocate( trwsb   (ncrms,nz,0:ntracers) )  ! SGS vertical flux
-    allocate( tradv   (ncrms,nz,0:ntracers) )  ! tendency due to vertical advection
-    allocate( trdiff  (ncrms,nz,0:ntracers) )  ! tendency due to vertical diffusion
-    allocate( trphys  (ncrms,nz,0:ntracers) )  ! tendency due to physics
+    ! allocate( tracer  (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers) )
+    ! allocate( fluxbtr (ncrms,nx, ny, 0:ntracers) ) ! surface flux of tracers
+    ! allocate( fluxttr (ncrms,nx, ny, 0:ntracers) ) ! top boundary flux of tracers
+    ! allocate( trwle   (ncrms,nz,0:ntracers) )  ! resolved vertical flux
+    ! allocate( trwsb   (ncrms,nz,0:ntracers) )  ! SGS vertical flux
+    ! allocate( tradv   (ncrms,nz,0:ntracers) )  ! tendency due to vertical advection
+    ! allocate( trdiff  (ncrms,nz,0:ntracers) )  ! tendency due to vertical diffusion
+    ! allocate( trphys  (ncrms,nz,0:ntracers) )  ! tendency due to physics
+    call pool_push(tracer,(/1,dimx1_s,dimy1_s,1,0/),(/ncrms,dimx2_s,dimy2_s,nzm,ntracers/))
+    call pool_push(fluxbtr,(/1,1,1,0/),(/ncrms,nx,ny,ntracers/))
+    call pool_push(fluxttr,(/1,1,1,0/),(/ncrms,nx,ny,ntracers/))
+    call pool_push(trwle  ,(/1,1,0/),(/ncrms,nz,ntracers/))
+    call pool_push(trwsb  ,(/1,1,0/),(/ncrms,nz,ntracers/))
+    call pool_push(tradv  ,(/1,1,0/),(/ncrms,nz,ntracers/))
+    call pool_push(trdiff ,(/1,1,0/),(/ncrms,nz,ntracers/))
+    call pool_push(trphys ,(/1,1,0/),(/ncrms,nz,ntracers/))
 
-    call memzero_crm_rknd( tracer  , product(shape(tracer )) ) 
-    call memzero_crm_rknd( fluxbtr , product(shape(fluxbtr)) ) 
-    call memzero_crm_rknd( fluxttr , product(shape(fluxttr)) ) 
-    call memzero_crm_rknd( trwle   , product(shape(trwle  )) ) 
-    call memzero_crm_rknd( trwsb   , product(shape(trwsb  )) ) 
-    call memzero_crm_rknd( tradv   , product(shape(tradv  )) ) 
-    call memzero_crm_rknd( trdiff  , product(shape(trdiff )) ) 
-    call memzero_crm_rknd( trphys  , product(shape(trphys )) ) 
+    call memzero_crm_rknd( tracer  , product(shape(tracer )) )
+    call memzero_crm_rknd( fluxbtr , product(shape(fluxbtr)) )
+    call memzero_crm_rknd( fluxttr , product(shape(fluxttr)) )
+    call memzero_crm_rknd( trwle   , product(shape(trwle  )) )
+    call memzero_crm_rknd( trwsb   , product(shape(trwsb  )) )
+    call memzero_crm_rknd( tradv   , product(shape(tradv  )) )
+    call memzero_crm_rknd( trdiff  , product(shape(trdiff )) )
+    call memzero_crm_rknd( trphys  , product(shape(trphys )) )
   end subroutine allocate_tracers
 
   subroutine deallocate_tracers
     implicit none
-    deallocate( tracer  )
-    deallocate( fluxbtr ) ! surface flux of tracers
-    deallocate( fluxttr ) ! top boundary flux of tracers
-    deallocate( trwle   ) ! resolved vertical flux
-    deallocate( trwsb   ) ! SGS vertical flux
-    deallocate( tradv   ) ! tendency due to vertical advection
-    deallocate( trdiff  ) ! tendency due to vertical diffusion
-    deallocate( trphys  ) ! tendency due to physics
+    ! deallocate( tracer  )
+    ! deallocate( fluxbtr ) ! surface flux of tracers
+    ! deallocate( fluxttr ) ! top boundary flux of tracers
+    ! deallocate( trwle   ) ! resolved vertical flux
+    ! deallocate( trwsb   ) ! SGS vertical flux
+    ! deallocate( tradv   ) ! tendency due to vertical advection
+    ! deallocate( trdiff  ) ! tendency due to vertical diffusion
+    ! deallocate( trphys  ) ! tendency due to physics
+    call pool_pop_multiple(8)
   end subroutine deallocate_tracers
 
   subroutine tracers_init(ncrms,icrm)

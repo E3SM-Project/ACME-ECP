@@ -11,20 +11,24 @@ contains
     use vars
     use microphysics, only: micro_field, index_cloud_ice
     !use micro_params
+    use openacc_pool
     use params
 
     implicit none
     integer, intent(in) :: ncrms
 
     integer i,j,k, kb, kc, ici, icrm
-    integer, allocatable :: kmax(:), kmin(:)
+    integer, pointer :: kmax(:), kmin(:)
     real(crm_rknd) coef,dqi,lat_heat,vt_ice
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
-    real(crm_rknd), allocatable :: fz(:,:,:,:)
+    real(crm_rknd), pointer :: fz(:,:,:,:)
 
-    allocate(kmax(ncrms))
-    allocate(kmin(ncrms))
-    allocate(fz(ncrms,nx,ny,nz))
+    ! allocate(kmax(ncrms))
+    ! allocate(kmin(ncrms))
+    ! allocate(fz(ncrms,nx,ny,nz))
+    call pool_push(kmax,(/ncrms/))
+    call pool_push(kmin,(/ncrms/))
+    call pool_push(fz,(/ncrms,nx,ny,nz/))
 
     !$acc parallel loop gang vector
     do icrm = 1 , ncrms
@@ -171,9 +175,10 @@ contains
 
     !call t_stopf ('ice_fall')
 
-    deallocate(kmax)
-    deallocate(kmin)
-    deallocate(fz)
+    ! deallocate(kmax)
+    ! deallocate(kmin)
+    ! deallocate(fz)
+    call pool_pop_multiple(3)
 
   end subroutine ice_fall
 
