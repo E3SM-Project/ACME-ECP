@@ -504,7 +504,8 @@ end subroutine crm_physics_init
 !-------------------------------------------------------------------------------------------
    use ppgrid
    use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, dyn_time_lvls, pbuf_get_field, pbuf_set_field
-   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_update, physics_ptend_init
+   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
+   use physics_update_mod, only: physics_update
    use camsrfexch,      only: cam_in_t, cam_out_t
    use time_manager,    only: is_first_step, get_nstep
    use cam_history,     only: outfld

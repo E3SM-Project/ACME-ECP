@@ -1995,6 +1995,7 @@ end function radiation_nextsw_cday
                            sd(i,:,:) = sd_m(i,:,:,icall)
                         end if
                         swcf(i)=fsntoa(i) - fsntoac(i)
+			fsutoac(i) = solin(i) - fsntoac(i)
                       end do
                      endif
                   end if ! (use_SPCAM)
@@ -2181,23 +2182,17 @@ end function radiation_nextsw_cday
               ! update the conctrations in the RRTMG state object
               call rrtmg_state_update( state, pbuf, icall, r_state)
 
-              call aer_rad_props_lw(icall, state, pbuf,  aer_lw_abs)
-              
-              call t_startf ('rad_rrtmg_lw')    !==Guangxing Lin
-
-                  call aer_rad_props_lw(is_cmip6_volc, icall, state, pbuf,  aer_lw_abs)
+              call aer_rad_props_lw(is_cmip6_volc, icall, state, pbuf,  aer_lw_abs)
                   
-                  call t_startf ('rad_rrtmg_lw')
-                  call rad_rrtmg_lw( &
+              call t_startf ('rad_rrtmg_lw')
+              call rad_rrtmg_lw( &
                        lchnk,        ncol,         num_rrtmg_levs,  r_state,                     &
                        state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
                        qrl,          qrlc,                                                       &
                        flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
                        flut,         flutc,        fnl,             fcnl,         fldsc,         &
                        clm_seed,     lu,           ld                                            )
-                  call t_stopf ('rad_rrtmg_lw')
-
-              call t_stopf ('rad_rrtmg_lw')   !==Guangxing Lin
+              call t_stopf ('rad_rrtmg_lw')
 
               if (lwrad_off) then
                 qrl(:,:) = 0._r8
