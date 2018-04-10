@@ -50,6 +50,7 @@
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
 module RNG_MT
+   use shr_kind_mod,  only: r8 => shr_kind_r8
 
    implicit none
 
@@ -89,7 +90,7 @@ end subroutine RNG_MT_set_seed
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
 subroutine RNG_MT_gen_rand(grnd)
-   real(8), dimension(1), intent(out) :: grnd
+   real(r8), intent(out) :: grnd
    integer :: y, kk
    
    if(mti >= N) then
