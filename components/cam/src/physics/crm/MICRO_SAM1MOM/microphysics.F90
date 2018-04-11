@@ -9,7 +9,6 @@ module microphysics
   use grid, only: nx,ny,nzm,nz, dimx1_s,dimx2_s,dimy1_s,dimy2_s ! subdomain grid information
   use params, only: doprecip, docloud, doclubb, crm_rknd
   use micro_params
-  use openacc_pool
   implicit none
 
   !----------------------------------------------------------------------
@@ -473,12 +472,11 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
-    real(crm_rknd), pointer :: omega(:,:,:,:)
+    real(crm_rknd), allocatable :: omega(:,:,:,:)
     integer ind
     integer i,j,k,icrm
 
-    ! allocate(omega(ncrms,nx,ny,nzm))
-    call pool_push(omega,(/ncrms,nx,ny,nzm/))
+    allocate(omega(ncrms,nx,ny,nzm))
 
     crain = b_rain / 4.
     csnow = b_snow / 4.
@@ -500,8 +498,7 @@ CONTAINS
 
     call precip_fall(qp, 2, omega(:,:,:,:), ind, ncrms)
 
-    ! deallocate(omega)
-    call pool_pop()
+    deallocate(omega)
   end subroutine micro_precip_fall
 
   !----------------------------------------------------------------------
@@ -567,8 +564,8 @@ CONTAINS
 
     ! Local:
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
-    real(crm_rknd), pointer :: mx(:,:,:,:),mn(:,:,:,:), lfac(:,:,:,:)
-    real(crm_rknd), pointer :: www(:,:,:,:),fz(:,:,:,:)
+    real(crm_rknd), allocatable :: mx(:,:,:,:),mn(:,:,:,:), lfac(:,:,:,:)
+    real(crm_rknd), allocatable :: www(:,:,:,:),fz(:,:,:,:)
     real(crm_rknd) eps
     integer i,j,k,kc,kb,icrm
     logical nonos
@@ -578,26 +575,19 @@ CONTAINS
     pn(y)=-min(real(0.,crm_rknd),y)
 
     real(crm_rknd) lat_heat, term_vel_qp, flagstat, tmp
-    real(crm_rknd), pointer :: wp(:,:,:,:), tmp_qp(:,:,:,:)
+    real(crm_rknd), allocatable :: wp(:,:,:,:), tmp_qp(:,:,:,:)
     integer iprec, nprec, inttmp
 
     !--------------------------------------------------------
     !call t_startf ('precip_fall')
 
-    ! allocate(mx    (ncrms,nx,ny,nzm))
-    ! allocate(mn    (ncrms,nx,ny,nzm))
-    ! allocate(lfac  (ncrms,nx,ny,nz ))
-    ! allocate(www   (ncrms,nx,ny,nz ))
-    ! allocate(fz    (ncrms,nx,ny,nz ))
-    ! allocate(wp    (ncrms,nx,ny,nzm))
-    ! allocate(tmp_qp(ncrms,nx,ny,nzm))
-    call pool_push( mx     , (/ncrms,nx,ny,nzm/))
-    call pool_push( mn     , (/ncrms,nx,ny,nzm/))
-    call pool_push( lfac   , (/ncrms,nx,ny,nz /))
-    call pool_push( www    , (/ncrms,nx,ny,nz /))
-    call pool_push( fz     , (/ncrms,nx,ny,nz /))
-    call pool_push( wp     , (/ncrms,nx,ny,nzm/))
-    call pool_push( tmp_qp , (/ncrms,nx,ny,nzm/))
+    allocate(mx    (ncrms,nx,ny,nzm))
+    allocate(mn    (ncrms,nx,ny,nzm))
+    allocate(lfac  (ncrms,nx,ny,nz ))
+    allocate(www   (ncrms,nx,ny,nz ))
+    allocate(fz    (ncrms,nx,ny,nz ))
+    allocate(wp    (ncrms,nx,ny,nzm))
+    allocate(tmp_qp(ncrms,nx,ny,nzm))
 
     eps = 1.e-10
     nonos = .true.
@@ -879,14 +869,13 @@ CONTAINS
       end do
     end do !iprec
 
-    ! deallocate(mx    )
-    ! deallocate(mn    )
-    ! deallocate(lfac  )
-    ! deallocate(www   )
-    ! deallocate(fz    )
-    ! deallocate(wp    )
-    ! deallocate(tmp_qp)
-    call pool_pop_multiple(7)
+    deallocate(mx    )
+    deallocate(mn    )
+    deallocate(lfac  )
+    deallocate(www   )
+    deallocate(fz    )
+    deallocate(wp    )
+    deallocate(tmp_qp)
 
     !call t_stopf ('precip_fall')
 

@@ -10,7 +10,6 @@ contains
     use grid
     use vars, only: rho, rhow
     use params
-    use openacc_pool
     implicit none
     integer, intent(in) :: ncrms
 
@@ -30,11 +29,10 @@ contains
     real(crm_rknd) fdiff   (ncrms,nz)
     logical doit
     ! Local
-    real(crm_rknd), pointer :: df(:,:,:,:)	! scalar
+    real(crm_rknd), allocatable :: df(:,:,:,:)	! scalar
     integer i,j,k, icrm
 
-    ! allocate(df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm))
-    call pool_push(df,(/1,dimx1_s,dimy1_s,1/),(/ncrms,dimx2_s,dimy2_s,nzm/))
+    allocate(df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm))
 
     !call t_startf ('diffuse_scalars')
 
@@ -71,8 +69,7 @@ contains
 
     !call t_stopf ('diffuse_scalars')
 
-    ! deallocate(df)
-    call pool_pop()
+    deallocate(df)
 
   end subroutine diffuse_scalar
 
