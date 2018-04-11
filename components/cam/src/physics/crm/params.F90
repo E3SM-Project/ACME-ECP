@@ -16,7 +16,6 @@ module params
 #endif /*CRM*/
 
 #endif
-  use openacc_pool
 
   implicit none
 
@@ -87,8 +86,8 @@ module params
 
   real(crm_rknd):: ug = 0.   !Read-Only     ! Velocity of the Domain's drift in x direction
   real(crm_rknd):: vg	= 0.   !Read-Only     ! Velocity of the Domain's drift in y direction
-  real(crm_rknd), pointer :: longitude0(:)    ! latitude of the domain's center
-  real(crm_rknd), pointer :: latitude0 (:)    ! longitude of the domain's center
+  real(crm_rknd), allocatable :: longitude0(:)    ! latitude of the domain's center
+  real(crm_rknd), allocatable :: latitude0 (:)    ! longitude of the domain's center
   !real(crm_rknd):: nxco2 = 1         ! factor to modify co2 concentration
   !logical:: doradlat = .false.
   !logical:: doradlon = .false.
@@ -103,7 +102,7 @@ module params
   ! real(crm_rknd)::   fluxt0 =0.  ! surface sensible flux, Km/s
   ! real(crm_rknd)::   fluxq0 =0.  ! surface latent flux, m/s
   ! real(crm_rknd)::   tau0   =0.  ! surface stress, m2/s2
-  real(crm_rknd), pointer ::   z0(:)    	! roughness length
+  real(crm_rknd), allocatable ::   z0(:)    	! roughness length
   ! real(crm_rknd)::   soil_wetness =1.! wetness coeff for soil (from 0 to 1.)
   ! integer:: ocean_type =0 ! type of SST forcing
   logical:: cem =.false.    ! flag for Cloud Ensemble Model
@@ -181,10 +180,10 @@ module params
   real(crm_rknd):: bubble_dtemp = 0.
   real(crm_rknd):: bubble_dq = 0.
 
-  real(crm_rknd), pointer :: uhl  (:)    ! current large-scale velocity in x near sfc
-  real(crm_rknd), pointer :: vhl  (:)    ! current large-scale velocity in y near sfc
-  real(crm_rknd), pointer :: taux0(:)    ! surface stress in x, m2/s2
-  real(crm_rknd), pointer :: tauy0(:)    ! surface stress in y, m2/s2
+  real(crm_rknd), allocatable :: uhl  (:)    ! current large-scale velocity in x near sfc
+  real(crm_rknd), allocatable :: vhl  (:)    ! current large-scale velocity in y near sfc
+  real(crm_rknd), allocatable :: taux0(:)    ! surface stress in x, m2/s2
+  real(crm_rknd), allocatable :: tauy0(:)    ! surface stress in y, m2/s2
 
 contains
 
@@ -192,21 +191,13 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    ! allocate( latitude0 (ncrms) )
-    ! allocate( longitude0(ncrms) )
-    ! allocate( z0        (ncrms) )
-    ! allocate( uhl       (ncrms) )
-    ! allocate( vhl       (ncrms) )
-    ! allocate( taux0     (ncrms) )
-    ! allocate( tauy0     (ncrms) )
-    call pool_push( latitude0  , (/ncrms/) )
-    call pool_push( longitude0 , (/ncrms/) )
-    call pool_push( z0         , (/ncrms/) )
-    call pool_push( uhl        , (/ncrms/) )
-    call pool_push( vhl        , (/ncrms/) )
-    call pool_push( taux0      , (/ncrms/) )
-    call pool_push( tauy0      , (/ncrms/) )
-
+    allocate( latitude0 (ncrms) )
+    allocate( longitude0(ncrms) )
+    allocate( z0        (ncrms) )
+    allocate( uhl       (ncrms) )
+    allocate( vhl       (ncrms) )
+    allocate( taux0     (ncrms) )
+    allocate( tauy0     (ncrms) )
     ! allocate( ocean     (ncrms) )
     ! allocate( land      (ncrms) )
 
@@ -225,14 +216,13 @@ contains
 
   subroutine deallocate_params
     implicit none
-    ! deallocate( latitude0  )
-    ! deallocate( longitude0 )
-    ! deallocate( z0         )
-    ! deallocate( uhl        )
-    ! deallocate( vhl        )
-    ! deallocate( taux0      )
-    ! deallocate( tauy0      )
-    call pool_pop_multiple(7)
+    deallocate( latitude0  )
+    deallocate( longitude0 )
+    deallocate( z0         )
+    deallocate( uhl        )
+    deallocate( vhl        )
+    deallocate( taux0      )
+    deallocate( tauy0      )
     ! deallocate( ocean      )
     ! deallocate( land       )
   end subroutine deallocate_params

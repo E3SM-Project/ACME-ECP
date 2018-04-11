@@ -8,19 +8,17 @@ contains
 
     use vars
     use params
-    use openacc_pool
+
     implicit none
     integer, intent(in) :: ncrms
 
     real(crm_rknd), intent (in) :: bflx(ncrms)
     real(crm_rknd) u_h0, tau00
-    real(crm_rknd), pointer :: tauxm(:), tauym(:)
+    real(crm_rknd), allocatable :: tauxm(:), tauym(:)
     integer i,j,icrm
 
-    !allocate(tauxm(ncrms))
-    !allocate(tauym(ncrms))
-    call pool_push(tauxm,(/ncrms/))
-    call pool_push(tauym,(/ncrms/))
+    allocate(tauxm(ncrms))
+    allocate(tauym(ncrms))
 
     !--------------------------------------------------------
 
@@ -64,9 +62,8 @@ contains
 
     end if ! SFC_FLX_FXD
 
-    ! deallocate(tauxm)
-    ! deallocate(tauym)
-    call pool_pop_multiple(2)
+    deallocate(tauxm)
+    deallocate(tauym)
 
   end
 

@@ -25,7 +25,6 @@ contains
     use params, only: dowallx, dowally, docolumn, crm_rknd
     use press_rhs_mod
     use press_grad_mod
-    use openacc_pool
     implicit none
     integer, intent(in) :: ncrms
 
@@ -35,60 +34,44 @@ contains
     integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
     integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
 
-    real(crm_rknd), pointer :: f      (:,:,:,:) ! global rhs and array for FTP coefficeients
-    real(crm_rknd), pointer :: ff     (:,:,:,:)  ! local (subdomain's) version of f
-    real(crm_rknd), pointer :: work   (:,:)
-    real(crm_rknd), pointer :: trigxi (:)
-    real(crm_rknd), pointer :: trigxj (:)
-    integer       , pointer :: ifaxj  (:)
-    integer       , pointer :: ifaxi  (:)
-    real(8)       , pointer :: a      (:,:)
-    real(8)       , pointer :: c      (:,:)
-    real(8)       , pointer :: fff    (:)
-    real(8)       , pointer :: alfa   (:)
-    real(8)       , pointer :: beta   (:)
-    integer       , pointer :: reqs_in(:)
-    integer       , pointer :: iii    (:)
-    integer       , pointer :: jjj    (:)
-    logical       , pointer :: flag   (:)
+    real(crm_rknd), allocatable :: f      (:,:,:,:) ! global rhs and array for FTP coefficeients
+    real(crm_rknd), allocatable :: ff     (:,:,:,:)  ! local (subdomain's) version of f
+    real(crm_rknd), allocatable :: work   (:,:)
+    real(crm_rknd), allocatable :: trigxi (:)
+    real(crm_rknd), allocatable :: trigxj (:)
+    integer       , allocatable :: ifaxj  (:)
+    integer       , allocatable :: ifaxi  (:)
+    real(8)       , allocatable :: a      (:,:)
+    real(8)       , allocatable :: c      (:,:)
+    real(8)       , allocatable :: fff    (:)
+    real(8)       , allocatable :: alfa   (:)
+    real(8)       , allocatable :: beta   (:)
+    integer       , allocatable :: reqs_in(:)
+    integer       , allocatable :: iii    (:)
+    integer       , allocatable :: jjj    (:)
+    logical       , allocatable :: flag   (:)
 
     real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty,eign,e,b
     integer i, j, k, id, jd, m, n, it, jt, ii, jj, tag, rf, icrm
     integer nyp22, n_in, count
     integer iwall,jwall
 
-    ! allocate( f      (ncrms,nx2,ny2,nzslab     ))
-    ! allocate( ff     (ncrms,nx+1,ny+2*YES3D,nzm))
-    ! allocate( work   (nx2,ny2                  ))
-    ! allocate( trigxi (n3i                      ))
-    ! allocate( trigxj (n3j                      ))
-    ! allocate( ifaxj  (100                      ))
-    ! allocate( ifaxi  (100                      ))
-    ! allocate( a      (ncrms,nzm                ))
-    ! allocate( c      (ncrms,nzm                ))
-    ! allocate( fff    (nzm                      ))
-    ! allocate( alfa   (nzm-1                    ))
-    ! allocate( beta   (nzm-1                    ))
-    ! allocate( reqs_in(nsubdomains              ))
-    ! allocate( iii    (0:nx_gl                  ))
-    ! allocate( jjj    (0:ny_gl                  ))
-    ! allocate( flag   (nsubdomains              ))
-    call pool_push( f       , (/ncrms,nx2,ny2,nzslab     /))
-    call pool_push( ff      , (/ncrms,nx+1,ny+2*YES3D,nzm/))
-    call pool_push( work    , (/nx2,ny2                  /))
-    call pool_push( trigxi  , (/n3i                      /))
-    call pool_push( trigxj  , (/n3j                      /))
-    call pool_push( ifaxj   , (/100                      /))
-    call pool_push( ifaxi   , (/100                      /))
-    call pool_push( a       , (/ncrms,nzm                /))
-    call pool_push( c       , (/ncrms,nzm                /))
-    call pool_push( fff     , (/nzm                      /))
-    call pool_push( alfa    , (/nzm-1                    /))
-    call pool_push( beta    , (/nzm-1                    /))
-    call pool_push( reqs_in , (/nsubdomains              /))
-    call pool_push( iii     , (/0/),(/nx_gl              /))
-    call pool_push( jjj     , (/0/),(/ny_gl              /))
-    call pool_push( flag    , (/nsubdomains              /))
+    allocate( f      (ncrms,nx2,ny2,nzslab)      )
+    allocate( ff     (ncrms,nx+1,ny+2*YES3D,nzm) )
+    allocate( work   (nx2,ny2)                   )
+    allocate( trigxi (n3i)                       )
+    allocate( trigxj (n3j)                       )
+    allocate( ifaxj  (100)                       )
+    allocate( ifaxi  (100)                       )
+    allocate( a      (ncrms,nzm)                 )
+    allocate( c      (ncrms,nzm)                 )
+    allocate( fff    (nzm)                       )
+    allocate( alfa   (nzm-1)                     )
+    allocate( beta   (nzm-1)                     )
+    allocate( reqs_in(nsubdomains)               )
+    allocate( iii    (0:nx_gl)                   )
+    allocate( jjj    (0:ny_gl)                   )
+    allocate( flag   (nsubdomains)               )
 
     ! check if the grid size allows the computation:
     if(nsubdomains.gt.nzm) then
@@ -295,23 +278,22 @@ contains
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
 
-    ! deallocate( f       )
-    ! deallocate( ff      )
-    ! deallocate( work    )
-    ! deallocate( trigxi  )
-    ! deallocate( trigxj  )
-    ! deallocate( ifaxj   )
-    ! deallocate( ifaxi   )
-    ! deallocate( a       )
-    ! deallocate( c       )
-    ! deallocate( fff     )
-    ! deallocate( alfa    )
-    ! deallocate( beta    )
-    ! deallocate( reqs_in )
-    ! deallocate( iii     )
-    ! deallocate( jjj     )
-    ! deallocate( flag    )
-    call pool_pop_multiple(16)
+    deallocate( f       )
+    deallocate( ff      )
+    deallocate( work    )
+    deallocate( trigxi  )
+    deallocate( trigxj  )
+    deallocate( ifaxj   )
+    deallocate( ifaxi   )
+    deallocate( a       )
+    deallocate( c       )
+    deallocate( fff     )
+    deallocate( alfa    )
+    deallocate( beta    )
+    deallocate( reqs_in )
+    deallocate( iii     )
+    deallocate( jjj     )
+    deallocate( flag    )
 
   end subroutine pressure
 

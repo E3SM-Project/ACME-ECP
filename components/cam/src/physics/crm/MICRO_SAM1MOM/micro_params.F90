@@ -2,7 +2,7 @@ module micro_params
 
   use grid, only: nzm
   use params, only: crm_rknd
-  use openacc_pool
+
   implicit none
 
   !  Microphysics stuff:
@@ -78,18 +78,18 @@ module micro_params
   real*4 gamr2      ! Gamma function of (5 + b_rain)/2
   real*4 gamr3      ! Gamma function of (4 + b_rain)
 
-  real(crm_rknd), pointer :: accrsc (:,:)
-  real(crm_rknd), pointer :: accrsi (:,:)
-  real(crm_rknd), pointer :: accrrc (:,:)
-  real(crm_rknd), pointer :: coefice(:,:)
-  real(crm_rknd), pointer :: accrgc (:,:)
-  real(crm_rknd), pointer :: accrgi (:,:)
-  real(crm_rknd), pointer :: evaps1 (:,:)
-  real(crm_rknd), pointer :: evaps2 (:,:)
-  real(crm_rknd), pointer :: evapr1 (:,:)
-  real(crm_rknd), pointer :: evapr2 (:,:)
-  real(crm_rknd), pointer :: evapg1 (:,:)
-  real(crm_rknd), pointer :: evapg2 (:,:)
+  real(crm_rknd), allocatable :: accrsc (:,:)
+  real(crm_rknd), allocatable :: accrsi (:,:)
+  real(crm_rknd), allocatable :: accrrc (:,:)
+  real(crm_rknd), allocatable :: coefice(:,:)
+  real(crm_rknd), allocatable :: accrgc (:,:)
+  real(crm_rknd), allocatable :: accrgi (:,:)
+  real(crm_rknd), allocatable :: evaps1 (:,:)
+  real(crm_rknd), allocatable :: evaps2 (:,:)
+  real(crm_rknd), allocatable :: evapr1 (:,:)
+  real(crm_rknd), allocatable :: evapr2 (:,:)
+  real(crm_rknd), allocatable :: evapg1 (:,:)
+  real(crm_rknd), allocatable :: evapg2 (:,:)
 
   real(crm_rknd) a_bg, a_pr, a_gr
 
@@ -99,30 +99,18 @@ contains
     use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    ! allocate( accrsc (ncrms,nzm) )
-    ! allocate( accrsi (ncrms,nzm) )
-    ! allocate( accrrc (ncrms,nzm) )
-    ! allocate( coefice(ncrms,nzm) )
-    ! allocate( accrgc (ncrms,nzm) )
-    ! allocate( accrgi (ncrms,nzm) )
-    ! allocate( evaps1 (ncrms,nzm) )
-    ! allocate( evaps2 (ncrms,nzm) )
-    ! allocate( evapr1 (ncrms,nzm) )
-    ! allocate( evapr2 (ncrms,nzm) )
-    ! allocate( evapg1 (ncrms,nzm) )
-    ! allocate( evapg2 (ncrms,nzm) )
-    call pool_push( accrsc  , (/ncrms,nzm/) )
-    call pool_push( accrsi  , (/ncrms,nzm/) )
-    call pool_push( accrrc  , (/ncrms,nzm/) )
-    call pool_push( coefice , (/ncrms,nzm/) )
-    call pool_push( accrgc  , (/ncrms,nzm/) )
-    call pool_push( accrgi  , (/ncrms,nzm/) )
-    call pool_push( evaps1  , (/ncrms,nzm/) )
-    call pool_push( evaps2  , (/ncrms,nzm/) )
-    call pool_push( evapr1  , (/ncrms,nzm/) )
-    call pool_push( evapr2  , (/ncrms,nzm/) )
-    call pool_push( evapg1  , (/ncrms,nzm/) )
-    call pool_push( evapg2  , (/ncrms,nzm/) )
+    allocate( accrsc (ncrms,nzm) )
+    allocate( accrsi (ncrms,nzm) )
+    allocate( accrrc (ncrms,nzm) )
+    allocate( coefice(ncrms,nzm) )
+    allocate( accrgc (ncrms,nzm) )
+    allocate( accrgi (ncrms,nzm) )
+    allocate( evaps1 (ncrms,nzm) )
+    allocate( evaps2 (ncrms,nzm) )
+    allocate( evapr1 (ncrms,nzm) )
+    allocate( evapr2 (ncrms,nzm) )
+    allocate( evapg1 (ncrms,nzm) )
+    allocate( evapg2 (ncrms,nzm) )
 
     call memzero_crm_rknd( accrsc  , product(shape(accrsc )) )
     call memzero_crm_rknd( accrsi  , product(shape(accrsi )) )
@@ -140,19 +128,18 @@ contains
 
   subroutine deallocate_micro_params
     implicit none
-    ! deallocate( accrsc  )
-    ! deallocate( accrsi  )
-    ! deallocate( accrrc  )
-    ! deallocate( coefice )
-    ! deallocate( accrgc  )
-    ! deallocate( accrgi  )
-    ! deallocate( evaps1  )
-    ! deallocate( evaps2  )
-    ! deallocate( evapr1  )
-    ! deallocate( evapr2  )
-    ! deallocate( evapg1  )
-    ! deallocate( evapg2  )
-    call pool_pop_multiple(12)
+    deallocate( accrsc  )
+    deallocate( accrsi  )
+    deallocate( accrrc  )
+    deallocate( coefice )
+    deallocate( accrgc  )
+    deallocate( accrgi  )
+    deallocate( evaps1  )
+    deallocate( evaps2  )
+    deallocate( evapr1  )
+    deallocate( evapr2  )
+    deallocate( evapg1  )
+    deallocate( evapg2  )
   end subroutine deallocate_micro_params
 
 end module micro_params

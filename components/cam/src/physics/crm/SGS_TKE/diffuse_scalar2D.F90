@@ -6,7 +6,6 @@ contains
 
     use grid
     use params
-    use openacc_pool
     implicit none
     integer, intent(in) :: ncrms
 
@@ -23,18 +22,16 @@ contains
     real(crm_rknd) flux  (ncrms,nz)
 
     ! local
-    real(crm_rknd), pointer :: flx (:,:,:,:)
-    real(crm_rknd), pointer :: dfdt(:,:,:,:)
+    real(crm_rknd), allocatable :: flx (:,:,:,:)
+    real(crm_rknd), allocatable :: dfdt(:,:,:,:)
     real(crm_rknd) rdx2
     real(crm_rknd) tkx,tkz, tmp1, tmp2
     integer i,j,k,ib,ic,kc,kb, icrm
 
     if(.not.dosgs.and..not.docolumn) return
 
-    ! allocate(flx (ncrms,0:nx,1,0:nzm))
-    ! allocate(dfdt(ncrms,nx,ny,nzm))
-    call pool_push(flx,(/1,0,1,0/),(/ncrms,nx,1,nzm/))
-    call pool_push(dfdt,(/ncrms,nx,ny,nzm/))
+    allocate(flx (ncrms,0:nx,1,0:nzm))
+    allocate(dfdt(ncrms,nx,ny,nzm))
 
     rdx2=1./(dx*dx)
 
@@ -122,9 +119,8 @@ contains
       end do
     end do
 
-    ! deallocate(flx )
-    ! deallocate(dfdt)
-    call pool_pop_multiple(2)
+    deallocate(flx )
+    deallocate(dfdt)
 
   end subroutine diffuse_scalar2D
 

@@ -11,7 +11,6 @@ contains
     use vars
     use microphysics, only: micro_field, index_water_vapor
     use params, only: crm_rknd
-    use openacc_pool
     implicit none
     integer, intent(in) :: ncrms
 
@@ -19,14 +18,12 @@ contains
     real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
-    real(crm_rknd), pointer :: tau(:,:)
+    real(crm_rknd), allocatable :: tau(:,:)
     integer i, j, k, max_depth, icrm
-    integer, pointer :: n_damp(:)
+    integer, allocatable :: n_damp(:)
 
-    ! allocate(n_damp(ncrms))
-    ! allocate(tau(ncrms,nzm))
-    call pool_push(n_damp,(/ncrms/))
-    call pool_push(tau,(/ncrms,nzm/))
+    allocate(n_damp(ncrms))
+    allocate(tau(ncrms,nzm))
 
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'
@@ -101,9 +98,8 @@ contains
     end do ! k
 
 
-    ! deallocate(n_damp)
-    ! deallocate(tau)
-    call pool_pop_multiple(2)
+    deallocate(n_damp)
+    deallocate(tau)
 
   end subroutine damping
 
