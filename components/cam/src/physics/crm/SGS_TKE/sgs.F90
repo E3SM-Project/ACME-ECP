@@ -234,12 +234,12 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! make some initial noise in sgs:
   !
-  subroutine setperturb_sgs(ptype,ncrms,icrm)
+  subroutine setperturb_sgs(ptype,ncrms)
 
     use vars, only: q0, z
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     integer, intent(in) :: ptype
-    integer i,j,k
+    integer i,j,k,icrm
 
     select case (ptype)
 
@@ -249,7 +249,9 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(k.le.4.and..not.dosmagor) then
+              do icrm = 1 , ncrms
               tke(icrm,i,j,k)=0.04*(5-k)
+              enddo
             endif
           end do
         end do
@@ -261,7 +263,9 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
+              do icrm = 1 , ncrms
               tke(icrm,i,j,k)=1.
+              enddo
             endif
           end do
         end do
@@ -275,7 +279,9 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.0.5e-3.and..not.dosmagor) then
+              do icrm = 1 , ncrms
               tke(icrm,i,j,k)=1.
+              enddo
             endif
           end do
         end do
@@ -288,7 +294,9 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(icrm,k).le.150..and..not.dosmagor) then
+              do icrm = 1 , ncrms
               tke(icrm,i,j,k)=0.15*(1.-z(icrm,k)/150.)
+              enddo
             endif
           end do
         end do
@@ -301,7 +309,9 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(icrm,k).le.3000..and..not.dosmagor) then
+              do icrm = 1 , ncrms
               tke(icrm,i,j,k)=1.-z(icrm,k)/3000.
+              enddo
             endif
           end do
         end do
@@ -314,7 +324,9 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
+              do icrm = 1 , ncrms
               tke(icrm,i,j,k)=1.
+              enddo
             endif
           end do
         end do

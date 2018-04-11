@@ -496,7 +496,7 @@ program crm_standalone
   write(unit=*,fmt='(A,I7,A,I6,A)') '*** CALLING CRM ',ind,' from task ',rank,' ***'
   call t_startf('crm_main')
   t1 = MPI_Wtime()
-  call crm           ( lchnk(1), icol(:), ncols, &
+  call crm           ( lchnk(1), icol(:), ncols, .false. , &
 #ifdef CRM_STANDALONE
                        latitude0(:), longitude0(:), &
 #endif

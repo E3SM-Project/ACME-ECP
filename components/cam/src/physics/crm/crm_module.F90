@@ -12,6 +12,7 @@ module crm_module
   use advect_all_scalars_mod, only: advect_all_scalars
   use sat_mod
   use crmsurface_mod
+  use perf_mod
 #ifdef sam1mom
   use precip_init_mod
   use micro_params
@@ -33,7 +34,7 @@ module crm_module
 contains
 
 ! subroutine crm  (lchnk, icol, &
-subroutine crm(lchnk, icol, ncrms, is_first_step, &
+subroutine crm(lchnk, icol, ncrms, is_first_step , &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
@@ -806,7 +807,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
 #ifndef CRM_STANDALONE
     if (is_first_step) then 
         iseed = get_gcol_p(lchnk,icol(icrm))
-        call setperturb(iseed)
+        call setperturb(iseed,ncrms)
     end if
 #endif
 

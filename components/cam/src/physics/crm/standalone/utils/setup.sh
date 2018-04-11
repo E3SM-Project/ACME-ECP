@@ -170,6 +170,7 @@ for i in `cat Filepath` ; do
 done
 ln -s $CRM_ROOT/../cam/crmdims.F90
 ln -s $CRM_ROOT/../cam/ppgrid.F90
+ln -s $CRM_ROOT/../cam/RNG_MT.F90
 ln -s $CRM_ROOT/../../../../../cime/src/share/util/shr_const_mod.F90
 ln -s $CRM_ROOT/../../../../../cime/src/share/util/shr_kind_mod.F90
 
