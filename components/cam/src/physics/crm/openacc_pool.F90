@@ -116,7 +116,7 @@ module openacc_pool
   !
   !call pool_push(ptr,dims)
   ![real,real(8),integer,integer(8),logical], pointer, intent(out) :: ptr(:[,:,:,:,:,:,:])
-  !integer, intent(in) :: dims(:) !Shape of the array
+  !integer, intent(in) :: dims(:)
   !
   !call pool_push(ptr,dims1,dims2)
   ![real,real(8),integer,integer(8),logical], pointer, intent(out) :: ptr(:[,:,:,:,:,:,:])
