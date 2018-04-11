@@ -442,27 +442,27 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 #endif
 
   !Initialize local arrays to zero
-  call memzero_crm_rknd( t00       , product(shape(t00      )) )
-  call memzero_crm_rknd( tln       , product(shape(tln      )) )
-  call memzero_crm_rknd( qln       , product(shape(qln      )) )
-  call memzero_crm_rknd( qccln     , product(shape(qccln    )) )
-  call memzero_crm_rknd( qiiln     , product(shape(qiiln    )) )
-  call memzero_crm_rknd( uln       , product(shape(uln      )) )
-  call memzero_crm_rknd( vln       , product(shape(vln      )) )
-  call memzero_crm_rknd( cwp       , product(shape(cwp      )) )
-  call memzero_crm_rknd( cwph      , product(shape(cwph     )) )
-  call memzero_crm_rknd( cwpm      , product(shape(cwpm     )) )
-  call memzero_crm_rknd( cwpl      , product(shape(cwpl     )) )
-  call memzero_logical ( flag_top  , product(shape(flag_top )) )
-  call memzero_crm_rknd( bflx      , product(shape(bflx     )) )
-  call memzero_crm_rknd( wnd       , product(shape(wnd      )) )
-  call memzero_crm_rknd( colprec   , product(shape(colprec  )) )
-  call memzero_crm_rknd( colprecs  , product(shape(colprecs )) )
-  call memzero_integer ( gcolindex , product(shape(gcolindex)) )
-  call memzero_crm_rknd( cltemp    , product(shape(cltemp   )) )
-  call memzero_crm_rknd( cmtemp    , product(shape(cmtemp   )) )
-  call memzero_crm_rknd( chtemp    , product(shape(chtemp   )) )
-  call memzero_crm_rknd( cttemp    , product(shape(cttemp   )) )
+  t00        = 0
+  tln        = 0
+  qln        = 0
+  qccln      = 0
+  qiiln      = 0
+  uln        = 0
+  vln        = 0
+  cwp        = 0
+  cwph       = 0
+  cwpm       = 0
+  cwpl       = 0
+  flag_top   = 0
+  bflx       = 0
+  wnd        = 0
+  colprec    = 0
+  colprecs   = 0
+  gcolindex  = 0
+  cltemp     = 0
+  cmtemp     = 0
+  chtemp     = 0
+  cttemp     = 0
 #ifdef CLUBB_CRM
   rtm_integral_before  = 0
   rtm_integral_after   = 0
@@ -520,16 +520,16 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   idt_gl    = 1._r8/dt_gl
   ptop      = plev-nzm+1
   factor_xy = 1._r8/dble(nx*ny)
-  call memzero_crm_rknd( t_rad   , product(shape(t_rad  )) )
-  call memzero_crm_rknd( qv_rad  , product(shape(qv_rad )) )
-  call memzero_crm_rknd( qc_rad  , product(shape(qc_rad )) )
-  call memzero_crm_rknd( qi_rad  , product(shape(qi_rad )) )
-  call memzero_crm_rknd( cld_rad , product(shape(cld_rad)) )
+  t_rad    = 0
+  qv_rad   = 0
+  qc_rad   = 0
+  qi_rad   = 0
+  cld_rad  = 0
 #ifdef m2005
-  call memzero_crm_rknd( nc_rad , product(shape(nc_rad)) )
-  call memzero_crm_rknd( ni_rad , product(shape(ni_rad)) )
-  call memzero_crm_rknd( qs_rad , product(shape(qs_rad)) )
-  call memzero_crm_rknd( ns_rad , product(shape(ns_rad)) )
+  nc_rad  = 0
+  ni_rad  = 0
+  qs_rad  = 0
+  ns_rad  = 0
 #endif
   ! zs=phis(icrm)/ggr
   bflx(:) = bflxls(:)

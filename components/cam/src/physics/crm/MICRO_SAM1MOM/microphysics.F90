@@ -91,20 +91,20 @@ CONTAINS
     q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
     qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(1:ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,2)
 
-    call memzero_crm_rknd( micro_field , product(shape(micro_field)) )
-    call memzero_crm_rknd( fluxbmk     , product(shape(fluxbmk    )) )
-    call memzero_crm_rknd( fluxtmk     , product(shape(fluxtmk    )) )
-    call memzero_crm_rknd( mkwle       , product(shape(mkwle      )) )
-    call memzero_crm_rknd( mkwsb       , product(shape(mkwsb      )) )
-    call memzero_crm_rknd( mkadv       , product(shape(mkadv      )) )
-    call memzero_crm_rknd( mklsadv     , product(shape(mklsadv    )) )
-    call memzero_crm_rknd( mkdiff      , product(shape(mkdiff     )) )
-    call memzero_crm_rknd( mstor       , product(shape(mstor      )) )
-    call memzero_crm_rknd( q           , product(shape(q          )) )
-    call memzero_crm_rknd( qp          , product(shape(qp         )) )
-    call memzero_crm_rknd( qn          , product(shape(qn         )) )
-    call memzero_crm_rknd( qpsrc       , product(shape(qpsrc      )) )
-    call memzero_crm_rknd( qpevp       , product(shape(qpevp      )) )
+    micro_field  = 0
+    fluxbmk      = 0
+    fluxtmk      = 0
+    mkwle        = 0
+    mkwsb        = 0
+    mkadv        = 0
+    mklsadv      = 0
+    mkdiff       = 0
+    mstor        = 0
+    q            = 0
+    qp           = 0
+    qn           = 0
+    qpsrc        = 0
+    qpevp        = 0
   end subroutine allocate_microphysics
 
   subroutine deallocate_microphysics

@@ -101,22 +101,22 @@ CONTAINS
     tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,1)
     tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,2)
 
-    call memzero_crm_rknd( sgs_field      , product(shape(sgs_field     )) )
-    call memzero_crm_rknd( sgs_field_diag , product(shape(sgs_field_diag)) )
-    call memzero_crm_rknd( fluxbsgs       , product(shape(fluxbsgs      )) )
-    call memzero_crm_rknd( fluxtsgs       , product(shape(fluxtsgs      )) )
-    call memzero_crm_rknd( sgswle         , product(shape(sgswle        )) )
-    call memzero_crm_rknd( sgswsb         , product(shape(sgswsb        )) )
-    call memzero_crm_rknd( sgsadv         , product(shape(sgsadv        )) )
-    call memzero_crm_rknd( sgslsadv       , product(shape(sgslsadv      )) )
-    call memzero_crm_rknd( sgsdiff        , product(shape(sgsdiff       )) )
-    call memzero_crm_rknd( grdf_x         , product(shape(grdf_x        )) )
-    call memzero_crm_rknd( grdf_y         , product(shape(grdf_y        )) )
-    call memzero_crm_rknd( grdf_z         , product(shape(grdf_z        )) )
-    call memzero_crm_rknd( tkesbbuoy      , product(shape(tkesbbuoy     )) )
-    call memzero_crm_rknd( tkesbshear     , product(shape(tkesbshear    )) )
-    call memzero_crm_rknd( tkesbdiss      , product(shape(tkesbdiss     )) )
-    call memzero_crm_rknd( tkesbdiff      , product(shape(tkesbdiff     )) )
+    sgs_field       = 0
+    sgs_field_diag  = 0
+    fluxbsgs        = 0
+    fluxtsgs        = 0
+    sgswle          = 0
+    sgswsb          = 0
+    sgsadv          = 0
+    sgslsadv        = 0
+    sgsdiff         = 0
+    grdf_x          = 0
+    grdf_y          = 0
+    grdf_z          = 0
+    tkesbbuoy       = 0
+    tkesbshear      = 0
+    tkesbdiss       = 0
+    tkesbdiff       = 0
   end subroutine allocate_sgs
 
 

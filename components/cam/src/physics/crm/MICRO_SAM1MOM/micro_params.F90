@@ -112,18 +112,18 @@ contains
     allocate( evapg1 (ncrms,nzm) )
     allocate( evapg2 (ncrms,nzm) )
 
-    call memzero_crm_rknd( accrsc  , product(shape(accrsc )) )
-    call memzero_crm_rknd( accrsi  , product(shape(accrsi )) )
-    call memzero_crm_rknd( accrrc  , product(shape(accrrc )) )
-    call memzero_crm_rknd( coefice , product(shape(coefice)) )
-    call memzero_crm_rknd( accrgc  , product(shape(accrgc )) )
-    call memzero_crm_rknd( accrgi  , product(shape(accrgi )) )
-    call memzero_crm_rknd( evaps1  , product(shape(evaps1 )) )
-    call memzero_crm_rknd( evaps2  , product(shape(evaps2 )) )
-    call memzero_crm_rknd( evapr1  , product(shape(evapr1 )) )
-    call memzero_crm_rknd( evapr2  , product(shape(evapr2 )) )
-    call memzero_crm_rknd( evapg1  , product(shape(evapg1 )) )
-    call memzero_crm_rknd( evapg2  , product(shape(evapg2 )) )
+    accrsc   = 0
+    accrsi   = 0
+    accrrc   = 0
+    coefice  = 0
+    accrgc   = 0
+    accrgi   = 0
+    evaps1   = 0
+    evaps2   = 0
+    evapr1   = 0
+    evapr2   = 0
+    evapg1   = 0
+    evapg2   = 0
   end subroutine allocate_micro_params
 
   subroutine deallocate_micro_params

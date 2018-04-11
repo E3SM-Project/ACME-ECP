@@ -16,7 +16,7 @@ module crmtracers
   use utils,  only: lenstr
   implicit none
 
-  real(crm_rknd), allocatable :: tracer  (:,:,:,:,:) !REDIM  
+  real(crm_rknd), allocatable :: tracer  (:,:,:,:,:) !REDIM
   real(crm_rknd), allocatable :: fluxbtr (:,:,:,:)   !REDIM ! surface flux of tracers
   real(crm_rknd), allocatable :: fluxttr (:,:,:,:)   !REDIM ! top boundary flux of tracers
   real(crm_rknd), allocatable :: trwle   (:,:,:)     !REDIM ! resolved vertical flux
@@ -42,14 +42,14 @@ CONTAINS
     allocate( trdiff  (ncrms,nz,0:ntracers) )  ! tendency due to vertical diffusion
     allocate( trphys  (ncrms,nz,0:ntracers) )  ! tendency due to physics
 
-    call memzero_crm_rknd( tracer  , product(shape(tracer )) ) 
-    call memzero_crm_rknd( fluxbtr , product(shape(fluxbtr)) ) 
-    call memzero_crm_rknd( fluxttr , product(shape(fluxttr)) ) 
-    call memzero_crm_rknd( trwle   , product(shape(trwle  )) ) 
-    call memzero_crm_rknd( trwsb   , product(shape(trwsb  )) ) 
-    call memzero_crm_rknd( tradv   , product(shape(tradv  )) ) 
-    call memzero_crm_rknd( trdiff  , product(shape(trdiff )) ) 
-    call memzero_crm_rknd( trphys  , product(shape(trphys )) ) 
+    tracer   = 0
+    fluxbtr  = 0
+    fluxttr  = 0
+    trwle    = 0
+    trwsb    = 0
+    tradv    = 0
+    trdiff   = 0
+    trphys   = 0 
   end subroutine allocate_tracers
 
   subroutine deallocate_tracers
