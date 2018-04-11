@@ -723,7 +723,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
           t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
                     -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
                     -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
-          !$acc atomic update
           colprec (icrm  )=colprec (icrm  )+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
           colprecs(icrm  )=colprecs(icrm  )+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
           u0      (icrm,k)=u0      (icrm,k)+u(icrm,i,j,k)
@@ -776,7 +775,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
   !MRN: This is not on the GPU because it gives the wrong answer for some reason
-  ! !$acc parallel loop gang vector
+  ! !!$acc parallel loop gang vector
   do icrm = 1 , ncrms
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),sqrt(tau00(icrm)/rho(icrm,1)))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
@@ -805,7 +804,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   !MRN: Need to make sure the first call to crm(...) is not dumped out
   !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
 #ifndef CRM_STANDALONE
-    if (is_first_step) then 
+    if (is_first_step) then
         iseed = get_gcol_p(lchnk,icol(icrm))
         call setperturb(iseed,ncrms)
     end if

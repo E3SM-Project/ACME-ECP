@@ -580,7 +580,7 @@ CONTAINS
     nprec = 1
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) copyout(lfac,wp) copyin(omega,tabs,rho,qp,dz,adz,rhow)
     do k=1,nz
       do j=1,ny
         do i=1,nx
@@ -667,7 +667,7 @@ CONTAINS
     endif
 
     do iprec = 1,nprec
-      !$acc parallel loop gang vector collapse(4)
+      !$acc parallel loop gang vector collapse(4) copyout(mx,mn,fz) copyin(qp,wp)
       do k=1,nz
         do j=1,ny
           do i=1,nx
@@ -804,7 +804,7 @@ CONTAINS
       end do
 
 
-      !$acc parallel loop gang vector collapse(4)
+      !$acc parallel loop gang vector collapse(4) copyout(wp,fz,www,lfac) copyin(tabs,rho,qp,rhow,dz)
       do k=1,nz
         do j=1,ny
           do i=1,nx

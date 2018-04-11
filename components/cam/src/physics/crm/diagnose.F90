@@ -15,9 +15,14 @@ contains
     implicit none
     integer, intent(in) :: ncrms
 
-    integer i,j,k,kb,kc,k200(ncrms),k500(ncrms),k850(ncrms),icrm
+    integer :: i,j,k,kb,kc,icrm
     real(8) coef, coef1(ncrms), tmp
     real(crm_rknd) omn, omp, tmp_lwp
+    integer, allocatable :: k200(:),k500(:),k850(:)
+
+    allocate(k200(ncrms))
+    allocate(k500(ncrms))
+    allocate(k850(ncrms))
 
     coef = 1./real(nx*ny,crm_rknd)
 
@@ -98,6 +103,7 @@ contains
     !$acc parallel loop gang vector
     do icrm = 1 , ncrms
       k500(icrm) = nzm
+      !$acc loop seq
       do k = 1,nzm
         kc=min(nzm,k+1)
         if((pres(icrm,kc).le.500.).and.(pres(icrm,k).gt.500.)) then
@@ -110,8 +116,7 @@ contains
       end do
     end do
 
-
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) copyin(w)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -162,7 +167,7 @@ contains
     end do ! k
 
     ! ACCUMULATE AVERAGES OF TWO-DIMENSIONAL STATISTICS
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) copy(psfc_xy,u850_xy,v850_xy) copyin(u,v,pres,p)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -223,6 +228,10 @@ contains
 
     ! recompute pressure levels, except at restart (saved levels are used).
     !if(dtfactor.ge.0.) call pressz()   ! recompute pressure levels
+
+    deallocate(k200)
+    deallocate(k500)
+    deallocate(k850)
   end subroutine diagnose
 
 end module diagnose_mod
