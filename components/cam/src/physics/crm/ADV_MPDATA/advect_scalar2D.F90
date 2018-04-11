@@ -9,7 +9,6 @@ contains
 
     use grid
     use params, only: dowallx, crm_rknd
-    use openacc_pool
     implicit none
     integer, intent(in) :: ncrms
 
@@ -21,10 +20,10 @@ contains
     real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(ncrms,nz)
 
-    real(crm_rknd), pointer :: mx   (:,:,:,:)
-    real(crm_rknd), pointer :: mn   (:,:,:,:)
-    real(crm_rknd), pointer :: uuu  (:,:,:,:)
-    real(crm_rknd), pointer :: www  (:,:,:,:)
+    real(crm_rknd), allocatable :: mx   (:,:,:,:)
+    real(crm_rknd), allocatable :: mn   (:,:,:,:)
+    real(crm_rknd), allocatable :: uuu  (:,:,:,:)
+    real(crm_rknd), allocatable :: www  (:,:,:,:)
 
     real(crm_rknd) eps, irho
     integer i,j,k,ic,ib,kc,kb,icrm
@@ -37,14 +36,10 @@ contains
     pp    (y)        = max(real(0.,crm_rknd),y)
     pn    (y)        =-min(real(0.,crm_rknd),y)
 
-    call pool_push(mx ,(/1, 0,1,1/),(/ncrms,nxp1,1,nzm/))
-    call pool_push(mn ,(/1, 0,1,1/),(/ncrms,nxp1,1,nzm/))
-    call pool_push(uuu,(/1,-1,1,1/),(/ncrms,nxp3,1,nzm/))
-    call pool_push(www,(/1,-1,1,1/),(/ncrms,nxp2,1,nz /))
-    !allocate( mx   (ncrms,0:nxp1,1,nzm)  )
-    !allocate( mn   (ncrms,0:nxp1,1,nzm)  )
-    !allocate( uuu  (ncrms,-1:nxp3,1,nzm) )
-    !allocate( www  (ncrms,-1:nxp2,1,nz)  )
+    allocate( mx   (ncrms,0:nxp1,1,nzm)  )
+    allocate( mn   (ncrms,0:nxp1,1,nzm)  )
+    allocate( uuu  (ncrms,-1:nxp3,1,nzm) )
+    allocate( www  (ncrms,-1:nxp2,1,nz)  )
 
     nonos = .true.
     eps = 1.e-10
@@ -221,11 +216,10 @@ contains
       end do
     end do
 
-    !deallocate( mx    )
-    !deallocate( mn    )
-    !deallocate( uuu   )
-    !deallocate( www   )
-    call pool_pop_multiple(4)
+    deallocate( mx    )
+    deallocate( mn    )
+    deallocate( uuu   )
+    deallocate( www   )
 
   end subroutine advect_scalar2D
 
