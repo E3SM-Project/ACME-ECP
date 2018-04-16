@@ -954,6 +954,11 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     ncycle = 1 ! call kurant(ncrms)
 
     do icyc=1,ncycle
+      !$acc data copyin(bet,adz,qci) copyout(dvdt(:,:,:,:,na),dudt(:,:,:,:,na),dwdt(:,:,:,:,na),misc) &
+      !$acc& copyin(qpi,qp0,qpl,tabs0,tabs,qv0,qn0,qcl,qv) &
+      !$acc& copyin(ttend,qtend,utend,vtend) copy(t,micro_field(:,:,:,:,index_water_vapor)) &
+      !$acc& copyin(qrad_crm)
+
       icycle = icyc
       dtn = dt/ncycle
       dt3(na) = dtn
@@ -975,7 +980,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       !       Large-scale and surface forcing:
       call forcing(ncrms)
 
-      !$acc parallel loop gang vector collapse(4)
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -987,6 +992,9 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
           enddo
         enddo
       enddo
+
+      !$acc wait(1)
+      !$acc end data
 
       !----------------------------------------------------------
       !   	suppress turbulence near the upper boundary (spange):

@@ -11,7 +11,7 @@ contains
     integer, intent(in) :: ncrms
     integer :: i,j,k,icrm
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1 , nz
       do j = 1 , nyp1
         do i = 1 , nxp1

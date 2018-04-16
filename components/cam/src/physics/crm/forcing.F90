@@ -19,9 +19,12 @@ contains
     allocate(qpoz  (ncrms,nzm))
     allocate(factor(ncrms,nzm))
 
+
+    !$acc enter data create(qpoz,qneg,factor) async(1)
+
     coef = 1./3600.
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -39,7 +42,7 @@ contains
       end do
     enddo
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1,nzm
       do icrm = 1 , ncrms
         !$acc loop seq
@@ -54,7 +57,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -66,6 +69,8 @@ contains
         end do
       end do
     end do
+
+    !$acc exit data delete(qpoz,qneg,factor) async(1)
 
     deallocate(qneg  )
     deallocate(qpoz  )
