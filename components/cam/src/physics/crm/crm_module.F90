@@ -957,7 +957,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       !$acc data copyin(bet,adz,qci) copyout(dvdt(:,:,:,:,na),dudt(:,:,:,:,na),dwdt(:,:,:,:,na),misc) &
       !$acc& copyin(qpi,qp0,qpl,tabs0,tabs,qv0,qn0,qcl,qv) &
       !$acc& copyin(ttend,qtend,utend,vtend) copy(t,micro_field(:,:,:,:,index_water_vapor)) &
-      !$acc& copyin(qrad_crm)
+      !$acc& copyin(qrad_crm) &
+      !$acc& copyin(z,u,v,w,qv,qv0) copyout(u0,v0,t0)
 
       icycle = icyc
       dtn = dt/ncycle
@@ -993,12 +994,12 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
         enddo
       enddo
 
-      !$acc wait(1)
-      !$acc end data
-
       !----------------------------------------------------------
       !   	suppress turbulence near the upper boundary (spange):
       if (dodamping) call damping(ncrms)
+
+      !$acc wait(1)
+      !$acc end data
 
       !---------------------------------------------------------
       !   Ice fall-out

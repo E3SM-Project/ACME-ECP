@@ -25,13 +25,15 @@ contains
     allocate(n_damp(ncrms))
     allocate(tau(ncrms,nzm))
 
+    !$acc enter data create(n_damp,tau) async(1)
+
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'
       call task_abort()
     end if
 
     max_depth = 0
-    !$acc parallel loop gang vector reduction(max:max_depth)
+    !$acc parallel loop gang vector reduction(max:max_depth) default(present) async(1)
     do icrm = 1 , ncrms
       !$acc loop seq
       do k=nzm,1,-1
@@ -42,7 +44,7 @@ contains
       max_depth = max(max_depth,n_damp(icrm))
     end do
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=nzm,nzm-max_depth,-1
       do icrm = 1 , ncrms
         if (k >= (nzm-n_damp(icrm))) then
@@ -55,7 +57,7 @@ contains
     !+++mhwang recalculate grid-mean u0, v0, t0 first,
     ! as t have been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1, nzm
       do icrm = 1 , ncrms
         u0(icrm,k)=0.0
@@ -74,7 +76,7 @@ contains
     end do
     !---mhwang
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = nzm, nzm-max_depth, -1
       do j=1,ny
         do i=1,nx
@@ -97,6 +99,7 @@ contains
       end do! j
     end do ! k
 
+    !$acc exit data delete(n_damp,tau) async(1)
 
     deallocate(n_damp)
     deallocate(tau)
