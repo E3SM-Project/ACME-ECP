@@ -17,9 +17,9 @@ contains
     logical :: dosmagor
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tkesbbuoy(ncrms,nz), tkesbshear(ncrms,nz), tkesbdiss(ncrms,nz)
-    real(crm_rknd) tke (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
-    real(crm_rknd) tk  (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy viscosity
-    real(crm_rknd) tkh (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm)  ! SGS eddy conductivity
+    real(crm_rknd), pointer :: tke (:,:,:,:)   ! SGS TKE
+    real(crm_rknd), pointer :: tk  (:,:,:,:)  ! SGS eddy viscosity
+    real(crm_rknd), pointer :: tkh (:,:,:,:)  ! SGS eddy conductivity
 
     real(crm_rknd), allocatable :: def2(:,:,:,:)
     real(crm_rknd) Ck,Ce,Ces,Ce1,Ce2,smix,Pr,Cee,Cs, grd, betdz
