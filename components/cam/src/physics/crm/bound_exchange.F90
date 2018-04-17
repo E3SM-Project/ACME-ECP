@@ -21,6 +21,8 @@ contains
 
     allocate(buffer(ncrms*(nx+ny)*3*nz))
 
+    !$acc enter data create(buffer) async(1)
+
     i1 = i_1 - 1
     i2 = i_2 - 1
     j1 = j_1 - 1
@@ -189,7 +191,7 @@ contains
 
     !  "East" -> "West":
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,dimz
       do j=1,ny
         do i=nx-i1,nx
@@ -200,7 +202,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,dimz
       do j=1,ny
         do i=-i1,0
@@ -214,7 +216,7 @@ contains
 
     ! "West" -> "East":
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,dimz
       do j=1,ny
         do i=1,1+i2
@@ -225,7 +227,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,dimz
       do j=1,ny
         do i=nxp1,nxp1+i2
@@ -238,6 +240,7 @@ contains
     end do
 
 
+    !$acc exit data delete(buffer) async(1)
     deallocate(buffer)
 
 

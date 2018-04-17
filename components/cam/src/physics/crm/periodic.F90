@@ -26,7 +26,7 @@ contains
       call bound_exchange(v(:,:,:,:),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2,ncrms)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do j = 1 , ny
         do i = 1 , nx
           do icrm = 1 , ncrms
@@ -35,7 +35,7 @@ contains
         enddo
       enddo
       call bound_exchange(w(:,:,:,:),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3,ncrms)
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do j = 1-YES3D,ny+YES3D
         do i = 1 , nx+1
           do icrm = 1 , ncrms

@@ -20,12 +20,14 @@ contains
     allocate(tauxm(ncrms))
     allocate(tauym(ncrms))
 
+    !$acc enter data create(tauxm,tauym) async(1)
+
     !--------------------------------------------------------
 
 
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
 
-      !$acc parallel loop gang vector
+      !$acc parallel loop gang vector default(present) async(1)
       do icrm = 1 , ncrms
         uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
         vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
@@ -33,7 +35,7 @@ contains
         tauym(icrm) = 0.
       enddo
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms
@@ -46,7 +48,7 @@ contains
         end do
       end do
 
-      !$acc parallel loop gang vector
+      !$acc parallel loop gang vector default(present) async(1)
       do icrm = 1 , ncrms
         !$acc loop seq
         do j=1,ny
@@ -61,6 +63,8 @@ contains
       enddo
 
     end if ! SFC_FLX_FXD
+
+    !$acc exit data delete(tauxm,tauym) async(1)
 
     deallocate(tauxm)
     deallocate(tauym)
