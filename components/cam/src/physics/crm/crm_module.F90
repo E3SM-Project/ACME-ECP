@@ -1037,14 +1037,14 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
         call crmsurface(bflx,ncrms)
       endif
 
-      !$acc wait(1)
-      !$acc end data
-
       !-----------------------------------------------------------
       !  SGS physics:
       if (dosgs) then
         call sgs_proc(ncrms)
       endif
+
+      !$acc wait(1)
+      !$acc end data
 
       !----------------------------------------------------------
       !     Fill boundaries for SGS diagnostic fields:

@@ -31,7 +31,11 @@ contains
     real(crm_rknd) tk_min_value   ! whannah - min value for eddy viscosity (TK)
     real(crm_rknd) tk_min_depth   ! whannah - near-surface depth to apply tk_min (meters)
 
+    write(*,*) 'tke_full loc tke: ', loc(tke)
+
     allocate(def2(ncrms,nx,ny,nzm))
+
+    !$acc enter data create(def2) async(1)
 
     tk_min_value = 0.05
     tk_min_depth = 500.
@@ -51,7 +55,7 @@ contains
       call shear_prod2D(def2, ncrms)
     endif
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1,nzm
       do icrm = 1 , ncrms
         tkelediss (icrm,k) = 0.
@@ -61,7 +65,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -180,6 +184,8 @@ contains
         end do ! i
       end do ! j
     end do ! k
+
+    !$acc exit data delete(def2) async(1)
 
     deallocate(def2)
 

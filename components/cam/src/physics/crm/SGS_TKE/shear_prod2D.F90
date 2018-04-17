@@ -19,8 +19,7 @@ contains
     rdx0=1./dx
     j=1
 
-
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=2,nzm-1
       do i=1,nx
         do icrm = 1 , ncrms
@@ -57,12 +56,10 @@ contains
       end do
     end do ! k
 
-
     k=1
     kc=k+1
 
-
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do i=1,nx
       do icrm = 1 , ncrms
         rdz = 1./(dz(icrm)*adz(icrm,k))
@@ -91,9 +88,7 @@ contains
     kc=k+1
     kb=k-1
 
-
-
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do i=1,nx
       do icrm = 1 , ncrms
         rdz = 1./(dz(icrm)*adz(icrm,k))

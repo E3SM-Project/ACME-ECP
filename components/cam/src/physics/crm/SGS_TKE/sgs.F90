@@ -101,6 +101,9 @@ CONTAINS
     tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,1)
     tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,2)
 
+    write(*,*) 'Init loc tke: ', loc(tke)
+    write(*,*) 'Init loc sgs_field: ', loc(sgs_field)
+
     sgs_field       = 0
     sgs_field_diag  = 0
     fluxbsgs        = 0
@@ -481,6 +484,8 @@ subroutine sgs_proc(ncrms)
 
   !    SGS TKE equation:
 
+    write(*,*) 'sgs_proc loc tke: ', loc(tke)
+
   if(dosgs) call tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms)
 
   x1 = min(0,dimx1_s)
@@ -488,7 +493,7 @@ subroutine sgs_proc(ncrms)
   y1 = min(1-YES3D,dimy1_s)
   y2 = max(nyp1,dimy2_s)
 
-  !$acc parallel loop gang vector collapse(4)
+  !$acc parallel loop gang vector collapse(4) default(present) async(1)
   do k = 1 , nzm
     do j = y1,y1
       do i = x1,x2
