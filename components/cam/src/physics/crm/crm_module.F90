@@ -1043,16 +1043,10 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
         call sgs_proc(ncrms)
       endif
 
-      !$acc wait(1)
-      !$acc end data
-
       !----------------------------------------------------------
       !     Fill boundaries for SGS diagnostic fields:
 
-      !$acc data copy(u,v,w,sstxy,t,sgs_field,micro_field,tracer,sgs_field_diag)
       call boundaries(4,ncrms)
-      !$acc wait(1)
-      !$acc end data
 
       !-----------------------------------------------
       !       advection of momentum:
@@ -1070,6 +1064,9 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       if (docoriolis) then
         call coriolis(ncrms)
       endif
+
+      !$acc wait(1)
+      !$acc end data
 
       !---------------------------------------------------------
       !       compute rhs of the Poisson equation and solve it for pressure.

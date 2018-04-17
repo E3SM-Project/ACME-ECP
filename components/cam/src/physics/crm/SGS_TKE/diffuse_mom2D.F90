@@ -12,7 +12,7 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
-    real(crm_rknd) tk  (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
+    real(crm_rknd), pointer :: tk  (:,:,:,:) ! SGS eddy viscosity
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
 
@@ -22,13 +22,15 @@ contains
     real(crm_rknd) tkz, rhoi
     real(crm_rknd) fu(ncrms,0:nx,1,nz),fv(ncrms,0:nx,1,nz),fw(ncrms,0:nx,1,nz)
 
+    !$acc enter data create(fu,fv,fw) async(1)
+
     rdx2=1./dx/dx
     rdx25=0.25*rdx2
 
     j=1
 
     if(.not.docolumn) then
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
@@ -55,7 +57,7 @@ contains
 
     !-------------------------
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k = 1 , nz
       do icrm = 1 , ncrms
         uwsb(icrm,k) = 0.
@@ -63,7 +65,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=1,nzm-1
       do i=1,nx
         do icrm = 1 , ncrms
@@ -84,7 +86,7 @@ contains
     end do
 
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do i=1,nx
       do icrm = 1 , ncrms
         rdz = 1 / dz(icrm)
@@ -102,7 +104,7 @@ contains
     end do
 
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -117,6 +119,8 @@ contains
         enddo
       end do
     end do ! k
+
+    !$acc exit data delete(fu,fv,fw) async(1)
 
   end subroutine diffuse_mom2D
 

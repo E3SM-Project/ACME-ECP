@@ -31,8 +31,6 @@ contains
     real(crm_rknd) tk_min_value   ! whannah - min value for eddy viscosity (TK)
     real(crm_rknd) tk_min_depth   ! whannah - near-surface depth to apply tk_min (meters)
 
-    write(*,*) 'tke_full loc tke: ', loc(tke)
-
     allocate(def2(ncrms,nx,ny,nzm))
 
     !$acc enter data create(def2) async(1)

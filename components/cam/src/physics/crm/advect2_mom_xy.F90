@@ -75,7 +75,7 @@ contains
 
       j=1
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k = 1,nzm
         do i = 1, nx
           do icrm = 1 , ncrms

@@ -484,8 +484,6 @@ subroutine sgs_proc(ncrms)
 
   !    SGS TKE equation:
 
-    write(*,*) 'sgs_proc loc tke: ', loc(tke)
-
   if(dosgs) call tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor, ncrms)
 
   x1 = min(0,dimx1_s)
