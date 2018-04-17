@@ -26,7 +26,9 @@ contains
     allocate(kmin(ncrms))
     allocate(fz(ncrms,nx,ny,nz))
 
-    !$acc parallel loop gang vector
+    !$acc enter data create(kmin,kmax,fz) async(1)
+
+    !$acc parallel loop gang vector default(present) async(1)
     do icrm = 1 , ncrms
       kmax(icrm)=0
       kmin(icrm)=nzm+1
@@ -45,7 +47,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k = 1,nzm
       do icrm = 1 , ncrms
         qifall(icrm,k) = 0.
@@ -57,7 +59,7 @@ contains
 
     !call t_startf ('ice_fall')
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1 , nz
       do j = 1 , ny
         do i = 1 , nx
@@ -71,7 +73,7 @@ contains
     ! Compute cloud ice flux (using flux limited advection scheme, as in
     ! chapter 6 of Finite Volume Methods for Hyperbolic Problems by R.J.
     ! LeVeque, Cambridge University Press, 2002).
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1,nzm+1
       do j = 1,ny
         do i = 1,nx
@@ -116,7 +118,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -127,7 +129,7 @@ contains
 
     ici = index_cloud_ice
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) present(dz,adz,rho,fz,micro_field,qifall,t,tlatqi) async(1)
     do k=1,nzm+1
       do j=1,ny
         do i=1,nx
@@ -140,6 +142,7 @@ contains
               ! Add this increment to both non-precipitating and total water.
               micro_field(icrm,i,j,k,ici)  = micro_field(icrm,i,j,k,ici)  + dqi
               ! Include this effect in the total moisture budget.
+              !$acc atomic update
               qifall(icrm,k) = qifall(icrm,k) + dqi
 
               ! The latent heat flux induced by the falling cloud ice enters
@@ -149,6 +152,7 @@ contains
               ! Add divergence of latent heat flux to liquid-ice static energy.
               t(icrm,i,j,k)  = t(icrm,i,j,k)  - lat_heat
               ! Add divergence to liquid-ice static energy budget.
+              !$acc atomic update
               tlatqi(icrm,k) = tlatqi(icrm,k) - lat_heat
             endif
           enddo
@@ -156,7 +160,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -170,6 +174,8 @@ contains
     end do
 
     !call t_stopf ('ice_fall')
+
+    !$acc exit data delete(kmin,kmax,fz) async(1)
 
     deallocate(kmax)
     deallocate(kmin)

@@ -954,11 +954,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     ncycle = 1 ! call kurant(ncrms)
 
     do icyc=1,ncycle
-      !$acc data copyin(bet,adz,qci) copyout(dvdt(:,:,:,:,na),dudt(:,:,:,:,na),dwdt(:,:,:,:,na),misc) &
-      !$acc& copyin(qpi,qp0,qpl,tabs0,tabs,qv0,qn0,qcl,qv) &
-      !$acc& copyin(ttend,qtend,utend,vtend) copy(t,micro_field(:,:,:,:,index_water_vapor)) &
-      !$acc& copyin(qrad_crm) &
-      !$acc& copyin(z,u,v,w,qv,qv0) copyout(u0,v0,t0)
+      !$acc data copy(bet,adz,qci,dudt,dvdt,dwdt,misc,qpi,qp0,qpl,tabs0,tabs,qv0,qn0,qcl,qv,ttend,qtend,utend,vtend,t,micro_field,qrad_crm,z,u,v,w,qv,qv0,u0,v0,t0,&
+      !$acc&          qcl,qci,tabs,qifall,tlatqi,adz,dz,rho,micro_field,t,precsfc,precssfc)
 
       icycle = icyc
       dtn = dt/ncycle
@@ -998,9 +995,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       !   	suppress turbulence near the upper boundary (spange):
       if (dodamping) call damping(ncrms)
 
-      !$acc wait(1)
-      !$acc end data
-
       !---------------------------------------------------------
       !   Ice fall-out
 #ifdef CLUBB_CRM
@@ -1012,6 +1006,9 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
         call ice_fall(ncrms)
       endif
 #endif
+
+      !$acc wait(1)
+      !$acc end data
 
       !----------------------------------------------------------
       !     Update scalar boundaries after large-scale processes:
