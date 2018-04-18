@@ -38,7 +38,8 @@ module crm_physics
    integer :: crm_qt_idx, crm_nc_idx, crm_qr_idx, crm_nr_idx, crm_qi_idx, crm_ni_idx 
    integer :: crm_qs_idx, crm_ns_idx, crm_qg_idx, crm_ng_idx, crm_qc_idx, crm_qp_idx, crm_qn_idx
    integer :: crm_t_rad_idx, crm_qv_rad_idx, crm_qc_rad_idx, crm_qi_rad_idx, crm_cld_rad_idx
-   integer :: crm_nc_rad_idx, crm_ni_rad_idx, crm_qs_rad_idx, crm_ns_rad_idx, crm_qrad_idx
+   integer :: crm_nc_rad_idx, crm_ni_rad_idx, crm_ns_rad_idx, crm_qrad_idx
+   integer :: crm_qr_rad_idx, crm_qs_rad_idx, crm_qg_rad_idx
    integer :: crm_qaerwat_idx, crm_dgnumwet_idx
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
    integer :: prec_sed_idx, snow_sed_idx, snow_str_idx, prec_pcw_idx, snow_pcw_idx
@@ -125,6 +126,12 @@ subroutine crm_physics_register()
   call pbuf_add_field('CRM_CLD_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_cld_rad_idx)
   call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qrad_idx)
 
+  ! More mixing ratios on radiation domain for COSP
+  if (spcam_microp_scheme == 'm2005') then
+     call pbuf_add_field('CRM_QR_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_qr_rad_idx)
+     call pbuf_add_field('CRM_QS_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_qs_rad_idx)
+     call pbuf_add_field('CRM_QG_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_qg_rad_idx)
+  end if
 
 #ifdef MODAL_AERO
   call pbuf_add_field('CRM_QAERWAT', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode/),  crm_qaerwat_idx)
@@ -594,7 +601,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
 
    real(r8), pointer ::   nc_rad(:,:,:,:)   ! rad cloud water droplet number [#/kg]
    real(r8), pointer ::   ni_rad(:,:,:,:)   ! rad cloud ice crystal number [#/kg]
-   real(r8), pointer ::   qs_rad(:,:,:,:)   ! rad cloud snow mass [kg/kg]
    real(r8), pointer ::   ns_rad(:,:,:,:)   ! rad cloud snow crystal number [#/kg]
    real(r8), pointer ::  cld_rad(:,:,:,:)   ! cloud fraction
 
@@ -602,6 +608,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    real(r8), pointer ::  qv_rad(:,:,:,:)    ! rad vapor
    real(r8), pointer ::  qc_rad(:,:,:,:)    ! rad cloud water
    real(r8), pointer ::  qi_rad(:,:,:,:)    ! rad cloud ice
+   real(r8), pointer ::  qr_rad(:,:,:,:)    ! rad cloud snow mass [kg/kg]
+   real(r8), pointer ::  qs_rad(:,:,:,:)    ! rad cloud snow mass [kg/kg]
+   real(r8), pointer ::  qg_rad(:,:,:,:)    ! rad cloud snow mass [kg/kg]
    real(r8), pointer ::  crm_qrad(:,:,:,:)
    real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
 ! at layer center
@@ -1029,12 +1038,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
 !------------------------------------------------------------
  
 
-!
-! tracer species other than water vapor and cloud water are updated in convetional CAM.
-! When ECPP is used, dropmixnuc and all transport(deep and shallow) are done in ECPP.
-! So all change in aerosol and gas species in the conventinal CAM are discarded.
-! Minghuai Wang, 2010-01 (Minghuai.Wang@pnl.gov)
-!
+   !
+   ! tracer species other than water vapor and cloud water are updated in conventional CAM.
+   ! When ECPP is used, dropmixnuc and all transport(deep and shallow) are done in ECPP.
+   ! So all change in aerosol and gas species in the conventinal CAM are discarded.
+   ! Minghuai Wang, 2010-01 (Minghuai.Wang@pnl.gov)
+   !
    if (.not. use_ECPP) then
       call phys_getopts(microp_scheme_out=microp_scheme)
       if ( microp_scheme .eq. 'MG' ) then
@@ -1044,7 +1053,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
       end if
    endif
 
-! Associate pointers with physics buffer fields
+   ! Associate pointers with physics buffer fields
    itim = pbuf_old_tim_idx()
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
@@ -1081,7 +1090,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    call pbuf_get_field (pbuf, crm_qv_rad_idx,   qv_rad)
    call pbuf_get_field (pbuf, crm_qc_rad_idx,   qc_rad)
    call pbuf_get_field (pbuf, crm_qi_rad_idx,   qi_rad)
-   call pbuf_get_field (pbuf, crm_cld_rad_idx, cld_rad)  !Guangxing Lin new CRM
+   call pbuf_get_field (pbuf, crm_cld_rad_idx, cld_rad)
+   if (spcam_microp_scheme == 'm2005') then
+      call pbuf_get_field(pbuf, crm_qr_rad_idx, qr_rad)
+      call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad)
+      call pbuf_get_field(pbuf, crm_qg_rad_idx, qg_rad)
+   end if
 
    call pbuf_get_field(pbuf, prec_dp_idx,  prec_dp  )
    call pbuf_get_field(pbuf, prec_sh_idx,  prec_sh  )
@@ -1251,12 +1265,14 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
             cld_rad(i,:,:,k)      = 0.
 #ifdef m2005
             if (SPCAM_microp_scheme .eq. 'm2005') then
+               qr_rad(i,:,:,k) = 0.0
+               qs_rad(i,:,:,k) = 0.0
+               qg_rad(i,:,:,k) = 0.0
+
                nc_rad(i,:,:,k) = 0.0
                ni_rad(i,:,:,k) = 0.0       
-               qs_rad(i,:,:,k) = 0.0
                ns_rad(i,:,:,k) = 0.0
                wvar_crm(i,:,:,k) = 0.0
-               ! hm 7/26/11, add new output
                aut_crm (i,:,:,k) = 0.0
                acc_crm (i,:,:,k) = 0.0
                evpc_crm(i,:,:,k) = 0.0
@@ -1265,7 +1281,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
                sub_crm (i,:,:,k) = 0.0
                dep_crm (i,:,:,k) = 0.0
                con_crm (i,:,:,k) = 0.0
-            endif
+            end if
 #endif
 
          end do
@@ -1605,17 +1621,18 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
                prec_crm(:ncol,:,:),         t_rad(:ncol,:,:,:),           qv_rad(:ncol,:,:,:),                                                                      &
                qc_rad(:ncol,:,:,:),         qi_rad(:ncol,:,:,:),          cld_rad(:ncol,:,:,:),         cld3d_crm(:ncol,:,:,:),                                     &
 #ifdef m2005
-               nc_rad(:ncol,:,:,:),         ni_rad(:ncol,:,:,:),          qs_rad(:ncol,:,:,:),          ns_rad(:ncol,:,:,:),         wvar_crm(:ncol,:,:,:),         &
-               aut_crm(:ncol,:,:,:),        acc_crm(:ncol,:,:,:),         evpc_crm(:ncol,:,:,:),        evpr_crm(:ncol,:,:,:),       mlt_crm(:ncol,:,:,:),          &
-               sub_crm(:ncol,:,:,:),        dep_crm(:ncol,:,:,:),         con_crm(:ncol,:,:,:),                                                                     &
-               aut_crm_a(:ncol,:),          acc_crm_a(:ncol,:),           evpc_crm_a(:ncol,:),          evpr_crm_a(:ncol,:),         mlt_crm_a(:ncol,:),            &
-               sub_crm_a(:ncol,:),          dep_crm_a(:ncol,:),           con_crm_a(:ncol,:),                                                                       &
+               qr_rad(:ncol,:,:,:),         qs_rad(:ncol,:,:,:),          qg_rad(:ncol,:,:,:), &
+               nc_rad(:ncol,:,:,:),         ni_rad(:ncol,:,:,:),          ns_rad(:ncol,:,:,:),         wvar_crm(:ncol,:,:,:),             &
+               aut_crm(:ncol,:,:,:),        acc_crm(:ncol,:,:,:),         evpc_crm(:ncol,:,:,:),     evpr_crm(:ncol,:,:,:),       mlt_crm(:ncol,:,:,:),              &
+               sub_crm(:ncol,:,:,:),        dep_crm(:ncol,:,:,:),         con_crm(:ncol,:,:,:),                                                                      &
+               aut_crm_a(:ncol,:),          acc_crm_a(:ncol,:),           evpc_crm_a(:ncol,:),       evpr_crm_a(:ncol,:),         mlt_crm_a(:ncol,:),                &
+               sub_crm_a(:ncol,:),          dep_crm_a(:ncol,:),           con_crm_a(:ncol,:),                                                                        &
 #endif /* m2005 */
-               precc(:ncol),                precl(:ncol),                 precsc(:ncol),                precsl(:ncol),                                              &
-               cltot(:ncol),                clhgh(:ncol),                 clmed(:ncol),                 cllow(:ncol),                cld(:ncol,:),cldtop(:ncol,:) , &
-               gicewp(:ncol,:),             gliqwp(:ncol,:),                                                                                                        &
-               mctot(:ncol,:),              mcup(:ncol,:),                mcdn(:ncol,:),                mcuup(:ncol,:),              mcudn(:ncol,:),                &
-               spqc(:ncol,:),               spqi(:ncol,:),                spqs(:ncol,:),                spqg(:ncol,:),               spqr(:ncol,:),                 &
+               precc(:ncol),                precl(:ncol),                 precsc(:ncol),             precsl(:ncol),                                                  &
+               cltot(:ncol),                clhgh(:ncol),                 clmed(:ncol),              cllow(:ncol),                cld(:ncol,:),    cldtop(:ncol,:) , &
+               gicewp(:ncol,:),             gliqwp(:ncol,:),                                                                                                         &
+               mctot(:ncol,:),              mcup(:ncol,:),                mcdn(:ncol,:),             mcuup(:ncol,:),              mcudn(:ncol,:),                    &
+               spqc(:ncol,:),               spqi(:ncol,:),                spqs(:ncol,:),             spqg(:ncol,:),               spqr(:ncol,:),                     &
 #ifdef m2005
                spnc(:ncol,:),               spni(:ncol,:),                spns(:ncol,:),                spng(:ncol,:),               spnr(:ncol,:),                 &
 #ifdef MODAL_AERO

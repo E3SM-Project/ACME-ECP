@@ -51,7 +51,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
                 t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
 #ifdef m2005
-                nc_rad, ni_rad, qs_rad, ns_rad, wvar_crm,  &
+                qr_rad, qs_rad, qg_rad, &
+                nc_rad, ni_rad, ns_rad, wvar_crm,  &
                 aut_crm, acc_crm, evpc_crm, evpr_crm, mlt_crm, &
                 sub_crm, dep_crm, con_crm, &
                 aut_crm_a, acc_crm_a, evpc_crm_a, evpr_crm_a, mlt_crm_a, &
@@ -233,13 +234,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice
     real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud fraction
 #ifdef m2005
-    ! real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg)
-    ! real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
-    ! real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
-    ! real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
     real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud droplet number (#/kg)
     real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice crystal number (#/kg)
+    real(r8), intent(  out) :: qr_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
     real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
+    real(r8), intent(  out) :: qg_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
     real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow crystal number (#/kg)
     real(r8), intent(  out) :: wvar_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
     real(r8), intent(  out) :: aut_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
@@ -275,6 +274,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: crm_qs              (ncrms,plev)  ! mean snow
     real(r8), intent(  out) :: crm_qg              (ncrms,plev)  ! mean graupel
     real(r8), intent(  out) :: crm_qr              (ncrms,plev)  ! mean rain
+
 #ifdef m2005
     real(r8), intent(  out) :: crm_nc              (ncrms,plev)  ! mean cloud water  (#/kg)
     real(r8), intent(  out) :: crm_ni              (ncrms,plev)  ! mean cloud ice    (#/kg)
@@ -543,7 +543,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef m2005
     nc_rad(icrm,:,:,:) = 0.0
     ni_rad(icrm,:,:,:) = 0.0
+    qr_rad(icrm,:,:,:) = 0.0
     qs_rad(icrm,:,:,:) = 0.0
+    qg_rad(icrm,:,:,:) = 0.0
     ns_rad(icrm,:,:,:) = 0.0
 #endif /* m2005 */
     zs=phis(icrm)/ggr
@@ -1388,18 +1390,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                  endif
             endif
 
-!             t_rad  (icrm,i,j,k) = t_rad  (icrm,i,j,k)+tabs(i,j,k)
-!             qv_rad (icrm,i,j,k) = qv_rad (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
-!             qc_rad (icrm,i,j,k) = qc_rad (icrm,i,j,k)+qcl(i,j,k)
-!             qi_rad (icrm,i,j,k) = qi_rad (icrm,i,j,k)+qci(i,j,k)
-!             cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) +  CF3D(i,j,k)
-! #ifdef m2005
-!             nc_rad(icrm,i,j,k) = nc_rad(icrm,i,j,k)+micro_field(i,j,k,incl)
-!             ni_rad(icrm,i,j,k) = ni_rad(icrm,i,j,k)+micro_field(i,j,k,inci)
-!             qs_rad(icrm,i,j,k) = qs_rad(icrm,i,j,k)+micro_field(i,j,k,iqs)
-!             ns_rad(icrm,i,j,k) = ns_rad(icrm,i,j,k)+micro_field(i,j,k,ins)
-! #endif
-          
             !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
             if ( phys_stage == 1 ) then
 
@@ -1415,7 +1405,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef m2005
               nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
               ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci)
+              qr_rad(icrm,i_rad,j_rad,k) = qr_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
               qs_rad(icrm,i_rad,j_rad,k) = qs_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
+              qg_rad(icrm,i_rad,j_rad,k) = qg_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
               ns_rad(icrm,i_rad,j_rad,k) = ns_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins)
 #endif
             endif
@@ -1498,10 +1490,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef m2005
       nc_rad(icrm,:,:,:) = nc_rad(icrm,:,:,:) * tmp1
       ni_rad(icrm,:,:,:) = ni_rad(icrm,:,:,:) * tmp1
+      qr_rad(icrm,:,:,:) = qr_rad(icrm,:,:,:) * tmp1
       qs_rad(icrm,:,:,:) = qs_rad(icrm,:,:,:) * tmp1
+      qg_rad(icrm,:,:,:) = qg_rad(icrm,:,:,:) * tmp1
       ns_rad(icrm,:,:,:) = ns_rad(icrm,:,:,:) * tmp1
 #endif /* m2005 */
-    
     endif
 
     ! no CRM tendencies above its top

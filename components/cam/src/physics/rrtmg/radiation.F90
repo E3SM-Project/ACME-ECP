@@ -122,6 +122,10 @@ contains
 !-----------------------------------------------------------------------
 
     use physics_buffer,  only: pbuf_add_field, dtype_r8
+    use phys_control, only: phys_getopts
+    use crmdims, only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
+    integer :: idx
+    logical :: use_SPCAM
 
     call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate 
     call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate 
@@ -135,6 +139,16 @@ contains
       call pbuf_add_field('LD'  , 'global',dtype_r8,(/pcols,pverp,nlwbands/), ld_idx) ! longwave downward flux (per band)
     end if
 
+    ! Cloud optical properties for simulators?
+    call pbuf_add_field('CLDTAU_SW', 'physpkg', dtype_r8, (/pcols,pver/), idx)
+    call pbuf_add_field('CLDEMS_LW', 'physpkg', dtype_r8, (/pcols,pver/), idx)
+
+    call phys_getopts(use_SPCAM_out=use_SPCAM)
+    if (use_SPCAM) then
+       call pbuf_add_field('CRM_CLDTAU_SW', 'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+       call pbuf_add_field('CRM_CLDEMS_LW', 'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+    end if
+       
   end subroutine radiation_register
 
 !================================================================================================
@@ -1314,6 +1328,8 @@ end function radiation_nextsw_cday
     real(r8) ::  aerindex(pcols)      ! Aerosol index
     integer aod400_idx, aod700_idx, cld_tau_idx
 
+    real(r8), pointer :: cldtau_sw(:,:), cldems_lw(:,:)
+    real(r8), pointer :: crm_cldtau_sw(:,:,:,:), crm_cldems_lw(:,:,:,:)
 
     character(*), parameter :: name = 'radiation_tend'
     character(len=16)       :: SPCAM_microp_scheme  ! SPCAM_microphysics scheme
@@ -1346,6 +1362,13 @@ end function radiation_nextsw_cday
     calday = get_curr_calday()
 
     itim = pbuf_old_tim_idx()
+
+    call pbuf_get_field(pbuf, pbuf_get_index('CLDTAU_SW'), cldtau_sw)
+    call pbuf_get_field(pbuf, pbuf_get_index('CLDEMS_LW'), cldems_lw)
+    if (use_SPCAM) then
+       call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLDTAU_SW'), crm_cldtau_sw)
+       call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLDEMS_LW'), crm_cldems_lw)
+    end if
 
     if (cldfsnow_idx > 0) then
        call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
@@ -1770,6 +1793,15 @@ end function radiation_nextsw_cday
              call pbuf_set_field(pbuf,cld_tau_idx,cld_tau(rrtmg_sw_cloudsim_band, :, :))                   
           end if
 
+          ! Save for COSP
+          cldtau_sw(:ncol,:pver) = c_cld_tau(rrtmg_sw_cloudsim_band,:ncol,:pver)
+          if (use_SPCAM) then
+             do m = 1,crm_nz
+               k = pver - m + 1
+               crm_cldtau_sw(:ncol,ii,jj,m) = c_cld_tau(rrtmg_sw_cloudsim_band,:ncol,k)
+             end do
+          end if
+
        endif
 
        if (dolw) then
@@ -1823,6 +1855,15 @@ end function radiation_nextsw_cday
           else
              c_cld_lw_abs(1:nbndlw,1:ncol,:)=cld_lw_abs(:,1:ncol,:)
           endif
+
+          ! Save for COSP
+          cldems_lw(:ncol,:pver) = 1._r8 - exp(-c_cld_lw_abs(rrtmg_lw_cloudsim_band,:ncol,:pver))
+          if (use_SPCAM) then
+             do m = 1,crm_nz
+               k = pver - m + 1
+               crm_cldems_lw(:ncol,ii,jj,m) = cldems_lw(:ncol,k)
+             end do
+          end if
        endif
 
        if (.not.(cldfsnow_idx > 0)) then
@@ -2402,54 +2443,32 @@ end function radiation_nextsw_cday
 
        end if
 
-! for the time being, the MMF stuff is not coupled with the COSP simulator yet
-! Minghuai Wang, 2012, January 30th. (Minghuai.Wang@pnnl.gov)
-       if (.not. use_SPCAM) then 
-          !! initialize and calculate emis
-          emis(:,:) = 0._r8
-          emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,:ncol,:))
-          call outfld('EMIS      ',emis    ,pcols   ,lchnk   )
-
+          call outfld('EMIS      ',cldems_lw    ,pcols   ,lchnk   )
           if (docosp) then
-             !! compute grid-box mean SW and LW snow optical depth for use by COSP
-             gb_snow_tau(:,:) = 0._r8
-             gb_snow_lw(:,:) = 0._r8
-             if (cldfsnow_idx > 0) then
-                do i=1,ncol
-                   do k=1,pver
-                      if (cldfsnow(i,k) > 0.)then
-                         gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k)
-                         gb_snow_lw(i,k) = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k)
-                      end if
-                   enddo
-                enddo
-             end if
+          ! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
+          ! advance counter for this timestep
+          cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
 
-             ! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
-             ! advance counter for this timestep
-             cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
+          ! if counter is the same as cosp_nradsteps, run cosp and reset counter
+          if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
+             ! start timer
+             call t_startf ('cosp_run')
 
-             ! if counter is the same as cosp_nradsteps, run cosp and reset counter
-             if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
-                ! start timer
-                call t_startf ('cosp_run')
+             ! Call the satellite simulator driver.
+             ! For snow optical properties, the GRID-BOX MEAN 
+             ! shortwave and longwave optical depths are passed.
+             call cospsimulator_intr_run(state,  pbuf, cam_in, coszrs)
+                  !cld_tau(rrtmg_sw_cloudsim_band,:,:), &
+                  !emis, coszrs, &
+                  !snow_tau_in=gb_snow_tau, snow_emis_in=gb_snow_lw)
 
-                ! Call the satellite simulator driver.
-                ! For snow optical properties, the GRID-BOX MEAN 
-                ! shortwave and longwave optical depths are passed.
-                call cospsimulator_intr_run(state,  pbuf, cam_in, &
-                     cld_tau(rrtmg_sw_cloudsim_band,:,:), &
-                     emis, coszrs, &
-                     snow_tau_in=gb_snow_tau, snow_emis_in=gb_snow_lw)
+             ! reset counter
+             cosp_cnt(lchnk) = 0
 
-                ! reset counter
-                cosp_cnt(lchnk) = 0
-
-                ! end timer
-                call t_stopf ('cosp_run')
-             end if
-          end if  ! docosp
-       endif  ! not use_spcam
+             ! end timer
+             call t_stopf ('cosp_run')
+          end if
+       end if  ! docosp
 
        if (use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
           call outfld('CRM_MU   ', mu_crm,  pcols, lchnk)

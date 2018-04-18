@@ -18,7 +18,8 @@ module cospsimulator_intr
 !
 ! History:  B. Hillman (bhillma@sandia.gov), February 2018  
 !           substantial modifications to run with resolved 
-!           subcolumn output from SP-CAM, and substantial clean-up and refactoring
+!           subcolumn output from SP-CAM, and substantial clean-up, refactoring,
+!           and debugging.
 !
 ! REQUIRED COSP OUTPUTS IF RUNNING COSP OFF-LINE
 ! If you want to run COSP off-line, the required fields are available and can be 
@@ -58,7 +59,7 @@ module cospsimulator_intr
    use cam_abortutils,  only: endrun
    use phys_control,    only: cam_physpkg_is
    use cam_logfile,     only: iulog
-   use crmdims,         only: crm_nx, crm_ny, crm_nz
+   use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
 #ifdef USE_COSP
    use mod_cosp_constants, only: R_UNDEF
 #endif
@@ -267,7 +268,7 @@ module cospsimulator_intr
    ! Values from cosp_test.f90 case released with cospv1.1 were used as a template
    ! Note: Unless otherwise specified, these are parameters that cannot be set by the CAM namelist.
    integer, parameter :: Npoints_it = 10000  ! Max # gridpoints to be processed in one iteration (10,000)
-   integer :: ncolumns = 50                  ! Number of subcolumns in SCOPS (50), can be changed from 
+   integer :: Ncolumns = 50                  ! Number of subcolumns in SCOPS (50), can be changed from 
                                              ! default by CAM namelist
    integer :: nlr = 40                       ! Number of levels in statistical outputs 
                                              ! (only used if USE_VGRID=.true.)  (40)
@@ -661,8 +662,8 @@ subroutine cospsimulator_intr_readnl(nlfile)
    end if
 
    ! reset COSP namelist variables based on input from cam namelist variables
-   if (cosp_ncolumns .ne. ncolumns) then
-      ncolumns = cosp_ncolumns
+   if (cosp_ncolumns .ne. Ncolumns) then
+      Ncolumns = cosp_ncolumns
    end if
 
    ! use the namelist variables to overwrite default COSP output variables above (set to .false.)
@@ -748,7 +749,7 @@ subroutine cospsimulator_intr_readnl(nlfile)
    end if
 
    ! Set vertical coordinate, subcolumn, and calculation frequency cosp options based on namelist inputs
-   call setcospvalues(nlr,use_vgrid,csat_vgrid,ncolumns,docosp,cosp_nradsteps)
+   call setcospvalues(nlr,use_vgrid,csat_vgrid,Ncolumns,docosp,cosp_nradsteps)
 
 end subroutine cospsimulator_intr_readnl
 
@@ -1373,30 +1374,20 @@ end subroutine read_cosp_atrain_data
 !------------------------------------------------------------------------------
 !------------------------------------------------------------------------------
 
-subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,snow_tau_in,snow_emis_in)    
+subroutine cospsimulator_intr_run(state, pbuf, cam_in, coszrs)    
    
    use physics_types,    only: physics_state
-   
-   use physics_buffer,   only: physics_buffer_desc, pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
+   use physics_buffer,   only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
    use camsrfexch,       only: cam_in_t
    use constituents,     only: cnst_get_ind
    use rad_constituents, only: rad_cnst_get_gas
-   use wv_saturation,    only: qsat_water
    use phys_control,     only: phys_getopts
-   use interpolate_data, only: lininterp_init,lininterp,lininterp_finish,interp_type    
-   use physconst,        only: pi, gravit
-   use cam_history,      only: outfld,hist_fld_col_active 
-   use cmparray_mod,     only: CmpDayNite, ExpDayNite
-   use phys_grid,        only: get_rlat_all_p, get_rlon_all_p
-   use time_manager,     only: get_curr_calday,get_curr_time,get_ref_date
+   use cam_history,      only: hist_fld_col_active 
    use perf_mod,         only: t_startf, t_stopf
 
 #ifdef USE_COSP
    ! cosp simulator package, COSP code was copied into CAM source tree and is compiled as a separate library
-   use mod_cosp_constants, only: R_UNDEF, N_HYDRO, parasol_nrefl, &
-                                 I_LSCICE, I_LSCLIQ, I_CVCLIQ, I_CVCICE, &
-                                 I_LSRAIN, I_LSSNOW, I_CVRAIN, I_CVSNOW, &
-                                 I_LSGRPL
+   use mod_cosp_constants, only: N_HYDRO, PARASOL_NREFL
    use mod_cosp_types, only: construct_cosp_gridbox,construct_cosp_vgrid, &
                              construct_cosp_subgrid,construct_cosp_sghydro, &
                              construct_cosp_sgradar,construct_cosp_radarstats,construct_cosp_sglidar, &
@@ -1409,24 +1400,14 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
                              cosp_sglidar,cosp_isccp,cosp_misr,cosp_vgrid,cosp_radarstats,&
                              cosp_radarstats,cosp_lidarstats
    use mod_cosp_modis_simulator, only: construct_cosp_modis,free_cosp_modis,cosp_modis
-   use mod_cosp,         only: cosp
-#else
-   real(r8), parameter :: R_UNDEF = -1.0E30_r8
+   use mod_cosp, only: cosp
 #endif
-! Arguments
+
+   ! Arguments
    type(physics_state), intent(in), target :: state
-   
    type(physics_buffer_desc), pointer :: pbuf(:)
    type(cam_in_t),  intent(in) :: cam_in
-
-   real(r8), intent(in) :: cld_swtau(pcols,pver)  ! cloud visible optical depth
-   real(r8), intent(in) :: emis(pcols,pver)             ! cloud longwave emissivity
-   real(r8), intent(in) :: coszrs(pcols)                ! cosine solar zenith angle (to tell if day or night)
-
-   ! make the input arguments optional because they are used differently in CAM4 and CAM5.
-   ! TODO: add CRM-scale input arguments
-   real(r8), intent(in), optional :: snow_tau_in(pcols,pver)  ! RRTM grid-box mean SW snow optical depth, used for CAM5 simulations 
-   real(r8), intent(in), optional :: snow_emis_in(pcols,pver) ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations 
+   real(r8), intent(in) :: coszrs(pcols)  ! cosine solar zenith angle (to tell if day or night)
 
 #ifdef USE_COSP
    !
@@ -1436,12 +1417,6 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    ! generic
    integer :: lchnk  ! chunk identifier
    integer :: ncol  ! number of active atmospheric columns
-   integer :: i, k, itim_old  ! indices
-
-   ! microphysics variables
-   integer :: &
-      ixcldliq, &  ! cloud liquid amount index for state%q
-      ixcldice     ! cloud ice amount index
 
    ! COSP-related local vars
    type(cosp_config) :: cfg          ! Configuration options
@@ -1470,18 +1445,9 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    real(r8), parameter :: emsfc_lw = 0.99_r8            ! longwave emissivity of surface at 10.5 microns 
                                                         ! set value same as in cloudsimulator.F90
 
-   ! local vars related to calculations to go from CAM input to COSP input
-   ! cosp convective value includes both deep and shallow convection
-   real(r8) :: rain_cv(pcols,pverp)                     ! interface flux_convective_cloud_rain (kg m^-2 s^-1)
-   real(r8) :: snow_cv(pcols,pverp)                     ! interface flux_convective_cloud_snow (kg m^-2 s^-1)
-   real(r8) :: rain_cv_interp(pcols,pver)               ! midpoint flux_convective_cloud_rain (kg m^-2 s^-1)
-   real(r8) :: snow_cv_interp(pcols,pver)               ! midpoint flux_convective_cloud_snow (kg m^-2 s^-1)
-   real(r8) :: grpl_ls_interp(pcols,pver)               ! midpoint ls grp flux, should be 0
-   real(r8) :: rain_ls_interp(pcols,pver)               ! midpoint ls rain flux (kg m^-2 s^-1)
-   real(r8) :: snow_ls_interp(pcols,pver)               ! midpoint ls snow flux
-   real(r8) :: es(pcols,pver)                           ! saturation vapor pressure
-   real(r8) :: qs(pcols,pver)                           ! saturation mixing ratio (kg/kg), saturation specific humidity
-   real(r8) :: sunlit(pcols)  ! sunlit flag
+   real(r8), pointer, dimension(:,:) :: co2             ! Mass mixing ratio C02
+   real(r8), pointer, dimension(:,:) :: ch4             ! Mass mixing ratio CH4
+   real(r8), pointer, dimension(:,:) :: n2o             ! Mass mixing ratio N20
 
    integer, parameter :: nf_radar=6                     ! number of radar outputs
    integer, parameter :: nf_lidar=28                    ! number of lidar outputs !+cosp1.4
@@ -1489,10 +1455,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    integer, parameter :: nf_misr=1                      ! number of misr outputs
    integer, parameter :: nf_modis=18                    ! number of modis outputs
 
-   ! list of all output field names for each simulator
-   !
-   ! bluefire complaining "All elements in an array constructor must have the same type and type parameters."
-   ! if they are not all exactly the same length....
+   integer :: i
 
    ! list of radar outputs
    character(len=max_fieldname_len),dimension(nf_radar), parameter :: &
@@ -1526,68 +1489,24 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
                         'PCTMODIS    ','LWPMODIS    ','IWPMODIS    ','CLMODIS     '/)
 
    ! column by column logical flags specifying whether or not to run individual simulators
-   logical :: run_radar(nf_radar,pcols)                 ! logical telling you if you should run radar simulator
-   logical :: run_lidar(nf_lidar,pcols)                 ! logical telling you if you should run lidar simulator
-   logical :: run_isccp(nf_isccp,pcols)                 ! logical telling you if you should run isccp simulator
-   logical :: run_misr(nf_misr,pcols)                   ! logical telling you if you should run misr simulator
-   logical :: run_modis(nf_modis,pcols)                 ! logical telling you if you should run modis simulator
+   ! TODO: we shouldn't need these
+   logical :: run_radar(nf_radar,pcols)  ! logical telling you if you should run radar simulator
+   logical :: run_lidar(nf_lidar,pcols)  ! logical telling you if you should run lidar simulator
+   logical :: run_isccp(nf_isccp,pcols)  ! logical telling you if you should run isccp simulator
+   logical :: run_misr(nf_misr,pcols)    ! logical telling you if you should run misr simulator
+   logical :: run_modis(nf_modis,pcols)  ! logical telling you if you should run modis simulator
 
-   ! CAM pointers to get variables from radiation interface (get from rad_cnst_get_gas)
-   real(r8), pointer, dimension(:,:) :: q               ! specific humidity (kg/kg)
-   real(r8), pointer, dimension(:,:) :: o3              ! Mass mixing ratio 03
-   real(r8), pointer, dimension(:,:) :: co2             ! Mass mixing ratio C02
-   real(r8), pointer, dimension(:,:) :: ch4             ! Mass mixing ratio CH4
-   real(r8), pointer, dimension(:,:) :: n2o             ! Mass mixing ratio N20
-
-   ! CAM pointers to get variables from the physics buffer
-   real(r8), pointer, dimension(:,:) :: cld             ! cloud fraction, tca - total_cloud_amount (0-1)
-   real(r8), pointer, dimension(:,:) :: concld          ! concld fraction, cca - convective_cloud_amount (0-1)
-   real(r8), pointer, dimension(:,:) :: rel             ! liquid effective drop radius (microns)
-   real(r8), pointer, dimension(:,:) :: rei             ! ice effective drop size (microns)
-
-   real(r8), pointer, dimension(:,:) :: ls_reffrain    ! rain effective drop radius (microns)
-   real(r8), pointer, dimension(:,:) :: ls_reffsnow    ! snow effective drop size (microns)
-   real(r8), pointer, dimension(:,:) :: cv_reffliq     ! convective cld liq effective drop radius (microns)
-   real(r8), pointer, dimension(:,:) :: cv_reffice     ! convective cld ice effective drop size (microns)
-
-   ! precip flux pointers (use for cam4 or cam5)
-   ! Added pointers;  pbuff in zm_conv_intr.F90, calc in zm_conv.F90 
-   real(r8), pointer, dimension(:,:) :: dp_flxprc   ! deep interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
-   real(r8), pointer, dimension(:,:) :: dp_flxsnw   ! deep interface gbm flux_convective_cloud_snow (kg m^-2 s^-1) 
-   ! More pointers;  pbuf in convect_shallow.F90, calc in hk_conv.F90/convect_shallow.F90 (CAM4), uwshcu.F90 (CAM5)
-   real(r8), pointer, dimension(:,:) :: sh_flxprc   ! shallow interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1) 
-   real(r8), pointer, dimension(:,:) :: sh_flxsnw   ! shallow interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
-   ! More pointers;  pbuf in stratiform.F90, getting from pbuf here
-   ! a) added as output to pcond subroutine in cldwat.F90 and to nmicro_pcond subroutine in cldwat2m_micro.F90
-   real(r8), pointer, dimension(:,:) :: ls_flxprc   ! stratiform interface gbm flux_cloud_rain+snow (kg m^-2 s^-1) 
-   real(r8), pointer, dimension(:,:) :: ls_flxsnw   ! stratiform interface gbm flux_cloud_snow (kg m^-2 s^-1)
-
-   ! cloud mixing ratio pointers (note: large-scale in state)
-   ! More pointers;  pbuf in convect_shallow.F90 (cam4) or stratiform.F90 (cam5)
-   ! calc in hk_conv.F90 (CAM4 should be 0!), uwshcu.F90 but then affected by micro so values from stratiform.F90 (CAM5)
-   real(r8), pointer, dimension(:,:) :: sh_cldliq   ! shallow gbm cloud liquid water (kg/kg)
-   real(r8), pointer, dimension(:,:) :: sh_cldice   ! shallow gbm cloud ice water (kg/kg)
-   ! More pointers;  pbuf in zm_conv_intr.F90, calc in zm_conv.F90, 0 for CAM4 and CAM5 (same convection scheme)
-   real(r8), pointer, dimension(:,:) :: dp_cldliq   ! deep gbm cloud liquid water (kg/kg)
-   real(r8), pointer, dimension(:,:) :: dp_cldice   ! deep gmb cloud ice water (kg/kg)
-
-   ! variables needed for vertical interpolation from model interfaces to
-   ! midpoints
-   type(interp_type)  :: interp_wgts
-   integer, parameter :: extrap_method = 1  ! sets extrapolation method to boundary value
-
+   ! Logical indicating whether or not we are running an SP-CAM configuration.
+   ! This will be set by phys_getopts()
    logical :: use_SPCAM = .false.
 
    !---------------- End of declaration of variables --------------
 
-   ! find the chunk and ncol from the state vector
+   ! Find the chunk and ncol from the state vector
    lchnk = state%lchnk   ! state variable contains a number of columns, one chunk
    ncol = state%ncol     ! number of columns in the chunk
 
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    ! DECIDE WHICH COLUMNS YOU ARE GOING TO RUN COSP ON....
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
    ! run_cosp is set for each column in each chunk in the first timestep of the run
    ! hist_fld_col_active in cam_history.F90 is used to decide if you need to run cosp.
    ! TODO: this section does not make a whole lot of sense to me. I'm not sure
@@ -1644,26 +1563,206 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
 
    end if
 
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    ! POPULATE COSP CONFIGURATION INPUT VARIABLE ("cfg") FROM CAM NAMELIST
-   ! Note: This is a first cut, and these values may get overwritten later.
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   ! Note: This is a first cut, and these values may get overwritten later (?)
    call initialize_cosp_config(cfg)
-
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   ! GET CAM GEOPHYSICAL VARIABLES NEEDED FOR COSP INPUT
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-   ! 1) state variables (prognostic variables, see physics_types.F90)
-   ! state vars are passed to this subroutine from radiation.F90.   
-   ! I do not need to define these variables.  I can use them as is, e.g., state%t
 
    ! default is running all columns in the chunk, not pcols = maximum number
    Npoints = ncol
    Nlevels = pver
 
-   ! 2) cam_in variables (see camsrfexch.F90)
-   ! I can reference these as is, e.g., cam_in%ts.  
+   ! If running SPCAM, then we set Ncolumns equal to number of CRM columns, and
+   ! we will populate the subcolumn directly using CRM fields (in the populate_
+   ! routines)
+   call phys_getopts(use_SPCAM_out=use_SPCAM)
+   if (use_SPCAM) then
+      Ncolumns = crm_nx * crm_ny
+   end if
+
+   ! construct_cosp_gridbox wants these on initialization. This is annoying here
+   ! because the logic to handle precipitation fluxes is handled in the populate
+   ! routines...these flags should be set in those routines to avoid setting
+   ! things inconsistently.
+   if (use_SPCAM) then
+      use_precipitation_fluxes = .false.
+   else
+      use_precipitation_fluxes = .true.
+   end if
+
+   ! For some weird reason, construct_cosp_gridbox requires these gas concentrations
+   ! when initializing the cosp_gridbox structure. It would be better for these to
+   ! be handled during the populate phase of the code.
+   call rad_cnst_get_gas(0,'CH4', state, pbuf,  ch4)
+   call rad_cnst_get_gas(0,'CO2', state, pbuf,  co2)
+   call rad_cnst_get_gas(0,'N2O', state, pbuf,  n2o)
+
+   ! Create and allocate COSP inputs
+   call t_startf('Allocate COSP inputs')
+   call construct_cosp_gridbox(time, time_bnds, radar_freq, &
+                               surface_radar, use_mie_tables, use_gas_abs, &
+                               do_ray, melt_lay, k2, &
+                               Npoints, Nlevels, Ncolumns,&
+                               nhydro, Nprmts_max_hydro, Naero, &
+                               Nprmts_max_aero, Npoints_it, lidar_ice_type, &
+                               isccp_topheight, isccp_topheight_direction, overlap, &
+                               emsfc_lw, use_precipitation_fluxes,use_reff, &
+                               Platform, Satellite, Instrument, &       
+                               Nchannels, ZenAng, Channels(1:Nchannels),&
+                               Surfem(1:Nchannels), co2(1, 1), ch4(1, 1), &
+                               n2o(1, 1), co, gbx)
+   call construct_cosp_subgrid(Npoints, Ncolumns, Nlevels, sgx)
+   call construct_cosp_sghydro(Npoints, Ncolumns, Nlevels, N_HYDRO, sghydro)
+   call t_stopf('Allocate COSP inputs')
+
+   ! Populate COSP input structures. COSP_GRIDBOX holds gridbox-mean quantities
+   ! (which we will populate the same for CAM and SP-CAM), COSP_SUBGRID (sgx)
+   ! holds subcolumn-sampled cloud and precipitation masks, and
+   ! subcolumn-sampled optical properties (which we pass explicitly for SP-CAM),
+   ! and COSP_SGHYDRO (sghydro) holds subcolumn hydrometeor information, which
+   ! again we pass explicitly for SP-CAM.
+   call t_startf('Populate COSP inputs')
+   call populate_cosp_gridbox(coszrs(:ncol), state, pbuf, cam_in, gbx)
+   call populate_cosp_subgrid(state, pbuf, sgx)
+   call populate_cosp_sghydro(state, pbuf, sghydro)
+   call t_stopf('Populate COSP inputs')
+
+   ! Create and allocate COSP output structures
+   call t_startf('Allocate COSP outputs')
+   call construct_cosp_vgrid(gbx,nlr,use_vgrid,csat_vgrid,vgrid)
+   call construct_cosp_sgradar(cfg,Npoints,Ncolumns,Nlevels,nhydro,sgradar)
+   call construct_cosp_radarstats(cfg,Npoints,Ncolumns,vgrid%Nlvgrid,nhydro,stradar)
+   call construct_cosp_sglidar(cfg,Npoints,Ncolumns,Nlevels,nhydro,PARASOL_NREFL,sglidar)
+   call construct_cosp_lidarstats(cfg,Npoints,Ncolumns,vgrid%Nlvgrid,nhydro,PARASOL_NREFL,stlidar)
+   call construct_cosp_isccp(cfg,Npoints,Ncolumns,Nlevels,isccp)
+   call construct_cosp_misr(cfg,Npoints,misr)
+   call construct_cosp_modis(cfg,Npoints,modis)
+   call t_stopf('Allocate COSP outputs')
+
+   ! Send COSP inputs to cam history buffer
+   if (cosp_histfile_aux) then
+      call cosp_dump_inputs(ncol, lchnk, gbx)
+   end if
+
+   ! Run COSP on all columns in the chunk
+   call t_startf('Run COSP')
+   call cosp(overlap, Ncolumns, cfg, vgrid, gbx, sgx, sghydro,  &
+             sgradar, sglidar, isccp, misr, modis, stradar, stlidar)
+   call t_stopf('Run COSP')
+
+   ! Send outputs to the history buffer
+   call cospsimulator_intr_out(ncol, lchnk, cfg, sgx, &
+                               sgradar, sglidar, &
+                               isccp, misr, modis, &
+                               stradar, stlidar)
+
+   ! Deallocate memory for COSP objects
+   call free_cosp_gridbox(gbx)
+   call free_cosp_vgrid(vgrid)
+   call free_cosp_subgrid(sgx)
+   !call free_cosp_sghydro(sghydro)
+   call free_cosp_sgradar(sgradar)
+   call free_cosp_radarstats(stradar)
+   call free_cosp_sglidar(sglidar)
+   call free_cosp_lidarstats(stlidar)
+   call free_cosp_isccp(isccp)
+   call free_cosp_misr(misr) 
+   call free_cosp_modis(modis)
+
+#endif  /* USE_COSP */
+end subroutine cospsimulator_intr_run
+
+#ifdef USE_COSP
+subroutine populate_cosp_gridbox(coszrs, state, pbuf, cam_in, gbx)
+   use physics_types, only: physics_state
+   use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
+   use physconst, only: pi, gravit
+   use camsrfexch, only: cam_in_t
+   use interpolate_data, only: lininterp_init,lininterp,lininterp_finish,interp_type    
+   use wv_saturation, only: qsat_water
+   use constituents, only: cnst_get_ind
+   use rad_constituents, only: rad_cnst_get_gas
+   use mod_cosp_types, only: cosp_gridbox
+   use mod_cosp_constants, only: N_HYDRO, parasol_nrefl, &
+                                 I_LSCICE, I_LSCLIQ, I_CVCLIQ, I_CVCICE, &
+                                 I_LSRAIN, I_LSSNOW, I_CVRAIN, I_CVSNOW, &
+                                 I_LSGRPL
+
+   real(r8), intent(in) :: coszrs(:)
+   type(physics_state), intent(in) :: state
+   type(physics_buffer_desc), pointer :: pbuf(:)
+   type(cam_in_t), intent(in) :: cam_in
+   type(cosp_gridbox), intent(inout) :: gbx
+
+   integer :: i, k ! indices
+
+   ! microphysics variables
+   integer :: &
+      ixcldliq, &  ! cloud liquid amount index for state%q
+      ixcldice     ! cloud ice amount index
+
+
+   integer :: ncol
+   real(r8) :: es(pcols,pver)  ! saturation vapor pressure
+   real(r8) :: qs(pcols,pver)  ! saturation mixing ratio (kg/kg), saturation specific humidity
+
+   ! local vars related to calculations to go from CAM input to COSP input
+   ! cosp convective value includes both deep and shallow convection
+   real(r8) :: rain_cv(pcols,pverp)                     ! interface flux_convective_cloud_rain (kg m^-2 s^-1)
+   real(r8) :: snow_cv(pcols,pverp)                     ! interface flux_convective_cloud_snow (kg m^-2 s^-1)
+   real(r8) :: rain_cv_interp(pcols,pver)               ! midpoint flux_convective_cloud_rain (kg m^-2 s^-1)
+   real(r8) :: snow_cv_interp(pcols,pver)               ! midpoint flux_convective_cloud_snow (kg m^-2 s^-1)
+   real(r8) :: grpl_ls_interp(pcols,pver)               ! midpoint ls grp flux, should be 0
+   real(r8) :: rain_ls_interp(pcols,pver)               ! midpoint ls rain flux (kg m^-2 s^-1)
+   real(r8) :: snow_ls_interp(pcols,pver)               ! midpoint ls snow flux
+
+   ! CAM pointers to get variables from radiation interface (get from rad_cnst_get_gas)
+   real(r8), pointer, dimension(:,:) :: q               ! specific humidity (kg/kg)
+   real(r8), pointer, dimension(:,:) :: o3              ! Mass mixing ratio 03
+   real(r8), pointer, dimension(:,:) :: co2             ! Mass mixing ratio C02
+   real(r8), pointer, dimension(:,:) :: ch4             ! Mass mixing ratio CH4
+   real(r8), pointer, dimension(:,:) :: n2o             ! Mass mixing ratio N20
+
+   ! CAM pointers to get variables from the physics buffer
+   real(r8), pointer, dimension(:,:) :: cld             ! cloud fraction, tca - total_cloud_amount (0-1)
+   real(r8), pointer, dimension(:,:) :: concld          ! concld fraction, cca - convective_cloud_amount (0-1)
+   real(r8), pointer, dimension(:,:) :: rel             ! liquid effective drop radius (microns)
+   real(r8), pointer, dimension(:,:) :: rei             ! ice effective drop size (microns)
+
+   real(r8), pointer, dimension(:,:) :: ls_reffrain    ! rain effective drop radius (microns)
+   real(r8), pointer, dimension(:,:) :: ls_reffsnow    ! snow effective drop size (microns)
+   real(r8), pointer, dimension(:,:) :: cv_reffliq     ! convective cld liq effective drop radius (microns)
+   real(r8), pointer, dimension(:,:) :: cv_reffice     ! convective cld ice effective drop size (microns)
+
+   ! precip flux pointers (use for cam4 or cam5)
+   ! Added pointers;  pbuff in zm_conv_intr.F90, calc in zm_conv.F90 
+   real(r8), pointer, dimension(:,:) :: dp_flxprc   ! deep interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
+   real(r8), pointer, dimension(:,:) :: dp_flxsnw   ! deep interface gbm flux_convective_cloud_snow (kg m^-2 s^-1) 
+   ! More pointers;  pbuf in convect_shallow.F90, calc in hk_conv.F90/convect_shallow.F90 (CAM4), uwshcu.F90 (CAM5)
+   real(r8), pointer, dimension(:,:) :: sh_flxprc   ! shallow interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1) 
+   real(r8), pointer, dimension(:,:) :: sh_flxsnw   ! shallow interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
+   ! More pointers;  pbuf in stratiform.F90, getting from pbuf here
+   ! a) added as output to pcond subroutine in cldwat.F90 and to nmicro_pcond subroutine in cldwat2m_micro.F90
+   real(r8), pointer, dimension(:,:) :: ls_flxprc   ! stratiform interface gbm flux_cloud_rain+snow (kg m^-2 s^-1) 
+   real(r8), pointer, dimension(:,:) :: ls_flxsnw   ! stratiform interface gbm flux_cloud_snow (kg m^-2 s^-1)
+
+   ! cloud mixing ratio pointers (note: large-scale in state)
+   ! More pointers;  pbuf in convect_shallow.F90 (cam4) or stratiform.F90 (cam5)
+   ! calc in hk_conv.F90 (CAM4 should be 0!), uwshcu.F90 but then affected by micro so values from stratiform.F90 (CAM5)
+   real(r8), pointer, dimension(:,:) :: sh_cldliq   ! shallow gbm cloud liquid water (kg/kg)
+   real(r8), pointer, dimension(:,:) :: sh_cldice   ! shallow gbm cloud ice water (kg/kg)
+   ! More pointers;  pbuf in zm_conv_intr.F90, calc in zm_conv.F90, 0 for CAM4 and CAM5 (same convection scheme)
+   real(r8), pointer, dimension(:,:) :: dp_cldliq   ! deep gbm cloud liquid water (kg/kg)
+   real(r8), pointer, dimension(:,:) :: dp_cldice   ! deep gmb cloud ice water (kg/kg)
+
+   real(r8), pointer, dimension(:,:) :: cldtau(:,:), cldems(:,:)
+
+   ! variables needed for vertical interpolation from model interfaces to
+   ! midpoints
+   type(interp_type)  :: interp_wgts
+   integer, parameter :: extrap_method = 1  ! sets extrapolation method to boundary value
+
+
+   ncol = state%ncol
 
    ! 3) radiative constituent interface variables:
    ! specific humidity (q), 03, CH4,C02, N20 mass mixing ratio
@@ -1674,11 +1773,9 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    call rad_cnst_get_gas(0,'CO2', state, pbuf,  co2)
    call rad_cnst_get_gas(0,'N2O', state, pbuf,  n2o)
 
-   ! 4) get variables from physics buffer
-   ! TODO: why is using old_tim_idx?
-   itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-   call pbuf_get_field(pbuf, pbuf_get_index('CONCLD'), concld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   ! Cloud fractions
+   call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld)
+   call pbuf_get_field(pbuf, pbuf_get_index('CONCLD'), concld)
 
    ! Effective radii
    call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
@@ -1722,15 +1819,11 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    call pbuf_get_field(pbuf, pbuf_get_index('LS_FLXPRC'), ls_flxprc)
    call pbuf_get_field(pbuf, pbuf_get_index('LS_FLXSNW'), ls_flxsnw)
 
+   call pbuf_get_field(pbuf, pbuf_get_index('CLDTAU_SW'), cldtau)
+   call pbuf_get_field(pbuf, pbuf_get_index('CLDEMS_LW'), cldems)
    !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    ! CALCULATE COSP INPUT VARIABLES FROM CAM VARIABLES, done for all columns within chunk
    !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-   ! convert latitude and longitude from radians to degrees_north and degrees_east 
-
-   ! calculate from CAM q and t using CAM built-in functions
-   call qsat_water(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
-                   es(1:ncol,1:pver), qs(1:ncol,1:pver))
 
    ! 4) calculate necessary input cloud/precip variables
    ! CAM4 note: don't take the cloud water from the hack shallow convection 
@@ -1749,7 +1842,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    if(cam_physpkg_is('cam3') .or. cam_physpkg_is('cam4') .or. cam_physpkg_is('cam5')) then
 
       ! using precipitation fluxes as COSP inputs
-      use_precipitation_fluxes = .true.
+      gbx%use_precipitation_fluxes = .true.
 
       ! add together deep and shallow convection precipitation fluxes
       ! (recall *_flxprc variables are rain+snow)
@@ -1787,31 +1880,6 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
 
    end if
 
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   !  POPULATE COSP INPUT VARIABLE ("gbx") FROM CAM VARIABLES
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   ! Create and Populate the input structure for COSP - "gbx"
-   ! Check cosp_input_nl information for gbx
-   ! contruct_* and free_* routines from /home/jenkay/cosp/cosp.v1.1/cosp_types.f90 
-   ! allocate and deallocate memory within this module.
-   call t_startf('Allocate COSP inputs')
-   call construct_cosp_gridbox(time, time_bnds, radar_freq, &
-                               surface_radar, use_mie_tables, use_gas_abs, &
-                               do_ray, melt_lay, k2, &
-                               Npoints, Nlevels, ncolumns,&
-                               nhydro, Nprmts_max_hydro, Naero, &
-                               Nprmts_max_aero, Npoints_it, lidar_ice_type, &
-                               isccp_topheight, isccp_topheight_direction, overlap, &
-                               emsfc_lw, use_precipitation_fluxes,use_reff, &
-                               Platform, Satellite, Instrument, &       
-                               Nchannels, ZenAng, Channels(1:Nchannels),&
-                               Surfem(1:Nchannels), co2(1, 1), ch4(1, 1), &
-                               n2o(1, 1), co, gbx)
-   call construct_cosp_subgrid(Npoints, ncolumns, Nlevels, sgx)
-   call construct_cosp_sghydro(Npoints, ncolumns, Nlevels, N_HYDRO, sghydro)
-   call t_stopf('Allocate COSP inputs')
-
-   call t_startf('Populate COSP inputs')
 
    ! Note: GBX expects vertical ordering to be from SURFACE(1) to the TOP(nlev), while
    ! by default CAM uses TOP(1) to SURFACE(nlev).
@@ -1835,6 +1903,8 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    ! relative humidity wrt water 
    ! note: it is confusing that it is called "q" within cosp,
    ! but it is rh according to Yuying
+   call qsat_water(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
+                   es(1:ncol,1:pver), qs(1:ncol,1:pver))
    gbx%q(:ncol,:pver) = (q(:ncol,pver:1:-1)/qs(:ncol,pver:1:-1))*100
 
    gbx%sh = q(:ncol,pver:1:-1)          ! specific humidity (kg/kg), range [0,0.019ish]
@@ -1857,6 +1927,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
       gbx%sunlit(:ncol) = 0
    endwhere
 
+   call rad_cnst_get_gas(0,'O3',  state, pbuf,  o3)
    gbx%mr_ozone = o3(1:ncol,pver:1:-1)   ! ozone mass mixing ratio (kg/kg)
 
    ! Surface winds (I do not think these are used, but may be in the future for
@@ -1941,95 +2012,143 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in, cld_swtau, emis,coszrs,sno
    where (gbx%Reff < 0._r8) gbx%Reff = 0._r8
 
    ! Cloud optical properties passed as inputs
-   gbx%dtau_s = cld_swtau(1:ncol,pver:1:-1)  ! mean 0.67 micron optical depth of stratiform
+   gbx%dtau_s = cldtau(1:ncol,pver:1:-1)  ! mean 0.67 micron optical depth of stratiform
                                              !  clouds in each model level
                                              !  NOTE:  this the cloud optical depth of only the
                                              !  cloudy part of the grid box, it is not weighted
                                              !  with the 0 cloud optical depth of the clear
                                              !  part of the grid box
-   gbx%dtau_c = cld_swtau(1:ncol,pver:1:-1)  ! mean 0.67 micron optical depth of convective
-   gbx%dem_s = emis(1:ncol,pver:1:-1)        ! 10.5 micron longwave emissivity of stratiform cloud
-   gbx%dem_c = emis(1:ncol,pver:1:-1)        ! 10.5 micron longwave emissivity of convective cloud
+   gbx%dtau_c = cldtau(1:ncol,pver:1:-1)  ! mean 0.67 micron optical depth of convective
+   gbx%dem_s = cldems(1:ncol,pver:1:-1)        ! 10.5 micron longwave emissivity of stratiform cloud
+   gbx%dem_c = cldems(1:ncol,pver:1:-1)        ! 10.5 micron longwave emissivity of convective cloud
 
-   ! Snow optical properties: 10.5 micron grid-box mean emissivity and
-   ! 0.67 micron grid-box mean optical depth of stratiform snow
-   if (present(snow_emis_in) .and. present(snow_tau_in)) then
-      gbx%dtau_s_snow = snow_tau_in(1:ncol,pver:1:-1)  ! grid-box mean 0.67 micron optical depth of stratiform snow
-      gbx%dem_s_snow = snow_emis_in(1:ncol,pver:1:-1)    ! 10.5 micron grid-box mean optical depth of stratiform snow
-   else
-      gbx%dtau_s_snow = 0._r8
-      gbx%dem_s_snow = 0._r8 
-   end if
+end subroutine populate_cosp_gridbox
+#ENDIF
 
-   ! Done populating inputs; stop the timer
-   call t_stopf('Populate COSP inputs')
 
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   ! STARTUP RELATED TO COSP OUTPUT (see cosp.F90)
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#IFDEF USE_COSP
+subroutine populate_cosp_subgrid(state, pbuf, sgx)
+   use physics_types, only: physics_state
+   use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
+   use phys_control, only : phys_getopts
+   use mod_cosp_types, only: cosp_subgrid
+   use mod_cosp_constants, only: N_HYDRO, parasol_nrefl, &
+                                 I_LSCICE, I_LSCLIQ, I_CVCLIQ, I_CVCICE, &
+                                 I_LSRAIN, I_LSSNOW, I_CVRAIN, I_CVSNOW, &
+                                 I_LSGRPL
+   type(physics_state), intent(in) :: state
+   type(physics_buffer_desc), pointer :: pbuf(:)
+   type(cosp_subgrid), intent(inout) :: sgx
 
-   call t_startf('Allocate COSP outputs')
+   ! Pointers to CRM-scale optical properties
+   real(r8), pointer, dimension(:,:,:,:) :: cldtau, cldems
 
-   ! Define new vertical grid (for radar and lidar height fields)
-   call construct_cosp_vgrid(gbx,nlr,use_vgrid,csat_vgrid,vgrid)
-     
-   ! Allocate memory for output
-   call construct_cosp_sgradar(cfg,Npoints,ncolumns,Nlevels,nhydro,sgradar)
-   call construct_cosp_radarstats(cfg,Npoints,ncolumns,vgrid%Nlvgrid,nhydro,stradar)
-   call construct_cosp_sglidar(cfg,Npoints,ncolumns,Nlevels,nhydro,PARASOL_NREFL,sglidar)
-   call construct_cosp_lidarstats(cfg,Npoints,ncolumns,vgrid%Nlvgrid,nhydro,PARASOL_NREFL,stlidar)
-   call construct_cosp_isccp(cfg,Npoints,ncolumns,Nlevels,isccp)
-   call construct_cosp_misr(cfg,Npoints,misr)
-   call construct_cosp_modis(cfg,Npoints,modis)
+   ! Loop variables
+   integer :: j, ii, jj
 
-   ! Done allocating outputs; stop the timer
-   call t_stopf('Allocate COSP outputs')
+   ! Logical to specify whether or not we are using SPCAM
+   logical :: use_SPCAM = .false.
 
-   ! If this is an SP run, then allocate subcolumn inputs and populate them
+   call phys_getopts(use_SPCAM_out=use_SPCAM)
    if (use_SPCAM) then
+      ! Get optical depth and emissivity
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLDTAU_SW'), cldtau)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLDEMS_LW'), cldems)
 
-      ! populate
+      ! Get precipitation fraction (?)
 
+      ! Populate subcolumn input
+      j = 1
+      do jj = 1,crm_ny_rad
+         do ii = 1,crm_nx_rad
+            sgx%dtau(:,j,:crm_nz) = cldtau(:,ii,jj,:crm_nz)
+            sgx%dem(:,j,:crm_nz) = cldems(:,ii,jj,:crm_nz)
+            j = j + 1
+         end do
+      end do
+
+      ! Set flag to specify NOT to allow COSP to do subcolumn sampling
+      sgx%do_subcol_sampling = .false.
    end if
+end subroutine populate_cosp_subgrid
+#ENDIF
 
-   ! send COSP inputs to cam history buffer
-   if (cosp_histfile_aux) then
-      call cosp_dump_inputs(ncol, lchnk, gbx)
-   end if
 
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   ! RUN COSP on all columns
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   call t_startf('Run COSP')
-   call cosp(overlap, ncolumns, cfg, vgrid, gbx, sgx, sghydro,  &
-             sgradar, sglidar, isccp, misr, modis, stradar, stlidar)
-   call t_stopf('Run COSP')
+#IFDEF USE_COSP
+subroutine populate_cosp_sghydro(state, pbuf, sghydro)
+   use physics_types, only: physics_state
+   use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
+   use phys_control, only : phys_getopts
+   use mod_cosp_types, only: cosp_sghydro
+   use mod_cosp_constants, only: N_HYDRO, parasol_nrefl, &
+                                 I_LSCICE, I_LSCLIQ, I_CVCLIQ, I_CVCICE, &
+                                 I_LSRAIN, I_LSSNOW, I_CVRAIN, I_CVSNOW, &
+                                 I_LSGRPL
+   type(physics_state), intent(in) :: state
+   type(physics_buffer_desc), pointer :: pbuf(:)
+   type(cosp_sghydro), intent(inout) :: sghydro
 
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   ! TRANSLATE COSP OUTPUT INTO INDIVIDUAL VARIABLES FOR OUTPUT (see nc_write_cosp_1d in cosp_io.f90)
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   call cospsimulator_intr_out(ncol, lchnk, cfg, sgx, &
-                               sgradar, sglidar, &
-                               isccp, misr, modis, &
-                               stradar, stlidar)
+   ! Pointers to mixing ratios, number concentrations, and effective radii on
+   ! the physics buffer
+   real(r8), pointer, dimension(:,:,:,:) :: &
+      crm_qc, crm_qi, crm_qr, crm_qs, crm_qg, &
+      crm_nc, crm_ni, crm_nr, crm_ns, crm_ng, &
+      crm_reffl, crm_reffi, crm_reffr, crm_reffs, crm_reffg
 
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   ! DEALLOCATE MEMORY for running with all columns
-   !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   call free_cosp_gridbox(gbx)
-   call free_cosp_vgrid(vgrid)
-   call free_cosp_subgrid(sgx)
-   !call free_cosp_sghydro(sghydro)
-   call free_cosp_sgradar(sgradar)
-   call free_cosp_radarstats(stradar)
-   call free_cosp_sglidar(sglidar)
-   call free_cosp_lidarstats(stlidar)
-   call free_cosp_isccp(isccp)
-   call free_cosp_misr(misr) 
-   call free_cosp_modis(modis)
+   ! Loop variables
+   integer :: j, ii, jj
 
-#endif  /* USE_COSP */
-end subroutine cospsimulator_intr_run
+   ! Logical to specify whether or not we are using SPCAM
+   logical :: use_SPCAM = .false.
+
+   call phys_getopts(use_SPCAM_out=use_SPCAM)
+   if (use_SPCAM) then
+      ! For SP-CAM, we get both cloud and precipitation mixing ratios from
+      ! the cloud-scale fields, which are stored on the physics buffer.
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD'), crm_qc)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD'), crm_qi)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QR_RAD'), crm_qr)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), crm_qs)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QG_RAD'), crm_qg)
+
+      ! Populate mixing ratios
+      j = 1
+      do jj = 1,crm_ny_rad
+         do ii = 1,crm_nx_rad
+            sghydro%mr_hydro(:,j,:crm_nz,I_LSCLIQ) = crm_qc(:,ii,jj,:crm_nz)
+            sghydro%mr_hydro(:,j,:crm_nz,I_LSCICE) = crm_qi(:,ii,jj,:crm_nz)
+            sghydro%mr_hydro(:,j,:crm_nz,I_LSRAIN) = crm_qr(:,ii,jj,:crm_nz)
+            sghydro%mr_hydro(:,j,:crm_nz,I_LSSNOW) = crm_qs(:,ii,jj,:crm_nz)
+            sghydro%mr_hydro(:,j,:crm_nz,I_LSGRPL) = crm_qg(:,ii,jj,:crm_nz)
+            j = j + 1
+         end do
+      end do
+
+      ! Get effective radii, added in radiation driver
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFL_RAD'), crm_reffl)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFI_RAD'), crm_reffi)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFR_RAD'), crm_reffr)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFS_RAD'), crm_reffs)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFG_RAD'), crm_reffg)
+
+      ! If using 2-moment microphysics, we also grab the number
+      ! concentrations (?)
+
+      ! Populate with the CRM-scale fields
+      j = 1
+      do ii = 1,crm_nx_rad
+         do jj = 1,crm_ny_rad
+            sghydro%Reff(:,j,:crm_nz,I_LSCLIQ) = crm_reffl(:,ii,jj,:crm_nz) * 1e-6_r8
+            sghydro%Reff(:,j,:crm_nz,I_LSCICE) = crm_reffi(:,ii,jj,:crm_nz) * 1e-6_r8
+            sghydro%Reff(:,j,:crm_nz,I_LSRAIN) = crm_reffr(:,ii,jj,:crm_nz) * 1e-6_r8
+            sghydro%Reff(:,j,:crm_nz,I_LSSNOW) = crm_reffs(:,ii,jj,:crm_nz) * 1e-6_r8
+            sghydro%Reff(:,j,:crm_nz,I_LSGRPL) = crm_reffg(:,ii,jj,:crm_nz) * 1e-6_r8
+            j = j + 1
+         end do
+      end do
+   end if  ! use_SPCAM
+end subroutine populate_cosp_sghydro
+#ENDIF
 
 
 #IFDEF USE_COSP
@@ -2678,6 +2797,7 @@ end subroutine initialize_cosp_config
 
 
 subroutine get_atrain_columns(ncol, lchnk, Natrain, Nno, IdxAtrain, IdxNo)
+   use time_manager,     only: get_curr_calday,get_curr_time,get_ref_date
    integer, intent(in) :: ncol, lchnk
    integer, intent(out) :: Natrain, Nno
    integer, intent(inout) :: IdxAtrain(:), IdxNo(:)
