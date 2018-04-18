@@ -8,22 +8,14 @@
      &     pfull,
      &     phalf,
      &     qv,
-     &     cc,
-     &     conv,
-     &     dtau_s,
-     &     dtau_c,
-     &     dtau_s_snow,
+     &     dtau_in,
      &     top_height,
      &     top_height_direction,
      &     overlap,
-     &     frac_out,
-     &     prec_frac,
      &     skt,
      &     emsfc_lw,
      &     at,
-     &     dem_s,
-     &     dem_c,
-     &     dem_s_snow,
+     &     dem_in,
      &     fq_isccp,
      &     totalcldarea,
      &     meanptop,
@@ -107,18 +99,7 @@
                   !  water vapor specific humidity (kg vapor/ kg air)
                   !         on full model levels
 
-      REAL cc(npoints,nlev)   
-                  !  input cloud cover in each model level (fraction) 
-                  !  NOTE:  This is the HORIZONTAL area of each
-                  !         grid box covered by clouds
-
-      REAL conv(npoints,nlev) 
-                  !  input convective cloud cover in each model
-                  !   level (fraction) 
-                  !  NOTE:  This is the HORIZONTAL area of each
-                  !         grid box covered by convective clouds
-
-      REAL dtau_s(npoints,nlev) 
+      REAL dtau_in(npoints,ncol,nlev) 
                   !  mean 0.67 micron optical depth of stratiform
                 !  clouds in each model level
                   !  NOTE:  this the cloud optical depth of only the
@@ -126,96 +107,66 @@
                   !  with the 0 cloud optical depth of the clear
                   !         part of the grid box
 
-      REAL dtau_c(npoints,nlev) 
-                  !  mean 0.67 micron optical depth of convective
-                !  clouds in each
-                  !  model level.  Same note applies as in dtau_s.
-
-      REAL dtau_s_snow(npoints,nlev) 
-                  !  mean 0.67 micron optical depth of stratiform
-                !  snow in each model level
-     
-
-
       INTEGER overlap                   !  overlap type
                               !  1=max
                               !  2=rand
                               !  3=max/rand
 
-      INTEGER top_height                !  1 = adjust top height using both a computed
-                                        !  infrared brightness temperature and the visible
+      INTEGER top_height      !  1 = adjust top height using both a computed
+                              !  infrared brightness temperature and the visible
                               !  optical depth to adjust cloud top pressure. Note
                               !  that this calculation is most appropriate to compare
                               !  to ISCCP data during sunlit hours.
-                                        !  2 = do not adjust top height, that is cloud top
-                                        !  pressure is the actual cloud top pressure
-                                        !  in the model
+                              !  2 = do not adjust top height, that is cloud top
+                              !  pressure is the actual cloud top pressure
+                              !  in the model
                               !  3 = adjust top height using only the computed
                               !  infrared brightness temperature. Note that this
                               !  calculation is most appropriate to compare to ISCCP
                               !  IR only algortihm (i.e. you can compare to nighttime
                               !  ISCCP data with this option)
 
-      INTEGER top_height_direction ! direction for finding atmosphere pressure level
-                                 ! with interpolated temperature equal to the radiance
-				 ! determined cloud-top temperature
-				 !
-				 ! 1 = find the *lowest* altitude (highest pressure) level
-				 ! with interpolated temperature equal to the radiance
-				 ! determined cloud-top temperature
-				 !
-				 ! 2 = find the *highest* altitude (lowest pressure) level
-				 ! with interpolated temperature equal to the radiance 
-				 ! determined cloud-top temperature
-				 ! 
-				 ! ONLY APPLICABLE IF top_height EQUALS 1 or 3
-				 !				 !
-				 ! 1 = old setting: matches all versions of 
-				 ! ISCCP simulator with versions numbers 3.5.1 and lower
-				 !
-				 ! 2 = default setting: for version numbers 4.0 and higher
+      INTEGER top_height_direction  ! direction for finding atmosphere pressure level
+                                    ! with interpolated temperature equal to the radiance
+                                    ! determined cloud-top temperature
+                                    !
+                                    ! 1 = find the *lowest* altitude (highest pressure) level
+                                    ! with interpolated temperature equal to the radiance
+                                    ! determined cloud-top temperature
+                                    !
+                                    ! 2 = find the *highest* altitude (lowest pressure) level
+                                    ! with interpolated temperature equal to the radiance 
+                                    ! determined cloud-top temperature
+                                    ! 
+                                    ! ONLY APPLICABLE IF top_height EQUALS 1 or 3
+                                    !
+                                    ! 1 = old setting: matches all versions of 
+                                    ! ISCCP simulator with versions numbers 3.5.1 and lower
+                                    !
+                                    ! 2 = default setting: for version numbers 4.0 and higher
 !
 !     The following input variables are used only if top_height = 1 or top_height = 3
 !
       REAL skt(npoints)                 !  skin Temperature (K)
       REAL emsfc_lw                     !  10.5 micron emissivity of surface (fraction)                                            
-      REAL at(npoints,nlev)                   !  temperature in each model level (K)
-      REAL dem_s(npoints,nlev)                !  10.5 micron longwave emissivity of stratiform
-                              !  clouds in each
-                                        !  model level.  Same note applies as in dtau_s.
-      REAL dem_c(npoints,nlev)                  !  10.5 micron longwave emissivity of convective
-                              !  clouds in each
-                                        !  model level.  Same note applies as in dtau_s.
-
-      REAL dem_s_snow(npoints,nlev)                !  10.5 micron longwave emissivity of stratiform
-                              !  snow in each
-                                        !  model level.  Same note applies as in dtau_s.
-      
-      REAL frac_out(npoints,ncol,nlev) ! boxes gridbox divided up into
-                              ! Equivalent of BOX in original version, but
-                              ! indexed by column then row, rather than
-                              ! by row then column
-
-      REAL prec_frac(npoints,ncol,nlev) ! box indicator for precipitation
-					! 0 -> clear sky
-                                        ! 1 -> LS precipitation
-                                        ! 2 -> CONV precipitation
-                    			! 3 -> both
+      REAL at(npoints,nlev)             !  temperature in each model level (K)
+      REAL dem_in(npoints,ncol,nlev)       !  10.5 micron longwave emissivity of stratiform
+                                        !  clouds in each
+                                        !  model level.  Same note applies as in dtau_in.
 
 !     ------
 !     Output
 !     ------
 
-      REAL fq_isccp(npoints,7,7)        !  the fraction of the model grid box covered by
-                                        !  each of the 49 ISCCP D level cloud types
+      REAL fq_isccp(npoints,7,7)        ! the fraction of the model grid box covered by
+                                        ! each of the 49 ISCCP D level cloud types
 
-      REAL totalcldarea(npoints)        !  the fraction of model grid box columns
-                                        !  with cloud somewhere in them.  NOTE: This diagnostic
-					! does not count model clouds with tau < isccp_taumin
-                              ! Thus this diagnostic does not equal the sum over all entries of fq_isccp.
-			      ! However, this diagnostic does equal the sum over entries of fq_isccp with
-			      ! itau = 2:7 (omitting itau = 1)
-      
+      REAL totalcldarea(npoints)        ! the fraction of model grid box columns
+                                        ! with cloud somewhere in them.  NOTE: This diagnostic
+                                        ! does not count model clouds with tau < isccp_taumin
+                                        ! Thus this diagnostic does not equal the sum over all entries of fq_isccp.
+                                        ! However, this diagnostic does equal the sum over entries of fq_isccp with
+                                        ! itau = 2:7 (omitting itau = 1)
       
       ! The following three means are averages only over the cloudy areas with tau > isccp_taumin.  
       ! If no clouds with tau > isccp_taumin are in grid box all three quantities should equal zero.      
@@ -228,7 +179,7 @@
       
       real meanalbedocld(npoints)        ! mean cloud albedo
                                         ! linear averaging in albedo performed
-					
+
       real meantb(npoints)              ! mean all-sky 10.5 micron brightness temperature
       
       real meantbclr(npoints)           ! mean clear-sky 10.5 micron brightness temperature
@@ -323,7 +274,7 @@
           write(6,'(8I10)') ncol
           write(6,'(a11)') 'top_height='
           write(6,'(8I10)') top_height
-	  write(6,'(a21)') 'top_height_direction='
+          write(6,'(a21)') 'top_height_direction='
           write(6,'(8I10)') top_height_direction
           write(6,'(a10)') 'overlap='
           write(6,'(8I10)') overlap
@@ -340,26 +291,10 @@
           write(6,'(8f10.2)') (phalf(j,i),i=1,nlev+1)
           write(6,'(a10)') 'qv='
           write(6,'(8f10.3)') (qv(j,i),i=1,nlev)
-          write(6,'(a10)') 'cc='
-          write(6,'(8f10.3)') (cc(j,i),i=1,nlev)
-          write(6,'(a10)') 'conv='
-          write(6,'(8f10.2)') (conv(j,i),i=1,nlev)
-          write(6,'(a10)') 'dtau_s='
-          write(6,'(8g12.5)') (dtau_s(j,i),i=1,nlev)
-          write(6,'(a10)') 'dtau_c='
-          write(6,'(8f10.2)') (dtau_c(j,i),i=1,nlev)
-          write(6,'(a10)') 'dtau_s_snow='
-          write(6,'(8g12.5)') (dtau_s_snow(j,i),i=1,nlev)
           write(6,'(a10)') 'skt='
           write(6,'(8f10.2)') skt(j)
           write(6,'(a10)') 'at='
           write(6,'(8f10.2)') (at(j,i),i=1,nlev)
-          write(6,'(a10)') 'dem_s='
-          write(6,'(8f10.3)') (dem_s(j,i),i=1,nlev)
-          write(6,'(a10)') 'dem_c='
-          write(6,'(8f10.3)') (dem_c(j,i),i=1,nlev)
-	  write(6,'(a10)') 'dem_s_snow='
-          write(6,'(8f10.3)') (dem_s_snow(j,i),i=1,nlev)
         enddo
       endif
 
@@ -413,87 +348,11 @@
       else
           do j=1,npoints
               meantb(j) = output_missing_value
-       	      meantbclr(j) = output_missing_value
+              meantbclr(j) = output_missing_value
           end do
       end if
       
-!     -----------------------------------------------------!
 
-!     ---------------------------------------------------!
-
-      do ilev=1,nlev
-        do j=1,npoints
-
-          rangevec(j)=0
-
-          if (cc(j,ilev) .lt. 0. .or. cc(j,ilev) .gt. 1.) then
-!           error = cloud fraction less than zero
-!           error = cloud fraction greater than 1
-            rangevec(j)=rangevec(j)+1
-          endif
-
-          if (conv(j,ilev) .lt. 0. .or. conv(j,ilev) .gt. 1.) then
-!           ' error = convective cloud fraction less than zero'
-!           ' error = convective cloud fraction greater than 1'
-            rangevec(j)=rangevec(j)+2
-          endif
-
-          if (dtau_s(j,ilev) .lt. 0.) then
-!           ' error = stratiform cloud opt. depth less than zero'
-            rangevec(j)=rangevec(j)+4
-          endif
-
-          if (dtau_c(j,ilev) .lt. 0.) then
-!           ' error = convective cloud opt. depth less than zero'
-            rangevec(j)=rangevec(j)+8
-          endif
-
-          if (dem_s(j,ilev) .lt. 0. .or. dem_s(j,ilev) .gt. 1.) then
-!             ' error = stratiform cloud emissivity less than zero'
-!             ' error = stratiform cloud emissivity greater than 1'
-            rangevec(j)=rangevec(j)+16
-          endif
-
-          if (dem_c(j,ilev) .lt. 0. .or. dem_c(j,ilev) .gt. 1.) then
-!             ' error = convective cloud emissivity less than zero'
-!             ' error = convective cloud emissivity greater than 1'
-              rangevec(j)=rangevec(j)+32
-          endif
-
-          if (dtau_s_snow(j,ilev) .lt. 0.) then
-!           ' error = stratiform snow opt. depth less than zero'
-            rangevec(j)=rangevec(j)+64
-          endif
-
-          if (dem_s_snow(j,ilev) .lt. 0. .or.
-     &        dem_s_snow(j,ilev) .gt. 1.) then
-!             ' error = stratiform snow emissivity less than zero'
-!             ' error = stratiform snow emissivity greater than 1'
-            rangevec(j)=rangevec(j)+128
-          endif
-
-        enddo
-
-        rangeerror=0
-        do j=1,npoints
-            rangeerror=rangeerror+rangevec(j)
-        enddo
-
-        if (rangeerror.ne.0) then 
-              write (6,*) 'Input variable out of range'
-              write (6,*) 'rangevec:'
-              write (6,*) rangevec
-!! local mod for CAM/CCSM - comment out per Brian Eaton, jek
-!!              call flush(6)
-              STOP
-        endif
-      enddo
-
-!
-!     ---------------------------------------------------!
-
-      
-!
 !     ---------------------------------------------------!
 !     COMPUTE CLOUD OPTICAL DEPTH FOR EACH COLUMN and
 !     put into vector tau
@@ -514,19 +373,7 @@
             !increment tau for each of the boxes
             do ibox=1,ncol
               do j=1,npoints 
-                 if (frac_out(j,ibox,ilev).eq.1) then
-                        tau(j,ibox)=tau(j,ibox)
-     &                     + dtau_s(j,ilev)
-                 endif
-                 if (frac_out(j,ibox,ilev).eq.2) then
-                        tau(j,ibox)=tau(j,ibox)
-     &                     + dtau_c(j,ilev)
-                 end if
-                 if ((prec_frac(j,ibox,ilev).eq.1) .or.
-     &               (prec_frac(j,ibox,ilev).eq.3)) then
-                        tau(j,ibox)=tau(j,ibox)
-     &                     + dtau_s_snow(j,ilev)
-                 end if                
+                 tau(j,ibox) = tau(j,ibox) + dtau_in(j,ibox,ilev)
               enddo
             enddo ! ibox
       enddo ! ilev
@@ -662,7 +509,7 @@
      
           !clear sky brightness temperature
           meantbclr(j) = 1307.27/(log(1.+(1./fluxtop_clrsky(j))))
-	  
+
         enddo
 
         if (ncolprint.ne.0) then
@@ -721,35 +568,20 @@
               do j=1,npoints 
 
               ! emissivity for point in this layer
-                if (frac_out(j,ibox,ilev).eq.1) then
-                dem(j,ibox)= 1. - 
-     &             ( (1. - dem_wv(j,ilev)) * (1. -  dem_s(j,ilev)) )
-                else if (frac_out(j,ibox,ilev).eq.2) then
-                dem(j,ibox)= 1. - 
-     &             ( (1. - dem_wv(j,ilev)) * (1. -  dem_c(j,ilev)) )
-                else
-                dem(j,ibox)=  dem_wv(j,ilev)
-                end if
+              dem(j,ibox)= 1. - 
+     &            (1. - dem_wv(j,ilev)) * (1. -  dem_in(j,ibox,ilev))
                 
-                if ((prec_frac(j,ibox,ilev).eq.1) .or.
-     &              (prec_frac(j,ibox,ilev).eq.3) ) then
-                dem(j,ibox) = 1. - 
-     &             ( (1. - dem(j,ibox)) * (1. - dem_s_snow(j,ilev)) )
-                else
-                dem(j,ibox) = dem(j,ibox)
-                end if
-
-                ! increase TOA flux by flux emitted from layer
+              ! increase TOA flux by flux emitted from layer
               ! times total transmittance in layers above
 
-                fluxtop(j,ibox) = fluxtop(j,ibox) 
+              fluxtop(j,ibox) = fluxtop(j,ibox) 
      &            + dem(j,ibox) * bb(j)
      &            * trans_layers_above(j,ibox) 
             
-                ! update trans_layers_above with transmissivity
+              ! update trans_layers_above with transmissivity
               ! from this layer for next time around loop
 
-                trans_layers_above(j,ibox)=
+              trans_layers_above(j,ibox)=
      &            trans_layers_above(j,ibox)*(1.-dem(j,ibox))
 
               enddo ! j
@@ -1033,7 +865,7 @@
           do ilev=1,nlev
             do j=1,npoints     
               if ((ptop(j,ibox) .eq. 0. )
-     &           .and.(frac_out(j,ibox,ilev) .ne. 0)) then
+     &           .and.(dtau_in(j,ibox,ilev) .ne. 0)) then
                 ptop(j,ibox)=phalf(j,ilev)
               levmatch(j,ibox)=ilev
               end if
@@ -1114,31 +946,25 @@
           endif
 
           if (box_cloudy(j,ibox)) then
+            if (sunlit(j).eq.1 .or. top_height .eq. 3) then
+              boxtau(j,ibox) = tau(j,ibox)
+              if (tau(j,ibox) .ge. isccp_taumin) then
+                totalcldarea(j) = totalcldarea(j) + boxarea
 
-              if (sunlit(j).eq.1 .or. top_height .eq. 3) then
-
-                boxtau(j,ibox) = tau(j,ibox)
-
-		if (tau(j,ibox) .ge. isccp_taumin) then
-		   totalcldarea(j) = totalcldarea(j) + boxarea
-		
-                   !convert optical thickness to albedo
-                   albedocld(j,ibox)
-     &		   = (tau(j,ibox)**0.895)/((tau(j,ibox)**0.895)+6.82)
+                !convert optical thickness to albedo
+                albedocld(j,ibox)
+     &              = (tau(j,ibox)**0.895)/((tau(j,ibox)**0.895)+6.82)
          
-                   !contribute to averaging
-                   meanalbedocld(j) = meanalbedocld(j) 
-     &                                +albedocld(j,ibox)*boxarea
-
-                end if
-
+                !contribute to averaging
+                meanalbedocld(j) = meanalbedocld(j) 
+     &                               +albedocld(j,ibox)*boxarea
+              end if
             endif
-
           endif
 
           if (sunlit(j).eq.1 .or. top_height .eq. 3) then 
 
-           if (box_cloudy(j,ibox)) then
+            if (box_cloudy(j,ibox)) then
           
               !convert ptop to millibars
               ptop(j,ibox)=ptop(j,ibox) / 100.
@@ -1147,8 +973,8 @@
               boxptop(j,ibox) = ptop(j,ibox)
     
               if (tau(j,ibox) .ge. isccp_taumin) then
-	      	meanptop(j) = meanptop(j) + ptop(j,ibox)*boxarea
-              end if		
+                meanptop(j) = meanptop(j) + ptop(j,ibox)*boxarea
+              end if
 
               !reset itau(j), ipres(j)
               itau(j) = 0
@@ -1242,20 +1068,20 @@
 !     
          do j=1,npoints,debugcol
 
-            !produce character output
-            do ilev=1,nlev
-              do ibox=1,ncol
-                   acc(ilev,ibox)=0
-              enddo
-            enddo
+!           !produce character output
+!           do ilev=1,nlev
+!             do ibox=1,ncol
+!                  acc(ilev,ibox)=0
+!             enddo
+!           enddo
 
-            do ilev=1,nlev
-              do ibox=1,ncol
-                   acc(ilev,ibox)=frac_out(j,ibox,ilev)*2
-                   if (levmatch(j,ibox) .eq. ilev) 
-     &                 acc(ilev,ibox)=acc(ilev,ibox)+1
-              enddo
-            enddo
+!           do ilev=1,nlev
+!             do ibox=1,ncol
+!                  acc(ilev,ibox)=frac_out(j,ibox,ilev)*2
+!                  if (levmatch(j,ibox) .eq. ilev) 
+!    &                 acc(ilev,ibox)=acc(ilev,ibox)+1
+!             enddo
+!           enddo
 
              !print test
 
@@ -1268,11 +1094,11 @@
      &                  (ilev,ilev=5,nlev,5)
              write(9,'(a1)') ' '
              
-             do ibox=1,ncol
-               write(9,'(40(a1),1x,40(a1))')
-     &           (cchar_realtops(acc(ilev,ibox)+1),ilev=1,nlev) 
-     &           ,(cchar(acc(ilev,ibox)+1),ilev=1,nlev) 
-             end do
+!            do ibox=1,ncol
+!              write(9,'(40(a1),1x,40(a1))')
+!    &           (cchar_realtops(acc(ilev,ibox)+1),ilev=1,nlev) 
+!    &           ,(cchar(acc(ilev,ibox)+1),ilev=1,nlev) 
+!            end do
              close(9)
 
              if (ncolprint.ne.0) then
@@ -1280,7 +1106,6 @@
                     write(6,'(a2,1X,5(a7,1X),a50)') 
      &                  'ilev',
      &                  'pfull','at',
-     &                  'cc*100','dem_s','dtau_s',
      &                  'cchar'
 
 !               do 4012 ilev=1,nlev
@@ -1288,7 +1113,6 @@
 !                   write(6,'(i2,1X,5(f7.2,1X),50(a1))') 
 !     &                  ilev,
 !     &                  pfull(j,ilev)/100.,at(j,ilev),
-!     &                  cc(j,ilev)*100.0,dem_s(j,ilev),dtau_s(j,ilev)
 !     &                  ,(cchar(acc(ilev,ibox)+1),ibox=1,ncolprint)
 !4012           continue
                write (6,'(a)') 'skt(j):'

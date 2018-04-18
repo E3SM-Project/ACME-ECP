@@ -30,11 +30,7 @@
      &     sunlit,
      &     zfull,
      &     at,
-     &     dtau_s,
-     &     dtau_c,
-     &     dtau_s_snow, 
-     &     frac_out,
-     &     prec_frac,
+     &     dtau_in,
      &     missing_value,
      &     fq_MISR_TAU_v_CTH,
      &     dist_model_layertops,
@@ -68,18 +64,8 @@
 
       REAL at(npoints,nlev)             !  temperature in each model level (K)
  
-      REAL dtau_s(npoints,nlev)         !  visible wavelength cloud optical depth ... for "stratiform" condensate
-                                        !  NOTE:  this the cloud optical depth of only the
-                    !     the model cell (i,j)
-                    
-      REAL dtau_c(npoints,nlev)         !  visible wavelength cloud optical depth ... for "convective" condensate
-                                        !  NOTE:  this the cloud optical depth of only the
-                    !     the model cell (i,j)
-
-      REAL dtau_s_snow(npoints,nlev)      !  visible wavelength SNOW optical depth ... !+JEK
+      REAL dtau_in(npoints,ncol,nlev)         !  visible wavelength cloud optical depth ... for "stratiform" condensate
                                      
-      REAL frac_out(npoints,ncol,nlev)  !  NOTE: only need if columns>1 ... subgrid scheme in use.
-      REAL prec_frac(npoints,ncol,nlev)  !  same as frac_out but for precipitation -- for Steve's snow scheme !+JEK      
       REAL missing_value
                                  
 !     ------
@@ -174,23 +160,8 @@
        
         do ilev=1,nlev
      
-             dtau=0
-             
-             if (frac_out(j,ibox,ilev).eq.1) then
-                        dtau = dtau_s(j,ilev)
-                 endif
-                 
-                 if (frac_out(j,ibox,ilev).eq.2) then
-                        dtau = dtau_c(j,ilev)
-                 end if 
-!+JEK
-		 if ((prec_frac(j,ibox,ilev).eq.1) .or.
-     &               (prec_frac(j,ibox,ilev).eq.3)) then
-                         dtau = dtau + dtau_s_snow(j,ilev)
-                 end if   
-!+JEK                
+             dtau = dtau_in(j,ibox,ilev)
              tau(j,ibox)=tau(j,ibox)+ dtau
-              
                      
         ! NOW for MISR ..
         ! if there a cloud ... start the counter ... store this height

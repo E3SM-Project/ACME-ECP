@@ -146,91 +146,45 @@ contains
       !
       ! Subcolumn properties - first stratiform cloud...
       ! 
+      opticalThickness(:, :, :) = subCols%dtau(sunlit(:), :, :)
       where(subCols%frac_out(sunlit(:), :, :) == I_LSC)
-        !opticalThickness(:, :, :) = & 
-        !               spread(gridBox%dtau_s      (sunlit(:),    :), dim = 2, nCopies = nSubCols) 
         cloudWater(:, :, :) = subcolHydro%mr_hydro(sunlit(:), :, :, I_LSCLIQ)
         waterSize (:, :, :) = subcolHydro%reff    (sunlit(:), :, :, I_LSCLIQ)
         cloudIce  (:, :, :) = subcolHydro%mr_hydro(sunlit(:), :, :, I_LSCICE)
         iceSize   (:, :, :) = subcolHydro%reff    (sunlit(:), :, :, I_LSCICE)
       elsewhere
-        opticalThickness(:, :, :) = 0.
         cloudWater      (:, :, :) = 0.
         cloudIce        (:, :, :) = 0.
         waterSize       (:, :, :) = 0.
         iceSize         (:, :, :) = 0.
       end where
 
-      ! Loop version of spread above - intrinsic doesn't work on certain platforms. 
-      do k = 1, nLevels
-        do j = 1, nSubCols
-          do i = 1, nSunlit
-            if(subCols%frac_out(sunlit(i), j, k) == I_LSC) then
-              opticalThickness(i, j, k) = gridBox%dtau_s(sunlit(i), k)
-            else
-              opticalThickness(i, j, k) = 0.   
-            end if 
-          end do 
-        end do
-      end do
-
       !
       ! .. then add convective cloud...
       !
       where(subCols%frac_out(sunlit(:), :, :) == I_CVC) 
-        !opticalThickness(:, :, :) = &
-        !               spread(gridBox%dtau_c(      sunlit(:),    :), dim = 2, nCopies = nSubCols)
         cloudWater(:, :, :) = subcolHydro%mr_hydro(sunlit(:), :, :, I_CVCLIQ)
         waterSize (:, :, :) = subcolHydro%reff    (sunlit(:), :, :, I_CVCLIQ)
         cloudIce  (:, :, :) = subcolHydro%mr_hydro(sunlit(:), :, :, I_CVCICE)
         iceSize   (:, :, :) = subcolHydro%reff    (sunlit(:), :, :, I_CVCICE)
       end where
 
-      ! Loop version of spread above - intrinsic doesn't work on certain platforms. 
-      do k = 1, nLevels
-        do j = 1, nSubCols
-          do i = 1, nSunlit
-            if(subCols%frac_out(sunlit(i), j, k) == I_CVC) opticalThickness(i, j, k) = gridBox%dtau_c(sunlit(i), k)
-          end do 
-        end do
-      end do
-
       !
       ! .. and finally snow (!+JEK)
       !
       ! prec_frac == 1 means stratiform, 3 means strat and convective (apparently not in cosp_constants). 
       !   Also filter on the presence of snow
-      
-      snowSize (:, :, :) = subcolHydro%reff    (sunlit(:), :, :, I_LSSNOW)
       where((subCols%prec_frac(sunlit(:), :, :) == 1 .or.   &
              subCols%prec_frac(sunlit(:), :, :) == 3) .and. &
-            snowSize(:, :, :) > 0.                    .and. &
-            spread(gridBox%dtau_s_snow(sunlit(:),    :), dim = 2, nCopies = nSubCols) > 0.) 
-        !opticalThickness(:, :, :) = opticalThickness(:, :, :) + &
-        !               spread(gridBox%dtau_s_snow(sunlit(:),    :), dim = 2, nCopies = nSubCols)
+             subcolHydro%Reff(sunlit(:), :, :, I_LSSNOW) > 0. .and. &
+             subcolHydro%mr_hydro(sunlit(:), :, :, I_LSSNOW) > 0. .and. &
+             spread(gridBox%dtau_s_snow(sunlit(:),    :), dim = 2, nCopies = nSubCols) > 0.)
         cloudSnow(:, :, :) = subcolHydro%mr_hydro(sunlit(:), :, :, I_LSSNOW)
+        snowSize (:, :, :) = subcolHydro%reff(sunlit(:), :, :, I_LSSNOW)
       elsewhere 
-        cloudSnow       (:, :, :) = 0.
-        snowSize        (:, :, :) = 0. 
+        cloudSnow(:, :, :) = 0.
+        snowSize (:, :, :) = 0. 
       end where
-
-      ! Loop version of spread above - intrinsic doesn't work on certain platforms.
-      do k = 1, nLevels
-        do j = 1, nSubCols
-          do i = 1, nSunlit
-            if((subCols%prec_frac(sunlit(i), j, k) == 1 .or. &
-		        subCols%prec_frac(sunlit(i), j, k) == 3) .and. &
-               snowSize(i, j, k) > 0.                    .and. &
-               gridBox%dtau_s_snow(sunlit(i),   k) > 0. ) then
-                 opticalThickness(i, j, k) = opticalThickness(i,j,k) + gridBox%dtau_c(sunlit(i), k)
-		       cloudSnow(i, j, k) = subcolHydro%mr_hydro(sunlit(i), j, k, I_LSSNOW)
-	        else
-               cloudSnow       (i, j, k) = 0.
-               snowSize        (i, j, k) = 0. 
-            end if 
-          end do 
-        end do
-      end do !+JEK
 
       !
       ! Reverse vertical order 
@@ -245,7 +199,7 @@ contains
       
       isccpTau(:, :)              = isccpSim%boxtau (sunlit(:), :)
       isccpCloudTopPressure(:, :) = isccpSim%boxptop(sunlit(:), :)
-      
+
       do i = 1, nSunlit
         call modis_L2_simulator(temperature(i, :), pressureLayers(i, :), pressureLevels(i, :),     &
                                 opticalThickness(i, :, :), cloudWater(i, :, :), cloudIce(i, :, :), &
@@ -272,7 +226,7 @@ contains
       modisSim%Cloud_Fraction_Total_Mean(sunlit(:)) = cfTotal(:)
       modisSim%Cloud_Fraction_Water_Mean(sunlit(:)) = cfLiquid
       modisSim%Cloud_Fraction_Ice_Mean  (sunlit(:)) = cfIce
-  
+
       modisSim%Cloud_Fraction_High_Mean(sunlit(:)) = cfHigh
       modisSim%Cloud_Fraction_Mid_Mean (sunlit(:)) = cfMid
       modisSim%Cloud_Fraction_Low_Mean (sunlit(:)) = cfLow

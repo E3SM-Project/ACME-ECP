@@ -224,7 +224,14 @@ MODULE MOD_COSP_TYPES
     integer :: Nhydro    ! Number of hydrometeors
     
     real,dimension(:,:,:),pointer :: prec_frac  ! Subgrid precip array. Dimensions (Npoints,Ncolumns,Nlevels)
-    real,dimension(:,:,:),pointer :: frac_out  ! Subgrid cloud array. Dimensions (Npoints,Ncolumns,Nlevels)
+    real,dimension(:,:,:),pointer :: frac_out   ! Subgrid cloud array. Dimensions (Npoints,Ncolumns,Nlevels)
+    real,dimension(:,:,:),pointer :: dtau       ! Subgrid cloud optical depth.
+    real,dimension(:,:,:),pointer :: dem        ! Subgrid cloud emissivity.
+
+    ! Flag to specify whether or not subcolumn sampling should be done. This
+    ! allows passing already dowscaled cloud optical properties to COSP to
+    ! bypass the SCOPS/PREC_SCOPS step, without needing to set Ncolumns to 1.
+    logical :: do_subcol_sampling
   END TYPE COSP_SUBGRID
 
   ! Input data for simulator at Subgrid scale.
@@ -850,7 +857,9 @@ CONTAINS
     y%Nlevels  = Nlevels
 
     ! --- Allocate arrays ---
-    allocate(y%frac_out(Npoints,Ncolumns,Nlevels))
+    allocate(y%frac_out(Npoints,Ncolumns,Nlevels), &
+             y%dtau(Npoints,Ncolumns,Nlevels), &
+             y%dem(Npoints,Ncolumns,Nlevels))
     if (Ncolumns > 1) then
       allocate(y%prec_frac(Npoints,Ncolumns,Nlevels))
     else ! CRM mode, not needed
@@ -859,13 +868,10 @@ CONTAINS
     ! --- Initialise to zero ---
     y%prec_frac = 0.0
     y%frac_out  = 0.0
-    ! The following line gives a compilation error on the Met Office NEC
-!     call zero_real(y%mr_hydro)
-!     f90: error(666): cosp_types.f90, line nnn:
-!                                        Actual argument corresponding to dummy
-!                                        argument of ELEMENTAL subroutine
-!                                        "zero_real" with INTENET(OUT) attribute
-!                                        is not array.
+    y%dtau      = 0.0
+    y%dem       = 0.0
+
+    y%do_subcol_sampling = .true.
 
   END SUBROUTINE CONSTRUCT_COSP_SUBGRID
 
@@ -876,7 +882,7 @@ CONTAINS
     type(cosp_subgrid),intent(inout) :: y
     
     ! --- Deallocate arrays ---
-    deallocate(y%prec_frac, y%frac_out)
+    deallocate(y%prec_frac, y%frac_out, y%dtau, y%dem)
         
   END SUBROUTINE FREE_COSP_SUBGRID
 
@@ -1282,7 +1288,22 @@ SUBROUTINE COSP_SUBGRID_CPSECTION(ix,iy,x,y)
     
     y%prec_frac(iy(1):iy(2),:,:)  = x%prec_frac(ix(1):ix(2),:,:)
     y%frac_out(iy(1):iy(2),:,:)   = x%frac_out(ix(1):ix(2),:,:)
+    y%dtau(iy(1):iy(2),:,:)   = x%dtau(ix(1):ix(2),:,:)
+    y%dem(iy(1):iy(2),:,:)   = x%dem(ix(1):ix(2),:,:)
 END SUBROUTINE COSP_SUBGRID_CPSECTION
+
+!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+!------------- SUBROUTINE COSP_SGHYDRO_CPSECTION -----------------
+!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+SUBROUTINE COSP_SGHYDRO_CPSECTION(ix,iy,x,y)
+    integer,intent(in),dimension(2) :: ix,iy
+    type(cosp_sghydro),intent(in) :: x
+    type(cosp_sghydro),intent(inout) :: y
+    
+    y%mr_hydro(iy(1):iy(2),:,:,:) = x%mr_hydro(ix(1):ix(2),:,:,:)
+    y%Reff(iy(1):iy(2),:,:,:)     = x%Reff(ix(1):ix(2),:,:,:)
+    y%Np(iy(1):iy(2),:,:,:)       = x%Np(ix(1):ix(2),:,:,:)
+END SUBROUTINE COSP_SGHYDRO_CPSECTION
 
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !------------- SUBROUTINE COSP_SGRADAR_CPSECTION -----------------
@@ -1647,9 +1668,12 @@ SUBROUTINE COSP_SUBGRID_PRINT(x)
     print *, x%Ncolumns
     print *, x%Nlevels
     print *, x%Nhydro
+    print *, x%do_subcol_sampling
     
     print *, 'shape(x%prec_frac): ',shape(x%prec_frac)
     print *, 'shape(x%frac_out): ',shape(x%frac_out)
+    print *, 'shape(x%dtau): ',shape(x%dtau)
+    print *, 'shape(x%dem): ',shape(x%dem)
 END SUBROUTINE COSP_SUBGRID_PRINT
 
 SUBROUTINE COSP_SGHYDRO_PRINT(x)

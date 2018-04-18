@@ -74,8 +74,8 @@ SUBROUTINE COSP_LIDAR(gbx,sgx,sghydro,y)
 
       call lidar_simulator(sgx%Npoints, sgx%Nlevels, 5, PARASOL_NREFL, LIDAR_UNDEF  &
                  , gbx%p, presf, gbx%T, mr_ll, mr_li, mr_cl, mr_ci &
-                 , gbx%Reff(:,:,I_LSCLIQ), gbx%Reff(:,:,I_LSCICE) &
-                 , gbx%Reff(:,:,I_CVCLIQ), gbx%Reff(:,:,I_CVCICE) &
+                 , sghydro%Reff(:,i,:,I_LSCLIQ), sghydro%Reff(:,i,:,I_LSCICE) &
+                 , sghydro%Reff(:,i,:,I_CVCLIQ), sghydro%Reff(:,i,:,I_CVCICE) &
                  , gbx%lidar_ice_type, y%beta_mol, beta_tot &
                  , betaperp_tot, tau_tot, refle &
                  , gbx%Reff(:,:,I_LSSNOW), mr_lsnow,sgx%prec_frac) !+JEK
