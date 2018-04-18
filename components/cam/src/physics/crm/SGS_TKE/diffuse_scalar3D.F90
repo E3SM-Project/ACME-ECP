@@ -16,7 +16,7 @@ contains
     real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) field (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
-    real(crm_rknd) tkh   (ncrms,0:nxp1,1-YES3D:nyp1,nzm)	! eddy conductivity
+    real(crm_rknd), pointer :: tkh(:,:,:,:)	! eddy conductivity
     real(crm_rknd) fluxb (ncrms,nx,ny)		! bottom flux
     real(crm_rknd) fluxt (ncrms,nx,ny)		! top flux
     real(crm_rknd) rho   (ncrms,nzm)

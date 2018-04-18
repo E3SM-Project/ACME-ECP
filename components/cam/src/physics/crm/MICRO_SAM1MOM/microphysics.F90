@@ -225,7 +225,7 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     integer :: i,j,icrm
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -464,6 +464,8 @@ CONTAINS
 
     allocate(omega(ncrms,nx,ny,nzm))
 
+    !$acc enter data create(omega) async(1)
+
     crain = b_rain / 4.
     csnow = b_snow / 4.
     cgrau = b_grau / 4.
@@ -471,7 +473,7 @@ CONTAINS
     vsnow = a_snow * gams3 / 6. / (pi * rhos * nzeros) ** csnow
     vgrau = a_grau * gamg3 / 6. / (pi * rhog * nzerog) ** cgrau
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -483,6 +485,8 @@ CONTAINS
     end do
 
     call precip_fall(qp, 2, omega(:,:,:,:), ind, ncrms)
+
+    !$acc exit data delete(omega) async(1)
 
     deallocate(omega)
   end subroutine micro_precip_fall
@@ -496,24 +500,27 @@ CONTAINS
   !-----------------------------------------------------------------------
   ! Supply function that computes total water in a domain:
   !
-  function total_water(ncrms)
+  subroutine total_water(ncrms,tw)
     use vars, only : nstep,nprint,adz,dz,rho
     implicit none
     integer, intent(in) :: ncrms
-    real(8) :: total_water(ncrms)
+    real(8), intent(out) :: tw(ncrms)
     real(8) tmp
     integer i,j,k,m,icrm
 
-    total_water(:) = 0.
+    !$acc parallel loop gang vector default(present) async(1)
+    do icrm = 1 , ncrms
+      tw(icrm) = 0.
+    enddo
     do m=1,nmicro_fields
       if(flag_wmass(m).eq.1) then
-        !$acc parallel loop gang vector
+        !$acc parallel loop gang vector default(present) async(1)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
               do i=1,nx
                 tmp = micro_field(icrm,i,j,k,m)*adz(icrm,k)*dz(icrm)*rho(icrm,k)
-                total_water(icrm) = total_water(icrm) + tmp
+                tw(icrm) = tw(icrm) + tmp
               enddo
             end do
           end do
@@ -521,7 +528,7 @@ CONTAINS
       end if
     end do
 
-  end function total_water
+  end subroutine total_water
 
   ! -------------------------------------------------------------------------------
   ! dummy effective radius functions:
@@ -543,7 +550,7 @@ CONTAINS
     use params
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
+    real(crm_rknd), pointer :: qp(:,:,:,:) ! falling hydrometeor
     integer hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
     real(crm_rknd) omega(ncrms,nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
     integer ind
@@ -575,12 +582,14 @@ CONTAINS
     allocate(wp    (ncrms,nx,ny,nzm))
     allocate(tmp_qp(ncrms,nx,ny,nzm))
 
+    !$acc enter data create(mx,mn,lfac,www,fz,wp,tmp_qp) async(1)
+
     eps = 1.e-10
     nonos = .true.
     nprec = 1
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
-    !$acc parallel loop gang vector collapse(4) copyout(lfac,wp) copyin(omega,tabs,rho,qp,dz,adz,rhow)
+    !$acc parallel loop gang vector collapse(4) present(lfac,wp,omega,tabs,rho,qp,dz,adz,rhow) async(1)
     do k=1,nz
       do j=1,ny
         do i=1,nx
@@ -650,7 +659,7 @@ CONTAINS
     end do  ! k
 
     if (nprec.gt.1) then
-      !$acc parallel loop gang vector collapse(4)
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k = 1,nzm
         do j=1,ny
           do i=1,nx
@@ -667,7 +676,7 @@ CONTAINS
     endif
 
     do iprec = 1,nprec
-      !$acc parallel loop gang vector collapse(4) copyout(mx,mn,fz) copyin(qp,wp)
+      !$acc parallel loop gang vector collapse(4) present(mx,mn,fz,qp,wp) async(1)
       do k=1,nz
         do j=1,ny
           do i=1,nx
@@ -689,7 +698,7 @@ CONTAINS
         enddo
       enddo
 
-      !$acc parallel loop gang vector collapse(4)
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -701,7 +710,7 @@ CONTAINS
         enddo
       enddo
 
-      !$acc parallel loop gang vector collapse(4)
+      !$acc parallel loop gang vector collapse(4) present(www,wp,rho,adz,tmp_qp) async(1)
       do k=1,nz
         do j=1,ny
           do i=1,nx
@@ -728,7 +737,7 @@ CONTAINS
 
       if(nonos) then
 
-        !$acc parallel loop gang vector collapse(4)
+        !$acc parallel loop gang vector collapse(4) default(present) async(1)
         do k=1,nzm
           do j=1,ny
             do i=1,nx
@@ -744,7 +753,7 @@ CONTAINS
           end do
         end do
 
-        !$acc parallel loop gang vector collapse(4)
+        !$acc parallel loop gang vector collapse(4) default(present) async(1)
         do k=1,nzm
           do j=1,ny
             do i=1,nx
@@ -761,7 +770,7 @@ CONTAINS
 
       endif ! nonos
 
-      !$acc parallel loop gang vector collapse(4)
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -804,7 +813,7 @@ CONTAINS
       end do
 
 
-      !$acc parallel loop gang vector collapse(4) copyout(wp,fz,www,lfac) copyin(tabs,rho,qp,rhow,dz)
+      !$acc parallel loop gang vector collapse(4) present(wp,fz,www,lfac,tabs,rho,qp,rhow,dz) async(1)
       do k=1,nz
         do j=1,ny
           do i=1,nx
@@ -854,6 +863,8 @@ CONTAINS
         end do
       end do
     end do !iprec
+
+    !$acc exit data delete(mx,mn,lfac,www,fz,wp,tmp_qp) async(1)
 
     deallocate(mx    )
     deallocate(mn    )

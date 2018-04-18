@@ -18,7 +18,7 @@ contains
     real(crm_rknd) grdf_x  (ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y  (ncrms,nzm)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z  (ncrms,nzm)! grid factor for eddy diffusion in z
-    real(crm_rknd) tkh     (ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
+    real(crm_rknd), pointer :: tkh(:,:,:,:) ! SGS eddy conductivity
     real(crm_rknd) f       (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)	! scalar
     real(crm_rknd) fluxb   (ncrms,nx,ny)		! bottom flux
     real(crm_rknd) fluxt   (ncrms,nx,ny)		! top flux
@@ -34,9 +34,11 @@ contains
 
     allocate(df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm))
 
+    !$acc enter data create(df) async(1)
+
     !call t_startf ('diffuse_scalars')
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1 , nzm
       do j = dimy1_s,dimy2_s
         do i = dimx1_s,dimx2_s
@@ -53,7 +55,7 @@ contains
       call diffuse_scalar2D (dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,       f,fluxb,fluxt,tkh,rho,rhow,flux,ncrms)
     endif
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1,nzm
       do icrm = 1 , ncrms
         fdiff(icrm,k)=0.
@@ -68,6 +70,8 @@ contains
     end do
 
     !call t_stopf ('diffuse_scalars')
+
+    !$acc exit data delete(df) async(1)
 
     deallocate(df)
 

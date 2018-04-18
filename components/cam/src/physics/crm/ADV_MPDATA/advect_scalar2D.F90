@@ -41,12 +41,14 @@ contains
     allocate( uuu  (ncrms,-1:nxp3,1,nzm) )
     allocate( www  (ncrms,-1:nxp2,1,nz)  )
 
+    !$acc enter data create(mx,mn,uuu,www) async(1)
+
     nonos = .true.
     eps = 1.e-10
 
     j=1
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do i = -1,nxp2
       do icrm = 1 , ncrms
         www(icrm,i,j,nz)=0.
@@ -56,7 +58,7 @@ contains
     if(dowallx) then
 
       if(mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop gang vector collapse(3)
+        !$acc parallel loop gang vector collapse(3) default(present) async(1)
         do k=1,nzm
           do i=dimx1_u,1
             do icrm = 1 , ncrms
@@ -66,7 +68,7 @@ contains
         end do
       end if
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop gang vector collapse(3)
+        !$acc parallel loop gang vector collapse(3) default(present) async(1)
         do k=1,nzm
           do i=nx+1,dimx2_u
             do icrm = 1 , ncrms
@@ -82,7 +84,7 @@ contains
 
     if(nonos) then
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do i=0,nxp1
           do icrm = 1 , ncrms
@@ -98,14 +100,14 @@ contains
 
     end if  ! nono
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k = 1 , nzm
       do icrm = 1 , ncrms
         flux(icrm,k) = 0.
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=1,nzm
       do i=-1,nxp3
         do icrm = 1 , ncrms
@@ -120,7 +122,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=1,nzm
       do i=-1,nxp2
         do icrm = 1 , ncrms
@@ -130,7 +132,7 @@ contains
     end do
 
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=1,nzm
       do i=0,nxp2
         do icrm = 1 , ncrms
@@ -151,7 +153,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do i = -1,nxp2
       do icrm = 1 , ncrms
         www(icrm,i,j,1)=0.
@@ -161,7 +163,7 @@ contains
 
     if(nonos) then
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do i=0,nxp1
           do icrm = 1 , ncrms
@@ -179,7 +181,7 @@ contains
         end do
       end do
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do i=1,nxp1
           do icrm = 1 , ncrms
@@ -201,7 +203,7 @@ contains
     endif ! nonos
 
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -215,6 +217,8 @@ contains
         end do
       end do
     end do
+
+    !$acc exit data delete(mx,mn,uuu,www) async(1)
 
     deallocate( mx    )
     deallocate( mn    )

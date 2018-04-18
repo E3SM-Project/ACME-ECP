@@ -26,6 +26,8 @@ contains
 
     allocate( df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
+    !$acc enter data create(df) async(1)
+
     if(docolumn) then
       flux = 0.
       return
@@ -33,7 +35,7 @@ contains
 
     !call t_startf ('advect_scalars')
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1 , nzm
       do j = dimy1_s,dimy2_s
         do i = dimx1_s,dimx2_s
@@ -50,7 +52,7 @@ contains
       call advect_scalar2D(f, u, w, rho, rhow, flux, ncrms)
     endif
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1,nzm
       do icrm = 1 , ncrms
         fadv(icrm,k)=0.
@@ -63,6 +65,8 @@ contains
         end do
       end do
     end do
+
+    !$acc exit data delete(df) async(1)
 
     !call t_stopf ('advect_scalars')
     deallocate( df )

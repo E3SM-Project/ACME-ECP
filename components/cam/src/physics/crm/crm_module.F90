@@ -1077,12 +1077,28 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       !  Note that at the end of the call, the velocities are in nondimensional form.
       call adams(ncrms)
 
+!$acc data copy(t00, tln, qln, qccln, qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, bflx, wnd, colprec, colprecs, gcolindex, cltemp, cmtemp, chtemp, cttemp, &
+!$acc&          z, pres, zi, presi, adz, adzw, dz, latitude0, longitude0, z0, uhl, &
+!$acc&          vhl, taux0, tauy0, u, v, w, t, p, tabs, qv, qcl, qpl, qci, qpi, tke2, tk2, dudt, dvdt, dwdt, misc, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, fluxtq, fzero, &
+!$acc&          precsfc, precssfc, t0, q0, qv0, tabs0, tl0, tv0, u0, v0, tg0, qg0, ug0, vg0, p0, tke0, t01, q01, qp0, qn0, prespot, rho, rhow, bet, gamaz, wsub, qtend, ttend, utend, &
+!$acc&          vtend, sstxy, fcory, fcorzy, latitude, longitude, prec_xy, pw_xy, cw_xy, iw_xy, cld_xy, u200_xy, usfc_xy, v200_xy, vsfc_xy, w500_xy, twle, twsb, precflux, uwle, uwsb, &
+!$acc&          vwle, vwsb, tkelediss, t2leadv, t2legrad, t2lediff, t2lediss, twleadv, twlediff, tadv, tdiff, tlat, tlatqi, qifall, qpfall, w_max, u_max, total_water_before, &
+!$acc&          total_water_after, total_water_evap, total_water_prec, total_water_ls, total_water_clubb, total_energy_before, total_energy_after, total_energy_evap, total_energy_prec, &
+!$acc&          total_energy_ls, total_energy_clubb, total_energy_rad, qtotmicro, CF3D, u850_xy, v850_xy, psfc_xy, swvp_xy, cloudtopheight, echotopheight, cloudtoptemp, &
+!$acc&          micro_field, fluxbmk, fluxtmk, mkwle, mkwsb, mkadv, mklsadv, mkdiff, mstor, qn, qpsrc, qpevp, tracer, fluxbtr, fluxttr, trwle, trwsb, tradv, trdiff, trphys, &
+!$acc&          sgs_field, sgs_field_diag, fluxbsgs, fluxtsgs, sgswle, sgswsb, sgsadv, sgslsadv, sgsdiff, grdf_x, grdf_y, grdf_z, tkesbbuoy, tkesbshear, tkesbdiss, tkesbdiff, accrsc, &
+!$acc&          accrsi, accrrc, coefice, accrgc, accrgi, evaps1, evaps2, evapr1, evapr2, evapg1, evapg2, &
+!$acc&          icol, latitude0_in, longitude0_in, ps, pmid, pdel, phis, zmid, zint, qrad_crm, ocnfrac, tau00, wndls, bflxls, fluxu00, fluxv00, fluxt00, fluxq00, tl, ql, qccl, qiil, ul, vl, &
+!$acc&          crm_tk, crm_tkh, cltot, clhgh, clmed, cllow, sltend, qltend, qcltend, qiltend, &
+!$acc&          u_crm, v_crm, w_crm, t_crm, micro_fields_crm, cld3d_crm, t_rad, qv_rad, qc_rad, qi_rad, cld_rad, t_rad, qv_rad, qc_rad, qi_rad, cld_rad, &
+!$acc&          precc, precl, cld, cldtop, gicewp, gliqwp, mc, mcup, mcdn, mcuup, mcudn, crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
+!$acc&          mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm, flux_qt, fluxsgs_qt, tkez, tkesgsz, tkz, flux_u, flux_v, flux_qp, pflx, qt_ls, qt_trans, &
+!$acc&          qp_trans, qp_fall, qp_src, qp_evp, t_ls, prectend, precstend, precsc, precsl, taux_crm, tauy_crm, z0m, timing_factor, qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
+!$acc&          qtot )
+
       !----------------------------------------------------------
       !     Update boundaries for all prognostic scalar fields for advection:
-      !$acc data copy(u,v,w,sstxy,t,sgs_field,micro_field,tracer,sgs_field_diag)
       call boundaries(2,ncrms)
-      !$acc wait(1)
-      !$acc end data
 
       !---------------------------------------------------------
       !      advection of scalars :
@@ -1094,16 +1110,16 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 
       !----------------------------------------------------------
       !     Update boundaries for scalars to prepare for SGS effects:
-      !$acc data copy(u,v,w,sstxy,t,sgs_field,micro_field,tracer,sgs_field_diag)
       call boundaries(3,ncrms)
-      !$acc wait(1)
-      !$acc end data
 
       !---------------------------------------------------------
       !      SGS effects on scalars :
       if (dosgs) then
         call sgs_scalars(ncrms)
       endif
+
+      !$acc wait(1)
+      !$acc end data
 
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:

@@ -49,7 +49,7 @@ CONTAINS
     trwsb    = 0
     tradv    = 0
     trdiff   = 0
-    trphys   = 0 
+    trphys   = 0
   end subroutine allocate_tracers
 
   subroutine deallocate_tracers

@@ -101,9 +101,6 @@ CONTAINS
     tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,1)
     tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(1:ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d,1:nzm,2)
 
-    write(*,*) 'Init loc tke: ', loc(tke)
-    write(*,*) 'Init loc sgs_field: ', loc(sgs_field)
-
     sgs_field       = 0
     sgs_field_diag  = 0
     fluxbsgs        = 0
@@ -396,14 +393,16 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
-    real(crm_rknd), allocatable :: dummy(:,:)
+    real(crm_rknd), allocatable :: dummy(:,:), tw(:)
     real(crm_rknd), allocatable :: fluxbtmp(:,:,:), fluxttmp(:,:,:) !bloss
     integer k, icrm, i, j
 
     allocate(dummy(ncrms,nz))
     allocate(fluxbtmp(ncrms,nx,ny))
     allocate(fluxttmp(ncrms,nx,ny))
+    allocate(tw(ncrms))
 
+    !$acc enter data create(dummy,fluxbtmp,fluxttmp,tw) async(1)
 
     call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,:),fluxbt(:,:,:),fluxtt(:,:,:),tdiff(:,:),twsb(:,:), &
     t2lediff(:,:),t2lediss(:,:),twlediff(:,:),.true.,ncrms)
@@ -418,12 +417,16 @@ CONTAINS
     !    diffusion of microphysics prognostics:
     !
     call micro_flux(ncrms)
-    total_water_evap = total_water_evap - total_water(ncrms)
+    call total_water(ncrms,tw)
+    !$acc parallel loop gang vector default(present) async(1)
+    do icrm = 1 , ncrms
+      total_water_evap(icrm) = total_water_evap(icrm) - tw(icrm)
+    enddo
 
 
     do k = 1,nmicro_fields
       if(   k.eq.index_water_vapor .or. docloud.and.flag_precip(k).ne.1  .or. doprecip.and.flag_precip(k).eq.1 ) then
-        !$acc parallel loop gang vector collapse(3)
+        !$acc parallel loop gang vector collapse(3) default(present) async(1)
         do j = 1 , ny
           do i = 1 , nx
             do icrm = 1 , ncrms
@@ -437,7 +440,11 @@ CONTAINS
       end if
     end do
 
-    total_water_evap = total_water_evap + total_water(ncrms)
+    call total_water(ncrms,tw)
+    !$acc parallel loop gang vector default(present) async(1)
+    do icrm = 1 , ncrms
+      total_water_evap(icrm) = total_water_evap(icrm) + tw(icrm)
+    enddo
 
     ! diffusion of tracers:
 
@@ -446,7 +453,7 @@ CONTAINS
       call tracers_flux()
 
       do k = 1,ntracers
-        !$acc parallel loop gang vector collapse(3)
+        !$acc parallel loop gang vector collapse(3) default(present) async(1)
         do j = 1 , ny
           do i = 1 , nx
             do icrm = 1 , ncrms
@@ -463,7 +470,9 @@ CONTAINS
 
     end if
 
+    !$acc exit data delete(dummy,fluxbtmp,fluxttmp,tw) async(1)
 
+    deallocate(tw)
     deallocate(dummy)
     deallocate(fluxbtmp)
     deallocate(fluxttmp)

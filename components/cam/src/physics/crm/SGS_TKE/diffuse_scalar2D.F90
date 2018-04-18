@@ -14,7 +14,7 @@ contains
     real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) field (ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
-    real(crm_rknd) tkh   (ncrms,0:nxp1, 1-YES3D:nyp1, nzm)  ! eddy conductivity
+    real(crm_rknd), pointer :: tkh(:,:,:,:)  ! eddy conductivity
     real(crm_rknd) fluxb (ncrms,nx,ny)    ! bottom flux
     real(crm_rknd) fluxt (ncrms,nx,ny)    ! top flux
     real(crm_rknd) rho   (ncrms,nzm)
@@ -33,11 +33,13 @@ contains
     allocate(flx (ncrms,0:nx,1,0:nzm))
     allocate(dfdt(ncrms,nx,ny,nzm))
 
+    !$acc enter data create(flx,dfdt) async(1)
+
     rdx2=1./(dx*dx)
 
     j=1
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k = 1 , nzm
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -49,7 +51,7 @@ contains
     if(dowallx) then
 
       if(mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop gang vector collapse(2)
+        !$acc parallel loop gang vector collapse(2) default(present) async(1)
         do k=1,nzm
           do icrm = 1 , ncrms
             field(icrm,0,j,k) = field(icrm,1,j,k)
@@ -57,7 +59,7 @@ contains
         end do
       end if
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop gang vector collapse(2)
+        !$acc parallel loop gang vector collapse(2) default(present) async(1)
         do k=1,nzm
           do icrm = 1 , ncrms
             field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
@@ -68,7 +70,7 @@ contains
     end if
 
     if(.not.docolumn) then
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
@@ -82,14 +84,14 @@ contains
       end do
     end if
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k = 1 , nz
       do icrm = 1 , ncrms
         flux(icrm,k) = 0.
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -108,7 +110,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -118,6 +120,8 @@ contains
         end do
       end do
     end do
+
+    !$acc exit data delete(flx,dfdt) async(1)
 
     deallocate(flx )
     deallocate(dfdt)
