@@ -30,42 +30,8 @@ MODULE MOD_COSP_RADAR
   use array_lib
   use atmos_lib
   use format_input
+  use radar_simulator_mod, only: radar_simulator
   IMPLICIT NONE
-
-  INTERFACE
-    subroutine radar_simulator(hp,nprof,ngate,undef, &
-        hgt_matrix,hm_matrix,re_matrix,Np_matrix, &
-        p_matrix,t_matrix,rh_matrix, &
-        Ze_non,Ze_ray,g_to_vol,a_to_vol,dBZe, &
-        g_to_vol_in,g_to_vol_out)
-
-        use m_mrgrnk
-        use array_lib
-        use math_lib
-        use optics_lib
-        use radar_simulator_types
-        implicit none
-
-        ! ----- INPUTS -----  
-        type(class_param) :: hp
-
-        integer, intent(in) :: nprof,ngate
-
-        real undef
-        real*8, dimension(nprof,ngate), intent(in) :: hgt_matrix, p_matrix, &
-            t_matrix,rh_matrix
-        real*8, dimension(hp%nhclass,nprof,ngate), intent(in) :: hm_matrix
-        real*8, dimension(hp%nhclass,nprof,ngate), intent(inout) :: re_matrix
-        real*8, dimension(hp%nhclass,nprof,ngate), intent(inout) :: Np_matrix
-
-        ! ----- OUTPUTS -----
-        real*8, dimension(nprof,ngate), intent(out) :: Ze_non,Ze_ray, &
-            g_to_vol,dBZe,a_to_vol
-        ! ----- OPTIONAL -----
-        real*8, optional, dimension(nprof,ngate) :: &
-            g_to_vol_in,g_to_vol_out
-     end subroutine radar_simulator
-  END INTERFACE
 
 CONTAINS
 

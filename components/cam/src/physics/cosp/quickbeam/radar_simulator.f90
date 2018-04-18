@@ -1,3 +1,6 @@
+module radar_simulator_mod
+   implicit none
+contains
   subroutine radar_simulator( &
     hp, &
     nprof,ngate, &
@@ -452,3 +455,4 @@
   if (hp%update_scale_LUTs) call save_scale_LUTs(hp)
 
   end subroutine radar_simulator
+end module radar_simulator_mod
