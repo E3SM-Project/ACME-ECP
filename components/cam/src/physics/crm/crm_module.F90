@@ -1076,11 +1076,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       !       compute rhs of the Poisson equation and solve it for pressure.
       call pressure(ncrms)
 
-      !---------------------------------------------------------
-      !       find velocity field at n+1/2 timestep needed for advection of scalars:
-      !  Note that at the end of the call, the velocities are in nondimensional form.
-      call adams(ncrms)
-
 !$acc data copy(t00, tln, qln, qccln, qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, bflx, wnd, colprec, colprecs, gcolindex, cltemp, cmtemp, chtemp, cttemp, &
 !$acc&          z, pres, zi, presi, adz, adzw, dz, latitude0, longitude0, z0, uhl, &
 !$acc&          vhl, taux0, tauy0, u, v, w, t, p, tabs, qv, qcl, qpl, qci, qpi, tke2, tk2, dudt, dvdt, dwdt, misc, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, fluxtq, fzero, &
@@ -1098,7 +1093,12 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 !$acc&          precc, precl, cld, cldtop, gicewp, gliqwp, mc, mcup, mcdn, mcuup, mcudn, crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
 !$acc&          mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm, flux_qt, fluxsgs_qt, tkez, tkesgsz, tkz, flux_u, flux_v, flux_qp, pflx, qt_ls, qt_trans, &
 !$acc&          qp_trans, qp_fall, qp_src, qp_evp, t_ls, prectend, precstend, precsc, precsl, taux_crm, tauy_crm, z0m, timing_factor, qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
-!$acc&          qtot )
+!$acc&          qtot , dt3 )
+
+      !---------------------------------------------------------
+      !       find velocity field at n+1/2 timestep needed for advection of scalars:
+      !  Note that at the end of the call, the velocities are in nondimensional form.
+      call adams(ncrms)
 
       !----------------------------------------------------------
       !     Update boundaries for all prognostic scalar fields for advection:

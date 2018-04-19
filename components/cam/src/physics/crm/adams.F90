@@ -16,9 +16,7 @@ contains
     dtdx = dtn/dx
     dtdy = dtn/dy
 
-    !!$acc data copy(dudt,dvdt,dwdt,u,v,w,misc,dt3,rho,rhow,dz)
-
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -35,8 +33,6 @@ contains
         end do
       end do
     end do
-
-    !!$acc end data
 
   end subroutine adams
 
