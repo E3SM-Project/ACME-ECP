@@ -975,11 +975,12 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 !$acc&          precc, precl, cld, cldtop, gicewp, gliqwp, mc, mcup, mcdn, mcuup, mcudn, crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
 !$acc&          mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm, flux_qt, fluxsgs_qt, tkez, tkesgsz, tkz, flux_u, flux_v, flux_qp, pflx, qt_ls, qt_trans, &
 !$acc&          qp_trans, qp_fall, qp_src, qp_evp, t_ls, prectend, precstend, precsc, precsl, taux_crm, tauy_crm, z0m, timing_factor, qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
-!$acc&          qtot )
+!$acc&          qtot, dt3)
 
       icycle = icyc
       dtn = dt/ncycle
       dt3(na) = dtn
+      !$acc update device(dt3) async(1)
       dtfactor = dtn/dt
 
       !---------------------------------------------

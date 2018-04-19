@@ -239,8 +239,8 @@ contains
       end do
     end do
 
-
     !$acc exit data delete(buffer) async(1)
+
     deallocate(buffer)
 
 

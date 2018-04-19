@@ -73,6 +73,8 @@ contains
     allocate( jjj    (0:ny_gl)                   )
     allocate( flag   (nsubdomains)               )
 
+    !!$acc enter data create(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
+
     ! check if the grid size allows the computation:
     if(nsubdomains.gt.nzm) then
       if(masterproc) print*,'pressure_orig: nzm < nsubdomains. STOP'
@@ -113,7 +115,6 @@ contains
 
     call press_rhs(ncrms)
 
-
     !-----------------------------------------------------------------
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
     !   for the global domain. Request sending and receiving tasks.
@@ -130,6 +131,8 @@ contains
       end do
     end do
 
+    !!$acc update host(f) async(1)
+    !!$acc wait(1)
 
     !-------------------------------------------------
     ! Perform Fourier transformation for a slab:
@@ -141,6 +144,8 @@ contains
         if(RUN3D) call fft991_crm(f(icrm,:,:,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
       end do
     end do
+
+    !!$acc update device(f) async(1)
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
@@ -173,6 +178,7 @@ contains
     pii = acos(-1._8)
     xnx=pii/nx_gl
     xny=pii/ny_gl
+    !$acc parallel loop gang vector collapse(3) private(fff,alfa,beta)
     do j=1,nyp22-jwall
       do i=1,nxp1-iwall
         do icrm = 1 , ncrms
@@ -237,6 +243,9 @@ contains
       end do
     end do
 
+    !!$acc update host(f) async(1)
+    !!$acc wait(1)
+
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
 
@@ -248,6 +257,8 @@ contains
         end do
       end do
     endif
+
+    !!$acc update device(f) async(1)
 
     !-----------------------------------------------------------------
     !   Fill the pressure field for each subdomain:
@@ -277,6 +288,8 @@ contains
 
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
+
+    !!$acc exit data delete(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
 
     deallocate( f       )
     deallocate( ff      )
