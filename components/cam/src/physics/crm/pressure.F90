@@ -74,7 +74,7 @@ contains
     allocate( jjj    (0:ny_gl)                   )
     allocate( flag   (nsubdomains)               )
 
-    !!$acc enter data create(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
+    !$acc enter data create(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
 
     ! check if the grid size allows the computation:
     if(nsubdomains.gt.nzm) then
@@ -110,8 +110,6 @@ contains
         jwall=0
       end if
     endif
-
-    !$acc data copy(adz,dz,rhow,rho,p,u,v,w,dudt,dvdt,dwdt,f,ff,a,c,adzw,iii,jjj)
 
     !-----------------------------------------------------------------
     !  Compute the r.h.s. of the Poisson equation for pressure
@@ -294,10 +292,7 @@ contains
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
 
-    !$acc wait(1)
-    !$acc end data
-
-    !!$acc exit data delete(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
+    !$acc exit data delete(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
 
     deallocate( f       )
     deallocate( ff      )
