@@ -20,7 +20,7 @@ contains
     rdx=1./dx
     rdy=1./dy
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -37,7 +37,7 @@ contains
       end do ! j
     end do ! k
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
         do i=0,nx
@@ -50,7 +50,7 @@ contains
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do icrm = 1 , ncrms
@@ -63,7 +63,7 @@ contains
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms

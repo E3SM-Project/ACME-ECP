@@ -25,6 +25,7 @@ contains
     use params, only: dowallx, dowally, docolumn, crm_rknd
     use press_rhs_mod
     use press_grad_mod
+    use vars
     implicit none
     integer, intent(in) :: ncrms
 
@@ -110,6 +111,8 @@ contains
       end if
     endif
 
+    !$acc data copy(adz,dz,rhow,rho,p,u,v,w,dudt,dvdt,dwdt,f,ff,a,c,adzw,iii,jjj)
+
     !-----------------------------------------------------------------
     !  Compute the r.h.s. of the Poisson equation for pressure
 
@@ -120,7 +123,7 @@ contains
     !   for the global domain. Request sending and receiving tasks.
 
     n = rank*nzslab
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1,nzslab
       do j = 1,ny
         do i = 1,nx
@@ -131,8 +134,8 @@ contains
       end do
     end do
 
-    !!$acc update host(f) async(1)
-    !!$acc wait(1)
+    !$acc update host(f) async(1)
+    !$acc wait(1)
 
     !-------------------------------------------------
     ! Perform Fourier transformation for a slab:
@@ -145,12 +148,12 @@ contains
       end do
     end do
 
-    !!$acc update device(f) async(1)
+    !$acc update device(f) async(1)
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
     n = rank*nzslab
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1,nzslab
       do j = 1,nyp22-jwall
         do i = 1,nxp1-iwall
@@ -165,7 +168,7 @@ contains
     !   Solve the tri-diagonal system for Fourier coeffiecients
     !   in the vertical for each subdomain:
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1,nzm
       do icrm = 1 , ncrms
         a(icrm,k)=rhow(icrm,k)/(adz(icrm,k)*adzw(icrm,k)*dz(icrm)*dz(icrm))
@@ -178,7 +181,7 @@ contains
     pii = acos(-1._8)
     xnx=pii/nx_gl
     xny=pii/ny_gl
-    !$acc parallel loop gang vector collapse(3) private(fff,alfa,beta)
+    !$acc parallel loop gang vector collapse(3) private(fff,alfa,beta) default(present) async(1)
     do j=1,nyp22-jwall
       do i=1,nxp1-iwall
         do icrm = 1 , ncrms
@@ -232,7 +235,7 @@ contains
     !   Send the Fourier coefficient to the tasks performing
     !   the inverse Fourier transformation:
     n = rank*nzslab
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1,nzslab
       do j = 1,nyp22-jwall
         do i = 1,nxp1-iwall
@@ -243,8 +246,8 @@ contains
       end do
     end do
 
-    !!$acc update host(f) async(1)
-    !!$acc wait(1)
+    !$acc update host(f) async(1)
+    !$acc wait(1)
 
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
@@ -258,22 +261,24 @@ contains
       end do
     endif
 
-    !!$acc update device(f) async(1)
+    !$acc update device(f) async(1)
 
     !-----------------------------------------------------------------
     !   Fill the pressure field for each subdomain:
 
-    do i=1,nx_gl
+    !$acc parallel loop gang vector default(present) async(1)
+    do i=0,nx_gl
       iii(i)=i
+      if (i == 0) iii(0) = nx_gl
     end do
-    iii(0)=nx_gl
-    do j=1,ny_gl
+    !$acc parallel loop gang vector default(present) async(1)
+    do j=0,ny_gl
       jjj(j)=j
+      if (j == 0) jjj(0) = ny_gl
     end do
-    jjj(0)=ny_gl
 
     n = rank*nzslab
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1,nzslab
       do j = 1-YES3D,ny
         do i = 0,nx
@@ -288,6 +293,9 @@ contains
 
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
+
+    !$acc wait(1)
+    !$acc end data
 
     !!$acc exit data delete(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
 

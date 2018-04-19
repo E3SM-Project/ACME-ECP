@@ -21,7 +21,7 @@ contains
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do icrm = 1 , ncrms
@@ -34,7 +34,7 @@ contains
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
@@ -55,7 +55,7 @@ contains
 
     if(RUN3D) then
 
-      !$acc parallel loop gang vector collapse(4)
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -89,7 +89,7 @@ contains
 
       j=1
 
-      !$acc parallel loop gang vector collapse(3)
+      !$acc parallel loop gang vector collapse(3) default(present) async(1)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
