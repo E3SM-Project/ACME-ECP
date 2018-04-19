@@ -1130,9 +1130,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       if(docloud.or.dosmoke) call micro_proc(ncrms)
 #endif /*CLUBB_CRM*/
 
-      !$acc wait(1)
-      !$acc end data
-
       !-----------------------------------------------------------
       !    Compute diagnostics fields:
       call diagnose(ncrms)
@@ -1143,6 +1140,9 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       na=nc
       nc=nb
       nb=nn
+
+      !$acc wait(1)
+      !$acc end data
     enddo ! icycle
 
     !----------------------------------------------------------

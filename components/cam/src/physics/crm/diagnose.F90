@@ -16,18 +16,22 @@ contains
     integer, intent(in) :: ncrms
 
     integer :: i,j,k,kb,kc,icrm
-    real(8) coef, coef1(ncrms), tmp
+    real(8) coef, tmp
     real(crm_rknd) omn, omp, tmp_lwp
     integer, allocatable :: k200(:),k500(:),k850(:)
+    real(8), allocatable :: coef1(:)
 
     allocate(k200(ncrms))
     allocate(k500(ncrms))
     allocate(k850(ncrms))
+    allocate(coef1(ncrms))
+
+    !$acc enter data create(k200,k500,k850,coef1) async(1)
 
     coef = 1./real(nx*ny,crm_rknd)
 
     k200(:) = nzm
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1,nzm
       do icrm = 1 , ncrms
         u0(icrm,k)=0.
@@ -46,7 +50,7 @@ contains
         coef1(icrm) = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
       enddo
     enddo
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -86,7 +90,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1,nzm
       do icrm = 1 , ncrms
         u0(icrm,k)=u0(icrm,k)*coef
@@ -100,7 +104,7 @@ contains
       end do
     end do ! k
 
-    !$acc parallel loop gang vector
+    !$acc parallel loop gang vector default(present) async(1)
     do icrm = 1 , ncrms
       k500(icrm) = nzm
       !$acc loop seq
@@ -116,7 +120,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(3) copyin(w)
+    !$acc parallel loop gang vector collapse(3) copyin(w) default(present) async(1)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -129,7 +133,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(2)
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k = 1 , nzm
       do icrm = 1 , ncrms
         qv0(icrm,k) = q0 (icrm,k)- qn0(icrm,k)
@@ -140,7 +144,7 @@ contains
     ! UW ADDITIONS
 
     ! FIND VERTICAL INDICES OF 850MB, COMPUTE SWVP
-    !$acc parallel loop gang vector
+    !$acc parallel loop gang vector default(present) async(1)
     do icrm = 1 , ncrms
       k850(icrm) = 1
       do k = 1,nzm
@@ -151,7 +155,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -167,7 +171,7 @@ contains
     end do ! k
 
     ! ACCUMULATE AVERAGES OF TWO-DIMENSIONAL STATISTICS
-    !$acc parallel loop gang vector collapse(3) copy(psfc_xy,u850_xy,v850_xy) copyin(u,v,pres,p)
+    !$acc parallel loop gang vector collapse(3) copy(psfc_xy,u850_xy,v850_xy) copyin(u,v,pres,p) default(present) async(1)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -187,7 +191,7 @@ contains
     ! WHERE THE PRECIPITATE MIXING RATIO > 0.001 G/KG.
 
     ! initially, zero out heights and set cloudtoptemp to SST
-    !$acc parallel loop gang vector collapse(3)
+    !$acc parallel loop gang vector collapse(3) default(present) async(1)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -229,6 +233,9 @@ contains
     ! recompute pressure levels, except at restart (saved levels are used).
     !if(dtfactor.ge.0.) call pressz()   ! recompute pressure levels
 
+    !$acc exit data delete(k200,k500,k850,coef1)
+
+    deallocate(coef1)
     deallocate(k200)
     deallocate(k500)
     deallocate(k850)
