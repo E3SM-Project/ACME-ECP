@@ -14,8 +14,8 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) q(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
-    real(crm_rknd) qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
+    real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
+    real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
     real(crm_rknd) qn(ncrms,nx,ny,nzm)  ! cloud condensate (liquid + ice)
 
     integer i,j,k, kb, kc,icrm
@@ -35,7 +35,7 @@ contains
 
     !call t_startf ('cloud')
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k = 1, nzm
       do j = 1, ny
         do i = 1, nx
@@ -72,6 +72,7 @@ contains
               qsatt = om*qsatw_crm(tabs1,pres(icrm,k))+(1.-om)*qsati_crm(tabs1,pres(icrm,k))
 
             endif
+
 
 
             !  Test if condensation is possible:

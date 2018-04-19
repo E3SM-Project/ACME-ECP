@@ -142,7 +142,7 @@ CONTAINS
     use params, only: nclubb
 #endif
     use grid, only: nrestart
-    use vars, only: q0
+    use vars
     use params, only: dosmoke
     implicit none
     integer, intent(in) :: ncrms
@@ -179,12 +179,21 @@ CONTAINS
       if(docloud) then
 #endif
 #ifndef CRM
+        !$acc data copy(q,tabs,t,gamaz,qp,pres,qn)
         call cloud(q,qn,qp,ncrms)
+        !$acc wait(1)
+        !$acc end data
 #endif
+        !$acc data copy(qv,q,qn,tabs,qcl,qci,qpl,qpi,qp)
         call micro_diagnose(ncrms)
+        !$acc wait(1)
+        !$acc end data
       end if
       if(dosmoke) then
+        !$acc data copy(qv,q,qn,tabs,qcl,qci,qpl,qpi,qp)
         call micro_diagnose(ncrms)
+        !$acc wait(1)
+        !$acc end data
       end if
 
     end if
@@ -300,7 +309,7 @@ CONTAINS
     real(crm_rknd) omn, omp
     integer i,j,k,icrm
 
-    !$acc parallel loop gang vector collapse(4)
+    !$acc parallel loop gang vector collapse(4) default(present) async(1)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

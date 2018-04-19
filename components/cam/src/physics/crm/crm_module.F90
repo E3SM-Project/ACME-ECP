@@ -797,7 +797,11 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 
 !--------------------------------------------------
 #ifdef sam1mom
+
+  !$acc data copy(rho,tabs0,pres,accrsi,accrsc,coefice,evaps1,evaps2,accrgi,accrgc,evapg1,evapg2,accrrc,evapr1,evapr2)
   if(doprecip) call precip_init(ncrms)
+  !$acc wait(1)
+  !$acc end data
 #endif
 
   !MRN: Don't want any stochasticity introduced in the standalone.
@@ -1118,9 +1122,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
         call sgs_scalars(ncrms)
       endif
 
-      !$acc wait(1)
-      !$acc end data
-
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
 #ifdef CLUBB_CRM
@@ -1128,6 +1129,9 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 #else
       if(docloud.or.dosmoke) call micro_proc(ncrms)
 #endif /*CLUBB_CRM*/
+
+      !$acc wait(1)
+      !$acc end data
 
       !-----------------------------------------------------------
       !    Compute diagnostics fields:

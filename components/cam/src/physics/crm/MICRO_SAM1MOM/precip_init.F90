@@ -52,7 +52,8 @@ contains
       call task_abort
     end if
 
-    !$acc parallel loop gang vector collapse(2)
+
+    !$acc parallel loop gang vector collapse(2) default(present) async(1)
     do k=1,nzm
       do icrm = 1 , ncrms
         ! pratio = (1000. / pres(icrm,k)) ** 0.4
