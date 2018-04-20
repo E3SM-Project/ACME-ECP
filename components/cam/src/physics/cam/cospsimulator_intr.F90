@@ -502,6 +502,7 @@ subroutine cospsimulator_intr_readnl(nlfile)
 
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
+   use phys_control, only: phys_getopts
 #ifdef SPMD
    use mpishorthand,    only: mpicom, mpilog, mpiint, mpichar
 #endif
@@ -511,6 +512,7 @@ subroutine cospsimulator_intr_readnl(nlfile)
    ! Local variables
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'cospsimulator_intr_readnl'
+   logical :: use_spcam
 
     ! this list should include any variable that you might want to include in the namelist
     ! philosophy is to not include COSP output flags but just important COSP settings and cfmip controls. 
@@ -661,8 +663,12 @@ subroutine cospsimulator_intr_readnl(nlfile)
       cosp_nradsteps = 3
    end if
 
-   ! reset COSP namelist variables based on input from cam namelist variables
-   if (cosp_ncolumns .ne. Ncolumns) then
+   ! Set Ncolumns to number of CRM rad columns if this is an SP-CAM run,
+   ! otherwise set to namelist value
+   call phys_getopts(use_SPCAM_out=use_spcam)
+   if (use_spcam) then
+      Ncolumns = crm_nx_rad * crm_ny_rad
+   else
       Ncolumns = cosp_ncolumns
    end if
 
