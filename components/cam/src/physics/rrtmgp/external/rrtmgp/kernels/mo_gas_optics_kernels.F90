@@ -174,6 +174,12 @@ contains
         itl = itropo_atm(icol,1)
         itu = itropo_atm(icol,2)
         do ilay = itl,itu
+          if (ilay < 1 .or. ilay > size(col_gas, 2)) then
+             print *, 'gas_optics_kernels: ilay = ', ilay, &
+                      'size(col_gas, 2) = ', size(col_gas, 2), &
+                      'icol = ', icol
+             stop
+          end if
           vmr_calc(1:ngas) = col_gas(icol,ilay,1:ngas)/col_gas(icol,ilay,0)
           !
           ! Scaling of minor gas absortion coefficient begins with column amount of minor gas
@@ -522,6 +528,10 @@ contains
         if (ilay .eq. 1) then
           itropo_last(icol) = itropo
         endif
+        if (itropo_last(icol) /= 1 .and. itropo_last(icol) /= 2) then
+           print *, 'icol, ilay, itropo_last: ', icol, ilay, itropo_last(icol)
+           stop
+        end if
         if (itropo_last(icol) .ne. itropo) then
           if (itropo .eq. 1) then ! layers go from TOA to surface
             itropo_lower(icol,1) = ilay
@@ -537,6 +547,7 @@ contains
             itropo_last(icol) = itropo
           endif
         endif
+
         ! loop over implemented combinations of major species
         do iflav = 1, nflav
           igases(:) = flavor(:,iflav)

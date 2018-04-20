@@ -665,6 +665,8 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
       call outfld('FDSC    ',fdsc,pcols,lchnk)
    endif
 
+   ! TODO: output inputs to radiation, including:
+   !     pmid, pint, tmid, tint, gas volume mixing ratios, coldry
 end subroutine rad_rrtmg_sw
 
 !-------------------------------------------------------------------------------

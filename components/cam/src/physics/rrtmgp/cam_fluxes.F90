@@ -198,13 +198,13 @@ contains
    end subroutine cam_fluxes_copy_from_rrtmgp
 
 
-   subroutine cam_fluxes_calculate_heating_rate(this, pdel)
+   subroutine cam_fluxes_calculate_heating_rate(this, pint)
 
       use physconst, only: gravit
 
       ! Inputs
       class(cam_flux_type), intent(inout) :: this 
-      real(r8), intent(in) :: pdel(:,:)
+      real(r8), intent(in) :: pint(:,:)
 
       ! Loop indices
       integer :: i, k
@@ -235,7 +235,7 @@ contains
             do k = 1,size(this%flux_net,2)-1
                this%heating_rate(i,k) = ( &
                   this%flux_net(i,k+1) - this%flux_net(i,k) &
-               ) * gravit / pdel(i,k)
+               ) * gravit / (pint(i,k+1) - pint(i,k)) !pdel(i,k)
             end do
          end do
       else if (trim(this%flux_type) == 'shortwave') then
@@ -243,7 +243,7 @@ contains
             do k = 1,size(this%flux_net,2)-1
                this%heating_rate(i,k) = ( &
                   this%flux_net(i,k) - this%flux_net(i,k+1) &
-               ) * gravit / pdel(i,k)
+               ) * gravit / (pint(i,k+1) - pint(i,k)) !pdel(i,k)
             end do
          end do
       else
@@ -366,5 +366,21 @@ contains
                  this%flux_net_bot, this%flux_net_top, &
                  this%heating_rate)
    end subroutine cam_fluxes_finalize
+
+   subroutine cam_fluxes_aggregate_average(this, that)
+      class(cam_flux_type), intent(inout) :: this
+      class(cam_flux_type), intent(in) :: that
+
+      ! Average fluxes from two flux type instances
+      this%flux_up = (this%flux_up + that%flux_up) * 0.5
+      this%flux_dn = (this%flux_dn + that%flux_dn) * 0.5
+      this%flux_net = (this%flux_net + that%flux_net) * 0.5
+      this%bnd_flux_up = (this%bnd_flux_up + that%bnd_flux_up) * 0.5
+      this%bnd_flux_dn = (this%bnd_flux_dn + that%bnd_flux_dn) * 0.5
+      this%bnd_flux_net = (this%bnd_flux_net + that%bnd_flux_net) * 0.5
+      this%flux_net_bot = (this%flux_net_bot + that%flux_net_bot) * 0.5
+      this%flux_net_top = (this%flux_net_top + that%flux_net_top) * 0.5
+      this%heating_rate = (this%heating_rate + that%heating_rate) * 0.5
+   end subroutine cam_fluxes_aggregate_average
 
 end module cam_fluxes

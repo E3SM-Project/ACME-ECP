@@ -219,6 +219,9 @@ contains
             snow_tau, snow_tau_ssa, snow_tau_ssa_g, snow_tau_ssa_f, &
             combined_tau, combined_tau_ssa, combined_tau_ssa_g, combined_tau_ssa_f
 
+      ! Pointers to fields on the physics buffer
+      real(r8), pointer :: iciwp(:,:), dei(:,:)
+
       ! Flag to see if we should be doing snow optics. To set this, we can look for
       ! the "snow cloud fraction" on the physics buffer, and if found then set this
       ! to .true.
@@ -246,6 +249,8 @@ contains
       combined_tau_ssa_f = 0
 
       ! Get ice cloud optics
+      !call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
+      !call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
       call get_ice_optics_sw(state, pbuf, &
                              ice_tau, ice_tau_ssa, &
                              ice_tau_ssa_g, ice_tau_ssa_f)

@@ -287,6 +287,16 @@ contains
     end if
     if(len_trim(error_msg) > 0) return
 
+    ! Check more sizes
+    if (any([size(t_lay, 1), size(t_lay, 2)] /= [ncol, nlay])) then
+       error_msg = "rrtmgp_sw: t_lay inconsistently sized"
+       return
+    end if
+    if (any([size(p_lev, 1), size(p_lev, 2)] /= [ncol, nlay+1])) then
+       error_msg = "rrtmgp_sw: p_lev inconsistently sized"
+       return
+    end if
+
     ! ------------------------------------------------------------------------------------
     ! Optical properties arrays
     !
@@ -346,22 +356,9 @@ contains
       else
         error_msg = aer_props%increment(optical_props, k_dist%get_band_lims_gpoint())
       end if
-
-      ! Check values
-      error_msg = optical_props%validate()
-      if (error_msg /= '') then
-         error_msg = 'clr_all_sky rte_sw after increment' // error_msg
-         return
-      end if
     end if
     if(error_msg /= '') return
 
-   ! Check values
-   error_msg = optical_props%validate()
-   if (error_msg /= '') then
-      error_msg = 'clr_all_sky rte_sw before base_rte_sw' // error_msg
-      return
-   end if
     error_msg = base_rte_sw(optical_props, top_at_1, k_dist, &
                                mu0, toa_flux,                   &
                                sfc_alb_dir, sfc_alb_dif,        &

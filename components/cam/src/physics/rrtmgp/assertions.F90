@@ -11,7 +11,7 @@ module assertions
 
    ! Interface blocks to allow overloading procedures
    interface assert_valid
-      module procedure assert_valid_1d, assert_valid_2d, assert_valid_3d
+      module procedure assert_valid_0d, assert_valid_1d, assert_valid_2d, assert_valid_3d
    end interface
 
    interface assert_range
@@ -111,6 +111,19 @@ contains
    ! assert_valid routines are designed to provide a means to check that a variable
    ! does not contain either infinities or NaNs, without knowing the actual valid
    ! range.
+   subroutine assert_valid_0d(x, message)
+      use infnan, only: isnan, isinf
+
+      real(r8), intent(in) :: x
+      character(len=*), intent(in) :: message
+
+      if (isnan(x)) then
+         call endrun('assert_valid failed (NaN): ' // message)
+      else if (isinf(x)) then
+         call endrun('assert_valid failed (inf): ' // message)
+      end if
+   end subroutine assert_valid_0d
+   !-------------------------------------------------------------------------------
    subroutine assert_valid_1d(x, message)
       use infnan, only: isnan, isinf
 
