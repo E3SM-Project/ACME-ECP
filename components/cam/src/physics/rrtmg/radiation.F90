@@ -1045,11 +1045,6 @@ end function radiation_nextsw_cday
     real(r8) pintmb(pcols,pverp)        ! Model interface pressures (hPa)
     real(r8) oro(pcols)                 ! Land surface flag, sea=0, land=1
 
-    real(r8),pointer :: nc_rad(:,:,:,:) ! rad cloud water droplet number (#/kg)
-    real(r8),pointer :: ni_rad(:,:,:,:) ! rad cloud ice crystal nubmer (#/kg)
-    real(r8),pointer :: qs_rad(:,:,:,:) ! rad cloud snow crystal mass (kg/kg)
-    real(r8),pointer :: ns_rad(:,:,:,:) ! rad cloud snow crystal number (#/kg)
-
     real(r8),pointer :: t_rad (:,:,:,:) ! rad temperuture
     real(r8),pointer :: qv_rad(:,:,:,:) ! rad vapor
     real(r8),pointer :: qc_rad(:,:,:,:) ! rad cloud water
@@ -1058,6 +1053,25 @@ end function radiation_nextsw_cday
 
     real(r8),pointer :: qaerwat_crm(:,:,:,:,:) ! aerosol water
     real(r8),pointer :: dgnumwet_crm(:,:,:,:,:) ! wet mode dimaeter
+
+    ! Additional mixing ratios for COSP
+    real(r8),pointer :: qr_rad(:,:,:,:) ! rad cloud rain mass (kg/kg)
+    real(r8),pointer :: qs_rad(:,:,:,:) ! rad cloud snow crystal mass (kg/kg)
+    real(r8),pointer :: qg_rad(:,:,:,:) ! rad cloud graupel crystal mass (kg/kg)
+
+    ! Number concentrations needed for COSP
+    real(r8),pointer :: nc_rad(:,:,:,:) ! rad cloud water droplet number (#/kg)
+    real(r8),pointer :: ni_rad(:,:,:,:) ! rad cloud ice crystal nubmer (#/kg)
+    real(r8),pointer :: nr_rad(:,:,:,:) ! rad cloud rain number (#/kg)
+    real(r8),pointer :: ns_rad(:,:,:,:) ! rad cloud snow crystal number (#/kg)
+    real(r8),pointer :: ng_rad(:,:,:,:) ! rad cloud graupel crystal number (#/kg)
+
+    ! Cloud-scale effective radii
+    real(r8), pointer :: reffl_rad(:,:,:,:)  ! Cloud liquid droplet effective radii (micron?)
+    real(r8), pointer :: reffi_rad(:,:,:,:)  ! Cloud ice crystal effective radii (micron?)
+    real(r8), pointer :: reffr_rad(:,:,:,:)  ! Rain droplet effective radii (micron?)
+    real(r8), pointer :: reffs_rad(:,:,:,:)  ! Snow crystal effective radii (micron?)
+    real(r8), pointer :: reffg_rad(:,:,:,:)  ! Graupel crystal effective radii (micron?)
 
     integer nmxrgn(pcols)                      ! Number of maximally overlapped regions
     real(r8) pmxrgn(pcols,pverp)               ! Maximum values of pressure for each
@@ -1171,8 +1185,6 @@ end function radiation_nextsw_cday
     real(r8) cld_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cliqwp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cicewp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-    real(r8) rel_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
-    real(r8) rei_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cld_tau_crm(pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) emis_crm   (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) qrl_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
@@ -1247,7 +1259,6 @@ end function radiation_nextsw_cday
     real(r8)  rei_save(pcols, pver)
     real(r8)  effl    ! droplet effective radius [micrometer]
     real(r8)  effi    ! ice crystal effective radius [micrometer]
-    real(r8)  effl_fn  ! effl for fixed number concentration of nlic = 1.e8
 
     real(r8)  deffi    ! ice effective diameter for optics (radiation)
     real(r8)  lamc     ! slope of droplet distribution for optics (radiation)
@@ -1403,16 +1414,26 @@ end function radiation_nextsw_cday
        call pbuf_get_field(pbuf, qaerwat_crm_idx,  qaerwat_crm)
 #endif
 
-       if (SPCAM_microp_scheme .eq. 'm2005') then
-          ! ifld = pbuf_get_index('DEI')
-          ! call pbuf_get_field(pbuf, ifld, dei)
-          ifld = pbuf_get_index('MU')
-          call pbuf_get_field(pbuf, ifld, mu)
-          ifld = pbuf_get_index('LAMBDAC')
-          call pbuf_get_field(pbuf, ifld, LAMBDAC)
-          ifld = pbuf_get_index('DES')
-          call pbuf_get_field(pbuf, ifld, des)
-       endif
+      if (SPCAM_microp_scheme .eq. 'm2005') then
+         ! ifld = pbuf_get_index('DEI')
+         ! call pbuf_get_field(pbuf, ifld, dei)
+         ifld = pbuf_get_index('MU')
+         call pbuf_get_field(pbuf, ifld, mu)
+         ifld = pbuf_get_index('LAMBDAC')
+         call pbuf_get_field(pbuf, ifld, LAMBDAC)
+         ifld = pbuf_get_index('DES')
+         call pbuf_get_field(pbuf, ifld, des)
+      endif
+
+      ! Pointers to cloud-scale effective radii
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFL_RAD'), reffl_rad)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFI_RAD'), reffi_rad)
+      if (SPCAM_microp_scheme == 'm2005') then
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFR_RAD'), reffr_rad)
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFS_RAD'), reffs_rad)
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_REFFG_RAD'), reffg_rad)
+      end if
+
     end if ! use_SPCAM
  
     if (do_aerocom_ind3) then
@@ -1541,14 +1562,18 @@ end function radiation_nextsw_cday
       crm_qrad=0.
 
       if (SPCAM_microp_scheme .eq. 'm2005') then 
-        crm_nc_rad_idx  = pbuf_get_index('CRM_NC_RAD')
-        call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_ni_rad_idx  = pbuf_get_index('CRM_NI_RAD')
-        call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_qs_rad_idx  = pbuf_get_index('CRM_QS_RAD')
-        call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_ns_rad_idx  = pbuf_get_index('CRM_NS_RAD')
-        call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), nc_rad)
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), ni_rad)
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), qs_rad)
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), ns_rad)
+
+        ! More mixing ratios for COSP
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_QR_RAD'), qr_rad)
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_QG_RAD'), qg_rad)
+
+        ! More number concentrations for COSP
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_NR_RAD'), nr_rad)
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_NG_RAD'), ng_rad)
       endif
 
       cicewp(1:ncol,1:pver) = 0.  
@@ -1683,11 +1708,18 @@ end function radiation_nextsw_cday
               do m=1,crm_nz
                 k = pver-m+1
                 do i=1,ncol
-                  call m2005_effradius(qc_rad(i,ii,jj,m), nc_rad(i,ii,jj,m), qi_rad(i,ii,jj,m), &
-                                       ni_rad(i,ii,jj,m), qs_rad(i,ii,jj,m), ns_rad(i,ii,jj,m),  &
-                                       1.0_r8, state%pmid(i,k), state%t(i,k), effl, effi, effl_fn, deffi, lamc, pgam, dest)
-                  rel(i,k)     = effl
-                  rei(i,k)     = effi
+                  call m2005_effradius(qc_rad(i,ii,jj,m), nc_rad(i,ii,jj,m), &
+                                       qi_rad(i,ii,jj,m), ni_rad(i,ii,jj,m), &
+                                       qr_rad(i,ii,jj,m), nr_rad(i,ii,jj,m), &
+                                       qs_rad(i,ii,jj,m), ns_rad(i,ii,jj,m), &
+                                       qg_rad(i,ii,jj,m), ng_rad(i,ii,jj,m), &
+                                       1.0_r8, state%pmid(i,k), state%t(i,k), &
+                                       reffl_rad(i,ii,jj,m), reffi_rad(i,ii,jj,m), &
+                                       reffr_rad(i,ii,jj,m), reffs_rad(i,ii,jj,m), &
+                                       reffg_rad(i,ii,jj,m), &
+                                       deffi, lamc, pgam, dest)
+                  rel(i,k)     = reffl_rad(i,ii,jj,m)
+                  rei(i,k)     = reffi_rad(i,ii,jj,m)
                   dei(i,k)     = deffi 
                   mu(i,k)      = pgam 
                   lambdac(i,k) = lamc 
@@ -1696,9 +1728,6 @@ end function radiation_nextsw_cday
                   mu_crm(i,ii,jj,m)      = mu(i,k)
                   lambdac_crm(i,ii,jj,m) = lambdac(i,k)
                   des_crm(i,ii,jj,m)     = des(i,k)
-                
-                  rel_crm(i,ii,jj,m) = rel(i,k)
-                  rei_crm(i,ii,jj,m) = rei(i,k)
                 end do ! i
               end do ! m
             endif ! m2005
@@ -1708,8 +1737,8 @@ end function radiation_nextsw_cday
               ! for sam1mom, rel and rei are calcualted above, and are the same for all CRM columns
               do m=1,crm_nz
                 k = pver-m+1
-                rel_crm(:ncol,ii,jj,m)=rel(:ncol,k)
-                rei_crm(:ncol,ii,jj,m)=rei(:ncol,k)
+                reffl_rad(:ncol,ii,jj,m)=rel(:ncol,k)
+                reffi_rad(:ncol,ii,jj,m)=rei(:ncol,k)
                 
                 dei(:ncol,k) = rei(:ncol,k) * 2.0_r8
                 ! whannah - calculation of dei below is taken from m2005_effradius()
@@ -2481,8 +2510,8 @@ end function radiation_nextsw_cday
        if (use_SPCAM) then 
           call outfld('CRM_DEI  ', dei_crm, pcols, lchnk)
           deallocate(dei_crm)
-          call outfld('CRM_REL  ', rel_crm, pcols, lchnk)
-          call outfld('CRM_REI  ', rei_crm, pcols, lchnk)
+          call outfld('CRM_REL  ', reffl_rad, pcols, lchnk)
+          call outfld('CRM_REI  ', reffi_rad, pcols, lchnk)
           call outfld('CRM_QRL  ', qrl_crm, pcols, lchnk)
           call outfld('CRM_QRS  ', qrs_crm, pcols, lchnk)
        endif

@@ -52,7 +52,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
 #ifdef m2005
                 qr_rad, qs_rad, qg_rad, &
-                nc_rad, ni_rad, ns_rad, wvar_crm,  &
+                nc_rad, ni_rad, nr_rad, ns_rad, ng_rad, wvar_crm,  &
                 aut_crm, acc_crm, evpc_crm, evpr_crm, mlt_crm, &
                 sub_crm, dep_crm, con_crm, &
                 aut_crm_a, acc_crm_a, evpc_crm_a, evpr_crm_a, mlt_crm_a, &
@@ -274,7 +274,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: crm_qs              (ncrms,plev)  ! mean snow
     real(r8), intent(  out) :: crm_qg              (ncrms,plev)  ! mean graupel
     real(r8), intent(  out) :: crm_qr              (ncrms,plev)  ! mean rain
-
 #ifdef m2005
     real(r8), intent(  out) :: crm_nc              (ncrms,plev)  ! mean cloud water  (#/kg)
     real(r8), intent(  out) :: crm_ni              (ncrms,plev)  ! mean cloud ice    (#/kg)
@@ -540,17 +539,19 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     qc_rad (icrm,:,:,:) = 0.
     qi_rad (icrm,:,:,:) = 0.
     cld_rad(icrm,:,:,:) = 0.
+    zs=phis(icrm)/ggr
+    bflx = bflxls(icrm)
+    wnd = wndls(icrm)
 #ifdef m2005
     nc_rad(icrm,:,:,:) = 0.0
     ni_rad(icrm,:,:,:) = 0.0
     qr_rad(icrm,:,:,:) = 0.0
     qs_rad(icrm,:,:,:) = 0.0
     qg_rad(icrm,:,:,:) = 0.0
+    nr_rad(icrm,:,:,:) = 0.0
     ns_rad(icrm,:,:,:) = 0.0
+    ng_rad(icrm,:,:,:) = 0.0
 #endif /* m2005 */
-    zs=phis(icrm)/ggr
-    bflx = bflxls(icrm)
-    wnd = wndls(icrm)
 
 !-----------------------------------------
 
@@ -1403,12 +1404,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
               qi_rad (icrm,i_rad,j_rad,k) = qi_rad (icrm,i_rad,j_rad,k) + qci(i,j,k)
               cld_rad(icrm,i_rad,j_rad,k) = cld_rad(icrm,i_rad,j_rad,k) + CF3D(i,j,k)
 #ifdef m2005
-              nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
-              ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci)
-              qr_rad(icrm,i_rad,j_rad,k) = qr_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
-              qs_rad(icrm,i_rad,j_rad,k) = qs_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
-              qg_rad(icrm,i_rad,j_rad,k) = qg_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
-              ns_rad(icrm,i_rad,j_rad,k) = ns_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins)
+               nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
+               ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci)
+               qr_rad(icrm,i_rad,j_rad,k) = qr_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
+               qs_rad(icrm,i_rad,j_rad,k) = qs_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
+               qg_rad(icrm,i_rad,j_rad,k) = qg_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
+               nr_rad(icrm,i_rad,j_rad,k) = nr_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins)
+               ns_rad(icrm,i_rad,j_rad,k) = ns_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins)
+               ng_rad(icrm,i_rad,j_rad,k) = ng_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins)
 #endif
             endif
 
@@ -1493,7 +1496,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       qr_rad(icrm,:,:,:) = qr_rad(icrm,:,:,:) * tmp1
       qs_rad(icrm,:,:,:) = qs_rad(icrm,:,:,:) * tmp1
       qg_rad(icrm,:,:,:) = qg_rad(icrm,:,:,:) * tmp1
+      nr_rad(icrm,:,:,:) = nr_rad(icrm,:,:,:) * tmp1
       ns_rad(icrm,:,:,:) = ns_rad(icrm,:,:,:) * tmp1
+      ng_rad(icrm,:,:,:) = ng_rad(icrm,:,:,:) * tmp1
 #endif /* m2005 */
     endif
 
