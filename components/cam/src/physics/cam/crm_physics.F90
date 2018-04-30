@@ -1132,7 +1132,7 @@ end subroutine crm_physics_init
                crm_micro(i,:,:,k,1) = crm_qt(i,:,:,k)
                crm_micro(i,:,:,k,2) = crm_qp(i,:,:,k)
                crm_micro(i,:,:,k,3) = crm_qn(i,:,:,k)
-
+#ifdef m2005 
             else if (SPCAM_microp_scheme .eq. 'm2005') then
                crm_qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)
                crm_nc(i,:,:,k) = 0.0_r8
@@ -1159,6 +1159,7 @@ end subroutine crm_physics_init
                crm_micro(i,:,:,k,11) = crm_qc(i,:,:,k)
             endif
 #endif
+#endif
 
 #ifdef CLUBB_CRM
             clubb_buffer(i,:,:,k,:) = 0.0  ! In the inital run, variables are set in clubb_sgs_setup at the first time step. 
@@ -1178,7 +1179,7 @@ end subroutine crm_physics_init
             qv_rad (i,:,:,k)      = state%q(i,m,1)
             qc_rad (i,:,:,k)      = 0.
             qi_rad (i,:,:,k)      = 0.
-            cld_rad(i,:,:,k)      = 0.  !Guangxing Lin new CRM
+            cld_rad(i,:,:,k)      = 0.
 #ifdef m2005
             if (SPCAM_microp_scheme .eq. 'm2005') then
                nc_rad(i,:,:,k) = 0.0
