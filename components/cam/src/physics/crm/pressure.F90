@@ -26,6 +26,7 @@ contains
     use press_rhs_mod
     use press_grad_mod
     use vars
+    use fft_mod
     implicit none
     integer, intent(in) :: ncrms
 
@@ -36,6 +37,7 @@ contains
     integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
 
     real(crm_rknd), allocatable :: f      (:,:,:,:) ! global rhs and array for FTP coefficeients
+    real(crm_rknd), allocatable :: ftmp   (:,:)
     real(crm_rknd), allocatable :: ff     (:,:,:,:)  ! local (subdomain's) version of f
     real(crm_rknd), allocatable :: work   (:,:)
     real(crm_rknd), allocatable :: trigxi (:)
@@ -58,6 +60,7 @@ contains
     integer iwall,jwall
 
     allocate( f      (ncrms,nx2,ny2,nzslab)      )
+    allocate( ftmp   (nx2,ny2)      )
     allocate( ff     (ncrms,nx+1,ny+2*YES3D,nzm) )
     allocate( work   (nx2,ny2)                   )
     allocate( trigxi (n3i)                       )
@@ -74,7 +77,7 @@ contains
     allocate( jjj    (0:ny_gl)                   )
     allocate( flag   (nsubdomains)               )
 
-    !$acc enter data create(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
+    !$acc enter data create(f,ftmp,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
 
     ! check if the grid size allows the computation:
     if(nsubdomains.gt.nzm) then
@@ -132,21 +135,30 @@ contains
       end do
     end do
 
-    !$acc update host(f) async(1)
-    !$acc wait(1)
-
     !-------------------------------------------------
     ! Perform Fourier transformation for a slab:
-    call fftfax_crm(nx_gl,ifaxi,trigxi)
+    !$acc parallel loop gang vector async(1)
+    do k = 1,1
+      call fftfax_crm(nx_gl,ifaxi,trigxi)
+    enddo
     if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
+    !$acc parallel loop gang vector collapse(2) private(ftmp,work) async(1)
     do k=1,nzslab
       do icrm = 1 , ncrms
-        call fft991_crm(f(icrm,:,:,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
-        if(RUN3D) call fft991_crm(f(icrm,:,:,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
+        do j = 1 , ny2
+          do i = 1 , nx2
+            ftmp(i,j) = f(icrm,i,j,k)
+          enddo
+        enddo
+        call fft991_crm(ftmp,work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
+        if(RUN3D) call fft991_crm(ftmp,work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
+        do j = 1 , ny2
+          do i = 1 , nx2
+            f(icrm,i,j,k) = ftmp(i,j)
+          enddo
+        enddo
       end do
     end do
-
-    !$acc update device(f) async(1)
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
@@ -244,22 +256,28 @@ contains
       end do
     end do
 
-    !$acc update host(f) async(1)
-    !$acc wait(1)
-
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
 
     if(rank.lt.npressureslabs) then
+      !$acc parallel loop gang vector collapse(2) private(ftmp,work) async(1)
       do k=1,nzslab
         do icrm = 1 , ncrms
-          if(RUN3D) call fft991_crm(f(icrm,:,:,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
-          call fft991_crm(f(icrm,:,:,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
+          do j = 1 , ny2
+            do i = 1 , nx2
+              ftmp(i,j) = f(icrm,i,j,k)
+            enddo
+          enddo
+          if(RUN3D) call fft991_crm(ftmp,work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
+          call fft991_crm(ftmp,work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
+          do j = 1 , ny2
+            do i = 1 , nx2
+              f(icrm,i,j,k) = ftmp(i,j)
+            enddo
+          enddo
         end do
       end do
     endif
-
-    !$acc update device(f) async(1)
 
     !-----------------------------------------------------------------
     !   Fill the pressure field for each subdomain:
@@ -295,6 +313,7 @@ contains
     !$acc exit data delete(f,ff,work,trigxi,trigxj,ifaxj,ifaxi,a,c,fff,alfa,beta,reqs_in,iii,jjj,flag) async(1)
 
     deallocate( f       )
+    deallocate( ftmp    )
     deallocate( ff      )
     deallocate( work    )
     deallocate( trigxi  )
