@@ -1546,39 +1546,46 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
+  !$acc parallel loop gang vector collapse(2)
+  do k = 1 , plev
+    do icrm = 1 , ncrms
+      cld   (icrm,k) = min(1._r8,cld   (icrm,k)/real(nstop,crm_rknd)*factor_xy)
+      cldtop(icrm,k) = min(1._r8,cldtop(icrm,k)/real(nstop,crm_rknd)*factor_xy)
+      gicewp(icrm,k) = gicewp(icrm,k)*pdel(icrm,k)*1000./ggr/real(nstop,crm_rknd)*factor_xy
+      gliqwp(icrm,k) = gliqwp(icrm,k)*pdel(icrm,k)*1000./ggr/real(nstop,crm_rknd)*factor_xy
+      mcup  (icrm,k) = mcup (icrm,k) / real(nstop,crm_rknd) * factor_xy
+      mcdn  (icrm,k) = mcdn (icrm,k) / real(nstop,crm_rknd) * factor_xy
+      mcuup (icrm,k) = mcuup(icrm,k) / real(nstop,crm_rknd) * factor_xy
+      mcudn (icrm,k) = mcudn(icrm,k) / real(nstop,crm_rknd) * factor_xy
+      mc    (icrm,k) = mcup (icrm,k) + mcdn(icrm,k) + mcuup(icrm,k) + mcudn(icrm,k)
+
+      crm_qc(icrm,k) = crm_qc(icrm,k) * factor_xy
+      crm_qi(icrm,k) = crm_qi(icrm,k) * factor_xy
+      crm_qs(icrm,k) = crm_qs(icrm,k) * factor_xy
+      crm_qg(icrm,k) = crm_qg(icrm,k) * factor_xy
+      crm_qr(icrm,k) = crm_qr(icrm,k) * factor_xy
+#ifdef m2005
+      crm_nc(icrm,k) = crm_nc(icrm,k) * factor_xy
+      crm_ni(icrm,k) = crm_ni(icrm,k) * factor_xy
+      crm_ns(icrm,k) = crm_ns(icrm,k) * factor_xy
+      crm_ng(icrm,k) = crm_ng(icrm,k) * factor_xy
+      crm_nr(icrm,k) = crm_nr(icrm,k) * factor_xy
+#endif
+    enddo
+  enddo
+
   !$acc wait(1)
   !$acc end data
 
   call t_startf('after time step loop')
 
   do icrm = 1 , ncrms
-    cld   (icrm,:) = min(1._r8,cld   (icrm,:)/real(nstop,crm_rknd)*factor_xy)
-    cldtop(icrm,:) = min(1._r8,cldtop(icrm,:)/real(nstop,crm_rknd)*factor_xy)
-    gicewp(icrm,:) = gicewp(icrm,:)*pdel(icrm,:)*1000./ggr/real(nstop,crm_rknd)*factor_xy
-    gliqwp(icrm,:) = gliqwp(icrm,:)*pdel(icrm,:)*1000./ggr/real(nstop,crm_rknd)*factor_xy
-    mcup  (icrm,:) = mcup (icrm,:) / real(nstop,crm_rknd) * factor_xy
-    mcdn  (icrm,:) = mcdn (icrm,:) / real(nstop,crm_rknd) * factor_xy
-    mcuup (icrm,:) = mcuup(icrm,:) / real(nstop,crm_rknd) * factor_xy
-    mcudn (icrm,:) = mcudn(icrm,:) / real(nstop,crm_rknd) * factor_xy
-    mc    (icrm,:) = mcup(icrm,:) + mcdn(icrm,:) + mcuup(icrm,:) + mcudn(icrm,:)
-
-    crm_qc(icrm,:) = crm_qc(icrm,:) * factor_xy
-    crm_qi(icrm,:) = crm_qi(icrm,:) * factor_xy
-    crm_qs(icrm,:) = crm_qs(icrm,:) * factor_xy
-    crm_qg(icrm,:) = crm_qg(icrm,:) * factor_xy
-    crm_qr(icrm,:) = crm_qr(icrm,:) * factor_xy
-#ifdef m2005
-    crm_nc(icrm,:) = crm_nc(icrm,:) * factor_xy
-    crm_ni(icrm,:) = crm_ni(icrm,:) * factor_xy
-    crm_ns(icrm,:) = crm_ns(icrm,:) * factor_xy
-    crm_ng(icrm,:) = crm_ng(icrm,:) * factor_xy
-    crm_nr(icrm,:) = crm_nr(icrm,:) * factor_xy
-
     ! add loop over i,j do get horizontal avg, and flip vertical array
     do k=1,nzm
       l = plev-k+1
       do j=1,ny
         do i=1,nx
+#ifdef m2005
           aut_crm_a (icrm,l) = aut_crm_a (icrm,l) + aut1a (icrm,i,j,k)
           acc_crm_a (icrm,l) = acc_crm_a (icrm,l) + acc1a (icrm,i,j,k)
           evpc_crm_a(icrm,l) = evpc_crm_a(icrm,l) + evpc1a(icrm,i,j,k)
@@ -1587,11 +1594,13 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
           sub_crm_a (icrm,l) = sub_crm_a (icrm,l) + sub1a (icrm,i,j,k)
           dep_crm_a (icrm,l) = dep_crm_a (icrm,l) + dep1a (icrm,i,j,k)
           con_crm_a (icrm,l) = con_crm_a (icrm,l) + con1a (icrm,i,j,k)
+#endif
         enddo
       enddo
     enddo
 
     ! note, rates are divded by dt to get mean rate over step
+#ifdef m2005
     aut_crm_a (icrm,:) = aut_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
     acc_crm_a (icrm,:) = acc_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
     evpc_crm_a(icrm,:) = evpc_crm_a(icrm,:) / dble(nstop) * factor_xy / dt
@@ -1600,8 +1609,10 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     sub_crm_a (icrm,:) = sub_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
     dep_crm_a (icrm,:) = dep_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
     con_crm_a (icrm,:) = con_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
-
 #endif
+  enddo
+
+  do icrm = 1 , ncrms
     precc (icrm) = 0.
     precl (icrm) = 0.
     precsc(icrm) = 0.
