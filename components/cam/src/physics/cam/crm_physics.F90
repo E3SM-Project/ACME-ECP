@@ -1157,8 +1157,9 @@ end subroutine crm_physics_init
                crm_micro(i,:,:,k,9)  = crm_qg(i,:,:,k)
                crm_micro(i,:,:,k,10) = crm_ng(i,:,:,k)
                crm_micro(i,:,:,k,11) = crm_qc(i,:,:,k)
-            endif
+            
 #endif
+            endif
 #endif
 
 #ifdef CLUBB_CRM
@@ -1187,7 +1188,7 @@ end subroutine crm_physics_init
                qs_rad(i,:,:,k) = 0.0
                ns_rad(i,:,:,k) = 0.0
                wvar_crm(i,:,:,k) = 0.0
-! hm 7/26/11, add new output
+               ! hm 7/26/11, add new output
                aut_crm (i,:,:,k) = 0.0
                acc_crm (i,:,:,k) = 0.0
                evpc_crm(i,:,:,k) = 0.0
