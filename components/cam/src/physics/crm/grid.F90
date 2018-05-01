@@ -63,7 +63,7 @@ module grid
   integer:: na=1, nb=2, nc=3 ! indeces for swapping the rhs arrays for AB scheme
   real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme
   real(crm_rknd) dtn	! current dynamical timestep (can be smaller than dt)
-  real(crm_rknd) dt3(3) 	! dynamical timesteps for three most recent time steps
+  real(crm_rknd), allocatable :: dt3(:) 	! dynamical timesteps for three most recent time steps
   real(8):: time=0.	! current time in sec.
   real(crm_rknd) day	! current day (including fraction)
   real(crm_rknd) dtfactor   ! dtn/dt
@@ -179,9 +179,11 @@ contains
     allocate( adz  (ncrms,nzm) )  ! ratio of the thickness of scalar levels to dz
     allocate( adzw (ncrms,nz ) )  ! ratio of the thinckness of w levels to dz
     allocate( dz   (ncrms    ) )
+    allocate( dt3  (3        ) )
 
     zero = 0
 
+    dt3   = zero
     z     = zero
     pres  = zero
     zi    = zero
@@ -200,6 +202,7 @@ contains
     deallocate( adz     )   ! ratio of the thickness of scalar levels to dz
     deallocate( adzw    ) ! ratio of the thinckness of w levels to dz
     deallocate( dz      )
+    deallocate( dt3     )
   end subroutine deallocate_grid
 
 end module grid
