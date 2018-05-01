@@ -1491,47 +1491,67 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
+  !$acc parallel loop gang vector default(present) async(1)
+  do icrm = 1 , ncrms
+    z0m     (icrm) = z0(icrm)
+    taux_crm(icrm) = taux0(icrm) / dble(nstop)
+    tauy_crm(icrm) = tauy0(icrm) / dble(nstop)
+  enddo
+
+  !---------------------------------------------------------------
+  !  Diagnostics:
+
+  ! hm add 9/7/11, change from GCM-time step avg to end-of-timestep
+  !$acc parallel loop gang vector collapse(4) default(present) async(1)
+  do k=1,nzm
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          l = plev-k+1
+          !$acc atomic update
+          crm_qc(icrm,l) = crm_qc(icrm,l) + qcl(icrm,i,j,k)
+          !$acc atomic update
+          crm_qi(icrm,l) = crm_qi(icrm,l) + qci(icrm,i,j,k)
+          !$acc atomic update
+          crm_qr(icrm,l) = crm_qr(icrm,l) + qpl(icrm,i,j,k)
+#ifdef sam1mom
+          omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
+          tmp = qpi(icrm,i,j,k)*omg
+          !$acc atomic update
+          crm_qg(icrm,l) = crm_qg(icrm,l) + tmp
+          tmp = qpi(icrm,i,j,k)*(1.-omg)
+          !$acc atomic update
+          crm_qs(icrm,l) = crm_qs(icrm,l) + tmp
+#else
+          !crm_qg(icrm,l) = crm_qg(icrm,l) + qpi(icrm,i,j,k)
+          !crm_qs(icrm,l) = crm_qs(icrm,l) + 0.     ! temporerary solution
+          !$acc atomic update
+          crm_qg(icrm,l) = crm_qg(icrm,l) + micro_field(icrm,i,j,k,iqg)
+          !$acc atomic update
+          crm_qs(icrm,l) = crm_qs(icrm,l) + micro_field(icrm,i,j,k,iqs)
+
+          !$acc atomic update
+          crm_nc(icrm,l) = crm_nc(icrm,l) + micro_field(icrm,i,j,k,incl)
+          !$acc atomic update
+          crm_ni(icrm,l) = crm_ni(icrm,l) + micro_field(icrm,i,j,k,inci)
+          !$acc atomic update
+          crm_nr(icrm,l) = crm_nr(icrm,l) + micro_field(icrm,i,j,k,inr)
+          !$acc atomic update
+          crm_ng(icrm,l) = crm_ng(icrm,l) + micro_field(icrm,i,j,k,ing)
+          !$acc atomic update
+          crm_ns(icrm,l) = crm_ns(icrm,l) + micro_field(icrm,i,j,k,ins)
+#endif
+        enddo
+      enddo
+    enddo
+  enddo
+
   !$acc wait(1)
   !$acc end data
 
   call t_startf('after time step loop')
 
   do icrm = 1 , ncrms
-    z0m     (icrm) = z0(icrm)
-    taux_crm(icrm) = taux0(icrm) / dble(nstop)
-    tauy_crm(icrm) = tauy0(icrm) / dble(nstop)
-
-    !---------------------------------------------------------------
-    !  Diagnostics:
-
-    ! hm add 9/7/11, change from GCM-time step avg to end-of-timestep
-    do k=1,nzm
-      l = plev-k+1
-      do j=1,ny
-        do i=1,nx
-          crm_qc(icrm,l) = crm_qc(icrm,l) + qcl(icrm,i,j,k)
-          crm_qi(icrm,l) = crm_qi(icrm,l) + qci(icrm,i,j,k)
-          crm_qr(icrm,l) = crm_qr(icrm,l) + qpl(icrm,i,j,k)
-#ifdef sam1mom
-          omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
-          crm_qg(icrm,l) = crm_qg(icrm,l) + qpi(icrm,i,j,k)*omg
-          crm_qs(icrm,l) = crm_qs(icrm,l) + qpi(icrm,i,j,k)*(1.-omg)
-#else
-          !crm_qg(icrm,l) = crm_qg(icrm,l) + qpi(icrm,i,j,k)
-          !crm_qs(icrm,l) = crm_qs(icrm,l) + 0.     ! temporerary solution
-          crm_qg(icrm,l) = crm_qg(icrm,l) + micro_field(icrm,i,j,k,iqg)
-          crm_qs(icrm,l) = crm_qs(icrm,l) + micro_field(icrm,i,j,k,iqs)
-
-          crm_nc(icrm,l) = crm_nc(icrm,l) + micro_field(icrm,i,j,k,incl)
-          crm_ni(icrm,l) = crm_ni(icrm,l) + micro_field(icrm,i,j,k,inci)
-          crm_nr(icrm,l) = crm_nr(icrm,l) + micro_field(icrm,i,j,k,inr)
-          crm_ng(icrm,l) = crm_ng(icrm,l) + micro_field(icrm,i,j,k,ing)
-          crm_ns(icrm,l) = crm_ns(icrm,l) + micro_field(icrm,i,j,k,ins)
-#endif
-        enddo
-      enddo
-    enddo
-
     cld   (icrm,:) = min(1._r8,cld   (icrm,:)/real(nstop,crm_rknd)*factor_xy)
     cldtop(icrm,:) = min(1._r8,cldtop(icrm,:)/real(nstop,crm_rknd)*factor_xy)
     gicewp(icrm,:) = gicewp(icrm,:)*pdel(icrm,:)*1000./ggr/real(nstop,crm_rknd)*factor_xy
