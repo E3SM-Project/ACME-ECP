@@ -1399,8 +1399,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   enddo
 
   !$acc parallel loop gang vector collapse(2) default(present) async(1)
-  do icrm = 1 , ncrms
-    do k = 1 , plev
+  do k = 1 , plev
+    do icrm = 1 , ncrms
       sltend (icrm,k) = cp * (tln  (icrm,k) - tl  (icrm,k)) * idt_gl
       qltend (icrm,k) =      (qln  (icrm,k) - ql  (icrm,k)) * idt_gl
       qcltend(icrm,k) =      (qccln(icrm,k) - qccl(icrm,k)) * idt_gl
@@ -1409,8 +1409,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   enddo
 
   !$acc parallel loop gang vector collapse(2) default(present) async(1)
-  do icrm = 1 , ncrms
-    do k = ptop,ptop+1
+  do k = ptop,ptop+1
+    do icrm = 1 , ncrms
       ! don't use CRM tendencies from two crm top levels,
       ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
       sltend (icrm,k) = 0.
@@ -1666,9 +1666,11 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     precl   (icrm)     = precl (icrm)*factor_xy/1000.
     precsc  (icrm)     = precsc(icrm)*factor_xy/1000.
     precsl  (icrm)     = precsl(icrm)*factor_xy/1000.
+  enddo
 
     !+++mhwangtest
     ! test water conservtion problem
+  do icrm = 1 , ncrms
     do k=1, nzm
       l=plev-k+1
       do j=1, ny
