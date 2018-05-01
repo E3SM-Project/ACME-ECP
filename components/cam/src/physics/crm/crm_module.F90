@@ -1656,11 +1656,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
-  !$acc wait(1)
-  !$acc end data
-
-  call t_startf('after time step loop')
-
+  !$acc parallel loop gang vector default(present) async(1)
   do icrm = 1 , ncrms
     precc   (icrm)     = precc (icrm)*factor_xy/1000.
     precl   (icrm)     = precl (icrm)*factor_xy/1000.
@@ -1668,23 +1664,38 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     precsl  (icrm)     = precsl(icrm)*factor_xy/1000.
   enddo
 
-    !+++mhwangtest
-    ! test water conservtion problem
+  !+++mhwangtest
+  ! test water conservtion problem
+  !$acc parallel loop gang vector collapse(4) default(present) async(1)
   do icrm = 1 , ncrms
     do k=1, nzm
-      l=plev-k+1
       do j=1, ny
         do i=1, nx
+          l=plev-k+1
 #ifdef m2005
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(icrm,i,j,k,iqr)+micro_field(icrm,i,j,k,iqs)+micro_field(icrm,i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(icrm,i,j,k,iqv)+micro_field(icrm,i,j,k,iqci)) * pdel(icrm,l)/ggr)/(nx*ny)
+          tmp = ((micro_field(icrm,i,j,k,iqr)+micro_field(icrm,i,j,k,iqs)+micro_field(icrm,i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
+          !$acc atomic update
+          qtot(icrm,9) = qtot(icrm,9)+tmp
+          tmp = ((micro_field(icrm,i,j,k,iqv)+micro_field(icrm,i,j,k,iqci)) * pdel(icrm,l)/ggr)/(nx*ny)
+          !$acc atomic update
+          qtot(icrm,9) = qtot(icrm,9)+tmp
 #endif
 #ifdef sam1mom
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(icrm,i,j,k,1)+micro_field(icrm,i,j,k,2)) * pdel(icrm,l)/ggr)/(nx*ny)
+          tmp = ((micro_field(icrm,i,j,k,1)+micro_field(icrm,i,j,k,2)) * pdel(icrm,l)/ggr)/(nx*ny)
+          !$acc atomic update
+          qtot(icrm,9) = qtot(icrm,9)+tmp
 #endif
         enddo
       enddo
     enddo
+  enddo
+
+  !$acc wait(1)
+  !$acc end data
+
+  call t_startf('after time step loop')
+
+  do icrm = 1 , ncrms
     qtot(icrm,9) = qtot(icrm,9) + (precc(icrm)+precl(icrm))*1000 * dt_gl
 
     cltot(icrm) = cltot(icrm) *factor_xy/nstop
