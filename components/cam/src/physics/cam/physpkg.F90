@@ -2367,9 +2367,7 @@ end if
     !-- mdb spcam
 
 ! #if defined(SPMOMTRANS) || defined(SP_ESMT)
-#if defined( SP_PHYS_BYPASS )
-    ! Do nothing...
-#else
+#ifndef SP_PHYS_BYPASS
 
     !
     !===================================================
@@ -2842,9 +2840,7 @@ end if
     endif
 
 
-#if defined( SP_PHYS_BYPASS )
-    ! Do nothing...
-#else
+#ifndef SP_PHYS_BYPASS 
 
     if(use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
       ! As ECPP is not linked with the sam1mom yet, conventional convective transport
