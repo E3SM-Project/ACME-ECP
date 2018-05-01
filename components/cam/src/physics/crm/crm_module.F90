@@ -1667,10 +1667,10 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   !+++mhwangtest
   ! test water conservtion problem
   !$acc parallel loop gang vector collapse(4) default(present) async(1)
-  do icrm = 1 , ncrms
-    do k=1, nzm
-      do j=1, ny
-        do i=1, nx
+  do k=1, nzm
+    do j=1, ny
+      do i=1, nx
+        do icrm = 1 , ncrms
           l=plev-k+1
 #ifdef m2005
           tmp = ((micro_field(icrm,i,j,k,iqr)+micro_field(icrm,i,j,k,iqs)+micro_field(icrm,i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
@@ -1690,11 +1690,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
-  !$acc wait(1)
-  !$acc end data
-
-  call t_startf('after time step loop')
-
+  !$acc parallel loop gang vector default(present) async(1)
   do icrm = 1 , ncrms
     qtot(icrm,9) = qtot(icrm,9) + (precc(icrm)+precl(icrm))*1000 * dt_gl
 
@@ -1705,6 +1701,14 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 
     jt_crm(icrm) = plev * 1.0
     mx_crm(icrm) = 1.0
+  enddo
+
+  !$acc wait(1)
+  !$acc end data
+
+  call t_startf('after time step loop')
+
+  do icrm = 1 , ncrms
     do k=1, plev
       mu_crm(icrm,k)=0.5*(mui_crm(icrm,k)+mui_crm(icrm,k+1))
       md_crm(icrm,k)=0.5*(mdi_crm(icrm,k)+mdi_crm(icrm,k+1))
