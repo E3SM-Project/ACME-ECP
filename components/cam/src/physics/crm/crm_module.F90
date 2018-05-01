@@ -1728,16 +1728,12 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
-  !$acc wait(1)
-  !$acc end data
-
-  call t_startf('after time step loop')
-
   !-------------------------------------------------------------
   !       Fluxes and other stat:
   !-------------------------------------------------------------
-  do icrm = 1 , ncrms
-    do k=1,nzm
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
+  do k=1,nzm
+    do icrm = 1 , ncrms
       u2z = 0.
       v2z = 0.
       w2z = 0.
@@ -1801,7 +1797,14 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       qt_ls     (icrm,l) = qtend(icrm,k)
       t_ls      (icrm,l) = ttend(icrm,k)
     enddo
+  enddo
 
+  !$acc wait(1)
+  !$acc end data
+
+  call t_startf('after time step loop')
+
+  do icrm = 1 , ncrms
 #ifdef ECPP
     abnd         (icrm,:,:,:,:)=0.0
     abnd_tf      (icrm,:,:,:,:)=0.0
