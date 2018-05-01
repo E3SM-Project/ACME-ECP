@@ -353,10 +353,10 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 
   !Arrays
   real(crm_rknd), allocatable :: t00      (:)
-  real(crm_rknd), allocatable :: tln      (:)
-  real(crm_rknd), allocatable :: qln      (:)
-  real(crm_rknd), allocatable :: qccln    (:)
-  real(crm_rknd), allocatable :: qiiln    (:)
+  real(crm_rknd), allocatable :: tln      (:,:)
+  real(crm_rknd), allocatable :: qln      (:,:)
+  real(crm_rknd), allocatable :: qccln    (:,:)
+  real(crm_rknd), allocatable :: qiiln    (:,:)
   real(crm_rknd), allocatable :: uln      (:,:)
   real(crm_rknd), allocatable :: vln      (:,:)
   real(crm_rknd), allocatable :: cwp      (:,:,:)
@@ -413,10 +413,10 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 
   !Allocate local arrays
   allocate( t00      (ncrms)      )
-  allocate( tln      (plev)       )
-  allocate( qln      (plev)       )
-  allocate( qccln    (plev)       )
-  allocate( qiiln    (plev)       )
+  allocate( tln      (ncrms,plev)       )
+  allocate( qln      (ncrms,plev)       )
+  allocate( qccln    (ncrms,plev)       )
+  allocate( qiiln    (ncrms,plev)       )
   allocate( uln      (ncrms,plev) )
   allocate( vln      (ncrms,plev) )
   allocate( cwp      (ncrms,nx,ny)      )
@@ -552,14 +552,12 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   call task_init()
   call setparm()
 
-  !$acc parallel loop gang vector
   do icrm = 1 , ncrms
     fcor= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
     fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
     fcory(icrm,:) = fcor
     fcorzy(icrm,:) = fcorz
   enddo
-  !$acc parallel loop gang vector collapse(3)
   do j=1,ny
     do i=1,nx
       do icrm = 1 , ncrms
@@ -576,7 +574,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   ! end if
 
   ! Create CRM vertical grid and initialize some vertical reference arrays:
-  !$acc parallel loop gang vector collapse(2)
   do k = 1, nzm
     do icrm = 1 , ncrms
       z(icrm,k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
@@ -587,7 +584,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       gamaz(icrm,k)=ggr/cp*z(icrm,k)
     end do ! k
   end do ! k
-  !$acc parallel loop gang vector
   do icrm = 1 , ncrms
     zi(icrm,nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
     dz(icrm) = 0.5*(z(icrm,1)+z(icrm,2))
@@ -600,7 +596,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 
   !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
   !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-  !$acc parallel loop gang vector collapse(2)
   do k=1, nzm
     do icrm = 1 , ncrms
       adz(icrm,k)=(zi(icrm,k+1)-zi(icrm,k))/dz(icrm)
@@ -611,7 +606,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     end do
   end do
 
-  !$acc parallel loop gang vector
   do icrm = 1 , ncrms
     rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
@@ -627,7 +621,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 
   !  Initialize:
   ! limit the velocity at the very first step:
-  !$acc parallel loop gang vector collapse(4)
   do k=1,nzm
     do j=1,ny
       do i=1,nx
@@ -641,7 +634,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
-  !$acc parallel loop gang vector collapse(4)
   do k = 1 , nzm
     do j = 1 , ny
       do i = 1 , nx
@@ -664,7 +656,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 
 
 #ifdef m2005
-  !$acc parallel loop gang vector collapse(3)
   do j = 1 , ntot_amode
     do k=1, nzm
       do icrm = 1 , ncrms
@@ -678,7 +669,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       enddo
     enddo
   enddo
-  !$acc parallel loop gang vector collapse(4)
   do k=1, nzm
     do j=1, ny
       do i=1, nx
@@ -709,7 +699,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   ! initialize sgs fields
   call sgs_init(ncrms)
 
-  !$acc parallel loop gang vector
   do icrm = 1 , ncrms
     do k=1,nzm
       u0   (icrm,k) = 0.
@@ -779,7 +768,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
   !MRN: This is not on the GPU because it gives the wrong answer for some reason
-  ! !!$acc parallel loop gang vector
   do icrm = 1 , ncrms
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),sqrt(tau00(icrm)/rho(icrm,1)))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
@@ -1313,67 +1301,99 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
     !----------------------------------------------------------
   enddo ! main loop
+  call t_stopf('main time loop')
+
+  !$acc parallel loop gang vector collapse(4) default(present) async(1)
+  do k = 1 , crm_nz
+    do j = 1 , crm_ny_rad
+      do i = 1 , crm_nx_rad
+        do icrm = 1 , ncrms
+          tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
+
+          t_rad  (icrm,i,j,k) = t_rad  (icrm,i,j,k) * tmp1
+          qv_rad (icrm,i,j,k) = qv_rad (icrm,i,j,k) * tmp1
+          qc_rad (icrm,i,j,k) = qc_rad (icrm,i,j,k) * tmp1
+          qi_rad (icrm,i,j,k) = qi_rad (icrm,i,j,k) * tmp1
+          cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) * tmp1
+#ifdef m2005
+          nc_rad (icrm,i,j,k) = nc_rad (icrm,i,j,k) * tmp1
+          ni_rad (icrm,i,j,k) = ni_rad (icrm,i,j,k) * tmp1
+          qs_rad (icrm,i,j,k) = qs_rad (icrm,i,j,k) * tmp1
+          ns_rad (icrm,i,j,k) = ns_rad (icrm,i,j,k) * tmp1
+#endif
+        enddo
+      enddo
+    enddo
+  enddo
+
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
+  do k = 1 , plev
+    do icrm = 1 , ncrms
+      if (k <= ptop-1) then
+        ! no CRM tendencies above its top
+        tln  (icrm,k) =   tl(icrm,k)
+        qln  (icrm,k) =   ql(icrm,k)
+        qccln(icrm,k) = qccl(icrm,k)
+        qiiln(icrm,k) = qiil(icrm,k)
+        uln  (icrm,k) =   ul(icrm,k)
+        vln  (icrm,k) =   vl(icrm,k)
+      else
+        !  Compute tendencies due to CRM:
+        tln  (icrm,k) = 0.
+        qln  (icrm,k) = 0.
+        qccln(icrm,k) = 0.
+        qiiln(icrm,k) = 0.
+        uln  (icrm,k) = 0.
+        vln  (icrm,k) = 0.
+      endif
+      if (k == 1) then
+        colprec (icrm)=0
+        colprecs(icrm)=0
+      endif
+    enddo
+  enddo
+
+  !$acc parallel loop gang vector collapse(4) default(present) async(1)
+  do k = 1,nzm
+    do i=1,nx
+      do j=1,ny
+        do icrm = 1 , ncrms
+          l = plev-k+1
+          tmp = (qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
+          !$acc atomic update
+          colprec (icrm)=colprec (icrm)+tmp
+          tmp = qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
+          !$acc atomic update
+          colprecs(icrm)=colprecs(icrm)+tmp
+          !$acc atomic update
+          tln  (icrm,l) = tln  (icrm,l)+tabs(icrm,i,j,k)
+          !$acc atomic update
+          qln  (icrm,l) = qln  (icrm,l)+qv  (icrm,i,j,k)
+          !$acc atomic update
+          qccln(icrm,l) = qccln(icrm,l)+qcl (icrm,i,j,k)
+          !$acc atomic update
+          qiiln(icrm,l) = qiiln(icrm,l)+qci (icrm,i,j,k)
+          !$acc atomic update
+          uln  (icrm,l) = uln  (icrm,l)+u   (icrm,i,j,k)
+          !$acc atomic update
+          vln  (icrm,l) = vln  (icrm,l)+v   (icrm,i,j,k)
+        enddo ! k
+      enddo
+    enddo ! i
+  enddo ! i
+
   !$acc wait(1)
   !$acc end data
-  call t_stopf('main time loop')
 
   call t_startf('after time step loop')
 
   do icrm = 1 , ncrms
-    tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
-
-    t_rad  (icrm,:,:,:) = t_rad  (icrm,:,:,:) * tmp1
-    qv_rad (icrm,:,:,:) = qv_rad (icrm,:,:,:) * tmp1
-    qc_rad (icrm,:,:,:) = qc_rad (icrm,:,:,:) * tmp1
-    qi_rad (icrm,:,:,:) = qi_rad (icrm,:,:,:) * tmp1
-    cld_rad(icrm,:,:,:) = cld_rad(icrm,:,:,:) * tmp1
-#ifdef m2005
-    nc_rad(icrm,:,:,:) = nc_rad(icrm,:,:,:) * tmp1
-    ni_rad(icrm,:,:,:) = ni_rad(icrm,:,:,:) * tmp1
-    qs_rad(icrm,:,:,:) = qs_rad(icrm,:,:,:) * tmp1
-    ns_rad(icrm,:,:,:) = ns_rad(icrm,:,:,:) * tmp1
-#endif
-
-    ! no CRM tendencies above its top
-    tln  (1:ptop-1) =   tl(icrm,1:ptop-1)
-    qln  (1:ptop-1) =   ql(icrm,1:ptop-1)
-    qccln(1:ptop-1) = qccl(icrm,1:ptop-1)
-    qiiln(1:ptop-1) = qiil(icrm,1:ptop-1)
-    uln  (icrm,1:ptop-1) =   ul(icrm,1:ptop-1)
-    vln  (icrm,1:ptop-1) =   vl(icrm,1:ptop-1)
-
-    !  Compute tendencies due to CRM:
-    tln (ptop:plev)  = 0.
-    qln (ptop:plev)  = 0.
-    qccln(ptop:plev) = 0.
-    qiiln(ptop:plev) = 0.
-    uln (icrm,ptop:plev)  = 0.
-    vln (icrm,ptop:plev)  = 0.
-
-    colprec(icrm)=0
-    colprecs(icrm)=0
-    do k = 1,nzm
-      l = plev-k+1
-      do i=1,nx
-        do j=1,ny
-          colprec(icrm)=colprec(icrm)+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*pdel(icrm,plev-k+1)
-          colprecs(icrm)=colprecs(icrm)+qpi(icrm,i,j,k)*pdel(icrm,plev-k+1)
-          tln(l) = tln(l)+tabs(icrm,i,j,k)
-          qln(l) = qln(l)+qv(icrm,i,j,k)
-          qccln(l)= qccln(l)+qcl(icrm,i,j,k)
-          qiiln(l)= qiiln(l)+qci(icrm,i,j,k)
-          uln(icrm,l) = uln(icrm,l)+u(icrm,i,j,k)
-          vln(icrm,l) = vln(icrm,l)+v(icrm,i,j,k)
-        enddo ! k
-      enddo
-    enddo ! i
-
-    tln(ptop:plev) = tln(ptop:plev) * factor_xy
-    qln(ptop:plev) = qln(ptop:plev) * factor_xy
-    qccln(ptop:plev) = qccln(ptop:plev) * factor_xy
-    qiiln(ptop:plev) = qiiln(ptop:plev) * factor_xy
-    uln(icrm,ptop:plev) = uln(icrm,ptop:plev) * factor_xy
-    vln(icrm,ptop:plev) = vln(icrm,ptop:plev) * factor_xy
+    tln  (icrm,ptop:plev) = tln  (icrm,ptop:plev) * factor_xy
+    qln  (icrm,ptop:plev) = qln  (icrm,ptop:plev) * factor_xy
+    qccln(icrm,ptop:plev) = qccln(icrm,ptop:plev) * factor_xy
+    qiiln(icrm,ptop:plev) = qiiln(icrm,ptop:plev) * factor_xy
+    uln  (icrm,ptop:plev) = uln  (icrm,ptop:plev) * factor_xy
+    vln  (icrm,ptop:plev) = vln  (icrm,ptop:plev) * factor_xy
 
 #ifdef SPMOMTRANS
     ! whannah - SP CMT tendencies
@@ -1381,10 +1401,10 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     vltend(icrm,:) = (vlnicrm, - vl(icrm,:))*idt_gl
 #endif
 
-    sltend (icrm,:) = cp * (tln   - tl  (icrm,:)) * idt_gl
-    qltend (icrm,:) =      (qln   - ql  (icrm,:)) * idt_gl
-    qcltend(icrm,:) =      (qccln - qccl(icrm,:)) * idt_gl
-    qiltend(icrm,:) =      (qiiln - qiil(icrm,:)) * idt_gl
+    sltend (icrm,:) = cp * (tln  (icrm,:) - tl  (icrm,:)) * idt_gl
+    qltend (icrm,:) =      (qln  (icrm,:) - ql  (icrm,:)) * idt_gl
+    qcltend(icrm,:) =      (qccln(icrm,:) - qccl(icrm,:)) * idt_gl
+    qiltend(icrm,:) =      (qiiln(icrm,:) - qiil(icrm,:)) * idt_gl
     prectend (icrm)=(colprec(icrm) -prectend (icrm))/ggr*factor_xy * idt_gl
     precstend(icrm)=(colprecs(icrm)-precstend(icrm))/ggr*factor_xy * idt_gl
 
