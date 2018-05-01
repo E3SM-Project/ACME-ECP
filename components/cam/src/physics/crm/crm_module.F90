@@ -1574,31 +1574,42 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
+  ! add loop over i,j do get horizontal avg, and flip vertical array
+  !$acc parallel loop gang vector collapse(4) default(present) async(1)
+  do k=1,nzm
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          l = plev-k+1
+#ifdef m2005
+          !$acc atomic update
+          aut_crm_a (icrm,l) = aut_crm_a (icrm,l) + aut1a (icrm,i,j,k)
+          !$acc atomic update
+          acc_crm_a (icrm,l) = acc_crm_a (icrm,l) + acc1a (icrm,i,j,k)
+          !$acc atomic update
+          evpc_crm_a(icrm,l) = evpc_crm_a(icrm,l) + evpc1a(icrm,i,j,k)
+          !$acc atomic update
+          evpr_crm_a(icrm,l) = evpr_crm_a(icrm,l) + evpr1a(icrm,i,j,k)
+          !$acc atomic update
+          mlt_crm_a (icrm,l) = mlt_crm_a (icrm,l) + mlt1a (icrm,i,j,k)
+          !$acc atomic update
+          sub_crm_a (icrm,l) = sub_crm_a (icrm,l) + sub1a (icrm,i,j,k)
+          !$acc atomic update
+          dep_crm_a (icrm,l) = dep_crm_a (icrm,l) + dep1a (icrm,i,j,k)
+          !$acc atomic update
+          con_crm_a (icrm,l) = con_crm_a (icrm,l) + con1a (icrm,i,j,k)
+#endif
+        enddo
+      enddo
+    enddo
+  enddo
+
   !$acc wait(1)
   !$acc end data
 
   call t_startf('after time step loop')
 
   do icrm = 1 , ncrms
-    ! add loop over i,j do get horizontal avg, and flip vertical array
-    do k=1,nzm
-      l = plev-k+1
-      do j=1,ny
-        do i=1,nx
-#ifdef m2005
-          aut_crm_a (icrm,l) = aut_crm_a (icrm,l) + aut1a (icrm,i,j,k)
-          acc_crm_a (icrm,l) = acc_crm_a (icrm,l) + acc1a (icrm,i,j,k)
-          evpc_crm_a(icrm,l) = evpc_crm_a(icrm,l) + evpc1a(icrm,i,j,k)
-          evpr_crm_a(icrm,l) = evpr_crm_a(icrm,l) + evpr1a(icrm,i,j,k)
-          mlt_crm_a (icrm,l) = mlt_crm_a (icrm,l) + mlt1a (icrm,i,j,k)
-          sub_crm_a (icrm,l) = sub_crm_a (icrm,l) + sub1a (icrm,i,j,k)
-          dep_crm_a (icrm,l) = dep_crm_a (icrm,l) + dep1a (icrm,i,j,k)
-          con_crm_a (icrm,l) = con_crm_a (icrm,l) + con1a (icrm,i,j,k)
-#endif
-        enddo
-      enddo
-    enddo
-
     ! note, rates are divded by dt to get mean rate over step
 #ifdef m2005
     aut_crm_a (icrm,:) = aut_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
