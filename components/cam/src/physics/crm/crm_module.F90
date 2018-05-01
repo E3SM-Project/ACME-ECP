@@ -409,6 +409,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   integer        :: i_rad
   integer        :: j_rad
 
+  call t_startf('initial allocates and zeros')
+
   !Allocate local arrays
   allocate( t00      (ncrms)      )
   allocate( tln      (plev)       )
@@ -482,7 +484,9 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 #ifdef sam1mom
   call allocate_micro_params(ncrms)
 #endif
+  call t_stopf('initial allocates and zeros')
 
+  call t_startf('before time step loop')
   !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
 #ifdef CRM_STANDALONE
   latitude0 (:) = latitude0_in (:)
@@ -936,6 +940,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   nstep  = 0
   !nrad = nstop/nrad0
   day=day0
+  call t_stopf('before time step loop')
 
   !------------------------------------------------------------------
   !   Main time loop
@@ -1311,6 +1316,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   !$acc wait(1)
   !$acc end data
   call t_stopf('main time loop')
+
+  call t_startf('after time step loop')
 
   do icrm = 1 , ncrms
     tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
@@ -1820,6 +1827,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   deallocate( thlm_after           )
   deallocate( rtm_column           )
 #endif
+
+  call t_stopf('after time step loop')
 
   end subroutine crm
 
