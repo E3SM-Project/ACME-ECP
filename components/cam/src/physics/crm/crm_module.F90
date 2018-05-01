@@ -1618,21 +1618,19 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       dep_crm_a (icrm,k) = dep_crm_a (icrm,k) / dble(nstop) * factor_xy / dt
       con_crm_a (icrm,k) = con_crm_a (icrm,k) / dble(nstop) * factor_xy / dt
 #endif
+      if (k == 1) then
+        precc (icrm) = 0.
+        precl (icrm) = 0.
+        precsc(icrm) = 0.
+        precsl(icrm) = 0.
+      endif
     enddo
   enddo
 
-  !$acc wait(1)
-  !$acc end data
-
-  call t_startf('after time step loop')
-
-  do icrm = 1 , ncrms
-    precc (icrm) = 0.
-    precl (icrm) = 0.
-    precsc(icrm) = 0.
-    precsl(icrm) = 0.
-    do j=1,ny
-      do i=1,nx
+  !$acc parallel loop gang vector collapse(3) default(present) async(1)
+  do j=1,ny
+    do i=1,nx
+      do icrm = 1 , ncrms
 #ifdef sam1mom
         precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
@@ -1643,15 +1641,27 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif
         if(precsfc(icrm,i,j).gt.10./86400.) then
+           !$acc atomic update
            precc (icrm) = precc (icrm) + precsfc(icrm,i,j)
+           !$acc atomic update
            precsc(icrm) = precsc(icrm) + precssfc(icrm,i,j)
         else
+           !$acc atomic update
            precl (icrm) = precl (icrm) + precsfc(icrm,i,j)
+           !$acc atomic update
            precsl(icrm) = precsl(icrm) + precssfc(icrm,i,j)
         endif
+        prec_crm(icrm,i,j) = precsfc(icrm,i,j)/1000.           !mm/s --> m/s
       enddo
     enddo
-    prec_crm(icrm,:,:) = precsfc(icrm,:,:)/1000.           !mm/s --> m/s
+  enddo
+
+  !$acc wait(1)
+  !$acc end data
+
+  call t_startf('after time step loop')
+
+  do icrm = 1 , ncrms
     precc   (icrm)     = precc (icrm)*factor_xy/1000.
     precl   (icrm)     = precl (icrm)*factor_xy/1000.
     precsc  (icrm)     = precsc(icrm)*factor_xy/1000.
