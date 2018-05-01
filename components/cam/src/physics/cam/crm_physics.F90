@@ -1485,21 +1485,21 @@ end subroutine crm_physics_init
 #endif
 
          !----------------------------------------------------------------------
-         ! Set the CRM orientation
+         ! Set the input wind (also sets CRM orientation)
          !----------------------------------------------------------------------
-         ul(i,:) = state%u(i,m) * cos( crm_angle(i) ) + state%v(i,m) * sin( crm_angle(i) )
-         vl(i,:) = state%v(i,m) * cos( crm_angle(i) ) - state%u(i,m) * sin( crm_angle(i) )
-
+         do k=1,pver
+            ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
+            vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
 #ifdef SP_ESMT
-         !----------------------------------------------------------------------
-         ! Set the wind input for ESMT
-         !----------------------------------------------------------------------
-         ul_esmt(i,:) = state%u(i,m)
-         vl_esmt(i,:) = state%v(i,m)
+            ! Set the input wind for ESMT
+            ul_esmt(i,k) = state%u(i,k)
+            vl_esmt(i,k) = state%v(i,k)
 #endif
+         enddo ! k=1,pver
 
          icol(i) = i
-   enddo
+   
+   enddo ! i=1,ncol
 
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
