@@ -1703,11 +1703,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     mx_crm(icrm) = 1.0
   enddo
 
-  !$acc wait(1)
-  !$acc end data
-
-  call t_startf('after time step loop')
-
+  !$acc parallel loop gang vector default(present) async(1)
   do icrm = 1 , ncrms
     do k=1, plev
       mu_crm(icrm,k)=0.5*(mui_crm(icrm,k)+mui_crm(icrm,k+1))
@@ -1730,10 +1726,17 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
         mx_crm(icrm) = max(k*1.0_r8, mx_crm(icrm))
       endif
     enddo
+  enddo
 
-    !-------------------------------------------------------------
-    !       Fluxes and other stat:
-    !-------------------------------------------------------------
+  !$acc wait(1)
+  !$acc end data
+
+  call t_startf('after time step loop')
+
+  !-------------------------------------------------------------
+  !       Fluxes and other stat:
+  !-------------------------------------------------------------
+  do icrm = 1 , ncrms
     do k=1,nzm
       u2z = 0.
       v2z = 0.
