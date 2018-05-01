@@ -1382,38 +1382,50 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo ! i
   enddo ! i
 
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
+  do k = ptop , plev
+    do icrm = 1 , ncrms
+      tln  (icrm,k) = tln  (icrm,k) * factor_xy
+      qln  (icrm,k) = qln  (icrm,k) * factor_xy
+      qccln(icrm,k) = qccln(icrm,k) * factor_xy
+      qiiln(icrm,k) = qiiln(icrm,k) * factor_xy
+      uln  (icrm,k) = uln  (icrm,k) * factor_xy
+      vln  (icrm,k) = vln  (icrm,k) * factor_xy
+      if (k == ptop) then
+        prectend (icrm)=(colprec(icrm) -prectend (icrm))/ggr*factor_xy * idt_gl
+        precstend(icrm)=(colprecs(icrm)-precstend(icrm))/ggr*factor_xy * idt_gl
+      endif
+    enddo
+  enddo
+
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
+  do icrm = 1 , ncrms
+    do k = 1 , plev
+      sltend (icrm,k) = cp * (tln  (icrm,k) - tl  (icrm,k)) * idt_gl
+      qltend (icrm,k) =      (qln  (icrm,k) - ql  (icrm,k)) * idt_gl
+      qcltend(icrm,k) =      (qccln(icrm,k) - qccl(icrm,k)) * idt_gl
+      qiltend(icrm,k) =      (qiiln(icrm,k) - qiil(icrm,k)) * idt_gl
+    enddo
+  enddo
+
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
+  do icrm = 1 , ncrms
+    do k = ptop,ptop+1
+      ! don't use CRM tendencies from two crm top levels,
+      ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
+      sltend (icrm,k) = 0.
+      qltend (icrm,k) = 0.
+      qcltend(icrm,k) = 0.
+      qiltend(icrm,k) = 0.
+    enddo
+  enddo
+
   !$acc wait(1)
   !$acc end data
 
   call t_startf('after time step loop')
 
   do icrm = 1 , ncrms
-    tln  (icrm,ptop:plev) = tln  (icrm,ptop:plev) * factor_xy
-    qln  (icrm,ptop:plev) = qln  (icrm,ptop:plev) * factor_xy
-    qccln(icrm,ptop:plev) = qccln(icrm,ptop:plev) * factor_xy
-    qiiln(icrm,ptop:plev) = qiiln(icrm,ptop:plev) * factor_xy
-    uln  (icrm,ptop:plev) = uln  (icrm,ptop:plev) * factor_xy
-    vln  (icrm,ptop:plev) = vln  (icrm,ptop:plev) * factor_xy
-
-#ifdef SPMOMTRANS
-    ! whannah - SP CMT tendencies
-    ultend(icrm,:) = (ulnicrm, - ul(icrm,:))*idt_gl
-    vltend(icrm,:) = (vlnicrm, - vl(icrm,:))*idt_gl
-#endif
-
-    sltend (icrm,:) = cp * (tln  (icrm,:) - tl  (icrm,:)) * idt_gl
-    qltend (icrm,:) =      (qln  (icrm,:) - ql  (icrm,:)) * idt_gl
-    qcltend(icrm,:) =      (qccln(icrm,:) - qccl(icrm,:)) * idt_gl
-    qiltend(icrm,:) =      (qiiln(icrm,:) - qiil(icrm,:)) * idt_gl
-    prectend (icrm)=(colprec(icrm) -prectend (icrm))/ggr*factor_xy * idt_gl
-    precstend(icrm)=(colprecs(icrm)-precstend(icrm))/ggr*factor_xy * idt_gl
-
-    ! don't use CRM tendencies from two crm top levels,
-    ! radiation tendencies are added back after the CRM call (see crm_physics_tend)
-    sltend (icrm,ptop:ptop+1) = 0.
-    qltend (icrm,ptop:ptop+1) = 0.
-    qcltend(icrm,ptop:ptop+1) = 0.
-    qiltend(icrm,ptop:ptop+1) = 0.
     !-------------------------------------------------------------
     !
     ! Save the last step to the permanent core:
