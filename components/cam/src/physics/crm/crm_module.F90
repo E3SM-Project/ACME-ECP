@@ -1604,24 +1604,27 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
+  do k = 1 , plev
+    do icrm = 1 , ncrms
+      ! note, rates are divded by dt to get mean rate over step
+#ifdef m2005
+      aut_crm_a (icrm,k) = aut_crm_a (icrm,k) / dble(nstop) * factor_xy / dt
+      acc_crm_a (icrm,k) = acc_crm_a (icrm,k) / dble(nstop) * factor_xy / dt
+      evpc_crm_a(icrm,k) = evpc_crm_a(icrm,k) / dble(nstop) * factor_xy / dt
+      evpr_crm_a(icrm,k) = evpr_crm_a(icrm,k) / dble(nstop) * factor_xy / dt
+      mlt_crm_a (icrm,k) = mlt_crm_a (icrm,k) / dble(nstop) * factor_xy / dt
+      sub_crm_a (icrm,k) = sub_crm_a (icrm,k) / dble(nstop) * factor_xy / dt
+      dep_crm_a (icrm,k) = dep_crm_a (icrm,k) / dble(nstop) * factor_xy / dt
+      con_crm_a (icrm,k) = con_crm_a (icrm,k) / dble(nstop) * factor_xy / dt
+#endif
+    enddo
+  enddo
+
   !$acc wait(1)
   !$acc end data
 
   call t_startf('after time step loop')
-
-  do icrm = 1 , ncrms
-    ! note, rates are divded by dt to get mean rate over step
-#ifdef m2005
-    aut_crm_a (icrm,:) = aut_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
-    acc_crm_a (icrm,:) = acc_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
-    evpc_crm_a(icrm,:) = evpc_crm_a(icrm,:) / dble(nstop) * factor_xy / dt
-    evpr_crm_a(icrm,:) = evpr_crm_a(icrm,:) / dble(nstop) * factor_xy / dt
-    mlt_crm_a (icrm,:) = mlt_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
-    sub_crm_a (icrm,:) = sub_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
-    dep_crm_a (icrm,:) = dep_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
-    con_crm_a (icrm,:) = con_crm_a (icrm,:) / dble(nstop) * factor_xy / dt
-#endif
-  enddo
 
   do icrm = 1 , ncrms
     precc (icrm) = 0.
