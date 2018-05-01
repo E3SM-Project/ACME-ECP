@@ -1420,78 +1420,83 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
+  !$acc parallel loop gang vector collapse(4) default(present) present(tkh,tk) async(1)
+  do k = 1 , nz
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          if (k <= nzm) then
+            !-------------------------------------------------------------
+            ! Save the last step to the permanent core:
+            u_crm  (icrm,i,j,k) = u   (icrm,i,j,k)
+            v_crm  (icrm,i,j,k) = v   (icrm,i,j,k)
+            w_crm  (icrm,i,j,k) = w   (icrm,i,j,k)
+            t_crm  (icrm,i,j,k) = tabs(icrm,i,j,k)
+            micro_fields_crm(icrm,i,j,k,1:nmicro_fields) = micro_field(icrm,i,j,k,1:nmicro_fields)
+
+#ifdef sam1mom
+            micro_fields_crm(icrm,i,j,k,3) = qn(icrm,i,j,k)
+#endif
+#ifdef m2005
+            micro_fields_crm(icrm,i,j,k,11) = cloudliq(icrm,i,j,k)
+#endif
+            crm_tk   (icrm,i,j,k) = tk  (icrm,i,j,k)
+            crm_tkh  (icrm,i,j,k) = tkh (icrm,i,j,k)
+            cld3d_crm(icrm,i,j,k) = CF3D(icrm,i,j,k)
+#ifdef CLUBB_CRM
+            clubb_buffer(icrm,i,j,k, 13) = t_tndcy     (i,j,k)
+            clubb_buffer(icrm,i,j,k, 14) = qc_tndcy    (i,j,k)
+            clubb_buffer(icrm,i,j,k, 15) = qv_tndcy    (i,j,k)
+            clubb_buffer(icrm,i,j,k, 16) = u_tndcy     (i,j,k)
+            clubb_buffer(icrm,i,j,k, 17) = v_tndcy     (i,j,k)
+            clubb_tk    (icrm,i,j,k)     = tk_clubb    (i,j,k)
+            clubb_tkh   (icrm,i,j,k)     = tkh_clubb   (i,j,k)
+            relvar      (icrm,i,j,k)     = relvarg     (i,j,k)
+            accre_enhan (icrm,i,j,k)     = accre_enhang(i,j,k)
+            qclvar      (icrm,i,j,k)     = qclvarg     (i,j,k)
+#endif
+            qc_crm (icrm,i,j,k) = qcl(icrm,i,j,k)
+            qi_crm (icrm,i,j,k) = qci(icrm,i,j,k)
+            qpc_crm(icrm,i,j,k) = qpl(icrm,i,j,k)
+            qpi_crm(icrm,i,j,k) = qpi(icrm,i,j,k)
+#ifdef m2005
+            wvar_crm(icrm,i,j,k) = wvar (icrm,i,j,k)
+            aut_crm (icrm,i,j,k) = aut1 (icrm,i,j,k)
+            acc_crm (icrm,i,j,k) = acc1 (icrm,i,j,k)
+            evpc_crm(icrm,i,j,k) = evpc1(icrm,i,j,k)
+            evpr_crm(icrm,i,j,k) = evpr1(icrm,i,j,k)
+            mlt_crm (icrm,i,j,k) = mlt1 (icrm,i,j,k)
+            sub_crm (icrm,i,j,k) = sub1 (icrm,i,j,k)
+            dep_crm (icrm,i,j,k) = dep1 (icrm,i,j,k)
+            con_crm (icrm,i,j,k) = con1 (icrm,i,j,k)
+#endif
+        endif
+#ifdef CLUBB_CRM
+          clubb_buffer(icrm,i,j,k,  1) = up2       (i,j,k)
+          clubb_buffer(icrm,i,j,k,  2) = vp2       (i,j,k)
+          clubb_buffer(icrm,i,j,k,  3) = wprtp     (i,j,k)
+          clubb_buffer(icrm,i,j,k,  4) = wpthlp    (i,j,k)
+          clubb_buffer(icrm,i,j,k,  5) = wp2       (i,j,k)
+          clubb_buffer(icrm,i,j,k,  6) = wp3       (i,j,k)
+          clubb_buffer(icrm,i,j,k,  7) = rtp2      (i,j,k)
+          clubb_buffer(icrm,i,j,k,  8) = thlp2     (i,j,k)
+          clubb_buffer(icrm,i,j,k,  9) = rtpthlp   (i,j,k)
+          clubb_buffer(icrm,i,j,k, 10) = upwp      (i,j,k)
+          clubb_buffer(icrm,i,j,k, 11) = vpwp      (i,j,k)
+          clubb_buffer(icrm,i,j,k, 12) = cloud_frac(i,j,k)
+          crm_cld     (icrm,i,j,k)     = cloud_frac(i,j,k)
+#endif
+        enddo
+      enddo
+    enddo
+  enddo
+
   !$acc wait(1)
   !$acc end data
 
   call t_startf('after time step loop')
 
   do icrm = 1 , ncrms
-    !-------------------------------------------------------------
-    !
-    ! Save the last step to the permanent core:
-    u_crm  (icrm,1:nx,1:ny,1:nzm) = u   (icrm,1:nx,1:ny,1:nzm)
-    v_crm  (icrm,1:nx,1:ny,1:nzm) = v   (icrm,1:nx,1:ny,1:nzm)
-    w_crm  (icrm,1:nx,1:ny,1:nzm) = w   (icrm,1:nx,1:ny,1:nzm)
-    t_crm  (icrm,1:nx,1:ny,1:nzm) = tabs(icrm,1:nx,1:ny,1:nzm)
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
-
-#ifdef sam1mom
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3) = qn(icrm,1:nx,1:ny,1:nzm)
-#endif
-#ifdef m2005
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,11) = cloudliq(icrm,1:nx,1:ny,1:nzm)
-#endif
-    crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (icrm,1:nx, 1:ny, 1:nzm)
-    crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (icrm,1:nx, 1:ny, 1:nzm)
-    cld3d_crm(icrm,1:nx,1:ny,1:nzm) = CF3D(icrm,1:nx, 1:ny, 1:nzm)
-#ifdef CLUBB_CRM
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3) = wprtp     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4) = wpthlp    (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5) = wp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6) = wp3       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7) = rtp2      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8) = thlp2     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9) = rtpthlp   (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10) = upwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11) = vpwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12) = cloud_frac(1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13) = t_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14) = qc_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15) = qv_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16) = u_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17) = v_tndcy   (1:nx, 1:ny, 1:nzm)
-
-    crm_cld    (icrm,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
-    clubb_tk   (icrm,1:nx, 1:ny, 1:nzm) = tk_clubb    (1:nx, 1:ny, 1:nzm)
-    clubb_tkh  (icrm,1:nx, 1:ny, 1:nzm) = tkh_clubb   (1:nx, 1:ny, 1:nzm)
-    relvar     (icrm,1:nx, 1:ny, 1:nzm) = relvarg     (1:nx, 1:ny, 1:nzm)
-    accre_enhan(icrm,1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm)
-    qclvar     (icrm,1:nx, 1:ny, 1:nzm) = qclvarg     (1:nx, 1:ny, 1:nzm)
-#endif
-
-    do k=1,nzm
-     do j=1,ny
-      do i=1,nx
-        qc_crm (icrm,i,j,k) = qcl(icrm,i,j,k)
-        qi_crm (icrm,i,j,k) = qci(icrm,i,j,k)
-        qpc_crm(icrm,i,j,k) = qpl(icrm,i,j,k)
-        qpi_crm(icrm,i,j,k) = qpi(icrm,i,j,k)
-#ifdef m2005
-        wvar_crm(icrm,i,j,k) = wvar (icrm,i,j,k)
-        aut_crm (icrm,i,j,k) = aut1 (icrm,i,j,k)
-        acc_crm (icrm,i,j,k) = acc1 (icrm,i,j,k)
-        evpc_crm(icrm,i,j,k) = evpc1(icrm,i,j,k)
-        evpr_crm(icrm,i,j,k) = evpr1(icrm,i,j,k)
-        mlt_crm (icrm,i,j,k) = mlt1 (icrm,i,j,k)
-        sub_crm (icrm,i,j,k) = sub1 (icrm,i,j,k)
-        dep_crm (icrm,i,j,k) = dep1 (icrm,i,j,k)
-        con_crm (icrm,i,j,k) = con1 (icrm,i,j,k)
-#endif
-        enddo
-      enddo
-    enddo
     z0m     (icrm) = z0(icrm)
     taux_crm(icrm) = taux0(icrm) / dble(nstop)
     tauy_crm(icrm) = tauy0(icrm) / dble(nstop)
