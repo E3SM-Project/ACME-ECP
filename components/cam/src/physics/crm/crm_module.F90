@@ -1546,7 +1546,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     enddo
   enddo
 
-  !$acc parallel loop gang vector collapse(2)
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
   do k = 1 , plev
     do icrm = 1 , ncrms
       cld   (icrm,k) = min(1._r8,cld   (icrm,k)/real(nstop,crm_rknd)*factor_xy)
