@@ -787,15 +787,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
 #else
 #endif
 
-!--------------------------------------------------
-#ifdef sam1mom
-
-  !$acc data copy(rho,tabs0,pres,accrsi,accrsc,coefice,evaps1,evaps2,accrgi,accrgc,evapg1,evapg2,accrrc,evapr1,evapr2)
-  if(doprecip) call precip_init(ncrms)
-  !$acc wait(1)
-  !$acc end data
-#endif
-  
   !$acc data copy(t00, tln, qln, qccln, qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, bflx, wnd, colprec, colprecs, gcolindex, cltemp, cmtemp, chtemp, cttemp, &
   !$acc&          z, pres, zi, presi, adz, adzw, dz, latitude0, longitude0, z0, uhl, &
   !$acc&          vhl, taux0, tauy0, u, v, w, t, p, tabs, qv, qcl, qpl, qci, qpi, tke2, tk2, dudt, dvdt, dwdt, misc, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, fluxtq, fzero, &
@@ -814,6 +805,12 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   !$acc&          mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm, flux_qt, fluxsgs_qt, tkez, tkesgsz, tkz, flux_u, flux_v, flux_qp, pflx, qt_ls, qt_trans, &
   !$acc&          qp_trans, qp_fall, qp_src, qp_evp, t_ls, prectend, precstend, precsc, precsl, taux_crm, tauy_crm, z0m, timing_factor, qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
   !$acc&          qtot, dt3, mui_crm, mdi_crm)
+
+!--------------------------------------------------
+#ifdef sam1mom
+
+  if(doprecip) call precip_init(ncrms)
+#endif
 
   !MRN: Don't want any stochasticity introduced in the standalone.
   !MRN: Need to make sure the first call to crm(...) is not dumped out
