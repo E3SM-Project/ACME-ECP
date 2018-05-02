@@ -498,25 +498,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   enddo
 #endif
 
-  !$acc data copy(t00, tln, qln, qccln, qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, bflx, wnd, colprec, colprecs, gcolindex, cltemp, cmtemp, chtemp, cttemp, &
-  !$acc&          z, pres, zi, presi, adz, adzw, dz, latitude0, longitude0, z0, uhl, &
-  !$acc&          vhl, taux0, tauy0, u, v, w, t, p, tabs, qv, qcl, qpl, qci, qpi, tke2, tk2, dudt, dvdt, dwdt, misc, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, fluxtq, fzero, &
-  !$acc&          precsfc, precssfc, t0, q0, qv0, tabs0, tl0, tv0, u0, v0, tg0, qg0, ug0, vg0, p0, tke0, t01, q01, qp0, qn0, prespot, rho, rhow, bet, gamaz, wsub, qtend, ttend, utend, &
-  !$acc&          vtend, sstxy, fcory, fcorzy, latitude, longitude, prec_xy, pw_xy, cw_xy, iw_xy, cld_xy, u200_xy, usfc_xy, v200_xy, vsfc_xy, w500_xy, twle, twsb, precflux, uwle, uwsb, &
-  !$acc&          vwle, vwsb, tkelediss, t2leadv, t2legrad, t2lediff, t2lediss, twleadv, twlediff, tadv, tdiff, tlat, tlatqi, qifall, qpfall, w_max, u_max, total_water_before, &
-  !$acc&          total_water_after, total_water_evap, total_water_prec, total_water_ls, total_water_clubb, total_energy_before, total_energy_after, total_energy_evap, total_energy_prec, &
-  !$acc&          total_energy_ls, total_energy_clubb, total_energy_rad, qtotmicro, CF3D, u850_xy, v850_xy, psfc_xy, swvp_xy, cloudtopheight, echotopheight, cloudtoptemp, &
-  !$acc&          micro_field, fluxbmk, fluxtmk, mkwle, mkwsb, mkadv, mklsadv, mkdiff, mstor, qn, qpsrc, qpevp, tracer, fluxbtr, fluxttr, trwle, trwsb, tradv, trdiff, trphys, &
-  !$acc&          sgs_field, sgs_field_diag, fluxbsgs, fluxtsgs, sgswle, sgswsb, sgsadv, sgslsadv, sgsdiff, grdf_x, grdf_y, grdf_z, tkesbbuoy, tkesbshear, tkesbdiss, tkesbdiff, accrsc, &
-  !$acc&          accrsi, accrrc, coefice, accrgc, accrgi, evaps1, evaps2, evapr1, evapr2, evapg1, evapg2, &
-  !$acc&          icol, latitude0_in, longitude0_in, ps, pmid, pdel, phis, zmid, zint, qrad_crm, ocnfrac, tau00, wndls, bflxls, fluxu00, fluxv00, fluxt00, fluxq00, tl, ql, qccl, qiil, ul, vl, &
-  !$acc&          crm_tk, crm_tkh, cltot, clhgh, clmed, cllow, sltend, qltend, qcltend, qiltend, &
-  !$acc&          u_crm, v_crm, w_crm, t_crm, micro_fields_crm, cld3d_crm, t_rad, qv_rad, qc_rad, qi_rad, cld_rad, t_rad, qv_rad, qc_rad, qi_rad, cld_rad, &
-  !$acc&          precc, precl, cld, cldtop, gicewp, gliqwp, mc, mcup, mcdn, mcuup, mcudn, crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
-  !$acc&          mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm, flux_qt, fluxsgs_qt, tkez, tkesgsz, tkz, flux_u, flux_v, flux_qp, pflx, qt_ls, qt_trans, &
-  !$acc&          qp_trans, qp_fall, qp_src, qp_evp, t_ls, prectend, precstend, precsc, precsl, taux_crm, tauy_crm, z0m, timing_factor, qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
-  !$acc&          qtot, dt3, mui_crm, mdi_crm)
-
   igstep = get_nstep()
 
 #ifdef CRM_DUMP
@@ -543,34 +524,39 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   idt_gl    = 1._r8/dt_gl
   ptop      = plev-nzm+1
   factor_xy = 1._r8/dble(nx*ny)
-
-  !$acc parallel loop gang vector collapse(4) default(present) async(1)
-  do k = 1 , crm_nz
-    do j = 1 , crm_ny_rad
-      do i = 1 , crm_nx_rad
-        do icrm = 1 , ncrms
-          t_rad  (icrm,i,j,k)  = 0
-          qv_rad (icrm,i,j,k)  = 0
-          qc_rad (icrm,i,j,k)  = 0
-          qi_rad (icrm,i,j,k)  = 0
-          cld_rad(icrm,i,j,k)  = 0
+  t_rad    = 0
+  qv_rad   = 0
+  qc_rad   = 0
+  qi_rad   = 0
+  cld_rad  = 0
 #ifdef m2005
-          nc_rad (icrm,i,j,k) = 0
-          ni_rad (icrm,i,j,k) = 0
-          qs_rad (icrm,i,j,k) = 0
-          ns_rad (icrm,i,j,k) = 0
+  nc_rad  = 0
+  ni_rad  = 0
+  qs_rad  = 0
+  ns_rad  = 0
 #endif
-        enddo
-      enddo
-    enddo
-  enddo
-
   ! zs=phis(icrm)/ggr
-  !$acc parallel loop gang vector default(present) async(1)
-  do icrm = 1 , ncrms
-    bflx(icrm) = bflxls(icrm)
-    wnd(icrm) = wndls(icrm)
-  enddo
+  bflx(:) = bflxls(:)
+  wnd(:) = wndls(:)
+
+  !$acc data copy(t00, tln, qln, qccln, qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, bflx, wnd, colprec, colprecs, gcolindex, cltemp, cmtemp, chtemp, cttemp, &
+  !$acc&          z, pres, zi, presi, adz, adzw, dz, latitude0, longitude0, z0, uhl, &
+  !$acc&          vhl, taux0, tauy0, u, v, w, t, p, tabs, qv, qcl, qpl, qci, qpi, tke2, tk2, dudt, dvdt, dwdt, misc, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, fluxtq, fzero, &
+  !$acc&          precsfc, precssfc, t0, q0, qv0, tabs0, tl0, tv0, u0, v0, tg0, qg0, ug0, vg0, p0, tke0, t01, q01, qp0, qn0, prespot, rho, rhow, bet, gamaz, wsub, qtend, ttend, utend, &
+  !$acc&          vtend, sstxy, fcory, fcorzy, latitude, longitude, prec_xy, pw_xy, cw_xy, iw_xy, cld_xy, u200_xy, usfc_xy, v200_xy, vsfc_xy, w500_xy, twle, twsb, precflux, uwle, uwsb, &
+  !$acc&          vwle, vwsb, tkelediss, t2leadv, t2legrad, t2lediff, t2lediss, twleadv, twlediff, tadv, tdiff, tlat, tlatqi, qifall, qpfall, w_max, u_max, total_water_before, &
+  !$acc&          total_water_after, total_water_evap, total_water_prec, total_water_ls, total_water_clubb, total_energy_before, total_energy_after, total_energy_evap, total_energy_prec, &
+  !$acc&          total_energy_ls, total_energy_clubb, total_energy_rad, qtotmicro, CF3D, u850_xy, v850_xy, psfc_xy, swvp_xy, cloudtopheight, echotopheight, cloudtoptemp, &
+  !$acc&          micro_field, fluxbmk, fluxtmk, mkwle, mkwsb, mkadv, mklsadv, mkdiff, mstor, qn, qpsrc, qpevp, tracer, fluxbtr, fluxttr, trwle, trwsb, tradv, trdiff, trphys, &
+  !$acc&          sgs_field, sgs_field_diag, fluxbsgs, fluxtsgs, sgswle, sgswsb, sgsadv, sgslsadv, sgsdiff, grdf_x, grdf_y, grdf_z, tkesbbuoy, tkesbshear, tkesbdiss, tkesbdiff, accrsc, &
+  !$acc&          accrsi, accrrc, coefice, accrgc, accrgi, evaps1, evaps2, evapr1, evapr2, evapg1, evapg2, &
+  !$acc&          icol, latitude0_in, longitude0_in, ps, pmid, pdel, phis, zmid, zint, qrad_crm, ocnfrac, tau00, wndls, bflxls, fluxu00, fluxv00, fluxt00, fluxq00, tl, ql, qccl, qiil, ul, vl, &
+  !$acc&          crm_tk, crm_tkh, cltot, clhgh, clmed, cllow, sltend, qltend, qcltend, qiltend, &
+  !$acc&          u_crm, v_crm, w_crm, t_crm, micro_fields_crm, cld3d_crm, t_rad, qv_rad, qc_rad, qi_rad, cld_rad, t_rad, qv_rad, qc_rad, qi_rad, cld_rad, &
+  !$acc&          precc, precl, cld, cldtop, gicewp, gliqwp, mc, mcup, mcdn, mcuup, mcudn, crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
+  !$acc&          mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm, flux_qt, fluxsgs_qt, tkez, tkesgsz, tkz, flux_u, flux_v, flux_qp, pflx, qt_ls, qt_trans, &
+  !$acc&          qp_trans, qp_fall, qp_src, qp_evp, t_ls, prectend, precstend, precsc, precsl, taux_crm, tauy_crm, z0m, timing_factor, qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
+  !$acc&          qtot, dt3, mui_crm, mdi_crm)
 
 !-----------------------------------------
 
