@@ -211,7 +211,7 @@ CONTAINS
     !  end if
 
     if(LES) then
-      !$acc parallel loop gang vector collapse(2)
+      !$acc parallel loop gang vector collapse(2) default(present) async(1)
       do k=1,nzm
         do icrm = 1 , ncrms
           grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
@@ -220,7 +220,7 @@ CONTAINS
         end do
       end do
     else
-      !$acc parallel loop gang vector collapse(2)
+      !$acc parallel loop gang vector collapse(2) default(present) async(1)
       do k=1,nzm
         do icrm = 1 , ncrms
           grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
