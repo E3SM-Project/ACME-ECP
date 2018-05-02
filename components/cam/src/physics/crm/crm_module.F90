@@ -567,33 +567,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
     end do
   end do
 
-  ! if(ocnfrac(icrm).gt.0.5) then
-  !    OCEAN(icrm) = .true.
-  ! else
-  !    LAND(icrm) = .true.
-  ! end if
-
-  ! Create CRM vertical grid and initialize some vertical reference arrays:
-  do k = 1, nzm
-    do icrm = 1 , ncrms
-      z(icrm,k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
-      zi(icrm,k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
-      pres(icrm,k) = pmid(icrm,plev-k+1)/100.
-      prespot(icrm,k)=(1000./pres(icrm,k))**(rgas/cp)
-      bet(icrm,k) = ggr/tl(icrm,plev-k+1)
-      gamaz(icrm,k)=ggr/cp*z(icrm,k)
-    end do ! k
-  end do ! k
-  do icrm = 1 , ncrms
-    zi(icrm,nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
-    dz(icrm) = 0.5*(z(icrm,1)+z(icrm,2))
-    do k=2,nzm
-      adzw(icrm,k) = (z(icrm,k)-z(icrm,k-1))/dz(icrm)
-    end do
-    adzw(icrm,1)  = 1.
-    adzw(icrm,nz) = adzw(icrm,nzm)
-  enddo
-
   !$acc data copy(t00, tln, qln, qccln, qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, bflx, wnd, colprec, colprecs, gcolindex, cltemp, cmtemp, chtemp, cttemp, &
   !$acc&          z, pres, zi, presi, adz, adzw, dz, latitude0, longitude0, z0, uhl, &
   !$acc&          vhl, taux0, tauy0, u, v, w, t, p, tabs, qv, qcl, qpl, qci, qpi, tke2, tk2, dudt, dvdt, dwdt, misc, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, fluxtq, fzero, &
@@ -612,6 +585,35 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   !$acc&          mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm, flux_qt, fluxsgs_qt, tkez, tkesgsz, tkz, flux_u, flux_v, flux_qp, pflx, qt_ls, qt_trans, &
   !$acc&          qp_trans, qp_fall, qp_src, qp_evp, t_ls, prectend, precstend, precsc, precsl, taux_crm, tauy_crm, z0m, timing_factor, qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
   !$acc&          qtot, dt3, mui_crm, mdi_crm)
+
+  ! if(ocnfrac(icrm).gt.0.5) then
+  !    OCEAN(icrm) = .true.
+  ! else
+  !    LAND(icrm) = .true.
+  ! end if
+
+  ! Create CRM vertical grid and initialize some vertical reference arrays:
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
+  do k = 1, nzm
+    do icrm = 1 , ncrms
+      z(icrm,k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
+      zi(icrm,k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
+      pres(icrm,k) = pmid(icrm,plev-k+1)/100.
+      prespot(icrm,k)=(1000./pres(icrm,k))**(rgas/cp)
+      bet(icrm,k) = ggr/tl(icrm,plev-k+1)
+      gamaz(icrm,k)=ggr/cp*z(icrm,k)
+    end do ! k
+  end do ! k
+  !$acc parallel loop gang vector default(present) async(1)
+  do icrm = 1 , ncrms
+    zi(icrm,nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
+    dz(icrm) = 0.5*(z(icrm,1)+z(icrm,2))
+    do k=2,nzm
+      adzw(icrm,k) = (z(icrm,k)-z(icrm,k-1))/dz(icrm)
+    end do
+    adzw(icrm,1)  = 1.
+    adzw(icrm,nz) = adzw(icrm,nzm)
+  enddo
 
   !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
   !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
