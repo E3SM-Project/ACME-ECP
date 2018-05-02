@@ -940,9 +940,14 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
       enddo
     enddo
   enddo
-  !$acc parallel loop gang vector default(present) async(1)
-  do icrm = 1 , ncrms
-    qtot(icrm,1) = qtot(icrm,1) + (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)) * pdel(icrm,l)/ggr
+  !$acc parallel loop gang vector collapse(2) default(present) async(1)
+  do k=1, nzm
+    do icrm = 1 , ncrms
+      l=plev-k+1
+      tmp = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)) * pdel(icrm,l)/ggr
+      !$acc atomic update
+      qtot(icrm,1) = qtot(icrm,1) + tmp
+    enddo
   enddo
   !---mhwangtest
 
