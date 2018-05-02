@@ -166,38 +166,11 @@ CONTAINS
     if(nrestart.eq.0) then
 
 #ifndef CRM
-      !$acc parallel loop gang vector collapse(5) default(present) async(1)
-      do m = 1 , nmicro_fields
-        do k = 1 , nzm
-          do j = dimy1_s,dimy2_s
-            do i = dimx1_s,dimx2_s
-              do icrm = 1 , ncrms
-                micro_field(icrm,i,j,k,m) = 0.
-              enddo
-            enddo
-          enddo
-        enddo
-      enddo
-      !$acc parallel loop gang vector collapse(4) default(present) async(1)
-      do k = 1 , nzm
-        do j = dimy1_s,dimy2_s
-          do i = dimx1_s,dimx2_s
-            do icrm = 1 , ncrms
-              q(icrm,i,j,k) = q0(icrm,k)
-            enddo
-          enddo
-        enddo
-      enddo
-      !$acc parallel loop gang vector collapse(4) default(present) async(1)
-      do k = 1 , nzm
-        do j = 1 , nx
-          do i = 1 , ny
-            do icrm = 1 , ncrms
-              qn(icrm,i,j,k) = 0.
-            enddo
-          enddo
-        enddo
-      enddo
+      micro_field(:,:,:,:,:) = 0.
+      do k=1,nzm
+        q(:,:,:,k) = q0(:,k)
+      end do
+      qn(:,:,:,:) = 0.
 #endif
 
 #ifdef CLUBB_CRM
@@ -206,12 +179,21 @@ CONTAINS
       if(docloud) then
 #endif
 #ifndef CRM
+        !$acc data copy(q,tabs,t,gamaz,qp,pres,qn)
         call cloud(q,qn,qp,ncrms)
+        !$acc wait(1)
+        !$acc end data
 #endif
+        !$acc data copy(qv,q,qn,tabs,qcl,qci,qpl,qpi,qp)
         call micro_diagnose(ncrms)
+        !$acc wait(1)
+        !$acc end data
       end if
       if(dosmoke) then
+        !$acc data copy(qv,q,qn,tabs,qcl,qci,qpl,qpi,qp)
         call micro_diagnose(ncrms)
+        !$acc wait(1)
+        !$acc end data
       end if
 
     end if
@@ -227,7 +209,7 @@ CONTAINS
     mkoutputscale(2) = 1.e3
 
     ! set mstor to be the inital microphysical mixing ratios
-    !$acc parallel loop gang vector collapse(3) default(present) async(1)
+    !$acc parallel loop gang vector collapse(3)
     do n=1, nmicro_fields
       do k=1, nzm
         do icrm = 1 , ncrms
