@@ -539,34 +539,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   bflx(:) = bflxls(:)
   wnd(:) = wndls(:)
 
-!-----------------------------------------
-
-#ifdef CLUBB_CRM
-  if(igstep == 1) then
-    lrestart_clubb = .false.
-  else
-   lrestart_clubb = .true.
-  endif
-#endif
-
-  call task_init()
-  call setparm()
-
-  do icrm = 1 , ncrms
-    fcor= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
-    fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
-    fcory(icrm,:) = fcor
-    fcorzy(icrm,:) = fcorz
-  enddo
-  do j=1,ny
-    do i=1,nx
-      do icrm = 1 , ncrms
-        latitude (icrm,i,j) = latitude0 (icrm)
-        longitude(icrm,i,j) = longitude0(icrm)
-      end do
-    end do
-  end do
-
   !$acc data copy(t00, tln, qln, qccln, qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, bflx, wnd, colprec, colprecs, gcolindex, cltemp, cmtemp, chtemp, cttemp, &
   !$acc&          z, pres, zi, presi, adz, adzw, dz, latitude0, longitude0, z0, uhl, &
   !$acc&          vhl, taux0, tauy0, u, v, w, t, p, tabs, qv, qcl, qpl, qci, qpi, tke2, tk2, dudt, dvdt, dwdt, misc, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, fluxtq, fzero, &
@@ -585,6 +557,36 @@ subroutine crm(lchnk, icol, ncrms, is_first_step , &
   !$acc&          mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm, flux_qt, fluxsgs_qt, tkez, tkesgsz, tkz, flux_u, flux_v, flux_qp, pflx, qt_ls, qt_trans, &
   !$acc&          qp_trans, qp_fall, qp_src, qp_evp, t_ls, prectend, precstend, precsc, precsl, taux_crm, tauy_crm, z0m, timing_factor, qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
   !$acc&          qtot, dt3, mui_crm, mdi_crm)
+
+!-----------------------------------------
+
+#ifdef CLUBB_CRM
+  if(igstep == 1) then
+    lrestart_clubb = .false.
+  else
+   lrestart_clubb = .true.
+  endif
+#endif
+
+  call task_init()
+  call setparm()
+
+  !$acc parallel loop gang vector default(present) async(1)
+  do icrm = 1 , ncrms
+    fcor= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
+    fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
+    fcory(icrm,:) = fcor
+    fcorzy(icrm,:) = fcorz
+  enddo
+  !$acc parallel loop gang vector collapse(3) default(present) async(1)
+  do j=1,ny
+    do i=1,nx
+      do icrm = 1 , ncrms
+        latitude (icrm,i,j) = latitude0 (icrm)
+        longitude(icrm,i,j) = longitude0(icrm)
+      end do
+    end do
+  end do
 
   ! if(ocnfrac(icrm).gt.0.5) then
   !    OCEAN(icrm) = .true.
