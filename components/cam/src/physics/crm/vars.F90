@@ -258,4 +258,10 @@ module vars
   real(crm_rknd)  hgaer(nzm, ntot_amode)    ! hygroscopicity of aerosol mode
 #endif
 
+contains
+
+  subroutine allocate_vars()
+    implicit none
+  end subroutine allocate_vars
+
 end module vars
