@@ -245,28 +245,30 @@ CONTAINS
 
     case(0)
 
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(k.le.4.and..not.dosmagor) then
-              do icrm = 1 , ncrms
-              tke(icrm,i,j,k)=0.04*(5-k)
-              enddo
-            endif
+            do icrm = 1 , ncrms
+              if(k.le.4.and..not.dosmagor) then
+                tke(icrm,i,j,k)=0.04*(5-k)
+              endif
+            enddo
           end do
         end do
       end do
 
     case(1)
 
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
-              do icrm = 1 , ncrms
-              tke(icrm,i,j,k)=1.
-              enddo
-            endif
+            do icrm = 1 , ncrms
+              if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
+                tke(icrm,i,j,k)=1.
+              endif
+            enddo
           end do
         end do
       end do
@@ -275,14 +277,15 @@ CONTAINS
 
     case(3)   ! gcss wg1 smoke-cloud case
 
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(icrm,k).gt.0.5e-3.and..not.dosmagor) then
-              do icrm = 1 , ncrms
-              tke(icrm,i,j,k)=1.
-              enddo
-            endif
+            do icrm = 1 , ncrms
+              if(q0(icrm,k).gt.0.5e-3.and..not.dosmagor) then
+                tke(icrm,i,j,k)=1.
+              endif
+            enddo
           end do
         end do
       end do
@@ -290,14 +293,15 @@ CONTAINS
 
     case(4)  ! gcss wg1 arm case
 
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(z(icrm,k).le.150..and..not.dosmagor) then
-              do icrm = 1 , ncrms
-              tke(icrm,i,j,k)=0.15*(1.-z(icrm,k)/150.)
-              enddo
-            endif
+            do icrm = 1 , ncrms
+              if(z(icrm,k).le.150..and..not.dosmagor) then
+                tke(icrm,i,j,k)=0.15*(1.-z(icrm,k)/150.)
+              endif
+            enddo
           end do
         end do
       end do
@@ -305,14 +309,15 @@ CONTAINS
 
     case(5)  ! gcss wg1 BOMEX case
 
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(z(icrm,k).le.3000..and..not.dosmagor) then
-              do icrm = 1 , ncrms
-              tke(icrm,i,j,k)=1.-z(icrm,k)/3000.
-              enddo
-            endif
+            do icrm = 1 , ncrms
+              if(z(icrm,k).le.3000..and..not.dosmagor) then
+                tke(icrm,i,j,k)=1.-z(icrm,k)/3000.
+              endif
+            enddo
           end do
         end do
       end do
@@ -320,14 +325,15 @@ CONTAINS
     case(6)  ! GCSS Lagragngian ASTEX
 
 
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
-              do icrm = 1 , ncrms
-              tke(icrm,i,j,k)=1.
-              enddo
-            endif
+            do icrm = 1 , ncrms
+              if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
+                tke(icrm,i,j,k)=1.
+              endif
+            enddo
           end do
         end do
       end do

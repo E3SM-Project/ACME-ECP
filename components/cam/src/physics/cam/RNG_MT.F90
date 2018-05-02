@@ -43,7 +43,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Update by Walter Hannah - March, 2018
-! - restructured code to be more consistent with E3SM 
+! - restructured code to be more consistent with E3SM
 ! - changed the interval to (0,1)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -61,14 +61,16 @@ module RNG_MT
    integer, private, parameter :: LMASK  = 2147483647
    integer, private, parameter :: TMASKB = -1658038656
    integer, private, parameter :: TMASKC = -272236544
-   
+
    integer, private :: mti
    integer, private, dimension(0:N-1) :: mt = N1
    integer, private, dimension(2)     :: mag01(0:1) = (/0, MATA/)
 
+   !$acc declare copyin(mt,mag01,mti)
+
    public RNG_MT_set_seed
    public RNG_MT_gen_rand
-   
+
    contains
 
 !-----------------------------------------------------------------------
@@ -78,9 +80,10 @@ module RNG_MT
 ! Knuth 1981, The Art of Computer Programming Vol. 2 (2nd Ed.), pp102
 !
 subroutine RNG_MT_set_seed(seed)
+  !$acc routine seq
 
    integer,intent(in) :: seed
-   
+
    mt(0) = iand(seed, -1)
    do mti = 1, N - 1
       mt(mti) = iand(69069 * mt(mti - 1), -1)
@@ -89,9 +92,10 @@ end subroutine RNG_MT_set_seed
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
 subroutine RNG_MT_gen_rand(grnd)
-   real(8), dimension(1), intent(out) :: grnd
+  !$acc routine seq
+   real(8), intent(out) :: grnd
    integer :: y, kk
-   
+
    if(mti >= N) then
       ! generate N words at one time
       if(mti == N + 1) then

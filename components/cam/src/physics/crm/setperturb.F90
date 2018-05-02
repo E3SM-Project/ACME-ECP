@@ -34,11 +34,14 @@ contains
       call setperturb_sgs(0,ncrms)  ! set sgs fields
 
       !!! set the seed (based on the global physics column index)
-      call RNG_MT_set_seed(iseed)
+      !$acc parallel loop gang vector default(present) async(1)
+      do k = 1 , 1
+        call RNG_MT_set_seed(iseed)
+      enddo
 
       t02 = 0.0
+      !$acc parallel loop gang vector collapse(4) default(present) async(1)
       do k=1,nzm
-
          do j=1,ny
             do i=1,nx
               do icrm = 1 , ncrms
@@ -58,19 +61,22 @@ contains
               end do ! icrm
             end do ! i
          end do ! j
+       end do ! j
 
-         !!! enforce energy conservation
+       !!! enforce energy conservation
+       !$acc parallel loop gang vector collapse(4) default(present) async(1)
+       do k=1,nzm
          do j=1, ny
-            do i=1, nx
+           do i=1, nx
+             do icrm = 1 , ncrms
                if(k.le.num_perturb_layers) then
-                do icrm = 1 , ncrms
-                  t(icrm,i,j,k) = t(icrm,i,j,k) * t0(icrm,k)/t02(icrm,k)
-                enddo
+                 t(icrm,i,j,k) = t(icrm,i,j,k) * t0(icrm,k)/t02(icrm,k)
                end if
-            end do ! i
+             enddo
+           end do ! i
          end do ! j
 
-      end do ! k
+       end do ! k
 
    end subroutine setperturb
 
