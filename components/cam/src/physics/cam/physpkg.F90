@@ -1352,6 +1352,7 @@ subroutine tphysac (ztodt,   cam_in,  &
     use shr_kind_mod,       only: r8 => shr_kind_r8
     use chemistry,          only: chem_is_active, chem_timestep_tend, chem_emissions
     use cam_diagnostics,    only: diag_phys_tend_writeout, diag_conv
+    use cloud_diagnostics,  only: cloud_diagnostics_calc
     use gw_drag,            only: gw_tend
     use vertical_diffusion, only: vertical_diffusion_tend
     use rayleigh_friction,  only: rayleigh_friction_tend
@@ -1371,7 +1372,7 @@ subroutine tphysac (ztodt,   cam_in,  &
                                   check_prect, &
                                   check_qflx 
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
-    use time_manager,       only: get_nstep
+    use time_manager,       only: is_first_step, get_nstep
     use cam_abortutils,         only: endrun
     use dycore,             only: dycore_is
     use cam_control_mod,    only: aqua_planet 
@@ -1656,6 +1657,25 @@ if (l_rayleigh) then
 end if ! l_rayleigh
 
 
+
+#if defined( SP_CRM_SPLIT )
+    !===================================================
+    ! SP_CRM_SPLIT splits the CRM integration equally
+    ! between tphysbc and tphysac, instead of running 
+    ! the whole integration from tphysbc. The idea is 
+    ! have the CRM handle the diffusion of sfc fluxes.
+    ! for tphysac() > phys_stage = 2
+    !===================================================
+    if ( use_SPCAM .and. .not.is_first_step() ) then
+      dlf(:,:) = 0.   ! whannah - this variable doens't seem to be used - probably should remove from interface
+      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, 2)
+    endif
+#endif
+
+
+
+
+
 if (l_tracer_aero) then
 
     !  aerosol dry deposition processes
@@ -1727,22 +1747,6 @@ if (l_gw_drag) then
     call t_stopf  ( 'iondrag' )
 
 end if ! l_gw_drag
-
-
-
-#if defined( SP_CRM_SPLIT )
-    !===================================================
-    ! SP_CRM_SPLIT splits the CRM integration equally
-    ! between tphysbc and tphysac, instead of running 
-    ! the whole integration from tphysbc. The idea is 
-    ! have the CRM handle the diffusion of sfc fluxes.
-    ! for tphysac() > phys_stage = 2
-    !===================================================
-    dlf(:,:) = 0.   ! whannah - this variable doens't seem to be used - probably should remove from interface
-    if (use_SPCAM) then
-      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, 2)
-    endif
-#endif
     
 
 
@@ -1843,6 +1847,7 @@ end if ! l_ac_energy_chk
 #if defined( SP_CRM_SPLIT )
     ! Accumulate convection tendencies when using second CRM call
     call diag_conv(state, ztodt*0.5, pbuf)
+    call cloud_diagnostics_calc(state, pbuf)
 #endif
 
 end subroutine tphysac

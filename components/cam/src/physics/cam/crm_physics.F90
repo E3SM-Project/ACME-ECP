@@ -1054,7 +1054,8 @@ end subroutine crm_physics_init
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-   if(is_first_step()) then
+   ! if(is_first_step()) then
+   if( is_first_step() .and. phys_stage==1 ) then
        ! call check_energy_timestep_init(state, tend, pbuf)
        do i=1,ncol
          do k=1,crm_nz

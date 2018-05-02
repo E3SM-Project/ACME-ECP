@@ -2289,10 +2289,8 @@ subroutine cldprp(lchnk   , &
 !>songxl 2014-05-20----------------
 
 
-! whannah - ZM_ED_MOD - allows detrainment below first detrainment level, net mass balance is unaffected
-! #ifdef ZM_ED_MOD
-!    real(r8) min_ed
-! #endif
+   ! whannah - ZM_ED_MOD - allows detrainment below first detrainment level, net mass balance is unaffected
+   real(r8) min_ed
 
 
 !
@@ -2547,11 +2545,11 @@ subroutine cldprp(lchnk   , &
    end do
   
 ! whannah - ZM_ED_MOD - allows detrainment below first detrainment level, net mass balance is unaffected
-! #ifdef ZM_ED_MOD
-!    min_ed = 1.E-4_r8  ! (0.1 km-1 => 0.0001 m-1)
-! #else
-!    min_ed = 0._r8
-! #endif
+#ifdef ZM_ED_MOD
+   min_ed = 1.E-4_r8  ! (0.1 km-1 => 0.0001 m-1)
+#else
+   min_ed = 0._r8
+#endif
 
    do k = pver,msg + 1,-1
       do i = 1,il2g
@@ -2559,8 +2557,8 @@ subroutine cldprp(lchnk   , &
             zuef(i) = zf(i,k) - zf(i,jb(i))
             rmue(i) = (1._r8/eps0(i))* (exp(eps(i,k+1)*zuef(i))-1._r8)/zuef(i)
             mu(i,k) = (1._r8/eps0(i))* (exp(eps(i,k  )*zuef(i))-1._r8)/zuef(i)
-            eu(i,k) = (rmue(i)-mu(i,k+1))/dz(i,k)  ! + min_ed
-            du(i,k) = (rmue(i)-mu(i,k)  )/dz(i,k)  ! + min_ed
+            eu(i,k) = (rmue(i)-mu(i,k+1))/dz(i,k) + min_ed
+            du(i,k) = (rmue(i)-mu(i,k)  )/dz(i,k) + min_ed
          end if
       end do
    end do

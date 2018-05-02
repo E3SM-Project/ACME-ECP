@@ -13,10 +13,17 @@ contains
 		use params
 		use microphysics, only: micro_setparm
 		use sgs, only: sgs_setparm
+#if defined( SP_DYNAMIC_DX ) 
+		use time_manager          , only: get_nstep
+#endif
 
 		implicit none
 
 		integer icondavg, ierr
+
+#if defined( SP_DYNAMIC_DX ) 
+		integer         :: igstep            ! GCM time steps
+#endif
 
 		!NAMELIST /PARAMETERS/ dodamping, doupperbound, docloud, doprecip, &
 		!                dolongwave, doshortwave, dosgs, &
@@ -62,6 +69,14 @@ contains
 		dt		= CRM_DT
 		dx		= CRM_DX
 		dy		= CRM_DY
+#if defined( SP_DYNAMIC_DX ) 
+		igstep = get_nstep()
+		! dx = mod(igstep,3)*1e3
+		if ( mod(igstep,16).eq.0  ) dx = 2000.
+		if ( mod(igstep,16).eq.4  ) dx = 3000.
+		if ( mod(igstep,16).eq.8  ) dx = 4000.
+		if ( mod(igstep,16).eq.12 ) dx = 3000.
+#endif
 		CEM             = .true.
 #ifndef CLUBB_CRM
 		doclubb         = .false.   ! then docloud must be .true.

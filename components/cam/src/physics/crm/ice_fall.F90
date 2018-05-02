@@ -10,13 +10,13 @@ contains
 
     use vars
     use microphysics, only: micro_field, index_cloud_ice
-    !use micro_params
+    ! use micro_params
     use params
 
     implicit none
 
     integer i,j,k, kb, kc, kmax, kmin, ici
-    real(crm_rknd) coef,dqi,lat_heat,vt_ice
+    real(crm_rknd) coef,dqi,lat_heat,vt_ice, vt_ice_min
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
     real(crm_rknd) fz(nx,ny,nz)
 
@@ -64,9 +64,15 @@ contains
           qic = rho(k) *qci(i,j,k)
           qid = rho(kb)*qci(i,j,kb)
 
+#if defined( SP_FAST_ICE )
+          vt_ice_min = 0.9
+#else
+          vt_ice_min = 0.4
+#endif
+
           ! Ice sedimentation velocity depends on ice content. The fiting is
           ! based on the data by Heymsfield (JAS,2003). -Marat
-          vt_ice = min(real(0.4,crm_rknd),8.66*(max(real(0.,crm_rknd),qic)+1.e-10)**0.24)   ! Heymsfield (JAS, 2003, p.2607)
+          vt_ice = min( vt_ice_min, 8.66*(max(real(0.,crm_rknd),qic)+1.e-10)**0.24 )   ! Heymsfield (JAS, 2003, p.2607)
 
           ! Use MC flux limiter in computation of flux correction.
           ! (MC = monotonized centered difference).

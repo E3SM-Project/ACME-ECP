@@ -115,20 +115,51 @@ contains
               end if
               dq = dq * dtn * (q(i,j,k) /qsatt-1.)
               dq = max(-0.5*qp(i,j,k),dq)
+#if defined( SP_LIMIT_QP_EVAP_80_PCT )
+              dq = dq*0.8
+#endif
+#if defined( SP_LIMIT_QP_EVAP_50_PCT )
+              dq = dq*0.5
+#endif
+#if defined( SP_LIMIT_QP_EVAP_20_PCT )
+              dq = dq*0.2
+#endif
+#if defined( SP_LIMIT_QP_EVAP_00_PCT )
+              dq = dq*0.
+#endif
               qp(i,j,k) = qp(i,j,k) + dq
               q(i,j,k) = q(i,j,k) - dq
               qpevp(k) = qpevp(k) + dq
 
             else
 
-              q(i,j,k) = q(i,j,k) + qp(i,j,k)
-              qpevp(k) = qpevp(k) - qp(i,j,k)
-              qp(i,j,k) = 0.
+              dq = qp(i,j,k)
+
+#if defined( SP_LIMIT_QP_EVAP_80_PCT )
+              dq = dq*0.8
+#endif
+#if defined( SP_LIMIT_QP_EVAP_50_PCT )
+              dq = dq*0.5
+#endif
+#if defined( SP_LIMIT_QP_EVAP_20_PCT )
+              dq = dq*0.2
+#endif
+#if defined( SP_LIMIT_QP_EVAP_00_PCT )
+              dq = dq*0.
+#endif
+              q(i,j,k)  = q(i,j,k)  + dq
+              qpevp(k)  = qpevp(k)  - dq
+              qp(i,j,k) = qp(i,j,k) - dq
+
+              ! q(i,j,k) = q(i,j,k) + qp(i,j,k)
+              ! qpevp(k) = qpevp(k) - qp(i,j,k)
+              ! qp(i,j,k) = 0.
 
             endif
 
           endif
 
+          !!! deal with case of negative qp
           dq = qp(i,j,k)
           qp(i,j,k)=max(real(0.,crm_rknd),qp(i,j,k))
           q(i,j,k) = q(i,j,k) + (dq-qp(i,j,k))

@@ -25,27 +25,126 @@ module micro_params
 
   ! Terminal velocity coefficients
 
+  ! real(crm_rknd), parameter :: a_rain = 842. ! Coeff.for rain term vel
+  ! real(crm_rknd), parameter :: b_rain = 0.8  ! Fall speed exponent for rain
+  ! real(crm_rknd), parameter :: a_snow = 4.84 ! Coeff.for snow term vel
+  ! real(crm_rknd), parameter :: b_snow = 0.25 ! Fall speed exponent for snow
+  ! !!!real(crm_rknd), parameter :: a_grau = 40.7! Krueger (1994) ! Coef. for graupel term vel
+  ! real(crm_rknd), parameter :: a_grau = 94.5 ! Lin (1983) (rhog=400)
+  ! !!!real(crm_rknd), parameter :: a_grau = 127.94! Lin (1983) (rhog=917)
+  ! real(crm_rknd), parameter :: b_grau = 0.5  ! Fall speed exponent for graupel
+
+  ! Autoconversion
+! #ifdef CLUBB_CRM   /*microphysical tuning for CLUBB*/
+!   real(crm_rknd), parameter :: qcw0 = 0.6e-3      ! Threshold for water autoconversion, g/g
+!   real(crm_rknd), parameter :: qci0 = 1.e-4     ! Threshold for ice autoconversion, g/g
+!   real(crm_rknd), parameter :: alphaelq = 10.e-3  ! autoconversion of cloud water rate coef
+!   real(crm_rknd), parameter :: betaelq = 6.0e-3   ! autoconversion of cloud ice rate coef
+! #else
+!   real(crm_rknd), parameter :: qcw0 = 1.e-3      ! Threshold for water autoconversion, g/g
+!   real(crm_rknd), parameter :: qci0 = 1.e-4     ! Threshold for ice autoconversion, g/g
+!   real(crm_rknd), parameter :: alphaelq = 1.e-3  ! autoconversion of cloud water rate coef
+!   real(crm_rknd), parameter :: betaelq = 1.e-3   ! autoconversion of cloud ice rate coef
+! #endif /*CLUBB_CRM*/
+
+! #if defined( SP_LOWER_ICE_AUTOCONV )
+!   real(crm_rknd), parameter :: qci0 = 1.e-6     ! Threshold for ice autoconversion, g/g
+! #else
+!   real(crm_rknd), parameter :: qci0 = 1.e-4     ! Threshold for ice autoconversion, g/g
+! #endif
+
+#if defined( SP_TUNING_A )  /* Decrease threshold for ice and water autoconversion */
+  ! Terminal velocity coefficients
   real(crm_rknd), parameter :: a_rain = 842. ! Coeff.for rain term vel
   real(crm_rknd), parameter :: b_rain = 0.8  ! Fall speed exponent for rain
   real(crm_rknd), parameter :: a_snow = 4.84 ! Coeff.for snow term vel
   real(crm_rknd), parameter :: b_snow = 0.25 ! Fall speed exponent for snow
-  !real(crm_rknd), parameter :: a_grau = 40.7! Krueger (1994) ! Coef. for graupel term vel
-  real(crm_rknd), parameter :: a_grau = 94.5 ! Lin (1983) (rhog=400)
-  !real(crm_rknd), parameter :: a_grau = 127.94! Lin (1983) (rhog=917)
+  real(crm_rknd), parameter :: a_grau = 94.5 ! Coeff.for graupel term vel
   real(crm_rknd), parameter :: b_grau = 0.5  ! Fall speed exponent for graupel
-
   ! Autoconversion
-#ifdef CLUBB_CRM   /*microphysical tuning for CLUBB*/
-  real(crm_rknd), parameter :: qcw0 = 0.6e-3      ! Threshold for water autoconversion, g/g
-  real(crm_rknd), parameter :: qci0 = 1.e-4     ! Threshold for ice autoconversion, g/g
-  real(crm_rknd), parameter :: alphaelq = 10.e-3  ! autoconversion of cloud water rate coef
-  real(crm_rknd), parameter :: betaelq = 6.0e-3   ! autoconversion of cloud ice rate coef
-#else
-  real(crm_rknd), parameter :: qcw0 = 1.e-3      ! Threshold for water autoconversion, g/g
-  real(crm_rknd), parameter :: qci0 = 1.e-4     ! Threshold for ice autoconversion, g/g
+  real(crm_rknd), parameter :: qcw0 = 1.e-4      ! Threshold for water autoconversion, g/g
+  real(crm_rknd), parameter :: qci0 = 1.e-6      ! Threshold for ice autoconversion, g/g
   real(crm_rknd), parameter :: alphaelq = 1.e-3  ! autoconversion of cloud water rate coef
   real(crm_rknd), parameter :: betaelq = 1.e-3   ! autoconversion of cloud ice rate coef
-#endif /*CLUBB_CRM*/
+#elif defined( SP_TUNING_B )  /* Increase water and ice autoconversion rate coeff */
+  ! Terminal velocity coefficients
+  real(crm_rknd), parameter :: a_rain = 842. ! Coeff.for rain term vel
+  real(crm_rknd), parameter :: b_rain = 0.8  ! Fall speed exponent for rain
+  real(crm_rknd), parameter :: a_snow = 4.84 ! Coeff.for snow term vel
+  real(crm_rknd), parameter :: b_snow = 0.25 ! Fall speed exponent for snow
+  real(crm_rknd), parameter :: a_grau = 94.5 ! Coeff.for graupel term vel
+  real(crm_rknd), parameter :: b_grau = 0.5  ! Fall speed exponent for graupel
+  ! Autoconversion
+  real(crm_rknd), parameter :: qcw0 = 1.e-3      ! Threshold for water autoconversion, g/g
+  real(crm_rknd), parameter :: qci0 = 1.e-4      ! Threshold for ice autoconversion, g/g
+  real(crm_rknd), parameter :: alphaelq = 10.e-3 ! autoconversion of cloud water rate coef
+  real(crm_rknd), parameter :: betaelq = 10.e-3  ! autoconversion of cloud ice rate coef
+#elif defined( SP_TUNING_C )  /* Combine A and B */
+  ! Terminal velocity coefficients
+  real(crm_rknd), parameter :: a_rain = 842. ! Coeff.for rain term vel
+  real(crm_rknd), parameter :: b_rain = 0.8  ! Fall speed exponent for rain
+  real(crm_rknd), parameter :: a_snow = 4.84 ! Coeff.for snow term vel
+  real(crm_rknd), parameter :: b_snow = 0.25 ! Fall speed exponent for snow
+  real(crm_rknd), parameter :: a_grau = 94.5 ! Coeff.for graupel term vel
+  real(crm_rknd), parameter :: b_grau = 0.5  ! Fall speed exponent for graupel
+  ! Autoconversion
+  real(crm_rknd), parameter :: qcw0 = 1.e-4      ! Threshold for water autoconversion, g/g
+  real(crm_rknd), parameter :: qci0 = 1.e-6      ! Threshold for ice autoconversion, g/g
+  real(crm_rknd), parameter :: alphaelq = 10.e-3 ! autoconversion of cloud water rate coef
+  real(crm_rknd), parameter :: betaelq = 10.e-3  ! autoconversion of cloud ice rate coef
+#elif defined( SP_TUNING_D )  /* larger fall speed parameters */
+  ! Terminal velocity coefficients
+  real(crm_rknd), parameter :: a_rain = 1000. ! Coeff.for rain term vel
+  real(crm_rknd), parameter :: b_rain = 0.9   ! Fall speed exponent for rain
+  real(crm_rknd), parameter :: a_snow = 5.    ! Coeff.for snow term vel
+  real(crm_rknd), parameter :: b_snow = 0.3   ! Fall speed exponent for snow
+  real(crm_rknd), parameter :: a_grau = 100   ! Coeff.for graupel term vel
+  real(crm_rknd), parameter :: b_grau = 0.8   ! Fall speed exponent for graupel
+  ! Autoconversion
+  real(crm_rknd), parameter :: qcw0 = 1.e-3      ! Threshold for water autoconversion, g/g
+  real(crm_rknd), parameter :: qci0 = 1.e-4      ! Threshold for ice autoconversion, g/g
+  real(crm_rknd), parameter :: alphaelq = 1.e-3  ! autoconversion of cloud water rate coef
+  real(crm_rknd), parameter :: betaelq = 1.e-3   ! autoconversion of cloud ice rate coef
+#elif defined( SP_TUNING_E )  /* C + D */
+  ! Terminal velocity coefficients
+  real(crm_rknd), parameter :: a_rain = 1000. ! Coeff.for rain term vel
+  real(crm_rknd), parameter :: b_rain = 0.9   ! Fall speed exponent for rain
+  real(crm_rknd), parameter :: a_snow = 5.    ! Coeff.for snow term vel
+  real(crm_rknd), parameter :: b_snow = 0.3   ! Fall speed exponent for snow
+  real(crm_rknd), parameter :: a_grau = 100   ! Coeff.for graupel term vel
+  real(crm_rknd), parameter :: b_grau = 0.8   ! Fall speed exponent for graupel
+  ! Autoconversion
+  real(crm_rknd), parameter :: qcw0 = 1.e-4      ! Threshold for water autoconversion, g/g
+  real(crm_rknd), parameter :: qci0 = 1.e-6      ! Threshold for ice autoconversion, g/g
+  real(crm_rknd), parameter :: alphaelq = 10.e-3 ! autoconversion of cloud water rate coef
+  real(crm_rknd), parameter :: betaelq = 10.e-3  ! autoconversion of cloud ice rate coef
+#elif defined( SP_TUNING_F )  /* B + D (...and then some - autoconv threshold stay at defaults) */
+  ! Terminal velocity coefficients
+  real(crm_rknd), parameter :: a_rain = 1100. ! Coeff.for rain term vel
+  real(crm_rknd), parameter :: b_rain = 0.99  ! Fall speed exponent for rain
+  real(crm_rknd), parameter :: a_snow = 6.    ! Coeff.for snow term vel
+  real(crm_rknd), parameter :: b_snow = 0.4   ! Fall speed exponent for snow
+  real(crm_rknd), parameter :: a_grau = 100   ! Coeff.for graupel term vel
+  real(crm_rknd), parameter :: b_grau = 0.9   ! Fall speed exponent for graupel
+  ! Autoconversion
+  real(crm_rknd), parameter :: qcw0 = 1.e-3      ! Threshold for water autoconversion, g/g
+  real(crm_rknd), parameter :: qci0 = 1.e-4      ! Threshold for ice autoconversion, g/g
+  real(crm_rknd), parameter :: alphaelq = 20.e-3 ! autoconversion of cloud water rate coef
+  real(crm_rknd), parameter :: betaelq  = 30.e-3 ! autoconversion of cloud ice rate coef
+#else /* Default vales */
+  ! Terminal velocity coefficients
+  real(crm_rknd), parameter :: a_rain = 842. ! Coeff.for rain term vel
+  real(crm_rknd), parameter :: b_rain = 0.8  ! Fall speed exponent for rain
+  real(crm_rknd), parameter :: a_snow = 4.84 ! Coeff.for snow term vel
+  real(crm_rknd), parameter :: b_snow = 0.25 ! Fall speed exponent for snow
+  real(crm_rknd), parameter :: a_grau = 94.5 ! Coeff.for graupel term vel
+  real(crm_rknd), parameter :: b_grau = 0.5  ! Fall speed exponent for graupel
+  ! Autoconversion
+  real(crm_rknd), parameter :: qcw0 = 1.e-3      ! Threshold for water autoconversion, g/g
+  real(crm_rknd), parameter :: qci0 = 1.e-4      ! Threshold for ice autoconversion, g/g
+  real(crm_rknd), parameter :: alphaelq = 1.e-3  ! autoconversion of cloud water rate coef
+  real(crm_rknd), parameter :: betaelq = 1.e-3   ! autoconversion of cloud ice rate coef
+#endif
 
   ! Accretion
 

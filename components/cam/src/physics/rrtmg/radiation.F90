@@ -1733,6 +1733,14 @@ end function radiation_nextsw_cday
 
                   call t_startf ('rad_rrtmg_sw')  !==Guangxing Lin
 
+#if defined( SP_TRANSPARENT_CLD )
+    ! Make clouds in lowest 2 layers transparent - whannah
+    c_cld_tau    (:,:ncol,pver-1:pver) = 0.
+    c_cld_tau_w  (:,:ncol,pver-1:pver) = 0.
+    c_cld_tau_w_g(:,:ncol,pver-1:pver) = 0.
+    c_cld_tau_w_f(:,:ncol,pver-1:pver) = 0.
+#endif /* SP_TRANSPARENT_CLD */
+
                   call rad_rrtmg_sw( &
                        lchnk,        ncol,         num_rrtmg_levs, r_state,                    &
                        state%pmid,   cldfprime,                                                &
