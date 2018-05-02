@@ -186,9 +186,7 @@ contains
 #ifdef CLUBB_CRM
                              clubb_buffer,crm_cld,clubb_tk,clubb_tkh,relvar,accre_enhan,qclvar , &
 #endif
-#ifdef CRM3D
                              ultend,vltend , &
-#endif
 #ifdef m2005
                              nc_rad,ni_rad,qs_rad,ns_rad,wvar_crm,aut_crm,acc_crm,evpc_crm,evpr_crm,mlt_crm,sub_crm,dep_crm,con_crm,aut_crm_a,acc_crm_a,&
                              evpc_crm_a,evpr_crm_a,mlt_crm_a,sub_crm_a,dep_crm_a,con_crm_a,crm_nc,crm_ni,crm_ns,crm_ng,crm_nr, &
@@ -226,10 +224,8 @@ contains
     real(r8), intent(in) :: clhgh ! shaded cloud fraction
     real(r8), intent(in) :: clmed ! shaded cloud fraction
     real(r8), intent(in) :: cllow ! shaded cloud fraction
-#ifdef CRM3D
     real(r8), intent(in) :: ultend(plev) ! tendency of ul
     real(r8), intent(in) :: vltend(plev) ! tendency of vl
-#endif
     real(r8), intent(in) :: sltend(plev) ! tendency of static energy
     real(r8), intent(in) :: u_crm  (crm_nx,crm_ny,crm_nz) ! CRM v-wind component
     real(r8), intent(in) :: v_crm  (crm_nx,crm_ny,crm_nz) ! CRM v-wind component
@@ -391,10 +387,8 @@ contains
         call dmdf_write(accre_enhan     ,myrank,'crm_out',trim('accre_enhan     '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(qclvar          ,myrank,'crm_out',trim('qclvar          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
 #endif
-#ifdef CRM3D
         call dmdf_write(ultend          ,myrank,'crm_out',trim('ultend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(vltend          ,myrank,'crm_out',trim('vltend          '),(/'plev'/)                                          ,.false.,.false.); _ERR(success,error_string,__LINE__)
-#endif
 #ifdef m2005
         call dmdf_write(nc_rad          ,myrank,'crm_out',trim('nc_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)
         call dmdf_write(ni_rad          ,myrank,'crm_out',trim('ni_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                      ,.false.,.false.); _ERR(success,error_string,__LINE__)

@@ -11,8 +11,8 @@ module grid
 
   integer, parameter :: nx = nx_gl/nsubdomains_x
   integer, parameter :: ny = ny_gl/nsubdomains_y
-  integer, parameter :: nz = nz_gl+1 				! note that nz_gl = crm_nz - whannah
-  integer, parameter :: nzm = nz-1				! note that nzm   = crm_nz - whannah
+  integer, parameter :: nz = nz_gl+1 				! note that nz_gl = crm_nz
+  integer, parameter :: nzm = nz-1				  ! note that nzm   = crm_nz
 
   integer, parameter :: nsubdomains = nsubdomains_x * nsubdomains_y
 

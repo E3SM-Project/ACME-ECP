@@ -54,7 +54,7 @@ module RNG_MT
 
    implicit none
 
-   integer, private, parameter :: N      = 624
+   integer, private, parameter :: N      = 624      ! why are these parameters so big?
    integer, private, parameter :: N1     = 625
    integer, private, parameter :: M      = 397
    integer, private, parameter :: MATA   = -1727483681
@@ -64,8 +64,8 @@ module RNG_MT
    integer, private, parameter :: TMASKC = -272236544
    
    integer, private :: mti
-   integer, private, dimension(0:N-1) :: mt = N1
    integer, private, dimension(2)     :: mag01(0:1) = (/0, MATA/)
+   integer, private, dimension(0:N-1) :: mt 
 
    public RNG_MT_set_seed
    public RNG_MT_gen_rand
@@ -75,17 +75,22 @@ module RNG_MT
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
 !
-! set initial seeds to mt[N] using the generator Line 25 of Table 1 in
+! set initial seeds to mt[N] using the generator - Line 25 of Table 1 in
 ! Knuth 1981, The Art of Computer Programming Vol. 2 (2nd Ed.), pp102
 !
 subroutine RNG_MT_set_seed(seed)
 
    integer,intent(in) :: seed
-   
+
+   !!! initialize mt
+   mt = N1
+
+   !!! set seed
    mt(0) = iand(seed, -1)
    do mti = 1, N - 1
       mt(mti) = iand(69069 * mt(mti - 1), -1)
    end do
+
 end subroutine RNG_MT_set_seed
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
@@ -94,11 +99,12 @@ subroutine RNG_MT_gen_rand(grnd)
    integer :: y, kk
    
    if(mti >= N) then
-      ! generate N words at one time
+      !!! generate N words at one time
       if(mti == N + 1) then
-         ! if RNG_MT_set_seed() has not been called,
-         ! a default initial seed is used
+         !!! if RNG_MT_set_seed() has not been called, a default initial seed is used
          call RNG_MT_set_seed(4357)
+         !!! that also means we need to initialize mt
+         mt = N1
       endif
 
       do kk = 0, N - M - 1
@@ -127,7 +133,7 @@ subroutine RNG_MT_gen_rand(grnd)
       grnd = (dble(y) + 2.0d0 ** 32) / (2.0d0 ** 32)
    else
       ! grnd = dble(y) / (2.0d0 ** 32)      ! for interval [0,1)
-      grnd = (dble(y) + 0.5)/(2.0d0**32)  ! for interval (0,1)
+      grnd = (dble(y) + 0.5d0)/(2.0d0**32)  ! for interval (0,1)
    endif
 
 end subroutine RNG_MT_gen_rand

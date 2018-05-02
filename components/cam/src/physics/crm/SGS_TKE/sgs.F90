@@ -312,10 +312,10 @@ CONTAINS
   !
   subroutine sgs_scalars()
     use diffuse_scalar_mod, only: diffuse_scalar
-
     use vars
     use microphysics
     use crmtracers
+    use scalar_momentum_mod
     use params, only: dotracers
     implicit none
 
@@ -372,6 +372,21 @@ CONTAINS
     end do
 
   end if
+
+
+#if defined(SP_ESMT)
+    
+    ! diffusion of scalar momentum tracers
+
+    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
+                        u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs,    &
+                        dummy,dummy,dummy,.false.)
+
+    call diffuse_scalar(dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
+                        v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs,    &
+                        dummy,dummy,dummy,.false.)
+
+#endif
 
 
 

@@ -2348,9 +2348,26 @@ if (l_dry_adj) then
 
 end if
 
-!-- mdb spcam
+
+! ************** whannah - Physics Bypass for SP **************
+! whannah - if either SPMOMTRANS (3D) or SP_ESMT (2D) are defined
+! Then the CRM with handle the momentum transport, and we can bypass 
+! all this stuff with the conventional convective parameterizations
+! (still need to save the CRM state for now)
+! ACTUALLY... that's not true. The aerosol stuff needs to be handled 
+! or disabled. Otherwise there will be an aerosol optical depth error.
+! The aerosol routines need info from both shallow and deep convection,
+! so we can't just bypass it all. The solution is to setup ECPP to work 
+! with the 1-mom CRM option.
+! The SP_PHYS_BYPASS option may still work with 2-moment micro and ECPP...?
+
+
+    !-- mdb spcam
     if (use_SPCAM) call crm_save_state_tend(state, tend, pbuf)
-!-- mdb spcam
+    !-- mdb spcam
+
+! #if defined(SPMOMTRANS) || defined(SP_ESMT)
+#ifndef SP_PHYS_BYPASS
 
     !
     !===================================================
@@ -2413,30 +2430,30 @@ end if
 
     call t_stopf('moist_convection')
 
-if (l_tracer_aero) then
+    if (l_tracer_aero) then
 
-    ! Rebin the 4-bin version of sea salt into bins for coarse and accumulation
-    ! modes that correspond to the available optics data.  This is only necessary
-    ! for CAM-RT.  But it's done here so that the microphysics code which is called
-    ! from the stratiform interface has access to the same aerosols as the radiation
-    ! code.
-    call sslt_rebin_adv(pbuf,  state)
-    
-    !===================================================
-    ! Calculate tendencies from CARMA bin microphysics.
-    !===================================================
-    !
-    ! If CARMA is doing detrainment, then on output, rliq no longer represents water reserved
-    ! for detrainment, but instead represents potential snow fall. The mass and number of the
-    ! snow are stored in the physics buffer and will be incorporated by the MG microphysics.
-    !
-    ! Currently CARMA cloud microphysics is only supported with the MG microphysics.
-    call t_startf('carma_timestep_tend')
+      ! Rebin the 4-bin version of sea salt into bins for coarse and accumulation
+      ! modes that correspond to the available optics data.  This is only necessary
+      ! for CAM-RT.  But it's done here so that the microphysics code which is called
+      ! from the stratiform interface has access to the same aerosols as the radiation
+      ! code.
+      call sslt_rebin_adv(pbuf,  state)
+      
+      !===================================================
+      ! Calculate tendencies from CARMA bin microphysics.
+      !===================================================
+      !
+      ! If CARMA is doing detrainment, then on output, rliq no longer represents water reserved
+      ! for detrainment, but instead represents potential snow fall. The mass and number of the
+      ! snow are stored in the physics buffer and will be incorporated by the MG microphysics.
+      !
+      ! Currently CARMA cloud microphysics is only supported with the MG microphysics.
+      call t_startf('carma_timestep_tend')
 
-    if (carma_do_cldice .or. carma_do_cldliq) then
-       call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, dlf=dlf, rliq=rliq, &
-            prec_str=prec_str, snow_str=snow_str, prec_sed=prec_sed_carma, snow_sed=snow_sed_carma)
-       call physics_update(state, ptend, ztodt, tend)
+      if (carma_do_cldice .or. carma_do_cldliq) then
+        call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, dlf=dlf, rliq=rliq, &
+             prec_str=prec_str, snow_str=snow_str, prec_sed=prec_sed_carma, snow_sed=snow_sed_carma)
+        call physics_update(state, ptend, ztodt, tend)
 
        ! Before the detrainment, the reserved condensate is all liquid, but if CARMA is doing
        ! detrainment, then the reserved condensate is snow.
@@ -2445,461 +2462,443 @@ if (l_tracer_aero) then
                nstep, ztodt, zero, prec_str(:ncol)+rliq(:ncol), snow_str(:ncol)+rliq(:ncol), zero)
        else
           call check_energy_chng(state, tend, "carma_tend", nstep, ztodt, zero, prec_str(:ncol), snow_str(:ncol), zero)
-       end if
-    end if
+        end if
+      end if
 
-    call t_stopf('carma_timestep_tend')
+      call t_stopf('carma_timestep_tend')
 
-end if
+    end if ! l_tracer_aero
 
 
     if( microp_scheme == 'RK' ) then
 
-     if (l_st_mac) then
-       !===================================================
-       ! Calculate stratiform tendency (sedimentation, detrain, cloud fraction and microphysics )
-       !===================================================
-       call t_startf('stratiform_tend')
+      if (l_st_mac) then
+        !===================================================
+        ! Calculate stratiform tendency (sedimentation, detrain, cloud fraction and microphysics )
+        !===================================================
+        call t_startf('stratiform_tend')
+ 
+        call stratiform_tend(state, ptend, pbuf, ztodt, &
+             cam_in%icefrac, cam_in%landfrac, cam_in%ocnfrac, &
+             landm, cam_in%snowhland, & ! sediment
+             dlf, dlf2, & ! detrain
+             rliq  , & ! check energy after detrain
+             cmfmc,   cmfmc2, &
+             cam_in%ts,      cam_in%sst,        zdu)
 
-       call stratiform_tend(state, ptend, pbuf, ztodt, &
-            cam_in%icefrac, cam_in%landfrac, cam_in%ocnfrac, &
-            landm, cam_in%snowhland, & ! sediment
-            dlf, dlf2, & ! detrain
-            rliq  , & ! check energy after detrain
-            cmfmc,   cmfmc2, &
-            cam_in%ts,      cam_in%sst,        zdu)
+        call physics_update(state, ptend, ztodt, tend)
+        call check_energy_chng(state, tend, "cldwat_tend", nstep, ztodt, zero, prec_str(:ncol), snow_str(:ncol), zero)
 
-       call physics_update(state, ptend, ztodt, tend)
-       call check_energy_chng(state, tend, "cldwat_tend", nstep, ztodt, zero, prec_str(:ncol), snow_str(:ncol), zero)
-
-       call t_stopf('stratiform_tend')
-     end if !l_st_mac
+        call t_stopf('stratiform_tend')
+      end if !l_st_mac
 
     elseif( microp_scheme == 'MG' ) then
-       ! Start co-substepping of macrophysics and microphysics
-       cld_macmic_ztodt = ztodt/cld_macmic_num_steps
+      ! Start co-substepping of macrophysics and microphysics
+      cld_macmic_ztodt = ztodt/cld_macmic_num_steps
 
-       ! Clear precip fields that should accumulate.
-       prec_sed_macmic = 0._r8
-       snow_sed_macmic = 0._r8
-       prec_pcw_macmic = 0._r8
-       snow_pcw_macmic = 0._r8
+      ! Clear precip fields that should accumulate.
+      prec_sed_macmic = 0._r8
+      snow_sed_macmic = 0._r8
+      prec_pcw_macmic = 0._r8
+      snow_pcw_macmic = 0._r8
 
-       do macmic_it = 1, cld_macmic_num_steps
+      do macmic_it = 1, cld_macmic_num_steps
 
-          if (micro_do_icesupersat) then 
+        if (micro_do_icesupersat) then 
 
-            !===================================================
-            ! Aerosol Activation
-            !===================================================
-            call t_startf('microp_aero_run')
-            call microp_aero_run(state, ptend, cld_macmic_ztodt, pbuf, lcldo, species_class) !==Guangxing Lin added species_class
-            call t_stopf('microp_aero_run')
-
-            call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
-
-            call physics_update(state, ptend, ztodt, tend)
-            call check_energy_chng(state, tend, "mp_aero_tend", nstep, ztodt, zero, zero, zero, zero)      
-
-          endif
           !===================================================
-          ! Calculate macrophysical tendency (sedimentation, detrain, cloud fraction)
+          ! Aerosol Activation
           !===================================================
+          call t_startf('microp_aero_run')
+          call microp_aero_run(state, ptend, cld_macmic_ztodt, pbuf, lcldo, species_class) !==Guangxing Lin added species_class
+          call t_stopf('microp_aero_run')
 
-          call t_startf('macrop_tend')
+          call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
 
-          ! don't call Park macrophysics if CLUBB is called
-          if (macrop_scheme .ne. 'CLUBB_SGS') then
+          call physics_update(state, ptend, ztodt, tend)
+          call check_energy_chng(state, tend, "mp_aero_tend", nstep, ztodt, zero, zero, zero, zero)      
 
-             call macrop_driver_tend( &
-                  state,           ptend,          cld_macmic_ztodt, &
-                  cam_in%landfrac, cam_in%ocnfrac, cam_in%snowhland, & ! sediment
-                  dlf,             dlf2,                             & ! detrain
-                  cmfmc,           cmfmc2,                           &
-                  cam_in%ts,       cam_in%sst,     zdu,              &
-                  pbuf,            det_s,          det_ice,          &
-                  lcldo)
+        endif
+        !===================================================
+        ! Calculate macrophysical tendency (sedimentation, detrain, cloud fraction)
+        !===================================================
 
-             !  Since we "added" the reserved liquid back in this routine, we need 
-             !  to account for it in the energy checker
-             flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
-             flx_heat(:ncol) = det_s(:ncol)
+        call t_startf('macrop_tend')
 
-             ! Unfortunately, physics_update does not know what time period
-             ! "tend" is supposed to cover, and therefore can't update it
-             ! with substeps correctly. For now, work around this by scaling
-             ! ptend down by the number of substeps, then applying it for
-             ! the full time (ztodt).
-             call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)          
-             call physics_update(state, ptend, ztodt, tend)
-             call check_energy_chng(state, tend, "macrop_tend", nstep, ztodt, &
-                  zero, flx_cnd/cld_macmic_num_steps, &
-                  det_ice/cld_macmic_num_steps, flx_heat/cld_macmic_num_steps)
-       
-          else ! Calculate CLUBB macrophysics
+        ! don't call Park macrophysics if CLUBB is called
+        if (macrop_scheme .ne. 'CLUBB_SGS') then
+
+          call macrop_driver_tend( &
+               state,           ptend,          cld_macmic_ztodt, &
+               cam_in%landfrac, cam_in%ocnfrac, cam_in%snowhland, & ! sediment
+               dlf,             dlf2,                             & ! detrain
+               cmfmc,           cmfmc2,                           &
+               cam_in%ts,       cam_in%sst,     zdu,              &
+               pbuf,            det_s,          det_ice,          &
+               lcldo)
+
+          !  Since we "added" the reserved liquid back in this routine, we need 
+          !  to account for it in the energy checker
+          flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
+          flx_heat(:ncol) = det_s(:ncol)
+
+          ! Unfortunately, physics_update does not know what time period
+          ! "tend" is supposed to cover, and therefore can't update it
+          ! with substeps correctly. For now, work around this by scaling
+          ! ptend down by the number of substeps, then applying it for
+          ! the full time (ztodt).
+          call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)          
+          call physics_update(state, ptend, ztodt, tend)
+          call check_energy_chng(state, tend, "macrop_tend", nstep, ztodt, &
+               zero, flx_cnd/cld_macmic_num_steps, &
+               det_ice/cld_macmic_num_steps, flx_heat/cld_macmic_num_steps)
+     
+        else ! Calculate CLUBB macrophysics
 
 
-!!== KZ_WATCON 
+          !!== KZ_WATCON 
 
-    !! qqflx fixer to avoid negative water vapor in the surface layer
-    !! due to strong negative qflx  
-    !!.................................................................
+          !! qqflx fixer to avoid negative water vapor in the surface layer
+          !! due to strong negative qflx  
+          !!.................................................................
 
-    if(use_qqflx_fixer) then
-       call qqflx_fixer('TPHYSBC ', lchnk, ncol, cld_macmic_ztodt, &
-            state%q(1,1,1), state%rpdel(1,1), cam_in%shf, &
-            cam_in%lhf , cam_in%cflx/cld_macmic_num_steps )
+          if(use_qqflx_fixer) then
+             call qqflx_fixer('TPHYSBC ', lchnk, ncol, cld_macmic_ztodt, &
+                  state%q(1,1,1), state%rpdel(1,1), cam_in%shf, &
+                  cam_in%lhf , cam_in%cflx/cld_macmic_num_steps )
 
-    end if
-!!== KZ_WATCON 
+          end if
+          !!== KZ_WATCON 
 
-             ! =====================================================
-             !    CLUBB call (PBL, shallow convection, macrophysics)
-             ! =====================================================  
-   
-             call clubb_tend_cam(state,ptend,pbuf,cld_macmic_ztodt,&
-                cmfmc, cam_in, sgh30, macmic_it, cld_macmic_num_steps, & 
-                dlf, det_s, det_ice, lcldo)
-
-                !  Since we "added" the reserved liquid back in this routine, we need 
-                !    to account for it in the energy checker
-                flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
-                flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
-
-                ! Unfortunately, physics_update does not know what time period
-                ! "tend" is supposed to cover, and therefore can't update it
-                ! with substeps correctly. For now, work around this by scaling
-                ! ptend down by the number of substeps, then applying it for
-                ! the full time (ztodt).
-                call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
-                !    Update physics tendencies and copy state to state_eq, because that is 
-                !      input for microphysics              
-                call physics_update(state, ptend, ztodt, tend)
-                call check_energy_chng(state, tend, "clubb_tend", nstep, ztodt, &
-                     cam_in%cflx(:,1)/cld_macmic_num_steps, flx_cnd/cld_macmic_num_steps, &
-                     det_ice/cld_macmic_num_steps, flx_heat/cld_macmic_num_steps)
+          ! =====================================================
+          !    CLUBB call (PBL, shallow convection, macrophysics)
+          ! =====================================================  
  
-          endif
+          call clubb_tend_cam(state,ptend,pbuf,cld_macmic_ztodt,&
+               cmfmc, cam_in, sgh30, macmic_it, cld_macmic_num_steps, & 
+               dlf, det_s, det_ice, lcldo)
 
-          call t_stopf('macrop_tend')
+          !  Since we "added" the reserved liquid back in this routine, we need 
+          !    to account for it in the energy checker
+          flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
+          flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
 
-          !===================================================
-          ! Calculate cloud microphysics 
-          !===================================================
+          ! Unfortunately, physics_update does not know what time period
+          ! "tend" is supposed to cover, and therefore can't update it
+          ! with substeps correctly. For now, work around this by scaling
+          ! ptend down by the number of substeps, then applying it for
+          ! the full time (ztodt).
+          call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
+          !    Update physics tendencies and copy state to state_eq, because that is 
+          !      input for microphysics              
+          call physics_update(state, ptend, ztodt, tend)
+          call check_energy_chng(state, tend, "clubb_tend", nstep, ztodt, &
+               cam_in%cflx(:,1)/cld_macmic_num_steps, flx_cnd/cld_macmic_num_steps, &
+               det_ice/cld_macmic_num_steps, flx_heat/cld_macmic_num_steps)
+ 
+        endif
 
-          if (is_subcol_on()) then
-             ! Allocate sub-column structures. 
-             call physics_state_alloc(state_sc, lchnk, psubcols*pcols)
-             call physics_tend_alloc(tend_sc, psubcols*pcols)
+        call t_stopf('macrop_tend')
 
-             ! Generate sub-columns using the requested scheme
-             call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
+        !===================================================
+        ! Calculate cloud microphysics 
+        !===================================================
 
-             !Initialize check energy for subcolumns
-             call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
-          end if
+        if (is_subcol_on()) then
+          ! Allocate sub-column structures. 
+          call physics_state_alloc(state_sc, lchnk, psubcols*pcols)
+          call physics_tend_alloc(tend_sc, psubcols*pcols)
 
-          if (.not. micro_do_icesupersat) then 
+          ! Generate sub-columns using the requested scheme
+          call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
 
-            call t_startf('microp_aero_run')
-            call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf, lcldo, species_class) !==Guangxing Lin added species_class
-            call t_stopf('microp_aero_run')
+          !Initialize check energy for subcolumns
+          call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
+        end if
 
-          endif
+        if (.not. micro_do_icesupersat) then 
 
-          call t_startf('microp_tend')
+          call t_startf('microp_aero_run')
+          call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf, lcldo, species_class) !==Guangxing Lin added species_class
+          call t_stopf('microp_aero_run')
+
+        endif
+
+        call t_startf('microp_tend')
 
 
-          if (use_subcol_microp) then
-             call microp_driver_tend(state_sc, ptend_sc, cld_macmic_ztodt, pbuf)
+        if (use_subcol_microp) then
+          call microp_driver_tend(state_sc, ptend_sc, cld_macmic_ztodt, pbuf)
 
-             ! Average the sub-column ptend for use in gridded update - will not contain ptend_aero
-             call subcol_ptend_avg(ptend_sc, state_sc%ngrdcol, lchnk, ptend)
+          ! Average the sub-column ptend for use in gridded update - will not contain ptend_aero
+          call subcol_ptend_avg(ptend_sc, state_sc%ngrdcol, lchnk, ptend)
 
-             ! Copy ptend_aero field to one dimensioned by sub-columns before summing with ptend
-             call subcol_ptend_copy(ptend_aero, state_sc, ptend_aero_sc)
-             call physics_ptend_sum(ptend_aero_sc, ptend_sc, state_sc%ncol)
-             call physics_ptend_dealloc(ptend_aero_sc)
-
-             ! Have to scale and apply for full timestep to get tend right
-             ! (see above note for macrophysics).
-             call physics_ptend_scale(ptend_sc, 1._r8/cld_macmic_num_steps, ncol)
-
-             call physics_update (state_sc, ptend_sc, ztodt, tend_sc)
-             call check_energy_chng(state_sc, tend_sc, "microp_tend_subcol", &
-                  nstep, ztodt, zero_sc, prec_str_sc(:ncol)/cld_macmic_num_steps, &
-                  snow_str_sc(:ncol)/cld_macmic_num_steps, zero_sc)
-
-             call physics_state_dealloc(state_sc)
-             call physics_tend_dealloc(tend_sc)
-             call physics_ptend_dealloc(ptend_sc)
-          else
-             call microp_driver_tend(state, ptend, cld_macmic_ztodt, pbuf)
-          end if
-          ! combine aero and micro tendencies for the grid
-          if (.not. micro_do_icesupersat) then
-             call physics_ptend_sum(ptend_aero, ptend, ncol)
-             call physics_ptend_dealloc(ptend_aero)
-          endif
+          ! Copy ptend_aero field to one dimensioned by sub-columns before summing with ptend
+          call subcol_ptend_copy(ptend_aero, state_sc, ptend_aero_sc)
+          call physics_ptend_sum(ptend_aero_sc, ptend_sc, state_sc%ncol)
+          call physics_ptend_dealloc(ptend_aero_sc)
 
           ! Have to scale and apply for full timestep to get tend right
           ! (see above note for macrophysics).
-          call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
+          call physics_ptend_scale(ptend_sc, 1._r8/cld_macmic_num_steps, ncol)
 
-          call physics_update (state, ptend, ztodt, tend)
-          call check_energy_chng(state, tend, "microp_tend", nstep, ztodt, &
-               zero, prec_str(:ncol)/cld_macmic_num_steps, &
-               snow_str(:ncol)/cld_macmic_num_steps, zero)
+          call physics_update (state_sc, ptend_sc, ztodt, tend_sc)
+          call check_energy_chng(state_sc, tend_sc, "microp_tend_subcol", &
+               nstep, ztodt, zero_sc, prec_str_sc(:ncol)/cld_macmic_num_steps, &
+               snow_str_sc(:ncol)/cld_macmic_num_steps, zero_sc)
 
-          call t_stopf('microp_tend')
-          prec_sed_macmic(:ncol) = prec_sed_macmic(:ncol) + prec_sed(:ncol)
-          snow_sed_macmic(:ncol) = snow_sed_macmic(:ncol) + snow_sed(:ncol)
-          prec_pcw_macmic(:ncol) = prec_pcw_macmic(:ncol) + prec_pcw(:ncol)
-          snow_pcw_macmic(:ncol) = snow_pcw_macmic(:ncol) + snow_pcw(:ncol)
+          call physics_state_dealloc(state_sc)
+          call physics_tend_dealloc(tend_sc)
+          call physics_ptend_dealloc(ptend_sc)
+        else
+          call microp_driver_tend(state, ptend, cld_macmic_ztodt, pbuf)
+        end if
+        ! combine aero and micro tendencies for the grid
+        if (.not. micro_do_icesupersat) then
+          call physics_ptend_sum(ptend_aero, ptend, ncol)
+          call physics_ptend_dealloc(ptend_aero)
+        endif
 
-       end do ! end substepping over macrophysics/microphysics
+        ! Have to scale and apply for full timestep to get tend right
+        ! (see above note for macrophysics).
+        call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
 
-       prec_sed(:ncol) = prec_sed_macmic(:ncol)/cld_macmic_num_steps
-       snow_sed(:ncol) = snow_sed_macmic(:ncol)/cld_macmic_num_steps
-       prec_pcw(:ncol) = prec_pcw_macmic(:ncol)/cld_macmic_num_steps
-       snow_pcw(:ncol) = snow_pcw_macmic(:ncol)/cld_macmic_num_steps
-       prec_str(:ncol) = prec_pcw(:ncol) + prec_sed(:ncol)
-       snow_str(:ncol) = snow_pcw(:ncol) + snow_sed(:ncol)
+        call physics_update (state, ptend, ztodt, tend)
+        call check_energy_chng(state, tend, "microp_tend", nstep, ztodt, &
+             zero, prec_str(:ncol)/cld_macmic_num_steps, &
+             snow_str(:ncol)/cld_macmic_num_steps, zero)
 
-     end if ! l_st_mic
+        call t_stopf('microp_tend')
+        prec_sed_macmic(:ncol) = prec_sed_macmic(:ncol) + prec_sed(:ncol)
+        snow_sed_macmic(:ncol) = snow_sed_macmic(:ncol) + snow_sed(:ncol)
+        prec_pcw_macmic(:ncol) = prec_pcw_macmic(:ncol) + prec_pcw(:ncol)
+        snow_pcw_macmic(:ncol) = snow_pcw_macmic(:ncol) + snow_pcw(:ncol)
 
-if (l_tracer_aero) then
+      end do ! macmic_it - substepping over macrophysics/microphysics
 
-    ! Add the precipitation from CARMA to the precipitation from stratiform.
-    if (carma_do_cldice .or. carma_do_cldliq) then
-       prec_sed(:ncol) = prec_sed(:ncol) + prec_sed_carma(:ncol)
-       snow_sed(:ncol) = snow_sed(:ncol) + snow_sed_carma(:ncol)
-    end if
+      prec_sed(:ncol) = prec_sed_macmic(:ncol)/cld_macmic_num_steps
+      snow_sed(:ncol) = snow_sed_macmic(:ncol)/cld_macmic_num_steps
+      prec_pcw(:ncol) = prec_pcw_macmic(:ncol)/cld_macmic_num_steps
+      snow_pcw(:ncol) = snow_pcw_macmic(:ncol)/cld_macmic_num_steps
+      prec_str(:ncol) = prec_pcw(:ncol) + prec_sed(:ncol)
+      snow_str(:ncol) = snow_pcw(:ncol) + snow_sed(:ncol)
 
-!==Guangxing Lin, we already have aero_model_wetdep after crm_physics_update, why we need that below?      
-!    if ( .not. deep_scheme_does_scav_trans() ) then
-!
-!       !===================================================
-!       !  Aerosol wet chemistry determines scavenging fractions, and transformations
-!       !
-!       !
-!       !  Then do convective transport of all trace species except water vapor and
-!       !     cloud liquid and ice (we needed to do the scavenging first
-!       !     to determine the interstitial fraction) 
-!       !===================================================
-
-!       call t_startf('bc_aerosols')
-!       if (clim_modal_aero .and. .not. prog_modal_aero) then
-!          call modal_aero_calcsize_diag(state, pbuf)
-!          call modal_aero_wateruptake_dr(state, pbuf)
-!       endif
-
-!       if (do_clubb_sgs) then
-!          sh_e_ed_ratio = 0.0_r8
-!       endif
-
-       !call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,       & !Intent-ins
-       !     mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
-       !     cam_out,                                                                 & !Intent-inout
-       !     pbuf,                                                                    & !Pointer
-       !     ptend                                                                    ) !Intent-out
-       
-       !call physics_update(state, ptend, ztodt, tend)
-
-!       if (carma_do_wetdep) then
-!          ! CARMA wet deposition
-!          !
-!          ! NOTE: It needs to follow aero_model_wetdep, so that cam_out%xxxwetxxx
-!          ! fields have already been set for CAM aerosols and cam_out can be added
-!          ! to for CARMA aerosols.
-!          call t_startf ('carma_wetdep_tend')
-!          call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
-!          call physics_update(state, ptend, ztodt, tend)
-!          call t_stopf ('carma_wetdep_tend')
-!       end if
-
-!       call t_startf ('convect_deep_tend2')
-!       call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
-!          du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
-!       call t_stopf ('convect_deep_tend2')
-
-!       call physics_update(state, ptend, ztodt, tend)
-
-       ! check tracer integrals
-!       call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
-
-!       call t_stopf('bc_aerosols')
-!
-!   endif
-!==Guangxing Lin
-
-!<songxl 2011-9-20---------------------------------
-   if(trigmem)then
-      do k=1,pver
-        qm1(:ncol,k) = state%q(:ncol,k,1)
-        tm1(:ncol,k) = state%t(:ncol,k)
-      enddo
-   endif
-!>songxl 2011-09-20---------------------------------
-
-!-- mdb spcam
-  if (use_SPCAM) then
-
-    !------------------------------------------------------------------------------------------
-    !------------------------------------------------------------------------------------------
-    ! whannah - The flux bypass option was originally implemented by Mike Pritchard (UCI)
-    ! Without this bypass the surface flux tendencies are applied to the GCM dynamical core 
-    ! as a perturbation tendency concentrated on just the lowest model layer instead of first 
-    ! before being diffused vertically by the boundary layer turbulence as occurs without SP, 
-    ! and was intended to be the case under SP (confirmed by Marat). This fix applies the 
-    ! surface fluxes of dry static energy and water vapor prior to running the CRM, and disables 
-    ! the tendency addition in diffusion_solver.F90. This is a more natural progression
-    ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
-    ! note : rpdel = 1./pdel
-    ! SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
-    ! SP_FLUX_BYPASS_2 - all constituent fluxes (and SHF) are affected
-    !------------------------------------------------------------------------------------------
-    !------------------------------------------------------------------------------------------
-
-!!! whannah - SP_FLUX_MOD - spread fluxes over nmax layers
-! #ifdef SP_FLUX_MOD
-!     nmax = 4
-! #else
-!     nmax = 1
-! #endif
-
-#if defined( SP_FLUX_BYPASS_DEBUG )
-write(*,223) 5,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
-#endif
-
-!!! whannah - SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
-#if defined( SP_FLUX_BYPASS_1 )
-    lq(:) = .false.
-    lq(1) = .true.
-    call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', lu=.false., lv=.false., ls=.true., lq=lq)
-    ptend%lu    = .false.
-    ptend%lv    = .false.
-    ptend%lq    = .false. 
-    ptend%ls    = .true.
-    ptend%lq(1) = .true.
-    ! sp_flux_nfac = real(1,r8) / real(nmax,r8)
-! write(*,*) 'whannah - lchnk ',lchnk,' - min/max shf = ',minval(cam_in%crm_shf(:))   ,maxval(cam_in%crm_shf(:))
-! write(*,*) 'whannah - lchnk ',lchnk,' - min/max lhf = ',minval(cam_in%crm_cflx(:,1)),maxval(cam_in%crm_cflx(:,1))
-
-! write(*,5001) lchnk,nstep, minval(cam_in%shf(:))   ,maxval(cam_in%shf(:))
-! write(*,5002) lchnk,nstep, minval(cam_in%cflx(:,1)),maxval(cam_in%cflx(:,1))
-! 5001 format('whannah - SPFB - ',i5,' ',i6,' - min/max shf = ',f6.2,' / ',f6.2  )
-! 5002 format('whannah - SPFB - ',i5,' ',i6,' - min/max lhf = ',f6.2,' / ',f6.2  )
-! stop
-    do i=1,ncol
-      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
-      ptend%s(i,:)   = 0.
-      ptend%q(i,:,1) = 0.
-      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
-      ! ptend%s(i,pver)   = tmp1 * cam_in%crm_shf(i)
-      ! ptend%q(i,pver,1) = tmp1 * cam_in%crm_cflx(i,1)
-      ! do n=1,nmax
-      !   ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i)    * sp_flux_nfac
-      !   ptend%q(i,pver-n-1,1) = tmp1 * cam_in%cflx(i,1) * sp_flux_nfac
-      ! end do
-    end do
-    call physics_update(state, ptend, ztodt, tend)   
-#endif 
+    end if ! microp_scheme
 
 
-!!! whannah - SP_FLUX_BYPASS_2 - all constituent fluxes (and sensible heat flux) are affected
-! #ifdef SP_FLU_XBYPASS_2
-!     lq(:) = .TRUE.
-!     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SP_FLUX_BYPASS_2', ls=.true., lq=lq)
-!     ptend%lu    = .false.
-!     ptend%lv    = .false.
-!     ptend%lq    = .true. 
-!     ptend%ls    = .true.
-!     sp_flux_nfac = real(1,r8) / real(nmax,r8)
-!     do i=1,ncol
-!       tmp1 = gravit * state%rpdel(i,pver)
-!       ptend%s(i,:)   = 0.
-!       ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
-!       ! ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-!       do n=1,nmax
-!         ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i) * sp_flux_nfac
-!       end do
-!       ! whannah - add all constituent fluxes
-!       do m = 1, pcnst
-!         ptend%q(i,:,m) = 0.
-!         ! ptend%q(i,pver,m) = gravit / state%pdel(i,pver) * cam_in%cflx(i,m)
-!         ! ptend%q(i,pver,m) = tmp1 * cam_in%cflx(i,m)
-!         do n=1,nmax
-!           ptend%q(i,pver-n-1,m) = tmp1 * cam_in%cflx(i,m) * sp_flux_nfac
-!         end do
-!       end do
-!     end do
-!     call physics_update(state, ptend, ztodt, tend)   
-! #endif  
+    if (l_tracer_aero) then
+
+      ! Add the precipitation from CARMA to the precipitation from stratiform.
+      if (carma_do_cldice .or. carma_do_cldliq) then
+         prec_sed(:ncol) = prec_sed(:ncol) + prec_sed_carma(:ncol)
+         snow_sed(:ncol) = snow_sed(:ncol) + snow_sed_carma(:ncol)
+      end if
+
+      ! !==Guangxing Lin, we already have aero_model_wetdep after crm_physics_update, why we need that below?      
+      ! if ( .not. deep_scheme_does_scav_trans() ) then
+      !   !===================================================
+      !   !  Aerosol wet chemistry determines scavenging fractions, and transformations
+      !   !
+      !   !
+      !   !  Then do convective transport of all trace species except water vapor and
+      !   !     cloud liquid and ice (we needed to do the scavenging first
+      !   !     to determine the interstitial fraction) 
+      !   !===================================================
+      !   call t_startf('bc_aerosols')
+      !   if (clim_modal_aero .and. .not. prog_modal_aero) then
+      !     call modal_aero_calcsize_diag(state, pbuf)
+      !     call modal_aero_wateruptake_dr(state, pbuf)
+      !   endif
+      !   if (do_clubb_sgs) then
+      !     sh_e_ed_ratio = 0.0_r8
+      !   endif
+      !   call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,       & !Intent-ins
+      !        mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
+      !        cam_out,                                                                 & !Intent-inout
+      !        pbuf,                                                                    & !Pointer
+      !        ptend                                                                    ) !Intent-out
+      !   call physics_update(state, ptend, ztodt, tend)
+      !   if (carma_do_wetdep) then
+      !     ! CARMA wet deposition
+      !     !
+      !     ! NOTE: It needs to follow aero_model_wetdep, so that cam_out%xxxwetxxx
+      !     ! fields have already been set for CAM aerosols and cam_out can be added
+      !     ! to for CARMA aerosols.
+      !     call t_startf ('carma_wetdep_tend')
+      !     call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
+      !     call physics_update(state, ptend, ztodt, tend)
+      !     call t_stopf ('carma_wetdep_tend')
+      !   end if
+      !   call t_startf ('convect_deep_tend2')
+      !   call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
+      !        du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
+      !   call t_stopf ('convect_deep_tend2')
+      !   call physics_update(state, ptend, ztodt, tend)
+      !   !!! check tracer integrals
+      !   call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
+      !   call t_stopf('bc_aerosols')
+      ! endif
+      ! !==Guangxing Lin
+
+      !<songxl 2011-9-20---------------------------------
+      if(trigmem)then
+        do k=1,pver
+          qm1(:ncol,k) = state%q(:ncol,k,1)
+          tm1(:ncol,k) = state%t(:ncol,k)
+        enddo
+      endif
+      !>songxl 2011-09-20---------------------------------
+
+#endif ! SP_PHYS_BYPASS
+
+    !-- mdb spcam
+    if (use_SPCAM) then
+
+      !------------------------------------------------------------------------------------------
+      !------------------------------------------------------------------------------------------
+      ! whannah - The flux bypass option was originally implemented by Mike Pritchard (UCI)
+      ! Without this bypass the surface flux tendencies are applied to the GCM dynamical core 
+      ! as a perturbation tendency concentrated on just the lowest model layer instead of first 
+      ! before being diffused vertically by the boundary layer turbulence as occurs without SP, 
+      ! and was intended to be the case under SP (confirmed by Marat). This fix applies the 
+      ! surface fluxes of dry static energy and water vapor prior to running the CRM, and disables 
+      ! the tendency addition in diffusion_solver.F90. This is a more natural progression
+      ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
+      ! note : rpdel = 1./pdel
+      ! SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
+      ! SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
+      !------------------------------------------------------------------------------------------
+      !------------------------------------------------------------------------------------------
+
+      !!! whannah - SP_FLUX_MOD - spread fluxes over nmax layers
+      ! #ifdef SP_FLUX_MOD
+      !     nmax = 4
+      ! #else
+      !     nmax = 1
+      ! #endif
+
+      !!! whannah - SPFLUXBYPASS_1 - only sensible and latent heat fluxes are affected
+      ! #ifdef SPFLUXBYPASS_1
+      !     lq(:) = .FALSE.
+      !     lq(1) = .TRUE.
+      !     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS', ls=.true., lq=lq)
+      !     ptend%lu    = .false.
+      !     ptend%lv    = .false.
+      !     ptend%lq    = .false. 
+      !     ptend%ls    = .true.
+      !     ptend%lq(1) = .true.
+      !     sp_flux_nfac = real(1,r8) / real(nmax,r8)
+      !     do i=1,ncol
+      !       tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
+      !       ptend%s(i,:)   = 0.
+      !       ptend%q(i,:,1) = 0.
+      !       ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
+      !       ! ptend%q(i,pver,1) = gravit / state%pdel(i,pver) * cam_in%cflx(i,1)
+      !       ! ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      !       ! ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
+      !       do n=1,nmax
+      !         ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i)    * sp_flux_nfac
+      !         ptend%q(i,pver-n-1,1) = tmp1 * cam_in%cflx(i,1) * sp_flux_nfac
+      !       end do
+      !     end do
+      !     call physics_update(state, ptend, ztodt, tend)   
+      ! #endif 
 
 
+      !!! whannah - SPFLUXBYPASS_2 - all constituent fluxes (and SHF) are affected
+      ! #ifdef SPFLUXBYPASS_2
+      !     lq(:) = .TRUE.
+      !     call physics_ptend_init(ptend, state%psetcols, 'tphysbc - SPFLUXBYPASS_2', ls=.true., lq=lq)
+      !     ptend%lu    = .false.
+      !     ptend%lv    = .false.
+      !     ptend%lq    = .true. 
+      !     ptend%ls    = .true.
+      !     sp_flux_nfac = real(1,r8) / real(nmax,r8)
+      !     do i=1,ncol
+      !       tmp1 = gravit * state%rpdel(i,pver)
+      !       ptend%s(i,:)   = 0.
+      !       ! ptend%s(i,pver)   = gravit / state%pdel(i,pver) * cam_in%shf(i)
+      !       ! ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      !       do n=1,nmax
+      !         ptend%s(i,pver-n-1)   = tmp1 * cam_in%shf(i) * sp_flux_nfac
+      !       end do
+      !       ! whannah - add all constituent fluxes
+      !       do m = 1, pcnst
+      !         ptend%q(i,:,m) = 0.
+      !         ! ptend%q(i,pver,m) = gravit / state%pdel(i,pver) * cam_in%cflx(i,m)
+      !         ! ptend%q(i,pver,m) = tmp1 * cam_in%cflx(i,m)
+      !         do n=1,nmax
+      !           ptend%q(i,pver-n-1,m) = tmp1 * cam_in%cflx(i,m) * sp_flux_nfac
+      !         end do
+      !       end do
+      !     end do
+      !     call physics_update(state, ptend, ztodt, tend)   
+      ! #endif 
 
+      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class) !==Guangxing Lin added species_class
 
-
-    call crm_physics_tend(ztodt, state, tend, ptend, pbuf, dlf, cam_in, cam_out, species_class)
-  endif
-
-  if(use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
-    ! As ECPP is not linked with the sam1mom yet, conventional convective transport
-    ! and wet savenging are still needed for sam1mom to drive the BAM aerosol treatment
-  else if ( .not. deep_scheme_does_scav_trans() ) then
-
-    ! -------------------------------------------------------------------------------
-    ! 1. Wet Scavenging of Aerosols by Convective and Stratiform Precipitation.
-    ! 2. Convective Transport of Non-Water Aerosol Species.
-    !
-    !  . Aerosol wet chemistry determines scavenging fractions, and transformations
-    !  . Then do convective transport of all trace species except qv,ql,qi.
-    !  . We needed to do the scavenging first to determine the interstitial fraction.
-    !  . When UNICON is used as unified convection, we should still perform
-    !    wet scavenging but not 'convect_deep_tend2'.
-    ! -------------------------------------------------------------------------------
-
-    call t_startf('bc_aerosols')
-    if (clim_modal_aero .and. .not. prog_modal_aero) then
-      call modal_aero_calcsize_diag(state, pbuf)
-      call modal_aero_wateruptake_dr(state, pbuf)
     endif
-    !!!call aero_model_wetdep( state, ztodt, dlf, cam_out, ptend, pbuf)
-    call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,      & !Intent-ins
-        mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
-        cam_out,                                                                 & !Intent-inout
-        pbuf,                                                                    & !Pointer
-        ptend                                                                    ) !Intent-out
-    call physics_update(state, ptend, ztodt, tend)
 
-    if (carma_do_wetdep) then
-      ! CARMA wet deposition
+
+#ifndef SP_PHYS_BYPASS 
+
+    if(use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
+      ! As ECPP is not linked with the sam1mom yet, conventional convective transport
+      ! and wet savenging are still needed for sam1mom to drive the BAM aerosol treatment
+    else if ( .not. deep_scheme_does_scav_trans() ) then
+
+      ! -------------------------------------------------------------------------------
+      ! 1. Wet Scavenging of Aerosols by Convective and Stratiform Precipitation.
+      ! 2. Convective Transport of Non-Water Aerosol Species.
       !
-      ! NOTE: It needs to follow aero_model_wetdep, so that cam_out%xxxwetxxx
-      ! fields have already been set for CAM aerosols and cam_out can be added
-      ! to for CARMA aerosols.
-      call t_startf ('carma_wetdep_tend')
-      call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
+      !  . Aerosol wet chemistry determines scavenging fractions, and transformations
+      !  . Then do convective transport of all trace species except qv,ql,qi.
+      !  . We needed to do the scavenging first to determine the interstitial fraction.
+      !  . When UNICON is used as unified convection, we should still perform
+      !    wet scavenging but not 'convect_deep_tend2'.
+      ! -------------------------------------------------------------------------------
+
+      call t_startf('bc_aerosols')
+      if (clim_modal_aero .and. .not. prog_modal_aero) then
+        call modal_aero_calcsize_diag(state, pbuf)
+        call modal_aero_wateruptake_dr(state, pbuf)
+      endif
+      
+      call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,      & !Intent-ins
+          mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
+          cam_out,                                                                 & !Intent-inout
+          pbuf,                                                                    & !Pointer
+          ptend                                                                    ) !Intent-out
       call physics_update(state, ptend, ztodt, tend)
-      call t_stopf ('carma_wetdep_tend')
-    end if
 
-    call t_startf ('convect_deep_tend2')
-    call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
-      du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
-    call physics_update(state, ptend, ztodt, tend)
-    call t_stopf ('convect_deep_tend2')
+      if (carma_do_wetdep) then
+        ! CARMA wet deposition
+        !
+        ! NOTE: It needs to follow aero_model_wetdep, so that cam_out%xxxwetxxx
+        ! fields have already been set for CAM aerosols and cam_out can be added
+        ! to for CARMA aerosols.
+        call t_startf ('carma_wetdep_tend')
+        call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
+        call physics_update(state, ptend, ztodt, tend)
+        call t_stopf ('carma_wetdep_tend')
+      end if
 
-    ! check tracer integrals
-    call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
+      call t_startf ('convect_deep_tend2')
+      call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
+        du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
+      call physics_update(state, ptend, ztodt, tend)
+      call t_stopf ('convect_deep_tend2')
 
-    call t_stopf('bc_aerosols')
+      ! check tracer integrals
+      call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
 
-  endif
+      call t_stopf('bc_aerosols')
 
-end if ! l_tracer_aero
+    endif
+
+#endif ! SP_PHYS_BYPASS
+
+    end if ! l_tracer_aero    
 
     !===================================================
     ! Moist physical parameteriztions complete: 

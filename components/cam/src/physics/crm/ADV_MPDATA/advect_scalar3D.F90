@@ -103,9 +103,9 @@ contains
             ib=i-1
             ic=i+1
             mx(i,j,k)=max(f(ib,j,k),f(ic,j,k),f(i,jb,k), &
-            f(i,jc,k),f(i,j,kb),f(i,j,kc),f(i,j,k))
+                          f(i,jc,k),f(i,j,kb),f(i,j,kc),f(i,j,k))
             mn(i,j,k)=min(f(ib,j,k),f(ic,j,k),f(i,jb,k), &
-            f(i,jc,k),f(i,j,kb),f(i,j,kc),f(i,j,k))
+                          f(i,jc,k),f(i,j,kb),f(i,j,kc),f(i,j,k))
           end do
         end do
       end do
@@ -149,8 +149,9 @@ contains
       iadz(k) = 1./adz(k)
       do j=-1,nyp2
         do i=-1,nxp2
-          f(i,j,k)=f(i,j,k) -(uuu(i+1,j,k)-uuu(i,j,k)+vvv(i,j+1,k)-vvv(i,j,k) &
-          +(www(i,j,k+1)-www(i,j,k))*iadz(k))*irho(k)
+          f(i,j,k)=f(i,j,k)-( uuu(i+1,j,k)-uuu(i,j,k)  & 
+                            + vvv(i,j+1,k)-vvv(i,j,k)  &
+                            +(www(i,j,k+1)-www(i,j,k) )*iadz(k))*irho(k)
         end do
       end do
     end do
@@ -226,9 +227,9 @@ contains
             ib=i-1
             ic=i+1
             mx(i,j,k)=max(f(ib,j,k),f(ic,j,k),f(i,jb,k), &
-            f(i,jc,k),f(i,j,kb),f(i,j,kc),f(i,j,k),mx(i,j,k))
+                          f(i,jc,k),f(i,j,kb),f(i,j,kc),f(i,j,k),mx(i,j,k))
             mn(i,j,k)=min(f(ib,j,k),f(ic,j,k),f(i,jb,k), &
-            f(i,jc,k),f(i,j,kb),f(i,j,kc),f(i,j,k),mn(i,j,k))
+                          f(i,jc,k),f(i,j,kb),f(i,j,kc),f(i,j,k),mn(i,j,k))
           end do
         end do
       end do
@@ -240,13 +241,13 @@ contains
           do i=0,nxp1
             ic=i+1
             mx(i,j,k)=rho(k)*(mx(i,j,k)-f(i,j,k))/ &
-            (pn(uuu(ic,j,k)) + pp(uuu(i,j,k))+ &
-            pn(vvv(i,jc,k)) + pp(vvv(i,j,k))+ &
-            iadz(k)*(pn(www(i,j,kc)) + pp(www(i,j,k)))+eps)
+                      ( pn(uuu(ic,j,k)) + pp(uuu(i,j,k))+ &
+                        pn(vvv(i,jc,k)) + pp(vvv(i,j,k))+ &
+                       (pn(www(i,j,kc)) + pp(www(i,j,k)))*iadz(k)+eps)
             mn(i,j,k)=rho(k)*(f(i,j,k)-mn(i,j,k))/ &
-            (pp(uuu(ic,j,k)) + pn(uuu(i,j,k))+ &
-            pp(vvv(i,jc,k)) + pn(vvv(i,j,k))+ &
-            iadz(k)*(pp(www(i,j,kc)) + pn(www(i,j,k)))+eps)
+                      ( pp(uuu(ic,j,k)) + pn(uuu(i,j,k))+ &
+                        pp(vvv(i,jc,k)) + pn(vvv(i,j,k))+ &
+                       (pp(www(i,j,kc)) + pn(www(i,j,k)))*iadz(k)+eps)
           end do
         end do
       end do
@@ -255,8 +256,8 @@ contains
         do j=1,ny
           do i=1,nxp1
             ib=i-1
-            uuu(i,j,k)=pp(uuu(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(ib,j,k)) &
-            - pn(uuu(i,j,k))*min(real(1.,crm_rknd),mx(ib,j,k),mn(i,j,k))
+            uuu(i,j,k) = pp(uuu(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(ib,j,k)) &
+                        -pn(uuu(i,j,k))*min(real(1.,crm_rknd),mx(ib,j,k),mn(i,j,k))
           end do
         end do
       end do
@@ -265,8 +266,8 @@ contains
         do j=1,nyp1
           jb=j-1
           do i=1,nx
-            vvv(i,j,k)=pp(vvv(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(i,jb,k)) &
-            - pn(vvv(i,j,k))*min(real(1.,crm_rknd),mx(i,jb,k),mn(i,j,k))
+            vvv(i,j,k) = pp(vvv(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(i,jb,k)) &
+                        -pn(vvv(i,j,k))*min(real(1.,crm_rknd),mx(i,jb,k),mn(i,j,k))
           end do
         end do
       end do
@@ -275,8 +276,8 @@ contains
         kb=max(1,k-1)
         do j=1,ny
           do i=1,nx
-            www(i,j,k)=pp(www(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(i,j,kb)) &
-            - pn(www(i,j,k))*min(real(1.,crm_rknd),mx(i,j,kb),mn(i,j,k))
+            www(i,j,k) = pp(www(i,j,k))*min(real(1.,crm_rknd),mx(i,j,k), mn(i,j,kb)) &
+                        -pn(www(i,j,k))*min(real(1.,crm_rknd),mx(i,j,kb),mn(i,j,k))
             flux(k) = flux(k) + www(i,j,k)
           end do
         end do
