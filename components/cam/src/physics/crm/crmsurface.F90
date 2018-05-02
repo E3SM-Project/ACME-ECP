@@ -148,7 +148,6 @@ contains
 
 
   real(crm_rknd) function z0_est(z,bflx,wnd,ustar)
-
     use params, only: crm_rknd
 
     !
