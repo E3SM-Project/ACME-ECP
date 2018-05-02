@@ -166,11 +166,36 @@ CONTAINS
     if(nrestart.eq.0) then
 
 #ifndef CRM
-      micro_field(:,:,:,:,:) = 0.
-      do k=1,nzm
-        q(:,:,:,k) = q0(:,k)
-      end do
-      qn(:,:,:,:) = 0.
+    !$acc parallel loop gang vector collapse(4)
+    do k = 1 , nzm
+      do j = dimy1_s,dimy2_s
+        do i = dimx1_x,dimx2_s
+          do icrm = 1 , ncrms
+            micro_field(icrm,i,j,k,:) = 0.
+          enddo
+        enddo
+      enddo
+    enddo
+    !$acc parallel loop gang vector collapse(4)
+    do k = 1 , nzm
+      do j = dimy1_s,dimy2_s
+        do i = dimx1_x,dimx2_s
+          do icrm = 1 , ncrms
+            q(icrm,i,j,k) = q0(icrm,k)
+          enddo
+        enddo
+      enddo
+    enddo
+    !$acc parallel loop gang vector collapse(4)
+    do k = 1 , nzm
+      do j = 1 , nx
+        do i = 1 , ny
+          do icrm = 1 , ncrms
+            qn(icrm,i,j,k) = 0.
+          enddo
+        enddo
+      enddo
+    enddo
 #endif
 
 #ifdef CLUBB_CRM
