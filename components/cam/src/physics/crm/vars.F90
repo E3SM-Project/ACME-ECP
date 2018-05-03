@@ -11,87 +11,85 @@ module vars
   !--------------------------------------------------------------------
   ! prognostic variables:
 
-  real(crm_rknd) u   (dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm) ! x-wind
-  real(crm_rknd) v   (dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm) ! y-wind
-  real(crm_rknd) w   (dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ) ! z-wind
-  real(crm_rknd) t   (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! liquid/ice water static energy
+  real(crm_rknd) :: u   (dimx1_u:dimx2_u,dimy1_u:dimy2_u,nzm) ! x-wind
+  real(crm_rknd) :: v   (dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm) ! y-wind
+  real(crm_rknd) :: w   (dimx1_w:dimx2_w,dimy1_w:dimy2_w,nz ) ! z-wind
+  real(crm_rknd) :: t   (dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm) ! liquid/ice water static energy
 
   !--------------------------------------------------------------------
   ! diagnostic variables:
 
-  real(crm_rknd) p      (0:nx, (1-YES3D):ny, nzm)     ! perturbation pressure (from Poison eq)
-  real(crm_rknd) tabs   (nx, ny, nzm)                 ! temperature
-  real(crm_rknd) qv      (nx, ny, nzm)                ! water vapor
-  real(crm_rknd) qcl     (nx, ny, nzm)                ! liquid water  (condensate)
-  real(crm_rknd) qpl     (nx, ny, nzm)                ! liquid water  (precipitation)
-  real(crm_rknd) qci     (nx, ny, nzm)                ! ice water  (condensate)
-  real(crm_rknd) qpi     (nx, ny, nzm)                ! ice water  (precipitation)
+  real(crm_rknd) :: p      (0:nx,(1-YES3D):ny,nzm)     ! perturbation pressure (from Poison eq)
+  real(crm_rknd) :: tabs   (nx,ny,nzm)                 ! temperature
+  real(crm_rknd) :: qv      (nx,ny,nzm)                ! water vapor
+  real(crm_rknd) :: qcl     (nx,ny,nzm)                ! liquid water  (condensate)
+  real(crm_rknd) :: qpl     (nx,ny,nzm)                ! liquid water  (precipitation)
+  real(crm_rknd) :: qci     (nx,ny,nzm)                ! ice water  (condensate)
+  real(crm_rknd) :: qpi     (nx,ny,nzm)                ! ice water  (precipitation)
 
-  real(crm_rknd) tke2(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
-  real(crm_rknd) tk2     (0:nxp1, (1-YES3D):nyp1, nzm) ! SGS eddyviscosity
+  real(crm_rknd) :: tke2(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm)   ! SGS TKE
+  real(crm_rknd) :: tk2     (0:nxp1,(1-YES3D):nyp1,nzm) ! SGS eddyviscosity
 
   !--------------------------------------------------------------------
   ! time-tendencies for prognostic variables
 
-  real(crm_rknd) dudt   (nxp1, ny, nzm, 3)
-  real(crm_rknd) dvdt   (nx, nyp1, nzm, 3)
-  real(crm_rknd) dwdt   (nx, ny, nz,  3)
+  real(crm_rknd) :: dudt   (nxp1,ny,nzm,3)
+  real(crm_rknd) :: dvdt   (nx,nyp1,nzm,3)
+  real(crm_rknd) :: dwdt   (nx,ny,nz,3)
 
   !----------------------------------------------------------------
   ! Temporary storage array:
 
-  real(crm_rknd) misc(nx, ny, nz)
+  real(crm_rknd) :: misc(nx,ny,nz)
   !------------------------------------------------------------------
   ! fluxes at the top and bottom of the domain:
 
-  real(crm_rknd) fluxbu (nx, ny), fluxbv (nx, ny), fluxbt (nx, ny)
-  real(crm_rknd) fluxbq (nx, ny), fluxtu (nx, ny), fluxtv (nx, ny)
-  real(crm_rknd) fluxtt (nx, ny), fluxtq (nx, ny), fzero  (nx, ny)
-  real(crm_rknd) precsfc(nx,ny) ! surface precip. rate
-  real(crm_rknd) precssfc(nx,ny) ! surface ice precip. rate
+  real(crm_rknd) :: fluxbu (nx,ny)
+  real(crm_rknd) :: fluxbv (nx,ny)
+  real(crm_rknd) :: fluxbt (nx,ny)
+  real(crm_rknd) :: fluxbq (nx,ny)
+  real(crm_rknd) :: fluxtu (nx,ny)
+  real(crm_rknd) :: fluxtv (nx,ny)
+  real(crm_rknd) :: fluxtt (nx,ny)
+  real(crm_rknd) :: fluxtq (nx,ny)
+  real(crm_rknd) :: fzero  (nx,ny)
+  real(crm_rknd) :: precsfc(nx,ny) ! surface precip. rate
+  real(crm_rknd) :: precssfc(nx,ny) ! surface ice precip. rate
 
   !-----------------------------------------------------------------
   ! profiles
 
-  real(crm_rknd)   t0(nzm), q0(nzm), qv0(nzm), tabs0(nzm), tl0(nzm), &
-  tv0(nzm), u0(nzm), v0(nzm), &
-  tg0(nzm), qg0(nzm), ug0(nzm), vg0(nzm), p0(nzm), &
-  tke0(nzm), t01(nzm), q01(nzm), qp0(nzm), qn0(nzm)
-  !----------------------------------------------------------------
-  ! "observed" (read from snd file) surface characteristics
-
-  real(crm_rknd)  sstobs, lhobs, shobs
-  !----------------------------------------------------------------
-  !  Domain top stuff:
-
-  real(crm_rknd)   gamt0    ! gradient of t() at the top,K/m
-  real(crm_rknd)   gamq0    ! gradient of q() at the top,g/g/m
+  real(crm_rknd) :: t0(nzm)
+  real(crm_rknd) :: q0(nzm)
+  real(crm_rknd) :: qv0(nzm)
+  real(crm_rknd) :: tabs0(nzm)
+  real(crm_rknd) :: tl0(nzm)
+  real(crm_rknd) :: tv0(nzm)
+  real(crm_rknd) :: u0(nzm)
+  real(crm_rknd) :: v0(nzm)
+  real(crm_rknd) :: tg0(nzm)
+  real(crm_rknd) :: qg0(nzm)
+  real(crm_rknd) :: ug0(nzm)
+  real(crm_rknd) :: vg0(nzm)
+  real(crm_rknd) :: p0(nzm)
+  real(crm_rknd) :: tke0(nzm)
+  real(crm_rknd) :: t01(nzm)
+  real(crm_rknd) :: q01(nzm)
+  real(crm_rknd) :: qp0(nzm)
+  real(crm_rknd) :: qn0(nzm)
 
   !-----------------------------------------------------------------
   ! reference vertical profiles:
-
-  real(crm_rknd)   prespot(nzm)  ! (1000./pres)**R/cp
-  real(crm_rknd)   rho(nzm)	  ! air density at pressure levels,kg/m3
-  real(crm_rknd)   rhow(nz)   ! air density at vertical velocity levels,kg/m3
-  real(crm_rknd)   bet(nzm)	  ! = ggr/tv0
-  real(crm_rknd)   gamaz(nzm) ! ggr/cp*z
-  real(crm_rknd)   wsub(nz)   ! Large-scale subsidence velocity,m/s
-  real(crm_rknd)   qtend(nzm) ! Large-scale tendency for total water
-  real(crm_rknd)   ttend(nzm) ! Large-scale tendency for temp.
-  real(crm_rknd)   utend(nzm) ! Large-scale tendency for u
-  real(crm_rknd)   vtend(nzm) ! Large-scale tendency for v
-
-
-  !---------------------------------------------------------------------
-  ! Large-scale and surface forcing:
-
-  integer nlsf	! number of large-scale forcing profiles
-  integer nrfc	! number of radiative forcing profiles
-  integer nsfc	! number of surface forcing profiles
-  integer nsnd	! number of observed soundings
-  integer nzlsf	! number of large-scale forcing profiles
-  integer nzrfc	! number of radiative forcing profiles
-  integer nzsnd	! number of observed soundings
+  real(crm_rknd) :: prespot(nzm)  ! (1000./pres)**R/cp
+  real(crm_rknd) :: rho(nzm)	  ! air density at pressure levels,kg/m3
+  real(crm_rknd) :: rhow(nz)   ! air density at vertical velocity levels,kg/m3
+  real(crm_rknd) :: bet(nzm)	  ! = ggr/tv0
+  real(crm_rknd) :: gamaz(nzm) ! ggr/cp*z
+  real(crm_rknd) :: wsub(nz)   ! Large-scale subsidence velocity,m/s
+  real(crm_rknd) :: qtend(nzm) ! Large-scale tendency for total water
+  real(crm_rknd) :: ttend(nzm) ! Large-scale tendency for temp.
+  real(crm_rknd) :: utend(nzm) ! Large-scale tendency for u
+  real(crm_rknd) :: vtend(nzm) ! Large-scale tendency for v
 
   real(crm_rknd), allocatable :: dqls(:,:) ! Large-scale tendency for total water
   real(crm_rknd), allocatable :: dtls(:,:) ! Large-scale tendency for temp.
@@ -152,7 +150,7 @@ module vars
   !----------------------------------------------------------------------
   !	Vertical profiles of quantities sampled for statitistics purposes:
 
-  real(crm_rknd) &
+  real(crm_rknd) :: &
   twle(nz), twsb(nz), precflux(nz), &
   uwle(nz), uwsb(nz), vwle(nz), vwsb(nz), &
   radlwup(nz), radlwdn(nz), radswup(nz), radswdn(nz), &
@@ -173,8 +171,33 @@ module vars
   qwleadv(nz),qwlediff(nz),qwlepres(nz),qwlebuoy(nz),qwleprec(nz), &
   momleadv(nz,3),momlepress(nz,3),momlebuoy(nz,3), &
   momlediff(nz,3),tadv(nz),tdiff(nz),tlat(nz), tlatqi(nz),qifall(nz),qpfall(nz)
-  real(crm_rknd) tdiff_xy(nz), tdiff_z(nz), ttest0(nzm), ttest1(nz), ttest2(nz, 10)  !+++mhwang test
+  real(crm_rknd) :: tdiff_xy(nz), tdiff_z(nz), ttest0(nzm), ttest1(nz), ttest2(nz,10)  !+++mhwang test
 
+  real(crm_rknd), allocatable :: condavg_factor(:,:) ! replaces cloud_factor, core_factor
+  real(crm_rknd), allocatable :: condavg_mask(:,:,:,:) ! indicator array for various conditional averages
+  character(LEN=8), allocatable :: condavgname(:) ! array of short names
+  character(LEN=25), allocatable :: condavglongname(:) ! array of long names
+
+  !----------------------------------------------------------------
+  ! "observed" (read from snd file) surface characteristics
+
+  real(crm_rknd)  sstobs, lhobs, shobs
+  !----------------------------------------------------------------
+  !  Domain top stuff:
+
+  real(crm_rknd)   gamt0    ! gradient of t() at the top,K/m
+  real(crm_rknd)   gamq0    ! gradient of q() at the top,g/g/m
+
+  !---------------------------------------------------------------------
+  ! Large-scale and surface forcing:
+
+  integer nlsf	! number of large-scale forcing profiles
+  integer nrfc	! number of radiative forcing profiles
+  integer nsfc	! number of surface forcing profiles
+  integer nsnd	! number of observed soundings
+  integer nzlsf	! number of large-scale forcing profiles
+  integer nzrfc	! number of radiative forcing profiles
+  integer nzsnd	! number of observed soundings
 
   ! register functions:
 
@@ -201,10 +224,6 @@ module vars
   ! conditional average statistics, subsumes cloud_factor, core_factor, coredn_factor
   integer :: ncondavg, icondavg_cld, icondavg_cor, icondavg_cordn, &
   icondavg_satdn, icondavg_satup, icondavg_env
-  real(crm_rknd), allocatable :: condavg_factor(:,:) ! replaces cloud_factor, core_factor
-  real(crm_rknd), allocatable :: condavg_mask(:,:,:,:) ! indicator array for various conditional averages
-  character(LEN=8), allocatable :: condavgname(:) ! array of short names
-  character(LEN=25), allocatable :: condavglongname(:) ! array of long names
 
   real(crm_rknd)   qlsvadv(nzm) ! Large-scale vertical advection tendency for total water
   real(crm_rknd)   tlsvadv(nzm) ! Large-scale vertical advection tendency for temperature
@@ -225,7 +244,7 @@ module vars
   real(crm_rknd)   utendcor(nzm) ! coriolis acceleration of zonal velocity
   real(crm_rknd)   vtendcor(nzm) ! coriolis acceleration of meridional velocity
 
-  real(crm_rknd)   CF3D(1:nx, 1:ny, 1:nzm)  ! Cloud fraction
+  real(crm_rknd)   CF3D(1:nx,1:ny,1:nzm)  ! Cloud fraction
   ! =1.0 when there is no fractional cloudiness scheme
   ! = cloud fraction produced by fractioal cloudiness scheme when avaiable
 
@@ -253,9 +272,9 @@ module vars
   real(crm_rknd) bubble_dtemp
   real(crm_rknd) bubble_dq
 #if (defined CRM && defined MODAL_AERO)
-  real(crm_rknd)  naer(nzm, ntot_amode)     ! Aerosol number concentration [/m3]
-  real(crm_rknd)  vaer(nzm, ntot_amode)     ! aerosol volume concentration [m3/m3]
-  real(crm_rknd)  hgaer(nzm, ntot_amode)    ! hygroscopicity of aerosol mode
+  real(crm_rknd)  naer(nzm,ntot_amode)     ! Aerosol number concentration [/m3]
+  real(crm_rknd)  vaer(nzm,ntot_amode)     ! aerosol volume concentration [m3/m3]
+  real(crm_rknd)  hgaer(nzm,ntot_amode)    ! hygroscopicity of aerosol mode
 #endif
 
 contains
