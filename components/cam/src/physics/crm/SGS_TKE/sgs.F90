@@ -15,8 +15,6 @@ module sgs
 
   integer, parameter :: nsgs_fields = 1   ! total number of prognostic sgs vars
 
-  real(crm_rknd) sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields)
-
   !!! sgs diagnostic variables that need to exchange boundary information (via MPI):
 
   integer, parameter :: nsgs_fields_diag = 2   ! total number of diagnostic sgs vars
@@ -24,7 +22,6 @@ module sgs
   ! diagnostic fields' boundaries:
   integer, parameter :: dimx1_d=0, dimx2_d=nxp1, dimy1_d=1-YES3D, dimy2_d=nyp1
 
-  real(crm_rknd) sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag)
 
   logical:: advect_sgs = .false. ! advect prognostics or not, default - not (Smagorinsky)
   logical, parameter:: do_sgsdiag_bound = .true.  ! exchange boundaries for diagnostics fields
@@ -33,48 +30,96 @@ module sgs
   integer, parameter :: flag_sgs3Dout(nsgs_fields) = (/0/)
   integer, parameter :: flag_sgsdiag3Dout(nsgs_fields_diag) = (/0,0/)
 
-  real(crm_rknd) fluxbsgs (nx, ny, 1:nsgs_fields) ! surface fluxes
-  real(crm_rknd) fluxtsgs (nx, ny, 1:nsgs_fields) ! top boundary fluxes
+
+  real(crm_rknd), allocatable, target :: sgs_field(:,:,:,:)
+  real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:)
+  real(crm_rknd), allocatable :: fluxbsgs (:,:,:) ! surface fluxes
+  real(crm_rknd), allocatable :: fluxtsgs (:,:,:) ! top boundary fluxes
 
   !!! these arrays may be needed for output statistics:
 
-  real(crm_rknd) sgswle(nz,1:nsgs_fields)  ! resolved vertical flux
-  real(crm_rknd) sgswsb(nz,1:nsgs_fields)  ! SGS vertical flux
-  real(crm_rknd) sgsadv(nz,1:nsgs_fields)  ! tendency due to vertical advection
-  real(crm_rknd) sgslsadv(nz,1:nsgs_fields)  ! tendency due to large-scale vertical advection
-  real(crm_rknd) sgsdiff(nz,1:nsgs_fields)  ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: sgswle  (:,:)  ! resolved vertical flux
+  real(crm_rknd), allocatable :: sgswsb  (:,:)  ! SGS vertical flux
+  real(crm_rknd), allocatable :: sgsadv  (:,:)  ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: sgslsadv(:,:)  ! tendency due to large-scale vertical advection
+  real(crm_rknd), allocatable :: sgsdiff (:,:)  ! tendency due to vertical diffusion
+
+  real(crm_rknd), allocatable :: grdf_x(:)! grid factor for eddy diffusion in x
+  real(crm_rknd), allocatable :: grdf_y(:)! grid factor for eddy diffusion in y
+  real(crm_rknd), allocatable :: grdf_z(:)! grid factor for eddy diffusion in z
+
+  ! Local diagnostics:
+
+  real(crm_rknd), allocatable :: tkesbbuoy (:)
+  real(crm_rknd), allocatable :: tkesbshear(:)
+  real(crm_rknd), allocatable :: tkesbdiss (:)
+  real(crm_rknd), allocatable :: tkesbdiff (:)
 
   !------------------------------------------------------------------
   ! internal (optional) definitions:
 
   ! make aliases for prognostic variables:
 
-  real(crm_rknd) tke(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! SGS TKE
-  equivalence (tke(dimx1_s,dimy1_s,1),sgs_field(dimx1_s,dimy1_s,1,1))
+  real(crm_rknd), pointer :: tke(:,:,:)   ! SGS TKE
 
   ! make aliases for diagnostic variables:
 
-  real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
-  real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
-  equivalence (tk(dimx1_d,dimy1_d,1), sgs_field_diag(dimx1_d, dimy1_d,1,1))
-  equivalence (tkh(dimx1_d,dimy1_d,1), sgs_field_diag(dimx1_d, dimy1_d,1,2))
-
-
-  real(crm_rknd) grdf_x(nzm)! grid factor for eddy diffusion in x
-  real(crm_rknd) grdf_y(nzm)! grid factor for eddy diffusion in y
-  real(crm_rknd) grdf_z(nzm)! grid factor for eddy diffusion in z
-
+  real(crm_rknd), pointer :: tk  (:,:,:) ! SGS eddy viscosity
+  real(crm_rknd), pointer :: tkh (:,:,:) ! SGS eddy conductivity
 
   logical:: dosmagor   ! if true, then use Smagorinsky closure
 
   ! whannah
   ! logical:: doscalar   ! if true, transport a passive scalar in the place of prognostic SGS TKE only if dosmagor=.true.
 
-  ! Local diagnostics:
-
-  real(crm_rknd) tkesbbuoy(nz), tkesbshear(nz),tkesbdiss(nz), tkesbdiff(nz)
 
 CONTAINS
+
+
+  subroutine allocate_sgs()
+    implicit none
+    allocate( sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
+    allocate( sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
+    allocate( fluxbsgs (nx, ny, 1:nsgs_fields) )
+    allocate( fluxtsgs (nx, ny, 1:nsgs_fields) )
+    allocate( sgswle(nz,1:nsgs_fields) )
+    allocate( sgswsb(nz,1:nsgs_fields) )
+    allocate( sgsadv(nz,1:nsgs_fields) )
+    allocate( sgslsadv(nz,1:nsgs_fields) )
+    allocate( sgsdiff(nz,1:nsgs_fields) )
+    allocate( grdf_x(nzm) )
+    allocate( grdf_y(nzm) )
+    allocate( grdf_z(nzm) )
+    allocate( tkesbbuoy(nz) )
+    allocate( tkesbshear(nz) )
+    allocate( tkesbdiss(nz) )
+    allocate( tkesbdiff(nz) )
+    tke(dimx1_s:,dimy1_s:,1:) => sgs_field     (dimx1_s:dimx2_s,dimy1_s:dimy2_s,1:nzm,1)
+    tk (dimx1_d:,dimy1_d:,1:) => sgs_field_diag(dimx1_d:dimx2_d,dimy1_d:dimy2_d,1:nzm,1)
+    tkh(dimx1_d:,dimy1_d:,1:) => sgs_field_diag(dimx1_d:dimx2_d,dimy1_d:dimy2_d,1:nzm,2)
+  end subroutine allocate_sgs
+
+
+  subroutine deallocate_sgs()
+    implicit none
+    deallocate( sgs_field )
+    deallocate( sgs_field_diag )
+    deallocate( fluxbsgs  )
+    deallocate( fluxtsgs  )
+    deallocate( sgswle )
+    deallocate( sgswsb )
+    deallocate( sgsadv )
+    deallocate( sgslsadv )
+    deallocate( sgsdiff )
+    deallocate( grdf_x )
+    deallocate( grdf_y )
+    deallocate( grdf_z )
+    deallocate( tkesbbuoy )
+    deallocate( tkesbshear )
+    deallocate( tkesbdiss )
+    deallocate( tkesbdiff )
+  end subroutine deallocate_sgs
+
 
   ! required microphysics subroutines and function:
   !----------------------------------------------------------------------

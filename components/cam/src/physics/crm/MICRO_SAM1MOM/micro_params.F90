@@ -78,12 +78,56 @@ module micro_params
   real*4 gamr2      ! Gamma function of (5 + b_rain)/2
   real*4 gamr3      ! Gamma function of (4 + b_rain)
 
-  real(crm_rknd) accrsc(nzm),accrsi(nzm),accrrc(nzm),coefice(nzm)
-  real(crm_rknd) accrgc(nzm),accrgi(nzm)
-  real(crm_rknd) evaps1(nzm),evaps2(nzm),evapr1(nzm),evapr2(nzm)
-  real(crm_rknd) evapg1(nzm),evapg2(nzm)
+  real(crm_rknd), allocatable :: accrsc (:)
+  real(crm_rknd), allocatable :: accrsi (:)
+  real(crm_rknd), allocatable :: accrrc (:)
+  real(crm_rknd), allocatable :: coefice(:)
+  real(crm_rknd), allocatable :: accrgc (:)
+  real(crm_rknd), allocatable :: accrgi (:)
+  real(crm_rknd), allocatable :: evaps1 (:)
+  real(crm_rknd), allocatable :: evaps2 (:)
+  real(crm_rknd), allocatable :: evapr1 (:)
+  real(crm_rknd), allocatable :: evapr2 (:)
+  real(crm_rknd), allocatable :: evapg1 (:)
+  real(crm_rknd), allocatable :: evapg2 (:)
 
   real(crm_rknd) a_bg, a_pr, a_gr
+
+contains
+
+
+  subroutine allocate_micro_params()
+    implicit none
+    allocate( accrsc (nzm) )
+    allocate( accrsi (nzm) )
+    allocate( accrrc (nzm) )
+    allocate( coefice(nzm) )
+    allocate( accrgc (nzm) )
+    allocate( accrgi (nzm) )
+    allocate( evaps1 (nzm) )
+    allocate( evaps2 (nzm) )
+    allocate( evapr1 (nzm) )
+    allocate( evapr2 (nzm) )
+    allocate( evapg1 (nzm) )
+    allocate( evapg2 (nzm) )
+  end subroutine allocate_micro_params
+
+
+  subroutine deallocate_micro_params()
+    implicit none
+    deallocate( accrsc  )
+    deallocate( accrsi  )
+    deallocate( accrrc  )
+    deallocate( coefice )
+    deallocate( accrgc  )
+    deallocate( accrgi  )
+    deallocate( evaps1  )
+    deallocate( evaps2  )
+    deallocate( evapr1  )
+    deallocate( evapr2  )
+    deallocate( evapg1  )
+    deallocate( evapg2  )
+  end subroutine deallocate_micro_params
 
 
 end module micro_params
