@@ -430,6 +430,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
   allocate( rtm_column(nzm) )
 #endif
 
+  call allocate_vars()
+
   !Loop over "vector columns"
   do icrm = 1 , ncrms
 
@@ -1864,6 +1866,8 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
                           prec_crm(icrm,:,:),qtot(icrm,:) )
 #endif
   enddo
+
+  call deallocate_vars()
 
   deallocate( flag_top )
   deallocate( dummy )
