@@ -431,6 +431,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
 #endif
 
   call allocate_vars()
+  call allocate_grid()
 
   !Loop over "vector columns"
   do icrm = 1 , ncrms
@@ -1867,6 +1868,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
 #endif
   enddo
 
+  call deallocate_grid()
   call deallocate_vars()
 
   deallocate( flag_top )
