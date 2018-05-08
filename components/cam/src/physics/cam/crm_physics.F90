@@ -1,6 +1,4 @@
-
-! #define SP_DIR_NS
-#ifdef SP_ORIENT_RAND
+#if defined( SP_ORIENT_RAND ) && defined( SP_DIR_NS )
 #undef SP_DIR_NS
 #endif
 
@@ -705,12 +703,16 @@ end subroutine crm_physics_init
    real(r8) ul(pcols,pver)
    real(r8) vl(pcols,pver)
 
+#if defined(SPMOMTRANS)
    real(r8) u_tend_crm (pcols,pver)       ! temporary variable for CRM momentum tendency
    real(r8) v_tend_crm (pcols,pver)       ! temporary variable for CRM momentum tendency
+#endif
+#if defined( SP_ESMT )
    real(r8) u_tend_esmt(pcols,pver)       ! temporary variable for CRM scalar momentum tendency
    real(r8) v_tend_esmt(pcols,pver)       ! temporary variable for CRM scalar momentum tendency
    real(r8) ul_esmt(pcols,pver)           ! input U wind for ESMT (may be different from CRM forcing due to orientation)
    real(r8) vl_esmt(pcols,pver)           ! input V wind for ESMT (may be different from CRM forcing due to orientation)
+#endif
 
    real(r8) :: mu_crm(pcols, pver)   
    real(r8) :: md_crm(pcols, pver) 
@@ -867,9 +869,9 @@ end subroutine crm_physics_init
    integer :: icol(pcols)
 
    !!! variables for changin CRM orientation - whannah
-   real(crm_rknd), parameter       :: pi   = 3.14159265359
-   real(crm_rknd), parameter       :: pix2 = 6.28318530718
-   real(crm_rknd), dimension(ncol) :: crm_angle
+   real(crm_rknd), parameter        :: pi   = 3.14159265359
+   real(crm_rknd), parameter        :: pix2 = 6.28318530718
+   real(crm_rknd), dimension(pcols) :: crm_angle
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -1116,6 +1118,10 @@ end subroutine crm_physics_init
          do k=1,crm_nz
             m = pver-k+1
 
+            !!! one-time test for PR merge  --  DELETE ME!!!
+            ! crm_u(i,:,:,k) = state%v(i,m)
+            ! crm_v(i,:,:,k) = state%u(i,m)
+
             crm_u(i,:,:,k) = state%u(i,m) * cos( crm_angle(i) ) + state%v(i,m) * sin( crm_angle(i) )
             crm_v(i,:,:,k) = state%v(i,m) * cos( crm_angle(i) ) - state%u(i,m) * sin( crm_angle(i) )
             crm_w(i,:,:,k) = 0.
@@ -1275,11 +1281,14 @@ end subroutine crm_physics_init
       qvw(:,:) = 0.      ! MDB 8/2013
 
 
+#if defined(SPMOMTRANS)
       u_tend_crm (:,:) = 0.
       v_tend_crm (:,:) = 0.
+#endif
+#if defined( SP_ESMT )
       u_tend_esmt(:,:) = 0.
       v_tend_esmt(:,:) = 0.
-
+#endif
 
 #ifdef ECPP
       if (use_ECPP) then
@@ -1489,9 +1498,14 @@ end subroutine crm_physics_init
          ! Set the input wind (also sets CRM orientation)
          !----------------------------------------------------------------------
          do k=1,pver
+            
+            !!! one-time test for PR merge  --  DELETE ME!!!
+            ! ul(i,k) = state%v(i,k)
+            ! vl(i,k) = state%u(i,k)
+
             ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
             vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
-#ifdef SP_ESMT
+#if defined( SP_ESMT )
             ! Set the input wind for ESMT
             ul_esmt(i,k) = state%u(i,k)
             vl_esmt(i,k) = state%v(i,k)
@@ -1516,8 +1530,10 @@ end subroutine crm_physics_init
                ul(:ncol,:),                 vl(:ncol,:),                                                                                                             &
                state%ps(:ncol),             state%pmid(:ncol,:),          state%pdel(:ncol,:),       state%phis(:ncol),                                              &
                state%zm(:ncol,:),           state%zi(:ncol,:),            ztodt,                     pver,                                                           &
+#if defined( SPMOMTRANS )
                u_tend_crm (:ncol,:),        v_tend_crm (:ncol,:),                                                                                                    &
-#ifdef SP_ESMT
+#endif
+#if defined( SP_ESMT )
                ul_esmt(:ncol,:),            vl_esmt(:ncol,:),                   u_tend_esmt(:ncol,:),     v_tend_esmt(:ncol,:),                                      &
 #endif
                ptend%q(:ncol,:,1),          ptend%q(:ncol,:,ixcldliq),    ptend%q(:ncol,:,ixcldice), ptend%s(:ncol,:),                                               &
@@ -1947,14 +1963,17 @@ end subroutine crm_physics_init
 ! Output CRM momentum tendencies
 !----------------------------------------------------------------------
 
-#ifdef SP_USE_ESMT 
+#if defined( SP_ESMT )
+      call outfld('U_ESMT',u_tend_esmt,pcols   ,lchnk   )
+      call outfld('V_ESMT',v_tend_esmt,pcols   ,lchnk   )
+#endif /* SP_ESMT */
+
+#if defined( SP_USE_ESMT )
       ptend%lu = .TRUE.
       ptend%lv = .TRUE.
       ptend%u  = u_tend_esmt
       ptend%v  = v_tend_esmt
-      call outfld('U_ESMT',u_tend_esmt,pcols   ,lchnk   )
-      call outfld('V_ESMT',v_tend_esmt,pcols   ,lchnk   )
-#else /* SP_USE_ESMT not defined */ 
+#else /* SP_USE_ESMT not defined */  
 
 #if defined(SPMOMTRANS)
       ptend%lu = .TRUE.

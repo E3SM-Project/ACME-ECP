@@ -40,7 +40,9 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
                 tl, ql, qccl, qiil, ul, vl, &
                 ps, pmid, pdel, phis, &
                 zmid, zint, dt_gl, plev, &
+#if defined(SPMOMTRANS)
                 ultend, vltend,          &
+#endif
 #if defined(SP_ESMT)
                 ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah 
 #endif
@@ -201,8 +203,10 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     real(r8), intent(inout) :: clhgh               (nvcols)                        ! shaded cloud fraction
     real(r8), intent(inout) :: clmed               (nvcols)                        ! shaded cloud fraction
     real(r8), intent(inout) :: cllow               (nvcols)                        ! shaded cloud fraction
+#if defined(SPMOMTRANS)
     real(r8), intent(  out) :: ultend              (nvcols,plev)                   ! tendency of ul
     real(r8), intent(  out) :: vltend              (nvcols,plev)                   ! tendency of vl
+#endif
 #if defined(SP_ESMT)
     real(r8), intent(in   ) :: ul_esmt             (nvcols,plev)                   ! input u for ESMT
     real(r8), intent(in   ) :: vl_esmt             (nvcols,plev)                   ! input v for ESMT
@@ -359,7 +363,9 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     real(crm_rknd)  :: dummy(nz), t00(nz)
     real(crm_rknd)  :: fluxbtmp(nx,ny), fluxttmp(nx,ny)    !bloss
     real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
-    real(crm_rknd)  :: uln_esmt(plev), vln_esmt(plev)     ! whannah - for scalar momentum transport - temporary
+#if defined(SP_ESMT)
+    real(crm_rknd)  :: uln_esmt(plev), vln_esmt(plev)     ! tempoerary variables for expliciit scalar momentum transport
+#endif
     real(crm_rknd)  :: cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
     real(r8)        :: factor_xy, idt_gl
     real(crm_rknd)  :: tmp1, tmp2
@@ -1868,9 +1874,11 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #ifdef CLUBB_CRM
                           clubb_buffer(vc,:,:,:,:),crm_cld(vc,:,:,:),clubb_tk(vc,:,:,:),clubb_tkh(vc,:,:,:),relvar(vc,:,:,:),accre_enhan(vc,:,:,:),qclvar(vc,:,:,:) , &
 #endif
+#if defined(SPMOMTRANS)
                           ultend(vc,:),vltend(vc,:) , &
+#endif
 ! #if defined(SP_ESMT)
-!                           ultend_esmt(vc,:),vltend_esmt(vc,:) , & ! whannah - temporary diagnostic fields
+!                           ultend_esmt(vc,:),vltend_esmt(vc,:) , & ! whannah - temporary diagnostic fields for ESMT
 ! #endif
 #ifdef m2005
                           nc_rad(vc,:,:,:),ni_rad(vc,:,:,:),qs_rad(vc,:,:,:),ns_rad(vc,:,:,:),wvar_crm(vc,:,:,:),aut_crm(vc,:,:,:),acc_crm(vc,:,:,:),evpc_crm(vc,:,:,:), &
