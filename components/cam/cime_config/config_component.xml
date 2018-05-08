@@ -97,7 +97,7 @@
       <value compset="_CAM4%WCSF"     >-chem waccm_mozart_sulfur -carma sulfate</value>
       <value compset="_CAM[45]%WCMX"  >-waccmx</value>
       <!-- Super-Parameterization -->
-      <value compset="_CAM5%SP[12]V1"      >-use_SPCAM -crm_adv MPDATA -nlev 72 -crm_nz 58 -crm_dx 1000 -crm_dt 10 </value>
+      <value compset="_CAM5%SP[12]V1"      >-use_SPCAM -crm_adv MPDATA -nlev 72 -crm_nz 58 -crm_dx 1000 -crm_dt 5 </value>
       <value compset="_CAM5%SP[12]V1"      >-microphys mg2  </value>
       <value compset="_CAM5%SP[12]V1"      >-cppdefs ' -DSP_DIR_NS -DSP_TK_LIM ' </value>
       <value compset="_CAM5%SP[12]V1_"     >-crm_nx 32 -crm_ny 1 -crm_nx_rad 8 -crm_ny_rad 1 </value>
