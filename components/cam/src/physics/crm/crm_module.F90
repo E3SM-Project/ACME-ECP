@@ -44,7 +44,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
                 ultend, vltend,          &
 #endif
 #if defined(SP_ESMT)
-                ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah 
+                ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah
 #endif
                 qltend, qcltend, qiltend, sltend, &
                 u_crm, v_crm, w_crm, t_crm, micro_fields_crm, &
@@ -210,7 +210,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #if defined(SP_ESMT)
     real(r8), intent(in   ) :: ul_esmt             (nvcols,plev)                   ! input u for ESMT
     real(r8), intent(in   ) :: vl_esmt             (nvcols,plev)                   ! input v for ESMT
-    real(r8), intent(  out) :: ultend_esmt         (nvcols,plev)                   ! tendency of ul - diagnostic field 
+    real(r8), intent(  out) :: ultend_esmt         (nvcols,plev)                   ! tendency of ul - diagnostic field
     real(r8), intent(  out) :: vltend_esmt         (nvcols,plev)                   ! tendency of vl - diagnostic field
 #endif
     real(r8), intent(  out) :: sltend              (nvcols,plev)                   ! tendency of static energy
@@ -352,50 +352,136 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     real(r8), intent(  out) :: wwqui_bnd           (nvcols,plev+1)                                 ! vertical velocity variance in quiescent class (m2/s2)
     real(r8), intent(  out) :: wwqui_cloudy_bnd    (nvcols,plev+1)                                 ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
 #endif
-
-!  Local space:
     real(r8), intent(  out) :: qtot                (nvcols,20)
 
     !  Local space:
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001    ! threshold for cloud condensate for shaded fraction calculation
-    real(crm_rknd)  :: dummy(nz), t00(nz)
-    real(crm_rknd)  :: fluxbtmp(nx,ny), fluxttmp(nx,ny)    !bloss
-    real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
-#if defined(SP_ESMT)
-    real(crm_rknd)  :: uln_esmt(plev), vln_esmt(plev)     ! tempoerary variables for expliciit scalar momentum transport
-#endif
-    real(crm_rknd)  :: cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
     real(r8)        :: factor_xy, idt_gl
     real(crm_rknd)  :: tmp1, tmp2
     real(crm_rknd)  :: u2z,v2z,w2z
     integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, vc
     integer         :: kx
-    logical         :: flag_top(nx,ny)
     real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
     real(crm_rknd)  :: colprec,colprecs
     real(r8)        :: zs                ! surface elevation
     integer         :: igstep            ! GCM time steps
     integer         :: iseed             ! seed for random perturbation
-    integer         :: gcolindex(pcols)  ! array of global latitude indices
-    real(crm_rknd)  :: cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
     real(crm_rknd)  :: ntotal_step
     integer         :: myrank, ierr
+    ! whannah - variables for new radiation group method
+    real(crm_rknd) :: crm_nx_rad_fac
+    real(crm_rknd) :: crm_ny_rad_fac
+    integer        :: i_rad
+    integer        :: j_rad
+    !Arrays
+    real(crm_rknd), allocatable :: dummy(:)
+    real(crm_rknd), allocatable :: t00(:)
+    real(crm_rknd), allocatable :: fluxbtmp(:,:)
+    real(crm_rknd), allocatable :: fluxttmp(:,:)    !bloss
+    real(crm_rknd), allocatable :: tln  (:)
+    real(crm_rknd), allocatable :: qln  (:)
+    real(crm_rknd), allocatable :: qccln(:)
+    real(crm_rknd), allocatable :: qiiln(:)
+    real(crm_rknd), allocatable :: uln  (:)
+    real(crm_rknd), allocatable :: vln  (:)
+#if defined(SP_ESMT)
+    real(crm_rknd), allocatable  :: uln_esmt(:)
+    real(crm_rknd), allocatable  :: vln_esmt(:)     ! tempoerary variables for expliciit scalar momentum transport
+#endif
+    real(crm_rknd), allocatable  :: cwp     (:,:)
+    real(crm_rknd), allocatable  :: cwph    (:,:)
+    real(crm_rknd), allocatable  :: cwpm    (:,:)
+    real(crm_rknd), allocatable  :: cwpl    (:,:)
+    logical       , allocatable  :: flag_top(:,:)
+    real(crm_rknd), allocatable  :: cltemp  (:,:)
+    real(crm_rknd), allocatable  :: cmtemp  (:,:)
+    real(crm_rknd), allocatable  :: chtemp  (:,:)
+    real(crm_rknd), allocatable  :: cttemp  (:,:)
+    integer       , allocatable  :: gcolindex(:)  ! array of global latitude indices
 #ifdef CLUBB_CRM
     !Array indicies for spurious RTM check
-    real(kind=core_rknd) :: rtm_integral_before (nx,ny), rtm_integral_after (nx,ny), rtm_flux_top, rtm_flux_sfc
-    real(kind=core_rknd) :: thlm_integral_before(nx,ny), thlm_integral_after(nx,ny), thlm_before(nzm), thlm_after(nzm), thlm_flux_top, thlm_flux_sfc
-    real(kind=core_rknd) :: rtm_column(nzm) ! Total water (vapor + liquid)     [kg/kg]
+    real(kind=core_rknd), allocatable :: thlm_flux_top, thlm_flux_sfc, rtm_flux_top, rtm_flux_sfc
+    real(kind=core_rknd), allocatable :: rtm_integral_before (:,:)
+    real(kind=core_rknd), allocatable :: rtm_integral_after  (:,:)
+    real(kind=core_rknd), allocatable :: thlm_integral_before(:,:)
+    real(kind=core_rknd), allocatable :: thlm_integral_after (:,:)
+    real(kind=core_rknd), allocatable :: thlm_before(:)
+    real(kind=core_rknd), allocatable :: thlm_after (:)
+    real(kind=core_rknd), allocatable :: rtm_column (:) ! Total water (vapor + liquid)     [kg/kg]
+#endif
+    real(crm_rknd) :: zeroval
+
+    allocate( dummy(nz) )
+    allocate( t00(nz) )
+    allocate( fluxbtmp(nx,ny) )
+    allocate( fluxttmp(nx,ny) )
+    allocate( tln(plev) )
+    allocate( qln(plev) )
+    allocate( qccln(plev) )
+    allocate( qiiln(plev) )
+    allocate( uln(plev) )
+    allocate( vln(plev) )
+#if defined(SP_ESMT)
+    allocate( uln_esmt(plev) )
+    allocate( vln_esmt(plev) )
+#endif
+    allocate( cwp(nx,ny) )
+    allocate( cwph(nx,ny) )
+    allocate( cwpm(nx,ny) )
+    allocate( cwpl(nx,ny) )
+    allocate( flag_top(nx,ny) )
+    allocate( gcolindex(pcols) )
+    allocate( cltemp(nx,ny) )
+    allocate( cmtemp(nx,ny) )
+    allocate( chtemp(nx,ny) )
+    allocate( cttemp(nx,ny) )
+#ifdef CLUBB_CRM
+    allocate( rtm_integral_before (nx,ny) )
+    allocate( rtm_integral_after (nx,ny) )
+    allocate( thlm_integral_before(nx,ny) )
+    allocate( thlm_integral_after(nx,ny) )
+    allocate( thlm_before(nzm) )
+    allocate( thlm_after(nzm) )
+    allocate( rtm_column(nzm) )
 #endif
 
-  ! whannah - variables for new radiation group method
-  real(crm_rknd) :: crm_nx_rad_fac
-  real(crm_rknd) :: crm_ny_rad_fac
-  integer        :: i_rad
-  integer        :: j_rad
+    zeroval = 0
 
-
+    dummy  = zeroval
+    t00  = zeroval
+    fluxbtmp  = zeroval
+    fluxttmp  = zeroval
+    tln  = zeroval
+    qln  = zeroval
+    qccln  = zeroval
+    qiiln  = zeroval
+    uln  = zeroval
+    vln  = zeroval
+#if defined(SP_ESMT)
+    uln_esmt = zeroval
+    vln_esmt = zeroval
+#endif
+    cwp = zeroval
+    cwph = zeroval
+    cwpm = zeroval
+    cwpl = zeroval
+    flag_top = .false.
+    gcolindex = zeroval
+    cltemp = zeroval
+    cmtemp = zeroval
+    chtemp = zeroval
+    cttemp = zeroval
+#ifdef CLUBB_CRM
+    rtm_integral_before  = zeroval
+    rtm_integral_after  = zeroval
+    thlm_integral_before = zeroval
+    thlm_integral_after = zeroval
+    thlm_before = zeroval
+    thlm_after = zeroval
+    rtm_column = zeroval
+#endif
 
   !Loop over "vector columns"
   do vc = 1 , nvcols
@@ -605,7 +691,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
 #if defined(SP_ESMT)
     ! initialize scalar momentum transport fields
     call scalar_momentum_init()
-#endif  
+#endif
 
     do k=1,nzm
       u0(k)=0.
@@ -805,7 +891,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
     !MRN: Need to make sure the first call to crm(...) is not dumped out
     !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
 #ifndef CRM_STANDALONE
-    if (is_first_step) then 
+    if (is_first_step) then
         iseed = get_gcol_p(lchnk,icol(vc))
         call setperturb(iseed)
     end if
@@ -1170,7 +1256,7 @@ subroutine crm(lchnk, icol, nvcols, is_first_step, &
           ! End spurious source calculation
         endif  ! doclubb
 #endif /*CLUBB_CRM_OLD*/
-        
+
         !-----------------------------------------------------------
         !       Calculate PGF for scalar momentum tendency
 #if defined(SP_ESMT)
