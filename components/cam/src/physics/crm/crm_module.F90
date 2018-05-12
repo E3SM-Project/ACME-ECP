@@ -488,6 +488,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
   call allocate_sgs()
 #ifdef sam1mom
   call allocate_micro_params()
+  call allocate_micro()
 #endif
 
   !Loop over "vector columns"
@@ -1997,6 +1998,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
   call deallocate_sgs()
 #ifdef sam1mom
   call deallocate_micro_params()
+  call deallocate_micro()
 #endif
 
   end subroutine crm
