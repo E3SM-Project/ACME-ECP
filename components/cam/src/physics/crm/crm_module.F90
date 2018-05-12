@@ -486,6 +486,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
   call allocate_grid()
   call allocate_tracers()
   call allocate_sgs()
+  call allocate_vars()
 #ifdef sam1mom
   call allocate_micro_params()
   call allocate_micro()
@@ -1996,6 +1997,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
   call deallocate_grid()
   call deallocate_tracers()
   call deallocate_sgs()
+  call deallocate_vars()
 #ifdef sam1mom
   call deallocate_micro_params()
   call deallocate_micro()
