@@ -485,6 +485,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
 
   call allocate_grid()
   call allocate_tracers()
+  call allocate_sgs()
 
   !Loop over "vector columns"
   do icrm = 1 , ncrms
@@ -1990,6 +1991,7 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, &
 
   call deallocate_grid()
   call deallocate_tracers()
+  call deallocate_sgs()
 
   end subroutine crm
 
