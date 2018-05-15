@@ -119,7 +119,7 @@ subroutine qneg3 (subnam  ,idx     ,ncol    ,ncold   ,lver    ,lconst_beg  , &
          else
             write(iulog,8000)subnam,m,idx,nvals,worst,iw,kw
          end if
-      end if 
+      end if
 
    end do
 !

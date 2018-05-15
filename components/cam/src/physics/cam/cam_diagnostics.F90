@@ -518,6 +518,7 @@ subroutine diag_init()
    call addfld ('SHFLX',horiz_only,    'A','W/m2','Surface sensible heat flux')
    call addfld ('LHFLX',horiz_only,    'A','W/m2','Surface latent heat flux')
    call addfld ('QFLX',horiz_only,    'A','kg/m2/s','Surface water flux')
+   call addfld ('QEXCESS',horiz_only,    'A','W/m2','qneg4 excess drying converted to cooling on bottom level')
 
    call addfld ('TAUX',horiz_only,    'A','N/m2','Zonal surface stress')
    call addfld ('TAUY',horiz_only,    'A','N/m2','Meridional surface stress')
@@ -746,12 +747,26 @@ subroutine diag_init()
       call addfld ('U_ESMT',(/ 'lev' /), 'A', 'm/s2 ','U tendency due to CRM (ESMT)'            )
       call addfld ('V_ESMT',(/ 'lev' /), 'A', 'm/s2 ','V tendency due to CRM (ESMT)'            )
 #endif
+#if defined( SP_CRM_SPLIT )
+      !!! diagnostic output for SP_CRM_SPLIT (tphysbc)
+      call addfld ('SPDT1   ',(/ 'lev' /), 'A', 'K/s     ','T tend due to CRM in tphysbc'            )
+      call addfld ('SPDQ1   ',(/ 'lev' /), 'A', 'kg/kg/s ','Q tend due to CRM in tphysbc'            )
+      call addfld ('SPQPEVP1',(/ 'lev' /), 'A', 'kg/kg/s ','Prec. water evap from CRM in tphysbc'    )
+      call addfld ('SPTLS1  ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE tend from CRM in tphysbc'     )
+
+      !!! diagnostic output for SP_CRM_SPLIT (tphysac)
+      call addfld ('SPDT2   ',(/ 'lev' /), 'A', 'K/s     ','T tend due to CRM in tphysac'            )
+      call addfld ('SPDQ2   ',(/ 'lev' /), 'A', 'kg/kg/s ','Q tend due to CRM in tphysac'            )
+      call addfld ('SPQPEVP2',(/ 'lev' /), 'A', 'kg/kg/s ','Prec. water evap from CRM in tphysac'    )
+      call addfld ('SPTLS2  ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE tend from CRM in tphysac'     )
+#endif
       ! Adding crm dimensions to cam history 
       call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
       call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
       call add_hist_coord('crm_nz'       ,crm_nz,  'CRM NZ')
       call add_hist_coord('pverp'        ,pverp,     'pverp ')
       call add_hist_coord('pver'         ,pver,      'pver  ')
+
 #ifdef ECPP
       if (use_ECPP) then
          call add_hist_coord('NCLASS_CL'    ,NCLASS_CL,'NCLASS_CL')
@@ -810,25 +825,37 @@ subroutine diag_init()
       call add_default ('SPTLS   ', 1, ' ')
       call add_default ('CLOUDTOP', 1, ' ')
       call add_default ('TIMINGF ', 1, ' ')
-! whannah
-#if defined(SPMOMTRANS) || defined(SP_ESMT)
-      call add_default ('UCONVMOM', 1, ' ')
-      call add_default ('VCONVMOM', 1, ' ')
-#endif
-!whannah
-#if defined(SP_ESMT)
-      call add_default ('U_ESMT', 1, ' ')
-      call add_default ('V_ESMT', 1, ' ')
-#endif
-!-- MDB 8/2013
+
       call add_default ('SPTVFLUX  ', 1, ' ')
       call add_default ('SPBUOY    ', 1, ' ')
       call add_default ('SPBUOYSD  ', 1, ' ')
       call add_default ('SPMSEF    ', 1, ' ')
       call add_default ('SPQVFLUX  ', 1, ' ')
 
+#if defined( SP_CRM_SPLIT )
+      !!! diagnostic output for SP_CRM_SPLIT
+      call add_default ('SPDT1   ', 1, ' ')
+      call add_default ('SPDQ1   ', 1, ' ')
+      call add_default ('SPQPEVP1', 1, ' ')
+      call add_default ('SPTLS1  ', 1, ' ')
+
+      call add_default ('SPDT2   ', 1, ' ')
+      call add_default ('SPDQ2   ', 1, ' ')
+      call add_default ('SPQPEVP2', 1, ' ')
+      call add_default ('SPTLS2  ', 1, ' ')
+#endif
+
+#if defined(SPMOMTRANS) || defined(SP_ESMT)
+      call add_default ('UCONVMOM', 1, ' ')
+      call add_default ('VCONVMOM', 1, ' ')
+#endif
+
+#if defined(SP_ESMT)
+      call add_default ('U_ESMT', 1, ' ')
+      call add_default ('V_ESMT', 1, ' ')
+#endif
+
    endif !/* SPCAM */
-!-- mdb spcam
 
   !---------------------------------------------------------
   ! WACCM diagnostic history fields 

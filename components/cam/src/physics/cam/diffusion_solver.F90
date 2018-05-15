@@ -137,7 +137,7 @@
                             u               , v                  , q             , dse          ,               &
                             tautmsx         , tautmsy            , dtk           , topflx       , errstring   , &
                             tauresx         , tauresy            , itaures       , cpairv       , rairi       , &
-                            do_molec_diff  , compute_molec_diff, vd_lu_qdecomp, kvt )
+                            do_molec_diff   , do_SP_bypass       , compute_molec_diff, vd_lu_qdecomp, kvt )
 
     !-------------------------------------------------------------------------- !
     ! Driver routine to compute vertical diffusion of momentum, moisture, trace !
@@ -151,10 +151,7 @@
 !    use phys_debug_util,    only : phys_debug_col
 !    use time_manager,       only : is_first_step, get_nstep
     use vdiff_lu_solver,     only : lu_decomp, vd_lu_decomp, vd_lu_solve
-
-!-- mdb spcam
-    use phys_control,       only : phys_getopts  
-!-- mdb spcam
+    use phys_control,        only : phys_getopts  
     
   ! Modification : Ideally, we should diffuse 'liquid-ice static energy' (sl), not the dry static energy.
   !                Also, vertical diffusion of cloud droplet number concentration and aerosol number
@@ -193,6 +190,7 @@
     real(r8), intent(in)    :: kvh(pcols,pver+1)         ! Eddy diffusivity for heat [ m2/s ]
 
     logical,  intent(in)    :: do_molec_diff             ! Flag indicating multiple constituent diffusivities
+    logical,  intent(in)    :: do_SP_bypass              ! whannah - Flag indicating whether to enforce SP_FLUX_BYPASS - needed for call in eddy_diff.F90
 
     integer,  external, optional :: compute_molec_diff   ! Constituent-independent moleculuar diffusivity routine
     integer,  external, optional :: vd_lu_qdecomp        ! Constituent-dependent moleculuar diffusivity routine
@@ -302,9 +300,7 @@
     
     real(r8) :: mw_fac_loc(pcols,pver+1,ncnst)           ! Local sqrt(1/M_q + 1/M_d) for this constituent
 
-!-- mdb spcam
     logical  :: use_SPCAM
-!-- mdb spcam
 
     !--------------------------------
     ! Variables needed for WACCM-X
@@ -657,7 +653,11 @@
   !                moist static energy,not the dry static energy.
 
     if( diffuse(fieldlist,'s') ) then
+#if defined( SP_USE_DIFF )
+      if (.true.) then
+#else
       if (.not. use_SPCAM) then
+#endif
 
       ! Add counter-gradient to input static energy profiles
 
@@ -670,19 +670,17 @@
 
       dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
 
-   ! whannah - The surface flux bypass option was implemented to move the 
-   ! addition of surface fluxes to be after the dynamical core. This modification 
-   ! has been commented out because it did not improve the simulation, and would
-   ! often lead to an error to be thrown in the energy balance check.
-   !   SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
-   !   SP_FLUX_BYPASS_2 - all constituent fluxes (and SHF) are affected
+     ! whannah - The surface flux bypass option was implemented to move the 
+     ! addition of surface fluxes to be after the dynamical core. This modification 
+     ! has been commented out because it did not improve the simulation, and would
+     ! often lead to an error to be thrown in the energy balance check.
+     !   SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
 
-#if defined(SP_FLUX_BYPASS_1)
-      dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+#if defined( SP_FLUX_BYPASS )
+      if (do_SP_bypass) then
+        dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+      endif
 #endif
-! #if defined(SP_FLUX_BYPASS_2)
-!       dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
-! #endif
 
      ! Diffuse dry static energy
      !----------------------------------------------------------------------------------------------------
@@ -698,7 +696,11 @@
                           zero  , kvh  , tmpi2 , rpdel , ztodt , gravit, &
                           cc_top, ntop , nbot  , decomp )
 
+#if defined( SP_USE_DIFF )
+       if (.true.) then
+#else
        if (.not. use_SPCAM) then
+#endif
          call vd_lu_solve(  pcols , pver  , ncol  ,                         &
                             dse   , decomp, ntop  , nbot  , cd_top )
        endif
@@ -756,8 +758,11 @@
 
        if( diffuse(fieldlist,'q',m) ) then
 
+#if defined( SP_USE_DIFF )
+           if (.true.) then
+#else
            if (.not. use_SPCAM) then
-
+#endif
              ! Add the nonlocal transport terms to constituents in the PBL.
              ! Check for neg q's in each constituent and put the original vertical
              ! profile back if a neg value is found. A neg value implies that the
@@ -784,12 +789,11 @@
       q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
         
 
-#ifdef SP_FLUX_BYPASS_1
-        if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
+#if defined( SP_FLUX_BYPASS )
+        if (do_SP_bypass) then
+          if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
+        endif
 #endif  
-! #ifdef SP_FLUX_BYPASS_2
-!         q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m)
-! #endif  
 
            ! Diffuse constituents.
 
@@ -824,8 +828,11 @@
                endif
            end if
 
-
+#if defined( SP_USE_DIFF )
+           if (.true.) then
+#else
            if (.not. use_SPCAM) then
+#endif
              call vd_lu_solve(  pcols , pver , ncol  ,                         &
                                 q(1,1,m) , decomp    , ntop  , nbot  , cd_top )
            endif

@@ -721,7 +721,8 @@
                              zi      , ksrftms  , zero     , fieldlist_wet, fieldlist_molec, &
                              ufd     , vfd      , qtfd     , slfd         ,             &
                              jnk1d   , jnk1d    , jnk2d    , jnk1d        , errstring , &
-                             tauresx , tauresy  , 0        , cpairv(:,:,lchnk), rairi , .false. )
+                             tauresx , tauresy  , 0        , cpairv(:,:,lchnk), rairi , .false. , &
+                             .false. ) ! whannah - added extra optional argument to avoid issues with SP runs with SP_FLUX_BYPASS option 
 
          call handle_errmsg(errstring, subname="compute_vdiff", &
               extra_msg="compute_vdiff called from eddy_diff")
