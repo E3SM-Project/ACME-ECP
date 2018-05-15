@@ -147,7 +147,8 @@ logical :: use_rad_dt_cosz  = .false.
 
 ! TODO: it seems CAM allows for multiple passes through the radiation (and other
 ! physics?) for different diagnostic purposes, but this does not seem to be well
-! documented anywhere. We should add some documentation here on this.
+! documented anywhere. We should add some documentation here on this if we are
+! going to keep this functionality.
 character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ', &
                                       '_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
 
@@ -183,22 +184,23 @@ character(len=cl) :: coefficients_file_sw, coefficients_file_lw
 !
 ! and so forth. Previously some of this existed in radconstants.F90, but I do
 ! not think we need to use that.
+! EDIT: maybe these JUST below in radconstants.F90?
 integer :: nswbands, nlwbands
 
 ! Also, save number of g-points as private module data
 integer :: nswgpts, nlwgpts
 
 ! Number of vertical levels in radiation calculations. This will generally
-! include an extra layer above the model top.
+! include an extra layer above the model top (num_rad_layers = pver + 1).
 integer :: num_rad_layers
 
 ! Indices to map levels on the radiation grid to levels on the cam grid
 integer, allocatable :: cam_layers(:), cam_interfaces(:)
 
-   ! Set name for this subroutine for log files
-! give this module a name
+! Set name for this module (for purpose of writing output and log files)
 character(len=*), parameter :: module_name = 'radiation'
 
+! Interface blocks for overloaded procedures
 interface clip_values
    module procedure clip_values_1d, clip_values_2d
 end interface clip_values
@@ -520,7 +522,6 @@ subroutine radiation_init()
    nlwgpts = k_dist_lw%get_ngpt()
 
    ! Set number of levels used in radiation calculations
-   ! TODO: add extra layer above model top
    num_rad_layers = pver + 1
 
    ! Setup a mapping from the RRTMGP grid back to the CAM grid
@@ -891,6 +892,8 @@ subroutine radiation_init()
    
 end subroutine radiation_init
 
+
+! Function to calculate band midpoints from kdist band limits
 function get_band_midpoints(kdist) result(band_midpoints)
    type(ty_gas_optics_specification) :: kdist
    real(r8) :: band_midpoints(kdist%get_nband())
@@ -1195,7 +1198,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                                     pint(:ncol,:nlay+1), &
                                     cam_interfaces(:nlay+1)) 
 
-         ! Fill layer above model top
+         ! Fill layer above model top; this is done 
+         ! consistent with the RRTMG implementation
          if (nlay > pver) then
             tmid(:ncol,1) = state%t(:ncol,1)
             pmid(:ncol,1) = 0.5_r8 * state%pint(:ncol,1)
@@ -1208,11 +1212,20 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                                      cam_layers(:nlay), &
                                      active_gases=active_gases)
          call handle_error(gas_test%get_vmr('h2o', h2ovmr(:ncol,:)))
+
+         ! Set dry column amounts explicitly. RRTMGP contains some code to do
+         ! this internally now, but we do this explicitly here to try to enforce
+         ! as much consistency with the old RRTMG implementation. This doesn't
+         ! seem to make a lot of difference, and in the future maybe we remove
+         ! or simplify this.
          call set_coldry(pint(:ncol,:nlay+1), &
                          h2ovmr(:ncol,:nlay), &
                          coldry(:ncol,:nlay))
 
-         ! Send rad inputs to history buffer
+         ! Send radiation inputs to history buffer. This is done here strictly
+         ! for debugging purposes, and this code can probably be removed in the
+         ! future once it is confirmed that inputs are consistent with old RRTMG
+         ! implementation.
          call output_rad_state(state, tmid(:ncol,:), tint(:ncol,:), &
                                pmid(:ncol,:), pint(:ncol,:), &
                                h2ovmr=h2ovmr(:ncol,:), coldry=coldry(:ncol,:))
@@ -1222,10 +1235,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
          call set_albedo(cam_in, alb_dir(:nswbands,:ncol), alb_dif(:nswbands,:ncol))
          call outfld('SW_ALBEDO_DIR', transpose(alb_dir(:nswbands,:ncol)), ncol, state%lchnk)
          call outfld('SW_ALBEDO_DIF', transpose(alb_dif(:nswbands,:ncol)), ncol, state%lchnk)
-
-         ! DEBUG
-         alb_dir = 1._r8
-         alb_dif = 1._r8
 
          ! Compress to daytime-only arrays
          do i = 1,nswbands
@@ -1335,8 +1344,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                   cloud_optics_sw, &
                   flux_sw_allsky_day, flux_sw_clearsky_day, &
                   inc_flux=solar_irradiance_by_gpt_day(:nday,:nswgpts), &
-                  col_dry=coldry(:nday,:nlay) &
-                  !aer_props=rrtmgp_aerosol_optics_sw &
+                  col_dry=coldry(:nday,:nlay), &
+                  aer_props=aerosol_optics_sw &
                ))
                call t_stopf('shortwave radiation calculations')
 
@@ -1483,8 +1492,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                   cloud_optics_lw, &
                   flux_lw_allsky, flux_lw_clearsky, &
                   t_lev=tint(:ncol,:nlay+1), &
-                  col_dry=coldry(:ncol,:nlay) &
-                  !aer_props=aerosol_optics_lw &
+                  col_dry=coldry(:ncol,:nlay), &
+                  aer_props=aerosol_optics_lw &
                ))
                call t_stopf('longwave radiation calculations')
 
