@@ -11,7 +11,7 @@ module scalar_momentum_mod
 ! See Tulich (2015) for further details on ESMT
 !
 ! Revision history: 
-! Nov, 2017 - Walter Hannah
+! Nov, 2017 - Walter Hannah - Lawrence Livermore National Lab
 !              initial version based on crmtracers.F90
 !              Possoin solver and fft routines provided by Stefan Tulich
 !
@@ -21,27 +21,28 @@ module scalar_momentum_mod
 
    implicit none
 
-   public scalar_momentum_init
+   public allocate_scalar_momentum
+   public deallocate_scalar_momentum
 #ifdef SP_ESMT_PGF
-   public scalar_momentum_tend
+   public scalar_momentum_tend 
 #endif
 
-   real(crm_rknd), dimension(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm) :: u_esmt         ! scalar zonal velocity
-   real(crm_rknd), dimension(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm) :: v_esmt         ! scalar meridonal velocity
+   real(crm_rknd), allocatable :: u_esmt         ! scalar zonal velocity
+   real(crm_rknd), allocatable :: v_esmt         ! scalar meridonal velocity
    
-   real(crm_rknd), dimension(nzm)       :: u_esmt_wle     ! resolved vertical flux
-   real(crm_rknd), dimension(nzm)       :: v_esmt_wle     ! 
-   real(crm_rknd), dimension(nzm)       :: u_esmt_sgs     ! SGS vertical flux 
-   real(crm_rknd), dimension(nzm)       :: v_esmt_sgs     ! 
-   real(crm_rknd), dimension(nzm)       :: u_esmt_adv     ! large-scale tendency due to vertical advection
-   real(crm_rknd), dimension(nzm)       :: v_esmt_adv     ! 
-   real(crm_rknd), dimension(nzm)       :: u_esmt_diff    ! large-scale tendency due to vertical diffusion
-   real(crm_rknd), dimension(nzm)       :: v_esmt_diff    ! 
+   real(crm_rknd), allocatable :: u_esmt_wle     ! resolved vertical flux
+   real(crm_rknd), allocatable :: v_esmt_wle     ! 
+   real(crm_rknd), allocatable :: u_esmt_sgs     ! SGS vertical flux 
+   real(crm_rknd), allocatable :: v_esmt_sgs     ! 
+   real(crm_rknd), allocatable :: u_esmt_adv     ! large-scale tendency due to vertical advection
+   real(crm_rknd), allocatable :: v_esmt_adv     ! 
+   real(crm_rknd), allocatable :: u_esmt_diff    ! large-scale tendency due to vertical diffusion
+   real(crm_rknd), allocatable :: v_esmt_diff    ! 
 
-   real(crm_rknd), dimension(nx,ny)     :: fluxb_u_esmt   ! flux of u_esmt at surface    (normally set to zero)
-   real(crm_rknd), dimension(nx,ny)     :: fluxb_v_esmt   ! flux of v_esmt at surface    (normally set to zero)
-   real(crm_rknd), dimension(nx,ny)     :: fluxt_u_esmt   ! flux of u_esmt at model top  (normally set to zero)
-   real(crm_rknd), dimension(nx,ny)     :: fluxt_v_esmt   ! flux of v_esmt at model top  (normally set to zero)
+   real(crm_rknd), allocatable :: fluxb_u_esmt   ! flux of u_esmt at surface    (normally set to zero)
+   real(crm_rknd), allocatable :: fluxb_v_esmt   ! flux of v_esmt at surface    (normally set to zero)
+   real(crm_rknd), allocatable :: fluxt_u_esmt   ! flux of u_esmt at model top  (normally set to zero)
+   real(crm_rknd), allocatable :: fluxt_v_esmt   ! flux of v_esmt at model top  (normally set to zero)
    
    
    character*10 u_esmt_name 
@@ -52,36 +53,80 @@ module scalar_momentum_mod
    
 !========================================================================================
 !========================================================================================
-subroutine scalar_momentum_init()
+subroutine allocate_scalar_momentum()
    !------------------------------------------------------------------
-   ! 
-   ! Purpose: Initialize variables for  explicit scalar momentum transport 
-   ! 
-   ! Author: Walter Hannah
-   ! 
+   ! Purpose: Allocate and initialize variables for ESMT
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
    !------------------------------------------------------------------
+   implicit none
+   
+   real(crm_rknd) :: zero
 
-   u_esmt_wle (:) = 0.
-   u_esmt_sgs (:) = 0.
-   u_esmt_adv (:) = 0.
-   u_esmt_diff(:) = 0.
+   allocate( u_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+   allocate( v_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
-   v_esmt_wle (:) = 0.
-   v_esmt_sgs (:) = 0.
-   v_esmt_adv (:) = 0.
-   v_esmt_diff(:) = 0.
+   allocate( fluxb_u_esmt (nx, ny) )
+   allocate( fluxb_v_esmt (nx, ny) )
+   allocate( fluxt_u_esmt (nx, ny) )
+   allocate( fluxt_v_esmt (nx, ny) )
 
-   fluxb_u_esmt(:,:) = 0.
-   fluxb_v_esmt(:,:) = 0.
-   fluxt_u_esmt(:,:) = 0.
-   fluxt_v_esmt(:,:) = 0.
+   allocate( u_esmt_wle   (nz)  )
+   allocate( v_esmt_wle   (nz)  )
+   allocate( u_esmt_sgs   (nz)  )
+   allocate( v_esmt_sgs   (nz)  )
+   allocate( u_esmt_adv   (nz)  )
+   allocate( v_esmt_adv   (nz)  )
+   allocate( u_esmt_diff  (nz)  )
+   allocate( v_esmt_diff  (nz)  )
+
+   zero = 0.
+
+   u_esmt(:,:,:)  = zero
+   v_esmt(:,:,:)  = zero
+
+   u_esmt_wle (:) = zero
+   u_esmt_sgs (:) = zero
+   u_esmt_adv (:) = zero
+   u_esmt_diff(:) = zero
+
+   v_esmt_wle (:) = zero
+   v_esmt_sgs (:) = zero
+   v_esmt_adv (:) = zero
+   v_esmt_diff(:) = zero
+
+   fluxb_u_esmt(:,:) = zero
+   fluxb_v_esmt(:,:) = zero
+   fluxt_u_esmt(:,:) = zero
+   fluxt_v_esmt(:,:) = zero
 
    u_esmt_name = 'Zonal Velocity'
    v_esmt_name = 'Meridonal Velocity'
    esmt_units  = 'm/s'
 
-end subroutine scalar_momentum_init
-
+end subroutine allocate_scalar_momentum
+!========================================================================================
+!========================================================================================
+subroutine deallocate_scalar_momentum()
+   !------------------------------------------------------------------
+   ! Purpose: Deallocate ESMT variables
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
+   !------------------------------------------------------------------
+   implicit none
+   deallocate( u_esmt       )
+   deallocate( v_esmt       )
+   deallocate( fluxb_u_esmt )
+   deallocate( fluxb_v_esmt )
+   deallocate( fluxt_u_esmt )
+   deallocate( fluxt_v_esmt )
+   deallocate( u_esmt_wle   )
+   deallocate( v_esmt_wle   )
+   deallocate( u_esmt_sgs   )
+   deallocate( v_esmt_sgs   )
+   deallocate( u_esmt_adv   )
+   deallocate( v_esmt_adv   )
+   deallocate( u_esmt_diff  )
+   deallocate( v_esmt_diff  )
+end subroutine deallocate_scalar_momentum
 !========================================================================================
 !========================================================================================
 
@@ -89,11 +134,8 @@ end subroutine scalar_momentum_init
 
 subroutine scalar_momentum_tend()
    !------------------------------------------------------------------
-   ! 
    ! Purpose: Calculate pressure gradient effects on scalar momentum
-   ! 
-   ! Author: Walter Hannah
-   ! 
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
    !------------------------------------------------------------------
    use grid
 
@@ -124,11 +166,9 @@ end subroutine scalar_momentum_tend
 
 subroutine scalar_momentum_pgf( u_s, tend )
    !------------------------------------------------------------------
-   ! 
    ! Purpose: calculate pgf for scalar momentum transport
-   ! 
-   ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
-   ! 
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
+   ! adapted from SP-WRF code by Stefan Tulich
    !------------------------------------------------------------------
    use grid,    only: nx,ny,nz,nzm,z,pres,zi
    use crmdims, only: crm_dx
@@ -293,11 +333,9 @@ end subroutine  scalar_momentum_pgf
 
 subroutine esmt_fft_forward(nx,nzm,dx,arr_in,k_out,arr_out)
    !------------------------------------------------------------------
-   ! 
    ! Purpose: calculate forward FFT transform
-   ! 
-   ! Author: Walter Hannah - adapted from SP-WRF code provided by Stefan Tulich
-   ! 
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
+   ! adapted from SP-WRF code provided by Stefan Tulich
    !------------------------------------------------------------------
    use fftpack51D
    
@@ -401,11 +439,9 @@ end subroutine esmt_fft_forward
 
 subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
    !------------------------------------------------------------------
-   ! 
    ! Purpose: calculate backward FFT transform
-   ! 
-   ! Author: Walter Hannah - adapted from SP-WRF code provided by Stefan Tulich
-   ! 
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
+   ! adapted from SP-WRF code provided by Stefan Tulich
    !------------------------------------------------------------------
    use fftpack51D
 
@@ -499,11 +535,9 @@ end subroutine esmt_fft_backward
 !                               ,xtime,cd,cda,ide,jde,kde                        &
 !                               ,ips,ipe,jps,jpe,kps,kpe                         )
 !    !------------------------------------------------------------------
-!    ! 
 !    ! Purpose: calculate pgf for scalar momentum transport
-!    ! 
-!    ! Author: Walter Hannah - adapted from SP-WRF code by Stefan Tulich
-!    ! 
+!    ! Author: Walter Hannah - Lawrence Livermore National Lab
+!    ! adapted from SP-WRF code by Stefan Tulich
 !    !------------------------------------------------------------------
 !    use module_configure, only : grid_config_rec_type
 !    use module_domain,only: domain
