@@ -101,6 +101,18 @@
   <lname>2000_CAM5%AV1C-L_CLM45%SPBC_MPASCICE_MPASO_MOSART_MALI_SWAV</lname>
 </compset>
 
+<!-- super-parameterization compsets -->
+
+<compset>
+  <alias>A_WCYCL2000_SP1</alias>
+  <lname>2000_CAM5%SP1V1_CLM45%SPBC_MPASCICE_MPASO_MOSART_SGLC_SWAV</lname>
+</compset>
+
+<compset>
+  <alias>A_WCYCL1850S_SP1</alias>
+  <lname>1850_CAM5%SP1V1_CLM45%SPBC_MPASCICE%SPUNUP_MPASO%SPUNUP_MOSART_SGLC_SWAV</lname>
+</compset>
+
 <!-- E3SM v1 science compsets (hires) -->
 
 <compset>
