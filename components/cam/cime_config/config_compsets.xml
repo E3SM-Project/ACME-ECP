@@ -334,6 +334,13 @@
    <lname>20TR_CAM5%SP2V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <!-- E compset - Slab Ocean Model (SOM) -->
+
+  <compset>
+    <alias>ESP1V1</alias>
+    <lname>2000_CAM5%SP1V1_CLM45%SPBC_CICE%PRES_DOCN%SOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
   <!-- ******************************* -->
   <!-- ******************************* -->
 
