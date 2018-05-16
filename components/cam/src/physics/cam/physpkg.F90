@@ -1474,9 +1474,9 @@ subroutine tphysac (ztodt,   cam_in,  &
     logical :: l_ac_energy_chk
 
 #if defined( SP_CRM_SPLIT )
-    real(r8), dimension(pcols,pver) :: dlf                   ! Detraining cld H20 from shallow + deep convections
     logical           :: use_SPCAM
     character(len=16) :: SPCAM_microp_scheme
+    integer           :: phys_stage
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
 #endif
@@ -1752,9 +1752,9 @@ end if ! l_gw_drag
     ! have the CRM handle the diffusion of sfc fluxes.
     ! for tphysac() > phys_stage = 2
     !===================================================
-    dlf(:,:) = 0.   ! whannah - this variable doens't seem to be used - probably should remove from interface
     if (use_SPCAM) then
-      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, 2)
+      phys_stage = 2
+      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, phys_stage)
     endif
 #endif
     
@@ -2109,6 +2109,7 @@ subroutine tphysbc (ztodt,               &
 !-- mdb spcam
     logical           :: use_SPCAM
     character(len=16) :: SPCAM_microp_scheme
+    integer           :: phys_stage
 
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
@@ -2783,10 +2784,11 @@ end if
 
 
       if (use_SPCAM) then
-        ! Recall the state before convective parameterizations
+        !!! Recall the state before convective parameterizations
         call crm_remember_state_tend(state, tend, pbuf)
-        ! Run the CRM - for tphysbc() => phys_stage = 1
-        call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, 1)
+        !!! Run the CRM - for tphysbc() => phys_stage = 1
+        phys_stage = 1
+        call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, phys_stage)
       endif
 
 

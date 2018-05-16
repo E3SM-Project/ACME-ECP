@@ -360,10 +360,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, phys_stage, &
     real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation
     real(r8)        :: crm_run_time                             ! length of CRM integration (=dt_gl*0.5 if SP_CRM_SPLIT is defined)
     real(r8)        :: icrm_run_time                            ! = 1 / crm_run_time
-    real(crm_rknd)  :: dummy(nz), t00(nz)
-    real(crm_rknd)  :: fluxbtmp(nx,ny), fluxttmp(nx,ny)         !bloss
-    real(crm_rknd)  :: tln(plev), qln(plev), qccln(plev), qiiln(plev), uln(plev), vln(plev)
-    real(crm_rknd)  :: cwp(nx,ny), cwph(nx,ny), cwpm(nx,ny), cwpl(nx,ny)
     real(r8)        :: factor_xy, idt_gl
     real(crm_rknd)  :: tmp1, tmp2
     real(crm_rknd)  :: u2z,v2z,w2z
