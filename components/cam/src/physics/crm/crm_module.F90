@@ -493,6 +493,9 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, phys_stage, &
   call allocate_micro_params()
   call allocate_micro()
 #endif
+#if defined(SP_ESMT)
+  call allocate_scalar_momentum()
+#endif
 
   !Loop over "vector columns"
   do icrm = 1 , ncrms
@@ -698,11 +701,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, phys_stage, &
 
     ! initialize sgs fields
     call sgs_init()
-
-#if defined(SP_ESMT)
-    ! initialize scalar momentum transport fields
-    call scalar_momentum_init()
-#endif
 
     do k=1,nzm
       u0(k)=0.
@@ -2013,6 +2011,9 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, phys_stage, &
 #ifdef sam1mom
   call deallocate_micro_params()
   call deallocate_micro()
+#endif
+#if defined(SP_ESMT)
+  call deallocate_scalar_momentum()
 #endif
 
   end subroutine crm
