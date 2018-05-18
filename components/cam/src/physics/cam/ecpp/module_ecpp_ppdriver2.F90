@@ -10,15 +10,13 @@ module module_ecpp_ppdriver2
 !      Minghuai Wang (Minghuai.Wang@pnl.gov), 2009-11 
 !---------------------------------------------------------------------------------------
 
-  use shr_kind_mod, only: r8=>shr_kind_r8
-  use ppgrid,       only: pcols, pver, pverp 
-  use constituents, only: pcnst, cnst_name
+  use shr_kind_mod,   only: r8=>shr_kind_r8
+  use ppgrid,         only: pcols, pver, pverp 
+  use constituents,   only: pcnst, cnst_name
+  use cam_abortutils, only: endrun
+  use crmdims,        only: crm_nz
+  use ecppvars,       only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in 
   use crmclouds_camaerosols, only: ecpp_mixnuc_tend => crmclouds_mixnuc_tend
-  ! use abortutils,   only: endrun
-  use cam_abortutils,   only: endrun  !==Guangxing Lin
-  use crmdims,         only: crm_nz   ! whannah
-
-  use ecppvars,     only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in 
   use module_data_ecpp1 
   use module_data_mosaic_asect
 
@@ -28,7 +26,7 @@ module module_ecpp_ppdriver2
   public :: papampollu_init
   public :: ecpp_mixnuc_tend
 
-  !+++mhwang follow what done in ndrop.F90. this is for qqcw
+  !+++mhwang follow what done in ndrop.F90 for qqcw
   ! ptr2d_t is used to create arrays of pointers to 2D fields
   type ptr2d_t
      real(r8), pointer :: fldcw(:,:)
@@ -69,8 +67,8 @@ module module_ecpp_ppdriver2
     ! set pp options (should this be done from driver?)
     !
 
-    num_moist_ecpp   = 5              ! is 5 the correct index...?
-    num_moist        = 5
+    num_moist_ecpp   = 9              ! number of non-CRM water species
+    num_moist        = 9
     num_chem_ecpp    = 2* pcnst       ! 2x for cloud-borne and interstitial aerosol
     num_chem         = num_chem_ecpp
     param_first_ecpp = num_moist+1    ! the first index for non-water species
@@ -549,7 +547,7 @@ module module_ecpp_ppdriver2
     real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  ! mixing ratios of trace gase (ppm) and aerosol species
                                                         ! (ug/kg for mass species, #/kg for number species)
 #ifdef MODAL_AERO
-    ! real(r8), pointer, dimension(:, :, :) :: qqcw  ! cloud-borne aerosol
+    ! real(r8), pointer, dimension(:,:,:) :: qqcw  ! cloud-borne aerosol
     type(ptr2d_t) :: qqcw(pcnst)
     ! real(r8) :: qqcwold(pcols, pver, pcnst)
 #endif
@@ -853,9 +851,9 @@ module module_ecpp_ppdriver2
       do k=pver,1,-1
         tcen_bar(pver-k+1)   = state%t(i,k)
         pcen_bar(pver-k+1)   = state%pmid(i,k)
-        rhocen_bar(pver-k+1) = state%pmiddry(i,k)/(287.0*state%t(i,k))    ! dry air density is calcualted, because tracer mixing ratios
-                                                                          ! are defined with respect to dry air in CAM.  
-        wbnd_bar(pver-k+2)   = -1*state%omega(i,k)/(rhocen_bar(pver-k+1)*gravit)   ! pressure vertical velocity (Pa/s) to height vertical velocity (m/s)
+        rhocen_bar(pver-k+1) = state%pmiddry(i,k)/(287.0*state%t(i,k))            ! dry air density is calcualted, because tracer mixing ratios
+                                                                                  ! are defined with respect to dry air in CAM.  
+        wbnd_bar(pver-k+2)   = -1*state%omega(i,k)/(rhocen_bar(pver-k+1)*gravit)  ! pressure vertical velocity (Pa/s) to height vertical velocity (m/s)
         dzcen(pver-k+1)      = state%pdeldry(i,k)/gravit/rhocen_bar(pver-k+1)
         zbnd(pver-k+2)       = zbnd(pver-k+1) + dzcen(pver-k+1)
       end do ! k=pver,1,-1
@@ -1242,12 +1240,7 @@ module module_ecpp_ppdriver2
           acldy_cen_tbeg_3d(i,k) = sum( acen_tfin(lk,2,1:ncls_ecpp) )
         end do
 
-!!! print variables for deugging  
-! write(*,6540) lchnk,i,'01',(minval(chem_bar(:,:)))  ,(maxval(chem_bar(:,:))) &
-!                           ,(minval(state%q(i,:,:))) ,(maxval(state%q(i,:,:)))
-! 6540 format('whannah - ',i6,' ',i4,' - ',A3,' - min/max chem_bar/q ',f15.2,' / ',f15.2,' - ',f15.2,' / ',f15.2  )
-
-        ! Interstial species 
+        ! Interstitial species 
         ptend_qqcw(i,:,:) = 0.0
         do k=1, pver
           lk=pver-k+1 

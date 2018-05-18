@@ -189,7 +189,7 @@ subroutine crm_physics_init(species_class)
   ! use physics_types,   only: physics_tend_alloc
   use physconst,       only: mwdry, cpair, spec_class_gas !==Guangxing Lin added spec_class_gas
   use ppgrid,          only: pcols, pver, pverp
-  use constituents,    only: pcnst, cnst_name !, species_class
+  use constituents,    only: pcnst, cnst_name 
   use cam_history,     only: addfld, add_default, horiz_only
   use crmdims,         only: crm_nx, crm_ny, crm_nz
   use phys_control,    only: phys_getopts
@@ -202,12 +202,8 @@ subroutine crm_physics_init(species_class)
   use cam_history,   only: fieldname_len
   use spmd_utils,    only: masterproc
   use modal_aero_data, only:  cnst_name_cw, &
-!                               lmassptr_amode, lmassptrcw_amode, lwaterptr_amode, &
                                 lmassptr_amode, lmassptrcw_amode, &
                                 nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode
-!==Guangxing Lin
-!                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode, &
-!                                species_class, spec_class_gas
        
     integer :: l, lphase, lspec
     character(len=fieldname_len)   :: tmpname
@@ -218,7 +214,7 @@ subroutine crm_physics_init(species_class)
     
     !==Guangxing Lin
     ! whannah - species_class is defined as input so it needs to be outside of MODAL_AERO condition for 1-moment micro to work
-    integer, intent(in) :: species_class(:)
+    integer, intent(in), dimension(pcnst) :: species_class
 
 
 ! local variables
@@ -2080,27 +2076,26 @@ end subroutine crm_physics_init
             ptend%q(:,:,ixnumsnow) = 0._r8 
 
             do i = 1, ncol
-             do k=1, crm_nz 
-               m= pver-k+1
-               do ii=1, crm_nx
-               do jj=1, crm_ny
-                 ptend%q(i,m,ixnumliq)  = ptend%q(i,m,ixnumliq)  + crm_nc(i,ii,jj,k) 
-                 ptend%q(i,m,ixnumice)  = ptend%q(i,m,ixnumice)  + crm_ni(i,ii,jj,k)
-                 ptend%q(i,m,ixrain)    = ptend%q(i,m,ixrain)    + crm_qr(i,ii,jj,k)
-                 ptend%q(i,m,ixsnow)    = ptend%q(i,m,ixsnow)    + crm_qs(i,ii,jj,k)
-                 ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_nr(i,ii,jj,k)
-                 ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_ns(i,ii,jj,k)
-                end do
-               end do
-               end do
-               ptend%q(i,m,ixnumliq)  = (ptend%q(i,m,ixnumliq) /(crm_nx*crm_ny) - state%q(i,m,ixnumliq)) /crm_run_time
-               ptend%q(i,m,ixnumice)  = (ptend%q(i,m,ixnumice) /(crm_nx*crm_ny) - state%q(i,m,ixnumice)) /crm_run_time
-               ptend%q(i,m,ixrain)    = (ptend%q(i,m,ixrain)   /(crm_nx*crm_ny) - state%q(i,m,ixrain))   /crm_run_time
-               ptend%q(i,m,ixsnow)    = (ptend%q(i,m,ixsnow)   /(crm_nx*crm_ny) - state%q(i,m,ixsnow))   /crm_run_time
-               ptend%q(i,m,ixnumrain) = (ptend%q(i,m,ixnumrain)/(crm_nx*crm_ny) - state%q(i,m,ixnumrain))/crm_run_time
-               ptend%q(i,m,ixnumsnow) = (ptend%q(i,m,ixnumsnow)/(crm_nx*crm_ny) - state%q(i,m,ixnumsnow))/crm_run_time
-             end do
-            end do
+               do k = 1, crm_nz 
+                  m= pver-k+1
+                  do ii=1, crm_nx
+                     do jj=1, crm_ny
+                        ptend%q(i,m,ixnumliq)  = ptend%q(i,m,ixnumliq)  + crm_nc(i,ii,jj,k) 
+                        ptend%q(i,m,ixnumice)  = ptend%q(i,m,ixnumice)  + crm_ni(i,ii,jj,k)
+                        ptend%q(i,m,ixrain)    = ptend%q(i,m,ixrain)    + crm_qr(i,ii,jj,k)
+                        ptend%q(i,m,ixsnow)    = ptend%q(i,m,ixsnow)    + crm_qs(i,ii,jj,k)
+                        ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_nr(i,ii,jj,k)
+                        ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_ns(i,ii,jj,k)
+                     end do ! jj
+                  end do ! ii
+                  ptend%q(i,m,ixnumliq)  = (ptend%q(i,m,ixnumliq) /(crm_nx*crm_ny) - state%q(i,m,ixnumliq)) /crm_run_time
+                  ptend%q(i,m,ixnumice)  = (ptend%q(i,m,ixnumice) /(crm_nx*crm_ny) - state%q(i,m,ixnumice)) /crm_run_time
+                  ptend%q(i,m,ixrain)    = (ptend%q(i,m,ixrain)   /(crm_nx*crm_ny) - state%q(i,m,ixrain))   /crm_run_time
+                  ptend%q(i,m,ixsnow)    = (ptend%q(i,m,ixsnow)   /(crm_nx*crm_ny) - state%q(i,m,ixsnow))   /crm_run_time
+                  ptend%q(i,m,ixnumrain) = (ptend%q(i,m,ixnumrain)/(crm_nx*crm_ny) - state%q(i,m,ixnumrain))/crm_run_time
+                  ptend%q(i,m,ixnumsnow) = (ptend%q(i,m,ixnumsnow)/(crm_nx*crm_ny) - state%q(i,m,ixnumsnow))/crm_run_time
+               end do ! k = crm_nz
+            end do ! i = ncol
          endif
 #endif
        end if
