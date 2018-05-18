@@ -5,23 +5,7 @@ module radiation
 ! CAM interface to RRTMGP
 !
 ! Revision history:
-! May 2004, D. B. Coleman, Initial version of interface module.
-! Jul 2004, B. Eaton,      Use interfaces from new shortwave, longwave, and ozone modules.
-! Feb 2005, B. Eaton,      Add namelist variables and control of when calcs are done.
-! May 2008, Mike Iacono    Initial version for RRTMG
-! Jun 2009, Minghuai Wang, The MMF treatment is added to the subroutine of 
-!                          radiation_tend. These modifications are based on the 
-!                          spcam3.5, which was developled by Marat Khairoutdinov. 
-!                          The spcam3.5 only have one radiation package (camrt). 
-!                          See comments in radiation_tend for the details. 
-! Jul 2009, Minghuai Wang, For the Morrison's two momenent microphysics in SAM, 
-!                          droplet and ice crystal effective radius used in the 
-!                          radiation code are calculated at each CRM column by 
-!                          calling m2005_effradius
-! Oct 2009, Minghuai Wang, CRM-scale aerosol water is used to calculate aerosol 
-!                          optical depth
-! Nov 2010, J. Kay,        Add COSP simulator calls
-! Nov 2017, B. Hillman,    Modify extensively for use with RRTMGP
+! Nov 2017  B. Hillman  Initial version, adapted from RRTMG interface.
 !
 ! # NOTES
 ! 
@@ -616,9 +600,11 @@ subroutine radiation_init()
 
    ! Band-by-band shortwave albedos
    call addfld('SW_ALBEDO_DIR', (/'swband'/), 'I', '1', &
-               'Shortwave direct-beam albedo', sampling_seq='rad_lwsw') 
+               'Shortwave direct-beam albedo', &
+               flag_xyfill=.true., sampling_seq='rad_lwsw') 
    call addfld('SW_ALBEDO_DIF', (/'swband'/), 'I', '1', &
-               'Shortwave diffuse-beam albedo', sampling_seq='rad_lwsw') 
+               'Shortwave diffuse-beam albedo', &
+               flag_xyfill=.true., sampling_seq='rad_lwsw') 
 
    ! get list of active radiation calls
    call rad_cnst_get_call_list(active_calls)
@@ -1088,8 +1074,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
 
    ! List of gases in use by RRTMG...only use these to start with for
    ! consistencey
-   character(len=3), dimension(6) :: active_gases = (/ &
-      'H2O', 'CO2', 'O3', 'N2O', 'CH4', 'O2 ' &
+   character(len=3), dimension(1) :: active_gases = (/ &
+      'H2O' &
    /)
 
    ! RRTMGP types
@@ -1233,6 +1219,12 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
          ! Get albedo. This uses CAM routines internally and just provides a
          ! wrapper to improve readability of the code here.
          call set_albedo(cam_in, alb_dir(:nswbands,:ncol), alb_dif(:nswbands,:ncol))
+         do i = 1,nswbands
+            where (coszrs(:ncol) <= 0)
+               alb_dir(i,:ncol) = 0
+               alb_dif(i,:ncol) = 0
+            end where
+         end do
          call outfld('SW_ALBEDO_DIR', transpose(alb_dir(:nswbands,:ncol)), ncol, state%lchnk)
          call outfld('SW_ALBEDO_DIF', transpose(alb_dif(:nswbands,:ncol)), ncol, state%lchnk)
 
@@ -1344,14 +1336,12 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                   cloud_optics_sw, &
                   flux_sw_allsky_day, flux_sw_clearsky_day, &
                   inc_flux=solar_irradiance_by_gpt_day(:nday,:nswgpts), &
-                  col_dry=coldry(:nday,:nlay), &
-                  aer_props=aerosol_optics_sw &
+                  col_dry=coldry(:nday,:nlay) &
+                  !aer_props=aerosol_optics_sw &
                ))
                call t_stopf('shortwave radiation calculations')
 
-               ! Expand fluxes and heating rates from daytime-only arrays to
-               ! full chunk arrays. For heating rates, we also map to the CAM
-               ! grid here.
+               ! Expand fluxes from daytime-only arrays to full chunk arrays
                call expand_daytime_fluxes(flux_sw_allsky_day, flux_sw_allsky, day_indices(:nday))
                call expand_daytime_fluxes(flux_sw_clearsky_day, flux_sw_clearsky, day_indices(:nday))
 
@@ -1363,11 +1353,11 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                call map_rad_to_cam_levels(qrs_rad(:ncol,:nlay), qrs(:ncol,:pver), cam_layers(:nlay))
                call map_rad_to_cam_levels(qrsc_rad(:ncol,:nlay), qrsc(:ncol,:pver), cam_layers(:nlay))
                            
-               ! Output heating rates here
+               ! Send heating rates to history buffer
                call outfld('QRS'//diag(icall), qrs(:ncol,:pver)/cpair, ncol, state%lchnk)
                call outfld('QRSC'//diag(icall), qrsc(:ncol,:pver)/cpair, ncol, state%lchnk)
 
-               ! Send fluxes and heating rates to history buffer
+               ! Send fluxes to history buffer
                call output_fluxes_sw(icall, state, &
                                      flux_sw_allsky, flux_sw_clearsky, &
                                      cam_interfaces(:nlay+1))
@@ -1428,6 +1418,12 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
          call map_cam_to_rad_levels(state%pint(:ncol,:pver+1), &
                                     pint(:ncol,:nlay+1), &
                                     cam_interfaces(:nlay+1)) 
+
+         ! Special case for top-most rad level, which is an extra level above
+         ! model top; fill temperatures in extra level with temperatures from
+         ! model top, set interface pressure at top of extra level to be a small
+         ! number, and set midpoint pressure to be half of the pressure at the
+         ! top most model interface.
          if (nlay > pver) then
             tint(:ncol,1) = state%t(:ncol,1)
             tmid(:ncol,1) = state%t(:ncol,1)
@@ -1435,9 +1431,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
             pint(:ncol,1) = 1.01_r8
          end if
 
-
-
-         ! Blackbody temperature of surface; needed for LW calculations later
+         ! Blackbody temperature of surface
          t_sfc(:ncol) = sqrt(sqrt(cam_in%lwup(:ncol)/stebol))
 
          ! Do longwave cloud optics calculations
@@ -1507,14 +1501,14 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                call map_rad_to_cam_levels(qrl_rad(:ncol,:nlay), qrl(:ncol,:pver), cam_layers(:nlay))
                call map_rad_to_cam_levels(qrlc_rad(:ncol,:nlay), qrlc(:ncol,:pver), cam_layers(:nlay))
                            
-               ! Output heating rates here
+               ! Send heating rates to history buffer
                call outfld('QRL'//diag(icall), qrl(:ncol,:pver)/cpair, ncol, state%lchnk)
                call outfld('QRLC'//diag(icall), qrlc(:ncol,:pver)/cpair, ncol, state%lchnk)
 
                ! Copy fluxes to pbuf
                call copy_fluxes_to_pbuf(pbuf, flux_lw_allsky, 'longwave')
 
-               ! Write outputs to history tapes
+               ! Send fluxes to history buffer
                call output_fluxes_lw(icall, state, flux_lw_allsky, flux_lw_clearsky, cam_interfaces(:nlay+1))
 
             end if  ! active calls
@@ -1568,6 +1562,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
 
 end subroutine radiation_tend
 
+
 subroutine output_rad_state(state, tmid, tint, pmid, pint, coldry, h2ovmr)
 
    use physics_types, only: physics_state
@@ -1591,6 +1586,7 @@ subroutine output_rad_state(state, tmid, tint, pmid, pint, coldry, h2ovmr)
    end if
 
 end subroutine output_rad_state
+
 
 ! Old calculation from RRTMG...seems to be inconsistent with internal RRTMGP
 ! function to calculation dry column amount
@@ -1660,7 +1656,6 @@ subroutine set_coldry(p_lev, h2ovmr, coldry)
 end subroutine set_coldry
 
 
-
 subroutine set_interface_temperature(state, cam_in, tint)
 
    use physics_types, only: physics_state
@@ -1697,7 +1692,12 @@ subroutine export_surface_fluxes(fluxes, cam_out, band)
    character(len=*), intent(in) :: band
    integer :: i, kbot
 
+   ! TODO: check this code! This seems to differ from what is in RRTMG. Also, I
+   ! think RRTMGP lets us break output into direct and diffuse beam now, so much
+   ! of this might be able to be simplified.
+   !
    ! Export surface fluxes
+   !
    ! The RRTMGP output isn't broken down into direct and diffuse.  For first cut
    ! put entire flux into direct and leave the diffuse set to zero.  To break the
    ! fluxes into the UV/vis and near-IR bands use the same scheme as for the albedos
@@ -1891,6 +1891,7 @@ subroutine calculate_heating_rate(fluxes, pint, heating_rate)
 
 end subroutine calculate_heating_rate
     
+
 subroutine set_aerosol_optics_lw(icall, state, pbuf, cam_layers, optics_out)
    use physics_types, only: physics_state
    use physics_buffer, only: physics_buffer_desc, pbuf_get_index, &
@@ -2020,33 +2021,6 @@ subroutine set_aerosol_optics_sw(icall, state, pbuf, &
    call handle_error(optics_out%validate())
    
 end subroutine set_aerosol_optics_sw
-
-
-subroutine compress_array(x_in, x_out, indices)
-   real(r8), intent(in) :: x_in(:)
-   real(r8), intent(inout) :: x_out(:)
-   integer, intent(in) :: indices(:)
-   integer :: i
-
-   do i = 1,size(indices)
-      if (indices(i) > 0) then
-         x_out(i) = x_in(indices(i))
-      end if
-   end do
-end subroutine
-
-subroutine expand_array(x_in, x_out, indices)
-   real(r8), intent(in) :: x_in(:)
-   real(r8), intent(inout) :: x_out(:)
-   integer, intent(in) :: indices(:)
-   integer :: i
-
-   do i = 1,size(indices)
-      if (indices(i) > 0) then
-         x_out(indices(i)) = x_in(i)
-      end if
-   end do
-end subroutine
 
 
 subroutine compress_day_columns_1d(xcol, xday, day_indices)
@@ -2289,31 +2263,6 @@ subroutine set_solar_irradiance_by_gpt(kdist, solar_irradiance)
 end subroutine set_solar_irradiance_by_gpt
 
 
-function get_cosine_solar_zenith_angle(state, dt) result(coszrs)
-   use physics_types,   only: physics_state
-   use phys_grid,       only: get_rlat_all_p, get_rlon_all_p
-   use time_manager,    only: get_curr_calday
-   use orbit,           only: zenith
-
-   ! Inputs
-   type(physics_state), intent(in) :: state
-   real(r8), intent(in) :: dt
-
-   ! Output cosine solar zenith angle
-   real(r8) :: coszrs(state%ncol)
-
-   ! Local variables
-   real(r8) :: calday            ! current calendar day
-   real(r8) :: clat(state%ncol)  ! current latitudes(radians)
-   real(r8) :: clon(state%ncol)  ! current longitudes(radians)
-
-   calday = get_curr_calday()
-   call get_rlat_all_p(state%lchnk, state%ncol, clat)
-   call get_rlon_all_p(state%lchnk, state%ncol, clon)
-   call zenith(calday, clat, clon, coszrs, state%ncol, dt)
-end function get_cosine_solar_zenith_angle
-
-
 ! Get and set cosine of the solar zenith angle or all columns in a physics chuck
 ! based on input physics_state object and timestep. This routine serves mainly
 ! as a wrapper for the "zenith" subroutine that handles the task of grabbing the
@@ -2362,36 +2311,6 @@ subroutine set_cosine_solar_zenith_angle(state, dt, coszrs)
 end subroutine set_cosine_solar_zenith_angle
 
 
-subroutine check_pbuf_fields(ncol, pbuf, fields)
-   use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
-   integer, intent(in) :: ncol
-   type(physics_buffer_desc), pointer :: pbuf(:)
-   character(len=*), intent(in) :: fields(:)
-   integer :: i
-   real(r8), pointer :: x(:)
-   character(len=32) :: subname = 'check_pbuf_fields'
-
-   do i = 1,size(fields,1)
-      call pbuf_get_field(pbuf, pbuf_get_index(fields(i)), x)
-      call assert_valid(x(:ncol), trim(subname) // ': ' // fields(i))
-   end do
-end subroutine check_pbuf_fields
-
-
-subroutine check_surface_fluxes(ncol, cam_out)
-   use camsrfexch, only: cam_out_t
-   type(cam_out_t), intent(in) :: cam_out
-   integer, intent(in) :: ncol
-
-   call assert_valid(cam_out%netsw(:ncol), 'cam_out%netsw')
-   call assert_valid(cam_out%soll(:ncol), 'cam_out%soll')
-   call assert_valid(cam_out%sols(:ncol), 'cam_out%sols')
-   call assert_valid(cam_out%solld(:ncol), 'cam_out%solld')
-   call assert_valid(cam_out%solsd(:ncol), 'cam_out%solsd')
-   call assert_valid(cam_out%flwds(:ncol), 'cam_out%flwds')
-end subroutine check_surface_fluxes
-
-
 ! Set surface albedos from cam surface exchange object for direct and diffuse
 ! beam radiation. This code was copied from the RRTMG implementation, but moved
 ! to a subroutine with some better variable names.
@@ -2422,6 +2341,10 @@ subroutine set_albedo(cam_in, albedo_direct, albedo_diffuse)
       call endrun(module_name //': ERROR: albedo band mapping assumes nswbands=14')
    end if
 
+   ! Initialize albedo
+   albedo_direct(:,:) = 0._r8
+   albedo_diffuse(:,:) = 0._r8
+
    ! Code lifted from RRTMG implementation
    do icol = 1,size(albedo_direct, 2)
       do ibnd = 1,8
@@ -2437,7 +2360,7 @@ subroutine set_albedo(cam_in, albedo_direct, albedo_diffuse)
       albedo_diffuse(9,icol) = 0.5*(cam_in%aldif(icol) + cam_in%asdif(icol))
 
       ! UV/visible bands 25-28 (10-13), 16000-50000 cm-1, 0.200-0.625 micron
-      do ibnd=10,13
+      do ibnd = 10,13
          albedo_direct(ibnd,icol) = cam_in%asdir(icol)
          albedo_diffuse(ibnd,icol) = cam_in%asdif(icol)
       enddo
@@ -2564,41 +2487,6 @@ subroutine clip_values_2d(x, min_x, max_x, varname, warn)
       end where
    end if
 
-!  nbad = 0
-!  do i = 1,size(x,1)
-!     do j = 1,size(x,2)
-!        if (x(i,j) < min_x) then
-!           x(i,j) = min_x
-!           nbad = nbad + 1
-!           if (warn_local) then
-!              if (present(varname)) then
-!                 print *, trim(varname) // ' < min at i,j = ', i, j
-!              end if
-!           end if
-!        else if (x(i,j) > max_x) then
-!           x(i,j) = max_x
-!           nbad = nbad + 1
-!           if (warn_local) then
-!              if (present(varname)) then
-!                 print *, trim(varname) // ' > min at i,j = ', i, j
-!              end if
-!           end if
-!        end if
-!     end do
-!  end do
-
-!  if (nbad > 0) then
-!     if (warn_local) then
-!        if (present(varname)) then
-!           print *, 'Warning: ' // varname // ' values clipped. min/max: ', &
-!              minval(x), maxval(x)
-!        else
-!           print *, 'Warning: values clipped. min/max: ', &
-!              minval(x), maxval(x)
-!        end if
-!     end if
-!  end if
-!           
 end subroutine clip_values_2d
 
 
@@ -2739,7 +2627,7 @@ end subroutine output_fluxes_lw
 
 ! For some reason the RRTMGP flux objects do not include initialization
 ! routines, but rather expect the user to associate the individual fluxes (which
-! are pointers) with appropriate targets. Rather, this routine treats those
+! are pointers) with appropriate targets. Instead, this routine treats those
 ! pointers as allocatable members and allocates space for them. TODO: is this
 ! appropriate use?
 subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes)
@@ -2771,6 +2659,7 @@ subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes)
    fluxes%bnd_flux_up = 0
    fluxes%bnd_flux_dn = 0
    fluxes%bnd_flux_net = 0
+
 end subroutine initialize_rrtmgp_fluxes
 
 
@@ -2971,21 +2860,6 @@ logical function string_in_list(string, list)
       end if
    end do
 end function string_in_list
-
-
-subroutine check_gas_concentrations(gas_concentrations)
-   use mo_gas_concentrations, only: ty_gas_concs
-
-   type(ty_gas_concs), intent(in) :: gas_concentrations
-   integer :: igas
-   do igas = 1,size(gas_concentrations%concs,1)
-      call assert_valid(gas_concentrations%concs(igas)%conc, gas_concentrations%gas_name(igas))
-
-      print *, 'check_gas_concentrations ' // gas_concentrations%gas_name(igas) // ': ', &
-               minval(gas_concentrations%concs(igas)%conc), &
-               maxval(gas_concentrations%concs(igas)%conc)
-   end do
-end subroutine
 
 
 subroutine handle_error(error_message, stop_on_error)
@@ -3216,7 +3090,6 @@ subroutine set_cloud_optics_lw(state, pbuf, lev_indices, kdist, optics_out)
    call optics_cam%finalize()
 
 end subroutine set_cloud_optics_lw
-
 
 
 ! Get index to highest vertical level above a minimum pressure. This function is
