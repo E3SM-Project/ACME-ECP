@@ -39,14 +39,6 @@ module aero_model
   public :: calc_1_impact_rate
   public :: dlndg_nimptblgrow, nimptblgrow_mind, nimptblgrow_maxd,   &
                 scavimptblnum, scavimptblvol
-!==Guangxing Lin
-!#if (defined CRM)
-!#if (defined ECPP)
-!#ifdef CRM 
-!#ifdef ECPP 
-!#endif
-!#endif 
-!==Guangxing Lin
 
  ! Misc private data 
 
@@ -2373,7 +2365,7 @@ do_lphase2_conditional: &
     use modal_aero_newnuc,     only : modal_aero_newnuc_sub
     use mo_setsox,             only : setsox, has_sox
     use modal_aero_data,       only : cnst_name_cw, qqcw_get_field
-    use phys_control,    only: phys_getopts !==Guangxing Lin
+    use phys_control,          only: phys_getopts
 
     !-----------------------------------------------------------------------
     !      ... dummy arguments
@@ -2483,11 +2475,11 @@ do_lphase2_conditional: &
             )
     endif
 
-!   Tendency due to aqueous chemistry 
-!   When mam_amicphys_optaa > 0, dvmrdt & dvmrcwdt to hold vmr & vmrcw 
-!      before aqueous chemistry, and cannot be used to hold aq. chem. tendencies
-!***Note - should calc & output tendencies for cloud-borne aerosol species 
-!          rather than interstitial here
+    ! Tendency due to aqueous chemistry 
+    ! When mam_amicphys_optaa > 0, dvmrdt & dvmrcwdt to hold vmr & vmrcw 
+    ! before aqueous chemistry, and cannot be used to hold aq. chem. tendencies
+    ! ***Note - should calc & output tendencies for cloud-borne aerosol species 
+    !           rather than interstitial here
     if (mam_amicphys_optaa <= 0) then
        dvmrdt   = (vmr - dvmrdt) / delt
        dvmrcwdt = (vmrcw - dvmrcwdt) / delt
@@ -2508,14 +2500,20 @@ do_lphase2_conditional: &
       call outfld( name, wrk(:ncol), ncol, lchnk )
     enddo
 !==Guangxing Lin
-  else if (use_ECPP) then  ! SPCAM ECPP
-! when ECPP is used, aqueous chemistry is done in ECPP, 
-! and not updated here. 
-! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
-!
-       dvmrdt = 0.0_r8
-       dvmrcwdt = 0.0_r8
-   endif
+  else if (use_ECPP) then  ! super-parameterization - ECPP
+    ! when ECPP is used, aqueous chemistry is done in ECPP, 
+    ! and not updated here. 
+    ! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
+    !
+    if (mam_amicphys_optaa <= 0) then
+      dvmrdt = 0.0_r8
+      dvmrcwdt = 0.0_r8
+    else  
+      dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
+      dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
+    end if
+
+  endif ! use_ECPP
 !==Guangxing Lin
 
 

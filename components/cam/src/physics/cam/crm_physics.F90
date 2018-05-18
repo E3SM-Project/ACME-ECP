@@ -856,7 +856,7 @@ end subroutine crm_physics_init
 
    integer ii, jj, mm
    integer iii,lll
-   integer ixcldliq, ixcldice, ixnumliq, ixnumice
+   integer ixcldliq, ixcldice, ixnumliq, ixnumice, ixrain, ixsnow, ixnumrain, ixnumsnow
    integer i, k, m
    integer ifld
    logical :: use_ECPP, use_SPCAM
@@ -973,21 +973,21 @@ end subroutine crm_physics_init
 
 #ifdef ECPP
     if (use_ECPP) then
-      allocate( acen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( acen_tf(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( rhcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( qcloudcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( qlsinkcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( precrcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( precsolidcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( wwqui_cen(pcols, pver))
-      allocate( wwqui_cloudy_cen(pcols, pver))
+      allocate( acen            (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( acen_tf         (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( rhcen           (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( qcloudcen       (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( qlsinkcen       (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( precrcen        (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( precsolidcen    (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( wwqui_cen       (pcols,pver) )
+      allocate( wwqui_cloudy_cen(pcols,pver) )
       ! at layer boundary
-      allocate( abnd(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( abnd_tf(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( massflxbnd(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( wwqui_bnd(pcols, pver+1))
-      allocate( wwqui_cloudy_bnd(pcols, pver+1))
+      allocate( abnd            (pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( abnd_tf         (pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( massflxbnd      (pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( wwqui_bnd       (pcols,pver+1) )
+      allocate( wwqui_cloudy_bnd(pcols,pver+1) )
     end if
 #endif
 
@@ -2005,8 +2005,8 @@ end subroutine crm_physics_init
          call outfld('QSINK_BFCEN', qlsink_bfcen, pcols, lchnk)
          call outfld('QSINK_AVGCEN', qlsink_avgcen, pcols, lchnk)
          call outfld('PRAINCEN', praincen, pcols, lchnk)
-       endif !/*ECPP*/
-#endif
+       endif ! use_ECPP
+#endif /* ECPP */
 
 !----------------------------------------------------------------------
 !  Update state with physics tendencies from CRM
@@ -2062,22 +2062,43 @@ end subroutine crm_physics_init
          if (SPCAM_microp_scheme .eq. 'm2005') then
             call cnst_get_ind('NUMLIQ', ixnumliq)
             call cnst_get_ind('NUMICE', ixnumice)
-            ptend%lq(ixnumliq) = .TRUE.
-            ptend%lq(ixnumice) = .TRUE.
-            ptend%q(:, :, ixnumliq) = 0._r8
-            ptend%q(:, :, ixnumice) = 0._r8
+            call cnst_get_ind('RAINQM', ixrain)
+            call cnst_get_ind('SNOWQM', ixsnow)
+            call cnst_get_ind('NUMRAI', ixnumrain)
+            call cnst_get_ind('NUMSNO', ixnumsnow)
+            ptend%lq(ixnumliq)  = .TRUE.
+            ptend%lq(ixnumice)  = .TRUE.
+            ptend%lq(ixrain)    = .TRUE.
+            ptend%lq(ixsnow)    = .TRUE.
+            ptend%lq(ixnumrain) = .TRUE.
+            ptend%lq(ixnumsnow) = .TRUE.
+            ptend%q(:,:,ixnumliq)  = 0._r8
+            ptend%q(:,:,ixnumice)  = 0._r8
+            ptend%q(:,:,ixrain)    = 0._r8 
+            ptend%q(:,:,ixsnow)    = 0._r8 
+            ptend%q(:,:,ixnumrain) = 0._r8 
+            ptend%q(:,:,ixnumsnow) = 0._r8 
 
             do i = 1, ncol
              do k=1, crm_nz 
                m= pver-k+1
                do ii=1, crm_nx
                do jj=1, crm_ny
-                 ptend%q(i,m,ixnumliq) = ptend%q(i,m,ixnumliq) + crm_nc(i,ii,jj,k) 
-                 ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_ni(i,ii,jj,k)
+                 ptend%q(i,m,ixnumliq)  = ptend%q(i,m,ixnumliq)  + crm_nc(i,ii,jj,k) 
+                 ptend%q(i,m,ixnumice)  = ptend%q(i,m,ixnumice)  + crm_ni(i,ii,jj,k)
+                 ptend%q(i,m,ixrain)    = ptend%q(i,m,ixrain)    + crm_qr(i,ii,jj,k)
+                 ptend%q(i,m,ixsnow)    = ptend%q(i,m,ixsnow)    + crm_qs(i,ii,jj,k)
+                 ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_nr(i,ii,jj,k)
+                 ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_ns(i,ii,jj,k)
+                end do
                end do
                end do
-               ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/crm_run_time
-               ptend%q(i,m,ixnumice) = (ptend%q(i,m,ixnumice)/(crm_nx*crm_ny) - state%q(i,m,ixnumice))/crm_run_time
+               ptend%q(i,m,ixnumliq)  = (ptend%q(i,m,ixnumliq) /(crm_nx*crm_ny) - state%q(i,m,ixnumliq)) /crm_run_time
+               ptend%q(i,m,ixnumice)  = (ptend%q(i,m,ixnumice) /(crm_nx*crm_ny) - state%q(i,m,ixnumice)) /crm_run_time
+               ptend%q(i,m,ixrain)    = (ptend%q(i,m,ixrain)   /(crm_nx*crm_ny) - state%q(i,m,ixrain))   /crm_run_time
+               ptend%q(i,m,ixsnow)    = (ptend%q(i,m,ixsnow)   /(crm_nx*crm_ny) - state%q(i,m,ixsnow))   /crm_run_time
+               ptend%q(i,m,ixnumrain) = (ptend%q(i,m,ixnumrain)/(crm_nx*crm_ny) - state%q(i,m,ixnumrain))/crm_run_time
+               ptend%q(i,m,ixnumsnow) = (ptend%q(i,m,ixnumsnow)/(crm_nx*crm_ny) - state%q(i,m,ixnumsnow))/crm_run_time
              end do
             end do
          endif

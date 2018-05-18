@@ -69,11 +69,11 @@ module module_ecpp_ppdriver2
     ! set pp options (should this be done from driver?)
     !
 
-    num_moist_ecpp = 5                ! is 5 the correct index...?
-    num_moist = 5
-    num_chem_ecpp = 2* pcnst          ! whannah - why is there a 2x here?
-    num_chem = num_chem_ecpp
-    param_first_ecpp = num_moist+1   ! the first index for non-water species
+    num_moist_ecpp   = 5              ! is 5 the correct index...?
+    num_moist        = 5
+    num_chem_ecpp    = 2* pcnst       ! 2x for cloud-borne and interstitial aerosol
+    num_chem         = num_chem_ecpp
+    param_first_ecpp = num_moist+1    ! the first index for non-water species
     p_qv = 1
     p_qc = 2
 
