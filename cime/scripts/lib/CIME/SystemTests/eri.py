@@ -2,6 +2,7 @@
 CIME ERI test  This class inherits from SystemTestsCommon
 """
 from CIME.XML.standard_module_setup import *
+from CIME.utils import safe_copy
 from CIME.SystemTests.system_tests_common import SystemTestsCommon
 import shutil, glob, os
 
@@ -17,7 +18,7 @@ def _helper(dout_sr, refdate, refsec, rundir):
         os.symlink(item, dst)
 
     for item in glob.glob("{}/*rpointer*".format(rest_path)):
-        shutil.copy(item, rundir)
+        safe_copy(item, rundir)
 
 class ERI(SystemTestsCommon):
 
@@ -103,6 +104,7 @@ class ERI(SystemTestsCommon):
         # if the initial case is hybrid this will put the reference data in the correct location
         clone1.check_all_input_data()
 
+        self._skip_pnl = False
         self.run_indv(st_archive=True, suffix=None)
 
         #
@@ -142,14 +144,13 @@ class ERI(SystemTestsCommon):
         rundir2 = clone2.get_value("RUNDIR")
         dout_sr2 = clone2.get_value("DOUT_S_ROOT")
 
-        if not os.path.exists(rundir2):
-            os.makedirs(rundir2)
-
         _helper(dout_sr1, refdate_2, refsec_2, rundir2)
 
         self._skip_pnl = False
         # run ref2 case (all component history files will go to short term archiving)
+        clone2.case_setup(test_mode=True, reset=True)
 
+        self._skip_pnl = False
         self.run_indv(suffix="hybrid", st_archive=True)
 
         #
@@ -197,6 +198,7 @@ class ERI(SystemTestsCommon):
                 os.remove(dst)
             os.symlink(item, dst)
 
+        self._skip_pnl = False
         # run branch case (short term archiving is off)
         self.run_indv()
 
