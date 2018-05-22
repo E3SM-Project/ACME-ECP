@@ -230,7 +230,7 @@ class SystemTestsCompareTwo(SystemTestsCommon):
                 logger.info('Doing second run: ' + self._run_two_description)
                 self._activate_case2()
                 # This assures that case two namelists are populated
-                self._case2.case_setup(test_mode=True, reset=True)
+                self._skip_pnl = False
                 # we need to make sure run2 is properly staged.
                 if run_type != "startup":
                     self._case2.check_case()
@@ -255,6 +255,7 @@ class SystemTestsCompareTwo(SystemTestsCommon):
         """
         rundir2 = self._case2.get_value("RUNDIR")
         self._case1.archive_last_restarts(archive_restdir = rundir2,
+                                          rundir=self._case1.get_value("RUNDIR"),
                                           link_to_restart_files = True)
 
     # ========================================================================

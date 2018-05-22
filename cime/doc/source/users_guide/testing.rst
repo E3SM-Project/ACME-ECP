@@ -278,16 +278,12 @@ baselines for 'master'::
 
   ./compare_test_results -r /home/jenkins/e3sm/scratch/jenkins/ -t mytest -b master
 
-===================
-manage_testlists
-===================
-
 =============
 Adding tests
 =============
 
-Open the update_e3sm_tests.py file, you'll see a python dict at the top
-of the file called TEST_SUITES, find the test category you want to
+Open the config/$model/tests.py file, you'll see a python dict at the top
+of the file called _TESTS, find the test category you want to
 change in this dict and add your testcase to the list.  Note the
 comment at the top of this file indicating that you add a test with
 this format: test>.<grid>.<compset>, and then there is a second

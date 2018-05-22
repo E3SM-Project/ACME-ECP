@@ -11,7 +11,7 @@
 ### BASIC INFO ABOUT RUN
 set job_name       = A_WCYCL1850_template
 set compset        = A_WCYCL1850
-set resolution     = ne4np4_oQU240
+set resolution     = ne4_oQU240
 set machine        = default
 set walltime       = default
 setenv project       default
@@ -208,7 +208,7 @@ set cpl_hist_num   = 1
 #===========================================
 # VERSION OF THIS SCRIPT
 #===========================================
-set script_ver = 3.0.20
+set script_ver = 3.0.22
 
 #===========================================
 # DEFINE ALIASES
@@ -538,6 +538,7 @@ if ( -f ${create_newcase_exe} ) then
   set xmlchange_exe = $case_scripts_dir/xmlchange
   set xmlquery_exe = $case_scripts_dir/xmlquery
   set shortterm_archive_script = $case_scripts_dir/case.st_archive
+  set preview_namelists_exe = $case_scripts_dir/preview_namelists
 else                                                                   # No version of create_newcase found
   e3sm_print 'ERROR: ${create_newcase_exe} not found'
   e3sm_print '       This is most likely because fetch_code should be true.'
@@ -665,7 +666,7 @@ endif
 #      it is useful for debugging so here's an example of how to use it...
 
 #echo 'KLUDGE: Putting streams.ocean in SourceMods'
-#cp /global/u1/p/petercal/junk/streams.ocean $case_scripts_dir/SourceMods/src.mpas-o/
+#cp /global/u1/p/petercal/junk/streams.ocean $case_scripts_dir/SourceMods/src.mpaso/
 
 #============================================================
 # COPY THIS SCRIPT TO THE CASE DIRECTORY TO ENSURE PROVENANCE
@@ -987,6 +988,11 @@ else
   endif
 endif
 
+# Some user_nl settings won't be updated to *_in files under the run directory
+# until namelists are built again.
+# Call preview_namelists to make sure *_in and user_nl files are consistent.
+$preview_namelists_exe
+
 #============================================
 # BATCH JOB OPTIONS
 #============================================
@@ -1204,7 +1210,7 @@ else if ( $model_start_type == 'branch' ) then
   cp -s ${restart_files_dir}/${restart_case_name}.cpl.r.${restart_filedate}-00000.nc $case_run_dir
   cp -s ${restart_files_dir}/${restart_case_name}.mosart.r.${restart_filedate}-00000.nc $case_run_dir
   cp -s ${restart_files_dir}/${restart_case_name}.mosart.rh0.${restart_filedate}-00000.nc $case_run_dir
-  cp -s ${restart_files_dir}/mpascice.rst.${restart_filedate}_00000.nc $case_run_dir
+  cp -s ${restart_files_dir}/mpassi.rst.${restart_filedate}_00000.nc $case_run_dir
   cp -s ${restart_files_dir}/mpaso.rst.${restart_filedate}_00000.nc $case_run_dir
   cp -s ${restart_files_dir}/../../atm/hist/${restart_case_name}.cam.h0.${restart_prevdate}.nc $case_run_dir
   cp -s ${restart_files_dir}/../../rof/hist/${restart_case_name}.mosart.h0.${restart_prevdate}.nc $case_run_dir
