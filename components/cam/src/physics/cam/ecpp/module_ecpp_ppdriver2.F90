@@ -415,33 +415,15 @@ module module_ecpp_ppdriver2
   !==================================================================================================
   !==================================================================================================
   !==================================================================================================
-  subroutine parampollu_driver2(                            &
-                state, ptend,  pbuf,                              &
-    dtstep_in, dtstep_pp_in,                          &
-    acen_3d, abnd_3d,                                 &
-    acen_tf_3d, abnd_tf_3d,                           &
-    massflxbnd_3d,                                    &
-    rhcen_3d, qcloudcen_3d, qlsinkcen_3d,             &
-    precrcen_3d, precsolidcen_3d,                     &
-    acldy_cen_tbeg_3d                                &
-                              )
-
-    ! modules from CAM
-    use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
-    use physics_buffer, only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
-    use physconst,      only: gravit 
-    use time_manager,   only: get_nstep, is_first_step
-    use constituents,   only: cnst_name
-    use cam_history,    only: outfld
-#ifdef MODAL_AERO
-    use modal_aero_data, only: ntot_amode, cnst_name_cw,  qqcw_get_field
-#endif
-
-    ! modules from ECPP
-    use module_ecpp_td2clm, only:  parampollu_td240clm
-
-    implicit none
-
+  subroutine parampollu_driver2(state, ptend,  pbuf,                   &
+                                dtstep_in, dtstep_pp_in,               &
+                                acen_3d, abnd_3d,                      &
+                                acen_tf_3d, abnd_tf_3d,                &
+                                massflxbnd_3d,                         &
+                                rhcen_3d, qcloudcen_3d, qlsinkcen_3d,  &
+                                precrcen_3d, precsolidcen_3d,          &
+                                acldy_cen_tbeg_3d                      &
+                               )
     !-----------------------------------------------------------------------
     ! DESCRIPTION
     !
@@ -459,48 +441,64 @@ module module_ecpp_ppdriver2
     !
     !-----------------------------------------------------------------------
 
-    !   subr arguments
+    use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
+    use physics_buffer, only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
+    use physconst,      only: gravit 
+    use time_manager,   only: get_nstep, is_first_step
+    use constituents,   only: cnst_name
+    use cam_history,    only: outfld
+    use module_ecpp_td2clm, only:  parampollu_td240clm
+#ifdef MODAL_AERO
+    use modal_aero_data, only: ntot_amode, cnst_name_cw,  qqcw_get_field
+#endif
 
-    real(r8), intent(in) :: dtstep_in, dtstep_pp_in
-    ! dtstep_in - main model time step (s)
-    ! dtstep_pp_in - time step (s) for "parameterized pollutants" calculations
+    implicit none
 
-    type(physics_state), intent(in) :: state       ! Physics state variables
-    type(physics_ptend), intent(inout) :: ptend       ! individual parameterization
-    type(physics_buffer_desc), pointer ::  pbuf(:)   ! physics buffer 
-
+    !!! Interface Arguments
+    type(physics_state), intent(in)    :: state   ! Physics state variables
+    type(physics_ptend), intent(inout) :: ptend   ! individual parameterization tendencies
+    type(physics_buffer_desc), pointer :: pbuf(:) ! physics buffer 
+    
+    real(r8), intent(in) :: dtstep_in             ! main model time step              [s]
+    real(r8), intent(in) :: dtstep_pp_in          ! time step for ECPP calculations   [s]
+    
     real(r8), intent(in), dimension(pcols,pverp,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: abnd_3d
     real(r8), intent(in), dimension(pcols,pverp,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: abnd_tf_3d
     real(r8), intent(in), dimension(pcols,pverp,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: massflxbnd_3d
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: acen_3d
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: acen_tf_3d
+    !-----------------------------------------------------------------------
+    ! *** note - these are not "3d" now but probably could be in the mmf code
+    !   abnd_3d and abnd_tf_3d  - sub-class frac area (--) at layer bottom boundary
+    !       abnd_3d             - average for full time period (=dtstep_pp_in)
+    !       abnd_tf_3d          - average for end-portion of time period
+    !   acen_3d and acen_tf_3d  - sub-class frac area (--) at layer center
+    !       acen_3d             - average for full time period (=dtstep_pp_in)
+    !       acen_tf_3d          - average for end-portion of time period
+    !   massflxbnd_3d - sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
+    !-----------------------------------------------------------------------
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: rhcen_3d
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: qcloudcen_3d
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: qlsinkcen_3d
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: precrcen_3d
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: precsolidcen_3d
-    !   *** note - these are not "3d" now but probably will be in the mmf code
-    !   abnd_3d and abnd_tf_3d - sub-class fractional area (--) at layer bottom boundary
-    ! abnd_3d    is average for full time period (=dtstep_pp_in)
-    ! abnd_tf_3d is average for end-portion of time period
-    !   acen_3d and acen_tf_3d - sub-class fractional area (--) at layer center
-    ! acen_3d    is average for full time period (=dtstep_pp_in)
-    ! acen_tf_3d is average for end-portion of time period
-    !   massflxbnd_3d - sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
-    !       *** note - These are calculated using wfull, not wprime.
-    !  rhcen_3d - relative humidity (0-1) at layer center
-    !  qcloudcen_3d - cloud water mixing ratio (kg/kg) at layer center
-    !  qlsinkcen_3d - cloud-water first-order loss rate to precipitation (/s) at layer center
-    !  precrcen_3d - liquid (rain) precipitation rate (kg/m2/s) at layer center
-    !  precsolidcen_3d - solid (snow,graupel,...) precipitation rate (kg/m2/s) at layer center
-
-    real(r8), intent(inout), dimension( pcols, pver)  :: acldy_cen_tbeg_3d
-    !   acldy_cen_tbeg_3d = total (all sub-classes) cloudy fractional area
-    ! on input,  = value from end of the previous time step
-    ! on output, = value from end of the current  time step
-
     !-----------------------------------------------------------------------
-    ! local variables
+    ! *** note - These are calculated using wfull, not wprime.
+    !   rhcen_3d         - relative humidity (0-1) at layer center
+    !   qcloudcen_3d     - cloud water mixing ratio (kg/kg) at layer center
+    !   qlsinkcen_3d     - cloud-water first-order loss rate to precipitation (/s) at layer center
+    !   precrcen_3d      - liquid (rain) precipitation rate (kg/m2/s) at layer center
+    !   precsolidcen_3d  - solid (snow,graupel,...) precipitation rate (kg/m2/s) at layer center
+    !-----------------------------------------------------------------------
+    
+    real(r8), intent(inout), dimension( pcols, pver)  :: acldy_cen_tbeg_3d
+    !-----------------------------------------------------------------------
+    ! acldy_cen_tbeg_3d = total (all sub-classes) cloudy fractional area
+    !   on input        = value from end of the previous time step
+    !   on output       = value from end of the current time step
+    !-----------------------------------------------------------------------
+
+    !!! local variables
     integer :: ncol, lchnk
     integer :: mbuf
     integer :: id
@@ -527,6 +525,7 @@ module module_ecpp_ppdriver2
     integer, dimension( 1:ndndraft_in ) :: kdndraftbase
     integer, dimension( 1:ndndraft_in ) :: kdndrafttop
 
+    !-----------------------------------------------------------------------
     ! kupdraftbase, kupdrafttop - lower-most and upper-most level for each updraft class
     ! *** note1- these refer to layer centers, not layer boundaries.  Thus
     !     acen > 0 for kupdraftbase:kupdrafttop and = 0 at other k
@@ -535,17 +534,17 @@ module module_ecpp_ppdriver2
     ! kdndraftbase, kdndrafttop - lower-most and upper-most level for each downdraft class
     ! *** note2- these get checked/adjusted later, so simply setting k--draftbase = kts
     !     and k--drafttop = ktecen is OK
+    !-----------------------------------------------------------------------
 
-    real(r8)  ::  tcen_bar   (pver)                 ! temperature at layer centers (K)  
-    real(r8)  ::  pcen_bar   (pver)                 ! pressure at layer centers (K)
-    real(r8)  ::  rhocen_bar (pver)                 ! air density at layer centers (kg/m3)
-    real(r8)  ::  dzcen      (pver)                 ! layer depth (m)
-    real(r8)  ::  wcen_bar   (pver)                 ! vertical velocity at layer centers (m/s)
-    real(r8)  ::  rhobnd_bar (pverp)                ! air density at layer boundaries (kg/m3)
-    real(r8)  ::  zbnd       (pverp)                ! elevation at layer boundaries (m) ???elevation or height????
+    real(r8)  ::  tcen_bar   (pver)                 ! temperature at layer centers          (K)  
+    real(r8)  ::  pcen_bar   (pver)                 ! pressure at layer centers             (K)
+    real(r8)  ::  rhocen_bar (pver)                 ! air density at layer centers          (kg/m3)
+    real(r8)  ::  dzcen      (pver)                 ! layer depth                           (m)
+    real(r8)  ::  wcen_bar   (pver)                 ! vertical velocity at layer centers    (m/s)
+    real(r8)  ::  rhobnd_bar (pverp)                ! air density at layer boundaries       (kg/m3)
+    real(r8)  ::  zbnd       (pverp)                ! elevation at layer boundaries         (m) 
     real(r8)  ::  wbnd_bar   (pverp)                ! vertical velocity at layer boundaries (m/s)  
-    real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  ! mixing ratios of trace gase (ppm) and aerosol species
-                                                        ! (ug/kg for mass species, #/kg for number species)
+    real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  ! mixing ratios of trace gase (ppm) and aerosol species (ug/kg for mass species, #/kg for number species)
 #ifdef MODAL_AERO
     ! real(r8), pointer, dimension(:,:,:) :: qqcw  ! cloud-borne aerosol
     type(ptr2d_t) :: qqcw(pcnst)
@@ -631,45 +630,45 @@ module module_ecpp_ppdriver2
     ! idiagaa_ecpp(--) and ldiagaa_ecpp(--) be positive
     !   the ldiagaa_ecpp(--) is the output unit number
     !
-    !    60 -  from subr parampollu_driver2
-    ! short messages on entry and exit
-    !    61 -  from subr parampollu_driver2
-    ! "rcetestpp diagnostics" block
-    !    62 - from subr parampollu_td240clm
-    ! short messages on entry and exit, and showing sub-time-step
-    !    63 - from subr parampollu_check_adjust_inputs 
-    ! shows some summary statistics about the check/adjust process
-    !   115, 116, 117 - from subr parampollu_1clm_dumpaa
-    ! shows various statistics on transport class and subarea
-    ! fractional areas and mass fluxes
-    ! 116 is before    call to parampollu_check_adjust_inputs
-    ! 117 is after 1st call to parampollu_check_adjust_inputs
-    ! 115 is after 2nd call to parampollu_check_adjust_inputs
-    !   118 - from subr parampollu_tdx_main_integ and parampollu_tdx_area_change
-    ! diagnostics involving changes to species 9 in those subrs
-    !   119 - from subr parampollu_tdx_cleanup
-    ! diagnostics involving changes to species 9 in that subr
-    !   121 - from subr parampollu_tdx_cleanup
-    ! diagnostics involving mass conservation
-    !   122 - from subr parampollu_tdx_entdet_sub1 and parampollu_tdx_entdet_diag01
-    ! diagnostics involving entrainment/detrainment and area changes
-    !   123 - from subr parampollu_tdx_entdet_sub1
-    ! diagnostics involving entrainment/detrainment and area changes
-    !   124 - from subr parampollu_tdx_main_integ
-    ! diagnostics involving sub-time-step for "main integration", 
-    ! related to stability and courant number
-    !   125 - from subr parampollu_tdx_activate_intface
-    ! diagnostics involving aerosol activation and associated vertical velocities
-    !   131-135 -  from subr parampollu_driver2
-    ! shows various statistics on transport class and subarea
-    ! fractional areas and mass fluxes
-    !   141-143 -  from subr parampollu_tdx_wetscav_2
-    !       diagnostics for the "new" wetscav code designed for the mmf-with-ecpp
-    !   155 - from subr parampollu_check_adjust_inputs 
-    ! shows "history" of acen_tavg_use thru the check/adjust process
-    !   161, 162, 164  - from subr parampollu_tdx_startup & parampollu_tdx_partition_acw
-    ! involves partitioning of cloudborne/interstitial aerosol between clear
-    ! and cloudy subareas
+    !  60 -  from subr parampollu_driver2
+    !     short messages on entry and exit
+    !  61 -  from subr parampollu_driver2
+    !     "rcetestpp diagnostics" block
+    !  62 - from subr parampollu_td240clm
+    !     short messages on entry and exit, and showing sub-time-step
+    !  63 - from subr parampollu_check_adjust_inputs 
+    !     shows some summary statistics about the check/adjust process
+    ! 115, 116, 117 - from subr parampollu_1clm_dumpaa
+    !     shows various statistics on transport class and subarea
+    !     fractional areas and mass fluxes
+    !     116 is before    call to parampollu_check_adjust_inputs
+    !     117 is after 1st call to parampollu_check_adjust_inputs
+    !     115 is after 2nd call to parampollu_check_adjust_inputs
+    ! 118 - from subr parampollu_tdx_main_integ and parampollu_tdx_area_change
+    !     diagnostics involving changes to species 9 in those subrs
+    ! 119 - from subr parampollu_tdx_cleanup
+    !     diagnostics involving changes to species 9 in that subr
+    ! 121 - from subr parampollu_tdx_cleanup
+    !     diagnostics involving mass conservation
+    ! 122 - from subr parampollu_tdx_entdet_sub1 and parampollu_tdx_entdet_diag01
+    !     diagnostics involving entrainment/detrainment and area changes
+    ! 123 - from subr parampollu_tdx_entdet_sub1
+    !     diagnostics involving entrainment/detrainment and area changes
+    ! 124 - from subr parampollu_tdx_main_integ
+    !     diagnostics involving sub-time-step for "main integration", 
+    !     related to stability and courant number
+    ! 125 - from subr parampollu_tdx_activate_intface
+    !     diagnostics involving aerosol activation and associated vertical velocities
+    ! 131-135 -  from subr parampollu_driver2
+    !     shows various statistics on transport class and subarea
+    !     fractional areas and mass fluxes
+    ! 141-143 -  from subr parampollu_tdx_wetscav_2
+    !     diagnostics for the "new" wetscav code designed for the mmf-with-ecpp
+    ! 155 - from subr parampollu_check_adjust_inputs 
+    !     shows "history" of acen_tavg_use thru the check/adjust process
+    ! 161, 162, 164  - from subr parampollu_tdx_startup & parampollu_tdx_partition_acw
+    !     involves partitioning of cloudborne/interstitial aerosol between clear
+    !     and cloudy subareas
 
 
     idiagaa_ecpp(:) = 0
@@ -705,34 +704,31 @@ module module_ecpp_ppdriver2
 
     !-----------------------------------------------------------------------
 
-    lun60 = -1
-    if (idiagaa_ecpp(60) > 0) lun60 = ldiagaa_ecpp(60)
-    lun61 = -1
-    if (idiagaa_ecpp(61) > 0) lun61 = ldiagaa_ecpp(61)
+    lun60  = -1
+    lun61  = -1
     lun131 = -1
-    if (idiagaa_ecpp(131) > 0) lun131 = ldiagaa_ecpp(131)
     lun132 = -1
-    if (idiagaa_ecpp(132) > 0) lun132 = ldiagaa_ecpp(132)
     lun133 = -1
-    if (idiagaa_ecpp(133) > 0) lun133 = ldiagaa_ecpp(133)
     lun134 = -1
-    if (idiagaa_ecpp(134) > 0) lun134 = ldiagaa_ecpp(134)
     lun135 = -1
+    if (idiagaa_ecpp(60)  > 0) lun60  = ldiagaa_ecpp(60)
+    if (idiagaa_ecpp(61)  > 0) lun61  = ldiagaa_ecpp(61)
+    if (idiagaa_ecpp(131) > 0) lun131 = ldiagaa_ecpp(131)
+    if (idiagaa_ecpp(132) > 0) lun132 = ldiagaa_ecpp(132)
+    if (idiagaa_ecpp(133) > 0) lun133 = ldiagaa_ecpp(133)
+    if (idiagaa_ecpp(134) > 0) lun134 = ldiagaa_ecpp(134)
     if (idiagaa_ecpp(135) > 0) lun135 = ldiagaa_ecpp(135)
 
         
-    ncol = state%ncol
+    ncol  = state%ncol
     lchnk = state%lchnk
 
-    ! whannah - moved the ptend initialization up to crm_physics_tend()
-    ! !==Guangxing Lin
-    ! lq(:) = .true.
-    ! call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
-    ! !call physics_ptend_init(ptend)
-    ! !ptend%name  = 'ecpp'
-    ! ptend%lq(:) = .true.
-    ! ptend%q(:,:,:) = 0.0_r8
-    ! !==Guangxing Lin
+    !!! Initialize ptend
+    lq(:) = .true.
+    call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
+    ptend%lq(:) = .true.
+    ptend%q(:,:,:) = 0.0_r8
+    
 
     dtstep = dtstep_in
     dtstep_pp = dtstep_pp_in

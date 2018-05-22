@@ -32,7 +32,8 @@ contains
 !======================================================================================================
 !======================================================================================================
 subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
-                   wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,  species_class )
+                                  wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,  &
+                                  species_class )
    !---------------------------------------------------------------------------------
    !
    ! Purpose: to calculate aerosol tendency from dropelt activation and mixing. 
@@ -57,9 +58,9 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
    real(r8), intent(in), dimension(pcols,pcnst)  :: cflx                   ! constituent flux from surface
    real(r8), intent(in), dimension(pcols,pver)   :: wwqui_cen              ! vertical velocity variance in quiescent class (m2/s2)
    real(r8), intent(in), dimension(pcols,pver)   :: wwqui_cloudy_cen       ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
-   real(r8), intent(in), dimension(pcols,pver+1) :: wwqui_bnd()            ! vertical velocity variance in quiescent class (m2/s2)
-   real(r8), intent(in), dimension(pcols,pver+1) :: wwqui_cloudy_bnd()     ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
-   integer,  intent(in), dimension(pcnst)        :: species_class
+   real(r8), intent(in), dimension(pcols,pver+1) :: wwqui_bnd              ! vertical velocity variance in quiescent class (m2/s2)
+   real(r8), intent(in), dimension(pcols,pver+1) :: wwqui_cloudy_bnd       ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
+   integer,  intent(in), dimension(pcnst)        :: species_class          ! 
 
    !!! Output
    type(physics_ptend), intent(out) :: ptend  ! output tendencies
