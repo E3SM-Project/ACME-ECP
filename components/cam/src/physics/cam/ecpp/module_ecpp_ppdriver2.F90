@@ -725,12 +725,12 @@ module module_ecpp_ppdriver2
 
     !!! Initialize ptend
     lq(:) = .true.
-    call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
-    ptend%lq(:) = .true.
+    ! call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
+    call physics_ptend_init(ptend, state%psetcols, 'ecpp', lu=.false., lv=.false., ls=.false., lq=lq )
+    ptend%lq(:)    = .true.
     ptend%q(:,:,:) = 0.0_r8
-    
 
-    dtstep = dtstep_in
+    dtstep    = dtstep_in
     dtstep_pp = dtstep_pp_in
 
     !rcetestpp diagnostics --------------------------------------------------

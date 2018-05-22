@@ -4,10 +4,7 @@
         use ecpp_modal_cloudchem,  only: parampollu_tdx_cldchem
         use ecpp_modal_wetscav,    only: parampollu_tdx_wetscav_2
         use perf_mod
-!==Guangxing Lin
-        !use abortutils, only: endrun
         use cam_abortutils, only: endrun
-!==Guangxing Lin
         use physics_buffer, only : physics_buffer_desc
 
     implicit none
@@ -46,218 +43,188 @@
                 aqso4_h2o2, aqso4_o3, xphlwc3d,                   &
         it,      jt,      kts,ktebnd,ktecen, pbuf         )
 
-!-----------------------------------------------------------------------
-! DESCRIPTION
-!
-! parampollu_td240clm is a top level routine for doing
-!    ecpp parameterized pollutants calculations on a single column
-!    of the host-code grid
-!
-! this version uses the hybrid time-dependent up/dndraft formulation
-!   the up and dndrafts are time-dependent, rather than steady state, 
-!   with a lifetime equal "draft_lifetime"
-!   in the hybrid formulation, the host-code column is conceptually
-!   divided into ntstep_hybrid == (draft_lifetime/dtstep_pp) pieces
-!   time integrations over dtstep_pp are done for each piece, sequentially
-!   the up and downdrafts start "fresh" in the first piece
-!   at the end of each "piece integration", the up and downdrafts are
-!   shifted into the next piece
-!   the the drafts evolve over time = draft_lifetime, but different 
-!   pieces of the environment are affected by different aged drafts
-!   the hybrid approach avoids two problems of the original time-dependent
-!   up/dndraft formulation:
-!   (a) having to store draft information (specifically aerosol mixing
-!   ratios in the drafts sub-classes) from one host-code time-step to
-!   the next
-!   (b) having to determine when drafts should be re-initialized
-!
-!-----------------------------------------------------------------------
-
+    !-----------------------------------------------------------------------
+    ! DESCRIPTION
+    !
+    ! parampollu_td240clm is a top level routine for doing
+    !    ecpp parameterized pollutants calculations on a single column
+    !    of the host-code grid
+    !
+    ! this version uses the hybrid time-dependent up/dndraft formulation
+    !   the up and dndrafts are time-dependent, rather than steady state, 
+    !   with a lifetime equal "draft_lifetime"
+    !   in the hybrid formulation, the host-code column is conceptually
+    !   divided into ntstep_hybrid == (draft_lifetime/dtstep_pp) pieces
+    !   time integrations over dtstep_pp are done for each piece, sequentially
+    !   the up and downdrafts start "fresh" in the first piece
+    !   at the end of each "piece integration", the up and downdrafts are
+    !   shifted into the next piece
+    !   the the drafts evolve over time = draft_lifetime, but different 
+    !   pieces of the environment are affected by different aged drafts
+    !   the hybrid approach avoids two problems of the original time-dependent
+    !   up/dndraft formulation:
+    !   (a) having to store draft information (specifically aerosol mixing
+    !   ratios in the drafts sub-classes) from one host-code time-step to
+    !   the next
+    !   (b) having to determine when drafts should be re-initialized
+    !
+    !-----------------------------------------------------------------------
 
     use module_data_mosaic_asect, only:  ai_phase, cw_phase, nphase_aer
-
     use module_data_ecpp1
+    use module_data_mosaic_asect, only: is_aerosol, iphase_of_aerosol, isize_of_aerosol,        &
+                                        itype_of_aerosol, inmw_of_aerosol, laicwpair_of_aerosol
+    use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message, parampollu_1clm_set_opts
+    use cam_abortutils, only: endrun
 
-    use module_data_mosaic_asect, only:  is_aerosol, iphase_of_aerosol, isize_of_aerosol, itype_of_aerosol,   &
-                inmw_of_aerosol, laicwpair_of_aerosol
-
-    use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message, &
-                                     parampollu_1clm_set_opts
-
-!==Guangxing Lin                                    
-        !use abortutils, only: endrun
-        use cam_abortutils, only: endrun
-!==Guangxing Lin                                    
-
-!   arguments
-    integer, intent(in) ::                  &
-        ktau, ktau_pp_in,           &
-        it, jt, kts, ktebnd, ktecen
-!   ktau - time step number
-!   ktau_pp_in - time step number for "parameterized pollutants" calculations
-!   [its:ite, kts:kte, jts:jte] - spatial (x,z,y) indices for "tile"
-!   chem_driver and routines under it do calculations
-!   over these spatial indices.
-
-    integer, intent(in) :: idiagaa_ecpp(1:199), ldiagaa_ecpp(1:199)
-!   these control diagnostic output
+    !!! Interface Arguments
+    integer, intent(in) :: ktau             ! time step number
+    integer, intent(in) :: ktau_pp_in       ! time step number for ECPP calculations
+    integer, intent(in) :: it               ! 
+    integer, intent(in) :: jt               !
+    integer, intent(in) :: kts              !
+    integer, intent(in) :: ktebnd           !
+    integer, intent(in) :: ktecen           !
     
-    real(r8), intent(in) :: dtstep, dtstep_pp
-!   dtstep - main model time step (s)
-!   dtstep_pp - time step (s) for "parameterized pollutants" calculations
+    ! [its:ite, kts:kte, jts:jte] - spatial (x,z,y) indices for "tile"
+    ! chem_driver and routines under it do calculations over these spatial indices.
 
-    real(r8), intent(in), dimension( kts:ktecen ) ::   &
-        tcen_bar, pcen_bar, rhocen_bar, dzcen
-    real(r8), intent(in), dimension( kts:ktebnd ) ::   &
-        rhobnd_bar, wbnd_bar, zbnd
-!   tcen_bar - temperature (K) at layer centers
-!   rhocen_bar, rhobnd_bar - dry air density (kg/m^3) at layer centers and boundaries
-!   pcen_bar - air pressure (Pa) at layer centers
-!   wbnd_bar - vertical velocity (m/s) at layer boundaries
-!   zbnd - elevation (m) at layer boundaries
-!   dzcen - layer thicknesses (m)
+    integer,  intent(in) :: idiagaa_ecpp(1:199) ! diagnostic output control
+    integer,  intent(in) :: ldiagaa_ecpp(1:199) ! diagnostic output control
+    real(r8), intent(in) :: dtstep              ! main model time step (s)
+    real(r8), intent(in) :: dtstep_pp           ! time step (s) for ECPP calculations
 
-    real(r8), intent(inout), dimension( kts:ktecen, 1:num_chem_ecpp ) :: &
-        chem_bar
-!   chem_bar - mixing ratios of trace gase (ppm) and aerosol species
-!   (ug/kg for mass species, #/kg for number species)
+    real(r8), intent(in), dimension( kts:ktecen ) :: tcen_bar       ! temperature (K) at layer centers
+    real(r8), intent(in), dimension( kts:ktecen ) :: pcen_bar       ! air pressure (Pa) at layer centers
+    real(r8), intent(in), dimension( kts:ktecen ) :: dzcen          ! elevation (m) at layer centers
+    real(r8), intent(in), dimension( kts:ktebnd ) :: zbnd           ! elevation (m) at layer boundaries
+    real(r8), intent(in), dimension( kts:ktecen ) :: rhocen_bar     ! dry air density (kg/m^3) at layer centers
+    real(r8), intent(in), dimension( kts:ktebnd ) :: rhobnd_bar     ! dry air density (kg/m^3) at layer boundaries
+    real(r8), intent(in), dimension( kts:ktebnd ) :: wbnd_bar       ! vertical velocity (m/s) at layer boundaries
+    
+    real(r8), intent(inout), dimension( kts:ktecen, 1:num_chem_ecpp ) :: chem_bar ! mixing ratios of trace gase (ppm) and aerosol species (ug/kg for mass species, #/kg for number species)
 
-!   NOTE - tcen_bar through chem_bar are all grid-cell averages
-!       (on the host-code grid)
+    !!! NOTE - tcen_bar through chem_bar are all grid-cell averages (on the host-code grid)
 
-    integer, intent(in) :: ncls_ecpp
-!   ncls_ecpp - number of ecpp transport classes in the grid column
+    integer, intent(in) :: ncls_ecpp        ! number of ecpp transport classes in the grid column
 
-    integer, intent(in), dimension( 1:2, 1:maxcls_ecpp ) ::   &
-        kdraft_bot_ecpp, kdraft_top_ecpp,   &
-        mtype_updnenv_ecpp
-!   kdraft_bot_ecpp = lowest  layer in/thru which sub-area transport occurs
-!                   = lowest  layer for which massflux != 0 at layer upper boundary
-!                                          OR areafrac != 0 at layer center
-!                   >= kts
-!   kdraft_top_ecpp = highest layer in/thru which sub-area transport occurs
-!                   = highest layer for which massflux != 0 at layer lower boundary
-!                                          OR areafrac != 0 at layer center
-!                   <= kte-1
-!   mtype_updnenv_ecpp - transport-class (updraft, downdraft, or quiescent)
+    integer, intent(in), dimension( 1:2, 1:maxcls_ecpp ) :: kdraft_bot_ecpp
+    integer, intent(in), dimension( 1:2, 1:maxcls_ecpp ) :: kdraft_top_ecpp
+    integer, intent(in), dimension( 1:2, 1:maxcls_ecpp ) :: mtype_updnenv_ecpp
 
-    real(r8), intent(in), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) ::   &
-        abnd_tavg_ecpp, mfbnd_ecpp 
-!   real(r8), intent(in), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
-!   acen_tavg_ecpp, acen_tbeg_ecpp, acen_prec_ecpp
-       real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
-        acen_tavg_ecpp, acen_tbeg_ecpp, acen_prec_ecpp
-    real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
-        acen_tfin_ecpp
-!   abnd_tavg_ecpp - sub-class fractional area (--) at layer bottom boundary
-!   acen_tavg_ecpp, acen_tbeg_ecpp, acen_tfin_ecpp - sub-class fractional area (--) 
-!   at layer centers
-!   _tavg_ is average for full time period (=dtstep_pp_in)
-!       _tbeg_ is average at beginning of time period
-!       _tfin_ is average for end-portion of time period
-!   acen_prec_ecpp - fractional area (---) of the portion of a sub-class that
-!   has precipitation
-!   0 <= acen_prec_ecpp(:,:,:)/acen_tavg_ecpp(:,:,:) <= 1
-!   mfbnd_ecpp - sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
-!
-!   NOTE 1 - these 6 xxx_ecpp arrays contain statistics from the crm 
-!   post-processor or interface.
-!   Each array has a xxx_use array that contains "checked and adjusted values",
-!   and those values are the ones that are used.
-!   NOTE 2 - indexing for these arrays
-!   the first index is vertical layer
-!   the second index (0:2):  1=clear, 2=cloudy, and 0=clear+cloudy combined
-!   the third index is transport class
+    ! kdraft_bot_ecpp = lowest  layer in/thru which sub-area transport occurs
+    !                 = lowest  layer for which massflux != 0 at layer upper boundary
+    !                                        OR areafrac != 0 at layer center
+    !                 >= kts
+    ! kdraft_top_ecpp = highest layer in/thru which sub-area transport occurs
+    !                 = highest layer for which massflux != 0 at layer lower boundary
+    !                                        OR areafrac != 0 at layer center
+    !                 <= kte-1
+    ! mtype_updnenv_ecpp - transport-class (updraft, downdraft, or quiescent)
 
-    real(r8), intent(in), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2 ) ::   &
-        rh_sub2, qcloud_sub2, qlsink_sub2, precr_sub2, precs_sub2
-!   rh_sub2 - relative humidity (0-1) at layer center
-!   qcloud_sub2 - cloud water mixing ratio (kg/kg) at layer center
-!   qlsink_sub2 - cloud-water first-order loss rate to precipitation (kg/kg/s) at layer center
-!   precr_sub2 - liquid (rain) precipitation rate (kg/m2/s) at layer center
-!   precsolid_sub2 - solid (snow,graupel,...) precipitation rate (kg/m2/s) at layer center
-!
-!   NOTE - indexing for these arrays
-!   the first index is vertical layer
-!   the second index (0:2) is:  1=clear, 2=cloudy
-!   the third index is transport class
-!   the fourth index (0:2) is:  1=non-precipitating, 2=precipitating
+    real(r8), intent(in   ), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) :: abnd_tavg_ecpp      ! sub-class fractional area (--) at layer bottom boundary for full time period (=dtstep_pp_in)
+    real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tavg_ecpp      ! sub-class fractional area (--) at layer centers         for full time period (=dtstep_pp_in)
+    real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tbeg_ecpp      ! sub-class fractional area (--) at layer centers         for beginning of time period
+    real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tfin_ecpp      ! sub-class fractional area (--) at layer centers         for end-portion of time period
+    real(r8), intent(in   ), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) :: mfbnd_ecpp          ! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
+    real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_prec_ecpp      ! fractional area (---) of the portion of a sub-class that has precipitation -  0 <= acen_prec_ecpp(:,:,:)/acen_tavg_ecpp(:,:,:) <= 1
 
-      real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2, 1:num_chem_ecpp )  ::       &
-                                  del_cldchem3d,      &            ! 3D change in chem_sub from aqueous chemistry
-                                  del_rename3d,       &            ! 3D change in chem_sub from renaming (modal merging)
-                                  del_wetscav3d,      &            ! 3D change in chem_sub from wet deposition
-                                  del_wetresu3d
+    ! NOTE 1 - these 6 xxx_ecpp arrays contain statistics from the crm post-processor or interface.
+    ! Each array has a xxx_use array that contains "checked and adjusted values",
+    ! and those values are the ones that are used.
 
-      real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp )  ::       &
-                                  del_activate3d            ! 3D change in chem_sub from activation/resuspension
+    ! NOTE 2 - indexing for these arrays the first index is vertical layer
+    ! the second index (0:2):  
+    !   1=clear
+    !   2=cloudy
+    !   0=clear+cloudy combined
+    ! the third index is transport class
 
-      real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp )  ::       &
-                                  del_conv3d            ! 3D change in chem_sub from convective transport 
+    real(r8), intent(in), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2 ) :: rh_sub2           ! relative humidity (0-1) at layer center
+    real(r8), intent(in), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2 ) :: qcloud_sub2       ! cloud water mixing ratio (kg/kg) at layer center
+    real(r8), intent(in), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2 ) :: qlsink_sub2       ! cloud-water first-order loss rate to precipitation (kg/kg/s) at layer center
+    real(r8), intent(in), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2 ) :: precr_sub2        ! liquid (rain) precipitation rate (kg/m2/s) at layer center
+    real(r8), intent(in), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2 ) :: precs_sub2        ! solid (snow,graupel,...) precipitation rate (kg/m2/s) at layer center
 
-        real(r8), intent(out) :: aqso4_h2o2,            &         ! SO4 aqueous phase chemistry due to H2O2 (kg/m2)
-                                   aqso4_o3                          ! SO4 aqueous phase chemistry due to O3 (kg/m2)
+    real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2, 1:num_chem_ecpp ) :: del_cldchem3d    ! 3D change in chem_sub from aqueous chemistry
+    real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2, 1:num_chem_ecpp ) :: del_rename3d     ! 3D change in chem_sub from renaming (modal merging)
+    real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2, 1:num_chem_ecpp ) :: del_wetscav3d    ! 3D change in chem_sub from wet deposition
+    real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2, 1:num_chem_ecpp ) :: del_wetresu3d    !
+    real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp,      1:num_chem_ecpp ) :: del_activate3d   ! 3D change in chem_sub from activation/resuspension
+    real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp,      1:num_chem_ecpp ) ::  del_conv3d      ! 3D change in chem_sub from convective transport 
 
-        real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2)  ::  &
-                                   xphlwc3d                          ! pH value multiplied by lwc
+    real(r8), intent(out) :: aqso4_h2o2         ! SO4 aqueous phase chemistry due to H2O2 (kg/m2)
+    real(r8), intent(out) :: aqso4_o3           ! SO4 aqueous phase chemistry due to O3 (kg/m2)
 
-        real(r8), intent(out), dimension( 1:num_chem_ecpp ) :: del_chem_clm_cldchem, del_chem_clm_rename, del_chem_clm_wetscav
-        type(physics_buffer_desc), pointer :: pbuf(:)
+    real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:2)  ::  xphlwc3d                          ! pH value multiplied by lwc
 
-!   local variables
+    real(r8), intent(out), dimension( 1:num_chem_ecpp ) :: del_chem_clm_cldchem
+    real(r8), intent(out), dimension( 1:num_chem_ecpp ) :: del_chem_clm_rename
+    real(r8), intent(out), dimension( 1:num_chem_ecpp ) :: del_chem_clm_wetscav
+    
+    type(physics_buffer_desc), pointer :: pbuf(:)
+
+    !!! local variables
     integer :: activate_onoff_use
-    integer :: icc, iccy, idiag,   &
-        ipass_area_change, ipass_check_adjust_inputs,   &
-        itstep_hybrid
+    integer :: icc, iccy, idiag
+    integer :: ipass_area_change
+    integer :: ipass_check_adjust_inputs
+    integer :: itstep_hybrid
     integer :: jcls, jclsbb, jgrp, jgrpbb
     integer :: k, ktau_pp
     integer :: l, laa, lbb, ll, lun, lun62
     integer :: ncls_use, ntstep_hybrid
 
-    integer, dimension( 1:2, 1:maxcls_ecpp ) ::   &
-        kdraft_bot_use, kdraft_top_use,   &
-        mtype_updnenv_use
+    integer, dimension( 1:2, 1:maxcls_ecpp ) :: kdraft_bot_use
+    integer, dimension( 1:2, 1:maxcls_ecpp ) :: kdraft_top_use
+    integer, dimension( 1:2, 1:maxcls_ecpp ) :: mtype_updnenv_use
 
     real(r8) :: draft_area_fudge, draft_area_fudge_1m
-    real(r8) :: tmpa 
-        real(r8) :: tmpd, tmpe, tmpf, tmpg, tmph
-        real(r8) :: tmpveca(100)
-        real(r8), save :: tmpvecsva(100), tmpvecsvb(100), tmpvecsvc(100)
+    real(r8) :: tmpa, tmpd, tmpe, tmpf, tmpg, tmph
+    real(r8) :: tmpveca(100)
+    real(r8), save :: tmpvecsva(100)
+    real(r8), save :: tmpvecsvb(100)
+    real(r8), save :: tmpvecsvc(100)
 
     real(r8), dimension( kts:ktebnd ) :: wbnd_bar_use
-
     real(r8), dimension( kts:ktecen ) :: rhodz_cen
 
-    real(r8), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) ::   &
-        abnd_tavg_use, mfbnd_use,   &
-        abnd_tavg_usex1, mfbnd_usex1,   &
-        ar_bnd_tavg
+    real(r8), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) :: abnd_tavg_use
+    real(r8), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) :: mfbnd_use
+    real(r8), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) :: abnd_tavg_usex1
+    real(r8), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) :: mfbnd_usex1
+    real(r8), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) :: ar_bnd_tavg
 
-    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
-        acen_tavg_usex1, acen_tbeg_usex1, acen_tfin_usex1,   &
-        acen_tavg_use, acen_tbeg_use, acen_tfin_use, acen_prec_use,   &
-        ardz_cen_tbeg, ardz_cen_tfin,   &
-        ardz_cen_tavg,   &
-        ardz_cen_old, ardz_cen_new
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tavg_usex1
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tbeg_usex1
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tfin_usex1
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tavg_use
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tbeg_use
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_tfin_use
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: acen_prec_use
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: ardz_cen_tbeg
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: ardz_cen_tfin
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: ardz_cen_tavg
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: ardz_cen_old
+    real(r8), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) :: ardz_cen_new
 
-    real(r8), dimension( kts:ktebnd, 0:2, 0:2 ) ::   &
-        mfbnd_quiescn_up, mfbnd_quiescn_dn
+    real(r8), dimension( kts:ktebnd, 0:2, 0:2 ) :: mfbnd_quiescn_up
+    real(r8), dimension( kts:ktebnd, 0:2, 0:2 ) :: mfbnd_quiescn_dn
 
-    real(r8), dimension( kts:ktecen, 1:maxcls_ecpp, 1:num_chem_ecpp ) :: &
-        chem_cls
- 
-    real(r8), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) ::   &
-        chem_sub_new, chem_sub_beg, chem_sub_ac1sv, chem_sub_hysum
+    real(r8), dimension( kts:ktecen,      1:maxcls_ecpp, 1:num_chem_ecpp ) :: chem_cls
+    real(r8), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) :: chem_sub_new
+    real(r8), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) :: chem_sub_beg
+    real(r8), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) :: chem_sub_ac1sv
+    real(r8), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) :: chem_sub_hysum
 
     real(r8), dimension( 1:2, num_chem_ecpp ) :: chem_bar_iccfactor
 
-        real(r8), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp )  ::       &
-                                  del_activate3da            ! 3D change in chem_sub from activation/resuspension
-
-        
+    real(r8), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp )  :: del_activate3da            ! 3D change in chem_sub from activation/resuspension
 
     character(len=120) :: msg
 
+    !-----------------------------------------------------------------------
+    !-----------------------------------------------------------------------
 
     ktau_pp = 10
 

@@ -118,10 +118,9 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 
    call rad_cnst_get_info(0, nmodes=nmodes)
    allocate(factnum(pcols,pver,nmodes))
-   ! ptend%name         = 'crmclouds_mixnuc'
-   ! call physics_ptend_init(ptend)
-   lq(:)=.false.
 
+   !!! Initialize ptend   
+   lq(:)=.false.
    do m=1,ntot_amode
       lnum=numptr_amode(m)
       if(lnum>0)then
@@ -134,8 +133,8 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
          lq(lmass)= .true.
       enddo
    enddo
- 
-   call physics_ptend_init(ptend,state%psetcols,'crmclouds_mixnuc', lq=lq)
+   ! call physics_ptend_init(ptend, state%psetcols,'crmclouds_mixnuc', lq=lq)
+   call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=.false., lv=.false., ls=.false., lq=lq )
 
    !
    ! In the MMF model, turbulent mixing for tracer species are turned off in tphysac.

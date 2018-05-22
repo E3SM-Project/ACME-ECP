@@ -2291,42 +2291,25 @@ end subroutine crm_physics_init
       ! ECPP is called at every 3rd GCM time step.
       ! GCM time step is 10 minutes, and ECPP time step is 30 minutes.
       
-      dtstep_pp = dtstep_pp_input
-#if defined( SP_CRM_SPLIT )
-      necpp = dtstep_pp/(ztodt*0.5)
-#else
-      necpp = dtstep_pp/ztodt
-#endif
-      if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+      dtstep_pp = dtstep_pp_input         ! whannah - currently hard-coded to 1800 sec
+      necpp     = dtstep_pp/crm_run_time
 
-        ! whannah - re-initialize ptend? - probably not necessary
-        ! lu    = .false. 
-        ! lv    = .false.
-        ! ls    = .false.
-        ! lq(:) = .true.
-        ! fromcrm = .false.
-        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-        ! ptend%lq(:) = .true.
-        ! ptend%q(:,:,:) = 0.0_r8
+      if ( nstep.ne.0 .and. mod(nstep, necpp).eq.0 ) then
 
-        ! calculate aerosol tendency from droplet activation and mixing
+        !!! calculate aerosol tendency from droplet activation and mixing
         call t_startf('crmclouds_mixnuc')
-        call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
-                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class
+        call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,         &
+                                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd, &
+                                    species_class)
         call physics_update(state, ptend, dtstep_pp, tend)
         call t_stopf('crmclouds_mixnuc')
 
-        ! ECPP interface
-
-        ! whannah - re-initialize ptend again? - probably not necessary
-        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-        ! ptend%lq(:) = .true.
-        ! ptend%q(:,:,:) = 0.0_r8
-
+        !!! ECPP interface
         call t_startf('ecpp')
         call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
-           acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
-           rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
+                                acen, abnd, acen_tf, abnd_tf, massflxbnd,  &
+                                rhcen, qcloudcen, qlsinkcen, precrcen,     &
+                                precsolidcen, acldy_cen_tbeg )
 
         ! whannah - debugging information for NaN issue
         ! do i=1,ncol
@@ -2338,13 +2321,13 @@ end subroutine crm_physics_init
         !   ! write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
         ! enddo
         ! enddo
-              
         ! ptend%q(:,:,:) = 0.0_r8 ! whannah - zero out tendency for testing - doesn't help NaN problem!
 
         call physics_update(state, ptend, dtstep_pp, tend)
-
         call t_stopf ('ecpp')
+        
       end if
+
     endif ! use_ECPP
 #endif
 
@@ -2389,11 +2372,12 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 ! save for old CRM cloud fraction 
 !----------------------------------------------------------------------
+
   ! In the CAM model, this is done in cldwat2m.F90.
   cldo(:ncol, :) = cld(:ncol, :)
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
 
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
 
 end subroutine crm_physics_tend
 !--------------------------------------------------------------------------------------------
