@@ -1610,7 +1610,9 @@ lude </CFLAGS>
 <compiler COMPILER="gnu" MACH="rhapsody">
   <ADD_FFLAGS>       -ffree-line-length-none  -ffixed-line-length-none </ADD_FFLAGS>
   <ADD_FFLAGS_NOOPT> -ffree-line-length-none  -ffixed-line-length-none </ADD_FFLAGS_NOOPT>
-  <ADD_LDFLAGS MODEL="driver" >  -L/usr/local/opt/lapack/lib   -llapack   </ADD_LDFLAGS>
+  <!-- use homebrew lapack library -->
+  <ADD_LDFLAGS MODEL="driver" >  -L/usr/local/opt/lapack/lib   -llapack -lblas   </ADD_LDFLAGS>
+  <ADD_CMAKE_OPTS MODEL="cism"> -D PIO_USE_MPIMOD:BOOL=OFF </ADD_CMAKE_OPTS>
   <!-- <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -L/opt/lapack3.6.1_pgi15.9/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl </ADD_LDFLAGS> -->
 </compiler>
 
