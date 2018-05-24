@@ -2716,6 +2716,8 @@ end if
 
     end if ! microp_scheme
 
+#endif /* SP_PHYS_BYPASS */ 
+
 
     if (l_tracer_aero) then
 
@@ -2780,7 +2782,6 @@ end if
       endif
       !>songxl 2011-09-20---------------------------------
 
-#endif /* SP_PHYS_BYPASS */ 
 
 
       if (use_SPCAM) then
