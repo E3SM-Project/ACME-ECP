@@ -1608,6 +1608,7 @@ lude </CFLAGS>
 </compiler>
 
 <compiler COMPILER="gnu" MACH="rhapsody">
+  <!-- Mac OSX workstation -->
   <ADD_FFLAGS>       -ffree-line-length-none  -ffixed-line-length-none </ADD_FFLAGS>
   <ADD_FFLAGS_NOOPT> -ffree-line-length-none  -ffixed-line-length-none </ADD_FFLAGS_NOOPT>
   <!-- use homebrew lapack library -->
