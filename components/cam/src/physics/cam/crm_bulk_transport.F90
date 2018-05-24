@@ -1,6 +1,6 @@
 module crm_bulk_transport_mod
 
-! the check for "CBT" just allows the module to be hidden
+! the check for "CBT" just allows the module to be hidden during development
 #ifdef CBT
 #if (defined CRM)
 
@@ -24,8 +24,7 @@ module crm_bulk_transport_mod
    implicit none
 
    public :: crm_bulk_transport
-   ! public :: crm_bulk_transport_tend 
-   ! public :: crm_bulk_cloud_diag 
+   public :: crm_bulk_transport_tend 
 
    contains 
 
@@ -124,7 +123,6 @@ subroutine crm_bulk_transport(state,  ptend,  ztodt,  pbuf)
    !-----------------------------------------------------------------------------------------
    !!! Calculate the transport tendencies
    !-----------------------------------------------------------------------------------------
-   
 
    call crm_bulk_transport_tend (lchnk, pcnst, lq,                    &
                                  state%q, fracis, mu, md, du, eu, ed, &
@@ -186,15 +184,16 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
    real(r8) q_above          ! Mix ratio of constituent above
    real(r8) q_below          ! Mix ratio of constituent below
    real(r8) q_diff_norm      ! Normalized diff between q_above and q_below
-   real(r8) small            ! A small number
-   real(r8) mbsth            ! Threshold for mass fluxes
+   real(r8) small            ! small number threshold
+   real(r8) mf_threshold     ! threshold for mass fluxes
 
-   real(r8) mupdudp          ! A work variable
-   real(r8) minc             ! A work variable
-   real(r8) maxc             ! A work variable
-   real(r8) fluxin           ! A work variable
-   real(r8) fluxout          ! A work variable
-   real(r8) netflux          ! A work variable
+   real(r8) mu_p_dudp        ! updraft mass flux + detrainment * dpdry
+
+   real(r8) min_q            ! A work variable
+   real(r8) max_q            ! A work variable
+   real(r8) flux_in          ! A work variable
+   real(r8) flux_out         ! A work variable
+   real(r8) flux_net         ! A work variable
 
 
    real(r8), dimension(pver) :: q_int        ! constituent mixing ratio in env       at interfaces
@@ -213,8 +212,8 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
    !!! Initialize output tendencies
    tend_out(:,:,:) = 0._r8
 
-   small = 1.e-36_r8    ! threshold for ???????
-   mbsth = 1.e-15_r8    ! threshold below which we treat the mass fluxes as zero (in mb/s)
+   small        = 1.e-36_r8    ! threshold for ???????
+   mf_threshold = 1.e-15_r8    ! threshold below which we treat the mass fluxes as zero (in mb/s)
 
    !!! Find the highest level top and bottom levels of convection
    ktm = pver
@@ -251,32 +250,27 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
             !!! Interpolate environment tracer values to interfaces
             do k = 1,pver
                km1 = max(1,k-1)
-               
-               minc = min( q(i,km1,m), q(i,k,m) )
-               maxc = max( q(i,km1,m), q(i,k,m) )
-               if (minc < 0) then
+               min_q = min( q(i,km1,m), q(i,k,m) )
+               max_q = max( q(i,km1,m), q(i,k,m) )
+               if (min_q < 0) then
                   q_diff_norm = 0._r8
                else
-                  q_diff_norm = abs( q(i,k,m) - q(i,km1,m) ) / max( maxc, small )
+                  q_diff_norm = abs( q(i,k,m) - q(i,km1,m) ) / max( max_q, small )
                endif
-
                !!! If the two layers differ significantly use a geometric averaging procedure
                if (q_diff_norm > 1.E-6_r8) then
-                  q_above = max( q(i,km1,m), maxc*1.e-12_r8 )
-                  q_below = max( q(i,k  ,m), maxc*1.e-12_r8 )
+                  q_above = max( q(i,km1,m), max_q*1.e-12_r8 )
+                  q_below = max( q(i,k  ,m), max_q*1.e-12_r8 )
                   q_int(i,k) = log(q_above/q_below) /(q_above-q_below) *q_above*q_below
                else             
                   !!! otherwise just use arithmetic mean
                   q_int(i,k) = 0.5_r8* ( q(i,k,m) + q(i,km1,m) )
                end if
-
                !!! Provisional up and down draft values
                q_up(i,k) = q_int(i,k)
                q_dn(i,k) = q_int(i,k)
-
-               !!! provisional tendencies
+               !!! initialize provisional tendency array
                q_tend(k) = 0._r8
-
             end do
 
             !!! Do levels adjacent to top and bottom
@@ -284,31 +278,33 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
             km1 = 1
             kk = pver
 
-            mupdudp = mu(i,kk) + du_tmp(i,kk)*dptmp(i,kk)
-            if (mupdudp > mbsth) then
-               q_up(i,kk) = ( +eu_tmp(i,kk) * frac_insol(i,kk) * q(i,kk,m) * dptmp(i,kk) )/mupdudp
+            mu_p_dudp = mu(i,kk) + du_tmp(i,kk)*dp_tmp(i,kk)
+
+            if (mu_p_dudp > mf_threshold) then
+               q_up(i,kk) = ( +eu_tmp(i,kk) * frac_insol(i,kk) * q(i,kk,m) * dp_tmp(i,kk) )/mu_p_dudp
             endif
-            if (md(i,k) < -mbsth) then
-               q_dn(i,k) =  ( -ed_tmp(i,km1) * frac_insol(i,km1) * q(i,km1,m) * dptmp(i,km1) )/md(i,k)
+            if (md(i,k) < -mf_threshold) then
+               q_dn(i,k) =  ( -ed_tmp(i,km1) * frac_insol(i,km1) * q(i,km1,m) * dp_tmp(i,km1) )/md(i,k)
             endif
 
             !!! Updraft from bottom to top
             do kk = pver-1,1,-1
                kkp1 = min(pver,kk+1)
-               mupdudp = mu(i,kk) + du_tmp(i,kk)*dptmp(i,kk)
-               if (mupdudp > mbsth) then
-                  q_up(i,kk) = (  mu(i,kkp1)*q_up(i,kkp1)   &
-                                + eu_tmp(i,kk) * frac_insol(i,kk) * q(i,kk,m) * dptmp(i,kk) &
-                               )/mupdudp
+               mu_p_dudp = mu(i,kk) + du_tmp(i,kk)*dp_tmp(i,kk)
+               if (mu_p_dudp > mf_threshold) then
+                  q_up(i,kk) = (  mu(i,kkp1) * q_up(i,kkp1)          &
+                                + eu_tmp(i,kk) * frac_insol(i,kk)    &
+                                * q(i,kk,m) * dp_tmp(i,kk) )/mu_p_dudp
                endif
             end do
 
             !!! Downdraft from top to bottom
             do k = 3,pver
                km1 = max(1,k-1)
-               if (md(i,k) < -mbsth) then
-                  q_dn(i,k) =  (  md(i,km1)*q_dn(i,km1)-ed_tmp(i,km1)*frac_insol(i,km1)*q(i,km1,m) &
-                                  *dptmp(i,km1) )/md(i,k)
+               if (md(i,k) < -mf_threshold) then
+                  q_dn(i,k) =  (  md(i,km1) * q_dn(i,km1)            &
+                                - ed_tmp(i,km1) * frac_insol(i,km1)  &
+                                * q(i,km1,m) * dp_tmp(i,km1) )/md(i,k)
                endif
             end do
 
@@ -321,17 +317,17 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
                ! these limiters are probably only safe for positive definite quantitities
                ! it assumes that mu and md already satisfy a courant number limit of 1
 
-               fluxin =  mu(i,kp1)*q_up(i,kp1)+ mu(i,k)*min(q_int(i,k),q(i,km1,m)) &
+               flux_in =  mu(i,kp1)*q_up(i,kp1)+ mu(i,k)*min(q_int(i,k),q(i,km1,m)) &
                          -(md(i,k)  *q_dn(i,k) + md(i,kp1)*min(q_int(i,kp1),q(i,kp1,m)))
 
-               fluxout = mu(i,k)*q_up(i,k) + mu(i,kp1)*min(q_int(i,kp1),q(i,k,m)) &
+               flux_out = mu(i,k)*q_up(i,k) + mu(i,kp1)*min(q_int(i,kp1),q(i,k,m)) &
                          -(md(i,kp1)*q_dn(i,kp1) + md(i,k)*min(q_int(i,k),q(i,k,m)))
 
-               netflux = fluxin - fluxout
-               if ( abs(netflux) < ( max(fluxin,fluxout)*1.e-12_r8 ) ) then
-                  netflux = 0._r8
+               flux_net = flux_in - flux_out
+               if ( abs(flux_net) < ( max(flux_in,flux_out)*1.e-12_r8 ) ) then
+                  flux_net = 0._r8
                endif
-               q_tend(k) = netflux/dptmp(i,k)
+               q_tend(k) = flux_net/dp_tmp(i,k)
 
             end do
 
@@ -341,14 +337,14 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
                if (k == cld_bot_idx(i)) then
 
                   !!! version 3
-                  fluxin =  mu(i,k)*min(q_int(i,k),q(i,km1,m)) - md(i,k)*q_dn(i,k)
-                  fluxout = mu(i,k)*q_up(i,k) - md(i,k)*min(q_int(i,k),q(i,k,m))
+                  flux_in =  mu(i,k)*min(q_int(i,k),q(i,km1,m)) - md(i,k)*q_dn(i,k)
+                  flux_out = mu(i,k)*q_up(i,k) - md(i,k)*min(q_int(i,k),q(i,k,m))
 
-                  netflux = fluxin - fluxout
-                  if (abs(netflux) < max(fluxin,fluxout)*1.e-12_r8) then
-                     netflux = 0._r8
+                  flux_net = flux_in - flux_out
+                  if (abs(flux_net) < max(flux_in,flux_out)*1.e-12_r8) then
+                     flux_net = 0._r8
                   endif
-                  q_tend(k) = netflux/dptmp(i,k)
+                  q_tend(k) = flux_net/dp_tmp(i,k)
                else if (k > mx(i)) then
                   q_tend(k) = 0._r8
                end if
