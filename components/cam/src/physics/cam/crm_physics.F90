@@ -1084,6 +1084,26 @@ end subroutine crm_physics_init
    call pbuf_get_field (pbuf, crm_qc_rad_idx,   qc_rad)
    call pbuf_get_field (pbuf, crm_qi_rad_idx,   qi_rad)
    call pbuf_get_field (pbuf, crm_cld_rad_idx, cld_rad)  !Guangxing Lin new CRM
+
+   call pbuf_get_field(pbuf, prec_dp_idx,  prec_dp  )
+   call pbuf_get_field(pbuf, prec_sh_idx,  prec_sh  )
+   call pbuf_get_field(pbuf, prec_sed_idx, prec_sed )
+   call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw )
+   call pbuf_get_field(pbuf, snow_dp_idx,  snow_dp  )
+   call pbuf_get_field(pbuf, snow_sh_idx,  snow_sh  )
+   call pbuf_get_field(pbuf, snow_sed_idx, snow_sed )
+   call pbuf_get_field(pbuf, snow_str_idx, snow_str )
+   call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
+
+   prec_dp  = 0.
+   snow_dp  = 0.
+   prec_sh  = 0.
+   snow_sh  = 0. 
+   prec_sed = 0.
+   snow_sed = 0.
+   snow_str = 0.
+   prec_pcw = 0
+   snow_pcw = 0.
    
 ! Initialize stuff:
    call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1540,7 +1560,7 @@ end subroutine crm_physics_init
             ! Set the input wind for ESMT
             ul_esmt(i,k) = state%u(i,k)
             vl_esmt(i,k) = state%v(i,k)
-#endif
+#endif /* SP_ESMT */
          enddo ! k=1,pver
 
          icol(i) = i
@@ -1563,10 +1583,10 @@ end subroutine crm_physics_init
                state%zm(:ncol,:pver),       state%zi(:ncol,:pver+1),      ztodt,                        pver,                                                       &
 #if defined( SPMOMTRANS )
                u_tend_crm (:ncol,:pver),    v_tend_crm (:ncol,:pver),                                                                                               &
-#endif
+#endif /* SPMOMTRANS */
 #if defined( SP_ESMT )
                ul_esmt(:ncol,:pver),        vl_esmt(:ncol,:pver),         u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
-#endif
+#endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
                crm_u(:ncol,:,:,:),          crm_v(:ncol,:,:,:),           crm_w(:ncol,:,:,:),           crm_t(:ncol,:,:,:),          crm_micro(:ncol,:,:,:,:),      &
                crm_qrad(:ncol,:,:,:),                                                                                                                               &
@@ -1579,7 +1599,7 @@ end subroutine crm_physics_init
                sub_crm(:ncol,:,:,:),        dep_crm(:ncol,:,:,:),         con_crm(:ncol,:,:,:),                                                                     &
                aut_crm_a(:ncol,:),          acc_crm_a(:ncol,:),           evpc_crm_a(:ncol,:),          evpr_crm_a(:ncol,:),         mlt_crm_a(:ncol,:),            &
                sub_crm_a(:ncol,:),          dep_crm_a(:ncol,:),           con_crm_a(:ncol,:),                                                                       &
-#endif
+#endif /* m2005 */
                precc(:ncol),                precl(:ncol),                 precsc(:ncol),                precsl(:ncol),                                              &
                cltot(:ncol),                clhgh(:ncol),                 clmed(:ncol),                 cllow(:ncol),                cld(:ncol,:),cldtop(:ncol,:) , &
                gicewp(:ncol,:),             gliqwp(:ncol,:),                                                                                                        &
@@ -1589,14 +1609,14 @@ end subroutine crm_physics_init
                spnc(:ncol,:),               spni(:ncol,:),                spns(:ncol,:),                spng(:ncol,:),               spnr(:ncol,:),                 &
 #ifdef MODAL_AERO
                naermod(:ncol,:,:),          vaerosol(:ncol,:,:),          hygro(:ncol,:,:),                                                                         &
-#endif 
-#endif
+#endif /* MODAL_AERO */
+#endif /* m2005 */
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
                crm_cld(:ncol,:, :, :),                                                                                                                              &
                clubb_tk(:ncol, :, :, :),    clubb_tkh(:ncol, :, :, :),                                                                                              &
                relvar(:ncol,:, :, :),       accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :),                                                                   &
-#endif
+#endif /* CLUBB_CRM */
                crm_tk(:ncol, :, :, :),      crm_tkh(:ncol, :, :, :),                                                                                                &
                mu_crm(:ncol,:),             md_crm(:ncol,:),              du_crm(:ncol,:),           eu_crm(:ncol,:),                                               & 
                ed_crm(:ncol,:),             jt_crm(:ncol),                mx_crm(:ncol),                                                                            &
@@ -1607,7 +1627,7 @@ end subroutine crm_physics_init
                qlsink_bfcen(:ncol,:,:,:,:), qlsink_avgcen(:ncol,:,:,:,:), praincen(:ncol,:,:,:,:),                                                                  &
                wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:),                                                                                               &
                wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                     &
-#endif
+#endif /* ECPP */
                tkez(:ncol,:),               tkesgsz(:ncol,:),             tkz(:ncol, :),                                                                            &
                flux_u(:ncol,:),             flux_v(:ncol,:),              flux_qt(:ncol,:),          fluxsgs_qt(:ncol,:),         flux_qp(:ncol,:),                 &
                precflux(:ncol,:),           qt_ls(:ncol,:),               qt_trans(:ncol,:),         qp_trans(:ncol,:),           qp_fall(:ncol,:),                 &
@@ -1620,89 +1640,72 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-    do i=1,ncol
-           if (SPCAM_microp_scheme .eq. 'sam1mom') then
-              crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
-              crm_qp(i,:,:,:) = crm_micro(i,:,:,:,2)
-              crm_qn(i,:,:,:) = crm_micro(i,:,:,:,3)
-	   endif
+      do i=1,ncol
+         if (SPCAM_microp_scheme .eq. 'sam1mom') then
+            crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
+            crm_qp(i,:,:,:) = crm_micro(i,:,:,:,2)
+            crm_qn(i,:,:,:) = crm_micro(i,:,:,:,3)
+	     endif
 #ifdef m2005
-              crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
-              crm_nc(i,:,:,:) = crm_micro(i,:,:,:,2)
-              crm_qr(i,:,:,:) = crm_micro(i,:,:,:,3)
-              crm_nr(i,:,:,:) = crm_micro(i,:,:,:,4)
-              crm_qi(i,:,:,:) = crm_micro(i,:,:,:,5)
-              crm_ni(i,:,:,:) = crm_micro(i,:,:,:,6)
-              crm_qs(i,:,:,:) = crm_micro(i,:,:,:,7)
-              crm_ns(i,:,:,:) = crm_micro(i,:,:,:,8)
-              crm_qg(i,:,:,:) = crm_micro(i,:,:,:,9)
-              crm_ng(i,:,:,:) = crm_micro(i,:,:,:,10)
-              crm_qc(i,:,:,:) = crm_micro(i,:,:,:,11)
-#endif
-       end do ! i (loop over ncol)
-#endif
-!----------------------------------------------------------------------
-! End ncol loop for CRM
-!----------------------------------------------------------------------
-       call t_stopf('crm_call')
+         crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
+         crm_nc(i,:,:,:) = crm_micro(i,:,:,:,2)
+         crm_qr(i,:,:,:) = crm_micro(i,:,:,:,3)
+         crm_nr(i,:,:,:) = crm_micro(i,:,:,:,4)
+         crm_qi(i,:,:,:) = crm_micro(i,:,:,:,5)
+         crm_ni(i,:,:,:) = crm_micro(i,:,:,:,6)
+         crm_qs(i,:,:,:) = crm_micro(i,:,:,:,7)
+         crm_ns(i,:,:,:) = crm_micro(i,:,:,:,8)
+         crm_qg(i,:,:,:) = crm_micro(i,:,:,:,9)
+         crm_ng(i,:,:,:) = crm_micro(i,:,:,:,10)
+         crm_qc(i,:,:,:) = crm_micro(i,:,:,:,11)
+#endif /* m2005 */
+      end do ! i (loop over ncol)
 
-       ! There is no separate convective and stratiform precip for CRM:
-       precc(:ncol) = precc(:ncol) + precl(:ncol)
-       precl(:ncol) = 0.
-       precsc(:ncol) = precsc(:ncol) + precsl(:ncol)
-       precsl(:ncol) = 0.
+#endif /* CRM */
 
-       call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
-       call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )
-       call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
-       call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
-       call pbuf_get_field(pbuf, prec_sed_idx, prec_sed )
-       call pbuf_get_field(pbuf, snow_sed_idx, snow_sed )
-       call pbuf_get_field(pbuf, snow_str_idx, snow_str )
-       call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw )
-       call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
+      call t_stopf('crm_call')
 
-       prec_dp  = precc
-       snow_dp  = precsc
-       prec_sh  = 0.
-       snow_sh  = 0. 
-       prec_sed = 0.
-       snow_sed = 0.
-       snow_str = 0.
-       prec_pcw = 0
-       snow_pcw = 0.
+      ! There is no separate convective and stratiform precip for CRM:
+      precc(:ncol) = precc(:ncol) + precl(:ncol)
+      precl(:ncol) = 0.
+      precsc(:ncol) = precsc(:ncol) + precsl(:ncol)
+      precsl(:ncol) = 0.
 
-       do m=1,crm_nz
-         k = pver-m+1
-         do i = 1,ncol
-           crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
-         end do
-       end do
+      !!! these precip pointer variables are used by coupler
+      prec_dp  = precc
+      snow_dp  = precsc
 
-       call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
-       call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
+      do m=1,crm_nz
+      k = pver-m+1
+      do i = 1,ncol
+         crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
+      end do
+      end do
+
+      call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
+      call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
       ! call outfld('HEIGHT  ',state%zm   ,pcols   ,lchnk   )
 
-       call outfld('CRM_U   ',crm_u, pcols   ,lchnk   )
-       call outfld('CRM_V   ',crm_v, pcols   ,lchnk   )
-       call outfld('CRM_W   ',crm_w, pcols   ,lchnk   )
-       call outfld('CRM_T   ',crm_t, pcols   ,lchnk   )
+      call outfld('CRM_U   ',crm_u, pcols   ,lchnk   )
+      call outfld('CRM_V   ',crm_v, pcols   ,lchnk   )
+      call outfld('CRM_W   ',crm_w, pcols   ,lchnk   )
+      call outfld('CRM_T   ',crm_t, pcols   ,lchnk   )
 
-       if (SPCAM_microp_scheme .eq. 'sam1mom') then
-          call outfld('CRM_QV  ',(crm_qt(:,:,:,:)-qc_crm-qi_crm),pcols   ,lchnk   )
-       else if (SPCAM_microp_scheme .eq. 'm2005') then 
-          call outfld('CRM_QV  ',crm_qt(:,:,:,:)-qc_crm, pcols   ,lchnk   )
-       endif
-       call outfld('CRM_QC  ',qc_crm   ,pcols   ,lchnk   )
-       call outfld('CRM_QI  ',qi_crm   ,pcols   ,lchnk   )
-       call outfld('CRM_QPC ',qpc_crm  ,pcols   ,lchnk   )
-       call outfld('CRM_QPI ',qpi_crm  ,pcols   ,lchnk   )
-       call outfld('CRM_PREC',prec_crm       ,pcols   ,lchnk   )
-       call outfld('CRM_TK ', crm_tk(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
-       call outfld('CRM_TKH', crm_tkh(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
+      if (SPCAM_microp_scheme .eq. 'sam1mom') then
+         call outfld('CRM_QV  ',(crm_qt(:,:,:,:)-qc_crm-qi_crm),pcols   ,lchnk   )
+      else if (SPCAM_microp_scheme .eq. 'm2005') then 
+         call outfld('CRM_QV  ',crm_qt(:,:,:,:)-qc_crm, pcols   ,lchnk   )
+      endif
+      call outfld('CRM_QC  ',qc_crm   ,pcols   ,lchnk   )
+      call outfld('CRM_QI  ',qi_crm   ,pcols   ,lchnk   )
+      call outfld('CRM_QPC ',qpc_crm  ,pcols   ,lchnk   )
+      call outfld('CRM_QPI ',qpi_crm  ,pcols   ,lchnk   )
+      call outfld('CRM_PREC',prec_crm       ,pcols   ,lchnk   )
+      call outfld('CRM_TK ', crm_tk(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
+      call outfld('CRM_TKH', crm_tkh(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
 
 #ifdef m2005
-       if (SPCAM_microp_scheme .eq. 'm2005') then
+      if (SPCAM_microp_scheme .eq. 'm2005') then
          ! index is defined in ./crm/MICRO_M2005/microphysics.F90
          ! Be cautious to use them here. They are defined in crm codes, and these codes are called only 
          ! after the subroutine of crm is called. So they can only be used after the 'crm' subroutine. 
@@ -1710,61 +1713,60 @@ end subroutine crm_physics_init
          ! in the future.
          ! incl, inci, ... can not be used here, for they are defined before we call them???
          ! +++mhwang
-          call outfld('CRM_NC ',crm_nc(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_NI ',crm_ni(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_NR ',crm_nr(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_NS ',crm_ns(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_NG ',crm_ng(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NC ',crm_nc(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NI ',crm_ni(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NR ',crm_nr(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NS ',crm_ns(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NG ',crm_ng(:, :, :, :)   ,pcols   ,lchnk   )
 
-          call outfld('CRM_WVAR', wvar_crm, pcols, lchnk)
+         call outfld('CRM_WVAR', wvar_crm, pcols, lchnk)
 
-          call outfld('CRM_QR ',crm_qr(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_QS ',crm_qs(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_QG ',crm_qg(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QR ',crm_qr(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QS ',crm_qs(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QG ',crm_qg(:, :, :, :)   ,pcols   ,lchnk   )
 
-          ! hm 7/26/11, add new output
-          call outfld('CRM_AUT', aut_crm, pcols, lchnk)
-          call outfld('CRM_ACC', acc_crm, pcols, lchnk)
-          call outfld('CRM_EVPC', evpc_crm, pcols, lchnk)
-          call outfld('CRM_EVPR', evpr_crm, pcols, lchnk)
-          call outfld('CRM_MLT', mlt_crm, pcols, lchnk)
-          call outfld('CRM_SUB', sub_crm, pcols, lchnk)
-          call outfld('CRM_DEP', dep_crm, pcols, lchnk)
-          call outfld('CRM_CON', con_crm, pcols, lchnk)
-          ! hm 8/31/11, add new output for time-mean-avg
-          call outfld('A_AUT', aut_crm_a, pcols, lchnk)
-          call outfld('A_ACC', acc_crm_a, pcols, lchnk)
-          call outfld('A_EVPC', evpc_crm_a, pcols, lchnk)
-          call outfld('A_EVPR', evpr_crm_a, pcols, lchnk)
-          call outfld('A_MLT', mlt_crm_a, pcols, lchnk)
-          call outfld('A_SUB', sub_crm_a, pcols, lchnk)
-          call outfld('A_DEP', dep_crm_a, pcols, lchnk)
-          call outfld('A_CON', con_crm_a, pcols, lchnk)
-       endif ! else of if_first_step
-#endif
+         ! hm 7/26/11, add new output
+         call outfld('CRM_AUT', aut_crm, pcols, lchnk)
+         call outfld('CRM_ACC', acc_crm, pcols, lchnk)
+         call outfld('CRM_EVPC', evpc_crm, pcols, lchnk)
+         call outfld('CRM_EVPR', evpr_crm, pcols, lchnk)
+         call outfld('CRM_MLT', mlt_crm, pcols, lchnk)
+         call outfld('CRM_SUB', sub_crm, pcols, lchnk)
+         call outfld('CRM_DEP', dep_crm, pcols, lchnk)
+         call outfld('CRM_CON', con_crm, pcols, lchnk)
+         ! hm 8/31/11, add new output for time-mean-avg
+         call outfld('A_AUT', aut_crm_a, pcols, lchnk)
+         call outfld('A_ACC', acc_crm_a, pcols, lchnk)
+         call outfld('A_EVPC', evpc_crm_a, pcols, lchnk)
+         call outfld('A_EVPR', evpr_crm_a, pcols, lchnk)
+         call outfld('A_MLT', mlt_crm_a, pcols, lchnk)
+         call outfld('A_SUB', sub_crm_a, pcols, lchnk)
+         call outfld('A_DEP', dep_crm_a, pcols, lchnk)
+         call outfld('A_CON', con_crm_a, pcols, lchnk)
+      endif ! m2005
+#endif /* m2005 */
 
 #ifdef CLUBB_CRM
-       call outfld('UP2     ', clubb_buffer(:, :, :, :, 1)   ,pcols   ,lchnk   )
-       call outfld('VP2     ', clubb_buffer(:, :, :, :, 2)   ,pcols   ,lchnk   )
-       call outfld('WPRTP   ', clubb_buffer(:, :, :, :, 3)   ,pcols   ,lchnk   )
-       call outfld('WPTHLP  ', clubb_buffer(:, :, :, :, 4)   ,pcols   ,lchnk   )
-       call outfld('WP2     ', clubb_buffer(:, :, :, :, 5)   ,pcols   ,lchnk   )
-       call outfld('WP3     ', clubb_buffer(:, :, :, :, 6)   ,pcols   ,lchnk   )
-       call outfld('RTP2    ', clubb_buffer(:, :, :, :, 7)   ,pcols   ,lchnk   )
-       call outfld('THLP2   ', clubb_buffer(:, :, :, :, 8)   ,pcols   ,lchnk   )
-       call outfld('RTPTHLP ', clubb_buffer(:, :, :, :, 9)   ,pcols   ,lchnk   )
-       call outfld('UPWP    ', clubb_buffer(:, :, :, :, 10)  ,pcols   ,lchnk   )
-       call outfld('VPWP    ', clubb_buffer(:, :, :, :, 11)  ,pcols   ,lchnk   )
-       call outfld('CRM_CLD ', clubb_buffer(:, :, :, :, 12)  ,pcols   ,lchnk   )
+      call outfld('UP2     ', clubb_buffer(:, :, :, :, 1)   ,pcols   ,lchnk   )
+      call outfld('VP2     ', clubb_buffer(:, :, :, :, 2)   ,pcols   ,lchnk   )
+      call outfld('WPRTP   ', clubb_buffer(:, :, :, :, 3)   ,pcols   ,lchnk   )
+      call outfld('WPTHLP  ', clubb_buffer(:, :, :, :, 4)   ,pcols   ,lchnk   )
+      call outfld('WP2     ', clubb_buffer(:, :, :, :, 5)   ,pcols   ,lchnk   )
+      call outfld('WP3     ', clubb_buffer(:, :, :, :, 6)   ,pcols   ,lchnk   )
+      call outfld('RTP2    ', clubb_buffer(:, :, :, :, 7)   ,pcols   ,lchnk   )
+      call outfld('THLP2   ', clubb_buffer(:, :, :, :, 8)   ,pcols   ,lchnk   )
+      call outfld('RTPTHLP ', clubb_buffer(:, :, :, :, 9)   ,pcols   ,lchnk   )
+      call outfld('UPWP    ', clubb_buffer(:, :, :, :, 10)  ,pcols   ,lchnk   )
+      call outfld('VPWP    ', clubb_buffer(:, :, :, :, 11)  ,pcols   ,lchnk   )
+      call outfld('CRM_CLD ', clubb_buffer(:, :, :, :, 12)  ,pcols   ,lchnk   )
       !==Guangxing Lin new crm
-       call outfld('CLUBB_TK ', clubb_tk(:, :, :, :)  ,pcols   ,lchnk   )
-       call outfld('CLUBB_TKH', clubb_tkh(:, :, :, :)  ,pcols   ,lchnk   )
-       call outfld('RELVAR', relvar(:, :, :, :)  ,pcols   ,lchnk   )
-       call outfld('ACCRE_ENHAN', accre_enhan(:, :, :, :)  ,pcols   ,lchnk   )
-       call outfld('QCLVAR', qclvar(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('CLUBB_TK ', clubb_tk(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('CLUBB_TKH', clubb_tkh(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('RELVAR', relvar(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('ACCRE_ENHAN', accre_enhan(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('QCLVAR', qclvar(:, :, :, :)  ,pcols   ,lchnk   )
       !==Guangxing Lin new crm
-
-#endif
+#endif /* CLUBB_CRM */
 
 !----------------------------------------------------------------------
 ! Add radiative heating tendency above CRM
