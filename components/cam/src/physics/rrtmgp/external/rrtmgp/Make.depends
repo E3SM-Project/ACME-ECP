@@ -1,6 +1,7 @@
 RRTMGP_SRC = \
   mo_util_string.o \
 	mo_rrtmgp_constants.o \
+  mo_reorder_kernels.o \
   mo_util_reorder.o \
   mo_gas_concentrations.o \
   mo_gas_optics_kernels.o \
@@ -26,7 +27,8 @@ mo_gas_concentrations.o: mo_rte_kind.o mo_gas_concentrations.F90
 # Utility
 #
 mo_util_string.o:  mo_util_string.F90
-mo_util_reorder.o: mo_rte_kind.o mo_util_reorder.F90
+mo_reorder_kernels.o: mo_rte_kind.o mo_reorder_kernels.F90
+mo_util_reorder.o: mo_rte_kind.o mo_reorder_kernels.o mo_util_reorder.F90
 #
 #
 # Gas optics

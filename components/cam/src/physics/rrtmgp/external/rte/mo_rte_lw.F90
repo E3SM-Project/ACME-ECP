@@ -1,5 +1,4 @@
-! This code is part of
-! RRTM for GCM Applications - Parallel (RRTMGP)
+! This code is part of Radiative Transfer for Energetics (RTE)
 !
 ! Eli Mlawer and Robert Pincus
 ! Andre Wehe and Jennifer Delamere
@@ -96,14 +95,11 @@ contains
     !
     ! Local variables
     !
-    integer :: ncol, nlay, ngpt, nband, ncomp
+    integer :: ncol, nlay, ngpt, nband
     integer :: top_lev
-    integer :: comp, icol
-    real(wp), dimension(optical_props%get_ncol(),   &
-                        optical_props%get_nlay()+1, &
-                        optical_props%get_ngpt()) :: gpt_flux_up, gpt_flux_dn
-    real(wp), dimension(optical_props%get_ncol(), &
-                        optical_props%get_ngpt()) :: sfc_emis_gpt
+    integer :: icol
+    real(wp), dimension(:,:,:), allocatable :: gpt_flux_up, gpt_flux_dn
+    real(wp), dimension(:,:),   allocatable :: sfc_emis_gpt
     ! ------------------------------------------------------------------------------------
     !
     ! Error checking
@@ -116,6 +112,8 @@ contains
     nband = k_dist%get_nband()
     error_msg = ""
 
+    allocate(gpt_flux_up (ncol, nlay+1, ngpt), gpt_flux_dn(ncol, nlay+1, ngpt))
+    allocate(sfc_emis_gpt(ncol,         ngpt))
     ! ------------------------------------------------------------------------------------
     !
     ! Error checking -- consistency of sizes and validity of values
@@ -176,26 +174,19 @@ contains
       if(any(inc_flux < 0._wp)) &
         error_msg = "rte_lw: inc_flux has values < 0"
     end if
+    if(len_trim(error_msg) > 0) return
 
     !
     ! Ensure values of tau, ssa, and g are reasonable
     !
     error_msg =  optical_props%validate()
     if(len_trim(error_msg) > 0) then
-      error_msg = "rte_lw: " // trim(error_msg)
+      if(len_trim(optical_props%get_name()) > 0) &
+        error_msg = trim(optical_props%get_name()) // ': ' // trim(error_msg)
       return
     end if
 
     ! ------------------------------------------------------------------------------------
-    ! Apply boundary conditions
-    !   Upper boundary condition
-    top_lev = MERGE(1, nlay+1, top_at_1)
-    if(present(inc_flux)) then
-      gpt_flux_dn(:,top_lev,:) = inc_flux(:,:)
-    else
-      gpt_flux_dn(:,top_lev,:) = 0._wp
-    end if
-
     !    Lower boundary condition -- expand surface emissivity by band to gpoints
     do icol = 1, ncol
       sfc_emis_gpt(icol, 1:ngpt) = k_dist%expand(sfc_emis(:,icol))
@@ -206,7 +197,7 @@ contains
     !
     error_msg = lw_solver(ncol, nlay, ngpt, top_at_1,                                &
                           optical_props, lay_source, lev_source_inc, lev_source_dec, &
-                          sfc_emis_gpt, sfc_source, gpt_flux_up, gpt_flux_dn)
+                          sfc_emis_gpt, sfc_source, gpt_flux_up, gpt_flux_dn, inc_flux)
     if (error_msg /= '') return
     !
     ! ...and reduce spectral fluxes to desired output quantities

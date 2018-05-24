@@ -3,6 +3,7 @@ RTE_SRC = \
   mo_optical_props_kernels.o \
   mo_optical_props.o \
 	mo_spectral_disc.o \
+  mo_fluxes_broadband_kernels.o \
   mo_fluxes.o \
   mo_rte_solver_kernels.o \
   mo_rte_lw_solver.o \
@@ -30,7 +31,8 @@ RTE_SRC = \
   #
   # Flux reduction
   #
-  mo_fluxes.o:        mo_rte_kind.o mo_spectral_disc.o   mo_fluxes.F90
+  mo_fluxes_broadband_kernels.o : mo_rte_kind.o mo_fluxes_broadband_kernels.F90
+  mo_fluxes.o:                    mo_rte_kind.o mo_fluxes_broadband_kernels.o   mo_spectral_disc.o mo_fluxes.F90
   #
   # Radiative transfer
   #

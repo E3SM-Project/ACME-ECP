@@ -1,0 +1,22 @@
+#!/bin/make
+
+# Fortran compiler command
+FC = nagfor
+
+# Fortran compiler flags
+FCFLAGS  = -g -f2003 -ieee=nonstd -gline -colour -C -C=dangling
+F77FLAGS = -g        -ieee=nonstd -gline -colour -C -C=dangling -dusty
+# Fortran .mod files, e.g. -I<include dir> if you have headers in a nonstandard directory <include dir>
+FCINCLUDE = -I/Users/robert/Applications/nagfor/include -I/opt/local/include
+
+# linker flags, e.g. -L<lib dir> if you have libraries in a nonstandard directory <lib dir>
+LDFLAGS = -L/Users/robert/Applications/nagfor/lib -L/opt/local/lib
+
+# libraries to pass to the linker, e.g. -l<library>
+LIBS = -lnetcdff -lnetcdf # -mkl
+
+# build directory
+BUILDDIR = build
+
+# these files will not be compiled
+BLACKLIST =

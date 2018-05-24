@@ -1,0 +1,38 @@
+#!/bin/make
+
+# Before running code on rotor
+# > source /opt/intel/bin/compilervars.sh intel64
+# > export LD_LIBRARY_PATH=/opt/local/netcdf/v4.3.3.1/lib:$LD_LIBRARY_PATH
+
+CWD = $(shell pwd)
+
+# Fortran compiler command
+FC = ifort
+
+# Fortran compiler flags
+FCFLAGS = -m64 -g -O3 -traceback -extend-source 132 -qopt-report-phase=vec -CA -CB -CU -fpe0 -check bounds
+
+# Fortran .mod files, e.g. -I<include dir> if you have headers in a nonstandard directory <include dir>
+FCINCLUDE = -I/opt/local/netcdf/v4.3.3.1/include \
+  -I/opt/local/hdf5/v1-8-15-p1/include \
+  -I/opt/local/szip/v2-1/include \
+  -I/opt/local/zlib/v1-2-8/include \
+
+# linker flags, e.g. -L<lib dir> if you have libraries in a nonstandard directory <lib dir>
+LDFLAGS = 
+
+# libraries to pass to the linker, e.g. -l<library>
+#LIBS = \
+#	-L/opt/local/netcdf/v4.3.3.1/lib -lnetcdff -lnetcdf
+#LIBS = -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lsz -lz -lm -ldl
+LIBS = -L/opt/local/netcdf/v4.3.3.1/lib -lnetcdff -lnetcdf \
+  -L/opt/local/hdf5/v1-8-15-p1/lib/ -lhdf5_hl -lhdf5 \
+  -L$(CWD) -lrrtmgp \
+  -L/opt/local/szip/v2-1/lib/ -lsz \
+  -lz -lm -ldl
+
+# build directory
+BUILDDIR = build
+
+# these files will not be compiled
+BLACKLIST = 

@@ -15,7 +15,6 @@ module mo_heating_rates
   use mo_rte_kind,      only: wp, wl
   use mo_rrtmgp_constants, only: cp_dry, grav ! Only needed for heating rate calculation
   implicit none
-  real, parameter :: pi = acos(-1._wp)
   private
   public ::  compute_heating_rate
 contains

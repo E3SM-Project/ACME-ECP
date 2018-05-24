@@ -1,0 +1,36 @@
+April 26, 2018
+
+A change to the minor coding has required a new coefficients file for the LW and SW.  To manage this new file in the short term,
+we created a python file to make the conversion (ncmod_vmr_ref.py).
+
+Process:
+> svn mv coefficients_sw.nc coefficients_sw_orig.nc; svn mv coefficients_lw.nc coefficients_lw_orig.nc
+> ./ncmod_vmr_ref.py coefficients_sw_orig.nc coefficients_sw.nc
+> ./ncmod_vmr_ref.py coefficients_lw_orig.nc coefficients_lw.nc
+> svn commit coefficients_sw.nc coefficients_lw.nc
+
+October 31, 2017
+
+Summary: LBLRTM v12.8 (modified for Rayleigh), AER v3.6, lnfl v3.1. Coefficients scaled to minimize LBLRTM/RRTMGP differences.
+
+Final Filename: coefficients_lw.nc
+
+Build repository for ks:
+Platform: University of Colorado/Summit
+Path: rebuild_rrtm_nasa_chk_rayl
+URL: https://aervcs-ext.aer.com/aer/rd/RRTM_BAND_GEN/branches/rebuild_rrtm_nasa_chk_rayl
+Repository Root: https://aervcs-ext.aer.com/aer/rd/RRTM_BAND_GEN
+Repository UUID: ee6258b2-6701-494e-9b87-2484b1c3b4b6
+Revision: 1426
+Node Kind: directory
+Last Changed Author: jdelamer
+Last Changed Rev: 1426
+Last Changed Date: 2017-10-23 10:24:04 -0600 (Mon, 23 Oct 2017)
+
+
+Internal Build Notes for Summit:
+
+Using https://aervcs-ext.aer.com/aer/rd/RRTM_BAND_GEN/branches/rebuild_rrtm_nasa_chk_rayl, r1433
+Final File: coefficients_lw.nc (../scripts/transform_kminor_arrays.py -i coefficients_lw_scaled.nc -o coefficients_lw.nc -n /curc/sw/netcdf/4.4.1.1/intel/17.4/bin/nccopy)
+Scaled Filename: coefficients_lw_scaled.nc (applied scripts/modify_rrtmgp_coefficients_lw.py)
+Initial Filename: final_lw_coefficients/rrtmgp-absorption-coefficients-lw_r1426.nc

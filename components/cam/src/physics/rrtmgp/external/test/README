@@ -1,0 +1,127 @@
+11-May-2017
+
+This branch is derivative of Andre's original RRTMGP environment, but here we separate the build and test environments. Some additional documentation is available at https://jira.aer.com/browse/RADCLIM-4.
+
+AER Users: Eventually, we generated a local build of RRTMGP in /nas/project/p1843/RRTMGP_SVN and its libraries in /nas/project/p1770/dependencies/. These will be referenced as the environment variables $LOCAL_RRTMGP and $LOCAL_RRTMGP_DEP, respectively. For details, see https://jira.aer.com/browse/RADCLIM-37 (but this README supercedes the JIRA documentation).
+
+Separation of the test and build environments was originally necessary because the test runs were executed via the Makefile. Test runs were eventually placed in run_tests.py, which we will discuss eventually. There was an additional layer of separation that we needed to implement: building the RRTMGP library and test executables separately. This is documented in https://jira.aer.com/browse/RADCLIM-30 and is the build procedure that we will be using in this README.
+
+The README will also assume the building is done in an AER environment (the AER local build).
+
+Initial Setup
+------------
+
+% pwd
+/nas/project/p1843
+% svn co https://aervcs-ext.aer.com/aer/rd/RRTMGP/trunk/ RRTMGP_SVN
+% cd RRTMGP_SVN/
+
+Build Environment
+------------
+
+At AER, we currently rely on my machine (rd47) because it has new ifort executables installed on it in /opt/intel/. The Intel license is retrieved by linking with a node on our license manager, and there are also other dependencies. All of these settings can be set in one's .cshrc.local or from the command line (tcsh syntax) as follows:
+
+setenv INTEL_LICENSE_FILE 27009@flexnet1
+set path = ( $path /opt/intel/bin )
+setenv LD_LIBRARY_PATH /project/p1770/dependencies/lib:/opt/intel/composer_xe_2015.3.187/compiler/lib/intel64:/project/p1770/dependencies/szip/lib:/opt/intel/compilers_and_libraries_2018.0.128/linux/compiler/lib/intel64_lin
+limit stacksize unlimited
+
+now the build:
+
+cd build/
+ln -s Makefile.conf.ifort-linux-AER Makefile.conf
+make # builds RRTMGP library
+cd ../test/
+make # builds RRTMGP test executables and places them in expected directories
+
+Cleanup
+------------
+
+to start, it is good practice to remove any files that one may have generated in previous anaylses. this can be accomplished with run_tests.py and one of its keywords. in $LOCAL_RRTMGP:
+
+util/scripts/run_tests.py --root_dir .. --clean
+Cleaning up intermediate files
+
+that command will remove any files staged or generated as specified in the configuration .ini files that will be elaborated upon in the next section.
+
+To remove the RRTMGP library:
+
+% pwd
+/nas/project/p1843/RRTMGP_SVN/build
+% make clean
+
+And to remove the test executables:
+
+% pwd
+/nas/project/p1843/RRTMGP_SVN/test
+% make clean
+
+Unit Test Environment
+------------
+
+eventually we migrated the unit testing environment from Shell to Python, mimicking the functionality of the original shell scripts while adding some additional functionality (see JIRA issue https://jira.aer.com/browse/RADCLIM-32). the added functionality starts with the configuration files that the user can edit to specify the unit test workflow that the want:
+
+% pwd
+/rd47/scratch/RRTMGP/RRTMGP_SVN/
+% ls *.ini
+flux_compute.ini              LW_solver_angles.ini
+flux_compute_tsi_scaling.ini  SW_clear_workflow.ini
+LW_clear_workflow.ini         SW_gen-clear_workflow.ini
+LW_gen-clear_workflow.ini
+
+these configuration files have different sections in them that represent different unit tests, and the variables in each section are necessary for the unit tests to be run. for now, we have defined a workflow for the end-to-end computation (flux_compute.ini) and separate workflows for the LW and SW units (LW_clear_workflow_config.ini and SW_clear_workflow.ini). the end result of the latter two should yield identical results to their LW and SW counterparts in the end-to-end test.
+
+by default, the 7 aforementioned .ini files gathered and utilized by run_tests.py. in $LOCAL_RRTMGP/test:
+
+util/scripts/run_tests.py --root_dir .. 
+
+the --root_dir keyword specifies where the RRTMGP "root" directory (e.g., to wherever the trunk was checked out) is relative to the working directory. since we are in $LOCAL_RRTMGP/test, the root directory is one level up.
+
+individual .ini files can be input into the unit test script. using the flux_compute test as an example:
+
+util/scripts/run_tests.py --root_dir .. --test_config flux_compute.ini
+
+in this case, the only configuration file that is processed is flux_compute.ini, and this could be any .ini file (including one that the user creates, so long it follows the currently-defined .ini files as a template). giving the --test_config keyword any value will override the default behavior.
+
+the script stages files as they were done in the original shell scripts (links the coefficients.nc, moves the "starting point" netCDF into the working directory, moves the output netCDF into test/). it then runs a difference script that compares the reference and test netCDFs. the previous two calls to run_tests.py will only print out the unit test name and either a "all files identical" string if everything is the same between the test and reference or a variable name and what percentage of the data differ by at least the amount specified by the --rel_diff_cut keyword. there is also an option to produce a more verbose comparison with the --very_verbose keyword:
+
+util/scripts/run_tests.py --root_dir .. --very_verbose
+
+the standard output here can be long (and probably should be redirected to a text file) depending on the amount of differences. it contains file name, compared variable, array index of the different values, and the test and reference values at that array element.
+
+by default, any standard output from the executables in a given .ini file is suppressed by the Python module. if one is interested in the executable output, they can use the --verbose keyword
+
+util/scripts/run_tests.py --root_dir .. --verbose
+
+the --rel keyword  (short for --rel_diff_cut) is by default 0.0001 and can be changed to anything the user wants. this relative difference is defined as (relDiff = (b/a) - 1), and any value where abs(relDiff) > relative_diff_threshold (provided by the user with --rel) is returned to standard output. to print out the verbose comparison for a stricter threshold (and all workflows):
+
+util/scripts/run_tests.py --root_dir .. --rel 0.001 --very_verbose
+
+some functionality has been added so that new test results replace the previous reference results. this can be executed with:
+
+util/scripts/run_tests.py --root_dir .. --ref_replace
+
+in the context of the workflows (e.g., LW_clear_workflow.ini), there is an option that directs the code, for a given test unit, to utilize the netCDF from the previous unit:
+
+util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --unit-chain
+
+in this call, the Gas Optics is run, its output is used as the starting point input for the LW Solver, which in turn provides the input for Flux Reduce. without --unit set, the starting point for each unit is the netCDF in its corresponding ref/ subdirectory.
+
+the --reverse keyword performs tests for a given unit both in the given vertical direction (e.g., surface to TOA) and subsequently in the reversed vertical direction (e.g., TOA to surface). this option is there to ensure the units worked correctly regardless of how the input profiles are provided to the RRTMGP code.
+
+util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --reverse
+
+sometimes in development it may be useful to exit out of a workflow as soon as any significant difference is found, which can be performed with the --quit_on_fail keyword:
+
+util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --quit
+
+also, one may want to run the test code without doing a difference comparison. this is invoked with the --no-diff keyword:
+
+util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --no-diff
+
+finally, the executables that are used in a given workflow can be compiled within the run_tests.py script rather than descending into the associated build directories:
+
+util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --build
+
+this command will build the test_gas_optics, test_lw_solver, and test_flux_reduce executables of the LW clear-sky workflow.
+

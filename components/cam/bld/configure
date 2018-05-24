@@ -2879,7 +2879,7 @@ sub write_filepath
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rrtmgp/kernels\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rte\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rte/kernels\n";
-        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/util\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/test/util/src\n";
     } elsif ($rad eq 'camrt') {
         print $fh "$camsrcdir/cam/src/physics/camrt\n";
     } else {

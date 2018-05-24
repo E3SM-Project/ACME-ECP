@@ -1,5 +1,4 @@
-! This code is part of
-! RRTM for GCM Applications - Parallel (RRTMGP)
+! This code is part of Radiative Transfer for Energetics (RTE)
 !
 ! Eli Mlawer and Robert Pincus
 ! Andre Wehe and Jennifer Delamere
@@ -25,7 +24,7 @@ module mo_spectral_disc
     integer,  dimension(:,:), allocatable :: band2gpt       ! (begin g-point, end g-point) = band2gpt(2,band)
     integer,  dimension(:),   allocatable :: gpt2band       ! band = gpt2band(g-point)
     real(wp), dimension(:,:), allocatable :: band_lims_wvn  ! (upper and lower wavenumber by band) = band_lims_wvn(2,band)
-  contains 
+  contains
     generic,   public :: init => init_disc
     procedure, public :: init_disc
     generic,   public :: is_initialized => is_initialized_desc
@@ -46,33 +45,33 @@ contains
   !
   ! Initialization
   !
-  function init_disc(this, band_lims_gpt, band_lims_wvn) result(err_message)  
+  function init_disc(this, band_lims_gpt, band_lims_wvn) result(err_message)
     class(ty_spectral_disc),  intent(inout) :: this
-    integer,  dimension(:,:), intent(in   ) :: band_lims_gpt 
+    integer,  dimension(:,:), intent(in   ) :: band_lims_gpt
     real(wp), dimension(:,:), intent(in   ) :: band_lims_wvn
     character(len = 128)                    :: err_message
-    
-    integer :: iband 
+
+    integer :: iband
     ! -------------------------
     !
-    ! Error checking -- are the arrays the size we expect, contain positive values? 
+    ! Error checking -- are the arrays the size we expect, contain positive values?
     !
-    err_message = "" 
-    if(size(band_lims_gpt,1) /= 2 .or. size(band_lims_wvn,1) /= 2) & 
+    err_message = ""
+    if(size(band_lims_gpt,1) /= 2 .or. size(band_lims_wvn,1) /= 2) &
       err_message = "ty_spectral_disc%init(): band_lims_gpt or band_lims_wvn 1st dim wrong size"
-    if(size(band_lims_gpt,2) /=        size(band_lims_wvn,2)     ) & 
+    if(size(band_lims_gpt,2) /=        size(band_lims_wvn,2)     ) &
       err_message = "ty_spectral_disc%init(): band_lims_gpt or band_lims_wvn sized inconsistently"
-    if(any(band_lims_gpt < 1 .or.      band_lims_wvn < 1) ) & 
+    if(any(band_lims_gpt < 1 .or.      band_lims_wvn < 1) ) &
       err_message = "ty_spectral_disc%init(): band_lims_gpt or band_lims_wvn have values < 1"
-    if(len_trim(err_message) > 0) return 
-    
-    ! Assignment, includes allocation 
-    this%band2gpt      = band_lims_gpt       
+    if(len_trim(err_message) > 0) return
+
+    ! Assignment, includes allocation
+    this%band2gpt      = band_lims_gpt
     this%band_lims_wvn = band_lims_wvn
 
     !
-    ! Make a map between g-points and bands 
-    !   Efficient only when g-point indexes start at 1 and are contiguous. 
+    ! Make a map between g-points and bands
+    !   Efficient only when g-point indexes start at 1 and are contiguous.
     !
     allocate(this%gpt2band(maxval(band_lims_gpt)))
     do iband=1,size(band_lims_gpt,dim=2)
@@ -86,7 +85,7 @@ contains
   pure function is_initialized_desc(this)
     class(ty_spectral_disc), intent(in) :: this
     logical                             :: is_initialized_desc
-    
+
     is_initialized_desc = allocated(this%band2gpt)
   end function is_initialized_desc
 
@@ -115,11 +114,11 @@ contains
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! The first and last g-point of all bands at once
-  ! dimension (2, nbands) 
-  ! 
+  ! dimension (2, nbands)
+  !
   pure function get_band_lims_gpoint(this)
     class(ty_spectral_disc), intent(in) :: this
-    integer, dimension(size(this%band2gpt,dim=1), size(this%band2gpt,dim=2)) & 
+    integer, dimension(size(this%band2gpt,dim=1), size(this%band2gpt,dim=2)) &
                                                    :: get_band_lims_gpoint
 
     get_band_lims_gpoint = this%band2gpt
@@ -144,7 +143,7 @@ contains
   !
   pure function get_band_lims_wavenumber(this)
     class(ty_spectral_disc), intent(in) :: this
-    real(wp), dimension(size(this%band_lims_wvn,1), size(this%band_lims_wvn,2)) & 
+    real(wp), dimension(size(this%band_lims_wvn,1), size(this%band_lims_wvn,2)) &
                                                    :: get_band_lims_wavenumber
 
     get_band_lims_wavenumber(:,:) = this%band_lims_wvn(:,:)
@@ -156,7 +155,7 @@ contains
   !
   pure function get_band_lims_wavelength(this)
     class(ty_spectral_disc), intent(in) :: this
-    real(wp), dimension(size(this%band_lims_wvn,1), size(this%band_lims_wvn,2)) & 
+    real(wp), dimension(size(this%band_lims_wvn,1), size(this%band_lims_wvn,2)) &
                                                    :: get_band_lims_wavelength
 
     get_band_lims_wavelength(:,:) = 1._wp/this%band_lims_wvn(:,:)
@@ -164,11 +163,11 @@ contains
 
   !--------------------------------------------------------------------------------------------------------------------
   ! Bands for all the g-points at once
-  ! dimension (ngpt) 
-  ! 
+  ! dimension (ngpt)
+  !
   pure function get_gpoint_bands(this)
     class(ty_spectral_disc), intent(in) :: this
-    integer, dimension(size(this%gpt2band,dim=1)) & 
+    integer, dimension(size(this%gpt2band,dim=1)) &
                                                    :: get_gpoint_bands
 
     get_gpoint_bands(:) = this%gpt2band(:)
@@ -194,9 +193,9 @@ contains
     class(ty_spectral_disc), intent(in) :: this
     real(wp), dimension(:), intent(in) :: arr_in ! (nband)
     real(wp), dimension(size(this%gpt2band)) :: arr_out
-    
+
     integer :: iband
-    
+
     do iband=1,this%get_nband()
       arr_out(this%band2gpt(1,iband):this%band2gpt(2,iband)) = arr_in(iband)
     end do

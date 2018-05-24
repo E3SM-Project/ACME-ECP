@@ -1,0 +1,37 @@
+#!/bin/make
+
+# Before running locally:
+# setenv LD_LIBRARY_PATH /project/p1770/dependencies/lib:/opt/intel/composer_xe_2015.3.187/compiler/lib/intel64:/project/p1770/dependencies/szip/lib
+
+CWD = $(shell pwd)
+
+# Fortran compiler command
+FC = ifort
+
+# Fortran compiler flags
+#FCFLAGS = -m64 -g -O3 -traceback -extend-source 132 -qopt-report-phase=vec -CA -CB -CU -fpe0 -check bounds
+FCFLAGS = -fpp -m64 -g -traceback -assume realloc_lhs -extend-source 132 -qopt-report-phase=vec -check bounds,uninit,pointers,stack -stand f03
+
+# Fortran .mod files, e.g. -I<include dir> if you have headers in a nonstandard directory <include dir>
+FCINCLUDE = -I/project/p1770/dependencies/include \
+  -I/project/p1770/dependencies/szip/include \
+  -I/project/p1770/dependencies/zlib/include \
+
+# linker flags, e.g. -L<lib dir> if you have libraries in a nonstandard directory <lib dir>
+#LDFLAGS = 
+
+# libraries to pass to the linker, e.g. -l<library>
+#LIBS = \
+#	-L/opt/local/netcdf/v4.3.3.1/lib -lnetcdff -lnetcdf
+#LIBS = -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lsz -lz -lm -ldl
+LIBS = -L/project/p1770/dependencies/lib \
+  -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 \
+  -L$(CWD) -lrrtmgp \
+  -L/project/p1770/dependencies/szip/lib -lsz \
+  -lz -lm -ldl
+
+# build directory
+BUILDDIR = build
+
+# these files will not be compiled
+BLACKLIST = 

@@ -1,0 +1,17 @@
+[Longwave, cloudy sky]
+ref_dir = validation/data
+ref_file = ecrad-lw-inputs-outputs-cloud-vertrev.nc
+test_dir = validation/data
+test_file = rrtmgp-lw-inputs-outputs-cloud-vertrev.nc
+fig_dir = validation
+fig_file = rrtmgp-ecrad-lw-cloud.pdf
+variables = flux_dn, flux_up, flux_net, heating_rate
+
+[Shortwave, cloudy sky]
+ref_dir = validation/data
+ref_file = ecrad-sw-inputs-outputs-cloud-vertrev.nc
+test_dir = validation/data
+test_file = rrtmgp-sw-inputs-outputs-cloud-vertrev.nc
+fig_dir = validation
+fig_file = rrtmgp-ecrad-sw-cloud.pdf
+variables = flux_dn, flux_up, flux_net, flux_dir_dn, heating_rate

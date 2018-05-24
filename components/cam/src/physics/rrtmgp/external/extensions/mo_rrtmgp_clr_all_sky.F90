@@ -159,11 +159,11 @@ contains
 
     select type (optical_props)
       class is (ty_optical_props_1scl) ! No scattering
-        error_msg = optical_props%init_1scl(ncol, nlay, ngpt, name="combined LW optics")
+        error_msg = optical_props%init_1scl(ncol, nlay, ngpt)
       class is (ty_optical_props_2str)
-        error_msg = optical_props%init_2str(ncol, nlay, ngpt, name="combined LW optics")
+        error_msg = optical_props%init_2str(ncol, nlay, ngpt)
       class is (ty_optical_props_nstr)
-        error_msg = optical_props%init_nstr(n_lw_streams/2, ncol, nlay, ngpt, name="combined LW optics")
+        error_msg = optical_props%init_nstr(n_lw_streams/2, ncol, nlay, ngpt)
     end select
     if (error_msg /= '') return
 
@@ -181,7 +181,6 @@ contains
                                   lay_src, lev_src_inc, lev_src_dec, sfc_src,             &
                                   col_dry, t_lev)
     if (error_msg /= '') return
-
     ! ----------------------------------------------------
     ! Clear sky is gases + aerosols (if they're supplied)
     !
@@ -199,7 +198,6 @@ contains
                                clrsky_fluxes,                   &
                                inc_flux)
     if(error_msg /= '') return
-
     ! ------------------------------------------------------------------------------------
     ! All-sky fluxes = clear skies + clouds
     !
@@ -214,7 +212,6 @@ contains
                                lay_src, lev_src_inc, lev_src_dec, sfc_emis, sfc_src, &
                                allsky_fluxes,                   &
                                inc_flux)
-    if (error_msg /= '') return
 
   end function rte_lw
   ! --------------------------------------------------
@@ -234,7 +231,7 @@ contains
     class(ty_fluxes),                  intent(inout) :: allsky_fluxes, clrsky_fluxes
 
     ! Optional inputs
-    class(ty_optical_props_arry),   target, &
+    class(ty_optical_props),   target, &
               optional,       intent(in ) :: aer_props   !< aerosol optical properties
     real(wp), dimension(:,:), &
               optional,       intent(in ) :: col_dry, &  !< Molecular number density (ncol, nlay)
@@ -287,16 +284,6 @@ contains
     end if
     if(len_trim(error_msg) > 0) return
 
-    ! Check more sizes
-    if (any([size(t_lay, 1), size(t_lay, 2)] /= [ncol, nlay])) then
-       error_msg = "rrtmgp_sw: t_lay inconsistently sized"
-       return
-    end if
-    if (any([size(p_lev, 1), size(p_lev, 2)] /= [ncol, nlay+1])) then
-       error_msg = "rrtmgp_sw: p_lev inconsistently sized"
-       return
-    end if
-
     ! ------------------------------------------------------------------------------------
     ! Optical properties arrays
     !
@@ -311,11 +298,11 @@ contains
 
     select type (optical_props)
       class is (ty_optical_props_1scl) ! No scattering
-        error_msg = optical_props%init_1scl(ncol, nlay, ngpt, name='combined SW optics')
+        error_msg = optical_props%init_1scl(ncol, nlay, ngpt)
       class is (ty_optical_props_2str)
-        error_msg = optical_props%init_2str(ncol, nlay, ngpt, name='combined SW optics')
+        error_msg = optical_props%init_2str(ncol, nlay, ngpt)
       class is (ty_optical_props_nstr)
-        error_msg = optical_props%init_nstr(n_sw_streams/2, ncol, nlay, ngpt, name='combined SW optics')
+        error_msg = optical_props%init_nstr(n_sw_streams/2, ncol, nlay, ngpt)
     end select
     if (error_msg /= '') return
 
@@ -338,19 +325,6 @@ contains
     ! Clear sky is gases + aerosols (if they're supplied)
     !
     if(present(aer_props)) then
-      ! Check values
-      error_msg = aer_props%validate()
-      if (error_msg /= '') then
-         error_msg = 'clr_all_sky rte_sw ' // error_msg
-         return
-      end if
-      error_msg = optical_props%validate()
-      if (error_msg /= '') then
-         error_msg = 'clr_all_sky rte_sw before increment' // error_msg
-         return
-      end if
-
-      ! Combine aerosol optical properties with existing
       if(aer_props%get_ngpt() == ngpt) then
         error_msg = aer_props%increment(optical_props)
       else
@@ -375,11 +349,6 @@ contains
     end if
     if(error_msg /= '') return
 
-    error_msg = optical_props%validate()
-    if (error_msg /= '') then
-      error_msg = 'clr_all_sky rte_sw after cloud_props' // error_msg
-      return
-    end if
     error_msg = base_rte_sw(optical_props, top_at_1, k_dist, &
                                mu0, toa_flux,                   &
                                sfc_alb_dir, sfc_alb_dif,        &

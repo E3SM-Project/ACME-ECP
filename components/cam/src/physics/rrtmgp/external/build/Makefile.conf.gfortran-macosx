@@ -1,0 +1,18 @@
+#!/bin/make
+
+# Fortran compiler command
+FC = gfortran
+
+# Fortran compiler flags
+FCFLAGS = -ffree-line-length-none -m64 -std=f2003 -march=native -O3
+FCFLAGS = -ffree-line-length-none -m64 -std=f2003 -march=native -mno-avx -pedantic -g -fbounds-check -Wall -fbacktrace -finit-real=nan
+#FCFLAGS = -ffree-line-length-none -m64 -std=f2003 -march=native          -pedantic -g -fbounds-check -Wall -fbacktrace -finit-real=nan
+
+# Fortran .mod files, e.g. -I<include dir> if you have headers in a nonstandard directory <include dir>
+FCINCLUDE = -I/opt/local/include
+
+# linker flags, e.g. -L<lib dir> if you have libraries in a nonstandard directory <lib dir>
+LDFLAGS = -L/opt/local/lib
+
+# libraries to pass to the linker, e.g. -l<library>
+LIBS = -lnetcdff -lnetcdf

@@ -1,0 +1,29 @@
+#!/bin/make
+# On a Janus compile node, load the following modules
+#  module load    intel/intel-15.0.1    netcdf/netcdf4-4.4.2_intel-15.0.1
+# (supposedly) python/2.7.10 netcdf4-python/1.1.8
+#
+
+# Fortran compiler command
+FC = ifort
+
+# Fortran compiler flags
+FCFLAGS = -fpp -m64 -g -traceback -assume realloc_lhs -extend-source 132 -qopt-report-phase=vec -check bounds,uninit,pointers,stack -stand f03
+
+# Fortran .mod files, e.g. -I<include dir> if you have headers in a nonstandard directory <include dir>
+#FCINCLUDE = $(nf-config --fflags)
+FCINCLUDE = -I/curc/sw/netcdf/4.4.0/intel/16.0.3/include
+
+# linker flags, e.g. -L<lib dir> if you have libraries in a nonstandard directory <lib dir>
+#LDFLAGS = -L/curc/tools/x86_64/rh6/software/netcdf/4.3.3.1/intel/15.0.2/lib -L/curc/tools/x86_64/rh6/software/netcdf/4.3.3.1/intel/15.0.2/lib 
+LDFLAGS = -L/curc/sw/netcdf/4.4.0/intel/16.0.3/lib -L/curc/sw/netcdf/4.4.0/intel/16.0.3/lib 
+
+# libraries to pass to the linker, e.g. -l<library>
+#LIBS = $(nf-config --flibs)
+LIBS = -lnetcdf -lnetcdff
+
+# build directory
+BUILDDIR = build
+
+# these files will not be compiled
+BLACKLIST =

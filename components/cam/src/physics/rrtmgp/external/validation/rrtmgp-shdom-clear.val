@@ -1,0 +1,18 @@
+[Longwave, uniform BCs] 
+ref_dir = validation/data
+ref_file = shdompp-lw-inputs-outputs-clear.nc
+test_dir = validation/data
+test_file = rrtmgp-lw-inputs-outputs-clear.nc
+fig_dir = validation 
+fig_file = rrtmgp-shdom-lw-clear.pdf 
+variables = flux_dn, flux_up, flux_net
+
+[Shortwave, uniform BCs] 
+ref_dir = validation/data
+ref_file = shdompp-sw-inputs-outputs-clear.nc
+test_dir = validation/data
+test_file = rrtmgp-sw-inputs-outputs-clear.nc
+fig_dir = validation 
+fig_file = rrtmgp-shdom-sw-clear.pdf 
+variables = flux_dn, flux_up, flux_net, flux_dir_dn
+

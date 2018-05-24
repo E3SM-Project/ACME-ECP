@@ -1,5 +1,4 @@
-! This code is part of
-! RRTM for GCM Applications - Parallel (RRTMGP)
+! This code is part of Radiative Transfer for Energetics (RTE)
 !
 ! Eli Mlawer and Robert Pincus
 ! Andre Wehe and Jennifer Delamere
@@ -12,13 +11,13 @@
 !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
 !
 
-! This module provides the Fortran KIND parameters for REAL and INTEGER variables. 
-!   By default we use constant from the ISO C binding and use double precision for working. 
-!   If the host model in which RRTGMP is embedded has defined these constants elsewhere 
-!   the model definitions can be used instead by renaming. For example, 
-! use  mo_model_kind, only wp => dp, ... 
+! This module provides the Fortran KIND parameters for REAL and INTEGER variables.
+!   By default we use constant from the ISO C binding and use double precision for working.
+!   If the host model in which RRTGMP is embedded has defined these constants elsewhere
+!   the model definitions can be used instead by renaming. For example,
+! use  mo_model_kind, only wp => dp, ...
 !   where the syntax is local_name => original_name
-!   and all the local names need to be defined 
+!   and all the local names need to be defined
 
 module mo_rte_kind
   use, intrinsic :: iso_c_binding, only: c_float, c_double, c_long, c_int, c_bool
@@ -27,8 +26,8 @@ module mo_rte_kind
   ! Floating point working precision
 
   integer, parameter :: wp = dp
-  
+
   ! Logical - for use with kernels
   integer, parameter :: wl = c_bool
-  
+
 end module mo_rte_kind

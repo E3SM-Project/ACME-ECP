@@ -20,9 +20,10 @@ module mo_gas_optics
   use mo_rte_kind,        only: wp, wl
   use mo_rrtmgp_constants,   only: avogad, m_dry, m_h2o, grav
   use mo_spectral_disc,      only: ty_spectral_disc
-  use mo_gas_optics_kernels, only: interpolation, gas_optical_depths_major, &
-                                   gas_optical_depths_minor, &
-                                   gas_optical_depths_rayleigh, source
+  use mo_gas_optics_kernels, only: interpolation,                                                       &
+                                   compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
+                                   combine_and_reorder_2str, combine_and_reorder_nstr, zero_array
+
   use mo_util_string,        only : lower_case, string_in_array, string_loc_in_array
   use mo_gas_concentrations, only: ty_gas_concs
   use mo_optical_props,      only: ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
@@ -57,33 +58,31 @@ module mo_gas_optics
       ! ----- major gas (also referred to as "key species")absorption coefficients ; kmajor(g-point,eta,pressure,temperature)
     real(wp), dimension(:,:,:,:), allocatable :: kmajor
     ! ----- minor species
-      ! stored absorption coefficients due to minor absorbing gases in lower/upper part of atmosphere;
+      ! absorption coefficients due to minor absorbing gases in lower/upper part of atmosphere;
       ! kminor_lower(contributor,eta,temperature)
     real(wp), dimension(:,:,:), allocatable :: kminor_lower, kminor_upper
     ! Name of the absorbing gas & unique identifying name (n_minor)
-    character(len=256), dimension(:), allocatable :: gas_minor, &
-      identifier_minor
+    ! character(len=256), dimension(:), allocatable :: gas_minor, &
+    !   identifier_minor
     ! Description of each minor gas contribution, separately for upper and lower atmospheres
   	!
   	! Arrays are dimensioned with n_minor_lower, n_minor_upper
   	!
   	! Name of the absorbing gas listed once for each band in which it is active (n_minor)
-    character(len=256), dimension(:), allocatable :: minor_gases_lower, &
-      minor_gases_upper
+    ! character(len=256), dimension(:), allocatable :: minor_gases_lower, &
+    !   minor_gases_upper
   	! Starting and ending g-points for each minor gas in each band (2, n_minor)
     integer, dimension(:,:), allocatable :: minor_limits_gpt_lower, &
-      minor_limits_gpt_upper
+                                            minor_limits_gpt_upper
     ! Does the minor gas absorption coefficient scale with density? (n_minor)
     logical, dimension(:), allocatable :: minor_scales_with_density_lower
     logical, dimension(:), allocatable :: minor_scales_with_density_upper
-  	! Does the minor gas absorption coefficient scale with the amount of another gas? (n_minor)
-    character(len=256), dimension(:), allocatable :: scaling_gas_lower, &
-      scaling_gas_upper
   	! If the minor gas absorption coefficient depends on another gas, does it depend on the concentration itself or
   	!   the concentration of all gases besides the scaling gas? (n_minor)
-    logical, dimension(:), allocatable :: scale_by_complement_lower, &
-      scale_by_complement_upper
-    integer, dimension(:), allocatable :: kminor_start_lower, kminor_start_upper
+    logical, dimension(:), allocatable :: scale_by_complement_lower, scale_by_complement_upper
+    integer, dimension(:), allocatable :: idx_minor_lower,           idx_minor_upper
+    integer, dimension(:), allocatable :: idx_minor_scaling_lower,   idx_minor_scaling_upper
+    integer, dimension(:), allocatable :: kminor_start_lower,        kminor_start_upper
     ! -----------------------------------------------------------------------------------
     ! ----- Rayleigh scattering
       ! stored scattering coefficients due to molecules in atmosphere;
@@ -134,7 +133,6 @@ module mo_gas_optics
     procedure, private :: get_nflav
     procedure, private :: get_nlay_ref
     procedure, private :: get_neta
-    procedure, private :: compute_gas_tau_core
   end type
   ! -----------------------------------------------------------------------------------
   public :: get_col_dry ! Utility function, not type-bound
@@ -145,6 +143,7 @@ module mo_gas_optics
 
   interface check_extent
     module procedure check_extent_1D, check_extent_2D, check_extent_3D
+    module procedure check_extent_4D, check_extent_5D, check_extent_6D
   end interface check_extent
 contains
   ! --------------------------------------------------------------------------------------
@@ -173,14 +172,14 @@ contains
   end function get_nflav
   !--------------------------------------------------------------------------------------------------------------------
 
-  ! Compute gas optical depth and, optionally, Planck source functions,
+  ! Compute gas optical depth andly, Planck source functions,
   !  given temperature, pressure, and composition
-  function gas_optics_int(this,                                   &
-                      play, plev, tlay, tsfc, gas_desc,           & ! mandatory inputs
-                      optical_props,                              & ! mandatory outputs
-                      lay_src, lev_src_inc, lev_src_dec, sfc_src, & ! internal-source specific outputs
-                      col_dry, tlev)                              & ! optional inputs
-                      result(error_msg)
+  function gas_optics_int(this,                                       &
+                          play, plev, tlay, tsfc, gas_desc,           & ! mandatory inputs
+                          optical_props,                              & ! mandatory outputs
+                          lay_src, lev_src_inc, lev_src_dec, sfc_src, & ! internal-source specific outputs
+                          col_dry, tlev)                              & ! optional inputs
+                          result(error_msg)
     ! inputs
     class(ty_gas_optics_specification), intent(in) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
@@ -206,47 +205,35 @@ contains
                                                tlev        ! level temperatures [K]l (ncol,nlay+1)
     ! ----------------------------------------------------------
     ! Local variables
-    ! Interpolation coefficients to save for use in source function
+    ! Interpolation coefficients for use in source function
     integer,  dimension(size(play,dim=1), size(play,dim=2)) :: jtemp, jpress
     logical,  dimension(size(play,dim=1), size(play,dim=2)) :: tropo
     real(wp), dimension(2,2,2,this%get_nflav(),size(play,dim=1), size(play,dim=2)) :: fmajor
     integer,  dimension(2,    this%get_nflav(),size(play,dim=1), size(play,dim=2)) :: jeta
+
+    integer :: ncol, nlay, ngpt, nband, ngas, nflav
     ! ----------------------------------------------------------
-    ! dimensions - determined from problem size
-    integer :: ncol, nlay ! number of columns, layers
-    ! dimensions - provided by k-distribution
-    integer :: ngpt, nband, ngas, nflav ! Number of g-points, bands, gas, gas "flavors" (major species combinations)
-
-    ! index
-    integer :: icol, ilay, igpt, igas
-
-    ! Variables for temperature at layer edges
-    ! [K] (ncol, nlay+1)
-    real(wp), dimension(size(play,dim=1),size(play,dim=2)+1), target  :: tlev_arr
-    real(wp), dimension(:,:),                                 pointer :: tlev_wk => NULL()
-
-    ! ----------------------------------------------------------
-    ! Code starts
+    ncol  = size(play,dim=1)
+    nlay  = size(play,dim=2)
+    ngpt  = this%get_ngpt()
+    nband = this%get_nband()
+    ngas  = this%get_ngas()
+    nflav = this%get_nflav()
     !
-    error_msg = ""
+    ! Gas optics
+    !
     error_msg = compute_gas_taus(this,                       &
+                                 ncol, nlay, ngpt, nband, ngas, nflav,   &
                                  play, plev, tlay, gas_desc, &
                                  optical_props,              &
                                  jtemp, jpress, jeta, tropo, fmajor, &
                                  col_dry)
     if(error_msg  /= '') return
 
-    ! init from array dimensions
-    ncol = size(play,dim=1)
-    nlay = size(play,dim=2)
-    ngpt = this%get_ngpt()
-    nband = this%get_nband()
-    ngas = this%get_ngas()
-    nflav = this%get_nflav()
-
+    ! ----------------------------------------------------------
     !
-    ! Planck source function
-    !   Check input data sizes and values
+    ! External source -- check arrays sizes and values
+    ! input data sizes and values
     !
     error_msg = check_extent(tsfc, ncol, 'tsfc')
     if(error_msg  /= '') return
@@ -272,54 +259,24 @@ contains
     if(error_msg  /= '') return
 
     !
-    ! Source function needs temperature at interfaces/levels and at layer centers
+    ! Interpolate source function
     !
-    if (present(tlev)) then
-      !   Users might have provided these
-      tlev_wk => tlev
-    else
-       tlev_wk => tlev_arr
-       !
-       ! Interpolate temperature to levels if not provided
-       !   Interpolation and extrapolation at boundaries is weighted by pressure
-       !
-       do icol = 1, ncol
-         tlev_arr(icol,1) = tlay(icol,1) &
-                           + (plev(icol,1)-play(icol,1))*(tlay(icol,2)-tlay(icol,1))  &
-              &                                           / (play(icol,2)-play(icol,1))
-       end do
-       do ilay = 2, nlay
-         do icol = 1, ncol
-           tlev_arr(icol,ilay) = (play(icol,ilay-1)*tlay(icol,ilay-1)*(plev(icol,ilay  )-play(icol,ilay)) &
-                                +  play(icol,ilay  )*tlay(icol,ilay  )*(play(icol,ilay-1)-plev(icol,ilay))) /  &
-                                  (plev(icol,ilay)*(play(icol,ilay-1) - play(icol,ilay)))
-         end do
-       end do
-       do icol = 1, ncol
-         tlev_arr(icol,nlay+1) = tlay(icol,nlay)                                                             &
-                                + (plev(icol,nlay+1)-play(icol,nlay))*(tlay(icol,nlay)-tlay(icol,nlay-1))  &
-                                                                      / (play(icol,nlay)-play(icol,nlay-1))
-       end do
-     end if
-
-!   Get internal source functions at layers and levels, which depend on mapping from spectral space that creates k-distribution.
-    call source(ncol, nlay, ngpt, nband, ngas, nflav, &
-                tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
-                fmajor, jeta, tropo, jtemp, jpress,                    &
-                this%get_gpoint_bands(), this%planck_frac, this%temp_ref_min,    &
-                this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
-                sfc_src, lay_src, lev_src_inc, lev_src_dec)
-
+    error_msg = source(this,                               &
+                       ncol, nlay, ngpt, nband, nflav,     &
+                       play, plev, tlay, tsfc,             &
+                       jtemp, jpress, jeta, tropo, fmajor, &
+                       lay_src, lev_src_inc, lev_src_dec, sfc_src, &
+                       tlev)
 
   end function gas_optics_int
   !------------------------------------------------------------------------------------------
 
   ! Compute gas optical depth
   !  given temperature, pressure, and composition
-  function gas_optics_ext(this,        &
-    play, plev, tlay, gas_desc,        & ! mandatory inputs
-    optical_props, toa_src,            & ! mandatory outputs
-    col_dry) result(error_msg)           ! optional input
+  function gas_optics_ext(this,                         &
+                          play, plev, tlay, gas_desc,   & ! mandatory inputs
+                          optical_props, toa_src,       & ! mandatory outputs
+                          col_dry) result(error_msg)      ! optional input
 
     class(ty_gas_optics_specification), intent(in) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
@@ -337,27 +294,35 @@ contains
                            optional, target :: col_dry ! Column dry amount; dim(ncol,nlay)
     ! ----------------------------------------------------------
     ! Local variables
-    ! Interpolation coefficients
+    ! Interpolation coefficients for use in source function
     integer,  dimension(size(play,dim=1), size(play,dim=2)) :: jtemp, jpress
     logical,  dimension(size(play,dim=1), size(play,dim=2)) :: tropo
     real(wp), dimension(2,2,2,this%get_nflav(),size(play,dim=1), size(play,dim=2)) :: fmajor
     integer,  dimension(2,    this%get_nflav(),size(play,dim=1), size(play,dim=2)) :: jeta
-    ! ----------------------------------------------------------
-    integer :: ncol, ngpt
 
+    integer :: ncol, nlay, ngpt, nband, ngas, nflav
     ! ----------------------------------------------------------
-    ! Code starts
+    ncol  = size(play,dim=1)
+    nlay  = size(play,dim=2)
+    ngpt  = this%get_ngpt()
+    nband = this%get_nband()
+    ngas  = this%get_ngas()
+    nflav = this%get_nflav()
     !
-    error_msg = ""
+    ! Gas optics
+    !
     error_msg = compute_gas_taus(this,                       &
+                                 ncol, nlay, ngpt, nband, ngas, nflav,   &
                                  play, plev, tlay, gas_desc, &
                                  optical_props,              &
                                  jtemp, jpress, jeta, tropo, fmajor, &
                                  col_dry)
     if(error_msg  /= '') return
 
-    ncol = size(play,dim=1)
-    ngpt = this%get_ngpt()
+    ! ----------------------------------------------------------
+    !
+    ! External source function is constant
+    !
     error_msg = check_extent(toa_src,     ncol,         ngpt, 'toa_src')
     if(error_msg  /= '') return
     toa_src(:,:) = spread(this%solar_src(:), dim=1, ncopies=ncol)
@@ -368,6 +333,7 @@ contains
   ! Returns optical properties and interpolation coefficients
   !
   function compute_gas_taus(this,                       &
+                            ncol, nlay, ngpt, nband, ngas, nflav, &
                             play, plev, tlay, gas_desc, &
                             optical_props,              &
                             jtemp, jpress, jeta, tropo, fmajor, &
@@ -375,57 +341,48 @@ contains
 
     class(ty_gas_optics_specification), &
                                       intent(in   ) :: this
+    integer,                          intent(in   ) :: ncol, nlay, ngpt, nband, ngas, nflav
     real(wp), dimension(:,:),         intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
                                                        plev, &   ! level pressures [Pa, mb]; (ncol,nlay+1)
                                                        tlay      ! layer temperatures [K]; (ncol,nlay)
     type(ty_gas_concs),               intent(in   ) :: gas_desc  ! Gas volume mixing ratios
-
-    class(ty_optical_props_arry),     intent(inout) :: optical_props
+    class(ty_optical_props_arry),     intent(inout) :: optical_props !inout because components are allocated
     ! Interpolation coefficients for use in internal source function
-    integer,  dimension(:,:),         intent(  out) :: jtemp, jpress
-    integer,  dimension(:,:,:,:),     intent(  out) :: jeta
-    logical,  dimension(:,:),         intent(  out) :: tropo
-    real(wp), dimension(:,:,:,:,:,:), intent(  out) :: fmajor
-    character(len=128)                            :: error_msg
+    integer,  dimension(            ncol, nlay), intent(  out) :: jtemp, jpress
+    integer,  dimension(2,    nflav,ncol, nlay), intent(  out) :: jeta
+    logical,  dimension(            ncol, nlay), intent(  out) :: tropo
+    real(wp), dimension(2,2,2,nflav,ncol, nlay), intent(  out) :: fmajor
+    character(len=128)                                         :: error_msg
 
     ! Optional inputs
     real(wp), dimension(:,:), intent(in   ), &
                            optional, target :: col_dry ! Column dry amount; dim(ncol,nlay)
     ! ----------------------------------------------------------
     ! Local variables
-    ! gas amounts
-    real(wp), dimension(size(play,dim=1), size(play,dim=2))                  :: one_vmr ! a single volume mixing ratio, (ncol, nlay)
-
-    real(wp), dimension(size(optical_props%tau,dim=3), &
-                        size(optical_props%tau,dim=2), &
-                        size(optical_props%tau,dim=1)) :: tau  ! optical depth; (ngpt, nlay, ncol)
-    real(wp), dimension(size(optical_props%tau,dim=3), &
-                        size(optical_props%tau,dim=2), &
-                        size(optical_props%tau,dim=1)) :: tau_rayleigh ! optical depth; (ngpt, nlay, ncol)
-
-    logical, dimension(this%get_ngas())              :: gas_is_present  ! Is the concentration of each gas known to the
-                                                                        !   k-distribution available in the set of concentrations?
-    integer, dimension(2, this%get_nflav())          :: flavor          ! indices of two major absorbing gases per band, referring to
-                                                                        ! gas-which-are-present
-
-    real(wp),          dimension(:,:,:), allocatable :: vmr             ! volume mixing ratios; (nlay,ncol,ngas)
-    character(len=256), dimension(:),     allocatable :: terse_gas_names ! The gases known to the k-distribution with
-                                                                        ! concentrations present
-    character(len=256), dimension(:), allocatable     :: minor_gas_list
-    integer                                          :: imnr
-    ! ----------------------------------------------------------
-    ! dimensions - determined from problem size
-    integer :: ncol, nlay ! number of columns, layers
-    ! dimensions - provided by k-distribution
-    integer :: ngpt, nband, ngas, nflav ! Number of g-points, bands, gas, gas "flavors" (major species combinations)
-    ! index
-    integer :: igas, iband, idx_h2o
-
+    real(wp), dimension(ngpt,nlay,ncol) :: tau, tau_rayleigh  ! absorption, Rayleigh scattering optical depths
+    integer :: igas, idx_h2o ! index of some gases
     ! Number of molecules per cm^2
-    real(wp), dimension(size(play,dim=1), size(play,dim=2)), target  :: col_dry_arr
-    real(wp), dimension(:,:),                                pointer :: col_dry_wk => NULL()
+    real(wp), dimension(ncol,nlay), target  :: col_dry_arr
+    real(wp), dimension(:,:),       pointer :: col_dry_wk => NULL()
+    !
+    ! Interpolation variables used in major gas but not elsewhere, so don't need exporting
+    !
+    real(wp), dimension(ncol,nlay,  ngas) :: vmr     ! volume mixing ratios
+    real(wp), dimension(ncol,nlay,0:ngas) :: col_gas ! column amounts for each gas, plus col_dry
+    integer, dimension(ncol,2)            :: itropo_lower ! layer boundaries of lower atmosphere
+    integer, dimension(ncol,2)            :: itropo_upper ! layer boundaries of upper atmosphere
+    real(wp), dimension(2,    nflav,ncol,nlay) :: col_mix ! combination of major species's column amounts
+                                                         ! index(1) : reference temperature level
+                                                         ! index(2) : flavor
+                                                         ! index(3) : layer
+    real(wp), dimension(2,2,  nflav,ncol,nlay) :: fminor ! interpolation fractions for minor species
+                                                          ! index(1) : reference eta level (temperature dependent)
+                                                          ! index(2) : reference temperature level
+                                                          ! index(3) : flavor
+                                                          ! index(4) : layer
     ! ----------------------------------------------------------
-    ! Code starts
+    !
+    ! Error checking
     !
     error_msg = ''
     ! Check for initialization
@@ -438,13 +395,6 @@ contains
     !
     error_msg = this%check_key_species_present(gas_desc)
     if (error_msg /= '') return
-    ! init from array dimensions
-    ncol = size(play,dim=1)
-    nlay = size(play,dim=2)
-    ngpt = this%get_ngpt()
-    nband = this%get_nband()
-    ngas = this%get_ngas()
-    nflav = this%get_nflav()
 
     !
     ! Check input data sizes and values
@@ -468,85 +418,83 @@ contains
       if(error_msg  /= '') return
     end if
 
+    ! ----------------------------------------------------------
     !
-    ! Code to be replaced when gas optics calculations are more thoroughly kernel-ized
+    ! Fill out the array of volume mixing ratios
     !
-    allocate(vmr(ncol, nlay, ngas))
     do igas = 1, ngas
-      ! Get vmr only for gases provided in ty_gas_concs
+      !
+      ! Get vmr if  gas is provided in ty_gas_concs
+      !
       if (any (lower_case(this%gas_names(igas)) == gas_desc%gas_name(:))) then
-         error_msg = gas_desc%get_vmr(this%gas_names(igas),one_vmr)
+         error_msg = gas_desc%get_vmr(this%gas_names(igas), vmr(:,:,igas))
          if (error_msg /= '') return
-         vmr(:,:,igas) = one_vmr
-      else
-      ! Temporarily set missing gas amounts to zero; may not be needed when missing
-      ! gases skipped in calculation
-         vmr(:,:,igas) = 0._wp
-      end if
+      endif
     end do
 
     !
-    ! Construct arrays of mixing ratios using only those gases that are both known to the
-    !   k-distribution and have concentrations available
-    !   Revise flavors and minor gases activities
-    !
-    if(.false.) then
-      !
-      ! Which gases from the k-distribution are present in the set of gas_concentrations?
-      !
-      do igas = 1, this%get_ngas()
-        gas_is_present(igas) = string_in_array(this%gas_names(igas), gas_desc%gas_name)
-      end do
-      ngas = count(gas_is_present)
-      allocate(terse_gas_names(ngas), vmr(ncol,nlay,ngas))
-      terse_gas_names(:) = pack(this%gas_names, mask=gas_is_present)
-      !
-      ! Expand volume mixing ratio of available gases to 3D fields
-      !
-      do igas = 1, ngas
-        error_msg = gas_desc%get_vmr(terse_gas_names(igas), one_vmr)
-        if (error_msg /= '') return
-        vmr(:,:,igas) = one_vmr
-      end do
-      !
-      ! Revise mappings into concentration arrays
-      !
-      do iband = 1, this%get_nflav()
-        flavor(1, iband) = string_loc_in_array(this%gas_names(this%flavor(1, iband)), terse_gas_names)
-        flavor(2, iband) = string_loc_in_array(this%gas_names(this%flavor(2, iband)), terse_gas_names)
-      end do
-    end if
-    !
-    !
-    !
-
     ! Compute dry air column amounts (number of molecule per cm^2) if user hasn't provided them
+    !
+    idx_h2o = string_loc_in_array('h2o', this%gas_names)
     if (present(col_dry)) then
       col_dry_wk => col_dry
     else
-      ! terse_gas_names never gets allocated or assigned because the above block
-      ! of code is wrapped in an if (.false.), so we get gas names from
-      ! this%gas_names, which seems to be what corresponds with the construction
-      ! of the vmr array
-      idx_h2o = string_loc_in_array('h2o', this%gas_names)
-      if (idx_h2o > 0) then
-         col_dry_arr = get_col_dry(vmr(:,:,idx_h2o), plev, tlay) ! dry air column amounts computation
-         col_dry_wk => col_dry_arr
-      else
-         error_msg = 'compute_gas_taus: h2o not found in gas list.'
-         return
-      end if
+      col_dry_arr = get_col_dry(vmr(:,:,idx_h2o), plev, tlay) ! dry air column amounts computation
+      col_dry_wk => col_dry_arr
     end if
+    !
+    ! compute column gas amounts
+    !
+    col_gas(1:ncol,1:nlay,0) = col_dry_wk(1:ncol,1:nlay)
+    do igas = 1, ngas
+      col_gas(1:ncol,1:nlay,igas) = vmr(1:ncol,1:nlay,igas) * col_dry_wk(1:ncol,1:nlay)
+    end do
 
-    ! Make list of minor gases that are defined in specification and have available concentrations
-    ! Includes key species that are also considered minor at some g-points
-    minor_gas_list = this%get_minor_list(gas_desc, ngas, this%gas_names)
-
-    ! Compute gas optical depths.
-    error_msg = this%compute_gas_tau_core(play, tlay, vmr, col_dry_wk, minor_gas_list, &
-                                     ncol, nlay, ngpt, nband, ngas, nflav, &
-                                     tau, tau_rayleigh, &
-                                     fmajor, jeta, tropo, jtemp, jpress)
+    !
+    ! ---- calculate gas optical depths ----
+    !
+    call zero_array(ngpt, nlay, ncol, tau)
+    call interpolation( &
+      ncol,nlay,this%get_ngas(),nflav,this%get_neta(), & ! dimensions
+      this%flavor, &
+      this%press_ref_log,this%temp_ref, &
+      this%press_ref_log_delta,this%temp_ref_min, this%temp_ref_delta, & ! inputs from object
+      this%press_ref_trop_log, this%vmr_ref, this%get_nlay_ref(), &
+      play,tlay,col_gas, & ! local input
+      jtemp,fmajor,fminor,col_mix,tropo,itropo_lower,itropo_upper,jeta,jpress) ! output
+    call compute_tau_absorption(                     &
+            ncol,nlay,ngpt,this%get_ngas(),nflav,    &  ! dimensions
+            idx_h2o,                                 &
+            this%gpoint_flavor,                      &
+            this%kmajor,                             &
+            this%kminor_lower,                       &
+            this%kminor_upper,                       &
+            this%minor_limits_gpt_lower,             &
+            this%minor_limits_gpt_upper,             &
+            this%minor_scales_with_density_lower,    &
+            this%minor_scales_with_density_upper,    &
+            this%scale_by_complement_lower,          &
+            this%scale_by_complement_upper,          &
+            this%idx_minor_lower,                    &
+            this%idx_minor_upper,                    &
+            this%idx_minor_scaling_lower,            &
+            this%idx_minor_scaling_upper,            &
+            this%kminor_start_lower,                 &
+            this%kminor_start_upper,                 &
+            tropo,itropo_lower,itropo_upper,         &
+            col_mix,fmajor,fminor,                   &
+            play,tlay,col_gas,                       &
+            jeta,jtemp,jpress,                       &
+            tau)
+    if (allocated(this%krayl)) then
+      call compute_tau_rayleigh(     & !Rayleigh scattering optical depths
+            ncol,nlay,ngpt,ngas,nflav,      & ! dimensions
+            this%gpoint_flavor,             &
+            this%krayl,                     & ! inputs from object
+            idx_h2o, col_dry,col_gas,       &
+            fminor,jeta,tropo,jtemp,        & ! local input
+            tau_rayleigh)
+    end if
     if (error_msg /= '') return
 
     ! Combine optical depths and reorder for radiative transfer solver.
@@ -554,174 +502,83 @@ contains
 
   end function compute_gas_taus
   !------------------------------------------------------------------------------------------
-  !
-  ! This function should be made into a kernel.
-  !
-  function compute_gas_tau_core(this,            &
-    play, tlay, vmr, col_dry, minor_gas_list, & !  inputs
-    ncol, nlay, ngpt, nband, ngas, nflav,   &
-    tau, tau_rayleigh,                      & ! mandatory outputs
-    fmajor_out, jeta_out, tropo_out, jtemp_out, jpress_out) result(error_msg)
-
-    class(ty_gas_optics_specification), intent(in) :: this
-
-    ! dimensions
-    integer, intent(in) :: ncol  ! Number of columns
-    integer, intent(in) :: nlay  ! Number of layers
-    integer, intent(in) :: ngpt  ! Number of gpts
-    integer, intent(in) :: nband ! Number of bands
-    integer, intent(in) :: ngas  ! Number of gases
-    integer, intent(in) :: nflav ! Number of gas flavors
-
-    real(wp), dimension(ncol,nlay  ), intent(in) :: play   ! Layer pressures [Pa, mb]
-    real(wp), dimension(ncol,nlay  ), intent(in) :: tlay   ! Layer temperatures [K]
-    real(wp), dimension(ncol,nlay  ,ngas), &
-                                      intent(in) :: vmr ! volume mixing ratios
-    real(wp), dimension(ncol,nlay  ), intent(in) :: col_dry ! Column amount of dry air
-    ! List of minor gases to be processed
-    character(len=256), dimension(:), intent(in)  :: minor_gas_list
-
-    ! output
-    real(wp), dimension(ngpt,nlay,ncol), intent(out) :: tau          ! gas absorption optical depth
-    real(wp), dimension(ngpt,nlay,ncol), intent(out) :: tau_rayleigh ! Rayleigh scattering optical depth
-
-    real(wp), dimension(2,2,2,nflav,ncol,nlay), optional, intent(out) :: fmajor_out
-    integer,  dimension(2,    nflav,ncol,nlay), optional, intent(out) :: jeta_out
-    logical,  dimension(            ncol,nlay), optional, intent(out) :: tropo_out
-    integer,  dimension(            ncol,nlay), optional, intent(out) :: jtemp_out
-    integer,  dimension(            ncol,nlay), optional, intent(out) :: jpress_out
-
-    ! result
-    character(len=128) :: error_msg
+  function source(this,                               &
+                  ncol, nlay, ngpt, nbnd, nflv,       &
+                  play, plev, tlay, tsfc,             &
+                  jtemp, jpress, jeta, tropo, fmajor, &
+                  lay_src, lev_src_inc, lev_src_dec, sfc_src, & ! Planck sources
+                  tlev)                              & ! optional input
+                  result(error_msg)
+    ! inputs
+    class(ty_gas_optics_specification),    intent(in ) :: this
+    integer,                               intent(in ) :: ncol, nlay, ngpt, nbnd, nflv
+    real(wp), dimension(ncol,nlay),        intent(in ) :: play   ! layer pressures [Pa, mb]
+    real(wp), dimension(ncol,nlay+1),      intent(in ) :: plev   ! level pressures [Pa, mb]
+    real(wp), dimension(ncol,nlay),        intent(in ) :: tlay   ! layer temperatures [K]
+    real(wp), dimension(ncol),             intent(in ) :: tsfc   ! surface skin temperatures [K]
+    ! Interplation coefficients
+    integer,  dimension(ncol,nlay),        intent(in ) :: jtemp, jpress
+    logical,  dimension(ncol,nlay),        intent(in ) :: tropo
+    real(wp), dimension(2,2,2,nflv,ncol,nlay),   &
+                                           intent(in ) :: fmajor
+    integer,  dimension(2,   nflv,ncol,nlay),   &
+                                           intent(in ) :: jeta
+    real(wp), dimension(ncol,nlay  ,ngpt), intent(out) :: lay_src ! source for average layer temperature
+    real(wp), dimension(ncol,nlay  ,ngpt), intent(out) :: lev_src_inc, lev_src_dec
+                                                             ! level source radiances in increasing/decreasing
+                                                             ! ilay direction
+    real(wp), dimension(ncol,       ngpt), intent(out) :: sfc_src ! surface Planck source
+    real(wp), dimension(ncol,nlay+1),      intent(in ), &
+                                      optional, target :: tlev          ! level temperatures [K]
+    character(len=128)                                 :: error_msg
     ! ----------------------------------------------------------
-    ! Local variables
-    ! index
-    integer :: igas
-    integer,  dimension(ngpt) :: gpt_flv_lower, gpt_flv_upper
-    integer :: idx_h2o ! index of some gases
-    ! Planck fractions
-    ! gas amounts
-    real(wp), dimension(ncol,nlay,0:ngas) :: col_gas ! column amounts for each gas
-    integer, dimension(ngas)  :: idx_gas_list      ! Index of minor gases to be processed
-
-    ! temperature variables
-    integer,  dimension(ncol,nlay) :: jtemp ! interpolation index for temperature
-    ! pressure variables
-    integer,  dimension(ncol,nlay) :: jpress ! interpolation index for pressure
-    logical,  dimension(ncol,nlay) :: tropo ! true for lower atmosphere; false for upper atmosphere
-    integer, dimension(ncol,2) :: itropo_lower ! layer boundaries of lower atmosphere
-    integer, dimension(ncol,2) :: itropo_upper ! layer boundaries of upper atmosphere
-    integer, dimension(2,     nflav,ncol,nlay) :: jeta ! interpolation index for binary species parameter (eta)
-                                                     ! index(1) : reference temperature level
-                                                     ! index(2) : flavor
-                                                     ! index(3) : layer
-
-    real(wp), dimension(2,    nflav,ncol,nlay) :: col_mix ! combination of major species's column amounts
-                                                         ! index(1) : reference temperature level
-                                                         ! index(2) : flavor
-                                                         ! index(3) : layer
-
-    real(wp), dimension(2,2,2,nflav,ncol,nlay) :: fmajor ! interpolation fractions for major species
-                                                            ! index(1) : reference eta level (temperature dependent)
-                                                            ! index(2) : reference pressure level
-                                                            ! index(3) : reference temperature level
-                                                            ! index(4) : flavor
-                                                            ! index(5) : layer
-
-    real(wp), dimension(2,2,  nflav,ncol,nlay) :: fminor ! interpolation fractions for minor species
-                                                          ! index(1) : reference eta level (temperature dependent)
-                                                          ! index(2) : reference temperature level
-                                                          ! index(3) : flavor
-                                                          ! index(4) : layer
-
-
+    integer :: icol, ilay
+    ! Variables for temperature at layer edges [K] (ncol, nlay+1)
+    real(wp), dimension(size(play,dim=1),size(play,dim=2)+1), target  :: tlev_arr
+    real(wp), dimension(:,:),                                 pointer :: tlev_wk => NULL()
     ! ----------------------------------------------------------
-    ! Code starts
+    error_msg = ""
     !
-
-    error_msg = ''
-    ! set up minor gases
-    idx_h2o = string_loc_in_array('h2o', this%gas_names)
-    do igas = 1, size(minor_gas_list)
-      idx_gas_list(igas) = string_loc_in_array(minor_gas_list(igas), this%gas_names)
-    end do
-
-    ! compute column gas amounts
-    col_gas(:,:,0) = col_dry(:,:)
-    do igas = 1, ngas
-      col_gas(:,:,igas) = vmr(:,:,igas) * col_dry(:,:)
-    end do
-
-    gpt_flv_lower = this%gpoint_flavor(1,:)
-    gpt_flv_upper = this%gpoint_flavor(2,:)
-    tau(:,:,:) = 0._wp
-    ! ---- calculate gas optical depths ----
-    call interpolation( &
-      ncol,nlay,nflav,this%get_neta(), & ! dimensions
-      this%flavor,this%press_ref_log,this%temp_ref,this%press_ref_log_delta,this%temp_ref_min, & ! inputs from object
-      this%temp_ref_delta, this%press_ref_trop_log,this%vmr_ref,this%get_nlay_ref(), &
-      play,tlay,col_gas, & ! local input
-      jtemp,fmajor,fminor,col_mix,tropo,itropo_lower,itropo_upper,jeta,jpress) ! output
-    call gas_optical_depths_major( & ! optical depths from major abosrbing gases
-      ncol,nlay,ngpt,nflav, & ! dimensions
-      this%gpoint_flavor,this%kmajor, & ! inputs from object
-      col_mix,fmajor,&
-      jeta,tropo,jtemp,jpress, & ! local input
-      tau)
-
-    call gas_optical_depths_minor( & !optical depths from minor gases in lower atmosphere, includes h2o continuum
-      ncol,nlay,ngpt,ngas,nflav, & ! dimensions
-      idx_h2o,&
-      gpt_flv_lower, & ! inputs from object
-      this%gas_names, &
-      this%gas_minor, this%identifier_minor, &
-      this%kminor_lower, &
-      this%minor_gases_lower, &
-      this%minor_limits_gpt_lower, &
-      this%minor_scales_with_density_lower, &
-      this%scaling_gas_lower, &
-      this%scale_by_complement_lower, &
-      this%kminor_start_lower, &
-      play,tlay, &
-      col_gas,idx_gas_list, &
-      fminor,jeta,itropo_lower,jtemp, & ! local input
-      tau)
-    call gas_optical_depths_minor( & !optical depths from minor gases in upper atmosphere, includes h2o continuum
-      ncol,nlay,ngpt,ngas,nflav, & ! dimensions
-      idx_h2o,&
-      gpt_flv_upper, & ! inputs from object
-      this%gas_names, &
-      this%gas_minor, this%identifier_minor, &
-      this%kminor_upper, &
-      this%minor_gases_upper, &
-      this%minor_limits_gpt_upper, &
-      this%minor_scales_with_density_upper, &
-      this%scaling_gas_upper, &
-      this%scale_by_complement_upper, &
-      this%kminor_start_upper, &
-      play,tlay, &
-      col_gas,idx_gas_list, &
-      fminor,jeta,itropo_upper,jtemp, & ! local input
-      tau)
-    if (allocated(this%krayl)) then
-      call gas_optical_depths_rayleigh( & !Rayleigh scattering optical depths
-        ncol,nlay,ngpt,ngas,nflav, & ! dimensions
-        this%gpoint_flavor,this%krayl, & ! inputs from object
-        idx_h2o,play,tlay,col_dry,col_gas,&
-        fminor,jeta,tropo,jtemp, & ! local input
-        tau_rayleigh)
+    ! Source function needs temperature at interfaces/levels and at layer centers
+    !
+    if (present(tlev)) then
+      !   Users might have provided these
+      tlev_wk => tlev
+    else
+      tlev_wk => tlev_arr
+      !
+      ! Interpolate temperature to levels if not provided
+      !   Interpolation and extrapolation at boundaries is weighted by pressure
+      !
+      do icol = 1, ncol
+         tlev_arr(icol,1) = tlay(icol,1) &
+                           + (plev(icol,1)-play(icol,1))*(tlay(icol,2)-tlay(icol,1))  &
+              &                                           / (play(icol,2)-play(icol,1))
+      end do
+      do ilay = 2, nlay
+        do icol = 1, ncol
+           tlev_arr(icol,ilay) = (play(icol,ilay-1)*tlay(icol,ilay-1)*(plev(icol,ilay  )-play(icol,ilay)) &
+                                +  play(icol,ilay  )*tlay(icol,ilay  )*(play(icol,ilay-1)-plev(icol,ilay))) /  &
+                                  (plev(icol,ilay)*(play(icol,ilay-1) - play(icol,ilay)))
+        end do
+      end do
+      do icol = 1, ncol
+         tlev_arr(icol,nlay+1) = tlay(icol,nlay)                                                             &
+                                + (plev(icol,nlay+1)-play(icol,nlay))*(tlay(icol,nlay)-tlay(icol,nlay-1))  &
+                                                                      / (play(icol,nlay)-play(icol,nlay-1))
+      end do
     end if
 
-    ! This is an internal function -- we can assume that all or none of these are present
-    if(present(fmajor_out)) then
-      fmajor_out = fmajor
-      jeta_out   = jeta
-      tropo_out  = tropo
-      jtemp_out  = jtemp
-      jpress_out = jpress
-    end if
-
-  end function compute_gas_tau_core
+    !-------------------------------------------------------------------
+    ! Compute internal (Planck) source functions at layers and levels,
+    !  which depend on mapping from spectral space that creates k-distribution.
+    call compute_Planck_source(ncol, nlay, ngpt, nbnd, nflv, &
+                tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
+                fmajor, jeta, tropo, jtemp, jpress,                    &
+                this%get_gpoint_bands(), this%planck_frac, this%temp_ref_min,    &
+                this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
+                sfc_src, lay_src, lev_src_inc, lev_src_dec)
+  end function source
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Initialization
@@ -731,61 +588,54 @@ contains
   !  Rayleigh scattering tables may or may not be present; this is indicated with allocation status
   ! This interface is for the internal-sources object -- includes Plank functions and fractions
   !
-  function init_int(this, available_gases, gas_names, key_species, &
-                    band2gpt, band_lims_wavenum,            &
-                    press_ref, press_ref_trop, temp_ref, &
-                    temp_ref_p, temp_ref_t, vmr_ref,     &
-                    kmajor, kminor_lower, kminor_upper, &
-                    gas_minor,identifier_minor,&
-                    minor_gases_lower, minor_gases_upper, &
+  function init_int(this, available_gases, gas_names, key_species,  &
+                    band2gpt, band_lims_wavenum,                    &
+                    press_ref, press_ref_trop, temp_ref,            &
+                    temp_ref_p, temp_ref_t, vmr_ref,                &
+                    kmajor, kminor_lower, kminor_upper,             &
+                    gas_minor,identifier_minor,                     &
+                    minor_gases_lower, minor_gases_upper,           &
                     minor_limits_gpt_lower, minor_limits_gpt_upper, &
-                    minor_scales_with_density_lower, &
-                    minor_scales_with_density_upper, &
-                    scaling_gas_lower, scaling_gas_upper, &
-                    scale_by_complement_lower, &
-                    scale_by_complement_upper, &
-                    kminor_start_lower, &
-                    kminor_start_upper, &
+                    minor_scales_with_density_lower,                &
+                    minor_scales_with_density_upper,                &
+                    scaling_gas_lower, scaling_gas_upper,           &
+                    scale_by_complement_lower,                      &
+                    scale_by_complement_upper,                      &
+                    kminor_start_lower,                             &
+                    kminor_start_upper,                             &
                     totplnk, planck_frac, rayl_lower, rayl_upper) result(err_message)
-    class(ty_gas_optics_specification), intent(inout) :: this
-    class(ty_gas_concs),                intent(in   ) :: available_gases ! Which gases does the host model have available?
-    character(len=*), dimension(:), intent(in) :: gas_names
-    integer,  dimension(:,:,:),   intent(in) :: key_species
-    integer,  dimension(:,:),     intent(in) :: band2gpt
-    real(wp), dimension(:,:),     intent(in) :: band_lims_wavenum
-    real(wp), dimension(:),       intent(in) :: press_ref, temp_ref
-    real(wp),                     intent(in) :: press_ref_trop, temp_ref_p, temp_ref_t
-    real(wp), dimension(:,:,:),   intent(in) :: vmr_ref
-    real(wp), dimension(:,:,:,:), intent(in) :: kmajor
-    real(wp), dimension(:,:,:),   intent(in) :: kminor_lower, kminor_upper
-    real(wp), dimension(:,:),     intent(in) :: totplnk
-    real(wp), dimension(:,:,:,:), intent(in) :: planck_frac
-    real(wp), dimension(:,:,:),   intent(in), &
-                                 allocatable :: rayl_lower, rayl_upper
-    character(len=256), dimension(:), &
-                                  intent(in) :: gas_minor,identifier_minor
-    character(len=256), dimension(:), &
-                                  intent(in) :: minor_gases_lower, &
-                                                minor_gases_upper
-    integer,  dimension(:,:),     intent(in) :: &
-                                                minor_limits_gpt_lower, &
-                                                minor_limits_gpt_upper
-    logical,  dimension(:),       intent(in) :: &
-                                                minor_scales_with_density_lower, &
-                                                minor_scales_with_density_upper
-    character(len=256), dimension(:),intent(in) :: &
-                                                scaling_gas_lower, &
-                                                scaling_gas_upper
-
-    logical, dimension(:), intent(in) :: &
-                                                scale_by_complement_lower,&
-                                                scale_by_complement_upper
-    integer, dimension(:), intent(in) :: &
-                                                kminor_start_lower,&
-                                                kminor_start_upper
-    character(len = 128) err_message
+    class(ty_gas_optics_specification),     intent(inout) :: this
+    class(ty_gas_concs),                    intent(in   ) :: available_gases ! Which gases does the host model have available?
+    character(len=*),   dimension(:),       intent(in   ) :: gas_names
+    integer,            dimension(:,:,:),   intent(in   ) :: key_species
+    integer,            dimension(:,:),     intent(in   ) :: band2gpt
+    real(wp),           dimension(:,:),     intent(in   ) :: band_lims_wavenum
+    real(wp),           dimension(:),       intent(in   ) :: press_ref, temp_ref
+    real(wp),                               intent(in   ) :: press_ref_trop, temp_ref_p, temp_ref_t
+    real(wp),           dimension(:,:,:),   intent(in   ) :: vmr_ref
+    real(wp),           dimension(:,:,:,:), intent(in   ) :: kmajor
+    real(wp),           dimension(:,:,:),   intent(in   ) :: kminor_lower, kminor_upper
+    real(wp),           dimension(:,:),     intent(in   ) :: totplnk
+    real(wp),           dimension(:,:,:,:), intent(in   ) :: planck_frac
+    real(wp),           dimension(:,:,:),   intent(in   ), &
+                                              allocatable :: rayl_lower, rayl_upper
+    character(len=256), dimension(:),       intent(in   ) :: gas_minor,identifier_minor
+    character(len=256), dimension(:),       intent(in   ) :: minor_gases_lower, &
+                                                             minor_gases_upper
+    integer,            dimension(:,:),     intent(in   ) :: minor_limits_gpt_lower, &
+                                                             minor_limits_gpt_upper
+    logical,            dimension(:),       intent(in   ) :: minor_scales_with_density_lower, &
+                                                             minor_scales_with_density_upper
+    character(len=256), dimension(:),       intent(in   ) :: scaling_gas_lower, &
+                                                             scaling_gas_upper
+    logical,            dimension(:),       intent(in   ) :: scale_by_complement_lower,&
+                                                             scale_by_complement_upper
+    integer,            dimension(:),       intent(in   ) :: kminor_start_lower,&
+                                                             kminor_start_upper
+    character(len = 128) :: err_message
     ! ----
     err_message = init_abs_coeffs(this, &
+                                  available_gases, &
                                   gas_names, key_species,    &
                                   band2gpt, band_lims_wavenum, &
                                   press_ref, temp_ref,       &
@@ -874,6 +724,7 @@ contains
     character(len = 128) err_message
     ! ----
     err_message = init_abs_coeffs(this, &
+                                  available_gases, &
                                   gas_names, key_species,    &
                                   band2gpt, band_lims_wavenum, &
                                   press_ref, temp_ref,       &
@@ -903,6 +754,7 @@ contains
   !   including Rayleigh scattering tables if provided (allocated)
   !
   function init_abs_coeffs(this, &
+                           available_gases, &
                            gas_names, key_species,    &
                            band2gpt, band_lims_wavenum, &
                            press_ref, temp_ref,       &
@@ -922,6 +774,7 @@ contains
                            kminor_start_upper, &
                            rayl_lower, rayl_upper) result(err_message)
     class(ty_gas_optics_specification), intent(inout) :: this
+    class(ty_gas_concs),                intent(in   ) :: available_gases
     character(len=*), &
               dimension(:),       intent(in) :: gas_names
     integer,  dimension(:,:,:),   intent(in) :: key_species
@@ -938,59 +791,111 @@ contains
     character(len=256), dimension(:), &
                                   intent(in) :: minor_gases_lower, &
                                                 minor_gases_upper
-    integer,  dimension(:,:),     intent(in) :: &
-                                                minor_limits_gpt_lower, &
+    integer,  dimension(:,:),     intent(in) :: minor_limits_gpt_lower, &
                                                 minor_limits_gpt_upper
-    logical,  dimension(:),       intent(in) :: &
-                                                minor_scales_with_density_lower, &
+    logical,  dimension(:),       intent(in) :: minor_scales_with_density_lower, &
                                                 minor_scales_with_density_upper
-    character(len=256), dimension(:),intent(in) :: &
-                                                scaling_gas_lower, &
+    character(len=256), dimension(:),&
+                                  intent(in) :: scaling_gas_lower, &
                                                 scaling_gas_upper
-    logical,  dimension(:), intent(in) :: &
-                                                scale_by_complement_lower, &
-                                                scale_by_complement_upper
-    integer,  dimension(:), intent(in) :: &
-                                                kminor_start_lower, &
+    logical,  dimension(:),       intent(in) :: scale_by_complement_lower, &
+                                                   scale_by_complement_upper
+    integer,  dimension(:),       intent(in) :: kminor_start_lower, &
                                                 kminor_start_upper
     real(wp), dimension(:,:,:),   intent(in), &
                                  allocatable :: rayl_lower, rayl_upper
-    real(wp), dimension(:,:,:), allocatable  :: vmr_ref_tmp
     character(len=128)                       :: err_message
+    ! --------------------------------------------------------------------------
+    logical,  dimension(:),     allocatable :: gas_is_present
+    logical,  dimension(:),     allocatable :: key_species_present_init
+    integer,  dimension(:,:,:), allocatable :: key_species_red
+    real(wp), dimension(:,:,:), allocatable :: vmr_ref_red
+    character(len=256), &
+              dimension(:),     allocatable :: minor_gases_lower_red, &
+                                               minor_gases_upper_red
+    character(len=256), &
+              dimension(:),     allocatable :: scaling_gas_lower_red, &
+                                               scaling_gas_upper_red
+    integer :: i, j, idx
+    integer :: ngas
     ! --------------------------------------
     err_message = this%ty_spectral_disc%init(band2gpt, band_lims_wavenum)
     if(len_trim(err_message) /= 0) return
-    ! Assignment
-    !   includes allocation
-    if (allocated(vmr_ref_tmp)) deallocate(vmr_ref_tmp)
-    allocate(vmr_ref_tmp(size(vmr_ref,dim=1),0:size(vmr_ref,dim=2), &
-      size(vmr_ref,dim=3)))
-    vmr_ref_tmp = vmr_ref
 
-    ! Try allocating first?
-    !allocate(this%gas_names, source=gas_names) !(size(gas_names, 1)))
-    ! Allocate and initialize
-    allocate(this%gas_names, source=gas_names)
-    allocate(this%press_ref, source=press_ref)
-    allocate(this%temp_ref, source=temp_ref)
-    allocate(this%vmr_ref, source=vmr_ref_tmp)
-    allocate(this%kmajor, source=kmajor)
-    allocate(this%kminor_lower, source=kminor_lower)
-    allocate(this%kminor_upper, source=kminor_upper)
-    allocate(this%gas_minor, source=gas_minor)
-    allocate(this%identifier_minor, source=identifier_minor)
-    allocate(this%minor_gases_lower, source=minor_gases_lower)
-    allocate(this%minor_gases_upper, source=minor_gases_upper)
-    allocate(this%minor_limits_gpt_lower, source=minor_limits_gpt_lower)
-    allocate(this%minor_limits_gpt_upper, source=minor_limits_gpt_upper)
-    allocate(this%minor_scales_with_density_lower, source=minor_scales_with_density_lower)
-    allocate(this%minor_scales_with_density_upper, source=minor_scales_with_density_upper)
-    allocate(this%scaling_gas_lower, source=scaling_gas_lower)
-    allocate(this%scaling_gas_upper, source=scaling_gas_upper)
-    allocate(this%scale_by_complement_lower, source=scale_by_complement_lower)
-    allocate(this%scale_by_complement_upper, source=scale_by_complement_upper)
-    allocate(this%kminor_start_lower, source=kminor_start_lower)
-    allocate(this%kminor_start_upper, source=kminor_start_upper)
+    !
+    ! Which gases known to the gas optics are present in the host model (available_gases)?
+    !
+    ngas = size(gas_names)
+    allocate(gas_is_present(ngas))
+    do i = 1, ngas
+      gas_is_present(i) = string_in_array(gas_names(i), available_gases%gas_name)
+    end do
+    !
+    ! Now the number of gases is the union of those known to the k-distribution and provided
+    !   by the host model
+    !
+    ngas = count(gas_is_present)
+
+    !
+    ! Initialize the gas optics object, keeping only those gases known to the
+    !   gas optics and also present in the host model
+    !
+    ! BRH fix: this needs to be explicitly allocated?
+    !this%gas_names = pack(gas_names,mask=gas_is_present)
+    allocate(this%gas_names, source=pack(gas_names, mask=gas_is_present))
+
+    allocate(vmr_ref_red(size(vmr_ref,dim=1),0:ngas, &
+                         size(vmr_ref,dim=3)))
+    ! Gas 0 is used in single-key species method, set to 1.0 (col_dry)
+    vmr_ref_red(:,0,:) = vmr_ref(:,1,:)
+    do i = 1, ngas
+      idx = string_loc_in_array(this%gas_names(i), gas_names)
+      vmr_ref_red(:,i,:) = vmr_ref(:,idx+1,:)
+    enddo
+    call move_alloc(vmr_ref_red, this%vmr_ref)
+
+    ! Reduce minor arrays so variables only contain minor gases that are available
+    ! Reduce size of minor Arrays
+    call reduce_minor_arrays(available_gases, &
+                             gas_names, &
+                             gas_minor,identifier_minor, &
+                             kminor_lower, &
+                             minor_gases_lower, &
+                             minor_limits_gpt_lower, &
+                             minor_scales_with_density_lower, &
+                             scaling_gas_lower, &
+                             scale_by_complement_lower, &
+                             kminor_start_lower, &
+                             this%kminor_lower, &
+                             minor_gases_lower_red, &
+                             this%minor_limits_gpt_lower, &
+                             this%minor_scales_with_density_lower, &
+                             scaling_gas_lower_red, &
+                             this%scale_by_complement_lower, &
+                             this%kminor_start_lower)
+    call reduce_minor_arrays(available_gases, &
+                             gas_names, &
+                             gas_minor,identifier_minor,&
+                             kminor_upper, &
+                             minor_gases_upper, &
+                             minor_limits_gpt_upper, &
+                             minor_scales_with_density_upper, &
+                             scaling_gas_upper, &
+                             scale_by_complement_upper, &
+                             kminor_start_upper, &
+                             this%kminor_upper, &
+                             minor_gases_upper_red, &
+                             this%minor_limits_gpt_upper, &
+                             this%minor_scales_with_density_upper, &
+                             scaling_gas_upper_red, &
+                             this%scale_by_complement_upper, &
+                             this%kminor_start_upper)
+
+    ! Arrays not reduced by the presence, or lack thereof, of a gas
+    this%press_ref = press_ref
+    this%temp_ref  = temp_ref
+    this%kmajor    = kmajor
+
     if(allocated(rayl_lower) .neqv. allocated(rayl_upper)) then
       err_message = "rayl_lower and rayl_upper must have the same allocation status"
       return
@@ -1003,7 +908,6 @@ contains
 
     ! ---- post processing ----
     ! Incoming coefficients file has units of Pa
-    ! TODO: what is going on here?
     this%press_ref(:) = this%press_ref(:)
 
     ! creates log reference pressure
@@ -1013,10 +917,27 @@ contains
     ! log scale of reference pressure
     this%press_ref_trop_log = log(press_ref_trop)
 
+    ! Get index of gas (if present) for determining col_gas
+    call create_idx_minor(this%gas_names, gas_minor, identifier_minor, minor_gases_lower_red, &
+      this%idx_minor_lower)
+    call create_idx_minor(this%gas_names, gas_minor, identifier_minor, minor_gases_upper_red, &
+      this%idx_minor_upper)
+    ! Get index of gas (if present) that has special treatment in density scaling
+    call create_idx_minor_scaling(this%gas_names, scaling_gas_lower_red, &
+      this%idx_minor_scaling_lower)
+    call create_idx_minor_scaling(this%gas_names, scaling_gas_upper_red, &
+      this%idx_minor_scaling_upper)
+
     ! create flavor list
-    call create_flavor(key_species, this%flavor)
+    ! Reduce (remap) key_species list; checks that all key gases are present in incoming
+    call create_key_species_reduce(gas_names,this%gas_names, &
+      key_species,key_species_red,key_species_present_init)
+    err_message = check_key_species_present_init(gas_names,key_species_present_init)
+    if(len_trim(err_message) /= 0) return
+    ! create flavor list
+    call create_flavor(key_species_red, this%flavor)
     ! create gpoint_flavor list
-    call create_gpoint_flavor(key_species, this%get_gpoint_bands(), this%flavor, this%gpoint_flavor)
+    call create_gpoint_flavor(key_species_red, this%get_gpoint_bands(), this%flavor, this%gpoint_flavor)
 
     ! minimum, maximum reference temperature, pressure -- assumes low-to-high ordering
     !   for T, high-to-low ordering for p
@@ -1029,16 +950,37 @@ contains
     this%press_ref_log_delta = (log(this%press_ref_min)-log(this%press_ref_max))/(size(this%press_ref)-1)
     this%temp_ref_delta      = (this%temp_ref_max-this%temp_ref_min)/(size(this%temp_ref)-1)
 
-    !
     ! Which species are key in one or more bands?
     !   this%flavor is an index into this%gas_names
     !
     if (allocated(this%is_key)) deallocate(this%is_key) ! Shouldn't ever happen...
     allocate(this%is_key(this%get_ngas()))
     this%is_key(:) = .False.
-    this%is_key(pack(this%flavor(:,:), this%flavor(:,:) /= 0)) = .true.
+    do j = 1, size(this%flavor, 2)
+      do i = 1, size(this%flavor, 1) ! should be 2
+        if (this%flavor(i,j) /= 0) this%is_key(this%flavor(i,j)) = .true.
+      end do
+    end do
 
   end function init_abs_coeffs
+  ! ----------------------------------------------------------------------------------------------------
+  function check_key_species_present_init(gas_names, &
+    key_species_present_init) result(err_message)
+
+    logical, dimension(:), intent(in) :: key_species_present_init
+    character(len=*), dimension(:), intent(in) :: gas_names
+
+    character(len=128)                             :: err_message
+    integer :: i
+
+    err_message=''
+    do i = 1, size(key_species_present_init)
+      if(.not. key_species_present_init(i)) &
+        err_message = ' ' // trim(gas_names(i)) // trim(err_message)
+    end do
+    if(len_trim(err_message) > 0) err_message = "gas_optics (init): required gases" // trim(err_message) // " are not provided"
+
+  end function check_key_species_present_init
 
   !------------------------------------------------------------------------------------------
   !
@@ -1051,8 +993,8 @@ contains
     character(len=128)                             :: error_msg
 
     ! Local variables
-    character(len=256), dimension(count(this%is_key(:)  )) :: key_gas_names
-    integer                                                :: igas
+    character(len=32), dimension(count(this%is_key(:)  )) :: key_gas_names
+    integer                                               :: igas
     ! --------------------------------------
     error_msg = ""
     key_gas_names = pack(this%gas_names, mask=this%is_key)
@@ -1074,10 +1016,10 @@ contains
     class(ty_gas_optics_specification), intent(in)       :: this
     class(ty_gas_concs), intent(in)                      :: gas_desc
     integer, intent(in)                                  :: ngas
-    character(256), dimension(ngas), intent(in)           :: names_spec
+    character(32), dimension(ngas), intent(in)           :: names_spec
 
     ! List of minor gases to be used in gas_optics()
-    character(len=256), dimension(:), allocatable         :: get_minor_list
+    character(len=32), dimension(:), allocatable         :: get_minor_list
     ! Logical flag for minor species in specification (T = minor; F = not minor)
     logical, dimension(size(names_spec))                 :: gas_is_present
     integer                                              :: igas, icnt
@@ -1118,7 +1060,7 @@ contains
   ! return the gas names
   pure function get_gases(this)
     class(ty_gas_optics_specification), intent(in) :: this
-    character(256), dimension(this%get_ngas())     :: get_gases
+    character(32), dimension(this%get_ngas())     :: get_gases
 
     get_gases = this%gas_names
   end function get_gases
@@ -1279,8 +1221,204 @@ contains
       end if
     end do
   end subroutine create_flavor
-! ---------------------------------------------------------------------------------------
 
+! ---------------------------------------------------------------------------------------
+! create_idx_minor
+! create index list for extracting col_gas needed for minor gas optical depth calculations
+  subroutine create_idx_minor(gas_names, &
+    gas_minor, identifier_minor, minor_gases_atm, idx_minor_atm)
+    character(len=*), dimension(:), intent(in) :: gas_names
+    character(len=*), dimension(:), intent(in) :: &
+                                                  gas_minor, &
+                                                  identifier_minor
+    character(len=*), dimension(:), intent(in) :: minor_gases_atm
+    integer, dimension(:), allocatable, &
+                                   intent(out) :: idx_minor_atm
+
+    ! local
+    integer :: imnr
+    integer :: idx_mnr
+    allocate(idx_minor_atm(size(minor_gases_atm,dim=1)))
+    do imnr = 1, size(minor_gases_atm,dim=1) ! loop over minor absorbers in each band
+          ! Find identifying string for minor species in list of possible identifiers (e.g. h2o_slf)
+          idx_mnr     = string_loc_in_array(minor_gases_atm(imnr), identifier_minor)
+          ! Find name of gas associated with minor species identifier (e.g. h2o)
+          idx_minor_atm(imnr) = string_loc_in_array(gas_minor(idx_mnr),    gas_names)
+    enddo
+
+  end subroutine create_idx_minor
+
+! ---------------------------------------------------------------------------------------
+! create_idx_minor_scaling
+! create index for special treatment in density scaling of minor gases
+  subroutine create_idx_minor_scaling(gas_names, &
+    scaling_gas_atm, idx_minor_scaling_atm)
+    character(len=*), dimension(:), intent(in) :: gas_names
+    character(len=*), dimension(:), intent(in) :: scaling_gas_atm
+    integer, dimension(:), allocatable, &
+                                   intent(out) :: idx_minor_scaling_atm
+
+    ! local
+    integer :: imnr
+    allocate(idx_minor_scaling_atm(size(scaling_gas_atm,dim=1)))
+    do imnr = 1, size(scaling_gas_atm,dim=1) ! loop over minor absorbers in each band
+          ! This will be -1 if there's no interacting gas
+          idx_minor_scaling_atm(imnr) = string_loc_in_array(scaling_gas_atm(imnr), gas_names)
+    enddo
+
+  end subroutine create_idx_minor_scaling
+  ! ---------------------------------------------------------------------------------------
+  subroutine create_key_species_reduce(gas_names,gas_names_red, &
+    key_species,key_species_red,key_species_present_init)
+    character(len=*), &
+              dimension(:),       intent(in) :: gas_names
+    character(len=*), &
+              dimension(:),       intent(in) :: gas_names_red
+    integer,  dimension(:,:,:),   intent(in) :: key_species
+    integer,  dimension(:,:,:), allocatable, intent(out) :: key_species_red
+
+    logical, dimension(:), allocatable, intent(out) :: key_species_present_init
+    integer :: ip, ia, it, np, na, nt
+
+    np = size(key_species,dim=1)
+    na = size(key_species,dim=2)
+    nt = size(key_species,dim=3)
+    allocate(key_species_red(size(key_species,dim=1), &
+                             size(key_species,dim=2), &
+                             size(key_species,dim=3)))
+    allocate(key_species_present_init(size(gas_names)))
+    key_species_present_init = .true.
+
+    do ip = 1, np
+      do ia = 1, na
+        do it = 1, nt
+                     
+          if (key_species(ip,ia,it) .ne. 0) then
+            key_species_red(ip,ia,it) = string_loc_in_array(gas_names(key_species(ip,ia,it)),gas_names_red)
+            if (key_species_red(ip,ia,it) .eq. -1) key_species_present_init(key_species(ip,ia,it)) = .false.
+          else
+            key_species_red(ip,ia,it) = key_species(ip,ia,it)
+          endif
+        enddo
+      end do
+    enddo
+
+  end subroutine create_key_species_reduce
+
+! ---------------------------------------------------------------------------------------
+  subroutine reduce_minor_arrays(available_gases, &
+                           gas_names, &
+                           gas_minor,identifier_minor,&
+                           kminor_atm, &
+                           minor_gases_atm, &
+                           minor_limits_gpt_atm, &
+                           minor_scales_with_density_atm, &
+                           scaling_gas_atm, &
+                           scale_by_complement_atm, &
+                           kminor_start_atm, &
+                           kminor_atm_red, &
+                           minor_gases_atm_red, &
+                           minor_limits_gpt_atm_red, &
+                           minor_scales_with_density_atm_red, &
+                           scaling_gas_atm_red, &
+                           scale_by_complement_atm_red, &
+                           kminor_start_atm_red)
+
+    class(ty_gas_concs),                intent(in   ) :: available_gases
+    character(len=*), &
+              dimension(:),       intent(in) :: gas_names
+    real(wp), dimension(:,:,:),   intent(in) :: kminor_atm
+    character(len=256), dimension(:), &
+                                  intent(in) :: gas_minor, &
+                                                identifier_minor
+    character(len=256), dimension(:), &
+                                  intent(in) :: minor_gases_atm
+    integer,  dimension(:,:),     intent(in) :: &
+                                                minor_limits_gpt_atm
+    logical,  dimension(:),       intent(in) :: &
+                                                minor_scales_with_density_atm
+    character(len=256), dimension(:),intent(in) :: &
+                                                scaling_gas_atm
+    logical,  dimension(:), intent(in) :: &
+                                                scale_by_complement_atm
+    integer,  dimension(:), intent(in) :: &
+                                                kminor_start_atm
+
+    real(wp), dimension(:,:,:),  allocatable, intent(out) :: kminor_atm_red
+    character(len=256), dimension(:), &
+                                  allocatable, intent(out) :: minor_gases_atm_red
+    integer,  dimension(:,:),     allocatable, intent(out) :: &
+                                                minor_limits_gpt_atm_red
+    logical,  dimension(:),       allocatable, intent(out) :: &
+                                                minor_scales_with_density_atm_red
+    character(len=256), dimension(:),allocatable, intent(out) :: &
+                                                scaling_gas_atm_red
+    logical,  dimension(:), allocatable, intent(out) :: &
+                                                scale_by_complement_atm_red
+    integer,  dimension(:), allocatable, intent(out) :: &
+                                                kminor_start_atm_red
+
+    ! Local variables
+    integer :: i, j
+    integer :: idx_mnr, nm, tot_g, red_nm
+    integer :: icnt, n_elim, ng
+    logical, dimension(:), allocatable :: gas_is_present
+
+    nm = size(minor_gases_atm)
+    tot_g=0
+    allocate(gas_is_present(nm))
+    do i = 1, size(minor_gases_atm)
+      idx_mnr = string_loc_in_array(minor_gases_atm(i), identifier_minor)
+      gas_is_present(i) = string_in_array(gas_minor(idx_mnr),available_gases%gas_name)
+      if(gas_is_present(i)) then
+        tot_g = tot_g + (minor_limits_gpt_atm(2,i)-minor_limits_gpt_atm(1,i)+1)
+      endif
+    enddo
+    red_nm = count(gas_is_present)
+
+    if ((red_nm .eq. nm)) then
+      kminor_atm_red = kminor_atm
+      minor_gases_atm_red = minor_gases_atm
+      minor_limits_gpt_atm_red = minor_limits_gpt_atm
+      minor_scales_with_density_atm_red = minor_scales_with_density_atm
+      scaling_gas_atm_red = scaling_gas_atm
+      scale_by_complement_atm_red = scale_by_complement_atm
+      kminor_start_atm_red = kminor_start_atm
+    else
+      minor_gases_atm_red= pack(minor_gases_atm, mask=gas_is_present)
+      minor_scales_with_density_atm_red = pack(minor_scales_with_density_atm, &
+        mask=gas_is_present)
+      scaling_gas_atm_red = pack(scaling_gas_atm, &
+        mask=gas_is_present)
+      scale_by_complement_atm_red = pack(scale_by_complement_atm, &
+        mask=gas_is_present)
+      kminor_start_atm_red = pack(kminor_start_atm, &
+        mask=gas_is_present)
+
+      allocate(minor_limits_gpt_atm_red(2, red_nm))
+      allocate(kminor_atm_red(tot_g, size(kminor_atm,2), size(kminor_atm,3)))
+
+      icnt = 0
+      n_elim = 0
+      do i = 1, nm
+        ng = minor_limits_gpt_atm(2,i)-minor_limits_gpt_atm(1,i)+1
+        if(gas_is_present(i)) then
+          icnt = icnt + 1
+          minor_limits_gpt_atm_red(1:2,icnt) = minor_limits_gpt_atm(1:2,i)
+          kminor_start_atm_red(icnt) = kminor_start_atm(i)-n_elim
+          do j = 1, ng
+            kminor_atm_red(kminor_start_atm_red(icnt)+j-1,:,:) = &
+              kminor_atm(kminor_start_atm(i)+j-1,:,:)
+          enddo
+        else
+          n_elim = n_elim + ng
+        endif
+      enddo
+    endif
+
+  end subroutine reduce_minor_arrays
+
+! ---------------------------------------------------------------------------------------
   ! returns flavor index; -1 if not found
   pure function key_species_pair2flavor(flavor, key_species_pair)
     integer :: key_species_pair2flavor
@@ -1329,7 +1467,7 @@ contains
     logical,                      intent(in) :: has_rayleigh
     class(ty_optical_props_arry), intent(inout) :: optical_props
 
-    integer :: icol, ilay, igpt, ncol, nlay, ngpt
+    integer :: ncol, nlay, ngpt, nmom
 
     ncol = size(tau, 3)
     nlay = size(tau, 2)
@@ -1345,26 +1483,12 @@ contains
           ! User is asking for absorption optical depth
           optical_props%tau = reorder123x321(tau)
         type is (ty_optical_props_2str)
-          do icol = 1, ncol
-            do ilay = 1, nlay
-              do igpt = 1, ngpt
-                optical_props%tau(icol,ilay,igpt) = tau(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol)
-                optical_props%ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / optical_props%tau(icol,ilay,igpt)
-              end do
-            end do
-          end do
-          optical_props%g = 0._wp
+          call combine_and_reorder_2str(ncol, nlay, ngpt,       tau, tau_rayleigh, &
+                                        optical_props%tau, optical_props%ssa, optical_props%g)
         type is (ty_optical_props_nstr) ! We ought to be able to combine this with above
-          do icol = 1, ncol
-            do ilay = 1, nlay
-              do igpt = 1, ngpt
-                optical_props%tau(icol,ilay,igpt) = tau(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol)
-                optical_props%ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / optical_props%tau(icol,ilay,igpt)
-              end do
-            end do
-          end do
-          optical_props%p = 0._wp
-          optical_props%p(2,:,:,:) = 0.1_wp
+          nmom = size(optical_props%p, 1)
+          call combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau, tau_rayleigh, &
+                                        optical_props%tau, optical_props%ssa, optical_props%p)
       end select
 
     end if
@@ -1394,38 +1518,75 @@ contains
   !
   ! Extents
   !
-  function check_extent_1d(array, nx, label)
-    real(wp), dimension(:),     intent(in) :: array
-    integer,                    intent(in) :: nx
-    character(len=*),           intent(in) :: label
-    character(len=128)                     :: check_extent_1d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_1d(array, n1, label)
+    real(wp), dimension(:          ), intent(in) :: array
+    integer,                          intent(in) :: n1
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_1d
 
     check_extent_1d = ""
-    if(size(array,1) /= nx) &
+    if(size(array,1) /= n1) &
       check_extent_1d = trim(label) // ' has incorrect size.'
   end function check_extent_1d
   ! --------------------------------------------------------------------------------------
-  function check_extent_2d(array, nx, ny, label)
-    real(wp), dimension(:,:),   intent(in) :: array
-    integer,                    intent(in) :: nx, ny
-    character(len=*),           intent(in) :: label
-    character(len=128)                     :: check_extent_2d
+  function check_extent_2d(array, n1, n2, label)
+    real(wp), dimension(:,:        ), intent(in) :: array
+    integer,                          intent(in) :: n1, n2
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_2d
 
     check_extent_2d = ""
-    if(size(array,1) /= nx .or. size(array,2) /= ny) &
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 ) &
       check_extent_2d = trim(label) // ' has incorrect size.'
   end function check_extent_2d
   ! --------------------------------------------------------------------------------------
-  function check_extent_3d(array, nx, ny, nz, label)
-    real(wp), dimension(:,:,:), intent(in) :: array
-    integer,                    intent(in) :: nx, ny, nz
-    character(len=*),           intent(in) :: label
-    character(len=128)                     :: check_extent_3d
+  function check_extent_3d(array, n1, n2, n3, label)
+    real(wp), dimension(:,:,:      ), intent(in) :: array
+    integer,                          intent(in) :: n1, n2, n3
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_3d
 
     check_extent_3d = ""
-    if(size(array,1) /= nx .or. size(array,2) /= ny .or. size(array,3) /= nz) &
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 .or. size(array,3) /= n3) &
       check_extent_3d = trim(label) // ' has incorrect size.'
   end function check_extent_3d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_4d(array, n1, n2, n3, n4, label)
+    real(wp), dimension(:,:,:,:    ), intent(in) :: array
+    integer,                          intent(in) :: n1, n2, n3, n4
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_4d
+
+    check_extent_4d = ""
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 .or. size(array,3) /= n3 .or. &
+       size(array,4) /= n4) &
+      check_extent_4d = trim(label) // ' has incorrect size.'
+  end function check_extent_4d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_5d(array, n1, n2, n3, n4, n5, label)
+    real(wp), dimension(:,:,:,:,:  ), intent(in) :: array
+    integer,                          intent(in) :: n1, n2, n3, n4, n5
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_5d
+
+    check_extent_5d = ""
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 .or. size(array,3) /= n3 .or. &
+       size(array,4) /= n4 .or. size(array,5) /= n5) &
+      check_extent_5d = trim(label) // ' has incorrect size.'
+  end function check_extent_5d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_6d(array, n1, n2, n3, n4, n5, n6, label)
+    real(wp), dimension(:,:,:,:,:,:), intent(in) :: array
+    integer,                          intent(in) :: n1, n2, n3, n4, n5, n6
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_6d
+
+    check_extent_6d = ""
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 .or. size(array,3) /= n3 .or. &
+       size(array,4) /= n4 .or. size(array,5) /= n5 .or. size(array,6) /= n6 ) &
+      check_extent_6d = trim(label) // ' has incorrect size.'
+  end function check_extent_6d
   ! --------------------------------------------------------------------------------------
   !
   ! Values
