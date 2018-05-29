@@ -134,7 +134,7 @@ subroutine crm_bulk_transport(state,  ptend,  ztodt,  pbuf)
 
 end subroutine crm_bulk_transport
 
-!=====================================================================================================
+!======================================================================================================
 !======================================================================================================
 
 subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
@@ -175,10 +175,9 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
    real(r8), intent(out), dimension(pcols,pver,ncnst) :: tend_out    ! Tracer tendency array
 
    !!! Local Variables
-
    integer i,,m,k            ! Work indices
-   integer kbm               ! Highest altitude index of cloud base
-   integer ktm               ! Highest altitude index of cloud top
+   ! integer kbm               ! Highest altitude index of cloud base
+   ! integer ktm               ! Highest altitude index of cloud top
    integer kk,kkp1,km1,kp1   ! Work index
 
    real(r8) q_above          ! Mix ratio of constituent above
@@ -212,16 +211,16 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
    !!! Initialize output tendencies
    tend_out(:,:,:) = 0._r8
 
-   small        = 1.e-36_r8    ! threshold for ???????
+   small        = 1.e-36_r8    ! threshold for constituent mixing ratios
    mf_threshold = 1.e-15_r8    ! threshold below which we treat the mass fluxes as zero (in mb/s)
 
    !!! Find the highest level top and bottom levels of convection
-   ktm = pver
-   kbm = pver
-   do i = 1,ncol
-      ktm = min( ktm, cld_top_idx(i) )
-      kbm = min( kbm, cld_bot_idx(i) )
-   end do
+   ! ktm = pver
+   ! kbm = pver
+   ! do i = 1,ncol
+   !    ktm = min( ktm, cld_top_idx(i) )
+   !    kbm = min( kbm, cld_bot_idx(i) )
+   ! end do
 
    !-----------------------------------------------------------------------------------------
    !!! Loop ever each constituent
@@ -308,8 +307,8 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
                endif
             end do
 
-            !!! WTF does this do?
-            do k = ktm,pver
+            !!! limit fluxes outside convection
+            do k = cld_top_idx(i),pver
                km1 = max(1,k-1)
                kp1 = min(pver,k+1)
 
@@ -317,11 +316,11 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
                ! these limiters are probably only safe for positive definite quantitities
                ! it assumes that mu and md already satisfy a courant number limit of 1
 
-               flux_in =  mu(i,kp1)*q_up(i,kp1)+ mu(i,k)*min(q_int(i,k),q(i,km1,m)) &
-                         -(md(i,k)  *q_dn(i,k) + md(i,kp1)*min(q_int(i,kp1),q(i,kp1,m)))
+               flux_in =   mu(i,kp1)*q_up(i,kp1) + mu(i,k  )*min(q_int(i,k  ),q(i,km1,m)) &
+                        -( md(i,k  )*q_dn(i,k  ) + md(i,kp1)*min(q_int(i,kp1),q(i,kp1,m)) )
 
-               flux_out = mu(i,k)*q_up(i,k) + mu(i,kp1)*min(q_int(i,kp1),q(i,k,m)) &
-                         -(md(i,kp1)*q_dn(i,kp1) + md(i,k)*min(q_int(i,k),q(i,k,m)))
+               flux_out =   mu(i,k  )*q_up(i,k  ) + mu(i,kp1)*min(q_int(i,kp1),q(i,k,m)) &
+                         -( md(i,kp1)*q_dn(i,kp1) + md(i,k  )*min(q_int(i,k  ),q(i,k,m)))
 
                flux_net = flux_in - flux_out
                if ( abs(flux_net) < ( max(flux_in,flux_out)*1.e-12_r8 ) ) then
@@ -332,20 +331,20 @@ subroutine crm_bulk_transport_tend( lchnk, ncnst, do_transport,            &
             end do
 
             !!! WTF does this do?
-            do k = kbm,pver
+            do k = cld_bot_idx(i),pver
                km1 = max(1,k-1)
-               if (k == cld_bot_idx(i)) then
+               if ( k == cld_bot_idx(i) ) then
 
                   !!! version 3
                   flux_in =  mu(i,k)*min(q_int(i,k),q(i,km1,m)) - md(i,k)*q_dn(i,k)
                   flux_out = mu(i,k)*q_up(i,k) - md(i,k)*min(q_int(i,k),q(i,k,m))
 
                   flux_net = flux_in - flux_out
-                  if (abs(flux_net) < max(flux_in,flux_out)*1.e-12_r8) then
+                  if ( abs(flux_net) < max(flux_in,flux_out)*1.e-12_r8 ) then
                      flux_net = 0._r8
                   endif
                   q_tend(k) = flux_net/dp_tmp(i,k)
-               else if (k > mx(i)) then
+               else if ( k > cld_bot_idx(i) ) then
                   q_tend(k) = 0._r8
                end if
             end do

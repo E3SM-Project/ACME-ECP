@@ -1095,6 +1095,48 @@ end subroutine crm_physics_init
    call pbuf_get_field(pbuf, snow_str_idx, snow_str )
    call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
 
+   !!! total clouds and precipiation - initialize here to be safe
+   ! pbuf(pbuf_get_fld_idx('AST'   ))%fld_ptr(1,1:pcols,1:pver,lchnk,itim) = 0.0_r8
+   ! pbuf(pbuf_get_fld_idx('QME'   ))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = 0.0_r8
+   ! pbuf(pbuf_get_fld_idx('PRAIN' ))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = 0.0_r8
+   ! pbuf(pbuf_get_fld_idx('NEVAPR'))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = 0.0_r8
+
+   call pbuf_set_field(pbuf, pbuf_get_index('AST'   ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('QME'   ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('PRAIN' ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('NEVAPR'), 0.0_r8 )
+
+   ! ifld = pbuf_get_fld_idx('AST')
+   ! pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,itim) = cld(:ncol, :pver)
+   ! ifld = pbuf_get_fld_idx('QME')
+   ! pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = 0.0_r8
+   ! ifld = pbuf_get_fld_idx('PRAIN')
+   ! pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = qp_src(:ncol, :pver)
+   ! ifld = pbuf_get_fld_idx('NEVAPR')
+   ! pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = qp_evp(:ncol, :pver)
+
+   !!! set convective rain to be zero for PRAIN already includes precipitation production from convection. 
+   ! pbuf(pbuf_get_fld_idx('RPRDTOT'))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8  
+   ! pbuf(pbuf_get_fld_idx('RPRDDP' ))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
+   ! pbuf(pbuf_get_fld_idx('RPRDSH' ))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
+   ! pbuf(pbuf_get_fld_idx('ICWMRDP'))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
+   ! pbuf(pbuf_get_fld_idx('ICWMRSH'))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
+   call pbuf_set_field(pbuf, pbuf_get_index('RPRDTOT'), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('RPRDDP' ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('RPRDSH' ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('ICWMRDP'), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('ICWMRSH'), 0.0_r8 )
+   ! ifld = pbuf_get_fld_idx( 'RPRDTOT' )
+   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8  
+   ! ifld = pbuf_get_fld_idx( 'RPRDDP' )
+   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
+   ! ifld = pbuf_get_fld_idx( 'RPRDSH' )
+   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
+   ! ifld = pbuf_get_fld_idx( 'ICWMRDP' )
+   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
+   ! ifld = pbuf_get_fld_idx( 'ICWMRSH' )
+   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
+
    prec_dp  = 0.
    snow_dp  = 0.
    prec_sh  = 0.
@@ -1675,6 +1717,20 @@ end subroutine crm_physics_init
       prec_dp  = precc
       snow_dp  = precsc
 
+      !!! These are needed elsewhere in the model when SP_PHYS_BYPASS is used
+      ! pbuf(pbuf_get_fld_idx('AST'   ))%fld_ptr(1,1:pcols,1:pver,lchnk,itim) = cld   (:ncol,:pver)
+      ! pbuf(pbuf_get_fld_idx('PRAIN' ))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = qp_src(:ncol,:pver)
+      ! pbuf(pbuf_get_fld_idx('NEVAPR'))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = qp_evp(:ncol,:pver)
+      !!! is this a better way to set pbuf fields?
+      ifld = pbuf_get_index('AST'   )
+      call pbuf_set_field(pbuf,ifld,cld   (:ncol,:pver),start=(/1,1/),kount=(/pcols,pver/) )
+
+      ifld = pbuf_get_index('PRAIN' )
+      call pbuf_set_field(pbuf,ifld,qp_src(:ncol,:pver),start=(/1,1/),kount=(/pcols,pver/) )
+
+      ifld = pbuf_get_index('NEVAPR')
+      call pbuf_set_field(pbuf,ifld,qp_evp(:ncol,:pver),start=(/1,1/),kount=(/pcols,pver/) )
+
       do m=1,crm_nz
       k = pver-m+1
       do i = 1,ncol
@@ -1920,27 +1976,6 @@ end subroutine crm_physics_init
        call outfld('ICLDIWP' ,cicewp , pcols,lchnk)
 
        if (use_ECPP) then
-! total clouds and precipiation 
-!         ifld = pbuf_get_fld_idx('AST')
-!         pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,itim) = cld(:ncol, :pver)
-!         ifld = pbuf_get_fld_idx('QME')
-!         pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = 0.0_r8
-!         ifld = pbuf_get_fld_idx('PRAIN')
-!         pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = qp_src(:ncol, :pver)
-!         ifld = pbuf_get_fld_idx('NEVAPR')
-!         pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = qp_evp(:ncol, :pver)
-
-! set convective rain to be zero for PRAIN already includes precipitation from convection. 
-!         ifld = pbuf_get_fld_idx( 'RPRDTOT' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8  
-!         ifld = pbuf_get_fld_idx( 'RPRDDP' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-!         ifld = pbuf_get_fld_idx( 'RPRDSH' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-!         ifld = pbuf_get_fld_idx( 'ICWMRDP' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-!         ifld = pbuf_get_fld_idx( 'ICWMRSH' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
 
 ! turbulence
           allocate(tempPtr(pcols,pver))
