@@ -1806,6 +1806,8 @@ end function radiation_nextsw_cday
                   call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnsc, fsn200c)
                   call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fns, fsn200)
 
+                  ! Calculate sw cloud radiative effect and shortwave upward
+                  ! flux at the TOA as residuals
                   do i=1,ncol
                      swcf(i)=fsntoa(i) - fsntoac(i)
                      fsutoac(i) = solin(i) - fsntoac(i)
@@ -1946,6 +1948,7 @@ end function radiation_nextsw_cday
                       call outfld('FSDSC'//diag(icall),fsdsc ,pcols,lchnk)
                       call outfld('FSNTOA'//diag(icall),fsntoa,pcols,lchnk)
                       call outfld('FSUTOA'//diag(icall),fsutoa,pcols,lchnk)
+                      call outfld('FSUTOAC'//diag(icall),fsutoac,pcols,lchnk)
                       call outfld('FSNTOAC'//diag(icall),fsntoac,pcols,lchnk)
                       call outfld('SOLS'//diag(icall),cam_out%sols  ,pcols,lchnk)
                       call outfld('SOLL'//diag(icall),cam_out%soll  ,pcols,lchnk)
