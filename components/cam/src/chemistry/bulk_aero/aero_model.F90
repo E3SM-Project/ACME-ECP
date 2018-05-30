@@ -119,7 +119,7 @@ contains
   subroutine aero_model_register(imozart_in, species_class_in)  
     use mo_setsoa, only : soa_register
     integer, intent(in) :: imozart_in              ! whannah - dummy
-    integer, intent(inout) :: species_class_in(:)  ! whannah - dummy
+    integer, intent(in) :: species_class_in(:)  ! whannah - dummy
 
     call soa_register()
 
@@ -144,7 +144,7 @@ contains
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    integer, intent(inout) :: species_class_in(:)        ! whannah - dummy
+    integer, intent(in) :: species_class_in(:)        ! whannah - dummy
     integer, intent(in) :: iflagaa_in                    ! whannah - dummy
 
     ! local vars
