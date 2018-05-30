@@ -51,7 +51,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
                     fus      ,fds        ,fns          ,               &
                     fusc     ,fdsc       ,fnsc         ,               &
                     Nday     ,Nnite      ,IdxDay       ,IdxNite      , &
-                    su       ,sd         ,                             &
+                    clm_rand_seed ,su         ,sd           ,               &
                     E_cld_tau, E_cld_tau_w, E_cld_tau_w_g, E_cld_tau_w_f,  &
                     old_convert)
 
@@ -268,14 +268,11 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    real(r8) :: ga(pcols,0:pver) ! aerosol assymetry parameter
    real(r8) :: fa(pcols,0:pver) ! aerosol forward scattered fraction
 
-   ! CRM
-   real(r8) :: fus(pcols,pverp)   ! Upward flux (added for CRM)
-   real(r8) :: fds(pcols,pverp)   ! Downward flux (added for CRM)
-   real(r8) :: fusc(pcols,pverp)  ! Upward clear-sky flux (added for CRM)
-   real(r8) :: fdsc(pcols,pverp)  ! Downward clear-sky flux (added for CRM)
-
+   ! Index to rad vertical level
    integer :: kk
 
+   ! Copies of state variables (compressed to daytime-only, mapped to rad
+   ! vertical grid)
    real(r8) :: pmidmb(pcols,rrtmg_levs)   ! Level pressure (hPa)
    real(r8) :: pintmb(pcols,rrtmg_levs+1) ! Model interface pressure (hPa)
    real(r8) :: tlay(pcols,rrtmg_levs)     ! mid point temperature

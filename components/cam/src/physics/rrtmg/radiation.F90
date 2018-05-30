@@ -515,7 +515,6 @@ end function radiation_nextsw_cday
        endif
     end if
 
-
     ! Shortwave radiation
     call addfld('TOT_CLD_VISTAU', (/ 'lev' /), 'A',   '1', 'Total gbx cloud extinction visible sw optical depth', &
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
@@ -572,8 +571,10 @@ end function radiation_nextsw_cday
                                                                                  sampling_seq='rad_lwsw')
           call addfld('FUS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave upward flux')
           call addfld('FDS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave downward flux')
+          call addfld('FNS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave net flux')
           call addfld('FUSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky upward flux')
           call addfld('FDSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky downward flux')
+          call addfld('FNSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky net flux')
           call addfld('FSNIRTOA'//diag(icall),  horiz_only,     'A','W/m2',&
            'Net near-infrared flux (Nimbus-7 WFOV) at top of atmosphere', sampling_seq='rad_lwsw')
           call addfld('FSNRTOAC'//diag(icall),  horiz_only,     'A','W/m2', &
@@ -645,8 +646,10 @@ end function radiation_nextsw_cday
                                                                            sampling_seq='rad_lwsw')
           call addfld('FUL'//diag(icall), (/ 'ilev' /),'I',     'W/m2', 'Longwave upward flux')
           call addfld('FDL'//diag(icall), (/ 'ilev' /),'I',     'W/m2', 'Longwave downward flux')
+          call addfld('FNL'//diag(icall), (/ 'ilev' /),'I',     'W/m2', 'Longwave net flux')
           call addfld('FULC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky upward flux')
           call addfld('FDLC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky downward flux')
+          call addfld('FNLC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky net flux')
  
          if (history_amwg) then
           call add_default('QRL'//diag(icall),   1, ' ')
@@ -759,15 +762,11 @@ end function radiation_nextsw_cday
     end if
 
     if (cldfsnow_idx > 0) then
-      ! call addfld ('CLDFSNOW','1',pver,'I','CLDFSNOW',phys_decomp,flag_xyfill=.true.)
-      ! call add_default ('CLDFSNOW',1,' ')
-      ! call addfld('SNOW_ICLD_VISTAU', '1', pver, 'A', 'Snow in-cloud extinction visible sw optical depth', phys_decomp, &
-      !                                               sampling_seq='rad_lwsw', flag_xyfill=.true.)
-       call addfld ('CLDFSNOW',(/ 'lev' /),'I','1','CLDFSNOW',flag_xyfill=.true.)
-       call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1', 'Snow in-cloud extinction visible sw optical depth', &
-                                                       sampling_seq='rad_lwsw', flag_xyfill=.true.)
+       call addfld('CLDFSNOW',(/ 'lev' /),'I','1','CLDFSNOW',flag_xyfill=.true.)
+       call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1', &
+                   'Snow in-cloud extinction visible sw optical depth', &
+                   sampling_seq='rad_lwsw', flag_xyfill=.true.)
     endif
-!==Guangxing Lin
 
   end subroutine radiation_init
 
@@ -1000,11 +999,9 @@ end function radiation_nextsw_cday
     real(r8) fldsc(pcols)         ! Clear sky lw flux at srf (down)
     real(r8) fln200(pcols)        ! net longwave flux interpolated to 200 mb
     real(r8) fln200c(pcols)       ! net clearsky longwave flux interpolated to 200 mb
-    real(r8) fns(pcols,pverp)     ! net shortwave flux
     real(r8) fcns(pcols,pverp)    ! net clear-sky shortwave flux
     real(r8) fsn200(pcols)        ! fns interpolated to 200 mb
     real(r8) fsn200c(pcols)       ! fcns interpolated to 200 mb
-    real(r8) fnl(pcols,pverp)     ! net longwave flux
     real(r8) fcnl(pcols,pverp)    ! net clear-sky longwave flux
     real(r8) qtot
     real(r8) factor_xy
@@ -1798,8 +1795,9 @@ end function radiation_nextsw_cday
                        fus,          fds,          fns,                                        &
                        fusc,         fdsc,         fnsc,                                       &
                        Nday,         Nnite,        IdxDay,       IdxNite,                      &
-                       su,           sd,                                                       &
-                       E_cld_tau=c_cld_tau, E_cld_tau_w=c_cld_tau_w, E_cld_tau_w_g=c_cld_tau_w_g, E_cld_tau_w_f=c_cld_tau_w_f, &
+                       clm_seed,     su,           sd,                                         &
+                       E_cld_tau=c_cld_tau, E_cld_tau_w=c_cld_tau_w, &
+                       E_cld_tau_w_g=c_cld_tau_w_g, E_cld_tau_w_f=c_cld_tau_w_f, &
                        old_convert = .false.)
 
                     call t_stopf ('rad_rrtmg_sw')   !==Guangxing Lin

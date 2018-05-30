@@ -1556,8 +1556,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                   cloud_optics_sw, &
                   flux_sw_allsky_day, flux_sw_clearsky_day, &
                   inc_flux=solar_irradiance_by_gpt_day(:nday,:nswgpts), &
-                  col_dry=coldry(:nday,:nlay) &
-                  !aer_props=aerosol_optics_sw &
+                  col_dry=coldry(:nday,:nlay), &
+                  aer_props=aerosol_optics_sw &
                ))
                call t_stopf('shortwave radiation calculations')
 
@@ -1705,8 +1705,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                   cloud_optics_lw, &
                   flux_lw_allsky, flux_lw_clearsky, &
                   t_lev=tint(:ncol,:nlay+1), &
-                  col_dry=coldry(:ncol,:nlay) &
-                  !aer_props=aerosol_optics_lw &
+                  col_dry=coldry(:ncol,:nlay), &
+                  aer_props=aerosol_optics_lw &
                ))
                call t_stopf('longwave radiation calculations')
 
