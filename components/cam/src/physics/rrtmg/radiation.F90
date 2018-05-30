@@ -54,8 +54,8 @@ public :: &
    radiation_readnl,      &! read namelist
    radiation_tend          ! moved from radctl.F90
 
-integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
-integer,public              :: cosp_cnt_init = 0 !initial value for cosp counter
+integer, public, allocatable :: cosp_cnt(:)       ! counter for cosp
+integer, public              :: cosp_cnt_init = 0 ! initial value for cosp counter
 
 integer, public, parameter   :: kiss_seed_num = 4
 integer, public, allocatable :: rad_randn_seedrst(:,:,:), tot_chnk_till_this_prc(:) !total number of chunks till this processor
@@ -1780,7 +1780,7 @@ end function radiation_nextsw_cday
                   ! update the concentrations in the RRTMG state object
                   call  rrtmg_state_update( state, pbuf, icall, r_state )
 
-                  call aer_rad_props_sw( icall, state, pbuf, nnite, idxnite, is_cmip6_volc, &
+                  call aer_rad_props_sw( icall, state, pbuf, nnite, idxnite, &
                                          aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
 
                   call t_startf ('rad_rrtmg_sw')  !==Guangxing Lin
@@ -2122,7 +2122,7 @@ end function radiation_nextsw_cday
               ! update the conctrations in the RRTMG state object
               call rrtmg_state_update( state, pbuf, icall, r_state)
 
-              call aer_rad_props_lw(is_cmip6_volc, icall, state, pbuf,  aer_lw_abs)
+              call aer_rad_props_lw(icall, state, pbuf,  aer_lw_abs)
                   
               call t_startf ('rad_rrtmg_lw')
               call rad_rrtmg_lw( &

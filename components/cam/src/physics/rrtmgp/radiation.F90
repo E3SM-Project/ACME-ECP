@@ -199,6 +199,21 @@ character(len=3), dimension(6) :: active_gases = (/ &
    'CH4', 'O2 ' &
 /)
 
+! Stuff to generate random numbers for perturbation growth tests. This needs to
+! be public module data because restart_physics needs to read it to write it to
+! restart files (I think). Making this public module data may not be the best
+! way of doing this, so maybe this should be reconsidered in the future.
+!
+! kiss_seed_num is number of seed values to use?
+integer, public, parameter :: kiss_seed_num = 4
+
+! TODO: what does this mean?
+integer, public, allocatable :: rad_randn_seedrst(:,:,:)
+
+! Total number of physics chunks until this processor (TODO: what exactly does
+! this mean?)
+integer, public, allocatable :: tot_chnk_till_this_prc(:,:,:)
+
 ! Interface blocks for overloaded procedures
 interface clip_values
    module procedure clip_values_1d, clip_values_2d
@@ -445,7 +460,7 @@ end function radiation_nextsw_cday
 
 !================================================================================================
 
-subroutine radiation_init()
+subroutine radiation_init(state)
 !-------------------------------------------------------------------------------
 ! Purpose: Initialize the radiation parameterization and add fields to the 
 ! history buffer
@@ -466,6 +481,7 @@ subroutine radiation_init()
    use modal_aer_opt,      only: modal_aer_opt_init
    use time_manager,       only: get_nstep, get_step_size, is_first_restart_step
    use radiation_data,     only: init_rad_data
+   use physics_types, only: physics_state
 
    ! RRTMGP modules
    use mo_rrtmgp_clr_all_sky, only: rrtmgp_sw_init=>rte_sw_init, &
@@ -475,6 +491,12 @@ subroutine radiation_init()
 
    ! For optics
    use cloud_rad_props, only: cloud_rad_props_init
+
+   ! Physics state is going to be needed for perturbation growth tests, but we
+   ! have yet to implement this in RRTMGP. It is a vector because at the point
+   ! where this subroutine is called, physics_state has not subset for a
+   ! specific chunk (i.e., state is a vector of all chunks, indexed by lchnk)
+   type(physics_state), intent(in) :: state(:)
 
    integer :: icall, nmodes
    logical :: active_calls(0:N_DIAG)
@@ -511,6 +533,9 @@ subroutine radiation_init()
    ! TODO: do we need to keep this functionality? Where is the offline driver?
    ! Do we need to write a new offline driver for RRTMGP?
    call init_rad_data()
+
+   ! Do initialization for perturbation growth tests
+   call perturbation_growth_init()
 
    ! Read gas optics coefficients from file
    ! Need to initialize available_gases here! The only field of the
@@ -912,6 +937,134 @@ subroutine radiation_init()
                flag_xyfill=.true., sampling_seq='rad_lwsw')
    
 end subroutine radiation_init
+
+
+subroutine perturbation_growth_init()
+
+   use cam_logfile, only: iulog
+
+   character(len=32) :: subname = 'perturbation_growth_init'
+
+   ! Wrap modes in an ifdef for now since this is not implemented here, and I
+   ! have some work to do to figure out what the heck this is meant to do.
+#ifdef DO_PERGRO_MODS
+   !Modification needed by pergro_mods for generating random numbers
+   if (pergro_mods) then
+      max_chnks_in_blk = maxval(npchunks(:))  !maximum of the number for chunks in each procs
+      allocate(clm_rand_seed(pcols,kiss_seed_num,max_chnks_in_blk), stat=astat)
+      if (astat /= 0) then
+         write(iulog,*) 'radiation.F90(rrtmg)-radiation_init: failed to allocate clm_rand_seed; error = ',astat
+         call endrun
+      end if
+
+      allocate(tot_chnk_till_this_prc(0:npes-1), stat=astat)
+      if (astat /= 0) then
+         write(errstr,*) 'radiation.F90(rrtmg)-radiation_init: failed to allocate tot_chnk_till_this_prc variable; error = ',astat
+         call endrun(errstr)
+      end if
+       
+      !BSINGH - Build lat lon relationship to chunk and column
+      !Compute maximum number of chunks each processor have
+      if (masterproc) then
+          tot_chnk_till_this_prc(0:npes-1) = huge(1)
+          do ipes = 0, npes - 1
+             tot_chnk_till_this_prc(ipes) = 0
+             do ipes_tmp = 0, ipes-1
+                tot_chnk_till_this_prc(ipes) = tot_chnk_till_this_prc(ipes) + npchunks(ipes_tmp)
+             enddo
+          enddo
+       endif
+#ifdef SPMD
+       !BSINGH - Ideally we should use mpi_scatter but we are using this variable
+       !in "if(masterproc)" below in phys_run1, so broadcast is iused here
+       call mpibcast(tot_chnk_till_this_prc,npes, mpi_integer, 0, mpicom)
+#endif
+       call get_block_bounds_d(firstblock,lastblock)
+       
+       allocate(clm_id(pcols,max_chnks_in_blk), stat=astat)
+       if( astat /= 0 ) then
+          write(errstr,*) 'radiation.F90(rrtmg)-radiation_init: failed to allocate clm_id; error = ',astat
+          call endrun(errstr)
+       end if
+       
+       allocate(clm_id_mstr(pcols,max_chnks_in_blk,npes), stat=astat)
+       if( astat /= 0 ) then
+          write(errstr,*) 'radiation.F90(rrtmg)-radiation_init: failed to allocate clm_id_mstr; error = ',astat
+          call endrun(errstr)
+       end if
+       !compute all clm ids on masterproc and then scatter it ....
+       if(masterproc) then
+          do igcol = 1, ngcols_p
+             imap = latlon_to_dyn_gcol_map(igcol)
+             chunkid  = knuhcs(imap)%chunkid
+             icol = knuhcs(imap)%col
+             iown  = chunks(chunkid)%owner
+             ilchnk = (chunks(chunkid)%lcid - lastblock) - tot_chnk_till_this_prc(iown)
+             clm_id_mstr(icol,ilchnk,iown+1) = igcol
+          enddo
+       endif
+       
+#ifdef SPMD
+       !Scatter
+       tot_cols = pcols*max_chnks_in_blk
+       call MPI_Scatter( clm_id_mstr, tot_cols,  mpi_integer, &
+            clm_id,    tot_cols,  mpi_integer, 0,             &
+            MPI_COMM_WORLD,ierr)
+#else
+       !BSINGH - Haven't tested it.....               
+       call endrun('radiation.F90(rrtmg)-radiation_init: non-mpi compiles are not tested yet for pergro test...')
+#endif       
+    endif
+       
+    if (is_first_restart_step()) then
+       cosp_cnt(begchunk:endchunk)=cosp_cnt_init
+       if (pergro_mods) then
+          !--------------------------------------
+          !Read seeds from restart file
+          !--------------------------------------
+          !For restart runs, rad_randn_seedrst array  will already be allocated in the restart_physics.F90
+          
+          do ilchnk = 1, max_chnks_in_blk
+             lchnk = begchunk + (ilchnk -1)
+             ncol = phys_state(lchnk)%ncol
+             do iseed = 1, kiss_seed_num
+                do icol = 1, ncol                
+                   clm_rand_seed(icol,iseed,ilchnk) = rad_randn_seedrst(icol,iseed,lchnk)
+                enddo
+             enddo
+          enddo
+       endif
+    else
+       cosp_cnt(begchunk:endchunk)=0           
+       if (pergro_mods) then
+          !---------------------------------------
+          !create seeds based off of column ids
+          !---------------------------------------
+          !allocate array rad_randn_seedrst for initial run for  maintaining exact restarts
+          !For restart runs, it will already be allocated in the restart_physics.F90
+          allocate(rad_randn_seedrst(pcols,kiss_seed_num,begchunk:endchunk), stat=astat)
+          if( astat /= 0 ) then
+             write(iulog,*) 'radiation.F90(rrtmg)-radiation_init: failed to allocate rad_randn_seedrst; error = ',astat
+             call endrun
+          end if
+          do ilchnk = 1, max_chnks_in_blk
+             lchnk = begchunk + (ilchnk -1)
+             ncol = phys_state(lchnk)%ncol
+             do iseed = 1, kiss_seed_num
+                do icol = 1, ncol
+                   id = clm_id(icol,ilchnk)
+                   clm_rand_seed(icol,iseed,ilchnk) = id + (iseed -1)
+                enddo
+             enddo
+          enddo
+       endif
+    end if
+
+#else
+   write(iulog,*) subname // ': PERGRO not implemented for RRTMGP, doing nothing.'
+#endif /* DO_PERGRO_MODS */
+
+end subroutine perturbation_growth_init
 
 
 subroutine set_available_gases(gases, gas_concentrations)
@@ -2183,13 +2336,13 @@ subroutine reset_fluxes(fluxes)
    fluxes%flux_up(:,:) = 0._wp
    fluxes%flux_dn(:,:) = 0._wp
    fluxes%flux_net(:,:) = 0._wp
-   if (allocated(fluxes%flux_dn_dir)) fluxes%flux_dn_dir(:,:) = 0._wp
+   if (associated(fluxes%flux_dn_dir)) fluxes%flux_dn_dir(:,:) = 0._wp
 
    ! Reset band-by-band fluxes
    fluxes%bnd_flux_up(:,:,:) = 0._wp
    fluxes%bnd_flux_dn(:,:,:) = 0._wp
    fluxes%bnd_flux_net(:,:,:) = 0._wp
-   if (allocated(fluxes%bnd_flux_dn_dir)) fluxes%bnd_flux_dn_dir(:,:,:) = 0._wp
+   if (associated(fluxes%bnd_flux_dn_dir)) fluxes%bnd_flux_dn_dir(:,:,:) = 0._wp
 
 end subroutine reset_fluxes
 
