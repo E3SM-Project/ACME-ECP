@@ -529,6 +529,10 @@ end subroutine crm_physics_init
    use phys_control,    only: phys_getopts
    use check_energy,    only: check_energy_chng
 
+#if defined( SP_CRM_BULK )
+   use crm_bulk_mod     only: crm_bulk_transport, crm_bulk_aero_mix_nuc
+#endif
+
 ! modal_aero_data only exists if MODAL_AERO
 #if (defined  m2005 && defined MODAL_AERO)  
    use crmclouds_camaerosols, only: crmclouds_mixnuc_tend
@@ -2250,7 +2254,7 @@ end subroutine crm_physics_init
   ! if (SPCAM_microp_scheme .eq. 'm2005') then
     call t_startf('bc_aerosols_mmf')
 
-    ! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
+    !!! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
     do  i=1,ncol
       do ii=1,crm_nx_rad
         do jj=1,crm_ny_rad
@@ -2277,14 +2281,34 @@ end subroutine crm_physics_init
     ptend%lq(:) = .false.
     call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
     call modal_aero_wateruptake_dr(state, pbuf)
-    !===Guangxing Lin
 
     ! When ECPP is included, wet deposition is done ECPP,
     ! So tendency from wet depostion is not updated in mz_aero_wet_intr (mz_aerosols_intr.F90)
     ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
     call physics_update (state, ptend, crm_run_time, tend)
 #endif
+  
+    !----------------------------------------------------
+    ! CRM Bulk Transport (i.e. ECPP-lite)
+    !----------------------------------------------------
+#if defined( SP_CRM_BULK )
+  
+    !!! Note: ptend initialization done within crm_bulk_*() routines - whannah
 
+    !!! calculate aerosol tendency from droplet activation and mixing
+    ! call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
+    !                             cam_in%cflx, pblh,                &
+    !                             wwqui_cen, wwqui_cloudy_cen,      &
+    !                             wwqui_bnd, wwqui_cloudy_bnd,      &
+    !                             species_class)
+    ! call physics_update(state, ptend, crm_run_time, tend)
+
+    !!! calculate bulk transport tendencies
+    call crm_bulk_transport(state, pbuf, ptend)
+
+    call physics_update (state, ptend, crm_run_time, tend)
+
+#endif /* SP_CRM_BULK */
     !----------------------------------------------------
     ! ECPP - Explicit-Cloud Parameterized-Pollutant
     ! Use CRM cloud statistics to calculate 
@@ -2559,7 +2583,7 @@ subroutine crm_remember_state_tend(state,tend,pbuf)
 
    if (use_SPCAM) then
 
-      ! gas and aerosol species are updated in by shallow convective transport.
+      ! gas and aerosol species are updated by shallow convective transport.
       ! Aerosol changes from dropmixnuc in cldwat2m.F90 are discarded. 
       ! (i.e. when dropmixnuc is called in cldwat2m.F90, the tendency is set to zero)
       q_aero = state%q
