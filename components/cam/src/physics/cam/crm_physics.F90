@@ -2285,7 +2285,7 @@ end subroutine crm_physics_init
 #endif
   
     !----------------------------------------------------
-    ! CRM Bulk Transport (i.e. ECPP-lite)
+    ! CRM Bulk Calculations (i.e. ECPP-lite)
     !----------------------------------------------------
 #if defined( SP_CRM_BULK )
   
@@ -2299,9 +2299,12 @@ end subroutine crm_physics_init
     !                             species_class)
     ! call physics_update(state, ptend, crm_run_time, tend)
 
+    !!! calculate wet scavenging of aerosols
+    ! call crm_bulk_aero_wet_dep_scav()
+    ! call physics_update(state, ptend, crm_run_time, tend)
+
     !!! calculate bulk transport tendencies
     call crm_bulk_transport(state, pbuf, ptend)
-
     call physics_update (state, ptend, crm_run_time, tend)
 
 #endif /* SP_CRM_BULK */
@@ -2616,217 +2619,219 @@ end subroutine crm_remember_state_tend
 !=====================================================================================================
 !=====================================================================================================
 subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, effl, effi, effl_fn, deffi, lamcrad, pgamrad, des)
-!-----------------------------------------------------------------------------------------------------
-! 
-! This subroutine is used to calculate droplet and ice crystal effective radius, which will be used 
-! in the CAM radiation code. The method to calculate effective radius is taken out of the Morrision's
-! two momenent scheme from M2005MICRO_GRAUPEL. It is also very similar with the subroutine of effradius in 
-! the module of cldwat2m in the CAM source codes. 
-!
-! Adopted by Minghuai Wang (Minghuai.Wang@pnl.gov). 
-!
-!-----------------------------------------------------------------------------------------------------
+   !-----------------------------------------------------------------------------------------------------
+   ! This subroutine is used to calculate droplet and ice crystal effective radius, which will be used 
+   ! in the CAM radiation code. The method to calculate effective radius is taken out of the Morrision's
+   ! two moment scheme from M2005MICRO_GRAUPEL. It is also very similar to the subroutine of effradius in 
+   ! the module of cldwat2m in the CAM source codes. 
+   ! Adopted by Minghuai Wang (Minghuai.Wang@pnl.gov). 
+   !-----------------------------------------------------------------------------------------------------
    ! ----------------------------------------------------------- !
    ! Calculate effective radius for pass to radiation code       !
-   ! If no cloud water, default value is 10 micron for droplets, !
-   ! 25 micron for cloud ice.                                    !
+   ! If no cloud water, default value is:                        !
+   !   10 micron for droplets,                                   !
+   !   25 micron for cloud ice.                                  !
    ! Be careful of the unit of effective radius : [micro meter]  !
    ! ----------------------------------------------------------- !
-  !!!use gamma_function, only: gamma
-  use shr_spfn_mod,    only: gamma => shr_spfn_gamma
-  implicit none
+   use shr_spfn_mod,    only: gamma => shr_spfn_gamma
+   implicit none
 
-     real(r8), intent(in)    :: ql                ! Mean LWC of pixels [ kg/kg ]
-     real(r8), intent(in)    :: nl                ! Grid-mean number concentration of cloud liquid droplet [#/kg]
-     real(r8), intent(in)    :: qi                ! Mean IWC of pixels [ kg/kg ]
-     real(r8), intent(in)    :: ni                ! Grid-mean number concentration of cloud ice    droplet [#/kg]
-     real(r8), intent(in)    :: qs                ! mean snow water content [kg/kg]
-     real(r8), intent(in)    :: ns                ! Mean snow crystal number concnetration [#/kg]
-     real(r8), intent(in)    :: cld               ! Physical stratus fraction
-     real(r8), intent(in)    :: pres               ! Air pressure [Pa] 
-     real(r8), intent(in)    :: tk                ! air temperature [K]
+   !!! input arguments
+   real(r8), intent(in)    :: ql          ! Mean LWC of pixels [ kg/kg ]
+   real(r8), intent(in)    :: nl          ! Grid-mean number concentration of cloud liquid droplet [#/kg]
+   real(r8), intent(in)    :: qi          ! Mean IWC of pixels [ kg/kg ]
+   real(r8), intent(in)    :: ni          ! Grid-mean number concentration of cloud ice    droplet [#/kg]
+   real(r8), intent(in)    :: qs          ! mean snow water content [kg/kg]
+   real(r8), intent(in)    :: ns          ! Mean snow crystal number concnetration [#/kg]
+   real(r8), intent(in)    :: cld         ! Physical stratus fraction
+   real(r8), intent(in)    :: pres        ! Air pressure [Pa] 
+   real(r8), intent(in)    :: tk          ! air temperature [K]
 
-     real(r8), intent(out)   :: effl              ! Effective radius of cloud liquid droplet [micro-meter]
-     real(r8), intent(out)   :: effi              ! Effective radius of cloud ice    droplet [micro-meter]
-     real(r8), intent(out)   :: effl_fn           ! effl for fixed number concentration of nlic = 1.e8
-     real(r8), intent(out)   :: deffi             ! ice effective diameter for optics (radiation)
-     real(r8), intent(out)   :: pgamrad           ! gamma parameter for optics (radiation)
-     real(r8), intent(out)   :: lamcrad           ! slope of droplet distribution for optics (radiation)
-     real(r8), intent(out)   :: des               ! snow effective diameter for optics (radiation) [micro-meter]
+   !!! output arguments
+   real(r8), intent(out)   :: effl        ! Effective radius of cloud liquid droplet [micro-meter]
+   real(r8), intent(out)   :: effi        ! Effective radius of cloud ice    droplet [micro-meter]
+   real(r8), intent(out)   :: effl_fn     ! effl for fixed number concentration of nlic = 1.e8
+   real(r8), intent(out)   :: deffi       ! ice effective diameter for optics (radiation)
+   real(r8), intent(out)   :: pgamrad     ! gamma parameter for optics (radiation)
+   real(r8), intent(out)   :: lamcrad     ! slope of droplet distribution for optics (radiation)
+   real(r8), intent(out)   :: des         ! snow effective diameter for optics (radiation) [micro-meter]
 
-     real(r8)  qlic                               ! In-cloud LWC [kg/m3]
-     real(r8)  qiic                               ! In-cloud IWC [kg/m3]
-     real(r8)  nlic                               ! In-cloud liquid number concentration [#/kg]
-     real(r8)  niic                               ! In-cloud ice    number concentration [#/kg]
+   !!! local variables
+   real(r8)  qlic        ! In-cloud LWC [kg/m3]
+   real(r8)  qiic        ! In-cloud IWC [kg/m3]
+   real(r8)  nlic        ! In-cloud liquid number concentration [#/kg]
+   real(r8)  niic        ! In-cloud ice    number concentration [#/kg]
+   real(r8)  mtime       ! Factor to account for droplet activation timescale [no]
+   real(r8)  cldm        ! Constrained stratus fraction [no]
+   real(r8)  mincld      ! Minimum stratus fraction [no]
 
-     real(r8)  mtime                              ! Factor to account for droplet activation timescale [no]
-     real(r8)  cldm                               ! Constrained stratus fraction [no]
-     real(r8)  mincld                             ! Minimum stratus fraction [no]
+   real(r8)  lami, laml, lammax, lammin, pgam, lams, lammaxs, lammins
 
-     real(r8)  lami, laml, lammax, lammin, pgam, lams, lammaxs, lammins
+   real(r8)  dcs         ! autoconversion size threshold   [meter]
+   real(r8)  di, ci      ! cloud ice mass-diameter relationship
+   real(r8)  ds, cs      ! snow crystal mass-diameter relationship 
+   real(r8)  qsmall      !
+   real(r8)  rho         ! air density [kg/m3]
+   real(r8)  rhow        ! liquid water density [kg/m3]
+   real(r8)  rhoi        ! ice density [kg/m3]
+   real(r8)  rhos        ! snow density [kg/m3]
+   real(r8)  res         ! effective snow diameters
+   real(r8)  pi          !
+   real(r8)  tempnc      !
 
-     real(r8)  dcs    !autoconversion size threshold   [meter]
-     real(r8)  di, ci     ! cloud ice mass-diameter relationship
-     real(r8)  ds, cs     ! snow crystal mass-diameter relationship 
-     real(r8)  qsmall
-     real(r8)  rho       ! air density [kg/m3]
-     real(r8)  rhow      ! liquid water density [kg/m3]
-     real(r8)  rhoi      ! ice density [kg/m3]
-     real(r8)  rhos      ! snow density [kg/m3]
-     real(r8)  res       ! effective snow diameters
-     real(r8)  pi
-     real(r8)  tempnc
+   !------------------------------------------------------------------------------
+   ! Main computation 
+   !------------------------------------------------------------------------------
 
-   ! ---------------- !
-   ! Main computation !
-   ! ---------------- !
+   pi = 3.1415926535897932384626434
+   ! qsmall = 1.0e-18  ! in the CAM source code (cldwat2m)
+   qsmall = 1.0e-14  ! in the SAM source code (module_mp_graupel)
+   ! rhow = 1000.      ! in cldwat2m, CAM 
+   rhow = 997.       ! in module_mp_graupel, SAM
+   rhoi = 500.       ! in both CAM and SAM
 
-     pi = 3.1415926535897932384626434
-!     qsmall = 1.0e-18  ! in the CAM source code (cldwat2m)
-     qsmall = 1.0e-14  ! in the SAM source code (module_mp_graupel)
-!     rhow = 1000.      ! in cldwat2m, CAM 
-     rhow = 997.       ! in module_mp_graupel, SAM
-     rhoi = 500.       ! in both CAM and SAM
+   ! dcs = 70.e-6_r8    ! in cldwat2m, CAM 
+   dcs = 125.e-6_r8   ! in module_mp_graupel, SAM 
+   ci = rhoi * pi/6.
+   di = 3.
 
-!     dcs = 70.e-6_r8    ! in cldwat2m, CAM 
-     dcs = 125.e-6_r8   ! in module_mp_graupel, SAM 
-     ci = rhoi * pi/6.
-     di = 3.
-
-!   for snow water
-     rhos = 100.      ! in both SAM and CAM5 
-     cs = rhos*pi/6.
-     ds = 3.
+   !!! for snow water
+   rhos = 100.      ! in both SAM and CAM5 
+   cs = rhos*pi/6.
+   ds = 3.
 
 
-     rho = pres / (287.15*tk)    ! air density [kg/m3]
+   rho = pres / (287.15*tk)    ! air density [kg/m3]
 
-     mincld  = 0.0001_r8
-     cldm    = max(cld,mincld)
-     qlic    = min(5.e-3_r8,max(0._r8,ql/cldm))
-     qiic    = min(5.e-3_r8,max(0._r8,qi/cldm))
-     nlic    = max(nl,0._r8)/cldm
-     niic    = max(ni,0._r8)/cldm
+   mincld  = 0.0001_r8
+   cldm    = max(cld,mincld)
+   qlic    = min(5.e-3_r8,max(0._r8,ql/cldm))
+   qiic    = min(5.e-3_r8,max(0._r8,qi/cldm))
+   nlic    = max(nl,0._r8)/cldm
+   niic    = max(ni,0._r8)/cldm
 
-!------------------------------------------------------
-!     Effective diameters of snow crystals
-!------------------------------------------------------
-     if(qs.gt.1.0e-7) then 
-       lammaxs=1._r8/10.e-6_r8
-       lammins=1._r8/2000.e-6_r8
-       lams = (gamma(1._r8+ds)*cs * ns/qs)**(1._r8/ds)
-       lams = min(lammaxs,max(lams,lammins))
-       res = 1.5/lams*1.0e6_r8
-     else
-       res = 500._r8 
-     end if 
-!
-! from Hugh Morrision: rhos/917 accouts for assumptions about 
-! ice density in the Mitchell optics. 
-!
-     des = res * rhos/917._r8 *2._r8
+   !------------------------------------------------------------------------------
+   ! Effective diameters of snow crystals
+   !------------------------------------------------------------------------------
+   if(qs.gt.1.0e-7) then 
+      lammaxs=1._r8/10.e-6_r8
+      lammins=1._r8/2000.e-6_r8
+      lams = (gamma(1._r8+ds)*cs * ns/qs)**(1._r8/ds)
+      lams = min(lammaxs,max(lams,lammins))
+      res = 1.5/lams*1.0e6_r8
+   else
+      res = 500._r8 
+   end if 
 
-   ! ------------------------------------- !
-   ! Effective radius of cloud ice droplet !
-   ! ------------------------------------- !
+   !
+   ! from Hugh Morrision: rhos/917 accouts for assumptions about 
+   ! ice density in the Mitchell optics. 
+   !
 
-     if( qiic.ge.qsmall ) then
-         niic   = min(niic,qiic*1.e20_r8)
-!         lammax = 1._r8/10.e-6_r8      ! in cldwat2m, CAM
-!         lammin = 1._r8/(2._r8*dcs)    ! in cldwat2m, CAM
-         lammax = 1._r8/1.e-6_r8      ! in module_mp_graupel, SAM 
-         lammin = 1._r8/(2._r8*dcs+100.e-6_r8)    ! in module_mp_graupel, SAM 
-         lami   = (gamma(1._r8+di)*ci*niic/qiic)**(1._r8/di)
-         lami   = min(lammax,max(lami,lammin))
-         effi   = 1.5_r8/lami*1.e6_r8
-     else
-         effi   = 25._r8
-     endif
+   des = res * rhos/917._r8 *2._r8
 
-!--hm ice effective radius for david mitchell's optics
-!--ac morrison indicates that this is effective diameter
-!--ac morrison indicates 917 (for the density of pure ice..)
-     deffi  = effi *rhoi/917._r8*2._r8
+   !------------------------------------------------------------------------------
+   ! Effective radius of cloud ice droplet 
+   !------------------------------------------------------------------------------
 
-   ! ---------------------------------------- !
-   ! Effective radius of cloud liquid droplet !
-   ! ---------------------------------------- !
+   if( qiic.ge.qsmall ) then
+      niic   = min(niic,qiic*1.e20_r8)
+      ! lammax = 1._r8/10.e-6_r8      ! in cldwat2m, CAM
+      ! lammin = 1._r8/(2._r8*dcs)    ! in cldwat2m, CAM
+      lammax = 1._r8/1.e-6_r8      ! in module_mp_graupel, SAM 
+      lammin = 1._r8/(2._r8*dcs+100.e-6_r8)    ! in module_mp_graupel, SAM 
+      lami   = (gamma(1._r8+di)*ci*niic/qiic)**(1._r8/di)
+      lami   = min(lammax,max(lami,lammin))
+      effi   = 1.5_r8/lami*1.e6_r8
+   else
+      effi   = 25._r8
+   endif
 
-     if( qlic.ge.qsmall ) then
-!        Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM).
-!        See also Morrison and Grabowski (2007, JAS, Eq. (2))
-         nlic   = min(nlic,qlic*1.e20_r8)
+   !--hm ice effective radius for david mitchell's optics
+   !--ac morrison indicates that this is effective diameter
+   !--ac morrison indicates 917 (for the density of pure ice..)
+   deffi  = effi *rhoi/917._r8*2._r8
 
-! set the minimum droplet number as 20/cm3.
-!         nlic   = max(nlic,20.e6_r8/rho) ! sghan minimum in #/cm3
-         tempnc = nlic/rho/1.0e6    ! #/kg --> #/cm3
-!         if (tempnc.gt.100._r8) then 
-!           write(0, *) 'nc larger than 100  ', tempnc, rho
-!         end if
+   !------------------------------------------------------------------------------
+   ! Effective radius of cloud liquid droplet 
+   !------------------------------------------------------------------------------
 
-!!!!!! ????? Should be the in-cloud dropelt number calculated as nlic*rho/1.0e6_r8 ????!!!! +++mhwang
-!         pgam   = 0.0005714_r8*(nlic/1.e6_r8/rho) + 0.2714_r8  !wrong, confirmed with Hugh Morrison. fixed in the latest SAM. 
-         pgam   = 0.0005714_r8*(nlic*rho/1.e6_r8) + 0.2714_r8
-         pgam   = 1._r8/(pgam**2)-1._r8
-!         pgam   = min(15._r8,max(pgam,2._r8))   ! in cldwat2m, CAM
-         pgam   = min(10._r8,max(pgam,2._r8))   ! in module_mp_graupel, SAM
-!         if(pgam.gt.2.01_r8 .and.pgam.lt.9.99_r8) then
-!           write(0, *) 'pgam', pgam
-!         end if
-         laml   = (pi/6._r8*rhow*nlic*gamma(pgam+4._r8)/(qlic*gamma(pgam+1._r8)))**(1._r8/3._r8)
-         lammin = (pgam+1._r8)/50.e-6_r8    ! in cldwat2m, CAM
-         lammax = (pgam+1._r8)/2.e-6_r8     ! in cldwat2m, CAM   ! cldwat2m should be used, 
-                                                                 ! if lammax is too large, this will lead to crash in 
-                                                                 ! src/physics/rrtmg/cloud_rad_props.F90 because 
-                                                                 ! klambda-1 can be zero in gam_liquid_lw and gam_liquid_sw
-                                                                 !  and g_lambda(kmu,klambda-1) will not be defined. 
-!         lammin = (pgam+1._r8)/60.e-6_r8    ! in module_mp_graupel, SAM
-!         lammax = (pgam+1._r8)/1.e-6_r8     ! in module_mp_graupel, SAM
+   if( qlic.ge.qsmall ) then
+      ! Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM).
+      ! See also Morrison and Grabowski (2007, JAS, Eq. (2))
+      nlic   = min(nlic,qlic*1.e20_r8)
 
-         laml   = min(max(laml,lammin),lammax)
-!         effl   = gamma(qcvar+1._r8/3._r8)/(gamma(qcvar)*qcvar**(1._r8/3._r8))* &
-!                  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8      ! in cldwat2m, CAM
-         effl   =  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8  ! in module_mp_graupel, SAM
-         lamcrad  = laml 
-         pgamrad  = pgam
-     else
-! we chose 10. over 25, since 10 is a more reasonable value for liquid droplet. +++mhwang
-         effl   = 10._r8     ! in cldwat2m, CAM
-!         effl   = 25._r8     ! in module_mp_graupel, SAM
-         lamcrad  = 0.0_r8
-         pgamrad  = 0.0_r8
-     endif
+      ! set the minimum droplet number as 20/cm3.
+      ! nlic   = max(nlic,20.e6_r8/rho) ! sghan minimum in #/cm3
+      tempnc = nlic/rho/1.0e6    ! #/kg --> #/cm3
+      ! if (tempnc.gt.100._r8) then 
+      !   write(0, *) 'nc larger than 100  ', tempnc, rho
+      ! end if
 
-   ! ---------------------------------------------------------------------- !
-   ! Recalculate effective radius for constant number, in order to separate !
-   ! first and second indirect effects. Assume constant number of 10^8 kg-1 !
-   ! ---------------------------------------------------------------------- !
+      !!!!!! ????? Should be the in-cloud dropelt number calculated as nlic*rho/1.0e6_r8 ????!!!! +++mhwang
+      ! pgam   = 0.0005714_r8*(nlic/1.e6_r8/rho) + 0.2714_r8  !wrong, confirmed with Hugh Morrison. fixed in the latest SAM. 
+      pgam   = 0.0005714_r8*(nlic*rho/1.e6_r8) + 0.2714_r8
+      pgam   = 1._r8/(pgam**2)-1._r8
+      ! pgam   = min(15._r8,max(pgam,2._r8))   ! in cldwat2m, CAM
+      pgam   = min(10._r8,max(pgam,2._r8))   ! in module_mp_graupel, SAM
+      ! if(pgam.gt.2.01_r8 .and.pgam.lt.9.99_r8) then
+      !   write(0, *) 'pgam', pgam
+      ! end if
+      laml   = (pi/6._r8*rhow*nlic*gamma(pgam+4._r8)/(qlic*gamma(pgam+1._r8)))**(1._r8/3._r8)
+      lammin = (pgam+1._r8)/50.e-6_r8    ! in cldwat2m, CAM
+      lammax = (pgam+1._r8)/2.e-6_r8     ! in cldwat2m, CAM   ! cldwat2m should be used, 
+                                                              ! if lammax is too large, this will lead to crash in 
+                                                              ! src/physics/rrtmg/cloud_rad_props.F90 because 
+                                                              ! klambda-1 can be zero in gam_liquid_lw and gam_liquid_sw
+                                                              !  and g_lambda(kmu,klambda-1) will not be defined. 
+      ! lammin = (pgam+1._r8)/60.e-6_r8    ! in module_mp_graupel, SAM
+      ! lammax = (pgam+1._r8)/1.e-6_r8     ! in module_mp_graupel, SAM
 
-     nlic = 1.e8
-     if( qlic.ge.qsmall ) then
-!        Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM). 
-!        See also Morrison and Grabowski (2007, JAS, Eq. (2))  
-         nlic   = min(nlic,qlic*1.e20_r8)
-         pgam   = 0.0005714_r8*(nlic/1.e6_r8/rho) + 0.2714_r8
-         pgam   = 1._r8/(pgam**2)-1._r8
-!         pgam   = min(15._r8,max(pgam,2._r8))   ! in cldwat2m, CAM
-         pgam   = min(10._r8,max(pgam,2._r8))   ! in module_mp_graupel, SAM
-         laml   = (pi/6._r8*rhow*nlic*gamma(pgam+4._r8)/(qlic*gamma(pgam+1._r8)))**(1._r8/3._r8)
-!         lammin = (pgam+1._r8)/50.e-6_r8    ! in cldwat2m, CAM
-!         lammax = (pgam+1._r8)/2.e-6_r8     ! in cldwat2m, CAM
-         lammin = (pgam+1._r8)/60.e-6_r8    ! in module_mp_graupel, SAM
-         lammax = (pgam+1._r8)/1.e-6_r8     ! in module_mp_graupel, SAM
+      laml   = min(max(laml,lammin),lammax)
+      ! effl   = gamma(qcvar+1._r8/3._r8)/(gamma(qcvar)*qcvar**(1._r8/3._r8))* &
+      !          gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8      ! in cldwat2m, CAM
+      effl   =  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8  ! in module_mp_graupel, SAM
+      lamcrad  = laml 
+      pgamrad  = pgam
+   else
+      ! we chose 10. over 25, since 10 is a more reasonable value for liquid droplet. +++mhwang
+      effl   = 10._r8     ! in cldwat2m, CAM
+      ! effl   = 25._r8     ! in module_mp_graupel, SAM
+      lamcrad  = 0.0_r8
+      pgamrad  = 0.0_r8
+   endif
 
-         laml   = min(max(laml,lammin),lammax)
-!         effl_fn   = gamma(qcvar+1._r8/3._r8)/(gamma(qcvar)*qcvar**(1._r8/3._r8))* &
-!                  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8      ! in cldwat2m, CAM
-         effl_fn   =  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8  ! in module_mp_graupel, SAM
-     else
-! we chose 10. over 25, since 10 is a more reasonable value for liquid droplet. +++mhwang
-         effl_fn   = 10._r8     ! in cldwat2m, CAM
-!         effl_fn   = 25._r8     ! in module_mp_graupel, SAM
-     endif
+   !------------------------------------------------------------------------------
+   ! Recalculate effective radius for constant number, in order to separate 
+   ! first and second indirect effects. Assume constant number of 10^8 kg-1 
+   !------------------------------------------------------------------------------
 
+   nlic = 1.e8
+   if( qlic.ge.qsmall ) then
+      ! Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM). 
+      ! See also Morrison and Grabowski (2007, JAS, Eq. (2))  
+      nlic   = min(nlic,qlic*1.e20_r8)
+      pgam   = 0.0005714_r8*(nlic/1.e6_r8/rho) + 0.2714_r8
+      pgam   = 1._r8/(pgam**2)-1._r8
+      ! pgam   = min(15._r8,max(pgam,2._r8))   ! in cldwat2m, CAM
+      pgam   = min(10._r8,max(pgam,2._r8))   ! in module_mp_graupel, SAM
+      laml   = (pi/6._r8*rhow*nlic*gamma(pgam+4._r8)/(qlic*gamma(pgam+1._r8)))**(1._r8/3._r8)
+      ! lammin = (pgam+1._r8)/50.e-6_r8    ! in cldwat2m, CAM
+      ! lammax = (pgam+1._r8)/2.e-6_r8     ! in cldwat2m, CAM
+      lammin = (pgam+1._r8)/60.e-6_r8    ! in module_mp_graupel, SAM
+      lammax = (pgam+1._r8)/1.e-6_r8     ! in module_mp_graupel, SAM
+
+      laml   = min(max(laml,lammin),lammax)
+      ! effl_fn   = gamma(qcvar+1._r8/3._r8)/(gamma(qcvar)*qcvar**(1._r8/3._r8))* &
+      !          gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8      ! in cldwat2m, CAM
+      effl_fn   =  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8  ! in module_mp_graupel, SAM
+   else
+      ! we chose 10. over 25, since 10 is a more reasonable value for liquid droplet. +++mhwang
+      effl_fn   = 10._r8     ! in cldwat2m, CAM
+      ! effl_fn   = 25._r8     ! in module_mp_graupel, SAM
+   endif
+   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------
    return
 end subroutine m2005_effradius
 
