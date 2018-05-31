@@ -1220,7 +1220,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
    ! ---------------------------------------------------------------------------
    ! Local variables
    ! ---------------------------------------------------------------------------
-   logical :: dosw, dolw
    integer :: nstep  ! current timestep number
 
    ! Pointers to heating rates on physics buffer
@@ -1372,385 +1371,375 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
    ! timestep, and if we are then we begin setting optical properties and then
    ! doing the radiative transfer separately for shortwave and longwave.
    ! TODO: split these logicals up; why do we need "dosw .or. dolw" here?
-   dosw = radiation_do('sw')
-   dolw = radiation_do('lw')
-   if (dosw .or. dolw) then
 
-      ! Do shortwave stuff...
-      if (dosw) then
+   ! Do shortwave stuff...
+   if (radiation_do('sw') .and. nday > 0) then
 
-         ! Populate RRTMGP input variables. Use the day_indices index array to
-         ! map CAM variables on all columns to the daytime-only arrays, and take
-         ! only the ktop:kbot vertical levels (mapping CAM vertical grid to
-         ! RRTMGP vertical grid).
+      ! Populate RRTMGP input variables. Use the day_indices index array to
+      ! map CAM variables on all columns to the daytime-only arrays, and take
+      ! only the ktop:kbot vertical levels (mapping CAM vertical grid to
+      ! RRTMGP vertical grid).
 
-         ! Map CAM to rad levels
-         call set_interface_temperature(state, cam_in, tint_cam(:ncol,:pver+1))
-         call map_cam_to_rad_levels(tint_cam(:ncol,:pver+1), &
-                                    tint(:ncol,:nlay+1), &
-                                    cam_interfaces(:nlay+1))
-         call map_cam_to_rad_levels(state%t(:ncol,:pver), &
-                                    tmid(:ncol,:nlay), &
-                                    cam_layers(:nlay)) 
-         call map_cam_to_rad_levels(state%pmid(:ncol,:pver), &
-                                    pmid(:ncol,:nlay), &
-                                    cam_layers(:nlay)) 
-         call map_cam_to_rad_levels(state%pint(:ncol,:pver+1), &
-                                    pint(:ncol,:nlay+1), &
-                                    cam_interfaces(:nlay+1)) 
+      ! Map CAM to rad levels
+      call set_interface_temperature(state, cam_in, tint_cam(:ncol,:pver+1))
+      call map_cam_to_rad_levels(tint_cam(:ncol,:pver+1), &
+                                 tint(:ncol,:nlay+1), &
+                                 cam_interfaces(:nlay+1))
+      call map_cam_to_rad_levels(state%t(:ncol,:pver), &
+                                 tmid(:ncol,:nlay), &
+                                 cam_layers(:nlay)) 
+      call map_cam_to_rad_levels(state%pmid(:ncol,:pver), &
+                                 pmid(:ncol,:nlay), &
+                                 cam_layers(:nlay)) 
+      call map_cam_to_rad_levels(state%pint(:ncol,:pver+1), &
+                                 pint(:ncol,:nlay+1), &
+                                 cam_interfaces(:nlay+1)) 
 
-         ! Fill layer above model top; this is done 
-         ! consistent with the RRTMG implementation
-         if (nlay > pver) then
-            tmid(:ncol,1) = state%t(:ncol,1)
-            pmid(:ncol,1) = 0.5_r8 * state%pint(:ncol,1)
-            pint(:ncol,1) = 1.01_r8
+      ! Fill layer above model top; this is done 
+      ! consistent with the RRTMG implementation
+      if (nlay > pver) then
+         tmid(:ncol,1) = state%t(:ncol,1)
+         pmid(:ncol,1) = 0.5_r8 * state%pint(:ncol,1)
+         pint(:ncol,1) = 1.01_r8
+      end if
+
+      ! Get gases for output call
+      call set_gas_concentrations(0, state, pbuf, nlay, &
+                                  gas_test, &
+                                  cam_layers(:nlay))
+      call handle_error(gas_test%get_vmr('h2o', h2ovmr(:ncol,:)))
+
+      ! Set dry column amounts explicitly. RRTMGP contains some code to do
+      ! this internally now, but we do this explicitly here to try to enforce
+      ! as much consistency with the old RRTMG implementation. This doesn't
+      ! seem to make a lot of difference, and in the future maybe we remove
+      ! or simplify this.
+      call set_coldry(pint(:ncol,:nlay+1), &
+                      h2ovmr(:ncol,:nlay), &
+                      coldry(:ncol,:nlay))
+
+      ! Send radiation inputs to history buffer. This is done here strictly
+      ! for debugging purposes, and this code can probably be removed in the
+      ! future once it is confirmed that inputs are consistent with old RRTMG
+      ! implementation.
+      call output_rad_state(state, tmid(:ncol,:), tint(:ncol,:), &
+                            pmid(:ncol,:), pint(:ncol,:), &
+                            h2ovmr=h2ovmr(:ncol,:), coldry=coldry(:ncol,:))
+
+      ! Get albedo. This uses CAM routines internally and just provides a
+      ! wrapper to improve readability of the code here.
+      call set_albedo(cam_in, albedo_direct(:nswbands,:ncol), albedo_diffuse(:nswbands,:ncol))
+
+      ! DEBUG
+      ! NOTE: this reveals that the big differences arise in the DIRECT beam
+      ! calculation! Check application of albedo here!
+      ! BUT...oddly, direct downward flux is consistent with RRTMG...the
+      ! difference is in the total upward flux...so, again, something weird
+      ! going on with application of albedo? Setting albedo to a constant
+      ! brings RRTMGP and RRTMG into (close) agreement. But albedos appear to
+      ! be the same between RRTMGP and RRTMG implementations when I output
+      ! them, so I'm not sure what is going on here.
+      !albedo_direct(:,:) = 0.5_r8
+      !albedo_diffuse(:,:) = 1._r8
+      !albedo_direct(:,:) = albedo_diffuse(:,:)
+
+      ! Set albedo to zero where nighttime for consistency with RRTMG
+      !do i = 1,nswbands
+      !   where (coszrs(:ncol) <= 0)
+      !      albedo_direct(i,:ncol) = 0
+      !      albedo_diffuse(i,:ncol) = 0
+      !   end where
+      !end do
+
+      ! Send albedos to history buffer
+      call outfld('SW_ALBEDO_DIR', transpose(albedo_direct(:nswbands,:ncol)), ncol, state%lchnk)
+      call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse(:nswbands,:ncol)), ncol, state%lchnk)
+
+      ! Compress to daytime-only arrays
+      do i = 1,nswbands
+         call compress_day_columns(albedo_direct(i,:ncol), albedo_direct_day(i,:nday), day_indices(:nday))
+         call compress_day_columns(albedo_diffuse(i,:ncol), albedo_diffuse_day(i,:nday), day_indices(:nday))
+      end do
+      call compress_day_columns(tmid(:ncol,:nlay), tmid_day(:nday,:nlay), day_indices(:nday))
+      call compress_day_columns(pmid(:ncol,:nlay), pmid_day(:nday,:nlay), day_indices(:nday))
+      call compress_day_columns(tint(:ncol,:nlay+1), tint_day(:nday,:nlay+1), day_indices(:nday))
+      call compress_day_columns(pint(:ncol,:nlay+1), pint_day(:nday,:nlay+1), day_indices(:nday))
+      call compress_day_columns(coszrs(:ncol), coszrs_day(:nday), day_indices(:nday))
+      call compress_day_columns(solar_irradiance_by_gpt(:ncol,:nswgpts), &
+                                solar_irradiance_by_gpt_day(:nday,:nswgpts), &
+                                day_indices(:nday))
+
+      ! Allocate shortwave fluxes (allsky and clearsky)
+      ! TODO: why do I need to provide my own routines to do this? Why is 
+      ! this not part of the ty_fluxes_byband object?
+      !
+      ! NOTE: fluxes defined at interfaces, so initialize to have vertical
+      ! dimension nlay+1, while we initialized the RRTMGP input variables to
+      ! have vertical dimension nlay (defined at midpoints).
+      call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, flux_sw_allsky_day, do_direct=.true.)
+      call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, flux_sw_clearsky_day, do_direct=.true.)
+      call initialize_rrtmgp_fluxes(ncol, nlay+1, nswbands, flux_sw_allsky, do_direct=.true.)
+      call initialize_rrtmgp_fluxes(ncol, nlay+1, nswbands, flux_sw_clearsky, do_direct=.true.)
+
+      ! Do shortwave cloud optics calculations
+      call t_startf('shortwave cloud optics')
+      call handle_error(cloud_optics_sw%init_2str( &
+         nday, nlay, nswgpts, &
+         name='shortwave cloud optics' &
+      ))
+
+      ! TODO: refactor the set_cloud_optics codes to allow passing arrays
+      ! rather than state/pbuf so that we can use this for SP
+      ! simulations...or alternatively add logic within the set_cloud_optics
+      ! routines to handle this.
+      call set_cloud_optics_sw(state, pbuf, &
+                               day_indices(:nday), cam_layers(:nlay), &
+                               k_dist_sw, cloud_optics_sw)
+      call t_stopf('shortwave cloud optics')
+
+      ! Initialize aerosol optics
+      call handle_error(aerosol_optics_sw%init_2str( &
+         nday, nlay, nswbands, &
+         name='shortwave aerosol optics' &
+      ))
+
+      ! Loop over diagnostic calls 
+      ! TODO: more documentation on what this means
+      !
+      ! NOTE: the climate (icall==0) calculation must occur last, so we loop
+      ! backwards.
+      call rad_cnst_get_call_list(active_calls)
+      do icall = N_DIAG,0,-1
+         if (active_calls(icall)) then
+
+            ! Get shortwave aerosol optics
+            ! NOTE: this gets vertical dimension nlay since cloud optics are
+            ! defined at model midpoints (representing optics through the whole
+            ! layer)
+            call t_startf('shortwave aerosol optics')
+            call set_aerosol_optics_sw(icall, state, pbuf, &
+                                       day_indices(:nday), &
+                                       night_indices(:nnight), &
+                                       cam_layers(:nlay), &
+                                       aerosol_optics_sw)
+            call t_stopf('shortwave aerosol optics')
+
+            ! Set gas concentrations (I believe the gases may change for
+            ! different values of icall, which is why we do this within the
+            ! loop)
+            call set_gas_concentrations(icall, state, pbuf, nlay, &
+                                        gas_concentrations_sw, &
+                                        cam_layers(:nlay), &
+                                        day_indices=day_indices(:nday))
+
+            ! Calculate dry column amount (???)
+            call handle_error(gas_concentrations_sw%get_vmr('h2o', h2ovmr(:nday,:nlay)))
+            call assert_range(pint_day(:nday,:nlay+1), 1._r8, 1.e10_r8, 'radiation: pint_day')
+            call set_coldry(pint_day(:nday,:nlay+1), &
+                            h2ovmr(:nday,:nlay), &
+                            coldry(:nday,:nlay))
+
+            ! Do shortwave radiative transfer calculations
+            call t_startf('shortwave radiation calculations')
+            call handle_error(rrtmgp_sw( &
+               k_dist_sw, gas_concentrations_sw, &
+               pmid_day(:nday,:nlay), &
+               tmid_day(:nday,:nlay), &
+               pint_day(:nday,:nlay+1), &
+               coszrs_day(:nday), &
+               albedo_direct_day(:nswbands,:nday), &
+               albedo_diffuse_day(:nswbands,:nday), &
+               cloud_optics_sw, &
+               flux_sw_allsky_day, flux_sw_clearsky_day, &
+               inc_flux=solar_irradiance_by_gpt_day(:nday,:nswgpts), &
+               col_dry=coldry(:nday,:nlay), &
+               aer_props=aerosol_optics_sw &
+            ))
+            call t_stopf('shortwave radiation calculations')
+
+            ! Expand fluxes from daytime-only arrays to full chunk arrays
+            call expand_daytime_fluxes(flux_sw_allsky_day, flux_sw_allsky, day_indices(:nday))
+            call expand_daytime_fluxes(flux_sw_clearsky_day, flux_sw_clearsky, day_indices(:nday))
+
+            ! Calculate heating rates
+            call calculate_heating_rate(flux_sw_allsky, pint(:ncol,:nlay+1), qrs_rad(:ncol,:nlay))
+            call calculate_heating_rate(flux_sw_clearsky, pint(:ncol,:nlay+1), qrsc_rad(:ncol,:nlay))
+
+            ! Map heating rates to CAM columns and levels
+            call map_rad_to_cam_levels(qrs_rad(:ncol,:nlay), qrs(:ncol,:pver), cam_layers(:nlay))
+            call map_rad_to_cam_levels(qrsc_rad(:ncol,:nlay), qrsc(:ncol,:pver), cam_layers(:nlay))
+                        
+            ! Send heating rates to history buffer
+            call outfld('QRS'//diag(icall), qrs(:ncol,:pver)/cpair, ncol, state%lchnk)
+            call outfld('QRSC'//diag(icall), qrsc(:ncol,:pver)/cpair, ncol, state%lchnk)
+
+            ! Send fluxes to history buffer
+            call output_fluxes_sw(icall, state, &
+                                  flux_sw_allsky, flux_sw_clearsky, &
+                                  cam_interfaces(:nlay+1))
+
+            ! Copy outputs to pbuf fields that are used by other model
+            ! components (i.e., land)
+            call copy_fluxes_to_pbuf(pbuf, flux_sw_allsky, 'shortwave')
+
          end if
+      end do
 
-         ! Get gases for output call
-         call set_gas_concentrations(0, state, pbuf, nlay, &
-                                     gas_test, &
-                                     cam_layers(:nlay))
-         call handle_error(gas_test%get_vmr('h2o', h2ovmr(:ncol,:)))
-
-         ! Set dry column amounts explicitly. RRTMGP contains some code to do
-         ! this internally now, but we do this explicitly here to try to enforce
-         ! as much consistency with the old RRTMG implementation. This doesn't
-         ! seem to make a lot of difference, and in the future maybe we remove
-         ! or simplify this.
-         call set_coldry(pint(:ncol,:nlay+1), &
-                         h2ovmr(:ncol,:nlay), &
-                         coldry(:ncol,:nlay))
-
-         ! Send radiation inputs to history buffer. This is done here strictly
-         ! for debugging purposes, and this code can probably be removed in the
-         ! future once it is confirmed that inputs are consistent with old RRTMG
-         ! implementation.
-         call output_rad_state(state, tmid(:ncol,:), tint(:ncol,:), &
-                               pmid(:ncol,:), pint(:ncol,:), &
-                               h2ovmr=h2ovmr(:ncol,:), coldry=coldry(:ncol,:))
-
-         ! Get albedo. This uses CAM routines internally and just provides a
-         ! wrapper to improve readability of the code here.
-         call set_albedo(cam_in, albedo_direct(:nswbands,:ncol), albedo_diffuse(:nswbands,:ncol))
-
-         ! DEBUG
-         ! NOTE: this reveals that the big differences arise in the DIRECT beam
-         ! calculation! Check application of albedo here!
-         ! BUT...oddly, direct downward flux is consistent with RRTMG...the
-         ! difference is in the total upward flux...so, again, something weird
-         ! going on with application of albedo? Setting albedo to a constant
-         ! brings RRTMGP and RRTMG into (close) agreement. But albedos appear to
-         ! be the same between RRTMGP and RRTMG implementations when I output
-         ! them, so I'm not sure what is going on here.
-         !albedo_direct(:,:) = 0.5_r8
-         !albedo_diffuse(:,:) = 1._r8
-         !albedo_direct(:,:) = albedo_diffuse(:,:)
-
-         ! Set albedo to zero where nighttime for consistency with RRTMG
-         do i = 1,nswbands
-            where (coszrs(:ncol) <= 0)
-               albedo_direct(i,:ncol) = 0
-               albedo_diffuse(i,:ncol) = 0
-            end where
-         end do
-
-         ! Send albedos to history buffer
-         call outfld('SW_ALBEDO_DIR', transpose(albedo_direct(:nswbands,:ncol)), ncol, state%lchnk)
-         call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse(:nswbands,:ncol)), ncol, state%lchnk)
-
-         ! Compress to daytime-only arrays
-         do i = 1,nswbands
-            call compress_day_columns(albedo_direct(i,:ncol), albedo_direct_day(i,:nday), day_indices(:nday))
-            call compress_day_columns(albedo_diffuse(i,:ncol), albedo_diffuse_day(i,:nday), day_indices(:nday))
-         end do
-         call compress_day_columns(tmid(:ncol,:nlay), tmid_day(:nday,:nlay), day_indices(:nday))
-         call compress_day_columns(pmid(:ncol,:nlay), pmid_day(:nday,:nlay), day_indices(:nday))
-         call compress_day_columns(tint(:ncol,:nlay+1), tint_day(:nday,:nlay+1), day_indices(:nday))
-         call compress_day_columns(pint(:ncol,:nlay+1), pint_day(:nday,:nlay+1), day_indices(:nday))
-         call compress_day_columns(coszrs(:ncol), coszrs_day(:nday), day_indices(:nday))
-         call compress_day_columns(solar_irradiance_by_gpt(:ncol,:nswgpts), &
-                                   solar_irradiance_by_gpt_day(:nday,:nswgpts), &
-                                   day_indices(:nday))
-
-         ! Allocate shortwave fluxes (allsky and clearsky)
-         ! TODO: why do I need to provide my own routines to do this? Why is 
-         ! this not part of the ty_fluxes_byband object?
-         !
-         ! NOTE: fluxes defined at interfaces, so initialize to have vertical
-         ! dimension nlay+1, while we initialized the RRTMGP input variables to
-         ! have vertical dimension nlay (defined at midpoints).
-         call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, flux_sw_allsky_day, do_direct=.true.)
-         call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, flux_sw_clearsky_day, do_direct=.true.)
-         call initialize_rrtmgp_fluxes(ncol, nlay+1, nswbands, flux_sw_allsky, do_direct=.true.)
-         call initialize_rrtmgp_fluxes(ncol, nlay+1, nswbands, flux_sw_clearsky, do_direct=.true.)
-
-         ! Do shortwave cloud optics calculations
-         call t_startf('shortwave cloud optics')
-         call handle_error(cloud_optics_sw%init_2str( &
-            nday, nlay, nswgpts, &
-            name='shortwave cloud optics' &
-         ))
-
-         ! TODO: refactor the set_cloud_optics codes to allow passing arrays
-         ! rather than state/pbuf so that we can use this for SP
-         ! simulations...or alternatively add logic within the set_cloud_optics
-         ! routines to handle this.
-         call set_cloud_optics_sw(state, pbuf, &
-                                  day_indices(:nday), cam_layers(:nlay), &
-                                  k_dist_sw, cloud_optics_sw)
-         call t_stopf('shortwave cloud optics')
-
-         ! Initialize aerosol optics
-         call handle_error(aerosol_optics_sw%init_2str( &
-            nday, nlay, nswbands, &
-            name='shortwave aerosol optics' &
-         ))
-
-         ! Loop over diagnostic calls 
-         ! TODO: more documentation on what this means
-         !
-         ! NOTE: the climate (icall==0) calculation must occur last, so we loop
-         ! backwards.
-         call rad_cnst_get_call_list(active_calls)
-         do icall = N_DIAG,0,-1
-            if (active_calls(icall)) then
-
-               ! Get shortwave aerosol optics
-               ! NOTE: this gets vertical dimension nlay since cloud optics are
-               ! defined at model midpoints (representing optics through the whole
-               ! layer)
-               call t_startf('shortwave aerosol optics')
-               call set_aerosol_optics_sw(icall, state, pbuf, &
-                                          day_indices(:nday), &
-                                          night_indices(:nnight), &
-                                          cam_layers(:nlay), &
-                                          aerosol_optics_sw)
-               call t_stopf('shortwave aerosol optics')
-
-               ! Set gas concentrations (I believe the gases may change for
-               ! different values of icall, which is why we do this within the
-               ! loop)
-               call set_gas_concentrations(icall, state, pbuf, nlay, &
-                                           gas_concentrations_sw, &
-                                           cam_layers(:nlay), &
-                                           day_indices=day_indices(:nday))
-
-               ! Calculate dry column amount (???)
-               call handle_error(gas_concentrations_sw%get_vmr('h2o', h2ovmr(:nday,:nlay)))
-               call assert_range(pint_day(:nday,:nlay+1), 1._r8, 1.e10_r8, 'radiation: pint_day')
-               call set_coldry(pint_day(:nday,:nlay+1), &
-                               h2ovmr(:nday,:nlay), &
-                               coldry(:nday,:nlay))
-
-               ! Do shortwave radiative transfer calculations
-               call t_startf('shortwave radiation calculations')
-               call handle_error(rrtmgp_sw( &
-                  k_dist_sw, gas_concentrations_sw, &
-                  pmid_day(:nday,:nlay), &
-                  tmid_day(:nday,:nlay), &
-                  pint_day(:nday,:nlay+1), &
-                  coszrs_day(:nday), &
-                  albedo_direct_day(:nswbands,:nday), &
-                  albedo_diffuse_day(:nswbands,:nday), &
-                  cloud_optics_sw, &
-                  flux_sw_allsky_day, flux_sw_clearsky_day, &
-                  inc_flux=solar_irradiance_by_gpt_day(:nday,:nswgpts), &
-                  col_dry=coldry(:nday,:nlay), &
-                  aer_props=aerosol_optics_sw &
-               ))
-               call t_stopf('shortwave radiation calculations')
-
-               ! Expand fluxes from daytime-only arrays to full chunk arrays
-               call expand_daytime_fluxes(flux_sw_allsky_day, flux_sw_allsky, day_indices(:nday))
-               call expand_daytime_fluxes(flux_sw_clearsky_day, flux_sw_clearsky, day_indices(:nday))
-
-               ! Calculate heating rates
-               call calculate_heating_rate(flux_sw_allsky, pint(:ncol,:nlay+1), qrs_rad(:ncol,:nlay))
-               call calculate_heating_rate(flux_sw_clearsky, pint(:ncol,:nlay+1), qrsc_rad(:ncol,:nlay))
-
-               ! Map heating rates to CAM columns and levels
-               call map_rad_to_cam_levels(qrs_rad(:ncol,:nlay), qrs(:ncol,:pver), cam_layers(:nlay))
-               call map_rad_to_cam_levels(qrsc_rad(:ncol,:nlay), qrsc(:ncol,:pver), cam_layers(:nlay))
-                           
-               ! Send heating rates to history buffer
-               call outfld('QRS'//diag(icall), qrs(:ncol,:pver)/cpair, ncol, state%lchnk)
-               call outfld('QRSC'//diag(icall), qrsc(:ncol,:pver)/cpair, ncol, state%lchnk)
-
-               ! Send fluxes to history buffer
-               call output_fluxes_sw(icall, state, &
-                                     flux_sw_allsky, flux_sw_clearsky, &
-                                     cam_interfaces(:nlay+1))
-
-               ! Copy outputs to pbuf fields that are used by other model
-               ! components (i.e., land)
-               call copy_fluxes_to_pbuf(pbuf, flux_sw_allsky, 'shortwave')
-
-            end if
-         end do
-
-      end if  ! dosw
-
-      ! Do longwave stuff...
-      if (dolw) then
-
-         ! initialize aerosol optics object
-         ! NOTE: we can initialize the aerosol optical properties by ngpt or by
-         ! nlwbands. We initialize by nlwbands here, because that is what the
-         ! internal CAM aer_rad_props routines expect. There is logic
-         ! encapsulated in RRTMGP to figure out how the optical properties are
-         ! split up.
-         call handle_error(aerosol_optics_lw%init_1scl( &
-            ncol, nlay, nlwbands, &
-            name='longwave aerosol optics' &
-         ))
-
-         ! Initialize cloud optics object
-         call handle_error(cloud_optics_lw%init_1scl( &
-            ncol, nlay, k_dist_lw%get_ngpt(), &
-            name='longwave cloud optics' &
-         ))
-
-         ! Allocate longwave outputs; why is this not part of the
-         ! ty_fluxes_byband object?
-         ! NOTE: fluxes defined at interfaces, so initialize to have vertical
-         ! dimension pver+1
-         call initialize_rrtmgp_fluxes( &
-            ncol, nlay+1, nlwbands, &
-            flux_lw_allsky &
-         )
-         call initialize_rrtmgp_fluxes( &
-            ncol, nlay+1, nlwbands, &
-            flux_lw_clearsky &
-         )
-           
-         ! Populate state variables
-         call set_interface_temperature(state, cam_in, tint_cam(:ncol,:pver+1))
-         call map_cam_to_rad_levels(tint_cam(:ncol,:pver+1), &
-                                    tint(:ncol,:nlay+1), &
-                                    cam_interfaces(:nlay+1))
-         call map_cam_to_rad_levels(state%t(:ncol,:pver), &
-                                    tmid(:ncol,:nlay), &
-                                    cam_layers(:nlay)) 
-         call map_cam_to_rad_levels(state%pmid(:ncol,:pver), &
-                                    pmid(:ncol,:nlay), &
-                                    cam_layers(:nlay)) 
-         call map_cam_to_rad_levels(state%pint(:ncol,:pver+1), &
-                                    pint(:ncol,:nlay+1), &
-                                    cam_interfaces(:nlay+1)) 
-
-         ! Special case for top-most rad level, which is an extra level above
-         ! model top; fill temperatures in extra level with temperatures from
-         ! model top, set interface pressure at top of extra level to be a small
-         ! number, and set midpoint pressure to be half of the pressure at the
-         ! top most model interface.
-         if (nlay > pver) then
-            tint(:ncol,1) = state%t(:ncol,1)
-            tmid(:ncol,1) = state%t(:ncol,1)
-            pmid(:ncol,1) = 0.5 * state%pint(:ncol,1)
-            pint(:ncol,1) = 1.01_r8
-         end if
-
-         ! Blackbody temperature of surface
-         t_sfc(:ncol) = sqrt(sqrt(cam_in%lwup(:ncol)/stebol))
-
-         ! Do longwave cloud optics calculations
-         call t_startf('longwave cloud optics')
-         call set_cloud_optics_lw(state, pbuf, cam_layers(:nlay), k_dist_lw, &
-                                  cloud_optics_lw)
-         call t_stopf('longwave cloud optics')
-
-         ! Set surface emissivity to 1 here. There is a note in the RRTMG
-         ! implementation that this is treated in the land model, but the old
-         ! RRTMG implementation also sets this to 1. This probably does not make
-         ! a lot of difference either way, but if a more intelligent value
-         ! exists or is assumed in the model we should use it here as well.
-         ! TODO: set this more intelligently?
-         surface_emissivity(:nlwbands,:ncol) = 1.0_r8
-
-         ! get list of active radiation calls
-         call rad_cnst_get_call_list(active_calls)
-
-         ! Loop over diagnostic calls (what does this mean?)
-         do icall = N_DIAG,0,-1
-            if (active_calls(icall)) then
-
-               ! Set gas concentrations (I believe the active gases may change
-               ! for different values of icall, which is why we do this within
-               ! the loop).
-               call t_startf('longwave gas concentrations')
-               call set_gas_concentrations(icall, state, pbuf, nlay, &
-                                           gas_concentrations_lw, &
-                                           cam_layers(:nlay))
-               call t_stopf('longwave gas concentrations')
-
-               ! Calculate dry column amount (???)
-               call handle_error(gas_concentrations_lw%get_vmr('h2o', h2ovmr(:ncol,:nlay)))
-               call set_coldry(pint(:ncol,:nlay+1), &
-                               h2ovmr(:ncol,:nlay), &
-                               coldry(:ncol,:nlay))
-
-               ! Get longwave aerosol optics
-               call t_startf('longwave aerosol optics')
-               call set_aerosol_optics_lw(icall, state, pbuf, cam_layers(:nlay), aerosol_optics_lw)
-               call t_stopf('longwave aerosol optics')
-
-               ! Do longwave radiative transfer calculations
-               call t_startf('longwave radiation calculations')
-               call handle_error(rrtmgp_lw( &
-                  k_dist_lw, gas_concentrations_lw, &
-                  pmid(:ncol,:nlay), tmid(:ncol,:nlay), &
-                  pint(:ncol,:nlay+1), t_sfc(:ncol), &
-                  surface_emissivity(:nlwbands,:ncol), &
-                  cloud_optics_lw, &
-                  flux_lw_allsky, flux_lw_clearsky, &
-                  t_lev=tint(:ncol,:nlay+1), &
-                  col_dry=coldry(:ncol,:nlay), &
-                  aer_props=aerosol_optics_lw &
-               ))
-               call t_stopf('longwave radiation calculations')
-
-               ! Calculate heating rates
-               call calculate_heating_rate(flux_lw_allsky, pint(:ncol,:nlay+1), &
-                                           qrl_rad(:ncol,:nlay))
-               call calculate_heating_rate(flux_lw_clearsky, pint(:ncol,:nlay+1), &
-                                           qrlc_rad(:ncol,:nlay))
-
-               ! Map heating rates to CAM columns and levels
-               call map_rad_to_cam_levels(qrl_rad(:ncol,:nlay), qrl(:ncol,:pver), cam_layers(:nlay))
-               call map_rad_to_cam_levels(qrlc_rad(:ncol,:nlay), qrlc(:ncol,:pver), cam_layers(:nlay))
-                           
-               ! Send heating rates to history buffer
-               call outfld('QRL'//diag(icall), qrl(:ncol,:pver)/cpair, ncol, state%lchnk)
-               call outfld('QRLC'//diag(icall), qrlc(:ncol,:pver)/cpair, ncol, state%lchnk)
-
-               ! Copy fluxes to pbuf
-               call copy_fluxes_to_pbuf(pbuf, flux_lw_allsky, 'longwave')
-
-               ! Send fluxes to history buffer
-               call output_fluxes_lw(icall, state, flux_lw_allsky, flux_lw_clearsky, cam_interfaces(:nlay+1))
-
-            end if  ! active calls
-         end do  ! loop over diagnostic calls
-               
-      else
-         !if (conserve_energy) then
-         !   qrl(:ncol,:pver) = qrl(:ncol,:pver) / state%pdel(:ncol,:pver)
-         !end if
-      end if  ! dolw
-
-   else  ! dosw .or. dolw
-      ! convert radiative heating rates from Q*dp to Q for energy conservation
-      ! TODO: move this into individual conditionals for sw and lw
+   else
+      ! Conserve energy
       if (conserve_energy) then
-         do k = 1,pver
-            do i = 1,ncol
-               qrs(i,k) = qrs(i,k)/state%pdel(i,k)
-               qrl(i,k) = qrl(i,k)/state%pdel(i,k)
-            end do
-         end do
-      end if  
-   end if  ! dosw .or. dolw
+         qrs(:ncol,:pver) = qrs(:ncol,:pver) / state%pdel(:ncol,:pver)
+      end if
+   end if  ! dosw
+
+   ! Do longwave stuff...
+   if (radiation_do('lw')) then
+
+      ! initialize aerosol optics object
+      ! NOTE: we can initialize the aerosol optical properties by ngpt or by
+      ! nlwbands. We initialize by nlwbands here, because that is what the
+      ! internal CAM aer_rad_props routines expect. There is logic
+      ! encapsulated in RRTMGP to figure out how the optical properties are
+      ! split up.
+      call handle_error(aerosol_optics_lw%init_1scl( &
+         ncol, nlay, nlwbands, &
+         name='longwave aerosol optics' &
+      ))
+
+      ! Initialize cloud optics object
+      call handle_error(cloud_optics_lw%init_1scl( &
+         ncol, nlay, k_dist_lw%get_ngpt(), &
+         name='longwave cloud optics' &
+      ))
+
+      ! Allocate longwave outputs; why is this not part of the
+      ! ty_fluxes_byband object?
+      ! NOTE: fluxes defined at interfaces, so initialize to have vertical
+      ! dimension pver+1
+      call initialize_rrtmgp_fluxes( &
+         ncol, nlay+1, nlwbands, &
+         flux_lw_allsky &
+      )
+      call initialize_rrtmgp_fluxes( &
+         ncol, nlay+1, nlwbands, &
+         flux_lw_clearsky &
+      )
+        
+      ! Populate state variables
+      call set_interface_temperature(state, cam_in, tint_cam(:ncol,:pver+1))
+      call map_cam_to_rad_levels(tint_cam(:ncol,:pver+1), &
+                                 tint(:ncol,:nlay+1), &
+                                 cam_interfaces(:nlay+1))
+      call map_cam_to_rad_levels(state%t(:ncol,:pver), &
+                                 tmid(:ncol,:nlay), &
+                                 cam_layers(:nlay)) 
+      call map_cam_to_rad_levels(state%pmid(:ncol,:pver), &
+                                 pmid(:ncol,:nlay), &
+                                 cam_layers(:nlay)) 
+      call map_cam_to_rad_levels(state%pint(:ncol,:pver+1), &
+                                 pint(:ncol,:nlay+1), &
+                                 cam_interfaces(:nlay+1)) 
+
+      ! Special case for top-most rad level, which is an extra level above
+      ! model top; fill temperatures in extra level with temperatures from
+      ! model top, set interface pressure at top of extra level to be a small
+      ! number, and set midpoint pressure to be half of the pressure at the
+      ! top most model interface.
+      if (nlay > pver) then
+         tint(:ncol,1) = state%t(:ncol,1)
+         tmid(:ncol,1) = state%t(:ncol,1)
+         pmid(:ncol,1) = 0.5 * state%pint(:ncol,1)
+         pint(:ncol,1) = 1.01_r8
+      end if
+
+      ! Blackbody temperature of surface
+      t_sfc(:ncol) = sqrt(sqrt(cam_in%lwup(:ncol)/stebol))
+
+      ! Do longwave cloud optics calculations
+      call t_startf('longwave cloud optics')
+      call set_cloud_optics_lw(state, pbuf, cam_layers(:nlay), k_dist_lw, &
+                               cloud_optics_lw)
+      call t_stopf('longwave cloud optics')
+
+      ! Set surface emissivity to 1 here. There is a note in the RRTMG
+      ! implementation that this is treated in the land model, but the old
+      ! RRTMG implementation also sets this to 1. This probably does not make
+      ! a lot of difference either way, but if a more intelligent value
+      ! exists or is assumed in the model we should use it here as well.
+      ! TODO: set this more intelligently?
+      surface_emissivity(:nlwbands,:ncol) = 1.0_r8
+
+      ! get list of active radiation calls
+      call rad_cnst_get_call_list(active_calls)
+
+      ! Loop over diagnostic calls (what does this mean?)
+      do icall = N_DIAG,0,-1
+         if (active_calls(icall)) then
+
+            ! Set gas concentrations (I believe the active gases may change
+            ! for different values of icall, which is why we do this within
+            ! the loop).
+            call t_startf('longwave gas concentrations')
+            call set_gas_concentrations(icall, state, pbuf, nlay, &
+                                        gas_concentrations_lw, &
+                                        cam_layers(:nlay))
+            call t_stopf('longwave gas concentrations')
+
+            ! Calculate dry column amount (???)
+            call handle_error(gas_concentrations_lw%get_vmr('h2o', h2ovmr(:ncol,:nlay)))
+            call set_coldry(pint(:ncol,:nlay+1), &
+                            h2ovmr(:ncol,:nlay), &
+                            coldry(:ncol,:nlay))
+
+            ! Get longwave aerosol optics
+            call t_startf('longwave aerosol optics')
+            call set_aerosol_optics_lw(icall, state, pbuf, cam_layers(:nlay), aerosol_optics_lw)
+            call t_stopf('longwave aerosol optics')
+
+            ! Do longwave radiative transfer calculations
+            call t_startf('longwave radiation calculations')
+            call handle_error(rrtmgp_lw( &
+               k_dist_lw, gas_concentrations_lw, &
+               pmid(:ncol,:nlay), tmid(:ncol,:nlay), &
+               pint(:ncol,:nlay+1), t_sfc(:ncol), &
+               surface_emissivity(:nlwbands,:ncol), &
+               cloud_optics_lw, &
+               flux_lw_allsky, flux_lw_clearsky, &
+               t_lev=tint(:ncol,:nlay+1), &
+               col_dry=coldry(:ncol,:nlay), &
+               aer_props=aerosol_optics_lw &
+            ))
+            call t_stopf('longwave radiation calculations')
+
+            ! Calculate heating rates
+            call calculate_heating_rate(flux_lw_allsky, pint(:ncol,:nlay+1), &
+                                        qrl_rad(:ncol,:nlay))
+            call calculate_heating_rate(flux_lw_clearsky, pint(:ncol,:nlay+1), &
+                                        qrlc_rad(:ncol,:nlay))
+
+            ! Map heating rates to CAM columns and levels
+            call map_rad_to_cam_levels(qrl_rad(:ncol,:nlay), qrl(:ncol,:pver), cam_layers(:nlay))
+            call map_rad_to_cam_levels(qrlc_rad(:ncol,:nlay), qrlc(:ncol,:pver), cam_layers(:nlay))
+                        
+            ! Send heating rates to history buffer
+            call outfld('QRL'//diag(icall), qrl(:ncol,:pver)/cpair, ncol, state%lchnk)
+            call outfld('QRLC'//diag(icall), qrlc(:ncol,:pver)/cpair, ncol, state%lchnk)
+
+            ! Copy fluxes to pbuf
+            call copy_fluxes_to_pbuf(pbuf, flux_lw_allsky, 'longwave')
+
+            ! Send fluxes to history buffer
+            call output_fluxes_lw(icall, state, flux_lw_allsky, flux_lw_clearsky, cam_interfaces(:nlay+1))
+
+         end if  ! active calls
+      end do  ! loop over diagnostic calls
+            
+   else
+      ! Conserve energy (what does this mean exactly?)
+      if (conserve_energy) then
+         qrl(:ncol,:pver) = qrl(:ncol,:pver) / state%pdel(:ncol,:pver)
+      end if
+   end if  ! dolw
 
    ! Compute net radiative heating tendency
    call t_startf('radheat_tend')
@@ -2454,8 +2443,6 @@ end subroutine set_daynight_indices
 ! Subroutine to calculate the solar insolation, accounting for orbital
 ! eccentricity and solar variability
 subroutine set_solar_irradiance_by_gpt(kdist, solar_irradiance)
-   use radconstants,  only: get_ref_solar_band_irrad
-   use rad_solar_var, only: get_variability
    use cam_control_mod, only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod, only: shr_orb_decl
    use time_manager, only: get_curr_calday
@@ -2490,7 +2477,7 @@ subroutine set_solar_irradiance_by_gpt(kdist, solar_irradiance)
 end subroutine set_solar_irradiance_by_gpt
 
 
-! Get and set cosine of the solar zenith angle or all columns in a physics chuck
+! Get and set cosine of the solar zenith angle for all columns in a physics chuck
 ! based on input physics_state object and timestep. This routine serves mainly
 ! as a wrapper for the "zenith" subroutine that handles the task of grabbing the
 ! appropriate calendar day for this timestep and the latitude and longitude 
@@ -2548,7 +2535,8 @@ subroutine set_albedo(cam_in, albedo_direct, albedo_diffuse)
    real(r8), intent(inout) :: albedo_diffuse(:,:)  ! surface albedo, diffuse radiation
 
    ! Local namespace
-   integer :: icol, ibnd
+   real(r8) :: wavenumber_limits(2,nswbands)
+   integer :: ncol, ibnd
 
    ! Check dimension sizes of output arrays.
    ! albedo_direct and albedo_diffuse should have sizes nswbands,ncol, but ncol
@@ -2561,6 +2549,46 @@ subroutine set_albedo(cam_in, albedo_direct, albedo_diffuse)
    call assert(all(shape(albedo_direct) == shape(albedo_diffuse)), &
                'set_albedo: albedo_direct and albedo_diffuse have inconsistent shapes')
    
+   ncol = size(albedo_direct, 2)
+
+   ! Initialize albedo
+   albedo_direct(:,:) = 0._r8
+   albedo_diffuse(:,:) = 0._r8
+
+   ! Albedos are input as broadband (visible, and near-IR), and we need to map
+   ! these to appropriate bands. Bands are categorized broadly as "visible" or
+   ! "infrared" based on wavenumber, so we get the wavenumber limits here
+   wavenumber_limits = k_dist_sw%get_band_lims_wavenumber()
+
+   ! Loop over bands, and determine for each band whether it is broadly in the
+   ! visible or infrared part of the spectrum (visible or "not visible")
+   do ibnd = 1,nswbands
+      if (is_visible(wavenumber_limits(1,ibnd)) .and. &
+          is_visible(wavenumber_limits(2,ibnd))) then
+
+         ! Entire band is in the visible
+         albedo_direct(ibnd,:ncol) = cam_in%asdir(:ncol)
+         albedo_diffuse(ibnd,:ncol) = cam_in%asdif(:ncol)
+
+      else if (.not.is_visible(wavenumber_limits(1,ibnd)) .and. &
+               .not.is_visible(wavenumber_limits(2,ibnd))) then
+
+         ! Entire band is in the longwave
+         albedo_direct(ibnd,:ncol) = cam_in%aldir(:ncol)
+         albedo_diffuse(ibnd,:ncol) = cam_in%aldif(:ncol)
+
+      else
+
+         ! Band straddles the visible to near-infrared transition, so we take
+         ! the albedo to be the average of the visible and near-infrared
+         ! broadband albedos
+         albedo_direct(ibnd,:ncol) = 0.5 * (cam_in%aldir(:ncol) + cam_in%asdir(:ncol))
+         albedo_diffuse(ibnd,:ncol) = 0.5 * (cam_in%aldif(:ncol) + cam_in%asdif(:ncol))
+
+      end if
+   end do
+
+#ifdef DO_FRAGILE_BAND_MAPPING
    ! Surface albedo (band mapping is hardcoded for RRTMG(P) code)
    ! This mapping assumes nswbands=14.
    ! TODO: we should handle this more intelligently
@@ -2568,30 +2596,26 @@ subroutine set_albedo(cam_in, albedo_direct, albedo_diffuse)
       call endrun(module_name //': ERROR: albedo band mapping assumes nswbands=14')
    end if
 
-   ! Initialize albedo
-   albedo_direct(:,:) = 0._r8
-   albedo_diffuse(:,:) = 0._r8
-
    ! Code lifted from RRTMG implementation
    do icol = 1,size(albedo_direct, 2)
-      do ibnd = 1,8
+
+      do ibnd = 1,9
          albedo_direct(ibnd,icol) = cam_in%aldir(icol)
          albedo_diffuse(ibnd,icol) = cam_in%aldif(icol)
       enddo
-      albedo_direct(nswbands,icol) = cam_in%aldir(icol)
-      albedo_diffuse(nswbands,icol) = cam_in%aldif(icol)
 
-      ! Set band 24 (or, band 9 counting from 1) to use linear average of UV/visible
+      ! Set band 25 (or, band 10 counting from 1) to use linear average of UV/visible
       ! and near-IR values, since this band straddles 0.7 microns:
-      albedo_direct(9,icol) = 0.5*(cam_in%aldir(icol) + cam_in%asdir(icol))
-      albedo_diffuse(9,icol) = 0.5*(cam_in%aldif(icol) + cam_in%asdif(icol))
+      albedo_direct(10,icol) = 0.5*(cam_in%aldir(icol) + cam_in%asdir(icol))
+      albedo_diffuse(10,icol) = 0.5*(cam_in%aldif(icol) + cam_in%asdif(icol))
 
-      ! UV/visible bands 25-28 (10-13), 16000-50000 cm-1, 0.200-0.625 micron
-      do ibnd = 10,13
+      ! UV/visible bands 25-28 (11-14), 16000-50000 cm-1, 0.200-0.625 micron
+      do ibnd = 11,nswbands
          albedo_direct(ibnd,icol) = cam_in%asdir(icol)
          albedo_diffuse(ibnd,icol) = cam_in%asdif(icol)
       enddo
    end do
+#endif
 
    ! Check values and clip if necessary (albedos should not be larger than 1)
    ! NOTE: this does actually issue warnings for albedos larger than 1, but this
@@ -2601,6 +2625,29 @@ subroutine set_albedo(cam_in, albedo_direct, albedo_diffuse)
    call clip_values(albedo_diffuse, 0._r8, 1._r8, varname='albedo_diffuse', warn=.true.)
 
 end subroutine set_albedo
+
+!-------------------------------------------------------------------------------
+
+! Function to check if a wavenumber is in the visible or IR
+logical function is_visible(wavenumber)
+
+   use mo_rte_kind, only: wp
+   
+   ! Input wavenumber; this needs to be input in inverse cm (cm^-1)
+   real(wp), intent(in) :: wavenumber
+
+   ! Threshold between visible and infrared is 0.7 micron, or 14286 cm^-1
+   real(wp), parameter :: visible_wavenumber_threshold = 14286._wp  ! cm^-1
+
+   ! Wavenumber is in the visible if it is above the visible threshold
+   ! wavenumber, and in the infrared if it is below the threshold
+   if (wavenumber > visible_wavenumber_threshold) then
+      is_visible = .true.
+   else
+      is_visible = .false.
+   end if
+
+end function is_visible
 
 !-------------------------------------------------------------------------------
 

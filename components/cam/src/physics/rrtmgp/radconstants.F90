@@ -23,45 +23,28 @@ integer, parameter, public :: nbndsw = 14
 ! to affect IR solar variability should take note of this.
 
 real(r8),parameter :: wavenum_low(nbndsw) = & ! in cm^-1
-  (/2600._r8, 3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, 7700._r8, &
-    8050._r8,12850._r8,16000._r8,22650._r8,29000._r8,38000._r8,  820._r8/)
+  (/ 820._r8, 2600._r8, 3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, &
+    7700._r8, 8050._r8,12850._r8,16000._r8,22650._r8,29000._r8,38000._r8/)
 real(r8),parameter :: wavenum_high(nbndsw) = & ! in cm^-1
-  (/3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, 7700._r8, 8050._r8, &
-   12850._r8,16000._r8,22650._r8,29000._r8,38000._r8,50000._r8, 2600._r8/)
+  (/2600._r8, 3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, 7700._r8, &
+    8050._r8,12850._r8,16000._r8,22650._r8,29000._r8,38000._r8,50000._r8/)
 
 ! Solar irradiance at 1 A.U. in W/m^2 assumed by radiation code
 ! Rescaled so that sum is precisely 1368.22 and fractional amounts sum to 1.0
 real(r8), parameter :: solar_ref_band_irradiance(nbndsw) = & 
    (/ &
-    12.11_r8,  20.3600000000001_r8, 23.73_r8, &
+    12.89_r8,  12.11_r8,  20.3600000000001_r8, 23.73_r8, &
     22.43_r8,  55.63_r8, 102.93_r8, 24.29_r8, &
    345.74_r8, 218.19_r8, 347.20_r8, &
-   129.49_r8,  50.15_r8,   3.08_r8, 12.89_r8 &
+   129.49_r8,  50.15_r8,   3.08_r8 &
    /)
 
-! None of the following comment appears to be the case any more? This
-! should be reevalutated and/or removed.
-
-! rrtmg (coarse) reference solar flux in rrtmg is initialized as the following
-! reference data inside rrtmg seems to indicate 1366.44 instead
-!  This data references 1366.442114152342
-!real(r8), parameter :: solar_ref_band_irradiance(nbndsw) = & 
-!   (/ &
-!   12.10956827000000_r8, 20.36508467999999_r8, 23.72973826333333_r8, &
-!   22.42769644333333_r8, 55.62661262000000_r8, 102.9314315544444_r8, 24.29361887666667_r8, &
-!   345.7425138000000_r8, 218.1870300666667_r8, 347.1923147000001_r8, &
-!   129.4950181200000_r8, 48.37217043000000_r8, 3.079938997898001_r8, 12.88937733000000_r8 &
-!   /)
-!  Kurucz (fine) reference would seem to imply the following but the above values are from rrtmg_sw_init
-!  (/12.109559, 20.365097, 23.729752, 22.427697, 55.626622, 102.93142, 24.293593, &
-!    345.73655, 218.18416, 347.18406, 129.49407, 50.147238, 3.1197130, 12.793834 /)
-
 ! These are indices to the band for diagnostic output
-integer, parameter, public :: idx_sw_diag = 10 ! index to sw visible band
-integer, parameter, public :: idx_nir_diag = 8 ! index to sw near infrared (778-1240 nm) band
-integer, parameter, public :: idx_uv_diag = 11 ! index to sw uv (345-441 nm) band
+integer, parameter, public :: idx_sw_diag = 11 ! index to sw visible band
+integer, parameter, public :: idx_nir_diag = 9 ! index to sw near infrared (778-1240 nm) band
+integer, parameter, public :: idx_uv_diag = 12 ! index to sw uv (345-441 nm) band
 
-integer, parameter, public :: rrtmg_sw_cloudsim_band = 9  ! rrtmg band for .67 micron
+integer, parameter, public :: rrtmg_sw_cloudsim_band = 10  ! rrtmg band for .67 micron
 
 ! Number of evenly spaced intervals in rh
 ! The globality of this mesh may not be necessary
