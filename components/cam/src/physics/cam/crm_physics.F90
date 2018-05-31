@@ -2443,17 +2443,10 @@ end subroutine crm_physics_tend
 !=====================================================================================================
 !=====================================================================================================
 subroutine crm_save_state_tend(state,tend,pbuf)
-! subroutine crm_save_state_tend(state, tend, pbuf, &
-!                                ,state_save,tend_save,cldo_save &
-! #if defined( MODAL_AERO )
-!                                ,qqcw_save,dgnumwet_save &
-! #endif
-!                                )
-!-----------------------------------------------------------------------------------------------------
-! This subroutine is used to save state, tend, cldo, qqcw and dgnumwet so that they can be used
-! after they have been changed by conventional physics.
-!-----------------------------------------------------------------------------------------------------
-   ! use infnan,          only: inf
+   !-----------------------------------------------------------------------------
+   ! This subroutine is used to save state variables at the beginning of tphysbc
+   ! so they can be recalled after they have been changed by conventional physics
+   !-----------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_tend, physics_tend_alloc
    use time_manager,    only: is_first_step
    use physics_buffer,  only: pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
@@ -2467,17 +2460,6 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    type(physics_state),       intent(in   ) :: state
    type(physics_tend),        intent(in   ) :: tend
    type(physics_buffer_desc), pointer       :: pbuf(:)
-   ! type(physics_state),       intent(  out) :: state_save
-   ! type(physics_tend),        intent(  out) :: tend_save
-   
-   ! real(r8)                 , intent(  out) :: cldo_save(pcols, pver)  ! old cloud fraction
-
-! #ifdef MODAL_AERO
-!    real(r8)                 , intent(  out) :: qqcw_save(pcols,pver,pcnst)
-!    real(r8)                 , intent(  out) :: qqcw_all(pcols,pver,pcnst)
-!    real(r8)                 , intent(  out) :: dgnumwet_save(pcols, pver, ntot_amode)
-!    real(r8)                 , pointer       :: dgnumwet(:,:,:)
-! #endif
 
    integer itim, ifld, ncol, i, lchnk
    real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
@@ -2488,10 +2470,10 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    call phys_getopts( use_SPCAM_out = use_SPCAM )
    call phys_getopts( use_ECPP_out  = use_ECPP  )
 
-   lchnk = state%lchnk
-   ncol  = state%ncol
-
    if (use_SPCAM) then
+
+      lchnk = state%lchnk
+      ncol  = state%ncol
 
       itim = pbuf_old_tim_idx()
       
@@ -2554,6 +2536,10 @@ end subroutine crm_save_state_tend
 !=====================================================================================================
 !=====================================================================================================
 subroutine crm_remember_state_tend(state,tend,pbuf)
+   !-----------------------------------------------------------------------------
+   ! This subroutine is used to recall the state that was saved prior
+   ! to running the conventional GCM physics routines
+   !-----------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_tend, physics_tend_dealloc
    use time_manager,    only: is_first_step
    use physics_buffer,  only: pbuf_get_field, physics_buffer_desc, dyn_time_lvls
@@ -2577,10 +2563,10 @@ subroutine crm_remember_state_tend(state,tend,pbuf)
    call phys_getopts( use_SPCAM_out = use_SPCAM )
    call phys_getopts( use_ECPP_out  = use_ECPP  )
 
-   lchnk = state%lchnk
-   ncol  = state%ncol
-
    if (use_SPCAM) then
+
+      lchnk = state%lchnk
+      ncol  = state%ncol
 
       ! gas and aerosol species are updated by shallow convective transport.
       ! Aerosol changes from dropmixnuc in cldwat2m.F90 are discarded. 
