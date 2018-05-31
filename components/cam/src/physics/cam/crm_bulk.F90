@@ -23,10 +23,7 @@ module crm_bulk_mod
 
    public :: crm_bulk_transport
    public :: crm_bulk_aero_mix_nuc 
-   
-   ! public :: crm_bulk_diagnose_cloud
-   ! public :: crm_bulk_diagnose_clear
-   ! public :: crm_bulk_diagnose_ww
+   ! public :: crm_bulk_diagnose_cloudy_clear
 
    private :: crm_bulk_transport_tend 
 
@@ -59,7 +56,7 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    type(physics_ptend), intent(out)   :: ptend        ! indivdual parameterization tendencies
 
    !!! Local variables
-   integer :: i, lchnk, ncol
+   integer :: i, m, lchnk, ncol
    integer :: ixcldice, ixcldliq                      ! constituent indices for cloud liquid and ice water.
    real(r8), dimension(pcols,pver)  :: dpdry          ! ?
    real(r8), dimension(pcols,pver)  :: dp             ! layer thickness in mbs (between upper/lower interface).
@@ -101,7 +98,7 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
 
    !!! set the flag for dry constituents
    dry_const_flag(:,:) = .false.
-   do m = 1, pcnst
+   do m = 1,pcnst
       if (cnst_get_type_byind(m).eq.'dry') then
          dry_const_flag(:,m) = .true.
       end if
@@ -630,6 +627,26 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    deallocate(factnum)
 
 end subroutine crm_bulk_aero_mix_nuc
+!==================================================================================================================
+!==================================================================================================================
+
+! subroutine crm_bulk_diagnose_cloudy_clear()
+   !-----------------------------------------------------------------------------------------
+   ! Purpose: diagnose statistics of cloudy and clear classes from CRM 
+   !          for input data to crm_bulk_aero_mix_nuc()
+   ! Walter Hannah (LLNL), 2018
+   !-----------------------------------------------------------------------------------------
+
+   !!! initialize running average quantities when CRM starts? (or use separate subroutine) 
+
+   !!! determine clear/cloudy staet of each CRM gridcell
+
+   !!! determine current vertical velocity variance
+
+   !!! add stats to running average variables
+
+! end subroutine 
+
 !==================================================================================================================
 !==================================================================================================================
 

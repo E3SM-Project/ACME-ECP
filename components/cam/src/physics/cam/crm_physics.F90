@@ -158,7 +158,7 @@ subroutine crm_physics_register()
 #endif
 
    
-  if (use_ECPP) then
+  ! if (use_ECPP) then
      call pbuf_add_field('MU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux up
      call pbuf_add_field('MD_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux down
      call pbuf_add_field('DU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
@@ -173,7 +173,7 @@ subroutine crm_physics_register()
 
      ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
      call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
-  endif 
+  ! endif 
 
 
 end subroutine crm_physics_register
@@ -182,7 +182,7 @@ end subroutine crm_physics_register
 subroutine crm_physics_init(species_class)
 !-------------------------------------------------------------------------------------------------------
 ! 
-! Purpose: initialize some varialbes, and add necessary fileds into output fields 
+! Purpose: initialize some variables, and add necessary fields into output fields 
 !
 !--------------------------------------------------------------------------------------------------------
   use physics_buffer,  only: pbuf_get_index
@@ -202,12 +202,8 @@ subroutine crm_physics_init(species_class)
   use cam_history,   only: fieldname_len
   use spmd_utils,    only: masterproc
   use modal_aero_data, only:  cnst_name_cw, &
-!                               lmassptr_amode, lmassptrcw_amode, lwaterptr_amode, &
                                 lmassptr_amode, lmassptrcw_amode, &
                                 nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode
-!==Guangxing Lin
-!                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode, &
-!                                species_class, spec_class_gas
        
     integer :: l, lphase, lspec
     character(len=fieldname_len)   :: tmpname
@@ -530,7 +526,7 @@ end subroutine crm_physics_init
    use check_energy,    only: check_energy_chng
 
 #if defined( SP_CRM_BULK )
-   use crm_bulk_mod     only: crm_bulk_transport, crm_bulk_aero_mix_nuc
+   use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
 #endif
 
 ! modal_aero_data only exists if MODAL_AERO
@@ -551,7 +547,7 @@ end subroutine crm_physics_init
    use module_data_ecpp1, only: dtstep_pp_input
 #endif
    use phys_grid,       only: get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p, get_gcol_p
-   use convect_deep,    only: convect_deep_tend_2, deep_scheme_does_scav_trans
+   ! use convect_deep,    only: convect_deep_tend_2, deep_scheme_does_scav_trans
    !!!use aerosol_intr,    only: aerosol_wet_intr
 
 #if defined( SP_ORIENT_RAND )
