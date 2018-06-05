@@ -61,11 +61,11 @@ module crm_physics
    real(r8),pointer  :: dgnumwet(:,:,:)
 #endif
 
-!========================================================================================================
-contains
-!========================================================================================================
 
-!---------------------------------------------------------------------------------------------------------
+contains
+!=========================================================================================================
+!=========================================================================================================
+
 subroutine crm_physics_register()
 !-------------------------------------------------------------------------------------------------------
 ! 
@@ -177,6 +177,8 @@ subroutine crm_physics_register()
 
 
 end subroutine crm_physics_register
+
+!=========================================================================================================
 !=========================================================================================================
 
 subroutine crm_physics_init(species_class)
@@ -483,9 +485,8 @@ subroutine crm_physics_init(species_class)
 
 end subroutine crm_physics_init
 !=========================================================================================================
-
-!---------------------------------------------------------------------------------------------------------
-   subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,species_class, phys_stage)
+!=========================================================================================================
+subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,species_class, phys_stage)
 
 !------------------------------------------------------------------------------------------
 !  Purpose: to update state from CRM physics. 
@@ -2244,10 +2245,9 @@ end subroutine crm_physics_init
 
 
 !----------------------------------------------------------------------
-! Aerosol stuff...
+! Aerosol stuff
 !----------------------------------------------------------------------
-  !-- mark branson: insert ifdef m2005 block so that 1-moment microphysics will compile
-  ! if (SPCAM_microp_scheme .eq. 'm2005') then
+    
     call t_startf('bc_aerosols_mmf')
 
     !!! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
@@ -2287,7 +2287,7 @@ end subroutine crm_physics_init
     !----------------------------------------------------
     ! CRM Bulk Calculations (i.e. ECPP-lite)
     !----------------------------------------------------
-#if defined( SP_CRM_BULK )
+! #if defined( SP_CRM_BULK )
   
     !!! Note: ptend initialization done within crm_bulk_*() routines - whannah
 
@@ -2303,11 +2303,11 @@ end subroutine crm_physics_init
     ! call crm_bulk_aero_wet_dep_scav()
     ! call physics_update(state, ptend, crm_run_time, tend)
 
-    !!! calculate bulk transport tendencies
-    call crm_bulk_transport(state, pbuf, ptend)
-    call physics_update (state, ptend, crm_run_time, tend)
+    ! !!! calculate bulk transport tendencies
+    ! call crm_bulk_transport(state, pbuf, ptend)
+    ! call physics_update (state, ptend, crm_run_time, tend)
 
-#endif /* SP_CRM_BULK */
+! #endif /* SP_CRM_BULK */
     !----------------------------------------------------
     ! ECPP - Explicit-Cloud Parameterized-Pollutant
     ! Use CRM cloud statistics to calculate 
@@ -2319,19 +2319,6 @@ end subroutine crm_physics_init
 
       pblh_idx  = pbuf_get_index('pblh')
       call pbuf_get_field(pbuf, pblh_idx, pblh)
-
- 
-      ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
-      ! So only turbulence mixing is done here.
-      !
-      !           call t_startf('crmclouds_mixnuc')
-      !           call crmclouds_mixnuc_tend (state, ptend, ztodt, cam_in%cflx, pblh, pbuf,  &
-      !                 wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd)
-      !           call physics_update(state, tend, ptend, ztodt)
-      !           call t_stopf('crmclouds_mixnuc')
-      ! 
-      ! ECPP is called at every 3rd GCM time step.
-      ! GCM time step is 10 minutes, and ECPP time step is 30 minutes.
       
       dtstep_pp = dtstep_pp_input
 #if defined( SP_CRM_SPLIT )
@@ -2341,17 +2328,9 @@ end subroutine crm_physics_init
 #endif
       if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
 
-        ! whannah - re-initialize ptend? - probably not necessary
-        ! lu    = .false. 
-        ! lv    = .false.
-        ! ls    = .false.
-        ! lq(:) = .true.
-        ! fromcrm = .false.
-        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-        ! ptend%lq(:) = .true.
-        ! ptend%q(:,:,:) = 0.0_r8
-
         ! calculate aerosol tendency from droplet activation and mixing
+        ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
+        ! So only turbulence mixing is done here.
         call t_startf('crmclouds_mixnuc')
         call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
                     wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class
@@ -2360,52 +2339,19 @@ end subroutine crm_physics_init
 
         ! ECPP interface
 
-        ! whannah - re-initialize ptend again? - probably not necessary
-        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-        ! ptend%lq(:) = .true.
-        ! ptend%q(:,:,:) = 0.0_r8
-
         call t_startf('ecpp')
         call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
            acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
            rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
-
-        ! whannah - debugging information for NaN issue
-        ! do i=1,ncol
-        ! do k=1,pver
-        !   if ( ieee_is_nan( ptend%q(i,k,0)  ) ) then
-        !     ptend%q(i,k,0) = 0.
-        !   endif
-        !   ! write(iulog,*) ""
-        !   ! write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
-        ! enddo
-        ! enddo
-              
-        ! ptend%q(:,:,:) = 0.0_r8 ! whannah - zero out tendency for testing - doesn't help NaN problem!
 
         call physics_update(state, ptend, dtstep_pp, tend)
 
         call t_stopf ('ecpp')
       end if
     endif ! use_ECPP
-#endif
-
+#endif /* ECPP */
 
     call t_stopf('bc_aerosols_mmf')
-  ! endif ! SPCAM_microp_scheme .eq. 'm2005'
-
-
-! 5001 format('whannah - ECPP tendency   lev ',i5,'    lat =',f8.2,'    lon =',f8.2  )
-! 5002 format('whannah - ECPP tendency   i: ',i4,    &
-!                                   '    chnk: ',i4, &
-!                                   '    k: ',i4, &
-!                                   '    y: ',f5.1, &
-!                                   '    x: ',f5.1, &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2 )
-
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -2431,17 +2377,16 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 ! save for old CRM cloud fraction 
 !----------------------------------------------------------------------
-  ! In the CAM model, this is done in cldwat2m.F90.
+  ! without the CRM, this is done in cldwat2m.F90.
   cldo(:ncol, :) = cld(:ncol, :)
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
-
 end subroutine crm_physics_tend
-!--------------------------------------------------------------------------------------------
 
-!=====================================================================================================
-!=====================================================================================================
+!=========================================================================================================
+!=========================================================================================================
+
 subroutine crm_save_state_tend(state,tend,pbuf)
    !-----------------------------------------------------------------------------
    ! This subroutine is used to save state variables at the beginning of tphysbc
@@ -2535,6 +2480,7 @@ end subroutine crm_save_state_tend
 
 !=====================================================================================================
 !=====================================================================================================
+
 subroutine crm_remember_state_tend(state,tend,pbuf)
    !-----------------------------------------------------------------------------
    ! This subroutine is used to recall the state that was saved prior
@@ -2604,6 +2550,7 @@ end subroutine crm_remember_state_tend
 
 !=====================================================================================================
 !=====================================================================================================
+
 subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, effl, effi, effl_fn, deffi, lamcrad, pgamrad, des)
    !-----------------------------------------------------------------------------------------------------
    ! This subroutine is used to calculate droplet and ice crystal effective radius, which will be used 
@@ -2820,5 +2767,8 @@ subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, effl, effi, effl_
    !------------------------------------------------------------------------------
    return
 end subroutine m2005_effradius
+
+!=========================================================================================================
+!=========================================================================================================
 
 end module crm_physics
