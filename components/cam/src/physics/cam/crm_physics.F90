@@ -887,6 +887,7 @@ end subroutine crm_physics_init
    real(crm_rknd) crm_rotation_offset     ! offset to specify preferred rotation direction 
    integer :: seed
 
+
    crm_rotation_std    = 20. * pi/180.                 ! std deviation of normal distribution for CRM rotation [radians]
    crm_rotation_offset = 90. * pi/180. * ztodt/86400.  ! This means that a CRM should rotate 90 deg / day on average
 #endif
@@ -1112,10 +1113,7 @@ end subroutine crm_physics_init
 
       do i=1,ncol
 
-         !!! set the seed based on the global physics column index
-         ! seed = get_gcol_p(lchnk,i)+nstep
-
-         !!! set the seed based on the chunk and column index
+         !!! set the seed based on the chunk and column index (duplicate seeds are ok)
          seed = lchnk + i + nstep
 
          call RNG_MT_set_seed(seed)
@@ -1558,7 +1556,7 @@ end subroutine crm_physics_init
 #ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm ( lchnk,                       icol(:ncol),                  ncol,                         is_first_step(),               phys_stage,                  &
+    call crm ( lchnk,                       icol(:ncol),                  ncol,                         phys_stage,                                                 &
                state%t(:ncol,:pver),        state%q(:ncol,:pver,1),       state%q(:ncol,:pver,ixcldliq),state%q(:ncol,:pver,ixcldice),                              &
                ul(:ncol,:pver),             vl(:ncol,:pver),                                                                                                        &
                state%ps(:ncol),             state%pmid(:ncol,:pver),      state%pdel(:ncol,:pver),      state%phis(:ncol),                                          &
