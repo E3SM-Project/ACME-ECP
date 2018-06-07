@@ -207,7 +207,8 @@ character(len=3), dimension(6) :: active_gases = (/ &
 ! kiss_seed_num is number of seed values to use?
 integer, public, parameter :: kiss_seed_num = 4
 
-! TODO: what does this mean?
+! TODO: what does this mean? This seems to be part of the additions for the
+! perturbation growth functionality.
 integer, public, allocatable :: rad_randn_seedrst(:,:,:)
 
 ! Total number of physics chunks until this processor (TODO: what exactly does
@@ -1347,13 +1348,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
    ! earth-sun distance for current day
    call set_solar_irradiance_by_gpt(k_dist_sw, solar_irradiance_by_gpt(:ncol,:nswgpts))
 
-   ! Send total solar irradiance to history buffer. The total solar irradiance
-   ! is the sum of the solar irradiance by g-point, scaled by the cosine of the
-   ! solar zenith angle. We do the scaling here because our function to set
-   ! solar irradiance by g-point above omits this because RRTMGP will do the
-   ! zenith angle scaling internally.
-   call outfld('SOLIN', coszrs(:ncol) * sum(solar_irradiance_by_gpt(:ncol,:), dim=2), ncol, state%lchnk)
-
    ! If the swrad_off flag is set, meaning we should not do SW radiation, then 
    ! we just set coszrs to zero everywhere. TODO: why not just set dosw false 
    ! and skip the loop?
@@ -1366,11 +1360,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
    call set_daynight_indices(coszrs(:ncol), day_indices(:ncol), night_indices(:ncol))
    nday = count(day_indices(:ncol) > 0)
    nnight = count(night_indices(:ncol) > 0)
-
-   ! Check if we are supposed to do shortwave and longwave stuff at this
-   ! timestep, and if we are then we begin setting optical properties and then
-   ! doing the radiative transfer separately for shortwave and longwave.
-   ! TODO: split these logicals up; why do we need "dosw .or. dolw" here?
 
    ! Do shortwave stuff...
    if (radiation_do('sw') .and. nday > 0) then
@@ -1430,28 +1419,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
       ! wrapper to improve readability of the code here.
       call set_albedo(cam_in, albedo_direct(:nswbands,:ncol), albedo_diffuse(:nswbands,:ncol))
 
-      ! DEBUG
-      ! NOTE: this reveals that the big differences arise in the DIRECT beam
-      ! calculation! Check application of albedo here!
-      ! BUT...oddly, direct downward flux is consistent with RRTMG...the
-      ! difference is in the total upward flux...so, again, something weird
-      ! going on with application of albedo? Setting albedo to a constant
-      ! brings RRTMGP and RRTMG into (close) agreement. But albedos appear to
-      ! be the same between RRTMGP and RRTMG implementations when I output
-      ! them, so I'm not sure what is going on here.
-      !albedo_direct(:,:) = 0.5_r8
-      !albedo_diffuse(:,:) = 1._r8
-      !albedo_direct(:,:) = albedo_diffuse(:,:)
-
-      ! Set albedo to zero where nighttime for consistency with RRTMG
-      !do i = 1,nswbands
-      !   where (coszrs(:ncol) <= 0)
-      !      albedo_direct(i,:ncol) = 0
-      !      albedo_diffuse(i,:ncol) = 0
-      !   end where
-      !end do
-
-      ! Send albedos to history buffer
+      ! Send albedos to history buffer (useful for debugging)
       call outfld('SW_ALBEDO_DIR', transpose(albedo_direct(:nswbands,:ncol)), ncol, state%lchnk)
       call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse(:nswbands,:ncol)), ncol, state%lchnk)
 
@@ -1568,6 +1536,9 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
             ! Map heating rates to CAM columns and levels
             call map_rad_to_cam_levels(qrs_rad(:ncol,:nlay), qrs(:ncol,:pver), cam_layers(:nlay))
             call map_rad_to_cam_levels(qrsc_rad(:ncol,:nlay), qrsc(:ncol,:pver), cam_layers(:nlay))
+
+            ! Send solar insolation to history buffer
+            call outfld('SOLIN'//diag(icall), flux_sw_clearsky%flux_dn(:ncol,1), ncol, state%lchnk)
                         
             ! Send heating rates to history buffer
             call outfld('QRS'//diag(icall), qrs(:ncol,:pver)/cpair, ncol, state%lchnk)
