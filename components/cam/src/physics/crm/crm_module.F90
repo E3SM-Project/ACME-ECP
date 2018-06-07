@@ -31,7 +31,7 @@ use setparm_mod, only : setparm
 
 contains
 
-subroutine crm(lchnk, icol, ncrms, is_first_step, phys_stage, &
+subroutine crm(lchnk, icol, ncrms, phys_stage, &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
@@ -158,7 +158,6 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, phys_stage, &
     implicit none
     integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
     integer , intent(in   ) :: ncrms                            ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
-    logical , intent(in   ) :: is_first_step                    ! flag to indicate first CRM integration - used to call setperturb()
     integer , intent(in   ) :: phys_stage                       ! physics run stage indicator (1 or 2 = bc or ac)
     integer , intent(in   ) :: plev                             ! number of levels in parent model
     real(r8), intent(in   ) :: dt_gl                            ! global model's time step
@@ -899,9 +898,11 @@ subroutine crm(lchnk, icol, ncrms, is_first_step, phys_stage, &
     !MRN: Don't want any stochasticity introduced in the standalone.
     !MRN: Need to make sure the first call to crm(...) is not dumped out
     !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
+
+
 #ifndef CRM_STANDALONE
-    if (is_first_step) then
-        iseed = get_gcol_p(lchnk,icol(icrm))
+    if ( igstep <= 1 ) then
+        iseed = get_gcol_p(lchnk,icol(icrm)) * 1000 
         call setperturb(iseed)
     end if
 #endif
