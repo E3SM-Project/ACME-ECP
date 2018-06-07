@@ -27,13 +27,14 @@ contains
       integer, intent(in) :: iseed
 
       integer i,j,k
-      real(crm_rknd) :: rand_perturb
-      real(crm_rknd) :: t02 
-      real(crm_rknd) :: factor_k
-      real(crm_rknd) :: factor_xy
+      real(crm_rknd) :: rand_perturb            ! variable to hold random number generator output
+      real(crm_rknd) :: t02                     ! new average liquid statis energy (LSE) for energy conservation scaling
+      real(crm_rknd) :: factor_xy               ! 1/(nx*ny)
+      real(crm_rknd) :: perturb_k_scaling       ! scaling factor so perturbation magnitudes decrease with altitude
       integer        :: perturb_num_layers      ! number of layers to add perturbations
 
-      integer, parameter :: perturb_t_magnitude = 1.0       ! perturbation t amplitube (max at bottom of the perturbed region)   [K]
+      real(crm_rknd), parameter :: perturbation_level_top = 700.  ! Top-most pressure level at which to apply LSE perturbations        [hPa]
+      integer,        parameter :: perturb_t_magnitude    = 1.0   ! perturbation t amplitube (max at bottom of the perturbed region)   [K]
 
       factor_xy = 1./real((nx*ny),crm_rknd)
 
@@ -43,21 +44,15 @@ contains
       call RNG_MT_set_seed(iseed)
 
       !!! find number of layers under some pressure level
-      do k = 1,nzm
-         if ( pres(k) > 700. ) then
-            perturb_num_layers = k
-         else
-            exit
-         end if
-      end do
+      perturb_num_layers = count( pres(1:nzm) > perturbation_level_top )
 
       !--------------------------------------------------------
       ! Apply random liquid static energy (LSE) perturbations
       !--------------------------------------------------------
       do k = 1,perturb_num_layers
 
-         !!! set factor_k so that perturbation tapers upwards
-         factor_k = real( perturb_num_layers+1-k ,crm_rknd) / real( perturb_num_layers+1 ,crm_rknd)
+         !!! set perturb_k_scaling so that perturbation tapers upwards
+         perturb_k_scaling = real( perturb_num_layers+1-k ,crm_rknd) / real( perturb_num_layers ,crm_rknd)
 
          t02 = 0.0
          do j = 1,ny
@@ -69,10 +64,11 @@ contains
                !!! convert perturbation range from (0,1) to (-1,1)
                rand_perturb = 1.-2.*rand_perturb
 
-               !!! apply perturbation to temperature field
-               t(i,j,k) = t(i,j,k) + perturb_t_magnitude * rand_perturb * factor_k
+               !!! apply perturbation 
+               t(i,j,k) = t(i,j,k) + perturb_t_magnitude * rand_perturb * perturb_k_scaling
                
-               t02 = t02 + t (i,j,k)*factor_xy
+               !!! Calculate new average LSE for energy conservation scaling below
+               t02 = t02 + t(i,j,k)*factor_xy
 
             end do ! i
          end do ! j
@@ -80,7 +76,7 @@ contains
          !!! enforce energy conservation
          do j = 1,ny
             do i = 1,nx
-               t (i,j,k) = t (i,j,k) *  t0(k)/t02
+               t(i,j,k) = t (i,j,k) *  t0(k)/t02
             end do ! i
          end do ! j
 

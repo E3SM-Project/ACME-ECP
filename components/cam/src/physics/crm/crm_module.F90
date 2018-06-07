@@ -357,6 +357,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt       ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                      ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation
+    integer,        parameter :: perturb_seed_scale = 1000      ! scaling value for setperturb() seed value (seed = gcol * perturb_seed_scale)
     real(r8)        :: crm_run_time                             ! length of CRM integration (=dt_gl*0.5 if SP_CRM_SPLIT is defined)
     real(r8)        :: icrm_run_time                            ! = 1 / crm_run_time
     real(r8)        :: factor_xy, idt_gl
@@ -902,7 +903,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
 #ifndef CRM_STANDALONE
     if ( igstep <= 1 ) then
-        iseed = get_gcol_p(lchnk,icol(icrm)) * 1000 
+        iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale 
         call setperturb(iseed)
     end if
 #endif
