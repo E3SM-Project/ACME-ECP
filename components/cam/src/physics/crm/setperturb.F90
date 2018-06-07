@@ -27,18 +27,19 @@ contains
       integer, intent(in) :: iseed
 
       integer i,j,k
-      real(crm_rknd) :: rand_perturb            ! variable to hold random number generator output
-      real(crm_rknd) :: t02                     ! new average liquid statis energy (LSE) for energy conservation scaling
-      real(crm_rknd) :: factor_xy               ! 1/(nx*ny)
-      real(crm_rknd) :: perturb_k_scaling       ! scaling factor so perturbation magnitudes decrease with altitude
-      integer        :: perturb_num_layers      ! number of layers to add perturbations
+      real(crm_rknd) :: rand_perturb                              ! variable to hold random number generator output
+      real(crm_rknd) :: t02                                       ! new average liquid statis energy (LSE) for energy conservation scaling
+      real(crm_rknd) :: factor_xy                                 ! 1/(nx*ny)
+      real(crm_rknd) :: perturb_k_scaling                         ! scaling factor so perturbation magnitudes decrease with altitude
+      integer        :: perturb_num_layers                        ! number of layers to add perturbations
 
       real(crm_rknd), parameter :: perturbation_level_top = 700.  ! Top-most pressure level at which to apply LSE perturbations        [hPa]
       integer,        parameter :: perturb_t_magnitude    = 1.0   ! perturbation t amplitube (max at bottom of the perturbed region)   [K]
 
       factor_xy = 1./real((nx*ny),crm_rknd)
 
-      call setperturb_sgs(0)  ! set sgs fields
+      !!! set the sub-grid scale (SGS) turbulence fields
+      call setperturb_sgs(0)  
 
       !!! set the seed
       call RNG_MT_set_seed(iseed)
@@ -51,7 +52,7 @@ contains
       !--------------------------------------------------------
       do k = 1,perturb_num_layers
 
-         !!! set perturb_k_scaling so that perturbation tapers upwards
+         !!! set perturb_k_scaling so that perturbation magnitude decreases with altitude
          perturb_k_scaling = real( perturb_num_layers+1-k ,crm_rknd) / real( perturb_num_layers ,crm_rknd)
 
          t02 = 0.0
