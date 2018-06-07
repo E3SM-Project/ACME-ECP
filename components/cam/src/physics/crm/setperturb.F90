@@ -76,7 +76,7 @@ contains
          !!! enforce energy conservation
          do j = 1,ny
             do i = 1,nx
-               t(i,j,k) = t (i,j,k) *  t0(k)/t02
+               t(i,j,k) = t(i,j,k) *  t0(k)/t02
             end do ! i
          end do ! j
 
