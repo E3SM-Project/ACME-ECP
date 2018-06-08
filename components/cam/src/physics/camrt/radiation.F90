@@ -343,6 +343,7 @@ end function radiation_nextsw_cday
     use radae,          only: radae_init
     use radconstants,   only: radconstants_init
     use radiation_data, only: init_rad_data
+    use rad_solar_var,  only: rad_solar_var_init
     use phys_control,   only: phys_getopts
     use cospsimulator_intr, only: docosp, cospsimulator_intr_init
     use time_manager, only: get_step_size
@@ -358,7 +359,7 @@ end function radiation_nextsw_cday
 
     call radconstants_init()
     call init_rad_data()
-
+    call rad_solar_var_init()
     call radsw_init(gravit)
     call radlw_init(gravit, stebol)
     call radae_init(gravit, epsilo, stebol, pstd, mwdry, mwco2, mwo3)

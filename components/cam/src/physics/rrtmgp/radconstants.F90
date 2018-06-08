@@ -2,6 +2,18 @@ module radconstants
 
 ! This module contains constants that are specific to the radiative transfer
 ! code used in the RRTMG model.
+!
+! TODO: This all needs to be checked for RRTMGP implementation! Some of this
+! might change; band mapping in the shortwave has definitely changed, and this
+! module should reflect those changes.
+!
+! TODO: Should this data be handled in a more robust way? Much of this contains
+! explicit mappings to indices, which would probably be better handled with get_
+! functions. I.e., get_nswbands() could query the kdist objects in case of
+! RRTMGP, and the diag indices could look up the actual bands used in the kdist
+! objects as well. On that note, this module should probably go away if
+! possible in the future, and we should provide more robust access to the
+! radiation interface.
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use cam_abortutils,     only: endrun
