@@ -70,7 +70,7 @@ module physpkg
   integer ::  rice2_idx          = 0
 
   !BSINGH: Moved species_class from modal_aero_data.F90 as it is being used in second call to zm deep convection scheme (convect_deep_tend_2)
-  integer :: species_class(pcnst)  = -1 
+  integer, dimension(pcnst) :: species_class = -1 
 
   save
 

@@ -189,7 +189,7 @@ subroutine crm_physics_init(species_class)
   ! use physics_types,   only: physics_tend_alloc
   use physconst,       only: mwdry, cpair, spec_class_gas !==Guangxing Lin added spec_class_gas
   use ppgrid,          only: pcols, pver, pverp
-  use constituents,    only: pcnst, cnst_name !, species_class
+  use constituents,    only: pcnst, cnst_name 
   use cam_history,     only: addfld, add_default, horiz_only
   use crmdims,         only: crm_nx, crm_ny, crm_nz
   use phys_control,    only: phys_getopts
@@ -202,12 +202,8 @@ subroutine crm_physics_init(species_class)
   use cam_history,   only: fieldname_len
   use spmd_utils,    only: masterproc
   use modal_aero_data, only:  cnst_name_cw, &
-!                               lmassptr_amode, lmassptrcw_amode, lwaterptr_amode, &
                                 lmassptr_amode, lmassptrcw_amode, &
                                 nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode
-!==Guangxing Lin
-!                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode, &
-!                                species_class, spec_class_gas
        
     integer :: l, lphase, lspec
     character(len=fieldname_len)   :: tmpname
@@ -218,7 +214,7 @@ subroutine crm_physics_init(species_class)
     
     !==Guangxing Lin
     ! whannah - species_class is defined as input so it needs to be outside of MODAL_AERO condition for 1-moment micro to work
-    integer, intent(in) :: species_class(:)
+    integer, intent(in), dimension(pcnst) :: species_class
 
 
 ! local variables
@@ -856,7 +852,7 @@ end subroutine crm_physics_init
 
    integer ii, jj, mm
    integer iii,lll
-   integer ixcldliq, ixcldice, ixnumliq, ixnumice
+   integer ixcldliq, ixcldice, ixnumliq, ixnumice, ixrain, ixsnow, ixnumrain, ixnumsnow
    integer i, k, m
    integer ifld
    logical :: use_ECPP, use_SPCAM
@@ -974,21 +970,21 @@ end subroutine crm_physics_init
 
 #ifdef ECPP
     if (use_ECPP) then
-      allocate( acen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( acen_tf(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( rhcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( qcloudcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( qlsinkcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( precrcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( precsolidcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( wwqui_cen(pcols, pver))
-      allocate( wwqui_cloudy_cen(pcols, pver))
+      allocate( acen            (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( acen_tf         (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( rhcen           (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( qcloudcen       (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( qlsinkcen       (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( precrcen        (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( precsolidcen    (pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( wwqui_cen       (pcols,pver) )
+      allocate( wwqui_cloudy_cen(pcols,pver) )
       ! at layer boundary
-      allocate( abnd(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( abnd_tf(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( massflxbnd(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( wwqui_bnd(pcols, pver+1))
-      allocate( wwqui_cloudy_bnd(pcols, pver+1))
+      allocate( abnd            (pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( abnd_tf         (pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( massflxbnd      (pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      allocate( wwqui_bnd       (pcols,pver+1) )
+      allocate( wwqui_cloudy_bnd(pcols,pver+1) )
     end if
 #endif
 
@@ -2003,8 +1999,8 @@ end subroutine crm_physics_init
          call outfld('QSINK_BFCEN', qlsink_bfcen, pcols, lchnk)
          call outfld('QSINK_AVGCEN', qlsink_avgcen, pcols, lchnk)
          call outfld('PRAINCEN', praincen, pcols, lchnk)
-       endif !/*ECPP*/
-#endif
+       endif ! use_ECPP
+#endif /* ECPP */
 
 !----------------------------------------------------------------------
 !  Update state with physics tendencies from CRM
@@ -2060,24 +2056,44 @@ end subroutine crm_physics_init
          if (SPCAM_microp_scheme .eq. 'm2005') then
             call cnst_get_ind('NUMLIQ', ixnumliq)
             call cnst_get_ind('NUMICE', ixnumice)
-            ptend%lq(ixnumliq) = .TRUE.
-            ptend%lq(ixnumice) = .TRUE.
-            ptend%q(:, :, ixnumliq) = 0._r8
-            ptend%q(:, :, ixnumice) = 0._r8
+            call cnst_get_ind('RAINQM', ixrain)
+            call cnst_get_ind('SNOWQM', ixsnow)
+            call cnst_get_ind('NUMRAI', ixnumrain)
+            call cnst_get_ind('NUMSNO', ixnumsnow)
+            ptend%lq(ixnumliq)  = .TRUE.
+            ptend%lq(ixnumice)  = .TRUE.
+            ptend%lq(ixrain)    = .TRUE.
+            ptend%lq(ixsnow)    = .TRUE.
+            ptend%lq(ixnumrain) = .TRUE.
+            ptend%lq(ixnumsnow) = .TRUE.
+            ptend%q(:,:,ixnumliq)  = 0._r8
+            ptend%q(:,:,ixnumice)  = 0._r8
+            ptend%q(:,:,ixrain)    = 0._r8 
+            ptend%q(:,:,ixsnow)    = 0._r8 
+            ptend%q(:,:,ixnumrain) = 0._r8 
+            ptend%q(:,:,ixnumsnow) = 0._r8 
 
             do i = 1, ncol
-             do k=1, crm_nz 
-               m= pver-k+1
-               do ii=1, crm_nx
-               do jj=1, crm_ny
-                 ptend%q(i,m,ixnumliq) = ptend%q(i,m,ixnumliq) + crm_nc(i,ii,jj,k) 
-                 ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_ni(i,ii,jj,k)
-               end do
-               end do
-               ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/crm_run_time
-               ptend%q(i,m,ixnumice) = (ptend%q(i,m,ixnumice)/(crm_nx*crm_ny) - state%q(i,m,ixnumice))/crm_run_time
-             end do
-            end do
+               do k = 1, crm_nz 
+                  m= pver-k+1
+                  do ii=1, crm_nx
+                     do jj=1, crm_ny
+                        ptend%q(i,m,ixnumliq)  = ptend%q(i,m,ixnumliq)  + crm_nc(i,ii,jj,k) 
+                        ptend%q(i,m,ixnumice)  = ptend%q(i,m,ixnumice)  + crm_ni(i,ii,jj,k)
+                        ptend%q(i,m,ixrain)    = ptend%q(i,m,ixrain)    + crm_qr(i,ii,jj,k)
+                        ptend%q(i,m,ixsnow)    = ptend%q(i,m,ixsnow)    + crm_qs(i,ii,jj,k)
+                        ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_nr(i,ii,jj,k)
+                        ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_ns(i,ii,jj,k)
+                     end do ! jj
+                  end do ! ii
+                  ptend%q(i,m,ixnumliq)  = (ptend%q(i,m,ixnumliq) /(crm_nx*crm_ny) - state%q(i,m,ixnumliq)) /crm_run_time
+                  ptend%q(i,m,ixnumice)  = (ptend%q(i,m,ixnumice) /(crm_nx*crm_ny) - state%q(i,m,ixnumice)) /crm_run_time
+                  ptend%q(i,m,ixrain)    = (ptend%q(i,m,ixrain)   /(crm_nx*crm_ny) - state%q(i,m,ixrain))   /crm_run_time
+                  ptend%q(i,m,ixsnow)    = (ptend%q(i,m,ixsnow)   /(crm_nx*crm_ny) - state%q(i,m,ixsnow))   /crm_run_time
+                  ptend%q(i,m,ixnumrain) = (ptend%q(i,m,ixnumrain)/(crm_nx*crm_ny) - state%q(i,m,ixnumrain))/crm_run_time
+                  ptend%q(i,m,ixnumsnow) = (ptend%q(i,m,ixnumsnow)/(crm_nx*crm_ny) - state%q(i,m,ixnumsnow))/crm_run_time
+               end do ! k = crm_nz
+            end do ! i = ncol
          endif
 #endif
        end if
@@ -2273,42 +2289,25 @@ end subroutine crm_physics_init
       ! ECPP is called at every 3rd GCM time step.
       ! GCM time step is 10 minutes, and ECPP time step is 30 minutes.
       
-      dtstep_pp = dtstep_pp_input
-#if defined( SP_CRM_SPLIT )
-      necpp = dtstep_pp/(ztodt*0.5)
-#else
-      necpp = dtstep_pp/ztodt
-#endif
-      if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+      dtstep_pp = dtstep_pp_input         ! whannah - currently hard-coded to 1800 sec
+      necpp     = dtstep_pp/crm_run_time
 
-        ! whannah - re-initialize ptend? - probably not necessary
-        ! lu    = .false. 
-        ! lv    = .false.
-        ! ls    = .false.
-        ! lq(:) = .true.
-        ! fromcrm = .false.
-        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-        ! ptend%lq(:) = .true.
-        ! ptend%q(:,:,:) = 0.0_r8
+      if ( nstep.ne.0 .and. mod(nstep, necpp).eq.0 ) then
 
-        ! calculate aerosol tendency from droplet activation and mixing
+        !!! calculate aerosol tendency from droplet activation and mixing
         call t_startf('crmclouds_mixnuc')
-        call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
-                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class
+        call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,         &
+                                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd, &
+                                    species_class)
         call physics_update(state, ptend, dtstep_pp, tend)
         call t_stopf('crmclouds_mixnuc')
 
-        ! ECPP interface
-
-        ! whannah - re-initialize ptend again? - probably not necessary
-        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-        ! ptend%lq(:) = .true.
-        ! ptend%q(:,:,:) = 0.0_r8
-
+        !!! ECPP interface
         call t_startf('ecpp')
         call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
-           acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
-           rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
+                                acen, abnd, acen_tf, abnd_tf, massflxbnd,  &
+                                rhcen, qcloudcen, qlsinkcen, precrcen,     &
+                                precsolidcen, acldy_cen_tbeg )
 
         ! whannah - debugging information for NaN issue
         ! do i=1,ncol
@@ -2320,13 +2319,13 @@ end subroutine crm_physics_init
         !   ! write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
         ! enddo
         ! enddo
-              
         ! ptend%q(:,:,:) = 0.0_r8 ! whannah - zero out tendency for testing - doesn't help NaN problem!
 
         call physics_update(state, ptend, dtstep_pp, tend)
-
         call t_stopf ('ecpp')
+        
       end if
+
     endif ! use_ECPP
 #endif
 
@@ -2371,11 +2370,12 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 ! save for old CRM cloud fraction 
 !----------------------------------------------------------------------
+
   ! In the CAM model, this is done in cldwat2m.F90.
   cldo(:ncol, :) = cld(:ncol, :)
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
 
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
 
 end subroutine crm_physics_tend
 !--------------------------------------------------------------------------------------------
