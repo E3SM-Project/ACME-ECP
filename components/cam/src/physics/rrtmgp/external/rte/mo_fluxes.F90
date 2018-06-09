@@ -16,7 +16,7 @@
 !
 module mo_fluxes
   use mo_rte_kind,      only: wp
-  use mo_spectral_disc, only: ty_spectral_disc
+  use mo_optical_props, only: ty_optical_props
   use mo_fluxes_broadband_kernels, &
                         only: sum_broadband, net_broadband
   implicit none
@@ -38,12 +38,12 @@ module mo_fluxes
       ! This routine takes the fully resolved calculation (detailed in spectral and vertical dimensions) and
       !   computes desired outputs. Output values will normally be data components of the derived type.
       !
-      import ty_fluxes, ty_spectral_disc
+      import ty_fluxes, ty_optical_props
       import wp
       class(ty_fluxes),                  intent(inout) :: this
       real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_up ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
       real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_dn ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
-      class(ty_spectral_disc),           intent(in   ) :: spectral_disc  !< derived type with spectral information
+      class(ty_optical_props),           intent(in   ) :: spectral_disc  !< derived type with spectral information
       logical,                           intent(in   ) :: top_at_1
       real(kind=wp), dimension(:,:,:), optional, &
                                          intent(in   ) :: gpt_flux_dn_dir! Direct flux down
@@ -84,7 +84,7 @@ contains
     class(ty_fluxes_broadband),        intent(inout) :: this
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_up ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_dn ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
-    class(ty_spectral_disc),           intent(in   ) :: spectral_disc  !< derived type with spectral information
+    class(ty_optical_props),           intent(in   ) :: spectral_disc  !< derived type with spectral information
     logical,                           intent(in   ) :: top_at_1
     real(kind=wp), dimension(:,:,:), optional, &
                                        intent(in   ) :: gpt_flux_dn_dir! Direct flux down

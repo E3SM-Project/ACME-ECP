@@ -15,12 +15,11 @@
 !   netCDF file layout
 
 module mo_test_files_io
-  use mo_rte_kind,   only: wp
-  use mo_optical_props, only: ty_optical_props_arry, &
-                              ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
-  use mo_gas_concentrations, &
-                        only: ty_gas_concs
-  use mo_spectral_disc, only: ty_spectral_disc
+  use mo_rte_kind,           only: wp
+  use mo_optical_props,      only: ty_optical_props, ty_optical_props_arry, &
+                                   ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
+  use mo_source_functions,   only: ty_source_func_lw
+  use mo_gas_concentrations, only: ty_gas_concs
   use mo_util_reorder
   use netcdf
   implicit none
@@ -32,6 +31,7 @@ module mo_test_files_io
   interface write_field
     module procedure write_1d_int_field, write_2d_int_field, &
                      write_1d_field, write_2d_field, write_3d_field, write_4d_field
+
   end interface
 
   public :: read_atmos, write_atmos, is_lw, is_sw, &
@@ -41,7 +41,7 @@ module mo_test_files_io
             write_spectral_disc, read_spectral_disc, &
             write_sw_surface_albedo, write_solar_zenith_angle, &
             write_lw_surface_emissivity, read_sfc_test_file, &
-            write_optical_props, read_optical_props, &
+            write_optical_prop_values, read_optical_prop_values, &
             write_direction,     read_direction,  &
             write_lw_Planck_sources, read_lw_Planck_sources, &
             write_sw_solar_sources,  read_sw_solar_sources, &
@@ -325,8 +325,8 @@ contains
   ! Write spectral discretization
   !
   subroutine write_spectral_disc(fileName, spectral_disc)
-    character(len=*),       intent(in) :: fileName
-    class(ty_spectral_disc), intent(in) :: spectral_disc
+    character(len=*),        intent(in) :: fileName
+    class(ty_optical_props), intent(in) :: spectral_disc
 
     integer :: ncid
     integer :: nband
@@ -352,7 +352,7 @@ contains
   !
   subroutine read_spectral_disc(fileName, spectral_disc)
     character(len=*),       intent(in   ) :: fileName
-    type(ty_spectral_disc), intent(inout) :: spectral_disc
+    class(ty_optical_props), intent(inout) :: spectral_disc
 
     integer :: ncid
     integer :: nband
@@ -361,7 +361,7 @@ contains
 
     ! -------------------
     if(nf90_open(trim(fileName), NF90_WRITE, ncid) /= NF90_NOERR) &
-      call stop_on_err("write_spectral_disc: can't open file " // trim(fileName))
+      call stop_on_err("read_spectral_disc: can't open file " // trim(fileName))
 
     nband = get_dim_length(ncid, 'band')
     if (get_dim_length(ncid, 'pair') /= 2) &
@@ -369,7 +369,7 @@ contains
 
     band_lims_wvn = read_field(ncid, 'band_lims_wvn', 2, nband)
     band_lims_gpt = read_field(ncid, 'band_lims_gpt', 2, nband)
-    call stop_on_err(spectral_disc%init(band_lims_gpt, band_lims_wvn))
+    call stop_on_err(spectral_disc%init(band_lims_gpt, band_lims_wvn, read_string(ncid, 'name', 32)))
 
     ncid = nf90_close(ncid)
   end subroutine read_spectral_disc
@@ -483,23 +483,37 @@ contains
   !
   ! Optical properties (tau, ssa and g or p if provided)
   !
-  subroutine write_optical_props(fileName, opt_props)
+  subroutine write_optical_prop_values(fileName, opt_props)
     character(len=*),             intent(in) :: fileName
     class(ty_optical_props_arry), intent(in) :: opt_props
     ! -------------------
     integer :: ncid
-    integer :: ncol, nlay, ngpt, nmom
+    integer :: ncol, nlay, ngpt, nmom, nband
     integer :: dimLengths(3)
     ! -------------------
     if(nf90_open(trim(fileName), NF90_WRITE, ncid) /= NF90_NOERR) &
-      call stop_on_err("write_optical_props: can't open file " // trim(fileName))
+      call stop_on_err("write_optical_prop_values: can't open file " // trim(fileName))
 
     ncol = get_dim_length(ncid, 'col')
     nlay = get_dim_length(ncid, 'lay')
     ngpt = opt_props%get_ngpt()
+    nband = opt_props%get_nband()
 
+    !
+    ! Spectral discretization
+    !
     call create_dim(ncid, "gpt", ngpt)
+    call create_dim(ncid, 'band', nband)
+    call create_dim(ncid, "pair", 2)
 
+    call create_var(ncid, "band_lims_wvn", ["pair", "band"], [2, nband])
+    call stop_on_err(write_field(ncid, "band_lims_wvn", opt_props%get_band_lims_wavenumber()))
+    call create_var(ncid, "band_lims_gpt", ["pair", "band"], [2, nband], NF90_INT)
+    call stop_on_err(write_field(ncid, "band_lims_gpt", opt_props%get_band_lims_gpoint()))
+
+    !
+    ! Values
+    !
     call create_var(ncid, "tau", ["col", "lay", "gpt"], [ncol, nlay, ngpt])
     call stop_on_err(write_field(ncid, "tau", opt_props%tau))
 
@@ -523,24 +537,27 @@ contains
 
     ncid = nf90_close(ncid)
 
-  end subroutine write_optical_props
+  end subroutine write_optical_prop_values
   !--------------------------------------------------------------------------------------------------------------------
-  subroutine read_optical_props(fileName, opt_props)
+  subroutine read_optical_prop_values(fileName, opt_props)
     character(len=*),                          intent(in ) :: fileName
     class(ty_optical_props_arry), allocatable, intent(out) :: opt_props
     ! -------------------
     integer :: ncid
-    integer :: ncol, nlay, ngpt, nmom
+    integer :: ncol, nlay, ngpt, nmom, nband
+    real(wp), dimension(:,:), allocatable :: band_lims_wvn
+    integer,  dimension(:,:), allocatable :: band_lims_gpt
     ! -------------------
     if(nf90_open(trim(fileName), NF90_NOWRITE, ncid) /= NF90_NOERR) &
-      call stop_on_err("read_optical_props: can't open file " // trim(fileName))
+      call stop_on_err("read_optical_prop_values: can't open file " // trim(fileName))
 
     if(.not. var_exists(ncid, 'tau')) &
-      call stop_on_err("read_optical_props: file " //trim(fileName) // " doesn't contain tau field.")
+      call stop_on_err("read_optical_prop_values: file " //trim(fileName) // " doesn't contain tau field.")
 
     ncol = get_dim_length(ncid, 'col')
     nlay = get_dim_length(ncid, 'lay')
     ngpt = get_dim_length(ncid, 'gpt')
+    nband = get_dim_length(ncid, 'band')
 
     if(var_exists(ncid, 'p')) then
       nmom = get_dim_length(ncid, 'mom')
@@ -551,22 +568,31 @@ contains
       allocate(ty_optical_props_1scl::opt_props)
     end if
 
+    !
+    ! Spectral discretization
+    !
+    if (get_dim_length(ncid, 'pair') /= 2) &
+      call stop_on_err("read_optical_prop_values: pair dimension not 2 in file " // trim(fileName) )
+    band_lims_wvn = read_field(ncid, 'band_lims_wvn', 2, nband)
+    band_lims_gpt = read_field(ncid, 'band_lims_gpt', 2, nband)
+
+    call stop_on_err(opt_props%init(band_lims_gpt, band_lims_wvn, read_string(ncid, 'name', 32)))
     select type (opt_props)
       class is (ty_optical_props_1scl)      ! No scattering
-        call stop_on_err(opt_props%init_1scl(ncol, nlay, ngpt))
+        call stop_on_err(opt_props%alloc_1scl(ncol, nlay))
       class is (ty_optical_props_2str) ! two-stream calculation
-        call stop_on_err(opt_props%init_2str(ncol, nlay, ngpt))
+        call stop_on_err(opt_props%alloc_2str(ncol, nlay))
         opt_props%ssa = read_field(ncid, "ssa", ncol, nlay, ngpt)
         opt_props%g   = read_field(ncid, "g",   ncol, nlay, ngpt)
       class is (ty_optical_props_nstr) ! n-stream calculation
-        call stop_on_err(opt_props%init_nstr(nmom, ncol, nlay, ngpt))
+        call stop_on_err(opt_props%alloc_nstr(nmom, ncol, nlay))
         opt_props%ssa = read_field(ncid, "ssa",       ncol, nlay, ngpt)
         opt_props%p   = read_field(ncid, "p",   nmom, ncol, nlay, ngpt)
     end select
     opt_props%tau = read_field(ncid, "tau", ncol, nlay, ngpt)
 
     ncid = nf90_close(ncid)
-  end subroutine read_optical_props
+  end subroutine read_optical_prop_values
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Which direction is up? Stored as a global attribute.
@@ -671,10 +697,10 @@ contains
   ! Longwave sources at layer centers; edges in two directions; surface
   !   Also directionality since this will be needed for solution
   !
-  subroutine write_lw_Planck_sources(fileName, lay_src, lev_src_inc, lev_src_dec, sfc_src)
-    character(len=*),           intent(in) :: fileName
-    real(wp), dimension(:,:,:), intent(in) :: lay_src, lev_src_inc, lev_src_dec
-    real(wp), dimension(:,:  ), intent(in) :: sfc_src
+  subroutine write_lw_Planck_sources(fileName, sources)
+    character(len=*),        intent(in) :: fileName
+    type(ty_source_func_lw), intent(in) :: sources
+
     ! -------------------
     integer :: ncid
     integer :: ncol, nlay, ngpt
@@ -684,47 +710,62 @@ contains
 
     ncol = get_dim_length(ncid, 'col')
     nlay = get_dim_length(ncid, 'lay')
-    ngpt = size(lay_src, 3)
+    if(any([sources%get_ncol(), sources%get_nlay()] /= [ncol, nlay])) &
+      call stop_on_err("write_lw_Planck_sources: inconsistent sizes in file, sources")
+
+    ngpt = sources%get_ngpt()
     call create_dim(ncid, "gpt", ngpt)
 
     call create_var(ncid, "lay_src", ["col", "lay", "gpt"], [ncol, nlay, ngpt])
-    call stop_on_err(write_field(ncid, "lay_src", lay_src))
+    call stop_on_err(write_field(ncid, "lay_src", sources%lay_source))
 
     call create_var(ncid, "lev_src_inc", ["col", "lay", "gpt"], [ncol, nlay, ngpt])
-    call stop_on_err(write_field(ncid, "lev_src_inc", lev_src_inc))
+    call stop_on_err(write_field(ncid, "lev_src_inc", sources%lev_source_inc))
     call create_var(ncid, "lev_src_dec", ["col", "lay", "gpt"], [ncol, nlay, ngpt])
-    call stop_on_err(write_field(ncid, "lev_src_dec", lev_src_dec))
+    call stop_on_err(write_field(ncid, "lev_src_dec", sources%lev_source_dec))
 
     call create_var(ncid, "sfc_src", ["col", "gpt"], [ncol, ngpt])
-    call stop_on_err(write_field(ncid, "sfc_src", sfc_src))
+    call stop_on_err(write_field(ncid, "sfc_src", sources%sfc_source))
 
     ncid = nf90_close(ncid)
   end subroutine write_lw_Planck_sources
   !--------------------------------------------------------------------------------------------------------------------
-  subroutine read_lw_Planck_sources(fileName, lay_src, lev_src_inc, lev_src_dec, sfc_src)
-    character(len=*),           intent(in ) :: fileName
-    real(wp), dimension(:,:,:), allocatable, &
-                                intent(out) :: lay_src, lev_src_inc, lev_src_dec
-    real(wp), dimension(:,:  ), allocatable, &
-                                intent(out) :: sfc_src
+  subroutine read_lw_Planck_sources(fileName, sources)
+    character(len=*),        intent(in   ) :: fileName
+    type(ty_source_func_lw), intent(inout) :: sources
     ! -------------------
     integer :: ncid
-    integer :: ncol, nlay, ngpt, nmom
+    integer :: ncol, nlay, ngpt, nmom, nband
+    integer,  dimension(:,:), allocatable :: band_lims_gpt
+    real(wp), dimension(:,:), allocatable :: band_lims_wvn
     ! -------------------
     if(nf90_open(trim(fileName), NF90_NOWRITE, ncid) /= NF90_NOERR) &
       call stop_on_err("read_lw_Planck_sources: can't open file " // trim(fileName))
 
-    if(.not. var_exists(ncid, 'lay_src')) &
-      call stop_on_err("read_lw_Planck_sources: file " //trim(fileName) // " doesn't contain lay_src field.")
-
     ncol = get_dim_length(ncid, 'col')
     nlay = get_dim_length(ncid, 'lay')
     ngpt = get_dim_length(ncid, 'gpt')
+    nband = get_dim_length(ncid, 'band')
+    !
+    ! Error checking
+    !
+    if (get_dim_length(ncid, 'pair') /= 2) &
+      call stop_on_err("read_spectral_disc: pair dimension not 2 in file "//trim(fileName) )
+    if(.not. var_exists(ncid, 'lay_src')) &
+      call stop_on_err("read_lw_Planck_sources: file " //trim(fileName) // " doesn't contain lay_src field.")
 
-    lay_src     = read_field(ncid, 'lay_src',     ncol, nlay, ngpt)
-    lev_src_inc = read_field(ncid, 'lev_src_inc', ncol, nlay, ngpt)
-    lev_src_dec = read_field(ncid, 'lev_src_dec', ncol, nlay, ngpt)
-    sfc_src     = read_field(ncid, 'sfc_src',     ncol,       ngpt)
+    !
+    ! Spectral discretization
+    !
+    band_lims_wvn = read_field(ncid, 'band_lims_wvn', 2, nband)
+    band_lims_gpt = read_field(ncid, 'band_lims_gpt', 2, nband)
+    call stop_on_err(sources%init(band_lims_gpt, band_lims_wvn, read_string(ncid, 'name', 32)))
+    call stop_on_err(sources%alloc(ncol, nlay))
+
+    sources%lay_source     = read_field(ncid, 'lay_src',     ncol, nlay, ngpt)
+    sources%lev_source_inc = read_field(ncid, 'lev_src_inc', ncol, nlay, ngpt)
+    sources%lev_source_dec = read_field(ncid, 'lev_src_dec', ncol, nlay, ngpt)
+    sources%sfc_source     = read_field(ncid, 'sfc_src',     ncol,       ngpt)
 
     ncid = nf90_close(ncid)
 
@@ -980,6 +1021,22 @@ contains
 
   end function read_4d_field
   !--------------------------------------------------------------------------------------------------------------------
+  function read_string(ncid, varName, nc)
+    integer,          intent(in) :: ncid
+    character(len=*), intent(in) :: varName
+    integer,          intent(in) :: nc
+    character(len=nc)            :: read_string
+
+    integer :: varid
+
+    if(nf90_inq_varid(ncid, trim(varName), varid) /= NF90_NOERR) then
+      read_string = ""
+      return
+    end if
+    if(nf90_get_var(ncid, varid, read_string)  /= NF90_NOERR) &
+      call stop_on_err("read_field: can't read variable " // trim(varName))
+  end function read_string
+  !--------------------------------------------------------------------------------------------------------------------
   ! Writing functions
   !--------------------------------------------------------------------------------------------------------------------
   function write_1d_int_field(ncid, varName, var) result(err_msg)
@@ -1089,6 +1146,24 @@ contains
       err_msg = "write_field: can't write variable " // trim(varName)
 
   end function write_4d_field
+  !--------------------------------------------------------------------------------------------------------------------
+  function write_string(ncid, varName, var) result(err_msg)
+    integer,                    intent(in) :: ncid
+    character(len=*),           intent(in) :: varName
+    character(len=*),           intent(in) :: var
+    character(len=128)                     :: err_msg
+
+    integer :: varid
+
+    err_msg = ""
+    if(nf90_inq_varid(ncid, trim(varName), varid) /= NF90_NOERR) then
+      err_msg = "write_field: can't find variable " // trim(varName)
+      return
+    end if
+    if(nf90_put_var(ncid, varid, var)  /= NF90_NOERR) &
+      err_msg = "write_field: can't write variable " // trim(varName)
+
+  end function write_string
   !--------------------------------------------------------------------------------------------------------------------
   function get_dim_length(ncid, dimname)
     !

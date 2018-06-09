@@ -18,7 +18,8 @@ module mo_reorder_kernels
   implicit none
 contains
   ! ----------------------------------------------------------------------------
-  subroutine reorder_123x312_kernel(d1, d2, d3, array_in, array_out) bind(C)
+  subroutine reorder_123x312_kernel(d1, d2, d3, array_in, array_out) &
+      bind(C, name = "reorder_123x312_kernel")
     integer,                         intent( in) :: d1, d2, d3
     real(wp), dimension(d1, d2, d3), intent( in) :: array_in
     real(wp), dimension(d3, d1, d2), intent(out) :: array_out
@@ -34,7 +35,8 @@ contains
     end do
   end subroutine reorder_123x312_kernel
   ! ----------------------------------------------------------------------------
-  subroutine reorder_123x321_kernel(d1, d2, d3, array_in, array_out) bind(C)
+  subroutine reorder_123x321_kernel(d1, d2, d3, array_in, array_out) & 
+      bind(C, name="reorder_123x321_kernel")
     integer,                         intent( in) :: d1, d2, d3
     real(wp), dimension(d1, d2, d3), intent( in) :: array_in
     real(wp), dimension(d3, d2, d1), intent(out) :: array_out

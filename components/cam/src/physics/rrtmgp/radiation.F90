@@ -485,8 +485,6 @@ subroutine radiation_init(state)
    use physics_types, only: physics_state
 
    ! RRTMGP modules
-   use mo_rrtmgp_clr_all_sky, only: rrtmgp_sw_init=>rte_sw_init, &
-                                    rrtmgp_lw_init=>rte_lw_init
    use mo_load_coefficients, only: rrtmgp_load_coefficients=>load_and_init
    use mo_gas_concentrations, only: ty_gas_concs
 
@@ -566,10 +564,6 @@ subroutine radiation_init(state)
    allocate(cam_layers(num_rad_layers), cam_interfaces(num_rad_layers+1))
    cam_layers(:) = get_cam_layers(num_rad_layers, pver)
    cam_interfaces(:) = get_cam_layers(num_rad_layers+1, pver+1)
-
-   ! Initialize the shortwave and longwave drivers
-   call handle_error(rrtmgp_sw_init())
-   call handle_error(rrtmgp_lw_init())
 
    ! Set the radiation timestep for cosz calculations if requested using the 
    ! adjusted iradsw value from radiation
@@ -1180,7 +1174,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
    use radconstants, only: idx_sw_diag
 
    ! RRTMGP radiation drivers and derived types
-   use mo_rrtmgp_clr_all_sky, only: rrtmgp_sw=>rte_sw, rrtmgp_lw=>rte_lw
+   use mo_rrtmgp_clr_all_sky, only: rte_sw, rte_lw
    use mo_gas_concentrations, only: ty_gas_concs
    use mo_optical_props, only: ty_optical_props, &
                                ty_optical_props_1scl, &
@@ -1278,23 +1272,25 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
    ! modified from what exist in the physics_state object, i.e. to clip
    ! temperatures to make sure they are within the valid range.
    real(r8) :: coszrs_day(pcols)  ! cosine solar zenith angle
-   real(r8) :: solar_irradiance_by_gpt_day(pcols,nswgpts)  ! Solar irradiance
    real(r8), dimension(pcols,num_rad_layers) :: tmid, tmid_day, pmid, pmid_day
-   real(r8), dimension(pcols,num_rad_layers+1) :: tint, tint_cam, tint_day, pint, pint_day
+   real(r8), dimension(pcols,num_rad_layers+1) :: pint, pint_day
    real(r8) :: surface_emissivity(nlwbands,pcols)
+
+   ! Scaling factor for total sky irradiance; used to account for orbital
+   ! eccentricity, and could be used to scale total sky irradiance for different
+   ! climates as well (i.e., paleoclimate simulations)
+   real(r8) :: tsi_scaling
 
    ! Temporary heating rates on radiation vertical grid
    real(r8), dimension(pcols,num_rad_layers) :: qrs_rad, qrsc_rad, &
                                                 qrl_rad, qrlc_rad
-
-   real(r8), dimension(pcols,num_rad_layers) :: coldry, h2ovmr
 
    ! Albedo for shortwave calculations
    real(r8) :: albedo_direct(nswbands,pcols), albedo_direct_day(nswbands,pcols)
    real(r8) :: albedo_diffuse(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
 
    ! RRTMGP types
-   type(ty_gas_concs) :: gas_concentrations_sw, gas_concentrations_lw, gas_test
+   type(ty_gas_concs) :: gas_concentrations_sw, gas_concentrations_lw
    type(ty_optical_props_1scl) :: aerosol_optics_lw
    type(ty_optical_props_1scl) :: cloud_optics_lw
    type(ty_optical_props_2str) :: aerosol_optics_sw
@@ -1344,9 +1340,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
    ! Send values for this chunk to history buffer
    call outfld('COSZRS', coszrs(:ncol), ncol, state%lchnk)
 
-   ! Get total solar irradiance, scaled to account for solar zenith angle and
-   ! earth-sun distance for current day
-   call set_solar_irradiance_by_gpt(k_dist_sw, solar_irradiance_by_gpt(:ncol,:nswgpts))
+   ! Get orbital eccentricity factor to scale total sky irradiance
+   tsi_scaling = get_eccentricity_factor()
 
    ! If the swrad_off flag is set, meaning we should not do SW radiation, then 
    ! we just set coszrs to zero everywhere. TODO: why not just set dosw false 
@@ -1370,10 +1365,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
       ! RRTMGP vertical grid).
 
       ! Map CAM to rad levels
-      call set_interface_temperature(state, cam_in, tint_cam(:ncol,:pver+1))
-      call map_cam_to_rad_levels(tint_cam(:ncol,:pver+1), &
-                                 tint(:ncol,:nlay+1), &
-                                 cam_interfaces(:nlay+1))
       call map_cam_to_rad_levels(state%t(:ncol,:pver), &
                                  tmid(:ncol,:nlay), &
                                  cam_layers(:nlay)) 
@@ -1392,29 +1383,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
          pint(:ncol,1) = 1.01_r8
       end if
 
-      ! Get gases for output call
-      call set_gas_concentrations(0, state, pbuf, nlay, &
-                                  gas_test, &
-                                  cam_layers(:nlay))
-      call handle_error(gas_test%get_vmr('h2o', h2ovmr(:ncol,:)))
-
-      ! Set dry column amounts explicitly. RRTMGP contains some code to do
-      ! this internally now, but we do this explicitly here to try to enforce
-      ! as much consistency with the old RRTMG implementation. This doesn't
-      ! seem to make a lot of difference, and in the future maybe we remove
-      ! or simplify this.
-      call set_coldry(pint(:ncol,:nlay+1), &
-                      h2ovmr(:ncol,:nlay), &
-                      coldry(:ncol,:nlay))
-
-      ! Send radiation inputs to history buffer. This is done here strictly
-      ! for debugging purposes, and this code can probably be removed in the
-      ! future once it is confirmed that inputs are consistent with old RRTMG
-      ! implementation.
-      call output_rad_state(state, tmid(:ncol,:), tint(:ncol,:), &
-                            pmid(:ncol,:), pint(:ncol,:), &
-                            h2ovmr=h2ovmr(:ncol,:), coldry=coldry(:ncol,:))
-
       ! Get albedo. This uses CAM routines internally and just provides a
       ! wrapper to improve readability of the code here.
       call set_albedo(cam_in, albedo_direct(:nswbands,:ncol), albedo_diffuse(:nswbands,:ncol))
@@ -1430,12 +1398,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
       end do
       call compress_day_columns(tmid(:ncol,:nlay), tmid_day(:nday,:nlay), day_indices(:nday))
       call compress_day_columns(pmid(:ncol,:nlay), pmid_day(:nday,:nlay), day_indices(:nday))
-      call compress_day_columns(tint(:ncol,:nlay+1), tint_day(:nday,:nlay+1), day_indices(:nday))
       call compress_day_columns(pint(:ncol,:nlay+1), pint_day(:nday,:nlay+1), day_indices(:nday))
       call compress_day_columns(coszrs(:ncol), coszrs_day(:nday), day_indices(:nday))
-      call compress_day_columns(solar_irradiance_by_gpt(:ncol,:nswgpts), &
-                                solar_irradiance_by_gpt_day(:nday,:nswgpts), &
-                                day_indices(:nday))
 
       ! Allocate shortwave fluxes (allsky and clearsky)
       ! TODO: why do I need to provide my own routines to do this? Why is 
@@ -1451,10 +1415,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
 
       ! Do shortwave cloud optics calculations
       call t_startf('shortwave cloud optics')
-      call handle_error(cloud_optics_sw%init_2str( &
-         nday, nlay, nswgpts, &
-         name='shortwave cloud optics' &
-      ))
+      call handle_error(cloud_optics_sw%alloc_2str(k_dist_sw, nday, nlay))
+      call cloud_optics_sw%set_name('shortwave cloud optics')
 
       ! TODO: refactor the set_cloud_optics codes to allow passing arrays
       ! rather than state/pbuf so that we can use this for SP
@@ -1466,10 +1428,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
       call t_stopf('shortwave cloud optics')
 
       ! Initialize aerosol optics
-      call handle_error(aerosol_optics_sw%init_2str( &
-         nday, nlay, nswbands, &
-         name='shortwave aerosol optics' &
-      ))
+      call handle_error(aerosol_optics_sw%alloc_2str(k_dist_sw, nday, nlay))
+      call aerosol_optics_sw%set_name('shortwave aerosol optics')
 
       ! Loop over diagnostic calls 
       ! TODO: more documentation on what this means
@@ -1500,16 +1460,9 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                                         cam_layers(:nlay), &
                                         day_indices=day_indices(:nday))
 
-            ! Calculate dry column amount (???)
-            call handle_error(gas_concentrations_sw%get_vmr('h2o', h2ovmr(:nday,:nlay)))
-            call assert_range(pint_day(:nday,:nlay+1), 1._r8, 1.e10_r8, 'radiation: pint_day')
-            call set_coldry(pint_day(:nday,:nlay+1), &
-                            h2ovmr(:nday,:nlay), &
-                            coldry(:nday,:nlay))
-
             ! Do shortwave radiative transfer calculations
             call t_startf('shortwave radiation calculations')
-            call handle_error(rrtmgp_sw( &
+            call handle_error(rte_sw( &
                k_dist_sw, gas_concentrations_sw, &
                pmid_day(:nday,:nlay), &
                tmid_day(:nday,:nlay), &
@@ -1519,9 +1472,8 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                albedo_diffuse_day(:nswbands,:nday), &
                cloud_optics_sw, &
                flux_sw_allsky_day, flux_sw_clearsky_day, &
-               inc_flux=solar_irradiance_by_gpt_day(:nday,:nswgpts), &
-               col_dry=coldry(:nday,:nlay), &
-               aer_props=aerosol_optics_sw &
+               aer_props=aerosol_optics_sw, &
+               tsi_scaling=tsi_scaling &
             ))
             call t_stopf('shortwave radiation calculations')
 
@@ -1572,16 +1524,12 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
       ! internal CAM aer_rad_props routines expect. There is logic
       ! encapsulated in RRTMGP to figure out how the optical properties are
       ! split up.
-      call handle_error(aerosol_optics_lw%init_1scl( &
-         ncol, nlay, nlwbands, &
-         name='longwave aerosol optics' &
-      ))
+      call handle_error(aerosol_optics_lw%alloc_1scl(k_dist_lw, ncol, nlay))
+      call aerosol_optics_lw%set_name('longwave aerosol optics')
 
       ! Initialize cloud optics object
-      call handle_error(cloud_optics_lw%init_1scl( &
-         ncol, nlay, k_dist_lw%get_ngpt(), &
-         name='longwave cloud optics' &
-      ))
+      call handle_error(cloud_optics_lw%alloc_1scl(k_dist_lw, ncol, nlay))
+      call cloud_optics_lw%set_name('longwave cloud optics')
 
       ! Allocate longwave outputs; why is this not part of the
       ! ty_fluxes_byband object?
@@ -1597,10 +1545,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
       )
         
       ! Populate state variables
-      call set_interface_temperature(state, cam_in, tint_cam(:ncol,:pver+1))
-      call map_cam_to_rad_levels(tint_cam(:ncol,:pver+1), &
-                                 tint(:ncol,:nlay+1), &
-                                 cam_interfaces(:nlay+1))
       call map_cam_to_rad_levels(state%t(:ncol,:pver), &
                                  tmid(:ncol,:nlay), &
                                  cam_layers(:nlay)) 
@@ -1617,7 +1561,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
       ! number, and set midpoint pressure to be half of the pressure at the
       ! top most model interface.
       if (nlay > pver) then
-         tint(:ncol,1) = state%t(:ncol,1)
          tmid(:ncol,1) = state%t(:ncol,1)
          pmid(:ncol,1) = 0.5 * state%pint(:ncol,1)
          pint(:ncol,1) = 1.01_r8
@@ -1656,12 +1599,6 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                                         cam_layers(:nlay))
             call t_stopf('longwave gas concentrations')
 
-            ! Calculate dry column amount (???)
-            call handle_error(gas_concentrations_lw%get_vmr('h2o', h2ovmr(:ncol,:nlay)))
-            call set_coldry(pint(:ncol,:nlay+1), &
-                            h2ovmr(:ncol,:nlay), &
-                            coldry(:ncol,:nlay))
-
             ! Get longwave aerosol optics
             call t_startf('longwave aerosol optics')
             call set_aerosol_optics_lw(icall, state, pbuf, cam_layers(:nlay), aerosol_optics_lw)
@@ -1669,15 +1606,13 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
 
             ! Do longwave radiative transfer calculations
             call t_startf('longwave radiation calculations')
-            call handle_error(rrtmgp_lw( &
+            call handle_error(rte_lw( &
                k_dist_lw, gas_concentrations_lw, &
                pmid(:ncol,:nlay), tmid(:ncol,:nlay), &
                pint(:ncol,:nlay+1), t_sfc(:ncol), &
                surface_emissivity(:nlwbands,:ncol), &
                cloud_optics_lw, &
                flux_lw_allsky, flux_lw_clearsky, &
-               t_lev=tint(:ncol,:nlay+1), &
-               col_dry=coldry(:ncol,:nlay), &
                aer_props=aerosol_optics_lw &
             ))
             call t_stopf('longwave radiation calculations')
@@ -2342,19 +2277,6 @@ subroutine output_cloud_optics_sw(state, optics)
 end subroutine output_cloud_optics_sw
 
 
-function total_solar_irradiance(solar_irradiance_by_gpt, coszrs)
-   real(r8), intent(in) :: solar_irradiance_by_gpt(:,:)
-   real(r8), intent(in) :: coszrs(:)
-   real(r8) :: total_solar_irradiance(size(coszrs))
-   character(len=128) :: subname = 'total_solar_irradiance'
-
-   call assert(size(coszrs,1) == size(solar_irradiance_by_gpt,1), &
-               trim(subname) // ': inconsistent sizes')
-
-   total_solar_irradiance = coszrs * sum(solar_irradiance_by_gpt, dim=2)
-end function total_solar_irradiance
-
-
 subroutine set_daynight_indices(coszrs, day_indices, night_indices)
    ! Input: cosine of solar zenith angle
    real(r8), intent(in) :: coszrs(:)
@@ -2413,18 +2335,10 @@ end subroutine set_daynight_indices
 
 ! Subroutine to calculate the solar insolation, accounting for orbital
 ! eccentricity and solar variability
-subroutine set_solar_irradiance_by_gpt(kdist, solar_irradiance)
+function get_eccentricity_factor() result(eccentricity_factor)
    use cam_control_mod, only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod, only: shr_orb_decl
    use time_manager, only: get_curr_calday
-   use mo_gas_optics, only: ty_gas_optics_specification
-
-   ! Inputs: kdist object to get solar source function by g-point
-   type(ty_gas_optics_specification), intent(in) :: kdist
-
-   ! Output: solar irradiance scaled by earth-sun distance factor and 
-   ! cosine solar zenith angle
-   real(r8), intent(inout) :: solar_irradiance(:,:)
 
    ! Variables needed to use shr_orb_decl to get orbital eccentricity factor 
    ! (earth-sun distance factor)
@@ -2432,20 +2346,12 @@ subroutine set_solar_irradiance_by_gpt(kdist, solar_irradiance)
    real(r8) :: solar_declination    ! Solar declination angle in rad
    real(r8) :: eccentricity_factor  ! Earth-sun distance factor (ie. (1/r)**2)
 
-   integer :: i
-
    ! Get orbital eccentricity factor for the current calendar day
    calday = get_curr_calday()
    call shr_orb_decl(calday, eccen, mvelpp, lambm0, obliqr, &
                      solar_declination, eccentricity_factor)
 
-   ! Grab solar irradiance from kdist
-   solar_irradiance(:,:) = spread(kdist%get_solar_source(), dim=1, ncopies=size(solar_irradiance, 1))
-
-   ! Scale solar irradiance by the earth-sun distance factor
-   solar_irradiance = eccentricity_factor * solar_irradiance
-
-end subroutine set_solar_irradiance_by_gpt
+end function get_eccentricity_factor
 
 
 ! Get and set cosine of the solar zenith angle for all columns in a physics chuck
@@ -2592,8 +2498,8 @@ subroutine set_albedo(cam_in, albedo_direct, albedo_diffuse)
    ! NOTE: this does actually issue warnings for albedos larger than 1, but this
    ! was never checked for RRTMG, so albedos will probably be slight different
    ! than the implementation in RRTMG!
-   call clip_values(albedo_direct, 0._r8, 1._r8, varname='albedo_direct', warn=.true.)
-   call clip_values(albedo_diffuse, 0._r8, 1._r8, varname='albedo_diffuse', warn=.true.)
+   call clip_values(albedo_direct, 0._r8, 1._r8, varname='albedo_direct')
+   call clip_values(albedo_diffuse, 0._r8, 1._r8, varname='albedo_diffuse')
 
 end subroutine set_albedo
 

@@ -15,14 +15,13 @@ program flux_compute
   use mo_rte_kind,        only: wp
   use mo_gas_optics, &
                         only: ty_gas_optics_specification
-  use mo_gas_concentrations,       &
+  use mo_gas_concentrations,  &
                         only: ty_gas_concs
   use mo_optical_props, only: ty_optical_props_2str
   use mo_fluxes_byband, only: ty_fluxes_byband
   ! ---- RRTMPG driver
-  use mo_rrtmgp_clr_all_sky,                             &
-                        only: rte_lw_init, rte_lw, &
-                              rte_sw_init, rte_sw
+  use mo_rrtmgp_clr_all_sky,  &
+                        only: rte_lw, rte_sw
   use mo_heating_rates, only: compute_heating_rate
 
   ! ---- I/O for test format files.
@@ -90,7 +89,6 @@ program flux_compute
     call read_lw_bc(input_file, t_sfc, emis_sfc)
     ! Number of quadrature angles
     call read_lw_rt(input_file, nang)
-    call stop_on_err(rte_lw_init(nangles=nang))
   else
     call read_sw_bc(input_file, sza, tsi, tsi_scaling, sfc_alb_dir, sfc_alb_dif)
     allocate(mu0(size(sza)))
@@ -117,7 +115,9 @@ program flux_compute
   allocate(heating_rate(ncol,nlay), bnd_heating_rate(ncol,nlay,nbnd))
   if(is_sw(input_file)) allocate(flux_dir(ncol,nlay+1), bnd_flux_dir(ncol,nlay+1,nbnd))
 
-  call stop_on_err(clouds%init_2str(ncol,nlay,ngpt))
+  call stop_on_err(clouds%init(k_dist%get_band_lims_gpoint(), &
+                               k_dist%get_band_lims_wavenumber()))
+  call stop_on_err(clouds%alloc_2str(ncol,nlay))
     ! clouds
   clouds%tau(:,:,:) = 0._wp
   clouds%ssa(:,:,:) = 1._wp
@@ -196,14 +196,14 @@ program flux_compute
                                    emis_sfc(:,colS:colE), clouds_subset,   &
                                    allsky_fluxes, clrsky_fluxes,           &
                                    col_dry = col_dry(colS:colE,:),         &
-                                   t_lev   = t_lev  (colS:colE,:)))
+                                   t_lev   = t_lev  (colS:colE,:), n_gauss_angles = nang))
       else
         call stop_on_err(rte_lw(k_dist, gas_concs_subset,               &
                                    p_lay(colS:colE,:), t_lay(colS:colE,:), &
                                    p_lev(colS:colE,:), t_sfc(colS:colE  ), &
                                    emis_sfc(:,colS:colE), clouds_subset,   &
                                    allsky_fluxes, clrsky_fluxes,           &
-                                   t_lev = t_lev(colS:colE,:)))
+                                   t_lev = t_lev(colS:colE,:), n_gauss_angles = nang))
       end if
     end if
   end do
@@ -278,14 +278,14 @@ program flux_compute
                                    emis_sfc(:,colS:colE), clouds_subset,   &
                                    allsky_fluxes, clrsky_fluxes,           &
                                    col_dry = col_dry(colS:colE,:),         &
-                                   t_lev   = t_lev  (colS:colE,:)))
+                                   t_lev   = t_lev  (colS:colE,:), n_gauss_angles = nang))
       else
         call stop_on_err(rte_lw(k_dist, gas_concs_subset,               &
                                    p_lay(colS:colE,:), t_lay(colS:colE,:), &
                                    p_lev(colS:colE,:), t_sfc(colS:colE  ), &
                                    emis_sfc(:,colS:colE), clouds_subset,   &
                                    allsky_fluxes, clrsky_fluxes,           &
-                                   t_lev = t_lev(colS:colE,:)))
+                                   t_lev = t_lev(colS:colE,:), n_gauss_angles = nang))
       end if
     end if
   end if
@@ -301,7 +301,7 @@ program flux_compute
   !
   ! ... and write everything out
   !
-  call write_spectral_disc(input_file, k_dist)
+  call write_spectral_disc(input_file, clouds)
   call write_fluxes(input_file, flux_up, flux_dn, flux_net, bnd_flux_up, bnd_flux_dn, bnd_flux_net)
   call write_heating_rates(input_file, heating_rate, bnd_heating_rate)
   if(k_dist%is_external_source_present()) &

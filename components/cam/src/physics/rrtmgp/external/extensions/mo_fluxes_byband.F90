@@ -18,7 +18,7 @@
 module mo_fluxes_byband
   use mo_rte_kind,   only: wp
   use mo_fluxes,        only: ty_fluxes, ty_fluxes_broadband
-  use mo_spectral_disc, only: ty_spectral_disc
+  use mo_optical_props, only: ty_optical_props
   use mo_fluxes_byband_kernels, &
                         only: sum_byband, net_byband
   implicit none
@@ -41,7 +41,7 @@ contains
     class(ty_fluxes_byband),           intent(inout) :: this
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_up ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_dn ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
-    class(ty_spectral_disc),            intent(in   ) :: spectral_disc  !< derived type with spectral information
+    class(ty_optical_props),           intent(in   ) :: spectral_disc  !< derived type with spectral information
     logical,                           intent(in   ) :: top_at_1
     real(kind=wp), dimension(:,:,:), optional, &
                                        intent(in   ) :: gpt_flux_dn_dir! Direct flux down
@@ -51,7 +51,7 @@ contains
     ! ------
     ncol = size(gpt_flux_up, DIM=1)
     nlev = size(gpt_flux_up, DIM=2)
-    ngpt = size(gpt_flux_up, DIM=3)
+    ngpt = spectral_disc%get_ngpt()
     nbnd = spectral_disc%get_nband()
 
 
@@ -60,6 +60,11 @@ contains
     !
     error_msg = this%ty_fluxes_broadband%reduce(gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir)
     if(error_msg /= '') return
+
+    if(size(gpt_flux_up, 3) /= ngpt) then
+      error_msg = "reduce: spectral discretization and g-point flux arrays have differing number of g-points"
+      return
+    end if
 
     ! Check sizes of output arrays
     if(associated(this%bnd_flux_up)) then

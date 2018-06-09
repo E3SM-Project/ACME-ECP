@@ -22,7 +22,7 @@ python change-values.py data/garand-atmospheres-sw-vertrev.nc solar_zenith_angle
 #
 # Run RRTMGP and ECRAD on these reversed files
 #
-python ../test/util/scripts/run_tests.py --root .. --no_diff --test rrtmgp-ecrad-clear.ini
+python ../test/run_tests.py --root .. --no_diff --test rrtmgp-ecrad-clear.ini
 
 #
 # Compare the files

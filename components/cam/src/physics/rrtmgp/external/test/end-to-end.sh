@@ -17,8 +17,8 @@ python repeat-cols.py ../test/data/garand-atmospheres-sw.nc data/one-clear-atmos
 #
 # Add cloud optics
 #
-if [ ! -e data/solver-lw-inputs-cloud.nc ]; then python ../test/util/scripts/run_tests.py --root .. --no_diff --test make-lw-cloud-problems.ini; fi
-if [ ! -e data/solver-sw-inputs-cloud.nc ]; then python ../test/util/scripts/run_tests.py --root .. --no_diff --test make-sw-cloud-problems.ini; fi
+if [ ! -e data/solver-lw-inputs-cloud.nc ]; then python ../test/run_tests.py --root .. --no_diff --test make-lw-cloud-problems.ini; fi
+if [ ! -e data/solver-sw-inputs-cloud.nc ]; then python ../test/run_tests.py --root .. --no_diff --test make-sw-cloud-problems.ini; fi
 
 for w in lw sw; do
   #

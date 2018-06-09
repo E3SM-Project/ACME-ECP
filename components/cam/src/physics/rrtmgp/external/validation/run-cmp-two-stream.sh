@@ -27,8 +27,8 @@ python repeat-cols.py ../test/data/garand-atmospheres-sw.nc data/one-clear-atmos
 # Add cloud optics - do this before reversing direction because I'm not sure how Frank's code
 #   treats direction
 #
-if [ ! -e data/solver-lw-inputs-cloud.nc ]; then python ../test/util/scripts/run_tests.py --root .. --no_diff --test make-lw-cloud-problems.ini; fi
-if [ ! -e data/solver-sw-inputs-cloud.nc ]; then python ../test/util/scripts/run_tests.py --root .. --no_diff --test make-sw-cloud-problems.ini; fi
+if [ ! -e data/solver-lw-inputs-cloud.nc ]; then python ../test/run_tests.py --root .. --no_diff --test make-lw-cloud-problems.ini; fi
+if [ ! -e data/solver-sw-inputs-cloud.nc ]; then python ../test/run_tests.py --root .. --no_diff --test make-sw-cloud-problems.ini; fi
 #
 # Default files in RRTMGP tree have first index at surface; ECRAD requires opposite vertical ordering.
 #
@@ -45,4 +45,4 @@ python change-values.py data/solver-sw-inputs-cloud-vertrev.nc solar_zenith_angl
 # Compute source functions and, for scattering atmospheres, the two-stream reflectance and
 #   transmittance with ECRAD and RTE
 #
-../test/util/scripts/run_tests.py --root .. --test rrtmgp-ecrad-two-stream.ini --no_diff
+../test/run_tests.py --root .. --test rrtmgp-ecrad-two-stream.ini --no_diff

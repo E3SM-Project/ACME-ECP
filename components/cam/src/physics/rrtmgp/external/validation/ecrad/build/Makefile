@@ -21,7 +21,6 @@ RTE_SRC = \
   mo_rte_kind.o \
   mo_optical_props_kernels.o \
   mo_optical_props.o \
-	mo_spectral_disc.o \
 	mo_fluxes_broadband_kernels.o \
   mo_fluxes.o \
 	mo_rte_lw_solver.o \
@@ -88,15 +87,10 @@ mo_rrtmgp_constants.o: mo_rte_kind.o mo_rrtmgp_constants.F90
 mo_optical_props_kernels.o: mo_rte_kind.o mo_optical_props_kernels.F90
 mo_optical_props.o:         mo_rte_kind.o mo_optical_props_kernels.o   mo_optical_props.F90
 #
-# Spectral discretization
-#
-mo_spectral_disc.o: mo_rte_kind.o  mo_spectral_disc.F90
-#
 # Flux reduction
 #
 mo_fluxes_broadband_kernels.o: mo_rte_kind.o mo_fluxes_broadband_kernels.F90
-mo_fluxes.o:        mo_rte_kind.o mo_fluxes_broadband_kernels.o mo_spectral_disc.o \
-	mo_fluxes.F90
+mo_fluxes.o:        mo_rte_kind.o mo_fluxes_broadband_kernels.o mo_fluxes.F90
 #
 # Radiative transfer
 #
@@ -128,7 +122,6 @@ mo_test_files_io.o: mo_rte_kind.o \
 	mo_optical_props.o  \
 	mo_gas_concentrations.o \
 	mo_util_reorder.o \
-  mo_spectral_disc.o \
 	mo_test_files_io.F90
 
 mo_util_reorder.o:  mo_rte_kind.o \

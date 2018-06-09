@@ -26,11 +26,11 @@ contains
   !
   ! Solution to the radiative transfer equation assuming internal emission
   !
-  function sw_solver(ncol, nlay, ngpt, top_is_1,           &
+  function sw_solver(ncol, nlay, ngpt, top_at_1,           &
                      atmos, mu0, sfc_alb_dir, sfc_alb_dif, &
                      inc_flux, flux_up, flux_dn, flux_dir, inc_flux_dif)
     integer,                         intent( in) :: ncol, nlay, ngpt !< Number of columns, layers, g-points
-    logical,                         intent( in) :: top_is_1         !< True if arrays are indexed top to bottom.
+    logical,                         intent( in) :: top_at_1         !< True if arrays are indexed top to bottom.
     class(ty_optical_props_arry),    intent( in) :: atmos            ! Optical properties of the atmosphere
     real(wp), dimension(ncol),       intent( in) :: mu0              !< cosine of solar zenith angle
     real(wp), dimension(ncol,ngpt),  intent( in) :: sfc_alb_dir, sfc_alb_dif
@@ -39,7 +39,7 @@ contains
     real(wp), dimension(ncol,nlay+1,ngpt), &
                                      intent(inout) :: flux_up, flux_dn, &  ! Fluxes [W/m2]
                                                       flux_dir             ! Downward direct
-                                                                         ! Top level (= merge(1, nlay+1, top_is_1)
+                                                                         ! Top level (= merge(1, nlay+1, top_at_1)
                                                                          ! must contain incident flux boundary condition
     real(wp), dimension(ncol,ngpt), optional, &
                                     intent( in) :: inc_flux_dif     !< diffuse incident flux at top-of-atmosphere [W/m2]
@@ -62,8 +62,8 @@ contains
     ! Calculations shared by all solvers ...
     !  ... are there any? We should leave anything that depends on spec_cfg elsewhere so this is pure RT.
     sw_solver = ""
-    if(.not. top_is_1) then
-      sw_solver = "sw_solver: atmosphere has to be ordered top to bottom (top_is_1 = .false.) for ECRAD"
+    if(.not. top_at_1) then
+      sw_solver = "sw_solver: atmosphere has to be ordered top to bottom (top_at_1 = .false.) for ECRAD"
       return
     end if
 

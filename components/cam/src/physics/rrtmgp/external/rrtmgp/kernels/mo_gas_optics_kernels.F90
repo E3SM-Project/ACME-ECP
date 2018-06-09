@@ -19,6 +19,9 @@ module mo_gas_optics_kernels
   use mo_util_string,   only : string_loc_in_array
   implicit none
 
+  interface zero_array
+    module procedure zero_array_3D, zero_array_4D
+  end interface
 contains
   ! --------------------------------------------------------------------------------------
 
@@ -529,9 +532,10 @@ contains
                                ! for given flavor and reference temperature level
     real(wp) :: eta, feta   ! binary_species_parameter, interpolation variable for eta
     real(wp) :: loceta ! needed to find location in eta grid
+    real(wp) :: ftemp_term
     ! -----------------
     ! local indexes
-    integer :: icol, ilay, iflav, igases(2), itropo
+    integer :: icol, ilay, iflav, igases(2), itropo, itemp
     integer, dimension(ncol) :: itropo_last
 
     do ilay = 1, nlay
@@ -572,43 +576,29 @@ contains
         ! loop over implemented combinations of major species
         do iflav = 1, nflav
           igases(:) = flavor(:,iflav)
-
-          ! compute interpolation fractions needed for lower reference temperature level
-          ! compute binary species parameter (eta) for flavor and temperature, and associated interpolation index and factors
-          ratio_eta_half = vmr_ref(itropo,igases(1),jtemp(icol,ilay)) / vmr_ref(itropo,igases(2),jtemp(icol,ilay))
-          col_mix(1,iflav,icol,ilay) = col_gas(icol,ilay,igases(1)) + ratio_eta_half * col_gas(icol,ilay,igases(2))
-          eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(1,iflav,icol,ilay), &
-                      0.5_wp, col_mix(1,iflav,icol,ilay) > 2._wp * tiny(col_mix))
-          loceta = eta * float(neta-1)
-          jeta(1,iflav,icol,ilay) = min(int(loceta)+1, neta-1)
-          feta = mod(loceta, 1.0_wp)
-          ! compute interpolation fractions needed for minor species
-          fminor(1,1,iflav,icol,ilay) = (1._wp-feta) * (1._wp-ftemp(icol,ilay))
-          fminor(2,1,iflav,icol,ilay) =        feta  * (1._wp-ftemp(icol,ilay))
-          ! compute interpolation fractions needed for major species
-          fmajor(1,1,1,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(1,1,iflav,icol,ilay)
-          fmajor(2,1,1,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(2,1,iflav,icol,ilay)
-          fmajor(1,2,1,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(1,1,iflav,icol,ilay)
-          fmajor(2,2,1,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(2,1,iflav,icol,ilay)
-
-          ! compute interpolation fractions needed for upper reference temperature level
-          ! compute binary species parameter (eta) for flavor and temperature, and associated interpolation index and factors
-          ratio_eta_half = vmr_ref(itropo,igases(1),jtemp(icol,ilay)+1) / vmr_ref(itropo,igases(2),jtemp(icol,ilay)+1)
-          col_mix(2,iflav,icol,ilay) = col_gas(icol,ilay,igases(1)) + ratio_eta_half * col_gas(icol,ilay,igases(2))
-          eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(2,iflav,icol,ilay), &
-                      0.5_wp, col_mix(2,iflav,icol,ilay) > 2._wp * tiny(col_mix))
-          loceta = eta * float(neta-1)
-          jeta(2,iflav,icol,ilay) = min(int(loceta)+1, neta-1)
-          feta = mod(loceta, 1.0_wp)
-
-          ! compute interpolation fractions needed for minor species
-          fminor(1,2,iflav,icol,ilay) = (1._wp-feta) * ftemp(icol,ilay)
-          fminor(2,2,iflav,icol,ilay) =        feta  * ftemp(icol,ilay)
-          ! compute interpolation fractions needed for major species
-          fmajor(1,1,2,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(1,2,iflav,icol,ilay)
-          fmajor(2,1,2,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(2,2,iflav,icol,ilay)
-          fmajor(1,2,2,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(1,2,iflav,icol,ilay)
-          fmajor(2,2,2,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(2,2,iflav,icol,ilay)
+          do itemp = 1, 2
+            ! compute interpolation fractions needed for lower, then upper reference temperature level
+            ! compute binary species parameter (eta) for flavor and temperature and
+            !  associated interpolation index and factors
+            ratio_eta_half = vmr_ref(itropo,igases(1),(jtemp(icol,ilay)+itemp-1)) / &
+                             vmr_ref(itropo,igases(2),(jtemp(icol,ilay)+itemp-1))
+            col_mix(itemp,iflav,icol,ilay) = col_gas(icol,ilay,igases(1)) + ratio_eta_half * col_gas(icol,ilay,igases(2))
+            eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(itemp,iflav,icol,ilay), 0.5_wp, &
+                        col_mix(itemp,iflav,icol,ilay) > 2._wp * tiny(col_mix))
+            loceta = eta * float(neta-1)
+            jeta(itemp,iflav,icol,ilay) = min(int(loceta)+1, neta-1)
+            feta = mod(loceta, 1.0_wp)
+            ! compute interpolation fractions needed for minor species
+            ! ftemp_term = (1._wp-ftemp(icol,ilay)) for itemp = 1, ftemp(icol,ilay) for itemp=1
+            ftemp_term = (real(2-itemp, wp) + real(2*itemp-3, wp) * ftemp(icol,ilay))
+            fminor(1,itemp,iflav,icol,ilay) = (1._wp-feta) * ftemp_term
+            fminor(2,itemp,iflav,icol,ilay) =        feta  * ftemp_term
+            ! compute interpolation fractions needed for major species
+            fmajor(1,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay)
+            fmajor(2,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay)
+            fmajor(1,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(1,itemp,iflav,icol,ilay)
+            fmajor(2,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(2,itemp,iflav,icol,ilay)
+          end do ! reference temperatures
         end do ! iflav
       end do ! icol,ilay
     end do
@@ -618,7 +608,8 @@ contains
   !
   ! Combine absoprtion and Rayleigh optical depths for total tau, ssa, g
   !
-  pure subroutine combine_and_reorder_2str(ncol, nlay, ngpt, tau_abs, tau_rayleigh, tau, ssa, g) bind(C)
+  pure subroutine combine_and_reorder_2str(ncol, nlay, ngpt, tau_abs, tau_rayleigh, tau, ssa, g) &
+      bind(C, name="combine_and_reorder_2str")
     integer,                             intent(in) :: ncol, nlay, ngpt
     real(wp), dimension(ngpt,nlay,ncol), intent(in   ) :: tau_abs, tau_rayleigh
     real(wp), dimension(ncol,nlay,ngpt), intent(inout) :: tau, ssa, g ! inout because components are allocated
@@ -646,7 +637,8 @@ contains
   ! Combine absoprtion and Rayleigh optical depths for total tau, ssa, p
   !   using Rayleigh scattering phase function
   !
-  pure subroutine combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau_abs, tau_rayleigh, tau, ssa, p) bind(C)
+  pure subroutine combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau_abs, tau_rayleigh, tau, ssa, p) &
+      bind(C, name="combine_and_reorder_nstr")
     integer, intent(in) :: ncol, nlay, ngpt, nmom
     real(wp), dimension(ngpt,nlay,ncol), intent(in ) :: tau_abs, tau_rayleigh
     real(wp), dimension(ncol,nlay,ngpt), intent(inout) :: tau, ssa
@@ -676,7 +668,7 @@ contains
     end do
   end subroutine combine_and_reorder_nstr
   ! ----------------------------------------------------------
-  pure subroutine zero_array(ni, nj, nk, array) bind(C)
+  pure subroutine zero_array_3D(ni, nj, nk, array) bind(C, name="zero_array_3D")
     integer, intent(in) :: ni, nj, nk
     real(wp), dimension(ni, nj, nk), intent(out) :: array
     ! -----------------------
@@ -690,6 +682,24 @@ contains
       end do
     end do
 
-  end subroutine zero_array
+  end subroutine zero_array_3D
+  ! ----------------------------------------------------------
+  pure subroutine zero_array_4D(ni, nj, nk, nl, array) bind(C, name="zero_array_4D")
+    integer, intent(in) :: ni, nj, nk, nl
+    real(wp), dimension(ni, nj, nk, nl), intent(out) :: array
+    ! -----------------------
+    integer :: i,j,k,l
+    ! -----------------------
+    do l = 1, nl
+      do k = 1, nk
+        do j = 1, nj
+          do i = 1, ni
+            array(i,j,k,l) = 0.0_wp
+          end do
+        end do
+      end do
+    end do
+
+  end subroutine zero_array_4D
   ! ----------------------------------------------------------
 end module mo_gas_optics_kernels

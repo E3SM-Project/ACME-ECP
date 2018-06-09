@@ -17,14 +17,15 @@
 ! absorbing gases.
 
 module mo_gas_optics
-  use mo_rte_kind,        only: wp, wl
+  use mo_rte_kind,           only: wp, wl
   use mo_rrtmgp_constants,   only: avogad, m_dry, m_h2o, grav
-  use mo_spectral_disc,      only: ty_spectral_disc
+  use mo_optical_props,      only: ty_optical_props
+  use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_optics_kernels, only: interpolation,                                                       &
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
                                    combine_and_reorder_2str, combine_and_reorder_nstr, zero_array
 
-  use mo_util_string,        only : lower_case, string_in_array, string_loc_in_array
+  use mo_util_string,        only: lower_case, string_in_array, string_loc_in_array
   use mo_gas_concentrations, only: ty_gas_concs
   use mo_optical_props,      only: ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
   use mo_util_reorder
@@ -34,9 +35,9 @@ module mo_gas_optics
   real(wp), parameter :: pi = acos(-1._wp)
 
   ! -----------------------------------------------------------------------------------
-  type, extends(ty_spectral_disc), public :: ty_gas_optics_specification
+  type, extends(ty_optical_props), public :: ty_gas_optics_specification
     private
-    character(256), &
+    character(32), &
               dimension(:),   allocatable :: gas_names  ! gas names
 
     integer,  dimension(:,:), allocatable :: flavor        ! major species pair; (2,nflav)
@@ -112,7 +113,7 @@ module mo_gas_optics
     ! Type-bound procedures
     ! Public procedures
     ! public interface
-    generic,   public :: init       => init_int,       init_ext
+    generic,   public :: load       => load_int,       load_ext
     generic,   public :: gas_optics => gas_optics_int, gas_optics_ext
     procedure, public :: is_internal_source_present
     procedure, public :: is_external_source_present
@@ -122,10 +123,9 @@ module mo_gas_optics
     procedure, public :: get_press_ref_max
     procedure, public :: get_temp_ref_min
     procedure, public :: get_temp_ref_max
-    procedure, public :: get_solar_source
     ! Internal procedures
-    procedure, private :: init_int
-    procedure, private :: init_ext
+    procedure, private :: load_int
+    procedure, private :: load_ext
     procedure, private :: gas_optics_int
     procedure, private :: gas_optics_ext
     procedure, private :: check_key_species_present
@@ -172,14 +172,12 @@ contains
   end function get_nflav
   !--------------------------------------------------------------------------------------------------------------------
 
-  ! Compute gas optical depth andly, Planck source functions,
+  ! Compute gas optical depth and Planck source functions,
   !  given temperature, pressure, and composition
-  function gas_optics_int(this,                                       &
-                          play, plev, tlay, tsfc, gas_desc,           & ! mandatory inputs
-                          optical_props,                              & ! mandatory outputs
-                          lay_src, lev_src_inc, lev_src_dec, sfc_src, & ! internal-source specific outputs
-                          col_dry, tlev)                              & ! optional inputs
-                          result(error_msg)
+  function gas_optics_int(this,                             &
+                          play, plev, tlay, tsfc, gas_desc, &
+                          optical_props, sources,           &
+                          col_dry, tlev) result(error_msg)
     ! inputs
     class(ty_gas_optics_specification), intent(in) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
@@ -189,16 +187,10 @@ contains
     type(ty_gas_concs),       intent(in   ) :: gas_desc  ! Gas volume mixing ratios
     ! output
     class(ty_optical_props_arry),  &
-                              intent(inout) :: optical_props
+                              intent(inout) :: optical_props ! Optical properties
+    class(ty_source_func_lw    ),  &
+                              intent(inout) :: sources       ! Planck sources
     character(len=128)                      :: error_msg
-    ! internal source functions (LW only)
-    ! These include spectral weighting that accounts for state-dependent frequency to k-distribution mapping
-    ! [W/m2]
-    real(wp), dimension(:,:,:), intent(  out) :: lay_src, &  ! source for average layer temperature; (ncol,nlay,ngpt)
-                                                 lev_src_inc, lev_src_dec
-                                                             ! level source radiances in increasing/decreasing
-                                                             ! ilay direction (ncol,nlay+1,ngpt)
-    real(wp), dimension(:,:),   intent(  out) :: sfc_src     ! surface Planck source; (ncol,ngpts)
     ! Optional inputs
     real(wp), dimension(:,:),   intent(in   ), &
                            optional, target :: col_dry, &  ! Column dry amount; dim(ncol,nlay)
@@ -249,13 +241,8 @@ contains
     !
     !   output extents
     !
-    error_msg = check_extent(sfc_src,     ncol,       ngpt, 'sfc_src')
-    if(error_msg  /= '') return
-    error_msg = check_extent(lay_src,     ncol, nlay, ngpt, 'lay_src')
-    if(error_msg  /= '') return
-    error_msg = check_extent(lev_src_inc, ncol, nlay, ngpt, 'lev_src_inc')
-    if(error_msg  /= '') return
-    error_msg = check_extent(lev_src_dec, ncol, nlay, ngpt, 'lev_src_dec')
+    if(any([sources%get_ncol(), sources%get_nlay(), sources%get_ngpt()] /= [ncol, nlay, ngpt])) &
+      error_msg = "gas_optics%gas_optics: source function arrays inconsistently sized"
     if(error_msg  /= '') return
 
     !
@@ -265,7 +252,7 @@ contains
                        ncol, nlay, ngpt, nband, nflav,     &
                        play, plev, tlay, tsfc,             &
                        jtemp, jpress, jeta, tropo, fmajor, &
-                       lay_src, lev_src_inc, lev_src_dec, sfc_src, &
+                       sources,                            &
                        tlev)
 
   end function gas_optics_int
@@ -491,7 +478,7 @@ contains
             ncol,nlay,ngpt,ngas,nflav,      & ! dimensions
             this%gpoint_flavor,             &
             this%krayl,                     & ! inputs from object
-            idx_h2o, col_dry,col_gas,       &
+            idx_h2o,col_dry_wk,col_gas,     &
             fminor,jeta,tropo,jtemp,        & ! local input
             tau_rayleigh)
     end if
@@ -506,8 +493,8 @@ contains
                   ncol, nlay, ngpt, nbnd, nflv,       &
                   play, plev, tlay, tsfc,             &
                   jtemp, jpress, jeta, tropo, fmajor, &
-                  lay_src, lev_src_inc, lev_src_dec, sfc_src, & ! Planck sources
-                  tlev)                              & ! optional input
+                  sources,                            & ! Planck sources
+                  tlev)                               & ! optional input
                   result(error_msg)
     ! inputs
     class(ty_gas_optics_specification),    intent(in ) :: this
@@ -523,11 +510,7 @@ contains
                                            intent(in ) :: fmajor
     integer,  dimension(2,   nflv,ncol,nlay),   &
                                            intent(in ) :: jeta
-    real(wp), dimension(ncol,nlay  ,ngpt), intent(out) :: lay_src ! source for average layer temperature
-    real(wp), dimension(ncol,nlay  ,ngpt), intent(out) :: lev_src_inc, lev_src_dec
-                                                             ! level source radiances in increasing/decreasing
-                                                             ! ilay direction
-    real(wp), dimension(ncol,       ngpt), intent(out) :: sfc_src ! surface Planck source
+    class(ty_source_func_lw    ),        intent(inout) :: sources
     real(wp), dimension(ncol,nlay+1),      intent(in ), &
                                       optional, target :: tlev          ! level temperatures [K]
     character(len=128)                                 :: error_msg
@@ -575,9 +558,9 @@ contains
     call compute_Planck_source(ncol, nlay, ngpt, nbnd, nflv, &
                 tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
                 fmajor, jeta, tropo, jtemp, jpress,                    &
-                this%get_gpoint_bands(), this%planck_frac, this%temp_ref_min,    &
+                this%get_gpoint_bands(), this%planck_frac, this%temp_ref_min,&
                 this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
-                sfc_src, lay_src, lev_src_inc, lev_src_dec)
+                sources%sfc_source, sources%lay_source, sources%lev_source_inc, sources%lev_source_dec)
   end function source
   !--------------------------------------------------------------------------------------------------------------------
   !
@@ -588,7 +571,7 @@ contains
   !  Rayleigh scattering tables may or may not be present; this is indicated with allocation status
   ! This interface is for the internal-sources object -- includes Plank functions and fractions
   !
-  function init_int(this, available_gases, gas_names, key_species,  &
+  function load_int(this, available_gases, gas_names, key_species,  &
                     band2gpt, band_lims_wavenum,                    &
                     press_ref, press_ref_trop, temp_ref,            &
                     temp_ref_p, temp_ref_t, vmr_ref,                &
@@ -662,14 +645,14 @@ contains
     !   Assumes that temperature minimum and max are the same for the absorption coefficient grid and the
     !   Planck grid and the Planck grid is equally spaced
     this%totplnk_delta =  (this%temp_ref_max-this%temp_ref_min) / (size(this%totplnk,dim=1)-1)
-  end function init_int
+  end function load_int
 
   !--------------------------------------------------------------------------------------------------------------------
   ! Initialize object based on data read from netCDF file however the user desires.
   !  Rayleigh scattering tables may or may not be present; this is indicated with allocation status
   ! This interface is for the external-sources object -- includes TOA source function table
   !
-  function init_ext(this, available_gases, gas_names, key_species,        &
+  function load_ext(this, available_gases, gas_names, key_species,        &
                     band2gpt, band_lims_wavenum,           &
                     press_ref, press_ref_trop, temp_ref, &
                     temp_ref_p, temp_ref_t, vmr_ref,     &
@@ -748,7 +731,7 @@ contains
     !
     this%solar_src = solar_src
 
-  end function init_ext
+  end function load_ext
   !--------------------------------------------------------------------------------------------------------------------
   ! Initialize absorption coefficient arrays,
   !   including Rayleigh scattering tables if provided (allocated)
@@ -819,7 +802,7 @@ contains
     integer :: i, j, idx
     integer :: ngas
     ! --------------------------------------
-    err_message = this%ty_spectral_disc%init(band2gpt, band_lims_wavenum)
+    err_message = this%ty_optical_props%init(band2gpt, band_lims_wavenum)
     if(len_trim(err_message) /= 0) return
 
     !
@@ -840,9 +823,7 @@ contains
     ! Initialize the gas optics object, keeping only those gases known to the
     !   gas optics and also present in the host model
     !
-    ! BRH fix: this needs to be explicitly allocated?
-    !this%gas_names = pack(gas_names,mask=gas_is_present)
-    allocate(this%gas_names, source=pack(gas_names, mask=gas_is_present))
+    this%gas_names = pack(gas_names,mask=gas_is_present)
 
     allocate(vmr_ref_red(size(vmr_ref,dim=1),0:ngas, &
                          size(vmr_ref,dim=3)))
@@ -978,7 +959,7 @@ contains
       if(.not. key_species_present_init(i)) &
         err_message = ' ' // trim(gas_names(i)) // trim(err_message)
     end do
-    if(len_trim(err_message) > 0) err_message = "gas_optics (init): required gases" // trim(err_message) // " are not provided"
+    if(len_trim(err_message) > 0) err_message = "gas_optics: required gases" // trim(err_message) // " are not provided"
 
   end function check_key_species_present_init
 
@@ -1100,14 +1081,6 @@ contains
     get_temp_ref_max = this%temp_ref_max
   end function get_temp_ref_max
 
-  !--------------------------------------------------------------------------------------------------------------------
-  ! return the solar source function if present
-  pure function get_solar_source(this)
-     class(ty_gas_optics_specification), intent(in) :: this
-     real(wp) :: get_solar_source(size(this%solar_src))
-
-     get_solar_source = this%solar_src
-  end function get_solar_source
 
   !--------------------------------------------------------------------------------------------------------------------
   ! --- gas optical depth calculations
@@ -1292,7 +1265,6 @@ contains
     do ip = 1, np
       do ia = 1, na
         do it = 1, nt
-                     
           if (key_species(ip,ia,it) .ne. 0) then
             key_species_red(ip,ia,it) = string_loc_in_array(gas_names(key_species(ip,ia,it)),gas_names_red)
             if (key_species_red(ip,ia,it) .eq. -1) key_species_present_init(key_species(ip,ia,it)) = .false.
@@ -1476,6 +1448,15 @@ contains
     if (.not. has_rayleigh) then
       ! index reorder (ngpt, nlay, ncol) -> (ncol,nlay,gpt)
       optical_props%tau = reorder123x321(tau)
+      select type(optical_props)
+        type is (ty_optical_props_2str)
+          call zero_array(     ncol,nlay,ngpt,optical_props%ssa)
+          call zero_array(     ncol,nlay,ngpt,optical_props%g  )
+        type is (ty_optical_props_nstr) ! We ought to be able to combine this with above
+          nmom = size(optical_props%p, 1)
+          call zero_array(     ncol,nlay,ngpt,optical_props%ssa)
+          call zero_array(nmom,ncol,nlay,ngpt,optical_props%p  )
+        end select
     else
       ! combine optical depth and rayleigh scattering
       select type(optical_props)
@@ -1490,7 +1471,6 @@ contains
           call combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau, tau_rayleigh, &
                                         optical_props%tau, optical_props%ssa, optical_props%p)
       end select
-
     end if
   end subroutine combine_and_reorder
 

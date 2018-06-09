@@ -3,8 +3,12 @@
 # make sure print behaves the same in 2.7 and 3.x
 from __future__ import print_function
 
-import os, sys, shutil, ConfigParser
+import os, sys, shutil
 import subprocess as sub
+if sys.version_info[0] < 3:
+    import ConfigParser
+else:
+    import configparser as ConfigParser
 
 # package netCDF4 (https://github.com/Unidata/netcdf4-python)
 import netCDF4 as nc
@@ -43,6 +47,8 @@ def spawn(cmd, noSplit=False, errStop=True):
 
   call = sub.Popen(cmd, shell=True, stdout=sub.PIPE, stderr=sub.PIPE)
   callout, callerr = call.communicate()
+  # Python 3 returns byte strings that need to be decoded.
+  callout, callerr = callout.decode('utf-8'), callerr.decode('utf-8')
   rCode = call.returncode
 
   # http://stackoverflow.com/questions/3630389/python-error-codes
@@ -578,7 +584,7 @@ def unitTest(inDict, verbose=False, reverse=False, skipDiff=False, \
 
 def configSetup(configFile, chain=False, replace=False, \
   relDiffCut=0.0001, validInfo=False, revLayers=False, \
-  build=False, rootDir='./', failQuit=False, **kwargs):
+  build=False, rootDir='../', failQuit=False, **kwargs):
   """
   Run unit tests as specified by the user in a configuration file
 
@@ -734,7 +740,7 @@ def configSetup(configFile, chain=False, replace=False, \
 
 # end configSetup
 
-def configSetupSHDOMPP(configFile, rootDir='./', \
+def configSetupSHDOMPP(configFile, rootDir='../', \
   **kwargs):
   """
   Run executables as specified by an input configuration file
@@ -867,7 +873,7 @@ def runOpticalProps(inDir, replace=False, verbose=False, build=False):
   return
 # end runOpticalProps()
 
-def cleanUp(inFile, rootDir='./', removeTest=True):
+def cleanUp(inFile, rootDir='../', removeTest=True):
   """
   Remove all intermediate (staging) files from unit test execution
 
@@ -973,7 +979,7 @@ if __name__ == '__main__':
   parser.add_argument('--build', action='store_true', \
     help='Build the RRTMGP library and executables before ' + \
     'running any tests.')
-  parser.add_argument('--root_dir', type=str, default=None, \
+  parser.add_argument('--root_dir', type=str, default='../', \
     help='This script runs with a number of assumptions on ' + \
     'where directories and executables exist. This keyword ' + \
     'specifies what the RRTMGP root directory is, and then ' + \

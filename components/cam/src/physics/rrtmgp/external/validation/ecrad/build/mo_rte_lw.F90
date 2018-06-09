@@ -20,14 +20,11 @@
 !
 !
 module mo_rte_lw
-  use mo_rte_kind,      only: wp, wl
+  use mo_rte_kind,   only: wp
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
-  use mo_source_functions,   &
-                        only: ty_source_func_lw
   use mo_fluxes,        only: ty_fluxes
-  use mo_rte_solver_kernels, &
-                        only: apply_BC, lw_solver_noscat_GaussQuad, lw_solver_2stream
+  use mo_lw_solver,     only: lw_solver_init, lw_solver
   implicit none
   private
 
@@ -38,52 +35,39 @@ contains
   ! Interface using only optical properties and source functions as inputs; fluxes as outputs.
   !
   ! --------------------------------------------------
-  function rte_lw(optical_props, top_at_1, &
-                  sources, sfc_emis,       &
-                  fluxes,                  &
-                  inc_flux, n_gauss_angles) result(error_msg)
+  function rte_lw(optical_props, top_at_1,  &
+                     lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_source, &
+                     fluxes, &
+                     inc_flux, n_gauss_angles) result(error_msg)
     class(ty_optical_props_arry), intent(in   ) :: optical_props     ! Array of ty_optical_props. This type is abstract
                                                                      ! and needs to be made concrete, either as an array
                                                                      ! (class ty_optical_props_arry) or in some user-defined way
     logical,                      intent(in   ) :: top_at_1          ! Is the top of the domain at index 1?
                                                                      ! (if not, ordering is bottom-to-top)
-    type(ty_source_func_lw),      intent(in   ) :: sources
+    real(wp), dimension(:,:,:),   intent(in   ) :: lay_source, &     ! Planck source at layer average temperature
+                                                                     ! [W/m2] (ncol, nlay, ngpt)
+                                                   lev_source_inc, & ! Planck source at layer edge for radiation,
+                                                   lev_source_dec    ! [W/m2] (ncol, nlay+1, ngpt)
+                                                                     ! in increasing/decreasing ilay direction
+                                                                     ! Includes spectral weighting that accounts for state-dependent
+                                                                     ! frequency to g-space mapping
     real(wp), dimension(:,:),     intent(in   ) :: sfc_emis    ! emissivity at surface [] (nband, ncol)
+    real(wp), dimension(:,:),     intent(in   ) :: sfc_source     ! source function at surface [W/m2] (ncol, ngpt)
     class(ty_fluxes),             intent(inout) :: fluxes      ! Array of ty_fluxes. Default computes broadband fluxes at all levels
                                                                !   if output arrays are defined. Can be extended per user desires.
     real(wp), dimension(:,:),   &
               target, optional, intent(in   ) :: inc_flux    ! incident flux at domain top [W/m2] (ncol, ngpts)
-    integer,          optional, intent(in   ) :: n_gauss_angles ! Number of angles used in Gaussian quadrature
-                                                                ! (no-scattering solution)
+    integer,          optional, intent(in   ) :: n_gauss_angles
     character(len=128)                        :: error_msg   ! If empty, calculation was successful
     ! --------------------------------
     !
     ! Local variables
     !
     integer :: ncol, nlay, ngpt, nband
-    integer :: n_quad_angs
+    integer :: top_lev
     integer :: icol
     real(wp), dimension(:,:,:), allocatable :: gpt_flux_up, gpt_flux_dn
     real(wp), dimension(:,:),   allocatable :: sfc_emis_gpt
-    ! --------------------------------------------------
-    !
-    ! Weights and angle secants for first order (k=1) Gaussian quadrature.
-    !   Values from Table 2, Clough et al, 1992, doi:10.1029/92JD01419
-    !   after Abramowitz & Stegun 1972, page 921
-    !
-    integer,  parameter :: max_gauss_pts = 4
-    real(wp), parameter,                         &
-      dimension(max_gauss_pts, max_gauss_pts) :: &
-        gauss_Ds  = RESHAPE([1.66_wp,               0._wp,         0._wp,         0._wp, &  ! Diffusivity angle, not Gaussian angle
-                             1.18350343_wp, 2.81649655_wp,         0._wp,         0._wp, &
-                             1.09719858_wp, 1.69338507_wp, 4.70941630_wp,         0._wp, &
-                             1.06056257_wp, 1.38282560_wp, 2.40148179_wp, 7.15513024_wp], &
-                            [max_gauss_pts, max_gauss_pts]),              &
-        gauss_wts = RESHAPE([0.5_wp,          0._wp,           0._wp,           0._wp, &
-                             0.3180413817_wp, 0.1819586183_wp, 0._wp,           0._wp, &
-                             0.2009319137_wp, 0.2292411064_wp, 0.0698269799_wp, 0._wp, &
-                             0.1355069134_wp, 0.2034645680_wp, 0.1298475476_wp, 0.0311809710_wp], &
-                             [max_gauss_pts, max_gauss_pts])
     ! ------------------------------------------------------------------------------------
     !
     ! Error checking
@@ -95,7 +79,6 @@ contains
     ngpt  = optical_props%get_ngpt()
     nband = optical_props%get_nband()
     error_msg = ""
-
     allocate(gpt_flux_up (ncol, nlay+1, ngpt), gpt_flux_dn(ncol, nlay+1, ngpt))
     allocate(sfc_emis_gpt(ncol,         ngpt))
     ! ------------------------------------------------------------------------------------
@@ -103,6 +86,10 @@ contains
     ! Error checking -- consistency of sizes and validity of values
     !
     ! --------------------------------
+    if(present(n_gauss_angles)) then
+      if(n_gauss_angles > 1) error_msg = "rte_lw: only a single angle is possible with ECRAD"
+    end if
+
     if(.not. fluxes%are_desired()) then
       error_msg = "rte_lw: no space allocated for fluxes"
       return
@@ -111,13 +98,30 @@ contains
     !
     ! Source functions
     !
-    if(any([sources%get_ncol(), sources%get_nlay(), sources%get_ngpt()]  /= [ncol, nlay, ngpt])) &
-      error_msg = "rte_lw: sources and optical properties inconsistently sized"
-    ! Also need to validate
+    if(any([size(lay_source,1), size(lay_source,2), size(lay_source,3)]            /= [ncol, nlay, ngpt])) &
+      error_msg = "rte_lw: lay_source inconsistently sized"
+    if(any(lay_source < 0._wp)) &
+      error_msg = "rte_lw: lay_source has values < 0"
+    if(len_trim(error_msg) > 0) return
+    if(any([size(lev_source_inc,1), size(lev_source_inc,2), size(lev_source_inc,3)] /= [ncol, nlay, ngpt])) &
+      error_msg = "rte_lw: lev_source_inc inconsistently sized"
+    if(any(lev_source_inc < 0._wp)) &
+      error_msg = "rte_lw: lev_source_inc has values < 0"
+    if(len_trim(error_msg) > 0) return
+    if(any([size(lev_source_dec,1), size(lev_source_dec,2), size(lev_source_dec,3)] /= [ncol, nlay, ngpt])) &
+      error_msg = "rte_lw: lev_source_dec inconsistently sized"
+    if(any(lev_source_dec < 0._wp)) &
+      error_msg = "rte_lw: lev_source_dec has values < 0"
+    if(len_trim(error_msg) > 0) return
 
     !
-    ! Surface emissivity
+    ! Surface source, emissivity
     !
+    if(any([size(sfc_source, 1), size(sfc_source, 2)] /= [ncol, ngpt])) &
+      error_msg = "rte_lw: sfc_source inconsistently sized"
+    if(any(sfc_source < 0._wp )) &
+      error_msg = "rte_lw: sfc_source has values < 0"
+
     if(any([size(sfc_emis,1), size(sfc_emis,2)] /= [nband, ncol])) &
       error_msg = "rte_lw: sfc_emis inconsistently sized"
     if(any(sfc_emis < 0._wp .or. sfc_emis > 1._wp)) &
@@ -136,17 +140,6 @@ contains
     if(len_trim(error_msg) > 0) return
 
     !
-    ! Number of quadrature points for no-scattering calculation
-    !
-    n_quad_angs = 1
-    if(present(n_gauss_angles)) then
-      if(n_gauss_angles > max_gauss_pts) &
-        error_msg = "rte_lw: asking for too many quadrature points for no-scattering calculation"
-      if(n_gauss_angles < 1) &
-        error_msg = "rte_lw: have to ask for at least one quadrature point for no-scattering calculation"
-      n_quad_angs = n_gauss_angles
-    end if
-    !
     ! Ensure values of tau, ssa, and g are reasonable
     !
     error_msg =  optical_props%validate()
@@ -157,54 +150,17 @@ contains
     end if
 
     ! ------------------------------------------------------------------------------------
-    !
     !    Lower boundary condition -- expand surface emissivity by band to gpoints
-    !
     do icol = 1, ncol
       sfc_emis_gpt(icol, 1:ngpt) = optical_props%expand(sfc_emis(:,icol))
     end do
-    !
-    !   Upper boundary condition
-    !
-    if(present(inc_flux)) then
-      call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl), inc_flux, gpt_flux_dn)
-    else
-      !
-      ! Default is zero incident diffuse flux
-      !
-      call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl),           gpt_flux_dn)
-    end if
 
     !
     ! Compute the radiative transfer...
     !
-    select type (optical_props)
-      class is (ty_optical_props_1scl)
-        !
-        ! No scattering two-stream calculation
-        !
-        call lw_solver_noscat_GaussQuad(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                              n_quad_angs, gauss_Ds(1:n_quad_angs,n_quad_angs), gauss_wts(1:n_quad_angs,n_quad_angs), &
-                              optical_props%tau,                                                  &
-                              sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
-                              sfc_emis_gpt, sources%sfc_source,  &
-                              gpt_flux_up, gpt_flux_dn)
-      class is (ty_optical_props_2str)
-        !
-        ! two-stream calculation with scattering
-        !
-        call lw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                               optical_props%tau, optical_props%ssa, optical_props%g,              &
-                               sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
-                               sfc_emis_gpt, sources%sfc_source,       &
-                               gpt_flux_up, gpt_flux_dn)
-      class is (ty_optical_props_nstr)
-        !
-        ! n-stream calculation
-        !
-        error_msg = 'lw_solver(...ty_optical_props_nstr...) not yet implemented'
-    end select
-
+    error_msg = lw_solver(ncol, nlay, ngpt, top_at_1,                                &
+                          optical_props, lay_source, lev_source_inc, lev_source_dec, &
+                          sfc_emis_gpt, sfc_source, gpt_flux_up, gpt_flux_dn, inc_flux)
     if (error_msg /= '') return
     !
     ! ...and reduce spectral fluxes to desired output quantities

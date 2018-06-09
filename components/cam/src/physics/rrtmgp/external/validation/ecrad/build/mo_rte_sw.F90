@@ -21,41 +21,17 @@
 !
 !
 module mo_rte_sw
-  use mo_rte_kind,      only: wp, wl
+  use mo_rte_kind,   only: wp
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
   use mo_fluxes,        only: ty_fluxes
-  use mo_rte_solver_kernels, &
-                        only: apply_BC, sw_solver_noscat, sw_solver_2stream
+  use mo_sw_solver,     only: sw_solver
   implicit none
   private
 
-  public :: rte_sw_init, rte_sw
-
-  !
-  ! Configuration information
-  !
-  integer :: nstreams = 2 ! Number of streams: 0 means no scattering
-                          ! Require even, positive value when setting
+  public :: rte_sw
 
 contains
-  ! --------------------------------------------------
-  ! Initialization function
-  ! --------------------------------------------------
-  function rte_sw_init(nswstreams) result(error_msg)
-    integer,           optional, intent( in) :: nswstreams
-    character(len=128)                       :: error_msg
-
-    error_msg = ""
-    if(present(nswstreams)) then
-      if(nswstreams >= 0) then  ! Check for an even number?
-        nstreams = nswstreams
-      else
-        error_msg = "rte_sw_init: nswstreams provided is less than 0"
-      end if
-    end if
-  end function rte_sw_init
-
   ! --------------------------------------------------
   ! Public interfaces to rte_sw()
   ! --------------------------------------------------
@@ -63,11 +39,11 @@ contains
   ! Interface using source functions and vectors of optical properties as inputs; vectors of fluxes as outputs.
   !
   ! --------------------------------------------------
-  function rte_sw(atmos, top_at_1,                 &
-                  mu0, inc_flux,                   &
-                  sfc_alb_dir, sfc_alb_dif,        &
-                  fluxes, inc_flux_dif) result(error_msg)
-    class(ty_optical_props_arry), intent(in   ) :: atmos   ! Array of ty_optical_props. This type is abstract
+  function rte_sw(optical_props, top_at_1, &
+                     mu0, inc_flux,                   &
+                     sfc_alb_dir, sfc_alb_dif,        &
+                     fluxes, inc_flux_dif) result(error_msg)
+    class(ty_optical_props_arry), intent(in   ) :: optical_props   ! Array of ty_optical_props. This type is abstract
                                                                    ! and needs to be made concrete, either as an array
                                                                    ! (class ty_optical_props_arry) or in some user-defined way
     logical,                      intent(in   ) :: top_at_1        ! Is the top of the domain at index 1?
@@ -90,10 +66,10 @@ contains
     real(wp), dimension(:,:,:), allocatable :: gpt_flux_up, gpt_flux_dn, gpt_flux_dir
     real(wp), dimension(:,:),   allocatable :: sfc_alb_dir_gpt, sfc_alb_dif_gpt
     ! ------------------------------------------------------------------------------------
-    ncol  = atmos%get_ncol()
-    nlay  = atmos%get_nlay()
-    ngpt  = atmos%get_ngpt()
-    nband = atmos%get_nband()
+    ncol  = optical_props%get_ncol()
+    nlay  = optical_props%get_nlay()
+    ngpt  = optical_props%get_ngpt()
+    nband = optical_props%get_nband()
     error_msg = ""
 
     allocate(gpt_flux_up (ncol, nlay+1, ngpt), gpt_flux_dn(ncol, nlay+1, ngpt), gpt_flux_dir(ncol, nlay+1, ngpt))
@@ -142,10 +118,10 @@ contains
     !
     ! Ensure values of tau, ssa, and g are reasonable
     !
-    error_msg =  atmos%validate()
+    error_msg =  optical_props%validate()
     if(len_trim(error_msg) > 0) then
-      if(len_trim(atmos%get_name()) > 0) &
-        error_msg = trim(atmos%get_name()) // ': ' // trim(error_msg)
+      if(len_trim(optical_props%get_name()) > 0) &
+        error_msg = trim(optical_props%get_name()) // ': ' // trim(error_msg)
       return
     end if
 
@@ -153,59 +129,23 @@ contains
     ! Lower boundary condition -- expand surface albedos by band to gpoints
     !   and switch dimension ordering
     do icol = 1, ncol
-      sfc_alb_dir_gpt(icol, 1:ngpt) = atmos%expand(sfc_alb_dir(:,icol))
+      sfc_alb_dir_gpt(icol, 1:ngpt) = optical_props%expand(sfc_alb_dir(:,icol))
     end do
     do icol = 1, ncol
-      sfc_alb_dif_gpt(icol, 1:ngpt) = atmos%expand(sfc_alb_dif(:,icol))
+      sfc_alb_dif_gpt(icol, 1:ngpt) = optical_props%expand(sfc_alb_dif(:,icol))
     end do
 
     ! ------------------------------------------------------------------------------------
     !
     ! Compute the radiative transfer...
     !
-    !
-    ! Apply boundary conditions
-    !   On input flux_dn is the diffuse component; the last action in each solver is to add
-    !   direct and diffuse to represent the total, consistent with the LW
-    !
-    call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl),   inc_flux, mu0, gpt_flux_dir)
-    if(present(inc_flux_dif)) then
-      call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl), inc_flux_dif,  gpt_flux_dn )
-    else
-      call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl),                gpt_flux_dn )
-    end if
-
-    select type (atmos)
-      class is (ty_optical_props_1scl)
-        !
-        ! Direct beam only
-        !
-        call sw_solver_noscat(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                              atmos%tau, mu0,                          &
-                              gpt_flux_dir)
-        ! No diffuse flux
-        gpt_flux_up = 0._wp
-        gpt_flux_dn = 0._wp
-      class is (ty_optical_props_2str)
-        !
-        ! two-stream calculation with scattering
-        !
-        call sw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                               atmos%tau, atmos%ssa, atmos%g, mu0,      &
-                               sfc_alb_dir_gpt, sfc_alb_dif_gpt,        &
-                               gpt_flux_up, gpt_flux_dn, gpt_flux_dir)
-      class is (ty_optical_props_nstr)
-        !
-        ! n-stream calculation
-        !
-        ! not yet implemented so fail
-        !
-        error_msg = 'sw_solver(...ty_optical_props_nstr...) not yet implemented'
-    end select
+    error_msg = sw_solver(ncol, nlay, ngpt, top_at_1,                     &
+                          optical_props, mu0, sfc_alb_dir_gpt, sfc_alb_dif_gpt, &
+                          inc_flux, gpt_flux_up, gpt_flux_dn, gpt_flux_dir, inc_flux_dif)
     if (error_msg /= '') return
     !
     ! ...and reduce spectral fluxes to desired output quantities
     !
-    error_msg = fluxes%reduce(gpt_flux_up, gpt_flux_dn, atmos, top_at_1, gpt_flux_dir)
+    error_msg = fluxes%reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1, gpt_flux_dir)
   end function rte_sw
 end module mo_rte_sw

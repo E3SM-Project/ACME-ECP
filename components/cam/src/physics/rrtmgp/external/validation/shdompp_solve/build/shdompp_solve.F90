@@ -18,10 +18,10 @@ program shdompp_solve
                               ty_optical_props_1scl, &
                               ty_optical_props_2str, &
                               ty_optical_props_nstr
-  use mo_spectral_disc, only: ty_spectral_disc
+  use mo_source_functions,   only: ty_source_func_lw
   use mo_fluxes_byband, only: ty_fluxes_byband
   use mo_test_files_io, only: is_sw, read_direction, &
-                              read_optical_props, read_spectral_disc, &
+                              read_optical_prop_values, read_spectral_disc, &
                               read_lw_Planck_sources, read_lw_bc, read_lw_rt, &
                               read_sw_bc, read_sw_solar_sources, &
                               write_gpt_fluxes, write_fluxes, write_dir_fluxes
@@ -32,9 +32,8 @@ program shdompp_solve
   character(len=128) :: fileName = 'shdompp-rrtmgp-inputs-outputs.nc'
 
   class(ty_optical_props_arry), allocatable :: atmos
-  real(wp), dimension(:,:,:), allocatable :: lay_source, &
-                                             lev_source_inc, lev_source_dec
-  real(wp), dimension(:,  :), allocatable :: sfc_emis, sfc_source
+  type(ty_source_func_lw)                 :: sources
+  real(wp), dimension(:,  :), allocatable :: sfc_emis
   real(wp), dimension(:    ), allocatable :: t_sfc
   real(wp), dimension(:    ), allocatable :: mu0, tsi
   real(wp), dimension(:,  :), allocatable :: sfc_alb_dir, sfc_alb_dif
@@ -44,9 +43,8 @@ program shdompp_solve
                               allocatable ::     flux_up,     flux_dn,     flux_net,     flux_dir
   real(wp), dimension(:,:,:), target, &
                               allocatable :: bnd_flux_up, bnd_flux_dn, bnd_flux_net, bnd_flux_dir
-  type(ty_spectral_disc)                :: spectral_disc
-  type(ty_fluxes_byband)                :: fluxes
-  real(wp)                              :: tsi_scaling = -999._wp
+  type(ty_fluxes_byband)                  :: fluxes
+  real(wp)                                :: tsi_scaling = -999._wp
 
   integer :: icol, igpt, ibnd, i, j, l
   logical :: top_at_1
@@ -90,18 +88,15 @@ program shdompp_solve
     SRCTYPE = 'T'
   end if
 
-  call read_optical_props (fileName, atmos)
+  call read_optical_prop_values (fileName, atmos)
 
    ! Get ncol, nlay, ngpt, and allocate output g-point flux arrays
   ncol = atmos%get_ncol()
   nlay = atmos%get_nlay()
   ngpt = atmos%get_ngpt()
+  nband = atmos%get_nband()
   allocate (gpt_flux_up(ncol,nlay+1,ngpt), gpt_flux_dn(ncol,nlay+1,ngpt), &
             gpt_flux_dn_dir(ncol,nlay+1,ngpt))
-
-   ! Read in gpt2band
-  call read_spectral_disc(fileName, spectral_disc)
-  nband = spectral_disc%get_nband()
 
   call read_direction (fileName, top_at_1)
 
@@ -110,8 +105,7 @@ program shdompp_solve
     mu0 = cos(mu0 *acos(-1._wp)/180.)
     call read_sw_solar_sources(fileName, toa_source)
   else
-    call read_lw_Planck_sources (fileName, lay_source, lev_source_inc, lev_source_dec, &
-                                  sfc_source)
+    call read_lw_Planck_sources (fileName, sources)
     call read_lw_bc (fileName, t_sfc, sfc_emis)
     call read_lw_rt (fileName, nang)
   end if
@@ -134,7 +128,7 @@ program shdompp_solve
       DELTAM = .false.
     class is (ty_optical_props_nstr)
       print *, 'N-stream optical properties input'
-      nmom = size(atmos%p, 1)
+      nmom = atmos%get_nmom()
       if (nmom < 4) then
         call stop_on_err('Too few phase function moments: nmom<4')
       else
@@ -181,7 +175,7 @@ program shdompp_solve
   do icol = 1, ncol
     ! Loop over the k-distribution g points for all bands
    do igpt = 1, ngpt
-    ibnd = spectral_disc%convert_gpt2band(igpt)
+    ibnd = atmos%convert_gpt2band(igpt)
      ! The g-point weights are in the source terms.
     if (SRCTYPE == 'S') then
       SOLARFLUX = mu0(icol)*toa_source(icol,igpt)
@@ -193,20 +187,20 @@ program shdompp_solve
        ! Use average of downwelling and upwelling LW sources for edge levels
        ! and lay_source for middle levels
       if (top_at_1) then
-        PLANCKSRC(3:NLAYSH-1:2) = sqrt(lev_source_dec(icol,2:nlay  ,igpt) &
-                                      *lev_source_inc(icol,1:nlay-1,igpt))
-        PLANCKSRC(1)        = lev_source_dec(icol,1,   igpt)
-        PLANCKSRC(NLAYSH+1) = lev_source_inc(icol,nlay,igpt)
-        PLANCKSRC(2:NLAYSH:2) = lay_source(icol,1:nlay,igpt)
+        PLANCKSRC(3:NLAYSH-1:2) = sqrt(sources%lev_source_dec(icol,2:nlay  ,igpt) &
+                                      *sources%lev_source_inc(icol,1:nlay-1,igpt))
+        PLANCKSRC(1)        = sources%lev_source_dec(icol,1,   igpt)
+        PLANCKSRC(NLAYSH+1) = sources%lev_source_inc(icol,nlay,igpt)
+        PLANCKSRC(2:NLAYSH:2) = sources%lay_source(icol,1:nlay,igpt)
       else
-        PLANCKSRC(3:NLAYSH-1:2) = sqrt(lev_source_dec(icol,nlay  :2:-1,igpt) &
-                                      *lev_source_inc(icol,nlay-1:1:-1,igpt))
-        PLANCKSRC(1)        = lev_source_inc(icol,nlay,igpt)
-        PLANCKSRC(NLAYSH+1) = lev_source_dec(icol,1,   igpt)
-        PLANCKSRC(2:NLAYSH:2) = lay_source(icol,nlay:1:-1,igpt)
+        PLANCKSRC(3:NLAYSH-1:2) = sqrt(sources%lev_source_dec(icol,nlay  :2:-1,igpt) &
+                                      *sources%lev_source_inc(icol,nlay-1:1:-1,igpt))
+        PLANCKSRC(1)        = sources%lev_source_inc(icol,nlay,igpt)
+        PLANCKSRC(NLAYSH+1) = sources%lev_source_dec(icol,1,   igpt)
+        PLANCKSRC(2:NLAYSH:2) = sources%lay_source(icol,nlay:1:-1,igpt)
       end if
       SFCPARMS(1) = 1.0 - sfc_emis(ibnd,icol)
-      SFCPLANCK = sfc_source(icol,igpt)
+      SFCPLANCK = sources%sfc_source(icol,igpt)
     end if
 
      ! Use top_at_1 to decide on reversing levels in arrays:
@@ -337,10 +331,10 @@ program shdompp_solve
     allocate(bnd_flux_dir(ncol,nlay+1,nband), flux_dir(ncol,nlay+1))
     fluxes%flux_dn_dir     => flux_dir
     fluxes%bnd_flux_dn_dir => bnd_flux_dir
-    call stop_on_err(fluxes%reduce(gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, &
+    call stop_on_err(fluxes%reduce(gpt_flux_up, gpt_flux_dn, atmos, top_at_1, &
                                           gpt_flux_dn_dir))
   else
-    call stop_on_err(fluxes%reduce(gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1))
+    call stop_on_err(fluxes%reduce(gpt_flux_up, gpt_flux_dn, atmos, top_at_1))
   end if
 
   call write_fluxes(fileName, flux_up, flux_dn, flux_net, bnd_flux_up, bnd_flux_dn, bnd_flux_net)

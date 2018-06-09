@@ -13,15 +13,14 @@ end subroutine
 ! ----------------------------------------------------------------------------------
 program test_two_stream
   use mo_rte_kind,      only: wp, wl
-  use mo_spectral_disc, only: ty_spectral_disc
-  use mo_optical_props, only: ty_optical_props_arry, &
+  use mo_optical_props, only: ty_optical_props, ty_optical_props_arry, &
                               ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
   use radiation_two_stream,    &
                         only: calc_reflectance_transmittance_sw, calc_two_stream_gammas_sw, &
                               calc_reflectance_transmittance_lw, calc_two_stream_gammas_lw, &
                               calc_no_scattering_transmittance_lw
 
-  use mo_test_files_io, only: read_optical_props, read_spectral_disc, &
+  use mo_test_files_io, only: read_optical_prop_values,     &
                               is_sw, is_lw, read_direction, &
                               read_sw_bc, read_sw_solar_sources,  &
                               read_lw_bc, read_lw_Planck_sources, &
@@ -50,8 +49,6 @@ program test_two_stream
   real(wp), dimension(:,:,:), allocatable :: source_dn, source_up
   real(wp), dimension(:,  :), allocatable :: source_sfc
 
-  type(ty_spectral_disc) :: spectral_disc
-
   integer                                 :: jcol, jlev, jgpt
   real(wp), dimension(:), allocatable     :: gamma1, gamma2, gamma3
   real(wp), parameter :: pi = acos(-1._wp)
@@ -61,8 +58,7 @@ program test_two_stream
   call read_direction(fileName, top_at_1)
   if(.not. top_at_1) call stop_on_err("atmosphere has to be ordered top to bottom (top_at_1 = .false.) for ECRAD")
 
-  call read_spectral_disc(fileName, spectral_disc)
-  call read_optical_props(fileName, atmos)
+  call read_optical_prop_values(fileName, atmos)
   do_sw = is_sw(fileName)
   ncol = atmos%get_ncol()
   nlay = atmos%get_nlay()
@@ -78,7 +74,7 @@ program test_two_stream
     call read_sw_solar_sources(fileName, toa_src)
     mu0 = cos(mu0 * acos(-1._wp)/180.)
     do jgpt = 1, ngpt
-      sfc_alb(1:ncol, jgpt) = sfc_alb_dir(spectral_disc%convert_gpt2band(jgpt), :)
+      sfc_alb(1:ncol, jgpt) = sfc_alb_dir(atmos%convert_gpt2band(jgpt), :)
       flux_dn_dir(1:ncol,1,jgpt) = toa_src(1:ncol,jgpt) * mu0(1:ncol)
     end do
   else
@@ -86,7 +82,7 @@ program test_two_stream
     call read_lw_Planck_sources(fileName, lay_src, lev_src_inc, lev_src_dec, sfc_src)
     call read_lw_bc            (fileName, t_sfc, emis_sfc_bnd)
     do jgpt = 1, ngpt
-      sfc_emis(1:ncol, jgpt) = emis_sfc_bnd(spectral_disc%convert_gpt2band(jgpt), :)
+      sfc_emis(1:ncol, jgpt) = emis_sfc_bnd(atmos%convert_gpt2band(jgpt), :)
     end do
   end if
 

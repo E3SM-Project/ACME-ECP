@@ -12,14 +12,15 @@ subroutine stop_on_err(msg)
 end subroutine
 ! ----------------------------------------------------------------------------------
 program test_lw_solver
-  use mo_rte_kind,   only: wp
-  use mo_optical_props, only: ty_optical_props_arry, &
-                              ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
-  use mo_spectral_disc, only: ty_spectral_disc
-  use mo_lw_solver,     only: lw_solver_init, lw_solver
+  use mo_rte_kind,         only: wp
+  use mo_optical_props,    only: ty_optical_props_arry, &
+                                 ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
+  use mo_source_functions, only: ty_source_func_lw
+  use mo_rte_lw,           only: rte_lw
 
-  use mo_test_files_io, only: read_optical_props, read_lw_Planck_sources, read_direction, read_lw_bc, read_lw_rt, &
-                              read_spectral_disc, write_gpt_fluxes
+  use mo_fluxes_bygpoint,  only: ty_fluxes_bygpoint
+  use mo_test_files_io,    only: read_optical_prop_values, read_lw_Planck_sources, read_direction, read_lw_bc, read_lw_rt, &
+                                 write_gpt_fluxes
   implicit none
   ! ----------------------------------------------------------------------------------
   integer :: ncol, nlay, ngpt
@@ -29,39 +30,34 @@ program test_lw_solver
 
   character(len=128) :: fileName = 'rrtmgp-inputs-outputs.nc'
 
-  class(ty_optical_props_arry), allocatable :: atmos_full, atmos_block
+  class(ty_optical_props_arry), allocatable :: atmos_full,   atmos_block
+  type (ty_source_func_lw)                  :: sources_full, sources_block
 
-  real(wp), dimension(:,:,:), allocatable :: lay_source, lev_source_inc, lev_source_dec
-  real(wp), dimension(:,  :), allocatable :: sfc_emis, sfc_source
+  real(wp), dimension(:,  :), allocatable :: sfc_emis
   real(wp), dimension(:    ), allocatable :: t_sfc
-  real(wp), dimension(:,:,:), allocatable :: flux_up, flux_dn
-  real(wp), dimension(:,  :), allocatable :: sfc_emis_gpt
+  real(wp), dimension(:,:,:), allocatable, target :: flux_up, flux_dn
 
-  integer :: i, ibnd, igpt
   logical :: top_at_1
-  type(ty_spectral_disc) :: spectral_disc
+  type(ty_fluxes_bygpoint) :: fluxes
   ! ----------------------------------------------------------------------------------
+  !
+  ! In early implementations this called the LW solver at an intermediate level in the
+  !   call tree - after some error checking had been done but before deciding e.g.
+  !   whether to use no-scattering or two-stream solvers.
+  ! The current implementation is functionally the same as compute_fluxes_from_optics but
+  !   writes out g-point fluxes
+  !
 
-  call read_optical_props(fileName, atmos_full)
-  call read_lw_Planck_sources   (fileName, lay_source, lev_source_inc, lev_source_dec, sfc_source)
+  call read_optical_prop_values (fileName, atmos_full)
+  call read_lw_Planck_sources   (fileName, sources_full)
   call read_direction    (fileName, top_at_1)
   call read_lw_bc        (fileName, t_sfc, sfc_emis)
   call read_lw_rt        (fileName, nang)
-  call stop_on_err(lw_solver_init(n_angles=nang))
   if(nang > 1) print *, "  Doing ", nang, "-angle integration"
-  ncol = size(lay_source, 1)
-  nlay = size(lay_source, 2)
-  ngpt = size(lay_source, 3)
+  ncol = sources_full%get_ncol()
+  nlay = sources_full%get_nlay()
+  ngpt = sources_full%get_ngpt()
 
-   ! Read in gpt2band
-  call read_spectral_disc(fileName, spectral_disc)
-
-   ! Set the surface emissivity for each g-point, depending on the band
-  allocate(sfc_emis_gpt(ncol,ngpt))
-  do igpt = 1, ngpt
-    ibnd = spectral_disc%convert_gpt2band(igpt)  ! Get band number for this g-point
-    sfc_emis_gpt(1:ncol,igpt) = sfc_emis(ibnd,1:ncol)
-  end do
 
   allocate(flux_up(ncol,nlay+1,ngpt), flux_dn(ncol,nlay+1,ngpt))
   flux_dn(:,MERGE(1, nlay+1, top_at_1),:) = 0._wp
@@ -84,15 +80,15 @@ program test_lw_solver
       colS = (b-1) * blockSize + 1
       colE =  b    * blockSize
 
-      call stop_on_err(atmos_full%get_subset(colS, blockSize, atmos_block))
-      call stop_on_err(lw_solver(blockSize, nlay, ngpt, top_at_1, &
-                                 atmos_block,                     &
-                                 lay_source(colS:colE,:,:),       &
-                                 lev_source_inc(colS:colE,:,:),   &
-                                 lev_source_dec(colS:colE,:,:),   &
-                                 sfc_emis_gpt(colS:colE,  :), &
-                                 sfc_source(colS:colE,  :),   &
-                                 flux_up(colS:colE,:,:), flux_dn(colS:colE,:,:)) )
+      call stop_on_err(  atmos_full%get_subset(colS, blockSize, atmos_block))
+      call stop_on_err(sources_full%get_subset(colS, blockSize, sources_block))
+      fluxes%gpt_flux_up => flux_up(colS:colE,:,:)
+      fluxes%gpt_flux_dn => flux_dn(colS:colE,:,:)
+      call stop_on_err(rte_lw(atmos_block,           &
+                              top_at_1,              &
+                              sources_block,         &
+                              sfc_emis(:,colS:colE), &
+                              fluxes, n_gauss_angles = nang))
     end do
 
     if(mod(ncol, blockSize) /= 0) then
@@ -100,15 +96,15 @@ program test_lw_solver
       colE = ncol
       print *, "Doing ", colE-colS+1, "extra columns"
 
-      call stop_on_err(atmos_full%get_subset(colS, colE-colS+1, atmos_block))
-      call stop_on_err(lw_solver(colE-colS+1, nlay, ngpt, top_at_1, &
-                                 atmos_block,                     &
-                                 lay_source(colS:colE,:,:),       &
-                                 lev_source_inc(colS:colE,:,:),   &
-                                 lev_source_dec(colS:colE,:,:),   &
-                                 sfc_emis_gpt(colS:colE,  :), &
-                                 sfc_source(colS:colE,  :), &
-                                 flux_up(colS:colE,:,:), flux_dn(colS:colE,:,:)) )
+      call stop_on_err(  atmos_full%get_subset(colS, colE-colS+1, atmos_block))
+      call stop_on_err(sources_full%get_subset(colS, colE-colS+1, sources_block))
+      fluxes%gpt_flux_up => flux_up(colS:colE,:,:)
+      fluxes%gpt_flux_dn => flux_dn(colS:colE,:,:)
+      call stop_on_err(rte_lw(atmos_block,           &
+                              top_at_1,              &
+                              sources_block,         &
+                              sfc_emis(:,colS:colE), &
+                              fluxes, n_gauss_angles = nang))
   endif
 
   call write_gpt_fluxes(fileName, flux_up, flux_dn)

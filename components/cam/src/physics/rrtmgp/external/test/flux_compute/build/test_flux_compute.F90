@@ -12,17 +12,16 @@ subroutine stop_on_err(error_msg)
 end subroutine stop_on_err
 !-----------------------------
 program flux_compute
-  use mo_rte_kind,        only: wp
-  use mo_gas_optics, &
-                        only: ty_gas_optics_specification
-  use mo_gas_concentrations,       &
-                        only: ty_gas_concs
-  use mo_optical_props, only: ty_optical_props, &
-                              ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str
-  use mo_fluxes_byband, only: ty_fluxes_byband
+  use mo_rte_kind,           only: wp
+  use mo_gas_optics,         only: ty_gas_optics_specification
+  use mo_gas_concentrations, only: ty_gas_concs
+  use mo_optical_props,      only: ty_optical_props, &
+                                   ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str
+  use mo_source_functions,   only: ty_source_func_lw
+  use mo_fluxes_byband,      only: ty_fluxes_byband
   ! ---- RRTMPG driver
-  use mo_rte_lw,     only: rte_lw, rte_lw_init
-  use mo_rte_sw,     only: rte_sw
+  use mo_rte_lw,             only: rte_lw
+  use mo_rte_sw,             only: rte_sw
   use mo_heating_rates, only: compute_heating_rate
 
   ! ---- I/O for test format files.
@@ -53,11 +52,9 @@ program flux_compute
 
   ! Source functions
   !   Longwave
-  real(wp), dimension(:,:,:),  allocatable :: lay_src, lev_src_inc, lev_src_dec
-  real(wp), dimension(:,:),    allocatable :: sfc_src
+  type(ty_source_func_lw)               :: lw_sources
   !   Shortwave
-  real(wp), dimension(:,:),    allocatable :: toa_flux
-
+  real(wp), dimension(:,:), allocatable :: toa_flux
 
   real(wp), dimension(:,:  ), target, &
                                allocatable ::     flux_up,      flux_dn, &
@@ -82,7 +79,7 @@ program flux_compute
   !
   ! Inputs to RRTMGP
   !
-  logical                                   :: top_at_1
+  logical :: top_at_1
 
   integer :: ncol, nlay, nbnd, ngpt
   integer :: b, nBlocks, colS, colE, nSubcols, nang
@@ -108,7 +105,6 @@ program flux_compute
     call read_lw_bc(input_file, t_sfc, emis_sfc)
     ! Number of quadrature angles
     call read_lw_rt(input_file, nang)
-    call stop_on_err(rte_lw_init(nangles=nang))
   else
     call read_sw_bc(input_file, sza, tsi, tsi_scaling, sfc_alb_dir, sfc_alb_dif)
     allocate(mu0(size(sza)))
@@ -140,6 +136,8 @@ program flux_compute
   else
     allocate(ty_optical_props_1scl::optical_props)
   end if
+  call stop_on_err(optical_props%init(k_dist%get_band_lims_gpoint(), &
+                                      k_dist%get_band_lims_wavenumber()))
 
   !
   ! Loop over subsets of the problem
@@ -152,7 +150,7 @@ program flux_compute
   if(is_sw(input_file)) then
     select type(optical_props)
       class is (ty_optical_props_2str)
-        call stop_on_err(optical_props%init_2str(blockSize, nlay, ngpt))
+        call stop_on_err(optical_props%alloc_2str(blockSize, nlay))
       class default
         call stop_on_err("flux_compute: Trying to do SW calculation but haven't allocated _2str")
     end select
@@ -161,15 +159,11 @@ program flux_compute
   else
     select type(optical_props)
       class is (ty_optical_props_1scl)
-        call stop_on_err(optical_props%init_1scl(blockSize, nlay, ngpt))
+        call stop_on_err(optical_props%alloc_1scl(blockSize, nlay))
       class default
         call stop_on_err("flux_compute: Trying to do LW calculation but haven't allocated _1scl")
     end select
-
-    allocate(lay_src    (blockSize, nlay, ngpt), &
-             lev_src_inc(blockSize, nlay, ngpt), &
-             lev_src_dec(blockSize, nlay, ngpt), &
-             sfc_src    (blockSize,       ngpt))
+    call stop_on_err(lw_sources%alloc(k_dist, blockSize, nlay))
   end if
 
   do b = 1, nBlocks
@@ -212,9 +206,8 @@ program flux_compute
       !
       ! Radiative transfer
       !
-      call stop_on_err(rte_sw(optical_props,            &
+      call stop_on_err(rte_sw(optical_props,               &
                                  top_at_1,                 &
-                                 k_dist,                   &
                                  mu0(colS:colE),           &
                                  toa_flux,                 &
                                  sfc_alb_dir(:,colS:colE), &
@@ -231,10 +224,7 @@ program flux_compute
                                            t_sfc(colS:colE  ), &
                                            gas_concs_subset,   &
                                            optical_props,      &
-                                           lay_src    (:,:,:), &
-                                           lev_src_inc(:,:,:), &
-                                           lev_src_dec(:,:,:), &
-                                           sfc_src    (:,:  ),   &
+                                           lw_sources,         &
                                            tlev    = t_lev  (colS:colE,:), &
                                            col_dry = col_dry(colS:colE,:)))
       else
@@ -244,24 +234,17 @@ program flux_compute
                                            t_sfc(colS:colE  ), &
                                            gas_concs_subset,   &
                                            optical_props,      &
-                                           lay_src,            &
-                                           lev_src_inc,        &
-                                           lev_src_dec,        &
-                                           sfc_src,            &
+                                           lw_sources,         &
                                            tlev    = t_lev  (colS:colE,:)))
       end if
       !
       ! Radiative transfer
       !
-      call stop_on_err(rte_lw(optical_props,         &
+      call stop_on_err(rte_lw(optical_props,            &
                                  top_at_1,              &
-                                 k_dist,                &
-                                 lay_src,               &
-                                 lev_src_inc,           &
-                                 lev_src_dec,           &
+                                 lw_sources,            &
                                  emis_sfc(:,colS:colE), &
-                                 sfc_src,               &
-                                 fluxes))
+                                 fluxes, n_gauss_angles = nang))
     end if
   end do
   if(mod(ncol, blockSize) /= 0) then
@@ -284,7 +267,7 @@ program flux_compute
     if(is_sw(input_file)) then
       select type(optical_props)
         class is (ty_optical_props_2str)
-          call stop_on_err(optical_props%init_2str(nSubcols, nlay, ngpt))
+          call stop_on_err(optical_props%alloc_2str(nSubcols, nlay))
         class default
           call stop_on_err("flux_compute: Trying to do SW calculation but haven't allocated _2str")
       end select
@@ -293,15 +276,11 @@ program flux_compute
     else
       select type(optical_props)
         class is (ty_optical_props_1scl)
-          call stop_on_err(optical_props%init_1scl(nSubcols, nlay, ngpt))
+          call stop_on_err(optical_props%alloc_1scl(nSubcols, nlay))
         class default
           call stop_on_err("flux_compute: Trying to do LW calculation but haven't allocated _1scl")
       end select
-      if(allocated(lay_src)) deallocate(lay_src, lev_src_inc, lev_src_dec, sfc_src)
-      allocate(lay_src(nSubcols, nlay, ngpt), &
-               lev_src_inc(nSubcols, nlay, ngpt), &
-               lev_src_dec(nSubcols, nlay, ngpt), &
-               sfc_src(nSubcols, ngpt))
+      call stop_on_err(lw_sources%alloc(nSubcols, nlay))
     end if
 
 
@@ -331,7 +310,6 @@ program flux_compute
       !
       call stop_on_err(rte_sw(optical_props,            &
                                  top_at_1,                 &
-                                 k_dist,                   &
                                  mu0(colS:colE),           &
                                  toa_flux,                 &
                                  sfc_alb_dir(:,colS:colE), &
@@ -348,10 +326,7 @@ program flux_compute
                                            t_sfc(colS:colE  ), &
                                            gas_concs_subset,   &
                                            optical_props,      &
-                                           lay_src,            &
-                                           lev_src_inc,        &
-                                           lev_src_dec,        &
-                                           sfc_src,            &
+                                           lw_sources,         &
                                            tlev    = t_lev  (colS:colE,:), &
                                            col_dry = col_dry(colS:colE,:)))
       else
@@ -361,10 +336,7 @@ program flux_compute
                                            t_sfc(colS:colE  ), &
                                            gas_concs_subset,   &
                                            optical_props,      &
-                                           lay_src,            &
-                                           lev_src_inc,        &
-                                           lev_src_dec,        &
-                                           sfc_src,            &
+                                           lw_sources,         &
                                            tlev    = t_lev  (colS:colE,:)))
       end if
       !
@@ -372,13 +344,9 @@ program flux_compute
       !
       call stop_on_err(rte_lw(optical_props,         &
                                  top_at_1,              &
-                                 k_dist,                &
-                                 lay_src,               &
-                                 lev_src_inc,           &
-                                 lev_src_dec,           &
+                                 lw_sources,         &
                                  emis_sfc(:,colS:colE), &
-                                 sfc_src,               &
-                                 fluxes))
+                                 fluxes, n_gauss_angles = nang))
     end if
   end if
 
@@ -393,7 +361,7 @@ program flux_compute
   !
   ! ... and write everything out
   !
-  call write_spectral_disc(input_file, k_dist)
+  call write_spectral_disc(input_file, optical_props)
   call write_fluxes(input_file, flux_up, flux_dn, flux_net, bnd_flux_up, bnd_flux_dn, bnd_flux_net)
   call write_heating_rates(input_file, heating_rate, bnd_heating_rate)
   if(k_dist%is_external_source_present()) &

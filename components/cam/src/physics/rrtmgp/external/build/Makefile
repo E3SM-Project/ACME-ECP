@@ -13,11 +13,11 @@ all: librrtmgp.a librte.a
 include $(RTE_DIR)/Make.depends
 include $(RRTMGP_DIR)/Make.depends
 
-librrtmgp.a: $(RRTMGP_SRC)
-	ar -rvs librrtmgp.a $(RRTMGP_SRC)
-
 librte.a: $(RTE_SRC)
 	ar -rvs librte.a $(RTE_SRC)
+
+librrtmgp.a: $(RRTMGP_SRC) 
+	ar -rvs librrtmgp.a $(RRTMGP_SRC)
 
 clean:
 	rm -f *.optrpt *.mod *.o librrtmgp.a librte.a

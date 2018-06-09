@@ -18,7 +18,7 @@ program test_two_stream
   use mo_rte_solver_kernels, &
                         only: sw_two_stream, lw_two_stream
 
-  use mo_test_files_io, only: read_optical_props, is_sw, is_lw, read_sw_bc, write_two_stream
+  use mo_test_files_io, only: read_optical_prop_values, is_sw, is_lw, read_sw_bc, write_two_stream
   implicit none
   ! ----------------------------------------------------------------------------------
   integer :: ncol, nlay, ngpt
@@ -38,7 +38,7 @@ program test_two_stream
   logical :: do_sw
   ! ----------------------------------------------------------------------------------
 
-  call read_optical_props(fileName, atmos)
+  call read_optical_prop_values(fileName, atmos)
   do_sw = is_sw(fileName)
   if(do_sw) then
     call read_sw_bc (fileName, mu0, tsi, tsi_scaling, sfc_alb_dir, sfc_alb_dif)

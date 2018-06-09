@@ -13,7 +13,7 @@ end subroutine
 ! ----------------------------------------------------------------------------------
 program test_flux_reduce
   use mo_rte_kind,   only: wp
-  use mo_spectral_disc, only: ty_spectral_disc
+  use mo_optical_props, only: ty_optical_props
   use mo_fluxes_byband, only: ty_fluxes_byband
 
   use mo_test_files_io, only: is_sw, read_gpt_fluxes, read_direction, read_spectral_disc, &
@@ -22,7 +22,7 @@ program test_flux_reduce
   ! ----------------------------------------------------------------------------------
   character(len=128) :: fileName    = 'rrtmgp-inputs-outputs.nc'
 
-  type(ty_spectral_disc) :: spectral_disc
+  type(ty_optical_props) :: spectral_disc
   type(ty_fluxes_byband) :: fluxes
 
   real(wp), dimension(:,  :), allocatable :: toa_src

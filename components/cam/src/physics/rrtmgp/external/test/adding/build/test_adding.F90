@@ -13,8 +13,7 @@ end subroutine
 ! ----------------------------------------------------------------------------------
 program test_adding
   use mo_rte_kind,      only: wp, wl
-  use mo_optical_props, only: ty_optical_props
-  use mo_spectral_disc, only: ty_spectral_disc
+  use mo_optical_props, only: ty_optical_props, ty_optical_props_arry
   use mo_rte_solver_kernels, &
                         only: adding
 
@@ -30,7 +29,7 @@ program test_adding
 
   character(len=128) :: fileName = 'rrtmgp-inputs-outputs.nc'
 
-  class(ty_optical_props), allocatable :: atmos
+  class(ty_optical_props_arry), allocatable :: atmos
 
   real(wp), dimension(:,:,:), allocatable :: Rdif, Tdif, source_up, source_dn
   real(wp), dimension(:,  :), allocatable :: source_sfc
@@ -45,7 +44,7 @@ program test_adding
 
   logical :: top_at_1, do_sw
   integer :: i, j, k, ibnd, igpt
-  type(ty_spectral_disc) :: spectral_disc
+  type(ty_optical_props) :: spectral_disc
   ! ----------------------------------------------------------------------------------
   do_sw = is_sw(fileName)
   call read_direction (fileName, top_at_1)

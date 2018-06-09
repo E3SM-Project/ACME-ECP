@@ -39,7 +39,7 @@ Cleanup
 
 to start, it is good practice to remove any files that one may have generated in previous anaylses. this can be accomplished with run_tests.py and one of its keywords. in $LOCAL_RRTMGP:
 
-util/scripts/run_tests.py --root_dir .. --clean
+run_tests.py --root_dir .. --clean
 Cleaning up intermediate files
 
 that command will remove any files staged or generated as specified in the configuration .ini files that will be elaborated upon in the next section.
@@ -73,55 +73,55 @@ these configuration files have different sections in them that represent differe
 
 by default, the 7 aforementioned .ini files gathered and utilized by run_tests.py. in $LOCAL_RRTMGP/test:
 
-util/scripts/run_tests.py --root_dir .. 
+run_tests.py --root_dir .. 
 
 the --root_dir keyword specifies where the RRTMGP "root" directory (e.g., to wherever the trunk was checked out) is relative to the working directory. since we are in $LOCAL_RRTMGP/test, the root directory is one level up.
 
 individual .ini files can be input into the unit test script. using the flux_compute test as an example:
 
-util/scripts/run_tests.py --root_dir .. --test_config flux_compute.ini
+run_tests.py --root_dir .. --test_config flux_compute.ini
 
 in this case, the only configuration file that is processed is flux_compute.ini, and this could be any .ini file (including one that the user creates, so long it follows the currently-defined .ini files as a template). giving the --test_config keyword any value will override the default behavior.
 
 the script stages files as they were done in the original shell scripts (links the coefficients.nc, moves the "starting point" netCDF into the working directory, moves the output netCDF into test/). it then runs a difference script that compares the reference and test netCDFs. the previous two calls to run_tests.py will only print out the unit test name and either a "all files identical" string if everything is the same between the test and reference or a variable name and what percentage of the data differ by at least the amount specified by the --rel_diff_cut keyword. there is also an option to produce a more verbose comparison with the --very_verbose keyword:
 
-util/scripts/run_tests.py --root_dir .. --very_verbose
+run_tests.py --root_dir .. --very_verbose
 
 the standard output here can be long (and probably should be redirected to a text file) depending on the amount of differences. it contains file name, compared variable, array index of the different values, and the test and reference values at that array element.
 
 by default, any standard output from the executables in a given .ini file is suppressed by the Python module. if one is interested in the executable output, they can use the --verbose keyword
 
-util/scripts/run_tests.py --root_dir .. --verbose
+run_tests.py --root_dir .. --verbose
 
 the --rel keyword  (short for --rel_diff_cut) is by default 0.0001 and can be changed to anything the user wants. this relative difference is defined as (relDiff = (b/a) - 1), and any value where abs(relDiff) > relative_diff_threshold (provided by the user with --rel) is returned to standard output. to print out the verbose comparison for a stricter threshold (and all workflows):
 
-util/scripts/run_tests.py --root_dir .. --rel 0.001 --very_verbose
+run_tests.py --root_dir .. --rel 0.001 --very_verbose
 
 some functionality has been added so that new test results replace the previous reference results. this can be executed with:
 
-util/scripts/run_tests.py --root_dir .. --ref_replace
+run_tests.py --root_dir .. --ref_replace
 
 in the context of the workflows (e.g., LW_clear_workflow.ini), there is an option that directs the code, for a given test unit, to utilize the netCDF from the previous unit:
 
-util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --unit-chain
+run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --unit-chain
 
 in this call, the Gas Optics is run, its output is used as the starting point input for the LW Solver, which in turn provides the input for Flux Reduce. without --unit set, the starting point for each unit is the netCDF in its corresponding ref/ subdirectory.
 
 the --reverse keyword performs tests for a given unit both in the given vertical direction (e.g., surface to TOA) and subsequently in the reversed vertical direction (e.g., TOA to surface). this option is there to ensure the units worked correctly regardless of how the input profiles are provided to the RRTMGP code.
 
-util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --reverse
+run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --reverse
 
 sometimes in development it may be useful to exit out of a workflow as soon as any significant difference is found, which can be performed with the --quit_on_fail keyword:
 
-util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --quit
+run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --quit
 
 also, one may want to run the test code without doing a difference comparison. this is invoked with the --no-diff keyword:
 
-util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --no-diff
+run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --no-diff
 
 finally, the executables that are used in a given workflow can be compiled within the run_tests.py script rather than descending into the associated build directories:
 
-util/scripts/run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --build
+run_tests.py --root_dir .. --test_config LW_clear_workflow.ini --build
 
 this command will build the test_gas_optics, test_lw_solver, and test_flux_reduce executables of the LW clear-sky workflow.
 

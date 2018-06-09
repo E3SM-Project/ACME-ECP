@@ -9,10 +9,7 @@ all:  test_adding \
 	test_flux_reduce \
 	test_gas_optics \
 	test_flux_compute \
-	test_lw_solver \
-	test_optical_props
-
-
+	test_lw_solver
 
 # tests adding
 test_adding:
@@ -49,12 +46,6 @@ test_lw_solver:
 	@echo --- building test lw_solver ---
 	( cd ../test/lw_solver/build ; make )
 
-# tests optical_props
-test_optical_props:
-	@echo --- building test optical_props ---
-	( cd ../test/optical_props/build ; make )
-
-
 # clean
 clean:
 	( cd ../test/adding/build ; make clean)
@@ -64,4 +55,3 @@ clean:
 	( cd ../test/gas_optics/build ; make clean )
 	( cd ../test/flux_compute/build ; make clean )
 	( cd ../test/lw_solver/build ; make clean )
-	( cd ../test/optical_props/build ; make clean )

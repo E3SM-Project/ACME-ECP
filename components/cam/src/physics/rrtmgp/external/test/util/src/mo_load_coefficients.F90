@@ -113,7 +113,7 @@ contains
       !
       call read_field(ncid, 'totplnk', totplnk)
       call read_field(ncid, 'plank_fraction', planck_frac)
-      call stop_on_err(kdist%init(available_gases, &
+      call stop_on_err(kdist%load(available_gases, &
                                   gas_names,   &
                                   key_species, &
                                   band2gpt,    &
@@ -143,7 +143,7 @@ contains
       ! Solar source doesn't have an dependencies yet
       !
       call read_field(ncid, 'solar_source', solar_src)
-      call stop_on_err(kdist%init(available_gases, &
+      call stop_on_err(kdist%load(available_gases, &
                                   gas_names,   &
                                   key_species, &
                                   band2gpt,    &

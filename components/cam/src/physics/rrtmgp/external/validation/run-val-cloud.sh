@@ -17,19 +17,19 @@ python repeat-cols.py ../test/data/garand-atmospheres-sw.nc data/one-clear-atmos
 # Add cloud optics - do this before reversing direction because I'm not sure how Frank's code
 #   treats direction
 #
-if [ ! -e data/solver-lw-inputs-cloud.nc ]; then python ../test/util/scripts/run_tests.py --root .. --no_diff --test make-lw-cloud-problems.ini; fi
-if [ ! -e data/solver-sw-inputs-cloud.nc ]; then python ../test/util/scripts/run_tests.py --root .. --no_diff --test make-sw-cloud-problems.ini; fi
+if [ ! -e data/solver-lw-inputs-cloud.nc ]; then python ../test/run_tests.py --root .. --no_diff --test make-lw-cloud-problems.ini; fi
+if [ ! -e data/solver-sw-inputs-cloud.nc ]; then python ../test/run_tests.py --root .. --no_diff --test make-sw-cloud-problems.ini; fi
 
 # Longwave cloudy-sky fluxes (about 8 minutes)
-python ../test/util/scripts/run_tests.py --root .. --no_diff --test shdompp-lw-cloud.ini
+python ../test/run_tests.py --root .. --no_diff --test shdompp-lw-cloud.ini
 # Shortwave cloudy-sky  fluxes (about 15 minutes)
-python ../test/util/scripts/run_tests.py --root .. --no_diff --test shdompp-sw-cloud.ini
+python ../test/run_tests.py --root .. --no_diff --test shdompp-sw-cloud.ini
 
 #
 # Fluxes with RRTMGP, relying on the cloud files built for SHDOMPP
 #
 # Cloudy-sky fluxes
-python ../test/util/scripts/run_tests.py --root .. --no_diff --test rrtmgp-cloud.ini
+python ../test/run_tests.py --root .. --no_diff --test rrtmgp-cloud.ini
 
 #
 # Validation plots

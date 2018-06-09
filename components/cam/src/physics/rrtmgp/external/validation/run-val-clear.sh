@@ -16,16 +16,16 @@ python change-values.py ../test/data/garand-atmospheres-sw.nc solar_zenith_angle
 # Fluxes with SHDOM 
 #
 # Longwave clear-sky fluxes (this takes a few minutes)
-python ../test/util/scripts/run_tests.py --root .. --no_diff --test shdompp-lw-clear.ini
+python ../test/run_tests.py --root .. --no_diff --test shdompp-lw-clear.ini
 # Shortwave clear-sky fluxes (about 8 minutes)
-python ../test/util/scripts/run_tests.py --root .. --no_diff --test shdompp-sw-clear.ini
+python ../test/run_tests.py --root .. --no_diff --test shdompp-sw-clear.ini
 
 #
 # Fluxes with RRTMGP -- these start from atmospheric profiles, not the output of gas optics
 #
 # One-angle and three-angle clear-sky fluxes using flux_compute
 python ../test/util/scripts/change-n-quad-angles.py 
-python ../test/util/scripts/run_tests.py --root .. --no_diff --test rrtmgp-clear.ini
+python ../test/run_tests.py --root .. --no_diff --test rrtmgp-clear.ini
 
 #
 # Comparisons -- SHDOM/LBL, RRTMGP/LBL, RRTMGP/SHDOM, for both LW and SW 

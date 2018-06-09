@@ -53,12 +53,12 @@ contains
   !
   ! Solution to the radiative transfer equation assuming internal emission
   !
-  function lw_solver(ncol, nlay, ngpt, top_is_1, &
+  function lw_solver(ncol, nlay, ngpt, top_at_1, &
                      atmos, lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                      flux_up, flux_dn,           &
                      inc_flux, Ds) result(error_msg)
     integer,                               intent( in) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
-    logical,                               intent( in) :: top_is_1       ! True if arrays are indexed top to bottom.
+    logical,                               intent( in) :: top_at_1       ! True if arrays are indexed top to bottom.
     class(ty_optical_props_arry),          intent( in) :: atmos          ! Optical properties of the atmosphere
     real(wp), dimension(ncol,nlay,  ngpt), intent( in) :: lay_source     ! Planck source at layer average temperature
                                                                          ! [W/m2] (ncol, nlay, ngpt)
@@ -71,7 +71,7 @@ contains
     real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_emis         ! Surface emissivity      []
     real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_src          ! Surface source function [W/m2]
     real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_up, flux_dn ! Fluxes [W/m2]
-                                                                           ! Top level (= merge(1, nlay+1, top_is_1)
+                                                                           ! Top level (= merge(1, nlay+1, top_at_1)
                                                                            ! must contain incident flux boundary condition
     real(wp), dimension(ncol,       ngpt), optional, &                     ! incident diffuse flux [W/m2]
                                            intent( in) :: inc_flux
@@ -97,8 +97,8 @@ contains
     real(wp), dimension(:,:), allocatable :: lev_source
     ! ----------------------------------------------------------------------------
     error_msg = ""
-    if(.not. top_is_1) then
-      error_msg = "lw_solver: atmosphere has to be ordered top to bottom (top_is_1 = .false.) for ECRAD"
+    if(.not. top_at_1) then
+      error_msg = "lw_solver: atmosphere has to be ordered top to bottom (top_at_1 = .false.) for ECRAD"
       return
     end if
     !
@@ -106,7 +106,7 @@ contains
     !
     allocate(planck_surf(ngpt,ncol), planck_hl(ngpt,nlay+1,ncol), lev_source(ncol, nlay+1))
     do igpt = 1, ngpt
-      call lw_combine_sources(ncol, nlay, top_is_1, &
+      call lw_combine_sources(ncol, nlay, top_at_1, &
                               lev_source_inc(:,:,igpt), lev_source_dec(:,:,igpt), &
                               lev_source)
       do icol = 1, ncol
@@ -198,10 +198,10 @@ contains
 
    end function lw_solver
 
-   subroutine lw_combine_sources(ncol, nlay, top_is_1, &
-                                 lev_src_inc, lev_src_dec, lev_source) bind(C)
+   subroutine lw_combine_sources(ncol, nlay, top_at_1, &
+                                 lev_src_inc, lev_src_dec, lev_source) bind(C, name="lw_combine_sources")
      integer,                           intent(in ) :: ncol, nlay
-     logical,                           intent(in ) :: top_is_1
+     logical,                           intent(in ) :: top_at_1
      real(wp), dimension(ncol, nlay  ), intent(in ) :: lev_src_inc, lev_src_dec
      real(wp), dimension(ncol, nlay+1), intent(out) :: lev_source
 
