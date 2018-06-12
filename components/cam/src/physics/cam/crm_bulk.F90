@@ -27,7 +27,7 @@ module crm_bulk_mod
 
    private :: crm_bulk_transport_tend 
 
-   contains 
+contains 
 !==================================================================================================================
 !==================================================================================================================
 
@@ -58,13 +58,13 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    !!! Local variables
    integer :: i, m, lchnk, ncol
    integer :: ixcldice, ixcldliq                      ! constituent indices for cloud liquid and ice water.
-   real(r8), dimension(pcols,pver)  :: dpdry          ! ?
-   real(r8), dimension(pcols,pver)  :: dp             ! layer thickness in mbs (between upper/lower interface).
+   real(r8), dimension(pcols,pver)  :: dpdry          ! pressure thickness for dry air
+   real(r8), dimension(pcols,pver)  :: dp             ! pressure thickness in mbs (between upper/lower interface).
    logical,  dimension(pcols,pcnst) :: dry_const_flag ! flag for dry constituents
 
    !!! physics buffer fields 
    integer itim, ifld
-   real(r8), pointer, dimension(:,:,:) :: fracis      ! fraction of transported species that are insoluble
+   real(r8), pointer, dimension(:,:,:) :: frac_insol  ! fraction of transported species that are insoluble
    real(r8), pointer, dimension(:,:)   :: mu          ! updraft mass flux       (pcols,pver,begchunk:endchunk)
    real(r8), pointer, dimension(:,:)   :: eu          ! updraft entrainment     (pcols,pver,begchunk:endchunk)
    real(r8), pointer, dimension(:,:)   :: du          ! updraft detrainment     (pcols,pver,begchunk:endchunk)
@@ -105,7 +105,7 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    end do
 
    !!! Associate pointers with physics buffer fields
-   call pbuf_get_field(pbuf, pbuf_get_index('FRACIS'), fracis, start=(/1,1,1/), kount=(/pcols,pver,pcnst/) )
+   call pbuf_get_field(pbuf, pbuf_get_index('FRACIS'), frac_insol, start=(/1,1,1/), kount=(/pcols,pver,pcnst/) )
    call pbuf_get_field(pbuf, pbuf_get_index('MU_CRM'), mu )
    call pbuf_get_field(pbuf, pbuf_get_index('MD_CRM'), md )
    call pbuf_get_field(pbuf, pbuf_get_index('DU_CRM'), du )
@@ -129,7 +129,7 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    ! Calculate the transport tendencies
    !-----------------------------------------------------------------------------------------
    call crm_bulk_transport_tend (lchnk, ncol, pcnst, lq, state%q,    &
-                                 dry_const_flag, fracis,             &
+                                 dry_const_flag, frac_insol,         &
                                  mu, md, du, eu, ed, dp, dpdry,      &
                                  cld_top_idx, cld_bot_idx,           &
                                  ptend%q )   
