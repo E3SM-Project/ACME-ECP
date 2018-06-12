@@ -158,22 +158,20 @@ subroutine crm_physics_register()
 #endif
 
    
-  ! if (use_ECPP) then
-     call pbuf_add_field('MU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux up
-     call pbuf_add_field('MD_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux down
-     call pbuf_add_field('DU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
-     call pbuf_add_field('EU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
-     call pbuf_add_field('ED_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from downdraft
-     call pbuf_add_field('JT_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) top for each column
-     call pbuf_add_field('MX_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) bottom for each column
-     call pbuf_add_field('IDEEP_CRM', 'physpkg', dtype_r8, (/pcols/),      idx)  ! Gathering array for convective columns
+  call pbuf_add_field('MU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux up
+  call pbuf_add_field('MD_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux down
+  call pbuf_add_field('DU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
+  call pbuf_add_field('EU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
+  call pbuf_add_field('ED_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from downdraft
+  call pbuf_add_field('JT_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) top for each column
+  call pbuf_add_field('MX_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) bottom for each column
+  call pbuf_add_field('IDEEP_CRM', 'physpkg', dtype_r8, (/pcols/),      idx)  ! Gathering array for convective columns
 
-     call pbuf_add_field('TKE_CRM',   'physpkg', dtype_r8, (/pcols,pver/), idx) ! TKE from CRM  (m2/s2)
-     call pbuf_add_field('TK_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx) ! TK from CRM (m2/s)
+  call pbuf_add_field('TKE_CRM',   'physpkg', dtype_r8, (/pcols,pver/), idx) ! TKE from CRM  (m2/s2)
+  call pbuf_add_field('TK_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx) ! TK from CRM (m2/s)
 
-     ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
-     call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
-  ! endif 
+  ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
+  call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
 
 
 end subroutine crm_physics_register
@@ -548,7 +546,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    use module_data_ecpp1, only: dtstep_pp_input
 #endif
    use phys_grid,       only: get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p, get_gcol_p
-   ! use convect_deep,    only: convect_deep_tend_2, deep_scheme_does_scav_trans
    !!!use aerosol_intr,    only: aerosol_wet_intr
 
 #if defined( SP_ORIENT_RAND )
@@ -1097,47 +1094,18 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
 
    !!! total clouds and precipiation - initialize here to be safe
-   ! pbuf(pbuf_get_fld_idx('AST'   ))%fld_ptr(1,1:pcols,1:pver,lchnk,itim) = 0.0_r8
-   ! pbuf(pbuf_get_fld_idx('QME'   ))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = 0.0_r8
-   ! pbuf(pbuf_get_fld_idx('PRAIN' ))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = 0.0_r8
-   ! pbuf(pbuf_get_fld_idx('NEVAPR'))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = 0.0_r8
-
    call pbuf_set_field(pbuf, pbuf_get_index('AST'   ), 0.0_r8 )
    call pbuf_set_field(pbuf, pbuf_get_index('QME'   ), 0.0_r8 )
    call pbuf_set_field(pbuf, pbuf_get_index('PRAIN' ), 0.0_r8 )
    call pbuf_set_field(pbuf, pbuf_get_index('NEVAPR'), 0.0_r8 )
 
-   ! ifld = pbuf_get_fld_idx('AST')
-   ! pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,itim) = cld(:ncol, :pver)
-   ! ifld = pbuf_get_fld_idx('QME')
-   ! pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = 0.0_r8
-   ! ifld = pbuf_get_fld_idx('PRAIN')
-   ! pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = qp_src(:ncol, :pver)
-   ! ifld = pbuf_get_fld_idx('NEVAPR')
-   ! pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = qp_evp(:ncol, :pver)
-
    !!! set convective rain to be zero for PRAIN already includes precipitation production from convection. 
-   ! pbuf(pbuf_get_fld_idx('RPRDTOT'))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8  
-   ! pbuf(pbuf_get_fld_idx('RPRDDP' ))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-   ! pbuf(pbuf_get_fld_idx('RPRDSH' ))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-   ! pbuf(pbuf_get_fld_idx('ICWMRDP'))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-   ! pbuf(pbuf_get_fld_idx('ICWMRSH'))%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
    call pbuf_set_field(pbuf, pbuf_get_index('RPRDTOT'), 0.0_r8 )
    call pbuf_set_field(pbuf, pbuf_get_index('RPRDDP' ), 0.0_r8 )
    call pbuf_set_field(pbuf, pbuf_get_index('RPRDSH' ), 0.0_r8 )
    call pbuf_set_field(pbuf, pbuf_get_index('ICWMRDP'), 0.0_r8 )
    call pbuf_set_field(pbuf, pbuf_get_index('ICWMRSH'), 0.0_r8 )
-   ! ifld = pbuf_get_fld_idx( 'RPRDTOT' )
-   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8  
-   ! ifld = pbuf_get_fld_idx( 'RPRDDP' )
-   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-   ! ifld = pbuf_get_fld_idx( 'RPRDSH' )
-   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-   ! ifld = pbuf_get_fld_idx( 'ICWMRDP' )
-   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-   ! ifld = pbuf_get_fld_idx( 'ICWMRSH' )
-   ! pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-
+   
    prec_dp  = 0.
    snow_dp  = 0.
    prec_sh  = 0.
@@ -1148,7 +1116,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    prec_pcw = 0
    snow_pcw = 0.
    
-! Initialize stuff:
+   !!! Initialize stuff:
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
@@ -1709,9 +1677,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
       call t_stopf('crm_call')
 
       ! There is no separate convective and stratiform precip for CRM:
-      precc(:ncol) = precc(:ncol) + precl(:ncol)
-      precl(:ncol) = 0.
+      precc(:ncol)  = precc(:ncol) + precl(:ncol)
       precsc(:ncol) = precsc(:ncol) + precsl(:ncol)
+      precl(:ncol)  = 0.
       precsl(:ncol) = 0.
 
       !!! these precip pointer variables are used by coupler
@@ -1719,18 +1687,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
       snow_dp  = precsc
 
       !!! These are needed elsewhere in the model when SP_PHYS_BYPASS is used
-      ! pbuf(pbuf_get_fld_idx('AST'   ))%fld_ptr(1,1:pcols,1:pver,lchnk,itim) = cld   (:ncol,:pver)
-      ! pbuf(pbuf_get_fld_idx('PRAIN' ))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = qp_src(:ncol,:pver)
-      ! pbuf(pbuf_get_fld_idx('NEVAPR'))%fld_ptr(1,1:pcols,1:pver,lchnk,1)    = qp_evp(:ncol,:pver)
-      !!! is this a better way to set pbuf fields?
       ifld = pbuf_get_index('AST'   )
-      call pbuf_set_field(pbuf,ifld,cld   (:ncol,:pver),start=(/1,1/),kount=(/pcols,pver/) )
-
+      call pbuf_set_field(pbuf,ifld, cld   (:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
       ifld = pbuf_get_index('PRAIN' )
-      call pbuf_set_field(pbuf,ifld,qp_src(:ncol,:pver),start=(/1,1/),kount=(/pcols,pver/) )
-
+      call pbuf_set_field(pbuf,ifld, qp_src(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
       ifld = pbuf_get_index('NEVAPR')
-      call pbuf_set_field(pbuf,ifld,qp_evp(:ncol,:pver),start=(/1,1/),kount=(/pcols,pver/) )
+      call pbuf_set_field(pbuf,ifld, qp_evp(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
 
       do m=1,crm_nz
       k = pver-m+1
@@ -2287,7 +2249,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
     !----------------------------------------------------
     ! CRM Bulk Calculations (i.e. ECPP-lite)
     !----------------------------------------------------
-! #if defined( SP_CRM_BULK )
+#if defined( SP_CRM_BULK )
   
     !!! Note: ptend initialization done within crm_bulk_*() routines - whannah
 
@@ -2307,7 +2269,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
     ! call crm_bulk_transport(state, pbuf, ptend)
     ! call physics_update (state, ptend, crm_run_time, tend)
 
-! #endif /* SP_CRM_BULK */
+#endif /* SP_CRM_BULK */
     !----------------------------------------------------
     ! ECPP - Explicit-Cloud Parameterized-Pollutant
     ! Use CRM cloud statistics to calculate 

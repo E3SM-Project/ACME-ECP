@@ -71,8 +71,11 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    real(r8), pointer, dimension(:,:)   :: md          ! downdraft mass flux     (pcols,pver,begchunk:endchunk)
    real(r8), pointer, dimension(:,:)   :: ed          ! downdraft entrainment   (pcols,pver,begchunk:endchunk)
 
-   real(r8), pointer, dimension(:) :: cld_top_idx_flt ! index of cloud top      (pcols,begchunk:endchunk)
-   real(r8), pointer, dimension(:) :: cld_bot_idx_flt ! index of cloud bottom   (pcols,begchunk:endchunk)
+   ! real(r8), pointer, dimension(:) :: cld_top_idx_flt ! index of cloud top      (pcols,begchunk:endchunk)
+   ! real(r8), pointer, dimension(:) :: cld_bot_idx_flt ! index of cloud bottom   (pcols,begchunk:endchunk)
+
+   real(r8), pointer, dimension(:) :: cld_top_idx_ptr ! index of cloud top      (pcols,begchunk:endchunk)
+   real(r8), pointer, dimension(:) :: cld_bot_idx_ptr ! index of cloud bottom   (pcols,begchunk:endchunk)
 
    integer, dimension(pcols) :: cld_top_idx           ! index of cloud top
    integer, dimension(pcols) :: cld_bot_idx           ! index of cloud bottom
@@ -111,19 +114,23 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    call pbuf_get_field(pbuf, pbuf_get_index('DU_CRM'), du )
    call pbuf_get_field(pbuf, pbuf_get_index('EU_CRM'), eu )
    call pbuf_get_field(pbuf, pbuf_get_index('ED_CRM'), ed )
-   call pbuf_get_field(pbuf, pbuf_get_index('JT_CRM'), cld_top_idx_flt )
-   call pbuf_get_field(pbuf, pbuf_get_index('MX_CRM'), cld_bot_idx_flt )
+   call pbuf_get_field(pbuf, pbuf_get_index('JT_CRM'), cld_top_idx_ptr )
+   call pbuf_get_field(pbuf, pbuf_get_index('MX_CRM'), cld_bot_idx_ptr )
+   ! call pbuf_get_field(pbuf, pbuf_get_index('JT_CRM'), cld_top_idx_flt )
+   ! call pbuf_get_field(pbuf, pbuf_get_index('MX_CRM'), cld_bot_idx_flt )
 
    !!! get integer cloud indices - add small constant since int() rounds down to nearest integer
-   cld_top_idx = int( cld_top_idx_flt + 0.1_r8)
-   cld_bot_idx = int( cld_bot_idx_flt + 0.1_r8)
+   ! cld_top_idx = int( cld_top_idx_flt + 0.1_r8)
+   ! cld_bot_idx = int( cld_bot_idx_flt + 0.1_r8)
+   cld_top_idx = cld_top_idx_ptr
+   cld_bot_idx = cld_bot_idx_ptr
 
-   !!! initialize dpdry for call to convtran - it is used for tracers of dry mixing ratio type
+   !!! initialize dp and dpdry - used for tracers of dry mixing ratio type
    dpdry = 0._r8
-   do i = 1,ncol
-      dpdry(i,:) = state%pdeldry(i,:)/100._r8
-      dp(i,:)    = state%pdel(i,:)/100._r8
-   end do
+
+   !!! convert pressure thickness from Pa to hPa
+   dpdry(1:ncol,:) = state%pdeldry(1:ncol,:)/100._r8
+   dp   (1:ncol,:) = state%pdel   (1:ncol,:)/100._r8
 
    !-----------------------------------------------------------------------------------------
    ! Calculate the transport tendencies
@@ -162,7 +169,7 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
    integer,  intent(in) :: ncnst                                        ! number of tracers to transport
    logical,  intent(in), dimension(ncnst)            :: do_transport    ! flag for doing convective transport
    real(r8), intent(in), dimension(pcols,pver,ncnst) :: q               ! Tracer array including moisture
-   logical,  intent(in), dimension(pcols,ncnst)      :: dry_const_flag  ! fraction of tracer that is insoluble
+   logical,  intent(in), dimension(pcols,ncnst)      :: dry_const_flag  ! flag to indicate dry constituent
    real(r8), intent(in), dimension(pcols,pver,ncnst) :: frac_insol      ! fraction of tracer that is insoluble
    real(r8), intent(in), dimension(pcols,pver)       :: mu              ! updraft mass flux     [mb/s]
    real(r8), intent(in), dimension(pcols,pver)       :: eu              ! updraft entrainment
@@ -170,32 +177,36 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
    real(r8), intent(in), dimension(pcols,pver)       :: md              ! downdraft mass flux   [mb/s]
    real(r8), intent(in), dimension(pcols,pver)       :: ed              ! downdraft entrainment
    real(r8), intent(in), dimension(pcols,pver)       :: dp              ! Delta pressure between interfaces
-   real(r8), intent(in), dimension(pcols,pver)       :: dpdry           ! Delta pressure between interfaces
-   integer,  intent(in), dimension(pcols)            :: cld_top_idx     ! Index of cloud top for each column
-   integer,  intent(in), dimension(pcols)            :: cld_bot_idx     ! Index of cloud top for each column
+   real(r8), intent(in), dimension(pcols,pver)       :: dpdry           ! Delta pressure between interfaces - for dry constituents
+   integer,  intent(in), dimension(pcols)            :: cld_top_idx     ! Index of cloud top    for each column
+   integer,  intent(in), dimension(pcols)            :: cld_bot_idx     ! Index of cloud bottom for each column
    
    !!! Output Arguments
    real(r8), intent(out), dimension(pcols,pver,ncnst) :: q_tend_out       ! Tracer tendency array
 
    !!! Local Variables
    integer i,m,k             ! Work indices
-   integer kk,kkp1,km1,kp1   ! Work index
+   integer km1,kp1           ! k-1, k+1
 
    real(r8) q_above          ! Mix ratio of constituent above
    real(r8) q_below          ! Mix ratio of constituent below
    real(r8) q_diff_norm      ! Normalized diff between q_above and q_below
-   real(r8) small            ! small number threshold
-   real(r8) mf_threshold     ! threshold for mass fluxes
 
-   real(r8) min_q            ! A work variable
-   real(r8) max_q            ! A work variable
-   real(r8) flux_in          ! A work variable
-   real(r8) flux_out         ! A work variable
-   real(r8) flux_net         ! A work variable
+   real(r8), parameter :: q_small          = 1.e-36_r8   ! small constituent mixing ratio threshold
+   real(r8), parameter :: min_mf           = 1.e-15_r8   ! threshold below which we treat the mass fluxes as zero (in mb/s)
+   real(r8), parameter :: min_q_diff       = 1.E-6_r8    ! minimum q_diff_norm
+   real(r8), parameter :: max_q_factor     = 1.e-12_r8   ! scaling factor for max_q
+   real(r8), parameter :: max_flux_factor  = 1.e-12_r8   ! scaling factor for max flux limiter
+
+   real(r8) min_q            ! temporary variable used to determine q_diff_norm
+   real(r8) max_q            ! temporary variable used to determine q_diff_norm
+   real(r8) flux_in          ! flux into layer k
+   real(r8) flux_out         ! flux out of layer k
+   real(r8) flux_net         ! net flux for layer k
 
    real(r8), dimension(pver) :: mu_p_duxdp   ! updraft mass flux + detrainment * dpdry
 
-   real(r8), dimension(pver) :: q_int        ! constituent mixing ratio in env       at interfaces
+   real(r8), dimension(pver) :: q_intrp      ! constituent mixing ratio in env       at interfaces
    real(r8), dimension(pver) :: q_up         ! constituent mixing ratio in updraft   at interfaces
    real(r8), dimension(pver) :: q_dn         ! constituent mixing ratio in downdraft at interfaces
 
@@ -205,9 +216,7 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
    real(r8), dimension(pver) :: dp_tmp       ! Delta pressure between interfaces
    !-----------------------------------------------------------------------------------------
    !-----------------------------------------------------------------------------------------
-   q_tend_out(:,:,:) = 0._r8   ! Initialize output tendency array
-   small        = 1.e-36_r8    ! threshold for constituent mixing ratios
-   mf_threshold = 1.e-15_r8    ! threshold below which we treat the mass fluxes as zero (in mb/s)
+   q_tend_out(:,:,:) = 0._r8   ! Initialize output tendency array   
    !-----------------------------------------------------------------------------------------
    ! Loop ever each constituent
    !-----------------------------------------------------------------------------------------
@@ -239,42 +248,43 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
                if (min_q < 0) then
                   q_diff_norm = 0._r8
                else
-                  q_diff_norm = abs( q(i,k,m) - q(i,km1,m) ) / max( max_q, small )
+                  q_diff_norm = abs( q(i,k,m) - q(i,km1,m) ) / max( max_q, q_small )
                endif
                
                !!! Interpolate tracer values to interfaces
-               if (q_diff_norm > 1.E-6_r8) then
+               if ( q_diff_norm > min_q_diff ) then
                   !!! If the two layers differ significantly use a geometric mean
-                  q_above = max( q(i,km1,m), max_q*1.e-12_r8 )
-                  q_below = max( q(i,k  ,m), max_q*1.e-12_r8 )
-                  q_int(k) = log(q_above/q_below) /(q_above-q_below) *q_above*q_below
+                  q_above    = max( q(i,km1,m), max_q*max_q_factor )
+                  q_below    = max( q(i,k  ,m), max_q*max_q_factor )
+                  q_intrp(k) = log(q_above/q_below) /(q_above-q_below) *q_above*q_below
                else             
                   !!! If the two layers are sufficiently small just use arithmetic mean
-                  q_int(k) = 0.5_r8* ( q(i,k,m) + q(i,km1,m) )
+                  q_intrp(k) = 0.5_r8* ( q(i,k,m) + q(i,km1,m) )
                end if
                !!! provisional up and down draft tracer values
-               q_up(k) = q_int(k)
-               q_dn(k) = q_int(k)
+               q_up(k) = q_intrp(k)
+               q_dn(k) = q_intrp(k)
 
-               !!! set mu_p_duxdp
+               !!! set mu_p_duxdp (updraft mass flux + detrainment * dpdry)
                mu_p_duxdp(k) = mu(i,k) + du_tmp(k)*dp_tmp(k)
-            end do
+
+            end do ! k
             !--------------------------------------------------------
             ! Determine updraft tracer values
             !--------------------------------------------------------
             !!! set initial updraft tracer values at surface
-            kk = pver 
-            if ( mu_p_duxdp(kk) > mf_threshold ) then
-               q_up(kk) = ( +eu_tmp(kk) * frac_insol(i,kk,m) * q(i,kk,m) * dp_tmp(kk) )/mu_p_duxdp(kk)
+            k = pver 
+            if ( mu_p_duxdp(k) > min_mf ) then
+               q_up(k) = ( eu_tmp(k) * frac_insol(i,k,m) * q(i,k,m) * dp_tmp(k) )/mu_p_duxdp(k)
             endif
 
             !!! Updraft from bottom to top
-            do kk = pver-1,1,-1
-               kkp1 = min(pver,kk+1)
-               if (mu_p_duxdp(kk) > mf_threshold) then
-                  q_up(kk) = (  mu(i,kkp1) * q_up(kkp1)          &
-                              + eu_tmp(kk) * q(i,kk,m) * frac_insol(i,kk,m) * dp_tmp(kk) &
-                             )/mu_p_duxdp(kk)
+            do k = pver-1,1,-1
+               kp1 = min(pver,k+1)
+               if (mu_p_duxdp(k) > min_mf) then
+                  q_up(k) = (  mu(i,kp1) * q_up(kp1)          &
+                              + eu_tmp(k) * q(i,k,m) * frac_insol(i,k,m) * dp_tmp(k) &
+                             )/mu_p_duxdp(k)
                endif
             end do
             !--------------------------------------------------------
@@ -283,19 +293,19 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
             !!! set initial downdraft tracer values at top of model
             k = 2
             km1 = 1
-            if ( md(i,k) < -mf_threshold ) then
+            if ( md(i,k) < -min_mf ) then
                q_dn(k) =  ( -ed_tmp(km1) * frac_insol(i,km1,m) * q(i,km1,m) * dp_tmp(km1) )/md(i,k)
             endif
 
             !!! Downdraft from top to bottom
             do k = 3,pver
                km1 = max(1,k-1)
-               if (md(i,k) < -mf_threshold) then
+               if (md(i,k) < -min_mf) then
                   q_dn(k) =  (  md(i,km1)   * q_dn(km1)            &
                               - ed_tmp(km1) * q(i,km1,m) * frac_insol(i,km1,m) * dp_tmp(km1) &
                              )/md(i,k)
                endif
-            end do
+            end do ! k
             !--------------------------------------------------------
             ! Calculate fluxes of q by convective transport
             !--------------------------------------------------------
@@ -304,12 +314,12 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
                kp1 = min(pver,k+1)
 
                !!! flux into layer k
-               flux_in =   mu(i,kp1)*q_up(kp1) + mu(i,k  )*min(q_int(k  ),q(i,km1,m)) &
-                        -( md(i,k  )*q_dn(k  ) + md(i,kp1)*min(q_int(kp1),q(i,kp1,m)) )
+               flux_in =   mu(i,kp1)*q_up(kp1) + mu(i,k  )*min(q_intrp(k  ),q(i,km1,m)) &
+                        -( md(i,k  )*q_dn(k  ) + md(i,kp1)*min(q_intrp(kp1),q(i,kp1,m)) )
 
                !!! flux out of layer k
-               flux_out =   mu(i,k  )*q_up(k  ) + mu(i,kp1)*min(q_int(kp1),q(i,k,m)) &
-                         -( md(i,kp1)*q_dn(kp1) + md(i,k  )*min(q_int(k  ),q(i,k,m)))
+               flux_out =   mu(i,k  )*q_up(k  ) + mu(i,kp1)*min(q_intrp(kp1),q(i,k,m)) &
+                         -( md(i,kp1)*q_dn(kp1) + md(i,k  )*min(q_intrp(k  ),q(i,k,m)))
 
                ! limit fluxes outside convection to mass in appropriate layer
                ! limiters are "probably" only safe for positive definite quantitities
@@ -317,13 +327,13 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
                ! already satisfy a courant number limit of 1
 
                flux_net = flux_in - flux_out
-               if ( abs(flux_net) < ( max(flux_in,flux_out)*1.e-12_r8 ) ) then
+               if ( abs(flux_net) < ( max(flux_in,flux_out)*max_flux_factor ) ) then
                   flux_net = 0._r8
                endif
 
                q_tend_out(i,k,m) = flux_net/dp_tmp(k)
 
-            end do
+            end do ! k
             !--------------------------------------------------------
             ! calculate fluxes for lowest cloud layer
             !--------------------------------------------------------
@@ -332,12 +342,12 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
                if ( k == cld_bot_idx(i) ) then
 
                   !!! calculate fluxes in and out of cloud base
-                  flux_in  = mu(i,k)*min(q_int(k),q(i,km1,m)) - md(i,k)*q_dn(k)
-                  flux_out = mu(i,k)*q_up(k) - md(i,k)*min(q_int(k),q(i,k,m))
+                  flux_in  = mu(i,k)*min(q_intrp(k),q(i,km1,m)) - md(i,k)*q_dn(k)
+                  flux_out = mu(i,k)*q_up(k) - md(i,k)*min(q_intrp(k),q(i,k,m))
 
                   !!! limit fluxes similar as above
                   flux_net = flux_in - flux_out
-                  if ( abs(flux_net) < max(flux_in,flux_out)*1.e-12_r8 ) then
+                  if ( abs(flux_net) < max(flux_in,flux_out)*max_flux_factor ) then
                      flux_net = 0._r8
                   endif
 
@@ -347,7 +357,7 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
                   !!! otherwise tendency is zero
                   q_tend_out(i,k,m) = 0._r8
                end if
-            end do
+            end do ! k
             !--------------------------------------------------------
             !--------------------------------------------------------
          end do ! i=1,ncol
@@ -366,7 +376,7 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
                                   wwqui_bnd, wwqui_cloudy_bnd,  &
                                   species_class )
    !-----------------------------------------------------------------------------------------
-   ! Purpose: to calculate aerosol tendency from dropelt activation and mixing
+   ! Purpose: to calculate aerosol tendency from droplet activation and mixing
    ! Walter Hannah (LLNL), 2018: based on Minghuai Wang's crmclouds_mixnuc_tend() - Adopted from mmicro_pcond in cldwat2m.F90
    !-----------------------------------------------------------------------------------------
    use physics_types,    only: physics_state, physics_ptend, physics_tend, physics_ptend_init
@@ -412,7 +422,7 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    real(r8), dimension(pcols,pver) :: lcldo     ! old liquid cloud fraction (previous time step)
 
    real(r8), dimension(pcols,pver ) :: wsub     ! subgrid vertical velocity
-   real(r8), dimension(pcols,pver ) :: zs       ! inverse of distance between levels (meter)
+   real(r8), dimension(pcols,pver ) :: dz_inv   ! inverse of distance between levels (meter)
    real(r8), dimension(pcols,pver ) :: dz       ! layer depth (m)
    real(r8), dimension(pcols,pver ) :: cs       ! air density
    real(r8), dimension(pcols,pverp) :: ekd_crm  ! diffusivity
@@ -423,11 +433,12 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    real(r8) :: alc(pcols, pverp)                ! asymptotic length scale (m)
    real(r8) :: tendnd(pcols, pver)              ! tendency of cloud droplet number concentrations (not used in the MMF) 
 
-   real(r8),allocatable :: factnum(:,:,:)       ! activation fraction for aerosol number
+   real(r8), allocatable :: factnum(:,:,:)      ! activation fraction for aerosol number
 
    real(r8) :: qcld                             ! cloud condensate - liquid + ice
-   real(r8) :: qcld_threhold                    ! lower bound for cloud condesnate
    logical  :: do_mmf = .true.                  ! value insignificant, if present, means that dropmixnuc is called the mmf part. 
+
+   real(r8), parameter :: qcld_threshold = 1.e-18_r8  ! lower bound for cloud condesnate
 
    !!! Variables in the physics buffer:
    real(r8), pointer, dimension(:,:)   :: cldn        ! cloud fraction                  (current time step)
@@ -441,8 +452,6 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    !-----------------------------------------------------------------------------------------
    lchnk  = state%lchnk
    ncol   = state%ncol
-   
-   qcld_threhold = 1.e-18_r8
 
    call rad_cnst_get_info(0, nmodes=nmodes)
    allocate( factnum(pcols,pver,nmodes) )
@@ -505,9 +514,9 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    !--------------------------------------------------------
    do i=1,ncol
       do k=1,pver-1
-         zs(i,k) = 1._r8/(state%zm(i,k)-state%zm(i,k+1))
+         dz_inv(i,k) = 1._r8/(state%zm(i,k)-state%zm(i,k+1))
       end do ! k=1,pver-1
-      zs(i,pver) = zs(i,pver-1)
+      dz_inv(i,pver) = dz_inv(i,pver-1)
 
       !!! calculate height at layer interface (simple calculation)
       zheight(i,pverp) = 0.0
@@ -545,7 +554,7 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
          !!! in cldwat2m.F90, it is tke.
          !!! wsub seems too large from this approach. 
 
-         ! wsub(i,k) = tk_crm(i,k) * zs(i,k)
+         ! wsub(i,k) = tk_crm(i,k) * dz_inv(i,k)
          ! wsub(i,k) = min(wsub(i,k),10._r8)
 
          !!! from vertical variance in the quiescent class, which excldues 
@@ -568,8 +577,8 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
 
          !!! calculate diffusivity (ekd_crm) from subgrid vertical velocity (wsub) 
          !!! in the cloudy quiescent class (following ndrop.F90)
-         ! ekd_crm(i,k) = wsub(i,k) / zs(i,k)
-         ! ekd_crm(i,k) = min(10.0_r8, max(0.20_r8, sqrt(wwqui_cloudy_bnd(i,k))))*2.0 / (zs(i,k1)+zs(i,k2))  ! use wsub at layer boundary - large ekd at free troposphere. 
+         ! ekd_crm(i,k) = wsub(i,k) / dz_inv(i,k)
+         ! ekd_crm(i,k) = min(10.0_r8, max(0.20_r8, sqrt(wwqui_cloudy_bnd(i,k))))*2.0 / (dz_inv(i,k1)+dz_inv(i,k2))  ! use wsub at layer boundary - large ekd at free troposphere. 
          ekd_crm(i,k) = min(10.0_r8, max(0.20_r8, sqrt(wwqui_cloudy_bnd(i,k))))* lc(i,k) 
          kkvh_crm(i,k) = ekd_crm(i,k)
 
@@ -601,7 +610,7 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
          qcld = qc(i,k) + qi(i,k)
 
          !!! check if total cloud condensate is sufficiently large
-         if ( qcld.gt.qcld_threhold ) then
+         if ( qcld.gt.qcld_threshold ) then
             lcldn(i,k) = cldn(i,k)*qc(i,k)/qcld
             lcldo(i,k) = cldo(i,k)*qc(i,k)/qcld
          else
