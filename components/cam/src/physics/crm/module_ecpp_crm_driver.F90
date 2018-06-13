@@ -73,10 +73,7 @@ module  module_ecpp_crm_driver
   !----------------------------------------------------------------------------------------
   use ecppvars
   use ecppvars,  only: QUI, UP1, DN1, NCLASS_TR, NCLASS_CL, CLR, CLD, NCLASS_PR, PRN, PRY
-  !Guangxing Lin
-  !use abortutils,  only: endrun
   use cam_abortutils,  only: endrun
-  !Guangxing Lin
   use params, only: crm_rknd
 
   public ecpp_crm_stat

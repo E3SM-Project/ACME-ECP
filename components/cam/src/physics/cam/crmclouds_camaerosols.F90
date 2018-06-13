@@ -26,7 +26,7 @@ module crmclouds_camaerosols
 
    public :: crmclouds_mixnuc_tend 
    public :: crmclouds_diag 
-   public :: crmclouds_convect_tend
+   public :: crmclouds_convect_tend 
 
 contains 
 !======================================================================================================

@@ -549,7 +549,8 @@ end subroutine crm_physics_init
 #if defined( SP_ORIENT_RAND )
    use RNG_MT            ! random number generator for randomly rotating CRM orientation (SP_ORIENT_RAND)
 #endif
-   ! use ieee_arithmetic   ! whannah - used for tracking down a NaN issue 
+   
+   use ieee_arithmetic   ! whannah - used for tracking down a NaN issue 
 
 
 ! whannah - need this for non-SP model, otherwise the compiler couldn't find params.F90
@@ -2311,17 +2312,33 @@ end subroutine crm_physics_init
                                 rhcen, qcloudcen, qlsinkcen, precrcen,     &
                                 precsolidcen, acldy_cen_tbeg )
 
-        ! whannah - debugging information for NaN issue
-        ! do i=1,ncol
-        ! do k=1,pver
-        !   if ( ieee_is_nan( ptend%q(i,k,0)  ) ) then
-        !     ptend%q(i,k,0) = 0.
-        !   endif
-        !   ! write(iulog,*) ""
-        !   ! write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
-        ! enddo
-        ! enddo
+#ifdef ECPP_DEBUG
+        !!! whannah - debugging information for NaN issue
+        do i=1,ncol
+        do k=1,pver
+          if ( ieee_is_nan( ptend%q(i,k,0)  ) ) then
+          !   ptend%q(i,k,0) = 0.
+          ! endif
+          ! write(iulog,*) ""
+            write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159),     &
+                                         (state%lon(i)*180./3.14159),     &
+                                         ptend%q(i,k,0), ptend%q(i,k,1),  &
+                                         ptend%q(i,k,2), ptend%q(i,k,3) 
+          endif
+        enddo
+        enddo
         ! ptend%q(:,:,:) = 0.0_r8 ! whannah - zero out tendency for testing - doesn't help NaN problem!
+5001 format('whannah - ECPP tendency   lev ',i5,'    lat =',f8.2,'    lon =',f8.2  )
+5002 format('whannah - ECPP tendency   i: ',i4,    &
+                                  '    chnk: ',i4, &
+                                  '    k: ',i4, &
+                                  '    y: ',f5.1, &
+                                  '    x: ',f5.1, &
+                                  '   ',f12.2,      &
+                                  '   ',f12.2,      &
+                                  '   ',f12.2,      &
+                                  '   ',f12.2 )
+#endif /* ECPP_DEBUG */
 
         call physics_update(state, ptend, dtstep_pp, tend)
         call t_stopf ('ecpp')
@@ -2329,23 +2346,14 @@ end subroutine crm_physics_init
       end if
 
     endif ! use_ECPP
-#endif
+#endif /* ECPP */
 
 
     call t_stopf('bc_aerosols_mmf')
   ! endif ! SPCAM_microp_scheme .eq. 'm2005'
 
 
-! 5001 format('whannah - ECPP tendency   lev ',i5,'    lat =',f8.2,'    lon =',f8.2  )
-! 5002 format('whannah - ECPP tendency   i: ',i4,    &
-!                                   '    chnk: ',i4, &
-!                                   '    k: ',i4, &
-!                                   '    y: ',f5.1, &
-!                                   '    x: ',f5.1, &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2 )
+
 
 
 !----------------------------------------------------------------------
