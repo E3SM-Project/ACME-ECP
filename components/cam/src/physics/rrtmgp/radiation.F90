@@ -2060,7 +2060,12 @@ subroutine set_aerosol_optics_sw(icall, state, pbuf, &
    integer, intent(in) :: cam_layers(:)
    type(ty_optical_props_2str), intent(inout) :: optics_out
 
-   ! NOTE: aer_rad_props expects 0:pver indexing on these!
+   ! NOTE: aer_rad_props expects 0:pver indexing on these! It appears this is to
+   ! account for the extra layer added above model top, but it is not entirely
+   ! clear. This is not done for the longwave, and it is not really documented
+   ! anywhere that I can find. Regardless, optical properties for the zero index
+   ! are set to zero in aer_rad_props_sw as far as I can tell.
+   !
    ! NOTE: dimension ordering is different than for cloud optics!
    real(r8), dimension(pcols,0:pver,nswbands) :: tau, tau_w, tau_w_g, tau_w_f
 
@@ -2106,7 +2111,7 @@ subroutine set_aerosol_optics_sw(icall, state, pbuf, &
          ! grid, then skip this index (leave optical properties at initial
          ! values, 0 for tau and g, 1 for ssa).
          k_cam = cam_layers(k_rad)
-         if (k_cam < 1) cycle
+         if (k_cam < 0) cycle
 
          ! Copy cloud optical depth over directly
          optics_out%tau(iday,k_rad,1:nbnd) = tau(icol,k_cam,1:nbnd)

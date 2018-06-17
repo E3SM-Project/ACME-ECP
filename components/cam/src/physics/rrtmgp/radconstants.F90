@@ -26,7 +26,6 @@ save
 
 ! number of shorwave spectral intervals
 integer, parameter, public :: nswbands = 14
-integer, parameter, public :: nbndsw = 14
 
 ! Wavenumbers of band boundaries
 !
@@ -34,16 +33,16 @@ integer, parameter, public :: nbndsw = 14
 ! 100 cm^-1 if it is too high to cover the far-IR. Any changes meant
 ! to affect IR solar variability should take note of this.
 
-real(r8),parameter :: wavenum_low(nbndsw) = & ! in cm^-1
+real(r8),parameter :: wavenum_low(nswbands) = & ! in cm^-1
   (/ 820._r8, 2600._r8, 3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, &
     7700._r8, 8050._r8,12850._r8,16000._r8,22650._r8,29000._r8,38000._r8/)
-real(r8),parameter :: wavenum_high(nbndsw) = & ! in cm^-1
+real(r8),parameter :: wavenum_high(nswbands) = & ! in cm^-1
   (/2600._r8, 3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, 7700._r8, &
     8050._r8,12850._r8,16000._r8,22650._r8,29000._r8,38000._r8,50000._r8/)
 
 ! Solar irradiance at 1 A.U. in W/m^2 assumed by radiation code
 ! Rescaled so that sum is precisely 1368.22 and fractional amounts sum to 1.0
-real(r8), parameter :: solar_ref_band_irradiance(nbndsw) = & 
+real(r8), parameter :: solar_ref_band_irradiance(nswbands) = & 
    (/ &
     12.89_r8,  12.11_r8,  20.3600000000001_r8, 23.73_r8, &
     22.43_r8,  55.63_r8, 102.93_r8, 24.29_r8, &
@@ -80,7 +79,6 @@ integer, parameter, public :: rrtmg_lw_cloudsim_band = 6  ! rrtmg band for 10.5 
 
 ! number of lw bands
 integer, parameter, public :: nlwbands = 16
-integer, parameter, public :: nbndlw = 16
 
 real(r8), parameter :: wavenumber1_longwave(nlwbands) = &! Longwave spectral band limits (cm-1)
     (/   10._r8,  350._r8, 500._r8,   630._r8,  700._r8,  820._r8,  980._r8, 1080._r8, &
