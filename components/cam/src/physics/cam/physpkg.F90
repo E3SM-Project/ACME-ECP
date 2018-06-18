@@ -1933,9 +1933,13 @@ subroutine tphysbc (ztodt,               &
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use phys_control,    only: use_qqflx_fixer, use_mass_borrower
 
-    use crmdims,         only: crm_nz!, crm_nx, crm_ny, crm_dx, crm_dy, crm_dt
+    use crmdims,         only: crm_nz, crm_nx, crm_ny, crm_dx, crm_dy, crm_dt
 
     use crm_physics,     only: crm_physics_tend, crm_save_state_tend, crm_remember_state_tend
+
+#if defined( SP_CRM_BULK )
+    use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
+#endif
 
     implicit none
 
@@ -2108,10 +2112,12 @@ subroutine tphysbc (ztodt,               &
     
 !-- mdb spcam
     logical           :: use_SPCAM
+    logical           :: use_ECPP
     character(len=16) :: SPCAM_microp_scheme
     integer           :: phys_stage
 
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
+    call phys_getopts( use_ECPP_out            = use_ECPP)
     call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
 !-- mdb spcam
 
@@ -2716,6 +2722,32 @@ end if
 
     end if ! microp_scheme
 
+#endif /* SP_PHYS_BYPASS */ 
+
+
+    !======================================================================================
+    !--------------------------------------------------------------------------------------
+    ! CRM Physics
+    !--------------------------------------------------------------------------------------
+    !======================================================================================
+    if (use_SPCAM) then
+      !!! Recall the state after dynamics
+      call crm_remember_state_tend(state, tend, pbuf)
+      !!! Run the CRM 
+      phys_stage = 1  ! for tphysbc() => phys_stage = 1
+      call crm_physics_tend(ztodt, state, tend,         &
+                            ptend, pbuf,                &
+                            cam_in, cam_out,            &
+                            species_class, phys_stage)
+    endif
+    !======================================================================================
+    !--------------------------------------------------------------------------------------
+    !======================================================================================
+
+
+! #if defined( SP_PHYS_BYPASS )
+!       ! Do nothing...
+! #else
 
     if (l_tracer_aero) then
 
@@ -2725,79 +2757,7 @@ end if
          snow_sed(:ncol) = snow_sed(:ncol) + snow_sed_carma(:ncol)
       end if
 
-      ! !==Guangxing Lin, we already have aero_model_wetdep after crm_physics_update, why we need that below?      
-      ! if ( .not. deep_scheme_does_scav_trans() ) then
-      !   !===================================================
-      !   !  Aerosol wet chemistry determines scavenging fractions, and transformations
-      !   !
-      !   !
-      !   !  Then do convective transport of all trace species except water vapor and
-      !   !     cloud liquid and ice (we needed to do the scavenging first
-      !   !     to determine the interstitial fraction) 
-      !   !===================================================
-      !   call t_startf('bc_aerosols')
-      !   if (clim_modal_aero .and. .not. prog_modal_aero) then
-      !     call modal_aero_calcsize_diag(state, pbuf)
-      !     call modal_aero_wateruptake_dr(state, pbuf)
-      !   endif
-      !   if (do_clubb_sgs) then
-      !     sh_e_ed_ratio = 0.0_r8
-      !   endif
-      !   call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,       & !Intent-ins
-      !        mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
-      !        cam_out,                                                                 & !Intent-inout
-      !        pbuf,                                                                    & !Pointer
-      !        ptend                                                                    ) !Intent-out
-      !   call physics_update(state, ptend, ztodt, tend)
-      !   if (carma_do_wetdep) then
-      !     ! CARMA wet deposition
-      !     !
-      !     ! NOTE: It needs to follow aero_model_wetdep, so that cam_out%xxxwetxxx
-      !     ! fields have already been set for CAM aerosols and cam_out can be added
-      !     ! to for CARMA aerosols.
-      !     call t_startf ('carma_wetdep_tend')
-      !     call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
-      !     call physics_update(state, ptend, ztodt, tend)
-      !     call t_stopf ('carma_wetdep_tend')
-      !   end if
-      !   call t_startf ('convect_deep_tend2')
-      !   call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
-      !        du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
-      !   call t_stopf ('convect_deep_tend2')
-      !   call physics_update(state, ptend, ztodt, tend)
-      !   !!! check tracer integrals
-      !   call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
-      !   call t_stopf('bc_aerosols')
-      ! endif
-      ! !==Guangxing Lin
-
-      !<songxl 2011-9-20---------------------------------
-      if(trigmem)then
-        do k=1,pver
-          qm1(:ncol,k) = state%q(:ncol,k,1)
-          tm1(:ncol,k) = state%t(:ncol,k)
-        enddo
-      endif
-      !>songxl 2011-09-20---------------------------------
-
-#endif /* SP_PHYS_BYPASS */ 
-
-
-      if (use_SPCAM) then
-        !!! Recall the state before convective parameterizations
-        call crm_remember_state_tend(state, tend, pbuf)
-        !!! Run the CRM - for tphysbc() => phys_stage = 1
-        phys_stage = 1
-        call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, phys_stage)
-      endif
-
-
-
-#if defined( SP_PHYS_BYPASS )
-      ! Do nothing...
-#else
-
-      if(use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
+      if(use_SPCAM .and. use_ECPP .and. SPCAM_microp_scheme .eq. 'm2005') then
         ! As ECPP is not linked with the sam1mom yet, conventional convective transport
         ! and wet savenging are still needed for sam1mom to drive the BAM aerosol treatment
       else if ( .not. deep_scheme_does_scav_trans() ) then
@@ -2818,13 +2778,20 @@ end if
           call modal_aero_calcsize_diag(state, pbuf)
           call modal_aero_wateruptake_dr(state, pbuf)
         endif
-        !!!call aero_model_wetdep( state, ztodt, dlf, cam_out, ptend, pbuf)
+
+        if (do_clubb_sgs) then
+          sh_e_ed_ratio = 0.0_r8
+        endif
+#if defined( SP_CRM_BULK )
+        ! Do something
+#else
         call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,      & !Intent-ins
             mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
             cam_out,                                                                 & !Intent-inout
             pbuf,                                                                    & !Pointer
             ptend                                                                    ) !Intent-out
         call physics_update(state, ptend, ztodt, tend)
+#endif
 
         if (carma_do_wetdep) then
           ! CARMA wet deposition
@@ -2838,11 +2805,19 @@ end if
           call t_stopf ('carma_wetdep_tend')
         end if
 
+#if defined( SP_CRM_BULK )
+        !!! calculate bulk transport tendencies (CRM)
+        call crm_bulk_transport(state, pbuf, ptend)
+        ! call physics_update (state, ptend, crm_run_time, tend)
+        call physics_update (state, ptend, ztodt, tend)
+#else
+        !!! deep convective transport (ZM)
         call t_startf ('convect_deep_tend2')
         call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
           du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
         call physics_update(state, ptend, ztodt, tend)
         call t_stopf ('convect_deep_tend2')
+#endif
 
         ! check tracer integrals
         call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
@@ -2851,9 +2826,18 @@ end if
 
       endif
 
-#endif /* SP_PHYS_BYPASS */ 
+      !<songxl 2011-9-20---------------------------------
+      if(trigmem)then
+        do k=1,pver
+          qm1(:ncol,k) = state%q(:ncol,k,1)
+          tm1(:ncol,k) = state%t(:ncol,k)
+        enddo
+      endif
+      !>songxl 2011-09-20---------------------------------
 
     end if ! l_tracer_aero
+
+! #endif /* SP_PHYS_BYPASS */ 
 
     !===================================================
     ! Moist physical parameteriztions complete: 

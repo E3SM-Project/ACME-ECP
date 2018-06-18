@@ -175,7 +175,7 @@ contains
     real(r8), intent(in)  ::    delt                        ! time step ( s )
     real(r8), intent(in)  ::    press(pcols,pver)           ! pressure in pascals
     real(r8), intent(in)  ::    cmfdqr(ncol,pver)           ! dq/dt for convection
-    real(r8), intent(in)  ::    nrain(ncol,pver)            ! stratoform precip
+    real(r8), intent(in)  ::    nrain(ncol,pver)            ! stratoform precip         (whannah - precip production rate seems more correct?)
     real(r8), intent(in)  ::    nevapr(ncol,pver)           ! evaporation
     real(r8), intent(in)  ::    qin(ncol,pver,gas_pcnst)    ! xported species ( vmr )
     real(r8), intent(in)  ::    zmid(ncol,pver)             ! midpoint geopot (km)

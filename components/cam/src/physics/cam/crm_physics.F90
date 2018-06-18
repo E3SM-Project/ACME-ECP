@@ -61,11 +61,11 @@ module crm_physics
    real(r8),pointer  :: dgnumwet(:,:,:)
 #endif
 
-!========================================================================================================
-contains
-!========================================================================================================
 
-!---------------------------------------------------------------------------------------------------------
+contains
+!=========================================================================================================
+!=========================================================================================================
+
 subroutine crm_physics_register()
 !-------------------------------------------------------------------------------------------------------
 ! 
@@ -158,31 +158,31 @@ subroutine crm_physics_register()
 #endif
 
    
-  if (use_ECPP) then
-     call pbuf_add_field('MU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux up
-     call pbuf_add_field('MD_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux down
-     call pbuf_add_field('DU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
-     call pbuf_add_field('EU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
-     call pbuf_add_field('ED_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from downdraft
-     call pbuf_add_field('JT_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) top for each column
-     call pbuf_add_field('MX_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) bottom for each column
-     call pbuf_add_field('IDEEP_CRM', 'physpkg', dtype_r8, (/pcols/),      idx)  ! Gathering array for convective columns
+  call pbuf_add_field('MU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux up
+  call pbuf_add_field('MD_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux down
+  call pbuf_add_field('DU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
+  call pbuf_add_field('EU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from updraft
+  call pbuf_add_field('ED_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass detrainment from downdraft
+  call pbuf_add_field('JT_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) top for each column
+  call pbuf_add_field('MX_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) bottom for each column
+  call pbuf_add_field('IDEEP_CRM', 'physpkg', dtype_r8, (/pcols/),      idx)  ! Gathering array for convective columns
 
-     call pbuf_add_field('TKE_CRM',   'physpkg', dtype_r8, (/pcols,pver/), idx) ! TKE from CRM  (m2/s2)
-     call pbuf_add_field('TK_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx) ! TK from CRM (m2/s)
+  call pbuf_add_field('TKE_CRM',   'physpkg', dtype_r8, (/pcols,pver/), idx) ! TKE from CRM  (m2/s2)
+  call pbuf_add_field('TK_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx) ! TK from CRM (m2/s)
 
-     ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
-     call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
-  endif 
+  ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
+  call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
 
 
 end subroutine crm_physics_register
+
+!=========================================================================================================
 !=========================================================================================================
 
 subroutine crm_physics_init(species_class)
 !-------------------------------------------------------------------------------------------------------
 ! 
-! Purpose: initialize some varialbes, and add necessary fileds into output fields 
+! Purpose: initialize some variables, and add necessary fields into output fields 
 !
 !--------------------------------------------------------------------------------------------------------
   use physics_buffer,  only: pbuf_get_index
@@ -202,12 +202,8 @@ subroutine crm_physics_init(species_class)
   use cam_history,   only: fieldname_len
   use spmd_utils,    only: masterproc
   use modal_aero_data, only:  cnst_name_cw, &
-!                               lmassptr_amode, lmassptrcw_amode, lwaterptr_amode, &
                                 lmassptr_amode, lmassptrcw_amode, &
                                 nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode
-!==Guangxing Lin
-!                                nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode, &
-!                                species_class, spec_class_gas
        
     integer :: l, lphase, lspec
     character(len=fieldname_len)   :: tmpname
@@ -487,9 +483,8 @@ subroutine crm_physics_init(species_class)
 
 end subroutine crm_physics_init
 !=========================================================================================================
-
-!---------------------------------------------------------------------------------------------------------
-   subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,species_class, phys_stage)
+!=========================================================================================================
+subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,species_class, phys_stage)
 
 !------------------------------------------------------------------------------------------
 !  Purpose: to update state from CRM physics. 
@@ -529,6 +524,10 @@ end subroutine crm_physics_init
    use phys_control,    only: phys_getopts
    use check_energy,    only: check_energy_chng
 
+#if defined( SP_CRM_BULK )
+   use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
+#endif
+
 ! modal_aero_data only exists if MODAL_AERO
 #if (defined  m2005 && defined MODAL_AERO)  
    use crmclouds_camaerosols, only: crmclouds_mixnuc_tend
@@ -547,7 +546,6 @@ end subroutine crm_physics_init
    use module_data_ecpp1, only: dtstep_pp_input
 #endif
    use phys_grid,       only: get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p, get_gcol_p
-   use convect_deep,    only: convect_deep_tend_2, deep_scheme_does_scav_trans
    !!!use aerosol_intr,    only: aerosol_wet_intr
 
 #if defined( SP_ORIENT_RAND )
@@ -1084,8 +1082,41 @@ end subroutine crm_physics_init
    call pbuf_get_field (pbuf, crm_qc_rad_idx,   qc_rad)
    call pbuf_get_field (pbuf, crm_qi_rad_idx,   qi_rad)
    call pbuf_get_field (pbuf, crm_cld_rad_idx, cld_rad)  !Guangxing Lin new CRM
+
+   call pbuf_get_field(pbuf, prec_dp_idx,  prec_dp  )
+   call pbuf_get_field(pbuf, prec_sh_idx,  prec_sh  )
+   call pbuf_get_field(pbuf, prec_sed_idx, prec_sed )
+   call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw )
+   call pbuf_get_field(pbuf, snow_dp_idx,  snow_dp  )
+   call pbuf_get_field(pbuf, snow_sh_idx,  snow_sh  )
+   call pbuf_get_field(pbuf, snow_sed_idx, snow_sed )
+   call pbuf_get_field(pbuf, snow_str_idx, snow_str )
+   call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
+
+   !!! total clouds and precipiation - initialize here to be safe
+   call pbuf_set_field(pbuf, pbuf_get_index('AST'   ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('QME'   ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('PRAIN' ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('NEVAPR'), 0.0_r8 )
+
+   !!! set convective rain to be zero for PRAIN already includes precipitation production from convection. 
+   call pbuf_set_field(pbuf, pbuf_get_index('RPRDTOT'), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('RPRDDP' ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('RPRDSH' ), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('ICWMRDP'), 0.0_r8 )
+   call pbuf_set_field(pbuf, pbuf_get_index('ICWMRSH'), 0.0_r8 )
    
-! Initialize stuff:
+   prec_dp  = 0.
+   snow_dp  = 0.
+   prec_sh  = 0.
+   snow_sh  = 0. 
+   prec_sed = 0.
+   snow_sed = 0.
+   snow_str = 0.
+   prec_pcw = 0
+   snow_pcw = 0.
+   
+   !!! Initialize stuff:
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
@@ -1540,7 +1571,7 @@ end subroutine crm_physics_init
             ! Set the input wind for ESMT
             ul_esmt(i,k) = state%u(i,k)
             vl_esmt(i,k) = state%v(i,k)
-#endif
+#endif /* SP_ESMT */
          enddo ! k=1,pver
 
          icol(i) = i
@@ -1563,10 +1594,10 @@ end subroutine crm_physics_init
                state%zm(:ncol,:pver),       state%zi(:ncol,:pver+1),      ztodt,                        pver,                                                       &
 #if defined( SPMOMTRANS )
                u_tend_crm (:ncol,:pver),    v_tend_crm (:ncol,:pver),                                                                                               &
-#endif
+#endif /* SPMOMTRANS */
 #if defined( SP_ESMT )
                ul_esmt(:ncol,:pver),        vl_esmt(:ncol,:pver),         u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
-#endif
+#endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
                crm_u(:ncol,:,:,:),          crm_v(:ncol,:,:,:),           crm_w(:ncol,:,:,:),           crm_t(:ncol,:,:,:),          crm_micro(:ncol,:,:,:,:),      &
                crm_qrad(:ncol,:,:,:),                                                                                                                               &
@@ -1579,7 +1610,7 @@ end subroutine crm_physics_init
                sub_crm(:ncol,:,:,:),        dep_crm(:ncol,:,:,:),         con_crm(:ncol,:,:,:),                                                                     &
                aut_crm_a(:ncol,:),          acc_crm_a(:ncol,:),           evpc_crm_a(:ncol,:),          evpr_crm_a(:ncol,:),         mlt_crm_a(:ncol,:),            &
                sub_crm_a(:ncol,:),          dep_crm_a(:ncol,:),           con_crm_a(:ncol,:),                                                                       &
-#endif
+#endif /* m2005 */
                precc(:ncol),                precl(:ncol),                 precsc(:ncol),                precsl(:ncol),                                              &
                cltot(:ncol),                clhgh(:ncol),                 clmed(:ncol),                 cllow(:ncol),                cld(:ncol,:),cldtop(:ncol,:) , &
                gicewp(:ncol,:),             gliqwp(:ncol,:),                                                                                                        &
@@ -1589,14 +1620,14 @@ end subroutine crm_physics_init
                spnc(:ncol,:),               spni(:ncol,:),                spns(:ncol,:),                spng(:ncol,:),               spnr(:ncol,:),                 &
 #ifdef MODAL_AERO
                naermod(:ncol,:,:),          vaerosol(:ncol,:,:),          hygro(:ncol,:,:),                                                                         &
-#endif 
-#endif
+#endif /* MODAL_AERO */
+#endif /* m2005 */
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
                crm_cld(:ncol,:, :, :),                                                                                                                              &
                clubb_tk(:ncol, :, :, :),    clubb_tkh(:ncol, :, :, :),                                                                                              &
                relvar(:ncol,:, :, :),       accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :),                                                                   &
-#endif
+#endif /* CLUBB_CRM */
                crm_tk(:ncol, :, :, :),      crm_tkh(:ncol, :, :, :),                                                                                                &
                mu_crm(:ncol,:),             md_crm(:ncol,:),              du_crm(:ncol,:),           eu_crm(:ncol,:),                                               & 
                ed_crm(:ncol,:),             jt_crm(:ncol),                mx_crm(:ncol),                                                                            &
@@ -1607,7 +1638,7 @@ end subroutine crm_physics_init
                qlsink_bfcen(:ncol,:,:,:,:), qlsink_avgcen(:ncol,:,:,:,:), praincen(:ncol,:,:,:,:),                                                                  &
                wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:),                                                                                               &
                wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                     &
-#endif
+#endif /* ECPP */
                tkez(:ncol,:),               tkesgsz(:ncol,:),             tkz(:ncol, :),                                                                            &
                flux_u(:ncol,:),             flux_v(:ncol,:),              flux_qt(:ncol,:),          fluxsgs_qt(:ncol,:),         flux_qp(:ncol,:),                 &
                precflux(:ncol,:),           qt_ls(:ncol,:),               qt_trans(:ncol,:),         qp_trans(:ncol,:),           qp_fall(:ncol,:),                 &
@@ -1620,89 +1651,80 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-    do i=1,ncol
-           if (SPCAM_microp_scheme .eq. 'sam1mom') then
-              crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
-              crm_qp(i,:,:,:) = crm_micro(i,:,:,:,2)
-              crm_qn(i,:,:,:) = crm_micro(i,:,:,:,3)
-	   endif
+      do i=1,ncol
+         if (SPCAM_microp_scheme .eq. 'sam1mom') then
+            crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
+            crm_qp(i,:,:,:) = crm_micro(i,:,:,:,2)
+            crm_qn(i,:,:,:) = crm_micro(i,:,:,:,3)
+	     endif
 #ifdef m2005
-              crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
-              crm_nc(i,:,:,:) = crm_micro(i,:,:,:,2)
-              crm_qr(i,:,:,:) = crm_micro(i,:,:,:,3)
-              crm_nr(i,:,:,:) = crm_micro(i,:,:,:,4)
-              crm_qi(i,:,:,:) = crm_micro(i,:,:,:,5)
-              crm_ni(i,:,:,:) = crm_micro(i,:,:,:,6)
-              crm_qs(i,:,:,:) = crm_micro(i,:,:,:,7)
-              crm_ns(i,:,:,:) = crm_micro(i,:,:,:,8)
-              crm_qg(i,:,:,:) = crm_micro(i,:,:,:,9)
-              crm_ng(i,:,:,:) = crm_micro(i,:,:,:,10)
-              crm_qc(i,:,:,:) = crm_micro(i,:,:,:,11)
-#endif
-       end do ! i (loop over ncol)
-#endif
-!----------------------------------------------------------------------
-! End ncol loop for CRM
-!----------------------------------------------------------------------
-       call t_stopf('crm_call')
+         crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
+         crm_nc(i,:,:,:) = crm_micro(i,:,:,:,2)
+         crm_qr(i,:,:,:) = crm_micro(i,:,:,:,3)
+         crm_nr(i,:,:,:) = crm_micro(i,:,:,:,4)
+         crm_qi(i,:,:,:) = crm_micro(i,:,:,:,5)
+         crm_ni(i,:,:,:) = crm_micro(i,:,:,:,6)
+         crm_qs(i,:,:,:) = crm_micro(i,:,:,:,7)
+         crm_ns(i,:,:,:) = crm_micro(i,:,:,:,8)
+         crm_qg(i,:,:,:) = crm_micro(i,:,:,:,9)
+         crm_ng(i,:,:,:) = crm_micro(i,:,:,:,10)
+         crm_qc(i,:,:,:) = crm_micro(i,:,:,:,11)
+#endif /* m2005 */
+      end do ! i (loop over ncol)
 
-       ! There is no separate convective and stratiform precip for CRM:
-       precc(:ncol) = precc(:ncol) + precl(:ncol)
-       precl(:ncol) = 0.
-       precsc(:ncol) = precsc(:ncol) + precsl(:ncol)
-       precsl(:ncol) = 0.
+#endif /* CRM */
 
-       call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
-       call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )
-       call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
-       call pbuf_get_field(pbuf, snow_sh_idx, snow_sh )
-       call pbuf_get_field(pbuf, prec_sed_idx, prec_sed )
-       call pbuf_get_field(pbuf, snow_sed_idx, snow_sed )
-       call pbuf_get_field(pbuf, snow_str_idx, snow_str )
-       call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw )
-       call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
+      call t_stopf('crm_call')
 
-       prec_dp  = precc
-       snow_dp  = precsc
-       prec_sh  = 0.
-       snow_sh  = 0. 
-       prec_sed = 0.
-       snow_sed = 0.
-       snow_str = 0.
-       prec_pcw = 0
-       snow_pcw = 0.
+      ! There is no separate convective and stratiform precip for CRM:
+      precc(:ncol)  = precc(:ncol) + precl(:ncol)
+      precsc(:ncol) = precsc(:ncol) + precsl(:ncol)
+      precl(:ncol)  = 0.
+      precsl(:ncol) = 0.
 
-       do m=1,crm_nz
-         k = pver-m+1
-         do i = 1,ncol
-           crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
-         end do
-       end do
+      !!! these precip pointer variables are used by coupler
+      prec_dp  = precc
+      snow_dp  = precsc
 
-       call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
-       call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
+      !!! These are needed elsewhere in the model when SP_PHYS_BYPASS is used
+      ifld = pbuf_get_index('AST'   )
+      call pbuf_set_field(pbuf,ifld, cld   (:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
+      ifld = pbuf_get_index('PRAIN' )
+      call pbuf_set_field(pbuf,ifld, qp_src(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
+      ifld = pbuf_get_index('NEVAPR')
+      call pbuf_set_field(pbuf,ifld, qp_evp(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
+
+      do m=1,crm_nz
+      k = pver-m+1
+      do i = 1,ncol
+         crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
+      end do
+      end do
+
+      call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
+      call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
       ! call outfld('HEIGHT  ',state%zm   ,pcols   ,lchnk   )
 
-       call outfld('CRM_U   ',crm_u, pcols   ,lchnk   )
-       call outfld('CRM_V   ',crm_v, pcols   ,lchnk   )
-       call outfld('CRM_W   ',crm_w, pcols   ,lchnk   )
-       call outfld('CRM_T   ',crm_t, pcols   ,lchnk   )
+      call outfld('CRM_U   ',crm_u, pcols   ,lchnk   )
+      call outfld('CRM_V   ',crm_v, pcols   ,lchnk   )
+      call outfld('CRM_W   ',crm_w, pcols   ,lchnk   )
+      call outfld('CRM_T   ',crm_t, pcols   ,lchnk   )
 
-       if (SPCAM_microp_scheme .eq. 'sam1mom') then
-          call outfld('CRM_QV  ',(crm_qt(:,:,:,:)-qc_crm-qi_crm),pcols   ,lchnk   )
-       else if (SPCAM_microp_scheme .eq. 'm2005') then 
-          call outfld('CRM_QV  ',crm_qt(:,:,:,:)-qc_crm, pcols   ,lchnk   )
-       endif
-       call outfld('CRM_QC  ',qc_crm   ,pcols   ,lchnk   )
-       call outfld('CRM_QI  ',qi_crm   ,pcols   ,lchnk   )
-       call outfld('CRM_QPC ',qpc_crm  ,pcols   ,lchnk   )
-       call outfld('CRM_QPI ',qpi_crm  ,pcols   ,lchnk   )
-       call outfld('CRM_PREC',prec_crm       ,pcols   ,lchnk   )
-       call outfld('CRM_TK ', crm_tk(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
-       call outfld('CRM_TKH', crm_tkh(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
+      if (SPCAM_microp_scheme .eq. 'sam1mom') then
+         call outfld('CRM_QV  ',(crm_qt(:,:,:,:)-qc_crm-qi_crm),pcols   ,lchnk   )
+      else if (SPCAM_microp_scheme .eq. 'm2005') then 
+         call outfld('CRM_QV  ',crm_qt(:,:,:,:)-qc_crm, pcols   ,lchnk   )
+      endif
+      call outfld('CRM_QC  ',qc_crm   ,pcols   ,lchnk   )
+      call outfld('CRM_QI  ',qi_crm   ,pcols   ,lchnk   )
+      call outfld('CRM_QPC ',qpc_crm  ,pcols   ,lchnk   )
+      call outfld('CRM_QPI ',qpi_crm  ,pcols   ,lchnk   )
+      call outfld('CRM_PREC',prec_crm       ,pcols   ,lchnk   )
+      call outfld('CRM_TK ', crm_tk(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
+      call outfld('CRM_TKH', crm_tkh(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
 
 #ifdef m2005
-       if (SPCAM_microp_scheme .eq. 'm2005') then
+      if (SPCAM_microp_scheme .eq. 'm2005') then
          ! index is defined in ./crm/MICRO_M2005/microphysics.F90
          ! Be cautious to use them here. They are defined in crm codes, and these codes are called only 
          ! after the subroutine of crm is called. So they can only be used after the 'crm' subroutine. 
@@ -1710,61 +1732,60 @@ end subroutine crm_physics_init
          ! in the future.
          ! incl, inci, ... can not be used here, for they are defined before we call them???
          ! +++mhwang
-          call outfld('CRM_NC ',crm_nc(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_NI ',crm_ni(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_NR ',crm_nr(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_NS ',crm_ns(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_NG ',crm_ng(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NC ',crm_nc(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NI ',crm_ni(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NR ',crm_nr(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NS ',crm_ns(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NG ',crm_ng(:, :, :, :)   ,pcols   ,lchnk   )
 
-          call outfld('CRM_WVAR', wvar_crm, pcols, lchnk)
+         call outfld('CRM_WVAR', wvar_crm, pcols, lchnk)
 
-          call outfld('CRM_QR ',crm_qr(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_QS ',crm_qs(:, :, :, :)   ,pcols   ,lchnk   )
-          call outfld('CRM_QG ',crm_qg(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QR ',crm_qr(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QS ',crm_qs(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QG ',crm_qg(:, :, :, :)   ,pcols   ,lchnk   )
 
-          ! hm 7/26/11, add new output
-          call outfld('CRM_AUT', aut_crm, pcols, lchnk)
-          call outfld('CRM_ACC', acc_crm, pcols, lchnk)
-          call outfld('CRM_EVPC', evpc_crm, pcols, lchnk)
-          call outfld('CRM_EVPR', evpr_crm, pcols, lchnk)
-          call outfld('CRM_MLT', mlt_crm, pcols, lchnk)
-          call outfld('CRM_SUB', sub_crm, pcols, lchnk)
-          call outfld('CRM_DEP', dep_crm, pcols, lchnk)
-          call outfld('CRM_CON', con_crm, pcols, lchnk)
-          ! hm 8/31/11, add new output for time-mean-avg
-          call outfld('A_AUT', aut_crm_a, pcols, lchnk)
-          call outfld('A_ACC', acc_crm_a, pcols, lchnk)
-          call outfld('A_EVPC', evpc_crm_a, pcols, lchnk)
-          call outfld('A_EVPR', evpr_crm_a, pcols, lchnk)
-          call outfld('A_MLT', mlt_crm_a, pcols, lchnk)
-          call outfld('A_SUB', sub_crm_a, pcols, lchnk)
-          call outfld('A_DEP', dep_crm_a, pcols, lchnk)
-          call outfld('A_CON', con_crm_a, pcols, lchnk)
-       endif ! else of if_first_step
-#endif
+         ! hm 7/26/11, add new output
+         call outfld('CRM_AUT', aut_crm, pcols, lchnk)
+         call outfld('CRM_ACC', acc_crm, pcols, lchnk)
+         call outfld('CRM_EVPC', evpc_crm, pcols, lchnk)
+         call outfld('CRM_EVPR', evpr_crm, pcols, lchnk)
+         call outfld('CRM_MLT', mlt_crm, pcols, lchnk)
+         call outfld('CRM_SUB', sub_crm, pcols, lchnk)
+         call outfld('CRM_DEP', dep_crm, pcols, lchnk)
+         call outfld('CRM_CON', con_crm, pcols, lchnk)
+         ! hm 8/31/11, add new output for time-mean-avg
+         call outfld('A_AUT', aut_crm_a, pcols, lchnk)
+         call outfld('A_ACC', acc_crm_a, pcols, lchnk)
+         call outfld('A_EVPC', evpc_crm_a, pcols, lchnk)
+         call outfld('A_EVPR', evpr_crm_a, pcols, lchnk)
+         call outfld('A_MLT', mlt_crm_a, pcols, lchnk)
+         call outfld('A_SUB', sub_crm_a, pcols, lchnk)
+         call outfld('A_DEP', dep_crm_a, pcols, lchnk)
+         call outfld('A_CON', con_crm_a, pcols, lchnk)
+      endif ! m2005
+#endif /* m2005 */
 
 #ifdef CLUBB_CRM
-       call outfld('UP2     ', clubb_buffer(:, :, :, :, 1)   ,pcols   ,lchnk   )
-       call outfld('VP2     ', clubb_buffer(:, :, :, :, 2)   ,pcols   ,lchnk   )
-       call outfld('WPRTP   ', clubb_buffer(:, :, :, :, 3)   ,pcols   ,lchnk   )
-       call outfld('WPTHLP  ', clubb_buffer(:, :, :, :, 4)   ,pcols   ,lchnk   )
-       call outfld('WP2     ', clubb_buffer(:, :, :, :, 5)   ,pcols   ,lchnk   )
-       call outfld('WP3     ', clubb_buffer(:, :, :, :, 6)   ,pcols   ,lchnk   )
-       call outfld('RTP2    ', clubb_buffer(:, :, :, :, 7)   ,pcols   ,lchnk   )
-       call outfld('THLP2   ', clubb_buffer(:, :, :, :, 8)   ,pcols   ,lchnk   )
-       call outfld('RTPTHLP ', clubb_buffer(:, :, :, :, 9)   ,pcols   ,lchnk   )
-       call outfld('UPWP    ', clubb_buffer(:, :, :, :, 10)  ,pcols   ,lchnk   )
-       call outfld('VPWP    ', clubb_buffer(:, :, :, :, 11)  ,pcols   ,lchnk   )
-       call outfld('CRM_CLD ', clubb_buffer(:, :, :, :, 12)  ,pcols   ,lchnk   )
+      call outfld('UP2     ', clubb_buffer(:, :, :, :, 1)   ,pcols   ,lchnk   )
+      call outfld('VP2     ', clubb_buffer(:, :, :, :, 2)   ,pcols   ,lchnk   )
+      call outfld('WPRTP   ', clubb_buffer(:, :, :, :, 3)   ,pcols   ,lchnk   )
+      call outfld('WPTHLP  ', clubb_buffer(:, :, :, :, 4)   ,pcols   ,lchnk   )
+      call outfld('WP2     ', clubb_buffer(:, :, :, :, 5)   ,pcols   ,lchnk   )
+      call outfld('WP3     ', clubb_buffer(:, :, :, :, 6)   ,pcols   ,lchnk   )
+      call outfld('RTP2    ', clubb_buffer(:, :, :, :, 7)   ,pcols   ,lchnk   )
+      call outfld('THLP2   ', clubb_buffer(:, :, :, :, 8)   ,pcols   ,lchnk   )
+      call outfld('RTPTHLP ', clubb_buffer(:, :, :, :, 9)   ,pcols   ,lchnk   )
+      call outfld('UPWP    ', clubb_buffer(:, :, :, :, 10)  ,pcols   ,lchnk   )
+      call outfld('VPWP    ', clubb_buffer(:, :, :, :, 11)  ,pcols   ,lchnk   )
+      call outfld('CRM_CLD ', clubb_buffer(:, :, :, :, 12)  ,pcols   ,lchnk   )
       !==Guangxing Lin new crm
-       call outfld('CLUBB_TK ', clubb_tk(:, :, :, :)  ,pcols   ,lchnk   )
-       call outfld('CLUBB_TKH', clubb_tkh(:, :, :, :)  ,pcols   ,lchnk   )
-       call outfld('RELVAR', relvar(:, :, :, :)  ,pcols   ,lchnk   )
-       call outfld('ACCRE_ENHAN', accre_enhan(:, :, :, :)  ,pcols   ,lchnk   )
-       call outfld('QCLVAR', qclvar(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('CLUBB_TK ', clubb_tk(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('CLUBB_TKH', clubb_tkh(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('RELVAR', relvar(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('ACCRE_ENHAN', accre_enhan(:, :, :, :)  ,pcols   ,lchnk   )
+      call outfld('QCLVAR', qclvar(:, :, :, :)  ,pcols   ,lchnk   )
       !==Guangxing Lin new crm
-
-#endif
+#endif /* CLUBB_CRM */
 
 !----------------------------------------------------------------------
 ! Add radiative heating tendency above CRM
@@ -1918,27 +1939,6 @@ end subroutine crm_physics_init
        call outfld('ICLDIWP' ,cicewp , pcols,lchnk)
 
        if (use_ECPP) then
-! total clouds and precipiation 
-!         ifld = pbuf_get_fld_idx('AST')
-!         pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,itim) = cld(:ncol, :pver)
-!         ifld = pbuf_get_fld_idx('QME')
-!         pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = 0.0_r8
-!         ifld = pbuf_get_fld_idx('PRAIN')
-!         pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = qp_src(:ncol, :pver)
-!         ifld = pbuf_get_fld_idx('NEVAPR')
-!         pbuf(ifld)%fld_ptr(1,1:pcols,1:pver,lchnk,1) = qp_evp(:ncol, :pver)
-
-! set convective rain to be zero for PRAIN already includes precipitation from convection. 
-!         ifld = pbuf_get_fld_idx( 'RPRDTOT' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8  
-!         ifld = pbuf_get_fld_idx( 'RPRDDP' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-!         ifld = pbuf_get_fld_idx( 'RPRDSH' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-!         ifld = pbuf_get_fld_idx( 'ICWMRDP' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
-!         ifld = pbuf_get_fld_idx( 'ICWMRSH' )
-!         pbuf(ifld)%fld_ptr(1,1:ncol,1:pver,lchnk,1) = 0.0_r8
 
 ! turbulence
           allocate(tempPtr(pcols,pver))
@@ -2207,13 +2207,12 @@ end subroutine crm_physics_init
 
 
 !----------------------------------------------------------------------
-! Aerosol stuff...
+! Aerosol stuff
 !----------------------------------------------------------------------
-  !-- mark branson: insert ifdef m2005 block so that 1-moment microphysics will compile
-  ! if (SPCAM_microp_scheme .eq. 'm2005') then
+    
     call t_startf('bc_aerosols_mmf')
 
-    ! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
+    !!! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
     do  i=1,ncol
       do ii=1,crm_nx_rad
         do jj=1,crm_ny_rad
@@ -2240,14 +2239,37 @@ end subroutine crm_physics_init
     ptend%lq(:) = .false.
     call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
     call modal_aero_wateruptake_dr(state, pbuf)
-    !===Guangxing Lin
 
     ! When ECPP is included, wet deposition is done ECPP,
     ! So tendency from wet depostion is not updated in mz_aero_wet_intr (mz_aerosols_intr.F90)
     ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
     call physics_update (state, ptend, crm_run_time, tend)
 #endif
+  
+    !----------------------------------------------------
+    ! CRM Bulk Calculations (i.e. ECPP-lite)
+    !----------------------------------------------------
+#if defined( SP_CRM_BULK )
+  
+    !!! Note: ptend initialization done within crm_bulk_*() routines - whannah
 
+    !!! calculate aerosol tendency from droplet activation and mixing
+    ! call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
+    !                             cam_in%cflx, pblh,                &
+    !                             wwqui_cen, wwqui_cloudy_cen,      &
+    !                             wwqui_bnd, wwqui_cloudy_bnd,      &
+    !                             species_class)
+    ! call physics_update(state, ptend, crm_run_time, tend)
+
+    !!! calculate wet scavenging of aerosols
+    ! call crm_bulk_aero_wet_dep_scav()
+    ! call physics_update(state, ptend, crm_run_time, tend)
+
+    ! !!! calculate bulk transport tendencies
+    ! call crm_bulk_transport(state, pbuf, ptend)
+    ! call physics_update (state, ptend, crm_run_time, tend)
+
+#endif /* SP_CRM_BULK */
     !----------------------------------------------------
     ! ECPP - Explicit-Cloud Parameterized-Pollutant
     ! Use CRM cloud statistics to calculate 
@@ -2259,19 +2281,6 @@ end subroutine crm_physics_init
 
       pblh_idx  = pbuf_get_index('pblh')
       call pbuf_get_field(pbuf, pblh_idx, pblh)
-
- 
-      ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
-      ! So only turbulence mixing is done here.
-      !
-      !           call t_startf('crmclouds_mixnuc')
-      !           call crmclouds_mixnuc_tend (state, ptend, ztodt, cam_in%cflx, pblh, pbuf,  &
-      !                 wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd)
-      !           call physics_update(state, tend, ptend, ztodt)
-      !           call t_stopf('crmclouds_mixnuc')
-      ! 
-      ! ECPP is called at every 3rd GCM time step.
-      ! GCM time step is 10 minutes, and ECPP time step is 30 minutes.
       
       dtstep_pp = dtstep_pp_input
 #if defined( SP_CRM_SPLIT )
@@ -2281,17 +2290,9 @@ end subroutine crm_physics_init
 #endif
       if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
 
-        ! whannah - re-initialize ptend? - probably not necessary
-        ! lu    = .false. 
-        ! lv    = .false.
-        ! ls    = .false.
-        ! lq(:) = .true.
-        ! fromcrm = .false.
-        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-        ! ptend%lq(:) = .true.
-        ! ptend%q(:,:,:) = 0.0_r8
-
         ! calculate aerosol tendency from droplet activation and mixing
+        ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
+        ! So only turbulence mixing is done here.
         call t_startf('crmclouds_mixnuc')
         call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
                     wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class
@@ -2300,52 +2301,19 @@ end subroutine crm_physics_init
 
         ! ECPP interface
 
-        ! whannah - re-initialize ptend again? - probably not necessary
-        ! call physics_ptend_init(ptend, state%psetcols, 'crmclouds_mixnuc', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  
-        ! ptend%lq(:) = .true.
-        ! ptend%q(:,:,:) = 0.0_r8
-
         call t_startf('ecpp')
         call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
            acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
            rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
-
-        ! whannah - debugging information for NaN issue
-        ! do i=1,ncol
-        ! do k=1,pver
-        !   if ( ieee_is_nan( ptend%q(i,k,0)  ) ) then
-        !     ptend%q(i,k,0) = 0.
-        !   endif
-        !   ! write(iulog,*) ""
-        !   ! write(iulog,5002) i,lchnk,k, (state%lat(i)*180./3.14159), (state%lon(i)*180./3.14159), ptend%q(i,k,0), ptend%q(i,k,1), ptend%q(i,k,2), ptend%q(i,k,3) 
-        ! enddo
-        ! enddo
-              
-        ! ptend%q(:,:,:) = 0.0_r8 ! whannah - zero out tendency for testing - doesn't help NaN problem!
 
         call physics_update(state, ptend, dtstep_pp, tend)
 
         call t_stopf ('ecpp')
       end if
     endif ! use_ECPP
-#endif
-
+#endif /* ECPP */
 
     call t_stopf('bc_aerosols_mmf')
-  ! endif ! SPCAM_microp_scheme .eq. 'm2005'
-
-
-! 5001 format('whannah - ECPP tendency   lev ',i5,'    lat =',f8.2,'    lon =',f8.2  )
-! 5002 format('whannah - ECPP tendency   i: ',i4,    &
-!                                   '    chnk: ',i4, &
-!                                   '    k: ',i4, &
-!                                   '    y: ',f5.1, &
-!                                   '    x: ',f5.1, &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2,      &
-!                                   '   ',f12.2 )
-
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -2371,29 +2339,21 @@ end subroutine crm_physics_init
 !----------------------------------------------------------------------
 ! save for old CRM cloud fraction 
 !----------------------------------------------------------------------
-  ! In the CAM model, this is done in cldwat2m.F90.
+  ! without the CRM, this is done in cldwat2m.F90.
   cldo(:ncol, :) = cld(:ncol, :)
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
-
 end subroutine crm_physics_tend
-!--------------------------------------------------------------------------------------------
 
-!=====================================================================================================
-!=====================================================================================================
+!=========================================================================================================
+!=========================================================================================================
+
 subroutine crm_save_state_tend(state,tend,pbuf)
-! subroutine crm_save_state_tend(state, tend, pbuf, &
-!                                ,state_save,tend_save,cldo_save &
-! #if defined( MODAL_AERO )
-!                                ,qqcw_save,dgnumwet_save &
-! #endif
-!                                )
-!-----------------------------------------------------------------------------------------------------
-! This subroutine is used to save state, tend, cldo, qqcw and dgnumwet so that they can be used
-! after they have been changed by conventional physics.
-!-----------------------------------------------------------------------------------------------------
-   ! use infnan,          only: inf
+   !-----------------------------------------------------------------------------
+   ! This subroutine is used to save state variables at the beginning of tphysbc
+   ! so they can be recalled after they have been changed by conventional physics
+   !-----------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_tend, physics_tend_alloc
    use time_manager,    only: is_first_step
    use physics_buffer,  only: pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
@@ -2407,17 +2367,6 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    type(physics_state),       intent(in   ) :: state
    type(physics_tend),        intent(in   ) :: tend
    type(physics_buffer_desc), pointer       :: pbuf(:)
-   ! type(physics_state),       intent(  out) :: state_save
-   ! type(physics_tend),        intent(  out) :: tend_save
-   
-   ! real(r8)                 , intent(  out) :: cldo_save(pcols, pver)  ! old cloud fraction
-
-! #ifdef MODAL_AERO
-!    real(r8)                 , intent(  out) :: qqcw_save(pcols,pver,pcnst)
-!    real(r8)                 , intent(  out) :: qqcw_all(pcols,pver,pcnst)
-!    real(r8)                 , intent(  out) :: dgnumwet_save(pcols, pver, ntot_amode)
-!    real(r8)                 , pointer       :: dgnumwet(:,:,:)
-! #endif
 
    integer itim, ifld, ncol, i, lchnk
    real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
@@ -2428,10 +2377,10 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    call phys_getopts( use_SPCAM_out = use_SPCAM )
    call phys_getopts( use_ECPP_out  = use_ECPP  )
 
-   lchnk = state%lchnk
-   ncol  = state%ncol
-
    if (use_SPCAM) then
+
+      lchnk = state%lchnk
+      ncol  = state%ncol
 
       itim = pbuf_old_tim_idx()
       
@@ -2493,7 +2442,12 @@ end subroutine crm_save_state_tend
 
 !=====================================================================================================
 !=====================================================================================================
+
 subroutine crm_remember_state_tend(state,tend,pbuf)
+   !-----------------------------------------------------------------------------
+   ! This subroutine is used to recall the state that was saved prior
+   ! to running the conventional GCM physics routines
+   !-----------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_tend, physics_tend_dealloc
    use time_manager,    only: is_first_step
    use physics_buffer,  only: pbuf_get_field, physics_buffer_desc, dyn_time_lvls
@@ -2517,12 +2471,12 @@ subroutine crm_remember_state_tend(state,tend,pbuf)
    call phys_getopts( use_SPCAM_out = use_SPCAM )
    call phys_getopts( use_ECPP_out  = use_ECPP  )
 
-   lchnk = state%lchnk
-   ncol  = state%ncol
-
    if (use_SPCAM) then
 
-      ! gas and aerosol species are updated in by shallow convective transport.
+      lchnk = state%lchnk
+      ncol  = state%ncol
+
+      ! gas and aerosol species are updated by shallow convective transport.
       ! Aerosol changes from dropmixnuc in cldwat2m.F90 are discarded. 
       ! (i.e. when dropmixnuc is called in cldwat2m.F90, the tendency is set to zero)
       q_aero = state%q
@@ -2558,219 +2512,225 @@ end subroutine crm_remember_state_tend
 
 !=====================================================================================================
 !=====================================================================================================
+
 subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, effl, effi, effl_fn, deffi, lamcrad, pgamrad, des)
-!-----------------------------------------------------------------------------------------------------
-! 
-! This subroutine is used to calculate droplet and ice crystal effective radius, which will be used 
-! in the CAM radiation code. The method to calculate effective radius is taken out of the Morrision's
-! two momenent scheme from M2005MICRO_GRAUPEL. It is also very similar with the subroutine of effradius in 
-! the module of cldwat2m in the CAM source codes. 
-!
-! Adopted by Minghuai Wang (Minghuai.Wang@pnl.gov). 
-!
-!-----------------------------------------------------------------------------------------------------
+   !-----------------------------------------------------------------------------------------------------
+   ! This subroutine is used to calculate droplet and ice crystal effective radius, which will be used 
+   ! in the CAM radiation code. The method to calculate effective radius is taken out of the Morrision's
+   ! two moment scheme from M2005MICRO_GRAUPEL. It is also very similar to the subroutine of effradius in 
+   ! the module of cldwat2m in the CAM source codes. 
+   ! Adopted by Minghuai Wang (Minghuai.Wang@pnl.gov). 
+   !-----------------------------------------------------------------------------------------------------
    ! ----------------------------------------------------------- !
    ! Calculate effective radius for pass to radiation code       !
-   ! If no cloud water, default value is 10 micron for droplets, !
-   ! 25 micron for cloud ice.                                    !
+   ! If no cloud water, default value is:                        !
+   !   10 micron for droplets,                                   !
+   !   25 micron for cloud ice.                                  !
    ! Be careful of the unit of effective radius : [micro meter]  !
    ! ----------------------------------------------------------- !
-  !!!use gamma_function, only: gamma
-  use shr_spfn_mod,    only: gamma => shr_spfn_gamma
-  implicit none
+   use shr_spfn_mod,    only: gamma => shr_spfn_gamma
+   implicit none
 
-     real(r8), intent(in)    :: ql                ! Mean LWC of pixels [ kg/kg ]
-     real(r8), intent(in)    :: nl                ! Grid-mean number concentration of cloud liquid droplet [#/kg]
-     real(r8), intent(in)    :: qi                ! Mean IWC of pixels [ kg/kg ]
-     real(r8), intent(in)    :: ni                ! Grid-mean number concentration of cloud ice    droplet [#/kg]
-     real(r8), intent(in)    :: qs                ! mean snow water content [kg/kg]
-     real(r8), intent(in)    :: ns                ! Mean snow crystal number concnetration [#/kg]
-     real(r8), intent(in)    :: cld               ! Physical stratus fraction
-     real(r8), intent(in)    :: pres               ! Air pressure [Pa] 
-     real(r8), intent(in)    :: tk                ! air temperature [K]
+   !!! input arguments
+   real(r8), intent(in)    :: ql          ! Mean LWC of pixels [ kg/kg ]
+   real(r8), intent(in)    :: nl          ! Grid-mean number concentration of cloud liquid droplet [#/kg]
+   real(r8), intent(in)    :: qi          ! Mean IWC of pixels [ kg/kg ]
+   real(r8), intent(in)    :: ni          ! Grid-mean number concentration of cloud ice    droplet [#/kg]
+   real(r8), intent(in)    :: qs          ! mean snow water content [kg/kg]
+   real(r8), intent(in)    :: ns          ! Mean snow crystal number concnetration [#/kg]
+   real(r8), intent(in)    :: cld         ! Physical stratus fraction
+   real(r8), intent(in)    :: pres        ! Air pressure [Pa] 
+   real(r8), intent(in)    :: tk          ! air temperature [K]
 
-     real(r8), intent(out)   :: effl              ! Effective radius of cloud liquid droplet [micro-meter]
-     real(r8), intent(out)   :: effi              ! Effective radius of cloud ice    droplet [micro-meter]
-     real(r8), intent(out)   :: effl_fn           ! effl for fixed number concentration of nlic = 1.e8
-     real(r8), intent(out)   :: deffi             ! ice effective diameter for optics (radiation)
-     real(r8), intent(out)   :: pgamrad           ! gamma parameter for optics (radiation)
-     real(r8), intent(out)   :: lamcrad           ! slope of droplet distribution for optics (radiation)
-     real(r8), intent(out)   :: des               ! snow effective diameter for optics (radiation) [micro-meter]
+   !!! output arguments
+   real(r8), intent(out)   :: effl        ! Effective radius of cloud liquid droplet [micro-meter]
+   real(r8), intent(out)   :: effi        ! Effective radius of cloud ice    droplet [micro-meter]
+   real(r8), intent(out)   :: effl_fn     ! effl for fixed number concentration of nlic = 1.e8
+   real(r8), intent(out)   :: deffi       ! ice effective diameter for optics (radiation)
+   real(r8), intent(out)   :: pgamrad     ! gamma parameter for optics (radiation)
+   real(r8), intent(out)   :: lamcrad     ! slope of droplet distribution for optics (radiation)
+   real(r8), intent(out)   :: des         ! snow effective diameter for optics (radiation) [micro-meter]
 
-     real(r8)  qlic                               ! In-cloud LWC [kg/m3]
-     real(r8)  qiic                               ! In-cloud IWC [kg/m3]
-     real(r8)  nlic                               ! In-cloud liquid number concentration [#/kg]
-     real(r8)  niic                               ! In-cloud ice    number concentration [#/kg]
+   !!! local variables
+   real(r8)  qlic        ! In-cloud LWC [kg/m3]
+   real(r8)  qiic        ! In-cloud IWC [kg/m3]
+   real(r8)  nlic        ! In-cloud liquid number concentration [#/kg]
+   real(r8)  niic        ! In-cloud ice    number concentration [#/kg]
+   real(r8)  mtime       ! Factor to account for droplet activation timescale [no]
+   real(r8)  cldm        ! Constrained stratus fraction [no]
+   real(r8)  mincld      ! Minimum stratus fraction [no]
 
-     real(r8)  mtime                              ! Factor to account for droplet activation timescale [no]
-     real(r8)  cldm                               ! Constrained stratus fraction [no]
-     real(r8)  mincld                             ! Minimum stratus fraction [no]
+   real(r8)  lami, laml, lammax, lammin, pgam, lams, lammaxs, lammins
 
-     real(r8)  lami, laml, lammax, lammin, pgam, lams, lammaxs, lammins
+   real(r8)  dcs         ! autoconversion size threshold   [meter]
+   real(r8)  di, ci      ! cloud ice mass-diameter relationship
+   real(r8)  ds, cs      ! snow crystal mass-diameter relationship 
+   real(r8)  qsmall      !
+   real(r8)  rho         ! air density [kg/m3]
+   real(r8)  rhow        ! liquid water density [kg/m3]
+   real(r8)  rhoi        ! ice density [kg/m3]
+   real(r8)  rhos        ! snow density [kg/m3]
+   real(r8)  res         ! effective snow diameters
+   real(r8)  pi          !
+   real(r8)  tempnc      !
 
-     real(r8)  dcs    !autoconversion size threshold   [meter]
-     real(r8)  di, ci     ! cloud ice mass-diameter relationship
-     real(r8)  ds, cs     ! snow crystal mass-diameter relationship 
-     real(r8)  qsmall
-     real(r8)  rho       ! air density [kg/m3]
-     real(r8)  rhow      ! liquid water density [kg/m3]
-     real(r8)  rhoi      ! ice density [kg/m3]
-     real(r8)  rhos      ! snow density [kg/m3]
-     real(r8)  res       ! effective snow diameters
-     real(r8)  pi
-     real(r8)  tempnc
+   !------------------------------------------------------------------------------
+   ! Main computation 
+   !------------------------------------------------------------------------------
 
-   ! ---------------- !
-   ! Main computation !
-   ! ---------------- !
+   pi = 3.1415926535897932384626434
+   ! qsmall = 1.0e-18  ! in the CAM source code (cldwat2m)
+   qsmall = 1.0e-14  ! in the SAM source code (module_mp_graupel)
+   ! rhow = 1000.      ! in cldwat2m, CAM 
+   rhow = 997.       ! in module_mp_graupel, SAM
+   rhoi = 500.       ! in both CAM and SAM
 
-     pi = 3.1415926535897932384626434
-!     qsmall = 1.0e-18  ! in the CAM source code (cldwat2m)
-     qsmall = 1.0e-14  ! in the SAM source code (module_mp_graupel)
-!     rhow = 1000.      ! in cldwat2m, CAM 
-     rhow = 997.       ! in module_mp_graupel, SAM
-     rhoi = 500.       ! in both CAM and SAM
+   ! dcs = 70.e-6_r8    ! in cldwat2m, CAM 
+   dcs = 125.e-6_r8   ! in module_mp_graupel, SAM 
+   ci = rhoi * pi/6.
+   di = 3.
 
-!     dcs = 70.e-6_r8    ! in cldwat2m, CAM 
-     dcs = 125.e-6_r8   ! in module_mp_graupel, SAM 
-     ci = rhoi * pi/6.
-     di = 3.
-
-!   for snow water
-     rhos = 100.      ! in both SAM and CAM5 
-     cs = rhos*pi/6.
-     ds = 3.
+   !!! for snow water
+   rhos = 100.      ! in both SAM and CAM5 
+   cs = rhos*pi/6.
+   ds = 3.
 
 
-     rho = pres / (287.15*tk)    ! air density [kg/m3]
+   rho = pres / (287.15*tk)    ! air density [kg/m3]
 
-     mincld  = 0.0001_r8
-     cldm    = max(cld,mincld)
-     qlic    = min(5.e-3_r8,max(0._r8,ql/cldm))
-     qiic    = min(5.e-3_r8,max(0._r8,qi/cldm))
-     nlic    = max(nl,0._r8)/cldm
-     niic    = max(ni,0._r8)/cldm
+   mincld  = 0.0001_r8
+   cldm    = max(cld,mincld)
+   qlic    = min(5.e-3_r8,max(0._r8,ql/cldm))
+   qiic    = min(5.e-3_r8,max(0._r8,qi/cldm))
+   nlic    = max(nl,0._r8)/cldm
+   niic    = max(ni,0._r8)/cldm
 
-!------------------------------------------------------
-!     Effective diameters of snow crystals
-!------------------------------------------------------
-     if(qs.gt.1.0e-7) then 
-       lammaxs=1._r8/10.e-6_r8
-       lammins=1._r8/2000.e-6_r8
-       lams = (gamma(1._r8+ds)*cs * ns/qs)**(1._r8/ds)
-       lams = min(lammaxs,max(lams,lammins))
-       res = 1.5/lams*1.0e6_r8
-     else
-       res = 500._r8 
-     end if 
-!
-! from Hugh Morrision: rhos/917 accouts for assumptions about 
-! ice density in the Mitchell optics. 
-!
-     des = res * rhos/917._r8 *2._r8
+   !------------------------------------------------------------------------------
+   ! Effective diameters of snow crystals
+   !------------------------------------------------------------------------------
+   if(qs.gt.1.0e-7) then 
+      lammaxs=1._r8/10.e-6_r8
+      lammins=1._r8/2000.e-6_r8
+      lams = (gamma(1._r8+ds)*cs * ns/qs)**(1._r8/ds)
+      lams = min(lammaxs,max(lams,lammins))
+      res = 1.5/lams*1.0e6_r8
+   else
+      res = 500._r8 
+   end if 
 
-   ! ------------------------------------- !
-   ! Effective radius of cloud ice droplet !
-   ! ------------------------------------- !
+   !
+   ! from Hugh Morrision: rhos/917 accouts for assumptions about 
+   ! ice density in the Mitchell optics. 
+   !
 
-     if( qiic.ge.qsmall ) then
-         niic   = min(niic,qiic*1.e20_r8)
-!         lammax = 1._r8/10.e-6_r8      ! in cldwat2m, CAM
-!         lammin = 1._r8/(2._r8*dcs)    ! in cldwat2m, CAM
-         lammax = 1._r8/1.e-6_r8      ! in module_mp_graupel, SAM 
-         lammin = 1._r8/(2._r8*dcs+100.e-6_r8)    ! in module_mp_graupel, SAM 
-         lami   = (gamma(1._r8+di)*ci*niic/qiic)**(1._r8/di)
-         lami   = min(lammax,max(lami,lammin))
-         effi   = 1.5_r8/lami*1.e6_r8
-     else
-         effi   = 25._r8
-     endif
+   des = res * rhos/917._r8 *2._r8
 
-!--hm ice effective radius for david mitchell's optics
-!--ac morrison indicates that this is effective diameter
-!--ac morrison indicates 917 (for the density of pure ice..)
-     deffi  = effi *rhoi/917._r8*2._r8
+   !------------------------------------------------------------------------------
+   ! Effective radius of cloud ice droplet 
+   !------------------------------------------------------------------------------
 
-   ! ---------------------------------------- !
-   ! Effective radius of cloud liquid droplet !
-   ! ---------------------------------------- !
+   if( qiic.ge.qsmall ) then
+      niic   = min(niic,qiic*1.e20_r8)
+      ! lammax = 1._r8/10.e-6_r8      ! in cldwat2m, CAM
+      ! lammin = 1._r8/(2._r8*dcs)    ! in cldwat2m, CAM
+      lammax = 1._r8/1.e-6_r8      ! in module_mp_graupel, SAM 
+      lammin = 1._r8/(2._r8*dcs+100.e-6_r8)    ! in module_mp_graupel, SAM 
+      lami   = (gamma(1._r8+di)*ci*niic/qiic)**(1._r8/di)
+      lami   = min(lammax,max(lami,lammin))
+      effi   = 1.5_r8/lami*1.e6_r8
+   else
+      effi   = 25._r8
+   endif
 
-     if( qlic.ge.qsmall ) then
-!        Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM).
-!        See also Morrison and Grabowski (2007, JAS, Eq. (2))
-         nlic   = min(nlic,qlic*1.e20_r8)
+   !--hm ice effective radius for david mitchell's optics
+   !--ac morrison indicates that this is effective diameter
+   !--ac morrison indicates 917 (for the density of pure ice..)
+   deffi  = effi *rhoi/917._r8*2._r8
 
-! set the minimum droplet number as 20/cm3.
-!         nlic   = max(nlic,20.e6_r8/rho) ! sghan minimum in #/cm3
-         tempnc = nlic/rho/1.0e6    ! #/kg --> #/cm3
-!         if (tempnc.gt.100._r8) then 
-!           write(0, *) 'nc larger than 100  ', tempnc, rho
-!         end if
+   !------------------------------------------------------------------------------
+   ! Effective radius of cloud liquid droplet 
+   !------------------------------------------------------------------------------
 
-!!!!!! ????? Should be the in-cloud dropelt number calculated as nlic*rho/1.0e6_r8 ????!!!! +++mhwang
-!         pgam   = 0.0005714_r8*(nlic/1.e6_r8/rho) + 0.2714_r8  !wrong, confirmed with Hugh Morrison. fixed in the latest SAM. 
-         pgam   = 0.0005714_r8*(nlic*rho/1.e6_r8) + 0.2714_r8
-         pgam   = 1._r8/(pgam**2)-1._r8
-!         pgam   = min(15._r8,max(pgam,2._r8))   ! in cldwat2m, CAM
-         pgam   = min(10._r8,max(pgam,2._r8))   ! in module_mp_graupel, SAM
-!         if(pgam.gt.2.01_r8 .and.pgam.lt.9.99_r8) then
-!           write(0, *) 'pgam', pgam
-!         end if
-         laml   = (pi/6._r8*rhow*nlic*gamma(pgam+4._r8)/(qlic*gamma(pgam+1._r8)))**(1._r8/3._r8)
-         lammin = (pgam+1._r8)/50.e-6_r8    ! in cldwat2m, CAM
-         lammax = (pgam+1._r8)/2.e-6_r8     ! in cldwat2m, CAM   ! cldwat2m should be used, 
-                                                                 ! if lammax is too large, this will lead to crash in 
-                                                                 ! src/physics/rrtmg/cloud_rad_props.F90 because 
-                                                                 ! klambda-1 can be zero in gam_liquid_lw and gam_liquid_sw
-                                                                 !  and g_lambda(kmu,klambda-1) will not be defined. 
-!         lammin = (pgam+1._r8)/60.e-6_r8    ! in module_mp_graupel, SAM
-!         lammax = (pgam+1._r8)/1.e-6_r8     ! in module_mp_graupel, SAM
+   if( qlic.ge.qsmall ) then
+      ! Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM).
+      ! See also Morrison and Grabowski (2007, JAS, Eq. (2))
+      nlic   = min(nlic,qlic*1.e20_r8)
 
-         laml   = min(max(laml,lammin),lammax)
-!         effl   = gamma(qcvar+1._r8/3._r8)/(gamma(qcvar)*qcvar**(1._r8/3._r8))* &
-!                  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8      ! in cldwat2m, CAM
-         effl   =  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8  ! in module_mp_graupel, SAM
-         lamcrad  = laml 
-         pgamrad  = pgam
-     else
-! we chose 10. over 25, since 10 is a more reasonable value for liquid droplet. +++mhwang
-         effl   = 10._r8     ! in cldwat2m, CAM
-!         effl   = 25._r8     ! in module_mp_graupel, SAM
-         lamcrad  = 0.0_r8
-         pgamrad  = 0.0_r8
-     endif
+      ! set the minimum droplet number as 20/cm3.
+      ! nlic   = max(nlic,20.e6_r8/rho) ! sghan minimum in #/cm3
+      tempnc = nlic/rho/1.0e6    ! #/kg --> #/cm3
+      ! if (tempnc.gt.100._r8) then 
+      !   write(0, *) 'nc larger than 100  ', tempnc, rho
+      ! end if
 
-   ! ---------------------------------------------------------------------- !
-   ! Recalculate effective radius for constant number, in order to separate !
-   ! first and second indirect effects. Assume constant number of 10^8 kg-1 !
-   ! ---------------------------------------------------------------------- !
+      !!!!!! ????? Should be the in-cloud dropelt number calculated as nlic*rho/1.0e6_r8 ????!!!! +++mhwang
+      ! pgam   = 0.0005714_r8*(nlic/1.e6_r8/rho) + 0.2714_r8  !wrong, confirmed with Hugh Morrison. fixed in the latest SAM. 
+      pgam   = 0.0005714_r8*(nlic*rho/1.e6_r8) + 0.2714_r8
+      pgam   = 1._r8/(pgam**2)-1._r8
+      ! pgam   = min(15._r8,max(pgam,2._r8))   ! in cldwat2m, CAM
+      pgam   = min(10._r8,max(pgam,2._r8))   ! in module_mp_graupel, SAM
+      ! if(pgam.gt.2.01_r8 .and.pgam.lt.9.99_r8) then
+      !   write(0, *) 'pgam', pgam
+      ! end if
+      laml   = (pi/6._r8*rhow*nlic*gamma(pgam+4._r8)/(qlic*gamma(pgam+1._r8)))**(1._r8/3._r8)
+      lammin = (pgam+1._r8)/50.e-6_r8    ! in cldwat2m, CAM
+      lammax = (pgam+1._r8)/2.e-6_r8     ! in cldwat2m, CAM   ! cldwat2m should be used, 
+                                                              ! if lammax is too large, this will lead to crash in 
+                                                              ! src/physics/rrtmg/cloud_rad_props.F90 because 
+                                                              ! klambda-1 can be zero in gam_liquid_lw and gam_liquid_sw
+                                                              !  and g_lambda(kmu,klambda-1) will not be defined. 
+      ! lammin = (pgam+1._r8)/60.e-6_r8    ! in module_mp_graupel, SAM
+      ! lammax = (pgam+1._r8)/1.e-6_r8     ! in module_mp_graupel, SAM
 
-     nlic = 1.e8
-     if( qlic.ge.qsmall ) then
-!        Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM). 
-!        See also Morrison and Grabowski (2007, JAS, Eq. (2))  
-         nlic   = min(nlic,qlic*1.e20_r8)
-         pgam   = 0.0005714_r8*(nlic/1.e6_r8/rho) + 0.2714_r8
-         pgam   = 1._r8/(pgam**2)-1._r8
-!         pgam   = min(15._r8,max(pgam,2._r8))   ! in cldwat2m, CAM
-         pgam   = min(10._r8,max(pgam,2._r8))   ! in module_mp_graupel, SAM
-         laml   = (pi/6._r8*rhow*nlic*gamma(pgam+4._r8)/(qlic*gamma(pgam+1._r8)))**(1._r8/3._r8)
-!         lammin = (pgam+1._r8)/50.e-6_r8    ! in cldwat2m, CAM
-!         lammax = (pgam+1._r8)/2.e-6_r8     ! in cldwat2m, CAM
-         lammin = (pgam+1._r8)/60.e-6_r8    ! in module_mp_graupel, SAM
-         lammax = (pgam+1._r8)/1.e-6_r8     ! in module_mp_graupel, SAM
+      laml   = min(max(laml,lammin),lammax)
+      ! effl   = gamma(qcvar+1._r8/3._r8)/(gamma(qcvar)*qcvar**(1._r8/3._r8))* &
+      !          gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8      ! in cldwat2m, CAM
+      effl   =  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8  ! in module_mp_graupel, SAM
+      lamcrad  = laml 
+      pgamrad  = pgam
+   else
+      ! we chose 10. over 25, since 10 is a more reasonable value for liquid droplet. +++mhwang
+      effl   = 10._r8     ! in cldwat2m, CAM
+      ! effl   = 25._r8     ! in module_mp_graupel, SAM
+      lamcrad  = 0.0_r8
+      pgamrad  = 0.0_r8
+   endif
 
-         laml   = min(max(laml,lammin),lammax)
-!         effl_fn   = gamma(qcvar+1._r8/3._r8)/(gamma(qcvar)*qcvar**(1._r8/3._r8))* &
-!                  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8      ! in cldwat2m, CAM
-         effl_fn   =  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8  ! in module_mp_graupel, SAM
-     else
-! we chose 10. over 25, since 10 is a more reasonable value for liquid droplet. +++mhwang
-         effl_fn   = 10._r8     ! in cldwat2m, CAM
-!         effl_fn   = 25._r8     ! in module_mp_graupel, SAM
-     endif
+   !------------------------------------------------------------------------------
+   ! Recalculate effective radius for constant number, in order to separate 
+   ! first and second indirect effects. Assume constant number of 10^8 kg-1 
+   !------------------------------------------------------------------------------
 
+   nlic = 1.e8
+   if( qlic.ge.qsmall ) then
+      ! Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM). 
+      ! See also Morrison and Grabowski (2007, JAS, Eq. (2))  
+      nlic   = min(nlic,qlic*1.e20_r8)
+      pgam   = 0.0005714_r8*(nlic/1.e6_r8/rho) + 0.2714_r8
+      pgam   = 1._r8/(pgam**2)-1._r8
+      ! pgam   = min(15._r8,max(pgam,2._r8))   ! in cldwat2m, CAM
+      pgam   = min(10._r8,max(pgam,2._r8))   ! in module_mp_graupel, SAM
+      laml   = (pi/6._r8*rhow*nlic*gamma(pgam+4._r8)/(qlic*gamma(pgam+1._r8)))**(1._r8/3._r8)
+      ! lammin = (pgam+1._r8)/50.e-6_r8    ! in cldwat2m, CAM
+      ! lammax = (pgam+1._r8)/2.e-6_r8     ! in cldwat2m, CAM
+      lammin = (pgam+1._r8)/60.e-6_r8    ! in module_mp_graupel, SAM
+      lammax = (pgam+1._r8)/1.e-6_r8     ! in module_mp_graupel, SAM
+
+      laml   = min(max(laml,lammin),lammax)
+      ! effl_fn   = gamma(qcvar+1._r8/3._r8)/(gamma(qcvar)*qcvar**(1._r8/3._r8))* &
+      !          gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8      ! in cldwat2m, CAM
+      effl_fn   =  gamma(pgam+4._r8)/gamma(pgam+3._r8)/laml/2._r8*1.e6_r8  ! in module_mp_graupel, SAM
+   else
+      ! we chose 10. over 25, since 10 is a more reasonable value for liquid droplet. +++mhwang
+      effl_fn   = 10._r8     ! in cldwat2m, CAM
+      ! effl_fn   = 25._r8     ! in module_mp_graupel, SAM
+   endif
+   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------
    return
 end subroutine m2005_effradius
+
+!=========================================================================================================
+!=========================================================================================================
 
 end module crm_physics
