@@ -270,6 +270,12 @@
     <lname>2000_CAM5%AV1C-L_SLND_SICE_DOCN%AQP1_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <!-- data ocean component for custom SST pattern -->
+  <compset>
+    <alias>FC5AV1C-L-AQUA</alias>
+    <lname>2000_CAM5%AV1C-L_SLND_SICE_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
   <compset>
     <alias>FIDEAL</alias>
     <lname>2000_CAM%IDEAL_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
@@ -313,7 +319,7 @@
   <!-- Custom Aqua-Planet -->
 
   <compset>
-    <alias>AQUA_SP1V1</alias>
+    <alias>SP1V1-AQUA</alias>
     <lname>2000_CAM5%SP1V1_SLND_SICE_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
