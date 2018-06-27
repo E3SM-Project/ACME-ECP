@@ -52,7 +52,7 @@ use rad_constituents, only: N_DIAG
 ! RRTMGP gas optics object to store coefficient information. This is imported
 ! here so that we can make the k_dist objects module data and only load them
 ! once.
-use mo_gas_optics, only: ty_gas_optics_specification
+use mo_gas_optics, only: ty_gas_optics
 use mo_rte_kind, only: wp
 
 ! Use my assertion routines to perform sanity checks
@@ -152,7 +152,7 @@ real(r8) :: dt_avg = 0.0_r8
 ! RRTMGP coefficients files, specified by coefficients_file_sw and
 ! coefficients_file_lw in the radiation namelist. They exist as module data
 ! because we only want to load those files once.
-type(ty_gas_optics_specification) :: k_dist_sw, k_dist_lw
+type(ty_gas_optics) :: k_dist_sw, k_dist_lw
 
 ! k-distribution coefficients files to read from. These are set via namelist
 ! variables.
@@ -485,7 +485,8 @@ subroutine radiation_init(state)
    use physics_types, only: physics_state
 
    ! RRTMGP modules
-   use mo_load_coefficients, only: rrtmgp_load_coefficients=>load_and_init
+   !use mo_load_coefficients, only: rrtmgp_load_coefficients=>load_and_init
+   use my_load_coefficients, only: rrtmgp_load_coefficients=>load_and_init
    use mo_gas_concentrations, only: ty_gas_concs
 
    ! For optics
@@ -1084,7 +1085,7 @@ end subroutine set_available_gases
 ! Function to calculate band midpoints from kdist band limits
 function get_band_midpoints(nbands, kdist) result(band_midpoints)
    integer, intent(in) :: nbands
-   type(ty_gas_optics_specification), intent(in) :: kdist
+   type(ty_gas_optics), intent(in) :: kdist
    real(r8) :: band_midpoints(nbands)
    real(r8) :: band_limits(2,nbands)
    integer :: i
@@ -1180,6 +1181,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                                ty_optical_props_1scl, &
                                ty_optical_props_2str
    use mo_fluxes_byband, only: ty_fluxes_byband
+   use mo_rte_kind, only: wp
 
    ! CAM history module provides subroutine to send output data to the history
    ! buffer to be aggregated and written to disk
@@ -1299,8 +1301,17 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
    type(ty_fluxes_byband) :: flux_sw_allsky, flux_sw_clearsky
    type(ty_fluxes_byband) :: flux_sw_allsky_day, flux_sw_clearsky_day
 
+   ! Optical properties array to hold RRTMGP band structure, indexed by *band*
+   ! rather than by *g-point*
+   type(ty_optical_props) :: rrtmgp_bands
+
+   real(wp) :: wavenumber_limits(2,nswbands)
+
    !----------------------------------------------------------------------
    
+   ! DEBUG
+   call handle_error(rrtmgp_bands%init(k_dist_sw%get_band_lims_wavenumber()))
+
    ! Number of physics columns in this "chunk"; used in multiple places
    ! throughout this subroutine, so set once for convenience
    ncol = state%ncol
@@ -1336,6 +1347,10 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
 
    ! Get cosine solar zenith angle for current time step. 
    call set_cosine_solar_zenith_angle(state, dt_avg, coszrs(:ncol))
+
+#ifdef DO_RAD_ALL_DAY
+   coszrs(:) = 1._r8
+#endif
 
    ! Send values for this chunk to history buffer
    call outfld('COSZRS', coszrs(:ncol), ncol, state%lchnk)
@@ -1415,7 +1430,7 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
 
       ! Do shortwave cloud optics calculations
       call t_startf('shortwave cloud optics')
-      call handle_error(cloud_optics_sw%alloc_2str(k_dist_sw, nday, nlay))
+      call handle_error(cloud_optics_sw%alloc_2str(nday, nlay, k_dist_sw))
       call cloud_optics_sw%set_name('shortwave cloud optics')
 
       ! TODO: refactor the set_cloud_optics codes to allow passing arrays
@@ -1427,8 +1442,11 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                                k_dist_sw, cloud_optics_sw)
       call t_stopf('shortwave cloud optics')
 
-      ! Initialize aerosol optics
-      call handle_error(aerosol_optics_sw%alloc_2str(k_dist_sw, nday, nlay))
+      ! Initialize aerosol optics; omit the g-point to band mapping argument to
+      ! force indexing optics by band rather than by g-point
+      wavenumber_limits(:,:) = k_dist_sw%get_band_lims_wavenumber()
+      call handle_error(aerosol_optics_sw%init(wavenumber_limits))
+      call handle_error(aerosol_optics_sw%alloc_2str(nday, nlay))
       call aerosol_optics_sw%set_name('shortwave aerosol optics')
 
       ! Loop over diagnostic calls 
@@ -1451,6 +1469,12 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
                                        cam_layers(:nlay), &
                                        aerosol_optics_sw)
             call t_stopf('shortwave aerosol optics')
+
+#ifdef NO_RAD_AEROSOL
+            aerosol_optics_sw%tau = 0.
+            aerosol_optics_sw%ssa = 1.
+            aerosol_optics_sw%g = 0.
+#endif
 
             ! Set gas concentrations (I believe the gases may change for
             ! different values of icall, which is why we do this within the
@@ -1524,11 +1548,11 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
       ! internal CAM aer_rad_props routines expect. There is logic
       ! encapsulated in RRTMGP to figure out how the optical properties are
       ! split up.
-      call handle_error(aerosol_optics_lw%alloc_1scl(k_dist_lw, ncol, nlay))
+      call handle_error(aerosol_optics_lw%alloc_1scl(ncol, nlay, k_dist_lw))
       call aerosol_optics_lw%set_name('longwave aerosol optics')
 
       ! Initialize cloud optics object
-      call handle_error(cloud_optics_lw%alloc_1scl(k_dist_lw, ncol, nlay))
+      call handle_error(cloud_optics_lw%alloc_1scl(ncol, nlay, k_dist_lw))
       call cloud_optics_lw%set_name('longwave cloud optics')
 
       ! Allocate longwave outputs; why is this not part of the
@@ -1603,6 +1627,10 @@ subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, net_flux)
             call t_startf('longwave aerosol optics')
             call set_aerosol_optics_lw(icall, state, pbuf, cam_layers(:nlay), aerosol_optics_lw)
             call t_stopf('longwave aerosol optics')
+
+#ifdef NO_RAD_AEROSOL
+            aerosol_optics_lw%tau = 0
+#endif
 
             ! Do longwave radiative transfer calculations
             call t_startf('longwave radiation calculations')
@@ -2053,6 +2081,7 @@ subroutine set_aerosol_optics_sw(icall, state, pbuf, &
    use aer_rad_props, only: aer_rad_props_sw
    use radconstants, only: nswbands
    use mo_optical_props, only: ty_optical_props_2str
+   use mo_optical_props_kernels, only: inc_2stream_by_2stream_bybnd
    integer, intent(in) :: icall
    type(physics_state), intent(in) :: state
    type(physics_buffer_desc), pointer :: pbuf(:)
@@ -2069,7 +2098,14 @@ subroutine set_aerosol_optics_sw(icall, state, pbuf, &
    ! NOTE: dimension ordering is different than for cloud optics!
    real(r8), dimension(pcols,0:pver,nswbands) :: tau, tau_w, tau_w_g, tau_w_f
 
-   integer :: ncol, nbnd, nlay
+   real(r8), dimension(size(optics_out%tau, 1), &
+                       size(optics_out%tau, 2), &
+                       nswbands) :: tau_byband, ssa_byband, g_byband
+   real(r8), dimension(size(optics_out%tau, 1), &
+                       size(optics_out%tau, 2), &
+                       size(optics_out%tau, 3)) :: tau_tmp, ssa_tmp, g_tmp
+
+   integer :: ncol, nlay, nday
    integer :: iday, icol
    integer :: k_rad, k_cam
 
@@ -2077,10 +2113,13 @@ subroutine set_aerosol_optics_sw(icall, state, pbuf, &
    character(len=*), parameter :: subroutine_name = 'set_aerosol_optics_sw'
 
    ncol = state%ncol
-   nbnd = nswbands
+   nlay = size(cam_layers)
+   nday = count(day_indices > 0)
 
-   ! Check dimensions
-   call assert(nbnd == nswbands, 'nbnd /= nswbands')
+   ! Check dimension sizes
+   call assert(nday == size(optics_out%tau, 1), 'nday /= size(optics_out%1)')
+   call assert(nlay == size(optics_out%tau, 2), 'nlay /= size(optics_out%2)')
+   !call assert(nswbands == size(optics_out%tau, 3), 'nswbands /= size(optics_out%3)')
 
    ! Get aerosol absorption optical depth from CAM routine
    tau = 0.0
@@ -2113,28 +2152,56 @@ subroutine set_aerosol_optics_sw(icall, state, pbuf, &
          k_cam = cam_layers(k_rad)
          if (k_cam < 0) cycle
 
-         ! Copy cloud optical depth over directly
-         optics_out%tau(iday,k_rad,1:nbnd) = tau(icol,k_cam,1:nbnd)
+         ! Copy optical depth over directly
+         tau_byband(iday,k_rad,1:nswbands) = tau(icol,k_cam,1:nswbands)
 
          ! Extract single scattering albedo from the product-defined fields
-         where (tau(icol,k_cam,1:nbnd) > 0)
-            optics_out%ssa(iday,k_rad,1:nbnd) &
-               = tau_w(icol,k_cam,1:nbnd) / tau(icol,k_cam,1:nbnd)
+         where (tau(icol,k_cam,1:nswbands) > 0)
+            ssa_byband(iday,k_rad,1:nswbands) &
+               = tau_w(icol,k_cam,1:nswbands) / tau(icol,k_cam,1:nswbands)
          elsewhere
-            optics_out%ssa(iday,k_rad,1:nbnd) = 1
+            ssa_byband(iday,k_rad,1:nswbands) = 1
          endwhere
 
          ! Extract assymmetry parameter from the product-defined fields
-         where (tau_w(icol,k_cam,1:nbnd) > 0)
-            optics_out%g(iday,k_rad,1:nbnd) &
-               = tau_w_g(icol,k_cam,1:nbnd) / tau_w(icol,k_cam,1:nbnd)
+         where (tau_w(icol,k_cam,1:nswbands) > 0)
+            g_byband(iday,k_rad,1:nswbands) &
+               = tau_w_g(icol,k_cam,1:nswbands) / tau_w(icol,k_cam,1:nswbands)
          elsewhere
-            optics_out%g(iday,k_rad,1:nbnd) = 0
+            g_byband(iday,k_rad,1:nswbands) = 0
          endwhere
 
       end do
 
    end do
+
+#ifdef SHIFT_AEROSOL_BANDS
+   tau_tmp(1:nday,1:nlay,1:nswbands) = tau_byband(1:nday,1:nlay,1:nswbands)
+   ssa_tmp(1:nday,1:nlay,1:nswbands) = ssa_byband(1:nday,1:nlay,1:nswbands)
+   g_tmp(1:nday,1:nlay,1:nswbands) = g_byband(1:nday,1:nlay,1:nswbands)
+
+   ! Move last band to front
+   tau_byband(1:nday,1:nlay,1) = tau_tmp(1:nday,1:nlay,nswbands)
+   ssa_byband(1:nday,1:nlay,1) = ssa_tmp(1:nday,1:nlay,nswbands)
+   g_byband(1:nday,1:nlay,1) = g_tmp(1:nday,1:nlay,nswbands)
+
+   ! Shift the rest of the bands
+   tau_byband(1:nday,1:nlay,2:nswbands) = tau_tmp(1:nday,1:nlay,1:nswbands-1)
+   ssa_byband(1:nday,1:nlay,2:nswbands) = ssa_tmp(1:nday,1:nlay,1:nswbands-1)
+   g_byband(1:nday,1:nlay,2:nswbands) = g_tmp(1:nday,1:nlay,1:nswbands-1)
+#endif
+
+   ! Increment
+   if (size(optics_out%tau, 3) == nswbands) then
+      optics_out%tau(1:nday,1:nlay,1:nswbands) = tau_byband(1:nday,1:nlay,1:nswbands)
+      optics_out%ssa(1:nday,1:nlay,1:nswbands) = ssa_byband(1:nday,1:nlay,1:nswbands)
+      optics_out%g(1:nday,1:nlay,1:nswbands) = g_byband(1:nday,1:nlay,1:nswbands)
+   else
+      call inc_2stream_by_2stream_bybnd(nday, nlay, optics_out%get_ngpt(), &
+                                        optics_out%tau, optics_out%ssa, optics_out%g, &
+                                        tau_byband, ssa_byband, g_byband, &
+                                        nswbands, optics_out%get_band_lims_gpoint())
+   end if
 
    ! Check values
    call handle_error(optics_out%validate())
@@ -3050,14 +3117,14 @@ subroutine set_cloud_optics_sw(state, pbuf, col_indices, lev_indices, kdist, opt
                              pbuf_get_field, &
                              pbuf_get_index
    use mo_optical_props, only: ty_optical_props_2str
-   use mo_gas_optics, only: ty_gas_optics_specification
+   use mo_gas_optics, only: ty_gas_optics
    use mcica_subcol_gen, only: mcica_subcol_mask
    use cam_optics, only: cam_optics_type, get_cloud_optics_sw
 
    type(physics_state), intent(in) :: state
    type(physics_buffer_desc), pointer :: pbuf(:)
    integer, intent(in) :: col_indices(:), lev_indices(:)
-   type(ty_gas_optics_specification), intent(in) :: kdist
+   type(ty_gas_optics), intent(in) :: kdist
    type(ty_optical_props_2str), intent(inout) :: optics_out
 
    ! Type to hold optics on CAM grid
@@ -3167,14 +3234,14 @@ subroutine set_cloud_optics_lw(state, pbuf, lev_indices, kdist, optics_out)
    use physics_buffer, only: physics_buffer_desc, &
                              pbuf_get_field, pbuf_get_index
    use mo_optical_props, only: ty_optical_props_1scl
-   use mo_gas_optics, only: ty_gas_optics_specification
+   use mo_gas_optics, only: ty_gas_optics
    use mcica_subcol_gen, only: mcica_subcol_mask
    use cam_optics, only: cam_optics_type, get_cloud_optics_lw
 
    type(physics_state), intent(in) :: state
    type(physics_buffer_desc), pointer :: pbuf(:)
    integer, intent(in) :: lev_indices(:)
-   type(ty_gas_optics_specification), intent(in) :: kdist
+   type(ty_gas_optics), intent(in) :: kdist
    type(ty_optical_props_1scl), intent(inout) :: optics_out
 
    type(cam_optics_type) :: optics_cam

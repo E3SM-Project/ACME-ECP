@@ -369,7 +369,7 @@ contains
 
     band_lims_wvn = read_field(ncid, 'band_lims_wvn', 2, nband)
     band_lims_gpt = read_field(ncid, 'band_lims_gpt', 2, nband)
-    call stop_on_err(spectral_disc%init(band_lims_gpt, band_lims_wvn, read_string(ncid, 'name', 32)))
+    call stop_on_err(spectral_disc%init(band_lims_wvn, band_lims_gpt, read_string(ncid, 'name', 32)))
 
     ncid = nf90_close(ncid)
   end subroutine read_spectral_disc
@@ -576,7 +576,7 @@ contains
     band_lims_wvn = read_field(ncid, 'band_lims_wvn', 2, nband)
     band_lims_gpt = read_field(ncid, 'band_lims_gpt', 2, nband)
 
-    call stop_on_err(opt_props%init(band_lims_gpt, band_lims_wvn, read_string(ncid, 'name', 32)))
+    call stop_on_err(opt_props%init(band_lims_wvn, band_lims_gpt, read_string(ncid, 'name', 32)))
     select type (opt_props)
       class is (ty_optical_props_1scl)      ! No scattering
         call stop_on_err(opt_props%alloc_1scl(ncol, nlay))
@@ -759,7 +759,7 @@ contains
     !
     band_lims_wvn = read_field(ncid, 'band_lims_wvn', 2, nband)
     band_lims_gpt = read_field(ncid, 'band_lims_gpt', 2, nband)
-    call stop_on_err(sources%init(band_lims_gpt, band_lims_wvn, read_string(ncid, 'name', 32)))
+    call stop_on_err(sources%init(band_lims_wvn, band_lims_gpt, read_string(ncid, 'name', 32)))
     call stop_on_err(sources%alloc(ncol, nlay))
 
     sources%lay_source     = read_field(ncid, 'lay_src',     ncol, nlay, ngpt)

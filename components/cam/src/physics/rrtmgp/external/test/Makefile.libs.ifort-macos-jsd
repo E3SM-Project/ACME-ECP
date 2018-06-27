@@ -1,0 +1,9 @@
+#
+# Intel Fortran 18
+#
+# Where to find Fortran .mod files
+export FCINCLUDE = -I/opt/local/include -I/usr/local/include
+
+# Libraries including netCDF and Fortran interface to netCDF
+export LDFLAGS = -L/opt/local/lib -L/usr/local/lib
+export LIBS = -lnetcdff -lnetcdf

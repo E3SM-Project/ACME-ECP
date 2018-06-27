@@ -1,6 +1,7 @@
+#
+# Meant to be called as a sub-make; relies on variables set in ../../Makefile
+#
 BUILD_DIR = ../../build
-include $(BUILD_DIR)/Makefile.conf
-
 VPATH = ../../test/util/io/
 
 #
@@ -11,12 +12,12 @@ LIBS      += -lrrtmgp
 FCINCLUDE += -I$(BUILD_DIR)
 
 COMPILE = $(FC) $(FCFLAGS) $(FCINCLUDE) -c
-LINK    = $(FC) $(FCFLAGS) $(LDFLAGS) $(LIBS)  
+LINK    = $(FC) $(FCFLAGS) $(LDFLAGS) $(LIBS)
 
 %.o: %.F90
 	$(COMPILE) $<
 
 %: %.o
-	$(LINK) -o $@ $^ 
-	
+	$(LINK) -o $@ $^
+
 test_cld_samp: test_cld_samp.o

@@ -1,6 +1,6 @@
 #!/bin/make
 
-include ../build/Makefile.conf
+include ../build/Makefile.conf ../test/Makefile.libs
 
 # compile tests (all)
 all:  make_new_test_problems shdompp_solve

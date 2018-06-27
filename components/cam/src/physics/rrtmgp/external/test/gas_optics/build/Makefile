@@ -1,6 +1,5 @@
 RRTMGP_ROOT = ../../..
 BUILD_DIR = $(RRTMGP_ROOT)/build
-include $(BUILD_DIR)/Makefile.conf
 include $(BUILD_DIR)/Makefile.rules
 
 VPATH = ./:$(BUILD_DIR):$(RRTMGP_ROOT)/test/util/src/

@@ -20,9 +20,11 @@
 !
 !
 module mo_rte_lw
-  use mo_rte_kind,   only: wp
+  use mo_rte_kind,      only: wp, wl
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
+  use mo_source_functions,   &
+                        only: ty_source_func_lw
   use mo_fluxes,        only: ty_fluxes
   use mo_lw_solver,     only: lw_solver_init, lw_solver
   implicit none
@@ -35,36 +37,30 @@ contains
   ! Interface using only optical properties and source functions as inputs; fluxes as outputs.
   !
   ! --------------------------------------------------
-  function rte_lw(optical_props, top_at_1,  &
-                     lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_source, &
-                     fluxes, &
-                     inc_flux, n_gauss_angles) result(error_msg)
+  function rte_lw(optical_props, top_at_1, &
+                  sources, sfc_emis,       &
+                  fluxes,                  &
+                  inc_flux, n_gauss_angles) result(error_msg)
     class(ty_optical_props_arry), intent(in   ) :: optical_props     ! Array of ty_optical_props. This type is abstract
                                                                      ! and needs to be made concrete, either as an array
                                                                      ! (class ty_optical_props_arry) or in some user-defined way
     logical,                      intent(in   ) :: top_at_1          ! Is the top of the domain at index 1?
                                                                      ! (if not, ordering is bottom-to-top)
-    real(wp), dimension(:,:,:),   intent(in   ) :: lay_source, &     ! Planck source at layer average temperature
-                                                                     ! [W/m2] (ncol, nlay, ngpt)
-                                                   lev_source_inc, & ! Planck source at layer edge for radiation,
-                                                   lev_source_dec    ! [W/m2] (ncol, nlay+1, ngpt)
-                                                                     ! in increasing/decreasing ilay direction
-                                                                     ! Includes spectral weighting that accounts for state-dependent
-                                                                     ! frequency to g-space mapping
+    type(ty_source_func_lw),      intent(in   ) :: sources
     real(wp), dimension(:,:),     intent(in   ) :: sfc_emis    ! emissivity at surface [] (nband, ncol)
-    real(wp), dimension(:,:),     intent(in   ) :: sfc_source     ! source function at surface [W/m2] (ncol, ngpt)
     class(ty_fluxes),             intent(inout) :: fluxes      ! Array of ty_fluxes. Default computes broadband fluxes at all levels
                                                                !   if output arrays are defined. Can be extended per user desires.
     real(wp), dimension(:,:),   &
               target, optional, intent(in   ) :: inc_flux    ! incident flux at domain top [W/m2] (ncol, ngpts)
-    integer,          optional, intent(in   ) :: n_gauss_angles
+    integer,          optional, intent(in   ) :: n_gauss_angles ! Number of angles used in Gaussian quadrature
+                                                                ! (no-scattering solution)
     character(len=128)                        :: error_msg   ! If empty, calculation was successful
     ! --------------------------------
     !
     ! Local variables
     !
     integer :: ncol, nlay, ngpt, nband
-    integer :: top_lev
+    integer :: n_quad_angs
     integer :: icol
     real(wp), dimension(:,:,:), allocatable :: gpt_flux_up, gpt_flux_dn
     real(wp), dimension(:,:),   allocatable :: sfc_emis_gpt
@@ -98,30 +94,13 @@ contains
     !
     ! Source functions
     !
-    if(any([size(lay_source,1), size(lay_source,2), size(lay_source,3)]            /= [ncol, nlay, ngpt])) &
-      error_msg = "rte_lw: lay_source inconsistently sized"
-    if(any(lay_source < 0._wp)) &
-      error_msg = "rte_lw: lay_source has values < 0"
-    if(len_trim(error_msg) > 0) return
-    if(any([size(lev_source_inc,1), size(lev_source_inc,2), size(lev_source_inc,3)] /= [ncol, nlay, ngpt])) &
-      error_msg = "rte_lw: lev_source_inc inconsistently sized"
-    if(any(lev_source_inc < 0._wp)) &
-      error_msg = "rte_lw: lev_source_inc has values < 0"
-    if(len_trim(error_msg) > 0) return
-    if(any([size(lev_source_dec,1), size(lev_source_dec,2), size(lev_source_dec,3)] /= [ncol, nlay, ngpt])) &
-      error_msg = "rte_lw: lev_source_dec inconsistently sized"
-    if(any(lev_source_dec < 0._wp)) &
-      error_msg = "rte_lw: lev_source_dec has values < 0"
-    if(len_trim(error_msg) > 0) return
+    if(any([sources%get_ncol(), sources%get_nlay(), sources%get_ngpt()]  /= [ncol, nlay, ngpt])) &
+      error_msg = "rte_lw: sources and optical properties inconsistently sized"
+    ! Also need to validate
 
     !
-    ! Surface source, emissivity
+    ! Surface emissivity
     !
-    if(any([size(sfc_source, 1), size(sfc_source, 2)] /= [ncol, ngpt])) &
-      error_msg = "rte_lw: sfc_source inconsistently sized"
-    if(any(sfc_source < 0._wp )) &
-      error_msg = "rte_lw: sfc_source has values < 0"
-
     if(any([size(sfc_emis,1), size(sfc_emis,2)] /= [nband, ncol])) &
       error_msg = "rte_lw: sfc_emis inconsistently sized"
     if(any(sfc_emis < 0._wp .or. sfc_emis > 1._wp)) &
@@ -158,9 +137,10 @@ contains
     !
     ! Compute the radiative transfer...
     !
-    error_msg = lw_solver(ncol, nlay, ngpt, top_at_1,                                &
-                          optical_props, lay_source, lev_source_inc, lev_source_dec, &
-                          sfc_emis_gpt, sfc_source, gpt_flux_up, gpt_flux_dn, inc_flux)
+    error_msg = lw_solver(ncol, nlay, ngpt, top_at_1,                     &
+                          optical_props, sources%lay_source,              &
+                          sources%lev_source_inc, sources%lev_source_dec, &
+                          sfc_emis_gpt, sources%sfc_source, gpt_flux_up, gpt_flux_dn, inc_flux)
     if (error_msg /= '') return
     !
     ! ...and reduce spectral fluxes to desired output quantities

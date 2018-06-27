@@ -1,16 +1,21 @@
-!>
-!! @par Copyright
-!! This code is subject to the MPI-M-Software - License - Agreement in it's most recent form.
-!! Please see URL http://www.mpimet.mpg.de/en/science/models/model-distribution.html and the
-!! file COPYING in the root of the source tree for this code.
-!! Where software is supplied by third parties, it is indicated in the headers of the routines.
-!!
-!! @brief Module to provide string related utilities
-!!
-!! @author Andre Wehe (2014)
-!!
+! This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 !
-
+! Contacts: Robert Pincus and Eli Mlawer
+! email:  rrtmgp@aer.com
+!
+! Copyright 2015-2018,  Atmospheric and Environmental Research and
+! Regents of the University of Colorado.  All right reserved.
+!
+! Use and duplication is permitted under the terms of the
+!    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
+! -------------------------------------------------------------------------------------------------
+!
+! Routines for handling strings:
+!   convert to lower case
+!   does a string exist within an array of strings?
+!   what is the location of a string with an array?
+!
+! -------------------------------------------------------------------------------------------------
 module mo_util_string
   implicit none
   private
@@ -21,7 +26,7 @@ module mo_util_string
   character(len=26), parameter :: UPPER_CASE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 contains
-  ! --------------------------------------------------------------------------------------
+  ! -------------------------------------------------------------------------------------------------
   pure function lower_case( input_string ) result( output_string )
     character(len=*), intent(in) :: input_string
     character(len=len(input_string)) :: output_string
@@ -38,44 +43,45 @@ contains
   end function
   ! --------------------------------------------------------------------------------------
   !
-  ! Is string somewhere in array? 
+  ! Is string somewhere in array?
   !
-  pure function string_in_array(string, array) 
+  pure function string_in_array(string, array)
     character(len=*),               intent(in) :: string
     character(len=*), dimension(:), intent(in) :: array
     logical                                    :: string_in_array
-    
+
     integer :: i
-    character(len=len_trim(string)) :: lc_string  
-    
-    string_in_array = .false. 
+    character(len=len_trim(string)) :: lc_string
+
+    string_in_array = .false.
     lc_string = lower_case(trim(string))
-    do i = 1, size(array) 
-      if(lc_string == lower_case(trim(array(i)))) then 
-        string_in_array = .true. 
-        exit 
-      end if 
-    end do 
+    do i = 1, size(array)
+      if(lc_string == lower_case(trim(array(i)))) then
+        string_in_array = .true.
+        exit
+      end if
+    end do
   end function string_in_array
   ! --------------------------------------------------------------------------------------
   !
-  ! Is string somewhere in array? 
+  ! Is string somewhere in array?
   !
-  pure function string_loc_in_array(string, array) 
+  pure function string_loc_in_array(string, array)
     character(len=*),               intent(in) :: string
     character(len=*), dimension(:), intent(in) :: array
     integer                                    :: string_loc_in_array
-    
+
     integer :: i
-    character(len=len_trim(string)) :: lc_string  
-    
+    character(len=len_trim(string)) :: lc_string
+
     string_loc_in_array = -1
     lc_string = lower_case(trim(string))
-    do i = 1, size(array) 
-      if(lc_string == lower_case(trim(array(i)))) then 
+    do i = 1, size(array)
+      if(lc_string == lower_case(trim(array(i)))) then
         string_loc_in_array = i
-        exit 
-      end if 
-    end do 
+        exit
+      end if
+    end do
   end function string_loc_in_array
+  ! --------------------------------------------------------------------------------------
 end module

@@ -1,6 +1,5 @@
 RRTMGP_ROOT = ../../..
 BUILD_DIR = $(RRTMGP_ROOT)/build
-include $(BUILD_DIR)/Makefile.conf
 include $(BUILD_DIR)/Makefile.rules
 
 ECRAD_ROOT = /users/robert/PowerFolders/Other-peoples-codes/ecrad-1.0.1-orig
@@ -21,6 +20,7 @@ RTE_SRC = \
   mo_rte_kind.o \
   mo_optical_props_kernels.o \
   mo_optical_props.o \
+	mo_source_functions.o \
 	mo_fluxes_broadband_kernels.o \
   mo_fluxes.o \
 	mo_rte_lw_solver.o \
@@ -69,7 +69,7 @@ test_two_stream.o: test_two_stream.F90 radiation_two_stream.o $(ADDITIONS)
 
 # Small bits of ecrad source for testing two-stream
 yomhook.o:                 parkind1.o yomhook.F90
-radiation_two_stream.o: parkind1.o yomhook.o radiation_two_stream.F90
+radiation_two_stream.o: parkind1.o yomhook.o mo_optical_props.o mo_fluxes.o radiation_two_stream.F90
 radiation_two_stream.F90:
 	cp $(ECRAD_ROOT)/radiation/radiation_two_stream.F90 .
 	patch radiation_two_stream.F90 < radiation_two_stream.F90.patch
@@ -86,6 +86,8 @@ mo_rrtmgp_constants.o: mo_rte_kind.o mo_rrtmgp_constants.F90
 #
 mo_optical_props_kernels.o: mo_rte_kind.o mo_optical_props_kernels.F90
 mo_optical_props.o:         mo_rte_kind.o mo_optical_props_kernels.o   mo_optical_props.F90
+
+mo_source_functions.o:      mo_rte_kind.o mo_optical_props.o mo_source_functions.F90
 #
 # Flux reduction
 #
@@ -104,6 +106,7 @@ mo_rte_sw_solver.o: mo_rte_kind.o \
 
 mo_rte_lw.o: mo_rte_kind.o \
 	mo_optical_props.o  \
+	mo_source_functions.o \
 	mo_fluxes.o \
 	mo_rte_lw_solver.o \
 	mo_rte_lw.F90

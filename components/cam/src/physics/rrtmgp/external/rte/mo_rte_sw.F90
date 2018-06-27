@@ -1,25 +1,32 @@
 ! This code is part of Radiative Transfer for Energetics (RTE)
 !
-! Eli Mlawer and Robert Pincus
-! Andre Wehe and Jennifer Delamere
+! Contacts: Robert Pincus and Eli Mlawer
 ! email:  rrtmgp@aer.com
 !
-! Copyright 2015-2017,  Atmospheric and Environmental Research and
+! Copyright 2015-2018,  Atmospheric and Environmental Research and
 ! Regents of the University of Colorado.  All right reserved.
 !
 ! Use and duplication is permitted under the terms of the
 !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
+! -------------------------------------------------------------------------------------------------
 !
-
+!  Contains a single routine to compute direct and diffuse fluxes of solar radiation given
+!    atmospheric optical properties on a spectral grid
+!    information about vertical ordering
+!    boundary conditions
+!      solar zenith angle, spectrally-resolved incident colimated flux, surface albedos for direct and diffuse radiation
+!    optionally, a boundary condition for incident diffuse radiation
 !
-! Output is via type ty_fluxes defined in this module
-!   (this means the argument list to rte_sw() need not change).
-!   Fluxes by g-point are available within the code. Most applications will expect some
-!   reduced version of this detail e.g. broadband flux profiles.
-! This implementation provides broadband fluxes but users are free to add others in
-!   rte_sw_opt()
+! It is the user's responsibility to ensure that boundary conditions (incident fluxes, surface albedos) are on the same
+!   spectral grid as the optical properties.
 !
+! Final output is via user-extensible ty_fluxes which must reduce the detailed spectral fluxes to
+!   whatever summary the user needs.
 !
+! The routine does error checking and choses which lower-level kernel to invoke based on
+!   what kinds of optical properties are supplied
+!
+! -------------------------------------------------------------------------------------------------
 module mo_rte_sw
   use mo_rte_kind,      only: wp, wl
   use mo_optical_props, only: ty_optical_props, &
@@ -30,46 +37,15 @@ module mo_rte_sw
   implicit none
   private
 
-  public :: rte_sw_init, rte_sw
-
-  !
-  ! Configuration information
-  !
-  integer :: nstreams = 2 ! Number of streams: 0 means no scattering
-                          ! Require even, positive value when setting
+  public :: rte_sw
 
 contains
-  ! --------------------------------------------------
-  ! Initialization function
-  ! --------------------------------------------------
-  function rte_sw_init(nswstreams) result(error_msg)
-    integer,           optional, intent( in) :: nswstreams
-    character(len=128)                       :: error_msg
-
-    error_msg = ""
-    if(present(nswstreams)) then
-      if(nswstreams >= 0) then  ! Check for an even number?
-        nstreams = nswstreams
-      else
-        error_msg = "rte_sw_init: nswstreams provided is less than 0"
-      end if
-    end if
-  end function rte_sw_init
-
-  ! --------------------------------------------------
-  ! Public interfaces to rte_sw()
-  ! --------------------------------------------------
-  !
-  ! Interface using source functions and vectors of optical properties as inputs; vectors of fluxes as outputs.
-  !
   ! --------------------------------------------------
   function rte_sw(atmos, top_at_1,                 &
                   mu0, inc_flux,                   &
                   sfc_alb_dir, sfc_alb_dif,        &
                   fluxes, inc_flux_dif) result(error_msg)
-    class(ty_optical_props_arry), intent(in   ) :: atmos   ! Array of ty_optical_props. This type is abstract
-                                                                   ! and needs to be made concrete, either as an array
-                                                                   ! (class ty_optical_props_arry) or in some user-defined way
+    class(ty_optical_props_arry), intent(in   ) :: atmos           ! Optical properties provided as arrays
     logical,                      intent(in   ) :: top_at_1        ! Is the top of the domain at index 1?
                                                                    ! (if not, ordering is bottom-to-top)
     real(wp), dimension(:),       intent(in   ) :: mu0             ! cosine of solar zenith angle (ncol)
@@ -183,7 +159,9 @@ contains
         call sw_solver_noscat(ncol, nlay, ngpt, logical(top_at_1, wl), &
                               atmos%tau, mu0,                          &
                               gpt_flux_dir)
+        !
         ! No diffuse flux
+        !
         gpt_flux_up = 0._wp
         gpt_flux_dn = 0._wp
       class is (ty_optical_props_2str)

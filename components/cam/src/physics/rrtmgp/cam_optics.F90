@@ -248,6 +248,8 @@ contains
       combined_tau_ssa_g = 0
       combined_tau_ssa_f = 0
 
+      ncol = state%ncol
+
       ! Get ice cloud optics
       !call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
       !call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)

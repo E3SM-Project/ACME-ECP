@@ -1,6 +1,6 @@
 #!/bin/make
 
-include ../build/Makefile.conf
+include ../build/Makefile.conf ../test/Makefile.libs
 
 # compile tests (all)
 all:  test_adding \
@@ -14,6 +14,7 @@ all:  test_adding \
 # tests adding
 test_adding:
 	@echo --- building test adding ---
+	@echo $(FCINCLUDE) $(LDFLAGS) $(LIBS)
 	( cd ../test/adding/build ; make )
 
 # tests two_stream

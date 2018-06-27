@@ -1,0 +1,9 @@
+#
+# Fortran modules and libraries are in compiler-specific directories.
+#
+# Where to find Fortran .mod files
+export FCINCLUDE = -I/Users/robert/Applications/$(FC)/include -I/opt/local/include
+
+# Libraries including netCDF and Fortran interface to netCDF
+export LDFLAGS = -L/Users/robert/Applications/$(FC)/lib -L/opt/local/lib
+export LIBS = -lnetcdff -lnetcdf

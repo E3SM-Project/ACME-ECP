@@ -1,7 +1,6 @@
 ! This code is part of Radiative Transfer for Energetics (RTE)
 !
-! Eli Mlawer and Robert Pincus
-! Andre Wehe and Jennifer Delamere
+! Contacts: Robert Pincus and Eli Mlawer
 ! email:  rrtmgp@aer.com
 !
 ! Copyright 2015-2018,  Atmospheric and Environmental Research and
@@ -9,15 +8,17 @@
 !
 ! Use and duplication is permitted under the terms of the
 !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
+! -------------------------------------------------------------------------------------------------
 !
-! Description:  Encapsulate source function arrays for longwave/lw/internal sources
+! Encapsulate source function arrays for longwave/lw/internal sources
 !    and shortwave/sw/external source.
-
+!
+! -------------------------------------------------------------------------------------------------
 module mo_source_functions
   use mo_rte_kind,      only: wp
   use mo_optical_props, only: ty_optical_props
   implicit none
-
+  ! -------------------------------------------------------------------------------------------------
   !
   ! Type for longwave sources: computed at layer center, at layer edges using
   !   spectral mapping in each direction separately, and at the surface
@@ -32,9 +33,9 @@ module mo_source_functions
                                                                   ! frequency to g-space mapping
     real(wp), allocatable, dimension(:,:  ) :: sfc_source
   contains
-    generic,   public :: alloc => alloc_lw, init_and_alloc_lw
+    generic,   public :: alloc => alloc_lw, copy_and_alloc_lw
     procedure, private:: alloc_lw
-    procedure, private:: init_and_alloc_lw
+    procedure, private:: copy_and_alloc_lw
     procedure, public :: is_allocated => is_allocated_lw
     procedure, public :: finalize => finalize_lw
     procedure, public :: get_subset => get_subset_range_lw
@@ -42,30 +43,32 @@ module mo_source_functions
     procedure, public :: get_nlay => get_nlay_lw
     ! validate?
   end type ty_source_func_lw
-
+  ! -------------------------------------------------------------------------------------------------
   !
   ! Type for shortave sources: top-of-domain spectrally-resolved flux
   !
   type, extends(ty_optical_props), public :: ty_source_func_sw
     real(wp), allocatable, dimension(:,:  ) :: toa_source
   contains
-    generic,   public :: alloc => alloc_sw, init_and_alloc_sw
+    generic,   public :: alloc => alloc_sw, copy_and_alloc_sw
     procedure, private:: alloc_sw
-    procedure, private:: init_and_alloc_sw
+    procedure, private:: copy_and_alloc_sw
     procedure, public :: is_allocated => is_allocated_sw
     procedure, public :: finalize => finalize_sw
     procedure, public :: get_subset => get_subset_range_sw
     procedure, public :: get_ncol => get_ncol_sw
     ! validate?
   end type ty_source_func_sw
-
+  ! -------------------------------------------------------------------------------------------------
 contains
   ! ------------------------------------------------------------------------------------------
   !
   !  Routines for initialization, validity checking, finalization
   !
   ! ------------------------------------------------------------------------------------------
+  !
   ! Longwave
+  !
   ! ------------------------------------------------------------------------------------------
   pure function is_allocated_lw(this)
     class(ty_source_func_lw), intent(in) :: this
@@ -99,10 +102,10 @@ contains
              this%lev_source_inc(ncol,nlay,ngpt), this%lev_source_dec(ncol,nlay,ngpt))
   end function alloc_lw
   ! --------------------------------------------------------------
-  function init_and_alloc_lw(this, spectral_desc, ncol, nlay) result(err_message)
+  function copy_and_alloc_lw(this, ncol, nlay, spectral_desc) result(err_message)
     class(ty_source_func_lw),    intent(inout) :: this
-    class(ty_optical_props ),    intent(in   ) :: spectral_desc
     integer,                     intent(in   ) :: ncol, nlay
+    class(ty_optical_props ),    intent(in   ) :: spectral_desc
     character(len = 128)                       :: err_message
 
     err_message = ""
@@ -114,9 +117,11 @@ contains
     err_message = this%init(spectral_desc)
     if (err_message /= "") return
     err_message = this%alloc(ncol,nlay)
-  end function init_and_alloc_lw
+  end function copy_and_alloc_lw
   ! ------------------------------------------------------------------------------------------
+  !
   ! Shortwave
+  !
   ! ------------------------------------------------------------------------------------------
   pure function is_allocated_sw(this)
     class(ty_source_func_sw), intent(in) :: this
@@ -143,10 +148,10 @@ contains
     allocate(this%toa_source(ncol, this%get_ngpt()))
   end function alloc_sw
   ! --------------------------------------------------------------
-  function init_and_alloc_sw(this, spectral_desc, ncol) result(err_message)
+  function copy_and_alloc_sw(this, ncol, spectral_desc) result(err_message)
     class(ty_source_func_sw),    intent(inout) :: this
-    class(ty_optical_props ),    intent(in   ) :: spectral_desc
     integer,                     intent(in   ) :: ncol
+    class(ty_optical_props ),    intent(in   ) :: spectral_desc
     character(len = 128)                       :: err_message
 
     err_message = ""
@@ -157,9 +162,11 @@ contains
     err_message = this%init(spectral_desc)
     if(err_message /= "") return
     err_message = this%alloc(ncol)
-  end function init_and_alloc_sw
+  end function copy_and_alloc_sw
   ! ------------------------------------------------------------------------------------------
+  !
   ! Finalization (memory deallocation)
+  !
   ! ------------------------------------------------------------------------------------------
   subroutine finalize_lw(this)
     class(ty_source_func_lw),    intent(inout) :: this
@@ -238,7 +245,7 @@ contains
     ! Could check to see if subset is correctly sized, has consistent spectral discretization
     !
     if(subset%is_allocated()) call subset%finalize()
-    err_message = subset%alloc(full, n, full%get_nlay())
+    err_message = subset%alloc(n, full%get_nlay(), full)
     if(err_message /= "") return
     subset%sfc_source    (1:n,  :) = full%sfc_source    (start:start+n-1,  :)
     subset%lay_source    (1:n,:,:) = full%lay_source    (start:start+n-1,:,:)
@@ -266,7 +273,7 @@ contains
     !
     if(subset%is_allocated()) call subset%finalize()
     ! Seems like I should be able to call "alloc" generically but the compilers are complaining
-    err_message = subset%init_and_alloc_sw(full, n)
+    err_message = subset%copy_and_alloc_sw(n, full)
 
     subset%toa_source(1:n,  :) = full%toa_source(start:start+n-1,  :)
   end function get_subset_range_sw

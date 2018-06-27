@@ -15,6 +15,8 @@ program test_two_stream
   use mo_rte_kind,      only: wp, wl
   use mo_optical_props, only: ty_optical_props, ty_optical_props_arry, &
                               ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
+  use mo_source_functions, &
+                        only: ty_source_func_lw
   use radiation_two_stream,    &
                         only: calc_reflectance_transmittance_sw, calc_two_stream_gammas_sw, &
                               calc_reflectance_transmittance_lw, calc_two_stream_gammas_lw, &
@@ -40,10 +42,11 @@ program test_two_stream
   real(wp), dimension(:,:,:), allocatable :: flux_dn_dir
   real(wp)                                :: tsi_scaling = -999._wp
   ! LW-specific
-  real(wp), dimension(:,:  ), allocatable :: sfc_emis, sfc_src, emis_sfc_bnd
+  real(wp), dimension(:,:  ), allocatable :: sfc_emis, emis_sfc_bnd
   real(wp), dimension(:    ), allocatable :: t_sfc
+  type(ty_source_func_lw)                 :: sources, sources_subset
   real(wp), dimension(:,:,:), allocatable, &
-                              target      :: lay_src, lev_src_inc, lev_src_dec, planck_hl
+                              target      :: planck_hl
   ! Generic
   real(wp), dimension(:,:,:), allocatable :: Rdif, Tdif
   real(wp), dimension(:,:,:), allocatable :: source_dn, source_up
@@ -79,7 +82,7 @@ program test_two_stream
     end do
   else
     allocate(sfc_emis(ncol, ngpt), planck_hl(ncol, nlay+1, ngpt))
-    call read_lw_Planck_sources(fileName, lay_src, lev_src_inc, lev_src_dec, sfc_src)
+    call read_lw_Planck_sources(fileName, sources)
     call read_lw_bc            (fileName, t_sfc, emis_sfc_bnd)
     do jgpt = 1, ngpt
       sfc_emis(1:ncol, jgpt) = emis_sfc_bnd(atmos%convert_gpt2band(jgpt), :)
@@ -116,13 +119,13 @@ program test_two_stream
         do jgpt = 1, ngpt
           do jcol = 1, ncol
             jlev = 1
-            planck_hl(jcol, jlev, jgpt) =        lev_src_dec(jcol, jlev, jgpt) * pi
+            planck_hl(jcol, jlev, jgpt) =        sources%lev_source_dec(jcol, jlev, jgpt) * pi
             do jlev = 2, nlay
-              planck_hl(jcol, jlev, jgpt) = sqrt(lev_src_dec(jcol, jlev, jgpt) * &
-                                                 lev_src_inc(jcol, jlev-1, jgpt)) * pi
+              planck_hl(jcol, jlev, jgpt) = sqrt(sources%lev_source_dec(jcol, jlev, jgpt) * &
+                                                 sources%lev_source_inc(jcol, jlev-1, jgpt)) * pi
             end do
             jlev = nlay+1
-            planck_hl(jcol, jlev, jgpt) =        lev_src_inc(jcol, jlev-1, jgpt) * pi
+            planck_hl(jcol, jlev, jgpt) =        sources%lev_source_inc(jcol, jlev-1, jgpt) * pi
           end do
         end do
         do jgpt = 1, ngpt
@@ -137,7 +140,7 @@ program test_two_stream
                  &  source_up(:,jlev,jgpt), source_dn(:,jlev,jgpt))
           end do
         end do
-        source_sfc(1:ncol,1:ngpt) = sfc_emis(1:ncol,1:ngpt) * sfc_src(1:ncol,1:ngpt) * pi
+        source_sfc(1:ncol,1:ngpt) = sfc_emis(1:ncol,1:ngpt) * sources%sfc_source(1:ncol,1:ngpt) * pi
         call write_two_stream(fileName, Rdif, Tdif)
       end if
 
@@ -149,11 +152,12 @@ program test_two_stream
           do jlev = 1, nlay
             call calc_no_scattering_transmittance_lw(ncol,       &
                  &  atmos%tau(:,jlev,jgpt),                      & ! diffusivity angle applied in source routine
-                 &  lev_src_dec(:,jlev,jgpt), lev_src_inc(:,jlev,jgpt), Tdif(:,jlev,jgpt), & ! Planck top, bottom
+                 &  sources%lev_source_dec(:,jlev,jgpt), sources%lev_source_inc(:,jlev,jgpt), &
+                 &  Tdif(:,jlev,jgpt), & ! Planck top, bottom
                  &  source_up(:,jlev,jgpt), source_dn(:,jlev,jgpt))
           end do
         end do
-        source_sfc(1:ncol,1:ngpt) = sfc_emis(1:ncol,1:ngpt) * sfc_src(1:ncol,1:ngpt)
+        source_sfc(1:ncol,1:ngpt) = sfc_emis(1:ncol,1:ngpt) * sources%sfc_source(1:ncol,1:ngpt)
       end if
 
     type is (ty_optical_props_nstr)

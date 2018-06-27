@@ -1,13 +1,13 @@
-BUILD_DIR = ../../../build
-include $(BUILD_DIR)/Makefile.conf
-
+#
+# Meant to be called as a sub-make; relies on variables set in ../../Makefile
+#
 VPATH = ../../../src:../../../build:../../../test/util/io/
 
 #
 RRTMGP_ROOT = ../../..
 BUILD_DIR = $(RRTMGP_ROOT)/build
-include $(BUILD_DIR)/Makefile.conf
-include $(BUILD_DIR)/Makefile.rules
+include  ../../Makefile.libs
+include $(BUILD_DIR)/Makefile.rules $(BUILD_DIR)/Makefile.conf
 
 VPATH = ./:$(BUILD_DIR):$(RRTMGP_ROOT)/test/util/src/
 

@@ -136,8 +136,7 @@ program flux_compute
   else
     allocate(ty_optical_props_1scl::optical_props)
   end if
-  call stop_on_err(optical_props%init(k_dist%get_band_lims_gpoint(), &
-                                      k_dist%get_band_lims_wavenumber()))
+  call stop_on_err(optical_props%init(k_dist))
 
   !
   ! Loop over subsets of the problem

@@ -1,6 +1,8 @@
+#
+# Meant to be called as a sub-make; relies on variables set in ../../Makefile
+#
 RRTMGP_ROOT = ../../..
 BUILD_DIR = $(RRTMGP_ROOT)/build
-include $(BUILD_DIR)/Makefile.conf
 include $(BUILD_DIR)/Makefile.rules
 
 VPATH = ./:$(BUILD_DIR):$(RRTMGP_ROOT)/extensions/:$(RRTMGP_ROOT)/test/util/src/

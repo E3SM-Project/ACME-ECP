@@ -1,21 +1,25 @@
-! Module: mo_gas_optics
-
-! This code is part of
-! RRTM for GCM Applications - Parallel (RRTMGP)
+! This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 !
-! Eli Mlawer and Robert Pincus
-! Andre Wehe and Jennifer Delamere
+! Contacts: Robert Pincus and Eli Mlawer
 ! email:  rrtmgp@aer.com
 !
-! Copyright 2015,  Atmospheric and Environmental Research and
+! Copyright 2015-2018,  Atmospheric and Environmental Research and
 ! Regents of the University of Colorado.  All right reserved.
 !
 ! Use and duplication is permitted under the terms of the
 !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
+! -------------------------------------------------------------------------------------------------
 !
-! Description:  Specifies all properties related to the k-distributions.  This includes each band's spectral properties and
-! absorbing gases.
-
+! Class for computing spectrally-resolved gas optical properties and source functions
+!   given atmopsheric physical properties (profiles of temperature, pressure, and gas concentrations)
+!   The class must be initialized with data (provided as a netCDF file) before being used.
+!
+! Two variants apply to internal Planck sources (longwave radiation in the Earth's atmosphere) and to
+!   external stellar radiation (shortwave radiation in the Earth's atmosphere).
+!   The variant is chosen based on what information is supplied during initialization.
+!   (It might make more sense to define two sub-classes)
+!
+! -------------------------------------------------------------------------------------------------
 module mo_gas_optics
   use mo_rte_kind,           only: wp, wl
   use mo_rrtmgp_constants,   only: avogad, m_dry, m_h2o, grav
@@ -31,64 +35,88 @@ module mo_gas_optics
   use mo_util_reorder
   implicit none
   private
-
   real(wp), parameter :: pi = acos(-1._wp)
 
-  ! -----------------------------------------------------------------------------------
-  type, extends(ty_optical_props), public :: ty_gas_optics_specification
+  ! -------------------------------------------------------------------------------------------------
+  type, extends(ty_optical_props), public :: ty_gas_optics
     private
-    character(32), &
-              dimension(:),   allocatable :: gas_names  ! gas names
-
-    integer,  dimension(:,:), allocatable :: flavor        ! major species pair; (2,nflav)
-    integer,  dimension(:,:), allocatable :: gpoint_flavor ! flavor = gpoint_flavor(lower or upper atmosphere, g-point)
-
-    ! -----------------------------------------------------------------------------------
-    ! Temperature and pressure interpolation grids
-    real(wp), dimension(:),  allocatable :: press_ref,  press_ref_log, temp_ref
-    ! Volume mixing ratios for reference atmosphere; vmr_ref(lower or upper atmosphere, gas, temp)
-    real(wp), dimension(:,:,:), allocatable :: vmr_ref
-
-    real(wp) :: press_ref_min, press_ref_max, &  ! min and max pressure of interpolation grids
-                temp_ref_min,  temp_ref_max      ! min and max temperature
-    real(wp) :: press_ref_log_delta, & ! difference in ln pressure between consecutive reference levels
-                temp_ref_delta,      & ! temperature difference between consecutive reference levels
-                press_ref_trop_log     ! log of reference pressure separating the lower and upper atmosphere
-    ! -----------------------------------------------------------------------------------
-    ! Absorption coefficients
-      ! ----- major gas (also referred to as "key species")absorption coefficients ; kmajor(g-point,eta,pressure,temperature)
-    real(wp), dimension(:,:,:,:), allocatable :: kmajor
-    ! ----- minor species
-      ! absorption coefficients due to minor absorbing gases in lower/upper part of atmosphere;
-      ! kminor_lower(contributor,eta,temperature)
-    real(wp), dimension(:,:,:), allocatable :: kminor_lower, kminor_upper
-    ! Name of the absorbing gas & unique identifying name (n_minor)
-    ! character(len=256), dimension(:), allocatable :: gas_minor, &
-    !   identifier_minor
-    ! Description of each minor gas contribution, separately for upper and lower atmospheres
-  	!
-  	! Arrays are dimensioned with n_minor_lower, n_minor_upper
-  	!
-  	! Name of the absorbing gas listed once for each band in which it is active (n_minor)
-    ! character(len=256), dimension(:), allocatable :: minor_gases_lower, &
-    !   minor_gases_upper
-  	! Starting and ending g-points for each minor gas in each band (2, n_minor)
+    !
+    ! RRTMGP computes absorption in each band arising from
+    !   two major species in each band, which are combined to make
+    !     a relative mixing ratio eta and a total column amount (col_mix)
+    !   contributions from zero or more minor species whose concentrations
+    !     may be scaled by other components of the atmosphere
+    !
+    ! Absorption coefficients are interpolated from tables on a pressure/temperature/(eta) grid
+    !
+    ! ------------------------------------
+    ! Interpolation variables: Temperature and pressure grids
+    !
+    real(wp),      dimension(:),     allocatable :: press_ref,  press_ref_log, temp_ref
+    !
+    ! Derived and stored for convenience:
+    !   Min and max for temperature and pressure intepolation grids
+    !   difference in ln pressure between consecutive reference levels
+    !   log of reference pressure separating the lower and upper atmosphere
+    !
+    real(wp) :: press_ref_min, press_ref_max, &
+                temp_ref_min,  temp_ref_max
+    real(wp) :: press_ref_log_delta, temp_ref_delta, press_ref_trop_log
+    ! ------------------------------------
+    ! Major absorbers ("key species")
+    !   Each unique set of major species is called a flavor.
+    !
+    ! Names  and reference volume mixing ratios of major gases
+    !
+    character(32), dimension(:),  allocatable :: gas_names     ! gas names
+    real(wp), dimension(:,:,:),   allocatable :: vmr_ref       ! vmr_ref(lower or upper atmosphere, gas, temp)
+    !
+    ! Which two gases are in each flavor? By index
+    !
+    integer,  dimension(:,:),     allocatable :: flavor        ! major species pair; (2,nflav)
+    !
+    ! Which flavor for each g-point? One each for lower, upper atmosphere
+    !
+    integer,  dimension(:,:),     allocatable :: gpoint_flavor ! flavor = gpoint_flavor(2, g-point)
+    !
+    ! Major gas absorption coefficients
+    !
+    real(wp), dimension(:,:,:,:), allocatable :: kmajor        !  kmajor(g-point,eta,pressure,temperature)
+    !
+    ! ------------------------------------
+    ! Minor species, independently for upper and lower atmospheres
+    !   Array extents in the n_minor dimension will differ between upper and lower atmospheres
+    !   Each contribution has starting and ending g-points
+    !
     integer, dimension(:,:), allocatable :: minor_limits_gpt_lower, &
                                             minor_limits_gpt_upper
-    ! Does the minor gas absorption coefficient scale with density? (n_minor)
-    logical, dimension(:), allocatable :: minor_scales_with_density_lower
-    logical, dimension(:), allocatable :: minor_scales_with_density_upper
-  	! If the minor gas absorption coefficient depends on another gas, does it depend on the concentration itself or
-  	!   the concentration of all gases besides the scaling gas? (n_minor)
+    !
+    ! Minor gas contributions might be scaled by other gas amounts; if so we need to know
+    !   the total density and whether the contribution is scaled by the partner gas
+    !   or its complement (i.e. all other gases)
+    ! Water vapor self- and foreign continua work like this, as do
+    !   all collision-induced abosption pairs
+    !
+    logical, dimension(:), allocatable :: minor_scales_with_density_lower, &
+                                          minor_scales_with_density_upper
     logical, dimension(:), allocatable :: scale_by_complement_lower, scale_by_complement_upper
     integer, dimension(:), allocatable :: idx_minor_lower,           idx_minor_upper
     integer, dimension(:), allocatable :: idx_minor_scaling_lower,   idx_minor_scaling_upper
+    !
+    ! Index into table of absorption coefficients
+    !
     integer, dimension(:), allocatable :: kminor_start_lower,        kminor_start_upper
+    !
+    ! The absorption coefficients themselves
+    !
+    real(wp), dimension(:,:,:), allocatable :: kminor_lower, kminor_upper ! kminor_lower(n_minor,eta,temperature)
+    !
     ! -----------------------------------------------------------------------------------
-    ! ----- Rayleigh scattering
-      ! stored scattering coefficients due to molecules in atmosphere;
-      ! krayl(g-point,eta,temperature,upper/lower atmosphere)
-    real(wp), dimension(:,:,:,:), allocatable :: krayl
+    !
+    ! Rayleigh scattering coefficients
+    !
+    real(wp), dimension(:,:,:,:), allocatable :: krayl ! krayl(g-point,eta,temperature,upper/lower atmosphere)
+    !
     ! -----------------------------------------------------------------------------------
     ! Planck function spectral mapping
     !   Allocated only when gas optics object is internal-source
@@ -102,6 +130,7 @@ module mo_gas_optics
     !   Allocated only when gas optics object is external-source
     !
     real(wp), dimension(:), allocatable :: solar_src ! incoming solar irradiance(g-point)
+    !
     ! -----------------------------------------------------------------------------------
     ! Ancillary
     ! -----------------------------------------------------------------------------------
@@ -115,8 +144,8 @@ module mo_gas_optics
     ! public interface
     generic,   public :: load       => load_int,       load_ext
     generic,   public :: gas_optics => gas_optics_int, gas_optics_ext
-    procedure, public :: is_internal_source_present
-    procedure, public :: is_external_source_present
+    procedure, public :: source_is_internal
+    procedure, public :: source_is_external
     procedure, public :: get_ngas
     procedure, public :: get_gases
     procedure, public :: get_press_ref_min
@@ -134,7 +163,10 @@ module mo_gas_optics
     procedure, private :: get_nlay_ref
     procedure, private :: get_neta
   end type
-  ! -----------------------------------------------------------------------------------
+  ! -------------------------------------------------------------------------------------------------
+  !
+  ! col_dry is the number of molecules per cm-2 of dry air
+  !
   public :: get_col_dry ! Utility function, not type-bound
 
   interface check_range
@@ -156,30 +188,33 @@ contains
   !
   pure function get_ngas(this)
     ! return the number of gases registered in the spectral configuration
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     integer                                        :: get_ngas
 
     get_ngas = size(this%gas_names)
   end function get_ngas
   !--------------------------------------------------------------------------------------------------------------------
+  !
+  ! return the number of distinct major gas pairs in the spectral bands (referred to as
+  ! "flavors" - all bands have a flavor even if there is one or no major gas)
+  !
   pure function get_nflav(this)
-    ! return the number of distinct major gas pairs in the spectral bands (referred to as
-    ! "flavors" - all bands have a flavor even if there is one or no major gas)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     integer                                        :: get_nflav
 
     get_nflav = size(this%flavor,dim=2)
   end function get_nflav
   !--------------------------------------------------------------------------------------------------------------------
-
+  !
   ! Compute gas optical depth and Planck source functions,
   !  given temperature, pressure, and composition
+  !
   function gas_optics_int(this,                             &
                           play, plev, tlay, tsfc, gas_desc, &
                           optical_props, sources,           &
                           col_dry, tlev) result(error_msg)
     ! inputs
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
                                                plev, &   ! level pressures [Pa, mb]; (ncol,nlay+1)
                                                tlay      ! layer temperatures [K]; (ncol,nlay)
@@ -257,15 +292,15 @@ contains
 
   end function gas_optics_int
   !------------------------------------------------------------------------------------------
-
-  ! Compute gas optical depth
-  !  given temperature, pressure, and composition
+  !
+  ! Compute gas optical depth given temperature, pressure, and composition
+  !
   function gas_optics_ext(this,                         &
                           play, plev, tlay, gas_desc,   & ! mandatory inputs
                           optical_props, toa_src,       & ! mandatory outputs
                           col_dry) result(error_msg)      ! optional input
 
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
                                                plev, &   ! level pressures [Pa, mb]; (ncol,nlay+1)
                                                tlay      ! layer temperatures [K]; (ncol,nlay)
@@ -326,7 +361,7 @@ contains
                             jtemp, jpress, jeta, tropo, fmajor, &
                             col_dry) result(error_msg)
 
-    class(ty_gas_optics_specification), &
+    class(ty_gas_optics), &
                                       intent(in   ) :: this
     integer,                          intent(in   ) :: ncol, nlay, ngpt, nband, ngas, nflav
     real(wp), dimension(:,:),         intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
@@ -478,7 +513,7 @@ contains
             ncol,nlay,ngpt,ngas,nflav,      & ! dimensions
             this%gpoint_flavor,             &
             this%krayl,                     & ! inputs from object
-            idx_h2o,col_dry_wk,col_gas,     &
+            idx_h2o, col_dry_wk,col_gas,       &
             fminor,jeta,tropo,jtemp,        & ! local input
             tau_rayleigh)
     end if
@@ -489,6 +524,9 @@ contains
 
   end function compute_gas_taus
   !------------------------------------------------------------------------------------------
+  !
+  ! Compute Planck source functions at layer centers and levels
+  !
   function source(this,                               &
                   ncol, nlay, ngpt, nbnd, nflv,       &
                   play, plev, tlay, tsfc,             &
@@ -497,7 +535,7 @@ contains
                   tlev)                               & ! optional input
                   result(error_msg)
     ! inputs
-    class(ty_gas_optics_specification),    intent(in ) :: this
+    class(ty_gas_optics),    intent(in ) :: this
     integer,                               intent(in ) :: ncol, nlay, ngpt, nbnd, nflv
     real(wp), dimension(ncol,nlay),        intent(in ) :: play   ! layer pressures [Pa, mb]
     real(wp), dimension(ncol,nlay+1),      intent(in ) :: plev   ! level pressures [Pa, mb]
@@ -587,7 +625,7 @@ contains
                     kminor_start_lower,                             &
                     kminor_start_upper,                             &
                     totplnk, planck_frac, rayl_lower, rayl_upper) result(err_message)
-    class(ty_gas_optics_specification),     intent(inout) :: this
+    class(ty_gas_optics),     intent(inout) :: this
     class(ty_gas_concs),                    intent(in   ) :: available_gases ! Which gases does the host model have available?
     character(len=*),   dimension(:),       intent(in   ) :: gas_names
     integer,            dimension(:,:,:),   intent(in   ) :: key_species
@@ -648,6 +686,7 @@ contains
   end function load_int
 
   !--------------------------------------------------------------------------------------------------------------------
+  !
   ! Initialize object based on data read from netCDF file however the user desires.
   !  Rayleigh scattering tables may or may not be present; this is indicated with allocation status
   ! This interface is for the external-sources object -- includes TOA source function table
@@ -668,7 +707,7 @@ contains
                     kminor_start_lower, &
                     kminor_start_upper, &
                     solar_src, rayl_lower, rayl_upper)  result(err_message)
-    class(ty_gas_optics_specification), intent(inout) :: this
+    class(ty_gas_optics), intent(inout) :: this
     class(ty_gas_concs),                intent(in   ) :: available_gases ! Which gases does the host model have available?
     character(len=*), &
               dimension(:),       intent(in) :: gas_names
@@ -733,6 +772,7 @@ contains
 
   end function load_ext
   !--------------------------------------------------------------------------------------------------------------------
+  !
   ! Initialize absorption coefficient arrays,
   !   including Rayleigh scattering tables if provided (allocated)
   !
@@ -756,7 +796,7 @@ contains
                            kminor_start_lower, &
                            kminor_start_upper, &
                            rayl_lower, rayl_upper) result(err_message)
-    class(ty_gas_optics_specification), intent(inout) :: this
+    class(ty_gas_optics), intent(inout) :: this
     class(ty_gas_concs),                intent(in   ) :: available_gases
     character(len=*), &
               dimension(:),       intent(in) :: gas_names
@@ -802,9 +842,8 @@ contains
     integer :: i, j, idx
     integer :: ngas
     ! --------------------------------------
-    err_message = this%ty_optical_props%init(band2gpt, band_lims_wavenum)
+    err_message = this%ty_optical_props%init(band_lims_wavenum, band2gpt)
     if(len_trim(err_message) /= 0) return
-
     !
     ! Which gases known to the gas optics are present in the host model (available_gases)?
     !
@@ -818,7 +857,6 @@ contains
     !   by the host model
     !
     ngas = count(gas_is_present)
-
     !
     ! Initialize the gas optics object, keeping only those gases known to the
     !   gas optics and also present in the host model
@@ -834,9 +872,10 @@ contains
       vmr_ref_red(:,i,:) = vmr_ref(:,idx+1,:)
     enddo
     call move_alloc(vmr_ref_red, this%vmr_ref)
-
+    !
     ! Reduce minor arrays so variables only contain minor gases that are available
     ! Reduce size of minor Arrays
+    !
     call reduce_minor_arrays(available_gases, &
                              gas_names, &
                              gas_minor,identifier_minor, &
@@ -962,14 +1001,13 @@ contains
     if(len_trim(err_message) > 0) err_message = "gas_optics: required gases" // trim(err_message) // " are not provided"
 
   end function check_key_species_present_init
-
   !------------------------------------------------------------------------------------------
   !
   ! Ensure that every key gas required by the k-distribution is
   !    present in the gas concentration object
   !
   function check_key_species_present(this, gas_desc) result(error_msg)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     class(ty_gas_concs),                intent(in) :: gas_desc
     character(len=128)                             :: error_msg
 
@@ -986,7 +1024,6 @@ contains
     if(len_trim(error_msg) > 0) error_msg = "gas_optics: required gases" // trim(error_msg) // " are not provided"
 
   end function check_key_species_present
-
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Function to define names of key and minor gases to be used by gas_optics().
@@ -994,7 +1031,7 @@ contains
   ! and are provided in ty_gas_concs.
   !
   function get_minor_list(this, gas_desc, ngas, names_spec)
-    class(ty_gas_optics_specification), intent(in)       :: this
+    class(ty_gas_optics), intent(in)       :: this
     class(ty_gas_concs), intent(in)                      :: gas_desc
     integer, intent(in)                                  :: ngas
     character(32), dimension(ngas), intent(in)           :: names_spec
@@ -1012,81 +1049,88 @@ contains
     icnt = count(gas_is_present)
     allocate(get_minor_list(icnt))
     get_minor_list(:) = pack(this%gas_names, mask=gas_is_present)
-
-
   end function get_minor_list
-
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Inquiry functions
   !
   !--------------------------------------------------------------------------------------------------------------------
-
+  !
   ! return true if initialized for internal sources, false otherwise
-  pure function is_internal_source_present(this)
-    class(ty_gas_optics_specification), intent(in) :: this
-    logical                                        :: is_internal_source_present
-    is_internal_source_present = allocated(this%totplnk).and.allocated(this%planck_frac)
-  end function is_internal_source_present
+  !
+  pure function source_is_internal(this)
+    class(ty_gas_optics), intent(in) :: this
+    logical                                        :: source_is_internal
+    source_is_internal = allocated(this%totplnk).and.allocated(this%planck_frac)
+  end function source_is_internal
   !--------------------------------------------------------------------------------------------------------------------
-
+  !
   ! return true if initialized for external sources, false otherwise
-  pure function is_external_source_present(this)
-    class(ty_gas_optics_specification), intent(in) :: this
-    logical                                        :: is_external_source_present
-    is_external_source_present = allocated(this%solar_src)
-  end function is_external_source_present
+  !
+  pure function source_is_external(this)
+    class(ty_gas_optics), intent(in) :: this
+    logical                                        :: source_is_external
+    source_is_external = allocated(this%solar_src)
+  end function source_is_external
 
   !--------------------------------------------------------------------------------------------------------------------
+  !
   ! return the gas names
+  !
   pure function get_gases(this)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     character(32), dimension(this%get_ngas())     :: get_gases
 
     get_gases = this%gas_names
   end function get_gases
   !--------------------------------------------------------------------------------------------------------------------
+  !
   ! return the minimum pressure on the interpolation grids
+  !
   pure function get_press_ref_min(this)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     real(wp)                                       :: get_press_ref_min
 
     get_press_ref_min = this%press_ref_min
   end function get_press_ref_min
 
   !--------------------------------------------------------------------------------------------------------------------
+  !
   ! return the maximum pressure on the interpolation grids
+  !
   pure function get_press_ref_max(this)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     real(wp)                                       :: get_press_ref_max
 
     get_press_ref_max = this%press_ref_max
   end function get_press_ref_max
 
   !--------------------------------------------------------------------------------------------------------------------
+  !
   ! return the minimum temparature on the interpolation grids
+  !
   pure function get_temp_ref_min(this)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     real(wp)                                       :: get_temp_ref_min
 
     get_temp_ref_min = this%temp_ref_min
   end function get_temp_ref_min
 
   !--------------------------------------------------------------------------------------------------------------------
+  !
   ! return the maximum temparature on the interpolation grids
+  !
   pure function get_temp_ref_max(this)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     real(wp)                                       :: get_temp_ref_max
 
     get_temp_ref_max = this%temp_ref_max
   end function get_temp_ref_max
-
-
   !--------------------------------------------------------------------------------------------------------------------
-  ! --- gas optical depth calculations
-  !--------------------------------------------------------------------------------------------------------------------
+  !
   ! Utility function, provided for user convenience
   ! computes column amounts of dry air using hydrostatic equation
+  !
   function get_col_dry(vmr_h2o, plev, tlay, latitude) result(col_dry)
     ! input
     real(wp), dimension(:,:), intent(in) :: vmr_h2o  ! volume mixing ratio of all gases excluding water; (ncol,nlay)
@@ -1153,7 +1197,6 @@ contains
     end do
     key_species_pair_exists = .false.
   end function key_species_pair_exists
-
   ! ---------------------------------------------------------------------------------------
   ! create flavor list --
   !   an unordered array of extent (2,:) containing all possible pairs of key species
@@ -1194,10 +1237,10 @@ contains
       end if
     end do
   end subroutine create_flavor
-
-! ---------------------------------------------------------------------------------------
-! create_idx_minor
-! create index list for extracting col_gas needed for minor gas optical depth calculations
+  ! ---------------------------------------------------------------------------------------
+  !
+  ! create index list for extracting col_gas needed for minor gas optical depth calculations
+  !
   subroutine create_idx_minor(gas_names, &
     gas_minor, identifier_minor, minor_gases_atm, idx_minor_atm)
     character(len=*), dimension(:), intent(in) :: gas_names
@@ -1221,9 +1264,10 @@ contains
 
   end subroutine create_idx_minor
 
-! ---------------------------------------------------------------------------------------
-! create_idx_minor_scaling
-! create index for special treatment in density scaling of minor gases
+  ! ---------------------------------------------------------------------------------------
+  !
+  ! create index for special treatment in density scaling of minor gases
+  !
   subroutine create_idx_minor_scaling(gas_names, &
     scaling_gas_atm, idx_minor_scaling_atm)
     character(len=*), dimension(:), intent(in) :: gas_names
@@ -1407,6 +1451,7 @@ contains
   end function key_species_pair2flavor
 
   ! ---------------------------------------------------------------------------------------
+  !
   ! create gpoint_flavor list
   !   a map pointing from each g-point to the corresponding entry in the "flavor list"
   !
@@ -1475,18 +1520,22 @@ contains
   end subroutine combine_and_reorder
 
   !--------------------------------------------------------------------------------------------------------------------
+  !
   ! return the number of reference pressure layers
+  !
   pure function get_nlay_ref(this)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     integer                                        :: get_nlay_ref
 
     get_nlay_ref = size(this%kmajor,dim=3)
   end function get_nlay_ref
 
   !--------------------------------------------------------------------------------------------------------------------
-  ! return eta dimension
+  !
+  ! return extent of eta dimension
+  !
   pure function get_neta(this)
-    class(ty_gas_optics_specification), intent(in) :: this
+    class(ty_gas_optics), intent(in) :: this
     integer                                        :: get_neta
 
     get_neta = size(this%kmajor,dim=2)
@@ -1605,6 +1654,4 @@ contains
       check_range_3D = trim(label) // ' values out of range.'
   end function check_range_3D
   !------------------------------------------------------------------------------------------
-
-
 end module mo_gas_optics

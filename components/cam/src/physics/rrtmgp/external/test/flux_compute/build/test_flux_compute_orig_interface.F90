@@ -115,8 +115,8 @@ program flux_compute
   allocate(heating_rate(ncol,nlay), bnd_heating_rate(ncol,nlay,nbnd))
   if(is_sw(input_file)) allocate(flux_dir(ncol,nlay+1), bnd_flux_dir(ncol,nlay+1,nbnd))
 
-  call stop_on_err(clouds%init(k_dist%get_band_lims_gpoint(), &
-                               k_dist%get_band_lims_wavenumber()))
+  call stop_on_err(clouds%init(k_dist%get_band_lims_wavenumber(), &
+                               k_dist%get_band_lims_gpoint()))
   call stop_on_err(clouds%alloc_2str(ncol,nlay))
     ! clouds
   clouds%tau(:,:,:) = 0._wp

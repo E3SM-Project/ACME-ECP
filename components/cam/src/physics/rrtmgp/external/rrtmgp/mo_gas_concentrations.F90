@@ -1,34 +1,37 @@
-! Module: mo_gas_desc
-
-! This code is part of
-! RRTM for GCM Applications - Parallel (RRTMGP)
+! This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 !
-! Eli Mlawer and Robert Pincus
-! Andre Wehe and Jennifer Delamere
+! Contacts: Robert Pincus and Eli Mlawer
 ! email:  rrtmgp@aer.com
 !
-! Copyright 2016,  Atmospheric and Environmental Research and
+! Copyright 2015-2018,  Atmospheric and Environmental Research and
 ! Regents of the University of Colorado.  All right reserved.
 !
 ! Use and duplication is permitted under the terms of the
 !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
-!
-! Description:  Encapsulates a collection of volume mixing ratios (concentrations) of gases.
+! -------------------------------------------------------------------------------------------------
+! Encapsulates a collection of volume mixing ratios (concentrations) of gases.
 !   Each concentration is associated with a name, normally the chemical formula.
-!   Values may be provided as scalars, 1-dimensional profiles (nlay), or 2-D fields (ncol,nlay).
+!
+! Values may be provided as scalars, 1-dimensional profiles (nlay), or 2-D fields (ncol,nlay).
 !   (nlay and ncol are determined from the input arrays; self-consistency is enforced)
-!   Values can be requested as profiles (valid only if there are no 2D fields present in the object)
+!   example:
+!   error_msg = gas_concs%set_vmr('h2o', values(:,:))
+!   error_msg = gas_concs%set_vmr('o3' , values(:)  )
+!   error_msg = gas_concs%set_vmr('co2', value      )
+!
+! Values can be requested as profiles (valid only if there are no 2D fields present in the object)
 !   or as 2D fields. Values for all columns are returned although the entire collection
 !   can be subsetted in the column dimension
+!
+! Subsets can be extracted in the column dimension
+!
 ! Functions return strings. Non-empty strings indicate an error.
-
-! example:
-!   call gas_concs%set_vmr('h2o', values(:,:))
-!   call gas_concs%set_vmr('o3' , values(:)  )
-!   call gas_concs%set_vmr('co2', value      )
+!
+! -------------------------------------------------------------------------------------------------
 
 module mo_gas_concentrations
-  use mo_rte_kind, only: wp
+  use mo_rte_kind,    only: wp
+  use mo_util_string, only: lower_case
   implicit none
   integer, parameter :: GAS_NOT_IN_LIST = -1
 
@@ -64,12 +67,13 @@ module mo_gas_concentrations
                                       set_vmr_2d
       generic,   public :: get_vmr => get_vmr_1d, &
                                       get_vmr_2d
-
       generic,   public :: get_subset => get_subset_range
   end type ty_gas_concs
 contains
   ! -------------------------------------------------------------------------------------
+  !
   ! Set concentrations --- scalar, 1D, 2D
+  !
   ! -------------------------------------------------------------------------------------
   function set_vmr_scalar(this, gas, w) result(error_msg)
     class(ty_gas_concs), intent(inout) :: this
@@ -174,7 +178,13 @@ contains
     this%gas_name(igas) = trim(gas)
   end function set_vmr_2d
   ! -------------------------------------------------------------------------------------
-  ! fill in volume mixing ratio 1D array
+  !
+  ! Return volume mixing ratio as 1D or 2D array
+  !
+  ! -------------------------------------------------------------------------------------
+  !
+  ! 1D array ( lay depdendence only)
+  !
   function get_vmr_1d(this, gas, array) result(error_msg)
     class(ty_gas_concs) :: this
     character(len=*),         intent(in ) :: gas
@@ -207,7 +217,9 @@ contains
 
   end function get_vmr_1d
   ! -------------------------------------------------------------------------------------
-  ! fill in volume mixing ratio 2D array
+  !
+  ! 2D array (col, lay)
+  !
   function get_vmr_2d(this, gas, array) result(error_msg)
     class(ty_gas_concs) :: this
     character(len=*),         intent(in ) :: gas
@@ -246,7 +258,10 @@ contains
 
   end function get_vmr_2d
   ! -------------------------------------------------------------------------------------
-  ! fill in volume mixing ratio 2D array
+  !
+  ! Extract a subset of n columns starting with column 'start'
+  !
+  ! -------------------------------------------------------------------------------------
   function get_subset_range(this, start, n, subset) result(error_msg)
     class(ty_gas_concs),      intent(in   ) :: this
     integer,                  intent(in   ) :: start, n
@@ -287,10 +302,11 @@ contains
 
   end function get_subset_range
   ! -------------------------------------------------------------------------------------
+  !
+  ! Deallocate memory
+  !
+  ! -------------------------------------------------------------------------------------
   subroutine reset(this)
-    !
-    ! Reset values to defaults
-    !
     class(ty_gas_concs), intent(inout) :: this
     ! -----------------
     integer :: i
@@ -306,14 +322,15 @@ contains
     end if
   end subroutine reset
   ! -------------------------------------------------------------------------------------
+  !
   ! Private procedures
+  !
   ! -------------------------------------------------------------------------------------
-
+  !
+  ! This routine is called when adding a new concentration if the
+  !   the gas isn't in the list already
+  !
   subroutine increase_list_size(this)
-    !
-    ! This routine is called when adding a new concentration if the
-    !   the gas isn't in the list already
-    !
     class(ty_gas_concs), intent(inout) :: this
     ! -----------------
     character(len=32), dimension(:), allocatable :: new_names
@@ -348,28 +365,6 @@ contains
       if (lower_case(trim(this%gas_name(igas))) == lower_case(trim(gas))) then
         find_gas = igas
       end if
-    end do
-  end function
-  ! -------------------------------------------------------------------------------------
-  pure function lower_case( input_string ) result( output_string )
-    !
-    ! Converts an ASCII string to all lower-case
-    !
-    character(len=*), intent(in) :: input_string
-    character(len=len(input_string)) :: output_string
-    ! ---------------
-    ! List of character for case conversion
-    character(len=26), parameter :: LOWER_CASE_CHARS = 'abcdefghijklmnopqrstuvwxyz'
-    character(len=26), parameter :: UPPER_CASE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    integer :: i, n
-    ! ---------------
-    ! Copy input string
-    output_string = input_string
-
-    ! Convert case character by character
-    do i = 1, len(output_string)
-      n = index(UPPER_CASE_CHARS, output_string(i:i))
-      if ( n /= 0 ) output_string(i:i) = LOWER_CASE_CHARS(n:n)
     end do
   end function
   ! -------------------------------------------------------------------------------------

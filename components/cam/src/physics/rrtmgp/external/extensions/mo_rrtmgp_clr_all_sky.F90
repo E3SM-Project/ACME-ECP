@@ -22,7 +22,7 @@
 module mo_rrtmgp_clr_all_sky
   use mo_rte_kind,   only: wp
   use mo_gas_optics, &
-                        only: ty_gas_optics_specification
+                        only: ty_gas_optics
   use mo_gas_concentrations, &
                         only: ty_gas_concs
   use mo_optical_props, only: ty_optical_props, &
@@ -47,7 +47,7 @@ contains
                      t_sfc, sfc_emis, cloud_props,           &
                      allsky_fluxes, clrsky_fluxes,           &
                      aer_props, col_dry, t_lev, inc_flux, n_gauss_angles) result(error_msg)
-    type(ty_gas_optics_specification), intent(in   ) :: k_dist       !< derived type with spectral information
+    type(ty_gas_optics), intent(in   ) :: k_dist       !< derived type with spectral information
     type(ty_gas_concs),                intent(in   ) :: gas_concs    !< derived type encapsulating gas concentrations
     real(wp), dimension(:,:),          intent(in   ) :: p_lay, t_lay !< pressure [Pa], temperature [K] at layer centers (ncol,nlay)
     real(wp), dimension(:,:),          intent(in   ) :: p_lev        !< pressure at levels/interfaces [Pa] (ncol,nlay+1)
@@ -124,10 +124,8 @@ contains
         nstr = size(cloud_props%tau,1)
     end select
 
-    !call stop_on_err(optical_props%init(k_dist))
     error_msg = optical_props%init(k_dist)
-    if (error_msg /= '') return
-
+    if(len_trim(error_msg) > 0) return
     select type (optical_props)
       class is (ty_optical_props_1scl) ! No scattering
         error_msg = optical_props%alloc_1scl(ncol, nlay)
@@ -156,13 +154,7 @@ contains
     ! ----------------------------------------------------
     ! Clear sky is gases + aerosols (if they're supplied)
     !
-    if(present(aer_props)) then
-      if(aer_props%get_ngpt() == ngpt) then
-        error_msg = aer_props%increment(optical_props)
-      else
-        error_msg = aer_props%increment(optical_props, k_dist%get_band_lims_gpoint())
-      end if
-    end if
+    if(present(aer_props)) error_msg = aer_props%increment(optical_props)
     if(error_msg /= '') return
 
     error_msg = base_rte_lw(optical_props, top_at_1, sources, &
@@ -172,11 +164,7 @@ contains
     ! ------------------------------------------------------------------------------------
     ! All-sky fluxes = clear skies + clouds
     !
-    if(cloud_props%get_ngpt() == ngpt) then
-      error_msg = cloud_props%increment(optical_props)
-    else
-      error_msg = cloud_props%increment(optical_props, k_dist%get_band_lims_gpoint())
-    end if
+    error_msg = cloud_props%increment(optical_props)
     if(error_msg /= '') return
 
     error_msg = base_rte_lw(optical_props, top_at_1, sources, &
@@ -190,7 +178,7 @@ contains
                                  mu0, sfc_alb_dir, sfc_alb_dif, cloud_props, &
                                  allsky_fluxes, clrsky_fluxes,           &
                                  aer_props, col_dry, inc_flux, tsi_scaling) result(error_msg)
-    type(ty_gas_optics_specification), intent(in   ) :: k_dist       !< derived type with spectral information
+    type(ty_gas_optics), intent(in   ) :: k_dist       !< derived type with spectral information
     type(ty_gas_concs),                intent(in   ) :: gas_concs    !< derived type encapsulating gas concentrations
     real(wp), dimension(:,:),          intent(in   ) :: p_lay, t_lay !< pressure [Pa], temperature [K] at layer centers (ncol,nlay)
     real(wp), dimension(:,:),          intent(in   ) :: p_lev        !< pressure at levels/interfaces [Pa] (ncol,nlay+1)
@@ -268,10 +256,9 @@ contains
         nstr = cloud_props%get_nmom()
     end select
 
-    error_msg = optical_props%init(k_dist%get_band_lims_gpoint(), &
-                                   k_dist%get_band_lims_wavenumber())
-    if (error_msg /= '') return
-
+    error_msg = optical_props%init(k_dist%get_band_lims_wavenumber(), &
+                                   k_dist%get_band_lims_gpoint())
+    if(len_trim(error_msg) > 0) return
     select type (optical_props)
       class is (ty_optical_props_1scl) ! No scattering
         error_msg = optical_props%alloc_1scl(ncol, nlay)
@@ -300,13 +287,7 @@ contains
     ! ----------------------------------------------------
     ! Clear sky is gases + aerosols (if they're supplied)
     !
-    if(present(aer_props)) then
-      if(aer_props%get_ngpt() == ngpt) then
-        error_msg = aer_props%increment(optical_props)
-      else
-        error_msg = aer_props%increment(optical_props, k_dist%get_band_lims_gpoint())
-      end if
-    end if
+    if(present(aer_props)) error_msg = aer_props%increment(optical_props)
     if(error_msg /= '') return
 
     error_msg = base_rte_sw(optical_props, top_at_1, &
@@ -318,11 +299,7 @@ contains
     ! ------------------------------------------------------------------------------------
     ! All-sky fluxes = clear skies + clouds
     !
-    if(cloud_props%get_ngpt() == ngpt) then
-      error_msg = cloud_props%increment(optical_props)
-    else
-      error_msg = cloud_props%increment(optical_props, k_dist%get_band_lims_gpoint())
-    end if
+    error_msg = cloud_props%increment(optical_props)
     if(error_msg /= '') return
 
     error_msg = base_rte_sw(optical_props, top_at_1,  &

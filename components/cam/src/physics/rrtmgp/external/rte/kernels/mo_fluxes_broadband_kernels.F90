@@ -1,7 +1,6 @@
 ! This code is part of Radiative Transfer for Energetics (RTE)
 !
-! Eli Mlawer and Robert Pincus
-! Andre Wehe and Jennifer Delamere
+! Contacts: Robert Pincus and Eli Mlawer
 ! email:  rrtmgp@aer.com
 !
 ! Copyright 2015-2018,  Atmospheric and Environmental Research and
@@ -9,9 +8,11 @@
 !
 ! Use and duplication is permitted under the terms of the
 !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
+! -------------------------------------------------------------------------------------------------
 !
 ! Kernels for computing broadband fluxes by summing over all elements in the spectral dimension
 !
+! -------------------------------------------------------------------------------------------------
 module mo_fluxes_broadband_kernels
   use, intrinsic :: iso_c_binding
   use mo_rte_kind, only: wp
@@ -22,7 +23,6 @@ module mo_fluxes_broadband_kernels
   interface net_broadband
     module procedure net_broadband_full, net_broadband_precalc
   end interface net_broadband
-
 contains
   ! ----------------------------------------------------------------------------
     !
@@ -75,6 +75,9 @@ contains
     end do
   end subroutine net_broadband_full
   ! ----------------------------------------------------------------------------
+  !
+  ! Net flux when bradband flux up and down are already available
+  !
   pure subroutine net_broadband_precalc(ncol, nlay, flux_dn, flux_up, broadband_flux_net) &
     bind(C, name="net_broadband_precalc")
     integer,                         intent(in ) :: ncol, nlay
@@ -83,4 +86,5 @@ contains
 
     broadband_flux_net(1:ncol,1:nlay) = flux_dn(1:ncol,1:nlay) - flux_up(1:ncol,1:nlay)
   end subroutine net_broadband_precalc
+  ! ----------------------------------------------------------------------------
 end module mo_fluxes_broadband_kernels
