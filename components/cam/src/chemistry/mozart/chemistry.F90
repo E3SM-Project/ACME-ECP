@@ -1334,7 +1334,7 @@ end function chem_is_active
 
   end subroutine chem_timestep_init
 
-  subroutine chem_timestep_tend( state, ptend, cam_in, cam_out, dt, pbuf,  fh2o, fsds )
+  subroutine chem_timestep_tend( state, ptend, cam_in, cam_out, dt, pbuf,  fh2o)
 
 !----------------------------------------------------------------------- 
 ! 
@@ -1349,7 +1349,7 @@ end function chem_is_active
 ! 
 !-----------------------------------------------------------------------
 
-    use physics_buffer,      only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,      only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx, pbuf_get_index
     use cam_history,         only : outfld
     use time_manager,        only : get_curr_calday
     use chem_mods,           only : gas_pcnst
@@ -1377,7 +1377,6 @@ end function chem_is_active
     
 
     type(physics_buffer_desc), pointer :: pbuf(:)
-    real(r8),            intent(in)    :: fsds(pcols)     ! longwave down at sfc
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -1397,6 +1396,7 @@ end function chem_is_active
     real(r8), pointer :: cmfdqr(:,:)
     real(r8), pointer :: nevapr(:,:)
     real(r8), pointer :: cldtop(:)
+    real(r8), pointer :: fsds(:)     ! longwave down at sfc
 
     integer :: tim_ndx
 
@@ -1456,6 +1456,7 @@ end function chem_is_active
     end do
 
     call t_startf( 'chemdr' )
+    call pbuf_get_field(pbuf, pbuf_get_index('FSDS'), fsds)
     call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
                           state%phis, state%zm, state%zi, calday, &
                           state%t, state%pmid, state%pdel, state%pint, &
