@@ -498,7 +498,7 @@ end function radiation_nextsw_cday
 !===============================================================================
 
   subroutine radiation_tend(state, ptend, pbuf, cam_out, cam_in, &
-                            net_flx, is_cmip6_volc)
+                            net_flx)
 
     !-----------------------------------------------------------------------
     !
@@ -548,7 +548,6 @@ end function radiation_nextsw_cday
 
 
     ! Arguments
-    logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false
     real(r8), intent(inout) :: net_flx(pcols)
 
     type(physics_state), intent(in), target :: state
@@ -1045,7 +1044,7 @@ end function radiation_nextsw_cday
    
           ! Get aerosol radiative properties.
           call t_startf('aero_optics_sw')
-          call aer_rad_props_sw(0, state, pbuf,  nnite, idxnite, is_cmip6_volc, &
+          call aer_rad_props_sw(0, state, pbuf,  nnite, idxnite, &
                aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
           call t_stopf('aero_optics_sw')
 
@@ -1363,7 +1362,7 @@ end function radiation_nextsw_cday
 
           ! absems requires lw absorption optical depth and transmission through aerosols
           call t_startf('aero_optics_lw')
-          if (doabsems) call aer_rad_props_lw(is_cmip6_volc, 0, state, pbuf,  odap_aer)
+          if (doabsems) call aer_rad_props_lw(0, state, pbuf,  odap_aer)
           call t_stopf('aero_optics_lw')
 
           call radclwmx(lchnk, ncol, doabsems, &
