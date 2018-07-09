@@ -2748,6 +2748,37 @@ end if
     if (use_SPCAM) then
       !!! Recall the state after dynamics
       call crm_remember_state_tend(state, tend, pbuf)
+      !---------------------------------------------------------------------------
+      !---------------------------------------------------------------------------
+      ! The surface flux bypass option was originally used by Mike Pritchard (UCI)
+      ! Without this byoass the surface flux tendencies are applied to the lowest 
+      ! layer of the GCM state without being diffused vertically by PBL turbulence. 
+      ! This was intentional (confirmed by Marat). This bypass applies the surface 
+      ! fluxes after the dycor and prior to running the CRM (the tendency addition 
+      ! in diffusion_solver.F90 is disabled). This is a more natural progression 
+      ! and does not expose the GCM dynamical core to unrealistic gradients.
+      !------------------------------------------------------------------------------------------
+      !------------------------------------------------------------------------------------------
+#if defined( SP_FLUX_BYPASS )
+      ! only sensible and latent heat fluxes are affected
+      lq(:) = .false.
+      lq(1) = .true.
+      call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', lu=.false., lv=.false., ls=.true., lq=lq)
+      ptend%name  = "SP_FLUX_BYPASS - tphysbc"
+      ptend%lu    = .false.
+      ptend%lv    = .false.
+      ptend%lq    = .false. 
+      ptend%ls    = .true.
+      ptend%lq(1) = .true.
+      do i=1,ncol
+         tmp1 = gravit * state%rpdel(i,pver)             ! note : rpdel = 1./pdel
+         ptend%s(i,:)   = 0.
+         ptend%q(i,:,1) = 0.
+         ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+         ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
+      end do
+      call physics_update(state, ptend, ztodt, tend)   
+#endif
       !!! Run the CRM 
       phys_stage = 1  ! for tphysbc() => phys_stage = 1
       call crm_physics_tend(ztodt, state, tend,         &

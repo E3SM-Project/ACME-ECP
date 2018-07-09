@@ -904,45 +904,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
 ! Author: Marat Khairoutdinov (mkhairoutdin@ms.cc.sunysb.edu)
 !========================================================
 
-   !------------------------------------------------------------------------------------------
-   !------------------------------------------------------------------------------------------
-   ! whannah - The flux bypass option was originally implemented by Mike Pritchard (UCI)
-   ! Without this bypass the surface flux tendencies are applied to the GCM dynamical core 
-   ! as a perturbation tendency concentrated on just the lowest model layer instead of first 
-   ! before being diffused vertically by the boundary layer turbulence as occurs without SP, 
-   ! and was intended to be the case under SP (confirmed by Marat). This fix applies the 
-   ! surface fluxes of dry static energy and water vapor prior to running the CRM, and disables 
-   ! the tendency addition in diffusion_solver.F90. This is a more natural progression
-   ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
-   ! note : rpdel = 1./pdel
-   ! SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
-   !------------------------------------------------------------------------------------------
-   !------------------------------------------------------------------------------------------
-#if defined( SP_FLUX_BYPASS )
-   lchnk = state%lchnk
-   ncol  = state%ncol
-   
-   lq(:) = .false.
-   lq(1) = .true.
-   call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', lu=.false., lv=.false., ls=.true., lq=lq)
-   ptend%name  = "SP_FLUX_BYPASS - tphysbc"
-   ptend%lu    = .false.
-   ptend%lv    = .false.
-   ptend%lq    = .false. 
-   ptend%ls    = .true.
-   ptend%lq(1) = .true.
-   do i=1,ncol
-      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
-      ptend%s(i,:)   = 0.
-      ptend%q(i,:,1) = 0.
-      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
-   end do
-   ! call physics_update(state_save, ptend, ztodt, tend)    ! use state_save since the state gets reset to this below
-   call physics_update(state, ptend, ztodt, tend)   
-#endif
-
-
    call t_startf ('crm')
 
    lu = .true. 
