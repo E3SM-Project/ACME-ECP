@@ -72,73 +72,13 @@ contains
     else
       call shear_prod2D(def2)
     endif
-
-    !!! whannah - not sure what to do about this first time step block - brought over from SAM6.11
-    !!! the SP_TK_LIM option already guarantees non-zero tke at the surface - so I don't think we need Blossey's code
-
-    ! if((nstep.eq.1).AND.(icycle.eq.1)) then
-    !   !bloss(2016-05-09): At start of simulation, make sure that subgrid TKE
-    !   !   is non-zero at surface if surface buoyancy fluxes are positive.
-    !   !   If they are, compute the TKE implied by local equilibrium between
-    !   !   turbulence production by the surface fluxes and dissipation.  Take
-    !   !   the initial TKE in the lowest level to be the larger of that and the 
-    !   !   initial value.  Since the present values of TKE, eddy viscosity and eddy
-    !   !   diffusivity are used in computing the new values, it is
-    !   !   important for them not to be zero initially if the buoyancy
-    !   !   flux is non-zero initially.
-
-    !   k = 1
-    !   do j = 1,ny
-    !     do i = 1,nx
-    !       !bloss: compute suface buoyancy flux
-    !       bbb = 1.+epsv*qv(i,j,k)
-    !       a_prod_bu_below(i,j) = bbb*bet(k)*fluxbt(i,j) + bet(k)*epsv*(t00+sstxy(i,j))*fluxbq(i,j) 
-      
-    !       grd=dz*adz(k)
-    !       Pr=1. 
-    !       Ce1=Ce/0.7*0.19
-    !       Ce2=Ce/0.7*0.51
-    !       Cee=Ce1+Ce2
-
-    !       ! Choose the subgrid TKE to be the larger of the initial value or
-    !       !   that which satisfies local equilibrium, buoyant production = dissipation
-    !       !   or a_prod_bu = Cee/grd * tke^(3/2).
-    !       !   NOTE: We're ignoring shear production here.
-    !       tke(i,j,1) = MAX( tke(i,j,1), &
-    !                         ( grd/Cee * MAX(1.e-20, 0.5*a_prod_bu_below(i,j) ) )**(2./3.) )
-
-    !       ! eddy viscosity = Ck*grd * sqrt(tke) --- analogous for Smagorinksy.
-    !       tk(i,j,1) = Ck*grd * SQRT( tke(i,j,1) )
-
-    !       ! eddy diffusivity = Pr * eddy viscosity
-    !       tkh(i,j,1) = Pr*tk(i,j,1)
-    !     end do
-    !   end do
-
-    ! end if ! if(nstep.eq.1.AND.icycle.eq.1)
-
-    !!! whannah - also commenting this out because we don't deal with surface fluxes directly for SP
-    !!! instead we'll just initialize surface buoyancy flux to zero
+    
+    !!! initialize surface buoyancy flux to zero
     a_prod_bu_below(:,:) = real(0.0,crm_rknd)
     buoy_sgs_below(:,:) = real(0.0,crm_rknd)
 
     !-----------------------------------------------------------------------
-    ! compute subgrid buoyancy flux at w-levels, starting with surface buoyancy flux
-    !-----------------------------------------------------------------------
-    ! k = 1
-    ! do j = 1,ny
-    !   do i = 1,nx
-    !     !bloss: Use SST along with surface vapor mixing ratio.  This is slightly inconsistent, 
-    !     !  but the error is small, and it's cheaper than another saturation mixing ratio computation.
-    !     bbb = 1.+epsv*qv(i,j,k)
-    !     a_prod_bu_below(i,j) = bbb*bet(k)*fluxbt(i,j) + bet(k)*epsv*(t00+sstxy(i,j))*fluxbq(i,j) 
-    !     ! back buoy_sgs out from buoyancy flux, a_prod_bu = - (tkh(i,j,k)+0.001)*buoy_sgs
-    !     buoy_sgs_below(i,j) = - a_prod_bu_below(i,j)/(tkh(i,j,k)+0.001)
-    !   end do
-    ! end do
-
-    !-----------------------------------------------------------------------
-    ! now compute SGS quantities in interior of domain.
+    ! compute SGS buoyancy flux at w-levels and SGS quantities in interior of domain
     !-----------------------------------------------------------------------
     do k = 1,nzm
       if (k.lt.nzm) then
