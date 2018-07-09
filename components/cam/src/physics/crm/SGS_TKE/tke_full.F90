@@ -36,11 +36,10 @@ subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd), intent(out), dimension(nz) :: tkesbshear  ! TKE production by shear
   real(crm_rknd), intent(out), dimension(nz) :: tkesbbuoy   ! TKE production by buoyancy
 
-  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: 
-    tke, &   ! SGS TKE
-    tk , &   ! SGS eddy viscosity
-    tkh      ! SGS eddy conductivity
-
+  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: tke   ! SGS TKE
+  real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) :: tk    ! SGS eddy viscosity
+  real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) :: tkh   ! SGS eddy conductivity
+  
   !-----------------------------------------------------------------------
   !!! Local Variables
   real(crm_rknd), dimension(nx,ny,nzm) :: def2
