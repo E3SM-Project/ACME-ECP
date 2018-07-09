@@ -473,7 +473,10 @@ subroutine sgs_proc()
 
   !    SGS TKE equation:
 
-  if(dosgs) call tke_full(tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh, dimx1_d, dimx2_d, dimy1_d, dimy2_d, dosmagor)
+  if(dosgs) call tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
+                          grdf_x, grdf_y, grdf_z, dosmagor,   &
+                          tkesbdiss, tkesbshear, tkesbbuoy,   &
+                          tke, tk, tkh)
 
   tke2 = tke
   tk2 = tk
