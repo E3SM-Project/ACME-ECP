@@ -10,7 +10,8 @@ contains
 
 subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                     grdf_x, grdf_y, grdf_z, dosmagor,     &
-                    tkesbdiss, tkesbshear, tkesbbuoy, tke, tk, tkh)
+                    tkesbdiss, tkesbshear, tkesbbuoy,     &
+                    tke, tk, tkh)
   !-----------------------------------------------------------------------
   ! Purpose: solve the TKE equation
   !-----------------------------------------------------------------------
@@ -22,23 +23,24 @@ subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
   !-----------------------------------------------------------------------
   !!! Interface Arguments
-  integer       , intent(in)                 :: dimx1_d
-  integer       , intent(in)                 :: dimx2_d
-  integer       , intent(in)                 :: dimy1_d
-  integer       , intent(in)                 :: dimy2_d
-  real(crm_rknd), intent(in), dimension(nzm) :: grdf_x
-  real(crm_rknd), intent(in), dimension(nzm) :: grdf_y
-  real(crm_rknd), intent(in), dimension(nzm) :: grdf_z
-  logical       , intent(in)                 :: dosmagor
+  integer       , intent(in)                 :: dimx1_d     ! scalar dimension parameter
+  integer       , intent(in)                 :: dimx2_d     ! scalar dimension parameter
+  integer       , intent(in)                 :: dimy1_d     ! scalar dimension parameter
+  integer       , intent(in)                 :: dimy2_d     ! scalar dimension parameter
+  real(crm_rknd), intent(in), dimension(nzm) :: grdf_x      ! grid length in x direction
+  real(crm_rknd), intent(in), dimension(nzm) :: grdf_y      ! grid length in y direction
+  real(crm_rknd), intent(in), dimension(nzm) :: grdf_z      ! grid length in z direction
+  logical       , intent(in)                 :: dosmagor    ! flag for diagnostic smagorinsky scheme
 
-  real(crm_rknd), intent(out), dimension(nz) :: tkesbdiss
-  real(crm_rknd), intent(out), dimension(nz) :: tkesbshear
-  real(crm_rknd), intent(out), dimension(nz) :: tkesbbuoy
-  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: tke   ! SGS TKE
-  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: tk    ! SGS eddy viscosity
-  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: tkh   ! SGS eddy conductivity
-  
-  
+  real(crm_rknd), intent(out), dimension(nz) :: tkesbdiss   ! TKE dissipation
+  real(crm_rknd), intent(out), dimension(nz) :: tkesbshear  ! TKE production by shear
+  real(crm_rknd), intent(out), dimension(nz) :: tkesbbuoy   ! TKE production by buoyancy
+
+  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: 
+    tke, &   ! SGS TKE
+    tk , &   ! SGS eddy viscosity
+    tkh      ! SGS eddy conductivity
+
   !-----------------------------------------------------------------------
   !!! Local Variables
   real(crm_rknd), dimension(nx,ny,nzm) :: def2
@@ -113,7 +115,7 @@ subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   ! compute SGS buoyancy flux at w-levels and SGS quantities in interior of domain
   !-----------------------------------------------------------------------
   do k = 1,nzm
-  
+
     if (k.lt.nzm) then
       kc = k+1
       kb = k
