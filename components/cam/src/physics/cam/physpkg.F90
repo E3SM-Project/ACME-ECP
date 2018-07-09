@@ -2740,14 +2740,17 @@ end if
 #endif /* SP_PHYS_BYPASS */ 
 
 
-    !======================================================================================
-    !--------------------------------------------------------------------------------------
-    ! CRM Physics
-    !--------------------------------------------------------------------------------------
-    !======================================================================================
-    if (use_SPCAM) then
-      !!! Recall the state after dynamics
+   !======================================================================================
+   !--------------------------------------------------------------------------------------
+   ! CRM Physics
+   !--------------------------------------------------------------------------------------
+   !======================================================================================
+   if (use_SPCAM) then
+      !---------------------------------------------------------------------------
+      ! Recall the state after dynamics
+      !---------------------------------------------------------------------------
       call crm_remember_state_tend(state, tend, pbuf)
+
       !---------------------------------------------------------------------------
       !---------------------------------------------------------------------------
       ! The surface flux bypass option was originally used by Mike Pritchard (UCI)
@@ -2779,16 +2782,99 @@ end if
       end do
       call physics_update(state, ptend, ztodt, tend)   
 #endif
-      !!! Run the CRM 
+
+      !---------------------------------------------------------------------------
+      ! Run the CRM 
+      !---------------------------------------------------------------------------
       phys_stage = 1  ! for tphysbc() => phys_stage = 1
       call crm_physics_tend(ztodt, state, tend,         &
                             ptend, pbuf,                &
                             cam_in, cam_out,            &
                             species_class, phys_stage)
-    endif
-    !======================================================================================
-    !--------------------------------------------------------------------------------------
-    !======================================================================================
+
+      !---------------------------------------------------------------------------
+      ! Modal aerosol wet radius for radiative calculation
+      !---------------------------------------------------------------------------
+#if defined(MODAL_AERO)  
+      !!! temporarily turn on all lq, so it is allocated
+      lq(:) = .true.
+      call physics_ptend_init(ptend, state%psetcols, 'crm_physics', lq=lq)
+
+      !!! set all ptend%lq to false as they will be set in modal_aero_calcsize_sub
+      ptend%lq(:) = .false.
+      call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
+      call modal_aero_wateruptake_dr(state, pbuf)
+
+      ! When ECPP is included, wet deposition is done ECPP,
+      ! So tendency from wet depostion is not updated 
+      ! in mz_aero_wet_intr (mz_aerosols_intr.F90)
+      ! tendency from other parts of crmclouds_aerosol_wet_intr() are still updated here.
+      call physics_update (state, ptend, crm_run_time, tend)
+#endif /* MODAL_AERO */
+      !---------------------------------------------------------------------------
+      ! CRM Bulk Calculations (i.e. ECPP-lite) 
+      !---------------------------------------------------------------------------
+#if defined( SP_CRM_BULK )
+      ! !!! aerosol tendency from droplet activation and mixing
+      ! call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
+      !                             cam_in%cflx, pblh,                &
+      !                             wwqui_cen, wwqui_cloudy_cen,      &
+      !                             wwqui_bnd, wwqui_cloudy_bnd,      &
+      !                             species_class)
+      ! call physics_update(state, ptend, crm_run_time, tend)
+#endif /* SP_CRM_BULK */
+
+      !---------------------------------------------------------------------------
+      ! ECPP - Explicit-Cloud Parameterized-Pollutant
+      !---------------------------------------------------------------------------
+#if defined(ECPP)
+      if (use_ECPP) then
+         pblh_idx  = pbuf_get_index('pblh')
+         call pbuf_get_field(pbuf, pblh_idx, pblh)
+       
+         dtstep_pp = dtstep_pp_input
+#if defined( SP_CRM_SPLIT )
+         necpp = dtstep_pp/(ztodt*0.5)
+#else
+         necpp = dtstep_pp/ztodt
+#endif /* SP_CRM_SPLIT */
+
+         if (nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
+
+            !!! aerosol tendency from droplet activation and mixing
+            !!! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
+            !!! So only turbulence mixing is done here.
+            call t_startf('crmclouds_mixnuc')
+            call crmclouds_mixnuc_tend(state, ptend, dtstep_pp,     &
+                                       cam_in%cflx, pblh, pbuf,     &
+                                       wwqui_cen, wwqui_cloudy_cen, &
+                                       wwqui_bnd, wwqui_cloudy_bnd, &
+                                       species_class)
+            call physics_update(state, ptend, dtstep_pp, tend)
+            call t_stopf('crmclouds_mixnuc')
+
+            !!! ECPP interface
+            call t_startf('ecpp')
+            call parampollu_driver2(state, ptend, pbuf,     &
+                                    dtstep_pp, dtstep_pp,   &
+                                    acen, abnd,             &
+                                    acen_tf, abnd_tf,       &
+                                    massflxbnd, rhcen,      &
+                                    qcloudcen, qlsinkcen,   &
+                                    precrcen, precsolidcen, &
+                                    acldy_cen_tbeg)
+            call physics_update(state, ptend, dtstep_pp, tend)
+            call t_stopf ('ecpp')
+         end if ! nstep.ne.0 .and. mod(nstep, necpp).eq.0
+
+      end if ! use_ECPP
+#endif /* ECPP */
+      !---------------------------------------------------------------------------
+      !---------------------------------------------------------------------------
+   end if ! use_SPCAM
+   !======================================================================================
+   !--------------------------------------------------------------------------------------
+   !======================================================================================
 
 
 ! #if defined( SP_PHYS_BYPASS )
@@ -2829,7 +2915,9 @@ end if
           sh_e_ed_ratio = 0.0_r8
         endif
 #if defined( SP_CRM_BULK )
-        ! Do something
+         ! !!!  wet scavenging of aerosols
+         ! call crm_bulk_aero_wet_dep_scav()
+         ! call physics_update(state, ptend, crm_run_time, tend)
 #else
         call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,      & !Intent-ins
             mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&

@@ -2189,92 +2189,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
     enddo
     !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 
-    !----------------------------------------------------
-    ! Modal aerosol wet radius for radiative calculation
-    !----------------------------------------------------
-! whannah - added ifdef check for MODAL_AERO so 1-moment w/o modal aerosols will compile
-#if defined(MODAL_AERO)  
-    !==Guangxing Lin - temporarily turn on all lq, so it is allocated
-    lq(:) = .true.
-    call physics_ptend_init(ptend, state%psetcols, 'crm_physics', lq=lq)
-
-    ! set all ptend%lq to false as they will be set in modal_aero_calcsize_sub
-    ptend%lq(:) = .false.
-    call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
-    call modal_aero_wateruptake_dr(state, pbuf)
-
-    ! When ECPP is included, wet deposition is done ECPP,
-    ! So tendency from wet depostion is not updated in mz_aero_wet_intr (mz_aerosols_intr.F90)
-    ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
-    call physics_update (state, ptend, crm_run_time, tend)
-#endif
+    
   
-    !----------------------------------------------------
-    ! CRM Bulk Calculations (i.e. ECPP-lite)
-    !----------------------------------------------------
-#if defined( SP_CRM_BULK )
-  
-    !!! Note: ptend initialization done within crm_bulk_*() routines - whannah
 
-    !!! calculate aerosol tendency from droplet activation and mixing
-    ! call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
-    !                             cam_in%cflx, pblh,                &
-    !                             wwqui_cen, wwqui_cloudy_cen,      &
-    !                             wwqui_bnd, wwqui_cloudy_bnd,      &
-    !                             species_class)
-    ! call physics_update(state, ptend, crm_run_time, tend)
-
-    !!! calculate wet scavenging of aerosols
-    ! call crm_bulk_aero_wet_dep_scav()
-    ! call physics_update(state, ptend, crm_run_time, tend)
-
-    ! !!! calculate bulk transport tendencies
-    ! call crm_bulk_transport(state, pbuf, ptend)
-    ! call physics_update (state, ptend, crm_run_time, tend)
-
-#endif /* SP_CRM_BULK */
-    !----------------------------------------------------
-    ! ECPP - Explicit-Cloud Parameterized-Pollutant
-    ! Use CRM cloud statistics to calculate 
-    ! pollutant transport and chemistry
-    !----------------------------------------------------
-
-#ifdef ECPP
-    if (use_ECPP) then
-
-      pblh_idx  = pbuf_get_index('pblh')
-      call pbuf_get_field(pbuf, pblh_idx, pblh)
-      
-      dtstep_pp = dtstep_pp_input
-#if defined( SP_CRM_SPLIT )
-      necpp = dtstep_pp/(ztodt*0.5)
-#else
-      necpp = dtstep_pp/ztodt
-#endif
-      if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
-
-        ! calculate aerosol tendency from droplet activation and mixing
-        ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
-        ! So only turbulence mixing is done here.
-        call t_startf('crmclouds_mixnuc')
-        call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
-                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class
-        call physics_update(state, ptend, dtstep_pp, tend)
-        call t_stopf('crmclouds_mixnuc')
-
-        ! ECPP interface
-
-        call t_startf('ecpp')
-        call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
-           acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
-           rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
-
-        call physics_update(state, ptend, dtstep_pp, tend)
-
-        call t_stopf ('ecpp')
-      end if
-    endif ! use_ECPP
-#endif /* ECPP */
+    
 
     call t_stopf('bc_aerosols_mmf')
 
