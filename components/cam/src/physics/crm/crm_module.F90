@@ -48,14 +48,14 @@ module crm_module
 
       ! NOTE: these were intent(inout) before, so these need to persist across calls; pointers so
       ! they can be used without making a bunch of temporary arrays. Dimensions should be
-      ! (ncrms,crm_nx,crm_ny,crm_nz)
+      ! (pcols,crm_nx,crm_ny,crm_nz)
       real(crm_rknd), pointer :: u_wind(:,:,:,:)       ! CRM u-wind component
       real(crm_rknd), pointer :: v_wind(:,:,:,:)       ! CRM v-wind component
       real(crm_rknd), pointer :: w_wind(:,:,:,:)       ! CRM w-wind component
       real(crm_rknd), pointer :: temperature(:,:,:,:)  ! CRM temperuture
 
-      ! TODO: is there a better way of interfacing with the microphysics than this awkward array?
-      !real(crm_rknd), allocatable :: micro_fields(:,:,:,:,:) ! CRM total water
+      ! Microphysics
+      ! NOTE: These are terrible variable names...replace with more descriptive names.
 #ifdef m2005
       real(crm_rknd), pointer :: qt(:,:,:,:) 
       real(crm_rknd), pointer :: nc(:,:,:,:)
@@ -78,6 +78,7 @@ module crm_module
       ! Type-bound procedures. Initialization should nullify fields
       procedure, public :: initialize=>crm_state_initialize
       procedure, public :: finalize=>crm_state_finalize
+      !procedure, public :: dump=>crm_state_dump
 
    end type crm_state_type
 
@@ -105,6 +106,18 @@ module crm_module
 
 !  type crm_diagnostic_type
 !  end type crm_diagnostic_type
+
+   type, public :: crm_output_type
+      ! Derived type to encapsulate CRM output fields (things that are either
+      ! time-averaged, have reduced spatial dimensions, or both)
+      real(crm_rknd), allocatable :: crm_tk (:,:,:,:)
+      real(crm_rknd), allocatable :: crm_tkh(:,:,:,:)
+
+   contains
+      procedure, public :: initialize=>crm_output_initialize
+      procedure, public :: finalize=>crm_output_finalize
+   end type crm_output_type
+
 contains
 
    !------------------------------------------------------------------------------------------------
@@ -168,6 +181,23 @@ contains
    end subroutine crm_state_finalize
    !------------------------------------------------------------------------------------------------
 
+   !------------------------------------------------------------------------------------------------
+   ! Type-bound procedures for crm_output_type
+   subroutine crm_output_initialize(this, ncrms)
+      class(crm_output_type), intent(inout) :: this
+      integer, intent(in) :: ncrms
+
+      allocate(crm_tk (ncrms,crm_nx, crm_ny, crm_nz))
+      allocate(crm_tkh(ncrms,crm_nx, crm_ny, crm_nz))
+   end subroutine crm_output_initialize
+   !------------------------------------------------------------------------------------------------
+   subroutine crm_output_finalize(this)
+      class(crm_output_type), intent(inout) :: this
+
+      deallocate(crm_tk )
+      deallocate(crm_tkh)
+   end subroutine crm_output_finalize
+   !------------------------------------------------------------------------------------------------
 
 subroutine crm(lchnk, icol, ncrms, phys_stage, &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
@@ -344,6 +374,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif /* CLUBB_CRM */
     real(r8), intent(  out) :: crm_tk              (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: crm_tkh             (ncrms,crm_nx, crm_ny, crm_nz)
+
+    ! These should be intent out and initialized and set here, rather than
+    ! initialized in crm_physics_tend()
     real(r8), intent(inout) :: cltot               (ncrms)                        ! shaded cloud fraction
     real(r8), intent(inout) :: clhgh               (ncrms)                        ! shaded cloud fraction
     real(r8), intent(inout) :: clmed               (ncrms)                        ! shaded cloud fraction
@@ -363,21 +396,20 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
     real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
     real(r8), intent(  out) :: cld3d_crm           (ncrms,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
-    ! real(r8), intent(  out) :: t_rad               (ncrms,crm_nx, crm_ny, crm_nz) ! rad temperuture
-    ! real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad vapor
-    ! real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud water
-    ! real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice
-    ! real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud fraction
+
+    ! Quantities used by the radiation code. Note that these are strange in that they are 
+    ! time-averages, but spatially-resolved.
+    ! TODO: can these be instantaneous fields from the end of the CRM run instead? Or would it be
+    ! better to leave them as time averages, but apply an overlap assumption to the individual
+    ! columns, since the clouds could be "smeared out" by the time averaging? This may be especially
+    ! true when using a reduced grid for the radiation (crm_nx_rad < crm_nx), since in this case
+    ! spatial averaging is done as well.
     real(r8), intent(  out) :: t_rad               (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad temperuture
     real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad vapor
     real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud water
     real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice
     real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud fraction
 #ifdef m2005
-    ! real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg)
-    ! real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
-    ! real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
-    ! real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
     real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud droplet number (#/kg)
     real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice crystal number (#/kg)
     real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
@@ -1491,31 +1523,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
         l = plev-k+1
         do j=1,ny
           do i=1,nx
-            ! hm modify 9/7/11 for end of timestep, GCM-grid scale hydrometeor output
-            ! instead of time-step-averaged
-            ! I also modified this for all q and N variables as well as for sam1mom
-            ! for consistency
-            !hm           crm_qc(l) = crm_qc(l) + qcl(i,j,k)
-            !hm           crm_qi(l) = crm_qi(l) + qci(i,j,k)
-            !hm           crm_qr(l) = crm_qr(l) + qpl(i,j,k)
-            !hm#ifdef sam1mom
-            !hm           omg = max(0.,min(1.,(tabs(i,j,k)-tgrmin)*a_gr))
-            !hm           crm_qg(l) = crm_qg(l) + qpi(i,j,k)*omg
-            !hm           crm_qs(l) = crm_qs(l) + qpi(i,j,k)*(1.-omg)
-            !hm#else
-            !           crm_qg(l) = crm_qg(l) + qpi(i,j,k)
-            !           crm_qs(l) = crm_qs(l) + 0.     ! temporerary solution
-            !hm           crm_qg(l) = crm_qg(l) + micro_field(i,j,k,iqg)
-            !hm           crm_qs(l) = crm_qs(l) + micro_field(i,j,k,iqs)
 
-            !hm           crm_nc(l) = crm_nc(l) + micro_field(i,j,k,incl)
-            !hm           crm_ni(l) = crm_ni(l) + micro_field(i,j,k,inci)
-            !hm           crm_nr(l) = crm_nr(l) + micro_field(i,j,k,inr)
-            !hm           crm_ng(l) = crm_ng(l) + micro_field(i,j,k,ing)
-            !hm           crm_ns(l) = crm_ns(l) + micro_field(i,j,k,ins)
-
-            !hm#endif
-
+            ! Calculate some cloud diagnostics
             tmp1 = rho(nz-k)*adz(nz-k)*dz*(qcl(i,j,nz-k)+qci(i,j,nz-k))
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
@@ -1534,8 +1543,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 cmtemp(i,j) = max(CF3D(i,j,nz-k), cmtemp(i,j))
             endif
 
-            !     qsat = qsatw_crm(tabs(i,j,k),pres(k))
-            !     if(qcl(i,j,k)+qci(i,j,k).gt.min(1.e-5,0.01*qsat)) then
+            ! Calculate cloud mass fluxes
             tmp1 = rho(k)*adz(k)*dz
             if(tmp1*(qcl(i,j,k)+qci(i,j,k)).gt.cwp_threshold) then
                  cld(icrm,l) = cld(icrm,l) + CF3D(i,j,k)
@@ -1556,18 +1564,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                  endif
             endif
 
-!             t_rad  (icrm,i,j,k) = t_rad  (icrm,i,j,k)+tabs(i,j,k)
-!             qv_rad (icrm,i,j,k) = qv_rad (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
-!             qc_rad (icrm,i,j,k) = qc_rad (icrm,i,j,k)+qcl(i,j,k)
-!             qi_rad (icrm,i,j,k) = qi_rad (icrm,i,j,k)+qci(i,j,k)
-!             cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) +  CF3D(i,j,k)
-! #ifdef m2005
-!             nc_rad(icrm,i,j,k) = nc_rad(icrm,i,j,k)+micro_field(i,j,k,incl)
-!             ni_rad(icrm,i,j,k) = ni_rad(icrm,i,j,k)+micro_field(i,j,k,inci)
-!             qs_rad(icrm,i,j,k) = qs_rad(icrm,i,j,k)+micro_field(i,j,k,iqs)
-!             ns_rad(icrm,i,j,k) = ns_rad(icrm,i,j,k)+micro_field(i,j,k,ins)
-! #endif
-          
             !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
             if ( phys_stage == 1 ) then
 
@@ -1579,6 +1575,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
               qv_rad (icrm,i_rad,j_rad,k) = qv_rad (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k))
               qc_rad (icrm,i_rad,j_rad,k) = qc_rad (icrm,i_rad,j_rad,k) + qcl(i,j,k)
               qi_rad (icrm,i_rad,j_rad,k) = qi_rad (icrm,i_rad,j_rad,k) + qci(i,j,k)
+
+              !!! NOTE: cld_rad appears to be only used in modal_aero_wateruptake...is this name
+              !!! misleading? Should we use this field in radiation_tend as well? Should this be
+              !!! instantaneous 3D cloud fraction at end of CRM run instead?
               cld_rad(icrm,i_rad,j_rad,k) = cld_rad(icrm,i_rad,j_rad,k) + CF3D(i,j,k)
 #ifdef m2005
               nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
@@ -1618,15 +1618,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
           enddo
         enddo
       enddo
-
-      !do k=1,nzm
-      ! radlwup0(k)=radlwup0(k)+radlwup(k)
-      ! radlwdn0(k)=radlwdn0(k)+radlwdn(k)
-      ! radqrlw0(k)=radqrlw0(k)+radqrlw(k)
-      ! radswup0(k)=radswup0(k)+radswup(k)
-      ! radswdn0(k)=radswdn0(k)+radswdn(k)
-      ! radqrsw0(k)=radqrsw0(k)+radqrsw(k)
-      !enddo
 
       do j=1,ny
         do i=1,nx
@@ -1673,6 +1664,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     endif
 
     ! no CRM tendencies above its top
+    ! TODO: crm should not need to know about the extent of the host-model vertical grid. We should
+    ! pass these in and out on the CRM grid, and let crm_physics handle the mapping between vertical
+    ! grids, filling above CRM top, etc.
     tln  (1:ptop-1) =   tl(icrm,1:ptop-1)
     qln  (1:ptop-1) =   ql(icrm,1:ptop-1)
     qccln(1:ptop-1) = qccl(icrm,1:ptop-1)
@@ -1756,6 +1750,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
     !!! don't use CRM tendencies from two crm top levels
     !!! radiation tendencies are added back after the CRM call (see crm_physics_tend)
+    !!! TODO: push this up to crm_physics level
     sltend (icrm,ptop:ptop+1) = 0.
     qltend (icrm,ptop:ptop+1) = 0.
     qcltend(icrm,ptop:ptop+1) = 0.
@@ -1764,10 +1759,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       !-------------------------------------------------------------
       !
       ! Save the last step to the permanent core:
-      crm_state%u_wind  (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
-      crm_state%v_wind  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
-      crm_state%w_wind  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
-      crm_state%temperature  (icrm,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
+      crm_state%u_wind     (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
+      crm_state%v_wind     (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
+      crm_state%w_wind     (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
+      crm_state%temperature(icrm,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
 
       !crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
 #ifdef m2005

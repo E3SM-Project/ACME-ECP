@@ -121,12 +121,12 @@ subroutine crm_physics_register()
   call pbuf_add_field('CRM_W', 'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), crm_w_idx)
   call pbuf_add_field('CRM_T', 'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), crm_t_idx)
 
-  call pbuf_add_field('CRM_T_RAD',   'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_t_rad_idx)
-  call pbuf_add_field('CRM_QV_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qv_rad_idx)
-  call pbuf_add_field('CRM_QC_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qc_rad_idx)
-  call pbuf_add_field('CRM_QI_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qi_rad_idx)
-  call pbuf_add_field('CRM_CLD_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_cld_rad_idx)
-  call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qrad_idx)
+  call pbuf_add_field('CRM_T_RAD',   'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_t_rad_idx)
+  call pbuf_add_field('CRM_QV_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_qv_rad_idx)
+  call pbuf_add_field('CRM_QC_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_qc_rad_idx)
+  call pbuf_add_field('CRM_QI_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_qi_rad_idx)
+  call pbuf_add_field('CRM_CLD_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_cld_rad_idx)
+  call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/), crm_qrad_idx)
 
 
 #ifdef MODAL_AERO
@@ -143,22 +143,22 @@ subroutine crm_physics_register()
     call pbuf_add_field('CRM_QS_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_qs_rad_idx)
     call pbuf_add_field('CRM_NS_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_ns_rad_idx)
 
-    ! These need to persist across timesteps?
-    call pbuf_add_field('CRM_QT',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qt_idx)
-    call pbuf_add_field('CRM_NC',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_nc_idx)
-    call pbuf_add_field('CRM_QR',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qr_idx)
-    call pbuf_add_field('CRM_NR',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_nr_idx)
-    call pbuf_add_field('CRM_QI',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qi_idx)
-    call pbuf_add_field('CRM_NI',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_ni_idx)
-    call pbuf_add_field('CRM_QS',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qs_idx)
-    call pbuf_add_field('CRM_NS',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_ns_idx)
-    call pbuf_add_field('CRM_QG',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qg_idx)
-    call pbuf_add_field('CRM_NG',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_ng_idx)
-    call pbuf_add_field('CRM_QC',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qc_idx)
+    ! These need to persist across timesteps, or can they be 'physpkg' scope?
+    call pbuf_add_field('CRM_QT', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qt_idx)
+    call pbuf_add_field('CRM_NC', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_nc_idx)
+    call pbuf_add_field('CRM_QR', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qr_idx)
+    call pbuf_add_field('CRM_NR', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_nr_idx)
+    call pbuf_add_field('CRM_QI', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qi_idx)
+    call pbuf_add_field('CRM_NI', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_ni_idx)
+    call pbuf_add_field('CRM_QS', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qs_idx)
+    call pbuf_add_field('CRM_NS', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_ns_idx)
+    call pbuf_add_field('CRM_QG', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qg_idx)
+    call pbuf_add_field('CRM_NG', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_ng_idx)
+    call pbuf_add_field('CRM_QC', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qc_idx)
   else
-    call pbuf_add_field('CRM_QT',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qt_idx)
-    call pbuf_add_field('CRM_QP',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qp_idx)
-    call pbuf_add_field('CRM_QN',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qn_idx)
+    call pbuf_add_field('CRM_QT', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qt_idx)
+    call pbuf_add_field('CRM_QP', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qp_idx)
+    call pbuf_add_field('CRM_QN', 'global', dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), crm_qn_idx)
   endif
 #endif
 
@@ -836,12 +836,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    logical :: use_ECPP, use_SPCAM
    character(len=16) :: SPCAM_microp_scheme
 
-   real(r8) tvwle (pcols,pver)
-   real(r8) buoy  (pcols,pver)
-   real(r8) buoysd(pcols,pver)
-   real(r8) msef  (pcols,pver)
-   real(r8) qvw   (pcols,pver)
-
    logical :: ls, lu, lv, lq(pcnst), fromcrm
 
    real(r8) dp_g   ! = state%pdel / gravit
@@ -934,16 +928,17 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !------------------------------------------------------------
 !------------------------------------------------------------
 
-! Associate pointers with physics buffer fields
+
+   ! Associate pointers with physics buffer fields
    itim = pbuf_old_tim_idx()
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
 
    ! Set pointers from crm_state to fields that persist on physics buffer
-   call pbuf_get_field (pbuf, crm_u_idx, crm_state%u_wind)
-   call pbuf_get_field (pbuf, crm_v_idx, crm_state%v_wind)
-   call pbuf_get_field (pbuf, crm_w_idx, crm_state%w_wind)
-   call pbuf_get_field (pbuf, crm_t_idx, crm_state%temperature)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_V'), crm_state%v_wind)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_W'), crm_state%w_wind)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_T'), crm_state%temperature)
 
    ! Set pointers to microphysics fields in crm_state
    if (SPCAM_microp_scheme .eq. 'sam1mom') then
@@ -1210,11 +1205,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       taux_crm(:) = 0.
       tauy_crm(:) = 0.
       t_ls(:,:) = 0.
-      tvwle(:,:) = 0.    ! MDB 8/2013
-      buoy(:,:) = 0.     ! MDB 8/2013
-      buoysd(:,:) = 0.   ! MDB 8/2013
-      msef(:,:) = 0.     ! MDB 8/2013
-      qvw(:,:) = 0.      ! MDB 8/2013
 
 
 #if defined(SPMOMTRANS)
@@ -1325,12 +1315,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
          wnd  (i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
          bflx (i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
-!+++mhwang
+         !+++mhwang
          fluxu0(i) = cam_in%wsx(i)     !N/m2
          fluxv0(i) = cam_in%wsy(i)     !N/m2
          fluxt0(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
          fluxq0(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
-!---mwwang
+         !---mwwang
 
          !----------------------------------------------------------------------
          ! calculate total water before calling crm - used for check_energy_chng() after CRM
@@ -1363,7 +1353,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
          !----------------------------------------------------------------------
          !----------------------------------------------------------------------
-         
 
 #if (defined m2005 && defined MODAL_AERO)
          do k=1, pver
@@ -1660,42 +1649,32 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          call outfld('SPNR    ',spnr         ,pcols ,lchnk )
       endif
 
-      call outfld('SPQTFLX ',flux_qt        ,pcols ,lchnk )
-      call outfld('SPUFLX  ',flux_u         ,pcols ,lchnk )
-      call outfld('SPVFLX  ',flux_v         ,pcols ,lchnk )
-      call outfld('SPTKE   ',tkez           ,pcols ,lchnk )
-      call outfld('SPTKES  ',tkesgsz        ,pcols ,lchnk )
-      call outfld('SPTK    ',tkz            ,pcols ,lchnk )
-      call outfld('SPQTFLXS',fluxsgs_qt     ,pcols ,lchnk )
-      call outfld('SPQPFLX ',flux_qp        ,pcols ,lchnk )
-      call outfld('SPPFLX  ',precflux       ,pcols ,lchnk )
-      call outfld('SPQTLS  ',qt_ls          ,pcols ,lchnk )
-      call outfld('SPQTTR  ',qt_trans       ,pcols ,lchnk )
-      call outfld('SPQPTR  ',qp_trans       ,pcols ,lchnk )
-      call outfld('SPQPEVP ',qp_evp         ,pcols ,lchnk )
-      call outfld('SPQPFALL',qp_fall        ,pcols ,lchnk )
-      call outfld('SPQPSRC ',qp_src         ,pcols ,lchnk )
-      call outfld('SPTLS   ',t_ls           ,pcols ,lchnk )
+       call outfld('SPQTFLX ',flux_qt        ,pcols ,lchnk )
+       call outfld('SPUFLX  ',flux_u         ,pcols ,lchnk )
+       call outfld('SPVFLX  ',flux_v         ,pcols ,lchnk )
+       call outfld('SPTKE   ',tkez           ,pcols ,lchnk )
+       call outfld('SPTKES  ',tkesgsz        ,pcols ,lchnk )
+       call outfld('SPTK    ',tkz            ,pcols ,lchnk )
+       call outfld('SPQTFLXS',fluxsgs_qt     ,pcols ,lchnk )
+       call outfld('SPQPFLX ',flux_qp        ,pcols ,lchnk )
+       call outfld('SPPFLX  ',precflux       ,pcols ,lchnk )
+       call outfld('SPQTLS  ',qt_ls          ,pcols ,lchnk )
+       call outfld('SPQTTR  ',qt_trans       ,pcols ,lchnk )
+       call outfld('SPQPTR  ',qp_trans       ,pcols ,lchnk )
+       call outfld('SPQPEVP ',qp_evp         ,pcols ,lchnk )
+       call outfld('SPQPFALL',qp_fall        ,pcols ,lchnk )
+       call outfld('SPQPSRC ',qp_src         ,pcols ,lchnk )
+       call outfld('SPTLS   ',t_ls           ,pcols ,lchnk )
 
-      ! whannah - these fields don't seem to contain anything...?
-      ! call outfld('SPTVFLUX',tvwle          ,pcols ,lchnk )
-      ! call outfld('SPBUOY  ',buoy           ,pcols ,lchnk )
-      ! call outfld('SPBUOYSD',buoysd         ,pcols ,lchnk )
-      ! call outfld('SPMSEF  ',msef           ,pcols ,lchnk )
-      ! call outfld('SPQVFLUX',qvw            ,pcols ,lchnk )
+       call outfld('CLOUD   ',cld            ,pcols, lchnk )
+       call outfld('CLDTOT  ',cltot          ,pcols, lchnk )
+       call outfld('CLDHGH  ',clhgh          ,pcols, lchnk )
+       call outfld('CLDMED  ',clmed          ,pcols, lchnk )
+       call outfld('CLDLOW  ',cllow          ,pcols, lchnk )
+       call outfld('CLOUDTOP',cldtop         ,pcols, lchnk )
 
-      call outfld('CLOUD   ',cld,  pcols,lchnk)
-      call outfld('CLDTOT  ',cltot  ,pcols,lchnk)
-      call outfld('CLDHGH  ',clhgh  ,pcols,lchnk)
-      call outfld('CLDMED  ',clmed  ,pcols,lchnk)
-      call outfld('CLDLOW  ',cllow  ,pcols,lchnk)
-      call outfld('CLOUDTOP',cldtop, pcols,lchnk)
+       call outfld('TIMINGF ',timing_factor  ,pcols, lchnk )
 
-      ! call outfld('Z0M     ',z0m  ,pcols,lchnk)
-      ! call outfld('TAUX_CRM',taux_crm  ,pcols,lchnk)
-      ! call outfld('TAUY_CRM',tauy_crm  ,pcols,lchnk)
-
-      call outfld('TIMINGF ',timing_factor  ,pcols,lchnk)
 !----------------------------------------------------------------------
 ! Compute liquid water paths (for diagnostics only)
 !----------------------------------------------------------------------
