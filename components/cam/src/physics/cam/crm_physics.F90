@@ -820,10 +820,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) , dimension(pcols) ::  qi_hydro_after     ! column-integrated snow water + graupel water
    real(r8) sfactor                                   ! used to determine precip type for sam1mom
 
-   real(r8) zero(pcols)          ! zero
-   real(r8) timing_factor(pcols) ! factor for crm cpu-usage: 1 means no subcycling
+   ! Array of zeros needed for check_energy_chng
+   real(r8), parameter :: zero(pcols) = 0._r8
 
-   real(r8) qtotcrm(pcols, 20)   ! the toal water calculated in crm.F90
+   real(r8) timing_factor(pcols) ! factor for crm cpu-usage: 1 means no subcycling
 
    integer nlon(pcols)
    integer nlat(pcols)
@@ -860,8 +860,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    crm_rotation_std    = 20. * pi/180.                 ! std deviation of normal distribution for CRM rotation [radians]
    crm_rotation_offset = 90. * pi/180. * ztodt/86400.  ! This means that a CRM should rotate 90 deg / day on average
 #endif
-
-   zero = 0.0_r8
 
 #if defined( SP_CRM_SPLIT ) 
    crm_run_time = ztodt * 0.5
@@ -1454,7 +1452,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                qp_evp(:ncol,:),             qp_src(:ncol,:),              t_ls(:ncol,:),             prectend(:ncol),             precstend(:ncol),                 &
                cam_in%ocnfrac(:ncol),       wnd(:ncol),                   tau00(:ncol),              bflx(:ncol),                                                   & 
                fluxu0(:ncol),               fluxv0(:ncol),                fluxt0(:ncol),             fluxq0(:ncol),                                                 & 
-               taux_crm(:ncol),             tauy_crm(:ncol),              z0m(:ncol),                timing_factor(:ncol),        qtotcrm(:ncol, :) )
+               taux_crm(:ncol),             tauy_crm(:ncol),              z0m(:ncol),                timing_factor(:ncol))
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------

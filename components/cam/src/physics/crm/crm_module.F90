@@ -113,6 +113,10 @@ module crm_module
       real(crm_rknd), allocatable :: crm_tk (:,:,:,:)
       real(crm_rknd), allocatable :: crm_tkh(:,:,:,:)
 
+      real(crm_rknd), allocatable :: cltot(:)  ! shaded cloud fraction
+      real(crm_rknd), allocatable :: clhgh(:)  ! shaded cloud fraction
+      real(crm_rknd), allocatable :: clmed(:)  ! shaded cloud fraction
+      real(crm_rknd), allocatable :: cllow(:)  ! shaded cloud fraction
    contains
       procedure, public :: initialize=>crm_output_initialize
       procedure, public :: finalize=>crm_output_finalize
@@ -183,19 +187,41 @@ contains
 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_output_type
+   subroutine crm_output_allocate(this, ncrms)
+      class(crm_output_type), intent(inout) :: this
+      integer, intent(in) :: ncrms
+
+      if (.not. allocated(this%crm_tk )) allocate(this%crm_tk (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%crm_tkh)) allocate(this%crm_tkh(ncrms,crm_nx, crm_ny, crm_nz))
+      
+      ! Allocate domain and time-averaged fields
+      if (.not. allocated(this%cltot)) allocate(this%cltot(ncrms))
+      if (.not. allocated(this%cllow)) allocate(this%cllow(ncrms))
+      if (.not. allocated(this%clmed)) allocate(this%clmed(ncrms))
+      if (.not. allocated(this%clhgh)) allocate(this%clhgh(ncrms))
+
+   end subroutine crm_output_allocate
+   !------------------------------------------------------------------------------------------------
    subroutine crm_output_initialize(this, ncrms)
       class(crm_output_type), intent(inout) :: this
       integer, intent(in) :: ncrms
 
-      allocate(crm_tk (ncrms,crm_nx, crm_ny, crm_nz))
-      allocate(crm_tkh(ncrms,crm_nx, crm_ny, crm_nz))
+      ! TODO: add check to see if we need to allocate here?
+      this%crm_tk = 0.0
+      this%crm_tkh = 0.0
+      
+      this%cltot = 0.0
+      this%cllow = 0.0
+      this%clmed = 0.0
+      this%clhgh = 0.0
+
    end subroutine crm_output_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_output_finalize(this)
       class(crm_output_type), intent(inout) :: this
 
-      deallocate(crm_tk )
-      deallocate(crm_tkh)
+      deallocate(this%crm_tk )
+      deallocate(this%crm_tkh)
    end subroutine crm_output_finalize
    !------------------------------------------------------------------------------------------------
 
@@ -256,7 +282,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 qp_evp, qp_src, t_ls, prectend, precstend, &
                 ocnfrac, wndls, tau00, bflxls, &
                 fluxu00, fluxv00, fluxt00, fluxq00,    &
-                taux_crm, tauy_crm, z0m, timing_factor, qtot)
+                taux_crm, tauy_crm, z0m, timing_factor)
         !---------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
@@ -322,12 +348,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
-    use cam_abortutils        , only: endrun
-    use time_manager          , only: get_nstep
+
+   ! TODO: remove dependence on CAM packages altogether
+   use cam_abortutils, only: endrun
+   use time_manager  , only: get_nstep
 
     implicit none
 
-    ! CRM state needs to be intent out because it persists across CRM calls and needs to be
+    ! CRM state needs to be intent inout because it persists across CRM calls and needs to be
     ! initialized outside of this routine 
     type(crm_state_type), intent(inout) :: crm_state
 
@@ -527,7 +555,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: wwqui_bnd           (ncrms,plev+1)                                 ! vertical velocity variance in quiescent class (m2/s2)
     real(r8), intent(  out) :: wwqui_cloudy_bnd    (ncrms,plev+1)                                 ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
 #endif /* ECPP */
-    real(r8), intent(  out) :: qtot                (ncrms,20)
 
     !  Local space:
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt       ! maxumum ampitude of the l.s. wind
@@ -1188,28 +1215,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     precr     = 0.0
     precsolid = 0.0
 #endif /* ECPP */
-
-    !+++mhwangtest
-    ! test water conservtion problem
-    ntotal_step = 0.0
-    qtot(icrm,:) = 0.0
-    qtotmicro(:) = 0.0
-    do k=1, nzm
-      l=plev-k+1
-      do j=1, ny
-        do i=1, nx
-#ifdef m2005
-          qtot(icrm,1) = qtot(icrm,1)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
-#endif
-#ifdef sam1mom
-          qtot(icrm,1) = qtot(icrm,1)+(qpl(i,j,k)+qpi(i,j,k)) * pdel(icrm,l)/ggr/(nx*ny)
-#endif
-        enddo
-      enddo
-      qtot(icrm,1) = qtot(icrm,1) + (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)) * pdel(icrm,l)/ggr
-    enddo
-    !---mhwangtest
-
 
     nstop = dt_gl/dt
     dt = dt_gl/nstop
@@ -1961,24 +1966,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     precsc  (icrm)     = precsc(icrm)*factor_xy/1000.
     precsl  (icrm)     = precsl(icrm)*factor_xy/1000.
 
-    !+++mhwangtest
-    ! test water conservtion problem
-    do k=1, nzm
-      l=plev-k+1
-      do j=1, ny
-        do i=1, nx
-#ifdef m2005
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * pdel(icrm,l)/ggr)/(nx*ny)
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqv)+micro_field(i,j,k,iqci)) * pdel(icrm,l)/ggr)/(nx*ny)
-#endif
-#ifdef sam1mom
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,1)+micro_field(i,j,k,2)) * pdel(icrm,l)/ggr)/(nx*ny)
-#endif
-        enddo
-      enddo
-    enddo
-    qtot(icrm,9) = qtot(icrm,9) + (precc(icrm)+precl(icrm))*1000 * crm_run_time
-
     cltot(icrm) = cltot(icrm) * factor_xyt
     clhgh(icrm) = clhgh(icrm) * factor_xyt
     clmed(icrm) = clmed(icrm) * factor_xyt
@@ -2172,7 +2159,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                           mx_crm(icrm),mui_crm(icrm,:),mdi_crm(icrm,:),flux_qt(icrm,:),fluxsgs_qt(icrm,:),tkez(icrm,:),tkesgsz(icrm,:),tkz(icrm,:),flux_u(icrm,:),flux_v(icrm,:),flux_qp(icrm,:), &
                           pflx(icrm,:),qt_ls(icrm,:),qt_trans(icrm,:),qp_trans(icrm,:),qp_fall(icrm,:),qp_src(icrm,:),qp_evp(icrm,:),t_ls(icrm,:),prectend(icrm),precstend(icrm),precsc(icrm), &
                           precsl(icrm),taux_crm(icrm),tauy_crm(icrm),z0m(icrm),timing_factor(icrm),qc_crm(icrm,:,:,:),qi_crm(icrm,:,:,:),qpc_crm(icrm,:,:,:),qpi_crm(icrm,:,:,:), &
-                          prec_crm(icrm,:,:),qtot(icrm,:) )
+                          prec_crm(icrm,:,:))
 #endif /* CRM_DUMP */
   enddo
 
