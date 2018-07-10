@@ -1390,23 +1390,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                    mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
             endif
-
-!             t_rad  (icrm,i,j,k) = t_rad  (icrm,i,j,k)+tabs(i,j,k)
-!             qv_rad (icrm,i,j,k) = qv_rad (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
-!             qc_rad (icrm,i,j,k) = qc_rad (icrm,i,j,k)+qcl(i,j,k)
-!             qi_rad (icrm,i,j,k) = qi_rad (icrm,i,j,k)+qci(i,j,k)
-!             cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) +  CF3D(i,j,k)
-! #ifdef m2005
-!             nc_rad(icrm,i,j,k) = nc_rad(icrm,i,j,k)+micro_field(i,j,k,incl)
-!             ni_rad(icrm,i,j,k) = ni_rad(icrm,i,j,k)+micro_field(i,j,k,inci)
-!             qs_rad(icrm,i,j,k) = qs_rad(icrm,i,j,k)+micro_field(i,j,k,iqs)
-!             ns_rad(icrm,i,j,k) = ns_rad(icrm,i,j,k)+micro_field(i,j,k,ins)
-! #endif
           
             !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
-            if ( phys_stage == 1 ) then
+#if defined( SP_RAD_NO_AVG )
+            if ( phys_stage==1 .and. nstep==nstop ) then
+#else
+            if ( phys_stage==1 ) then
+#endif
 
-              !!! whannah - new method allows for fewer radiation calculation over column groups
+              !!! new method allows for fewer radiation calculation over column groups
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
@@ -1491,7 +1483,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     !!! only collect radiative inputs during tphysbc()
     if ( phys_stage == 1 ) then
 
+#if defined( SP_RAD_NO_AVG )
+      tmp1 = crm_nx_rad_fac * crm_ny_rad_fac
+#else
       tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
+#endif
 
       t_rad  (icrm,:,:,:) = t_rad  (icrm,:,:,:) * tmp1
       qv_rad (icrm,:,:,:) = qv_rad (icrm,:,:,:) * tmp1
