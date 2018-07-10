@@ -55,7 +55,24 @@ module crm_module
       real(crm_rknd), pointer :: temperature(:,:,:,:)  ! CRM temperuture
 
       ! TODO: is there a better way of interfacing with the microphysics than this awkward array?
-      real(crm_rknd), allocatable :: micro_fields(:,:,:,:,:) ! CRM total water
+      !real(crm_rknd), allocatable :: micro_fields(:,:,:,:,:) ! CRM total water
+#ifdef m2005
+      real(crm_rknd), pointer :: qt(:,:,:,:) 
+      real(crm_rknd), pointer :: nc(:,:,:,:)
+      real(crm_rknd), pointer :: qr(:,:,:,:)
+      real(crm_rknd), pointer :: nr(:,:,:,:)
+      real(crm_rknd), pointer :: qi(:,:,:,:)
+      real(crm_rknd), pointer :: ni(:,:,:,:)
+      real(crm_rknd), pointer :: qs(:,:,:,:)
+      real(crm_rknd), pointer :: ns(:,:,:,:)
+      real(crm_rknd), pointer :: qg(:,:,:,:)
+      real(crm_rknd), pointer :: ng(:,:,:,:)
+      real(crm_rknd), pointer :: qc(:,:,:,:)
+#else
+      real(crm_rknd), pointer :: qt(:,:,:,:)
+      real(crm_rknd), pointer :: qp(:,:,:,:)
+      real(crm_rknd), pointer :: qn(:,:,:,:)
+#endif
 
    contains
       ! Type-bound procedures. Initialization should nullify fields
@@ -92,9 +109,8 @@ contains
 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_state_type
-   subroutine crm_state_initialize(this, ncrms, nmicro_fields)
+   subroutine crm_state_initialize(this)
       class(crm_state_type), intent(inout) :: this
-      integer, intent(in) :: ncrms, nmicro_fields
 
       ! Nullify pointers
       this%u_wind => null()
@@ -102,8 +118,24 @@ contains
       this%w_wind => null()
       this%temperature => null()
 
-      ! Allocate memory for micro_fields array
-      allocate(this%micro_fields(ncrms,crm_nx,crm_ny,crm_nz,nmicro_fields+1))
+#ifdef m2005
+      this%qt => null()
+      this%qc => null()
+      this%qi => null()
+      this%qr => null()
+      this%qs => null()
+      this%qg => null()
+      this%nc => null()
+      this%ni => null()
+      this%nr => null()
+      this%ns => null()
+      this%ng => null()
+#else
+      this%qt => null()
+      this%qp => null()
+      this%qn => null()
+#endif
+
    end subroutine crm_state_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_state_finalize(this)
@@ -115,8 +147,23 @@ contains
       this%w_wind => null()
       this%temperature => null()
 
-      ! Free memory for micro_fields array
-      deallocate(this%micro_fields)
+#ifdef m2005
+      this%qt => null()
+      this%qc => null()
+      this%qi => null()
+      this%qr => null()
+      this%qs => null()
+      this%qg => null()
+      this%nc => null()
+      this%ni => null()
+      this%nr => null()
+      this%ns => null()
+      this%ng => null()
+#else
+      this%qt => null()
+      this%qp => null()
+      this%qn => null()
+#endif
 
    end subroutine crm_state_finalize
    !------------------------------------------------------------------------------------------------
@@ -189,7 +236,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     !MRN: the first call to crm(...)
 
 #ifndef CRM_STANDALONE
-    use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
+   ! TODO: remove this dependence on CAM packages! This module should not need to know anything
+   ! about the host model!
+   use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
 #endif
     use ppgrid                , only: pcols
     use vars
@@ -413,10 +462,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: tauy_crm            (ncrms)            ! merid CRM surface stress perturbation (N/m2)
     real(r8), intent(  out) :: z0m                 (ncrms)            ! surface stress (N/m2)
     real(r8), intent(  out) :: timing_factor       (ncrms)            ! crm cpu efficiency
+
+    ! TODO: are these redundant with crm_state%qc, crm_state%qi, etc.? Or can they be combined?
     real(r8), intent(  out) :: qc_crm              (ncrms,crm_nx, crm_ny, crm_nz)! CRM cloud water
     real(r8), intent(  out) :: qi_crm              (ncrms,crm_nx, crm_ny, crm_nz)! CRM cloud ice
     real(r8), intent(  out) :: qpc_crm             (ncrms,crm_nx, crm_ny, crm_nz)! CRM precip water
     real(r8), intent(  out) :: qpi_crm             (ncrms,crm_nx, crm_ny, crm_nz)! CRM precip ice
+
     real(r8), intent(  out) :: prec_crm            (ncrms,crm_nx, crm_ny)        ! CRM precipiation rate at layer center
 #ifdef ECPP
     real(r8), intent(  out) :: acen                (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for each sub-sub class for full time period
@@ -749,15 +801,33 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     end do
 #endif
 
-   ! Populate microphysics array from crm_state
-    micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
+      ! Populate microphysics array from crm_state
+      !micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
+#ifdef m2005
+      micro_field(1:nx,1:ny,1:nzm,1)  = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,2)  = crm_state%nc(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,3)  = crm_state%qr(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,4)  = crm_state%nr(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,5)  = crm_state%qi(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,6)  = crm_state%ni(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,7)  = crm_state%qs(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,8)  = crm_state%ns(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,9)  = crm_state%qg(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,10) = crm_state%ng(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,11) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
+#else
+      micro_field(1:nx,1:ny,1:nzm,1) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,2) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,3) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
+#endif
+
 
 #ifdef sam1mom
-    qn(1:nx,1:ny,1:nzm) = crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,3 )
+    qn(1:nx,1:ny,1:nzm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 
 #ifdef m2005
-    cloudliq(1:nx,1:ny,1:nzm) = crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,11)
+    cloudliq(1:nx,1:ny,1:nzm) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
 #endif
 
 #ifdef m2005
@@ -1690,21 +1760,42 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     qltend (icrm,ptop:ptop+1) = 0.
     qcltend(icrm,ptop:ptop+1) = 0.
     qiltend(icrm,ptop:ptop+1) = 0.
-    !-------------------------------------------------------------
-    !
-    ! Save the last step to the permanent core:
-    crm_state%u_wind  (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
-    crm_state%v_wind  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
-    crm_state%w_wind  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
-    crm_state%temperature  (icrm,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
-    crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
 
+      !-------------------------------------------------------------
+      !
+      ! Save the last step to the permanent core:
+      crm_state%u_wind  (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
+      crm_state%v_wind  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
+      crm_state%w_wind  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
+      crm_state%temperature  (icrm,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
+
+      !crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
+#ifdef m2005
+      crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1)
+      crm_state%nc(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2)
+      crm_state%qr(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,3)
+      crm_state%nr(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,4)
+      crm_state%qi(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,5)
+      crm_state%ni(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,6)
+      crm_state%qs(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,7)
+      crm_state%ns(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,8)
+      crm_state%qg(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,9)
+      crm_state%ng(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,10)
+      crm_state%qc(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,11)
+#else
+      crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1)
+      crm_state%qp(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2)
+      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,3)
+#endif
+
+      ! Override micro (TODO: why?)
 #ifdef sam1mom
-    crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,3) = qn(1:nx,1:ny,1:nzm)
+      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm)
 #endif
 #ifdef m2005
-    crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,11) = cloudliq(1:nx,1:ny,1:nzm)
+      crm_state%qc(icrm,1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
 #endif
+
     crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
     crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
     cld3d_crm(icrm,1:nx,1:ny,1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)

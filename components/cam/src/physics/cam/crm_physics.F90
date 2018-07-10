@@ -82,7 +82,6 @@ subroutine crm_physics_register()
   use phys_control,    only: phys_getopts
   use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_dx, crm_dy, crm_dt, nclubbvars, crm_nx_rad, crm_ny_rad
 #ifdef CRM
-  use microphysics,    only: nmicro_fields
   use setparm_mod,     only: setparm
 #endif
 
@@ -521,7 +520,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use constituents,    only: pcnst, qmin, cnst_get_ind, cnst_cam_outfld, bpcnst, cnst_name
 #ifdef CRM
    use crm_module,      only: crm, crm_state_type
-   use microphysics,    only: nmicro_fields
    use params,          only: crm_rknd
 #endif
    use physconst,       only: latvap
@@ -903,7 +901,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    lchnk = state%lchnk
    ncol  = state%ncol
 
-   call crm_state%initialize(ncol, nmicro_fields)
+   ! Initialize crm_state (nullify pointers, allocate memory, etc)
+   call crm_state%initialize()
 
    if (SPCAM_microp_scheme .eq. 'm2005') then
      call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
@@ -948,22 +947,22 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    ! Set pointers to microphysics fields in crm_state
    if (SPCAM_microp_scheme .eq. 'sam1mom') then
-      call pbuf_get_field(pbuf, crm_qt_idx, crm_qt)
-      call pbuf_get_field(pbuf, crm_qp_idx, crm_qp)
-      call pbuf_get_field(pbuf, crm_qn_idx, crm_qn)
+      call pbuf_get_field(pbuf, crm_qt_idx, crm_state%qt)
+      call pbuf_get_field(pbuf, crm_qp_idx, crm_state%qp)
+      call pbuf_get_field(pbuf, crm_qn_idx, crm_state%qn)
    endif
 #ifdef m2005
-   call pbuf_get_field(pbuf, crm_qt_idx, crm_qt)
-   call pbuf_get_field(pbuf, crm_nc_idx, crm_nc)
-   call pbuf_get_field(pbuf, crm_qr_idx, crm_qr)
-   call pbuf_get_field(pbuf, crm_nr_idx, crm_nr)
-   call pbuf_get_field(pbuf, crm_qi_idx, crm_qi)
-   call pbuf_get_field(pbuf, crm_ni_idx, crm_ni)
-   call pbuf_get_field(pbuf, crm_qs_idx, crm_qs)
-   call pbuf_get_field(pbuf, crm_ns_idx, crm_ns)
-   call pbuf_get_field(pbuf, crm_qg_idx, crm_qg)
-   call pbuf_get_field(pbuf, crm_ng_idx, crm_ng)
-   call pbuf_get_field(pbuf, crm_qc_idx, crm_qc)
+   call pbuf_get_field(pbuf, crm_qt_idx, crm_state%qt)
+   call pbuf_get_field(pbuf, crm_nc_idx, crm_state%nc)
+   call pbuf_get_field(pbuf, crm_qr_idx, crm_state%qr)
+   call pbuf_get_field(pbuf, crm_nr_idx, crm_state%nr)
+   call pbuf_get_field(pbuf, crm_qi_idx, crm_state%qi)
+   call pbuf_get_field(pbuf, crm_ni_idx, crm_state%ni)
+   call pbuf_get_field(pbuf, crm_qs_idx, crm_state%qs)
+   call pbuf_get_field(pbuf, crm_ns_idx, crm_state%ns)
+   call pbuf_get_field(pbuf, crm_qg_idx, crm_state%qg)
+   call pbuf_get_field(pbuf, crm_ng_idx, crm_state%ng)
+   call pbuf_get_field(pbuf, crm_qc_idx, crm_state%qc)
 #endif
 
    call pbuf_get_field (pbuf, crm_qrad_idx,      crm_qrad)
@@ -1080,49 +1079,30 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             crm_state%w_wind(i,:,:,k) = 0.
             crm_state%temperature(i,:,:,k) = state%t(i,m)
 
-            ! Load the crm micro_fields array for use in the call to crm
-            ! TODO: does micro_fields belong here? Better to hide this in crm_module, and define
-            ! explicit fields like crm_state%cloud_liq_content, crm_state%cloud_ice_content, etc,
-            ! that get pointed to the fields on the physics buffer? This use of micro_fields here
-            ! seems unnecessary.
+! TODO: do we need this ifdef anymore?
 #ifdef CRM
             if (SPCAM_microp_scheme .eq. 'sam1mom') then
 
-               crm_qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
-               crm_qp(i,:,:,k) = 0.0_r8
-               crm_qn(i,:,:,k) = state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
-               crm_state%micro_fields(i,:,:,k,1) = crm_qt(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,2) = crm_qp(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,3) = crm_qn(i,:,:,k)
+               crm_state%qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
+               crm_state%qp(i,:,:,k) = 0.0_r8
+               crm_state%qn(i,:,:,k) = state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
 #ifdef m2005 
             else if (SPCAM_microp_scheme .eq. 'm2005') then
-               crm_qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)
-               crm_nc(i,:,:,k) = 0.0_r8
-               crm_qr(i,:,:,k) = 0.0_r8
-               crm_nr(i,:,:,k) = 0.0_r8
-               crm_qi(i,:,:,k) = state%q(i,m,ixcldice) 
-               crm_ni(i,:,:,k) = 0.0_r8
-               crm_qs(i,:,:,k) = 0.0_r8
-               crm_ns(i,:,:,k) = 0.0_r8
-               crm_qg(i,:,:,k) = 0.0_r8
-               crm_ng(i,:,:,k) = 0.0_r8
-               crm_qc(i,:,:,k) = state%q(i,m,ixcldliq)
+               crm_state%qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)
+               crm_state%nc(i,:,:,k) = 0.0_r8
+               crm_state%qr(i,:,:,k) = 0.0_r8
+               crm_state%nr(i,:,:,k) = 0.0_r8
+               crm_state%qi(i,:,:,k) = state%q(i,m,ixcldice) 
+               crm_state%ni(i,:,:,k) = 0.0_r8
+               crm_state%qs(i,:,:,k) = 0.0_r8
+               crm_state%ns(i,:,:,k) = 0.0_r8
+               crm_state%qg(i,:,:,k) = 0.0_r8
+               crm_state%ng(i,:,:,k) = 0.0_r8
+               crm_state%qc(i,:,:,k) = state%q(i,m,ixcldliq)
 
-               crm_state%micro_fields(i,:,:,k,1)  = crm_qt(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,2)  = crm_nc(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,3)  = crm_qr(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,4)  = crm_nr(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,5)  = crm_qi(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,6)  = crm_ni(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,7)  = crm_qs(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,8)  = crm_ns(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,9)  = crm_qg(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,10) = crm_ng(i,:,:,k)
-               crm_state%micro_fields(i,:,:,k,11) = crm_qc(i,:,:,k)
-            
-#endif
+#endif /* m2005 */
             endif
-#endif
+#endif /* CRM */
 
 #ifdef CLUBB_CRM
             clubb_buffer(i,:,:,k,:) = 0.0  ! In the inital run, variables are set in clubb_sgs_setup at the first time step. 
@@ -1285,29 +1265,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
 
    else  ! not is_first_step
-
-#ifdef CRM
-      if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         crm_state%micro_fields(:,:,:,:,1) = crm_qt(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,2) = crm_qp(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,3) = crm_qn(:,:,:,:)
-#ifdef m2005
-      else if (SPCAM_microp_scheme .eq. 'm2005') then
-         crm_state%micro_fields(:,:,:,:,1)  = crm_qt(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,2)  = crm_nc(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,3)  = crm_qr(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,4)  = crm_nr(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,5)  = crm_qi(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,6)  = crm_ni(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,7)  = crm_qs(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,8)  = crm_ns(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,9)  = crm_qg(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,10) = crm_ng(:,:,:,:)
-         crm_state%micro_fields(:,:,:,:,11) = crm_qc(:,:,:,:)
-#endif /* m2005 */
-      endif ! SPCAM_microp_scheme
-#endif
-
 
       ptend%q(:,:,1) = 0.  ! necessary?
       ptend%q(:,:,ixcldliq) = 0.
@@ -1513,27 +1470,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-      do i=1,ncol
-         if (SPCAM_microp_scheme .eq. 'sam1mom') then
-            crm_qt(i,:,:,:) = crm_state%micro_fields(i,:,:,:,1)
-            crm_qp(i,:,:,:) = crm_state%micro_fields(i,:,:,:,2)
-            crm_qn(i,:,:,:) = crm_state%micro_fields(i,:,:,:,3)
-	     endif
-#ifdef m2005
-         crm_qt(i,:,:,:) = crm_state%micro_fields(i,:,:,:,1)
-         crm_nc(i,:,:,:) = crm_state%micro_fields(i,:,:,:,2)
-         crm_qr(i,:,:,:) = crm_state%micro_fields(i,:,:,:,3)
-         crm_nr(i,:,:,:) = crm_state%micro_fields(i,:,:,:,4)
-         crm_qi(i,:,:,:) = crm_state%micro_fields(i,:,:,:,5)
-         crm_ni(i,:,:,:) = crm_state%micro_fields(i,:,:,:,6)
-         crm_qs(i,:,:,:) = crm_state%micro_fields(i,:,:,:,7)
-         crm_ns(i,:,:,:) = crm_state%micro_fields(i,:,:,:,8)
-         crm_qg(i,:,:,:) = crm_state%micro_fields(i,:,:,:,9)
-         crm_ng(i,:,:,:) = crm_state%micro_fields(i,:,:,:,10)
-         crm_qc(i,:,:,:) = crm_state%micro_fields(i,:,:,:,11)
-#endif /* m2005 */
-      end do ! i (loop over ncol)
 
 #endif /* CRM */
 
