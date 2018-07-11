@@ -2745,7 +2745,9 @@ end if
       !---------------------------------------------------------------------------
 #if defined( SP_FLUX_BYPASS )
       call crm_surface_flux_bypass_tend(state, cam_in, ptend)
-      call physics_update(state, ptend, ztodt, tend)   
+      call physics_update(state, ptend, ztodt, tend)  
+      call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
+                             cam_in%shf(:), zero, zero, cam_in%cflx(:,1)) 
 #endif
 
       !---------------------------------------------------------------------------
@@ -2779,6 +2781,7 @@ end if
       ! in mz_aero_wet_intr (mz_aerosols_intr.F90)
       ! tendency from other parts of crmclouds_aerosol_wet_intr() are still updated here.
       call physics_update (state, ptend, crm_run_time, tend)
+      call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time, zero, zero, zero, zero)
 #endif /* MODAL_AERO */
 
       !---------------------------------------------------------------------------
