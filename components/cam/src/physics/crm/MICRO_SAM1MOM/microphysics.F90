@@ -517,16 +517,4 @@ CONTAINS
 
   end function total_water
 
-  ! -------------------------------------------------------------------------------
-  ! dummy effective radius functions:
-
-  function Get_reffc() ! liquid water
-    real(crm_rknd), pointer, dimension(:,:,:) :: Get_reffc
-  end function Get_reffc
-
-  function Get_reffi() ! ice
-    real(crm_rknd), pointer, dimension(:,:,:) :: Get_reffi
-  end function Get_reffi
-
-
 end module microphysics
