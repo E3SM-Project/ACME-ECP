@@ -604,10 +604,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    integer  nstep                   ! time steps
    real(r8) crm_run_time            ! length of CRM integration - usually equal to ztodt unless SP_CRM_SPLIT is defined
 
-   real(r8) qc_crm (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) qi_crm (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) qpc_crm(pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) qpi_crm(pcols,crm_nx, crm_ny, crm_nz)
 #ifdef CLUBB_CRM
    real(r8) crm_cld(pcols,crm_nx, crm_ny, crm_nz+1)
    real(r8) clubb_tk   (pcols,crm_nx, crm_ny, crm_nz)
@@ -758,29 +754,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) tauy_crm(pcols)   ! merid CRM surface stress perturbation
    real(r8) z0m(pcols)        ! surface momentum roughness length
    real(r8), pointer, dimension(:,:)     :: qrs        ! shortwave radiative heating rate
-   real(r8), pointer, dimension(:,:)     :: qrl        ! shortwave radiative heating rate
+   real(r8), pointer, dimension(:,:)     :: qrl        ! longwave radiative heating rate
    real(r8), pointer, dimension(:,:)     :: tempPtr
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qt
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qp
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qn
-   real(r8), pointer, dimension(:,:,:,:) :: crm_nc
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qr
-   real(r8), pointer, dimension(:,:,:,:) :: crm_nr
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qi
-   real(r8), pointer, dimension(:,:,:,:) :: crm_ni
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qs
-   real(r8), pointer, dimension(:,:,:,:) :: crm_ns
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qg
-   real(r8), pointer, dimension(:,:,:,:) :: crm_ng
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qc
-
-#ifdef CRM
-   real(r8), dimension(pcols,crm_nx,crm_ny,crm_nz,nmicro_fields+1) :: crm_micro
-#endif
 
    integer                           :: pblh_idx
    real(r8), pointer, dimension(:)   :: pblh
    real(r8), pointer, dimension(:,:) :: qqcw
+
+   ! Pointers to crm_state fields that are NOT on the physics buffer
+   real(r8), target :: qcl(:,:,:,:), qci(:,:,:,:), qpl(:,:,:,:), qpi(:,:,:,:)
 
 #ifdef ECPP
    ! at layer center
@@ -993,6 +975,14 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! call pbuf_set_field(pbuf, pbuf_get_index('ICWMRDP'), 0.0_r8 )
    ! call pbuf_set_field(pbuf, pbuf_get_index('ICWMRSH'), 0.0_r8 )
    
+   ! Associate pointers to crm_state microphysics variables that are NOT on the
+   ! physics buffer
+   crm_state%qcl => qcl
+   crm_state%qci => qci
+   crm_state%qpl => qpl
+   crm_state%qpi => qpi
+
+   ! Initialization of precip fields
    prec_dp  = 0.
    snow_dp  = 0.
    prec_sh  = 0.
@@ -1107,10 +1097,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          m = pver-k+1
          do i=1,ncol
             crm_qrad (i,:,:,k)    = 0.
-            qc_crm (i,:,:,k)      = 0.
-            qi_crm (i,:,:,k)      = 0.
-            qpc_crm(i,:,:,k)      = 0.
-            qpi_crm(i,:,:,k)      = 0.
             t_rad  (i,:,:,k)      = state%t(i,m)
             qv_rad (i,:,:,k)      = state%q(i,m,1)
             qc_rad (i,:,:,k)      = 0.
@@ -1266,10 +1252,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       clmed  = 0.
       cllow  = 0.
 
-      qc_crm   = 0.
-      qi_crm   = 0.
-      qpc_crm  = 0.
-      qpi_crm  = 0
       prec_crm = 0.
 
       if (SPCAM_microp_scheme .eq. 'm2005') then
@@ -1332,15 +1314,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             do jj = 1,crm_ny
                do ii = 1,crm_nx
                   if (SPCAM_microp_scheme .eq. 'm2005') then
-                     qli_hydro_before(i) = qli_hydro_before(i)+(crm_qr(i,ii,jj,m)+ &
-                                                                crm_qs(i,ii,jj,m)+ &
-                                                                crm_qg(i,ii,jj,m)) * dp_g
-                     qi_hydro_before(i)  =  qi_hydro_before(i)+(crm_qs(i,ii,jj,m)+ &
-                                                                crm_qg(i,ii,jj,m)) * dp_g
+                     qli_hydro_before(i) = qli_hydro_before(i)+(crm_state%qr(i,ii,jj,m)+ &
+                                                                crm_state%qs(i,ii,jj,m)+ &
+                                                                crm_state%qg(i,ii,jj,m)) * dp_g
+                     qi_hydro_before(i)  =  qi_hydro_before(i)+(crm_state%qs(i,ii,jj,m)+ &
+                                                                crm_state%qg(i,ii,jj,m)) * dp_g
                   else if (SPCAM_microp_scheme .eq. 'sam1mom') then
                      sfactor = max(0._r8,min(1._r8,(crm_state%temperature(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
-                     qli_hydro_before(i) = qli_hydro_before(i)+crm_qp(i,ii,jj,m) * dp_g
-                     qi_hydro_before(i)  =  qi_hydro_before(i)+crm_qp(i,ii,jj,m) * (1-sfactor) * dp_g
+                     qli_hydro_before(i) = qli_hydro_before(i)+crm_state%qp(i,ii,jj,m) * dp_g
+                     qi_hydro_before(i)  =  qi_hydro_before(i)+crm_state%qp(i,ii,jj,m) * (1-sfactor) * dp_g
                   end if ! SPCAM_microp_scheme
                end do ! ii
             end do ! jj
@@ -1408,7 +1390,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
                crm_state, &
                crm_qrad(:ncol,:,:,:),                                                                                                                               &
-               qc_crm(:ncol,:,:,:),         qi_crm(:ncol,:,:,:),          qpc_crm(:ncol,:,:,:),         qpi_crm(:ncol,:,:,:),                                       &
                prec_crm(:ncol,:,:),         t_rad(:ncol,:,:,:),           qv_rad(:ncol,:,:,:),                                                                      &
                qc_rad(:ncol,:,:,:),         qi_rad(:ncol,:,:,:),          cld_rad(:ncol,:,:,:),         cld3d_crm(:ncol,:,:,:),                                     &
 #ifdef m2005
@@ -1497,14 +1478,14 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CRM_T   ', crm_state%temperature, pcols, lchnk)
 
       if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         call outfld('CRM_QV  ',(crm_qt(:,:,:,:)-qc_crm-qi_crm),pcols   ,lchnk   )
+         call outfld('CRM_QV  ',(crm_state%qt(:,:,:,:)-crm_state%qcl-crm_state%qci),pcols   ,lchnk   )
       else if (SPCAM_microp_scheme .eq. 'm2005') then 
-         call outfld('CRM_QV  ',crm_qt(:,:,:,:)-qc_crm, pcols   ,lchnk   )
+         call outfld('CRM_QV  ',crm_state%qt(:,:,:,:)-crm_state%qcl, pcols   ,lchnk   )
       endif
-      call outfld('CRM_QC  ',qc_crm   ,pcols   ,lchnk   )
-      call outfld('CRM_QI  ',qi_crm   ,pcols   ,lchnk   )
-      call outfld('CRM_QPC ',qpc_crm  ,pcols   ,lchnk   )
-      call outfld('CRM_QPI ',qpi_crm  ,pcols   ,lchnk   )
+      call outfld('CRM_QC  ',crm_state%qcl   ,pcols   ,lchnk   )
+      call outfld('CRM_QI  ',crm_state%qci   ,pcols   ,lchnk   )
+      call outfld('CRM_QPC ',crm_state%qpl  ,pcols   ,lchnk   )
+      call outfld('CRM_QPI ',crm_state%qpi  ,pcols   ,lchnk   )
       call outfld('CRM_PREC',prec_crm       ,pcols   ,lchnk   )
       call outfld('CRM_TK ', crm_tk(:, :, :, :)  ,pcols   ,lchnk   )  
       call outfld('CRM_TKH', crm_tkh(:, :, :, :)  ,pcols   ,lchnk   ) 
@@ -1526,9 +1507,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
          call outfld('CRM_WVAR', wvar_crm, pcols, lchnk)
 
-         call outfld('CRM_QR ',crm_qr(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_QS ',crm_qs(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_QG ',crm_qg(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QR ',crm_state%qr(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QS ',crm_state%qs(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QG ',crm_state%qg(:, :, :, :)   ,pcols   ,lchnk   )
 
          ! hm 7/26/11, add new output
          call outfld('CRM_AUT', aut_crm, pcols, lchnk)
@@ -1853,15 +1834,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             do jj = 1,crm_ny
                do ii = 1,crm_nx
                   if(SPCAM_microp_scheme .eq. 'm2005') then
-                     qli_hydro_after(i) = qli_hydro_after(i)+(crm_qr(i,ii,jj,m)+ &
-                                                              crm_qs(i,ii,jj,m)+ &
-                                                              crm_qg(i,ii,jj,m)) * dp_g
-                     qi_hydro_after(i)  =  qi_hydro_after(i)+(crm_qs(i,ii,jj,m)+ &
-                                                              crm_qg(i,ii,jj,m)) * dp_g
+                     qli_hydro_after(i) = qli_hydro_after(i)+(crm_state%qr(i,ii,jj,m)+ &
+                                                              crm_state%qs(i,ii,jj,m)+ &
+                                                              crm_state%qg(i,ii,jj,m)) * dp_g
+                     qi_hydro_after(i)  =  qi_hydro_after(i)+(crm_state%qs(i,ii,jj,m)+ &
+                                                              crm_state%qg(i,ii,jj,m)) * dp_g
                   else if(SPCAM_microp_scheme .eq. 'sam1mom') then 
                      sfactor = max(0._r8,min(1._r8,(crm_state%temperature(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
-                     qli_hydro_after(i) = qli_hydro_after(i)+crm_qp(i,ii,jj,m) * dp_g
-                     qi_hydro_after(i)  =  qi_hydro_after(i)+crm_qp(i,ii,jj,m) * (1-sfactor) * dp_g
+                     qli_hydro_after(i) = qli_hydro_after(i)+crm_state%qp(i,ii,jj,m) * dp_g
+                     qi_hydro_after(i)  =  qi_hydro_after(i)+crm_state%qp(i,ii,jj,m) * (1-sfactor) * dp_g
                   end if ! SPCAM_microp_scheme
                end do ! ii
             end do ! jj

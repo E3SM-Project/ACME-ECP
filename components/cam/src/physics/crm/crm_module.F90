@@ -74,6 +74,15 @@ module crm_module
       real(crm_rknd), pointer :: qn(:,:,:,:)
 #endif
 
+      ! These are copies of the SAM cloud and precip liquid and ice, previously
+      ! passed in and out of crm() via qc_crm, qi_crm, etc. How are these
+      ! different from the above microphysics variables? It looks like these are
+      ! derived from the above, so maybe we don't need to pass these in and out?
+      real(crm_rknd), pointer :: qcl(:,:,:,:)
+      real(crm_rknd), pointer :: qci(:,:,:,:)
+      real(crm_rknd), pointer :: qpl(:,:,:,:)
+      real(crm_rknd), pointer :: qpi(:,:,:,:)
+
    contains
       ! Type-bound procedures. Initialization should nullify fields
       procedure, public :: initialize=>crm_state_initialize
@@ -153,6 +162,11 @@ contains
       this%qn => null()
 #endif
 
+      this%qcl => null()
+      this%qci => null()
+      this%qpl => null()
+      this%qpi => null()
+
    end subroutine crm_state_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_state_finalize(this)
@@ -182,6 +196,10 @@ contains
       this%qn => null()
 #endif
 
+      this%qcl => null()
+      this%qci => null()
+      this%qpl => null()
+      this%qpi => null()
    end subroutine crm_state_finalize
    !------------------------------------------------------------------------------------------------
 
@@ -242,7 +260,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 qltend, qcltend, qiltend, sltend, &
                 crm_state, &
                 qrad_crm, &
-                qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
+                prec_crm, &
                 t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
 #ifdef m2005
                 nc_rad, ni_rad, qs_rad, ns_rad, wvar_crm,  &
@@ -522,12 +540,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: tauy_crm            (ncrms)            ! merid CRM surface stress perturbation (N/m2)
     real(r8), intent(  out) :: z0m                 (ncrms)            ! surface stress (N/m2)
     real(r8), intent(  out) :: timing_factor       (ncrms)            ! crm cpu efficiency
-
-    ! TODO: are these redundant with crm_state%qc, crm_state%qi, etc.? Or can they be combined?
-    real(r8), intent(  out) :: qc_crm              (ncrms,crm_nx, crm_ny, crm_nz)! CRM cloud water
-    real(r8), intent(  out) :: qi_crm              (ncrms,crm_nx, crm_ny, crm_nz)! CRM cloud ice
-    real(r8), intent(  out) :: qpc_crm             (ncrms,crm_nx, crm_ny, crm_nz)! CRM precip water
-    real(r8), intent(  out) :: qpi_crm             (ncrms,crm_nx, crm_ny, crm_nz)! CRM precip ice
 
     real(r8), intent(  out) :: prec_crm            (ncrms,crm_nx, crm_ny)        ! CRM precipiation rate at layer center
 #ifdef ECPP
@@ -1829,10 +1841,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     do k=1,nzm
      do j=1,ny
       do i=1,nx
-        qc_crm (icrm,i,j,k) = qcl(i,j,k)
-        qi_crm (icrm,i,j,k) = qci(i,j,k)
-        qpc_crm(icrm,i,j,k) = qpl(i,j,k)
-        qpi_crm(icrm,i,j,k) = qpi(i,j,k)
+        crm_state%qcl(icrm,i,j,k) = qcl(i,j,k)
+        crm_state%qci(icrm,i,j,k) = qci(i,j,k)
+        crm_state%qpl(icrm,i,j,k) = qpl(i,j,k)
+        crm_state%qpi(icrm,i,j,k) = qpi(i,j,k)
 #ifdef m2005
         wvar_crm(icrm,i,j,k) = wvar (i,j,k)
         aut_crm (icrm,i,j,k) = aut1 (i,j,k)
