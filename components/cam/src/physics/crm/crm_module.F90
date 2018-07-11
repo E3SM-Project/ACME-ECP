@@ -107,6 +107,17 @@ module crm_module
       real(crm_rknd), allocatable :: crm_tkh(:,:,:,:)
 
       real(crm_rknd), allocatable :: prec_crm(:,:,:) ! CRM precipiation rate (surface)
+
+      ! Stuff for 2-moment
+      real(crm_rknd), allocatable :: wvar(:,:,:,:) ! vertical velocity variance (m/s)
+      real(crm_rknd), allocatable :: aut (:,:,:,:) ! cloud water autoconversion (1/s)
+      real(crm_rknd), allocatable :: acc (:,:,:,:) ! cloud water accretion (1/s)
+      real(crm_rknd), allocatable :: evpc(:,:,:,:) ! cloud water evaporation (1/s)
+      real(crm_rknd), allocatable :: evpr(:,:,:,:) ! rain evaporation (1/s)
+      real(crm_rknd), allocatable :: mlt (:,:,:,:) ! ice, snow, graupel melting (1/s)
+      real(crm_rknd), allocatable :: sub (:,:,:,:) ! ice, snow, graupel sublimation (1/s)
+      real(crm_rknd), allocatable :: dep (:,:,:,:) ! ice, snow, graupel deposition (1/s)
+      real(crm_rknd), allocatable :: con (:,:,:,:) ! cloud water condensation(1/s)
    contains
       ! Type-bound procedures. Initialization should nullify fields
       procedure, public :: initialize=>crm_state_initialize
@@ -176,6 +187,62 @@ module crm_module
       real(crm_rknd), allocatable :: nr_mean(:,:)  ! mean rain         (#/kg)
 #endif
 
+#ifdef m2005
+      ! Time and domain averaged process rates
+      real(crm_rknd), allocatable :: aut_crm_a (:,:)  ! cloud water autoconversion (1/s)
+      real(crm_rknd), allocatable :: acc_crm_a (:,:)  ! cloud water accretion (1/s)
+      real(crm_rknd), allocatable :: evpc_crm_a(:,:)  ! cloud water evaporation (1/s)
+      real(crm_rknd), allocatable :: evpr_crm_a(:,:)  ! rain evaporation (1/s)
+      real(crm_rknd), allocatable :: mlt_crm_a (:,:)  ! ice, snow, graupel melting (1/s)
+      real(crm_rknd), allocatable :: sub_crm_a (:,:)  ! ice, snow, graupel sublimation (1/s)
+      real(crm_rknd), allocatable :: dep_crm_a (:,:)  ! ice, snow, graupel deposition (1/s)
+      real(crm_rknd), allocatable :: con_crm_a (:,:)  ! cloud water condensation(1/s)
+#endif /* m2005 */
+
+      ! These are all time and spatial averages, on the GCM grid
+      real(crm_rknd), allocatable :: cld   (:,:)  ! cloud fraction
+      real(crm_rknd), allocatable :: gicewp(:,:)  ! ice water path
+      real(crm_rknd), allocatable :: gliqwp(:,:)  ! ice water path
+      real(crm_rknd), allocatable :: mctot (:,:)  ! cloud mass flux
+      real(crm_rknd), allocatable :: mcup  (:,:)  ! updraft cloud mass flux
+      real(crm_rknd), allocatable :: mcdn  (:,:)  ! downdraft cloud mass flux
+      real(crm_rknd), allocatable :: mcuup (:,:)  ! unsat updraft cloud mass flux
+      real(crm_rknd), allocatable :: mcudn (:,:)  ! unsat downdraft cloud mass flux
+
+      ! For convective transport
+      real(crm_rknd), allocatable :: mu_crm(:,:)  ! mass flux up
+      real(crm_rknd), allocatable :: md_crm(:,:)  ! mass flux down
+      real(crm_rknd), allocatable :: du_crm(:,:)  ! mass detrainment from updraft
+      real(crm_rknd), allocatable :: eu_crm(:,:)  ! mass entrainment from updraft
+      real(crm_rknd), allocatable :: ed_crm(:,:)  ! mass detrainment from downdraft
+      real(crm_rknd), allocatable :: jt_crm(:)       ! index of cloud (convection) top
+      real(crm_rknd), allocatable :: mx_crm(:)       ! index of cloud (convection) bottom
+
+      ! Other stuff...
+      real(crm_rknd), allocatable :: flux_qt      (:,:)       ! nonprecipitating water flux           [kg/m2/s]
+      real(crm_rknd), allocatable :: fluxsgs_qt   (:,:)       ! sgs nonprecipitating water flux    [kg/m2/s]
+      real(crm_rknd), allocatable :: tkez         (:,:)       ! tke profile               [kg/m/s2]
+      real(crm_rknd), allocatable :: tkesgsz      (:,:)       ! sgs tke profile        [kg/m/s2]
+      real(crm_rknd), allocatable :: tkz          (:,:)       ! tk profile                [m2/s]
+      real(crm_rknd), allocatable :: flux_u       (:,:)       ! x-momentum flux          [m2/s2]
+      real(crm_rknd), allocatable :: flux_v       (:,:)       ! y-momentum flux          [m2/s2]
+      real(crm_rknd), allocatable :: flux_qp      (:,:)       ! precipitating water flux [kg/m2/s or mm/s]
+      real(crm_rknd), allocatable :: pflx         (:,:)       ! precipitation flux      [m/s]
+      real(crm_rknd), allocatable :: qt_ls        (:,:)       ! tendency of nonprec water due to large-scale  [kg/kg/s]
+      real(crm_rknd), allocatable :: qt_trans     (:,:)       ! tendency of nonprec water due to transport  [kg/kg/s]
+      real(crm_rknd), allocatable :: qp_trans     (:,:)       ! tendency of prec water due to transport [kg/kg/s]
+      real(crm_rknd), allocatable :: qp_fall      (:,:)       ! tendency of prec water due to fall-out   [kg/kg/s]
+      real(crm_rknd), allocatable :: qp_src       (:,:)       ! tendency of prec water due to conversion  [kg/kg/s]
+      real(crm_rknd), allocatable :: qp_evp       (:,:)       ! tendency of prec water due to evp         [kg/kg/s]
+      real(crm_rknd), allocatable :: t_ls         (:,:)       ! tendency of lwse  due to large-scale        [kg/kg/s] ???
+      real(crm_rknd), allocatable :: prectend     (:)            ! column integrated tendency in precipitating water+ice (kg/m2/s)
+      real(crm_rknd), allocatable :: precstend    (:)            ! column integrated tendency in precipitating ice (kg/m2/s)
+      real(crm_rknd), allocatable :: taux_crm     (:)            ! zonal CRM surface stress perturbation (N/m2)
+      real(crm_rknd), allocatable :: tauy_crm     (:)            ! merid CRM surface stress perturbation (N/m2)
+      real(crm_rknd), allocatable :: z0m          (:)            ! surface stress (N/m2)
+      real(crm_rknd), allocatable :: timing_factor(:)            ! crm cpu efficiency
+
+
    contains
       procedure, public :: initialize=>crm_output_initialize
       procedure, public :: finalize=>crm_output_finalize
@@ -219,11 +286,31 @@ contains
       if (.not. allocated(this%crm_tkh)) allocate(this%crm_tkh(ncrms,crm_nx,crm_ny,crm_nz))
       if (.not. allocated(this%prec_crm)) allocate(this%prec_crm(ncrms,crm_nx,crm_ny))
 
+      if (.not. allocated(this%wvar)) allocate(this%wvar(ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%aut)) allocate(this%aut (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%acc)) allocate(this%acc (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%evpc)) allocate(this%evpc(ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%evpr)) allocate(this%evpr(ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%mlt)) allocate(this%mlt (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%sub)) allocate(this%sub (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%dep)) allocate(this%dep (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not. allocated(this%con)) allocate(this%con (ncrms,crm_nx, crm_ny, crm_nz))
+
       ! Initialize 
       this%crm_tk = 0.0
       this%crm_tkh = 0.0
       this%prec_crm = 0.0
       
+      this%wvar = 0.0
+      this%aut  = 0.0
+      this%acc  = 0.0
+      this%evpc = 0.0
+      this%evpr = 0.0
+      this%mlt  = 0.0
+      this%sub  = 0.0
+      this%dep  = 0.0
+      this%con  = 0.0
+
    end subroutine crm_state_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_state_finalize(this)
@@ -300,6 +387,59 @@ contains
          if (.not. allocated(this%ng_mean)) allocate(this%ng_mean(ncrms,nlev))
          if (.not. allocated(this%nr_mean)) allocate(this%nr_mean(ncrms,nlev))
 #endif
+
+#ifdef m2005
+         if (.not. allocated(this%aut_crm_a )) allocate(this%aut_crm_a (ncrms,nlev))
+         if (.not. allocated(this%acc_crm_a )) allocate(this%acc_crm_a (ncrms,nlev))
+         if (.not. allocated(this%evpc_crm_a)) allocate(this%evpc_crm_a(ncrms,nlev))
+         if (.not. allocated(this%evpr_crm_a)) allocate(this%evpr_crm_a(ncrms,nlev))
+         if (.not. allocated(this%mlt_crm_a )) allocate(this%mlt_crm_a (ncrms,nlev))
+         if (.not. allocated(this%sub_crm_a )) allocate(this%sub_crm_a (ncrms,nlev))
+         if (.not. allocated(this%dep_crm_a )) allocate(this%dep_crm_a (ncrms,nlev))
+         if (.not. allocated(this%con_crm_a )) allocate(this%con_crm_a (ncrms,nlev))
+#endif /* m2005 */
+
+         if (.not. allocated(this%cld   )) allocate(this%cld   (ncrms,nlev))  ! cloud fraction
+         if (.not. allocated(this%gicewp)) allocate(this%gicewp(ncrms,nlev))  ! ice water path
+         if (.not. allocated(this%gliqwp)) allocate(this%gliqwp(ncrms,nlev))  ! ice water path
+         if (.not. allocated(this%mctot )) allocate(this%mctot (ncrms,nlev))  ! cloud mass flux
+         if (.not. allocated(this%mcup  )) allocate(this%mcup  (ncrms,nlev))  ! updraft cloud mass flux
+         if (.not. allocated(this%mcdn  )) allocate(this%mcdn  (ncrms,nlev))  ! downdraft cloud mass flux
+         if (.not. allocated(this%mcuup )) allocate(this%mcuup (ncrms,nlev))  ! unsat updraft cloud mass flux
+         if (.not. allocated(this%mcudn )) allocate(this%mcudn (ncrms,nlev))  ! unsat downdraft cloud mass flux
+
+         if (.not. allocated(this%mu_crm)) allocate(this%mu_crm(ncrms,nlev))  ! mass flux up
+         if (.not. allocated(this%md_crm)) allocate(this%md_crm(ncrms,nlev))  ! mass flux down
+         if (.not. allocated(this%du_crm)) allocate(this%du_crm(ncrms,nlev))  ! mass detrainment from updraft
+         if (.not. allocated(this%eu_crm)) allocate(this%eu_crm(ncrms,nlev))  ! mass entrainment from updraft
+         if (.not. allocated(this%ed_crm)) allocate(this%ed_crm(ncrms,nlev))  ! mass detrainment from downdraft
+         if (.not. allocated(this%jt_crm)) allocate(this%jt_crm(ncrms))       ! index of cloud (convection) top
+         if (.not. allocated(this%mx_crm)) allocate(this%mx_crm(ncrms))       ! index of cloud (convection) bottom
+
+         if (.not. allocated(this%flux_qt   )) allocate(this%flux_qt             (ncrms,plev))
+         if (.not. allocated(this%fluxsgs_qt)) allocate(this%fluxsgs_qt          (ncrms,plev))
+         if (.not. allocated(this%tkez      )) allocate(this%tkez                (ncrms,plev))
+         if (.not. allocated(this%tkesgsz   )) allocate(this%tkesgsz             (ncrms,plev))
+         if (.not. allocated(this%tkz       )) allocate(this%tkz                 (ncrms,plev))
+         if (.not. allocated(this%flux_u    )) allocate(this%flux_u              (ncrms,plev))
+         if (.not. allocated(this%flux_v    )) allocate(this%flux_v              (ncrms,plev))
+         if (.not. allocated(this%flux_qp   )) allocate(this%flux_qp             (ncrms,plev))
+         if (.not. allocated(this%pflx      )) allocate(this%pflx                (ncrms,plev))
+         if (.not. allocated(this%qt_ls     )) allocate(this%qt_ls               (ncrms,plev))
+         if (.not. allocated(this%qt_trans  )) allocate(this%qt_trans            (ncrms,plev))
+         if (.not. allocated(this%qp_trans  )) allocate(this%qp_trans            (ncrms,plev))
+         if (.not. allocated(this%qp_fall   )) allocate(this%qp_fall             (ncrms,plev))
+         if (.not. allocated(this%qp_src    )) allocate(this%qp_src              (ncrms,plev))
+         if (.not. allocated(this%qp_evp    )) allocate(this%qp_evp              (ncrms,plev))
+         if (.not. allocated(this%t_ls      )) allocate(this%t_ls                (ncrms,plev))
+         if (.not. allocated(this%prectend  )) allocate(this%prectend            (ncrms))
+         if (.not. allocated(this%precstend )) allocate(this%precstend           (ncrms))
+         if (.not. allocated(this%taux_crm  )) allocate(this%taux_crm            (ncrms))
+         if (.not. allocated(this%tauy_crm  )) allocate(this%tauy_crm            (ncrms))
+         if (.not. allocated(this%z0m       )) allocate(this%z0m                 (ncrms))
+         if (.not. allocated(this%timing_factor)) allocate(this%timing_factor       (ncrms))
+
+
       end if
 
       this%cltot = 0.0
@@ -325,6 +465,36 @@ contains
       this%ng_mean = 0.0
       this%nr_mean = 0.0
 #endif
+
+#ifdef m2005
+      this%aut_crm_a = 0.0
+      this%acc_crm_a = 0.0
+      this%evpc_crm_a = 0.0
+      this%evpr_crm_a = 0.0
+      this%mlt_crm_a = 0.0
+      this%sub_crm_a = 0.0
+      this%dep_crm_a = 0.0
+      this%con_crm_a = 0.0
+#endif
+
+      this%cld    = 0.
+      this%gicewp = 0
+      this%gliqwp = 0
+      this%mctot  = 0.
+      this%mcup   = 0.
+      this%mcdn   = 0.
+      this%mcuup  = 0.
+      this%mcudn  = 0.
+
+      ! Convective transport
+      this%mu_crm = 0.
+      this%md_crm = 0.
+      this%eu_crm = 0.
+      this%du_crm = 0.
+      this%ed_crm = 0.
+      this%jt_crm = 0.
+      this%mx_crm = 0.
+
    end subroutine crm_output_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_output_finalize(this)
@@ -360,16 +530,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 crm_state, crm_output, &
                 qrad_crm, &
 #ifdef m2005
-                wvar_crm,  &
-                aut_crm, acc_crm, evpc_crm, evpr_crm, mlt_crm, &
-                sub_crm, dep_crm, con_crm, &
-                aut_crm_a, acc_crm_a, evpc_crm_a, evpr_crm_a, mlt_crm_a, &
-                sub_crm_a, dep_crm_a, con_crm_a, &
-#endif
-                cld, &
-                gicewp, gliqwp, &
-                mc, mcup, mcdn, mcuup, mcudn, &
-#ifdef m2005
 #ifdef MODAL_AERO
                 naermod, vaerosol, hygro,     &
 #endif
@@ -380,7 +540,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 clubb_tk, clubb_tkh,          &
                 relvar, accre_enhan, qclvar,  &
 #endif
-                mu_crm, md_crm, du_crm, eu_crm, ed_crm, jt_crm, mx_crm,    &
 #ifdef ECPP
                 abnd, abnd_tf, massflxbnd, acen, acen_tf,           &
                 rhcen, qcloudcen, qicecen, qlsinkcen, precrcen, precsolidcen,  &
@@ -388,12 +547,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 wupthresh_bnd, wdownthresh_bnd,   &
                 wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
 #endif
-                tkez, tkesgsz, tkz, flux_u, flux_v, flux_qt, fluxsgs_qt,flux_qp, &
-                pflx, qt_ls, qt_trans, qp_trans, qp_fall, &
-                qp_evp, qp_src, t_ls, prectend, precstend, &
+! These are inputs
                 ocnfrac, wndls, tau00, bflxls, &
                 fluxu00, fluxv00, fluxt00, fluxq00,    &
-                taux_crm, tauy_crm, z0m, timing_factor)
+                )
         !---------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
@@ -529,73 +686,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
 
 #ifdef m2005
-    real(r8), intent(  out) :: wvar_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
-    real(r8), intent(  out) :: aut_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
-    real(r8), intent(  out) :: acc_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
-    real(r8), intent(  out) :: evpc_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water evaporation (1/s)
-    real(r8), intent(  out) :: evpr_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! rain evaporation (1/s)
-    real(r8), intent(  out) :: mlt_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel melting (1/s)
-    real(r8), intent(  out) :: sub_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel sublimation (1/s)
-    real(r8), intent(  out) :: dep_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! ice, snow, graupel deposition (1/s)
-    real(r8), intent(  out) :: con_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water condensation(1/s)
-    real(r8), intent(  out) :: aut_crm_a           (ncrms,plev)  ! cloud water autoconversion (1/s)
-    real(r8), intent(  out) :: acc_crm_a           (ncrms,plev)  ! cloud water accretion (1/s)
-    real(r8), intent(  out) :: evpc_crm_a          (ncrms,plev)  ! cloud water evaporation (1/s)
-    real(r8), intent(  out) :: evpr_crm_a          (ncrms,plev)  ! rain evaporation (1/s)
-    real(r8), intent(  out) :: mlt_crm_a           (ncrms,plev)  ! ice, snow, graupel melting (1/s)
-    real(r8), intent(  out) :: sub_crm_a           (ncrms,plev)  ! ice, snow, graupel sublimation (1/s)
-    real(r8), intent(  out) :: dep_crm_a           (ncrms,plev)  ! ice, snow, graupel deposition (1/s)
-    real(r8), intent(  out) :: con_crm_a           (ncrms,plev)  ! cloud water condensation(1/s)
-#endif /* m2005 */
-    real(r8), intent(  out) :: cld                 (ncrms,plev)  ! cloud fraction
-    real(r8), intent(  out) :: gicewp              (ncrms,plev)  ! ice water path
-    real(r8), intent(  out) :: gliqwp              (ncrms,plev)  ! ice water path
-    real(r8), intent(  out) :: mc                  (ncrms,plev)  ! cloud mass flux
-    real(r8), intent(  out) :: mcup                (ncrms,plev)  ! updraft cloud mass flux
-    real(r8), intent(  out) :: mcdn                (ncrms,plev)  ! downdraft cloud mass flux
-    real(r8), intent(  out) :: mcuup               (ncrms,plev)  ! unsat updraft cloud mass flux
-    real(r8), intent(  out) :: mcudn               (ncrms,plev)  ! unsat downdraft cloud mass flux
-#ifdef m2005
 #ifdef MODAL_AERO
     real(r8), intent(in   )  :: naermod            (ncrms,plev, ntot_amode)    ! Aerosol number concentration [/m3]
     real(r8), intent(in   )  :: vaerosol           (ncrms,plev, ntot_amode)    ! aerosol volume concentration [m3/m3]
     real(r8), intent(in   )  :: hygro              (ncrms,plev, ntot_amode)    ! hygroscopicity of aerosol mode
 #endif
 #endif /* m2005 */
-    real(r8), intent(  out) :: mu_crm              (ncrms,plev)       ! mass flux up
-    real(r8), intent(  out) :: md_crm              (ncrms,plev)       ! mass flux down
-    real(r8), intent(  out) :: du_crm              (ncrms,plev)       ! mass detrainment from updraft
-    real(r8), intent(  out) :: eu_crm              (ncrms,plev)       ! mass entrainment from updraft
-    real(r8), intent(  out) :: ed_crm              (ncrms,plev)       ! mass detrainment from downdraft
-    real(r8)                :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
-    real(r8), intent(  out) :: jt_crm              (ncrms)            ! index of cloud (convection) top
-    real(r8), intent(  out) :: mx_crm              (ncrms)            ! index of cloud (convection) bottom
-    real(r8)                :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
-    real(r8)                :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
-    real(r8), intent(  out) :: flux_qt             (ncrms,plev)       ! nonprecipitating water flux           [kg/m2/s]
-    real(r8), intent(  out) :: fluxsgs_qt          (ncrms,plev)       ! sgs nonprecipitating water flux    [kg/m2/s]
-    real(r8), intent(  out) :: tkez                (ncrms,plev)       ! tke profile               [kg/m/s2]
-    real(r8), intent(  out) :: tkesgsz             (ncrms,plev)       ! sgs tke profile        [kg/m/s2]
-    real(r8), intent(  out) :: tkz                 (ncrms,plev)       ! tk profile                [m2/s]
-    real(r8), intent(  out) :: flux_u              (ncrms,plev)       ! x-momentum flux          [m2/s2]
-    real(r8), intent(  out) :: flux_v              (ncrms,plev)       ! y-momentum flux          [m2/s2]
-    real(r8), intent(  out) :: flux_qp             (ncrms,plev)       ! precipitating water flux [kg/m2/s or mm/s]
-    real(r8), intent(  out) :: pflx                (ncrms,plev)       ! precipitation flux      [m/s]
-    real(r8), intent(  out) :: qt_ls               (ncrms,plev)       ! tendency of nonprec water due to large-scale  [kg/kg/s]
-    real(r8), intent(  out) :: qt_trans            (ncrms,plev)       ! tendency of nonprec water due to transport  [kg/kg/s]
-    real(r8), intent(  out) :: qp_trans            (ncrms,plev)       ! tendency of prec water due to transport [kg/kg/s]
-    real(r8), intent(  out) :: qp_fall             (ncrms,plev)       ! tendency of prec water due to fall-out   [kg/kg/s]
-    real(r8), intent(  out) :: qp_src              (ncrms,plev)       ! tendency of prec water due to conversion  [kg/kg/s]
-    real(r8), intent(  out) :: qp_evp              (ncrms,plev)       ! tendency of prec water due to evp         [kg/kg/s]
-    real(r8), intent(  out) :: t_ls                (ncrms,plev)       ! tendency of lwse  due to large-scale        [kg/kg/s] ???
-    real(r8), intent(  out) :: prectend            (ncrms)            ! column integrated tendency in precipitating water+ice (kg/m2/s)
-    real(r8), intent(  out) :: precstend           (ncrms)            ! column integrated tendency in precipitating ice (kg/m2/s)
-    real(r8), intent(  out) :: taux_crm            (ncrms)            ! zonal CRM surface stress perturbation (N/m2)
-    real(r8), intent(  out) :: tauy_crm            (ncrms)            ! merid CRM surface stress perturbation (N/m2)
-    real(r8), intent(  out) :: z0m                 (ncrms)            ! surface stress (N/m2)
-    real(r8), intent(  out) :: timing_factor       (ncrms)            ! crm cpu efficiency
 
 #ifdef ECPP
+   ! TODO: these should be passed as a separate crm_ecpp_type
     real(r8), intent(  out) :: acen                (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for each sub-sub class for full time period
     real(r8), intent(  out) :: acen_tf             (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for end-portion of time period
     real(r8), intent(  out) :: rhcen               (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! relative humidity (0-1)
@@ -681,6 +780,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(kind=core_rknd), allocatable :: rtm_column (:) ! Total water (vapor + liquid)     [kg/kg]
 #endif /* CLUBB_CRM */
     real(crm_rknd) :: zeroval
+
+    real(r8) :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
+    real(r8) :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
+    real(r8) :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
+
+
 
     allocate( dummy(nz) )
     allocate( t00(nz) )
@@ -1064,10 +1169,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     z0 = z0_est(z(1),bflx,wnd,ustar)
     z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
 
-    timing_factor = 0.
+    crm_output%timing_factor = 0.
 
-    prectend(icrm)=colprec
-    precstend(icrm)=colprecs
+    crm_output%prectend(icrm)=colprec
+    crm_output%precstend(icrm)=colprecs
 
 
 #ifdef CLUBB_CRM
@@ -1100,24 +1205,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     call crm_output%initialize()
 
 !---------------------------------------------------
-    cld   (icrm,:) = 0.
-    gicewp(icrm,:) = 0
-    gliqwp(icrm,:) = 0
-    mc    (icrm,:) = 0.
-    mcup  (icrm,:) = 0.
-    mcdn  (icrm,:) = 0.
-    mcuup (icrm,:) = 0.
-    mcudn (icrm,:) = 0.
+    crm_output%cld   (icrm,:) = 0.
+    crm_output%gicewp(icrm,:) = 0
+    crm_output%gliqwp(icrm,:) = 0
+    crm_output%mctot (icrm,:) = 0.
+    crm_output%mcup  (icrm,:) = 0.
+    crm_output%mcdn  (icrm,:) = 0.
+    crm_output%mcuup (icrm,:) = 0.
+    crm_output%mcudn (icrm,:) = 0.
 #ifdef m2005
-    ! hm 8/31/11 add new variables
-    aut_crm_a (icrm,:) = 0.
-    acc_crm_a (icrm,:) = 0.
-    evpc_crm_a(icrm,:) = 0.
-    evpr_crm_a(icrm,:) = 0.
-    mlt_crm_a (icrm,:) = 0.
-    sub_crm_a (icrm,:) = 0.
-    dep_crm_a (icrm,:) = 0.
-    con_crm_a (icrm,:) = 0.
 
     ! hm 8/31/11 add new output
     ! these are increments added to calculate gcm-grid and time-step avg
@@ -1133,34 +1229,26 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     con1a  = 0.
 #endif /* m2005 */
 
-    mu_crm (icrm,:) = 0.
-    md_crm (icrm,:) = 0.
-    eu_crm (icrm,:) = 0.
-    du_crm (icrm,:) = 0.
-    ed_crm (icrm,:) = 0.
     dd_crm (icrm,:) = 0.
-    jt_crm (icrm)   = 0.
-    mx_crm (icrm)   = 0.
-
     mui_crm(icrm,:) = 0.
     mdi_crm(icrm,:) = 0.
 
-    flux_qt   (icrm,:) = 0.
-    flux_u    (icrm,:) = 0.
-    flux_v    (icrm,:) = 0.
-    fluxsgs_qt(icrm,:) = 0.
-    tkez      (icrm,:) = 0.
-    tkesgsz   (icrm,:) = 0.
-    tkz       (icrm,:) = 0.
-    flux_qp   (icrm,:) = 0.
-    pflx      (icrm,:) = 0.
-    qt_trans  (icrm,:) = 0.
-    qp_trans  (icrm,:) = 0.
-    qp_fall   (icrm,:) = 0.
-    qp_evp    (icrm,:) = 0.
-    qp_src    (icrm,:) = 0.
-    qt_ls     (icrm,:) = 0.
-    t_ls      (icrm,:) = 0.
+    crm_output%flux_qt   (icrm,:) = 0.
+    crm_output%flux_u    (icrm,:) = 0.
+    crm_output%flux_v    (icrm,:) = 0.
+    crm_output%fluxsgs_qt(icrm,:) = 0.
+    crm_output%tkez      (icrm,:) = 0.
+    crm_output%tkesgsz   (icrm,:) = 0.
+    crm_output%tkz       (icrm,:) = 0.
+    crm_output%flux_qp   (icrm,:) = 0.
+    crm_output%pflx      (icrm,:) = 0.
+    crm_output%qt_trans  (icrm,:) = 0.
+    crm_output%qp_trans  (icrm,:) = 0.
+    crm_output%qp_fall   (icrm,:) = 0.
+    crm_output%qp_evp    (icrm,:) = 0.
+    crm_output%qp_src    (icrm,:) = 0.
+    crm_output%qt_ls     (icrm,:) = 0.
+    crm_output%t_ls      (icrm,:) = 0.
 
     uwle     = 0.
     uwsb     = 0.
@@ -1300,7 +1388,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       nstep = nstep + 1
       time = time + dt
       day = day0 + time/86400.
-      timing_factor(icrm) = timing_factor(icrm)+1
+      crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
       !------------------------------------------------------------------
       !  Check if the dynamical time step should be decreased
       !  to handle the cases when the flow being locally linearly unstable
@@ -1601,21 +1689,21 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
             ! Calculate cloud mass fluxes
             tmp1 = rho(k)*adz(k)*dz
             if(tmp1*(qcl(i,j,k)+qci(i,j,k)).gt.cwp_threshold) then
-                 cld(icrm,l) = cld(icrm,l) + CF3D(i,j,k)
+                 crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k)
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   mcup (icrm,l) = mcup (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
+                   crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
+                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
                  endif
                  if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   mcdn (icrm,l) = mcdn (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
+                   crm_output%mcdn (icrm,l) = crm_output%mcdn (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
+                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
                  endif
             else
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   mcuup(icrm,l) = mcuup(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
                  if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   mcudn(icrm,l) = mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
             endif
 
@@ -1643,8 +1731,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif
             endif
 
-            gliqwp(icrm,l) = gliqwp(icrm,l) + qcl(i,j,k)
-            gicewp(icrm,l) = gicewp(icrm,l) + qci(i,j,k)
+            crm_output%gliqwp(icrm,l) = crm_output%gliqwp(icrm,l) + qcl(i,j,k)
+            crm_output%gicewp(icrm,l) = crm_output%gicewp(icrm,l) + qci(i,j,k)
           enddo
         enddo
       enddo
@@ -1799,12 +1887,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif /* SPMOMTRANS */
 
    ! TODO: move tendencies up to crm_physics_tend
-    sltend (icrm,:) = cp * (tln   - tl  (icrm,:)) * icrm_run_time
-    qltend (icrm,:) =      (qln   - ql  (icrm,:)) * icrm_run_time
-    qcltend(icrm,:) =      (qccln - qccl(icrm,:)) * icrm_run_time
-    qiltend(icrm,:) =      (qiiln - qiil(icrm,:)) * icrm_run_time
-    prectend (icrm) = (colprec -prectend (icrm))/ggr*factor_xy * icrm_run_time
-    precstend(icrm) = (colprecs-precstend(icrm))/ggr*factor_xy * icrm_run_time
+    crm_output%sltend (icrm,:) = cp * (tln   - tl  (icrm,:)) * icrm_run_time
+    crm_output%qltend (icrm,:) =      (qln   - ql  (icrm,:)) * icrm_run_time
+    crm_output%qcltend(icrm,:) =      (qccln - qccl(icrm,:)) * icrm_run_time
+    crm_output%qiltend(icrm,:) =      (qiiln - qiil(icrm,:)) * icrm_run_time
+    crm_output%prectend (icrm) = (colprec -crm_output%prectend (icrm))/ggr*factor_xy * icrm_run_time
+    crm_output%precstend(icrm) = (colprecs-crm_output%precstend(icrm))/ggr*factor_xy * icrm_run_time
 
    ! TODO: move tendencies up to crm_physics_tend
     !!! don't use CRM tendencies from two crm top levels
@@ -1884,22 +1972,22 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
         crm_state%qpl(icrm,i,j,k) = qpl(i,j,k)
         crm_state%qpi(icrm,i,j,k) = qpi(i,j,k)
 #ifdef m2005
-        wvar_crm(icrm,i,j,k) = wvar (i,j,k)
-        aut_crm (icrm,i,j,k) = aut1 (i,j,k)
-        acc_crm (icrm,i,j,k) = acc1 (i,j,k)
-        evpc_crm(icrm,i,j,k) = evpc1(i,j,k)
-        evpr_crm(icrm,i,j,k) = evpr1(i,j,k)
-        mlt_crm (icrm,i,j,k) = mlt1 (i,j,k)
-        sub_crm (icrm,i,j,k) = sub1 (i,j,k)
-        dep_crm (icrm,i,j,k) = dep1 (i,j,k)
-        con_crm (icrm,i,j,k) = con1 (i,j,k)
+        crm_state%wvar(icrm,i,j,k) = wvar (i,j,k)
+        crm_state%aut (icrm,i,j,k) = aut1 (i,j,k)
+        crm_state%acc (icrm,i,j,k) = acc1 (i,j,k)
+        crm_state%evpc(icrm,i,j,k) = evpc1(i,j,k)
+        crm_state%evpr(icrm,i,j,k) = evpr1(i,j,k)
+        crm_state%mlt (icrm,i,j,k) = mlt1 (i,j,k)
+        crm_state%sub (icrm,i,j,k) = sub1 (i,j,k)
+        crm_state%dep (icrm,i,j,k) = dep1 (i,j,k)
+        crm_state%con (icrm,i,j,k) = con1 (i,j,k)
 #endif /* m2005 */
         enddo
       enddo
     enddo
-    z0m     (icrm) = z0
-    taux_crm(icrm) = taux0 / dble(nstop)
-    tauy_crm(icrm) = tauy0 / dble(nstop)
+    crm_output%z0m     (icrm) = z0
+    crm_output%taux_crm(icrm) = taux0 / dble(nstop)
+    crm_output%tauy_crm(icrm) = tauy0 / dble(nstop)
 
     !---------------------------------------------------------------
     !  Diagnostics:
@@ -1929,15 +2017,18 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       enddo
     enddo
 
-    cld   (icrm,:) = min( 1._r8, cld   (icrm,:)            * factor_xyt )
+    crm_output%cld   (icrm,:) = min( 1._r8, crm_output%cld   (icrm,:)            * factor_xyt )
     crm_output%cldtop(icrm,:) = min( 1._r8, crm_output%cldtop(icrm,:)            * factor_xyt )
-    gicewp(icrm,:) = gicewp(icrm,:)*pdel(icrm,:)*1000./ggr * factor_xyt
-    gliqwp(icrm,:) = gliqwp(icrm,:)*pdel(icrm,:)*1000./ggr * factor_xyt
-    mcup  (icrm,:) = mcup (icrm,:)                         * factor_xyt
-    mcdn  (icrm,:) = mcdn (icrm,:)                         * factor_xyt
-    mcuup (icrm,:) = mcuup(icrm,:)                         * factor_xyt
-    mcudn (icrm,:) = mcudn(icrm,:)                         * factor_xyt
-    mc    (icrm,:) = mcup(icrm,:) + mcdn(icrm,:) + mcuup(icrm,:) + mcudn(icrm,:)
+    crm_output%gicewp(icrm,:) = crm_output%gicewp(icrm,:)*pdel(icrm,:)*1000./ggr * factor_xyt
+    crm_output%gliqwp(icrm,:) = crm_output%gliqwp(icrm,:)*pdel(icrm,:)*1000./ggr * factor_xyt
+    crm_output%mcup  (icrm,:) = crm_output%mcup (icrm,:)                         * factor_xyt
+    crm_output%mcdn  (icrm,:) = crm_output%mcdn (icrm,:)                         * factor_xyt
+    crm_output%mcuup (icrm,:) = crm_output%mcuup(icrm,:)                         * factor_xyt
+    crm_output%mcudn (icrm,:) = crm_output%mcudn(icrm,:)                         * factor_xyt
+    crm_output%mctot (icrm,:) = crm_output%mcup(icrm,:) &
+                              + crm_output%mcdn(icrm,:) &
+                              + crm_output%mcuup(icrm,:) &
+                              + crm_output%mcudn(icrm,:)
 
     crm_output%qc_mean(icrm,:) = crm_output%qc_mean(icrm,:) * factor_xy
     crm_output%qi_mean(icrm,:) = crm_output%qi_mean(icrm,:) * factor_xy
@@ -1953,33 +2044,43 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif /* m2005 */
 
 #ifdef m2005
-    ! hm 8/31/11 new output, gcm-grid- and time-step avg
-    ! add loop over i,j do get horizontal avg, and flip vertical array
-    do k=1,nzm
+   ! Do horizontal and time averaging of process rates
+   crm_output%aut_crm_a (icrm,:) = 0.
+   crm_output%acc_crm_a (icrm,:) = 0.
+   crm_output%evpc_crm_a(icrm,:) = 0.
+   crm_output%evpr_crm_a(icrm,:) = 0.
+   crm_output%mlt_crm_a (icrm,:) = 0.
+   crm_output%sub_crm_a (icrm,:) = 0.
+   crm_output%dep_crm_a (icrm,:) = 0.
+   crm_output%con_crm_a (icrm,:) = 0.
+
+   ! Aggregate horizontal averages
+   do k=1,nzm
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          aut_crm_a (icrm,l) = aut_crm_a (icrm,l) + aut1a (i,j,k)
-          acc_crm_a (icrm,l) = acc_crm_a (icrm,l) + acc1a (i,j,k)
-          evpc_crm_a(icrm,l) = evpc_crm_a(icrm,l) + evpc1a(i,j,k)
-          evpr_crm_a(icrm,l) = evpr_crm_a(icrm,l) + evpr1a(i,j,k)
-          mlt_crm_a (icrm,l) = mlt_crm_a (icrm,l) + mlt1a (i,j,k)
-          sub_crm_a (icrm,l) = sub_crm_a (icrm,l) + sub1a (i,j,k)
-          dep_crm_a (icrm,l) = dep_crm_a (icrm,l) + dep1a (i,j,k)
-          con_crm_a (icrm,l) = con_crm_a (icrm,l) + con1a (i,j,k)
+          crm_output%aut_crm_a (icrm,l) = crm_output%aut_crm_a (icrm,l) + aut1a (i,j,k)
+          crm_output%acc_crm_a (icrm,l) = crm_output%acc_crm_a (icrm,l) + acc1a (i,j,k)
+          crm_output%evpc_crm_a(icrm,l) = crm_output%evpc_crm_a(icrm,l) + evpc1a(i,j,k)
+          crm_output%evpr_crm_a(icrm,l) = crm_output%evpr_crm_a(icrm,l) + evpr1a(i,j,k)
+          crm_output%mlt_crm_a (icrm,l) = crm_output%mlt_crm_a (icrm,l) + mlt1a (i,j,k)
+          crm_output%sub_crm_a (icrm,l) = crm_output%sub_crm_a (icrm,l) + sub1a (i,j,k)
+          crm_output%dep_crm_a (icrm,l) = crm_output%dep_crm_a (icrm,l) + dep1a (i,j,k)
+          crm_output%con_crm_a (icrm,l) = crm_output%con_crm_a (icrm,l) + con1a (i,j,k)
         enddo
       enddo
-    enddo
+   enddo
 
-    ! note, rates are divded by dt to get mean rate over step
-    aut_crm_a (icrm,:) = aut_crm_a (icrm,:) * factor_xyt / dt
-    acc_crm_a (icrm,:) = acc_crm_a (icrm,:) * factor_xyt / dt
-    evpc_crm_a(icrm,:) = evpc_crm_a(icrm,:) * factor_xyt / dt
-    evpr_crm_a(icrm,:) = evpr_crm_a(icrm,:) * factor_xyt / dt
-    mlt_crm_a (icrm,:) = mlt_crm_a (icrm,:) * factor_xyt / dt
-    sub_crm_a (icrm,:) = sub_crm_a (icrm,:) * factor_xyt / dt
-    dep_crm_a (icrm,:) = dep_crm_a (icrm,:) * factor_xyt / dt
-    con_crm_a (icrm,:) = con_crm_a (icrm,:) * factor_xyt / dt
+   ! Calculate averages
+   ! note, rates are divded by dt to get mean rate over step
+   crm_output%aut_crm_a (icrm,:) = crm_output%aut_crm_a (icrm,:) * factor_xyt / dt
+   crm_output%acc_crm_a (icrm,:) = crm_output%acc_crm_a (icrm,:) * factor_xyt / dt
+   crm_output%evpc_crm_a(icrm,:) = crm_output%evpc_crm_a(icrm,:) * factor_xyt / dt
+   crm_output%evpr_crm_a(icrm,:) = crm_output%evpr_crm_a(icrm,:) * factor_xyt / dt
+   crm_output%mlt_crm_a (icrm,:) = crm_output%mlt_crm_a (icrm,:) * factor_xyt / dt
+   crm_output%sub_crm_a (icrm,:) = crm_output%sub_crm_a (icrm,:) * factor_xyt / dt
+   crm_output%dep_crm_a (icrm,:) = crm_output%dep_crm_a (icrm,:) * factor_xyt / dt
+   crm_output%con_crm_a (icrm,:) = crm_output%con_crm_a (icrm,:) * factor_xyt / dt
 #endif /* m2005 */
 
    ! Calculate precipitation rates
@@ -2022,27 +2123,29 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     crm_output%clmed(icrm) = crm_output%clmed(icrm) * factor_xyt
     crm_output%cllow(icrm) = crm_output%cllow(icrm) * factor_xyt
 
-    jt_crm(icrm) = plev * 1.0
-    mx_crm(icrm) = 1.0
+    ! Mass flux stuff for convective transport...not sure what to do with this
+    ! now...
+    crm_output%jt_crm(icrm) = plev * 1.0
+    crm_output%mx_crm(icrm) = 1.0
     do k=1, plev
-      mu_crm(icrm,k)=0.5*(mui_crm(icrm,k)+mui_crm(icrm,k+1))
-      md_crm(icrm,k)=0.5*(mdi_crm(icrm,k)+mdi_crm(icrm,k+1))
-      mu_crm(icrm,k)=mu_crm(icrm,k)*ggr/100.          !kg/m2/s --> mb/s
-      md_crm(icrm,k)=md_crm(icrm,k)*ggr/100.          !kg/m2/s --> mb/s
-      eu_crm(icrm,k) = 0.
+      crm_output%mu_crm(icrm,k)=0.5*(mui_crm(icrm,k)+mui_crm(icrm,k+1))
+      crm_output%md_crm(icrm,k)=0.5*(mdi_crm(icrm,k)+mdi_crm(icrm,k+1))
+      crm_output%mu_crm(icrm,k)=crm_output%mu_crm(icrm,k)*ggr/100.          !kg/m2/s --> mb/s
+      crm_output%md_crm(icrm,k)=crm_output%md_crm(icrm,k)*ggr/100.          !kg/m2/s --> mb/s
+      crm_output%eu_crm(icrm,k) = 0.
       if(mui_crm(icrm,k)-mui_crm(icrm,k+1).gt.0) then
-        eu_crm(icrm,k)=(mui_crm(icrm,k)-mui_crm(icrm,k+1))*ggr/pdel(icrm,k)    !/s
+        crm_output%eu_crm(icrm,k)=(mui_crm(icrm,k)-mui_crm(icrm,k+1))*ggr/pdel(icrm,k)    !/s
       else
-        du_crm(icrm,k)=-1.0*(mui_crm(icrm,k)-mui_crm(icrm,k+1))*ggr/pdel(icrm,k)   !/s
+        crm_output%du_crm(icrm,k)=-1.0*(mui_crm(icrm,k)-mui_crm(icrm,k+1))*ggr/pdel(icrm,k)   !/s
       endif
       if(mdi_crm(icrm,k+1)-mdi_crm(icrm,k).lt.0) then
-        ed_crm(icrm,k)=(mdi_crm(icrm,k)-mdi_crm(icrm,k+1))*ggr/pdel(icrm,k) ! /s
+        crm_output%ed_crm(icrm,k)=(mdi_crm(icrm,k)-mdi_crm(icrm,k+1))*ggr/pdel(icrm,k) ! /s
       else
         dd_crm(icrm,k)=-1.*(mdi_crm(icrm,k)-mdi_crm(icrm,k+1))*ggr/pdel(icrm,k)   !/s
       endif
-      if(abs(mu_crm(icrm,k)).gt.1.0e-15.or.abs(md_crm(icrm,k)).gt.1.0e-15) then
-        jt_crm(icrm) = min(k*1.0_r8, jt_crm(icrm))
-        mx_crm(icrm) = max(k*1.0_r8, mx_crm(icrm))
+      if(abs(crm_output%mu_crm(icrm,k)).gt.1.0e-15.or.abs(crm_output%md_crm(icrm,k)).gt.1.0e-15) then
+        crm_output%jt_crm(icrm) = min(k*1.0_r8, crm_output%jt_crm(icrm))
+        crm_output%mx_crm(icrm) = max(k*1.0_r8, crm_output%mx_crm(icrm))
       endif
     enddo
 
@@ -2081,37 +2184,37 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       precflux(k) = precflux(k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
-      flux_u    (icrm,l) = (uwle(k) + uwsb(k))*tmp1*factor_xy/nstop
-      flux_v    (icrm,l) = (vwle(k) + vwsb(k))*tmp1*factor_xy/nstop
+      crm_output%flux_u    (icrm,l) = (uwle(k) + uwsb(k))*tmp1*factor_xy/nstop
+      crm_output%flux_v    (icrm,l) = (vwle(k) + vwsb(k))*tmp1*factor_xy/nstop
 #ifdef sam1mom
-      flux_qt   (icrm,l) = mkwle(k,1) + mkwsb(k,1)
-      fluxsgs_qt(icrm,l) = mkwsb(k,1)
-      flux_qp   (icrm,l) = mkwle(k,2) + mkwsb(k,2)
-      qt_trans  (icrm,l) = mkadv(k,1) + mkdiff(k,1)
-      qp_trans  (icrm,l) = mkadv(k,2) + mkdiff(k,2)
+      crm_output%flux_qt   (icrm,l) = mkwle(k,1) + mkwsb(k,1)
+      crm_output%fluxsgs_qt(icrm,l) = mkwsb(k,1)
+      crm_output%flux_qp   (icrm,l) = mkwle(k,2) + mkwsb(k,2)
+      crm_output%qt_trans  (icrm,l) = mkadv(k,1) + mkdiff(k,1)
+      crm_output%qp_trans  (icrm,l) = mkadv(k,2) + mkdiff(k,2)
 #endif /* sam1mom */
 #ifdef m2005
-      flux_qt   (icrm,l) = mkwle(k,1   ) + mkwsb(k,1   ) +  &
-                         mkwle(k,iqci) + mkwsb(k,iqci)
-      fluxsgs_qt(icrm,l) = mkwsb(k,1   ) + mkwsb(k,iqci)
-      flux_qp   (icrm,l) = mkwle(k,iqr) + mkwsb(k,iqr) +  &
-                         mkwle(k,iqs) + mkwsb(k,iqs) + mkwle(k,iqg) + mkwsb(k,iqg)
-      qt_trans  (icrm,l) = mkadv (k,1) + mkadv (k,iqci) + &
-                         mkdiff(k,1) + mkdiff(k,iqci)
-      qp_trans  (icrm,l) = mkadv (k,iqr) + mkadv (k,iqs) + mkadv (k,iqg) + &
-                         mkdiff(k,iqr) + mkdiff(k,iqs) + mkdiff(k,iqg)
+      crm_output%flux_qt   (icrm,l) = mkwle(k,1   ) + mkwsb(k,1   ) +  &
+                                      mkwle(k,iqci) + mkwsb(k,iqci)
+      crm_output%fluxsgs_qt(icrm,l) = mkwsb(k,1   ) + mkwsb(k,iqci)
+      crm_output%flux_qp   (icrm,l) = mkwle(k,iqr) + mkwsb(k,iqr) +  &
+                                      mkwle(k,iqs) + mkwsb(k,iqs) + mkwle(k,iqg) + mkwsb(k,iqg)
+      crm_output%qt_trans  (icrm,l) = mkadv (k,1) + mkadv (k,iqci) + &
+                                      mkdiff(k,1) + mkdiff(k,iqci)
+      crm_output%qp_trans  (icrm,l) = mkadv (k,iqr) + mkadv (k,iqs) + mkadv (k,iqg) + &
+                                      mkdiff(k,iqr) + mkdiff(k,iqs) + mkdiff(k,iqg)
 #endif /* m2005 */
-      tkesgsz   (icrm,l)= rho(k)*sum(tke(1:nx,1:ny,k))*factor_xy
-      tkez      (icrm,l)= rho(k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + tkesgsz(icrm,l)
-      tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
-      pflx      (icrm,l) = precflux(k)/1000.       !mm/s  -->m/s
+      crm_output%tkesgsz   (icrm,l)= rho(k)*sum(tke(1:nx,1:ny,k))*factor_xy
+      crm_output%tkez      (icrm,l)= rho(k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
+      crm_output%tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
+      crm_output%pflx      (icrm,l) = precflux(k)/1000.       !mm/s  -->m/s
 
-      qp_fall   (icrm,l) = qpfall(k)
-      qp_evp    (icrm,l) = qpevp(k)
-      qp_src    (icrm,l) = qpsrc(k)
+      crm_output%qp_fall   (icrm,l) = qpfall(k)
+      crm_output%qp_evp    (icrm,l) = qpevp(k)
+      crm_output%qp_src    (icrm,l) = qpsrc(k)
 
-      qt_ls     (icrm,l) = qtend(k)
-      t_ls      (icrm,l) = ttend(k)
+      crm_output%qt_ls     (icrm,l) = qtend(k)
+      crm_output%t_ls      (icrm,l) = ttend(k)
     enddo
 
 #ifdef ECPP
@@ -2170,7 +2273,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     enddo
 #endif /* ECPP */
 
-    timing_factor(icrm) = timing_factor(icrm) / nstop
+    crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm) / nstop
 
 #ifdef CLUBB_CRM
     ! Deallocate CLUBB variables, etc.
