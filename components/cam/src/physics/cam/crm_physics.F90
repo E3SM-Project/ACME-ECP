@@ -2341,4 +2341,37 @@ end subroutine m2005_effradius
 !==================================================================================================
 !==================================================================================================
 
+subroutine crm_physics_out(state, crm_state, crm_output)
+   !------------------------------------------------------------------------------------------ 
+   ! 
+   ! Purpose: to write crm physics output to history 
+   !
+   !------------------------------------------------------------------------------------------ 
+   ! #crjones
+   ! WIP (work in progress): copying outfld calls down from crm_physics_tend
+   ! TODO: remove those outfld calls from crm_physics_tend
+   !------------------------------------------------------------------------------------------ 
+   use cam_history, only: outfld
+#ifdef CRM
+   use crm_module, only: crm, crm_state_type, crm_output_type
+#endif
+   implicit none
+
+   type(physics_state), intent(in) :: state
+   type(crm_state_type), intent(in) :: crm_state
+   type(crm_output_type), intent(in) :: crm_output
+
+
+   !!! state output variables
+   call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
+   call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
+
+   !!! crm_state outputs
+   call outfld('CRM_U   ', crm_state%u_wind(1:ncol,:,:,:),      ncol, lchnk)
+   call outfld('CRM_V   ', crm_state%v_wind(1:ncol,:,:,:),      ncol, lchnk)
+   call outfld('CRM_W   ', crm_state%w_wind(1:ncol,:,:,:),      ncol, lchnk)
+   call outfld('CRM_T   ', crm_state%temperature(1:ncol,:,:,:), ncol, lchnk)
+
+end subroutine crm_physics_out
+
 end module crm_physics
