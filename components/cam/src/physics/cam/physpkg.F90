@@ -2103,6 +2103,9 @@ subroutine tphysbc (ztodt,               &
     character(len=16) :: SPCAM_microp_scheme
     integer           :: phys_stage             ! physics stage indicator (tphysbc => 1)
     real(r8)          :: crm_run_time           ! length of CRM integration
+    real(r8), dimension(pcols) :: sp_qchk_prec_dp
+    real(r8), dimension(pcols) :: sp_qchk_snow_dp
+    real(r8), dimension(pcols) :: sp_rad_flux
 
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( use_ECPP_out            = use_ECPP)
@@ -2749,10 +2752,14 @@ end if
       ! Run the CRM 
       !---------------------------------------------------------------------------
       phys_stage = 1  ! for tphysbc() => phys_stage = 1
-      call crm_physics_tend(ztodt, state, tend,         &
-                            ptend, pbuf,                &
-                            cam_in, cam_out,            &
-                            species_class, phys_stage)
+      call crm_physics_tend(ztodt, state, tend,ptend, pbuf, cam_in, cam_out,    &
+                            species_class, phys_stage,                          &
+                            sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
+
+      call physics_update(state, ptend, crm_run_time, tend)
+
+      call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
+                             zero, sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
       !---------------------------------------------------------------------------
       ! Modal aerosol wet radius for radiative calculation
@@ -2773,6 +2780,7 @@ end if
       ! tendency from other parts of crmclouds_aerosol_wet_intr() are still updated here.
       call physics_update (state, ptend, crm_run_time, tend)
 #endif /* MODAL_AERO */
+
       !---------------------------------------------------------------------------
       ! CRM Bulk Calculations (i.e. ECPP-lite) 
       !---------------------------------------------------------------------------
@@ -2827,6 +2835,7 @@ end if
 
       end if ! use_ECPP
 #endif /* ECPP */
+
       !---------------------------------------------------------------------------
       !---------------------------------------------------------------------------
    end if ! use_SPCAM
