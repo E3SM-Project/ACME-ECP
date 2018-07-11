@@ -29,9 +29,12 @@ module crm_physics
    private
    save
 
-   public :: crm_physics_tend, crm_physics_register, crm_physics_init
-   public :: crm_save_state_tend
+   public :: crm_physics_register
+   public :: crm_physics_init
+   public :: crm_physics_tend
+   public :: crm_surface_flux_bypass_tend
    public :: crm_remember_state_tend
+   public :: crm_save_state_tend
    public :: m2005_effradius
 
    integer :: crm_u_idx, crm_v_idx, crm_w_idx, crm_t_idx
@@ -534,11 +537,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    use modal_aero_data, only: ntot_amode, ntot_amode
    use ndrop,  only: loadaer
    use microphysics,  only: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ing, ins   !!!!!! BE CAUIOUS, these indices can only defined before call to crm.
-#endif
-#if (defined MODAL_AERO)  
-   use modal_aero_data, only: qqcw_get_field
-   use modal_aero_wateruptake, only: modal_aero_wateruptake_dr    !==Guangxing Lin
-   use modal_aero_calcsize,    only: modal_aero_calcsize_sub      !==Guangxing Lin
 #endif
 #ifdef ECPP
    use module_ecpp_ppdriver2,  only: parampollu_driver2
@@ -2175,11 +2173,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
     
     call t_startf('bc_aerosols_mmf')
 
-    !!! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
-    do  i=1,ncol
-      do ii=1,crm_nx_rad
-        do jj=1,crm_ny_rad
-          do  m=1,crm_nz
+    !!! calculate aerosol water at CRM domain using water vapor at CRM domain
+    !!! note: only used in src/chemistry/utils/modal_aero_wateruptake.F90
+    do  m=1,crm_nz
+      do jj=1,crm_ny_rad
+        do ii=1,crm_nx_rad
+          do  i=1,ncol
             if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).le.1.0e-10) then
               cld_rad(i,ii,jj,m) = 0.0_r8
             endif
@@ -2188,11 +2187,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
       enddo
     enddo
     !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
-
-    
-  
-
-    
 
     call t_stopf('bc_aerosols_mmf')
 
@@ -2226,6 +2220,65 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
 !----------------------------------------------------------------------
 
 end subroutine crm_physics_tend
+
+!=========================================================================================================
+!=========================================================================================================
+
+subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
+   !-----------------------------------------------------------------------------
+   ! This subroutine is used to apply the fluxes when SP_FLUX_BYPASS is used.
+   ! The surface flux bypass option was originally used by Mike Pritchard (UCI)
+   ! Without this byoass the surface flux tendencies are applied to the lowest 
+   ! layer of the GCM state without being diffused vertically by PBL turbulence. 
+   ! This was intentional (confirmed by Marat). This bypass applies the surface 
+   ! fluxes after the dycor and prior to running the CRM (the tendency addition 
+   ! in diffusion_solver.F90 is disabled). This is a more natural progression 
+   ! and does not expose the GCM dynamical core to unrealistic gradients.
+   ! note: only sensible and latent heat fluxes are affected
+   !-----------------------------------------------------------------------------
+   use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
+   use physics_buffer,  only: physics_buffer_desc
+   use camsrfexch,      only: cam_in_t
+   use ppgrid,          only: begchunk, endchunk, pcols, pver
+   use constituents,    only: pcnst
+   use physconst,       only: gravit
+
+   implicit none
+
+   type(physics_state), intent(in   ) :: state
+   type(cam_in_t),      intent(in   ) :: cam_in
+   type(physics_ptend), intent(  out) :: ptend 
+
+   integer  :: ii       ! loop iterator
+   integer  :: ncol     ! number of columns
+   real(r8) :: tmp      ! temporary variable for unit conversion
+   logical, dimension(pcnst) :: lq
+
+   ncol  = state%ncol
+
+   !!! initialize ptend
+   lq(:) = .false.
+   lq(1) = .true.
+   call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', &
+                           lu=.false., lv=.false., ls=.true., lq=lq)
+
+   ptend%name  = "SP_FLUX_BYPASS - tphysbc"
+   ptend%lu    = .false.
+   ptend%lv    = .false.
+   ptend%lq    = .false. 
+   ptend%ls    = .true.
+   ptend%lq(1) = .true.
+
+   !!! apply fluxes to bottom layer
+   do ii = 1,ncol
+      tmp = gravit * state%rpdel(ii,pver)             ! note : rpdel = 1./pdel
+      ptend%s(ii,:)   = 0.
+      ptend%q(ii,:,1) = 0.
+      ptend%s(ii,pver)   = tmp * cam_in%shf(ii)
+      ptend%q(ii,pver,1) = tmp * cam_in%cflx(ii,1)
+   end do
+
+end subroutine crm_surface_flux_bypass_tend
 
 !=========================================================================================================
 !=========================================================================================================
