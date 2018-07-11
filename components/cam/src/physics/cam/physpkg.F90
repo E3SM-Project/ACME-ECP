@@ -40,7 +40,7 @@ module physpkg
   use cam_logfile,     only: iulog
   use camsrfexch,      only: cam_export
 
-  use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg
+  use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg, modal_aero_calcsize_sub
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
   implicit none
@@ -156,9 +156,7 @@ subroutine phys_register
     use subcol_utils,       only: is_subcol_on
     use output_aerocom_aie, only: output_aerocom_aie_register, do_aerocom_ind3
 
-!-- mdb spcam
     use crm_physics,        only: crm_physics_register
-!-- mdb spcam
 
     !---------------------------Local variables-----------------------------
     !
@@ -168,10 +166,8 @@ subroutine phys_register
 
     integer :: nmodes
 
-!-- mdb spcam
     logical           :: use_SPCAM
     character(len=16) :: SPCAM_microp_scheme
-!-- mdb spcam
 
     call phys_getopts(shallow_scheme_out       = shallow_scheme, &
                       macrop_scheme_out        = macrop_scheme,   &
@@ -740,8 +736,8 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use output_aerocom_aie, only: output_aerocom_aie_init, do_aerocom_ind3
 
 
-    use cam_history,        only: addfld, add_default, horiz_only !Guangxing Lin debug output
-    use crm_physics,        only: crm_physics_init !-- mdb spcam
+    use cam_history,        only: addfld, add_default, horiz_only 
+    use crm_physics,        only: crm_physics_init 
 
 
     ! Input/output arguments
@@ -753,18 +749,13 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     ! local variables
     integer :: lchnk
-
-!-- mdb spcam
     logical :: use_SPCAM
-!-- mdb spcam
 
     real(r8) :: dp1 = huge(1.0_r8) !set in namelist, assigned in cloud_fraction.F90
 
     !-----------------------------------------------------------------------
 
-!-- mdb spcam
     call phys_getopts(use_SPCAM_out     = use_SPCAM)
-!-- mdb spcam
 
     call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
 
@@ -1931,7 +1922,8 @@ subroutine tphysbc (ztodt,               &
 
     use crmdims,         only: crm_nz, crm_nx, crm_ny, crm_dx, crm_dy, crm_dt
 
-    use crm_physics,     only: crm_physics_tend, crm_save_state_tend, crm_remember_state_tend
+    use crm_physics,     only: crm_physics_tend, crm_surface_flux_bypass_tend, &
+                               crm_save_state_tend, crm_remember_state_tend
 
 #if defined( SP_CRM_BULK )
     use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
@@ -2103,15 +2095,14 @@ subroutine tphysbc (ztodt,               &
     logical :: l_rad
     !HuiWan (2014/15): added for a short-term time step convergence test ==
 
-    ! real(r8) rad_rrt(pcols,pver)  ! whannah - for debugging output
-    real(r8) tmp1 ! whannah: to help feed the fluxes to CRM right before the call to CRM. 
     real(r8) :: qexcess(pcols)
     
 !-- mdb spcam
     logical           :: use_SPCAM
     logical           :: use_ECPP
     character(len=16) :: SPCAM_microp_scheme
-    integer           :: phys_stage
+    integer           :: phys_stage             ! physics stage indicator (tphysbc => 1)
+    real(r8)          :: crm_run_time           ! length of CRM integration
 
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( use_ECPP_out            = use_ECPP)
@@ -2385,20 +2376,10 @@ if (l_dry_adj) then
 
 end if
 
-
-! ****************** Physics Bypass for SP ******************
-! whannah - if either SPMOMTRANS (3D) or SP_ESMT (2D) are defined
-! Then the CRM with handle the momentum transport, and we can bypass 
-! all this stuff with the conventional convective parameterizations
-! (still need to save the CRM state for now)
-! ACTUALLY... that's not true. The aerosol stuff needs to be handled 
-! or disabled. Otherwise there will be an aerosol optical depth error.
-! The aerosol routines need info from both shallow and deep convection,
-! so we can't just bypass it all. The solution is to setup ECPP to work 
-! with the 1-mom CRM option.
-! The SP_PHYS_BYPASS option may still work with 2-moment micro and ECPP...?
-
-    
+  
+    !===================================================
+    ! Save state to recall or CRM call
+    !===================================================  
     if (use_SPCAM) call crm_save_state_tend(state, tend, pbuf)
     
 
@@ -2746,40 +2727,21 @@ end if
    !--------------------------------------------------------------------------------------
    !======================================================================================
    if (use_SPCAM) then
+#if defined( SP_CRM_SPLIT ) 
+      crm_run_time = ztodt * 0.5
+#else
+      crm_run_time = ztodt
+#endif
       !---------------------------------------------------------------------------
       ! Recall the state after dynamics
       !---------------------------------------------------------------------------
       call crm_remember_state_tend(state, tend, pbuf)
 
       !---------------------------------------------------------------------------
+      ! Apply surface fluxes if using SP_FLUX_BYPASS
       !---------------------------------------------------------------------------
-      ! The surface flux bypass option was originally used by Mike Pritchard (UCI)
-      ! Without this byoass the surface flux tendencies are applied to the lowest 
-      ! layer of the GCM state without being diffused vertically by PBL turbulence. 
-      ! This was intentional (confirmed by Marat). This bypass applies the surface 
-      ! fluxes after the dycor and prior to running the CRM (the tendency addition 
-      ! in diffusion_solver.F90 is disabled). This is a more natural progression 
-      ! and does not expose the GCM dynamical core to unrealistic gradients.
-      !------------------------------------------------------------------------------------------
-      !------------------------------------------------------------------------------------------
 #if defined( SP_FLUX_BYPASS )
-      ! only sensible and latent heat fluxes are affected
-      lq(:) = .false.
-      lq(1) = .true.
-      call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', lu=.false., lv=.false., ls=.true., lq=lq)
-      ptend%name  = "SP_FLUX_BYPASS - tphysbc"
-      ptend%lu    = .false.
-      ptend%lv    = .false.
-      ptend%lq    = .false. 
-      ptend%ls    = .true.
-      ptend%lq(1) = .true.
-      do i=1,ncol
-         tmp1 = gravit * state%rpdel(i,pver)             ! note : rpdel = 1./pdel
-         ptend%s(i,:)   = 0.
-         ptend%q(i,:,1) = 0.
-         ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-         ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
-      end do
+      call crm_surface_flux_bypass_tend(state, cam_in, ptend)
       call physics_update(state, ptend, ztodt, tend)   
 #endif
 
@@ -2798,7 +2760,7 @@ end if
 #if defined(MODAL_AERO)  
       !!! temporarily turn on all lq, so it is allocated
       lq(:) = .true.
-      call physics_ptend_init(ptend, state%psetcols, 'crm_physics', lq=lq)
+      call physics_ptend_init(ptend, state%psetcols, 'crm - modal_aero_wateruptake_dr', lq=lq)
 
       !!! set all ptend%lq to false as they will be set in modal_aero_calcsize_sub
       ptend%lq(:) = .false.
@@ -2833,11 +2795,7 @@ end if
          call pbuf_get_field(pbuf, pblh_idx, pblh)
        
          dtstep_pp = dtstep_pp_input
-#if defined( SP_CRM_SPLIT )
-         necpp = dtstep_pp/(ztodt*0.5)
-#else
-         necpp = dtstep_pp/ztodt
-#endif /* SP_CRM_SPLIT */
+         necpp = dtstep_pp/crm_run_time
 
          if (nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
 
