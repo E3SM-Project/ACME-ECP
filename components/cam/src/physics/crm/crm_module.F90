@@ -56,7 +56,7 @@ module crm_module
 
       ! Microphysics
       ! NOTE: These are terrible variable names...replace with more descriptive names.
-#ifdef m2005
+      ! for m2005...
       real(crm_rknd), pointer :: qt(:,:,:,:) 
       real(crm_rknd), pointer :: nc(:,:,:,:)
       real(crm_rknd), pointer :: qr(:,:,:,:)
@@ -68,20 +68,19 @@ module crm_module
       real(crm_rknd), pointer :: qg(:,:,:,:)
       real(crm_rknd), pointer :: ng(:,:,:,:)
       real(crm_rknd), pointer :: qc(:,:,:,:)
-#else
-      real(crm_rknd), pointer :: qt(:,:,:,:)
+
+      ! for sam1mom...
       real(crm_rknd), pointer :: qp(:,:,:,:)
       real(crm_rknd), pointer :: qn(:,:,:,:)
-#endif
 
       ! These are copies of the SAM cloud and precip liquid and ice, previously
       ! passed in and out of crm() via qc_crm, qi_crm, etc. How are these
       ! different from the above microphysics variables? It looks like these are
       ! derived from the above, so maybe we don't need to pass these in and out?
-      real(crm_rknd), pointer :: qcl(:,:,:,:)
-      real(crm_rknd), pointer :: qci(:,:,:,:)
-      real(crm_rknd), pointer :: qpl(:,:,:,:)
-      real(crm_rknd), pointer :: qpi(:,:,:,:)
+      real(crm_rknd), allocatable :: qcl(:,:,:,:)
+      real(crm_rknd), allocatable :: qci(:,:,:,:)
+      real(crm_rknd), allocatable :: qpl(:,:,:,:)
+      real(crm_rknd), allocatable :: qpi(:,:,:,:)
 
    contains
       ! Type-bound procedures. Initialization should nullify fields
@@ -126,6 +125,22 @@ module crm_module
       real(crm_rknd), allocatable :: clhgh(:)  ! shaded cloud fraction
       real(crm_rknd), allocatable :: clmed(:)  ! shaded cloud fraction
       real(crm_rknd), allocatable :: cllow(:)  ! shaded cloud fraction
+
+      real(crm_rknd), allocatable :: cldtop(:,:)  ! cloud top ... pressure???
+      real(crm_rknd), allocatable :: precc(:)   ! convective precipitation rate
+      real(crm_rknd), allocatable :: precl(:)   ! stratiform precipitation rate
+      real(crm_rknd), allocatable :: precsc(:)   ! convective snow precipitation rate
+      real(crm_rknd), allocatable :: precsl(:)   ! stratiform snow precipitation rate
+
+      ! TODO: These diagnostics are currently all on the GCM vertical grid. I think this is
+      ! misleading though, and overly complicates crm_module. I think the better thing to do would
+      ! be to define everything within crm_module on the CRM grid, and then do the
+      ! mapping/interpolation at the GCM (crm_physics) level. For now though, I am just copying
+      ! these over directly to minimize chances of me making a mistake. Also, some of these probably
+      ! do not need to be calculated here, and might make more sense to calculate at the
+      ! crm_physics_tend level. For example, I think tendencies should be calculated in
+      ! crm_physics_tend, from, for example, something like crm_output%uwind - crm_input%uwind.
+
    contains
       procedure, public :: initialize=>crm_output_initialize
       procedure, public :: finalize=>crm_output_finalize
@@ -135,8 +150,9 @@ contains
 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_state_type
-   subroutine crm_state_initialize(this)
+   subroutine crm_state_initialize(this, ncrms)
       class(crm_state_type), intent(inout) :: this
+      integer, intent(in) :: ncrms
 
       ! Nullify pointers
       this%u_wind => null()
@@ -144,7 +160,6 @@ contains
       this%w_wind => null()
       this%temperature => null()
 
-#ifdef m2005
       this%qt => null()
       this%qc => null()
       this%qi => null()
@@ -156,16 +171,14 @@ contains
       this%nr => null()
       this%ns => null()
       this%ng => null()
-#else
-      this%qt => null()
+
       this%qp => null()
       this%qn => null()
-#endif
 
-      this%qcl => null()
-      this%qci => null()
-      this%qpl => null()
-      this%qpi => null()
+      allocate(this%qcl(ncrms,crm_nx,crm_ny,crm_nz))
+      allocate(this%qci(ncrms,crm_nx,crm_ny,crm_nz))
+      allocate(this%qpl(ncrms,crm_nx,crm_ny,crm_nz))
+      allocate(this%qpi(ncrms,crm_nx,crm_ny,crm_nz))
 
    end subroutine crm_state_initialize
    !------------------------------------------------------------------------------------------------
@@ -196,35 +209,40 @@ contains
       this%qn => null()
 #endif
 
-      this%qcl => null()
-      this%qci => null()
-      this%qpl => null()
-      this%qpi => null()
+      deallocate(this%qcl)
+      deallocate(this%qci)
+      deallocate(this%qpl)
+      deallocate(this%qpi)
    end subroutine crm_state_finalize
    !------------------------------------------------------------------------------------------------
 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_output_type
-   subroutine crm_output_allocate(this, ncrms)
-      class(crm_output_type), intent(inout) :: this
-      integer, intent(in) :: ncrms
-
-      if (.not. allocated(this%crm_tk )) allocate(this%crm_tk (ncrms,crm_nx, crm_ny, crm_nz))
-      if (.not. allocated(this%crm_tkh)) allocate(this%crm_tkh(ncrms,crm_nx, crm_ny, crm_nz))
-      
-      ! Allocate domain and time-averaged fields
-      if (.not. allocated(this%cltot)) allocate(this%cltot(ncrms))
-      if (.not. allocated(this%cllow)) allocate(this%cllow(ncrms))
-      if (.not. allocated(this%clmed)) allocate(this%clmed(ncrms))
-      if (.not. allocated(this%clhgh)) allocate(this%clhgh(ncrms))
-
-   end subroutine crm_output_allocate
-   !------------------------------------------------------------------------------------------------
    subroutine crm_output_initialize(this, ncrms)
       class(crm_output_type), intent(inout) :: this
-      integer, intent(in) :: ncrms
+      integer, intent(in), optional :: ncrms
 
-      ! TODO: add check to see if we need to allocate here?
+      ! Allocate arrays if dimensions are passed as input
+      if (present(ncrms)) then
+         ! Allocate (time-averaged?) fields
+         if (.not. allocated(this%crm_tk )) allocate(this%crm_tk (ncrms,crm_nx, crm_ny, crm_nz))
+         if (.not. allocated(this%crm_tkh)) allocate(this%crm_tkh(ncrms,crm_nx, crm_ny, crm_nz))
+         
+         ! Allocate domain and time-averaged fields
+         if (.not. allocated(this%cltot)) allocate(this%cltot(ncrms))
+         if (.not. allocated(this%cllow)) allocate(this%cllow(ncrms))
+         if (.not. allocated(this%clmed)) allocate(this%clmed(ncrms))
+         if (.not. allocated(this%clhgh)) allocate(this%clhgh(ncrms))
+
+         if (.not. allocated(this%precc)) allocate(this%precc(ncrms))
+         if (.not. allocated(this%precl)) allocate(this%precl(ncrms))
+         if (.not. allocated(this%precsc)) allocate(this%precsc(ncrms))
+         if (.not. allocated(this%precsl)) allocate(this%precsl(ncrms))
+
+         if (.not. allocated(this%cldtop)) allocate(this%cldtop(ncrms,crm_nz))
+      end if
+
+      ! Initialize all fields to zero
       this%crm_tk = 0.0
       this%crm_tkh = 0.0
       
@@ -233,6 +251,11 @@ contains
       this%clmed = 0.0
       this%clhgh = 0.0
 
+      this%cldtop = 0.0
+      this%precc = 0.0
+      this%precl = 0.0
+      this%precsc = 0.0
+      this%precsl = 0.0
    end subroutine crm_output_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_output_finalize(this)
@@ -240,6 +263,15 @@ contains
 
       deallocate(this%crm_tk )
       deallocate(this%crm_tkh)
+      deallocate(this%cltot)
+      deallocate(this%cllow)
+      deallocate(this%clmed)
+      deallocate(this%clhgh)
+      deallocate(this%cldtop)
+      deallocate(this%precc)
+      deallocate(this%precl)
+      deallocate(this%precsc)
+      deallocate(this%precsl)
    end subroutine crm_output_finalize
    !------------------------------------------------------------------------------------------------
 
@@ -258,10 +290,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah
 #endif
                 qltend, qcltend, qiltend, sltend, &
-                crm_state, &
+                crm_state, crm_output, &
                 qrad_crm, &
                 prec_crm, &
-                t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
+                t_rad, qv_rad, qc_rad, qi_rad, cld_rad, &
 #ifdef m2005
                 nc_rad, ni_rad, qs_rad, ns_rad, wvar_crm,  &
                 aut_crm, acc_crm, evpc_crm, evpr_crm, mlt_crm, &
@@ -269,8 +301,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 aut_crm_a, acc_crm_a, evpc_crm_a, evpr_crm_a, mlt_crm_a, &
                 sub_crm_a, dep_crm_a, con_crm_a, &
 #endif
-                precc, precl, precsc, precsl, &
-                cltot, clhgh, clmed, cllow, cld, cldtop, &
+                cld, &
                 gicewp, gliqwp, &
                 mc, mcup, mcdn, mcuup, mcudn, &
                 crm_qc, crm_qi, crm_qs, crm_qg, crm_qr, &
@@ -376,6 +407,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     ! CRM state needs to be intent inout because it persists across CRM calls and needs to be
     ! initialized outside of this routine 
     type(crm_state_type), intent(inout) :: crm_state
+    type(crm_output_type), intent(inout) :: crm_output
 
     integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
     integer , intent(in   ) :: ncrms                            ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
@@ -421,12 +453,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: crm_tk              (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: crm_tkh             (ncrms,crm_nx, crm_ny, crm_nz)
 
-    ! These should be intent out and initialized and set here, rather than
-    ! initialized in crm_physics_tend()
-    real(r8), intent(inout) :: cltot               (ncrms)                        ! shaded cloud fraction
-    real(r8), intent(inout) :: clhgh               (ncrms)                        ! shaded cloud fraction
-    real(r8), intent(inout) :: clmed               (ncrms)                        ! shaded cloud fraction
-    real(r8), intent(inout) :: cllow               (ncrms)                        ! shaded cloud fraction
 #if defined(SPMOMTRANS)
     real(r8), intent(  out) :: ultend              (ncrms,plev)                   ! tendency of ul
     real(r8), intent(  out) :: vltend              (ncrms,plev)                   ! tendency of vl
@@ -441,7 +467,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: qltend              (ncrms,plev)                   ! tendency of water vapor
     real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
     real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
-    real(r8), intent(  out) :: cld3d_crm           (ncrms,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
 
     ! Quantities used by the radiation code. Note that these are strange in that they are 
     ! time-averages, but spatially-resolved.
@@ -478,10 +503,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: dep_crm_a           (ncrms,plev)  ! ice, snow, graupel deposition (1/s)
     real(r8), intent(  out) :: con_crm_a           (ncrms,plev)  ! cloud water condensation(1/s)
 #endif /* m2005 */
-    real(r8), intent(  out) :: precc               (ncrms)       ! convective precip rate (m/s)
-    real(r8), intent(  out) :: precl               (ncrms)       ! stratiform precip rate (m/s)
     real(r8), intent(  out) :: cld                 (ncrms,plev)  ! cloud fraction
-    real(r8), intent(  out) :: cldtop              (ncrms,plev)  ! cloud top pdf
     real(r8), intent(  out) :: gicewp              (ncrms,plev)  ! ice water path
     real(r8), intent(  out) :: gliqwp              (ncrms,plev)  ! ice water path
     real(r8), intent(  out) :: mc                  (ncrms,plev)  ! cloud mass flux
@@ -534,8 +556,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: t_ls                (ncrms,plev)       ! tendency of lwse  due to large-scale        [kg/kg/s] ???
     real(r8), intent(  out) :: prectend            (ncrms)            ! column integrated tendency in precipitating water+ice (kg/m2/s)
     real(r8), intent(  out) :: precstend           (ncrms)            ! column integrated tendency in precipitating ice (kg/m2/s)
-    real(r8), intent(  out) :: precsc              (ncrms)            ! convective snow rate (m/s)
-    real(r8), intent(  out) :: precsl              (ncrms)            ! stratiform snow rate (m/s)
     real(r8), intent(  out) :: taux_crm            (ncrms)            ! zonal CRM surface stress perturbation (N/m2)
     real(r8), intent(  out) :: tauy_crm            (ncrms)            ! merid CRM surface stress perturbation (N/m2)
     real(r8), intent(  out) :: z0m                 (ncrms)            ! surface stress (N/m2)
@@ -585,7 +605,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8)        :: zs                ! surface elevation
     integer         :: igstep            ! GCM time steps
     integer         :: iseed             ! seed for random perturbation
-    real(crm_rknd)  :: ntotal_step
     integer         :: myrank, ierr
     ! whannah - variables for new radiation group method
     real(crm_rknd) :: crm_nx_rad_fac
@@ -889,9 +908,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #else
       micro_field(1:nx,1:ny,1:nzm,1) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,2) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
-      micro_field(1:nx,1:ny,1:nzm,3) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
+      !micro_field(1:nx,1:ny,1:nzm,3) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
 #endif
-
 
 #ifdef sam1mom
     qn(1:nx,1:ny,1:nzm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
@@ -1045,9 +1063,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     precsfc=0.
     precssfc=0.
 
+    ! Initialize/reset aggregated averages to zero
+    call crm_output%initialize()
+
 !---------------------------------------------------
     cld   (icrm,:) = 0.
-    cldtop(icrm,:) = 0.
     gicewp(icrm,:) = 0
     gliqwp(icrm,:) = 0
     mc    (icrm,:) = 0.
@@ -1284,11 +1304,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
         !-----------------------------------------------------------
         !       Buoyancy term:
         call buoyancy()
-
-        !+++mhwangtest
-        ! test water conservtion problem
-        ntotal_step = ntotal_step + 1.
-        !---mhwangtest
 
         !------------------------------------------------------------
         !       Large-scale and surface forcing:
@@ -1546,7 +1561,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
-                cldtop(icrm,k) = cldtop(icrm,k) + 1
+                crm_output%cldtop(icrm,k) = crm_output%cldtop(icrm,k) + 1
                 flag_top(i,j) = .false.
             endif
             if(pres(nz-k).ge.700.) then
@@ -1638,16 +1653,18 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
       do j=1,ny
         do i=1,nx
+          ! TODO: why was this changed? What is cttemp, chtemp, etc? This seems
+          ! overly complicated?
           !           if(cwp (i,j).gt.cwp_threshold) cltot(icrm) = cltot(icrm) + 1.
           !           if(cwph(i,j).gt.cwp_threshold) clhgh(icrm) = clhgh(icrm) + 1.
           !           if(cwpm(i,j).gt.cwp_threshold) clmed(icrm) = clmed(icrm) + 1.
           !           if(cwpl(i,j).gt.cwp_threshold) cllow(icrm) = cllow(icrm) + 1.
           !  use maxmimum cloud overlap to calcluate cltot, clhgh,
           !  cldmed, and cldlow   +++ mhwang
-          if(cwp (i,j).gt.cwp_threshold) cltot(icrm) = cltot(icrm) + cttemp(i,j)
-          if(cwph(i,j).gt.cwp_threshold) clhgh(icrm) = clhgh(icrm) + chtemp(i,j)
-          if(cwpm(i,j).gt.cwp_threshold) clmed(icrm) = clmed(icrm) + cmtemp(i,j)
-          if(cwpl(i,j).gt.cwp_threshold) cllow(icrm) = cllow(icrm) + cltemp(i,j)
+          if(cwp (i,j).gt.cwp_threshold) crm_output%cltot(icrm) = crm_output%cltot(icrm) + cttemp(i,j)
+          if(cwph(i,j).gt.cwp_threshold) crm_output%clhgh(icrm) = crm_output%clhgh(icrm) + chtemp(i,j)
+          if(cwpm(i,j).gt.cwp_threshold) crm_output%clmed(icrm) = crm_output%clmed(icrm) + cmtemp(i,j)
+          if(cwpl(i,j).gt.cwp_threshold) crm_output%cllow(icrm) = crm_output%cllow(icrm) + cltemp(i,j)
         enddo
       enddo
 
@@ -1758,6 +1775,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     vltend(icrm,ptop:ptop+1) = 0.
 #endif /* SPMOMTRANS */
 
+   ! TODO: move tendencies up to crm_physics_tend
     sltend (icrm,:) = cp * (tln   - tl  (icrm,:)) * icrm_run_time
     qltend (icrm,:) =      (qln   - ql  (icrm,:)) * icrm_run_time
     qcltend(icrm,:) =      (qccln - qccl(icrm,:)) * icrm_run_time
@@ -1765,6 +1783,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     prectend (icrm) = (colprec -prectend (icrm))/ggr*factor_xy * icrm_run_time
     precstend(icrm) = (colprecs-precstend(icrm))/ggr*factor_xy * icrm_run_time
 
+   ! TODO: move tendencies up to crm_physics_tend
     !!! don't use CRM tendencies from two crm top levels
     !!! radiation tendencies are added back after the CRM call (see crm_physics_tend)
     !!! TODO: push this up to crm_physics level
@@ -1797,20 +1816,16 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #else
       crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1)
       crm_state%qp(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2)
-      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,3)
+      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm) !micro_field(1:nx,1:ny,1:nzm,3)
 #endif
 
       ! Override micro (TODO: why?)
-#ifdef sam1mom
-      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm)
-#endif
 #ifdef m2005
       crm_state%qc(icrm,1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
 #endif
 
     crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
     crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
-    cld3d_crm(icrm,1:nx,1:ny,1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)
 #ifdef CLUBB_CRM
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
@@ -1895,7 +1910,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     enddo
 
     cld   (icrm,:) = min( 1._r8, cld   (icrm,:)            * factor_xyt )
-    cldtop(icrm,:) = min( 1._r8, cldtop(icrm,:)            * factor_xyt )
+    crm_output%cldtop(icrm,:) = min( 1._r8, crm_output%cldtop(icrm,:)            * factor_xyt )
     gicewp(icrm,:) = gicewp(icrm,:)*pdel(icrm,:)*1000./ggr * factor_xyt
     gliqwp(icrm,:) = gliqwp(icrm,:)*pdel(icrm,:)*1000./ggr * factor_xyt
     mcup  (icrm,:) = mcup (icrm,:)                         * factor_xyt
@@ -1945,10 +1960,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     con_crm_a (icrm,:) = con_crm_a (icrm,:) * factor_xyt / dt
 #endif /* m2005 */
 
-    precc (icrm) = 0.
-    precl (icrm) = 0.
-    precsc(icrm) = 0.
-    precsl(icrm) = 0.
+   ! Calculate precipitation rates
+    crm_output%precc(icrm) = 0.
+    crm_output%precl(icrm) = 0.
+    crm_output%precsc(icrm) = 0.
+    crm_output%precsl(icrm) = 0.
     do j=1,ny
       do i=1,nx
 #ifdef sam1mom
@@ -1964,24 +1980,24 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
         precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
         if(precsfc(i,j).gt.10./86400.) then
-           precc (icrm) = precc (icrm) + precsfc(i,j)
-           precsc(icrm) = precsc(icrm) + precssfc(i,j)
+           crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(i,j)
+           crm_output%precsc(icrm) = crm_output%precsc(icrm) + precssfc(i,j)
         else
-           precl (icrm) = precl (icrm) + precsfc(i,j)
-           precsl(icrm) = precsl(icrm) + precssfc(i,j)
+           crm_output%precl (icrm) = crm_output%precl (icrm) + precsfc(i,j)
+           crm_output%precsl(icrm) = crm_output%precsl(icrm) + precssfc(i,j)
         endif
       enddo
     enddo
     prec_crm(icrm,:,:) = precsfc/1000.           !mm/s --> m/s
-    precc   (icrm)     = precc (icrm)*factor_xy/1000.
-    precl   (icrm)     = precl (icrm)*factor_xy/1000.
-    precsc  (icrm)     = precsc(icrm)*factor_xy/1000.
-    precsl  (icrm)     = precsl(icrm)*factor_xy/1000.
+    crm_output%precc   (icrm)     = crm_output%precc (icrm)*factor_xy/1000.
+    crm_output%precl   (icrm)     = crm_output%precl (icrm)*factor_xy/1000.
+    crm_output%precsc  (icrm)     = crm_output%precsc(icrm)*factor_xy/1000.
+    crm_output%precsl  (icrm)     = crm_output%precsl(icrm)*factor_xy/1000.
 
-    cltot(icrm) = cltot(icrm) * factor_xyt
-    clhgh(icrm) = clhgh(icrm) * factor_xyt
-    clmed(icrm) = clmed(icrm) * factor_xyt
-    cllow(icrm) = cllow(icrm) * factor_xyt
+    crm_output%cltot(icrm) = crm_output%cltot(icrm) * factor_xyt
+    crm_output%clhgh(icrm) = crm_output%clhgh(icrm) * factor_xyt
+    crm_output%clmed(icrm) = crm_output%clmed(icrm) * factor_xyt
+    crm_output%cllow(icrm) = crm_output%cllow(icrm) * factor_xyt
 
     jt_crm(icrm) = plev * 1.0
     mx_crm(icrm) = 1.0

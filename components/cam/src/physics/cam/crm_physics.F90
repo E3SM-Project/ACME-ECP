@@ -519,7 +519,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use physconst,       only: cpair, latvap, latice, gravit, cappa
    use constituents,    only: pcnst, qmin, cnst_get_ind, cnst_cam_outfld, bpcnst, cnst_name
 #ifdef CRM
-   use crm_module,      only: crm, crm_state_type
+   use crm_module,      only: crm, crm_state_type, crm_output_type
    use params,          only: crm_rknd
 #endif
    use physconst,       only: latvap
@@ -614,8 +614,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
    real(r8) crm_tk   (pcols,crm_nx, crm_ny, crm_nz)
    real(r8) crm_tkh  (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) cld3d_crm(pcols, crm_nx, crm_ny, crm_nz)   ! 3D instaneous cloud fraction 
-   
    real(r8) prec_crm(pcols,crm_nx, crm_ny)
    real(r8) mctot(pcols,pver)        ! total cloud mass flux
    real(r8) mcup(pcols,pver)         ! cloud updraft mass flux
@@ -653,42 +651,38 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) dep_crm_a (pcols,pver)        ! Ice, snow, graupel deposition (1/s)
    real(r8) con_crm_a (pcols,pver)        ! Cloud water condensation (1/s)
  
-   character(len=16) :: microp_scheme     ! microphysics scheme
-   real(r8) flux_qt(pcols,pver)           ! nonprecipitating water flux
-   real(r8) flux_u(pcols,pver)            ! x-momentum flux
-   real(r8) flux_v(pcols,pver)            ! y-momentum flux
-   real(r8) fluxsgs_qt(pcols,pver)        ! sgs nonprecipitating water flux
-   real(r8) tkez(pcols,pver)              ! tke profile [kg/m/s2]
-   real(r8) tkesgsz(pcols,pver)           ! sgs tke profile  [kg/m/s2]
-   real(r8) tkz(pcols, pver)              ! tk profile [m2/s]
-   real(r8) flux_qp(pcols,pver)           ! precipitating water flux
-   real(r8) precflux(pcols,pver)          ! precipitation flux
-   real(r8) qt_ls(pcols,pver)             ! water tendency due to large-scale
-   real(r8) qt_trans(pcols,pver)          ! nonprecip water tendency due to transport
-   real(r8) qp_trans(pcols,pver)          ! precip water tendency due to transport
-   real(r8) qp_fall(pcols,pver)           ! precip water tendency due to fall-out
-   real(r8) qp_evp(pcols,pver)            ! precip water tendency due to evap
-   real(r8) qp_src(pcols,pver)            ! precip water tendency due to conversion
-   real(r8) t_ls(pcols,pver)              ! tendency of crm's liwse due to large-scale
-   real(r8) cldtop(pcols,pver)
-   real(r8) cwp   (pcols,pver)            ! in-cloud cloud (total) water path (kg/m2)
-   real(r8) gicewp(pcols,pver)            ! grid-box cloud ice water path  (g/m2)
-   real(r8) gliqwp(pcols,pver)            ! grid-box cloud liquid water path (g/m2)
-   real(r8) gwp   (pcols,pver)            ! grid-box cloud (total) water path (kg/m2)
-   real(r8) tgicewp(pcols)                ! Vertically integrated ice water path (kg/m2
-   real(r8) tgliqwp(pcols)                ! Vertically integrated liquid water path (kg/m2)
-   real(r8) cicewp(pcols,pver)            ! in-cloud cloud ice water path (kg/m2)
-   real(r8) cliqwp(pcols,pver)            ! in-cloud cloud liquid water path (kg/m2)
-   real(r8) tgwp   (pcols)                ! Vertically integrated (total) cloud water path  (kg/m2)
-   real(r8) precc(pcols)                  ! convective precipitation [m/s]
-   real(r8) precl(pcols)                  ! large scale precipitation [m/s]
-   real(r8) precsc(pcols)                 ! convecitve snow   [m/s]
-   real(r8) precsl(pcols)                 ! convective snow   [m/s]
-   real(r8) cltot(pcols)                  ! Diagnostic total cloud cover
-   real(r8) cllow(pcols)                  ! Diagnostic low cloud cover
-   real(r8) clmed(pcols)                  ! Diagnostic mid cloud cover
-   real(r8) clhgh(pcols)                  ! Diagnostic hgh cloud cover
-   real(r8) :: ftem(pcols,pver)           ! Temporary workspace for outfld variables
+   character(len=16) :: microp_scheme  ! microphysics scheme
+   real(r8) flux_qt(pcols,pver)        ! nonprecipitating water flux
+   real(r8) flux_u(pcols,pver)        ! x-momentum flux
+   real(r8) flux_v(pcols,pver)        ! y-momentum flux
+   real(r8) fluxsgs_qt(pcols,pver)     ! sgs nonprecipitating water flux
+   real(r8) tkez(pcols,pver)     ! tke profile [kg/m/s2]
+   real(r8) tkesgsz(pcols,pver)     ! sgs tke profile  [kg/m/s2]
+   real(r8) tkz(pcols, pver)     ! tk profile [m2/s]
+   real(r8) flux_qp(pcols,pver)        ! precipitating water flux
+   real(r8) precflux(pcols,pver)       ! precipitation flux
+   real(r8) qt_ls(pcols,pver)        ! water tendency due to large-scale
+   real(r8) qt_trans(pcols,pver)     ! nonprecip water tendency due to transport
+   real(r8) qp_trans(pcols,pver)     ! precip water tendency due to transport
+   real(r8) qp_fall(pcols,pver)      ! precip water tendency due to fall-out
+   real(r8) qp_evp(pcols,pver)       ! precip water tendency due to evap
+   real(r8) qp_src(pcols,pver)       ! precip water tendency due to conversion
+   real(r8) t_ls(pcols,pver)        ! tendency of crm's liwse due to large-scale
+   real(r8) cwp   (pcols,pver)      ! in-cloud cloud (total) water path (kg/m2)
+   real(r8) gicewp(pcols,pver)      ! grid-box cloud ice water path  (g/m2)
+   real(r8) gliqwp(pcols,pver)      ! grid-box cloud liquid water path (g/m2)
+   real(r8) gwp   (pcols,pver)      ! grid-box cloud (total) water path (kg/m2)
+   real(r8) tgicewp(pcols)          ! Vertically integrated ice water path (kg/m2
+   real(r8) tgliqwp(pcols)          ! Vertically integrated liquid water path (kg/m2)
+   real(r8) cicewp(pcols,pver)             ! in-cloud cloud ice water path (kg/m2)
+   real(r8) cliqwp(pcols,pver)             ! in-cloud cloud liquid water path (kg/m2)
+   real(r8) tgwp   (pcols)          ! Vertically integrated (total) cloud water path  (kg/m2)
+   real(r8) cltot(pcols)                      ! Diagnostic total cloud cover
+   real(r8) cllow(pcols)                       !     "  low cloud cover
+   real(r8) clmed(pcols)                      !       "     mid  cloud cover
+   real(r8) clhgh(pcols)                      !       "     hgh  cloud cover
+   real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
+
    real(r8) ul(pcols,pver)
    real(r8) vl(pcols,pver)
 
@@ -761,9 +755,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer, dimension(:)   :: pblh
    real(r8), pointer, dimension(:,:) :: qqcw
 
-   ! Pointers to crm_state fields that are NOT on the physics buffer
-   real(r8), target :: qcl(:,:,:,:), qci(:,:,:,:), qpl(:,:,:,:), qpi(:,:,:,:)
-
 #ifdef ECPP
    ! at layer center
    real(r8),allocatable :: acen(:,:,:,:,:)         ! cloud fraction for each sub-sub class for full time period
@@ -830,6 +821,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(crm_rknd), dimension(pcols) :: crm_angle
 
    type(crm_state_type) :: crm_state
+   type(crm_output_type) :: crm_output
+
+   integer :: k_gcm, k_crm
+   real(r8) :: cldtop_gcm(pcols,pver)
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -876,7 +871,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ncol  = state%ncol
 
    ! Initialize crm_state (nullify pointers, allocate memory, etc)
-   call crm_state%initialize()
+   call crm_state%initialize(ncol)
+   call crm_output%initialize(ncol)
 
    if (SPCAM_microp_scheme .eq. 'm2005') then
      call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
@@ -925,20 +921,21 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call pbuf_get_field(pbuf, crm_qt_idx, crm_state%qt)
       call pbuf_get_field(pbuf, crm_qp_idx, crm_state%qp)
       call pbuf_get_field(pbuf, crm_qn_idx, crm_state%qn)
-   endif
+   else
+      call pbuf_get_field(pbuf, crm_qt_idx, crm_state%qt)
 #ifdef m2005
-   call pbuf_get_field(pbuf, crm_qt_idx, crm_state%qt)
-   call pbuf_get_field(pbuf, crm_nc_idx, crm_state%nc)
-   call pbuf_get_field(pbuf, crm_qr_idx, crm_state%qr)
-   call pbuf_get_field(pbuf, crm_nr_idx, crm_state%nr)
-   call pbuf_get_field(pbuf, crm_qi_idx, crm_state%qi)
-   call pbuf_get_field(pbuf, crm_ni_idx, crm_state%ni)
-   call pbuf_get_field(pbuf, crm_qs_idx, crm_state%qs)
-   call pbuf_get_field(pbuf, crm_ns_idx, crm_state%ns)
-   call pbuf_get_field(pbuf, crm_qg_idx, crm_state%qg)
-   call pbuf_get_field(pbuf, crm_ng_idx, crm_state%ng)
-   call pbuf_get_field(pbuf, crm_qc_idx, crm_state%qc)
+      call pbuf_get_field(pbuf, crm_nc_idx, crm_state%nc)
+      call pbuf_get_field(pbuf, crm_qr_idx, crm_state%qr)
+      call pbuf_get_field(pbuf, crm_nr_idx, crm_state%nr)
+      call pbuf_get_field(pbuf, crm_qi_idx, crm_state%qi)
+      call pbuf_get_field(pbuf, crm_ni_idx, crm_state%ni)
+      call pbuf_get_field(pbuf, crm_qs_idx, crm_state%qs)
+      call pbuf_get_field(pbuf, crm_ns_idx, crm_state%ns)
+      call pbuf_get_field(pbuf, crm_qg_idx, crm_state%qg)
+      call pbuf_get_field(pbuf, crm_ng_idx, crm_state%ng)
+      call pbuf_get_field(pbuf, crm_qc_idx, crm_state%qc)
 #endif
+   end if
 
    call pbuf_get_field (pbuf, crm_qrad_idx,      crm_qrad)
 #ifdef CLUBB_CRM
@@ -976,11 +973,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! call pbuf_set_field(pbuf, pbuf_get_index('ICWMRSH'), 0.0_r8 )
    
    ! Associate pointers to crm_state microphysics variables that are NOT on the
-   ! physics buffer
-   crm_state%qcl => qcl
-   crm_state%qci => qci
-   crm_state%qpl => qpl
-   crm_state%qpi => qpi
+   ! physics buffer; note that these are only used for outfld calls, but we need
+   ! a real variable for the crm_state fields to point to.
 
    ! Initialization of precip fields
    prec_dp  = 0.
@@ -1130,16 +1124,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%q(:,:,ixcldliq) = 0.
       ptend%q(:,:,ixcldice) = 0.
       ptend%s(:,:) = 0.
-      precc(:) = 0.
-      precl(:) = 0.
-      precsc(:) = 0.
-      precsl(:) = 0.
-      cltot(:) = 0.
-      clhgh(:) = 0.
-      clmed(:) = 0.
-      cllow(:) = 0.
+
       cld(:,:) = 0.
-      cldtop(:,:) = 0.
       gicewp(:,:)=0
       gliqwp(:,:)=0
       mctot(:,:) = 0.
@@ -1168,7 +1154,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          dep_crm_a(:,:) = 0.
          con_crm_a(:,:) = 0.
       endif 
-      cld3d_crm (:,:,:,:) = 0.
 
       flux_qt(:,:) = 0.
       flux_u(:,:) = 0.
@@ -1247,10 +1232,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       cwp    = 0.
       gicewp = 0.
       gliqwp = 0.
-      cltot  = 0.
-      clhgh  = 0.
-      clmed  = 0.
-      cllow  = 0.
 
       prec_crm = 0.
 
@@ -1388,10 +1369,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                ul_esmt(:ncol,:pver),        vl_esmt(:ncol,:pver),         u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
-               crm_state, &
+               crm_state, crm_output, &
                crm_qrad(:ncol,:,:,:),                                                                                                                               &
                prec_crm(:ncol,:,:),         t_rad(:ncol,:,:,:),           qv_rad(:ncol,:,:,:),                                                                      &
-               qc_rad(:ncol,:,:,:),         qi_rad(:ncol,:,:,:),          cld_rad(:ncol,:,:,:),         cld3d_crm(:ncol,:,:,:),                                     &
+               qc_rad(:ncol,:,:,:),         qi_rad(:ncol,:,:,:),          cld_rad(:ncol,:,:,:),                                              &
 #ifdef m2005
                nc_rad(:ncol,:,:,:),         ni_rad(:ncol,:,:,:),          qs_rad(:ncol,:,:,:),          ns_rad(:ncol,:,:,:),         wvar_crm(:ncol,:,:,:),         &
                aut_crm(:ncol,:,:,:),        acc_crm(:ncol,:,:,:),         evpc_crm(:ncol,:,:,:),        evpr_crm(:ncol,:,:,:),       mlt_crm(:ncol,:,:,:),          &
@@ -1399,8 +1380,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                aut_crm_a(:ncol,:),          acc_crm_a(:ncol,:),           evpc_crm_a(:ncol,:),          evpr_crm_a(:ncol,:),         mlt_crm_a(:ncol,:),            &
                sub_crm_a(:ncol,:),          dep_crm_a(:ncol,:),           con_crm_a(:ncol,:),                                                                       &
 #endif /* m2005 */
-               precc(:ncol),                precl(:ncol),                 precsc(:ncol),                precsl(:ncol),                                              &
-               cltot(:ncol),                clhgh(:ncol),                 clmed(:ncol),                 cllow(:ncol),                cld(:ncol,:),cldtop(:ncol,:) , &
+               cld(:ncol,:), &
                gicewp(:ncol,:),             gliqwp(:ncol,:),                                                                                                        &
                mctot(:ncol,:),              mcup(:ncol,:),                mcdn(:ncol,:),                mcuup(:ncol,:),              mcudn(:ncol,:),                &
                spqc(:ncol,:),               spqi(:ncol,:),                spqs(:ncol,:),                spqg(:ncol,:),               spqr(:ncol,:),                 &
@@ -1444,14 +1424,16 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call t_stopf('crm_call')
 
       ! There is no separate convective and stratiform precip for CRM:
-      precc(:ncol)  = precc(:ncol) + precl(:ncol)
-      precsc(:ncol) = precsc(:ncol) + precsl(:ncol)
-      precl(:ncol)  = 0.
-      precsl(:ncol) = 0.
+      ! NOTE: these don't seem to be used anywhere, other than to transfer to
+      ! prec_dp and snow_dp?
+      crm_output%precc(:ncol)  = crm_output%precc(:ncol) + crm_output%precl(:ncol)
+      crm_output%precsc(:ncol) = crm_output%precsc(:ncol) + crm_output%precsl(:ncol)
+      crm_output%precl(:ncol)  = 0.
+      crm_output%precsl(:ncol) = 0.
 
       !!! these precip pointer variables are used by coupler
-      prec_dp  = precc
-      snow_dp  = precsc
+      prec_dp(:ncol)  = crm_output%precc(:ncol)
+      snow_dp(:ncol)  = crm_output%precsc(:ncol)
 
       !!! These are needed elsewhere in the model when SP_PHYS_BYPASS is used
       ! ifld = pbuf_get_index('AST'   )
@@ -1472,23 +1454,24 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
       ! call outfld('HEIGHT  ',state%zm   ,pcols   ,lchnk   )
 
-      call outfld('CRM_U   ', crm_state%u_wind,      pcols, lchnk)
-      call outfld('CRM_V   ', crm_state%v_wind,      pcols, lchnk)
-      call outfld('CRM_W   ', crm_state%w_wind,      pcols, lchnk)
-      call outfld('CRM_T   ', crm_state%temperature, pcols, lchnk)
+      call outfld('CRM_U   ', crm_state%u_wind(1:ncol,:,:,:),      ncol, lchnk)
+      call outfld('CRM_V   ', crm_state%v_wind(1:ncol,:,:,:),      ncol, lchnk)
+      call outfld('CRM_W   ', crm_state%w_wind(1:ncol,:,:,:),      ncol, lchnk)
+      call outfld('CRM_T   ', crm_state%temperature(1:ncol,:,:,:), ncol, lchnk)
 
       if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         call outfld('CRM_QV  ',(crm_state%qt(:,:,:,:)-crm_state%qcl-crm_state%qci),pcols   ,lchnk   )
+         call outfld('CRM_QV  ',crm_state%qt(1:ncol,:,:,:)-crm_state%qcl(1:ncol,:,:,:)-crm_state%qci(1:ncol,:,:,:),ncol,lchnk   )
       else if (SPCAM_microp_scheme .eq. 'm2005') then 
-         call outfld('CRM_QV  ',crm_state%qt(:,:,:,:)-crm_state%qcl, pcols   ,lchnk   )
+         call outfld('CRM_QV  ',crm_state%qt(1:ncol,:,:,:)-crm_state%qcl(1:ncol,:,:,:), ncol,lchnk   )
       endif
-      call outfld('CRM_QC  ',crm_state%qcl   ,pcols   ,lchnk   )
-      call outfld('CRM_QI  ',crm_state%qci   ,pcols   ,lchnk   )
-      call outfld('CRM_QPC ',crm_state%qpl  ,pcols   ,lchnk   )
-      call outfld('CRM_QPI ',crm_state%qpi  ,pcols   ,lchnk   )
-      call outfld('CRM_PREC',prec_crm       ,pcols   ,lchnk   )
-      call outfld('CRM_TK ', crm_tk(:, :, :, :)  ,pcols   ,lchnk   )  
-      call outfld('CRM_TKH', crm_tkh(:, :, :, :)  ,pcols   ,lchnk   ) 
+
+      call outfld('CRM_QC  ',crm_state%qcl(1:ncol,:,:,:) ,ncol   ,lchnk   )
+      call outfld('CRM_QI  ',crm_state%qci(1:ncol,:,:,:) ,ncol   ,lchnk   )
+      call outfld('CRM_QPC ',crm_state%qpl(1:ncol,:,:,:) ,ncol   ,lchnk   )
+      call outfld('CRM_QPI ',crm_state%qpi(1:ncol,:,:,:) ,ncol   ,lchnk   )
+      call outfld('CRM_PREC',prec_crm(1:ncol,:,:)      ,ncol   ,lchnk   )
+      call outfld('CRM_TK ', crm_tk(1:ncol, :, :, :)     ,ncol   ,lchnk   ) !Guangxing Lin new crm
+      call outfld('CRM_TKH', crm_tkh(1:ncol, :, :, :)    ,ncol   ,lchnk   ) !Guangxing Lin new crm
 
 #ifdef m2005
       if (SPCAM_microp_scheme .eq. 'm2005') then
@@ -1628,32 +1611,44 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          call outfld('SPNR    ',spnr         ,pcols ,lchnk )
       endif
 
-       call outfld('SPQTFLX ',flux_qt        ,pcols ,lchnk )
-       call outfld('SPUFLX  ',flux_u         ,pcols ,lchnk )
-       call outfld('SPVFLX  ',flux_v         ,pcols ,lchnk )
-       call outfld('SPTKE   ',tkez           ,pcols ,lchnk )
-       call outfld('SPTKES  ',tkesgsz        ,pcols ,lchnk )
-       call outfld('SPTK    ',tkz            ,pcols ,lchnk )
-       call outfld('SPQTFLXS',fluxsgs_qt     ,pcols ,lchnk )
-       call outfld('SPQPFLX ',flux_qp        ,pcols ,lchnk )
-       call outfld('SPPFLX  ',precflux       ,pcols ,lchnk )
-       call outfld('SPQTLS  ',qt_ls          ,pcols ,lchnk )
-       call outfld('SPQTTR  ',qt_trans       ,pcols ,lchnk )
-       call outfld('SPQPTR  ',qp_trans       ,pcols ,lchnk )
-       call outfld('SPQPEVP ',qp_evp         ,pcols ,lchnk )
-       call outfld('SPQPFALL',qp_fall        ,pcols ,lchnk )
-       call outfld('SPQPSRC ',qp_src         ,pcols ,lchnk )
-       call outfld('SPTLS   ',t_ls           ,pcols ,lchnk )
+       call outfld('SPQTFLX ',flux_qt        ,pcols   ,lchnk   )
+       call outfld('SPUFLX  ',flux_u         ,pcols   ,lchnk   )
+       call outfld('SPVFLX  ',flux_v         ,pcols   ,lchnk   )
+       call outfld('SPTKE   ',tkez           ,pcols   ,lchnk   )
+       call outfld('SPTKES  ',tkesgsz        ,pcols   ,lchnk   )
+       call outfld('SPTK    ',tkz            ,pcols   ,lchnk   )
+       call outfld('SPQTFLXS',fluxsgs_qt     ,pcols   ,lchnk   )
+       call outfld('SPQPFLX ',flux_qp        ,pcols   ,lchnk   )
+       call outfld('SPPFLX  ',precflux       ,pcols   ,lchnk   )
+       call outfld('SPQTLS  ',qt_ls          ,pcols   ,lchnk   )
+       call outfld('SPQTTR  ',qt_trans       ,pcols   ,lchnk   )
+       call outfld('SPQPTR  ',qp_trans       ,pcols   ,lchnk   )
+       call outfld('SPQPEVP ',qp_evp         ,pcols   ,lchnk   )
+       call outfld('SPQPFALL',qp_fall        ,pcols   ,lchnk   )
+       call outfld('SPQPSRC ',qp_src         ,pcols   ,lchnk   )
+       call outfld('SPTLS   ',t_ls           ,pcols   ,lchnk   )
 
-       call outfld('CLOUD   ',cld            ,pcols, lchnk )
-       call outfld('CLDTOT  ',cltot          ,pcols, lchnk )
-       call outfld('CLDHGH  ',clhgh          ,pcols, lchnk )
-       call outfld('CLDMED  ',clmed          ,pcols, lchnk )
-       call outfld('CLDLOW  ',cllow          ,pcols, lchnk )
-       call outfld('CLOUDTOP',cldtop         ,pcols, lchnk )
+       call outfld('CLOUD   ',cld,  pcols,lchnk)
 
-       call outfld('TIMINGF ',timing_factor  ,pcols, lchnk )
+       ! Cloud averages from CRM
+       call outfld('CLDTOT  ',crm_output%cltot(1:ncol),ncol,lchnk)
+       call outfld('CLDHGH  ',crm_output%clhgh(1:ncol),ncol,lchnk)
+       call outfld('CLDMED  ',crm_output%clmed(1:ncol),ncol,lchnk)
+       call outfld('CLDLOW  ',crm_output%cllow(1:ncol),ncol,lchnk)
 
+       ! Need to remap vertical coordinate of crm_output
+       ! TODO: provide a procedure to do this
+       ! NOTE: this was NOT done in previous version before adding crm_output
+       ! type! So this variable would have been incorrect in history files,
+       ! because in crm_module this is set over k_crm, not k_gcm!
+       cldtop_gcm = 0.0
+       do k_crm = 1,crm_nz
+         k_gcm = pver - k_crm + 1
+         cldtop_gcm(1:ncol,k_gcm) = crm_output%cldtop(1:ncol,k_crm)
+       end do
+       call outfld('CLOUDTOP',cldtop_gcm(1:ncol,:), ncol,lchnk)
+
+       call outfld('TIMINGF ',timing_factor  ,pcols,lchnk)
 !----------------------------------------------------------------------
 ! Compute liquid water paths (for diagnostics only)
 !----------------------------------------------------------------------
@@ -1886,6 +1881,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    ! Free memory in crm_state
    call crm_state%finalize()
+   call crm_output%finalize()
 
 end subroutine crm_physics_tend
 
