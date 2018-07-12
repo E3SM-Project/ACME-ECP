@@ -6,8 +6,12 @@ module crm_types
    implicit none
    private
 
+   public crm_state_type
+   public crm_input_type
+   public crm_output_type
+
    !------------------------------------------------------------------------------------------------
-   type, public :: crm_state_type
+   type crm_state_type
       ! Purpose: Define a class that will encapulate the CRM-level data that needs to be passed
       ! between the GCM and the CRM, and to encapulate operations on that data (i.e.,
       ! initialization, writing fields to netCDF files, displaying info, et.c).
@@ -96,11 +100,15 @@ module crm_types
       !procedure, public :: dump=>crm_state_dump
 
    end type crm_state_type
-
-!  type crm_input
-!  end type crm_input
-
-   type, public :: crm_output_type
+   !------------------------------------------------------------------------------------------------
+   type crm_input_type
+      !
+   ! contains
+      ! procedure, public :: initialize=>crm_input_initialize
+      ! procedure, public :: finalize=>crm_input_finalize
+   end type crm_input_type
+   !------------------------------------------------------------------------------------------------
+   type crm_output_type
       ! Derived type to encapsulate CRM output fields (things that are either
       ! time-averaged, have reduced spatial dimensions, or both)
 
