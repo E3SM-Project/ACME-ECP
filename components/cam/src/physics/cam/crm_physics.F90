@@ -526,7 +526,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use constituents,    only: pcnst, qmin, cnst_get_ind, cnst_cam_outfld, bpcnst, cnst_name
 #ifdef CRM
    use crm_module,      only: crm
-   use crm_types,       only: crm_state_type, crm_output_type
+   use crm_types,       only: crm_state_type, crm_input_type, crm_output_type
    use params,          only: crm_rknd
 #endif
    use physconst,       only: latvap
@@ -789,7 +789,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(crm_rknd), parameter        :: pix2 = 6.28318530718
    real(crm_rknd), dimension(pcols) :: crm_angle
 
-   type(crm_state_type) :: crm_state
+   type(crm_state_type)  :: crm_state
+   type(crm_input_type)  :: crm_input
    type(crm_output_type) :: crm_output
 
    integer :: k_gcm, k_crm
@@ -1304,7 +1305,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                ul_esmt(:ncol,:pver),        vl_esmt(:ncol,:pver),         u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
-               crm_state, crm_output, &
+               crm_state, crm_input, crm_output, &
                crm_qrad(:ncol,:,:,:),                                                                                                                               &
 #ifdef m2005
 #ifdef MODAL_AERO

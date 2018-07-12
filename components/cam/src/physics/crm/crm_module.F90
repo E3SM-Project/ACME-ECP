@@ -26,8 +26,8 @@ module crm_module
    use ice_fall_mod
    use coriolis_mod
    use setparm_mod, only : setparm
-
    use params, only: crm_rknd
+   use crm_types, only: crm_state_type, crm_input_type, crm_output_type
 
    ! TODO: crm dimensions should *probably* be defined somewhere within the CRM source, and then
    ! used in the CAM source, rather than the other way around. In this case, crmdims exists in the
@@ -52,7 +52,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah
 #endif
                 qltend, qcltend, qiltend, sltend, &
-                crm_state, crm_output, &
+                crm_state, crm_input, crm_output, &
                 qrad_crm, &
 #ifdef m2005
 #ifdef MODAL_AERO
@@ -150,7 +150,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
     ! CRM state needs to be intent inout because it persists across CRM calls and needs to be
     ! initialized outside of this routine 
-    type(crm_state_type), intent(inout) :: crm_state
+    type(crm_state_type) , intent(inout) :: crm_state
+    type(crm_input_type) , intent(inout) :: crm_input
     type(crm_output_type), intent(inout) :: crm_output
 
     ! TODO: we shoud NOT be passing in lchnk and using CAM functions here!
