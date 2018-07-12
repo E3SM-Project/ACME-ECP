@@ -1,0 +1,16 @@
+#
+# Intel Fortran on University of Colorado's Summit
+#
+# The following instructions look outdated (RP, June 2018)
+# On a compile node, load the following modules
+#  module load    intel/intel-15.0.1    netcdf/netcdf4-4.4.2_intel-15.0.1
+# (supposedly) python/2.7.10 netcdf4-python/1.1.8
+
+# Where to find Fortran .mod files
+#export FCINCLUDE = $(nf-config --fflags)
+export FCINCLUDE = -I/curc/sw/netcdf/4.4.0/intel/16.0.3/include
+
+# Libraries including netCDF and Fortran interface to netCDF
+export LDFLAGS = -L/curc/sw/netcdf/4.4.0/intel/16.0.3/lib -L/curc/sw/netcdf/4.4.0/intel/16.0.3/lib
+#export LIBS = $(nf-config --flibs)
+export LIBS = -lnetcdff -lnetcdf

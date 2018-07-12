@@ -27,7 +27,7 @@ module prescribed_volcaero
   public :: has_prescribed_volcaero
   public :: init_prescribed_volcaero_restart
 
-
+  logical, public :: is_cmip6_volc
   logical :: has_prescribed_volcaero = .false.
   character(len=8), parameter :: volcaero_name = 'VOLC_MMR'
   character(len=13), parameter :: volcrad_name = 'VOLC_RAD_GEOM'
@@ -182,7 +182,7 @@ end subroutine prescribed_volcaero_readnl
 
 !-------------------------------------------------------------------
 !-------------------------------------------------------------------
-  subroutine prescribed_volcaero_init(is_cmip6_volc)
+  subroutine prescribed_volcaero_init()
 
     use tracer_data, only : trcdata_init
     use cam_history, only : addfld, horiz_only
@@ -194,9 +194,6 @@ end subroutine prescribed_volcaero_readnl
 
     implicit none
     
-    !Arguments
-    logical, intent(out):: is_cmip6_volc
-
     !Local variables
     integer :: ndx, istat
     integer :: errcode, ispf

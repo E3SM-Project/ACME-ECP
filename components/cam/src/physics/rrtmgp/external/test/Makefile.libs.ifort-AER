@@ -1,0 +1,14 @@
+#
+# Intel Fortran on AER platforms
+#
+# Before running locally:
+# setenv LD_LIBRARY_PATH /project/p1770/dependencies/lib:/opt/intel/composer_xe_2015.3.187/compiler/lib/intel64:/project/p1770/dependencies/szip/lib
+
+# Where to find Fortran .mod files
+export FCINCLUDE = -I/project/p1770/dependencies/include \
+  -I/project/p1770/dependencies/szip/include \
+  -I/project/p1770/dependencies/zlib/include \
+
+# Libraries including netCDF and Fortran interface to netCDF
+export LDFLAGS = -L/project/p1770/dependencies/lib -L/project/p1770/dependencies/szip/lib -L.
+export LIBS = -lrrtmgp -lrte -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lsz -lz -lm -ldl

@@ -1,0 +1,9 @@
+#
+# Gfortran (or really any compiler for which Fortran interface lives with the rest of netCDF)
+#
+# Where to find Fortran .mod files
+export FCINCLUDE = -I/usr/local/include
+
+# Libraries including netCDF and Fortran interface to netCDF
+export LDFLAGS = -L/usr/local/lib
+export LIBS = -lnetcdff -lnetcdf

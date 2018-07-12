@@ -1,0 +1,18 @@
+#
+# Intel Fortran on AER's rotor
+#
+# Before running code on rotor
+# > source /opt/intel/bin/compilervars.sh intel64
+# > export LD_LIBRARY_PATH=/opt/local/netcdf/v4.3.3.1/lib:$LD_LIBRARY_PATH
+
+
+# Where to find Fortran .mod files
+export FCINCLUDE = -I/opt/local/netcdf/v4.3.3.1/include \
+  -I/opt/local/hdf5/v1-8-15-p1/include \
+  -I/opt/local/szip/v2-1/include \
+  -I/opt/local/zlib/v1-2-8/include
+
+# Libraries including netCDF and Fortran interface to netCDF
+export LDFLAGS = -L/opt/local/netcdf/v4.3.3.1/lib -L/opt/local/hdf5/v1-8-15-p1/lib/ -L/opt/local/szip/v2-1/lib/
+
+export LIBS = -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lsz -lz -lm -ldl

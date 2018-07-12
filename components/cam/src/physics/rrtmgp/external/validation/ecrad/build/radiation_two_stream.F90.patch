@@ -1,0 +1,40 @@
+107,108c107,108
+<     real(jprb), intent(in)                :: mu0
+<     real(jprb), intent(in),  dimension(:) :: ssa, g
+---
+> !    real(jprb), intent(in)                :: mu0
+>     real(jprb), intent(in),  dimension(:) :: mu0, ssa, g
+133c133
+<       gamma3(j) = 0.5_jprb  - mu0*factor
+---
+>       gamma3(j) = 0.5_jprb  - mu0(j)*factor
+326c326
+<     real(jprb), intent(in) :: mu0
+---
+>   !  real(jprb), intent(in) :: mu0
+329c329
+<     real(jprb), intent(in), dimension(n) :: od, ssa
+---
+>     real(jprb), intent(in), dimension(n) :: mu0, od, ssa
+364c364
+<       od_over_mu0 = max(od(j) / mu0, 0.0_jprb)
+---
+>       od_over_mu0 = max(od(j) / mu0(j), 0.0_jprb)
+378c378
+<         k_mu0 = k*mu0
+---
+>         k_mu0 = k*mu0(j)
+405c405
+<         RT_factor = mu0 * ssa(j) * RT_factor / (1.0_jprb - k_mu0*k_mu0)
+---
+>         RT_factor = mu0(j) * ssa(j) * RT_factor / (1.0_jprb - k_mu0*k_mu0)
+412c412
+<              &     -k_2_exponential*(gamma3(j) - alpha2*mu0)*exponential0)
+---
+>              &     -k_2_exponential*(gamma3(j) - alpha2*mu0(j))*exponential0)
+416,417c416,417
+<         ! unscattered transmittance.
+<         Tdir(j) = RT_factor * ( k_2_exponential*(gamma4 + alpha1*mu0) &
+---
+>         ! unscattered transmittance.
+>         Tdir(j) = RT_factor * ( k_2_exponential*(gamma4 + alpha1*mu0(j)) &

@@ -1,0 +1,20 @@
+# Load the following modules
+#
+#  module swap PrgEnv-cray PrgEnv-pgi
+#  module load cray-netcdf cray-hdf5
+#  module load craype-accel-nvidia35
+#  module unload cray-libsci_acc
+
+# Override Fortran compiler name and flags
+export FC = ftn
+#export FCFLAGS = -g -Minfo -Mbounds -Mchkptr -Mstandard -Kieee -Mchkstk -Mipa=fast,inline -acc -ta=tesla:6.5
+#export FCFLAGS = -g -Minfo -Mbounds -Mchkptr -Mstandard -Kieee -Mchkstk -Mipa=fast,inline -ta=tesla
+export FCFLAGS = -g -Minfo -Mbounds -Mchkptr -Mstandard -Kieee -Mchkstk -Mipa=fast,inline -Mallocatable=03 -D__MAP_NLAY_NLON_NLAT__
+
+# Where to find Fortran .mod files
+#export FCINCLUDE =
+
+# Libraries including netCDF and Fortran interface to netCDF
+#export LDFLAGS = -L/opt/nvidia/cudatoolkit6.5/6.5.14-1.0502.9836.8.1/lib64 -ta=tesla6.5 -lcudart_static -Bdynamic
+#export LDFLAGS = -ta=tesla
+#export LIBS = -lnetcdff -lnetcdf

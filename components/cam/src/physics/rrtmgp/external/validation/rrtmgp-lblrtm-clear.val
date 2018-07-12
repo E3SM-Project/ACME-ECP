@@ -1,0 +1,26 @@
+[Longwave] 
+ref_dir = validation/data
+ref_file = lblrtm-v12.8-lw-flux-inputs-outputs-garand-r1378.nc
+test_dir = test/flux_compute/ref
+test_file = rrtmgp-lw-inputs-outputs-clear.nc
+fig_dir = validation 
+fig_file = rrtmgp-lblrtm-lw-clear.pdf 
+variables = flux_dn, flux_up, flux_net, heating_rate
+
+[Longwave, 3 angles ] 
+ref_dir = validation/data
+ref_file = lblrtm-v12.8-lw-flux-inputs-outputs-garand-r1378.nc
+test_dir = validation/data
+test_file = rrtmgp-lw-inputs-outputs-clear-ang-3.nc
+fig_dir = validation 
+fig_file = rrtmgp-lblrtm-lw-clear-ang-3.pdf 
+variables = flux_dn, flux_up, flux_net, heating_rate
+
+[Shortwave] 
+ref_dir = validation/data
+ref_file = charts-sw-inputs-outputs-clear.nc
+test_dir = validation/data
+test_file = rrtmgp-sw-inputs-outputs-clear.nc
+fig_dir = validation 
+fig_file = rrtmgp-lblrtm-sw-clear.pdf 
+variables = flux_dn, flux_up, flux_net, flux_dir_dn, heating_rate

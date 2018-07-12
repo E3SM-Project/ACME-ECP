@@ -1,0 +1,17 @@
+[Longwave, clear sky]
+ref_dir = validation/data
+ref_file = ecrad-lw-inputs-outputs-vertrev.nc
+test_dir = validation/data
+test_file = rrtmgp-lw-inputs-outputs-vertrev.nc
+fig_dir = validation
+fig_file = rrtmgp-ecrad-lw-clear.pdf
+variables = flux_dn, flux_up, flux_net, heating_rate
+
+[Shortwave, clear sky]
+ref_dir = validation/data
+ref_file = ecrad-sw-inputs-outputs-vertrev.nc
+test_dir = validation/data
+test_file = rrtmgp-sw-inputs-outputs-vertrev.nc
+fig_dir = validation
+fig_file = rrtmgp-ecrad-sw-clear.pdf
+variables = flux_dn, flux_up, flux_net, flux_dir_dn, heating_rate

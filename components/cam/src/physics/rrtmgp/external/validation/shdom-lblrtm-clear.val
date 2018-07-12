@@ -1,0 +1,17 @@
+[Longwave] 
+ref_dir = validation/data
+ref_file = lblrtm-v12.8-lw-flux-inputs-outputs-garand-r1378.nc
+test_dir = validation/data
+test_file = shdompp-lw-inputs-outputs-clear.nc
+fig_dir = validation 
+fig_file = shdompp-lblrtm-lw-clear.pdf 
+variables = flux_dn, flux_up, flux_net
+
+[Shortwave] 
+ref_dir = validation/data
+ref_file = charts-sw-inputs-outputs-clear.nc
+test_dir = validation/data
+test_file = shdompp-sw-inputs-outputs-clear.nc
+fig_dir = validation 
+fig_file = shdompp-lblrtm-sw-clear.pdf 
+variables = flux_dn, flux_up, flux_net, flux_dir_dn

@@ -755,7 +755,7 @@ subroutine stratiform_tend( &
                meltheat, prec_pcw, snow_pcw, dtime, fwaut,                 &
                fsaut, fracw, fsacw, fsaci, ltend,                          &
                rhdfda, rhu00, icefrac, state1%zi, ice2pr, liq2pr,          &
-               liq2snow, snowh, rkflxprc, rkflxsnw, pracwo, psacwo, psacio )
+               liq2snow, snowh, landm, rkflxprc, rkflxsnw, pracwo, psacwo, psacio )
    call t_stopf('pcond')
 
    lq(:)        = .FALSE.

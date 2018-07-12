@@ -1,0 +1,43 @@
+October 23, 2017
+
+SW Dir Beam
+New filename: lblrtm-v12.8-sw-dirbeam-flux-inputs-outputs-garand-r1378.nc
+Original filename: lblrtm-sw-flux-inputs-outputs-garand-all.nc
+Note: The input pressures, temperatures are not correct in this file, nor are
+the wavenumbers of the bands.
+Note: Calculations done at SZA=30.
+
+LW
+New filename: lblrtm-v12.8-lw-flux-inputs-outputs-garand-r1378.nc
+Original filename: lblrtm-lw-flux-inputs-outputs-garand-all.nc
+Note: The number of angles used in these calculations were 3 (the .nc file says 1).
+
+Codes used to build these files on CU Summit Computer
+# Base directory for finding any validation atmosphere
+GARANDDIR='/projects/jede9034/p1770/garand_validation_atmospheres_input'
+
+# Set path/name for lblrtm
+LBLEXE='/projects/jede9034/p1770/AER_CODES/lblrtm_versions/lblrtm_v12.8_mod_rayl/lblrtm_v12.8_linux_intel_dbl'
+
+# Set path for TAPE3; assume name is TAPE3
+# Line rejection is off in this TAPE3.
+# 7 major molecules included for this version of HITRAN.
+T3DIR='/projects/jede9034/p1770/runs_rebuild_rrtm_nasa_neweta_onekeyspecies/tape3s_aer_v_3.6_r1390/'
+
+# Set LINEFILE Version used to make TAPE3s
+LINEFILEVER='/projects/jede9034/p1770/AER_CODES/linefile_versions/aer_v_3.6/line_file/aer_v_3.6/'
+
+# LNFL used to extract TAPE3s
+LNFLEXE='/projects/jede9034/p1770/AER_CODES/lnfl_versions/lnfl_v3.1/lnfl_v3.1_linux_intel_sgl'
+
+# Radsum version
+RADSUMEXE='/projects/jede9034/p1770/AER_CODES/radsum_versions/radsum_trunk_r31720_modoutput/radsum_r31720_modoutput_linux_intel_dbl'
+
+# Solar Extract executable
+EXTSOLEXE='/projects/jede9034/p1770/AER_CODES/solar_extract_versions/extract_solar_v1.4/extract_solar_v1.4.little_Endian'
+
+# Original Solar source function used by LBLRTM and scripts
+SSFVER='/projects/jede9034/p1770/AER_CODES/solar_extract_versions/extract_solar_v1.4/data_amended/build_comb_solar_rad_avg.bin'
+
+# Directory to find solar.rad runs used in LBL validations
+SOLARRADDIR='/projects/jede9034/p1770/runs_rebuild_rrtm_nasa_neweta_onekeyspecies/solarrads_extract_solar_v1.4_r1390/'
