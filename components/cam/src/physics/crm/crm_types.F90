@@ -322,9 +322,8 @@ contains
    subroutine crm_input_finalize(this)
       class(crm_input_type), intent(inout) :: this
 
-      ! Nullify pointers
-      this%ul => null()
-      this%vl => null()
+      deallocate(this%ul)
+      deallocate(this%vl)
 
    end subroutine crm_input_finalize 
    !------------------------------------------------------------------------------------------------
