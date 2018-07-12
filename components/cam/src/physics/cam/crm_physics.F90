@@ -659,9 +659,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) clhgh(pcols)                      !       "     hgh  cloud cover
    real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
 
-   real(r8) ul(pcols,pver)
-   real(r8) vl(pcols,pver)
-
 #if defined(SPMOMTRANS)
    real(r8) u_tend_crm (pcols,pver)       ! temporary variable for CRM momentum tendency
    real(r8) v_tend_crm (pcols,pver)       ! temporary variable for CRM momentum tendency
@@ -842,6 +839,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    ! Initialize crm_state (nullify pointers, allocate memory, etc)
    call crm_state%initialize(ncol)
+   call crm_input%initialize(ncol, pver)
    call crm_output%initialize(ncol, pver)
 
    if (SPCAM_microp_scheme .eq. 'm2005') then
@@ -1271,8 +1269,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          !----------------------------------------------------------------------
          do k=1,pver
 
-            ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
-            vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
+            crm_input%ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
+            crm_input%vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
+
 #if defined( SP_ESMT )
             ! Set the input wind for ESMT
             ul_esmt(i,k) = state%u(i,k)
@@ -1295,7 +1294,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
     call crm( lchnk,                       icol(:ncol),                  ncol,                         phys_stage,                                                  &
                state%t(:ncol,:pver),        state%q(:ncol,:pver,1),       state%q(:ncol,:pver,ixcldliq),state%q(:ncol,:pver,ixcldice),                              &
-               ul(:ncol,:pver),             vl(:ncol,:pver),                                                                                                        &
                state%ps(:ncol),             state%pmid(:ncol,:pver),      state%pint(:ncol,:pver+1),    state%pdel(:ncol,:pver),      state%phis(:ncol),            &
                state%zm(:ncol,:pver),       state%zi(:ncol,:pver+1),      ztodt,                        pver,                                                       &
 #if defined( SPMOMTRANS )
@@ -1785,6 +1783,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    ! Free memory in crm_state
    call crm_state%finalize()
+   call crm_input%finalize()
    call crm_output%finalize()
 
 end subroutine crm_physics_tend

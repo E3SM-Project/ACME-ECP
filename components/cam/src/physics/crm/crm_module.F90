@@ -203,8 +203,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(in   ) :: ql                  (ncrms,plev)  ! Global grid water vapor (g/g)
     real(r8), intent(in   ) :: qccl                (ncrms,plev)  ! Global grid cloud liquid water (g/g)
     real(r8), intent(in   ) :: qiil                (ncrms,plev)  ! Global grid cloud ice (g/g)
-    real(r8), intent(in   ) :: ul                  (ncrms,plev)  ! Global grid u (m/s)
-    real(r8), intent(in   ) :: vl                  (ncrms,plev)  ! Global grid v (m/s)
 
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
@@ -437,12 +435,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef CRM_DUMP
     call crm_dump_input( igstep,plev,lchnk,icol(icrm),latitude0,longitude0,ps(icrm),pmid(icrm,:),pdel(icrm,:),phis(icrm),zmid(icrm,:),zint(icrm,:),qrad_crm(icrm,:,:,:),dt_gl, &
                          ocnfrac(icrm),tau00(icrm),wndls(icrm),bflxls(icrm),fluxu00(icrm),fluxv00(icrm),fluxt00(icrm),fluxq00(icrm),tl(icrm,:),ql(icrm,:),qccl(icrm,:),qiil(icrm,:),   &
-                         ul(icrm,:),vl(icrm,:), &
 #ifdef CLUBB_CRM
                          clubb_buffer(icrm,:,:,:,:) , &
 #endif
                          cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm), &
-                         crm_state, &
+                         crm_state, crm_input, &
 #ifdef m2005
 #ifdef MODAL_AERO
                          naermod(icrm,:,:),vaerosol(icrm,:,:),hygro(icrm,:,:) , &
@@ -697,8 +694,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif /* CLUBB_CRM */
 
       l = plev-k+1
-      uln(l) = min( umax, max(-umax,ul(icrm,l)) )
-      vln(l) = min( umax, max(-umax,vl(icrm,l)) )*YES3D
+      uln(l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
+      vln(l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
       ttend(k) = (tl(icrm,l)+gamaz(k)- fac_cond*(qccl(icrm,l)+qiil(icrm,l))-fac_fus*qiil(icrm,l)-t00(k))*idt_gl
       qtend(k) = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)-q0(k))*idt_gl
       utend(k) = (uln(l)-u0(k))*idt_gl
@@ -1366,8 +1363,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     qln  (1:ptop-1) =   ql(icrm,1:ptop-1)
     qccln(1:ptop-1) = qccl(icrm,1:ptop-1)
     qiiln(1:ptop-1) = qiil(icrm,1:ptop-1)
-    uln  (1:ptop-1) =   ul(icrm,1:ptop-1)
-    vln  (1:ptop-1) =   vl(icrm,1:ptop-1)
+    uln  (1:ptop-1) =   crm_input%ul(icrm,1:ptop-1)
+    vln  (1:ptop-1) =   crm_input%vl(icrm,1:ptop-1)
 
     !  Compute tendencies due to CRM:
     tln  (ptop:plev) = 0.
@@ -1428,8 +1425,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
 #if defined(SPMOMTRANS)
     !!! resolved convective momentum transport (CMT) tendencies
-    ultend(icrm,:) = (uln - ul(icrm,:))*icrm_run_time
-    vltend(icrm,:) = (vln - vl(icrm,:))*icrm_run_time
+    ultend(icrm,:) = (uln - crm_input%ul(icrm,:))*icrm_run_time
+    vltend(icrm,:) = (vln - crm_input%vl(icrm,:))*icrm_run_time
 
     !!! don't use tendencies from two top levels
     ultend(icrm,ptop:ptop+1) = 0.

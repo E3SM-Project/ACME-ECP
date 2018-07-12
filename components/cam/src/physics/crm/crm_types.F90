@@ -102,10 +102,13 @@ module crm_types
    end type crm_state_type
    !------------------------------------------------------------------------------------------------
    type crm_input_type
-      !
+      
+      real(crm_rknd), allocatable :: ul(:,:)    ! Global grid u (m/s)
+      real(crm_rknd), allocatable :: vl(:,:)    ! Global grid v (m/s)
+
    ! contains
-      ! procedure, public :: initialize=>crm_input_initialize
-      ! procedure, public :: finalize=>crm_input_finalize
+      procedure, public :: initialize=>crm_input_initialize
+      procedure, public :: finalize=>crm_input_finalize
    end type crm_input_type
    !------------------------------------------------------------------------------------------------
    type crm_output_type
@@ -306,7 +309,24 @@ contains
       deallocate(this%prec_crm)
    end subroutine crm_state_finalize
    !------------------------------------------------------------------------------------------------
+   ! Type-bound procedures for crm_state_type
+   subroutine crm_input_initialize(this, ncrms, nlev)
+      class(crm_input_type), intent(inout) :: this
+      integer, intent(in) :: ncrms, nlev
+ 
+      if (.not. allocated(this%ul)) allocate(this%ul(ncrms,nlev))
+      if (.not. allocated(this%vl)) allocate(this%vl(ncrms,nlev))
 
+   end subroutine crm_input_initialize
+   !------------------------------------------------------------------------------------------------
+   subroutine crm_input_finalize(this)
+      class(crm_state_type), intent(inout) :: this
+
+      ! Nullify pointers
+      this%ul => null()
+      this%vl => null()
+
+   end subroutine crm_input_finalize 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_output_type
    subroutine crm_output_initialize(this, ncrms, nlev)
