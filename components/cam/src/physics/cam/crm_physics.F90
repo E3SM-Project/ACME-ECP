@@ -525,7 +525,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use physconst,       only: cpair, latvap, latice, gravit, cappa
    use constituents,    only: pcnst, qmin, cnst_get_ind, cnst_cam_outfld, bpcnst, cnst_name
 #ifdef CRM
-   use crm_module,      only: crm, crm_state_type, crm_output_type
+   use crm_module,      only: crm
+   use crm_types,       only: crm_state_type, crm_output_type
    use params,          only: crm_rknd
 #endif
    use physconst,       only: latvap
@@ -1127,6 +1128,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       t_ls(:,:) = 0.
 
 
+      ! TODO: do these need to be separate?
 #if defined(SPMOMTRANS)
       u_tend_crm (:,:) = 0.
       v_tend_crm (:,:) = 0.
@@ -1396,18 +1398,17 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          ! in the future.
          ! incl, inci, ... can not be used here, for they are defined before we call them???
          ! +++mhwang
-         call outfld('CRM_NC ',crm_nc(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_NI ',crm_ni(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_NR ',crm_nr(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_NS ',crm_ns(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_NG ',crm_ng(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NC ',crm_state%nc(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+         call outfld('CRM_NI ',crm_state%ni(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+         call outfld('CRM_NR ',crm_state%nr(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+         call outfld('CRM_NS ',crm_state%ns(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+         call outfld('CRM_NG ',crm_state%ng(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+
+         call outfld('CRM_QR ',crm_state%qr(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+         call outfld('CRM_QS ',crm_state%qs(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+         call outfld('CRM_QG ',crm_state%qg(1:ncol, :, :, :)   ,ncol   ,lchnk   )
 
          call outfld('CRM_WVAR', crm_state%wvar(1:ncol,:,:,:), ncol, lchnk)
-
-         call outfld('CRM_QR ',crm_state%qr(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_QS ',crm_state%qs(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_QG ',crm_state%qg(:, :, :, :)   ,pcols   ,lchnk   )
-
          call outfld('CRM_AUT', crm_state%aut(1:ncol,:,:,:), ncol, lchnk)
          call outfld('CRM_ACC', crm_state%acc(1:ncol,:,:,:), ncol, lchnk)
          call outfld('CRM_EVPC',crm_state%evpc(1:ncol,:,:,:), ncol, lchnk)
@@ -1679,6 +1680,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('V_ESMT',v_tend_esmt,pcols   ,lchnk   )
 #endif /* SP_ESMT */
 
+      ! TODO: why do u_tend_esmt and u_tend_crm need to be different? better
+      ! would be to just change how u_tend gets set depending on SP_USE_ESMT
+      ! flag or SPMOMTRANS?
 #if defined( SP_USE_ESMT )
       ptend%lu = .TRUE.
       ptend%lv = .TRUE.
