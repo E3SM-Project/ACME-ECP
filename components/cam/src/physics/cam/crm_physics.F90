@@ -1364,30 +1364,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
       end do
       end do
-
-      call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
-      call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
-      ! call outfld('HEIGHT  ',state%zm   ,pcols   ,lchnk   )
-
-      call outfld('CRM_U   ', crm_state%u_wind(1:ncol,:,:,:),      ncol, lchnk)
-      call outfld('CRM_V   ', crm_state%v_wind(1:ncol,:,:,:),      ncol, lchnk)
-      call outfld('CRM_W   ', crm_state%w_wind(1:ncol,:,:,:),      ncol, lchnk)
-      call outfld('CRM_T   ', crm_state%temperature(1:ncol,:,:,:), ncol, lchnk)
-
-      if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         call outfld('CRM_QV  ',crm_state%qt(1:ncol,:,:,:)-crm_state%qcl(1:ncol,:,:,:)-crm_state%qci(1:ncol,:,:,:),ncol,lchnk   )
-      else if (SPCAM_microp_scheme .eq. 'm2005') then 
-         call outfld('CRM_QV  ',crm_state%qt(1:ncol,:,:,:)-crm_state%qcl(1:ncol,:,:,:), ncol,lchnk   )
-      endif
-
-      call outfld('CRM_QC  ',crm_state%qcl(1:ncol,:,:,:)   ,ncol ,lchnk)
-      call outfld('CRM_QI  ',crm_state%qci(1:ncol,:,:,:)   ,ncol ,lchnk)
-      call outfld('CRM_QPC ',crm_state%qpl(1:ncol,:,:,:)   ,ncol ,lchnk)
-      call outfld('CRM_QPI ',crm_state%qpi(1:ncol,:,:,:)   ,ncol ,lchnk)
-      call outfld('CRM_PREC',crm_state%prec_crm(1:ncol,:,:),ncol ,lchnk)
-
-      call outfld('CRM_TK ', crm_state%crm_tk(1:ncol, :, :, :) ,ncol,lchnk) !Guangxing Lin new crm
-      call outfld('CRM_TKH', crm_state%crm_tkh(1:ncol, :, :, :),ncol,lchnk) !Guangxing Lin new crm
+      
+      !----------------------------------------------------------------------------------
+      ! Write outputs to history
+      ! TODO: Move the remaining outfld calls into crm_physics_out()
+      !
+      call crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
 
 #ifdef m2005
       if (SPCAM_microp_scheme .eq. 'm2005') then
@@ -2262,7 +2244,7 @@ end subroutine m2005_effradius
 !==================================================================================================
 !==================================================================================================
 
-subroutine crm_physics_out(state, crm_state, crm_output)
+subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
    !------------------------------------------------------------------------------------------ 
    ! 
    ! Purpose: to write crm physics output to history 
@@ -2274,18 +2256,15 @@ subroutine crm_physics_out(state, crm_state, crm_output)
    !------------------------------------------------------------------------------------------ 
    use cam_history, only: outfld
 #ifdef CRM
-   use crm_module, only: crm, crm_state_type, crm_output_type
+   use crm_types, only: crm_state_type, crm_output_type
 #endif
    implicit none
 
+   integer, intent(in) :: lchnk
+   integer, intent(in) :: ncol
    type(physics_state), intent(in) :: state
    type(crm_state_type), intent(in) :: crm_state
    type(crm_output_type), intent(in) :: crm_output
-
-   integer :: lchnk, ncol
-
-   lchnk = state%lchnk
-   ncol = state%ncol
 
    !!! state output variables
    call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
@@ -2296,6 +2275,21 @@ subroutine crm_physics_out(state, crm_state, crm_output)
    call outfld('CRM_V   ', crm_state%v_wind(1:ncol,:,:,:),      ncol, lchnk)
    call outfld('CRM_W   ', crm_state%w_wind(1:ncol,:,:,:),      ncol, lchnk)
    call outfld('CRM_T   ', crm_state%temperature(1:ncol,:,:,:), ncol, lchnk)
+
+   if (SPCAM_microp_scheme .eq. 'sam1mom') then
+      call outfld('CRM_QV  ',crm_state%qt(1:ncol,:,:,:)-crm_state%qcl(1:ncol,:,:,:)-crm_state%qci(1:ncol,:,:,:),ncol,lchnk   )
+   else if (SPCAM_microp_scheme .eq. 'm2005') then 
+      call outfld('CRM_QV  ',crm_state%qt(1:ncol,:,:,:)-crm_state%qcl(1:ncol,:,:,:), ncol,lchnk   )
+   endif
+   call outfld('CRM_QC  ',crm_state%qcl(1:ncol,:,:,:)   ,ncol ,lchnk)
+   call outfld('CRM_QI  ',crm_state%qci(1:ncol,:,:,:)   ,ncol ,lchnk)
+   call outfld('CRM_QPC ',crm_state%qpl(1:ncol,:,:,:)   ,ncol ,lchnk)
+   call outfld('CRM_QPI ',crm_state%qpi(1:ncol,:,:,:)   ,ncol ,lchnk)
+   call outfld('CRM_PREC',crm_state%prec_crm(1:ncol,:,:),ncol ,lchnk)
+
+   call outfld('CRM_TK ', crm_state%crm_tk(1:ncol, :, :, :) ,ncol,lchnk) !Guangxing Lin new crm
+   call outfld('CRM_TKH', crm_state%crm_tkh(1:ncol, :, :, :),ncol,lchnk) !Guangxing Lin new crm
+
 
 end subroutine crm_physics_out
 
