@@ -320,7 +320,7 @@ contains
    end subroutine crm_input_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_input_finalize(this)
-      class(crm_state_type), intent(inout) :: this
+      class(crm_input_type), intent(inout) :: this
 
       ! Nullify pointers
       this%ul => null()
