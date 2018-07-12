@@ -1364,72 +1364,14 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       end do
       end do
       
-      !----------------------------------------------------------------------------------
-      ! Write outputs to history
-      ! TODO: Move the remaining outfld calls into crm_physics_out()
+      !--------------------------------------------------------------------------------------
+      ! Write outputs to history (Work in Progress)
+      ! TODO: Move the remaining outfld calls into crm_physics_out() or related subroutines
       !
-      call crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
-
-#ifdef m2005
-      if (SPCAM_microp_scheme .eq. 'm2005') then
-         ! index is defined in ./crm/MICRO_M2005/microphysics.F90
-         ! Be cautious to use them here. They are defined in crm codes, and these codes are called only 
-         ! after the subroutine of crm is called. So they can only be used after the 'crm' subroutine. 
-         ! some initializaiton part of crm codes should be called in the initializaation part of cam 
-         ! in the future.
-         ! incl, inci, ... can not be used here, for they are defined before we call them???
-         ! +++mhwang
-         call outfld('CRM_NC ',crm_state%nc(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-         call outfld('CRM_NI ',crm_state%ni(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-         call outfld('CRM_NR ',crm_state%nr(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-         call outfld('CRM_NS ',crm_state%ns(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-         call outfld('CRM_NG ',crm_state%ng(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-
-         call outfld('CRM_QR ',crm_state%qr(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-         call outfld('CRM_QS ',crm_state%qs(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-         call outfld('CRM_QG ',crm_state%qg(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-
-         call outfld('CRM_WVAR', crm_state%wvar(1:ncol,:,:,:), ncol, lchnk)
-         call outfld('CRM_AUT', crm_state%aut(1:ncol,:,:,:), ncol, lchnk)
-         call outfld('CRM_ACC', crm_state%acc(1:ncol,:,:,:), ncol, lchnk)
-         call outfld('CRM_EVPC',crm_state%evpc(1:ncol,:,:,:), ncol, lchnk)
-         call outfld('CRM_EVPR',crm_state%evpr(1:ncol,:,:,:), ncol, lchnk)
-         call outfld('CRM_MLT', crm_state%mlt(1:ncol,:,:,:), ncol, lchnk)
-         call outfld('CRM_SUB', crm_state%sub(1:ncol,:,:,:), ncol, lchnk)
-         call outfld('CRM_DEP', crm_state%dep(1:ncol,:,:,:), ncol, lchnk)
-         call outfld('CRM_CON', crm_state%con(1:ncol,:,:,:), ncol, lchnk)
-
-         ! hm 8/31/11, add new output for time-mean-avg
-         call outfld('A_AUT',  crm_output%aut_crm_a(1:ncol,:), ncol, lchnk)
-         call outfld('A_ACC',  crm_output%acc_crm_a(1:ncol,:), ncol, lchnk)
-         call outfld('A_EVPC', crm_output%evpc_crm_a(1:ncol,:), ncol, lchnk)
-         call outfld('A_EVPR', crm_output%evpr_crm_a(1:ncol,:), ncol, lchnk)
-         call outfld('A_MLT',  crm_output%mlt_crm_a(1:ncol,:), ncol, lchnk)
-         call outfld('A_SUB',  crm_output%sub_crm_a(1:ncol,:), ncol, lchnk)
-         call outfld('A_DEP',  crm_output%dep_crm_a(1:ncol,:), ncol, lchnk)
-         call outfld('A_CON',  crm_output%con_crm_a(1:ncol,:), ncol, lchnk)
-      end if ! m2005
-#endif /* m2005 */
-
 #ifdef CLUBB_CRM
-      call outfld('UP2     ', clubb_buffer(:, :, :, :, 1) ,pcols, lchnk )
-      call outfld('VP2     ', clubb_buffer(:, :, :, :, 2) ,pcols, lchnk )
-      call outfld('WPRTP   ', clubb_buffer(:, :, :, :, 3) ,pcols, lchnk )
-      call outfld('WPTHLP  ', clubb_buffer(:, :, :, :, 4) ,pcols, lchnk )
-      call outfld('WP2     ', clubb_buffer(:, :, :, :, 5) ,pcols, lchnk )
-      call outfld('WP3     ', clubb_buffer(:, :, :, :, 6) ,pcols, lchnk )
-      call outfld('RTP2    ', clubb_buffer(:, :, :, :, 7) ,pcols, lchnk )
-      call outfld('THLP2   ', clubb_buffer(:, :, :, :, 8) ,pcols, lchnk )
-      call outfld('RTPTHLP ', clubb_buffer(:, :, :, :, 9) ,pcols, lchnk )
-      call outfld('UPWP    ', clubb_buffer(:, :, :, :, 10),pcols, lchnk )
-      call outfld('VPWP    ', clubb_buffer(:, :, :, :, 11),pcols, lchnk )
-      call outfld('CRM_CLD ', clubb_buffer(:, :, :, :, 12),pcols, lchnk )
-      call outfld('CLUBB_TK '  , clubb_tk(:, :, :, :)     ,pcols, lchnk )
-      call outfld('CLUBB_TKH'  , clubb_tkh(:, :, :, :)    ,pcols, lchnk )
-      call outfld('RELVAR'     , relvar(:, :, :, :)       ,pcols, lchnk )
-      call outfld('ACCRE_ENHAN', accre_enhan(:, :, :, :)  ,pcols, lchnk )
-      call outfld('QCLVAR'     , qclvar(:, :, :, :)       ,pcols, lchnk )
-#endif /* CLUBB_CRM */
+      call crm_clubb_out(lchnk, clubb_buffer)
+#endif
+      call crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
 
 !----------------------------------------------------------------------
 ! Add radiative heating tendency above CRM
@@ -2290,7 +2232,87 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
    call outfld('CRM_TK ', crm_state%crm_tk(1:ncol, :, :, :) ,ncol,lchnk) !Guangxing Lin new crm
    call outfld('CRM_TKH', crm_state%crm_tkh(1:ncol, :, :, :),ncol,lchnk) !Guangxing Lin new crm
 
+#ifdef m2005
+   if (SPCAM_microp_scheme .eq. 'm2005') then
+      call outfld('CRM_NC ',crm_state%nc(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+      call outfld('CRM_NI ',crm_state%ni(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+      call outfld('CRM_NR ',crm_state%nr(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+      call outfld('CRM_NS ',crm_state%ns(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+      call outfld('CRM_NG ',crm_state%ng(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+
+      call outfld('CRM_QR ',crm_state%qr(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+      call outfld('CRM_QS ',crm_state%qs(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+      call outfld('CRM_QG ',crm_state%qg(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+
+      call outfld('CRM_WVAR', crm_state%wvar(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_AUT', crm_state%aut(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_ACC', crm_state%acc(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_EVPC',crm_state%evpc(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_EVPR',crm_state%evpr(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_MLT', crm_state%mlt(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_SUB', crm_state%sub(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_DEP', crm_state%dep(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_CON', crm_state%con(1:ncol,:,:,:), ncol, lchnk)
+
+      ! hm 8/31/11, add new output for time-mean-avg
+      call outfld('A_AUT',  crm_output%aut_crm_a(1:ncol,:), ncol, lchnk)
+      call outfld('A_ACC',  crm_output%acc_crm_a(1:ncol,:), ncol, lchnk)
+      call outfld('A_EVPC', crm_output%evpc_crm_a(1:ncol,:), ncol, lchnk)
+      call outfld('A_EVPR', crm_output%evpr_crm_a(1:ncol,:), ncol, lchnk)
+      call outfld('A_MLT',  crm_output%mlt_crm_a(1:ncol,:), ncol, lchnk)
+      call outfld('A_SUB',  crm_output%sub_crm_a(1:ncol,:), ncol, lchnk)
+      call outfld('A_DEP',  crm_output%dep_crm_a(1:ncol,:), ncol, lchnk)
+      call outfld('A_CON',  crm_output%con_crm_a(1:ncol,:), ncol, lchnk)
+   end if ! m2005
+#endif /* m2005 */
 
 end subroutine crm_physics_out
+
+#ifdef CLUBB_CRM
+subroutine crm_clubb_out(lchnk, clubb_buffer, &
+                         clubb_tk, clubb_tkh, relvar, accre_enhan, qclvar)
+   !------------------------------------------------------------------------------------------ 
+   ! 
+   ! Purpose: write CLUBB crm output to history files
+   !
+   !------------------------------------------------------------------------------------------ 
+   ! TODO: this subroutine should be refactored in future -- currently the goal is 
+   ! to move all "call outfld" blocks out of the CRM, and this is the quickest approach.
+   !------------------------------------------------------------------------------------------
+   use cam_history, only: outfld
+   use crmdims, only: crm_nx, crm_ny, crm_nz
+   implicit none
+
+   integer, intent(in) :: lchnk
+   real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
+   real(r8) crm_cld(pcols,crm_nx, crm_ny, crm_nz+1)
+   real(r8) clubb_tk   (pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) clubb_tkh  (pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) relvar     (pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) accre_enhan(pcols,crm_nx, crm_ny, crm_nz)
+   real(r8) qclvar     (pcols,crm_nx, crm_ny, crm_nz)
+
+   ! clubb_buffer outputs
+   call outfld('UP2     ', clubb_buffer(:, :, :, :, 1)   ,pcols   ,lchnk   )
+   call outfld('VP2     ', clubb_buffer(:, :, :, :, 2)   ,pcols   ,lchnk   )
+   call outfld('WPRTP   ', clubb_buffer(:, :, :, :, 3)   ,pcols   ,lchnk   )
+   call outfld('WPTHLP  ', clubb_buffer(:, :, :, :, 4)   ,pcols   ,lchnk   )
+   call outfld('WP2     ', clubb_buffer(:, :, :, :, 5)   ,pcols   ,lchnk   )
+   call outfld('WP3     ', clubb_buffer(:, :, :, :, 6)   ,pcols   ,lchnk   )
+   call outfld('RTP2    ', clubb_buffer(:, :, :, :, 7)   ,pcols   ,lchnk   )
+   call outfld('THLP2   ', clubb_buffer(:, :, :, :, 8)   ,pcols   ,lchnk   )
+   call outfld('RTPTHLP ', clubb_buffer(:, :, :, :, 9)   ,pcols   ,lchnk   )
+   call outfld('UPWP    ', clubb_buffer(:, :, :, :, 10)  ,pcols   ,lchnk   )
+   call outfld('VPWP    ', clubb_buffer(:, :, :, :, 11)  ,pcols   ,lchnk   )
+   call outfld('CRM_CLD ', clubb_buffer(:, :, :, :, 12)  ,pcols   ,lchnk   )
+
+   ! additional clubb-related diagnostics
+   call outfld('CLUBB_TK ', clubb_tk(:, :, :, :)  ,pcols   ,lchnk   )
+   call outfld('CLUBB_TKH', clubb_tkh(:, :, :, :)  ,pcols   ,lchnk   )
+   call outfld('RELVAR', relvar(:, :, :, :)  ,pcols   ,lchnk   )
+   call outfld('ACCRE_ENHAN', accre_enhan(:, :, :, :)  ,pcols   ,lchnk   )
+   call outfld('QCLVAR', qclvar(:, :, :, :)  ,pcols   ,lchnk   )
+end subroutine crm_clubb_out
+#endif /* CLUBB_CRM */
 
 end module crm_physics
