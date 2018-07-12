@@ -347,6 +347,7 @@ end function radiation_nextsw_cday
 #ifdef SPMD
     use mpishorthand,   only: mpi_integer, mpicom, mpi_comm_world
 #endif
+    use rad_solar_var,      only: rad_solar_var_init
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
@@ -391,6 +392,9 @@ end function radiation_nextsw_cday
        iradsw = 1
        iradlw = 1
     end if
+
+    ! Initialize solar variability interface
+    call rad_solar_var_init()
 
     ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then
@@ -657,8 +661,10 @@ end function radiation_nextsw_cday
                                                                                  sampling_seq='rad_lwsw')
           call addfld('FUS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave upward flux')
           call addfld('FDS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave downward flux')
+          call addfld('FNS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave net flux')
           call addfld('FUSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky upward flux')
           call addfld('FDSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky downward flux')
+          call addfld('FNSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky net flux')
           call addfld('FSNIRTOA'//diag(icall),  horiz_only,     'A','W/m2',&
            'Net near-infrared flux (Nimbus-7 WFOV) at top of atmosphere', sampling_seq='rad_lwsw')
           call addfld('FSNRTOAC'//diag(icall),  horiz_only,     'A','W/m2', &
@@ -687,7 +693,6 @@ end function radiation_nextsw_cday
 
        end if
     end do
-
 
     if (single_column .and. scm_crm_mode) then
        call add_default ('FUS     ', 1, ' ')
@@ -756,8 +761,10 @@ end function radiation_nextsw_cday
                                                                            sampling_seq='rad_lwsw')
           call addfld('FLNSC'//diag(icall), horiz_only,    'A',   'W/m2', 'Clearsky net longwave flux at surface', &
                                                                            sampling_seq='rad_lwsw')
+          call addfld('FNL'//diag(icall), (/ 'ilev' /),'I',     'W/m2', 'Longwave net flux')
           call addfld('FUL'//diag(icall), (/ 'ilev' /),'I',     'W/m2', 'Longwave upward flux')
           call addfld('FDL'//diag(icall), (/ 'ilev' /),'I',     'W/m2', 'Longwave downward flux')
+          call addfld('FNLC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky net flux')
           call addfld('FULC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky upward flux')
           call addfld('FDLC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky downward flux')
 !==Guangxing Lin
@@ -1115,7 +1122,7 @@ end function radiation_nextsw_cday
     real(r8) fln200(pcols)        ! net longwave flux interpolated to 200 mb
     real(r8) fln200c(pcols)       ! net clearsky longwave flux interpolated to 200 mb
     real(r8) fns(pcols,pverp)     ! net shortwave flux
-    real(r8) fcns(pcols,pverp)    ! net clear-sky shortwave flux
+    real(r8) fnsc(pcols,pverp)    ! net clear-sky shortwave flux
     real(r8) fsn200(pcols)        ! fns interpolated to 200 mb
     real(r8) fsn200c(pcols)       ! fcns interpolated to 200 mb
     real(r8) fnl(pcols,pverp)     ! net longwave flux
@@ -1230,6 +1237,7 @@ end function radiation_nextsw_cday
     real(r8)  qaerwat_save(pcols, pver, ntot_amode)
 #endif
  
+
     real(r8) pbr(pcols,pver)      ! Model mid-level pressures (dynes/cm2)
     real(r8) pnm(pcols,pverp)     ! Model interface pressures (dynes/cm2)
     real(r8) eccf                 ! Earth/sun distance factor
@@ -1866,8 +1874,10 @@ end function radiation_nextsw_cday
                        cam_in%asdir, cam_in%asdif, cam_in%aldir, cam_in%aldif,                 &
                        qrs,          qrsc,         fsnt,         fsntc,        fsntoa, fsutoa, &
                        fsntoac,      fsnirt,       fsnrtc,       fsnirtsq,     fsns,           &
-                       fsnsc,        fsdsc,        fsds,         cam_out%sols, cam_out%soll,   &
-                       cam_out%solsd,cam_out%solld,fns,          fcns,                         &
+                       fsnsc,        fsdsc,        fsds,         &
+                       cam_out%sols, cam_out%soll, cam_out%solsd,cam_out%solld,                &
+                       fus,          fds,          fns,                                        &
+                       fusc,         fdsc,         fnsc,                                       &
                        Nday,         Nnite,        IdxDay,       IdxNite,      clm_seed,       &
                        su,           sd,                                                       &
                        E_cld_tau=c_cld_tau, E_cld_tau_w=c_cld_tau_w, E_cld_tau_w_g=c_cld_tau_w_g, E_cld_tau_w_f=c_cld_tau_w_f, &
@@ -1876,7 +1886,7 @@ end function radiation_nextsw_cday
                     call t_stopf ('rad_rrtmg_sw')   !==Guangxing Lin
                    
                   !  Output net fluxes at 200 mb
-                  call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fcns, fsn200c)
+                  call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnsc, fsn200c)
                   call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fns, fsn200)
 
                   do i=1,ncol
@@ -2049,8 +2059,35 @@ end function radiation_nextsw_cday
                   end if
 
 
+                  ! Shortwave fluxes on interfaces
+                  if (single_column .and. scm_crm_mode) then
+                     ! This is copied from old radsw implementation; why are
+                     ! these scaled for single column mode?
+                     call outfld('FUS'//diag(icall), 1.e-3_r8 * fus(:ncol,:pverp), ncol, lchnk)
+                     call outfld('FDS'//diag(icall), 1.e-3_r8 * fds(:ncol,:pverp), ncol, lchnk)
+                  else
+                     call outfld('FUS'//diag(icall), fus(:ncol,:pverp), ncol, lchnk)
+                     call outfld('FDS'//diag(icall), fds(:ncol,:pverp), ncol, lchnk)
+                  end if
+                  call outfld('FNS'//diag(icall), fns(:ncol,:pverp), ncol, lchnk)
+                  call outfld('FUSC'//diag(icall), fusc(:ncol,:pverp), ncol, lchnk)
+                  call outfld('FDSC'//diag(icall), fdsc(:ncol,:pverp), ncol, lchnk)
+                  call outfld('FNSC'//diag(icall), fnsc(:ncol,:pverp), ncol, lchnk)
+
               end if ! (active_calls(icall))
           end do ! icall
+
+          call t_stopf ('rad_sw_loop')
+
+          ! Output cloud optical depth fields for the visible band
+          tot_icld_vistau(:ncol,:)  = c_cld_tau(idx_sw_diag,:ncol,:)
+          liq_icld_vistau(:ncol,:)  = liq_tau(idx_sw_diag,:ncol,:)
+          ice_icld_vistau(:ncol,:)  = ice_tau(idx_sw_diag,:ncol,:)
+          if (cldfsnow_idx > 0) then
+             snow_icld_vistau(:ncol,:) = snow_tau(idx_sw_diag,:ncol,:)
+          endif
+          ! multiply by total cloud fraction to get gridbox value
+          tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
 
            call t_stopf ('rad_sw_loop')   !==Guangxing Lin
  
@@ -2175,7 +2212,9 @@ end function radiation_nextsw_cday
                        state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
                        qrl,          qrlc,                                                       &
                        flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
-                       flut,         flutc,        fnl,             fcnl,         fldsc,         &
+                       flut,         flutc,        fldsc,         &
+                       ful,          fdl,          fnl,                                        &
+                       fulc,         fdlc,         fnlc,                                       &
                        clm_seed,     lu,           ld                                            )
               call t_stopf ('rad_rrtmg_lw')
 
@@ -2276,6 +2315,7 @@ end function radiation_nextsw_cday
                 call outfld('FLN200'//diag(icall),fln200,pcols,lchnk)
                 call outfld('FLN200C'//diag(icall),fln200c,pcols,lchnk)
                 call outfld('FLDS'//diag(icall),cam_out%flwds ,pcols,lchnk)
+
               end if
               if (use_SPCAM .and. last_column ) then
                 if(icall.eq.0) then  ! the climate call
