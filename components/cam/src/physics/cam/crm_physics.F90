@@ -603,7 +603,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer ::  qv_rad(:,:,:,:)    ! rad vapor
    real(r8), pointer ::  qc_rad(:,:,:,:)    ! rad cloud water
    real(r8), pointer ::  qi_rad(:,:,:,:)    ! rad cloud ice
-   real(r8), pointer ::  crm_qrad(:,:,:,:)
    real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
 
    integer lchnk                    ! chunk identifier
@@ -903,7 +902,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
    end if
 
-   call pbuf_get_field (pbuf, crm_qrad_idx,      crm_qrad)
+   call pbuf_get_field (pbuf, crm_qrad_idx, crm_input%qrad)
 #ifdef CLUBB_CRM
    call pbuf_get_field (pbuf, clubb_buffer_idx,  clubb_buffer)
 #endif
@@ -1058,7 +1057,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do k=1,crm_nz
          m = pver-k+1
          do i=1,ncol
-            crm_qrad (i,:,:,k)    = 0.
+            crm_input%qrad   (i,:,:,k)      = 0.
             crm_state%t_rad  (i,:,:,k)      = state%t(i,m)
             crm_state%qv_rad (i,:,:,k)      = state%q(i,m,1)
             crm_state%qc_rad (i,:,:,k)      = 0.
@@ -1190,7 +1189,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do m=1,crm_nz
          k = pver-m+1
          do i = 1,ncol
-            crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) / state%pdel(i,k) ! for energy conservation
+            crm_input%qrad(i,:,:,m) = crm_input%qrad(i,:,:,m) / state%pdel(i,k) ! for energy conservation
          end do
       end do
 
@@ -1314,7 +1313,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
                crm_state, crm_input, crm_output, &
-               crm_qrad(:ncol,:,:,:),                                                                                                                               &
 #ifdef m2005
 #ifdef MODAL_AERO
                naermod(:ncol,:,:),          vaerosol(:ncol,:,:),          hygro(:ncol,:,:),                                                                         &
@@ -1370,7 +1368,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do m=1,crm_nz
       k = pver-m+1
       do i = 1,ncol
-         crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
+         crm_input%qrad(i,:,:,m) = crm_input%qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
       end do
       end do
       

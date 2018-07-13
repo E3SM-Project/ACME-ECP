@@ -51,7 +51,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif
                 qltend, qcltend, qiltend, sltend, &
                 crm_state, crm_input, crm_output, &
-                qrad_crm, &
 #ifdef m2005
 #ifdef MODAL_AERO
                 naermod, vaerosol, hygro,     &
@@ -181,7 +180,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
-    real(r8), intent(in   ) :: qrad_crm            (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
     real(r8), intent(in   ) :: ocnfrac             (ncrms)       ! area fraction of the ocean
     real(r8), intent(in   ) :: tau00               (ncrms)       ! large-scale surface stress (N/m2)
     real(r8), intent(in   ) :: wndls               (ncrms)       ! large-scale surface wind (m/s)
@@ -968,7 +966,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(i,j,k) = t(i,j,k) + qrad_crm(icrm,i_rad,j_rad,k)*dtn
+              t(i,j,k) = t(i,j,k) + crm_input%qrad(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo

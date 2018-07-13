@@ -103,24 +103,25 @@ module crm_types
    !------------------------------------------------------------------------------------------------
    type crm_input_type
 
-      real(crm_rknd), allocatable :: zmid(:,:)        ! Global grid height (m)
-      real(crm_rknd), allocatable :: zint(:,:)        ! Global grid interface height (m)
-      real(crm_rknd), allocatable :: tl(:,:)          ! Global grid temperature (K)
-      real(crm_rknd), allocatable :: ql(:,:)          ! Global grid water vapor (g/g)
-      real(crm_rknd), allocatable :: qccl(:,:)        ! Global grid cloud liquid water (g/g)
-      real(crm_rknd), allocatable :: qiil(:,:)        ! Global grid cloud ice (g/g)
-      real(crm_rknd), allocatable :: ps(:)            ! Global grid surface pressure (Pa)
-      real(crm_rknd), allocatable :: pmid(:,:)        ! Global grid pressure (Pa)
-      real(crm_rknd), allocatable :: pint(:,:)        ! Global grid interface pressure (Pa)
-      real(crm_rknd), allocatable :: pdel(:,:)        ! Layer's pressure thickness (Pa)
-      real(crm_rknd), allocatable :: phis(:)        ! Global grid surface geopotential (m2/s2)
+      real(crm_rknd), allocatable :: zmid(:,:)           ! Global grid height (m)
+      real(crm_rknd), allocatable :: zint(:,:)           ! Global grid interface height (m)
+      real(crm_rknd), allocatable :: tl(:,:)             ! Global grid temperature (K)
+      real(crm_rknd), allocatable :: ql(:,:)             ! Global grid water vapor (g/g)
+      real(crm_rknd), allocatable :: qccl(:,:)           ! Global grid cloud liquid water (g/g)
+      real(crm_rknd), allocatable :: qiil(:,:)           ! Global grid cloud ice (g/g)
+      real(crm_rknd), allocatable :: ps(:)               ! Global grid surface pressure (Pa)
+      real(crm_rknd), allocatable :: pmid(:,:)           ! Global grid pressure (Pa)
+      real(crm_rknd), allocatable :: pdel(:,:)           ! Layer's pressure thickness (Pa)
+      real(crm_rknd), allocatable :: phis(:)             ! Global grid surface geopotential (m2/s2)
 
-      real(crm_rknd), allocatable :: ul(:,:)          ! Global grid u (m/s)
-      real(crm_rknd), allocatable :: vl(:,:)          ! Global grid v (m/s)
+      real(crm_rknd), allocatable :: ul(:,:)             ! Global grid u (m/s)
+      real(crm_rknd), allocatable :: vl(:,:)             ! Global grid v (m/s)
+
+      real(crm_rknd), pointer     :: qrad(:,:,:,:)       ! CRM rad. heating
 
 #if defined(SP_ESMT)
-      real(crm_rknd), allocatable :: ul_esmt(:,:)     ! input u for ESMT
-      real(crm_rknd), allocatable :: vl_esmt(:,:)     ! input v for ESMT
+      real(crm_rknd), allocatable :: ul_esmt(:,:)        ! input u for ESMT
+      real(crm_rknd), allocatable :: vl_esmt(:,:)        ! input v for ESMT
 #endif
 
    contains
@@ -331,30 +332,32 @@ contains
       class(crm_input_type), intent(inout) :: this
       integer, intent(in) :: ncrms, nlev
       
-      if (.not. allocated(this%zmid)) allocate(this%zmid(ncrms,nlev))
-      if (.not. allocated(this%zint)) allocate(this%zint(ncrms,nlev+1))
-      if (.not. allocated(this%tl))   allocate(this%tl(ncrms,nlev))
-      if (.not. allocated(this%ql))   allocate(this%ql(ncrms,nlev))
-      if (.not. allocated(this%qccl)) allocate(this%qccl(ncrms,nlev))
-      if (.not. allocated(this%qiil)) allocate(this%qiil(ncrms,nlev))
-      if (.not. allocated(this%ps))   allocate(this%ps(ncrms))
-      if (.not. allocated(this%pmid)) allocate(this%pmid(ncrms,nlev))
-      if (.not. allocated(this%pint)) allocate(this%pint(ncrms,nlev+1))
-      if (.not. allocated(this%pdel)) allocate(this%pdel(ncrms,nlev))
-      if (.not. allocated(this%phis)) allocate(this%phis(ncrms))
+      this%qrad => null()
 
-      if (.not. allocated(this%ul))   allocate(this%ul(ncrms,nlev))
-      if (.not. allocated(this%vl))   allocate(this%vl(ncrms,nlev))
+      if (.not. allocated(this%zmid))     allocate(this%zmid(ncrms,nlev))
+      if (.not. allocated(this%zint))     allocate(this%zint(ncrms,nlev+1))
+      if (.not. allocated(this%tl))       allocate(this%tl(ncrms,nlev))
+      if (.not. allocated(this%ql))       allocate(this%ql(ncrms,nlev))
+      if (.not. allocated(this%qccl))     allocate(this%qccl(ncrms,nlev))
+      if (.not. allocated(this%qiil))     allocate(this%qiil(ncrms,nlev))
+      if (.not. allocated(this%ps))       allocate(this%ps(ncrms))
+      if (.not. allocated(this%pmid))     allocate(this%pmid(ncrms,nlev))
+      if (.not. allocated(this%pdel))     allocate(this%pdel(ncrms,nlev))
+      if (.not. allocated(this%phis))     allocate(this%phis(ncrms))
+      if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))
+      if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
 
 #if defined(SP_ESMT)
-      if (.not. allocated(this%ul_esmt)) allocate(this%ul_esmt(ncrms,nlev))
-      if (.not. allocated(this%vl_esmt)) allocate(this%vl_esmt(ncrms,nlev))
+      if (.not. allocated(this%ul_esmt))  allocate(this%ul_esmt(ncrms,nlev))
+      if (.not. allocated(this%vl_esmt))  allocate(this%vl_esmt(ncrms,nlev))
 #endif
 
    end subroutine crm_input_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_input_finalize(this)
       class(crm_input_type), intent(inout) :: this
+
+      this%qrad => null()
 
       deallocate(this%zmid)
       deallocate(this%zint)
