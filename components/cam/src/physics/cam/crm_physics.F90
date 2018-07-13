@@ -540,7 +540,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 ! modal_aero_data only exists if MODAL_AERO
 #if (defined  m2005 && defined MODAL_AERO)  
    use crmclouds_camaerosols, only: crmclouds_mixnuc_tend
-   use modal_aero_data, only: ntot_amode, ntot_amode
+   use modal_aero_data, only: ntot_amode
    use ndrop,  only: loadaer
    use microphysics,  only: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ing, ins   !!!!!! BE CAUIOUS, these indices can only defined before call to crm.
 #endif
@@ -674,13 +674,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
 
 #if (defined m2005 && defined MODAL_AERO)
-   real(r8) na(pcols)                           ! aerosol number concentration [/m3]
-   real(r8) va(pcols)                           ! aerosol voume concentration [m3/m3]
-   real(r8) hy(pcols)                           ! aerosol bulk hygroscopicity
-   real(r8) naermod (pcols,pver, ntot_amode)    ! Aerosol number concentration [/m3]
-   real(r8) vaerosol(pcols,pver, ntot_amode)    ! aerosol volume concentration [m3/m3]
-   real(r8) hygro   (pcols,pver, ntot_amode)    ! hygroscopicity of aerosol mode 
-   integer  phase                               ! phase to determine whether it is interstitial, cloud-borne, or the sum. 
+   real(r8) na(pcols)              ! aerosol number concentration [/m3]
+   real(r8) va(pcols)              ! aerosol voume concentration [m3/m3]
+   real(r8) hy(pcols)              ! aerosol bulk hygroscopicity
+   !real(r8) cs(pcols, pver)                     ! air density  [kg/m3]
+   integer   phase                  ! phase to determine whether it is interstitial, cloud-borne, or the sum. 
 #endif
 
    real(r8) cs(pcols, pver)                     ! air density  [kg/m3]
@@ -1254,9 +1252,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                   state, pbuf, i, i, k, &
                   m, cs, phase, na, va, &
                   hy)
-               naermod (i,k, m) = na(i)
-               vaerosol(i,k, m) = va(i)
-               hygro   (i,k, m) = hy(i)
+               crm_input%naermod (i,k,m) = na(i)
+               crm_input%vaerosol(i,k,m) = va(i)
+               crm_input%hygro   (i,k,m) = hy(i)
             end do    
          end do
 #endif
@@ -1313,11 +1311,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
                crm_state, crm_input, crm_output, &
-#ifdef m2005
-#ifdef MODAL_AERO
-               naermod(:ncol,:,:),          vaerosol(:ncol,:,:),          hygro(:ncol,:,:),                                                                         &
-#endif /* MODAL_AERO */
-#endif /* m2005 */
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
                crm_cld(:ncol,:, :, :),                                                                                                                              &

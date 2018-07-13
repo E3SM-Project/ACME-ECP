@@ -51,11 +51,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif
                 qltend, qcltend, qiltend, sltend, &
                 crm_state, crm_input, crm_output, &
-#ifdef m2005
-#ifdef MODAL_AERO
-                naermod, vaerosol, hygro,     &
-#endif
-#endif
 #ifdef CLUBB_CRM
                 clubb_buffer,                 &
                 crm_cld,                      &
@@ -211,14 +206,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: qltend              (ncrms,plev)                   ! tendency of water vapor
     real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
     real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
-
-#ifdef m2005
-#ifdef MODAL_AERO
-    real(r8), intent(in   )  :: naermod            (ncrms,plev, ntot_amode)    ! Aerosol number concentration [/m3]
-    real(r8), intent(in   )  :: vaerosol           (ncrms,plev, ntot_amode)    ! aerosol volume concentration [m3/m3]
-    real(r8), intent(in   )  :: hygro              (ncrms,plev, ntot_amode)    ! hygroscopicity of aerosol mode
-#endif
-#endif /* m2005 */
 
 #ifdef ECPP
    ! TODO: these should be passed as a separate crm_ecpp_type
@@ -593,9 +580,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef MODAL_AERO
       ! set aerosol data
       l=plev-k+1
-      naer (k, 1:ntot_amode) = naermod (icrm,l, 1:ntot_amode)
-      vaer (k, 1:ntot_amode) = vaerosol(icrm,l, 1:ntot_amode)
-      hgaer(k, 1:ntot_amode) = hygro   (icrm,l, 1:ntot_amode)
+      naer (k, 1:ntot_amode) = crm_input%naermod (icrm,l, 1:ntot_amode)
+      vaer (k, 1:ntot_amode) = crm_input%vaerosol(icrm,l, 1:ntot_amode)
+      hgaer(k, 1:ntot_amode) = crm_input%hygro   (icrm,l, 1:ntot_amode)
 #endif /* MODAL_AERO */
       do j=1, ny
         do i=1, nx

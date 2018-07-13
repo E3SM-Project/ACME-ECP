@@ -3,6 +3,10 @@ module crm_types
    use params, only: crm_rknd
    use crmdims, only: nclubbvars, crm_nx_rad, crm_ny_rad, crm_nx, crm_ny, crm_nz
 
+#if defined( m2005 ) && defined( MODAL_AERO )
+   use modal_aero_data, only: ntot_amode
+#endif
+
    implicit none
    private
 
@@ -118,6 +122,12 @@ module crm_types
       real(crm_rknd), allocatable :: vl(:,:)             ! Global grid v (m/s)
 
       real(crm_rknd), pointer     :: qrad(:,:,:,:)       ! CRM rad. heating
+
+#if defined( m2005 ) && defined( MODAL_AERO )
+      real(r8), allocatable :: naermod (:,:,:)           ! Aerosol number concentration [/m3]
+      real(r8), allocatable :: vaerosol(:,:,:)           ! aerosol volume concentration [m3/m3]
+      real(r8), allocatable :: hygro   (:,:,:)           ! hygroscopicity of aerosol mode 
+#endif
 
 #if defined(SP_ESMT)
       real(crm_rknd), allocatable :: ul_esmt(:,:)        ! input u for ESMT
@@ -347,6 +357,12 @@ contains
       if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))
       if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
 
+#if defined( m2005 ) && defined( MODAL_AERO )
+      if (.not. allocated(this%naermod))  allocate(this%naermod(ncrms,nlev,ntot_amode))
+      if (.not. allocated(this%vaerosol)) allocate(this%vaerosol(ncrms,nlev,ntot_amode))
+      if (.not. allocated(this%hygro))    allocate(this%hygro(ncrms,nlev,ntot_amode))
+#endif
+
 #if defined(SP_ESMT)
       if (.not. allocated(this%ul_esmt))  allocate(this%ul_esmt(ncrms,nlev))
       if (.not. allocated(this%vl_esmt))  allocate(this%vl_esmt(ncrms,nlev))
@@ -372,6 +388,12 @@ contains
       deallocate(this%phis)
       deallocate(this%ul)
       deallocate(this%vl)
+
+#if defined( m2005 ) && defined( MODAL_AERO )
+      deallocate(this%naermod)
+      deallocate(this%vaerosol)
+      deallocate(this%hygro)
+#endif
 
 #if defined(SP_ESMT)
       deallocate(this%ul_esmt)
