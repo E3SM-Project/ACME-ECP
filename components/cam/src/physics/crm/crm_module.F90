@@ -149,7 +149,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     ! CRM state needs to be intent inout because it persists across CRM calls and needs to be
     ! initialized outside of this routine 
     type(crm_state_type) , intent(inout) :: crm_state
-    type(crm_input_type) , intent(inout) :: crm_input
+    type(crm_input_type) , intent(in   ) :: crm_input
     type(crm_output_type), intent(inout) :: crm_output
 
     ! TODO: we shoud NOT be passing in lchnk and using CAM functions here!
