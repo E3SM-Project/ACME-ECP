@@ -123,10 +123,19 @@ module crm_types
 
       real(crm_rknd), pointer     :: qrad(:,:,:,:)       ! CRM rad. heating
 
+      real(crm_rknd), allocatable :: ocnfrac(:)          ! area fraction of the ocean
+      real(crm_rknd), allocatable :: tau00  (:)          ! large-scale surface stress (N/m2)
+      real(crm_rknd), allocatable :: wndls  (:)          ! large-scale surface wind (m/s)
+      real(crm_rknd), allocatable :: bflxls (:)          ! large-scale surface buoyancy flux (K m/s)
+      real(crm_rknd), allocatable :: fluxu00(:)          ! surface momenent fluxes [N/m2]
+      real(crm_rknd), allocatable :: fluxv00(:)          ! surface momenent fluxes [N/m2]
+      real(crm_rknd), allocatable :: fluxt00(:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
+      real(crm_rknd), allocatable :: fluxq00(:)          ! surface latent heat fluxes [ kg/(m2 s)]
+
 #if defined( m2005 ) && defined( MODAL_AERO )
-      real(r8), allocatable :: naermod (:,:,:)           ! Aerosol number concentration [/m3]
-      real(r8), allocatable :: vaerosol(:,:,:)           ! aerosol volume concentration [m3/m3]
-      real(r8), allocatable :: hygro   (:,:,:)           ! hygroscopicity of aerosol mode 
+      real(crm_rknd), allocatable :: naermod (:,:,:)     ! Aerosol number concentration [/m3]
+      real(crm_rknd), allocatable :: vaerosol(:,:,:)     ! aerosol volume concentration [m3/m3]
+      real(crm_rknd), allocatable :: hygro   (:,:,:)     ! hygroscopicity of aerosol mode 
 #endif
 
 #if defined(SP_ESMT)
@@ -357,6 +366,15 @@ contains
       if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))
       if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
 
+      if (.not. allocated(this%ocnfrac))  allocate(this%ocnfrac(ncrms))
+      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms))
+      if (.not. allocated(this%wndls))    allocate(this%wndls(ncrms))
+      if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms))
+      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms))
+      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms))
+      if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
+      if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
+
 #if defined( m2005 ) && defined( MODAL_AERO )
       if (.not. allocated(this%naermod))  allocate(this%naermod(ncrms,nlev,ntot_amode))
       if (.not. allocated(this%vaerosol)) allocate(this%vaerosol(ncrms,nlev,ntot_amode))
@@ -388,6 +406,15 @@ contains
       deallocate(this%phis)
       deallocate(this%ul)
       deallocate(this%vl)
+
+      deallocate(this%ocnfrac)
+      deallocate(this%tau00)
+      deallocate(this%wndls)
+      deallocate(this%bflxls)
+      deallocate(this%fluxu00)
+      deallocate(this%fluxv00)
+      deallocate(this%fluxt00)
+      deallocate(this%fluxq00)
 
 #if defined( m2005 ) && defined( MODAL_AERO )
       deallocate(this%naermod)

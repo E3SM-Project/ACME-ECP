@@ -701,19 +701,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) prectend(pcols)   ! tendency in precipitating water and ice
    real(r8) precstend(pcols)  ! tendency in precipitating ice
    real(r8) wtricesink(pcols) ! sink of water vapor + cloud water + cloud ice
-   real(r8) icesink(pcols)    ! sink of ice
-   real(r8) tau00(pcols)      ! surface stress
-   real(r8) wnd  (pcols)      ! surface wnd
-   real(r8) bflx (pcols)      ! surface buoyancy flux (Km/s)
-   real(r8) taux_crm(pcols)   ! zonal CRM surface stress perturbation
-   real(r8) tauy_crm(pcols)   ! merid CRM surface stress perturbation
-   real(r8) z0m(pcols)        ! surface momentum roughness length
-   real(r8), pointer, dimension(:,:)     :: qrs        ! shortwave radiative heating rate
-   real(r8), pointer, dimension(:,:)     :: qrl        ! longwave radiative heating rate
-   real(r8), pointer, dimension(:,:)     :: tempPtr
+   real(r8) icesink(pcols) ! sink of
+   real(r8) taux_crm(pcols)  ! zonal CRM surface stress perturbation
+   real(r8) tauy_crm(pcols)  ! merid CRM surface stress perturbation
+   real(r8) z0m(pcols)  ! surface momentum roughness length
+   real(r8), pointer, dimension(:,:) :: qrs, qrl        ! rad heating rates
+   real(r8), pointer, dimension(:,:) :: tempPtr
 
-   integer                           :: pblh_idx
-   real(r8), pointer, dimension(:)   :: pblh
+   integer                         :: pblh_idx
+   real(r8), pointer, dimension(:) :: pblh
    real(r8), pointer, dimension(:,:) :: qqcw
 
 #ifdef ECPP
@@ -740,11 +736,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8)             :: dgnumwet_rad(pcols, crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode)   ! wet mode dimaeter
 #endif
 
-   ! Surface fluxes 
-   real(r8) ::  fluxu0(pcols)    ! surface momenment fluxes
-   real(r8) ::  fluxv0(pcols)    ! surface momenment fluxes
-   real(r8) ::  fluxt0(pcols)    ! surface sensible heat fluxes
-   real(r8) ::  fluxq0(pcols)    ! surface latent heat fluxes
    real(r8) ::  dtstep_pp        ! time step for the ECPP (seconds)
    integer  ::  necpp            ! the number of GCM time step in which ECPP is called once.
 
@@ -1202,15 +1193,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ! Start ncol loop for CRM
       !----------------------------------------------------------------------
       do i = 1,ncol
-         tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
-         wnd  (i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
-         bflx (i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
-         !+++mhwang
-         fluxu0(i) = cam_in%wsx(i)     !N/m2
-         fluxv0(i) = cam_in%wsy(i)     !N/m2
-         fluxt0(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
-         fluxq0(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
-         !---mwwang
 
          !----------------------------------------------------------------------
          ! calculate total water before calling crm - used for check_energy_chng() after CRM
@@ -1293,6 +1275,18 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    crm_input%pdel(:ncol,:pver)   = state%pdel(:ncol,:pver)
    crm_input%phis(:ncol)         = state%phis(:ncol)
 
+   crm_input%ocnfrac(:ncol) = cam_in%ocnfrac(:ncol)
+   crm_input%tau00(:ncol)   = sqrt(cam_in%wsx(:ncol)**2 + &
+                                   cam_in%wsy(:ncol)**2)
+   crm_input%wndls(:ncol)   = sqrt(state%u(:ncol,pver)**2 + &
+                                   state%v(:ncol,pver)**2)
+   crm_input%bflxls(:ncol)  = cam_in%shf(:ncol)/cpair + &
+                              cam_in%lhf(:ncol)*0.61*state%t(:ncol,pver)/latvap
+   crm_input%fluxu00(:ncol) = cam_in%wsx(:ncol)              ! N/m2
+   crm_input%fluxv00(:ncol) = cam_in%wsy(:ncol)              ! N/m2
+   crm_input%fluxt00(:ncol) = cam_in%shf(:ncol)/cpair        ! K Kg/ (m2 s)
+   crm_input%fluxq00(:ncol) = cam_in%lhf(:ncol)/latvap       ! Kg/(m2 s)
+
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
 ! Run the CRM
@@ -1310,7 +1304,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
-               crm_state, crm_input, crm_output, &
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
                crm_cld(:ncol,:, :, :),                                                                                                                              &
@@ -1325,8 +1318,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:),                                                                                               &
                wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                     &
 #endif /* ECPP */
-               cam_in%ocnfrac(:ncol),       wnd(:ncol),                   tau00(:ncol),              bflx(:ncol),                                                   & 
-               fluxu0(:ncol),               fluxv0(:ncol),                fluxt0(:ncol),             fluxq0(:ncol))
+               crm_state, crm_input, crm_output)
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------

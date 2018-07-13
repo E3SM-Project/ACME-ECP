@@ -37,12 +37,11 @@ module crm_module
 
 contains
 
-subroutine crm(lchnk, icol, ncrms, phys_stage, &
+subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
 #endif
-                dt_gl, plev, &
 #if defined(SPMOMTRANS)
                 ultend, vltend,          &
 #endif
@@ -50,7 +49,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 ultend_esmt, vltend_esmt,           & 
 #endif
                 qltend, qcltend, qiltend, sltend, &
-                crm_state, crm_input, crm_output, &
 #ifdef CLUBB_CRM
                 clubb_buffer,                 &
                 crm_cld,                      &
@@ -64,10 +62,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 wupthresh_bnd, wdownthresh_bnd,   &
                 wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
 #endif
-! These are inputs
-                ocnfrac, wndls, tau00, bflxls, &
-                fluxu00, fluxv00, fluxt00, fluxq00    &
-                )
+                crm_state, crm_input, crm_output)
         !---------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
@@ -148,7 +143,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
     ! TODO: we shoud NOT be passing in lchnk and using CAM functions here!
     integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
-
     integer , intent(in   ) :: ncrms                            ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
 
     ! TODO: this module should not need to know anything about phys_stage. Move
@@ -175,14 +169,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
-    real(r8), intent(in   ) :: ocnfrac             (ncrms)       ! area fraction of the ocean
-    real(r8), intent(in   ) :: tau00               (ncrms)       ! large-scale surface stress (N/m2)
-    real(r8), intent(in   ) :: wndls               (ncrms)       ! large-scale surface wind (m/s)
-    real(r8), intent(in   ) :: bflxls              (ncrms)       ! large-scale surface buoyancy flux (K m/s)
-    real(r8), intent(in   ) :: fluxu00             (ncrms)       ! surface momenent fluxes [N/m2]
-    real(r8), intent(in   ) :: fluxv00             (ncrms)       ! surface momenent fluxes [N/m2]
-    real(r8), intent(in   ) :: fluxt00             (ncrms)       ! surface sensible heat fluxes [K Kg/ (m2 s)]
-    real(r8), intent(in   ) :: fluxq00             (ncrms)       ! surface latent heat fluxes [ kg/(m2 s)]
 
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
@@ -437,8 +423,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     crm_state%ns_rad(icrm,:,:,:) = 0.0
 #endif /* m2005 */
     zs = crm_input%phis(icrm)/ggr
-    bflx = bflxls(icrm)
-    wnd = wndls(icrm)
+    bflx = crm_input%bflxls(icrm)
+    wnd = crm_input%wndls(icrm)
 
 !-----------------------------------------
 
@@ -464,7 +450,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       end do
     end do
 
-    if(ocnfrac(icrm).gt.0.5) then
+    if(crm_input%ocnfrac(icrm).gt.0.5) then
        OCEAN = .true.
     else
        LAND = .true.
@@ -691,7 +677,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
-    ustar = sqrt(tau00(icrm)/rho(1))
+    ustar = sqrt(crm_input%tau00(icrm)/rho(1))
     z0 = z0_est(z(1),bflx,wnd,ustar)
     z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
 
@@ -703,10 +689,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(:, :) = fluxu00(icrm)/rhow(1)
-      fluxbv(:, :) = fluxv00(icrm)/rhow(1)
-      fluxbt(:, :) = fluxt00(icrm)/rhow(1)
-      fluxbq(:, :) = fluxq00(icrm)/rhow(1)
+      fluxbu(:, :) = crm_input%fluxu00(icrm)/rhow(1)
+      fluxbv(:, :) = crm_input%fluxv00(icrm)/rhow(1)
+      fluxbt(:, :) = crm_input%fluxt00(icrm)/rhow(1)
+      fluxbq(:, :) = crm_input%fluxq00(icrm)/rhow(1)
     else
       fluxbu(:, :) = 0.
       fluxbv(:, :) = 0.
