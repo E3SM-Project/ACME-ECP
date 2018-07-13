@@ -103,6 +103,8 @@ module crm_types
    !------------------------------------------------------------------------------------------------
    type crm_input_type
 
+      real(crm_rknd), allocatable :: zmid(:,:)        ! Global grid height (m)
+      real(crm_rknd), allocatable :: zint(:,:)        ! Global grid interface height (m)
       real(crm_rknd), allocatable :: tl(:,:)          ! Global grid temperature (K)
       real(crm_rknd), allocatable :: ql(:,:)          ! Global grid water vapor (g/g)
       real(crm_rknd), allocatable :: qccl(:,:)        ! Global grid cloud liquid water (g/g)
@@ -329,6 +331,8 @@ contains
       class(crm_input_type), intent(inout) :: this
       integer, intent(in) :: ncrms, nlev
       
+      if (.not. allocated(this%zmid)) allocate(this%zmid(ncrms,nlev))
+      if (.not. allocated(this%zint)) allocate(this%zint(ncrms,nlev+1))
       if (.not. allocated(this%tl))   allocate(this%tl(ncrms,nlev))
       if (.not. allocated(this%ql))   allocate(this%ql(ncrms,nlev))
       if (.not. allocated(this%qccl)) allocate(this%qccl(ncrms,nlev))
@@ -352,6 +356,8 @@ contains
    subroutine crm_input_finalize(this)
       class(crm_input_type), intent(inout) :: this
 
+      deallocate(this%zmid)
+      deallocate(this%zint)
       deallocate(this%tl)
       deallocate(this%ql)
       deallocate(this%qccl)

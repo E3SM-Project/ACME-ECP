@@ -42,7 +42,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
 #endif
-                zmid, zint, dt_gl, plev, &
+                dt_gl, plev, &
 #if defined(SPMOMTRANS)
                 ultend, vltend,          &
 #endif
@@ -181,8 +181,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
-    real(r8), intent(in   ) :: zmid                (ncrms,plev)  ! Global grid height (m)
-    real(r8), intent(in   ) :: zint                (ncrms,plev+1)! Global grid interface height (m)
     real(r8), intent(in   ) :: qrad_crm            (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
     real(r8), intent(in   ) :: ocnfrac             (ncrms)       ! area fraction of the ocean
     real(r8), intent(in   ) :: tau00               (ncrms)       ! large-scale surface stress (N/m2)
@@ -489,16 +487,17 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
     ! Create CRM vertical grid and initialize some vertical reference arrays:
     do k = 1, nzm
-      z(k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
-      zi(k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
+      z(k)  = crm_input%zmid(icrm,plev-k+1) - &
+              crm_input%zint(icrm,plev+1)
+      zi(k) = crm_input%zint(icrm,plev-k+2) - &
+              crm_input%zint(icrm,plev+1)
       pres(k) = crm_input%pmid(icrm,plev-k+1)/100.
-      prespot(k)=(1000./pres(k))**(rgas/cp)
+      prespot(k) = (1000./pres(k))**(rgas/cp)
       bet(k) = ggr/crm_input%tl(icrm,plev-k+1)
-      gamaz(k)=ggr/cp*z(k)
+      gamaz(k) = ggr/cp*z(k)
     end do ! k
-   ! zi(nz) =  zint(plev-nz+2)
-    zi(nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
-    presi(nz) = pint(icrm, plev-nz+2)/100.
+    zi(nz) = crm_input%zint(icrm,plev-nz+2) - &
+             crm_input%zint(icrm,plev+1)
 
     dz = 0.5*(z(1)+z(2))
     do k=2,nzm
