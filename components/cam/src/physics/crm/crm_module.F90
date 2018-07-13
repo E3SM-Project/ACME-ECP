@@ -42,7 +42,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
 #endif
-                ps, pmid, pint, pdel, phis, &
                 zmid, zint, dt_gl, plev, &
 #if defined(SPMOMTRANS)
                 ultend, vltend,          &
@@ -182,11 +181,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
-    real(r8), intent(in   ) :: ps                  (ncrms)       ! Global grid surface pressure (Pa)
-    real(r8), intent(in   ) :: pmid                (ncrms,plev)  ! Global grid pressure (Pa)
-    real(r8), intent(in   ) :: pint                (ncrms,plev+1)! Pressure at model interfaces
-    real(r8), intent(in   ) :: pdel                (ncrms,plev)  ! Layer's pressure thickness (Pa)
-    real(r8), intent(in   ) :: phis                (ncrms)       ! Global grid surface geopotential (m2/s2)
     real(r8), intent(in   ) :: zmid                (ncrms,plev)  ! Global grid height (m)
     real(r8), intent(in   ) :: zint                (ncrms,plev+1)! Global grid interface height (m)
     real(r8), intent(in   ) :: qrad_crm            (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
@@ -459,7 +453,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     crm_state%qs_rad(icrm,:,:,:) = 0.0
     crm_state%ns_rad(icrm,:,:,:) = 0.0
 #endif /* m2005 */
-    zs=phis(icrm)/ggr
+    zs = crm_input%phis(icrm)/ggr
     bflx = bflxls(icrm)
     wnd = wndls(icrm)
 
@@ -497,8 +491,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     do k = 1, nzm
       z(k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
       zi(k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
-      pres(k) = pmid(icrm,plev-k+1)/100.
-      presi(k) = pint(icrm,plev-k+2)/100.
+      pres(k) = crm_input%pmid(icrm,plev-k+1)/100.
       prespot(k)=(1000./pres(k))**(rgas/cp)
       bet(k) = ggr/crm_input%tl(icrm,plev-k+1)
       gamaz(k)=ggr/cp*z(k)
@@ -520,13 +513,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     end do
 
     do k = 1,nzm
-      rho(k) = pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
+      rho(k) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
     end do
     do k=2,nzm
     ! rhow(k) = 0.5*(rho(k)+rho(k-1))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(k) = (pmid(icrm,plev-k+2)-pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
+      rhow(k) = (crm_input%pmid(icrm,plev-k+2) - &
+                 crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
     end do
     rhow(1) = 2.*rhow(2) - rhow(3)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
@@ -653,8 +647,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
           t(i,j,k) = tabs(i,j,k)+gamaz(k) &
                     -fac_cond*qcl(i,j,k)-fac_sub*qci(i,j,k) &
                     -fac_cond*qpl(i,j,k)-fac_sub*qpi(i,j,k)
-          colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*pdel(icrm,plev-k+1)
-          colprecs=colprecs+qpi(i,j,k)*pdel(icrm,plev-k+1)
+          colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*crm_input%pdel(icrm,plev-k+1)
+          colprecs=colprecs+qpi(i,j,k)*crm_input%pdel(icrm,plev-k+1)
           u0(k)=u0(k)+u(i,j,k)
           v0(k)=v0(k)+v(i,j,k)
           t0(k)=t0(k)+t(i,j,k)
@@ -1388,8 +1382,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       l = plev-k+1
       do i=1,nx
         do j=1,ny
-          colprec = colprec +(qpl(i,j,k)+qpi(i,j,k))*pdel(icrm,plev-k+1)
-          colprecs= colprecs+qpi(i,j,k)*pdel(icrm,plev-k+1)
+          colprec = colprec +(qpl(i,j,k)+qpi(i,j,k))*crm_input%pdel(icrm,plev-k+1)
+          colprecs= colprecs+qpi(i,j,k)*crm_input%pdel(icrm,plev-k+1)
           tln(l)  = tln(l)  +tabs(i,j,k)
           qln(l)  = qln(l)  +qv(i,j,k)
           qccln(l)= qccln(l)+qcl(i,j,k)
@@ -1567,8 +1561,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
     crm_output%cld   (icrm,:) = min( 1._r8, crm_output%cld   (icrm,:)            * factor_xyt )
     crm_output%cldtop(icrm,:) = min( 1._r8, crm_output%cldtop(icrm,:)            * factor_xyt )
-    crm_output%gicewp(icrm,:) = crm_output%gicewp(icrm,:)*pdel(icrm,:)*1000./ggr * factor_xyt
-    crm_output%gliqwp(icrm,:) = crm_output%gliqwp(icrm,:)*pdel(icrm,:)*1000./ggr * factor_xyt
+    crm_output%gicewp(icrm,:) = crm_output%gicewp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
+    crm_output%gliqwp(icrm,:) = crm_output%gliqwp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
     crm_output%mcup  (icrm,:) = crm_output%mcup (icrm,:)                         * factor_xyt
     crm_output%mcdn  (icrm,:) = crm_output%mcdn (icrm,:)                         * factor_xyt
     crm_output%mcuup (icrm,:) = crm_output%mcuup(icrm,:)                         * factor_xyt
@@ -1682,14 +1676,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       crm_output%md_crm(icrm,k)=crm_output%md_crm(icrm,k)*ggr/100.          !kg/m2/s --> mb/s
       crm_output%eu_crm(icrm,k) = 0.
       if(mui_crm(icrm,k)-mui_crm(icrm,k+1).gt.0) then
-        crm_output%eu_crm(icrm,k)=(mui_crm(icrm,k)-mui_crm(icrm,k+1))*ggr/pdel(icrm,k)    !/s
+        crm_output%eu_crm(icrm,k)=(mui_crm(icrm,k)-mui_crm(icrm,k+1))*ggr/crm_input%pdel(icrm,k)    !/s
       else
-        crm_output%du_crm(icrm,k)=-1.0*(mui_crm(icrm,k)-mui_crm(icrm,k+1))*ggr/pdel(icrm,k)   !/s
+        crm_output%du_crm(icrm,k)=-1.0*(mui_crm(icrm,k)-mui_crm(icrm,k+1))*ggr/crm_input%pdel(icrm,k)   !/s
       endif
       if(mdi_crm(icrm,k+1)-mdi_crm(icrm,k).lt.0) then
-        crm_output%ed_crm(icrm,k)=(mdi_crm(icrm,k)-mdi_crm(icrm,k+1))*ggr/pdel(icrm,k) ! /s
+        crm_output%ed_crm(icrm,k)=(mdi_crm(icrm,k)-mdi_crm(icrm,k+1))*ggr/crm_input%pdel(icrm,k) ! /s
       else
-        dd_crm(icrm,k)=-1.*(mdi_crm(icrm,k)-mdi_crm(icrm,k+1))*ggr/pdel(icrm,k)   !/s
+        dd_crm(icrm,k)=-1.*(mdi_crm(icrm,k)-mdi_crm(icrm,k+1))*ggr/crm_input%pdel(icrm,k)   !/s
       endif
       if(abs(crm_output%mu_crm(icrm,k)).gt.1.0e-15.or.abs(crm_output%md_crm(icrm,k)).gt.1.0e-15) then
         crm_output%jt_crm(icrm) = min(k*1.0_r8, crm_output%jt_crm(icrm))

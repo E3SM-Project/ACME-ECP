@@ -107,6 +107,11 @@ module crm_types
       real(crm_rknd), allocatable :: ql(:,:)          ! Global grid water vapor (g/g)
       real(crm_rknd), allocatable :: qccl(:,:)        ! Global grid cloud liquid water (g/g)
       real(crm_rknd), allocatable :: qiil(:,:)        ! Global grid cloud ice (g/g)
+      real(crm_rknd), allocatable :: ps(:)            ! Global grid surface pressure (Pa)
+      real(crm_rknd), allocatable :: pmid(:,:)        ! Global grid pressure (Pa)
+      real(crm_rknd), allocatable :: pint(:,:)        ! Global grid interface pressure (Pa)
+      real(crm_rknd), allocatable :: pdel(:,:)        ! Layer's pressure thickness (Pa)
+      real(crm_rknd), allocatable :: phis(:)        ! Global grid surface geopotential (m2/s2)
 
       real(crm_rknd), allocatable :: ul(:,:)          ! Global grid u (m/s)
       real(crm_rknd), allocatable :: vl(:,:)          ! Global grid v (m/s)
@@ -328,6 +333,12 @@ contains
       if (.not. allocated(this%ql))   allocate(this%ql(ncrms,nlev))
       if (.not. allocated(this%qccl)) allocate(this%qccl(ncrms,nlev))
       if (.not. allocated(this%qiil)) allocate(this%qiil(ncrms,nlev))
+      if (.not. allocated(this%ps))   allocate(this%ps(ncrms))
+      if (.not. allocated(this%pmid)) allocate(this%pmid(ncrms,nlev))
+      if (.not. allocated(this%pint)) allocate(this%pint(ncrms,nlev+1))
+      if (.not. allocated(this%pdel)) allocate(this%pdel(ncrms,nlev))
+      if (.not. allocated(this%phis)) allocate(this%phis(ncrms))
+
       if (.not. allocated(this%ul))   allocate(this%ul(ncrms,nlev))
       if (.not. allocated(this%vl))   allocate(this%vl(ncrms,nlev))
 
@@ -345,6 +356,11 @@ contains
       deallocate(this%ql)
       deallocate(this%qccl)
       deallocate(this%qiil)
+      deallocate(this%ps)
+      deallocate(this%pmid)
+      deallocate(this%pint)
+      deallocate(this%pdel)
+      deallocate(this%phis)
       deallocate(this%ul)
       deallocate(this%vl)
 

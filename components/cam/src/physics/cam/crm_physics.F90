@@ -1282,10 +1282,14 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          !----------------------------------------------------------------------
          !----------------------------------------------------------------------
 
-         crm_input%tl   = state%t(:ncol,:pver)
-         crm_input%ql   = state%q(:ncol,:pver,1)
-         crm_input%qccl = state%q(:ncol,:pver,ixcldliq)
-         crm_input%qiil = state%q(:ncol,:pver,ixcldice)
+         crm_input%tl(:ncol,:pver)   = state%t(:ncol,:pver)
+         crm_input%ql(:ncol,:pver)   = state%q(:ncol,:pver,1)
+         crm_input%qccl(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
+         crm_input%qiil(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
+         crm_input%ps(:ncol)         = state%ps(:ncol)
+         crm_input%pmid(:ncol,:pver) = state%pmid(:ncol,:pver)
+         crm_input%pdel(:ncol,:pver) = state%pdel(:ncol,:pver)
+         crm_input%phis(:ncol)       = state%phis(:ncol)
    
    enddo ! i=1,ncol
 
@@ -1299,7 +1303,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
     call crm( lchnk,                       icol(:ncol),                  ncol,                         phys_stage,                                                  &
-               state%ps(:ncol),             state%pmid(:ncol,:pver),      state%pint(:ncol,:pver+1),    state%pdel(:ncol,:pver),      state%phis(:ncol),            &
                state%zm(:ncol,:pver),       state%zi(:ncol,:pver+1),      ztodt,                        pver,                                                       &
 #if defined( SPMOMTRANS )
                u_tend_crm (:ncol,:pver),    v_tend_crm (:ncol,:pver),                                                                                               &
