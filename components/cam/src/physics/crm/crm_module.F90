@@ -42,7 +42,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
 #endif
-                tl, ql, qccl, qiil, &
                 ps, pmid, pint, pdel, phis, &
                 zmid, zint, dt_gl, plev, &
 #if defined(SPMOMTRANS)
@@ -199,10 +198,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(in   ) :: fluxv00             (ncrms)       ! surface momenent fluxes [N/m2]
     real(r8), intent(in   ) :: fluxt00             (ncrms)       ! surface sensible heat fluxes [K Kg/ (m2 s)]
     real(r8), intent(in   ) :: fluxq00             (ncrms)       ! surface latent heat fluxes [ kg/(m2 s)]
-    real(r8), intent(in   ) :: tl                  (ncrms,plev)  ! Global grid temperature (K)
-    real(r8), intent(in   ) :: ql                  (ncrms,plev)  ! Global grid water vapor (g/g)
-    real(r8), intent(in   ) :: qccl                (ncrms,plev)  ! Global grid cloud liquid water (g/g)
-    real(r8), intent(in   ) :: qiil                (ncrms,plev)  ! Global grid cloud ice (g/g)
 
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
@@ -505,7 +500,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       pres(k) = pmid(icrm,plev-k+1)/100.
       presi(k) = pint(icrm,plev-k+2)/100.
       prespot(k)=(1000./pres(k))**(rgas/cp)
-      bet(k) = ggr/tl(icrm,plev-k+1)
+      bet(k) = ggr/crm_input%tl(icrm,plev-k+1)
       gamaz(k)=ggr/cp*z(k)
     end do ! k
    ! zi(nz) =  zint(plev-nz+2)
@@ -694,14 +689,22 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       l = plev-k+1
       uln(l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
       vln(l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
-      ttend(k) = (tl(icrm,l)+gamaz(k)- fac_cond*(qccl(icrm,l)+qiil(icrm,l))-fac_fus*qiil(icrm,l)-t00(k))*idt_gl
-      qtend(k) = (ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)-q0(k))*idt_gl
+      ttend(k) = (crm_input%tl(icrm,l)+gamaz(k) -        &
+                  fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)) - &
+                  fac_fus*crm_input%qiil(icrm,l) - t00(k))*idt_gl
+      qtend(k) = (crm_input%ql(icrm,l) +    &
+                  crm_input%qccl(icrm,l) +  &
+                  crm_input%qiil(icrm,l) - q0(k))*idt_gl
       utend(k) = (uln(l)-u0(k))*idt_gl
       vtend(k) = (vln(l)-v0(k))*idt_gl
       ug0(k) = uln(l)
       vg0(k) = vln(l)
-      tg0(k) = tl(icrm,l)+gamaz(k)-fac_cond*qccl(icrm,l)-fac_sub*qiil(icrm,l)
-      qg0(k) = ql(icrm,l)+qccl(icrm,l)+qiil(icrm,l)
+      tg0(k) = crm_input%tl(icrm,l) + gamaz(k) -    & 
+               fac_cond*crm_input%qccl(icrm,l) -    &
+               fac_sub*crm_input%qiil(icrm,l)
+      qg0(k) = crm_input%ql(icrm,l) +   &
+               crm_input%qccl(icrm,l) + &
+               crm_input%qiil(icrm,l)
 
     end do ! k
 
@@ -1357,10 +1360,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     ! TODO: crm should not need to know about the extent of the host-model vertical grid. We should
     ! pass these in and out on the CRM grid, and let crm_physics handle the mapping between vertical
     ! grids, filling above CRM top, etc.
-    tln  (1:ptop-1) =   tl(icrm,1:ptop-1)
-    qln  (1:ptop-1) =   ql(icrm,1:ptop-1)
-    qccln(1:ptop-1) = qccl(icrm,1:ptop-1)
-    qiiln(1:ptop-1) = qiil(icrm,1:ptop-1)
+    tln  (1:ptop-1) =   crm_input%tl(icrm,1:ptop-1)
+    qln  (1:ptop-1) =   crm_input%ql(icrm,1:ptop-1)
+    qccln(1:ptop-1) = crm_input%qccl(icrm,1:ptop-1)
+    qiiln(1:ptop-1) = crm_input%qiil(icrm,1:ptop-1)
     uln  (1:ptop-1) =   crm_input%ul(icrm,1:ptop-1)
     vln  (1:ptop-1) =   crm_input%vl(icrm,1:ptop-1)
 
@@ -1432,10 +1435,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif /* SPMOMTRANS */
 
    ! TODO: move tendencies up to crm_physics_tend
-    sltend (icrm,:) = cp * (tln   - tl  (icrm,:)) * icrm_run_time
-    qltend (icrm,:) =      (qln   - ql  (icrm,:)) * icrm_run_time
-    qcltend(icrm,:) =      (qccln - qccl(icrm,:)) * icrm_run_time
-    qiltend(icrm,:) =      (qiiln - qiil(icrm,:)) * icrm_run_time
+    sltend (icrm,:) = cp * (tln   - crm_input%tl  (icrm,:)) * icrm_run_time
+    qltend (icrm,:) =      (qln   - crm_input%ql  (icrm,:)) * icrm_run_time
+    qcltend(icrm,:) =      (qccln - crm_input%qccl(icrm,:)) * icrm_run_time
+    qiltend(icrm,:) =      (qiiln - crm_input%qiil(icrm,:)) * icrm_run_time
     crm_output%prectend (icrm) = (colprec -crm_output%prectend (icrm))/ggr*factor_xy * icrm_run_time
     crm_output%precstend(icrm) = (colprecs-crm_output%precstend(icrm))/ggr*factor_xy * icrm_run_time
 

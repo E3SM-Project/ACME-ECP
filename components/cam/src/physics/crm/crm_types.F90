@@ -102,7 +102,12 @@ module crm_types
    end type crm_state_type
    !------------------------------------------------------------------------------------------------
    type crm_input_type
-      
+
+      real(crm_rknd), allocatable :: tl(:,:)          ! Global grid temperature (K)
+      real(crm_rknd), allocatable :: ql(:,:)          ! Global grid water vapor (g/g)
+      real(crm_rknd), allocatable :: qccl(:,:)        ! Global grid cloud liquid water (g/g)
+      real(crm_rknd), allocatable :: qiil(:,:)        ! Global grid cloud ice (g/g)
+
       real(crm_rknd), allocatable :: ul(:,:)          ! Global grid u (m/s)
       real(crm_rknd), allocatable :: vl(:,:)          ! Global grid v (m/s)
 
@@ -318,9 +323,13 @@ contains
    subroutine crm_input_initialize(this, ncrms, nlev)
       class(crm_input_type), intent(inout) :: this
       integer, intent(in) :: ncrms, nlev
- 
-      if (.not. allocated(this%ul)) allocate(this%ul(ncrms,nlev))
-      if (.not. allocated(this%vl)) allocate(this%vl(ncrms,nlev))
+      
+      if (.not. allocated(this%tl))   allocate(this%tl(ncrms,nlev))
+      if (.not. allocated(this%ql))   allocate(this%ql(ncrms,nlev))
+      if (.not. allocated(this%qccl)) allocate(this%qccl(ncrms,nlev))
+      if (.not. allocated(this%qiil)) allocate(this%qiil(ncrms,nlev))
+      if (.not. allocated(this%ul))   allocate(this%ul(ncrms,nlev))
+      if (.not. allocated(this%vl))   allocate(this%vl(ncrms,nlev))
 
 #if defined(SP_ESMT)
       if (.not. allocated(this%ul_esmt)) allocate(this%ul_esmt(ncrms,nlev))
@@ -332,6 +341,10 @@ contains
    subroutine crm_input_finalize(this)
       class(crm_input_type), intent(inout) :: this
 
+      deallocate(this%tl)
+      deallocate(this%ql)
+      deallocate(this%qccl)
+      deallocate(this%qiil)
       deallocate(this%ul)
       deallocate(this%vl)
 
