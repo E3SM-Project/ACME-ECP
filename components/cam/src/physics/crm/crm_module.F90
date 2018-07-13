@@ -42,14 +42,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
 #endif
-                tl, ql, qccl, qiil, ul, vl, &
+                tl, ql, qccl, qiil, &
                 ps, pmid, pint, pdel, phis, &
                 zmid, zint, dt_gl, plev, &
 #if defined(SPMOMTRANS)
                 ultend, vltend,          &
 #endif
 #if defined(SP_ESMT)
-                ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah
+                ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & 
 #endif
                 qltend, qcltend, qiltend, sltend, &
                 crm_state, crm_input, crm_output, &
@@ -74,7 +74,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif
 ! These are inputs
                 ocnfrac, wndls, tau00, bflxls, &
-                fluxu00, fluxv00, fluxt00, fluxq00,    &
+                fluxu00, fluxv00, fluxt00, fluxq00    &
                 )
         !---------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
@@ -788,7 +788,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     crm_output%tkesgsz   (icrm,:) = 0.
     crm_output%tkz       (icrm,:) = 0.
     crm_output%flux_qp   (icrm,:) = 0.
-    crm_output%pflx      (icrm,:) = 0.
+    crm_output%precflux  (icrm,:) = 0.
     crm_output%qt_trans  (icrm,:) = 0.
     crm_output%qp_trans  (icrm,:) = 0.
     crm_output%qp_fall   (icrm,:) = 0.
@@ -1434,10 +1434,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif /* SPMOMTRANS */
 
    ! TODO: move tendencies up to crm_physics_tend
-    crm_output%sltend (icrm,:) = cp * (tln   - tl  (icrm,:)) * icrm_run_time
-    crm_output%qltend (icrm,:) =      (qln   - ql  (icrm,:)) * icrm_run_time
-    crm_output%qcltend(icrm,:) =      (qccln - qccl(icrm,:)) * icrm_run_time
-    crm_output%qiltend(icrm,:) =      (qiiln - qiil(icrm,:)) * icrm_run_time
+    sltend (icrm,:) = cp * (tln   - tl  (icrm,:)) * icrm_run_time
+    qltend (icrm,:) =      (qln   - ql  (icrm,:)) * icrm_run_time
+    qcltend(icrm,:) =      (qccln - qccl(icrm,:)) * icrm_run_time
+    qiltend(icrm,:) =      (qiiln - qiil(icrm,:)) * icrm_run_time
     crm_output%prectend (icrm) = (colprec -crm_output%prectend (icrm))/ggr*factor_xy * icrm_run_time
     crm_output%precstend(icrm) = (colprecs-crm_output%precstend(icrm))/ggr*factor_xy * icrm_run_time
 
@@ -1754,7 +1754,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       crm_output%tkesgsz   (icrm,l)= rho(k)*sum(tke(1:nx,1:ny,k))*factor_xy
       crm_output%tkez      (icrm,l)= rho(k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
       crm_output%tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
-      crm_output%pflx      (icrm,l) = precflux(k)/1000.       !mm/s  -->m/s
+      crm_output%precflux  (icrm,l) = precflux(k)/1000.       !mm/s  -->m/s
 
       crm_output%qp_fall   (icrm,l) = qpfall(k)
       crm_output%qp_evp    (icrm,l) = qpevp(k)
@@ -1858,7 +1858,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                           precc(icrm),precl(icrm),cld(icrm,:),cldtop(icrm,:),gicewp(icrm,:),gliqwp(icrm,:),mc(icrm,:),mcup(icrm,:),mcdn(icrm,:),mcuup(icrm,:),mcudn(icrm,:),crm_qc(icrm,:), &
                           crm_qi(icrm,:),crm_qs(icrm,:),crm_qg(icrm,:),crm_qr(icrm,:),mu_crm(icrm,:),md_crm(icrm,:),du_crm(icrm,:),eu_crm(icrm,:),ed_crm(icrm,:),dd_crm(icrm,:),jt_crm(icrm), &
                           mx_crm(icrm),mui_crm(icrm,:),mdi_crm(icrm,:),flux_qt(icrm,:),fluxsgs_qt(icrm,:),tkez(icrm,:),tkesgsz(icrm,:),tkz(icrm,:),flux_u(icrm,:),flux_v(icrm,:),flux_qp(icrm,:), &
-                          pflx(icrm,:),qt_ls(icrm,:),qt_trans(icrm,:),qp_trans(icrm,:),qp_fall(icrm,:),qp_src(icrm,:),qp_evp(icrm,:),t_ls(icrm,:),prectend(icrm),precstend(icrm),precsc(icrm), &
+                          precflx(icrm,:),qt_ls(icrm,:),qt_trans(icrm,:),qp_trans(icrm,:),qp_fall(icrm,:),qp_src(icrm,:),qp_evp(icrm,:),t_ls(icrm,:),prectend(icrm),precstend(icrm),precsc(icrm), &
                           precsl(icrm),taux_crm(icrm),tauy_crm(icrm),z0m(icrm),timing_factor(icrm),qc_crm(icrm,:,:,:),qi_crm(icrm,:,:,:),qpc_crm(icrm,:,:,:),qpi_crm(icrm,:,:,:), &
                           prec_crm(icrm,:,:))
 #endif /* CRM_DUMP */

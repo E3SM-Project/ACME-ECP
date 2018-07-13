@@ -1526,7 +1526,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
           deallocate(tempPtr)
 
           ifld = pbuf_get_index('TK_CRM')
-          call pbuf_set_field(pbuf, ifld, crm_output%tkz, start=(/1,1/), kount=(/ncols, pver/) )
+          call pbuf_set_field(pbuf, ifld, crm_output%tkz, start=(/1,1/), kount=(/ncol, pver/) )
 
           ! For convective transport
           do i=1, ncol
@@ -2196,17 +2196,27 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
    ! WIP (work in progress): copying outfld calls down from crm_physics_tend
    ! TODO: remove those outfld calls from crm_physics_tend
    !------------------------------------------------------------------------------------------ 
-   use cam_history, only: outfld
+   use cam_history,  only: outfld
+   use phys_control, only: phys_getopts
 #ifdef CRM
-   use crm_types, only: crm_state_type, crm_output_type
+   use crm_types,    only: crm_state_type, crm_output_type
 #endif
    implicit none
+   
+
+  
 
    integer, intent(in) :: lchnk
    integer, intent(in) :: ncol
    type(physics_state), intent(in) :: state
    type(crm_state_type), intent(in) :: crm_state
    type(crm_output_type), intent(in) :: crm_output
+
+   logical           :: use_ECPP
+   character(len=16) :: SPCAM_microp_scheme
+
+   call phys_getopts( use_ECPP_out            = use_ECPP)
+   call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
 
    !!! state output variables
    call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )

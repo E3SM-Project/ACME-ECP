@@ -187,7 +187,7 @@ module crm_types
       real(crm_rknd), allocatable :: flux_u       (:,:)       ! x-momentum flux          [m2/s2]
       real(crm_rknd), allocatable :: flux_v       (:,:)       ! y-momentum flux          [m2/s2]
       real(crm_rknd), allocatable :: flux_qp      (:,:)       ! precipitating water flux [kg/m2/s or mm/s]
-      real(crm_rknd), allocatable :: pflx         (:,:)       ! precipitation flux      [m/s]
+      real(crm_rknd), allocatable :: precflux     (:,:)       ! precipitation flux      [m/s]
       real(crm_rknd), allocatable :: qt_ls        (:,:)       ! tendency of nonprec water due to large-scale  [kg/kg/s]
       real(crm_rknd), allocatable :: qt_trans     (:,:)       ! tendency of nonprec water due to transport  [kg/kg/s]
       real(crm_rknd), allocatable :: qp_trans     (:,:)       ! tendency of prec water due to transport [kg/kg/s]
@@ -392,28 +392,28 @@ contains
          if (.not. allocated(this%jt_crm)) allocate(this%jt_crm(ncrms))       ! index of cloud (convection) top
          if (.not. allocated(this%mx_crm)) allocate(this%mx_crm(ncrms))       ! index of cloud (convection) bottom
 
-         if (.not. allocated(this%flux_qt   )) allocate(this%flux_qt             (ncrms,nlev))
-         if (.not. allocated(this%fluxsgs_qt)) allocate(this%fluxsgs_qt          (ncrms,nlev))
-         if (.not. allocated(this%tkez      )) allocate(this%tkez                (ncrms,nlev))
-         if (.not. allocated(this%tkesgsz   )) allocate(this%tkesgsz             (ncrms,nlev))
-         if (.not. allocated(this%tkz       )) allocate(this%tkz                 (ncrms,nlev))
-         if (.not. allocated(this%flux_u    )) allocate(this%flux_u              (ncrms,nlev))
-         if (.not. allocated(this%flux_v    )) allocate(this%flux_v              (ncrms,nlev))
-         if (.not. allocated(this%flux_qp   )) allocate(this%flux_qp             (ncrms,nlev))
-         if (.not. allocated(this%pflx      )) allocate(this%pflx                (ncrms,nlev))
-         if (.not. allocated(this%qt_ls     )) allocate(this%qt_ls               (ncrms,nlev))
-         if (.not. allocated(this%qt_trans  )) allocate(this%qt_trans            (ncrms,nlev))
-         if (.not. allocated(this%qp_trans  )) allocate(this%qp_trans            (ncrms,nlev))
-         if (.not. allocated(this%qp_fall   )) allocate(this%qp_fall             (ncrms,nlev))
-         if (.not. allocated(this%qp_src    )) allocate(this%qp_src              (ncrms,nlev))
-         if (.not. allocated(this%qp_evp    )) allocate(this%qp_evp              (ncrms,nlev))
-         if (.not. allocated(this%t_ls      )) allocate(this%t_ls                (ncrms,nlev))
-         if (.not. allocated(this%prectend  )) allocate(this%prectend            (ncrms))
-         if (.not. allocated(this%precstend )) allocate(this%precstend           (ncrms))
-         if (.not. allocated(this%taux_crm  )) allocate(this%taux_crm            (ncrms))
-         if (.not. allocated(this%tauy_crm  )) allocate(this%tauy_crm            (ncrms))
-         if (.not. allocated(this%z0m       )) allocate(this%z0m                 (ncrms))
-         if (.not. allocated(this%timing_factor)) allocate(this%timing_factor    (ncrms))
+         if (.not. allocated(this%flux_qt      )) allocate(this%flux_qt             (ncrms,nlev))
+         if (.not. allocated(this%fluxsgs_qt   )) allocate(this%fluxsgs_qt          (ncrms,nlev))
+         if (.not. allocated(this%tkez         )) allocate(this%tkez                (ncrms,nlev))
+         if (.not. allocated(this%tkesgsz      )) allocate(this%tkesgsz             (ncrms,nlev))
+         if (.not. allocated(this%tkz          )) allocate(this%tkz                 (ncrms,nlev))
+         if (.not. allocated(this%flux_u       )) allocate(this%flux_u              (ncrms,nlev))
+         if (.not. allocated(this%flux_v       )) allocate(this%flux_v              (ncrms,nlev))
+         if (.not. allocated(this%flux_qp      )) allocate(this%flux_qp             (ncrms,nlev))
+         if (.not. allocated(this%precflux     )) allocate(this%precflux            (ncrms,nlev))
+         if (.not. allocated(this%qt_ls        )) allocate(this%qt_ls               (ncrms,nlev))
+         if (.not. allocated(this%qt_trans     )) allocate(this%qt_trans            (ncrms,nlev))
+         if (.not. allocated(this%qp_trans     )) allocate(this%qp_trans            (ncrms,nlev))
+         if (.not. allocated(this%qp_fall      )) allocate(this%qp_fall             (ncrms,nlev))
+         if (.not. allocated(this%qp_src       )) allocate(this%qp_src              (ncrms,nlev))
+         if (.not. allocated(this%qp_evp       )) allocate(this%qp_evp              (ncrms,nlev))
+         if (.not. allocated(this%t_ls         )) allocate(this%t_ls                (ncrms,nlev))
+         if (.not. allocated(this%prectend     )) allocate(this%prectend            (ncrms))
+         if (.not. allocated(this%precstend    )) allocate(this%precstend           (ncrms))
+         if (.not. allocated(this%taux_crm     )) allocate(this%taux_crm            (ncrms))
+         if (.not. allocated(this%tauy_crm     )) allocate(this%tauy_crm            (ncrms))
+         if (.not. allocated(this%z0m          )) allocate(this%z0m                 (ncrms))
+         if (.not. allocated(this%timing_factor)) allocate(this%timing_factor       (ncrms))
 
 
       end if
