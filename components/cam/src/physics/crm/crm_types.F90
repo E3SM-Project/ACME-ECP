@@ -103,8 +103,13 @@ module crm_types
    !------------------------------------------------------------------------------------------------
    type crm_input_type
       
-      real(crm_rknd), allocatable :: ul(:,:)    ! Global grid u (m/s)
-      real(crm_rknd), allocatable :: vl(:,:)    ! Global grid v (m/s)
+      real(crm_rknd), allocatable :: ul(:,:)          ! Global grid u (m/s)
+      real(crm_rknd), allocatable :: vl(:,:)          ! Global grid v (m/s)
+
+#if defined(SP_ESMT)
+      real(crm_rknd), allocatable :: ul_esmt(:,:)     ! input u for ESMT
+      real(crm_rknd), allocatable :: vl_esmt(:,:)     ! input v for ESMT
+#endif
 
    contains
       procedure, public :: initialize=>crm_input_initialize
@@ -317,6 +322,11 @@ contains
       if (.not. allocated(this%ul)) allocate(this%ul(ncrms,nlev))
       if (.not. allocated(this%vl)) allocate(this%vl(ncrms,nlev))
 
+#if defined(SP_ESMT)
+      if (.not. allocated(this%ul_esmt)) allocate(this%ul_esmt(ncrms,nlev))
+      if (.not. allocated(this%vl_esmt)) allocate(this%vl_esmt(ncrms,nlev))
+#endif
+
    end subroutine crm_input_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_input_finalize(this)
@@ -324,6 +334,11 @@ contains
 
       deallocate(this%ul)
       deallocate(this%vl)
+
+#if defined(SP_ESMT)
+      deallocate(this%ul_esmt)
+      deallocate(this%vl_esmt)
+#endif
 
    end subroutine crm_input_finalize 
    !------------------------------------------------------------------------------------------------

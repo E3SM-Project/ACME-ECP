@@ -49,7 +49,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 ultend, vltend,          &
 #endif
 #if defined(SP_ESMT)
-                ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & 
+                ultend_esmt, vltend_esmt,           & 
 #endif
                 qltend, qcltend, qiltend, sltend, &
                 crm_state, crm_input, crm_output, &
@@ -219,8 +219,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: vltend              (ncrms,plev)                   ! tendency of vl
 #endif
 #if defined(SP_ESMT)
-    real(r8), intent(in   ) :: ul_esmt             (ncrms,plev)                   ! input u for ESMT
-    real(r8), intent(in   ) :: vl_esmt             (ncrms,plev)                   ! input v for ESMT
     real(r8), intent(  out) :: ultend_esmt         (ncrms,plev)                   ! tendency of ul - diagnostic field
     real(r8), intent(  out) :: vltend_esmt         (ncrms,plev)                   ! tendency of vl - diagnostic field
 #endif
@@ -571,8 +569,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
 #if defined(SP_ESMT)
     do k=1,nzm
-      u_esmt(:,:,k) = ul_esmt(icrm,plev-k+1)
-      v_esmt(:,:,k) = vl_esmt(icrm,plev-k+1)
+      u_esmt(:,:,k) = crm_input%ul_esmt(icrm,plev-k+1)
+      v_esmt(:,:,k) = crm_input%vl_esmt(icrm,plev-k+1)
     end do
 #endif
 
@@ -1375,8 +1373,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     vln  (ptop:plev) = 0.
 
 #if defined( SP_ESMT )
-    uln_esmt(1:ptop-1)  = ul_esmt(icrm,1:ptop-1)
-    vln_esmt(1:ptop-1)  = vl_esmt(icrm,1:ptop-1)
+    uln_esmt(1:ptop-1)  = crm_input%ul_esmt(icrm,1:ptop-1)
+    vln_esmt(1:ptop-1)  = crm_input%vl_esmt(icrm,1:ptop-1)
     uln_esmt(ptop:plev) = 0.
     vln_esmt(ptop:plev) = 0.
 #endif /* SP_ESMT */
@@ -1415,8 +1413,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     uln_esmt(ptop:plev) = uln_esmt(ptop:plev) * factor_xy
     vln_esmt(ptop:plev) = vln_esmt(ptop:plev) * factor_xy
 
-    ultend_esmt(icrm,:) = (uln_esmt(:) - ul_esmt(icrm,:))*icrm_run_time
-    vltend_esmt(icrm,:) = (vln_esmt(:) - vl_esmt(icrm,:))*icrm_run_time
+    ultend_esmt(icrm,:) = (uln_esmt(:) - crm_input%ul_esmt(icrm,:))*icrm_run_time
+    vltend_esmt(icrm,:) = (vln_esmt(:) - crm_input%vl_esmt(icrm,:))*icrm_run_time
 
     ! don't use tendencies from two top levels,
     ultend_esmt(icrm,ptop:ptop+1) = 0.

@@ -666,8 +666,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #if defined( SP_ESMT )
    real(r8) u_tend_esmt(pcols,pver)       ! temporary variable for CRM scalar momentum tendency
    real(r8) v_tend_esmt(pcols,pver)       ! temporary variable for CRM scalar momentum tendency
-   real(r8) ul_esmt(pcols,pver)           ! input U wind for ESMT (may be different from CRM forcing due to orientation)
-   real(r8) vl_esmt(pcols,pver)           ! input V wind for ESMT (may be different from CRM forcing due to orientation)
 #endif
 
    real(r8) :: ideep_crm(pcols)
@@ -1274,8 +1272,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 #if defined( SP_ESMT )
             ! Set the input wind for ESMT
-            ul_esmt(i,k) = state%u(i,k)
-            vl_esmt(i,k) = state%v(i,k)
+            crm_input%ul_esmt(i,k) = state%u(i,k)
+            crm_input%vl_esmt(i,k) = state%v(i,k)
 #endif /* SP_ESMT */
          enddo ! k=1,pver
 
@@ -1300,7 +1298,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                u_tend_crm (:ncol,:pver),    v_tend_crm (:ncol,:pver),                                                                                               &
 #endif /* SPMOMTRANS */
 #if defined( SP_ESMT )
-               ul_esmt(:ncol,:pver),        vl_esmt(:ncol,:pver),         u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
+               u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
                crm_state, crm_input, crm_output, &
