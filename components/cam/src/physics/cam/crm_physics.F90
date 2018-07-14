@@ -1397,6 +1397,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
          crm_micro(:,:,:,:,1) = crm_qt(:,:,:,:)
          crm_micro(:,:,:,:,2) = crm_qp(:,:,:,:)
          crm_micro(:,:,:,:,3) = crm_qn(:,:,:,:)
+#ifdef m2005
       else if (SPCAM_microp_scheme .eq. 'm2005') then
          crm_micro(:,:,:,:,1)  = crm_qt(:,:,:,:)
          crm_micro(:,:,:,:,2)  = crm_nc(:,:,:,:)
@@ -1409,6 +1410,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
          crm_micro(:,:,:,:,9)  = crm_qg(:,:,:,:)
          crm_micro(:,:,:,:,10) = crm_ng(:,:,:,:)
          crm_micro(:,:,:,:,11) = crm_qc(:,:,:,:)
+#endif
       endif
 #endif
 
@@ -1590,7 +1592,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
     call crm ( lchnk,                       icol(:ncol),                  ncol,                         phys_stage,                                                 &
                state%t(:ncol,:pver),        state%q(:ncol,:pver,1),       state%q(:ncol,:pver,ixcldliq),state%q(:ncol,:pver,ixcldice),                              &
                ul(:ncol,:pver),             vl(:ncol,:pver),                                                                                                        &
-               state%ps(:ncol),             state%pmid(:ncol,:pver),      state%pdel(:ncol,:pver),      state%phis(:ncol),                                          &
+               state%ps(:ncol),             state%pmid(:ncol,:pver),      state%pint(:ncol,:pver+1),    state%pdel(:ncol,:pver),      state%phis(:ncol),            &
                state%zm(:ncol,:pver),       state%zi(:ncol,:pver+1),      ztodt,                        pver,                                                       &
 #if defined( SPMOMTRANS )
                u_tend_crm (:ncol,:pver),    v_tend_crm (:ncol,:pver),                                                                                               &

@@ -37,7 +37,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 latitude0_in, longitude0_in, &
 #endif
                 tl, ql, qccl, qiil, ul, vl, &
-                ps, pmid, pdel, phis, &
+                ps, pmid, pint, pdel, phis, &
                 zmid, zint, dt_gl, plev, &
 #if defined(SPMOMTRANS)
                 ultend, vltend,          &
@@ -168,6 +168,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif
     real(r8), intent(in   ) :: ps                  (ncrms)       ! Global grid surface pressure (Pa)
     real(r8), intent(in   ) :: pmid                (ncrms,plev)  ! Global grid pressure (Pa)
+    real(r8), intent(in   ) :: pint                (ncrms,plev+1)! Pressure at model interfaces
     real(r8), intent(in   ) :: pdel                (ncrms,plev)  ! Layer's pressure thickness (Pa)
     real(r8), intent(in   ) :: phis                (ncrms)       ! Global grid surface geopotential (m2/s2)
     real(r8), intent(in   ) :: zmid                (ncrms,plev)  ! Global grid height (m)
@@ -585,12 +586,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       z(k) = zmid(icrm,plev-k+1) - zint(icrm,plev+1)
       zi(k) = zint(icrm,plev-k+2)- zint(icrm,plev+1)
       pres(k) = pmid(icrm,plev-k+1)/100.
+      presi(k) = pint(icrm,plev-k+2)/100.
       prespot(k)=(1000./pres(k))**(rgas/cp)
       bet(k) = ggr/tl(icrm,plev-k+1)
       gamaz(k)=ggr/cp*z(k)
     end do ! k
    ! zi(nz) =  zint(plev-nz+2)
     zi(nz) = zint(icrm,plev-nz+2)-zint(icrm,plev+1) !+++mhwang, 2012-02-04
+    presi(nz) = pint(icrm, plev-nz+2)/100.
 
     dz = 0.5*(z(1)+z(2))
     do k=2,nzm
