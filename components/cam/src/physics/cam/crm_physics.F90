@@ -705,7 +705,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) taux_crm(pcols)  ! zonal CRM surface stress perturbation
    real(r8) tauy_crm(pcols)  ! merid CRM surface stress perturbation
    real(r8) z0m(pcols)  ! surface momentum roughness length
-   real(r8), pointer, dimension(:,:) :: qrs, qrl        ! rad heating rates
    real(r8), pointer, dimension(:,:) :: tempPtr
 
    integer                         :: pblh_idx
@@ -1356,35 +1355,46 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          crm_input%qrad(i,:,:,m) = crm_input%qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
       end do
       end do
-      
+
+      ! rescale qrs, qrl and prep for output
+      ifld = pbuf_get_index('QRL')
+      call pbuf_get_field(pbuf, ifld, crm_output%qrl)
+
+      ifld = pbuf_get_index('QRS')
+      call pbuf_get_field(pbuf, ifld, crm_output%qrs)
+
+      do k =1 , pver
+         do i = 1, ncol
+            crm_output%qrs(i,k) = crm_output%qrs(i,k)/state%pdel(i,k)
+            crm_output%qrl(i,k) = crm_output%qrl(i,k)/state%pdel(i,k)
+         end do
+      end do
+
       !--------------------------------------------------------------------------------------
       ! Write outputs to history (Work in Progress)
       ! TODO: Move the remaining outfld calls into crm_physics_out() or related subroutines
-      !
+      !       Update qrl, qrs so they're handled with new crm_output structure ... 
 #ifdef CLUBB_CRM
       call crm_clubb_out(lchnk, clubb_buffer)
 #endif
       call crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
-
+     
 !----------------------------------------------------------------------
 ! Add radiative heating tendency above CRM
 !----------------------------------------------------------------------
+      ! The radiation tendencies in the GCM levels above the CRM and the top 2 CRM levels 
+      ! are set to be zero in the CRM, So add radiation tendencies to these levels 
+      ptend%s(:ncol, :pver-crm_nz+2) = crm_output%qrs(:ncol,:pver-crm_nz+2) + crm_output%qrl(:ncol,:pver-crm_nz+2)
 
-      ifld = pbuf_get_index('QRL')
-      call pbuf_get_field(pbuf, ifld, qrl)
-
-      ifld = pbuf_get_index('QRS')
-      call pbuf_get_field(pbuf, ifld, qrs)
-
-      do k =1 , pver
-         do i = 1, ncol
-            qrs(i,k) = qrs(i,k)/state%pdel(i,k)
-            qrl(i,k) = qrl(i,k)/state%pdel(i,k)
+      ! This will be used to check energy conservation
+      !+++mhwang, 2012-02-07 (Minghuai.Wang@pnnl.gov)
+      radflux(:) = 0.0_r8
+      do k=1, pver
+         do i=1, ncol
+            radflux(i) = radflux(i) + ( crm_output%qrs(i,k) + crm_output%qrl(i,k) ) * state%pdel(i,k)/gravit
          end do
       end do
 
-      call outfld('SPQRL   ',qrl/cpair      ,pcols   ,lchnk   )
-      call outfld('SPQRS   ',qrs/cpair      ,pcols   ,lchnk   )
 
       ! The radiation tendencies in the GCM levels above the CRM and the top 2 CRM levels 
       ! are set to be zero in the CRM, So add radiation tendencies to these levels 
@@ -2191,14 +2201,12 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
    !------------------------------------------------------------------------------------------ 
    use cam_history,  only: outfld
    use phys_control, only: phys_getopts
+   use physconst,    only: cpair
 #ifdef CRM
    use crm_types,    only: crm_state_type, crm_output_type
 #endif
    implicit none
    
-
-  
-
    integer, intent(in) :: lchnk
    integer, intent(in) :: ncol
    type(physics_state), intent(in) :: state
@@ -2232,8 +2240,14 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output)
    call outfld('CRM_QPI ',crm_state%qpi(1:ncol,:,:,:)   ,ncol ,lchnk)
    call outfld('CRM_PREC',crm_state%prec_crm(1:ncol,:,:),ncol ,lchnk)
 
-   call outfld('CRM_TK ', crm_state%crm_tk(1:ncol, :, :, :) ,ncol,lchnk) !Guangxing Lin new crm
-   call outfld('CRM_TKH', crm_state%crm_tkh(1:ncol, :, :, :),ncol,lchnk) !Guangxing Lin new crm
+   call outfld('CRM_TK ', crm_state%crm_tk(1:ncol, :, :, :) ,ncol,lchnk)
+   call outfld('CRM_TKH', crm_state%crm_tkh(1:ncol, :, :, :),ncol,lchnk)
+
+   !!! radiative flux outputs
+   !?? crjones: did I do this right? original version had 
+   !    call outfld('SPQRL   ',qrl/cpair      ,ncol ,lchnk   )
+   call outfld('SPQRL   ', crm_output%qrl(1:ncol,:)/cpair, ncol, lchnk)
+   call outfld('SPQRS   ', crm_output%qrs(1:ncol,:)/cpair, ncol, lchnk)
 
 #ifdef m2005
    if (SPCAM_microp_scheme .eq. 'm2005') then

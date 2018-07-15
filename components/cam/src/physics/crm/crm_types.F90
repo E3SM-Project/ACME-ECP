@@ -215,6 +215,11 @@ module crm_types
       real(crm_rknd), allocatable :: jt_crm(:)       ! index of cloud (convection) top
       real(crm_rknd), allocatable :: mx_crm(:)       ! index of cloud (convection) bottom
 
+      ! radiative heating rates
+      !?? crjones: are these units correct? calculated as qrl = pbuf_getfld('QRL')/pdel/cpair
+      real(r8), pointer :: qrs(:,:)          ! horizontally-averaged SW heating tendency [K/s]
+      real(r8), pointer :: qrl(:,:)          ! horizontally-arverage LW heating tendency [K/s]
+
       ! Other stuff...
       real(crm_rknd), allocatable :: flux_qt      (:,:)       ! nonprecipitating water flux           [kg/m2/s]
       real(crm_rknd), allocatable :: fluxsgs_qt   (:,:)       ! sgs nonprecipitating water flux    [kg/m2/s]
@@ -573,6 +578,10 @@ contains
       this%jt_crm = 0.
       this%mx_crm = 0.
 
+      ! Radiative heating rates (Nullify pointers)
+      this%qrl => null()
+      this%qrs => null()
+
    end subroutine crm_output_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_output_finalize(this)
@@ -587,6 +596,10 @@ contains
       deallocate(this%precl)
       deallocate(this%precsc)
       deallocate(this%precsl)
+
+      ! Radiative heating rates (Nullify pointers)
+      this%qrl => null()
+      this%qrs => null()
    end subroutine crm_output_finalize
    !------------------------------------------------------------------------------------------------
 
