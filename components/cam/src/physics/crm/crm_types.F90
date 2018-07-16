@@ -1,5 +1,6 @@
 module crm_types
 
+   use shr_kind_mod, only: r8 => shr_kind_r8
    use params, only: crm_rknd
    use crmdims, only: nclubbvars, crm_nx_rad, crm_ny_rad, crm_nx, crm_ny, crm_nz
 
@@ -216,9 +217,11 @@ module crm_types
       real(crm_rknd), allocatable :: mx_crm(:)       ! index of cloud (convection) bottom
 
       ! radiative heating rates
-      !?? crjones: are these units correct? calculated as qrl = pbuf_getfld('QRL')/pdel/cpair
       real(r8), pointer :: qrs(:,:)          ! horizontally-averaged SW heating tendency [K/s]
       real(r8), pointer :: qrl(:,:)          ! horizontally-arverage LW heating tendency [K/s]
+
+      ! crm tendency outputs (SPDT, etc.)
+      real(r8), allocatable :: spdt(:,:)  ! temperature tendency from CRM [K/s]
 
       ! Other stuff...
       real(crm_rknd), allocatable :: flux_qt      (:,:)       ! nonprecipitating water flux           [kg/m2/s]
@@ -522,7 +525,8 @@ contains
          if (.not. allocated(this%z0m          )) allocate(this%z0m                 (ncrms))
          if (.not. allocated(this%timing_factor)) allocate(this%timing_factor       (ncrms))
 
-
+         ! NOTE: output currently defined on "pver" grid, for consistency with use in crm_phys_tend
+         if (.not. allocated(this%spdt)) allocate(this%spdt(ncrms,pver))   ! temperature tendency
       end if
 
       this%cltot = 0.0
@@ -582,6 +586,9 @@ contains
       this%qrl => null()
       this%qrs => null()
 
+      ! tendency outputs
+      this%spdt = 0.
+
    end subroutine crm_output_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_output_finalize(this)
@@ -600,6 +607,10 @@ contains
       ! Radiative heating rates (Nullify pointers)
       this%qrl => null()
       this%qrs => null()
+
+      ! tendencie
+      deallocate(this%spdt)
+      
    end subroutine crm_output_finalize
    !------------------------------------------------------------------------------------------------
 

@@ -900,7 +900,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       nstep = nstep + 1
       time = time + dt
       day = day0 + time/86400.
-      crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
       !------------------------------------------------------------------
       !  Check if the dynamical time step should be decreased
       !  to handle the cases when the flow being locally linearly unstable
@@ -915,6 +914,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         dtn = dt/ncycle
         dt3(na) = dtn
         dtfactor = dtn/dt
+        ! The true number of substeps is the proper measure of model effort in each GCM grid cell
+        crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm) + 1
 
         !---------------------------------------------
         !  	the Adams-Bashforth scheme in time
