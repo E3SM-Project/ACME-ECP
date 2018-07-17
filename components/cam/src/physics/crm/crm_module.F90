@@ -45,9 +45,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #if defined(SPMOMTRANS)
                 ultend, vltend,          &
 #endif
-#if defined(SP_ESMT)
-                ultend_esmt, vltend_esmt,           & 
-#endif
                 qltend, qcltend, qiltend, sltend, &
 #ifdef CLUBB_CRM
                 clubb_buffer,                 &
@@ -183,10 +180,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #if defined(SPMOMTRANS)
     real(r8), intent(  out) :: ultend              (ncrms,plev)                   ! tendency of ul
     real(r8), intent(  out) :: vltend              (ncrms,plev)                   ! tendency of vl
-#endif
-#if defined(SP_ESMT)
-    real(r8), intent(  out) :: ultend_esmt         (ncrms,plev)                   ! tendency of ul - diagnostic field
-    real(r8), intent(  out) :: vltend_esmt         (ncrms,plev)                   ! tendency of vl - diagnostic field
 #endif
     real(r8), intent(  out) :: sltend              (ncrms,plev)                   ! tendency of static energy
     real(r8), intent(  out) :: qltend              (ncrms,plev)                   ! tendency of water vapor
@@ -1381,12 +1374,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     uln_esmt(ptop:plev) = uln_esmt(ptop:plev) * factor_xy
     vln_esmt(ptop:plev) = vln_esmt(ptop:plev) * factor_xy
 
-    ultend_esmt(icrm,:) = (uln_esmt(:) - crm_input%ul_esmt(icrm,:))*icrm_run_time
-    vltend_esmt(icrm,:) = (vln_esmt(:) - crm_input%vl_esmt(icrm,:))*icrm_run_time
+    crm_output%u_tend_esmt(icrm,:) = (uln_esmt(:) - crm_input%ul_esmt(icrm,:))*icrm_run_time
+    crm_output%v_tend_esmt(icrm,:) = (vln_esmt(:) - crm_input%vl_esmt(icrm,:))*icrm_run_time
 
     ! don't use tendencies from two top levels,
-    ultend_esmt(icrm,ptop:ptop+1) = 0.
-    vltend_esmt(icrm,ptop:ptop+1) = 0.
+    crm_output%u_tend_esmt(icrm,ptop:ptop+1) = 0.
+    crm_output%v_tend_esmt(icrm,ptop:ptop+1) = 0.
 #endif
 
 #if defined(SPMOMTRANS)

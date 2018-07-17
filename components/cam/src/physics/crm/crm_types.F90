@@ -197,6 +197,11 @@ module crm_types
       real(crm_rknd), allocatable :: con_crm_a (:,:)  ! cloud water condensation(1/s)
 #endif /* m2005 */
 
+#ifdef SP_ESMT
+      real(r8), allocatable :: u_tend_esmt(:,:)  ! CRM scalar u-momentum tendency
+      real(r8), allocatable :: v_tend_esmt(:,:)  ! CRM scalar v-momentum tendency
+#endif
+
       ! These are all time and spatial averages, on the GCM grid
       real(crm_rknd), allocatable :: cld   (:,:)  ! cloud fraction
       real(crm_rknd), allocatable :: gicewp(:,:)  ! ice water path
@@ -485,6 +490,11 @@ contains
          if (.not. allocated(this%con_crm_a )) allocate(this%con_crm_a (ncrms,nlev))
 #endif /* m2005 */
 
+#ifdef SP_ESMT
+         if (.not. allocated(this%u_tend_esmt )) allocate(this%u_tend_esmt (ncrms,nlev))
+         if (.not. allocated(this%v_tend_esmt )) allocate(this%v_tend_esmt (ncrms,nlev))
+#endif
+
          if (.not. allocated(this%cld   )) allocate(this%cld   (ncrms,nlev))  ! cloud fraction
          if (.not. allocated(this%gicewp)) allocate(this%gicewp(ncrms,nlev))  ! ice water path
          if (.not. allocated(this%gliqwp)) allocate(this%gliqwp(ncrms,nlev))  ! ice water path
@@ -562,6 +572,11 @@ contains
       this%sub_crm_a = 0.0
       this%dep_crm_a = 0.0
       this%con_crm_a = 0.0
+#endif
+
+#ifdef SP_ESMT
+      this%u_tend_esmt = 0.0
+      this%v_tend_esmt = 0.0
 #endif
 
       this%cld    = 0.

@@ -662,11 +662,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) u_tend_crm (pcols,pver)       ! temporary variable for CRM momentum tendency
    real(r8) v_tend_crm (pcols,pver)       ! temporary variable for CRM momentum tendency
 #endif
-#if defined( SP_ESMT )
-   real(r8) u_tend_esmt(pcols,pver)       ! temporary variable for CRM scalar momentum tendency
-   real(r8) v_tend_esmt(pcols,pver)       ! temporary variable for CRM scalar momentum tendency
-#endif
-
    real(r8) :: ideep_crm(pcols)
 
    ! physics buffer fields to compute tendencies for stratiform package
@@ -776,7 +771,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(crm_output_type) :: crm_output
 
    integer :: k_gcm, k_crm
-   real(r8) :: cldtop_gcm(pcols,pver)
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -1117,10 +1111,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       u_tend_crm (:,:) = 0.
       v_tend_crm (:,:) = 0.
 #endif
-#if defined( SP_ESMT )
-      u_tend_esmt(:,:) = 0.
-      v_tend_esmt(:,:) = 0.
-#endif
 
 #ifdef ECPP
       if (use_ECPP) then
@@ -1299,9 +1289,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #if defined( SPMOMTRANS )
                u_tend_crm (:ncol,:pver),    v_tend_crm (:ncol,:pver),                                                                                               &
 #endif /* SPMOMTRANS */
-#if defined( SP_ESMT )
-               u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
-#endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
@@ -1389,119 +1376,42 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       !!! Subtract radiative heating for SPDT output
       crm_output%spdt(:ncol,:pver) = ( ptend%s(:ncol,:pver) - crm_output%qrs(:ncol,:pver) - crm_output%qrl(:ncol,:pver) )/cpair
 
-      !--------------------------------------------------------------------------------------
-      ! Write outputs to history (Work in Progress)
-      ! TODO: Move the remaining outfld calls into crm_physics_out() or related subroutines
-#ifdef CLUBB_CRM
-      call crm_clubb_out(lchnk, clubb_buffer)
-#endif
 
-      call crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phys_stage)
+      ! update some quantities of ECPP is used
+      if (use_ECPP) then
+         ! turbulence
+         allocate(tempPtr(pcols,pver))
+         ifld = pbuf_get_index('TKE_CRM')
+         cs(:ncol, 1:pver) = state%pmid(:ncol, 1:pver)/(287.15*state%t(:ncol, 1:pver))
+         tempPtr(:ncol, 1:pver) = crm_output%tkez(:ncol, 1:pver)/cs(:ncol, 1:pver)
+         call pbuf_set_field(pbuf, ifld, tempPtr, start=(/1,1/), kount=(/pcols, pver/) )
+         deallocate(tempPtr)
+
+         ifld = pbuf_get_index('TK_CRM')
+         call pbuf_set_field(pbuf, ifld, crm_output%tkz, start=(/1,1/), kount=(/ncol, pver/) )
+      endif  ! use_ECPP
+         
+      ! For convective transport
+      do i=1, ncol
+         ideep_crm(i) = i*1.0 
+      end do
+      ifld = pbuf_get_index( 'MU_CRM' )
+      call pbuf_set_field(pbuf, ifld, crm_output%mu_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
+      ifld = pbuf_get_index( 'MD_CRM' )
+      call pbuf_set_field(pbuf, ifld, crm_output%md_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
+      ifld = pbuf_get_index( 'EU_CRM' )
+      call pbuf_set_field(pbuf, ifld, crm_output%eu_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
+      ifld = pbuf_get_index( 'DU_CRM' )
+      call pbuf_set_field(pbuf, ifld, crm_output%du_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
+      ifld = pbuf_get_index( 'ED_CRM' )
+      call pbuf_set_field(pbuf, ifld, crm_output%eu_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
+      ifld = pbuf_get_index( 'JT_CRM' )
+      call pbuf_set_field(pbuf, ifld, crm_output%jt_crm(:ncol), start=(/1/), kount=(/ncol/) )
+      ifld = pbuf_get_index( 'MX_CRM' )
+      call pbuf_set_field(pbuf, ifld, crm_output%mx_crm(:ncol), start=(/1/), kount=(/ncol/) )
+      ifld = pbuf_get_index( 'IDEEP_CRM' )
+      call pbuf_set_field(pbuf, ifld, ideep_crm, start=(/1/), kount=(/pcols/) )
       
-       ! Need to remap vertical coordinate of crm_output
-       ! TODO: provide a procedure to do this
-       ! NOTE: this was NOT done in previous version before adding crm_output
-       ! type! So this variable would have been incorrect in history files,
-       ! because in crm_module this is set over k_crm, not k_gcm!
-       cldtop_gcm = 0.0
-       do k_crm = 1,crm_nz
-         k_gcm = pver - k_crm + 1
-         cldtop_gcm(1:ncol,k_gcm) = crm_output%cldtop(1:ncol,k_crm)
-       end do
-       call outfld('CLOUDTOP',cldtop_gcm(1:ncol,:), ncol,lchnk)
-
-!----------------------------------------------------------------------
-! Compute liquid water paths (for diagnostics only)
-!----------------------------------------------------------------------
-
-       tgicewp(:ncol) = 0.
-       tgliqwp(:ncol) = 0.
-       do k=1,pver
-          do i = 1,ncol
-             cicewp(i,k) = crm_output%gicewp(i,k) * 1.0e-3 / max(0.01_r8,crm_output%cld(i,k)) ! In-cloud ice water path.  g/m2 --> kg/m2
-             cliqwp(i,k) = crm_output%gliqwp(i,k) * 1.0e-3 / max(0.01_r8,crm_output%cld(i,k)) ! In-cloud liquid water path. g/m2 --> kg/m2
-             tgicewp(i)  = tgicewp(i) + crm_output%gicewp(i,k) *1.0e-3 ! grid cell mean ice water path.  g/m2 --> kg/m2
-             tgliqwp(i)  = tgliqwp(i) + crm_output%gliqwp(i,k) *1.0e-3 ! grid cell mean ice water path.  g/m2 --> kg/m2
-          end do
-       end do
-       tgwp(:ncol) = tgicewp(:ncol) + tgliqwp(:ncol)
-       gwp(:ncol,:pver) = crm_output%gicewp(:ncol,:pver) + crm_output%gliqwp(:ncol,:pver)
-       cwp(:ncol,:pver) = cicewp(:ncol,:pver) + cliqwp(:ncol,:pver)
-
-       call outfld('GCLDLWP' ,gwp    , pcols,lchnk)
-       call outfld('TGCLDCWP',tgwp   , pcols,lchnk)
-       call outfld('TGCLDLWP',tgliqwp, pcols,lchnk)
-       call outfld('TGCLDIWP',tgicewp, pcols,lchnk)
-       call outfld('ICLDTWP' ,cwp    , pcols,lchnk)
-       call outfld('ICLDIWP' ,cicewp , pcols,lchnk)
-
-       if (use_ECPP) then
-
-          ! turbulence
-          allocate(tempPtr(pcols,pver))
-          ifld = pbuf_get_index('TKE_CRM')
-          cs(:ncol, 1:pver) = state%pmid(:ncol, 1:pver)/(287.15*state%t(:ncol, 1:pver))
-          tempPtr(:ncol, 1:pver) = crm_output%tkez(:ncol, 1:pver)/cs(:ncol, 1:pver)
-          call pbuf_set_field(pbuf, ifld, tempPtr, start=(/1,1/), kount=(/pcols, pver/) )
-          deallocate(tempPtr)
-
-          ifld = pbuf_get_index('TK_CRM')
-          call pbuf_set_field(pbuf, ifld, crm_output%tkz, start=(/1,1/), kount=(/ncol, pver/) )
-
-          ! For convective transport
-          do i=1, ncol
-           ideep_crm(i) = i*1.0 
-          end do
-          ifld = pbuf_get_index( 'MU_CRM' )
-          call pbuf_set_field(pbuf, ifld, crm_output%mu_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
-          ifld = pbuf_get_index( 'MD_CRM' )
-          call pbuf_set_field(pbuf, ifld, crm_output%md_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
-          ifld = pbuf_get_index( 'EU_CRM' )
-          call pbuf_set_field(pbuf, ifld, crm_output%eu_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
-          ifld = pbuf_get_index( 'DU_CRM' )
-          call pbuf_set_field(pbuf, ifld, crm_output%du_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
-          ifld = pbuf_get_index( 'ED_CRM' )
-          call pbuf_set_field(pbuf, ifld, crm_output%eu_crm(:ncol,:), start=(/1,1/), kount=(/ncol, pver/) )
-          ifld = pbuf_get_index( 'JT_CRM' )
-          call pbuf_set_field(pbuf, ifld, crm_output%jt_crm(:ncol), start=(/1/), kount=(/ncol/) )
-          ifld = pbuf_get_index( 'MX_CRM' )
-          call pbuf_set_field(pbuf, ifld, crm_output%mx_crm(:ncol), start=(/1/), kount=(/ncol/) )
-          ifld = pbuf_get_index( 'IDEEP_CRM' )
-          call pbuf_set_field(pbuf, ifld, ideep_crm, start=(/1/), kount=(/pcols/) )
-       endif
-       call outfld('MU_CRM  ', crm_output%mu_crm(1:ncol,:), ncol, lchnk)
-       call outfld('MD_CRM  ', crm_output%md_crm(1:ncol,:), ncol, lchnk)
-       call outfld('EU_CRM  ', crm_output%eu_crm(1:ncol,:), ncol, lchnk)
-       call outfld('DU_CRM  ', crm_output%du_crm(1:ncol,:), ncol, lchnk)
-       call outfld('ED_CRM  ', crm_output%ed_crm(1:ncol,:), ncol, lchnk)
-
-#ifdef ECPP
-       if (use_ECPP) then
-
-         qlsinkcen = qlsink_avgcen
-
-         call outfld('ACEN    ', acen, pcols, lchnk)
-         call outfld('ABND    ', abnd, pcols, lchnk)
-         call outfld('ACEN_TF ', acen_tf, pcols, lchnk)
-         call outfld('ABND_TF ', abnd_tf, pcols, lchnk)
-         call outfld('MASFBND ', massflxbnd, pcols, lchnk)
-         call outfld('RHCEN   ', rhcen, pcols, lchnk)
-         call outfld('QCCEN   ', qcloudcen, pcols, lchnk)
-         call outfld('QICEN   ', qicecen, pcols, lchnk)
-         call outfld('QSINK_AFCEN', qlsink_afcen, pcols, lchnk)
-         call outfld('PRECRCEN', precrcen, pcols, lchnk)
-         call outfld('PRECSCEN', precsolidcen, pcols, lchnk)
-         call outfld('WUPTHRES', wupthresh_bnd, pcols, lchnk)
-         call outfld('WDNTHRES', wdownthresh_bnd, pcols, lchnk)
-         call outfld('WWQUI_CEN', wwqui_cen, pcols, lchnk)
-         call outfld('WWQUI_CLD_CEN', wwqui_cloudy_cen, pcols, lchnk)
-         call outfld('WWQUI_BND', wwqui_cen, pcols, lchnk)
-         call outfld('WWQUI_CLD_BND', wwqui_cloudy_cen, pcols, lchnk)
-         call outfld('QSINK_BFCEN', qlsink_bfcen, pcols, lchnk)
-         call outfld('QSINK_AVGCEN', qlsink_avgcen, pcols, lchnk)
-         call outfld('PRAINCEN', praincen, pcols, lchnk)
-       endif !/*ECPP*/
-#endif
 
 !----------------------------------------------------------------------
 ! Set ptend logicals with physics tendencies from CRM
@@ -1517,37 +1427,44 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !----------------------------------------------------------------------
 ! Output CRM momentum tendencies
 !----------------------------------------------------------------------
-
-#if defined( SP_ESMT )
-      call outfld('U_ESMT',u_tend_esmt,pcols   ,lchnk   )
-      call outfld('V_ESMT',v_tend_esmt,pcols   ,lchnk   )
-#endif /* SP_ESMT */
-
-      ! TODO: why do u_tend_esmt and u_tend_crm need to be different? better
-      ! would be to just change how u_tend gets set depending on SP_USE_ESMT
-      ! flag or SPMOMTRANS?
 #if defined( SP_USE_ESMT )
       ptend%lu = .TRUE.
       ptend%lv = .TRUE.
-      ptend%u  = u_tend_esmt
-      ptend%v  = v_tend_esmt
-#else /* SP_USE_ESMT not defined */  
-
+      ptend%u  = crm_output%u_tend_esmt
+      ptend%v  = crm_output%v_tend_esmt
+#else /* SP_USE_ESMT not defined */
 #if defined(SPMOMTRANS)
       ptend%lu = .TRUE.
       ptend%lv = .TRUE.
       
       !!! rotate resolved CRM momentum tendencies back
       do i = 1, ncol 
-         ptend%u(i) = u_tend_crm(i) * cos( -1.*crm_angle(i) ) + v_tend_crm(i) * sin( -1.*crm_angle(i) )
-         ptend%v(i) = v_tend_crm(i) * cos( -1.*crm_angle(i) ) - u_tend_crm(i) * sin( -1.*crm_angle(i) )
+         ptend%u(i, :) = u_tend_crm(i, :) * cos( -1.*crm_angle(i) ) + v_tend_crm(i, :) * sin( -1.*crm_angle(i) )
+         ptend%v(i, :) = v_tend_crm(i, :) * cos( -1.*crm_angle(i) ) - u_tend_crm(i, :) * sin( -1.*crm_angle(i) )
       enddo
-
-      call outfld('UCONVMOM',ptend%u,pcols   ,lchnk   )
-      call outfld('VCONVMOM',ptend%v,pcols   ,lchnk   )
 #endif /* SPMOMTRANS */
-
 #endif /* SP_USE_ESMT */
+
+      !--------------------------------------------------------------------------------------
+      ! Write outputs to history (Work in Progress)
+      ! TODO: Move the remaining outfld calls into crm_physics_out() or related subroutines
+#ifdef CLUBB_CRM
+      call crm_clubb_out(lchnk, clubb_buffer)
+#endif
+      call crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phys_stage)
+#ifdef ECPP
+      ! TODO: fold this into crm_physics_out
+      if (use_ECPP) then
+         qlsinkcen = qlsink_avgcen   ! TODO: move this somewhere else
+         call crm_ecpp_out(lchnk, acen, abnd, acen_tf, abnd_tf, massflxbnd, &
+                           rhcen, qcloundcen, qicecen, qlsink_afcen, &
+                           precrcen, precsolidcen, wupthresh_bnd, wdownthresh_bnd, &
+                           wwqui_cen, wwqui_cloudy_cen, wwqui_bnd. wwqui_cloudy_bnd, &
+                           qlsink_bfcen, qlsink_avgcen, praincen)
+      endif
+#endif
+
+
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -2120,6 +2037,7 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    use cam_history,  only: outfld
    use phys_control, only: phys_getopts
    use physconst,    only: cpair
+   use crmdims,      only: crm_nz
 #ifdef CRM
    use crm_types,    only: crm_state_type, crm_output_type
 #endif
@@ -2137,12 +2055,30 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    logical           :: use_ECPP
    character(len=16) :: SPCAM_microp_scheme
    integer :: ixcldliq, ixcldice
+   real(r8) tgicewp(ncol)      ! Vertically integrated IWP (kg/m2)
+   real(r8) tgliqwp(ncol)      ! Vertically integrated liquid water path (kg/m2)
+   real(r8) cicewp(ncol, pver) ! in-cloud cloud ice water path (kg/m2)
+   real(r8) cliqwp(ncol, pver) ! in-cloud cloud liquid water path (kg/m2)
+   real(r8) tgwp(ncol)         ! Vertically integrated (total) cloud water path (kg/m2)
+   real(r8) gwp(ncol, pver)
+   real(r8) cwp(ncol, pver)
+   real(r8) :: cldtop_gcm(pcols, pver)
+
+   integer :: i, k, kgcm       ! dummy loop variables
 
    ! initializations
    call phys_getopts( use_ECPP_out            = use_ECPP)
    call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
+   tgicewp = 0._r8
+   tgliqwp = 0._r8
+   cicewp = 0._r8
+   cliqwp = 0._r8
+   tgwp = 0._r8
+   gwp = 0._r8
+   cwp = 0._r8
+   cldtop_gcm = 0._r8
 
    !!! state output variables
    call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
@@ -2223,6 +2159,15 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    call outfld('SPDQ    ', ptend%q(1,1,1), pcols, lchnk)
    call outfld('SPDQC   ', ptend%q(1,1,ixcldliq), pcols, lchnk)
    call outfld('SPDQI   ', ptend%q(1,1,ixcldice), pcols, lchnk)
+#ifdef SP_USE_ESMT
+   call outfld('U_ESMT', ptend%u, pcols, lchnk)
+   call outfld('V_ESMT', ptend%v, pcols, lchnk)
+#else 
+#ifdef SPMOMTRANS
+   call outfld('UCONVMOM', ptend%u, pcols, lchnk)
+   call outfld('VCONVMOM', ptend%v, pcols, lchnk)
+#endif /* SPMOMTRANS and not SP_USE_ESMT */
+#endif /* SP_USE_ESMT */
 
    ! SP diagnostics (time- and horizontal- mean profiles)
    call outfld('SPMC    ',crm_output%mctot(1:ncol,:), ncol   ,lchnk   )
@@ -2258,12 +2203,8 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    call outfld('SPTLS   ',crm_output%t_ls           ,ncol   ,lchnk   )
 
    !!! Clouds
-   ! note: not sure this is right, since cld output should be on plev, 
-   !       but crm_output%cld has dimension(ncrms, nlev) ...
-   ! TODO: write vertical-remap from crm to gcm method for crm_output, 
-   !       and apply that here ...
-
-   ! to be remapped:
+   ! note: not sure this is right, since cld output should be on pver
+   !       is that consistent with crm_output here? (should verify)
    call outfld('CLOUD   ',crm_output%cld(1:ncol,:), ncol, lchnk)
 
    ! vertically integrated and time/space averaged crm clouds:
@@ -2271,6 +2212,17 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    call outfld('CLDHGH  ',crm_output%clhgh(1:ncol),ncol,lchnk)
    call outfld('CLDMED  ',crm_output%clmed(1:ncol),ncol,lchnk)
    call outfld('CLDLOW  ',crm_output%cllow(1:ncol),ncol,lchnk)
+
+   ! Need to remap vertical coordinate of crm_output
+   ! TODO: provide a procedure to do this
+   ! NOTE: this was NOT done in previous version before adding crm_output
+   ! type! So this variable would have been incorrect in history files,
+   ! because in crm_module this is set over k_crm, not k_gcm!
+   do k = 1, crm_nz
+      kgcm = pver - k + 1
+      cldtop_gcm(1:ncol, kgcm) = crm_output%cldtop(1:ncol, k)
+   end do
+   call outfld('CLOUDTOP', cldtop_gcm(1:ncol,:), ncol, lchnk)
 
    ! miscellaneous:
    call outfld('TIMINGF ', crm_output%timing_factor(1:ncol), ncol, lchnk)
@@ -2292,10 +2244,37 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
 
    !----------------------------------------------------------------------
    ! Compute liquid water paths (for diagnostics only)
-   ! (TODO)
    !----------------------------------------------------------------------
+   do k = 1, pver
+      do i = 1, ncol
+         cicewp(i,k) = crm_output%gicewp(i,k) * 1.0e-3 / max(0.01_r8,crm_output%cld(i,k)) ! In-cloud ice water path.  g/m2 --> kg/m2
+         cliqwp(i,k) = crm_output%gliqwp(i,k) * 1.0e-3 / max(0.01_r8,crm_output%cld(i,k)) ! In-cloud liquid water path. g/m2 --> kg/m2
+         tgicewp(i)  = tgicewp(i) + crm_output%gicewp(i,k) *1.0e-3 ! grid cell mean ice water path.  g/m2 --> kg/m2
+         tgliqwp(i)  = tgliqwp(i) + crm_output%gliqwp(i,k) *1.0e-3 ! grid cell mean ice water path.  g/m2 --> kg/m2
+      end do
+   end do
+   tgwp(:ncol) = tgicewp(:ncol) + tgliqwp(:ncol)
+   gwp(:ncol,:pver) = crm_output%gicewp(:ncol,:pver) + crm_output%gliqwp(:ncol,:pver)
+   cwp(:ncol,:pver) = cicewp(:ncol,:pver) + cliqwp(:ncol, :pver)
+
+   ! TODO: verify this change from "pcols" to "ncol" works as expected here
+   call outfld('GCLDLWP' ,gwp    , ncol, lchnk)
+   call outfld('TGCLDCWP',tgwp   , ncol, lchnk)
+   call outfld('TGCLDLWP',tgliqwp, ncol, lchnk)
+   call outfld('TGCLDIWP',tgicewp, ncol, lchnk)
+   call outfld('ICLDTWP' ,cwp    , ncol, lchnk)
+   call outfld('ICLDIWP' ,cicewp , ncol, lchnk)
+
+   call outfld('MU_CRM  ', crm_output%mu_crm(1:ncol,:), ncol, lchnk)
+   call outfld('MD_CRM  ', crm_output%md_crm(1:ncol,:), ncol, lchnk)
+   call outfld('EU_CRM  ', crm_output%eu_crm(1:ncol,:), ncol, lchnk)
+   call outfld('DU_CRM  ', crm_output%du_crm(1:ncol,:), ncol, lchnk)
+   call outfld('ED_CRM  ', crm_output%ed_crm(1:ncol,:), ncol, lchnk)
 
 end subroutine crm_physics_out
+
+!==================================================================================================
+!==================================================================================================
 
 #ifdef CLUBB_CRM
 subroutine crm_clubb_out(lchnk, clubb_buffer, &
@@ -2343,5 +2322,35 @@ subroutine crm_clubb_out(lchnk, clubb_buffer, &
    call outfld('QCLVAR', qclvar(:, :, :, :)  ,pcols   ,lchnk   )
 end subroutine crm_clubb_out
 #endif /* CLUBB_CRM */
+
+#ifdef ECPP
+subroutine crm_ecpp_out(lchnk, acen, abnd, acen_tf, abnd_tf, massflxbnd, &
+                        rhcen, qcloundcen, qicecen, qlsink_afcen, &
+                        precrcen, precsolidcen, wupthresh_bnd, wdownthresh_bnd, &
+                        wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd, &
+                        qlsink_bfcen, qlsink_avgcen, praincen)
+   ! TODO: add header stuff here,
+   call outfld('ACEN    ', acen, pcols, lchnk)
+   call outfld('ABND    ', abnd, pcols, lchnk)
+   call outfld('ACEN_TF ', acen_tf, pcols, lchnk)
+   call outfld('ABND_TF ', abnd_tf, pcols, lchnk)
+   call outfld('MASFBND ', massflxbnd, pcols, lchnk)
+   call outfld('RHCEN   ', rhcen, pcols, lchnk)
+   call outfld('QCCEN   ', qcloudcen, pcols, lchnk)
+   call outfld('QICEN   ', qicecen, pcols, lchnk)
+   call outfld('QSINK_AFCEN', qlsink_afcen, pcols, lchnk)
+   call outfld('PRECRCEN', precrcen, pcols, lchnk)
+   call outfld('PRECSCEN', precsolidcen, pcols, lchnk)
+   call outfld('WUPTHRES', wupthresh_bnd, pcols, lchnk)
+   call outfld('WDNTHRES', wdownthresh_bnd, pcols, lchnk)
+   call outfld('WWQUI_CEN', wwqui_cen, pcols, lchnk)
+   call outfld('WWQUI_CLD_CEN', wwqui_cloudy_cen, pcols, lchnk)
+   call outfld('WWQUI_BND', wwqui_cen, pcols, lchnk)  ! should this be wwqui_bnd ??
+   call outfld('WWQUI_CLD_BND', wwqui_cloudy_cen, pcols, lchnk)  ! should this be wwqui_cloudy_bnd ??
+   call outfld('QSINK_BFCEN', qlsink_bfcen, pcols, lchnk)
+   call outfld('QSINK_AVGCEN', qlsink_avgcen, pcols, lchnk)
+   call outfld('PRAINCEN', praincen, pcols, lchnk)               
+end subroutine
+#endif /* ECPP */
 
 end module crm_physics
