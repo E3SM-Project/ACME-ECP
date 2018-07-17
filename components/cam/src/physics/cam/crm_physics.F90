@@ -47,6 +47,9 @@ module crm_physics
 
    integer :: clubb_buffer_idx
 
+!MAML-Guangxing Lin
+   integer :: crm_pcp_idx,crm_snw_idx
+!MAML-Guangxing Lin
    
    real(r8),pointer                        :: acldy_cen_tbeg(:,:)        ! cloud fraction
    real(r8), pointer, dimension(:,:)       :: cldo
@@ -173,6 +176,10 @@ subroutine crm_physics_register()
   ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
   call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
 
+!MAML-Guangxing Lin...adding new variables for passing precipition/snow into CLM. Added new variables
+  call pbuf_add_field('CRM_PCP',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_pcp_idx)
+  call pbuf_add_field('CRM_SNW',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_snw_idx)
+!MAML-Guangxing Lin
 
 end subroutine crm_physics_register
 
@@ -397,6 +404,14 @@ subroutine crm_physics_init(species_class)
   call addfld ('SPWTKE   ', (/ 'lev' /), 'A', 'm/s',      'Standard deviation of updraft velocity')
   call addfld ('SPLCLOUD  ',(/ 'lev' /), 'A', '        ', 'Liquid cloud fraction')
 
+!MAML-Guangxing Lin
+  call addfld ('CRM_SHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc sensible heat flux'          )
+  call addfld ('CRM_LHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc latent heat flux'            )
+  call addfld ('CRM_SNOW',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Snow Rate'                       )
+  call addfld ('CRM_PCP ',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Precipitation Rate'              )
+  call addfld ('CRM_SPD ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'm/s     ', 'CRM Wind Speed'                      )
+!MAML-Guangxing Lin
+
    ! call addfld ('SPNDROPMIX','#/kg/s  ',pver,  'A','Droplet number mixing',phys_decomp)
    ! call addfld ('SPNDROPSRC','#/kg/s  ',pver,  'A','Droplet number source',phys_decomp)
    ! call addfld ('SPNDROPCOL','#/m2    ',1,     'A','Column droplet number',phys_decomp)
@@ -615,6 +630,13 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
 
    real(r8) :: cs(pcols, pver)  ! air density  [kg/m3]
+!MAML-Guangxing Lin
+   real(r8) tau00(pcols,crm_nx)  ! surface stress
+   real(r8) bflx(pcols,crm_nx)   ! surface buoyancy flux (Km/s)
+   !real(r8) tau00(pcols)  ! surface stress
+   !real(r8) bflx (pcols)  ! surface buoyancy flux (Km/s)
+!MAML-Guangxing Lin
+
 
    ! CRM column radiation stuff:
    real(r8), pointer, dimension(:,:) :: qrs        ! shortwave radiative heating rate
@@ -910,6 +932,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          end do
       end do
 
+!MAML-Guangxing Lin
+       crm_pcp(:,:,:) = 0.
+       crm_snw(:,:,:) = 0.
+!MAML-Guangxing Lin
+
 ! use radiation from grid-cell mean radctl on first time step
       cld(:,:) = 0.
       ptend%q(:,:,1) = 0.
@@ -933,6 +960,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 
    else  ! not is_first_step
+!MAML-Guangxing Lin
+       crm_pcp = 0.
+       crm_snw = 0.
+!MAML-Guangxing Lin
 
       ptend%q(:,:,1) = 0.  ! necessary?
       ptend%q(:,:,ixcldliq) = 0.
@@ -1200,6 +1231,13 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !----------------------------------------------------------------------
 ! Add radiative heating tendency above CRM
 !----------------------------------------------------------------------
+!MAML-Guangxing Lin
+       call outfld('CRM_SHF ', cam_in%shf ,pcols ,lchnk)
+       call outfld('CRM_LHF ', cam_in%lhf ,pcols ,lchnk)
+       call outfld('CRM_SNOW', crm_snw    ,pcols ,lchnk)
+       call outfld('CRM_PCP',  crm_pcp    ,pcols ,lchnk)
+       !call outfld('CRM_SPD ', spd_crm    ,pcols ,lchnk)
+!MAML-Guangxing Lin
 
       ifld = pbuf_get_index('QRL')
       call pbuf_get_field(pbuf, ifld, qrl)

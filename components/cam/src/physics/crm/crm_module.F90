@@ -37,6 +37,9 @@ use setparm_mod, only : setparm
 
 contains
 
+!MAML-Guangxing Lin
+!                crm_pcp, crm_snw,                         &
+!MAML-Guangxing Lin
 subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 crm_input, crm_state, crm_rad,  &
 #ifdef CLUBB_CRM
@@ -57,6 +60,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     use sgs
     use crmtracers
     use scalar_momentum_mod
+
 #ifdef MODAL_AERO
     use modal_aero_data       , only: ntot_amode
 #endif
@@ -82,7 +86,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                                       qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
     use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
-#endif /* ECPP */
+#endif
     use cam_abortutils        , only: endrun
     use time_manager          , only: get_nstep
 
@@ -125,9 +129,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8)        :: factor_xy, factor_xyt, idt_gl
     real(crm_rknd)  :: tmp1, tmp2
     real(crm_rknd)  :: u2z,v2z,w2z
-    integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, icrm
+    integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, vc
     integer         :: kx
-    real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
+    logical         :: flag_top(nx,ny)
+!MAML-Guangxing Lin
+    real(crm_rknd)  ::  ustar(crm_nx), bflx(crm_nx), wnd,  qsat, omg
+    integer :: ii
+ !   real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
+!MAML-Guangxing Lin
     real(crm_rknd)  :: colprec,colprecs
     real(r8)        :: zs                ! surface elevation
     real(r8)        :: qtot(ncrms,20)    ! Total water for water conservation check
@@ -135,6 +144,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     !!! These should all be inputs
     integer         :: igstep            ! GCM time steps
     integer         :: iseed             ! seed for random perturbation
+    integer         :: gcolindex(pcols)  ! array of global latitude indices
+    real(crm_rknd)  :: cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
     real(crm_rknd)  :: ntotal_step
     integer         :: myrank, ierr
 
@@ -272,6 +283,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call allocate_scalar_momentum(ncrms)
 #endif
 
+  ! whannah - variables for new radiation group method
+  real(crm_rknd) :: crm_nx_rad_fac
+  real(crm_rknd) :: crm_ny_rad_fac
+  integer        :: i_rad
+  integer        :: j_rad
+
+
+
   !Loop over "vector columns"
   do icrm = 1 , ncrms
     latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
@@ -308,7 +327,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     else
      lrestart_clubb = .true.
     endif
-#endif /* CLUBB_CRM */
+#endif
 
     call task_init ()
     call setparm()
@@ -374,6 +393,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     endif
 #else
     rhow(nz,icrm)= 2.*rhow(nzm,icrm) - rhow(nzm-1,icrm)
+
+
 #endif /*CLUBB_CRM*/
     colprec=0
     colprecs=0
@@ -442,7 +463,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         enddo
       enddo
     enddo
-#endif /* m2005 */
+#endif
 
     w(:,:,nz,icrm)=0.
     wsub (:,icrm) = 0.      !used in clubb, +++mhwang
@@ -683,23 +704,23 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     !------------------------------------------------------------------
     ! Do initialization for UWM CLUBB
     !------------------------------------------------------------------
-    up2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1)
-    vp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2)
-    wprtp     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3)
-    wpthlp    (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4)
-    wp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5)
-    wp3       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6)
-    rtp2      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7)
-    thlp2     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8)
-    rtpthlp   (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9)
-    upwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10)
-    vpwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11)
-    cloud_frac(1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12)
-    t_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13)
-    qc_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14)
-    qv_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15)
-    u_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16)
-    v_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17)
+    up2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  1)
+    vp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  2)
+    wprtp     (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  3)
+    wpthlp    (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  4)
+    wp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  5)
+    wp3       (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  6)
+    rtp2      (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  7)
+    thlp2     (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  8)
+    rtpthlp   (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  9)
+    upwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz , 10)
+    vpwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz , 11)
+    cloud_frac(1:nx, 1:ny, 1:nz ) = clubb_buffer(vc,1:nx, 1:ny, 1:nz , 12)
+    t_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 13)
+    qc_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 14)
+    qv_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 15)
+    u_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 16)
+    v_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 17)
 
     ! since no tracer is carried in the current version of MMF, these
     ! tracer-related restart varialbes are set to zero. +++mhwang, 2011-08
@@ -722,7 +743,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
                             latitude(:,:,icrm), longitude(:,:,icrm), z(:,icrm), rho(:,icrm), zi(:,icrm), rhow(:,icrm), tv0(:,icrm), tke(:,:,:,icrm) )
     endif
-#endif /* CLUBB_CRM */
+#endif
 
 #ifdef ECPP
     call ecpp_crm_init(dt_gl)
@@ -732,7 +753,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     prain     = 0.0
     precr     = 0.0
     precsolid = 0.0
-#endif /* ECPP */
+#endif
 
      ntotal_step = 0.0
 !    !+++mhwangtest
@@ -755,13 +776,18 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 !    enddo
 !    !---mhwangtest
 
-
     nstop = dt_gl/dt
     dt = dt_gl/nstop
     nsave3D = nint(60/dt)
+    !if(nint(nsave3D*dt).ne.60)then
+    !   print *,'CRM: time step=',dt,' is not divisible by 60 seconds'
+    !   print *,'this is needed for output every 60 seconds'
+    !   stop
+    !endif
     nstep  = 0
     nprint = 1
     ncycle = 0
+    !nrad = nstop/nrad0
     day=day0
 
     crm_run_time  = dt_gl
@@ -772,8 +798,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     !========================================================================================
     !----------------------------------------------------------------------------------------
     !   Main time loop
-    !----------------------------------------------------------------------------------------
-    !========================================================================================
+    !------------------------------------------------------------------
 
     do while (nstep.lt.nstop)
       nstep = nstep + 1
@@ -789,7 +814,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call kurant(ncrms,icrm)
 
       do icyc=1,ncycle
-
         icycle = icyc
         dtn = dt/ncycle
         dt3(na,icrm) = dtn
@@ -816,8 +840,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         !       Large-scale and surface forcing:
         call forcing(ncrms,icrm)
 
-
-        !!! Apply radiative tendency
         do k=1,nzm
           do j=1,ny
             do i=1,nx
@@ -907,12 +929,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         !---------------------------------------------------------
         !      SGS effects on scalars :
         if (dosgs) call sgs_scalars(ncrms,icrm)
-
-        !-----------------------------------------------------------
-        !       Calculate PGF for scalar momentum tendency
-#if defined( SP_ESMT ) && defined( SP_ESMT_PGF )
-            call scalar_momentum_tend()
-#endif
 
         !-----------------------------------------------------------
         !       Cloud condensation/evaporation and precipitation processes:
@@ -1110,6 +1126,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       !        call stepout()
       !----------------------------------------------------------
     enddo ! main loop
+    !----------------------------------------------------------
 
     !========================================================================================
     !----------------------------------------------------------------------------------------
@@ -1248,31 +1265,31 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm,icrm)
     crm_output%tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm,icrm)
 #ifdef CLUBB_CRM
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3) = wprtp     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4) = wpthlp    (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5) = wp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6) = wp3       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7) = rtp2      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8) = thlp2     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9) = rtpthlp   (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10) = upwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11) = vpwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12) = cloud_frac(1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13) = t_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14) = qc_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15) = qv_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16) = u_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17) = v_tndcy   (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  3) = wprtp     (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  4) = wpthlp    (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  5) = wp2       (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  6) = wp3       (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  7) = rtp2      (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  8) = thlp2     (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz ,  9) = rtpthlp   (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz , 10) = upwp      (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz , 11) = vpwp      (1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nz , 12) = cloud_frac(1:nx, 1:ny, 1:nz )
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 13) = t_tndcy   (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 14) = qc_tndcy  (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 15) = qv_tndcy  (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 16) = u_tndcy   (1:nx, 1:ny, 1:nzm)
+    clubb_buffer(vc,1:nx, 1:ny, 1:nzm, 17) = v_tndcy   (1:nx, 1:ny, 1:nzm)
 
-    crm_cld    (icrm,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
-    clubb_tk   (icrm,1:nx, 1:ny, 1:nzm) = tk_clubb    (1:nx, 1:ny, 1:nzm)
-    clubb_tkh  (icrm,1:nx, 1:ny, 1:nzm) = tkh_clubb   (1:nx, 1:ny, 1:nzm)
-    relvar     (icrm,1:nx, 1:ny, 1:nzm) = relvarg     (1:nx, 1:ny, 1:nzm)
-    accre_enhan(icrm,1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm)
-    qclvar     (icrm,1:nx, 1:ny, 1:nzm) = qclvarg     (1:nx, 1:ny, 1:nzm)
-#endif /* CLUBB_CRM */
+    crm_cld    (vc,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
+    clubb_tk   (vc,1:nx, 1:ny, 1:nzm) = tk_clubb    (1:nx, 1:ny, 1:nzm)
+    clubb_tkh  (vc,1:nx, 1:ny, 1:nzm) = tkh_clubb   (1:nx, 1:ny, 1:nzm)
+    relvar     (vc,1:nx, 1:ny, 1:nzm) = relvarg     (1:nx, 1:ny, 1:nzm)
+    accre_enhan(vc,1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm)
+    qclvar     (vc,1:nx, 1:ny, 1:nzm) = qclvarg     (1:nx, 1:ny, 1:nzm)
+#endif
 
     do k=1,nzm
      do j=1,ny
@@ -1584,7 +1601,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_ecpp_output%wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k)
       crm_ecpp_output%wwqui_cloudy_bnd(icrm,l)       = wwqui_cloudy_bnd_sum(k)
     enddo
-#endif /* ECPP */
+#endif
 
     crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm) / nstop
 
@@ -1645,10 +1662,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #ifdef sam1mom
   call deallocate_micro_params()
 #endif
-#if defined( SP_ESMT )
-  call deallocate_scalar_momentum()
+                          precc(vc),precl(vc),cld(vc,:),cldtop(vc,:),gicewp(vc,:),gliqwp(vc,:),mc(vc,:),mcup(vc,:),mcdn(vc,:),mcuup(vc,:),mcudn(vc,:),crm_qc(vc,:), &
+                          crm_qi(vc,:),crm_qs(vc,:),crm_qg(vc,:),crm_qr(vc,:),mu_crm(vc,:),md_crm(vc,:),du_crm(vc,:),eu_crm(vc,:),ed_crm(vc,:),dd_crm(vc,:),jt_crm(vc), &
+                          mx_crm(vc),mui_crm(vc,:),mdi_crm(vc,:),flux_qt(vc,:),fluxsgs_qt(vc,:),tkez(vc,:),tkesgsz(vc,:),tkz(vc,:),flux_u(vc,:),flux_v(vc,:),flux_qp(vc,:), &
+                          pflx(vc,:),qt_ls(vc,:),qt_trans(vc,:),qp_trans(vc,:),qp_fall(vc,:),qp_src(vc,:),qp_evp(vc,:),t_ls(vc,:),prectend(vc),precstend(vc),precsc(vc), &
+                          precsl(vc),taux_crm(vc),tauy_crm(vc),z0m(vc),timing_factor(vc),qc_crm(vc,:,:,:),qi_crm(vc,:,:,:),qpc_crm(vc,:,:,:),qpi_crm(vc,:,:,:), &
+                          prec_crm(vc,:,:),qtot(vc,:) )
 #endif
+  enddo
 
-end subroutine crm
+  end subroutine crm
 
+  
 end module crm_module

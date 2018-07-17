@@ -16,6 +16,9 @@ use ppgrid,        only: pcols, pver
 use physics_types, only: physics_state, physics_ptend, physics_ptend_init
 
 use physics_buffer, only : physics_buffer_desc
+!MAML-Guangxing Lin
+use seq_comm_mct, only : num_inst_atm
+!MAML-Guangxing Lin
 
 implicit none
 private
@@ -88,7 +91,10 @@ subroutine radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
    real(r8),            intent(in)  :: fsnt(pcols)       ! Net column abs solar flux at model top
    real(r8),            intent(in)  :: flns(pcols)       ! Srf longwave cooling (up-down) flux
    real(r8),            intent(in)  :: flnt(pcols)       ! Net outgoing lw flux at model top
-   real(r8),            intent(in)  :: asdir(pcols)      ! shortwave, direct albedo
+!MAML-Guangxing Lin
+   real(r8),            intent(in)  :: asdir(pcols,num_inst_atm)      ! shortwave, direct albedo
+   !real(r8),            intent(in)  :: asdir(pcols)      ! shortwave, direct albedo
+!MAML-Guangxing Lin
    real(r8),            intent(out) :: net_flx(pcols)  
 
 

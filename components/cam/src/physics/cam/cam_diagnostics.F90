@@ -512,7 +512,9 @@ subroutine diag_init()
    call addfld ('PRECSC',horiz_only,    'A','m/s','Convective snow rate (water equivalent)'                            )
    call addfld ('PRECCav',horiz_only,    'A','m/s','Average large-scale precipitation (liq + ice)'                      )
    call addfld ('PRECLav',horiz_only,    'A','m/s','Average convective precipitation  (liq + ice)'                      )
-
+!MAML-Guangxing Lin
+    call addfld ('PRECTFREQ',  horiz_only, 'A', 'm/s','Total precipitation frequency')
+!MAML-Guangxing Lin
    ! outfld calls in diag_surf
 
    call addfld ('SHFLX',horiz_only,    'A','W/m2','Surface sensible heat flux')
@@ -548,7 +550,9 @@ subroutine diag_init()
    call addfld ('ALDIR',       horiz_only,    'A',   '1','albedo: longwave, direct')
    call addfld ('ALDIF',       horiz_only,    'A',   '1','albedo: longwave, diffuse')
    call addfld ('SST',       horiz_only,    'A',     'K','sea surface temperature')
-
+!MAML-Guangxing Lin
+    call addfld ('LHFLXSD',  horiz_only, 'A', 'W/m2','Surface latent heat flux standard deviation')
+!MAML-Guangxing Lin
    ! defaults
    if (history_amwg) then
        call add_default ('DTCOND  ', 1, ' ')
@@ -556,6 +560,9 @@ subroutine diag_init()
        call add_default ('PRECC   ', 1, ' ')
        call add_default ('PRECSL  ', 1, ' ')
        call add_default ('PRECSC  ', 1, ' ')
+!MAML-Guangxing Lin
+       call add_default ('PRECTFREQ', 1, ' ')
+!MAML-Guangxing Lin
        call add_default ('SHFLX   ', 1, ' ')
        call add_default ('LHFLX   ', 1, ' ')
        call add_default ('QFLX    ', 1, ' ')
@@ -1595,7 +1602,9 @@ subroutine diag_conv(state, ztodt, pbuf)
    real(r8):: snowl(pcols)                ! stratiform snow rate
    real(r8):: prect(pcols)                ! total (conv+large scale) precip rate
    real(r8) :: dcoef(4)                   ! for tidal component of T tend
-
+!MAML-Guangxing Lin
+    real(r8):: prectfreq(pcols)            ! total (conv+large scale) precip freq 
+!MAML-Guangxing Lin
    lchnk = state%lchnk
    ncol  = state%ncol
 
@@ -1628,6 +1637,13 @@ subroutine diag_conv(state, ztodt, pbuf)
 
    call outfld('PRECLav ', precl, pcols, lchnk )
    call outfld('PRECCav ', precc, pcols, lchnk )
+!MAML-Guangxing Lin
+      prectfreq(:ncol) = 0._r8
+      do i = 1, ncol
+        if (prect(i) > 1.2e-11_r8) prectfreq(i) = 1.0_r8
+      end do
+      call outfld('PRECTFREQ', prectfreq, pcols, lchnk )
+!MAML-Guangxing Lin
 
 #if ( defined BFB_CAM_SCAM_IOP )
    call outfld('Prec   ' , prect, pcols, lchnk )
@@ -1676,6 +1692,9 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
    use co2_cycle,        only: c_i, co2_transport
    use constituents,     only: sflxnam
 
+!MAML-Guangxing Lin
+    use seq_comm_mct,     only : num_inst_atm
+!MAML-Guangxing Lin
 !-----------------------------------------------------------------------
 !
 ! Input arguments
@@ -1695,18 +1714,67 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     integer :: ncol         ! longitude dimension
     real(r8) tem2(pcols)    ! temporary workspace
     real(r8) ftem(pcols)    ! temporary workspace
+
+!MAML-Guangxing Lin
+    real(r8) shfavg(pcols),lhfavg(pcols),wsxavg(pcols),wsyavg(pcols)
+    real(r8) snowhlandavg(pcols),asdiravg(pcols),aldiravg(pcols)
+    real(r8) asdifavg(pcols),aldifavg(pcols)
+    real(r8) lhfsd(pcols)
+    integer :: ii
+!MAML-Guangxing Lin
+
 !
 !-----------------------------------------------------------------------
 !
     lchnk = cam_in%lchnk
     ncol  = cam_in%ncol
 
-    call outfld('SHFLX',    cam_in%shf,       pcols, lchnk)
-    call outfld('LHFLX',    cam_in%lhf,       pcols, lchnk)
+!MAML-Guangxing Lin
+    lhfavg = 0.; shfavg = 0.; wsxavg = 0.; wsyavg = 0.
+    snowhlandavg = 0.; asdiravg = 0.; aldiravg = 0.
+    asdifavg = 0.; aldifavg = 0.
+    lhfsd = 0.
+    do i = 1,ncol
+      do ii = 1,num_inst_atm
+        lhfavg(i) = lhfavg(i)+cam_in%lhf(i,ii)
+        shfavg(i) = shfavg(i)+cam_in%shf(i,ii)
+        wsxavg(i) = wsxavg(i)+cam_in%wsx(i,ii)
+        wsyavg(i) = wsyavg(i)+cam_in%wsy(i,ii)
+        snowhlandavg(i) = snowhlandavg(i)+cam_in%snowhland(i,ii)
+        asdiravg(i) = asdiravg(i)+cam_in%asdir(i,ii)
+        aldiravg(i) = aldiravg(i)+cam_in%aldir(i,ii)
+        asdifavg(i) = asdifavg(i)+cam_in%asdif(i,ii)
+        aldifavg(i) = aldifavg(i)+cam_in%aldif(i,ii)
+      enddo
+      lhfavg(i) = lhfavg(i)/float(num_inst_atm)
+      shfavg(i) = shfavg(i)/float(num_inst_atm)
+      wsxavg(i) = wsxavg(i)/float(num_inst_atm)
+      wsyavg(i) = wsyavg(i)/float(num_inst_atm)
+      snowhlandavg(i) = snowhlandavg(i)/float(num_inst_atm)
+      asdiravg(i) = asdiravg(i)/float(num_inst_atm)
+      aldiravg(i) = aldiravg(i)/float(num_inst_atm)
+      asdifavg(i) = asdifavg(i)/float(num_inst_atm)
+      aldifavg(i) = aldifavg(i)/float(num_inst_atm)
+      do ii = 1,num_inst_atm
+        lhfsd(i) = (cam_in%lhf(i,ii)-lhfavg(i))**2
+      enddo
+      lhfsd(i) = sqrt(lhfsd(i)/float(ncol))
+    enddo
+ 
+    call outfld('SHFLX',    shfavg,       pcols, lchnk)
+    call outfld('LHFLX',    lhfavg,       pcols, lchnk)
+    call outfld('TAUX',     wsxavg,       pcols, lchnk)
+    call outfld('TAUY',     wsyavg,       pcols, lchnk)
+    call outfld('LHFLXSD',    lhfsd,       pcols, lchnk)
+
+
+  !  call outfld('SHFLX',    cam_in%shf,       pcols, lchnk)
+  !  call outfld('LHFLX',    cam_in%lhf,       pcols, lchnk)
     call outfld('QFLX',     cam_in%cflx(1,1), pcols, lchnk)
 
-    call outfld('TAUX',     cam_in%wsx,       pcols, lchnk)
-    call outfld('TAUY',     cam_in%wsy,       pcols, lchnk)
+  !  call outfld('TAUX',     cam_in%wsx,       pcols, lchnk)
+  !  call outfld('TAUY',     cam_in%wsy,       pcols, lchnk)
+!MAML-Guangxing Lin
     call outfld('TREFHT  ', cam_in%tref,      pcols, lchnk)
     call outfld('TREFHTMX', cam_in%tref,      pcols, lchnk)
     call outfld('TREFHTMN', cam_in%tref,      pcols, lchnk)
@@ -1752,13 +1820,21 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     call outfld('TS',       cam_in%ts,        pcols, lchnk)
     call outfld('TSMN',     cam_in%ts,        pcols, lchnk)
     call outfld('TSMX',     cam_in%ts,        pcols, lchnk)
-    call outfld('SNOWHLND', cam_in%snowhland, pcols, lchnk)
-    call outfld('SNOWHICE', cam_in%snowhice,  pcols, lchnk)
-    call outfld('ASDIR',    cam_in%asdir,     pcols, lchnk)
-    call outfld('ASDIF',    cam_in%asdif,     pcols, lchnk)
-    call outfld('ALDIR',    cam_in%aldir,     pcols, lchnk)
-    call outfld('ALDIF',    cam_in%aldif,     pcols, lchnk)
+!MAML-Guangxing Lin
+    !call outfld('SNOWHLND', cam_in%snowhland, pcols, lchnk)
+    !call outfld('SNOWHICE', cam_in%snowhice,  pcols, lchnk)
+    !call outfld('ASDIR',    cam_in%asdir,     pcols, lchnk)
+    !call outfld('ASDIF',    cam_in%asdif,     pcols, lchnk)
+    !call outfld('ALDIR',    cam_in%aldir,     pcols, lchnk)
+    !call outfld('ALDIF',    cam_in%aldif,     pcols, lchnk)
     call outfld('SST',      cam_in%sst,       pcols, lchnk)
+      call outfld('SNOWHLND', snowhlandavg, pcols, lchnk)
+      call outfld('SNOWHICE', cam_in%snowhice,  pcols, lchnk)
+      call outfld('ASDIR',    asdiravg,     pcols, lchnk)
+      call outfld('ASDIF',    asdifavg,     pcols, lchnk)
+      call outfld('ALDIR',    aldiravg,     pcols, lchnk)
+      call outfld('ALDIF',    aldifavg,     pcols, lchnk)
+!MAML-Guangxing Lin
 
     if (co2_transport()) then
        do m = 1,4

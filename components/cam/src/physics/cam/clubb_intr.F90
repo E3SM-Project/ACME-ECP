@@ -918,7 +918,11 @@ end subroutine clubb_init_cnst
    use cam_abortutils, only: endrun
    use wv_saturation,  only: qsat
    use micro_mg_cam,   only: micro_mg_version
-      
+!MAML-Guangxing Lin
+  use seq_comm_mct,       only : num_inst_atm
+!MAML-Guangxing Lin
+
+   
 #ifdef CLUBB_SGS
    use hb_diff,                   only: pblintd
    use scamMOD,                   only: single_column,scm_clubb_iop_name
@@ -1217,6 +1221,15 @@ end subroutine clubb_init_cnst
    integer :: ixorg
 
    intrinsic :: selected_real_kind, max
+!MAML-Guangxing Lin
+   real(r8) :: shfavg_in(pcols)
+   real(r8) :: lhfavg_in(pcols)
+   real(r8) :: wsxavg_in(pcols)
+   real(r8) :: wsyavg_in(pcols)
+   real(r8) :: snowhlandavg_in(pcols)
+   real(r8) :: factor_xy
+   integer ::  ii
+!MAML-Guangxing Lin
 
 #endif
    det_s(:)   = 0.0_r8
@@ -1518,6 +1531,24 @@ end subroutine clubb_init_cnst
                   -state1%q(i,k,ixcldliq))
      enddo
    enddo
+
+!MAML-Guangxing Lin
+    shfavg_in =0._r8
+    lhfavg_in =0._r8
+    wsxavg_in =0._r8
+    wsyavg_in =0._r8
+    snowhlandavg_in =0._r8
+    factor_xy = 1._r8 / dble(num_inst_atm)
+    do i=1,ncol
+      do ii=1,num_inst_atm
+        shfavg_in(i) = shfavg_in(i)+cam_in%shf(i,ii)*factor_xy
+        lhfavg_in(i) = lhfavg_in(i)+cam_in%lhf(i,ii)*factor_xy
+        wsxavg_in(i) = wsxavg_in(i)+cam_in%wsx(i,ii)*factor_xy
+        wsyavg_in(i) = wsyavg_in(i)+cam_in%wsy(i,ii)*factor_xy
+        snowhlandavg_in(i) = snowhlandavg_in(i) + cam_in%snowhland(i,ii)*factor_xy
+      enddo
+    end do
+!MAML-Guangxing Lin
    call t_stopf('clubb_tend_cam_init')
    
    ! ------------------------------------------------- !
@@ -1703,10 +1734,16 @@ end subroutine clubb_init_cnst
       wm_zm           = zt2zm(wm_zt)
       
       !  Surface fluxes provided by host model
-      wpthlp_sfc = cam_in%shf(i)/(cpair*rho_ds_zm(1))       ! Sensible heat flux
+!MAML-Guangxing Lin
+      !wpthlp_sfc = cam_in%shf(i)/(cpair*rho_ds_zm(1))       ! Sensible heat flux
+      !wprtp_sfc  = cam_in%cflx(i,1)/(rho_ds_zm(1))      ! Latent heat flux
+      !upwp_sfc   = cam_in%wsx(i)/rho_ds_zm(1)               ! Surface meridional momentum flux
+      !vpwp_sfc   = cam_in%wsy(i)/rho_ds_zm(1)               ! Surface zonal momentum flux  
+      wpthlp_sfc = shfavg_in(i)/(cpair*rho_ds_zm(1))       ! Sensible heat flux
       wprtp_sfc  = cam_in%cflx(i,1)/(rho_ds_zm(1))      ! Latent heat flux
-      upwp_sfc   = cam_in%wsx(i)/rho_ds_zm(1)               ! Surface meridional momentum flux
-      vpwp_sfc   = cam_in%wsy(i)/rho_ds_zm(1)               ! Surface zonal momentum flux  
+      upwp_sfc   = wsxavg_in(i)/rho_ds_zm(1)               ! Surface meridional momentum flux
+      vpwp_sfc   = wsyavg_in(i)/rho_ds_zm(1)               ! Surface zonal momentum flux  
+!MAML-Guangxing Lin      
       
       ! ------------------------------------------------- !
       ! Apply TMS                                         !
@@ -2011,7 +2048,10 @@ end subroutine clubb_init_cnst
       enddo
      
       ! Take into account the surface fluxes of heat and moisture
-      te_b(i) = te_b(i)+(cam_in%shf(i)+(cam_in%cflx(i,1))*(latvap+latice))*hdtime
+!MAML-Guangxing Lin
+      !te_b(i) = te_b(i)+(cam_in%shf(i)+(cam_in%cflx(i,1))*(latvap+latice))*hdtime
+      te_b(i) = te_b(i)+(shfavg_in(i)+(cam_in%cflx(i,1))*(latvap+latice))*hdtime
+!MAML-Guangxing Lin
 
       ! Limit the energy fixer to find highest layer where CLUBB is active
       ! Find first level where wp2 is higher than lowest threshold
@@ -2369,7 +2409,10 @@ end subroutine clubb_init_cnst
    call t_startf('ice_cloud_frac_diag')
    do k=1,pver
       call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
-           state1%q(:,k,ixnumice),cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol)
+!MAML-Guangxing Lin           
+           !state1%q(:,k,ixnumice),cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol)
+           state1%q(:,k,ixnumice),cam_in%landfrac(:),snowhlandavg_in(:),aist(:,k),ncol)
+!MAML-Guangxing Lin           
    enddo
    call t_stopf('ice_cloud_frac_diag')
   
@@ -2420,10 +2463,14 @@ end subroutine clubb_init_cnst
    ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
    do i=1,ncol
       rrho = (1._r8/gravit)*(state1%pdel(i,pver)/dz_g(pver))
-      call calc_ustar( state1%t(i,pver), state1%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
+!MAML-Guangxing Lin      
+     !call calc_ustar( state1%t(i,pver), state1%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
+      call calc_ustar( state1%t(i,pver), state1%pmid(i,pver), wsxavg_in(i), wsyavg_in(i), &
                        rrho, ustar2(i) )
-      call calc_obklen( th(i,pver), thv(i,pver), cam_in%cflx(i,1), cam_in%shf(i), rrho, ustar2(i), &
+      !call calc_obklen( th(i,pver), thv(i,pver), cam_in%cflx(i,1), cam_in%shf(i), rrho, ustar2(i), &
+      call calc_obklen( th(i,pver), thv(i,pver), cam_in%cflx(i,1), shfavg_in(i), rrho, ustar2(i), &
                         kinheat(i), kinwat(i), kbfs(i), obklen(i) )  
+!MAML-Guangxing Lin      
    enddo
    
    dummy2(:) = 0._r8
@@ -2553,7 +2600,9 @@ end subroutine clubb_init_cnst
     use ppgrid,                 only: pver, pcols
     use constituents,           only: pcnst, cnst_get_ind
     use camsrfexch,             only: cam_in_t
-    
+!MAML-Guangxing Lin
+  use seq_comm_mct,       only : num_inst_atm
+!MAML-Guangxing Lin 
     implicit none
     
     ! --------------- !
@@ -2594,7 +2643,15 @@ end subroutine clubb_init_cnst
     real(r8) :: rrho                                            ! Inverse air density
     
     logical  :: lq(pcnst)
-
+!MAML-Guangxing Lin
+   real(r8) :: shfavg_in(pcols)
+   real(r8) :: lhfavg_in(pcols)
+   real(r8) :: wsxavg_in(pcols)
+   real(r8) :: wsyavg_in(pcols)
+   real(r8) :: snowhlandavg_in(pcols)
+   real(r8) :: factor_xy
+   integer ::  ii
+!MAML-Guangxing Lin
 #endif
     obklen(pcols) = 0.0_r8
     ustar(pcols)  = 0.0_r8
@@ -2618,12 +2675,30 @@ end subroutine clubb_init_cnst
        th(i) = state%t(i,pver)*state%exner(i,pver)         ! diagnose potential temperature
        thv(i) = th(i)*(1._r8+zvir*state%q(i,pver,ixq))  ! diagnose virtual potential temperature
     enddo
-    
+   
+
+!MAML-Guangxing Lin
+    shfavg_in =0._r8
+    wsxavg_in =0._r8
+    wsyavg_in =0._r8
+    factor_xy = 1._r8 / dble(num_inst_atm)
+    do i=1,ncol
+      do ii=1,num_inst_atm
+        shfavg_in(i) = shfavg_in(i)+cam_in%shf(i,ii)*factor_xy
+        wsxavg_in(i) = wsxavg_in(i)+cam_in%wsx(i,ii)*factor_xy
+        wsyavg_in(i) = wsyavg_in(i)+cam_in%wsy(i,ii)*factor_xy
+      enddo
+    end do
+!MAML-Guangxing Lin 
     do i = 1, ncol
-       call calc_ustar( state%t(i,pver), state%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
+!MAML-Guangxing Lin
+       !call calc_ustar( state%t(i,pver), state%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
+       call calc_ustar( state%t(i,pver), state%pmid(i,pver), wsxavg_in(i), wsyavg_in(i), &
                         rrho, ustar(i) )
-       call calc_obklen( th(i), thv(i), cam_in%cflx(i,1), cam_in%shf(i), rrho, ustar(i), &
+       !call calc_obklen( th(i), thv(i), cam_in%cflx(i,1), cam_in%shf(i), rrho, ustar(i), &
+       call calc_obklen( th(i), thv(i), cam_in%cflx(i,1), shfavg_in(i), rrho, ustar(i), &
                         kinheat, kinwat, kbfs, obklen(i) )
+!MAML-Guangxing Lin
     enddo
 
     rztodt                 = 1._r8/ztodt
