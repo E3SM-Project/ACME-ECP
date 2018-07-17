@@ -55,6 +55,9 @@ subroutine crm(lchnk, icol, nvcols, &
                 sub_crm_a, dep_crm_a, con_crm_a, &
 #endif
                 precc, precl, precsc, precsl, &
+!MAML-Guangxing Lin
+                crm_pcp, crm_snw,                         &
+!MAML-Guangxing Lin
                 cltot, clhgh, clmed, cllow, cld, cldtop, &
                 gicewp, gliqwp, &
                 mc, mcup, mcdn, mcuup, mcudn, &
@@ -169,13 +172,21 @@ subroutine crm(lchnk, icol, nvcols, &
     real(r8), intent(in   ) :: zint                (nvcols,plev+1)! Global grid interface height (m)
     real(r8), intent(in   ) :: qrad_crm            (nvcols,crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
     real(r8), intent(in   ) :: ocnfrac             (nvcols)       ! area fraction of the ocean
-    real(r8), intent(in   ) :: tau00               (nvcols)       ! large-scale surface stress (N/m2)
+!MAML-Guangxing Lin    
+    !real(r8), intent(in   ) :: tau00               (nvcols)       ! large-scale surface stress (N/m2)
+    real(r8), intent(in   ) :: tau00               (nvcols,crm_nx)       ! large-scale surface stress (N/m2)
     real(r8), intent(in   ) :: wndls               (nvcols)       ! large-scale surface wind (m/s)
-    real(r8), intent(in   ) :: bflxls              (nvcols)       ! large-scale surface buoyancy flux (K m/s)
-    real(r8), intent(in   ) :: fluxu00             (nvcols)       ! surface momenent fluxes [N/m2]
-    real(r8), intent(in   ) :: fluxv00             (nvcols)       ! surface momenent fluxes [N/m2]
-    real(r8), intent(in   ) :: fluxt00             (nvcols)       ! surface sensible heat fluxes [K Kg/ (m2 s)]
-    real(r8), intent(in   ) :: fluxq00             (nvcols)       ! surface latent heat fluxes [ kg/(m2 s)]
+    !real(r8), intent(in   ) :: bflxls              (nvcols)       ! large-scale surface buoyancy flux (K m/s)
+    real(r8), intent(in   ) :: bflxls              (nvcols,crm_nx)       ! large-scale surface buoyancy flux (K m/s)
+    real(r8), intent(in   ) :: fluxu00             (nvcols,crm_nx)       ! surface momenent fluxes [N/m2]
+    real(r8), intent(in   ) :: fluxv00             (nvcols,crm_nx)       ! surface momenent fluxes [N/m2]
+    real(r8), intent(in   ) :: fluxt00             (nvcols,crm_nx)       ! surface sensible heat fluxes [K Kg/ (m2 s)]
+    real(r8), intent(in   ) :: fluxq00             (nvcols,crm_nx)       ! surface latent heat fluxes [ kg/(m2 s)]
+    !real(r8), intent(in   ) :: fluxu00             (nvcols)       ! surface momenent fluxes [N/m2]
+    !real(r8), intent(in   ) :: fluxv00             (nvcols)       ! surface momenent fluxes [N/m2]
+    !real(r8), intent(in   ) :: fluxt00             (nvcols)       ! surface sensible heat fluxes [K Kg/ (m2 s)]
+    !real(r8), intent(in   ) :: fluxq00             (nvcols)       ! surface latent heat fluxes [ kg/(m2 s)]
+!MAML-Guangxing Lin    
     real(r8), intent(in   ) :: tl                  (nvcols,plev)  ! Global grid temperature (K)
     real(r8), intent(in   ) :: ql                  (nvcols,plev)  ! Global grid water vapor (g/g)
     real(r8), intent(in   ) :: qccl                (nvcols,plev)  ! Global grid cloud liquid water (g/g)
@@ -250,6 +261,9 @@ subroutine crm(lchnk, icol, nvcols, &
 #endif
     real(r8), intent(  out) :: precc               (nvcols)       ! convective precip rate (m/s)
     real(r8), intent(  out) :: precl               (nvcols)       ! stratiform precip rate (m/s)
+!MAML-Guangxing Lin
+    real(r8), intent(inout) :: crm_pcp(nvcols, crm_nx,crm_ny)  ! CRM precip rate (m/s)
+!MAML-Guangxing Lin
     real(r8), intent(  out) :: cld                 (nvcols,plev)  ! cloud fraction
     real(r8), intent(  out) :: cldtop              (nvcols,plev)  ! cloud top pdf
     real(r8), intent(  out) :: gicewp              (nvcols,plev)  ! ice water path
@@ -306,6 +320,9 @@ subroutine crm(lchnk, icol, nvcols, &
     real(r8), intent(  out) :: precstend           (nvcols)            ! column integrated tendency in precipitating ice (kg/m2/s)
     real(r8), intent(  out) :: precsc              (nvcols)            ! convective snow rate (m/s)
     real(r8), intent(  out) :: precsl              (nvcols)            ! stratiform snow rate (m/s)
+!MAML-Guangxing Lin
+    real(r8), intent(inout) :: crm_snw(nvcols,crm_nx,crm_ny) ! CRM snow rate (m/s)
+!MAML-Guangxing Lin
     real(r8), intent(  out) :: taux_crm            (nvcols)            ! zonal CRM surface stress perturbation (N/m2)
     real(r8), intent(  out) :: tauy_crm            (nvcols)            ! merid CRM surface stress perturbation (N/m2)
     real(r8), intent(  out) :: z0m                 (nvcols)            ! surface stress (N/m2)
@@ -358,7 +375,11 @@ subroutine crm(lchnk, icol, nvcols, &
     integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, vc
     integer         :: kx
     logical         :: flag_top(nx,ny)
-    real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
+!MAML-Guangxing Lin
+    real(crm_rknd)  ::  ustar(crm_nx), bflx(crm_nx), wnd,  qsat, omg
+    integer :: ii
+ !   real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
+!MAML-Guangxing Lin
     real(crm_rknd)  :: colprec,colprecs
     real(r8)        :: zs                ! surface elevation
     integer         :: igstep            ! GCM time steps
@@ -367,6 +388,16 @@ subroutine crm(lchnk, icol, nvcols, &
     real(crm_rknd)  :: cltemp(nx,ny), cmtemp(nx,ny), chtemp(nx, ny), cttemp(nx, ny)
     real(crm_rknd)  :: ntotal_step
     integer         :: myrank, ierr
+!MAML-Guangxing Lin
+    real(r8) z0_loc(crm_nx)  ! local z0; should it be dimensioned nx?
+    real(r8) pcp_check   ! precip amount over all CRMs
+    real(r8) fluxu00avg   !
+    real(r8) fluxv00avg   !
+    real(r8) fluxt00avg   !
+    real(r8) fluxq00avg   !
+    real(r8) tau00avg   !
+    real(r8) bflxlsavg   !
+!MAML-Guangxing Lin
 #ifdef CLUBB_CRM
     !Array indicies for spurious RTM check
     real(kind=core_rknd) :: rtm_integral_before (nx,ny), rtm_integral_after (nx,ny), rtm_flux_top, rtm_flux_sfc
@@ -397,9 +428,28 @@ subroutine crm(lchnk, icol, nvcols, &
 
     igstep = get_nstep()
 
+!MAML-Guangxing Lin
+    fluxv00avg =0._r8
+    fluxu00avg =0._r8
+    fluxt00avg =0._r8
+    fluxq00avg =0._r8
+    tau00avg =0._r8
+    bflxlsavg =0._r8
+    factor_xy = 1._r8 / dble(crm_nx)
+    do ii =1, crm_nx
+       fluxv00avg = fluxv00avg + fluxv00(vc,ii)*factor_xy
+       fluxu00avg = fluxu00avg + fluxu00(vc,ii)*factor_xy
+       fluxt00avg = fluxt00avg + fluxt00(vc,ii)*factor_xy
+       fluxq00avg = fluxq00avg + fluxq00(vc,ii)*factor_xy
+       tau00avg = tau00avg + tau00(vc,ii)*factor_xy
+       bflxlsavg = bflxlsavg + bflxls(vc,ii)*factor_xy
+    enddo
+
 #ifdef CRM_DUMP
     call crm_dump_input( igstep,plev,lchnk,icol(vc),latitude0,longitude0,ps(vc),pmid(vc,:),pdel(vc,:),phis(vc),zmid(vc,:),zint(vc,:),qrad_crm(vc,:,:,:),dt_gl, &
-                         ocnfrac(vc),tau00(vc),wndls(vc),bflxls(vc),fluxu00(vc),fluxv00(vc),fluxt00(vc),fluxq00(vc),tl(vc,:),ql(vc,:),qccl(vc,:),qiil(vc,:),   &
+                         ocnfrac(vc),tau00avg,wndls(vc),bflxlsavg,fluxu00avg,fluxv00avg,fluxt00avg,fluxq00avg,tl(vc,:),ql(vc,:),qccl(vc,:),qiil(vc,:),   &
+                       !  ocnfrac(vc),tau00(vc),wndls(vc),bflxls(vc),fluxu00(vc),fluxv00(vc),fluxt00(vc),fluxq00(vc),tl(vc,:),ql(vc,:),qccl(vc,:),qiil(vc,:),   &
+!MAML-Guangxing Lin
                          ul(vc,:),vl(vc,:), &
 #ifdef CLUBB_CRM
                          clubb_buffer(vc,:,:,:,:) , &
@@ -432,7 +482,10 @@ subroutine crm(lchnk, icol, nvcols, &
     ns_rad(vc,:,:,:) = 0.0
 #endif
     zs=phis(vc)/ggr
-    bflx = bflxls(vc)
+!MAML-Guangxing Lin
+    !bflx = bflxls(vc)
+    bflx(:) = bflxls(vc,:)
+!MAML-Guangxing Lin
     wnd = wndls(vc)
 
 !-----------------------------------------
@@ -520,14 +573,20 @@ subroutine crm(lchnk, icol, nvcols, &
         do j=1,ny
           do i=1,nx
             u_crm(vc,i,j,k) = min( umax, max(-umax,u_crm(vc,i,j,k)) )
-            v_crm(vc,i,j,k) = min( umax, max(-umax,v_crm(vc,i,j,k)) )*YES3D
+!MAML-Guangxing Lin: v winds needed for multi-instance code to get surface drag 
+            !v_crm(vc,i,j,k) = min( umax, max(-umax,v_crm(vc,i,j,k)) )*YES3D
+            v_crm(vc,i,j,k) = min( umax, max(-umax,v_crm(vc,i,j,k)) )
+!MAML-Guangxing Lin
           enddo
         enddo
       enddo
     endif
 
     u          (1:nx,1:ny,1:nzm                ) = u_crm           (vc,1:nx,1:ny,1:nzm                )
-    v          (1:nx,1:ny,1:nzm                ) = v_crm           (vc,1:nx,1:ny,1:nzm                )*YES3D
+!MAML-Guangxing Lin
+    !v          (1:nx,1:ny,1:nzm                ) = v_crm           (vc,1:nx,1:ny,1:nzm                )*YES3D
+    v          (1:nx,1:ny,1:nzm                ) = v_crm           (vc,1:nx,1:ny,1:nzm                )
+!MAML-Guangxing Lin
     w          (1:nx,1:ny,1:nzm                ) = w_crm           (vc,1:nx,1:ny,1:nzm                )
     tabs       (1:nx,1:ny,1:nzm                ) = t_crm           (vc,1:nx,1:ny,1:nzm                )
     micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(vc,1:nx,1:ny,1:nzm,1:nmicro_fields)
@@ -630,7 +689,10 @@ subroutine crm(lchnk, icol, nvcols, &
 
       l = plev-k+1
       uln(l) = min( umax, max(-umax,ul(vc,l)) )
-      vln(l) = min( umax, max(-umax,vl(vc,l)) )*YES3D
+!MAML-Guangxing Lin
+      !vln(l) = min( umax, max(-umax,vl(vc,l)) )*YES3D
+      vln(l) = min( umax, max(-umax,vl(vc,l)) )
+!MAML-Guangxing Lin
       ttend(k) = (tl(vc,l)+gamaz(k)- fac_cond*(qccl(vc,l)+qiil(vc,l))-fac_fus*qiil(vc,l)-t00(k))*idt_gl
       qtend(k) = (ql(vc,l)+qccl(vc,l)+qiil(vc,l)-q0(k))*idt_gl
       utend(k) = (uln(l)-u0(k))*idt_gl
@@ -647,9 +709,16 @@ subroutine crm(lchnk, icol, nvcols, &
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
-    ustar = sqrt(tau00(vc)/rho(1))
-    z0 = z0_est(z(1),bflx,wnd,ustar)
-    z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
+!MAML-Guangxing Lin...adjusted for CRM-resolution
+    do i=1,nx
+       ustar(i) = sqrt(tau00(vc,i)/rho(1))
+       z0_loc(i) = z0_est(z(1),bflx(i),wnd,ustar(i))
+       z0_loc(i) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0_loc(i)))
+    enddo
+ !   ustar = sqrt(tau00(vc)/rho(1))
+ !   z0 = z0_est(z(1),bflx,wnd,ustar)
+ !   z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
+!MAML-Guangxing Lin
 
     timing_factor = 0.
 
@@ -659,10 +728,16 @@ subroutine crm(lchnk, icol, nvcols, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(:, :) = fluxu00(vc)/rhow(1)
-      fluxbv(:, :) = fluxv00(vc)/rhow(1)
-      fluxbt(:, :) = fluxt00(vc)/rhow(1)
-      fluxbq(:, :) = fluxq00(vc)/rhow(1)
+!MAML-Guangxing Lin...adjusted for CRM-resolution
+      fluxbu(1:nx, :) = fluxu00(vc,1:nx)/rhow(1)
+      fluxbv(1:nx, :) = fluxv00(vc,1:nx)/rhow(1)
+      fluxbt(1:nx, :) = fluxt00(vc,1:nx)/rhow(1)
+      fluxbq(1:nx, :) = fluxq00(vc,1:nx)/rhow(1)
+      !fluxbu(:, :) = fluxu00(vc)/rhow(1)
+      !fluxbv(:, :) = fluxv00(vc)/rhow(1)
+      !fluxbt(:, :) = fluxt00(vc)/rhow(1)
+      !fluxbq(:, :) = fluxq00(vc)/rhow(1)
+!MAML-Guangxing Lin
     else
       fluxbu(:, :) = 0.
       fluxbv(:, :) = 0.
@@ -670,10 +745,18 @@ subroutine crm(lchnk, icol, nvcols, &
       fluxbq(:, :) = 0.
     endif
 #else
+!MAML-Guangxing: crm-level surface fluxes
+    do i=1,nx
+       do j=1,ny
+         fluxbt(i,j) = fluxt00(vc,i)/rhow(1)
+         fluxbq(i,j) = fluxq00(vc,i)/rhow(1)
+       enddo
+    enddo
     fluxbu=0.
     fluxbv=0.
-    fluxbt=0.
-    fluxbq=0.
+    !fluxbt=0.
+    !fluxbq=0.
+!MAML-Guangxing: crm-level surface fluxes
 #endif
     fluxtu=0.
     fluxtv=0.
@@ -980,7 +1063,10 @@ subroutine crm(lchnk, icol, nvcols, &
 
         !-----------------------------------------------
         !     surface fluxes:
-        if (dosurface) call crmsurface(bflx)
+!MAML-Guangxing Lin
+        if(dosurface) call crmsurface(bflx,z0_loc)
+       ! if (dosurface) call crmsurface(bflx)
+!MAML-Guangxing Lin
 
         !-----------------------------------------------------------
         !  SGS physics:
@@ -1590,6 +1676,13 @@ subroutine crm(lchnk, icol, nvcols, &
         precsfc(i,j) = precsfc(i,j)*dz/dt/dble(nstop)     !mm/s/dz --> mm/s
         precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif
+
+!MAML-Guangxing Lin precip is aggregated and a mean value is determined. We need
+!  to change this so that individual CRM precip values are passed down
+!  to CLM.
+          crm_pcp(vc,i,j) = precsfc(i,j)/1000.      ! mm/s --> m/s
+          crm_snw(vc,i,j) = precssfc(i,j)/1000.     ! mm/s --> m/s
+!MAML-Guangxing Lin
         if(precsfc(i,j).gt.10./86400.) then
            precc (vc) = precc (vc) + precsfc(i,j)
            precsc(vc) = precsc(vc) + precssfc(i,j)
@@ -1621,7 +1714,16 @@ subroutine crm(lchnk, icol, nvcols, &
         enddo
       enddo
     enddo
-    qtot(vc,9) = qtot(vc,9) + (precc(vc)+precl(vc))*1000 * dt_gl
+!MAML-Guangxing Lin....now add in precip to qtot(9)
+    pcp_check = 0._r8
+       do j = 1,ny
+         do i = 1,nx
+          qtot(vc,9) = qtot(vc,9) + crm_pcp(vc,i,j)*1000.0 * dt_gl
+          pcp_check = pcp_check + crm_pcp(vc,i,j)*1000.0*dt_gl
+         enddo
+       enddo
+    !qtot(vc,9) = qtot(vc,9) + (precc(vc)+precl(vc))*1000 * dt_gl
+!MAML-Guangxing Lin
 
     cltot(vc) = cltot(vc) *factor_xy/nstop
     clhgh(vc) = clhgh(vc) *factor_xy/nstop
@@ -1819,5 +1921,5 @@ subroutine crm(lchnk, icol, nvcols, &
 
   end subroutine crm
 
-
+  
 end module crm_module

@@ -309,7 +309,6 @@
     <modules>
       <command name="load">git/2.9.1</command>
       <command name="load">cmake/3.3.2</command>
-      <command name="load">zlib/1.2.8</command>
     </modules>
   </module_system>
 
@@ -460,7 +459,6 @@
     <modules>
       <command name="load">git/2.9.1</command>
       <command name="load">cmake/3.3.2</command>
-      <command name="load">zlib/1.2.8</command>
     </modules>
 
     <!--command name="list">&gt;&amp; ml.txt</command-->

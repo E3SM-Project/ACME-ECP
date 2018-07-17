@@ -22,7 +22,9 @@ module atm_comp_mct
   use cam_cpl_indices
   use atm_import_export
   use cam_comp
-  use cam_instance     , only: cam_instance_init, inst_suffix
+  !MAML-Guangxing Lin
+  use cam_instance     , only: cam_instance_init, inst_suffix,  inst_index
+  !MAML-Guangxing Lin
   use cam_control_mod  , only: nsrest, aqua_planet, eccen, obliqr, lambm0, mvelpp
   use radiation        , only: radiation_do, radiation_nextsw_cday
   use phys_grid        , only: get_ncols_p, ngcols, get_gcol_p, get_rlat_all_p, &
@@ -48,7 +50,9 @@ module atm_comp_mct
   use co2_cycle        , only: co2_readFlux_ocn, co2_readFlux_fuel
   use runtime_opts     , only: read_namelist
   use scamMod          , only: single_column,scmlat,scmlon
-
+  !MAML-Guangxing Lin 
+  use seq_comm_mct, only : num_inst_atm
+  !MAML-Guangxing Lin 
 !
 ! !PUBLIC TYPES:
   implicit none
@@ -92,6 +96,10 @@ module atm_comp_mct
 
   integer,                 pointer :: dof(:) ! needed for pio_init decomp for restarts
   type(seq_infodata_type), pointer :: infodata
+  !MAML-Guangxing Lin
+  logical :: sequence_instances = .false.
+  !MAML-Guangxing Lin
+
 !
 !================================================================================
 CONTAINS
@@ -141,7 +149,9 @@ CONTAINS
     logical :: perpetual_run    ! If in perpetual mode or not
     integer :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
     integer :: shrlogunit,shrloglev ! old values
-    logical :: first_time = .true.
+    !MAML-Guangxing Lin
+    !logical :: first_time = .true.
+    !MAML-Guangxing Lin
     character(len=SHR_KIND_CS) :: calendar  ! Calendar type
     character(len=SHR_KIND_CS) :: starttype ! infodata start type
     integer :: lbnum
@@ -149,6 +159,14 @@ CONTAINS
                                 ! data structure, If 1D data structure, then
                                 ! hdim2_d == 1.
     character(len=64) :: filein ! Input namelist filename
+    !MAML-Guangxing Lin
+    logical,save :: first_call = .true.    ! check for sequential calls of multi-instances
+    integer :: atm_phase        ! passed from driver
+
+   ! integer :: dtime_sync       ! integer timestep size
+   ! integer :: currentymd       ! current year-month-day
+    !MAML-Guangxing Lin
+
     !-----------------------------------------------------------------------
     !
     ! Determine cdata points
@@ -163,9 +181,45 @@ CONTAINS
     call seq_cdata_setptrs(cdata_a, ID=ATMID, mpicom=mpicom_atm, &
          gsMap=gsMap_atm, dom=dom_a, infodata=infodata)
 
-    if (first_time) then
+    !MAML-Guangxing Lin
+    call seq_infodata_getData(infodata,atm_phase=atm_phase)
+    call cam_instance_init(ATMID)
+    !write(*,*) '### atm_init_mct: ATMID = ',ATMID
+    !write(*,*) '### atm_init_mct: inst_index = ',inst_index
+
+    !--- auto detect sequence_instances based on calling this more than once in phase 1 ---
+    !write(*,*) '### atm_init_mct: atm_phase,first_call,sequence_instances = ',atm_phase,first_call,sequence_instances
+    if (atm_phase == 1 .and. .not.first_call .and. .not.sequence_instances) then
+        sequence_instances = .true.
+        write(6,*) "Setting sequence_instances to true"
+    endif
+    first_call = .false.
+    if (sequence_instances .and. inst_index > 1) then
+       if (atm_phase == 1) then
+          call atm_SetgsMap_mct( mpicom_atm, ATMID, gsMap_atm )
+          lsize = mct_gsMap_lsize(gsMap_atm, mpicom_atm)
+          call atm_domain_mct( lsize, gsMap_atm, dom_a )
+          call mct_aVect_init(a2x_a, rList=seq_flds_a2x_fields, lsize=lsize)
+          call mct_aVect_zero(a2x_a)
+          call mct_aVect_init(x2a_a, rList=seq_flds_x2a_fields, lsize=lsize)
+          call mct_aVect_zero(x2a_a)
+          call atm_export( cam_out, a2x_a%rattr )
+       else
+          call seq_timemgr_EClockGetData(EClock,StepNo=StepNo)
+          if (StepNo == 0) then
+             call atm_export( cam_out, a2x_a%rattr )
+          else
+             call atm_read_srfrest_mct( EClock, x2a_a, a2x_a )
+          endif
+       endif
+       return
+    endif
+    !MAML-Guangxing Lin
+ 
+ !   if (first_time) then !MAML-Guangxing Lin
+    if (atm_phase == 1) then
        
-       call cam_instance_init(ATMID)
+       !call cam_instance_init(ATMID) !MAML-Guangxing Lin
 
        ! Set filename specifier for restart surface file
        ! (%c=caseid, $y=year, $m=month, $d=day, $s=seconds in day)
@@ -179,6 +233,7 @@ CONTAINS
        
        call spmdinit(mpicom_atm)
        
+       ! Redirect share output to cam log
        if (masterproc) then
           inquire(file='atm_modelio.nml'//trim(inst_suffix), exist=exists)
           if (exists) then
@@ -194,13 +249,15 @@ CONTAINS
        ! 
        ! Consistency check                              
        !
-       if (co2_readFlux_ocn .and. index_x2a_Faoo_fco2_ocn /= 0) then
-          write(iulog,*)'error co2_readFlux_ocn and index_x2a_Faoo_fco2_ocn cannot both be active'
-          call shr_sys_abort()
-       end if
+       !MAML-Guanxing Lin
+       !if (co2_readFlux_ocn .and. index_x2a_Faoo_fco2_ocn /= 0) then
+       !   write(iulog,*)'error co2_readFlux_ocn and index_x2a_Faoo_fco2_ocn cannot both be active'
+        !  call shr_sys_abort()
+       !end if
        ! 
        ! Get data from infodata object
        !
+       !MAML-Guanxing Lin
        call seq_infodata_GetData( infodata,                                           &
             case_name=caseid, case_desc=ctitle,                                       &
             start_type=starttype,                                                     &
@@ -318,7 +375,7 @@ CONTAINS
        call shr_file_setLogUnit (shrlogunit)
        call shr_file_setLogLevel(shrloglev)
 
-       first_time = .false.
+       !first_time = .false.
 
     else
        
@@ -434,6 +491,10 @@ CONTAINS
     logical :: first_time = .true.
     integer :: lbnum
     character(len=*), parameter :: subname="atm_run_mct"
+    !MAML-Guangxing Lin
+    integer :: ATMID
+    integer :: atm_phase        ! passed from driver
+    !MAML-Guangxing Lin
     !-----------------------------------------------------------------------
 
 #if (defined _MEMTRACE)
@@ -448,7 +509,12 @@ CONTAINS
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_getLogLevel(shrloglev)
     call shr_file_setLogUnit (iulog)
-    
+   
+    !MAML-Guangxing Lin
+    call seq_cdata_setptrs(cdata_a, infodata=infodata, ID=ATMID)
+    call cam_instance_init(ATMID)  
+    !MAML-Guangxing Lin
+ 
     ! Note that sync clock time should match cam time at end of time step/loop not beginning
     
     call seq_timemgr_EClockGetData(EClock,curr_ymd=ymd_sync,curr_tod=tod_sync, &
@@ -459,8 +525,47 @@ CONTAINS
     call seq_infodata_GetData( infodata,                                           &
        orb_eccen=eccen, orb_mvelpp=mvelpp, orb_lambm0=lambm0, orb_obliqr=obliqr)
 
+    !MAML-Guangxing Lin
+     call seq_infodata_getData(infodata,atm_phase=atm_phase)
+    !write(*,*) '### atm_run_mct: seq_infodata_getData atm_phase = ',atm_phase
+    !MAML-Guangxing Lin
+   
     nlend_sync = seq_timemgr_StopAlarmIsOn(EClock)
     rstwr_sync = seq_timemgr_RestartAlarmIsOn(EClock)
+
+    !MAML-Guangxing Lin: huge new block 
+    !------------
+    ! for special case (sequence instances)
+    !   import n instances at atm_phase = 0 and return
+    !   run on instance 1 at atm_phase /= 0
+    !   export final n-1 instances at atm_phase /=0 and return
+    !------------
+
+    if (sequence_instances) then
+       if (atm_phase == 0) then
+          ! Map input from mct to cam data structure and return
+          call t_startf ('CAM_import')
+          !write(*,*) '### atm_run_mct call atm_import, atm_phase == 0: inst_index = ',inst_index
+          call atm_import( x2a_a%rattr, cam_in )
+          call t_stopf  ('CAM_import')
+          return
+       else
+          if (inst_index > 1) then
+             ! Map output from cam to mct data structures and return
+             call t_startf ('CAM_export')
+             !write(*,*) '### atm_run_mct call atm_export: inst_index = ',inst_index
+             call atm_export( cam_out, a2x_a%rattr )
+             call t_stopf ('CAM_export')
+             !write(iulog,*) 'atm tcx1c ',atm_phase,inst_index
+             call shr_sys_flush(iulog)
+             return
+          endif
+       endif
+    endif
+    
+    ! Return if atm_phase is 0 in standard coupling mode
+    if (atm_phase == 0) return
+    !MAML-Guangxing Lin: huge new block
 
     ! Map input from mct to cam data structure
 
@@ -590,6 +695,19 @@ CONTAINS
     type(seq_cdata)             ,intent(inout) :: cdata_a
     type(mct_aVect)             ,intent(inout) :: x2a_a
     type(mct_aVect)             ,intent(inout) :: a2x_a
+
+    !MAML-Guangxing Lin
+!--- local --- 
+    integer :: ATMID
+
+    call seq_cdata_setptrs(cdata_a, ID=ATMID)
+    call cam_instance_init(ATMID)
+
+    !--- sequence_instances and return ---
+    if (sequence_instances .and. inst_index > 1) then
+       return
+    endif
+    !MAML-Guangxing Lin
 
     call cam_final( cam_out, cam_in )
 

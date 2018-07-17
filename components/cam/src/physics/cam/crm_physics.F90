@@ -42,6 +42,9 @@ module crm_physics
 
    integer :: clubb_buffer_idx
 
+!MAML-Guangxing Lin
+   integer :: crm_pcp_idx,crm_snw_idx
+!MAML-Guangxing Lin
    type(physics_state)  :: state_save
    type(physics_tend)   :: tend_save
    real(r8) cldo_save(pcols, pver)  ! save for the old cloud fraction
@@ -169,6 +172,10 @@ subroutine crm_physics_register()
   call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
   endif 
 
+!MAML-Guangxing Lin...adding new variables for passing precipition/snow into CLM. Added new variables
+  call pbuf_add_field('CRM_PCP',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_pcp_idx)
+  call pbuf_add_field('CRM_SNW',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_snw_idx)
+!MAML-Guangxing Lin
 
 end subroutine crm_physics_register
 !=========================================================================================================
@@ -397,6 +404,14 @@ subroutine crm_physics_init(species_class)
   call addfld ('SPKVH     ',(/ 'ilev' /), 'A', 'm2/s    ', 'Vertical diffusivity used in dropmixnuc in the MMF call')
   call addfld ('SPWTKE   ', (/ 'lev' /), 'A', 'm/s',      'Standard deviation of updraft velocity')
   call addfld ('SPLCLOUD  ',(/ 'lev' /), 'A', '        ', 'Liquid cloud fraction')
+
+!MAML-Guangxing Lin
+  call addfld ('CRM_SHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc sensible heat flux'          )
+  call addfld ('CRM_LHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc latent heat flux'            )
+  call addfld ('CRM_SNOW',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Snow Rate'                       )
+  call addfld ('CRM_PCP ',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Precipitation Rate'              )
+  call addfld ('CRM_SPD ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'm/s     ', 'CRM Wind Speed'                      )
+!MAML-Guangxing Lin
 
 !==Guangxing Lin
    ! call addfld ('SPNDROPMIX','#/kg/s  ',pver,  'A','Droplet number mixing',phys_decomp)
@@ -735,14 +750,19 @@ end subroutine crm_physics_init
    real(r8) :: wdownthresh_bnd(pcols, pverp)
 #endif
 
+!MAML-Guangxing Lin
+   real(r8) tau00(pcols,crm_nx)  ! surface stress
+   real(r8) bflx(pcols,crm_nx)   ! surface buoyancy flux (Km/s)
+   !real(r8) tau00(pcols)  ! surface stress
+   !real(r8) bflx (pcols)  ! surface buoyancy flux (Km/s)
+!MAML-Guangxing Lin
+
 ! CRM column radiation stuff:
    real(r8) prectend(pcols) ! tendency in precipitating water and ice
    real(r8) precstend(pcols) ! tendency in precipitating ice
    real(r8) wtricesink(pcols) ! sink of water vapor + cloud water + cloud ice
    real(r8) icesink(pcols) ! sink of
-   real(r8) tau00(pcols)  ! surface stress
    real(r8) wnd  (pcols)  ! surface wnd
-   real(r8) bflx (pcols)  ! surface buoyancy flux (Km/s)
    real(r8) taux_crm(pcols)  ! zonal CRM surface stress perturbation
    real(r8) tauy_crm(pcols)  ! merid CRM surface stress perturbation
    real(r8) z0m(pcols)  ! surface momentum roughness length
@@ -799,10 +819,17 @@ end subroutine crm_physics_init
 #endif
 
 ! Surface fluxes +++mhwang
-   real(r8) ::  fluxu0(pcols)           ! surface momenment fluxes
-   real(r8) ::  fluxv0(pcols)           ! surface momenment fluxes
-   real(r8) ::  fluxt0(pcols)           ! surface sensible heat fluxes
-   real(r8) ::  fluxq0(pcols)           ! surface latent heat fluxes
+
+!MAML-Guangxing Lin
+   real(r8) ::  fluxt0(pcols,crm_nx)           ! surface sensible heat fluxes
+   real(r8) ::  fluxq0(pcols,crm_nx)           ! surface latent heat fluxes
+   real(r8) ::  fluxu0(pcols,crm_nx)           ! surface momenment fluxes
+   real(r8) ::  fluxv0(pcols,crm_nx)           ! surface momenment fluxes
+   !real(r8) ::  fluxu0(pcols)           ! surface momenment fluxes
+   !real(r8) ::  fluxv0(pcols)           ! surface momenment fluxes
+   !real(r8) ::  fluxt0(pcols)           ! surface sensible heat fluxes
+   !real(r8) ::  fluxq0(pcols)           ! surface latent heat fluxes
+!MAML-Guangxing Lin
    real(r8) ::  dtstep_pp        ! time step for the ECPP (seconds)
    integer  ::  necpp            ! the number of GCM time step in which ECPP is called once.
 
@@ -848,6 +875,12 @@ end subroutine crm_physics_init
    real(r8) tmp1          ! whannah: to help feed the fluxes to CRM right before the call to CRM. 
    integer :: icol(pcols)
 
+!MAML-Guangxing Lin
+   real(r8), pointer, dimension(:,:,:)   :: crm_pcp
+   real(r8), pointer, dimension(:,:,:)   :: crm_snw
+   real(r8) :: factor_xy
+   factor_xy = 1._r8/dble(crm_nx*crm_ny)
+!MAML-Guangxing Lin
    zero = 0.0_r8
 !========================================================
 !========================================================
@@ -998,6 +1031,10 @@ end subroutine crm_physics_init
    call pbuf_get_field (pbuf, crm_qc_rad_idx,   qc_rad)
    call pbuf_get_field (pbuf, crm_qi_rad_idx,   qi_rad)
    call pbuf_get_field (pbuf, crm_cld_rad_idx, cld_rad)  !Guangxing Lin new CRM
+!MAML-Guangxing Lin
+   call pbuf_get_field (pbuf, crm_pcp_idx, crm_pcp)
+   call pbuf_get_field (pbuf, crm_snw_idx, crm_snw)
+!MAML-Guangxing Lin
    
 ! Initialize stuff:
    call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1103,6 +1140,11 @@ end subroutine crm_physics_init
 
          end do
        end do
+
+!MAML-Guangxing Lin
+       crm_pcp(:,:,:) = 0.
+       crm_snw(:,:,:) = 0.
+!MAML-Guangxing Lin
 
 ! use radiation from grid-cell mean radctl on first time step
        prec_crm (:,:,:) = 0.
@@ -1237,6 +1279,10 @@ end subroutine crm_physics_init
 #endif
 #endif
 
+!MAML-Guangxing Lin
+       crm_pcp = 0.
+       crm_snw = 0.
+!MAML-Guangxing Lin
 
        ptend%q(:,:,1) = 0.  ! necessary?
        ptend%q(:,:,ixcldliq) = 0.
@@ -1293,15 +1339,27 @@ end subroutine crm_physics_init
 ! Start ncol loop for CRM
 !----------------------------------------------------------------------
        do i = 1,ncol
-          tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
+
+!MAML-Guangxing Lin
+         do ii=1,crm_nx
+
+            tau00(i,ii) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
+            bflx(i,ii) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
+            fluxu0(i,ii) = cam_in%wsx(i,ii)     !N/m2
+            fluxv0(i,ii) = cam_in%wsy(i,ii)     !N/m2
+            fluxt0(i,ii) = cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
+            fluxq0(i,ii) = cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
+         enddo   ! ii; crm_nx
+    !      tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
           wnd  (i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
-          bflx (i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
+     !     bflx (i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
 !+++mhwang
-         fluxu0(i) = cam_in%wsx(i)     !N/m2
-         fluxv0(i) = cam_in%wsy(i)     !N/m2
-         fluxt0(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
-         fluxq0(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
+      !   fluxu0(i) = cam_in%wsx(i)     !N/m2
+      !   fluxv0(i) = cam_in%wsy(i)     !N/m2
+      !   fluxt0(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
+      !   fluxq0(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
 !---mwwang
+!MAML-Guangxing Lin
 
 !+++mhwangtest
 !
@@ -1429,6 +1487,9 @@ end subroutine crm_physics_init
                sub_crm_a(:ncol,:),          dep_crm_a(:ncol,:),           con_crm_a(:ncol,:),                                                                        &
 #endif
                precc(:ncol),                precl(:ncol),                 precsc(:ncol),             precsl(:ncol),                                                  &
+!MAML-Guangxing Lin
+               crm_pcp(:ncol,:,:),     crm_snw(:ncol,:,:),                                                                             &
+!MAML-Guangxing Lin
                cltot(:ncol),                clhgh(:ncol),                 clmed(:ncol),              cllow(:ncol),                cld(:ncol,:),    cldtop(:ncol,:) , &
                gicewp(:ncol,:),             gliqwp(:ncol,:),                                                                                                         &
                mctot(:ncol,:),              mcup(:ncol,:),                mcdn(:ncol,:),             mcuup(:ncol,:),              mcudn(:ncol,:),                    &
@@ -1460,8 +1521,12 @@ end subroutine crm_physics_init
                flux_u(:ncol,:),             flux_v(:ncol,:),              flux_qt(:ncol,:),          fluxsgs_qt(:ncol,:),         flux_qp(:ncol,:),                  &
                precflux(:ncol,:),           qt_ls(:ncol,:),               qt_trans(:ncol,:),         qp_trans(:ncol,:),           qp_fall(:ncol,:),                  &
                qp_evp(:ncol,:),             qp_src(:ncol,:),              t_ls(:ncol,:),             prectend(:ncol),             precstend(:ncol),                  &
-               cam_in%ocnfrac(:ncol),       wnd(:ncol),                   tau00(:ncol),              bflx(:ncol),                                                    & 
-               fluxu0(:ncol),               fluxv0(:ncol),                fluxt0(:ncol),             fluxq0(:ncol),                                                  & 
+!MAML-Guangxing Lin            
+   !cam_in%ocnfrac(:ncol),       wnd(:ncol),                   tau00(:ncol),              bflx(:ncol),                                                    & 
+               cam_in%ocnfrac(:ncol),       wnd(:ncol),                   tau00(:ncol,:),              bflx(:ncol,:),                                                    & 
+               fluxu0(:ncol,:),               fluxv0(:ncol,:),                fluxt0(:ncol,:),             fluxq0(:ncol,:),                                                  & 
+             !  fluxu0(:ncol),               fluxv0(:ncol),                fluxt0(:ncol),             fluxq0(:ncol),                                                  & 
+!MAML-Guangxing Lin            
                taux_crm(:ncol),             tauy_crm(:ncol),              z0m(:ncol),                timing_factor(:ncol),        qtotcrm(:ncol, :) )
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1623,6 +1688,13 @@ end subroutine crm_physics_init
        call outfld('CRM_PREC',prec_crm       ,pcols   ,lchnk   )
        call outfld('CRM_TK ', crm_tk(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
        call outfld('CRM_TKH', crm_tkh(:, :, :, :)  ,pcols   ,lchnk   ) !Guangxing Lin new crm
+!MAML-Guangxing Lin
+       call outfld('CRM_SHF ', cam_in%shf ,pcols ,lchnk)
+       call outfld('CRM_LHF ', cam_in%lhf ,pcols ,lchnk)
+       call outfld('CRM_SNOW', crm_snw    ,pcols ,lchnk)
+       call outfld('CRM_PCP',  crm_pcp    ,pcols ,lchnk)
+       !call outfld('CRM_SPD ', spd_crm    ,pcols ,lchnk)
+!MAML-Guangxing Lin
 
 #ifdef m2005
        if (SPCAM_microp_scheme .eq. 'm2005') then

@@ -42,6 +42,9 @@ module physpkg
 
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
+!MAML-Guangxing Lin
+  use seq_comm_mct,       only : num_inst_atm
+!MAML-Guangxing Lin
 
   implicit none
   private
@@ -93,6 +96,15 @@ module physpkg
   logical           :: clim_modal_aero     ! climate controled by prognostic or prescribed modal aerosols
   logical           :: prog_modal_aero     ! Prognostic modal aerosols present
   logical           :: micro_do_icesupersat
+
+!MAML-Guangxing Lin
+  real(r8) :: shfavg_in(pcols)
+  real(r8) :: lhfavg_in(pcols)
+  real(r8) :: wsxavg_in(pcols)
+  real(r8) :: wsyavg_in(pcols)
+  real(r8) :: snowhlandavg_in(pcols)
+  real(r8) :: factor_xy
+!MAML-Guangxing Lin
 
   !======================================================================= 
 contains
@@ -476,7 +488,10 @@ subroutine phys_inidat( cam_out, pbuf2d )
     deallocate(tptr)
 
     do lchnk=begchunk,endchunk
-       cam_out(lchnk)%tbot(:) = posinf
+!MAML-Guangxing Lin
+       !cam_out(lchnk)%tbot(:) = posinf
+       cam_out(lchnk)%tbot(:,:) = posinf
+!MAML-Guangxing Lin
     end do
 
     !
@@ -1208,6 +1223,9 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
     integer :: c                                 ! chunk index
     integer :: ncol                              ! number of columns
     integer :: nstep                             ! current timestep number
+!MAML-Guangxing Lin
+    integer :: i, ii
+!MAML-Guangxing Lin
 #if (! defined SPMD)
     integer  :: mpicom = 0
 #endif
@@ -1254,12 +1272,24 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
        ncol = get_ncols_p(c)
        phys_buffer_chunk => pbuf_get_chunk(pbuf2d, c)
 
+!MAML-Guangxing Lin
+       shfavg_in =0._r8
+       factor_xy = 1._r8 / dble(num_inst_atm)
+       do i=1,ncol
+         do ii=1,num_inst_atm
+           shfavg_in(i) = shfavg_in(i)+cam_in(c)%shf(i,ii)*factor_xy
+         enddo
+       end do
+!MAML-Guangxing Lin
        !! 
        !! add the implied internal energy flux to sensible heat flux
        !! 
 
        if(ieflx_opt>0) then
-          call check_ieflx_fix(c, ncol, nstep, cam_in(c)%shf)
+!MAML-Guangxing Lin
+          call check_ieflx_fix(c, ncol, nstep, shfavg_in(:ncol))
+          !call check_ieflx_fix(c, ncol, nstep, cam_in(c)%shf)
+!MAML-Guangxing Lin
        end if
 
        !
@@ -1447,6 +1477,10 @@ subroutine tphysac (ztodt,   cam_in,  &
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction 
 
+!MAML-Guangxing Lin
+    real(r8) :: factor_xy    ! for converting from CRM to GCM-level
+    integer  :: ii           ! loop index for CRM
+!MAML-Guangxing Lin
     logical :: do_clubb_sgs 
 
     ! Debug physics_state.
@@ -1513,20 +1547,31 @@ subroutine tphysac (ztodt,   cam_in,  &
     ! accumulate fluxes into net flux array for spectral dycores
     ! jrm Include latent heat of fusion for snow
     !
+    
+   ! do i=1,ncol
+   !    tend%flx_net(i) = tend%flx_net(i) + cam_in%shf(i) + (cam_out%precc(i) &
+   !         + cam_out%precl(i))*latvap*rhoh2o &
+   !         + (cam_out%precsc(i) + cam_out%precsl(i))*latice*rhoh2o
+   ! end do
+!MAML-Guangxing Lin
+    shfavg_in =0._r8
+    lhfavg_in =0._r8
+    wsxavg_in =0._r8
+    wsyavg_in =0._r8
+    factor_xy = 1._r8 / dble(num_inst_atm)
     do i=1,ncol
-       tend%flx_net(i) = tend%flx_net(i) + cam_in%shf(i) + (cam_out%precc(i) &
-            + cam_out%precl(i))*latvap*rhoh2o &
-            + (cam_out%precsc(i) + cam_out%precsl(i))*latice*rhoh2o
+      do ii=1,num_inst_atm
+        tend%flx_net(i) = tend%flx_net(i) + ( ( cam_in%shf(i,ii) +               &
+            ( (cam_out%precc(i,ii)  + cam_out%precl(i,ii) ) * latvap*rhoh2o ) +      &
+            ( (cam_out%precsc(i,ii) + cam_out%precsl(i,ii)) * latice*rhoh2o ) ) * factor_xy)
+        shfavg_in(i) = shfavg_in(i)+cam_in%shf(i,ii)*factor_xy
+        lhfavg_in(i) = lhfavg_in(i)+cam_in%lhf(i,ii)*factor_xy 
+        wsxavg_in(i) = wsxavg_in(i)+cam_in%wsx(i,ii)*factor_xy
+        wsyavg_in(i) = wsyavg_in(i)+cam_in%wsy(i,ii)*factor_xy
+      enddo
     end do
+!MAML-Guangxing Lin
 
-
-       !Guangxing Lin debug
-     ! do m=1, pcnst
-     !    if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
-     !    write(*,6998) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
- !6998 format('gxlin-test6998 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
-  !       end if
-  !    end do
 if (l_tracer_aero) then
 
     ! emissions of aerosols and gas-phase chemistry constituents at surface
@@ -1539,13 +1584,6 @@ if (l_tracer_aero) then
     end if
 
 end if ! l_tracer_aero
-       !Guangxing Lin debug
-      !do m=1, pcnst
-       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
-        ! write(*,6997) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
-! 6997 format('gxlin-test6997 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
- !        end if
-  !    end do
 
     ! get nstep and zero array for energy checker
     zero = 0._r8
@@ -1562,8 +1600,12 @@ end if ! l_tracer_aero
        ! lowest model layer, thereby creating negative moisture.
 
        call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
-            state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
-            cam_in%lhf , cam_in%cflx )
+!MAML-Guangxing Lin
+            state%q(1,pver,1),state%rpdel(1,pver) ,shfavg_in ,         &
+            lhfavg_in , cam_in%cflx )
+            !state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
+            !cam_in%lhf , cam_in%cflx )
+!MAML-Guangxing Lin
 
     end if 
 
@@ -1572,13 +1614,6 @@ end if ! l_tracer_aero
 !!== KZ_WCON
 
     call t_stopf('tphysac_init')
-       !Guangxing Lin debug
-      !do m=1, pcnst
-       !  if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
-        ! write(*,6992) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
- !6992 format('gxlin-test6992 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
-  !       end if
-   !   end do
 
 if (l_tracer_aero) then
     !===================================================
@@ -1644,8 +1679,12 @@ if (l_vdiff) then
     else
 
         call t_startf('vertical_diffusion_tend')
-        call vertical_diffusion_tend (ztodt ,state ,cam_in%wsx, cam_in%wsy,   &
-            cam_in%shf     ,cam_in%cflx     ,surfric  ,obklen   ,ptend    ,ast    ,&
+!MAML-Guangxing Lin
+        call vertical_diffusion_tend (ztodt ,state ,wsxavg_in, wsyavg_in,   &
+             shfavg_in     ,cam_in%cflx     ,surfric  ,obklen   ,ptend    ,ast    ,&
+        !call vertical_diffusion_tend (ztodt ,state ,cam_in%wsx, cam_in%wsy,   &
+            !cam_in%shf     ,cam_in%cflx     ,surfric  ,obklen   ,ptend    ,ast    ,&
+!MAML-Guangxing Lin
             cam_in%ocnfrac  , cam_in%landfrac ,        &
             sgh30    ,pbuf )
 
@@ -1677,7 +1716,10 @@ if (l_rayleigh) then
       call check_energy_chng(state, tend, "vdiff", nstep, ztodt, zero, zero, zero, zero)
     else
       call check_energy_chng(state, tend, "vdiff", nstep, ztodt, cam_in%cflx(:,1), zero, &
-           zero, cam_in%shf)
+!MAML-Guangxing Lin
+           zero, shfavg_in)
+           !zero, cam_in%shf)
+!MAML-Guangxing Lin
     endif
     
     call check_tracers_chng(state, tracerint, "vdiff", nstep, ztodt, cam_in%cflx)
@@ -1951,6 +1993,10 @@ subroutine tphysbc (ztodt,               &
     use crm_physics,     only: crm_physics_tend, crm_save_state_tend
 !-- mdb spcam
 
+!MAML-Guangxing Lin
+    use seq_comm_mct,       only : num_inst_atm
+!MAML-Guangxing Lin
+
     implicit none
 
     !
@@ -2099,7 +2145,9 @@ subroutine tphysbc (ztodt,               &
     
     ! w holds position of gathered points vs longitude index
     integer :: lengath
-
+!MAML-Guangxing Lin
+    integer :: ii
+!MAML-Guangxing Lin
     real(r8)  :: lcldo(pcols,pver)              !Pass old liqclf from macro_driver to micro_driver
 
     real(r8) :: ftem(pcols,pver)         ! tmp space
@@ -2153,12 +2201,32 @@ subroutine tphysbc (ztodt,               &
 
     nstep = get_nstep()
 
+!MAML-Guangxing Lin
+    shfavg_in =0._r8
+    lhfavg_in =0._r8
+    wsxavg_in =0._r8
+    wsyavg_in =0._r8
+    snowhlandavg_in =0._r8
+    factor_xy = 1._r8 / dble(num_inst_atm)
+    do i=1,ncol
+      do ii=1,num_inst_atm
+        shfavg_in(i) = shfavg_in(i)+cam_in%shf(i,ii)*factor_xy
+        lhfavg_in(i) = lhfavg_in(i)+cam_in%lhf(i,ii)*factor_xy 
+        wsxavg_in(i) = wsxavg_in(i)+cam_in%wsx(i,ii)*factor_xy
+        wsyavg_in(i) = wsyavg_in(i)+cam_in%wsy(i,ii)*factor_xy
+        snowhlandavg_in(i) = snowhlandavg_in(i)+cam_in%snowhland(i,ii)*factor_xy
+      enddo
+    end do
+!MAML-Guangxing Lin
+
 #if defined( SP_FLUX_BYPASS_DEBUG )
 223 format('whannah - SPFB',i2,' - ',i6,' - ',i6,' - min/max = ',f8.4,' / ',f8.4  )
 #endif
 
 #if defined( SP_FLUX_BYPASS_DEBUG )
-write(*,223) 4,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
+!write(*,223) 4,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
+!MAML-Guangxing Lin
+write(*,223) 4,lchnk,nstep, minval(shfavg_in(:ncol)),maxval(shfavg_in(:ncol))
 #endif
 
     static_ener_ac_idx = pbuf_get_index('static_ener_ac')
@@ -2494,7 +2562,10 @@ end if
 
        call stratiform_tend(state, ptend, pbuf, ztodt, &
             cam_in%icefrac, cam_in%landfrac, cam_in%ocnfrac, &
-            landm, cam_in%snowhland, & ! sediment
+!MAML-Guangxing Lin
+            !landm, cam_in%snowhland, & ! sediment
+            landm, snowhlandavg_in, & ! sediment
+!MAML-Guangxing Lin
             dlf, dlf2, & ! detrain
             rliq  , & ! check energy after detrain
             cmfmc,   cmfmc2, &
@@ -2544,7 +2615,10 @@ end if
 
              call macrop_driver_tend( &
                   state,           ptend,          cld_macmic_ztodt, &
-                  cam_in%landfrac, cam_in%ocnfrac, cam_in%snowhland, & ! sediment
+!MAML-Guangxing Lin
+                  !cam_in%landfrac, cam_in%ocnfrac, cam_in%snowhland, & ! sediment
+                  cam_in%landfrac, cam_in%ocnfrac, snowhlandavg_in, & ! sediment
+!MAML-Guangxing Lin
                   dlf,             dlf2,                             & ! detrain
                   cmfmc,           cmfmc2,                           &
                   cam_in%ts,       cam_in%sst,     zdu,              &
@@ -2578,8 +2652,12 @@ end if
 
     if(use_qqflx_fixer) then
        call qqflx_fixer('TPHYSBC ', lchnk, ncol, cld_macmic_ztodt, &
-            state%q(1,1,1), state%rpdel(1,1), cam_in%shf, &
-            cam_in%lhf , cam_in%cflx/cld_macmic_num_steps )
+!MAML-Guangxing Lin, hack for now, since shf is not used in qqffx_fixer
+            state%q(1,1,1), state%rpdel(1,1), shfavg_in(:ncol), &
+            lhfavg_in(:ncol) , cam_in%cflx/cld_macmic_num_steps )
+!MAML-Guangxing Lin, hack for now, since shf is not used in qqffx_fixer
+            !state%q(1,1,1), state%rpdel(1,1), cam_in%shf, &
+            !cam_in%lhf , cam_in%cflx/cld_macmic_num_steps )
 
     end if
 !!== KZ_WATCON 
@@ -2594,8 +2672,11 @@ end if
 
                 !  Since we "added" the reserved liquid back in this routine, we need 
                 !    to account for it in the energy checker
-                flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
-                flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
+                flx_cnd(:ncol) = -1._r8*rliq(:ncol)
+!MAML-Guangxing Lin , hack for now
+                !flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
+                flx_heat(:ncol) = shfavg_in(:ncol) + det_s(:ncol)
+!MAML-Guangxing Lin 
 
                 ! Unfortunately, physics_update does not know what time period
                 ! "tend" is supposed to cover, and therefore can't update it
@@ -2800,7 +2881,9 @@ if (l_tracer_aero) then
 ! #endif
 
 #if defined( SP_FLUX_BYPASS_DEBUG )
-write(*,223) 5,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
+!write(*,223) 5,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
+!MAML-Guangxing Lin
+write(*,223) 5,lchnk,nstep, minval(shfavg_in(:ncol)),maxval(shfavg_in(:ncol)
 #endif
 
 !!! whannah - SP_FLUX_BYPASS_1 - only sensible and latent heat fluxes are affected
@@ -2826,7 +2909,10 @@ write(*,223) 5,lchnk,nstep, minval(cam_in%shf(:)),maxval(cam_in%shf(:))
       tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
       ptend%s(i,:)   = 0.
       ptend%q(i,:,1) = 0.
-      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+!MAML-Guangxing Lin
+      !ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
+      ptend%s(i,pver)   = tmp1 * shfavg_in(i)
+!MAML-Guangxing Lin
       ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
       ! ptend%s(i,pver)   = tmp1 * cam_in%crm_shf(i)
       ! ptend%q(i,pver,1) = tmp1 * cam_in%crm_cflx(i,1)
@@ -2962,7 +3048,10 @@ if (l_rad) then
 
     call radiation_tend(state,ptend, pbuf, &
          cam_out, cam_in, &
-         cam_in%landfrac,landm,cam_in%icefrac, cam_in%snowhland, &
+!MAML-Guangxing Lin
+         !cam_in%landfrac,landm,cam_in%icefrac, cam_in%snowhland, &
+         cam_in%landfrac,landm,cam_in%icefrac, snowhlandavg_in, &
+!MAML-Guangxing Lin
          fsns,    fsnt, flns,    flnt,  &
          fsds, net_flx)
 
