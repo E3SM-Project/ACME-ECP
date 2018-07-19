@@ -1,8 +1,9 @@
 module crm_types
 
    use shr_kind_mod, only: r8 => shr_kind_r8
-   use params, only: crm_rknd
-   use crmdims, only: nclubbvars, crm_nx_rad, crm_ny_rad, crm_nx, crm_ny, crm_nz
+   use params,       only: crm_rknd
+   use ppgrid,       only: pcols, pver, pverp
+   use crmdims,      only: nclubbvars, crm_nx_rad, crm_ny_rad, crm_nx, crm_ny, crm_nz
 
 #if defined( m2005 ) && defined( MODAL_AERO )
    use modal_aero_data, only: ntot_amode

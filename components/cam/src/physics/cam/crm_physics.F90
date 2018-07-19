@@ -2036,6 +2036,7 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    !------------------------------------------------------------------------------------------ 
    use cam_history,  only: outfld
    use phys_control, only: phys_getopts
+   use physics_types,only: physics_ptend 
    use physconst,    only: cpair
    use crmdims,      only: crm_nz
 #ifdef CRM
@@ -2043,15 +2044,16 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
 #endif
    implicit none
    
+   !!! interface variable declaration
    integer, intent(in) :: lchnk
    integer, intent(in) :: ncol
-   type(physics_state), intent(in) :: state
-   type(crm_state_type), intent(in) :: crm_state
+   type(physics_state),   intent(in) :: state
+   type(crm_state_type),  intent(in) :: crm_state
    type(crm_output_type), intent(in) :: crm_output
-   type(phys_tend), intent(in) :: ptend
-   integer, intent(in) :: phys_stage
+   type(physics_ptend),   intent(in) :: ptend 
+   integer,               intent(in) :: phys_stage
 
-   ! local variable declarations
+   !!! local variable declarations
    logical           :: use_ECPP
    character(len=16) :: SPCAM_microp_scheme
    integer :: ixcldliq, ixcldice
