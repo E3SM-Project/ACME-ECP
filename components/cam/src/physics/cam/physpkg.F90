@@ -2950,9 +2950,9 @@ end if
           sh_e_ed_ratio = 0.0_r8
         endif
 #if defined( SP_CRM_BULK )
-         ! !!!  wet scavenging of aerosols
-         ! call crm_bulk_aero_wet_dep_scav()
-         ! call physics_update(state, ptend, crm_run_time, tend)
+        !!!  wet scavenging of aerosols
+        call crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
+        call physics_update(state, ptend, ztodt, tend)
 #else
         call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,      & !Intent-ins
             mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
@@ -2977,7 +2977,6 @@ end if
 #if defined( SP_CRM_BULK )
         !!! calculate bulk transport tendencies (CRM)
         call crm_bulk_transport(state, pbuf, ptend)
-        ! call physics_update (state, ptend, crm_run_time, tend)
         call physics_update (state, ptend, ztodt, tend)
 #else
         !!! deep convective transport (ZM)

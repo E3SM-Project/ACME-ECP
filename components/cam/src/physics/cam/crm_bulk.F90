@@ -1,10 +1,10 @@
 module crm_bulk_mod
 
-! the check for "CBT" just allows the module to be hidden during development
+! the chec here just allows the module to be hidden during development
 #if defined( SP_CRM_BULK )
 #if defined( CRM )
 
-   !--------------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    ! Purpose: 
    !  Provides a method for convective transport of tracers using 
    !  cloud statistics from the explicit convection of the CRM.
@@ -12,8 +12,9 @@ module crm_bulk_mod
    !  (explicit-cloud parameterized-pollutant) approach. 
    !
    !  Revision history: 
-   !     2018: Walter Hannah - initial version based on Minghuai Wang's "crmclouds_camaerosols" module
-   !-------------------------------------------------------------------------------------------- 
+   !     2018: Walter Hannah - initial version based on Minghuai Wang's 
+   !                           "crmclouds_camaerosols" module
+   !-------------------------------------------------------------------------------------
    use shr_kind_mod,       only: r8 => shr_kind_r8
    use cam_abortutils,     only: endrun
    use ppgrid
@@ -23,16 +24,106 @@ module crm_bulk_mod
 
    public :: crm_bulk_transport
    public :: crm_bulk_aero_mix_nuc 
+   public :: crm_bulk_aerosol_wet_removal
    ! public :: crm_bulk_diagnose_cloudy_clear
 
    private :: crm_bulk_transport_tend 
 
 contains 
-!==================================================================================================================
-!==================================================================================================================
+!==================================================================================================
+!==================================================================================================
+subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
+   !-------------------------------------------------------------------------------------
+   ! Purpose: calculate scavenging and wet removal of aerosols
+   !          Scheme is based on supplementary material from:
+   !              Wang et al., 2013: Sensitivity of remote aerosol distributions to 
+   !                 representation of cloud–aerosol interactions in a global climate model, 
+   !                 Geosci. Model Dev., 6, 765-782, https://doi.org/10.5194/gmd-6-765-2013.
+   ! Author: Walter Hannah (LLNL), 2018
+   !-------------------------------------------------------------------------------------
+   use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
+   use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
+   use constituents,    only: pcnst, cnst_get_ind, cnst_get_type_byind
+   use error_messages,  only: alloc_err  
 
+   !!! Input Arguments
+   type(physics_state), intent(in )   :: state           ! Physics state variables
+   type(physics_buffer_desc), pointer :: pbuf(:)         ! physics buffer
+
+   !!! Output Arguments
+   type(physics_ptend), intent(out)   :: ptend           ! indivdual parameterization tendencies
+
+   !!! Local variables
+   integer :: i, m, lchnk, ncol
+   integer :: ixcldice, ixcldliq                         ! constituent indices for cloud liquid and ice water.
+   logical,  dimension(pcnst)      :: lq                 ! flag for ptend
+   real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
+   ! real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
+   real(r8), dimension(pcols,pver) :: cld_water          ! 
+   ! real(r8), dimension(pcols,pver) :: cld_fraction       ! 
+   real(r8), dimension(pcols,pver) :: rain_production    ! 
+
+   !!! physics buffer fields 
+   integer itim, ifld
+   real(r8), pointer, dimension(:,:) :: cld_fraction    ! cloud fraction                  (current time step)
+
+   ! integer, dimension(pcols) :: cld_top_idx           ! index of cloud top
+   
+   !--------------------------------------------------------
+   !--------------------------------------------------------
+   lchnk = state%lchnk
+   ncol  = state%ncol
+
+   !!! Initialize ptend
+   call cnst_get_ind('CLDLIQ', ixcldliq)
+   call cnst_get_ind('CLDICE', ixcldice)
+
+   lq(:)        = .true.
+   lq(1)        = .false.  ! vapor
+   lq(ixcldliq) = .false.  ! liquid
+   lq(ixcldice) = .false.  ! ice
+   call physics_ptend_init(ptend,state%psetcols,'crm_bulk_aerosol_wet_removal',lq=lq)
+
+
+   itim = pbuf_old_tim_idx ()
+   ifld = pbuf_get_index ('CLD')
+   call pbuf_get_field(pbuf, ifld, cld_fraction, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+
+   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDTOT'), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDDP' ), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDSH' ), 0.0_r8 )
+
+   ! real(r8) qp_src(pcols,pver)       ! precip water tendency due to conversion
+   ! ifld = pbuf_get_index('PRAIN' )
+   ! call pbuf_set_field(pbuf,ifld, qp_src(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
+
+   rain_production   = ???
+   cld_water         = state%q(:,:,ixcldliq)
+
+   do i = 1,ncol
+      do k = 1,pver
+
+         !!! Calculate updraft wet removal loss rate
+         aero_loss_rate(i,k) = rain_production(i,k) / ( cld_fraction(i,k) * cld_water(i,k) )
+
+         do m = 1, ncnst
+            !!! Calculate updraft wet removal tendency
+            ptend%q(i,k,m) = -1.0_r8 * aero_loss_rate * state%q(i,k,m)
+         end do ! m=1,pcnst         
+
+      end do ! k=1,pver
+   end if ! i=1,ncol
+
+
+   !--------------------------------------------------------
+   !--------------------------------------------------------
+
+end subroutine crm_bulk_aerosol_wet_removal
+
+!==================================================================================================
+!==================================================================================================
 subroutine crm_bulk_transport(state, pbuf, ptend)
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    ! Purpose:  to do convective transport of tracer species using the 
    !           cloud updraft and downdraft mass fluxes from the CRM.
    !           Adopted from crmclouds_convect_tend() by Minghuai Wang
@@ -40,12 +131,10 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    !           Original version used the "gathered" array terminology 
    !           but for the CRM we omit this and operate on all columns.
    ! Walter Hannah (LLNL), 2018
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
-   use time_manager,    only: get_nstep
    use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
    use constituents,    only: pcnst, cnst_get_ind, cnst_get_type_byind
-   use zm_conv,         only: convtran
    use error_messages,  only: alloc_err  
 
    !!! Input Arguments
@@ -80,8 +169,8 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    integer, dimension(pcols) :: cld_top_idx           ! index of cloud top
    integer, dimension(pcols) :: cld_bot_idx           ! index of cloud bottom
    logical, dimension(pcnst) :: lq                    ! flag to indicate whether to do transport calculation
-   !-----------------------------------------------------------------------------------------
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    lchnk = state%lchnk
    ncol  = state%ncol
 
@@ -92,7 +181,7 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    ! to determine the interstitial fraction.
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
-   lq(:) = .true.
+   lq(:)        = .true.
    lq(1)        = .false.  ! vapor
    lq(ixcldliq) = .false.  ! liquid
    lq(ixcldice) = .false.  ! ice
@@ -116,8 +205,6 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    call pbuf_get_field(pbuf, pbuf_get_index('ED_CRM'), ed )
    call pbuf_get_field(pbuf, pbuf_get_index('JT_CRM'), cld_top_idx_ptr )
    call pbuf_get_field(pbuf, pbuf_get_index('MX_CRM'), cld_bot_idx_ptr )
-   ! call pbuf_get_field(pbuf, pbuf_get_index('JT_CRM'), cld_top_idx_flt )
-   ! call pbuf_get_field(pbuf, pbuf_get_index('MX_CRM'), cld_bot_idx_flt )
 
    !!! get integer cloud indices - add small constant since int() rounds down to nearest integer
    ! cld_top_idx = int( cld_top_idx_flt + 0.1_r8)
@@ -132,31 +219,31 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    dpdry(1:ncol,:) = state%pdeldry(1:ncol,:)/100._r8
    dp   (1:ncol,:) = state%pdel   (1:ncol,:)/100._r8
 
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    ! Calculate the transport tendencies
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    call crm_bulk_transport_tend (lchnk, ncol, pcnst, lq, state%q,    &
                                  dry_const_flag, frac_insol,         &
                                  mu, md, du, eu, ed, dp, dpdry,      &
                                  cld_top_idx, cld_bot_idx,           &
                                  ptend%q )   
-   !-----------------------------------------------------------------------------------------
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
 
 end subroutine crm_bulk_transport
 
-!==================================================================================================================
-!==================================================================================================================
+!==================================================================================================
+!==================================================================================================
 
 subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
                                     dry_const_flag, frac_insol,          &
                                     mu, md, du, eu, ed, dp, dpdry,       &
                                     cld_top_idx, cld_bot_idx,            &
                                     q_tend_out )
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    ! Purpose: to do convective transport of tracer species using CRM cloud statistics
    ! Walter Hannah (LLNL), 2018: based on convtran() from the Zhang-McFarlane scheme
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    use ppgrid
    ! use cam_abortutils,  only: endrun
    use shr_kind_mod,    only: r8 => shr_kind_r8
@@ -214,12 +301,12 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
    real(r8), dimension(pver) :: du_tmp       ! Mass detraining from updraft
    real(r8), dimension(pver) :: ed_tmp       ! Mass entraining from downdraft
    real(r8), dimension(pver) :: dp_tmp       ! Delta pressure between interfaces
-   !-----------------------------------------------------------------------------------------
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    q_tend_out(:,:,:) = 0._r8   ! Initialize output tendency array   
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    ! Loop ever each constituent
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    do m = 1, ncnst
       if ( do_transport(m) ) then
          do i = 1,ncol
@@ -363,22 +450,23 @@ subroutine crm_bulk_transport_tend( lchnk, ncol, ncnst, do_transport, q, &
          end do ! i=1,ncol
       end if ! do_transport
    end do ! m=1,pcnst
-   !-----------------------------------------------------------------------------------------
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
 end subroutine crm_bulk_transport_tend
 
-!==================================================================================================================
-!==================================================================================================================
+!==================================================================================================
+!==================================================================================================
 
 subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
                                   cflx, pblht,                  &
                                   wwqui_cen, wwqui_cloudy_cen,  &
                                   wwqui_bnd, wwqui_cloudy_bnd,  &
                                   species_class )
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    ! Purpose: to calculate aerosol tendency from droplet activation and mixing
-   ! Walter Hannah (LLNL), 2018: based on Minghuai Wang's crmclouds_mixnuc_tend() - Adopted from mmicro_pcond in cldwat2m.F90
-   !-----------------------------------------------------------------------------------------
+   ! Walter Hannah (LLNL), 2018: based on Minghuai Wang's crmclouds_mixnuc_tend()
+   !                             Adopted from mmicro_pcond in cldwat2m.F90
+   !-------------------------------------------------------------------------------------
    use physics_types,    only: physics_state, physics_ptend, physics_tend, physics_ptend_init
    use physics_buffer,   only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
    use physconst,        only: gravit, rair, karman, spec_class_gas
@@ -448,8 +536,8 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    real(r8), pointer, dimension(:,:)   :: tke         ! turbulence kenetic energy 
    real(r8), pointer, dimension(:,:)   :: tk_crm      ! m2/s
    logical,           dimension(pcnst) :: lq          ! flag for ptend
-   !-----------------------------------------------------------------------------------------
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    lchnk  = state%lchnk
    ncol   = state%ncol
 
@@ -636,15 +724,14 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    deallocate(factnum)
 
 end subroutine crm_bulk_aero_mix_nuc
-!==================================================================================================================
-!==================================================================================================================
-
+!==================================================================================================
+!==================================================================================================
 ! subroutine crm_bulk_diagnose_cloudy_clear()
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    ! Purpose: diagnose statistics of cloudy and clear classes from CRM 
    !          for input data to crm_bulk_aero_mix_nuc()
    ! Walter Hannah (LLNL), 2018
-   !-----------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
 
    !!! initialize running average quantities when CRM starts? (or use separate subroutine) 
 
@@ -656,8 +743,8 @@ end subroutine crm_bulk_aero_mix_nuc
 
 ! end subroutine 
 
-!==================================================================================================================
-!==================================================================================================================
+!==================================================================================================
+!==================================================================================================
 
 #endif /* CRM */
 #endif /* SP_CRM_BULK */

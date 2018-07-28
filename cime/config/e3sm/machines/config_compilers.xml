@@ -1598,6 +1598,14 @@ lude </CFLAGS>
   <!-- Mac OSX workstation -->
   <ADD_FFLAGS>       -ffree-line-length-none  -ffixed-line-length-none </ADD_FFLAGS>
   <ADD_FFLAGS_NOOPT> -ffree-line-length-none  -ffixed-line-length-none </ADD_FFLAGS_NOOPT>
+  <ADD_CFLAGS DEBUG="FALSE"> -O2 </ADD_CFLAGS>
+  <ADD_FFLAGS DEBUG="FALSE"> -O2 </ADD_FFLAGS>
+  <!-- <ADD_CFLAGS DEBUG="TRUE"> -g -Wall -Og -fno-omit-frame-pointer -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow</ADD_CFLAGS> -->
+  <!-- <ADD_FFLAGS DEBUG="TRUE"> -g -Wall -Og -fno-omit-frame-pointer -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow</ADD_FFLAGS> -->
+  <!-- <ADD_LDFLAGS DEBUG="TRUE"> -fsanitize=address </ADD_LDFLAGS> -->
+  <!-- <ADD_CFLAGS DEBUG="TRUE"> -g -Og -Wall -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow </ADD_CFLAGS> -->
+  <ADD_FFLAGS DEBUG="TRUE"> -g -Og -Wall -fno-omit-frame-pointer -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow </ADD_FFLAGS>
+  <!-- <ADD_LDFLAGS DEBUG="TRUE"> -fsanitize=address </ADD_LDFLAGS> -->
   <!-- use homebrew lapack library -->
   <ADD_LDFLAGS MODEL="driver" >  -L/usr/local/opt/lapack/lib   -llapack -lblas   </ADD_LDFLAGS>
   <ADD_CMAKE_OPTS MODEL="cism"> -D PIO_USE_MPIMOD:BOOL=OFF </ADD_CMAKE_OPTS>

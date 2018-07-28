@@ -624,7 +624,7 @@
     <TESTS>e3sm_developer</TESTS>
     <OS>Darwin</OS>
     <COMPILERS>gnu</COMPILERS>
-    <MPILIBS>mpi-serial</MPILIBS>
+    <MPILIBS>mpich,mpi-serial</MPILIBS>
     <RUNDIR>$ENV{HOME}/E3SM/scratch/$CASE/run</RUNDIR>
     <EXEROOT>$ENV{HOME}/E3SM/scratch/$CASE/bld</EXEROOT>
     <DIN_LOC_ROOT>$ENV{HOME}/E3SM/scratch/cesm-inputdata</DIN_LOC_ROOT>    <DIN_LOC_ROOT_CLMFORC>$ENV{HOME}/projects/acme/ptclm-data</DIN_LOC_ROOT_CLMFORC>
