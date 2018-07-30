@@ -380,6 +380,8 @@ subroutine crm_physics_init(species_class)
   call addfld ('EU_CRM   ', (/ 'lev' /), 'A', '/s',       'entraiment rate from updraft')
   call addfld ('ED_CRM   ', (/ 'lev' /), 'A', '/s',       'entraiment rate from downdraft')
 
+  call addfld ('PRAIN_CRM', (/ 'lev' /), 'A', 'kg/kg/s',  'Total rain production from CRM')
+
   do m=1, pcnst 
     if(cnst_name(m) == 'DMS') then 
        call addfld('DMSCONV',   (/ 'lev' /), 'A', 'kg/kg/s',  'DMS tendency from ZM convection')
@@ -804,6 +806,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! call pbuf_set_field(pbuf, pbuf_get_index('PRAIN' ), 0.0_r8 )
    ! call pbuf_set_field(pbuf, pbuf_get_index('NEVAPR'), 0.0_r8 )
 
+   !!! rain production for CRM bulk
+   call pbuf_set_field(pbuf, pbuf_get_index('PRAIN_CRM' ), 0.0_r8 )
+
    !!! set convective rain to be zero for PRAIN already includes precipitation production from convection. 
    ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDTOT'), 0.0_r8 )
    ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDDP' ), 0.0_r8 )
@@ -1106,6 +1111,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ! call pbuf_set_field(pbuf,ifld, crm_output%qp_src(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
       ! ifld = pbuf_get_index('NEVAPR')
       ! call pbuf_set_field(pbuf,ifld, crm_output%qp_evp(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
+
+      ifld = pbuf_get_index('PRAIN_CRM' )
+      call pbuf_set_field(pbuf,ifld, qp_src(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
 
       ! Set cloud field to output from CRM. We need to do this here because we
       ! did not set crm_output%cld as a pointer to the pbuf field, so we need to

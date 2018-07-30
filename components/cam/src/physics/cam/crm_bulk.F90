@@ -42,9 +42,9 @@ subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
    ! Author: Walter Hannah (LLNL), 2018
    !-------------------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
-   use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
-   use constituents,    only: pcnst, cnst_get_ind, cnst_get_type_byind
-   use error_messages,  only: alloc_err  
+   use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, &
+                              pbuf_get_index, pbuf_get_field
+   use constituents,    only: pcnst, cnst_get_ind
 
    !!! Input Arguments
    type(physics_state), intent(in )   :: state           ! Physics state variables
@@ -54,69 +54,65 @@ subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
    type(physics_ptend), intent(out)   :: ptend           ! indivdual parameterization tendencies
 
    !!! Local variables
-   integer :: i, m, lchnk, ncol
-   integer :: ixcldice, ixcldliq                         ! constituent indices for cloud liquid and ice water.
+   integer  :: i, k, m, lchnk, ncol
+   integer  :: ixcldice, ixcldliq                        ! constituent indices for cloud liquid and ice water.
+   real(r8) :: available_water
    logical,  dimension(pcnst)      :: lq                 ! flag for ptend
    real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
-   ! real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
-   real(r8), dimension(pcols,pver) :: cld_water          ! 
-   ! real(r8), dimension(pcols,pver) :: cld_fraction       ! 
    real(r8), dimension(pcols,pver) :: rain_production    ! 
+   ! real(r8), dimension(pcols,pver) :: cld_fraction       ! 
+   ! real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
 
    !!! physics buffer fields 
    integer itim, ifld
-   real(r8), pointer, dimension(:,:) :: cld_fraction    ! cloud fraction                  (current time step)
-
+   real(r8), pointer, dimension(:,:) :: cld_fraction    ! cloud fraction (current time step)
    ! integer, dimension(pcols) :: cld_top_idx           ! index of cloud top
    
-   !--------------------------------------------------------
-   !--------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   
    lchnk = state%lchnk
    ncol  = state%ncol
 
    !!! Initialize ptend
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
-
    lq(:)        = .true.
    lq(1)        = .false.  ! vapor
    lq(ixcldliq) = .false.  ! liquid
    lq(ixcldice) = .false.  ! ice
    call physics_ptend_init(ptend,state%psetcols,'crm_bulk_aerosol_wet_removal',lq=lq)
 
-
-   itim = pbuf_old_tim_idx ()
-   ifld = pbuf_get_index ('CLD')
-   call pbuf_get_field(pbuf, ifld, cld_fraction, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-
-   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDTOT'), 0.0_r8 )
-   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDDP' ), 0.0_r8 )
-   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDSH' ), 0.0_r8 )
-
-   ! real(r8) qp_src(pcols,pver)       ! precip water tendency due to conversion
-   ! ifld = pbuf_get_index('PRAIN' )
-   ! call pbuf_set_field(pbuf,ifld, qp_src(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
-
-   rain_production   = ???
-   cld_water         = state%q(:,:,ixcldliq)
+   !!! retreive pbuf fields
+   itim = pbuf_old_tim_idx()
+   ifld = pbuf_get_index('CLD')
+   call pbuf_get_field(pbuf,ifld, cld_fraction    ,start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+   ifld = pbuf_get_index('PRAIN_CRM' )
+   call pbuf_get_field(pbuf,ifld, rain_production ,start=(/1,1/)     , kount=(/pcols,pver/) )
 
    do i = 1,ncol
       do k = 1,pver
+         
+         !!! check if there sufficient cloud water available
+         available_water = cld_fraction(i,k) * state%q(i,k,ixcldliq)
 
-         !!! Calculate updraft wet removal loss rate
-         aero_loss_rate(i,k) = rain_production(i,k) / ( cld_fraction(i,k) * cld_water(i,k) )
+         if ( available_water /= 0. ) then
 
-         do m = 1, ncnst
+            !!! Calculate updraft wet removal loss rate
+            aero_loss_rate(i,k) = rain_production(i,k) / available_water
+
             !!! Calculate updraft wet removal tendency
-            ptend%q(i,k,m) = -1.0_r8 * aero_loss_rate * state%q(i,k,m)
-         end do ! m=1,pcnst         
+            do m = 1, pcnst
+               ptend%q(i,k,m) = -1.0_r8 * aero_loss_rate * state%q(i,k,m)
+            end do ! m=1,pcnst  
+
+         end if ! available_water
 
       end do ! k=1,pver
-   end if ! i=1,ncol
+   end do ! i=1,ncol
 
-
-   !--------------------------------------------------------
-   !--------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
 
 end subroutine crm_bulk_aerosol_wet_removal
 
