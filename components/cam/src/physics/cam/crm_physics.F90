@@ -167,6 +167,8 @@ subroutine crm_physics_register()
   call pbuf_add_field('MX_CRM',    'physpkg', dtype_r8, (/pcols/),      idx)  ! index of cloud (convection) bottom for each column
   call pbuf_add_field('IDEEP_CRM', 'physpkg', dtype_r8, (/pcols/),      idx)  ! Gathering array for convective columns
 
+  call pbuf_add_field('PRAIN_CRM', 'physpkg', dtype_r8, (/pcols,pver/), idx)  ! 
+
   call pbuf_add_field('TKE_CRM',   'physpkg', dtype_r8, (/pcols,pver/), idx) ! TKE from CRM  (m2/s2)
   call pbuf_add_field('TK_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx) ! TK from CRM (m2/s)
 

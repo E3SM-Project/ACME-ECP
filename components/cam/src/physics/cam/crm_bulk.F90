@@ -22,6 +22,7 @@ module crm_bulk_mod
 
    implicit none
 
+   ! public :: crm_bulk_aerosol_activation
    public :: crm_bulk_aerosol_wet_removal
    public :: crm_bulk_transport
    public :: crm_bulk_aero_mix_nuc 
@@ -32,9 +33,100 @@ module crm_bulk_mod
 contains 
 !==================================================================================================
 !==================================================================================================
+! subroutine crm_bulk_aerosol_activation(state, pbuf, ptend)
+   !-------------------------------------------------------------------------------------
+   ! Purpose: calculate activation of aerosols using CRM cloud information
+   ! Author: Walter Hannah (LLNL), 2018
+   !-------------------------------------------------------------------------------------
+   ! use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
+   ! use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, &
+   !                            pbuf_get_index, pbuf_get_field
+   ! use constituents,    only: pcnst, cnst_get_ind
+   ! use modal_aero_data,  only: ntot_amode
+
+   ! !!! Input Arguments
+   ! type(physics_state), intent(in )   :: state              ! Physics state variables
+   ! type(physics_buffer_desc), pointer :: pbuf(:)            ! physics buffer
+
+   ! !!! Output Arguments
+   ! type(physics_ptend), intent(out)   :: ptend              ! indivdual parameterization tendencies
+
+   ! !!! Local variables
+   ! integer  :: i, k, m, lchnk, ncol
+   ! integer  :: ixcldice, ixcldliq                           ! constituent indices for cloud liquid and ice water.
+
+   ! real(r8)                        :: wbar             ! mean updraft velocity (cm/s)
+   ! real(r8)                        :: sigw             ! standard deviation of updraft velocity (cm/s)
+   ! real(r8)                        :: wdiab            ! diabatic vertical velocity (cm/s)
+   ! real(r8)                        :: wminf            ! lower limit for integration over updraft spectrum (cm/s)
+   ! real(r8)                        :: wmaxf            ! upper limit for integration over updraft spectrum (cm/s)
+   ! real(r8), dimension(ntot_amode) :: naerosol         ! interstitial+activated number conc (#/m3)
+   ! real(r8), dimension(ntot_amode) :: vaerosol         ! interstitial + activated aerosol volume mixing ratio (m3/m3)
+   ! real(r8), dimension(ntot_amode) :: hygro            ! current hygroscopicity for int+act
+
+   ! real(r8), dimension(ntot_amode) :: fn               ! number fraction of aerosols activated
+   ! real(r8), dimension(ntot_amode) :: fm               ! mass fraction of aerosols activated
+   ! real(r8), dimension(ntot_amode) :: fluxn            ! see activate_modal() in ndrop.F90
+   ! real(r8), dimension(ntot_amode) :: fluxm            ! see activate_modal() in ndrop.F90
+   ! real(r8)                        :: flux_fullact     ! see activate_modal() in ndrop.F90
+   
+   
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   
+   ! lchnk = state%lchnk
+   ! ncol  = state%ncol
+
+   ! !!! Initialize ptend
+   ! call cnst_get_ind('CLDLIQ', ixcldliq)
+   ! call cnst_get_ind('CLDICE', ixcldice)
+   ! lq(:)        = .true.
+   ! lq(1)        = .false.  ! vapor
+   ! lq(ixcldliq) = .false.  ! liquid
+   ! lq(ixcldice) = .false.  ! ice
+   ! call physics_ptend_init(ptend,state%psetcols,'crm_bulk_aerosol_activation',lq=lq)
+
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+
+   !!! subroutine activate_modal Interface:
+   !!!    real(r8), intent(in) :: wbar          ! grid cell mean vertical velocity (m/s)
+   !!!    real(r8), intent(in) :: sigw          ! subgrid standard deviation of vertical vel (m/s)
+   !!!    real(r8), intent(in) :: wdiab         ! diabatic vertical velocity (0 if adiabatic)
+   !!!    real(r8), intent(in) :: wminf         ! minimum updraft velocity for integration (m/s)
+   !!!    real(r8), intent(in) :: wmaxf         ! maximum updraft velocity for integration (m/s)
+   !!!    real(r8), intent(in) :: tair          ! air temperature (K)
+   !!!    real(r8), intent(in) :: rhoair        ! air density (kg/m3)
+   !!!    real(r8), intent(in) :: na(:)         ! aerosol number concentration (/m3)
+   !!!    integer,  intent(in) :: nmode         ! number of aerosol modes
+   !!!    real(r8), intent(in) :: volume(:)     ! aerosol volume concentration (m3/m3)
+   !!!    real(r8), intent(in) :: hygro(:)      ! hygroscopicity of aerosol mode
+   !!!    real(r8), intent(out) :: fn(:)        ! number fraction of aerosols activated
+   !!!    real(r8), intent(out) :: fm(:)        ! mass fraction of aerosols activated
+   !!!    real(r8), intent(out) :: fluxn(:)     ! flux of activated aerosol number fraction into cloud (cm/s)
+   !!!    real(r8), intent(out) :: fluxm(:)     ! flux of activated aerosol mass fraction into cloud (cm/s)
+   !!!    real(r8), intent(out) :: flux_fullact ! flux of activated aerosol fraction assuming 100% activation (cm/s)
+
+   ! tair = state%t(:,:)
+   ! use physconst, only: gravit, rair, rhoh2o
+   ! rhoair_i(k) = pmid(icol,k)/(rair*t(icol,k))
+   ! rhoair = 
+
+
+   ! call activate_modal(wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,   &
+   !                     naerosol, ntot_amode, vaerosol, hygro,           &
+   !                     fn, fm, fluxn, fluxm, flux_fullact               )
+
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+
+! end subroutine crm_bulk_aerosol_activation
+
+!==================================================================================================
+!==================================================================================================
 subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
    !-------------------------------------------------------------------------------------
-   ! Purpose: calculate scavenging and wet removal of aerosols
+   ! Purpose: calculate wet removal (i.e. scavenging) of aerosols
    !          Scheme is based on supplementary material from:
    !              Wang et al., 2013: Sensitivity of remote aerosol distributions to 
    !                 representation of cloud–aerosol interactions in a global climate model, 
@@ -47,27 +139,24 @@ subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
    use constituents,    only: pcnst, cnst_get_ind
 
    !!! Input Arguments
-   type(physics_state), intent(in )   :: state           ! Physics state variables
-   type(physics_buffer_desc), pointer :: pbuf(:)         ! physics buffer
+   type(physics_state), intent(in )   :: state              ! Physics state variables
+   type(physics_buffer_desc), pointer :: pbuf(:)            ! physics buffer
 
    !!! Output Arguments
-   type(physics_ptend), intent(out)   :: ptend           ! indivdual parameterization tendencies
+   type(physics_ptend), intent(out)   :: ptend              ! indivdual parameterization tendencies
 
    !!! Local variables
    integer  :: i, k, m, lchnk, ncol
-   integer  :: ixcldice, ixcldliq                        ! constituent indices for cloud liquid and ice water.
-   real(r8) :: available_water
-   logical,  dimension(pcnst)      :: lq                 ! flag for ptend
-   real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
-   ! real(r8), dimension(pcols,pver) :: rain_production    ! 
-   ! real(r8), dimension(pcols,pver) :: cld_fraction       ! 
-   ! real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
+   integer  :: ixcldice, ixcldliq                           ! constituent indices for cloud liquid and ice water.
+   real(r8) :: available_water                              ! available cloud water to be rained out
+   logical,  dimension(pcnst)            :: lq              ! flag for ptend
+   real(r8), dimension(pcols,pver)       :: aero_loss_rate  ! 
+   real(r8), dimension(pcols,pver,pcnst) :: cld_borne_aero  ! cloud borne aerosol mass mixing ratio 
 
    !!! physics buffer fields 
    integer itim, ifld
-   real(r8), pointer, dimension(:,:) :: cld_fraction    ! cloud fraction (current time step)
-   real(r8), pointer, dimension(:,:) :: rain_production ! rain production rate 
-   ! integer, dimension(pcols) :: cld_top_idx           ! index of cloud top
+   real(r8), pointer, dimension(:,:) :: cld_fraction        ! cloud fraction (current time step)
+   real(r8), pointer, dimension(:,:) :: rain_production     ! rain production rate 
    
    !-------------------------------------------------------------------------------------
    !-------------------------------------------------------------------------------------
@@ -85,13 +174,18 @@ subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
    call physics_ptend_init(ptend,state%psetcols,'crm_bulk_aerosol_wet_removal',lq=lq)
 
    !!! retreive pbuf fields
-   itim = pbuf_old_tim_idx()
+   ! itim = pbuf_old_tim_idx()
    ! ifld = pbuf_get_index('CLD')
    ! call pbuf_get_field(pbuf,ifld, cld_fraction    ,start=(/1,1,itim/), kount=(/pcols,pver,1/) )
    ! ifld = pbuf_get_index('PRAIN_CRM' )
    ! call pbuf_get_field(pbuf,ifld, rain_production ,start=(/1,1/)     , kount=(/pcols,pver/) )
+
+   !!! retreive pbuf fields
    call pbuf_get_field(pbuf,pbuf_get_index('CLD'),        cld_fraction     )
    call pbuf_get_field(pbuf,pbuf_get_index('PRAIN_CRM' ), rain_production  )
+
+   !!! TEMPORARY - this needs to change to reflect activated aerosols - use crm_bulk_aerosol_activation()
+   cld_borne_aero = 0.5_r8 * state%q(:,:,:)
 
    do i = 1,ncol
       do k = 1,pver
@@ -99,14 +193,14 @@ subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
          !!! check if there sufficient cloud water available
          available_water = cld_fraction(i,k) * state%q(i,k,ixcldliq)
 
-         if ( available_water /= 0. ) then
+         if ( available_water > 0.0_r8 ) then
 
             !!! Calculate updraft wet removal loss rate
             aero_loss_rate(i,k) = rain_production(i,k) / available_water
 
             !!! Calculate updraft wet removal tendency
             do m = 1, pcnst
-               ptend%q(i,k,m) = -1.0_r8 * aero_loss_rate(i,k) * state%q(i,k,m)
+               ptend%q(i,k,m) = -1.0_r8 * aero_loss_rate(i,k) * cld_borne_aero(i,k,m)
             end do ! m=1,pcnst  
 
          end if ! available_water
@@ -473,7 +567,7 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    use time_manager,     only: is_first_step
    use cam_history,      only: outfld
    use ndrop,            only: dropmixnuc
-   use modal_aero_data
+   use modal_aero_data,  only: ntot_amode
    use rad_constituents, only: rad_cnst_get_info
 
    !!! Input 

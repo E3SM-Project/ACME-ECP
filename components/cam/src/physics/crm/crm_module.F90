@@ -1578,6 +1578,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         endif
       enddo
     enddo
+<<<<<<< HEAD
     crm_output%prec_crm(icrm,:,:) = precsfc/1000.           !mm/s --> m/s
     crm_output%precc   (icrm)     = crm_output%precc (icrm)*factor_xy/1000.
     crm_output%precl   (icrm)     = crm_output%precl (icrm)*factor_xy/1000.
@@ -1607,6 +1608,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     crm_output%clmed(icrm) = crm_output%clmed(icrm) * factor_xyt
     crm_output%cllow(icrm) = crm_output%cllow(icrm) * factor_xyt
 
+    !-------------------------------------------------------------
+    ! Set stuff for bulk convective transport
+    !-------------------------------------------------------------    
     crm_output%jt_crm(icrm) = plev * 1.0
     crm_output%mx_crm(icrm) = 1.0
     do k=1, plev

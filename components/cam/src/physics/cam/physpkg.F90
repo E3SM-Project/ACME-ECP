@@ -1945,7 +1945,7 @@ subroutine tphysbc (ztodt,               &
 #endif
 
 #if defined( SP_CRM_BULK )
-    use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
+    use crm_bulk_mod,    only: crm_bulk_aerosol_wet_removal, crm_bulk_transport, crm_bulk_aero_mix_nuc
 #endif
 
 #endif /* CRM */
@@ -2950,17 +2950,31 @@ end if
           sh_e_ed_ratio = 0.0_r8
         endif
 #if defined( SP_CRM_BULK )
-        !!!  wet scavenging of aerosols
-        call crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
-        call physics_update(state, ptend, ztodt, tend)
-#else
+
+        if (.not.is_first_step()) then
+
+          !!! calculate aerosol activation
+          ! call crm_bulk_aerosol_activation(state, pbuf, ptend)
+          ! call physics_update(state, ptend, ztodt, tend)
+
+          !!! calculate wet removal of constituents (i.e. scavenging)
+          call crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
+          call physics_update(state, ptend, ztodt, tend)
+
+          !!! calculate bulk transport tendencies (CRM)
+          call crm_bulk_transport(state, pbuf, ptend)
+          call physics_update (state, ptend, ztodt, tend)
+
+        end if ! .not.is_first_step
+
+#else /* SP_CRM_BULK */
+
         call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,      & !Intent-ins
             mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
             cam_out,                                                                 & !Intent-inout
             pbuf,                                                                    & !Pointer
             ptend                                                                    ) !Intent-out
         call physics_update(state, ptend, ztodt, tend)
-#endif
 
         if (carma_do_wetdep) then
           ! CARMA wet deposition
@@ -2974,18 +2988,14 @@ end if
           call t_stopf ('carma_wetdep_tend')
         end if
 
-#if defined( SP_CRM_BULK )
-        !!! calculate bulk transport tendencies (CRM)
-        call crm_bulk_transport(state, pbuf, ptend)
-        call physics_update (state, ptend, ztodt, tend)
-#else
         !!! deep convective transport (ZM)
         call t_startf ('convect_deep_tend2')
         call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
           du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
         call physics_update(state, ptend, ztodt, tend)
         call t_stopf ('convect_deep_tend2')
-#endif
+
+#endif /* SP_CRM_BULK */
 
         ! check tracer integrals
         call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
