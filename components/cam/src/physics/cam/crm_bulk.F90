@@ -22,9 +22,9 @@ module crm_bulk_mod
 
    implicit none
 
+   public :: crm_bulk_aerosol_wet_removal
    public :: crm_bulk_transport
    public :: crm_bulk_aero_mix_nuc 
-   public :: crm_bulk_aerosol_wet_removal
    ! public :: crm_bulk_diagnose_cloudy_clear
 
    private :: crm_bulk_transport_tend 
@@ -59,13 +59,14 @@ subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
    real(r8) :: available_water
    logical,  dimension(pcnst)      :: lq                 ! flag for ptend
    real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
-   real(r8), dimension(pcols,pver) :: rain_production    ! 
+   ! real(r8), dimension(pcols,pver) :: rain_production    ! 
    ! real(r8), dimension(pcols,pver) :: cld_fraction       ! 
    ! real(r8), dimension(pcols,pver) :: aero_loss_rate     ! 
 
    !!! physics buffer fields 
    integer itim, ifld
    real(r8), pointer, dimension(:,:) :: cld_fraction    ! cloud fraction (current time step)
+   real(r8), pointer, dimension(:,:) :: rain_production ! rain production rate 
    ! integer, dimension(pcols) :: cld_top_idx           ! index of cloud top
    
    !-------------------------------------------------------------------------------------
@@ -85,10 +86,12 @@ subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
 
    !!! retreive pbuf fields
    itim = pbuf_old_tim_idx()
-   ifld = pbuf_get_index('CLD')
-   call pbuf_get_field(pbuf,ifld, cld_fraction    ,start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-   ifld = pbuf_get_index('PRAIN_CRM' )
-   call pbuf_get_field(pbuf,ifld, rain_production ,start=(/1,1/)     , kount=(/pcols,pver/) )
+   ! ifld = pbuf_get_index('CLD')
+   ! call pbuf_get_field(pbuf,ifld, cld_fraction    ,start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+   ! ifld = pbuf_get_index('PRAIN_CRM' )
+   ! call pbuf_get_field(pbuf,ifld, rain_production ,start=(/1,1/)     , kount=(/pcols,pver/) )
+   call pbuf_get_field(pbuf,pbuf_get_index('CLD'),        cld_fraction     )
+   call pbuf_get_field(pbuf,pbuf_get_index('PRAIN_CRM' ), rain_production  )
 
    do i = 1,ncol
       do k = 1,pver
@@ -103,7 +106,7 @@ subroutine crm_bulk_aerosol_wet_removal(state, pbuf, ptend)
 
             !!! Calculate updraft wet removal tendency
             do m = 1, pcnst
-               ptend%q(i,k,m) = -1.0_r8 * aero_loss_rate * state%q(i,k,m)
+               ptend%q(i,k,m) = -1.0_r8 * aero_loss_rate(i,k) * state%q(i,k,m)
             end do ! m=1,pcnst  
 
          end if ! available_water
