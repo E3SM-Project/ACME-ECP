@@ -640,8 +640,10 @@
     <MAX_MPITASKS_PER_NODE>1</MAX_MPITASKS_PER_NODE>
     <module_system type="none"/>
     <environment_variables>
-      <env name="NETCDF_PATH">/usr/local</env>     <!-- Use this for homebrew libraries -->
-      <!-- <env name="NETCDF_PATH">/Users/hannah6/NetCDF/bld</env> -->
+      <!-- Use this for homebrew libraries -->
+      <!-- <env name="NETCDF_PATH">/usr/local</env> -->
+      <!-- Use this for custom built libraries -->     
+      <env name="NETCDF_PATH">/Users/hannah6/NetCDF/bld</env>
     </environment_variables>
 </machine>
 

@@ -1601,10 +1601,10 @@ lude </CFLAGS>
   <ADD_CFLAGS DEBUG="FALSE"> -O2 </ADD_CFLAGS>
   <ADD_FFLAGS DEBUG="FALSE"> -O2 </ADD_FFLAGS>
   <!-- <ADD_CFLAGS DEBUG="TRUE"> -g -Wall -Og -fno-omit-frame-pointer -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow</ADD_CFLAGS> -->
-  <!-- <ADD_FFLAGS DEBUG="TRUE"> -g -Wall -Og -fno-omit-frame-pointer -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow</ADD_FFLAGS> -->
+  <ADD_FFLAGS DEBUG="TRUE"> -g -Wall -Og -fno-omit-frame-pointer -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow</ADD_FFLAGS>
   <!-- <ADD_LDFLAGS DEBUG="TRUE"> -fsanitize=address </ADD_LDFLAGS> -->
   <!-- <ADD_CFLAGS DEBUG="TRUE"> -g -Og -Wall -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow </ADD_CFLAGS> -->
-  <ADD_FFLAGS DEBUG="TRUE"> -g -Og -Wall -fno-omit-frame-pointer -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow </ADD_FFLAGS>
+  <!-- <ADD_FFLAGS DEBUG="TRUE"> -g -Og -Wall -fno-omit-frame-pointer -fsanitize=address -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow </ADD_FFLAGS> -->
   <!-- <ADD_LDFLAGS DEBUG="TRUE"> -fsanitize=address </ADD_LDFLAGS> -->
   <!-- use homebrew lapack library -->
   <ADD_LDFLAGS MODEL="driver" >  -L/usr/local/opt/lapack/lib   -llapack -lblas   </ADD_LDFLAGS>
