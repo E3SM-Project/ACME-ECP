@@ -1093,18 +1093,19 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    call pbuf_get_field(pbuf, snow_str_idx, snow_str )
    call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
 
-   !!! total clouds and precipiation - initialize here to be safe
-   call pbuf_set_field(pbuf, pbuf_get_index('AST'   ), 0.0_r8 )
-   call pbuf_set_field(pbuf, pbuf_get_index('QME'   ), 0.0_r8 )
-   call pbuf_set_field(pbuf, pbuf_get_index('PRAIN' ), 0.0_r8 )
-   call pbuf_set_field(pbuf, pbuf_get_index('NEVAPR'), 0.0_r8 )
+   !!! total clouds and precipiation - initialize here to be safe 
+   !!! WARNING - this disables aerosol scavenging!
+   ! call pbuf_set_field(pbuf, pbuf_get_index('AST'   ), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('QME'   ), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('PRAIN' ), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('NEVAPR'), 0.0_r8 )
 
    !!! set convective rain to be zero for PRAIN already includes precipitation production from convection. 
-   call pbuf_set_field(pbuf, pbuf_get_index('RPRDTOT'), 0.0_r8 )
-   call pbuf_set_field(pbuf, pbuf_get_index('RPRDDP' ), 0.0_r8 )
-   call pbuf_set_field(pbuf, pbuf_get_index('RPRDSH' ), 0.0_r8 )
-   call pbuf_set_field(pbuf, pbuf_get_index('ICWMRDP'), 0.0_r8 )
-   call pbuf_set_field(pbuf, pbuf_get_index('ICWMRSH'), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDTOT'), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDDP' ), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('RPRDSH' ), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('ICWMRDP'), 0.0_r8 )
+   ! call pbuf_set_field(pbuf, pbuf_get_index('ICWMRSH'), 0.0_r8 )
    
    prec_dp  = 0.
    snow_dp  = 0.
@@ -1120,21 +1121,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-   !------------------------------------------------------------
-   ! initialize CRM orientation angle
-   !------------------------------------------------------------
-   if(is_first_step()) then
-
-#ifdef SP_DIR_NS
-      if (crm_ny.eq.1) then
-         crm_angle(:ncol) = pi/2.
-      else 
-         crm_angle(:ncol) = 0.
-      endif
-#else
-      crm_angle(:ncol) = 0.
-#endif 
-   endif
 
 #if defined( SP_ORIENT_RAND )
    !------------------------------------------------------------
@@ -1168,6 +1154,20 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
       enddo
 
    endif
+#else /* SP_ORIENT_RAND */
+   !------------------------------------------------------------
+   ! initialize static CRM orientation angle (no rotation)
+   !------------------------------------------------------------
+#if defined( SP_DIR_NS )
+    if (crm_ny.eq.1) then
+       crm_angle(:ncol) = pi/2.
+    else 
+       crm_angle(:ncol) = 0.
+    endif
+#else
+      crm_angle(:ncol) = 0.
+#endif /* SP_DIR_NS */
+
 #endif /* SP_ORIENT_RAND */
 
    !------------------------------------------------------------
@@ -1689,12 +1689,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
       snow_dp  = precsc
 
       !!! These are needed elsewhere in the model when SP_PHYS_BYPASS is used
-      ifld = pbuf_get_index('AST'   )
-      call pbuf_set_field(pbuf,ifld, cld   (:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
-      ifld = pbuf_get_index('PRAIN' )
-      call pbuf_set_field(pbuf,ifld, qp_src(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
-      ifld = pbuf_get_index('NEVAPR')
-      call pbuf_set_field(pbuf,ifld, qp_evp(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
+      ! ifld = pbuf_get_index('AST'   )
+      ! call pbuf_set_field(pbuf,ifld, cld   (:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
+      ! ifld = pbuf_get_index('PRAIN' )
+      ! call pbuf_set_field(pbuf,ifld, qp_src(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
+      ! ifld = pbuf_get_index('NEVAPR')
+      ! call pbuf_set_field(pbuf,ifld, qp_evp(:ncol,:pver),start=(/1,1/), kount=(/pcols,pver/) )
 
       do m=1,crm_nz
       k = pver-m+1
