@@ -29,9 +29,12 @@ module crm_physics
    private
    save
 
-   public :: crm_physics_tend, crm_physics_register, crm_physics_init
-   public :: crm_save_state_tend
+   public :: crm_physics_register
+   public :: crm_physics_init
+   public :: crm_physics_tend
+   public :: crm_surface_flux_bypass_tend
    public :: crm_remember_state_tend
+   public :: crm_save_state_tend
    public :: m2005_effradius
 
    integer :: crm_u_idx, crm_v_idx, crm_w_idx, crm_t_idx
@@ -63,15 +66,15 @@ module crm_physics
 
 
 contains
-!=========================================================================================================
-!=========================================================================================================
+!==================================================================================================
+!==================================================================================================
 
 subroutine crm_physics_register()
-!-------------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! 
 ! Purpose:  add necessary fileds into physics buffer
 !
-!--------------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
   use spmd_utils,      only: masterproc
   use physconst,       only: mwdry, cpair
   use ppgrid,          only: pcols, pver, pverp
@@ -176,15 +179,15 @@ subroutine crm_physics_register()
 
 end subroutine crm_physics_register
 
-!=========================================================================================================
-!=========================================================================================================
+!==================================================================================================
+!==================================================================================================
 
 subroutine crm_physics_init(species_class)
-!-------------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! 
 ! Purpose: initialize some variables, and add necessary fields into output fields 
 !
-!--------------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
   use physics_buffer,  only: pbuf_get_index
   ! use physics_types,   only: physics_tend_alloc
   use physconst,       only: mwdry, cpair, spec_class_gas !==Guangxing Lin added spec_class_gas
@@ -482,9 +485,13 @@ subroutine crm_physics_init(species_class)
 
 
 end subroutine crm_physics_init
-!=========================================================================================================
-!=========================================================================================================
-subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,species_class, phys_stage)
+
+!==================================================================================================
+!==================================================================================================
+
+subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,    &
+                            species_class, phys_stage,                           &
+                            sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
 !------------------------------------------------------------------------------------------
 !  Purpose: to update state from CRM physics. 
@@ -507,7 +514,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    use ppgrid
    use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, dyn_time_lvls, pbuf_get_field, pbuf_set_field
    use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
-   use physics_update_mod, only: physics_update
    use camsrfexch,      only: cam_in_t, cam_out_t
    use time_manager,    only: is_first_step, get_nstep
    use cam_history,     only: outfld
@@ -534,11 +540,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    use modal_aero_data, only: ntot_amode, ntot_amode
    use ndrop,  only: loadaer
    use microphysics,  only: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ing, ins   !!!!!! BE CAUIOUS, these indices can only defined before call to crm.
-#endif
-#if (defined MODAL_AERO)  
-   use modal_aero_data, only: qqcw_get_field
-   use modal_aero_wateruptake, only: modal_aero_wateruptake_dr    !==Guangxing Lin
-   use modal_aero_calcsize,    only: modal_aero_calcsize_sub      !==Guangxing Lin
 #endif
 #ifdef ECPP
    use module_ecpp_ppdriver2,  only: parampollu_driver2
@@ -571,19 +572,17 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    ! real(r8), intent(in) :: dlf(pcols,pver)        ! shallow+deep convective detrainment [kg/kg/s] - used for aerosol_wet_intr - no longer needed
    type (cam_in_t), intent(in)      :: cam_in
    type (cam_out_t), intent(inout)  :: cam_out
-
-   integer, intent(in   ) :: species_class(:)    !==Guangxing Lin
-   integer, intent(inout) :: phys_stage        ! physics run stage indicator (1 or 2 = bc or ac) - used for radiative tendencies when SP_CRM_SPLIT is used
+   integer, intent(in   ) :: species_class(:)
+   integer, intent(inout) :: phys_stage                        ! physics run stage indicator (1 or 2 = bc or ac, see SP_CRM_SPLIT)
+   real(r8), intent(out), dimension(pcols) :: sp_qchk_prec_dp  ! precipitation diagostic (liq+ice)  used for check_energy_chng
+   real(r8), intent(out), dimension(pcols) :: sp_qchk_snow_dp  ! precipitation diagostic (ice only) used for check_energy_chng
+   real(r8), intent(out), dimension(pcols) :: sp_rad_flux      ! radiative flux diagnostic used for check_energy_chng
 
 ! convective precipitation variables
    real(r8), pointer :: prec_dp(:)          ! total precip from deep convection (ZM)    [m/s]
    real(r8), pointer :: snow_dp(:)          ! snow from deep convection (ZM)            [m/s]
    real(r8), pointer :: prec_sh(:)          ! total precip from shallow convection      [m/s]
    real(r8), pointer :: snow_sh(:)          ! snow from shallow convection              [m/s]
-
-   ! whannah - tmp variables for check_energy_chng()
-   ! real(r8), dimension(pcols) :: chk_prec_dp      ! 
-   ! real(r8), dimension(pcols) :: chk_snow_dp      ! 
 
 ! stratiform precipitation variables
    real(r8), pointer :: prec_pcw(:)         ! total precip from prognostic cloud scheme   [m/s]
@@ -830,19 +829,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
    real(r8) ::  dtstep_pp        ! time step for the ECPP (seconds)
    integer  ::  necpp            ! the number of GCM time step in which ECPP is called once.
 
-
-   real(r8) radflux(pcols)       ! radiative fluxes from radiation calculation (qrs + qrl)
-
-!+++mhwangtest
-   real(r8) qtot(pcols, 3)       ! total water
-   real(r8) qt_hydro(pcols, 2)   ! total hydrometer 
-   real(r8) qt_cloud(pcols, 3)   ! total cloud water
-   real(r8) qtv(pcols, 3)        ! total water vapor
-   real(r8) ql_cloud(pcols, 2)   ! liquid cloud water
-   real(r8) qli_hydro(pcols, 2)  ! column-integraetd rain + snow + graupel 
-   real(r8) qi_hydro(pcols, 2)   ! column-integrated snow water + graupel water
-   real(r8) sfactor 
-!---mhwangtest
+   real(r8) , dimension(pcols) :: qli_hydro_before   ! column-integraetd rain + snow + graupel 
+   real(r8) , dimension(pcols) ::  qi_hydro_before   ! column-integrated snow water + graupel water
+   real(r8) , dimension(pcols) :: qli_hydro_after   ! column-integraetd rain + snow + graupel 
+   real(r8) , dimension(pcols) ::  qi_hydro_after   ! column-integrated snow water + graupel water
+   real(r8) sfactor              ! used to determine precip type for sam1mom
 
    real(r8) zero(pcols)          ! zero
    real(r8) timing_factor(pcols) ! factor for crm cpu-usage: 1 means no subcycling
@@ -869,10 +860,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
 
    logical :: ls, lu, lv, lq(pcnst), fromcrm
 
-   real(r8) tmp1           ! used for SP_FLUX_BYPASS - add fluxes to state before CRM call in tphysbc 
+   real(r8) dp_g   ! = state%pdel / gravit
+
    integer :: icol(pcols)
 
-   !!! variables for changin CRM orientation - whannah
+   !!! variables for changin CRM orientation
    real(crm_rknd), parameter        :: pi   = 3.14159265359
    real(crm_rknd), parameter        :: pix2 = 6.28318530718
    real(crm_rknd), dimension(pcols) :: crm_angle
@@ -903,45 +895,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
 !  CRM (Superparameterization).
 ! Author: Marat Khairoutdinov (mkhairoutdin@ms.cc.sunysb.edu)
 !========================================================
-
-   !------------------------------------------------------------------------------------------
-   !------------------------------------------------------------------------------------------
-   ! whannah - The flux bypass option was originally implemented by Mike Pritchard (UCI)
-   ! Without this bypass the surface flux tendencies are applied to the GCM dynamical core 
-   ! as a perturbation tendency concentrated on just the lowest model layer instead of first 
-   ! before being diffused vertically by the boundary layer turbulence as occurs without SP, 
-   ! and was intended to be the case under SP (confirmed by Marat). This fix applies the 
-   ! surface fluxes of dry static energy and water vapor prior to running the CRM, and disables 
-   ! the tendency addition in diffusion_solver.F90. This is a more natural progression
-   ! and does not expose the GCM dynamical core to unrealistic tendencies at the surface.
-   ! note : rpdel = 1./pdel
-   ! SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
-   !------------------------------------------------------------------------------------------
-   !------------------------------------------------------------------------------------------
-#if defined( SP_FLUX_BYPASS )
-   lchnk = state%lchnk
-   ncol  = state%ncol
-   
-   lq(:) = .false.
-   lq(1) = .true.
-   call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', lu=.false., lv=.false., ls=.true., lq=lq)
-   ptend%name  = "SP_FLUX_BYPASS - tphysbc"
-   ptend%lu    = .false.
-   ptend%lv    = .false.
-   ptend%lq    = .false. 
-   ptend%ls    = .true.
-   ptend%lq(1) = .true.
-   do i=1,ncol
-      tmp1 = gravit * state%rpdel(i,pver)    ! no need to multiply by ztodt as this is done in physics_update()
-      ptend%s(i,:)   = 0.
-      ptend%q(i,:,1) = 0.
-      ptend%s(i,pver)   = tmp1 * cam_in%shf(i)
-      ptend%q(i,pver,1) = tmp1 * cam_in%cflx(i,1)
-   end do
-   ! call physics_update(state_save, ptend, ztodt, tend)    ! use state_save since the state gets reset to this below
-   call physics_update(state, ptend, ztodt, tend)   
-#endif
-
 
    call t_startf ('crm')
 
@@ -1481,67 +1434,45 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
          fluxq0(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
 !---mwwang
 
-!+++mhwangtest
-!
-! calculate total water before calling crm
-! total hydrometer water (rain, snow, and graupel)
-!-- mark branson: insert ifdef m2005 around this test so 1-moment micro compile will work
+         !----------------------------------------------------------------------
+         ! calculate total water before calling crm - used for check_energy_chng() after CRM
+         !----------------------------------------------------------------------
          if (SPCAM_microp_scheme .eq. 'm2005') then
-            qt_hydro(i, 1) = 0.0_r8
-            qli_hydro(i, 1) = 0.0_r8
-            qi_hydro(i, 1) = 0.0_r8
-            do m=1, crm_nz
-               k=pver-m+1
-               do ii=1, crm_nx
-                  do jj=1, crm_ny
-                     qt_hydro(i,1)  =  qt_hydro(i,1)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit 
-                     qli_hydro(i,1) = qli_hydro(i,1)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
-                     qi_hydro(i,1)  =  qi_hydro(i,1)+(crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
-                  end do
-               end do 
-            end do
-            qt_hydro(i,1)  =  qt_hydro(i,1)/(crm_nx*crm_ny)
-            qli_hydro(i,1) = qli_hydro(i,1)/(crm_nx*crm_ny)
-            qi_hydro(i,1)  =  qi_hydro(i,1)/(crm_nx*crm_ny)
+            qli_hydro_before(i) = 0.0_r8
+            qi_hydro_before(i) = 0.0_r8
+            do m = 1,crm_nz
+               k = pver-m+1
+               dp_g = state%pdel(i,k)/gravit
+               do jj = 1,crm_ny
+                  do ii = 1,crm_nx
+                     qli_hydro_before(i) = qli_hydro_before(i)+(crm_qr(i,ii,jj,m)+ &
+                                                                crm_qs(i,ii,jj,m)+ &
+                                                                crm_qg(i,ii,jj,m)) * dp_g
+                     qi_hydro_before(i)  =  qi_hydro_before(i)+(crm_qs(i,ii,jj,m)+ &
+                                                                crm_qg(i,ii,jj,m)) * dp_g
+                  end do ! ii
+               end do ! jj
+            end do ! m
+            qli_hydro_before(i) = qli_hydro_before(i)/(crm_nx*crm_ny)
+            qi_hydro_before(i)  =  qi_hydro_before(i)/(crm_nx*crm_ny)
 
-            ! total cloud water and total water vapor
-            qt_cloud(i,1) = 0._r8
-            qtv(i,1) = 0._r8
-            do k=1, pver
-               qt_cloud(i,1) = qt_cloud(i,1) + (state%q(i,k,ixcldliq)+state%q(i,k,ixcldice)) * state%pdel(i,k)/gravit
-               qtv(i,1) = qtv(i,1) + state%q(i,k,1) * state%pdel(i,k)/gravit
-            end do 
-
-            ! total water 
-            qtot(i,1) = qt_hydro(i,1) + qt_cloud(i,1) + qtv(i,1)
-
-!---mhwangtest
          else if (SPCAM_microp_scheme .eq. 'sam1mom') then
-            qli_hydro(i, 1) = 0.0_r8
-            qi_hydro(i, 1) = 0.0_r8
+            qli_hydro_before(i) = 0.0_r8
+            qi_hydro_before(i) = 0.0_r8
             do m=1, crm_nz
                k=pver-m+1
-               do ii=1, crm_nx
-               do jj=1, crm_ny
-                  sfactor = max(0._r8,min(1._r8,(crm_t(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
-                  qli_hydro(i,1) = qli_hydro(i,1)+crm_qp(i,ii,jj,m) * state%pdel(i,k)/gravit
-                  qi_hydro(i,1)  =  qi_hydro(i,1)+crm_qp(i,ii,jj,m) * (1-sfactor) * state%pdel(i,k)/gravit
-               end do
-               end do
-            end do
-            qli_hydro(i,1) = qli_hydro(i,1)/(crm_nx*crm_ny)
-            qi_hydro(i,1)  =  qi_hydro(i,1)/(crm_nx*crm_ny)    
-
-            ! total cloud water and total water vapor, and energy
-            qt_cloud(i,1) = 0._r8
-            ql_cloud(i,1) = 0._r8
-            qtv(i,1) = 0._r8
-            do k=1, pver
-               qt_cloud(i,1) = qt_cloud(i,1) + (state%q(i,k,ixcldliq)+state%q(i,k,ixcldice)) * state%pdel(i,k)/gravit
-               ql_cloud(i,1) = ql_cloud(i,1) + state%q(i,k,ixcldliq) * state%pdel(i,k)/gravit
-               qtv(i,1) = qtv(i,1) + state%q(i,k,1) * state%pdel(i,k)/gravit
-            end do
-         endif
+               dp_g = state%pdel(i,k)/gravit
+               do jj = 1,crm_ny
+                  do ii = 1,crm_nx
+                     sfactor = max(0._r8,min(1._r8,(crm_t(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
+                     qli_hydro_before(i) = qli_hydro_before(i)+crm_qp(i,ii,jj,m) * dp_g
+                     qi_hydro_before(i)  =  qi_hydro_before(i)+crm_qp(i,ii,jj,m) * (1-sfactor) * dp_g
+                  end do ! ii
+               end do ! jj
+            end do ! m
+            qli_hydro_before(i) = qli_hydro_before(i)/(crm_nx*crm_ny)
+            qi_hydro_before(i)  =  qi_hydro_before(i)/(crm_nx*crm_ny)    
+         end if ! SPCAM_microp_scheme
 
 #if (defined m2005 && defined MODAL_AERO)
          do k=1, pver
@@ -1562,10 +1493,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
          ! Set the input wind (also sets CRM orientation)
          !----------------------------------------------------------------------
          do k=1,pver
-            
-            !!! one-time test for PR merge  --  DELETE ME!!!
-            ! ul(i,k) = state%v(i,k)
-            ! vl(i,k) = state%u(i,k)
 
             ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
             vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
@@ -1818,11 +1745,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
          ptend%s(:ncol, :pver-crm_nz+2) = qrs(:ncol,:pver-crm_nz+2) + qrl(:ncol,:pver-crm_nz+2)
 
          ! This will be used to check energy conservation
-         !+++mhwang, 2012-02-07 (Minghuai.Wang@pnnl.gov)
-         radflux(:) = 0.0_r8
+         sp_rad_flux(:ncol) = 0.0_r8
          do k=1, pver
             do i=1, ncol
-               radflux(i) = radflux(i) + ( qrs(i,k) + qrl(i,k) ) * state%pdel(i,k)/gravit
+               sp_rad_flux(i) = sp_rad_flux(i) + ( qrs(i,k) + qrl(i,k) ) * state%pdel(i,k)/gravit
             end do
          end do
 
@@ -1831,7 +1757,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
 
       ! else
 
-      !    radflux(:) = 0.0_r8
+      !    sp_rad_flux(:ncol) = 0.0_r8
 
       !    ftem(:ncol,:pver) = ( ptend%s(:ncol,:pver) )/cpair
 
@@ -2084,272 +2010,149 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,spe
 #endif
        end if
 
-! physics_update should be moved to tphysbc. Also, it seems, state is changed in the subroutine of crm. 
-! so doese this mean state is updated twice??? -Minghuai Wang (minghuai@pnl.gov).
-       call physics_update(state, ptend, crm_run_time, tend)
+      !----------------------------------------------------------------------
+      ! calculate column integrated water for energy check
+      !----------------------------------------------------------------------
+      if(SPCAM_microp_scheme .eq. 'm2005') then
+         
+         do i = 1,ncol
+            qli_hydro_after(i) = 0.0_r8
+            qi_hydro_after(i) = 0.0_r8
+            do m = 1,crm_nz
+               k = pver-m+1
+               dp_g = state%pdel(i,k)/gravit
+               do jj = 1,crm_ny
+                  do ii = 1,crm_nx
+                     qli_hydro_after(i) = qli_hydro_after(i)+(crm_qr(i,ii,jj,m)+ &
+                                                              crm_qs(i,ii,jj,m)+ &
+                                                              crm_qg(i,ii,jj,m)) * dp_g
+                     qi_hydro_after(i)  =  qi_hydro_after(i)+(crm_qs(i,ii,jj,m)+ &
+                                                              crm_qg(i,ii,jj,m)) * dp_g
+                  end do ! ii
+               end do ! jj
+            end do ! m
+            qli_hydro_after(i) = qli_hydro_after(i)/(crm_nx*crm_ny)
+            qi_hydro_after(i)  =  qi_hydro_after(i)/(crm_nx*crm_ny)
+         end do ! i
+      
+      else if(SPCAM_microp_scheme .eq. 'sam1mom') then 
 
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
+         do i = 1,ncol
+            qli_hydro_after(i) = 0.0_r8
+            qi_hydro_after(i)  = 0.0_r8
+            do m = 1,crm_nz
+               k = pver-m+1
+               dp_g = state%pdel(i,k)/gravit
+               do jj = 1,crm_ny
+                  do ii = 1,crm_nx
+                     sfactor = max(0._r8,min(1._r8,(crm_t(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
+                     qli_hydro_after(i) = qli_hydro_after(i)+crm_qp(i,ii,jj,m) * dp_g
+                     qi_hydro_after(i)  =  qi_hydro_after(i)+crm_qp(i,ii,jj,m) * (1-sfactor) * dp_g
+                  end do ! ii
+               end do ! jj
+            end do ! m
+            qli_hydro_after(i) = qli_hydro_after(i)/(crm_nx*crm_ny)
+            qi_hydro_after(i)  =  qi_hydro_after(i)/(crm_nx*crm_ny)
+         end do ! i
 
-       if(SPCAM_microp_scheme .eq. 'm2005') then
-         ! calculate column water of rain, snow and graupel 
-         do i=1, ncol
-            qt_hydro(i, 2) = 0.0_r8
-            qli_hydro(i, 2) = 0.0_r8
-            qi_hydro(i, 2) = 0.0_r8
-            qtot(i, 3) = 0.0_r8
-            qt_cloud(i, 3) = 0.0_r8
-            qtv(i, 3) = 0.0_r8
-            do m=1, crm_nz
-              k=pver-m+1
-              do ii=1, crm_nx
-              do jj=1, crm_ny
-                 qt_hydro(i,2)  =  qt_hydro(i,2)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit 
-                 qli_hydro(i,2) = qli_hydro(i,2)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
-                 qi_hydro(i,2)  =  qi_hydro(i,2)+(crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit
-                 qt_cloud(i, 3) =  qt_cloud(i,3)+(crm_qt(i,ii,jj,m)+crm_qi(i,ii,jj,m)) * state%pdel(i,k)/gravit 
-                 qtot(i, 3)     =      qtot(i,3)+(crm_qr(i,ii,jj,m)+crm_qs(i,ii,jj,m)+crm_qg(i,ii,jj,m)) * state%pdel(i,k)/gravit     &
-                                 +(crm_qt(i,ii,jj,m)+crm_qi(i,ii,jj,m)) * state%pdel(i,k)/gravit
-              end do
-              end do
-            end do
-            qt_hydro(i,2)  =  qt_hydro(i,2)/(crm_nx*crm_ny)
-            qli_hydro(i,2) = qli_hydro(i,2)/(crm_nx*crm_ny)
-            qi_hydro(i,2)  =  qi_hydro(i,2)/(crm_nx*crm_ny)
-            qt_cloud(i, 3) =  qt_cloud(i,3)/(crm_nx*crm_ny)
-            qtot(i, 3)     =      qtot(i,3)/(crm_nx*crm_ny)
-         end do 
-       else if(SPCAM_microp_scheme .eq. 'sam1mom') then 
-         do i=1, ncol
-            qli_hydro(i, 2) = 0.0_r8
-            qi_hydro(i, 2)  = 0.0_r8
-            do m=1, crm_nz
-              k=pver-m+1
-              do ii=1, crm_nx
-              do jj=1, crm_ny
-                sfactor = max(0._r8,min(1._r8,(crm_t(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
-                qli_hydro(i,2) = qli_hydro(i,2)+crm_qp(i,ii,jj,m) * state%pdel(i,k)/gravit
-                qi_hydro(i,2)  =  qi_hydro(i,2)+crm_qp(i,ii,jj,m) * (1-sfactor) * state%pdel(i,k)/gravit
-              end do
-              end do
-            end do
-            qli_hydro(i,2) = qli_hydro(i,2)/(crm_nx*crm_ny)
-            qi_hydro(i,2)  =  qi_hydro(i,2)/(crm_nx*crm_ny)
+      end if ! SPCAM_microp_scheme
 
-            ! total cloud water and total water vapor, and energy
-            qt_cloud(i,2) = 0._r8
-            ql_cloud(i,2) = 0._r8
-            qtv(i,2) = 0._r8
-            do k=1, pver
-              qt_cloud(i,2) = qt_cloud(i,2) + (state%q(i,k,ixcldliq)+state%q(i,k,ixcldice)) * state%pdel(i,k)/gravit
-              ql_cloud(i,2) = ql_cloud(i,2) + state%q(i,k,ixcldliq) * state%pdel(i,k)/gravit
-              qtv(i,2) = qtv(i,2) + state%q(i,k,1) * state%pdel(i,k)/gravit
-            end do
-         end do
-       end if
-
-!----------------------------------------------------------------------
-! check water and energy conservation
-!----------------------------------------------------------------------
-       ! chk_prec_dp = prec_dp+(qli_hydro(:,2)-qli_hydro(:,1))/ztodt/1000._r8
-       ! chk_snow_dp = snow_dp+( qi_hydro(:,2)- qi_hydro(:,1))/ztodt/1000._r8
-       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time, zero, &
-                              prec_dp(:ncol)+(qli_hydro(:ncol,2)-qli_hydro(:ncol,1))/crm_run_time/1000._r8, &
-                              snow_dp(:ncol)+( qi_hydro(:ncol,2)- qi_hydro(:ncol,1))/crm_run_time/1000._r8, &
-                              radflux)
-        ! call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero,   &
-        !        prec_dp, snow_dp, zero)
-        ! call check_energy_chng(state, tend, "crm_tend", nstep, ztodt, zero, zero, zero, zero)
-
-!+++mhwangtest
-!
-! calculate total water after crm update
-! total hydrometer water (rain, snow, and graupel)
-!-- mark branson: insert ifdef m2005 around this test so 1-moment micro compile will work
-#ifdef m2005
-       if (SPCAM_microp_scheme .eq. 'm2005') then
-          do i=1, ncol
-
-             ! total cloud water and total water vapor
-             qt_cloud(i,2) = 0._r8
-             qtv(i,2) = 0._r8
-             do k=1, pver
-               qt_cloud(i,2) = qt_cloud(i,2) + (state%q(i,k,ixcldliq)+state%q(i,k,ixcldice)) * state%pdel(i,k)/gravit
-               qtv(i,2) = qtv(i,2) + state%q(i,k,1) * state%pdel(i,k)/gravit
-             end do ! k=1, pver
-             
-             ! total water
-             qtot(i,2) = qt_hydro(i,2) + qt_cloud(i,2) + qtv(i,2)
-
-             ! check water conservation
-             if(abs((qtot(i,2)+(precc(i)+precl(i))*1000*crm_run_time)-qtot(i,1))/qtot(i,1).gt.1.0e-5) then 
-                write(0, *) 'water before crm call', i, lchnk, qtot(i,1), qtv(i,1), qt_cloud(i,1), qt_hydro(i,1)
-                !write(0, *) 'water after crm call', i, lchnk, qtot(i,2)+(precc(i)+precl(i))*1000*ztodt, qtv(i,2), qt_cloud(i,2), qt_hydro(i,2), (precc(i)+precl(i))*1000*ztodt
-                !write(0, *) 'water, nstep, crm call2', nstep, i, lchnk, ((qtot(i,2)+(precc(i)+precl(i))*1000*ztodt)-qtot(i,1))/qtot(i,1)
-                !write(0, *) 'water, calcualted in crm.F90', i, lchnk, qtotcrm(i, 1), qtotcrm(i, 9), qtot(i, 3)+(precc(i)+precl(i))*1000*ztodt, qt_cloud(i, 3), qtv(i,2)+qt_cloud(i,2)
-                !write(0, *) 'water, temperature', i, lchnk, state%t(i,pver)
-              ! call endrun('water conservation error in crm_physics')
-             end if
-          end do ! i=1, ncol
-!---mhwangtest
-       endif
-#endif
+      sp_qchk_prec_dp(:ncol) = prec_dp(:ncol) + (qli_hydro_after (:ncol) - &
+                                                 qli_hydro_before(:ncol))/crm_run_time/1000._r8
+      sp_qchk_snow_dp(:ncol) = snow_dp(:ncol) + ( qi_hydro_after (:ncol) - &
+                                                  qi_hydro_before(:ncol))/crm_run_time/1000._r8
 
    end if ! (is_first_step())
 
-   ! ***  OLD COMMENT ******
-   ! physics_update is called in crm_physics. This is not a good practice. But it seems state is changed in
-   ! crm_physics. The physics_update should be moved to here in the future. ---Minghuai Wang (Minghuai.Wang@pnl.gov)
-   !   call physics_update(state, tend, ptend, ztodt)
-
-   ! should the energy check are applied???? -Minghuai Wang
-   !   call check_energy_chng(state, tend, "crm_physics", nstep, ztodt, zero, zero, zero, zero)
-
    call t_stopf('crm')
-
-
-!----------------------------------------------------------------------
-! Aerosol stuff
-!----------------------------------------------------------------------
+   
+   !----------------------------------------------------------------------
+   ! Aerosol stuff
+   !----------------------------------------------------------------------
     
-    call t_startf('bc_aerosols_mmf')
+   ! call t_startf('bc_aerosols_mmf')
 
-    !!! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
-    do  i=1,ncol
-      do ii=1,crm_nx_rad
-        do jj=1,crm_ny_rad
-          do  m=1,crm_nz
-            if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).le.1.0e-10) then
-              cld_rad(i,ii,jj,m) = 0.0_r8
-            endif
-          enddo
-        enddo
+   !!! calculate aerosol water at CRM domain using water vapor at CRM domain
+   !!! note: only used in src/chemistry/utils/modal_aero_wateruptake.F90
+   do  m=1,crm_nz
+      do jj=1,crm_ny_rad
+         do ii=1,crm_nx_rad
+            do  i=1,ncol
+               if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).le.1.0e-10) then
+                  cld_rad(i,ii,jj,m) = 0.0_r8
+               endif
+            enddo
+         enddo
       enddo
-    enddo
-    !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
+   enddo
+   !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 
-    !----------------------------------------------------
-    ! Modal aerosol wet radius for radiative calculation
-    !----------------------------------------------------
-! whannah - added ifdef check for MODAL_AERO so 1-moment w/o modal aerosols will compile
-#if defined(MODAL_AERO)  
-    !==Guangxing Lin - temporarily turn on all lq, so it is allocated
-    lq(:) = .true.
-    call physics_ptend_init(ptend, state%psetcols, 'crm_physics', lq=lq)
+   ! call t_stopf('bc_aerosols_mmf')
 
-    ! set all ptend%lq to false as they will be set in modal_aero_calcsize_sub
-    ptend%lq(:) = .false.
-    call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
-    call modal_aero_wateruptake_dr(state, pbuf)
-
-    ! When ECPP is included, wet deposition is done ECPP,
-    ! So tendency from wet depostion is not updated in mz_aero_wet_intr (mz_aerosols_intr.F90)
-    ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
-    call physics_update (state, ptend, crm_run_time, tend)
-#endif
-  
-    !----------------------------------------------------
-    ! CRM Bulk Calculations (i.e. ECPP-lite)
-    !----------------------------------------------------
-#if defined( SP_CRM_BULK )
-  
-    !!! Note: ptend initialization done within crm_bulk_*() routines - whannah
-
-    !!! calculate aerosol tendency from droplet activation and mixing
-    ! call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
-    !                             cam_in%cflx, pblh,                &
-    !                             wwqui_cen, wwqui_cloudy_cen,      &
-    !                             wwqui_bnd, wwqui_cloudy_bnd,      &
-    !                             species_class)
-    ! call physics_update(state, ptend, crm_run_time, tend)
-
-    !!! calculate wet scavenging of aerosols
-    ! call crm_bulk_aero_wet_dep_scav()
-    ! call physics_update(state, ptend, crm_run_time, tend)
-
-    ! !!! calculate bulk transport tendencies
-    ! call crm_bulk_transport(state, pbuf, ptend)
-    ! call physics_update (state, ptend, crm_run_time, tend)
-
-#endif /* SP_CRM_BULK */
-    !----------------------------------------------------
-    ! ECPP - Explicit-Cloud Parameterized-Pollutant
-    ! Use CRM cloud statistics to calculate 
-    ! pollutant transport and chemistry
-    !----------------------------------------------------
-
-#ifdef ECPP
-    if (use_ECPP) then
-
-      pblh_idx  = pbuf_get_index('pblh')
-      call pbuf_get_field(pbuf, pblh_idx, pblh)
-      
-      dtstep_pp = dtstep_pp_input
-#if defined( SP_CRM_SPLIT )
-      necpp = dtstep_pp/(ztodt*0.5)
-#else
-      necpp = dtstep_pp/ztodt
-#endif
-      if(nstep.ne.0 .and. mod(nstep, necpp).eq.0) then
-
-        ! calculate aerosol tendency from droplet activation and mixing
-        ! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
-        ! So only turbulence mixing is done here.
-        call t_startf('crmclouds_mixnuc')
-        call crmclouds_mixnuc_tend (state, ptend, dtstep_pp, cam_in%cflx, pblh, pbuf,  &
-                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,species_class)   !==Guangxing Lin added species_class
-        call physics_update(state, ptend, dtstep_pp, tend)
-        call t_stopf('crmclouds_mixnuc')
-
-        ! ECPP interface
-
-        call t_startf('ecpp')
-        call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,  &
-           acen, abnd, acen_tf, abnd_tf, massflxbnd,   &
-           rhcen, qcloudcen, qlsinkcen, precrcen, precsolidcen, acldy_cen_tbeg )
-
-        call physics_update(state, ptend, dtstep_pp, tend)
-
-        call t_stopf ('ecpp')
-      end if
-    endif ! use_ECPP
-#endif /* ECPP */
-
-    call t_stopf('bc_aerosols_mmf')
-
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
-!### mdb spcam:  commenting this out for now just to get sam1mom working
-!   if (use_SPCAM .and. use_ECPP .and. SPCAM_microp_scheme .eq.  'm2005') then
-!!
-!!  call deep convective transport subroutine to get the tendency for testing purpose.
-!     if ( .not. deep_scheme_does_scav_trans() ) then
-!
-!       call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf )
-!       do m=1, pcnst
-!         if(cnst_name(m) == 'DMS') call outfld(trim(cnst_name(m))//'CONV', ptend%q(:,:,m), pcols, lchnk )
-!         if(cnst_name(m) == 'SO2') call outfld(trim(cnst_name(m))//'CONV', ptend%q(:,:,m), pcols, lchnk )
-!       end do
-!!
-!! for testing purpose, q is not updated.
-!       ptend%lq(:) = .false.
-!       call physics_update (state, tend, ptend, ztodt)
-!
-!     endif ! deep_scheme
-!   endif ! /*use_SPCAM && use_ECPP* && *m2005*/
-
-!----------------------------------------------------------------------
-! save for old CRM cloud fraction 
-!----------------------------------------------------------------------
-  ! without the CRM, this is done in cldwat2m.F90.
-  cldo(:ncol, :) = cld(:ncol, :)
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
+   !----------------------------------------------------------------------
+   ! save for old CRM cloud fraction 
+   !----------------------------------------------------------------------
+   ! without the CRM, this is done in cldwat2m.F90.
+   cldo(:ncol, :) = cld(:ncol, :)
+   !----------------------------------------------------------------------
+   !----------------------------------------------------------------------
 
 end subroutine crm_physics_tend
 
-!=========================================================================================================
-!=========================================================================================================
+!==================================================================================================
+!==================================================================================================
+
+subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
+   !-----------------------------------------------------------------------------
+   ! This subroutine is used to apply the fluxes when SP_FLUX_BYPASS is used.
+   ! The surface flux bypass option was originally used by Mike Pritchard (UCI)
+   ! Without this bypass the surface flux tendencies are applied to the lowest 
+   ! layer of the GCM state without being diffused vertically by PBL turbulence. 
+   ! This was intentional (confirmed by Marat). This bypass applies the surface 
+   ! fluxes after the dycor and prior to running the CRM (the tendency addition 
+   ! in diffusion_solver.F90 is disabled). This is a more natural progression 
+   ! and does not expose the GCM dynamical core to unrealistic gradients.
+   ! (only sensible and latent heat fluxes are affected)
+   !-----------------------------------------------------------------------------
+   use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
+   use physics_buffer,  only: physics_buffer_desc
+   use camsrfexch,      only: cam_in_t
+   use ppgrid,          only: begchunk, endchunk, pcols, pver
+   use constituents,    only: pcnst
+   use physconst,       only: gravit
+
+   implicit none
+
+   type(physics_state), intent(in   ) :: state
+   type(cam_in_t),      intent(in   ) :: cam_in
+   type(physics_ptend), intent(  out) :: ptend 
+
+   integer  :: ii       ! loop iterator
+   integer  :: ncol     ! number of columns
+   real(r8) :: g_dp     ! temporary variable for unit conversion
+   logical, dimension(pcnst) :: lq
+
+   ncol  = state%ncol
+
+   !!! initialize ptend
+   lq(:) = .false.
+   lq(1) = .true.
+   call physics_ptend_init(ptend, state%psetcols, 'SP_FLUX_BYPASS', &
+                           lu=.false., lv=.false., ls=.true., lq=lq)
+
+   !!! apply fluxes to bottom layer
+   do ii = 1,ncol
+      g_dp = gravit * state%rpdel(ii,pver)             ! note : rpdel = 1./pdel
+      ptend%s(ii,:)   = 0.
+      ptend%q(ii,:,1) = 0.
+      ptend%s(ii,pver)   = g_dp * cam_in%shf(ii)
+      ptend%q(ii,pver,1) = g_dp * cam_in%cflx(ii,1)
+   end do
+
+end subroutine crm_surface_flux_bypass_tend
+
+!==================================================================================================
+!==================================================================================================
 
 subroutine crm_save_state_tend(state,tend,pbuf)
    !-----------------------------------------------------------------------------
@@ -2442,8 +2245,8 @@ subroutine crm_save_state_tend(state,tend,pbuf)
 
 end subroutine crm_save_state_tend
 
-!=====================================================================================================
-!=====================================================================================================
+!==================================================================================================
+!==================================================================================================
 
 subroutine crm_remember_state_tend(state,tend,pbuf)
    !-----------------------------------------------------------------------------
@@ -2512,10 +2315,12 @@ subroutine crm_remember_state_tend(state,tend,pbuf)
 
 end subroutine crm_remember_state_tend
 
-!=====================================================================================================
-!=====================================================================================================
+!==================================================================================================
+!==================================================================================================
 
-subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, effl, effi, effl_fn, deffi, lamcrad, pgamrad, des)
+subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, &
+                           effl, effi, effl_fn, deffi,         &
+                           lamcrad, pgamrad, des)
    !-----------------------------------------------------------------------------------------------------
    ! This subroutine is used to calculate droplet and ice crystal effective radius, which will be used 
    ! in the CAM radiation code. The method to calculate effective radius is taken out of the Morrision's
@@ -2732,7 +2537,7 @@ subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, effl, effi, effl_
    return
 end subroutine m2005_effradius
 
-!=========================================================================================================
-!=========================================================================================================
+!==================================================================================================
+!==================================================================================================
 
 end module crm_physics
