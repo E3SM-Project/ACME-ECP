@@ -507,7 +507,7 @@ subroutine phys_inidat( cam_out, pbuf2d )
                tptr3d, found, gridname='physgrid')
           if (found) then
              if (masterproc) write(iulog,*) trim(fieldname), ' initialized with Q'
-             if(dycore_is('LR')) call polar_average(pver, tptr3d) 	
+             if(dycore_is('LR')) call polar_average(pver, tptr3d)   
           else
              call endrun('  '//trim(subname)//' Error:  Q must be on Initial File')
           end if
@@ -578,7 +578,7 @@ subroutine phys_inidat( cam_out, pbuf2d )
              do n = 1, dyn_time_lvls
                 call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
              end do
-             if(dycore_is('LR')) call polar_average(pver, tptr3d) 	
+             if(dycore_is('LR')) call polar_average(pver, tptr3d)   
           else
              call pbuf_set_field(pbuf2d, m, 0._r8)
              if (masterproc)  write(iulog,*) trim(fieldname), ' initialized to 0.0'
@@ -598,7 +598,7 @@ subroutine phys_inidat( cam_out, pbuf2d )
        if(.not.found) then
           call infld('T', fh_ini, dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                tptr3d, found, gridname='physgrid')
-          if(dycore_is('LR')) call polar_average(pver, tptr3d) 	
+          if(dycore_is('LR')) call polar_average(pver, tptr3d)  
           if (masterproc) write(iulog,*) trim(fieldname), ' initialized with T'
        end if
        do n = 1, dyn_time_lvls
@@ -725,7 +725,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 #if ( defined OFFLINE_DYN )
     use metdata,            only: metdata_phys_init
 #endif
-    use ionosphere,	    only: ionos_init  ! Initialization of ionosphere module (WACCM-X)
+    use ionosphere,         only: ionos_init  ! Initialization of ionosphere module (WACCM-X)
     use majorsp_diffusion,  only: mspd_init   ! Initialization of major species diffusion module (WACCM-X)
     use clubb_intr,         only: clubb_ini_cam
     use sslt_rebin,         only: sslt_rebin_init
@@ -826,8 +826,8 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call prescribed_aero_init()
     call aerodep_flx_init()
     call aircraft_emit_init()
-	!when is_cmip6_volc is true ,cmip6 style volcanic file is read
-	!Initialized to .false. here but it gets its values from prescribed_volcaero_init
+    !when is_cmip6_volc is true ,cmip6 style volcanic file is read
+    !Initialized to .false. here but it gets its values from prescribed_volcaero_init
     is_cmip6_volc = .false. 
     call prescribed_volcaero_init(is_cmip6_volc)
 
@@ -1682,7 +1682,7 @@ if (l_tracer_aero) then
    end if
 
     !---------------------------------------------------------------------------------
-    !	... enforce charge neutrality
+    !  ... enforce charge neutrality
     !---------------------------------------------------------------------------------
     call charge_fix( ncol, state%q(:,:,:) )
 
@@ -1991,6 +1991,7 @@ subroutine tphysbc (ztodt,               &
     ! physics buffer fields to compute tendencies for stratiform package
     integer itim_old, ifld
     real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
+    real(r8), pointer, dimension(:,:) :: cldo       ! old cloud fraction
 
 !<songxl 2011-09-20----------------------------
 ! physics buffer fields to compute tendencies for deep convection scheme
@@ -2101,11 +2102,11 @@ subroutine tphysbc (ztodt,               &
     logical           :: use_SPCAM
     logical           :: use_ECPP
     character(len=16) :: SPCAM_microp_scheme
-    integer           :: phys_stage             ! physics stage indicator (tphysbc => 1)
-    real(r8)          :: crm_run_time           ! length of CRM integration
-    real(r8), dimension(pcols) :: sp_qchk_prec_dp
-    real(r8), dimension(pcols) :: sp_qchk_snow_dp
-    real(r8), dimension(pcols) :: sp_rad_flux
+    integer           :: phys_stage                ! physics stage indicator (tphysbc => 1)
+    real(r8)          :: crm_run_time              ! length of CRM integration
+    real(r8), dimension(pcols) :: sp_qchk_prec_dp  ! CRM precipitation diagostic (liq+ice)  used for check_energy_chng
+    real(r8), dimension(pcols) :: sp_qchk_snow_dp  ! CRM precipitation diagostic (ice only) used for check_energy_chng
+    real(r8), dimension(pcols) :: sp_rad_flux      ! CRM radiative flux diagnostic used for check_energy_chng
 
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( use_ECPP_out            = use_ECPP)
@@ -2838,6 +2839,18 @@ end if
 
       end if ! use_ECPP
 #endif /* ECPP */
+
+      !---------------------------------------------------------------------------
+      ! save old CRM cloud fraction - w/o CRM, this is done in cldwat2m.F90
+      !---------------------------------------------------------------------------
+
+      ifld = pbuf_get_index('CLDO')
+      call pbuf_get_field(pbuf, ifld, cldo, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+
+      ifld = pbuf_get_index('CLD')
+      call pbuf_get_field(pbuf, ifld, cld , start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+
+      cldo(1:ncol,1:pver) = cld(1:ncol,1:pver)
 
       !---------------------------------------------------------------------------
       !---------------------------------------------------------------------------
