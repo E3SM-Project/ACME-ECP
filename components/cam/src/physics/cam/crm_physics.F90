@@ -1442,8 +1442,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       
       !!! rotate resolved CRM momentum tendencies back
       do i = 1, ncol 
-         ptend%u(i, :) = u_tend_crm(i, :) * cos( -1.*crm_angle(i) ) + v_tend_crm(i, :) * sin( -1.*crm_angle(i) )
-         ptend%v(i, :) = v_tend_crm(i, :) * cos( -1.*crm_angle(i) ) - u_tend_crm(i, :) * sin( -1.*crm_angle(i) )
+         ptend%u(i,:) = u_tend_crm(i,:) * cos( -1.*crm_angle(i) ) + v_tend_crm(i,:) * sin( -1.*crm_angle(i) )
+         ptend%v(i,:) = v_tend_crm(i,:) * cos( -1.*crm_angle(i) ) - u_tend_crm(i,:) * sin( -1.*crm_angle(i) )
       enddo
 #endif /* SPMOMTRANS */
 #endif /* SP_USE_ESMT */
@@ -2034,7 +2034,6 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    ! #crjones
    ! WIP (work in progress): copying outfld calls down from crm_physics_tend
    ! TODO: * remove those outfld calls from crm_physics_tend
-   !       * verify use of ncol and pcols (both of which are used here)
    !------------------------------------------------------------------------------------------ 
    use cam_history,  only: outfld
    use phys_control, only: phys_getopts
@@ -2048,8 +2047,8 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    implicit none
    
    !!! interface variable declaration
-   integer, intent(in) :: lchnk
-   integer, intent(in) :: ncol
+   integer,               intent(in) :: lchnk
+   integer,               intent(in) :: ncol
    type(physics_state),   intent(in) :: state
    type(crm_state_type),  intent(in) :: crm_state
    type(crm_output_type), intent(in) :: crm_output
@@ -2060,14 +2059,14 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    logical           :: use_ECPP
    character(len=16) :: SPCAM_microp_scheme
    integer :: ixcldliq, ixcldice
-   real(r8) tgicewp(ncol)      ! Vertically integrated IWP (kg/m2)
-   real(r8) tgliqwp(ncol)      ! Vertically integrated liquid water path (kg/m2)
-   real(r8) cicewp(ncol, pver) ! in-cloud cloud ice water path (kg/m2)
-   real(r8) cliqwp(ncol, pver) ! in-cloud cloud liquid water path (kg/m2)
-   real(r8) tgwp(ncol)         ! Vertically integrated (total) cloud water path (kg/m2)
-   real(r8) gwp(ncol, pver)
-   real(r8) cwp(ncol, pver)
-   real(r8) :: cldtop_gcm(pcols, pver)
+   real(r8), dimension(pcols)       :: tgicewp  ! Vertically integrated IWP (kg/m2)
+   real(r8), dimension(pcols)       :: tgliqwp  ! Vertically integrated liquid water path (kg/m2)
+   real(r8), dimension(pcols)       :: tgwp     ! Vertically integrated (total) cloud water path (kg/m2)
+   real(r8), dimension(pcols, pver) :: cicewp   ! in-cloud cloud ice water path (kg/m2)
+   real(r8), dimension(pcols, pver) :: cliqwp   ! in-cloud cloud liquid water path (kg/m2)
+   real(r8), dimension(pcols, pver) :: gwp
+   real(r8), dimension(pcols, pver) :: cwp
+   real(r8), dimension(pcols, pver) :: cldtop_gcm
 
    integer :: i, k, kgcm       ! dummy loop variables
 
@@ -2076,147 +2075,149 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
-   tgicewp = 0._r8
-   tgliqwp = 0._r8
-   cicewp = 0._r8
-   cliqwp = 0._r8
-   tgwp = 0._r8
-   gwp = 0._r8
-   cwp = 0._r8
-   cldtop_gcm = 0._r8
+   tgicewp   (1:ncol)   = 0._r8
+   tgliqwp   (1:ncol)   = 0._r8
+   tgwp      (1:ncol)   = 0._r8
+   cicewp    (1:ncol,:) = 0._r8
+   cliqwp    (1:ncol,:) = 0._r8
+   gwp       (1:ncol,:) = 0._r8
+   cwp       (1:ncol,:) = 0._r8
+   cldtop_gcm(1:ncol,:) = 0._r8
 
    !!! state output variables
-   call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
-   call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
+   call outfld('PRES    ',state%pmid(1:ncol,:), ncol, lchnk )
+   call outfld('DPRES   ',state%pdel(1:ncol,:), ncol, lchnk )
 
    !!! crm_state outputs
-   call outfld('CRM_U   ', crm_state%u_wind(1:ncol,:,:,:),      ncol, lchnk)
-   call outfld('CRM_V   ', crm_state%v_wind(1:ncol,:,:,:),      ncol, lchnk)
-   call outfld('CRM_W   ', crm_state%w_wind(1:ncol,:,:,:),      ncol, lchnk)
-   call outfld('CRM_T   ', crm_state%temperature(1:ncol,:,:,:), ncol, lchnk)
+   call outfld('CRM_U   ', crm_state%u_wind     (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('CRM_V   ', crm_state%v_wind     (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('CRM_W   ', crm_state%w_wind     (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('CRM_T   ', crm_state%temperature(1:ncol,:,:,:), ncol, lchnk )
 
    !!! Microphysics 
    ! common to sam1mom and m2005:
-   call outfld('CRM_QC  ',crm_state%qcl(1:ncol,:,:,:)   ,ncol ,lchnk)
-   call outfld('CRM_QI  ',crm_state%qci(1:ncol,:,:,:)   ,ncol ,lchnk)
-   call outfld('CRM_QPC ',crm_state%qpl(1:ncol,:,:,:)   ,ncol ,lchnk)
-   call outfld('CRM_QPI ',crm_state%qpi(1:ncol,:,:,:)   ,ncol ,lchnk)
-   call outfld('CRM_PREC',crm_state%prec_crm(1:ncol,:,:),ncol ,lchnk)
+   call outfld('CRM_QC  ',crm_state%qcl     (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('CRM_QI  ',crm_state%qci     (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('CRM_QPC ',crm_state%qpl     (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('CRM_QPI ',crm_state%qpi     (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('CRM_PREC',crm_state%prec_crm(1:ncol,:,:)  , ncol, lchnk )
    !!! sam1mom only:
    if (SPCAM_microp_scheme .eq. 'sam1mom') then
-      call outfld('CRM_QV  ',crm_state%qt(1:ncol,:,:,:)-crm_state%qcl(1:ncol,:,:,:)-crm_state%qci(1:ncol,:,:,:),ncol,lchnk   )
+      call outfld('CRM_QV  ', crm_state%qt (1:ncol,:,:,:)  &
+                             -crm_state%qcl(1:ncol,:,:,:)  &
+                             -crm_state%qci(1:ncol,:,:,:), ncol, lchnk )
    endif
 
 #ifdef m2005
    !!! m2005 only
    if (SPCAM_microp_scheme .eq. 'm2005') then 
-      call outfld('CRM_QV  ',crm_state%qt(1:ncol,:,:,:)-crm_state%qcl(1:ncol,:,:,:), ncol,lchnk   )
-      call outfld('CRM_NC ',crm_state%nc(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-      call outfld('CRM_NI ',crm_state%ni(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-      call outfld('CRM_NR ',crm_state%nr(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-      call outfld('CRM_NS ',crm_state%ns(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-      call outfld('CRM_NG ',crm_state%ng(1:ncol, :, :, :)   ,ncol   ,lchnk   )
+      call outfld('CRM_QV  ',crm_state%qt (1:ncol,:,:,:) &
+                            -crm_state%qcl(1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_NC ' ,crm_state%nc (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_NI ' ,crm_state%ni (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_NR ' ,crm_state%nr (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_NS ' ,crm_state%ns (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_NG ' ,crm_state%ng (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_QR ' ,crm_state%qr (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_QS ' ,crm_state%qs (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_QG ' ,crm_state%qg (1:ncol,:,:,:), ncol, lchnk )
 
-      call outfld('CRM_QR ',crm_state%qr(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-      call outfld('CRM_QS ',crm_state%qs(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-      call outfld('CRM_QG ',crm_state%qg(1:ncol, :, :, :)   ,ncol   ,lchnk   )
-
-      call outfld('CRM_WVAR', crm_state%wvar(1:ncol,:,:,:), ncol, lchnk)
-      call outfld('CRM_AUT' , crm_state%aut(1:ncol,:,:,:) , ncol, lchnk)
-      call outfld('CRM_ACC' , crm_state%acc(1:ncol,:,:,:) , ncol, lchnk)
-      call outfld('CRM_EVPC', crm_state%evpc(1:ncol,:,:,:), ncol, lchnk)
-      call outfld('CRM_EVPR', crm_state%evpr(1:ncol,:,:,:), ncol, lchnk)
-      call outfld('CRM_MLT' , crm_state%mlt(1:ncol,:,:,:) , ncol, lchnk)
-      call outfld('CRM_SUB' , crm_state%sub(1:ncol,:,:,:) , ncol, lchnk)
-      call outfld('CRM_DEP' , crm_state%dep(1:ncol,:,:,:) , ncol, lchnk)
-      call outfld('CRM_CON' , crm_state%con(1:ncol,:,:,:) , ncol, lchnk)
+      call outfld('CRM_WVAR', crm_state%wvar(1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_AUT' , crm_state%aut (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_ACC' , crm_state%acc (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_EVPC', crm_state%evpc(1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_EVPR', crm_state%evpr(1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_MLT' , crm_state%mlt (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_SUB' , crm_state%sub (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_DEP' , crm_state%dep (1:ncol,:,:,:), ncol, lchnk )
+      call outfld('CRM_CON' , crm_state%con (1:ncol,:,:,:), ncol, lchnk )
 
       ! hm 8/31/11, add new output for time-mean-avg
-      call outfld('A_AUT' , crm_output%aut_crm_a(1:ncol,:) , ncol, lchnk)
-      call outfld('A_ACC' , crm_output%acc_crm_a(1:ncol,:) , ncol, lchnk)
-      call outfld('A_EVPC', crm_output%evpc_crm_a(1:ncol,:), ncol, lchnk)
-      call outfld('A_EVPR', crm_output%evpr_crm_a(1:ncol,:), ncol, lchnk)
-      call outfld('A_MLT' , crm_output%mlt_crm_a(1:ncol,:) , ncol, lchnk)
-      call outfld('A_SUB' , crm_output%sub_crm_a(1:ncol,:) , ncol, lchnk)
-      call outfld('A_DEP' , crm_output%dep_crm_a(1:ncol,:) , ncol, lchnk)
-      call outfld('A_CON' , crm_output%con_crm_a(1:ncol,:) , ncol, lchnk)
+      call outfld('A_AUT' , crm_output%aut_crm_a (1:ncol,:), ncol, lchnk )
+      call outfld('A_ACC' , crm_output%acc_crm_a (1:ncol,:), ncol, lchnk )
+      call outfld('A_EVPC', crm_output%evpc_crm_a(1:ncol,:), ncol, lchnk )
+      call outfld('A_EVPR', crm_output%evpr_crm_a(1:ncol,:), ncol, lchnk )
+      call outfld('A_MLT' , crm_output%mlt_crm_a (1:ncol,:), ncol, lchnk )
+      call outfld('A_SUB' , crm_output%sub_crm_a (1:ncol,:), ncol, lchnk )
+      call outfld('A_DEP' , crm_output%dep_crm_a (1:ncol,:), ncol, lchnk )
+      call outfld('A_CON' , crm_output%con_crm_a (1:ncol,:), ncol, lchnk )
 
       ! diagnostic profiles (time- and horizontal-means)
-      call outfld('SPNC    ',crm_output%nc_mean(1:ncol,:),ncol   ,lchnk   )
-      call outfld('SPNI    ',crm_output%ni_mean(1:ncol,:),ncol   ,lchnk   )
-      call outfld('SPNS    ',crm_output%ns_mean(1:ncol,:),ncol   ,lchnk   )
-      call outfld('SPNG    ',crm_output%ng_mean(1:ncol,:),ncol   ,lchnk   )
-      call outfld('SPNR    ',crm_output%nr_mean(1:ncol,:),ncol   ,lchnk   )
+      call outfld('SPNC    ',crm_output%nc_mean(1:ncol,:), ncol, lchnk )
+      call outfld('SPNI    ',crm_output%ni_mean(1:ncol,:), ncol, lchnk )
+      call outfld('SPNS    ',crm_output%ns_mean(1:ncol,:), ncol, lchnk )
+      call outfld('SPNG    ',crm_output%ng_mean(1:ncol,:), ncol, lchnk )
+      call outfld('SPNR    ',crm_output%nr_mean(1:ncol,:), ncol, lchnk )
    endif
 #endif /* m2005 */
 
-   call outfld('CRM_TK ', crm_state%crm_tk(1:ncol, :, :, :) ,ncol,lchnk)
-   call outfld('CRM_TKH', crm_state%crm_tkh(1:ncol, :, :, :),ncol,lchnk)
+   call outfld('CRM_TK ', crm_state%crm_tk (1:ncol, :, :, :), ncol, lchnk )
+   call outfld('CRM_TKH', crm_state%crm_tkh(1:ncol, :, :, :), ncol, lchnk )
 
    !!! radiative flux outputs
    !?? crjones: did I do this right? original version had 
    !    call outfld('SPQRL   ',qrl/cpair      ,ncol ,lchnk   )
-   call outfld('SPQRL   ', crm_output%qrl(1:ncol,:)/cpair, ncol, lchnk)
-   call outfld('SPQRS   ', crm_output%qrs(1:ncol,:)/cpair, ncol, lchnk)
+   call outfld('SPQRL   ', crm_output%qrl(1:ncol,:)/cpair, ncol, lchnk )
+   call outfld('SPQRS   ', crm_output%qrs(1:ncol,:)/cpair, ncol, lchnk )
 
    !!! SP tendencies
-   call outfld('SPDT    ', crm_output%spdt(1:ncol,:), ncol, lchnk)
-   call outfld('SPDQ    ', ptend%q(1,1,1)           , pcols, lchnk)
-   call outfld('SPDQC   ', ptend%q(1,1,ixcldliq)    , pcols, lchnk)
-   call outfld('SPDQI   ', ptend%q(1,1,ixcldice)    , pcols, lchnk)
+   call outfld('SPDT    ', crm_output%spdt(1:ncol,:) , ncol, lchnk )
+   call outfld('SPDQ    ', ptend%q(1:ncol,:,1)       , ncol, lchnk )
+   call outfld('SPDQC   ', ptend%q(1:ncol,:,ixcldliq), ncol, lchnk )
+   call outfld('SPDQI   ', ptend%q(1:ncol,:,ixcldice), ncol, lchnk )
 #ifdef SP_USE_ESMT
-   call outfld('U_ESMT', ptend%u, pcols, lchnk)
-   call outfld('V_ESMT', ptend%v, pcols, lchnk)
+   call outfld('U_ESMT'  , ptend%u(1:ncol,:), ncol, lchnk )
+   call outfld('V_ESMT'  , ptend%v(1:ncol,:), ncol, lchnk )
 #else 
 #ifdef SPMOMTRANS
-   call outfld('UCONVMOM', ptend%u, pcols, lchnk)
-   call outfld('VCONVMOM', ptend%v, pcols, lchnk)
+   call outfld('UCONVMOM', ptend%u(1:ncol,:), ncol, lchnk )
+   call outfld('VCONVMOM', ptend%v(1:ncol,:), ncol, lchnk )
 #endif /* SPMOMTRANS and not SP_USE_ESMT */
 #endif /* SP_USE_ESMT */
 
    !!! SP diagnostics (time- and horizontal- mean profiles)
-   call outfld('SPMC    ',crm_output%mctot(1:ncol,:), ncol   ,lchnk   )
-   call outfld('SPMCUP  ',crm_output%mcup (1:ncol,:), ncol   ,lchnk   )
-   call outfld('SPMCDN  ',crm_output%mcdn (1:ncol,:), ncol   ,lchnk   )
-   call outfld('SPMCUUP ',crm_output%mcuup(1:ncol,:), ncol   ,lchnk   )
-   call outfld('SPMCUDN ',crm_output%mcudn(1:ncol,:), ncol   ,lchnk   )
+   call outfld('SPMC    ',crm_output%mctot(1:ncol,:), ncol, lchnk )
+   call outfld('SPMCUP  ',crm_output%mcup (1:ncol,:), ncol, lchnk )
+   call outfld('SPMCDN  ',crm_output%mcdn (1:ncol,:), ncol, lchnk )
+   call outfld('SPMCUUP ',crm_output%mcuup(1:ncol,:), ncol, lchnk )
+   call outfld('SPMCUDN ',crm_output%mcudn(1:ncol,:), ncol, lchnk )
 
    !!! SP microphysics diagnostics (time- and horizontal- mean profiles)
-   call outfld('SPQC    ',crm_output%qc_mean(1:ncol,:), ncol   ,lchnk   )
-   call outfld('SPQI    ',crm_output%qi_mean(1:ncol,:), ncol   ,lchnk   )
-   call outfld('SPQS    ',crm_output%qs_mean(1:ncol,:), ncol   ,lchnk   )
-   call outfld('SPQG    ',crm_output%qg_mean(1:ncol,:), ncol   ,lchnk   )
-   call outfld('SPQR    ',crm_output%qr_mean(1:ncol,:), ncol   ,lchnk   )
+   call outfld('SPQC    ',crm_output%qc_mean(1:ncol,:), ncol, lchnk )
+   call outfld('SPQI    ',crm_output%qi_mean(1:ncol,:), ncol, lchnk )
+   call outfld('SPQS    ',crm_output%qs_mean(1:ncol,:), ncol, lchnk )
+   call outfld('SPQG    ',crm_output%qg_mean(1:ncol,:), ncol, lchnk )
+   call outfld('SPQR    ',crm_output%qr_mean(1:ncol,:), ncol, lchnk )
 
    !!! More SP diagnostics 
    ! TODO: explicit dim stride; reorganize
-   call outfld('SPQTFLX ',crm_output%flux_qt        ,ncol   ,lchnk   )
-   call outfld('SPUFLX  ',crm_output%flux_u         ,ncol   ,lchnk   )
-   call outfld('SPVFLX  ',crm_output%flux_v         ,ncol   ,lchnk   )
-   call outfld('SPTKE   ',crm_output%tkez           ,ncol   ,lchnk   )
-   call outfld('SPTKES  ',crm_output%tkesgsz        ,ncol   ,lchnk   )
-   call outfld('SPTK    ',crm_output%tkz            ,ncol   ,lchnk   )
-   call outfld('SPQTFLXS',crm_output%fluxsgs_qt     ,ncol   ,lchnk   )
-   call outfld('SPQPFLX ',crm_output%flux_qp        ,ncol   ,lchnk   )
-   call outfld('SPPFLX  ',crm_output%precflux       ,ncol   ,lchnk   )
-   call outfld('SPQTLS  ',crm_output%qt_ls          ,ncol   ,lchnk   )
-   call outfld('SPQTTR  ',crm_output%qt_trans       ,ncol   ,lchnk   )
-   call outfld('SPQPTR  ',crm_output%qp_trans       ,ncol   ,lchnk   )
-   call outfld('SPQPEVP ',crm_output%qp_evp         ,ncol   ,lchnk   )
-   call outfld('SPQPFALL',crm_output%qp_fall        ,ncol   ,lchnk   )
-   call outfld('SPQPSRC ',crm_output%qp_src         ,ncol   ,lchnk   )
-   call outfld('SPTLS   ',crm_output%t_ls           ,ncol   ,lchnk   )
+   call outfld('SPQTFLX ',crm_output%flux_qt   (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPUFLX  ',crm_output%flux_u    (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPVFLX  ',crm_output%flux_v    (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPTKE   ',crm_output%tkez      (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPTKES  ',crm_output%tkesgsz   (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPTK    ',crm_output%tkz       (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQTFLXS',crm_output%fluxsgs_qt(1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQPFLX ',crm_output%flux_qp   (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPPFLX  ',crm_output%precflux  (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQTLS  ',crm_output%qt_ls     (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQTTR  ',crm_output%qt_trans  (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQPTR  ',crm_output%qp_trans  (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQPEVP ',crm_output%qp_evp    (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQPFALL',crm_output%qp_fall   (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQPSRC ',crm_output%qp_src    (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPTLS   ',crm_output%t_ls      (1:,ncol,:) ,ncol, lchnk )
 
    !!! Clouds
    ! note: not sure this is right, since cld output should be on pver
    !       is that consistent with crm_output here? (should verify)
-   call outfld('CLOUD   ',crm_output%cld(1:ncol,:), ncol, lchnk)
+   call outfld('CLOUD   ',crm_output%cld(1:ncol,:), ncol, lchnk )
 
    ! vertically integrated and time/space averaged crm clouds:
-   call outfld('CLDTOT  ',crm_output%cltot(1:ncol),ncol,lchnk)
-   call outfld('CLDHGH  ',crm_output%clhgh(1:ncol),ncol,lchnk)
-   call outfld('CLDMED  ',crm_output%clmed(1:ncol),ncol,lchnk)
-   call outfld('CLDLOW  ',crm_output%cllow(1:ncol),ncol,lchnk)
+   call outfld('CLDTOT  ',crm_output%cltot(1:ncol), ncol, lchnk )
+   call outfld('CLDHGH  ',crm_output%clhgh(1:ncol), ncol, lchnk )
+   call outfld('CLDMED  ',crm_output%clmed(1:ncol), ncol, lchnk )
+   call outfld('CLDLOW  ',crm_output%cllow(1:ncol), ncol, lchnk )
 
    !!! Need to remap vertical coordinate of crm_output
    ! TODO: provide a procedure to do this
@@ -2227,23 +2228,23 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
       kgcm = pver - k + 1
       cldtop_gcm(1:ncol, kgcm) = crm_output%cldtop(1:ncol, k)
    end do
-   call outfld('CLOUDTOP', cldtop_gcm(1:ncol,:), ncol, lchnk)
+   call outfld('CLOUDTOP', cldtop_gcm(1:ncol,:), ncol, lchnk  )
 
    !!! miscellaneous:
-   call outfld('TIMINGF ', crm_output%timing_factor(1:ncol), ncol, lchnk)
+   call outfld('TIMINGF ', crm_output%timing_factor(1:ncol), ncol, lchnk )
 
 #if defined( SP_CRM_SPLIT )
    !!! diagnostic output for SP_CRM_SPLIT
    if ( phys_stage == 1 ) then 
-      call outfld('SPDT1   ', crm_output%spdt(1:ncol,:), ncol, lchnk)
-      call outfld('SPDQ1   ', ptend%q(1,1,1), pcols, lchnk)
-      call outfld('SPQPEVP1', crm_output%qp_evp, ncol, lchnk)
-      call outfld('SPTLS1  ', crm_output%t_ls, ncol, lchnk)
+      call outfld('SPDT1   ', crm_output%spdt  (1:ncol,:),   ncol, lchnk )
+      call outfld('SPDQ1   ', ptend%q          (1:ncol,:,1), ncol, lchnk )
+      call outfld('SPQPEVP1', crm_output%qp_evp(1:ncol,:),   ncol, lchnk )
+      call outfld('SPTLS1  ', crm_output%t_ls  (1:ncol,:),   ncol, lchnk )
    else
-      call outfld('SPDT2   ', crm_output%spdt(1:ncol,:), ncol, lchnk)
-      call outfld('SPDQ2   ',ptend%q(1,1,1) ,pcols   ,lchnk   )
-      call outfld('SPQPEVP2',qp_evp         ,pcols   ,lchnk   )
-      call outfld('SPTLS2  ',t_ls           ,pcols   ,lchnk   )
+      call outfld('SPDT2   ', crm_output%spdt  (1:ncol,:),   ncol, lchnk )
+      call outfld('SPDQ2   ', ptend%q          (1:ncol,:,1), ncol, lchnk )
+      call outfld('SPQPEVP2', crm_output%qp_evp(1:ncol,:),   ncol, lchnk )
+      call outfld('SPTLS2  ', crm_output%t_ls  (1:ncol,:),   ncol, lchnk )
    end if
 #endif
 
@@ -2262,13 +2263,12 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    gwp(:ncol,:pver) = crm_output%gicewp(:ncol,:pver) + crm_output%gliqwp(:ncol,:pver)
    cwp(:ncol,:pver) = cicewp(:ncol,:pver) + cliqwp(:ncol, :pver)
 
-   ! TODO: verify this change from "pcols" to "ncol" works as expected here
-   call outfld('GCLDLWP' ,gwp    , ncol, lchnk)
-   call outfld('TGCLDCWP',tgwp   , ncol, lchnk)
-   call outfld('TGCLDLWP',tgliqwp, ncol, lchnk)
-   call outfld('TGCLDIWP',tgicewp, ncol, lchnk)
-   call outfld('ICLDTWP' ,cwp    , ncol, lchnk)
-   call outfld('ICLDIWP' ,cicewp , ncol, lchnk)
+   call outfld('GCLDLWP' ,gwp    (1:ncol,:), ncol, lchnk)
+   call outfld('TGCLDCWP',tgwp   (1:ncol,:), ncol, lchnk)
+   call outfld('TGCLDLWP',tgliqwp(1:ncol,:), ncol, lchnk)
+   call outfld('TGCLDIWP',tgicewp(1:ncol,:), ncol, lchnk)
+   call outfld('ICLDTWP' ,cwp    (1:ncol,:), ncol, lchnk)
+   call outfld('ICLDIWP' ,cicewp (1:ncol,:), ncol, lchnk)
 
    call outfld('MU_CRM  ', crm_output%mu_crm(1:ncol,:), ncol, lchnk)
    call outfld('MD_CRM  ', crm_output%md_crm(1:ncol,:), ncol, lchnk)
@@ -2285,48 +2285,46 @@ end subroutine crm_physics_out
 subroutine crm_clubb_out(lchnk, clubb_buffer, &
                          clubb_tk, clubb_tkh, relvar, accre_enhan, qclvar)
    !------------------------------------------------------------------------------------------ 
-   ! 
    ! Purpose: write CLUBB crm output to history files
-   !
-   !------------------------------------------------------------------------------------------ 
-   ! TODO: this subroutine should be refactored in future -- currently the goal is 
-   ! to move all "call outfld" blocks out of the CRM, and this is the quickest approach.
    !------------------------------------------------------------------------------------------
    use cam_history, only: outfld
    use crmdims, only: crm_nx, crm_ny, crm_nz
    implicit none
 
    integer, intent(in) :: lchnk
-   real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
-   real(r8) crm_cld(pcols,crm_nx, crm_ny, crm_nz+1)
-   real(r8) clubb_tk   (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) clubb_tkh  (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) relvar     (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) accre_enhan(pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) qclvar     (pcols,crm_nx, crm_ny, crm_nz)
+   real(r8), pointer   ::  clubb_buffer(:,:,:,:,:)
+   real(r8), dimension(pcols,crm_nx, crm_ny, crm_nz+1) :: crm_cld    
+   real(r8), dimension(pcols,crm_nx, crm_ny, crm_nz)   :: clubb_tk   
+   real(r8), dimension(pcols,crm_nx, crm_ny, crm_nz)   :: clubb_tkh  
+   real(r8), dimension(pcols,crm_nx, crm_ny, crm_nz)   :: relvar     
+   real(r8), dimension(pcols,crm_nx, crm_ny, crm_nz)   :: accre_enhan
+   real(r8), dimension(pcols,crm_nx, crm_ny, crm_nz)   :: qclvar     
 
    ! clubb_buffer outputs
-   call outfld('UP2     ', clubb_buffer(:, :, :, :, 1)   ,pcols   ,lchnk   )
-   call outfld('VP2     ', clubb_buffer(:, :, :, :, 2)   ,pcols   ,lchnk   )
-   call outfld('WPRTP   ', clubb_buffer(:, :, :, :, 3)   ,pcols   ,lchnk   )
-   call outfld('WPTHLP  ', clubb_buffer(:, :, :, :, 4)   ,pcols   ,lchnk   )
-   call outfld('WP2     ', clubb_buffer(:, :, :, :, 5)   ,pcols   ,lchnk   )
-   call outfld('WP3     ', clubb_buffer(:, :, :, :, 6)   ,pcols   ,lchnk   )
-   call outfld('RTP2    ', clubb_buffer(:, :, :, :, 7)   ,pcols   ,lchnk   )
-   call outfld('THLP2   ', clubb_buffer(:, :, :, :, 8)   ,pcols   ,lchnk   )
-   call outfld('RTPTHLP ', clubb_buffer(:, :, :, :, 9)   ,pcols   ,lchnk   )
-   call outfld('UPWP    ', clubb_buffer(:, :, :, :, 10)  ,pcols   ,lchnk   )
-   call outfld('VPWP    ', clubb_buffer(:, :, :, :, 11)  ,pcols   ,lchnk   )
-   call outfld('CRM_CLD ', clubb_buffer(:, :, :, :, 12)  ,pcols   ,lchnk   )
+   call outfld('UP2     ', clubb_buffer(1:ncol,:,:,:,1) , ncol, lchnk )
+   call outfld('VP2     ', clubb_buffer(1:ncol,:,:,:,2) , ncol, lchnk )
+   call outfld('WPRTP   ', clubb_buffer(1:ncol,:,:,:,3) , ncol, lchnk )
+   call outfld('WPTHLP  ', clubb_buffer(1:ncol,:,:,:,4) , ncol, lchnk )
+   call outfld('WP2     ', clubb_buffer(1:ncol,:,:,:,5) , ncol, lchnk )
+   call outfld('WP3     ', clubb_buffer(1:ncol,:,:,:,6) , ncol, lchnk )
+   call outfld('RTP2    ', clubb_buffer(1:ncol,:,:,:,7) , ncol, lchnk )
+   call outfld('THLP2   ', clubb_buffer(1:ncol,:,:,:,8) , ncol, lchnk )
+   call outfld('RTPTHLP ', clubb_buffer(1:ncol,:,:,:,9) , ncol, lchnk )
+   call outfld('UPWP    ', clubb_buffer(1:ncol,:,:,:,10), ncol, lchnk )
+   call outfld('VPWP    ', clubb_buffer(1:ncol,:,:,:,11), ncol, lchnk )
+   call outfld('CRM_CLD ', clubb_buffer(1:ncol,:,:,:,12), ncol, lchnk )
 
    ! additional clubb-related diagnostics
-   call outfld('CLUBB_TK ', clubb_tk(:, :, :, :)  ,pcols   ,lchnk   )
-   call outfld('CLUBB_TKH', clubb_tkh(:, :, :, :)  ,pcols   ,lchnk   )
-   call outfld('RELVAR', relvar(:, :, :, :)  ,pcols   ,lchnk   )
-   call outfld('ACCRE_ENHAN', accre_enhan(:, :, :, :)  ,pcols   ,lchnk   )
-   call outfld('QCLVAR', qclvar(:, :, :, :)  ,pcols   ,lchnk   )
+   call outfld('CLUBB_TK '  , clubb_tk   (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('CLUBB_TKH'  , clubb_tkh  (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('RELVAR'     , relvar     (1:ncol,:,:,:), ncol, lchnk )
+   call outfld('ACCRE_ENHAN', accre_enhan(1:ncol,:,:,:), ncol, lchnk )
+   call outfld('QCLVAR'     , qclvar     (1:ncol,:,:,:), ncol, lchnk )
 end subroutine crm_clubb_out
 #endif /* CLUBB_CRM */
+
+!==================================================================================================
+!==================================================================================================
 
 #ifdef ECPP
 subroutine crm_ecpp_out(lchnk, acen, abnd, acen_tf, abnd_tf, massflxbnd, &
@@ -2334,28 +2332,36 @@ subroutine crm_ecpp_out(lchnk, acen, abnd, acen_tf, abnd_tf, massflxbnd, &
                         precrcen, precsolidcen, wupthresh_bnd, wdownthresh_bnd, &
                         wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd, &
                         qlsink_bfcen, qlsink_avgcen, praincen)
-   ! TODO: add header stuff here,
-   call outfld('ACEN    ', acen, pcols, lchnk)
-   call outfld('ABND    ', abnd, pcols, lchnk)
-   call outfld('ACEN_TF ', acen_tf, pcols, lchnk)
-   call outfld('ABND_TF ', abnd_tf, pcols, lchnk)
-   call outfld('MASFBND ', massflxbnd, pcols, lchnk)
-   call outfld('RHCEN   ', rhcen, pcols, lchnk)
-   call outfld('QCCEN   ', qcloudcen, pcols, lchnk)
-   call outfld('QICEN   ', qicecen, pcols, lchnk)
-   call outfld('QSINK_AFCEN', qlsink_afcen, pcols, lchnk)
-   call outfld('PRECRCEN', precrcen, pcols, lchnk)
-   call outfld('PRECSCEN', precsolidcen, pcols, lchnk)
-   call outfld('WUPTHRES', wupthresh_bnd, pcols, lchnk)
-   call outfld('WDNTHRES', wdownthresh_bnd, pcols, lchnk)
-   call outfld('WWQUI_CEN', wwqui_cen, pcols, lchnk)
-   call outfld('WWQUI_CLD_CEN', wwqui_cloudy_cen, pcols, lchnk)
-   call outfld('WWQUI_BND', wwqui_cen, pcols, lchnk)  ! should this be wwqui_bnd ??
-   call outfld('WWQUI_CLD_BND', wwqui_cloudy_cen, pcols, lchnk)  ! should this be wwqui_cloudy_bnd ??
-   call outfld('QSINK_BFCEN', qlsink_bfcen, pcols, lchnk)
-   call outfld('QSINK_AVGCEN', qlsink_avgcen, pcols, lchnk)
-   call outfld('PRAINCEN', praincen, pcols, lchnk)               
-end subroutine
+   !------------------------------------------------------------------------------------------ 
+   ! Purpose: write ECPP output to history files
+   ! TODO: add variables to derived type for ECPP variables
+   !------------------------------------------------------------------------------------------ 
+   call outfld('ACEN    '     , acen            (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('ABND    '     , abnd            (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('ACEN_TF '     , acen_tf         (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('ABND_TF '     , abnd_tf         (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('MASFBND '     , massflxbnd      (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('RHCEN   '     , rhcen           (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('QCCEN   '     , qcloudcen       (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('QICEN   '     , qicecen         (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('QSINK_AFCEN'  , qlsink_afcen    (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('PRECRCEN'     , precrcen        (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('PRECSCEN'     , precsolidcen    (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('QSINK_BFCEN'  , qlsink_bfcen    (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('QSINK_AVGCEN' , qlsink_avgcen   (1:ncol,:,:,:,:), ncol, lchnk )
+   call outfld('PRAINCEN'     , praincen        (1:ncol,:,:,:,:), ncol, lchnk )
+
+   call outfld('WUPTHRES'     , wupthresh_bnd   (1:ncol,:), ncol, lchnk )
+   call outfld('WDNTHRES'     , wdownthresh_bnd (1:ncol,:), ncol, lchnk )
+   call outfld('WWQUI_CEN'    , wwqui_cen       (1:ncol,:), ncol, lchnk )
+   call outfld('WWQUI_CLD_CEN', wwqui_cloudy_cen(1:ncol,:), ncol, lchnk )
+   call outfld('WWQUI_BND'    , wwqui_bnd       (1:ncol,:), ncol, lchnk )
+   call outfld('WWQUI_CLD_BND', wwqui_cloudy_bnd(1:ncol,:), ncol, lchnk )   
+
+end subroutine crm_ecpp_out
 #endif /* ECPP */
+
+!==================================================================================================
+!==================================================================================================
 
 end module crm_physics
