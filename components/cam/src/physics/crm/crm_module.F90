@@ -455,11 +455,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
               crm_input%zint(icrm,plev+1)
       zi(k) = crm_input%zint(icrm,plev-k+2) - &
               crm_input%zint(icrm,plev+1)
-      pres(k) = crm_input%pmid(icrm,plev-k+1)/100.
+      pres(k)  = crm_input%pmid(icrm,plev-k+1)/100.
+      presi(k) = crm_input%pint(icrm,plev-k+2)/100.
       prespot(k) = (1000./pres(k))**(rgas/cp)
       bet(k) = ggr/crm_input%tl(icrm,plev-k+1)
       gamaz(k) = ggr/cp*z(k)
     end do ! k
+    presi(nz) = crm_input%pint(icrm, plev-nz+2)/100.
     zi(nz) = crm_input%zint(icrm,plev-nz+2) - &
              crm_input%zint(icrm,plev+1)
 
