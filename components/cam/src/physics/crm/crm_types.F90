@@ -117,6 +117,7 @@ module crm_types
       real(crm_rknd), allocatable :: qiil(:,:)           ! Global grid cloud ice (g/g)
       real(crm_rknd), allocatable :: ps(:)               ! Global grid surface pressure (Pa)
       real(crm_rknd), allocatable :: pmid(:,:)           ! Global grid pressure (Pa)
+      real(crm_rknd), allocatable :: pint(:,:)           ! Global grid pressure (Pa)
       real(crm_rknd), allocatable :: pdel(:,:)           ! Layer's pressure thickness (Pa)
       real(crm_rknd), allocatable :: phis(:)             ! Global grid surface geopotential (m2/s2)
 
@@ -375,6 +376,7 @@ contains
       if (.not. allocated(this%qiil))     allocate(this%qiil(ncrms,nlev))
       if (.not. allocated(this%ps))       allocate(this%ps(ncrms))
       if (.not. allocated(this%pmid))     allocate(this%pmid(ncrms,nlev))
+      if (.not. allocated(this%pint))     allocate(this%pint(ncrms,nlev))
       if (.not. allocated(this%pdel))     allocate(this%pdel(ncrms,nlev))
       if (.not. allocated(this%phis))     allocate(this%phis(ncrms))
       if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))
