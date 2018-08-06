@@ -2031,10 +2031,6 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    ! Purpose: to write crm physics output to history 
    !
    !------------------------------------------------------------------------------------------ 
-   ! #crjones
-   ! WIP (work in progress): copying outfld calls down from crm_physics_tend
-   ! TODO: * remove those outfld calls from crm_physics_tend
-   !------------------------------------------------------------------------------------------ 
    use cam_history,  only: outfld
    use phys_control, only: phys_getopts
    use physics_types,only: physics_ptend 
@@ -2191,22 +2187,22 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
 
    !!! More SP diagnostics 
    ! TODO: explicit dim stride; reorganize
-   call outfld('SPQTFLX ',crm_output%flux_qt   (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPUFLX  ',crm_output%flux_u    (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPVFLX  ',crm_output%flux_v    (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPTKE   ',crm_output%tkez      (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPTKES  ',crm_output%tkesgsz   (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPTK    ',crm_output%tkz       (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPQTFLXS',crm_output%fluxsgs_qt(1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPQPFLX ',crm_output%flux_qp   (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPPFLX  ',crm_output%precflux  (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPQTLS  ',crm_output%qt_ls     (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPQTTR  ',crm_output%qt_trans  (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPQPTR  ',crm_output%qp_trans  (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPQPEVP ',crm_output%qp_evp    (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPQPFALL',crm_output%qp_fall   (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPQPSRC ',crm_output%qp_src    (1:,ncol,:) ,ncol, lchnk )
-   call outfld('SPTLS   ',crm_output%t_ls      (1:,ncol,:) ,ncol, lchnk )
+   call outfld('SPQTFLX ',crm_output%flux_qt   (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPUFLX  ',crm_output%flux_u    (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPVFLX  ',crm_output%flux_v    (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPTKE   ',crm_output%tkez      (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPTKES  ',crm_output%tkesgsz   (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPTK    ',crm_output%tkz       (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPQTFLXS',crm_output%fluxsgs_qt(1:ncol,:) ,ncol, lchnk )
+   call outfld('SPQPFLX ',crm_output%flux_qp   (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPPFLX  ',crm_output%precflux  (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPQTLS  ',crm_output%qt_ls     (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPQTTR  ',crm_output%qt_trans  (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPQPTR  ',crm_output%qp_trans  (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPQPEVP ',crm_output%qp_evp    (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPQPFALL',crm_output%qp_fall   (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPQPSRC ',crm_output%qp_src    (1:ncol,:) ,ncol, lchnk )
+   call outfld('SPTLS   ',crm_output%t_ls      (1:ncol,:) ,ncol, lchnk )
 
    !!! Clouds
    ! note: not sure this is right, since cld output should be on pver
@@ -2264,11 +2260,11 @@ subroutine crm_physics_out(lchnk, ncol, state, crm_state, crm_output, ptend, phy
    cwp(:ncol,:pver) = cicewp(:ncol,:pver) + cliqwp(:ncol, :pver)
 
    call outfld('GCLDLWP' ,gwp    (1:ncol,:), ncol, lchnk)
-   call outfld('TGCLDCWP',tgwp   (1:ncol,:), ncol, lchnk)
-   call outfld('TGCLDLWP',tgliqwp(1:ncol,:), ncol, lchnk)
-   call outfld('TGCLDIWP',tgicewp(1:ncol,:), ncol, lchnk)
    call outfld('ICLDTWP' ,cwp    (1:ncol,:), ncol, lchnk)
    call outfld('ICLDIWP' ,cicewp (1:ncol,:), ncol, lchnk)
+   call outfld('TGCLDCWP',tgwp   (1:ncol),   ncol, lchnk)
+   call outfld('TGCLDLWP',tgliqwp(1:ncol),   ncol, lchnk)
+   call outfld('TGCLDIWP',tgicewp(1:ncol),   ncol, lchnk)
 
    call outfld('MU_CRM  ', crm_output%mu_crm(1:ncol,:), ncol, lchnk)
    call outfld('MD_CRM  ', crm_output%md_crm(1:ncol,:), ncol, lchnk)
