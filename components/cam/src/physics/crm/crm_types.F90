@@ -376,7 +376,7 @@ contains
       if (.not. allocated(this%qiil))     allocate(this%qiil(ncrms,nlev))
       if (.not. allocated(this%ps))       allocate(this%ps(ncrms))
       if (.not. allocated(this%pmid))     allocate(this%pmid(ncrms,nlev))
-      if (.not. allocated(this%pint))     allocate(this%pint(ncrms,nlev))
+      if (.not. allocated(this%pint))     allocate(this%pint(ncrms,nlev+1))
       if (.not. allocated(this%pdel))     allocate(this%pdel(ncrms,nlev))
       if (.not. allocated(this%phis))     allocate(this%phis(ncrms))
       if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))

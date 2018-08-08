@@ -1741,7 +1741,7 @@ end if ! l_gw_drag
     !===================================================
     if (use_SPCAM) then
       phys_stage = 2
-      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, phys_stage)
+      call crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out, species_class, phys_stage)
     endif
 #endif
     
@@ -2755,8 +2755,8 @@ end if
       ! Run the CRM 
       !---------------------------------------------------------------------------
       phys_stage = 1  ! for tphysbc() => phys_stage = 1
-      call crm_physics_tend(ztodt, state, tend,ptend, pbuf, cam_in, cam_out,    &
-                            species_class, phys_stage,                          &
+      call crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,     &
+                            species_class, phys_stage,                      &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
       call physics_update(state, ptend, crm_run_time, tend)
