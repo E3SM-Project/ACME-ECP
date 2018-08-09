@@ -474,10 +474,6 @@ subroutine crm_physics_init(species_class)
     snow_str_idx =  pbuf_get_index('SNOW_STR')
     prec_pcw_idx =  pbuf_get_index('PREC_PCW')
     snow_pcw_idx =  pbuf_get_index('SNOW_PCW')
-    
-   !-- mdb spcam:  try putting this here
-   ! call physics_tend_alloc(tend_save, pcols)
-
 
 end subroutine crm_physics_init
 
@@ -2041,8 +2037,8 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    ! This subroutine is used to save state variables at the beginning of tphysbc
    ! so they can be recalled after they have been changed by conventional physics
    !-----------------------------------------------------------------------------
-   use physics_types,   only: physics_state, physics_tend, physics_tend_alloc, &
-                              physics_state_copy, physics_tend_copy, physics_state_alloc
+   use physics_types,   only: physics_state, physics_tend, physics_tend_dealloc, &
+                              physics_state_copy, physics_tend_copy, physics_state_dealloc
    use time_manager,    only: is_first_step
    use physics_buffer,  only: pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
    use phys_control,    only: phys_getopts
@@ -2071,10 +2067,9 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    !!! Save the state and tend variables 
    !!! Overwrite conventional physics effects before calling the crm. 
    !!! Non-CRM physics routines are allowed to compute diagnostic tendencies.
-   !!! Note that state_save gets allocated in physics_state_copy()
-
-   call physics_state_alloc(state_save,state%lchnk,state%psetcols)
-   call physics_tend_alloc(tend_save,pcols)
+   !!! Note that state_save and tend_save get allocated in the copy routines
+   if ( allocated(state_save%t) ) call physics_state_dealloc(state_save)
+   if ( allocated(tend_save%dtdt) ) call physics_tend_dealloc(tend_save)
 
    call physics_state_copy(state,state_save)
    call physics_tend_copy(tend,tend_save)
@@ -2159,6 +2154,9 @@ subroutine crm_recall_state_tend(state,tend,pbuf)
    q_aero = state%q
 
    !!! Restore state and tend (from beginning of tphysbc)
+   if ( allocated(state%t) ) call physics_state_dealloc(state)
+   if ( allocated(tend%dtdt) ) call physics_tend_dealloc(tend)
+
    call physics_state_copy(state_save,state)
    call physics_tend_copy(tend_save,tend)
 

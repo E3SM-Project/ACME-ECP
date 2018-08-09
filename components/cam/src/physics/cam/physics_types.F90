@@ -1293,10 +1293,8 @@ end subroutine physics_ptend_copy
     !
     integer i, k, m, ncol
 
-    if (.not.allocated(state_out%t)) then
-      ! Allocate state_out with same subcol dimension as state_in
-      call physics_state_alloc ( state_out, state_in%lchnk, state_in%psetcols)
-    end if
+    ! Allocate state_out with same subcol dimension as state_in
+    call physics_state_alloc ( state_out, state_in%lchnk, state_in%psetcols)
 
     ncol = state_in%ncol
     
@@ -1380,10 +1378,8 @@ end subroutine physics_ptend_copy
     type(physics_tend), intent(in)  :: tend_in
     type(physics_tend), intent(out) :: tend_out
 
-    ! Allocate tend_out if not already allocated
-    if (.not.allocated(tend_out%dtdt)) then
-      call physics_tend_alloc(tend_out)
-    end if
+    ! Allocate tend_out
+    call physics_tend_alloc(tend_out,tend_in%psetcols)
     
     tend_out%dtdt    (:pcols,:pver) = tend_in%dtdt    (:pcols,:pver)
     tend_out%dudt    (:pcols,:pver) = tend_in%dudt    (:pcols,:pver)
