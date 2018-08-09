@@ -666,12 +666,12 @@ end function radiation_nextsw_cday
                                                                                  sampling_seq='rad_lwsw')
           call addfld('FSDS'//diag(icall),  horiz_only,     'A',    'W/m2', 'Downwelling solar flux at surface', &
                                                                                  sampling_seq='rad_lwsw')
-          call addfld('FUS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave upward flux')
-          call addfld('FDS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave downward flux')
-          call addfld('FNS'//diag(icall),  (/ 'ilev' /), 'I',     'W/m2', 'Shortwave net flux')
-          call addfld('FUSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky upward flux')
-          call addfld('FDSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky downward flux')
-          call addfld('FNSC'//diag(icall),  (/ 'ilev' /), 'I',    'W/m2', 'Shortwave clear-sky net flux')
+          call addfld('FUS'//diag(icall),  (/ 'ilev' /), 'A',     'W/m2', 'Shortwave upward flux')
+          call addfld('FDS'//diag(icall),  (/ 'ilev' /), 'A',     'W/m2', 'Shortwave downward flux')
+          call addfld('FNS'//diag(icall),  (/ 'ilev' /), 'A',     'W/m2', 'Shortwave net flux')
+          call addfld('FUSC'//diag(icall),  (/ 'ilev' /), 'A',    'W/m2', 'Shortwave clear-sky upward flux')
+          call addfld('FDSC'//diag(icall),  (/ 'ilev' /), 'A',    'W/m2', 'Shortwave clear-sky downward flux')
+          call addfld('FNSC'//diag(icall),  (/ 'ilev' /), 'A',    'W/m2', 'Shortwave clear-sky net flux')
           call addfld('FSNIRTOA'//diag(icall),  horiz_only,     'A','W/m2',&
            'Net near-infrared flux (Nimbus-7 WFOV) at top of atmosphere', sampling_seq='rad_lwsw')
           call addfld('FSNRTOAC'//diag(icall),  horiz_only,     'A','W/m2', &
@@ -774,7 +774,6 @@ end function radiation_nextsw_cday
           call addfld('FNLC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky net flux')
           call addfld('FULC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky upward flux')
           call addfld('FDLC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky downward flux')
-!==Guangxing Lin
  
          if (history_amwg) then
           call add_default('QRL'//diag(icall),   1, ' ')
