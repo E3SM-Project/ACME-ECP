@@ -33,7 +33,7 @@ module crm_physics
    public :: crm_physics_init
    public :: crm_physics_tend
    public :: crm_surface_flux_bypass_tend
-   public :: crm_remember_state_tend
+   public :: crm_recall_state_tend
    public :: crm_save_state_tend
    public :: m2005_effradius
 
@@ -474,10 +474,6 @@ subroutine crm_physics_init(species_class)
     snow_str_idx =  pbuf_get_index('SNOW_STR')
     prec_pcw_idx =  pbuf_get_index('PREC_PCW')
     snow_pcw_idx =  pbuf_get_index('SNOW_PCW')
-    
-   !-- mdb spcam:  try putting this here
-   ! call physics_tend_alloc(tend_save, pcols)
-
 
 end subroutine crm_physics_init
 
@@ -2041,7 +2037,8 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    ! This subroutine is used to save state variables at the beginning of tphysbc
    ! so they can be recalled after they have been changed by conventional physics
    !-----------------------------------------------------------------------------
-   use physics_types,   only: physics_state, physics_tend, physics_tend_alloc
+   use physics_types,   only: physics_state, physics_tend, physics_tend_dealloc, &
+                              physics_state_copy, physics_tend_copy, physics_state_dealloc
    use time_manager,    only: is_first_step
    use physics_buffer,  only: pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
    use phys_control,    only: phys_getopts
@@ -2052,7 +2049,7 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    implicit none
 
    type(physics_state),       intent(in   ) :: state
-   type(physics_tend),        intent(in   ) :: tend
+   type(physics_tend),        intent(in   ) :: tend 
    type(physics_buffer_desc), pointer       :: pbuf(:)
 
    integer itim, ifld, ncol, i, lchnk
@@ -2060,82 +2057,71 @@ subroutine crm_save_state_tend(state,tend,pbuf)
    real(r8), pointer, dimension(:,:) :: qqcw
    logical                           :: use_SPCAM, use_ECPP
 
-
    call phys_getopts( use_SPCAM_out = use_SPCAM )
    call phys_getopts( use_ECPP_out  = use_ECPP  )
 
-   if (use_SPCAM) then
+   lchnk = state%lchnk
+   ncol  = state%ncol
+   itim  = pbuf_old_tim_idx()
 
-      lchnk = state%lchnk
-      ncol  = state%ncol
+   !!! Save the state and tend variables 
+   !!! Overwrite conventional physics effects before calling the crm. 
+   !!! Non-CRM physics routines are allowed to compute diagnostic tendencies.
+   !!! Note that state_save and tend_save get allocated in the copy routines
+   if ( allocated(state_save%t) ) call physics_state_dealloc(state_save)
+   if ( allocated(tend_save%dtdt) ) call physics_tend_dealloc(tend_save)
 
-      itim = pbuf_old_tim_idx()
-      
-      call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-
-      if (use_ECPP) then
-         ifld = pbuf_get_index('CLD')
-         call pbuf_get_field(pbuf, ifld, cld, (/1,1,itim/),(/pcols,pver,1/))
-         ifld = pbuf_get_index('ACLDY_CEN')
-         call pbuf_get_field(pbuf, ifld, acldy_cen_tbeg)
-         if(is_first_step())then
-           acldy_cen_tbeg(:ncol,:) = cld(:ncol, :)
-         end if
-      endif
+   call physics_state_copy(state,state_save)
+   call physics_tend_copy(tend,tend_save)
    
-      ! Save the state and tend variables to overwrite conventional physics effects
-      ! leter before calling the superparameterization. Conventional moist
-      ! physics is allowed to compute tendencies due to conventional
-      ! moist physics for diagnostics purposes. -Marat
+   !!! save the old cloud fraction
+   call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+   cldo_save(:ncol, :) = cldo(:ncol, :)
 
-      state_save = state
-      !tend_save = tend            ! mdb: try uncommenting this line
-
-      call physics_tend_alloc(tend_save, pcols)
-
-      tend_save%dtdt(:ncol,:pver) = tend%dtdt(:ncol,:pver)
-      tend_save%dudt(:ncol,:pver) = tend%dudt(:ncol,:pver)
-      tend_save%dvdt(:ncol,:pver) = tend%dvdt(:ncol,:pver)
-      tend_save%te_tnd(:ncol)     = tend%te_tnd(:ncol)
-      tend_save%tw_tnd(:ncol)     = tend%tw_tnd(:ncol)
-      ! tend_save%flx_net(:ncol)    = tend_save%flx_net(:ncol)
-
-      cldo_save(:ncol, :) = cldo(:ncol, :)
+   !!! other things relevant for aerosols
+   if (use_ECPP) then
+      ifld = pbuf_get_index('CLD')
+      call pbuf_get_field(pbuf, ifld, cld, (/1,1,itim/),(/pcols,pver,1/))
+      ifld = pbuf_get_index('ACLDY_CEN')
+      call pbuf_get_field(pbuf, ifld, acldy_cen_tbeg)
+      if(is_first_step())then
+        acldy_cen_tbeg(:ncol,:) = cld(:ncol, :)
+      end if
+   endif
 
 #if ( defined MODAL_AERO )
-      qqcw_all=0_r8
+   qqcw_all=0_r8
+   do i = 1,pcnst
+      qqcw   =>  qqcw_get_field(pbuf, i,lchnk, .true.)
+      if (associated(qqcw)) qqcw_all(:,:,i) = qqcw(:,:)
+   end do
+
+   ifld = pbuf_get_index('DGNUMWET')
+   call pbuf_get_field(pbuf, ifld, dgnumwet, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/))
+
+   if(is_first_step())then
       do i=1,pcnst
-          qqcw   =>  qqcw_get_field(pbuf, i,lchnk, .true.)
-          if (associated(qqcw)) qqcw_all(:,:,i) = qqcw(:,:)
+         qqcw_all(:,:,i) = 1.e-38_r8
       end do
+      dgnumwet(1:pcols,1:pver,1:ntot_amode) = 0.0_r8
+   endif
 
-      ifld = pbuf_get_index('DGNUMWET')
-      call pbuf_get_field(pbuf, ifld, dgnumwet, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/))
-
-      if(is_first_step())then
-         do i=1,pcnst
-            qqcw_all(:,:,i) = 1.e-38_r8
-         end do
-         dgnumwet(1:pcols,1:pver,1:ntot_amode) = 0.0_r8
-      endif
-
-      qqcw_save = qqcw_all
-      dgnumwet_save = dgnumwet
+   qqcw_save = qqcw_all
+   dgnumwet_save = dgnumwet
 #endif
-
-   endif ! use_SPCAM
 
 end subroutine crm_save_state_tend
 
 !==================================================================================================
 !==================================================================================================
 
-subroutine crm_remember_state_tend(state,tend,pbuf)
+subroutine crm_recall_state_tend(state,tend,pbuf)
    !-----------------------------------------------------------------------------
    ! This subroutine is used to recall the state that was saved prior
    ! to running the conventional GCM physics routines
    !-----------------------------------------------------------------------------
-   use physics_types,   only: physics_state, physics_tend, physics_tend_dealloc
+   use physics_types,   only: physics_state, physics_tend, physics_tend_dealloc,&
+                              physics_state_copy, physics_tend_copy, physics_state_dealloc
    use time_manager,    only: is_first_step
    use physics_buffer,  only: pbuf_get_field, physics_buffer_desc, dyn_time_lvls
    use phys_control,    only: phys_getopts
@@ -2146,7 +2132,7 @@ subroutine crm_remember_state_tend(state,tend,pbuf)
    implicit none
 
    type(physics_state),       intent(inout) :: state
-   type(physics_tend),        intent(inout) :: tend
+   type(physics_tend),        intent(inout) :: tend 
    type(physics_buffer_desc), pointer       :: pbuf(:)
 
    integer ncol, lchnk, i, m
@@ -2159,58 +2145,56 @@ subroutine crm_remember_state_tend(state,tend,pbuf)
    call phys_getopts( use_ECPP_out      = use_ECPP  )
    call phys_getopts( microp_scheme_out = microp_scheme )
 
+   lchnk = state%lchnk
+   ncol  = state%ncol
 
-   if (use_SPCAM) then
+   ! gas and aerosol species are updated by shallow convective transport.
+   ! Aerosol changes from dropmixnuc in cldwat2m.F90 are discarded. 
+   ! (i.e. when dropmixnuc is called in cldwat2m.F90, the tendency is set to zero)
+   q_aero = state%q
 
-      lchnk = state%lchnk
-      ncol  = state%ncol
+   !!! Restore state and tend (from beginning of tphysbc)
+   if ( allocated(state%t) ) call physics_state_dealloc(state)
+   if ( allocated(tend%dtdt) ) call physics_tend_dealloc(tend)
 
-      ! gas and aerosol species are updated by shallow convective transport.
-      ! Aerosol changes from dropmixnuc in cldwat2m.F90 are discarded. 
-      ! (i.e. when dropmixnuc is called in cldwat2m.F90, the tendency is set to zero)
-      q_aero = state%q
-   
-      ! Restore state and tend (from beginning of tphysbc)
-      state = state_save
-      tend  = tend_save
+   call physics_state_copy(state_save,state)
+   call physics_tend_copy(tend_save,tend)
 
-      ! tracer species other than water vapor and cloud water are updated in convetional CAM.
-      ! When ECPP is used, dropmixnuc and all transport(deep and shallow) are done in ECPP.
-      ! So all change in aerosol and gas species in the conventinal CAM are discarded.
-      ! Minghuai Wang, 2010-01 (Minghuai.Wang@pnl.gov)
-      if (.not. use_ECPP) then
-         
-         if ( microp_scheme .eq. 'MG' ) then
-            state%q(:ncol, :pver, 6:pcnst) = q_aero(:ncol, :pver, 6:pcnst)
-         else if ( microp_scheme .eq. 'RK' ) then
-            state%q(:ncol, :pver, 4:pcnst) = q_aero(:ncol, :pver, 4:pcnst)
-         end if
-      endif
+   call physics_state_dealloc(state_save)
+   call physics_tend_dealloc(tend_save)
 
-      call physics_tend_dealloc(tend_save)
+   ! tracer species other than water vapor and cloud water are updated in convetional CAM.
+   ! When ECPP is used, dropmixnuc and all transport(deep and shallow) are done in ECPP.
+   ! So all change in aerosol and gas species in the conventinal CAM are discarded.
+   ! Minghuai Wang, 2010-01 (Minghuai.Wang@pnl.gov)
+   if (.not. use_ECPP) then
+      if ( microp_scheme .eq. 'MG' ) then
+         state%q(:ncol,:pver,6:pcnst) = q_aero(:ncol,:pver,6:pcnst)
+      else if ( microp_scheme .eq. 'RK' ) then
+         state%q(:ncol,:pver,4:pcnst) = q_aero(:ncol,:pver,4:pcnst)
+      end if
+   endif
 
-      !!! whannah - not sure why we do this...
-      if(is_first_step())then
-         do m=1,dyn_time_lvls
-            call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,m/), kount=(/pcols,pver,1/) )
-            cldo(:ncol,:) = 0
-         enddo
-      endif
-  
-      ! Restore cloud fraction
-      cldo(:ncol, :) = cldo_save(:ncol, :)
+   !!! whannah - not sure why we do this...
+   if(is_first_step())then
+      do m=1,dyn_time_lvls
+         call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,m/), kount=(/pcols,pver,1/) )
+         cldo(:ncol,:) = 0
+      enddo
+   endif
+
+   !!! Restore cloud fraction
+   cldo(:ncol, :) = cldo_save(:ncol, :)
 
 #if ( defined MODAL_AERO )
-      do i=1,pcnst
-         qqcw   =>  qqcw_get_field(pbuf, i,lchnk, .true.)
-         if (associated(qqcw)) qqcw(:, :) = qqcw_save(:,:,i)
-      end do
-      dgnumwet = dgnumwet_save
+   do i = 1,pcnst
+      qqcw => qqcw_get_field(pbuf,i,lchnk,.true.)
+      if (associated(qqcw)) qqcw(:,:) = qqcw_save(:,:,i)
+   end do
+   dgnumwet = dgnumwet_save
 #endif
 
-   endif ! use_SPCAM
-
-end subroutine crm_remember_state_tend
+end subroutine crm_recall_state_tend
 
 !==================================================================================================
 !==================================================================================================
