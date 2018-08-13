@@ -516,9 +516,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       enddo
     endif
 
-    u   (1:nx,1:ny,1:nzm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
-    v   (1:nx,1:ny,1:nzm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
-    w   (1:nx,1:ny,1:nzm) = crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)
+    u(1:nx,1:ny,1:nzm)    = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
+    v(1:nx,1:ny,1:nzm)    = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
+    w(1:nx,1:ny,1:nzm)    = crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)
     tabs(1:nx,1:ny,1:nzm) = crm_state%temperature(icrm,1:nx,1:ny,1:nzm)
 
 #if defined(SP_ESMT)
@@ -545,7 +545,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #else
       micro_field(1:nx,1:ny,1:nzm,1) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,2) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
-      !micro_field(1:nx,1:ny,1:nzm,3) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 
 #ifdef sam1mom
@@ -565,16 +564,16 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       vaer (k, 1:ntot_amode) = crm_input%vaerosol(icrm,l, 1:ntot_amode)
       hgaer(k, 1:ntot_amode) = crm_input%hygro   (icrm,l, 1:ntot_amode)
 #endif /* MODAL_AERO */
-      do j=1, ny
-        do i=1, nx
-          if(cloudliq(i,j,k).gt.0) then
-            if(dopredictNc) then
-              if( micro_field(i,j,k,incl).eq.0) micro_field(i,j,k,incl) = 1.0e6*Nc0/rho(k)
-            endif
-          endif
-        enddo
-      enddo
-    enddo
+      if (dopredictNc) then
+         do j=1, ny
+           do i=1, nx
+             if (cloudliq(i,j,k).gt.0) then
+                 if( micro_field(i,j,k,incl).eq.0) micro_field(i,j,k,incl) = 1.0e6*Nc0/rho(k)
+             end if
+           end do ! i
+         end do ! j
+      end if ! dopredictNc
+    end do ! k
 #endif /* m2005 */
 
     w(:,:,nz)=0.
@@ -1414,12 +1413,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !-------------------------------------------------------------
       !
       ! Save the last step to the permanent core:
-      crm_state%u_wind     (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
-      crm_state%v_wind     (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
-      crm_state%w_wind     (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
+      crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)      = u(1:nx,1:ny,1:nzm)
+      crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)      = v(1:nx,1:ny,1:nzm)
+      crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)      = w(1:nx,1:ny,1:nzm)
       crm_state%temperature(icrm,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
 
-      !crm_state%micro_fields(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
 #ifdef m2005
       crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1)
       crm_state%nc(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2)
@@ -1435,7 +1433,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #else
       crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1)
       crm_state%qp(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2)
-      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm) !micro_field(1:nx,1:ny,1:nzm,3)
+      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm) 
 #endif
 
       ! Override micro (TODO: why?)
