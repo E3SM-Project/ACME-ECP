@@ -1923,7 +1923,7 @@ subroutine tphysbc (ztodt,               &
     use crmdims,         only: crm_nz, crm_nx, crm_ny, crm_dx, crm_dy, crm_dt
 
     use crm_physics,     only: crm_physics_tend, crm_surface_flux_bypass_tend, &
-                               crm_save_state_tend, crm_remember_state_tend
+                               crm_save_state_tend, crm_recall_state_tend
 
 #if defined( SP_CRM_BULK )
     use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
@@ -2739,7 +2739,7 @@ end if
       !---------------------------------------------------------------------------
       ! Recall the state after dynamics
       !---------------------------------------------------------------------------
-      call crm_remember_state_tend(state, tend, pbuf)
+      call crm_recall_state_tend(state, tend, pbuf)
 
       !---------------------------------------------------------------------------
       ! Apply surface fluxes if using SP_FLUX_BYPASS
