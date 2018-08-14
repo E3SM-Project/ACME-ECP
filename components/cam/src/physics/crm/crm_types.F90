@@ -209,6 +209,11 @@ module crm_types
       real(r8), allocatable :: v_tend_esmt(:,:)       ! CRM scalar v-momentum tendency
 #endif
 
+      real(r8), allocatable :: sltend  (:,:)          ! CRM output tendency of static energy
+      real(r8), allocatable :: qltend  (:,:)          ! CRM output tendency of water vapor
+      real(r8), allocatable :: qcltend (:,:)          ! CRM output tendency of cloud liquid water
+      real(r8), allocatable :: qiltend (:,:)          ! CRM output tendency of cloud ice
+
       ! These are all time and spatial averages, on the GCM grid
       real(crm_rknd), allocatable :: cld   (:,:)      ! cloud fraction
       real(crm_rknd), allocatable :: gicewp(:,:)      ! ice water path
@@ -507,6 +512,11 @@ contains
          if (.not. allocated(this%u_tend_esmt )) allocate(this%u_tend_esmt (ncrms,nlev))
          if (.not. allocated(this%v_tend_esmt )) allocate(this%v_tend_esmt (ncrms,nlev))
 #endif
+         
+         if (.not. allocated(this%sltend ))  allocate(this%sltend (ncrms,nlev))
+         if (.not. allocated(this%qltend ))  allocate(this%qltend (ncrms,nlev))
+         if (.not. allocated(this%qcltend))  allocate(this%qcltend(ncrms,nlev))
+         if (.not. allocated(this%qiltend))  allocate(this%qiltend(ncrms,nlev))
 
          if (.not. allocated(this%cld   )) allocate(this%cld   (ncrms,nlev))  ! cloud fraction
          if (.not. allocated(this%gicewp)) allocate(this%gicewp(ncrms,nlev))  ! ice water path
@@ -597,6 +607,11 @@ contains
       this%u_tend_esmt = 0.0
       this%v_tend_esmt = 0.0
 #endif
+
+      this%sltend  = 0.0
+      this%qltend  = 0.0
+      this%qcltend = 0.0
+      this%qiltend = 0.0
 
       this%cld    = 0.
       this%gicewp = 0

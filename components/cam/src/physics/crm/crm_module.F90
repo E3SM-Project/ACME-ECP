@@ -42,7 +42,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
 #endif
-                qltend, qcltend, qiltend, sltend, &
 #ifdef CLUBB_CRM
                 clubb_buffer,                 &
                 crm_cld,                      &
@@ -173,12 +172,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
-
-
-    real(r8), intent(  out) :: sltend              (ncrms,plev)                   ! tendency of static energy
-    real(r8), intent(  out) :: qltend              (ncrms,plev)                   ! tendency of water vapor
-    real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
-    real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
 
 #ifdef ECPP
    ! TODO: these should be passed as a separate crm_ecpp_type
@@ -1388,21 +1381,20 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif /* SPMOMTRANS */
 
    ! TODO: move tendencies up to crm_physics_tend
-    sltend (icrm,:) = cp * (tln   - crm_input%tl  (icrm,:)) * icrm_run_time
-    qltend (icrm,:) =      (qln   - crm_input%ql  (icrm,:)) * icrm_run_time
-    qcltend(icrm,:) =      (qccln - crm_input%qccl(icrm,:)) * icrm_run_time
-    qiltend(icrm,:) =      (qiiln - crm_input%qiil(icrm,:)) * icrm_run_time
+    crm_output%sltend (icrm,:) = cp * (tln   - crm_input%tl  (icrm,:)) * icrm_run_time
+    crm_output%qltend (icrm,:) =      (qln   - crm_input%ql  (icrm,:)) * icrm_run_time
+    crm_output%qcltend(icrm,:) =      (qccln - crm_input%qccl(icrm,:)) * icrm_run_time
+    crm_output%qiltend(icrm,:) =      (qiiln - crm_input%qiil(icrm,:)) * icrm_run_time
     crm_output%prectend (icrm) = (colprec -crm_output%prectend (icrm))/ggr*factor_xy * icrm_run_time
     crm_output%precstend(icrm) = (colprecs-crm_output%precstend(icrm))/ggr*factor_xy * icrm_run_time
 
-   ! TODO: move tendencies up to crm_physics_tend
+    !!! TODO: push this up to crm_physics level
     !!! don't use CRM tendencies from two crm top levels
     !!! radiation tendencies are added back after the CRM call (see crm_physics_tend)
-    !!! TODO: push this up to crm_physics level
-    sltend (icrm,ptop:ptop+1) = 0.
-    qltend (icrm,ptop:ptop+1) = 0.
-    qcltend(icrm,ptop:ptop+1) = 0.
-    qiltend(icrm,ptop:ptop+1) = 0.
+    crm_output%sltend (icrm,ptop:ptop+1) = 0.
+    crm_output%qltend (icrm,ptop:ptop+1) = 0.
+    crm_output%qcltend(icrm,ptop:ptop+1) = 0.
+    crm_output%qiltend(icrm,ptop:ptop+1) = 0.
 
       !-------------------------------------------------------------
       !
