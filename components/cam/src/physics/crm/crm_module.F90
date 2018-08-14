@@ -42,9 +42,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #ifdef CRM_STANDALONE
                 latitude0_in, longitude0_in, &
 #endif
-#if defined(SPMOMTRANS)
-                ultend, vltend,          &
-#endif
                 qltend, qcltend, qiltend, sltend, &
 #ifdef CLUBB_CRM
                 clubb_buffer,                 &
@@ -177,10 +174,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
 
-#if defined(SPMOMTRANS)
-    real(r8), intent(  out) :: ultend              (ncrms,plev)                   ! tendency of ul
-    real(r8), intent(  out) :: vltend              (ncrms,plev)                   ! tendency of vl
-#endif
+
     real(r8), intent(  out) :: sltend              (ncrms,plev)                   ! tendency of static energy
     real(r8), intent(  out) :: qltend              (ncrms,plev)                   ! tendency of water vapor
     real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
@@ -1385,12 +1379,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 #if defined(SPMOMTRANS)
     !!! resolved convective momentum transport (CMT) tendencies
-    ultend(icrm,:) = (uln - crm_input%ul(icrm,:))*icrm_run_time
-    vltend(icrm,:) = (vln - crm_input%vl(icrm,:))*icrm_run_time
+    crm_output%ultend(icrm,:) = (uln - crm_input%ul(icrm,:))*icrm_run_time
+    crm_output%vltend(icrm,:) = (vln - crm_input%vl(icrm,:))*icrm_run_time
 
     !!! don't use tendencies from two top levels
-    ultend(icrm,ptop:ptop+1) = 0.
-    vltend(icrm,ptop:ptop+1) = 0.
+    crm_output%ultend(icrm,ptop:ptop+1) = 0.
+    crm_output%vltend(icrm,ptop:ptop+1) = 0.
 #endif /* SPMOMTRANS */
 
    ! TODO: move tendencies up to crm_physics_tend

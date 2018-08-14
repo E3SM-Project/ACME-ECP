@@ -199,29 +199,34 @@ module crm_types
       real(crm_rknd), allocatable :: con_crm_a (:,:)  ! cloud water condensation(1/s)
 #endif /* m2005 */
 
-#ifdef SP_ESMT
-      real(r8), allocatable :: u_tend_esmt(:,:)  ! CRM scalar u-momentum tendency
-      real(r8), allocatable :: v_tend_esmt(:,:)  ! CRM scalar v-momentum tendency
+#if defined( SPMOMTRANS )
+      real(r8), allocatable :: ultend(:,:)            ! tendency of ul
+      real(r8), allocatable :: vltend(:,:)            ! tendency of vl
+#endif
+
+#if defined( SP_ESMT )
+      real(r8), allocatable :: u_tend_esmt(:,:)       ! CRM scalar u-momentum tendency
+      real(r8), allocatable :: v_tend_esmt(:,:)       ! CRM scalar v-momentum tendency
 #endif
 
       ! These are all time and spatial averages, on the GCM grid
-      real(crm_rknd), allocatable :: cld   (:,:)  ! cloud fraction
-      real(crm_rknd), allocatable :: gicewp(:,:)  ! ice water path
-      real(crm_rknd), allocatable :: gliqwp(:,:)  ! ice water path
-      real(crm_rknd), allocatable :: mctot (:,:)  ! cloud mass flux
-      real(crm_rknd), allocatable :: mcup  (:,:)  ! updraft cloud mass flux
-      real(crm_rknd), allocatable :: mcdn  (:,:)  ! downdraft cloud mass flux
-      real(crm_rknd), allocatable :: mcuup (:,:)  ! unsat updraft cloud mass flux
-      real(crm_rknd), allocatable :: mcudn (:,:)  ! unsat downdraft cloud mass flux
+      real(crm_rknd), allocatable :: cld   (:,:)      ! cloud fraction
+      real(crm_rknd), allocatable :: gicewp(:,:)      ! ice water path
+      real(crm_rknd), allocatable :: gliqwp(:,:)      ! ice water path
+      real(crm_rknd), allocatable :: mctot (:,:)      ! cloud mass flux
+      real(crm_rknd), allocatable :: mcup  (:,:)      ! updraft cloud mass flux
+      real(crm_rknd), allocatable :: mcdn  (:,:)      ! downdraft cloud mass flux
+      real(crm_rknd), allocatable :: mcuup (:,:)      ! unsat updraft cloud mass flux
+      real(crm_rknd), allocatable :: mcudn (:,:)      ! unsat downdraft cloud mass flux
 
       ! For convective transport
-      real(crm_rknd), allocatable :: mu_crm(:,:)  ! mass flux up
-      real(crm_rknd), allocatable :: md_crm(:,:)  ! mass flux down
-      real(crm_rknd), allocatable :: du_crm(:,:)  ! mass detrainment from updraft
-      real(crm_rknd), allocatable :: eu_crm(:,:)  ! mass entrainment from updraft
-      real(crm_rknd), allocatable :: ed_crm(:,:)  ! mass detrainment from downdraft
-      real(crm_rknd), allocatable :: jt_crm(:)       ! index of cloud (convection) top
-      real(crm_rknd), allocatable :: mx_crm(:)       ! index of cloud (convection) bottom
+      real(crm_rknd), allocatable :: mu_crm(:,:)      ! mass flux up
+      real(crm_rknd), allocatable :: md_crm(:,:)      ! mass flux down
+      real(crm_rknd), allocatable :: du_crm(:,:)      ! mass detrainment from updraft
+      real(crm_rknd), allocatable :: eu_crm(:,:)      ! mass entrainment from updraft
+      real(crm_rknd), allocatable :: ed_crm(:,:)      ! mass detrainment from downdraft
+      real(crm_rknd), allocatable :: jt_crm(:)        ! index of cloud (convection) top
+      real(crm_rknd), allocatable :: mx_crm(:)        ! index of cloud (convection) bottom
 
       ! radiative heating rates
       real(r8), pointer :: qrs(:,:)          ! horizontally-averaged SW heating tendency [K/s]
@@ -231,28 +236,28 @@ module crm_types
       real(r8), allocatable :: spdt(:,:)  ! temperature tendency from CRM [K/s]
 
       ! Other stuff...
-      real(crm_rknd), allocatable :: flux_qt      (:,:)       ! nonprecipitating water flux           [kg/m2/s]
-      real(crm_rknd), allocatable :: fluxsgs_qt   (:,:)       ! sgs nonprecipitating water flux    [kg/m2/s]
-      real(crm_rknd), allocatable :: tkez         (:,:)       ! tke profile               [kg/m/s2]
-      real(crm_rknd), allocatable :: tkesgsz      (:,:)       ! sgs tke profile        [kg/m/s2]
-      real(crm_rknd), allocatable :: tkz          (:,:)       ! tk profile                [m2/s]
-      real(crm_rknd), allocatable :: flux_u       (:,:)       ! x-momentum flux          [m2/s2]
-      real(crm_rknd), allocatable :: flux_v       (:,:)       ! y-momentum flux          [m2/s2]
-      real(crm_rknd), allocatable :: flux_qp      (:,:)       ! precipitating water flux [kg/m2/s or mm/s]
-      real(crm_rknd), allocatable :: precflux     (:,:)       ! precipitation flux      [m/s]
-      real(crm_rknd), allocatable :: qt_ls        (:,:)       ! tendency of nonprec water due to large-scale  [kg/kg/s]
-      real(crm_rknd), allocatable :: qt_trans     (:,:)       ! tendency of nonprec water due to transport  [kg/kg/s]
-      real(crm_rknd), allocatable :: qp_trans     (:,:)       ! tendency of prec water due to transport [kg/kg/s]
-      real(crm_rknd), allocatable :: qp_fall      (:,:)       ! tendency of prec water due to fall-out   [kg/kg/s]
-      real(crm_rknd), allocatable :: qp_src       (:,:)       ! tendency of prec water due to conversion  [kg/kg/s]
-      real(crm_rknd), allocatable :: qp_evp       (:,:)       ! tendency of prec water due to evp         [kg/kg/s]
-      real(crm_rknd), allocatable :: t_ls         (:,:)       ! tendency of lwse  due to large-scale        [kg/kg/s] ???
-      real(crm_rknd), allocatable :: prectend     (:)            ! column integrated tendency in precipitating water+ice (kg/m2/s)
-      real(crm_rknd), allocatable :: precstend    (:)            ! column integrated tendency in precipitating ice (kg/m2/s)
-      real(crm_rknd), allocatable :: taux_crm     (:)            ! zonal CRM surface stress perturbation (N/m2)
-      real(crm_rknd), allocatable :: tauy_crm     (:)            ! merid CRM surface stress perturbation (N/m2)
-      real(crm_rknd), allocatable :: z0m          (:)            ! surface stress (N/m2)
-      real(crm_rknd), allocatable :: timing_factor(:)            ! crm cpu efficiency
+      real(crm_rknd), allocatable :: flux_qt      (:,:)  ! nonprecip water flux        [kg/m2/s]
+      real(crm_rknd), allocatable :: fluxsgs_qt   (:,:)  ! sgs non-precip water flux   [kg/m2/s]
+      real(crm_rknd), allocatable :: tkez         (:,:)  ! tke profile                 [kg/m/s2]
+      real(crm_rknd), allocatable :: tkesgsz      (:,:)  ! sgs tke profile             [kg/m/s2]
+      real(crm_rknd), allocatable :: tkz          (:,:)  ! tk profile                  [m2/s]
+      real(crm_rknd), allocatable :: flux_u       (:,:)  ! x-momentum flux             [m2/s2]
+      real(crm_rknd), allocatable :: flux_v       (:,:)  ! y-momentum flux             [m2/s2]
+      real(crm_rknd), allocatable :: flux_qp      (:,:)  ! precipitating water flux    [kg/m2/s or mm/s]
+      real(crm_rknd), allocatable :: precflux     (:,:)  ! precipitation flux          [m/s]
+      real(crm_rknd), allocatable :: qt_ls        (:,:)  ! tend of nonprec water due to large-scale   [kg/kg/s]
+      real(crm_rknd), allocatable :: qt_trans     (:,:)  ! tend of nonprec water due to transport     [kg/kg/s]
+      real(crm_rknd), allocatable :: qp_trans     (:,:)  ! tend of    prec water due to transport     [kg/kg/s]
+      real(crm_rknd), allocatable :: qp_fall      (:,:)  ! tend of    prec water due to fall-out      [kg/kg/s]
+      real(crm_rknd), allocatable :: qp_src       (:,:)  ! tend of    prec water due to conversion    [kg/kg/s]
+      real(crm_rknd), allocatable :: qp_evp       (:,:)  ! tend of    prec water due to evp           [kg/kg/s]
+      real(crm_rknd), allocatable :: t_ls         (:,:)  ! tend of lwse  due to large-scale           [kg/kg/s] ???
+      real(crm_rknd), allocatable :: prectend     (:)    ! column integrated tend in precip water+ice [kg/m2/s]
+      real(crm_rknd), allocatable :: precstend    (:)    ! column integrated tend in precip ice       [kg/m2/s]
+      real(crm_rknd), allocatable :: taux_crm     (:)    ! zonal CRM surface stress perturbation      [N/m2]
+      real(crm_rknd), allocatable :: tauy_crm     (:)    ! merid CRM surface stress perturbation      [N/m2]
+      real(crm_rknd), allocatable :: z0m          (:)    ! surface stress                             [N/m2]
+      real(crm_rknd), allocatable :: timing_factor(:)    ! crm cpu efficiency
 
 
    contains
@@ -493,7 +498,12 @@ contains
          if (.not. allocated(this%con_crm_a )) allocate(this%con_crm_a (ncrms,nlev))
 #endif /* m2005 */
 
-#ifdef SP_ESMT
+#if defined( SPMOMTRANS )
+         if (.not. allocated(this%ultend )) allocate(this%ultend (ncrms,nlev))
+         if (.not. allocated(this%vltend )) allocate(this%vltend (ncrms,nlev))
+#endif
+
+#if defined( SP_ESMT )
          if (.not. allocated(this%u_tend_esmt )) allocate(this%u_tend_esmt (ncrms,nlev))
          if (.not. allocated(this%v_tend_esmt )) allocate(this%v_tend_esmt (ncrms,nlev))
 #endif
@@ -577,7 +587,13 @@ contains
       this%con_crm_a = 0.0
 #endif
 
-#ifdef SP_ESMT
+
+#if defined( SPMOMTRANS )
+      this%ultend = 0.0
+      this%vltend = 0.0
+#endif
+
+#if defined( SP_ESMT )
       this%u_tend_esmt = 0.0
       this%v_tend_esmt = 0.0
 #endif
