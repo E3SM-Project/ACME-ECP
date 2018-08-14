@@ -1796,19 +1796,62 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev &
                           precsl(icrm),taux_crm(icrm),tauy_crm(icrm),z0m(icrm),timing_factor(icrm),qc_crm(icrm,:,:,:),qi_crm(icrm,:,:,:),qpc_crm(icrm,:,:,:),qpi_crm(icrm,:,:,:), &
                           prec_crm(icrm,:,:))
 #endif /* CRM_DUMP */
-  enddo
 
-  call deallocate_grid()
-  call deallocate_tracers()
-  call deallocate_sgs()
-  call deallocate_vars()
+  end do ! icrm
+
+
+   !-----------------------------------------------------------------------------------------------
+   ! Deallocate local variables
+   !-----------------------------------------------------------------------------------------------
+
+   deallocate( dummy )
+   deallocate( t00 )
+   deallocate( fluxbtmp )
+   deallocate( fluxttmp )
+   deallocate( tln )
+   deallocate( qln )
+   deallocate( qccln )
+   deallocate( qiiln )
+   deallocate( uln )
+   deallocate( vln )
+   deallocate( cwp )
+   deallocate( cwph )
+   deallocate( cwpm )
+   deallocate( cwpl )
+   deallocate( flag_top )
+   deallocate( gcolindex )
+   deallocate( cltemp )
+   deallocate( cmtemp )
+   deallocate( chtemp )
+   deallocate( cttemp )
+#if defined( CLUBB_CRM )
+   deallocate( rtm_integral_before )
+   deallocate( rtm_integral_after )
+   deallocate( thlm_integral_before )
+   deallocate( thlm_integral_after )
+   deallocate( thlm_before )
+   deallocate( thlm_after )
+   deallocate( rtm_column )
+#endif /* CLUBB_CRM */
+   
+   !-----------------------------------------------------------------------------------------------
+   ! Deallocate other stuff
+   !-----------------------------------------------------------------------------------------------
+   call deallocate_grid()
+   call deallocate_tracers()
+   call deallocate_sgs()
+   call deallocate_vars()
 #ifdef sam1mom
-  call deallocate_micro_params()
-  call deallocate_micro()
+   call deallocate_micro_params()
+   call deallocate_micro()
 #endif
 #if defined( SP_ESMT )
-  call deallocate_scalar_momentum()
+   deallocate( uln_esmt )
+   deallocate( vln_esmt )
+   call deallocate_scalar_momentum()
 #endif
+   !-----------------------------------------------------------------------------------------------
+   !-----------------------------------------------------------------------------------------------
 
 end subroutine crm
 
