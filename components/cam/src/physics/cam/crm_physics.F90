@@ -593,24 +593,11 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
    real(r8), pointer ::   ns_rad(:,:,:,:)   ! rad cloud snow crystal number [#/kg]
    real(r8), pointer ::  cld_rad(:,:,:,:)   ! cloud fraction
 
-   real(r8), pointer ::   t_rad(:,:,:,:)    ! rad temperuture
-   real(r8), pointer ::  qv_rad(:,:,:,:)    ! rad vapor
-   real(r8), pointer ::  qc_rad(:,:,:,:)    ! rad cloud water
-   real(r8), pointer ::  qi_rad(:,:,:,:)    ! rad cloud ice
-   real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
-
    integer lchnk                    ! chunk identifier
    integer ncol                     ! number of atmospheric columns
    integer  nstep                   ! time steps
    real(r8) crm_run_time            ! length of CRM integration - usually equal to ztodt unless SP_CRM_SPLIT is defined
 
-#ifdef CLUBB_CRM
-   real(r8) clubb_tk   (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) clubb_tkh  (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) relvar     (pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) accre_enhan(pcols,crm_nx, crm_ny, crm_nz)
-   real(r8) qclvar     (pcols,crm_nx, crm_ny, crm_nz)
-#endif
    real(r8) spqc(pcols,pver)         ! cloud water
    real(r8) spqi(pcols,pver)         ! cloud ice
    real(r8) spqs(pcols,pver)         ! snow
@@ -763,6 +750,10 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
    type(crm_input_type)  :: crm_input
    type(crm_output_type) :: crm_output
 
+#if defined( CLUBB_CRM )
+   type(crm_clubb_type)  :: crm_clubb
+#endif
+
    integer :: k_gcm, k_crm
 
 #if defined( SP_ORIENT_RAND )
@@ -814,11 +805,16 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
    call crm_input%initialize(ncol, pver)
    call crm_output%initialize(ncol, pver)
 
+#if defined( CLUBB_CRM )
+   call crm_clubb%initialize(ncol)
+#endif
+
+
    if (SPCAM_microp_scheme .eq. 'm2005') then
-     call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, crm_nc_rad_idx, crm_state%nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad,crm_ny_rad,crm_nz/))
+     call pbuf_get_field(pbuf, crm_ni_rad_idx, crm_state%ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad,crm_ny_rad,crm_nz/))
+     call pbuf_get_field(pbuf, crm_qs_rad_idx, crm_state%qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad,crm_ny_rad,crm_nz/))
+     call pbuf_get_field(pbuf, crm_ns_rad_idx, crm_state%ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad,crm_ny_rad,crm_nz/))
    endif
 
 #ifdef ECPP
@@ -879,7 +875,7 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
 
    call pbuf_get_field (pbuf, crm_qrad_idx, crm_input%qrad)
 #ifdef CLUBB_CRM
-   call pbuf_get_field (pbuf, clubb_buffer_idx,  clubb_buffer)
+   call pbuf_get_field (pbuf, clubb_buffer_idx, crm_clubb%clubb_buffer)
 #endif
 
    call pbuf_get_field (pbuf, crm_t_rad_idx,   crm_state%t_rad)
@@ -1022,7 +1018,7 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
 #endif /* CRM */
 
 #ifdef CLUBB_CRM
-            clubb_buffer(i,:,:,k,:) = 0.0  ! In the inital run, variables are set in clubb_sgs_setup at the first time step. 
+            crm_clubb%clubb_buffer(i,:,:,k,:) = 0.0  ! In the inital run, variables are set in clubb_sgs_setup at the first time step. 
 #endif
          end do
       end do
@@ -1279,21 +1275,19 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
 #ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm( lchnk, icol(:ncol), ncol, phys_stage, ztodt, pver,  &
-#ifdef CLUBB_CRM
-               clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
-               clubb_tk(:ncol, :, :, :),    clubb_tkh(:ncol, :, :, :),                                                                                              &
-               relvar(:ncol,:, :, :),       accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :),                                                                   &
-#endif /* CLUBB_CRM */
+    call crm( lchnk, icol(:ncol), ncol, phys_stage, ztodt, pver  &
 #ifdef ECPP
-               abnd(:ncol,:,:,:,:),         abnd_tf(:ncol,:,:,:,:),       massflxbnd(:ncol,:,:,:,:), acen(:ncol,:,:,:,:),         acen_tf(:ncol,:,:,:,:),           &
-               rhcen(:ncol,:,:,:,:),        qcloudcen(:ncol,:,:,:,:),     qicecen(:ncol,:,:,:,:),    qlsink_afcen(:ncol,:,:,:,:),                                   &
-               precrcen(:ncol,:,:,:,:),     precsolidcen(:ncol,:,:,:,:),                                                                                            &
-               qlsink_bfcen(:ncol,:,:,:,:), qlsink_avgcen(:ncol,:,:,:,:), praincen(:ncol,:,:,:,:),                                                                  &
-               wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:),                                                                                               &
-               wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                     &
+               ,abnd(:ncol,:,:,:,:),         abnd_tf(:ncol,:,:,:,:),       massflxbnd(:ncol,:,:,:,:), acen(:ncol,:,:,:,:),         acen_tf(:ncol,:,:,:,:)           &
+               ,rhcen(:ncol,:,:,:,:),        qcloudcen(:ncol,:,:,:,:),     qicecen(:ncol,:,:,:,:),    qlsink_afcen(:ncol,:,:,:,:)                                   &
+               ,precrcen(:ncol,:,:,:,:),     precsolidcen(:ncol,:,:,:,:)                                                                                            &
+               ,qlsink_bfcen(:ncol,:,:,:,:), qlsink_avgcen(:ncol,:,:,:,:), praincen(:ncol,:,:,:,:)                                                                  &
+               ,wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:)                                                                                               &
+               ,wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:)                                     &
 #endif /* ECPP */
-               crm_state, crm_input, crm_output)
+               ,crm_state, crm_input, crm_output &
+#if defined( CLUBB_CRM )
+               ,crm_clubb &
+               )
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
@@ -1562,6 +1556,10 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
    call crm_state%finalize()
    call crm_input%finalize()
    call crm_output%finalize()
+
+#if defined( CLUBB_CRM )
+   call crm_clubb%finalize(ncol)
+#endif
 
 end subroutine crm_physics_tend
 

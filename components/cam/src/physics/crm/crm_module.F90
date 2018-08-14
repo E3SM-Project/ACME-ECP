@@ -37,24 +37,23 @@ module crm_module
 
 contains
 
-subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
-!MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
+subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev &
 #ifdef CRM_STANDALONE
-                latitude0_in, longitude0_in, &
-#endif
-#ifdef CLUBB_CRM
-                clubb_buffer,                 &
-                clubb_tk, clubb_tkh,          &
-                relvar, accre_enhan, qclvar,  &
+                !MRN: in standalone mode, lat,lon are passed in directly
+                ,latitude0_in, longitude0_in &
 #endif
 #ifdef ECPP
-                abnd, abnd_tf, massflxbnd, acen, acen_tf,           &
-                rhcen, qcloudcen, qicecen, qlsinkcen, precrcen, precsolidcen,  &
-                qlsink_bfcen, qlsink_avgcen, praincen,     &
-                wupthresh_bnd, wdownthresh_bnd,   &
-                wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
+                ,abnd, abnd_tf, massflxbnd, acen, acen_tf           &
+                ,rhcen, qcloudcen, qicecen, qlsinkcen, precrcen, precsolidcen  &
+                ,qlsink_bfcen, qlsink_avgcen, praincen     &
+                ,wupthresh_bnd, wdownthresh_bnd   &
+                ,wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd   &
 #endif
-                crm_state, crm_input, crm_output)
+                ,crm_state, crm_input, crm_output &
+#ifdef CLUBB_CRM
+                ,crm_clubb &
+#endif
+               )
         !---------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
@@ -163,12 +162,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif
 
 #ifdef CLUBB_CRM
-    real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
-    real(r8), intent(  out) :: clubb_tk            (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: clubb_tkh           (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: relvar              (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
+    type(crm_club), intent(inout) :: crm_clubb
 #endif /* CLUBB_CRM */
 
 #ifdef ECPP
@@ -775,35 +769,27 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       call endrun('crm main')
     end if
 
-#ifndef CLUBB_CRM
-    !--------------------------
-    ! do a CLUBB sanity check
-    if ( doclubb .or. doclubbnoninter ) then
-      write(0,*) "Cannot call CLUBB if -DCLUBB is not in FFLAGS"
-      call endrun('crm main')
-    endif
-#endif
-#ifdef CLUBB_CRM
+#if defined( CLUBB_CRM )
     !------------------------------------------------------------------
     ! Do initialization for UWM CLUBB
     !------------------------------------------------------------------
-    up2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1)
-    vp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2)
-    wprtp     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3)
-    wpthlp    (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4)
-    wp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5)
-    wp3       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6)
-    rtp2      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7)
-    thlp2     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8)
-    rtpthlp   (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9)
-    upwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10)
-    vpwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11)
-    cloud_frac(1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12)
-    t_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13)
-    qc_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14)
-    qv_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15)
-    u_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16)
-    v_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17)
+    up2       (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 1)
+    vp2       (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 2)
+    wprtp     (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 3)
+    wpthlp    (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 4)
+    wp2       (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 5)
+    wp3       (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 6)
+    rtp2      (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 7)
+    thlp2     (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 8)
+    rtpthlp   (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 9)
+    upwp      (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz ,10)
+    vpwp      (1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz ,11)
+    cloud_frac(1:nx,1:ny,1:nz ) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz ,12)
+    t_tndcy   (1:nx,1:ny,1:nzm) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,13)
+    qc_tndcy  (1:nx,1:ny,1:nzm) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,14)
+    qv_tndcy  (1:nx,1:ny,1:nzm) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,15)
+    u_tndcy   (1:nx,1:ny,1:nzm) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,16)
+    v_tndcy   (1:nx,1:ny,1:nzm) = crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,17)
 
     ! since no tracer is carried in the current version of MMF, these
     ! tracer-related restart varialbes are set to zero. +++mhwang, 2011-08
@@ -825,6 +811,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     if ( doclubb .or. doclubbnoninter ) then
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
                             latitude, longitude, z, rho, zi, rhow, tv0, tke )
+    endif
+#else
+    !--------------------------
+    ! do a CLUBB sanity check
+    if ( doclubb .or. doclubbnoninter ) then
+      write(0,*) "Cannot call CLUBB if -DCLUBB is not in FFLAGS"
+      call endrun('crm main')
     endif
 #endif /* CLUBB_CRM */
 
@@ -1424,31 +1417,32 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     crm_state%crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
     crm_state%crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
-#ifdef CLUBB_CRM
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3) = wprtp     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4) = wpthlp    (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5) = wp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6) = wp3       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7) = rtp2      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8) = thlp2     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9) = rtpthlp   (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10) = upwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11) = vpwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12) = cloud_frac(1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13) = t_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14) = qc_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15) = qv_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16) = u_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17) = v_tndcy   (1:nx, 1:ny, 1:nzm)
 
-    crm_output%crm_cld    (icrm,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
-    clubb_tk   (icrm,1:nx, 1:ny, 1:nzm) = tk_clubb    (1:nx, 1:ny, 1:nzm)
-    clubb_tkh  (icrm,1:nx, 1:ny, 1:nzm) = tkh_clubb   (1:nx, 1:ny, 1:nzm)
-    relvar     (icrm,1:nx, 1:ny, 1:nzm) = relvarg     (1:nx, 1:ny, 1:nzm)
-    accre_enhan(icrm,1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm)
-    qclvar     (icrm,1:nx, 1:ny, 1:nzm) = qclvarg     (1:nx, 1:ny, 1:nzm)
+#ifdef CLUBB_CRM
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 1) = up2       (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 2) = vp2       (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 3) = wprtp     (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 4) = wpthlp    (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 5) = wp2       (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 6) = wp3       (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 7) = rtp2      (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 8) = thlp2     (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz , 9) = rtpthlp   (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz ,10) = upwp      (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz ,11) = vpwp      (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nz ,12) = cloud_frac(1:nx,1:ny,1:nz )
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,13) = t_tndcy   (1:nx,1:ny,1:nzm)
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,14) = qc_tndcy  (1:nx,1:ny,1:nzm)
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,15) = qv_tndcy  (1:nx,1:ny,1:nzm)
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,16) = u_tndcy   (1:nx,1:ny,1:nzm)
+    crm_clubb%clubb_buffer(icrm,1:nx,1:ny,1:nzm,17) = v_tndcy   (1:nx,1:ny,1:nzm)
+
+    crm_clubb%crm_cld    (icrm,1:nx,1:ny,1:nz ) = cloud_frac  (1:nx,1:ny,1:nz )
+    crm_clubb%clubb_tk   (icrm,1:nx,1:ny,1:nzm) = tk_clubb    (1:nx,1:ny,1:nzm)
+    crm_clubb%clubb_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh_clubb   (1:nx,1:ny,1:nzm)
+    crm_clubb%relvar     (icrm,1:nx,1:ny,1:nzm) = relvarg     (1:nx,1:ny,1:nzm)
+    crm_clubb%accre_enhan(icrm,1:nx,1:ny,1:nzm) = accre_enhang(1:nx,1:ny,1:nzm)
+    crm_clubb%qclvar     (icrm,1:nx,1:ny,1:nzm) = qclvarg     (1:nx,1:ny,1:nzm)
 #endif /* CLUBB_CRM */
 
     do k=1,nzm

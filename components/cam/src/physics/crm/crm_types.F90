@@ -264,15 +264,28 @@ module crm_types
       real(crm_rknd), allocatable :: z0m          (:)    ! surface stress                             [N/m2]
       real(crm_rknd), allocatable :: timing_factor(:)    ! crm cpu efficiency
 
-#if defined( CLUBB_CRM )
-      real(r8), allocatable :: crm_cld
-#endif
-
-
    contains
       procedure, public :: initialize=>crm_output_initialize
       procedure, public :: finalize=>crm_output_finalize
    end type crm_output_type
+   !------------------------------------------------------------------------------------------------
+#if defined( CLUBB_CRM )
+   type crm_clubb_type
+      real(r8), pointer :: clubb_buffer(:,:,:,:,:)
+      
+      real(r8), allocatable :: crm_cld             (:,:,:,:)
+      real(r8), allocatable :: clubb_tk            (:,:,:,:)
+      real(r8), allocatable :: clubb_tkh           (:,:,:,:)
+      real(r8), allocatable :: relvar              (:,:,:,:)
+      real(r8), allocatable :: accre_enhan         (:,:,:,:)
+      real(r8), allocatable :: qclvar              (:,:,:,:)
+   contains
+      procedure, public :: initialize=>crm_clubb_initialize
+      procedure, public :: finalize=>crm_clubb_finalize
+      procedure, public :: save_state=>crm_clubb_save_state
+   end type crm_clubb
+#endif
+   !------------------------------------------------------------------------------------------------
 
 contains
 
@@ -569,10 +582,6 @@ contains
          this%qrl => null()
          this%qrs => null()
 
-#if defined( CLUBB_CRM )
-         if (.not. allocated(this%crm_cld)) allocate(this%crm_cld (ncrms,crm_nx,crm_ny,crm_nz+1))
-#endif
-
       end if ! present(ncrms)
 
       this%cltot = 0.0
@@ -670,6 +679,34 @@ contains
       deallocate(this%spdt)
       
    end subroutine crm_output_finalize
+   !------------------------------------------------------------------------------------------------
+#if defined( CLUBB_CRM )
+   subroutine crm_clubb_initialize(this, ncrms)
+      class(crm_clubb_type), intent(inout) :: this
+      integer, intent(in) :: ncrms
+      if (.not.allocated(this%crm_cld     )) allocate(this%crm_cld     (ncrms,crm_nx, crm_ny, crm_nz+1))
+      if (.not.allocated(this%clubb_tk    )) allocate(this%clubb_tk    (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not.allocated(this%clubb_tkh   )) allocate(this%clubb_tkh   (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not.allocated(this%relvar      )) allocate(this%relvar      (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not.allocated(this%accre_enhan )) allocate(this%accre_enhan (ncrms,crm_nx, crm_ny, crm_nz))
+      if (.not.allocated(this%qclvar      )) allocate(this%qclvar      (ncrms,crm_nx, crm_ny, crm_nz))
+
+      this%clubb_buffer => null()
+   end subroutine crm_clubb_initialize
+   !------------------------------------------------------------------------------------------------
+   subroutine crm_clubb_finalize(this)
+      class(crm_clubb_type), intent(inout) :: this
+      deallocate(this%clubb_buffer)
+      deallocate(this%crm_cld)
+      deallocate(this%clubb_tk)
+      deallocate(this%clubb_tkh)
+      deallocate(this%relvar)
+      deallocate(this%accre_enhan)
+      deallocate(this%qclvar)
+
+      this%clubb_buffer => null()
+   end subroutine crm_clubb_finalize
+#endif /* CLUBB_CRM */
    !------------------------------------------------------------------------------------------------
 
 end module crm_types
