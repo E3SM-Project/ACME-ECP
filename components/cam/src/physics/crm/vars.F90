@@ -19,15 +19,15 @@ module vars
   !--------------------------------------------------------------------
   ! diagnostic variables:
 
-  real(crm_rknd), allocatable :: p       (:,:,:)     ! perturbation pressure (from Poison eq)
-  real(crm_rknd), allocatable :: tabs    (:,:,:)                 ! temperature
-  real(crm_rknd), allocatable :: qv      (:,:,:)                ! water vapor
-  real(crm_rknd), allocatable :: qcl     (:,:,:)                ! liquid water  (condensate)
-  real(crm_rknd), allocatable :: qpl     (:,:,:)                ! liquid water  (precipitation)
-  real(crm_rknd), allocatable :: qci     (:,:,:)                ! ice water  (condensate)
-  real(crm_rknd), allocatable :: qpi     (:,:,:)                ! ice water  (precipitation)
-  real(crm_rknd), allocatable :: tke2(:,:,:)   ! SGS TKE
-  real(crm_rknd), allocatable :: tk2  (:,:,:) ! SGS eddyviscosity
+  real(crm_rknd), allocatable :: p       (:,:,:)    ! perturbation pressure (from Poison eq)
+  real(crm_rknd), allocatable :: tabs    (:,:,:)    ! temperature
+  real(crm_rknd), allocatable :: qv      (:,:,:)    ! water vapor
+  real(crm_rknd), allocatable :: qcl     (:,:,:)    ! liquid water  (condensate)
+  real(crm_rknd), allocatable :: qpl     (:,:,:)    ! liquid water  (precipitation)
+  real(crm_rknd), allocatable :: qci     (:,:,:)    ! ice water  (condensate)
+  real(crm_rknd), allocatable :: qpi     (:,:,:)    ! ice water  (precipitation)
+  real(crm_rknd), allocatable :: tke2    (:,:,:)    ! SGS TKE
+  real(crm_rknd), allocatable :: tk2     (:,:,:)    ! SGS eddyviscosity
 
   !--------------------------------------------------------------------
   ! time-tendencies for prognostic variables
@@ -89,16 +89,16 @@ module vars
   !-----------------------------------------------------------------
   ! reference vertical profiles:
 
-  real(crm_rknd), allocatable :: prespot(:)  ! (1000./pres)**R/cp
+  real(crm_rknd), allocatable :: prespot(:)   ! (1000./pres)**R/cp
   real(crm_rknd), allocatable :: rho    (:)	  ! air density at pressure levels,kg/m3
   real(crm_rknd), allocatable :: rhow   (:)   ! air density at vertical velocity levels,kg/m3
   real(crm_rknd), allocatable :: bet    (:)	  ! = ggr/tv0
-  real(crm_rknd), allocatable :: gamaz  (:) ! ggr/cp*z
+  real(crm_rknd), allocatable :: gamaz  (:)   ! ggr/cp*z
   real(crm_rknd), allocatable :: wsub   (:)   ! Large-scale subsidence velocity,m/s
-  real(crm_rknd), allocatable :: qtend  (:) ! Large-scale tendency for total water
-  real(crm_rknd), allocatable :: ttend  (:) ! Large-scale tendency for temp.
-  real(crm_rknd), allocatable :: utend  (:) ! Large-scale tendency for u
-  real(crm_rknd), allocatable :: vtend  (:) ! Large-scale tendency for v
+  real(crm_rknd), allocatable :: qtend  (:)   ! Large-scale tendency for total water
+  real(crm_rknd), allocatable :: ttend  (:)   ! Large-scale tendency for temp.
+  real(crm_rknd), allocatable :: utend  (:)   ! Large-scale tendency for u
+  real(crm_rknd), allocatable :: vtend  (:)   ! Large-scale tendency for v
 
   !---------------------------------------------------------------------
   ! Large-scale and surface forcing:
@@ -114,62 +114,62 @@ module vars
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! MRN: Already previously allocated. I'm leaving these alone
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  real(crm_rknd), allocatable :: dqls(:,:) ! Large-scale tendency for total water
-  real(crm_rknd), allocatable :: dtls(:,:) ! Large-scale tendency for temp.
-  real(crm_rknd), allocatable :: ugls(:,:) ! Large-scale wind in X-direction
-  real(crm_rknd), allocatable :: vgls(:,:) ! Large-scale wind in Y-direction
-  real(crm_rknd), allocatable :: wgls(:,:) ! Large-scale subsidence velocity,m/s
-  real(crm_rknd), allocatable :: pres0ls(:)! Surface pressure, mb
-  real(crm_rknd), allocatable :: zls(:,:)  ! Height
-  real(crm_rknd), allocatable :: pls(:,:)  ! Pressure
-  real(crm_rknd), allocatable :: dayls(:)  ! Large-scale forcing arrays time (days)
-  real(crm_rknd), allocatable :: dtrfc(:,:)! Radiative tendency for pot. temp.
-  real(crm_rknd), allocatable :: dayrfc(:) ! Radiative forcing arrays time (days)
-  real(crm_rknd), allocatable :: prfc(:,:) ! Pressure/Height
-  real(crm_rknd), allocatable :: sstsfc(:) ! SSTs
+  real(crm_rknd), allocatable :: dqls(:,:)  ! Large-scale tendency for total water
+  real(crm_rknd), allocatable :: dtls(:,:)  ! Large-scale tendency for temp.
+  real(crm_rknd), allocatable :: ugls(:,:)  ! Large-scale wind in X-direction
+  real(crm_rknd), allocatable :: vgls(:,:)  ! Large-scale wind in Y-direction
+  real(crm_rknd), allocatable :: wgls(:,:)  ! Large-scale subsidence velocity,m/s
+  real(crm_rknd), allocatable :: pres0ls(:) ! Surface pressure, mb
+  real(crm_rknd), allocatable :: zls(:,:)   ! Height
+  real(crm_rknd), allocatable :: pls(:,:)   ! Pressure
+  real(crm_rknd), allocatable :: dayls(:)   ! Large-scale forcing arrays time (days)
+  real(crm_rknd), allocatable :: dtrfc(:,:) ! Radiative tendency for pot. temp.
+  real(crm_rknd), allocatable :: dayrfc(:)  ! Radiative forcing arrays time (days)
+  real(crm_rknd), allocatable :: prfc(:,:)  ! Pressure/Height
+  real(crm_rknd), allocatable :: sstsfc(:)  ! SSTs
   real(crm_rknd), allocatable :: shsfc(:)   ! Sensible heat flux,W/m2
-  real(crm_rknd), allocatable :: lhsfc(:)  ! Latent heat flux,W/m2
-  real(crm_rknd), allocatable :: tausfc(:) ! Surface drag,m2/s2
-  real(crm_rknd), allocatable :: daysfc(:) ! Surface forcing arrays time (days)
-  real(crm_rknd), allocatable :: usnd(:,:) ! Observed zonal wind
-  real(crm_rknd), allocatable :: vsnd(:,:) ! Observed meriod wind
-  real(crm_rknd), allocatable :: tsnd(:,:) ! Observed Abs. temperature
-  real(crm_rknd), allocatable :: qsnd(:,:) ! Observed Moisture
-  real(crm_rknd), allocatable :: zsnd(:,:) ! Height
-  real(crm_rknd), allocatable :: psnd(:,:) ! Pressure
-  real(crm_rknd), allocatable :: daysnd(:) ! number of sounding samples
+  real(crm_rknd), allocatable :: lhsfc(:)   ! Latent heat flux,W/m2
+  real(crm_rknd), allocatable :: tausfc(:)  ! Surface drag,m2/s2
+  real(crm_rknd), allocatable :: daysfc(:)  ! Surface forcing arrays time (days)
+  real(crm_rknd), allocatable :: usnd(:,:)  ! Observed zonal wind
+  real(crm_rknd), allocatable :: vsnd(:,:)  ! Observed meriod wind
+  real(crm_rknd), allocatable :: tsnd(:,:)  ! Observed Abs. temperature
+  real(crm_rknd), allocatable :: qsnd(:,:)  ! Observed Moisture
+  real(crm_rknd), allocatable :: zsnd(:,:)  ! Height
+  real(crm_rknd), allocatable :: psnd(:,:)  ! Pressure
+  real(crm_rknd), allocatable :: daysnd(:)  ! number of sounding samples
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
   !
-  real(crm_rknd), allocatable :: sstxy    (:,:)	!  surface temperature xy-distribution
-  real(crm_rknd), allocatable :: fcory    (:)      !  Coriolis parameter xy-distribution
-  real(crm_rknd), allocatable :: fcorzy   (:)      !  z-Coriolis parameter xy-distribution
-  real(crm_rknd), allocatable :: latitude (:,:)	     ! latitude (degrees)
-  real(crm_rknd), allocatable :: longitude(:,:)	     ! longitude(degrees)
-  real(crm_rknd), allocatable :: prec_xy  (:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: shf_xy   (:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: lhf_xy   (:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: lwns_xy  (:,:) ! mean net lw at SFC
-  real(crm_rknd), allocatable :: swns_xy  (:,:) ! mean net sw at SFC
-  real(crm_rknd), allocatable :: lwnsc_xy (:,:) ! clear-sky mean net lw at SFC
-  real(crm_rknd), allocatable :: swnsc_xy (:,:) ! clear-sky mean net sw at SFC
-  real(crm_rknd), allocatable :: lwnt_xy  (:,:) ! mean net lw at TOA
-  real(crm_rknd), allocatable :: swnt_xy  (:,:) ! mean net sw at TOA
-  real(crm_rknd), allocatable :: lwntc_xy (:,:) ! clear-sky mean net lw at TOA
-  real(crm_rknd), allocatable :: swntc_xy (:,:) ! clear-sky mean net sw at TOA
-  real(crm_rknd), allocatable :: solin_xy (:,:) ! solar TOA insolation
+  real(crm_rknd), allocatable :: sstxy    (:,:)	  ! surface temperature xy-distribution
+  real(crm_rknd), allocatable :: fcory    (:)     ! Coriolis parameter xy-distribution
+  real(crm_rknd), allocatable :: fcorzy   (:)     ! z-Coriolis parameter xy-distribution
+  real(crm_rknd), allocatable :: latitude (:,:)	  ! latitude (degrees)
+  real(crm_rknd), allocatable :: longitude(:,:)	  ! longitude(degrees)
+  real(crm_rknd), allocatable :: prec_xy  (:,:)   ! mean precip. rate for outout
+  real(crm_rknd), allocatable :: shf_xy   (:,:)   ! mean precip. rate for outout
+  real(crm_rknd), allocatable :: lhf_xy   (:,:)   ! mean precip. rate for outout
+  real(crm_rknd), allocatable :: lwns_xy  (:,:)   ! mean net lw at SFC
+  real(crm_rknd), allocatable :: swns_xy  (:,:)   ! mean net sw at SFC
+  real(crm_rknd), allocatable :: lwnsc_xy (:,:)   ! clear-sky mean net lw at SFC
+  real(crm_rknd), allocatable :: swnsc_xy (:,:)   ! clear-sky mean net sw at SFC
+  real(crm_rknd), allocatable :: lwnt_xy  (:,:)   ! mean net lw at TOA
+  real(crm_rknd), allocatable :: swnt_xy  (:,:)   ! mean net sw at TOA
+  real(crm_rknd), allocatable :: lwntc_xy (:,:)   ! clear-sky mean net lw at TOA
+  real(crm_rknd), allocatable :: swntc_xy (:,:)   ! clear-sky mean net sw at TOA
+  real(crm_rknd), allocatable :: solin_xy (:,:)   ! solar TOA insolation
   real(crm_rknd), allocatable :: pw_xy    (:,:)   ! precipitable water
   real(crm_rknd), allocatable :: cw_xy    (:,:)   ! cloud water path
   real(crm_rknd), allocatable :: iw_xy    (:,:)   ! ice water path
   real(crm_rknd), allocatable :: cld_xy   (:,:)   ! cloud frequency
-  real(crm_rknd), allocatable :: u200_xy  (:,:) ! u-wind at 200 mb
-  real(crm_rknd), allocatable :: usfc_xy  (:,:) ! u-wind at at the surface
-  real(crm_rknd), allocatable :: v200_xy  (:,:) ! v-wind at 200 mb
-  real(crm_rknd), allocatable :: vsfc_xy  (:,:) ! v-wind at the surface
-  real(crm_rknd), allocatable :: w500_xy  (:,:) ! w at 500 mb
-  real(crm_rknd), allocatable :: qocean_xy(:,:) ! ocean cooling in W/m2
+  real(crm_rknd), allocatable :: u200_xy  (:,:)   ! u-wind at 200 mb
+  real(crm_rknd), allocatable :: usfc_xy  (:,:)   ! u-wind at at the surface
+  real(crm_rknd), allocatable :: v200_xy  (:,:)   ! v-wind at 200 mb
+  real(crm_rknd), allocatable :: vsfc_xy  (:,:)   ! v-wind at the surface
+  real(crm_rknd), allocatable :: w500_xy  (:,:)   ! w at 500 mb
+  real(crm_rknd), allocatable :: qocean_xy(:,:)   ! ocean cooling in W/m2
 
   !----------------------------------------------------------------------
   !	Vertical profiles of quantities sampled for statitistics purposes:
@@ -322,21 +322,21 @@ module vars
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  real(crm_rknd), allocatable :: qlsvadv(:) ! Large-scale vertical advection tendency for total water
-  real(crm_rknd), allocatable :: tlsvadv(:) ! Large-scale vertical advection tendency for temperature
-  real(crm_rknd), allocatable :: ulsvadv(:) ! Large-scale vertical advection tendency for zonal velocity
-  real(crm_rknd), allocatable :: vlsvadv(:) ! Large-scale vertical advection tendency for meridional velocity
-  real(crm_rknd), allocatable :: qnudge(:) ! Nudging of horiz.-averaged total water profile
-  real(crm_rknd), allocatable :: tnudge(:) ! Nudging of horiz.-averaged temperature profile
-  real(crm_rknd), allocatable :: unudge(:) ! Nudging of horiz.-averaged zonal velocity
-  real(crm_rknd), allocatable :: vnudge(:) ! Nudging of horiz.-averaged meridional velocity
-  real(crm_rknd), allocatable :: qstor(:) ! Storage of horiz.-averaged total water profile
-  real(crm_rknd), allocatable :: tstor(:) ! Storage of horiz.-averaged temperature profile
-  real(crm_rknd), allocatable :: ustor(:) ! Storage of horiz.-averaged zonal velocity
-  real(crm_rknd), allocatable :: vstor(:) ! Storage of horiz.-averaged meridional velocity
-  real(crm_rknd), allocatable :: qtostor(:) ! Storage of horiz.-averaged total water profile (vapor + liquid)
-  real(crm_rknd), allocatable :: utendcor(:) ! coriolis acceleration of zonal velocity
-  real(crm_rknd), allocatable :: vtendcor(:) ! coriolis acceleration of meridional velocity
+  real(crm_rknd), allocatable :: qlsvadv(:)   ! Large-scale vertical advection tendency for total water
+  real(crm_rknd), allocatable :: tlsvadv(:)   ! Large-scale vertical advection tendency for temperature
+  real(crm_rknd), allocatable :: ulsvadv(:)   ! Large-scale vertical advection tendency for zonal velocity
+  real(crm_rknd), allocatable :: vlsvadv(:)   ! Large-scale vertical advection tendency for meridional velocity
+  real(crm_rknd), allocatable :: qnudge(:)    ! Nudging of horiz.-averaged total water profile
+  real(crm_rknd), allocatable :: tnudge(:)    ! Nudging of horiz.-averaged temperature profile
+  real(crm_rknd), allocatable :: unudge(:)    ! Nudging of horiz.-averaged zonal velocity
+  real(crm_rknd), allocatable :: vnudge(:)    ! Nudging of horiz.-averaged meridional velocity
+  real(crm_rknd), allocatable :: qstor(:)     ! Storage of horiz.-averaged total water profile
+  real(crm_rknd), allocatable :: tstor(:)     ! Storage of horiz.-averaged temperature profile
+  real(crm_rknd), allocatable :: ustor(:)     ! Storage of horiz.-averaged zonal velocity
+  real(crm_rknd), allocatable :: vstor(:)     ! Storage of horiz.-averaged meridional velocity
+  real(crm_rknd), allocatable :: qtostor(:)   ! Storage of horiz.-averaged total water profile (vapor + liquid)
+  real(crm_rknd), allocatable :: utendcor(:)  ! coriolis acceleration of zonal velocity
+  real(crm_rknd), allocatable :: vtendcor(:)  ! coriolis acceleration of meridional velocity
   real(crm_rknd), allocatable :: CF3D(:,:,:)  ! Cloud fraction
   ! =1.0 when there is no fractional cloudiness scheme
   ! = cloud fraction produced by fractioal cloudiness scheme when avaiable
@@ -369,7 +369,7 @@ module vars
 #if (defined CRM && defined MODAL_AERO)
   real(crm_rknd), allocatable :: naer (:,:)     ! Aerosol number concentration [/m3]
   real(crm_rknd), allocatable :: vaer (:,:)     ! aerosol volume concentration [m3/m3]
-  real(crm_rknd), allocatable :: hgaer(:,:)    ! hygroscopicity of aerosol mode
+  real(crm_rknd), allocatable :: hgaer(:,:)     ! hygroscopicity of aerosol mode
 #endif
 
 
