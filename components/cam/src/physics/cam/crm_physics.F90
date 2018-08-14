@@ -1280,10 +1280,6 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
     call crm( lchnk, icol(:ncol), ncol, phys_stage, ztodt, pver,  &
-#if defined( SPMOMTRANS )
-               u_tend_crm (:ncol,:pver),    v_tend_crm (:ncol,:pver),                                                                                               &
-#endif /* SPMOMTRANS */
-               ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
                crm_cld(:ncol,:, :, :),                                                                                                                              &
@@ -1307,6 +1303,11 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
 #endif /* CRM */
 
       call t_stopf('crm_call')
+
+      ptend%q(:ncol,:pver,1)        = crm_output%sltend  
+      ptend%q(:ncol,:pver,ixcldliq) = crm_output%qltend  
+      ptend%q(:ncol,:pver,ixcldice) = crm_output%qcltend 
+      ptend%s(:ncol,:pver)          = crm_output%qiltend 
 
       cld(:ncol,:) = crm_output%cld(:ncol,:)
 
@@ -1436,8 +1437,10 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
       
       !!! rotate resolved CRM momentum tendencies back
       do i = 1, ncol 
-         ptend%u(i,:) = u_tend_crm(i,:) * cos( -1.*crm_angle(i) ) + v_tend_crm(i,:) * sin( -1.*crm_angle(i) )
-         ptend%v(i,:) = v_tend_crm(i,:) * cos( -1.*crm_angle(i) ) - u_tend_crm(i,:) * sin( -1.*crm_angle(i) )
+         ptend%u(i,:) = crm_output%u_tend_crm(i,:) * cos( -1.*crm_angle(i) ) + &
+                        crm_output%v_tend_crm(i,:) * sin( -1.*crm_angle(i) )
+         ptend%v(i,:) = crm_output%v_tend_crm(i,:) * cos( -1.*crm_angle(i) ) - &
+                        crm_output%u_tend_crm(i,:) * sin( -1.*crm_angle(i) )
       enddo
 #endif /* SPMOMTRANS */
 #endif /* SP_USE_ESMT */

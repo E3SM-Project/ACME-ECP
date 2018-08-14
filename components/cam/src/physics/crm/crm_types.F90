@@ -560,6 +560,11 @@ contains
 
          ! NOTE: output currently defined on "pver" grid, for consistency with use in crm_phys_tend
          if (.not. allocated(this%spdt)) allocate(this%spdt(ncrms,pver))   ! temperature tendency
+
+         ! Radiative heating rates (Nullify pointers)
+         this%qrl => null()
+         this%qrs => null()
+      
       end if
 
       this%cltot = 0.0
@@ -630,10 +635,6 @@ contains
       this%ed_crm = 0.
       this%jt_crm = 0.
       this%mx_crm = 0.
-
-      ! Radiative heating rates (Nullify pointers)
-      this%qrl => null()
-      this%qrs => null()
 
       ! tendency outputs
       this%spdt = 0.

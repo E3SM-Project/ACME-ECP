@@ -307,38 +307,38 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     zeroval = 0
 
-    dummy  = zeroval
-    t00  = zeroval
-    fluxbtmp  = zeroval
-    fluxttmp  = zeroval
-    tln  = zeroval
-    qln  = zeroval
-    qccln  = zeroval
-    qiiln  = zeroval
-    uln  = zeroval
-    vln  = zeroval
+    dummy      = zeroval
+    t00        = zeroval
+    fluxbtmp   = zeroval
+    fluxttmp   = zeroval
+    tln        = zeroval
+    qln        = zeroval
+    qccln      = zeroval
+    qiiln      = zeroval
+    uln        = zeroval
+    vln        = zeroval
 #if defined(SP_ESMT)
-    uln_esmt = zeroval
-    vln_esmt = zeroval
+    uln_esmt   = zeroval
+    vln_esmt   = zeroval
 #endif
-    cwp = zeroval
-    cwph = zeroval
-    cwpm = zeroval
-    cwpl = zeroval
-    flag_top = .false.
-    gcolindex = zeroval
-    cltemp = zeroval
-    cmtemp = zeroval
-    chtemp = zeroval
-    cttemp = zeroval
+    cwp        = zeroval
+    cwph       = zeroval
+    cwpm       = zeroval
+    cwpl       = zeroval
+    flag_top   = .false.
+    gcolindex  = zeroval
+    cltemp     = zeroval
+    cmtemp     = zeroval
+    chtemp     = zeroval
+    cttemp     = zeroval
 #ifdef CLUBB_CRM
     rtm_integral_before  = zeroval
-    rtm_integral_after  = zeroval
+    rtm_integral_after   = zeroval
     thlm_integral_before = zeroval
-    thlm_integral_after = zeroval
-    thlm_before = zeroval
-    thlm_after = zeroval
-    rtm_column = zeroval
+    thlm_integral_after  = zeroval
+    thlm_before          = zeroval
+    thlm_after           = zeroval
+    rtm_column           = zeroval
 #endif /* CLUBB_CRM */
 
   call allocate_grid()
@@ -662,10 +662,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     z0 = z0_est(z(1),bflx,wnd,ustar)
     z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
 
-    crm_output%timing_factor = 0.
+    crm_output%timing_factor(icrm) = 0.
 
-    crm_output%prectend(icrm)=colprec
-    crm_output%precstend(icrm)=colprecs
+    crm_output%prectend(icrm)  = colprec
+    crm_output%precstend(icrm) = colprecs
 
 
 #ifdef CLUBB_CRM
@@ -693,9 +693,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     fzero =0.
     precsfc=0.
     precssfc=0.
-
-    ! Initialize/reset aggregated averages to zero
-    call crm_output%initialize()
 
 !---------------------------------------------------
     crm_output%cld   (icrm,:) = 0.
