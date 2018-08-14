@@ -44,7 +44,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif
 #ifdef CLUBB_CRM
                 clubb_buffer,                 &
-                crm_cld,                      &
                 clubb_tk, clubb_tkh,          &
                 relvar, accre_enhan, qclvar,  &
 #endif
@@ -165,7 +164,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
-    real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
     real(r8), intent(  out) :: clubb_tk            (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: clubb_tkh           (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: relvar              (ncrms,crm_nx, crm_ny, crm_nz)
@@ -1445,7 +1443,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16) = u_tndcy   (1:nx, 1:ny, 1:nzm)
     clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17) = v_tndcy   (1:nx, 1:ny, 1:nzm)
 
-    crm_cld    (icrm,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
+    crm_output%crm_cld    (icrm,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
     clubb_tk   (icrm,1:nx, 1:ny, 1:nzm) = tk_clubb    (1:nx, 1:ny, 1:nzm)
     clubb_tkh  (icrm,1:nx, 1:ny, 1:nzm) = tkh_clubb   (1:nx, 1:ny, 1:nzm)
     relvar     (icrm,1:nx, 1:ny, 1:nzm) = relvarg     (1:nx, 1:ny, 1:nzm)

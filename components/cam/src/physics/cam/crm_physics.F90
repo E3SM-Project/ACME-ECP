@@ -605,7 +605,6 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
    real(r8) crm_run_time            ! length of CRM integration - usually equal to ztodt unless SP_CRM_SPLIT is defined
 
 #ifdef CLUBB_CRM
-   real(r8) crm_cld(pcols,crm_nx, crm_ny, crm_nz+1)
    real(r8) clubb_tk   (pcols,crm_nx, crm_ny, crm_nz)
    real(r8) clubb_tkh  (pcols,crm_nx, crm_ny, crm_nz)
    real(r8) relvar     (pcols,crm_nx, crm_ny, crm_nz)
@@ -1283,7 +1282,6 @@ subroutine crm_physics_tend(ztodt, state, ptend, pbuf, cam_in, cam_out,         
     call crm( lchnk, icol(:ncol), ncol, phys_stage, ztodt, pver,  &
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
-               crm_cld(:ncol,:, :, :),                                                                                                                              &
                clubb_tk(:ncol, :, :, :),    clubb_tkh(:ncol, :, :, :),                                                                                              &
                relvar(:ncol,:, :, :),       accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :),                                                                   &
 #endif /* CLUBB_CRM */

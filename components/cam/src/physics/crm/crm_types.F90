@@ -141,7 +141,7 @@ module crm_types
       real(crm_rknd), allocatable :: hygro   (:,:,:)     ! hygroscopicity of aerosol mode 
 #endif
 
-#if defined(SP_ESMT)
+#if defined( SP_ESMT )
       real(crm_rknd), allocatable :: ul_esmt(:,:)        ! input u for ESMT
       real(crm_rknd), allocatable :: vl_esmt(:,:)        ! input v for ESMT
 #endif
@@ -263,6 +263,10 @@ module crm_types
       real(crm_rknd), allocatable :: tauy_crm     (:)    ! merid CRM surface stress perturbation      [N/m2]
       real(crm_rknd), allocatable :: z0m          (:)    ! surface stress                             [N/m2]
       real(crm_rknd), allocatable :: timing_factor(:)    ! crm cpu efficiency
+
+#if defined( CLUBB_CRM )
+      real(r8), allocatable :: crm_cld
+#endif
 
 
    contains
@@ -564,8 +568,12 @@ contains
          ! Radiative heating rates (Nullify pointers)
          this%qrl => null()
          this%qrs => null()
-      
-      end if
+
+#if defined( CLUBB_CRM )
+         if (.not. allocated(this%crm_cld)) allocate(this%crm_cld (ncrms,crm_nx,crm_ny,crm_nz+1))
+#endif
+
+      end if ! present(ncrms)
 
       this%cltot = 0.0
       this%cllow = 0.0
