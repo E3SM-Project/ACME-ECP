@@ -15,19 +15,22 @@ module crm_rad_module
    public crm_rad_type
 
    type crm_rad_type
+      ! Radiative heating
+      real(crm_rknd), pointer :: qrad(:,:,:,:)
+
       ! Quantities used by the radiation code. Note that these are strange in that they are 
       ! time-averages, but spatially-resolved.
-      real(crm_rknd), pointer :: t_rad  (:,:,:,:) ! rad temperature
-      real(crm_rknd), pointer :: qv_rad (:,:,:,:) ! rad vapor
-      real(crm_rknd), pointer :: qc_rad (:,:,:,:) ! rad cloud water
-      real(crm_rknd), pointer :: qi_rad (:,:,:,:) ! rad cloud ice
-      real(crm_rknd), pointer :: cld_rad(:,:,:,:) ! rad cloud fraction
+      real(crm_rknd), pointer :: temperature(:,:,:,:) ! rad temperature
+      real(crm_rknd), pointer :: qv (:,:,:,:) ! rad vapor
+      real(crm_rknd), pointer :: qc (:,:,:,:) ! rad cloud water
+      real(crm_rknd), pointer :: qi (:,:,:,:) ! rad cloud ice
+      real(crm_rknd), pointer :: cld(:,:,:,:) ! rad cloud fraction
 
       ! Only relevant when using 2-moment microphysics
-      real(crm_rknd), pointer :: nc_rad (:,:,:,:) ! rad cloud droplet number (#/kg)
-      real(crm_rknd), pointer :: ni_rad (:,:,:,:) ! rad cloud ice crystal number (#/kg)
-      real(crm_rknd), pointer :: qs_rad (:,:,:,:) ! rad cloud snow (kg/kg)
-      real(crm_rknd), pointer :: ns_rad (:,:,:,:) ! rad cloud snow crystal number (#/kg)
+      real(crm_rknd), pointer :: nc(:,:,:,:) ! rad cloud droplet number (#/kg)
+      real(crm_rknd), pointer :: ni(:,:,:,:) ! rad cloud ice crystal number (#/kg)
+      real(crm_rknd), pointer :: qs(:,:,:,:) ! rad cloud snow (kg/kg)
+      real(crm_rknd), pointer :: ns(:,:,:,:) ! rad cloud snow crystal number (#/kg)
    contains
       procedure, public :: initialize=>crm_state_initialize
       procedure, public :: finalize=>crm_state_finalize
@@ -41,15 +44,16 @@ contains
       class(crm_rad_type), intent(inout) :: this
 
       ! Nullify pointers
-      this%t_rad => null()
-      this%qv_rad => null()
-      this%qi_rad => null()
-      this%cld_rad => null()
+      this%qrad => null()
+      this%temperature => null()
+      this%qv => null()
+      this%qi => null()
+      this%cld => null()
 
-      this%nc_rad => null()
-      this%ni_rad => null()
-      this%qs_rad => null()
-      this%ns_rad => null()
+      this%nc => null()
+      this%ni => null()
+      this%qs => null()
+      this%ns => null()
 
    end subroutine crm_rad_initialize
    !------------------------------------------------------------------------------------------------
@@ -57,15 +61,16 @@ contains
       class(crm_rad_type), intent(inout) :: this
 
       ! Nullify pointers
-      this%t_rad => null()
-      this%qv_rad => null()
-      this%qi_rad => null()
-      this%cld_rad => null()
+      this%qrad => null()
+      this%temperature => null()
+      this%qv => null()
+      this%qi => null()
+      this%cld => null()
 
-      this%nc_rad => null()
-      this%ni_rad => null()
-      this%qs_rad => null()
-      this%ns_rad => null()
+      this%nc => null()
+      this%ni => null()
+      this%qs => null()
+      this%ns => null()
 
    end subroutine crm_rad_finalize
    !------------------------------------------------------------------------------------------------
