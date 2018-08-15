@@ -23,6 +23,8 @@ module crm_module
   use ice_fall_mod
   use coriolis_mod
 
+  use crm_state_module, only: crm_state_type
+
 !---------------------------------------------------------------
 !  Super-parameterization's main driver
 !  Marat Khairoutdinov, 2001-2009
@@ -46,7 +48,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 ul_esmt, vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah
 #endif
                 qltend, qcltend, qiltend, sltend, &
-                u_crm, v_crm, w_crm, t_crm, micro_fields_crm, &
+                crm_state, &
                 qrad_crm, &
                 qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
                 t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
@@ -166,6 +168,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
+    type(crm_state_type), intent(inout) :: crm_state
     real(r8), intent(in   ) :: ps                  (ncrms)       ! Global grid surface pressure (Pa)
     real(r8), intent(in   ) :: pmid                (ncrms,plev)  ! Global grid pressure (Pa)
     real(r8), intent(in   ) :: pint                (ncrms,plev+1)! Pressure at model interfaces
@@ -217,31 +220,17 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: qltend              (ncrms,plev)                   ! tendency of water vapor
     real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
     real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
-    real(r8), intent(inout) :: u_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM u-wind component
-    real(r8), intent(inout) :: v_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM v-wind component
-    real(r8), intent(inout) :: w_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM w-wind component
-    real(r8), intent(inout) :: t_crm               (ncrms,crm_nx,crm_ny,crm_nz)   ! CRM temperuture
-    real(r8), intent(inout) :: micro_fields_crm    (ncrms,crm_nx,crm_ny,crm_nz,nmicro_fields+1) ! CRM total water
     real(r8), intent(  out) :: cld3d_crm           (ncrms,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
-    ! real(r8), intent(  out) :: t_rad               (ncrms,crm_nx, crm_ny, crm_nz) ! rad temperuture
-    ! real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad vapor
-    ! real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud water
-    ! real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice
-    ! real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud fraction
-    real(r8), intent(  out) :: t_rad               (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad temperuture
-    real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad vapor
-    real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud water
-    real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice
-    real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud fraction
+    real(r8), intent(  out) :: t_rad               (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad temperuture
+    real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad vapor
+    real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud water
+    real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud ice
+    real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud fraction
 #ifdef m2005
-    ! real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud droplet number (#/kg)
-    ! real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud ice crystal number (#/kg)
-    ! real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow (kg/kg)
-    ! real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx, crm_ny, crm_nz) ! rad cloud snow crystal number (#/kg)
-    real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud droplet number (#/kg)
-    real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud ice crystal number (#/kg)
-    real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow (kg/kg)
-    real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! rad cloud snow crystal number (#/kg)
+    real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud droplet number (#/kg)
+    real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud ice crystal number (#/kg)
+    real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud snow (kg/kg)
+    real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud snow crystal number (#/kg)
     real(r8), intent(  out) :: wvar_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
     real(r8), intent(  out) :: aut_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
     real(r8), intent(  out) :: acc_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
@@ -520,7 +509,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #ifdef CLUBB_CRM
                          clubb_buffer(icrm,:,:,:,:) , &
 #endif
-                         cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm),u_crm(icrm,:,:,:),v_crm(icrm,:,:,:),w_crm(icrm,:,:,:),t_crm(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:), &
+                         cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm),crm_state%u_wind(icrm,:,:,:),crm_state%v_wind(icrm,:,:,:),crm_state%w_wind(icrm,:,:,:),crm_state%temperature(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:), &
 #ifdef m2005
 #ifdef MODAL_AERO
                          naermod(icrm,:,:),vaerosol(icrm,:,:),hygro(icrm,:,:) , &
@@ -630,23 +619,23 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     colprecs=0
 
     !  Initialize CRM fields:
+    u   (1:nx,1:ny,1:nzm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
+    v   (1:nx,1:ny,1:nzm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
+    w   (1:nx,1:ny,1:nzm) = crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)
+    tabs(1:nx,1:ny,1:nzm) = crm_state%temperature(icrm,1:nx,1:ny,1:nzm)
 
     ! limit the velocity at the very first step:
-    if(u_crm(icrm,1,1,1).eq.u_crm(icrm,2,1,1).and.u_crm(icrm,3,1,2).eq.u_crm(icrm,4,1,2)) then
+    if(u(1,1,1).eq.u(2,1,1).and.u(3,1,2).eq.u(4,1,2)) then
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            u_crm(icrm,i,j,k) = min( umax, max(-umax,u_crm(icrm,i,j,k)) )
-            v_crm(icrm,i,j,k) = min( umax, max(-umax,v_crm(icrm,i,j,k)) )*YES3D
+            u(i,j,k) = min( umax, max(-umax,u(i,j,k)) )
+            v(i,j,k) = min( umax, max(-umax,v(i,j,k)) )*YES3D
           enddo
         enddo
       enddo
     endif
 
-    u   (1:nx,1:ny,1:nzm) = u_crm(icrm,1:nx,1:ny,1:nzm)
-    v   (1:nx,1:ny,1:nzm) = v_crm(icrm,1:nx,1:ny,1:nzm)*YES3D
-    w   (1:nx,1:ny,1:nzm) = w_crm(icrm,1:nx,1:ny,1:nzm)
-    tabs(1:nx,1:ny,1:nzm) = t_crm(icrm,1:nx,1:ny,1:nzm)
 
 #if defined(SP_ESMT)
     do k=1,nzm
@@ -655,14 +644,23 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     end do
 #endif
 
-    micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields)
-
-#ifdef sam1mom
-    qn(1:nx,1:ny,1:nzm) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3 )
-#endif
-
+      ! Populate microphysics array from crm_state
 #ifdef m2005
-    cloudliq(1:nx,1:ny,1:nzm) = micro_fields_crm(icrm,1:nx,1:ny,1:nzm,11)
+      micro_field(1:nx,1:ny,1:nzm,1)  = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,2)  = crm_state%nc(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,3)  = crm_state%qr(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,4)  = crm_state%nr(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,5)  = crm_state%qi(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,6)  = crm_state%ni(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,7)  = crm_state%qs(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,8)  = crm_state%ns(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,9)  = crm_state%qg(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,10) = crm_state%ng(icrm,1:nx,1:ny,1:nzm)
+      cloudliq(1:nx,1:ny,1:nzm) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
+#else
+      micro_field(1:nx,1:ny,1:nzm,1) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
+      micro_field(1:nx,1:ny,1:nzm,2) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
+      qn(1:nx,1:ny,1:nzm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 
 #ifdef m2005
@@ -1598,18 +1596,29 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     !-------------------------------------------------------------
     !
     ! Save the last step to the permanent core:
-    u_crm  (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
-    v_crm  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
-    w_crm  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
-    t_crm  (icrm,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,1:nmicro_fields) = micro_field(1:nx,1:ny,1:nzm,1:nmicro_fields)
+    crm_state%u_wind  (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
+    crm_state%v_wind  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
+    crm_state%w_wind  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
+    crm_state%temperature  (icrm,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm)
 
-#ifdef sam1mom
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,3) = qn(1:nx,1:ny,1:nzm)
-#endif
 #ifdef m2005
-    micro_fields_crm(icrm,1:nx,1:ny,1:nzm,11) = cloudliq(1:nx,1:ny,1:nzm)
+      crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1)
+      crm_state%nc(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2)
+      crm_state%qr(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,3)
+      crm_state%nr(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,4)
+      crm_state%qi(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,5)
+      crm_state%ni(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,6)
+      crm_state%qs(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,7)
+      crm_state%ns(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,8)
+      crm_state%qg(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,9)
+      crm_state%ng(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,10)
+      crm_state%qc(icrm,1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
+#else
+      crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1)
+      crm_state%qp(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2)
+      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm)
 #endif
+
     crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
     crm_tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
     cld3d_crm(icrm,1:nx,1:ny,1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)
@@ -1964,8 +1973,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif
 
 #ifdef CRM_DUMP
-    call crm_dump_output( igstep,plev,crm_tk(icrm,:,:,:),crm_tkh(icrm,:,:,:),cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm),sltend(icrm,:),u_crm(icrm,:,:,:),v_crm(icrm,:,:,:),&
-                          w_crm(icrm,:,:,:),t_crm(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:),qltend(icrm,:),qcltend(icrm,:),qiltend(icrm,:),t_rad(icrm,:,:,:),qv_rad(icrm,:,:,:),&
+    call crm_dump_output( igstep,plev,crm_tk(icrm,:,:,:),crm_tkh(icrm,:,:,:),cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm),sltend(icrm,:),crm_state%u_wind(icrm,:,:,:),crm_state%v_wind(icrm,:,:,:),&
+                          crm_state%w_wind(icrm,:,:,:),crm_state%temperature(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:),qltend(icrm,:),qcltend(icrm,:),qiltend(icrm,:),t_rad(icrm,:,:,:),qv_rad(icrm,:,:,:),&
                           qc_rad(icrm,:,:,:),qi_rad(icrm,:,:,:),cld_rad(icrm,:,:,:),cld3d_crm(icrm,:,:,:), &
 #ifdef CLUBB_CRM
                           clubb_buffer(icrm,:,:,:,:),crm_cld(icrm,:,:,:),clubb_tk(icrm,:,:,:),clubb_tkh(icrm,:,:,:),relvar(icrm,:,:,:),accre_enhan(icrm,:,:,:),qclvar(icrm,:,:,:) , &

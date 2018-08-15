@@ -37,11 +37,6 @@ module crm_physics
    public :: crm_save_state_tend
    public :: m2005_effradius
 
-   integer :: crm_u_idx, crm_v_idx, crm_w_idx, crm_t_idx
-   integer :: crm_qt_idx, crm_nc_idx, crm_qr_idx, crm_nr_idx, crm_qi_idx, crm_ni_idx 
-   integer :: crm_qs_idx, crm_ns_idx, crm_qg_idx, crm_ng_idx, crm_qc_idx, crm_qp_idx, crm_qn_idx
-   integer :: crm_t_rad_idx, crm_qv_rad_idx, crm_qc_rad_idx, crm_qi_rad_idx, crm_cld_rad_idx
-   integer :: crm_nc_rad_idx, crm_ni_rad_idx, crm_qs_rad_idx, crm_ns_rad_idx, crm_qrad_idx
    integer :: crm_qaerwat_idx, crm_dgnumwet_idx
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
    integer :: prec_sed_idx, snow_sed_idx, snow_str_idx, prec_pcw_idx, snow_pcw_idx
@@ -82,7 +77,6 @@ subroutine crm_physics_register()
   use phys_control,    only: phys_getopts
   use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_dx, crm_dy, crm_dt, nclubbvars, crm_nx_rad, crm_ny_rad
 #ifdef CRM
-  use microphysics,    only: nmicro_fields
   use setparm_mod,     only: setparm
 #endif
 
@@ -116,18 +110,17 @@ subroutine crm_physics_register()
      call setparm()
   end if
 
-  call pbuf_add_field('CRM_U',     'global', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),                crm_u_idx)
-  call pbuf_add_field('CRM_V',     'global', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),                crm_v_idx)
-  call pbuf_add_field('CRM_W',     'global', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),                crm_w_idx)
-  call pbuf_add_field('CRM_T',     'global', dtype_r8, (/pcols,crm_nx, crm_ny, crm_nz/),                crm_t_idx)
+  call pbuf_add_field('CRM_U',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
+  call pbuf_add_field('CRM_V',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
+  call pbuf_add_field('CRM_W',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
+  call pbuf_add_field('CRM_T',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
 
-  call pbuf_add_field('CRM_T_RAD',   'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_t_rad_idx)
-  call pbuf_add_field('CRM_QV_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qv_rad_idx)
-  call pbuf_add_field('CRM_QC_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qc_rad_idx)
-  call pbuf_add_field('CRM_QI_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qi_rad_idx)
-  call pbuf_add_field('CRM_CLD_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_cld_rad_idx)
-  call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz/),     crm_qrad_idx)
-
+  call pbuf_add_field('CRM_T_RAD',   'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+  call pbuf_add_field('CRM_QV_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+  call pbuf_add_field('CRM_QC_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+  call pbuf_add_field('CRM_QI_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+  call pbuf_add_field('CRM_CLD_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+  call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
 
 #ifdef MODAL_AERO
   call pbuf_add_field('CRM_QAERWAT', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode/),  crm_qaerwat_idx)
@@ -138,25 +131,26 @@ subroutine crm_physics_register()
    call pbuf_add_field('CLDO',      'global',  dtype_r8, (/pcols ,pver, dyn_time_lvls/),                  cldo_idx  )
 
   if (SPCAM_microp_scheme .eq. 'm2005') then
-    call pbuf_add_field('CRM_NC_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_nc_rad_idx)
-    call pbuf_add_field('CRM_NI_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_ni_rad_idx)
-    call pbuf_add_field('CRM_QS_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_qs_rad_idx)
-    call pbuf_add_field('CRM_NS_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/),       crm_ns_rad_idx)
-    call pbuf_add_field('CRM_QT',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qt_idx)
-    call pbuf_add_field('CRM_NC',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_nc_idx)
-    call pbuf_add_field('CRM_QR',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qr_idx)
-    call pbuf_add_field('CRM_NR',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_nr_idx)
-    call pbuf_add_field('CRM_QI',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qi_idx)
-    call pbuf_add_field('CRM_NI',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_ni_idx)
-    call pbuf_add_field('CRM_QS',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qs_idx)
-    call pbuf_add_field('CRM_NS',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_ns_idx)
-    call pbuf_add_field('CRM_QG',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qg_idx)
-    call pbuf_add_field('CRM_NG',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_ng_idx)
-    call pbuf_add_field('CRM_QC',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qc_idx)
+    call pbuf_add_field('CRM_NC_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/), idx)
+    call pbuf_add_field('CRM_NI_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/), idx)
+    call pbuf_add_field('CRM_QS_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/), idx)
+    call pbuf_add_field('CRM_NS_RAD','physpkg', dtype_r8, (/pcols, crm_nx_rad, crm_ny_rad, crm_nz/), idx)
+
+    call pbuf_add_field('CRM_QT',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_NC',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_QR',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_NR',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_QI',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_NI',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_QS',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_NS',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_QG',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_NG',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_QC',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
   else
-    call pbuf_add_field('CRM_QT',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qt_idx)
-    call pbuf_add_field('CRM_QP',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qp_idx)
-    call pbuf_add_field('CRM_QN',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/),               crm_qn_idx)
+    call pbuf_add_field('CRM_QT',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_QP',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
+    call pbuf_add_field('CRM_QN',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
   endif
 #endif
 
@@ -514,7 +508,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use constituents,    only: pcnst, qmin, cnst_get_ind, cnst_cam_outfld, bpcnst, cnst_name
 #ifdef CRM
    use crm_module,      only: crm
-   use microphysics,    only: nmicro_fields
    use params,          only: crm_rknd
 #endif
    use physconst,       only: latvap
@@ -544,6 +537,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use RNG_MT            ! random number generator for randomly rotating CRM orientation (SP_ORIENT_RAND)
 #endif
 
+#ifdef CRM
+   use crm_state_module, only: crm_state_type
+#endif
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
 #ifndef CRM
@@ -565,6 +561,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    
    ! real(r8), intent(in) :: dlf(pcols,pver)  ! shallow+deep convective detrainment [kg/kg/s] - used for aerosol_wet_intr - no longer needed
 
+#ifdef CRM
 !--------------------------------------------------------------------------------------------------
 ! Local variables 
 !--------------------------------------------------------------------------------------------------
@@ -756,27 +753,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer, dimension(:,:)     :: qrs        ! shortwave radiative heating rate
    real(r8), pointer, dimension(:,:)     :: qrl        ! shortwave radiative heating rate
    real(r8), pointer, dimension(:,:)     :: tempPtr
-   real(r8), pointer, dimension(:,:,:,:) :: crm_u
-   real(r8), pointer, dimension(:,:,:,:) :: crm_v
-   real(r8), pointer, dimension(:,:,:,:) :: crm_w
-   real(r8), pointer, dimension(:,:,:,:) :: crm_t
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qt
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qp
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qn
-   real(r8), pointer, dimension(:,:,:,:) :: crm_nc
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qr
-   real(r8), pointer, dimension(:,:,:,:) :: crm_nr
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qi
-   real(r8), pointer, dimension(:,:,:,:) :: crm_ni
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qs
-   real(r8), pointer, dimension(:,:,:,:) :: crm_ns
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qg
-   real(r8), pointer, dimension(:,:,:,:) :: crm_ng
-   real(r8), pointer, dimension(:,:,:,:) :: crm_qc
-
-#ifdef CRM
-   real(r8), dimension(pcols,crm_nx,crm_ny,crm_nz,nmicro_fields+1) :: crm_micro
-#endif
 
    integer                           :: pblh_idx
    real(r8), pointer, dimension(:)   :: pblh
@@ -853,6 +829,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(crm_rknd), parameter        :: pix2 = 6.28318530718
    real(crm_rknd), dimension(pcols) :: crm_angle
 
+   type(crm_state_type) :: crm_state
+
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
    real(crm_rknd) :: unif_rand2           ! uniform random number 
@@ -900,10 +878,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ncol  = state%ncol
 
    if (SPCAM_microp_scheme .eq. 'm2005') then
-     call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
    endif
 
 #ifdef ECPP
@@ -934,39 +912,16 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
 
-   call pbuf_get_field (pbuf, crm_u_idx,         crm_u)
-   call pbuf_get_field (pbuf, crm_v_idx,         crm_v)
-   call pbuf_get_field (pbuf, crm_w_idx,         crm_w)
-   call pbuf_get_field (pbuf, crm_t_idx,         crm_t)
-
-   if (SPCAM_microp_scheme .eq. 'sam1mom') then
-      call pbuf_get_field (pbuf, crm_qt_idx,        crm_qt)
-      call pbuf_get_field (pbuf, crm_qp_idx,        crm_qp)
-      call pbuf_get_field (pbuf, crm_qn_idx,        crm_qn)
-   endif
-#ifdef m2005
-      call pbuf_get_field (pbuf, crm_qt_idx,        crm_qt)
-      call pbuf_get_field (pbuf, crm_nc_idx,        crm_nc)
-      call pbuf_get_field (pbuf, crm_qr_idx,        crm_qr)
-      call pbuf_get_field (pbuf, crm_nr_idx,        crm_nr)
-      call pbuf_get_field (pbuf, crm_qi_idx,        crm_qi)
-      call pbuf_get_field (pbuf, crm_ni_idx,        crm_ni)
-      call pbuf_get_field (pbuf, crm_qs_idx,        crm_qs)
-      call pbuf_get_field (pbuf, crm_ns_idx,        crm_ns)
-      call pbuf_get_field (pbuf, crm_qg_idx,        crm_qg)
-      call pbuf_get_field (pbuf, crm_ng_idx,        crm_ng)
-      call pbuf_get_field (pbuf, crm_qc_idx,        crm_qc)
-#endif
-   call pbuf_get_field (pbuf, crm_qrad_idx,      crm_qrad)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QRAD'),      crm_qrad)
 #ifdef CLUBB_CRM
    call pbuf_get_field (pbuf, clubb_buffer_idx,  clubb_buffer)
 #endif
 
-   call pbuf_get_field (pbuf, crm_t_rad_idx,     t_rad)
-   call pbuf_get_field (pbuf, crm_qv_rad_idx,   qv_rad)
-   call pbuf_get_field (pbuf, crm_qc_rad_idx,   qc_rad)
-   call pbuf_get_field (pbuf, crm_qi_rad_idx,   qi_rad)
-   call pbuf_get_field (pbuf, crm_cld_rad_idx, cld_rad)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_T_RAD'),     t_rad)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QV_RAD'),   qv_rad)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QC_RAD'),   qc_rad)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QI_RAD'),   qi_rad)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_CLD_RAD'), cld_rad)
 
    call pbuf_get_field(pbuf, prec_dp_idx,  prec_dp  )
    call pbuf_get_field(pbuf, prec_sh_idx,  prec_sh  )
@@ -1058,6 +1013,32 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !------------------------------------------------------------
    !------------------------------------------------------------
 
+   ! Initialize CRM state
+   call crm_state%initialize(ncol)
+
+   ! Set pointers from crm_state to fields that persist on physics buffer
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_V'), crm_state%v_wind)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_W'), crm_state%w_wind)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_T'), crm_state%temperature)
+
+   ! Set pointers to microphysics fields in crm_state
+   call pbuf_get_field(pbuf, pbuf_get_index('CRM_QT'), crm_state%qt)
+   if (SPCAM_microp_scheme .eq. 'sam1mom') then
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QP'), crm_state%qp)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QN'), crm_state%qn)
+   else
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC'), crm_state%nc)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QR'), crm_state%qr)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NR'), crm_state%nr)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI'), crm_state%qi)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI'), crm_state%ni)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS'), crm_state%qs)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS'), crm_state%ns)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QG'), crm_state%qg)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NG'), crm_state%ng)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC'), crm_state%qc)
+   end if
 
    if(is_first_step()) then
       ! call check_energy_timestep_init(state, tend, pbuf)
@@ -1065,51 +1046,30 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          do k=1,crm_nz
             m = pver-k+1
 
-            crm_u(i,:,:,k) = state%u(i,m) * cos( crm_angle(i) ) + state%v(i,m) * sin( crm_angle(i) )
-            crm_v(i,:,:,k) = state%v(i,m) * cos( crm_angle(i) ) - state%u(i,m) * sin( crm_angle(i) )
-            crm_w(i,:,:,k) = 0.
-            crm_t(i,:,:,k) = state%t(i,m)
+            ! Initialize CRM state
+            crm_state%u_wind(i,:,:,k) = state%u(i,m) * cos( crm_angle(i) ) + state%v(i,m) * sin( crm_angle(i) )
+            crm_state%v_wind(i,:,:,k) = state%v(i,m) * cos( crm_angle(i) ) - state%u(i,m) * sin( crm_angle(i) )
+            crm_state%w_wind(i,:,:,k) = 0.
+            crm_state%temperature(i,:,:,k) = state%t(i,m)
 
-! Load the crm_micro array for use in the call to crm
-
-#ifdef CRM
+            ! Initialize microphysics arrays
             if (SPCAM_microp_scheme .eq. 'sam1mom') then
-
-               crm_qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
-               crm_qp(i,:,:,k) = 0.0_r8
-               crm_qn(i,:,:,k) = state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
-               crm_micro(i,:,:,k,1) = crm_qt(i,:,:,k)
-               crm_micro(i,:,:,k,2) = crm_qp(i,:,:,k)
-               crm_micro(i,:,:,k,3) = crm_qn(i,:,:,k)
-#ifdef m2005 
+               crm_state%qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
+               crm_state%qp(i,:,:,k) = 0.0_r8
+               crm_state%qn(i,:,:,k) = state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
             else if (SPCAM_microp_scheme .eq. 'm2005') then
-               crm_qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)
-               crm_nc(i,:,:,k) = 0.0_r8
-               crm_qr(i,:,:,k) = 0.0_r8
-               crm_nr(i,:,:,k) = 0.0_r8
-               crm_qi(i,:,:,k) = state%q(i,m,ixcldice) 
-               crm_ni(i,:,:,k) = 0.0_r8
-               crm_qs(i,:,:,k) = 0.0_r8
-               crm_ns(i,:,:,k) = 0.0_r8
-               crm_qg(i,:,:,k) = 0.0_r8
-               crm_ng(i,:,:,k) = 0.0_r8
-               crm_qc(i,:,:,k) = state%q(i,m,ixcldliq)
-
-               crm_micro(i,:,:,k,1)  = crm_qt(i,:,:,k)
-               crm_micro(i,:,:,k,2)  = crm_nc(i,:,:,k)
-               crm_micro(i,:,:,k,3)  = crm_qr(i,:,:,k)
-               crm_micro(i,:,:,k,4)  = crm_nr(i,:,:,k)
-               crm_micro(i,:,:,k,5)  = crm_qi(i,:,:,k)
-               crm_micro(i,:,:,k,6)  = crm_ni(i,:,:,k)
-               crm_micro(i,:,:,k,7)  = crm_qs(i,:,:,k)
-               crm_micro(i,:,:,k,8)  = crm_ns(i,:,:,k)
-               crm_micro(i,:,:,k,9)  = crm_qg(i,:,:,k)
-               crm_micro(i,:,:,k,10) = crm_ng(i,:,:,k)
-               crm_micro(i,:,:,k,11) = crm_qc(i,:,:,k)
-            
-#endif
+               crm_state%qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)
+               crm_state%nc(i,:,:,k) = 0.0_r8
+               crm_state%qr(i,:,:,k) = 0.0_r8
+               crm_state%nr(i,:,:,k) = 0.0_r8
+               crm_state%qi(i,:,:,k) = state%q(i,m,ixcldice)
+               crm_state%ni(i,:,:,k) = 0.0_r8
+               crm_state%qs(i,:,:,k) = 0.0_r8
+               crm_state%ns(i,:,:,k) = 0.0_r8
+               crm_state%qg(i,:,:,k) = 0.0_r8
+               crm_state%ng(i,:,:,k) = 0.0_r8
+               crm_state%qc(i,:,:,k) = state%q(i,m,ixcldliq)
             endif
-#endif
 
 #ifdef CLUBB_CRM
             clubb_buffer(i,:,:,k,:) = 0.0  ! In the inital run, variables are set in clubb_sgs_setup at the first time step. 
@@ -1271,30 +1231,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       endif 
 #endif
 
+
    else  ! not is_first_step
-
-#ifdef CRM
-      if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         crm_micro(:,:,:,:,1) = crm_qt(:,:,:,:)
-         crm_micro(:,:,:,:,2) = crm_qp(:,:,:,:)
-         crm_micro(:,:,:,:,3) = crm_qn(:,:,:,:)
-#ifdef m2005
-      else if (SPCAM_microp_scheme .eq. 'm2005') then
-         crm_micro(:,:,:,:,1)  = crm_qt(:,:,:,:)
-         crm_micro(:,:,:,:,2)  = crm_nc(:,:,:,:)
-         crm_micro(:,:,:,:,3)  = crm_qr(:,:,:,:)
-         crm_micro(:,:,:,:,4)  = crm_nr(:,:,:,:)
-         crm_micro(:,:,:,:,5)  = crm_qi(:,:,:,:)
-         crm_micro(:,:,:,:,6)  = crm_ni(:,:,:,:)
-         crm_micro(:,:,:,:,7)  = crm_qs(:,:,:,:)
-         crm_micro(:,:,:,:,8)  = crm_ns(:,:,:,:)
-         crm_micro(:,:,:,:,9)  = crm_qg(:,:,:,:)
-         crm_micro(:,:,:,:,10) = crm_ng(:,:,:,:)
-         crm_micro(:,:,:,:,11) = crm_qc(:,:,:,:)
-#endif
-      endif
-#endif
-
 
       ptend%q(:,:,1) = 0.  ! necessary?
       ptend%q(:,:,ixcldliq) = 0.
@@ -1374,15 +1312,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             do jj = 1,crm_ny
                do ii = 1,crm_nx
                   if (SPCAM_microp_scheme .eq. 'm2005') then
-                     qli_hydro_before(i) = qli_hydro_before(i)+(crm_qr(i,ii,jj,m)+ &
-                                                                crm_qs(i,ii,jj,m)+ &
-                                                                crm_qg(i,ii,jj,m)) * dp_g
-                     qi_hydro_before(i)  =  qi_hydro_before(i)+(crm_qs(i,ii,jj,m)+ &
-                                                                crm_qg(i,ii,jj,m)) * dp_g
+                     qli_hydro_before(i) = qli_hydro_before(i)+(crm_state%qr(i,ii,jj,m)+ &
+                                                                crm_state%qs(i,ii,jj,m)+ &
+                                                                crm_state%qg(i,ii,jj,m)) * dp_g
+                     qi_hydro_before(i)  =  qi_hydro_before(i)+(crm_state%qs(i,ii,jj,m)+ &
+                                                                crm_state%qg(i,ii,jj,m)) * dp_g
                   else if (SPCAM_microp_scheme .eq. 'sam1mom') then
-                     sfactor = max(0._r8,min(1._r8,(crm_t(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
-                     qli_hydro_before(i) = qli_hydro_before(i)+crm_qp(i,ii,jj,m) * dp_g
-                     qi_hydro_before(i)  =  qi_hydro_before(i)+crm_qp(i,ii,jj,m) * (1-sfactor) * dp_g
+                     sfactor = max(0._r8,min(1._r8,(crm_state%temperature(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
+                     qli_hydro_before(i) = qli_hydro_before(i)+crm_state%qp(i,ii,jj,m) * dp_g
+                     qi_hydro_before(i)  =  qi_hydro_before(i)+crm_state%qp(i,ii,jj,m) * (1-sfactor) * dp_g
                   end if ! SPCAM_microp_scheme
                end do ! ii
             end do ! jj
@@ -1449,7 +1387,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                ul_esmt(:ncol,:pver),        vl_esmt(:ncol,:pver),         u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
-               crm_u(:ncol,:,:,:),          crm_v(:ncol,:,:,:),           crm_w(:ncol,:,:,:),           crm_t(:ncol,:,:,:),          crm_micro(:ncol,:,:,:,:),      &
+               crm_state,                &
                crm_qrad(:ncol,:,:,:),                                                                                                                               &
                qc_crm(:ncol,:,:,:),         qi_crm(:ncol,:,:,:),          qpc_crm(:ncol,:,:,:),         qpi_crm(:ncol,:,:,:),                                       &
                prec_crm(:ncol,:,:),         t_rad(:ncol,:,:,:),           qv_rad(:ncol,:,:,:),                                                                      &
@@ -1501,27 +1439,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-      do i=1,ncol
-         if (SPCAM_microp_scheme .eq. 'sam1mom') then
-            crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
-            crm_qp(i,:,:,:) = crm_micro(i,:,:,:,2)
-            crm_qn(i,:,:,:) = crm_micro(i,:,:,:,3)
-        endif
-#ifdef m2005
-         crm_qt(i,:,:,:) = crm_micro(i,:,:,:,1)
-         crm_nc(i,:,:,:) = crm_micro(i,:,:,:,2)
-         crm_qr(i,:,:,:) = crm_micro(i,:,:,:,3)
-         crm_nr(i,:,:,:) = crm_micro(i,:,:,:,4)
-         crm_qi(i,:,:,:) = crm_micro(i,:,:,:,5)
-         crm_ni(i,:,:,:) = crm_micro(i,:,:,:,6)
-         crm_qs(i,:,:,:) = crm_micro(i,:,:,:,7)
-         crm_ns(i,:,:,:) = crm_micro(i,:,:,:,8)
-         crm_qg(i,:,:,:) = crm_micro(i,:,:,:,9)
-         crm_ng(i,:,:,:) = crm_micro(i,:,:,:,10)
-         crm_qc(i,:,:,:) = crm_micro(i,:,:,:,11)
-#endif /* m2005 */
-      end do ! i (loop over ncol)
-
 #endif /* CRM */
 
       call t_stopf('crm_call')
@@ -1555,15 +1472,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
       ! call outfld('HEIGHT  ',state%zm   ,pcols   ,lchnk   )
 
-      call outfld('CRM_U   ',crm_u, pcols   ,lchnk   )
-      call outfld('CRM_V   ',crm_v, pcols   ,lchnk   )
-      call outfld('CRM_W   ',crm_w, pcols   ,lchnk   )
-      call outfld('CRM_T   ',crm_t, pcols   ,lchnk   )
+      call outfld('CRM_U   ',crm_state%u_wind, pcols   ,lchnk   )
+      call outfld('CRM_V   ',crm_state%v_wind, pcols   ,lchnk   )
+      call outfld('CRM_W   ',crm_state%w_wind, pcols   ,lchnk   )
+      call outfld('CRM_T   ',crm_state%temperature, pcols   ,lchnk   )
 
       if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         call outfld('CRM_QV  ',(crm_qt(:,:,:,:)-qc_crm-qi_crm),pcols   ,lchnk   )
+         call outfld('CRM_QV  ',(crm_state%qt(:,:,:,:)-qc_crm-qi_crm),pcols   ,lchnk   )
       else if (SPCAM_microp_scheme .eq. 'm2005') then 
-         call outfld('CRM_QV  ',crm_qt(:,:,:,:)-qc_crm, pcols   ,lchnk   )
+         call outfld('CRM_QV  ',crm_state%qt(:,:,:,:)-qc_crm, pcols   ,lchnk   )
       endif
       call outfld('CRM_QC  ',qc_crm   ,pcols   ,lchnk   )
       call outfld('CRM_QI  ',qi_crm   ,pcols   ,lchnk   )
@@ -1582,17 +1499,17 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          ! in the future.
          ! incl, inci, ... can not be used here, for they are defined before we call them???
          ! +++mhwang
-         call outfld('CRM_NC ',crm_nc(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_NI ',crm_ni(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_NR ',crm_nr(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_NS ',crm_ns(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_NG ',crm_ng(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NC ',crm_state%nc(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NI ',crm_state%ni(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NR ',crm_state%nr(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NS ',crm_state%ns(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_NG ',crm_state%ng(:, :, :, :)   ,pcols   ,lchnk   )
 
          call outfld('CRM_WVAR', wvar_crm, pcols, lchnk)
 
-         call outfld('CRM_QR ',crm_qr(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_QS ',crm_qs(:, :, :, :)   ,pcols   ,lchnk   )
-         call outfld('CRM_QG ',crm_qg(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QR ',crm_state%qr(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QS ',crm_state%qs(:, :, :, :)   ,pcols   ,lchnk   )
+         call outfld('CRM_QG ',crm_state%qg(:, :, :, :)   ,pcols   ,lchnk   )
 
          ! hm 7/26/11, add new output
          call outfld('CRM_AUT', aut_crm, pcols, lchnk)
@@ -1902,8 +1819,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                m= pver-k+1
                do ii=1, crm_nx
                do jj=1, crm_ny
-                 ptend%q(i,m,ixnumliq) = ptend%q(i,m,ixnumliq) + crm_nc(i,ii,jj,k) 
-                 ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_ni(i,ii,jj,k)
+                 ptend%q(i,m,ixnumliq) = ptend%q(i,m,ixnumliq) + crm_state%nc(i,ii,jj,k) 
+                 ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_state%ni(i,ii,jj,k)
                end do
                end do
                ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/crm_run_time
@@ -1927,15 +1844,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             do jj = 1,crm_ny
                do ii = 1,crm_nx
                   if(SPCAM_microp_scheme .eq. 'm2005') then
-                     qli_hydro_after(i) = qli_hydro_after(i)+(crm_qr(i,ii,jj,m)+ &
-                                                              crm_qs(i,ii,jj,m)+ &
-                                                              crm_qg(i,ii,jj,m)) * dp_g
-                     qi_hydro_after(i)  =  qi_hydro_after(i)+(crm_qs(i,ii,jj,m)+ &
-                                                              crm_qg(i,ii,jj,m)) * dp_g
+                     qli_hydro_after(i) = qli_hydro_after(i)+(crm_state%qr(i,ii,jj,m)+ &
+                                                              crm_state%qs(i,ii,jj,m)+ &
+                                                              crm_state%qg(i,ii,jj,m)) * dp_g
+                     qi_hydro_after(i)  =  qi_hydro_after(i)+(crm_state%qs(i,ii,jj,m)+ &
+                                                              crm_state%qg(i,ii,jj,m)) * dp_g
                   else if(SPCAM_microp_scheme .eq. 'sam1mom') then 
-                     sfactor = max(0._r8,min(1._r8,(crm_t(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
-                     qli_hydro_after(i) = qli_hydro_after(i)+crm_qp(i,ii,jj,m) * dp_g
-                     qi_hydro_after(i)  =  qi_hydro_after(i)+crm_qp(i,ii,jj,m) * (1-sfactor) * dp_g
+                     sfactor = max(0._r8,min(1._r8,(crm_state%temperature(i,ii,jj,m)-268.16)*1./(283.16-268.16)))
+                     qli_hydro_after(i) = qli_hydro_after(i)+crm_state%qp(i,ii,jj,m) * dp_g
+                     qi_hydro_after(i)  =  qi_hydro_after(i)+crm_state%qp(i,ii,jj,m) * (1-sfactor) * dp_g
                   end if ! SPCAM_microp_scheme
                end do ! ii
             end do ! jj
@@ -1975,6 +1892,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !----------------------------------------------------------------------
    !----------------------------------------------------------------------
 
+#endif /* CRM */
 end subroutine crm_physics_tend
 
 !==================================================================================================
