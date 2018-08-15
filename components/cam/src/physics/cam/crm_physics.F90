@@ -123,8 +123,8 @@ subroutine crm_physics_register()
   call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
 
 #ifdef MODAL_AERO
-  call pbuf_add_field('CRM_QAERWAT', 'physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode/),  crm_qaerwat_idx)
-  call pbuf_add_field('CRM_DGNUMWET','physpkg', dtype_r8, (/pcols,crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode/),  crm_dgnumwet_idx)
+  call pbuf_add_field('CRM_QAERWAT', 'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz,ntot_amode/),  crm_qaerwat_idx)
+  call pbuf_add_field('CRM_DGNUMWET','physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz,ntot_amode/),  crm_dgnumwet_idx)
 #endif
    
    cldo_idx = pbuf_get_index('CLDO')
@@ -539,6 +539,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 #ifdef CRM
    use crm_state_module, only: crm_state_type
+   use crm_rad_module, only: crm_rad_type
 #endif
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
@@ -579,17 +580,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer :: snow_sed(:)         ! snow from cloud ice sedimentation           [m/s]
    real(r8), pointer :: snow_str(:)         ! snow from stratiform cloud                  [m/s]
 
-   real(r8), pointer ::   nc_rad(:,:,:,:)   ! rad cloud water droplet number [#/kg]
-   real(r8), pointer ::   ni_rad(:,:,:,:)   ! rad cloud ice crystal number [#/kg]
-   real(r8), pointer ::   qs_rad(:,:,:,:)   ! rad cloud snow mass [kg/kg]
-   real(r8), pointer ::   ns_rad(:,:,:,:)   ! rad cloud snow crystal number [#/kg]
-   real(r8), pointer ::  cld_rad(:,:,:,:)   ! cloud fraction
-
-   real(r8), pointer ::   t_rad(:,:,:,:)    ! rad temperuture
-   real(r8), pointer ::  qv_rad(:,:,:,:)    ! rad vapor
-   real(r8), pointer ::  qc_rad(:,:,:,:)    ! rad cloud water
-   real(r8), pointer ::  qi_rad(:,:,:,:)    ! rad cloud ice
-   real(r8), pointer ::  crm_qrad(:,:,:,:)
    real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
 
    integer lchnk                    ! chunk identifier
@@ -830,6 +820,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(crm_rknd), dimension(pcols) :: crm_angle
 
    type(crm_state_type) :: crm_state
+   type(crm_rad_type) :: crm_rad
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -878,10 +869,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ncol  = state%ncol
 
    if (SPCAM_microp_scheme .eq. 'm2005') then
-     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_rad%nc, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), crm_rad%ni, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), crm_rad%qs, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+     call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), crm_rad%ns, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
    endif
 
 #ifdef ECPP
@@ -912,16 +903,16 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
 
-   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QRAD'),      crm_qrad)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QRAD'),    crm_rad%qrad)
 #ifdef CLUBB_CRM
    call pbuf_get_field (pbuf, clubb_buffer_idx,  clubb_buffer)
 #endif
 
-   call pbuf_get_field (pbuf, pbuf_get_index('CRM_T_RAD'),     t_rad)
-   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QV_RAD'),   qv_rad)
-   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QC_RAD'),   qc_rad)
-   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QI_RAD'),   qi_rad)
-   call pbuf_get_field (pbuf, pbuf_get_index('CRM_CLD_RAD'), cld_rad)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_T_RAD'),   crm_rad%temperature)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QV_RAD'),  crm_rad%qv)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QC_RAD'),  crm_rad%qc)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QI_RAD'),  crm_rad%qi)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_rad%cld)
 
    call pbuf_get_field(pbuf, prec_dp_idx,  prec_dp  )
    call pbuf_get_field(pbuf, prec_sh_idx,  prec_sh  )
@@ -1080,22 +1071,22 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do k=1,crm_nz
          m = pver-k+1
          do i=1,ncol
-            crm_qrad (i,:,:,k)    = 0.
+            crm_rad%qrad (i,:,:,k)    = 0.
             qc_crm (i,:,:,k)      = 0.
             qi_crm (i,:,:,k)      = 0.
             qpc_crm(i,:,:,k)      = 0.
             qpi_crm(i,:,:,k)      = 0.
-            t_rad  (i,:,:,k)      = state%t(i,m)
-            qv_rad (i,:,:,k)      = state%q(i,m,1)
-            qc_rad (i,:,:,k)      = 0.
-            qi_rad (i,:,:,k)      = 0.
-            cld_rad(i,:,:,k)      = 0.
+            crm_rad%temperature  (i,:,:,k)      = state%t(i,m)
+            crm_rad%qv (i,:,:,k)      = state%q(i,m,1)
+            crm_rad%qc (i,:,:,k)      = 0.
+            crm_rad%qi (i,:,:,k)      = 0.
+            crm_rad%cld(i,:,:,k)      = 0.
 #ifdef m2005
             if (SPCAM_microp_scheme .eq. 'm2005') then
-               nc_rad(i,:,:,k) = 0.0
-               ni_rad(i,:,:,k) = 0.0       
-               qs_rad(i,:,:,k) = 0.0
-               ns_rad(i,:,:,k) = 0.0
+               crm_rad%nc(i,:,:,k) = 0.0
+               crm_rad%ni(i,:,:,k) = 0.0       
+               crm_rad%qs(i,:,:,k) = 0.0
+               crm_rad%ns(i,:,:,k) = 0.0
                wvar_crm(i,:,:,k) = 0.0
                ! hm 7/26/11, add new output
                aut_crm (i,:,:,k) = 0.0
@@ -1275,7 +1266,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do m=1,crm_nz
          k = pver-m+1
          do i = 1,ncol
-            crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) / state%pdel(i,k) ! for energy conservation
+            crm_rad%qrad(i,:,:,m) = crm_rad%qrad(i,:,:,m) / state%pdel(i,k) ! for energy conservation
          end do
       end do
 
@@ -1388,12 +1379,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
                crm_state,                &
-               crm_qrad(:ncol,:,:,:),                                                                                                                               &
+               crm_rad,                  &
                qc_crm(:ncol,:,:,:),         qi_crm(:ncol,:,:,:),          qpc_crm(:ncol,:,:,:),         qpi_crm(:ncol,:,:,:),                                       &
-               prec_crm(:ncol,:,:),         t_rad(:ncol,:,:,:),           qv_rad(:ncol,:,:,:),                                                                      &
-               qc_rad(:ncol,:,:,:),         qi_rad(:ncol,:,:,:),          cld_rad(:ncol,:,:,:),         cld3d_crm(:ncol,:,:,:),                                     &
+               prec_crm(:ncol,:,:),         cld3d_crm(:ncol,:,:,:),                                     &
 #ifdef m2005
-               nc_rad(:ncol,:,:,:),         ni_rad(:ncol,:,:,:),          qs_rad(:ncol,:,:,:),          ns_rad(:ncol,:,:,:),         wvar_crm(:ncol,:,:,:),         &
+               wvar_crm(:ncol,:,:,:),         &
                aut_crm(:ncol,:,:,:),        acc_crm(:ncol,:,:,:),         evpc_crm(:ncol,:,:,:),        evpr_crm(:ncol,:,:,:),       mlt_crm(:ncol,:,:,:),          &
                sub_crm(:ncol,:,:,:),        dep_crm(:ncol,:,:,:),         con_crm(:ncol,:,:,:),                                                                     &
                aut_crm_a(:ncol,:),          acc_crm_a(:ncol,:),           evpc_crm_a(:ncol,:),          evpr_crm_a(:ncol,:),         mlt_crm_a(:ncol,:),            &
@@ -1464,7 +1454,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do m=1,crm_nz
       k = pver-m+1
       do i = 1,ncol
-         crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
+         crm_rad%qrad(i,:,:,m) = crm_rad%qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
       end do
       end do
 
@@ -1880,8 +1870,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do jj=1,crm_ny_rad
          do ii=1,crm_nx_rad
             do  i=1,ncol
-               if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).le.1.0e-10) then
-                  cld_rad(i,ii,jj,m) = 0.0_r8
+               if(crm_rad%qc(i,ii,jj,m)+crm_rad%qi(i,ii,jj,m).le.1.0e-10) then
+                  crm_rad%cld(i,ii,jj,m) = 0.0_r8
                endif
             enddo
          enddo
