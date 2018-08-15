@@ -1551,7 +1551,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 !----------------------------------------------------------------------
 ! Add radiative heating tendency above CRM
-!---------------------------------------------
+!----------------------------------------------------------------------
 
       ifld = pbuf_get_index('QRL')
       call pbuf_get_field(pbuf, ifld, qrl)
