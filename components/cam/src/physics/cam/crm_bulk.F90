@@ -33,94 +33,101 @@ module crm_bulk_mod
 contains 
 !==================================================================================================
 !==================================================================================================
+
+!!! the ifdef is used to hide crm_bulk_aerosol_activation() during development
+
+! #if defined( SP_BULK_AERO_ACT )
+
 ! subroutine crm_bulk_aerosol_activation(state, pbuf, ptend)
-   !-------------------------------------------------------------------------------------
-   ! Purpose: calculate activation of aerosols using CRM cloud information
-   ! Author: Walter Hannah (LLNL), 2018
-   !-------------------------------------------------------------------------------------
-   ! use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
-   ! use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, &
-   !                            pbuf_get_index, pbuf_get_field
-   ! use constituents,    only: pcnst, cnst_get_ind
-   ! use modal_aero_data,  only: ntot_amode
+!    !-------------------------------------------------------------------------------------
+!    ! Purpose: calculate activation of aerosols using CRM cloud information
+!    ! Author: Walter Hannah (LLNL), 2018
+!    !-------------------------------------------------------------------------------------
+!    use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
+!    use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, &
+!                               pbuf_get_index, pbuf_get_field
+!    use constituents,    only: pcnst, cnst_get_ind
+!    use modal_aero_data,  only: ntot_amode
 
-   ! !!! Input Arguments
-   ! type(physics_state), intent(in )   :: state              ! Physics state variables
-   ! type(physics_buffer_desc), pointer :: pbuf(:)            ! physics buffer
+!    !!! Input Arguments
+!    type(physics_state), intent(in )   :: state              ! Physics state variables
+!    type(physics_buffer_desc), pointer :: pbuf(:)            ! physics buffer
 
-   ! !!! Output Arguments
-   ! type(physics_ptend), intent(out)   :: ptend              ! indivdual parameterization tendencies
+!    !!! Output Arguments
+!    type(physics_ptend), intent(out)   :: ptend              ! indivdual parameterization tendencies
 
-   ! !!! Local variables
-   ! integer  :: i, k, m, lchnk, ncol
-   ! integer  :: ixcldice, ixcldliq                           ! constituent indices for cloud liquid and ice water.
+!    !!! Local variables
+!    integer  :: i, k, m, lchnk, ncol
+!    integer  :: ixcldice, ixcldliq                           ! constituent indices for cloud liquid and ice water.
 
-   ! real(r8)                        :: wbar             ! mean updraft velocity (cm/s)
-   ! real(r8)                        :: sigw             ! standard deviation of updraft velocity (cm/s)
-   ! real(r8)                        :: wdiab            ! diabatic vertical velocity (cm/s)
-   ! real(r8)                        :: wminf            ! lower limit for integration over updraft spectrum (cm/s)
-   ! real(r8)                        :: wmaxf            ! upper limit for integration over updraft spectrum (cm/s)
-   ! real(r8), dimension(ntot_amode) :: naerosol         ! interstitial+activated number conc (#/m3)
-   ! real(r8), dimension(ntot_amode) :: vaerosol         ! interstitial + activated aerosol volume mixing ratio (m3/m3)
-   ! real(r8), dimension(ntot_amode) :: hygro            ! current hygroscopicity for int+act
+!    real(r8)                        :: wbar             ! mean updraft velocity (cm/s)
+!    real(r8)                        :: sigw             ! standard deviation of updraft velocity (cm/s)
+!    real(r8)                        :: wdiab            ! diabatic vertical velocity (cm/s)
+!    real(r8)                        :: wminf            ! lower limit for integration over updraft spectrum (cm/s)
+!    real(r8)                        :: wmaxf            ! upper limit for integration over updraft spectrum (cm/s)
+!    real(r8), dimension(ntot_amode) :: naerosol         ! interstitial+activated number conc (#/m3)
+!    real(r8), dimension(ntot_amode) :: vaerosol         ! interstitial + activated aerosol volume mixing ratio (m3/m3)
+!    real(r8), dimension(ntot_amode) :: hygro            ! current hygroscopicity for int+act
 
-   ! real(r8), dimension(ntot_amode) :: fn               ! number fraction of aerosols activated
-   ! real(r8), dimension(ntot_amode) :: fm               ! mass fraction of aerosols activated
-   ! real(r8), dimension(ntot_amode) :: fluxn            ! see activate_modal() in ndrop.F90
-   ! real(r8), dimension(ntot_amode) :: fluxm            ! see activate_modal() in ndrop.F90
-   ! real(r8)                        :: flux_fullact     ! see activate_modal() in ndrop.F90
+!    real(r8), dimension(ntot_amode) :: fn               ! number fraction of aerosols activated
+!    real(r8), dimension(ntot_amode) :: fm               ! mass fraction of aerosols activated
+!    real(r8), dimension(ntot_amode) :: fluxn            ! see activate_modal() in ndrop.F90
+!    real(r8), dimension(ntot_amode) :: fluxm            ! see activate_modal() in ndrop.F90
+!    real(r8)                        :: flux_fullact     ! see activate_modal() in ndrop.F90
    
    
-   !-------------------------------------------------------------------------------------
-   !-------------------------------------------------------------------------------------
+!    !-------------------------------------------------------------------------------------
+!    !-------------------------------------------------------------------------------------
    
-   ! lchnk = state%lchnk
-   ! ncol  = state%ncol
+!    lchnk = state%lchnk
+!    ncol  = state%ncol
 
-   ! !!! Initialize ptend
-   ! call cnst_get_ind('CLDLIQ', ixcldliq)
-   ! call cnst_get_ind('CLDICE', ixcldice)
-   ! lq(:)        = .true.
-   ! lq(1)        = .false.  ! vapor
-   ! lq(ixcldliq) = .false.  ! liquid
-   ! lq(ixcldice) = .false.  ! ice
-   ! call physics_ptend_init(ptend,state%psetcols,'crm_bulk_aerosol_activation',lq=lq)
+!    !!! Initialize ptend
+!    call cnst_get_ind('CLDLIQ', ixcldliq)
+!    call cnst_get_ind('CLDICE', ixcldice)
+!    lq(:)        = .true.
+!    lq(1)        = .false.  ! vapor
+!    lq(ixcldliq) = .false.  ! liquid
+!    lq(ixcldice) = .false.  ! ice
+!    call physics_ptend_init(ptend,state%psetcols,'crm_bulk_aerosol_activation',lq=lq)
 
-   !-------------------------------------------------------------------------------------
-   !-------------------------------------------------------------------------------------
+!    !-------------------------------------------------------------------------------------
+!    !-------------------------------------------------------------------------------------
 
-   !!! subroutine activate_modal Interface:
-   !!!    real(r8), intent(in) :: wbar          ! grid cell mean vertical velocity (m/s)
-   !!!    real(r8), intent(in) :: sigw          ! subgrid standard deviation of vertical vel (m/s)
-   !!!    real(r8), intent(in) :: wdiab         ! diabatic vertical velocity (0 if adiabatic)
-   !!!    real(r8), intent(in) :: wminf         ! minimum updraft velocity for integration (m/s)
-   !!!    real(r8), intent(in) :: wmaxf         ! maximum updraft velocity for integration (m/s)
-   !!!    real(r8), intent(in) :: tair          ! air temperature (K)
-   !!!    real(r8), intent(in) :: rhoair        ! air density (kg/m3)
-   !!!    real(r8), intent(in) :: na(:)         ! aerosol number concentration (/m3)
-   !!!    integer,  intent(in) :: nmode         ! number of aerosol modes
-   !!!    real(r8), intent(in) :: volume(:)     ! aerosol volume concentration (m3/m3)
-   !!!    real(r8), intent(in) :: hygro(:)      ! hygroscopicity of aerosol mode
-   !!!    real(r8), intent(out) :: fn(:)        ! number fraction of aerosols activated
-   !!!    real(r8), intent(out) :: fm(:)        ! mass fraction of aerosols activated
-   !!!    real(r8), intent(out) :: fluxn(:)     ! flux of activated aerosol number fraction into cloud (cm/s)
-   !!!    real(r8), intent(out) :: fluxm(:)     ! flux of activated aerosol mass fraction into cloud (cm/s)
-   !!!    real(r8), intent(out) :: flux_fullact ! flux of activated aerosol fraction assuming 100% activation (cm/s)
+!    !!! subroutine activate_modal Interface:
+!    !!!    real(r8), intent(in) :: wbar          ! grid cell mean vertical velocity (m/s)
+!    !!!    real(r8), intent(in) :: sigw          ! subgrid standard deviation of vertical vel (m/s)
+!    !!!    real(r8), intent(in) :: wdiab         ! diabatic vertical velocity (0 if adiabatic)
+!    !!!    real(r8), intent(in) :: wminf         ! minimum updraft velocity for integration (m/s)
+!    !!!    real(r8), intent(in) :: wmaxf         ! maximum updraft velocity for integration (m/s)
+!    !!!    real(r8), intent(in) :: tair          ! air temperature (K)
+!    !!!    real(r8), intent(in) :: rhoair        ! air density (kg/m3)
+!    !!!    real(r8), intent(in) :: na(:)         ! aerosol number concentration (/m3)
+!    !!!    integer,  intent(in) :: nmode         ! number of aerosol modes
+!    !!!    real(r8), intent(in) :: volume(:)     ! aerosol volume concentration (m3/m3)
+!    !!!    real(r8), intent(in) :: hygro(:)      ! hygroscopicity of aerosol mode
+!    !!!    real(r8), intent(out) :: fn(:)        ! number fraction of aerosols activated
+!    !!!    real(r8), intent(out) :: fm(:)        ! mass fraction of aerosols activated
+!    !!!    real(r8), intent(out) :: fluxn(:)     ! flux of activated aerosol number fraction into cloud (cm/s)
+!    !!!    real(r8), intent(out) :: fluxm(:)     ! flux of activated aerosol mass fraction into cloud (cm/s)
+!    !!!    real(r8), intent(out) :: flux_fullact ! flux of activated aerosol fraction assuming 100% activation (cm/s)
 
-   ! tair = state%t(:,:)
-   ! use physconst, only: gravit, rair, rhoh2o
-   ! rhoair_i(k) = pmid(icol,k)/(rair*t(icol,k))
-   ! rhoair = 
+!    tair = state%t(:,:)
+!    use physconst, only: gravit, rair, rhoh2o
+!    rhoair_i(k) = pmid(icol,k)/(rair*t(icol,k))
+!    rhoair = 
 
 
-   ! call activate_modal(wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,   &
-   !                     naerosol, ntot_amode, vaerosol, hygro,           &
-   !                     fn, fm, fluxn, fluxm, flux_fullact               )
+!    call activate_modal(wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,   &
+!                        naerosol, ntot_amode, vaerosol, hygro,           &
+!                        fn, fm, fluxn, fluxm, flux_fullact               )
 
-   !-------------------------------------------------------------------------------------
-   !-------------------------------------------------------------------------------------
+!    !-------------------------------------------------------------------------------------
+!    !-------------------------------------------------------------------------------------
 
 ! end subroutine crm_bulk_aerosol_activation
+
+! #endif /* SP_BULK_AERO_ACT */
 
 !==================================================================================================
 !==================================================================================================
@@ -245,7 +252,7 @@ subroutine crm_bulk_transport(state, pbuf, ptend)
    logical,  dimension(pcols,pcnst) :: dry_const_flag ! flag for dry constituents
 
    !!! physics buffer fields 
-   integer itim, ifld
+   ! integer itim, ifld
    real(r8), pointer, dimension(:,:,:) :: frac_insol  ! fraction of transported species that are insoluble
    real(r8), pointer, dimension(:,:)   :: mu          ! updraft mass flux       (pcols,pver,begchunk:endchunk)
    real(r8), pointer, dimension(:,:)   :: eu          ! updraft entrainment     (pcols,pver,begchunk:endchunk)
@@ -550,11 +557,9 @@ end subroutine crm_bulk_transport_tend
 !==================================================================================================
 !==================================================================================================
 
-subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
-                                  cflx, pblht,                  &
-                                  wwqui_cen, wwqui_cloudy_cen,  &
-                                  wwqui_bnd, wwqui_cloudy_bnd,  &
-                                  species_class )
+subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime    &
+                                  ! ,cflx, ww_cen, ww_bnd        &
+                                  ,pblht, species_class )
    !-------------------------------------------------------------------------------------
    ! Purpose: to calculate aerosol tendency from droplet activation and mixing
    ! Walter Hannah (LLNL), 2018: based on Minghuai Wang's crmclouds_mixnuc_tend()
@@ -567,61 +572,58 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    use time_manager,     only: is_first_step
    use cam_history,      only: outfld
    use ndrop,            only: dropmixnuc
-   use modal_aero_data,  only: ntot_amode
+   use modal_aero_data,  only: ntot_amode, numptr_amode, lmassptr_amode, nspec_amode
    use rad_constituents, only: rad_cnst_get_info
 
    !!! Input 
-   type(physics_state), intent(in)                  :: state              ! state variable
-   type(physics_buffer_desc), pointer, dimension(:) :: pbuf               ! physics buffer
-   real(r8), intent(in)                             :: dtime              ! timestep for microphysics - passed to dropmixnuc()
-   real(r8), intent(in), dimension(pcols)           :: pblht              ! PBL height (meter)
-   real(r8), intent(in), dimension(pcols,pcnst)     :: cflx               ! constituent flux from surface
-   real(r8), intent(in), dimension(pcols, pver)     :: wwqui_cen          ! vert. velocity variance in quiescent class            (at layer center)    [m2/s2]
-   real(r8), intent(in), dimension(pcols, pver)     :: wwqui_cloudy_cen   ! vert. velocity variance in quiescent and cloudy class (at layer center)    [m2/s2]
-   real(r8), intent(in), dimension(pcols, pver+1)   :: wwqui_bnd          ! vert. velocity variance in quiescent class            (at layer interface) [m2/s2]
-   real(r8), intent(in), dimension(pcols, pver+1)   :: wwqui_cloudy_bnd   ! vert. velocity variance in quiescent and cloudy class (at layer interface) [m2/s2]
-   integer,  intent(in), dimension(pcnst)           :: species_class      ! 
+   type(physics_state), intent(in)                  :: state         ! state variable
+   type(physics_buffer_desc), pointer, dimension(:) :: pbuf          ! physics buffer
+   real(r8), intent(in)                             :: dtime         ! timestep for microphysics - passed to dropmixnuc()
+   real(r8), intent(in), dimension(pcols)           :: pblht         ! PBL height - used for mixing length calculation [m]
+   ! real(r8), intent(in), dimension(pcols,pcnst)     :: cflx          ! constituent flux from surface (not used)
+   ! real(r8), intent(in), dimension(pcols, pver)     :: ww_cen        ! vert. velocity variance (at layer center)    [m2/s2]
+   ! real(r8), intent(in), dimension(pcols, pver+1)   :: ww_bnd        ! vert. velocity variance (at layer interface) [m2/s2]
+   integer,  intent(in), dimension(pcnst)           :: species_class ! 
 
    !!! output arguments
    type(physics_ptend), intent(out) :: ptend   ! output physics tendencies
 
    !!! Local variables
    integer i, k, m, k1, k2
-   integer ifld, itim
+   ! integer ifld, itim
    integer ixcldliq, ixcldice, ixnumliq
    integer l,lnum,lnumcw,lmass,lmasscw
    integer :: lchnk                    ! chunk identifier
    integer :: ncol                     ! number of atmospheric columns
    integer :: nmodes
+   logical :: do_mmf = .true.          ! value insignificant, if present, means that dropmixnuc is called the mmf part. 
 
-   real(r8), dimension(pcols,pver) :: nc        ! droplet number concentration (#/kg)
-   real(r8), dimension(pcols,pver) :: nctend    ! change in droplet number concentration
-   ! real(r8), dimension(pcols,pver) :: omega     ! grid-averaaged vertical velocity - not used?
-   real(r8), dimension(pcols,pver) :: qc        ! liquid water content (kg/kg)
-   real(r8), dimension(pcols,pver) :: qi        ! ice water content (kg/kg) 
-   real(r8), dimension(pcols,pver) :: lcldn     ! new liquid cloud fraction (current time step)
-   real(r8), dimension(pcols,pver) :: lcldo     ! old liquid cloud fraction (previous time step)
+!TODO: calculate the vertical velocites using crm grid data on the pbuf
+   real(r8), dimension(pcols,pver ) :: ww_cen         ! vert. velocity variance (at layer center)    [m2/s2]
+   real(r8), dimension(pcols,pverp) :: ww_bnd         ! vert. velocity variance (at layer interface) [m2/s2]
+   ! real(r8), dimension(pcols,pver ) :: nc             ! droplet number concentration                 [#/kg]
+   ! real(r8), dimension(pcols,pver ) :: nctend         ! change in droplet number concentration
+   ! real(r8), dimension(pcols,pver ) :: omega          ! grid-averaaged vertical velocity - not used?
+   real(r8), dimension(pcols,pver ) :: qc             ! liquid water content                          [kg/kg]
+   real(r8), dimension(pcols,pver ) :: qi             ! ice water content                             [kg/kg] 
+   real(r8), dimension(pcols,pver ) :: lcldn          ! new liquid cloud fraction (current time step)
+   real(r8), dimension(pcols,pver ) :: lcldo          ! old liquid cloud fraction (previous time step)
+   real(r8), dimension(pcols,pver ) :: wsub           ! subgrid vertical velocity
+   real(r8), dimension(pcols,pver ) :: dz_inv         ! inverse of distance between levels (meter)
+   real(r8), dimension(pcols,pver ) :: dz             ! layer depth                                   [m]
+   real(r8), dimension(pcols,pver ) :: cs             ! air density
+   real(r8), dimension(pcols,pverp) :: ekd_crm        ! diffusivity
+   real(r8), dimension(pcols,pverp) :: kkvh_crm       ! eddy diffusivity
+   real(r8), dimension(pcols,pverp) :: mix_len        ! mixing length                                 [m]
+   real(r8), dimension(pcols,pverp) :: zheight        ! height at lay interface                       [m]
+   real(r8), dimension(pcols,pverp) :: asym_length    ! asymptotic length scale                       [m]
+   real(r8), dimension(pcols,pver ) :: tend_ndrop     ! tendency of cloud droplet number concentrations (not used in the MMF) 
+   
+   real(r8), allocatable, dimension(:,:,:) :: aero_act_frac_num ! activation fraction for aerosol number
 
-   real(r8), dimension(pcols,pver ) :: wsub     ! subgrid vertical velocity
-   real(r8), dimension(pcols,pver ) :: dz_inv   ! inverse of distance between levels (meter)
-   real(r8), dimension(pcols,pver ) :: dz       ! layer depth (m)
-   real(r8), dimension(pcols,pver ) :: cs       ! air density
-   real(r8), dimension(pcols,pverp) :: ekd_crm  ! diffusivity
-   real(r8), dimension(pcols,pverp) :: kkvh_crm ! eddy diffusivity
-   real(r8), dimension(pcols,pverp) :: lc       ! mixing length (m)
-   real(r8), dimension(pcols,pverp) :: zheight  ! height at lay interface (m)
+   real(r8) :: qcld                                   ! temporary cloud condensate - liquid + ice
 
-   real(r8) :: alc(pcols, pverp)                ! asymptotic length scale (m)
-   real(r8) :: tendnd(pcols, pver)              ! tendency of cloud droplet number concentrations (not used in the MMF) 
-
-   real(r8), allocatable :: factnum(:,:,:)      ! activation fraction for aerosol number
-
-   real(r8) :: qcld                             ! cloud condensate - liquid + ice
-   logical  :: do_mmf = .true.                  ! value insignificant, if present, means that dropmixnuc is called the mmf part. 
-
-   real(r8), parameter :: qcld_threshold = 1.e-18_r8  ! lower bound for cloud condesnate
-
-   !!! Variables in the physics buffer:
+   !!! physics buffer variables
    real(r8), pointer, dimension(:,:)   :: cldn        ! cloud fraction                  (current time step)
    real(r8), pointer, dimension(:,:)   :: cldo        ! cloud fraction                  (previous time step)
    real(r8), pointer, dimension(:,:)   :: acldy_cen   ! liquid cloud fraction from ECPP (previous time step )
@@ -629,38 +631,42 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    real(r8), pointer, dimension(:,:)   :: tke         ! turbulence kenetic energy 
    real(r8), pointer, dimension(:,:)   :: tk_crm      ! m2/s
    logical,           dimension(pcnst) :: lq          ! flag for ptend
-   !-------------------------------------------------------------------------------------
-   !-------------------------------------------------------------------------------------
-   lchnk  = state%lchnk
-   ncol   = state%ncol
 
-   call rad_cnst_get_info(0, nmodes=nmodes)
-   allocate( factnum(pcols,pver,nmodes) )
+   !!! fixed parameters
+   real(r8), parameter :: qcld_threshold = 1.e-18_r8  ! lower bound for cloud condesnate
+   real(r8), parameter :: wsub_min       =  0.2_r8    ! lower bound for subgrid vertical velocity
+   real(r8), parameter :: wsub_max       = 10.0_r8    ! upper bound for subgrid vertical velocity
+   !-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
+   lchnk = state%lchnk
+   ncol  = state%ncol
+
+   call rad_cnst_get_info(0, nmodes = nmodes )
+
+   allocate( aero_act_frac_num(pcols,pver,nmodes) )
 
    !--------------------------------------------------------
    ! Initialize ptend
    !--------------------------------------------------------
    lq(:)=.false.
 
-   do m=1,ntot_amode
-      lnum=numptr_amode(m)
-      if(lnum>0)then
-         !ptend%lq(lnum)= .true.
-         lq(lnum)= .true.
-      endif
-      do l=1,nspec_amode(m)
-         lmass=lmassptr_amode(l,m)
-         !ptend%lq(lmass)= .true.
-         lq(lmass)= .true.
+   do m = 1,ntot_amode
+      lnum = numptr_amode(m)
+      if ( lnum > 0 ) then
+         lq(lnum) = .true.
+      end if
+      do l = 1,nspec_amode(m)
+         lmass = lmassptr_amode(l,m)
+         lq(lmass) = .true.
       end do
    end do ! m=1,ntot_amode
 
-   call physics_ptend_init(ptend,state%psetcols,'crmclouds_mixnuc', lq=lq)
+   call physics_ptend_init(ptend,state%psetcols,'crm_bulk_aero_mix_nuc', lq=lq)
 
    !!! In the MMF model, turbulent mixing for tracer species are turned off in tphysac.
    !!! So the turbulent for gas species mixing are added here.
-   do m=1,pcnst
-      if(species_class(m).eq.spec_class_gas) then
+   do m = 1,pcnst
+      if ( species_class(m) .eq. spec_class_gas ) then
          ptend%lq(m) = .true.
       end if
    end do
@@ -668,26 +674,18 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    !--------------------------------------------------------
    ! get pbuf variables
    !--------------------------------------------------------
-   itim = pbuf_old_tim_idx ()
-   ifld = pbuf_get_index ('CLD')
-   call pbuf_get_field(pbuf, ifld, cldn, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-   ifld = pbuf_get_index ('CLDO')
-   call pbuf_get_field(pbuf, ifld, cldo, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-   ifld = pbuf_get_index ('ACLDY_CEN')
-   call pbuf_get_field(pbuf, ifld, acldy_cen)
-   ifld = pbuf_get_index('kvh')
-   call pbuf_get_field(pbuf, ifld, kkvh)
-
-   ifld=pbuf_get_index('tke')
-   call pbuf_get_field(pbuf, ifld, tke)
-
-   ifld = pbuf_get_index('TK_CRM')
-   call pbuf_get_field(pbuf, ifld, tk_crm)
+   call pbuf_get_field(pbuf,pbuf_get_index('CLD'),       cldn      )
+   call pbuf_get_field(pbuf,pbuf_get_index('CLDO'),      cldo      )
+!TODO: need a different version of cloud fraction derived from CRM data directly
+   call pbuf_get_field(pbuf,pbuf_get_index('ACLDY_CEN'), acldy_cen )    
+   call pbuf_get_field(pbuf,pbuf_get_index('kvh'),       kkvh      )
+   call pbuf_get_field(pbuf,pbuf_get_index('tke'),       tke       )
+   call pbuf_get_field(pbuf,pbuf_get_index('TK_CRM'),    tk_crm    )
 
    !!! initialize diffusivity and tke
    if (is_first_step()) then
-      kkvh(:,:)= 0.0_r8
-      tke(:,:) = 0.0_r8
+      kkvh(:,:) = 0.0_r8
+      tke(:,:)  = 0.0_r8
    endif
 
    !--------------------------------------------------------
@@ -707,21 +705,21 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
 
       !!! calculate mixing length - Holtslag and Boville, 1993, J. Climate. 
       do k=1,pverp
-         if(zheight(i,k).le.pblht(i)) then
-            alc(i,k) = 300.
+         if ( zheight(i,k).le.pblht(i) ) then
+            asym_length(i,k) = 300._r8
          else
-            alc(i,k) = 30+270*exp(1.-zheight(i,k)/pblht(i))
+            asym_length(i,k) = 30._r8 + 270._r8 * exp( 1._r8 - zheight(i,k) / pblht(i) )
          endif
-         lc(i,k) = alc(i,k)*karman*zheight(i,k)/(alc(i,k)+karman*zheight(i,k))
+         mix_len(i,k) = asym_length(i,k)*karman*zheight(i,k)/(asym_length(i,k)+karman*zheight(i,k))
       end do ! k=1,pverp
    end do ! i=1,ncol
 
    !!! output mixing length?
-   ! call outfld('LENGC', lc, pcols, lchnk)
-   ! call outfld('CRM_MIXLENC', lc, pcols, lchnk)
+   ! call outfld('LENGC'      , mix_len, pcols, lchnk)
+   ! call outfld('CRM_MIXLENC', mix_len, pcols, lchnk)
 
    !--------------------------------------------------------
-   ! Calculate 
+   ! Calculate vert. velocity and eddy diffusivity
    !--------------------------------------------------------
    kkvh_crm = 0._r8
    do i=1,ncol
@@ -730,37 +728,43 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
       do k=1,pver
          ! wsub(i,k) = sqrt(tke(i,k)/3.)  
 
-         !!! tke from CRM is located in the middle of model level
-         !!! should be tke or tke/3. 
-         !!! in cldwat2m.F90, it is tke.
-         !!! wsub seems too large from this approach. 
+         !!! tke from CRM is located in the middle of model level, should be tke or tke/3. 
+         !!! in cldwat2m.F90, it is tke. wsub seems too large from this approach. 
 
          ! wsub(i,k) = tk_crm(i,k) * dz_inv(i,k)
-         ! wsub(i,k) = min(wsub(i,k),10._r8)
 
-         !!! from vertical variance in the quiescent class, which excldues 
-         !!! the contribution from strong updraft and downdraft. 
+         !!! vertical variance in the quiescent class excludes contribution from strong updraft and downdraft. 
 
-         ! wsub(i,k) = sqrt(wwqui_cen(i,k))        ! use variance in quiescent area
-         wsub(i,k) = sqrt(wwqui_cloudy_cen(i,k))   ! use variance in cloudy quiescent area
+         ! wsub(i,k) = sqrt(wwqui_cen(i,k))           ! variance in quiescent area
+         ! wsub(i,k) = sqrt(wwqui_cloudy_cen(i,k))    ! variance in cloudy quiescent area  (this version is used for ECPP case)
+
+         wsub(i,k) = sqrt( ww_cen(i,k) )
 
          !!! from tke in CAM
          ! wsub(i,k) = sqrt(0.5_r8*(tke(i,k)+tke(i,k+1)))
 
-         wsub(i,k) = min(wsub(i,k), 10._r8) 
-         wsub(i,k) = max(0.20_r8, wsub(i,k))
-      end do   ! k=1,pver
+         wsub(i,k) = min( wsub(i,k), wsub_max )
+         wsub(i,k) = max( wsub(i,k), wsub_min )
+      end do ! k=1,pver
 
-      !!!
+      !!! calculate eddy diffusivity (ekd_crm) from subgrid vertical velocity (wsub) 
       do k=1,pver+1
          k1=min(k, pver)
          k2=max(k-1, 1)
 
-         !!! calculate diffusivity (ekd_crm) from subgrid vertical velocity (wsub) 
-         !!! in the cloudy quiescent class (following ndrop.F90)
+         !!! following ndrop.F90
          ! ekd_crm(i,k) = wsub(i,k) / dz_inv(i,k)
-         ! ekd_crm(i,k) = min(10.0_r8, max(0.20_r8, sqrt(wwqui_cloudy_bnd(i,k))))*2.0 / (dz_inv(i,k1)+dz_inv(i,k2))  ! use wsub at layer boundary - large ekd at free troposphere. 
-         ekd_crm(i,k) = min(10.0_r8, max(0.20_r8, sqrt(wwqui_cloudy_bnd(i,k))))* lc(i,k) 
+
+         !!! calculate wsub at boundary
+         ! wsub_bnd(i,k) = sqrt(wwqui_cloudy_bnd(i,k))
+         wsub_bnd(i,k) = sqrt( ww_bnd(i,k) )
+
+         wsub_bnd(i,k) = min( wsub_bnd(i,k), wsub_max )
+         wsub_bnd(i,k) = max( wsub_bnd(i,k), wsub_min )
+
+         !!! use cloudy quiescent class - use wsub at layer boundary - large ekd in free troposphere
+         ! ekd_crm(i,k) = wsub_bnd(i,k) * 2.0 / (dz_inv(i,k1)+dz_inv(i,k2))  
+         ekd_crm(i,k) = wsub_bnd(i,k) * mix_len(i,k) 
          kkvh_crm(i,k) = ekd_crm(i,k)
 
          !!! kkvh_crm is from kvh in CAM
@@ -774,17 +778,16 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    end do ! i=1,ncol
 
    !--------------------------------------------------------
+   ! Adjust new and old liquid cloud fraction
    !--------------------------------------------------------
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
-   call cnst_get_ind('NUMLIQ', ixnumliq)
+   ! call cnst_get_ind('NUMLIQ', ixnumliq)
 
    qc(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
    qi(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
-   nc(:ncol,:pver) = state%q(:ncol,:pver,ixnumliq)
+   ! nc(:ncol,:pver) = state%q(:ncol,:pver,ixnumliq)
 
-   !--------------------------------------------------------
-   !--------------------------------------------------------
    do k=1,pver
       do i=1,ncol
 
@@ -809,14 +812,18 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime,    &
    ! Calculate mixing and nucleation tendencies
    !--------------------------------------------------------
    
-   call dropmixnuc(state, ptend, dtime, pbuf, wsub, lcldn, lcldo, tendnd,factnum, species_class,do_mmf )
+   call dropmixnuc(state, ptend, dtime, pbuf,      &
+                   wsub, lcldn, lcldo,             &
+                   tend_ndrop, aero_act_frac_num,  &
+                   species_class, do_mmf )
    
    !--------------------------------------------------------
    ! clean-up
    !--------------------------------------------------------
-   deallocate(factnum)
+   deallocate(aero_act_frac_num)
 
 end subroutine crm_bulk_aero_mix_nuc
+
 !==================================================================================================
 !==================================================================================================
 ! subroutine crm_bulk_diagnose_cloudy_clear()
