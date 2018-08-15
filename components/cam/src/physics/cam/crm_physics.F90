@@ -537,7 +537,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use RNG_MT            ! random number generator for randomly rotating CRM orientation (SP_ORIENT_RAND)
 #endif
 
+#ifdef CRM
    use crm_state_module, only: crm_state_type
+#endif
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
 #ifndef CRM
@@ -559,6 +561,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    
    ! real(r8), intent(in) :: dlf(pcols,pver)  ! shallow+deep convective detrainment [kg/kg/s] - used for aerosol_wet_intr - no longer needed
 
+#ifdef CRM
 !--------------------------------------------------------------------------------------------------
 ! Local variables 
 !--------------------------------------------------------------------------------------------------
@@ -1889,6 +1892,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !----------------------------------------------------------------------
    !----------------------------------------------------------------------
 
+#endif /* CRM */
 end subroutine crm_physics_tend
 
 !==================================================================================================
