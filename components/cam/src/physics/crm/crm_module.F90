@@ -656,18 +656,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       micro_field(1:nx,1:ny,1:nzm,8)  = crm_state%ns(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,9)  = crm_state%qg(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,10) = crm_state%ng(icrm,1:nx,1:ny,1:nzm)
-      micro_field(1:nx,1:ny,1:nzm,11) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
+      cloudliq(1:nx,1:ny,1:nzm) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
 #else
       micro_field(1:nx,1:ny,1:nzm,1) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,2) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
-#endif
-
-#ifdef sam1mom
-    qn(1:nx,1:ny,1:nzm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
-#endif
-
-#ifdef m2005
-    cloudliq(1:nx,1:ny,1:nzm) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
+      qn(1:nx,1:ny,1:nzm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 
 #ifdef m2005
@@ -1619,16 +1612,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       crm_state%ns(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,8)
       crm_state%qg(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,9)
       crm_state%ng(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,10)
-      crm_state%qc(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,11)
+      crm_state%qc(icrm,1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
 #else
       crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1)
       crm_state%qp(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2)
       crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm)
-#endif
-
-      ! Override micro (TODO: why?)
-#ifdef m2005
-      crm_state%qc(icrm,1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
 #endif
 
     crm_tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
