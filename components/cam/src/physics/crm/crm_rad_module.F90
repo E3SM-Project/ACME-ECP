@@ -32,14 +32,14 @@ module crm_rad_module
       real(crm_rknd), pointer :: qs(:,:,:,:) ! rad cloud snow (kg/kg)
       real(crm_rknd), pointer :: ns(:,:,:,:) ! rad cloud snow crystal number (#/kg)
    contains
-      procedure, public :: initialize=>crm_state_initialize
-      procedure, public :: finalize=>crm_state_finalize
+      procedure, public :: initialize=>crm_rad_initialize
+      procedure, public :: finalize=>crm_rad_finalize
    end type crm_rad_type
 
 contains
 
    !------------------------------------------------------------------------------------------------
-   ! Type-bound procedures for crm_state_type
+   ! Type-bound procedures for crm_rad_type
    subroutine crm_rad_initialize(this)
       class(crm_rad_type), intent(inout) :: this
 
