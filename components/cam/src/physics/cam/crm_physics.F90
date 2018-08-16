@@ -692,7 +692,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call phys_getopts(use_ECPP_out            = use_ECPP)
    call phys_getopts(use_SPCAM_out           = use_SPCAM)
    call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
-   
+
    nstep = get_nstep()
    lchnk = state%lchnk
    ncol  = state%ncol
@@ -707,7 +707,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ls = .true.
    lq(:) = .true.
    fromcrm = .true.
-   call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  ! Initialize output physics_ptend object
+   call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm) 
    fromcrm = .false.
    
    !------------------------------------------------------------
