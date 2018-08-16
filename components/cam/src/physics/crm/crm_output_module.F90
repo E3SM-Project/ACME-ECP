@@ -60,9 +60,7 @@ module crm_output_module
       real(crm_rknd), allocatable :: ns_mean(:,:)  ! mean snow         (#/kg)
       real(crm_rknd), allocatable :: ng_mean(:,:)  ! mean graupel      (#/kg)
       real(crm_rknd), allocatable :: nr_mean(:,:)  ! mean rain         (#/kg)
-#endif
 
-#ifdef m2005
       ! Time and domain averaged process rates
       real(crm_rknd), allocatable :: aut_a (:,:)  ! cloud water autoconversion (1/s)
       real(crm_rknd), allocatable :: acc_a (:,:)  ! cloud water accretion (1/s)
@@ -74,11 +72,15 @@ module crm_output_module
       real(crm_rknd), allocatable :: con_a (:,:)  ! cloud water condensation(1/s)
 #endif /* m2005 */
 
+#if defined( SPMOMTRANS )
       real(crm_rknd), allocatable :: ultend(:,:)            ! tendency of ul
       real(crm_rknd), allocatable :: vltend(:,:)            ! tendency of vl
+#endif
 
+#if defined( SP_ESMT )
       real(crm_rknd), allocatable :: u_tend_esmt(:,:)       ! CRM scalar u-momentum tendency
       real(crm_rknd), allocatable :: v_tend_esmt(:,:)       ! CRM scalar v-momentum tendency
+#endif
 
       real(crm_rknd), allocatable :: sltend  (:,:)          ! CRM output tendency of static energy
       real(crm_rknd), allocatable :: qltend  (:,:)          ! CRM output tendency of water vapor
@@ -191,9 +193,7 @@ contains
          if (.not. allocated(this%ns_mean)) allocate(this%ns_mean(ncrms,nlev))
          if (.not. allocated(this%ng_mean)) allocate(this%ng_mean(ncrms,nlev))
          if (.not. allocated(this%nr_mean)) allocate(this%nr_mean(ncrms,nlev))
-#endif
 
-#ifdef m2005
          if (.not. allocated(this%aut_a )) allocate(this%aut_a (ncrms,nlev))
          if (.not. allocated(this%acc_a )) allocate(this%acc_a (ncrms,nlev))
          if (.not. allocated(this%evpc_a)) allocate(this%evpc_a(ncrms,nlev))
@@ -259,9 +259,6 @@ contains
          if (.not. allocated(this%z0m          )) allocate(this%z0m                 (ncrms))
          if (.not. allocated(this%timing_factor)) allocate(this%timing_factor       (ncrms))
 
-         ! NOTE: output currently defined on "pver" grid, for consistency with use in crm_phys_tend
-         if (.not. allocated(this%spdt)) allocate(this%spdt(ncrms,nlev))   ! temperature tendency
-
       end if ! present(ncrms)
 
       ! Initialize 
@@ -307,9 +304,7 @@ contains
       this%ns_mean = 0
       this%ng_mean = 0
       this%nr_mean = 0
-#endif
 
-#ifdef m2005
       this%aut_a = 0
       this%acc_a = 0
       this%evpc_a = 0
@@ -319,7 +314,6 @@ contains
       this%dep_a = 0
       this%con_a = 0
 #endif
-
 
 #if defined( SPMOMTRANS )
       this%ultend = 0
@@ -415,6 +409,7 @@ contains
       if (allocated(this%qs_mean)) deallocate(this%qs_mean)
       if (allocated(this%qg_mean)) deallocate(this%qg_mean)
       if (allocated(this%qr_mean)) deallocate(this%qr_mean)
+#ifdef m2005
       if (allocated(this%nc_mean)) deallocate(this%nc_mean)
       if (allocated(this%ni_mean)) deallocate(this%ni_mean)
       if (allocated(this%ns_mean)) deallocate(this%ns_mean)
@@ -430,12 +425,17 @@ contains
       if (allocated(this%sub_a)) deallocate(this%sub_a)
       if (allocated(this%dep_a)) deallocate(this%dep_a)
       if (allocated(this%con_a)) deallocate(this%con_a)
+#endif
 
+#if defined( SPMOMTRANS )
       if (allocated(this%ultend)) deallocate(this%ultend)
       if (allocated(this%vltend)) deallocate(this%vltend)
+#endif
 
+#if defined( SP_ESMT )
       if (allocated(this%u_tend_esmt)) deallocate(this%u_tend_esmt)
       if (allocated(this%v_tend_esmt)) deallocate(this%v_tend_esmt)
+#endif
 
       if (allocated(this%sltend)) deallocate(this%sltend)
       if (allocated(this%qltend)) deallocate(this%qltend)
