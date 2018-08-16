@@ -597,7 +597,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) accre_enhan(pcols,crm_nx, crm_ny, crm_nz)
    real(r8) qclvar     (pcols,crm_nx, crm_ny, crm_nz)
 #endif
-   real(r8) cld3d_crm(pcols, crm_nx, crm_ny, crm_nz)   ! 3D instaneous cloud fraction 
    
    character(len=16) :: microp_scheme     ! microphysics scheme
    real(r8) cwp   (pcols,pver)            ! in-cloud cloud (total) water path (kg/m2)
@@ -1004,8 +1003,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%q(:,:,ixcldice) = 0.
       ptend%s(:,:) = 0.
 
-      cld3d_crm (:,:,:,:) = 0.
-
       tvwle(:,:) = 0.    ! MDB 8/2013
       buoy(:,:) = 0.     ! MDB 8/2013
       buoysd(:,:) = 0.   ! MDB 8/2013
@@ -1189,7 +1186,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
     call crm ( lchnk,                       icol(:ncol),                  ncol,                         phys_stage,                                                 &
                ztodt,                        pver,                                                       &
                crm_state, crm_rad, crm_input, crm_output,  &
-               cld3d_crm(:ncol,:,:,:),                                     &
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
                crm_cld(:ncol,:, :, :),                                                                                                                              &

@@ -43,7 +43,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif
                 dt_gl, plev, &
                 crm_state, crm_rad, crm_input, crm_output, &
-                cld3d_crm, &
 #ifdef CLUBB_CRM
                 clubb_buffer,                 &
                 crm_cld,                      &
@@ -148,7 +147,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
-    real(r8), intent(  out) :: cld3d_crm           (ncrms,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
     real(r8)                :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
     real(r8)                :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
     real(r8)                :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
@@ -1443,7 +1441,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
     crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
     crm_output%tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
-    cld3d_crm(icrm,1:nx,1:ny,1:nzm) = CF3D(1:nx, 1:ny, 1:nzm)
 #ifdef CLUBB_CRM
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
