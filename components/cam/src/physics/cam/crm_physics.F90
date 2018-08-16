@@ -1056,11 +1056,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%s(:,:) = 0. ! necessary?
       cwp    = 0.
 
-!===================================================================================
-!!!!!! should other variables also be set to be zero (such as crm_output%precc)? !!!!!!!!!!
-!  -Minghuai Wang
-!===================================================================================
-
       call t_startf ('crm_call')
 
       do m=1,crm_nz
@@ -1250,10 +1245,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
       call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
 
-      call outfld('CRM_U   ',crm_state%u_wind, pcols   ,lchnk   )
-      call outfld('CRM_V   ',crm_state%v_wind, pcols   ,lchnk   )
-      call outfld('CRM_W   ',crm_state%w_wind, pcols   ,lchnk   )
-      call outfld('CRM_T   ',crm_state%temperature, pcols   ,lchnk   )
+      call outfld('CRM_U   ',crm_state%u_wind,      pcols, lchnk)
+      call outfld('CRM_V   ',crm_state%v_wind,      pcols, lchnk)
+      call outfld('CRM_W   ',crm_state%w_wind,      pcols, lchnk)
+      call outfld('CRM_T   ',crm_state%temperature, pcols, lchnk)
 
       if (SPCAM_microp_scheme .eq. 'sam1mom') then
          call outfld('CRM_QV  ',(crm_state%qt(:,:,:,:)-crm_output%qcl-crm_output%qci),pcols   ,lchnk   )
