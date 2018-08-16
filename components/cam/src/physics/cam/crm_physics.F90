@@ -688,9 +688,20 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 ! Author: Marat Khairoutdinov (mkhairoutdin@ms.cc.sunysb.edu)
 !==================================================================================================
 !==================================================================================================
+   
+   call phys_getopts(use_ECPP_out            = use_ECPP)
+   call phys_getopts(use_SPCAM_out           = use_SPCAM)
+   call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
+   
+   nstep = get_nstep()
+   lchnk = state%lchnk
+   ncol  = state%ncol
 
    call t_startf ('crm')
 
+   !------------------------------------------------------------
+   ! Initialize ptend
+   !------------------------------------------------------------
    lu = .true. 
    lv = .true.
    ls = .true.
@@ -698,16 +709,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    fromcrm = .true.
    call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  ! Initialize output physics_ptend object
    fromcrm = .false.
-
-   call phys_getopts(use_ECPP_out            = use_ECPP)
-   call phys_getopts(use_SPCAM_out           = use_SPCAM)
-   call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
-
-   nstep = get_nstep()
-
-   lchnk = state%lchnk
-   ncol  = state%ncol
-
+   
    !------------------------------------------------------------
    ! Initialize CRM state (nullify pointers, allocate memory, etc)
    !------------------------------------------------------------
@@ -717,11 +719,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! problem other than using a little more memory than we need.
    call crm_state%initialize()
    call crm_rad%initialize()
-   call crm_input%initialize(pcols, pver)
-   call crm_output%initialize(pcols, pver)
+   call crm_input%initialize(pcols,pver)
+   call crm_output%initialize(pcols,pver)
 
 #if defined( ECPP )
-   call crm_ecpp%initialize(ncol,pver)
+   call crm_ecpp%initialize(pcols,pver)
 #endif
 
    !------------------------------------------------------------
