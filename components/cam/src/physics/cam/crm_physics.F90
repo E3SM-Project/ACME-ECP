@@ -708,16 +708,83 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    lchnk = state%lchnk
    ncol  = state%ncol
 
+   !------------------------------------------------------------
+   ! Initialize CRM state (nullify pointers, allocate memory, etc)
+   !------------------------------------------------------------
+   ! TODO: should these be allocated with size pcols to handle calls to outfld,
+   ! which seem to expect input arrays to have size pcols rather than ncol? We
+   ! only ever use ncol many elements of these arrays, so this should not be a
+   ! problem other than using a little more memory than we need.
+   call crm_state%initialize()
+   call crm_rad%initialize()
+   call crm_input%initialize(pcols, pver)
+   call crm_output%initialize(pcols, pver)
+
+#if defined( ECPP )
+   call crm_ecpp%initialize(ncol,pver)
+#endif
+
+   !------------------------------------------------------------
+   ! Set CRM orientation angle
+   !------------------------------------------------------------
+
+#if defined( SP_ORIENT_RAND )
+   !---------------------------------------------
+   ! Rotate the CRM using a random walk
+   !---------------------------------------------
+   if ( (crm_ny.eq.1) .or. (crm_nx.eq.1) ) then
+
+      do i=1,ncol
+
+         !!! set the seed based on the chunk and column index (duplicate seeds are ok)
+         seed = lchnk + i + nstep
+
+         call RNG_MT_set_seed(seed)
+
+         !!! Generate a pair of uniform random numbers
+         call RNG_MT_gen_rand(unif_rand1)
+         call RNG_MT_gen_rand(unif_rand2)
+
+         !!! Box-Muller (1958) method of obtaining a Gaussian distributed random number
+         norm_rand = sqrt(-2.*log(unif_rand1))*cos(pix2*unif_rand2)
+         crm_angle(i) = crm_angle(i) + norm_rand * crm_rotation_std + crm_rotation_offset
+
+         !!! Adjust CRM orientation angle to be between 0 and 2*pi
+         if ( crm_angle(i) .lt. 0. ) then
+            crm_angle(i) = crm_angle(i) + pix2
+         endif
+         if ( crm_angle(i) .gt. pix2 ) then
+            crm_angle(i) = crm_angle(i) - pix2
+         endif
+
+      enddo
+
+   endif
+#else /* SP_ORIENT_RAND */
+   !---------------------------------------------
+   ! use static CRM orientation (no rotation)
+   !---------------------------------------------
+#if defined( SP_DIR_NS )
+    if (crm_ny.eq.1) then
+       crm_angle(:ncol) = pi/2.
+    else 
+       crm_angle(:ncol) = 0.
+    endif
+#else
+      crm_angle(:ncol) = 0.
+#endif /* SP_DIR_NS */
+
+#endif /* SP_ORIENT_RAND */
+
+   !------------------------------------------------------------
+   ! Retreive pbuf fields
+   !------------------------------------------------------------
    if (SPCAM_microp_scheme .eq. 'm2005') then
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_rad%nc, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), crm_rad%ni, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), crm_rad%qs, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), crm_rad%ns, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
    endif
-
-
-!------------------------------------------------------------
-!------------------------------------------------------------
 
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_QRAD'),    crm_rad%qrad)
 #ifdef CLUBB_CRM
@@ -768,69 +835,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-#if defined( SP_ORIENT_RAND )
    !------------------------------------------------------------
-   ! Rotate the CRM using a random walk
+   ! Retreive CRM state data from pbuf
    !------------------------------------------------------------
-   if ( (crm_ny.eq.1) .or. (crm_nx.eq.1) ) then
-
-      do i=1,ncol
-
-         !!! set the seed based on the chunk and column index (duplicate seeds are ok)
-         seed = lchnk + i + nstep
-
-         call RNG_MT_set_seed(seed)
-
-         !!! Generate a pair of uniform random numbers
-         call RNG_MT_gen_rand(unif_rand1)
-         call RNG_MT_gen_rand(unif_rand2)
-
-         !!! Box-Muller (1958) method of obtaining a Gaussian distributed random number
-         norm_rand = sqrt(-2.*log(unif_rand1))*cos(pix2*unif_rand2)
-         crm_angle(i) = crm_angle(i) + norm_rand * crm_rotation_std + crm_rotation_offset
-
-         !!! Adjust CRM orientation angle to be between 0 and 2*pi
-         if ( crm_angle(i) .lt. 0. ) then
-            crm_angle(i) = crm_angle(i) + pix2
-         endif
-         if ( crm_angle(i) .gt. pix2 ) then
-            crm_angle(i) = crm_angle(i) - pix2
-         endif
-
-      enddo
-
-   endif
-#else /* SP_ORIENT_RAND */
-   !------------------------------------------------------------
-   ! initialize static CRM orientation angle (no rotation)
-   !------------------------------------------------------------
-#if defined( SP_DIR_NS )
-    if (crm_ny.eq.1) then
-       crm_angle(:ncol) = pi/2.
-    else 
-       crm_angle(:ncol) = 0.
-    endif
-#else
-      crm_angle(:ncol) = 0.
-#endif /* SP_DIR_NS */
-
-#endif /* SP_ORIENT_RAND */
-
-   !------------------------------------------------------------
-   !------------------------------------------------------------
-
-   ! Initialize CRM state
-   ! TODO: should these be allocated with size pcols to handle calls to outfld,
-   ! which seem to expect input arrays to have size pcols rather than ncol? We
-   ! only ever use ncol many elements of these arrays, so this should not be a
-   ! problem other than using a little more memory than we need.
-   call crm_state%initialize()
-   call crm_input%initialize(pcols, pver)
-   call crm_output%initialize(pcols, pver)
-
-#if defined( ECPP )
-   call crm_ecpp%initialize(ncol,pver)
-#endif
 
    ! Set pointers from crm_state to fields that persist on physics buffer
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
@@ -855,6 +862,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call pbuf_get_field(pbuf, pbuf_get_index('CRM_NG'), crm_state%ng)
       call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC'), crm_state%qc)
    end if
+
+   !------------------------------------------------------------
+   !------------------------------------------------------------
 
    if(is_first_step()) then
       ! call check_energy_timestep_init(state, tend, pbuf)
@@ -1546,6 +1556,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    ! Free memory in derived types
    call crm_state%finalize()
+   call crm_rad%finalize()
    call crm_input%finalize()
    call crm_output%finalize()
 
