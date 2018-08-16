@@ -610,7 +610,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) :: ideep_crm(pcols)
 
    ! physics buffer fields to compute tendencies for stratiform package
-   integer itim 
    real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
 
 #if (defined m2005 && defined MODAL_AERO)
@@ -671,6 +670,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    real(r8) :: timing_factor(pcols) ! factor for crm cpu-usage: 1 means no subcycling
 
+   ! TODO: this is not used anywhere, and should be removed from both this
+   ! routine and from crm() in crm_module.
    real(r8) :: qtotcrm(pcols, 20)   ! the toal water calculated in crm.F90
 
    integer :: ii, jj
@@ -771,9 +772,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !------------------------------------------------------------
 !------------------------------------------------------------
 
-! Associate pointers with physics buffer fields
-   itim = pbuf_old_tim_idx()
-
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_QRAD'),    crm_rad%qrad)
 #ifdef CLUBB_CRM
    call pbuf_get_field (pbuf, clubb_buffer_idx,  clubb_buffer)
@@ -822,7 +820,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !!! Initialize stuff:
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
-
 
 #if defined( SP_ORIENT_RAND )
    !------------------------------------------------------------
@@ -880,9 +877,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! which seem to expect input arrays to have size pcols rather than ncol? We
    ! only ever use ncol many elements of these arrays, so this should not be a
    ! problem other than using a little more memory than we need.
-   call crm_state%initialize(ncol)
-   call crm_input%initialize(ncol, pver)
-   call crm_output%initialize(ncol, pver)
+   call crm_state%initialize(pcols)
+   call crm_input%initialize(pcols, pver)
+   call crm_output%initialize(pcols, pver)
 
    ! Set pointers from crm_state to fields that persist on physics buffer
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
@@ -1099,9 +1096,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                   state, pbuf, i, i, k, &
                   m, cs, phase, na, va, &
                   hy)
-               crm_input%naermod (i,k, m) = na(i)
-               crm_input%vaerosol(i,k, m) = va(i)
-               crm_input%hygro   (i,k, m) = hy(i)
+               crm_input%naermod (i,k,m) = na(i)
+               crm_input%vaerosol(i,k,m) = va(i)
+               crm_input%hygro   (i,k,m) = hy(i)
             end do    
          end do
       end do
@@ -1128,13 +1125,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          icol(i) = i
       end do
 
-!----------------------------------------------------------------------------------------------------------------------------------------------------------------
-!----------------------------------------------------------------------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! Run the CRM
-!----------------------------------------------------------------------------------------------------------------------------------------------------------------
-!----------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
+!---------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 #ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
@@ -1156,10 +1151,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                     &
 #endif /* ECPP */
                timing_factor(:ncol),        qtotcrm(:ncol, :) )
-!----------------------------------------------------------------------------------------------------------------------------------------------------------------
-!----------------------------------------------------------------------------------------------------------------------------------------------------------------
-!----------------------------------------------------------------------------------------------------------------------------------------------------------------
-!----------------------------------------------------------------------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 
 #endif /* CRM */
 
@@ -1200,10 +1195,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       cld(1:ncol,1:pver) = crm_output%cld(1:ncol,1:pver)
 
       do m=1,crm_nz
-      k = pver-m+1
-      do i = 1,ncol
-         crm_rad%qrad(i,:,:,m) = crm_rad%qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
-      end do
+         k = pver-m+1
+         do i = 1,ncol
+            crm_rad%qrad(i,:,:,m) = crm_rad%qrad(i,:,:,m) * state%pdel(i,k) ! for energy conservation
+         end do
       end do
 
       call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
@@ -1341,7 +1336,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       end if
 #endif
 
-
       call outfld('SPDQ    ',ptend%q(1,1,1)        ,pcols ,lchnk )
       call outfld('SPDQC   ',ptend%q(1,1,ixcldliq) ,pcols ,lchnk )
       call outfld('SPDQI   ',ptend%q(1,1,ixcldice) ,pcols ,lchnk )
@@ -1385,22 +1379,21 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('SPTLS   ',crm_output%t_ls           ,pcols ,lchnk )
 
       ! whannah - these fields don't seem to contain anything...?
+      ! These can probably go away, but leaving here for now to remind us to
+      ! revisit whether or not we want to keep them
       ! call outfld('SPTVFLUX',tvwle          ,pcols ,lchnk )
       ! call outfld('SPBUOY  ',buoy           ,pcols ,lchnk )
       ! call outfld('SPBUOYSD',buoysd         ,pcols ,lchnk )
       ! call outfld('SPMSEF  ',msef           ,pcols ,lchnk )
       ! call outfld('SPQVFLUX',qvw            ,pcols ,lchnk )
 
+      ! NOTE: these should overwrite cloud outputs from CAM routines
       call outfld('CLOUD   ',crm_output%cld,  pcols,lchnk)
       call outfld('CLDTOT  ',crm_output%cltot  ,pcols,lchnk)
       call outfld('CLDHGH  ',crm_output%clhgh  ,pcols,lchnk)
       call outfld('CLDMED  ',crm_output%clmed  ,pcols,lchnk)
       call outfld('CLDLOW  ',crm_output%cllow  ,pcols,lchnk)
       call outfld('CLOUDTOP',crm_output%cldtop, pcols,lchnk)
-
-      ! call outfld('Z0M     ',crm_output%z0m  ,pcols,lchnk)
-      ! call outfld('TAUX_CRM',crm_output%taux  ,pcols,lchnk)
-      ! call outfld('TAUY_CRM',crm_output%tauy  ,pcols,lchnk)
 
       call outfld('TIMINGF ',timing_factor  ,pcols,lchnk)
 !----------------------------------------------------------------------
