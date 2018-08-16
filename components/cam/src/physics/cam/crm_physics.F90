@@ -541,6 +541,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use crm_state_module, only: crm_state_type
    use crm_rad_module, only: crm_rad_type
    use crm_input_module, only: crm_input_type
+   use crm_output_module, only: crm_output_type
 #endif
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
@@ -728,6 +729,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(crm_state_type) :: crm_state
    type(crm_rad_type) :: crm_rad
    type(crm_input_type) :: crm_input
+   type(crm_output_type) :: crm_output
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -912,6 +914,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! Initialize CRM state
    call crm_state%initialize(ncol)
    call crm_input%initialize(ncol, pver)
+   call crm_output%initialize(ncol, pver)
 
    ! Set pointers from crm_state to fields that persist on physics buffer
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
@@ -1220,8 +1223,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ! There is no separate convective and stratiform precip for CRM:
       crm_output%precc(:ncol)  = crm_output%precc(:ncol) + crm_output%precl(:ncol)
       crm_output%precsc(:ncol) = crm_output%precsc(:ncol) + crm_output%precsl(:ncol)
-      crm_output%precl(:ncol)  = 0.
-      crm_output%precsl(:ncol) = 0.
+      crm_output%precl(:ncol)  = 0
+      crm_output%precsl(:ncol) = 0
 
       !!! these precip pointer variables are used by coupler
       prec_dp  = crm_output%precc
@@ -1398,6 +1401,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('SPQG    ',crm_output%qg_mean   ,pcols ,lchnk )
       call outfld('SPQR    ',crm_output%qr_mean   ,pcols ,lchnk )
 
+#ifdef m2005
       if (SPCAM_microp_scheme .eq. 'm2005') then
          call outfld('SPNC    ',crm_output%nc_mean         ,pcols ,lchnk )
          call outfld('SPNI    ',crm_output%ni_mean         ,pcols ,lchnk )
@@ -1405,6 +1409,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          call outfld('SPNG    ',crm_output%ng_mean         ,pcols ,lchnk )
          call outfld('SPNR    ',crm_output%nr_mean         ,pcols ,lchnk )
       endif
+#endif
 
       call outfld('SPQTFLX ',crm_output%flux_qt        ,pcols ,lchnk )
       call outfld('SPUFLX  ',crm_output%flux_u         ,pcols ,lchnk )
@@ -1415,7 +1420,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('SPQTFLXS',crm_output%fluxsgs_qt     ,pcols ,lchnk )
       call outfld('SPQPFLX ',crm_output%flux_qp        ,pcols ,lchnk )
       call outfld('SPPFLX  ',crm_output%precflux       ,pcols ,lchnk )
-      call outfld('SPQTLS  ',crm_output%qcrm_output%t_ls          ,pcols ,lchnk )
+      call outfld('SPQTLS  ',crm_output%qt_ls          ,pcols ,lchnk )
       call outfld('SPQTTR  ',crm_output%qt_trans       ,pcols ,lchnk )
       call outfld('SPQPTR  ',crm_output%qp_trans       ,pcols ,lchnk )
       call outfld('SPQPEVP ',crm_output%qp_evp         ,pcols ,lchnk )
