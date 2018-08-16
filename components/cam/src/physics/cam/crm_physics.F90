@@ -530,7 +530,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use ecppvars,              only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
    use module_data_ecpp1,     only: dtstep_pp_input
 #endif
-   use phys_grid,       only: get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p, get_gcol_p
+   use phys_grid,       only: get_rlat_all_p, get_rlon_all_p, get_gcol_p
    !!!use aerosol_intr,    only: aerosol_wet_intr
 
 #if defined( SP_ORIENT_RAND )
@@ -582,7 +582,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer :: snow_sed(:)         ! snow from cloud ice sedimentation           [m/s]
    real(r8), pointer :: snow_str(:)         ! snow from stratiform cloud                  [m/s]
 
-   real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
 
    integer lchnk                    ! chunk identifier
    integer ncol                     ! number of atmospheric columns
@@ -590,6 +589,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) crm_run_time            ! length of CRM integration - usually equal to ztodt unless SP_CRM_SPLIT is defined
 
 #ifdef CLUBB_CRM
+   real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
    real(r8) crm_cld(pcols,crm_nx, crm_ny, crm_nz+1)
    real(r8) clubb_tk   (pcols,crm_nx, crm_ny, crm_nz)
    real(r8) clubb_tkh  (pcols,crm_nx, crm_ny, crm_nz)
@@ -598,23 +598,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) qclvar     (pcols,crm_nx, crm_ny, crm_nz)
 #endif
    
-   character(len=16) :: microp_scheme     ! microphysics scheme
-   real(r8) cwp   (pcols,pver)            ! in-cloud cloud (total) water path (kg/m2)
-   real(r8) gwp   (pcols,pver)            ! grid-box cloud (total) water path (kg/m2)
-   real(r8) tgicewp(pcols)                ! Vertically integrated ice water path (kg/m2
-   real(r8) tgliqwp(pcols)                ! Vertically integrated liquid water path (kg/m2)
-   real(r8) cicewp(pcols,pver)            ! in-cloud cloud ice water path (kg/m2)
-   real(r8) cliqwp(pcols,pver)            ! in-cloud cloud liquid water path (kg/m2)
-   real(r8) tgwp   (pcols)                ! Vertically integrated (total) cloud water path  (kg/m2)
-   real(r8) :: ftem(pcols,pver)           ! Temporary workspace for outfld variables
-   real(r8) ul(pcols,pver)
-   real(r8) vl(pcols,pver)
-
-#if defined( SP_ESMT )
-   real(r8) ul_esmt(pcols,pver)           ! input U wind for ESMT (may be different from CRM forcing due to orientation)
-   real(r8) vl_esmt(pcols,pver)           ! input V wind for ESMT (may be different from CRM forcing due to orientation)
-#endif
-
+   character(len=16) :: microp_scheme  ! microphysics scheme
+   real(r8) :: cwp      (pcols,pver)   ! in-cloud cloud (total) water path (kg/m2)
+   real(r8) :: gwp      (pcols,pver)   ! grid-box cloud (total) water path (kg/m2)
+   real(r8) :: tgicewp  (pcols)        ! Vertically integrated ice water path (kg/m2
+   real(r8) :: tgliqwp  (pcols)        ! Vertically integrated liquid water path (kg/m2)
+   real(r8) :: cicewp   (pcols,pver)   ! in-cloud cloud ice water path (kg/m2)
+   real(r8) :: cliqwp   (pcols,pver)   ! in-cloud cloud liquid water path (kg/m2)
+   real(r8) :: tgwp     (pcols)        ! Vertically integrated (total) cloud water path  (kg/m2)
+   real(r8) :: ftem     (pcols,pver)   ! Temporary workspace for outfld variables
    real(r8) :: ideep_crm(pcols)
 
    ! physics buffer fields to compute tendencies for stratiform package
@@ -622,13 +614,13 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer, dimension(:,:) :: cld        ! cloud fraction
 
 #if (defined m2005 && defined MODAL_AERO)
-   real(r8) na(pcols)                           ! aerosol number concentration [/m3]
-   real(r8) va(pcols)                           ! aerosol voume concentration [m3/m3]
-   real(r8) hy(pcols)                           ! aerosol bulk hygroscopicity
-   integer  phase                               ! phase to determine whether it is interstitial, cloud-borne, or the sum. 
+   real(r8) :: na(pcols)  ! aerosol number concentration [/m3]
+   real(r8) :: va(pcols)  ! aerosol voume concentration [m3/m3]
+   real(r8) :: hy(pcols)  ! aerosol bulk hygroscopicity
+   integer  :: phase      ! phase to determine whether it is interstitial, cloud-borne, or the sum. 
 #endif
 
-   real(r8) cs(pcols, pver)                     ! air density  [kg/m3]
+   real(r8) :: cs(pcols, pver)  ! air density  [kg/m3]
 
 #ifdef ECPP
    real(r8) :: qicecen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)        ! cloud ice (kg/kg)
@@ -644,75 +636,49 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) :: wdownthresh_bnd(pcols, pverp)
 #endif
 
-! CRM column radiation stuff:
-   real(r8) wtricesink(pcols) ! sink of water vapor + cloud water + cloud ice
-   real(r8) icesink(pcols)    ! sink of
-   real(r8) tau00(pcols)      ! surface stress
-   real(r8) wnd  (pcols)      ! surface wnd
-   real(r8) bflx (pcols)      ! surface buoyancy flux (Km/s)
-   real(r8), pointer, dimension(:,:)     :: qrs        ! shortwave radiative heating rate
-   real(r8), pointer, dimension(:,:)     :: qrl        ! shortwave radiative heating rate
-   real(r8), pointer, dimension(:,:)     :: tempPtr
+   ! CRM column radiation stuff:
+   real(r8), pointer, dimension(:,:) :: qrs        ! shortwave radiative heating rate
+   real(r8), pointer, dimension(:,:) :: qrl        ! shortwave radiative heating rate
 
-   integer                           :: pblh_idx
-   real(r8), pointer, dimension(:)   :: pblh
-   real(r8), pointer, dimension(:,:) :: qqcw
+   ! TODO: this should not be a pointer, it is being used as an alloctable (and
+   ! is only used in one place, so should get a more descriptive variable name)
+   real(r8), pointer, dimension(:,:)     :: tempPtr
 
 #ifdef ECPP
    ! at layer center
-   real(r8),allocatable :: acen(:,:,:,:,:)         ! cloud fraction for each sub-sub class for full time period
-   real(r8),allocatable :: acen_tf(:,:,:,:,:)      ! cloud fraction for end-portion of time period
-   real(r8),allocatable :: rhcen(:,:,:,:,:)        ! relative humidity (0-1)
-   real(r8),allocatable :: qcloudcen(:,:,:,:,:)    ! cloud water (kg/kg)
-   real(r8),allocatable :: qlsinkcen(:,:,:,:,:)    ! cloud water loss rate from precipitation (/s??)
-   real(r8),allocatable :: precrcen(:,:,:,:,:)     ! liquid (rain) precipitation rate (kg/m2/s)
-   real(r8),allocatable :: precsolidcen(:,:,:,:,:) ! solid (rain) precipitation rate (kg/m2/s)
-   real(r8),allocatable :: wwqui_cen(:,:)          ! vertical velocity variance in quiescent class (m2/s2)
-   real(r8),allocatable :: wwqui_cloudy_cen(:,:)   ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
+   real(r8), allocatable :: acen(:,:,:,:,:)         ! cloud fraction for each sub-sub class for full time period
+   real(r8), allocatable :: acen_tf(:,:,:,:,:)      ! cloud fraction for end-portion of time period
+   real(r8), allocatable :: rhcen(:,:,:,:,:)        ! relative humidity (0-1)
+   real(r8), allocatable :: qcloudcen(:,:,:,:,:)    ! cloud water (kg/kg)
+   real(r8), allocatable :: qlsinkcen(:,:,:,:,:)    ! cloud water loss rate from precipitation (/s??)
+   real(r8), allocatable :: precrcen(:,:,:,:,:)     ! liquid (rain) precipitation rate (kg/m2/s)
+   real(r8), allocatable :: precsolidcen(:,:,:,:,:) ! solid (rain) precipitation rate (kg/m2/s)
+   real(r8), allocatable :: wwqui_cen(:,:)          ! vertical velocity variance in quiescent class (m2/s2)
+   real(r8), allocatable :: wwqui_cloudy_cen(:,:)   ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
    ! at layer boundary
-   real(r8),allocatable :: abnd(:,:,:,:,:)         ! cloud fraction for each sub-sub class for full time period
-   real(r8),allocatable :: abnd_tf(:,:,:,:,:)      ! cloud fraction for end-portion of time period
-   real(r8),allocatable :: massflxbnd(:,:,:,:,:)   ! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
-   real(r8),allocatable :: wwqui_bnd(:,:)          ! vertical velocity variance in quiescent class (m2/s2)
-   real(r8),allocatable :: wwqui_cloudy_bnd(:,:)   ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
+   real(r8), allocatable :: abnd(:,:,:,:,:)         ! cloud fraction for each sub-sub class for full time period
+   real(r8), allocatable :: abnd_tf(:,:,:,:,:)      ! cloud fraction for end-portion of time period
+   real(r8), allocatable :: massflxbnd(:,:,:,:,:)   ! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
+   real(r8), allocatable :: wwqui_bnd(:,:)          ! vertical velocity variance in quiescent class (m2/s2)
+   real(r8), allocatable :: wwqui_cloudy_bnd(:,:)   ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
 #endif
 
-#ifdef MODAL_AERO
-   real(r8)             ::  qaerwat_rad(pcols, crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode)  ! aerosol water
-   real(r8)             :: dgnumwet_rad(pcols, crm_nx_rad, crm_ny_rad, crm_nz, ntot_amode)   ! wet mode dimaeter
-#endif
+   real(r8), dimension(pcols) :: qli_hydro_before    ! column-integraetd rain + snow + graupel 
+   real(r8), dimension(pcols) ::  qi_hydro_before    ! column-integrated snow water + graupel water
+   real(r8), dimension(pcols) :: qli_hydro_after     ! column-integraetd rain + snow + graupel 
+   real(r8), dimension(pcols) ::  qi_hydro_after     ! column-integrated snow water + graupel water
+   real(r8) :: sfactor                               ! used to determine precip type for sam1mom
 
-   ! Surface fluxes 
-   real(r8) ::  dtstep_pp        ! time step for the ECPP (seconds)
-   integer  ::  necpp            ! the number of GCM time step in which ECPP is called once.
+   real(r8) :: timing_factor(pcols) ! factor for crm cpu-usage: 1 means no subcycling
 
-   real(r8) , dimension(pcols) :: qli_hydro_before    ! column-integraetd rain + snow + graupel 
-   real(r8) , dimension(pcols) ::  qi_hydro_before    ! column-integrated snow water + graupel water
-   real(r8) , dimension(pcols) :: qli_hydro_after     ! column-integraetd rain + snow + graupel 
-   real(r8) , dimension(pcols) ::  qi_hydro_after     ! column-integrated snow water + graupel water
-   real(r8) sfactor                                   ! used to determine precip type for sam1mom
+   real(r8) :: qtotcrm(pcols, 20)   ! the toal water calculated in crm.F90
 
-   real(r8) zero(pcols)          ! zero
-   real(r8) timing_factor(pcols) ! factor for crm cpu-usage: 1 means no subcycling
-
-   real(r8) qtotcrm(pcols, 20)   ! the toal water calculated in crm.F90
-
-   integer nlon(pcols)
-   integer nlat(pcols)
-
-   integer ii, jj, mm
-   integer iii,lll
-   integer ixcldliq, ixcldice, ixnumliq, ixnumice
-   integer i, k, m
-   integer ifld
+   integer :: ii, jj
+   integer :: ixcldliq, ixcldice, ixnumliq, ixnumice
+   integer :: i, k, m
+   integer :: ifld
    logical :: use_ECPP, use_SPCAM
    character(len=16) :: SPCAM_microp_scheme
-
-   real(r8) tvwle (pcols,pver)
-   real(r8) buoy  (pcols,pver)
-   real(r8) buoysd(pcols,pver)
-   real(r8) msef  (pcols,pver)
-   real(r8) qvw   (pcols,pver)
 
    logical :: ls, lu, lv, lq(pcnst), fromcrm
 
@@ -725,6 +691,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(crm_rknd), parameter        :: pix2 = 6.28318530718
    real(crm_rknd), dimension(pcols) :: crm_angle
 
+   ! CRM types
    type(crm_state_type) :: crm_state
    type(crm_rad_type) :: crm_rad
    type(crm_input_type) :: crm_input
@@ -741,8 +708,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    crm_rotation_std    = 20. * pi/180.                 ! std deviation of normal distribution for CRM rotation [radians]
    crm_rotation_offset = 90. * pi/180. * ztodt/86400.  ! This means that a CRM should rotate 90 deg / day on average
 #endif
-
-   zero = 0.0_r8
 
 #if defined( SP_CRM_SPLIT ) 
    crm_run_time = ztodt * 0.5
@@ -1003,12 +968,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%q(:,:,ixcldice) = 0.
       ptend%s(:,:) = 0.
 
-      tvwle(:,:) = 0.    ! MDB 8/2013
-      buoy(:,:) = 0.     ! MDB 8/2013
-      buoysd(:,:) = 0.   ! MDB 8/2013
-      msef(:,:) = 0.     ! MDB 8/2013
-      qvw(:,:) = 0.      ! MDB 8/2013
-
 #ifdef ECPP
       if (use_ECPP) then
          abnd=0.0
@@ -1069,9 +1028,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       cs(1:ncol, 1:pver) = state%pmid(1:ncol, 1:pver)/(287.15*state%t(1:ncol, 1:pver))
 #endif
 
-      call get_lat_all_p(lchnk, ncol, nlat)
-      call get_lon_all_p(lchnk, ncol, nlon)
-      
       !----------------------------------------------------------------------
       ! calculate total water before calling crm - used for check_energy_chng() after CRM
       !----------------------------------------------------------------------
