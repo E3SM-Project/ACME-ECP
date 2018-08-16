@@ -876,6 +876,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !------------------------------------------------------------
 
    ! Initialize CRM state
+   ! TODO: should these be allocated with size pcols to handle calls to outfld,
+   ! which seem to expect input arrays to have size pcols rather than ncol? We
+   ! only ever use ncol many elements of these arrays, so this should not be a
+   ! problem other than using a little more memory than we need.
    call crm_state%initialize(ncol)
    call crm_input%initialize(ncol, pver)
    call crm_output%initialize(ncol, pver)
@@ -1211,9 +1215,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CRM_T   ',crm_state%temperature, pcols, lchnk)
 
       if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         call outfld('CRM_QV  ',(crm_state%qt(:,:,:,:)-crm_output%qcl-crm_output%qci),pcols   ,lchnk   )
+         call outfld('CRM_QV  ',(crm_state%qt(:ncol,:,:,:)-crm_output%qcl-crm_output%qci),pcols   ,lchnk   )
       else if (SPCAM_microp_scheme .eq. 'm2005') then 
-         call outfld('CRM_QV  ',crm_state%qt(:,:,:,:)-crm_output%qcl, pcols   ,lchnk   )
+         call outfld('CRM_QV  ',crm_state%qt(:ncol,:,:,:)-crm_output%qcl, pcols   ,lchnk   )
       endif
       call outfld('CRM_QC  ',crm_output%qcl   ,pcols   ,lchnk   )
       call outfld('CRM_QI  ',crm_output%qci   ,pcols   ,lchnk   )
