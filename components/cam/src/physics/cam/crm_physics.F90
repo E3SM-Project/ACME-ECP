@@ -1223,8 +1223,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       crm_output%precsl(:ncol) = 0
 
       !!! these precip pointer variables are used by coupler
-      prec_dp  = crm_output%precc
-      snow_dp  = crm_output%precsc
+      !!! TODO: do we need to zero out the elements beyond ncol here?
+      prec_dp(1:ncol) = crm_output%precc(1:ncol)
+      snow_dp(1:ncol) = crm_output%precsc(1:ncol)
 
       !!! These are needed elsewhere in the model when SP_PHYS_BYPASS is used
       ! ifld = pbuf_get_index('AST'   )
