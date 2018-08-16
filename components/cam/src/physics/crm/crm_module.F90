@@ -138,7 +138,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     type(crm_state_type), intent(inout) :: crm_state
     type(crm_rad_type),   intent(inout) :: crm_rad
     type(crm_input_type), intent(in   ) :: crm_input
-    type(crm_input_type), intent(inout) :: crm_input
+    type(crm_output_type), intent(inout) :: crm_output
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
     real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
@@ -633,22 +633,22 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     crm_output%cldtop(icrm,:) = 0.
     crm_output%gicewp(icrm,:) = 0
     crm_output%gliqwp(icrm,:) = 0
-    crm_output%mc    (icrm,:) = 0.
+    crm_output%mctot (icrm,:) = 0.
     crm_output%mcup  (icrm,:) = 0.
     crm_output%mcdn  (icrm,:) = 0.
     crm_output%mcuup (icrm,:) = 0.
     crm_output%mcudn (icrm,:) = 0.
-    crm_output%qc(icrm,:) = 0.
-    crm_output%qi(icrm,:) = 0.
-    crm_output%qs(icrm,:) = 0.
-    crm_output%qg(icrm,:) = 0.
-    crm_output%qr(icrm,:) = 0.
+    crm_output%qc_mean(icrm,:) = 0.
+    crm_output%qi_mean(icrm,:) = 0.
+    crm_output%qs_mean(icrm,:) = 0.
+    crm_output%qg_mean(icrm,:) = 0.
+    crm_output%qr_mean(icrm,:) = 0.
 #ifdef m2005
-    crm_output%nc(icrm,:) = 0.
-    crm_output%ni(icrm,:) = 0.
-    crm_output%ns(icrm,:) = 0.
-    crm_output%ng(icrm,:) = 0.
-    crm_output%nr(icrm,:) = 0.
+    crm_output%nc_mean(icrm,:) = 0.
+    crm_output%ni_mean(icrm,:) = 0.
+    crm_output%ns_mean(icrm,:) = 0.
+    crm_output%ng_mean(icrm,:) = 0.
+    crm_output%nr_mean(icrm,:) = 0.
     ! hm 8/31/11 add new variables
     crm_output%aut_a (icrm,:) = 0.
     crm_output%acc_a (icrm,:) = 0.
@@ -699,7 +699,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     crm_output%qp_fall   (icrm,:) = 0.
     crm_output%qp_evp    (icrm,:) = 0.
     crm_output%qp_src    (icrm,:) = 0.
-    crm_output%qcrm_output%t_ls     (icrm,:) = 0.
+    crm_output%qt_ls     (icrm,:) = 0.
     crm_output%t_ls      (icrm,:) = 0.
 
     uwle     = 0.
@@ -1474,9 +1474,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     do k=1,nzm
      do j=1,ny
       do i=1,nx
-        crm_output%qc (icrm,i,j,k) = qcl(i,j,k)
-        crm_output%qi (icrm,i,j,k) = qci(i,j,k)
-        crm_output%qpc(icrm,i,j,k) = qpl(i,j,k)
+        crm_output%qcl(icrm,i,j,k) = qcl(i,j,k)
+        crm_output%qci(icrm,i,j,k) = qci(i,j,k)
+        crm_output%qpl(icrm,i,j,k) = qpl(i,j,k)
         crm_output%qpi(icrm,i,j,k) = qpi(i,j,k)
 #ifdef m2005
         crm_output%wvar(icrm,i,j,k) = wvar (i,j,k)
@@ -1504,24 +1504,24 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          crm_output%qc(icrm,l) = crm_output%qc(icrm,l) + qcl(i,j,k)
-          crm_output%qi(icrm,l) = crm_output%qi(icrm,l) + qci(i,j,k)
-          crm_output%qr(icrm,l) = crm_output%qr(icrm,l) + qpl(i,j,k)
+          crm_output%qc_mean(icrm,l) = crm_output%qc_mean(icrm,l) + qcl(i,j,k)
+          crm_output%qi_mean(icrm,l) = crm_output%qi_mean(icrm,l) + qci(i,j,k)
+          crm_output%qr_mean(icrm,l) = crm_output%qr_mean(icrm,l) + qpl(i,j,k)
 #ifdef sam1mom
           omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tgrmin)*a_gr))
-          crm_output%qg(icrm,l) = crm_output%qg(icrm,l) + qpi(i,j,k)*omg
-          crm_output%qs(icrm,l) = crm_output%qs(icrm,l) + qpi(i,j,k)*(1.-omg)
+          crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(i,j,k)*omg
+          crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + qpi(i,j,k)*(1.-omg)
 #else
-          !crm_output%qg(icrm,l) = crm_output%qg(icrm,l) + qpi(i,j,k)
-          !crm_output%qs(icrm,l) = crm_output%qs(icrm,l) + 0.     ! temporerary solution
-          crm_output%qg(icrm,l) = crm_output%qg(icrm,l) + micro_field(i,j,k,iqg)
-          crm_output%qs(icrm,l) = crm_output%qs(icrm,l) + micro_field(i,j,k,iqs)
+          !crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(i,j,k)
+          !crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + 0.     ! temporerary solution
+          crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + micro_field(i,j,k,iqg)
+          crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + micro_field(i,j,k,iqs)
 
-          crm_output%nc(icrm,l) = crm_output%nc(icrm,l) + micro_field(i,j,k,incl)
-          crm_output%ni(icrm,l) = crm_output%ni(icrm,l) + micro_field(i,j,k,inci)
-          crm_output%nr(icrm,l) = crm_output%nr(icrm,l) + micro_field(i,j,k,inr)
-          crm_output%ng(icrm,l) = crm_output%ng(icrm,l) + micro_field(i,j,k,ing)
-          crm_output%ns(icrm,l) = crm_output%ns(icrm,l) + micro_field(i,j,k,ins)
+          crm_output%nc_mean(icrm,l) = crm_output%nc_mean(icrm,l) + micro_field(i,j,k,incl)
+          crm_output%ni_mean(icrm,l) = crm_output%ni_mean(icrm,l) + micro_field(i,j,k,inci)
+          crm_output%nr_mean(icrm,l) = crm_output%nr_mean(icrm,l) + micro_field(i,j,k,inr)
+          crm_output%ng_mean(icrm,l) = crm_output%ng_mean(icrm,l) + micro_field(i,j,k,ing)
+          crm_output%ns_mean(icrm,l) = crm_output%ns_mean(icrm,l) + micro_field(i,j,k,ins)
 #endif /* sam1mom */
         enddo
       enddo
@@ -1535,19 +1535,19 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     crm_output%mcdn  (icrm,:) = crm_output%mcdn (icrm,:)                         * factor_xyt
     crm_output%mcuup (icrm,:) = crm_output%mcuup(icrm,:)                         * factor_xyt
     crm_output%mcudn (icrm,:) = crm_output%mcudn(icrm,:)                         * factor_xyt
-    crm_output%mc    (icrm,:) = crm_output%mcup(icrm,:) + crm_output%mcdn(icrm,:) + crm_output%mcuup(icrm,:) + crm_output%mcudn(icrm,:)
+    crm_output%mctot (icrm,:) = crm_output%mcup(icrm,:) + crm_output%mcdn(icrm,:) + crm_output%mcuup(icrm,:) + crm_output%mcudn(icrm,:)
 
-    crm_output%qc(icrm,:) = crm_output%qc(icrm,:) * factor_xy
-    crm_output%qi(icrm,:) = crm_output%qi(icrm,:) * factor_xy
-    crm_output%qs(icrm,:) = crm_output%qs(icrm,:) * factor_xy
-    crm_output%qg(icrm,:) = crm_output%qg(icrm,:) * factor_xy
-    crm_output%qr(icrm,:) = crm_output%qr(icrm,:) * factor_xy
+    crm_output%qc_mean(icrm,:) = crm_output%qc_mean(icrm,:) * factor_xy
+    crm_output%qi_mean(icrm,:) = crm_output%qi_mean(icrm,:) * factor_xy
+    crm_output%qs_mean(icrm,:) = crm_output%qs_mean(icrm,:) * factor_xy
+    crm_output%qg_mean(icrm,:) = crm_output%qg_mean(icrm,:) * factor_xy
+    crm_output%qr_mean(icrm,:) = crm_output%qr_mean(icrm,:) * factor_xy
 #ifdef m2005
-    crm_output%nc(icrm,:) = crm_output%nc(icrm,:) * factor_xy
-    crm_output%ni(icrm,:) = crm_output%ni(icrm,:) * factor_xy
-    crm_output%ns(icrm,:) = crm_output%ns(icrm,:) * factor_xy
-    crm_output%ng(icrm,:) = crm_output%ng(icrm,:) * factor_xy
-    crm_output%nr(icrm,:) = crm_output%nr(icrm,:) * factor_xy
+    crm_output%nc_mean(icrm,:) = crm_output%nc_mean(icrm,:) * factor_xy
+    crm_output%ni_mean(icrm,:) = crm_output%ni_mean(icrm,:) * factor_xy
+    crm_output%ns_mean(icrm,:) = crm_output%ns_mean(icrm,:) * factor_xy
+    crm_output%ng_mean(icrm,:) = crm_output%ng_mean(icrm,:) * factor_xy
+    crm_output%nr_mean(icrm,:) = crm_output%nr_mean(icrm,:) * factor_xy
 
     ! hm 8/31/11 new output, gcm-grid- and time-step avg
     ! add loop over i,j do get horizontal avg, and flip vertical array
@@ -1722,7 +1722,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       crm_output%qp_evp    (icrm,l) = qpevp(k)
       crm_output%qp_src    (icrm,l) = qpsrc(k)
 
-      crm_output%qcrm_output%t_ls     (icrm,l) = qtend(k)
+      crm_output%qt_ls     (icrm,l) = qtend(k)
       crm_output%t_ls      (icrm,l) = ttend(k)
     enddo
 
