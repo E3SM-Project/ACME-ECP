@@ -56,7 +56,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 wupthresh_bnd, wdownthresh_bnd,   &
                 wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
 #endif
-                qtot)
+                )
         !---------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
@@ -175,9 +175,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: wwqui_bnd           (ncrms,plev+1)                                 ! vertical velocity variance in quiescent class (m2/s2)
     real(r8), intent(  out) :: wwqui_cloudy_bnd    (ncrms,plev+1)                                 ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
 #endif /* ECPP */
-    real(r8), intent(  out) :: qtot                (ncrms,20)
 
     !  Local space:
+    real(r8) :: qtot(ncrms,20)  ! Total water for water conservation check
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt       ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                      ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation

@@ -668,10 +668,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), dimension(pcols) ::  qi_hydro_after     ! column-integrated snow water + graupel water
    real(r8) :: sfactor                               ! used to determine precip type for sam1mom
 
-   ! TODO: this is not used anywhere, and should be removed from both this
-   ! routine and from crm() in crm_module.
-   real(r8) :: qtotcrm(pcols, 20)   ! the toal water calculated in crm.F90
-
    integer :: ii, jj
    integer :: ixcldliq, ixcldice, ixnumliq, ixnumice
    integer :: i, k, m
@@ -1148,7 +1144,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:),                                                                                               &
                wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                     &
 #endif /* ECPP */
-               qtotcrm(:ncol, :) )
+               )
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
