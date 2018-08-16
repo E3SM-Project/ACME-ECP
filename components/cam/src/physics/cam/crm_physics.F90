@@ -877,7 +877,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! which seem to expect input arrays to have size pcols rather than ncol? We
    ! only ever use ncol many elements of these arrays, so this should not be a
    ! problem other than using a little more memory than we need.
-   call crm_state%initialize(pcols)
+   call crm_state%initialize()
    call crm_input%initialize(pcols, pver)
    call crm_output%initialize(pcols, pver)
 
