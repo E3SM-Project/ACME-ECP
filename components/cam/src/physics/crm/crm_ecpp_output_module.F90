@@ -1,14 +1,14 @@
-module crm_state_module
+module crm_ecpp_output_module
    use params, only: crm_rknd
    implicit none
    private
 
 #if defined( ECPP )
 
-   public crm_ecpp_type
+   public crm_ecpp_output_type
 
    !------------------------------------------------------------------------------------------------
-   type crm_ecpp_type
+   type crm_ecpp_output_type
       ! Purpose: Derived type to encapsulate the CRM output relevant for ECPP
       real(crm_rknd), allocatable :: abnd         (:,:,:,:,:)  ! cloud fraction for each sub-sub class for full time period
       real(crm_rknd), allocatable :: abnd_tf      (:,:,:,:,:)  ! cloud fraction for end-portion of time period
@@ -34,7 +34,7 @@ module crm_state_module
    contains
       procedure, public :: initialize=>crm_ecpp_initialize
       procedure, public :: finalize=>crm_ecpp_finalize
-   end type crm_ecpp_type
+   end type crm_ecpp_output_type
    !------------------------------------------------------------------------------------------------
 
 contains
@@ -42,7 +42,7 @@ contains
    !------------------------------------------------------------------------------------------------
    subroutine crm_ecpp_initialize(this, ncol, nlev)
       use ecppvars, only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
-      class(crm_ecpp_type), intent(inout) :: this
+      class(crm_ecpp_output_type), intent(inout) :: this
       integer, intent(in) :: ncol, plev
       if (.not.allocated(this% )) allocate(acen            (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
       if (.not.allocated(this% )) allocate(acen_tf         (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
@@ -68,7 +68,7 @@ contains
    end subroutine crm_ecpp_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_ecpp_finalize(this)
-      class(crm_ecpp_type), intent(inout) :: this
+      class(crm_ecpp_output_type), intent(inout) :: this
       deallocate(this%acen            )
       deallocate(this%acen_tf         )
       deallocate(this%rhcen           )
@@ -95,4 +95,4 @@ contains
 
 #endif /* ECPP */
 
-end module crm_state_modu
+end module crm_ecpp_output_module

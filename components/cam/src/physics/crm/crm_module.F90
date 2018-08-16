@@ -23,10 +23,11 @@ module crm_module
   use ice_fall_mod
   use coriolis_mod
 
-  use crm_state_module, only: crm_state_type
-  use crm_rad_module, only: crm_rad_type
-  use crm_input_module, only: crm_input_type
-  use crm_output_module, only: crm_output_type
+  use crm_state_module,       only: crm_state_type
+  use crm_rad_module,         only: crm_rad_type
+  use crm_input_module,       only: crm_input_type
+  use crm_output_module,      only: crm_output_type
+  use crm_ecpp_output_module, only: crm_ecpp_output_type
 
 !---------------------------------------------------------------
 !  Super-parameterization's main driver
@@ -36,28 +37,25 @@ use setparm_mod, only : setparm
 
 contains
 
-subroutine crm(lchnk, icol, ncrms, phys_stage, &
+subroutine crm(lchnk, icol, ncrms, phys_stage &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
-                latitude0_in, longitude0_in, &
+                ,latitude0_in, longitude0_in &
 #endif
-                dt_gl, plev, &
-                crm_state, crm_rad, crm_input, crm_output, &
+                ,dt_gl, plev &
+                ,crm_state, crm_rad, crm_input, crm_output &
 #ifdef CLUBB_CRM
-                clubb_buffer,                 &
-                crm_cld,                      &
-                clubb_tk, clubb_tkh,          &
-                relvar, accre_enhan, qclvar,  &
+                ,clubb_buffer                 &
+                ,crm_cld                      &
+                ,clubb_tk, clubb_tkh          &
+                ,relvar, accre_enhan, qclvar  &
 #endif
-#ifdef ECPP
-                abnd, abnd_tf, massflxbnd, acen, acen_tf,           &
-                rhcen, qcloudcen, qicecen, qlsinkcen, precrcen, precsolidcen,  &
-                qlsink_bfcen, qlsink_avgcen, praincen,     &
-                wupthresh_bnd, wdownthresh_bnd,   &
-                wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
+#if defined( ECPP )
+                ,crm_ecpp &
 #endif
                 )
-        !---------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
     !MRN: phys_grid is a rabbit hole of dependencies I'd rather hijack and avoid.
@@ -124,6 +122,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     use time_manager          , only: get_nstep
 
     implicit none
+
+    !-----------------------------------------------------------------------------------------------
+    ! Interface variable declarations
+    !-----------------------------------------------------------------------------------------------
+
     integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
     integer , intent(in   ) :: ncrms                            ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
     integer , intent(in   ) :: phys_stage                       ! physics run stage indicator (1 or 2 = bc or ac)
@@ -134,10 +137,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
-    type(crm_state_type), intent(inout) :: crm_state
-    type(crm_rad_type),   intent(inout) :: crm_rad
-    type(crm_input_type), intent(in   ) :: crm_input
+    type(crm_state_type),  intent(inout) :: crm_state
+    type(crm_rad_type),    intent(inout) :: crm_rad
+    type(crm_input_type),  intent(in   ) :: crm_input
     type(crm_output_type), intent(inout) :: crm_output
+#if defined( ECPP )
+   type(crm_ecpp_type),    intent(inout) :: crm_ecpp 
+#endif
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
     real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
@@ -147,37 +153,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
-    real(r8)                :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
-    real(r8)                :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
-    real(r8)                :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
-#ifdef ECPP
-    real(r8), intent(  out) :: acen                (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for each sub-sub class for full time period
-    real(r8), intent(  out) :: acen_tf             (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for end-portion of time period
-    real(r8), intent(  out) :: rhcen               (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! relative humidity (0-1)
-    real(r8), intent(  out) :: qcloudcen           (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water (kg/kg)
-    real(r8), intent(  out) :: qicecen             (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud ice (kg/kg)
-    real(r8), intent(  out) :: qlsinkcen           (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (/s??)
-    real(r8), intent(  out) :: precrcen            (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! liquid (rain) precipitation rate (kg/m2/s)
-    real(r8), intent(  out) :: precsolidcen        (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! solid (rain) precipitation rate (kg/m2/s)
-    real(r8), intent(  out) :: qlsink_bfcen        (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated
-                                                                                                   ! cloud water before precipitatinog (/s)
-    real(r8), intent(  out) :: qlsink_avgcen       (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated
-                                                                                                   ! from praincen and qlcoudcen averaged over
-                                                                                                   ! ntavg1_ss time step (/s??)
-    real(r8), intent(  out) :: praincen            (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation (kg/kg/s)
-    real(r8), intent(  out) :: wwqui_cen           (ncrms,plev)                                   ! vertical velocity variance in quiescent class (m2/s2)
-    real(r8), intent(  out) :: wwqui_cloudy_cen    (ncrms,plev)                                   ! vertical velocity variance in quiescent, and cloudy class (m2/s2) at layer boundary
-    real(r8), intent(  out) :: abnd                (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! cloud fraction for each sub-sub class for full time period
-    real(r8), intent(  out) :: abnd_tf             (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! cloud fraction for end-portion of time period
-    real(r8), intent(  out) :: massflxbnd          (ncrms,plev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
-    real(r8), intent(  out) :: wupthresh_bnd       (ncrms,plev+1)                                 ! vertical velocity threshold for updraft (m/s)
-    real(r8), intent(  out) :: wdownthresh_bnd     (ncrms,plev+1)                                 ! vertical velocity threshold for downdraft (m/s)
-    real(r8), intent(  out) :: wwqui_bnd           (ncrms,plev+1)                                 ! vertical velocity variance in quiescent class (m2/s2)
-    real(r8), intent(  out) :: wwqui_cloudy_bnd    (ncrms,plev+1)                                 ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
-#endif /* ECPP */
 
-    !  Local space:
-    real(r8) :: qtot(ncrms,20)  ! Total water for water conservation check
+    !-----------------------------------------------------------------------------------------------
+    ! Local variable declarations
+    !-----------------------------------------------------------------------------------------------
+    
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt       ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                      ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation
@@ -192,16 +172,21 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
     real(crm_rknd)  :: colprec,colprecs
     real(r8)        :: zs                ! surface elevation
+    real(r8)        :: qtot(ncrms,20)    ! Total water for water conservation check
+
+    !!! These should all be inputs
     integer         :: igstep            ! GCM time steps
     integer         :: iseed             ! seed for random perturbation
     real(crm_rknd)  :: ntotal_step
     integer         :: myrank, ierr
-    ! whannah - variables for new radiation group method
+    
+    !!! variables for radiation grouping method
     real(crm_rknd) :: crm_nx_rad_fac
     real(crm_rknd) :: crm_ny_rad_fac
     integer        :: i_rad
     integer        :: j_rad
-    !Arrays
+    
+    !!! Arrays
     real(crm_rknd), allocatable :: dummy(:)
     real(crm_rknd), allocatable :: t00(:)
     real(crm_rknd), allocatable :: fluxbtmp(:,:)
@@ -238,6 +223,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(kind=core_rknd), allocatable :: rtm_column (:) ! Total water (vapor + liquid)     [kg/kg]
 #endif /* CLUBB_CRM */
     real(crm_rknd) :: zeroval
+
+    real(r8) :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
+    real(r8) :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
+    real(r8) :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
+
+    !-----------------------------------------------------------------------------------------------
+    !-----------------------------------------------------------------------------------------------
 
     allocate( dummy(nz) )
     allocate( t00(nz) )
@@ -1723,58 +1715,59 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     enddo
 
 #ifdef ECPP
-    abnd         (icrm,:,:,:,:)=0.0
-    abnd_tf      (icrm,:,:,:,:)=0.0
-    massflxbnd   (icrm,:,:,:,:)=0.0
-    acen         (icrm,:,:,:,:)=0.0
-    acen_tf      (icrm,:,:,:,:)=0.0
-    rhcen        (icrm,:,:,:,:)=0.0
-    qcloudcen    (icrm,:,:,:,:)=0.0
-    qicecen      (icrm,:,:,:,:)=0.0
-    qlsinkcen    (icrm,:,:,:,:)=0.0
-    precrcen     (icrm,:,:,:,:)=0.0
-    precsolidcen (icrm,:,:,:,:)=0.0
-    qlsink_bfcen (icrm,:,:,:,:)=0.0
-    qlsink_avgcen(icrm,:,:,:,:)=0.0
-    praincen     (icrm,:,:,:,:)=0.0
+    crm_ecpp%abnd         (icrm,:,:,:,:)=0.0
+    crm_ecpp%abnd_tf      (icrm,:,:,:,:)=0.0
+    crm_ecpp%massflxbnd   (icrm,:,:,:,:)=0.0
+    crm_ecpp%acen         (icrm,:,:,:,:)=0.0
+    crm_ecpp%acen_tf      (icrm,:,:,:,:)=0.0
+    crm_ecpp%rhcen        (icrm,:,:,:,:)=0.0
+    crm_ecpp%qcloudcen    (icrm,:,:,:,:)=0.0
+    crm_ecpp%qicecen      (icrm,:,:,:,:)=0.0
+    crm_ecpp%qlsinkcen    (icrm,:,:,:,:)=0.0
+    crm_ecpp%precrcen     (icrm,:,:,:,:)=0.0
+    crm_ecpp%precsolidcen (icrm,:,:,:,:)=0.0
+    crm_ecpp%qlsink_bfcen (icrm,:,:,:,:)=0.0
+    crm_ecpp%qlsink_avgcen(icrm,:,:,:,:)=0.0
+    crm_ecpp%praincen     (icrm,:,:,:,:)=0.0
 
-    wupthresh_bnd   (icrm,:)=0.0
-    wdownthresh_bnd (icrm,:)=0.0
-    wwqui_cen       (icrm,:)=0.0
-    wwqui_bnd       (icrm,:)=0.0
-    wwqui_cloudy_cen(icrm,:)=0.0
-    wwqui_cloudy_bnd(icrm,:)=0.0
+    crm_ecpp%wupthresh_bnd   (icrm,:)=0.0
+    crm_ecpp%wdownthresh_bnd (icrm,:)=0.0
+    crm_ecpp%wwqui_cen       (icrm,:)=0.0
+    crm_ecpp%wwqui_bnd       (icrm,:)=0.0
+    crm_ecpp%wwqui_cloudy_cen(icrm,:)=0.0
+    crm_ecpp%wwqui_cloudy_bnd(icrm,:)=0.0
 
     ! default is clear, non-precipitating, and quiescent class
-    abnd   (icrm,:,1,1,1)=1.0
-    abnd_tf(icrm,:,1,1,1)=1.0
-    acen   (icrm,:,1,1,1)=1.0
-    acen_tf(icrm,:,1,1,1)=1.0
+    crm_ecpp%abnd   (icrm,:,1,1,1)=1.0
+    crm_ecpp%abnd_tf(icrm,:,1,1,1)=1.0
+    crm_ecpp%acen   (icrm,:,1,1,1)=1.0
+    crm_ecpp%acen_tf(icrm,:,1,1,1)=1.0
+
     do k=1, nzm
       l=plev-k+1
-      acen            (icrm,l,:,:,:) = area_cen_sum        (k,:,1:ncls_ecpp_in,:)
-      acen_tf         (icrm,l,:,:,:) = area_cen_final      (k,:,1:ncls_ecpp_in,:)
-      rhcen           (icrm,l,:,:,:) = rh_cen_sum          (k,:,1:ncls_ecpp_in,:)
-      qcloudcen       (icrm,l,:,:,:) = qcloud_cen_sum      (k,:,1:ncls_ecpp_in,:)
-      qicecen         (icrm,l,:,:,:) = qice_cen_sum        (k,:,1:ncls_ecpp_in,:)
-      qlsinkcen       (icrm,l,:,:,:) = qlsink_cen_sum      (k,:,1:ncls_ecpp_in,:)
-      precrcen        (icrm,l,:,:,:) = precr_cen_sum       (k,:,1:ncls_ecpp_in,:)
-      precsolidcen    (icrm,l,:,:,:) = precsolid_cen_sum   (k,:,1:ncls_ecpp_in,:)
-      wwqui_cen       (icrm,l)       = wwqui_cen_sum       (k)
-      wwqui_cloudy_cen(icrm,l)       = wwqui_cloudy_cen_sum(k)
-      qlsink_bfcen    (icrm,l,:,:,:) = qlsink_bf_cen_sum   (k,:,1:ncls_ecpp_in,:)
-      qlsink_avgcen   (icrm,l,:,:,:) = qlsink_avg_cen_sum  (k,:,1:ncls_ecpp_in,:)
-      praincen        (icrm,l,:,:,:) = prain_cen_sum       (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%acen            (icrm,l,:,:,:) = area_cen_sum        (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%acen_tf         (icrm,l,:,:,:) = area_cen_final      (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%rhcen           (icrm,l,:,:,:) = rh_cen_sum          (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%qcloudcen       (icrm,l,:,:,:) = qcloud_cen_sum      (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%qicecen         (icrm,l,:,:,:) = qice_cen_sum        (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%qlsinkcen       (icrm,l,:,:,:) = qlsink_cen_sum      (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%precrcen        (icrm,l,:,:,:) = precr_cen_sum       (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%precsolidcen    (icrm,l,:,:,:) = precsolid_cen_sum   (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%wwqui_cen       (icrm,l)       = wwqui_cen_sum       (k)
+      crm_ecpp%wwqui_cloudy_cen(icrm,l)       = wwqui_cloudy_cen_sum(k)
+      crm_ecpp%qlsink_bfcen    (icrm,l,:,:,:) = qlsink_bf_cen_sum   (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%qlsink_avgcen   (icrm,l,:,:,:) = qlsink_avg_cen_sum  (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%praincen        (icrm,l,:,:,:) = prain_cen_sum       (k,:,1:ncls_ecpp_in,:)
     enddo
     do k=1, nzm+1
       l=plev+1-k+1
-      abnd            (icrm,l,:,:,:) = area_bnd_sum        (k,:,1:ncls_ecpp_in,:)
-      abnd_tf         (icrm,l,:,:,:) = area_bnd_final      (k,:,1:ncls_ecpp_in,:)
-      massflxbnd      (icrm,l,:,:,:) = mass_bnd_sum        (k,:,1:ncls_ecpp_in,:)
-      wupthresh_bnd   (icrm,l)       = wup_thresh          (k)
-      wdownthresh_bnd (icrm,l)       = wdown_thresh        (k)
-      wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k)
-      wwqui_cloudy_bnd(icrm,l)       = wwqui_cloudy_bnd_sum(k)
+      crm_ecpp%abnd            (icrm,l,:,:,:) = area_bnd_sum        (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%abnd_tf         (icrm,l,:,:,:) = area_bnd_final      (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%massflxbnd      (icrm,l,:,:,:) = mass_bnd_sum        (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp%wupthresh_bnd   (icrm,l)       = wup_thresh          (k)
+      crm_ecpp%wdownthresh_bnd (icrm,l)       = wdown_thresh        (k)
+      crm_ecpp%wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k)
+      crm_ecpp%wwqui_cloudy_bnd(icrm,l)       = wwqui_cloudy_bnd_sum(k)
     enddo
 #endif /* ECPP */
 
