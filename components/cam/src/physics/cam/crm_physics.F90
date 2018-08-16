@@ -936,7 +936,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       if (use_ECPP) then
          !!! initialize turbulence for ECPP calculations
          ifld = pbuf_get_index('TKE_CRM')
-         cs(:ncol, 1:pver) = state%pmid(:ncol, 1:pver)/(287.15*state%t(:ncol, 1:pver))
+         cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
          call pbuf_set_field(pbuf, ifld, 0.0_r8, start=(/1,1/), kount=(/pcols, pver/) )
 
          ifld = pbuf_get_index('TK_CRM')
@@ -963,7 +963,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       end do
 
 #if (defined m2005 && defined MODAL_AERO)
-      cs(1:ncol, 1:pver) = state%pmid(1:ncol, 1:pver)/(287.15*state%t(1:ncol, 1:pver))
+      cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
 #endif
 
       !----------------------------------------------------------------------
@@ -1357,7 +1357,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
           ! turbulence
           allocate(tempPtr(pcols,pver))
           ifld = pbuf_get_index('TKE_CRM')
-          cs(:ncol, 1:pver) = state%pmid(:ncol, 1:pver)/(287.15*state%t(:ncol, 1:pver))
+          cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
           tempPtr(:ncol, 1:pver) = crm_output%tkez(:ncol, 1:pver)/cs(:ncol, 1:pver)
           call pbuf_set_field(pbuf, ifld, tempPtr, start=(/1,1/), kount=(/pcols, pver/) )
           deallocate(tempPtr)
