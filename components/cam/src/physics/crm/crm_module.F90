@@ -1172,7 +1172,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
-                crm_output%cldtop(icrm,k) = crm_output%cldtop(icrm,k) + 1
+                crm_output%cldtop(icrm,l) = crm_output%cldtop(icrm,l) + 1
                 flag_top(i,j) = .false.
             endif
             if(pres(nz-k).ge.700.) then
@@ -1524,14 +1524,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       enddo
     enddo
 
-    crm_output%cld   (icrm,:) = min( 1._r8, crm_output%cld   (icrm,:)            * factor_xyt )
-    crm_output%cldtop(icrm,:) = min( 1._r8, crm_output%cldtop(icrm,:)            * factor_xyt )
+    crm_output%cld   (icrm,:) = min( 1._r8, crm_output%cld   (icrm,:) * factor_xyt )
+    crm_output%cldtop(icrm,:) = min( 1._r8, crm_output%cldtop(icrm,:) * factor_xyt )
     crm_output%gicewp(icrm,:) = crm_output%gicewp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
     crm_output%gliqwp(icrm,:) = crm_output%gliqwp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
-    crm_output%mcup  (icrm,:) = crm_output%mcup (icrm,:)                         * factor_xyt
-    crm_output%mcdn  (icrm,:) = crm_output%mcdn (icrm,:)                         * factor_xyt
-    crm_output%mcuup (icrm,:) = crm_output%mcuup(icrm,:)                         * factor_xyt
-    crm_output%mcudn (icrm,:) = crm_output%mcudn(icrm,:)                         * factor_xyt
+    crm_output%mcup  (icrm,:) = crm_output%mcup (icrm,:) * factor_xyt
+    crm_output%mcdn  (icrm,:) = crm_output%mcdn (icrm,:) * factor_xyt
+    crm_output%mcuup (icrm,:) = crm_output%mcuup(icrm,:) * factor_xyt
+    crm_output%mcudn (icrm,:) = crm_output%mcudn(icrm,:) * factor_xyt
     crm_output%mctot (icrm,:) = crm_output%mcup(icrm,:) + crm_output%mcdn(icrm,:) + crm_output%mcuup(icrm,:) + crm_output%mcudn(icrm,:)
 
     crm_output%qc_mean(icrm,:) = crm_output%qc_mean(icrm,:) * factor_xy

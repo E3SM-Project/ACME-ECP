@@ -178,9 +178,8 @@ contains
          if (.not. allocated(this%precsc)) allocate(this%precsc(ncrms))
          if (.not. allocated(this%precsl)) allocate(this%precsl(ncrms))
 
-         ! NOTE: this is on the CRM vertical grid, not the GCM. Is this a
-         ! mistake?
-         if (.not. allocated(this%cldtop)) allocate(this%cldtop(ncrms,crm_nz))
+         ! NOTE: this output had a bug in the previous implementation
+         if (.not. allocated(this%cldtop)) allocate(this%cldtop(ncrms,nlev))
 
          if (.not. allocated(this%qc_mean)) allocate(this%qc_mean(ncrms,nlev))
          if (.not. allocated(this%qi_mean)) allocate(this%qi_mean(ncrms,nlev))
