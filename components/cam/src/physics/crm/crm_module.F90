@@ -808,26 +808,26 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     precsolid = 0.0
 #endif /* ECPP */
 
-    !+++mhwangtest
-    ! test water conservtion problem
-    ntotal_step = 0.0
-    qtot(icrm,:) = 0.0
-    qtotmicro(:) = 0.0
-    do k=1, nzm
-      l=plev-k+1
-      do j=1, ny
-        do i=1, nx
-#ifdef m2005
-          qtot(icrm,1) = qtot(icrm,1)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
-#endif
-#ifdef sam1mom
-          qtot(icrm,1) = qtot(icrm,1)+(qpl(i,j,k)+qpi(i,j,k)) * crm_input%pdel(icrm,l)/ggr/(nx*ny)
-#endif
-        enddo
-      enddo
-      qtot(icrm,1) = qtot(icrm,1) + (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)) * crm_input%pdel(icrm,l)/ggr
-    enddo
-    !---mhwangtest
+     qtotmicro(:) = 0.0
+!    !+++mhwangtest
+!    ! test water conservtion problem
+!    ntotal_step = 0.0
+!    qtot(icrm,:) = 0.0
+!    do k=1, nzm
+!      l=plev-k+1
+!      do j=1, ny
+!        do i=1, nx
+!#ifdef m2005
+!          qtot(icrm,1) = qtot(icrm,1)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
+!#endif
+!#ifdef sam1mom
+!          qtot(icrm,1) = qtot(icrm,1)+(qpl(i,j,k)+qpi(i,j,k)) * crm_input%pdel(icrm,l)/ggr/(nx*ny)
+!#endif
+!        enddo
+!      enddo
+!      qtot(icrm,1) = qtot(icrm,1) + (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)) * crm_input%pdel(icrm,l)/ggr
+!    enddo
+!    !---mhwangtest
 
 
     nstop = dt_gl/dt
@@ -1607,23 +1607,23 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     crm_output%precsc  (icrm)     = crm_output%precsc(icrm)*factor_xy/1000.
     crm_output%precsl  (icrm)     = crm_output%precsl(icrm)*factor_xy/1000.
 
-    !+++mhwangtest
-    ! test water conservtion problem
-    do k=1, nzm
-      l=plev-k+1
-      do j=1, ny
-        do i=1, nx
-#ifdef m2005
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqv)+micro_field(i,j,k,iqci)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
-#endif
-#ifdef sam1mom
-          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,1)+micro_field(i,j,k,2)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
-#endif
-        enddo
-      enddo
-    enddo
-    qtot(icrm,9) = qtot(icrm,9) + (crm_output%precc(icrm)+crm_output%precl(icrm))*1000 * crm_run_time
+!    !+++mhwangtest
+!    ! test water conservtion problem
+!    do k=1, nzm
+!      l=plev-k+1
+!      do j=1, ny
+!        do i=1, nx
+!#ifdef m2005
+!          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
+!          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqv)+micro_field(i,j,k,iqci)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
+!#endif
+!#ifdef sam1mom
+!          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,1)+micro_field(i,j,k,2)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
+!#endif
+!        enddo
+!      enddo
+!    enddo
+!    qtot(icrm,9) = qtot(icrm,9) + (crm_output%precc(icrm)+crm_output%precl(icrm))*1000 * crm_run_time
 
     crm_output%cltot(icrm) = crm_output%cltot(icrm) * factor_xyt
     crm_output%clhgh(icrm) = crm_output%clhgh(icrm) * factor_xyt
