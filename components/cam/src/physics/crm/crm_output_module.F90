@@ -14,8 +14,8 @@ module crm_output_module
       real(crm_rknd), allocatable :: qpl(:,:,:,:)
       real(crm_rknd), allocatable :: qpi(:,:,:,:)
 
-      real(crm_rknd), allocatable :: crm_tk (:,:,:,:)
-      real(crm_rknd), allocatable :: crm_tkh(:,:,:,:)
+      real(crm_rknd), allocatable :: tk (:,:,:,:)
+      real(crm_rknd), allocatable :: tkh(:,:,:,:)
       real(crm_rknd), allocatable :: prec_crm(:,:,:) ! CRM precipiation rate (surface)
 
       ! 2-moment process rates
@@ -64,14 +64,14 @@ module crm_output_module
 
 #ifdef m2005
       ! Time and domain averaged process rates
-      real(crm_rknd), allocatable :: aut_crm_a (:,:)  ! cloud water autoconversion (1/s)
-      real(crm_rknd), allocatable :: acc_crm_a (:,:)  ! cloud water accretion (1/s)
-      real(crm_rknd), allocatable :: evpc_crm_a(:,:)  ! cloud water evaporation (1/s)
-      real(crm_rknd), allocatable :: evpr_crm_a(:,:)  ! rain evaporation (1/s)
-      real(crm_rknd), allocatable :: mlt_crm_a (:,:)  ! ice, snow, graupel melting (1/s)
-      real(crm_rknd), allocatable :: sub_crm_a (:,:)  ! ice, snow, graupel sublimation (1/s)
-      real(crm_rknd), allocatable :: dep_crm_a (:,:)  ! ice, snow, graupel deposition (1/s)
-      real(crm_rknd), allocatable :: con_crm_a (:,:)  ! cloud water condensation(1/s)
+      real(crm_rknd), allocatable :: aut_a (:,:)  ! cloud water autoconversion (1/s)
+      real(crm_rknd), allocatable :: acc_a (:,:)  ! cloud water accretion (1/s)
+      real(crm_rknd), allocatable :: evpc_a(:,:)  ! cloud water evaporation (1/s)
+      real(crm_rknd), allocatable :: evpr_a(:,:)  ! rain evaporation (1/s)
+      real(crm_rknd), allocatable :: mlt_a (:,:)  ! ice, snow, graupel melting (1/s)
+      real(crm_rknd), allocatable :: sub_a (:,:)  ! ice, snow, graupel sublimation (1/s)
+      real(crm_rknd), allocatable :: dep_a (:,:)  ! ice, snow, graupel deposition (1/s)
+      real(crm_rknd), allocatable :: con_a (:,:)  ! cloud water condensation(1/s)
 #endif /* m2005 */
 
       real(crm_rknd), allocatable :: ultend(:,:)            ! tendency of ul
@@ -123,8 +123,8 @@ module crm_output_module
       real(crm_rknd), allocatable :: t_ls         (:,:)  ! tend of lwse  due to large-scale           [kg/kg/s] ???
       real(crm_rknd), allocatable :: prectend     (:)    ! column integrated tend in precip water+ice [kg/m2/s]
       real(crm_rknd), allocatable :: precstend    (:)    ! column integrated tend in precip ice       [kg/m2/s]
-      real(crm_rknd), allocatable :: taux_crm     (:)    ! zonal CRM surface stress perturbation      [N/m2]
-      real(crm_rknd), allocatable :: tauy_crm     (:)    ! merid CRM surface stress perturbation      [N/m2]
+      real(crm_rknd), allocatable :: taux     (:)    ! zonal CRM surface stress perturbation      [N/m2]
+      real(crm_rknd), allocatable :: tauy     (:)    ! merid CRM surface stress perturbation      [N/m2]
       real(crm_rknd), allocatable :: z0m          (:)    ! surface stress                             [N/m2]
       real(crm_rknd), allocatable :: timing_factor(:)    ! crm cpu efficiency
 
@@ -150,8 +150,8 @@ contains
          if (.not. allocated(this%qpl)) allocate(this%qpl(ncrms,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(this%qpi)) allocate(this%qpi(ncrms,crm_nx,crm_ny,crm_nz))
 
-         if (.not. allocated(this%crm_tk )) allocate(this%crm_tk (ncrms,crm_nx,crm_ny,crm_nz))
-         if (.not. allocated(this%crm_tkh)) allocate(this%crm_tkh(ncrms,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%tk )) allocate(this%tk (ncrms,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%tkh)) allocate(this%tkh(ncrms,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(this%prec_crm)) allocate(this%prec_crm(ncrms,crm_nx,crm_ny))
 
          if (.not. allocated(this%wvar)) allocate(this%wvar(ncrms,crm_nx, crm_ny, crm_nz))
@@ -194,14 +194,14 @@ contains
 #endif
 
 #ifdef m2005
-         if (.not. allocated(this%aut_crm_a )) allocate(this%aut_crm_a (ncrms,nlev))
-         if (.not. allocated(this%acc_crm_a )) allocate(this%acc_crm_a (ncrms,nlev))
-         if (.not. allocated(this%evpc_crm_a)) allocate(this%evpc_crm_a(ncrms,nlev))
-         if (.not. allocated(this%evpr_crm_a)) allocate(this%evpr_crm_a(ncrms,nlev))
-         if (.not. allocated(this%mlt_crm_a )) allocate(this%mlt_crm_a (ncrms,nlev))
-         if (.not. allocated(this%sub_crm_a )) allocate(this%sub_crm_a (ncrms,nlev))
-         if (.not. allocated(this%dep_crm_a )) allocate(this%dep_crm_a (ncrms,nlev))
-         if (.not. allocated(this%con_crm_a )) allocate(this%con_crm_a (ncrms,nlev))
+         if (.not. allocated(this%aut_a )) allocate(this%aut_a (ncrms,nlev))
+         if (.not. allocated(this%acc_a )) allocate(this%acc_a (ncrms,nlev))
+         if (.not. allocated(this%evpc_a)) allocate(this%evpc_a(ncrms,nlev))
+         if (.not. allocated(this%evpr_a)) allocate(this%evpr_a(ncrms,nlev))
+         if (.not. allocated(this%mlt_a )) allocate(this%mlt_a (ncrms,nlev))
+         if (.not. allocated(this%sub_a )) allocate(this%sub_a (ncrms,nlev))
+         if (.not. allocated(this%dep_a )) allocate(this%dep_a (ncrms,nlev))
+         if (.not. allocated(this%con_a )) allocate(this%con_a (ncrms,nlev))
 #endif /* m2005 */
 
 #if defined( SPMOMTRANS )
@@ -254,8 +254,8 @@ contains
          if (.not. allocated(this%t_ls         )) allocate(this%t_ls                (ncrms,nlev))
          if (.not. allocated(this%prectend     )) allocate(this%prectend            (ncrms))
          if (.not. allocated(this%precstend    )) allocate(this%precstend           (ncrms))
-         if (.not. allocated(this%taux_crm     )) allocate(this%taux_crm            (ncrms))
-         if (.not. allocated(this%tauy_crm     )) allocate(this%tauy_crm            (ncrms))
+         if (.not. allocated(this%taux     )) allocate(this%taux            (ncrms))
+         if (.not. allocated(this%tauy     )) allocate(this%tauy            (ncrms))
          if (.not. allocated(this%z0m          )) allocate(this%z0m                 (ncrms))
          if (.not. allocated(this%timing_factor)) allocate(this%timing_factor       (ncrms))
 
@@ -270,8 +270,8 @@ contains
       this%qpl = 0
       this%qpi = 0
 
-      this%crm_tk = 0
-      this%crm_tkh = 0
+      this%tk = 0
+      this%tkh = 0
       this%prec_crm = 0
 
       ! 2-moment process rates
@@ -310,14 +310,14 @@ contains
 #endif
 
 #ifdef m2005
-      this%aut_crm_a = 0
-      this%acc_crm_a = 0
-      this%evpc_crm_a = 0
-      this%evpr_crm_a = 0
-      this%mlt_crm_a = 0
-      this%sub_crm_a = 0
-      this%dep_crm_a = 0
-      this%con_crm_a = 0
+      this%aut_a = 0
+      this%acc_a = 0
+      this%evpc_a = 0
+      this%evpr_a = 0
+      this%mlt_a = 0
+      this%sub_a = 0
+      this%dep_a = 0
+      this%con_a = 0
 #endif
 
 
@@ -373,8 +373,8 @@ contains
       this%t_ls          = 0
       this%prectend      = 0
       this%precstend     = 0
-      this%taux_crm      = 0
-      this%tauy_crm      = 0
+      this%taux      = 0
+      this%tauy      = 0
       this%z0m           = 0
       this%timing_factor = 0
 
@@ -386,8 +386,8 @@ contains
       deallocate(this%qci)
       deallocate(this%qpl)
       deallocate(this%qpi)
-      deallocate(this%crm_tk )
-      deallocate(this%crm_tkh)
+      deallocate(this%tk )
+      deallocate(this%tkh)
       deallocate(this%prec_crm)
 
       if (allocated(this%wvar)) deallocate(this%wvar)
@@ -422,14 +422,14 @@ contains
       if (allocated(this%nr_mean)) deallocate(this%nr_mean)
 
       ! Time and domain-averaged process rates
-      if (allocated(this%aut_crm_a)) deallocate(this%aut_crm_a)
-      if (allocated(this%acc_crm_a)) deallocate(this%acc_crm_a)
-      if (allocated(this%evpc_crm_a)) deallocate(this%evpc_crm_a)
-      if (allocated(this%evpr_crm_a)) deallocate(this%evpr_crm_a)
-      if (allocated(this%mlt_crm_a)) deallocate(this%mlt_crm_a)
-      if (allocated(this%sub_crm_a)) deallocate(this%sub_crm_a)
-      if (allocated(this%dep_crm_a)) deallocate(this%dep_crm_a)
-      if (allocated(this%con_crm_a)) deallocate(this%con_crm_a)
+      if (allocated(this%aut_a)) deallocate(this%aut_a)
+      if (allocated(this%acc_a)) deallocate(this%acc_a)
+      if (allocated(this%evpc_a)) deallocate(this%evpc_a)
+      if (allocated(this%evpr_a)) deallocate(this%evpr_a)
+      if (allocated(this%mlt_a)) deallocate(this%mlt_a)
+      if (allocated(this%sub_a)) deallocate(this%sub_a)
+      if (allocated(this%dep_a)) deallocate(this%dep_a)
+      if (allocated(this%con_a)) deallocate(this%con_a)
 
       if (allocated(this%ultend)) deallocate(this%ultend)
       if (allocated(this%vltend)) deallocate(this%vltend)
@@ -477,8 +477,8 @@ contains
       if (allocated(this%t_ls)) deallocate(this%t_ls)
       if (allocated(this%prectend)) deallocate(this%prectend)
       if (allocated(this%precstend)) deallocate(this%precstend)
-      if (allocated(this%taux_crm)) deallocate(this%taux_crm)
-      if (allocated(this%tauy_crm)) deallocate(this%tauy_crm)
+      if (allocated(this%taux)) deallocate(this%taux)
+      if (allocated(this%tauy)) deallocate(this%tauy)
       if (allocated(this%z0m)) deallocate(this%z0m)
       if (allocated(this%timing_factor)) deallocate(this%timing_factor)
 
