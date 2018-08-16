@@ -1232,7 +1232,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
       ! Set cloud field to output from CRM. We need to do this here because we
       ! did not set crm_output%cld as a pointer to the pbuf field, so we need to
-      ! copy the data over for us.
+      ! copy the data over. NOTE: I think this can be done using pbuf_set_field
+      ! without making an extra pointer for cld, but I do not think we would be
+      ! able to zero-out the rest of cld beyond pcols that way.
+      call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld)
+      cld(:,:) = 0
       cld(1:ncol,1:pver) = crm_output%cld(1:ncol,1:pver)
 
       do m=1,crm_nz
