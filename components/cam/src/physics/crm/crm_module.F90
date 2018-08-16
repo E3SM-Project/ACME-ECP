@@ -460,22 +460,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
     igstep = get_nstep()
 
-#ifdef CRM_DUMP
-    call crm_dump_input( igstep,plev,lchnk,icol(icrm),latitude0,longitude0,ps(icrm),crm_input%pmid(icrm,:),crm_input%pdel(icrm,:),crm_input%phis(icrm),crm_input%zmid(icrm,:),crm_input%zint(icrm,:),crm_rad%qrad(icrm,:,:,:),dt_gl, &
-                         crm_input%ocnfrac(icrm),crm_input%tau00(icrm),crm_input%wndls(icrm),crm_input%bflxls(icrm),crm_input%fluxu00(icrm),crm_input%fluxv00(icrm),crm_input%fluxt00(icrm),crm_input%fluxq00(icrm),crm_input%tl(icrm,:),crm_input%ql(icrm,:),crm_input%qccl(icrm,:),crm_input%qiil(icrm,:),   &
-                         crm_input%ul(icrm,:),crm_input%vl(icrm,:), &
-#ifdef CLUBB_CRM
-                         clubb_buffer(icrm,:,:,:,:) , &
-#endif
-                         cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm),crm_state%u_wind(icrm,:,:,:),crm_state%v_wind(icrm,:,:,:),crm_state%w_wind(icrm,:,:,:),crm_state%temperature(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:), &
-#ifdef m2005
-#ifdef MODAL_AERO
-                         crm_input%naermod(icrm,:,:),crm_input%vaerosol(icrm,:,:),crm_input%hygro(icrm,:,:) , &
-#endif /* MODAL_AERO */
-#endif /* m2005 */
-                         dd_crm(icrm,:),mui_crm(icrm,:),mdi_crm(icrm,:) )
-#endif /* CRM_STANDALONE */
-
 !-----------------------------------------------
 
     dostatis  = .false.    ! no statistics are collected.
@@ -1931,36 +1915,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     call ecpp_crm_cleanup ()
 #endif
 
-#ifdef CRM_DUMP
-    call crm_dump_output( igstep,plev,crm_tk(icrm,:,:,:),crm_tkh(icrm,:,:,:),cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm),sltend(icrm,:),crm_state%u_wind(icrm,:,:,:),crm_state%v_wind(icrm,:,:,:),&
-                          crm_state%w_wind(icrm,:,:,:),crm_state%temperature(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:),qltend(icrm,:),qcltend(icrm,:),qiltend(icrm,:),crm_rad%temperature(icrm,:,:,:),crm_rad%qv(icrm,:,:,:),&
-                          crm_rad%qc(icrm,:,:,:),crm_rad%qi(icrm,:,:,:),crm_rad%cld(icrm,:,:,:),cld3d_crm(icrm,:,:,:), &
-#ifdef CLUBB_CRM
-                          clubb_buffer(icrm,:,:,:,:),crm_cld(icrm,:,:,:),clubb_tk(icrm,:,:,:),clubb_tkh(icrm,:,:,:),relvar(icrm,:,:,:),accre_enhan(icrm,:,:,:),qclvar(icrm,:,:,:) , &
-#endif /* CLUBB_CRM */
-#if defined( SPMOMTRANS )
-                          ultend(icrm,:),vltend(icrm,:) , &
-#endif
-! #if defined(SP_ESMT)
-!                           ultend_esmt(icrm,:),vltend_esmt(icrm,:) , & ! whannah - temporary diagnostic fields for ESMT
-! #endif
-#ifdef m2005
-                          crm_rad%nc(icrm,:,:,:),crm_rad%ni(icrm,:,:,:),crm_rad%qs(icrm,:,:,:),crm_rad%ns(icrm,:,:,:),wvar_crm(icrm,:,:,:),aut_crm(icrm,:,:,:),acc_crm(icrm,:,:,:),evpc_crm(icrm,:,:,:), &
-                          evpr_crm(icrm,:,:,:),mlt_crm(icrm,:,:,:),sub_crm(icrm,:,:,:),dep_crm(icrm,:,:,:),con_crm(icrm,:,:,:),aut_crm_a(icrm,:),acc_crm_a(icrm,:),evpc_crm_a(icrm,:), &
-                          evpr_crm_a(icrm,:),mlt_crm_a(icrm,:),sub_crm_a(icrm,:),dep_crm_a(icrm,:),con_crm_a(icrm,:),crm_nc(icrm,:),crm_ni(icrm,:),crm_ns(icrm,:),crm_ng(icrm,:),crm_nr(icrm,:), &
-#endif
-#ifdef ECPP
-                          acen(icrm,:,:,:,:),acen_tf(icrm,:,:,:,:),rhcen(icrm,:,:,:,:),qcloudcen(icrm,:,:,:,:),qicecen(icrm,:,:,:,:),qlsinkcen(icrm,:,:,:,:),precrcen(icrm,:,:,:,:),&
-                          precsolidcen(icrm,:,:,:,:),qlsink_bfcen(icrm,:,:,:,:),qlsink_avgcen(icrm,:,:,:,:),praincen(icrm,:,:,:,:),wwqui_cen(icrm,:),wwqui_cloudy_cen(icrm,:), &
-                          abnd(icrm,:,:,:,:),abnd_tf(icrm,:,:,:,:),massflxbnd(icrm,:,:,:,:),wupthresh_bnd(icrm,:),wdownthresh_bnd(icrm,:),wwqui_bnd(icrm,:),wwqui_cloudy_bnd(icrm,:), &
-#endif
-                          precc(icrm),precl(icrm),cld(icrm,:),cldtop(icrm,:),gicewp(icrm,:),gliqwp(icrm,:),mc(icrm,:),mcup(icrm,:),mcdn(icrm,:),mcuup(icrm,:),mcudn(icrm,:),crm_qc(icrm,:), &
-                          crm_qi(icrm,:),crm_qs(icrm,:),crm_qg(icrm,:),crm_qr(icrm,:),mu_crm(icrm,:),md_crm(icrm,:),du_crm(icrm,:),eu_crm(icrm,:),ed_crm(icrm,:),dd_crm(icrm,:),jt_crm(icrm), &
-                          mx_crm(icrm),mui_crm(icrm,:),mdi_crm(icrm,:),flux_qt(icrm,:),fluxsgs_qt(icrm,:),tkez(icrm,:),tkesgsz(icrm,:),tkz(icrm,:),flux_u(icrm,:),flux_v(icrm,:),flux_qp(icrm,:), &
-                          pflx(icrm,:),qt_ls(icrm,:),qt_trans(icrm,:),qp_trans(icrm,:),qp_fall(icrm,:),qp_src(icrm,:),qp_evp(icrm,:),t_ls(icrm,:),prectend(icrm),precstend(icrm),precsc(icrm), &
-                          precsl(icrm),taux_crm(icrm),tauy_crm(icrm),z0m(icrm),timing_factor(icrm),qc_crm(icrm,:,:,:),qi_crm(icrm,:,:,:),qpc_crm(icrm,:,:,:),qpi_crm(icrm,:,:,:), &
-                          prec_crm(icrm,:,:),qtot(icrm,:) )
-#endif /* CRM_DUMP */
   enddo
 
   call deallocate_grid()
