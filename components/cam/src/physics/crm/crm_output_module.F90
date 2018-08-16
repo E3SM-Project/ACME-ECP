@@ -139,126 +139,126 @@ contains
 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_output_type
-   subroutine crm_output_initialize(this, ncrms, nlev)
+   subroutine crm_output_initialize(this, ncol, nlev)
       class(crm_output_type), intent(inout) :: this
-      integer, intent(in), optional :: ncrms, nlev
+      integer, intent(in), optional :: ncol, nlev
 
       ! Allocate arrays if dimensions are passed as input
-      if (present(ncrms)) then
+      if (present(ncol)) then
 
          ! Allocate instantaneous outputs
-         if (.not. allocated(this%qcl)) allocate(this%qcl(ncrms,crm_nx,crm_ny,crm_nz))
-         if (.not. allocated(this%qci)) allocate(this%qci(ncrms,crm_nx,crm_ny,crm_nz))
-         if (.not. allocated(this%qpl)) allocate(this%qpl(ncrms,crm_nx,crm_ny,crm_nz))
-         if (.not. allocated(this%qpi)) allocate(this%qpi(ncrms,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%qcl)) allocate(this%qcl(ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%qci)) allocate(this%qci(ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%qpl)) allocate(this%qpl(ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%qpi)) allocate(this%qpi(ncol,crm_nx,crm_ny,crm_nz))
 
-         if (.not. allocated(this%tk )) allocate(this%tk (ncrms,crm_nx,crm_ny,crm_nz))
-         if (.not. allocated(this%tkh)) allocate(this%tkh(ncrms,crm_nx,crm_ny,crm_nz))
-         if (.not. allocated(this%prec_crm)) allocate(this%prec_crm(ncrms,crm_nx,crm_ny))
+         if (.not. allocated(this%tk )) allocate(this%tk (ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%tkh)) allocate(this%tkh(ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%prec_crm)) allocate(this%prec_crm(ncol,crm_nx,crm_ny))
 
-         if (.not. allocated(this%wvar)) allocate(this%wvar(ncrms,crm_nx, crm_ny, crm_nz))
-         if (.not. allocated(this%aut)) allocate(this%aut (ncrms,crm_nx, crm_ny, crm_nz))
-         if (.not. allocated(this%acc)) allocate(this%acc (ncrms,crm_nx, crm_ny, crm_nz))
-         if (.not. allocated(this%evpc)) allocate(this%evpc(ncrms,crm_nx, crm_ny, crm_nz))
-         if (.not. allocated(this%evpr)) allocate(this%evpr(ncrms,crm_nx, crm_ny, crm_nz))
-         if (.not. allocated(this%mlt)) allocate(this%mlt (ncrms,crm_nx, crm_ny, crm_nz))
-         if (.not. allocated(this%sub)) allocate(this%sub (ncrms,crm_nx, crm_ny, crm_nz))
-         if (.not. allocated(this%dep)) allocate(this%dep (ncrms,crm_nx, crm_ny, crm_nz))
-         if (.not. allocated(this%con)) allocate(this%con (ncrms,crm_nx, crm_ny, crm_nz))
+         if (.not. allocated(this%wvar)) allocate(this%wvar(ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%aut))  allocate(this%aut (ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%acc))  allocate(this%acc (ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%evpc)) allocate(this%evpc(ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%evpr)) allocate(this%evpr(ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%mlt))  allocate(this%mlt (ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%sub))  allocate(this%sub (ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%dep))  allocate(this%dep (ncol,crm_nx,crm_ny,crm_nz))
+         if (.not. allocated(this%con))  allocate(this%con (ncol,crm_nx,crm_ny,crm_nz))
 
 
          ! Allocate domain and time-averaged fields
-         if (.not. allocated(this%cltot)) allocate(this%cltot(ncrms))
-         if (.not. allocated(this%cllow)) allocate(this%cllow(ncrms))
-         if (.not. allocated(this%clmed)) allocate(this%clmed(ncrms))
-         if (.not. allocated(this%clhgh)) allocate(this%clhgh(ncrms))
+         if (.not. allocated(this%cltot)) allocate(this%cltot(ncol))
+         if (.not. allocated(this%cllow)) allocate(this%cllow(ncol))
+         if (.not. allocated(this%clmed)) allocate(this%clmed(ncol))
+         if (.not. allocated(this%clhgh)) allocate(this%clhgh(ncol))
 
-         if (.not. allocated(this%precc)) allocate(this%precc(ncrms))
-         if (.not. allocated(this%precl)) allocate(this%precl(ncrms))
-         if (.not. allocated(this%precsc)) allocate(this%precsc(ncrms))
-         if (.not. allocated(this%precsl)) allocate(this%precsl(ncrms))
+         if (.not. allocated(this%precc))  allocate(this%precc(ncol))
+         if (.not. allocated(this%precl))  allocate(this%precl(ncol))
+         if (.not. allocated(this%precsc)) allocate(this%precsc(ncol))
+         if (.not. allocated(this%precsl)) allocate(this%precsl(ncol))
 
          ! NOTE: this output had a bug in the previous implementation
-         if (.not. allocated(this%cldtop)) allocate(this%cldtop(ncrms,nlev))
+         if (.not. allocated(this%cldtop)) allocate(this%cldtop(ncol,nlev))
 
-         if (.not. allocated(this%qc_mean)) allocate(this%qc_mean(ncrms,nlev))
-         if (.not. allocated(this%qi_mean)) allocate(this%qi_mean(ncrms,nlev))
-         if (.not. allocated(this%qs_mean)) allocate(this%qs_mean(ncrms,nlev))
-         if (.not. allocated(this%qg_mean)) allocate(this%qg_mean(ncrms,nlev))
-         if (.not. allocated(this%qr_mean)) allocate(this%qr_mean(ncrms,nlev))
+         if (.not. allocated(this%qc_mean)) allocate(this%qc_mean(ncol,nlev))
+         if (.not. allocated(this%qi_mean)) allocate(this%qi_mean(ncol,nlev))
+         if (.not. allocated(this%qs_mean)) allocate(this%qs_mean(ncol,nlev))
+         if (.not. allocated(this%qg_mean)) allocate(this%qg_mean(ncol,nlev))
+         if (.not. allocated(this%qr_mean)) allocate(this%qr_mean(ncol,nlev))
 #ifdef m2005
-         if (.not. allocated(this%nc_mean)) allocate(this%nc_mean(ncrms,nlev))
-         if (.not. allocated(this%ni_mean)) allocate(this%ni_mean(ncrms,nlev))
-         if (.not. allocated(this%ns_mean)) allocate(this%ns_mean(ncrms,nlev))
-         if (.not. allocated(this%ng_mean)) allocate(this%ng_mean(ncrms,nlev))
-         if (.not. allocated(this%nr_mean)) allocate(this%nr_mean(ncrms,nlev))
+         if (.not. allocated(this%nc_mean)) allocate(this%nc_mean(ncol,nlev))
+         if (.not. allocated(this%ni_mean)) allocate(this%ni_mean(ncol,nlev))
+         if (.not. allocated(this%ns_mean)) allocate(this%ns_mean(ncol,nlev))
+         if (.not. allocated(this%ng_mean)) allocate(this%ng_mean(ncol,nlev))
+         if (.not. allocated(this%nr_mean)) allocate(this%nr_mean(ncol,nlev))
 
-         if (.not. allocated(this%aut_a )) allocate(this%aut_a (ncrms,nlev))
-         if (.not. allocated(this%acc_a )) allocate(this%acc_a (ncrms,nlev))
-         if (.not. allocated(this%evpc_a)) allocate(this%evpc_a(ncrms,nlev))
-         if (.not. allocated(this%evpr_a)) allocate(this%evpr_a(ncrms,nlev))
-         if (.not. allocated(this%mlt_a )) allocate(this%mlt_a (ncrms,nlev))
-         if (.not. allocated(this%sub_a )) allocate(this%sub_a (ncrms,nlev))
-         if (.not. allocated(this%dep_a )) allocate(this%dep_a (ncrms,nlev))
-         if (.not. allocated(this%con_a )) allocate(this%con_a (ncrms,nlev))
+         if (.not. allocated(this%aut_a )) allocate(this%aut_a (ncol,nlev))
+         if (.not. allocated(this%acc_a )) allocate(this%acc_a (ncol,nlev))
+         if (.not. allocated(this%evpc_a)) allocate(this%evpc_a(ncol,nlev))
+         if (.not. allocated(this%evpr_a)) allocate(this%evpr_a(ncol,nlev))
+         if (.not. allocated(this%mlt_a )) allocate(this%mlt_a (ncol,nlev))
+         if (.not. allocated(this%sub_a )) allocate(this%sub_a (ncol,nlev))
+         if (.not. allocated(this%dep_a )) allocate(this%dep_a (ncol,nlev))
+         if (.not. allocated(this%con_a )) allocate(this%con_a (ncol,nlev))
 #endif /* m2005 */
 
 #if defined( SPMOMTRANS )
-         if (.not. allocated(this%ultend )) allocate(this%ultend (ncrms,nlev))
-         if (.not. allocated(this%vltend )) allocate(this%vltend (ncrms,nlev))
+         if (.not. allocated(this%ultend )) allocate(this%ultend (ncol,nlev))
+         if (.not. allocated(this%vltend )) allocate(this%vltend (ncol,nlev))
 #endif
 
 #if defined( SP_ESMT )
-         if (.not. allocated(this%u_tend_esmt )) allocate(this%u_tend_esmt (ncrms,nlev))
-         if (.not. allocated(this%v_tend_esmt )) allocate(this%v_tend_esmt (ncrms,nlev))
+         if (.not. allocated(this%u_tend_esmt )) allocate(this%u_tend_esmt (ncol,nlev))
+         if (.not. allocated(this%v_tend_esmt )) allocate(this%v_tend_esmt (ncol,nlev))
 #endif
          
-         if (.not. allocated(this%sltend ))  allocate(this%sltend (ncrms,nlev))
-         if (.not. allocated(this%qltend ))  allocate(this%qltend (ncrms,nlev))
-         if (.not. allocated(this%qcltend))  allocate(this%qcltend(ncrms,nlev))
-         if (.not. allocated(this%qiltend))  allocate(this%qiltend(ncrms,nlev))
+         if (.not. allocated(this%sltend ))  allocate(this%sltend (ncol,nlev))
+         if (.not. allocated(this%qltend ))  allocate(this%qltend (ncol,nlev))
+         if (.not. allocated(this%qcltend))  allocate(this%qcltend(ncol,nlev))
+         if (.not. allocated(this%qiltend))  allocate(this%qiltend(ncol,nlev))
 
-         if (.not. allocated(this%cld   )) allocate(this%cld   (ncrms,nlev))  ! cloud fraction
-         if (.not. allocated(this%gicewp)) allocate(this%gicewp(ncrms,nlev))  ! ice water path
-         if (.not. allocated(this%gliqwp)) allocate(this%gliqwp(ncrms,nlev))  ! ice water path
-         if (.not. allocated(this%mctot )) allocate(this%mctot (ncrms,nlev))  ! cloud mass flux
-         if (.not. allocated(this%mcup  )) allocate(this%mcup  (ncrms,nlev))  ! updraft cloud mass flux
-         if (.not. allocated(this%mcdn  )) allocate(this%mcdn  (ncrms,nlev))  ! downdraft cloud mass flux
-         if (.not. allocated(this%mcuup )) allocate(this%mcuup (ncrms,nlev))  ! unsat updraft cloud mass flux
-         if (.not. allocated(this%mcudn )) allocate(this%mcudn (ncrms,nlev))  ! unsat downdraft cloud mass flux
+         if (.not. allocated(this%cld   )) allocate(this%cld   (ncol,nlev))  ! cloud fraction
+         if (.not. allocated(this%gicewp)) allocate(this%gicewp(ncol,nlev))  ! ice water path
+         if (.not. allocated(this%gliqwp)) allocate(this%gliqwp(ncol,nlev))  ! ice water path
+         if (.not. allocated(this%mctot )) allocate(this%mctot (ncol,nlev))  ! cloud mass flux
+         if (.not. allocated(this%mcup  )) allocate(this%mcup  (ncol,nlev))  ! updraft cloud mass flux
+         if (.not. allocated(this%mcdn  )) allocate(this%mcdn  (ncol,nlev))  ! downdraft cloud mass flux
+         if (.not. allocated(this%mcuup )) allocate(this%mcuup (ncol,nlev))  ! unsat updraft cloud mass flux
+         if (.not. allocated(this%mcudn )) allocate(this%mcudn (ncol,nlev))  ! unsat downdraft cloud mass flux
 
-         if (.not. allocated(this%mu_crm)) allocate(this%mu_crm(ncrms,nlev))  ! mass flux up
-         if (.not. allocated(this%md_crm)) allocate(this%md_crm(ncrms,nlev))  ! mass flux down
-         if (.not. allocated(this%du_crm)) allocate(this%du_crm(ncrms,nlev))  ! mass detrainment from updraft
-         if (.not. allocated(this%eu_crm)) allocate(this%eu_crm(ncrms,nlev))  ! mass entrainment from updraft
-         if (.not. allocated(this%ed_crm)) allocate(this%ed_crm(ncrms,nlev))  ! mass detrainment from downdraft
-         if (.not. allocated(this%jt_crm)) allocate(this%jt_crm(ncrms))       ! index of cloud (convection) top
-         if (.not. allocated(this%mx_crm)) allocate(this%mx_crm(ncrms))       ! index of cloud (convection) bottom
+         if (.not. allocated(this%mu_crm)) allocate(this%mu_crm(ncol,nlev))  ! mass flux up
+         if (.not. allocated(this%md_crm)) allocate(this%md_crm(ncol,nlev))  ! mass flux down
+         if (.not. allocated(this%du_crm)) allocate(this%du_crm(ncol,nlev))  ! mass detrainment from updraft
+         if (.not. allocated(this%eu_crm)) allocate(this%eu_crm(ncol,nlev))  ! mass entrainment from updraft
+         if (.not. allocated(this%ed_crm)) allocate(this%ed_crm(ncol,nlev))  ! mass detrainment from downdraft
+         if (.not. allocated(this%jt_crm)) allocate(this%jt_crm(ncol))       ! index of cloud (convection) top
+         if (.not. allocated(this%mx_crm)) allocate(this%mx_crm(ncol))       ! index of cloud (convection) bottom
 
-         if (.not. allocated(this%flux_qt      )) allocate(this%flux_qt             (ncrms,nlev))
-         if (.not. allocated(this%fluxsgs_qt   )) allocate(this%fluxsgs_qt          (ncrms,nlev))
-         if (.not. allocated(this%tkez         )) allocate(this%tkez                (ncrms,nlev))
-         if (.not. allocated(this%tkesgsz      )) allocate(this%tkesgsz             (ncrms,nlev))
-         if (.not. allocated(this%tkz          )) allocate(this%tkz                 (ncrms,nlev))
-         if (.not. allocated(this%flux_u       )) allocate(this%flux_u              (ncrms,nlev))
-         if (.not. allocated(this%flux_v       )) allocate(this%flux_v              (ncrms,nlev))
-         if (.not. allocated(this%flux_qp      )) allocate(this%flux_qp             (ncrms,nlev))
-         if (.not. allocated(this%precflux     )) allocate(this%precflux            (ncrms,nlev))
-         if (.not. allocated(this%qt_ls        )) allocate(this%qt_ls               (ncrms,nlev))
-         if (.not. allocated(this%qt_trans     )) allocate(this%qt_trans            (ncrms,nlev))
-         if (.not. allocated(this%qp_trans     )) allocate(this%qp_trans            (ncrms,nlev))
-         if (.not. allocated(this%qp_fall      )) allocate(this%qp_fall             (ncrms,nlev))
-         if (.not. allocated(this%qp_src       )) allocate(this%qp_src              (ncrms,nlev))
-         if (.not. allocated(this%qp_evp       )) allocate(this%qp_evp              (ncrms,nlev))
-         if (.not. allocated(this%t_ls         )) allocate(this%t_ls                (ncrms,nlev))
-         if (.not. allocated(this%prectend     )) allocate(this%prectend            (ncrms))
-         if (.not. allocated(this%precstend    )) allocate(this%precstend           (ncrms))
-         if (.not. allocated(this%taux     )) allocate(this%taux            (ncrms))
-         if (.not. allocated(this%tauy     )) allocate(this%tauy            (ncrms))
-         if (.not. allocated(this%z0m          )) allocate(this%z0m                 (ncrms))
-         if (.not. allocated(this%timing_factor)) allocate(this%timing_factor       (ncrms))
+         if (.not. allocated(this%flux_qt      )) allocate(this%flux_qt      (ncol,nlev))
+         if (.not. allocated(this%fluxsgs_qt   )) allocate(this%fluxsgs_qt   (ncol,nlev))
+         if (.not. allocated(this%tkez         )) allocate(this%tkez         (ncol,nlev))
+         if (.not. allocated(this%tkesgsz      )) allocate(this%tkesgsz      (ncol,nlev))
+         if (.not. allocated(this%tkz          )) allocate(this%tkz          (ncol,nlev))
+         if (.not. allocated(this%flux_u       )) allocate(this%flux_u       (ncol,nlev))
+         if (.not. allocated(this%flux_v       )) allocate(this%flux_v       (ncol,nlev))
+         if (.not. allocated(this%flux_qp      )) allocate(this%flux_qp      (ncol,nlev))
+         if (.not. allocated(this%precflux     )) allocate(this%precflux     (ncol,nlev))
+         if (.not. allocated(this%qt_ls        )) allocate(this%qt_ls        (ncol,nlev))
+         if (.not. allocated(this%qt_trans     )) allocate(this%qt_trans     (ncol,nlev))
+         if (.not. allocated(this%qp_trans     )) allocate(this%qp_trans     (ncol,nlev))
+         if (.not. allocated(this%qp_fall      )) allocate(this%qp_fall      (ncol,nlev))
+         if (.not. allocated(this%qp_src       )) allocate(this%qp_src       (ncol,nlev))
+         if (.not. allocated(this%qp_evp       )) allocate(this%qp_evp       (ncol,nlev))
+         if (.not. allocated(this%t_ls         )) allocate(this%t_ls         (ncol,nlev))
+         if (.not. allocated(this%prectend     )) allocate(this%prectend     (ncol))
+         if (.not. allocated(this%precstend    )) allocate(this%precstend    (ncol))
+         if (.not. allocated(this%taux         )) allocate(this%taux         (ncol))
+         if (.not. allocated(this%tauy         )) allocate(this%tauy         (ncol))
+         if (.not. allocated(this%z0m          )) allocate(this%z0m          (ncol))
+         if (.not. allocated(this%timing_factor)) allocate(this%timing_factor(ncol))
 
-      end if ! present(ncrms)
+      end if ! present(ncol)
 
       ! Initialize 
       this%qcl = 0
@@ -375,13 +375,13 @@ contains
    !------------------------------------------------------------------------------------------------
    subroutine crm_output_finalize(this)
       class(crm_output_type), intent(inout) :: this
-      deallocate(this%qcl)
-      deallocate(this%qci)
-      deallocate(this%qpl)
-      deallocate(this%qpi)
-      deallocate(this%tk )
-      deallocate(this%tkh)
-      deallocate(this%prec_crm)
+      if (allocated(this%qcl)) deallocate(this%qcl)
+      if (allocated(this%qci)) deallocate(this%qci)
+      if (allocated(this%qpl)) deallocate(this%qpl)
+      if (allocated(this%qpi)) deallocate(this%qpi)
+      if (allocated(this%tk )) deallocate(this%tk )
+      if (allocated(this%tkh)) deallocate(this%tkh)
+      if (allocated(this%prec_crm)) deallocate(this%prec_crm)
 
       if (allocated(this%wvar)) deallocate(this%wvar)
       if (allocated(this%aut)) deallocate(this%aut)
@@ -393,15 +393,15 @@ contains
       if (allocated(this%dep)) deallocate(this%dep)
       if (allocated(this%con)) deallocate(this%con)
 
-      deallocate(this%cltot)
-      deallocate(this%cllow)
-      deallocate(this%clmed)
-      deallocate(this%clhgh)
-      deallocate(this%cldtop)
-      deallocate(this%precc)
-      deallocate(this%precl)
-      deallocate(this%precsc)
-      deallocate(this%precsl)
+      if (allocated(this%cltot)) deallocate(this%cltot)
+      if (allocated(this%cllow)) deallocate(this%cllow)
+      if (allocated(this%clmed)) deallocate(this%clmed)
+      if (allocated(this%clhgh)) deallocate(this%clhgh)
+      if (allocated(this%cldtop)) deallocate(this%cldtop)
+      if (allocated(this%precc)) deallocate(this%precc)
+      if (allocated(this%precl)) deallocate(this%precl)
+      if (allocated(this%precsc)) deallocate(this%precsc)
+      if (allocated(this%precsl)) deallocate(this%precsl)
 
       if (allocated(this%qc_mean)) deallocate(this%qc_mean)
       if (allocated(this%qi_mean)) deallocate(this%qi_mean)
