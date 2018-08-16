@@ -45,7 +45,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 ultend, vltend,          &
 #endif
 #if defined(SP_ESMT)
-                crm_input%ul_esmt, crm_input%vl_esmt, ultend_esmt, vltend_esmt,           & ! whannah
+                ultend_esmt, vltend_esmt,           & ! whannah
 #endif
                 qltend, qcltend, qiltend, sltend, &
                 crm_state, crm_rad, crm_input, &
@@ -185,8 +185,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: vltend              (ncrms,plev)                   ! tendency of vl
 #endif
 #if defined(SP_ESMT)
-    real(r8), intent(in   ) :: crm_input%ul_esmt             (ncrms,plev)                   ! input u for ESMT
-    real(r8), intent(in   ) :: crm_input%vl_esmt             (ncrms,plev)                   ! input v for ESMT
     real(r8), intent(  out) :: ultend_esmt         (ncrms,plev)                   ! tendency of ul - diagnostic field
     real(r8), intent(  out) :: vltend_esmt         (ncrms,plev)                   ! tendency of vl - diagnostic field
 #endif
