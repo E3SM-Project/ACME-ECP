@@ -163,8 +163,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
     type(crm_state_type), intent(inout) :: crm_state
-    type(crm_rad_type), intent(inout) :: crm_rad
-    type(crm_input_type), intent(in) :: crm_input
+    type(crm_rad_type),   intent(inout) :: crm_rad
+    type(crm_input_type), intent(in   ) :: crm_input
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
     real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
