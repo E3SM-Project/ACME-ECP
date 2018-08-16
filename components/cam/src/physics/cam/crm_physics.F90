@@ -1405,7 +1405,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          call outfld('QSINK_BFCEN',   crm_ecpp%qlsink_bfcen,     pcols, lchnk)
          call outfld('QSINK_AVGCEN',  crm_ecpp%qlsink_avgcen,    pcols, lchnk)
          call outfld('PRAINCEN',      crm_ecpp%praincen,         pcols, lchnk)
-         
+
        end if ! use_ECPP
 #endif /* ECPP */
 
@@ -1543,6 +1543,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    !----------------------------------------------------------------------
    !----------------------------------------------------------------------
+
+   ! Free memory in derived types
+   call crm_state%finalize()
+   call crm_input%finalize()
+   call crm_output%finalize()
+
+#if defined( ECPP )
+   call crm_ecpp%finalize()
+#endif
 
 #endif /* CRM */
 end subroutine crm_physics_tend
