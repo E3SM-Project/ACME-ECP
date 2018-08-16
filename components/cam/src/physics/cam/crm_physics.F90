@@ -668,8 +668,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), dimension(pcols) ::  qi_hydro_after     ! column-integrated snow water + graupel water
    real(r8) :: sfactor                               ! used to determine precip type for sam1mom
 
-   real(r8) :: timing_factor(pcols) ! factor for crm cpu-usage: 1 means no subcycling
-
    ! TODO: this is not used anywhere, and should be removed from both this
    ! routine and from crm() in crm_module.
    real(r8) :: qtotcrm(pcols, 20)   ! the toal water calculated in crm.F90
@@ -1150,7 +1148,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:),                                                                                               &
                wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                     &
 #endif /* ECPP */
-               timing_factor(:ncol),        qtotcrm(:ncol, :) )
+               qtotcrm(:ncol, :) )
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
@@ -1395,7 +1393,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CLDLOW  ',crm_output%cllow  ,pcols,lchnk)
       call outfld('CLOUDTOP',crm_output%cldtop, pcols,lchnk)
 
-      call outfld('TIMINGF ',timing_factor  ,pcols,lchnk)
+      call outfld('TIMINGF ',crm_output%timing_factor  ,pcols,lchnk)
 !----------------------------------------------------------------------
 ! Compute liquid water paths (for diagnostics only)
 !----------------------------------------------------------------------

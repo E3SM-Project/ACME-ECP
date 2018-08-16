@@ -56,7 +56,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                 wupthresh_bnd, wdownthresh_bnd,   &
                 wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
 #endif
-                timing_factor, qtot)
+                qtot)
         !---------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
@@ -150,7 +150,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8)                :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
     real(r8)                :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
     real(r8)                :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
-    real(r8), intent(  out) :: timing_factor       (ncrms)            ! crm cpu efficiency
 #ifdef ECPP
     real(r8), intent(  out) :: acen                (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for each sub-sub class for full time period
     real(r8), intent(  out) :: acen_tf             (ncrms,plev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud fraction for end-portion of time period
@@ -594,7 +593,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     z0 = z0_est(z(1),bflx,wnd,ustar)
     z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
 
-    timing_factor = 0.
+    crm_output%timing_factor = 0.
 
     crm_output%prectend(icrm)=colprec
     crm_output%precstend(icrm)=colprecs
@@ -860,7 +859,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       nstep = nstep + 1
       time = time + dt
       day = day0 + time/86400.
-      timing_factor(icrm) = timing_factor(icrm)+1
+      crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
       !------------------------------------------------------------------
       !  Check if the dynamical time step should be decreased
       !  to handle the cases when the flow being locally linearly unstable
@@ -1779,7 +1778,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     enddo
 #endif /* ECPP */
 
-    timing_factor(icrm) = timing_factor(icrm) / nstop
+    crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm) / nstop
 
 #ifdef CLUBB_CRM
     ! Deallocate CLUBB variables, etc.
