@@ -14,9 +14,8 @@ module module_ecpp_ppdriver2
   use ppgrid,       only: pcols, pver, pverp 
   use constituents, only: pcnst, cnst_name
   use crmclouds_camaerosols, only: ecpp_mixnuc_tend => crmclouds_mixnuc_tend
-  ! use abortutils,   only: endrun
-  use cam_abortutils,   only: endrun  !==Guangxing Lin
-  use crmdims,         only: crm_nz   ! whannah
+  use cam_abortutils,   only: endrun
+  use crmdims,          only: crm_nz
 
   use ecppvars,     only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in 
   use module_data_ecpp1 
@@ -28,7 +27,7 @@ module module_ecpp_ppdriver2
   public :: papampollu_init
   public :: ecpp_mixnuc_tend
 
-  !+++mhwang follow what done in ndrop.F90. this is for qqcw
+  !+++mhwang follow what is done in ndrop.F90 for qqcw
   ! ptr2d_t is used to create arrays of pointers to 2D fields
   type ptr2d_t
      real(r8), pointer :: fldcw(:,:)
@@ -69,9 +68,10 @@ module module_ecpp_ppdriver2
     ! set pp options (should this be done from driver?)
     !
 
-    num_moist_ecpp = 9 
-    num_chem_ecpp = 2 * pcnst         ! The factor of 2 is for both interstitial and cloudborne aerosol
-    num_chem = num_chem_ecpp
+    num_moist_ecpp   = 9 
+    num_moist        = 9
+    num_chem_ecpp    = 2 * pcnst      ! 2x for cloud-borne and interstitial aerosol
+    num_chem         = num_chem_ecpp
     param_first_ecpp = num_moist+1    ! the first index for non-water species
     p_qv = 1
     p_qc = 2
