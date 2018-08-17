@@ -120,10 +120,13 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 
   qsmall = 1.e-18_r8
 
-   call rad_cnst_get_info(0, nmodes=nmodes)
-   allocate(factnum(pcols,pver,nmodes))
-  lq(:)=.false.
+  call rad_cnst_get_info(0, nmodes=nmodes)
+  allocate(factnum(pcols,pver,nmodes))
 
+  !----------------------------------------------------------------------------
+  ! Initialize ptend
+  !----------------------------------------------------------------------------
+  lq(:)=.false.
   do m=1,ntot_amode
 
     lnum = numptr_amode(m)
@@ -139,6 +142,9 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   end do ! m
  
   call physics_ptend_init(ptend,state%psetcols,'crmclouds_mixnuc', lq=lq)
+
+  !----------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
 
 #ifdef CRM
 
@@ -284,12 +290,9 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 ! should we set omega to be zero ??
   omega(:ncol, :) = state%omega(:ncol, :)
 
-!==Guangxing Lin
- ! call dropmixnuc(state, ptend, dtime, pbuf, wsub, lcldn, lcldo, tendnd, dommf )
   call dropmixnuc(state, ptend, dtime, pbuf, wsub, lcldn, lcldo, tendnd,factnum, species_class,dommf )
   deallocate(factnum)
-!==Guangxing Lin
-!                    state%pmid, state%pint, state%pdel, state%rpdel, state%zm, kkvh_crm, wsub, lcldn, lcldo,     &
+
 
 ! this part is moved into tphysbc after aerosol stuffs. 
 !
