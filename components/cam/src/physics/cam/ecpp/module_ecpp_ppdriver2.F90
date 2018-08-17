@@ -10,14 +10,13 @@ module module_ecpp_ppdriver2
 !      Minghuai Wang (Minghuai.Wang@pnl.gov), 2009-11 
 !---------------------------------------------------------------------------------------
 
-  use shr_kind_mod, only: r8=>shr_kind_r8
-  use ppgrid,       only: pcols, pver, pverp 
-  use constituents, only: pcnst, cnst_name
-  use crmclouds_camaerosols, only: ecpp_mixnuc_tend => crmclouds_mixnuc_tend
-  use cam_abortutils,   only: endrun
-  use crmdims,          only: crm_nz
-
-  use ecppvars,     only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in 
+  use shr_kind_mod,   only: r8=>shr_kind_r8
+  use ppgrid,         only: pcols, pver, pverp 
+  use constituents,   only: pcnst, cnst_name
+  use cam_abortutils, only: endrun
+  use crmdims,        only: crm_nz
+  use ecppvars,       only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in 
+  use crmclouds_camaerosols, only: ecpp_mixnuc_tend => crmclouds_mixnuc_tend 
   use module_data_ecpp1 
   use module_data_mosaic_asect
 
