@@ -115,7 +115,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
                                       qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
                                       wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
                                       qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
-    use module_ecpp_crm_driver, only: ecpp_crm_stat, ntavg1_ss, ntavg2_ss
+    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
     use cam_abortutils        , only: endrun
@@ -782,16 +782,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
 #endif /* CLUBB_CRM */
 
 #ifdef ECPP
-    ! !ntavg1_ss = dt_gl/3   ! one third of GCM time step, 10 minutes
-    ! ntavg1_ss = min(600._r8, dt_gl)       ! 10 minutes  or the GCM timestep, whichever smaller
-    !       ! ntavg1_ss = number of seconds to average between computing categories.
-    ! ntavg2_ss = dt_gl   ! GCM time step
-    !       ! ntavg2_ss = number of seconds to average between outputs.
-    !       !    This must be a multiple of ntavgt1_ss.
+    ntavg1_ss = min(600._r8, dt_gl)   ! 10 minutes  or the GCM timestep, whichever smaller
+    ntavg2_ss = dt_gl                 ! # of seconds to average between computing categories, must be a multiple of ntavgt1_ss.
 
-    ! ! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss
-    ! ! are set for their values are used in ecpp_crm_init.
-    ! call ecpp_crm_init()
+    !!! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss are set
+    call ecpp_crm_init()
 
     qlsink    = 0.0
     qlsink_bf = 0.0
@@ -1779,10 +1774,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
     ! -UWM
     if ( doclubb .or. doclubbnoninter ) call clubb_sgs_cleanup( )
 #endif
-! #ifdef ECPP
-!     ! Deallocate ECPP variables
-!     call ecpp_crm_cleanup ()
-! #endif
+#ifdef ECPP
+    !!! Deallocate ECPP variables
+    call ecpp_crm_cleanup ()
+#endif
 
   enddo
 

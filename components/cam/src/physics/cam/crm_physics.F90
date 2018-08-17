@@ -923,9 +923,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 #ifdef ECPP
       if (use_ECPP) then
+         
+         cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
+
          !!! initialize turbulence for ECPP calculations
          ifld = pbuf_get_index('TKE_CRM')
-         cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
          call pbuf_set_field(pbuf, ifld, 0.0_r8, start=(/1,1/), kount=(/pcols, pver/) )
 
          ifld = pbuf_get_index('TK_CRM')
