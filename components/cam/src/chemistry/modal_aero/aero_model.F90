@@ -2509,10 +2509,8 @@ do_lphase2_conditional: &
     enddo
 !==Guangxing Lin
   else if (use_ECPP) then  ! SPCAM ECPP
-! when ECPP is used, aqueous chemistry is done in ECPP, 
-! and not updated here. 
-! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
-!
+     ! when ECPP is used, aqueous chemistry is done in ECPP, and not updated here. 
+     ! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
      if (mam_amicphys_optaa <= 0) then
        dvmrdt = 0.0_r8  
        dvmrcwdt = 0.0_r8
