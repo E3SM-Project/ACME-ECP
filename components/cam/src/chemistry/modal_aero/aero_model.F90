@@ -39,14 +39,6 @@ module aero_model
   public :: calc_1_impact_rate
   public :: dlndg_nimptblgrow, nimptblgrow_mind, nimptblgrow_maxd,   &
                 scavimptblnum, scavimptblvol
-!==Guangxing Lin
-!#if (defined CRM)
-!#if (defined ECPP)
-!#ifdef CRM 
-!#ifdef ECPP 
-!#endif
-!#endif 
-!==Guangxing Lin
 
  ! Misc private data 
 
@@ -2420,11 +2412,11 @@ do_lphase2_conditional: &
     real(r8) :: vmrcw(ncol,pver,gas_pcnst)            ! cloud-borne aerosol (vmr)
 
     real(r8), pointer :: fldcw(:,:)
-!==Guangxing Lin
+
     logical :: use_ECPP
 
     call phys_getopts (use_ECPP_out  = use_ECPP ) 
-!==Guangxing Lin
+
     
     call pbuf_get_field(pbuf, dgnum_idx,      dgnum,  start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )
     call pbuf_get_field(pbuf, dgnumwet_idx,   dgnumwet )
@@ -2455,9 +2447,9 @@ do_lphase2_conditional: &
 !
     call qqcw2vmr( lchnk, vmrcw, mbar, ncol, loffset, pbuf )
 
-!==Guangxing Lin
-   if (.not. use_ECPP) then  ! regular CAM
-!==Guangxing Lin
+   !---------------------------------------------
+   if (.not. use_ECPP) then  ! regular Model
+
     dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
     dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
 
@@ -2507,8 +2499,9 @@ do_lphase2_conditional: &
       name = 'AQ_'//trim(solsym(m))
       call outfld( name, wrk(:ncol), ncol, lchnk )
     enddo
-!==Guangxing Lin
-  else if (use_ECPP) then  ! SPCAM ECPP
+
+  !---------------------------------------------
+  else if (use_ECPP) then  ! super-parameterization w/ ECPP
      ! when ECPP is used, aqueous chemistry is done in ECPP, and not updated here. 
      ! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
      if (mam_amicphys_optaa <= 0) then
@@ -2520,7 +2513,7 @@ do_lphase2_conditional: &
      end if
 
    end if ! use_ECPP
-!==Guangxing Lin
+   !---------------------------------------------
 
 
     if (mam_amicphys_optaa <= 0) then

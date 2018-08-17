@@ -69,7 +69,6 @@ module module_ecpp_ppdriver2
     ! set pp options (should this be done from driver?)
     !
 
-    
     num_moist_ecpp = 9 
     num_chem_ecpp = 2 * pcnst         ! The factor of 2 is for both interstitial and cloudborne aerosol
     num_chem = num_chem_ecpp
