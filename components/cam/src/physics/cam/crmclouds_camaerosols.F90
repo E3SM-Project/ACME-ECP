@@ -35,7 +35,6 @@ contains
 !------------------------------------------------------------------------------------------------------
 subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,  species_class )
-!==Guangxing Lin added species_class
 !-----------------------------------------------------------------------------------------------------
 !
 ! Purpose: to calculate aerosol tendency from dropelt activation and mixing. 
@@ -44,8 +43,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 !------------------------------------------------------------------------------------------------------
   use physics_types,    only: physics_state, physics_ptend, physics_tend, physics_ptend_init
   use physics_buffer,   only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
-  ! use constituents,     only: cnst_get_ind, pcnst, species_class
-  use physconst,        only: gravit, rair, karman, spec_class_gas !==Guangxing Lin added spec_class_gas
+  use physconst,        only: gravit, rair, karman, spec_class_gas
   use constituents,     only: cnst_get_ind, pcnst
   use time_manager,     only: is_first_step
   use cam_history,      only: outfld
@@ -73,43 +71,44 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   integer ifld, itim
   integer ixcldliq, ixcldice, ixnumliq
   integer l,lnum,lnumcw,lmass,lmasscw
-  integer :: lchnk                  ! chunk identifier
-  integer :: ncol                   ! number of atmospheric columns
+
+  integer :: lchnk    ! chunk identifier
+  integer :: ncol     ! number of atmospheric columns
   integer :: nmodes
  
   
-  real(r8) :: nc(pcols, pver)       ! droplet number concentration (#/kg)
-  real(r8) :: nctend(pcols, pver)   ! change in droplet number concentration
-  real(r8) :: omega(pcols, pver)    ! grid-averaaged vertical velocity 
-  real(r8) :: qc(pcols, pver)       ! liquid water content (kg/kg)
-  real(r8) :: qi(pcols, pver)       ! ice water content (kg/kg) 
+  real(r8) :: nc(pcols, pver)             ! droplet number concentration (#/kg)
+  real(r8) :: nctend(pcols, pver)         ! change in droplet number concentration
+  real(r8) :: omega(pcols, pver)          ! grid-averaaged vertical velocity 
+  real(r8) :: qc(pcols, pver)             ! liquid water content (kg/kg)
+  real(r8) :: qi(pcols, pver)             ! ice water content (kg/kg) 
   real(r8) :: lcldn(pcols, pver)
   real(r8) :: lcldo(pcols, pver) 
 
-  real(r8) :: wsub(pcols, pver)     ! subgrid vertical velocity
-  real(r8) :: ekd_crm(pcols, pverp)  ! diffusivity
-  real(r8) :: kkvh_crm(pcols, pverp)  ! eddy diffusivity
-  real(r8) :: zs(pcols, pver)       ! inverse of distance between levels (meter)
-  real(r8) :: dz(pcols, pver)       ! layer depth (m)
-  real(r8) :: cs(pcols, pver)       ! air density
-  real(r8) :: lc(pcols, pverp)       ! mixing length (m)
-  real(r8) :: zheight(pcols, pverp)   ! height at lay interface (m)
+  real(r8) :: wsub(pcols, pver)           ! subgrid vertical velocity
+  real(r8) :: ekd_crm(pcols, pverp)       ! diffusivity
+  real(r8) :: kkvh_crm(pcols, pverp)      ! eddy diffusivity
+  real(r8) :: zs(pcols, pver)             ! inverse of distance between levels (meter)
+  real(r8) :: dz(pcols, pver)             ! layer depth (m)
+  real(r8) :: cs(pcols, pver)             ! air density
+  real(r8) :: lc(pcols, pverp)            ! mixing length (m)
+  real(r8) :: zheight(pcols, pverp)       ! height at lay interface (m)
   
-  real(r8) :: alc(pcols, pverp)        ! asymptotic length scale (m)
-  real(r8) :: tendnd(pcols, pver)      ! tendency of cloud droplet number concentrations (not used in the MMF) 
+  real(r8) :: alc(pcols, pverp)           ! asymptotic length scale (m)
+  real(r8) :: tendnd(pcols, pver)         ! tendency of cloud droplet number concentrations (not used in the MMF) 
 
   real(r8),allocatable :: factnum(:,:,:)  ! activation fraction for aerosol number
 
   real(r8) :: qcld, qsmall
 
-  logical :: dommf=.true.              ! value insignificant, if present, means that dropmixnuc is called the mmf part. 
+  logical :: dommf=.true.                 ! value insignificant, if present, means that dropmixnuc is called the mmf part. 
 
   !!! Variables in the physics buffer:
-  real(r8), pointer, dimension(:,:) :: cldn    ! cloud fractin at the current time step
-  real(r8), pointer, dimension(:,:) :: cldo   ! cloud fraction at the previous time step
-  real(r8), pointer, dimension(:,:) :: acldy_cen ! liquid cloud fraction at the previous time step from ECPP
-  real(r8), pointer, dimension(:,:) ::  kkvh    ! vertical diffusivity
-  real(r8), pointer, dimension(:,:) :: tke          ! turbulence kenetic energy 
+  real(r8), pointer, dimension(:,:) :: cldn       ! cloud fractin at the current time step
+  real(r8), pointer, dimension(:,:) :: cldo       ! cloud fraction at the previous time step
+  real(r8), pointer, dimension(:,:) :: acldy_cen  ! liquid cloud fraction at the previous time step from ECPP
+  real(r8), pointer, dimension(:,:) ::  kkvh      ! vertical diffusivity
+  real(r8), pointer, dimension(:,:) :: tke        ! turbulence kenetic energy 
   real(r8), pointer, dimension(:,:) :: tk_crm     ! m2/s
   logical :: lq(pcnst)
 
