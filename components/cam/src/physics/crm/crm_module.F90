@@ -51,7 +51,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
                 ,relvar, accre_enhan, qclvar  &
 #endif
 #if defined( ECPP )
-                ,crm_ecpp &
+                ,crm_ecpp_output &
 #endif
                 )
     !-----------------------------------------------------------------------------------------------
@@ -115,7 +115,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
                                       qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
                                       wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
                                       qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
-    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
+    use module_ecpp_crm_driver, only: ecpp_crm_stat, ntavg1_ss, ntavg2_ss
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
     use cam_abortutils        , only: endrun
@@ -142,7 +142,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
     type(crm_input_type),  intent(in   ) :: crm_input
     type(crm_output_type), intent(inout) :: crm_output
 #if defined( ECPP )
-   type(crm_ecpp_type),    intent(inout) :: crm_ecpp 
+   type(crm_ecpp_output_type), intent(inout) :: crm_ecpp_output 
 #endif
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
@@ -782,16 +782,16 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
 #endif /* CLUBB_CRM */
 
 #ifdef ECPP
-    !ntavg1_ss = dt_gl/3   ! one third of GCM time step, 10 minutes
-    ntavg1_ss = min(600._r8, dt_gl)       ! 10 minutes  or the GCM timestep, whichever smaller
-          ! ntavg1_ss = number of seconds to average between computing categories.
-    ntavg2_ss = dt_gl   ! GCM time step
-          ! ntavg2_ss = number of seconds to average between outputs.
-          !    This must be a multiple of ntavgt1_ss.
+    ! !ntavg1_ss = dt_gl/3   ! one third of GCM time step, 10 minutes
+    ! ntavg1_ss = min(600._r8, dt_gl)       ! 10 minutes  or the GCM timestep, whichever smaller
+    !       ! ntavg1_ss = number of seconds to average between computing categories.
+    ! ntavg2_ss = dt_gl   ! GCM time step
+    !       ! ntavg2_ss = number of seconds to average between outputs.
+    !       !    This must be a multiple of ntavgt1_ss.
 
-    ! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss
-    ! are set for their values are used in ecpp_crm_init.
-    call ecpp_crm_init()
+    ! ! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss
+    ! ! are set for their values are used in ecpp_crm_init.
+    ! call ecpp_crm_init()
 
     qlsink    = 0.0
     qlsink_bf = 0.0
@@ -801,6 +801,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
 #endif /* ECPP */
 
      qtotmicro(:) = 0.0
+     ntotal_step = 0.0
 !    !+++mhwangtest
 !    ! test water conservtion problem
 !    ntotal_step = 0.0
@@ -1715,59 +1716,59 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
     enddo
 
 #ifdef ECPP
-    crm_ecpp%abnd         (icrm,:,:,:,:)=0.0
-    crm_ecpp%abnd_tf      (icrm,:,:,:,:)=0.0
-    crm_ecpp%massflxbnd   (icrm,:,:,:,:)=0.0
-    crm_ecpp%acen         (icrm,:,:,:,:)=0.0
-    crm_ecpp%acen_tf      (icrm,:,:,:,:)=0.0
-    crm_ecpp%rhcen        (icrm,:,:,:,:)=0.0
-    crm_ecpp%qcloudcen    (icrm,:,:,:,:)=0.0
-    crm_ecpp%qicecen      (icrm,:,:,:,:)=0.0
-    crm_ecpp%qlsinkcen    (icrm,:,:,:,:)=0.0
-    crm_ecpp%precrcen     (icrm,:,:,:,:)=0.0
-    crm_ecpp%precsolidcen (icrm,:,:,:,:)=0.0
-    crm_ecpp%qlsink_bfcen (icrm,:,:,:,:)=0.0
-    crm_ecpp%qlsink_avgcen(icrm,:,:,:,:)=0.0
-    crm_ecpp%praincen     (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%abnd         (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%abnd_tf      (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%massflxbnd   (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%acen         (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%acen_tf      (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%rhcen        (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%qcloudcen    (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%qicecen      (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%qlsinkcen    (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%precrcen     (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%precsolidcen (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%qlsink_bfcen (icrm,:,:,:,:)=0.0
+    crm_ecpp_output%qlsink_avgcen(icrm,:,:,:,:)=0.0
+    crm_ecpp_output%praincen     (icrm,:,:,:,:)=0.0
 
-    crm_ecpp%wupthresh_bnd   (icrm,:)=0.0
-    crm_ecpp%wdownthresh_bnd (icrm,:)=0.0
-    crm_ecpp%wwqui_cen       (icrm,:)=0.0
-    crm_ecpp%wwqui_bnd       (icrm,:)=0.0
-    crm_ecpp%wwqui_cloudy_cen(icrm,:)=0.0
-    crm_ecpp%wwqui_cloudy_bnd(icrm,:)=0.0
+    crm_ecpp_output%wupthresh_bnd   (icrm,:)=0.0
+    crm_ecpp_output%wdownthresh_bnd (icrm,:)=0.0
+    crm_ecpp_output%wwqui_cen       (icrm,:)=0.0
+    crm_ecpp_output%wwqui_bnd       (icrm,:)=0.0
+    crm_ecpp_output%wwqui_cloudy_cen(icrm,:)=0.0
+    crm_ecpp_output%wwqui_cloudy_bnd(icrm,:)=0.0
 
     ! default is clear, non-precipitating, and quiescent class
-    crm_ecpp%abnd   (icrm,:,1,1,1)=1.0
-    crm_ecpp%abnd_tf(icrm,:,1,1,1)=1.0
-    crm_ecpp%acen   (icrm,:,1,1,1)=1.0
-    crm_ecpp%acen_tf(icrm,:,1,1,1)=1.0
+    crm_ecpp_output%abnd   (icrm,:,1,1,1)=1.0
+    crm_ecpp_output%abnd_tf(icrm,:,1,1,1)=1.0
+    crm_ecpp_output%acen   (icrm,:,1,1,1)=1.0
+    crm_ecpp_output%acen_tf(icrm,:,1,1,1)=1.0
 
     do k=1, nzm
       l=plev-k+1
-      crm_ecpp%acen            (icrm,l,:,:,:) = area_cen_sum        (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%acen_tf         (icrm,l,:,:,:) = area_cen_final      (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%rhcen           (icrm,l,:,:,:) = rh_cen_sum          (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%qcloudcen       (icrm,l,:,:,:) = qcloud_cen_sum      (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%qicecen         (icrm,l,:,:,:) = qice_cen_sum        (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%qlsinkcen       (icrm,l,:,:,:) = qlsink_cen_sum      (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%precrcen        (icrm,l,:,:,:) = precr_cen_sum       (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%precsolidcen    (icrm,l,:,:,:) = precsolid_cen_sum   (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%wwqui_cen       (icrm,l)       = wwqui_cen_sum       (k)
-      crm_ecpp%wwqui_cloudy_cen(icrm,l)       = wwqui_cloudy_cen_sum(k)
-      crm_ecpp%qlsink_bfcen    (icrm,l,:,:,:) = qlsink_bf_cen_sum   (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%qlsink_avgcen   (icrm,l,:,:,:) = qlsink_avg_cen_sum  (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%praincen        (icrm,l,:,:,:) = prain_cen_sum       (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%acen            (icrm,l,:,:,:) = area_cen_sum        (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%acen_tf         (icrm,l,:,:,:) = area_cen_final      (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%rhcen           (icrm,l,:,:,:) = rh_cen_sum          (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%qcloudcen       (icrm,l,:,:,:) = qcloud_cen_sum      (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%qicecen         (icrm,l,:,:,:) = qice_cen_sum        (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%qlsinkcen       (icrm,l,:,:,:) = qlsink_cen_sum      (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%precrcen        (icrm,l,:,:,:) = precr_cen_sum       (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%precsolidcen    (icrm,l,:,:,:) = precsolid_cen_sum   (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%wwqui_cen       (icrm,l)       = wwqui_cen_sum       (k)
+      crm_ecpp_output%wwqui_cloudy_cen(icrm,l)       = wwqui_cloudy_cen_sum(k)
+      crm_ecpp_output%qlsink_bfcen    (icrm,l,:,:,:) = qlsink_bf_cen_sum   (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%qlsink_avgcen   (icrm,l,:,:,:) = qlsink_avg_cen_sum  (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%praincen        (icrm,l,:,:,:) = prain_cen_sum       (k,:,1:ncls_ecpp_in,:)
     enddo
     do k=1, nzm+1
       l=plev+1-k+1
-      crm_ecpp%abnd            (icrm,l,:,:,:) = area_bnd_sum        (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%abnd_tf         (icrm,l,:,:,:) = area_bnd_final      (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%massflxbnd      (icrm,l,:,:,:) = mass_bnd_sum        (k,:,1:ncls_ecpp_in,:)
-      crm_ecpp%wupthresh_bnd   (icrm,l)       = wup_thresh          (k)
-      crm_ecpp%wdownthresh_bnd (icrm,l)       = wdown_thresh        (k)
-      crm_ecpp%wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k)
-      crm_ecpp%wwqui_cloudy_bnd(icrm,l)       = wwqui_cloudy_bnd_sum(k)
+      crm_ecpp_output%abnd            (icrm,l,:,:,:) = area_bnd_sum        (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%abnd_tf         (icrm,l,:,:,:) = area_bnd_final      (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%massflxbnd      (icrm,l,:,:,:) = mass_bnd_sum        (k,:,1:ncls_ecpp_in,:)
+      crm_ecpp_output%wupthresh_bnd   (icrm,l)       = wup_thresh          (k)
+      crm_ecpp_output%wdownthresh_bnd (icrm,l)       = wdown_thresh        (k)
+      crm_ecpp_output%wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k)
+      crm_ecpp_output%wwqui_cloudy_bnd(icrm,l)       = wwqui_cloudy_bnd_sum(k)
     enddo
 #endif /* ECPP */
 
@@ -1778,10 +1779,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
     ! -UWM
     if ( doclubb .or. doclubbnoninter ) call clubb_sgs_cleanup( )
 #endif
-#ifdef ECPP
-    ! Deallocate ECPP variables
-    call ecpp_crm_cleanup ()
-#endif
+! #ifdef ECPP
+!     ! Deallocate ECPP variables
+!     call ecpp_crm_cleanup ()
+! #endif
 
   enddo
 

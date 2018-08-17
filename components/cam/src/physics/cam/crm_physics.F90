@@ -475,7 +475,7 @@ end subroutine crm_physics_init
 !==================================================================================================
 
 subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,    &
-                            species_class, phys_stage,                           &
+                            species_class, phys_stage, crm_ecpp_output,          &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
 !------------------------------------------------------------------------------------------
@@ -520,15 +520,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 ! modal_aero_data only exists if MODAL_AERO
 #if (defined  m2005 && defined MODAL_AERO)  
-   use crmclouds_camaerosols, only: crmclouds_mixnuc_tend
    use modal_aero_data, only: ntot_amode, ntot_amode
    use ndrop,  only: loadaer
    use microphysics,  only: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ing, ins   !!!!!! BE CAUIOUS, these indices can only defined before call to crm.
-#endif
-#ifdef ECPP
-   use module_ecpp_ppdriver2, only: parampollu_driver2
-   use ecppvars,              only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
-   use module_data_ecpp1,     only: dtstep_pp_input
 #endif
    use phys_grid,       only: get_rlat_all_p, get_rlon_all_p, get_gcol_p
    !!!use aerosol_intr,    only: aerosol_wet_intr
@@ -559,9 +553,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(cam_out_t),            intent(inout) :: cam_out          ! atm output to coupler
    integer,                    intent(in   ) :: species_class(:) ! aerosol species type
    integer,                    intent(inout) :: phys_stage       ! physics run stage indicator (1 or 2 = bc or ac, see SP_CRM_SPLIT)
+   type(crm_ecpp_output_type), intent(inout) :: crm_ecpp_output  ! output data for ECPP calculations
    real(r8), dimension(pcols), intent(out  ) :: sp_qchk_prec_dp  ! precipitation diagostic (liq+ice)  used for check_energy_chng
    real(r8), dimension(pcols), intent(out  ) :: sp_qchk_snow_dp  ! precipitation diagostic (ice only) used for check_energy_chng
    real(r8), dimension(pcols), intent(out  ) :: sp_rad_flux      ! radiative flux diagnostic used for check_energy_chng
+
    
    ! real(r8), intent(in) :: dlf(pcols,pver)  ! shallow+deep convective detrainment [kg/kg/s] - used for aerosol_wet_intr - no longer needed
 
@@ -660,10 +656,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(crm_input_type)  :: crm_input
    type(crm_output_type) :: crm_output
 
-#if defined( ECPP )
-   type(crm_ecpp_type)   :: crm_ecpp
-#endif
-
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
    real(crm_rknd) :: unif_rand2           ! uniform random number 
@@ -721,10 +713,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call crm_rad%initialize()
    call crm_input%initialize(pcols,pver)
    call crm_output%initialize(pcols,pver)
-
-#if defined( ECPP )
-   call crm_ecpp%initialize(pcols,pver)
-#endif
 
    !------------------------------------------------------------
    ! Set CRM orientation angle
@@ -1079,7 +1067,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
               ,relvar(:ncol,:, :, :),       accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :)   &
 #endif /* CLUBB_CRM */
 #if defined( ECPP )
-              ,crm_ecpp &
+              ,crm_ecpp_output &
 #endif
                )
 !---------------------------------------------------------------------------------------------------
@@ -1395,28 +1383,28 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #ifdef ECPP
        if (use_ECPP) then
 
-         crm_ecpp%qlsinkcen = crm_ecpp%qlsink_avgcen
+         crm_ecpp_output%qlsinkcen = crm_ecpp_output%qlsink_avgcen
 
-         call outfld('ACEN    ',      crm_ecpp%acen,             pcols, lchnk)
-         call outfld('ABND    ',      crm_ecpp%abnd,             pcols, lchnk)
-         call outfld('ACEN_TF ',      crm_ecpp%acen_tf,          pcols, lchnk)
-         call outfld('ABND_TF ',      crm_ecpp%abnd_tf,          pcols, lchnk)
-         call outfld('MASFBND ',      crm_ecpp%massflxbnd,       pcols, lchnk)
-         call outfld('RHCEN   ',      crm_ecpp%rhcen,            pcols, lchnk)
-         call outfld('QCCEN   ',      crm_ecpp%qcloudcen,        pcols, lchnk)
-         call outfld('QICEN   ',      crm_ecpp%qicecen,          pcols, lchnk)
-         call outfld('QSINK_AFCEN',   crm_ecpp%qlsink_afcen,     pcols, lchnk)
-         call outfld('PRECRCEN',      crm_ecpp%precrcen,         pcols, lchnk)
-         call outfld('PRECSCEN',      crm_ecpp%precsolidcen,     pcols, lchnk)
-         call outfld('WUPTHRES',      crm_ecpp%wupthresh_bnd,    pcols, lchnk)
-         call outfld('WDNTHRES',      crm_ecpp%wdownthresh_bnd,  pcols, lchnk)
-         call outfld('WWQUI_CEN',     crm_ecpp%wwqui_cen,        pcols, lchnk)
-         call outfld('WWQUI_CLD_CEN', crm_ecpp%wwqui_cloudy_cen, pcols, lchnk)
-         call outfld('WWQUI_BND',     crm_ecpp%wwqui_cen,        pcols, lchnk)
-         call outfld('WWQUI_CLD_BND', crm_ecpp%wwqui_cloudy_cen, pcols, lchnk)
-         call outfld('QSINK_BFCEN',   crm_ecpp%qlsink_bfcen,     pcols, lchnk)
-         call outfld('QSINK_AVGCEN',  crm_ecpp%qlsink_avgcen,    pcols, lchnk)
-         call outfld('PRAINCEN',      crm_ecpp%praincen,         pcols, lchnk)
+         call outfld('ACEN    ',      crm_ecpp_output%acen,             pcols, lchnk)
+         call outfld('ABND    ',      crm_ecpp_output%abnd,             pcols, lchnk)
+         call outfld('ACEN_TF ',      crm_ecpp_output%acen_tf,          pcols, lchnk)
+         call outfld('ABND_TF ',      crm_ecpp_output%abnd_tf,          pcols, lchnk)
+         call outfld('MASFBND ',      crm_ecpp_output%massflxbnd,       pcols, lchnk)
+         call outfld('RHCEN   ',      crm_ecpp_output%rhcen,            pcols, lchnk)
+         call outfld('QCCEN   ',      crm_ecpp_output%qcloudcen,        pcols, lchnk)
+         call outfld('QICEN   ',      crm_ecpp_output%qicecen,          pcols, lchnk)
+         call outfld('QSINK_AFCEN',   crm_ecpp_output%qlsink_afcen,     pcols, lchnk)
+         call outfld('PRECRCEN',      crm_ecpp_output%precrcen,         pcols, lchnk)
+         call outfld('PRECSCEN',      crm_ecpp_output%precsolidcen,     pcols, lchnk)
+         call outfld('WUPTHRES',      crm_ecpp_output%wupthresh_bnd,    pcols, lchnk)
+         call outfld('WDNTHRES',      crm_ecpp_output%wdownthresh_bnd,  pcols, lchnk)
+         call outfld('WWQUI_CEN',     crm_ecpp_output%wwqui_cen,        pcols, lchnk)
+         call outfld('WWQUI_CLD_CEN', crm_ecpp_output%wwqui_cloudy_cen, pcols, lchnk)
+         call outfld('WWQUI_BND',     crm_ecpp_output%wwqui_cen,        pcols, lchnk)
+         call outfld('WWQUI_CLD_BND', crm_ecpp_output%wwqui_cloudy_cen, pcols, lchnk)
+         call outfld('QSINK_BFCEN',   crm_ecpp_output%qlsink_bfcen,     pcols, lchnk)
+         call outfld('QSINK_AVGCEN',  crm_ecpp_output%qlsink_avgcen,    pcols, lchnk)
+         call outfld('PRAINCEN',      crm_ecpp_output%praincen,         pcols, lchnk)
 
        end if ! use_ECPP
 #endif /* ECPP */
@@ -1561,10 +1549,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call crm_rad%finalize()
    call crm_input%finalize()
    call crm_output%finalize()
-
-#if defined( ECPP )
-   call crm_ecpp%finalize()
-#endif
 
 #endif /* CRM */
 end subroutine crm_physics_tend

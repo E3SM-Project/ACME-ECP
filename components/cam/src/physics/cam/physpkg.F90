@@ -1920,10 +1920,19 @@ subroutine tphysbc (ztodt,               &
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use phys_control,    only: use_qqflx_fixer, use_mass_borrower
 
+    !!! CRM modules
     use crmdims,         only: crm_nz, crm_nx, crm_ny, crm_dx, crm_dy, crm_dt
 
     use crm_physics,     only: crm_physics_tend, crm_surface_flux_bypass_tend, &
                                crm_save_state_tend, crm_recall_state_tend
+    use crm_ecpp_output_module, only: crm_ecpp_output_type
+
+#if defined( ECPP )
+   use module_ecpp_ppdriver2,  only: parampollu_driver2
+   use module_data_ecpp1,      only: dtstep_pp_input
+   use crmclouds_camaerosols,  only: crmclouds_mixnuc_tend
+   use module_ecpp_crm_driver, only: ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
+#endif
 
 #if defined( SP_CRM_BULK )
     use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
@@ -2104,9 +2113,19 @@ subroutine tphysbc (ztodt,               &
     character(len=16) :: SPCAM_microp_scheme
     integer           :: phys_stage                ! physics stage indicator (tphysbc => 1)
     real(r8)          :: crm_run_time              ! length of CRM integration
+    type(crm_ecpp_output_type) :: crm_ecpp_output  ! CRM output data for ECPP calculations
     real(r8), dimension(pcols) :: sp_qchk_prec_dp  ! CRM precipitation diagostic (liq+ice)  used for check_energy_chng
     real(r8), dimension(pcols) :: sp_qchk_snow_dp  ! CRM precipitation diagostic (ice only) used for check_energy_chng
     real(r8), dimension(pcols) :: sp_rad_flux      ! CRM radiative flux diagnostic used for check_energy_chng
+
+#if defined( ECPP )
+    !!! ECPP variables
+    real(r8),pointer,dimension(:)   :: pblh           ! PBL height (for ECPP)
+    real(r8),pointer,dimension(:,:) :: acldy_cen_tbeg ! cloud fraction
+    real(r8)                        :: dtstep_pp      ! ECPP time step (seconds)
+    integer                         :: necpp          ! number of GCM time steps in which ECPP is called once
+
+#endif /* ECPP */
 
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( use_ECPP_out            = use_ECPP)
@@ -2750,13 +2769,27 @@ end if
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
                              cam_in%shf(:), zero, zero, cam_in%cflx(:,1)) 
 #endif
+      !---------------------------------------------------------------------------
+      ! Initialize variabale for ECPP data
+      !---------------------------------------------------------------------------
+#if defined( ECPP )
+      if (use_ECPP) then
+         call crm_ecpp_output%initialize(pcols,pver)
 
+         ntavg1_ss = min(600._r8, ztodt)   ! 10 minutes  or the GCM timestep, whichever smaller
+         ntavg2_ss = ztodt                 ! # of seconds to average between computing categories, must be a multiple of ntavgt1_ss.
+
+         ! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss are set
+         call ecpp_crm_init()
+
+      end if ! use_ECPP
+#endif
       !---------------------------------------------------------------------------
       ! Run the CRM 
       !---------------------------------------------------------------------------
       phys_stage = 1  ! for tphysbc() => phys_stage = 1
       call crm_physics_tend(ztodt, state, tend,ptend, pbuf, cam_in, cam_out,    &
-                            species_class, phys_stage,                          &
+                            species_class, phys_stage, crm_ecpp_output,         &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
       call physics_update(state, ptend, crm_run_time, tend)
@@ -2801,10 +2834,11 @@ end if
       !---------------------------------------------------------------------------
       ! ECPP - Explicit-Cloud Parameterized-Pollutant
       !---------------------------------------------------------------------------
-#if defined(ECPP)
+#if defined( ECPP )
       if (use_ECPP) then
-         pblh_idx  = pbuf_get_index('pblh')
-         call pbuf_get_field(pbuf, pblh_idx, pblh)
+
+         call pbuf_get_field(pbuf, pbuf_get_index('pblh'), pblh)
+         call pbuf_get_field(pbuf, pbuf_get_index('ACLDY_CEN'), acldy_cen_tbeg)
        
          dtstep_pp = dtstep_pp_input
          necpp = dtstep_pp/crm_run_time
@@ -2815,27 +2849,34 @@ end if
             !!! cldo and cldn are set to be the same in crmclouds_mixnuc_tend,
             !!! So only turbulence mixing is done here.
             call t_startf('crmclouds_mixnuc')
-            call crmclouds_mixnuc_tend(state, ptend, dtstep_pp,     &
-                                       cam_in%cflx, pblh, pbuf,     &
-                                       wwqui_cen, wwqui_cloudy_cen, &
-                                       wwqui_bnd, wwqui_cloudy_bnd, &
+            call crmclouds_mixnuc_tend(state, ptend, dtstep_pp,           &
+                                       cam_in%cflx, pblh, pbuf,           &
+                                       crm_ecpp_output%wwqui_cen,         &
+                                       crm_ecpp_output%wwqui_cloudy_cen,  &
+                                       crm_ecpp_output%wwqui_bnd,         &
+                                       crm_ecpp_output%wwqui_cloudy_bnd,  &
                                        species_class)
             call physics_update(state, ptend, dtstep_pp, tend)
             call t_stopf('crmclouds_mixnuc')
 
             !!! ECPP interface
             call t_startf('ecpp')
-            call parampollu_driver2(state, ptend, pbuf,     &
-                                    dtstep_pp, dtstep_pp,   &
-                                    acen, abnd,             &
-                                    acen_tf, abnd_tf,       &
-                                    massflxbnd, rhcen,      &
-                                    qcloudcen, qlsinkcen,   &
-                                    precrcen, precsolidcen, &
+            call parampollu_driver2(state, ptend, pbuf, dtstep_pp, dtstep_pp,   &
+                                    crm_ecpp_output%acen,       crm_ecpp_output%abnd,         &
+                                    crm_ecpp_output%acen_tf,    crm_ecpp_output%abnd_tf,      &
+                                    crm_ecpp_output%massflxbnd, crm_ecpp_output%rhcen,        &
+                                    crm_ecpp_output%qcloudcen,  crm_ecpp_output%qlsinkcen,    &
+                                    crm_ecpp_output%precrcen,   crm_ecpp_output%precsolidcen, &
                                     acldy_cen_tbeg)
             call physics_update(state, ptend, dtstep_pp, tend)
             call t_stopf ('ecpp')
+
          end if ! nstep.ne.0 .and. mod(nstep, necpp).eq.0
+
+         ! Deallocate ECPP variables
+         call ecpp_crm_cleanup()
+
+         call crm_ecpp_output%finalize()
 
       end if ! use_ECPP
 #endif /* ECPP */

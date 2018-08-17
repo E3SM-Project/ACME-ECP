@@ -1,9 +1,14 @@
 module crm_ecpp_output_module
-   use params, only: crm_rknd
-   implicit none
-   private
 
-#if defined( ECPP )
+#if defined( CRM )
+   use params, only: crm_rknd
+#else
+   integer, parameter :: crm_rknd = 8
+#endif
+
+   implicit none
+
+   private
 
    public crm_ecpp_output_type
 
@@ -39,32 +44,34 @@ module crm_ecpp_output_module
 
 contains
 
+#if defined( ECPP )
+
    !------------------------------------------------------------------------------------------------
    subroutine crm_ecpp_initialize(this, ncol, nlev)
       use ecppvars, only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
       class(crm_ecpp_output_type), intent(inout) :: this
-      integer, intent(in) :: ncol, plev
-      if (.not.allocated(this% )) allocate(acen            (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(acen_tf         (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(rhcen           (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(qcloudcen       (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(qicecen         (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(qlsinkcen       (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(precrcen        (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(precsolidcen    (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(qlsink_afcen    (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(qlsink_bfcen    (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(qlsink_avgcen   (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(praincen        (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  
-      if (.not.allocated(this% )) allocate(wwqui_cen       (ncol,nlev)
-      if (.not.allocated(this% )) allocate(wwqui_cloudy_cen(ncol,nlev)
-      if (.not.allocated(this% )) allocate(abnd            (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)
-      if (.not.allocated(this% )) allocate(abnd_tf         (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)
-      if (.not.allocated(this% )) allocate(massflxbnd      (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)
-      if (.not.allocated(this% )) allocate(wupthresh_bnd   (ncol,nlev+1)
-      if (.not.allocated(this% )) allocate(wdownthresh_bnd (ncol,nlev+1)
-      if (.not.allocated(this% )) allocate(wwqui_bnd       (ncol,nlev+1)
-      if (.not.allocated(this% )) allocate(wwqui_cloudy_bnd(ncol,nlev+1)
+      integer, intent(in) :: ncol, nlev
+      if (.not.allocated(this%acen            )) allocate(this%acen            (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%acen_tf         )) allocate(this%acen_tf         (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%rhcen           )) allocate(this%rhcen           (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%qcloudcen       )) allocate(this%qcloudcen       (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%qicecen         )) allocate(this%qicecen         (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%qlsinkcen       )) allocate(this%qlsinkcen       (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%precrcen        )) allocate(this%precrcen        (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%precsolidcen    )) allocate(this%precsolidcen    (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%qlsink_afcen    )) allocate(this%qlsink_afcen    (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%qlsink_bfcen    )) allocate(this%qlsink_bfcen    (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%qlsink_avgcen   )) allocate(this%qlsink_avgcen   (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%praincen        )) allocate(this%praincen        (ncol,nlev,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%wwqui_cen       )) allocate(this%wwqui_cen       (ncol,nlev) )
+      if (.not.allocated(this%wwqui_cloudy_cen)) allocate(this%wwqui_cloudy_cen(ncol,nlev) )
+      if (.not.allocated(this%abnd            )) allocate(this%abnd            (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%abnd_tf         )) allocate(this%abnd_tf         (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%massflxbnd      )) allocate(this%massflxbnd      (ncol,nlev+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR) )
+      if (.not.allocated(this%wupthresh_bnd   )) allocate(this%wupthresh_bnd   (ncol,nlev+1) )
+      if (.not.allocated(this%wdownthresh_bnd )) allocate(this%wdownthresh_bnd (ncol,nlev+1) )
+      if (.not.allocated(this%wwqui_bnd       )) allocate(this%wwqui_bnd       (ncol,nlev+1) )
+      if (.not.allocated(this%wwqui_cloudy_bnd)) allocate(this%wwqui_cloudy_bnd(ncol,nlev+1) )
    end subroutine crm_ecpp_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_ecpp_finalize(this)
