@@ -726,15 +726,15 @@ module module_ecpp_ppdriver2
     ncol = state%ncol
     lchnk = state%lchnk
 
-    ! whannah - moved the ptend initialization up to crm_physics_tend()
-    ! !==Guangxing Lin
-    ! lq(:) = .true.
-    ! call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
-    ! !call physics_ptend_init(ptend)
-    ! !ptend%name  = 'ecpp'
-    ! ptend%lq(:) = .true.
-    ! ptend%q(:,:,:) = 0.0_r8
-    ! !==Guangxing Lin
+    !------------------------------------------------------
+    ! Initialize ptend
+    !------------------------------------------------------
+    lq(:) = .true.
+    call physics_ptend_init(ptend, state%psetcols,'ecpp',lq=lq)
+    ptend%lq(:) = .true.
+    ptend%q(:,:,:) = 0.0_r8
+    !------------------------------------------------------
+    !------------------------------------------------------
 
     dtstep = dtstep_in
     dtstep_pp = dtstep_pp_in
