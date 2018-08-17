@@ -1931,7 +1931,8 @@ subroutine tphysbc (ztodt,               &
    use module_ecpp_ppdriver2,  only: parampollu_driver2
    use module_data_ecpp1,      only: dtstep_pp_input
    use crmclouds_camaerosols,  only: crmclouds_mixnuc_tend
-   use module_ecpp_crm_driver, only: ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
+   ! use module_ecpp_crm_driver, only: ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
+   ! use module_ecpp_crm_driver, only: ntavg1_ss, ntavg2_ss
 #endif
 
 #if defined( SP_CRM_BULK )
@@ -2776,11 +2777,11 @@ end if
       if (use_ECPP) then
          call crm_ecpp_output%initialize(pcols,pver)
 
-         ntavg1_ss = min(600._r8, ztodt)   ! 10 minutes  or the GCM timestep, whichever smaller
-         ntavg2_ss = ztodt                 ! # of seconds to average between computing categories, must be a multiple of ntavgt1_ss.
+         ! ntavg1_ss = min(600._r8, ztodt)   ! 10 minutes  or the GCM timestep, whichever smaller
+         ! ntavg2_ss = ztodt                 ! # of seconds to average between computing categories, must be a multiple of ntavgt1_ss.
 
-         ! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss are set
-         call ecpp_crm_init()
+         !!! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss are set
+         ! call ecpp_crm_init()
 
       end if ! use_ECPP
 #endif
@@ -2873,8 +2874,8 @@ end if
 
          end if ! nstep.ne.0 .and. mod(nstep, necpp).eq.0
 
-         ! Deallocate ECPP variables
-         call ecpp_crm_cleanup()
+         !!! Deallocate ECPP variables
+         ! call ecpp_crm_cleanup()
 
          call crm_ecpp_output%finalize()
 
