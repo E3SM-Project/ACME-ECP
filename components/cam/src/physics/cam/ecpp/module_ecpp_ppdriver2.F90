@@ -415,16 +415,15 @@ module module_ecpp_ppdriver2
   !==================================================================================================
   !==================================================================================================
   !==================================================================================================
-  subroutine parampollu_driver2(                            &
-                state, ptend,  pbuf,                              &
-    dtstep_in, dtstep_pp_in,                          &
-    acen_3d, abnd_3d,                                 &
-    acen_tf_3d, abnd_tf_3d,                           &
-    massflxbnd_3d,                                    &
-    rhcen_3d, qcloudcen_3d, qlsinkcen_3d,             &
-    precrcen_3d, precsolidcen_3d,                     &
-    acldy_cen_tbeg_3d                                &
-                              )
+  subroutine parampollu_driver2(state, ptend,  pbuf,                              &
+                                dtstep_in, dtstep_pp_in,                          &
+                                acen_3d, abnd_3d,                                 &
+                                acen_tf_3d, abnd_tf_3d,                           &
+                                massflxbnd_3d,                                    &
+                                rhcen_3d, qcloudcen_3d, qlsinkcen_3d,             &
+                                precrcen_3d, precsolidcen_3d,                     &
+                                acldy_cen_tbeg_3d                                 &
+                               )
 
     ! modules from CAM
     use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
@@ -459,15 +458,15 @@ module module_ecpp_ppdriver2
     !
     !-----------------------------------------------------------------------
 
-    !   subr arguments
+    !!! Interface Arguments
 
     real(r8), intent(in) :: dtstep_in, dtstep_pp_in
     ! dtstep_in - main model time step (s)
     ! dtstep_pp_in - time step (s) for "parameterized pollutants" calculations
 
-    type(physics_state), intent(in) :: state       ! Physics state variables
-    type(physics_ptend), intent(inout) :: ptend       ! individual parameterization
-    type(physics_buffer_desc), pointer ::  pbuf(:)   ! physics buffer 
+    type(physics_state),       intent(in)    :: state      ! Physics state variables
+    type(physics_ptend),       intent(inout) :: ptend      ! individual parameterization tendencies
+    type(physics_buffer_desc), pointer       :: pbuf(:)    ! physics buffer 
 
     real(r8), intent(in), dimension(pcols,pverp,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: abnd_3d
     real(r8), intent(in), dimension(pcols,pverp,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: abnd_tf_3d
@@ -479,25 +478,29 @@ module module_ecpp_ppdriver2
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: qlsinkcen_3d
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: precrcen_3d
     real(r8), intent(in), dimension(pcols,pver ,1:ncc_in,1:ncls_ecpp_in,1:nprcp_in ) :: precsolidcen_3d
-    !   *** note - these are not "3d" now but probably will be in the mmf code
-    !   abnd_3d and abnd_tf_3d - sub-class fractional area (--) at layer bottom boundary
-    ! abnd_3d    is average for full time period (=dtstep_pp_in)
-    ! abnd_tf_3d is average for end-portion of time period
-    !   acen_3d and acen_tf_3d - sub-class fractional area (--) at layer center
-    ! acen_3d    is average for full time period (=dtstep_pp_in)
-    ! acen_tf_3d is average for end-portion of time period
+    !-----------------------------------------------------------------------
+    ! *** note - these are not "3d" now but probably could be in the mmf code
+    !   abnd_3d and abnd_tf_3d  - sub-class frac area (--) at layer bottom boundary
+    !       abnd_3d             - average for full time period (=dtstep_pp_in)
+    !       abnd_tf_3d          - average for end-portion of time period
+    !   acen_3d and acen_tf_3d  - sub-class frac area (--) at layer center
+    !       acen_3d             - average for full time period (=dtstep_pp_in)
+    !       acen_tf_3d          - average for end-portion of time period
     !   massflxbnd_3d - sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
-    !       *** note - These are calculated using wfull, not wprime.
-    !  rhcen_3d - relative humidity (0-1) at layer center
-    !  qcloudcen_3d - cloud water mixing ratio (kg/kg) at layer center
-    !  qlsinkcen_3d - cloud-water first-order loss rate to precipitation (/s) at layer center
-    !  precrcen_3d - liquid (rain) precipitation rate (kg/m2/s) at layer center
-    !  precsolidcen_3d - solid (snow,graupel,...) precipitation rate (kg/m2/s) at layer center
+    !-----------------------------------------------------------------------
+    ! *** note - These are calculated using wfull, not wprime.
+    !   rhcen_3d         - relative humidity (0-1) at layer center
+    !   qcloudcen_3d     - cloud water mixing ratio (kg/kg) at layer center
+    !   qlsinkcen_3d     - cloud-water first-order loss rate to precipitation (/s) at layer center
+    !   precrcen_3d      - liquid (rain) precipitation rate (kg/m2/s) at layer center
+    !   precsolidcen_3d  - solid (snow,graupel,...) precipitation rate (kg/m2/s) at layer center
+    !-----------------------------------------------------------------------
 
     real(r8), intent(inout), dimension( pcols, pver)  :: acldy_cen_tbeg_3d
-    !   acldy_cen_tbeg_3d = total (all sub-classes) cloudy fractional area
-    ! on input,  = value from end of the previous time step
-    ! on output, = value from end of the current  time step
+    !-----------------------------------------------------------------------
+    ! acldy_cen_tbeg_3d = total (all sub-classes) cloudy fractional area
+    !   on input,  = value from end of the previous time step
+    !   on output, = value from end of the current  time step
 
     !-----------------------------------------------------------------------
     ! local variables
@@ -527,6 +530,7 @@ module module_ecpp_ppdriver2
     integer, dimension( 1:ndndraft_in ) :: kdndraftbase
     integer, dimension( 1:ndndraft_in ) :: kdndrafttop
 
+    !-----------------------------------------------------------------------
     ! kupdraftbase, kupdrafttop - lower-most and upper-most level for each updraft class
     ! *** note1- these refer to layer centers, not layer boundaries.  Thus
     !     acen > 0 for kupdraftbase:kupdrafttop and = 0 at other k
@@ -535,6 +539,7 @@ module module_ecpp_ppdriver2
     ! kdndraftbase, kdndrafttop - lower-most and upper-most level for each downdraft class
     ! *** note2- these get checked/adjusted later, so simply setting k--draftbase = kts
     !     and k--drafttop = ktecen is OK
+    !-----------------------------------------------------------------------
 
     real(r8)  ::  tcen_bar   (pver)                 ! temperature at layer centers (K)  
     real(r8)  ::  pcen_bar   (pver)                 ! pressure at layer centers (K)
@@ -542,10 +547,10 @@ module module_ecpp_ppdriver2
     real(r8)  ::  dzcen      (pver)                 ! layer depth (m)
     real(r8)  ::  wcen_bar   (pver)                 ! vertical velocity at layer centers (m/s)
     real(r8)  ::  rhobnd_bar (pverp)                ! air density at layer boundaries (kg/m3)
-    real(r8)  ::  zbnd       (pverp)                ! elevation at layer boundaries (m) ???elevation or height????
+    real(r8)  ::  zbnd       (pverp)                ! elevation at layer boundaries         (m) 
     real(r8)  ::  wbnd_bar   (pverp)                ! vertical velocity at layer boundaries (m/s)  
-    real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  ! mixing ratios of trace gase (ppm) and aerosol species
-                                                        ! (ug/kg for mass species, #/kg for number species)
+    real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  ! mixing ratios of trace gase (ppm) and aerosol species 
+                                                    ! ( ug/kg for mass species, #/kg for number species )
 #ifdef MODAL_AERO
     ! real(r8), pointer, dimension(:, :, :) :: qqcw  ! cloud-borne aerosol
     type(ptr2d_t) :: qqcw(pcnst)
@@ -706,18 +711,19 @@ module module_ecpp_ppdriver2
     !-----------------------------------------------------------------------
 
     lun60 = -1
-    if (idiagaa_ecpp(60) > 0) lun60 = ldiagaa_ecpp(60)
     lun61 = -1
-    if (idiagaa_ecpp(61) > 0) lun61 = ldiagaa_ecpp(61)
     lun131 = -1
-    if (idiagaa_ecpp(131) > 0) lun131 = ldiagaa_ecpp(131)
     lun132 = -1
-    if (idiagaa_ecpp(132) > 0) lun132 = ldiagaa_ecpp(132)
     lun133 = -1
-    if (idiagaa_ecpp(133) > 0) lun133 = ldiagaa_ecpp(133)
     lun134 = -1
-    if (idiagaa_ecpp(134) > 0) lun134 = ldiagaa_ecpp(134)
     lun135 = -1
+    
+    if (idiagaa_ecpp(60)  > 0) lun60  = ldiagaa_ecpp(60)
+    if (idiagaa_ecpp(61)  > 0) lun61  = ldiagaa_ecpp(61)
+    if (idiagaa_ecpp(131) > 0) lun131 = ldiagaa_ecpp(131)
+    if (idiagaa_ecpp(132) > 0) lun132 = ldiagaa_ecpp(132)
+    if (idiagaa_ecpp(133) > 0) lun133 = ldiagaa_ecpp(133)
+    if (idiagaa_ecpp(134) > 0) lun134 = ldiagaa_ecpp(134)
     if (idiagaa_ecpp(135) > 0) lun135 = ldiagaa_ecpp(135)
 
         
@@ -902,13 +908,6 @@ module module_ecpp_ppdriver2
       kdraft_top_ecpp(   1:2,jcls) = pver 
       mtype_updnenv_ecpp(1:2,jcls) = mtype_quiescn_ecpp
 
-! whannah - make sure there's no mass flux above CRM top
-! #ifdef ECPP_LEV_MOD
-!       kupdrafttop  = crm_nz  ! whannah
-!       kdndrafttop  = crm_nz  ! whannah
-!       kdraft_top_ecpp(   1:2,jcls) = crm_nz ! whannah
-! #endif
-
       ! load updrafts
       do n=1,nupdraft
         jcls = jcls + 1
@@ -927,13 +926,7 @@ module module_ecpp_ppdriver2
         jcls = jcls + 1
 
         kdraft_bot_ecpp(   1:2,jcls) = max( kdndraftbase(n), 1 )
-! whannah - make sure there's no mass flux above CRM top
-! #ifdef ECPP_LEV_MOD
-!         kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), crm_nz ) ! whannah
-! #else
         kdraft_top_ecpp(   1:2,jcls) = min( kdndrafttop(n), pver )
-! #endif
-! whannah 
         mtype_updnenv_ecpp(1:2,jcls) = mtype_dndraft_ecpp
       end do ! n=1,ndndraft
 
@@ -988,19 +981,6 @@ module module_ecpp_ppdriver2
         do jclrcld=1,2
           kdraft_top_ecpp(jclrcld,jcls) = max( kdraft_top_ecpp(jclrcld,jcls),   &
                                                kdraft_bot_ecpp(jclrcld,jcls)+1 )
-! ! whannah - make sure there's no mass flux above CRM top
-! #ifdef ECPP_LEV_MOD
-!       if (kdraft_top_ecpp(jclrcld,jcls) .gt. crm_nz) then
-!         kdraft_top_ecpp(jclrcld,jcls) = crm_nz
-!         kdraft_bot_ecpp(jclrcld,jcls) = crm_nz-1
-!       end if
-! #else
-!       ! if (kdraft_top_ecpp(jclrcld,jcls) .gt. pver) then
-!       !   kdraft_top_ecpp(jclrcld,jcls) = pver
-!       !   kdraft_bot_ecpp(jclrcld,jcls) = pver-1
-!       ! end if
-! #endif
-! ! whannah
         end do ! jclrcld=1,2
       end do ! jcls=1,ncls_ecpp
 
@@ -1012,34 +992,6 @@ module module_ecpp_ppdriver2
         acen_tbeg(lk,2,jcls) = acldy_cen_tbeg_3d(i,k)
         acen_tbeg(lk,1,jcls) = 1.0_r8 - acen_tbeg(lk,2,jcls)
       end do
-
-! ! whannah - make sure there's no mass flux above CRM top
-! #ifdef ECPP_LEV_MOD
-!   do jcls = 1, ncls_ecpp
-!   do icc = 1, 2
-!   ! do k=1, pver
-!   do k=1,crm_nz
-!     lk=pver-k+1
-!     mfbnd(    lk,icc,jcls) = 0.0
-!     acen_prec(lk,icc,jcls) = 0.0
-!     ! Set the area of quiescent, non-precipitating class to 1
-!     if (jcls.eq.jcls_quiescn .and. icc.eq.1) then
-!       abnd_tavg(lk,icc,jcls) = 1.0
-!       abnd_tfin(lk,icc,jcls) = 1.0
-!       acen_tbeg(lk,icc,jcls) = 1.0
-!       acen_tavg(lk,icc,jcls) = 1.0
-!       acen_tfin(lk,icc,jcls) = 1.0
-!     else
-!       abnd_tavg(lk,icc,jcls) = 0.0
-!       abnd_tfin(lk,icc,jcls) = 0.0
-!       acen_tbeg(lk,icc,jcls) = 0.0
-!       acen_tavg(lk,icc,jcls) = 0.0
-!       acen_tfin(lk,icc,jcls) = 0.0
-!     end if
-!   end do
-!   end do
-!   end do
-! #endif
 
       !----------------------------------------------------------------
       !   start of temporary diagnostics ------------------------------
@@ -1239,11 +1191,6 @@ module module_ecpp_ppdriver2
           lk=pver-k+1
           acldy_cen_tbeg_3d(i,k) = sum( acen_tfin(lk,2,1:ncls_ecpp) )
         end do
-
-!!! print variables for deugging  
-! write(*,6540) lchnk,i,'01',(minval(chem_bar(:,:)))  ,(maxval(chem_bar(:,:))) &
-!                           ,(minval(state%q(i,:,:))) ,(maxval(state%q(i,:,:)))
-! 6540 format('whannah - ',i6,' ',i4,' - ',A3,' - min/max chem_bar/q ',f15.2,' / ',f15.2,' - ',f15.2,' / ',f15.2  )
 
         ! Interstial species 
         ptend_qqcw(i,:,:) = 0.0
