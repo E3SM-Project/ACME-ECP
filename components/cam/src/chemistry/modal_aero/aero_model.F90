@@ -2513,9 +2513,15 @@ do_lphase2_conditional: &
 ! and not updated here. 
 ! Minghuai Wang, 2010-02 (Minghuai.Wang@pnl.gov)
 !
-       dvmrdt = 0.0_r8
+     if (mam_amicphys_optaa <= 0) then
+       dvmrdt = 0.0_r8  
        dvmrcwdt = 0.0_r8
-   endif
+     else  
+       dvmrdt(:ncol,:,:) = vmr(:ncol,:,:)
+       dvmrcwdt(:ncol,:,:) = vmrcw(:ncol,:,:)
+     end if
+
+   end if ! use_ECPP
 !==Guangxing Lin
 
 
