@@ -24,6 +24,7 @@ module crm_module
   use coriolis_mod
 
   use crm_state_module, only: crm_state_type
+  use crm_rad_module, only: crm_rad_type
 
 !---------------------------------------------------------------
 !  Super-parameterization's main driver
@@ -49,11 +50,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 #endif
                 qltend, qcltend, qiltend, sltend, &
                 crm_state, &
-                qrad_crm, &
+                crm_rad, &
                 qc_crm, qi_crm, qpc_crm, qpi_crm, prec_crm, &
-                t_rad, qv_rad, qc_rad, qi_rad, cld_rad, cld3d_crm, &
+                cld3d_crm, &
 #ifdef m2005
-                nc_rad, ni_rad, qs_rad, ns_rad, wvar_crm,  &
+                wvar_crm,  &
                 aut_crm, acc_crm, evpc_crm, evpr_crm, mlt_crm, &
                 sub_crm, dep_crm, con_crm, &
                 aut_crm_a, acc_crm_a, evpc_crm_a, evpr_crm_a, mlt_crm_a, &
@@ -169,6 +170,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
     type(crm_state_type), intent(inout) :: crm_state
+    type(crm_rad_type), intent(inout) :: crm_rad
     real(r8), intent(in   ) :: ps                  (ncrms)       ! Global grid surface pressure (Pa)
     real(r8), intent(in   ) :: pmid                (ncrms,plev)  ! Global grid pressure (Pa)
     real(r8), intent(in   ) :: pint                (ncrms,plev+1)! Pressure at model interfaces
@@ -176,7 +178,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(in   ) :: phis                (ncrms)       ! Global grid surface geopotential (m2/s2)
     real(r8), intent(in   ) :: zmid                (ncrms,plev)  ! Global grid height (m)
     real(r8), intent(in   ) :: zint                (ncrms,plev+1)! Global grid interface height (m)
-    real(r8), intent(in   ) :: qrad_crm            (ncrms,crm_nx_rad, crm_ny_rad, crm_nz) ! CRM rad. heating
     real(r8), intent(in   ) :: ocnfrac             (ncrms)       ! area fraction of the ocean
     real(r8), intent(in   ) :: tau00               (ncrms)       ! large-scale surface stress (N/m2)
     real(r8), intent(in   ) :: wndls               (ncrms)       ! large-scale surface wind (m/s)
@@ -221,16 +222,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     real(r8), intent(  out) :: qcltend             (ncrms,plev)                   ! tendency of cloud liquid water
     real(r8), intent(  out) :: qiltend             (ncrms,plev)                   ! tendency of cloud ice
     real(r8), intent(  out) :: cld3d_crm           (ncrms,crm_nx, crm_ny, crm_nz) ! instant 3D cloud fraction
-    real(r8), intent(  out) :: t_rad               (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad temperuture
-    real(r8), intent(  out) :: qv_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad vapor
-    real(r8), intent(  out) :: qc_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud water
-    real(r8), intent(  out) :: qi_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud ice
-    real(r8), intent(  out) :: cld_rad             (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud fraction
 #ifdef m2005
-    real(r8), intent(  out) :: nc_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud droplet number (#/kg)
-    real(r8), intent(  out) :: ni_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud ice crystal number (#/kg)
-    real(r8), intent(  out) :: qs_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud snow (kg/kg)
-    real(r8), intent(  out) :: ns_rad              (ncrms,crm_nx_rad,crm_ny_rad,crm_nz) ! rad cloud snow crystal number (#/kg)
     real(r8), intent(  out) :: wvar_crm            (ncrms,crm_nx, crm_ny, crm_nz) ! vertical velocity variance (m/s)
     real(r8), intent(  out) :: aut_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water autoconversion (1/s)
     real(r8), intent(  out) :: acc_crm             (ncrms,crm_nx, crm_ny, crm_nz) ! cloud water accretion (1/s)
@@ -503,7 +495,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     igstep = get_nstep()
 
 #ifdef CRM_DUMP
-    call crm_dump_input( igstep,plev,lchnk,icol(icrm),latitude0,longitude0,ps(icrm),pmid(icrm,:),pdel(icrm,:),phis(icrm),zmid(icrm,:),zint(icrm,:),qrad_crm(icrm,:,:,:),dt_gl, &
+    call crm_dump_input( igstep,plev,lchnk,icol(icrm),latitude0,longitude0,ps(icrm),pmid(icrm,:),pdel(icrm,:),phis(icrm),zmid(icrm,:),zint(icrm,:),crm_rad%qrad(icrm,:,:,:),dt_gl, &
                          ocnfrac(icrm),tau00(icrm),wndls(icrm),bflxls(icrm),fluxu00(icrm),fluxv00(icrm),fluxt00(icrm),fluxq00(icrm),tl(icrm,:),ql(icrm,:),qccl(icrm,:),qiil(icrm,:),   &
                          ul(icrm,:),vl(icrm,:), &
 #ifdef CLUBB_CRM
@@ -525,16 +517,16 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     ptop      = plev-nzm+1
     factor_xy = 1._r8/dble(nx*ny)
     dummy     = 0.
-    t_rad  (icrm,:,:,:) = 0.
-    qv_rad (icrm,:,:,:) = 0.
-    qc_rad (icrm,:,:,:) = 0.
-    qi_rad (icrm,:,:,:) = 0.
-    cld_rad(icrm,:,:,:) = 0.
+    crm_rad%temperature  (icrm,:,:,:) = 0.
+    crm_rad%qv (icrm,:,:,:) = 0.
+    crm_rad%qc (icrm,:,:,:) = 0.
+    crm_rad%qi (icrm,:,:,:) = 0.
+    crm_rad%cld(icrm,:,:,:) = 0.
 #ifdef m2005
-    nc_rad(icrm,:,:,:) = 0.0
-    ni_rad(icrm,:,:,:) = 0.0
-    qs_rad(icrm,:,:,:) = 0.0
-    ns_rad(icrm,:,:,:) = 0.0
+    crm_rad%nc(icrm,:,:,:) = 0.0
+    crm_rad%ni(icrm,:,:,:) = 0.0
+    crm_rad%qs(icrm,:,:,:) = 0.0
+    crm_rad%ns(icrm,:,:,:) = 0.0
 #endif /* m2005 */
     zs=phis(icrm)/ggr
     bflx = bflxls(icrm)
@@ -1085,7 +1077,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(i,j,k) = t(i,j,k) + qrad_crm(icrm,i_rad,j_rad,k)*dtn
+              t(i,j,k) = t(i,j,k) + crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
@@ -1305,7 +1297,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
       !----------------------------------------------------------
 #ifdef ECPP
       ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
-      ! This is what the original MMF model did (t_rad, qv_rad, ...). Do we want to call ecpp_crm_stat
+      ! This is what the original MMF model did (crm_rad%temperature, crm_rad%qv, ...). Do we want to call ecpp_crm_stat
       ! every subcycle time step??? +++mhwang
       call ecpp_crm_stat()
 #endif /*ECPP*/
@@ -1389,35 +1381,36 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
                  endif
             endif
 
-!             t_rad  (icrm,i,j,k) = t_rad  (icrm,i,j,k)+tabs(i,j,k)
-!             qv_rad (icrm,i,j,k) = qv_rad (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
-!             qc_rad (icrm,i,j,k) = qc_rad (icrm,i,j,k)+qcl(i,j,k)
-!             qi_rad (icrm,i,j,k) = qi_rad (icrm,i,j,k)+qci(i,j,k)
-!             cld_rad(icrm,i,j,k) = cld_rad(icrm,i,j,k) +  CF3D(i,j,k)
+!             crm_rad%temperature  (icrm,i,j,k) = crm_rad%temperature  (icrm,i,j,k)+tabs(i,j,k)
+!             crm_rad%qv (icrm,i,j,k) = crm_rad%qv (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
+!             crm_rad%qc (icrm,i,j,k) = crm_rad%qc (icrm,i,j,k)+qcl(i,j,k)
+!             crm_rad%qi (icrm,i,j,k) = crm_rad%qi (icrm,i,j,k)+qci(i,j,k)
+!             crm_rad%cld(icrm,i,j,k) = crm_rad%cld(icrm,i,j,k) +  CF3D(i,j,k)
 ! #ifdef m2005
-!             nc_rad(icrm,i,j,k) = nc_rad(icrm,i,j,k)+micro_field(i,j,k,incl)
-!             ni_rad(icrm,i,j,k) = ni_rad(icrm,i,j,k)+micro_field(i,j,k,inci)
-!             qs_rad(icrm,i,j,k) = qs_rad(icrm,i,j,k)+micro_field(i,j,k,iqs)
-!             ns_rad(icrm,i,j,k) = ns_rad(icrm,i,j,k)+micro_field(i,j,k,ins)
+!             crm_rad%nc(icrm,i,j,k) = crm_rad%nc(icrm,i,j,k)+micro_field(i,j,k,incl)
+!             crm_rad%ni(icrm,i,j,k) = crm_rad%ni(icrm,i,j,k)+micro_field(i,j,k,inci)
+!             crm_rad%qs(icrm,i,j,k) = crm_rad%qs(icrm,i,j,k)+micro_field(i,j,k,iqs)
+!             crm_rad%ns(icrm,i,j,k) = crm_rad%ns(icrm,i,j,k)+micro_field(i,j,k,ins)
 ! #endif
           
             !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
             if ( phys_stage == 1 ) then
 
-              !!! whannah - new method allows for fewer radiation calculation over column groups
+              !!! Reduced radiation method allows for fewer radiation calculations
+              !!! by collecting statistics and doing radiation over column groups
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
-              t_rad  (icrm,i_rad,j_rad,k) = t_rad  (icrm,i_rad,j_rad,k) + tabs(i,j,k)
-              qv_rad (icrm,i_rad,j_rad,k) = qv_rad (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k))
-              qc_rad (icrm,i_rad,j_rad,k) = qc_rad (icrm,i_rad,j_rad,k) + qcl(i,j,k)
-              qi_rad (icrm,i_rad,j_rad,k) = qi_rad (icrm,i_rad,j_rad,k) + qci(i,j,k)
-              cld_rad(icrm,i_rad,j_rad,k) = cld_rad(icrm,i_rad,j_rad,k) + CF3D(i,j,k)
+              crm_rad%temperature  (icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k)
+              crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k))
+              crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k)
+              crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k)
+              crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k)
 #ifdef m2005
-              nc_rad(icrm,i_rad,j_rad,k) = nc_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
-              ni_rad(icrm,i_rad,j_rad,k) = ni_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci)
-              qs_rad(icrm,i_rad,j_rad,k) = qs_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
-              ns_rad(icrm,i_rad,j_rad,k) = ns_rad(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins)
+              crm_rad%nc(icrm,i_rad,j_rad,k) = crm_rad%nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
+              crm_rad%ni(icrm,i_rad,j_rad,k) = crm_rad%ni(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci)
+              crm_rad%qs(icrm,i_rad,j_rad,k) = crm_rad%qs(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs)
+              crm_rad%ns(icrm,i_rad,j_rad,k) = crm_rad%ns(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins)
 #endif
             endif
 
@@ -1491,16 +1484,16 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
       tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
 
-      t_rad  (icrm,:,:,:) = t_rad  (icrm,:,:,:) * tmp1
-      qv_rad (icrm,:,:,:) = qv_rad (icrm,:,:,:) * tmp1
-      qc_rad (icrm,:,:,:) = qc_rad (icrm,:,:,:) * tmp1
-      qi_rad (icrm,:,:,:) = qi_rad (icrm,:,:,:) * tmp1
-      cld_rad(icrm,:,:,:) = cld_rad(icrm,:,:,:) * tmp1
+      crm_rad%temperature  (icrm,:,:,:) = crm_rad%temperature  (icrm,:,:,:) * tmp1
+      crm_rad%qv (icrm,:,:,:) = crm_rad%qv (icrm,:,:,:) * tmp1
+      crm_rad%qc (icrm,:,:,:) = crm_rad%qc (icrm,:,:,:) * tmp1
+      crm_rad%qi (icrm,:,:,:) = crm_rad%qi (icrm,:,:,:) * tmp1
+      crm_rad%cld(icrm,:,:,:) = crm_rad%cld(icrm,:,:,:) * tmp1
 #ifdef m2005
-      nc_rad(icrm,:,:,:) = nc_rad(icrm,:,:,:) * tmp1
-      ni_rad(icrm,:,:,:) = ni_rad(icrm,:,:,:) * tmp1
-      qs_rad(icrm,:,:,:) = qs_rad(icrm,:,:,:) * tmp1
-      ns_rad(icrm,:,:,:) = ns_rad(icrm,:,:,:) * tmp1
+      crm_rad%nc(icrm,:,:,:) = crm_rad%nc(icrm,:,:,:) * tmp1
+      crm_rad%ni(icrm,:,:,:) = crm_rad%ni(icrm,:,:,:) * tmp1
+      crm_rad%qs(icrm,:,:,:) = crm_rad%qs(icrm,:,:,:) * tmp1
+      crm_rad%ns(icrm,:,:,:) = crm_rad%ns(icrm,:,:,:) * tmp1
 #endif /* m2005 */
     
     endif
@@ -1974,8 +1967,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
 #ifdef CRM_DUMP
     call crm_dump_output( igstep,plev,crm_tk(icrm,:,:,:),crm_tkh(icrm,:,:,:),cltot(icrm),clhgh(icrm),clmed(icrm),cllow(icrm),sltend(icrm,:),crm_state%u_wind(icrm,:,:,:),crm_state%v_wind(icrm,:,:,:),&
-                          crm_state%w_wind(icrm,:,:,:),crm_state%temperature(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:),qltend(icrm,:),qcltend(icrm,:),qiltend(icrm,:),t_rad(icrm,:,:,:),qv_rad(icrm,:,:,:),&
-                          qc_rad(icrm,:,:,:),qi_rad(icrm,:,:,:),cld_rad(icrm,:,:,:),cld3d_crm(icrm,:,:,:), &
+                          crm_state%w_wind(icrm,:,:,:),crm_state%temperature(icrm,:,:,:),micro_fields_crm(icrm,:,:,:,:),qltend(icrm,:),qcltend(icrm,:),qiltend(icrm,:),crm_rad%temperature(icrm,:,:,:),crm_rad%qv(icrm,:,:,:),&
+                          crm_rad%qc(icrm,:,:,:),crm_rad%qi(icrm,:,:,:),crm_rad%cld(icrm,:,:,:),cld3d_crm(icrm,:,:,:), &
 #ifdef CLUBB_CRM
                           clubb_buffer(icrm,:,:,:,:),crm_cld(icrm,:,:,:),clubb_tk(icrm,:,:,:),clubb_tkh(icrm,:,:,:),relvar(icrm,:,:,:),accre_enhan(icrm,:,:,:),qclvar(icrm,:,:,:) , &
 #endif /* CLUBB_CRM */
@@ -1986,7 +1979,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 !                           ultend_esmt(icrm,:),vltend_esmt(icrm,:) , & ! whannah - temporary diagnostic fields for ESMT
 ! #endif
 #ifdef m2005
-                          nc_rad(icrm,:,:,:),ni_rad(icrm,:,:,:),qs_rad(icrm,:,:,:),ns_rad(icrm,:,:,:),wvar_crm(icrm,:,:,:),aut_crm(icrm,:,:,:),acc_crm(icrm,:,:,:),evpc_crm(icrm,:,:,:), &
+                          crm_rad%nc(icrm,:,:,:),crm_rad%ni(icrm,:,:,:),crm_rad%qs(icrm,:,:,:),crm_rad%ns(icrm,:,:,:),wvar_crm(icrm,:,:,:),aut_crm(icrm,:,:,:),acc_crm(icrm,:,:,:),evpc_crm(icrm,:,:,:), &
                           evpr_crm(icrm,:,:,:),mlt_crm(icrm,:,:,:),sub_crm(icrm,:,:,:),dep_crm(icrm,:,:,:),con_crm(icrm,:,:,:),aut_crm_a(icrm,:),acc_crm_a(icrm,:),evpc_crm_a(icrm,:), &
                           evpr_crm_a(icrm,:),mlt_crm_a(icrm,:),sub_crm_a(icrm,:),dep_crm_a(icrm,:),con_crm_a(icrm,:),crm_nc(icrm,:),crm_ni(icrm,:),crm_ns(icrm,:),crm_ng(icrm,:),crm_nr(icrm,:), &
 #endif
