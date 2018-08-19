@@ -1000,8 +1000,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !------------------------------------------------------------
 
    ! Initialize CRM state
-   call crm_state%initialize(ncol)
-   call crm_input%initialize(ncol, pver)
+   call crm_state%initialize(pcols)
+   call crm_input%initialize(pcols, pver)
 
    ! Set pointers from crm_state to fields that persist on physics buffer
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
