@@ -1885,6 +1885,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !----------------------------------------------------------------------
    !----------------------------------------------------------------------
 
+   call crm_state%finalize()
+   call crm_rad%finalize()
+   call crm_input%finalize()
+
 #endif /* CRM */
 end subroutine crm_physics_tend
 
