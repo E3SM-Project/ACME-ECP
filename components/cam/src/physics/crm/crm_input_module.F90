@@ -87,6 +87,38 @@ contains
       if (.not. allocated(this%vl_esmt))  allocate(this%vl_esmt(ncrms,nlev))
 #endif
 
+      ! Initialize
+      zmid = 0
+      zint = 0
+      tl = 0
+      ql = 0
+      qccl = 0
+      qiil = 0
+      ps = 0
+      pmid = 0
+      pint = 0
+      pdel = 0
+      phis = 0
+      ul = 0
+      vl = 0
+      ocnfrac = 0
+      tau00   = 0
+      wndls   = 0
+      bflxls  = 0
+      fluxu00 = 0
+      fluxv00 = 0
+      fluxt00 = 0
+      fluxq00 = 0
+#if defined( m2005 ) && defined( MODAL_AERO )
+      naermod  = 0
+      vaerosol = 0
+      hygro    = 0
+#endif
+#if defined( SP_ESMT )
+      ul_esmt = 0
+      vl_esmt = 0
+#endif
+
    end subroutine crm_input_initialize
    !------------------------------------------------------------------------------------------------
    subroutine crm_input_finalize(this)
