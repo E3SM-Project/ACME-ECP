@@ -88,35 +88,35 @@ contains
 #endif
 
       ! Initialize
-      zmid = 0
-      zint = 0
-      tl = 0
-      ql = 0
-      qccl = 0
-      qiil = 0
-      ps = 0
-      pmid = 0
-      pint = 0
-      pdel = 0
-      phis = 0
-      ul = 0
-      vl = 0
-      ocnfrac = 0
-      tau00   = 0
-      wndls   = 0
-      bflxls  = 0
-      fluxu00 = 0
-      fluxv00 = 0
-      fluxt00 = 0
-      fluxq00 = 0
+      this%zmid = 0
+      this%zint = 0
+      this%tl = 0
+      this%ql = 0
+      this%qccl = 0
+      this%qiil = 0
+      this%ps = 0
+      this%pmid = 0
+      this%pint = 0
+      this%pdel = 0
+      this%phis = 0
+      this%ul = 0
+      this%vl = 0
+      this%ocnfrac = 0
+      this%tau00   = 0
+      this%wndls   = 0
+      this%bflxls  = 0
+      this%fluxu00 = 0
+      this%fluxv00 = 0
+      this%fluxt00 = 0
+      this%fluxq00 = 0
 #if defined( m2005 ) && defined( MODAL_AERO )
-      naermod  = 0
-      vaerosol = 0
-      hygro    = 0
+      this%naermod  = 0
+      this%vaerosol = 0
+      this%hygro    = 0
 #endif
 #if defined( SP_ESMT )
-      ul_esmt = 0
-      vl_esmt = 0
+      this%ul_esmt = 0
+      this%vl_esmt = 0
 #endif
 
    end subroutine crm_input_initialize
