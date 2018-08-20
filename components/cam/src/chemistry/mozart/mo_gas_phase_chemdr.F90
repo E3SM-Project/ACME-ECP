@@ -456,6 +456,11 @@ contains
     !-----------------------------------------------------------------------      
     call mmr2vmr( mmr, vmr, mbar, ncol )
 
+    !Guangxing Lin debug
+      ! n = map2chm(18) !Guangxing Lin soa_a1
+       !  write(*,9997) lchnk, n, (minval(mmr(:ncol,:,n))) ,(maxval(mmr(:ncol,:,n))), (minval(vmr(:ncol,:,n))) ,(maxval(vmr(:ncol,:,n)))
+ !9997 format('gxlin-test9997 -lchnk= ',i6,'n = ',i4,' - min/max q ',e15.4,' / ',e15.4, ' ,vmr= ',e15.4,' / ',e15.4  )
+
     if (h2o_ndx>0) then
        !-----------------------------------------------------------------------      
        !        ... store water vapor in wrk variable
@@ -803,6 +808,10 @@ contains
     if (ndx_h2so4 > 0) then
        del_h2so4_gasprod(1:ncol,:) = vmr(1:ncol,:,ndx_h2so4) - del_h2so4_gasprod(1:ncol,:)
     endif
+    !Guangxing Lin debug
+      ! n = map2chm(18) !Guangxing Lin soa_a1
+       !  write(*,9996) lchnk, n, (minval(mmr(:ncol,:,n))) ,(maxval(mmr(:ncol,:,n))), (minval(vmr(:ncol,:,n))) ,(maxval(vmr(:ncol,:,n)))
+! 9996 format('gxlin-test9996 -lchnk= ',i6,'n = ',i4,' - min/max q ',e15.4,' / ',e15.4, ' ,vmr= ',e15.4,' / ',e15.4  )
 
 !
 ! Aerosol processes ...
@@ -815,6 +824,10 @@ contains
                                 invariants(:,:,indexm), invariants, del_h2so4_gasprod,  &
                                 vmr0, vmr, pbuf )
     call t_stopf('aero_model_gasaerexch')
+    !Guangxing Lin debug
+ !      n = map2chm(18) !Guangxing Lin soa_a1
+  !       write(*,9995) lchnk, n, (minval(mmr(:ncol,:,n))) ,(maxval(mmr(:ncol,:,n))), (minval(vmr(:ncol,:,n))) ,(maxval(vmr(:ncol,:,n)))
+ !9995 format('gxlin-test9995 -lchnk= ',i6,'n = ',i4,' - min/max q ',e15.4,' / ',e15.4, ' ,vmr= ',e15.4,' / ',e15.4  )
 
     if ( has_strato_chem ) then 
 

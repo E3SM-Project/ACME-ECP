@@ -796,7 +796,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    integer ii, jj, mm
    integer iii,lll
-   integer ixcldliq, ixcldice, ixnumliq, ixnumice
+   integer ixcldliq, ixcldice, ixnumliq, ixnumice,ixrain, ixsnow, ixnumrain, ixnumsnow !Guangxing Lin
    integer i, k, m
    integer ifld
    logical :: use_ECPP, use_SPCAM
@@ -895,8 +895,62 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
     end if
 #endif
 
-!------------------------------------------------------------
-!------------------------------------------------------------
+   if(is_first_step())then
+      do m=1,dyn_time_lvls
+         call pbuf_get_field(pbuf, cldo_idx, cldo, start=(/1,1,m/), kount=(/pcols,pver,1/) )
+         cldo(:ncol,:) = 0
+      enddo
+   endif
+
+
+! Forget all changes to the state due to conventional physics above:
+
+! gas and aerosol species are updated in by shallow convective transport in CAM.
+! Aerosol changes from dropmixnuc in cldwat2m.F90 is discarded. (When dropmixnuc
+! is called in cldwat2m.F90, the tendency is set to zero. See dropmixnuc for details).
+! Minghuai Wang, 2010-01 (Minghuai.Wang@pnl.gov)
+!
+   qaer = state%q
+
+   state = state_save
+   tend  = tend_save
+      ! do m=1, pcnst
+      !   if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+      !   write(*,6552) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m))), (minval(qaer(:ncol,:,m))), (maxval(qaer(:ncol,:,m)))
+ !6552 format('gxlin-test6552 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4,'qaer= ', e15.4, ' ',e15.4  )
+  !          end if
+   !     end do
+  
+   cldo(:ncol, :) = cldo_save(:ncol, :)
+
+#ifdef GXL_DEBUG_OUTPUT
+   call outfld("conc_BC2",state%q(:,:pver,19),pcols, lchnk)  !==Guangxing Lin debug output
+#endif
+
+
+#if ( defined MODAL_AERO )
+   do i=1,pcnst
+      qqcw   =>  qqcw_get_field(pbuf, i,lchnk, .true.)
+      if (associated(qqcw)) qqcw(:, :) = qqcw_save(:,:,i)
+   end do
+   dgnumwet = dgnumwet_save
+#endif
+
+!
+! tracer species other than water vapor and cloud water are updated in convetional CAM.
+! When ECPP is used, dropmixnuc and all transport(deep and shallow) are done in ECPP.
+! So all change in aerosol and gas species in the conventinal CAM are discarded.
+! Minghuai Wang, 2010-01 (Minghuai.Wang@pnl.gov)
+!
+   if (.not. use_ECPP) then
+       call phys_getopts(microp_scheme_out=microp_scheme)
+       if ( microp_scheme .eq. 'MG' ) then
+         state%q(:ncol, :pver, 6:pcnst) = qaer(:ncol, :pver, 6:pcnst)
+       else if ( microp_scheme .eq. 'RK' ) then
+         state%q(:ncol, :pver, 4:pcnst) = qaer(:ncol, :pver, 4:pcnst)
+       end if
+   endif
+
 
 ! Associate pointers with physics buffer fields
    itim = pbuf_old_tim_idx()
@@ -1799,22 +1853,42 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          if (SPCAM_microp_scheme .eq. 'm2005') then
             call cnst_get_ind('NUMLIQ', ixnumliq)
             call cnst_get_ind('NUMICE', ixnumice)
+            call cnst_get_ind('RAINQM', ixrain)!Guangxing Lin
+            call cnst_get_ind('SNOWQM', ixsnow)!Guangxing Lin
+            call cnst_get_ind('NUMRAI', ixnumrain)!Guangxing Lin
+            call cnst_get_ind('NUMSNO', ixnumsnow)!Guangxing Lin
             ptend%lq(ixnumliq) = .TRUE.
             ptend%lq(ixnumice) = .TRUE.
+            ptend%lq(ixrain) = .TRUE. !Guangxing Lin
+            ptend%lq(ixsnow) = .TRUE. !Guangxing Lin
+            ptend%lq(ixnumrain) = .TRUE. !Guangxing Lin
+            ptend%lq(ixnumsnow) = .TRUE. !Guangxing Lin
             ptend%q(:, :, ixnumliq) = 0._r8
             ptend%q(:, :, ixnumice) = 0._r8
+            ptend%q(:, :, ixrain) = 0._r8 !Guangxing Lin
+            ptend%q(:, :, ixsnow) = 0._r8 !Guangxing Lin
+            ptend%q(:, :, ixnumrain) = 0._r8 !Guangxing Lin
+            ptend%q(:, :, ixnumsnow) = 0._r8 !Guangxing Lin
 
             do i = 1, ncol
              do k=1, crm_nz 
                m= pver-k+1
                do ii=1, crm_nx
                do jj=1, crm_ny
-                 ptend%q(i,m,ixnumliq) = ptend%q(i,m,ixnumliq) + crm_state%nc(i,ii,jj,k) 
-                 ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_state%ni(i,ii,jj,k)
+                 ptend%q(i,m,ixnumliq) = ptend%q(i,m,ixnumliq) + crm_nc(i,ii,jj,k) 
+                 ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_ni(i,ii,jj,k)
+                 ptend%q(i,m,ixrain) = ptend%q(i,m,ixrain) + crm_qr(i,ii,jj,k) !Guangxing Lin
+                 ptend%q(i,m,ixsnow) = ptend%q(i,m,ixsnow) + crm_qs(i,ii,jj,k) !Guangxing Lin
+                 ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_nr(i,ii,jj,k) !Guangxing Lin
+                 ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_ns(i,ii,jj,k) !Guangxing Lin
                end do
                end do
-               ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/crm_run_time
-               ptend%q(i,m,ixnumice) = (ptend%q(i,m,ixnumice)/(crm_nx*crm_ny) - state%q(i,m,ixnumice))/crm_run_time
+               ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/ztodt
+               ptend%q(i,m,ixnumice) = (ptend%q(i,m,ixnumice)/(crm_nx*crm_ny) - state%q(i,m,ixnumice))/ztodt
+               ptend%q(i,m,ixrain) = (ptend%q(i,m,ixrain)/(crm_nx*crm_ny) - state%q(i,m,ixrain))/ztodt!Guangxing Lin
+               ptend%q(i,m,ixsnow) = (ptend%q(i,m,ixsnow)/(crm_nx*crm_ny) - state%q(i,m,ixsnow))/ztodt!Guangxing Lin
+               ptend%q(i,m,ixnumrain) = (ptend%q(i,m,ixnumrain)/(crm_nx*crm_ny) - state%q(i,m,ixnumrain))/ztodt!Guangxing Lin
+               ptend%q(i,m,ixnumsnow) = (ptend%q(i,m,ixnumsnow)/(crm_nx*crm_ny) - state%q(i,m,ixnumsnow))/ztodt!Guangxing Lin
              end do
             end do
          endif
@@ -1920,6 +1994,7 @@ subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
 
    ncol  = state%ncol
 
+
    !!! initialize ptend
    lq(:) = .false.
    lq(1) = .true.
@@ -1935,10 +2010,69 @@ subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
       ptend%q(ii,pver,1) = g_dp * cam_in%cflx(ii,1)
    end do
 
+!----------------------------------------------------------------------
+! Aerosol stuff...
+!----------------------------------------------------------------------
+  !-- mark branson: insert ifdef m2005 block so that 1-moment microphysics will compile
+  if (SPCAM_microp_scheme .eq. 'm2005') then
+    call t_startf('bc_aerosols_mmf')
+
+    ! calculate aerosol water at CRM domain using water vapor at CRM domain +++mhwang
+    do  i=1,ncol
+      do ii=1,crm_nx_rad
+        do jj=1,crm_ny_rad
+          do  m=1,crm_nz
+            if(qc_rad(i,ii,jj,m)+qi_rad(i,ii,jj,m).le.1.0e-10) then
+              cld_rad(i,ii,jj,m) = 0.0_r8
+            endif
+          enddo
+        enddo
+      enddo
+    enddo
+       !do m=1, pcnst
+        ! if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+         !write(*,6551) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+! 6551 format('gxlin-test0 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+ !           end if
+  !      end do
+    !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
+
+    !----------------------------------------------------
+    ! Modal aerosol wet radius for radiative calculation
+    !----------------------------------------------------
+! whannah - added ifdef check for MODAL_AERO so 1-moment w/o modal aerosols will compile
+#if defined(MODAL_AERO)  
+    !==Guangxing Lin - temporarily turn on all lq, so it is allocated
+    lq(:) = .true.
+    call physics_ptend_init(ptend, state%psetcols, 'crm_physics', lq=lq)
+
+    ! set all ptend%lq to false as they will be set in modal_aero_calcsize_sub
+    ptend%lq(:) = .false.
+    call modal_aero_calcsize_sub (state, ptend, ztodt, pbuf)
+    call modal_aero_wateruptake_dr(state, pbuf)
+    !===Guangxing Lin
+
+    ! When ECPP is included, wet deposition is done ECPP,
+    ! So tendency from wet depostion is not updated in mz_aero_wet_intr (mz_aerosols_intr.F90)
+    ! tendency from other parts of crmclouds_aerosol_wet_intr are still updated here.
+    call physics_update (state, ptend, ztodt, tend)
+#endif
+       !do m=1, pcnst
+        ! if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+         !write(*,6550) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6550 format('gxlin-test1 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+   !     end do
+
+
 end subroutine crm_surface_flux_bypass_tend
+
 
 !==================================================================================================
 !==================================================================================================
+
+#ifdef ECPP 
+    if (use_ECPP) then
 
 subroutine crm_save_state_tend(state,tend,pbuf)
    !-----------------------------------------------------------------------------
@@ -1953,6 +2087,20 @@ subroutine crm_save_state_tend(state,tend,pbuf)
 #ifdef MODAL_AERO
    use modal_aero_data, only: ntot_amode, qqcw_get_field
 #endif
+       !do m=1, pcnst
+        ! if(cnst_name(m) == 'soa_a1') then !debug Guangxing Lin 
+         !write(*,6549) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6549 format('gxlin-test2 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+         !if(cnst_name(m) == 'soa_a2') then !debug Guangxing Lin 
+         !write(*,6599) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6599 format('gxlin-test6599 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+   !      if(cnst_name(m) == 'soa_a3') then !debug Guangxing Lin 
+    !     write(*,6500) lchnk,nstep, (minval(state%q(:ncol,:,m))) ,(maxval(state%q(:ncol,:,m)))
+ !6500 format('gxlin-test6500 -lchnk= ',i6,'nstep= ',i4,' - min/max q ',e15.4,' / ',e15.4  )
+  !          end if
+        !end do
 
    implicit none
 
