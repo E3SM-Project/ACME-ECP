@@ -1,8 +1,30 @@
+# Object files
+*.lo
+*.o
+
+# Fortran module files
+*.mod
+
+# Static libraries
+*.la
+*.a
+
+# Executables
+*.exe
+
+# Logs
+*.log
+
 # Ignore netCDF files.
 *.nc
 
 # Ignore python bytecode files
 *.pyc
+buildnmlc
 
 # Ignore emacs backup files
 *~
+
+# Ignore mac OS folder attribute files
+.DS_Store
+._.DS_Store

@@ -52,7 +52,7 @@ def _normalize_lists(value_str):
 def _interpret_value(value_str, filename):
 ###############################################################################
     comma_re = re.compile(r'\s*,\s*')
-    dict_re = re.compile(r"^'(\S+)\s*->\s*(\S+)'")
+    dict_re = re.compile(r"^'(\S+)\s*->\s*(\S+)\s*'")
 
     value_str = _normalize_lists(value_str)
 
@@ -337,7 +337,7 @@ def _compare_values(name, gold_value, comp_value, case):
     comments = ""
     if (type(gold_value) != type(comp_value)):
         comments += "  variable '{}' did not have expected type '{}', instead is type '{}'\n".format(name, type(gold_value), type(comp_value))
-        return (False, comments)
+        return comments
 
     if (type(gold_value) is list):
         # Note, list values remain order sensitive
@@ -444,7 +444,7 @@ def _compare_namelists(gold_namelists, comp_namelists, case):
     >>> teststr1 = '''&rad_cnst_nl
     ... icecldoptics           = 'mitchell'
     ... logfile                = 'cpl.log.150514-001533'
-    ... case_name              = 'ERB.f19_g16.B1850C5.skybridge_intel.C.150513-230221'
+    ... case_name              = 'ERB.f19_g16.B1850C5.sandiatoss3_intel.C.150513-230221'
     ... runid                  = 'FOO'
     ... model_version          = 'cam5_3_36'
     ... username               = 'jgfouca'
@@ -468,7 +468,7 @@ def _compare_namelists(gold_namelists, comp_namelists, case):
     >>> teststr2 = '''&rad_cnst_nl
     ... icecldoptics           = 'mitchell'
     ... logfile                = 'cpl.log.150514-2398745'
-    ... case_name              = 'ERB.f19_g16.B1850C5.skybridge_intel.C.150513-1274213'
+    ... case_name              = 'ERB.f19_g16.B1850C5.sandiatoss3_intel.C.150513-1274213'
     ... runid                  = 'BAR'
     ... model_version          = 'cam5_3_36'
     ... username               = 'hudson'
@@ -489,7 +489,7 @@ def _compare_namelists(gold_namelists, comp_namelists, case):
     ...   'N:CFC11:CFC11', 'N:CFC12:CFC12', 'M:mam3_mode1:/something/else/inputdata/atm/cam/physprops/mam3_mode1_rrtmg_c110318.nc',
     ...   'M:mam3_mode2:/something/else/inputdata/atm/cam/physprops/mam3_mode2_rrtmg_c110318.nc', 'M:mam3_mode3:/something/else/inputdata/atm/cam/physprops/mam3_mode3_rrtmg_c110318.nc'
     ... /'''
-    >>> _compare_namelists(_parse_namelists(teststr1.splitlines(), 'foo'), _parse_namelists(teststr2.splitlines(), 'bar'), 'ERB.f19_g16.B1850C5.skybridge_intel')
+    >>> _compare_namelists(_parse_namelists(teststr1.splitlines(), 'foo'), _parse_namelists(teststr2.splitlines(), 'bar'), 'ERB.f19_g16.B1850C5.sandiatoss3_intel')
     ''
     """
     different_namelists = OrderedDict()
@@ -536,7 +536,6 @@ def compare_namelist_files(gold_file, compare_file, case=None):
 
     gold_namelists = _parse_namelists(open(gold_file, "r").readlines(), gold_file)
     comp_namelists = _parse_namelists(open(compare_file, "r").readlines(), compare_file)
-
     comments = _compare_namelists(gold_namelists, comp_namelists, case)
     return comments == "", comments
 

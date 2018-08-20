@@ -39,10 +39,8 @@ implicit none
 private
 save
 
-!==Guangxing Lin
-!public ndrop_init, dropmixnuc, activate_modal
 public ndrop_init, dropmixnuc, activate_modal,loadaer
-!==Guangxing Lin
+
 
 real(r8), allocatable :: alogsig(:)     ! natl log of geometric standard dev of aerosol
 real(r8), allocatable :: exp45logsig(:)
@@ -326,9 +324,7 @@ subroutine dropmixnuc( &
    real(r8), intent(in) :: cldn(pcols,pver)    ! cloud fraction
    real(r8), intent(in) :: cldo(pcols,pver)    ! cloud fraction on previous time step
    logical,  intent(in),optional :: do_mmf      ! value insignificant - if variable present, is called in the mmf part.
-!==Guangxing Lin
    integer, intent(in) :: species_class(:)    
-!==Guangxing Lin
 
    ! output arguments
    real(r8), intent(out) :: tendnd(pcols,pver) ! change in droplet number concentration (#/kg/s)
@@ -448,19 +444,19 @@ subroutine dropmixnuc( &
    logical  :: zmflag
 
 
-!-- mdb spcam
-!+++mhwang for gas species turbulent mixing
+   !-- mdb spcam
+   !+++mhwang for gas species turbulent mixing
    real(r8), pointer :: rgas(:, :, :)
    real(r8), allocatable :: rgascol(:, :, :)
    real(r8), allocatable :: coltendgas(:)
    real(r8) :: zerogas(pver)
    character*200 fieldnamegas
-!---mhwang
+   !---mhwang
 
    logical  :: use_SPCAM
    logical  :: SPCAM_mmf
    logical  :: SPCAM_notmmf
-!-- mdb spcam
+   !-- mdb spcam
 
    !-------------------------------------------------------------------------------
 
@@ -549,7 +545,7 @@ subroutine dropmixnuc( &
 
    if (prog_modal_aero) then
       ! aerosol tendencies
-      call physics_ptend_init(ptend, state%psetcols, 'ndrop', lq=lq)
+      call physics_ptend_init(ptend, state%psetcols, 'ndrop_aero', lq=lq)
    else
       ! no aerosol tendencies
       call physics_ptend_init(ptend, state%psetcols, 'ndrop')
@@ -622,11 +618,9 @@ subroutine dropmixnuc( &
 
 !-- mdb spcam
 if (SPCAM_mmf) then
-!
 ! In the MMF model, turbulent mixing for tracer species are turned off.
 ! So the turbulent for gas species mixing are added here.
 ! (Previously, it had the turbulent mixing for aerosol species)
-!
 #if (defined MODAL_AERO)
    do m=1, pcnst
       if(species_class(m).eq.spec_class_gas) then
@@ -643,13 +637,13 @@ endif
       !    by (horizontal) exchange with clear air
       tau_cld_regenerate = 3600.0_r8 * 3.0_r8 
 
-!-- mdb spcam
+      !-- mdb spcam
       if (SPCAM_mmf) then
-!       when this is called  in the MMF part, no cloud regeneration and decay.
-!       set the time scale be very long so that no cloud regeneration.
-           tau_cld_regenerate = 3600.0_r8 * 24.0_r8 * 365.0_r8
+         ! when this is called  in the MMF part, no cloud regeneration and decay.
+         ! set the time scale be very long so that no cloud regeneration.
+         tau_cld_regenerate = 3600.0_r8 * 24.0_r8 * 365.0_r8
       endif
-!-- mdb spcam
+      !-- mdb spcam
 
       ! k-loop for growing/shrinking cloud calcs .............................
       ! grow_shrink_main_k_loop: &
@@ -1185,7 +1179,7 @@ endif
    end do  ! overall_main_i_loop
    ! end of main loop over i/longitude ....................................
 
-!-- mdb spcam
+   !-- mdb spcam
    !call outfld('NDROPCOL', ndropcol, pcols, lchnk)
    !call outfld('NDROPSRC', nsource,  pcols, lchnk)
    !call outfld('NDROPMIX', ndropmix, pcols, lchnk)
@@ -1204,15 +1198,15 @@ endif
         call outfld('SPWTKE    ', wtke    , pcols, lchnk   )
         call outfld('SPKVH     ', kvh     , pcols, lchnk   )
    endif
-!-- mdb spcam
+   !-- mdb spcam
 
    call ccncalc(state, pbuf, cs, ccn)
    do l = 1, psat
-!-- mdb spcam
+      !-- mdb spcam
       if ( (SPCAM_mmf) .or. .not. use_SPCAM) then ! called in the MMF part only or in the standard CAM
         call outfld(ccn_name(l), ccn(1,1,l), pcols, lchnk)
       endif
-!-- mdb spcam
+      !-- mdb spcam
    enddo
 
    if(do_aerocom_ind3) then 
@@ -1267,9 +1261,7 @@ endif
 
 !-- mdb spcam
 if(SPCAM_mmf) then
-!
 ! output column-integrated Gas tendency (this should be zero)
-!
 #ifdef MODAL_AERO
    do m=1, pcnst
       if(species_class(m).eq.spec_class_gas) then

@@ -1,66 +1,90 @@
 module setperturb_mod
-  use random_mod
-  implicit none
+   use random_mod
+   implicit none
 
 contains
 
-  subroutine setperturb(iseed)
+   subroutine setperturb(iseed)
 
-    !  Random noise
-    !  This surboutine has been updated for SPCAM5 (Minghuai.Wang@pnnl.gov, April, 2012).
-    !  Now the random generator is seeded based on the global column id, which gets rid
-    !  of the dependence of the SPCAM results on pcols.
+      ! Add random noise near the surface to help turbulence develop
 
-    use vars
-    use sgs, only: setperturb_sgs
-    use params, only: crm_rknd
+      !  This surboutine has been updated for SPCAM5 (Minghuai.Wang@pnnl.gov, April, 2012).
+      !  Now the random generator is seeded based on the global column id, which gets rid
+      !  of the dependence of the SPCAM results on pcols.
 
-    implicit none
+      ! This module was updated to use a Mersenne Twister algorithm, because compiler deependent
+      ! issues were identified with the intrinisic random number routines (e.g. random_number())
+      ! Walter Hannah - LLNL - Mar 2018
 
-    integer, intent(in) :: iseed
+      use vars
+      use grid,   only: pres
+      use sgs,    only: setperturb_sgs
+      use params, only: crm_rknd
+      use RNG_MT
 
-    integer i,j,k
-    real(crm_rknd) rrr
-    integer, allocatable :: rndm_seed(:)
-    integer :: rndm_seed_sz
-    real(crm_rknd) :: t02(nzm)
-    real(crm_rknd) :: tke02(nzm)
+      implicit none
 
-    !call ranset_(30*rank)
-    call random_seed(size=rndm_seed_sz)
-    allocate(rndm_seed(rndm_seed_sz))
+      integer, intent(in) :: iseed
 
-    rndm_seed = iseed
-    call random_seed(put=rndm_seed)
+      integer i,j,k
+      real(crm_rknd) :: rand_perturb                              ! variable to hold random number generator output
+      real(crm_rknd) :: t02                                       ! new average liquid statis energy (LSE) for energy conservation scaling
+      real(crm_rknd) :: factor_xy                                 ! 1/(nx*ny)
+      real(crm_rknd) :: perturb_k_scaling                         ! scaling factor so perturbation magnitudes decrease with altitude
+      integer        :: perturb_num_layers                        ! number of layers to add perturbations
 
-    call setperturb_sgs(0)  ! set sgs fields
+      real(crm_rknd), parameter :: perturbation_level_top = 700.  ! Top-most pressure level at which to apply LSE perturbations        [hPa]
+      integer,        parameter :: perturb_t_magnitude    = 1.0   ! perturbation t amplitube (max at bottom of the perturbed region)   [K]
 
-    t02 = 0.0
-    tke02 = 0.0
-    do k=1,nzm
-      do j=1,ny
-        do i=1,nx
-          rrr=1.-2.*ranf_()
+      factor_xy = 1./real((nx*ny),crm_rknd)
 
-          if(k.le.5) then
-            t(i,j,k)=t(i,j,k)+0.02*rrr*(6-k)
-          endif
-          t02(k) = t02(k) + t(i,j,k)/(nx*ny)
-        end do
-      end do
+      !!! set the sub-grid scale (SGS) turbulence fields
+      call setperturb_sgs(0)  
 
-      ! energy conservation +++mhwang (2012-06)
-      do j=1, ny
-        do i=1, nx
-          if(k.le.5) then
-            t(i,j,k) = t(i,j,k) * t0(k)/t02(k)
-          end if
-        end do
-      end do
-    end do
+      !!! set the seed
+      call RNG_MT_set_seed(iseed)
 
-    deallocate(rndm_seed)
+      !!! find number of layers under some pressure level
+      perturb_num_layers = count( pres(1:nzm) > perturbation_level_top )
 
-  end
+      !--------------------------------------------------------
+      ! Apply random liquid static energy (LSE) perturbations
+      !--------------------------------------------------------
+      do k = 1,perturb_num_layers
+
+         !!! set perturb_k_scaling so that perturbation magnitude decreases with altitude
+         perturb_k_scaling = real( perturb_num_layers+1-k ,crm_rknd) / real( perturb_num_layers ,crm_rknd)
+
+         t02 = 0.0
+         do j = 1,ny
+            do i = 1,nx
+
+               !!! Generate a uniform random number in interval (0,1)
+               call RNG_MT_gen_rand(rand_perturb)
+
+               !!! convert perturbation range from (0,1) to (-1,1)
+               rand_perturb = 1.-2.*rand_perturb
+
+               !!! apply perturbation 
+               t(i,j,k) = t(i,j,k) + perturb_t_magnitude * rand_perturb * perturb_k_scaling
+               
+               !!! Calculate new average LSE for energy conservation scaling below
+               t02 = t02 + t(i,j,k)*factor_xy
+
+            end do ! i
+         end do ! j
+
+         !!! enforce energy conservation
+         do j = 1,ny
+            do i = 1,nx
+               t(i,j,k) = t(i,j,k) *  t0(k)/t02
+            end do ! i
+         end do ! j
+
+      end do ! k
+      !--------------------------------------------------------
+      !--------------------------------------------------------
+
+   end subroutine setperturb
 
 end module setperturb_mod

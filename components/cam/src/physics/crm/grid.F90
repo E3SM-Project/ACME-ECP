@@ -11,8 +11,8 @@ module grid
 
   integer, parameter :: nx = nx_gl/nsubdomains_x
   integer, parameter :: ny = ny_gl/nsubdomains_y
-  integer, parameter :: nz = nz_gl+1 				! note that nz_gl = crm_nz - whannah
-  integer, parameter :: nzm = nz-1				! note that nzm   = crm_nz - whannah
+  integer, parameter :: nz = nz_gl+1 				! note that nz_gl = crm_nz
+  integer, parameter :: nzm = nz-1				  ! note that nzm   = crm_nz
 
   integer, parameter :: nsubdomains = nsubdomains_x * nsubdomains_y
 
@@ -49,12 +49,6 @@ module grid
   integer, parameter :: nadams = 3
 
   ! Vertical grid parameters:
-  real(crm_rknd) z(nz)      ! height of the pressure levels above surface,m
-  real(crm_rknd) pres(nzm)  ! pressure,mb at scalar levels
-  real(crm_rknd) zi(nz)     ! height of the interface levels
-  real(crm_rknd) presi(nz)  ! pressure,mb at interface levels
-  real(crm_rknd) adz(nzm)   ! ratio of the thickness of scalar levels to dz
-  real(crm_rknd) adzw(nz)	! ratio of the thinckness of w levels to dz
   real(crm_rknd) pres0      ! Reference surface pressure, Pa
 
   integer:: nstep =0! current number of performed time steps
@@ -63,7 +57,6 @@ module grid
   integer:: na=1, nb=2, nc=3 ! indeces for swapping the rhs arrays for AB scheme
   real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme
   real(crm_rknd) dtn	! current dynamical timestep (can be smaller than dt)
-  real(crm_rknd) dt3(3) 	! dynamical timesteps for three most recent time steps
   real(8):: time=0.	! current time in sec.
   real(crm_rknd) day	! current day (including fraction)
   real(crm_rknd) dtfactor   ! dtn/dt
@@ -164,5 +157,54 @@ module grid
   logical :: isInitialized_scamiopdata = .false.
   logical :: wgls_holds_omega = .false.
 
+  real(crm_rknd), allocatable :: z(:)      ! height of the pressure levels above surface,m
+  real(crm_rknd), allocatable :: pres(:)  ! pressure,mb at scalar levels
+  real(crm_rknd), allocatable :: zi(:)     ! height of the interface levels
+  real(crm_rknd), allocatable :: presi(:)  ! pressure,mb at interface levels
+  real(crm_rknd), allocatable :: adz(:)   ! ratio of the thickness of scalar levels to dz
+  real(crm_rknd), allocatable :: adzw(:)	! ratio of the thinckness of w levels to dz
+  real(crm_rknd), allocatable :: dt3(:) 	! dynamical timesteps for three most recent time steps
+
   !-----------------------------------------
+
+contains
+
+
+
+  subroutine allocate_grid()
+    implicit none
+    real(crm_rknd) :: zero
+    
+    allocate( z(nz)       )
+    allocate( pres(nzm)   )
+    allocate( zi(nz)      )
+    allocate( presi(nz)   )
+    allocate( adz(nzm)    )
+    allocate( adzw(nz)	 )
+    allocate( dt3(3) 	 )
+
+    zero = 0
+
+    z = zero
+    pres = zero
+    zi = zero
+    presi = zero
+    adz = zero
+    adzw = zero
+    dt3 = zero
+  end subroutine allocate_grid
+
+
+  subroutine deallocate_grid()
+    implicit none
+    deallocate( z )
+    deallocate( pres )
+    deallocate( zi )
+    deallocate( presi )
+    deallocate( adz )
+    deallocate( adzw )
+    deallocate( dt3 )
+  end subroutine deallocate_grid
+
+
 end module grid

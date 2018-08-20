@@ -77,10 +77,8 @@ program crm_standalone
   real(r8), allocatable :: clhgh(:) 
   real(r8), allocatable :: clmed(:) 
   real(r8), allocatable :: cllow(:) 
-#ifdef CRM3D
   real(r8), allocatable :: ultend(:,:) 
   real(r8), allocatable :: vltend(:,:) 
-#endif
   real(r8), allocatable :: sltend(:,:) 
   real(r8), allocatable :: u_crm(:,:,:,:) 
   real(r8), allocatable :: v_crm(:,:,:,:) 
@@ -292,10 +290,8 @@ program crm_standalone
   allocate( clhgh(ncols) ) 
   allocate( clmed(ncols) ) 
   allocate( cllow(ncols) ) 
-#ifdef CRM3D
   allocate( ultend(ncols,plev) ) 
   allocate( vltend(ncols,plev) ) 
-#endif
   allocate( sltend(ncols,plev) ) 
   allocate( u_crm(ncols,crm_nx,crm_ny,crm_nz) ) 
   allocate( v_crm(ncols,crm_nx,crm_ny,crm_nz) ) 
@@ -503,9 +499,7 @@ program crm_standalone
                        tl(:,:), ql(:,:), qccl(:,:), qiil(:,:), ul(:,:), vl(:,:), &
                        ps(:), pmid(:,:), pdel(:,:), phis(:), &
                        zmid(:,:), zint(:,:), dt_gl(1), plev, &
-#ifdef CRM3D
                        ultend(:,:), vltend(:,:),          &
-#endif
                        qltend(:,:), qcltend(:,:), qiltend(:,:), sltend(:,:), &
                        u_crm(:,:,:,:), v_crm(:,:,:,:), w_crm(:,:,:,:), t_crm(:,:,:,:), micro_fields_crm(:,:,:,:,:), &
                        qrad_crm(:,:,:,:), &
@@ -578,10 +572,8 @@ program crm_standalone
     call dmdf_write(qi_rad          (i,:,:,:  ),rank,fprefix_out,trim('qi_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
     call dmdf_write(cld_rad         (i,:,:,:  ),rank,fprefix_out,trim('cld_rad         '),(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
     call dmdf_write(cld3d_crm       (i,:,:,:  ),rank,fprefix_out,trim('cld3d_crm       '),(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
-#ifdef CRM3D
     call dmdf_write(ultend          (i,:      ),rank,fprefix_out,trim('ultend          '),(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
     call dmdf_write(vltend          (i,:      ),rank,fprefix_out,trim('vltend          '),(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-#endif
 #ifdef m2005
     call dmdf_write(nc_rad          (i,:,:,:  ),rank,fprefix_out,trim('nc_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
     call dmdf_write(ni_rad          (i,:,:,:  ),rank,fprefix_out,trim('ni_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)

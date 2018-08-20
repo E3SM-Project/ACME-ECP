@@ -39,6 +39,7 @@ integer :: dgnumwet_idx   = 0
 integer :: wetdens_ap_idx = 0
 integer :: qaerwat_idx    = 0
 
+logical :: pergro_mods         = .false.
 !===============================================================================
 contains
 !===============================================================================
@@ -84,7 +85,8 @@ subroutine modal_aero_wateruptake_init(pbuf2d)
 
    ! determine default variables
    call phys_getopts(history_aerosol_out = history_aerosol, &
-                     history_verbose_out = history_verbose)
+                     history_verbose_out = history_verbose, &
+                     pergro_mods_out = pergro_mods)
 
    do m = 1, nmodes
       write(trnum, '(i3.3)') m
@@ -206,6 +208,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    real(r8) :: es(pcols)             ! saturation vapor pressure
    real(r8) :: qs(pcols)             ! saturation specific humidity
+   real(r8) :: cldn_thresh
    real(r8) :: aerosol_water(pcols,pver) !sum of aerosol water (wat_a1 + wat_a2 + wat_a3 + wat_a4)
    logical :: history_aerosol      ! Output the MAM aerosol variables and tendencies
    logical :: history_verbose      ! produce verbose history output

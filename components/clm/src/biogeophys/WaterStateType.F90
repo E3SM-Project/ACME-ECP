@@ -11,7 +11,7 @@ module WaterstateType
   ! use shr_sys_mod    , only : shr_sys_flush
   use shr_log_mod    , only : errMsg => shr_log_errMsg
   use decompMod      , only : bounds_type
-  use clm_varctl     , only : use_vancouver, use_mexicocity, use_cn, iulog
+  use clm_varctl     , only : use_vancouver, use_mexicocity, use_cn, iulog, use_fates_planthydro
   use clm_varpar     , only : nlevgrnd, nlevurb, nlevsno   
   use clm_varcon     , only : spval
   use LandunitType   , only : lun_pp                
@@ -671,7 +671,11 @@ contains
                   if (j > nlevbed) then
                      this%h2osoi_vol_col(c,j) = 0.0_r8
                   else
-                     this%h2osoi_vol_col(c,j) = 0.15_r8
+		     if (use_fates_planthydro) then
+                              this%h2osoi_vol_col(c,j) = 0.70_r8*watsat_col(c,j) !0.15_r8 to avoid very dry conditions that cause errors in FATES HYDRO
+                     else
+                              this%h2osoi_vol_col(c,j) = 0.15_r8
+                     endif
                   endif
                end do
             else if (lun_pp%urbpoi(l)) then

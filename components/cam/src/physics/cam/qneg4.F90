@@ -1,6 +1,6 @@
 
 subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
-                  qbot    ,srfrpdel,shflx   ,lhflx   ,qflx    )
+                  qbot    ,srfrpdel,shflx   ,lhflx   ,qflx, excess    )
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -22,7 +22,7 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
    use physconst,    only: gravit, latvap
    use constituents, only: qmin, pcnst
    use cam_logfile,  only: iulog
-   use shr_sys_mod,  only: shr_sys_flush 
+   use phys_control, only: print_fixer_message
 
    implicit none
 
@@ -43,6 +43,8 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
    real(r8), intent(inout) :: shflx(pcols)   ! Surface sensible heat flux (J/m2/s)
    real(r8), intent(inout) :: lhflx(pcols)   ! Surface latent   heat flux (J/m2/s)
    real(r8), intent(inout) :: qflx (pcols,pcnst)   ! surface water flux (kg/m^2/s)
+   real(r8), intent(out) :: excess(pcols)     ! Excess downward sfc latent heat flux
+
 !
 !---------------------------Local workspace-----------------------------
 !
@@ -52,7 +54,6 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
    integer :: nptsexc           ! number of points with excess flux
 !
    real(r8):: worst             ! biggest violator
-   real(r8):: excess(pcols)     ! Excess downward sfc latent heat flux
 !
 !-----------------------------------------------------------------------
 !
@@ -73,12 +74,14 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
          qflx (i,1) = qflx (i,1) - excess(i)
          lhflx(i) = lhflx(i) - excess(i)*latvap
          shflx(i) = shflx(i) + excess(i)*latvap
+       else
+          excess(i) = 0._r8
       end if
    end do
 !
 ! Write out worst value if excess
 !
-   if (nptsexc.gt.0) then
+   if (nptsexc.gt.0 .and. print_fixer_message) then
       worst = 0._r8
       do ii=1,nptsexc
          i = indxexc(ii)
@@ -88,8 +91,8 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
          end if
       end do
       write(iulog,9000) subnam,nptsexc,worst, lchnk, iw, get_lat_p(lchnk,iw),get_lon_p(lchnk,iw)
-      call shr_sys_flush(iulog)
    end if
+   excess = excess*latvap  ! for output var to be in W/m2
 !
    return
 9000 format(' QNEG4 WARNING from ',a8 &

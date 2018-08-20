@@ -15,10 +15,13 @@ contains
 #else
     use params, only: dotracers
 #endif
+    use scalar_momentum_mod
     implicit none
     ! real dummy(nz)
     real(crm_rknd) dummy(nz)
     integer k
+
+    real(crm_rknd) esmt_offset    ! whannah - offset for advecting scalar momentum tracers
 
 
     !---------------------------------------------------------
@@ -76,6 +79,26 @@ contains
       end do
 
     end if
+
+#if defined(SP_ESMT)
+    
+    ! whannah - the esmt_offset simply ensures that the scalar momentum  
+    ! tracers are positive definite during the advection calculation
+    ! esmt_offset = 1000.
+
+    esmt_offset = abs( minval( (/ minval(u_esmt), minval(v_esmt) /) ) ) + 50.
+
+    u_esmt(:,:,:) = u_esmt(:,:,:) + esmt_offset
+    v_esmt(:,:,:) = v_esmt(:,:,:) + esmt_offset
+
+    ! advection of scalar momentum tracers
+    call advect_scalar(u_esmt,u_esmt_adv,u_esmt_wle,dummy,dummy,dummy,.false.)
+    call advect_scalar(v_esmt,v_esmt_adv,v_esmt_wle,dummy,dummy,dummy,.false.)
+
+    u_esmt(:,:,:) = u_esmt(:,:,:) - esmt_offset
+    v_esmt(:,:,:) = v_esmt(:,:,:) - esmt_offset
+
+#endif
 
   end subroutine advect_all_scalars
 

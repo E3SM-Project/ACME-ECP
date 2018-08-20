@@ -208,10 +208,8 @@ end
 ;==============================================================================================
 
 
-;#ifdef CRM3D
 ;    call dmdf_write(ultend          (:,      i),rank,fprefix_out,trim('ultend          '),(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
 ;    call dmdf_write(vltend          (:,      i),rank,fprefix_out,trim('vltend          '),(/'plev'/)                                       ,.false.,.false.); _ERR(success,error_string,__LINE__)
-;#endif
 ;#ifdef m2005
 ;    call dmdf_write(nc_rad          (:,:,:,  i),rank,fprefix_out,trim('nc_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)
 ;    call dmdf_write(ni_rad          (:,:,:,  i),rank,fprefix_out,trim('ni_rad          '),(/'crm_nx','crm_ny','crm_nz'/)                   ,.false.,.false.); _ERR(success,error_string,__LINE__)

@@ -12,6 +12,7 @@ contains
     use sgs
     use params, only: dotracers, dosgs
     use crmtracers
+    use scalar_momentum_mod
 #ifdef CLUBB_CRM
     use params, only: doclubb, doclubbnoninter
 #endif
@@ -19,6 +20,9 @@ contains
 
     integer flag, i
 
+    !-------------------------------------------------
+    ! Update velocity fields
+    !-------------------------------------------------
     if(flag.eq.0) then
 
       call bound_exchange(u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,1,1,1,1,1)
@@ -32,7 +36,9 @@ contains
 
     endif
 
-
+    !-------------------------------------------------
+    ! update prognostic scalar fields for advection
+    !-------------------------------------------------
     if(flag.eq.2) then
 
       call bound_exchange(u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
@@ -65,8 +71,20 @@ contains
         end do
       end if
 
+#if defined(SP_ESMT)
+      call bound_exchange(u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+                          3+NADVS,3+NADVS,3+NADVS,3+NADVS,            &
+                          4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
+      call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+                          3+NADVS,3+NADVS,3+NADVS,3+NADVS,            &
+                          4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+#endif
+
     endif
 
+    !-------------------------------------------------
+    ! Update all scalars before SGS
+    !-------------------------------------------------
     if(flag.eq.3) then
 
       call bound_exchange(t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4)
@@ -94,8 +112,25 @@ contains
         end do
       end if
 
+#if defined(SP_ESMT)
+      call bound_exchange(u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,      &
+                          4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
+      call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,      &
+                          4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+
+      ! call bound_exchange(u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
+      !                     3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
+      !                     4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
+      ! call bound_exchange(v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,&
+      !                     3+NADVS,3+NADVS,3+NADVS,3+NADVS,&
+      !                     4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+#endif
+
     endif
 
+    !-------------------------------------------------
+    ! SGS diagnostic fields
+    !-------------------------------------------------
     if(flag.eq.4) then
 
       do i = 1,nsgs_fields_diag
@@ -105,6 +140,8 @@ contains
       end do
 
     end if
+    !-------------------------------------------------
+    !-------------------------------------------------
 
 
 

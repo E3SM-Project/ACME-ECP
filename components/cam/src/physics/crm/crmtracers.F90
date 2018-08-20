@@ -16,18 +16,63 @@ module crmtracers
   use utils,  only: lenstr
   implicit none
 
-  real(crm_rknd) tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers)
-  real(crm_rknd) fluxbtr (nx, ny, 0:ntracers) ! surface flux of tracers
-  real(crm_rknd) fluxttr (nx, ny, 0:ntracers) ! top boundary flux of tracers
-  real(crm_rknd) trwle(nz,0:ntracers)  ! resolved vertical flux
-  real(crm_rknd) trwsb(nz,0:ntracers)  ! SGS vertical flux
-  real(crm_rknd) tradv(nz,0:ntracers)  ! tendency due to vertical advection
-  real(crm_rknd) trdiff(nz,0:ntracers)  ! tendency due to vertical diffusion
-  real(crm_rknd) trphys(nz,0:ntracers)  ! tendency due to physics
-  character *4 tracername(0:ntracers)
-  character *10 tracerunits(0:ntracers)
+  real(crm_rknd), allocatable :: tracer  (:,:,:,:)
+  real(crm_rknd), allocatable :: fluxbtr (:,:,:) ! surface flux of tracers
+  real(crm_rknd), allocatable :: fluxttr (:,:,:) ! top boundary flux of tracers
+  real(crm_rknd), allocatable :: trwle   (:,:)  ! resolved vertical flux
+  real(crm_rknd), allocatable :: trwsb   (:,:)  ! SGS vertical flux
+  real(crm_rknd), allocatable :: tradv   (:,:)  ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: trdiff  (:,:)  ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: trphys  (:,:)  ! tendency due to physics
+  character *4  , allocatable :: tracername  (:)
+  character *10 , allocatable :: tracerunits (:)
 
 CONTAINS
+
+
+  subroutine allocate_tracers()
+    implicit none
+    real(crm_rknd) :: zero
+    allocate( tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers))
+    allocate( fluxbtr (nx, ny, 0:ntracers) )
+    allocate( fluxttr (nx, ny, 0:ntracers) )
+    allocate( trwle   (nz,0:ntracers)  )
+    allocate( trwsb   (nz,0:ntracers)  )
+    allocate( tradv   (nz,0:ntracers)  )
+    allocate( trdiff  (nz,0:ntracers)  )
+    allocate( trphys  (nz,0:ntracers)  )
+    allocate( tracername   (0:ntracers))
+    allocate( tracerunits (0:ntracers))
+
+    zero = 0
+
+    tracer   = zero
+    fluxbtr  = zero
+    fluxttr  = zero
+    trwle    = zero
+    trwsb    = zero
+    tradv    = zero
+    trdiff   = zero
+    trphys   = zero
+    tracername  = ''
+    tracerunits = ''
+  end subroutine allocate_tracers
+
+
+  subroutine deallocate_tracers()
+    implicit none
+    deallocate( tracer    )
+    deallocate( fluxbtr   )
+    deallocate( fluxttr   )
+    deallocate( trwle     )
+    deallocate( trwsb     )
+    deallocate( tradv     )
+    deallocate( trdiff    )
+    deallocate( trphys    )
+    deallocate( tracername   )
+    deallocate( tracerunits  )
+  end subroutine deallocate_tracers
+
 
   subroutine tracers_init()
 
