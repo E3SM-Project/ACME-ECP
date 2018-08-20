@@ -540,6 +540,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #ifdef CRM
    use crm_state_module, only: crm_state_type
    use crm_rad_module, only: crm_rad_type
+   use crm_input_module, only: crm_input_type
 #endif
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
@@ -707,9 +708,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) na(pcols)                           ! aerosol number concentration [/m3]
    real(r8) va(pcols)                           ! aerosol voume concentration [m3/m3]
    real(r8) hy(pcols)                           ! aerosol bulk hygroscopicity
-   real(r8) naermod (pcols,pver, ntot_amode)    ! Aerosol number concentration [/m3]
-   real(r8) vaerosol(pcols,pver, ntot_amode)    ! aerosol volume concentration [m3/m3]
-   real(r8) hygro   (pcols,pver, ntot_amode)    ! hygroscopicity of aerosol mode 
    integer  phase                               ! phase to determine whether it is interstitial, cloud-borne, or the sum. 
 #endif
 
@@ -773,10 +771,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
 
    ! Surface fluxes 
-   real(r8) ::  fluxu0(pcols)    ! surface momenment fluxes
-   real(r8) ::  fluxv0(pcols)    ! surface momenment fluxes
-   real(r8) ::  fluxt0(pcols)    ! surface sensible heat fluxes
-   real(r8) ::  fluxq0(pcols)    ! surface latent heat fluxes
    real(r8) ::  dtstep_pp        ! time step for the ECPP (seconds)
    integer  ::  necpp            ! the number of GCM time step in which ECPP is called once.
 
@@ -821,6 +815,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    type(crm_state_type) :: crm_state
    type(crm_rad_type) :: crm_rad
+   type(crm_input_type) :: crm_input
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -868,6 +863,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    lchnk = state%lchnk
    ncol  = state%ncol
 
+   ! Initialize CRM state
+   call crm_state%initialize(pcols)
+   call crm_rad%initialize()
+   call crm_input%initialize(pcols, pver)
+
+   ! Associate pointers
    if (SPCAM_microp_scheme .eq. 'm2005') then
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_rad%nc, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), crm_rad%ni, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
@@ -1003,9 +1004,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    !------------------------------------------------------------
    !------------------------------------------------------------
-
-   ! Initialize CRM state
-   call crm_state%initialize(ncol)
 
    ! Set pointers from crm_state to fields that persist on physics buffer
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
@@ -1278,22 +1276,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call get_lon_all_p(lchnk, ncol, nlon)
       
       !----------------------------------------------------------------------
-      ! Start ncol loop for CRM
+      ! calculate total water before calling crm - used for check_energy_chng() after CRM
       !----------------------------------------------------------------------
       do i = 1,ncol
-         tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
-         wnd  (i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
-         bflx (i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
-!+++mhwang
-         fluxu0(i) = cam_in%wsx(i)     !N/m2
-         fluxv0(i) = cam_in%wsy(i)     !N/m2
-         fluxt0(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
-         fluxq0(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
-!---mwwang
-
-         !----------------------------------------------------------------------
-         ! calculate total water before calling crm - used for check_energy_chng() after CRM
-         !----------------------------------------------------------------------
          qli_hydro_before(i) = 0.0_r8
          qi_hydro_before(i) = 0.0_r8
 
@@ -1319,12 +1304,37 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
          qli_hydro_before(i) = qli_hydro_before(i)/(crm_nx*crm_ny)
          qi_hydro_before(i)  =  qi_hydro_before(i)/(crm_nx*crm_ny)
+      end do ! i = 1,ncol
 
-         !----------------------------------------------------------------------
-         !----------------------------------------------------------------------
-         
-
+      ! Set CRM inputs
+      ! TODO: move this to a routine and call like:
+      !    call set_crm_input(state, cam_in, pbuf, crm_input)
+      crm_input%zmid(1:ncol,1:pver) = state%zm(1:ncol,1:pver)
+      crm_input%zint(1:ncol,1:pver+1) = state%zi(1:ncol,1:pver+1)
+      crm_input%tl(1:ncol,1:pver) = state%t(1:ncol,1:pver)
+      crm_input%ql(1:ncol,1:pver) = state%q(1:ncol,1:pver,1)
+      crm_input%qccl(1:ncol,1:pver) = state%q(1:ncol,1:pver,ixcldliq)
+      crm_input%qiil(1:ncol,1:pver) = state%q(1:ncol,1:pver,ixcldice)
+      crm_input%ps(1:ncol) = state%ps(1:ncol)
+      crm_input%pmid(1:ncol,1:pver) = state%pmid(1:ncol,1:pver)
+      crm_input%pint(1:ncol,1:pver+1) = state%pint(1:ncol,1:pver+1)
+      crm_input%pdel(1:ncol,1:pver) = state%pdel(1:ncol,1:pver)
+      crm_input%phis(1:ncol) = state%phis(1:ncol)
+      crm_input%ul(1:ncol,1:pver) = state%u(1:ncol,1:pver)
+      crm_input%vl(1:ncol,1:pver) = state%v(1:ncol,1:pver)
+      crm_input%ocnfrac(1:ncol) = cam_in%ocnfrac(1:ncol)
+      do i = 1,ncol
+         crm_input%tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
+         crm_input%wndls(i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
+         crm_input%bflxls(i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
+         crm_input%fluxu00(i) = cam_in%wsx(i)     !N/m2
+         crm_input%fluxv00(i) = cam_in%wsy(i)     !N/m2
+         crm_input%fluxt00(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
+         crm_input%fluxq00(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
+      end do
 #if (defined m2005 && defined MODAL_AERO)
+      ! Set aerosol
+      do i = 1,ncol
          do k=1, pver
             phase = 1  ! interstital aerosols only
             do m=1, ntot_amode
@@ -1332,30 +1342,34 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                   state, pbuf, i, i, k, &
                   m, cs, phase, na, va, &
                   hy)
-               naermod (i,k, m) = na(i)
-               vaerosol(i,k, m) = va(i)
-               hygro   (i,k, m) = hy(i)
+               crm_input%naermod (i,k, m) = na(i)
+               crm_input%vaerosol(i,k, m) = va(i)
+               crm_input%hygro   (i,k, m) = hy(i)
             end do    
          end do
+      end do
 #endif
-
-         !----------------------------------------------------------------------
-         ! Set the input wind (also sets CRM orientation)
-         !----------------------------------------------------------------------
+      !----------------------------------------------------------------------
+      ! Set the input wind (also sets CRM orientation)
+      !----------------------------------------------------------------------
+      do i = 1,ncol
          do k=1,pver
-
-            ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
-            vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
+            crm_input%ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
+            crm_input%vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
 #if defined( SP_ESMT )
             ! Set the input wind for ESMT
-            ul_esmt(i,k) = state%u(i,k)
-            vl_esmt(i,k) = state%v(i,k)
+            crm_input%ul_esmt(i,k) = state%u(i,k)
+            crm_input%vl_esmt(i,k) = state%v(i,k)
 #endif /* SP_ESMT */
          enddo ! k=1,pver
+      enddo ! i=1,ncol
 
+      ! Set the global model column mapping
+      ! TODO: get rid of this; we do not need this anymore if we are not
+      ! supporting the stand-alone CRM dump routines in crm_module.
+      do i = 1,ncol
          icol(i) = i
-   
-   enddo ! i=1,ncol
+      end do
 
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1363,23 +1377,20 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
 #ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
     call crm ( lchnk,                       icol(:ncol),                  ncol,                         phys_stage,                                                 &
-               state%t(:ncol,:pver),        state%q(:ncol,:pver,1),       state%q(:ncol,:pver,ixcldliq),state%q(:ncol,:pver,ixcldice),                              &
-               ul(:ncol,:pver),             vl(:ncol,:pver),                                                                                                        &
-               state%ps(:ncol),             state%pmid(:ncol,:pver),      state%pint(:ncol,:pver+1),    state%pdel(:ncol,:pver),      state%phis(:ncol),            &
-               state%zm(:ncol,:pver),       state%zi(:ncol,:pver+1),      ztodt,                        pver,                                                       &
+               ztodt,                        pver,                                                       &
 #if defined( SPMOMTRANS )
                u_tend_crm (:ncol,:pver),    v_tend_crm (:ncol,:pver),                                                                                               &
 #endif /* SPMOMTRANS */
 #if defined( SP_ESMT )
-               ul_esmt(:ncol,:pver),        vl_esmt(:ncol,:pver),         u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
+               u_tend_esmt(:ncol,:pver),     v_tend_esmt(:ncol,:pver),                                   &
 #endif /* SP_ESMT */
                ptend%q(:ncol,:pver,1),      ptend%q(:ncol,:pver,ixcldliq),ptend%q(:ncol,:pver,ixcldice),ptend%s(:ncol,:pver),                                       &
-               crm_state,                &
-               crm_rad,                  &
+               crm_state, crm_rad, crm_input,              &
                qc_crm(:ncol,:,:,:),         qi_crm(:ncol,:,:,:),          qpc_crm(:ncol,:,:,:),         qpi_crm(:ncol,:,:,:),                                       &
                prec_crm(:ncol,:,:),         cld3d_crm(:ncol,:,:,:),                                     &
 #ifdef m2005
@@ -1396,9 +1407,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                spqc(:ncol,:),               spqi(:ncol,:),                spqs(:ncol,:),                spqg(:ncol,:),               spqr(:ncol,:),                 &
 #ifdef m2005
                spnc(:ncol,:),               spni(:ncol,:),                spns(:ncol,:),                spng(:ncol,:),               spnr(:ncol,:),                 &
-#ifdef MODAL_AERO
-               naermod(:ncol,:,:),          vaerosol(:ncol,:,:),          hygro(:ncol,:,:),                                                                         &
-#endif /* MODAL_AERO */
 #endif /* m2005 */
 #ifdef CLUBB_CRM
                clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
@@ -1421,8 +1429,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                flux_u(:ncol,:),             flux_v(:ncol,:),              flux_qt(:ncol,:),          fluxsgs_qt(:ncol,:),         flux_qp(:ncol,:),                 &
                precflux(:ncol,:),           qt_ls(:ncol,:),               qt_trans(:ncol,:),         qp_trans(:ncol,:),           qp_fall(:ncol,:),                 &
                qp_evp(:ncol,:),             qp_src(:ncol,:),              t_ls(:ncol,:),             prectend(:ncol),             precstend(:ncol),                 &
-               cam_in%ocnfrac(:ncol),       wnd(:ncol),                   tau00(:ncol),              bflx(:ncol),                                                   & 
-               fluxu0(:ncol),               fluxv0(:ncol),                fluxt0(:ncol),             fluxq0(:ncol),                                                 & 
                taux_crm(:ncol),             tauy_crm(:ncol),              z0m(:ncol),                timing_factor(:ncol),        qtotcrm(:ncol, :) )
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1460,7 +1466,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
       call outfld('PRES    ',state%pmid ,pcols   ,lchnk   )
       call outfld('DPRES   ',state%pdel ,pcols   ,lchnk   )
-      ! call outfld('HEIGHT  ',state%zm   ,pcols   ,lchnk   )
 
       call outfld('CRM_U   ',crm_state%u_wind, pcols   ,lchnk   )
       call outfld('CRM_V   ',crm_state%v_wind, pcols   ,lchnk   )
@@ -1881,6 +1886,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    !----------------------------------------------------------------------
    !----------------------------------------------------------------------
+
+   call crm_state%finalize()
+   call crm_rad%finalize()
+   call crm_input%finalize()
 
 #endif /* CRM */
 end subroutine crm_physics_tend
