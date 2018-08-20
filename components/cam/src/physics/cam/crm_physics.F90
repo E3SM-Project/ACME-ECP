@@ -1488,10 +1488,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                do jj=1, crm_ny
                  ptend%q(i,m,ixnumliq)  = ptend%q(i,m,ixnumliq)  + crm_state%nc(i,ii,jj,k) 
                  ptend%q(i,m,ixnumice)  = ptend%q(i,m,ixnumice)  + crm_state%ni(i,ii,jj,k)
-                 ptend%q(i,m,ixrain)    = ptend%q(i,m,ixrain)    + crm_state%crm_qr(i,ii,jj,k)
-                 ptend%q(i,m,ixsnow)    = ptend%q(i,m,ixsnow)    + crm_state%crm_qs(i,ii,jj,k)
-                 ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_state%crm_nr(i,ii,jj,k)
-                 ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_state%crm_ns(i,ii,jj,k)
+                 ptend%q(i,m,ixrain)    = ptend%q(i,m,ixrain)    + crm_state%qr(i,ii,jj,k)
+                 ptend%q(i,m,ixsnow)    = ptend%q(i,m,ixsnow)    + crm_state%qs(i,ii,jj,k)
+                 ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_state%nr(i,ii,jj,k)
+                 ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_state%ns(i,ii,jj,k)
                end do
                end do
                ptend%q(i,m,ixnumliq)  = (ptend%q(i,m,ixnumliq) /(crm_nx*crm_ny) - state%q(i,m,ixnumliq)) /crm_run_time
