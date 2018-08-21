@@ -2119,19 +2119,18 @@ subroutine tphysbc (ztodt,               &
 
     real(r8) :: qexcess(pcols)
     
-#ifdef CRM
 !-- mdb spcam
     logical           :: use_SPCAM
     logical           :: use_ECPP
     character(len=16) :: SPCAM_microp_scheme
+#ifdef CRM
     integer           :: phys_stage                ! physics stage indicator (tphysbc => 1)
     real(r8)          :: crm_run_time              ! length of CRM integration
     real(r8), dimension(pcols) :: sp_qchk_prec_dp  ! CRM precipitation diagostic (liq+ice)  used for check_energy_chng
     real(r8), dimension(pcols) :: sp_qchk_snow_dp  ! CRM precipitation diagostic (ice only) used for check_energy_chng
     real(r8), dimension(pcols) :: sp_rad_flux      ! CRM radiative flux diagnostic used for check_energy_chng
-    
-    type(crm_ecpp_output_type)      :: crm_ecpp_output   ! CRM output data for ECPP calculations
 
+    type(crm_ecpp_output_type)      :: crm_ecpp_output   ! CRM output data for ECPP calculations
 #if defined( ECPP )
     !!! ECPP variables
     real(r8),pointer,dimension(:)   :: pblh              ! PBL height (for ECPP)
@@ -2141,11 +2140,13 @@ subroutine tphysbc (ztodt,               &
 
 #endif /* ECPP */
 
+#endif /* CRM */
+
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( use_ECPP_out            = use_ECPP)
     call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
 !-- mdb spcam
-#endif /* CRM */
+
 
     call phys_getopts( microp_scheme_out      = microp_scheme, &
                        macrop_scheme_out      = macrop_scheme, &
