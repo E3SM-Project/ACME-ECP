@@ -36,9 +36,11 @@ module crm_ecpp_output_module
       real(crm_rknd), allocatable :: wwqui_bnd          (:,:)  ! vert velocity variance in quiescent class (m2/s2) at layer boundary
       real(crm_rknd), allocatable :: wwqui_cloudy_cen   (:,:)  ! vert velocity variance in quiescent and cloudy class (m2/s2) at layer center
       real(crm_rknd), allocatable :: wwqui_cloudy_bnd   (:,:)  ! vert velocity variance in quiescent and cloudy class (m2/s2) at layer boundary
+#if defined( ECPP )
    contains
       procedure, public :: initialize=>crm_ecpp_initialize
       procedure, public :: finalize=>crm_ecpp_finalize
+#endif /* ECPP */
    end type crm_ecpp_output_type
    !------------------------------------------------------------------------------------------------
 

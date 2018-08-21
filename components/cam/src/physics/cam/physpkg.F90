@@ -156,7 +156,9 @@ subroutine phys_register
     use subcol_utils,       only: is_subcol_on
     use output_aerocom_aie, only: output_aerocom_aie_register, do_aerocom_ind3
 
+#ifdef CRM
     use crm_physics,        only: crm_physics_register
+#endif /* CRM */
 
     !---------------------------Local variables-----------------------------
     !
@@ -311,9 +313,11 @@ subroutine phys_register
        !  shallow convection
        call convect_shallow_register
 
+#ifdef CRM
 !-- mdb spcam
        if (use_SPCAM) call crm_physics_register
 !-- mdb spcam
+#endif /* CRM */
 
        ! radiation
        call radiation_register
@@ -737,7 +741,10 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
 
     use cam_history,        only: addfld, add_default, horiz_only 
+
+#ifdef CRM
     use crm_physics,        only: crm_physics_init 
+#endif /* CRM */
 
 
     ! Input/output arguments
@@ -888,9 +895,11 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     ! initiate CLUBB within CAM
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d,dp1)
 
+#ifdef CRM
 !-- mdb spcam
     if (use_SPCAM) call crm_physics_init(species_class) !==Guangxing Lin added species_class
 !-- mdb spcam
+#endif /* CRM */
 
     call qbo_init
 
@@ -1390,7 +1399,9 @@ subroutine tphysac (ztodt,   cam_in,  &
     use nudging,            only: Nudge_Model,Nudge_ON,nudging_timestep_tend
     use phys_control,       only: use_qqflx_fixer
     use cam_history,        only: outfld 
+#ifdef CRM
     use crm_physics,        only: crm_physics_tend
+#endif /* CRM */
 
     implicit none
 
@@ -1920,9 +1931,9 @@ subroutine tphysbc (ztodt,               &
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use phys_control,    only: use_qqflx_fixer, use_mass_borrower
 
+#ifdef CRM
     !!! CRM modules
     use crmdims,         only: crm_nz, crm_nx, crm_ny, crm_dx, crm_dy, crm_dt
-
     use crm_physics,     only: crm_physics_tend, crm_surface_flux_bypass_tend, &
                                crm_save_state_tend, crm_recall_state_tend
     use crm_ecpp_output_module, only: crm_ecpp_output_type
@@ -1931,13 +1942,13 @@ subroutine tphysbc (ztodt,               &
    use module_ecpp_ppdriver2,  only: parampollu_driver2
    use module_data_ecpp1,      only: dtstep_pp_input
    use crmclouds_camaerosols,  only: crmclouds_mixnuc_tend
-   ! use module_ecpp_crm_driver, only: ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
-   ! use module_ecpp_crm_driver, only: ntavg1_ss, ntavg2_ss
 #endif
 
 #if defined( SP_CRM_BULK )
     use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
 #endif
+
+#endif /* CRM */
 
     implicit none
 
@@ -2108,23 +2119,25 @@ subroutine tphysbc (ztodt,               &
 
     real(r8) :: qexcess(pcols)
     
+#ifdef CRM
 !-- mdb spcam
     logical           :: use_SPCAM
     logical           :: use_ECPP
     character(len=16) :: SPCAM_microp_scheme
     integer           :: phys_stage                ! physics stage indicator (tphysbc => 1)
     real(r8)          :: crm_run_time              ! length of CRM integration
-    type(crm_ecpp_output_type) :: crm_ecpp_output  ! CRM output data for ECPP calculations
     real(r8), dimension(pcols) :: sp_qchk_prec_dp  ! CRM precipitation diagostic (liq+ice)  used for check_energy_chng
     real(r8), dimension(pcols) :: sp_qchk_snow_dp  ! CRM precipitation diagostic (ice only) used for check_energy_chng
     real(r8), dimension(pcols) :: sp_rad_flux      ! CRM radiative flux diagnostic used for check_energy_chng
+    
+    type(crm_ecpp_output_type)      :: crm_ecpp_output   ! CRM output data for ECPP calculations
 
 #if defined( ECPP )
     !!! ECPP variables
-    real(r8),pointer,dimension(:)   :: pblh           ! PBL height (for ECPP)
-    real(r8),pointer,dimension(:,:) :: acldy_cen_tbeg ! cloud fraction
-    real(r8)                        :: dtstep_pp      ! ECPP time step (seconds)
-    integer                         :: necpp          ! number of GCM time steps in which ECPP is called once
+    real(r8),pointer,dimension(:)   :: pblh              ! PBL height (for ECPP)
+    real(r8),pointer,dimension(:,:) :: acldy_cen_tbeg    ! cloud fraction
+    real(r8)                        :: dtstep_pp         ! ECPP time step (seconds)
+    integer                         :: necpp             ! number of GCM time steps in which ECPP is called once
 
 #endif /* ECPP */
 
@@ -2132,6 +2145,7 @@ subroutine tphysbc (ztodt,               &
     call phys_getopts( use_ECPP_out            = use_ECPP)
     call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
 !-- mdb spcam
+#endif /* CRM */
 
     call phys_getopts( microp_scheme_out      = microp_scheme, &
                        macrop_scheme_out      = macrop_scheme, &
@@ -2404,7 +2418,9 @@ end if
     !===================================================
     ! Save state to recall or CRM call
     !===================================================  
+#ifdef CRM
     if (use_SPCAM) call crm_save_state_tend(state, tend, pbuf)
+#endif
     
 
 #if defined( SP_PHYS_BYPASS )
@@ -2750,6 +2766,8 @@ end if
    ! CRM Physics
    !--------------------------------------------------------------------------------------
    !======================================================================================
+#ifdef CRM
+
    if (use_SPCAM) then
 #if defined( SP_CRM_SPLIT ) 
       crm_run_time = ztodt * 0.5
@@ -2776,13 +2794,6 @@ end if
 #if defined( ECPP )
       if (use_ECPP) then
          call crm_ecpp_output%initialize(pcols,pver)
-
-         ! ntavg1_ss = min(600._r8, ztodt)   ! 10 minutes  or the GCM timestep, whichever smaller
-         ! ntavg2_ss = ztodt                 ! # of seconds to average between computing categories, must be a multiple of ntavgt1_ss.
-
-         !!! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss are set
-         ! call ecpp_crm_init()
-
       end if ! use_ECPP
 #endif
       !---------------------------------------------------------------------------
@@ -2874,9 +2885,6 @@ end if
 
          end if ! nstep.ne.0 .and. mod(nstep, necpp).eq.0
 
-         !!! Deallocate ECPP variables
-         ! call ecpp_crm_cleanup()
-
          call crm_ecpp_output%finalize()
 
       end if ! use_ECPP
@@ -2897,6 +2905,7 @@ end if
       !---------------------------------------------------------------------------
       !---------------------------------------------------------------------------
    end if ! use_SPCAM
+#endif /* CRM */
    !======================================================================================
    !--------------------------------------------------------------------------------------
    !======================================================================================

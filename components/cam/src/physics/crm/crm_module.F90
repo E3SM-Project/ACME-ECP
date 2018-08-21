@@ -37,23 +37,19 @@ use setparm_mod, only : setparm
 
 contains
 
-subroutine crm(lchnk, icol, ncrms, phys_stage &
+subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 !MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
 #ifdef CRM_STANDALONE
-                ,latitude0_in, longitude0_in &
+                latitude0_in, longitude0_in, &
 #endif
-                ,dt_gl, plev &
-                ,crm_state, crm_rad, crm_input, crm_output &
+                crm_input, crm_state, crm_rad,  &
 #ifdef CLUBB_CRM
-                ,clubb_buffer                 &
-                ,crm_cld                      &
-                ,clubb_tk, clubb_tkh          &
-                ,relvar, accre_enhan, qclvar  &
+                clubb_buffer,           &
+                crm_cld, clubb_tk,      &
+                clubb_tkh, relvar,      &
+                accre_enhan, qclvar,    &
 #endif
-#if defined( ECPP )
-                ,crm_ecpp_output &
-#endif
-                )
+                crm_ecpp_output, crm_output )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
@@ -137,13 +133,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage &
     real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
     real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
 #endif
-    type(crm_state_type),  intent(inout) :: crm_state
-    type(crm_rad_type),    intent(inout) :: crm_rad
-    type(crm_input_type),  intent(in   ) :: crm_input
-    type(crm_output_type), intent(inout) :: crm_output
-#if defined( ECPP )
+    type(crm_state_type),      intent(inout) :: crm_state
+    type(crm_rad_type),        intent(inout) :: crm_rad
+    type(crm_input_type),      intent(in   ) :: crm_input
+    type(crm_output_type),     intent(inout) :: crm_output
    type(crm_ecpp_output_type), intent(inout) :: crm_ecpp_output 
-#endif
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
     real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)

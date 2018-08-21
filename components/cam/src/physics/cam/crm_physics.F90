@@ -536,8 +536,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use crm_rad_module,         only: crm_rad_type
    use crm_input_module,       only: crm_input_type
    use crm_output_module,      only: crm_output_type
-   use crm_ecpp_output_module, only: crm_ecpp_output_type
 #endif /* CRM */
+   use crm_ecpp_output_module, only: crm_ecpp_output_type
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
 #ifndef CRM
@@ -705,10 +705,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !------------------------------------------------------------
    ! Initialize CRM state (nullify pointers, allocate memory, etc)
    !------------------------------------------------------------
-   ! TODO: should these be allocated with size pcols to handle calls to outfld,
-   ! which seem to expect input arrays to have size pcols rather than ncol? We
-   ! only ever use ncol many elements of these arrays, so this should not be a
-   ! problem other than using a little more memory than we need.
    call crm_state%initialize()
    call crm_rad%initialize()
    call crm_input%initialize(pcols,pver)
@@ -1057,27 +1053,22 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 ! Run the CRM
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
-#ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm( lchnk, icol(:ncol), ncol, phys_stage, ztodt, pver               &
-              ,crm_state, crm_rad, crm_input, crm_output                      &
+    call crm( lchnk, icol(:ncol), ncol, phys_stage, ztodt, pver,        &
+              crm_input, crm_state, crm_rad,                            &
 #ifdef CLUBB_CRM
-              ,clubb_buffer(:ncol,:,:,:,:)                                                         &
-              ,crm_cld(:ncol,:, :, :)                                                              &
-              ,clubb_tk(:ncol, :, :, :),    clubb_tkh(:ncol, :, :, :)                              &
-              ,relvar(:ncol,:, :, :),       accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :)   &
+              clubb_buffer(:ncol,:,:,:,:),                              &
+              crm_cld(:ncol,:, :, :),      clubb_tk(:ncol, :, :, :),    &
+              clubb_tkh(:ncol, :, :, :),   relvar(:ncol,:, :, :),       &
+              accre_enhan(:ncol, :, :, :), qclvar(:ncol, :, :, :),      &
 #endif /* CLUBB_CRM */
-#if defined( ECPP )
-              ,crm_ecpp_output &
-#endif
-               )
+              crm_ecpp_output, crm_output )
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 
-#endif /* CRM */
 
       call t_stopf('crm_call')
 
