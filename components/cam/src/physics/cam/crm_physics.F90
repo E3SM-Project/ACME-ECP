@@ -736,6 +736,13 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    lchnk = state%lchnk
    ncol  = state%ncol
 
+   ! Initialize CRM types
+   call crm_state%initialize()
+   call crm_rad%initialize()
+   call crm_input%initialize(pcols, pver)
+   call crm_output%initialize(pcols, pver)
+
+   ! Associate pointers
    if (SPCAM_microp_scheme .eq. 'm2005') then
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_rad%nc, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), crm_rad%ni, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
@@ -865,15 +872,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    !------------------------------------------------------------
    !------------------------------------------------------------
-
-   ! Initialize CRM state
-   ! TODO: should these be allocated with size pcols to handle calls to outfld,
-   ! which seem to expect input arrays to have size pcols rather than ncol? We
-   ! only ever use ncol many elements of these arrays, so this should not be a
-   ! problem other than using a little more memory than we need.
-   call crm_state%initialize()
-   call crm_input%initialize(pcols, pver)
-   call crm_output%initialize(pcols, pver)
 
    ! Set pointers from crm_state to fields that persist on physics buffer
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
@@ -1617,6 +1615,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    !----------------------------------------------------------------------
    !----------------------------------------------------------------------
+
+   call crm_state%finalize()
+   call crm_rad%finalize()
+   call crm_input%finalize()
+   call crm_output%finalize()
 
 #endif /* CRM */
 end subroutine crm_physics_tend
