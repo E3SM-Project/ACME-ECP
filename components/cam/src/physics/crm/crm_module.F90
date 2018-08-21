@@ -36,27 +36,24 @@ use setparm_mod, only : setparm
 
 contains
 
-subroutine crm(lchnk, icol, ncrms, phys_stage, &
-!MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
-#ifdef CRM_STANDALONE
-                latitude0_in, longitude0_in, &
-#endif
-                dt_gl, plev, &
-                crm_state, crm_rad, crm_input, crm_output, &
+subroutine crm(lchnk,         icol,             ncrms,            &
+               phys_stage,    dt_gl,            plev,             &
 #ifdef CLUBB_CRM
-                clubb_buffer,                 &
-                crm_cld,                      &
-                clubb_tk, clubb_tkh,          &
-                relvar, accre_enhan, qclvar,  &
+               clubb_buffer,  crm_cld,                            &
+               clubb_tk,      clubb_tkh,                          &
+               relvar,        accre_enhan,      qclvar,           &
 #endif
 #ifdef ECPP
-                abnd, abnd_tf, massflxbnd, acen, acen_tf,           &
-                rhcen, qcloudcen, qicecen, qlsinkcen, precrcen, precsolidcen,  &
-                qlsink_bfcen, qlsink_avgcen, praincen,     &
-                wupthresh_bnd, wdownthresh_bnd,   &
-                wwqui_cen, wwqui_bnd, wwqui_cloudy_cen, wwqui_cloudy_bnd,   &
+               abnd,          abnd_tf,          massflxbnd,       &
+               acen,          acen_tf,                            &
+               rhcen,         qcloudcen,        qicecen,          &
+               qlsinkcen,     precrcen,         precsolidcen,     &
+               qlsink_bfcen,  qlsink_avgcen,    praincen,         &
+               wupthresh_bnd, wdownthresh_bnd,  wwqui_cen,        &
+               wwqui_bnd,     wwqui_cloudy_cen, wwqui_cloudy_bnd, &
 #endif
-                )
+               crm_input,     crm_state,        crm_rad,          &
+               crm_output)
         !---------------------------------------------------------------
     use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
@@ -130,10 +127,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
     integer , intent(in   ) :: plev                             ! number of levels in parent model
     real(r8), intent(in   ) :: dt_gl                            ! global model's time step
     integer , intent(in   ) :: icol                (ncrms)      ! column identifier (only for lat/lon and random seed)
-#ifdef CRM_STANDALONE
-    real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
-    real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
-#endif
     type(crm_state_type), intent(inout) :: crm_state
     type(crm_rad_type),   intent(inout) :: crm_rad
     type(crm_input_type), intent(in   ) :: crm_input
@@ -326,13 +319,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
 
     !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
-#ifdef CRM_STANDALONE
-    latitude0  = latitude0_in (icrm)
-    longitude0 = longitude0_in(icrm)
-#else
     latitude0  = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
     longitude0 = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
-#endif
 
     igstep = get_nstep()
 
@@ -889,7 +877,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, &
 
         !+++mhwangtest
         ! test water conservtion problem
-        ntotal_step = ntotal_step + 1.
+        !ntotal_step = ntotal_step + 1.
         !---mhwangtest
 
         !------------------------------------------------------------

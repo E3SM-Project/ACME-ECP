@@ -1125,24 +1125,24 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm ( lchnk,                       icol(:ncol),                  ncol,                         phys_stage,                                                 &
-               ztodt,                        pver,                                                       &
-               crm_state, crm_rad, crm_input, crm_output,  &
+    call crm(lchnk,                      icol(:ncol),                  ncol,                         &
+             phys_stage,                 ztodt,                        pver,                         &
 #ifdef CLUBB_CRM
-               clubb_buffer(:ncol,:,:,:,:),                                                                                                                         &
-               crm_cld(:ncol,:, :, :),                                                                                                                              &
-               clubb_tk(:ncol, :, :, :),    clubb_tkh(:ncol, :, :, :),                                                                                              &
-               relvar(:ncol,:, :, :),       accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :),                                                                   &
+             clubb_buffer(:ncol,:,:,:,:),crm_cld(:ncol,:, :, :),                                     &
+             clubb_tk(:ncol, :, :, :),   clubb_tkh(:ncol, :, :, :),                                  &
+             relvar(:ncol,:, :, :),      accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :),       &
 #endif /* CLUBB_CRM */
 #ifdef ECPP
-               abnd(:ncol,:,:,:,:),         abnd_tf(:ncol,:,:,:,:),       massflxbnd(:ncol,:,:,:,:), acen(:ncol,:,:,:,:),         acen_tf(:ncol,:,:,:,:),           &
-               rhcen(:ncol,:,:,:,:),        qcloudcen(:ncol,:,:,:,:),     qicecen(:ncol,:,:,:,:),    qlsink_afcen(:ncol,:,:,:,:),                                   &
-               precrcen(:ncol,:,:,:,:),     precsolidcen(:ncol,:,:,:,:),                                                                                            &
-               qlsink_bfcen(:ncol,:,:,:,:), qlsink_avgcen(:ncol,:,:,:,:), praincen(:ncol,:,:,:,:),                                                                  &
-               wupthresh_bnd(:ncol,:),      wdownthresh_bnd(:ncol,:),                                                                                               &
-               wwqui_cen(:ncol,:),          wwqui_bnd(:ncol,:),           wwqui_cloudy_cen(:ncol,:), wwqui_cloudy_bnd(:ncol,:),                                     &
+             abnd(:ncol,:,:,:,:),        abnd_tf(:ncol,:,:,:,:),       massflxbnd(:ncol,:,:,:,:),    &
+             acen(:ncol,:,:,:,:),        acen_tf(:ncol,:,:,:,:),                                     &
+             rhcen(:ncol,:,:,:,:),       qcloudcen(:ncol,:,:,:,:),     qicecen(:ncol,:,:,:,:),       &
+             qlsink_afcen(:ncol,:,:,:,:),precrcen(:ncol,:,:,:,:),      precsolidcen(:ncol,:,:,:,:),  & 
+             qlsink_bfcen(:ncol,:,:,:,:),qlsink_avgcen(:ncol,:,:,:,:), praincen(:ncol,:,:,:,:),      &
+             wupthresh_bnd(:ncol,:),     wdownthresh_bnd(:ncol,:),     wwqui_cen(:ncol,:),           &
+             wwqui_bnd(:ncol,:),         wwqui_cloudy_cen(:ncol,:),    wwqui_cloudy_bnd(:ncol,:)     &
 #endif /* ECPP */
-               )
+             crm_input,                  crm_state,                    crm_rad,                      &
+             crm_output)
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
