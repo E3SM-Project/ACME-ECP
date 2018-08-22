@@ -1,10 +1,6 @@
 module crm_ecpp_output_module
 
-#if defined( CRM )
    use params, only: crm_rknd
-#else
-   integer, parameter :: crm_rknd = 8
-#endif
 
    implicit none
 
