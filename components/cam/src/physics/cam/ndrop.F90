@@ -1168,8 +1168,10 @@ if (SPCAM_mmf) then
 #ifdef MODAL_AERO
    do m=1, pcnst
       if(species_class(m).eq.spec_class_gas) then
-         ptend%lq(m) = .true.
-         ptend%q(i, :, m) = (rgascol(:,m,nnew)-rgas(i,:,m)) * dtinv
+         ! ptend%lq(m) = .true.
+         ! ptend%q(i, :, m) = (rgascol(:,m,nnew)-rgas(i,:,m)) * dtinv
+         ptend%lq(m) = .false.
+         ptend%q(i, :, m) = 0.0_r8
       end if
    end do
 #endif 

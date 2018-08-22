@@ -35,7 +35,6 @@ contains
 !------------------------------------------------------------------------------------------------------
 subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
                    wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd,  species_class )
-!==Guangxing Lin added species_class
 !-----------------------------------------------------------------------------------------------------
 !
 ! Purpose: to calculate aerosol tendency from dropelt activation and mixing. 
@@ -44,131 +43,122 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 !------------------------------------------------------------------------------------------------------
   use physics_types,    only: physics_state, physics_ptend, physics_tend, physics_ptend_init
   use physics_buffer,   only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
-  ! use constituents,     only: cnst_get_ind, pcnst, species_class
-  use physconst,        only: gravit, rair, karman, spec_class_gas !==Guangxing Lin added spec_class_gas
+  use physconst,        only: gravit, rair, karman, spec_class_gas
   use constituents,     only: cnst_get_ind, pcnst
   use time_manager,     only: is_first_step
   use cam_history,      only: outfld
   use ndrop,            only: dropmixnuc
   use modal_aero_data
-!==Guangxing Lin
   use rad_constituents, only: rad_cnst_get_info
-!==Guangxing Lin
 
-! Input 
-  type(physics_state), intent(in)    :: state   ! state variables
-  type(physics_buffer_desc), pointer :: pbuf(:)
-  real(r8), intent(in) :: pblht(pcols)          ! PBL height (meter)
-  real(r8), intent(in)  :: dtime                ! timestep
-  real(r8), intent(in) :: cflx(pcols,pcnst)     ! constituent flux from surface
-  real(r8), intent(in) :: wwqui_cen(pcols, pver)                                ! vertical velocity variance in quiescent class (m2/s2)
-  real(r8), intent(in) :: wwqui_cloudy_cen(pcols, pver)                         ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
-  real(r8), intent(in) :: wwqui_bnd(pcols, pver+1)                                ! vertical velocity variance in quiescent class (m2/s2)
-  real(r8), intent(in) :: wwqui_cloudy_bnd(pcols, pver+1)                         ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
+  !!! Input 
+  type(physics_state), intent(in)    :: state               ! state variables
+  type(physics_buffer_desc), pointer :: pbuf(:)             ! physics buffer
+  real(r8), intent(in) :: pblht(pcols)                      ! PBL height (meter)
+  real(r8), intent(in)  :: dtime                            ! timestep
+  real(r8), intent(in) :: cflx(pcols,pcnst)                 ! constituent flux from surface
+  real(r8), intent(in) :: wwqui_cen(pcols, pver)            ! vertical velocity variance in quiescent class (m2/s2)
+  real(r8), intent(in) :: wwqui_cloudy_cen(pcols, pver)     ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
+  real(r8), intent(in) :: wwqui_bnd(pcols, pver+1)          ! vertical velocity variance in quiescent class (m2/s2)
+  real(r8), intent(in) :: wwqui_cloudy_bnd(pcols, pver+1)   ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
+  integer,  intent(in) :: species_class(:)
 
-!==Guangxing Lin
-    integer, intent(in) :: species_class(:)
-!==Guangxing Lin
-
-! output
+  !!! output
   type(physics_ptend), intent(out) :: ptend   ! package tendencies
 
-! Local variables
+  !!! Local variables
   integer i,k,m, k1, k2
   integer ifld, itim
   integer ixcldliq, ixcldice, ixnumliq
   integer l,lnum,lnumcw,lmass,lmasscw
-  integer :: lchnk                  ! chunk identifier
-  integer :: ncol                   ! number of atmospheric columns
-!==Guangxing Lin
+
+  integer :: lchnk    ! chunk identifier
+  integer :: ncol     ! number of atmospheric columns
   integer :: nmodes
-!==Guangxing Lin
  
   
-  real(r8) :: nc(pcols, pver)       ! droplet number concentration (#/kg)
-  real(r8) :: nctend(pcols, pver)   ! change in droplet number concentration
-  real(r8) :: omega(pcols, pver)    ! grid-averaaged vertical velocity 
-  real(r8) :: qc(pcols, pver)       ! liquid water content (kg/kg)
-  real(r8) :: qi(pcols, pver)       ! ice water content (kg/kg) 
+  real(r8) :: nc(pcols, pver)             ! droplet number concentration (#/kg)
+  real(r8) :: nctend(pcols, pver)         ! change in droplet number concentration
+  real(r8) :: omega(pcols, pver)          ! grid-averaaged vertical velocity 
+  real(r8) :: qc(pcols, pver)             ! liquid water content (kg/kg)
+  real(r8) :: qi(pcols, pver)             ! ice water content (kg/kg) 
   real(r8) :: lcldn(pcols, pver)
   real(r8) :: lcldo(pcols, pver) 
 
-  real(r8) :: wsub(pcols, pver)     ! subgrid vertical velocity
-  real(r8) :: ekd_crm(pcols, pverp)  ! diffusivity
-  real(r8) :: kkvh_crm(pcols, pverp)  ! eddy diffusivity
-  real(r8) :: zs(pcols, pver)       ! inverse of distance between levels (meter)
-  real(r8) :: dz(pcols, pver)       ! layer depth (m)
-  real(r8) :: cs(pcols, pver)       ! air density
-  real(r8) :: lc(pcols, pverp)       ! mixing length (m)
-  real(r8) :: zheight(pcols, pverp)   ! height at lay interface (m)
+  real(r8) :: wsub(pcols, pver)           ! subgrid vertical velocity
+  real(r8) :: ekd_crm(pcols, pverp)       ! diffusivity
+  real(r8) :: kkvh_crm(pcols, pverp)      ! eddy diffusivity
+  real(r8) :: zs(pcols, pver)             ! inverse of distance between levels (meter)
+  real(r8) :: dz(pcols, pver)             ! layer depth (m)
+  real(r8) :: cs(pcols, pver)             ! air density
+  real(r8) :: lc(pcols, pverp)            ! mixing length (m)
+  real(r8) :: zheight(pcols, pverp)       ! height at lay interface (m)
   
-  real(r8) :: alc(pcols, pverp)        ! asymptotic length scale (m)
-  real(r8) :: tendnd(pcols, pver)      ! tendency of cloud droplet number concentrations (not used in the MMF) 
+  real(r8) :: alc(pcols, pverp)           ! asymptotic length scale (m)
+  real(r8) :: tendnd(pcols, pver)         ! tendency of cloud droplet number concentrations (not used in the MMF) 
 
-!==Guangxing Lin
   real(r8),allocatable :: factnum(:,:,:)  ! activation fraction for aerosol number
-!==Guangxing Lin
 
   real(r8) :: qcld, qsmall
 
-  logical :: dommf=.true.              ! value insignificant, if present, means that dropmixnuc is called the mmf part. 
+  logical :: dommf=.true.                 ! value insignificant, if present, means that dropmixnuc is called the mmf part. 
 
-! Variables in the physics buffer:
-  real(r8), pointer, dimension(:,:) :: cldn    ! cloud fractin at the current time step
-  real(r8), pointer, dimension(:,:) :: cldo   ! cloud fraction at the previous time step
-  real(r8), pointer, dimension(:,:) :: acldy_cen ! liquid cloud fraction at the previous time step from ECPP
-  real(r8), pointer, dimension(:,:) ::  kkvh    ! vertical diffusivity
-  real(r8), pointer, dimension(:,:) :: tke          ! turbulence kenetic energy 
+  !!! Variables in the physics buffer:
+  real(r8), pointer, dimension(:,:) :: cldn       ! cloud fractin at the current time step
+  real(r8), pointer, dimension(:,:) :: cldo       ! cloud fraction at the previous time step
+  real(r8), pointer, dimension(:,:) :: acldy_cen  ! liquid cloud fraction at the previous time step from ECPP
+  real(r8), pointer, dimension(:,:) ::  kkvh      ! vertical diffusivity
+  real(r8), pointer, dimension(:,:) :: tke        ! turbulence kenetic energy 
   real(r8), pointer, dimension(:,:) :: tk_crm     ! m2/s
-!==Guangxing Lin
   logical :: lq(pcnst)
-!==Guangxing Lin
+
+  !----------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
+
   lchnk = state%lchnk
   ncol  = state%ncol
 
   qsmall = 1.e-18_r8
 
-!==Guangxing Lin
-   call rad_cnst_get_info(0, nmodes=nmodes)
-   allocate(factnum(pcols,pver,nmodes))
-!  ptend%name         = 'crmclouds_mixnuc'
-!  call physics_ptend_init(ptend)
-  lq(:)=.false.
-!==Guangxing Lin
+  call rad_cnst_get_info(0, nmodes=nmodes)
+  allocate(factnum(pcols,pver,nmodes))
 
- do m=1,ntot_amode
-    lnum=numptr_amode(m)
-    if(lnum>0)then
-!==Guangxing Lin
-       !ptend%lq(lnum)= .true.
-       lq(lnum)= .true.
-!==Guangxing Lin
-    endif
+  !----------------------------------------------------------------------------
+  ! Initialize ptend
+  !----------------------------------------------------------------------------
+  lq(:)=.false.
+  do m=1,ntot_amode
+
+    lnum = numptr_amode(m)
+    if (lnum>0)then
+       lq(lnum) = .true.
+    end if
+
     do l=1,nspec_amode(m)
-      lmass=lmassptr_amode(l,m)
-!==Guangxing Lin
-      !ptend%lq(lmass)= .true.
-      lq(lmass)= .true.
-!==Guangxing Lin
-    enddo
-  enddo
+      lmass = lmassptr_amode(l,m)
+      lq(lmass) = .true.
+    end do ! l
+
+  end do ! m
  
-!==Guangxing Lin
-     call physics_ptend_init(ptend,state%psetcols,'crmclouds_mixnuc', lq=lq)
-!==Guangxing Lin
+  call physics_ptend_init(ptend,state%psetcols,'crmclouds_mixnuc', lq=lq)
+
+  !----------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
 
 #ifdef CRM
-!
-! In the MMF model, turbulent mixing for tracer species are turned off in tphysac.
-! So the turbulent for gas species mixing are added here.
-!
+
+  ! In the MMF model, turbulent mixing for tracer species are turned off in tphysac.
+  ! So the turbulent for gas species mixing are added here.
 
    do m=1, pcnst
       if(species_class(m).eq.spec_class_gas) then
-        ptend%lq(m) = .true.
+        ! ptend%lq(m) = .true.
+        ptend%lq(m) = .false.
       end if
    end do
-#endif
+
+#endif /* CRM */
 
   itim = pbuf_old_tim_idx ()
   ifld = pbuf_get_index ('CLD')
@@ -301,12 +291,9 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 ! should we set omega to be zero ??
   omega(:ncol, :) = state%omega(:ncol, :)
 
-!==Guangxing Lin
- ! call dropmixnuc(state, ptend, dtime, pbuf, wsub, lcldn, lcldo, tendnd, dommf )
   call dropmixnuc(state, ptend, dtime, pbuf, wsub, lcldn, lcldo, tendnd,factnum, species_class,dommf )
   deallocate(factnum)
-!==Guangxing Lin
-!                    state%pmid, state%pint, state%pdel, state%rpdel, state%zm, kkvh_crm, wsub, lcldn, lcldo,     &
+
 
 ! this part is moved into tphysbc after aerosol stuffs. 
 !
