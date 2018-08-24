@@ -374,8 +374,8 @@ subroutine micro_setparm()
         isallocatedMICRO = .true.
      end if
 
-  ! zero out statistics variables associated with cloud ice sedimentation
-  !   in Marat's default SAM microphysics
+  ! zero out statistics variables associated with cloud ice sedimentation 
+  !   in Marat's default SAM microphysics 
   tlatqi = 0.
 
   ! initialize these arrays

@@ -3,6 +3,9 @@
 #endif
 
 module crm_physics
+
+#ifdef CRM
+
 !-----------------------------------------------------------------------
 ! Purpose: 
 ! 
@@ -475,7 +478,7 @@ end subroutine crm_physics_init
 !==================================================================================================
 
 subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,    &
-                            species_class, phys_stage,                           &
+                            species_class, phys_stage, crm_ecpp_output,          &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
 !------------------------------------------------------------------------------------------
@@ -520,15 +523,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 ! modal_aero_data only exists if MODAL_AERO
 #if (defined  m2005 && defined MODAL_AERO)  
-   use crmclouds_camaerosols, only: crmclouds_mixnuc_tend
    use modal_aero_data, only: ntot_amode, ntot_amode
    use ndrop,  only: loadaer
    use microphysics,  only: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ing, ins   !!!!!! BE CAUIOUS, these indices can only defined before call to crm.
-#endif
-#ifdef ECPP
-   use module_ecpp_ppdriver2, only: parampollu_driver2
-   use ecppvars,              only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
-   use module_data_ecpp1,     only: dtstep_pp_input
 #endif
    use phys_grid,       only: get_rlat_all_p, get_rlon_all_p, get_gcol_p
    !!!use aerosol_intr,    only: aerosol_wet_intr
@@ -538,11 +535,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
 
 #ifdef CRM
-   use crm_state_module, only: crm_state_type
-   use crm_rad_module, only: crm_rad_type
-   use crm_input_module, only: crm_input_type
-   use crm_output_module, only: crm_output_type
-#endif
+   use crm_state_module,       only: crm_state_type
+   use crm_rad_module,         only: crm_rad_type
+   use crm_input_module,       only: crm_input_type
+   use crm_output_module,      only: crm_output_type
+#endif /* CRM */
+   use crm_ecpp_output_module, only: crm_ecpp_output_type
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
 #ifndef CRM
@@ -558,9 +556,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(cam_out_t),            intent(inout) :: cam_out          ! atm output to coupler
    integer,                    intent(in   ) :: species_class(:) ! aerosol species type
    integer,                    intent(inout) :: phys_stage       ! physics run stage indicator (1 or 2 = bc or ac, see SP_CRM_SPLIT)
+   type(crm_ecpp_output_type), intent(inout) :: crm_ecpp_output  ! output data for ECPP calculations
    real(r8), dimension(pcols), intent(out  ) :: sp_qchk_prec_dp  ! precipitation diagostic (liq+ice)  used for check_energy_chng
    real(r8), dimension(pcols), intent(out  ) :: sp_qchk_snow_dp  ! precipitation diagostic (ice only) used for check_energy_chng
    real(r8), dimension(pcols), intent(out  ) :: sp_rad_flux      ! radiative flux diagnostic used for check_energy_chng
+
    
    ! real(r8), intent(in) :: dlf(pcols,pver)  ! shallow+deep convective detrainment [kg/kg/s] - used for aerosol_wet_intr - no longer needed
 
@@ -621,20 +621,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    real(r8) :: cs(pcols, pver)  ! air density  [kg/m3]
 
-#ifdef ECPP
-   real(r8) :: qicecen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)        ! cloud ice (kg/kg)
-   real(r8) :: qlsink_afcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)   ! cloud water loss rate from precipitation calculated
-                                                                           ! cloud water before precipitatinog (/s)
-   real(r8) :: qlsink_bfcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)   ! cloud water loss rate from precipitation calculated
-                                                                           ! cloud water before precipitatinog (/s)
-   real(r8) :: qlsink_avgcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)  ! cloud water loss rate from precipitation calculated
-                                                                           ! from praincen and qlcoudcen averaged over
-                                                                           ! ntavg1_ss time step (/s)
-   real(r8) :: praincen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR)       ! cloud water loss rate from precipitation (kg/kg/s)
-   real(r8) :: wupthresh_bnd(pcols, pverp) 
-   real(r8) :: wdownthresh_bnd(pcols, pverp)
-#endif
-
    ! CRM column radiation stuff:
    real(r8), pointer, dimension(:,:) :: qrs        ! shortwave radiative heating rate
    real(r8), pointer, dimension(:,:) :: qrl        ! shortwave radiative heating rate
@@ -642,25 +628,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! TODO: this should not be a pointer, it is being used as an alloctable (and
    ! is only used in one place, so should get a more descriptive variable name)
    real(r8), pointer, dimension(:,:)     :: tempPtr
-
-#ifdef ECPP
-   ! at layer center
-   real(r8), allocatable :: acen(:,:,:,:,:)         ! cloud fraction for each sub-sub class for full time period
-   real(r8), allocatable :: acen_tf(:,:,:,:,:)      ! cloud fraction for end-portion of time period
-   real(r8), allocatable :: rhcen(:,:,:,:,:)        ! relative humidity (0-1)
-   real(r8), allocatable :: qcloudcen(:,:,:,:,:)    ! cloud water (kg/kg)
-   real(r8), allocatable :: qlsinkcen(:,:,:,:,:)    ! cloud water loss rate from precipitation (/s??)
-   real(r8), allocatable :: precrcen(:,:,:,:,:)     ! liquid (rain) precipitation rate (kg/m2/s)
-   real(r8), allocatable :: precsolidcen(:,:,:,:,:) ! solid (rain) precipitation rate (kg/m2/s)
-   real(r8), allocatable :: wwqui_cen(:,:)          ! vertical velocity variance in quiescent class (m2/s2)
-   real(r8), allocatable :: wwqui_cloudy_cen(:,:)   ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
-   ! at layer boundary
-   real(r8), allocatable :: abnd(:,:,:,:,:)         ! cloud fraction for each sub-sub class for full time period
-   real(r8), allocatable :: abnd_tf(:,:,:,:,:)      ! cloud fraction for end-portion of time period
-   real(r8), allocatable :: massflxbnd(:,:,:,:,:)   ! sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
-   real(r8), allocatable :: wwqui_bnd(:,:)          ! vertical velocity variance in quiescent class (m2/s2)
-   real(r8), allocatable :: wwqui_cloudy_bnd(:,:)   ! vertical velocity variance in quiescent, and cloudy class (m2/s2)
-#endif
 
    real(r8), dimension(pcols) :: qli_hydro_before    ! column-integraetd rain + snow + graupel 
    real(r8), dimension(pcols) ::  qi_hydro_before    ! column-integrated snow water + graupel water
@@ -670,6 +637,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    integer :: ii, jj
    integer :: ixcldliq, ixcldice, ixnumliq, ixnumice
+   integer :: ixrain, ixsnow, ixnumrain, ixnumsnow
    integer :: i, k, m
    integer :: ifld, itim
    logical :: use_ECPP, use_SPCAM
@@ -687,9 +655,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(crm_rknd), dimension(pcols) :: crm_angle
 
    ! CRM types
-   type(crm_state_type) :: crm_state
-   type(crm_rad_type) :: crm_rad
-   type(crm_input_type) :: crm_input
+   type(crm_state_type)  :: crm_state
+   type(crm_rad_type)    :: crm_rad
+   type(crm_input_type)  :: crm_input
    type(crm_output_type) :: crm_output
 
 #if defined( SP_ORIENT_RAND )
@@ -716,62 +684,97 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 ! Author: Marat Khairoutdinov (mkhairoutdin@ms.cc.sunysb.edu)
 !==================================================================================================
 !==================================================================================================
-
-   call t_startf ('crm')
-
-   lu = .true. 
-   lv = .true.
-   ls = .true.
-   lq(:) = .true.
-   fromcrm = .true.
-   call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)  ! Initialize output physics_ptend object
-   fromcrm = .false.
-
+   
    call phys_getopts(use_ECPP_out            = use_ECPP)
    call phys_getopts(use_SPCAM_out           = use_SPCAM)
    call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
 
    nstep = get_nstep()
-
    lchnk = state%lchnk
    ncol  = state%ncol
 
-   ! Initialize CRM types
+   call t_startf ('crm')
+
+   !------------------------------------------------------------
+   ! Initialize ptend
+   !------------------------------------------------------------
+   lu = .true. 
+   lv = .true.
+   ls = .true.
+   lq(:) = .true.
+   fromcrm = .true.
+   call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm) 
+   fromcrm = .false.
+   
+   !------------------------------------------------------------
+   ! Initialize CRM state (nullify pointers, allocate memory, etc)
+   !------------------------------------------------------------
    call crm_state%initialize()
    call crm_rad%initialize()
-   call crm_input%initialize(pcols, pver)
-   call crm_output%initialize(pcols, pver)
+   call crm_input%initialize(pcols,pver)
+   call crm_output%initialize(pcols,pver)
 
-   ! Associate pointers
+   !------------------------------------------------------------
+   ! Set CRM orientation angle
+   !------------------------------------------------------------
+
+#if defined( SP_ORIENT_RAND )
+   !---------------------------------------------
+   ! Rotate the CRM using a random walk
+   !---------------------------------------------
+   if ( (crm_ny.eq.1) .or. (crm_nx.eq.1) ) then
+
+      do i=1,ncol
+
+         !!! set the seed based on the chunk and column index (duplicate seeds are ok)
+         seed = lchnk + i + nstep
+
+         call RNG_MT_set_seed(seed)
+
+         !!! Generate a pair of uniform random numbers
+         call RNG_MT_gen_rand(unif_rand1)
+         call RNG_MT_gen_rand(unif_rand2)
+
+         !!! Box-Muller (1958) method of obtaining a Gaussian distributed random number
+         norm_rand = sqrt(-2.*log(unif_rand1))*cos(pix2*unif_rand2)
+         crm_angle(i) = crm_angle(i) + norm_rand * crm_rotation_std + crm_rotation_offset
+
+         !!! Adjust CRM orientation angle to be between 0 and 2*pi
+         if ( crm_angle(i) .lt. 0. ) then
+            crm_angle(i) = crm_angle(i) + pix2
+         endif
+         if ( crm_angle(i) .gt. pix2 ) then
+            crm_angle(i) = crm_angle(i) - pix2
+         endif
+
+      enddo
+
+   endif
+#else /* SP_ORIENT_RAND */
+   !---------------------------------------------
+   ! use static CRM orientation (no rotation)
+   !---------------------------------------------
+#if defined( SP_DIR_NS )
+    if (crm_ny.eq.1) then
+       crm_angle(:ncol) = pi/2.
+    else 
+       crm_angle(:ncol) = 0.
+    endif
+#else
+      crm_angle(:ncol) = 0.
+#endif /* SP_DIR_NS */
+
+#endif /* SP_ORIENT_RAND */
+
+   !------------------------------------------------------------
+   ! Retreive pbuf fields
+   !------------------------------------------------------------
    if (SPCAM_microp_scheme .eq. 'm2005') then
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_rad%nc, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), crm_rad%ni, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), crm_rad%qs, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), crm_rad%ns, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
    endif
-
-#ifdef ECPP
-    if (use_ECPP) then
-      allocate( acen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( acen_tf(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( rhcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( qcloudcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( qlsinkcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( precrcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( precsolidcen(pcols,pver,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( wwqui_cen(pcols, pver))
-      allocate( wwqui_cloudy_cen(pcols, pver))
-      ! at layer boundary
-      allocate( abnd(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( abnd_tf(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( massflxbnd(pcols,pver+1,NCLASS_CL,ncls_ecpp_in,NCLASS_PR))
-      allocate( wwqui_bnd(pcols, pver+1))
-      allocate( wwqui_cloudy_bnd(pcols, pver+1))
-    end if
-#endif
-
-!------------------------------------------------------------
-!------------------------------------------------------------
 
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_QRAD'),    crm_rad%qrad)
 #ifdef CLUBB_CRM
@@ -822,55 +825,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-#if defined( SP_ORIENT_RAND )
    !------------------------------------------------------------
-   ! Rotate the CRM using a random walk
-   !------------------------------------------------------------
-   if ( (crm_ny.eq.1) .or. (crm_nx.eq.1) ) then
-
-      do i=1,ncol
-
-         !!! set the seed based on the chunk and column index (duplicate seeds are ok)
-         seed = lchnk + i + nstep
-
-         call RNG_MT_set_seed(seed)
-
-         !!! Generate a pair of uniform random numbers
-         call RNG_MT_gen_rand(unif_rand1)
-         call RNG_MT_gen_rand(unif_rand2)
-
-         !!! Box-Muller (1958) method of obtaining a Gaussian distributed random number
-         norm_rand = sqrt(-2.*log(unif_rand1))*cos(pix2*unif_rand2)
-         crm_angle(i) = crm_angle(i) + norm_rand * crm_rotation_std + crm_rotation_offset
-
-         !!! Adjust CRM orientation angle to be between 0 and 2*pi
-         if ( crm_angle(i) .lt. 0. ) then
-            crm_angle(i) = crm_angle(i) + pix2
-         endif
-         if ( crm_angle(i) .gt. pix2 ) then
-            crm_angle(i) = crm_angle(i) - pix2
-         endif
-
-      enddo
-
-   endif
-#else /* SP_ORIENT_RAND */
-   !------------------------------------------------------------
-   ! initialize static CRM orientation angle (no rotation)
-   !------------------------------------------------------------
-#if defined( SP_DIR_NS )
-    if (crm_ny.eq.1) then
-       crm_angle(:ncol) = pi/2.
-    else 
-       crm_angle(:ncol) = 0.
-    endif
-#else
-      crm_angle(:ncol) = 0.
-#endif /* SP_DIR_NS */
-
-#endif /* SP_ORIENT_RAND */
-
-   !------------------------------------------------------------
+   ! Retreive CRM state data from pbuf
    !------------------------------------------------------------
 
    ! Set pointers from crm_state to fields that persist on physics buffer
@@ -901,6 +857,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    itim = pbuf_old_tim_idx()
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+
+   !------------------------------------------------------------
+   !------------------------------------------------------------
 
    if(is_first_step()) then
       ! call check_energy_timestep_init(state, tend, pbuf)
@@ -969,35 +928,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 #ifdef ECPP
       if (use_ECPP) then
-         abnd=0.0
-         abnd_tf=0.0
-         massflxbnd=0.0
-         acen=0.0
-         acen_tf=0.0
-         rhcen=0.0
-         qcloudcen=0.0
-         qicecen=0.0
-         qlsinkcen=0.0
-         precrcen=0.0
-         precsolidcen=0.0
-         wupthresh_bnd = 0.0
-         wdownthresh_bnd = 0.0
-         qlsink_afcen = 0.0
-         qlsink_bfcen = 0.0
-         qlsink_avgcen = 0.0
-         praincen = 0.0
-! default is clear, non-precipitating, and quiescent class
-         abnd(:,:,1,1,1)=1.0 
-         abnd_tf(:,:,1,1,1)=1.0 
-         acen(:,:,1,1,1)=1.0 
-         acen_tf(:,:,1,1,1)=1.0 
-         wwqui_cen = 0.0
-         wwqui_bnd = 0.0
-         wwqui_cloudy_cen = 0.0
-         wwqui_cloudy_bnd = 0.0
-! turbulence
+         
+         cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
+
+         !!! initialize turbulence for ECPP calculations
          ifld = pbuf_get_index('TKE_CRM')
-         cs(:ncol, 1:pver) = state%pmid(:ncol, 1:pver)/(287.15*state%t(:ncol, 1:pver))
          call pbuf_set_field(pbuf, ifld, 0.0_r8, start=(/1,1/), kount=(/pcols, pver/) )
 
          ifld = pbuf_get_index('TK_CRM')
@@ -1024,7 +959,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       end do
 
 #if (defined m2005 && defined MODAL_AERO)
-      cs(1:ncol, 1:pver) = state%pmid(1:ncol, 1:pver)/(287.15*state%t(1:ncol, 1:pver))
+      cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
 #endif
 
       !----------------------------------------------------------------------
@@ -1128,33 +1063,22 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 ! Run the CRM
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
-#ifdef CRM
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm(lchnk,                      icol(:ncol),                  ncol,                         &
-             phys_stage,                 ztodt,                        pver,                         &
+    call crm( lchnk, icol(:ncol), ncol, phys_stage, ztodt, pver,        &
+              crm_input, crm_state, crm_rad,                            &
 #ifdef CLUBB_CRM
-             clubb_buffer(:ncol,:,:,:,:),crm_cld(:ncol,:, :, :),                                     &
-             clubb_tk(:ncol, :, :, :),   clubb_tkh(:ncol, :, :, :),                                  &
-             relvar(:ncol,:, :, :),      accre_enhan(:ncol, :, :, :),  qclvar(:ncol, :, :, :),       &
+              clubb_buffer(:ncol,:,:,:,:),                              &
+              crm_cld(:ncol,:, :, :),      clubb_tk(:ncol, :, :, :),    &
+              clubb_tkh(:ncol, :, :, :),   relvar(:ncol,:, :, :),       &
+              accre_enhan(:ncol, :, :, :), qclvar(:ncol, :, :, :),      &
 #endif /* CLUBB_CRM */
-#ifdef ECPP
-             abnd(:ncol,:,:,:,:),        abnd_tf(:ncol,:,:,:,:),       massflxbnd(:ncol,:,:,:,:),    &
-             acen(:ncol,:,:,:,:),        acen_tf(:ncol,:,:,:,:),                                     &
-             rhcen(:ncol,:,:,:,:),       qcloudcen(:ncol,:,:,:,:),     qicecen(:ncol,:,:,:,:),       &
-             qlsink_afcen(:ncol,:,:,:,:),precrcen(:ncol,:,:,:,:),      precsolidcen(:ncol,:,:,:,:),  & 
-             qlsink_bfcen(:ncol,:,:,:,:),qlsink_avgcen(:ncol,:,:,:,:), praincen(:ncol,:,:,:,:),      &
-             wupthresh_bnd(:ncol,:),     wdownthresh_bnd(:ncol,:),     wwqui_cen(:ncol,:),           &
-             wwqui_bnd(:ncol,:),         wwqui_cloudy_cen(:ncol,:),    wwqui_cloudy_bnd(:ncol,:)     &
-#endif /* ECPP */
-             crm_input,                  crm_state,                    crm_rad,                      &
-             crm_output)
+              crm_ecpp_output, crm_output )
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
 
-#endif /* CRM */
 
       call t_stopf('crm_call')
 
@@ -1208,9 +1132,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CRM_T   ',crm_state%temperature, pcols, lchnk)
 
       if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         call outfld('CRM_QV  ',(crm_state%qt(:ncol,:,:,:)-crm_output%qcl-crm_output%qci),pcols   ,lchnk   )
+         call outfld('CRM_QV  ',(crm_state%qt-crm_output%qcl-crm_output%qci),ncol   ,lchnk   )
       else if (SPCAM_microp_scheme .eq. 'm2005') then 
-         call outfld('CRM_QV  ',crm_state%qt(:ncol,:,:,:)-crm_output%qcl, pcols   ,lchnk   )
+         call outfld('CRM_QV  ',crm_state%qt-crm_output%qcl, ncol   ,lchnk   )
       endif
       call outfld('CRM_QC  ',crm_output%qcl   ,pcols   ,lchnk   )
       call outfld('CRM_QI  ',crm_output%qci   ,pcols   ,lchnk   )
@@ -1424,7 +1348,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
           ! turbulence
           allocate(tempPtr(pcols,pver))
           ifld = pbuf_get_index('TKE_CRM')
-          cs(:ncol, 1:pver) = state%pmid(:ncol, 1:pver)/(287.15*state%t(:ncol, 1:pver))
+          cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
           tempPtr(:ncol, 1:pver) = crm_output%tkez(:ncol, 1:pver)/cs(:ncol, 1:pver)
           call pbuf_set_field(pbuf, ifld, tempPtr, start=(/1,1/), kount=(/pcols, pver/) )
           deallocate(tempPtr)
@@ -1462,30 +1386,31 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #ifdef ECPP
        if (use_ECPP) then
 
-         qlsinkcen = qlsink_avgcen
+         crm_ecpp_output%qlsinkcen = crm_ecpp_output%qlsink_avgcen
 
-         call outfld('ACEN    ', acen, pcols, lchnk)
-         call outfld('ABND    ', abnd, pcols, lchnk)
-         call outfld('ACEN_TF ', acen_tf, pcols, lchnk)
-         call outfld('ABND_TF ', abnd_tf, pcols, lchnk)
-         call outfld('MASFBND ', massflxbnd, pcols, lchnk)
-         call outfld('RHCEN   ', rhcen, pcols, lchnk)
-         call outfld('QCCEN   ', qcloudcen, pcols, lchnk)
-         call outfld('QICEN   ', qicecen, pcols, lchnk)
-         call outfld('QSINK_AFCEN', qlsink_afcen, pcols, lchnk)
-         call outfld('PRECRCEN', precrcen, pcols, lchnk)
-         call outfld('PRECSCEN', precsolidcen, pcols, lchnk)
-         call outfld('WUPTHRES', wupthresh_bnd, pcols, lchnk)
-         call outfld('WDNTHRES', wdownthresh_bnd, pcols, lchnk)
-         call outfld('WWQUI_CEN', wwqui_cen, pcols, lchnk)
-         call outfld('WWQUI_CLD_CEN', wwqui_cloudy_cen, pcols, lchnk)
-         call outfld('WWQUI_BND', wwqui_cen, pcols, lchnk)
-         call outfld('WWQUI_CLD_BND', wwqui_cloudy_cen, pcols, lchnk)
-         call outfld('QSINK_BFCEN', qlsink_bfcen, pcols, lchnk)
-         call outfld('QSINK_AVGCEN', qlsink_avgcen, pcols, lchnk)
-         call outfld('PRAINCEN', praincen, pcols, lchnk)
-       endif !/*ECPP*/
-#endif
+         call outfld('ACEN    ',      crm_ecpp_output%acen,             pcols, lchnk)
+         call outfld('ABND    ',      crm_ecpp_output%abnd,             pcols, lchnk)
+         call outfld('ACEN_TF ',      crm_ecpp_output%acen_tf,          pcols, lchnk)
+         call outfld('ABND_TF ',      crm_ecpp_output%abnd_tf,          pcols, lchnk)
+         call outfld('MASFBND ',      crm_ecpp_output%massflxbnd,       pcols, lchnk)
+         call outfld('RHCEN   ',      crm_ecpp_output%rhcen,            pcols, lchnk)
+         call outfld('QCCEN   ',      crm_ecpp_output%qcloudcen,        pcols, lchnk)
+         call outfld('QICEN   ',      crm_ecpp_output%qicecen,          pcols, lchnk)
+         call outfld('QSINK_AFCEN',   crm_ecpp_output%qlsink_afcen,     pcols, lchnk)
+         call outfld('PRECRCEN',      crm_ecpp_output%precrcen,         pcols, lchnk)
+         call outfld('PRECSCEN',      crm_ecpp_output%precsolidcen,     pcols, lchnk)
+         call outfld('WUPTHRES',      crm_ecpp_output%wupthresh_bnd,    pcols, lchnk)
+         call outfld('WDNTHRES',      crm_ecpp_output%wdownthresh_bnd,  pcols, lchnk)
+         call outfld('WWQUI_CEN',     crm_ecpp_output%wwqui_cen,        pcols, lchnk)
+         call outfld('WWQUI_CLD_CEN', crm_ecpp_output%wwqui_cloudy_cen, pcols, lchnk)
+         call outfld('WWQUI_BND',     crm_ecpp_output%wwqui_cen,        pcols, lchnk)
+         call outfld('WWQUI_CLD_BND', crm_ecpp_output%wwqui_cloudy_cen, pcols, lchnk)
+         call outfld('QSINK_BFCEN',   crm_ecpp_output%qlsink_bfcen,     pcols, lchnk)
+         call outfld('QSINK_AVGCEN',  crm_ecpp_output%qlsink_avgcen,    pcols, lchnk)
+         call outfld('PRAINCEN',      crm_ecpp_output%praincen,         pcols, lchnk)
+
+       end if ! use_ECPP
+#endif /* ECPP */
 
 !----------------------------------------------------------------------
 ! Set ptend logicals with physics tendencies from CRM
@@ -1539,26 +1464,53 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          if (SPCAM_microp_scheme .eq. 'm2005') then
             call cnst_get_ind('NUMLIQ', ixnumliq)
             call cnst_get_ind('NUMICE', ixnumice)
-            ptend%lq(ixnumliq) = .TRUE.
-            ptend%lq(ixnumice) = .TRUE.
-            ptend%q(:, :, ixnumliq) = 0._r8
-            ptend%q(:, :, ixnumice) = 0._r8
+            call cnst_get_ind('RAINQM', ixrain)   
+            call cnst_get_ind('SNOWQM', ixsnow)   
+            call cnst_get_ind('NUMRAI', ixnumrain)
+            call cnst_get_ind('NUMSNO', ixnumsnow)
+            ptend%lq(ixnumliq)  = .TRUE.
+            ptend%lq(ixnumice)  = .TRUE.
+            ptend%q(:,:,ixnumliq)  = 0._r8
+            ptend%q(:,:,ixnumice)  = 0._r8
+#ifdef ECPP
+            ptend%lq(ixrain)    = .TRUE. 
+            ptend%lq(ixsnow)    = .TRUE. 
+            ptend%lq(ixnumrain) = .TRUE. 
+            ptend%lq(ixnumsnow) = .TRUE. 
+            ptend%q(:,:,ixrain)    = 0._r8 
+            ptend%q(:,:,ixsnow)    = 0._r8 
+            ptend%q(:,:,ixnumrain) = 0._r8 
+            ptend%q(:,:,ixnumsnow) = 0._r8 
+#endif /* ECPP */
 
             do i = 1, ncol
              do k=1, crm_nz 
                m= pver-k+1
                do ii=1, crm_nx
                do jj=1, crm_ny
-                 ptend%q(i,m,ixnumliq) = ptend%q(i,m,ixnumliq) + crm_state%nc(i,ii,jj,k) 
-                 ptend%q(i,m,ixnumice) = ptend%q(i,m,ixnumice) + crm_state%ni(i,ii,jj,k)
+                 ptend%q(i,m,ixnumliq)  = ptend%q(i,m,ixnumliq)  + crm_state%nc(i,ii,jj,k) 
+                 ptend%q(i,m,ixnumice)  = ptend%q(i,m,ixnumice)  + crm_state%ni(i,ii,jj,k)
+#ifdef ECPP
+                 ptend%q(i,m,ixrain)    = ptend%q(i,m,ixrain)    + crm_state%qr(i,ii,jj,k)
+                 ptend%q(i,m,ixsnow)    = ptend%q(i,m,ixsnow)    + crm_state%qs(i,ii,jj,k)
+                 ptend%q(i,m,ixnumrain) = ptend%q(i,m,ixnumrain) + crm_state%nr(i,ii,jj,k)
+                 ptend%q(i,m,ixnumsnow) = ptend%q(i,m,ixnumsnow) + crm_state%ns(i,ii,jj,k)
+#endif /* ECPP */
                end do
                end do
-               ptend%q(i,m,ixnumliq) = (ptend%q(i,m,ixnumliq)/(crm_nx*crm_ny) - state%q(i,m,ixnumliq))/crm_run_time
-               ptend%q(i,m,ixnumice) = (ptend%q(i,m,ixnumice)/(crm_nx*crm_ny) - state%q(i,m,ixnumice))/crm_run_time
+               ptend%q(i,m,ixnumliq)  = (ptend%q(i,m,ixnumliq) /(crm_nx*crm_ny) - state%q(i,m,ixnumliq)) /crm_run_time
+               ptend%q(i,m,ixnumice)  = (ptend%q(i,m,ixnumice) /(crm_nx*crm_ny) - state%q(i,m,ixnumice)) /crm_run_time
+#ifdef ECPP
+               ptend%q(i,m,ixrain)    = (ptend%q(i,m,ixrain)   /(crm_nx*crm_ny) - state%q(i,m,ixrain))   /crm_run_time
+               ptend%q(i,m,ixsnow)    = (ptend%q(i,m,ixsnow)   /(crm_nx*crm_ny) - state%q(i,m,ixsnow))   /crm_run_time
+               ptend%q(i,m,ixnumrain) = (ptend%q(i,m,ixnumrain)/(crm_nx*crm_ny) - state%q(i,m,ixnumrain))/crm_run_time
+               ptend%q(i,m,ixnumsnow) = (ptend%q(i,m,ixnumsnow)/(crm_nx*crm_ny) - state%q(i,m,ixnumsnow))/crm_run_time
+#endif /* ECPP */
+
              end do
             end do
          endif
-#endif
+#endif /* m2005 */
        end if
 
       !----------------------------------------------------------------------
@@ -1622,6 +1574,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !----------------------------------------------------------------------
    !----------------------------------------------------------------------
 
+   !!! Free memory in derived types
    call crm_state%finalize()
    call crm_rad%finalize()
    call crm_input%finalize()
@@ -2073,5 +2026,6 @@ end subroutine m2005_effradius
 
 !==================================================================================================
 !==================================================================================================
+#endif /* CRM */
 
 end module crm_physics
