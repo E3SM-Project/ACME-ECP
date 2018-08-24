@@ -59,9 +59,8 @@ contains
 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_state_type
-   subroutine crm_state_initialize(this, ncrms)
+   subroutine crm_state_initialize(this)
       class(crm_state_type), intent(inout) :: this
-      integer, intent(in) :: ncrms
 
       ! Nullify pointers
       this%u_wind => null()
