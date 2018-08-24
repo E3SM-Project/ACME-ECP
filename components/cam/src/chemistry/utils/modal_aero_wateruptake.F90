@@ -241,10 +241,12 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
       call pbuf_get_field (pbuf, idx, t_crm)
       idx = pbuf_get_index('CRM_CLD_RAD')
       call pbuf_get_field (pbuf, idx, cldn_crm)
+#ifdef MODAL_AERO
       idx = pbuf_get_index('CRM_QAERWAT')
       call pbuf_get_field (pbuf, idx, qaerwat_crm)
       idx = pbuf_get_index('CRM_DGNUMWET')
       call pbuf_get_field (pbuf, idx, dgncur_awet_crm)
+#endif MODAL_AERO
    end if
 
 
@@ -464,10 +466,12 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
                      qaerwat(i,k,m)     = rhoh2o*naer(i,k,m)*wtrvol(i,k,m)
                   else  ! use_SPCAM
                      qaerwat(i,k,m) = qaerwat(i,k,m)+ rhoh2o*naer(i,k,m)*wtrvol(i,k,m) * (1-cldnt(i,k))
+#ifdef MODAL_AERO
                      if(k.ge.pver-crm_nz+1) then
                         qaerwat_crm(i,ii,jj,pver-k+1,m) = rhoh2o*naer(i,k,m)*wtrvol(i,k,m)
                         dgncur_awet_crm(i,ii,jj,pver-k+1,m) = dgncur_awet(i,k,m)
                      end if
+#endif
                   end if
                   !==Guangxing Lin
 
