@@ -639,7 +639,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    integer :: ixcldliq, ixcldice, ixnumliq, ixnumice
    integer :: ixrain, ixsnow, ixnumrain, ixnumsnow
    integer :: i, k, m
-   integer :: ifld
+   integer :: ifld, itim
    logical :: use_ECPP, use_SPCAM
    character(len=16) :: SPCAM_microp_scheme
 
@@ -853,6 +853,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC'), crm_state%qc)
    end if
 
+   ! "Old" cloud fraction (what does all this mean?)
+   itim = pbuf_old_tim_idx()
+   ifld = pbuf_get_index('CLD')
+   call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
+
    !------------------------------------------------------------
    !------------------------------------------------------------
 
@@ -915,6 +920,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       end do
 
 ! use radiation from grid-cell mean radctl on first time step
+      cld(:,:) = 0.
       ptend%q(:,:,1) = 0.
       ptend%q(:,:,ixcldliq) = 0.
       ptend%q(:,:,ixcldice) = 0.
@@ -1106,8 +1112,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ! copy the data over. NOTE: I think this can be done using pbuf_set_field
       ! without making an extra pointer for cld, but I do not think we would be
       ! able to zero-out the rest of cld beyond pcols that way.
-      call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld)
-      cld(:,:) = 0
+      ! call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld)
+      ! cld(:,:) = 0
       cld(1:ncol,1:pver) = crm_output%cld(1:ncol,1:pver)
 
       do m=1,crm_nz
