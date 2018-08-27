@@ -376,7 +376,7 @@ subroutine micro_setparm()
 
   ! zero out statistics variables associated with cloud ice sedimentation 
   !   in Marat's default SAM microphysics 
-  tlatqi = 0.
+  !tlatqi = 0.
 
   ! initialize these arrays
   micro_field = 0.
