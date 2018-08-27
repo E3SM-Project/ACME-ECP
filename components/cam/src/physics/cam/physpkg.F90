@@ -2835,13 +2835,13 @@ end if
       ! CRM Bulk Calculations (i.e. ECPP-lite) 
       !---------------------------------------------------------------------------
 #if defined( SP_CRM_BULK )
-      ! !!! aerosol tendency from droplet activation and mixing
-      ! call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
-      !                             cam_in%cflx, pblh,                &
-      !                             wwqui_cen, wwqui_cloudy_cen,      &
-      !                             wwqui_bnd, wwqui_cloudy_bnd,      &
-      !                             species_class)
-      ! call physics_update(state, ptend, crm_run_time, tend)
+       !!! aerosol tendency from droplet activation and mixing
+       call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
+                                   cam_in%cflx, pblh,                &
+                                   wwqui_cen, wwqui_cloudy_cen,      &
+                                   wwqui_bnd, wwqui_cloudy_bnd,      &
+                                   species_class)
+       call physics_update(state, ptend, crm_run_time, tend)
 #endif /* SP_CRM_BULK */
 
       !---------------------------------------------------------------------------

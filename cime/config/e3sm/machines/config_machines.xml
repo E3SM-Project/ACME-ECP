@@ -647,6 +647,34 @@
     </environment_variables>
 </machine>
 
+<machine MACH="worthy">
+    <DESC>Mac OS/X workstation</DESC>
+    <NODENAME_REGEX>worthy</NODENAME_REGEX>
+    <TESTS>e3sm_developer</TESTS>
+    <OS>Darwin</OS>
+    <COMPILERS>gnu</COMPILERS>
+    <MPILIBS>mpi-serial</MPILIBS>
+    <RUNDIR>$ENV{HOME}/Projects/E3SM/scratch/$CASE/run</RUNDIR>
+    <EXEROOT>$ENV{HOME}/Projects/E3SM/scratch/$CASE/bld</EXEROOT>
+    <DIN_LOC_ROOT>$ENV{HOME}/Projects/E3SM/scratch/cesm-inputdata</DIN_LOC_ROOT>    <DIN_LOC_ROOT_CLMFORC>$ENV{HOME}/projects/acme/ptclm-data</DIN_LOC_ROOT_CLMFORC>
+    <DOUT_S_ROOT>$ENV{HOME}/Projects/E3SM/scratch/archive/$CASE</DOUT_S_ROOT>
+    <DOUT_L_MSROOT>csm/$CASE</DOUT_L_MSROOT>
+    <CIME_OUTPUT_ROOT>$ENV{HOME}/Projects/E3SM/scratch</CIME_OUTPUT_ROOT>
+    <BASELINE_ROOT>$ENV{HOME}/Projects/E3SM/scratch/baselines/$COMPILER</BASELINE_ROOT>
+    <CCSM_CPRNC>$CCSMROOT/tools/cprnc/build/cprnc</CCSM_CPRNC>
+    <BATCH_SYSTEM>none</BATCH_SYSTEM>
+    <SUPPORTED_BY>Jungmin Lee, lee1046@llnl.gov</SUPPORTED_BY>
+    <GMAKE_J>4</GMAKE_J>
+    <MAX_TASKS_PER_NODE>4</MAX_TASKS_PER_NODE>
+    <MAX_MPITASKS_PER_NODE>1</MAX_MPITASKS_PER_NODE>
+    <module_system type="none"/>
+    <environment_variables>
+      <env name="NETCDF_PATH">/usr/local</env>     <!-- Use this for homebrew libraries -->
+      <!-- <env name="NETCDF_PATH">/Users/hannah6/NetCDF/bld</env> -->
+    </environment_variables>
+</machine>
+
+
 <machine MACH="linux-generic">
     <DESC>Linux workstation or laptop</DESC>
     <NODENAME_REGEX>none</NODENAME_REGEX>

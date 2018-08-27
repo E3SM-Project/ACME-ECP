@@ -601,6 +601,7 @@ subroutine crm_bulk_aero_mix_nuc( state, ptend, pbuf, dtime    &
 !TODO: calculate the vertical velocites using crm grid data on the pbuf
    real(r8), dimension(pcols,pver ) :: ww_cen         ! vert. velocity variance (at layer center)    [m2/s2]
    real(r8), dimension(pcols,pverp) :: ww_bnd         ! vert. velocity variance (at layer interface) [m2/s2]
+   real(r8), dimension(pcols,pverp) :: wsub_bnd       ! w subsidence at cloud boundary [m/s]
    ! real(r8), dimension(pcols,pver ) :: nc             ! droplet number concentration                 [#/kg]
    ! real(r8), dimension(pcols,pver ) :: nctend         ! change in droplet number concentration
    ! real(r8), dimension(pcols,pver ) :: omega          ! grid-averaaged vertical velocity - not used?
