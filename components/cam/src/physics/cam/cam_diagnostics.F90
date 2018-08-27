@@ -788,6 +788,11 @@ subroutine diag_init()
       call addfld ('CRM_QRS ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K/s     ', 'CRM Shortwave radiative heating rate')
       call addfld ('CRM_QRL ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K/s     ', 'CRM Longwave radiative heating rate' )
 
+      call addfld ('CRMDT_T ' ,(/'crm_nt','crm_nz'/), 'I', 'K'       ,'CRMdt Temperature' )
+      call addfld ('CRMDT_QV' ,(/'crm_nt','crm_nz'/), 'I', 'K'       ,'CRMdt Water Vapor' )
+      call addfld ('CRMDTSPDT',(/'crm_nt','crm_nz'/), 'I', 'K/s     ','CRMdt T tend due to CRM' )
+      call addfld ('CRMDTSPDQ',(/'crm_nt','crm_nz'/), 'I', 'kg/kg/s ','CRMdt Q tend due to CRM' )
+
       !-- MDB 8/2013
       call addfld ('SPTVFLUX ',(/ 'lev' /), 'A', 'W/m2  ','Buoyancy Flux from CRM'             )
       call addfld ('SPBUOY   ',(/ 'lev' /), 'A', 'W/m3  ','Buoyancy Term from CRM'             )

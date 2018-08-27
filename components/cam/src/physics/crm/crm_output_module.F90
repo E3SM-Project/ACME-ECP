@@ -130,6 +130,11 @@ module crm_output_module
       real(crm_rknd), allocatable :: z0m          (:)    ! surface stress                             [N/m2]
       real(crm_rknd), allocatable :: timing_factor(:)    ! crm cpu efficiency
 
+      real(crm_rknd), allocatable :: crmdt_t (:,:)
+      real(crm_rknd), allocatable :: crmdt_qv(:,:)
+      real(crm_rknd), allocatable :: crmdt_dt(:,:)
+      real(crm_rknd), allocatable :: crmdt_dq(:,:)
+
    contains
       procedure, public :: initialize=>crm_output_initialize
       procedure, public :: finalize=>crm_output_finalize
@@ -257,6 +262,11 @@ contains
          if (.not. allocated(this%tauy         )) allocate(this%tauy         (ncol))
          if (.not. allocated(this%z0m          )) allocate(this%z0m          (ncol))
          if (.not. allocated(this%timing_factor)) allocate(this%timing_factor(ncol))
+
+         if (.not. allocated(this%crmdt_t )) allocate(this%crmdt_t (crm_nt,crm_nz))
+         if (.not. allocated(this%crmdt_qv)) allocate(this%crmdt_qv(crm_nt,crm_nz))
+         if (.not. allocated(this%crmdt_dt)) allocate(this%crmdt_dt(crm_nt,crm_nz))
+         if (.not. allocated(this%crmdt_dq)) allocate(this%crmdt_dq(crm_nt,crm_nz))
 
       end if ! present(ncol)
 

@@ -23,6 +23,8 @@ module crm_module
   use ice_fall_mod
   use coriolis_mod
 
+  use cam_history,     only: outfld
+
   use crm_state_module,       only: crm_state_type
   use crm_rad_module,         only: crm_rad_type
   use crm_input_module,       only: crm_input_type
