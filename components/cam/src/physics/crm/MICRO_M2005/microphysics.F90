@@ -374,10 +374,6 @@ subroutine micro_setparm()
         isallocatedMICRO = .true.
      end if
 
-  ! zero out statistics variables associated with cloud ice sedimentation 
-  !   in Marat's default SAM microphysics 
-  !tlatqi = 0.
-
   ! initialize these arrays
   micro_field = 0.
   cloudliq = 0. !bloss/qt: auxially cloud liquid water variable, analogous to qn in MICRO_SAM1MOM
