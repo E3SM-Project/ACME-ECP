@@ -1299,8 +1299,6 @@ end function radiation_nextsw_cday
     integer, dimension(pcols) :: IdxNite ! Indicies of night coumns
 
     integer :: icall                     ! index through climate/diagnostic radiation calls
-    integer :: crm_nc_rad_idx, crm_ni_rad_idx, crm_qs_rad_idx, crm_ns_rad_idx
-    integer :: crm_t_rad_idx, crm_qi_rad_idx, crm_qc_rad_idx, crm_qv_rad_idx, crm_qrad_idx
     integer :: dgnumwet_crm_idx, qaerwat_crm_idx
 
     logical :: active_calls(0:N_DIAG)
@@ -1514,27 +1512,22 @@ end function radiation_nextsw_cday
         csnowp_save = csnowp     ! save to restore later
       end if
 
-      crm_t_rad_idx   = pbuf_get_index('CRM_T_RAD')
-      crm_qc_rad_idx  = pbuf_get_index('CRM_QC_RAD')
-      crm_qi_rad_idx  = pbuf_get_index('CRM_QI_RAD')
-      crm_qv_rad_idx  = pbuf_get_index('CRM_QV_RAD')
-      crm_qrad_idx    = pbuf_get_index('CRM_QRAD')
-      call pbuf_get_field(pbuf, crm_t_rad_idx,  t_rad)
-      call pbuf_get_field(pbuf, crm_qc_rad_idx, qc_rad)
-      call pbuf_get_field(pbuf, crm_qi_rad_idx, qi_rad)
-      call pbuf_get_field(pbuf, crm_qv_rad_idx, qv_rad)
-      call pbuf_get_field(pbuf, crm_qrad_idx,   crm_qrad)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_T_RAD'),  t_rad)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD'), qc_rad)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD'), qi_rad)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QV_RAD'), qv_rad)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRAD'),   crm_qrad)
       crm_qrad=0.
 
       if (SPCAM_microp_scheme .eq. 'm2005') then 
-        crm_nc_rad_idx  = pbuf_get_index('CRM_NC_RAD')
-        call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_ni_rad_idx  = pbuf_get_index('CRM_NI_RAD')
-        call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_qs_rad_idx  = pbuf_get_index('CRM_QS_RAD')
-        call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_ns_rad_idx  = pbuf_get_index('CRM_NS_RAD')
-        call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), nc_rad, &
+                            start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), ni_rad, &
+                            start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), qs_rad, &
+                            start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+        call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), ns_rad, &
+                            start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
       endif
 
       cicewp(1:ncol,1:pver) = 0.  
