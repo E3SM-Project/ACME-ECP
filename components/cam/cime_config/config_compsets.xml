@@ -322,6 +322,16 @@
     <lname>2000_CAM5%SP2V1-TEST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>FSP1VFAST</alias>
+    <lname>2000_CAM5%SP1VFAST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FSP2VFAST</alias>
+    <lname>2000_CAM5%SP2VFAST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
   <!-- 20th century transient -->
 
   <compset>

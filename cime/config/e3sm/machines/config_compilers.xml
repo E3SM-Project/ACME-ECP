@@ -415,9 +415,9 @@ for mct, etc.
   <FIXEDFLAGS>  -ffixed-form </FIXEDFLAGS>
   <FREEFLAGS> -ffree-form </FREEFLAGS>
   <ADD_FFLAGS DEBUG="TRUE"> -g -Wall -Og -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow</ADD_FFLAGS>
-  <ADD_FFLAGS DEBUG="FALSE"> -O </ADD_FFLAGS>
+  <ADD_FFLAGS DEBUG="FALSE"> -O3 </ADD_FFLAGS>
   <ADD_CFLAGS DEBUG="TRUE"> -g -Wall -Og -fbacktrace -fcheck=bounds -ffpe-trap=invalid,zero,overflow</ADD_CFLAGS>
-  <ADD_CFLAGS DEBUG="FALSE"> -O </ADD_CFLAGS>
+  <ADD_CFLAGS DEBUG="FALSE"> -O3 </ADD_CFLAGS>
   <!-- -ffree-line-length-none and -ffixed-line-length-none need to be in FFLAGS rather than in FIXEDFLAGS/FREEFLAGS
        so that these are passed to cmake builds (cmake builds don't use FIXEDFLAGS and FREEFLAGS). -->
   <FFLAGS> -mcmodel=medium -fconvert=big-endian -ffree-line-length-none -ffixed-line-length-none </FFLAGS>
@@ -919,11 +919,11 @@ for mct, etc.
 </compiler>
 
 <compiler COMPILER="pgi" MACH="thatchroof">
-  <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -L/opt/lapack3.6.1_pgi15.9/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl </ADD_LDFLAGS>
+  <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L${PNETCDF_PATH}/lib -L/opt/lapack3.6.1_pgi15.9/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl </ADD_LDFLAGS>
 </compiler>
 
 <compiler COMPILER="gnu" MACH="thatchroof">
-  <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl -lidn -lrtmp -lssh2 -lssl -lcrypto -lssl -lcrypto -llber -lldap -lz </ADD_LDFLAGS>
+  <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L${PNETCDF_PATH}/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl -lidn -lrtmp -lssh2 -lssl -lcrypto -lssl -lcrypto -llber -lldap -lz </ADD_LDFLAGS>
 </compiler>
 
 <compiler COMPILER="intel" MACH="titan">
