@@ -1156,7 +1156,6 @@ end function radiation_nextsw_cday
     real(r8) qvrad      (pcols,pver)
     real(r8) cld_save   (pcols,pver)
     real(r8) fice       (pcols,pver)
-    real(r8) cld_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cliqwp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cicewp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) rel_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
@@ -1604,7 +1603,6 @@ end function radiation_nextsw_cday
                 if(qtot.gt.1.e-9) then
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
                   cld(i,k) = 0.99_r8
-                  cld_crm(i,ii,jj,m)=0.99_r8
                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
                            / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
                   cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
@@ -1612,7 +1610,6 @@ end function radiation_nextsw_cday
                 else
                   fice(i,k)= 0.
                   cld(i,k) = 0.
-                  cld_crm(i,ii,jj,m) = 0.
                   cicewp(i,k) = 0.           ! In-cloud ice water path.
                   cliqwp(i,k) = 0.           ! In-cloud liquid water path.
                 end if
