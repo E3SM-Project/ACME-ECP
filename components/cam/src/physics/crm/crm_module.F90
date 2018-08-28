@@ -38,10 +38,6 @@ use setparm_mod, only : setparm
 contains
 
 subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
-!MRN: If this is in standalone mode, lat,lon are passed in directly, not looked up in phys_grid
-#ifdef CRM_STANDALONE
-                latitude0_in, longitude0_in, &
-#endif
                 crm_input, crm_state, crm_rad,  &
 #ifdef CLUBB_CRM
                 clubb_buffer,           &
@@ -52,16 +48,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                 crm_ecpp_output, crm_output )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
-    use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
     !MRN: phys_grid is a rabbit hole of dependencies I'd rather hijack and avoid.
     !MRN: It's only used to get the longitude and latitude for each call and then
     !MRN: random seed values for perturbations to the initial temprature field on
     !MRN: the first call to crm(...)
 
-#ifndef CRM_STANDALONE
     use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
-#endif
     use ppgrid                , only: pcols
     use vars
     use params
@@ -129,10 +122,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     integer , intent(in   ) :: plev                             ! number of levels in parent model
     real(r8), intent(in   ) :: dt_gl                            ! global model's time step
     integer , intent(in   ) :: icol                (ncrms)      ! column identifier (only for lat/lon and random seed)
-#ifdef CRM_STANDALONE
-    real(crm_rknd)   , intent(in) :: latitude0_in  (ncrms)
-    real(crm_rknd)   , intent(in) :: longitude0_in (ncrms)
-#endif
     type(crm_input_type),      intent(in   ) :: crm_input
     type(crm_state_type),      intent(inout) :: crm_state
     type(crm_rad_type),        intent(inout) :: crm_rad
@@ -311,7 +300,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   do icrm = 1 , ncrms
 
 
-    !MRN: In standalone mode, we need to pass these things in by parameter, not look them up.
     latitude0  = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
     longitude0 = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
 
@@ -694,17 +682,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     if(doprecip) call precip_init()
 #endif
 
-    !MRN: Don't want any stochasticity introduced in the standalone.
-    !MRN: Need to make sure the first call to crm(...) is not dumped out
-    !MRN: Also want to avoid the rabbit hole of dependencies eminating from get_gcol_all_p in phys_grid!
-
-
-#ifndef CRM_STANDALONE
     if ( igstep <= 1 ) then
         iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale 
         call setperturb(iseed)
     end if
-#endif
 
     !--------------------------
     ! whannah - sanity check for new method to calculate radiation
