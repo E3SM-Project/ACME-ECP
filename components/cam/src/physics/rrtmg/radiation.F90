@@ -1594,16 +1594,34 @@ end function radiation_nextsw_cday
               do i=1,ncol
 
                 qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
+
+                ! Determine cloud fraction for this CRM column. If we set cld
+                ! equal to 1, we will not get any mcica sampling for this column
+                ! (assume clouds are fully resolved). If we set cld to the
+                ! "real" CRM cloud fraction though, we will do mcica subcolumn
+                ! sampling later. This is useful if we are doing something like
+                ! reduced rad, where we average cloud properties over some
+                ! number of CRM columns, which effectively coarsens our CRM grid
+                ! for the purpose of the radiation calculations.
+#ifdef MCICA_SP_RAD
+                cld(i,k) = cld_rad(i,ii,jj,m)
+#else
+                if(qtot.gt.1.e-9) then
+                    cld(i,k) = 0.99_r8
+                else
+                    cld(i,k) = 0
+                end if
+#endif
+
+                ! Calculate water paths and fraction of ice
                 if(qtot.gt.1.e-9) then
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
-                  cld(i,k) = 0.99_r8
                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
                            / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
                   cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
                            / max(0.01_r8,cld(i,k)) ! In-cloud liquid water path. 
                 else
                   fice(i,k)= 0.
-                  cld(i,k) = 0.
                   cicewp(i,k) = 0.           ! In-cloud ice water path.
                   cliqwp(i,k) = 0.           ! In-cloud liquid water path.
                 end if
