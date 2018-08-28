@@ -1207,12 +1207,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     uln_esmt(ptop:plev,icrm) = uln_esmt(ptop:plev,icrm) * factor_xy
     vln_esmt(ptop:plev,icrm) = vln_esmt(ptop:plev,icrm) * factor_xy
 
-    crm_output%ultend_esmt(icrm,:) = (uln_esmt(:,icrm) - crm_input%ul_esmt(icrm,:))*icrm_run_time
-    crm_output%vltend_esmt(icrm,:) = (vln_esmt(:,icrm) - crm_input%vl_esmt(icrm,:))*icrm_run_time
+    crm_output%u_tend_esmt(icrm,:) = (uln_esmt(:,icrm) - crm_input%ul_esmt(icrm,:))*icrm_run_time
+    crm_output%v_tend_esmt(icrm,:) = (vln_esmt(:,icrm) - crm_input%vl_esmt(icrm,:))*icrm_run_time
 
     ! don't use tendencies from two top levels,
-    crm_output%ultend_esmt(icrm,ptop:ptop+1) = 0.
-    crm_output%vltend_esmt(icrm,ptop:ptop+1) = 0.
+    crm_output%u_tend_esmt(icrm,ptop:ptop+1) = 0.
+    crm_output%v_tend_esmt(icrm,ptop:ptop+1) = 0.
 #endif
 
 #if defined(SPMOMTRANS)
