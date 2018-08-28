@@ -48,7 +48,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                 crm_ecpp_output, crm_output )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
-    use crm_dump              , only: crm_dump_input, crm_dump_output
     use shr_kind_mod          , only: r8 => shr_kind_r8
     !MRN: phys_grid is a rabbit hole of dependencies I'd rather hijack and avoid.
     !MRN: It's only used to get the longitude and latitude for each call and then
