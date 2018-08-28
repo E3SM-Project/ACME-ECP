@@ -160,11 +160,17 @@ subroutine diag_init()
    use tidal_diag,         only: tidal_diag_init 
 
 !-- mdb spcam
-   use crmdims,            only: crm_nx, crm_ny, crm_nz
+   use crmdims,            only: crm_nx, crm_ny, crm_nz, crm_dt
 #ifdef ECPP
    use ecppvars,           only: NCLASS_CL,ncls_ecpp_in,NCLASS_PR
 #endif
+   use time_manager,       only : get_step_size
 !-- mdb spcam
+   
+   ! real(r8), intent(in) :: dt_global
+   ! integer, intent(in) :: dt_global
+
+   integer :: dt_global
 
    integer :: k, m
    ! Note - this is a duplication of information in ice_constants 
@@ -175,6 +181,7 @@ subroutine diag_init()
    integer :: ierr
 !-- mdb spcam
    logical :: use_SPCAM, use_ECPP
+   integer :: crm_nt
 !-- mdb spcam
 
    call phys_getopts(prog_modal_aero_out = prog_modal_aero )
@@ -761,6 +768,13 @@ subroutine diag_init()
       call addfld ('SPTLS2  ',(/ 'lev' /), 'A', 'kg/kg/s ','L.S. LIWSE tend from CRM in tphysac'     )
 #endif
       ! Adding crm dimensions to cam history 
+
+      dt_global = get_step_size()
+      crm_nt = int( dt_global/crm_dt )
+
+      write(*,*) 'whannah - crm_nt: ',crm_nt
+
+      call add_hist_coord('crm_nt'       ,crm_nt,  'CRM NT')
       call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
       call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
       call add_hist_coord('crm_nz'       ,crm_nz,  'CRM NZ')
@@ -788,10 +802,10 @@ subroutine diag_init()
       call addfld ('CRM_QRS ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K/s     ', 'CRM Shortwave radiative heating rate')
       call addfld ('CRM_QRL ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K/s     ', 'CRM Longwave radiative heating rate' )
 
-      call addfld ('CRMDT_T ' ,(/'crm_nt','crm_nz'/), 'I', 'K'       ,'CRMdt Temperature' )
-      call addfld ('CRMDT_QV' ,(/'crm_nt','crm_nz'/), 'I', 'K'       ,'CRMdt Water Vapor' )
-      call addfld ('CRMDTSPDT',(/'crm_nt','crm_nz'/), 'I', 'K/s     ','CRMdt T tend due to CRM' )
-      call addfld ('CRMDTSPDQ',(/'crm_nt','crm_nz'/), 'I', 'kg/kg/s ','CRMdt Q tend due to CRM' )
+      call addfld ('CRMDT_T ',(/'crm_nt','crm_nz'/), 'I', 'K'       ,'CRMdt Temperature' )
+      call addfld ('CRMDT_QV',(/'crm_nt','crm_nz'/), 'I', 'K'       ,'CRMdt Water Vapor' )
+      call addfld ('CRMDT_DT',(/'crm_nt','crm_nz'/), 'I', 'K/s     ','CRMdt T tend due to CRM' )
+      call addfld ('CRMDT_DQ',(/'crm_nt','crm_nz'/), 'I', 'kg/kg/s ','CRMdt Q tend due to CRM' )
 
       !-- MDB 8/2013
       call addfld ('SPTVFLUX ',(/ 'lev' /), 'A', 'W/m2  ','Buoyancy Flux from CRM'             )

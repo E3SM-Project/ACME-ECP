@@ -144,9 +144,16 @@ contains
 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_output_type
-   subroutine crm_output_initialize(this, ncol, nlev)
+   subroutine crm_output_initialize(this, dt_global, ncol, nlev)
+      use crmdims,      only: crm_dt
+      use shr_kind_mod, only: r8 => shr_kind_r8
       class(crm_output_type), intent(inout) :: this
+      real(r8), intent(in) :: dt_global
       integer, intent(in), optional :: ncol, nlev
+
+      integer :: crm_nt
+
+      crm_nt = int( dt_global/crm_dt )
 
       ! Allocate arrays if dimensions are passed as input
       if (present(ncol)) then
@@ -269,6 +276,11 @@ contains
          if (.not. allocated(this%crmdt_dq)) allocate(this%crmdt_dq(crm_nt,crm_nz))
 
       end if ! present(ncol)
+
+      this%crmdt_t  = 0
+      this%crmdt_qv = 0
+      this%crmdt_dt = 0
+      this%crmdt_dq = 0
 
       ! Initialize 
       this%qcl = 0

@@ -754,6 +754,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     type(cam_out_t),intent(inout)      :: cam_out(begchunk:endchunk)
 
+
     ! local variables
     integer :: lchnk
     logical :: use_SPCAM

@@ -712,7 +712,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call crm_state%initialize()
    call crm_rad%initialize()
    call crm_input%initialize(pcols,pver)
-   call crm_output%initialize(pcols,pver)
+   call crm_output%initialize(ztodt,pcols,pver)
 
    !------------------------------------------------------------
    ! Set CRM orientation angle
@@ -1142,7 +1142,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CRM_QPI ',crm_output%qpi  ,pcols   ,lchnk   )
       call outfld('CRM_PREC',crm_output%prec_crm       ,pcols   ,lchnk   )
       call outfld('CRM_TK ', crm_output%tk(:, :, :, :)  ,pcols   ,lchnk   )  
-      call outfld('CRM_TKH', crm_output%tkh(:, :, :, :)  ,pcols   ,lchnk   ) 
+      call outfld('CRM_TKH', crm_output%tkh(:, :, :, :)  ,pcols   ,lchnk   )
+      
+      call outfld('CRMDT_T ', crm_output%crmdt_t  ,pcols ,lchnk ) 
+      call outfld('CRMDT_QV', crm_output%crmdt_qv ,pcols ,lchnk ) 
+      call outfld('CRMDT_DT', crm_output%crmdt_dt ,pcols ,lchnk ) 
+      call outfld('CRMDT_DQ', crm_output%crmdt_dq ,pcols ,lchnk ) 
 
 #ifdef m2005
       if (SPCAM_microp_scheme .eq. 'm2005') then

@@ -1276,6 +1276,23 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
       !        call stepout()
       !----------------------------------------------------------
+
+      crm_output%crmdt_t (nstep,:) = 0.
+      crm_output%crmdt_qv(nstep,:) = 0.
+
+      do j = 1,ny
+        do i = 1,nx
+          crm_output%crmdt_t (nstep,:) = crm_output%crmdt_t (nstep,:) + tabs(i,j,:) 
+          crm_output%crmdt_qv(nstep,:) = crm_output%crmdt_qv(nstep,:) +   qv(i,j,:)
+        end do
+      end do
+      
+      crm_output%crmdt_t (nstep,:) = crm_output%crmdt_t (nstep,:) * factor_xy
+      crm_output%crmdt_qv(nstep,:) = crm_output%crmdt_qv(nstep,:) * factor_xy
+
+      crm_output%crmdt_dt(nstep,:) = cp*( crm_output%crmdt_t (nstep,:) - crm_input%tl(icrm,:) ) / (nstep*dt)
+      crm_output%crmdt_dq(nstep,:) =    ( crm_output%crmdt_qv(nstep,:) - crm_input%ql(icrm,:) ) / (nstep*dt)
+
     enddo ! main loop
 
     !========================================================================================
