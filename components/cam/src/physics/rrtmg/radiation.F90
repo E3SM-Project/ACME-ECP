@@ -1311,6 +1311,9 @@ end function radiation_nextsw_cday
     real(r8) ::  aerindex(pcols)      ! Aerosol index
     integer aod400_idx, aod700_idx, cld_tau_idx
 
+    ! Total cloud water threshold for considering a CRM column "cloudy" or
+    ! "clear"
+    real(r8), parameter :: qtot_cld_threshold = 1.e-9
 
     character(*), parameter :: name = 'radiation_tend'
     character(len=16)       :: SPCAM_microp_scheme  ! SPCAM_microphysics scheme
@@ -1606,7 +1609,7 @@ end function radiation_nextsw_cday
 #ifdef MCICA_SP_RAD
                 cld(i,k) = cld_rad(i,ii,jj,m)
 #else
-                if(qtot.gt.1.e-9) then
+                if(qtot > qtot_cld_threshold) then
                     cld(i,k) = 0.99_r8
                 else
                     cld(i,k) = 0
@@ -1614,7 +1617,7 @@ end function radiation_nextsw_cday
 #endif
 
                 ! Calculate water paths and fraction of ice
-                if(qtot.gt.1.e-9) then
+                if (qtot > qtot_cld_threshold) then
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
                            / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
