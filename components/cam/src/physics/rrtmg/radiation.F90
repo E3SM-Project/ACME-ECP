@@ -1152,8 +1152,6 @@ end function radiation_nextsw_cday
     real(r8) fcnl(pcols,pverp)    ! net clear-sky longwave flux
     real(r8) qtot
     real(r8) factor_xy
-    real(r8) trad       (pcols,pver)
-    real(r8) qvrad      (pcols,pver)
     real(r8) cld_save   (pcols,pver)
     real(r8) fice       (pcols,pver)
     real(r8) cliqwp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
@@ -1531,8 +1529,6 @@ end function radiation_nextsw_cday
 
       cicewp(1:ncol,1:pver) = 0.  
       cliqwp(1:ncol,1:pver) = 0.
-      trad(:ncol,:)  = state%t(:ncol,:)
-      qvrad(:ncol,:) = state%q(:ncol,:,1)  
 
       factor_xy = 1./real( crm_nx_rad*crm_ny_rad ,r8)
 
@@ -1597,8 +1593,6 @@ end function radiation_nextsw_cday
               k = pver-m+1
               do i=1,ncol
 
-                trad(i,k) = t_rad(i,ii,jj,m)
-                qvrad(i,k) = max(1.e-9_r8,qv_rad(i,ii,jj,m))  ! whannah - this doesn't seem to be used
                 qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
                 if(qtot.gt.1.e-9) then
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
