@@ -358,14 +358,6 @@ module vars
 
   ! END UW ADDITIONS
   !===========================================================================
-  ! Initial bubble parameters. Activated when perturb_type = 2
-  real(crm_rknd) bubble_x0
-  real(crm_rknd) bubble_y0
-  real(crm_rknd) bubble_z0
-  real(crm_rknd) bubble_radius_hor
-  real(crm_rknd) bubble_radius_ver
-  real(crm_rknd) bubble_dtemp
-  real(crm_rknd) bubble_dq
 #if (defined CRM && defined MODAL_AERO)
   real(crm_rknd), allocatable :: naer (:,:)     ! Aerosol number concentration [/m3]
   real(crm_rknd), allocatable :: vaer (:,:)     ! aerosol volume concentration [m3/m3]

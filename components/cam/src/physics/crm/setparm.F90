@@ -62,7 +62,6 @@ contains
     dt    = CRM_DT
     dx    = CRM_DX
     dy    = CRM_DY
-    CEM             = .true.
 #ifndef CLUBB_CRM
     doclubb         = .false.   ! then docloud must be .true.
     docloud         = .true.
@@ -130,8 +129,6 @@ contains
       nstatmomstart    = 99999999
       nstatmomend      = 999999999
     end if
-
-    if(tautqls.eq.99999999.) tautqls = tauls
 
     masterproc = rank.eq.0
 

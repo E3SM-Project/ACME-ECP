@@ -329,9 +329,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     end do
 
     if(crm_input%ocnfrac(icrm).gt.0.5) then
-       OCEAN = .true.
+       OCEAN(icrm) = .true.
     else
-       LAND = .true.
+       LAND(icrm) = .true.
     end if
 
     ! Create CRM vertical grid and initialize some vertical reference arrays:
@@ -536,8 +536,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
     ustar = sqrt(crm_input%tau00(icrm)/rho(1))
-    z0 = z0_est(z(1),bflx,wnd,ustar)
-    z0 = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0))
+    z0(icrm) = z0_est(z(1),bflx,wnd,ustar)
+    z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
     crm_output%timing_factor = 0.
 
@@ -870,7 +870,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !-----------------------------------------------
         !     surface fluxes:
-        if (dosurface) call crmsurface(bflx)
+        if (dosurface) call crmsurface(ncrms,icrm,bflx)
 
         !-----------------------------------------------------------
         !  SGS physics:
@@ -1423,7 +1423,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         enddo
       enddo
     enddo
-    crm_output%z0m     (icrm) = z0
+    crm_output%z0m     (icrm) = z0(icrm)
     crm_output%taux(icrm) = taux0 / dble(nstop)
     crm_output%tauy(icrm) = tauy0 / dble(nstop)
 
