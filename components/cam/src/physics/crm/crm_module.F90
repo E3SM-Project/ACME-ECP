@@ -530,8 +530,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     end do ! k
 
-    uhl = u0(1)
-    vhl = v0(1)
+    uhl(icrm) = u0(1)
+    vhl(icrm) = v0(1)
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
@@ -1424,8 +1424,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       enddo
     enddo
     crm_output%z0m     (icrm) = z0(icrm)
-    crm_output%taux(icrm) = taux0 / dble(nstop)
-    crm_output%tauy(icrm) = tauy0 / dble(nstop)
+    crm_output%taux(icrm) = taux0(icrm) / dble(nstop)
+    crm_output%tauy(icrm) = tauy0(icrm) / dble(nstop)
 
     !---------------------------------------------------------------
     !  Diagnostics:
