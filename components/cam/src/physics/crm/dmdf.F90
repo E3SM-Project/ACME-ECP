@@ -72,7 +72,7 @@ module dmdf
 
   character(len=1024), public :: error_string
   logical            , public :: success
-  
+
   interface dmdf_write_attr
     module procedure dmdf_write_attr_real4
     module procedure dmdf_write_attr_real8
@@ -81,7 +81,7 @@ module dmdf
     module procedure dmdf_write_attr_char
     module procedure dmdf_write_attr_log
   end interface
-  
+
   interface dmdf_read_attr
     module procedure dmdf_read_attr_real4
     module procedure dmdf_read_attr_real8
@@ -90,7 +90,7 @@ module dmdf
     module procedure dmdf_read_attr_char
     module procedure dmdf_read_attr_log
   end interface
-  
+
   interface dmdf_write
     module procedure dmdf_write_real4_scalar
     module procedure dmdf_write_real8_scalar
@@ -122,7 +122,7 @@ module dmdf
     module procedure dmdf_write_int8_4d
     module procedure dmdf_write_log_4d
   end interface
-  
+
   interface dmdf_read
     module procedure dmdf_read_real4_scalar
     module procedure dmdf_read_real8_scalar
@@ -1750,11 +1750,11 @@ contains
       if (rank == -1) then
         write(fname,fmt='(A,A)') trim(fprefix)
       else
-        write(fname,fmt='(A,A,I0.6,A)') trim(fprefix) , '_' , rank , '.nc'
+        write(fname,fmt='(A,A,I0.9,A)') trim(fprefix) , '_' , rank , '.nc'
       endif
 
       !If the file exists, open for writing. Otherwise, create
-      inquire(file=trim(fname), exist=file_exists) 
+      inquire(file=trim(fname), exist=file_exists)
       if (file_exists) then
         if (rank == -1) then
           _NCERR( nf90_open  ( trim(fname) , NF90_NOWRITE , ncid ) )
@@ -1769,4 +1769,3 @@ contains
 
 
 end module dmdf
-

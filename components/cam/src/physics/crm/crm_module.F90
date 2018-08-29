@@ -1,4 +1,6 @@
 
+#define _ERR(s,e,l) if (.not. s) then; write(*,*) l,', ',trim(e); stop; endif
+
 module crm_module
   use task_init_mod, only: task_init
   use abcoefs_mod, only: abcoefs
@@ -28,6 +30,10 @@ module crm_module
   use crm_input_module,       only: crm_input_type
   use crm_output_module,      only: crm_output_type
   use crm_ecpp_output_module, only: crm_ecpp_output_type
+#ifdef GLITTER_DUMP
+  use mpi
+  use dmdf
+#endif
 
 !---------------------------------------------------------------
 !  Super-parameterization's main driver
@@ -140,7 +146,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !-----------------------------------------------------------------------------------------------
     ! Local variable declarations
     !-----------------------------------------------------------------------------------------------
-    
+
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt       ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                      ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation
@@ -161,14 +167,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     integer         :: igstep            ! GCM time steps
     integer         :: iseed             ! seed for random perturbation
     real(crm_rknd)  :: ntotal_step
-    integer         :: myrank, ierr
-    
+
     !!! variables for radiation grouping method
     real(crm_rknd) :: crm_nx_rad_fac
     real(crm_rknd) :: crm_ny_rad_fac
     integer        :: i_rad
     integer        :: j_rad
-    
+
     !!! Arrays
     real(crm_rknd), allocatable :: dummy(:)
     real(crm_rknd), allocatable :: t00(:)
@@ -210,6 +215,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8) :: dd_crm              (ncrms,plev)       ! mass entraiment from downdraft
     real(r8) :: mui_crm             (ncrms,plev+1)     ! mass flux up at the interface
     real(r8) :: mdi_crm             (ncrms,plev+1)     ! mass flux down at the interface
+
+#ifdef GLITTER_DUMP
+    integer :: myrank, ierr
+    real :: rand
+    character(len=256) :: fprefix
+    logical :: dump_my_glitter
+#endif
 
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
@@ -304,6 +316,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     longitude0 = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
 
     igstep = get_nstep()
+
+#ifdef GLITTER_DUMP
+    dump_my_glitter = .false.
+    if ( latitude0 > 10 .and. latitude0 < 30 .and. longitude0 > 150 .and. longitude0 < 180 ) dump_my_glitter = .true.
+#endif
 
 !-----------------------------------------------
 
@@ -683,7 +700,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif
 
     if ( igstep <= 1 ) then
-        iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale 
+        iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale
         call setperturb(iseed)
     end if
 
@@ -818,6 +835,25 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       time = time + dt
       day = day0 + time/86400.
       crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
+
+#ifdef GLITTER_DUMP
+      if (dump_my_glitter) then
+        call mpi_comm_rank(mpi_comm_world,myrank,ierr)
+        write(fprefix,'(A,I0.6,A,I0.6)') 'glitter_',lchnk,'_',icol(icrm)
+        if (nstep == 1) then
+          call dmdf_write_attr(latitude0 ,myrank,fprefix,'latitude0' )
+          call dmdf_write_attr(longitude0,myrank,fprefix,'longitude0')
+        endif
+        call dmdf_write(t      ,myrank,fprefix,'t'      ,(/'x_s','y_s','nzm'/),.true. ,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(u      ,myrank,fprefix,'u'      ,(/'x_u','y_u','nzm'/),.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(precsfc,myrank,fprefix,'precsfc',(/'x'  ,'y'        /),.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(qcl    ,myrank,fprefix,'qcl'    ,(/'x  ','y  ','nzm'/),.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(qpl    ,myrank,fprefix,'qpl'    ,(/'x  ','y  ','nzm'/),.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(qci    ,myrank,fprefix,'qci'    ,(/'x  ','y  ','nzm'/),.false.,.false.); _ERR(success,error_string,__LINE__)
+        call dmdf_write(qpi    ,myrank,fprefix,'qpi'    ,(/'x  ','y  ','nzm'/),.false.,.true. ); _ERR(success,error_string,__LINE__)
+      endif
+#endif
+
       !------------------------------------------------------------------
       !  Check if the dynamical time step should be decreased
       !  to handle the cases when the flow being locally linearly unstable
@@ -1176,7 +1212,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 !             crm_rad%qs(icrm,i,j,k) = crm_rad%qs(icrm,i,j,k)+micro_field(i,j,k,iqs)
 !             crm_rad%ns(icrm,i,j,k) = crm_rad%ns(icrm,i,j,k)+micro_field(i,j,k,ins)
 ! #endif
-          
+
             !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
             if ( phys_stage == 1 ) then
 
@@ -1279,7 +1315,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_rad%qs(icrm,:,:,:) = crm_rad%qs(icrm,:,:,:) * tmp1
       crm_rad%ns(icrm,:,:,:) = crm_rad%ns(icrm,:,:,:) * tmp1
 #endif /* m2005 */
-    
+
     endif
 
     ! no CRM tendencies above its top
