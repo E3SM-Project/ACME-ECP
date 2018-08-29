@@ -42,7 +42,7 @@ module params
   real(crm_rknd), parameter :: cp    = 1004.          ! Specific heat of air, J/kg/K
   real(crm_rknd), parameter :: ggr   = 9.81           ! Gravity acceleration, m/s2
   real(crm_rknd), parameter :: lcond = 2.5104e+06     ! Latent heat of condensation, J/kg
-  real(crm_rknd), parameter :: lfus  = 0.3336e+06  	! Latent heat of fusion, J/kg
+  real(crm_rknd), parameter :: lfus  = 0.3336e+06   ! Latent heat of fusion, J/kg
   real(crm_rknd), parameter :: lsub  = 2.8440e+06     ! Latent heat of sublimation, J/kg
   real(crm_rknd), parameter :: rv    = 461.           ! Gas constant for water vapor, J/kg/K
   real(crm_rknd), parameter :: rgas  = 287.           ! Gas constant for dry air, J/kg/K
@@ -77,8 +77,7 @@ module params
 
   real(crm_rknd)   epsv     ! = (1-eps)/eps, where eps= Rv/Ra, or =0. if dosmoke=.true.
   logical:: dosubsidence = .false.
-  real(crm_rknd) fcorz      ! Vertical Coriolis parameter
-  real(crm_rknd) coszrs
+  real(crm_rknd), allocatable :: fcorz(:)      ! Vertical Coriolis parameter
 
   !----------------------------------------------
   ! Parameters set by PARAMETERS namelist:
@@ -86,25 +85,12 @@ module params
   !----------------------------------------------
 
   real(crm_rknd):: ug = 0.        ! Velocity of the Domain's drift in x direction
-  real(crm_rknd):: vg	= 0.        ! Velocity of the Domain's drift in y direction
-  real(crm_rknd):: fcor = -999.   ! Coriolis parameter
-  real(crm_rknd):: longitude0 = 0.    ! latitude of the domain's center
-  real(crm_rknd):: latitude0  = 0.    ! longitude of the domain's center
-  real(crm_rknd):: nxco2 = 1         ! factor to modify co2 concentration
-  logical:: doradlat = .false.
-  logical:: doradlon = .false.
+  real(crm_rknd):: vg = 0.        ! Velocity of the Domain's drift in y direction
+  real(crm_rknd), allocatable :: fcor(:)  ! Coriolis parameter
+  real(crm_rknd), allocatable :: longitude0(:)    ! latitude of the domain's center
+  real(crm_rknd), allocatable :: latitude0 (:)    ! longitude of the domain's center
 
-  real(8):: tabs_s =0.	! surface temperature,K
-  real(crm_rknd):: delta_sst = 0.   ! amplitude of sin-pattern of sst about tabs_s (ocean_type=1)
-  real(crm_rknd):: depth_slab_ocean = 2. ! thickness of the slab-ocean (m)
-  real(crm_rknd):: Szero = 0.  ! mean ocean transport (W/m2)
-  real(crm_rknd):: deltaS = 0. ! amplitude of linear variation of ocean transport (W/m2)
-  real(crm_rknd):: timesimpleocean = 0. ! time to start simple ocean
-
-  real(crm_rknd)::   fluxt0 =0.  ! surface sensible flux, Km/s
-  real(crm_rknd)::   fluxq0 =0.  ! surface latent flux, m/s
-  real(crm_rknd)::   tau0   =0.  ! surface stress, m2/s2
-  real(crm_rknd)::   z0     =0.035	! roughness length
+  real(crm_rknd)::   z0     =0.035  ! roughness length
   real(crm_rknd)::   soil_wetness =1.! wetness coeff for soil (from 0 to 1.)
   integer:: ocean_type =0 ! type of SST forcing
   logical:: cem =.false.    ! flag for Cloud Ensemble Model
@@ -185,5 +171,33 @@ module params
   real(crm_rknd) vhl      ! current large-scale velocity in y near sfc
   real(crm_rknd) taux0    ! surface stress in x, m2/s2
   real(crm_rknd) tauy0    ! surface stress in y, m2/s2
+
+
+contains
+
+  
+  subroutine allocate_params(ncrms)
+    implicit none
+    integer, intent(in) :: ncrms
+    allocate(fcor (ncrms))
+    allocate(fcorz(ncrms))
+    allocate(longitude0(ncrms))
+    allocate(latitude0 (ncrms))
+
+    fcor  = 0
+    fcorz = 0
+    longitude0 = 0
+    latitude0  = 0
+  end subroutine allocate_params
+
+  
+  subroutine deallocate_params()
+    implicit none
+    deallocate(fcor )
+    deallocate(fcorz)
+    deallocate(longitude0)
+    deallocate(latitude0 )
+  end subroutine deallocate_params
+
 
 end module params

@@ -49,11 +49,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
     use shr_kind_mod          , only: r8 => shr_kind_r8
-    !MRN: phys_grid is a rabbit hole of dependencies I'd rather hijack and avoid.
-    !MRN: It's only used to get the longitude and latitude for each call and then
-    !MRN: random seed values for perturbations to the initial temprature field on
-    !MRN: the first call to crm(...)
-
     use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
     use ppgrid                , only: pcols
     use vars
@@ -62,25 +57,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     use sgs
     use crmtracers
     use scalar_momentum_mod
-
-! whannah - Matt Norman added the more specific use statements below - however this was causing problems for the 1-moment configuration
-!
-!     use vars                  , only: crm_nx, crm_ny, crm_nz, nx, ny, nz, crm_dx, crm_dt, fcory, fcorzy, latitude, longitude, z, zi, pres, prespot, bet, gamaz, &
-!                                       adzw, adz, rho, rhow, u, v, w, tabs, dudt, dvdt, dwdt, p, wsub, cf3d, u0, v0, t0, tabs0, q0, t, qp0, tke0, qv0, qn0,  &
-!                                       tke0, ttend, qtend, utend, vtend, ug0, vg0, tg0, qg0, qtotmicro, dt3, precsfc, precssfc, qpfall, precflux, uwle, uwsb, &
-!                                       vwle, vwsb, dostatis, nzm, dz, yes3d, qcl, qci, qpl, qpi, qv, fluxbu, fluxbv, fluxbt, fluxbq, fluxtu, fluxtv, fluxtt, &
-!                                       fluxtq, fzero, uwle, uwsb, vwle, nstop, dt, nsave3d, nstep, nprint, ncycle, day, day0, time, icycle, dtn, na, dtfactor, &
-! #ifdef MODAL_AERO
-!                                       naer, vaer, hgaer, &
-! #endif
-!                                       nc, nb, qsatw_crm
-!     use params                , only: latitude0, longitude0, fcor, pi, fcorz, ocean, land, rgas, cp, fac_fus, uhl, vhl, z0, dodamping, dosurface, docoriolis, &
-!                                       taux0, tauy0, doclubb, doclubbnoninter, docloud, dosmoke, crm_rknd
-!     use microphysics          , only: nmicro_fields, micro_field, cloudliq, aut1a, acc1a, evpc1a, evpr1a, mlt1a, sub1a, dep1a, con1a, mkwsb, mkwle, mkadv, &
-!                                       mkdiff, qpsrc, qpevp, ggr, dopredictnc, incl, nc0, fac_cond, fac_sub, iqr, iqs, iqg, inci, ins, wvar, aut1, acc1,    &
-!                                       evpc1, evpr1, mlt1, sub1, dep1, con1, inr, ing, iqv, iqci, micro_init, micro_proc
-!     use sgs                   , only: tke, tk, tkh, dosgs, sgs_init, sgs_proc, sgs_mom, sgs_scalars
-
 #ifdef MODAL_AERO
     use modal_aero_data       , only: ntot_amode
 #endif
@@ -284,6 +260,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     rtm_column = zeroval
 #endif /* CLUBB_CRM */
 
+  call allocate_params(ncrms)
   call allocate_grid()
   call allocate_tracers()
   call allocate_sgs()
@@ -300,8 +277,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   do icrm = 1 , ncrms
 
 
-    latitude0  = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
-    longitude0 = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
+    latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
+    longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
 
     igstep = get_nstep()
 
@@ -340,14 +317,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     call task_init ()
     call setparm()
 
-    if(fcor.eq.-999.) fcor= 4*pi/86400.*sin(latitude0*pi/180.)
-    fcorz = sqrt(4.*(2*pi/(3600.*24.))**2-fcor**2)
-    fcory(:) = fcor
-    fcorzy(:) = fcorz
+    fcor(icrm)= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
+    fcorz(icrm) = sqrt(4.*(2*pi/(3600.*24.))**2-fcor(icrm)**2)
+    fcory(:) = fcor(icrm)
+    fcorzy(:) = fcorz(icrm)
     do j=1,ny
       do i=1,nx
-        latitude (i,j) = latitude0
-        longitude(i,j) = longitude0
+        latitude (i,j) = latitude0(icrm)
+        longitude(i,j) = longitude0(icrm)
       end do
     end do
 
@@ -1751,6 +1728,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
   enddo
 
+  call deallocate_params()
   call deallocate_grid()
   call deallocate_tracers()
   call deallocate_sgs()
