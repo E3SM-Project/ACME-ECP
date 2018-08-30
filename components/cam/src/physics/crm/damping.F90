@@ -56,9 +56,9 @@ contains
     do k = nzm, nzm-n_damp, -1
       do j=1,ny
         do i=1,nx
-          dudt(i,j,k,na)= dudt(i,j,k,na)-(u(i,j,k)-u0(k)) * tau(k)
-          dvdt(i,j,k,na)= dvdt(i,j,k,na)-(v(i,j,k)-v0(k)) * tau(k)
-          dwdt(i,j,k,na)= dwdt(i,j,k,na)-w(i,j,k) * tau(k)
+          dudt(i,j,k,na,icrm)= dudt(i,j,k,na,icrm)-(u(i,j,k)-u0(k)) * tau(k)
+          dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(i,j,k)-v0(k)) * tau(k)
+          dwdt(i,j,k,na,icrm)= dwdt(i,j,k,na,icrm)-w(i,j,k) * tau(k)
           t(i,j,k)= t(i,j,k)-dtn*(t(i,j,k)-t0(k)) * tau(k)
           ! In the old version (SAM7.5?) of SAM, water vapor is the prognostic variable for the two-moment microphyscs.
           ! So the following damping approach can lead to the negative water vapor.

@@ -24,9 +24,9 @@ contains
         jb=j-YES3D
         do i=1,nx
           ib=i-1
-          dudt(i,j,k,na)=dudt(i,j,k,na)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx
-          dvdt(i,j,k,na)=dvdt(i,j,k,na)-(p(i,j,k,icrm)-p(i,jb,k,icrm))*rdy
-          dwdt(i,j,k,na)=dwdt(i,j,k,na)-(p(i,j,k,icrm)-p(i,j,kb,icrm))*rdz
+          dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx
+          dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(i,jb,k,icrm))*rdy
+          dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(i,j,kb,icrm))*rdz
         end do ! i
       end do ! j
     end do ! k
@@ -43,7 +43,7 @@ contains
 
       do k=1,nzm
         do j=1,ny
-          dudt(1,j,k,na) = 0.
+          dudt(1,j,k,na,icrm) = 0.
         end do
       end do
 
@@ -53,7 +53,7 @@ contains
 
       do k=1,nzm
         do i=1,nx
-          dvdt(i,1,k,na) = 0.
+          dvdt(i,1,k,na,icrm) = 0.
         end do
       end do
 
@@ -62,7 +62,7 @@ contains
     if(dompi) then
       call task_bound_duvdt()
     else
-      call bound_duvdt()
+      call bound_duvdt(ncrms,icrm)
     endif
 
     call task_barrier()

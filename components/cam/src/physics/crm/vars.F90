@@ -26,15 +26,15 @@ module vars
   real(crm_rknd), allocatable :: qpl     (:,:,:,:)                ! liquid water  (precipitation)
   real(crm_rknd), allocatable :: qci     (:,:,:,:)                ! ice water  (condensate)
   real(crm_rknd), allocatable :: qpi     (:,:,:,:)                ! ice water  (precipitation)
-  real(crm_rknd), allocatable :: tke2(:,:,:)   ! SGS TKE
-  real(crm_rknd), allocatable :: tk2  (:,:,:) ! SGS eddyviscosity
+  real(crm_rknd), allocatable :: tke2    (:,:,:,:)   ! SGS TKE
+  real(crm_rknd), allocatable :: tk2     (:,:,:,:) ! SGS eddyviscosity
 
   !--------------------------------------------------------------------
   ! time-tendencies for prognostic variables
 
-  real(crm_rknd), allocatable :: dudt   (:,:,:,:)
-  real(crm_rknd), allocatable :: dvdt   (:,:,:,:)
-  real(crm_rknd), allocatable :: dwdt   (:,:,:,:)
+  real(crm_rknd), allocatable :: dudt   (:,:,:,:,:)
+  real(crm_rknd), allocatable :: dvdt   (:,:,:,:,:)
+  real(crm_rknd), allocatable :: dwdt   (:,:,:,:,:)
 
   !----------------------------------------------------------------
   ! Temporary storage array:
@@ -383,11 +383,11 @@ contains
     allocate( qpl     (nx, ny, nzm, ncrms)                 )
     allocate( qci     (nx, ny, nzm, ncrms)                 )
     allocate( qpi     (nx, ny, nzm, ncrms)                 )
-    allocate( tke2(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)    )
-    allocate( tk2  (0:nxp1, (1-YES3D):nyp1, nzm)  )
-    allocate( dudt   (nxp1, ny, nzm, 3) )
-    allocate( dvdt   (nx, nyp1, nzm, 3) )
-    allocate( dwdt   (nx, ny  , nz,  3) )
+    allocate( tke2(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms)    )
+    allocate( tk2  (0:nxp1, (1-YES3D):nyp1, nzm, ncrms)  )
+    allocate( dudt   (nxp1, ny, nzm, 3, ncrms) )
+    allocate( dvdt   (nx, nyp1, nzm, 3, ncrms) )
+    allocate( dwdt   (nx, ny  , nz,  3, ncrms) )
     allocate( misc(nx, ny, nz) )
     allocate( fluxbu  (nx,ny) )
     allocate( fluxbv  (nx,ny) )

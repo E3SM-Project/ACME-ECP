@@ -1,14 +1,14 @@
 module advect2_mom_z_mod
-	implicit none
+  implicit none
 
 contains
 
-  subroutine advect2_mom_z
+  subroutine advect2_mom_z(ncrms,icrm)
     !       momentum tendency due to the 2nd-order-central vertical advection
     use vars
     use params, only: crm_rknd
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     real(crm_rknd) fuz(nx,ny,nz),fvz(nx,ny,nz),fwz(nx,ny,nzm)
     integer i, j, k, kc, kb
     real(crm_rknd) dz2, dz25, www, rhoi
@@ -73,8 +73,8 @@ contains
       rhoi = 1./(rho(k)*adz(k))
       do j=1,ny
         do i=1,nx
-          dudt(i,j,k,na)=dudt(i,j,k,na)-(fuz(i,j,kc)-fuz(i,j,k))*rhoi
-          dvdt(i,j,k,na)=dvdt(i,j,k,na)-(fvz(i,j,kc)-fvz(i,j,k))*rhoi
+          dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fuz(i,j,kc)-fuz(i,j,k))*rhoi
+          dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fvz(i,j,kc)-fvz(i,j,k))*rhoi
           fwz(i,j,k)=dz25*(w(i,j,kc)*rhow(kc)+w(i,j,k)*rhow(k))*(w(i,j,kc)+w(i,j,k))
         end do
       end do
@@ -85,7 +85,7 @@ contains
       rhoi = 1./(rhow(k)*adzw(k))
       do j=1,ny
         do i=1,nx
-          dwdt(i,j,k,na)=dwdt(i,j,k,na)-(fwz(i,j,k)-fwz(i,j,kb))*rhoi
+          dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fwz(i,j,k)-fwz(i,j,kb))*rhoi
         end do
       end do
     end do ! k

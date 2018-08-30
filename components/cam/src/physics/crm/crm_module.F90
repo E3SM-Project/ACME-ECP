@@ -450,9 +450,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     w(:,:,nz)=0.
     wsub (:) = 0.      !used in clubb, +++mhwang
-    dudt(1:nx,1:ny,1:nzm,1:3) = 0.
-    dvdt(1:nx,1:ny,1:nzm,1:3) = 0.
-    dwdt(1:nx,1:ny,1:nz,1:3) = 0.
+    dudt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
+    dvdt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
+    dwdt(1:nx,1:ny,1:nz,1:3,icrm) = 0.
     tke (1:nx,1:ny,1:nzm) = 0.
     tk  (1:nx,1:ny,1:nzm) = 0.
     tkh (1:nx,1:ny,1:nzm) = 0.
@@ -816,7 +816,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !---------------------------------------------
         !  	initialize stuff:
-        call zero()
+        call zero(ncrms,icrm)
 
         !-----------------------------------------------------------
         !       Buoyancy term:
@@ -829,7 +829,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !------------------------------------------------------------
         !       Large-scale and surface forcing:
-        call forcing()
+        call forcing(ncrms,icrm)
 
 
         !!! Apply radiative tendency
@@ -933,12 +933,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !-----------------------------------------------
         !       advection of momentum:
-        call advect_mom()
+        call advect_mom(ncrms,icrm)
 
         !----------------------------------------------------------
         !	SGS effects on momentum:
 
-        if(dosgs) call sgs_mom()
+        if(dosgs) call sgs_mom(ncrms,icrm)
 #ifdef CLUBB_CRM_OLD
         if ( doclubb ) then
           !          call apply_clubb_sgs_tndcy_mom &
@@ -948,7 +948,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !-----------------------------------------------------------
         !       Coriolis force:
-        if (docoriolis) call coriolis()
+        if (docoriolis) call coriolis(ncrms,icrm)
 
         !---------------------------------------------------------
         !       compute rhs of the Poisson equation and solve it for pressure.
@@ -957,7 +957,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !---------------------------------------------------------
         !       find velocity field at n+1/2 timestep needed for advection of scalars:
         !  Note that at the end of the call, the velocities are in nondimensional form.
-        call adams()
+        call adams(ncrms,icrm)
 
         !----------------------------------------------------------
         !     Update boundaries for all prognostic scalar fields for advection:
@@ -969,7 +969,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !-----------------------------------------------------------
         !    Convert velocity back from nondimensional form:
-        call uvw()
+        call uvw(ncrms,icrm)
 
         !----------------------------------------------------------
         !     Update boundaries for scalars to prepare for SGS effects:

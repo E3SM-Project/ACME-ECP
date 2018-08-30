@@ -756,7 +756,7 @@ do j = 1,ny
 !        tmpwsub = 0.
 ! diagnose tmpwsub from tke.
 ! Notes: tke has to be already prognsotic or diagnostic.
-        tmpwsub = sqrt(tke2(i,j,:)/3.)  ! diagnosed tmpwsub from tke
+        tmpwsub = sqrt(tke2(i,j,:,icrm)/3.)  ! diagnosed tmpwsub from tke
 ! diagnose tmpwsub from tk
 !        tmpwsub = sqrt(2*3.141593)*tk(i,j,:)/(dz*adz(:))  ! from Ghan et al. (1997, JGR).
       end if
@@ -772,7 +772,7 @@ do j = 1,ny
 !      tmpwsub = 0.
 ! diagnose tmpwsub from tke.
 ! Notes: tke has to be already prognsotic or diagnostic.
-      tmpwsub = sqrt(tke2(i,j,:)/3.)  ! diagnosed tmpwsub from tke
+      tmpwsub = sqrt(tke2(i,j,:,icrm)/3.)  ! diagnosed tmpwsub from tke
 ! diagnose tmpwsub from tk
 !      tmpwsub = sqrt(2*3.141593)*tk(i,j,:)/(dz*adz(:))  ! from Ghan et al. (1997, JGR).
 #endif

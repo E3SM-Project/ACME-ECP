@@ -1,20 +1,21 @@
 module uvw_mod
-	implicit none
+  implicit none
 
 contains
 
-	subroutine uvw
+  subroutine uvw(ncrms,icrm)
 
-		! update the velocity field
+    ! update the velocity field
 
-		use vars
-		use params
-		implicit none
+    use vars
+    use params
+    implicit none
+    integer, intent(in) :: ncrms,icrm
 
-		u(1:nx,1:ny,1:nzm) = dudt(1:nx,1:ny,1:nzm,nc)
-		v(1:nx,1:ny,1:nzm) = dvdt(1:nx,1:ny,1:nzm,nc)
-		w(1:nx,1:ny,1:nzm) = dwdt(1:nx,1:ny,1:nzm,nc)
+    u(1:nx,1:ny,1:nzm) = dudt(1:nx,1:ny,1:nzm,nc,icrm)
+    v(1:nx,1:ny,1:nzm) = dvdt(1:nx,1:ny,1:nzm,nc,icrm)
+    w(1:nx,1:ny,1:nzm) = dwdt(1:nx,1:ny,1:nzm,nc,icrm)
 
-	end subroutine uvw
+  end subroutine uvw
 
-end	module uvw_mod
+end module uvw_mod
