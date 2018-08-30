@@ -697,7 +697,7 @@ end subroutine esmt_fft_backward
 !       ! ********** compute horizonal average of p **********
 !       do k = kps,kpe-1
 !          do i = ips,ipe-1
-!             p_avg(k) = p_avg(k) + ( p(i,k,j) + pb(i,k,j) ) / (numx*100.)
+!             p_avg(k) = p_avg(k) + ( p(i,k,j,icrm) + pb(i,k,j) ) / (numx*100.)
 !          enddo
 !       enddo
       

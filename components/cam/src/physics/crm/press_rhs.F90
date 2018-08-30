@@ -5,16 +5,12 @@ module press_rhs_mod
 
 contains
 
-  subroutine press_rhs
-
+  subroutine press_rhs(ncrms,icrm)
     !       right-hand-side of the Poisson equation for pressure
-
     use vars
     use params, only: dowallx, dowally
-
     implicit none
-
-
+    integer, intent(in) :: ncrms, icrm
     real *8 dta,rdx,rdy,rdz,btat,ctat,rup,rdn
     integer i,j,k,ic,jc,kc
 
@@ -62,7 +58,7 @@ contains
           jc=j+1
           do i=1,nx
             ic=i+1
-            p(i,j,k)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
+            p(i,j,k,icrm)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
             rdy*(v(i,jc,k)-v(i,j,k))+ &
             (w(i,j,kc)*rup-w(i,j,k)*rdn) )*dta + &
             (rdx*(dudt(ic,j,k,na)-dudt(i,j,k,na))+ &
@@ -74,7 +70,7 @@ contains
             ctat*(rdx*(dudt(ic,j,k,nc)-dudt(i,j,k,nc))+ &
             rdy*(dvdt(i,jc,k,nc)-dvdt(i,j,k,nc))+ &
             (dwdt(i,j,kc,nc)*rup-dwdt(i,j,k,nc)*rdn) )
-            p(i,j,k)=p(i,j,k)*rho(k)
+            p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k)
           end do
         end do
       end do
@@ -91,7 +87,7 @@ contains
         rdn = rhow(k)/rho(k)*rdz
         do i=1,nx
           ic=i+1
-          p(i,j,k)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
+          p(i,j,k,icrm)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
           (w(i,j,kc)*rup-w(i,j,k)*rdn) )*dta + &
           (rdx*(dudt(ic,j,k,na)-dudt(i,j,k,na))+ &
           (dwdt(i,j,kc,na)*rup-dwdt(i,j,k,na)*rdn) ) + &
@@ -99,7 +95,7 @@ contains
           (dwdt(i,j,kc,nb)*rup-dwdt(i,j,k,nb)*rdn) ) + &
           ctat*(rdx*(dudt(ic,j,k,nc)-dudt(i,j,k,nc))+ &
           (dwdt(i,j,kc,nc)*rup-dwdt(i,j,k,nc)*rdn) )
-          p(i,j,k)=p(i,j,k)*rho(k)
+          p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k)
         end do
       end do
 

@@ -261,10 +261,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif /* CLUBB_CRM */
 
   call allocate_params(ncrms)
+  call allocate_vars(ncrms)
   call allocate_grid()
   call allocate_tracers()
   call allocate_sgs()
-  call allocate_vars()
 #ifdef sam1mom
   call allocate_micro_params()
   call allocate_micro()
@@ -456,7 +456,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     tke (1:nx,1:ny,1:nzm) = 0.
     tk  (1:nx,1:ny,1:nzm) = 0.
     tkh (1:nx,1:ny,1:nzm) = 0.
-    p   (1:nx,1:ny,1:nzm) = 0.
+    p   (1:nx,1:ny,1:nzm,icrm) = 0.
 
     CF3D(1:nx,1:ny,1:nzm) = 1.
 
@@ -952,7 +952,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !---------------------------------------------------------
         !       compute rhs of the Poisson equation and solve it for pressure.
-        call pressure()
+        call pressure(ncrms,icrm)
 
         !---------------------------------------------------------
         !       find velocity field at n+1/2 timestep needed for advection of scalars:
@@ -1044,7 +1044,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !-----------------------------------------------------------
         !    Compute diagnostics fields:
-          call diagnose()
+          call diagnose(ncrms,icrm)
 
         !----------------------------------------------------------
         ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
