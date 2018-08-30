@@ -141,15 +141,15 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
         !!! similarly for water vapor if all cloud evaporated/sublimated
         qtot_interface = &
-             0.5*( qv(i,j,kc) + qcl(i,j,kc) + qci(i,j,kc) &
-                 + qv(i,j,kb) + qcl(i,j,kb) + qci(i,j,kb) )
+             0.5*( qv(i,j,kc,icrm) + qcl(i,j,kc) + qci(i,j,kc) &
+                 + qv(i,j,kb,icrm) + qcl(i,j,kb) + qci(i,j,kb) )
 
         qp_interface = 0.5*( qpl(i,j,kc) + qpi(i,j,kc) + qpl(i,j,kb) + qpi(i,j,kb) )
 
         bbb = 1.+epsv*qtot_interface - qp_interface
         buoy_sgs=betdz*( bbb*(t(i,j,kc)-t(i,j,kb)) &
              +epsv*tabs_interface* &
-             (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) &
+             (qv(i,j,kc,icrm)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb,icrm)-qcl(i,j,kb)-qci(i,j,kb)) &
              +(bbb*fac_cond-tabs_interface)*(qpl(i,j,kc)-qpl(i,j,kb)) &
              +(bbb*fac_sub -tabs_interface)*(qpi(i,j,kc)-qpi(i,j,kb)) )
 
@@ -180,8 +180,8 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
           !!! similarly for total water (vapor + cloud) mixing ratio
           qtot_interface = &
-               0.5*( qv(i,j,kc) + qcl(i,j,kc) + qci(i,j,kc) &
-                   + qv(i,j,kb) + qcl(i,j,kb) + qci(i,j,kb) )
+               0.5*( qv(i,j,kc,icrm) + qcl(i,j,kc) + qci(i,j,kc) &
+                   + qv(i,j,kb,icrm) + qcl(i,j,kb) + qci(i,j,kb) )
 
           !!! compute saturation mixing ratio at this temperature
           qsat_check =      omn*qsatw_crm(tabs_interface,presi(k+1)) &
@@ -216,7 +216,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
             buoy_sgs = betdz*(bbb*(t(i,j,kc)-t(i,j,kb)) &
                  +(bbb*lstarn - (1.+lstarn*dqsat)*tabs_interface)* &
-                 (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) & 
+                 (qv(i,j,kc,icrm)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb,icrm)-qcl(i,j,kb)-qci(i,j,kb)) & 
                  + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(i,j,k,icrm) ) * ( qpl(i,j,kc)-qpl(i,j,kb) )  &
                  + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(i,j,k,icrm) ) * ( qpi(i,j,kc)-qpi(i,j,kb) ) )
 

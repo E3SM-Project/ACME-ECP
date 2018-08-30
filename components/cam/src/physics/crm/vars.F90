@@ -21,7 +21,7 @@ module vars
 
   real(crm_rknd), allocatable :: p       (:,:,:,:)     ! perturbation pressure (from Poison eq)
   real(crm_rknd), allocatable :: tabs    (:,:,:,:)                 ! temperature
-  real(crm_rknd), allocatable :: qv      (:,:,:)                ! water vapor
+  real(crm_rknd), allocatable :: qv      (:,:,:,:)                ! water vapor
   real(crm_rknd), allocatable :: qcl     (:,:,:)                ! liquid water  (condensate)
   real(crm_rknd), allocatable :: qpl     (:,:,:)                ! liquid water  (precipitation)
   real(crm_rknd), allocatable :: qci     (:,:,:)                ! ice water  (condensate)
@@ -90,9 +90,9 @@ module vars
   ! reference vertical profiles:
 
   real(crm_rknd), allocatable :: prespot(:)  ! (1000./pres)**R/cp
-  real(crm_rknd), allocatable :: rho    (:)	  ! air density at pressure levels,kg/m3
+  real(crm_rknd), allocatable :: rho    (:)   ! air density at pressure levels,kg/m3
   real(crm_rknd), allocatable :: rhow   (:)   ! air density at vertical velocity levels,kg/m3
-  real(crm_rknd), allocatable :: bet    (:)	  ! = ggr/tv0
+  real(crm_rknd), allocatable :: bet    (:)   ! = ggr/tv0
   real(crm_rknd), allocatable :: gamaz  (:) ! ggr/cp*z
   real(crm_rknd), allocatable :: wsub   (:)   ! Large-scale subsidence velocity,m/s
   real(crm_rknd), allocatable :: qtend  (:) ! Large-scale tendency for total water
@@ -103,13 +103,13 @@ module vars
   !---------------------------------------------------------------------
   ! Large-scale and surface forcing:
 
-  integer nlsf	! number of large-scale forcing profiles
-  integer nrfc	! number of radiative forcing profiles
-  integer nsfc	! number of surface forcing profiles
-  integer nsnd	! number of observed soundings
-  integer nzlsf	! number of large-scale forcing profiles
-  integer nzrfc	! number of radiative forcing profiles
-  integer nzsnd	! number of observed soundings
+  integer nlsf  ! number of large-scale forcing profiles
+  integer nrfc  ! number of radiative forcing profiles
+  integer nsfc  ! number of surface forcing profiles
+  integer nsnd  ! number of observed soundings
+  integer nzlsf ! number of large-scale forcing profiles
+  integer nzrfc ! number of radiative forcing profiles
+  integer nzsnd ! number of observed soundings
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !! MRN: Already previously allocated. I'm leaving these alone
@@ -143,11 +143,11 @@ module vars
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
   !
-  real(crm_rknd), allocatable :: sstxy    (:,:)	!  surface temperature xy-distribution
+  real(crm_rknd), allocatable :: sstxy    (:,:) !  surface temperature xy-distribution
   real(crm_rknd), allocatable :: fcory    (:)      !  Coriolis parameter xy-distribution
   real(crm_rknd), allocatable :: fcorzy   (:)      !  z-Coriolis parameter xy-distribution
-  real(crm_rknd), allocatable :: latitude (:,:)	     ! latitude (degrees)
-  real(crm_rknd), allocatable :: longitude(:,:)	     ! longitude(degrees)
+  real(crm_rknd), allocatable :: latitude (:,:)      ! latitude (degrees)
+  real(crm_rknd), allocatable :: longitude(:,:)      ! longitude(degrees)
   real(crm_rknd), allocatable :: prec_xy  (:,:) ! mean precip. rate for outout
   real(crm_rknd), allocatable :: shf_xy   (:,:) ! mean precip. rate for outout
   real(crm_rknd), allocatable :: lhf_xy   (:,:) ! mean precip. rate for outout
@@ -172,7 +172,7 @@ module vars
   real(crm_rknd), allocatable :: qocean_xy(:,:) ! ocean cooling in W/m2
 
   !----------------------------------------------------------------------
-  !	Vertical profiles of quantities sampled for statitistics purposes:
+  ! Vertical profiles of quantities sampled for statitistics purposes:
 
   real(crm_rknd) :: w_max
   real(crm_rknd) :: u_max
@@ -378,7 +378,7 @@ contains
     allocate( t   (dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm)  )
     allocate( p       (0:nx, (1-YES3D):ny, nzm, ncrms)      )
     allocate( tabs    (nx, ny, nzm, ncrms)                  )
-    allocate( qv      (nx, ny, nzm)                 )
+    allocate( qv      (nx, ny, nzm, ncrms)                 )
     allocate( qcl     (nx, ny, nzm)                 )
     allocate( qpl     (nx, ny, nzm)                 )
     allocate( qci     (nx, ny, nzm)                 )
@@ -419,20 +419,20 @@ contains
     allocate( qp0  (nzm) )
     allocate( qn0  (nzm) )
     allocate( prespot(nzm)   )
-    allocate( rho    (nzm)	   )
+    allocate( rho    (nzm)     )
     allocate( rhow   (nz )    )
-    allocate( bet    (nzm)	   )
+    allocate( bet    (nzm)     )
     allocate( gamaz  (nzm)  )
     allocate( wsub   (nz )    )
     allocate( qtend  (nzm)  )
     allocate( ttend  (nzm)  )
     allocate( utend  (nzm)  )
     allocate( vtend  (nzm)  )
-    allocate( sstxy    (0:nx,(1-YES3D):ny)	 )
+    allocate( sstxy    (0:nx,(1-YES3D):ny)   )
     allocate( fcory    (0:ny)       )
     allocate( fcorzy   (ny)       )
-    allocate( latitude (nx,ny)	      )
-    allocate( longitude(nx,ny)	      )
+    allocate( latitude (nx,ny)        )
+    allocate( longitude(nx,ny)        )
     allocate( prec_xy  (nx,ny)  )
     allocate( shf_xy   (nx,ny)  )
     allocate( lhf_xy   (nx,ny)  )

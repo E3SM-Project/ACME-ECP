@@ -550,9 +550,9 @@ subroutine micro_init(ncrms,icrm)
 #endif  ! CRM
 
 #ifdef CLUBB_CRM
-     if(docloud.or.doclubb)  call micro_diagnose()   ! leave this line here
+     if(docloud.or.doclubb)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 #else
-     if(docloud) call micro_diagnose()   ! leave this here
+     if(docloud) call micro_diagnose(ncrms,icrm)   ! leave this here
 #endif
 
 
@@ -577,12 +577,12 @@ fluxbmk(:,:,:) = 0. ! initialize all fluxes at surface to zero
 fluxtmk(:,:,:) = 0. ! initialize all fluxes at top of domain to zero
 #ifdef CLUBB_CRM
 if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
-  fluxbmk(:,:,index_water_vapor) = 0.0 ! surface qv (latent heat) flux
+  fluxbmk(:,:,index_water_vapor) = 0.0 ! surface qv (latent heat,icrm) flux
 else
-  fluxbmk(:,:,index_water_vapor) = fluxbq(:,:) ! surface qv (latent heat) flux
+  fluxbmk(:,:,index_water_vapor) = fluxbq(:,:) ! surface qv (latent heat,icrm) flux
 end if
 #else
-fluxbmk(:,:,index_water_vapor) = fluxbq(:,:) ! surface qv (latent heat) flux
+fluxbmk(:,:,index_water_vapor) = fluxbq(:,:) ! surface qv (latent heat,icrm) flux
 #endif
 fluxtmk(:,:,index_water_vapor) = fluxtq(:,:) ! top of domain qv flux
 
@@ -1246,7 +1246,7 @@ end if
 !!$if(doprecip) total_water_prec = total_water_prec - total_water()
 
 #ifdef CLUBB_CRM
-if (docloud.or.doclubb)  call micro_diagnose()   ! leave this line here
+if (docloud.or.doclubb)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 if(doclubb) then
    CF3D(1:nx, 1:ny, 1:nzm) = cloud_frac(1:nx, 1:ny, 2:nzm+1)
    if(doicemicro) then
@@ -1272,7 +1272,7 @@ if(doclubb) then
    endif
 endif
 #else
-if (docloud)  call micro_diagnose()   ! leave this line here
+if (docloud)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 #endif
 
 ! call t_stopf ('micro_proc')
@@ -1285,20 +1285,21 @@ end subroutine micro_proc
 !  This is the pace where the microphysics field that SAM actually cares about
 !  are diagnosed.
 
-subroutine micro_diagnose()
+subroutine micro_diagnose(ncrms,icrm)
 
 use vars
 #ifdef CLUBB_CRM
 use error_code, only: clubb_at_least_debug_level ! Procedure
 use constants_clubb, only: fstderr, zero_threshold
-implicit none
 #endif
+implicit none
+integer, intent(in) :: ncrms,icrm
 
 real(crm_rknd) omn, omp
 integer i,j,k
 
 ! water vapor = total water - cloud liquid
-qv(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqv) &
+qv(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqv) &
      - cloudliq(1:nx,1:ny,1:nzm)
 
 #ifdef CLUBB_CRM
@@ -1308,9 +1309,9 @@ do i = 1, nx
       ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
       ! static energy should be conserved, so updating temperature is not
       ! needed here. -dschanen 31 August 2011
-      if ( qv(i,j,k) < zero_threshold ) then
-        cloudliq(i,j,k) = cloudliq(i,j,k) + qv(i,j,k)
-        qv(i,j,k) = zero_threshold
+      if ( qv(i,j,k,icrm) < zero_threshold ) then
+        cloudliq(i,j,k) = cloudliq(i,j,k) + qv(i,j,k,icrm)
+        qv(i,j,k,icrm) = zero_threshold
         if ( cloudliq(i,j,k) < zero_threshold ) then
           if ( clubb_at_least_debug_level( 1 ) ) then
             write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &
@@ -1359,7 +1360,7 @@ subroutine micro_update()
   ! Update the dynamical core variables (e.g. qv, qcl) with the value in
   ! micro_field.  Diffusion, advection, and other processes are applied to
   ! micro_field but not the variables in vars.f90
-  call micro_diagnose()
+  call micro_diagnose(ncrms,icrm)
 
   return
 end subroutine micro_update

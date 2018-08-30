@@ -47,11 +47,11 @@ contains
           p0(k)=p0(k)+p(i,j,k,icrm)
           t0(k)=t0(k)+t(i,j,k)
           tabs0(k)=tabs0(k)+tabs(i,j,k,icrm)
-          q0(k)=q0(k)+qv(i,j,k)+qcl(i,j,k)+qci(i,j,k)
+          q0(k)=q0(k)+qv(i,j,k,icrm)+qcl(i,j,k)+qci(i,j,k)
           qn0(k) = qn0(k) + qcl(i,j,k) + qci(i,j,k)
           qp0(k) = qp0(k) + qpl(i,j,k) + qpi(i,j,k)
 
-          pw_xy(i,j) = pw_xy(i,j)+qv(i,j,k)*coef1
+          pw_xy(i,j) = pw_xy(i,j)+qv(i,j,k,icrm)*coef1
           cw_xy(i,j) = cw_xy(i,j)+qcl(i,j,k)*coef1
           iw_xy(i,j) = iw_xy(i,j)+qci(i,j,k)*coef1
 

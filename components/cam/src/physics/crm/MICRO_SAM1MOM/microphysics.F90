@@ -317,7 +317,7 @@ CONTAINS
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          qv(i,j,k) = q(i,j,k) - qn(i,j,k)
+          qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k)
           omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
           qcl(i,j,k) = qn(i,j,k)*omn
           qci(i,j,k) = qn(i,j,k)*(1.-omn)
@@ -395,13 +395,13 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(i,j,k) = q(i,j,k) - qn(i,j,k)
+          qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011
-          if ( qv(i,j,k) < zero_threshold ) then
-            qn(i,j,k) = qn(i,j,k) + qv(i,j,k)
-            qv(i,j,k) = zero_threshold
+          if ( qv(i,j,k,icrm) < zero_threshold ) then
+            qn(i,j,k) = qn(i,j,k) + qv(i,j,k,icrm)
+            qv(i,j,k,icrm) = zero_threshold
             if ( qn(i,j,k) < zero_threshold ) then
               if ( clubb_at_least_debug_level( 1 ) ) then
                 write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &

@@ -22,10 +22,10 @@ contains
 
           dwdt(i,j,k,na)=dwdt(i,j,k,na) +  &
           bet(k)*betu* &
-          ( tabs0(k)*(epsv*(qv(i,j,k)-qv0(k))-(qcl(i,j,k)+qci(i,j,k)-qn0(k)+qpl(i,j,k)+qpi(i,j,k)-qp0(k))) &
+          ( tabs0(k)*(epsv*(qv(i,j,k,icrm)-qv0(k))-(qcl(i,j,k)+qci(i,j,k)-qn0(k)+qpl(i,j,k)+qpi(i,j,k)-qp0(k))) &
           +(tabs(i,j,k,icrm)-tabs0(k))*(1.+epsv*qv0(k)-qn0(k)-qp0(k)) ) &
           + bet(kb)*betd* &
-          ( tabs0(kb)*(epsv*(qv(i,j,kb)-qv0(kb))-(qcl(i,j,kb)+qci(i,j,kb)-qn0(kb)+qpl(i,j,kb)+qpi(i,j,kb)-qp0(kb))) &
+          ( tabs0(kb)*(epsv*(qv(i,j,kb,icrm)-qv0(kb))-(qcl(i,j,kb)+qci(i,j,kb)-qn0(kb)+qpl(i,j,kb)+qpi(i,j,kb)-qp0(kb))) &
           +(tabs(i,j,kb,icrm)-tabs0(kb))*(1.+epsv*qv0(kb)-qn0(kb)-qp0(kb)) )
 
         end do ! i

@@ -4,7 +4,7 @@ module damping_mod
 
 contains
 
-  subroutine damping
+  subroutine damping(ncrms,icrm)
 
     !  "Spange"-layer damping at the domain top region
 
@@ -12,7 +12,7 @@ contains
     use microphysics, only: micro_field, index_water_vapor
     use params, only: crm_rknd
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     real(crm_rknd) tau_min	! minimum damping time-scale (at the top)
     real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
@@ -63,10 +63,10 @@ contains
           ! In the old version (SAM7.5?) of SAM, water vapor is the prognostic variable for the two-moment microphyscs.
           ! So the following damping approach can lead to the negative water vapor.
           !      micro_field(i,j,k,index_water_vapor)= micro_field(i,j,k,index_water_vapor)- &
-          !                                    dtn*(qv(i,j,k)+qcl(i,j,k)+qci(i,j,k)-q0(k)) * tau(k)
+          !                                    dtn*(qv(i,j,k,icrm)+qcl(i,j,k)+qci(i,j,k)-q0(k)) * tau(k)
           ! a simple fix (Minghuai Wang, 2011-08):
           micro_field(i,j,k,index_water_vapor)= micro_field(i,j,k,index_water_vapor)- &
-          dtn*(qv(i,j,k)-qv0(k)) * tau(k)
+          dtn*(qv(i,j,k,icrm)-qv0(k)) * tau(k)
         end do! i
       end do! j
     end do ! k

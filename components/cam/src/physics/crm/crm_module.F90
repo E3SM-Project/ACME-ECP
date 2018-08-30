@@ -490,8 +490,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           t0(k)=t0(k)+t(i,j,k)
           t00(k)=t00(k)+t(i,j,k)+fac_cond*qpl(i,j,k)+fac_sub*qpi(i,j,k)
           tabs0(k)=tabs0(k)+tabs(i,j,k,icrm)
-          q0(k)=q0(k)+qv(i,j,k)+qcl(i,j,k)+qci(i,j,k)
-          qv0(k) = qv0(k) + qv(i,j,k)
+          q0(k)=q0(k)+qv(i,j,k,icrm)+qcl(i,j,k)+qci(i,j,k)
+          qv0(k) = qv0(k) + qv(i,j,k,icrm)
           qn0(k) = qn0(k) + qcl(i,j,k) + qci(i,j,k)
           qp0(k) = qp0(k) + qpl(i,j,k) + qpi(i,j,k)
           tke0(k)=tke0(k)+tke(i,j,k)
@@ -845,7 +845,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !----------------------------------------------------------
         !   	suppress turbulence near the upper boundary (spange):
-        if (dodamping) call damping()
+        if (dodamping) call damping(ncrms,icrm)
 
         !---------------------------------------------------------
         !   Ice fall-out
@@ -894,7 +894,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           ! - nielsenb UWM 4 Jun 2010
           do i = 1,nx
             do j = 1,ny
-              rtm_column = qv(i,j,1:nzm) + qcl(i,j,1:nzm)
+              rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm)
               rtm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                            rtm_column, gr%invrs_dzt(2:nz) )
 
@@ -998,7 +998,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             do j = 1,ny
               rtm_flux_top = rho_ds_zm(nz) * wprtp(i,j,nz)
               rtm_flux_sfc = rho_ds_zm(1) * fluxbq(i,j)
-              rtm_column = qv(i,j,1:nzm) + qcl(i,j,1:nzm)
+              rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm)
               rtm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                             rtm_column, gr%invrs_dzt(2:nz) )
 
@@ -1143,7 +1143,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             endif
 
 !             crm_rad%temperature  (icrm,i,j,k) = crm_rad%temperature  (icrm,i,j,k)+tabs(i,j,k,icrm)
-!             crm_rad%qv (icrm,i,j,k) = crm_rad%qv (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k))
+!             crm_rad%qv (icrm,i,j,k) = crm_rad%qv (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k,icrm))
 !             crm_rad%qc (icrm,i,j,k) = crm_rad%qc (icrm,i,j,k)+qcl(i,j,k)
 !             crm_rad%qi (icrm,i,j,k) = crm_rad%qi (icrm,i,j,k)+qci(i,j,k)
 !             crm_rad%cld(icrm,i,j,k) = crm_rad%cld(icrm,i,j,k) +  CF3D(i,j,k)
@@ -1163,7 +1163,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
               crm_rad%temperature  (icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
-              crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k))
+              crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
               crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k)
               crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k)
               crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k)
@@ -1291,7 +1291,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           colprec = colprec +(qpl(i,j,k)+qpi(i,j,k))*crm_input%pdel(icrm,plev-k+1)
           colprecs= colprecs+qpi(i,j,k)*crm_input%pdel(icrm,plev-k+1)
           tln(l)  = tln(l)  +tabs(i,j,k,icrm)
-          qln(l)  = qln(l)  +qv(i,j,k)
+          qln(l)  = qln(l)  +qv(i,j,k,icrm)
           qccln(l)= qccln(l)+qcl(i,j,k)
           qiiln(l)= qiiln(l)+qci(i,j,k)
           uln(l)  = uln(l)  +u(i,j,k)
