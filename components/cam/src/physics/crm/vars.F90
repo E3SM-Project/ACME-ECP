@@ -81,7 +81,7 @@ module vars
   ! reference vertical profiles:
   real(crm_rknd), allocatable :: prespot(:,:)  ! (1000./pres)**R/cp
   real(crm_rknd), allocatable :: rho    (:,:)   ! air density at pressure levels,kg/m3
-  real(crm_rknd), allocatable :: rhow   (:)   ! air density at vertical velocity levels,kg/m3
+  real(crm_rknd), allocatable :: rhow   (:,:)   ! air density at vertical velocity levels,kg/m3
   real(crm_rknd), allocatable :: bet    (:)   ! = ggr/tv0
   real(crm_rknd), allocatable :: gamaz  (:) ! ggr/cp*z
   real(crm_rknd), allocatable :: wsub   (:)   ! Large-scale subsidence velocity,m/s
@@ -409,7 +409,7 @@ contains
     allocate( qn0  (nzm,ncrms) )
     allocate( prespot(nzm,ncrms)   )
     allocate( rho    (nzm,ncrms)     )
-    allocate( rhow   (nz )    )
+    allocate( rhow   (nz ,ncrms)    )
     allocate( bet    (nzm)     )
     allocate( gamaz  (nzm)  )
     allocate( wsub   (nz )    )

@@ -19,7 +19,7 @@ contains
     real(crm_rknd), dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm), intent(inout) :: v
     real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
     real(crm_rknd), dimension(nzm,ncrms), intent(in) :: rho
-    real(crm_rknd), dimension(nz), intent(in) :: rhow
+    real(crm_rknd), dimension(nz,ncrms), intent(in) :: rhow
     real(crm_rknd), dimension(nz), intent(out) :: flux
 
     ! local
@@ -108,7 +108,7 @@ contains
       cw(:,:,nz) = 0.   ! non-mass weighted and adz adjusted
       cw(:,:,1) = 0.
       do k = 2, nzm
-        irhow(k) = 1. / ( rhow(k) * adz(k) )  ! adz adjustment here
+        irhow(k) = 1. / ( rhow(k,icrm) * adz(k) )  ! adz adjustment here
         do j = -3, nyp4
           do i = -3, nxp4
             cw(i,j,k) = w(i,j,k) * irhow(k)

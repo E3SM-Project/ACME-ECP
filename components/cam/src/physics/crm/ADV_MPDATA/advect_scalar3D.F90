@@ -17,7 +17,7 @@ contains
     real(crm_rknd) v(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm)
     real(crm_rknd) w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
     real(crm_rknd) rho(nzm,ncrms)
-    real(crm_rknd) rhow(nz)
+    real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz)
 
     real(crm_rknd) mx (0:nxp1,0:nyp1,nzm)
@@ -195,7 +195,7 @@ contains
 
     do k=1,nzm
       kb=max(1,k-1)
-      irhow(k)=1./(rhow(k)*adz(k))
+      irhow(k)=1./(rhow(k,icrm)*adz(k))
       do j=0,nyp1
         jb=j-1
         jc=j+1

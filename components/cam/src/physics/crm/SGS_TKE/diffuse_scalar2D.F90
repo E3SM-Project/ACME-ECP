@@ -17,7 +17,7 @@ contains
     real(crm_rknd) fluxb(nx,ny)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny)   ! top flux
     real(crm_rknd) rho(nzm,ncrms)
-    real(crm_rknd) rhow(nz)
+    real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz)
 
     ! local
@@ -79,8 +79,8 @@ contains
     flux(1) = 0.
     tmp=1./adzw(nz)
     do i=1,nx
-      flx(i,j,0)=fluxb(i,j)*rdz*rhow(1)
-      flx(i,j,nzm)=fluxt(i,j)*rdz*tmp*rhow(nz)
+      flx(i,j,0)=fluxb(i,j)*rdz*rhow(1,icrm)
+      flx(i,j,nzm)=fluxt(i,j)*rdz*tmp*rhow(nz,icrm)
       flux(1) = flux(1) + flx(i,j,0)
     end do
 
@@ -88,7 +88,7 @@ contains
     do k=1,nzm-1
       kc=k+1
       flux(kc)=0.
-      rhoi = rhow(kc)/adzw(kc)
+      rhoi = rhow(kc,icrm)/adzw(kc)
       rdz5=0.5*rdz2 * grdf_z(k)
       do i=1,nx
         tkz=rdz5*(tkh(i,j,k)+tkh(i,j,kc))

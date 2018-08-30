@@ -364,20 +364,20 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       rho(k,icrm) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
     end do
     do k=2,nzm
-    ! rhow(k) = 0.5*(rho(k,icrm)+rho(k-1,icrm))
+    ! rhow(k,icrm) = 0.5*(rho(k,icrm)+rho(k-1,icrm))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with crm_input%pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(k) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
+      rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
     end do
-    rhow(1) = 2.*rhow(2) - rhow(3)
+    rhow(1,icrm) = 2.*rhow(2,icrm) - rhow(3,icrm)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
-    if (  2.*rhow(nzm) - rhow(nzm-1) > 0. ) then
-       rhow(nz)= 2.*rhow(nzm) - rhow(nzm-1)
+    if (  2.*rhow(nzm,icrm) - rhow(nzm-1,icrm) > 0. ) then
+       rhow(nz,icrm)= 2.*rhow(nzm,icrm) - rhow(nzm-1,icrm)
     else
-       rhow(nz)= sqrt( rhow(nzm) )
+       rhow(nz,icrm)= sqrt( rhow(nzm,icrm) )
     endif
 #else
-    rhow(nz)= 2.*rhow(nzm) - rhow(nzm-1)
+    rhow(nz,icrm)= 2.*rhow(nzm,icrm) - rhow(nzm-1,icrm)
 #endif /*CLUBB_CRM*/
     colprec=0
     colprecs=0
@@ -547,10 +547,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(:, :,icrm) = crm_input%fluxu00(icrm)/rhow(1)
-      fluxbv(:, :,icrm) = crm_input%fluxv00(icrm)/rhow(1)
-      fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1)
-      fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1)
+      fluxbu(:, :,icrm) = crm_input%fluxu00(icrm)/rhow(1,icrm)
+      fluxbv(:, :,icrm) = crm_input%fluxv00(icrm)/rhow(1,icrm)
+      fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1,icrm)
+      fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1,icrm)
     else
       fluxbu(:, :,icrm) = 0.
       fluxbv(:, :,icrm) = 0.
@@ -1086,15 +1086,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx))
               if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k)*w(i,j,k)
+                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k,icrm)*w(i,j,k)
               endif
             else if (w(i,j,k).lt.0.) then
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx))
               if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(i,j,k)
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k)
               else if(qpl(i,j,kx,icrm)+qpi(i,j,kx,icrm).gt.1.0e-4) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(i,j,k)
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k)
               endif
             endif
           enddo
@@ -1504,11 +1504,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       ! time step.
       !---mhwang
 
-      tmp1 = dz/rhow(k)
+      tmp1 = dz/rhow(k,icrm)
       tmp2 = tmp1/dtn                        ! dtn is calculated inside of the icyc loop.
                                              ! It seems wrong to use it here ???? +++mhwang
-      mkwsb (k,:) = mkwsb (k,:) * tmp1*rhow(k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
-      mkwle (k,:) = mkwle (k,:) * tmp2*rhow(k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
+      mkwsb (k,:) = mkwsb (k,:) * tmp1*rhow(k,icrm) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
+      mkwle (k,:) = mkwle (k,:) * tmp2*rhow(k,icrm) * factor_xy/nstop     !kg/m3   --> kg/m2/s
       mkadv (k,:) = mkadv (k,:) * factor_xy*icrm_run_time     ! kg/kg  --> kg/kg/s
       mkdiff(k,:) = mkdiff(k,:) * factor_xy*icrm_run_time   ! kg/kg  --> kg/kg/s
 

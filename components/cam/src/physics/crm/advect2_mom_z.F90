@@ -34,7 +34,7 @@ contains
 
       do k=2,nzm
         kb = k-1
-        rhoi = dz25 * rhow(k)
+        rhoi = dz25 * rhow(k,icrm)
         uwle(k) = 0.
         vwle(k) = 0.
         do j=1,ny
@@ -51,7 +51,7 @@ contains
 
       do k=2,nzm
         kb = k-1
-        rhoi = dz25 * rhow(k)
+        rhoi = dz25 * rhow(k,icrm)
         uwle(k) = 0.
         vwle(k) = 0.
         do j=1,ny
@@ -75,14 +75,14 @@ contains
         do i=1,nx
           dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fuz(i,j,kc)-fuz(i,j,k))*rhoi
           dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fvz(i,j,kc)-fvz(i,j,k))*rhoi
-          fwz(i,j,k)=dz25*(w(i,j,kc)*rhow(kc)+w(i,j,k)*rhow(k))*(w(i,j,kc)+w(i,j,k))
+          fwz(i,j,k)=dz25*(w(i,j,kc)*rhow(kc,icrm)+w(i,j,k)*rhow(k,icrm))*(w(i,j,kc)+w(i,j,k))
         end do
       end do
     end do
 
     do k=2,nzm
       kb=k-1
-      rhoi = 1./(rhow(k)*adzw(k))
+      rhoi = 1./(rhow(k,icrm)*adzw(k))
       do j=1,ny
         do i=1,nx
           dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fwz(i,j,k)-fwz(i,j,kb))*rhoi

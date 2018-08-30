@@ -18,7 +18,7 @@ contains
     real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(inout) :: u
     real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
     real(crm_rknd), dimension(nzm,ncrms), intent(in) :: rho
-    real(crm_rknd), dimension(nz), intent(in) :: rhow
+    real(crm_rknd), dimension(nz,ncrms), intent(in) :: rhow
     real(crm_rknd), dimension(nz), intent(out) :: flux
 
     ! local
@@ -72,7 +72,7 @@ contains
       cw(:,:,nz) = 0.
       cw(:,:,1) = 0.
       do k = 2, nzm
-        irhow(k) = 1. / ( rhow(k) * adz(k) )
+        irhow(k) = 1. / ( rhow(k,icrm) * adz(k) )
         do i = -3, nxp4
           cw(i,j,k) = w(i,j,k) * irhow(k)
         enddo

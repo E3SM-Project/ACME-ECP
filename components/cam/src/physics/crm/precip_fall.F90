@@ -92,7 +92,7 @@ contains
 
           wp(k)=rhofac(k)*term_vel(ncrms,icrm,i,j,k,ind)
           prec_cfl = max(prec_cfl,wp(k)*iwmax(k)) ! Keep column maximum CFL
-          wp(k) = -wp(k)*rhow(k)*dtn/dz
+          wp(k) = -wp(k)*rhow(k,icrm)*dtn/dz
 
         end do  ! k
 
@@ -208,7 +208,7 @@ contains
             do k=1,nzm
               wp(k) = rhofac(k)*term_vel(ncrms,icrm,i,j,k,ind)
               ! Decrease precipitation velocity by factor of nprec
-              wp(k) = -wp(k)*rhow(k)*dtn/dz/real(nprec,crm_rknd)
+              wp(k) = -wp(k)*rhow(k,icrm)*dtn/dz/real(nprec,crm_rknd)
               ! Note: Don't bother checking CFL condition at each
               ! substep since it's unlikely that the CFL will
               ! increase very much between substeps when using

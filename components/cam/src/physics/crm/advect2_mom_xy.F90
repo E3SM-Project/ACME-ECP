@@ -28,7 +28,7 @@ contains
       do k = 1,nzm
         kc= k+1
         kcu =min(kc, nzm)
-        irho = 1./(rhow(kc)*adzw(kc))
+        irho = 1./(rhow(kc,icrm)*adzw(kc))
 
         do j = 1, ny
           jb = j-1
@@ -76,7 +76,7 @@ contains
       do k = 1,nzm
         kc= k+1
         kcu =min(kc, nzm)
-        irho = 1./(rhow(kc)*adzw(kc))
+        irho = 1./(rhow(kc,icrm)*adzw(kc))
 
         do i = 0, nx
           ic = i+1

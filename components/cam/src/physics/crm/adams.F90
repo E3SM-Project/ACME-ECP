@@ -19,7 +19,7 @@ contains
     do k=1,nzm
       rhox = rho(k,icrm)*dtdx
       rhoy = rho(k,icrm)*dtdy
-      rhoz = rhow(k)*dtdz
+      rhoz = rhow(k,icrm)*dtdz
       do j=1,ny
         do i=1,nx
 
