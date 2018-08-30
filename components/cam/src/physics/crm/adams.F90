@@ -34,7 +34,7 @@ contains
 
           u(i,j,k) = 0.5*(u(i,j,k)+dudt(i,j,k,nc,icrm)) * rhox
           v(i,j,k) = 0.5*(v(i,j,k)+dvdt(i,j,k,nc,icrm)) * rhoy
-          misc(i,j,k) = 0.5*(w(i,j,k)+dwdt(i,j,k,nc,icrm))
+          misc(i,j,k,icrm) = 0.5*(w(i,j,k)+dwdt(i,j,k,nc,icrm))
           w(i,j,k) = 0.5*(w(i,j,k)+dwdt(i,j,k,nc,icrm)) * rhoz
 
 

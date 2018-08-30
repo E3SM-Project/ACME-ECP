@@ -566,12 +566,14 @@ end subroutine micro_init
 ! Obviously, for liquid/ice water variables those fluxes are zero. They are not zero
 ! only for water vapor variable and, possibly, for CCN and IN if you have those.
 
-subroutine micro_flux()
+subroutine micro_flux(ncrms,icrm)
 
 use vars, only: fluxbq, fluxtq
 #ifdef CLUBB_CRM
 use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
 #endif
+implicit none
+integer, intent(in) :: ncrms,icrm
 
 fluxbmk(:,:,:) = 0. ! initialize all fluxes at surface to zero
 fluxtmk(:,:,:) = 0. ! initialize all fluxes at top of domain to zero
@@ -579,12 +581,12 @@ fluxtmk(:,:,:) = 0. ! initialize all fluxes at top of domain to zero
 if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
   fluxbmk(:,:,index_water_vapor) = 0.0 ! surface qv (latent heat,icrm) flux
 else
-  fluxbmk(:,:,index_water_vapor) = fluxbq(:,:) ! surface qv (latent heat,icrm) flux
+  fluxbmk(:,:,index_water_vapor) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
 end if
 #else
-fluxbmk(:,:,index_water_vapor) = fluxbq(:,:) ! surface qv (latent heat,icrm) flux
+fluxbmk(:,:,index_water_vapor) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
 #endif
-fluxtmk(:,:,index_water_vapor) = fluxtq(:,:) ! top of domain qv flux
+fluxtmk(:,:,index_water_vapor) = fluxtq(:,:,icrm) ! top of domain qv flux
 
 end subroutine micro_flux
 
@@ -674,7 +676,7 @@ real(8) :: tmp_total, tmptot
 if(mod(nstep-1,nstatis).eq.0.and.icycle.eq.1) then
    do j=1,ny
       do i=1,nx
-         precsfc(i,j)=0.    ! in SPCAM, done in crm.F90
+         precsfc(i,j,icrm)=0.    ! in SPCAM, done in crm.F90
       end do
    end do
    do k=1,nzm
@@ -1015,13 +1017,13 @@ do j = 1,ny
          total_water_prec = total_water_prec + sfcpcp
 
          ! take care of surface precipitation
-         precsfc(i,j) = precsfc(i,j) + sfcpcp/dz
+         precsfc(i,j,icrm) = precsfc(i,j,icrm) + sfcpcp/dz
          prec_xy(i,j) = prec_xy(i,j) + sfcpcp/dtn/dz
 !+++mhwang
          sfcpcp2D(i,j) = sfcpcp/dtn/dz
 !---mhwang
 #ifdef CRM
-         precssfc(i,j) = precssfc(i,j) + sfcicepcp/dz    ! the corect unit of precssfc should be mm/dz +++mhwang
+         precssfc(i,j,icrm) = precssfc(i,j,icrm) + sfcicepcp/dz    ! the corect unit of precssfc should be mm/dz +++mhwang
 #endif
          ! update rain
          micro_field(i,j,:,iqr) = tmpqr(:)
@@ -1448,7 +1450,7 @@ return ! do not need this routine -- sedimentation done in m2005micro.
 !!$ if(mod(nstep-1,nstatis).eq.0.and.icycle.eq.1) then
 !!$   do j=1,ny
 !!$    do i=1,nx
-!!$     precsfc(i,j)=0.
+!!$     precsfc(i,j,icrm)=0.
 !!$    end do
 !!$   end do
 !!$   do k=1,nzm

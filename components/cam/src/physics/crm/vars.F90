@@ -39,21 +39,21 @@ module vars
   !----------------------------------------------------------------
   ! Temporary storage array:
 
-  real(crm_rknd), allocatable :: misc(:,:,:)
+  real(crm_rknd), allocatable :: misc(:,:,:,:)
   !------------------------------------------------------------------
   ! fluxes at the top and bottom of the domain:
 
-  real(crm_rknd), allocatable :: fluxbu  (:,:)
-  real(crm_rknd), allocatable :: fluxbv  (:,:)
-  real(crm_rknd), allocatable :: fluxbt  (:,:)
-  real(crm_rknd), allocatable :: fluxbq  (:,:)
-  real(crm_rknd), allocatable :: fluxtu  (:,:)
-  real(crm_rknd), allocatable :: fluxtv  (:,:)
-  real(crm_rknd), allocatable :: fluxtt  (:,:)
-  real(crm_rknd), allocatable :: fluxtq  (:,:)
-  real(crm_rknd), allocatable :: fzero   (:,:)
-  real(crm_rknd), allocatable :: precsfc (:,:) ! surface precip. rate
-  real(crm_rknd), allocatable :: precssfc(:,:) ! surface ice precip. rate
+  real(crm_rknd), allocatable :: fluxbu  (:,:,:)
+  real(crm_rknd), allocatable :: fluxbv  (:,:,:)
+  real(crm_rknd), allocatable :: fluxbt  (:,:,:)
+  real(crm_rknd), allocatable :: fluxbq  (:,:,:)
+  real(crm_rknd), allocatable :: fluxtu  (:,:,:)
+  real(crm_rknd), allocatable :: fluxtv  (:,:,:)
+  real(crm_rknd), allocatable :: fluxtt  (:,:,:)
+  real(crm_rknd), allocatable :: fluxtq  (:,:,:)
+  real(crm_rknd), allocatable :: fzero   (:,:,:)
+  real(crm_rknd), allocatable :: precsfc (:,:,:) ! surface precip. rate
+  real(crm_rknd), allocatable :: precssfc(:,:,:) ! surface ice precip. rate
 
   !-----------------------------------------------------------------
   ! profiles
@@ -388,18 +388,18 @@ contains
     allocate( dudt   (nxp1, ny, nzm, 3, ncrms) )
     allocate( dvdt   (nx, nyp1, nzm, 3, ncrms) )
     allocate( dwdt   (nx, ny  , nz,  3, ncrms) )
-    allocate( misc(nx, ny, nz) )
-    allocate( fluxbu  (nx,ny) )
-    allocate( fluxbv  (nx,ny) )
-    allocate( fluxbt  (nx,ny) )
-    allocate( fluxbq  (nx,ny) )
-    allocate( fluxtu  (nx,ny) )
-    allocate( fluxtv  (nx,ny) )
-    allocate( fluxtt  (nx,ny) )
-    allocate( fluxtq  (nx,ny) )
-    allocate( fzero   (nx,ny) )
-    allocate( precsfc (nx,ny)  )
-    allocate( precssfc(nx,ny)  )
+    allocate( misc(nx, ny, nz,ncrms) )
+    allocate( fluxbu  (nx,ny,ncrms) )
+    allocate( fluxbv  (nx,ny,ncrms) )
+    allocate( fluxbt  (nx,ny,ncrms) )
+    allocate( fluxbq  (nx,ny,ncrms) )
+    allocate( fluxtu  (nx,ny,ncrms) )
+    allocate( fluxtv  (nx,ny,ncrms) )
+    allocate( fluxtt  (nx,ny,ncrms) )
+    allocate( fluxtq  (nx,ny,ncrms) )
+    allocate( fzero   (nx,ny,ncrms) )
+    allocate( precsfc (nx,ny,ncrms)  )
+    allocate( precssfc(nx,ny,ncrms)  )
     allocate( t0   (nzm) )
     allocate( q0   (nzm) )
     allocate( qv0  (nzm) )

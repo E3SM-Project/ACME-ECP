@@ -12,7 +12,7 @@ contains
     dudt(:,:,:,na,icrm) = 0.
     dvdt(:,:,:,na,icrm) = 0.
     dwdt(:,:,:,na,icrm) = 0.
-    misc(:,:,:) = 0.
+    misc(:,:,:,icrm) = 0.
   end
 
 end module zero_mod

@@ -23,10 +23,10 @@ contains
           u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(i+1,j,1)+u(i,j,1))+ug)**2+ &
           (0.5*(v(i,j+YES3D,1)+v(i,j,1))+vg)**2))
           tau00 = rho(1) * diag_ustar(z(1),bflx,u_h0,z0(icrm))**2
-          fluxbu(i,j) = -(0.5*(u(i+1,j,1)+u(i,j,1))+ug-uhl(icrm))/u_h0*tau00
-          fluxbv(i,j) = -(0.5*(v(i,j+YES3D,1)+v(i,j,1))+vg-vhl(icrm))/u_h0*tau00
-          tauxm = tauxm + fluxbu(i,j)
-          tauym = tauym + fluxbv(i,j)
+          fluxbu(i,j,icrm) = -(0.5*(u(i+1,j,1)+u(i,j,1))+ug-uhl(icrm))/u_h0*tau00
+          fluxbv(i,j,icrm) = -(0.5*(v(i,j+YES3D,1)+v(i,j,1))+vg-vhl(icrm))/u_h0*tau00
+          tauxm = tauxm + fluxbu(i,j,icrm)
+          tauym = tauym + fluxbv(i,j,icrm)
         end do
       end do
       taux0(icrm) = taux0(icrm) + tauxm/dble(nx*ny)

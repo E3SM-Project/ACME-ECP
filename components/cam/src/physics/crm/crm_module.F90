@@ -547,15 +547,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(:, :) = crm_input%fluxu00(icrm)/rhow(1)
-      fluxbv(:, :) = crm_input%fluxv00(icrm)/rhow(1)
-      fluxbt(:, :) = crm_input%fluxt00(icrm)/rhow(1)
-      fluxbq(:, :) = crm_input%fluxq00(icrm)/rhow(1)
+      fluxbu(:, :,icrm) = crm_input%fluxu00(icrm)/rhow(1)
+      fluxbv(:, :,icrm) = crm_input%fluxv00(icrm)/rhow(1)
+      fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1)
+      fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1)
     else
-      fluxbu(:, :) = 0.
-      fluxbv(:, :) = 0.
-      fluxbt(:, :) = 0.
-      fluxbq(:, :) = 0.
+      fluxbu(:, :,icrm) = 0.
+      fluxbv(:, :,icrm) = 0.
+      fluxbt(:, :,icrm) = 0.
+      fluxbq(:, :,icrm) = 0.
     endif
 #else
     fluxbu=0.
@@ -977,7 +977,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !---------------------------------------------------------
         !      SGS effects on scalars :
-        if (dosgs) call sgs_scalars()
+        if (dosgs) call sgs_scalars(ncrms,icrm)
 
 #ifdef CLUBB_CRM_OLD
         ! Re-compute q/qv/qcl based on values computed in CLUBB
@@ -997,7 +997,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           do i = 1,nx
             do j = 1,ny
               rtm_flux_top = rho_ds_zm(nz) * wprtp(i,j,nz)
-              rtm_flux_sfc = rho_ds_zm(1) * fluxbq(i,j)
+              rtm_flux_sfc = rho_ds_zm(1) * fluxbq(i,j,icrm)
               rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm,icrm)
               rtm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                             rtm_column, gr%invrs_dzt(2:nz) )
@@ -1008,7 +1008,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                                                          0.0_core_rknd, real( dtn, kind=core_rknd) )
 
               thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
-              thlm_flux_sfc = rho_ds_zm(1) * fluxbt(i,j)
+              thlm_flux_sfc = rho_ds_zm(1) * fluxbt(i,j,icrm)
 
               thlm_after = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
                                      qcl(i,j,1:nzm,icrm), qpl(i,j,1:nzm,icrm), &
@@ -1516,27 +1516,27 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     do j=1,ny
       do i=1,nx
 #ifdef sam1mom
-        precsfc(i,j) = precsfc(i,j)*dz/dt/dble(nstop)
-        precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)
+        precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz/dt/dble(nstop)
+        precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz/dt/dble(nstop)
 #endif /* sam1mom */
 #ifdef m2005
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/s/dz
-        !          precsfc(i,j) = precsfc(i,j)*dz/dble(nstop)     !mm/s/dz --> mm/s
-        !          precssfc(i,j) = precssfc(i,j)*dz/dble(nstop)   !mm/s/dz --> mm/s
+        !          precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz/dble(nstop)     !mm/s/dz --> mm/s
+        !          precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz/dble(nstop)   !mm/s/dz --> mm/s
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/dz
-        precsfc(i,j) = precsfc(i,j)*dz/dt/dble(nstop)     !mm/s/dz --> mm/s
-        precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
+        precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz/dt/dble(nstop)     !mm/s/dz --> mm/s
+        precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
-        if(precsfc(i,j).gt.10./86400.) then
-           crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(i,j)
-           crm_output%precsc(icrm) = crm_output%precsc(icrm) + precssfc(i,j)
+        if(precsfc(i,j,icrm).gt.10./86400.) then
+           crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(i,j,icrm)
+           crm_output%precsc(icrm) = crm_output%precsc(icrm) + precssfc(i,j,icrm)
         else
-           crm_output%precl (icrm) = crm_output%precl (icrm) + precsfc(i,j)
-           crm_output%precsl(icrm) = crm_output%precsl(icrm) + precssfc(i,j)
+           crm_output%precl (icrm) = crm_output%precl (icrm) + precsfc(i,j,icrm)
+           crm_output%precsl(icrm) = crm_output%precsl(icrm) + precssfc(i,j,icrm)
         endif
       enddo
     enddo
-    crm_output%prec_crm(icrm,:,:) = precsfc/1000.           !mm/s --> m/s
+    crm_output%prec_crm(icrm,:,:) = precsfc(:,:,icrm)/1000.           !mm/s --> m/s
     crm_output%precc   (icrm)     = crm_output%precc (icrm)*factor_xy/1000.
     crm_output%precl   (icrm)     = crm_output%precl (icrm)*factor_xy/1000.
     crm_output%precsc  (icrm)     = crm_output%precsc(icrm)*factor_xy/1000.

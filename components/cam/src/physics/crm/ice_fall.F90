@@ -113,8 +113,8 @@ contains
     do j=1,ny
       do i=1,nx
         dqi=-coef*fz(i,j,1)
-        precsfc(i,j) = precsfc(i,j)+dqi
-        precssfc(i,j) = precssfc(i,j)+dqi
+        precsfc(i,j,icrm) = precsfc(i,j,icrm)+dqi
+        precssfc(i,j,icrm) = precssfc(i,j,icrm)+dqi
       end do
     end do
 

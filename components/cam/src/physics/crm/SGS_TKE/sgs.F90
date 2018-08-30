@@ -382,7 +382,7 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sgs diffusion of scalars:
   !
-  subroutine sgs_scalars()
+  subroutine sgs_scalars(ncrms,icrm)
     use diffuse_scalar_mod, only: diffuse_scalar
     use vars
     use microphysics
@@ -390,7 +390,7 @@ CONTAINS
     use scalar_momentum_mod
     use params, only: dotracers
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     real(crm_rknd) dummy(nz)
     real(crm_rknd) fluxbtmp(nx,ny), fluxttmp(nx,ny) !bloss
     integer k
@@ -408,7 +408,7 @@ CONTAINS
     !
     !    diffusion of microphysics prognostics:
     !
-    call micro_flux()
+    call micro_flux(ncrms,icrm)
 
     total_water_evap = total_water_evap - total_water()
 

@@ -198,8 +198,8 @@ contains
             tlat(k)=tlat(k)-lat_heat            ! For energy budget
             precflux(k) = precflux(k) - fz(k)*flagstat   ! For statistics
           end do
-          precsfc(i,j) = precsfc(i,j) - fz(1)*flagstat ! For statistics
-          precssfc(i,j) = precssfc(i,j) - fz(1)*(1.-omega(i,j,1))*flagstat ! For statistics
+          precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(1)*flagstat ! For statistics
+          precssfc(i,j,icrm) = precssfc(i,j,icrm) - fz(1)*(1.-omega(i,j,1))*flagstat ! For statistics
           prec_xy(i,j) = prec_xy(i,j) - fz(1)*flagstat ! For 2D output
 
           if (iprec.lt.nprec) then
