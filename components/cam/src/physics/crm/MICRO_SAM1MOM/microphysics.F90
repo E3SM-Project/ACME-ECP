@@ -319,11 +319,11 @@ CONTAINS
         do i=1,nx
           qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k)
           omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
-          qcl(i,j,k) = qn(i,j,k)*omn
-          qci(i,j,k) = qn(i,j,k)*(1.-omn)
+          qcl(i,j,k,icrm) = qn(i,j,k)*omn
+          qci(i,j,k,icrm) = qn(i,j,k)*(1.-omn)
           omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
-          qpl(i,j,k) = qp(i,j,k)*omp
-          qpi(i,j,k) = qp(i,j,k)*(1.-omp)
+          qpl(i,j,k,icrm) = qp(i,j,k)*omp
+          qpi(i,j,k,icrm) = qp(i,j,k)*(1.-omp)
         end do
       end do
     end do
@@ -411,11 +411,11 @@ CONTAINS
             end if ! cloud_liq < 0
           end if ! qv < 0
 
-          qcl(i,j,k) = qn(i,j,k)
-          qci(i,j,k) = 0.0
+          qcl(i,j,k,icrm) = qn(i,j,k)
+          qci(i,j,k,icrm) = 0.0
           omp = max(0.,min(1.,(tabs(i,j,k,icrm)-tprmin)*a_pr))
-          qpl(i,j,k) = qp(i,j,k)*omp
-          qpi(i,j,k) = qp(i,j,k)*(1.-omp)
+          qpl(i,j,k,icrm) = qp(i,j,k)*omp
+          qpi(i,j,k,icrm) = qp(i,j,k)*(1.-omp)
         end do
       end do
     end do

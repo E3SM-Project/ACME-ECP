@@ -481,19 +481,19 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       do j=1,ny
         do i=1,nx
           t(i,j,k) = tabs(i,j,k,icrm)+gamaz(k) &
-                    -fac_cond*qcl(i,j,k)-fac_sub*qci(i,j,k) &
-                    -fac_cond*qpl(i,j,k)-fac_sub*qpi(i,j,k)
-          colprec=colprec+(qpl(i,j,k)+qpi(i,j,k))*crm_input%pdel(icrm,plev-k+1)
-          colprecs=colprecs+qpi(i,j,k)*crm_input%pdel(icrm,plev-k+1)
+                    -fac_cond*qcl(i,j,k,icrm)-fac_sub*qci(i,j,k,icrm) &
+                    -fac_cond*qpl(i,j,k,icrm)-fac_sub*qpi(i,j,k,icrm)
+          colprec=colprec+(qpl(i,j,k,icrm)+qpi(i,j,k,icrm))*crm_input%pdel(icrm,plev-k+1)
+          colprecs=colprecs+qpi(i,j,k,icrm)*crm_input%pdel(icrm,plev-k+1)
           u0(k)=u0(k)+u(i,j,k)
           v0(k)=v0(k)+v(i,j,k)
           t0(k)=t0(k)+t(i,j,k)
-          t00(k)=t00(k)+t(i,j,k)+fac_cond*qpl(i,j,k)+fac_sub*qpi(i,j,k)
+          t00(k)=t00(k)+t(i,j,k)+fac_cond*qpl(i,j,k,icrm)+fac_sub*qpi(i,j,k,icrm)
           tabs0(k)=tabs0(k)+tabs(i,j,k,icrm)
-          q0(k)=q0(k)+qv(i,j,k,icrm)+qcl(i,j,k)+qci(i,j,k)
+          q0(k)=q0(k)+qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)
           qv0(k) = qv0(k) + qv(i,j,k,icrm)
-          qn0(k) = qn0(k) + qcl(i,j,k) + qci(i,j,k)
-          qp0(k) = qp0(k) + qpl(i,j,k) + qpi(i,j,k)
+          qn0(k) = qn0(k) + qcl(i,j,k,icrm) + qci(i,j,k,icrm)
+          qp0(k) = qp0(k) + qpl(i,j,k,icrm) + qpi(i,j,k,icrm)
           tke0(k)=tke0(k)+tke(i,j,k)
         enddo
       enddo
@@ -756,7 +756,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 !          qtot(icrm,1) = qtot(icrm,1)+((micro_field(i,j,k,iqr)+micro_field(i,j,k,iqs)+micro_field(i,j,k,iqg)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
 !#endif
 !#ifdef sam1mom
-!          qtot(icrm,1) = qtot(icrm,1)+(qpl(i,j,k)+qpi(i,j,k)) * crm_input%pdel(icrm,l)/ggr/(nx*ny)
+!          qtot(icrm,1) = qtot(icrm,1)+(qpl(i,j,k,icrm)+qpi(i,j,k,icrm)) * crm_input%pdel(icrm,l)/ggr/(nx*ny)
 !#endif
 !        enddo
 !      enddo
@@ -894,13 +894,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           ! - nielsenb UWM 4 Jun 2010
           do i = 1,nx
             do j = 1,ny
-              rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm)
+              rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm,icrm)
               rtm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                            rtm_column, gr%invrs_dzt(2:nz) )
 
               thlm_before = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
-                                   qcl(i,j,1:nzm), qpl(i,j,1:nzm), &
-                                   qci(i,j,1:nzm), qpi(i,j,1:nzm), &
+                                   qcl(i,j,1:nzm,icrm), qpl(i,j,1:nzm,icrm), &
+                                   qci(i,j,1:nzm,icrm), qpi(i,j,1:nzm,icrm), &
                                    prespot(1:nzm) )
 
               thlm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
@@ -998,7 +998,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             do j = 1,ny
               rtm_flux_top = rho_ds_zm(nz) * wprtp(i,j,nz)
               rtm_flux_sfc = rho_ds_zm(1) * fluxbq(i,j)
-              rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm)
+              rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm,icrm)
               rtm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
                                             rtm_column, gr%invrs_dzt(2:nz) )
 
@@ -1011,8 +1011,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
               thlm_flux_sfc = rho_ds_zm(1) * fluxbt(i,j)
 
               thlm_after = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
-                                     qcl(i,j,1:nzm), qpl(i,j,1:nzm), &
-                                     qci(i,j,1:nzm), qpi(i,j,1:nzm), &
+                                     qcl(i,j,1:nzm,icrm), qpl(i,j,1:nzm,icrm), &
+                                     qci(i,j,1:nzm,icrm), qpi(i,j,1:nzm,icrm), &
                                      prespot(1:nzm) )
 
               thlm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
@@ -1081,15 +1081,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             ! instead of time-step-averaged
             ! I also modified this for all q and N variables as well as for sam1mom
             ! for consistency
-            !hm           crm_output%qc(l) = crm_output%qc(l) + qcl(i,j,k)
-            !hm           crm_output%qi(l) = crm_output%qi(l) + qci(i,j,k)
-            !hm           crm_output%qr(l) = crm_output%qr(l) + qpl(i,j,k)
+            !hm           crm_output%qc(l) = crm_output%qc(l) + qcl(i,j,k,icrm)
+            !hm           crm_output%qi(l) = crm_output%qi(l) + qci(i,j,k,icrm)
+            !hm           crm_output%qr(l) = crm_output%qr(l) + qpl(i,j,k,icrm)
             !hm#ifdef sam1mom
             !hm           omg = max(0.,min(1.,(tabs(i,j,k,icrm)-tgrmin)*a_gr))
-            !hm           crm_output%qg(l) = crm_output%qg(l) + qpi(i,j,k)*omg
-            !hm           crm_output%qs(l) = crm_output%qs(l) + qpi(i,j,k)*(1.-omg)
+            !hm           crm_output%qg(l) = crm_output%qg(l) + qpi(i,j,k,icrm)*omg
+            !hm           crm_output%qs(l) = crm_output%qs(l) + qpi(i,j,k,icrm)*(1.-omg)
             !hm#else
-            !           crm_output%qg(l) = crm_output%qg(l) + qpi(i,j,k)
+            !           crm_output%qg(l) = crm_output%qg(l) + qpi(i,j,k,icrm)
             !           crm_output%qs(l) = crm_output%qs(l) + 0.     ! temporerary solution
             !hm           crm_output%qg(l) = crm_output%qg(l) + micro_field(i,j,k,iqg)
             !hm           crm_output%qs(l) = crm_output%qs(l) + micro_field(i,j,k,iqs)
@@ -1102,7 +1102,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
             !hm#endif
 
-            tmp1 = rho(nz-k)*adz(nz-k)*dz*(qcl(i,j,nz-k)+qci(i,j,nz-k))
+            tmp1 = rho(nz-k)*adz(nz-k)*dz*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
@@ -1121,9 +1121,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             endif
 
             !     qsat = qsatw_crm(tabs(i,j,k,icrm),pres(k))
-            !     if(qcl(i,j,k)+qci(i,j,k).gt.min(1.e-5,0.01*qsat)) then
+            !     if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.min(1.e-5,0.01*qsat)) then
             tmp1 = rho(k)*adz(k)*dz
-            if(tmp1*(qcl(i,j,k)+qci(i,j,k)).gt.cwp_threshold) then
+            if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
                  crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k)
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
                    crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
@@ -1144,8 +1144,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 !             crm_rad%temperature  (icrm,i,j,k) = crm_rad%temperature  (icrm,i,j,k)+tabs(i,j,k,icrm)
 !             crm_rad%qv (icrm,i,j,k) = crm_rad%qv (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k,icrm))
-!             crm_rad%qc (icrm,i,j,k) = crm_rad%qc (icrm,i,j,k)+qcl(i,j,k)
-!             crm_rad%qi (icrm,i,j,k) = crm_rad%qi (icrm,i,j,k)+qci(i,j,k)
+!             crm_rad%qc (icrm,i,j,k) = crm_rad%qc (icrm,i,j,k)+qcl(i,j,k,icrm)
+!             crm_rad%qi (icrm,i,j,k) = crm_rad%qi (icrm,i,j,k)+qci(i,j,k,icrm)
 !             crm_rad%cld(icrm,i,j,k) = crm_rad%cld(icrm,i,j,k) +  CF3D(i,j,k)
 ! #ifdef m2005
 !             crm_rad%nc(icrm,i,j,k) = crm_rad%nc(icrm,i,j,k)+micro_field(i,j,k,incl)
@@ -1164,8 +1164,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
               crm_rad%temperature  (icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
               crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
-              crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k)
-              crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k)
+              crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
+              crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
               crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k)
 #ifdef m2005
               crm_rad%nc(icrm,i_rad,j_rad,k) = crm_rad%nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
@@ -1175,8 +1175,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif
             endif
 
-            crm_output%gliqwp(icrm,l) = crm_output%gliqwp(icrm,l) + qcl(i,j,k)
-            crm_output%gicewp(icrm,l) = crm_output%gicewp(icrm,l) + qci(i,j,k)
+            crm_output%gliqwp(icrm,l) = crm_output%gliqwp(icrm,l) + qcl(i,j,k,icrm)
+            crm_output%gicewp(icrm,l) = crm_output%gicewp(icrm,l) + qci(i,j,k,icrm)
           enddo
         enddo
       enddo
@@ -1190,15 +1190,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             if(w(i,j,k).gt.0.) then
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx))
-              if(qcl(i,j,kx)+qci(i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
+              if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                 mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k)*w(i,j,k)
               endif
             else if (w(i,j,k).lt.0.) then
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx))
-              if(qcl(i,j,kx)+qci(i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
+              if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                 mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(i,j,k)
-              else if(qpl(i,j,kx)+qpi(i,j,kx).gt.1.0e-4) then
+              else if(qpl(i,j,kx,icrm)+qpi(i,j,kx,icrm).gt.1.0e-4) then
                 mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k)*w(i,j,k)
               endif
             endif
@@ -1288,12 +1288,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       l = plev-k+1
       do i=1,nx
         do j=1,ny
-          colprec = colprec +(qpl(i,j,k)+qpi(i,j,k))*crm_input%pdel(icrm,plev-k+1)
-          colprecs= colprecs+qpi(i,j,k)*crm_input%pdel(icrm,plev-k+1)
+          colprec = colprec +(qpl(i,j,k,icrm)+qpi(i,j,k,icrm))*crm_input%pdel(icrm,plev-k+1)
+          colprecs= colprecs+qpi(i,j,k,icrm)*crm_input%pdel(icrm,plev-k+1)
           tln(l)  = tln(l)  +tabs(i,j,k,icrm)
           qln(l)  = qln(l)  +qv(i,j,k,icrm)
-          qccln(l)= qccln(l)+qcl(i,j,k)
-          qiiln(l)= qiiln(l)+qci(i,j,k)
+          qccln(l)= qccln(l)+qcl(i,j,k,icrm)
+          qiiln(l)= qiiln(l)+qci(i,j,k,icrm)
           uln(l)  = uln(l)  +u(i,j,k)
           vln(l)  = vln(l)  +v(i,j,k)
 
@@ -1405,10 +1405,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     do k=1,nzm
      do j=1,ny
       do i=1,nx
-        crm_output%qcl(icrm,i,j,k) = qcl(i,j,k)
-        crm_output%qci(icrm,i,j,k) = qci(i,j,k)
-        crm_output%qpl(icrm,i,j,k) = qpl(i,j,k)
-        crm_output%qpi(icrm,i,j,k) = qpi(i,j,k)
+        crm_output%qcl(icrm,i,j,k) = qcl(i,j,k,icrm)
+        crm_output%qci(icrm,i,j,k) = qci(i,j,k,icrm)
+        crm_output%qpl(icrm,i,j,k) = qpl(i,j,k,icrm)
+        crm_output%qpi(icrm,i,j,k) = qpi(i,j,k,icrm)
 #ifdef m2005
         crm_output%wvar(icrm,i,j,k) = wvar (i,j,k)
         crm_output%aut (icrm,i,j,k) = aut1 (i,j,k)
@@ -1435,15 +1435,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          crm_output%qc_mean(icrm,l) = crm_output%qc_mean(icrm,l) + qcl(i,j,k)
-          crm_output%qi_mean(icrm,l) = crm_output%qi_mean(icrm,l) + qci(i,j,k)
-          crm_output%qr_mean(icrm,l) = crm_output%qr_mean(icrm,l) + qpl(i,j,k)
+          crm_output%qc_mean(icrm,l) = crm_output%qc_mean(icrm,l) + qcl(i,j,k,icrm)
+          crm_output%qi_mean(icrm,l) = crm_output%qi_mean(icrm,l) + qci(i,j,k,icrm)
+          crm_output%qr_mean(icrm,l) = crm_output%qr_mean(icrm,l) + qpl(i,j,k,icrm)
 #ifdef sam1mom
           omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
-          crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(i,j,k)*omg
-          crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + qpi(i,j,k)*(1.-omg)
+          crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(i,j,k,icrm)*omg
+          crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + qpi(i,j,k,icrm)*(1.-omg)
 #else
-          !crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(i,j,k)
+          !crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(i,j,k,icrm)
           !crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + 0.     ! temporerary solution
           crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + micro_field(i,j,k,iqg)
           crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + micro_field(i,j,k,iqs)

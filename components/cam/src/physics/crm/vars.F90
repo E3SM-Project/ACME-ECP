@@ -22,10 +22,10 @@ module vars
   real(crm_rknd), allocatable :: p       (:,:,:,:)     ! perturbation pressure (from Poison eq)
   real(crm_rknd), allocatable :: tabs    (:,:,:,:)                 ! temperature
   real(crm_rknd), allocatable :: qv      (:,:,:,:)                ! water vapor
-  real(crm_rknd), allocatable :: qcl     (:,:,:)                ! liquid water  (condensate)
-  real(crm_rknd), allocatable :: qpl     (:,:,:)                ! liquid water  (precipitation)
-  real(crm_rknd), allocatable :: qci     (:,:,:)                ! ice water  (condensate)
-  real(crm_rknd), allocatable :: qpi     (:,:,:)                ! ice water  (precipitation)
+  real(crm_rknd), allocatable :: qcl     (:,:,:,:)                ! liquid water  (condensate)
+  real(crm_rknd), allocatable :: qpl     (:,:,:,:)                ! liquid water  (precipitation)
+  real(crm_rknd), allocatable :: qci     (:,:,:,:)                ! ice water  (condensate)
+  real(crm_rknd), allocatable :: qpi     (:,:,:,:)                ! ice water  (precipitation)
   real(crm_rknd), allocatable :: tke2(:,:,:)   ! SGS TKE
   real(crm_rknd), allocatable :: tk2  (:,:,:) ! SGS eddyviscosity
 
@@ -379,10 +379,10 @@ contains
     allocate( p       (0:nx, (1-YES3D):ny, nzm, ncrms)      )
     allocate( tabs    (nx, ny, nzm, ncrms)                  )
     allocate( qv      (nx, ny, nzm, ncrms)                 )
-    allocate( qcl     (nx, ny, nzm)                 )
-    allocate( qpl     (nx, ny, nzm)                 )
-    allocate( qci     (nx, ny, nzm)                 )
-    allocate( qpi     (nx, ny, nzm)                 )
+    allocate( qcl     (nx, ny, nzm, ncrms)                 )
+    allocate( qpl     (nx, ny, nzm, ncrms)                 )
+    allocate( qci     (nx, ny, nzm, ncrms)                 )
+    allocate( qpi     (nx, ny, nzm, ncrms)                 )
     allocate( tke2(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)    )
     allocate( tk2  (0:nxp1, (1-YES3D):nyp1, nzm)  )
     allocate( dudt   (nxp1, ny, nzm, 3) )

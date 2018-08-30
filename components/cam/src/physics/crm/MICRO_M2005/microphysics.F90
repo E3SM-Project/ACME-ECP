@@ -735,7 +735,7 @@ do j = 1,ny
 
       ! get absolute temperature in this column
       !bloss/qt: before saturation adjustment for liquid,
-      !          this is Tcl = T - (L/Cp)*qcl (the cloud liquid water temperature)
+      !          this is Tcl = T - (L/Cp)*qcl (the cloud liquid water temperature,icrm)
       tmptabs(:) = t(i,j,:)  &           ! liquid water-ice static energy over Cp
            - gamaz(:) &                                   ! potential energy
            + fac_cond * (tmpqr(:)) &    ! bloss/qt: liquid latent energy due to rain only
@@ -1325,20 +1325,20 @@ do i = 1, nx
 end do ! 1.. nx
 #endif /* CLUBB_CRM */
 ! cloud liquid water
-qcl(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
+qcl(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm)
 
 ! rain water
-if(doprecip) qpl(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqr)
+if(doprecip) qpl(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqr)
 
 ! cloud ice
 if(doicemicro) then
-   qci(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqci)
+   qci(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqci)
 
    if(dograupel) then
-      qpi(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqs) &
+      qpi(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqs) &
            + micro_field(1:nx,1:ny,1:nzm,iqg)
    else
-      qpi(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqs)
+      qpi(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqs)
    end if
 end if
 

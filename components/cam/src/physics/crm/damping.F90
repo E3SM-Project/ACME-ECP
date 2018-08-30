@@ -63,7 +63,7 @@ contains
           ! In the old version (SAM7.5?) of SAM, water vapor is the prognostic variable for the two-moment microphyscs.
           ! So the following damping approach can lead to the negative water vapor.
           !      micro_field(i,j,k,index_water_vapor)= micro_field(i,j,k,index_water_vapor)- &
-          !                                    dtn*(qv(i,j,k,icrm)+qcl(i,j,k)+qci(i,j,k)-q0(k)) * tau(k)
+          !                                    dtn*(qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)-q0(k)) * tau(k)
           ! a simple fix (Minghuai Wang, 2011-08):
           micro_field(i,j,k,index_water_vapor)= micro_field(i,j,k,index_water_vapor)- &
           dtn*(qv(i,j,k,icrm)-qv0(k)) * tau(k)

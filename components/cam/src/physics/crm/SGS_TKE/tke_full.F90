@@ -136,22 +136,22 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
         !!! compute temperature of mixture between two grid levels if all cloud
         !!!   were evaporated and sublimated
         tabs_interface = &
-             0.5*( tabs(i,j,kc,icrm) + fac_cond*qcl(i,j,kc) + fac_sub*qci(i,j,kc) &
-                 + tabs(i,j,kb,icrm) + fac_cond*qcl(i,j,kb) + fac_sub*qci(i,j,kb) )
+             0.5*( tabs(i,j,kc,icrm) + fac_cond*qcl(i,j,kc,icrm) + fac_sub*qci(i,j,kc,icrm) &
+                 + tabs(i,j,kb,icrm) + fac_cond*qcl(i,j,kb,icrm) + fac_sub*qci(i,j,kb,icrm) )
 
         !!! similarly for water vapor if all cloud evaporated/sublimated
         qtot_interface = &
-             0.5*( qv(i,j,kc,icrm) + qcl(i,j,kc) + qci(i,j,kc) &
-                 + qv(i,j,kb,icrm) + qcl(i,j,kb) + qci(i,j,kb) )
+             0.5*( qv(i,j,kc,icrm) + qcl(i,j,kc,icrm) + qci(i,j,kc,icrm) &
+                 + qv(i,j,kb,icrm) + qcl(i,j,kb,icrm) + qci(i,j,kb,icrm) )
 
-        qp_interface = 0.5*( qpl(i,j,kc) + qpi(i,j,kc) + qpl(i,j,kb) + qpi(i,j,kb) )
+        qp_interface = 0.5*( qpl(i,j,kc,icrm) + qpi(i,j,kc,icrm) + qpl(i,j,kb,icrm) + qpi(i,j,kb,icrm) )
 
         bbb = 1.+epsv*qtot_interface - qp_interface
         buoy_sgs=betdz*( bbb*(t(i,j,kc)-t(i,j,kb)) &
              +epsv*tabs_interface* &
-             (qv(i,j,kc,icrm)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb,icrm)-qcl(i,j,kb)-qci(i,j,kb)) &
-             +(bbb*fac_cond-tabs_interface)*(qpl(i,j,kc)-qpl(i,j,kb)) &
-             +(bbb*fac_sub -tabs_interface)*(qpi(i,j,kc)-qpi(i,j,kb)) )
+             (qv(i,j,kc,icrm)+qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)-qv(i,j,kb,icrm)-qcl(i,j,kb,icrm)-qci(i,j,kb,icrm)) &
+             +(bbb*fac_cond-tabs_interface)*(qpl(i,j,kc,icrm)-qpl(i,j,kb,icrm)) &
+             +(bbb*fac_sub -tabs_interface)*(qpi(i,j,kc,icrm)-qpi(i,j,kb,icrm)) )
 
         buoy_sgs_above(i,j) = buoy_sgs
         a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc)+tkh(i,j,kb)+0.002)*buoy_sgs
@@ -166,22 +166,22 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
       do i = 1,nx
         !!! if there's any cloud in the grid cells above or below, check to see if
         !!! the mixture between the two levels is also cloudy
-        qctot = qcl(i,j,kc)+qci(i,j,kc)+qcl(i,j,kb)+qci(i,j,kb)
+        qctot = qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)+qcl(i,j,kb,icrm)+qci(i,j,kb,icrm)
         if(qctot .gt. 0.) then
         
           !!! figure out the fraction of condensate that's liquid
-          omn = (qcl(i,j,kc)+qcl(i,j,kb))/(qctot+1.e-20)
+          omn = (qcl(i,j,kc,icrm)+qcl(i,j,kb,icrm))/(qctot+1.e-20)
           
           !!! compute temperature of mixture between two grid levels 
           !!! if all cloud were evaporated and sublimated
           tabs_interface = &
-               0.5*( tabs(i,j,kc,icrm) + fac_cond*qcl(i,j,kc) + fac_sub*qci(i,j,kc) &
-                   + tabs(i,j,kb,icrm) + fac_cond*qcl(i,j,kb) + fac_sub*qci(i,j,kb) )
+               0.5*( tabs(i,j,kc,icrm) + fac_cond*qcl(i,j,kc,icrm) + fac_sub*qci(i,j,kc,icrm) &
+                   + tabs(i,j,kb,icrm) + fac_cond*qcl(i,j,kb,icrm) + fac_sub*qci(i,j,kb,icrm) )
 
           !!! similarly for total water (vapor + cloud) mixing ratio
           qtot_interface = &
-               0.5*( qv(i,j,kc,icrm) + qcl(i,j,kc) + qci(i,j,kc) &
-                   + qv(i,j,kb,icrm) + qcl(i,j,kb) + qci(i,j,kb) )
+               0.5*( qv(i,j,kc,icrm) + qcl(i,j,kc,icrm) + qci(i,j,kc,icrm) &
+                   + qv(i,j,kb,icrm) + qcl(i,j,kb,icrm) + qci(i,j,kb,icrm) )
 
           !!! compute saturation mixing ratio at this temperature
           qsat_check =      omn*qsatw_crm(tabs_interface,presi(k+1)) &
@@ -201,7 +201,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
             !!! evaporation/condensation with mixing.  Hopefully good enough.
             tabs_interface = 0.5*( tabs(i,j,kc,icrm) + tabs(i,j,kb,icrm) )
 
-            qp_interface = 0.5*( qpl(i,j,kc) + qpi(i,j,kc) + qpl(i,j,kb) + qpi(i,j,kb) )
+            qp_interface = 0.5*( qpl(i,j,kc,icrm) + qpi(i,j,kc,icrm) + qpl(i,j,kb,icrm) + qpi(i,j,kb,icrm) )
 
             dqsat =     omn*dtqsatw_crm(tabs_interface,presi(k+1)) + &
                    (1.-omn)*dtqsati_crm(tabs_interface,presi(k+1))
@@ -216,9 +216,9 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
             buoy_sgs = betdz*(bbb*(t(i,j,kc)-t(i,j,kb)) &
                  +(bbb*lstarn - (1.+lstarn*dqsat)*tabs_interface)* &
-                 (qv(i,j,kc,icrm)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb,icrm)-qcl(i,j,kb)-qci(i,j,kb)) & 
-                 + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(i,j,k,icrm) ) * ( qpl(i,j,kc)-qpl(i,j,kb) )  &
-                 + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(i,j,k,icrm) ) * ( qpi(i,j,kc)-qpi(i,j,kb) ) )
+                 (qv(i,j,kc,icrm)+qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)-qv(i,j,kb,icrm)-qcl(i,j,kb,icrm)-qci(i,j,kb,icrm)) & 
+                 + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(i,j,k,icrm) ) * ( qpl(i,j,kc,icrm)-qpl(i,j,kb,icrm) )  &
+                 + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(i,j,k,icrm) ) * ( qpi(i,j,kc,icrm)-qpi(i,j,kb,icrm) ) )
 
             buoy_sgs_above(i,j) = buoy_sgs
             a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc)+tkh(i,j,kb)+0.002)*buoy_sgs
