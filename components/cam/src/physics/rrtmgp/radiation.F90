@@ -1267,6 +1267,9 @@ contains
       ! Temporary fluxes compressed to daytime only arrays
       type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day
 
+      ! Temporary fluxes to hold outputs for a single CRM column
+      type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
+
       ! Temporary heating rates on radiation vertical grid (and daytime only)
       real(r8), dimension(pcols,nlev_rad) :: qrs_rad, qrsc_rad
 
@@ -1315,6 +1318,9 @@ contains
       ! temperatures to make sure they are within the valid range.
       real(r8), dimension(pcols,nlev_rad) :: tmid, pmid
       real(r8), dimension(pcols,nlev_rad+1) :: pint, tint
+
+      ! Total number of CRM columns
+      integer :: number_crm_columns
 
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_sw'
@@ -1384,6 +1390,10 @@ contains
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_allsky_day, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_clrsky_day, do_direct=.true.)
 
+      ! Initialize an extra set of fluxes to deal with aggregating averages
+      call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_allsky_col, do_direct=.true.)
+      call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_clrsky_col, do_direct=.true.)
+
       ! Loop over diagnostic calls (i.e., different configurations of gases)
       ! NOTE: in the non-SP configurations, we do not need to have the cloud
       ! optics inside the icall loop, because they should not change for
@@ -1400,6 +1410,7 @@ contains
 
             ! Start loop over CRM. First make sure our fluxes (that will be
             ! aggregated) are zeroed out
+            number_crm_columns = crm_nx_rad * crm_ny_rad
             do crm_iy = 1,crm_ny_rad
                do crm_ix = 1,crm_nx_rad
 
@@ -1469,8 +1480,8 @@ contains
 
                   ! Expand fluxes from daytime-only arrays to full chunk arrays
                   call t_startf('rad_expand_fluxes_sw')
-                  call expand_day_fluxes(fluxes_allsky_day, fluxes_allsky, day_indices(1:nday))
-                  call expand_day_fluxes(fluxes_clrsky_day, fluxes_clrsky, day_indices(1:nday))
+                  call expand_day_fluxes(fluxes_allsky_day, fluxes_allsky_col, day_indices(1:nday))
+                  call expand_day_fluxes(fluxes_clrsky_day, fluxes_clrsky_col, day_indices(1:nday))
                   call t_stopf('rad_expand_fluxes_sw')
 
                   ! Expand heating rates to all columns and map back to CAM levels
@@ -1478,6 +1489,10 @@ contains
                   call expand_day_columns(qrs_rad(1:nday,ktop:kbot), qrs(1:ncol,1:pver), day_indices(1:nday))
                   call expand_day_columns(qrsc_rad(1:nday,ktop:kbot), qrsc(1:ncol,1:pver), day_indices(1:nday))
                   call t_stopf('rad_expand_heating_rate_sw')
+
+                  ! Aggregate means
+                  call aggregate_flux_averages(number_crm_columns, fluxes_allsky_col, fluxes_allsky)
+                  call aggregate_flux_averages(number_crm_columns, fluxes_clrsky_col, fluxes_clrsky)
 
                end do  ! crm_ix
             end do  ! crm_iy
@@ -1488,11 +1503,15 @@ contains
          end if
       end do
 
-      ! Free fluxes and optical properties
+      ! Free optical properties
       call free_optics_sw(cloud_optics_sw)
       call free_optics_sw(aerosol_optics_sw)
+
+      ! Free fluxes
       call free_fluxes(fluxes_allsky_day)
       call free_fluxes(fluxes_clrsky_day)
+      call free_fluxes(fluxes_allsky_col)
+      call free_fluxes(fluxes_clrsky_col)
 
    end subroutine radiation_driver_sw
 
@@ -1547,7 +1566,14 @@ contains
       type(ty_optical_props_1scl) :: aerosol_optics_lw
       type(ty_optical_props_1scl) :: cloud_optics_lw
 
+      ! Temporary fluxes to hold outputs for a single CRM column
+      type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
+
+      ! Indices
       integer :: ncol, icall, crm_ix, crm_iy, crm_iz
+
+      ! Total number of crm columns
+      integer :: number_crm_columns
 
       ! Number of physics columns in this "chunk"; used in multiple places
       ! throughout this subroutine, so set once for convenience
@@ -1568,6 +1594,10 @@ contains
       ! TODO: set this more intelligently?
       surface_emissivity(1:nlwbands,1:ncol) = 1.0_r8
 
+      ! Initialize an extra set of fluxes to deal with aggregating averages
+      call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_allsky_col)
+      call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_clrsky_col)
+
       ! Loop over diagnostic calls (i.e., different configurations of gases)
       ! NOTE: in the non-SP configurations, we do not need to have the cloud
       ! optics inside the icall loop, because they should not change for
@@ -1582,6 +1612,7 @@ contains
 
             ! Start loop over CRM columns and do radiative transfer separately
             ! for each column
+            number_crm_columns = crm_nx_rad * crm_ny_rad
             do crm_iy = 1,crm_ny_rad
                do crm_ix = 1,crm_nx_rad
 
@@ -1620,26 +1651,26 @@ contains
                      pint(1:ncol,1:nlev_rad+1), tint(1:ncol,nlev_rad+1), &
                      surface_emissivity(1:nlwbands,1:ncol), &
                      cloud_optics_lw, &
-                     fluxes_allsky, fluxes_clrsky, &
+                     fluxes_allsky_col, fluxes_clrsky_col, &
                      aer_props=aerosol_optics_lw, &
                      t_lev=tint(1:ncol,1:nlev_rad+1), &
                      n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
                   ))
                   call t_stopf('rad_calculations_lw')
 
-                  ! Check stuff
-                  call assert_valid(fluxes_allsky%flux_up, 'flux_up invalid')
-                  call assert_valid(fluxes_allsky%flux_dn, 'flux_dn invalid')
-
                   ! Calculate heating rates
-                  call calculate_heating_rate(fluxes_allsky, pint(1:ncol,1:nlev_rad+1), &
+                  call calculate_heating_rate(fluxes_allsky_col, pint(1:ncol,1:nlev_rad+1), &
                                               qrl_rad(1:ncol,1:nlev_rad))
-                  call calculate_heating_rate(fluxes_clrsky, pint(1:ncol,1:nlev_rad+1), &
+                  call calculate_heating_rate(fluxes_clrsky_col, pint(1:ncol,1:nlev_rad+1), &
                                               qrlc_rad(1:ncol,1:nlev_rad))
 
                   ! Map heating rates to CAM columns and levels
                   qrl(1:ncol,1:pver) = qrl_rad(1:ncol,ktop:kbot)
                   qrlc(1:ncol,1:pver) = qrlc_rad(1:ncol,ktop:kbot)
+
+                  ! Aggregate mean fluxes
+                  call aggregate_flux_averages(number_crm_columns, fluxes_allsky_col, fluxes_allsky)
+                  call aggregate_flux_averages(number_crm_columns, fluxes_clrsky_col, fluxes_clrsky)
                               
                end do  ! crm_ix
             end do  ! crm_iy
@@ -1650,11 +1681,45 @@ contains
          end if  ! active calls
       end do  ! loop over diagnostic calls
 
-      ! Free fluxes and optical properties
+      ! Free optical properties
       call free_optics_lw(cloud_optics_lw)
       call free_optics_lw(aerosol_optics_lw)
 
+      ! Free temporary fluxes
+      call free_fluxes(fluxes_allsky_col)
+      call free_fluxes(fluxes_clrsky_col)
+
    end subroutine radiation_driver_lw
+
+   !----------------------------------------------------------------------------
+
+   subroutine aggregate_flux_averages(number_of_samples, fluxes_in, fluxes_out)
+
+      use mo_fluxes_byband, only: ty_fluxes_byband
+
+      integer, intent(in) :: number_of_samples
+      type(ty_fluxes_byband), intent(in) :: fluxes_in
+      type(ty_fluxes_byband), intent(inout) :: fluxes_out
+
+      integer :: factor
+
+      factor = 1._r8 / number_of_samples
+
+      fluxes_out%flux_up  = fluxes_out%flux_up  + factor * fluxes_in%flux_up
+      fluxes_out%flux_dn  = fluxes_out%flux_dn  + factor * fluxes_in%flux_dn
+      fluxes_out%flux_net = fluxes_out%flux_net + factor * fluxes_in%flux_net
+      if (associated(fluxes_out%flux_dn_dir)) then
+         fluxes_out%flux_dn_dir = fluxes_out%flux_dn_dir + factor * fluxes_in%flux_dn_dir
+      end if
+
+      fluxes_out%bnd_flux_up  = fluxes_out%bnd_flux_up  + factor * fluxes_in%bnd_flux_up
+      fluxes_out%bnd_flux_dn  = fluxes_out%bnd_flux_dn  + factor * fluxes_in%bnd_flux_dn
+      fluxes_out%bnd_flux_net = fluxes_out%bnd_flux_net + factor * fluxes_in%bnd_flux_net
+      if (associated(fluxes_out%bnd_flux_dn_dir)) then
+         fluxes_out%bnd_flux_dn_dir = fluxes_out%bnd_flux_dn_dir + factor * fluxes_in%bnd_flux_dn_dir
+      end if
+
+   end subroutine aggregate_flux_averages
 
    !----------------------------------------------------------------------------
 
