@@ -90,43 +90,6 @@ module vars
   real(crm_rknd), allocatable :: utend  (:,:) ! Large-scale tendency for u
   real(crm_rknd), allocatable :: vtend  (:,:) ! Large-scale tendency for v
 
-  !---------------------------------------------------------------------
-  ! Large-scale and surface forcing:
-  integer nlsf  ! number of large-scale forcing profiles
-  integer nrfc  ! number of radiative forcing profiles
-  integer nsfc  ! number of surface forcing profiles
-  integer nsnd  ! number of observed soundings
-  integer nzlsf ! number of large-scale forcing profiles
-  integer nzrfc ! number of radiative forcing profiles
-  integer nzsnd ! number of observed soundings
-
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !! MRN: Already previously allocated. I'm leaving these alone
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  real(crm_rknd), allocatable :: dqls(:,:) ! Large-scale tendency for total water
-  real(crm_rknd), allocatable :: dtls(:,:) ! Large-scale tendency for temp.
-  real(crm_rknd), allocatable :: ugls(:,:) ! Large-scale wind in X-direction
-  real(crm_rknd), allocatable :: vgls(:,:) ! Large-scale wind in Y-direction
-  real(crm_rknd), allocatable :: wgls(:,:) ! Large-scale subsidence velocity,m/s
-  real(crm_rknd), allocatable :: pres0ls(:)! Surface pressure, mb
-  real(crm_rknd), allocatable :: zls(:,:)  ! Height
-  real(crm_rknd), allocatable :: pls(:,:)  ! Pressure
-  real(crm_rknd), allocatable :: dayls(:)  ! Large-scale forcing arrays time (days)
-  real(crm_rknd), allocatable :: dtrfc(:,:)! Radiative tendency for pot. temp.
-  real(crm_rknd), allocatable :: dayrfc(:) ! Radiative forcing arrays time (days)
-  real(crm_rknd), allocatable :: prfc(:,:) ! Pressure/Height
-  real(crm_rknd), allocatable :: sstsfc(:) ! SSTs
-  real(crm_rknd), allocatable :: shsfc(:)   ! Sensible heat flux,W/m2
-  real(crm_rknd), allocatable :: lhsfc(:)  ! Latent heat flux,W/m2
-  real(crm_rknd), allocatable :: tausfc(:) ! Surface drag,m2/s2
-  real(crm_rknd), allocatable :: daysfc(:) ! Surface forcing arrays time (days)
-  real(crm_rknd), allocatable :: usnd(:,:) ! Observed zonal wind
-  real(crm_rknd), allocatable :: vsnd(:,:) ! Observed meriod wind
-  real(crm_rknd), allocatable :: tsnd(:,:) ! Observed Abs. temperature
-  real(crm_rknd), allocatable :: qsnd(:,:) ! Observed Moisture
-  real(crm_rknd), allocatable :: zsnd(:,:) ! Height
-  real(crm_rknd), allocatable :: psnd(:,:) ! Pressure
-  real(crm_rknd), allocatable :: daysnd(:) ! number of sounding samples
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !---------------------------------------------------------------------
@@ -163,78 +126,16 @@ module vars
   !----------------------------------------------------------------------
   ! Vertical profiles of quantities sampled for statitistics purposes:
 
-  real(crm_rknd) :: w_max
-  real(crm_rknd) :: u_max
-  real(crm_rknd) :: s_acld
-  real(crm_rknd) :: s_acldcold
-  real(crm_rknd) :: s_ar
-  real(crm_rknd) :: s_arthr
-  real(crm_rknd) :: s_sst
-  real(crm_rknd) :: s_acldl
-  real(crm_rknd) :: s_acldm
-  real(crm_rknd) :: s_acldh
-  real(crm_rknd) :: ncmn
-  real(crm_rknd) :: nrmn
-  real(crm_rknd) :: z_inv
-  real(crm_rknd) :: z_cb
-  real(crm_rknd) :: z_ct
-  real(crm_rknd) :: z_cbmn
-  real(crm_rknd) :: z_ctmn
-  real(crm_rknd) :: z2_inv
-  real(crm_rknd) :: z2_cb
-  real(crm_rknd) :: z2_ct
-  real(crm_rknd) :: cwpmean
-  real(crm_rknd) :: cwp2
-  real(crm_rknd) :: precmean
-  real(crm_rknd) :: prec2
-  real(crm_rknd) :: precmax
-  real(crm_rknd) :: nrainy
-  real(crm_rknd) :: ncloudy
-  real(crm_rknd) :: s_acldisccp
-  real(crm_rknd) :: s_acldlisccp
-  real(crm_rknd) :: s_acldmisccp
-  real(crm_rknd) :: s_acldhisccp
-  real(crm_rknd) :: s_ptopisccp
-  real(crm_rknd) :: s_acldmodis
-  real(crm_rknd) :: s_acldlmodis
-  real(crm_rknd) :: s_acldmmodis
-  real(crm_rknd) :: s_acldhmodis
-  real(crm_rknd) :: s_ptopmodis
-  real(crm_rknd) :: s_acldmisr
-  real(crm_rknd) :: s_ztopmisr
-  real(crm_rknd) :: s_relmodis
-  real(crm_rknd) :: s_reimodis
-  real(crm_rknd) :: s_lwpmodis
-  real(crm_rknd) :: s_iwpmodis
-  real(crm_rknd) :: s_tbisccp
-  real(crm_rknd) :: s_tbclrisccp
-  real(crm_rknd) :: s_acldliqmodis
-  real(crm_rknd) :: s_acldicemodis
-  real(crm_rknd) :: s_cldtauisccp
-  real(crm_rknd) :: s_cldtaumodis
-  real(crm_rknd) :: s_cldtaulmodis
-  real(crm_rknd) :: s_cldtauimodis
-  real(crm_rknd) :: s_cldalbisccp
-  real(crm_rknd) :: s_flns
-  real(crm_rknd) :: s_flnt
-  real(crm_rknd) :: s_flntoa
-  real(crm_rknd) :: s_flnsc
-  real(crm_rknd) :: s_flntoac
-  real(crm_rknd) :: s_flds
-  real(crm_rknd) :: s_fsns
-  real(crm_rknd) :: s_fsnt
-  real(crm_rknd) :: s_fsntoa
-  real(crm_rknd) :: s_fsnsc
-  real(crm_rknd) :: s_fsntoac
-  real(crm_rknd) :: s_fsds
-  real(crm_rknd) :: s_solin
-  real(crm_rknd), allocatable :: twle(:)
-  real(crm_rknd), allocatable :: twsb(:)
-  real(crm_rknd), allocatable :: precflux(:)
-  real(crm_rknd), allocatable :: uwle(:)
-  real(crm_rknd), allocatable :: uwsb(:)
-  real(crm_rknd), allocatable :: vwle(:)
-  real(crm_rknd), allocatable :: vwsb(:)
+  real(crm_rknd), allocatable :: w_max(:)
+  real(crm_rknd), allocatable :: u_max(:)
+
+  real(crm_rknd), allocatable :: twle(:,:)
+  real(crm_rknd), allocatable :: twsb(:,:)
+  real(crm_rknd), allocatable :: precflux(:,:)
+  real(crm_rknd), allocatable :: uwle(:,:)
+  real(crm_rknd), allocatable :: uwsb(:,:)
+  real(crm_rknd), allocatable :: vwle(:,:)
+  real(crm_rknd), allocatable :: vwsb(:,:)
   real(crm_rknd), allocatable :: radlwup(:)
   real(crm_rknd), allocatable :: radlwdn(:)
   real(crm_rknd), allocatable :: radswup(:)
@@ -444,13 +345,13 @@ contains
     allocate( vsfc_xy  (nx,ny,ncrms)  )
     allocate( w500_xy  (nx,ny,ncrms)  )
     allocate( qocean_xy(nx,ny,ncrms)  )
-    allocate( twle(nz) )
-    allocate( twsb(nz) )
-    allocate( precflux(nz) )
-    allocate( uwle(nz) )
-    allocate( uwsb(nz) )
-    allocate( vwle(nz) )
-    allocate( vwsb(nz) )
+    allocate( twle(nz,ncrms) )
+    allocate( twsb(nz,ncrms) )
+    allocate( precflux(nz,ncrms) )
+    allocate( uwle(nz,ncrms) )
+    allocate( uwsb(nz,ncrms) )
+    allocate( vwle(nz,ncrms) )
+    allocate( vwsb(nz,ncrms) )
     allocate( radlwup(nz) )
     allocate( radlwdn(nz) )
     allocate( radswup(nz) )
@@ -521,6 +422,8 @@ contains
     allocate( cloudtopheight(nx,ny) )
     allocate( echotopheight (nx,ny) )
     allocate( cloudtoptemp  (nx,ny) )
+    allocate( u_max(ncrms) )
+    allocate( w_max(ncrms) )
 #if (defined CRM && defined MODAL_AERO)
     allocate( naer (nzm, ntot_amode) )
     allocate( vaer (nzm, ntot_amode) )
@@ -689,6 +592,8 @@ contains
     cloudtopheight = zero
     echotopheight = zero
     cloudtoptemp = zero
+    u_max = zero
+    w_max = zero
 #if (defined CRM && defined MODAL_AERO)
     naer = zero
     vaer = zero
@@ -859,6 +764,8 @@ contains
     deallocate( cloudtopheight )
     deallocate( echotopheight )
     deallocate( cloudtoptemp )
+    deallocate( u_max )
+    deallocate( w_max )
 #if (defined CRM && defined MODAL_AERO)
     deallocate( naer )
     deallocate( vaer )

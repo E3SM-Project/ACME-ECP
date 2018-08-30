@@ -397,7 +397,7 @@ CONTAINS
     integer k
 
 
-    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb, &
+    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb(:,icrm), &
     t2lediff,t2lediss,twlediff,.true.)
 
     if(advect_sgs) then

@@ -196,7 +196,7 @@ contains
             lat_heat = -(lfac(kc)*fz(kc)-lfac(k)*fz(k))*irhoadz(k)
             t(i,j,k)=t(i,j,k)-lat_heat
             tlat(k)=tlat(k)-lat_heat            ! For energy budget
-            precflux(k) = precflux(k) - fz(k)*flagstat   ! For statistics
+            precflux(k,icrm) = precflux(k,icrm) - fz(k)*flagstat   ! For statistics
           end do
           precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(1)*flagstat ! For statistics
           precssfc(i,j,icrm) = precssfc(i,j,icrm) - fz(1)*(1.-omega(i,j,1))*flagstat ! For statistics

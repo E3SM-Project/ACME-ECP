@@ -636,7 +636,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     crm_output%tkesgsz   (icrm,:) = 0.
     crm_output%tkz       (icrm,:) = 0.
     crm_output%flux_qp   (icrm,:) = 0.
-    crm_output%precflux      (icrm,:) = 0.
+    crm_output%precflux  (icrm,:) = 0.
     crm_output%qt_trans  (icrm,:) = 0.
     crm_output%qp_trans  (icrm,:) = 0.
     crm_output%qp_fall   (icrm,:) = 0.
@@ -645,14 +645,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     crm_output%qt_ls     (icrm,:) = 0.
     crm_output%t_ls      (icrm,:) = 0.
 
-    uwle     = 0.
-    uwsb     = 0.
-    vwle     = 0.
-    vwsb     = 0.
+    uwle(:,icrm)     = 0.
+    uwsb(:,icrm)     = 0.
+    vwle(:,icrm)     = 0.
+    vwsb(:,icrm)     = 0.
     qpsrc    = 0.
     qpevp    = 0.
     qpfall   = 0.
-    precflux = 0.
+    precflux(:,icrm) = 0.
 
 !--------------------------------------------------
 #ifdef sam1mom
@@ -1516,11 +1516,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       qpsrc   (k) = qpsrc   (k) * factor_xy*icrm_run_time
       qpevp   (k) = qpevp   (k) * factor_xy*icrm_run_time
       qpfall  (k) = qpfall  (k) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
-      precflux(k) = precflux(k) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
+      precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
-      crm_output%flux_u    (icrm,l) = (uwle(k) + uwsb(k))*tmp1*factor_xy/nstop
-      crm_output%flux_v    (icrm,l) = (vwle(k) + vwsb(k))*tmp1*factor_xy/nstop
+      crm_output%flux_u    (icrm,l) = (uwle(k,icrm) + uwsb(k,icrm))*tmp1*factor_xy/nstop
+      crm_output%flux_v    (icrm,l) = (vwle(k,icrm) + vwsb(k,icrm))*tmp1*factor_xy/nstop
 #ifdef sam1mom
       crm_output%flux_qt   (icrm,l) = mkwle(k,1) + mkwsb(k,1)
       crm_output%fluxsgs_qt(icrm,l) = mkwsb(k,1)
@@ -1542,7 +1542,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_output%tkesgsz   (icrm,l)= rho(k,icrm)*sum(tke(1:nx,1:ny,k))*factor_xy
       crm_output%tkez      (icrm,l)= rho(k,icrm)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
       crm_output%tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
-      crm_output%precflux      (icrm,l) = precflux(k)/1000.       !mm/s  -->m/s
+      crm_output%precflux      (icrm,l) = precflux(k,icrm)/1000.       !mm/s  -->m/s
 
       crm_output%qp_fall   (icrm,l) = qpfall(k)
       crm_output%qp_evp    (icrm,l) = qpevp(k)

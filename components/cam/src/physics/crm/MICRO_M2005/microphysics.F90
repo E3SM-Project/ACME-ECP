@@ -680,7 +680,7 @@ if(mod(nstep-1,nstatis).eq.0.and.icycle.eq.1) then
       end do
    end do
    do k=1,nzm
-      precflux(k) = 0.   ! in SPCAM, done in crm.F90
+      precflux(k,icrm) = 0.   ! in SPCAM, done in crm.F90
    end do
 end if
 #endif ! end CRM
@@ -1192,7 +1192,7 @@ do k = 1,nzm
    tmpc = tmpc + stend(m,iqv)*rho(m,icrm)*dz*adz(m)  !bloss/qt: iqcl --> iqv
    mksed(m,iqv) = tmpc
 end do
-precflux(1:nzm) = precflux(1:nzm) - mksed(:,iqv)*dtn/dz
+precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqv)*dtn/dz
 
 if(doprecip) then
    tmpr = 0.
@@ -1201,7 +1201,7 @@ if(doprecip) then
       tmpr = tmpr + stend(m,iqr)*rho(m,icrm)*dz*adz(m)
       mksed(m,iqr) = tmpr
    end do
-   precflux(1:nzm) = precflux(1:nzm) - mksed(:,iqr)*dtn/dz
+   precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqr)*dtn/dz
 end if
 
 if(doicemicro) then
@@ -1233,14 +1233,14 @@ if(doicemicro) then
    end do
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
    if ( dograupel ) then
-     precflux(1:nzm) = precflux(1:nzm) &
+     precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
           - (mksed(:,iqci) + mksed(:,iqs) + mksed(:,iqg))*dtn/dz
    else
-     precflux(1:nzm) = precflux(1:nzm) &
+     precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
           - (mksed(:,iqci) + mksed(:,iqs))*dtn/dz
    end if
 #else
-   precflux(1:nzm) = precflux(1:nzm) &
+   precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
         - (mksed(:,iqci) + mksed(:,iqs) + mksed(:,iqg))*dtn/dz
 #endif
 end if
@@ -1454,7 +1454,7 @@ return ! do not need this routine -- sedimentation done in m2005micro.
 !!$    end do
 !!$   end do
 !!$   do k=1,nzm
-!!$    precflux(k) = 0.
+!!$    precflux(k,icrm) = 0.
 !!$   end do
 !!$ end if
 !!$
