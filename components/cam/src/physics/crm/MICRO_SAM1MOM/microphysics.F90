@@ -440,22 +440,22 @@ CONTAINS
     if(qp(i,j,k).gt.qp_threshold) then
       omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
       if(omp.eq.1.) then
-        term_vel_qp = vrain*(rho(k)*qp(i,j,k))**crain
+        term_vel_qp = vrain*(rho(k,icrm)*qp(i,j,k))**crain
       elseif(omp.eq.0.) then
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
         qgg=omg*qp(i,j,k)
         qss=qp(i,j,k)-qgg
-        term_vel_qp = (omg*vgrau*(rho(k)*qgg)**cgrau &
-        +(1.-omg)*vsnow*(rho(k)*qss)**csnow)
+        term_vel_qp = (omg*vgrau*(rho(k,icrm)*qgg)**cgrau &
+        +(1.-omg)*vsnow*(rho(k,icrm)*qss)**csnow)
       else
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
         qrr=omp*qp(i,j,k)
         qss=qp(i,j,k)-qrr
         qgg=omg*qss
         qss=qss-qgg
-        term_vel_qp = (omp*vrain*(rho(k)*qrr)**crain &
-        +(1.-omp)*(omg*vgrau*(rho(k)*qgg)**cgrau &
-        +(1.-omg)*vsnow*(rho(k)*qss)**csnow))
+        term_vel_qp = (omp*vrain*(rho(k,icrm)*qrr)**crain &
+        +(1.-omp)*(omg*vgrau*(rho(k,icrm)*qgg)**cgrau &
+        +(1.-omg)*vsnow*(rho(k,icrm)*qss)**csnow))
       endif
     end if
   end function term_vel_qp
@@ -504,9 +504,10 @@ CONTAINS
   !-----------------------------------------------------------------------
   ! Supply function that computes total water in a domain:
   !
-  real(8) function total_water()
-
+  real(8) function total_water(ncrms,icrm)
     use vars, only : nstep,nprint,adz,dz,rho
+    implicit none
+    integer, intent(in) :: ncrms,icrm
     real(8) tmp
     integer i,j,k,m
 
@@ -520,7 +521,7 @@ CONTAINS
               tmp = tmp + micro_field(i,j,k,m)
             end do
           end do
-          total_water = total_water + tmp*adz(k)*dz*rho(k)
+          total_water = total_water + tmp*adz(k)*dz*rho(k,icrm)
         end do
       end if
     end do

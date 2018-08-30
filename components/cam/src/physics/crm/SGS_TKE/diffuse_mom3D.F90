@@ -106,7 +106,7 @@ contains
         do i=1,nx
           ib=i-1
           tkz=rdz2*tk(i,j,k)
-          fw(i,j,kc)=-2.*tkz*(w(i,j,kc)-w(i,j,k))*rho(k)*iadz
+          fw(i,j,kc)=-2.*tkz*(w(i,j,kc)-w(i,j,k))*rho(k,icrm)*iadz
           tkz=rdz25*(tk(i,j,k)+tk(ib,j,k)+tk(i,j,kc)+tk(ib,j,kc))
           fu(i,j,kc)=-tkz*( (u(i,j,kc)-u(i,j,k))*iadzw + &
           (w(i,j,kc)-w(ib,j,kc))*dzx)*rhow(kc)
@@ -125,7 +125,7 @@ contains
     do j=1,ny
       do i=1,nx
         tkz=rdz2*grdf_z(nzm)*tk(i,j,nzm)
-        fw(i,j,nz)=-2.*tkz*(w(i,j,nz)-w(i,j,nzm))/adz(nzm)*rho(nzm)
+        fw(i,j,nz)=-2.*tkz*(w(i,j,nz)-w(i,j,nzm))/adz(nzm)*rho(nzm,icrm)
         fu(i,j,1)=fluxbu(i,j,icrm) * rdz * rhow(1)
         fv(i,j,1)=fluxbv(i,j,icrm) * rdz * rhow(1)
         fu(i,j,nz)=fluxtu(i,j,icrm) * rdz * rhow(nz)
@@ -137,7 +137,7 @@ contains
 
     do k=1,nzm
       kc=k+1
-      rhoi = 1./(rho(k)*adz(k))
+      rhoi = 1./(rho(k,icrm)*adz(k))
       do j=1,ny
         do i=1,nx
           dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fu(i,j,kc)-fu(i,j,k))*rhoi

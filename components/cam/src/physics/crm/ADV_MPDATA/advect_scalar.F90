@@ -5,7 +5,7 @@ module advect_scalar_mod
 
 contains
 
-  subroutine advect_scalar (f,fadv,flux,f2leadv,f2legrad,fwleadv,doit)
+  subroutine advect_scalar (ncrms,icrm,f,fadv,flux,f2leadv,f2legrad,fwleadv,doit)
 
     !     positively definite monotonic advection with non-oscillatory option
 
@@ -14,7 +14,7 @@ contains
     use params, only: docolumn, crm_rknd
 
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) flux(nz), fadv(nz)
     real(crm_rknd) f2leadv(nz),f2legrad(nz),fwleadv(nz)
@@ -33,9 +33,9 @@ contains
     df(:,:,:) = f(:,:,:)
 
     if(RUN3D) then
-      call advect_scalar3D(f, u, v, w, rho, rhow, flux)
+      call advect_scalar3D(ncrms, icrm, f, u, v, w, rho, rhow, flux)
     else
-      call advect_scalar2D(f, u, w, rho, rhow, flux)
+      call advect_scalar2D(ncrms, icrm, f, u, w, rho, rhow, flux)
     endif
 
     do k=1,nzm

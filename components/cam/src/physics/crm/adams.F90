@@ -17,8 +17,8 @@ contains
     dtdz = dtn/dz
 
     do k=1,nzm
-      rhox = rho(k)*dtdx
-      rhoy = rho(k)*dtdy
+      rhox = rho(k,icrm)*dtdx
+      rhoy = rho(k,icrm)*dtdy
       rhoz = rhow(k)*dtdz
       do j=1,ny
         do i=1,nx

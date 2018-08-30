@@ -52,8 +52,8 @@ contains
       do k=1,nzm
         kc=k+1
         rdz=1./(adz(k)*dz)
-        rup = rhow(kc)/rho(k)*rdz
-        rdn = rhow(k)/rho(k)*rdz
+        rup = rhow(kc)/rho(k,icrm)*rdz
+        rdn = rhow(k)/rho(k,icrm)*rdz
         do j=1,ny
           jc=j+1
           do i=1,nx
@@ -70,7 +70,7 @@ contains
             ctat*(rdx*(dudt(ic,j,k,nc,icrm)-dudt(i,j,k,nc,icrm))+ &
             rdy*(dvdt(i,jc,k,nc,icrm)-dvdt(i,j,k,nc,icrm))+ &
             (dwdt(i,j,kc,nc,icrm)*rup-dwdt(i,j,k,nc,icrm)*rdn) )
-            p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k)
+            p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)
           end do
         end do
       end do
@@ -83,8 +83,8 @@ contains
       do k=1,nzm
         kc=k+1
         rdz=1./(adz(k)*dz)
-        rup = rhow(kc)/rho(k)*rdz
-        rdn = rhow(k)/rho(k)*rdz
+        rup = rhow(kc)/rho(k,icrm)*rdz
+        rdn = rhow(k)/rho(k,icrm)*rdz
         do i=1,nx
           ic=i+1
           p(i,j,k,icrm)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
@@ -95,7 +95,7 @@ contains
           (dwdt(i,j,kc,nb,icrm)*rup-dwdt(i,j,k,nb,icrm)*rdn) ) + &
           ctat*(rdx*(dudt(ic,j,k,nc,icrm)-dudt(i,j,k,nc,icrm))+ &
           (dwdt(i,j,kc,nc,icrm)*rup-dwdt(i,j,k,nc,icrm)*rdn) )
-          p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k)
+          p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)
         end do
       end do
 

@@ -3,19 +3,19 @@ module advect_scalar2D_mod
 
 contains
 
-  subroutine advect_scalar2D (f, u, w, rho, rhow, flux)
+  subroutine advect_scalar2D (ncrms, icrm, f, u, w, rho, rhow, flux)
 
     !     positively definite monotonic advection with non-oscillatory option
 
     use grid
     use params, only: dowallx, crm_rknd
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
 
     real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) u(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
-    real(crm_rknd) rho(nzm)
+    real(crm_rknd) rho(nzm,ncrms)
     real(crm_rknd) rhow(nz)
     real(crm_rknd) flux(nz)
 
@@ -94,7 +94,7 @@ contains
     end do
 
     do k=1,nzm
-      irho(k) = 1./rho(k)
+      irho(k) = 1./rho(k,icrm)
       iadz(k) = 1./adz(k)
       do i=-1,nxp2
         f(i,j,k) = f(i,j,k) - (uuu(i+1,j,k)-uuu(i,j,k) &
@@ -144,9 +144,9 @@ contains
         kc=min(nzm,k+1)
         do i=0,nxp1
           ic=i+1
-          mx(i,j,k)=rho(k)*(mx(i,j,k)-f(i,j,k))/(pn(uuu(ic,j,k)) + pp(uuu(i,j,k))+&
+          mx(i,j,k)=rho(k,icrm)*(mx(i,j,k)-f(i,j,k))/(pn(uuu(ic,j,k)) + pp(uuu(i,j,k))+&
           iadz(k)*(pn(www(i,j,kc)) + pp(www(i,j,k)))+eps)
-          mn(i,j,k)=rho(k)*(f(i,j,k)-mn(i,j,k))/(pp(uuu(ic,j,k)) + pn(uuu(i,j,k))+&
+          mn(i,j,k)=rho(k,icrm)*(f(i,j,k)-mn(i,j,k))/(pp(uuu(ic,j,k)) + pn(uuu(i,j,k))+&
           iadz(k)*(pp(www(i,j,kc)) + pn(www(i,j,k)))+eps)
         end do
       end do

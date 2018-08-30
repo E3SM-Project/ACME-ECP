@@ -300,22 +300,22 @@ contains
         eign=(2._8*cos(factx*xnx*xi)-2._8)*ddx2+ &
         (2._8*cos(facty*xny*xj)-2._8)*ddy2
         if(id+jd.eq.0) then
-          b=1._8/(eign*rho(1)-a(1)-c(1))
+          b=1._8/(eign*rho(1,icrm)-a(1)-c(1))
           alfa(1)=-c(1)*b
           beta(1)=fff(1)*b
         else
-          b=1._8/(eign*rho(1)-c(1))
+          b=1._8/(eign*rho(1,icrm)-c(1))
           alfa(1)=-c(1)*b
           beta(1)=fff(1)*b
         end if
         do k=2,nzm-1
-          e=1._8/(eign*rho(k)-a(k)-c(k)+a(k)*alfa(k-1))
+          e=1._8/(eign*rho(k,icrm)-a(k)-c(k)+a(k)*alfa(k-1))
           alfa(k)=-c(k)*e
           beta(k)=(fff(k)-a(k)*beta(k-1))*e
         end do
 
         fff(nzm)=(fff(nzm)-a(nzm)*beta(nzm-1))/ &
-        (eign*rho(nzm)-a(nzm)+a(nzm)*alfa(nzm-1))
+        (eign*rho(nzm,icrm)-a(nzm)+a(nzm)*alfa(nzm-1))
 
         do k=nzm-1,1,-1
           fff(k)=alfa(k)*fff(k+1)+beta(k)

@@ -1,5 +1,5 @@
 module init_mod
-	implicit none
+  implicit none
 
 contains
 
@@ -47,10 +47,6 @@ contains
     tradv = 0.
     trdiff = 0.
     trphys = 0.
-
-    gamt0 = 0.
-    gamq0 = 0.
-
   end subroutine init
 
 

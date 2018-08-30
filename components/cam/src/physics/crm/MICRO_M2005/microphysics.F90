@@ -924,7 +924,7 @@ do j = 1,ny
            tmpqcl,tmpqci,tmpqs,tmpqr, &
            tmpncl,tmpnci,tmpns,tmpnr, &
            tmtend1d,mtendqv, &
-           tmptabs,tmpqv,tmppres,rho,tmpdz,tmpw,tmpwsub, &
+           tmptabs,tmpqv,tmppres,rho(:,icrm),tmpdz,tmpw,tmpwsub, &
 ! hm 7/26/11, new output
            tmpacc,tmpaut,tmpevpc,tmpevpr,tmpmlt, &
            tmpsub,tmpdep,tmpcon, &
@@ -971,7 +971,7 @@ do j = 1,ny
            tmpqcl,tmpqci,tmpqs,tmpqr, &
            tmpncl,tmpnci,tmpns,tmpnr, &
            tmtend1d,mtendqv, &
-           tmptabs,tmpqv,tmppres,rho,tmpdz,tmpw,tmpwsub, &
+           tmptabs,tmpqv,tmppres,rho(:,icrm),tmpdz,tmpw,tmpwsub, &
 ! hm 7/26/11, new output
            tmpacc,tmpaut,tmpevpc,tmpevpr,tmpmlt, &
            tmpsub,tmpdep,tmpcon, &
@@ -1117,16 +1117,16 @@ do j = 1,ny
          tmpg = 0.
 
          do k = 1,nzm
-            tmpc = tmpc + 0.0018*rho(k)*dz*adz(k)*tmpqcl(k)/(1.e-20+1.e-6*effc1d(k))
-            tmpr = tmpr + 0.0018*rho(k)*dz*adz(k)*tmpqr(k)/(1.e-20+1.e-6*effr1d(k))
+            tmpc = tmpc + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqcl(k)/(1.e-20+1.e-6*effc1d(k))
+            tmpr = tmpr + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqr(k)/(1.e-20+1.e-6*effr1d(k))
             !bloss/qt: put cloud liquid optical depth in trtau(:,iqv)
             trtau(k,iqv) = trtau(k,iqv) + tmpc
             if(doprecip) trtau(k,iqr) = trtau(k,iqr) + tmpr
 
             if(doicemicro) then
-               tmpi = tmpi + 0.0018*rho(k)*dz*adz(k)*tmpqci(k)/(1.e-20+1.e-6*effi1d(k))
-               tmps = tmps + 0.0018*rho(k)*dz*adz(k)*tmpqs(k)/(1.e-20+1.e-6*effs1d(k))
-               tmpg = tmpg + 0.0018*rho(k)*dz*adz(k)*tmpqg(k)/(1.e-20+1.e-6*effg1d(k))
+               tmpi = tmpi + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqci(k)/(1.e-20+1.e-6*effi1d(k))
+               tmps = tmps + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqs(k)/(1.e-20+1.e-6*effs1d(k))
+               tmpg = tmpg + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqg(k)/(1.e-20+1.e-6*effg1d(k))
 
                trtau(k,iqci) = trtau(k,iqci) + tmpi
                trtau(k,iqs) = trtau(k,iqs) + tmps
@@ -1189,7 +1189,7 @@ end do ! j = 1,ny
 tmpc = 0.
 do k = 1,nzm
    m = nz-k
-   tmpc = tmpc + stend(m,iqv)*rho(m)*dz*adz(m)  !bloss/qt: iqcl --> iqv
+   tmpc = tmpc + stend(m,iqv)*rho(m,icrm)*dz*adz(m)  !bloss/qt: iqcl --> iqv
    mksed(m,iqv) = tmpc
 end do
 precflux(1:nzm) = precflux(1:nzm) - mksed(:,iqv)*dtn/dz
@@ -1198,7 +1198,7 @@ if(doprecip) then
    tmpr = 0.
    do k = 1,nzm
       m = nz-k
-      tmpr = tmpr + stend(m,iqr)*rho(m)*dz*adz(m)
+      tmpr = tmpr + stend(m,iqr)*rho(m,icrm)*dz*adz(m)
       mksed(m,iqr) = tmpr
    end do
    precflux(1:nzm) = precflux(1:nzm) - mksed(:,iqr)*dtn/dz
@@ -1210,16 +1210,16 @@ if(doicemicro) then
    tmpg = 0.
    do k = 1,nzm
       m = nz-k
-      tmpi = tmpi + stend(m,iqci)*rho(m)*dz*adz(m)
-      tmps = tmps + stend(m,iqs)*rho(m)*dz*adz(m)
+      tmpi = tmpi + stend(m,iqci)*rho(m,icrm)*dz*adz(m)
+      tmps = tmps + stend(m,iqs)*rho(m,icrm)*dz*adz(m)
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
       if ( dograupel ) then
-        tmpg = tmpg + stend(m,iqg)*rho(m)*dz*adz(m)
+        tmpg = tmpg + stend(m,iqg)*rho(m,icrm)*dz*adz(m)
       else
         tmpg = 0.
       end if
 #else
-      tmpg = tmpg + stend(m,iqg)*rho(m)*dz*adz(m)
+      tmpg = tmpg + stend(m,iqg)*rho(m,icrm)*dz*adz(m)
 #endif
       mksed(m,iqci) = tmpi
       mksed(m,iqs) = tmps
@@ -1576,9 +1576,10 @@ end subroutine satadj_liquid
 !-----------------------------------------------------------------------
 ! Supply function that computes total water in a domain:
 !
-real(8) function total_water()
-
+real(8) function total_water(ncrms,icrm)
   use vars, only : nstep,nprint,adz,dz,rho
+  implicit none
+  integer, intent(in) :: ncrms,icrm
   real(8) tmp
   integer i,j,k,m
 
@@ -1592,7 +1593,7 @@ real(8) function total_water()
           tmp = tmp + micro_field(i,j,k,m)
         end do
       end do
-      total_water = total_water + tmp*adz(k)*dz*rho(k)
+      total_water = total_water + tmp*adz(k)*dz*rho(k,icrm)
     end do
    end if
   end do

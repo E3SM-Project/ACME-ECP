@@ -76,21 +76,11 @@ module vars
   real(crm_rknd), allocatable :: q01  (:,:)
   real(crm_rknd), allocatable :: qp0  (:,:)
   real(crm_rknd), allocatable :: qn0  (:,:)
-  !----------------------------------------------------------------
-  ! "observed" (read from snd file) surface characteristics
-
-  real(crm_rknd)  sstobs, lhobs, shobs
-  !----------------------------------------------------------------
-  !  Domain top stuff:
-
-  real(crm_rknd)   gamt0    ! gradient of t() at the top,K/m
-  real(crm_rknd)   gamq0    ! gradient of q() at the top,g/g/m
 
   !-----------------------------------------------------------------
   ! reference vertical profiles:
-
-  real(crm_rknd), allocatable :: prespot(:)  ! (1000./pres)**R/cp
-  real(crm_rknd), allocatable :: rho    (:)   ! air density at pressure levels,kg/m3
+  real(crm_rknd), allocatable :: prespot(:,:)  ! (1000./pres)**R/cp
+  real(crm_rknd), allocatable :: rho    (:,:)   ! air density at pressure levels,kg/m3
   real(crm_rknd), allocatable :: rhow   (:)   ! air density at vertical velocity levels,kg/m3
   real(crm_rknd), allocatable :: bet    (:)   ! = ggr/tv0
   real(crm_rknd), allocatable :: gamaz  (:) ! ggr/cp*z
@@ -102,7 +92,6 @@ module vars
 
   !---------------------------------------------------------------------
   ! Large-scale and surface forcing:
-
   integer nlsf  ! number of large-scale forcing profiles
   integer nrfc  ! number of radiative forcing profiles
   integer nsfc  ! number of surface forcing profiles
@@ -418,8 +407,8 @@ contains
     allocate( q01  (nzm,ncrms) )
     allocate( qp0  (nzm,ncrms) )
     allocate( qn0  (nzm,ncrms) )
-    allocate( prespot(nzm)   )
-    allocate( rho    (nzm)     )
+    allocate( prespot(nzm,ncrms)   )
+    allocate( rho    (nzm,ncrms)     )
     allocate( rhow   (nz )    )
     allocate( bet    (nzm)     )
     allocate( gamaz  (nzm)  )

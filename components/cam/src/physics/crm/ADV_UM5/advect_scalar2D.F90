@@ -4,24 +4,24 @@ module advect_scalar2D_mod
 
 contains
 
-  subroutine advect_scalar2D( f, u, w, rho, rhow, flux )
+  subroutine advect_scalar2D( ncrms,icrm, f, u, w, rho, rhow, flux )
 
-    !	Two dimentional 5th order ULTIMATE-MACHO scheme
+    ! Two dimentional 5th order ULTIMATE-MACHO scheme
 
     use grid
     use advect_um_lib
     use params, only: dowallx, crm_rknd
     implicit none
-
-    !	input & output
+    integer, intent(in) :: ncrms,icrm
+    ! input & output
     real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
     real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(inout) :: u
     real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
-    real(crm_rknd), dimension(nzm), intent(in) :: rho
+    real(crm_rknd), dimension(nzm,ncrms), intent(in) :: rho
     real(crm_rknd), dimension(nz), intent(in) :: rhow
     real(crm_rknd), dimension(nz), intent(out) :: flux
 
-    !	local
+    ! local
     integer, parameter :: j = 1
     integer :: macho_order, i, k
 
@@ -44,31 +44,31 @@ contains
     endif
     !--------------------------------------------------------------------------
 
-    !	Convert mass-weighted courant number to non-mass weighted
-    !	Inverse of rho and adz
+    ! Convert mass-weighted courant number to non-mass weighted
+    ! Inverse of rho and adz
     if ( ( nstep > nstep_adv ).and.( .not.updated_cn(icycle) ) ) then
       !!if (masterproc) print*,'cn updated'
-      updated_cn(icycle) = .true.	! skip for same icycle if updated
-      if (icycle == ncycle) then	! skip at ncycle if updated
+      updated_cn(icycle) = .true. ! skip for same icycle if updated
+      if (icycle == ncycle) then  ! skip at ncycle if updated
         nstep_adv = nstep
         updated_cn(:) = .false.
       endif
 
-      !	Inverse of rho and adz, adzw
+      ! Inverse of rho and adz, adzw
       do k = 1, nzm
-        irho(k)  = 1. / rho(k)
+        irho(k)  = 1. / rho(k,icrm)
         iadz(k)  = 1. / adz(k)
         iadzw(k) = 1. / adzw(k)
       enddo
 
-      !	x direction
+      ! x direction
       do k = 1, nzm
         do i = -1, nxp3
           cu(i,j,k) = u(i,j,k) * irho(k)
         enddo
       enddo
 
-      !	z direction
+      ! z direction
       cw(:,:,nz) = 0.
       cw(:,:,1) = 0.
       do k = 2, nzm
@@ -79,43 +79,43 @@ contains
       enddo
     endif
 
-    !	Top and bottom boundaryies
+    ! Top and bottom boundaryies
     fz(:,:,nz) = 0.
     fz(:,:,1) = 0.
 
-    !	Face values
+    ! Face values
     fadv(:,:,:) = f(:,:,:)
     macho_order = mod(nstep,2)
     select case (macho_order)
     case(0)
 
-      !	x-direction
+      ! x-direction
       call face_x_5th( 0, nxp2, 1, 1 )
       call adv_form_update_x( 0, nxp1, 1, 1 )
 
-      !	z-direction
+      ! z-direction
       call face_z_5th( 0, nxp1, 1, 1 )
 
     case(1)
 
-      !	z-direction
+      ! z-direction
       call face_z_5th( -3, nxp4, 1, 1 )
       call adv_form_update_z( -3, nxp4, 1, 1 )
 
-      !	x-direction
+      ! x-direction
       call face_x_5th( 0, nxp2, 1, 1 )
 
     end select
 
-    !	FCT to ensure positive definite or monotone
+    ! FCT to ensure positive definite or monotone
     if (fct) then
       call fct2D( f, u, w, flux )
     else
-      !	In case...
+      ! In case...
       !fz(:,:,nz) = 0.
       !fz(:,:,1) = 0.
 
-      !	Flux-form update
+      ! Flux-form update
       flux = 0.
       do k = 1, nzm
         do i = 1, nx

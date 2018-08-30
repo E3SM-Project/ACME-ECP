@@ -340,7 +340,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       zi(k) = crm_input%zint(icrm,plev-k+2)- crm_input%zint(icrm,plev+1)
       pres(k) = crm_input%pmid(icrm,plev-k+1)/100.
       presi(k) = crm_input%pint(icrm,plev-k+2)/100.
-      prespot(k)=(1000./pres(k))**(rgas/cp)
+      prespot(k,icrm)=(1000./pres(k))**(rgas/cp)
       bet(k) = ggr/crm_input%tl(icrm,plev-k+1)
       gamaz(k)=ggr/cp*z(k)
     end do ! k
@@ -361,10 +361,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     end do
 
     do k = 1,nzm
-      rho(k) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
+      rho(k,icrm) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
     end do
     do k=2,nzm
-    ! rhow(k) = 0.5*(rho(k)+rho(k-1))
+    ! rhow(k) = 0.5*(rho(k,icrm)+rho(k-1,icrm))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with crm_input%pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
       rhow(k) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
@@ -440,7 +440,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         do i=1, nx
           if(cloudliq(i,j,k).gt.0) then
             if(dopredictNc) then
-              if( micro_field(i,j,k,incl).eq.0) micro_field(i,j,k,incl) = 1.0e6*Nc0/rho(k)
+              if( micro_field(i,j,k,incl).eq.0) micro_field(i,j,k,incl) = 1.0e6*Nc0/rho(k,icrm)
             endif
           endif
         enddo
@@ -513,7 +513,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       ! than is in the sounding, because we subsequently use tv0 to initialize
       ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
       ! -dschanen UWM 11 Feb 2010
-      tv0(k,icrm) = tabs0(k,icrm)*prespot(k)*(1.+epsv*q0(k,icrm))
+      tv0(k,icrm) = tabs0(k,icrm)*prespot(k,icrm)*(1.+epsv*q0(k,icrm))
 #endif /* CLUBB_CRM */
 
       l = plev-k+1
@@ -535,7 +535,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
-    ustar = sqrt(crm_input%tau00(icrm)/rho(1))
+    ustar = sqrt(crm_input%tau00(icrm)/rho(1,icrm))
     z0(icrm) = z0_est(z(1),bflx,wnd,ustar)
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
@@ -724,7 +724,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     if ( doclubb .or. doclubbnoninter ) then
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                            latitude, longitude, z, rho, zi, rhow, tv0, tke )
+                            latitude, longitude, z, rho(:,icrm), zi, rhow, tv0, tke )
     endif
 #endif /* CLUBB_CRM */
 
@@ -997,7 +997,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
             !hm#endif
 
-            tmp1 = rho(nz-k)*adz(nz-k)*dz*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
+            tmp1 = rho(nz-k,icrm)*adz(nz-k)*dz*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
@@ -1017,23 +1017,23 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
             !     qsat = qsatw_crm(tabs(i,j,k,icrm),pres(k))
             !     if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.min(1.e-5,0.01*qsat)) then
-            tmp1 = rho(k)*adz(k)*dz
+            tmp1 = rho(k,icrm)*adz(k)*dz
             if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
                  crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k)
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
+                   crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
+                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
                  endif
                  if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   crm_output%mcdn (icrm,l) = crm_output%mcdn (icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
+                   crm_output%mcdn (icrm,l) = crm_output%mcdn (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
+                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
                  endif
             else
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
                  if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k)*0.5*(w(i,j,k+1)+w(i,j,k))
+                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k))
                  endif
             endif
 
@@ -1539,8 +1539,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_output%qp_trans  (icrm,l) = mkadv (k,iqr) + mkadv (k,iqs) + mkadv (k,iqg) + &
                          mkdiff(k,iqr) + mkdiff(k,iqs) + mkdiff(k,iqg)
 #endif /* m2005 */
-      crm_output%tkesgsz   (icrm,l)= rho(k)*sum(tke(1:nx,1:ny,k))*factor_xy
-      crm_output%tkez      (icrm,l)= rho(k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
+      crm_output%tkesgsz   (icrm,l)= rho(k,icrm)*sum(tke(1:nx,1:ny,k))*factor_xy
+      crm_output%tkez      (icrm,l)= rho(k,icrm)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
       crm_output%tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
       crm_output%precflux      (icrm,l) = precflux(k)/1000.       !mm/s  -->m/s
 
