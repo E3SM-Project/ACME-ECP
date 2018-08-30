@@ -319,12 +319,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     fcor(icrm)= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
     fcorz(icrm) = sqrt(4.*(2*pi/(3600.*24.))**2-fcor(icrm)**2)
-    fcory(:) = fcor(icrm)
-    fcorzy(:) = fcorz(icrm)
+    fcory(:,icrm) = fcor(icrm)
+    fcorzy(:,icrm) = fcorz(icrm)
     do j=1,ny
       do i=1,nx
-        latitude (i,j) = latitude0(icrm)
-        longitude(i,j) = longitude0(icrm)
+        latitude (i,j,icrm) = latitude0(icrm)
+        longitude(i,j,icrm) = longitude0(icrm)
       end do
     end do
 
@@ -341,8 +341,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       pres(k) = crm_input%pmid(icrm,plev-k+1)/100.
       presi(k) = crm_input%pint(icrm,plev-k+2)/100.
       prespot(k,icrm)=(1000./pres(k))**(rgas/cp)
-      bet(k) = ggr/crm_input%tl(icrm,plev-k+1)
-      gamaz(k)=ggr/cp*z(k)
+      bet(k,icrm) = ggr/crm_input%tl(icrm,plev-k+1)
+      gamaz(k,icrm)=ggr/cp*z(k)
     end do ! k
    ! zi(nz) =  crm_input%zint(plev-nz+2)
     zi(nz) = crm_input%zint(icrm,plev-nz+2)-crm_input%zint(icrm,plev+1) !+++mhwang, 2012-02-04
@@ -449,7 +449,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif /* m2005 */
 
     w(:,:,nz)=0.
-    wsub (:) = 0.      !used in clubb, +++mhwang
+    wsub (:,icrm) = 0.      !used in clubb, +++mhwang
     dudt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
     dvdt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
     dwdt(1:nx,1:ny,1:nz,1:3,icrm) = 0.
@@ -480,7 +480,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !---mhwang
       do j=1,ny
         do i=1,nx
-          t(i,j,k) = tabs(i,j,k,icrm)+gamaz(k) &
+          t(i,j,k) = tabs(i,j,k,icrm)+gamaz(k,icrm) &
                     -fac_cond*qcl(i,j,k,icrm)-fac_sub*qci(i,j,k,icrm) &
                     -fac_cond*qpl(i,j,k,icrm)-fac_sub*qpi(i,j,k,icrm)
           colprec=colprec+(qpl(i,j,k,icrm)+qpi(i,j,k,icrm))*crm_input%pdel(icrm,plev-k+1)
@@ -519,13 +519,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       l = plev-k+1
       uln(l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
       vln(l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
-      ttend(k) = (crm_input%tl(icrm,l)+gamaz(k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k))*idt_gl
-      qtend(k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
-      utend(k) = (uln(l)-u0(k,icrm))*idt_gl
-      vtend(k) = (vln(l)-v0(k,icrm))*idt_gl
+      ttend(k,icrm) = (crm_input%tl(icrm,l)+gamaz(k,icrm)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k))*idt_gl
+      qtend(k,icrm) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
+      utend(k,icrm) = (uln(l)-u0(k,icrm))*idt_gl
+      vtend(k,icrm) = (vln(l)-v0(k,icrm))*idt_gl
       ug0(k,icrm) = uln(l)
       vg0(k,icrm) = vln(l)
-      tg0(k,icrm) = crm_input%tl(icrm,l)+gamaz(k)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
+      tg0(k,icrm) = crm_input%tl(icrm,l)+gamaz(k,icrm)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
       qg0(k,icrm) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
 
     end do ! k
@@ -862,11 +862,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !----------------------------------------------------------
         !     Update scalar boundaries after large-scale processes:
-        call boundaries(3)
+        call boundaries(ncrms,icrm,3)
 
         !---------------------------------------------------------
         !     Update boundaries for velocities:
-        call boundaries(0)
+        call boundaries(ncrms,icrm,0)
 
         !-----------------------------------------------
         !     surface fluxes:
@@ -879,7 +879,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !----------------------------------------------------------
         !     Fill boundaries for SGS diagnostic fields:
 
-        call boundaries(4)
+        call boundaries(ncrms,icrm,4)
 
         !-----------------------------------------------
         !       advection of momentum:
@@ -905,7 +905,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !----------------------------------------------------------
         !     Update boundaries for all prognostic scalar fields for advection:
-        call boundaries(2)
+        call boundaries(ncrms,icrm,2)
 
         !---------------------------------------------------------
         !      advection of scalars :
@@ -917,7 +917,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !----------------------------------------------------------
         !     Update boundaries for scalars to prepare for SGS effects:
-        call boundaries(3)
+        call boundaries(ncrms,icrm,3)
 
         !---------------------------------------------------------
         !      SGS effects on scalars :
@@ -1548,8 +1548,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_output%qp_evp    (icrm,l) = qpevp(k)
       crm_output%qp_src    (icrm,l) = qpsrc(k)
 
-      crm_output%qt_ls     (icrm,l) = qtend(k)
-      crm_output%t_ls      (icrm,l) = ttend(k)
+      crm_output%qt_ls     (icrm,l) = qtend(k,icrm)
+      crm_output%t_ls      (icrm,l) = ttend(k,icrm)
     enddo
 
 #ifdef ECPP

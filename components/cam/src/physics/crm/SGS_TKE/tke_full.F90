@@ -126,7 +126,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     !!! first compute subgrid buoyancy flux at interface above this level.
 
     !!! average betdz to w-levels
-    betdz = 0.5*(bet(kc)+bet(kb))/dz/adzw(k+1)
+    betdz = 0.5*(bet(kc,icrm)+bet(kb,icrm))/dz/adzw(k+1)
 
     !!! compute subgrid buoyancy flux assuming clear conditions
     !!! we will over-write this later if conditions are cloudy

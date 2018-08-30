@@ -739,7 +739,7 @@ do j = 1,ny
       !bloss/qt: before saturation adjustment for liquid,
       !          this is Tcl = T - (L/Cp)*qcl (the cloud liquid water temperature,icrm)
       tmptabs(:) = t(i,j,:)  &           ! liquid water-ice static energy over Cp
-           - gamaz(:) &                                   ! potential energy
+           - gamaz(:,icrm) &                                   ! potential energy
            + fac_cond * (tmpqr(:)) &    ! bloss/qt: liquid latent energy due to rain only
            + fac_sub  * (tmpqci(:) + tmpqs(:) + tmpqg(:)) ! ice latent energy
 
@@ -1018,7 +1018,7 @@ do j = 1,ny
 
          ! take care of surface precipitation
          precsfc(i,j,icrm) = precsfc(i,j,icrm) + sfcpcp/dz
-         prec_xy(i,j) = prec_xy(i,j) + sfcpcp/dtn/dz
+         prec_xy(i,j,icrm) = prec_xy(i,j,icrm) + sfcpcp/dtn/dz
 !+++mhwang
          sfcpcp2D(i,j) = sfcpcp/dtn/dz
 !---mhwang

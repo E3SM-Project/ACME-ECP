@@ -14,8 +14,8 @@ contains
 
     !--------------------------------------------------------
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
-      uhl(icrm) = uhl(icrm) + dtn*utend(1)
-      vhl(icrm) = vhl(icrm) + dtn*vtend(1)
+      uhl(icrm) = uhl(icrm) + dtn*utend(1,icrm)
+      vhl(icrm) = vhl(icrm) + dtn*vtend(1,icrm)
       tauxm = 0.
       tauym = 0.
       do j=1,ny

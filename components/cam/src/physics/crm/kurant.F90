@@ -44,7 +44,7 @@ module kurant_mod
       if(ncycle.gt.4) then
          if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
          !+++ test +++mhwang
-         ! write(0, *) 'cfl', cfl, cfl_sgs, latitude(1, 1), longitude(1,1)
+         ! write(0, *) 'cfl', cfl, cfl_sgs, latitude(1, 1,icrm), longitude(1,1,icrm)
          ! do k=1, nzm
          !    write(0, *) 'k=', k, wm(k), uhm(k)
          ! end do
@@ -54,7 +54,7 @@ module kurant_mod
          !---mhwang
 
          ! whannah - formatted debug info - easier to read
-         write(0, 5550) cfl, cfl_sgs, latitude(1,1), longitude(1,1)
+         write(0, 5550) cfl, cfl_sgs, latitude(1,1,icrm), longitude(1,1,icrm)
          do k=1, nzm
             write(0, 5551) k, wm(k), uhm(k), tabs(1,1,k,icrm)
          end do

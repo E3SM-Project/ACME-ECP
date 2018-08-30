@@ -40,7 +40,7 @@ contains
       coef1 = rho(k,icrm)*dz*adz(k)*dtfactor
       do j=1,ny
         do i=1,nx
-          tabs(i,j,k,icrm) = t(i,j,k)-gamaz(k)+ fac_cond * (qcl(i,j,k,icrm)+qpl(i,j,k,icrm)) +&
+          tabs(i,j,k,icrm) = t(i,j,k)-gamaz(k,icrm)+ fac_cond * (qcl(i,j,k,icrm)+qpl(i,j,k,icrm)) +&
           fac_sub *(qci(i,j,k,icrm) + qpi(i,j,k,icrm))
           u0(k,icrm)=u0(k,icrm)+u(i,j,k)
           v0(k,icrm)=v0(k,icrm)+v(i,j,k)
@@ -51,9 +51,9 @@ contains
           qn0(k,icrm) = qn0(k,icrm) + qcl(i,j,k,icrm) + qci(i,j,k,icrm)
           qp0(k,icrm) = qp0(k,icrm) + qpl(i,j,k,icrm) + qpi(i,j,k,icrm)
 
-          pw_xy(i,j) = pw_xy(i,j)+qv(i,j,k,icrm)*coef1
-          cw_xy(i,j) = cw_xy(i,j)+qcl(i,j,k,icrm)*coef1
-          iw_xy(i,j) = iw_xy(i,j)+qci(i,j,k,icrm)*coef1
+          pw_xy(i,j,icrm) = pw_xy(i,j,icrm)+qv(i,j,k,icrm)*coef1
+          cw_xy(i,j,icrm) = cw_xy(i,j,icrm)+qcl(i,j,k,icrm)*coef1
+          iw_xy(i,j,icrm) = iw_xy(i,j,icrm)+qci(i,j,k,icrm)*coef1
 
         end do
       end do
@@ -83,11 +83,11 @@ contains
 
     do j=1,ny
       do i=1,nx
-        usfc_xy(i,j) = usfc_xy(i,j) + u(i,j,1)*dtfactor
-        vsfc_xy(i,j) = vsfc_xy(i,j) + v(i,j,1)*dtfactor
-        u200_xy(i,j) = u200_xy(i,j) + u(i,j,k200)*dtfactor
-        v200_xy(i,j) = v200_xy(i,j) + v(i,j,k200)*dtfactor
-        w500_xy(i,j) = w500_xy(i,j) + w(i,j,k500)*dtfactor
+        usfc_xy(i,j,icrm) = usfc_xy(i,j,icrm) + u(i,j,1)*dtfactor
+        vsfc_xy(i,j,icrm) = vsfc_xy(i,j,icrm) + v(i,j,1)*dtfactor
+        u200_xy(i,j,icrm) = u200_xy(i,j,icrm) + u(i,j,k200)*dtfactor
+        v200_xy(i,j,icrm) = v200_xy(i,j,icrm) + v(i,j,k200)*dtfactor
+        w500_xy(i,j,icrm) = w500_xy(i,j,icrm) + w(i,j,k500)*dtfactor
       end do
     end do
 
@@ -164,7 +164,7 @@ contains
 
     ! initially, zero out heights and set cloudtoptemp to SST
     cloudtopheight = 0.
-    cloudtoptemp = sstxy(1:nx,1:ny)
+    cloudtoptemp = sstxy(1:nx,1:ny,icrm)
     echotopheight = 0.
     do j = 1,ny
       do i = 1,nx
@@ -175,7 +175,7 @@ contains
           if (tmp_lwp.gt.0.01) then
             cloudtopheight(i,j) = z(k)
             cloudtoptemp(i,j) = tabs(i,j,k,icrm)
-            cld_xy(i,j) = cld_xy(i,j) + dtfactor
+            cld_xy(i,j,icrm) = cld_xy(i,j,icrm) + dtfactor
             EXIT
           end if
         end do

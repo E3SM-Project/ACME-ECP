@@ -45,7 +45,7 @@ contains
           ! Initail guess for temperature assuming no cloud water/ice:
 
 
-          tabs(i,j,k,icrm) = t(i,j,k)-gamaz(k)
+          tabs(i,j,k,icrm) = t(i,j,k)-gamaz(k,icrm)
           tabs1=(tabs(i,j,k,icrm)+fac1*qp(i,j,k))/(1.+fac2*qp(i,j,k))
 
           ! Warm cloud:

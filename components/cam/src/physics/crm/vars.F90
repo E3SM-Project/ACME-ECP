@@ -82,13 +82,13 @@ module vars
   real(crm_rknd), allocatable :: prespot(:,:)  ! (1000./pres)**R/cp
   real(crm_rknd), allocatable :: rho    (:,:)   ! air density at pressure levels,kg/m3
   real(crm_rknd), allocatable :: rhow   (:,:)   ! air density at vertical velocity levels,kg/m3
-  real(crm_rknd), allocatable :: bet    (:)   ! = ggr/tv0
-  real(crm_rknd), allocatable :: gamaz  (:) ! ggr/cp*z
-  real(crm_rknd), allocatable :: wsub   (:)   ! Large-scale subsidence velocity,m/s
-  real(crm_rknd), allocatable :: qtend  (:) ! Large-scale tendency for total water
-  real(crm_rknd), allocatable :: ttend  (:) ! Large-scale tendency for temp.
-  real(crm_rknd), allocatable :: utend  (:) ! Large-scale tendency for u
-  real(crm_rknd), allocatable :: vtend  (:) ! Large-scale tendency for v
+  real(crm_rknd), allocatable :: bet    (:,:)   ! = ggr/tv0
+  real(crm_rknd), allocatable :: gamaz  (:,:) ! ggr/cp*z
+  real(crm_rknd), allocatable :: wsub   (:,:)   ! Large-scale subsidence velocity,m/s
+  real(crm_rknd), allocatable :: qtend  (:,:) ! Large-scale tendency for total water
+  real(crm_rknd), allocatable :: ttend  (:,:) ! Large-scale tendency for temp.
+  real(crm_rknd), allocatable :: utend  (:,:) ! Large-scale tendency for u
+  real(crm_rknd), allocatable :: vtend  (:,:) ! Large-scale tendency for v
 
   !---------------------------------------------------------------------
   ! Large-scale and surface forcing:
@@ -132,33 +132,33 @@ module vars
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
   !
-  real(crm_rknd), allocatable :: sstxy    (:,:) !  surface temperature xy-distribution
-  real(crm_rknd), allocatable :: fcory    (:)      !  Coriolis parameter xy-distribution
-  real(crm_rknd), allocatable :: fcorzy   (:)      !  z-Coriolis parameter xy-distribution
-  real(crm_rknd), allocatable :: latitude (:,:)      ! latitude (degrees)
-  real(crm_rknd), allocatable :: longitude(:,:)      ! longitude(degrees)
-  real(crm_rknd), allocatable :: prec_xy  (:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: shf_xy   (:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: lhf_xy   (:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: lwns_xy  (:,:) ! mean net lw at SFC
-  real(crm_rknd), allocatable :: swns_xy  (:,:) ! mean net sw at SFC
-  real(crm_rknd), allocatable :: lwnsc_xy (:,:) ! clear-sky mean net lw at SFC
-  real(crm_rknd), allocatable :: swnsc_xy (:,:) ! clear-sky mean net sw at SFC
-  real(crm_rknd), allocatable :: lwnt_xy  (:,:) ! mean net lw at TOA
-  real(crm_rknd), allocatable :: swnt_xy  (:,:) ! mean net sw at TOA
-  real(crm_rknd), allocatable :: lwntc_xy (:,:) ! clear-sky mean net lw at TOA
-  real(crm_rknd), allocatable :: swntc_xy (:,:) ! clear-sky mean net sw at TOA
-  real(crm_rknd), allocatable :: solin_xy (:,:) ! solar TOA insolation
-  real(crm_rknd), allocatable :: pw_xy    (:,:)   ! precipitable water
-  real(crm_rknd), allocatable :: cw_xy    (:,:)   ! cloud water path
-  real(crm_rknd), allocatable :: iw_xy    (:,:)   ! ice water path
-  real(crm_rknd), allocatable :: cld_xy   (:,:)   ! cloud frequency
-  real(crm_rknd), allocatable :: u200_xy  (:,:) ! u-wind at 200 mb
-  real(crm_rknd), allocatable :: usfc_xy  (:,:) ! u-wind at at the surface
-  real(crm_rknd), allocatable :: v200_xy  (:,:) ! v-wind at 200 mb
-  real(crm_rknd), allocatable :: vsfc_xy  (:,:) ! v-wind at the surface
-  real(crm_rknd), allocatable :: w500_xy  (:,:) ! w at 500 mb
-  real(crm_rknd), allocatable :: qocean_xy(:,:) ! ocean cooling in W/m2
+  real(crm_rknd), allocatable :: sstxy    (:,:,:) !  surface temperature xy-distribution
+  real(crm_rknd), allocatable :: fcory    (:,:)      !  Coriolis parameter xy-distribution
+  real(crm_rknd), allocatable :: fcorzy   (:,:)      !  z-Coriolis parameter xy-distribution
+  real(crm_rknd), allocatable :: latitude (:,:,:)      ! latitude (degrees,:)
+  real(crm_rknd), allocatable :: longitude(:,:,:)      ! longitude(degrees,:)
+  real(crm_rknd), allocatable :: prec_xy  (:,:,:) ! mean precip. rate for outout
+  real(crm_rknd), allocatable :: shf_xy   (:,:,:) ! mean precip. rate for outout
+  real(crm_rknd), allocatable :: lhf_xy   (:,:,:) ! mean precip. rate for outout
+  real(crm_rknd), allocatable :: lwns_xy  (:,:,:) ! mean net lw at SFC
+  real(crm_rknd), allocatable :: swns_xy  (:,:,:) ! mean net sw at SFC
+  real(crm_rknd), allocatable :: lwnsc_xy (:,:,:) ! clear-sky mean net lw at SFC
+  real(crm_rknd), allocatable :: swnsc_xy (:,:,:) ! clear-sky mean net sw at SFC
+  real(crm_rknd), allocatable :: lwnt_xy  (:,:,:) ! mean net lw at TOA
+  real(crm_rknd), allocatable :: swnt_xy  (:,:,:) ! mean net sw at TOA
+  real(crm_rknd), allocatable :: lwntc_xy (:,:,:) ! clear-sky mean net lw at TOA
+  real(crm_rknd), allocatable :: swntc_xy (:,:,:) ! clear-sky mean net sw at TOA
+  real(crm_rknd), allocatable :: solin_xy (:,:,:) ! solar TOA insolation
+  real(crm_rknd), allocatable :: pw_xy    (:,:,:)   ! precipitable water
+  real(crm_rknd), allocatable :: cw_xy    (:,:,:)   ! cloud water path
+  real(crm_rknd), allocatable :: iw_xy    (:,:,:)   ! ice water path
+  real(crm_rknd), allocatable :: cld_xy   (:,:,:)   ! cloud frequency
+  real(crm_rknd), allocatable :: u200_xy  (:,:,:) ! u-wind at 200 mb
+  real(crm_rknd), allocatable :: usfc_xy  (:,:,:) ! u-wind at at the surface
+  real(crm_rknd), allocatable :: v200_xy  (:,:,:) ! v-wind at 200 mb
+  real(crm_rknd), allocatable :: vsfc_xy  (:,:,:) ! v-wind at the surface
+  real(crm_rknd), allocatable :: w500_xy  (:,:,:) ! w at 500 mb
+  real(crm_rknd), allocatable :: qocean_xy(:,:,:) ! ocean cooling in W/m2
 
   !----------------------------------------------------------------------
   ! Vertical profiles of quantities sampled for statitistics purposes:
@@ -410,40 +410,40 @@ contains
     allocate( prespot(nzm,ncrms)   )
     allocate( rho    (nzm,ncrms)     )
     allocate( rhow   (nz ,ncrms)    )
-    allocate( bet    (nzm)     )
-    allocate( gamaz  (nzm)  )
-    allocate( wsub   (nz )    )
-    allocate( qtend  (nzm)  )
-    allocate( ttend  (nzm)  )
-    allocate( utend  (nzm)  )
-    allocate( vtend  (nzm)  )
-    allocate( sstxy    (0:nx,(1-YES3D):ny)   )
-    allocate( fcory    (0:ny)       )
-    allocate( fcorzy   (ny)       )
-    allocate( latitude (nx,ny)        )
-    allocate( longitude(nx,ny)        )
-    allocate( prec_xy  (nx,ny)  )
-    allocate( shf_xy   (nx,ny)  )
-    allocate( lhf_xy   (nx,ny)  )
-    allocate( lwns_xy  (nx,ny)  )
-    allocate( swns_xy  (nx,ny)  )
-    allocate( lwnsc_xy (nx,ny)  )
-    allocate( swnsc_xy (nx,ny)  )
-    allocate( lwnt_xy  (nx,ny)  )
-    allocate( swnt_xy  (nx,ny)  )
-    allocate( lwntc_xy (nx,ny)  )
-    allocate( swntc_xy (nx,ny)  )
-    allocate( solin_xy (nx,ny)  )
-    allocate( pw_xy    (nx,ny)    )
-    allocate( cw_xy    (nx,ny)    )
-    allocate( iw_xy    (nx,ny)    )
-    allocate( cld_xy   (nx,ny)    )
-    allocate( u200_xy  (nx,ny)  )
-    allocate( usfc_xy  (nx,ny)  )
-    allocate( v200_xy  (nx,ny)  )
-    allocate( vsfc_xy  (nx,ny)  )
-    allocate( w500_xy  (nx,ny)  )
-    allocate( qocean_xy(nx,ny)  )
+    allocate( bet    (nzm,ncrms)     )
+    allocate( gamaz  (nzm,ncrms)  )
+    allocate( wsub   (nz ,ncrms)    )
+    allocate( qtend  (nzm,ncrms)  )
+    allocate( ttend  (nzm,ncrms)  )
+    allocate( utend  (nzm,ncrms)  )
+    allocate( vtend  (nzm,ncrms)  )
+    allocate( sstxy    (0:nx,(1-YES3D):ny,ncrms)   )
+    allocate( fcory    (0:ny,ncrms)       )
+    allocate( fcorzy   (ny,ncrms)       )
+    allocate( latitude (nx,ny,ncrms)        )
+    allocate( longitude(nx,ny,ncrms)        )
+    allocate( prec_xy  (nx,ny,ncrms)  )
+    allocate( shf_xy   (nx,ny,ncrms)  )
+    allocate( lhf_xy   (nx,ny,ncrms)  )
+    allocate( lwns_xy  (nx,ny,ncrms)  )
+    allocate( swns_xy  (nx,ny,ncrms)  )
+    allocate( lwnsc_xy (nx,ny,ncrms)  )
+    allocate( swnsc_xy (nx,ny,ncrms)  )
+    allocate( lwnt_xy  (nx,ny,ncrms)  )
+    allocate( swnt_xy  (nx,ny,ncrms)  )
+    allocate( lwntc_xy (nx,ny,ncrms)  )
+    allocate( swntc_xy (nx,ny,ncrms)  )
+    allocate( solin_xy (nx,ny,ncrms)  )
+    allocate( pw_xy    (nx,ny,ncrms)    )
+    allocate( cw_xy    (nx,ny,ncrms)    )
+    allocate( iw_xy    (nx,ny,ncrms)    )
+    allocate( cld_xy   (nx,ny,ncrms)    )
+    allocate( u200_xy  (nx,ny,ncrms)  )
+    allocate( usfc_xy  (nx,ny,ncrms)  )
+    allocate( v200_xy  (nx,ny,ncrms)  )
+    allocate( vsfc_xy  (nx,ny,ncrms)  )
+    allocate( w500_xy  (nx,ny,ncrms)  )
+    allocate( qocean_xy(nx,ny,ncrms)  )
     allocate( twle(nz) )
     allocate( twsb(nz) )
     allocate( precflux(nz) )
