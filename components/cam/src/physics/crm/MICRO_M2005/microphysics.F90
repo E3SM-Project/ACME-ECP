@@ -531,18 +531,18 @@ subroutine micro_init(ncrms,icrm)
 ! In SPCAM,  do not need this part.
 #ifndef CRM
  ! compute initial profiles of liquid water - M.K.
-      call satadj_liquid(nzm,tabs0,q0,qc0,pres*100.)
+      call satadj_liquid(nzm,tabs0(:,icrm),q0(:,icrm),qc0,pres*100.)
 
      ! initialize microphysical quantities
-     q0 = q0 + qc0
+     q0(:,icrm) = q0(:,icrm) + qc0(:,icrm)
      do k = 1,nzm
-        micro_field(:,:,k,iqv) = q0(k)
+        micro_field(:,:,k,iqv) = q0(k,icrm)
         cloudliq(:,:,k) = qc0(k)
-        tabs(:,:,k,icrm) = tabs0(k)
+        tabs(:,:,k,icrm) = tabs0(k,icrm)
      end do
      if(dopredictNc) then ! initialize concentration somehow...
        do k = 1,nzm
-         if(q0(k).gt.0.) then
+         if(q0(k,icrm).gt.0.) then
             micro_field(:,:,k,incl) = 0.5*ccnconst*1.e6
          end if
        end do

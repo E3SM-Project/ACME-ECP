@@ -101,9 +101,9 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   Pr  = 1. 
 
   if(RUN3D) then
-    call shear_prod3D(def2)
+    call shear_prod3D(ncrms,icrm,def2)
   else
-    call shear_prod2D(def2)
+    call shear_prod2D(ncrms,icrm,def2)
   endif
   
   !!! initialize surface buoyancy flux to zero

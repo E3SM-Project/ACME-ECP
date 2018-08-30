@@ -184,7 +184,7 @@ CONTAINS
 #ifndef CRM
       micro_field = 0.
       do k=1,nzm
-        q(:,:,k) = q0(k)
+        q(:,:,k) = q0(k,icrm)
       end do
       qn = 0.
 #endif
@@ -282,7 +282,7 @@ CONTAINS
     integer, intent(in) :: ncrms,icrm
 
     ! Update bulk coefficient
-    if(doprecip.and.icycle.eq.1) call precip_init()
+    if(doprecip.and.icycle.eq.1) call precip_init(ncrms,icrm)
 
     if(docloud) then
       call cloud(ncrms,icrm,q,qn,qp)

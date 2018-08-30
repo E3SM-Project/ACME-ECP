@@ -466,17 +466,17 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     call sgs_init()
 
     do k=1,nzm
-      u0(k)=0.
-      v0(k)=0.
-      t0(k)=0.
+      u0(k,icrm)=0.
+      v0(k,icrm)=0.
+      t0(k,icrm)=0.
       t00(k)=0.
-      tabs0(k)=0.
-      q0(k)=0.
-      qv0(k)=0.
+      tabs0(k,icrm)=0.
+      q0(k,icrm)=0.
+      qv0(k,icrm)=0.
       !+++mhwang these are not initialized ??
-      qn0(k) = 0.0
-      qp0(k) = 0.0
-      tke0(k) = 0.0
+      qn0(k,icrm) = 0.0
+      qp0(k,icrm) = 0.0
+      tke0(k,icrm) = 0.0
       !---mhwang
       do j=1,ny
         do i=1,nx
@@ -485,53 +485,53 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                     -fac_cond*qpl(i,j,k,icrm)-fac_sub*qpi(i,j,k,icrm)
           colprec=colprec+(qpl(i,j,k,icrm)+qpi(i,j,k,icrm))*crm_input%pdel(icrm,plev-k+1)
           colprecs=colprecs+qpi(i,j,k,icrm)*crm_input%pdel(icrm,plev-k+1)
-          u0(k)=u0(k)+u(i,j,k)
-          v0(k)=v0(k)+v(i,j,k)
-          t0(k)=t0(k)+t(i,j,k)
+          u0(k,icrm)=u0(k,icrm)+u(i,j,k)
+          v0(k,icrm)=v0(k,icrm)+v(i,j,k)
+          t0(k,icrm)=t0(k,icrm)+t(i,j,k)
           t00(k)=t00(k)+t(i,j,k)+fac_cond*qpl(i,j,k,icrm)+fac_sub*qpi(i,j,k,icrm)
-          tabs0(k)=tabs0(k)+tabs(i,j,k,icrm)
-          q0(k)=q0(k)+qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)
-          qv0(k) = qv0(k) + qv(i,j,k,icrm)
-          qn0(k) = qn0(k) + qcl(i,j,k,icrm) + qci(i,j,k,icrm)
-          qp0(k) = qp0(k) + qpl(i,j,k,icrm) + qpi(i,j,k,icrm)
-          tke0(k)=tke0(k)+tke(i,j,k)
+          tabs0(k,icrm)=tabs0(k,icrm)+tabs(i,j,k,icrm)
+          q0(k,icrm)=q0(k,icrm)+qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)
+          qv0(k,icrm) = qv0(k,icrm) + qv(i,j,k,icrm)
+          qn0(k,icrm) = qn0(k,icrm) + qcl(i,j,k,icrm) + qci(i,j,k,icrm)
+          qp0(k,icrm) = qp0(k,icrm) + qpl(i,j,k,icrm) + qpi(i,j,k,icrm)
+          tke0(k,icrm)=tke0(k,icrm)+tke(i,j,k)
         enddo
       enddo
 
-      u0(k) = u0(k) * factor_xy
-      v0(k) = v0(k) * factor_xy
-      t0(k) = t0(k) * factor_xy
+      u0(k,icrm) = u0(k,icrm) * factor_xy
+      v0(k,icrm) = v0(k,icrm) * factor_xy
+      t0(k,icrm) = t0(k,icrm) * factor_xy
       t00(k) = t00(k) * factor_xy
-      tabs0(k) = tabs0(k) * factor_xy
-      q0(k) = q0(k) * factor_xy
-      qv0(k) = qv0(k) * factor_xy
-      qn0(k) = qn0(k) * factor_xy
-      qp0(k) = qp0(k) * factor_xy
-      tke0(k) = tke0(k) * factor_xy
+      tabs0(k,icrm) = tabs0(k,icrm) * factor_xy
+      q0(k,icrm) = q0(k,icrm) * factor_xy
+      qv0(k,icrm) = qv0(k,icrm) * factor_xy
+      qn0(k,icrm) = qn0(k,icrm) * factor_xy
+      qp0(k,icrm) = qp0(k,icrm) * factor_xy
+      tke0(k,icrm) = tke0(k,icrm) * factor_xy
 #ifdef CLUBB_CRM
       ! Update thetav for CLUBB.  This is needed when we have a higher model top
       ! than is in the sounding, because we subsequently use tv0 to initialize
       ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
       ! -dschanen UWM 11 Feb 2010
-      tv0(k) = tabs0(k)*prespot(k)*(1.+epsv*q0(k))
+      tv0(k,icrm) = tabs0(k,icrm)*prespot(k)*(1.+epsv*q0(k,icrm))
 #endif /* CLUBB_CRM */
 
       l = plev-k+1
       uln(l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
       vln(l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
       ttend(k) = (crm_input%tl(icrm,l)+gamaz(k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k))*idt_gl
-      qtend(k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k))*idt_gl
-      utend(k) = (uln(l)-u0(k))*idt_gl
-      vtend(k) = (vln(l)-v0(k))*idt_gl
-      ug0(k) = uln(l)
-      vg0(k) = vln(l)
-      tg0(k) = crm_input%tl(icrm,l)+gamaz(k)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
-      qg0(k) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
+      qtend(k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
+      utend(k) = (uln(l)-u0(k,icrm))*idt_gl
+      vtend(k) = (vln(l)-v0(k,icrm))*idt_gl
+      ug0(k,icrm) = uln(l)
+      vg0(k,icrm) = vln(l)
+      tg0(k,icrm) = crm_input%tl(icrm,l)+gamaz(k)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
+      qg0(k,icrm) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
 
     end do ! k
 
-    uhl(icrm) = u0(1)
-    vhl(icrm) = v0(1)
+    uhl(icrm) = u0(1,icrm)
+    vhl(icrm) = v0(1,icrm)
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
@@ -558,18 +558,18 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       fluxbq(:, :,icrm) = 0.
     endif
 #else
-    fluxbu=0.
-    fluxbv=0.
-    fluxbt=0.
-    fluxbq=0.
+    fluxbu(:,:,icrm)=0.
+    fluxbv(:,:,icrm)=0.
+    fluxbt(:,:,icrm)=0.
+    fluxbq(:,:,icrm)=0.
 #endif /* CLUBB_CRM */
-    fluxtu=0.
-    fluxtv=0.
-    fluxtt=0.
-    fluxtq=0.
-    fzero =0.
-    precsfc=0.
-    precssfc=0.
+    fluxtu  (:,:,icrm)=0.
+    fluxtv  (:,:,icrm)=0.
+    fluxtt  (:,:,icrm)=0.
+    fluxtq  (:,:,icrm)=0.
+    fzero   (:,:,icrm) =0.
+    precsfc (:,:,icrm)=0.
+    precssfc(:,:,icrm)=0.
 
 !---------------------------------------------------
     crm_output%cld   (icrm,:) = 0.
@@ -656,12 +656,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 !--------------------------------------------------
 #ifdef sam1mom
-    if(doprecip) call precip_init()
+    if(doprecip) call precip_init(ncrms,icrm)
 #endif
 
     if ( igstep <= 1 ) then
         iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale 
-        call setperturb(iseed)
+        call setperturb(ncrms,icrm,iseed)
     end if
 
     !--------------------------
@@ -876,56 +876,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !  SGS physics:
         if (dosgs) call sgs_proc(ncrms,icrm)
 
-#ifdef CLUBB_CRM_OLD
-        !----------------------------------------------------------
-        ! Do a timestep with CLUBB if enabled:
-        ! -dschanen UWM 16 May 2008
-
-        if ( doclubb .or. doclubbnoninter ) then
-          ! In case of ice fall, we recompute qci here for the
-          ! single-moment scheme.  Also, subsidence, diffusion and advection have
-          ! been applied to micro_field but not qv/qcl so they must be updated.
-          call micro_update()
-        endif ! doclubb .or. doclubbnoninter
-
-        if ( doclubb ) then
-          ! Calculate the vertical integrals for RTM and THLM so we can later
-          ! calculate whether CLUBB is a spurious source or sink of either.
-          ! - nielsenb UWM 4 Jun 2010
-          do i = 1,nx
-            do j = 1,ny
-              rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm,icrm)
-              rtm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                           rtm_column, gr%invrs_dzt(2:nz) )
-
-              thlm_before = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
-                                   qcl(i,j,1:nzm,icrm), qpl(i,j,1:nzm,icrm), &
-                                   qci(i,j,1:nzm,icrm), qpi(i,j,1:nzm,icrm), &
-                                   prespot(1:nzm) )
-
-              thlm_integral_before(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                                            thlm_before(1:nzm), gr%invrs_dzt(2:nz) )
-            enddo
-          enddo
-          ! End vertical integral
-        endif ! doclubb
-
-        if ( doclubb .or. doclubbnoninter ) then
-          ! We call CLUBB here because adjustments to the wind
-          ! must occur prior to adams() -dschanen 26 Aug 2008
-          ! Here we call clubb only if nstep divides the current timestep,
-          ! or we're on the very first timestep
-          if ( nstep == 1 .or. mod( nstep, nclubb ) == 0 ) then
-
-            call advance_clubb_sgs( real( dtn*real( nclubb ), kind=time_precision), & ! in
-                                    real( 0., kind=time_precision ),         & ! in
-                                    real( time, kind=time_precision ),       & ! in
-                                    rho, rhow, wsub, u, v, w, qpl, qci, qpi, & ! in
-                                    t, qv, qcl ) ! in
-          endif ! nstep == 1 .or. mod( nstep, nclubb) == 0
-        endif ! doclubb .or. doclubbnoninter
-
-#endif /* CLUBB_CRM_OLD */
         !----------------------------------------------------------
         !     Fill boundaries for SGS diagnostic fields:
 
@@ -939,12 +889,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !	SGS effects on momentum:
 
         if(dosgs) call sgs_mom(ncrms,icrm)
-#ifdef CLUBB_CRM_OLD
-        if ( doclubb ) then
-          !          call apply_clubb_sgs_tndcy_mom &
-          !               ( dudt, dvdt ) ! in/out
-        endif
-#endif /*CLUBB_CRM_OLD*/
 
         !-----------------------------------------------------------
         !       Coriolis force:
@@ -978,55 +922,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !---------------------------------------------------------
         !      SGS effects on scalars :
         if (dosgs) call sgs_scalars(ncrms,icrm)
-
-#ifdef CLUBB_CRM_OLD
-        ! Re-compute q/qv/qcl based on values computed in CLUBB
-        if ( doclubb ) then
-          ! Recalculate q, qv, qcl based on new micro_fields (updated by horizontal diffusion)
-          call micro_update()
-
-          ! Then Re-compute q/qv/qcl based on values computed in CLUBB
-          call apply_clubb_sgs_tndcy_scalars( real( dtn, kind=time_precision), & ! in
-                                              t, qv, qcl) ! in/out
-
-          call micro_adjust( qv, qcl ) ! in
-
-          ! Calculate the vertical integrals for RTM and THLM again so
-          ! calculate whether CLUBB is a spurious source or sink of either.
-          ! - nielsenb UWM 4 Jun 2010
-          do i = 1,nx
-            do j = 1,ny
-              rtm_flux_top = rho_ds_zm(nz) * wprtp(i,j,nz)
-              rtm_flux_sfc = rho_ds_zm(1) * fluxbq(i,j,icrm)
-              rtm_column = qv(i,j,1:nzm,icrm) + qcl(i,j,1:nzm,icrm)
-              rtm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                            rtm_column, gr%invrs_dzt(2:nz) )
-
-              rtm_spurious_source(i,j) = calculate_spurious_source( rtm_integral_after(i,j), &
-                                                         rtm_integral_before(i,j), &
-                                                         rtm_flux_top, rtm_flux_sfc, &
-                                                         0.0_core_rknd, real( dtn, kind=core_rknd) )
-
-              thlm_flux_top = rho_ds_zm(nz) * wpthlp(i,j,nz)
-              thlm_flux_sfc = rho_ds_zm(1) * fluxbt(i,j,icrm)
-
-              thlm_after = t2thetal( t(i,j,1:nzm), gamaz(1:nzm), &
-                                     qcl(i,j,1:nzm,icrm), qpl(i,j,1:nzm,icrm), &
-                                     qci(i,j,1:nzm,icrm), qpi(i,j,1:nzm,icrm), &
-                                     prespot(1:nzm) )
-
-              thlm_integral_after(i,j) = vertical_integral( (nz - 2 + 1), rho_ds_zt(2:nz), &
-                                                         thlm_after(1:nzm), gr%invrs_dzt(2:nz))
-
-              thlm_spurious_source(i,j) = calculate_spurious_source( thlm_integral_after(i,j), &
-                                                             thlm_integral_before(i,j), &
-                                                             thlm_flux_top, thlm_flux_sfc, &
-                                                             0.0_core_rknd, real( dtn, kind=core_rknd ))
-            enddo
-          enddo
-          ! End spurious source calculation
-        endif  ! doclubb
-#endif /*CLUBB_CRM_OLD*/
 
         !-----------------------------------------------------------
         !       Calculate PGF for scalar momentum tendency
@@ -1598,8 +1493,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       w2z = 0.
       do j=1,ny
         do i=1,nx
-          u2z = u2z+(u(i,j,k)-u0(k))**2
-          v2z = v2z+(v(i,j,k)-v0(k))**2
+          u2z = u2z+(u(i,j,k)-u0(k,icrm))**2
+          v2z = v2z+(v(i,j,k)-v0(k,icrm))**2
           w2z = w2z+0.5*(w(i,j,k+1)**2+w(i,j,k)**2)
         enddo
       enddo

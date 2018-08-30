@@ -40,14 +40,14 @@ contains
     ! as t have been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
     do k=1, nzm
-      u0(k)=0.0
-      v0(k)=0.0
-      t0(k)=0.0
+      u0(k,icrm)=0.0
+      v0(k,icrm)=0.0
+      t0(k,icrm)=0.0
       do j=1, ny
         do i=1, nx
-          u0(k) = u0(k) + u(i,j,k)/(nx*ny)
-          v0(k) = v0(k) + v(i,j,k)/(nx*ny)
-          t0(k) = t0(k) + t(i,j,k)/(nx*ny)
+          u0(k,icrm) = u0(k,icrm) + u(i,j,k)/(nx*ny)
+          v0(k,icrm) = v0(k,icrm) + v(i,j,k)/(nx*ny)
+          t0(k,icrm) = t0(k,icrm) + t(i,j,k)/(nx*ny)
         end do
       end do
     end do
@@ -56,17 +56,17 @@ contains
     do k = nzm, nzm-n_damp, -1
       do j=1,ny
         do i=1,nx
-          dudt(i,j,k,na,icrm)= dudt(i,j,k,na,icrm)-(u(i,j,k)-u0(k)) * tau(k)
-          dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(i,j,k)-v0(k)) * tau(k)
+          dudt(i,j,k,na,icrm)= dudt(i,j,k,na,icrm)-(u(i,j,k)-u0(k,icrm)) * tau(k)
+          dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(i,j,k)-v0(k,icrm)) * tau(k)
           dwdt(i,j,k,na,icrm)= dwdt(i,j,k,na,icrm)-w(i,j,k) * tau(k)
-          t(i,j,k)= t(i,j,k)-dtn*(t(i,j,k)-t0(k)) * tau(k)
+          t(i,j,k)= t(i,j,k)-dtn*(t(i,j,k)-t0(k,icrm)) * tau(k)
           ! In the old version (SAM7.5?) of SAM, water vapor is the prognostic variable for the two-moment microphyscs.
           ! So the following damping approach can lead to the negative water vapor.
           !      micro_field(i,j,k,index_water_vapor)= micro_field(i,j,k,index_water_vapor)- &
-          !                                    dtn*(qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)-q0(k)) * tau(k)
+          !                                    dtn*(qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)-q0(k,icrm)) * tau(k)
           ! a simple fix (Minghuai Wang, 2011-08):
           micro_field(i,j,k,index_water_vapor)= micro_field(i,j,k,index_water_vapor)- &
-          dtn*(qv(i,j,k,icrm)-qv0(k)) * tau(k)
+          dtn*(qv(i,j,k,icrm)-qv0(k,icrm)) * tau(k)
         end do! i
       end do! j
     end do ! k
