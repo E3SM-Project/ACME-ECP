@@ -8,7 +8,7 @@ module tke_full_mod
 
 contains
 
-subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
+subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                     grdf_x, grdf_y, grdf_z, dosmagor,     &
                     tkesbdiss, tkesbshear, tkesbbuoy,     &
                     tke, tk, tkh)
@@ -20,7 +20,7 @@ subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   use params
   
   implicit none
-
+  integer, intent(in) :: ncrms,icrm
   !-----------------------------------------------------------------------
   !!! Interface Arguments
   integer       , intent(in)                 :: dimx1_d     ! scalar dimension parameter
@@ -136,8 +136,8 @@ subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
         !!! compute temperature of mixture between two grid levels if all cloud
         !!!   were evaporated and sublimated
         tabs_interface = &
-             0.5*( tabs(i,j,kc) + fac_cond*qcl(i,j,kc) + fac_sub*qci(i,j,kc) &
-                 + tabs(i,j,kb) + fac_cond*qcl(i,j,kb) + fac_sub*qci(i,j,kb) )
+             0.5*( tabs(i,j,kc,icrm) + fac_cond*qcl(i,j,kc) + fac_sub*qci(i,j,kc) &
+                 + tabs(i,j,kb,icrm) + fac_cond*qcl(i,j,kb) + fac_sub*qci(i,j,kb) )
 
         !!! similarly for water vapor if all cloud evaporated/sublimated
         qtot_interface = &
@@ -175,8 +175,8 @@ subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           !!! compute temperature of mixture between two grid levels 
           !!! if all cloud were evaporated and sublimated
           tabs_interface = &
-               0.5*( tabs(i,j,kc) + fac_cond*qcl(i,j,kc) + fac_sub*qci(i,j,kc) &
-                   + tabs(i,j,kb) + fac_cond*qcl(i,j,kb) + fac_sub*qci(i,j,kb) )
+               0.5*( tabs(i,j,kc,icrm) + fac_cond*qcl(i,j,kc) + fac_sub*qci(i,j,kc) &
+                   + tabs(i,j,kb,icrm) + fac_cond*qcl(i,j,kb) + fac_sub*qci(i,j,kb) )
 
           !!! similarly for total water (vapor + cloud) mixing ratio
           qtot_interface = &
@@ -199,7 +199,7 @@ subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
             !!! interface is halfway between neighboring levels, so that the potential
             !!! energy cancels out.  This is approximate and neglects the effects of
             !!! evaporation/condensation with mixing.  Hopefully good enough.
-            tabs_interface = 0.5*( tabs(i,j,kc) + tabs(i,j,kb) )
+            tabs_interface = 0.5*( tabs(i,j,kc,icrm) + tabs(i,j,kb,icrm) )
 
             qp_interface = 0.5*( qpl(i,j,kc) + qpi(i,j,kc) + qpl(i,j,kb) + qpi(i,j,kb) )
 
@@ -217,8 +217,8 @@ subroutine tke_full(dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
             buoy_sgs = betdz*(bbb*(t(i,j,kc)-t(i,j,kb)) &
                  +(bbb*lstarn - (1.+lstarn*dqsat)*tabs_interface)* &
                  (qv(i,j,kc)+qcl(i,j,kc)+qci(i,j,kc)-qv(i,j,kb)-qcl(i,j,kb)-qci(i,j,kb)) & 
-                 + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(i,j,k) ) * ( qpl(i,j,kc)-qpl(i,j,kb) )  &
-                 + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(i,j,k) ) * ( qpi(i,j,kc)-qpi(i,j,kb) ) )
+                 + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(i,j,k,icrm) ) * ( qpl(i,j,kc)-qpl(i,j,kb) )  &
+                 + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(i,j,k,icrm) ) * ( qpi(i,j,kc)-qpi(i,j,kb) ) )
 
             buoy_sgs_above(i,j) = buoy_sgs
             a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc)+tkh(i,j,kb)+0.002)*buoy_sgs

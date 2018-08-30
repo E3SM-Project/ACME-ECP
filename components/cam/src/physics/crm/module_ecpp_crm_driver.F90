@@ -477,8 +477,7 @@ contains
   !---------------------------------------------------------------------------------------
 
   !========================================================================================
-  subroutine ecpp_crm_stat()
-
+  subroutine ecpp_crm_stat(ncrms,icrm)
     use module_ecpp_stats
     use module_data_ecpp1, only: afrac_cut
     use grid,  only: nx, ny, nzm, pres
@@ -491,7 +490,7 @@ contains
     use sgs, only: tk_clubb
 #endif
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     integer :: i, ierr, i_tidx, j, &
     ncnt1, ncnt2
 
@@ -529,11 +528,11 @@ contains
     do ii=1, nx
       do jj=1, ny
         do kk=1, nzm
-          EVS = POLYSVP(tabs(ii,jj,kk),0)   ! saturation water vapor pressure (PA)
+          EVS = POLYSVP(tabs(ii,jj,kk,icrm),0)   ! saturation water vapor pressure (PA)
           qvs(ii,jj,kk) = .622*EVS/(pres(kk)*100.-EVS)  ! pres(kk) with unit of hPa
           !         rh(ii,jj,kk) = micro_field(ii,jj,kk,iqv)/QVS ! unit 0-1
           !         rh(ii,jj,kk) = min(1.0, rh(ii,jj,kk))    ! RH is diagnosed in microphysics
-          alt(ii,jj,kk) =  287.*tabs(ii,jj,kk)/(100.*pres(kk))
+          alt(ii,jj,kk) =  287.*tabs(ii,jj,kk,icrm)/(100.*pres(kk))
 
         end do
       end do

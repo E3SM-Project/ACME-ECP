@@ -20,7 +20,7 @@ module vars
   ! diagnostic variables:
 
   real(crm_rknd), allocatable :: p       (:,:,:,:)     ! perturbation pressure (from Poison eq)
-  real(crm_rknd), allocatable :: tabs    (:,:,:)                 ! temperature
+  real(crm_rknd), allocatable :: tabs    (:,:,:,:)                 ! temperature
   real(crm_rknd), allocatable :: qv      (:,:,:)                ! water vapor
   real(crm_rknd), allocatable :: qcl     (:,:,:)                ! liquid water  (condensate)
   real(crm_rknd), allocatable :: qpl     (:,:,:)                ! liquid water  (precipitation)
@@ -376,8 +376,8 @@ contains
     allocate( v   (dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm)  )
     allocate( w   (dimx1_w:dimx2_w,dimy1_w:dimy2_w,nz )  )
     allocate( t   (dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm)  )
-    allocate( p       (0:nx, (1-YES3D):ny, nzm,ncrms)      )
-    allocate( tabs    (nx, ny, nzm)                  )
+    allocate( p       (0:nx, (1-YES3D):ny, nzm, ncrms)      )
+    allocate( tabs    (nx, ny, nzm, ncrms)                  )
     allocate( qv      (nx, ny, nzm)                 )
     allocate( qcl     (nx, ny, nzm)                 )
     allocate( qpl     (nx, ny, nzm)                 )

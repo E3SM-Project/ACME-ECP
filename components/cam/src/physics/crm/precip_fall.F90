@@ -5,7 +5,7 @@ module precip_fall_mod
 
 contains
 
-  subroutine precip_fall(qp, term_vel, hydro_type, omega, ind)
+  subroutine precip_fall(ncrms,icrm,qp, term_vel, hydro_type, omega, ind)
 
     !     positively definite monotonic advection with non-oscillatory option
     !     and gravitational sedimentation
@@ -13,9 +13,7 @@ contains
     use vars
     use params
     implicit none
-
-
-
+    integer, intent(in) :: ncrms,icrm
     real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
     integer hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
     real(crm_rknd) omega(nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
@@ -92,7 +90,7 @@ contains
             end if
           end select
 
-          wp(k)=rhofac(k)*term_vel(i,j,k,ind)
+          wp(k)=rhofac(k)*term_vel(ncrms,icrm,i,j,k,ind)
           prec_cfl = max(prec_cfl,wp(k)*iwmax(k)) ! Keep column maximum CFL
           wp(k) = -wp(k)*rhow(k)*dtn/dz
 
@@ -208,7 +206,7 @@ contains
 
             ! Re-compute precipitation velocity using new value of qp.
             do k=1,nzm
-              wp(k) = rhofac(k)*term_vel(i,j,k,ind)
+              wp(k) = rhofac(k)*term_vel(ncrms,icrm,i,j,k,ind)
               ! Decrease precipitation velocity by factor of nprec
               wp(k) = -wp(k)*rhow(k)*dtn/dz/real(nprec,crm_rknd)
               ! Note: Don't bother checking CFL condition at each

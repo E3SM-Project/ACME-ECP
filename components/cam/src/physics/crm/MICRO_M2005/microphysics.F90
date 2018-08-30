@@ -426,7 +426,7 @@ end subroutine micro_setparm
 !
 ! this one is guaranteed to be called by SAM at the
 !   beginning of each run, initial or restart:
-subroutine micro_init()
+subroutine micro_init(ncrms,icrm)
 
   use vars
 #if (defined CRM && defined MODAL_AERO)
@@ -434,6 +434,7 @@ subroutine micro_init()
 #endif
 
   implicit none
+  integer, intent(in) :: ncrms,icrm
 
   real(crm_rknd), dimension(nzm) :: qc0, qi0
 
@@ -537,7 +538,7 @@ subroutine micro_init()
      do k = 1,nzm
         micro_field(:,:,k,iqv) = q0(k)
         cloudliq(:,:,k) = qc0(k)
-        tabs(:,:,k) = tabs0(k)
+        tabs(:,:,k,icrm) = tabs0(k)
      end do
      if(dopredictNc) then ! initialize concentration somehow...
        do k = 1,nzm
@@ -599,7 +600,7 @@ end subroutine micro_flux
 ! proceses is the liquid/ice water static energy: t = tabs + gz - Lc (qc+qr) - Ls (qi+qs+qg)
 ! It should not be changed during all of your point microphysical processes!
 
-subroutine micro_proc()
+subroutine micro_proc(ncrms,icrm)
 
 use params, only: fac_cond, fac_sub, rgas
 use grid, only: z, zi
@@ -630,6 +631,8 @@ use clubb_precision, only: core_rknd
 use constants_clubb, only: T_freeze_K
 use vars, only: CF3D
 #endif
+implicit none
+  integer, intent(in) :: ncrms,icrm
 
 
 real(crm_rknd), dimension(nzm) :: &
@@ -1418,7 +1421,7 @@ end subroutine micro_adjust
 !
 !  The perpose of this subroutine is to prepare variables needed to call
 ! the precip_all() for each of the falling hydrometeor varibles
-subroutine micro_precip_fall()
+subroutine micro_precip_fall(ncrms,icrm)
 
 ! before calling precip_fall() for each of falling prognostic variables,
 ! you need to set hydro_type and omega(:,:,:) variables.
@@ -1429,6 +1432,8 @@ subroutine micro_precip_fall()
 ! 3 - variable is not mixing ratio, but, for example, rain drop concentration
 ! OMEGA(:,:,:) is used only for hydro_type=2, and is the fraction of liquid phase (0-1).
 ! for hour hypothetical case, there is no mixed hydrometeor, so omega is not actually used.
+  implicit none
+  integer, intent(in) :: ncrms,icrm
 
 integer hydro_type
 real(crm_rknd) omega(nx,ny,nzm)
@@ -1503,7 +1508,6 @@ subroutine satadj_liquid(nzm,tabs,qt,qc,pres)
   use module_mp_GRAUPEL, only: polysvp
   use params, only: cp, lcond, rv, fac_cond
   implicit none
-
   integer, intent(in) :: nzm
   real(crm_rknd), intent(inout), dimension(nzm) :: tabs ! absolute temperature, K
   real(crm_rknd), intent(inout), dimension(nzm) :: qt  ! on input: qt; on output: qv

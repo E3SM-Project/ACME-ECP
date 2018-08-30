@@ -40,13 +40,13 @@ contains
       coef1 = rho(k)*dz*adz(k)*dtfactor
       do j=1,ny
         do i=1,nx
-          tabs(i,j,k) = t(i,j,k)-gamaz(k)+ fac_cond * (qcl(i,j,k)+qpl(i,j,k)) +&
+          tabs(i,j,k,icrm) = t(i,j,k)-gamaz(k)+ fac_cond * (qcl(i,j,k)+qpl(i,j,k)) +&
           fac_sub *(qci(i,j,k) + qpi(i,j,k))
           u0(k)=u0(k)+u(i,j,k)
           v0(k)=v0(k)+v(i,j,k)
           p0(k)=p0(k)+p(i,j,k,icrm)
           t0(k)=t0(k)+t(i,j,k)
-          tabs0(k)=tabs0(k)+tabs(i,j,k)
+          tabs0(k)=tabs0(k)+tabs(i,j,k,icrm)
           q0(k)=q0(k)+qv(i,j,k)+qcl(i,j,k)+qci(i,j,k)
           qn0(k) = qn0(k) + qcl(i,j,k) + qci(i,j,k)
           qp0(k) = qp0(k) + qpl(i,j,k) + qpi(i,j,k)
@@ -140,7 +140,7 @@ contains
           ! Saturated water vapor path with respect to water. Can be used
           ! with water vapor path (= pw) to compute column-average
           ! relative humidity.
-          swvp_xy(i,j) = swvp_xy(i,j)+qsatw_crm(tabs(i,j,k),pres(k))*coef1
+          swvp_xy(i,j) = swvp_xy(i,j)+qsatw_crm(tabs(i,j,k,icrm),pres(k))*coef1
         end do
       end do
     end do ! k
@@ -174,7 +174,7 @@ contains
           tmp_lwp = tmp_lwp + (qcl(i,j,k)+qci(i,j,k))*rho(k)*dz*adz(k)
           if (tmp_lwp.gt.0.01) then
             cloudtopheight(i,j) = z(k)
-            cloudtoptemp(i,j) = tabs(i,j,k)
+            cloudtoptemp(i,j) = tabs(i,j,k,icrm)
             cld_xy(i,j) = cld_xy(i,j) + dtfactor
             EXIT
           end if

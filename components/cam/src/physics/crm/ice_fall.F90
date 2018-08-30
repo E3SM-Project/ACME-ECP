@@ -3,18 +3,14 @@ module ice_fall_mod
 
 contains
 
-  subroutine ice_fall()
-
-
+  subroutine ice_fall(ncrms,icrm)
     ! Sedimentation of ice:
-
     use vars
     use microphysics, only: micro_field, index_cloud_ice
     !use micro_params
     use params
-
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     integer i,j,k, kb, kc, kmax, kmin, ici
     real(crm_rknd) coef,dqi,lat_heat,vt_ice
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
@@ -26,7 +22,7 @@ contains
     do k = 1,nzm
       do j = 1, ny
         do i = 1, nx
-          if(qcl(i,j,k)+qci(i,j,k).gt.0..and. tabs(i,j,k).lt.273.15) then
+          if(qcl(i,j,k)+qci(i,j,k).gt.0..and. tabs(i,j,k,icrm).lt.273.15) then
             kmin = min(kmin,k)
             kmax = max(kmax,k)
           end if

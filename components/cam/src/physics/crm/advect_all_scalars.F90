@@ -4,7 +4,7 @@ module advect_all_scalars_mod
 
 contains
 
-  subroutine advect_all_scalars()
+  subroutine advect_all_scalars(ncrms,icrm)
 
     use vars
     use microphysics
@@ -17,6 +17,7 @@ contains
 #endif
     use scalar_momentum_mod
     implicit none
+    integer, intent(in) :: ncrms,icrm
     ! real dummy(nz)
     real(crm_rknd) dummy(nz)
     integer k
@@ -63,7 +64,7 @@ contains
 
       total_water_prec = total_water_prec + total_water()
 
-      call micro_precip_fall()
+      call micro_precip_fall(ncrms,icrm)
 
       total_water_prec = total_water_prec - total_water()
 

@@ -3,7 +3,7 @@ module precip_proc_mod
 
 contains
 
-  subroutine precip_proc(qpsrc,qpevp,qp,q,qn)
+  subroutine precip_proc(ncrms,icrm,qpsrc,qpevp,qp,q,qn)
 
     use vars
     use micro_params
@@ -11,6 +11,7 @@ contains
     use sat_mod
 
     implicit none
+    integer, intent(in) :: ncrms,icrm
     real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
     real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
     real(crm_rknd) qn(nx,ny,nzm)  ! cloud condensate (liquid + ice)
@@ -43,9 +44,9 @@ contains
           if(qn(i,j,k)+qp(i,j,k).gt.0.) then
 
 
-            omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tbgmin)*a_bg))
-            omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tprmin)*a_pr))
-            omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k)-tgrmin)*a_gr))
+            omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
+            omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
+            omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
 
             if(qn(i,j,k).gt.0.) then
 
@@ -98,8 +99,8 @@ contains
             elseif(qp(i,j,k).gt.qp_threshold.and.qn(i,j,k).eq.0.) then
 
               qsatt = 0.
-              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(i,j,k),pres(k))
-              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(i,j,k),pres(k))
+              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(i,j,k,icrm),pres(k))
+              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(i,j,k,icrm),pres(k))
               dq = 0.
               if(omp.gt.0.001) then
                 qrr = qp(i,j,k) * omp

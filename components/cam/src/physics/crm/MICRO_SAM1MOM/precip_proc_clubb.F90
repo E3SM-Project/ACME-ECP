@@ -5,7 +5,7 @@ module precip_proc_clubb_mod
 
 contains
 
-  subroutine precip_proc_clubb
+  subroutine precip_proc_clubb()
 
 #ifdef CLUBB_CRM
     use vars
@@ -15,7 +15,6 @@ contains
     use vars, only: CF3D
 
     implicit none
-
     integer i,j,k
     real(crm_rknd) autor, autos, accrr, accris, accrcs, accrig, accrcg
     real(crm_rknd) dq, omn, omp, omg, qsatt
@@ -83,9 +82,9 @@ contains
           if(qn(i,j,k)+qp(i,j,k).gt.0.) then
 
 
-            omn = max(0.,min(1.,(tabs(i,j,k)-tbgmin)*a_bg))
-            omp = max(0.,min(1.,(tabs(i,j,k)-tprmin)*a_pr))
-            omg = max(0.,min(1.,(tabs(i,j,k)-tgrmin)*a_gr))
+            omn = max(0.,min(1.,(tabs(i,j,k,icrm)-tbgmin)*a_bg))
+            omp = max(0.,min(1.,(tabs(i,j,k,icrm)-tprmin)*a_pr))
+            omg = max(0.,min(1.,(tabs(i,j,k,icrm)-tgrmin)*a_gr))
 
             !	 if(qn(i,j,k).gt.0.) then
             if(cld3d(i,j,k).gt.0.) then  ! the generation of precipitating condensate
@@ -148,8 +147,8 @@ contains
             if(qp(i,j,k).gt.qp_threshold.and.qn(i,j,k).eq.0.) then
 
               qsatt = 0.
-              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(i,j,k),pres(k))
-              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(i,j,k),pres(k))
+              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(i,j,k,icrm),pres(k))
+              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(i,j,k,icrm),pres(k))
               dq = 0.
               if(omp.gt.0.001) then
                 qrr = qp(i,j,k) * omp /cldmax(i,j,k)
