@@ -196,10 +196,11 @@ CONTAINS
   !!! Initialize sgs:
 
 
-  subroutine sgs_init()
-
+  subroutine sgs_init(ncrms,icrm)
     use grid, only: nrestart, dx, dy, dz, adz, masterproc
     use params, only: LES
+    implicit none
+    integer, intent(in) :: ncrms,icrm
     integer k
 
     if(nrestart.eq.0) then
@@ -222,14 +223,14 @@ CONTAINS
 
     if(LES) then
       do k=1,nzm
-        grdf_x(k) = dx**2/(adz(k)*dz)**2
-        grdf_y(k) = dy**2/(adz(k)*dz)**2
+        grdf_x(k) = dx**2/(adz(k)*dz(icrm))**2
+        grdf_y(k) = dy**2/(adz(k)*dz(icrm))**2
         grdf_z(k) = 1.
       end do
     else
       do k=1,nzm
-        grdf_x(k) = min( real(16.,crm_rknd), dx**2/(adz(k)*dz)**2)
-        grdf_y(k) = min( real(16.,crm_rknd), dy**2/(adz(k)*dz)**2)
+        grdf_x(k) = min( real(16.,crm_rknd), dx**2/(adz(k)*dz(icrm))**2)
+        grdf_y(k) = min( real(16.,crm_rknd), dy**2/(adz(k)*dz(icrm))**2)
         grdf_z(k) = 1.
       end do
     end if
@@ -343,11 +344,11 @@ CONTAINS
   !!! Estimate Courant number limit for SGS
   !
 
-  subroutine kurant_sgs(cfl)
+  subroutine kurant_sgs(ncrms,icrm,cfl)
 
     use grid, only: dt, dx, dy, dz, adz, adzw
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     real(crm_rknd), intent(out) :: cfl
 
     integer k
@@ -360,7 +361,7 @@ CONTAINS
     cfl = 0.
     do k=1,nzm
       cfl = max(cfl,        &
-      0.5*tkhmax(k)*grdf_z(k)*dt/(dz*adzw(k))**2, &
+      0.5*tkhmax(k)*grdf_z(k)*dt/(dz(icrm)*adzw(k))**2, &
       0.5*tkhmax(k)*grdf_x(k)*dt/dx**2, &
       YES3D*0.5*tkhmax(k)*grdf_y(k)*dt/dy**2)
     end do

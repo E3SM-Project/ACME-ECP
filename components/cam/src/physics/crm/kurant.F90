@@ -27,10 +27,10 @@ module kurant_mod
       cfl = 0.
       do k=1,nzm
          cfl = max(cfl,uhm(k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2), &
-                   max(wm(k),wm(k+1))*dt/(dz*adzw(k)) )
+                   max(wm(k),wm(k+1))*dt/(dz(icrm)*adzw(k)) )
       end do
 
-      call kurant_sgs(cfl_sgs)
+      call kurant_sgs(ncrms,icrm,cfl_sgs)
       cfl = max(cfl,cfl_sgs)
 
       ncycle = max(1,ceiling(cfl/0.7))

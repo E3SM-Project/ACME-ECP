@@ -262,7 +262,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
-  call allocate_grid()
+  call allocate_grid(ncrms)
   call allocate_tracers()
   call allocate_sgs()
 #ifdef sam1mom
@@ -348,26 +348,26 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     zi(nz) = crm_input%zint(icrm,plev-nz+2)-crm_input%zint(icrm,plev+1) !+++mhwang, 2012-02-04
     presi(nz) = crm_input%pint(icrm, plev-nz+2)/100.
 
-    dz = 0.5*(z(1)+z(2))
+    dz(icrm) = 0.5*(z(1)+z(2))
     do k=2,nzm
-      adzw(k) = (z(k)-z(k-1))/dz
+      adzw(k) = (z(k)-z(k-1))/dz(icrm)
     end do
     adzw(1)  = 1.
     adzw(nz) = adzw(nzm)
     !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
     do k=1, nzm
-      adz(k)=(zi(k+1)-zi(k))/dz
+      adz(k)=(zi(k+1)-zi(k))/dz(icrm)
     end do
 
     do k = 1,nzm
-      rho(k,icrm) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(k)*dz)
+      rho(k,icrm) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(k)*dz(icrm))
     end do
     do k=2,nzm
     ! rhow(k,icrm) = 0.5*(rho(k,icrm)+rho(k-1,icrm))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with crm_input%pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz)
+      rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz(icrm))
     end do
     rhow(1,icrm) = 2.*rhow(2,icrm) - rhow(3,icrm)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
@@ -463,7 +463,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     call micro_init(ncrms,icrm)
 
     ! initialize sgs fields
-    call sgs_init()
+    call sgs_init(ncrms,icrm)
 
     do k=1,nzm
       u0(k,icrm)=0.
@@ -996,7 +996,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
             !hm#endif
 
-            tmp1 = rho(nz-k,icrm)*adz(nz-k)*dz*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
+            tmp1 = rho(nz-k,icrm)*adz(nz-k)*dz(icrm)*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
@@ -1016,7 +1016,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
             !     qsat = qsatw_crm(tabs(i,j,k,icrm),pres(k))
             !     if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.min(1.e-5,0.01*qsat)) then
-            tmp1 = rho(k,icrm)*adz(k)*dz
+            tmp1 = rho(k,icrm)*adz(k)*dz(icrm)
             if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
                  crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k,icrm)
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
@@ -1410,16 +1410,16 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     do j=1,ny
       do i=1,nx
 #ifdef sam1mom
-        precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz/dt/dble(nstop)
-        precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz/dt/dble(nstop)
+        precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)
+        precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)
 #endif /* sam1mom */
 #ifdef m2005
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/s/dz
         !          precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz/dble(nstop)     !mm/s/dz --> mm/s
         !          precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz/dble(nstop)   !mm/s/dz --> mm/s
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/dz
-        precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz/dt/dble(nstop)     !mm/s/dz --> mm/s
-        precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz/dt/dble(nstop)   !mm/s/dz --> mm/s
+        precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
+        precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
         if(precsfc(i,j,icrm).gt.10./86400.) then
            crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(i,j,icrm)
@@ -1503,7 +1503,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       ! time step.
       !---mhwang
 
-      tmp1 = dz/rhow(k,icrm)
+      tmp1 = dz(icrm)/rhow(k,icrm)
       tmp2 = tmp1/dtn                        ! dtn is calculated inside of the icyc loop.
                                              ! It seems wrong to use it here ???? +++mhwang
       mkwsb (k,:) = mkwsb (k,:) * tmp1*rhow(k,icrm) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
@@ -1515,7 +1515,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       qpsrc   (k) = qpsrc   (k) * factor_xy*icrm_run_time
       qpevp   (k) = qpevp   (k) * factor_xy*icrm_run_time
       qpfall  (k,icrm) = qpfall  (k,icrm) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
-      precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
+      precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz(icrm)/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
       crm_output%flux_u    (icrm,l) = (uwle(k,icrm) + uwsb(k,icrm))*tmp1*factor_xy/nstop

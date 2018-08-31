@@ -34,14 +34,14 @@ contains
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
-    rdz2=1./(dz*dz)
-    rdz=1./dz
+    rdz2=1./(dz(icrm)*dz(icrm))
+    rdz=1./dz(icrm)
     dxy=dx/dy
-    dxz=dx/dz
+    dxz=dx/dz(icrm)
     dyx=dy/dx
-    dyz=dy/dz
-    dzx=dz/dx
-    dzy=dz/dy
+    dyz=dy/dz(icrm)
+    dzx=dz(icrm)/dx
+    dzy=dz(icrm)/dy
 
     dfdt(:,:,:)=0.
 

@@ -126,7 +126,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     !!! first compute subgrid buoyancy flux at interface above this level.
 
     !!! average betdz to w-levels
-    betdz = 0.5*(bet(kc,icrm)+bet(kb,icrm))/dz/adzw(k+1)
+    betdz = 0.5*(bet(kc,icrm)+bet(kb,icrm))/dz(icrm)/adzw(k+1)
 
     !!! compute subgrid buoyancy flux assuming clear conditions
     !!! we will over-write this later if conditions are cloudy
@@ -238,7 +238,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
       a_prod_bu_above(:,:) = 0.
     end if
 
-    grd = dz*adz(k)
+    grd = dz(icrm)*adz(k)
 
     Ce1 = Ce/0.7*0.19
     Ce2 = Ce/0.7*0.51
@@ -252,7 +252,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     !!! compute correction factors for eddy visc/cond not to acceed 3D stability
     cx = dx**2/dt/grdf_x(k)
     cy = dy**2/dt/grdf_y(k)
-    cz = (dz*min(adzw(k),adzw(k+1)))**2/dt/grdf_z(k)
+    cz = (dz(icrm)*min(adzw(k),adzw(k+1)))**2/dt/grdf_z(k)
 
     !!! maximum value of eddy visc/cond
     tkmax = 0.09/(1./cx+1./cy+1./cz)  

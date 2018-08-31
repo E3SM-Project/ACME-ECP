@@ -26,7 +26,7 @@ contains
     rdx2=1./dx/dx
     rdx25=0.25*rdx2
 
-    dxz=dx/dz
+    dxz=dx/dz(icrm)
 
     j=1
 
@@ -35,7 +35,7 @@ contains
 
         kc=k+1
         kcu=min(kc,nzm)
-        dxz=dx/(dz*adzw(kc))
+        dxz=dx/(dz(icrm)*adzw(kc))
         rdx21=rdx2 * grdf_x(k)
         rdx251=rdx25 * grdf_x(k)
 
@@ -59,8 +59,8 @@ contains
     end if
 
     !-------------------------
-    rdz=1./dz
-    dzx=dz/dx
+    rdz=1./dz(icrm)
+    dzx=dz(icrm)/dx
 
     do k=1,nzm-1
       kc=k+1

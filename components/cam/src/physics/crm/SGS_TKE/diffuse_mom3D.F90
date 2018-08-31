@@ -32,16 +32,16 @@ contains
     rdy25=0.25*rdy2
 
     dxy=dx/dy
-    dxz=dx/dz
+    dxz=dx/dz(icrm)
     dyx=dy/dx
-    dyz=dy/dz
+    dyz=dy/dz(icrm)
 
 
     do k=1,nzm
       kc=k+1
       kcu=min(kc,nzm)
-      dxz=dx/(dz*adzw(kc))
-      dyz=dy/(dz*adzw(kc))
+      dxz=dx/(dz(icrm)*adzw(kc))
+      dyz=dy/(dz(icrm)*adzw(kc))
       rdx21=rdx2    * grdf_x(k)
       rdy21=rdy2    * grdf_y(k)
       rdx251=rdx25  * grdf_x(k)
@@ -89,9 +89,9 @@ contains
     end do
 
     !-------------------------
-    rdz=1./dz
-    dzx=dz/dx
-    dzy=dz/dy
+    rdz=1./dz(icrm)
+    dzx=dz(icrm)/dx
+    dzy=dz(icrm)/dy
 
     do k=1,nzm-1
       kc=k+1

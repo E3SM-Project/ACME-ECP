@@ -13,7 +13,7 @@ contains
     integer i, j, k, kc, kb
     real(crm_rknd) dz2, dz25, www, rhoi
 
-    dz25=1./(4.*dz)
+    dz25=1./(4.*dz(icrm))
     dz2=dz25*2.
 
     do j=1,ny

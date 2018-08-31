@@ -742,7 +742,7 @@ do j = 1,ny
            + fac_cond * (tmpqr(:)) &    ! bloss/qt: liquid latent energy due to rain only
            + fac_sub  * (tmpqci(:) + tmpqs(:) + tmpqg(:)) ! ice latent energy
 
-      tmpdz = adz(:)*dz
+      tmpdz = adz(:)*dz(icrm)
 !      tmpw = 0.5*(w(i,j,1:nzm) + w(i,j,2:nz))  ! MK: changed for stretched grids
       tmpw = ((zi(2:nz)-z(1:nzm))*w(i,j,1:nzm)+ &
              (z(1:nzm)-zi(1:nzm))*w(i,j,2:nz))/(zi(2:nz)-zi(1:nzm))
@@ -759,7 +759,7 @@ do j = 1,ny
 ! Notes: tke has to be already prognsotic or diagnostic.
         tmpwsub = sqrt(tke2(i,j,:,icrm)/3.)  ! diagnosed tmpwsub from tke
 ! diagnose tmpwsub from tk
-!        tmpwsub = sqrt(2*3.141593)*tk(i,j,:)/(dz*adz(:))  ! from Ghan et al. (1997, JGR).
+!        tmpwsub = sqrt(2*3.141593)*tk(i,j,:)/(dz(icrm)*adz(:))  ! from Ghan et al. (1997, JGR).
       end if
 
       if ( doclubb ) then
@@ -775,7 +775,7 @@ do j = 1,ny
 ! Notes: tke has to be already prognsotic or diagnostic.
       tmpwsub = sqrt(tke2(i,j,:,icrm)/3.)  ! diagnosed tmpwsub from tke
 ! diagnose tmpwsub from tk
-!      tmpwsub = sqrt(2*3.141593)*tk(i,j,:)/(dz*adz(:))  ! from Ghan et al. (1997, JGR).
+!      tmpwsub = sqrt(2*3.141593)*tk(i,j,:)/(dz(icrm)*adz(:))  ! from Ghan et al. (1997, JGR).
 #endif
       wvar(i,j,:) = tmpwsub(:)
 
@@ -1016,13 +1016,13 @@ do j = 1,ny
          total_water_prec(icrm) = total_water_prec(icrm) + sfcpcp
 
          ! take care of surface precipitation
-         precsfc(i,j,icrm) = precsfc(i,j,icrm) + sfcpcp/dz
-         prec_xy(i,j,icrm) = prec_xy(i,j,icrm) + sfcpcp/dtn/dz
+         precsfc(i,j,icrm) = precsfc(i,j,icrm) + sfcpcp/dz(icrm)
+         prec_xy(i,j,icrm) = prec_xy(i,j,icrm) + sfcpcp/dtn/dz(icrm)
 !+++mhwang
-         sfcpcp2D(i,j) = sfcpcp/dtn/dz
+         sfcpcp2D(i,j) = sfcpcp/dtn/dz(icrm)
 !---mhwang
 #ifdef CRM
-         precssfc(i,j,icrm) = precssfc(i,j,icrm) + sfcicepcp/dz    ! the corect unit of precssfc should be mm/dz +++mhwang
+         precssfc(i,j,icrm) = precssfc(i,j,icrm) + sfcicepcp/dz(icrm)    ! the corect unit of precssfc should be mm/dz +++mhwang
 #endif
          ! update rain
          micro_field(i,j,:,iqr) = tmpqr(:)
@@ -1116,16 +1116,16 @@ do j = 1,ny
          tmpg = 0.
 
          do k = 1,nzm
-            tmpc = tmpc + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqcl(k)/(1.e-20+1.e-6*effc1d(k))
-            tmpr = tmpr + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqr(k)/(1.e-20+1.e-6*effr1d(k))
+            tmpc = tmpc + 0.0018*rho(k,icrm)*dz(icrm)*adz(k)*tmpqcl(k)/(1.e-20+1.e-6*effc1d(k))
+            tmpr = tmpr + 0.0018*rho(k,icrm)*dz(icrm)*adz(k)*tmpqr(k)/(1.e-20+1.e-6*effr1d(k))
             !bloss/qt: put cloud liquid optical depth in trtau(:,iqv)
             trtau(k,iqv) = trtau(k,iqv) + tmpc
             if(doprecip) trtau(k,iqr) = trtau(k,iqr) + tmpr
 
             if(doicemicro) then
-               tmpi = tmpi + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqci(k)/(1.e-20+1.e-6*effi1d(k))
-               tmps = tmps + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqs(k)/(1.e-20+1.e-6*effs1d(k))
-               tmpg = tmpg + 0.0018*rho(k,icrm)*dz*adz(k)*tmpqg(k)/(1.e-20+1.e-6*effg1d(k))
+               tmpi = tmpi + 0.0018*rho(k,icrm)*dz(icrm)*adz(k)*tmpqci(k)/(1.e-20+1.e-6*effi1d(k))
+               tmps = tmps + 0.0018*rho(k,icrm)*dz(icrm)*adz(k)*tmpqs(k)/(1.e-20+1.e-6*effs1d(k))
+               tmpg = tmpg + 0.0018*rho(k,icrm)*dz(icrm)*adz(k)*tmpqg(k)/(1.e-20+1.e-6*effg1d(k))
 
                trtau(k,iqci) = trtau(k,iqci) + tmpi
                trtau(k,iqs) = trtau(k,iqs) + tmps
@@ -1188,19 +1188,19 @@ end do ! j = 1,ny
 tmpc = 0.
 do k = 1,nzm
    m = nz-k
-   tmpc = tmpc + stend(m,iqv)*rho(m,icrm)*dz*adz(m)  !bloss/qt: iqcl --> iqv
+   tmpc = tmpc + stend(m,iqv)*rho(m,icrm)*dz(icrm)*adz(m)  !bloss/qt: iqcl --> iqv
    mksed(m,iqv) = tmpc
 end do
-precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqv)*dtn/dz
+precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqv)*dtn/dz(icrm)
 
 if(doprecip) then
    tmpr = 0.
    do k = 1,nzm
       m = nz-k
-      tmpr = tmpr + stend(m,iqr)*rho(m,icrm)*dz*adz(m)
+      tmpr = tmpr + stend(m,iqr)*rho(m,icrm)*dz(icrm)*adz(m)
       mksed(m,iqr) = tmpr
    end do
-   precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqr)*dtn/dz
+   precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqr)*dtn/dz(icrm)
 end if
 
 if(doicemicro) then
@@ -1209,16 +1209,16 @@ if(doicemicro) then
    tmpg = 0.
    do k = 1,nzm
       m = nz-k
-      tmpi = tmpi + stend(m,iqci)*rho(m,icrm)*dz*adz(m)
-      tmps = tmps + stend(m,iqs)*rho(m,icrm)*dz*adz(m)
+      tmpi = tmpi + stend(m,iqci)*rho(m,icrm)*dz(icrm)*adz(m)
+      tmps = tmps + stend(m,iqs)*rho(m,icrm)*dz(icrm)*adz(m)
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
       if ( dograupel ) then
-        tmpg = tmpg + stend(m,iqg)*rho(m,icrm)*dz*adz(m)
+        tmpg = tmpg + stend(m,iqg)*rho(m,icrm)*dz(icrm)*adz(m)
       else
         tmpg = 0.
       end if
 #else
-      tmpg = tmpg + stend(m,iqg)*rho(m,icrm)*dz*adz(m)
+      tmpg = tmpg + stend(m,iqg)*rho(m,icrm)*dz(icrm)*adz(m)
 #endif
       mksed(m,iqci) = tmpi
       mksed(m,iqs) = tmps
@@ -1233,14 +1233,14 @@ if(doicemicro) then
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
    if ( dograupel ) then
      precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
-          - (mksed(:,iqci) + mksed(:,iqs) + mksed(:,iqg))*dtn/dz
+          - (mksed(:,iqci) + mksed(:,iqs) + mksed(:,iqg))*dtn/dz(icrm)
    else
      precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
-          - (mksed(:,iqci) + mksed(:,iqs))*dtn/dz
+          - (mksed(:,iqci) + mksed(:,iqs))*dtn/dz(icrm)
    end if
 #else
    precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
-        - (mksed(:,iqci) + mksed(:,iqs) + mksed(:,iqg))*dtn/dz
+        - (mksed(:,iqci) + mksed(:,iqs) + mksed(:,iqg))*dtn/dz(icrm)
 #endif
 end if
 
@@ -1592,7 +1592,7 @@ real(8) function total_water(ncrms,icrm)
           tmp = tmp + micro_field(i,j,k,m)
         end do
       end do
-      total_water = total_water + tmp*adz(k)*dz*rho(k,icrm)
+      total_water = total_water + tmp*adz(k)*dz(icrm)*rho(k,icrm)
     end do
    end if
   end do

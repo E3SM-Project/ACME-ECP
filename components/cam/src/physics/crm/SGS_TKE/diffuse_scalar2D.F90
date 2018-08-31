@@ -30,10 +30,10 @@ contains
     if(.not.dosgs.and..not.docolumn) return
 
     rdx2=1./(dx*dx)
-    rdz2=1./(dz*dz)
-    rdz=1./dz
-    dxz=dx/dz
-    dzx=dz/dx
+    rdz2=1./(dz(icrm)*dz(icrm))
+    rdz=1./dz(icrm)
+    dxz=dx/dz(icrm)
+    dzx=dz(icrm)/dx
 
     j=1
 
