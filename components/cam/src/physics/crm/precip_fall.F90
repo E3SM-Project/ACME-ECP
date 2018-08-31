@@ -192,10 +192,10 @@ contains
             ! Note that fz is the total flux, including both the
             ! upwind flux and the anti-diffusive correction.
             qp(i,j,k)=qp(i,j,k)-(fz(kc)-fz(k))*irhoadz(k)
-            qpfall(k)=qpfall(k)-(fz(kc)-fz(k))*irhoadz(k)*flagstat  ! For qp budget
+            qpfall(k,icrm)=qpfall(k,icrm)-(fz(kc)-fz(k))*irhoadz(k)*flagstat  ! For qp budget
             lat_heat = -(lfac(kc)*fz(kc)-lfac(k)*fz(k))*irhoadz(k)
             t(i,j,k)=t(i,j,k)-lat_heat
-            tlat(k)=tlat(k)-lat_heat            ! For energy budget
+            tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
             precflux(k,icrm) = precflux(k,icrm) - fz(k)*flagstat   ! For statistics
           end do
           precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(1)*flagstat ! For statistics

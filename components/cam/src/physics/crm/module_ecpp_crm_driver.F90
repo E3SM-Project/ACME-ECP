@@ -580,7 +580,7 @@ contains
     precall,   precallsum1(:,:,:),   &
     alt,       altsum1(:,:,:),       &
     rh,        rhsum1(:,:,:),        &
-    CF3D,      cf3dsum1(:,:,:),       &
+    CF3D(:,:,:,icrm),      cf3dsum1(:,:,:),       &
     ww,        wwsum1(:,:,:),        &
     wwsq,      wwsqsum1(:,:,:),      &
     tke(1:nx,1:ny,1:nzm),       tkesgssum1(:,:,:),    &

@@ -397,7 +397,7 @@ CONTAINS
     integer k
 
 
-    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb(:,icrm), &
+    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff(:,icrm),twsb(:,icrm), &
     t2lediff(:,icrm),t2lediss(:,icrm),twlediff(:,icrm),.true.)
 
     if(advect_sgs) then
@@ -411,7 +411,7 @@ CONTAINS
     !
     call micro_flux(ncrms,icrm)
 
-    total_water_evap = total_water_evap - total_water(ncrms,icrm)
+    total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
 
     do k = 1,nmicro_fields
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
@@ -424,7 +424,7 @@ CONTAINS
     end if
   end do
 
-  total_water_evap = total_water_evap + total_water(ncrms,icrm)
+  total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
 
   ! diffusion of tracers:
 

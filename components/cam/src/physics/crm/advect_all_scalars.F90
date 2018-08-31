@@ -28,7 +28,7 @@ contains
     !---------------------------------------------------------
     !      advection of scalars :
 
-    call advect_scalar(ncrms,icrm,t,tadv,twle(:,icrm),t2leadv(:,icrm),t2legrad(:,icrm),twleadv(:,icrm),.true.)
+    call advect_scalar(ncrms,icrm,t,tadv(:,icrm),twle(:,icrm),t2leadv(:,icrm),t2legrad(:,icrm),twleadv(:,icrm),.true.)
 
     !
     !    Advection of microphysics prognostics:
@@ -62,11 +62,11 @@ contains
     !
     if(doprecip) then
 
-      total_water_prec = total_water_prec + total_water(ncrms,icrm)
+      total_water_prec(icrm) = total_water_prec(icrm) + total_water(ncrms,icrm)
 
       call micro_precip_fall(ncrms,icrm)
 
-      total_water_prec = total_water_prec - total_water(ncrms,icrm)
+      total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
 
 
     end if

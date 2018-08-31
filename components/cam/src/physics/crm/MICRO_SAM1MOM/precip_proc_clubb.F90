@@ -42,8 +42,8 @@ contains
     do j=1, ny
       do i=1, nx
         do k=nzm, 1, -1
-          cld3d(i, j, k) = CF3D(i,j,k)
-          cld3d_temp(i, j, k) = min(0.999, max(CF3D(i,j,k), cloud_frac_thresh))
+          cld3d(i, j, k) = CF3D(i,j,k,icrm)
+          cld3d_temp(i, j, k) = min(0.999, max(CF3D(i,j,k,icrm), cloud_frac_thresh))
         end do
         cldmax(i,j,nzm)=cld3d_temp(i,j,nzm)
 

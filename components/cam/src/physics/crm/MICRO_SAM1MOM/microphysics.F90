@@ -294,7 +294,7 @@ CONTAINS
     end if
 #ifdef CLUBB_CRM
     if ( doclubb ) then ! -dschanen UWM 21 May 2008
-      CF3D(:,:, 1:nzm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
+      CF3D(:,:, 1:nzm,icrm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
       ! so it is set here first  +++mhwang
       !     if(doprecip) call precip_proc()
       if(doprecip) call precip_proc_clubb(ncrms,icrm)

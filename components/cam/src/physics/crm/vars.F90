@@ -143,71 +143,18 @@ module vars
   real(crm_rknd), allocatable :: t2lediss(:,:)
   real(crm_rknd), allocatable :: twleadv(:,:)
   real(crm_rknd), allocatable :: twlediff(:,:)
-
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !! MATT YOU STOPPED HERE
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  real(crm_rknd), allocatable :: momleadv(:,:)
-  real(crm_rknd), allocatable :: momlepress(:,:)
-  real(crm_rknd), allocatable :: momlebuoy(:,:)
-  real(crm_rknd), allocatable :: momlediff(:,:)
-  real(crm_rknd), allocatable :: tadv(:)
-  real(crm_rknd), allocatable :: tdiff(:)
-  real(crm_rknd), allocatable :: tlat(:)
-  real(crm_rknd), allocatable :: tlatqi(:)
-  real(crm_rknd), allocatable :: qifall(:)
-  real(crm_rknd), allocatable :: qpfall(:)
-  real(crm_rknd), allocatable :: tdiff_xy(:)
-  real(crm_rknd), allocatable :: tdiff_z(:)
-  real(crm_rknd), allocatable :: ttest0(:)
-  real(crm_rknd), allocatable :: ttest1(:)
-  real(crm_rknd), allocatable :: ttest2(:,:)  !+++mhwang test
+  real(crm_rknd), allocatable :: tadv(:,:)
+  real(crm_rknd), allocatable :: tdiff(:,:)
+  real(crm_rknd), allocatable :: tlat(:,:)
+  real(crm_rknd), allocatable :: tlatqi(:,:)
+  real(crm_rknd), allocatable :: qifall(:,:)
+  real(crm_rknd), allocatable :: qpfall(:,:)
 
   ! energy conservation diagnostics:
+  real(8), allocatable :: total_water_evap(:)
+  real(8), allocatable :: total_water_prec(:)
 
-  real(8) total_water_before, total_water_after
-  real(8) total_water_evap, total_water_prec, total_water_ls
-  !#ifdef CLUBB_CRM
-  real(8) total_water_clubb
-  real(8) total_energy_before, total_energy_after
-  real(8) total_energy_evap, total_energy_prec, total_energy_ls
-  real(8) total_energy_clubb, total_energy_rad
-  !#endif
-  real(8), allocatable :: qtotmicro(:)  ! total water for water conservation test in microphysics +++mhwang
-
-  !===========================================================================
-  ! UW ADDITIONS
-
-  ! conditional average statistics, subsumes cloud_factor, core_factor, coredn_factor
-  integer :: ncondavg, icondavg_cld, icondavg_cor, icondavg_cordn, &
-  icondavg_satdn, icondavg_satup, icondavg_env
-
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !! MRN: Already allocated, I'm leaving them alone
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  real(crm_rknd), allocatable :: condavg_factor(:,:) ! replaces cloud_factor, core_factor
-  real(crm_rknd), allocatable :: condavg_mask(:,:,:,:) ! indicator array for various conditional averages
-  character(LEN=8), allocatable :: condavgname(:) ! array of short names
-  character(LEN=25), allocatable :: condavglongname(:) ! array of long names
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-  real(crm_rknd), allocatable :: qlsvadv(:) ! Large-scale vertical advection tendency for total water
-  real(crm_rknd), allocatable :: tlsvadv(:) ! Large-scale vertical advection tendency for temperature
-  real(crm_rknd), allocatable :: ulsvadv(:) ! Large-scale vertical advection tendency for zonal velocity
-  real(crm_rknd), allocatable :: vlsvadv(:) ! Large-scale vertical advection tendency for meridional velocity
-  real(crm_rknd), allocatable :: qnudge(:) ! Nudging of horiz.-averaged total water profile
-  real(crm_rknd), allocatable :: tnudge(:) ! Nudging of horiz.-averaged temperature profile
-  real(crm_rknd), allocatable :: unudge(:) ! Nudging of horiz.-averaged zonal velocity
-  real(crm_rknd), allocatable :: vnudge(:) ! Nudging of horiz.-averaged meridional velocity
-  real(crm_rknd), allocatable :: qstor(:) ! Storage of horiz.-averaged total water profile
-  real(crm_rknd), allocatable :: tstor(:) ! Storage of horiz.-averaged temperature profile
-  real(crm_rknd), allocatable :: ustor(:) ! Storage of horiz.-averaged zonal velocity
-  real(crm_rknd), allocatable :: vstor(:) ! Storage of horiz.-averaged meridional velocity
-  real(crm_rknd), allocatable :: qtostor(:) ! Storage of horiz.-averaged total water profile (vapor + liquid)
-  real(crm_rknd), allocatable :: utendcor(:) ! coriolis acceleration of zonal velocity
-  real(crm_rknd), allocatable :: vtendcor(:) ! coriolis acceleration of meridional velocity
-  real(crm_rknd), allocatable :: CF3D(:,:,:)  ! Cloud fraction
+  real(crm_rknd), allocatable :: CF3D(:,:,:,:)  ! Cloud fraction
   ! =1.0 when there is no fractional cloudiness scheme
   ! = cloud fraction produced by fractioal cloudiness scheme when avaiable
 
@@ -339,38 +286,13 @@ contains
     allocate( t2lediss(nz,ncrms) )
     allocate( twleadv(nz,ncrms) )
     allocate( twlediff(nz,ncrms) )
-    allocate( momleadv(nz,3) )
-    allocate( momlepress(nz,3) )
-    allocate( momlebuoy(nz,3) )
-    allocate( momlediff(nz,3) )
-    allocate( tadv(nz) )
-    allocate( tdiff(nz) )
-    allocate( tlat(nz) )
-    allocate( tlatqi(nz) )
-    allocate( qifall(nz) )
-    allocate( qpfall(nz) )
-    allocate( tdiff_xy(nz) )
-    allocate( tdiff_z(nz) )
-    allocate( ttest0(nzm) )
-    allocate( ttest1(nz) )
-    allocate( ttest2(nz,10)   )
-    allocate( qtotmicro(5)   )
-    allocate( qlsvadv(nzm)  )
-    allocate( tlsvadv(nzm)  )
-    allocate( ulsvadv(nzm)  )
-    allocate( vlsvadv(nzm)  )
-    allocate( qnudge(nzm)  )
-    allocate( tnudge(nzm)  )
-    allocate( unudge(nzm)  )
-    allocate( vnudge(nzm)  )
-    allocate( qstor(nzm)  )
-    allocate( tstor(nzm)  )
-    allocate( ustor(nzm)  )
-    allocate( vstor(nzm)  )
-    allocate( qtostor(nzm)  )
-    allocate( utendcor(nzm)  )
-    allocate( vtendcor(nzm)  )
-    allocate( CF3D(1:nx, 1:ny, 1:nzm)   )
+    allocate( tadv(nz,ncrms) )
+    allocate( tdiff(nz,ncrms) )
+    allocate( tlat(nz,ncrms) )
+    allocate( tlatqi(nz,ncrms) )
+    allocate( qifall(nz,ncrms) )
+    allocate( qpfall(nz,ncrms) )
+    allocate( CF3D(1:nx, 1:ny, 1:nzm,ncrms)   )
     allocate( u850_xy(nx,ny)  )
     allocate( v850_xy(nx,ny)  )
     allocate( psfc_xy(nx,ny)  )
@@ -380,6 +302,8 @@ contains
     allocate( cloudtoptemp  (nx,ny) )
     allocate( u_max(ncrms) )
     allocate( w_max(ncrms) )
+    allocate( total_water_evap(ncrms) )
+    allocate( total_water_prec(ncrms) )
 #if (defined CRM && defined MODAL_AERO)
     allocate( naer (nzm, ntot_amode) )
     allocate( vaer (nzm, ntot_amode) )
@@ -485,37 +409,12 @@ contains
     t2lediss = zero
     twleadv = zero
     twlediff = zero
-    momleadv = zero
-    momlepress = zero
-    momlebuoy = zero
-    momlediff = zero
     tadv = zero
     tdiff = zero
     tlat = zero
     tlatqi = zero
     qifall = zero
     qpfall = zero
-    tdiff_xy = zero
-    tdiff_z = zero
-    ttest0 = zero
-    ttest1 = zero
-    ttest2 = zero
-    qtotmicro = zero
-    qlsvadv = zero
-    tlsvadv = zero
-    ulsvadv = zero
-    vlsvadv = zero
-    qnudge = zero
-    tnudge = zero
-    unudge = zero
-    vnudge = zero
-    qstor = zero
-    tstor = zero
-    ustor = zero
-    vstor = zero
-    qtostor = zero
-    utendcor = zero
-    vtendcor = zero
     CF3D = zero
     u850_xy = zero
     v850_xy = zero
@@ -526,6 +425,8 @@ contains
     cloudtoptemp = zero
     u_max = zero
     w_max = zero
+    total_water_evap = zero
+    total_water_prec = zero
 #if (defined CRM && defined MODAL_AERO)
     naer = zero
     vaer = zero
@@ -633,37 +534,12 @@ contains
     deallocate( t2lediss )
     deallocate( twleadv )
     deallocate( twlediff )
-    deallocate( momleadv )
-    deallocate( momlepress )
-    deallocate( momlebuoy )
-    deallocate( momlediff )
     deallocate( tadv )
     deallocate( tdiff )
     deallocate( tlat )
     deallocate( tlatqi )
     deallocate( qifall )
     deallocate( qpfall )
-    deallocate( tdiff_xy )
-    deallocate( tdiff_z )
-    deallocate( ttest0 )
-    deallocate( ttest1 )
-    deallocate( ttest2 )
-    deallocate( qtotmicro )
-    deallocate( qlsvadv )
-    deallocate( tlsvadv )
-    deallocate( ulsvadv )
-    deallocate( vlsvadv )
-    deallocate( qnudge )
-    deallocate( tnudge )
-    deallocate( unudge )
-    deallocate( vnudge )
-    deallocate( qstor )
-    deallocate( tstor )
-    deallocate( ustor )
-    deallocate( vstor )
-    deallocate( qtostor )
-    deallocate( utendcor )
-    deallocate( vtendcor )
     deallocate( CF3D )
     deallocate( u850_xy )
     deallocate( v850_xy )
@@ -674,6 +550,8 @@ contains
     deallocate( cloudtoptemp )
     deallocate( u_max )
     deallocate( w_max )
+    deallocate( total_water_evap )
+    deallocate( total_water_prec )
 #if (defined CRM && defined MODAL_AERO)
     deallocate( naer )
     deallocate( vaer )

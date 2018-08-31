@@ -10,8 +10,7 @@ use grid, only: nx,ny,nzm,nz, &  !grid dimensions; nzm = nz-1 # of scalar lvls
      dz, adz, dostatis, masterproc, &
      doSAMconditionals, dosatupdnconditionals
 
-use vars, only: pres, rho, dt, dtn, w, t, tlatqi, condavg_mask, &
-     ncondavg, condavgname, condavglongname
+use vars, only: pres, rho, dt, dtn, w, t, tlatqi
 use vars, only: tke2, tk2
 use params, only: doprecip, docloud, doclubb
 use task_util_mod
@@ -689,8 +688,8 @@ if(dostatis) then ! initialize arrays for statistics
    mfrac(:,:) = 0.
    mtend(:,:) = 0.
    trtau(:,:) = 0.
-!   qpfall(:)=0.     ! in SPCAM, done in crm.F90
-   tlat(:) = 0.
+!   qpfall(:,icrm)=0.     ! in SPCAM, done in crm.F90
+   tlat(:,icrm) = 0.
    tmtend3d(:,:,:) = 0.
 end if
 stend(:,:) = 0.
@@ -801,7 +800,7 @@ do j = 1,ny
                                        ! simply set cloud_frac_in to be zero.
            liq_cldfrac(1:nzm) = cloud_frac(i,j,2:nz)
 
-           CF3D(i, j, 1:nzm) = cloud_frac(i, j, 2:nz)
+           CF3D(i, j, 1:nzm,icrm) = cloud_frac(i, j, 2:nz)
            ice_cldfrac(:)= 0.0
            if(doicemicro) then
              do k=1, nzm
@@ -809,12 +808,12 @@ do j = 1,ny
                  ice_cldfrac(k) = 1.0
                end if
                if((tmpqcl(k) + tmpqci(k)).gt.1.0e-9) then
-                 CF3D(i,j,k) = (CF3D(i,j,k) * tmpqcl(k) + ice_cldfrac(k) * tmpqci(k))  &
+                 CF3D(i,j,k,icrm) = (CF3D(i,j,k,icrm) * tmpqcl(k) + ice_cldfrac(k) * tmpqci(k))  &
                            / (tmpqcl(k) + tmpqci(k))
                else
-                 CF3D(i,j,k) = 0.0
+                 CF3D(i,j,k,icrm) = 0.0
                end if
-               ice_cldfrac(k) = max(CF3D(i,j,k), liq_cldfrac(k))
+               ice_cldfrac(k) = max(CF3D(i,j,k,icrm), liq_cldfrac(k))
              end do
            endif
          end if
@@ -1014,7 +1013,7 @@ do j = 1,ny
 
      ! update microphysical quantities in this grid column
       if(doprecip) then
-         total_water_prec = total_water_prec + sfcpcp
+         total_water_prec(icrm) = total_water_prec(icrm) + sfcpcp
 
          ! take care of surface precipitation
          precsfc(i,j,icrm) = precsfc(i,j,icrm) + sfcpcp/dz
@@ -1140,10 +1139,10 @@ do j = 1,ny
             end if
          end do
 
-         tlat(1:nzm) = tlat(1:nzm) &
+         tlat(1:nzm,icrm) = tlat(1:nzm,icrm) &
               - dtn*fac_cond*(stendqcl+stendqr) &
               - dtn*fac_sub*(stendqci+stendqs+stendqg)
-         qpfall(1:nzm) = qpfall(1:nzm) + dtn*(stendqr+stendqs+stendqg)
+         qpfall(1:nzm,icrm) = qpfall(1:nzm,icrm) + dtn*(stendqr+stendqs+stendqg)
 
 #ifdef CRM
          qpsrc(1:nzm) = qpsrc(1:nzm) + dtn*(mtendqr+mtendqs+mtendqg)
@@ -1250,7 +1249,7 @@ end if
 #ifdef CLUBB_CRM
 if (docloud.or.doclubb)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 if(doclubb) then
-   CF3D(1:nx, 1:ny, 1:nzm) = cloud_frac(1:nx, 1:ny, 2:nzm+1)
+   CF3D(1:nx, 1:ny, 1:nzm,icrm) = cloud_frac(1:nx, 1:ny, 2:nzm+1)
    if(doicemicro) then
      do i=1, nx
        do j=1, ny
@@ -1263,10 +1262,10 @@ if(doclubb) then
              ice_cldfrac(k) = 1.0
            end if
            if(cloudliq(i,j,k) + micro_field(i,j,k,iqci) .gt.1.0e-9) then
-             CF3D(i,j,k) = (CF3D(i,j,k)* cloudliq(i,j,k) + ice_cldfrac(k) * micro_field(i,j,k,iqci))  &
+             CF3D(i,j,k,icrm) = (CF3D(i,j,k,icrm)* cloudliq(i,j,k) + ice_cldfrac(k) * micro_field(i,j,k,iqci))  &
                            / (cloudliq(i,j,k) + micro_field(i,j,k,iqci))
            else
-             CF3D(i,j,k) = 0.0
+             CF3D(i,j,k,icrm) = 0.0
            end if
           end do
         end do
@@ -1459,8 +1458,8 @@ return ! do not need this routine -- sedimentation done in m2005micro.
 !!$ end if
 !!$
 !!$ do k = 1,nzm ! Initialize arrays which hold precipitation fluxes for stats.
-!!$    qpfall(k)=0.
-!!$    tlat(k) = 0.
+!!$    qpfall(k,icrm)=0.
+!!$    tlat(k,icrm) = 0.
 !!$ end do
 !!$
 !!$! Compute sedimentation of falling variables:

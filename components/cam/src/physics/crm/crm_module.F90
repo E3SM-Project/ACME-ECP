@@ -458,7 +458,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     tkh (1:nx,1:ny,1:nzm) = 0.
     p   (1:nx,1:ny,1:nzm,icrm) = 0.
 
-    CF3D(1:nx,1:ny,1:nzm) = 1.
+    CF3D(1:nx,1:ny,1:nzm,icrm) = 1.
 
     call micro_init(ncrms,icrm)
 
@@ -742,7 +742,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     precsolid = 0.0
 #endif /* ECPP */
 
-     qtotmicro(:) = 0.0
      ntotal_step = 0.0
 !    !+++mhwangtest
 !    ! test water conservtion problem
@@ -999,34 +998,34 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
             tmp1 = rho(nz-k,icrm)*adz(nz-k)*dz*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
             cwp(i,j) = cwp(i,j)+tmp1
-            cttemp(i,j) = max(CF3D(i,j,nz-k), cttemp(i,j))
+            cttemp(i,j) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
                 crm_output%cldtop(icrm,l) = crm_output%cldtop(icrm,l) + 1
                 flag_top(i,j) = .false.
             endif
             if(pres(nz-k).ge.700.) then
                 cwpl(i,j) = cwpl(i,j)+tmp1
-                cltemp(i,j) = max(CF3D(i,j,nz-k), cltemp(i,j))
+                cltemp(i,j) = max(CF3D(i,j,nz-k,icrm), cltemp(i,j))
             else if(pres(nz-k).lt.400.) then
                 cwph(i,j) = cwph(i,j)+tmp1
-                chtemp(i,j) = max(CF3D(i,j,nz-k), chtemp(i,j))
+                chtemp(i,j) = max(CF3D(i,j,nz-k,icrm), chtemp(i,j))
             else
                 cwpm(i,j) = cwpm(i,j)+tmp1
-                cmtemp(i,j) = max(CF3D(i,j,nz-k), cmtemp(i,j))
+                cmtemp(i,j) = max(CF3D(i,j,nz-k,icrm), cmtemp(i,j))
             endif
 
             !     qsat = qsatw_crm(tabs(i,j,k,icrm),pres(k))
             !     if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.min(1.e-5,0.01*qsat)) then
             tmp1 = rho(k,icrm)*adz(k)*dz
             if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
-                 crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k)
+                 crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k,icrm)
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k))
+                   crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k,icrm)
+                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k,icrm))
                  endif
                  if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   crm_output%mcdn (icrm,l) = crm_output%mcdn (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k)
-                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k))
+                   crm_output%mcdn (icrm,l) = crm_output%mcdn (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k,icrm)
+                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k,icrm))
                  endif
             else
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
@@ -1041,7 +1040,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 !             crm_rad%qv (icrm,i,j,k) = crm_rad%qv (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k,icrm))
 !             crm_rad%qc (icrm,i,j,k) = crm_rad%qc (icrm,i,j,k)+qcl(i,j,k,icrm)
 !             crm_rad%qi (icrm,i,j,k) = crm_rad%qi (icrm,i,j,k)+qci(i,j,k,icrm)
-!             crm_rad%cld(icrm,i,j,k) = crm_rad%cld(icrm,i,j,k) +  CF3D(i,j,k)
+!             crm_rad%cld(icrm,i,j,k) = crm_rad%cld(icrm,i,j,k) +  CF3D(i,j,k,icrm)
 ! #ifdef m2005
 !             crm_rad%nc(icrm,i,j,k) = crm_rad%nc(icrm,i,j,k)+micro_field(i,j,k,incl)
 !             crm_rad%ni(icrm,i,j,k) = crm_rad%ni(icrm,i,j,k)+micro_field(i,j,k,inci)
@@ -1061,7 +1060,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
               crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
               crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
               crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
-              crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k)
+              crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
 #ifdef m2005
               crm_rad%nc(icrm,i_rad,j_rad,k) = crm_rad%nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl)
               crm_rad%ni(icrm,i_rad,j_rad,k) = crm_rad%ni(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci)
@@ -1515,7 +1514,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
       qpsrc   (k) = qpsrc   (k) * factor_xy*icrm_run_time
       qpevp   (k) = qpevp   (k) * factor_xy*icrm_run_time
-      qpfall  (k) = qpfall  (k) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
+      qpfall  (k,icrm) = qpfall  (k,icrm) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
       precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
@@ -1544,7 +1543,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_output%tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
       crm_output%precflux      (icrm,l) = precflux(k,icrm)/1000.       !mm/s  -->m/s
 
-      crm_output%qp_fall   (icrm,l) = qpfall(k)
+      crm_output%qp_fall   (icrm,l) = qpfall(k,icrm)
       crm_output%qp_evp    (icrm,l) = qpevp(k)
       crm_output%qp_src    (icrm,l) = qpsrc(k)
 

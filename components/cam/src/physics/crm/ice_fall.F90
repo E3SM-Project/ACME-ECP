@@ -31,8 +31,8 @@ contains
     end do
 
     do k = 1,nzm
-      qifall(k) = 0.
-      tlatqi(k) = 0.
+      qifall(k,icrm) = 0.
+      tlatqi(k,icrm) = 0.
     end do
 
     if(index_cloud_ice.eq.-1) return
@@ -95,7 +95,7 @@ contains
           ! Add this increment to both non-precipitating and total water.
           micro_field(i,j,k,ici)  = micro_field(i,j,k,ici)  + dqi
           ! Include this effect in the total moisture budget.
-          qifall(k) = qifall(k) + dqi
+          qifall(k,icrm) = qifall(k,icrm) + dqi
 
           ! The latent heat flux induced by the falling cloud ice enters
           ! the liquid-ice static energy budget in the same way as the
@@ -104,7 +104,7 @@ contains
           ! Add divergence of latent heat flux to liquid-ice static energy.
           t(i,j,k)  = t(i,j,k)  - lat_heat
           ! Add divergence to liquid-ice static energy budget.
-          tlatqi(k) = tlatqi(k) - lat_heat
+          tlatqi(k,icrm) = tlatqi(k,icrm) - lat_heat
         end do
       end do
     end do
