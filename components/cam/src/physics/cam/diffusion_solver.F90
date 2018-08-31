@@ -682,6 +682,12 @@
       endif
 #endif
 
+#if defined( SP_CRM_SFC_FLUX )
+      if (do_SP_bypass) then
+        dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
+      endif
+#endif
+
      ! Diffuse dry static energy
      !----------------------------------------------------------------------------------------------------
      ! In Extended WACCM, kvt is calculated rather kvh. This is because molecular diffusion operates on 
@@ -793,7 +799,13 @@
         if (do_SP_bypass) then
           if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
         endif
-#endif  
+#endif
+
+#if defined( SP_CRM_SFC_FLUX )
+        if (do_SP_bypass) then
+          if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
+        endif
+#endif
 
            ! Diffuse constituents.
 

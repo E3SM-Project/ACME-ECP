@@ -22,7 +22,7 @@ module params
 #ifdef CRM_SINGLE_PRECISION
   integer, parameter :: crm_rknd = selected_real_kind( 6) ! 4 byte real
 #else
-  ! whannah - default precision of real - kind(1.d0)
+  ! default precision of real - kind(1.d0)
   integer, parameter :: crm_rknd = selected_real_kind(12) ! 8 byte real
 #endif
 

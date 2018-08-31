@@ -95,7 +95,7 @@ module vars
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
   !
-  real(crm_rknd), allocatable :: sstxy    (:,:,:) !  surface temperature xy-distribution
+  real(crm_rknd), allocatable :: t_sfc_xy (:,:,:) !  surface temperature xy-distribution
   real(crm_rknd), allocatable :: fcory    (:,:)      !  Coriolis parameter xy-distribution
   real(crm_rknd), allocatable :: fcorzy   (:,:)      !  z-Coriolis parameter xy-distribution
   real(crm_rknd), allocatable :: latitude (:,:,:)      ! latitude (degrees,:)
@@ -245,7 +245,7 @@ contains
     allocate( ttend  (nzm,ncrms)  )
     allocate( utend  (nzm,ncrms)  )
     allocate( vtend  (nzm,ncrms)  )
-    allocate( sstxy    (0:nx,(1-YES3D):ny,ncrms)   )
+    allocate( t_sfc_xy (0:nx,(1-YES3D):ny,ncrms)   )
     allocate( fcory    (0:ny,ncrms)       )
     allocate( fcorzy   (ny,ncrms)       )
     allocate( latitude (nx,ny,ncrms)        )
@@ -368,7 +368,8 @@ contains
     ttend = zero
     utend = zero
     vtend = zero
-    sstxy = zero
+    t_sfc_xy = zero
+    ! sstxy = zero
     fcory = zero
     fcorzy = zero
     latitude = zero
@@ -493,7 +494,8 @@ contains
     deallocate( ttend )
     deallocate( utend )
     deallocate( vtend )
-    deallocate( sstxy )
+    deallocate( t_sfc_xy )
+    ! deallocate( sstxy )
     deallocate( fcory )
     deallocate( fcorzy )
     deallocate( latitude )
