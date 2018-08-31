@@ -124,8 +124,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
       do i = 1,nx
         !bloss: compute suface buoyancy flux
         bbb = 1.+epsv*qv(i,j,k)
-        a_prod_bu_below(i,j) = bbb*bet(k,icrm)*fluxbt(i,j,icrm) + bet(k,icrm)*epsv*(t00+t_sfc_xy(i,j,icrm))*fluxbq(i,j,icrm) 
-    
+        a_prod_bu_below(i,j) = bbb*bet(k,icrm)*fluxbt(i,j,icrm) + bet(k,icrm)*epsv*(t_sfc_xy(i,j,icrm))*fluxbq(i,j,icrm) 
         grd=dz*adz(k,icrm)
         Pr=1. 
         Ce1=Ce/0.7*0.19

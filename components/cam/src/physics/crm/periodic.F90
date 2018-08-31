@@ -27,12 +27,11 @@ contains
 
       call bound_exchange(u(:,:,:,icrm),dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,1,1,1,1,1)
       call bound_exchange(v(:,:,:,icrm),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
-      ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
-      ! surface fluxes call
-      w(1:nx,1:ny,nz,icrm) = sstxy(1:nx,1:ny,icrm)
+      ! use w at the top level (=0) to exchange the sst boundaries (for surface fluxes call)
+      ! w(1:nx,1:ny,nz,icrm) = t_sfc_xy(1:nx,1:ny,icrm)
       call bound_exchange(w(:,:,:,icrm),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
-      sstxy(0:nx,1-YES3D:ny,icrm) = w(0:nx,1-YES3D:ny,nz,icrm)
-      w(0:nx+1,1-YES3D:ny+YES3D,nz,icrm) = 0.
+      ! t_sfc_xy(0:nx,1-YES3D:ny,icrm) = w(0:nx,1-YES3D:ny,nz,icrm)
+      ! w(0:nx+1,1-YES3D:ny+YES3D,nz,icrm) = 0.
 
     endif
 

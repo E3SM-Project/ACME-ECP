@@ -162,9 +162,9 @@ contains
     ! CONDENSATE PATH OF 0.01 kg/m2 ABOVE.  ECHO TOP IS THE HIGHEST LEVEL
     ! WHERE THE PRECIPITATE MIXING RATIO > 0.001 G/KG.
 
-    ! initially, zero out heights and set cloudtoptemp to SST
+    ! initially, zero out heights and set cloudtoptemp to surface temperature
     cloudtopheight(:,:,icrm) = 0.
-    cloudtoptemp(:,:,icrm) = sstxy(1:nx,1:ny,icrm)
+    cloudtoptemp(:,:,icrm) = t_sfc_xy(1:nx,1:ny,icrm)
     echotopheight(:,:,icrm) = 0.
     do j = 1,ny
       do i = 1,nx
