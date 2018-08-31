@@ -159,26 +159,26 @@ module vars
   ! = cloud fraction produced by fractioal cloudiness scheme when avaiable
 
   ! 850 mbar horizontal winds
-  real(crm_rknd), allocatable :: u850_xy(:,:) ! zonal velocity at 850 mb
-  real(crm_rknd), allocatable :: v850_xy(:,:) ! meridional velocity at 850 mb
+  real(crm_rknd), allocatable :: u850_xy(:,:,:) ! zonal velocity at 850 mb
+  real(crm_rknd), allocatable :: v850_xy(:,:,:) ! meridional velocity at 850 mb
 
   ! Surface pressure
-  real(crm_rknd), allocatable :: psfc_xy(:,:) ! pressure (in millibar) at lowest grid point
+  real(crm_rknd), allocatable :: psfc_xy(:,:,:) ! pressure (in millibar) at lowest grid point
 
   ! Saturated water vapor path, useful for computing column relative humidity
-  real(crm_rknd), allocatable :: swvp_xy(:,:)  ! saturated water vapor path (wrt water)
+  real(crm_rknd), allocatable :: swvp_xy(:,:,:)  ! saturated water vapor path (wrt water)
 
   ! Cloud and echo top heights, and cloud top temperature (instantaneous)
-  real(crm_rknd), allocatable :: cloudtopheight(:,:)
-  real(crm_rknd), allocatable :: echotopheight (:,:)
-  real(crm_rknd), allocatable :: cloudtoptemp  (:,:)
+  real(crm_rknd), allocatable :: cloudtopheight(:,:,:)
+  real(crm_rknd), allocatable :: echotopheight (:,:,:)
+  real(crm_rknd), allocatable :: cloudtoptemp  (:,:,:)
 
   ! END UW ADDITIONS
   !===========================================================================
 #if (defined CRM && defined MODAL_AERO)
-  real(crm_rknd), allocatable :: naer (:,:)     ! Aerosol number concentration [/m3]
-  real(crm_rknd), allocatable :: vaer (:,:)     ! aerosol volume concentration [m3/m3]
-  real(crm_rknd), allocatable :: hgaer(:,:)    ! hygroscopicity of aerosol mode
+  real(crm_rknd), allocatable :: naer (:,:,:)     ! Aerosol number concentration [/m3]
+  real(crm_rknd), allocatable :: vaer (:,:,:)     ! aerosol volume concentration [m3/m3]
+  real(crm_rknd), allocatable :: hgaer(:,:,:)    ! hygroscopicity of aerosol mode
 #endif
 
 
@@ -293,21 +293,21 @@ contains
     allocate( qifall(nz,ncrms) )
     allocate( qpfall(nz,ncrms) )
     allocate( CF3D(1:nx, 1:ny, 1:nzm,ncrms)   )
-    allocate( u850_xy(nx,ny)  )
-    allocate( v850_xy(nx,ny)  )
-    allocate( psfc_xy(nx,ny)  )
-    allocate( swvp_xy(nx,ny)   )
-    allocate( cloudtopheight(nx,ny) )
-    allocate( echotopheight (nx,ny) )
-    allocate( cloudtoptemp  (nx,ny) )
+    allocate( u850_xy(nx,ny,ncrms)  )
+    allocate( v850_xy(nx,ny,ncrms)  )
+    allocate( psfc_xy(nx,ny,ncrms)  )
+    allocate( swvp_xy(nx,ny,ncrms)   )
+    allocate( cloudtopheight(nx,ny,ncrms) )
+    allocate( echotopheight (nx,ny,ncrms) )
+    allocate( cloudtoptemp  (nx,ny,ncrms) )
     allocate( u_max(ncrms) )
     allocate( w_max(ncrms) )
     allocate( total_water_evap(ncrms) )
     allocate( total_water_prec(ncrms) )
 #if (defined CRM && defined MODAL_AERO)
-    allocate( naer (nzm, ntot_amode) )
-    allocate( vaer (nzm, ntot_amode) )
-    allocate( hgaer(nzm, ntot_amode) )
+    allocate( naer (nzm, ntot_amode,ncrms) )
+    allocate( vaer (nzm, ntot_amode,ncrms) )
+    allocate( hgaer(nzm, ntot_amode,ncrms) )
 #endif
 
     zero = 0

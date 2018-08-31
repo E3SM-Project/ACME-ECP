@@ -432,9 +432,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #ifdef MODAL_AERO
       ! set aerosol data
       l=plev-k+1
-      naer (k, 1:ntot_amode) = crm_input%naermod (icrm,l, 1:ntot_amode)
-      vaer (k, 1:ntot_amode) = crm_input%vaerosol(icrm,l, 1:ntot_amode)
-      hgaer(k, 1:ntot_amode) = crm_input%hygro   (icrm,l, 1:ntot_amode)
+      naer (k, 1:ntot_amode,icrm) = crm_input%naermod (icrm,l, 1:ntot_amode)
+      vaer (k, 1:ntot_amode,icrm) = crm_input%vaerosol(icrm,l, 1:ntot_amode)
+      hgaer(k, 1:ntot_amode,icrm) = crm_input%hygro   (icrm,l, 1:ntot_amode)
 #endif /* MODAL_AERO */
       do j=1, ny
         do i=1, nx

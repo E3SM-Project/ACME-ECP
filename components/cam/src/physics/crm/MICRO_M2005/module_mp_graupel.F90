@@ -1083,7 +1083,7 @@ END SUBROUTINE MP_GRAUPEL
 !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 #ifdef CLUBB_CRM
-      SUBROUTINE M2005MICRO_GRAUPEL(QC3DTEN,QI3DTEN,QNI3DTEN,QR3DTEN,NC3DTEN,    &
+      SUBROUTINE M2005MICRO_GRAUPEL(ncrms,icrm,QC3DTEN,QI3DTEN,QNI3DTEN,QR3DTEN,NC3DTEN,    &
        NI3DTEN,NS3DTEN,NR3DTEN,QC3D,QI3D,QNI3D,QR3D,NC3D,NI3D,NS3D,NR3D,         &
        T3DTEN,QV3DTEN,T3D,QV3D,PRES,RHO,DZQ,W3D,WVAR, &
 ! hm 7/26/11, new output
@@ -1099,7 +1099,7 @@ END SUBROUTINE MP_GRAUPEL
 #endif /*ECPP*/
                                 )
 #else
-      SUBROUTINE M2005MICRO_GRAUPEL(QC3DTEN,QI3DTEN,QNI3DTEN,QR3DTEN,NC3DTEN,    &
+      SUBROUTINE M2005MICRO_GRAUPEL(ncrms,icrm,QC3DTEN,QI3DTEN,QNI3DTEN,QR3DTEN,NC3DTEN,    &
        NI3DTEN,NS3DTEN,NR3DTEN,QC3D,QI3D,QNI3D,QR3D,NC3D,NI3D,NS3D,NR3D,         &
        T3DTEN,QV3DTEN,T3D,QV3D,PRES,RHO,DZQ,W3D,WVAR, &
 ! hm 7/26/11, new output
@@ -1143,7 +1143,7 @@ END SUBROUTINE MP_GRAUPEL
 ! INPUT NUMBER OF GRID CELLS
 
 ! INPUT/OUTPUT PARAMETERS                                 ! DESCRIPTION (UNITS)
-      INTEGER, INTENT( IN)  :: IMS,IME, JMS,JME, KMS,KME,          &
+      INTEGER, INTENT( IN)  :: ncrms,icrm,IMS,IME, JMS,JME, KMS,KME,          &
                                ITS,ITE, JTS,JTE, KTS,KTE
 
       REAL(crm_rknd), DIMENSION(KMS:KME) ::  QC3DTEN            ! CLOUD WATER MIXING RATIO TENDENCY (KG/KG/S)
@@ -2622,7 +2622,7 @@ END SUBROUTINE MP_GRAUPEL
 #if (defined CRM && defined MODAL_AERO)
             ELSE if (IACT.EQ.3) then
               INES = 0 
-              CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
+              CALL DROP_ACTIVATION_GHAN(ncrms,icrm,DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)  
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
@@ -2749,7 +2749,7 @@ END SUBROUTINE MP_GRAUPEL
               INES =1 
 ! GET SUPERSATURATION RATIO FROM ABSOLUTE SUPERSATURATION
               SMAX = DUM3/QVS(K)
-              CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
+              CALL DROP_ACTIVATION_GHAN(ncrms,icrm,DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
@@ -2828,7 +2828,7 @@ END SUBROUTINE MP_GRAUPEL
 #if (defined CRM && defined MODAL_AERO)
             ELSE if (IACT.EQ.3) then
               INES = 0
-              CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
+              CALL DROP_ACTIVATION_GHAN(ncrms,icrm,DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
@@ -4391,7 +4391,7 @@ END SUBROUTINE MP_GRAUPEL
 #if (defined CRM && defined MODAL_AERO)
             ELSE if (IACT.EQ.3) then
               INES = 0
-              CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
+              CALL DROP_ACTIVATION_GHAN(ncrms,icrm,DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
@@ -4539,7 +4539,7 @@ END SUBROUTINE MP_GRAUPEL
               SMAX = DUM3/QVS(K)
 
               INES = 1 
-              CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
+              CALL DROP_ACTIVATION_GHAN(ncrms,icrm,DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then
@@ -4619,7 +4619,7 @@ END SUBROUTINE MP_GRAUPEL
 #if (defined CRM && defined MODAL_AERO)
             ELSE if (IACT.EQ.3) then
               INES = 0
-              CALL DROP_ACTIVATION_GHAN(DUM, T3D(k), RHO(k),  &
+              CALL DROP_ACTIVATION_GHAN(ncrms,icrm,DUM, T3D(k), RHO(k),  &
                    DUM2, INES, SMAX, K)
 #ifdef CLUBB_CRM
             if(doclubb_gridmean) then

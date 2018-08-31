@@ -918,7 +918,7 @@ do j = 1,ny
       !   tmp**: on input, current value of **.  On output, new value of **.
       !   eff*1d: one-dim. profile of effective raduis for *
       call m2005micro_graupel(&
-           mtendqcl,mtendqci,mtendqs,mtendqr, &
+           ncrms,icrm,mtendqcl,mtendqci,mtendqs,mtendqr, &
            mtendncl,mtendnci,mtendns,mtendnr, &
            tmpqcl,tmpqci,tmpqs,tmpqr, &
            tmpncl,tmpnci,tmpns,tmpnr, &
@@ -965,7 +965,7 @@ do j = 1,ny
       !   tmp**: on input, current value of **.  On output, new value of **.
       !   eff*1d: one-dim. profile of effective raduis for *
       call m2005micro_graupel(&
-           mtendqcl,mtendqci,mtendqs,mtendqr, &
+           ncrms,icrm,mtendqcl,mtendqci,mtendqs,mtendqr, &
            mtendncl,mtendnci,mtendns,mtendnr, &
            tmpqcl,tmpqci,tmpqs,tmpqr, &
            tmpncl,tmpnci,tmpns,tmpnr, &

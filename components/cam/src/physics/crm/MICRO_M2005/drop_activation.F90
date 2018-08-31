@@ -81,7 +81,7 @@ end subroutine drop_activation_init
 !-------------------------------------------------------------------------------------------------------
 
 !=======================================================================================================
-subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
+subroutine drop_activation_Ghan(ncrms,icrm,wnuc4, tair4, rhoair4,  &
                           ndrop4, ines, smaxinout4, k)
 !-------------------------------------------------------------------------------------------------------
 !
@@ -112,6 +112,7 @@ subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
 
 
 !   Input
+      integer, intent(in) :: ncrms,icrm
       real(crm_rknd), intent (in)  ::    wnuc4          ! updraft velocity (m/s)
       real(crm_rknd), intent (in)  ::    tair4          ! air temperature (K)
       real(crm_rknd), intent (in)  ::    rhoair4        ! air density (kg/m3)
@@ -182,9 +183,9 @@ subroutine drop_activation_Ghan(wnuc4, tair4, rhoair4,  &
       rhoair = rhoair4
 
 ! Set aerosol fields
-      na = naer(k, :) 
-      volume = vaer(k, :)
-      hygro = hgaer(k, :) 
+      na = naer(k, :,icrm) 
+      volume = vaer(k, :,icrm)
+      hygro = hgaer(k, :,icrm) 
 
       nmode = ntot_amode
       wmaxf = 10.0
