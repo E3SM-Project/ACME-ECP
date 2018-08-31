@@ -136,37 +136,13 @@ module vars
   real(crm_rknd), allocatable :: uwsb(:,:)
   real(crm_rknd), allocatable :: vwle(:,:)
   real(crm_rknd), allocatable :: vwsb(:,:)
-  real(crm_rknd), allocatable :: radlwup(:)
-  real(crm_rknd), allocatable :: radlwdn(:)
-  real(crm_rknd), allocatable :: radswup(:)
-  real(crm_rknd), allocatable :: radswdn(:)
-  real(crm_rknd), allocatable :: radqrlw(:)
-  real(crm_rknd), allocatable :: radqrsw(:)
-  real(crm_rknd), allocatable :: tkeleadv(:)
-  real(crm_rknd), allocatable :: tkelepress(:)
-  real(crm_rknd), allocatable :: tkelediss(:)
-  real(crm_rknd), allocatable :: tkelediff(:)
-  real(crm_rknd), allocatable :: tkelebuoy(:)
-  real(crm_rknd), allocatable :: t2leadv(:)
-  real(crm_rknd), allocatable :: t2legrad(:)
-  real(crm_rknd), allocatable :: t2lediff(:)
-  real(crm_rknd), allocatable :: t2leprec(:)
-  real(crm_rknd), allocatable :: t2lediss(:)
-  real(crm_rknd), allocatable :: q2leadv(:)
-  real(crm_rknd), allocatable :: q2legrad(:)
-  real(crm_rknd), allocatable :: q2lediff(:)
-  real(crm_rknd), allocatable :: q2leprec(:)
-  real(crm_rknd), allocatable :: q2lediss(:)
-  real(crm_rknd), allocatable :: twleadv(:)
-  real(crm_rknd), allocatable :: twlediff(:)
-  real(crm_rknd), allocatable :: twlepres(:)
-  real(crm_rknd), allocatable :: twlebuoy(:)
-  real(crm_rknd), allocatable :: twleprec(:)
-  real(crm_rknd), allocatable :: qwleadv(:)
-  real(crm_rknd), allocatable :: qwlediff(:)
-  real(crm_rknd), allocatable :: qwlepres(:)
-  real(crm_rknd), allocatable :: qwlebuoy(:)
-  real(crm_rknd), allocatable :: qwleprec(:)
+  real(crm_rknd), allocatable :: tkelediss(:,:)
+  real(crm_rknd), allocatable :: t2leadv(:,:)
+  real(crm_rknd), allocatable :: t2legrad(:,:)
+  real(crm_rknd), allocatable :: t2lediff(:,:)
+  real(crm_rknd), allocatable :: t2lediss(:,:)
+  real(crm_rknd), allocatable :: twleadv(:,:)
+  real(crm_rknd), allocatable :: twlediff(:,:)
   real(crm_rknd), allocatable :: momleadv(:,:)
   real(crm_rknd), allocatable :: momlepress(:,:)
   real(crm_rknd), allocatable :: momlebuoy(:,:)
@@ -352,37 +328,13 @@ contains
     allocate( uwsb(nz,ncrms) )
     allocate( vwle(nz,ncrms) )
     allocate( vwsb(nz,ncrms) )
-    allocate( radlwup(nz) )
-    allocate( radlwdn(nz) )
-    allocate( radswup(nz) )
-    allocate( radswdn(nz) )
-    allocate( radqrlw(nz) )
-    allocate( radqrsw(nz) )
-    allocate( tkeleadv(nz) )
-    allocate( tkelepress(nz) )
-    allocate( tkelediss(nz) )
-    allocate( tkelediff(nz) )
-    allocate( tkelebuoy(nz) )
-    allocate( t2leadv(nz) )
-    allocate( t2legrad(nz) )
-    allocate( t2lediff(nz) )
-    allocate( t2leprec(nz) )
-    allocate( t2lediss(nz) )
-    allocate( q2leadv(nz) )
-    allocate( q2legrad(nz) )
-    allocate( q2lediff(nz) )
-    allocate( q2leprec(nz) )
-    allocate( q2lediss(nz) )
-    allocate( twleadv(nz) )
-    allocate( twlediff(nz) )
-    allocate( twlepres(nz) )
-    allocate( twlebuoy(nz) )
-    allocate( twleprec(nz) )
-    allocate( qwleadv(nz) )
-    allocate( qwlediff(nz) )
-    allocate( qwlepres(nz) )
-    allocate( qwlebuoy(nz) )
-    allocate( qwleprec(nz) )
+    allocate( tkelediss(nz,ncrms) )
+    allocate( t2leadv(nz,ncrms) )
+    allocate( t2legrad(nz,ncrms) )
+    allocate( t2lediff(nz,ncrms) )
+    allocate( t2lediss(nz,ncrms) )
+    allocate( twleadv(nz,ncrms) )
+    allocate( twlediff(nz,ncrms) )
     allocate( momleadv(nz,3) )
     allocate( momlepress(nz,3) )
     allocate( momlebuoy(nz,3) )
@@ -522,37 +474,13 @@ contains
     uwsb = zero
     vwle = zero
     vwsb = zero
-    radlwup = zero
-    radlwdn = zero
-    radswup = zero
-    radswdn = zero
-    radqrlw = zero
-    radqrsw = zero
-    tkeleadv = zero
-    tkelepress = zero
     tkelediss = zero
-    tkelediff = zero
-    tkelebuoy = zero
     t2leadv = zero
     t2legrad = zero
     t2lediff = zero
-    t2leprec = zero
     t2lediss = zero
-    q2leadv = zero
-    q2legrad = zero
-    q2lediff = zero
-    q2leprec = zero
-    q2lediss = zero
     twleadv = zero
     twlediff = zero
-    twlepres = zero
-    twlebuoy = zero
-    twleprec = zero
-    qwleadv = zero
-    qwlediff = zero
-    qwlepres = zero
-    qwlebuoy = zero
-    qwleprec = zero
     momleadv = zero
     momlepress = zero
     momlebuoy = zero
@@ -694,37 +622,13 @@ contains
     deallocate( uwsb )
     deallocate( vwle )
     deallocate( vwsb )
-    deallocate( radlwup )
-    deallocate( radlwdn )
-    deallocate( radswup )
-    deallocate( radswdn )
-    deallocate( radqrlw )
-    deallocate( radqrsw )
-    deallocate( tkeleadv )
-    deallocate( tkelepress )
     deallocate( tkelediss )
-    deallocate( tkelediff )
-    deallocate( tkelebuoy )
     deallocate( t2leadv )
     deallocate( t2legrad )
     deallocate( t2lediff )
-    deallocate( t2leprec )
     deallocate( t2lediss )
-    deallocate( q2leadv )
-    deallocate( q2legrad )
-    deallocate( q2lediff )
-    deallocate( q2leprec )
-    deallocate( q2lediss )
     deallocate( twleadv )
     deallocate( twlediff )
-    deallocate( twlepres )
-    deallocate( twlebuoy )
-    deallocate( twleprec )
-    deallocate( qwleadv )
-    deallocate( qwlediff )
-    deallocate( qwlepres )
-    deallocate( qwlebuoy )
-    deallocate( qwleprec )
     deallocate( momleadv )
     deallocate( momlepress )
     deallocate( momlebuoy )

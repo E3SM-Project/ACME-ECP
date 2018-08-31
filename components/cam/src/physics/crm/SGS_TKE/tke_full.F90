@@ -244,7 +244,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     Ce2 = Ce/0.7*0.51
 
 
-    tkelediss(k)  = 0.
+    tkelediss(k,icrm)  = 0.
     tkesbdiss(k)  = 0.
     tkesbshear(k) = 0.
     tkesbbuoy(k)  = 0.
@@ -304,7 +304,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
         tk(i,j,k)  = min(tk(i,j,k),tkmax)
         tkh(i,j,k) = Pr*tk(i,j,k)
 
-        tkelediss(k)  = tkelediss(k) - a_prod_sh
+        tkelediss(k,icrm)  = tkelediss(k,icrm) - a_prod_sh
         tkesbdiss(k)  = tkesbdiss(k) + a_diss
         tkesbshear(k) = tkesbshear(k)+ a_prod_sh
         tkesbbuoy(k)  = tkesbbuoy(k) + a_prod_bu
@@ -312,7 +312,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
       end do ! i
     end do ! j
 
-    tkelediss(k) = tkelediss(k)/float(nx*ny)
+    tkelediss(k,icrm) = tkelediss(k,icrm)/float(nx*ny)
 
     buoy_sgs_below(:,:) = buoy_sgs_above(:,:)
     a_prod_bu_below(:,:) = a_prod_bu_above(:,:)

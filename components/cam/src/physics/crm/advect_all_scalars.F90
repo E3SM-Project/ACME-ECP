@@ -28,7 +28,7 @@ contains
     !---------------------------------------------------------
     !      advection of scalars :
 
-    call advect_scalar(ncrms,icrm,t,tadv,twle(:,icrm),t2leadv,t2legrad,twleadv,.true.)
+    call advect_scalar(ncrms,icrm,t,tadv,twle(:,icrm),t2leadv(:,icrm),t2legrad(:,icrm),twleadv(:,icrm),.true.)
 
     !
     !    Advection of microphysics prognostics:
