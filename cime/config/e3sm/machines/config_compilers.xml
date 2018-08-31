@@ -1578,16 +1578,6 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
   </SLIBS>
 </compiler>
 
-<!-- need to be updated with current LDFLAG treatment
-<compiler COMPILER="pgi" MACH="thatchroof">
-  <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -L/opt/lapack3.6.1_pgi15.9/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl </ADD_LDFLAGS>
-</compiler>
-
-<compiler COMPILER="gnu" MACH="thatchroof">
-  <ADD_LDFLAGS MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl -lidn -lrtmp -lssh2 -lssl -lcrypto -lssl -lcrypto -llber -lldap -lz </ADD_LDFLAGS>
-</compiler>
--->
-
 <compiler MACH="olympus" COMPILER="pgi">
   <CFLAGS>
     <append DEBUG="FALSE"> -O2 </append>
@@ -1957,6 +1947,19 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
   </SLIBS>
 </compiler>
 
+
+<compiler COMPILER="pgi" MACH="thatchroof">
+  <LDFLAGS>
+    <append MODEL="driver"> -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -L/opt/lapack3.6.1_pgi15.9/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl</append>
+  </LDFLAGS>
+</compiler>
+
+<compiler COMPILER="gnu" MACH="thatchroof">
+  <LDFLAGS>
+    <append MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L{PNETCDF_PATH}/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl -lidn -lrtmp -lssh2 -lssl -lcrypto -lssl -lcrypto -llber -lldap -lz </append>
+  </LDFLAGS>
+</compiler>
+
 <compiler MACH="titan" COMPILER="intel">
   <CFLAGS>
     <append DEBUG="FALSE"> -O2 </append>
@@ -2045,6 +2048,23 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
   <SLIBS>
     <append># USERDEFINED $SHELL{$NETCDF_PATH/bin/nf-config --flibs}</append>
   </SLIBS>
+</compiler>
+
+<compiler MACH="rhapsody" COMPILER="gnu">
+  <!-- Mac OSX workstation -->
+  <FFLAGS>
+    <append> -ffree-line-length-none  -ffixed-line-length-none </append>
+  </FFLAGS>
+  <FFLAGS_NOOPT>
+    <append> -ffree-line-length-none  -ffixed-line-length-none </append>
+  </FFLAGS_NOOPT>
+  <!-- use homebrew lapack library -->
+  <LDFLAGS>
+    <append MODEL="driver"> -L/usr/local/opt/lapack/lib   -llapack -lblas </append>
+  </LDFLAGS>
+  <CMAKE_OPTS>
+    <append MODEL="cism"> -D PIO_USE_MPIMOD:BOOL=OFF </append>
+  </CMAKE_OPTS>
 </compiler>
 
 <compiler MACH="wolf" COMPILER="gnu">
