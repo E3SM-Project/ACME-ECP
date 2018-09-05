@@ -41,7 +41,7 @@ contains
       call bound_duvdt(ncrms,icrm)
     endif
 
-    dta=1./dt3(na)/at
+    dta=1./dt3(na,icrm)/at
     rdx=1./dx
     rdy=1./dy
     btat=bt/at
@@ -51,7 +51,7 @@ contains
 
       do k=1,nzm
         kc=k+1
-        rdz=1./(adz(k)*dz(icrm))
+        rdz=1./(adz(k,icrm)*dz(icrm))
         rup = rhow(kc,icrm)/rho(k,icrm)*rdz
         rdn = rhow(k,icrm)/rho(k,icrm)*rdz
         do j=1,ny
@@ -82,7 +82,7 @@ contains
 
       do k=1,nzm
         kc=k+1
-        rdz=1./(adz(k)*dz(icrm))
+        rdz=1./(adz(k,icrm)*dz(icrm))
         rup = rhow(kc,icrm)/rho(k,icrm)*rdz
         rdn = rhow(k,icrm)/rho(k,icrm)*rdz
         do i=1,nx

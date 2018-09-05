@@ -77,7 +77,7 @@ contains
     end if
 
     flux(1) = 0.
-    tmp=1./adzw(nz)
+    tmp=1./adzw(nz,icrm)
     do i=1,nx
       flx(i,j,0)=fluxb(i,j)*rdz*rhow(1,icrm)
       flx(i,j,nzm)=fluxt(i,j)*rdz*tmp*rhow(nz,icrm)
@@ -88,7 +88,7 @@ contains
     do k=1,nzm-1
       kc=k+1
       flux(kc)=0.
-      rhoi = rhow(kc,icrm)/adzw(kc)
+      rhoi = rhow(kc,icrm)/adzw(kc,icrm)
       rdz5=0.5*rdz2 * grdf_z(k)
       do i=1,nx
         tkz=rdz5*(tkh(i,j,k)+tkh(i,j,kc))
@@ -99,7 +99,7 @@ contains
 
     do k=1,nzm
       kb=k-1
-      rhoi = 1./(adz(k)*rho(k,icrm))
+      rhoi = 1./(adz(k,icrm)*rho(k,icrm))
       do i=1,nx
         dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)
         field(i,j,k)=field(i,j,k) + dfdt(i,j,k)

@@ -149,7 +149,7 @@ contains
     !  Vertical diffusion:
 
     flux(1) = 0.
-    tmp=1./adzw(nz)
+    tmp=1./adzw(nz,icrm)
     do j=1,ny
       do i=1,nx
         flx(i,j,0)=fluxb(i,j)*rdz*rhow(1,icrm)
@@ -162,7 +162,7 @@ contains
     do k=1,nzm-1
       kc=k+1
       flux(kc)=0.
-      rhoi = rhow(kc,icrm)/adzw(kc)
+      rhoi = rhow(kc,icrm)/adzw(kc,icrm)
       rdz5=0.5*rdz2 * grdf_z(k)
       do j=1,ny
         do i=1,nx
@@ -175,7 +175,7 @@ contains
 
     do k=1,nzm
       kb=k-1
-      rhoi = 1./(adz(k)*rho(k,icrm))
+      rhoi = 1./(adz(k,icrm)*rho(k,icrm))
       do j=1,ny
         do i=1,nx
           dfdt(i,j,k)=dtn*(dfdt(i,j,k)-(flx(i,j,k)-flx(i,j,kb))*rhoi)

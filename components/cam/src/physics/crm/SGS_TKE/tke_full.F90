@@ -126,7 +126,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     !!! first compute subgrid buoyancy flux at interface above this level.
 
     !!! average betdz to w-levels
-    betdz = 0.5*(bet(kc,icrm)+bet(kb,icrm))/dz(icrm)/adzw(k+1)
+    betdz = 0.5*(bet(kc,icrm)+bet(kb,icrm))/dz(icrm)/adzw(k+1,icrm)
 
     !!! compute subgrid buoyancy flux assuming clear conditions
     !!! we will over-write this later if conditions are cloudy
@@ -184,8 +184,8 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                    + qv(i,j,kb,icrm) + qcl(i,j,kb,icrm) + qci(i,j,kb,icrm) )
 
           !!! compute saturation mixing ratio at this temperature
-          qsat_check =      omn*qsatw_crm(tabs_interface,presi(k+1)) &
-                      +(1.-omn)*qsati_crm(tabs_interface,presi(k+1))
+          qsat_check =      omn*qsatw_crm(tabs_interface,presi(k+1,icrm)) &
+                      +(1.-omn)*qsati_crm(tabs_interface,presi(k+1,icrm))
 
           !!! check to see if the total water exceeds this saturation mixing ratio.
           !!! if so, apply the cloudy relations for subgrid buoyancy flux
@@ -203,10 +203,10 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
             qp_interface = 0.5*( qpl(i,j,kc,icrm) + qpi(i,j,kc,icrm) + qpl(i,j,kb,icrm) + qpi(i,j,kb,icrm) )
 
-            dqsat =     omn*dtqsatw_crm(tabs_interface,presi(k+1)) + &
-                   (1.-omn)*dtqsati_crm(tabs_interface,presi(k+1))
-            qsatt =       omn*qsatw_crm(tabs_interface,presi(k+1)) + &
-                     (1.-omn)*qsati_crm(tabs_interface,presi(k+1))
+            dqsat =     omn*dtqsatw_crm(tabs_interface,presi(k+1,icrm)) + &
+                   (1.-omn)*dtqsati_crm(tabs_interface,presi(k+1,icrm))
+            qsatt =       omn*qsatw_crm(tabs_interface,presi(k+1,icrm)) + &
+                     (1.-omn)*qsati_crm(tabs_interface,presi(k+1,icrm))
 
             !!! condensate loading term
             bbb = 1. + epsv*qsatt &
@@ -238,7 +238,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
       a_prod_bu_above(:,:) = 0.
     end if
 
-    grd = dz(icrm)*adz(k)
+    grd = dz(icrm)*adz(k,icrm)
 
     Ce1 = Ce/0.7*0.19
     Ce2 = Ce/0.7*0.51
@@ -252,7 +252,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     !!! compute correction factors for eddy visc/cond not to acceed 3D stability
     cx = dx**2/dt/grdf_x(k)
     cy = dy**2/dt/grdf_y(k)
-    cz = (dz(icrm)*min(adzw(k),adzw(k+1)))**2/dt/grdf_z(k)
+    cz = (dz(icrm)*min(adzw(k,icrm),adzw(k+1,icrm)))**2/dt/grdf_z(k)
 
     !!! maximum value of eddy visc/cond
     tkmax = 0.09/(1./cx+1./cy+1./cz)  
@@ -278,7 +278,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
 #if defined( SP_TK_LIM )
             !!! put a hard lower limit on near-surface tk
-            if ( z(k).lt.tk_min_depth ) then
+            if ( z(k,icrm).lt.tk_min_depth ) then
               tk(i,j,k) = max( tk(i,j,k), tk_min_value ) 
             end if
 #endif

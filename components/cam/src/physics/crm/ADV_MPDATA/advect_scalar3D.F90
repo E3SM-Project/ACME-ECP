@@ -146,7 +146,7 @@ contains
 
     do k=1,nzm
       irho(k) = 1./rho(k,icrm)
-      iadz(k) = 1./adz(k)
+      iadz(k) = 1./adz(k,icrm)
       do j=-1,nyp2
         do i=-1,nxp2
           f(i,j,k)=f(i,j,k)-( uuu(i+1,j,k)-uuu(i,j,k)  & 
@@ -160,7 +160,7 @@ contains
     do k=1,nzm
       kc=min(nzm,k+1)
       kb=max(1,k-1)
-      dd=2./(kc-kb)/adz(k)
+      dd=2./(kc-kb)/adz(k,icrm)
       do j=0,nyp1
         jb=j-1
         jc=j+1
@@ -178,7 +178,7 @@ contains
     do k=1,nzm
       kc=min(nzm,k+1)
       kb=max(1,k-1)
-      dd=2./(kc-kb)/adz(k)
+      dd=2./(kc-kb)/adz(k,icrm)
       do j=0,nyp2
         jb=j-1
         do i=0,nxp1
@@ -195,7 +195,7 @@ contains
 
     do k=1,nzm
       kb=max(1,k-1)
-      irhow(k)=1./(rhow(k,icrm)*adz(k))
+      irhow(k)=1./(rhow(k,icrm)*adz(k,icrm))
       do j=0,nyp1
         jb=j-1
         jc=j+1

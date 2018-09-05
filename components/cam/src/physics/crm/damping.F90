@@ -26,13 +26,13 @@ contains
     end if
 
     do k=nzm,1,-1
-      if(z(nzm)-z(k).lt.damp_depth*z(nzm)) then
+      if(z(nzm,icrm)-z(k,icrm).lt.damp_depth*z(nzm,icrm)) then
         n_damp=nzm-k+1
       endif
     end do
 
     do k=nzm,nzm-n_damp,-1
-      tau(k) = tau_min *(tau_max/tau_min)**((z(nzm)-z(k))/(z(nzm)-z(nzm-n_damp)))
+      tau(k) = tau_min *(tau_max/tau_min)**((z(nzm,icrm)-z(k,icrm))/(z(nzm,icrm)-z(nzm-n_damp,icrm)))
       tau(k)=1./tau(k)
     end do
 

@@ -70,7 +70,7 @@ contains
 
     do k=1,nzm
       kc = k+1
-      rhoi = 1./(rho(k,icrm)*adz(k))
+      rhoi = 1./(rho(k,icrm)*adz(k,icrm))
       do j=1,ny
         do i=1,nx
           dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fuz(i,j,kc)-fuz(i,j,k))*rhoi
@@ -82,7 +82,7 @@ contains
 
     do k=2,nzm
       kb=k-1
-      rhoi = 1./(rhow(k,icrm)*adzw(k))
+      rhoi = 1./(rhow(k,icrm)*adzw(k,icrm))
       do j=1,ny
         do i=1,nx
           dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fwz(i,j,k)-fwz(i,j,kb))*rhoi

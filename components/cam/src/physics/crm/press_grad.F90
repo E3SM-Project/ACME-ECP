@@ -19,7 +19,7 @@ contains
 
     do k=1,nzm
       kb=max(1,k-1)
-      rdz = 1./(dz(icrm)*adzw(k))
+      rdz = 1./(dz(icrm)*adzw(k,icrm))
       do j=1,ny
         jb=j-YES3D
         do i=1,nx

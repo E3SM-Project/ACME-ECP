@@ -521,7 +521,7 @@ CONTAINS
               tmp = tmp + micro_field(i,j,k,m)
             end do
           end do
-          total_water = total_water + tmp*adz(k)*dz(icrm)*rho(k,icrm)
+          total_water = total_water + tmp*adz(k,icrm)*dz(icrm)*rho(k,icrm)
         end do
       end if
     end do

@@ -82,8 +82,8 @@ contains
       ! Inverse of rho, adz, adzw
       do k = 1, nzm
         irho(k)  = 1. / rho(k,icrm)
-        iadz(k)  = 1. / adz(k)
-        iadzw(k) = 1. / adzw(k)
+        iadz(k)  = 1. / adz(k,icrm)
+        iadzw(k) = 1. / adzw(k,icrm)
       enddo
 
       ! x direction
@@ -108,7 +108,7 @@ contains
       cw(:,:,nz) = 0.   ! non-mass weighted and adz adjusted
       cw(:,:,1) = 0.
       do k = 2, nzm
-        irhow(k) = 1. / ( rhow(k,icrm) * adz(k) )  ! adz adjustment here
+        irhow(k) = 1. / ( rhow(k,icrm) * adz(k,icrm) )  ! adz adjustment here
         do j = -3, nyp4
           do i = -3, nxp4
             cw(i,j,k) = w(i,j,k) * irhow(k)

@@ -53,11 +53,11 @@ contains
 
     do k=1,nzm
 
-      ! pratio = (1000. / pres(k)) ** 0.4
+      ! pratio = (1000. / pres(k,icrm)) ** 0.4
       pratio = sqrt(1.29 / rho(k,icrm))
 
       rrr1=393./(tabs0(k,icrm)+120.)*(tabs0(k,icrm)/273.)**1.5
-      rrr2=(tabs0(k,icrm)/273.)**1.94*(1000./pres(k))
+      rrr2=(tabs0(k,icrm)/273.)**1.94*(1000./pres(k,icrm))
 
       estw = 100.*esatw_crm(tabs0(k,icrm))
       esti = 100.*esati_crm(tabs0(k,icrm))

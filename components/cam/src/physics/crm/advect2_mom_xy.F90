@@ -28,7 +28,7 @@ contains
       do k = 1,nzm
         kc= k+1
         kcu =min(kc, nzm)
-        irho = 1./(rhow(kc,icrm)*adzw(kc))
+        irho = 1./(rhow(kc,icrm)*adzw(kc,icrm))
 
         do j = 1, ny
           jb = j-1
@@ -36,8 +36,8 @@ contains
             ic = i+1
             fu(i,j,k)=dx25*(u(ic,j,k)+u(i,j,k))*(u(i,j,k)+u(ic,j,k))
             fv(i,j,k)=dx25*(u(ic,j,k)+u(ic,jb,k))*(v(i,j,k)+v(ic,j,k))
-            fw(i,j,k)=dx25*(u(ic,j,k)*rho(k,icrm)*adz(k)+ &
-            u(ic,j,kcu)*rho(kcu,icrm)*adz(kcu))*(w(i,j,kc)+w(ic,j,kc))
+            fw(i,j,k)=dx25*(u(ic,j,k)*rho(k,icrm)*adz(k,icrm)+ &
+            u(ic,j,kcu)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc)+w(ic,j,kc))
           end do
           do i = 1, nx
             ib = i-1
@@ -53,8 +53,8 @@ contains
             ib = i-1
             fu(i,j,k)=dy25*(v(i,jc,k)+v(ib,jc,k))*(u(i,j,k)+u(i,jc,k))
             fv(i,j,k)=dy25*(v(i,jc,k)+v(i,j,k))*(v(i,j,k)+v(i,jc,k))
-            fw(i,j,k)=dy25*(v(i,jc,k)*rho(k,icrm)*adz(k)+ &
-            v(i,jc,kcu)*rho(kcu,icrm)*adz(kcu))*(w(i,j,kc)+w(i,jc,kc))
+            fw(i,j,k)=dy25*(v(i,jc,k)*rho(k,icrm)*adz(k,icrm)+ &
+            v(i,jc,kcu)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc)+w(i,jc,kc))
           end do
         end do
         do j = 1,ny
@@ -76,14 +76,14 @@ contains
       do k = 1,nzm
         kc= k+1
         kcu =min(kc, nzm)
-        irho = 1./(rhow(kc,icrm)*adzw(kc))
+        irho = 1./(rhow(kc,icrm)*adzw(kc,icrm))
 
         do i = 0, nx
           ic = i+1
           fu(i,j,k)=dx25*(u(ic,j,k)+u(i,j,k))*(u(i,j,k)+u(ic,j,k))
           fv(i,j,k)=dx25*(u(ic,j,k)+u(i,j,k))*(v(i,j,k)+v(ic,j,k))
-          fw(i,j,k)=dx25*(u(ic,j,k)*rho(k,icrm)*adz(k)+ &
-          u(ic,j,kcu)*rho(kcu,icrm)*adz(kcu))*(w(i,j,kc)+w(ic,j,kc))
+          fw(i,j,k)=dx25*(u(ic,j,k)*rho(k,icrm)*adz(k,icrm)+ &
+          u(ic,j,kcu)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc)+w(ic,j,kc))
         end do
         do i = 1, nx
           ib = i-1

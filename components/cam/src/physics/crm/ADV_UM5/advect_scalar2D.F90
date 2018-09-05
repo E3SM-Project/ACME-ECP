@@ -57,8 +57,8 @@ contains
       ! Inverse of rho and adz, adzw
       do k = 1, nzm
         irho(k)  = 1. / rho(k,icrm)
-        iadz(k)  = 1. / adz(k)
-        iadzw(k) = 1. / adzw(k)
+        iadz(k)  = 1. / adz(k,icrm)
+        iadzw(k) = 1. / adzw(k,icrm)
       enddo
 
       ! x direction
@@ -72,7 +72,7 @@ contains
       cw(:,:,nz) = 0.
       cw(:,:,1) = 0.
       do k = 2, nzm
-        irhow(k) = 1. / ( rhow(k,icrm) * adz(k) )
+        irhow(k) = 1. / ( rhow(k,icrm) * adz(k,icrm) )
         do i = -3, nxp4
           cw(i,j,k) = w(i,j,k) * irhow(k)
         enddo

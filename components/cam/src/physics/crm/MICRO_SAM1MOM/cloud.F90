@@ -53,21 +53,21 @@ contains
           if(tabs1.ge.tbgmax) then
 
             tabs1=tabs(i,j,k,icrm)+fac_cond*qp(i,j,k)
-            qsatt = qsatw_crm(tabs1,pres(k))
+            qsatt = qsatw_crm(tabs1,pres(k,icrm))
 
             ! Ice cloud:
 
           elseif(tabs1.le.tbgmin) then
 
             tabs1=tabs(i,j,k,icrm)+fac_sub*qp(i,j,k)
-            qsatt = qsati_crm(tabs1,pres(k))
+            qsatt = qsati_crm(tabs1,pres(k,icrm))
 
             ! Mixed-phase cloud:
 
           else
 
             om = an*tabs1-bn
-            qsatt = om*qsatw_crm(tabs1,pres(k))+(1.-om)*qsati_crm(tabs1,pres(k))
+            qsatt = om*qsatw_crm(tabs1,pres(k,icrm))+(1.-om)*qsati_crm(tabs1,pres(k,icrm))
 
           endif
 
@@ -84,20 +84,20 @@ contains
                 om=1.
                 lstarn=fac_cond
                 dlstarn=0.
-                qsatt=qsatw_crm(tabs1,pres(k))
-                dqsat=dtqsatw_crm(tabs1,pres(k))
+                qsatt=qsatw_crm(tabs1,pres(k,icrm))
+                dqsat=dtqsatw_crm(tabs1,pres(k,icrm))
               else if(tabs1.le.tbgmin) then
                 om=0.
                 lstarn=fac_sub
                 dlstarn=0.
-                qsatt=qsati_crm(tabs1,pres(k))
-                dqsat=dtqsati_crm(tabs1,pres(k))
+                qsatt=qsati_crm(tabs1,pres(k,icrm))
+                dqsat=dtqsati_crm(tabs1,pres(k,icrm))
               else
                 om=an*tabs1-bn
                 lstarn=fac_cond+(1.-om)*fac_fus
                 dlstarn=an*fac_fus
-                qsatt=om*qsatw_crm(tabs1,pres(k))+(1.-om)*qsati_crm(tabs1,pres(k))
-                dqsat=om*dtqsatw_crm(tabs1,pres(k))+(1.-om)*dtqsati_crm(tabs1,pres(k))
+                qsatt=om*qsatw_crm(tabs1,pres(k,icrm))+(1.-om)*qsati_crm(tabs1,pres(k,icrm))
+                dqsat=om*dtqsatw_crm(tabs1,pres(k,icrm))+(1.-om)*dtqsati_crm(tabs1,pres(k,icrm))
               endif
               if(tabs1.ge.tprmax) then
                 omp=1.

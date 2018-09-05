@@ -223,14 +223,14 @@ CONTAINS
 
     if(LES) then
       do k=1,nzm
-        grdf_x(k) = dx**2/(adz(k)*dz(icrm))**2
-        grdf_y(k) = dy**2/(adz(k)*dz(icrm))**2
+        grdf_x(k) = dx**2/(adz(k,icrm)*dz(icrm))**2
+        grdf_y(k) = dy**2/(adz(k,icrm)*dz(icrm))**2
         grdf_z(k) = 1.
       end do
     else
       do k=1,nzm
-        grdf_x(k) = min( real(16.,crm_rknd), dx**2/(adz(k)*dz(icrm))**2)
-        grdf_y(k) = min( real(16.,crm_rknd), dy**2/(adz(k)*dz(icrm))**2)
+        grdf_x(k) = min( real(16.,crm_rknd), dx**2/(adz(k,icrm)*dz(icrm))**2)
+        grdf_y(k) = min( real(16.,crm_rknd), dy**2/(adz(k,icrm)*dz(icrm))**2)
         grdf_z(k) = 1.
       end do
     end if
@@ -300,8 +300,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(z(k).le.150..and..not.dosmagor) then
-              tke(i,j,k)=0.15*(1.-z(k)/150.)
+            if(z(k,icrm).le.150..and..not.dosmagor) then
+              tke(i,j,k)=0.15*(1.-z(k,icrm)/150.)
             endif
           end do
         end do
@@ -313,8 +313,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(z(k).le.3000..and..not.dosmagor) then
-              tke(i,j,k)=1.-z(k)/3000.
+            if(z(k,icrm).le.3000..and..not.dosmagor) then
+              tke(i,j,k)=1.-z(k,icrm)/3000.
             endif
           end do
         end do
@@ -361,7 +361,7 @@ CONTAINS
     cfl = 0.
     do k=1,nzm
       cfl = max(cfl,        &
-      0.5*tkhmax(k)*grdf_z(k)*dt/(dz(icrm)*adzw(k))**2, &
+      0.5*tkhmax(k)*grdf_z(k)*dt/(dz(icrm)*adzw(k,icrm))**2, &
       0.5*tkhmax(k)*grdf_x(k)*dt/dx**2, &
       YES3D*0.5*tkhmax(k)*grdf_y(k)*dt/dy**2)
     end do

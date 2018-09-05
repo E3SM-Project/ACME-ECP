@@ -58,7 +58,7 @@ contains
 		integer, intent(in) :: i
 
 		!	Face value
-		face_2nd_z = 0.5 * ( f_i + f_im1 - cn * adz(i) * iadzw(i) * ( f_i - f_im1 ) )
+		face_2nd_z = 0.5 * ( f_i + f_im1 - cn * adz(i,icrm) * iadzw(i) * ( f_i - f_im1 ) )
 
 	end function face_2nd_z
 
@@ -97,13 +97,13 @@ contains
 		!	local
 		real(crm_rknd) :: positive_3rd, negative_3rd
 
-		positive_3rd = 1./6. * ( cn * cn * adz(i) * adz(i) * iadzw(i) * iadzw(i-1) - 1. ) &
-			* ( adzw(i-1) * iadz(i-1) * ( f_i - f_im1 ) - adzw(i) * iadz(i-1) * ( f_im1 - f_im2 ) )
-		negative_3rd = 1./6. * ( cn * cn * adz(i) * adz(i) * iadzw(i+1) * adzw(i) - 1. ) &
-			* ( adzw(i) * iadz(i) * ( f_ip1 - f_i ) - adzw(i+1) * iadz(i) * ( f_i - f_im1 ) )
+		positive_3rd = 1./6. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i) * iadzw(i-1) - 1. ) &
+			* ( adzw(i-1,icrm) * iadz(i-1) * ( f_i - f_im1 ) - adzw(i,icrm) * iadz(i-1) * ( f_im1 - f_im2 ) )
+		negative_3rd = 1./6. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * adzw(i,icrm) - 1. ) &
+			* ( adzw(i,icrm) * iadz(i) * ( f_ip1 - f_i ) - adzw(i+1,icrm) * iadz(i) * ( f_i - f_im1 ) )
 
 		!	Face value
-		face_3rd_z = 0.5 * ( f_i + f_im1 - cn * adz(i) * iadzw(i) * ( f_i - f_im1 ) &
+		face_3rd_z = 0.5 * ( f_i + f_im1 - cn * adz(i,icrm) * iadzw(i) * ( f_i - f_im1 ) &
 			+ positive_3rd + negative_3rd + sign(1._crm_rknd,cn) * ( positive_3rd - negative_3rd ) )
 
 	end function face_3rd_z
@@ -146,33 +146,33 @@ contains
 		!	local
 		real(crm_rknd) :: positive_5th, negative_5th
 
-		positive_5th = 1./120. * ( cn * cn * adz(i) * adz(i) * iadzw(i) * iadzw(i-1) - 1. ) &
-			* ( cn * cn * adz(i) * adz(i) * iadzw(i+1) * iadzw(i-2) - 4. ) &
-			* ( adzw(i-1) * adzw(i-2) * iadz(i) * iadz(i-1) * ( f_ip1 - f_i ) &
-			  - adzw(i+1) * adzw(i-2) * (adzw(i-1) * adz(i-1) + adzw(i-1) * adz(i) + adzw(i) * adz(i)) &
+		positive_5th = 1./120. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i) * iadzw(i-1) - 1. ) &
+			* ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * iadzw(i-2) - 4. ) &
+			* ( adzw(i-1,icrm) * adzw(i-2,icrm) * iadz(i) * iadz(i-1) * ( f_ip1 - f_i ) &
+			  - adzw(i+1,icrm) * adzw(i-2,icrm) * (adzw(i-1,icrm) * adz(i-1,icrm) + adzw(i-1,icrm) * adz(i,icrm) + adzw(i,icrm) * adz(i,icrm)) &
 			    * iadzw(i) * iadz(i) * iadz(i-1) * iadz(i-1) * ( f_i - f_im1 ) &
-			  + adzw(i+1) * adzw(i-2) * (adzw(i-1) * adz(i-2) + adzw(i) * adz(i-2) + adzw(i) *adz(i-1))&
+			  + adzw(i+1,icrm) * adzw(i-2,icrm) * (adzw(i-1,icrm) * adz(i-2,icrm) + adzw(i,icrm) * adz(i-2,icrm) + adzw(i,icrm) *adz(i-1,icrm))&
 			    * iadzw(i-1) * iadz(i-1) * iadz(i-1) * iadz(i-2) * ( f_im1 - f_im2 ) &
-			  - adzw(i+1) * adzw(i) * iadz(i-1) * iadz(i-2) * ( f_im2 - f_im3 ) )
+			  - adzw(i+1,icrm) * adzw(i,icrm) * iadz(i-1) * iadz(i-2) * ( f_im2 - f_im3 ) )
 
-		negative_5th = 1./120. * ( cn * cn * adz(i) * adz(i) * iadzw(i+1) * iadzw(i) - 1. ) &
-			* ( cn  * cn * adz(i) * adz(i) * iadzw(i+2) * iadzw(i-1) - 4. ) &
-			* ( adzw(i) * adzw(i-1) * iadz(i+1) * iadz(i) * ( f_ip2 - f_ip1 ) &
-			  - adzw(i+2) * adzw(i-1) * (adzw(i) * adz(i) + adzw(i) * adz(i+1) + adzw(i+1) * adz(i+1)) &
+		negative_5th = 1./120. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * iadzw(i) - 1. ) &
+			* ( cn  * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+2) * iadzw(i-1) - 4. ) &
+			* ( adzw(i,icrm) * adzw(i-1,icrm) * iadz(i+1) * iadz(i) * ( f_ip2 - f_ip1 ) &
+			  - adzw(i+2,icrm) * adzw(i-1,icrm) * (adzw(i,icrm) * adz(i,icrm) + adzw(i,icrm) * adz(i+1,icrm) + adzw(i+1,icrm) * adz(i+1,icrm)) &
 			    * iadzw(i+1) * iadz(i+1) * iadz(i) * iadz(i) * ( f_ip1 - f_i ) &
-			  + adzw(i+2) * adzw(i-1) * (adzw(i) * adz(i-1) + adzw(i+1) * adz(i-1) + adzw(i+1) *adz(i))&
+			  + adzw(i+2,icrm) * adzw(i-1,icrm) * (adzw(i,icrm) * adz(i-1,icrm) + adzw(i+1,icrm) * adz(i-1,icrm) + adzw(i+1,icrm) *adz(i,icrm))&
 			    * iadzw(i) * iadz(i) * iadz(i) * iadz(i-1) * ( f_i - f_im1 ) &
-			  - adzw(i+2) * adzw(i+1) * iadz(i) * iadz(i-1) * ( f_im1 - f_im2 ) )
+			  - adzw(i+2,icrm) * adzw(i+1,icrm) * iadz(i) * iadz(i-1) * ( f_im1 - f_im2 ) )
 
 		!	Face value
-		face_5th_z = 0.5 * ( f_i + f_im1 - cn * adz(i) * iadzw(i) * ( f_i - f_im1 ) &
-			+ 1./3. * ( cn * cn * adz(i) * adz(i) * iadzw(i+1) * iadzw(i-1) - 1. ) &
-			  * ( adzw(i-1) / ( adz(i) + adz(i-1) ) * ( f_ip1 - f_i ) &
-			    - adzw(i+1) / ( adz(i) + adz(i-1) )  * ( f_im1 - f_im2 ) ) &
-			- 1./12. * ( cn * cn * adz(i) * adz(i) * iadzw(i+1) * adzw(i-1) - 1. ) * cn*adz(i)*iadzw(i)&
-			  * ( adzw(i-1) * iadz(i) * ( f_ip1 - f_i ) &
-			    - adzw(i+1)*adzw(i-1)*(adz(i-1)+adz(i))*iadzw(i)*iadz(i)*iadz(i-1) * ( f_i - f_im1 ) &
-			    + adzw(i+1) * iadz(i-1) * ( f_im1 - f_im2 ) ) &
+		face_5th_z = 0.5 * ( f_i + f_im1 - cn * adz(i,icrm) * iadzw(i) * ( f_i - f_im1 ) &
+			+ 1./3. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * iadzw(i-1) - 1. ) &
+			  * ( adzw(i-1,icrm) / ( adz(i,icrm) + adz(i-1,icrm) ) * ( f_ip1 - f_i ) &
+			    - adzw(i+1,icrm) / ( adz(i,icrm) + adz(i-1,icrm) )  * ( f_im1 - f_im2 ) ) &
+			- 1./12. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * adzw(i-1,icrm) - 1. ) * cn*adz(i,icrm)*iadzw(i)&
+			  * ( adzw(i-1,icrm) * iadz(i) * ( f_ip1 - f_i ) &
+			    - adzw(i+1,icrm)*adzw(i-1,icrm)*(adz(i-1,icrm)+adz(i,icrm))*iadzw(i)*iadz(i)*iadz(i-1) * ( f_i - f_im1 ) &
+			    + adzw(i+1,icrm) * iadz(i-1) * ( f_im1 - f_im2 ) ) &
 			+ positive_5th + negative_5th + sign(1._crm_rknd,cn) * ( positive_5th - negative_5th ) )
 
 	end function face_5th_z

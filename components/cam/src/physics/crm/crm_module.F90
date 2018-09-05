@@ -336,38 +336,38 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     ! Create CRM vertical grid and initialize some vertical reference arrays:
     do k = 1, nzm
-      z(k) = crm_input%zmid(icrm,plev-k+1) - crm_input%zint(icrm,plev+1)
-      zi(k) = crm_input%zint(icrm,plev-k+2)- crm_input%zint(icrm,plev+1)
-      pres(k) = crm_input%pmid(icrm,plev-k+1)/100.
-      presi(k) = crm_input%pint(icrm,plev-k+2)/100.
-      prespot(k,icrm)=(1000./pres(k))**(rgas/cp)
+      z(k,icrm) = crm_input%zmid(icrm,plev-k+1) - crm_input%zint(icrm,plev+1)
+      zi(k,icrm) = crm_input%zint(icrm,plev-k+2)- crm_input%zint(icrm,plev+1)
+      pres(k,icrm) = crm_input%pmid(icrm,plev-k+1)/100.
+      presi(k,icrm) = crm_input%pint(icrm,plev-k+2)/100.
+      prespot(k,icrm)=(1000./pres(k,icrm))**(rgas/cp)
       bet(k,icrm) = ggr/crm_input%tl(icrm,plev-k+1)
-      gamaz(k,icrm)=ggr/cp*z(k)
+      gamaz(k,icrm)=ggr/cp*z(k,icrm)
     end do ! k
-   ! zi(nz) =  crm_input%zint(plev-nz+2)
-    zi(nz) = crm_input%zint(icrm,plev-nz+2)-crm_input%zint(icrm,plev+1) !+++mhwang, 2012-02-04
-    presi(nz) = crm_input%pint(icrm, plev-nz+2)/100.
+   ! zi(nz,icrm) =  crm_input%zint(plev-nz+2)
+    zi(nz,icrm) = crm_input%zint(icrm,plev-nz+2)-crm_input%zint(icrm,plev+1) !+++mhwang, 2012-02-04
+    presi(nz,icrm) = crm_input%pint(icrm, plev-nz+2)/100.
 
-    dz(icrm) = 0.5*(z(1)+z(2))
+    dz(icrm) = 0.5*(z(1,icrm)+z(2,icrm))
     do k=2,nzm
-      adzw(k) = (z(k)-z(k-1))/dz(icrm)
+      adzw(k,icrm) = (z(k,icrm)-z(k-1,icrm))/dz(icrm)
     end do
-    adzw(1)  = 1.
-    adzw(nz) = adzw(nzm)
+    adzw(1,icrm)  = 1.
+    adzw(nz,icrm) = adzw(nzm,icrm)
     !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
     do k=1, nzm
-      adz(k)=(zi(k+1)-zi(k))/dz(icrm)
+      adz(k,icrm)=(zi(k+1,icrm)-zi(k,icrm))/dz(icrm)
     end do
 
     do k = 1,nzm
-      rho(k,icrm) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(k)*dz(icrm))
+      rho(k,icrm) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(k,icrm)*dz(icrm))
     end do
     do k=2,nzm
     ! rhow(k,icrm) = 0.5*(rho(k,icrm)+rho(k-1,icrm))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with crm_input%pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k)*dz(icrm))
+      rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k,icrm)*dz(icrm))
     end do
     rhow(1,icrm) = 2.*rhow(2,icrm) - rhow(3,icrm)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
@@ -536,7 +536,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
     ustar = sqrt(crm_input%tau00(icrm)/rho(1,icrm))
-    z0(icrm) = z0_est(z(1),bflx,wnd,ustar)
+    z0(icrm) = z0_est(z(1,icrm),bflx,wnd,ustar)
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
     crm_output%timing_factor = 0.
@@ -724,7 +724,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     if ( doclubb .or. doclubbnoninter ) then
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                            latitude, longitude, z, rho(:,icrm), zi, rhow, tv0, tke )
+                            latitude, longitude, z(:,icrm), rho(:,icrm), zi(:,icrm), rhow, tv0, tke )
     endif
 #endif /* CLUBB_CRM */
 
@@ -806,12 +806,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         icycle = icyc
         dtn = dt/ncycle
-        dt3(na) = dtn
+        dt3(na,icrm) = dtn
         dtfactor = dtn/dt
 
         !---------------------------------------------
         !  	the Adams-Bashforth scheme in time
-        call abcoefs()
+        call abcoefs(ncrms,icrm)
 
         !---------------------------------------------
         !  	initialize stuff:
@@ -996,17 +996,17 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
             !hm#endif
 
-            tmp1 = rho(nz-k,icrm)*adz(nz-k)*dz(icrm)*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
+            tmp1 = rho(nz-k,icrm)*adz(nz-k,icrm)*dz(icrm)*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
             cwp(i,j) = cwp(i,j)+tmp1
             cttemp(i,j) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j))
             if(cwp(i,j).gt.cwp_threshold.and.flag_top(i,j)) then
                 crm_output%cldtop(icrm,l) = crm_output%cldtop(icrm,l) + 1
                 flag_top(i,j) = .false.
             endif
-            if(pres(nz-k).ge.700.) then
+            if(pres(nz-k,icrm).ge.700.) then
                 cwpl(i,j) = cwpl(i,j)+tmp1
                 cltemp(i,j) = max(CF3D(i,j,nz-k,icrm), cltemp(i,j))
-            else if(pres(nz-k).lt.400.) then
+            else if(pres(nz-k,icrm).lt.400.) then
                 cwph(i,j) = cwph(i,j)+tmp1
                 chtemp(i,j) = max(CF3D(i,j,nz-k,icrm), chtemp(i,j))
             else
@@ -1014,9 +1014,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                 cmtemp(i,j) = max(CF3D(i,j,nz-k,icrm), cmtemp(i,j))
             endif
 
-            !     qsat = qsatw_crm(tabs(i,j,k,icrm),pres(k))
+            !     qsat = qsatw_crm(tabs(i,j,k,icrm),pres(k,icrm))
             !     if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.min(1.e-5,0.01*qsat)) then
-            tmp1 = rho(k,icrm)*adz(k)*dz(icrm)
+            tmp1 = rho(k,icrm)*adz(k,icrm)*dz(icrm)
             if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
                  crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k,icrm)
                  if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
@@ -1083,13 +1083,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           do i=1, nx
             if(w(i,j,k).gt.0.) then
               kx=max(1, k-1)
-              qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx))
+              qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx,icrm))
               if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                 mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k,icrm)*w(i,j,k)
               endif
             else if (w(i,j,k).lt.0.) then
               kx=min(k+1, nzm)
-              qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx))
+              qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx,icrm))
               if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                 mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k)
               else if(qpl(i,j,kx,icrm)+qpi(i,j,kx,icrm).gt.1.0e-4) then

@@ -53,9 +53,9 @@ contains
 
     do k = 1,nzm
       rhofac(k) = sqrt(1.29/rho(k,icrm))
-      irhoadz(k) = 1./(rho(k,icrm)*adz(k)) ! Useful factor
+      irhoadz(k) = 1./(rho(k,icrm)*adz(k,icrm)) ! Useful factor
       kb = max(1,k-1)
-      wmax       = dz(icrm)*adz(kb)/dtn   ! Velocity equivalent to a cfl of 1.0.
+      wmax       = dz(icrm)*adz(kb,icrm)/dtn   ! Velocity equivalent to a cfl of 1.0.
       iwmax(k)   = 1./wmax
     end do
 
@@ -170,8 +170,8 @@ contains
 
             do k=1,nzm
               kc=min(nzm,k+1)
-              mx(k)=rho(k,icrm)*adz(k)*(mx(k)-tmp_qp(k))/(pn(www(kc)) + pp(www(k))+eps)
-              mn(k)=rho(k,icrm)*adz(k)*(tmp_qp(k)-mn(k))/(pp(www(kc)) + pn(www(k))+eps)
+              mx(k)=rho(k,icrm)*adz(k,icrm)*(mx(k)-tmp_qp(k))/(pn(www(kc)) + pp(www(k))+eps)
+              mn(k)=rho(k,icrm)*adz(k,icrm)*(tmp_qp(k)-mn(k))/(pp(www(kc)) + pn(www(k))+eps)
             end do
 
             do k=1,nzm

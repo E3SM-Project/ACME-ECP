@@ -49,7 +49,7 @@ module grid
   integer, parameter :: nadams = 3
 
   ! Vertical grid parameters:
-  real(crm_rknd) pres0      ! Reference surface pressure, Pa
+  ! real(crm_rknd) pres0      ! Reference surface pressure, Pa
 
   integer:: nstep =0! current number of performed time steps
   integer  ncycle  ! number of subcycles over the dynamical timestep
@@ -157,13 +157,13 @@ module grid
   logical :: isInitialized_scamiopdata = .false.
   logical :: wgls_holds_omega = .false.
 
-  real(crm_rknd), allocatable :: z(:)      ! height of the pressure levels above surface,m
-  real(crm_rknd), allocatable :: pres(:)  ! pressure,mb at scalar levels
-  real(crm_rknd), allocatable :: zi(:)     ! height of the interface levels
-  real(crm_rknd), allocatable :: presi(:)  ! pressure,mb at interface levels
-  real(crm_rknd), allocatable :: adz(:)   ! ratio of the thickness of scalar levels to dz
-  real(crm_rknd), allocatable :: adzw(:)  ! ratio of the thinckness of w levels to dz
-  real(crm_rknd), allocatable :: dt3(:)   ! dynamical timesteps for three most recent time steps
+  real(crm_rknd), allocatable :: z    (:,:)      ! height of the pressure levels above surface,m
+  real(crm_rknd), allocatable :: pres (:,:)  ! pressure,mb at scalar levels
+  real(crm_rknd), allocatable :: zi   (:,:)     ! height of the interface levels
+  real(crm_rknd), allocatable :: presi(:,:)  ! pressure,mb at interface levels
+  real(crm_rknd), allocatable :: adz  (:,:)   ! ratio of the thickness of scalar levels to dz
+  real(crm_rknd), allocatable :: adzw (:,:)  ! ratio of the thinckness of w levels to dz
+  real(crm_rknd), allocatable :: dt3  (:,:)   ! dynamical timesteps for three most recent time steps
 
   !-----------------------------------------
 
@@ -176,13 +176,13 @@ contains
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
     
-    allocate( z(nz)       )
-    allocate( pres(nzm)   )
-    allocate( zi(nz)      )
-    allocate( presi(nz)   )
-    allocate( adz(nzm)    )
-    allocate( adzw(nz)   )
-    allocate( dt3(3)   )
+    allocate( z(nz,ncrms)       )
+    allocate( pres(nzm,ncrms)   )
+    allocate( zi(nz,ncrms)      )
+    allocate( presi(nz,ncrms)   )
+    allocate( adz(nzm,ncrms)    )
+    allocate( adzw(nz,ncrms)   )
+    allocate( dt3(3,ncrms)   )
     allocate( dz(ncrms)   )
 
     zero = 0
