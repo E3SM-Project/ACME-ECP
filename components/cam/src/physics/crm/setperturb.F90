@@ -66,10 +66,10 @@ contains
                rand_perturb = 1.-2.*rand_perturb
 
                !!! apply perturbation 
-               t(i,j,k) = t(i,j,k) + perturb_t_magnitude * rand_perturb * perturb_k_scaling
+               t(i,j,k,icrm) = t(i,j,k,icrm) + perturb_t_magnitude * rand_perturb * perturb_k_scaling
                
                !!! Calculate new average LSE for energy conservation scaling below
-               t02 = t02 + t(i,j,k)*factor_xy
+               t02 = t02 + t(i,j,k,icrm)*factor_xy
 
             end do ! i
          end do ! j
@@ -77,7 +77,7 @@ contains
          !!! enforce energy conservation
          do j = 1,ny
             do i = 1,nx
-               t(i,j,k) = t(i,j,k) *  t0(k,icrm)/t02
+               t(i,j,k,icrm) = t(i,j,k,icrm) *  t0(k,icrm)/t02
             end do ! i
          end do ! j
 

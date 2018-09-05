@@ -737,15 +737,15 @@ do j = 1,ny
       ! get absolute temperature in this column
       !bloss/qt: before saturation adjustment for liquid,
       !          this is Tcl = T - (L/Cp)*qcl (the cloud liquid water temperature,icrm)
-      tmptabs(:) = t(i,j,:)  &           ! liquid water-ice static energy over Cp
+      tmptabs(:) = t(i,j,:,icrm)  &           ! liquid water-ice static energy over Cp
            - gamaz(:,icrm) &                                   ! potential energy
            + fac_cond * (tmpqr(:)) &    ! bloss/qt: liquid latent energy due to rain only
            + fac_sub  * (tmpqci(:) + tmpqs(:) + tmpqg(:)) ! ice latent energy
 
       tmpdz = adz(:,icrm)*dz(icrm)
-!      tmpw = 0.5*(w(i,j,1:nzm) + w(i,j,2:nz))  ! MK: changed for stretched grids
-      tmpw = ((zi(2:nz,icrm)-z(1:nzm,icrm))*w(i,j,1:nzm)+ &
-             (z(1:nzm,icrm)-zi(1:nzm,icrm))*w(i,j,2:nz))/(zi(2:nz,icrm)-zi(1:nzm,icrm))
+!      tmpw = 0.5*(w(i,j,1:nzm,icrm) + w(i,j,2:nz,icrm))  ! MK: changed for stretched grids
+      tmpw = ((zi(2:nz,icrm)-z(1:nzm,icrm))*w(i,j,1:nzm,icrm)+ &
+             (z(1:nzm,icrm)-zi(1:nzm,icrm))*w(i,j,2:nz,icrm))/(zi(2:nz,icrm)-zi(1:nzm,icrm))
 #ifdef CLUBB_CRM
       ! Added by dschanen on 4 Nov 2008 to account for w_sgs
       if ( doclubb .and. dosubgridw ) then
@@ -1070,7 +1070,7 @@ do j = 1,ny
 
       !=====================================================
       ! update liquid-ice static energy due to precipitation
-      t(i,j,:) = t(i,j,:) &
+      t(i,j,:,icrm) = t(i,j,:,icrm) &
            - dtn*fac_cond*(stendqcl+stendqr) &
            - dtn*fac_sub*(stendqci+stendqs+stendqg)
       !=====================================================

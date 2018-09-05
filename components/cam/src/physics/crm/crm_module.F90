@@ -382,18 +382,18 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     colprecs=0
 
     !  Initialize CRM fields:
-    u   (1:nx,1:ny,1:nzm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
-    v   (1:nx,1:ny,1:nzm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
-    w   (1:nx,1:ny,1:nzm) = crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)
+    u   (1:nx,1:ny,1:nzm,icrm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
+    v   (1:nx,1:ny,1:nzm,icrm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
+    w   (1:nx,1:ny,1:nzm,icrm) = crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)
     tabs(1:nx,1:ny,1:nzm,icrm) = crm_state%temperature(icrm,1:nx,1:ny,1:nzm)
 
     ! limit the velocity at the very first step:
-    if(u(1,1,1).eq.u(2,1,1).and.u(3,1,2).eq.u(4,1,2)) then
+    if(u(1,1,1,icrm).eq.u(2,1,1,icrm).and.u(3,1,2,icrm).eq.u(4,1,2,icrm)) then
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            u(i,j,k) = min( umax, max(-umax,u(i,j,k)) )
-            v(i,j,k) = min( umax, max(-umax,v(i,j,k)) )*YES3D
+            u(i,j,k,icrm) = min( umax, max(-umax,u(i,j,k,icrm)) )
+            v(i,j,k,icrm) = min( umax, max(-umax,v(i,j,k,icrm)) )*YES3D
           enddo
         enddo
       enddo
@@ -447,7 +447,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     enddo
 #endif /* m2005 */
 
-    w(:,:,nz)=0.
+    w(:,:,nz,icrm)=0.
     wsub (:,icrm) = 0.      !used in clubb, +++mhwang
     dudt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
     dvdt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
@@ -479,15 +479,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !---mhwang
       do j=1,ny
         do i=1,nx
-          t(i,j,k) = tabs(i,j,k,icrm)+gamaz(k,icrm) &
+          t(i,j,k,icrm) = tabs(i,j,k,icrm)+gamaz(k,icrm) &
                     -fac_cond*qcl(i,j,k,icrm)-fac_sub*qci(i,j,k,icrm) &
                     -fac_cond*qpl(i,j,k,icrm)-fac_sub*qpi(i,j,k,icrm)
           colprec=colprec+(qpl(i,j,k,icrm)+qpi(i,j,k,icrm))*crm_input%pdel(icrm,plev-k+1)
           colprecs=colprecs+qpi(i,j,k,icrm)*crm_input%pdel(icrm,plev-k+1)
-          u0(k,icrm)=u0(k,icrm)+u(i,j,k)
-          v0(k,icrm)=v0(k,icrm)+v(i,j,k)
-          t0(k,icrm)=t0(k,icrm)+t(i,j,k)
-          t00(k)=t00(k)+t(i,j,k)+fac_cond*qpl(i,j,k,icrm)+fac_sub*qpi(i,j,k,icrm)
+          u0(k,icrm)=u0(k,icrm)+u(i,j,k,icrm)
+          v0(k,icrm)=v0(k,icrm)+v(i,j,k,icrm)
+          t0(k,icrm)=t0(k,icrm)+t(i,j,k,icrm)
+          t00(k)=t00(k)+t(i,j,k,icrm)+fac_cond*qpl(i,j,k,icrm)+fac_sub*qpi(i,j,k,icrm)
           tabs0(k,icrm)=tabs0(k,icrm)+tabs(i,j,k,icrm)
           q0(k,icrm)=q0(k,icrm)+qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)
           qv0(k,icrm) = qv0(k,icrm) + qv(i,j,k,icrm)
@@ -836,7 +836,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(i,j,k) = t(i,j,k) + crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
+              t(i,j,k,icrm) = t(i,j,k,icrm) + crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
@@ -1018,20 +1018,20 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             tmp1 = rho(k,icrm)*adz(k,icrm)*dz(icrm)
             if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
                  crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k,icrm)
-                 if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k,icrm)
-                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1.0 - CF3D(i,j,k,icrm))
+                 if(w(i,j,k+1,icrm)+w(i,j,k,icrm).gt.2*wmin) then
+                   crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
+                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1.0 - CF3D(i,j,k,icrm))
                  endif
-                 if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   crm_output%mcdn (icrm,l) = crm_output%mcdn (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * CF3D(i,j,k,icrm)
-                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k)) * (1. - CF3D(i,j,k,icrm))
+                 if(w(i,j,k+1,icrm)+w(i,j,k,icrm).lt.-2*wmin) then
+                   crm_output%mcdn (icrm,l) = crm_output%mcdn (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
+                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1. - CF3D(i,j,k,icrm))
                  endif
             else
-                 if(w(i,j,k+1)+w(i,j,k).gt.2*wmin) then
-                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k))
+                 if(w(i,j,k+1,icrm)+w(i,j,k,icrm).gt.2*wmin) then
+                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
                  endif
-                 if(w(i,j,k+1)+w(i,j,k).lt.-2*wmin) then
-                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1)+w(i,j,k))
+                 if(w(i,j,k+1,icrm)+w(i,j,k,icrm).lt.-2*wmin) then
+                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
                  endif
             endif
 
@@ -1080,19 +1080,19 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         l=plev+1-k+1
         do j=1, ny
           do i=1, nx
-            if(w(i,j,k).gt.0.) then
+            if(w(i,j,k,icrm).gt.0.) then
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx,icrm))
               if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k,icrm)*w(i,j,k)
+                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k,icrm)*w(i,j,k,icrm)
               endif
-            else if (w(i,j,k).lt.0.) then
+            else if (w(i,j,k,icrm).lt.0.) then
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx,icrm))
               if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k)
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k,icrm)
               else if(qpl(i,j,kx,icrm)+qpi(i,j,kx,icrm).gt.1.0e-4) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k)
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k,icrm)
               endif
             endif
           enddo
@@ -1187,8 +1187,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           qln(l)  = qln(l)  +qv(i,j,k,icrm)
           qccln(l)= qccln(l)+qcl(i,j,k,icrm)
           qiiln(l)= qiiln(l)+qci(i,j,k,icrm)
-          uln(l)  = uln(l)  +u(i,j,k)
-          vln(l)  = vln(l)  +v(i,j,k)
+          uln(l)  = uln(l)  +u(i,j,k,icrm)
+          vln(l)  = vln(l)  +v(i,j,k,icrm)
 
 #if defined(SP_ESMT)
           uln_esmt(l) = uln_esmt(l)+u_esmt(i,j,k)
@@ -1243,9 +1243,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !-------------------------------------------------------------
     !
     ! Save the last step to the permanent core:
-    crm_state%u_wind  (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm)
-    crm_state%v_wind  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm)
-    crm_state%w_wind  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm)
+    crm_state%u_wind  (icrm,1:nx,1:ny,1:nzm) = u   (1:nx,1:ny,1:nzm,icrm)
+    crm_state%v_wind  (icrm,1:nx,1:ny,1:nzm) = v   (1:nx,1:ny,1:nzm,icrm)
+    crm_state%w_wind  (icrm,1:nx,1:ny,1:nzm) = w   (1:nx,1:ny,1:nzm,icrm)
     crm_state%temperature  (icrm,1:nx,1:ny,1:nzm) = tabs(1:nx,1:ny,1:nzm,icrm)
 
 #ifdef m2005
@@ -1491,9 +1491,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       w2z = 0.
       do j=1,ny
         do i=1,nx
-          u2z = u2z+(u(i,j,k)-u0(k,icrm))**2
-          v2z = v2z+(v(i,j,k)-v0(k,icrm))**2
-          w2z = w2z+0.5*(w(i,j,k+1)**2+w(i,j,k)**2)
+          u2z = u2z+(u(i,j,k,icrm)-u0(k,icrm))**2
+          v2z = v2z+(v(i,j,k,icrm)-v0(k,icrm))**2
+          w2z = w2z+0.5*(w(i,j,k+1,icrm)**2+w(i,j,k,icrm)**2)
         enddo
       enddo
       !+++mhwang

@@ -15,9 +15,9 @@ contains
     integer, intent(in) :: ncrms,icrm
     ! input & output
     real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
-    real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(inout) :: u
-    real(crm_rknd), dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm), intent(inout) :: v
-    real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
+    real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm,ncrms), intent(inout) :: u
+    real(crm_rknd), dimension(dimx1_v:dimx2_v, dimy1_v:dimy2_v, nzm,ncrms), intent(inout) :: v
+    real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ,ncrms), intent(in) :: w
     real(crm_rknd), dimension(nzm,ncrms), intent(in) :: rho
     real(crm_rknd), dimension(nz,ncrms), intent(in) :: rhow
     real(crm_rknd), dimension(nz), intent(out) :: flux
@@ -31,7 +31,7 @@ contains
         do k = 1, nzm
           do j = dimy1_u, dimy2_u
             do i = dimx1_u, 1
-              u(i,j,k) = 0.
+              u(i,j,k,icrm) = 0.
             enddo
           enddo
         enddo
@@ -40,7 +40,7 @@ contains
         do k = 1, nzm
           do j = dimy1_u, dimy2_u
             do i = nx+1, dimx2_u
-              u(i,j,k) = 0.
+              u(i,j,k,icrm) = 0.
             enddo
           enddo
         enddo
@@ -52,7 +52,7 @@ contains
         do k = 1, nzm
           do j = dimy1_v, 1
             do i = dimx1_v, dimx2_v
-              v(i,j,k) = 0.
+              v(i,j,k,icrm) = 0.
             enddo
           enddo
         enddo
@@ -61,7 +61,7 @@ contains
         do k = 1, nzm
           do j = ny+1, dimy2_v
             do i = dimx1_v, dimx2_v
-              v(i,j,k) = 0.
+              v(i,j,k,icrm) = 0.
             enddo
           enddo
         enddo
@@ -90,7 +90,7 @@ contains
       do k = 1, nzm
         do j = -3, nyp4
           do i = -1, nxp3
-            cu(i,j,k) = u(i,j,k) * irho(k)
+            cu(i,j,k) = u(i,j,k,icrm) * irho(k)
           enddo
         enddo
       enddo
@@ -99,7 +99,7 @@ contains
       do k = 1, nzm
         do j = -1, nyp3
           do i = -3, nxp4
-            cv(i,j,k) = v(i,j,k) * irho(k)
+            cv(i,j,k) = v(i,j,k,icrm) * irho(k)
           enddo
         enddo
       enddo
@@ -111,7 +111,7 @@ contains
         irhow(k) = 1. / ( rhow(k,icrm) * adz(k,icrm) )  ! adz adjustment here
         do j = -3, nyp4
           do i = -3, nxp4
-            cw(i,j,k) = w(i,j,k) * irhow(k)
+            cw(i,j,k) = w(i,j,k,icrm) * irhow(k)
           enddo
         enddo
       enddo
@@ -220,10 +220,10 @@ contains
         do j = 1, ny
           do i = 1, nx
             f(i,j,k) = max(0.,f(i,j,k) &
-            + ( u(i,j,k) * fx(i,j,k) - u(i+1,j,k) * fx(i+1,j,k) &
-            +   v(i,j,k) * fy(i,j,k) - v(i,j+1,k) * fy(i,j+1,k) &
-            + ( w(i,j,k) * fz(i,j,k) - w(i,j,k+1) * fz(i,j,k+1) ) * iadz(k) ) * irho(k))
-            flux(k) = flux(k) + w(i,j,k) * fz(i,j,k)
+            + ( u(i,j,k,icrm) * fx(i,j,k) - u(i+1,j,k,icrm) * fx(i+1,j,k) &
+            +   v(i,j,k,icrm) * fy(i,j,k) - v(i,j+1,k,icrm) * fy(i,j+1,k) &
+            + ( w(i,j,k,icrm) * fz(i,j,k) - w(i,j,k+1,icrm) * fz(i,j,k+1) ) * iadz(k) ) * irho(k))
+            flux(k) = flux(k) + w(i,j,k,icrm) * fz(i,j,k)
           enddo
         enddo
       enddo

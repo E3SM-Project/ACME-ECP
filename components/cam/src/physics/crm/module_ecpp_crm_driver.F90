@@ -538,7 +538,7 @@ contains
       end do
     end do
 
-    ww(:,:,:)     = w(1:nx,1:ny,1:nzstag)
+    ww(:,:,:)     = w(1:nx,1:ny,1:nzstag,icrm)
 #ifdef CLUBB_CRM
     wwsq(:,:,:)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
 #else

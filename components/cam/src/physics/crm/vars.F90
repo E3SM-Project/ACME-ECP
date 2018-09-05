@@ -11,10 +11,10 @@ module vars
   !--------------------------------------------------------------------
   ! prognostic variables:
 
-  real(crm_rknd), allocatable :: u   (:,:,:) ! x-wind
-  real(crm_rknd), allocatable :: v   (:,:,:) ! y-wind
-  real(crm_rknd), allocatable :: w   (:,:,:) ! z-wind
-  real(crm_rknd), allocatable :: t   (:,:,:) ! liquid/ice water static energy
+  real(crm_rknd), allocatable :: u   (:,:,:,:) ! x-wind
+  real(crm_rknd), allocatable :: v   (:,:,:,:) ! y-wind
+  real(crm_rknd), allocatable :: w   (:,:,:,:) ! z-wind
+  real(crm_rknd), allocatable :: t   (:,:,:,:) ! liquid/ice water static energy
 
   !--------------------------------------------------------------------
   ! diagnostic variables:
@@ -189,10 +189,10 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( u   (dimx1_u:dimx2_u,dimy1_u:dimy2_u,nzm)  )
-    allocate( v   (dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm)  )
-    allocate( w   (dimx1_w:dimx2_w,dimy1_w:dimy2_w,nz )  )
-    allocate( t   (dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm)  )
+    allocate( u   (dimx1_u:dimx2_u,dimy1_u:dimy2_u,nzm,ncrms)  )
+    allocate( v   (dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm,ncrms)  )
+    allocate( w   (dimx1_w:dimx2_w,dimy1_w:dimy2_w,nz ,ncrms)  )
+    allocate( t   (dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,ncrms)  )
     allocate( p       (0:nx, (1-YES3D):ny, nzm, ncrms)      )
     allocate( tabs    (nx, ny, nzm, ncrms)                  )
     allocate( qv      (nx, ny, nzm, ncrms)                 )

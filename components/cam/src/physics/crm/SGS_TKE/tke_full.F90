@@ -147,7 +147,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
         qp_interface = 0.5*( qpl(i,j,kc,icrm) + qpi(i,j,kc,icrm) + qpl(i,j,kb,icrm) + qpi(i,j,kb,icrm) )
 
         bbb = 1.+epsv*qtot_interface - qp_interface
-        buoy_sgs=betdz*( bbb*(t(i,j,kc)-t(i,j,kb)) &
+        buoy_sgs=betdz*( bbb*(t(i,j,kc,icrm)-t(i,j,kb,icrm)) &
              +epsv*tabs_interface* &
              (qv(i,j,kc,icrm)+qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)-qv(i,j,kb,icrm)-qcl(i,j,kb,icrm)-qci(i,j,kb,icrm)) &
              +(bbb*fac_cond-tabs_interface)*(qpl(i,j,kc,icrm)-qpl(i,j,kb,icrm)) &
@@ -214,7 +214,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                  +1.61*tabs_interface*dqsat
             bbb = bbb / (1.+lstarn*dqsat)
 
-            buoy_sgs = betdz*(bbb*(t(i,j,kc)-t(i,j,kb)) &
+            buoy_sgs = betdz*(bbb*(t(i,j,kc,icrm)-t(i,j,kb,icrm)) &
                  +(bbb*lstarn - (1.+lstarn*dqsat)*tabs_interface)* &
                  (qv(i,j,kc,icrm)+qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)-qv(i,j,kb,icrm)-qcl(i,j,kb,icrm)-qci(i,j,kb,icrm)) & 
                  + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(i,j,k,icrm) ) * ( qpl(i,j,kc,icrm)-qpl(i,j,kb,icrm) )  &

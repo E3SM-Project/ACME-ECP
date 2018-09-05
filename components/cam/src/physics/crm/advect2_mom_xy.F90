@@ -34,10 +34,10 @@ contains
           jb = j-1
           do i = 0, nx
             ic = i+1
-            fu(i,j,k)=dx25*(u(ic,j,k)+u(i,j,k))*(u(i,j,k)+u(ic,j,k))
-            fv(i,j,k)=dx25*(u(ic,j,k)+u(ic,jb,k))*(v(i,j,k)+v(ic,j,k))
-            fw(i,j,k)=dx25*(u(ic,j,k)*rho(k,icrm)*adz(k,icrm)+ &
-            u(ic,j,kcu)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc)+w(ic,j,kc))
+            fu(i,j,k)=dx25*(u(ic,j,k,icrm)+u(i,j,k,icrm))*(u(i,j,k,icrm)+u(ic,j,k,icrm))
+            fv(i,j,k)=dx25*(u(ic,j,k,icrm)+u(ic,jb,k,icrm))*(v(i,j,k,icrm)+v(ic,j,k,icrm))
+            fw(i,j,k)=dx25*(u(ic,j,k,icrm)*rho(k,icrm)*adz(k,icrm)+ &
+            u(ic,j,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc,icrm)+w(ic,j,kc,icrm))
           end do
           do i = 1, nx
             ib = i-1
@@ -51,10 +51,10 @@ contains
           jc = j+1
           do i = 1, nx
             ib = i-1
-            fu(i,j,k)=dy25*(v(i,jc,k)+v(ib,jc,k))*(u(i,j,k)+u(i,jc,k))
-            fv(i,j,k)=dy25*(v(i,jc,k)+v(i,j,k))*(v(i,j,k)+v(i,jc,k))
-            fw(i,j,k)=dy25*(v(i,jc,k)*rho(k,icrm)*adz(k,icrm)+ &
-            v(i,jc,kcu)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc)+w(i,jc,kc))
+            fu(i,j,k)=dy25*(v(i,jc,k,icrm)+v(ib,jc,k,icrm))*(u(i,j,k,icrm)+u(i,jc,k,icrm))
+            fv(i,j,k)=dy25*(v(i,jc,k,icrm)+v(i,j,k,icrm))*(v(i,j,k,icrm)+v(i,jc,k,icrm))
+            fw(i,j,k)=dy25*(v(i,jc,k,icrm)*rho(k,icrm)*adz(k,icrm)+ &
+            v(i,jc,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc,icrm)+w(i,jc,kc,icrm))
           end do
         end do
         do j = 1,ny
@@ -80,10 +80,10 @@ contains
 
         do i = 0, nx
           ic = i+1
-          fu(i,j,k)=dx25*(u(ic,j,k)+u(i,j,k))*(u(i,j,k)+u(ic,j,k))
-          fv(i,j,k)=dx25*(u(ic,j,k)+u(i,j,k))*(v(i,j,k)+v(ic,j,k))
-          fw(i,j,k)=dx25*(u(ic,j,k)*rho(k,icrm)*adz(k,icrm)+ &
-          u(ic,j,kcu)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc)+w(ic,j,kc))
+          fu(i,j,k)=dx25*(u(ic,j,k,icrm)+u(i,j,k,icrm))*(u(i,j,k,icrm)+u(ic,j,k,icrm))
+          fv(i,j,k)=dx25*(u(ic,j,k,icrm)+u(i,j,k,icrm))*(v(i,j,k,icrm)+v(ic,j,k,icrm))
+          fw(i,j,k)=dx25*(u(ic,j,k,icrm)*rho(k,icrm)*adz(k,icrm)+ &
+          u(ic,j,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j,kc,icrm)+w(ic,j,kc,icrm))
         end do
         do i = 1, nx
           ib = i-1

@@ -40,12 +40,12 @@ contains
       coef1 = rho(k,icrm)*dz(icrm)*adz(k,icrm)*dtfactor
       do j=1,ny
         do i=1,nx
-          tabs(i,j,k,icrm) = t(i,j,k)-gamaz(k,icrm)+ fac_cond * (qcl(i,j,k,icrm)+qpl(i,j,k,icrm)) +&
+          tabs(i,j,k,icrm) = t(i,j,k,icrm)-gamaz(k,icrm)+ fac_cond * (qcl(i,j,k,icrm)+qpl(i,j,k,icrm)) +&
           fac_sub *(qci(i,j,k,icrm) + qpi(i,j,k,icrm))
-          u0(k,icrm)=u0(k,icrm)+u(i,j,k)
-          v0(k,icrm)=v0(k,icrm)+v(i,j,k)
+          u0(k,icrm)=u0(k,icrm)+u(i,j,k,icrm)
+          v0(k,icrm)=v0(k,icrm)+v(i,j,k,icrm)
           p0(k,icrm)=p0(k,icrm)+p(i,j,k,icrm)
-          t0(k,icrm)=t0(k,icrm)+t(i,j,k)
+          t0(k,icrm)=t0(k,icrm)+t(i,j,k,icrm)
           tabs0(k,icrm)=tabs0(k,icrm)+tabs(i,j,k,icrm)
           q0(k,icrm)=q0(k,icrm)+qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)
           qn0(k,icrm) = qn0(k,icrm) + qcl(i,j,k,icrm) + qci(i,j,k,icrm)
@@ -83,11 +83,11 @@ contains
 
     do j=1,ny
       do i=1,nx
-        usfc_xy(i,j,icrm) = usfc_xy(i,j,icrm) + u(i,j,1)*dtfactor
-        vsfc_xy(i,j,icrm) = vsfc_xy(i,j,icrm) + v(i,j,1)*dtfactor
-        u200_xy(i,j,icrm) = u200_xy(i,j,icrm) + u(i,j,k200)*dtfactor
-        v200_xy(i,j,icrm) = v200_xy(i,j,icrm) + v(i,j,k200)*dtfactor
-        w500_xy(i,j,icrm) = w500_xy(i,j,icrm) + w(i,j,k500)*dtfactor
+        usfc_xy(i,j,icrm) = usfc_xy(i,j,icrm) + u(i,j,1,icrm)*dtfactor
+        vsfc_xy(i,j,icrm) = vsfc_xy(i,j,icrm) + v(i,j,1,icrm)*dtfactor
+        u200_xy(i,j,icrm) = u200_xy(i,j,icrm) + u(i,j,k200,icrm)*dtfactor
+        v200_xy(i,j,icrm) = v200_xy(i,j,icrm) + v(i,j,k200,icrm)*dtfactor
+        w500_xy(i,j,icrm) = w500_xy(i,j,icrm) + w(i,j,k500,icrm)*dtfactor
       end do
     end do
 
@@ -151,8 +151,8 @@ contains
         psfc_xy(i,j,icrm) = psfc_xy(i,j,icrm) + (100.*pres(1,icrm) + p(i,j,1,icrm))*dtfactor
 
         ! 850 mbar horizontal winds
-        u850_xy(i,j,icrm) = u850_xy(i,j,icrm) + u(i,j,k850)*dtfactor
-        v850_xy(i,j,icrm) = v850_xy(i,j,icrm) + v(i,j,k850)*dtfactor
+        u850_xy(i,j,icrm) = u850_xy(i,j,icrm) + u(i,j,k850,icrm)*dtfactor
+        v850_xy(i,j,icrm) = v850_xy(i,j,icrm) + v(i,j,k850,icrm)*dtfactor
 
       end do
     end do

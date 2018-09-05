@@ -225,7 +225,7 @@ subroutine scalar_momentum_pgf( u_s, tend )
          do i = 1,nx
             u_s_avg(k) = u_s_avg(k) + u_s(i,j,k)
             ! note that w is on interface levels
-            w_i(i,k) = ( w(i,j,k) + w(i,j,k+1) )/2.
+            w_i(i,k) = ( w(i,j,k,icrm) + w(i,j,k+1,icrm) )/2.
          end do
          u_s_avg(k) = u_s_avg(k) / real(nx,crm_rknd)
       end do
@@ -789,7 +789,7 @@ end subroutine esmt_fft_backward
 !          endif
 !          do k = kps, kpe-1
 !             do i = ips, ipe-1
-!                w_i(i-ips+1,k-kps+1) = (w(i,k,j)+w(i,k+1,j))/2.
+!                w_i(i-ips+1,k-kps+1) = (w(i,k,j,icrm)+w(i,k+1,j,icrm))/2.
 !             enddo
 !             z_avg_i(k-kps+1) = (z_avg(k)+z_avg(k+1))/2.
 !             shr(k-kps+1) = (u_si_avg(k+1)-u_si_avg(k))/(z_avg(k+1)-z_avg(k))

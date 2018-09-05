@@ -23,10 +23,10 @@ contains
           do i=1,nx
             ib=i-1
             ic=i+1
-            v_av=0.25*(v(i,j,k)+v(i,jc,k)+v(ib,j,k)+v(ib,jc,k))
-            w_av=0.25*(w(i,j,kc)+w(ib,j,kc)+w(i,j,k)+w(ib,j,k))
+            v_av=0.25*(v(i,j,k,icrm)+v(i,jc,k,icrm)+v(ib,j,k,icrm)+v(ib,jc,k,icrm))
+            w_av=0.25*(w(i,j,kc,icrm)+w(ib,j,kc,icrm)+w(i,j,k,icrm)+w(ib,j,k,icrm))
             dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)+fcory(j,icrm)*(v_av-vg0(k,icrm))-fcorzy(j,icrm)*w_av
-            u_av=0.25*(u(i,j,k)+u(ic,j,k)+u(i,jb,k)+u(ic,jb,k))
+            u_av=0.25*(u(i,j,k,icrm)+u(ic,j,k,icrm)+u(i,jb,k,icrm)+u(ic,jb,k,icrm))
             dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-0.5*(fcory(j,icrm)+fcory(jb,icrm))*(u_av-ug0(k,icrm))
           end do ! i
         end do ! j
@@ -40,9 +40,9 @@ contains
           do i=1,nx
             ib=i-1
             ic=i+1
-            w_av=0.25*(w(i,j,kc)+w(ib,j,kc)+w(i,j,k)+w(ib,j,k))
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)+fcory(j,icrm)*(v(i,j,k)-vg0(k,icrm))-fcorzy(j,icrm)*w_av
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-fcory(j,icrm)*(u(i,j,k)-ug0(k,icrm))
+            w_av=0.25*(w(i,j,kc,icrm)+w(ib,j,kc,icrm)+w(i,j,k,icrm)+w(ib,j,k,icrm))
+            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)+fcory(j,icrm)*(v(i,j,k,icrm)-vg0(k,icrm))-fcorzy(j,icrm)*w_av
+            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-fcory(j,icrm)*(u(i,j,k,icrm)-ug0(k,icrm))
           end do ! i
         end do ! i
       end do ! k

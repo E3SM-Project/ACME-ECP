@@ -13,8 +13,8 @@ contains
     integer, intent(in) :: ncrms,icrm
 
     real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    real(crm_rknd) u(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
-    real(crm_rknd) w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
+    real(crm_rknd) u(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm,ncrms)
+    real(crm_rknd) w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ,ncrms)
     real(crm_rknd) rho(nzm,ncrms)
     real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz)
@@ -48,14 +48,14 @@ contains
       if(mod(rank,nsubdomains_x).eq.0) then
         do k=1,nzm
           do i=dimx1_u,1
-            u(i,j,k) = 0.
+            u(i,j,k,icrm) = 0.
           end do
         end do
       end if
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
         do k=1,nzm
           do i=nx+1,dimx2_u
-            u(i,j,k) = 0.
+            u(i,j,k,icrm) = 0.
           end do
         end do
       end if
@@ -82,10 +82,10 @@ contains
     do k=1,nzm
       kb=max(1,k-1)
       do i=-1,nxp3
-        uuu(i,j,k)=max(real(0.,crm_rknd),u(i,j,k))*f(i-1,j,k)+min(real(0.,crm_rknd),u(i,j,k))*f(i,j,k)
+        uuu(i,j,k)=max(real(0.,crm_rknd),u(i,j,k,icrm))*f(i-1,j,k)+min(real(0.,crm_rknd),u(i,j,k,icrm))*f(i,j,k)
       end do
       do i=-1,nxp2
-        www(i,j,k)=max(real(0.,crm_rknd),w(i,j,k))*f(i,j,kb)+min(real(0.,crm_rknd),w(i,j,k))*f(i,j,k)
+        www(i,j,k)=max(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,kb)+min(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,k)
       end do
       flux(k) = 0.
       do i=1,nx
@@ -110,18 +110,18 @@ contains
       irhow(k)=1./(rhow(k,icrm)*adz(k,icrm))
       do i=0,nxp2
         ib=i-1
-        uuu(i,j,k)=andiff(f(ib,j,k),f(i,j,k),u(i,j,k),irho(k)) &
+        uuu(i,j,k)=andiff(f(ib,j,k),f(i,j,k),u(i,j,k,icrm),irho(k)) &
         - across(dd*(f(ib,j,kc)+f(i,j,kc)-f(ib,j,kb)-f(i,j,kb)), &
-        u(i,j,k), w(ib,j,k)+w(ib,j,kc)+w(i,j,k)+w(i,j,kc)) *irho(k)
+        u(i,j,k,icrm), w(ib,j,k,icrm)+w(ib,j,kc,icrm)+w(i,j,k,icrm)+w(i,j,kc,icrm)) *irho(k)
       end do
 
 
       do i=0,nxp1
         ib=i-1
         ic=i+1
-        www(i,j,k)=andiff(f(i,j,kb),f(i,j,k),w(i,j,k),irhow(k)) &
+        www(i,j,k)=andiff(f(i,j,kb),f(i,j,k),w(i,j,k,icrm),irhow(k)) &
         -across(f(ic,j,kb)+f(ic,j,k)-f(ib,j,kb)-f(ib,j,k), &
-        w(i,j,k), u(i,j,kb)+u(i,j,k)+u(ic,j,k)+u(ic,j,kb)) *irho(k)
+        w(i,j,k,icrm), u(i,j,kb,icrm)+u(i,j,k,icrm)+u(ic,j,k,icrm)+u(ic,j,kb,icrm)) *irho(k)
       end do
     end do
     www(:,:,1) = 0.

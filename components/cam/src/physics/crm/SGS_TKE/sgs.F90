@@ -396,11 +396,11 @@ CONTAINS
     integer k
 
 
-    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff(:,icrm),twsb(:,icrm), &
+    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,icrm),fluxbt,fluxtt,tdiff(:,icrm),twsb(:,icrm), &
     t2lediff(:,icrm),t2lediss(:,icrm),twlediff(:,icrm),.true.)
 
     if(advect_sgs) then
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,sgswsb(:,:,icrm), &
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,icrm),fzero,fzero,dummy,sgswsb(:,:,icrm), &
       dummy,dummy,dummy,.false.)
     end if
 

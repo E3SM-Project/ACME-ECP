@@ -22,7 +22,7 @@ contains
 
       do j=1,ny
         do i=1,nx
-          t(i,j,k)=t(i,j,k) + ttend(k,icrm) * dtn
+          t(i,j,k,icrm)=t(i,j,k,icrm) + ttend(k,icrm) * dtn
           micro_field(i,j,k,index_water_vapor)=micro_field(i,j,k,index_water_vapor) + qtend(k,icrm) * dtn
           if(micro_field(i,j,k,index_water_vapor).lt.0.) then
             nneg = nneg + 1

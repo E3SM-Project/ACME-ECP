@@ -58,9 +58,9 @@ contains
           jc=j+1
           do i=1,nx
             ic=i+1
-            p(i,j,k,icrm)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
-            rdy*(v(i,jc,k)-v(i,j,k))+ &
-            (w(i,j,kc)*rup-w(i,j,k)*rdn) )*dta + &
+            p(i,j,k,icrm)=(rdx*(u(ic,j,k,icrm)-u(i,j,k,icrm))+ &
+            rdy*(v(i,jc,k,icrm)-v(i,j,k,icrm))+ &
+            (w(i,j,kc,icrm)*rup-w(i,j,k,icrm)*rdn) )*dta + &
             (rdx*(dudt(ic,j,k,na,icrm)-dudt(i,j,k,na,icrm))+ &
             rdy*(dvdt(i,jc,k,na,icrm)-dvdt(i,j,k,na,icrm))+ &
             (dwdt(i,j,kc,na,icrm)*rup-dwdt(i,j,k,na,icrm)*rdn) ) + &
@@ -87,8 +87,8 @@ contains
         rdn = rhow(k,icrm)/rho(k,icrm)*rdz
         do i=1,nx
           ic=i+1
-          p(i,j,k,icrm)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
-          (w(i,j,kc)*rup-w(i,j,k)*rdn) )*dta + &
+          p(i,j,k,icrm)=(rdx*(u(ic,j,k,icrm)-u(i,j,k,icrm))+ &
+          (w(i,j,kc,icrm)*rup-w(i,j,k,icrm)*rdn) )*dta + &
           (rdx*(dudt(ic,j,k,na,icrm)-dudt(i,j,k,na,icrm))+ &
           (dwdt(i,j,kc,na,icrm)*rup-dwdt(i,j,k,na,icrm)*rdn) ) + &
           btat*(rdx*(dudt(ic,j,k,nb,icrm)-dudt(i,j,k,nb,icrm))+ &

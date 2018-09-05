@@ -53,7 +53,7 @@ contains
       do j = 1,ny
         do i = 1,nx
           ! Compute cloud ice density in this cell and the ones above/below.
-          ! Since cloud ice is falling, the above cell is u (upwind),
+          ! Since cloud ice is falling, the above cell is u (upwind,icrm),
           ! this cell is c (center) and the one below is d (downwind).
 
           qiu = rho(kc,icrm)*qci(i,j,kc,icrm)
@@ -102,7 +102,7 @@ contains
           ! precipitation.  Note: use latent heat of sublimation.
           lat_heat  = (fac_cond+fac_fus)*dqi
           ! Add divergence of latent heat flux to liquid-ice static energy.
-          t(i,j,k)  = t(i,j,k)  - lat_heat
+          t(i,j,k,icrm)  = t(i,j,k,icrm)  - lat_heat
           ! Add divergence to liquid-ice static energy budget.
           tlatqi(k,icrm) = tlatqi(k,icrm) - lat_heat
         end do

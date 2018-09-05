@@ -15,8 +15,8 @@ contains
     integer, intent(in) :: ncrms,icrm
     ! input & output
     real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
-    real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm), intent(inout) :: u
-    real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ), intent(in) :: w
+    real(crm_rknd), dimension(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm,ncrms), intent(inout) :: u
+    real(crm_rknd), dimension(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ,ncrms), intent(in) :: w
     real(crm_rknd), dimension(nzm,ncrms), intent(in) :: rho
     real(crm_rknd), dimension(nz,ncrms), intent(in) :: rhow
     real(crm_rknd), dimension(nz), intent(out) :: flux
@@ -30,14 +30,14 @@ contains
       if ( mod(rank,nsubdomains_x) == 0 ) then
         do k = 1, nzm
           do i = dimx1_u, 1
-            u(i,j,k) = 0.
+            u(i,j,k,icrm) = 0.
           enddo
         enddo
       endif
       if ( mod(rank,nsubdomains_x) == nsubdomains_x-1 ) then
         do k = 1, nzm
           do i = nx+1, dimx2_u
-            u(i,j,k) = 0.
+            u(i,j,k,icrm) = 0.
           enddo
         enddo
       endif
@@ -64,7 +64,7 @@ contains
       ! x direction
       do k = 1, nzm
         do i = -1, nxp3
-          cu(i,j,k) = u(i,j,k) * irho(k)
+          cu(i,j,k) = u(i,j,k,icrm) * irho(k)
         enddo
       enddo
 
@@ -74,7 +74,7 @@ contains
       do k = 2, nzm
         irhow(k) = 1. / ( rhow(k,icrm) * adz(k,icrm) )
         do i = -3, nxp4
-          cw(i,j,k) = w(i,j,k) * irhow(k)
+          cw(i,j,k) = w(i,j,k,icrm) * irhow(k)
         enddo
       enddo
     endif
@@ -120,9 +120,9 @@ contains
       do k = 1, nzm
         do i = 1, nx
           f(i,j,k) = f(i,j,k) &
-          + ( u(i,j,k) * fx(i,j,k) - u(i+1,j,k) * fx(i+1,j,k) &
-          + ( w(i,j,k) * fz(i,j,k) - w(i,j,k+1) * fz(i,j,k+1) ) * iadz(k) ) * irho(k)
-          flux(k) = flux(k) + w(i,j,k) * fz(i,j,k)
+          + ( u(i,j,k,icrm) * fx(i,j,k) - u(i+1,j,k,icrm) * fx(i+1,j,k) &
+          + ( w(i,j,k,icrm) * fz(i,j,k) - w(i,j,k+1,icrm) * fz(i,j,k+1) ) * iadz(k) ) * irho(k)
+          flux(k) = flux(k) + w(i,j,k,icrm) * fz(i,j,k)
         enddo
       enddo
     endif

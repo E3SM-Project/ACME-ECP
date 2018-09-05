@@ -194,7 +194,7 @@ contains
             qp(i,j,k)=qp(i,j,k)-(fz(kc)-fz(k))*irhoadz(k)
             qpfall(k,icrm)=qpfall(k,icrm)-(fz(kc)-fz(k))*irhoadz(k)*flagstat  ! For qp budget
             lat_heat = -(lfac(kc)*fz(kc)-lfac(k)*fz(k))*irhoadz(k)
-            t(i,j,k)=t(i,j,k)-lat_heat
+            t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat
             tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
             precflux(k,icrm) = precflux(k,icrm) - fz(k)*flagstat   ! For statistics
           end do

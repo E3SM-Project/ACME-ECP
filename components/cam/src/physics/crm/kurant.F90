@@ -18,10 +18,10 @@ module kurant_mod
 
       wm(nz)=0.
       do k = 1,nzm
-         wm(k) = maxval(abs(w(1:nx,1:ny,k)))
-         uhm(k) = sqrt(maxval(u(1:nx,1:ny,k)**2+YES3D*v(1:nx,1:ny,k)**2))
+         wm(k) = maxval(abs(w(1:nx,1:ny,k,icrm)))
+         uhm(k) = sqrt(maxval(u(1:nx,1:ny,k,icrm)**2+YES3D*v(1:nx,1:ny,k,icrm)**2))
       end do
-      w_max(icrm)=max( w_max(icrm), real(maxval(w(1:nx,1:ny,1:nz)),kind(w_max(icrm))) )
+      w_max(icrm)=max( w_max(icrm), real(maxval(w(1:nx,1:ny,1:nz,icrm)),kind(w_max(icrm))) )
       u_max(icrm)=max( u_max(icrm), real(maxval(uhm(1:nzm))       ,kind(u_max(icrm))) )
 
       cfl = 0.
@@ -49,7 +49,7 @@ module kurant_mod
          !    write(0, *) 'k=', k, wm(k), uhm(k)
          ! end do
          ! do i=1, nx
-         !   write(0, *) 'i=', i,  u(i, 1, 4), v(i, 1, 4), tabs(i,1,4,icrm)
+         !   write(0, *) 'i=', i,  u(i, 1, 4,icrm), v(i, 1, 4,icrm), tabs(i,1,4,icrm)
          ! end do
          !---mhwang
 
