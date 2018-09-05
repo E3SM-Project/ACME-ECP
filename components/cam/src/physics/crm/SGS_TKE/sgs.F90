@@ -435,12 +435,12 @@ CONTAINS
 
     do k = 1,ntracers
 
-      fluxbtmp = fluxbtr(:,:,k)
-      fluxttmp = fluxttr(:,:,k)
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,k),fluxbtmp,fluxttmp, &
-      trdiff(:,k),trwsb(:,k), &
+      fluxbtmp = fluxbtr(:,:,k,icrm)
+      fluxttmp = fluxttr(:,:,k,icrm)
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,k,icrm),fluxbtmp,fluxttmp, &
+      trdiff(:,k,icrm),trwsb(:,k,icrm), &
       dummy,dummy,dummy,.false.)
-      !!$          call diffuse_scalar(ncrms,icrm,tracer(:,:,:,k),fluxbtr(:,:,k),fluxttr(:,:,k),trdiff(:,k),trwsb(:,k), &
+      !!$          call diffuse_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),fluxbtr(:,:,k,icrm),fluxttr(:,:,k,icrm),trdiff(:,k,icrm),trwsb(:,k,icrm), &
       !!$                           dummy,dummy,dummy,.false.)
 
     end do

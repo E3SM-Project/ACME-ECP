@@ -263,7 +263,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
   call allocate_grid(ncrms)
-  call allocate_tracers()
+  call allocate_tracers(ncrms)
   call allocate_sgs()
 #ifdef sam1mom
   call allocate_micro_params()
