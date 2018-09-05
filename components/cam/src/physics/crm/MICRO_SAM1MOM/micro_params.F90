@@ -78,18 +78,18 @@ module micro_params
   real*4 gamr2      ! Gamma function of (5 + b_rain)/2
   real*4 gamr3      ! Gamma function of (4 + b_rain)
 
-  real(crm_rknd), allocatable :: accrsc (:)
-  real(crm_rknd), allocatable :: accrsi (:)
-  real(crm_rknd), allocatable :: accrrc (:)
-  real(crm_rknd), allocatable :: coefice(:)
-  real(crm_rknd), allocatable :: accrgc (:)
-  real(crm_rknd), allocatable :: accrgi (:)
-  real(crm_rknd), allocatable :: evaps1 (:)
-  real(crm_rknd), allocatable :: evaps2 (:)
-  real(crm_rknd), allocatable :: evapr1 (:)
-  real(crm_rknd), allocatable :: evapr2 (:)
-  real(crm_rknd), allocatable :: evapg1 (:)
-  real(crm_rknd), allocatable :: evapg2 (:)
+  real(crm_rknd), allocatable :: accrsc (:,:)
+  real(crm_rknd), allocatable :: accrsi (:,:)
+  real(crm_rknd), allocatable :: accrrc (:,:)
+  real(crm_rknd), allocatable :: coefice(:,:)
+  real(crm_rknd), allocatable :: accrgc (:,:)
+  real(crm_rknd), allocatable :: accrgi (:,:)
+  real(crm_rknd), allocatable :: evaps1 (:,:)
+  real(crm_rknd), allocatable :: evaps2 (:,:)
+  real(crm_rknd), allocatable :: evapr1 (:,:)
+  real(crm_rknd), allocatable :: evapr2 (:,:)
+  real(crm_rknd), allocatable :: evapg1 (:,:)
+  real(crm_rknd), allocatable :: evapg2 (:,:)
 
   real(crm_rknd) a_bg, a_pr, a_gr
 
@@ -97,22 +97,23 @@ module micro_params
 contains
 
 
-  subroutine allocate_micro_params()
+  subroutine allocate_micro_params(ncrms)
     implicit none
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
 
-    allocate( accrsc (nzm) )
-    allocate( accrsi (nzm) )
-    allocate( accrrc (nzm) )
-    allocate( coefice(nzm) )
-    allocate( accrgc (nzm) )
-    allocate( accrgi (nzm) )
-    allocate( evaps1 (nzm) )
-    allocate( evaps2 (nzm) )
-    allocate( evapr1 (nzm) )
-    allocate( evapr2 (nzm) )
-    allocate( evapg1 (nzm) )
-    allocate( evapg2 (nzm) )
+    allocate( accrsc (nzm,ncrms) )
+    allocate( accrsi (nzm,ncrms) )
+    allocate( accrrc (nzm,ncrms) )
+    allocate( coefice(nzm,ncrms) )
+    allocate( accrgc (nzm,ncrms) )
+    allocate( accrgi (nzm,ncrms) )
+    allocate( evaps1 (nzm,ncrms) )
+    allocate( evaps2 (nzm,ncrms) )
+    allocate( evapr1 (nzm,ncrms) )
+    allocate( evapr2 (nzm,ncrms) )
+    allocate( evapg1 (nzm,ncrms) )
+    allocate( evapg2 (nzm,ncrms) )
 
     zero = 0
 

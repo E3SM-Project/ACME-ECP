@@ -60,7 +60,7 @@ contains
               endif
 
               if(qii .gt. qci0) then
-                autos = betaelq*coefice(k)
+                autos = betaelq*coefice(k,icrm)
               else
                 autos = 0.
               endif
@@ -68,23 +68,23 @@ contains
               accrr = 0.
               if(omp.gt.0.001) then
                 qrr = qp(i,j,k) * omp
-                accrr = accrrc(k) * qrr ** powr1
+                accrr = accrrc(k,icrm) * qrr ** powr1
               end if
               accrcs = 0.
               accris = 0.
               if(omp.lt.0.999.and.omg.lt.0.999) then
                 qss = qp(i,j,k) * (1.-omp)*(1.-omg)
                 tmp = qss ** pows1
-                accrcs = accrsc(k) * tmp
-                accris = accrsi(k) * tmp
+                accrcs = accrsc(k,icrm) * tmp
+                accris = accrsi(k,icrm) * tmp
               end if
               accrcg = 0.
               accrig = 0.
               if(omp.lt.0.999.and.omg.gt.0.001) then
                 qgg = qp(i,j,k) * (1.-omp)*omg
                 tmp = qgg ** powg1
-                accrcg = accrgc(k) * tmp
-                accrig = accrgi(k) * tmp
+                accrcg = accrgc(k,icrm) * tmp
+                accrig = accrgi(k,icrm) * tmp
               endif
               qcc = (qcc+dtn*autor*qcw0)/(1.+dtn*(accrr+accrcs+accrcg+autor))
               qii = (qii+dtn*autos*qci0)/(1.+dtn*(accris+accrig+autos))
@@ -104,15 +104,15 @@ contains
               dq = 0.
               if(omp.gt.0.001) then
                 qrr = qp(i,j,k) * omp
-                dq = dq + evapr1(k)*sqrt(qrr) + evapr2(k)*qrr**powr2
+                dq = dq + evapr1(k,icrm)*sqrt(qrr) + evapr2(k,icrm)*qrr**powr2
               end if
               if(omp.lt.0.999.and.omg.lt.0.999) then
                 qss = qp(i,j,k) * (1.-omp)*(1.-omg)
-                dq = dq + evaps1(k)*sqrt(qss) + evaps2(k)*qss**pows2
+                dq = dq + evaps1(k,icrm)*sqrt(qss) + evaps2(k,icrm)*qss**pows2
               end if
               if(omp.lt.0.999.and.omg.gt.0.001) then
                 qgg = qp(i,j,k) * (1.-omp)*omg
-                dq = dq + evapg1(k)*sqrt(qgg) + evapg2(k)*qgg**powg2
+                dq = dq + evapg1(k,icrm)*sqrt(qgg) + evapg2(k,icrm)*qgg**powg2
               end if
               dq = dq * dtn * (q(i,j,k) /qsatt-1.)
               dq = max(-0.5*qp(i,j,k),dq)

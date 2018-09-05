@@ -266,7 +266,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   call allocate_tracers(ncrms)
   call allocate_sgs(ncrms)
 #ifdef sam1mom
-  call allocate_micro_params()
+  call allocate_micro_params(ncrms)
   call allocate_micro()
 #endif
 #if defined(SP_ESMT)
