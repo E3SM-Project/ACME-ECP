@@ -48,7 +48,7 @@ contains
       call bound_exchange(t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4)
       do i = 1,nsgs_fields
         if(dosgs.and.advect_sgs) &
-        call bound_exchange(sgs_field(:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+        call bound_exchange(sgs_field(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
         3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+i)
       end do
       do i = 1,nmicro_fields
@@ -90,7 +90,7 @@ contains
       call bound_exchange(t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4)
       do i = 1,nsgs_fields
         if(dosgs.and.advect_sgs) &
-        call bound_exchange(sgs_field(:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+i)
+        call bound_exchange(sgs_field(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+i)
       end do
       do i = 1,nmicro_fields
         if(   i.eq.index_water_vapor             &
@@ -135,7 +135,7 @@ contains
 
       do i = 1,nsgs_fields_diag
         if(dosgs.and.do_sgsdiag_bound) &
-        call bound_exchange(sgs_field_diag(:,:,:,i),dimx1_d,dimx2_d,dimy1_d,dimy2_d,nzm, &
+        call bound_exchange(sgs_field_diag(:,:,:,i,icrm),dimx1_d,dimx2_d,dimy1_d,dimy2_d,nzm, &
         1+dimx1_d,dimx2_d-nx,YES3D+dimy1_d,1-YES3D+dimy2_d-ny,4+nsgs_fields+i)
       end do
 

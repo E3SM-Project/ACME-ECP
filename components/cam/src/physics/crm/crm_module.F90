@@ -264,7 +264,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   call allocate_vars(ncrms)
   call allocate_grid(ncrms)
   call allocate_tracers(ncrms)
-  call allocate_sgs()
+  call allocate_sgs(ncrms)
 #ifdef sam1mom
   call allocate_micro_params()
   call allocate_micro()
@@ -275,7 +275,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
   !Loop over "vector columns"
   do icrm = 1 , ncrms
-
 
     latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
     longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
@@ -453,9 +452,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     dudt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
     dvdt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
     dwdt(1:nx,1:ny,1:nz,1:3,icrm) = 0.
-    tke (1:nx,1:ny,1:nzm) = 0.
-    tk  (1:nx,1:ny,1:nzm) = 0.
-    tkh (1:nx,1:ny,1:nzm) = 0.
+    tke (1:nx,1:ny,1:nzm,icrm) = 0.
+    tk  (1:nx,1:ny,1:nzm,icrm) = 0.
+    tkh (1:nx,1:ny,1:nzm,icrm) = 0.
     p   (1:nx,1:ny,1:nzm,icrm) = 0.
 
     CF3D(1:nx,1:ny,1:nzm,icrm) = 1.
@@ -494,7 +493,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           qv0(k,icrm) = qv0(k,icrm) + qv(i,j,k,icrm)
           qn0(k,icrm) = qn0(k,icrm) + qcl(i,j,k,icrm) + qci(i,j,k,icrm)
           qp0(k,icrm) = qp0(k,icrm) + qpl(i,j,k,icrm) + qpi(i,j,k,icrm)
-          tke0(k,icrm)=tke0(k,icrm)+tke(i,j,k)
+          tke0(k,icrm)=tke0(k,icrm)+tke(i,j,k,icrm)
         enddo
       enddo
 
@@ -724,7 +723,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     if ( doclubb .or. doclubbnoninter ) then
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                            latitude, longitude, z(:,icrm), rho(:,icrm), zi(:,icrm), rhow, tv0, tke )
+                            latitude(:,:,icrm), longitude(:,:,icrm), z(:,icrm), rho(:,icrm), zi(:,icrm), rhow(:,icrm), tv0(:,icrm), tke(:,:,:,icrm) )
     endif
 #endif /* CLUBB_CRM */
 
@@ -1267,8 +1266,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm)
 #endif
 
-    crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm)
-    crm_output%tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm)
+    crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm,icrm)
+    crm_output%tkh  (icrm,1:nx,1:ny,1:nzm) = tkh (1:nx, 1:ny, 1:nzm,icrm)
 #ifdef CLUBB_CRM
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
@@ -1538,9 +1537,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_output%qp_trans  (icrm,l) = mkadv (k,iqr) + mkadv (k,iqs) + mkadv (k,iqg) + &
                          mkdiff(k,iqr) + mkdiff(k,iqs) + mkdiff(k,iqg)
 #endif /* m2005 */
-      crm_output%tkesgsz   (icrm,l)= rho(k,icrm)*sum(tke(1:nx,1:ny,k))*factor_xy
+      crm_output%tkesgsz   (icrm,l)= rho(k,icrm)*sum(tke(1:nx,1:ny,k,icrm))*factor_xy
       crm_output%tkez      (icrm,l)= rho(k,icrm)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
-      crm_output%tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k)) * factor_xy
+      crm_output%tkz       (icrm,l) = sum(tk(1:nx, 1:ny, k,icrm)) * factor_xy
       crm_output%precflux      (icrm,l) = precflux(k,icrm)/1000.       !mm/s  -->m/s
 
       crm_output%qp_fall   (icrm,l) = qpfall(k,icrm)

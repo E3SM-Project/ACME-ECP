@@ -51,52 +51,53 @@ module sgs
 
   ! Local diagnostics:
 
-  real(crm_rknd), allocatable, target :: sgs_field     (:,:,:,:)
-  real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:)
-  real(crm_rknd), allocatable :: fluxbsgs (:,:,:) ! surface fluxes
-  real(crm_rknd), allocatable :: fluxtsgs (:,:,:) ! top boundary fluxes
-  real(crm_rknd), allocatable :: sgswle   (:,:)  ! resolved vertical flux
-  real(crm_rknd), allocatable :: sgswsb   (:,:)  ! SGS vertical flux
-  real(crm_rknd), allocatable :: sgsadv   (:,:)  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: sgslsadv (:,:)  ! tendency due to large-scale vertical advection
-  real(crm_rknd), allocatable :: sgsdiff  (:,:)  ! tendency due to vertical diffusion
-  real(crm_rknd), allocatable :: grdf_x(:)! grid factor for eddy diffusion in x
-  real(crm_rknd), allocatable :: grdf_y(:)! grid factor for eddy diffusion in y
-  real(crm_rknd), allocatable :: grdf_z(:)! grid factor for eddy diffusion in z
-  real(crm_rknd), allocatable :: tkesbbuoy (:)
-  real(crm_rknd), allocatable :: tkesbshear(:)
-  real(crm_rknd), allocatable :: tkesbdiss (:)
-  real(crm_rknd), allocatable :: tkesbdiff (:)
-  real(crm_rknd), pointer :: tke (:,:,:)   ! SGS TKE
-  real(crm_rknd), pointer :: tk  (:,:,:) ! SGS eddy viscosity
-  real(crm_rknd), pointer :: tkh (:,:,:) ! SGS eddy conductivity
+  real(crm_rknd), allocatable, target :: sgs_field     (:,:,:,:,:)
+  real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:,:)
+  real(crm_rknd), allocatable :: fluxbsgs (:,:,:,:) ! surface fluxes
+  real(crm_rknd), allocatable :: fluxtsgs (:,:,:,:) ! top boundary fluxes
+  real(crm_rknd), allocatable :: sgswle   (:,:,:)  ! resolved vertical flux
+  real(crm_rknd), allocatable :: sgswsb   (:,:,:)  ! SGS vertical flux
+  real(crm_rknd), allocatable :: sgsadv   (:,:,:)  ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: sgslsadv (:,:,:)  ! tendency due to large-scale vertical advection
+  real(crm_rknd), allocatable :: sgsdiff  (:,:,:)  ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: grdf_x(:,:)! grid factor for eddy diffusion in x
+  real(crm_rknd), allocatable :: grdf_y(:,:)! grid factor for eddy diffusion in y
+  real(crm_rknd), allocatable :: grdf_z(:,:)! grid factor for eddy diffusion in z
+  real(crm_rknd), allocatable :: tkesbbuoy (:,:)
+  real(crm_rknd), allocatable :: tkesbshear(:,:)
+  real(crm_rknd), allocatable :: tkesbdiss (:,:)
+  real(crm_rknd), allocatable :: tkesbdiff (:,:)
+  real(crm_rknd), pointer :: tke (:,:,:,:)   ! SGS TKE
+  real(crm_rknd), pointer :: tk  (:,:,:,:) ! SGS eddy viscosity
+  real(crm_rknd), pointer :: tkh (:,:,:,:) ! SGS eddy conductivity
 
 CONTAINS
 
 
-  subroutine allocate_sgs()
+  subroutine allocate_sgs(ncrms)
     implicit none
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
-    allocate( sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
-    allocate( fluxbsgs (nx,ny,1:nsgs_fields)  )
-    allocate( fluxtsgs (nx,ny,1:nsgs_fields)  )
-    allocate( sgswle(nz,1:nsgs_fields)   )
-    allocate( sgswsb(nz,1:nsgs_fields)   )
-    allocate( sgsadv(nz,1:nsgs_fields)   )
-    allocate( sgslsadv(nz,1:nsgs_fields)   )
-    allocate( sgsdiff(nz,1:nsgs_fields)   )
-    allocate( grdf_x(nzm) )
-    allocate( grdf_y(nzm) )
-    allocate( grdf_z(nzm) )
-    allocate( tkesbbuoy(nz) )
-    allocate( tkesbshear(nz) )
-    allocate( tkesbdiss(nz) )
-    allocate( tkesbdiff(nz) )
+    allocate( sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields,ncrms) )
+    allocate( sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag,ncrms) )
+    allocate( fluxbsgs (nx,ny,1:nsgs_fields,ncrms)  )
+    allocate( fluxtsgs (nx,ny,1:nsgs_fields,ncrms)  )
+    allocate( sgswle(nz,1:nsgs_fields,ncrms)   )
+    allocate( sgswsb(nz,1:nsgs_fields,ncrms)   )
+    allocate( sgsadv(nz,1:nsgs_fields,ncrms)   )
+    allocate( sgslsadv(nz,1:nsgs_fields,ncrms)   )
+    allocate( sgsdiff(nz,1:nsgs_fields,ncrms)   )
+    allocate( grdf_x(nzm,ncrms) )
+    allocate( grdf_y(nzm,ncrms) )
+    allocate( grdf_z(nzm,ncrms) )
+    allocate( tkesbbuoy(nz,ncrms) )
+    allocate( tkesbshear(nz,ncrms) )
+    allocate( tkesbdiss(nz,ncrms) )
+    allocate( tkesbdiff(nz,ncrms) )
 
-    tke(dimx1_s:,dimy1_s:,1:) => sgs_field     (:,:,:,1)
-    tk (dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,1)
-    tkh(dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,2)
+    tke(dimx1_s:,dimy1_s:,1:,1:) => sgs_field     (:,:,:,1,:)
+    tk (dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,1,:)
+    tkh(dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,2,:)
 
     zero = 0
 
@@ -109,9 +110,6 @@ CONTAINS
     sgsadv = zero
     sgslsadv = zero
     sgsdiff = zero
-    tke = zero
-    tk   = zero
-    tkh  = zero
     grdf_x = zero
     grdf_y = zero
     grdf_z = zero
@@ -205,11 +203,11 @@ CONTAINS
 
     if(nrestart.eq.0) then
 
-      sgs_field = 0.
-      sgs_field_diag = 0.
+      sgs_field(:,:,:,:,icrm) = 0.
+      sgs_field_diag(:,:,:,:,icrm) = 0.
 
-      fluxbsgs = 0.
-      fluxtsgs = 0.
+      fluxbsgs(:,:,:,icrm) = 0.
+      fluxtsgs(:,:,:,icrm) = 0.
 
     end if
 
@@ -223,23 +221,23 @@ CONTAINS
 
     if(LES) then
       do k=1,nzm
-        grdf_x(k) = dx**2/(adz(k,icrm)*dz(icrm))**2
-        grdf_y(k) = dy**2/(adz(k,icrm)*dz(icrm))**2
-        grdf_z(k) = 1.
+        grdf_x(k,icrm) = dx**2/(adz(k,icrm)*dz(icrm))**2
+        grdf_y(k,icrm) = dy**2/(adz(k,icrm)*dz(icrm))**2
+        grdf_z(k,icrm) = 1.
       end do
     else
       do k=1,nzm
-        grdf_x(k) = min( real(16.,crm_rknd), dx**2/(adz(k,icrm)*dz(icrm))**2)
-        grdf_y(k) = min( real(16.,crm_rknd), dy**2/(adz(k,icrm)*dz(icrm))**2)
-        grdf_z(k) = 1.
+        grdf_x(k,icrm) = min( real(16.,crm_rknd), dx**2/(adz(k,icrm)*dz(icrm))**2)
+        grdf_y(k,icrm) = min( real(16.,crm_rknd), dy**2/(adz(k,icrm)*dz(icrm))**2)
+        grdf_z(k,icrm) = 1.
       end do
     end if
 
-    sgswle = 0.
-    sgswsb = 0.
-    sgsadv = 0.
-    sgsdiff = 0.
-    sgslsadv = 0.
+    sgswle  (:,:,icrm) = 0.
+    sgswsb  (:,:,icrm) = 0.
+    sgsadv  (:,:,icrm) = 0.
+    sgsdiff (:,:,icrm) = 0.
+    sgslsadv(:,:,icrm) = 0.
 
 
   end subroutine sgs_init
@@ -262,7 +260,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(k.le.4.and..not.dosmagor) then
-              tke(i,j,k)=0.04*(5-k)
+              tke(i,j,k,icrm)=0.04*(5-k)
             endif
           end do
         end do
@@ -274,7 +272,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(k,icrm).gt.6.e-3.and..not.dosmagor) then
-              tke(i,j,k)=1.
+              tke(i,j,k,icrm)=1.
             endif
           end do
         end do
@@ -288,7 +286,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(k,icrm).gt.0.5e-3.and..not.dosmagor) then
-              tke(i,j,k)=1.
+              tke(i,j,k,icrm)=1.
             endif
           end do
         end do
@@ -301,7 +299,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(k,icrm).le.150..and..not.dosmagor) then
-              tke(i,j,k)=0.15*(1.-z(k,icrm)/150.)
+              tke(i,j,k,icrm)=0.15*(1.-z(k,icrm)/150.)
             endif
           end do
         end do
@@ -314,7 +312,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(k,icrm).le.3000..and..not.dosmagor) then
-              tke(i,j,k)=1.-z(k,icrm)/3000.
+              tke(i,j,k,icrm)=1.-z(k,icrm)/3000.
             endif
           end do
         end do
@@ -327,7 +325,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(k,icrm).gt.6.e-3.and..not.dosmagor) then
-              tke(i,j,k)=1.
+              tke(i,j,k,icrm)=1.
             endif
           end do
         end do
@@ -355,15 +353,15 @@ CONTAINS
     real(crm_rknd) tkhmax(nz)
 
     do k = 1,nzm
-      tkhmax(k) = maxval(tkh(1:nx,1:ny,k))
+      tkhmax(k) = maxval(tkh(1:nx,1:ny,k,icrm))
     end do
 
     cfl = 0.
     do k=1,nzm
       cfl = max(cfl,        &
-      0.5*tkhmax(k)*grdf_z(k)*dt/(dz(icrm)*adzw(k,icrm))**2, &
-      0.5*tkhmax(k)*grdf_x(k)*dt/dx**2, &
-      YES3D*0.5*tkhmax(k)*grdf_y(k)*dt/dy**2)
+      0.5*tkhmax(k)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2, &
+      0.5*tkhmax(k)*grdf_x(k,icrm)*dt/dx**2, &
+      YES3D*0.5*tkhmax(k)*grdf_y(k,icrm)*dt/dy**2)
     end do
 
   end subroutine kurant_sgs
@@ -402,7 +400,7 @@ CONTAINS
     t2lediff(:,icrm),t2lediss(:,icrm),twlediff(:,icrm),.true.)
 
     if(advect_sgs) then
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,sgswsb, &
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,sgswsb(:,:,icrm), &
       dummy,dummy,dummy,.false.)
     end if
 
@@ -482,8 +480,8 @@ subroutine sgs_proc(ncrms,icrm)
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
                           tke, tk, tkh)
 
-  tke2(:,:,:,icrm) = tke
-  tk2(:,:,:,icrm) = tk
+  tke2(:,:,:,icrm) = tke(:,:,:,icrm)
+  tk2(:,:,:,icrm) = tk(:,:,:,icrm)
 
 end subroutine sgs_proc
 
@@ -494,18 +492,6 @@ subroutine sgs_diagnose()
   ! None
 
 end subroutine sgs_diagnose
-
-!----------------------------------------------------------------------
-! called when stepout() called
-
-subroutine sgs_print()
-  use utils, only: fminmax_print
-
-  call fminmax_print('tke:',tke,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm)
-  call fminmax_print('tk:',tk,0,nxp1,1-YES3D,nyp1,nzm)
-  call fminmax_print('tkh:',tkh,0,nxp1,1-YES3D,nyp1,nzm)
-
-end subroutine sgs_print
 
 !----------------------------------------------------------------------
 !!! Initialize the list of sgs statistics

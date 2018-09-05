@@ -27,18 +27,18 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   integer       , intent(in)                 :: dimx2_d     ! scalar dimension parameter
   integer       , intent(in)                 :: dimy1_d     ! scalar dimension parameter
   integer       , intent(in)                 :: dimy2_d     ! scalar dimension parameter
-  real(crm_rknd), intent(in), dimension(nzm) :: grdf_x      ! grid length in x direction
-  real(crm_rknd), intent(in), dimension(nzm) :: grdf_y      ! grid length in y direction
-  real(crm_rknd), intent(in), dimension(nzm) :: grdf_z      ! grid length in z direction
+  real(crm_rknd), intent(in), dimension(nzm,ncrms) :: grdf_x      ! grid length in x direction
+  real(crm_rknd), intent(in), dimension(nzm,ncrms) :: grdf_y      ! grid length in y direction
+  real(crm_rknd), intent(in), dimension(nzm,ncrms) :: grdf_z      ! grid length in z direction
   logical       , intent(in)                 :: dosmagor    ! flag for diagnostic smagorinsky scheme
 
-  real(crm_rknd), intent(out), dimension(nz) :: tkesbdiss   ! TKE dissipation
-  real(crm_rknd), intent(out), dimension(nz) :: tkesbshear  ! TKE production by shear
-  real(crm_rknd), intent(out), dimension(nz) :: tkesbbuoy   ! TKE production by buoyancy
+  real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbdiss   ! TKE dissipation
+  real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbshear  ! TKE production by shear
+  real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbbuoy   ! TKE production by buoyancy
 
-  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) :: tke   ! SGS TKE
-  real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) :: tk    ! SGS eddy viscosity
-  real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) :: tkh   ! SGS eddy conductivity
+  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms) :: tke   ! SGS TKE
+  real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, ncrms) :: tk    ! SGS eddy viscosity
+  real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, ncrms) :: tkh   ! SGS eddy conductivity
   
   !-----------------------------------------------------------------------
   !!! Local Variables
@@ -73,7 +73,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd) :: cx            ! correction factor for eddy visc CFL criteria
   real(crm_rknd) :: cy            ! correction factor for eddy visc CFL criteria
   real(crm_rknd) :: cz            ! correction factor for eddy visc CFL criteria
-  real(crm_rknd) :: tkmax         ! Maximum TKE (CFL limiter)
+  real(crm_rknd) :: tkmax         ! Maximum TKE (CFL limiter,icrm)
   
   integer :: i,j,k
   integer :: kc      ! = k+1
@@ -154,7 +154,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
              +(bbb*fac_sub -tabs_interface)*(qpi(i,j,kc,icrm)-qpi(i,j,kb,icrm)) )
 
         buoy_sgs_above(i,j) = buoy_sgs
-        a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc)+tkh(i,j,kb)+0.002)*buoy_sgs
+        a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc,icrm)+tkh(i,j,kb,icrm)+0.002)*buoy_sgs
 
       end do ! i
     end do ! j
@@ -221,9 +221,9 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                  + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(i,j,k,icrm) ) * ( qpi(i,j,kc,icrm)-qpi(i,j,kb,icrm) ) )
 
             buoy_sgs_above(i,j) = buoy_sgs
-            a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc)+tkh(i,j,kb)+0.002)*buoy_sgs
+            a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc,icrm)+tkh(i,j,kb,icrm)+0.002)*buoy_sgs
 
-            ! buoy_sgs_above(i,j) = -0.5*(tkh(i,j,kc)+tkh(i,j,kb)*buoy_sgs    !bloss: Should we add the offset to tkh or not??
+            ! buoy_sgs_above(i,j) = -0.5*(tkh(i,j,kc,icrm)+tkh(i,j,kb,icrm)*buoy_sgs    !bloss: Should we add the offset to tkh or not??
 
           end if ! if saturated at interface
 
@@ -245,14 +245,14 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
 
     tkelediss(k,icrm)  = 0.
-    tkesbdiss(k)  = 0.
-    tkesbshear(k) = 0.
-    tkesbbuoy(k)  = 0.
+    tkesbdiss(k,icrm)  = 0.
+    tkesbshear(k,icrm) = 0.
+    tkesbbuoy(k,icrm)  = 0.
 
     !!! compute correction factors for eddy visc/cond not to acceed 3D stability
-    cx = dx**2/dt/grdf_x(k)
-    cy = dy**2/dt/grdf_y(k)
-    cz = (dz(icrm)*min(adzw(k,icrm),adzw(k+1,icrm)))**2/dt/grdf_z(k)
+    cx = dx**2/dt/grdf_x(k,icrm)
+    cy = dy**2/dt/grdf_y(k,icrm)
+    cz = (dz(icrm)*min(adzw(k,icrm),adzw(k+1,icrm)))**2/dt/grdf_z(k,icrm)
 
     !!! maximum value of eddy visc/cond
     tkmax = 0.09/(1./cx+1./cy+1./cz)  
@@ -265,7 +265,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
         if(buoy_sgs.le.0.) then
           smix = grd
         else
-          smix = min(grd,max(0.1*grd, sqrt(0.76*tk(i,j,k)/Ck/sqrt(buoy_sgs+1.e-10))))
+          smix = min(grd,max(0.1*grd, sqrt(0.76*tk(i,j,k,icrm)/Ck/sqrt(buoy_sgs+1.e-10))))
         end if
 
 
@@ -274,40 +274,40 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
         if(dosmagor) then
 
-          tk(i,j,k) = sqrt(Ck**3/Cee*max(0.,def2(i,j,k)-Pr*buoy_sgs))*smix**2
+          tk(i,j,k,icrm) = sqrt(Ck**3/Cee*max(0.,def2(i,j,k)-Pr*buoy_sgs))*smix**2
 
 #if defined( SP_TK_LIM )
             !!! put a hard lower limit on near-surface tk
             if ( z(k,icrm).lt.tk_min_depth ) then
-              tk(i,j,k) = max( tk(i,j,k), tk_min_value ) 
+              tk(i,j,k,icrm) = max( tk(i,j,k,icrm), tk_min_value ) 
             end if
 #endif
 
-          tke(i,j,k) = (tk(i,j,k)/(Ck*smix))**2
-          a_prod_sh = (tk(i,j,k)+0.001)*def2(i,j,k)
-          ! a_prod_bu=-(tk(i,j,k)+0.001)*Pr*buoy_sgs
+          tke(i,j,k,icrm) = (tk(i,j,k,icrm)/(Ck*smix))**2
+          a_prod_sh = (tk(i,j,k,icrm)+0.001)*def2(i,j,k)
+          ! a_prod_bu=-(tk(i,j,k,icrm)+0.001)*Pr*buoy_sgs
           a_prod_bu = 0.5*( a_prod_bu_below(i,j) + a_prod_bu_above(i,j) )
           a_diss = a_prod_sh+a_prod_bu
 
         else
 
-          tke(i,j,k) = max(real(0.,crm_rknd),tke(i,j,k))
-          a_prod_sh = (tk(i,j,k)+0.001)*def2(i,j,k)
+          tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm))
+          a_prod_sh = (tk(i,j,k,icrm)+0.001)*def2(i,j,k)
           a_prod_bu = 0.5*( a_prod_bu_below(i,j) + a_prod_bu_above(i,j) )
           !!! cap the diss rate (useful for large time steps)
-          a_diss = min(tke(i,j,k)/(4.*dt),Cee/smix*tke(i,j,k)**1.5)               
-          tke(i,j,k) = max(real(0.,crm_rknd),tke(i,j,k)+dtn*(max(0.,a_prod_sh+a_prod_bu)-a_diss))
-          tk(i,j,k)  = Ck*smix*sqrt(tke(i,j,k))
+          a_diss = min(tke(i,j,k,icrm)/(4.*dt),Cee/smix*tke(i,j,k,icrm)**1.5)               
+          tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm)+dtn*(max(0.,a_prod_sh+a_prod_bu)-a_diss))
+          tk(i,j,k,icrm)  = Ck*smix*sqrt(tke(i,j,k,icrm))
 
         end if
 
-        tk(i,j,k)  = min(tk(i,j,k),tkmax)
-        tkh(i,j,k) = Pr*tk(i,j,k)
+        tk(i,j,k,icrm)  = min(tk(i,j,k,icrm),tkmax)
+        tkh(i,j,k,icrm) = Pr*tk(i,j,k,icrm)
 
         tkelediss(k,icrm)  = tkelediss(k,icrm) - a_prod_sh
-        tkesbdiss(k)  = tkesbdiss(k) + a_diss
-        tkesbshear(k) = tkesbshear(k)+ a_prod_sh
-        tkesbbuoy(k)  = tkesbbuoy(k) + a_prod_bu
+        tkesbdiss(k,icrm)  = tkesbdiss(k,icrm) + a_diss
+        tkesbshear(k,icrm) = tkesbshear(k,icrm)+ a_prod_sh
+        tkesbbuoy(k,icrm)  = tkesbbuoy(k,icrm) + a_prod_bu
 
       end do ! i
     end do ! j

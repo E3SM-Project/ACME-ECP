@@ -13,10 +13,10 @@ contains
     integer, intent(in) :: ncrms,icrm
     ! input:
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
-    real(crm_rknd) grdf_x(nzm)! grid factor for eddy diffusion in x
-    real(crm_rknd) grdf_y(nzm)! grid factor for eddy diffusion in y
-    real(crm_rknd) grdf_z(nzm)! grid factor for eddy diffusion in z
-    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
+    real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
+    real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
+    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms) ! SGS eddy conductivity
     real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
     real(crm_rknd) fluxb(nx,ny)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny)   ! top flux

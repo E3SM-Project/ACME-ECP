@@ -12,11 +12,11 @@ contains
     integer, intent(in) :: ncrms,icrm
     ! input
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
-    real(crm_rknd) grdf_x(nzm)! grid factor for eddy diffusion in x
-    real(crm_rknd) grdf_y(nzm)! grid factor for eddy diffusion in y
-    real(crm_rknd) grdf_z(nzm)! grid factor for eddy diffusion in z
+    real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
+    real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
     real(crm_rknd) field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
-    real(crm_rknd) tkh(0:nxp1,1-YES3D:nyp1,nzm) ! eddy conductivity
+    real(crm_rknd) tkh(0:nxp1,1-YES3D:nyp1,nzm,ncrms) ! eddy conductivity
     real(crm_rknd) fluxb(nx,ny)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny)   ! top flux
     real(crm_rknd) rho(nzm,ncrms)
@@ -114,13 +114,13 @@ contains
 
     do k=1,nzm
 
-      rdx5=0.5*rdx2  * grdf_x(k)
-      rdy5=0.5*rdy2  * grdf_y(k)
+      rdx5=0.5*rdx2  * grdf_x(k,icrm)
+      rdy5=0.5*rdy2  * grdf_y(k,icrm)
 
       do j=1,ny
         do i=0,nx
           ic=i+1
-          tkx=rdx5*(tkh(i,j,k)+tkh(ic,j,k))
+          tkx=rdx5*(tkh(i,j,k,icrm)+tkh(ic,j,k,icrm))
           flx(i,j,k)=-tkx*(field(ic,j,k)-field(i,j,k))
         end do
         do i=1,nx
@@ -132,7 +132,7 @@ contains
       do j=0,ny
         jc=j+1
         do i=1,nx
-          tky=rdy5*(tkh(i,j,k)+tkh(i,jc,k))
+          tky=rdy5*(tkh(i,j,k,icrm)+tkh(i,jc,k,icrm))
           flx(i,j,k)=-tky*(field(i,jc,k)-field(i,j,k))
         end do
       end do
@@ -163,10 +163,10 @@ contains
       kc=k+1
       flux(kc)=0.
       rhoi = rhow(kc,icrm)/adzw(kc,icrm)
-      rdz5=0.5*rdz2 * grdf_z(k)
+      rdz5=0.5*rdz2 * grdf_z(k,icrm)
       do j=1,ny
         do i=1,nx
-          tkz=rdz5*(tkh(i,j,k)+tkh(i,j,kc))
+          tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
           flx(i,j,k)=-tkz*(field(i,j,kc)-field(i,j,k))*rhoi
           flux(kc) = flux(kc) + flx(i,j,k)
         end do

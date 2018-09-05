@@ -759,7 +759,7 @@ do j = 1,ny
 ! Notes: tke has to be already prognsotic or diagnostic.
         tmpwsub = sqrt(tke2(i,j,:,icrm)/3.)  ! diagnosed tmpwsub from tke
 ! diagnose tmpwsub from tk
-!        tmpwsub = sqrt(2*3.141593)*tk(i,j,:)/(dz(icrm)*adz(:,icrm))  ! from Ghan et al. (1997, JGR).
+!        tmpwsub = sqrt(2*3.141593)*tk(i,j,:,icrm)/(dz(icrm)*adz(:,icrm))  ! from Ghan et al. (1997, JGR).
       end if
 
       if ( doclubb ) then
@@ -775,7 +775,7 @@ do j = 1,ny
 ! Notes: tke has to be already prognsotic or diagnostic.
       tmpwsub = sqrt(tke2(i,j,:,icrm)/3.)  ! diagnosed tmpwsub from tke
 ! diagnose tmpwsub from tk
-!      tmpwsub = sqrt(2*3.141593)*tk(i,j,:)/(dz(icrm)*adz(:,icrm))  ! from Ghan et al. (1997, JGR).
+!      tmpwsub = sqrt(2*3.141593)*tk(i,j,:,icrm)/(dz(icrm)*adz(:,icrm))  ! from Ghan et al. (1997, JGR).
 #endif
       wvar(i,j,:) = tmpwsub(:)
 
