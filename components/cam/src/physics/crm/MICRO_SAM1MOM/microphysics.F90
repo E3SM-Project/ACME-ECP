@@ -50,7 +50,7 @@ module microphysics
 
   real(crm_rknd) vrain, vsnow, vgrau, crain, csnow, cgrau  ! precomputed coefs for precip terminal velocity
 
-  real(crm_rknd), allocatable, target :: micro_field(:,:,:,:)
+  real(crm_rknd), allocatable, target :: micro_field(:,:,:,:,:)
   real(crm_rknd), allocatable :: fluxbmk (:,:,:) ! surface flux of tracers
   real(crm_rknd), allocatable :: fluxtmk (:,:,:) ! top boundary flux of tracers
   real(crm_rknd), allocatable :: mkwle  (:,:)  ! resolved vertical flux
@@ -73,10 +73,11 @@ module microphysics
 CONTAINS
 
 
-  subroutine allocate_micro()
+  subroutine allocate_micro(ncrms)
     implicit none
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields))
+    allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields,ncrms))
     allocate( fluxbmk (nx, ny, 1:nmicro_fields) )
     allocate( fluxtmk (nx, ny, 1:nmicro_fields) )
     allocate( mkwle  (nz,1:nmicro_fields)  )
@@ -92,8 +93,6 @@ CONTAINS
     allocate( qn(nx,ny,nzm)  )
     allocate( qpsrc(nz)  )
     allocate( qpevp(nz)  )
-    q (dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,1)
-    qp(dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,2)
 
     zero = 0
 
@@ -182,7 +181,7 @@ CONTAINS
     if(nrestart.eq.0) then
 
 #ifndef CRM
-      micro_field = 0.
+      micro_field(:,:,:,:,icrm) = 0.
       do k=1,nzm
         q(:,:,k) = q0(k,icrm)
       end do
@@ -231,7 +230,7 @@ CONTAINS
     ! set mstor to be the inital microphysical mixing ratios
     do n=1, nmicro_fields
       do k=1, nzm
-        mstor(k, n) = SUM(micro_field(1:nx,1:ny,k,n))
+        mstor(k, n) = SUM(micro_field(1:nx,1:ny,k,n,icrm))
       end do
     end do
 
@@ -498,9 +497,6 @@ CONTAINS
   !----------------------------------------------------------------------
   ! called when stepout() called
 
-  subroutine micro_print()
-  end subroutine micro_print
-
   !-----------------------------------------------------------------------
   ! Supply function that computes total water in a domain:
   !
@@ -518,7 +514,7 @@ CONTAINS
           tmp = 0.
           do j=1,ny
             do i=1,nx
-              tmp = tmp + micro_field(i,j,k,m)
+              tmp = tmp + micro_field(i,j,k,m,icrm)
             end do
           end do
           total_water = total_water + tmp*adz(k,icrm)*dz(icrm)*rho(k,icrm)

@@ -61,7 +61,7 @@ contains
         .or. docloud.and.flag_precip(i).ne.1    &
 #endif
         .or. doprecip.and.flag_precip(i).eq.1 ) &
-        call bound_exchange(micro_field(:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+        call bound_exchange(micro_field(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
         3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
       end do
       if(dotracers) then
@@ -102,7 +102,7 @@ contains
         .or. docloud.and.flag_precip(i).ne.1    &
 #endif
         .or. doprecip.and.flag_precip(i).eq.1 ) &
-        call bound_exchange(micro_field(:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
+        call bound_exchange(micro_field(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm, &
         1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
       end do
       if(dotracers) then

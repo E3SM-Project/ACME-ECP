@@ -418,7 +418,7 @@ CONTAINS
       .or. doprecip.and.flag_precip(k).eq.1 ) then
       fluxbtmp(1:nx,1:ny) = fluxbmk(1:nx,1:ny,k)
       fluxttmp(1:nx,1:ny) = fluxtmk(1:nx,1:ny,k)
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k),fluxbtmp,fluxttmp, &
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k,icrm),fluxbtmp,fluxttmp, &
       mkdiff(:,k),mkwsb(:,k), dummy,dummy,dummy,.false.)
     end if
   end do
