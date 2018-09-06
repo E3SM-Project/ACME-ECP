@@ -16,7 +16,7 @@ contains
     integer, intent(in) :: ncrms,icrm
     real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
     real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
-    real(crm_rknd) qn(nx,ny,nzm)  ! cloud condensate (liquid + ice)
+    real(crm_rknd) qn(nx,ny,nzm,ncrms)  ! cloud condensate (liquid + ice)
 
     integer i,j,k, kb, kc
     real(crm_rknd) dtabs, tabs1, an, bn, ap, bp, om, ag, omp
@@ -120,11 +120,11 @@ contains
             end do
 
             qsatt = qsatt + dqsat * dtabs
-            qn(i,j,k) = max(real(0.,crm_rknd),q(i,j,k)-qsatt)
+            qn(i,j,k,icrm) = max(real(0.,crm_rknd),q(i,j,k)-qsatt)
 
           else
 
-            qn(i,j,k) = 0.
+            qn(i,j,k,icrm) = 0.
 
           endif
 

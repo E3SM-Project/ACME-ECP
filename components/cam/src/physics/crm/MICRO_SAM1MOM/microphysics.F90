@@ -63,9 +63,9 @@ module microphysics
   character*80  , allocatable :: mklongname   (:)
   character*10  , allocatable :: mkunits      (:)
   real(crm_rknd), allocatable :: mkoutputscale(:)
-  real(crm_rknd), allocatable :: qn(:,:,:)  ! cloud condensate (liquid + ice)
-  real(crm_rknd), allocatable :: qpsrc(:)  ! source of precipitation microphysical processes
-  real(crm_rknd), allocatable :: qpevp(:)  ! sink of precipitating water due to evaporation
+  real(crm_rknd), allocatable :: qn(:,:,:,:)  ! cloud condensate (liquid + ice)
+  real(crm_rknd), allocatable :: qpsrc(:,:)  ! source of precipitation microphysical processes
+  real(crm_rknd), allocatable :: qpevp(:,:)  ! sink of precipitating water due to evaporation
   real(crm_rknd), pointer :: q (:,:,:)   ! total nonprecipitating water
   real(crm_rknd), pointer :: qp(:,:,:)  ! total precipitating water
 
@@ -90,9 +90,9 @@ CONTAINS
     allocate( mklongname   (nmicro_fields))
     allocate( mkunits      (nmicro_fields))
     allocate( mkoutputscale(nmicro_fields))
-    allocate( qn(nx,ny,nzm)  )
-    allocate( qpsrc(nz)  )
-    allocate( qpevp(nz)  )
+    allocate( qn(nx,ny,nzm,ncrms)  )
+    allocate( qpsrc(nz,ncrms)  )
+    allocate( qpevp(nz,ncrms)  )
 
     zero = 0
 
@@ -185,7 +185,7 @@ CONTAINS
       do k=1,nzm
         q(:,:,k) = q0(k,icrm)
       end do
-      qn = 0.
+      qn(:,:,:,icrm) = 0.
 #endif
 
       fluxbmk(:,:,:,icrm) = 0.
@@ -214,8 +214,8 @@ CONTAINS
     mklsadv(:,:,icrm) = 0.
     mstor  (:,:,icrm) = 0.
 
-    qpsrc = 0.
-    qpevp = 0.
+    qpsrc(:,icrm) = 0.
+    qpevp(:,icrm) = 0.
 
     mkname(1) = 'QT'
     mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'
@@ -318,10 +318,10 @@ CONTAINS
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k)
+          qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k,icrm)
           omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
-          qcl(i,j,k,icrm) = qn(i,j,k)*omn
-          qci(i,j,k,icrm) = qn(i,j,k)*(1.-omn)
+          qcl(i,j,k,icrm) = qn(i,j,k,icrm)*omn
+          qci(i,j,k,icrm) = qn(i,j,k,icrm)*(1.-omn)
           omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
           qpl(i,j,k,icrm) = qp(i,j,k)*omp
           qpi(i,j,k,icrm) = qp(i,j,k)*(1.-omp)
@@ -375,7 +375,7 @@ CONTAINS
     ! For the single moment microphysics, it is liquid + ice
 
     q(1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
-    qn(1:nx,1:ny,1:nzm) = new_qc ! Liquid + Ice
+    qn(1:nx,1:ny,1:nzm,icrm) = new_qc ! Liquid + Ice
 
     return
   end subroutine micro_adjust
@@ -396,23 +396,23 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k)
+          qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k,icrm)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011
           if ( qv(i,j,k,icrm) < zero_threshold ) then
-            qn(i,j,k) = qn(i,j,k) + qv(i,j,k,icrm)
+            qn(i,j,k,icrm) = qn(i,j,k,icrm) + qv(i,j,k,icrm)
             qv(i,j,k,icrm) = zero_threshold
-            if ( qn(i,j,k) < zero_threshold ) then
+            if ( qn(i,j,k,icrm) < zero_threshold ) then
               if ( clubb_at_least_debug_level( 1 ) ) then
                 write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &
                 "Applying non-conservative hard clipping."
               end if
-              qn(i,j,k) = zero_threshold
+              qn(i,j,k,icrm) = zero_threshold
             end if ! cloud_liq < 0
           end if ! qv < 0
 
-          qcl(i,j,k,icrm) = qn(i,j,k)
+          qcl(i,j,k,icrm) = qn(i,j,k,icrm)
           qci(i,j,k,icrm) = 0.0
           omp = max(0.,min(1.,(tabs(i,j,k,icrm)-tprmin)*a_pr))
           qpl(i,j,k,icrm) = qp(i,j,k)*omp

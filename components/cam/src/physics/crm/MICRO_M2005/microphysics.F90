@@ -100,8 +100,8 @@ logical douse_reffc, douse_reffi
 real(crm_rknd), allocatable, dimension(:,:,:), SAVE :: tmtend3d
 
 #ifdef CRM
-real(crm_rknd), allocatable, dimension(:) ::  qpevp   !sink of precipitating water due to evaporation (set to zero here)
-real(crm_rknd), allocatable, dimension(:) ::  qpsrc   !source of precipitation microphysical processes (set to mtend)
+real(crm_rknd), allocatable, dimension(:,:) ::  qpevp   !sink of precipitating water due to evaporation (set to zero here)
+real(crm_rknd), allocatable, dimension(:,:) ::  qpsrc   !source of precipitation microphysical processes (set to mtend)
 #endif
 
 real(crm_rknd), allocatable, dimension(:,:,:)  :: wvar  ! the vertical velocity variance from subgrid-scale motion,
@@ -169,8 +169,8 @@ subroutine allocate_micro(ncrms)
      allocate(mkoutputscale(nmicro_fields))
      allocate (wvar(nx,ny,nzm))
 #ifdef CRM
-     allocate (qpevp(nz))
-     allocate (qpsrc(nz))
+     allocate (qpevp(nz,ncrms))
+     allocate (qpsrc(nz,ncrms))
      allocate (aut1(nx,ny,nzm))
      allocate (acc1(nx,ny,nzm))
      allocate (evpc1(nx,ny,nzm))
@@ -1195,8 +1195,8 @@ do j = 1,ny
          qpfall(1:nzm,icrm) = qpfall(1:nzm,icrm) + dtn*(stendqr+stendqs+stendqg)
 
 #ifdef CRM
-         qpsrc(1:nzm) = qpsrc(1:nzm) + dtn*(mtendqr+mtendqs+mtendqg)
-         qpevp(1:nzm) = 0.0
+         qpsrc(1:nzm,icrm) = qpsrc(1:nzm,icrm) + dtn*(mtendqr+mtendqs+mtendqg)
+         qpevp(1:nzm,icrm) = 0.0
 #endif
 
          !bloss: temperature tendency (sensible heating) due to phase changes

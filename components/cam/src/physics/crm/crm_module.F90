@@ -427,7 +427,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #else
       micro_field(1:nx,1:ny,1:nzm,1,icrm) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,2,icrm) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
-      qn(1:nx,1:ny,1:nzm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
+      qn(1:nx,1:ny,1:nzm,icrm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 
 #ifdef m2005
@@ -652,8 +652,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     uwsb(:,icrm)     = 0.
     vwle(:,icrm)     = 0.
     vwsb(:,icrm)     = 0.
-    qpsrc    = 0.
-    qpevp    = 0.
+    qpsrc(:,icrm)    = 0.
+    qpevp(:,icrm)    = 0.
     qpfall   = 0.
     precflux(:,icrm) = 0.
 
@@ -1267,7 +1267,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #else
       crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1,icrm)
       crm_state%qp(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2,icrm)
-      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm)
+      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm,icrm)
 #endif
 
     crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = tk  (1:nx, 1:ny, 1:nzm,icrm)
@@ -1515,8 +1515,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       mkdiff(k,:,icrm) = mkdiff(k,:,icrm) * factor_xy*icrm_run_time   ! kg/kg  --> kg/kg/s
 
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
-      qpsrc   (k) = qpsrc   (k) * factor_xy*icrm_run_time
-      qpevp   (k) = qpevp   (k) * factor_xy*icrm_run_time
+      qpsrc   (k,icrm) = qpsrc   (k,icrm) * factor_xy*icrm_run_time
+      qpevp   (k,icrm) = qpevp   (k,icrm) * factor_xy*icrm_run_time
       qpfall  (k,icrm) = qpfall  (k,icrm) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
       precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz(icrm)/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
@@ -1547,8 +1547,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_output%precflux      (icrm,l) = precflux(k,icrm)/1000.       !mm/s  -->m/s
 
       crm_output%qp_fall   (icrm,l) = qpfall(k,icrm)
-      crm_output%qp_evp    (icrm,l) = qpevp(k)
-      crm_output%qp_src    (icrm,l) = qpsrc(k)
+      crm_output%qp_evp    (icrm,l) = qpevp(k,icrm)
+      crm_output%qp_src    (icrm,l) = qpsrc(k,icrm)
 
       crm_output%qt_ls     (icrm,l) = qtend(k,icrm)
       crm_output%t_ls      (icrm,l) = ttend(k,icrm)
