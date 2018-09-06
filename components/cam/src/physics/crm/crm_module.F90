@@ -116,7 +116,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !-----------------------------------------------------------------------------------------------
     ! Local variable declarations
     !-----------------------------------------------------------------------------------------------
-    
+
     real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt       ! maxumum ampitude of the l.s. wind
     real(r8),       parameter :: wmin = 2.                      ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation
@@ -138,13 +138,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     integer         :: iseed             ! seed for random perturbation
     real(crm_rknd)  :: ntotal_step
     integer         :: myrank, ierr
-    
+
     !!! variables for radiation grouping method
     real(crm_rknd) :: crm_nx_rad_fac
     real(crm_rknd) :: crm_ny_rad_fac
     integer        :: i_rad
     integer        :: j_rad
-    
+
     !!! Arrays
     real(crm_rknd), allocatable :: dummy(:)
     real(crm_rknd), allocatable :: t00(:)
@@ -276,7 +276,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !Loop over "vector columns"
   do icrm = 1 , ncrms
 #ifdef sam1mom
-    q (dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,1,icrm)
+    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,1,:)
     qp(dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,2,icrm)
 #endif
 
@@ -663,7 +663,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif
 
     if ( igstep <= 1 ) then
-        iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale 
+        iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale
         call setperturb(ncrms,icrm,iseed)
     end if
 
@@ -1050,7 +1050,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 !             crm_rad%qs(icrm,i,j,k) = crm_rad%qs(icrm,i,j,k)+micro_field(i,j,k,iqs,icrm)
 !             crm_rad%ns(icrm,i,j,k) = crm_rad%ns(icrm,i,j,k)+micro_field(i,j,k,ins,icrm)
 ! #endif
-          
+
             !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
             if ( phys_stage == 1 ) then
 
@@ -1153,7 +1153,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_rad%qs(icrm,:,:,:) = crm_rad%qs(icrm,:,:,:) * tmp1
       crm_rad%ns(icrm,:,:,:) = crm_rad%ns(icrm,:,:,:) * tmp1
 #endif /* m2005 */
-    
+
     endif
 
     ! no CRM tendencies above its top

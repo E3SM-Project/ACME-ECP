@@ -134,7 +134,7 @@ contains
 
               dq = min(dq,qn(i,j,k,icrm))
               !           qp(i,j,k) = qp(i,j,k) + dq
-              !           q(i,j,k) = q(i,j,k) - dq
+              !           q(i,j,k,icrm) = q(i,j,k,icrm) - dq
               !           qn(i,j,k,icrm) = qn(i,j,k,icrm) - dq
               dqpsrc = dq
               qpsrc(k,icrm) = qpsrc(k,icrm) + dq
@@ -163,22 +163,22 @@ contains
                 dq = dq + evapg1(k,icrm)*sqrt(qgg) + evapg2(k,icrm)*qgg**powg2
               end if
 
-              !           dq = dq * dtn * (q(i,j,k) /qsatt-1.)
-              qclr = max(0., (q(i,j,k)-qn(i,j,k,icrm)-qsatt * cld3d(i,j,k)))/max(0.001, (1-cld3d(i,j,k)))
+              !           dq = dq * dtn * (q(i,j,k,icrm) /qsatt-1.)
+              qclr = max(0., (q(i,j,k,icrm)-qn(i,j,k,icrm)-qsatt * cld3d(i,j,k)))/max(0.001, (1-cld3d(i,j,k)))
               qclr = min(qclr, qsatt)
               dq = dq * dtn * (qclr/qsatt-1.)
               dq = dq * (cldmax(i,j,k) - cld3d_temp(i,j,k))  ! convert this to the grid-mean value
 
               dq = max(-0.5*qp(i,j,k),dq)
               !           qp(i,j,k) = qp(i,j,k) + dq
-              !           q(i,j,k) = q(i,j,k) - dq
+              !           q(i,j,k,icrm) = q(i,j,k,icrm) - dq
               dqpevp = dq
               qpevp(k,icrm) = qpevp(k,icrm) + dq
 
             end if
 
             if(qp(i,j,k).le.qp_threshold .and. cld3d(i,j,k).le.0) then
-              !           q(i,j,k) = q(i,j,k) + qp(i,j,k)
+              !           q(i,j,k,icrm) = q(i,j,k,icrm) + qp(i,j,k)
               dqpevp = dqpevp - qp(i,j,k)
               qpevp(k,icrm) = qpevp(k,icrm) - qp(i,j,k)
               !           qp(i,j,k) = 0.
@@ -187,12 +187,12 @@ contains
           endif
 
           qp(i,j,k) = qp(i,j,k) + dqpsrc + dqpevp
-          q(i,j,k) = q(i,j,k) - dqpsrc - dqpevp
+          q(i,j,k,icrm) = q(i,j,k,icrm) - dqpsrc - dqpevp
           qn(i,j,k,icrm) = qn(i,j,k,icrm) - dqpsrc
 
           dq = qp(i,j,k)
           qp(i,j,k)=max(0.,qp(i,j,k))
-          q(i,j,k) = q(i,j,k) + (dq-qp(i,j,k))
+          q(i,j,k,icrm) = q(i,j,k,icrm) + (dq-qp(i,j,k))
 
         end do
       enddo

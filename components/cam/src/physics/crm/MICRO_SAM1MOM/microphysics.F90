@@ -66,7 +66,7 @@ module microphysics
   real(crm_rknd), allocatable :: qn(:,:,:,:)  ! cloud condensate (liquid + ice)
   real(crm_rknd), allocatable :: qpsrc(:,:)  ! source of precipitation microphysical processes
   real(crm_rknd), allocatable :: qpevp(:,:)  ! sink of precipitating water due to evaporation
-  real(crm_rknd), pointer :: q (:,:,:)   ! total nonprecipitating water
+  real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
   real(crm_rknd), pointer :: qp(:,:,:)  ! total precipitating water
 
 
@@ -183,7 +183,7 @@ CONTAINS
 #ifndef CRM
       micro_field(:,:,:,:,icrm) = 0.
       do k=1,nzm
-        q(:,:,k) = q0(k,icrm)
+        q(:,:,k,icrm) = q0(k,icrm)
       end do
       qn(:,:,:,icrm) = 0.
 #endif
@@ -318,7 +318,7 @@ CONTAINS
     do k=1,nzm
       do j=1,ny
         do i=1,nx
-          qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k,icrm)
+          qv(i,j,k,icrm) = q(i,j,k,icrm) - qn(i,j,k,icrm)
           omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
           qcl(i,j,k,icrm) = qn(i,j,k,icrm)*omn
           qci(i,j,k,icrm) = qn(i,j,k,icrm)*(1.-omn)
@@ -374,7 +374,7 @@ CONTAINS
     new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg].
     ! For the single moment microphysics, it is liquid + ice
 
-    q(1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
+    q(1:nx,1:ny,1:nzm,icrm) = new_qv + new_qc ! Vapor + Liquid + Ice
     qn(1:nx,1:ny,1:nzm,icrm) = new_qc ! Liquid + Ice
 
     return
@@ -396,7 +396,7 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(i,j,k,icrm) = q(i,j,k) - qn(i,j,k,icrm)
+          qv(i,j,k,icrm) = q(i,j,k,icrm) - qn(i,j,k,icrm)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011

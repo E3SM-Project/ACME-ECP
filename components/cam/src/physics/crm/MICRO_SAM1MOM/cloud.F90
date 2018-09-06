@@ -14,7 +14,7 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms,icrm
-    real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
+    real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)   ! total nonprecipitating water
     real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
     real(crm_rknd) qn(nx,ny,nzm,ncrms)  ! cloud condensate (liquid + ice)
 
@@ -39,7 +39,7 @@ contains
       do j = 1, ny
         do i = 1, nx
 
-          q(i,j,k)=max(real(0.,crm_rknd),q(i,j,k))
+          q(i,j,k,icrm)=max(real(0.,crm_rknd),q(i,j,k,icrm))
 
 
           ! Initail guess for temperature assuming no cloud water/ice:
@@ -75,7 +75,7 @@ contains
           !  Test if condensation is possible:
 
 
-          if(q(i,j,k).gt.qsatt) then
+          if(q(i,j,k,icrm).gt.qsatt) then
 
             niter=0
             dtabs = 100.
@@ -112,15 +112,15 @@ contains
                 lstarp=fac_cond+(1.-omp)*fac_fus
                 dlstarp=ap*fac_fus
               endif
-              fff = tabs(i,j,k,icrm)-tabs1+lstarn*(q(i,j,k)-qsatt)+lstarp*qp(i,j,k)
-              dfff=dlstarn*(q(i,j,k)-qsatt)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
+              fff = tabs(i,j,k,icrm)-tabs1+lstarn*(q(i,j,k,icrm)-qsatt)+lstarp*qp(i,j,k)
+              dfff=dlstarn*(q(i,j,k,icrm)-qsatt)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
               dtabs=-fff/dfff
               niter=niter+1
               tabs1=tabs1+dtabs
             end do
 
             qsatt = qsatt + dqsat * dtabs
-            qn(i,j,k,icrm) = max(real(0.,crm_rknd),q(i,j,k)-qsatt)
+            qn(i,j,k,icrm) = max(real(0.,crm_rknd),q(i,j,k,icrm)-qsatt)
 
           else
 

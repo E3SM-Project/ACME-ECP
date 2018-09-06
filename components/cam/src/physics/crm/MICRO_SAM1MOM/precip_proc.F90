@@ -12,7 +12,7 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms,icrm
-    real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)   ! total nonprecipitating water
+    real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)   ! total nonprecipitating water
     real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
     real(crm_rknd) qn(nx,ny,nzm,ncrms)  ! cloud condensate (liquid + ice)
     real(crm_rknd) qpsrc(nz,ncrms)  ! source of precipitation microphysical processes
@@ -92,7 +92,7 @@ contains
               (accris+accrig)*qii + (accrcs+accrcg)*qcc + autos*(qii-qci0))
               dq = min(dq,qn(i,j,k,icrm))
               qp(i,j,k) = qp(i,j,k) + dq
-              q(i,j,k) = q(i,j,k) - dq
+              q(i,j,k,icrm) = q(i,j,k,icrm) - dq
               qn(i,j,k,icrm) = qn(i,j,k,icrm) - dq
               qpsrc(k,icrm) = qpsrc(k,icrm) + dq
 
@@ -114,15 +114,15 @@ contains
                 qgg = qp(i,j,k) * (1.-omp)*omg
                 dq = dq + evapg1(k,icrm)*sqrt(qgg) + evapg2(k,icrm)*qgg**powg2
               end if
-              dq = dq * dtn * (q(i,j,k) /qsatt-1.)
+              dq = dq * dtn * (q(i,j,k,icrm) /qsatt-1.)
               dq = max(-0.5*qp(i,j,k),dq)
               qp(i,j,k) = qp(i,j,k) + dq
-              q(i,j,k) = q(i,j,k) - dq
+              q(i,j,k,icrm) = q(i,j,k,icrm) - dq
               qpevp(k,icrm) = qpevp(k,icrm) + dq
 
             else
 
-              q(i,j,k) = q(i,j,k) + qp(i,j,k)
+              q(i,j,k,icrm) = q(i,j,k,icrm) + qp(i,j,k)
               qpevp(k,icrm) = qpevp(k,icrm) - qp(i,j,k)
               qp(i,j,k) = 0.
 
@@ -132,7 +132,7 @@ contains
 
           dq = qp(i,j,k)
           qp(i,j,k)=max(real(0.,crm_rknd),qp(i,j,k))
-          q(i,j,k) = q(i,j,k) + (dq-qp(i,j,k))
+          q(i,j,k,icrm) = q(i,j,k,icrm) + (dq-qp(i,j,k))
 
         end do
       enddo
