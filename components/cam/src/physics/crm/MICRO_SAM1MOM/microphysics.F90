@@ -51,14 +51,14 @@ module microphysics
   real(crm_rknd) vrain, vsnow, vgrau, crain, csnow, cgrau  ! precomputed coefs for precip terminal velocity
 
   real(crm_rknd), allocatable, target :: micro_field(:,:,:,:,:)
-  real(crm_rknd), allocatable :: fluxbmk (:,:,:) ! surface flux of tracers
-  real(crm_rknd), allocatable :: fluxtmk (:,:,:) ! top boundary flux of tracers
-  real(crm_rknd), allocatable :: mkwle  (:,:)  ! resolved vertical flux
-  real(crm_rknd), allocatable :: mkwsb  (:,:)  ! SGS vertical flux
-  real(crm_rknd), allocatable :: mkadv  (:,:)  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: mklsadv(:,:)  ! tendency due to large-scale vertical advection
-  real(crm_rknd), allocatable :: mkdiff (:,:)  ! tendency due to vertical diffusion
-  real(crm_rknd), allocatable :: mstor  (:,:)  ! storage terms of microphysical variables
+  real(crm_rknd), allocatable :: fluxbmk (:,:,:,:) ! surface flux of tracers
+  real(crm_rknd), allocatable :: fluxtmk (:,:,:,:) ! top boundary flux of tracers
+  real(crm_rknd), allocatable :: mkwle  (:,:,:)  ! resolved vertical flux
+  real(crm_rknd), allocatable :: mkwsb  (:,:,:)  ! SGS vertical flux
+  real(crm_rknd), allocatable :: mkadv  (:,:,:)  ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: mklsadv(:,:,:)  ! tendency due to large-scale vertical advection
+  real(crm_rknd), allocatable :: mkdiff (:,:,:)  ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: mstor  (:,:,:)  ! storage terms of microphysical variables
   character*3   , allocatable :: mkname       (:)
   character*80  , allocatable :: mklongname   (:)
   character*10  , allocatable :: mkunits      (:)
@@ -78,14 +78,14 @@ CONTAINS
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
     allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields,ncrms))
-    allocate( fluxbmk (nx, ny, 1:nmicro_fields) )
-    allocate( fluxtmk (nx, ny, 1:nmicro_fields) )
-    allocate( mkwle  (nz,1:nmicro_fields)  )
-    allocate( mkwsb  (nz,1:nmicro_fields)  )
-    allocate( mkadv  (nz,1:nmicro_fields)  )
-    allocate( mklsadv(nz,1:nmicro_fields)  )
-    allocate( mkdiff (nz,1:nmicro_fields)  )
-    allocate( mstor  (nz,1:nmicro_fields)  )
+    allocate( fluxbmk (nx, ny, 1:nmicro_fields,ncrms) )
+    allocate( fluxtmk (nx, ny, 1:nmicro_fields,ncrms) )
+    allocate( mkwle  (nz,1:nmicro_fields,ncrms)  )
+    allocate( mkwsb  (nz,1:nmicro_fields,ncrms)  )
+    allocate( mkadv  (nz,1:nmicro_fields,ncrms)  )
+    allocate( mklsadv(nz,1:nmicro_fields,ncrms)  )
+    allocate( mkdiff (nz,1:nmicro_fields,ncrms)  )
+    allocate( mstor  (nz,1:nmicro_fields,ncrms)  )
     allocate( mkname       (nmicro_fields))
     allocate( mklongname   (nmicro_fields))
     allocate( mkunits      (nmicro_fields))
@@ -188,8 +188,8 @@ CONTAINS
       qn = 0.
 #endif
 
-      fluxbmk = 0.
-      fluxtmk = 0.
+      fluxbmk(:,:,:,icrm) = 0.
+      fluxtmk(:,:,:,icrm) = 0.
 
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
@@ -207,12 +207,12 @@ CONTAINS
 
     end if
 
-    mkwle = 0.
-    mkwsb = 0.
-    mkadv = 0.
-    mkdiff = 0.
-    mklsadv = 0.
-    mstor = 0.
+    mkwle  (:,:,icrm) = 0.
+    mkwsb  (:,:,icrm) = 0.
+    mkadv  (:,:,icrm) = 0.
+    mkdiff (:,:,icrm) = 0.
+    mklsadv(:,:,icrm) = 0.
+    mstor  (:,:,icrm) = 0.
 
     qpsrc = 0.
     qpevp = 0.
@@ -230,7 +230,7 @@ CONTAINS
     ! set mstor to be the inital microphysical mixing ratios
     do n=1, nmicro_fields
       do k=1, nzm
-        mstor(k, n) = SUM(micro_field(1:nx,1:ny,k,n,icrm))
+        mstor(k, n,icrm) = SUM(micro_field(1:nx,1:ny,k,n,icrm))
       end do
     end do
 
@@ -250,14 +250,14 @@ CONTAINS
     use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
     if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
       ! Add this in later
-      fluxbmk(:,:,index_water_vapor) = 0.0
+      fluxbmk(:,:,index_water_vapor,icrm) = 0.0
     else
-      fluxbmk(:,:,index_water_vapor) = fluxbq(:,:,icrm)
+      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
     end if
 #else
-    fluxbmk(:,:,index_water_vapor) = fluxbq(:,:,icrm)
+    fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
 #endif /*CLUBB_CRM*/
-    fluxtmk(:,:,index_water_vapor) = fluxtq(:,:,icrm)
+    fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm)
 
   end subroutine micro_flux
 

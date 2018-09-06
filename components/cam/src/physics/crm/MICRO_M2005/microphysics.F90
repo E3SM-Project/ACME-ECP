@@ -65,22 +65,22 @@ integer, allocatable, dimension(:) :: flag_micro3Dout
 
 integer, parameter :: index_cloud_ice = -1 ! historical variable (don't change)
 
-real(crm_rknd), allocatable, dimension(:,:,:) :: fluxbmk, fluxtmk !surface/top fluxes
+real(crm_rknd), allocatable, dimension(:,:,:,:) :: fluxbmk, fluxtmk !surface/top fluxes
 real(crm_rknd), allocatable, dimension(:,:,:) :: reffc, reffi
 real(crm_rknd), allocatable, dimension(:,:,:) :: cloudliq
 
-real(crm_rknd), allocatable, dimension(:,:) :: & ! statistical arrays
-     mkwle, & ! resolved vertical flux
-     mkwsb, & ! SGS vertical flux
-     mksed, & ! sedimentation vertical flux
-     mkadv, & ! tendency due to vertical advection
-     mkdiff, &! tendency due to vertical diffusion
-     mklsadv, & ! tendency due to large-scale vertical advection
-     mfrac, & ! fraction of domain with microphysical quantity > 1.e-6
-     stend, & ! tendency due to sedimentation
-     mtend, & ! tendency due to microphysical processes (other than sedimentation)
-     mstor, & ! storage terms of microphysical variables
-     trtau    ! optical depths of various species
+! statistical arrays
+real(crm_rknd), allocatable, dimension(:,:,:) :: mkwle ! resolved vertical flux
+real(crm_rknd), allocatable, dimension(:,:,:) :: mkwsb ! SGS vertical flux
+real(crm_rknd), allocatable, dimension(:,:) :: mksed ! sedimentation vertical flux
+real(crm_rknd), allocatable, dimension(:,:,:) :: mkadv ! tendency due to vertical advection
+real(crm_rknd), allocatable, dimension(:,:,:) :: mkdiff! tendency due to vertical diffusion
+real(crm_rknd), allocatable, dimension(:,:,:) :: mklsadv ! tendency due to large-scale vertical advection
+real(crm_rknd), allocatable, dimension(:,:) :: mfrac ! fraction of domain with microphysical quantity > 1.e-6
+real(crm_rknd), allocatable, dimension(:,:) :: stend ! tendency due to sedimentation
+real(crm_rknd), allocatable, dimension(:,:) :: mtend ! tendency due to microphysical processes (other than sedimentation)
+real(crm_rknd), allocatable, dimension(:,:,:) :: mstor ! storage terms of microphysical variables
+real(crm_rknd), allocatable, dimension(:,:) :: trtau    ! optical depths of various species
 
 real(crm_rknd), allocatable, dimension(:) :: tmtend
 
@@ -140,22 +140,22 @@ subroutine allocate_micro(ncrms)
   integer, intent(in) :: ncrms
      ! allocate microphysical variables
      allocate(micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,nmicro_fields,ncrms))
-     allocate(fluxbmk(nx,ny,nmicro_fields))
-     allocate(fluxtmk(nx,ny,nmicro_fields))
+     allocate(fluxbmk(nx,ny,nmicro_fields,ncrms))
+     allocate(fluxtmk(nx,ny,nmicro_fields,ncrms))
      allocate(reffc(nx,ny,nzm))
      allocate(reffi(nx,ny,nzm))
-     allocate(mkwle(nz,nmicro_fields))
-     allocate(mkwsb(nz,nmicro_fields))
-     allocate(mkadv(nz,nmicro_fields))
-     allocate(mkdiff(nz,nmicro_fields))
-     allocate(mklsadv(nz,nmicro_fields))
+     allocate(mkwle(nz,nmicro_fields,ncrms))
+     allocate(mkwsb(nz,nmicro_fields,ncrms))
+     allocate(mkadv(nz,nmicro_fields,ncrms))
+     allocate(mkdiff(nz,nmicro_fields,ncrms))
+     allocate(mklsadv(nz,nmicro_fields,ncrms))
      allocate(stend(nzm,nmicro_fields))
      allocate(mtend(nzm,nmicro_fields))
      allocate(mfrac(nzm,nmicro_fields))
      allocate(trtau(nzm,nmicro_fields))
      allocate(mksed(nzm,nmicro_fields))
      allocate(tmtend(nzm))
-     allocate(mstor(nzm,nmicro_fields))
+     allocate(mstor(nzm,nmicro_fields,ncrms))
      allocate(cloudliq(nx,ny,nzm))
      allocate(tmtend3d(nx,ny,nzm))
      allocate(flag_micro3Dout(nmicro_fields))
@@ -624,18 +624,18 @@ use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
 implicit none
 integer, intent(in) :: ncrms,icrm
 
-fluxbmk(:,:,:) = 0. ! initialize all fluxes at surface to zero
-fluxtmk(:,:,:) = 0. ! initialize all fluxes at top of domain to zero
+fluxbmk(:,:,:,icrm) = 0. ! initialize all fluxes at surface to zero
+fluxtmk(:,:,:,icrm) = 0. ! initialize all fluxes at top of domain to zero
 #ifdef CLUBB_CRM
 if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
-  fluxbmk(:,:,index_water_vapor) = 0.0 ! surface qv (latent heat,icrm) flux
+  fluxbmk(:,:,index_water_vapor,icrm) = 0.0 ! surface qv (latent heat,icrm) flux
 else
-  fluxbmk(:,:,index_water_vapor) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
+  fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
 end if
 #else
-fluxbmk(:,:,index_water_vapor) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
+fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
 #endif
-fluxtmk(:,:,index_water_vapor) = fluxtq(:,:,icrm) ! top of domain qv flux
+fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm) ! top of domain qv flux
 
 end subroutine micro_flux
 

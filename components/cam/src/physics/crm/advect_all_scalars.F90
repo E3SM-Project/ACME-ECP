@@ -43,7 +43,7 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) &
-      call advect_scalar(ncrms,icrm,micro_field(:,:,:,k,icrm),mkadv(:,k),mkwle(:,k),dummy,dummy,dummy,.false.)
+      call advect_scalar(ncrms,icrm,micro_field(:,:,:,k,icrm),mkadv(:,k,icrm),mkwle(:,k,icrm),dummy,dummy,dummy,.false.)
     end do
 
     !
