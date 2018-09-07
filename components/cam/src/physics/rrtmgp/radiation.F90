@@ -1173,6 +1173,7 @@ contains
 
       ! For CRM rad
       real(r8), pointer, dimension(:,:,:,:) :: crm_temperature, crm_qv, crm_qc, crm_qi
+      real(r8) :: qrs_col(pcols,pver), qrsc_col(pcols,pver)
 
       ! Temporary fluxes to hold outputs for a single CRM column
       type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
@@ -1233,6 +1234,8 @@ contains
                ! aggregated) are zeroed out
                call reset_fluxes(fluxes_allsky)
                call reset_fluxes(fluxes_clrsky)
+               qrs = 0
+               qrsc = 0
 
                number_crm_columns = crm_nx_rad * crm_ny_rad
                do crm_iy = 1,crm_ny_rad
@@ -1252,17 +1255,19 @@ contains
 
                      ! Call the shortwave radiation driver
                      call radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                              fluxes_allsky_col, fluxes_clrsky_col, qrs, qrsc)
+                                              fluxes_allsky_col, fluxes_clrsky_col, qrs_col, qrsc_col)
 
                      ! Aggregate means
                      call aggregate_flux_averages(number_crm_columns, fluxes_allsky_col, fluxes_allsky)
                      call aggregate_flux_averages(number_crm_columns, fluxes_clrsky_col, fluxes_clrsky)
+                     qrs  = qrs  + qrs_col  / number_crm_columns
+                     qrsc = qrsc + qrsc_col / number_crm_columns
 
                      ! Save CRM heating
                      if (use_SPCAM) then
                         do crm_iz = 1,crm_nz
                            gcm_iz = pver - crm_iz + 1
-                           crm_qrs(1:ncol,crm_ix,crm_iy,crm_iz) = qrs(1:ncol,gcm_iz)
+                           crm_qrs(1:ncol,crm_ix,crm_iy,crm_iz) = qrs_col(1:ncol,gcm_iz)
                         end do
                      end if
 
@@ -1829,6 +1834,18 @@ contains
       end if
 
    end subroutine aggregate_flux_averages
+
+   !----------------------------------------------------------------------------
+
+   subroutine aggregate_array_averages(number_of_samples, array_in, array_out)
+
+      integer, intent(in) :: number_of_samples
+      real(r8), intent(in) :: array_in
+      real(r8), intent(inout) :: array_out
+
+      array_out = array_out + array_in / number_of_samples
+
+   end subroutine aggregate_array_averages
 
    !----------------------------------------------------------------------------
 
