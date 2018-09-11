@@ -418,7 +418,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       micro_field(1:nx,1:ny,1:nzm,8,icrm)  = crm_state%ns(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,9,icrm)  = crm_state%qg(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,10,icrm) = crm_state%ng(icrm,1:nx,1:ny,1:nzm)
-      cloudliq(1:nx,1:ny,1:nzm) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
+      cloudliq(1:nx,1:ny,1:nzm,icrm) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
 #else
       micro_field(1:nx,1:ny,1:nzm,1,icrm) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
       micro_field(1:nx,1:ny,1:nzm,2,icrm) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
@@ -436,7 +436,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif /* MODAL_AERO */
       do j=1, ny
         do i=1, nx
-          if(cloudliq(i,j,k).gt.0) then
+          if(cloudliq(i,j,k,icrm).gt.0) then
             if(dopredictNc) then
               if( micro_field(i,j,k,incl,icrm).eq.0) micro_field(i,j,k,incl,icrm) = 1.0e6*Nc0/rho(k,icrm)
             endif
@@ -1258,7 +1258,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       crm_state%ns(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,8,icrm)
       crm_state%qg(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,9,icrm)
       crm_state%ng(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,10,icrm)
-      crm_state%qc(icrm,1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
+      crm_state%qc(icrm,1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
 #else
       crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,1,icrm)
       crm_state%qp(icrm,1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,2,icrm)

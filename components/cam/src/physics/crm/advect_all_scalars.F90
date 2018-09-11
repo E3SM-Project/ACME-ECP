@@ -38,11 +38,11 @@ contains
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
 #ifdef CLUBB_CRM
       !Added preprocessor directives. - nielsenb UWM 30 July 2008
-      .or. ( docloud .or. doclubb .or. doclubbnoninter ) .and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+      .or. ( docloud .or. doclubb .or. doclubbnoninter ) .and.flag_precip(k,icrm).ne.1    & ! transport non-precipitation vars
 #else
-      .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+      .or. docloud.and.flag_precip(k,icrm).ne.1    & ! transport non-precipitation vars
 #endif
-      .or. doprecip.and.flag_precip(k).eq.1 ) &
+      .or. doprecip.and.flag_precip(k,icrm).eq.1 ) &
       call advect_scalar(ncrms,icrm,micro_field(:,:,:,k,icrm),mkadv(:,k,icrm),mkwle(:,k,icrm),dummy,dummy,dummy,.false.)
     end do
 

@@ -19,16 +19,16 @@ module microphysics
   !!! microphysics prognostic variables are storred in this array:
 
 
-  integer, parameter :: flag_wmass(nmicro_fields) = (/1,1/)
+  integer, parameter :: flag_wmass(nmicro_fields,icrm) = (/1,1/)
   integer, parameter :: index_water_vapor = 1 ! index for variable that has water vapor
   integer, parameter :: index_cloud_ice = 1   ! index for cloud ice (sedimentation)
-  integer, parameter :: flag_precip(nmicro_fields) = (/0,1/)
+  integer, parameter :: flag_precip(nmicro_fields,icrm) = (/0,1/)
 
   ! both variables correspond to mass, not number
-  integer, parameter :: flag_number(nmicro_fields) = (/0,0/)
+  integer, parameter :: flag_number(nmicro_fields,icrm) = (/0,0/)
 
   ! SAM1MOM 3D microphysical fields are output by default.
-  integer, parameter :: flag_micro3Dout(nmicro_fields) = (/0,0/)
+  integer, parameter :: flag_micro3Dout(nmicro_fields,icrm) = (/0,0/)
 
 
   !!! these arrays are needed for output statistics:
@@ -510,7 +510,7 @@ CONTAINS
 
     total_water = 0.
     do m=1,nmicro_fields
-      if(flag_wmass(m).eq.1) then
+      if(flag_wmass(m,icrm).eq.1) then
         do k=1,nzm
           tmp = 0.
           do j=1,ny

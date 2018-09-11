@@ -517,7 +517,7 @@ contains
     ndn = ndndraft ; nup = nupdraft
 
     ! Get values from SAM cloud fields
-    qcloud(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
+    qcloud(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
     qrain(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
     qice(1:nx,1:ny,1:nzm)   = micro_field(1:nx,1:ny,1:nzm,iqci,icrm)
     qsnow(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqs,icrm)

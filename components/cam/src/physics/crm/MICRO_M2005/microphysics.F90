@@ -60,29 +60,29 @@ integer :: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ins, ing
 integer :: index_water_vapor ! separate water vapor index used by SAM
 
 real(crm_rknd), allocatable, dimension(:) :: lfac
-integer, allocatable, dimension(:) :: flag_wmass, flag_precip, flag_number
-integer, allocatable, dimension(:) :: flag_micro3Dout
+integer, allocatable, dimension(:,:) :: flag_wmass, flag_precip, flag_number
+integer, allocatable, dimension(:,:) :: flag_micro3Dout
 
 integer, parameter :: index_cloud_ice = -1 ! historical variable (don't change)
 
 real(crm_rknd), allocatable, dimension(:,:,:,:) :: fluxbmk, fluxtmk !surface/top fluxes
-real(crm_rknd), allocatable, dimension(:,:,:) :: reffc, reffi
-real(crm_rknd), allocatable, dimension(:,:,:) :: cloudliq
+real(crm_rknd), allocatable, dimension(:,:,:,:) :: reffc, reffi
+real(crm_rknd), allocatable, dimension(:,:,:,:) :: cloudliq
 
 ! statistical arrays
 real(crm_rknd), allocatable, dimension(:,:,:) :: mkwle ! resolved vertical flux
 real(crm_rknd), allocatable, dimension(:,:,:) :: mkwsb ! SGS vertical flux
-real(crm_rknd), allocatable, dimension(:,:) :: mksed ! sedimentation vertical flux
+real(crm_rknd), allocatable, dimension(:,:,:) :: mksed ! sedimentation vertical flux
 real(crm_rknd), allocatable, dimension(:,:,:) :: mkadv ! tendency due to vertical advection
 real(crm_rknd), allocatable, dimension(:,:,:) :: mkdiff! tendency due to vertical diffusion
 real(crm_rknd), allocatable, dimension(:,:,:) :: mklsadv ! tendency due to large-scale vertical advection
-real(crm_rknd), allocatable, dimension(:,:) :: mfrac ! fraction of domain with microphysical quantity > 1.e-6
-real(crm_rknd), allocatable, dimension(:,:) :: stend ! tendency due to sedimentation
-real(crm_rknd), allocatable, dimension(:,:) :: mtend ! tendency due to microphysical processes (other than sedimentation)
+real(crm_rknd), allocatable, dimension(:,:,:) :: mfrac ! fraction of domain with microphysical quantity > 1.e-6
+real(crm_rknd), allocatable, dimension(:,:,:) :: stend ! tendency due to sedimentation
+real(crm_rknd), allocatable, dimension(:,:,:) :: mtend ! tendency due to microphysical processes (other than sedimentation)
 real(crm_rknd), allocatable, dimension(:,:,:) :: mstor ! storage terms of microphysical variables
-real(crm_rknd), allocatable, dimension(:,:) :: trtau    ! optical depths of various species
+real(crm_rknd), allocatable, dimension(:,:,:) :: trtau    ! optical depths of various species
 
-real(crm_rknd), allocatable, dimension(:) :: tmtend
+real(crm_rknd), allocatable, dimension(:,:) :: tmtend
 
 real(crm_rknd) :: sfcpcp, sfcicepcp
 
@@ -97,7 +97,7 @@ logical douse_reffc, douse_reffi
 ! nonprecipitating cloud water, etc:
 
 !bloss: array which holds temperature tendency due to microphysics
-real(crm_rknd), allocatable, dimension(:,:,:), SAVE :: tmtend3d
+real(crm_rknd), allocatable, dimension(:,:,:,:) :: tmtend3d
 
 #ifdef CRM
 real(crm_rknd), allocatable, dimension(:,:) ::  qpevp   !sink of precipitating water due to evaporation (set to zero here)
@@ -142,53 +142,53 @@ subroutine allocate_micro(ncrms)
      allocate(micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,nmicro_fields,ncrms))
      allocate(fluxbmk(nx,ny,nmicro_fields,ncrms))
      allocate(fluxtmk(nx,ny,nmicro_fields,ncrms))
-     allocate(reffc(nx,ny,nzm))
-     allocate(reffi(nx,ny,nzm))
+     allocate(reffc(nx,ny,nzm,ncrms))
+     allocate(reffi(nx,ny,nzm,ncrms))
      allocate(mkwle(nz,nmicro_fields,ncrms))
      allocate(mkwsb(nz,nmicro_fields,ncrms))
      allocate(mkadv(nz,nmicro_fields,ncrms))
      allocate(mkdiff(nz,nmicro_fields,ncrms))
      allocate(mklsadv(nz,nmicro_fields,ncrms))
-     allocate(stend(nzm,nmicro_fields))
-     allocate(mtend(nzm,nmicro_fields))
-     allocate(mfrac(nzm,nmicro_fields))
-     allocate(trtau(nzm,nmicro_fields))
-     allocate(mksed(nzm,nmicro_fields))
-     allocate(tmtend(nzm))
+     allocate(stend(nzm,nmicro_fields,ncrms))
+     allocate(mtend(nzm,nmicro_fields,ncrms))
+     allocate(mfrac(nzm,nmicro_fields,ncrms))
+     allocate(trtau(nzm,nmicro_fields,ncrms))
+     allocate(mksed(nzm,nmicro_fields,ncrms))
+     allocate(tmtend(nzm,ncrms))
      allocate(mstor(nzm,nmicro_fields,ncrms))
-     allocate(cloudliq(nx,ny,nzm))
-     allocate(tmtend3d(nx,ny,nzm))
-     allocate(flag_micro3Dout(nmicro_fields))
-     allocate(flag_wmass(nmicro_fields))
-     allocate(flag_precip(nmicro_fields))
-     allocate(flag_number(nmicro_fields))
+     allocate(cloudliq(nx,ny,nzm,ncrms))
+     allocate(tmtend3d(nx,ny,nzm,ncrms))
+     allocate(flag_micro3Dout(nmicro_fields,ncrms))
+     allocate(flag_wmass(nmicro_fields,ncrms))
+     allocate(flag_precip(nmicro_fields,ncrms))
+     allocate(flag_number(nmicro_fields,ncrms))
      allocate(lfac(nmicro_fields))
      allocate(mkname(nmicro_fields))
      allocate(mklongname(nmicro_fields))
      allocate(mkunits(nmicro_fields))
      allocate(mkoutputscale(nmicro_fields))
-     allocate (wvar(nx,ny,nzm))
+     allocate(wvar(nx,ny,nzm))
 #ifdef CRM
-     allocate (qpevp(nz,ncrms))
-     allocate (qpsrc(nz,ncrms))
-     allocate (aut1(nx,ny,nzm))
-     allocate (acc1(nx,ny,nzm))
-     allocate (evpc1(nx,ny,nzm))
-     allocate (evpr1(nx,ny,nzm))
-     allocate (mlt1(nx,ny,nzm))
-     allocate (sub1(nx,ny,nzm))
-     allocate (dep1(nx,ny,nzm))
-     allocate (con1(nx,ny,nzm))
-     allocate (aut1a(nx,ny,nzm))
-     allocate (acc1a(nx,ny,nzm))
-     allocate (evpc1a(nx,ny,nzm))
-     allocate (evpr1a(nx,ny,nzm))
-     allocate (mlt1a(nx,ny,nzm))
-     allocate (sub1a(nx,ny,nzm))
-     allocate (dep1a(nx,ny,nzm))
-     allocate (con1a(nx,ny,nzm))
+     allocate(qpevp(nz,ncrms))
+     allocate(qpsrc(nz,ncrms))
+     allocate(aut1(nx,ny,nzm))
+     allocate(acc1(nx,ny,nzm))
+     allocate(evpc1(nx,ny,nzm))
+     allocate(evpr1(nx,ny,nzm))
+     allocate(mlt1(nx,ny,nzm))
+     allocate(sub1(nx,ny,nzm))
+     allocate(dep1(nx,ny,nzm))
+     allocate(con1(nx,ny,nzm))
+     allocate(aut1a(nx,ny,nzm))
+     allocate(acc1a(nx,ny,nzm))
+     allocate(evpc1a(nx,ny,nzm))
+     allocate(evpr1a(nx,ny,nzm))
+     allocate(mlt1a(nx,ny,nzm))
+     allocate(sub1a(nx,ny,nzm))
+     allocate(dep1a(nx,ny,nzm))
+     allocate(con1a(nx,ny,nzm))
 #endif
-     allocate (sfcpcp2D(nx,ny))
+     allocate(sfcpcp2D(nx,ny))
   ! initialize these arrays
   micro_field = 0.
   cloudliq = 0. !bloss/qt: auxially cloud liquid water variable, analogous to qn in MICRO_SAM1MOM
@@ -497,26 +497,26 @@ subroutine micro_init(ncrms,icrm)
      if(doicemicro) then
         if(dograupel) then
           !bloss/qt: qt, Nc, qr, Nr, qi, Ni, qs, Ns, qg, Ng
-           flag_wmass  = (/1,0,1,0,1,0,1,0,1,0/)
-           flag_precip = (/0,0,1,1,0,0,1,1,1,1/)
-           flag_number = (/0,1,0,1,0,1,0,1,0,1/)
+           flag_wmass (:,icrm) = (/1,0,1,0,1,0,1,0,1,0/)
+           flag_precip(:,icrm) = (/0,0,1,1,0,0,1,1,1,1/)
+           flag_number(:,icrm) = (/0,1,0,1,0,1,0,1,0,1/)
         else
           !bloss/qt: qt, Nc, qr, Nr, qi, Ni, qs, Ns
-           flag_wmass  = (/1,0,1,0,1,0,1,0/)
-           flag_precip = (/0,0,1,1,0,0,1,1/)
-           flag_number = (/0,1,0,1,0,1,0,1/)
+           flag_wmass (:,icrm) = (/1,0,1,0,1,0,1,0/)
+           flag_precip(:,icrm) = (/0,0,1,1,0,0,1,1/)
+           flag_number(:,icrm) = (/0,1,0,1,0,1,0,1/)
         end if
      else
         if(doprecip) then
           !bloss/qt: qt, Nc, qr, Nr
-           flag_wmass  = (/1,0,1,0/)
-           flag_precip = (/0,0,1,1/)
-           flag_number = (/0,1,0,1/)
+           flag_wmass (:,icrm) = (/1,0,1,0/)
+           flag_precip(:,icrm) = (/0,0,1,1/)
+           flag_number(:,icrm) = (/0,1,0,1/)
         else
           !bloss/qt: qt, Nc
-           flag_wmass  = (/1,0/)
-           flag_precip = (/0,0/)
-           flag_number = (/0,1/)
+           flag_wmass (:,icrm) = (/1,0/)
+           flag_precip(:,icrm) = (/0,0/)
+           flag_number(:,icrm) = (/0,1/)
         end if
      end if
   else
@@ -524,27 +524,27 @@ subroutine micro_init(ncrms,icrm)
      if(doicemicro) then
         if(dograupel) then
           !bloss/qt: qt, qr, Nr, qi, Ni, qs, Ns, qg, Ng
-           flag_wmass  = (/1,1,0,1,0,1,0,1,0/)
-           flag_precip = (/0,1,1,0,0,1,1,1,1/)
-           flag_number = (/0,0,1,0,1,0,1,0,1/)
+           flag_wmass (:,icrm) = (/1,1,0,1,0,1,0,1,0/)
+           flag_precip(:,icrm) = (/0,1,1,0,0,1,1,1,1/)
+           flag_number(:,icrm) = (/0,0,1,0,1,0,1,0,1/)
         else
           !bloss/qt: qt, qr, Nr, qi, Ni, qs, Ns
-           flag_wmass  = (/1,1,0,1,0,1,0/)
-           flag_precip = (/0,1,1,0,0,1,1/)
-           flag_number = (/0,0,1,0,1,0,1/)
+           flag_wmass (:,icrm) = (/1,1,0,1,0,1,0/)
+           flag_precip(:,icrm) = (/0,1,1,0,0,1,1/)
+           flag_number(:,icrm) = (/0,0,1,0,1,0,1/)
         end if
      else
         if(doprecip) then
           !bloss/qt: qt, qr, Nr
-           flag_wmass  = (/1,1,0/)
-           flag_precip = (/0,1,1/)
-           flag_number = (/0,0,1/)
+           flag_wmass (:,icrm) = (/1,1,0/)
+           flag_precip(:,icrm) = (/0,1,1/)
+           flag_number(:,icrm) = (/0,0,1/)
         else
           !bloss/qt: only total water variable is needed for no-precip,
           !            fixed droplet number, warm cloud and no cloud simulations.
-           flag_wmass  = (/1/)
-           flag_precip = (/0/)
-           flag_number = (/0/)
+           flag_wmass (:,icrm) = (/1/)
+           flag_precip(:,icrm) = (/0/)
+           flag_number(:,icrm) = (/0/)
         end if
      end if
   end if
@@ -556,7 +556,7 @@ subroutine micro_init(ncrms,icrm)
 #else
   if(docloud.AND.(doprecip.OR.dopredictNc)) then
 #endif
-     flag_micro3Dout = 1
+     flag_micro3Dout(:,icrm) = 1
   end if
 
   ! initialize factor for latent heat
@@ -586,7 +586,7 @@ subroutine micro_init(ncrms,icrm)
      q0(:,icrm) = q0(:,icrm) + qc0(:,icrm)
      do k = 1,nzm
         micro_field(:,:,k,iqv,icrm) = q0(k,icrm)
-        cloudliq(:,:,k) = qc0(k)
+        cloudliq(:,:,k,icrm) = qc0(k)
         tabs(:,:,k,icrm) = tabs0(k,icrm)
      end do
      if(dopredictNc) then ! initialize concentration somehow...
@@ -735,15 +735,15 @@ end if
 #endif ! end CRM
 
 if(dostatis) then ! initialize arrays for statistics
-   mfrac(:,:) = 0.
-   mtend(:,:) = 0.
-   trtau(:,:) = 0.
+   mfrac(:,:,icrm) = 0.
+   mtend(:,:,icrm) = 0.
+   trtau(:,:,icrm) = 0.
 !   qpfall(:,icrm)=0.     ! in SPCAM, done in crm.F90
    tlat(:,icrm) = 0.
-   tmtend3d(:,:,:) = 0.
+   tmtend3d(:,:,:,icrm) = 0.
 end if
-stend(:,:) = 0.
-mksed(:,:) = 0.
+stend(:,:,icrm) = 0.
+mksed(:,:,icrm) = 0.
 
 !!$if(doprecip) total_water_prec = total_water_prec + total_water()
 
@@ -842,7 +842,7 @@ do j = 1,ny
       ! liquid water. -dschanen 23 Nov 2009
       if ( .not. ( docloud .or. dosmoke ) ) then
         if(.not.doclubb_tb) then
-         tmpqcl  = cloudliq(i,j,:) ! Liquid updated by CLUBB just prior to this
+         tmpqcl  = cloudliq(i,j,:,icrm) ! Liquid updated by CLUBB just prior to this
          tmpqv   = tmpqv - tmpqcl ! Vapor
          tmptabs = tmptabs + fac_cond * tmpqcl ! Update temperature
          if(doclubb_gridmean) then
@@ -869,7 +869,7 @@ do j = 1,ny
          end if
         else
           call satadj_liquid(nzm,tmptabs,tmpqv,tmpqcl,tmppres)
-          cloudliq(i,j,:) = tmpqcl
+          cloudliq(i,j,:,icrm) = tmpqcl
           cloud_frac_in(1:nzm) = 0.0
         end if
       else
@@ -1101,10 +1101,10 @@ do j = 1,ny
       !          Note: update of total water moved to after if(doprecip),
       !                  since no precip moves rain --> cloud liq.
       micro_field(i,j,:,iqv,icrm) = tmpqv(:) + tmpqcl(:) !bloss/qt: total water
-      cloudliq(i,j,:) = tmpqcl(:) !bloss/qt: auxilliary cloud liquid water variable
+      cloudliq(i,j,:,icrm) = tmpqcl(:) !bloss/qt: auxilliary cloud liquid water variable
       if(dopredictNc) micro_field(i,j,:,incl,icrm) = tmpncl(:)
 
-      reffc(i,j,:) = effc1d(:)
+      reffc(i,j,:,icrm) = effc1d(:)
 
       if(doicemicro) then
          micro_field(i,j,:,iqci,icrm) = tmpqci(:)
@@ -1115,7 +1115,7 @@ do j = 1,ny
             micro_field(i,j,:,iqg,icrm) = tmpqg(:)
             micro_field(i,j,:,ing,icrm) = tmpng(:)
          end if
-         reffi(i,j,:) = effi1d(:)
+         reffi(i,j,:,icrm) = effi1d(:)
       end if
 
       !=====================================================
@@ -1127,33 +1127,33 @@ do j = 1,ny
 
       if(dostatis) then
 !bloss/qt: total water microphysical tendency includes qv and qcl
-         mtend(:,iqv) = mtend(:,iqv) + mtendqv + mtendqcl
-!bloss/qt         mtend(:,iqcl) = mtend(:,iqcl) + mtendqcl
-         if(dopredictNc) mtend(:,incl) = mtend(:,incl) + mtendncl
+         mtend(:,iqv,icrm) = mtend(:,iqv,icrm) + mtendqv + mtendqcl
+!bloss/qt         mtend(:,iqcl,icrm) = mtend(:,iqcl,icrm) + mtendqcl
+         if(dopredictNc) mtend(:,incl,icrm) = mtend(:,incl,icrm) + mtendncl
          if(doprecip) then
-            mtend(:,iqr) = mtend(:,iqr) + mtendqr
-            mtend(:,inr) = mtend(:,inr) + mtendnr
+            mtend(:,iqr,icrm) = mtend(:,iqr,icrm) + mtendqr
+            mtend(:,inr,icrm) = mtend(:,inr,icrm) + mtendnr
          end if
 
          if(doicemicro) then
-            mtend(:,iqci) = mtend(:,iqci) + mtendqci
-            mtend(:,inci) = mtend(:,inci) + mtendnci
-            !bloss            stend(:,inci) = stend(:,inci) + stendnci
+            mtend(:,iqci,icrm) = mtend(:,iqci,icrm) + mtendqci
+            mtend(:,inci,icrm) = mtend(:,inci,icrm) + mtendnci
+            !bloss            stend(:,inci,icrm) = stend(:,inci,icrm) + stendnci
 
-            mtend(:,iqs) = mtend(:,iqs) + mtendqs
-            mtend(:,ins) = mtend(:,ins) + mtendns
-            !bloss            stend(:,ins) = stend(:,ins) + stendns
+            mtend(:,iqs,icrm) = mtend(:,iqs,icrm) + mtendqs
+            mtend(:,ins,icrm) = mtend(:,ins,icrm) + mtendns
+            !bloss            stend(:,ins,icrm) = stend(:,ins,icrm) + stendns
 
             if(dograupel) then
-               mtend(:,iqg) = mtend(:,iqg) + mtendqg
-               mtend(:,ing) = mtend(:,ing) + mtendng
-               !bloss            stend(:,ing) = stend(:,ing) + stendng
+               mtend(:,iqg,icrm) = mtend(:,iqg,icrm) + mtendqg
+               mtend(:,ing,icrm) = mtend(:,ing,icrm) + mtendng
+               !bloss            stend(:,ing,icrm) = stend(:,ing,icrm) + stendng
             end if
          end if
 
          do n = 1,nmicro_fields
             do k = 1,nzm
-               if(micro_field(i,j,k,n,icrm).ge.1.e-6) mfrac(k,n) = mfrac(k,n)+1.
+               if(micro_field(i,j,k,n,icrm).ge.1.e-6) mfrac(k,n,icrm) = mfrac(k,n,icrm)+1.
             end do
          end do
 
@@ -1168,23 +1168,23 @@ do j = 1,ny
          do k = 1,nzm
             tmpc = tmpc + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqcl(k)/(1.e-20+1.e-6*effc1d(k))
             tmpr = tmpr + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqr(k)/(1.e-20+1.e-6*effr1d(k))
-            !bloss/qt: put cloud liquid optical depth in trtau(:,iqv)
-            trtau(k,iqv) = trtau(k,iqv) + tmpc
-            if(doprecip) trtau(k,iqr) = trtau(k,iqr) + tmpr
+            !bloss/qt: put cloud liquid optical depth in trtau(:,iqv,icrm)
+            trtau(k,iqv,icrm) = trtau(k,iqv,icrm) + tmpc
+            if(doprecip) trtau(k,iqr,icrm) = trtau(k,iqr,icrm) + tmpr
 
             if(doicemicro) then
                tmpi = tmpi + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqci(k)/(1.e-20+1.e-6*effi1d(k))
                tmps = tmps + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqs(k)/(1.e-20+1.e-6*effs1d(k))
                tmpg = tmpg + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqg(k)/(1.e-20+1.e-6*effg1d(k))
 
-               trtau(k,iqci) = trtau(k,iqci) + tmpi
-               trtau(k,iqs) = trtau(k,iqs) + tmps
+               trtau(k,iqci,icrm) = trtau(k,iqci,icrm) + tmpi
+               trtau(k,iqs,icrm) = trtau(k,iqs,icrm) + tmps
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
                if ( dograupel ) then
-                 trtau(k,iqg) = trtau(k,iqg) + tmpg
+                 trtau(k,iqg,icrm) = trtau(k,iqg,icrm) + tmpg
                end if
 #else
-               trtau(k,iqg) = trtau(k,iqg) + tmpg
+               trtau(k,iqg,icrm) = trtau(k,iqg,icrm) + tmpg
 #endif /* CLUBB */
             end if
          end do
@@ -1200,19 +1200,19 @@ do j = 1,ny
 #endif
 
          !bloss: temperature tendency (sensible heating) due to phase changes
-         tmtend3d(i,j,1:nzm) = tmtend1d(1:nzm)
+         tmtend3d(i,j,1:nzm,icrm) = tmtend1d(1:nzm)
 
       end if ! dostatis
 
-      stend(:,iqv) = stend(:,iqv) + stendqcl !bloss/qt: iqcl --> iqv
+      stend(:,iqv,icrm) = stend(:,iqv,icrm) + stendqcl !bloss/qt: iqcl --> iqv
       if(doprecip) then
-         stend(:,iqr) = stend(:,iqr) + stendqr
+         stend(:,iqr,icrm) = stend(:,iqr,icrm) + stendqr
       end if
 
       if(doicemicro) then
-         stend(:,iqci) = stend(:,iqci) + stendqci
-         stend(:,iqs) = stend(:,iqs) + stendqs
-         if(dograupel) stend(:,iqg) = stend(:,iqg) + stendqg
+         stend(:,iqci,icrm) = stend(:,iqci,icrm) + stendqci
+         stend(:,iqs,icrm) = stend(:,iqs,icrm) + stendqs
+         if(dograupel) stend(:,iqg,icrm) = stend(:,iqg,icrm) + stendqg
       end if
 
 #ifdef ECPP
@@ -1220,8 +1220,8 @@ do j = 1,ny
         qlsink_bf(i,j,k)  = min(1.0/dt, QSINK_TMP(k))     ! /s
         rh(i,j,k)      = RH3D(k)       !0-1
         prain(i,j,k) = C2PREC(K)    ! kg/kg/s
-        if(cloudliq(i,j,k).gt.1.0e-10) then
-          qlsink(i,j,k) = min(1.0/dt, C2PREC(k)/cloudliq(i,j,k))
+        if(cloudliq(i,j,k,icrm).gt.1.0e-10) then
+          qlsink(i,j,k) = min(1.0/dt, C2PREC(k)/cloudliq(i,j,k,icrm))
         else
           qlsink(i,j,k) = 0.0
         end if
@@ -1238,19 +1238,19 @@ end do ! j = 1,ny
 tmpc = 0.
 do k = 1,nzm
    m = nz-k
-   tmpc = tmpc + stend(m,iqv)*rho(m,icrm)*dz(icrm)*adz(m,icrm)  !bloss/qt: iqcl --> iqv
-   mksed(m,iqv) = tmpc
+   tmpc = tmpc + stend(m,iqv,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)  !bloss/qt: iqcl --> iqv
+   mksed(m,iqv,icrm) = tmpc
 end do
-precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqv)*dtn/dz(icrm)
+precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqv,icrm)*dtn/dz(icrm)
 
 if(doprecip) then
    tmpr = 0.
    do k = 1,nzm
       m = nz-k
-      tmpr = tmpr + stend(m,iqr)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
-      mksed(m,iqr) = tmpr
+      tmpr = tmpr + stend(m,iqr,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+      mksed(m,iqr,icrm) = tmpr
    end do
-   precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqr)*dtn/dz(icrm)
+   precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqr,icrm)*dtn/dz(icrm)
 end if
 
 if(doicemicro) then
@@ -1259,38 +1259,38 @@ if(doicemicro) then
    tmpg = 0.
    do k = 1,nzm
       m = nz-k
-      tmpi = tmpi + stend(m,iqci)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
-      tmps = tmps + stend(m,iqs)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+      tmpi = tmpi + stend(m,iqci,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+      tmps = tmps + stend(m,iqs,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
       if ( dograupel ) then
-        tmpg = tmpg + stend(m,iqg)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+        tmpg = tmpg + stend(m,iqg,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
       else
         tmpg = 0.
       end if
 #else
-      tmpg = tmpg + stend(m,iqg)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+      tmpg = tmpg + stend(m,iqg,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
 #endif
-      mksed(m,iqci) = tmpi
-      mksed(m,iqs) = tmps
+      mksed(m,iqci,icrm) = tmpi
+      mksed(m,iqs,icrm) = tmps
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
       if ( dograupel ) then
-        mksed(m,iqg) = tmpg
+        mksed(m,iqg,icrm) = tmpg
       end if
 #else
-      mksed(m,iqg) = tmpg
+      mksed(m,iqg,icrm) = tmpg
 #endif
    end do
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
    if ( dograupel ) then
      precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
-          - (mksed(:,iqci) + mksed(:,iqs) + mksed(:,iqg))*dtn/dz(icrm)
+          - (mksed(:,iqci,icrm) + mksed(:,iqs,icrm) + mksed(:,iqg,icrm))*dtn/dz(icrm)
    else
      precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
-          - (mksed(:,iqci) + mksed(:,iqs))*dtn/dz(icrm)
+          - (mksed(:,iqci,icrm) + mksed(:,iqs,icrm))*dtn/dz(icrm)
    end if
 #else
    precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
-        - (mksed(:,iqci) + mksed(:,iqs) + mksed(:,iqg))*dtn/dz(icrm)
+        - (mksed(:,iqci,icrm) + mksed(:,iqs,icrm) + mksed(:,iqg,icrm))*dtn/dz(icrm)
 #endif
 end if
 
@@ -1311,9 +1311,9 @@ if(doclubb) then
            if(micro_field(i,j,k,iqci,icrm) .gt. 1.0e-8) then
              ice_cldfrac(k) = 1.0
            end if
-           if(cloudliq(i,j,k) + micro_field(i,j,k,iqci,icrm) .gt.1.0e-9) then
-             CF3D(i,j,k,icrm) = (CF3D(i,j,k,icrm)* cloudliq(i,j,k) + ice_cldfrac(k) * micro_field(i,j,k,iqci,icrm))  &
-                           / (cloudliq(i,j,k) + micro_field(i,j,k,iqci,icrm))
+           if(cloudliq(i,j,k,icrm) + micro_field(i,j,k,iqci,icrm) .gt.1.0e-9) then
+             CF3D(i,j,k,icrm) = (CF3D(i,j,k,icrm)* cloudliq(i,j,k,icrm) + ice_cldfrac(k) * micro_field(i,j,k,iqci,icrm))  &
+                           / (cloudliq(i,j,k,icrm) + micro_field(i,j,k,iqci,icrm))
            else
              CF3D(i,j,k,icrm) = 0.0
            end if
@@ -1351,7 +1351,7 @@ integer i,j,k
 
 ! water vapor = total water - cloud liquid
 qv(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqv,icrm) &
-     - cloudliq(1:nx,1:ny,1:nzm)
+     - cloudliq(1:nx,1:ny,1:nzm,icrm)
 
 #ifdef CLUBB_CRM
 do i = 1, nx
@@ -1361,14 +1361,14 @@ do i = 1, nx
       ! static energy should be conserved, so updating temperature is not
       ! needed here. -dschanen 31 August 2011
       if ( qv(i,j,k,icrm) < zero_threshold ) then
-        cloudliq(i,j,k) = cloudliq(i,j,k) + qv(i,j,k,icrm)
+        cloudliq(i,j,k,icrm) = cloudliq(i,j,k,icrm) + qv(i,j,k,icrm)
         qv(i,j,k,icrm) = zero_threshold
-        if ( cloudliq(i,j,k) < zero_threshold ) then
+        if ( cloudliq(i,j,k,icrm) < zero_threshold ) then
           if ( clubb_at_least_debug_level( 1 ) ) then
             write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &
               "Applying non-conservative hard clipping."
           end if
-          cloudliq(i,j,k) = zero_threshold
+          cloudliq(i,j,k,icrm) = zero_threshold
         end if ! cloud_liq < 0
       end if ! qv < 0
     end do ! 1.. nzm
@@ -1376,7 +1376,7 @@ do i = 1, nx
 end do ! 1.. nx
 #endif /* CLUBB_CRM */
 ! cloud liquid water
-qcl(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm)
+qcl(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
 
 ! rain water
 if(doprecip) qpl(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
@@ -1437,7 +1437,7 @@ subroutine micro_adjust( new_qv, new_qc )
                                    + new_qc(1:nx,1:ny,1:nzm)
 
   ! Cloud water mixing ratio
-  cloudliq(1:nx,1:ny,1:nzm) = new_qc(1:nx,1:ny,1:nzm)
+  cloudliq(1:nx,1:ny,1:nzm,icrm) = new_qc(1:nx,1:ny,1:nzm)
 
   return
 end subroutine micro_adjust
@@ -1622,7 +1622,7 @@ real(8) function total_water(ncrms,icrm)
 
   total_water = 0.
   do m=1,nmicro_fields
-   if(flag_wmass(m).eq.1) then
+   if(flag_wmass(m,icrm).eq.1) then
     do k=1,nzm
       tmp = 0.
       do j=1,ny
@@ -1636,16 +1636,6 @@ real(8) function total_water(ncrms,icrm)
   end do
 
 end function total_water
-
-function Get_reffc() ! liquid water
-  real(crm_rknd), dimension(nx,ny,nzm) :: Get_reffc
-  Get_reffc = reffc
-end function Get_reffc
-
-function Get_reffi() ! ice
-  real(crm_rknd), dimension(nx,ny,nzm) :: Get_reffi
-  Get_reffi = reffi
-end function Get_reffi
 #ifdef CLUBB_CRM
 !-------------------------------------------------------------------------------
 ELEMENTAL REAL(crm_rknd) FUNCTION LIN_INT( var_high, var_low, height_high, height_low, height_int )
