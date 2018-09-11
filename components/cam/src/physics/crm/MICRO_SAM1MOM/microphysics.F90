@@ -19,16 +19,15 @@ module microphysics
   !!! microphysics prognostic variables are storred in this array:
 
 
-  integer, parameter :: flag_wmass(nmicro_fields,icrm) = (/1,1/)
   integer, parameter :: index_water_vapor = 1 ! index for variable that has water vapor
   integer, parameter :: index_cloud_ice = 1   ! index for cloud ice (sedimentation)
-  integer, parameter :: flag_precip(nmicro_fields,icrm) = (/0,1/)
 
   ! both variables correspond to mass, not number
-  integer, parameter :: flag_number(nmicro_fields,icrm) = (/0,0/)
-
   ! SAM1MOM 3D microphysical fields are output by default.
-  integer, parameter :: flag_micro3Dout(nmicro_fields,icrm) = (/0,0/)
+  integer, allocatable :: flag_micro3Dout(:,:)
+  integer, allocatable :: flag_precip    (:,:)
+  integer, allocatable :: flag_wmass     (:,:)
+  integer, allocatable :: flag_number    (:,:)
 
 
   !!! these arrays are needed for output statistics:
@@ -76,6 +75,7 @@ CONTAINS
   subroutine allocate_micro(ncrms)
     implicit none
     integer, intent(in) :: ncrms
+    integer :: icrm
     real(crm_rknd) :: zero
     allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields,ncrms))
     allocate( fluxbmk (nx, ny, 1:nmicro_fields,ncrms) )
@@ -93,6 +93,10 @@ CONTAINS
     allocate( qn(nx,ny,nzm,ncrms)  )
     allocate( qpsrc(nz,ncrms)  )
     allocate( qpevp(nz,ncrms)  )
+    allocate( flag_micro3Dout(nmicro_fields,ncrms) )
+    allocate( flag_precip    (nmicro_fields,ncrms) )
+    allocate( flag_wmass     (nmicro_fields,ncrms) )
+    allocate( flag_number    (nmicro_fields,ncrms) )
 
     q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,1,:)
     qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
@@ -115,6 +119,12 @@ CONTAINS
     qn = zero
     qpsrc = zero
     qpevp = zero
+    do icrm = 1 , ncrms
+      flag_micro3Dout(:,icrm)  = (/0,0/)
+      flag_precip    (:,icrm)  = (/0,1/)
+      flag_wmass     (:,icrm)  = (/1,1/)
+      flag_number    (:,icrm)  = (/0,0/)
+    enddo
   end subroutine allocate_micro
 
 
@@ -138,6 +148,10 @@ CONTAINS
     deallocate(qpevp  )
     nullify(q )
     nullify(qp)
+    deallocate(flag_micro3Dout)
+    deallocate(flag_precip    )
+    deallocate(flag_wmass     )
+    deallocate(flag_number    )
   end subroutine deallocate_micro
 
 
