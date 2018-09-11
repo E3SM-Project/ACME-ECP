@@ -3,7 +3,7 @@ module cloud_mod
 
 contains
 
-  subroutine cloud(ncrms,icrm,q,qn,qp)
+  subroutine cloud(ncrms,icrm,micro_field,qn)
 
     !  Condensation of cloud water/cloud ice.
 
@@ -14,8 +14,7 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms,icrm
-    real(crm_rknd) q(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)   ! total nonprecipitating water
-    real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! total precipitating water
+    real(crm_rknd), target :: micro_field(dimx1_s:, dimy1_s:, :, :,:)
     real(crm_rknd) qn(nx,ny,nzm,ncrms)  ! cloud condensate (liquid + ice)
 
     integer i,j,k, kb, kc
@@ -24,6 +23,11 @@ contains
     real(crm_rknd) fff,dfff,qsatt,dqsat
     real(crm_rknd) lstarn,dlstarn,lstarp,dlstarp
     integer niter
+    real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
+    real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
+
+    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,1,:)
+    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
 
     an = 1./(tbgmax-tbgmin)
     bn = tbgmin * an
@@ -46,20 +50,20 @@ contains
 
 
           tabs(i,j,k,icrm) = t(i,j,k,icrm)-gamaz(k,icrm)
-          tabs1=(tabs(i,j,k,icrm)+fac1*qp(i,j,k))/(1.+fac2*qp(i,j,k))
+          tabs1=(tabs(i,j,k,icrm)+fac1*qp(i,j,k,icrm))/(1.+fac2*qp(i,j,k,icrm))
 
           ! Warm cloud:
 
           if(tabs1.ge.tbgmax) then
 
-            tabs1=tabs(i,j,k,icrm)+fac_cond*qp(i,j,k)
+            tabs1=tabs(i,j,k,icrm)+fac_cond*qp(i,j,k,icrm)
             qsatt = qsatw_crm(tabs1,pres(k,icrm))
 
             ! Ice cloud:
 
           elseif(tabs1.le.tbgmin) then
 
-            tabs1=tabs(i,j,k,icrm)+fac_sub*qp(i,j,k)
+            tabs1=tabs(i,j,k,icrm)+fac_sub*qp(i,j,k,icrm)
             qsatt = qsati_crm(tabs1,pres(k,icrm))
 
             ! Mixed-phase cloud:
@@ -112,8 +116,8 @@ contains
                 lstarp=fac_cond+(1.-omp)*fac_fus
                 dlstarp=ap*fac_fus
               endif
-              fff = tabs(i,j,k,icrm)-tabs1+lstarn*(q(i,j,k,icrm)-qsatt)+lstarp*qp(i,j,k)
-              dfff=dlstarn*(q(i,j,k,icrm)-qsatt)+dlstarp*qp(i,j,k)-lstarn*dqsat-1.
+              fff = tabs(i,j,k,icrm)-tabs1+lstarn*(q(i,j,k,icrm)-qsatt)+lstarp*qp(i,j,k,icrm)
+              dfff=dlstarn*(q(i,j,k,icrm)-qsatt)+dlstarp*qp(i,j,k,icrm)-lstarn*dqsat-1.
               dtabs=-fff/dfff
               niter=niter+1
               tabs1=tabs1+dtabs
@@ -129,7 +133,7 @@ contains
           endif
 
           tabs(i,j,k,icrm) = tabs1
-          qp(i,j,k) = max(real(0.,crm_rknd),qp(i,j,k)) ! just in case
+          qp(i,j,k,icrm) = max(real(0.,crm_rknd),qp(i,j,k,icrm)) ! just in case
 
         end do
       end do

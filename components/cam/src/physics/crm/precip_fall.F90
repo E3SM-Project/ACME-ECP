@@ -5,7 +5,7 @@ module precip_fall_mod
 
 contains
 
-  subroutine precip_fall(ncrms,icrm,qp, term_vel, hydro_type, omega, ind)
+  subroutine precip_fall(ncrms,icrm,micro_field, term_vel, hydro_type, omega, ind)
 
     !     positively definite monotonic advection with non-oscillatory option
     !     and gravitational sedimentation
@@ -14,7 +14,7 @@ contains
     use params
     implicit none
     integer, intent(in) :: ncrms,icrm
-    real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
+    real(crm_rknd), target :: micro_field(dimx1_s:, dimy1_s:, :, :,:)
     integer hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
     real(crm_rknd) omega(nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
     integer ind
@@ -43,6 +43,9 @@ contains
     real(crm_rknd) wp(nzm), tmp_qp(nzm), irhoadz(nzm), iwmax(nzm), rhofac(nzm), prec_cfl
     integer nprec, iprec
     real(crm_rknd)  flagstat
+    real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
+
+    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
 
     !--------------------------------------------------------
 
@@ -116,7 +119,7 @@ contains
         do iprec = 1,nprec
 
           do k = 1,nzm
-            tmp_qp(k) = qp(i,j,k) ! Temporary array for qp in this column
+            tmp_qp(k) = qp(i,j,k,icrm) ! Temporary array for qp in this column
           end do
 
           !-----------------------------------------
@@ -191,7 +194,7 @@ contains
             ! Update precipitation mass fraction.
             ! Note that fz is the total flux, including both the
             ! upwind flux and the anti-diffusive correction.
-            qp(i,j,k)=qp(i,j,k)-(fz(kc)-fz(k))*irhoadz(k)
+            qp(i,j,k,icrm)=qp(i,j,k,icrm)-(fz(kc)-fz(k))*irhoadz(k)
             qpfall(k,icrm)=qpfall(k,icrm)-(fz(kc)-fz(k))*irhoadz(k)*flagstat  ! For qp budget
             lat_heat = -(lfac(kc)*fz(kc)-lfac(k)*fz(k))*irhoadz(k)
             t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat

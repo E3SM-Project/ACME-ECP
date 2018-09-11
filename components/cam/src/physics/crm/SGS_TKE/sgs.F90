@@ -78,8 +78,8 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields,ncrms) )
-    allocate( sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag,ncrms) )
+    allocate( sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms, nsgs_fields) )
+    allocate( sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms, nsgs_fields_diag) )
     allocate( fluxbsgs (nx,ny,1:nsgs_fields,ncrms)  )
     allocate( fluxtsgs (nx,ny,1:nsgs_fields,ncrms)  )
     allocate( sgswle(nz,1:nsgs_fields,ncrms)   )
@@ -95,9 +95,9 @@ CONTAINS
     allocate( tkesbdiss(nz,ncrms) )
     allocate( tkesbdiff(nz,ncrms) )
 
-    tke(dimx1_s:,dimy1_s:,1:,1:) => sgs_field     (:,:,:,1,:)
-    tk (dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,1,:)
-    tkh(dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,2,:)
+    tke(dimx1_s:,dimy1_s:,1:,1:) => sgs_field     (:,:,:,:,1)
+    tk (dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,1)
+    tkh(dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,2)
 
     zero = 0
 
@@ -203,8 +203,8 @@ CONTAINS
 
     if(nrestart.eq.0) then
 
-      sgs_field(:,:,:,:,icrm) = 0.
-      sgs_field_diag(:,:,:,:,icrm) = 0.
+      sgs_field(:,:,:,icrm,:) = 0.
+      sgs_field_diag(:,:,:,icrm,:) = 0.
 
       fluxbsgs(:,:,:,icrm) = 0.
       fluxtsgs(:,:,:,icrm) = 0.

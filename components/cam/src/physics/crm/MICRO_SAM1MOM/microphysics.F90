@@ -67,7 +67,7 @@ module microphysics
   real(crm_rknd), allocatable :: qpsrc(:,:)  ! source of precipitation microphysical processes
   real(crm_rknd), allocatable :: qpevp(:,:)  ! sink of precipitating water due to evaporation
   real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
-  real(crm_rknd), pointer :: qp(:,:,:)  ! total precipitating water
+  real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
 
 
 CONTAINS
@@ -93,6 +93,9 @@ CONTAINS
     allocate( qn(nx,ny,nzm,ncrms)  )
     allocate( qpsrc(nz,ncrms)  )
     allocate( qpevp(nz,ncrms)  )
+
+    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,1,:)
+    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
 
     zero = 0
 
@@ -197,7 +200,7 @@ CONTAINS
       if(docloud) then
 #endif
 #ifndef CRM
-        call cloud(ncrms,icrm,q,qn,qp)
+        call cloud(ncrms,icrm,micro_field,qn)
 #endif
         call micro_diagnose(ncrms,icrm)
       end if
@@ -284,8 +287,8 @@ CONTAINS
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms,icrm)
 
     if(docloud) then
-      call cloud(ncrms,icrm,q,qn,qp)
-      if(doprecip) call precip_proc(ncrms,icrm,qpsrc,qpevp,qp,q,qn)
+      call cloud(ncrms,icrm,micro_field,qn)
+      if(doprecip) call precip_proc(ncrms,icrm,qpsrc,qpevp,micro_field,qn)
       call micro_diagnose(ncrms,icrm)
     end if
     if(dosmoke) then
@@ -295,7 +298,6 @@ CONTAINS
     if ( doclubb ) then ! -dschanen UWM 21 May 2008
       CF3D(:,:, 1:nzm,icrm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
       ! so it is set here first  +++mhwang
-      !     if(doprecip) call precip_proc()
       if(doprecip) call precip_proc_clubb(ncrms,icrm)
       call micro_diagnose(ncrms,icrm)
     end if
@@ -323,8 +325,8 @@ CONTAINS
           qcl(i,j,k,icrm) = qn(i,j,k,icrm)*omn
           qci(i,j,k,icrm) = qn(i,j,k,icrm)*(1.-omn)
           omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
-          qpl(i,j,k,icrm) = qp(i,j,k)*omp
-          qpi(i,j,k,icrm) = qp(i,j,k)*(1.-omp)
+          qpl(i,j,k,icrm) = qp(i,j,k,icrm)*omp
+          qpi(i,j,k,icrm) = qp(i,j,k,icrm)*(1.-omp)
         end do
       end do
     end do
@@ -345,7 +347,6 @@ CONTAINS
     ! dschanen UWM 7 Jul 2008
     !---------------------------------------------------------------------
 
-    !   call cloud()
     !   call micro_diagnose()
 
     call micro_diagnose_clubb()
@@ -415,8 +416,8 @@ CONTAINS
           qcl(i,j,k,icrm) = qn(i,j,k,icrm)
           qci(i,j,k,icrm) = 0.0
           omp = max(0.,min(1.,(tabs(i,j,k,icrm)-tprmin)*a_pr))
-          qpl(i,j,k,icrm) = qp(i,j,k)*omp
-          qpi(i,j,k,icrm) = qp(i,j,k)*(1.-omp)
+          qpl(i,j,k,icrm) = qp(i,j,k,icrm)*omp
+          qpi(i,j,k,icrm) = qp(i,j,k,icrm)*(1.-omp)
         end do
       end do
     end do
@@ -436,20 +437,20 @@ CONTAINS
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
 
     term_vel_qp = 0.
-    if(qp(i,j,k).gt.qp_threshold) then
+    if(qp(i,j,k,icrm).gt.qp_threshold) then
       omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
       if(omp.eq.1.) then
-        term_vel_qp = vrain*(rho(k,icrm)*qp(i,j,k))**crain
+        term_vel_qp = vrain*(rho(k,icrm)*qp(i,j,k,icrm))**crain
       elseif(omp.eq.0.) then
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
-        qgg=omg*qp(i,j,k)
-        qss=qp(i,j,k)-qgg
+        qgg=omg*qp(i,j,k,icrm)
+        qss=qp(i,j,k,icrm)-qgg
         term_vel_qp = (omg*vgrau*(rho(k,icrm)*qgg)**cgrau &
         +(1.-omg)*vsnow*(rho(k,icrm)*qss)**csnow)
       else
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
-        qrr=omp*qp(i,j,k)
-        qss=qp(i,j,k)-qrr
+        qrr=omp*qp(i,j,k,icrm)
+        qss=qp(i,j,k,icrm)-qrr
         qgg=omg*qss
         qss=qss-qgg
         term_vel_qp = (omp*vrain*(rho(k,icrm)*qrr)**crain &
@@ -489,7 +490,7 @@ CONTAINS
       end do
     end do
 
-    call precip_fall(ncrms,icrm, qp, term_vel_qp, 2, omega, ind)
+    call precip_fall(ncrms,icrm, micro_field, term_vel_qp, 2, omega, ind)
 
 
   end subroutine micro_precip_fall

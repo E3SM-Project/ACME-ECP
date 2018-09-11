@@ -275,11 +275,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
   !Loop over "vector columns"
   do icrm = 1 , ncrms
-#ifdef sam1mom
-    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,1,:)
-    qp(dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,2,icrm)
-#endif
-
     latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
     longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
 
