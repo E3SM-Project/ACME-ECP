@@ -59,7 +59,7 @@ real(crm_rknd), allocatable, dimension(:,:,:,:,:) :: micro_field  ! holds mphys 
 integer :: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ins, ing
 integer :: index_water_vapor ! separate water vapor index used by SAM
 
-real(crm_rknd), allocatable, dimension(:) :: lfac
+real(crm_rknd), allocatable, dimension(:,:) :: lfac
 integer, allocatable, dimension(:,:) :: flag_wmass, flag_precip, flag_number
 integer, allocatable, dimension(:,:) :: flag_micro3Dout
 
@@ -104,32 +104,32 @@ real(crm_rknd), allocatable, dimension(:,:) ::  qpevp   !sink of precipitating w
 real(crm_rknd), allocatable, dimension(:,:) ::  qpsrc   !source of precipitation microphysical processes (set to mtend)
 #endif
 
-real(crm_rknd), allocatable, dimension(:,:,:)  :: wvar  ! the vertical velocity variance from subgrid-scale motion,
+real(crm_rknd), allocatable, dimension(:,:,:,:)  :: wvar  ! the vertical velocity variance from subgrid-scale motion,
                                               ! which is needed in droplet activation.
 #ifdef CRM
 ! hm 7/26/11 new output
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: aut1  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: acc1  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: evpc1  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: evpr1  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: mlt1  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: sub1  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: dep1  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: con1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: aut1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: acc1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: evpc1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: evpr1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: mlt1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: sub1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: dep1  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: con1  !
 
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: aut1a  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: acc1a  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: evpc1a  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: evpr1a  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: mlt1a  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: sub1a  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: dep1a  !
-real(crm_rknd), public, allocatable, dimension(:,:,:)  :: con1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: aut1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: acc1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: evpc1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: evpr1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: mlt1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: sub1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: dep1a  !
+real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: con1a  !
 #endif
 
 !+++mhwangtest
 ! test water conservation
-real(crm_rknd), public, allocatable, dimension(:, :) ::  sfcpcp2D  ! surface precipitation
+real(crm_rknd), public, allocatable, dimension(:,:,:) ::  sfcpcp2D  ! surface precipitation
 !---mhwangtest
 
 CONTAINS
@@ -162,45 +162,60 @@ subroutine allocate_micro(ncrms)
      allocate(flag_wmass(nmicro_fields,ncrms))
      allocate(flag_precip(nmicro_fields,ncrms))
      allocate(flag_number(nmicro_fields,ncrms))
-     allocate(lfac(nmicro_fields))
+     allocate(lfac(nmicro_fields,ncrms))
      allocate(mkname(nmicro_fields))
      allocate(mklongname(nmicro_fields))
      allocate(mkunits(nmicro_fields))
      allocate(mkoutputscale(nmicro_fields))
-     allocate(wvar(nx,ny,nzm))
+     allocate(wvar(nx,ny,nzm,ncrms))
 #ifdef CRM
      allocate(qpevp(nz,ncrms))
      allocate(qpsrc(nz,ncrms))
-     allocate(aut1(nx,ny,nzm))
-     allocate(acc1(nx,ny,nzm))
-     allocate(evpc1(nx,ny,nzm))
-     allocate(evpr1(nx,ny,nzm))
-     allocate(mlt1(nx,ny,nzm))
-     allocate(sub1(nx,ny,nzm))
-     allocate(dep1(nx,ny,nzm))
-     allocate(con1(nx,ny,nzm))
-     allocate(aut1a(nx,ny,nzm))
-     allocate(acc1a(nx,ny,nzm))
-     allocate(evpc1a(nx,ny,nzm))
-     allocate(evpr1a(nx,ny,nzm))
-     allocate(mlt1a(nx,ny,nzm))
-     allocate(sub1a(nx,ny,nzm))
-     allocate(dep1a(nx,ny,nzm))
-     allocate(con1a(nx,ny,nzm))
+     allocate(aut1(nx,ny,nzm,ncrms))
+     allocate(acc1(nx,ny,nzm,ncrms))
+     allocate(evpc1(nx,ny,nzm,ncrms))
+     allocate(evpr1(nx,ny,nzm,ncrms))
+     allocate(mlt1(nx,ny,nzm,ncrms))
+     allocate(sub1(nx,ny,nzm,ncrms))
+     allocate(dep1(nx,ny,nzm,ncrms))
+     allocate(con1(nx,ny,nzm,ncrms))
+     allocate(aut1a(nx,ny,nzm,ncrms))
+     allocate(acc1a(nx,ny,nzm,ncrms))
+     allocate(evpc1a(nx,ny,nzm,ncrms))
+     allocate(evpr1a(nx,ny,nzm,ncrms))
+     allocate(mlt1a(nx,ny,nzm,ncrms))
+     allocate(sub1a(nx,ny,nzm,ncrms))
+     allocate(dep1a(nx,ny,nzm,ncrms))
+     allocate(con1a(nx,ny,nzm,ncrms))
 #endif
-     allocate(sfcpcp2D(nx,ny))
+     allocate(sfcpcp2D(nx,ny,ncrms))
   ! initialize these arrays
   micro_field = 0.
   cloudliq = 0. !bloss/qt: auxially cloud liquid water variable, analogous to qn in MICRO_SAM1MOM
   fluxbmk = 0.
   fluxtmk = 0.
   mkwle = 0.
+  reffc = 0.
+  reffi = 0.
   mkwsb = 0.
   mkadv = 0.
   mkdiff = 0.
   mklsadv = 0.
+  stend = 0.
+  mtend = 0.
+  mfrac = 0.
+  trtau = 0.
+  mksed = 0.
+  tmtend = 0.
+  tmtend3d = 0.
   mstor =0.
   wvar = 0.
+  lfac = 0.
+  ! initialize flag arrays to all mass, no number, no precip
+  flag_wmass = 1
+  flag_number = 0
+  flag_precip = 0
+  flag_micro3Dout = 0
 #ifdef CRM
 ! hm 7/26/11, new output
   aut1 = 0.
@@ -220,12 +235,6 @@ subroutine allocate_micro(ncrms)
   dep1a = 0.
   con1a = 0.
 #endif
-
-  ! initialize flag arrays to all mass, no number, no precip
-  flag_wmass = 1
-  flag_number = 0
-  flag_precip = 0
-  flag_micro3Dout = 0
 end subroutine allocate_micro
 
 
@@ -560,14 +569,14 @@ subroutine micro_init(ncrms,icrm)
   end if
 
   ! initialize factor for latent heat
-  lfac(:) = 1. ! use one as default for number species
-  lfac(iqv) = lcond
-!bloss/qt  if(docloud) lfac(iqcl) = lcond
-  if(doprecip) lfac(iqr) = lcond
+  lfac(:,icrm) = 1. ! use one as default for number species
+  lfac(iqv,icrm) = lcond
+!bloss/qt  if(docloud) lfac(iqcl,icrm) = lcond
+  if(doprecip) lfac(iqr,icrm) = lcond
   if(doicemicro) then
-     lfac(iqci) = lsub
-     lfac(iqs) = lsub
-     if(dograupel) lfac(iqg) = lsub
+     lfac(iqci,icrm) = lsub
+     lfac(iqs,icrm) = lsub
+     if(dograupel) lfac(iqg,icrm) = lsub
   end if
 
   call graupel_init() ! call initialization routine within mphys module
@@ -827,7 +836,7 @@ do j = 1,ny
 ! diagnose tmpwsub from tk
 !      tmpwsub = sqrt(2*3.141593)*tk(i,j,:,icrm)/(dz(icrm)*adz(:,icrm))  ! from Ghan et al. (1997, JGR).
 #endif
-      wvar(i,j,:) = tmpwsub(:)
+      wvar(i,j,:,icrm) = tmpwsub(:)
 
       tmppres(:) = 100.*pres(1:nzm,icrm)
 
@@ -918,7 +927,7 @@ do j = 1,ny
       sfcpcp = 0.
       sfcicepcp = 0.
 
-      sfcpcp2D = 0.0  !+++mhwangtest
+      sfcpcp2D(:,:,icrm) = 0.0  !+++mhwangtest
 
       effc1d(:) = 10. ! default liquid and ice effective radii
       effi1d(:) = 75.
@@ -1038,27 +1047,27 @@ do j = 1,ny
 
 #ifdef CRM
 ! hm 7/26/11, new output
-      aut1(i,j,:) = tmpaut(:)
-      acc1(i,j,:) = tmpacc(:)
-      evpc1(i,j,:) = tmpevpc(:)
-      evpr1(i,j,:) = tmpevpr(:)
-      mlt1(i,j,:) = tmpmlt(:)
-      sub1(i,j,:) = tmpsub(:)
-      dep1(i,j,:) = tmpdep(:)
-      con1(i,j,:) = tmpcon(:)
+      aut1(i,j,:,icrm) = tmpaut(:)
+      acc1(i,j,:,icrm) = tmpacc(:)
+      evpc1(i,j,:,icrm) = tmpevpc(:)
+      evpr1(i,j,:,icrm) = tmpevpr(:)
+      mlt1(i,j,:,icrm) = tmpmlt(:)
+      sub1(i,j,:,icrm) = tmpsub(:)
+      dep1(i,j,:,icrm) = tmpdep(:)
+      con1(i,j,:,icrm) = tmpcon(:)
 
 ! hm 8/31/11, new output for gcm-grid and time-step avg
 ! rates are summed here over the icycle loop
 ! note: rates are multiplied by time step, and then
 ! divided by dt in crm.F90 to get mean rates
-      aut1a(i,j,:) = aut1a(i,j,:) + aut1(i,j,:)*dtn
-      acc1a(i,j,:) = acc1a(i,j,:) + acc1(i,j,:)*dtn
-      evpc1a(i,j,:) = evpc1a(i,j,:) + evpc1(i,j,:)*dtn
-      evpr1a(i,j,:) = evpr1a(i,j,:) + evpr1(i,j,:)*dtn
-      mlt1a(i,j,:) = mlt1a(i,j,:) + mlt1(i,j,:)*dtn
-      sub1a(i,j,:) = sub1a(i,j,:) + sub1(i,j,:)*dtn
-      dep1a(i,j,:) = dep1a(i,j,:) + dep1(i,j,:)*dtn
-      con1a(i,j,:) = con1a(i,j,:) + con1(i,j,:)*dtn
+      aut1a(i,j,:,icrm) = aut1a(i,j,:,icrm) + aut1(i,j,:,icrm)*dtn
+      acc1a(i,j,:,icrm) = acc1a(i,j,:,icrm) + acc1(i,j,:,icrm)*dtn
+      evpc1a(i,j,:,icrm) = evpc1a(i,j,:,icrm) + evpc1(i,j,:,icrm)*dtn
+      evpr1a(i,j,:,icrm) = evpr1a(i,j,:,icrm) + evpr1(i,j,:,icrm)*dtn
+      mlt1a(i,j,:,icrm) = mlt1a(i,j,:,icrm) + mlt1(i,j,:,icrm)*dtn
+      sub1a(i,j,:,icrm) = sub1a(i,j,:,icrm) + sub1(i,j,:,icrm)*dtn
+      dep1a(i,j,:,icrm) = dep1a(i,j,:,icrm) + dep1(i,j,:,icrm)*dtn
+      con1a(i,j,:,icrm) = con1a(i,j,:,icrm) + con1(i,j,:,icrm)*dtn
 #endif
 
      ! update microphysical quantities in this grid column
@@ -1069,7 +1078,7 @@ do j = 1,ny
          precsfc(i,j,icrm) = precsfc(i,j,icrm) + sfcpcp/dz(icrm)
          prec_xy(i,j,icrm) = prec_xy(i,j,icrm) + sfcpcp/dtn/dz(icrm)
 !+++mhwang
-         sfcpcp2D(i,j) = sfcpcp/dtn/dz(icrm)
+         sfcpcp2D(i,j,icrm) = sfcpcp/dtn/dz(icrm)
 !---mhwang
 #ifdef CRM
          precssfc(i,j,icrm) = precssfc(i,j,icrm) + sfcicepcp/dz(icrm)    ! the corect unit of precssfc should be mm/dz +++mhwang

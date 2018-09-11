@@ -604,14 +604,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     ! these are increments added to calculate gcm-grid and time-step avg
     ! note - these values are also averaged over the icycle loop following
     ! the approach for precsfc
-    aut1a  = 0.
-    acc1a  = 0.
-    evpc1a = 0.
-    evpr1a = 0.
-    mlt1a  = 0.
-    sub1a  = 0.
-    dep1a  = 0.
-    con1a  = 0.
+    aut1a (:,:,:,icrm) = 0.
+    acc1a (:,:,:,icrm) = 0.
+    evpc1a(:,:,:,icrm) = 0.
+    evpr1a(:,:,:,icrm) = 0.
+    mlt1a (:,:,:,icrm) = 0.
+    sub1a (:,:,:,icrm) = 0.
+    dep1a (:,:,:,icrm) = 0.
+    con1a (:,:,:,icrm) = 0.
 #endif /* m2005 */
 
     crm_output%mu_crm (icrm,:) = 0.
@@ -1302,15 +1302,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         crm_output%qpl(icrm,i,j,k) = qpl(i,j,k,icrm)
         crm_output%qpi(icrm,i,j,k) = qpi(i,j,k,icrm)
 #ifdef m2005
-        crm_output%wvar(icrm,i,j,k) = wvar (i,j,k)
-        crm_output%aut (icrm,i,j,k) = aut1 (i,j,k)
-        crm_output%acc (icrm,i,j,k) = acc1 (i,j,k)
-        crm_output%evpc(icrm,i,j,k) = evpc1(i,j,k)
-        crm_output%evpr(icrm,i,j,k) = evpr1(i,j,k)
-        crm_output%mlt (icrm,i,j,k) = mlt1 (i,j,k)
-        crm_output%sub (icrm,i,j,k) = sub1 (i,j,k)
-        crm_output%dep (icrm,i,j,k) = dep1 (i,j,k)
-        crm_output%con (icrm,i,j,k) = con1 (i,j,k)
+        crm_output%wvar(icrm,i,j,k) = wvar (i,j,k,icrm)
+        crm_output%aut (icrm,i,j,k) = aut1 (i,j,k,icrm)
+        crm_output%acc (icrm,i,j,k) = acc1 (i,j,k,icrm)
+        crm_output%evpc(icrm,i,j,k) = evpc1(i,j,k,icrm)
+        crm_output%evpr(icrm,i,j,k) = evpr1(i,j,k,icrm)
+        crm_output%mlt (icrm,i,j,k) = mlt1 (i,j,k,icrm)
+        crm_output%sub (icrm,i,j,k) = sub1 (i,j,k,icrm)
+        crm_output%dep (icrm,i,j,k) = dep1 (i,j,k,icrm)
+        crm_output%con (icrm,i,j,k) = con1 (i,j,k,icrm)
 #endif /* m2005 */
         enddo
       enddo
@@ -1378,14 +1378,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          crm_output%aut_a (icrm,l) = crm_output%aut_a (icrm,l) + aut1a (i,j,k)
-          crm_output%acc_a (icrm,l) = crm_output%acc_a (icrm,l) + acc1a (i,j,k)
-          crm_output%evpc_a(icrm,l) = crm_output%evpc_a(icrm,l) + evpc1a(i,j,k)
-          crm_output%evpr_a(icrm,l) = crm_output%evpr_a(icrm,l) + evpr1a(i,j,k)
-          crm_output%mlt_a (icrm,l) = crm_output%mlt_a (icrm,l) + mlt1a (i,j,k)
-          crm_output%sub_a (icrm,l) = crm_output%sub_a (icrm,l) + sub1a (i,j,k)
-          crm_output%dep_a (icrm,l) = crm_output%dep_a (icrm,l) + dep1a (i,j,k)
-          crm_output%con_a (icrm,l) = crm_output%con_a (icrm,l) + con1a (i,j,k)
+          crm_output%aut_a (icrm,l) = crm_output%aut_a (icrm,l) + aut1a (i,j,k,icrm)
+          crm_output%acc_a (icrm,l) = crm_output%acc_a (icrm,l) + acc1a (i,j,k,icrm)
+          crm_output%evpc_a(icrm,l) = crm_output%evpc_a(icrm,l) + evpc1a(i,j,k,icrm)
+          crm_output%evpr_a(icrm,l) = crm_output%evpr_a(icrm,l) + evpr1a(i,j,k,icrm)
+          crm_output%mlt_a (icrm,l) = crm_output%mlt_a (icrm,l) + mlt1a (i,j,k,icrm)
+          crm_output%sub_a (icrm,l) = crm_output%sub_a (icrm,l) + sub1a (i,j,k,icrm)
+          crm_output%dep_a (icrm,l) = crm_output%dep_a (icrm,l) + dep1a (i,j,k,icrm)
+          crm_output%con_a (icrm,l) = crm_output%con_a (icrm,l) + con1a (i,j,k,icrm)
         enddo
       enddo
     enddo

@@ -26,7 +26,7 @@ contains
 
     ! Local:
 
-    real(crm_rknd) mx(nzm),mn(nzm), lfac(nz)
+    real(crm_rknd) mx(nzm),mn(nzm), lfac(nz,icrm)
     real(crm_rknd) www(nz),fz(nz)
     real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) f0(nzm),df0(nzm)
@@ -75,16 +75,16 @@ contains
 
           select case (hydro_type)
           case(0)
-            lfac(k) = fac_cond
+            lfac(k,icrm) = fac_cond
             flagstat = 1.
           case(1)
-            lfac(k) = fac_sub
+            lfac(k,icrm) = fac_sub
             flagstat = 1.
           case(2)
-            lfac(k) = fac_cond + (1-omega(i,j,k))*fac_fus
+            lfac(k,icrm) = fac_cond + (1-omega(i,j,k))*fac_fus
             flagstat = 1.
           case(3)
-            lfac(k) = 0.
+            lfac(k,icrm) = 0.
             flagstat = 0.
           case default
             if(masterproc) then
@@ -101,7 +101,7 @@ contains
 
         fz(nz)=0.
         www(nz)=0.
-        lfac(nz)=0
+        lfac(nz,icrm)=0
 
         ! If maximum CFL due to precipitation velocity is greater than 0.9,
         ! take more than one advection step to maintain stability.
@@ -196,7 +196,7 @@ contains
             ! upwind flux and the anti-diffusive correction.
             qp(i,j,k,icrm)=qp(i,j,k,icrm)-(fz(kc)-fz(k))*irhoadz(k)
             qpfall(k,icrm)=qpfall(k,icrm)-(fz(kc)-fz(k))*irhoadz(k)*flagstat  ! For qp budget
-            lat_heat = -(lfac(kc)*fz(kc)-lfac(k)*fz(k))*irhoadz(k)
+            lat_heat = -(lfac(kc,icrm)*fz(kc)-lfac(k,icrm)*fz(k))*irhoadz(k)
             t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat
             tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
             precflux(k,icrm) = precflux(k,icrm) - fz(k)*flagstat   ! For statistics
@@ -220,7 +220,7 @@ contains
 
             fz(nz)=0.
             www(nz)=0.
-            lfac(nz)=0.
+            lfac(nz,icrm)=0.
 
           end if
 
