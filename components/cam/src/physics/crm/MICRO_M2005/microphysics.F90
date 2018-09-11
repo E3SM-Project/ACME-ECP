@@ -592,7 +592,7 @@ subroutine micro_init(ncrms,icrm)
       call satadj_liquid(nzm,tabs0(:,icrm),q0(:,icrm),qc0,pres(:,icrm)*100.)
 
      ! initialize microphysical quantities
-     q0(:,icrm) = q0(:,icrm) + qc0(:,icrm)
+     q0(:,icrm) = q0(:,icrm) + qc0(:)
      do k = 1,nzm
         micro_field(:,:,k,iqv,icrm) = q0(k,icrm)
         cloudliq(:,:,k,icrm) = qc0(k)
