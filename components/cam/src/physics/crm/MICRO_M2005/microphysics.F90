@@ -574,27 +574,6 @@ subroutine micro_init(ncrms,icrm)
 
   if(nrestart.eq.0) then
 
-! In SPCAM,  do not need this part.
-#ifndef CRM
- ! compute initial profiles of liquid water - M.K.
-      call satadj_liquid(nzm,tabs0(:,icrm),q0(:,icrm),qc0,pres(:,icrm)*100.)
-
-     ! initialize microphysical quantities
-     q0(:,icrm) = q0(:,icrm) + qc0(:)
-     do k = 1,nzm
-        micro_field(:,:,k,iqv,icrm) = q0(k,icrm)
-        cloudliq(:,:,k,icrm) = qc0(k)
-        tabs(:,:,k,icrm) = tabs0(k,icrm)
-     end do
-     if(dopredictNc) then ! initialize concentration somehow...
-       do k = 1,nzm
-         if(q0(k,icrm).gt.0.) then
-            micro_field(:,:,k,incl,icrm) = 0.5*ccnconst*1.e6
-         end if
-       end do
-     end if
-#endif  ! CRM
-
 #ifdef CLUBB_CRM
      if(docloud.or.doclubb)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 #else
@@ -717,19 +696,6 @@ integer :: i1, i2, j1, j2, i, j, k, m, n
 real(8) :: tmp_total, tmptot
 
 ! call t_startf ('micro_proc')
-
-#ifndef CRM
-if(mod(nstep-1,nstatis).eq.0.and.icycle.eq.1) then
-   do j=1,ny
-      do i=1,nx
-         precsfc(i,j,icrm)=0.    ! in SPCAM, done in crm.F90
-      end do
-   end do
-   do k=1,nzm
-      precflux(k,icrm) = 0.   ! in SPCAM, done in crm.F90
-   end do
-end if
-#endif ! end CRM
 
 if(dostatis) then ! initialize arrays for statistics
    mfrac(:,:,icrm) = 0.
