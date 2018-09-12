@@ -18,7 +18,7 @@ import numpy as np
 #######################################################################################
 
 #Complain if there aren't two arguments
-if (len(sys.argv) < 3) :
+if (len(sys.argv) < 4) :
   print("Usage: python nccmp.py file1.nc file2.nc")
   sys.exit(1)
 
