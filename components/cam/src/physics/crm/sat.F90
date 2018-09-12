@@ -12,13 +12,13 @@ contains
   real(crm_rknd) function esatw_crm(t)
     use params, only: crm_rknd
     implicit none
-    real(crm_rknd) t	! temperature (K)
+    real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
     data  a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
     6.105851, 0.4440316, 0.1430341e-1, &
     0.2641412e-3, 0.2995057e-5, 0.2031998e-7, &
     0.6936113e-10, 0.2564861e-13,-0.3704404e-15/
-    !     	6.11239921, 0.443987641, 0.142986287e-1, &
+    !       6.11239921, 0.443987641, 0.142986287e-1, &
     !       0.264847430e-3, 0.302950461e-5, 0.206739458e-7, &
     !       0.640689451e-10, -0.952447341e-13,-0.976195544e-15/
     real(crm_rknd) dt
@@ -35,8 +35,8 @@ contains
   real(crm_rknd) function qsatw_crm(t,p)
     use params, only: crm_rknd
     implicit none
-    real(crm_rknd) t	! temperature (K)
-    real(crm_rknd) p	! pressure    (mb)
+    real(crm_rknd) t  ! temperature (K)
+    real(crm_rknd) p  ! pressure    (mb)
     real(crm_rknd) esat_crm
     esat_crm = esatw_crm(t)
     qsatw_crm = 0.622 * esat_crm/max(esat_crm,p-esat_crm)
@@ -46,7 +46,7 @@ contains
   real(crm_rknd) function dtesatw_crm(t)
     use params, only: crm_rknd
     implicit none
-    real(crm_rknd) t	! temperature (K)
+    real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
     data  a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
     0.443956472, 0.285976452e-1, 0.794747212e-3, &
@@ -66,8 +66,8 @@ contains
   real(crm_rknd) function dtqsatw_crm(t,p)
     use params, only: crm_rknd
     implicit none
-    real(crm_rknd) t	! temperature (K)
-    real(crm_rknd) p	! pressure    (mb)
+    real(crm_rknd) t  ! temperature (K)
+    real(crm_rknd) p  ! pressure    (mb)
     dtqsatw_crm = 0.622*dtesatw_crm(t)/p
   end
 
@@ -75,7 +75,7 @@ contains
   real(crm_rknd) function esati_crm(t)
     use params, only: crm_rknd
     implicit none
-    real(crm_rknd) t	! temperature (K)
+    real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
     data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
     6.11147274, 0.503160820, 0.188439774e-1, &
@@ -95,8 +95,8 @@ contains
   real(crm_rknd) function qsati_crm(t,p)
     use params, only: crm_rknd
     implicit none
-    real(crm_rknd) t	! temperature (K)
-    real(crm_rknd) p	! pressure    (mb)
+    real(crm_rknd) t  ! temperature (K)
+    real(crm_rknd) p  ! pressure    (mb)
     real(crm_rknd) esat_crm
     esat_crm=esati_crm(t)
     qsati_crm=0.622 * esat_crm/max(esat_crm,p-esat_crm)
@@ -106,7 +106,7 @@ contains
   real(crm_rknd) function dtesati_crm(t)
     use params, only: crm_rknd
     implicit none
-    real(crm_rknd) t	! temperature (K)
+    real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
     data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
     0.503223089, 0.377174432e-1,0.126710138e-2, &
@@ -125,8 +125,8 @@ contains
   real(crm_rknd) function dtqsati_crm(t,p)
     use params, only: crm_rknd
     implicit none
-    real(crm_rknd) t	! temperature (K)
-    real(crm_rknd) p	! pressure    (mb)
+    real(crm_rknd) t  ! temperature (K)
+    real(crm_rknd) p  ! pressure    (mb)
     dtqsati_crm=0.622*dtesati_crm(t)/p
   end
 
