@@ -451,11 +451,11 @@ CONTAINS
     ! diffusion of scalar momentum tracers
 
     call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
-                        u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs,    &
+                        u_esmt(:,:,:,icrm),fluxb_u_esmt(:,:,icrm),fluxt_u_esmt(:,:,icrm),u_esmt_diff(:,icrm),u_esmt_sgs(:,icrm),    &
                         dummy,dummy,dummy,.false.)
 
     call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
-                        v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs,    &
+                        v_esmt(:,:,:,icrm),fluxb_v_esmt(:,:,icrm),fluxt_v_esmt(:,:,icrm),v_esmt_diff(:,icrm),v_esmt_sgs(:,icrm),    &
                         dummy,dummy,dummy,.false.)
 
 #endif

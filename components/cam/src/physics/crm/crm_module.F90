@@ -270,7 +270,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   call allocate_micro_params(ncrms)
 #endif
 #if defined(SP_ESMT)
-  call allocate_scalar_momentum()
+  call allocate_scalar_momentum(ncrms)
 #endif
 
   !Loop over "vector columns"
@@ -400,8 +400,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 #if defined(SP_ESMT)
     do k=1,nzm
-      u_esmt(:,:,k) = crm_input%ul_esmt(icrm,plev-k+1)
-      v_esmt(:,:,k) = crm_input%vl_esmt(icrm,plev-k+1)
+      u_esmt(:,:,k,icrm) = crm_input%ul_esmt(icrm,plev-k+1)
+      v_esmt(:,:,k,icrm) = crm_input%vl_esmt(icrm,plev-k+1)
     end do
 #endif
 
@@ -1189,8 +1189,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           vln(l,icrm)  = vln(l,icrm)  +v(i,j,k,icrm)
 
 #if defined(SP_ESMT)
-          uln_esmt(l,icrm) = uln_esmt(l,icrm)+u_esmt(i,j,k)
-          vln_esmt(l,icrm) = vln_esmt(l,icrm)+v_esmt(i,j,k)
+          uln_esmt(l,icrm) = uln_esmt(l,icrm)+u_esmt(i,j,k,icrm)
+          vln_esmt(l,icrm) = vln_esmt(l,icrm)+v_esmt(i,j,k,icrm)
 #endif
         enddo ! j
       enddo ! i

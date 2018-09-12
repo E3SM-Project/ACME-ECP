@@ -27,22 +27,22 @@ module scalar_momentum_mod
    public scalar_momentum_tend
 #endif
 
-   real(crm_rknd), allocatable :: u_esmt(:,:,:)       ! scalar zonal velocity
-   real(crm_rknd), allocatable :: v_esmt(:,:,:)       ! scalar meridonal velocity
+   real(crm_rknd), allocatable :: u_esmt(:,:,:,:)       ! scalar zonal velocity
+   real(crm_rknd), allocatable :: v_esmt(:,:,:,:)       ! scalar meridonal velocity
 
-   real(crm_rknd), allocatable :: u_esmt_wle (:)      ! resolved vertical flux
-   real(crm_rknd), allocatable :: v_esmt_wle (:)      !
-   real(crm_rknd), allocatable :: u_esmt_sgs (:)      ! SGS vertical flux
-   real(crm_rknd), allocatable :: v_esmt_sgs (:)      !
-   real(crm_rknd), allocatable :: u_esmt_adv (:)      ! large-scale tendency due to vertical advection
-   real(crm_rknd), allocatable :: v_esmt_adv (:)      !
-   real(crm_rknd), allocatable :: u_esmt_diff(:)      ! large-scale tendency due to vertical diffusion
-   real(crm_rknd), allocatable :: v_esmt_diff(:)      !
+   real(crm_rknd), allocatable :: u_esmt_wle (:,:)      ! resolved vertical flux
+   real(crm_rknd), allocatable :: v_esmt_wle (:,:)      !
+   real(crm_rknd), allocatable :: u_esmt_sgs (:,:)      ! SGS vertical flux
+   real(crm_rknd), allocatable :: v_esmt_sgs (:,:)      !
+   real(crm_rknd), allocatable :: u_esmt_adv (:,:)      ! large-scale tendency due to vertical advection
+   real(crm_rknd), allocatable :: v_esmt_adv (:,:)      !
+   real(crm_rknd), allocatable :: u_esmt_diff(:,:)      ! large-scale tendency due to vertical diffusion
+   real(crm_rknd), allocatable :: v_esmt_diff(:,:)      !
 
-   real(crm_rknd), allocatable :: fluxb_u_esmt(:,:)   ! flux of u_esmt at surface    (normally set to zero)
-   real(crm_rknd), allocatable :: fluxb_v_esmt(:,:)   ! flux of v_esmt at surface    (normally set to zero)
-   real(crm_rknd), allocatable :: fluxt_u_esmt(:,:)   ! flux of u_esmt at model top  (normally set to zero)
-   real(crm_rknd), allocatable :: fluxt_v_esmt(:,:)   ! flux of v_esmt at model top  (normally set to zero)
+   real(crm_rknd), allocatable :: fluxb_u_esmt(:,:,:)   ! flux of u_esmt at surface    (normally set to zero)
+   real(crm_rknd), allocatable :: fluxb_v_esmt(:,:,:)   ! flux of v_esmt at surface    (normally set to zero)
+   real(crm_rknd), allocatable :: fluxt_u_esmt(:,:,:)   ! flux of u_esmt at model top  (normally set to zero)
+   real(crm_rknd), allocatable :: fluxt_v_esmt(:,:,:)   ! flux of v_esmt at model top  (normally set to zero)
 
 
    character*30 u_esmt_name
@@ -53,51 +53,52 @@ module scalar_momentum_mod
 
 !========================================================================================
 !========================================================================================
-subroutine allocate_scalar_momentum()
+subroutine allocate_scalar_momentum(ncrms)
    !------------------------------------------------------------------
    ! Purpose: Allocate and initialize variables for ESMT
    ! Author: Walter Hannah - Lawrence Livermore National Lab
    !------------------------------------------------------------------
    implicit none
+   integer, intent(in) :: ncrms
 
    real(crm_rknd) :: zero
 
-   allocate( u_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
-   allocate( v_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+   allocate( u_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms) )
+   allocate( v_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms) )
 
-   allocate( fluxb_u_esmt (nx, ny) )
-   allocate( fluxb_v_esmt (nx, ny) )
-   allocate( fluxt_u_esmt (nx, ny) )
-   allocate( fluxt_v_esmt (nx, ny) )
+   allocate( fluxb_u_esmt (nx, ny,ncrms) )
+   allocate( fluxb_v_esmt (nx, ny,ncrms) )
+   allocate( fluxt_u_esmt (nx, ny,ncrms) )
+   allocate( fluxt_v_esmt (nx, ny,ncrms) )
 
-   allocate( u_esmt_wle   (nz)  )
-   allocate( v_esmt_wle   (nz)  )
-   allocate( u_esmt_sgs   (nz)  )
-   allocate( v_esmt_sgs   (nz)  )
-   allocate( u_esmt_adv   (nz)  )
-   allocate( v_esmt_adv   (nz)  )
-   allocate( u_esmt_diff  (nz)  )
-   allocate( v_esmt_diff  (nz)  )
+   allocate( u_esmt_wle   (nz,ncrms)  )
+   allocate( v_esmt_wle   (nz,ncrms)  )
+   allocate( u_esmt_sgs   (nz,ncrms)  )
+   allocate( v_esmt_sgs   (nz,ncrms)  )
+   allocate( u_esmt_adv   (nz,ncrms)  )
+   allocate( v_esmt_adv   (nz,ncrms)  )
+   allocate( u_esmt_diff  (nz,ncrms)  )
+   allocate( v_esmt_diff  (nz,ncrms)  )
 
    zero = 0.
 
-   u_esmt(:,:,:) = zero
-   v_esmt(:,:,:) = zero
+   u_esmt = zero
+   v_esmt = zero
 
-   fluxb_u_esmt(:,:) = zero
-   fluxb_v_esmt(:,:) = zero
-   fluxt_u_esmt(:,:) = zero
-   fluxt_v_esmt(:,:) = zero
+   fluxb_u_esmt = zero
+   fluxb_v_esmt = zero
+   fluxt_u_esmt = zero
+   fluxt_v_esmt = zero
 
-   u_esmt_wle (:) = zero
-   u_esmt_sgs (:) = zero
-   u_esmt_adv (:) = zero
-   u_esmt_diff(:) = zero
+   u_esmt_wle  = zero
+   u_esmt_sgs  = zero
+   u_esmt_adv  = zero
+   u_esmt_diff = zero
 
-   v_esmt_wle (:) = zero
-   v_esmt_sgs (:) = zero
-   v_esmt_adv (:) = zero
-   v_esmt_diff(:) = zero
+   v_esmt_wle  = zero
+   v_esmt_sgs  = zero
+   v_esmt_adv  = zero
+   v_esmt_diff = zero
 
    u_esmt_name = 'Zonal Velocity'
    v_esmt_name = 'Meridonal Velocity'
@@ -146,15 +147,15 @@ subroutine scalar_momentum_tend()
 
    factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
 
-   call scalar_momentum_pgf(u_esmt,u_esmt_pgf_3D)
-   call scalar_momentum_pgf(v_esmt,v_esmt_pgf_3D)
+   call scalar_momentum_pgf(u_esmt(:,:,:,icrm),u_esmt_pgf_3D)
+   call scalar_momentum_pgf(v_esmt(:,:,:,icrm),v_esmt_pgf_3D)
 
    ! Add PGF tendency
    do k=1,nzm
       do j=1,ny
          do i=1,nx
-            u_esmt(i,j,k) = u_esmt(i,j,k) + u_esmt_pgf_3D(i,j,k)*dtn
-            v_esmt(i,j,k) = v_esmt(i,j,k) + v_esmt_pgf_3D(i,j,k)*dtn
+            u_esmt(i,j,k,icrm) = u_esmt(i,j,k,icrm) + u_esmt_pgf_3D(i,j,k)*dtn
+            v_esmt(i,j,k,icrm) = v_esmt(i,j,k,icrm) + v_esmt_pgf_3D(i,j,k)*dtn
          end do
       end do
    end do

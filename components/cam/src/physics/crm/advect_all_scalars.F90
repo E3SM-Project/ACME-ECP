@@ -82,22 +82,22 @@ contains
     end if
 
 #if defined(SP_ESMT)
-    
-    ! whannah - the esmt_offset simply ensures that the scalar momentum  
+
+    ! whannah - the esmt_offset simply ensures that the scalar momentum
     ! tracers are positive definite during the advection calculation
     ! esmt_offset = 1000.
 
-    esmt_offset = abs( minval( (/ minval(u_esmt), minval(v_esmt) /) ) ) + 50.
+    esmt_offset = abs( minval( (/ minval(u_esmt(:,:,:,icrm)), minval(v_esmt(:,:,:,icrm)) /) ) ) + 50.
 
-    u_esmt(:,:,:) = u_esmt(:,:,:) + esmt_offset
-    v_esmt(:,:,:) = v_esmt(:,:,:) + esmt_offset
+    u_esmt(:,:,:,icrm) = u_esmt(:,:,:,icrm) + esmt_offset
+    v_esmt(:,:,:,icrm) = v_esmt(:,:,:,icrm) + esmt_offset
 
     ! advection of scalar momentum tracers
-    call advect_scalar(ncrms,icrm,u_esmt,u_esmt_adv,u_esmt_wle,dummy,dummy,dummy,.false.)
-    call advect_scalar(ncrms,icrm,v_esmt,v_esmt_adv,v_esmt_wle,dummy,dummy,dummy,.false.)
+    call advect_scalar(ncrms,icrm,u_esmt(:,:,:,icrm),u_esmt_adv(:,icrm),u_esmt_wle(:,icrm),dummy,dummy,dummy,.false.)
+    call advect_scalar(ncrms,icrm,v_esmt(:,:,:,icrm),v_esmt_adv(:,icrm),v_esmt_wle(:,icrm),dummy,dummy,dummy,.false.)
 
-    u_esmt(:,:,:) = u_esmt(:,:,:) - esmt_offset
-    v_esmt(:,:,:) = v_esmt(:,:,:) - esmt_offset
+    u_esmt(:,:,:,icrm) = u_esmt(:,:,:,icrm) - esmt_offset
+    v_esmt(:,:,:,icrm) = v_esmt(:,:,:,icrm) - esmt_offset
 
 #endif
 
