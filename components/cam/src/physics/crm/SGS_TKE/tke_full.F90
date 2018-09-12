@@ -18,7 +18,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
   use vars
   use params
-  
+
   implicit none
   integer, intent(in) :: ncrms,icrm
   !-----------------------------------------------------------------------
@@ -39,7 +39,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms) :: tke   ! SGS TKE
   real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, ncrms) :: tk    ! SGS eddy viscosity
   real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, ncrms) :: tkh   ! SGS eddy conductivity
-  
+
   !-----------------------------------------------------------------------
   !!! Local Variables
   real(crm_rknd), dimension(nx,ny,nzm) :: def2
@@ -58,7 +58,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd) :: Pr            ! Prandtl number
   real(crm_rknd) :: Cee           !
   real(crm_rknd) :: Cs            !
-  real(crm_rknd) :: buoy_sgs      ! 
+  real(crm_rknd) :: buoy_sgs      !
   real(crm_rknd) :: ratio         !
   real(crm_rknd) :: a_prod_sh     ! shear production of TKE
   real(crm_rknd) :: a_prod_bu     ! buoyant production of TKE
@@ -73,8 +73,8 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd) :: cx            ! correction factor for eddy visc CFL criteria
   real(crm_rknd) :: cy            ! correction factor for eddy visc CFL criteria
   real(crm_rknd) :: cz            ! correction factor for eddy visc CFL criteria
-  real(crm_rknd) :: tkmax         ! Maximum TKE (CFL limiter,icrm)
-  
+  real(crm_rknd) :: tkmax         ! Maximum TKE (CFL limiter)
+
   integer :: i,j,k
   integer :: kc      ! = k+1
   integer :: kb      ! = k-1
@@ -98,14 +98,14 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   Ck  = 0.1
   Ce  = Ck**3/Cs**4
   Ces = Ce/0.7*3.0
-  Pr  = 1. 
+  Pr  = 1.
 
   if(RUN3D) then
     call shear_prod3D(ncrms,icrm,def2)
   else
     call shear_prod2D(ncrms,icrm,def2)
   endif
-  
+
   !!! initialize surface buoyancy flux to zero
   a_prod_bu_below(:,:) = real(0.0,crm_rknd)
   buoy_sgs_below(:,:) = real(0.0,crm_rknd)
@@ -168,11 +168,11 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
         !!! the mixture between the two levels is also cloudy
         qctot = qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)+qcl(i,j,kb,icrm)+qci(i,j,kb,icrm)
         if(qctot .gt. 0.) then
-        
+
           !!! figure out the fraction of condensate that's liquid
           omn = (qcl(i,j,kc,icrm)+qcl(i,j,kb,icrm))/(qctot+1.e-20)
-          
-          !!! compute temperature of mixture between two grid levels 
+
+          !!! compute temperature of mixture between two grid levels
           !!! if all cloud were evaporated and sublimated
           tabs_interface = &
                0.5*( tabs(i,j,kc,icrm) + fac_cond*qcl(i,j,kc,icrm) + fac_sub*qci(i,j,kc,icrm) &
@@ -193,7 +193,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
             !!! apply cloudy relations for buoyancy flux, use the liquid-ice breakdown computed above.
             lstarn = fac_cond+(1.-omn)*fac_fus
-        
+
             !!! use the average values of T from the two levels to compute qsat, dqsat
             !!! and the multipliers for the subgrid buoyancy fluxes.  Note that the
             !!! interface is halfway between neighboring levels, so that the potential
@@ -210,13 +210,13 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
             !!! condensate loading term
             bbb = 1. + epsv*qsatt &
-                 + qsatt - qtot_interface - qp_interface & 
+                 + qsatt - qtot_interface - qp_interface &
                  +1.61*tabs_interface*dqsat
             bbb = bbb / (1.+lstarn*dqsat)
 
             buoy_sgs = betdz*(bbb*(t(i,j,kc,icrm)-t(i,j,kb,icrm)) &
                  +(bbb*lstarn - (1.+lstarn*dqsat)*tabs_interface)* &
-                 (qv(i,j,kc,icrm)+qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)-qv(i,j,kb,icrm)-qcl(i,j,kb,icrm)-qci(i,j,kb,icrm)) & 
+                 (qv(i,j,kc,icrm)+qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)-qv(i,j,kb,icrm)-qcl(i,j,kb,icrm)-qci(i,j,kb,icrm)) &
                  + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(i,j,k,icrm) ) * ( qpl(i,j,kc,icrm)-qpl(i,j,kb,icrm) )  &
                  + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(i,j,k,icrm) ) * ( qpi(i,j,kc,icrm)-qpi(i,j,kb,icrm) ) )
 
@@ -255,7 +255,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     cz = (dz(icrm)*min(adzw(k,icrm),adzw(k+1,icrm)))**2/dt/grdf_z(k,icrm)
 
     !!! maximum value of eddy visc/cond
-    tkmax = 0.09/(1./cx+1./cy+1./cz)  
+    tkmax = 0.09/(1./cx+1./cy+1./cz)
 
     do j = 1,ny
       do i = 1,nx
@@ -279,7 +279,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 #if defined( SP_TK_LIM )
             !!! put a hard lower limit on near-surface tk
             if ( z(k,icrm).lt.tk_min_depth ) then
-              tk(i,j,k,icrm) = max( tk(i,j,k,icrm), tk_min_value ) 
+              tk(i,j,k,icrm) = max( tk(i,j,k,icrm), tk_min_value )
             end if
 #endif
 
@@ -295,7 +295,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           a_prod_sh = (tk(i,j,k,icrm)+0.001)*def2(i,j,k)
           a_prod_bu = 0.5*( a_prod_bu_below(i,j) + a_prod_bu_above(i,j) )
           !!! cap the diss rate (useful for large time steps)
-          a_diss = min(tke(i,j,k,icrm)/(4.*dt),Cee/smix*tke(i,j,k,icrm)**1.5)               
+          a_diss = min(tke(i,j,k,icrm)/(4.*dt),Cee/smix*tke(i,j,k,icrm)**1.5)
           tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm)+dtn*(max(0.,a_prod_sh+a_prod_bu)-a_diss))
           tk(i,j,k,icrm)  = Ck*smix*sqrt(tke(i,j,k,icrm))
 

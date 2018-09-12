@@ -21,7 +21,7 @@ module domain
   integer, parameter :: navgmom_x = -1
   integer, parameter :: navgmom_y = -1
 
-  integer, parameter :: ntracers = 0 ! number of transported tracers (dotracers=.true.,icrm)
+  integer, parameter :: ntracers = 0 ! number of transported tracers (dotracers=.true.)
 
   ! Note:
   !  * nx_gl and ny_gl should be a factor of 2,3, or 5 (see User's Guide)

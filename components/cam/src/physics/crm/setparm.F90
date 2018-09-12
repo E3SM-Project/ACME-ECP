@@ -18,43 +18,6 @@ contains
 
     integer icondavg, ierr
 
-    !NAMELIST /PARAMETERS/ dodamping, doupperbound, docloud, doprecip, &
-    !                dolongwave, doshortwave, dosgs, &
-    !                docoriolis, dosurface, dolargescale, doradforcing, &
-    !   nadams,fluxt0,fluxq0,tau0,tabs_s,z0,tauls,nelapse, &
-    !   dt, dx, dy, fcor, ug, vg, nstop, caseid, &
-    !   nstat, nstatfrq, nprint, nrestart, doradsimple, &
-    !   nsave3D, nsave3Dstart, nsave3Dend, dosfcforcing, &
-    !   donudging_uv, donudging_tq, dosmagor, doscalar,  &
-    !   timelargescale, longitude0, latitude0, day0, nrad, &
-    !   CEM,LES,OCEAN,LAND,SFC_FLX_FXD,SFC_TAU_FXD, soil_wetness, &
-    !                doensemble, nensemble, doxy, dowallx, dowally, &
-    !                nsave2D, nsave2Dstart, nsave2Dend, qnsave3D, &
-    !                docolumn, save2Dbin, save2Davg, save3Dbin, &
-    !                save2Dsep, save3Dsep, dogzip2D, dogzip3D, restart_sep, &
-    !         doseasons, doperpetual, doradhomo, dosfchomo, doisccp, &
-    !         dodynamicocean, ocean_type, &
-    !   dosolarconstant, solar_constant, zenith_angle, rundatadir, &
-    !                dotracers, output_sep, perturb_type, &
-    !                doSAMconditionals, dosatupdnconditionals, &
-    !                doscamiopdata, iopfile, dozero_out_day0, &
-    !                nstatmom, nstatmomstart, nstatmomend, savemomsep, savemombin, &
-    !                nmovie, nmoviestart, nmovieend, nrestart_skip, &
-    !                bubble_x0,bubble_y0,bubble_z0,bubble_radius_hor, &
-    !               bubble_radius_ver,bubble_dtemp,bubble_dq, dosmoke, &
-    !               doclubb, doclubbnoninter, doclubb_sfc_fluxes, & ! added by dschanen UWM
-    !               docam_sfc_fluxes           ! added by mhwang
-
-
-
-    !----------------------------------
-    !  Read namelist variables from the standard input:
-    !------------
-
-    !open(55,file='./'//trim(case)//'/prm', status='old',form='formatted')
-    !read (55,PARAMETERS)
-    !close(55)
-
     doprecip    = .true.
     dosgs   = .true.
     dosurface = .true.
