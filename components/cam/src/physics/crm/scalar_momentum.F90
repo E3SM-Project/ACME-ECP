@@ -1,16 +1,16 @@
 module scalar_momentum_mod
 !-----------------------------------------------------------------------
-! Purpose: 
-! 
+! Purpose:
+!
 ! Explicit Scalar Momentum Transport (ESMT)
 ! Transport large-scale momentum as non-conserved scalars,
-! including estimate of 3D pressure gradient force. This was 
+! including estimate of 3D pressure gradient force. This was
 ! implemented to help avoid using any physics modules outside
 ! of CRM and radiation routines. These non-SP routines can be
 ! problematic when changing the vertical grid.
 ! See Tulich (2015) for further details on ESMT
 !
-! Revision history: 
+! Revision history:
 ! Nov, 2017 - Walter Hannah - Lawrence Livermore National Lab
 !              initial version based on crmtracers.F90
 !              Possoin solver and fft routines provided by Stefan Tulich
@@ -24,33 +24,33 @@ module scalar_momentum_mod
    public allocate_scalar_momentum
    public deallocate_scalar_momentum
 #ifdef SP_ESMT_PGF
-   public scalar_momentum_tend 
+   public scalar_momentum_tend
 #endif
 
    real(crm_rknd), allocatable :: u_esmt(:,:,:)       ! scalar zonal velocity
    real(crm_rknd), allocatable :: v_esmt(:,:,:)       ! scalar meridonal velocity
-   
+
    real(crm_rknd), allocatable :: u_esmt_wle (:)      ! resolved vertical flux
-   real(crm_rknd), allocatable :: v_esmt_wle (:)      ! 
-   real(crm_rknd), allocatable :: u_esmt_sgs (:)      ! SGS vertical flux 
-   real(crm_rknd), allocatable :: v_esmt_sgs (:)      ! 
+   real(crm_rknd), allocatable :: v_esmt_wle (:)      !
+   real(crm_rknd), allocatable :: u_esmt_sgs (:)      ! SGS vertical flux
+   real(crm_rknd), allocatable :: v_esmt_sgs (:)      !
    real(crm_rknd), allocatable :: u_esmt_adv (:)      ! large-scale tendency due to vertical advection
-   real(crm_rknd), allocatable :: v_esmt_adv (:)      ! 
+   real(crm_rknd), allocatable :: v_esmt_adv (:)      !
    real(crm_rknd), allocatable :: u_esmt_diff(:)      ! large-scale tendency due to vertical diffusion
-   real(crm_rknd), allocatable :: v_esmt_diff(:)      ! 
+   real(crm_rknd), allocatable :: v_esmt_diff(:)      !
 
    real(crm_rknd), allocatable :: fluxb_u_esmt(:,:)   ! flux of u_esmt at surface    (normally set to zero)
    real(crm_rknd), allocatable :: fluxb_v_esmt(:,:)   ! flux of v_esmt at surface    (normally set to zero)
    real(crm_rknd), allocatable :: fluxt_u_esmt(:,:)   ! flux of u_esmt at model top  (normally set to zero)
    real(crm_rknd), allocatable :: fluxt_v_esmt(:,:)   ! flux of v_esmt at model top  (normally set to zero)
-   
-   
-   character*10 u_esmt_name 
-   character*10 v_esmt_name
+
+
+   character*30 u_esmt_name
+   character*30 v_esmt_name
    character*10   esmt_units
 
    contains
-   
+
 !========================================================================================
 !========================================================================================
 subroutine allocate_scalar_momentum()
@@ -59,7 +59,7 @@ subroutine allocate_scalar_momentum()
    ! Author: Walter Hannah - Lawrence Livermore National Lab
    !------------------------------------------------------------------
    implicit none
-   
+
    real(crm_rknd) :: zero
 
    allocate( u_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
@@ -141,7 +141,7 @@ subroutine scalar_momentum_tend()
 
    real(crm_rknd), dimension(nx,ny,nzm) :: u_esmt_pgf_3D
    real(crm_rknd), dimension(nx,ny,nzm) :: v_esmt_pgf_3D
-   real(crm_rknd) factor_xy 
+   real(crm_rknd) factor_xy
    integer i,j,k
 
    factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
@@ -173,7 +173,7 @@ subroutine scalar_momentum_pgf( u_s, tend )
    use grid,    only: nx,ny,nz,nzm,z,pres,zi
    use crmdims, only: crm_dx
    use vars,    only: w
-   
+
    implicit none
    !------------------------------------------------------------------
    ! interface variables
@@ -195,12 +195,12 @@ subroutine scalar_momentum_pgf( u_s, tend )
    real(crm_rknd), dimension(nx,nzm)   :: pgf_hat    ! pressure gradient force (Fourier transform space)
    real(crm_rknd), dimension(nx,nzm)   :: pgf        ! pressure gradient force for final tendency
 
-   real(crm_rknd), dimension(nzm+1)    :: dz         ! layer thickness 
+   real(crm_rknd), dimension(nzm+1)    :: dz         ! layer thickness
    !------------------------------------------------------------------------
    !------------------------------------------------------------------------
 
-   !!! The loop over "y" points is mostly unessary, since ESMT 
-   !!! is meant for 2D CRMs, but I've left it in for comparing 
+   !!! The loop over "y" points is mostly unessary, since ESMT
+   !!! is meant for 2D CRMs, but I've left it in for comparing
    !!! ESMT tendencies to fully resolved 3D momentum transport
 
    ! Calculate layer thickness
@@ -218,7 +218,7 @@ subroutine scalar_momentum_pgf( u_s, tend )
       shr(:) = 0
 
       !-----------------------------------------
-      ! Calculate shear of domain average profile 
+      ! Calculate shear of domain average profile
       ! defined on scalar levels
       !-----------------------------------------
       do k = 1,nzm
@@ -241,17 +241,17 @@ subroutine scalar_momentum_pgf( u_s, tend )
       ! pgf is diagnosed from w * du_si/dz using the poisson equation
       ! (see Wu and Yanai 1994)
       !------------------------------------------------------------------------
-      !------------------------------------------------------------------------ 
-      
+      !------------------------------------------------------------------------
+
       !-----------------------------------------
       ! compute forward fft of w
       !-----------------------------------------
       call esmt_fft_forward(nx,nzm,crm_dx,w_i,k_arr,w_hat)
 
       !-----------------------------------------
-      ! solve vertical structure equation 
-      ! for each zonal wavelength (k_arr) 
-      ! solution method involves constructing 
+      ! solve vertical structure equation
+      ! for each zonal wavelength (k_arr)
+      ! solution method involves constructing
       ! a tridiagonal matrix
       !-----------------------------------------
 
@@ -282,7 +282,7 @@ subroutine scalar_momentum_pgf( u_s, tend )
             rhs(k+1) = rhs(k+1)-a(k+1)/b(k)*rhs(k)
          end do ! k
 
-         ! backward substitution 
+         ! backward substitution
          rhs(nzm)=rhs(nzm)/b(nzm)
          do k=nzm-1,1,-1
             rhs(k) = (rhs(k)-c(k)*rhs(k+1))/b(k)
@@ -316,10 +316,10 @@ subroutine scalar_momentum_pgf( u_s, tend )
          enddo ! i
       end do ! k
 
-      !------------------------------------------------------------------------ 
+      !------------------------------------------------------------------------
       !------------------------------------------------------------------------
       ! End of Possion solver
-      !------------------------------------------------------------------------ 
+      !------------------------------------------------------------------------
       !------------------------------------------------------------------------
 
    end do ! j
@@ -338,7 +338,7 @@ subroutine esmt_fft_forward(nx,nzm,dx,arr_in,k_out,arr_out)
    ! adapted from SP-WRF code provided by Stefan Tulich
    !------------------------------------------------------------------
    use fftpack51D
-   
+
    implicit none
 
    integer                          , intent(in ) :: nx
@@ -370,7 +370,7 @@ subroutine esmt_fft_forward(nx,nzm,dx,arr_in,k_out,arr_out)
    ! lenr = nx*nzm
    ! jump = nx
    ! lenwrk = lenr
-   
+
    ! ! initialization for FFT
    ! call rfftmi(n,wsave,lensav,ier)
    ! if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
@@ -407,7 +407,7 @@ subroutine esmt_fft_forward(nx,nzm,dx,arr_in,k_out,arr_out)
       if(ier /= 0) write(0,*) 'ERROR: rfftmf(): ESMT - Forward FFT error ',ier
    enddo
 
-   
+
 
    if(mod(n,2) == 0) then
       nh = n/2 - 1
@@ -475,14 +475,14 @@ subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
    ! ! initialization for FFT
    ! call rfftmi(n,wsave,lensav,ier)
    ! if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
-   
+
    ! do k = 1,nzm
    !    do i = 1,nx
    !       arr_out(i,k) = arr_in(i,k)
    !       ! arr_tmp(k*(nx-1)+i) = arr_in(i,k)
    !    enddo
    ! enddo
-   
+
    ! !  do the backward transform
    ! ! call rfftmb( lot, jump, n, inc, arr_tmp, lenr, wsave, lensav, work, lenwrk, ier )
    ! call rfftmb( lot, jump, n, inc, arr_out, lenr, wsave, lensav, work, lenwrk, ier )
@@ -508,7 +508,7 @@ subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
       if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - backward FFT error ',ier
    enddo
 
-   
+
 
    ! do k = 1,nzm
    !    do i = 1,nx
@@ -521,7 +521,7 @@ subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
 end subroutine esmt_fft_backward
 
 
-! whannah - this #endif is just to hide the PGF code 
+! whannah - this #endif is just to hide the PGF code
 ! without commenting it out during development
 #endif
 
@@ -542,7 +542,7 @@ end subroutine esmt_fft_backward
 !    use module_configure, only : grid_config_rec_type
 !    use module_domain,only: domain
 !    !  this subroutine adds a kludge for the horizontal pgf to the
-!    !  tendency of scalar momentum field 
+!    !  tendency of scalar momentum field
 !    !------------------------------------------------------------------
 !    implicit none
 !    !------------------------------------------------------------------
@@ -555,7 +555,7 @@ end subroutine esmt_fft_backward
 !    integer,        intent(in) :: ips
 !    ! integer,        intent(in) :: ids
 !    ! integer,        intent(in) :: jds
-!    ! integer,        intent(in) :: ipe   
+!    ! integer,        intent(in) :: ipe
 !    ! integer,        intent(in) :: jpe
 !    ! integer,        intent(in) :: kds
 !    integer,        intent(in) :: kde
@@ -597,7 +597,7 @@ end subroutine esmt_fft_backward
 
 !    !
 !    ! local variables
-!    ! 
+!    !
 
 !    ! !! config_flags elements:
 !    ! zdamp
@@ -613,24 +613,24 @@ end subroutine esmt_fft_backward
 !    ! integer :: nx, nz
 !    real(crm_rknd) :: numx,xmsg
 !    real(crm_rknd) :: cft1,cft2               ! used for interpolating u to w levels
-!    ! real(crm_rknd) :: p1,p2,p3,p4           ! used for alternative to Poisson solver  
-!    ! real(crm_rknd) :: pgc1,pgc2,pgc3,pgc4   ! used for alternative to Poisson solver  
+!    ! real(crm_rknd) :: p1,p2,p3,p4           ! used for alternative to Poisson solver
+!    ! real(crm_rknd) :: pgc1,pgc2,pgc3,pgc4   ! used for alternative to Poisson solver
 !    real(crm_rknd) :: x,y,sumx,sumx2,sumy,sumy2,sumxy,n,m,r,d
 !    real(crm_rknd) :: dt_fac,htop,hdepth1,hdepth2,hbot,dampwt,hk,pi
 !    real(crm_rknd), dimension(ips:ipe,kps:kpe)       :: u_si             ! scalar momentum on level interface
-!    real(crm_rknd), dimension(kps:kpe)               :: z_avg            ! 
+!    real(crm_rknd), dimension(kps:kpe)               :: z_avg            !
 !    real(crm_rknd), dimension(kps:kpe)               :: u_si_avg         ! horizonal average of u_si
 !    real(crm_rknd), dimension(kps:kpe)               :: zzin, zzout
 !    real(crm_rknd), dimension(kps:kpe)               :: xxin, xxout
 !    real(crm_rknd), dimension(kps:kpe-1)             :: pgcon
 !    real(crm_rknd), dimension(kps:kpe-1)             :: p_avg
 !    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: w_i,w_hat
-!    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf_hat 
+!    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf_hat
 !    real(crm_rknd), dimension(1:ipe-ips,1:kpe-kps)   :: pgf
 !    real(crm_rknd), dimension(1:ipe-ips)             :: k_arr
 !    real(crm_rknd), dimension(1:kpe-kps+1)           :: dz
 !    real(crm_rknd), dimension(1:kpe-kps)             :: a,b,c,rhs,z_avg_i,shr
-   
+
 !    !------------------------------------------------------------------------
 
 !    ! j_start = jps
@@ -700,7 +700,7 @@ end subroutine esmt_fft_backward
 !             p_avg(k) = p_avg(k) + ( p(i,k,j,icrm) + pb(i,k,j) ) / (numx*100.)
 !          enddo
 !       enddo
-      
+
 !       ! ********** interpolate u to w levels **********
 !       do i = ips,ipe-1
 !          k = kps
@@ -725,9 +725,9 @@ end subroutine esmt_fft_backward
 
 !       !------------------------------------------------------------------------
 !       ! If config_flags%sp_mom_feedback == 5 then the Poisson solver is used
-!       ! otherwise, simple assumptions about the relationship between the PGF 
-!       ! and the vertical velocity field are used to diagnose the PGF 
-!       !------------------------------------------------------------------------ 
+!       ! otherwise, simple assumptions about the relationship between the PGF
+!       ! and the vertical velocity field are used to diagnose the PGF
+!       !------------------------------------------------------------------------
 
 !       ! if (config_flags%sp_mom_feedback .lt. 5) then
 !       !    ! specified proportionality relationship between pgf and w * du_si/dz
@@ -771,7 +771,7 @@ end subroutine esmt_fft_backward
 !       !       enddo
 !       !    enddo
 !       !    ! ****************************************
-      
+
 !       ! else ! config_flags%sp_mom_feedback .lt. 5
 
 !          ! pgf is diagnosed from w * du_si/dz using the poisson equation (see wu and yanai 1994)
@@ -799,11 +799,11 @@ end subroutine esmt_fft_backward
 !          enddo
 !          dz(1) = 2.*(z_avg_i(1)-z_avg(1))
 !          dz(nz+1) = 2.*(z_avg(nz+1)-z_avg_i(nz))
-         
+
 !          ! compute forward fft of w
 !          call esmt_fft_forward(nx,nz,dx,w_i,k_arr,w_hat)
 
-!          ! solve vertical structure equation for each zonal wavelength (k_arr) 
+!          ! solve vertical structure equation for each zonal wavelength (k_arr)
 !          ! solution method involves constructing tridiagonal matrix
 
 !          pgf_hat(:,:) = 0.
