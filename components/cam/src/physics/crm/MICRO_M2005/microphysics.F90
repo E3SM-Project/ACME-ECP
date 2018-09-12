@@ -23,7 +23,7 @@ use module_mp_GRAUPEL, only: GRAUPEL_INIT, M2005MICRO_GRAUPEL, &
       dosb_warm_rain, &     ! use Seifert & Beheng (2001) warm rain parameterization
       dopredictNc, &        ! prediction of cloud droplet number
       aerosol_mode, &   ! specify two modes of (sulfate) aerosol
-#if (defined CRM && defined MODAL_AERO)
+#if (defined MODAL_AERO)
       domodal_aero,     &   ! use modal aerosol from the CAM
 #endif
 #ifdef CLUBB_CRM
@@ -42,12 +42,10 @@ use module_mp_GRAUPEL, only: GRAUPEL_INIT, M2005MICRO_GRAUPEL, &
       aer_sig1, aer_sig2, & ! sig=geom standard deviation of aerosol size distn.
       dofix_pgam, pgam_fixed ! option to specify pgam (exponent of cloud water's gamma distn)
 
-#ifdef CRM
   !==Guangxing Lin
   !use abortutils,     only: endrun
   use cam_abortutils,     only: endrun
   !==Guangxing Lin
-#endif
 
 implicit none
 
@@ -99,14 +97,11 @@ logical douse_reffc, douse_reffi
 !bloss: array which holds temperature tendency due to microphysics
 real(crm_rknd), allocatable, dimension(:,:,:,:) :: tmtend3d
 
-#ifdef CRM
 real(crm_rknd), allocatable, dimension(:,:) ::  qpevp   !sink of precipitating water due to evaporation (set to zero here)
 real(crm_rknd), allocatable, dimension(:,:) ::  qpsrc   !source of precipitation microphysical processes (set to mtend)
-#endif
 
 real(crm_rknd), allocatable, dimension(:,:,:,:)  :: wvar  ! the vertical velocity variance from subgrid-scale motion,
                                               ! which is needed in droplet activation.
-#ifdef CRM
 ! hm 7/26/11 new output
 real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: aut1  !
 real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: acc1  !
@@ -125,7 +120,6 @@ real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: mlt1a  !
 real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: sub1a  !
 real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: dep1a  !
 real(crm_rknd), public, allocatable, dimension(:,:,:,:)  :: con1a  !
-#endif
 
 !+++mhwangtest
 ! test water conservation
@@ -168,7 +162,6 @@ subroutine allocate_micro(ncrms)
   allocate(mkunits(nmicro_fields))
   allocate(mkoutputscale(nmicro_fields))
   allocate(wvar(nx,ny,nzm,ncrms))
-#ifdef CRM
   allocate(qpevp(nz,ncrms))
   allocate(qpsrc(nz,ncrms))
   allocate(aut1(nx,ny,nzm,ncrms))
@@ -187,7 +180,6 @@ subroutine allocate_micro(ncrms)
   allocate(sub1a(nx,ny,nzm,ncrms))
   allocate(dep1a(nx,ny,nzm,ncrms))
   allocate(con1a(nx,ny,nzm,ncrms))
-#endif
   allocate(sfcpcp2D(nx,ny,ncrms))
   ! initialize these arrays
   micro_field = 0.
@@ -216,7 +208,6 @@ subroutine allocate_micro(ncrms)
   flag_number = 0
   flag_precip = 0
   flag_micro3Dout = 0
-#ifdef CRM
 ! hm 7/26/11, new output
   aut1 = 0.
   acc1 = 0.
@@ -234,7 +225,6 @@ subroutine allocate_micro(ncrms)
   sub1a = 0.
   dep1a = 0.
   con1a = 0.
-#endif
 end subroutine allocate_micro
 
 
@@ -269,7 +259,6 @@ subroutine deallocate_micro()
   deallocate(mkunits)
   deallocate(mkoutputscale)
   deallocate (wvar)
-#ifdef CRM
   deallocate (qpevp)
   deallocate (qpsrc)
   deallocate (aut1)
@@ -288,7 +277,6 @@ subroutine deallocate_micro()
   deallocate (sub1a)
   deallocate (dep1a)
   deallocate (con1a)
-#endif
   deallocate (sfcpcp2D)
 end subroutine deallocate_micro
 
@@ -487,7 +475,7 @@ end subroutine micro_setparm
 subroutine micro_init(ncrms,icrm)
 
   use vars
-#if (defined CRM && defined MODAL_AERO)
+#if (defined MODAL_AERO)
   use drop_activation, only: drop_activation_init
 #endif
 
@@ -580,7 +568,7 @@ subroutine micro_init(ncrms,icrm)
   end if
 
   call graupel_init() ! call initialization routine within mphys module
-#if (defined CRM && defined MODAL_AERO)
+#if (defined MODAL_AERO)
   call drop_activation_init
 #endif
 
@@ -1045,7 +1033,6 @@ do j = 1,ny
                                         )
 #endif
 
-#ifdef CRM
 ! hm 7/26/11, new output
       aut1(i,j,:,icrm) = tmpaut(:)
       acc1(i,j,:,icrm) = tmpacc(:)
@@ -1068,7 +1055,6 @@ do j = 1,ny
       sub1a(i,j,:,icrm) = sub1a(i,j,:,icrm) + sub1(i,j,:,icrm)*dtn
       dep1a(i,j,:,icrm) = dep1a(i,j,:,icrm) + dep1(i,j,:,icrm)*dtn
       con1a(i,j,:,icrm) = con1a(i,j,:,icrm) + con1(i,j,:,icrm)*dtn
-#endif
 
      ! update microphysical quantities in this grid column
       if(doprecip) then
@@ -1080,9 +1066,7 @@ do j = 1,ny
 !+++mhwang
          sfcpcp2D(i,j,icrm) = sfcpcp/dtn/dz(icrm)
 !---mhwang
-#ifdef CRM
          precssfc(i,j,icrm) = precssfc(i,j,icrm) + sfcicepcp/dz(icrm)    ! the corect unit of precssfc should be mm/dz +++mhwang
-#endif
          ! update rain
          micro_field(i,j,:,iqr,icrm) = tmpqr(:)
          micro_field(i,j,:,inr,icrm) = tmpnr(:)
@@ -1203,10 +1187,8 @@ do j = 1,ny
               - dtn*fac_sub*(stendqci+stendqs+stendqg)
          qpfall(1:nzm,icrm) = qpfall(1:nzm,icrm) + dtn*(stendqr+stendqs+stendqg)
 
-#ifdef CRM
          qpsrc(1:nzm,icrm) = qpsrc(1:nzm,icrm) + dtn*(mtendqr+mtendqs+mtendqg)
          qpevp(1:nzm,icrm) = 0.0
-#endif
 
          !bloss: temperature tendency (sensible heating) due to phase changes
          tmtend3d(i,j,1:nzm,icrm) = tmtend1d(1:nzm)
