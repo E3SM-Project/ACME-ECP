@@ -1174,6 +1174,7 @@ contains
       ! For CRM rad
       real(r8), pointer, dimension(:,:,:,:) :: crm_temperature, crm_qv, crm_qc, crm_qi
       real(r8) :: qrs_col(pcols,pver), qrsc_col(pcols,pver)
+      real(r8) :: qrl_col(pcols,pver), qrlc_col(pcols,pver)
 
       ! Temporary fluxes to hold outputs for a single CRM column
       type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
@@ -1311,6 +1312,10 @@ contains
          call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_allsky)
          call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_clrsky)
 
+         ! Initialize an extra set of fluxes to deal with aggregating averages
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_allsky_col)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_clrsky_col)
+
          ! Loop over diagnostic calls (i.e., different configurations of gases)
          ! NOTE: in the non-SP configurations, we do not need to have the cloud
          ! optics inside the icall loop, because they should not change for
@@ -1322,10 +1327,49 @@ contains
          call rad_cnst_get_call_list(active_calls)
          do icall = N_DIAG,0,-1
             if (active_calls(icall)) then
+               ! Start loop over CRM. First make sure our fluxes (that will be
+               ! aggregated) are zeroed out
+               call reset_fluxes(fluxes_allsky)
+               call reset_fluxes(fluxes_clrsky)
+               qrl = 0
+               qrlc = 0
 
-               ! Call the longwave radiation driver to calculate fluxes and heating rates
-               call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                        fluxes_allsky, fluxes_clrsky, qrl, qrlc)
+               number_crm_columns = crm_nx_rad * crm_ny_rad
+               do crm_iy = 1,crm_ny_rad
+                  do crm_ix = 1,crm_nx_rad
+
+                     ! Modify copied state to hold CRM variables
+                     if (use_SPCAM) then
+                        do crm_iz = 1,crm_nz
+                           gcm_iz = pver - crm_nz + 1
+                           state%t(1:ncol,gcm_iz)          = crm_temperature(1:ncol,crm_ix,crm_iy,crm_iz)
+                           state%q(1:ncol,gcm_iz,1)        = crm_qv(1:ncol,crm_ix,crm_iy,crm_iz)
+                           state%q(1:ncol,gcm_iz,ixcldliq) = crm_qc(1:ncol,crm_ix,crm_iy,crm_iz)
+                           state%q(1:ncol,gcm_iz,ixcldice) = crm_qi(1:ncol,crm_ix,crm_iy,crm_iz)
+                        end do
+                        crm_qrl = 0
+                     end if
+
+                     ! Call the longwave radiation driver to calculate fluxes and heating rates
+                     call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
+                                              fluxes_allsky_col, fluxes_clrsky_col, qrl_col, qrlc_col)
+
+                     ! Aggregate means
+                     call aggregate_flux_averages(number_crm_columns, fluxes_allsky_col, fluxes_allsky)
+                     call aggregate_flux_averages(number_crm_columns, fluxes_clrsky_col, fluxes_clrsky)
+                     qrl  = qrl  + qrl_col  / number_crm_columns
+                     qrlc = qrlc + qrlc_col / number_crm_columns
+
+                     ! Save CRM heating
+                     if (use_SPCAM) then
+                        do crm_iz = 1,crm_nz
+                           gcm_iz = pver - crm_iz + 1
+                           crm_qrl(1:ncol,crm_ix,crm_iy,crm_iz) = qrl_col(1:ncol,gcm_iz)
+                        end do
+                     end if
+
+                  end do
+               end do
 
                ! Send fluxes to history buffer
                call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
@@ -1600,7 +1644,7 @@ contains
 
    subroutine radiation_driver_lw(icall, state_in, pbuf, cam_in, is_cmip6_volc, &
                                   fluxes_allsky, fluxes_clrsky, &
-                                  qrl, qrlc, crm_qrl)
+                                  qrl, qrlc)
     
       use rad_constituents, only: N_DIAG, rad_cnst_get_call_list
       use perf_mod, only: t_startf, t_stopf
@@ -1655,17 +1699,10 @@ contains
       type(ty_optical_props_1scl) :: aerosol_optics_lw
       type(ty_optical_props_1scl) :: cloud_optics_lw
 
-      ! Temporary fluxes to hold outputs for a single CRM column
-      type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
-
       ! Indices
       integer :: ncol, crm_ix, crm_iy, crm_iz, gcm_iz
 
-      ! Total number of crm columns
-      integer :: number_crm_columns
-
       logical :: use_SPCAM
-      real(r8), intent(inout), optional :: crm_qrl(:,:,:,:)
       real(r8), pointer, dimension(:,:,:,:) :: crm_temperature, crm_qv, crm_qc, crm_qi
       integer :: ixcldliq, ixcldice
 
@@ -1690,118 +1727,73 @@ contains
       call cnst_get_ind('CLDLIQ', ixcldliq)
       call cnst_get_ind('CLDICE', ixcldice)
 
-      ! Initialize an extra set of fluxes to deal with aggregating averages
-      call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_allsky_col)
-      call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_clrsky_col)
+      ! Populate RRTMGP input variables. Use the day_indices index array to
+      ! map CAM variables on all columns to the daytime-only arrays, and take
+      ! only the ktop:kbot vertical levels (mapping CAM vertical grid to
+      ! RRTMGP vertical grid). Note that we populate the state separately for
+      ! shortwave and longwave, because we need to compress to just the daytime
+      ! columns for the shortwave, but the longwave uses all columns
+      call set_rad_state(state, cam_in, &
+                         tmid(1:ncol,1:nlev_rad), & 
+                         tint(1:ncol,1:nlev_rad+1), &
+                         pmid(1:ncol,1:nlev_rad), &
+                         pint(1:ncol,1:nlev_rad+1))
 
-      ! Start loop over CRM columns and do radiative transfer separately
-      ! for each column
-      number_crm_columns = crm_nx_rad * crm_ny_rad
-      do crm_iy = 1,crm_ny_rad
-         do crm_ix = 1,crm_nx_rad
+      ! Do longwave cloud optics calculations
+      call t_startf('longwave cloud optics')
+      call set_cloud_optics_lw(state, pbuf, k_dist_lw, cloud_optics_lw)
+      call t_stopf('longwave cloud optics')
 
-            ! Modify copied state to hold CRM variables
-            if (use_SPCAM) then
-               call pbuf_get_field(pbuf, pbuf_get_index('CRM_T_RAD') , crm_temperature)
-               call pbuf_get_field(pbuf, pbuf_get_index('CRM_QV_RAD'), crm_qv)
-               call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD'), crm_qc)
-               call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD'), crm_qi)
-               do crm_iz = 1,crm_nz
-                  gcm_iz = pver - crm_nz + 1
-                  state%t(1:ncol,gcm_iz)          = crm_temperature(1:ncol,crm_ix,crm_iy,crm_iz)
-                  state%q(1:ncol,gcm_iz,1)        = crm_qv(1:ncol,crm_ix,crm_iy,crm_iz)
-                  state%q(1:ncol,gcm_iz,ixcldliq) = crm_qc(1:ncol,crm_ix,crm_iy,crm_iz)
-                  state%q(1:ncol,gcm_iz,ixcldice) = crm_qi(1:ncol,crm_ix,crm_iy,crm_iz)
-               end do
-               crm_qrl = 0
-            end if
+      ! Initialize aerosol optics; passing only the wavenumber bounds for each
+      ! "band" rather than passing the full spectral discretization object, and
+      ! omitting the "g-point" mapping forces the optics to be indexed and
+      ! stored by band rather than by g-point. This is most consistent with our
+      ! treatment of aerosol optics in the model, and prevents us from having to
+      ! map bands to g-points ourselves since that will all be handled by the
+      ! private routines internal to the optics class.
+      call handle_error(aerosol_optics_lw%alloc_1scl(ncol, nlev_rad, k_dist_lw%get_band_lims_wavenumber()))
+      call aerosol_optics_lw%set_name('longwave aerosol optics')
 
-            ! Populate RRTMGP input variables. Use the day_indices index array to
-            ! map CAM variables on all columns to the daytime-only arrays, and take
-            ! only the ktop:kbot vertical levels (mapping CAM vertical grid to
-            ! RRTMGP vertical grid). Note that we populate the state separately for
-            ! shortwave and longwave, because we need to compress to just the daytime
-            ! columns for the shortwave, but the longwave uses all columns
-            call set_rad_state(state, cam_in, &
-                               tmid(1:ncol,1:nlev_rad), & 
-                               tint(1:ncol,1:nlev_rad+1), &
-                               pmid(1:ncol,1:nlev_rad), &
-                               pint(1:ncol,1:nlev_rad+1))
+      ! Set gas concentrations (I believe the active gases may change
+      ! for different values of icall, which is why we do this within
+      ! the loop).
+      call t_startf('rad_gas_concentrations_lw')
+      call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
+      call t_stopf('rad_gas_concentrations_lw')
 
-            ! Do longwave cloud optics calculations
-            call t_startf('longwave cloud optics')
-            call set_cloud_optics_lw(state, pbuf, k_dist_lw, cloud_optics_lw)
-            call t_stopf('longwave cloud optics')
+      ! Get longwave aerosol optics
+      call t_startf('rad_aerosol_optics_lw')
+      call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aerosol_optics_lw)
+      call t_stopf('rad_aerosol_optics_lw')
 
-            ! Initialize aerosol optics; passing only the wavenumber bounds for each
-            ! "band" rather than passing the full spectral discretization object, and
-            ! omitting the "g-point" mapping forces the optics to be indexed and
-            ! stored by band rather than by g-point. This is most consistent with our
-            ! treatment of aerosol optics in the model, and prevents us from having to
-            ! map bands to g-points ourselves since that will all be handled by the
-            ! private routines internal to the optics class.
-            call handle_error(aerosol_optics_lw%alloc_1scl(ncol, nlev_rad, k_dist_lw%get_band_lims_wavenumber()))
-            call aerosol_optics_lw%set_name('longwave aerosol optics')
+      ! Do longwave radiative transfer calculations
+      call t_startf('rad_calculations_lw')
+      call handle_error(rte_lw( &
+         k_dist_lw, gas_concentrations, &
+         pmid(1:ncol,1:nlev_rad), tmid(1:ncol,1:nlev_rad), &
+         pint(1:ncol,1:nlev_rad+1), tint(1:ncol,nlev_rad+1), &
+         surface_emissivity(1:nlwbands,1:ncol), &
+         cloud_optics_lw, &
+         fluxes_allsky, fluxes_clrsky, &
+         aer_props=aerosol_optics_lw, &
+         t_lev=tint(1:ncol,1:nlev_rad+1), &
+         n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
+      ))
+      call t_stopf('rad_calculations_lw')
 
-            ! Set gas concentrations (I believe the active gases may change
-            ! for different values of icall, which is why we do this within
-            ! the loop).
-            call t_startf('rad_gas_concentrations_lw')
-            call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
-            call t_stopf('rad_gas_concentrations_lw')
+      ! Calculate heating rates
+      call calculate_heating_rate(fluxes_allsky, pint(1:ncol,1:nlev_rad+1), &
+                                  qrl_rad(1:ncol,1:nlev_rad))
+      call calculate_heating_rate(fluxes_clrsky, pint(1:ncol,1:nlev_rad+1), &
+                                  qrlc_rad(1:ncol,1:nlev_rad))
 
-            ! Get longwave aerosol optics
-            call t_startf('rad_aerosol_optics_lw')
-            call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aerosol_optics_lw)
-            call t_stopf('rad_aerosol_optics_lw')
-
-            ! Do longwave radiative transfer calculations
-            call t_startf('rad_calculations_lw')
-            call handle_error(rte_lw( &
-               k_dist_lw, gas_concentrations, &
-               pmid(1:ncol,1:nlev_rad), tmid(1:ncol,1:nlev_rad), &
-               pint(1:ncol,1:nlev_rad+1), tint(1:ncol,nlev_rad+1), &
-               surface_emissivity(1:nlwbands,1:ncol), &
-               cloud_optics_lw, &
-               fluxes_allsky_col, fluxes_clrsky_col, &
-               aer_props=aerosol_optics_lw, &
-               t_lev=tint(1:ncol,1:nlev_rad+1), &
-               n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
-            ))
-            call t_stopf('rad_calculations_lw')
-
-            ! Calculate heating rates
-            call calculate_heating_rate(fluxes_allsky_col, pint(1:ncol,1:nlev_rad+1), &
-                                        qrl_rad(1:ncol,1:nlev_rad))
-            call calculate_heating_rate(fluxes_clrsky_col, pint(1:ncol,1:nlev_rad+1), &
-                                        qrlc_rad(1:ncol,1:nlev_rad))
-
-            ! Map heating rates to CAM columns and levels
-            qrl(1:ncol,1:pver) = qrl_rad(1:ncol,ktop:kbot)
-            qrlc(1:ncol,1:pver) = qrlc_rad(1:ncol,ktop:kbot)
-
-            ! Aggregate mean fluxes
-            call aggregate_flux_averages(number_crm_columns, fluxes_allsky_col, fluxes_allsky)
-            call aggregate_flux_averages(number_crm_columns, fluxes_clrsky_col, fluxes_clrsky)
-                        
-            ! Save CRM heating
-            if (use_SPCAM) then
-               do crm_iz = 1,crm_nz
-                  gcm_iz = pver - crm_iz + 1
-                  crm_qrl(1:ncol,crm_ix,crm_iy,crm_iz) = qrl(1:ncol,gcm_iz)
-               end do
-            end if
-
-         end do  ! crm_ix
-      end do  ! crm_iy
+      ! Map heating rates to CAM columns and levels
+      qrl(1:ncol,1:pver) = qrl_rad(1:ncol,ktop:kbot)
+      qrlc(1:ncol,1:pver) = qrlc_rad(1:ncol,ktop:kbot)
 
       ! Free optical properties
       call free_optics_lw(cloud_optics_lw)
       call free_optics_lw(aerosol_optics_lw)
-
-      ! Free temporary fluxes
-      call free_fluxes(fluxes_allsky_col)
-      call free_fluxes(fluxes_clrsky_col)
 
    end subroutine radiation_driver_lw
 
