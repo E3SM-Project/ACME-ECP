@@ -1948,6 +1948,10 @@ subroutine tphysbc (ztodt,               &
     use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
 #endif
 
+#if defined( DIFFUSE_PHYS_TEND )
+    use phys_hyperviscosity_mod
+#endif
+
 #endif /* CRM */
 
     implicit none
@@ -2801,10 +2805,12 @@ end if
       ! Run the CRM 
       !---------------------------------------------------------------------------
       phys_stage = 1  ! for tphysbc() => phys_stage = 1
-      call crm_physics_tend(ztodt, state, tend,ptend, pbuf, cam_in, cam_out,    &
+      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,    &
                             species_class, phys_stage, crm_ecpp_output,         &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
-
+#if defined( DIFFUSE_PHYS_TEND )
+      call phys_hyperviscosity(ptend)
+#endif
       call physics_update(state, ptend, crm_run_time, tend)
 
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
