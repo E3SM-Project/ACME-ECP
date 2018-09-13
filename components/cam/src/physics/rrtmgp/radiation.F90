@@ -1430,6 +1430,9 @@ contains
                end do
             end do
          end do
+
+         ! Output CRM heating
+         call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
       end if
 
    end subroutine radiation_tend
