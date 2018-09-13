@@ -11,8 +11,8 @@ module grid
 
   integer, parameter :: nx = nx_gl/nsubdomains_x
   integer, parameter :: ny = ny_gl/nsubdomains_y
-  integer, parameter :: nz = nz_gl+1 				! note that nz_gl = crm_nz
-  integer, parameter :: nzm = nz-1				  ! note that nzm   = crm_nz
+  integer, parameter :: nz = nz_gl+1        ! note that nz_gl = crm_nz
+  integer, parameter :: nzm = nz-1          ! note that nzm   = crm_nz
 
   integer, parameter :: nsubdomains = nsubdomains_x * nsubdomains_y
 
@@ -49,16 +49,16 @@ module grid
   integer, parameter :: nadams = 3
 
   ! Vertical grid parameters:
-  real(crm_rknd) pres0      ! Reference surface pressure, Pa
+  ! real(crm_rknd) pres0      ! Reference surface pressure, Pa
 
   integer:: nstep =0! current number of performed time steps
   integer  ncycle  ! number of subcycles over the dynamical timestep
   integer icycle  ! current subcycle
   integer:: na=1, nb=2, nc=3 ! indeces for swapping the rhs arrays for AB scheme
   real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme
-  real(crm_rknd) dtn	! current dynamical timestep (can be smaller than dt)
-  real(8):: time=0.	! current time in sec.
-  real(crm_rknd) day	! current day (including fraction)
+  real(crm_rknd) dtn  ! current dynamical timestep (can be smaller than dt)
+  real(8):: time=0. ! current time in sec.
+  real(crm_rknd) day  ! current day (including fraction)
   real(crm_rknd) dtfactor   ! dtn/dt
 
   !  MPI staff:
@@ -78,7 +78,7 @@ module grid
 
   logical dostatis     ! flag to permit the gathering of statistics
   logical dostatisrad  ! flag to permit the gathering of radiation statistics
-  integer nstatis	! the interval between substeps to compute statistics
+  integer nstatis ! the interval between substeps to compute statistics
 
   logical :: compute_reffc = .false.
   logical :: compute_reffi = .false.
@@ -90,21 +90,21 @@ module grid
   !-----------------------------------------
   ! Parameters controled by namelist PARAMETERS
 
-  real(crm_rknd):: dx =0. 	! grid spacing in x direction
-  real(crm_rknd):: dy =0.	! grid spacing in y direction
-  real(crm_rknd):: dz =0.	! constant grid spacing in z direction (when dz_constant=.true.)
+  real(crm_rknd) :: dx =0.   ! grid spacing in x direction
+  real(crm_rknd) :: dy =0.   ! grid spacing in y direction
+  real(crm_rknd), allocatable :: dz(:)    ! constant grid spacing in z direction (when dz_constant=.true.)
   logical:: doconstdz = .false.  ! do constant vertical grid spacing set by dz
 
   integer:: nstop =0   ! time step number to stop the integration
   integer:: nelapse =999999999! time step number to elapse before stoping
 
-  real(crm_rknd):: dt=0.	! dynamical timestep
-  real(crm_rknd):: day0=0.	! starting day (including fraction)
+  real(crm_rknd):: dt=0.  ! dynamical timestep
+  real(crm_rknd):: day0=0.  ! starting day (including fraction)
 
   integer:: nrad =1  ! frequency of calling the radiation routines
-  integer:: nprint =1000	! frequency of printing a listing (steps)
+  integer:: nprint =1000  ! frequency of printing a listing (steps)
   integer:: nrestart =0 ! switch to control starting/restarting of the model
-  integer:: nstat =1000	! the interval in time steps to compute statistics
+  integer:: nstat =1000 ! the interval in time steps to compute statistics
   integer:: nstatfrq =50 ! frequency of computing statistics
 
   logical:: restart_sep =.false.  ! write separate restart files for sub-domains
@@ -157,13 +157,13 @@ module grid
   logical :: isInitialized_scamiopdata = .false.
   logical :: wgls_holds_omega = .false.
 
-  real(crm_rknd), allocatable :: z(:)      ! height of the pressure levels above surface,m
-  real(crm_rknd), allocatable :: pres(:)  ! pressure,mb at scalar levels
-  real(crm_rknd), allocatable :: zi(:)     ! height of the interface levels
-  real(crm_rknd), allocatable :: presi(:)  ! pressure,mb at interface levels
-  real(crm_rknd), allocatable :: adz(:)   ! ratio of the thickness of scalar levels to dz
-  real(crm_rknd), allocatable :: adzw(:)	! ratio of the thinckness of w levels to dz
-  real(crm_rknd), allocatable :: dt3(:) 	! dynamical timesteps for three most recent time steps
+  real(crm_rknd), allocatable :: z    (:,:)      ! height of the pressure levels above surface,m
+  real(crm_rknd), allocatable :: pres (:,:)  ! pressure,mb at scalar levels
+  real(crm_rknd), allocatable :: zi   (:,:)     ! height of the interface levels
+  real(crm_rknd), allocatable :: presi(:,:)  ! pressure,mb at interface levels
+  real(crm_rknd), allocatable :: adz  (:,:)   ! ratio of the thickness of scalar levels to dz
+  real(crm_rknd), allocatable :: adzw (:,:)  ! ratio of the thinckness of w levels to dz
+  real(crm_rknd), allocatable :: dt3  (:,:)   ! dynamical timesteps for three most recent time steps
 
   !-----------------------------------------
 
@@ -171,17 +171,19 @@ contains
 
 
 
-  subroutine allocate_grid()
+  subroutine allocate_grid(ncrms)
     implicit none
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
     
-    allocate( z(nz)       )
-    allocate( pres(nzm)   )
-    allocate( zi(nz)      )
-    allocate( presi(nz)   )
-    allocate( adz(nzm)    )
-    allocate( adzw(nz)	 )
-    allocate( dt3(3) 	 )
+    allocate( z(nz,ncrms)       )
+    allocate( pres(nzm,ncrms)   )
+    allocate( zi(nz,ncrms)      )
+    allocate( presi(nz,ncrms)   )
+    allocate( adz(nzm,ncrms)    )
+    allocate( adzw(nz,ncrms)   )
+    allocate( dt3(3,ncrms)   )
+    allocate( dz(ncrms)   )
 
     zero = 0
 
@@ -192,6 +194,7 @@ contains
     adz = zero
     adzw = zero
     dt3 = zero
+    dz = zero
   end subroutine allocate_grid
 
 
@@ -204,6 +207,7 @@ contains
     deallocate( adz )
     deallocate( adzw )
     deallocate( dt3 )
+    deallocate( dz )
   end subroutine deallocate_grid
 
 

@@ -5,7 +5,7 @@ module advect_scalar_mod
 
 contains
 
-  subroutine advect_scalar( f, fadv, flux, f2leadv, f2legrad, fwleadv, doit )
+  subroutine advect_scalar( ncrms, icrm, f, fadv, flux, f2leadv, f2legrad, fwleadv, doit )
 
     !	5th order ultimate-macho advection scheme
     ! Yamaguchi, T., D. A. Randall, and M. F. Khairoutdinov, 2011:
@@ -24,7 +24,7 @@ contains
     use params, only: docolumn, crm_rknd
 
     implicit none
-
+    integer, intent(in) :: ncrms, icrm
     !	input
     real(crm_rknd), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm), intent(inout) :: f
     real(crm_rknd), dimension(nz), intent(out) :: flux, fadv
@@ -46,9 +46,9 @@ contains
     df(:,:,:) = f(:,:,:)
 
     if (RUN3D) then
-      call advect_scalar3D(f, u, v, w, rho, rhow, flux)
+      call advect_scalar3D(ncrms,icrm, f, u, v, w, rho, rhow, flux)
     else
-      call advect_scalar2D(f, u, w, rho, rhow, flux)
+      call advect_scalar2D(ncrms,icrm, f, u, w, rho, rhow, flux)
     endif
 
     do k = 1, nzm

@@ -5,16 +5,12 @@ module press_rhs_mod
 
 contains
 
-  subroutine press_rhs
-
+  subroutine press_rhs(ncrms,icrm)
     !       right-hand-side of the Poisson equation for pressure
-
     use vars
     use params, only: dowallx, dowally
-
     implicit none
-
-
+    integer, intent(in) :: ncrms, icrm
     real *8 dta,rdx,rdy,rdz,btat,ctat,rup,rdn
     integer i,j,k,ic,jc,kc
 
@@ -22,7 +18,7 @@ contains
 
       do k=1,nzm
         do j=1,ny
-          dudt(1,j,k,na) = 0.
+          dudt(1,j,k,na,icrm) = 0.
         end do
       end do
 
@@ -32,7 +28,7 @@ contains
 
       do k=1,nzm
         do i=1,nx
-          dvdt(i,1,k,na) = 0.
+          dvdt(i,1,k,na,icrm) = 0.
         end do
       end do
 
@@ -42,10 +38,10 @@ contains
     if(dompi) then
       call task_bound_duvdt()
     else
-      call bound_duvdt()
+      call bound_duvdt(ncrms,icrm)
     endif
 
-    dta=1./dt3(na)/at
+    dta=1./dt3(na,icrm)/at
     rdx=1./dx
     rdy=1./dy
     btat=bt/at
@@ -55,26 +51,26 @@ contains
 
       do k=1,nzm
         kc=k+1
-        rdz=1./(adz(k)*dz)
-        rup = rhow(kc)/rho(k)*rdz
-        rdn = rhow(k)/rho(k)*rdz
+        rdz=1./(adz(k,icrm)*dz(icrm))
+        rup = rhow(kc,icrm)/rho(k,icrm)*rdz
+        rdn = rhow(k,icrm)/rho(k,icrm)*rdz
         do j=1,ny
           jc=j+1
           do i=1,nx
             ic=i+1
-            p(i,j,k)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
-            rdy*(v(i,jc,k)-v(i,j,k))+ &
-            (w(i,j,kc)*rup-w(i,j,k)*rdn) )*dta + &
-            (rdx*(dudt(ic,j,k,na)-dudt(i,j,k,na))+ &
-            rdy*(dvdt(i,jc,k,na)-dvdt(i,j,k,na))+ &
-            (dwdt(i,j,kc,na)*rup-dwdt(i,j,k,na)*rdn) ) + &
-            btat*(rdx*(dudt(ic,j,k,nb)-dudt(i,j,k,nb))+ &
-            rdy*(dvdt(i,jc,k,nb)-dvdt(i,j,k,nb))+ &
-            (dwdt(i,j,kc,nb)*rup-dwdt(i,j,k,nb)*rdn) ) + &
-            ctat*(rdx*(dudt(ic,j,k,nc)-dudt(i,j,k,nc))+ &
-            rdy*(dvdt(i,jc,k,nc)-dvdt(i,j,k,nc))+ &
-            (dwdt(i,j,kc,nc)*rup-dwdt(i,j,k,nc)*rdn) )
-            p(i,j,k)=p(i,j,k)*rho(k)
+            p(i,j,k,icrm)=(rdx*(u(ic,j,k,icrm)-u(i,j,k,icrm))+ &
+            rdy*(v(i,jc,k,icrm)-v(i,j,k,icrm))+ &
+            (w(i,j,kc,icrm)*rup-w(i,j,k,icrm)*rdn) )*dta + &
+            (rdx*(dudt(ic,j,k,na,icrm)-dudt(i,j,k,na,icrm))+ &
+            rdy*(dvdt(i,jc,k,na,icrm)-dvdt(i,j,k,na,icrm))+ &
+            (dwdt(i,j,kc,na,icrm)*rup-dwdt(i,j,k,na,icrm)*rdn) ) + &
+            btat*(rdx*(dudt(ic,j,k,nb,icrm)-dudt(i,j,k,nb,icrm))+ &
+            rdy*(dvdt(i,jc,k,nb,icrm)-dvdt(i,j,k,nb,icrm))+ &
+            (dwdt(i,j,kc,nb,icrm)*rup-dwdt(i,j,k,nb,icrm)*rdn) ) + &
+            ctat*(rdx*(dudt(ic,j,k,nc,icrm)-dudt(i,j,k,nc,icrm))+ &
+            rdy*(dvdt(i,jc,k,nc,icrm)-dvdt(i,j,k,nc,icrm))+ &
+            (dwdt(i,j,kc,nc,icrm)*rup-dwdt(i,j,k,nc,icrm)*rdn) )
+            p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)
           end do
         end do
       end do
@@ -86,20 +82,20 @@ contains
 
       do k=1,nzm
         kc=k+1
-        rdz=1./(adz(k)*dz)
-        rup = rhow(kc)/rho(k)*rdz
-        rdn = rhow(k)/rho(k)*rdz
+        rdz=1./(adz(k,icrm)*dz(icrm))
+        rup = rhow(kc,icrm)/rho(k,icrm)*rdz
+        rdn = rhow(k,icrm)/rho(k,icrm)*rdz
         do i=1,nx
           ic=i+1
-          p(i,j,k)=(rdx*(u(ic,j,k)-u(i,j,k))+ &
-          (w(i,j,kc)*rup-w(i,j,k)*rdn) )*dta + &
-          (rdx*(dudt(ic,j,k,na)-dudt(i,j,k,na))+ &
-          (dwdt(i,j,kc,na)*rup-dwdt(i,j,k,na)*rdn) ) + &
-          btat*(rdx*(dudt(ic,j,k,nb)-dudt(i,j,k,nb))+ &
-          (dwdt(i,j,kc,nb)*rup-dwdt(i,j,k,nb)*rdn) ) + &
-          ctat*(rdx*(dudt(ic,j,k,nc)-dudt(i,j,k,nc))+ &
-          (dwdt(i,j,kc,nc)*rup-dwdt(i,j,k,nc)*rdn) )
-          p(i,j,k)=p(i,j,k)*rho(k)
+          p(i,j,k,icrm)=(rdx*(u(ic,j,k,icrm)-u(i,j,k,icrm))+ &
+          (w(i,j,kc,icrm)*rup-w(i,j,k,icrm)*rdn) )*dta + &
+          (rdx*(dudt(ic,j,k,na,icrm)-dudt(i,j,k,na,icrm))+ &
+          (dwdt(i,j,kc,na,icrm)*rup-dwdt(i,j,k,na,icrm)*rdn) ) + &
+          btat*(rdx*(dudt(ic,j,k,nb,icrm)-dudt(i,j,k,nb,icrm))+ &
+          (dwdt(i,j,kc,nb,icrm)*rup-dwdt(i,j,k,nb,icrm)*rdn) ) + &
+          ctat*(rdx*(dudt(ic,j,k,nc,icrm)-dudt(i,j,k,nc,icrm))+ &
+          (dwdt(i,j,kc,nc,icrm)*rup-dwdt(i,j,k,nc,icrm)*rdn) )
+          p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)
         end do
       end do
 

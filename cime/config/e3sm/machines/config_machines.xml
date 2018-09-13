@@ -2124,17 +2124,16 @@
         <command name="purge"/>
       </modules>
       <modules compiler="pgi">
-        <command name="load">pgi/17.4</command>
-        <command name="load">openmpi/pgi_1.10.2</command>
+        <command name="load">pgi/17.10</command>
+        <command name="load">openmpi</command>
       </modules>
       <modules>
-        <command name="load">netcdf/4.3.3.1</command>
-        <command name="load">hdf5/1.8.5p1</command>
-        <command name="load">curl/7.45</command>
-        <command name="load">szip/2.1</command>
-        <command name="load">zlib/1.2.8</command>
-        <command name="load">parallel-netcdf/1.6.1</command>
-        <command name="load">cuda/8.0</command>
+        <command name="load">netcdf</command>
+        <command name="load">hdf5</command>
+        <command name="load">curl</command>
+        <command name="load">szip</command>
+        <command name="load">zlib</command>
+        <command name="load">parallel-netcdf</command>
       </modules>
     </module_system>
     <environment_variables>

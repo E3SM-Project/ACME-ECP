@@ -3,18 +3,14 @@ module ice_fall_mod
 
 contains
 
-  subroutine ice_fall()
-
-
+  subroutine ice_fall(ncrms,icrm)
     ! Sedimentation of ice:
-
     use vars
     use microphysics, only: micro_field, index_cloud_ice
     !use micro_params
     use params
-
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     integer i,j,k, kb, kc, kmax, kmin, ici
     real(crm_rknd) coef,dqi,lat_heat,vt_ice
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
@@ -26,7 +22,7 @@ contains
     do k = 1,nzm
       do j = 1, ny
         do i = 1, nx
-          if(qcl(i,j,k)+qci(i,j,k).gt.0..and. tabs(i,j,k).lt.273.15) then
+          if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.0..and. tabs(i,j,k,icrm).lt.273.15) then
             kmin = min(kmin,k)
             kmax = max(kmax,k)
           end if
@@ -35,8 +31,8 @@ contains
     end do
 
     do k = 1,nzm
-      qifall(k) = 0.
-      tlatqi(k) = 0.
+      qifall(k,icrm) = 0.
+      tlatqi(k,icrm) = 0.
     end do
 
     if(index_cloud_ice.eq.-1) return
@@ -53,16 +49,16 @@ contains
       kc = min(nzm,k+1)
       kb = max(1,k-1)
       ! CFL number based on grid spacing interpolated to interface i,j,k-1/2
-      coef = dtn/(0.5*(adz(kb)+adz(k))*dz)
+      coef = dtn/(0.5*(adz(kb,icrm)+adz(k,icrm))*dz(icrm))
       do j = 1,ny
         do i = 1,nx
           ! Compute cloud ice density in this cell and the ones above/below.
-          ! Since cloud ice is falling, the above cell is u (upwind),
+          ! Since cloud ice is falling, the above cell is u (upwind,icrm),
           ! this cell is c (center) and the one below is d (downwind).
 
-          qiu = rho(kc)*qci(i,j,kc)
-          qic = rho(k) *qci(i,j,k)
-          qid = rho(kb)*qci(i,j,kb)
+          qiu = rho(kc,icrm)*qci(i,j,kc,icrm)
+          qic = rho(k,icrm) *qci(i,j,k,icrm)
+          qid = rho(kb,icrm)*qci(i,j,kb,icrm)
 
           ! Ice sedimentation velocity depends on ice content. The fiting is
           ! based on the data by Heymsfield (JAS,2003). -Marat
@@ -91,34 +87,34 @@ contains
     ici = index_cloud_ice
 
     do k=max(1,kmin-2),kmax
-      coef=dtn/(dz*adz(k)*rho(k))
+      coef=dtn/(dz(icrm)*adz(k,icrm)*rho(k,icrm))
       do j=1,ny
         do i=1,nx
           ! The cloud ice increment is the difference of the fluxes.
           dqi=coef*(fz(i,j,k)-fz(i,j,k+1))
           ! Add this increment to both non-precipitating and total water.
-          micro_field(i,j,k,ici)  = micro_field(i,j,k,ici)  + dqi
+          micro_field(i,j,k,ici,icrm)  = micro_field(i,j,k,ici,icrm)  + dqi
           ! Include this effect in the total moisture budget.
-          qifall(k) = qifall(k) + dqi
+          qifall(k,icrm) = qifall(k,icrm) + dqi
 
           ! The latent heat flux induced by the falling cloud ice enters
           ! the liquid-ice static energy budget in the same way as the
           ! precipitation.  Note: use latent heat of sublimation.
           lat_heat  = (fac_cond+fac_fus)*dqi
           ! Add divergence of latent heat flux to liquid-ice static energy.
-          t(i,j,k)  = t(i,j,k)  - lat_heat
+          t(i,j,k,icrm)  = t(i,j,k,icrm)  - lat_heat
           ! Add divergence to liquid-ice static energy budget.
-          tlatqi(k) = tlatqi(k) - lat_heat
+          tlatqi(k,icrm) = tlatqi(k,icrm) - lat_heat
         end do
       end do
     end do
 
-    coef=dtn/dz
+    coef=dtn/dz(icrm)
     do j=1,ny
       do i=1,nx
         dqi=-coef*fz(i,j,1)
-        precsfc(i,j) = precsfc(i,j)+dqi
-        precssfc(i,j) = precssfc(i,j)+dqi
+        precsfc(i,j,icrm) = precsfc(i,j,icrm)+dqi
+        precssfc(i,j,icrm) = precssfc(i,j,icrm)+dqi
       end do
     end do
 

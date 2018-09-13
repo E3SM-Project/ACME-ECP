@@ -477,8 +477,7 @@ contains
   !---------------------------------------------------------------------------------------
 
   !========================================================================================
-  subroutine ecpp_crm_stat()
-
+  subroutine ecpp_crm_stat(ncrms,icrm)
     use module_ecpp_stats
     use module_data_ecpp1, only: afrac_cut
     use grid,  only: nx, ny, nzm, pres
@@ -491,7 +490,7 @@ contains
     use sgs, only: tk_clubb
 #endif
     implicit none
-
+    integer, intent(in) :: ncrms,icrm
     integer :: i, ierr, i_tidx, j, &
     ncnt1, ncnt2
 
@@ -518,28 +517,28 @@ contains
     ndn = ndndraft ; nup = nupdraft
 
     ! Get values from SAM cloud fields
-    qcloud(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm)
-    qrain(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqr)
-    qice(1:nx,1:ny,1:nzm)   = micro_field(1:nx,1:ny,1:nzm,iqci)
-    qsnow(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqs)
-    qgraup(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqg)
+    qcloud(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
+    qrain(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
+    qice(1:nx,1:ny,1:nzm)   = micro_field(1:nx,1:ny,1:nzm,iqci,icrm)
+    qsnow(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqs,icrm)
+    qgraup(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqg,icrm)
 
     precall(:,:,:)= precr(:,:,:) + precsolid(:,:,:)
 
     do ii=1, nx
       do jj=1, ny
         do kk=1, nzm
-          EVS = POLYSVP(tabs(ii,jj,kk),0)   ! saturation water vapor pressure (PA)
-          qvs(ii,jj,kk) = .622*EVS/(pres(kk)*100.-EVS)  ! pres(kk) with unit of hPa
-          !         rh(ii,jj,kk) = micro_field(ii,jj,kk,iqv)/QVS ! unit 0-1
+          EVS = POLYSVP(tabs(ii,jj,kk,icrm),0)   ! saturation water vapor pressure (PA)
+          qvs(ii,jj,kk) = .622*EVS/(pres(kk,icrm)*100.-EVS)  ! pres(kk,icrm) with unit of hPa
+          !         rh(ii,jj,kk) = micro_field(ii,jj,kk,iqv,icrm)/QVS ! unit 0-1
           !         rh(ii,jj,kk) = min(1.0, rh(ii,jj,kk))    ! RH is diagnosed in microphysics
-          alt(ii,jj,kk) =  287.*tabs(ii,jj,kk)/(100.*pres(kk))
+          alt(ii,jj,kk) =  287.*tabs(ii,jj,kk,icrm)/(100.*pres(kk,icrm))
 
         end do
       end do
     end do
 
-    ww(:,:,:)     = w(1:nx,1:ny,1:nzstag)
+    ww(:,:,:)     = w(1:nx,1:ny,1:nzstag,icrm)
 #ifdef CLUBB_CRM
     wwsq(:,:,:)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
 #else
@@ -549,7 +548,7 @@ contains
 #ifdef CLUBB_CRM
     xkhv(:,:,:)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
 #else
-    xkhv(:,:,:)   = tk(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
+    xkhv(:,:,:)   = tk(1:nx,1:ny,1:nzm,icrm)  ! eddy viscosity m2/s
 #endif
 
     !+++mhwangtest
@@ -581,10 +580,10 @@ contains
     precall,   precallsum1(:,:,:),   &
     alt,       altsum1(:,:,:),       &
     rh,        rhsum1(:,:,:),        &
-    CF3D,      cf3dsum1(:,:,:),       &
+    CF3D(:,:,:,icrm),      cf3dsum1(:,:,:),       &
     ww,        wwsum1(:,:,:),        &
     wwsq,      wwsqsum1(:,:,:),      &
-    tke(1:nx,1:ny,1:nzm),       tkesgssum1(:,:,:),    &
+    tke(1:nx,1:ny,1:nzm,icrm),       tkesgssum1(:,:,:),    &
     qlsink_bf, qlsink_bfsum1(:,:,:), &
     prain,     prainsum1(:,:,:),     &
     qvs,       qvssum1(:,:,:)   )

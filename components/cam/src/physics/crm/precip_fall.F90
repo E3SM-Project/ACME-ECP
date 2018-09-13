@@ -5,7 +5,7 @@ module precip_fall_mod
 
 contains
 
-  subroutine precip_fall(qp, term_vel, hydro_type, omega, ind)
+  subroutine precip_fall(ncrms,icrm,micro_field, term_vel, hydro_type, omega, ind)
 
     !     positively definite monotonic advection with non-oscillatory option
     !     and gravitational sedimentation
@@ -13,10 +13,8 @@ contains
     use vars
     use params
     implicit none
-
-
-
-    real(crm_rknd) qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! falling hydrometeor
+    integer, intent(in) :: ncrms,icrm
+    real(crm_rknd), target :: micro_field(dimx1_s:, dimy1_s:, :, :,:)
     integer hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
     real(crm_rknd) omega(nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
     integer ind
@@ -28,7 +26,7 @@ contains
 
     ! Local:
 
-    real(crm_rknd) mx(nzm),mn(nzm), lfac(nz)
+    real(crm_rknd) mx(nzm),mn(nzm), lfac(nz,icrm)
     real(crm_rknd) www(nz),fz(nz)
     real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) f0(nzm),df0(nzm)
@@ -45,6 +43,9 @@ contains
     real(crm_rknd) wp(nzm), tmp_qp(nzm), irhoadz(nzm), iwmax(nzm), rhofac(nzm), prec_cfl
     integer nprec, iprec
     real(crm_rknd)  flagstat
+    real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
+
+    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
 
     !--------------------------------------------------------
 
@@ -54,10 +55,10 @@ contains
     nonos = .true.
 
     do k = 1,nzm
-      rhofac(k) = sqrt(1.29/rho(k))
-      irhoadz(k) = 1./(rho(k)*adz(k)) ! Useful factor
+      rhofac(k) = sqrt(1.29/rho(k,icrm))
+      irhoadz(k) = 1./(rho(k,icrm)*adz(k,icrm)) ! Useful factor
       kb = max(1,k-1)
-      wmax       = dz*adz(kb)/dtn   ! Velocity equivalent to a cfl of 1.0.
+      wmax       = dz(icrm)*adz(kb,icrm)/dtn   ! Velocity equivalent to a cfl of 1.0.
       iwmax(k)   = 1./wmax
     end do
 
@@ -74,16 +75,16 @@ contains
 
           select case (hydro_type)
           case(0)
-            lfac(k) = fac_cond
+            lfac(k,icrm) = fac_cond
             flagstat = 1.
           case(1)
-            lfac(k) = fac_sub
+            lfac(k,icrm) = fac_sub
             flagstat = 1.
           case(2)
-            lfac(k) = fac_cond + (1-omega(i,j,k))*fac_fus
+            lfac(k,icrm) = fac_cond + (1-omega(i,j,k))*fac_fus
             flagstat = 1.
           case(3)
-            lfac(k) = 0.
+            lfac(k,icrm) = 0.
             flagstat = 0.
           case default
             if(masterproc) then
@@ -92,15 +93,15 @@ contains
             end if
           end select
 
-          wp(k)=rhofac(k)*term_vel(i,j,k,ind)
+          wp(k)=rhofac(k)*term_vel(ncrms,icrm,i,j,k,ind)
           prec_cfl = max(prec_cfl,wp(k)*iwmax(k)) ! Keep column maximum CFL
-          wp(k) = -wp(k)*rhow(k)*dtn/dz
+          wp(k) = -wp(k)*rhow(k,icrm)*dtn/dz(icrm)
 
         end do  ! k
 
         fz(nz)=0.
         www(nz)=0.
-        lfac(nz)=0
+        lfac(nz,icrm)=0
 
         ! If maximum CFL due to precipitation velocity is greater than 0.9,
         ! take more than one advection step to maintain stability.
@@ -118,7 +119,7 @@ contains
         do iprec = 1,nprec
 
           do k = 1,nzm
-            tmp_qp(k) = qp(i,j,k) ! Temporary array for qp in this column
+            tmp_qp(k) = qp(i,j,k,icrm) ! Temporary array for qp in this column
           end do
 
           !-----------------------------------------
@@ -172,8 +173,8 @@ contains
 
             do k=1,nzm
               kc=min(nzm,k+1)
-              mx(k)=rho(k)*adz(k)*(mx(k)-tmp_qp(k))/(pn(www(kc)) + pp(www(k))+eps)
-              mn(k)=rho(k)*adz(k)*(tmp_qp(k)-mn(k))/(pp(www(kc)) + pn(www(k))+eps)
+              mx(k)=rho(k,icrm)*adz(k,icrm)*(mx(k)-tmp_qp(k))/(pn(www(kc)) + pp(www(k))+eps)
+              mn(k)=rho(k,icrm)*adz(k,icrm)*(tmp_qp(k)-mn(k))/(pp(www(kc)) + pn(www(k))+eps)
             end do
 
             do k=1,nzm
@@ -193,24 +194,24 @@ contains
             ! Update precipitation mass fraction.
             ! Note that fz is the total flux, including both the
             ! upwind flux and the anti-diffusive correction.
-            qp(i,j,k)=qp(i,j,k)-(fz(kc)-fz(k))*irhoadz(k)
-            qpfall(k)=qpfall(k)-(fz(kc)-fz(k))*irhoadz(k)*flagstat  ! For qp budget
-            lat_heat = -(lfac(kc)*fz(kc)-lfac(k)*fz(k))*irhoadz(k)
-            t(i,j,k)=t(i,j,k)-lat_heat
-            tlat(k)=tlat(k)-lat_heat            ! For energy budget
-            precflux(k) = precflux(k) - fz(k)*flagstat   ! For statistics
+            qp(i,j,k,icrm)=qp(i,j,k,icrm)-(fz(kc)-fz(k))*irhoadz(k)
+            qpfall(k,icrm)=qpfall(k,icrm)-(fz(kc)-fz(k))*irhoadz(k)*flagstat  ! For qp budget
+            lat_heat = -(lfac(kc,icrm)*fz(kc)-lfac(k,icrm)*fz(k))*irhoadz(k)
+            t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat
+            tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
+            precflux(k,icrm) = precflux(k,icrm) - fz(k)*flagstat   ! For statistics
           end do
-          precsfc(i,j) = precsfc(i,j) - fz(1)*flagstat ! For statistics
-          precssfc(i,j) = precssfc(i,j) - fz(1)*(1.-omega(i,j,1))*flagstat ! For statistics
-          prec_xy(i,j) = prec_xy(i,j) - fz(1)*flagstat ! For 2D output
+          precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(1)*flagstat ! For statistics
+          precssfc(i,j,icrm) = precssfc(i,j,icrm) - fz(1)*(1.-omega(i,j,1))*flagstat ! For statistics
+          prec_xy(i,j,icrm) = prec_xy(i,j,icrm) - fz(1)*flagstat ! For 2D output
 
           if (iprec.lt.nprec) then
 
             ! Re-compute precipitation velocity using new value of qp.
             do k=1,nzm
-              wp(k) = rhofac(k)*term_vel(i,j,k,ind)
+              wp(k) = rhofac(k)*term_vel(ncrms,icrm,i,j,k,ind)
               ! Decrease precipitation velocity by factor of nprec
-              wp(k) = -wp(k)*rhow(k)*dtn/dz/real(nprec,crm_rknd)
+              wp(k) = -wp(k)*rhow(k,icrm)*dtn/dz(icrm)/real(nprec,crm_rknd)
               ! Note: Don't bother checking CFL condition at each
               ! substep since it's unlikely that the CFL will
               ! increase very much between substeps when using
@@ -219,7 +220,7 @@ contains
 
             fz(nz)=0.
             www(nz)=0.
-            lfac(nz)=0.
+            lfac(nz,icrm)=0.
 
           end if
 

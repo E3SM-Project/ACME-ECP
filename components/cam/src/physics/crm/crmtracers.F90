@@ -16,31 +16,32 @@ module crmtracers
   use utils,  only: lenstr
   implicit none
 
-  real(crm_rknd), allocatable :: tracer  (:,:,:,:)
-  real(crm_rknd), allocatable :: fluxbtr (:,:,:) ! surface flux of tracers
-  real(crm_rknd), allocatable :: fluxttr (:,:,:) ! top boundary flux of tracers
-  real(crm_rknd), allocatable :: trwle   (:,:)  ! resolved vertical flux
-  real(crm_rknd), allocatable :: trwsb   (:,:)  ! SGS vertical flux
-  real(crm_rknd), allocatable :: tradv   (:,:)  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: trdiff  (:,:)  ! tendency due to vertical diffusion
-  real(crm_rknd), allocatable :: trphys  (:,:)  ! tendency due to physics
+  real(crm_rknd), allocatable :: tracer  (:,:,:,:,:)
+  real(crm_rknd), allocatable :: fluxbtr (:,:,:,:) ! surface flux of tracers
+  real(crm_rknd), allocatable :: fluxttr (:,:,:,:) ! top boundary flux of tracers
+  real(crm_rknd), allocatable :: trwle   (:,:,:)  ! resolved vertical flux
+  real(crm_rknd), allocatable :: trwsb   (:,:,:)  ! SGS vertical flux
+  real(crm_rknd), allocatable :: tradv   (:,:,:)  ! tendency due to vertical advection
+  real(crm_rknd), allocatable :: trdiff  (:,:,:)  ! tendency due to vertical diffusion
+  real(crm_rknd), allocatable :: trphys  (:,:,:)  ! tendency due to physics
   character *4  , allocatable :: tracername  (:)
   character *10 , allocatable :: tracerunits (:)
 
 CONTAINS
 
 
-  subroutine allocate_tracers()
+  subroutine allocate_tracers(ncrms)
     implicit none
+    integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers))
-    allocate( fluxbtr (nx, ny, 0:ntracers) )
-    allocate( fluxttr (nx, ny, 0:ntracers) )
-    allocate( trwle   (nz,0:ntracers)  )
-    allocate( trwsb   (nz,0:ntracers)  )
-    allocate( tradv   (nz,0:ntracers)  )
-    allocate( trdiff  (nz,0:ntracers)  )
-    allocate( trphys  (nz,0:ntracers)  )
+    allocate( tracer  (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, 0:ntracers,ncrms))
+    allocate( fluxbtr (nx, ny, 0:ntracers,ncrms) )
+    allocate( fluxttr (nx, ny, 0:ntracers,ncrms) )
+    allocate( trwle   (nz,0:ntracers,ncrms)  )
+    allocate( trwsb   (nz,0:ntracers,ncrms)  )
+    allocate( tradv   (nz,0:ntracers,ncrms)  )
+    allocate( trdiff  (nz,0:ntracers,ncrms)  )
+    allocate( trphys  (nz,0:ntracers,ncrms)  )
     allocate( tracername   (0:ntracers))
     allocate( tracerunits (0:ntracers))
 

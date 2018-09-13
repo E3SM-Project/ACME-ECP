@@ -1,518 +1,517 @@
 module pressure_mod
-	use task_util_mod
+  use task_util_mod
   implicit none
 
 contains
 
-	! Non-blocking receives before blocking sends
-	subroutine pressure
-
-		!       Original pressure solver based on horizontal slabs
-		!       (C) 1998, 2002 Marat Khairoutdinov
-		!       Works only when the number of slabs is equal to the number of processors.
-		!       Therefore, the number of processors shouldn't exceed the number of levels nzm
-		!       Also, used for a 2D version
-		!       For more processors for the given number of levels and 3D, use pressure_big
-
-		use vars
-		use params, only: dowallx, dowally, docolumn, crm_rknd
-		use press_rhs_mod
-		use press_grad_mod
-		implicit none
-
-
-		integer, parameter :: npressureslabs = nsubdomains
-		integer, parameter :: nzslab = max(1,nzm / npressureslabs)
-		integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
-		integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
-
-		real(crm_rknd) f(nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
-		real(crm_rknd) ff(nx+1,ny+2*YES3D,nzm)	! local (subdomain's) version of f
-		real(crm_rknd) buff_slabs(nxp1,nyp2,nzslab,npressureslabs)
-		real(crm_rknd) buff_subs(nxp1,nyp2,nzslab,nsubdomains)
-		real(crm_rknd) bufp_slabs(0:nx,1-YES3D:ny,nzslab,npressureslabs)
-		real(crm_rknd) bufp_subs(0:nx,1-YES3D:ny,nzslab,nsubdomains)
-		common/tmpstack/f,ff,buff_slabs,buff_subs
-		equivalence (buff_slabs,bufp_slabs)
-		equivalence (buff_subs,bufp_subs)
+  ! Non-blocking receives before blocking sends
+  subroutine pressure(ncrms,icrm)
+
+    !       Original pressure solver based on horizontal slabs
+    !       (C) 1998, 2002 Marat Khairoutdinov
+    !       Works only when the number of slabs is equal to the number of processors.
+    !       Therefore, the number of processors shouldn't exceed the number of levels nzm
+    !       Also, used for a 2D version
+    !       For more processors for the given number of levels and 3D, use pressure_big
+
+    use vars
+    use params, only: dowallx, dowally, docolumn, crm_rknd
+    use press_rhs_mod
+    use press_grad_mod
+    implicit none
+    integer, intent(in) :: ncrms, icrm
+    integer, parameter :: npressureslabs = nsubdomains
+    integer, parameter :: nzslab = max(1,nzm / npressureslabs)
+    integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
+    integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
+
+    real(crm_rknd) f(nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
+    real(crm_rknd) ff(nx+1,ny+2*YES3D,nzm)  ! local (subdomain's) version of f
+    real(crm_rknd) buff_slabs(nxp1,nyp2,nzslab,npressureslabs)
+    real(crm_rknd) buff_subs(nxp1,nyp2,nzslab,nsubdomains)
+    real(crm_rknd) bufp_slabs(0:nx,1-YES3D:ny,nzslab,npressureslabs)
+    real(crm_rknd) bufp_subs(0:nx,1-YES3D:ny,nzslab,nsubdomains)
+    common/tmpstack/f,ff,buff_slabs,buff_subs
+    equivalence (buff_slabs,bufp_slabs)
+    equivalence (buff_subs,bufp_subs)
+
+    real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
+    integer ifaxj(100),ifaxi(100)
+
+    real(8) a(nzm),b,c(nzm),e,fff(nzm)
+    real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty,eign
+    real(8) alfa(nzm-1),beta(nzm-1)
+
+    integer reqs_in(nsubdomains)
+    integer i, j, k, id, jd, m, n, it, jt, ii, jj, tag, rf
+    integer nyp22, n_in, count
+    integer iii(0:nx_gl),jjj(0:ny_gl)
+    logical flag(nsubdomains)
+    integer iwall,jwall
+
+    ! check if the grid size allows the computation:
+
+    if(nsubdomains.gt.nzm) then
+      if(masterproc) print*,'pressure_orig: nzm < nsubdomains. STOP'
+      call task_abort
+    endif
+
+    if(mod(nzm,npressureslabs).ne.0) then
+      if(masterproc) print*,'pressure_orig: nzm/npressureslabs is not round number. STOP'
+      call task_abort
+    endif
+
+    !-----------------------------------------------------------------
+
+    if(docolumn) return
+
+    if(dowallx) then
+      iwall=1
+    else
+      iwall=0
+    end if
+    if(RUN2D) then
+      nyp22=1
+      jwall=0
+    else
+      nyp22=nyp2
+      if(dowally) then
+        jwall=2
+      else
+        jwall=0
+      end if
+    endif
+
+    !-----------------------------------------------------------------
+    !  Compute the r.h.s. of the Poisson equation for pressure
 
-		real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
-		integer ifaxj(100),ifaxi(100)
+    call press_rhs(ncrms,icrm)
 
-		real(8) a(nzm),b,c(nzm),e,fff(nzm)
-		real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty,eign
-		real(8) alfa(nzm-1),beta(nzm-1)
 
-		integer reqs_in(nsubdomains)
-		integer i, j, k, id, jd, m, n, it, jt, ii, jj, tag, rf
-		integer nyp22, n_in, count
-		integer iii(0:nx_gl),jjj(0:ny_gl)
-		logical flag(nsubdomains)
-		integer iwall,jwall
-
-		! check if the grid size allows the computation:
-
-		if(nsubdomains.gt.nzm) then
-			if(masterproc) print*,'pressure_orig: nzm < nsubdomains. STOP'
-			call task_abort
-		endif
-
-		if(mod(nzm,npressureslabs).ne.0) then
-			if(masterproc) print*,'pressure_orig: nzm/npressureslabs is not round number. STOP'
-			call task_abort
-		endif
-
-		!-----------------------------------------------------------------
-
-		if(docolumn) return
-
-		if(dowallx) then
-			iwall=1
-		else
-			iwall=0
-		end if
-		if(RUN2D) then
-			nyp22=1
-			jwall=0
-		else
-			nyp22=nyp2
-			if(dowally) then
-				jwall=2
-			else
-				jwall=0
-			end if
-		endif
+    !-----------------------------------------------------------------
+    !   Form the horizontal slabs of right-hand-sides of Poisson equation
+    !   for the global domain. Request sending and receiving tasks.
 
-		!-----------------------------------------------------------------
-		!  Compute the r.h.s. of the Poisson equation for pressure
+    ! iNon-blocking receive first:
 
-		call press_rhs()
+    n_in = 0
+    do m = 0,nsubdomains-1
 
+      if(rank.lt.npressureslabs.and.m.ne.nsubdomains-1) then
 
-		!-----------------------------------------------------------------
-		!   Form the horizontal slabs of right-hand-sides of Poisson equation
-		!   for the global domain. Request sending and receiving tasks.
+        n_in = n_in + 1
+        call task_receive_float(bufp_subs(0,1-YES3D,1,n_in), &
+        nzslab*nxp1*nyp1,reqs_in(n_in))
+        flag(n_in) = .false.
 
-		! iNon-blocking receive first:
+      endif
 
-		n_in = 0
-		do m = 0,nsubdomains-1
+      if(rank.lt.npressureslabs.and.m.eq.nsubdomains-1) then
 
-			if(rank.lt.npressureslabs.and.m.ne.nsubdomains-1) then
+        call task_rank_to_index(rank,it,jt)
+        n = rank*nzslab
+        do k = 1,nzslab
+          do j = 1,ny
+            do i = 1,nx
+              f(i+it,j+jt,k) = p(i,j,k+n,icrm)
+            end do
+          end do
+        end do
+      endif
 
-				n_in = n_in + 1
-				call task_receive_float(bufp_subs(0,1-YES3D,1,n_in), &
-				nzslab*nxp1*nyp1,reqs_in(n_in))
-				flag(n_in) = .false.
+    end do ! m
 
-			endif
 
-			if(rank.lt.npressureslabs.and.m.eq.nsubdomains-1) then
+    ! Blocking send now:
 
-				call task_rank_to_index(rank,it,jt)
-				n = rank*nzslab
-				do k = 1,nzslab
-					do j = 1,ny
-						do i = 1,nx
-							f(i+it,j+jt,k) = p(i,j,k+n)
-						end do
-					end do
-				end do
-			endif
 
-		end do ! m
+    do m = 0,nsubdomains-1
 
+      if(m.lt.npressureslabs.and.m.ne.rank) then
 
-		! Blocking send now:
+        n = m*nzslab + 1
+        call task_bsend_float(m,p(0,1-YES3D,n,icrm),nzslab*nxp1*nyp1, 33)
+      endif
 
+    end do ! m
 
-		do m = 0,nsubdomains-1
 
-			if(m.lt.npressureslabs.and.m.ne.rank) then
+    ! Fill slabs when receive buffers are full:
 
-				n = m*nzslab + 1
-				call task_bsend_float(m,p(0,1-YES3D,n),nzslab*nxp1*nyp1, 33)
-			endif
+    count = n_in
+    do while (count .gt. 0)
+      do m = 1,n_in
+        if(.not.flag(m)) then
+          call task_test(reqs_in(m), flag(m), rf, tag)
+          if(flag(m)) then
+            count=count-1
+            call task_rank_to_index(rf,it,jt)
+            do k = 1,nzslab
+              do j = 1,ny
+                do i = 1,nx
+                  f(i+it,j+jt,k) = bufp_subs(i,j,k,m)
+                end do
+              end do
+            end do
+          endif
+        endif
+      end do
+    end do
 
-		end do ! m
 
+    !-------------------------------------------------
+    ! Perform Fourier transformation for a slab:
 
-		! Fill slabs when receive buffers are full:
+    if(rank.lt.npressureslabs) then
+      call fftfax_crm(nx_gl,ifaxi,trigxi)
+      if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
+      do k=1,nzslab
 
-		count = n_in
-		do while (count .gt. 0)
-			do m = 1,n_in
-				if(.not.flag(m)) then
-					call task_test(reqs_in(m), flag(m), rf, tag)
-					if(flag(m)) then
-						count=count-1
-						call task_rank_to_index(rf,it,jt)
-						do k = 1,nzslab
-							do j = 1,ny
-								do i = 1,nx
-									f(i+it,j+jt,k) = bufp_subs(i,j,k,m)
-								end do
-							end do
-						end do
-					endif
-				endif
-			end do
-		end do
+        call fft991_crm(f(1,1,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
 
+        if(RUN3D) then
+          call fft991_crm(f(1,1,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
+        end if
 
-		!-------------------------------------------------
-		! Perform Fourier transformation for a slab:
+      end do
 
-		if(rank.lt.npressureslabs) then
-			call fftfax_crm(nx_gl,ifaxi,trigxi)
-			if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
-			do k=1,nzslab
+    endif
 
-				call fft991_crm(f(1,1,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
 
-				if(RUN3D) then
-					call fft991_crm(f(1,1,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
-				end if
+    ! Synchronize all slabs:
 
-			end do
+    call task_barrier()
 
-		endif
+    !-------------------------------------------------
+    !   Send Fourier coeffiecients back to subdomains:
 
+    ! Non-blocking receive first:
 
-		! Synchronize all slabs:
+    n_in = 0
+    do m = 0, nsubdomains-1
 
-		call task_barrier()
+      call task_rank_to_index(m,it,jt)
 
-		!-------------------------------------------------
-		!   Send Fourier coeffiecients back to subdomains:
+      if(rank.lt.npressureslabs.and.m.eq.rank) then
 
-		! Non-blocking receive first:
+        n = rank*nzslab
+        do k = 1,nzslab
+          do j = 1,nyp22-jwall
+            do i = 1,nxp1-iwall
+              ff(i,j,k+n) = f(i+it,j+jt,k)
+            end do
+          end do
+        end do
 
-		n_in = 0
-		do m = 0, nsubdomains-1
+      end if
 
-			call task_rank_to_index(m,it,jt)
+      if(m.lt.npressureslabs-1.or.m.eq.npressureslabs-1 .and.rank.ge.npressureslabs) then
+
+        n_in = n_in + 1
+        call task_receive_float(buff_slabs(1,1,1,n_in), &
+        nzslab*nxp1*nyp22,reqs_in(n_in))
+        flag(n_in) = .false.
+      endif
+
+    end do ! m
+
+    ! Blocking send now:
+
+    do m = 0, nsubdomains-1
+
+      call task_rank_to_index(m,it,jt)
+
+      if(rank.lt.npressureslabs.and.m.ne.rank) then
+
+        do k = 1,nzslab
+          do j = 1,nyp22
+            do i = 1,nxp1
+              buff_subs(i,j,k,1) = f(i+it,j+jt,k)
+            end do
+          end do
+        end do
+
+        call task_bsend_float(m, buff_subs(1,1,1,1),nzslab*nxp1*nyp22,44)
+
+      endif
+
+    end do ! m
 
-			if(rank.lt.npressureslabs.and.m.eq.rank) then
+
+
+    ! Fill slabs when receive buffers are complete:
+
+
+    count = n_in
+    do while (count .gt. 0)
+      do m = 1,n_in
+        if(.not.flag(m)) then
+          call task_test(reqs_in(m), flag(m), rf, tag)
+          if(flag(m)) then
+            count=count-1
+            n = rf*nzslab
+            do k = 1,nzslab
+              do j=1,nyp22
+                do i=1,nxp1
+                  ff(i,j,k+n) = buff_slabs(i,j,k,m)
+                end do
+              end do
+            end do
+          endif
+        endif
+      end do
+    end do
+
+    !-------------------------------------------------
+    !   Solve the tri-diagonal system for Fourier coeffiecients
+    !   in the vertical for each subdomain:
+
+    do k=1,nzm
+      a(k)=rhow(k,icrm)/(adz(k,icrm)*adzw(k,icrm)*dz(icrm)*dz(icrm))
+      c(k)=rhow(k+1,icrm)/(adz(k,icrm)*adzw(k+1,icrm)*dz(icrm)*dz(icrm))
+    end do
 
-				n = rank*nzslab
-				do k = 1,nzslab
-					do j = 1,nyp22-jwall
-						do i = 1,nxp1-iwall
-							ff(i,j,k+n) = f(i+it,j+jt,k)
-						end do
-					end do
-				end do
+    call task_rank_to_index(rank,it,jt)
 
-			end if
+    ddx2=1._8/(dx*dx)
+    ddy2=1._8/(dy*dy)
+    pii = acos(-1._8)
+    xnx=pii/nx_gl
+    xny=pii/ny_gl
+    do j=1,nyp22-jwall
+      if(dowally) then
+        jd=j+jt-1
+        facty = 1.d0
+      else
+        jd=(j+jt-0.1)/2.
+        facty = 2.d0
+      end if
+      xj=jd
+      do i=1,nxp1-iwall
+        if(dowallx) then
+          id=i+it-1
+          factx = 1.d0
+        else
+          id=(i+it-0.1)/2.
+          factx = 2.d0
+        end if
+        fff(1:nzm) = ff(i,j,1:nzm)
+        xi=id
+        eign=(2._8*cos(factx*xnx*xi)-2._8)*ddx2+ &
+        (2._8*cos(facty*xny*xj)-2._8)*ddy2
+        if(id+jd.eq.0) then
+          b=1._8/(eign*rho(1,icrm)-a(1)-c(1))
+          alfa(1)=-c(1)*b
+          beta(1)=fff(1)*b
+        else
+          b=1._8/(eign*rho(1,icrm)-c(1))
+          alfa(1)=-c(1)*b
+          beta(1)=fff(1)*b
+        end if
+        do k=2,nzm-1
+          e=1._8/(eign*rho(k,icrm)-a(k)-c(k)+a(k)*alfa(k-1))
+          alfa(k)=-c(k)*e
+          beta(k)=(fff(k)-a(k)*beta(k-1))*e
+        end do
 
-			if(m.lt.npressureslabs-1.or.m.eq.npressureslabs-1 .and.rank.ge.npressureslabs) then
+        fff(nzm)=(fff(nzm)-a(nzm)*beta(nzm-1))/ &
+        (eign*rho(nzm,icrm)-a(nzm)+a(nzm)*alfa(nzm-1))
 
-				n_in = n_in + 1
-				call task_receive_float(buff_slabs(1,1,1,n_in), &
-				nzslab*nxp1*nyp22,reqs_in(n_in))
-				flag(n_in) = .false.
-			endif
-
-		end do ! m
-
-		! Blocking send now:
-
-		do m = 0, nsubdomains-1
-
-			call task_rank_to_index(m,it,jt)
-
-			if(rank.lt.npressureslabs.and.m.ne.rank) then
-
-				do k = 1,nzslab
-					do j = 1,nyp22
-						do i = 1,nxp1
-							buff_subs(i,j,k,1) = f(i+it,j+jt,k)
-						end do
-					end do
-				end do
-
-				call task_bsend_float(m, buff_subs(1,1,1,1),nzslab*nxp1*nyp22,44)
-
-			endif
+        do k=nzm-1,1,-1
+          fff(k)=alfa(k)*fff(k+1)+beta(k)
+        end do
+        ff(i,j,1:nzm) = fff(1:nzm)
 
-		end do ! m
+      end do
+    end do
 
+    call task_barrier()
 
+    !-----------------------------------------------------------------
+    !   Send the Fourier coefficient to the tasks performing
+    !   the inverse Fourier transformation:
 
-		! Fill slabs when receive buffers are complete:
-
-
-		count = n_in
-		do while (count .gt. 0)
-			do m = 1,n_in
-				if(.not.flag(m)) then
-					call task_test(reqs_in(m), flag(m), rf, tag)
-					if(flag(m)) then
-						count=count-1
-						n = rf*nzslab
-						do k = 1,nzslab
-							do j=1,nyp22
-								do i=1,nxp1
-									ff(i,j,k+n) = buff_slabs(i,j,k,m)
-								end do
-							end do
-						end do
-					endif
-				endif
-			end do
-		end do
+    ! Non-blocking receive first:
 
-		!-------------------------------------------------
-		!   Solve the tri-diagonal system for Fourier coeffiecients
-		!   in the vertical for each subdomain:
+    n_in = 0
+    do m = 0,nsubdomains-1
 
-		do k=1,nzm
-			a(k)=rhow(k)/(adz(k)*adzw(k)*dz*dz)
-			c(k)=rhow(k+1)/(adz(k)*adzw(k+1)*dz*dz)
-		end do
+      if(rank.lt.npressureslabs.and.m.ne.nsubdomains-1) then
+        n_in = n_in + 1
+        call task_receive_float(buff_subs(1,1,1,n_in), &
+        nzslab*nxp1*nyp22, reqs_in(n_in))
+        flag(n_in) = .false.
+      endif
 
-		call task_rank_to_index(rank,it,jt)
+      if(rank.lt.npressureslabs.and.m.eq.nsubdomains-1) then
 
-		ddx2=1._8/(dx*dx)
-		ddy2=1._8/(dy*dy)
-		pii = acos(-1._8)
-		xnx=pii/nx_gl
-		xny=pii/ny_gl
-		do j=1,nyp22-jwall
-			if(dowally) then
-				jd=j+jt-1
-				facty = 1.d0
-			else
-				jd=(j+jt-0.1)/2.
-				facty = 2.d0
-			end if
-			xj=jd
-			do i=1,nxp1-iwall
-				if(dowallx) then
-					id=i+it-1
-					factx = 1.d0
-				else
-					id=(i+it-0.1)/2.
-					factx = 2.d0
-				end if
-				fff(1:nzm) = ff(i,j,1:nzm)
-				xi=id
-				eign=(2._8*cos(factx*xnx*xi)-2._8)*ddx2+ &
-				(2._8*cos(facty*xny*xj)-2._8)*ddy2
-				if(id+jd.eq.0) then
-					b=1._8/(eign*rho(1)-a(1)-c(1))
-					alfa(1)=-c(1)*b
-					beta(1)=fff(1)*b
-				else
-					b=1._8/(eign*rho(1)-c(1))
-					alfa(1)=-c(1)*b
-					beta(1)=fff(1)*b
-				end if
-				do k=2,nzm-1
-					e=1._8/(eign*rho(k)-a(k)-c(k)+a(k)*alfa(k-1))
-					alfa(k)=-c(k)*e
-					beta(k)=(fff(k)-a(k)*beta(k-1))*e
-				end do
+        call task_rank_to_index(rank,it,jt)
+        n = rank*nzslab
+        do k = 1,nzslab
+          do j = 1,nyp22-jwall
+            do i = 1,nxp1-iwall
+              f(i+it,j+jt,k) = ff(i,j,k+n)
+            end do
+          end do
+        end do
 
-				fff(nzm)=(fff(nzm)-a(nzm)*beta(nzm-1))/ &
-				(eign*rho(nzm)-a(nzm)+a(nzm)*alfa(nzm-1))
+      endif
 
-				do k=nzm-1,1,-1
-					fff(k)=alfa(k)*fff(k+1)+beta(k)
-				end do
-				ff(i,j,1:nzm) = fff(1:nzm)
+    end do ! m
 
-			end do
-		end do
+    ! Blocking send now:
 
-		call task_barrier()
+    do m = 0,nsubdomains-1
 
-		!-----------------------------------------------------------------
-		!   Send the Fourier coefficient to the tasks performing
-		!   the inverse Fourier transformation:
+      if(m.lt.npressureslabs.and.m.ne.rank) then
+        n = m*nzslab+1
+        call task_bsend_float(m,ff(1,1,n),nzslab*nxp1*nyp22, 33)
+      endif
 
-		! Non-blocking receive first:
+    end do ! m
 
-		n_in = 0
-		do m = 0,nsubdomains-1
 
-			if(rank.lt.npressureslabs.and.m.ne.nsubdomains-1) then
-				n_in = n_in + 1
-				call task_receive_float(buff_subs(1,1,1,n_in), &
-				nzslab*nxp1*nyp22, reqs_in(n_in))
-				flag(n_in) = .false.
-			endif
+    ! Fill slabs when receive buffers are full:
 
-			if(rank.lt.npressureslabs.and.m.eq.nsubdomains-1) then
 
-				call task_rank_to_index(rank,it,jt)
-				n = rank*nzslab
-				do k = 1,nzslab
-					do j = 1,nyp22-jwall
-						do i = 1,nxp1-iwall
-							f(i+it,j+jt,k) = ff(i,j,k+n)
-						end do
-					end do
-				end do
+    count = n_in
+    do while (count .gt. 0)
+      do m = 1,n_in
+        if(.not.flag(m)) then
+          call task_test(reqs_in(m), flag(m), rf, tag)
+          if(flag(m)) then
+            count=count-1
+            call task_rank_to_index(rf,it,jt)
+            do k = 1,nzslab
+              do j = 1,nyp22-jwall
+                do i = 1,nxp1-iwall
+                  f(i+it,j+jt,k) = buff_subs(i,j,k,m)
+                end do
+              end do
+            end do
+          endif
+        endif
+      end do
+    end do
 
-			endif
+    !-------------------------------------------------
+    !   Perform inverse Fourier transformation:
 
-		end do ! m
+    if(rank.lt.npressureslabs) then
 
-		! Blocking send now:
+      do k=1,nzslab
 
-		do m = 0,nsubdomains-1
+        if(RUN3D) then
+          call fft991_crm(f(1,1,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
+        end if
 
-			if(m.lt.npressureslabs.and.m.ne.rank) then
-				n = m*nzslab+1
-				call task_bsend_float(m,ff(1,1,n),nzslab*nxp1*nyp22, 33)
-			endif
+        call fft991_crm(f(1,1,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
 
-		end do ! m
+      end do
 
+    endif
 
-		! Fill slabs when receive buffers are full:
+    call task_barrier()
 
+    !-----------------------------------------------------------------
+    !   Fill the pressure field for each subdomain:
 
-		count = n_in
-		do while (count .gt. 0)
-			do m = 1,n_in
-				if(.not.flag(m)) then
-					call task_test(reqs_in(m), flag(m), rf, tag)
-					if(flag(m)) then
-						count=count-1
-						call task_rank_to_index(rf,it,jt)
-						do k = 1,nzslab
-							do j = 1,nyp22-jwall
-								do i = 1,nxp1-iwall
-									f(i+it,j+jt,k) = buff_subs(i,j,k,m)
-								end do
-							end do
-						end do
-					endif
-				endif
-			end do
-		end do
+    do i=1,nx_gl
+      iii(i)=i
+    end do
+    iii(0)=nx_gl
+    do j=1,ny_gl
+      jjj(j)=j
+    end do
+    jjj(0)=ny_gl
 
-		!-------------------------------------------------
-		!   Perform inverse Fourier transformation:
+    ! Non-blocking receive first:
 
-		if(rank.lt.npressureslabs) then
+    n_in = 0
+    do m = 0, nsubdomains-1
 
-			do k=1,nzslab
+      call task_rank_to_index(m,it,jt)
 
-				if(RUN3D) then
-					call fft991_crm(f(1,1,k),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
-				end if
+      if(m.lt.npressureslabs-1.or. m.eq.npressureslabs-1.and.rank.ge.npressureslabs) then
 
-				call fft991_crm(f(1,1,k),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
+        n_in = n_in + 1
+        call task_receive_float(bufp_slabs(0,1-YES3D,1,n_in), &
+        nzslab*nxp1*nyp1, reqs_in(n_in))
+        flag(n_in) = .false.
 
-			end do
+      endif
 
-		endif
+      if(rank.lt.npressureslabs.and.m.eq.rank) then
 
-		call task_barrier()
+        n = rank*nzslab
+        do k = 1,nzslab
+          do j = 1-YES3D,ny
+            jj=jjj(j+jt)
+            do i = 0,nx
+              ii=iii(i+it)
+              p(i,j,k+n,icrm) = f(ii,jj,k)
+            end do
+          end do
+        end do
 
-		!-----------------------------------------------------------------
-		!   Fill the pressure field for each subdomain:
+      end if
 
-		do i=1,nx_gl
-			iii(i)=i
-		end do
-		iii(0)=nx_gl
-		do j=1,ny_gl
-			jjj(j)=j
-		end do
-		jjj(0)=ny_gl
+    end do ! m
 
-		! Non-blocking receive first:
 
-		n_in = 0
-		do m = 0, nsubdomains-1
+    ! Blocking send now:
 
-			call task_rank_to_index(m,it,jt)
+    do m = 0, nsubdomains-1
 
-			if(m.lt.npressureslabs-1.or. m.eq.npressureslabs-1.and.rank.ge.npressureslabs) then
+      call task_rank_to_index(m,it,jt)
 
-				n_in = n_in + 1
-				call task_receive_float(bufp_slabs(0,1-YES3D,1,n_in), &
-				nzslab*nxp1*nyp1, reqs_in(n_in))
-				flag(n_in) = .false.
+      if(rank.lt.npressureslabs.and.m.ne.rank) then
 
-			endif
+        do k = 1,nzslab
+          do j = 1-YES3D,ny
+            jj=jjj(j+jt)
+            do i = 0,nx
+              ii=iii(i+it)
+              bufp_subs(i,j,k,1) = f(ii,jj,k)
+            end do
+          end do
+        end do
 
-			if(rank.lt.npressureslabs.and.m.eq.rank) then
+        call task_bsend_float(m, bufp_subs(0,1-YES3D,1,1), nzslab*nxp1*nyp1,44)
 
-				n = rank*nzslab
-				do k = 1,nzslab
-					do j = 1-YES3D,ny
-						jj=jjj(j+jt)
-						do i = 0,nx
-							ii=iii(i+it)
-							p(i,j,k+n) = f(ii,jj,k)
-						end do
-					end do
-				end do
+      endif
 
-			end if
+    end do ! m
 
-		end do ! m
+    ! Fill the receive buffers:
 
+    count = n_in
+    do while (count .gt. 0)
+      do m = 1,n_in
+        if(.not.flag(m)) then
+          call task_test(reqs_in(m), flag(m), rf, tag)
+          if(flag(m)) then
+            count=count-1
+            n = rf*nzslab
+            do k = 1,nzslab
+              do j=1-YES3D,ny
+                do i=0,nx
+                  p(i,j,k+n,icrm) = bufp_slabs(i,j,k,m)
+                end do
+              end do
+            end do
+          endif
+        endif
+      end do
+    end do
 
-		! Blocking send now:
 
-		do m = 0, nsubdomains-1
+    call task_barrier()
 
-			call task_rank_to_index(m,it,jt)
+    !  Add pressure gradient term to the rhs of the momentum equation:
 
-			if(rank.lt.npressureslabs.and.m.ne.rank) then
+    call press_grad(ncrms,icrm)
 
-				do k = 1,nzslab
-					do j = 1-YES3D,ny
-						jj=jjj(j+jt)
-						do i = 0,nx
-							ii=iii(i+it)
-							bufp_subs(i,j,k,1) = f(ii,jj,k)
-						end do
-					end do
-				end do
-
-				call task_bsend_float(m, bufp_subs(0,1-YES3D,1,1), nzslab*nxp1*nyp1,44)
-
-			endif
-
-		end do ! m
-
-		! Fill the receive buffers:
-
-		count = n_in
-		do while (count .gt. 0)
-			do m = 1,n_in
-				if(.not.flag(m)) then
-					call task_test(reqs_in(m), flag(m), rf, tag)
-					if(flag(m)) then
-						count=count-1
-						n = rf*nzslab
-						do k = 1,nzslab
-							do j=1-YES3D,ny
-								do i=0,nx
-									p(i,j,k+n) = bufp_slabs(i,j,k,m)
-								end do
-							end do
-						end do
-					endif
-				endif
-			end do
-		end do
-
-
-		call task_barrier()
-
-		!  Add pressure gradient term to the rhs of the momentum equation:
-
-		call press_grad()
-
-	end subroutine pressure
+  end subroutine pressure
 
 end module pressure_mod

@@ -45,7 +45,7 @@
     <alias>F1850C5AV1C-04</alias>
     <lname>1850_CAM5%AV1C-04_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
-  
+
   <compset>
     <alias>F1850C5AV1C-04P</alias>
     <lname>1850_CAM5%AV1C-04P_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
@@ -279,7 +279,7 @@
     <alias>FADIAB</alias>
     <lname>2000_CAM%ADIAB_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
-  
+
   <!-- ************ -->
   <!-- SCM compsets -->
   <!-- ************ -->
@@ -287,12 +287,12 @@
   <compset>
     <alias>F_ARM97_SCAM5</alias>
     <lname>AR97_CAM5%SCAM_CLM45%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-  </compset> 
-  
+  </compset>
+
   <compset>
     <alias>F_SCAM5</alias>
     <lname>SCAM_CAM5%SCAM_CLM45%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-  </compset>   
+  </compset>
 
   <!-- ******************************* -->
   <!-- super-parameterization compsets -->
@@ -303,7 +303,7 @@
   <compset>
     <alias>FSP1V1</alias>
     <lname>2000_CAM5%SP1V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-  </compset> 
+  </compset>
 
   <compset>
     <alias>FSP2V1</alias>
@@ -322,13 +322,23 @@
     <lname>2000_CAM5%SP2V1-TEST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>FSP1FAST</alias>
+    <lname>2000_CAM5%SP1FAST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FSP2FAST</alias>
+    <lname>2000_CAM5%SP2FAST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
   <!-- 20th century transient -->
 
   <compset>
    <alias>F20TRSP1V1</alias>
    <lname>20TR_CAM5%SP1V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
-  
+
   <compset>
    <alias>F20TRSP2V1</alias>
    <lname>20TR_CAM5%SP2V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
@@ -339,66 +349,66 @@
 
   <entries>
 
-    <entry id="RUN_STARTDATE"> 
+    <entry id="RUN_STARTDATE">
       <values>
-        <value  compset="20TR_CAM">1850-01-01</value> 
-        <value  compset="AMIP_CAM">1979-01-01</value> 
-        <value  compset="HIST_CAM">1850-01-01</value> 
-        <value  compset="PIPD_CAM">1850-01-01</value> 
+        <value  compset="20TR_CAM">1850-01-01</value>
+        <value  compset="AMIP_CAM">1979-01-01</value>
+        <value  compset="HIST_CAM">1850-01-01</value>
+        <value  compset="PIPD_CAM">1850-01-01</value>
         <value  compset="7905_CAM">1979-01-01</value>
-        <value  compset="5505_CAM">1955-01-01</value> 
+        <value  compset="5505_CAM">1955-01-01</value>
         <value  compset="1996_CAM\d+%WCMX">1996-01-01</value>
         <value  compset="2000_CAM\d+%WCMX">2000-01-01</value>
         <value  compset="2000_CAM\d+%WCXI">2000-01-01</value>
-        <value  compset="2013_CAM\d+%WCBC">2013-01-01</value> 
-        <value  compset="GEOS_CAM\d+%WCCM">2005-01-01</value> 
-        <value  compset="GEOS_CAM\d+%WTSM">1990-01-01</value> 
-        <value  compset="GEOS_CAM\d+%WCSF">2010-01-01</value> 
-        <value  compset="GEOS_CAM\d+%TMOZ">2008-01-01</value> 
+        <value  compset="2013_CAM\d+%WCBC">2013-01-01</value>
+        <value  compset="GEOS_CAM\d+%WCCM">2005-01-01</value>
+        <value  compset="GEOS_CAM\d+%WTSM">1990-01-01</value>
+        <value  compset="GEOS_CAM\d+%WCSF">2010-01-01</value>
+        <value  compset="GEOS_CAM\d+%TMOZ">2008-01-01</value>
         <value  compset="GEOS_CAM\d+%TBAM">2008-01-01</value>
         <value  compset="GEOS_CAM\d+%S">2005-01-01</value>
         <value  compset="RCP[2468]_CAM\d+">2005-01-01</value>
-        <value  compset="C2R[68]_CAM">1950-01-01</value> 
+        <value  compset="C2R[68]_CAM">1950-01-01</value>
         <value  compset="C2R4_CAM">2004-01-01</value>
         <value  compset="AR95_CAM">1995-07-18</value>
         <value  compset="AR97_CAM">1997-06-19</value>
       </values>
     </entry>
 
-    <entry id="CALENDAR"> 
+    <entry id="CALENDAR">
       <values>
   <value  compset="GEOS_">GREGORIAN</value>
       </values>
     </entry>
 
-    <entry id="START_TOD"> 
+    <entry id="START_TOD">
       <values>
   <value  compset="AR95_CAM">19800</value>
   <value  compset="AR97_CAM">84585</value>
       </values>
     </entry>
 
-    <entry id="STOP_OPTION"> 
+    <entry id="STOP_OPTION">
       <values>
   <value compset="AR95_CAM">ndays</value>
   <value compset="AR97_CAM">ndays</value>
       </values>
     </entry>
 
-    <entry id="STOP_N"> 
+    <entry id="STOP_N">
       <values>
   <value compset="AR95_CAM">2</value>
   <value compset="AR97_CAM">29</value>
       </values>
     </entry>
-  
-    <entry id="MASK_GRID"> 
+
+    <entry id="MASK_GRID">
       <values>
   <value compset="AR97_CAM">USGS</value>
       </values>
-    </entry>    
+    </entry>
 
-    <entry id="GET_REFCASE"> 
+    <entry id="GET_REFCASE">
       <values>
   <value compset="AMIP_CAM">TRUE</value>
       </values>

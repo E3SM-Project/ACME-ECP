@@ -1,13 +1,14 @@
 module boundaries_mod
-	use periodic_mod
-	use task_util_mod
-	implicit none
+  use periodic_mod
+  use task_util_mod
+  implicit none
 
 contains
 
-  subroutine boundaries(flag)
+  subroutine boundaries(ncrms,icrm,flag)
     use grid, only: dompi
     implicit none
+    integer, intent(in) :: ncrms,icrm
     integer flag
 
     !call t_startf ('boundaries')
@@ -15,7 +16,7 @@ contains
     if(dompi) then
       call task_boundaries(flag)
     else
-      call periodic(flag)
+      call periodic(ncrms,icrm,flag)
     end if
 
     !call t_stopf ('boundaries')
