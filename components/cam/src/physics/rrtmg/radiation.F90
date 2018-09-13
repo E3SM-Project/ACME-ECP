@@ -2444,6 +2444,7 @@ end function radiation_nextsw_cday
           crm_qrad(i,:,:,m) = (qrs_crm(i,:,:,m)+qrl_crm(i,:,:,m)) * state%pdel(i,k) ! for energy conservation
         end do
       end do
+      call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
 
    endif ! use_SPCAM
        ! deconstruct the RRTMG state object

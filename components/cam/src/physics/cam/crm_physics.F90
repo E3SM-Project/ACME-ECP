@@ -230,6 +230,10 @@ subroutine crm_physics_init(species_class)
   end if
 #endif
 
+   ! Add CRM radiative heating
+   call addfld('CRM_QRAD', (/'crm_nx','crm_ny','crm_nz'/), 'I', 'K/s', &
+               'Net CRM heating', sampling_seq='rad_lwsw')
+
   if (SPCAM_microp_scheme .eq. 'm2005') then
     call addfld ('SPNC    ',(/ 'lev' /), 'A', '/kg   ','Cloud water dropet number from CRM')
     call addfld ('SPNI    ',(/ 'lev' /), 'A', '/kg   ','Cloud ice crystal number from CRM')
