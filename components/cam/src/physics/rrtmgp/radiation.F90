@@ -1165,6 +1165,10 @@ contains
       ! For SP, we need CRM-scale heating
       real(r8), allocatable :: crm_qrs(:,:,:,:), crm_qrl(:,:,:,:)
 
+      ! Total CRM radiative heating is stored in the physics buffer so we need a
+      ! pointer to access it
+      real(r8), pointer :: crm_qrad(:,:,:,:)
+
       ! Total number of CRM columns
       integer :: number_crm_columns
 
@@ -1201,10 +1205,16 @@ contains
       call cnst_get_ind('CLDICE', ixcldice)
       if (use_SPCAM) then
          allocate(crm_qrs(ncol,crm_nx_rad,crm_ny_rad,crm_nz))
+         allocate(crm_qrl(ncol,crm_nx_rad,crm_ny_rad,crm_nz))
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRAD'),   crm_qrad)
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_T_RAD') , crm_temperature)
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QV_RAD'), crm_qv)
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD'), crm_qc)
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD'), crm_qi)
+
+         ! Initialize CRM radiative heating
+         crm_qrs = 0
+         crm_qrl = 0
       end if
 
       ! Do shortwave stuff...
@@ -1251,7 +1261,6 @@ contains
                            state%q(1:ncol,gcm_iz,ixcldliq) = crm_qc(1:ncol,crm_ix,crm_iy,crm_iz)
                            state%q(1:ncol,gcm_iz,ixcldice) = crm_qi(1:ncol,crm_ix,crm_iy,crm_iz)
                         end do
-                        crm_qrs = 0
                      end if
 
                      ! Call the shortwave radiation driver
@@ -1347,7 +1356,6 @@ contains
                            state%q(1:ncol,gcm_iz,ixcldliq) = crm_qc(1:ncol,crm_ix,crm_iy,crm_iz)
                            state%q(1:ncol,gcm_iz,ixcldice) = crm_qi(1:ncol,crm_ix,crm_iy,crm_iz)
                         end do
-                        crm_qrl = 0
                      end if
 
                      ! Call the longwave radiation driver to calculate fluxes and heating rates
@@ -1408,6 +1416,20 @@ contains
       if (conserve_energy) then
          qrs(1:ncol,1:pver) = qrs(1:ncol,1:pver) * state%pdel(1:ncol,1:pver)
          qrl(1:ncol,1:pver) = qrl(1:ncol,1:pver) * state%pdel(1:ncol,1:pver)
+      end if
+
+      ! Calculate net CRM radiative heating
+      if (use_SPCAM) then
+         do crm_iz = 1,crm_nz
+            do crm_iy = 1,crm_ny_rad
+               do crm_ix = 1,crm_nx_rad
+                  gcm_iz = pver - crm_iz + 1
+                  crm_qrad(1:ncol,crm_ix,crm_iy,crm_iz) = ( &
+                     crm_qrs(1:ncol,crm_ix,crm_iy,crm_iz) + crm_qrl(1:ncol,crm_ix,crm_iy,crm_iz) &
+                  ) * state%pdel(1:ncol,gcm_iz) / cpair
+               end do
+            end do
+         end do
       end if
 
    end subroutine radiation_tend
