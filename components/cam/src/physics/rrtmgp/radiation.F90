@@ -1084,6 +1084,10 @@ contains
 
       ! For SP-E3SM configurations
       use crmdims, only: crm_nx_rad, crm_ny_rad, crm_nz
+      use pkg_cldoptics, only: cldefr
+#ifdef CRM
+      use crm_physics, only: m2005_effradius
+#endif
 
       ! ---------------------------------------------------------------------------
       ! Arguments
@@ -1161,6 +1165,9 @@ contains
 
       ! Whether or not we are doing SP-CAM
       logical :: use_SPCAM
+      character(len=16) :: SPCAM_microp_scheme
+
+      logical :: use_snow = .false.
 
       ! For SP, we need CRM-scale heating
       real(r8), allocatable :: crm_qrs(:,:,:,:), crm_qrl(:,:,:,:)
@@ -1176,14 +1183,45 @@ contains
       integer :: ixcldliq, ixcldice
 
       ! For CRM rad
-      real(r8), pointer, dimension(:,:,:,:) :: crm_temperature, crm_qv, crm_qc, crm_qi
+      real(r8), pointer, dimension(:,:,:,:) :: &
+            crm_temperature, crm_qv, &
+            crm_qc, crm_qi, crm_qr, crm_qs, crm_qg, &
+            crm_nc, crm_ni, crm_nr, crm_ns, crm_ng
       real(r8) :: qrs_col(pcols,pver), qrsc_col(pcols,pver)
       real(r8) :: qrl_col(pcols,pver), qrlc_col(pcols,pver)
+
+      ! For our temporary, extremely hackish solution for using cloud and
+      ! aerosol optics from CAM with CRM columns
+      real(r8), pointer :: cld(:,:)       ! Cloud fraction
+      real(r8), pointer :: cldfsnow(:,:)  ! Snow fraction
+      real(r8), pointer :: lambdac(:,:)   ! Slope of droplet size distribution
+      real(r8), pointer :: mu(:,:)        ! gamma parameter (TODO: what does this mean)
+      real(r8), pointer :: des(:,:)       ! Snow crystal diameter
+      real(r8), pointer :: dei(:,:)       ! Cloud ice crystal diameter
+      real(r8), pointer :: rel(:,:)       ! Cloud liquid effective radius
+      real(r8), pointer :: rei(:,:)       ! Cloud ice effective radius
+
+      ! ...and to save those optical parameters to restore later...
+      real(r8), allocatable :: cld_save(:,:)       ! Cloud fraction
+      real(r8), allocatable :: cldfsnow_save(:,:)  ! Cloud fraction
+      real(r8), allocatable :: lambdac_save(:,:)   ! Slope of droplet size distribution
+      real(r8), allocatable :: mu_save(:,:)        ! gamma parameter (TODO: what does this mean)
+      real(r8), allocatable :: des_save(:,:)       ! Snow crystal diameter
+      real(r8), allocatable :: dei_save(:,:)       ! Cloud ice crystal diameter
+      real(r8), allocatable :: rel_save(:,:)       ! Cloud liquid effective radius
+      real(r8), allocatable :: rei_save(:,:)       ! Cloud ice effective radius
+
+      ! Dummy variable to call m2005_effradius
+      ! TODO: rip this out, this is not being used
+      real(r8) :: effl_fn  ! effl for fixed number concentration of nlic = 1.e8
 
       ! Temporary fluxes to hold outputs for a single CRM column
       type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
 
-      integer :: crm_iy, crm_ix, crm_iz, gcm_iz
+      ! Loop variables
+      integer :: crm_iy, crm_ix, crm_iz, gcm_iz, icol
+
+      integer :: errcode
 
       !----------------------------------------------------------------------
 
@@ -1201,6 +1239,7 @@ contains
       ! Get indices for liquid and ice in constituents object for SP
       ! configurations
       call phys_getopts(use_SPCAM_out=use_SPCAM)
+      call phys_getopts(SPCAM_microp_scheme_out=SPCAM_microp_scheme)
       call cnst_get_ind('CLDLIQ', ixcldliq)
       call cnst_get_ind('CLDICE', ixcldice)
       if (use_SPCAM) then
@@ -1215,6 +1254,40 @@ contains
          ! Initialize CRM radiative heating
          crm_qrs = 0
          crm_qrl = 0
+
+         ! We need to save stuff in pbuf that will be hackishly modified in
+         ! place in this routine so that we can use the CAM cloud optics
+         ! routines with state and pbuf populated with data from a CRM column...
+         ! this is a temporary fix to be consistent with the old RRTMG
+         ! implementation. The proper thing to do is to refactor the optics 
+         ! routines to take array arguments rather than the pbuf, or (better) to
+         ! move the radiation to the CRM for SP runs. Both of these will take a
+         ! bit of work, so we do the easy but ugly thing for now.
+         ! TODO: does cld need to have the "old_tim_idx" specified?
+         call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld)
+         call pbuf_get_field(pbuf, pbuf_get_index('LAMBDAC'), lambdac)
+         call pbuf_get_field(pbuf, pbuf_get_index('MU'), mu)
+         call pbuf_get_field(pbuf, pbuf_get_index('DES'), des)
+         call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
+         call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
+         call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
+
+         use_snow = (pbuf_get_index('CLDFSNOW', errcode=errcode) > 0)
+         if (use_snow) call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldfsnow)
+
+         ! Save this stuff to restore at end of routine
+         allocate(cld_save(pcols,pver), cldfsnow_save(pcols,pver), &
+                  mu_save(pcols,pver), lambdac_save(pcols,pver), &
+                  des_save(pcols,pver), dei_save(pcols,pver), &
+                  rel_save(pcols,pver), rei_save(pcols,pver))
+         cld_save = cld
+         if (use_snow) cldfsnow_save = cldfsnow
+         mu_save = mu
+         lambdac_save = lambdac
+         des_save = des
+         dei_save = dei
+         rel_save = rel
+         rei_save = rei
       end if
 
       ! Do shortwave stuff...
@@ -1252,15 +1325,14 @@ contains
                do crm_iy = 1,crm_ny_rad
                   do crm_ix = 1,crm_nx_rad
 
-                     ! Modify copied state to hold CRM variables
+                     ! Modify copied state and pbuf to hold CRM variables so
+                     ! that we can use the CAM cloud and aerosol optics routines
+                     ! as-is. NOTE: this is kind of a hack, but consistent with
+                     ! the old implementation. This should be refactored once
+                     ! this is working consistent with the old implementation!
+                     ! TODO: refactor optics so we do not have to do this
                      if (use_SPCAM) then
-                        do crm_iz = 1,crm_nz
-                           gcm_iz = pver - crm_nz + 1
-                           state%t(1:ncol,gcm_iz)          = crm_temperature(1:ncol,crm_ix,crm_iy,crm_iz)
-                           state%q(1:ncol,gcm_iz,1)        = crm_qv(1:ncol,crm_ix,crm_iy,crm_iz)
-                           state%q(1:ncol,gcm_iz,ixcldliq) = crm_qc(1:ncol,crm_ix,crm_iy,crm_iz)
-                           state%q(1:ncol,gcm_iz,ixcldice) = crm_qi(1:ncol,crm_ix,crm_iy,crm_iz)
-                        end do
+                        call overwrite_state_with_crm()
                      end if
 
                      ! Call the shortwave radiation driver
@@ -1347,15 +1419,9 @@ contains
                do crm_iy = 1,crm_ny_rad
                   do crm_ix = 1,crm_nx_rad
 
-                     ! Modify copied state to hold CRM variables
+                     ! Modify state and pbuf to hold CRM variables
                      if (use_SPCAM) then
-                        do crm_iz = 1,crm_nz
-                           gcm_iz = pver - crm_nz + 1
-                           state%t(1:ncol,gcm_iz)          = crm_temperature(1:ncol,crm_ix,crm_iy,crm_iz)
-                           state%q(1:ncol,gcm_iz,1)        = crm_qv(1:ncol,crm_ix,crm_iy,crm_iz)
-                           state%q(1:ncol,gcm_iz,ixcldliq) = crm_qc(1:ncol,crm_ix,crm_iy,crm_iz)
-                           state%q(1:ncol,gcm_iz,ixcldice) = crm_qi(1:ncol,crm_ix,crm_iy,crm_iz)
-                        end do
+                        call overwrite_state_with_crm()
                      end if
 
                      ! Call the longwave radiation driver to calculate fluxes and heating rates
@@ -1434,6 +1500,98 @@ contains
          ! Output CRM heating
          call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
       end if
+
+      ! Restore pbuf stuff for hackish solution to use cloud optics
+      if (use_SPCAM) then
+         cld = cld_save
+         if (use_snow) cldfsnow = cldfsnow_save
+         lambdac = lambdac_save
+         mu = mu_save
+         des = des_save
+         dei = dei_save
+         rel = rel_save
+         rei = rei_save
+
+         deallocate(lambdac_save, mu_save, des_save, dei_save, rel_save, rei_save)
+      end if
+
+   contains
+      ! Modify copied state and pbuf to hold CRM variables so
+      ! that we can use the CAM cloud and aerosol optics routines
+      ! as-is. NOTE: this is kind of a hack, but consistent with
+      ! the old implementation. This should be refactored once
+      ! this is working consistent with the old implementation!
+      ! TODO: refactor optics so we do not have to do this
+      subroutine overwrite_state_with_crm()
+         real(r8) :: total_cloud_water
+         real(r8), parameter :: cloud_water_threshold = 1.e-9
+         real(r8), parameter :: snow_water_threshold = 1.e-7
+
+         do crm_iz = 1,crm_nz
+            gcm_iz = pver - crm_nz + 1
+            state%t(1:ncol,gcm_iz)          = crm_temperature(1:ncol,crm_ix,crm_iy,crm_iz)
+            state%q(1:ncol,gcm_iz,1)        = crm_qv(1:ncol,crm_ix,crm_iy,crm_iz)
+            state%q(1:ncol,gcm_iz,ixcldliq) = crm_qc(1:ncol,crm_ix,crm_iy,crm_iz)
+            state%q(1:ncol,gcm_iz,ixcldice) = crm_qi(1:ncol,crm_ix,crm_iy,crm_iz)
+         end do
+
+! This needs to be protected in an ifdef for now because m2005_effradius only
+! exists if CRM is defined
+#ifdef CRM
+         if (SPCAM_microp_scheme == 'm2005') then
+            ! SP2 stuff
+            do crm_iz = 1,crm_nz
+               gcm_iz = pver - crm_iz + 1
+               do icol = 1,ncol
+                  call m2005_effradius(crm_qc(icol,crm_ix,crm_iy,crm_iz), crm_nc(icol,crm_ix,crm_iy,crm_iz), &
+                                       crm_qi(icol,crm_ix,crm_iy,crm_iz), crm_ni(icol,crm_ix,crm_iy,crm_iz), &
+                                       crm_qs(icol,crm_ix,crm_iy,crm_iz), crm_ns(icol,crm_ix,crm_iy,crm_iz), &
+                                       1.0_r8, state%pmid(icol,gcm_iz), state%t(icol,gcm_iz), &
+                                       rel(icol,gcm_iz), rei(icol,gcm_iz), effl_fn, &
+                                       dei(icol,gcm_iz), lambdac(icol,gcm_iz), &
+                                       mu(icol,gcm_iz), des(icol, gcm_iz))
+               end do
+            end do
+         else if (SPCAM_microp_scheme == 'sam1mom') then
+            ! SP1 stuff; NOTE: this does not need to be called
+            ! for each CRM column, but putting it here for now
+            ! for clarity
+            call cldefr(state%lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh)
+            dei = 2 * rei
+         else
+            call endrun('SPCAM microphysics ' // trim(SPCAM_microp_scheme) // ' not supported.')
+         end if
+#endif
+
+         ! Overwrite cloud fractions
+         ! TODO: replace with actual CRM cloud fraction? We should still allow
+         ! McICA sampling here
+         do crm_iz = 1,crm_nz
+            gcm_iz = pver - crm_iz + 1
+            do icol = 1,ncol
+               total_cloud_water = crm_qc(icol,crm_ix,crm_iy,crm_iz) + crm_qi(icol,crm_ix,crm_iy,crm_iz)
+               if (total_cloud_water > cloud_water_threshold) then
+                  cld(icol,gcm_iz) = 0.99_r8
+               else
+                  cld(icol,gcm_iz) = 0
+               end if
+            end do
+         end do
+
+         ! Overwrite snow fraction
+         if (SPCAM_microp_scheme == 'm2005') then
+            do crm_iz = 1,crm_nz
+               gcm_iz = pver - crm_iz + 1
+               do icol = 1,ncol
+                  if (crm_qs(icol,crm_ix,crm_iy,crm_iz) > snow_water_threshold) then
+                     cldfsnow(icol,gcm_iz) = 0.99_r8
+                  else
+                     cldfsnow(icol,gcm_iz) = 0
+                  end if
+               end do
+            end do
+         end if
+      end subroutine overwrite_state_with_crm
 
    end subroutine radiation_tend
 
@@ -1832,7 +1990,7 @@ contains
       type(ty_fluxes_byband), intent(in) :: fluxes_in
       type(ty_fluxes_byband), intent(inout) :: fluxes_out
 
-      integer :: factor
+      real(r8) :: factor
 
       factor = 1._r8 / number_of_samples
 
