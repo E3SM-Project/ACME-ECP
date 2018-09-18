@@ -1078,7 +1078,7 @@ contains
       ! properties, and subroutines to get CAM aerosol and cloud optical properties
       ! via CAM parameterizations
       use cam_optics,   only: cam_optics_type
-      use physconst,    only: cpair, stebol
+      use physconst,    only: cpair, stebol, gravit
       use phys_control, only: phys_getopts
       use constituents, only: cnst_get_ind
 
@@ -1094,7 +1094,7 @@ contains
       ! ---------------------------------------------------------------------------
 
       ! Physics state variables
-      type(physics_state), intent(in), target :: state_in
+      type(physics_state), intent(in) :: state_in
 
       ! Heating tendencies calculated in this subroutine
       type(physics_ptend), intent(out) :: ptend
@@ -1200,6 +1200,9 @@ contains
       real(r8), pointer :: dei(:,:)       ! Cloud ice crystal diameter
       real(r8), pointer :: rel(:,:)       ! Cloud liquid effective radius
       real(r8), pointer :: rei(:,:)       ! Cloud ice effective radius
+      real(r8), pointer :: cliqwp(:,:)    ! Cloud liquid water path
+      real(r8), pointer :: cicewp(:,:)    ! Cloud ice water path
+      real(r8), pointer :: csnowp(:,:)    ! Cloud snow water path
 
       ! ...and to save those optical parameters to restore later...
       real(r8), allocatable :: cld_save(:,:)       ! Cloud fraction
@@ -1210,10 +1213,9 @@ contains
       real(r8), allocatable :: dei_save(:,:)       ! Cloud ice crystal diameter
       real(r8), allocatable :: rel_save(:,:)       ! Cloud liquid effective radius
       real(r8), allocatable :: rei_save(:,:)       ! Cloud ice effective radius
-
-      ! Dummy to point cldfsnow to in case cldfsnow is not present in CAM but is
-      ! used in SP-CAM (2-moment)
-      real(r8), allocatable, target :: cldfsnow_target(:,:)
+      real(r8), allocatable :: cliqwp_save(:,:)    ! Cloud liquid water path
+      real(r8), allocatable :: cicewp_save(:,:)    ! Cloud ice water path
+      real(r8), allocatable :: csnowp_save(:,:)    ! Cloud snow water path
 
       ! Dummy variable to call m2005_effradius
       ! TODO: rip this out, this is not being used
@@ -1285,14 +1287,19 @@ contains
          call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
          call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
          call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
-
+         call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), cliqwp)
+         call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), cicewp)
+         call pbuf_get_field(pbuf, pbuf_get_index('ICSWP'), csnowp)
 
          ! Save this stuff to restore at end of routine
          allocate(cld_save(pcols,pver), cldfsnow_save(pcols,pver), &
                   mu_save(pcols,pver), lambdac_save(pcols,pver), &
                   des_save(pcols,pver), dei_save(pcols,pver), &
-                  rel_save(pcols,pver), rei_save(pcols,pver))
+                  rel_save(pcols,pver), rei_save(pcols,pver), &
+                  cliqwp_save(pcols,pver), cicewp_save(pcols,pver), &
+                  csnowp_save(pcols, pver))
 
+         ! TODO: I think we always have snow now
          ! Snow may or may not be present. The easy way to query this is to try
          ! to find the field in the pbuf. If errcode is passed as an optional
          ! argument, then this query will not crash the model if the index is
@@ -1304,6 +1311,11 @@ contains
             cldfsnow_save = cldfsnow
             use_snow = .true.
          end if
+
+         ! Save water paths before modifying
+         cliqwp_save = cliqwp
+         cicewp_save = cicewp
+         csnowp_save = csnowp
 
          ! Save cloud fraction
          cld_save = cld
@@ -1538,8 +1550,11 @@ contains
          dei = dei_save
          rel = rel_save
          rei = rei_save
-
-         deallocate(lambdac_save, mu_save, des_save, dei_save, rel_save, rei_save)
+         cliqwp = cliqwp_save
+         cicewp = cicewp_save
+         csnowp = csnowp_save
+         deallocate(lambdac_save, mu_save, des_save, dei_save, rel_save, rei_save, &
+                    cliqwp_save, cicewp_save, csnowp_save)
       end if
 
    contains
@@ -1549,11 +1564,21 @@ contains
       ! the old implementation. This should be refactored once
       ! this is working consistent with the old implementation!
       ! TODO: refactor optics so we do not have to do this
+      !
+      ! NOTE: For CAM5 cloud optics, we need:
+      ! Ice optics: dei, iciwp, des, icswp 
+      ! Liq optics: lambdac, mu, iclwp
+      ! Setting oldcldoptics is...confusing. I think what we want is that for
+      ! single-moment runs, we do not want to take lambdac and mu from the CAM5
+      ! MG2 microphysics...but rather we want to use the old cloud optics scheme
+      ! that does not depend on these parameters. But I am not sure that setting
+      ! oldcldoptics does this. For now, just take lambdac and mu from MG2...
       subroutine overwrite_state_with_crm()
          real(r8) :: total_cloud_water
          real(r8), parameter :: cloud_water_threshold = 1.e-9
          real(r8), parameter :: snow_water_threshold = 1.e-7
 
+         ! Overwrite state fields; temperature, humidity, and cloud water
          do crm_iz = 1,crm_nz
             gcm_iz = pver - crm_nz + 1
             state%t(1:ncol,gcm_iz)          = crm_temperature(1:ncol,crm_ix,crm_iy,crm_iz)
@@ -1562,9 +1587,80 @@ contains
             state%q(1:ncol,gcm_iz,ixcldice) = crm_qi(1:ncol,crm_ix,crm_iy,crm_iz)
          end do
 
+         ! Overwrite cloud fractions
+         ! TODO: replace with actual CRM cloud fraction? We should still allow
+         ! McICA sampling here
+         do crm_iz = 1,crm_nz
+            gcm_iz = pver - crm_iz + 1
+            do icol = 1,ncol
+               total_cloud_water = crm_qc(icol,crm_ix,crm_iy,crm_iz) + crm_qi(icol,crm_ix,crm_iy,crm_iz)
+               if (total_cloud_water > cloud_water_threshold) then
+                  cld(icol,gcm_iz) = 0.99_r8
+               else
+                  cld(icol,gcm_iz) = 0
+               end if
+            end do
+         end do
+
+         ! Overwrite snow fraction; again, we should take this from the CRM,
+         ! rather than calculating based on a threshold here
+         if (SPCAM_microp_scheme == 'm2005') then
+            do crm_iz = 1,crm_nz
+               gcm_iz = pver - crm_iz + 1
+               do icol = 1,ncol
+                  if (crm_qs(icol,crm_ix,crm_iy,crm_iz) > snow_water_threshold) then
+                     cldfsnow(icol,gcm_iz) = 0.99_r8
+                  else
+                     cldfsnow(icol,gcm_iz) = 0
+                  end if
+               end do
+            end do
+         else
+            cldfsnow = 0
+         end if
+
+         ! Calculate (in-cloud) cloud water paths
+         do crm_iz = 1,crm_nz
+            gcm_iz = pver - crm_iz + 1
+            do icol = 1,ncol
+               if (cld(icol,gcm_iz) > 0) then
+                  cliqwp(icol,gcm_iz) = crm_qc(icol,crm_ix,crm_iy,crm_iz) &
+                                      * state%pdel(icol,gcm_iz) / gravit / cld(icol,gcm_iz)
+                  cicewp(icol,gcm_iz) = crm_qi(icol,crm_ix,crm_iy,crm_iz) &
+                                      * state%pdel(icol,gcm_iz) / gravit / cld(icol,gcm_iz)
+               else
+                  cliqwp(icol,gcm_iz) = 0
+                  cicewp(icol,gcm_iz) = 0
+               end if
+            end do
+         end do
+
+         ! Calculate (in-snow) snow water path
+         if (SPCAM_microp_scheme == 'm2005') then
+            do crm_iz = 1,crm_nz
+               gcm_iz = pver - crm_iz + 1
+               do icol = 1,ncol
+                  if (cldfsnow(icol,gcm_iz) > 0) then
+                     csnowp(icol,gcm_iz) = crm_qs(icol,crm_ix,crm_iy,crm_iz) &
+                                         * state%pdel(icol,gcm_iz) / gravit / cldfsnow(icol,gcm_iz)
+                  else
+                     csnowp(icol,gcm_iz) = 0
+                  end if
+               end do
+            end do
+         end if
+
 ! This needs to be protected in an ifdef for now because m2005_effradius only
 ! exists if CRM is defined
 #ifdef CRM
+         ! Calculate effective radii and particle size distribution parameters
+         ! lambdac and mu. The stuff we are interested in here are dei, lambdac,
+         ! mu, and des. dei and des are used in the ice optics routine, and
+         ! lambdac and mu are used in the liquid optics routines. For 1-moment,
+         ! we use the old CAM effective radius routine to get rel and rei, and
+         ! calculate dei as 2*rei. We do not have an analogue for snow for
+         ! 1-moment, so we should make sure we set cldfsnow = 0 above for
+         ! 1-moment.
          if (SPCAM_microp_scheme == 'm2005') then
             ! SP2 stuff
             do crm_iz = 1,crm_nz
@@ -1588,36 +1684,10 @@ contains
          else
             call endrun('SPCAM microphysics ' // trim(SPCAM_microp_scheme) // ' not supported.')
          end if
+
 #endif
 
-         ! Overwrite cloud fractions
-         ! TODO: replace with actual CRM cloud fraction? We should still allow
-         ! McICA sampling here
-         do crm_iz = 1,crm_nz
-            gcm_iz = pver - crm_iz + 1
-            do icol = 1,ncol
-               total_cloud_water = crm_qc(icol,crm_ix,crm_iy,crm_iz) + crm_qi(icol,crm_ix,crm_iy,crm_iz)
-               if (total_cloud_water > cloud_water_threshold) then
-                  cld(icol,gcm_iz) = 0.99_r8
-               else
-                  cld(icol,gcm_iz) = 0
-               end if
-            end do
-         end do
 
-         ! Overwrite snow fraction
-         if (SPCAM_microp_scheme == 'm2005') then
-            do crm_iz = 1,crm_nz
-               gcm_iz = pver - crm_iz + 1
-               do icol = 1,ncol
-                  if (crm_qs(icol,crm_ix,crm_iy,crm_iz) > snow_water_threshold) then
-                     cldfsnow(icol,gcm_iz) = 0.99_r8
-                  else
-                     cldfsnow(icol,gcm_iz) = 0
-                  end if
-               end do
-            end do
-         end if
       end subroutine overwrite_state_with_crm
 
    end subroutine radiation_tend
