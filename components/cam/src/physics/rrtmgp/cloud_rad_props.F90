@@ -66,6 +66,8 @@ subroutine cloud_rad_props_init()
    use mpishorthand
 #endif
    use constituents,   only: cnst_get_ind
+   use slingo,         only: slingo_rad_props_init
+   use ebert_curry,    only: ec_rad_props_init
 
    character(len=256) :: liquidfile 
    character(len=256) :: icefile 
@@ -85,6 +87,12 @@ subroutine cloud_rad_props_init()
 
    liquidfile = liqopticsfile 
    icefile = iceopticsfile
+
+   ! Initialize old optics modules, in case we need to use them. These just set
+   ! some pbuf indices to module data, but I think maybe we should not be doing
+   ! that anyway.
+   call slingo_rad_props_init()
+   call ec_rad_props_init()
 
    ! Ice effective diameter?
    i_dei    = pbuf_get_index('DEI',errcode=err)

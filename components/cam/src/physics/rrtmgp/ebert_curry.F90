@@ -63,12 +63,13 @@ subroutine ec_rad_props_init()
 
    integer :: err
 
+   ! Do pbuf index look-ups here because string comparisons are expensive
    iciwp_idx  = pbuf_get_index('ICIWP',errcode=err)
    iclwp_idx  = pbuf_get_index('ICLWP',errcode=err)
    cld_idx    = pbuf_get_index('CLD')
    rei_idx    = pbuf_get_index('REI')
 
-   ! old optics
+   ! Get constituent indices for old optics
    call cnst_get_ind('CLDICE', ixcldice)
    call cnst_get_ind('CLDLIQ', ixcldliq)
 
@@ -135,8 +136,8 @@ subroutine ec_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice
    lchnk = state%lchnk
 
    itim_old = pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, cld_idx,cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-   call pbuf_get_field(pbuf, rei_idx,rei)
+   call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, rei_idx, rei)
 
    if(oldicewp) then
       do k=1,pver
@@ -145,9 +146,6 @@ subroutine ec_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice
          end do
       end do
    else
-      if (iciwp_idx<=0) then 
-         call endrun('ec_ice_optics_sw: oldicewp must be set to true since ICIWP was not found in pbuf')
-      endif
       call pbuf_get_field(pbuf, iciwp_idx, tmpptr)
       cicewp(1:pcols,1:pver) =  1000.0_r8*tmpptr(1:pcols,1:pver)
    endif
@@ -235,9 +233,8 @@ subroutine ec_ice_optics_lw(state, pbuf, abs_od, oldicewp)
    lchnk = state%lchnk
 
    itim_old  =  pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, rei_idx,   rei)
    call pbuf_get_field(pbuf, cld_idx,   cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-
+   call pbuf_get_field(pbuf, rei_idx,   rei)
 
    if(oldicewp) then
      do k=1,pver
@@ -252,9 +249,6 @@ subroutine ec_ice_optics_lw(state, pbuf, abs_od, oldicewp)
      end do
      cwp(:ncol,:pver) = cicewp(:ncol,:pver) + cliqwp(:ncol,:pver)
    else
-      if (iclwp_idx<=0 .or. iciwp_idx<=0) then 
-         call endrun('ec_optics_lw: oldicewp must be set to true since ICIWP and/or ICLWP were not found in pbuf')
-      endif
       call pbuf_get_field(pbuf, iclwp_idx, iclwpth)
       call pbuf_get_field(pbuf, iciwp_idx, iciwpth)
       do k=1,pver
