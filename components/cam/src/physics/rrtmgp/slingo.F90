@@ -220,7 +220,7 @@ end subroutine slingo_liq_optics_sw
 
 !==============================================================================
 
-subroutine slingo_liq_optics_lw(state, pbuf, abs_od)
+subroutine slingo_liq_optics_lw(state, pbuf, abs_od, oldliqwp)
 
    use physconst, only: gravit
 
