@@ -977,6 +977,10 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
      use metdata,       only: get_met_srf1
 #endif
 
+#if defined( SP_ALT_TPHYSBC )
+    use tphysbc_sp_mod, only: tphysbc_sp
+#endif
+
     !
     ! Input arguments
     !
@@ -1063,6 +1067,14 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
        !call t_adj_detailf(+1)
 
 !$OMP PARALLEL DO PRIVATE (C, phys_buffer_chunk)
+#if defined( SP_ALT_TPHYSBC )
+
+        call tphysbc_sp(ztodt, fsns(1,:), fsnt(1,:), flns(1,:), flnt(1,:),  &
+                        phys_state(:), phys_tend(:), phys_buffer_chunk,     &
+                        fsds(1,:), landm(1,:), sgh(1,:), sgh30(1,:),        &
+                        cam_out(:), cam_in(:) )
+
+#else /* SP_ALT_TPHYSBC */
        do c=begchunk, endchunk
           !
           ! Output physics terms to IC file
@@ -1079,6 +1091,7 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
 
           !write(*,*) '### phys_run1: maxval(cam_in(c)%ts) = ',maxval(cam_in(c)%ts)
        end do
+#endif /* SP_ALT_TPHYSBC */
 
        !call t_adj_detailf(-1)
        call t_stopf ('bc_physics')
