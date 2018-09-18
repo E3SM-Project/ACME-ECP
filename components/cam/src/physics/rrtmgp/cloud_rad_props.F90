@@ -13,7 +13,7 @@ use rad_constituents, only: iceopticsfile, liqopticsfile, oldcldoptics
 
 use interpolate_data, only: interp_type, lininterp_init, lininterp, &
                             extrap_method_bndry, lininterp_finish
-use slingo,           only: slingo_liq_optics_sw
+use slingo,           only: slingo_liq_optics_sw, slingo_liq_optics_lw
 use ebert_curry,      only: ec_ice_optics_sw
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
@@ -270,7 +270,7 @@ end subroutine cloud_rad_props_init
 
 ! Generic subroutine to get ice optics. If oldcldoptics is true, then call the
 ! Ebert-Curry ice optics routine. Otherwise, call the Mitchell routine that does
-! an interpolation.
+! an interpolation. TODO: respect the options set in the namelist.
 subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    type(physics_state), intent(in)   :: state
    type(physics_buffer_desc),pointer :: pbuf(:)
@@ -396,6 +396,22 @@ end subroutine gammadist_liq_optics_sw
 !==============================================================================
 
 subroutine get_liquid_optics_lw(state, pbuf, abs_od)
+
+   type(physics_state), intent(in)    :: state
+   type(physics_buffer_desc),pointer  :: pbuf(:)
+   real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
+
+   if (oldcldoptics) then
+      call slingo_liq_optics_lw(state, pbuf, abs_od, oldliqwp=.false.)
+   else
+      call gammadist_liq_optics_lw(state, pbuf, abs_od)
+   end if
+
+end subroutine get_liquid_optics_lw
+
+!==============================================================================
+
+subroutine gammadist_liq_optics_lw(state, pbuf, abs_od)
    type(physics_state), intent(in)    :: state
    type(physics_buffer_desc),pointer  :: pbuf(:)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
@@ -424,7 +440,7 @@ subroutine get_liquid_optics_lw(state, pbuf, abs_od)
       enddo
    enddo
 
-end subroutine get_liquid_optics_lw
+end subroutine gammadist_liq_optics_lw
 
 !==============================================================================
 
