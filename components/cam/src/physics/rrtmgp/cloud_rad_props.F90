@@ -14,6 +14,7 @@ use rad_constituents, only: iceopticsfile, liqopticsfile, oldcldoptics
 use interpolate_data, only: interp_type, lininterp_init, lininterp, &
                             extrap_method_bndry, lininterp_finish
 use slingo,           only: slingo_liq_optics_sw
+use ebert_curry,      only: ec_ice_optics_sw
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
 
@@ -267,11 +268,35 @@ end subroutine cloud_rad_props_init
 
 !==============================================================================
 
+! Generic subroutine to get ice optics. If oldcldoptics is true, then call the
+! Ebert-Curry ice optics routine. Otherwise, call the Mitchell routine that does
+! an interpolation.
 subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    type(physics_state), intent(in)   :: state
    type(physics_buffer_desc),pointer :: pbuf(:)
 
-   ! NOTE: should be nswbands,ncols,pver
+   real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
+   real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
+
+   real(r8), pointer :: iciwpth(:,:), dei(:,:)
+
+   if (oldcldoptics) then
+      call ec_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f, oldicewp=.false.)
+   else
+      call mitchell_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+   end if
+
+end subroutine get_ice_optics_sw
+
+!==============================================================================
+
+subroutine mitchell_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+
+   type(physics_state), intent(in)   :: state
+   type(physics_buffer_desc),pointer :: pbuf(:)
+
    real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
    real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
@@ -286,7 +311,7 @@ subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    call interpolate_ice_optics_sw(state%ncol, iciwpth, dei, tau, tau_w, &
                                   tau_w_g, tau_w_f)
 
-end subroutine get_ice_optics_sw
+end subroutine mitchell_ice_optics_sw
 
 !==============================================================================
 
