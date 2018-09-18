@@ -14,7 +14,7 @@ use rad_constituents, only: iceopticsfile, liqopticsfile, oldcldoptics
 use interpolate_data, only: interp_type, lininterp_init, lininterp, &
                             extrap_method_bndry, lininterp_finish
 use slingo,           only: slingo_liq_optics_sw, slingo_liq_optics_lw
-use ebert_curry,      only: ec_ice_optics_sw
+use ebert_curry,      only: ec_ice_optics_sw, ec_ice_optics_lw
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
 
@@ -316,6 +316,23 @@ end subroutine mitchell_ice_optics_sw
 !==============================================================================
 
 subroutine get_ice_optics_lw(state, pbuf, abs_od)
+
+   type(physics_state), intent(in)     :: state
+   type(physics_buffer_desc), pointer  :: pbuf(:)
+   real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
+
+   if (oldcldoptics) then
+      call ec_ice_optics_lw(state, pbuf, abs_od, oldicewp=.false.)
+   else
+      call mitchell_ice_optics_lw(state, pbuf, abs_od)
+   end if
+
+end subroutine get_ice_optics_lw
+
+!==============================================================================
+
+subroutine mitchell_ice_optics_lw(state, pbuf, abs_od)
+
    type(physics_state), intent(in)     :: state
    type(physics_buffer_desc), pointer  :: pbuf(:)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
@@ -329,7 +346,7 @@ subroutine get_ice_optics_lw(state, pbuf, abs_od)
 
    call interpolate_ice_optics_lw(state%ncol,iciwpth, dei, abs_od)
 
-end subroutine get_ice_optics_lw
+end subroutine mitchell_ice_optics_lw
 
 !==============================================================================
 
