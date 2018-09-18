@@ -64,13 +64,14 @@ subroutine slingo_rad_props_init()
 
    integer :: err
 
+   ! Do pbuf index lookups here because string comparisons are expensive
    iciwp_idx  = pbuf_get_index('ICIWP',errcode=err)
    iclwp_idx  = pbuf_get_index('ICLWP',errcode=err)
    cld_idx    = pbuf_get_index('CLD')
    rel_idx    = pbuf_get_index('REL')
    rei_idx    = pbuf_get_index('REI')
 
-   ! old optics
+   ! Get constituent indices for old optics
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
@@ -251,8 +252,8 @@ subroutine slingo_liq_optics_lw(state, pbuf, abs_od, oldliqwp)
    lchnk = state%lchnk
 
    itim_old  =  pbuf_old_tim_idx()
-   call pbuf_get_field(pbuf, rei_idx,   rei)
    call pbuf_get_field(pbuf, cld_idx,   cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+   call pbuf_get_field(pbuf, rei_idx, rei)
 
    if (oldliqwp) then
       do k=1,pver
