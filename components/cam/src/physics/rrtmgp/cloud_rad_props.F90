@@ -9,11 +9,11 @@ use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
 
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag
-use rad_constituents, only: iceopticsfile, liqopticsfile
+use rad_constituents, only: iceopticsfile, liqopticsfile, oldcldoptics
 
 use interpolate_data, only: interp_type, lininterp_init, lininterp, &
                             extrap_method_bndry, lininterp_finish
-
+use slingo,           only: slingo_liq_optics_sw
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
 
@@ -308,7 +308,31 @@ end subroutine get_ice_optics_lw
 
 !==============================================================================
 
+! Generic subroutine to get liquid cloud optics. If oldcldoptics is true, this
+! will use the slingo liquid optics routine, otherwise it will call the
+! gamma distribution routine that exists in this module.
 subroutine get_liquid_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+
+   type(physics_state), intent(in)   :: state
+   type(physics_buffer_desc),pointer :: pbuf(:)
+
+   real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
+   real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
+
+   if (oldcldoptics) then
+      call slingo_liq_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f, oldliqwp=.false.)
+   else
+      call gammadist_liq_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+   end if
+
+end subroutine get_liquid_optics_sw
+
+!==============================================================================
+
+subroutine gammadist_liq_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+
    type(physics_state), intent(in)   :: state
    type(physics_buffer_desc),pointer :: pbuf(:)
 
@@ -332,7 +356,7 @@ subroutine get_liquid_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
       do i = 1,ncol
          if(lamc(i,k) > 0._r8) then ! This seems to be clue from microphysics of no cloud
             call gam_liquid_sw(iclwpth(i,k), lamc(i,k), pgam(i,k), &
-                tau(1:nswbands,i,k), tau_w(1:nswbands,i,k), tau_w_g(1:nswbands,i,k), tau_w_f(1:nswbands,i,k))
+                 tau(1:nswbands,i,k), tau_w(1:nswbands,i,k), tau_w_g(1:nswbands,i,k), tau_w_f(1:nswbands,i,k))
          else
             tau(1:nswbands,i,k) = 0._r8
             tau_w(1:nswbands,i,k) = 0._r8
@@ -342,7 +366,7 @@ subroutine get_liquid_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
       enddo
    enddo
 
-end subroutine get_liquid_optics_sw
+end subroutine gammadist_liq_optics_sw
 
 !==============================================================================
 
