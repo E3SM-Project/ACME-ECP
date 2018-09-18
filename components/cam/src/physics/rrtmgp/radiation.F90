@@ -1211,6 +1211,10 @@ contains
       real(r8), allocatable :: rel_save(:,:)       ! Cloud liquid effective radius
       real(r8), allocatable :: rei_save(:,:)       ! Cloud ice effective radius
 
+      ! Dummy to point cldfsnow to in case cldfsnow is not present in CAM but is
+      ! used in SP-CAM (2-moment)
+      real(r8), allocatable, target :: cldfsnow_target(:,:)
+
       ! Dummy variable to call m2005_effradius
       ! TODO: rip this out, this is not being used
       real(r8) :: effl_fn  ! effl for fixed number concentration of nlic = 1.e8
@@ -1221,7 +1225,9 @@ contains
       ! Loop variables
       integer :: crm_iy, crm_ix, crm_iz, gcm_iz, icol
 
+      ! Stuff for pbuf
       integer :: errcode
+      integer :: cldfsnow_idx = -1
 
       !----------------------------------------------------------------------
 
@@ -1251,6 +1257,14 @@ contains
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD'), crm_qc)
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD'), crm_qi)
 
+         ! Snow and number concentrations may or may not be present
+         if (SPCAM_microp_scheme == 'm2005') then
+            call pbuf_get_field(pbuf, pbuf_get_index('CRM_QS_RAD'), crm_qs)
+            call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), crm_ns)
+            call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_nc)
+            call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), crm_ni)
+         end if
+
          ! Initialize CRM radiative heating
          crm_qrs = 0
          crm_qrl = 0
@@ -1272,16 +1286,29 @@ contains
          call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
          call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
 
-         use_snow = (pbuf_get_index('CLDFSNOW', errcode=errcode) > 0)
-         if (use_snow) call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldfsnow)
 
          ! Save this stuff to restore at end of routine
          allocate(cld_save(pcols,pver), cldfsnow_save(pcols,pver), &
                   mu_save(pcols,pver), lambdac_save(pcols,pver), &
                   des_save(pcols,pver), dei_save(pcols,pver), &
                   rel_save(pcols,pver), rei_save(pcols,pver))
+
+         ! Snow may or may not be present. The easy way to query this is to try
+         ! to find the field in the pbuf. If errcode is passed as an optional
+         ! argument, then this query will not crash the model if the index is
+         ! not found, but rather just exit and return the error code, along with
+         ! a pbuf index of -1.
+         cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=errcode)
+         if (cldfsnow_idx > 0) then
+            call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow)
+            cldfsnow_save = cldfsnow
+            use_snow = .true.
+         end if
+
+         ! Save cloud fraction
          cld_save = cld
-         if (use_snow) cldfsnow_save = cldfsnow
+
+         ! Save size distribution parameters before modifying in-place
          mu_save = mu
          lambdac_save = lambdac
          des_save = des
