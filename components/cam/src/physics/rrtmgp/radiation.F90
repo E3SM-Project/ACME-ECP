@@ -172,6 +172,11 @@ module radiation
    ! this mean?)
    integer, public, allocatable :: tot_chnk_till_this_prc(:,:,:)
 
+   ! pbuf indices are looked up in radiation_init() to keep from having to do
+   ! expensive string comparisons all the time
+   integer :: qaerwat_idx, dgnumwet_idx, &
+              crm_qaerwat_idx, crm_dgnumwet_idx
+
    !============================================================================
 
 contains
@@ -451,9 +456,19 @@ contains
       type(ty_gas_concs) :: available_gases
 
       real(r8), target :: sw_band_midpoints(nswbands), lw_band_midpoints(nlwbands)
+
       character(len=32) :: subname = 'radiation_init'
 
       !-----------------------------------------------------------------------
+
+      ! If we are doing SP-CAM, then we need to do radiation every timestep. To
+      ! control this, set iradsw and iradlw to calculate radiative transfer
+      ! every timestep
+      !call phys_getopts(use_SPCAM_out=use_SPCAM)
+      !if (use_SPCAM) then
+      !   iradsw = 1
+      !   iradlw = 1
+      !end if
 
       ! Initialize cloud optics
       call cloud_rad_props_init()
@@ -850,6 +865,17 @@ contains
                      sampling_seq='rad_lwsw', flag_xyfill=.true.)
       endif
 
+#ifdef MODAL_AERO
+      qaerwat_idx = pbuf_get_index('QAERWAT')
+      dgnumwet_idx = pbuf_get_index('DGNUMWET')
+
+      call phys_getopts(use_SPCAM_out=use_SPCAM)
+      if (use_SPCAM) then
+         crm_qaerwat_idx = pbuf_get_index('CRM_QAERWAT')
+         crm_dgnumwet_idx = pbuf_get_index('CRM_DGNUMWET')
+      end if
+#endif
+
    end subroutine radiation_init
 
 
@@ -1088,6 +1114,9 @@ contains
 #ifdef CRM
       use crm_physics, only: m2005_effradius
 #endif
+#ifdef MODAL_AERO
+      use modal_aero_data, only: ntot_amode
+#endif
 
       ! ---------------------------------------------------------------------------
       ! Arguments
@@ -1203,6 +1232,11 @@ contains
       real(r8), pointer :: cliqwp(:,:)    ! Cloud liquid water path
       real(r8), pointer :: cicewp(:,:)    ! Cloud ice water path
       real(r8), pointer :: csnowp(:,:)    ! Cloud snow water path
+      real(r8), pointer :: qaerwat(:,:,:)
+      real(r8), pointer :: dgnumwet(:,:,:)
+
+      real(r8), pointer :: crm_qaerwat(:,:,:,:,:)
+      real(r8), pointer :: crm_dgnumwet(:,:,:,:,:)
 
       ! ...and to save those optical parameters to restore later...
       real(r8), allocatable :: cld_save(:,:)       ! Cloud fraction
@@ -1217,6 +1251,9 @@ contains
       real(r8), allocatable :: cicewp_save(:,:)    ! Cloud ice water path
       real(r8), allocatable :: csnowp_save(:,:)    ! Cloud snow water path
 
+      real(r8), allocatable :: qaerwat_save(:,:,:)
+      real(r8), allocatable :: dgnumwet_save(:,:,:)
+
       ! Dummy variable to call m2005_effradius
       ! TODO: rip this out, this is not being used
       real(r8) :: effl_fn  ! effl for fixed number concentration of nlic = 1.e8
@@ -1230,6 +1267,8 @@ contains
       ! Stuff for pbuf
       integer :: errcode
       integer :: cldfsnow_idx = -1
+
+      logical :: dosw, dolw
 
       !----------------------------------------------------------------------
 
@@ -1327,10 +1366,37 @@ contains
          dei_save = dei
          rel_save = rel
          rei_save = rei
+
+#ifdef MODAL_AERO
+         call pbuf_get_field(pbuf, qaerwat_idx, qaerwat, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/))
+         call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/))
+
+         ! Save aerosol stuff
+         allocate(qaerwat_save(pcols,pver,ntot_amode), dgnumwet(pcols,pver,ntot_amode))
+         qaerwat_save = qaerwat
+         dgnumwet_save = dgnumwet
+
+         ! Get CRM-scale aerosol pointers
+         call pbuf_get_field(pbuf, crm_qaerwat_idx, crm_qaerwat)
+         call pbuf_get_field(pbuf, crm_dgnumwet_idx, crm_dgnumwet)
+#endif
+      end if
+
+      ! Temporary hack to get radiation to run at every timestep. This should be
+      ! handled by setting iradsw, iradlw = 1 so that surface albedo is also
+      ! updated every timestep, but do it this way for now to be consistent with
+      ! RRTMG implementation. After this is merged, we should change both
+      ! simulataneously. This change will NOT be BFB, but will be more robust.
+      if (use_SPCAM) then
+         dosw = .true.
+         dolw = .true.
+      else
+         dosw = radiation_do('sw')
+         dolw = radiation_do('lw')
       end if
 
       ! Do shortwave stuff...
-      if (radiation_do('sw')) then
+      if (dosw) then
 
          ! Allocate shortwave fluxes
          call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_allsky, do_direct=.true.)
@@ -1423,7 +1489,7 @@ contains
       end if  ! dosw
 
       ! Do longwave stuff...
-      if (radiation_do('lw')) then
+      if (dolw) then
 
          ! Allocate longwave outputs; why is this not part of the
          ! ty_fluxes_byband object?
@@ -1555,6 +1621,11 @@ contains
          csnowp = csnowp_save
          deallocate(lambdac_save, mu_save, des_save, dei_save, rel_save, rei_save, &
                     cliqwp_save, cicewp_save, csnowp_save)
+#ifdef MODAL_AERO
+         qaerwat = qaerwat_save
+         dgnumwet = dgnumwet_save
+         deallocate(qaerwat_save, dgnumwet_save)
+#endif
       end if
 
    contains
@@ -1687,6 +1758,14 @@ contains
 
 #endif
 
+#ifdef MODAL_AERO
+         ! Replace aerosol stuff in-place
+         do crm_iz = 1,crm_nz
+            gcm_iz = pver - crm_iz + 1
+            qaerwat(1:ncol,gcm_iz,1:ntot_amode) = crm_qaerwat(1:ncol,crm_ix,crm_iy,crm_iz,1:ntot_amode)
+            dgnumwet(1:ncol,gcm_iz,1:ntot_amode) = crm_dgnumwet(1:ncol,crm_ix,crm_iy,crm_iz,1:ntot_amode)
+         end do
+#endif
 
       end subroutine overwrite_state_with_crm
 
