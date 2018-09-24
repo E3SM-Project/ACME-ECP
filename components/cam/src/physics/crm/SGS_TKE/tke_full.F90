@@ -195,7 +195,9 @@ contains
 
           end if
 
+#ifndef SP_TKE_NO_CFL
           tk(i,j,k,icrm)  = min(tk(i,j,k,icrm),tkmax)
+#endif
           tkh(i,j,k,icrm) = Pr*tk(i,j,k,icrm)
 
           tkelediss(k,icrm) = tkelediss(k,icrm) - a_prod_sh
@@ -504,7 +506,9 @@ contains
 
           end if
 
+#ifndef SP_TKE_NO_CFL
           tk(i,j,k,icrm)  = min(tk(i,j,k,icrm),tkmax)
+#endif
           tkh(i,j,k,icrm) = Pr*tk(i,j,k,icrm)
 
           tkelediss(k,icrm)  = tkelediss(k,icrm) - a_prod_sh
