@@ -82,7 +82,7 @@ contains
     ! It looks like this is only used in this routine...
     ! so no need to put it in the schedule data-structure
     ! =====================================================
-    allocate(Global2Local(nelem))
+    if (.not.allocated(Global2Local)) allocate(Global2Local(nelem))
     if(Debug) write(iulog,*)'genEdgeSched: point #1'
     iSched = PartNumber
 
@@ -111,9 +111,9 @@ contains
     if(Debug) write(iulog,*)'genEdgeSched: point #5'
 
     ! Temporary array to calculate the Buffer Slot
-    allocate(tmpP(2,nedges+1))
-    allocate(tmpS(2,nedges+1))
-    allocate(tmpP_ghost(2,nedges+1))
+    if (.not.allocated(tmpP)) allocate(tmpP(2,nedges+1))
+    if (.not.allocated(tmpS)) allocate(tmpS(2,nedges+1))
+    if (.not.allocated(tmpP_ghost)) allocate(tmpP_ghost(2,nedges+1))
 
     tmpP(1,:) = -1
     tmpP(2,:) = 0
@@ -262,9 +262,9 @@ contains
 
     nSend = nedges
     nRecv = nedges
-    allocate(Rrequest(nRecv))
-    allocate(Srequest(nSend))
-    allocate(status(MPI_STATUS_SIZE,nRecv))
+    if (.not.allocated(Rrequest)) allocate(Rrequest(nRecv))
+    if (.not.allocated(Srequest)) allocate(Srequest(nSend))
+    if (.not.allocated(status)) allocate(status(MPI_STATUS_SIZE,nRecv))
 
     !===============================================================
     !   Number of communication points ... to be used later to

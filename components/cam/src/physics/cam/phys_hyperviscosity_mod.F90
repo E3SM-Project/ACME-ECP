@@ -10,11 +10,15 @@ module phys_hyperviscosity_mod
    use hybvcoord_mod,   only: hvcoord_t
    use domain_mod,      only: domain1d_t
    use edgetype_mod,    only: EdgeBuffer_t
+   
    use bndry_mod,       only: bndry_exchangeV
+   use edge_mod_base,   only: edgevpack_nlyr, edgevunpack_nlyr, initEdgeBuffer
 
    implicit none
 
    public :: phys_hyperviscosity
+
+   type (EdgeBuffer_t)   :: edge_buffer
    
    contains
 
@@ -28,17 +32,19 @@ subroutine phys_hyperviscosity(ptend)
    ! Original motivation was to effectively smooth the output tendencies from the CRM.
    ! Author: Walter Hannah (LLNL)
    !----------------------------------------------
-   use parallel_mod,    only: par
-   use time_mod,        only: tstep
-   use hybrid_mod,      only: hybrid_create
-   use dyn_comp,        only: hvcoord, TimeLevel
-   use thread_mod,      only: hthreads, omp_get_thread_num
-   use prim_driver_base,only: prim_init1
-   use phys_grid,       only: get_ncols_p, get_gcol_all_p
-   use dimensions_mod,  only: np, npsq, nelemd, nlev
-   use ppgrid,          only: begchunk, endchunk, pcols, pver, pverp
-   use dof_mod,         only: putUniquePoints
-   use physics_types,   only: physics_ptend 
+   use parallel_mod,       only: par
+   use time_mod,           only: tstep
+   use hybrid_mod,         only: hybrid_create
+   use dyn_comp,           only: hvcoord, TimeLevel
+   use thread_mod,         only: hthreads, omp_get_thread_num
+   use prim_driver_base,   only: prim_init1
+   use derivative_mod_base,only: derivinit
+   use dyn_grid,           only: get_gcol_block_d
+   use phys_grid,          only: get_ncols_p, get_gcol_all_p
+   use dimensions_mod,     only: np, npsq, nelemd, nlev
+   use ppgrid,             only: begchunk, endchunk, pcols, pver, pverp
+   use dof_mod,            only: putUniquePoints
+   use physics_types,      only: physics_ptend 
    !!! Interface arguments
    type(physics_ptend), intent(inout) :: ptend(begchunk:endchunk)
    !!! Local variables
@@ -54,12 +60,13 @@ subroutine phys_hyperviscosity(ptend)
    type (derivative_t)        :: deriv
 
    real (kind=real_kind), dimension(npsq,pver,nelemd) :: T_tmp       ! temporary array to physics tend
-   
+
    !----------------------------------------------
    ! setup element and TimeLevel structure
    !----------------------------------------------   
-   call f(phys_elem,par,dom_mt,TimeLevel)
+   call prim_init1(phys_elem,par,dom_mt,TimeLevel)
 
+   ithr = omp_get_thread_num()
    nets = dom_mt(ithr)%start
    nete = dom_mt(ithr)%end
 
@@ -68,10 +75,14 @@ subroutine phys_hyperviscosity(ptend)
    !----------------------------------------------
    ! initialize hybrid and derivative structure
    !----------------------------------------------
-   ithr = omp_get_thread_num()
    hybrid = hybrid_create(par,ithr,hthreads)
 
    call derivinit(deriv)
+
+   !----------------------------------------------
+   ! setup edge buffer
+   !----------------------------------------------
+   call initEdgeBuffer(par,edge_buffer,phys_elem,nlev+1)
 
    !----------------------------------------------
    ! copy physics tendencies to element structure 
@@ -126,8 +137,6 @@ subroutine phys_hyperviscosity_T( elem, hvcoord, hybrid, deriv, nt, nets, nete, 
    ! Author: Walter Hannah (LLNL)
    !----------------------------------------------
    use dimensions_mod,  only: np, nlev
-   use edge_mod,        only: edgevpack_nlyr
-   use bndry_mod,       only: bndry_exchangev
    use control_mod,     only: hypervis_order, nu, nu_q, nu_s, nu_p, hypervis_subcycle
    !!! Interface arguments
    type (element_t)     , intent(inout) :: elem(:)
@@ -141,7 +150,6 @@ subroutine phys_hyperviscosity_T( elem, hvcoord, hybrid, deriv, nt, nets, nete, 
    !!! Local variables
    real (kind=real_kind), dimension(np,np,nlev,nets:nete) :: tensor 
    real (kind=real_kind), dimension(np,np,nlev)           :: dp
-   type (EdgeBuffer_t)   :: edge_buffer
    real (kind=real_kind) :: dt
    integer :: k, i, j, ie, ic, q
 
@@ -349,7 +357,7 @@ end subroutine phys_hyperviscosity_T
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
 
-subroutine phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, edge_buffer, qtens)
+subroutine phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, edge_buffer_in, qtens)
    !----------------------------------------------
    ! compute weak biharmonic operator (for physics)
    !    input:  qtens = Q
@@ -366,7 +374,7 @@ subroutine phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, edge_buffe
    integer              , intent(in   ) :: nets
    integer              , intent(in   ) :: nete
    type (element_t)     , intent(inout) :: elem(:)
-   type (EdgeBuffer_t)  , intent(inout) :: edge_buffer
+   type (EdgeBuffer_t)  , intent(inout) :: edge_buffer_in
    real (kind=real_kind), intent(inout),  dimension(np,np,nlev,nets:nete) :: qtens
 
    !!! Local Variables
@@ -390,19 +398,19 @@ subroutine phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, edge_buffe
          qtens(:,:,k,ie) = laplace_sphere_wk(lap_p, deriv, elem(ie), var_coef=var_coef1)
       enddo
       !!! prepare edge buffer
-      call edgeVpack_nlyr(edge_buffer, elem(ie)%desc, qtens(:,:,:,ie),nlev, 0, nlev)
+      call edgeVpack_nlyr(edge_buffer_in, elem(ie)%desc, qtens(:,:,:,ie),nlev, 0, nlev)
    enddo
 
    !----------------------------------------------
    ! update boundaries
    !----------------------------------------------
-   call bndry_exchangeV(hybrid,edge_buffer)
+   call bndry_exchangeV(hybrid,edge_buffer_in)
    
    !----------------------------------------------
    ! apply inverse mass matrix, then apply laplace again
    !----------------------------------------------
    do ie=nets,nete
-      call edgeVunpack_nlyr(edge_buffer, elem(ie)%desc, qtens(:,:,:,ie), nlev, 0, nlev)
+      call edgeVunpack_nlyr(edge_buffer_in, elem(ie)%desc, qtens(:,:,:,ie), nlev, 0, nlev)
       do k=1,nlev 
          lap_p(:,:) = elem(ie)%rspheremp(:,:)*qtens(:,:,k,ie)
          ! qtens(:,:,k,ie) = phys_laplace_sphere_wk(lap_p, deriv, elem(ie), var_coef=.true.)

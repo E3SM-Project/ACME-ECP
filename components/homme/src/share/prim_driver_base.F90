@@ -228,8 +228,8 @@ contains
           call abortmp('Error: too many MPI tasks. set dyn_npes <= nelem')
        end if
 
-       allocate(GridVertex(nelem))
-       allocate(GridEdge(nelem_edge))
+       if (.not.allocated(GridVertex)) allocate(GridVertex(nelem))
+       if (.not.allocated(GridEdge)) allocate(GridEdge(nelem_edge))
 
        do j =1,nelem
           call allocate_gridvertex_nbrs(GridVertex(j))
@@ -285,13 +285,13 @@ contains
     ! ===========================================================
     ! given partition, count number of local element descriptors
     ! ===========================================================
-    allocate(MetaVertex(1))
-    allocate(Schedule(1))
+    if (.not.allocated(MetaVertex)) allocate(MetaVertex(1))
+    if (.not.allocated(Schedule)) allocate(Schedule(1))
 
     nelem_edge=SIZE(GridEdge)
 
-    allocate(TailPartition(nelem_edge))
-    allocate(HeadPartition(nelem_edge))
+    if (.not.allocated(TailPartition)) allocate(TailPartition(nelem_edge))
+    if (.not.allocated(HeadPartition)) allocate(HeadPartition(nelem_edge))
     do i=1,nelem_edge
        TailPartition(i)=GridEdge(i)%tail%processor_number
        HeadPartition(i)=GridEdge(i)%head%processor_number
@@ -330,7 +330,7 @@ contains
     call genEdgeSched(elem,iam,Schedule(1),MetaVertex(1))
 
 
-    allocate(global_shared_buf(nelemd,nrepro_vars))
+    if (.not.allocated(global_shared_buf)) allocate(global_shared_buf(nelemd,nrepro_vars))
     global_shared_buf=0.0_real_kind
     !  nlyr=edge3p1%nlyr
     !  call MessageStats(nlyr)
@@ -661,7 +661,7 @@ contains
 #ifdef TRILINOS
 
       lenx=(np*np*nlev*3 + np*np*1)*(nete-nets+1)  ! 3 3d vars plus 1 2d vars
-      allocate(xstate(lenx))
+      if (.not.allocated(xstate)) allocate(xstate(lenx))
       xstate(:) = 0d0
       compute_diagnostics = .false.
       qn0 = -1 ! dry case for testing right now

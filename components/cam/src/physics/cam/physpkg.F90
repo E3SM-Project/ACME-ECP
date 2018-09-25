@@ -48,7 +48,6 @@ module physpkg
 
   !  Physics buffer index
   integer ::  teout_idx          = 0  
-
   integer ::  tini_idx           = 0 
   integer ::  qini_idx           = 0 
   integer ::  cldliqini_idx      = 0 
@@ -1069,10 +1068,10 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
 !$OMP PARALLEL DO PRIVATE (C, phys_buffer_chunk)
 #if defined( SP_ALT_TPHYSBC )
 
-        call tphysbc_sp(ztodt, fsns(1,:), fsnt(1,:), flns(1,:), flnt(1,:),  &
-                        phys_state(:), phys_tend(:), phys_buffer_chunk,     &
-                        fsds(1,:), landm(1,:), sgh(1,:), sgh30(1,:),        &
-                        cam_out(:), cam_in(:) )
+        call tphysbc_sp(ztodt, pbuf2d, landm(:,:),  &
+                        fsns(:,:), fsnt(:,:), flns(:,:), flnt(:,:), fsds(:,:),  &
+                        phys_state(:), phys_tend(:), cam_in(:), cam_out(:),     &
+                        species_class(:) )
 
 #else /* SP_ALT_TPHYSBC */
        do c=begchunk, endchunk
@@ -1961,10 +1960,6 @@ subroutine tphysbc (ztodt,               &
     use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
 #endif
 
-#if defined( DIFFUSE_PHYS_TEND )
-    use phys_hyperviscosity_mod
-#endif
-
 #endif /* CRM */
 
     implicit none
@@ -2821,9 +2816,7 @@ end if
       call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,    &
                             species_class, phys_stage, crm_ecpp_output,         &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
-#if defined( DIFFUSE_PHYS_TEND )
-      call phys_hyperviscosity(ptend)
-#endif
+
       call physics_update(state, ptend, crm_run_time, tend)
 
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &

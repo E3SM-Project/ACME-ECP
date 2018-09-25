@@ -42,7 +42,7 @@ contains
     integer :: i, ie
 
     ! compute averaging weights for RK+LF (tstep_type=1) timestepping:
-    allocate(ur_weights(qsplit))
+    if (.not.allocated(ur_weights)) allocate(ur_weights(qsplit))
     ur_weights(:)=0.0d0
 
     if(mod(qsplit,2).NE.0)then

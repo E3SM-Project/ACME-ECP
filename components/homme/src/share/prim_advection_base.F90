@@ -111,8 +111,8 @@ contains
     call initEdgeSBuffer(par,edgeAdvQminmax,elem,qsize*nlev*2)
 
     ! this static array is shared by all threads, so dimension for all threads (nelemd), not nets:nete:
-    allocate (qmin(nlev,qsize,nelemd))
-    allocate (qmax(nlev,qsize,nelemd))
+    if (.not.allocated(qmin)) allocate (qmin(nlev,qsize,nelemd))
+    if (.not.allocated(qmax)) allocate (qmax(nlev,qsize,nelemd))
 
   end subroutine 
 
