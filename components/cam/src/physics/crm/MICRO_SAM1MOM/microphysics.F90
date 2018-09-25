@@ -516,7 +516,7 @@ CONTAINS
   ! Supply function that computes total water in a domain:
   !
   real(8) function total_water(ncrms,icrm)
-    use vars, only : nstep,nprint,adz,dz,rho
+    use vars, only : nstep,adz,dz,rho
     implicit none
     integer, intent(in) :: ncrms,icrm
     real(8) tmp

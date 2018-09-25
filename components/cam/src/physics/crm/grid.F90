@@ -51,14 +51,12 @@ module grid
   ! Vertical grid parameters:
   ! real(crm_rknd) pres0      ! Reference surface pressure, Pa
 
-  integer:: nstep =0! current number of performed time steps
+  integer :: nstep = 0! current number of performed time steps
   integer  ncycle  ! number of subcycles over the dynamical timestep
   integer icycle  ! current subcycle
   integer:: na=1, nb=2, nc=3 ! indeces for swapping the rhs arrays for AB scheme
   real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme
   real(crm_rknd) dtn  ! current dynamical timestep (can be smaller than dt)
-  real(8):: time=0. ! current time in sec.
-  real(crm_rknd) day  ! current day (including fraction)
   real(crm_rknd) dtfactor   ! dtn/dt
 
   !  MPI staff:
@@ -102,7 +100,6 @@ module grid
   real(crm_rknd):: day0=0.  ! starting day (including fraction)
 
   integer:: nrad =1  ! frequency of calling the radiation routines
-  integer:: nprint =1000  ! frequency of printing a listing (steps)
   integer:: nrestart =0 ! switch to control starting/restarting of the model
   integer:: nstat =1000 ! the interval in time steps to compute statistics
   integer:: nstatfrq =50 ! frequency of computing statistics
@@ -127,7 +124,6 @@ module grid
   character(len=120):: iopfile=''
   character(256):: rundatadir ='./RUNDATA' ! path to data directory
 
-  integer:: nsave3D =1000     ! frequency of writting 3D fields (steps)
   integer:: nsave3Dstart =99999999! timestep to start writting 3D fields
   integer:: nsave3Dend  =99999999 ! timestep to end writting 3D fields
   logical:: save3Dbin =.false.   ! save 3D data in binary format(no 2-byte compression)
@@ -175,15 +171,15 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    
+
     allocate( z(nz,ncrms)       )
     allocate( pres(nzm,ncrms)   )
     allocate( zi(nz,ncrms)      )
     allocate( presi(nz,ncrms)   )
     allocate( adz(nzm,ncrms)    )
-    allocate( adzw(nz,ncrms)   )
-    allocate( dt3(3,ncrms)   )
-    allocate( dz(ncrms)   )
+    allocate( adzw(nz,ncrms)    )
+    allocate( dt3(3,ncrms)      )
+    allocate( dz(ncrms)         )
 
     zero = 0
 
