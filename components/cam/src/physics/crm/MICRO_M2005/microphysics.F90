@@ -846,7 +846,7 @@ do j = 1,ny
 #ifdef ECPP
 ! save cloud water before microphysics process for the calculation
 ! of qlsink in ECPP
-      qcloud_bf(i,j,:) =  tmpqcl(:)
+      qcloud_bf(i,j,:,icrm) =  tmpqcl(:)
 #endif /*ECPP*/
 
       i1 = 1 ! dummy variables used by WRF convention in subroutine call
@@ -1174,17 +1174,17 @@ do j = 1,ny
 
 #ifdef ECPP
       do k=1, nzm
-        qlsink_bf(i,j,k)  = min(1.0/dt, QSINK_TMP(k))     ! /s
-        rh(i,j,k)      = RH3D(k)       !0-1
-        prain(i,j,k) = C2PREC(K)    ! kg/kg/s
+        qlsink_bf(i,j,k,icrm)  = min(1.0/dt, QSINK_TMP(k))     ! /s
+        rh(i,j,k,icrm)      = RH3D(k)       !0-1
+        prain(i,j,k,icrm) = C2PREC(K)    ! kg/kg/s
         if(cloudliq(i,j,k,icrm).gt.1.0e-10) then
-          qlsink(i,j,k) = min(1.0/dt, C2PREC(k)/cloudliq(i,j,k,icrm))
+          qlsink(i,j,k,icrm) = min(1.0/dt, C2PREC(k)/cloudliq(i,j,k,icrm))
         else
-          qlsink(i,j,k) = 0.0
+          qlsink(i,j,k,icrm) = 0.0
         end if
       end do
-      precr(i,j,:)=(RSED(:))    ! kg/m2/s
-      precsolid(i,j,:)=(SSED(:)+GSED(:))  !kg/m2/s leave ISED out for the momenent, and we may want to
+      precr(i,j,:,icrm)=(RSED(:))    ! kg/m2/s
+      precsolid(i,j,:,icrm)=(SSED(:)+GSED(:))  !kg/m2/s leave ISED out for the momenent, and we may want to
                                     ! test it effects in the future. +++mhwang
 #endif /*ECPP*/
 

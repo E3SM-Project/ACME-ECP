@@ -145,7 +145,7 @@ contains
     qlsink_bfsum1, prainsum1, qvssum1
 
     qcloudsum1    = qcloudsum1 + qcloud
-    qcloud_bfsum1    = qcloud_bfsum1 + qcloud_bf
+    qcloud_bfsum1 = qcloud_bfsum1 + qcloud_bf
     qrainsum1     = qrainsum1 + qrain
     qicesum1      = qicesum1 + qice
     qsnowsum1     = qsnowsum1 + qsnow
@@ -163,7 +163,6 @@ contains
     qlsink_bfsum1 = qlsink_bfsum1 + qlsink_bf*qcloud_bf  ! Note this is converted back in rsum2ToAvg
     prainsum1     = prainsum1 + prain
     qvssum1       = qvssum1 + qvs
-
   end subroutine rsums1
 
 

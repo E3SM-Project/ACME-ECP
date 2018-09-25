@@ -30,26 +30,64 @@ module ecppvars
   PRN = 1,       &  !Not precipitating sub-class
   PRY = 2           !Is precipitating sub-class
 
-
-  real(crm_rknd),dimension(:,:,:), allocatable :: qlsink, precr, precsolid, rh, qlsink_bf, prain, qcloud_bf, qvs
-
-  real(crm_rknd),dimension(:,:,:),allocatable :: &
-  qcloudsum1, qcloud_bfsum1, qrainsum1, qicesum1, qsnowsum1, qgraupsum1, &
-  qlsinksum1, qlsink_bfsum1, prainsum1, precrsum1, precsolidsum1, precallsum1, &
-  altsum1, rhsum1, cf3dsum1, wwsum1, wwsqsum1, tkesgssum1, qvssum1
-
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qlsink
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: precr
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: precsolid
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: rh
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qlsink_bf
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: prain
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qcloud_bf
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qvs
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qcloudsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qcloud_bfsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qrainsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qicesum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qsnowsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qgraupsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qlsinksum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qlsink_bfsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: prainsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: precrsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: precsolidsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: precallsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: altsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: rhsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: cf3dsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: wwsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: wwsqsum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: tkesgssum1
+  real(crm_rknd),dimension(:,:,:,:)   , allocatable :: qvssum1
   ! dim1 = z
-  real(crm_rknd),dimension(:),allocatable :: &
-  xkhvsum, wup_thresh, wdown_thresh, wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum
-
+  real(crm_rknd),dimension(:,:)       , allocatable :: xkhvsum
+  real(crm_rknd),dimension(:,:)       , allocatable :: wup_thresh
+  real(crm_rknd),dimension(:,:)       , allocatable :: wdown_thresh
+  real(crm_rknd),dimension(:,:)       , allocatable :: wwqui_cen_sum
+  real(crm_rknd),dimension(:,:)       , allocatable :: wwqui_bnd_sum
+  real(crm_rknd),dimension(:,:)       , allocatable :: wwqui_cloudy_cen_sum
+  real(crm_rknd),dimension(:,:)       , allocatable :: wwqui_cloudy_bnd_sum
   ! dims = (z, cloud sub-class, transport-class, precip sub-class)
-  real(crm_rknd), dimension(:,:,:,:), allocatable :: &
-  area_bnd_final, area_bnd_sum, area_cen_final, area_cen_sum, &
-  mass_bnd_final, mass_bnd_sum, mass_cen_final, mass_cen_sum, &
-  ent_bnd_sum, rh_cen_sum, &
-  qcloud_cen_sum, qcloud_bf_cen_sum, qrain_cen_sum, &
-  qice_cen_sum, qsnow_cen_sum, qgraup_cen_sum, &
-  qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, precall_cen_sum, &
-  qlsink_bf_cen_sum, prain_cen_sum, qlsink_avg_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: area_bnd_final
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: area_bnd_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: area_cen_final
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: area_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: mass_bnd_final
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: mass_bnd_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: mass_cen_final
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: mass_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: ent_bnd_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: rh_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qcloud_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qcloud_bf_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qrain_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qice_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qsnow_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qgraup_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qlsink_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: precr_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: precsolid_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: precall_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qlsink_bf_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: prain_cen_sum
+  real(crm_rknd), dimension(:,:,:,:,:), allocatable :: qlsink_avg_cen_sum
 #endif /*ECPP*/
 end module ecppvars
