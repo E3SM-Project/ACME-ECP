@@ -123,9 +123,10 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     do j = 1,ny
       do i = 1,nx
         !bloss: compute suface buoyancy flux
-        bbb = 1.+epsv*qv(i,j,k)
-        a_prod_bu_below(i,j) = bbb*bet(k,icrm)*fluxbt(i,j,icrm) + bet(k,icrm)*epsv*(t_sfc_xy(i,j,icrm))*fluxbq(i,j,icrm) 
-        grd=dz*adz(k,icrm)
+        bbb = 1.+epsv*qv(i,j,k,icrm)
+        a_prod_bu_below(i,j) = bbb*bet(k,icrm)*fluxbt(i,j,icrm) + &
+                               bet(k,icrm)*epsv*(t_sfc_xy(i,j,icrm))*fluxbq(i,j,icrm) 
+        grd=dz(icrm)*adz(k,icrm)
         Pr=1. 
         Ce1=Ce/0.7*0.19
         Ce2=Ce/0.7*0.51
@@ -134,10 +135,11 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
         ! that which satisfies local equilibrium, buoyant production = dissipation
         ! or a_prod_bu = Cee/grd * tke^(3/2).
         ! NOTE: We're ignoring shear production here.
-        tke(i,j,1,icrm) = MAX( tke(i,j,1,icrm), &
-                          ( grd/Cee * MAX(1.e-20, 0.5*a_prod_bu_below(i,j) ) )**(2./3.) )
+        tke(i,j,1,icrm) = max( tke(i,j,1,icrm), &
+                              ( grd/Cee * max( real(1.e-20,crm_rknd),   &
+                                               0.5*a_prod_bu_below(i,j) ) )**(2./3.) )
         ! eddy viscosity = Ck*grd * sqrt(tke) --- analogous for Smagorinksy.
-        tk(i,j,1,icrm) = Ck*grd * SQRT( tke(i,j,1,icrm) )
+        tk(i,j,1,icrm) = Ck*grd * sqrt( tke(i,j,1,icrm) )
         ! eddy diffusivity = Pr * eddy viscosity
         tkh(i,j,1,icrm) = Pr*tk(i,j,1,icrm)
       end do
@@ -154,7 +156,8 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
       ! Use surface temperature and vapor mixing ratio. This is slightly inconsistent, 
       ! but the error is small, and it's cheaper than another saturation mixing ratio computation.
       bbb = 1.+epsv*qv(i,j,k,icrm)
-      a_prod_bu_below(i,j) = bbb*bet(k,icrm)*fluxbt(i,j,icrm) + bet(k,icrm)*epsv*(t_sfc_xy(i,j,icrm))*fluxbq(i,j,icrm) 
+      a_prod_bu_below(i,j) = bbb*bet(k,icrm)*fluxbt(i,j,icrm) + &
+                             bet(k,icrm)*epsv*(t_sfc_xy(i,j,icrm))*fluxbq(i,j,icrm) 
       ! back buoy_sgs out from buoyancy flux, a_prod_bu = - (tkh(i,j,k,icrm)+0.001)*buoy_sgs
       buoy_sgs_below(i,j) = - a_prod_bu_below(i,j)/(tkh(i,j,k,icrm)+0.001)
     end do
@@ -332,7 +335,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
         if(dosmagor) then
 
-          tk(i,j,k,icrm) = sqrt(Ck**3/Cee*max(0.,def2(i,j,k)-Pr*buoy_sgs))*smix**2
+          tk(i,j,k,icrm) = sqrt(Ck**3/Cee*max(real(0.,crm_rknd),def2(i,j,k)-Pr*buoy_sgs))*smix**2
 
 #if defined( SP_TK_LIM )
             !!! put a hard lower limit on near-surface tk
@@ -354,7 +357,7 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           a_prod_bu = 0.5*( a_prod_bu_below(i,j) + a_prod_bu_above(i,j) )
           !!! cap the diss rate (useful for large time steps)
           a_diss = min(tke(i,j,k,icrm)/(4.*dt),Cee/smix*tke(i,j,k,icrm)**1.5)
-          tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm)+dtn*(max(0.,a_prod_sh+a_prod_bu)-a_diss))
+          tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm)+dtn*(max(real(0.,crm_rknd),a_prod_sh+a_prod_bu)-a_diss))
           tk(i,j,k,icrm)  = Ck*smix*sqrt(tke(i,j,k,icrm))
 
         end if
