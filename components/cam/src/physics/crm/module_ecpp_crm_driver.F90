@@ -123,7 +123,6 @@ module  module_ecpp_crm_driver
 
 contains
 
-  !========================================================================================
   subroutine ecpp_crm_init(ncrms,icrm,dt_gl)
     use grid, only: nx, ny, nzm
     use module_ecpp_stats, only: zero_out_sums1, zero_out_sums2
@@ -133,7 +132,7 @@ contains
     integer , intent(in) :: ncrms,icrm
     integer :: kbase, ktop
     integer :: m
-    integer :: nup, ndn
+    integer :: nup, ndn, icrm
     character(len=100) :: msg
 
     nxstag = nx+1
@@ -379,33 +378,35 @@ contains
     prain_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms)  )
 
     ! Initialize the running sums.
-    call zero_out_sums1( qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
-    qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), qgraupsum1(:,:,:,icrm), &
-    qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
-    precsolidsum1(:,:,:,icrm), precallsum1(:,:,:,icrm), &
-    altsum1(:,:,:,icrm), rhsum1(:,:,:,icrm), cf3dsum1(:,:,:,icrm), &
-    wwsum1(:,:,:,icrm), wwsqsum1(:,:,:,icrm), tkesgssum1(:,:,:,icrm), &
-    qlsink_bfsum1(:,:,:,icrm), prainsum1(:,:,:,icrm), qvssum1(:,:,:,icrm) )
-    ndn = ndndraft ; nup = nupdraft
-    call zero_out_sums2( &
-    xkhvsum(:,icrm), &
-    wwqui_cen_sum(:,icrm), wwqui_bnd_sum(:,icrm), wwqui_cloudy_cen_sum(:,icrm), wwqui_cloudy_bnd_sum(:,icrm),  &
-    area_bnd_final(:,:,1:1+nup+ndn,:,icrm), area_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
-    area_cen_final(:,:,1:1+nup+ndn,:,icrm), area_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    mass_bnd_final(:,:,1:1+nup+ndn,:,icrm), mass_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
-    mass_cen_final(:,:,1:1+nup+ndn,:,icrm), mass_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    ent_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
-    rh_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    qcloud_cen_sum(:,:,1:1+nup+ndn,:,icrm), qcloud_bf_cen_sum(:,:,1:1+nup+ndn,:,icrm), qrain_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    qice_cen_sum(:,:,1:1+nup+ndn,:,icrm),  qsnow_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    qgraup_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    qlsink_cen_sum(:,:,1:1+nup+ndn,:,icrm), precr_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    precsolid_cen_sum(:,:,1:1+nup+ndn,:,icrm), precall_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    qlsink_bf_cen_sum(:,:,1:1+nup+ndn,:,icrm), qlsink_avg_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
-    prain_cen_sum(:,:,1:1+nup+ndn,:,icrm)  )
+    do icrm = 1 , ncrms
+      call zero_out_sums1( qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
+      qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), qgraupsum1(:,:,:,icrm), &
+      qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
+      precsolidsum1(:,:,:,icrm), precallsum1(:,:,:,icrm), &
+      altsum1(:,:,:,icrm), rhsum1(:,:,:,icrm), cf3dsum1(:,:,:,icrm), &
+      wwsum1(:,:,:,icrm), wwsqsum1(:,:,:,icrm), tkesgssum1(:,:,:,icrm), &
+      qlsink_bfsum1(:,:,:,icrm), prainsum1(:,:,:,icrm), qvssum1(:,:,:,icrm) )
+      ndn = ndndraft ; nup = nupdraft
+      call zero_out_sums2( &
+      xkhvsum(:,icrm), &
+      wwqui_cen_sum(:,icrm), wwqui_bnd_sum(:,icrm), wwqui_cloudy_cen_sum(:,icrm), wwqui_cloudy_bnd_sum(:,icrm),  &
+      area_bnd_final(:,:,1:1+nup+ndn,:,icrm), area_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
+      area_cen_final(:,:,1:1+nup+ndn,:,icrm), area_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      mass_bnd_final(:,:,1:1+nup+ndn,:,icrm), mass_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
+      mass_cen_final(:,:,1:1+nup+ndn,:,icrm), mass_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      ent_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
+      rh_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qcloud_cen_sum(:,:,1:1+nup+ndn,:,icrm), qcloud_bf_cen_sum(:,:,1:1+nup+ndn,:,icrm), qrain_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qice_cen_sum(:,:,1:1+nup+ndn,:,icrm),  qsnow_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qgraup_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qlsink_cen_sum(:,:,1:1+nup+ndn,:,icrm), precr_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      precsolid_cen_sum(:,:,1:1+nup+ndn,:,icrm), precall_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qlsink_bf_cen_sum(:,:,1:1+nup+ndn,:,icrm), qlsink_avg_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      prain_cen_sum(:,:,1:1+nup+ndn,:,icrm)  )
 
-    wup_thresh(:,icrm) = 0.0
-    wdown_thresh(:,icrm) = 0.0
+      wup_thresh(:,icrm) = 0.0
+      wdown_thresh(:,icrm) = 0.0
+    enddo
 
     ! set ntavg[12] and initialize itavg[12] counters
     call ecpp_set_ntavg(dt_gl)

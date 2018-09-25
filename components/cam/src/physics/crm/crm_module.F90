@@ -126,19 +126,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8)        :: factor_xy, factor_xyt, idt_gl
     real(crm_rknd)  :: tmp1, tmp2
     real(crm_rknd)  :: u2z,v2z,w2z
-    integer         :: i,j,k,l,ptop,nn,icyc, nstatsteps, icrm
+    integer         :: i,j,k,l,ptop,nn,icyc,icrm
     integer         :: kx
-    real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
+    real(crm_rknd)  :: ustar(ncrms), bflx(ncrms), wnd(ncrms), qsat, omg
     real(crm_rknd)  :: colprec,colprecs
-    real(r8)        :: zs                ! surface elevation
     real(r8)        :: qtot(ncrms,20)    ! Total water for water conservation check
 
     !!! These should all be inputs
     integer         :: igstep            ! GCM time steps
     integer         :: iseed             ! seed for random perturbation
-    real(crm_rknd)  :: ntotal_step
-    integer         :: myrank, ierr
-
     !!! variables for radiation grouping method
     real(crm_rknd) :: crm_nx_rad_fac
     real(crm_rknd) :: crm_ny_rad_fac
@@ -297,9 +293,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     crm_rad%qs(icrm,:,:,:) = 0.0
     crm_rad%ns(icrm,:,:,:) = 0.0
 #endif /* m2005 */
-    zs=crm_input%phis(icrm)/ggr
-    bflx = crm_input%bflxls(icrm)
-    wnd = crm_input%wndls(icrm)
+    bflx(icrm) = crm_input%bflxls(icrm)
+    wnd(icrm) = crm_input%wndls(icrm)
 
 !-----------------------------------------
 
@@ -376,8 +371,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #else
     rhow(nz,icrm)= 2.*rhow(nzm,icrm) - rhow(nzm-1,icrm)
 #endif /*CLUBB_CRM*/
-    colprec=0
-    colprecs=0
 
     !  Initialize CRM fields:
     u   (1:nx,1:ny,1:nzm,icrm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
@@ -462,6 +455,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     ! initialize sgs fields
     call sgs_init(ncrms,icrm)
 
+    colprec=0
+    colprecs=0
     do k=1,nzm
       u0(k,icrm)=0.
       v0(k,icrm)=0.
@@ -532,8 +527,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
-    ustar = sqrt(crm_input%tau00(icrm)/rho(1,icrm))
-    z0(icrm) = z0_est(z(1,icrm),bflx,wnd,ustar)
+    ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(1,icrm))
+    z0(icrm) = z0_est(z(1,icrm),bflx(icrm),wnd(icrm),ustar(icrm))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
     crm_output%timing_factor = 0.
@@ -724,79 +719,49 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                             latitude(:,:,icrm), longitude(:,:,icrm), z(:,icrm), rho(:,icrm), zi(:,icrm), rhow(:,icrm), tv0(:,icrm), tke(:,:,:,icrm) )
     endif
 #endif /* CLUBB_CRM */
+  enddo
 
 #ifdef ECPP
     call ecpp_crm_init(ncrms,icrm,dt_gl)
 
-    qlsink   (:,:,:,icrm) = 0.0
-    qlsink_bf(:,:,:,icrm) = 0.0
-    prain    (:,:,:,icrm) = 0.0
-    precr    (:,:,:,icrm) = 0.0
-    precsolid(:,:,:,icrm) = 0.0
+  qlsink    = 0.0
+  qlsink_bf = 0.0
+  prain     = 0.0
+  precr     = 0.0
+  precsolid = 0.0
 #endif /* ECPP */
 
-     ntotal_step = 0.0
-!    !+++mhwangtest
-!    ! test water conservtion problem
-!    ntotal_step = 0.0
-!    qtot(icrm,:) = 0.0
-!    do k=1, nzm
-!      l=plev-k+1
-!      do j=1, ny
-!        do i=1, nx
-!#ifdef m2005
-!          qtot(icrm,1) = qtot(icrm,1)+((micro_field(i,j,k,iqr,icrm)+micro_field(i,j,k,iqs,icrm)+micro_field(i,j,k,iqg,icrm)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
-!#endif
-!#ifdef sam1mom
-!          qtot(icrm,1) = qtot(icrm,1)+(qpl(i,j,k,icrm)+qpi(i,j,k,icrm)) * crm_input%pdel(icrm,l)/ggr/(nx*ny)
-!#endif
-!        enddo
-!      enddo
-!      qtot(icrm,1) = qtot(icrm,1) + (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)) * crm_input%pdel(icrm,l)/ggr
-!    enddo
-!    !---mhwangtest
-
-
-    nstop = dt_gl/dt
-    dt = dt_gl/nstop
-    nsave3D = nint(60/dt)
-    nstep  = 0
-    nprint = 1
-    ncycle = 0
-    day=day0
+  nstop = dt_gl/dt
+  dt = dt_gl/nstop
 
 #if defined( SP_CRM_SPLIT )
-    nstop  = ceiling( nstop * 0.5 )
-    crm_run_time  = dt_gl * 0.5
-    icrm_run_time = 1._r8/crm_run_time
+  nstop  = ceiling( nstop * 0.5 )
+  crm_run_time  = dt_gl * 0.5
+  icrm_run_time = 1._r8/crm_run_time
 #else
-    crm_run_time  = dt_gl
-    icrm_run_time = 1._r8/crm_run_time
+  crm_run_time  = dt_gl
+  icrm_run_time = 1._r8/crm_run_time
 #endif
+  factor_xyt = factor_xy / real(nstop,crm_rknd)
 
-    factor_xyt = factor_xy / real(nstop,crm_rknd)
 
-    !========================================================================================
-    !----------------------------------------------------------------------------------------
-    !   Main time loop
-    !----------------------------------------------------------------------------------------
-    !========================================================================================
-
-    do while (nstep.lt.nstop)
-      nstep = nstep + 1
-      time = time + dt
-      day = day0 + time/86400.
+  !========================================================================================
+  !----------------------------------------------------------------------------------------
+  !   Main time loop
+  !----------------------------------------------------------------------------------------
+  !========================================================================================
+  do icrm = 1 , ncrms
+    do nstep = 1 , nstop
       crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
+
       !------------------------------------------------------------------
       !  Check if the dynamical time step should be decreased
       !  to handle the cases when the flow being locally linearly unstable
       !------------------------------------------------------------------
       ncycle = 1
-
       call kurant(ncrms,icrm)
 
       do icyc=1,ncycle
-
         icycle = icyc
         dtn = dt/ncycle
         dt3(na,icrm) = dtn
@@ -814,15 +779,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !       Buoyancy term:
         call buoyancy(ncrms,icrm)
 
-        !+++mhwangtest
-        ! test water conservtion problem
-        !ntotal_step = ntotal_step + 1.
-        !---mhwangtest
-
         !------------------------------------------------------------
         !       Large-scale and surface forcing:
         call forcing(ncrms,icrm)
-
 
         !!! Apply radiative tendency
         do k=1,nzm
@@ -862,7 +821,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !-----------------------------------------------
         !     surface fluxes:
-        if (dosurface) call crmsurface(ncrms,icrm,bflx)
+        if (dosurface) call crmsurface(ncrms,icrm,bflx(icrm))
 
         !-----------------------------------------------------------
         !  SGS physics:
@@ -964,31 +923,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         l = plev-k+1
         do j=1,ny
           do i=1,nx
-            ! hm modify 9/7/11 for end of timestep, GCM-grid scale hydrometeor output
-            ! instead of time-step-averaged
-            ! I also modified this for all q and N variables as well as for sam1mom
-            ! for consistency
-            !hm           crm_output%qc(l) = crm_output%qc(l) + qcl(i,j,k,icrm)
-            !hm           crm_output%qi(l) = crm_output%qi(l) + qci(i,j,k,icrm)
-            !hm           crm_output%qr(l) = crm_output%qr(l) + qpl(i,j,k,icrm)
-            !hm#ifdef sam1mom
-            !hm           omg = max(0.,min(1.,(tabs(i,j,k,icrm)-tgrmin)*a_gr))
-            !hm           crm_output%qg(l) = crm_output%qg(l) + qpi(i,j,k,icrm)*omg
-            !hm           crm_output%qs(l) = crm_output%qs(l) + qpi(i,j,k,icrm)*(1.-omg)
-            !hm#else
-            !           crm_output%qg(l) = crm_output%qg(l) + qpi(i,j,k,icrm)
-            !           crm_output%qs(l) = crm_output%qs(l) + 0.     ! temporerary solution
-            !hm           crm_output%qg(l) = crm_output%qg(l) + micro_field(i,j,k,iqg,icrm)
-            !hm           crm_output%qs(l) = crm_output%qs(l) + micro_field(i,j,k,iqs,icrm)
-
-            !hm           crm_output%nc(l) = crm_output%nc(l) + micro_field(i,j,k,incl,icrm)
-            !hm           crm_output%ni(l) = crm_output%ni(l) + micro_field(i,j,k,inci,icrm)
-            !hm           crm_output%nr(l) = crm_output%nr(l) + micro_field(i,j,k,inr,icrm)
-            !hm           crm_output%ng(l) = crm_output%ng(l) + micro_field(i,j,k,ing,icrm)
-            !hm           crm_output%ns(l) = crm_output%ns(l) + micro_field(i,j,k,ins,icrm)
-
-            !hm#endif
-
             tmp1 = rho(nz-k,icrm)*adz(nz-k,icrm)*dz(icrm)*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
             cwp(i,j,icrm) = cwp(i,j,icrm)+tmp1
             cttemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j,icrm))
@@ -1006,9 +940,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                 cwpm(i,j,icrm) = cwpm(i,j,icrm)+tmp1
                 cmtemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cmtemp(i,j,icrm))
             endif
-
-            !     qsat = qsatw_crm(tabs(i,j,k,icrm),pres(k,icrm))
-            !     if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.min(1.e-5,0.01*qsat)) then
             tmp1 = rho(k,icrm)*adz(k,icrm)*dz(icrm)
             if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
                  crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k,icrm)
@@ -1028,18 +959,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                    crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
                  endif
             endif
-
-!             crm_rad%temperature  (icrm,i,j,k) = crm_rad%temperature  (icrm,i,j,k)+tabs(i,j,k,icrm)
-!             crm_rad%qv (icrm,i,j,k) = crm_rad%qv (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k,icrm))
-!             crm_rad%qc (icrm,i,j,k) = crm_rad%qc (icrm,i,j,k)+qcl(i,j,k,icrm)
-!             crm_rad%qi (icrm,i,j,k) = crm_rad%qi (icrm,i,j,k)+qci(i,j,k,icrm)
-!             crm_rad%cld(icrm,i,j,k) = crm_rad%cld(icrm,i,j,k) +  CF3D(i,j,k,icrm)
-! #ifdef m2005
-!             crm_rad%nc(icrm,i,j,k) = crm_rad%nc(icrm,i,j,k)+micro_field(i,j,k,incl,icrm)
-!             crm_rad%ni(icrm,i,j,k) = crm_rad%ni(icrm,i,j,k)+micro_field(i,j,k,inci,icrm)
-!             crm_rad%qs(icrm,i,j,k) = crm_rad%qs(icrm,i,j,k)+micro_field(i,j,k,iqs,icrm)
-!             crm_rad%ns(icrm,i,j,k) = crm_rad%ns(icrm,i,j,k)+micro_field(i,j,k,ins,icrm)
-! #endif
 
             !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
             if ( phys_stage == 1 ) then
@@ -1093,23 +1012,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         enddo
       enddo
 
-      !do k=1,nzm
-      ! radlwup0(k)=radlwup0(k)+radlwup(k)
-      ! radlwdn0(k)=radlwdn0(k)+radlwdn(k)
-      ! radqrlw0(k)=radqrlw0(k)+radqrlw(k)
-      ! radswup0(k)=radswup0(k)+radswup(k)
-      ! radswdn0(k)=radswdn0(k)+radswdn(k)
-      ! radqrsw0(k)=radqrsw0(k)+radqrsw(k)
-      !enddo
-
       do j=1,ny
         do i=1,nx
-          !           if(cwp (i,j,icrm).gt.cwp_threshold) crm_output%cltot(icrm) = crm_output%cltot(icrm) + 1.
-          !           if(cwph(i,j,icrm).gt.cwp_threshold) crm_output%clhgh(icrm) = crm_output%clhgh(icrm) + 1.
-          !           if(cwpm(i,j,icrm).gt.cwp_threshold) crm_output%clmed(icrm) = crm_output%clmed(icrm) + 1.
-          !           if(cwpl(i,j,icrm).gt.cwp_threshold) crm_output%cllow(icrm) = crm_output%cllow(icrm) + 1.
-          !  use maxmimum cloud overlap to calcluate crm_output%cltot, crm_output%clhgh,
-          !  cldmed, and cldlow   +++ mhwang
           if(cwp (i,j,icrm).gt.cwp_threshold) crm_output%cltot(icrm) = crm_output%cltot(icrm) + cttemp(i,j,icrm)
           if(cwph(i,j,icrm).gt.cwp_threshold) crm_output%clhgh(icrm) = crm_output%clhgh(icrm) + chtemp(i,j,icrm)
           if(cwpm(i,j,icrm).gt.cwp_threshold) crm_output%clmed(icrm) = crm_output%clmed(icrm) + cmtemp(i,j,icrm)
@@ -1117,16 +1021,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         enddo
       enddo
 
-      !        call stepout()
-      !----------------------------------------------------------
-    enddo ! main loop
+    enddo ! icrm
+  enddo ! nstep
+  !========================================================================================
+  !----------------------------------------------------------------------------------------
+  ! End main time loop
+  !----------------------------------------------------------------------------------------
+  !========================================================================================
 
-    !========================================================================================
-    !----------------------------------------------------------------------------------------
-    ! End main time loop
-    !----------------------------------------------------------------------------------------
-    !========================================================================================
-
+  do icrm = 1 , ncrms
     !!! only collect radiative inputs during tphysbc()
     if ( phys_stage == 1 ) then
 
@@ -1330,8 +1233,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(i,j,k,icrm)*omg
           crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + qpi(i,j,k,icrm)*(1.-omg)
 #else
-          !crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(i,j,k,icrm)
-          !crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + 0.     ! temporerary solution
           crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + micro_field(i,j,k,iqg,icrm)
           crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + micro_field(i,j,k,iqs,icrm)
 
@@ -1407,10 +1308,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)
 #endif /* sam1mom */
 #ifdef m2005
-        ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/s/dz
-        !          precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz/dble(nstop)     !mm/s/dz --> mm/s
-        !          precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz/dble(nstop)   !mm/s/dz --> mm/s
-        ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/dz
         precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
         precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
@@ -1428,24 +1325,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     crm_output%precl   (icrm)     = crm_output%precl (icrm)*factor_xy/1000.
     crm_output%precsc  (icrm)     = crm_output%precsc(icrm)*factor_xy/1000.
     crm_output%precsl  (icrm)     = crm_output%precsl(icrm)*factor_xy/1000.
-
-!    !+++mhwangtest
-!    ! test water conservtion problem
-!    do k=1, nzm
-!      l=plev-k+1
-!      do j=1, ny
-!        do i=1, nx
-!#ifdef m2005
-!          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqr,icrm)+micro_field(i,j,k,iqs,icrm)+micro_field(i,j,k,iqg,icrm)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
-!          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,iqv,icrm)+micro_field(i,j,k,iqci,icrm)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
-!#endif
-!#ifdef sam1mom
-!          qtot(icrm,9) = qtot(icrm,9)+((micro_field(i,j,k,1,icrm)+micro_field(i,j,k,2,icrm)) * crm_input%pdel(icrm,l)/ggr)/(nx*ny)
-!#endif
-!        enddo
-!      enddo
-!    enddo
-!    qtot(icrm,9) = qtot(icrm,9) + (crm_output%precc(icrm)+crm_output%precl(icrm))*1000 * crm_run_time
 
     crm_output%cltot(icrm) = crm_output%cltot(icrm) * factor_xyt
     crm_output%clhgh(icrm) = crm_output%clhgh(icrm) * factor_xyt
@@ -1608,12 +1487,12 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     ! -UWM
     if ( doclubb .or. doclubbnoninter ) call clubb_sgs_cleanup( )
 #endif
-#ifdef ECPP
-    !!! Deallocate ECPP variables
-    call ecpp_crm_cleanup ()
-#endif
-
   enddo
+
+#ifdef ECPP
+  !!! Deallocate ECPP variables
+  call ecpp_crm_cleanup ()
+#endif
 
   deallocate( t00)
   deallocate( fluxbtmp)
