@@ -4,29 +4,32 @@ module abcoefs_mod
 
 contains
 
-  subroutine abcoefs(ncrms,icrm)
+  subroutine abcoefs(ncrms)
     !      coefficients for the Adams-Bashforth scheme
     use grid
     use params, only: crm_rknd
     implicit none
-    integer, intent(in) :: ncrms, icrm
+    integer, intent(in) :: ncrms
     real(crm_rknd) alpha, beta
+    integer :: icrm
 
-    if(nstep.ge.3.and.nadams.eq.3.or.nrestart.eq.2) then
-      alpha = dt3(nb(icrm),icrm) / dt3(na(icrm),icrm)
-      beta = dt3(nc(icrm),icrm) / dt3(na(icrm),icrm)
-      ct = (2.+3.* alpha) / (6.* (alpha + beta) * beta)
-      bt = -(1.+2.*(alpha + beta) * ct)/(2. * alpha)
-      at = 1. - bt - ct
-    else if(nstep.ge.2) then
-      at = 3./2.
-      bt = -1./2.
-      ct = 0.
-    else
-      at = 1.
-      bt = 0.
-      ct = 0.
-    end if
+    do icrm = 1 , ncrms
+      if(nstep.ge.3.and.nadams.eq.3.or.nrestart.eq.2) then
+        alpha = dt3(nb(icrm),icrm) / dt3(na(icrm),icrm)
+        beta = dt3(nc(icrm),icrm) / dt3(na(icrm),icrm)
+        ct = (2.+3.* alpha) / (6.* (alpha + beta) * beta)
+        bt = -(1.+2.*(alpha + beta) * ct)/(2. * alpha)
+        at = 1. - bt - ct
+      else if(nstep.ge.2) then
+        at = 3./2.
+        bt = -1./2.
+        ct = 0.
+      else
+        at = 1.
+        bt = 0.
+        ct = 0.
+      end if
+    enddo
 
   end subroutine abcoefs
 

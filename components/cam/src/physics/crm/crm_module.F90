@@ -766,23 +766,26 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     call kurant(ncrms)
 
     do icyc=1,ncycle
+      icycle = icyc
+      dtn = dt/ncycle
       do icrm = 1 , ncrms
-        icycle = icyc
-        dtn = dt/ncycle
         dt3(na(icrm),icrm) = dtn
-        dtfactor = dtn/dt
+      enddo
+      dtfactor = dtn/dt
 
-        !---------------------------------------------
-        !  	the Adams-Bashforth scheme in time
-        call abcoefs(ncrms,icrm)
+      !---------------------------------------------
+      !  	the Adams-Bashforth scheme in time
+      call abcoefs(ncrms)
 
-        !---------------------------------------------
-        !  	initialize stuff:
-        call zero(ncrms,icrm)
+      !---------------------------------------------
+      !  	initialize stuff:
+      call zero(ncrms)
 
-        !-----------------------------------------------------------
-        !       Buoyancy term:
-        call buoyancy(ncrms,icrm)
+      !-----------------------------------------------------------
+      !       Buoyancy term:
+      call buoyancy(ncrms)
+
+      do icrm = 1 , ncrms
 
         !------------------------------------------------------------
         !       Large-scale and surface forcing:
