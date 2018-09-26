@@ -824,11 +824,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !     Update boundaries for velocities:
       call boundaries(ncrms,0)
 
-      do icrm = 1 , ncrms
-        !-----------------------------------------------
-        !     surface fluxes:
-        if (dosurface) call crmsurface(ncrms,icrm,bflx(icrm))
+      !-----------------------------------------------
+      !     surface fluxes:
+      if (dosurface) call crmsurface(ncrms,bflx)
 
+      do icrm = 1 , ncrms
         !-----------------------------------------------------------
         !  SGS physics:
         if (dosgs) call sgs_proc(ncrms,icrm)
