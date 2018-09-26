@@ -757,14 +757,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   do nstep = 1 , nstop
     do icrm = 1 , ncrms
       crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
+    enddo
 
-      !------------------------------------------------------------------
-      !  Check if the dynamical time step should be decreased
-      !  to handle the cases when the flow being locally linearly unstable
-      !------------------------------------------------------------------
-      ncycle = 1
-      call kurant(ncrms,icrm)
+    !------------------------------------------------------------------
+    !  Check if the dynamical time step should be decreased
+    !  to handle the cases when the flow being locally linearly unstable
+    !------------------------------------------------------------------
+    call kurant(ncrms)
 
+    do icrm = 1 , ncrms
       do icyc=1,ncycle
         icycle = icyc
         dtn = dt/ncycle
