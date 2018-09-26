@@ -9,9 +9,9 @@ contains
     implicit none
     integer, intent(in) :: ncrms,icrm
     integer k
-    dudt(:,:,:,na,icrm) = 0.
-    dvdt(:,:,:,na,icrm) = 0.
-    dwdt(:,:,:,na,icrm) = 0.
+    dudt(:,:,:,na(icrm),icrm) = 0.
+    dvdt(:,:,:,na(icrm),icrm) = 0.
+    dwdt(:,:,:,na(icrm),icrm) = 0.
     misc(:,:,:,icrm) = 0.
   end
 

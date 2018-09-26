@@ -108,16 +108,12 @@ module  module_ecpp_crm_driver
   logical :: allcomb
   ! true if updrafts and downdrafts have all
   ! combinations of bases and tops.
-  real(crm_rknd) :: cloudthresh, &
-  prcpthresh, &
-  downthresh, downthresh2, &
-  upthresh, upthresh2
+  real(crm_rknd) :: cloudthresh, prcpthresh, downthresh, downthresh2, upthresh, upthresh2
 
-  real(crm_rknd) :: cloudthresh_trans,   &   !  the threshold total cloud water for updraft or downdraft
-  precthresh_trans         !  the threshold total rain, snow and graupel for clear, updraft or downdraft
+  real(crm_rknd) :: cloudthresh_trans        !  the threshold total cloud water for updraft or downdraft
+  real(crm_rknd) :: precthresh_trans         !  the threshold total rain, snow and graupel for clear, updraft or downdraft
 
-  integer, dimension(:),allocatable :: &
-  updraftbase, updrafttop, dndrafttop, dndraftbase
+  integer, dimension(:,:), allocatable :: updraftbase, updrafttop, dndrafttop, dndraftbase
   integer :: nupdraft, ndndraft
   integer :: ndraft_max, nupdraft_max, ndndraft_max
 
@@ -282,53 +278,53 @@ contains
       call endrun('nupdraft or ndndraft is not set correctly')
     end if
 
-    allocate (updraftbase(nupdraft_max), &
-    updrafttop( nupdraft_max) )
-    allocate (dndraftbase(ndndraft_max), &
-    dndrafttop( ndndraft_max) )
+    allocate (updraftbase(nupdraft_max,ncrms), updrafttop( nupdraft_max,ncrms) )
+    allocate (dndraftbase(ndndraft_max,ncrms), dndrafttop( ndndraft_max,ncrms) )
 
-    select case (plumetype)
-    case (1) !single plume
-      updraftbase(1)=1
-      updrafttop( 1)=nzm
-      dndrafttop( 1)=nzm
-      dndraftbase(1)=1
-    case (2)
-      updraftbase(1:2)=1
-      updrafttop( 1:2)=nzm
-      dndrafttop( 1:2)=nzm
-      dndraftbase(1:2)=1
-    case (3)
-      m=0
-      do kbase=1,nzm-1
-        if(allcomb)then     ! loop over all possible tops.
-          do ktop=kbase+1,nzm
+    do icrm = 1 , ncrms
+      select case (plumetype)
+      case (1) !single plume
+        updraftbase(1,icrm)=1
+        updrafttop( 1,icrm)=nzm
+        dndrafttop( 1,icrm)=nzm
+        dndraftbase(1,icrm)=1
+      case (2)
+        updraftbase(1:2,icrm)=1
+        updrafttop( 1:2,icrm)=nzm
+        dndrafttop( 1:2,icrm)=nzm
+        dndraftbase(1:2,icrm)=1
+      case (3)
+        m=0
+        do kbase=1,nzm-1
+          if(allcomb)then     ! loop over all possible tops.
+            do ktop=kbase+1,nzm
+              m=m+1
+              updraftbase(m,icrm)=kbase
+              updrafttop( m,icrm)=ktop
+            enddo
+          else                ! only one top per base
             m=m+1
-            updraftbase(m)=kbase
-            updrafttop( m)=ktop
-          enddo
-        else                ! only one top per base
-          m=m+1
-          updraftbase(m)=kbase
-          updrafttop( m)=nzm
-        endif
-      enddo
+            updraftbase(m,icrm)=kbase
+            updrafttop( m,icrm)=nzm
+          endif
+        enddo
 
-      m=0
-      do ktop=nzm,2,-1
-        if(allcomb)then    ! loop over all possible bases.
-          do kbase=ktop-1,1,-1
+        m=0
+        do ktop=nzm,2,-1
+          if(allcomb)then    ! loop over all possible bases.
+            do kbase=ktop-1,1,-1
+              m=m+1
+              dndrafttop( m,icrm)=ktop
+              dndraftbase(m,icrm)=kbase
+            enddo
+          else               ! only one base per top
             m=m+1
-            dndrafttop( m)=ktop
-            dndraftbase(m)=kbase
-          enddo
-        else               ! only one base per top
-          m=m+1
-          dndrafttop( m)=ktop
-          dndraftbase(m)=1
-        endif
-      enddo
-    end select
+            dndrafttop( m,icrm)=ktop
+            dndraftbase(m,icrm)=1
+          endif
+        enddo
+      end select
+    enddo
 
     !---------------------------------------------------------------------------
     ! Allocate arrays
@@ -376,6 +372,8 @@ contains
     qlsink_bf_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
     qlsink_avg_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
     prain_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms)  )
+    allocate(itavg1(ncrms))
+    allocate(itavg2(ncrms))
 
     ! Initialize the running sums.
     do icrm = 1 , ncrms
@@ -406,12 +404,19 @@ contains
 
       wup_thresh(:,icrm) = 0.0
       wdown_thresh(:,icrm) = 0.0
+      itavg1(icrm) = 0
+      itavg2(icrm) = 0
     enddo
 
+<<<<<<< HEAD
     ! set ntavg[12] and initialize itavg[12] counters
     call ecpp_set_ntavg(dt_gl)
     itavg1 = 0
     itavg2 = 0
+=======
+    ntavg1 = ntavg1_ss  / dt
+    ntavg2 = ntavg2_ss  / dt
+>>>>>>> had to fix some non-threadable indexing in ECPP, but it appears I've successfully permuted the loop now, at long last. Now to get some real work done.
 
   end subroutine ecpp_crm_init
   !---------------------------------------------------------------------------------------
@@ -419,6 +424,8 @@ contains
   !=======================================================================================
   subroutine ecpp_crm_cleanup ()
 
+    deallocate(itavg1)
+    deallocate(itavg2)
     ! deallocate variables
     deallocate (updraftbase, &
     updrafttop )
@@ -505,8 +512,8 @@ contains
 
     ndn = ndndraft ; nup = nupdraft
 
-    itavg1 = itavg1 + 1
-    itavg2 = itavg2 + 1
+    itavg1(icrm) = itavg1(icrm) + 1
+    itavg2(icrm) = itavg2(icrm) + 1
     ndn = ndndraft ; nup = nupdraft
 
     ! Get values from SAM cloud fields
@@ -588,10 +595,10 @@ contains
     xkhv,      xkhvsum(:,icrm) )
 
     ! Check if we have reached the end of the level 1 time averaging period.
-    if( mod(itavg1,ntavg1) == 0 ) then
+    if( mod(itavg1(icrm),ntavg1) == 0 ) then
 
       ! Turn the running sums into averages.
-      if( itavg1 /= 0 ) then
+      if( itavg1(icrm) /= 0 ) then
         ncnt1 = ntavg1
       else
         ncnt1 = 1
@@ -614,8 +621,8 @@ contains
       cloudthresh_trans, precthresh_trans,  &
       qvssum1(:,:,:,icrm),          &
       plumetype, allcomb, &
-      updraftbase(1:nupdraft), updrafttop(1:nupdraft), &
-      dndraftbase(1:ndndraft), dndrafttop(1:ndndraft), &
+      updraftbase(1:nupdraft,icrm), updrafttop(1:nupdraft,icrm), &
+      dndraftbase(1:ndndraft,icrm), dndrafttop(1:ndndraft,icrm), &
       qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
       qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), qgraupsum1(:,:,:,icrm), &
       qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
@@ -639,7 +646,7 @@ contains
       ! If we want final area categories based on the last avg1 period in each
       ! avg2 then we need to zero out the running sum just created for the areas
       ! if it is not the last block of time in ntavg2
-      if( areaavgtype==1 .and. .not. mod(itavg2,ntavg2)==0 ) then
+      if( areaavgtype==1 .and. .not. mod(itavg2(icrm),ntavg2)==0 ) then
         call zero_out_areas( &
         area_bnd_final(:,:,1:1+ndn+nup,:,icrm), &
         area_cen_final(:,:,1:1+ndn+nup,:,icrm) )
@@ -657,12 +664,12 @@ contains
     end if !End of time level one averaging period
 
     ! Check if we have reached the end of a level 2 averaging period.
-    if( mod(itavg2,ntavg2) == 0 ) then
+    if( mod(itavg2(icrm),ntavg2) == 0 ) then
 
       ! Turn the running sums into averages. ncnt1 in this case is the number
       ! of calls to categorization_stats during the level 2 averaging period,
       ! which increment the bnd/cen arrays.
-      if( itavg2 /= 0 ) then
+      if( itavg2(icrm) /= 0 ) then
         ncnt1 = ntavg2_ss/ntavg1_ss
         ncnt2 = ntavg2
       else

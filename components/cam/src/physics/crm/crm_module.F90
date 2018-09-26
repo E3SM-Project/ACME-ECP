@@ -750,8 +750,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !   Main time loop
   !----------------------------------------------------------------------------------------
   !========================================================================================
-  do icrm = 1 , ncrms
-    do nstep = 1 , nstop
+  do nstep = 1 , nstop
+    do icrm = 1 , ncrms
       crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
 
       !------------------------------------------------------------------
@@ -764,7 +764,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       do icyc=1,ncycle
         icycle = icyc
         dtn = dt/ncycle
-        dt3(na,icrm) = dtn
+        dt3(na(icrm),icrm) = dtn
         dtfactor = dtn/dt
 
         !---------------------------------------------
@@ -894,10 +894,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !----------------------------------------------------------
         ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
-        nn=na
-        na=nc
-        nc=nb
-        nb=nn
+        nn=na(icrm)
+        na(icrm)=nc(icrm)
+        nc(icrm)=nb(icrm)
+        nb(icrm)=nn
       enddo ! icycle
 
       !----------------------------------------------------------
