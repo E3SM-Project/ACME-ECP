@@ -785,11 +785,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !       Buoyancy term:
       call buoyancy(ncrms)
 
-      do icrm = 1 , ncrms
+      !------------------------------------------------------------
+      !       Large-scale and surface forcing:
+      call forcing(ncrms)
 
-        !------------------------------------------------------------
-        !       Large-scale and surface forcing:
-        call forcing(ncrms,icrm)
+      do icrm = 1 , ncrms
 
         !!! Apply radiative tendency
         do k=1,nzm
