@@ -342,28 +342,37 @@ CONTAINS
   !!! Estimate Courant number limit for SGS
   !
 
-  subroutine kurant_sgs(ncrms,icrm,cfl)
-
+  subroutine kurant_sgs(ncrms,cfl)
     use grid, only: dt, dx, dy, dz, adz, adzw
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    real(crm_rknd), intent(out) :: cfl
-
-    integer k
-    real(crm_rknd) tkhmax(nz)
-
-    do k = 1,nzm
-      tkhmax(k) = maxval(tkh(1:nx,1:ny,k,icrm))
+    integer, intent(in) :: ncrms
+    real(crm_rknd), intent(inout) :: cfl
+    integer k,icrm, j, i
+    real(crm_rknd) tkhmax(nz,ncrms), tmp
+    do icrm = 1 , ncrms
+      do k = 1,nzm
+        tkhmax(k,icrm) = 0.
+      enddo
+    enddo
+    do icrm = 1 , ncrms
+      do k = 1,nzm
+        do j = 1 , ny
+          do i = 1 , nx
+            tkhmax(k,icrm) = max(tkhmax(k,icrm),tkh(i,j,k,icrm))
+          enddo
+        enddo
+      end do
     end do
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2  , &
+                   0.5*tkhmax(k,icrm)*grdf_x(k,icrm)*dt/dx**2  , &
+                   YES3D*0.5*tkhmax(k,icrm)*grdf_y(k,icrm)*dt/dy**2  )
+        !$acc atomic update
+        cfl = max( cfl , tmp )
 
-    cfl = 0.
-    do k=1,nzm
-      cfl = max(cfl,        &
-      0.5*tkhmax(k)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2, &
-      0.5*tkhmax(k)*grdf_x(k,icrm)*dt/dx**2, &
-      YES3D*0.5*tkhmax(k)*grdf_y(k,icrm)*dt/dy**2)
+      end do
     end do
-
   end subroutine kurant_sgs
 
 
