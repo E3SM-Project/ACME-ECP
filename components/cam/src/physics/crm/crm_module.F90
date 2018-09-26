@@ -904,7 +904,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         nc(icrm)=nb(icrm)
         nb(icrm)=nn
       enddo ! icycle
+    enddo ! icrm
 
+    do icrm = 1 , ncrms
       !----------------------------------------------------------
       !----------------------------------------------------------
 #ifdef ECPP
