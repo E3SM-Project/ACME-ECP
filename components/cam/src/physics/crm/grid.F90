@@ -54,7 +54,7 @@ module grid
   integer :: nstep = 0! current number of performed time steps
   integer  ncycle  ! number of subcycles over the dynamical timestep
   integer icycle  ! current subcycle
-  integer:: na=1, nb=2, nc=3 ! indeces for swapping the rhs arrays for AB scheme
+  integer, allocatable :: na(:), nb(:), nc(:) ! indeces for swapping the rhs arrays for AB scheme
   real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme
   real(crm_rknd) dtn  ! current dynamical timestep (can be smaller than dt)
   real(crm_rknd) dtfactor   ! dtn/dt
@@ -172,6 +172,9 @@ contains
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
 
+    allocate( na(ncrms)         )
+    allocate( nb(ncrms)         )
+    allocate( nc(ncrms)         )
     allocate( z(nz,ncrms)       )
     allocate( pres(nzm,ncrms)   )
     allocate( zi(nz,ncrms)      )
@@ -183,6 +186,9 @@ contains
 
     zero = 0
 
+    na=1
+    nb=2
+    nc=3
     z = zero
     pres = zero
     zi = zero
@@ -196,6 +202,9 @@ contains
 
   subroutine deallocate_grid()
     implicit none
+    deallocate( na )
+    deallocate( nb )
+    deallocate( nc )
     deallocate( z )
     deallocate( pres )
     deallocate( zi )

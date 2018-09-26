@@ -23,19 +23,19 @@ contains
       do j=1,ny
         do i=1,nx
 
-          dudt(i,j,k,nc,icrm) = u(i,j,k,icrm) + dt3(na,icrm) &
-          *(at*dudt(i,j,k,na,icrm)+bt*dudt(i,j,k,nb,icrm)+ct*dudt(i,j,k,nc,icrm))
+          dudt(i,j,k,nc(icrm),icrm) = u(i,j,k,icrm) + dt3(na(icrm),icrm) &
+          *(at*dudt(i,j,k,na(icrm),icrm)+bt*dudt(i,j,k,nb(icrm),icrm)+ct*dudt(i,j,k,nc(icrm),icrm))
 
-          dvdt(i,j,k,nc,icrm) = v(i,j,k,icrm) + dt3(na,icrm) &
-          *(at*dvdt(i,j,k,na,icrm)+bt*dvdt(i,j,k,nb,icrm)+ct*dvdt(i,j,k,nc,icrm))
+          dvdt(i,j,k,nc(icrm),icrm) = v(i,j,k,icrm) + dt3(na(icrm),icrm) &
+          *(at*dvdt(i,j,k,na(icrm),icrm)+bt*dvdt(i,j,k,nb(icrm),icrm)+ct*dvdt(i,j,k,nc(icrm),icrm))
 
-          dwdt(i,j,k,nc,icrm) = w(i,j,k,icrm) + dt3(na,icrm) &
-          *(at*dwdt(i,j,k,na,icrm)+bt*dwdt(i,j,k,nb,icrm)+ct*dwdt(i,j,k,nc,icrm))
+          dwdt(i,j,k,nc(icrm),icrm) = w(i,j,k,icrm) + dt3(na(icrm),icrm) &
+          *(at*dwdt(i,j,k,na(icrm),icrm)+bt*dwdt(i,j,k,nb(icrm),icrm)+ct*dwdt(i,j,k,nc(icrm),icrm))
 
-          u(i,j,k,icrm) = 0.5*(u(i,j,k,icrm)+dudt(i,j,k,nc,icrm)) * rhox
-          v(i,j,k,icrm) = 0.5*(v(i,j,k,icrm)+dvdt(i,j,k,nc,icrm)) * rhoy
-          misc(i,j,k,icrm) = 0.5*(w(i,j,k,icrm)+dwdt(i,j,k,nc,icrm))
-          w(i,j,k,icrm) = 0.5*(w(i,j,k,icrm)+dwdt(i,j,k,nc,icrm)) * rhoz
+          u(i,j,k,icrm) = 0.5*(u(i,j,k,icrm)+dudt(i,j,k,nc(icrm),icrm)) * rhox
+          v(i,j,k,icrm) = 0.5*(v(i,j,k,icrm)+dvdt(i,j,k,nc(icrm),icrm)) * rhoy
+          misc(i,j,k,icrm) = 0.5*(w(i,j,k,icrm)+dwdt(i,j,k,nc(icrm),icrm))
+          w(i,j,k,icrm) = 0.5*(w(i,j,k,icrm)+dwdt(i,j,k,nc(icrm),icrm)) * rhoz
 
 
         end do

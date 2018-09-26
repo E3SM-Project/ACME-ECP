@@ -12,9 +12,9 @@ contains
     implicit none
     integer, intent(in) :: ncrms,icrm
 
-    u(1:nx,1:ny,1:nzm,icrm) = dudt(1:nx,1:ny,1:nzm,nc,icrm)
-    v(1:nx,1:ny,1:nzm,icrm) = dvdt(1:nx,1:ny,1:nzm,nc,icrm)
-    w(1:nx,1:ny,1:nzm,icrm) = dwdt(1:nx,1:ny,1:nzm,nc,icrm)
+    u(1:nx,1:ny,1:nzm,icrm) = dudt(1:nx,1:ny,1:nzm,nc(icrm),icrm)
+    v(1:nx,1:ny,1:nzm,icrm) = dvdt(1:nx,1:ny,1:nzm,nc(icrm),icrm)
+    w(1:nx,1:ny,1:nzm,icrm) = dwdt(1:nx,1:ny,1:nzm,nc(icrm),icrm)
 
   end subroutine uvw
 
