@@ -124,7 +124,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8)        :: crm_run_time                             ! length of CRM integration (=dt_gl*0.5 if SP_CRM_SPLIT is defined)
     real(r8)        :: icrm_run_time                            ! = 1 / crm_run_time
     real(r8)        :: factor_xy, factor_xyt, idt_gl
-    real(crm_rknd)  :: tmp1, tmp2
+    real(crm_rknd)  :: tmp1, tmp2, tmp
     real(crm_rknd)  :: u2z,v2z,w2z
     integer         :: i,j,k,l,ptop,nn,icyc,icrm
     integer         :: kx
@@ -785,35 +785,38 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !       Large-scale and surface forcing:
       call forcing(ncrms)
 
+      !!! Apply radiative tendency
       do icrm = 1 , ncrms
-
-        !!! Apply radiative tendency
         do k=1,nzm
           do j=1,ny
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(i,j,k,icrm) = t(i,j,k,icrm) + crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
+              tmp = crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
+              !$acc atomic update
+              t(i,j,k,icrm) = t(i,j,k,icrm) + tmp
             enddo
           enddo
         enddo
+      enddo
 
-        !----------------------------------------------------------
-        !   	suppress turbulence near the upper boundary (spange):
-        if (dodamping) call damping(ncrms,icrm)
+      !----------------------------------------------------------
+      !   	suppress turbulence near the upper boundary (spange):
+      if (dodamping) call damping(ncrms)
 
-        !---------------------------------------------------------
-        !   Ice fall-out
-
+      !---------------------------------------------------------
+      !   Ice fall-out
 #ifdef CLUBB_CRM
-        if ( docloud .or. doclubb ) then
-          call ice_fall(ncrms,icrm)
-        endif
+      if ( docloud .or. doclubb ) then
+        call ice_fall(ncrms)
+      endif
 #else
-        if(docloud) then
-            call ice_fall(ncrms,icrm)
-        endif
+      if(docloud) then
+          call ice_fall(ncrms)
+      endif
 #endif
+
+      do icrm = 1 , ncrms
 
         !----------------------------------------------------------
         !     Update scalar boundaries after large-scale processes:
