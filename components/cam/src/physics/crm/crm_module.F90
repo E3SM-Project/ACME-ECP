@@ -765,8 +765,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !------------------------------------------------------------------
     call kurant(ncrms)
 
-    do icrm = 1 , ncrms
-      do icyc=1,ncycle
+    do icyc=1,ncycle
+      do icrm = 1 , ncrms
         icycle = icyc
         dtn = dt/ncycle
         dt3(na(icrm),icrm) = dtn
@@ -903,8 +903,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         na(icrm)=nc(icrm)
         nc(icrm)=nb(icrm)
         nb(icrm)=nn
-      enddo ! icycle
-    enddo ! icrm
+      enddo ! icrm
+    enddo ! icycle
 
     do icrm = 1 , ncrms
       !----------------------------------------------------------
