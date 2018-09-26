@@ -28,7 +28,6 @@ contains
     !  Send buffers to neighbors
     !----------------------------------------------------------------------
 
-
     if(RUN3D) then
 
       ! "North" -> "South":

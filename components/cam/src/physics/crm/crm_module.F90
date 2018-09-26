@@ -820,16 +820,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       endif
 #endif
 
+      !----------------------------------------------------------
+      !     Update scalar boundaries after large-scale processes:
+      call boundaries(ncrms,3)
+
+      !---------------------------------------------------------
+      !     Update boundaries for velocities:
+      call boundaries(ncrms,0)
+
       do icrm = 1 , ncrms
-
-        !----------------------------------------------------------
-        !     Update scalar boundaries after large-scale processes:
-        call boundaries(ncrms,icrm,3)
-
-        !---------------------------------------------------------
-        !     Update boundaries for velocities:
-        call boundaries(ncrms,icrm,0)
-
         !-----------------------------------------------
         !     surface fluxes:
         if (dosurface) call crmsurface(ncrms,icrm,bflx(icrm))
@@ -837,12 +836,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !-----------------------------------------------------------
         !  SGS physics:
         if (dosgs) call sgs_proc(ncrms,icrm)
+      enddo
 
-        !----------------------------------------------------------
-        !     Fill boundaries for SGS diagnostic fields:
+      !----------------------------------------------------------
+      !     Fill boundaries for SGS diagnostic fields:
+      call boundaries(ncrms,4)
 
-        call boundaries(ncrms,icrm,4)
-
+      do icrm = 1 , ncrms
         !-----------------------------------------------
         !       advection of momentum:
         call advect_mom(ncrms,icrm)
@@ -864,11 +864,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !       find velocity field at n+1/2 timestep needed for advection of scalars:
         !  Note that at the end of the call, the velocities are in nondimensional form.
         call adams(ncrms,icrm)
+      enddo
 
-        !----------------------------------------------------------
-        !     Update boundaries for all prognostic scalar fields for advection:
-        call boundaries(ncrms,icrm,2)
+      !----------------------------------------------------------
+      !     Update boundaries for all prognostic scalar fields for advection:
+      call boundaries(ncrms,2)
 
+      do icrm = 1 , ncrms
         !---------------------------------------------------------
         !      advection of scalars :
         call advect_all_scalars(ncrms,icrm)
@@ -876,11 +878,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         !-----------------------------------------------------------
         !    Convert velocity back from nondimensional form:
         call uvw(ncrms,icrm)
+      enddo
 
-        !----------------------------------------------------------
-        !     Update boundaries for scalars to prepare for SGS effects:
-        call boundaries(ncrms,icrm,3)
+      !----------------------------------------------------------
+      !     Update boundaries for scalars to prepare for SGS effects:
+      call boundaries(ncrms,3)
 
+      do icrm = 1 , ncrms
         !---------------------------------------------------------
         !      SGS effects on scalars :
         if (dosgs) call sgs_scalars(ncrms,icrm)
