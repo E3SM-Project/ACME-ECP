@@ -80,7 +80,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                                       qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
                                       wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
                                       qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
-    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
+    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
     use cam_abortutils        , only: endrun
