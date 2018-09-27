@@ -323,6 +323,11 @@
   </compset>
 
   <compset>
+    <alias>FSP2V1-ECPP-TEST</alias>
+    <lname>2000_CAM5%SP2V1-ECPP-TEST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>FSP1FAST</alias>
     <lname>2000_CAM5%SP1FAST_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>

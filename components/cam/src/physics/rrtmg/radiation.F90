@@ -405,20 +405,25 @@ end function radiation_nextsw_cday
     call radsw_init()
     call radlw_init()
 
-!==Guangxing Lin
-     ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
+    ! If we are using superparameterization, then we need to make sure that
+    ! iradsw and iradlw are both set to 1 to make sure that radiation is updated
+    ! every timestep.
+    if (use_SPCAM) then
+       iradsw = 1
+       iradlw = 1
+    end if
+
+    ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then
        dtime  = get_step_size()
        dt_avg = iradsw*dtime
     end if
-
 
     call phys_getopts(history_amwg_out   = history_amwg,    &
                       history_vdiag_out  = history_vdiag,   &
                       history_budget_out = history_budget,  &
                       history_budget_histfile_num_out = history_budget_histfile_num, &
                       pergro_mods_out    = pergro_mods)
-!==Guangxing Lin
    
     ! Determine whether modal aerosols are affecting the climate, and if so
     ! then initialize the modal aerosol optics module
@@ -846,8 +851,6 @@ end function radiation_nextsw_cday
     end if
 
     ! Heating rate needed for d(theta)/dt computation
-    ! call addfld ('HR      ','K/s     ',pver, 'A','Heating rate needed for d(theta)/dt computation',phys_decomp)
-!==Guangxing Lin
     call addfld ('HR',(/ 'lev' /), 'A','K/s','Heating rate needed for d(theta)/dt computation')
 
     if ( history_budget .and. history_budget_histfile_num > 1 ) then
@@ -890,15 +893,14 @@ end function radiation_nextsw_cday
     end if
 
     if (cldfsnow_idx > 0) then
-      ! call addfld ('CLDFSNOW','1',pver,'I','CLDFSNOW',phys_decomp,flag_xyfill=.true.)
-      ! call add_default ('CLDFSNOW',1,' ')
-      ! call addfld('SNOW_ICLD_VISTAU', '1', pver, 'A', 'Snow in-cloud extinction visible sw optical depth', phys_decomp, &
-      !                                               sampling_seq='rad_lwsw', flag_xyfill=.true.)
        call addfld ('CLDFSNOW',(/ 'lev' /),'I','1','CLDFSNOW',flag_xyfill=.true.)
        call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1', 'Snow in-cloud extinction visible sw optical depth', &
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
     endif
-!==Guangxing Lin
+
+    call addfld('COSZRS', horiz_only, 'I', '1', &
+                'Cosine of solar zenith angle', &
+                sampling_seq='rad_lwsw', flag_xyfill=.true.)
 
   end subroutine radiation_init
 
@@ -1419,6 +1421,9 @@ end function radiation_nextsw_cday
        coszrs(:)=0._r8 ! coszrs is only output for zenith
     endif    
 
+    ! Output cosine solar zenith angle
+    call outfld('COSZRS', coszrs(1:ncol), ncol, lchnk)
+
     call output_rad_data(  pbuf, state, cam_in, landm, coszrs )
 
     ! Gather night/day column indices.
@@ -1434,6 +1439,8 @@ end function radiation_nextsw_cday
       end if
     end do ! i
 
+    ! Allocate "save" variables that will be used to restore fields that are
+    ! modified in-place in pbuf to populate with each crm column one at a time
     if (use_SPCAM) then
       allocate(dei_save(pcols, pver))
       allocate(dei_crm(pcols, crm_nx_rad, crm_ny_rad, crm_nz))
@@ -1445,14 +1452,16 @@ end function radiation_nextsw_cday
         allocate(lambdac_crm  (pcols, crm_nx_rad, crm_ny_Rad, crm_nz))
         allocate(des_crm      (pcols, crm_nx_rad, crm_ny_Rad, crm_nz))
       end if
-      ! calculate radiation every timestep for SP
-      dosw = .true. 
-      dolw = .true.
-    else
-      dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
-      dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
-    endif ! use_SPCAM
+    end if
 
+    ! Figure out if we are doing radiation at this timestep. For SP-CAM, these
+    ! should ALWAYS return true...this is handled in radiation_init() by setting
+    ! iradsw = iradlw = 1
+    dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
+    dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
+
+    ! Initialize averages over CRM columns to zero. These are aggregated over
+    ! the loop over CRM columns below.
     if (use_SPCAM) then 
       solin_m    = 0.   ; fsntoa_m   = 0. 
       fsutoa_m   = 0.   ; fsntoac_m  = 0.

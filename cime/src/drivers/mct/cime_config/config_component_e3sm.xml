@@ -318,6 +318,7 @@
       <!-- a shorter timestep is needed for stability in SP compsets -->
       <!-- (i.e. super-parameterization, MMF, CRM) -->
       <value compset="_CAM5%SP" grid="a%ne4np4">96</value>
+      <value compset="_CAM5%SP.*ECPP" grid="a%ne4np4">72</value>
     </values>
     <group>run_coupling</group>
     <file>env_run.xml</file>
