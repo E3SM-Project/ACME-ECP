@@ -517,10 +517,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use phys_control,    only: phys_getopts
    use check_energy,    only: check_energy_chng
 
-#if defined( SP_CRM_BULK )
-   use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
-#endif
-
 ! modal_aero_data only exists if MODAL_AERO
 #if (defined  m2005 && defined MODAL_AERO)  
    use modal_aero_data, only: ntot_amode, ntot_amode

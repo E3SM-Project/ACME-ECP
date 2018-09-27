@@ -1914,10 +1914,6 @@ subroutine tphysbc (ztodt,               &
    use crmclouds_camaerosols,  only: crmclouds_mixnuc_tend
 #endif
 
-#if defined( SP_CRM_BULK )
-    use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
-#endif
-
 #endif /* CRM */
 
     implicit none
@@ -2796,19 +2792,6 @@ end if
 #endif /* MODAL_AERO */
 
       !---------------------------------------------------------------------------
-      ! CRM Bulk Calculations (i.e. ECPP-lite) 
-      !---------------------------------------------------------------------------
-#if defined( SP_CRM_BULK )
-      ! !!! aerosol tendency from droplet activation and mixing
-      ! call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
-      !                             cam_in%cflx, pblh,                &
-      !                             wwqui_cen, wwqui_cloudy_cen,      &
-      !                             wwqui_bnd, wwqui_cloudy_bnd,      &
-      !                             species_class)
-      ! call physics_update(state, ptend, crm_run_time, tend)
-#endif /* SP_CRM_BULK */
-
-      !---------------------------------------------------------------------------
       ! ECPP - Explicit-Cloud Parameterized-Pollutant
       !---------------------------------------------------------------------------
 #if defined( ECPP )
@@ -2913,18 +2896,13 @@ end if
         if (do_clubb_sgs) then
           sh_e_ed_ratio = 0.0_r8
         endif
-#if defined( SP_CRM_BULK )
-         ! !!!  wet scavenging of aerosols
-         ! call crm_bulk_aero_wet_dep_scav()
-         ! call physics_update(state, ptend, crm_run_time, tend)
-#else
+
         call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,      & !Intent-ins
             mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
             cam_out,                                                                 & !Intent-inout
             pbuf,                                                                    & !Pointer
             ptend                                                                    ) !Intent-out
         call physics_update(state, ptend, ztodt, tend)
-#endif
 
         if (carma_do_wetdep) then
           ! CARMA wet deposition
@@ -2938,19 +2916,12 @@ end if
           call t_stopf ('carma_wetdep_tend')
         end if
 
-#if defined( SP_CRM_BULK )
-        !!! calculate bulk transport tendencies (CRM)
-        call crm_bulk_transport(state, pbuf, ptend)
-        ! call physics_update (state, ptend, crm_run_time, tend)
-        call physics_update (state, ptend, ztodt, tend)
-#else
         !!! deep convective transport (ZM)
         call t_startf ('convect_deep_tend2')
         call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
           du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
         call physics_update(state, ptend, ztodt, tend)
         call t_stopf ('convect_deep_tend2')
-#endif
 
         ! check tracer integrals
         call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
