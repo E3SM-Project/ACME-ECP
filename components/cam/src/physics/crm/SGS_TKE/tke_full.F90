@@ -43,10 +43,8 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   !-----------------------------------------------------------------------
   !!! Local Variables
   real(crm_rknd), dimension(nx,ny,nzm,ncrms) :: def2
-  real(crm_rknd), dimension(nx,ny)     :: buoy_sgs_below
-  real(crm_rknd), dimension(nx,ny)     :: buoy_sgs_above
-  real(crm_rknd), dimension(nx,ny)     :: a_prod_bu_below
-  real(crm_rknd), dimension(nx,ny)     :: a_prod_bu_above
+  real(crm_rknd), dimension(nx,ny,0:nzm,ncrms)     :: buoy_sgs_vert
+  real(crm_rknd), dimension(nx,ny,0:nzm,ncrms)     :: a_prod_bu_vert
   real(crm_rknd) :: grd           !
   real(crm_rknd) :: betdz         !
   real(crm_rknd) :: Ck            !
@@ -106,17 +104,25 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     call shear_prod2D(ncrms,def2)
   endif
 
+  !!! initialize surface buoyancy flux to zero
   do icrm = 1 , ncrms
-    !!! initialize surface buoyancy flux to zero
-    a_prod_bu_below(:,:) = 0
-    buoy_sgs_below(:,:) = 0
+    do j = 1 , ny
+      do i = 1 , nx
+        a_prod_bu_vert(i,j,0,icrm) = 0
+        buoy_sgs_vert(i,j,0,icrm) = 0
+        a_prod_bu_vert(i,j,nzm,icrm) = 0
+        buoy_sgs_vert(i,j,nzm,icrm) = 0
+      enddo
+    enddo
+  enddo
 
-    !-----------------------------------------------------------------------
-    ! compute SGS buoyancy flux at w-levels and SGS quantities in interior of domain
-    !-----------------------------------------------------------------------
-    do k = 1,nzm
-      !!! compute subgrid buoyancy flux assuming clear conditions
-      !!! we will over-write this later if conditions are cloudy
+  !-----------------------------------------------------------------------
+  ! compute SGS buoyancy flux at w-levels and SGS quantities in interior of domain
+  !-----------------------------------------------------------------------
+  !!! compute subgrid buoyancy flux assuming clear conditions
+  !!! we will over-write this later if conditions are cloudy
+  do icrm = 1 , ncrms
+    do k = 1,nzm-1
       do j = 1,ny
         do i = 1,nx
           if (k.lt.nzm) then
@@ -150,27 +156,13 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                +(bbb*fac_cond-tabs_interface)*(qpl(i,j,kc,icrm)-qpl(i,j,kb,icrm)) &
                +(bbb*fac_sub -tabs_interface)*(qpi(i,j,kc,icrm)-qpi(i,j,kb,icrm)) )
 
-          buoy_sgs_above(i,j) = buoy_sgs
-          a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc,icrm)+tkh(i,j,kb,icrm)+0.002)*buoy_sgs
+          buoy_sgs_vert(i,j,k,icrm) = buoy_sgs
+          a_prod_bu_vert(i,j,k,icrm) = -0.5*(tkh(i,j,kc,icrm)+tkh(i,j,kb,icrm)+0.002)*buoy_sgs
 
-        end do ! i
-      end do ! j
+          !-----------------------------------------------------------------------
+          ! now go back and check for cloud
+          !-----------------------------------------------------------------------
 
-      !-----------------------------------------------------------------------
-      ! now go back and check for cloud
-      !-----------------------------------------------------------------------
-      do j = 1,ny
-        do i = 1,nx
-          if (k.lt.nzm) then
-            kc = k+1
-            kb = k
-          else
-            kc = k
-            kb = k-1
-          end if
-          !!! first compute subgrid buoyancy flux at interface above this level.
-          !!! average betdz to w-levels
-          betdz = 0.5*(bet(kc,icrm)+bet(kb,icrm))/dz(icrm)/adzw(k+1,icrm)
           !!! if there's any cloud in the grid cells above or below, check to see if
           !!! the mixture between the two levels is also cloudy
           qctot = qcl(i,j,kc,icrm)+qci(i,j,kc,icrm)+qcl(i,j,kb,icrm)+qci(i,j,kb,icrm)
@@ -225,91 +217,71 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                    + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(i,j,k,icrm) ) * ( qpl(i,j,kc,icrm)-qpl(i,j,kb,icrm) )  &
                    + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(i,j,k,icrm) ) * ( qpi(i,j,kc,icrm)-qpi(i,j,kb,icrm) ) )
 
-              buoy_sgs_above(i,j) = buoy_sgs
-              a_prod_bu_above(i,j) = -0.5*(tkh(i,j,kc,icrm)+tkh(i,j,kb,icrm)+0.002)*buoy_sgs
+              buoy_sgs_vert(i,j,k,icrm) = buoy_sgs
+              a_prod_bu_vert(i,j,k,icrm) = -0.5*(tkh(i,j,kc,icrm)+tkh(i,j,kb,icrm)+0.002)*buoy_sgs
             end if ! if saturated at interface
           end if ! if either layer is cloudy
         end do ! i
       end do ! j
+    enddo !k
+  enddo !icrm
 
-      if(k.eq.nzm) then
-        !!! zero out the subgrid buoyancy flux at the top level
-        buoy_sgs_above(:,:)  = 0.
-        a_prod_bu_above(:,:) = 0.
-      end if
-      grd = dz(icrm)*adz(k,icrm)
-      Ce1 = Ce/0.7*0.19
-      Ce2 = Ce/0.7*0.51
-      tkelediss(k,icrm)  = 0.
-      tkesbdiss(k,icrm)  = 0.
-      tkesbshear(k,icrm) = 0.
-      tkesbbuoy(k,icrm)  = 0.
-      !!! compute correction factors for eddy visc/cond not to acceed 3D stability
-      cx = dx**2/dt/grdf_x(k,icrm)
-      cy = dy**2/dt/grdf_y(k,icrm)
-      cz = (dz(icrm)*min(adzw(k,icrm),adzw(k+1,icrm)))**2/dt/grdf_z(k,icrm)
-      !!! maximum value of eddy visc/cond
-      tkmax = 0.09/(1./cx+1./cy+1./cz)
+  do icrm = 1 , ncrms
+    do k = 1,nzm-1
       do j = 1,ny
         do i = 1,nx
-
-          buoy_sgs = 0.5*( buoy_sgs_below(i,j) + buoy_sgs_above(i,j) )
-
+          grd = dz(icrm)*adz(k,icrm)
+          Ce1 = Ce/0.7*0.19
+          Ce2 = Ce/0.7*0.51
+          tkelediss(k,icrm)  = 0.
+          tkesbdiss(k,icrm)  = 0.
+          tkesbshear(k,icrm) = 0.
+          tkesbbuoy(k,icrm)  = 0.
+          !!! compute correction factors for eddy visc/cond not to acceed 3D stability
+          cx = dx**2/dt/grdf_x(k,icrm)
+          cy = dy**2/dt/grdf_y(k,icrm)
+          cz = (dz(icrm)*min(adzw(k,icrm),adzw(k+1,icrm)))**2/dt/grdf_z(k,icrm)
+          !!! maximum value of eddy visc/cond
+          tkmax = 0.09/(1./cx+1./cy+1./cz)
+          buoy_sgs = 0.5*( buoy_sgs_vert(i,j,k-1,icrm) + buoy_sgs_vert(i,j,k,icrm) )
           if(buoy_sgs.le.0.) then
             smix = grd
           else
             smix = min(grd,max(0.1*grd, sqrt(0.76*tk(i,j,k,icrm)/Ck/sqrt(buoy_sgs+1.e-10))))
           end if
-
-
           ratio = smix/grd
           Cee = Ce1+Ce2*ratio
-
           if(dosmagor) then
-
             tk(i,j,k,icrm) = sqrt(Ck**3/Cee*max(0.,def2(i,j,k,icrm)-Pr*buoy_sgs))*smix**2
-
 #if defined( SP_TK_LIM )
               !!! put a hard lower limit on near-surface tk
               if ( z(k,icrm).lt.tk_min_depth ) then
                 tk(i,j,k,icrm) = max( tk(i,j,k,icrm), tk_min_value )
               end if
 #endif
-
             tke(i,j,k,icrm) = (tk(i,j,k,icrm)/(Ck*smix))**2
             a_prod_sh = (tk(i,j,k,icrm)+0.001)*def2(i,j,k,icrm)
             ! a_prod_bu=-(tk(i,j,k,icrm)+0.001)*Pr*buoy_sgs
-            a_prod_bu = 0.5*( a_prod_bu_below(i,j) + a_prod_bu_above(i,j) )
+            a_prod_bu = 0.5*( a_prod_bu_vert(i,j,k-1,icrm) + a_prod_bu_vert(i,j,k,icrm) )
             a_diss = a_prod_sh+a_prod_bu
-
           else
-
             tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm))
             a_prod_sh = (tk(i,j,k,icrm)+0.001)*def2(i,j,k,icrm)
-            a_prod_bu = 0.5*( a_prod_bu_below(i,j) + a_prod_bu_above(i,j) )
+            a_prod_bu = 0.5*( a_prod_bu_vert(i,j,k-1,icrm) + a_prod_bu_vert(i,j,k,icrm) )
             !!! cap the diss rate (useful for large time steps)
             a_diss = min(tke(i,j,k,icrm)/(4.*dt),Cee/smix*tke(i,j,k,icrm)**1.5)
             tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm)+dtn*(max(0.,a_prod_sh+a_prod_bu)-a_diss))
             tk(i,j,k,icrm)  = Ck*smix*sqrt(tke(i,j,k,icrm))
-
           end if
-
           tk(i,j,k,icrm)  = min(tk(i,j,k,icrm),tkmax)
           tkh(i,j,k,icrm) = Pr*tk(i,j,k,icrm)
 
-          tkelediss(k,icrm)  = tkelediss(k,icrm) - a_prod_sh
+          tkelediss(k,icrm)  = tkelediss(k,icrm) - a_prod_sh/float(nx*ny)
           tkesbdiss(k,icrm)  = tkesbdiss(k,icrm) + a_diss
           tkesbshear(k,icrm) = tkesbshear(k,icrm)+ a_prod_sh
           tkesbbuoy(k,icrm)  = tkesbbuoy(k,icrm) + a_prod_bu
-
         end do ! i
       end do ! j
-
-      tkelediss(k,icrm) = tkelediss(k,icrm)/float(nx*ny)
-
-      buoy_sgs_below(:,:) = buoy_sgs_above(:,:)
-      a_prod_bu_below(:,:) = a_prod_bu_above(:,:)
-
     end do ! k
   enddo !icrm
 
