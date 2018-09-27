@@ -848,35 +848,34 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !	SGS effects on momentum:
       if(dosgs) call sgs_mom(ncrms)
 
+      !-----------------------------------------------------------
+      !       Coriolis force:
+      if (docoriolis) call coriolis(ncrms)
+
+      !---------------------------------------------------------
+      !       compute rhs of the Poisson equation and solve it for pressure.
       do icrm = 1 , ncrms
-
-        !-----------------------------------------------------------
-        !       Coriolis force:
-        if (docoriolis) call coriolis(ncrms,icrm)
-
-        !---------------------------------------------------------
-        !       compute rhs of the Poisson equation and solve it for pressure.
         call pressure(ncrms,icrm)
-
-        !---------------------------------------------------------
-        !       find velocity field at n+1/2 timestep needed for advection of scalars:
-        !  Note that at the end of the call, the velocities are in nondimensional form.
-        call adams(ncrms,icrm)
       enddo
+
+      !---------------------------------------------------------
+      !       find velocity field at n+1/2 timestep needed for advection of scalars:
+      !  Note that at the end of the call, the velocities are in nondimensional form.
+      call adams(ncrms)
 
       !----------------------------------------------------------
       !     Update boundaries for all prognostic scalar fields for advection:
       call boundaries(ncrms,2)
 
+      !---------------------------------------------------------
+      !      advection of scalars :
       do icrm = 1 , ncrms
-        !---------------------------------------------------------
-        !      advection of scalars :
         call advect_all_scalars(ncrms,icrm)
-
-        !-----------------------------------------------------------
-        !    Convert velocity back from nondimensional form:
-        call uvw(ncrms,icrm)
       enddo
+
+      !-----------------------------------------------------------
+      !    Convert velocity back from nondimensional form:
+      call uvw(ncrms)
 
       !----------------------------------------------------------
       !     Update boundaries for scalars to prepare for SGS effects:
