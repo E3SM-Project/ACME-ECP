@@ -854,9 +854,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
       !---------------------------------------------------------
       !       compute rhs of the Poisson equation and solve it for pressure.
-      do icrm = 1 , ncrms
-        call pressure(ncrms,icrm)
-      enddo
+      call pressure(ncrms)
 
       !---------------------------------------------------------
       !       find velocity field at n+1/2 timestep needed for advection of scalars:

@@ -5,67 +5,69 @@ module press_grad_mod
 
 contains
 
-  subroutine press_grad(ncrms,icrm)
+  subroutine press_grad(ncrms)
     !       pressure term of the momentum equations
     use vars
     use params, only: dowallx, dowally
     implicit none
-    integer, intent(in) :: ncrms, icrm
+    integer, intent(in) :: ncrms
     real *8 rdx,rdy,rdz
-    integer i,j,k,kb,jb,ib
+    integer i,j,k,kb,jb,ib, icrm
 
     rdx=1./dx
     rdy=1./dy
 
-    do k=1,nzm
-      kb=max(1,k-1)
-      rdz = 1./(dz(icrm)*adzw(k,icrm))
-      do j=1,ny
-        jb=j-YES3D
-        do i=1,nx
-          ib=i-1
-          dudt(i,j,k,na(icrm),icrm)=dudt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx
-          dvdt(i,j,k,na(icrm),icrm)=dvdt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(i,jb,k,icrm))*rdy
-          dwdt(i,j,k,na(icrm),icrm)=dwdt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(i,j,kb,icrm))*rdz
-        end do ! i
-      end do ! j
-    end do ! k
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            kb=max(1,k-1)
+            rdz = 1./(dz(icrm)*adzw(k,icrm))
+            jb=j-YES3D
+            ib=i-1
+            dudt(i,j,k,na(icrm),icrm)=dudt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx
+            dvdt(i,j,k,na(icrm),icrm)=dvdt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(i,jb,k,icrm))*rdy
+            dwdt(i,j,k,na(icrm),icrm)=dwdt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(i,j,kb,icrm))*rdz
+          end do ! i
+        end do ! j
+      end do ! k
+    enddo
 
-    do k=1,nzm
-      do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
-        do i=0,nx
-          p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)  ! convert p'/rho to p'
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
+          do i=0,nx
+            p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)  ! convert p'/rho to p'
+          end do
         end do
       end do
-    end do
+    enddo
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
-      do k=1,nzm
-        do j=1,ny
-          dudt(1,j,k,na(icrm),icrm) = 0.
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          do j=1,ny
+            dudt(1,j,k,na(icrm),icrm) = 0.
+          end do
         end do
-      end do
+      enddo
 
     end if
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
-      do k=1,nzm
-        do i=1,nx
-          dvdt(i,1,k,na(icrm),icrm) = 0.
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          do i=1,nx
+            dvdt(i,1,k,na(icrm),icrm) = 0.
+          end do
         end do
-      end do
+      enddo
 
     end if
 
-    if(dompi) then
-      call task_bound_duvdt()
-    else
-      call bound_duvdt(ncrms,icrm)
-    endif
-
-    call task_barrier()
+    call bound_duvdt(ncrms)
 
   end subroutine press_grad
 
