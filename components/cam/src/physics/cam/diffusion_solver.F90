@@ -489,7 +489,7 @@
 
          ! 2. Do 'normal stress' explicitly
 
-! whannah - bypass adding surface stress here when CRM handles subgrid momentum tendencies
+! bypass adding surface stress here when CRM handles subgrid momentum tendencies
 ! #if defined(SPMOMTRANS) || defined(SP_USE_ESMT)
 !       ! Do nothing...
 ! #else
@@ -512,7 +512,7 @@
                           ksrf  , kvm  , tmpi2 , rpdel , ztodt , gravit, &
                           zero  , ntop , nbot  , decomp)
 
-! whannah - bypass vertical diffusion of momentum when CRM handles subgrid momentum tendencies
+! bypass vertical diffusion of momentum when CRM handles subgrid momentum tendencies
 ! #if defined(SPMOMTRANS) || defined(SP_USE_ESMT)
 !       ! Do nothing...
 ! #else
@@ -676,13 +676,7 @@
      ! often lead to an error to be thrown in the energy balance check.
      !   SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
 
-#if defined( SP_FLUX_BYPASS )
-      if (do_SP_bypass) then
-        dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
-      endif
-#endif
-
-#if defined( SP_CRM_SFC_FLUX )
+#if defined( SP_FLUX_BYPASS ) || defined( SP_CRM_SFC_FLUX )
       if (do_SP_bypass) then
         dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
       endif
@@ -795,13 +789,7 @@
       q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
         
 
-#if defined( SP_FLUX_BYPASS )
-        if (do_SP_bypass) then
-          if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
-        endif
-#endif
-
-#if defined( SP_CRM_SFC_FLUX )
+#if defined( SP_FLUX_BYPASS ) || defined( SP_CRM_SFC_FLUX )
         if (do_SP_bypass) then
           if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
         endif
