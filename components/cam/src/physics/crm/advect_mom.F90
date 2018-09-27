@@ -5,21 +5,17 @@ module advect_mom_mod
 
 contains
 
-  subroutine advect_mom(ncrms,icrm)
+  subroutine advect_mom(ncrms)
     use vars
     use params, only: docolumn
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     integer i,j,k
 
     if(docolumn) return
 
-    !call t_startf ('advect_mom')
-
-    call advect2_mom_xy(ncrms,icrm)
-    call advect2_mom_z(ncrms,icrm)
-
-    !call t_stopf ('advect_mom')
+    call advect2_mom_xy(ncrms)
+    call advect2_mom_z(ncrms)
 
   end subroutine advect_mom
 
