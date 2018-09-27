@@ -816,7 +816,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       endif
 #else
       if(docloud) then
-          call ice_fall(ncrms)
+        call ice_fall(ncrms)
       endif
 #endif
 
@@ -902,7 +902,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
         !-----------------------------------------------------------
         !    Compute diagnostics fields:
-          call diagnose(ncrms,icrm)
+        call diagnose(ncrms,icrm)
 
         !----------------------------------------------------------
         ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
