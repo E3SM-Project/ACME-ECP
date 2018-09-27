@@ -86,8 +86,10 @@ module  module_ecpp_crm_driver
   save
 
   integer ::  nxstag, nystag, nzstag
-  integer :: ntavg1, ntavg2
-  integer :: itavg1, itavg2
+  integer :: ntavg1_ss  ! # of seconds to average when computing categories
+  integer :: ntavg2_ss  ! # of seconds to average between outputs.
+  integer :: ntavg1, ntavg2  ! number of CRM steps in ntavg[12]_ss period
+  integer :: itavg1, itavg2  ! level-1 and level-2 counters
 
   integer :: mode_updnthresh
   integer :: areaavgtype
@@ -766,14 +768,13 @@ contains
 
   subroutine ecpp_set_ntavg(dt_gl)
   !----------------------------------------------------------------------------
-  ! Sets ntavg1 and ntavg2, which are the number of steps used for 
-  ! "level-1" and "level-2" averaging periods, respectively.
+  ! Sets ntavg1_ss and ntavg2_ss periods for "level-1" and "level-2" averages,
+  ! respectively. Also sets ntavg1 and ntavg2 which are the number of CRM 
+  ! steps in each averaging period.
   !----------------------------------------------------------------------------
     use grid, only: dt    ! CRM timestep (calling frequency of ecpp_crm_stat)
     implicit none
     real(r8), intent(in) :: dt_gl  ! global model's time step
-    integer :: ntavg1_ss  ! # of seconds to average when computing categories
-    integer :: ntavg2_ss  ! # of seconds to average between outputs.
 
     ! set level-1 and level-2 averaging periods for ECPP
     ntavg1_ss = min(600._r8, dt_gl)  ! lesser of 10 minutes or the GCM timestep
