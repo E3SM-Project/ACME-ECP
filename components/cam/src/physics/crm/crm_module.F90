@@ -726,15 +726,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif /* CLUBB_CRM */
 
 #ifdef ECPP
-    ! set level-1 and level-2 averaging periods for ECPP
-    ntavg1_ss = min(600._r8, dt_gl)   ! 10 minutes  or the GCM timestep, whichever smaller
-    ntavg2_ss = dt_gl                 ! # of seconds to average between computing categories.
-    
-    ! ensure that ntavg2_ss is a multiple of ntavg1_ss (note: ntavg[12]_ss are integers)
-    ntavg1_ss = ntavg2_ss / (ntavg2_ss / ntavg1_ss)
-
-    !!! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss are set
-    call ecpp_crm_init()
+    call ecpp_crm_init(dt_gl)
 
     qlsink    = 0.0
     qlsink_bf = 0.0

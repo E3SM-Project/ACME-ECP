@@ -71,26 +71,23 @@ module  module_ecpp_crm_driver
   ! 16-Apr-2009, wig: Added qcloud weighting to qlsink averages
   !
   !----------------------------------------------------------------------------------------
+  use shr_kind_mod, only: r8 => shr_kind_r8
+  use params, only: crm_rknd
   use ecppvars
   use ecppvars,  only: QUI, UP1, DN1, NCLASS_TR, NCLASS_CL, CLR, CLD, NCLASS_PR, PRN, PRY
-  !Guangxing Lin
-  !use abortutils,  only: endrun
   use cam_abortutils,  only: endrun
-  !Guangxing Lin
-  use params, only: crm_rknd
 
   public ecpp_crm_stat
   public ecpp_crm_init
   public ecpp_crm_cleanup
 
-  integer, public :: ntavg1_ss, ntavg2_ss
 
   private
   save
 
   integer ::  nxstag, nystag, nzstag
-  integer :: itavg1, itavg2,  &
-  ntavg1, ntavg2
+  integer :: ntavg1, ntavg2
+  integer :: itavg1, itavg2
 
   integer :: mode_updnthresh
   integer :: areaavgtype
@@ -125,12 +122,15 @@ module  module_ecpp_crm_driver
 contains
 
   !========================================================================================
-  subroutine ecpp_crm_init()
+  subroutine ecpp_crm_init(dt_gl)
 
-    use grid, only: nx, ny, nzm, dt
+    use grid, only: nx, ny, nzm
     use module_ecpp_stats, only: zero_out_sums1, zero_out_sums2
     use module_ecpp_ppdriver2, only: nupdraft_in, ndndraft_in, ncls_ecpp_in
     implicit none
+
+    real(r8), intent(in) :: dt_gl  ! global model's time step
+
 
     integer :: kbase, ktop
     integer :: m
@@ -140,13 +140,6 @@ contains
     nxstag = nx+1
     nystag = ny+1
     nzstag = nzm+1
-
-    ! ntavg1_ss and ntavg1_ss are defined in crm.F90 in the MMF model.
-    ! ntavg1_ss = dt_gl   ! GCM time step
-    ! ntavg1_ss = number of seconds to average between computing categories.
-    !  ntavg2_ss = dt_gl   ! GCM time step
-    ! ntavg2_ss = number of seconds to average between outputs.
-    !    This must be a multiple of ntavgt1_ss.
 
     mode_updnthresh = 16
     !     1 = method originally implemented by Bill G
@@ -415,8 +408,8 @@ contains
     wup_thresh(:) = 0.0
     wdown_thresh(:) = 0.0
 
-    ntavg1 = ntavg1_ss  / dt
-    ntavg2 = ntavg2_ss  / dt
+    ! set ntavg[12] and initialize itavg[12] counters
+    call ecpp_set_ntavg(dt_gl)
     itavg1 = 0
     itavg2 = 0
 
@@ -770,6 +763,33 @@ contains
     end if !End of level two time averaging period
 
   end subroutine ecpp_crm_stat
+
+  subroutine ecpp_set_ntavg(dt_gl)
+  !----------------------------------------------------------------------------
+  ! Sets ntavg1 and ntavg2, which are the number of steps used for 
+  ! "level-1" and "level-2" averaging periods, respectively.
+  !----------------------------------------------------------------------------
+    use grid, only: dt    ! CRM timestep (calling frequency of ecpp_crm_stat)
+    implicit none
+    real(r8), intent(in) :: dt_gl  ! global model's time step
+    integer :: ntavg1_ss  ! # of seconds to average when computing categories
+    integer :: ntavg2_ss  ! # of seconds to average between outputs.
+
+    ! set level-1 and level-2 averaging periods for ECPP
+    ntavg1_ss = min(600._r8, dt_gl)  ! lesser of 10 minutes or the GCM timestep
+    ntavg2_ss = dt_gl                ! level-2 averaging period is GCM timestep
+   
+    ! Current implementation of ECPP requires that ntavg2_ss is a multiple of 
+    ! ntavg1_ss. Adjust ntavg1_ss upward from 10 minutes necessary.
+    ! Ex. 1: ntavg2_ss = 1200 => ntavg1_ss = 1200/ (1200/600) = 1200 / 2 = 600
+    ! Ex. 2: ntavg2_ss = 900 => ntavg1_ss = 900 / (900/600) = 900 / 1 = 900
+    ntavg1_ss = ntavg2_ss / (ntavg2_ss / ntavg1_ss)
+
+    ! calculate number of steps assuming dt evenly divides ntavg[12]_ss
+    ! (alaways the case under current usage)
+    ntavg1 = ntavg1_ss / dt
+    ntavg2 = ntavg2_ss / dt
+  end subroutine ecpp_set_ntavg
 
 #endif /*ECPP*/
 end module  module_ecpp_crm_driver
