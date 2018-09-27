@@ -840,14 +840,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !     Fill boundaries for SGS diagnostic fields:
       call boundaries(ncrms,4)
 
-      do icrm = 1 , ncrms
-        !-----------------------------------------------
-        !       advection of momentum:
-        call advect_mom(ncrms,icrm)
+      !-----------------------------------------------
+      !       advection of momentum:
+      call advect_mom(ncrms)
 
+      do icrm = 1 , ncrms
         !----------------------------------------------------------
         !	SGS effects on momentum:
-
         if(dosgs) call sgs_mom(ncrms,icrm)
 
         !-----------------------------------------------------------
