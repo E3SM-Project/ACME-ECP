@@ -478,7 +478,7 @@ end subroutine crm_physics_init
 !==================================================================================================
 
 subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,    &
-                            species_class, phys_stage, crm_ecpp_output,          &
+                            species_class, crm_ecpp_output,          &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
 !------------------------------------------------------------------------------------------
@@ -555,7 +555,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(cam_in_t),             intent(in   ) :: cam_in           ! atm input from coupler
    type(cam_out_t),            intent(inout) :: cam_out          ! atm output to coupler
    integer,                    intent(in   ) :: species_class(:) ! aerosol species type
-   integer,                    intent(inout) :: phys_stage       ! physics run stage indicator (1 or 2 = bc or ac, see SP_CRM_SPLIT)
    type(crm_ecpp_output_type), intent(inout) :: crm_ecpp_output  ! output data for ECPP calculations
    real(r8), dimension(pcols), intent(out  ) :: sp_qchk_prec_dp  ! precipitation diagostic (liq+ice)  used for check_energy_chng
    real(r8), dimension(pcols), intent(out  ) :: sp_qchk_snow_dp  ! precipitation diagostic (ice only) used for check_energy_chng
@@ -586,7 +585,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    integer lchnk                    ! chunk identifier
    integer ncol                     ! number of atmospheric columns
    integer  nstep                   ! time steps
-   real(r8) crm_run_time            ! length of CRM integration - usually equal to ztodt unless SP_CRM_SPLIT is defined
+   real(r8) crm_run_time            ! length of CRM integration
 
 #ifdef CLUBB_CRM
    real(r8), pointer ::  clubb_buffer  (:,:,:,:,:)
@@ -672,11 +671,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    crm_rotation_offset = 90. * pi/180. * ztodt/86400.  ! This means that a CRM should rotate 90 deg / day on average
 #endif
 
-#if defined( SP_CRM_SPLIT ) 
-   crm_run_time = ztodt * 0.5
-#else
    crm_run_time = ztodt
-#endif
 
 !==================================================================================================
 !==================================================================================================
@@ -1065,7 +1060,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !---------------------------------------------------------------------------------------------------
     if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
     if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm( lchnk, icol(:ncol), ncol, phys_stage, ztodt, pver,        &
+    call crm( lchnk, icol(:ncol), ncol, ztodt, pver,                    &
               crm_input, crm_state, crm_rad,                            &
 #ifdef CLUBB_CRM
               clubb_buffer(:ncol,:,:,:,:),                              &
@@ -1243,21 +1238,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
-#if defined( SP_CRM_SPLIT )
-      !!! diagnostic output for SP_CRM_SPLIT
-      if ( phys_stage == 1 ) then 
-         call outfld('SPDT1   ',ftem           ,pcols ,lchnk )
-         call outfld('SPDQ1   ',ptend%q(1,1,1) ,pcols ,lchnk )
-         call outfld('SPQPEVP1',crm_output%qp_evp         ,pcols ,lchnk )
-         call outfld('SPTLS1  ',crm_output%t_ls           ,pcols ,lchnk )
-      else
-         call outfld('SPDT2   ',ftem           ,pcols ,lchnk )
-         call outfld('SPDQ2   ',ptend%q(1,1,1) ,pcols ,lchnk )
-         call outfld('SPQPEVP2',crm_output%qp_evp         ,pcols ,lchnk )
-         call outfld('SPTLS2  ',crm_output%t_ls           ,pcols ,lchnk )
-      end if
-#endif
-
       call outfld('SPDQ    ',ptend%q(1,1,1)        ,pcols ,lchnk )
       call outfld('SPDQC   ',ptend%q(1,1,ixcldliq) ,pcols ,lchnk )
       call outfld('SPDQI   ',ptend%q(1,1,ixcldice) ,pcols ,lchnk )
