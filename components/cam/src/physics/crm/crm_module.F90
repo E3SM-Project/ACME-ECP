@@ -828,11 +828,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !     surface fluxes:
       if (dosurface) call crmsurface(ncrms,bflx)
 
-      do icrm = 1 , ncrms
-        !-----------------------------------------------------------
-        !  SGS physics:
-        if (dosgs) call sgs_proc(ncrms,icrm)
-      enddo
+      !-----------------------------------------------------------
+      !  SGS physics:
+      if (dosgs) call sgs_proc(ncrms)
 
       !----------------------------------------------------------
       !     Fill boundaries for SGS diagnostic fields:

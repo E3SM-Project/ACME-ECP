@@ -476,21 +476,24 @@ end subroutine sgs_scalars
 !----------------------------------------------------------------------
 !!! compute sgs processes (beyond advection):
 !
-subroutine sgs_proc(ncrms,icrm)
+subroutine sgs_proc(ncrms)
   use tke_full_mod, only: tke_full
   use grid, only: dt,icycle
   use params, only: dosmoke
   implicit none
-  integer, intent(in) :: ncrms,icrm
+  integer, intent(in) :: ncrms
+  integer :: icrm
   !    SGS TKE equation:
 
-  if(dosgs) call tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
+  if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
                           tke, tk, tkh)
 
-  tke2(:,:,:,icrm) = tke(:,:,:,icrm)
-  tk2(:,:,:,icrm) = tk(:,:,:,icrm)
+  do icrm = 1 , ncrms
+    tke2(:,:,:,icrm) = tke(:,:,:,icrm)
+    tk2(:,:,:,icrm) = tk(:,:,:,icrm)
+  enddo
 
 end subroutine sgs_proc
 
