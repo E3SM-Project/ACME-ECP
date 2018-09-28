@@ -190,7 +190,8 @@
     real(r8), intent(in)    :: kvh(pcols,pver+1)         ! Eddy diffusivity for heat [ m2/s ]
 
     logical,  intent(in)    :: do_molec_diff             ! Flag indicating multiple constituent diffusivities
-    logical,  intent(in)    :: do_SP_bypass              ! whannah - Flag indicating whether to enforce SP_FLUX_BYPASS - needed for call in eddy_diff.F90
+    logical,  intent(in)    :: do_SP_bypass              ! Flag indicating whether to enforce SP_FLUX_BYPASS
+                                                         ! needs to be false in eddy_diff.F90 to avoid problems with diffusion
 
     integer,  external, optional :: compute_molec_diff   ! Constituent-independent moleculuar diffusivity routine
     integer,  external, optional :: vd_lu_qdecomp        ! Constituent-dependent moleculuar diffusivity routine
@@ -670,11 +671,11 @@
 
       dse(:ncol,pver) = dse(:ncol,pver) + tmp1(:ncol) * shflx(:ncol)
 
-     ! whannah - The surface flux bypass option was implemented to move the 
+     ! The surface flux bypass option was implemented to move the 
      ! addition of surface fluxes to be after the dynamical core. This modification 
      ! has been commented out because it did not improve the simulation, and would
      ! often lead to an error to be thrown in the energy balance check.
-     !   SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
+     ! SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
 
 #if defined( SP_FLUX_BYPASS ) || defined( SP_CRM_SFC_FLUX )
       if (do_SP_bypass) then

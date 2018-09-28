@@ -569,11 +569,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     precssfc(:,:,icrm)=0.
 
 #if defined( SP_CRM_SFC_FLUX )
-    ! fluxbu(:,:) = crm_input%fluxu00(icrm)/rhow(1)
-    ! fluxbv(:,:) = crm_input%fluxv00(icrm)/rhow(1)
-    fluxbt(:,:) = crm_input%fluxt00(icrm)/rhow(1)
-    fluxbq(:,:) = crm_input%fluxq00(icrm)/rhow(1)
-    t_sfc_xy(:,:) = crm_input%ts(icrm)
+    ! fluxbu(:,:,icrm) = crm_input%fluxu00(icrm)/rhow(1)
+    ! fluxbv(:,:,icrm) = crm_input%fluxv00(icrm)/rhow(1)
+    fluxbt(:,:,icrm) = crm_input%fluxt00(icrm)/rhow(1)
+    fluxbq(:,:,icrm) = crm_input%fluxq00(icrm)/rhow(1)
+    t_sfc_xy(:,:,icrm) = crm_input%ts(icrm)
 #endif /* SP_CRM_SFC_FLUX */
 
 !---------------------------------------------------

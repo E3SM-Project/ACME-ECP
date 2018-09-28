@@ -94,6 +94,10 @@ subroutine tke_full(ncrms,icrm,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   tk_min_value = 0.05
   tk_min_depth = 500.
 
+#if defined( SP_TK_LIM_200 )
+  tk_min_depth = 200.
+#endif
+
   Cs  = 0.15
   Ck  = 0.1
   Ce  = Ck**3/Cs**4
