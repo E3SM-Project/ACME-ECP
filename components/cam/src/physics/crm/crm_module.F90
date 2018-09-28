@@ -80,7 +80,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
                                       qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
                                       wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
                                       qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
-    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup, ntavg1_ss, ntavg2_ss
+    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
     use cam_abortutils        , only: endrun
@@ -726,11 +726,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 #endif /* CLUBB_CRM */
 
 #ifdef ECPP
-    ntavg1_ss = min(600._r8, dt_gl)   ! 10 minutes  or the GCM timestep, whichever smaller
-    ntavg2_ss = dt_gl                 ! # of seconds to average between computing categories, must be a multiple of ntavgt1_ss.
-
-    !!! ecpp_crm_init has to be called after ntavg1_ss and ntavg2_ss are set
-    call ecpp_crm_init()
+    call ecpp_crm_init(dt_gl)
 
     qlsink    = 0.0
     qlsink_bf = 0.0
