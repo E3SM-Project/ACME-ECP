@@ -5,7 +5,7 @@ module advect_scalar_mod
 
 contains
 
-  subroutine advect_scalar (ncrms,icrm,f,fadv,flux,f2leadv,f2legrad,fwleadv,doit)
+  subroutine advect_scalar (ncrms,icrm,f,fadv,flux)
 
     !     positively definite monotonic advection with non-oscillatory option
 
@@ -17,9 +17,6 @@ contains
     integer, intent(in) :: ncrms,icrm
     real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) flux(nz), fadv(nz)
-    real(crm_rknd) f2leadv(nz),f2legrad(nz),fwleadv(nz)
-    logical doit
-
     real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     integer i,j,k
 
