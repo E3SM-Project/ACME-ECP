@@ -867,9 +867,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
       !---------------------------------------------------------
       !      advection of scalars :
-      do icrm = 1 , ncrms
-        call advect_all_scalars(ncrms,icrm)
-      enddo
+      call advect_all_scalars(ncrms)
 
       !-----------------------------------------------------------
       !    Convert velocity back from nondimensional form:
