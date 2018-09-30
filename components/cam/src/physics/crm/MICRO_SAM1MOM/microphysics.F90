@@ -25,7 +25,7 @@ module microphysics
   ! both variables correspond to mass, not number
   ! SAM1MOM 3D microphysical fields are output by default.
   integer, allocatable :: flag_micro3Dout(:,:)
-  integer, allocatable :: flag_precip    (:,:)
+  integer, allocatable :: flag_precip    (:)
   integer, allocatable :: flag_wmass     (:,:)
   integer, allocatable :: flag_number    (:,:)
 
@@ -94,7 +94,7 @@ CONTAINS
     allocate( qpsrc(nz,ncrms)  )
     allocate( qpevp(nz,ncrms)  )
     allocate( flag_micro3Dout(nmicro_fields,ncrms) )
-    allocate( flag_precip    (nmicro_fields,ncrms) )
+    allocate( flag_precip    (nmicro_fields) )
     allocate( flag_wmass     (nmicro_fields,ncrms) )
     allocate( flag_number    (nmicro_fields,ncrms) )
 
@@ -119,9 +119,9 @@ CONTAINS
     qn = zero
     qpsrc = zero
     qpevp = zero
+    flag_precip    (:)  = (/0,1/)
     do icrm = 1 , ncrms
       flag_micro3Dout(:,icrm)  = (/0,0/)
-      flag_precip    (:,icrm)  = (/0,1/)
       flag_wmass     (:,icrm)  = (/1,1/)
       flag_number    (:,icrm)  = (/0,0/)
     enddo

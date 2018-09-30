@@ -58,7 +58,8 @@ integer :: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ins, ing
 integer :: index_water_vapor ! separate water vapor index used by SAM
 
 real(crm_rknd), allocatable, dimension(:,:) :: lfac
-integer, allocatable, dimension(:,:) :: flag_wmass, flag_precip, flag_number
+integer, allocatable, dimension(:) :: flag_precip
+integer, allocatable, dimension(:,:) :: flag_wmass, flag_number
 integer, allocatable, dimension(:,:) :: flag_micro3Dout
 
 integer, parameter :: index_cloud_ice = -1 ! historical variable (don't change)
@@ -154,7 +155,7 @@ subroutine allocate_micro(ncrms)
   allocate(tmtend3d(nx,ny,nzm,ncrms))
   allocate(flag_micro3Dout(nmicro_fields,ncrms))
   allocate(flag_wmass(nmicro_fields,ncrms))
-  allocate(flag_precip(nmicro_fields,ncrms))
+  allocate(flag_precip(nmicro_fields))
   allocate(flag_number(nmicro_fields,ncrms))
   allocate(lfac(nmicro_fields,ncrms))
   allocate(mkname(nmicro_fields))
@@ -495,24 +496,24 @@ subroutine micro_init(ncrms,icrm)
         if(dograupel) then
           !bloss/qt: qt, Nc, qr, Nr, qi, Ni, qs, Ns, qg, Ng
            flag_wmass (:,icrm) = (/1,0,1,0,1,0,1,0,1,0/)
-           flag_precip(:,icrm) = (/0,0,1,1,0,0,1,1,1,1/)
+           flag_precip(:) = (/0,0,1,1,0,0,1,1,1,1/)
            flag_number(:,icrm) = (/0,1,0,1,0,1,0,1,0,1/)
         else
           !bloss/qt: qt, Nc, qr, Nr, qi, Ni, qs, Ns
            flag_wmass (:,icrm) = (/1,0,1,0,1,0,1,0/)
-           flag_precip(:,icrm) = (/0,0,1,1,0,0,1,1/)
+           flag_precip(:) = (/0,0,1,1,0,0,1,1/)
            flag_number(:,icrm) = (/0,1,0,1,0,1,0,1/)
         end if
      else
         if(doprecip) then
           !bloss/qt: qt, Nc, qr, Nr
            flag_wmass (:,icrm) = (/1,0,1,0/)
-           flag_precip(:,icrm) = (/0,0,1,1/)
+           flag_precip(:) = (/0,0,1,1/)
            flag_number(:,icrm) = (/0,1,0,1/)
         else
           !bloss/qt: qt, Nc
            flag_wmass (:,icrm) = (/1,0/)
-           flag_precip(:,icrm) = (/0,0/)
+           flag_precip(:) = (/0,0/)
            flag_number(:,icrm) = (/0,1/)
         end if
      end if
@@ -522,25 +523,25 @@ subroutine micro_init(ncrms,icrm)
         if(dograupel) then
           !bloss/qt: qt, qr, Nr, qi, Ni, qs, Ns, qg, Ng
            flag_wmass (:,icrm) = (/1,1,0,1,0,1,0,1,0/)
-           flag_precip(:,icrm) = (/0,1,1,0,0,1,1,1,1/)
+           flag_precip(:) = (/0,1,1,0,0,1,1,1,1/)
            flag_number(:,icrm) = (/0,0,1,0,1,0,1,0,1/)
         else
           !bloss/qt: qt, qr, Nr, qi, Ni, qs, Ns
            flag_wmass (:,icrm) = (/1,1,0,1,0,1,0/)
-           flag_precip(:,icrm) = (/0,1,1,0,0,1,1/)
+           flag_precip(:) = (/0,1,1,0,0,1,1/)
            flag_number(:,icrm) = (/0,0,1,0,1,0,1/)
         end if
      else
         if(doprecip) then
           !bloss/qt: qt, qr, Nr
            flag_wmass (:,icrm) = (/1,1,0/)
-           flag_precip(:,icrm) = (/0,1,1/)
+           flag_precip(:) = (/0,1,1/)
            flag_number(:,icrm) = (/0,0,1/)
         else
           !bloss/qt: only total water variable is needed for no-precip,
           !            fixed droplet number, warm cloud and no cloud simulations.
            flag_wmass (:,icrm) = (/1/)
-           flag_precip(:,icrm) = (/0/)
+           flag_precip(:) = (/0/)
            flag_number(:,icrm) = (/0/)
         end if
      end if
