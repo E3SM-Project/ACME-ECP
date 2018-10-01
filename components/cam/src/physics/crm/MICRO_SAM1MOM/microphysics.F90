@@ -300,12 +300,14 @@ CONTAINS
     ! Update bulk coefficient
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
 
-    do icrm = 1 , ncrms
-      if(docloud) then
-        call cloud(ncrms,icrm,micro_field,qn)
+    if(docloud) then
+      call cloud(ncrms,micro_field,qn)
+      do icrm = 1 , ncrms
         if(doprecip) call precip_proc(ncrms,icrm,qpsrc,qpevp,micro_field,qn)
         call micro_diagnose(ncrms,icrm)
-      end if
+      enddo
+    end if
+    do icrm = 1 , ncrms
       if(dosmoke) then
         call micro_diagnose(ncrms,icrm)
       end if
