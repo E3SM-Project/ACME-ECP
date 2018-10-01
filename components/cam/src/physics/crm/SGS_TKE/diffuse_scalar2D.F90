@@ -19,7 +19,6 @@ contains
     real(crm_rknd) rho(nzm,ncrms)
     real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz)
-
     ! local
     real(crm_rknd) flx(0:nx,1,0:nzm)
     real(crm_rknd) dfdt(nx,ny,nzm)
