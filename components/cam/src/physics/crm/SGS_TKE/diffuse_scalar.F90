@@ -20,8 +20,8 @@ contains
     real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
     real(crm_rknd) fluxb(nx,ny)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny)   ! top flux
-    real(crm_rknd) flux(nz)
     real(crm_rknd) fdiff(nz)
+    real(crm_rknd) flux(nz)
     ! Local
     real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
     integer i,j,k

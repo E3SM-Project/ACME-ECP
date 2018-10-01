@@ -400,16 +400,17 @@ CONTAINS
     use params, only: dotracers
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) dummy(nz)
-    real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms) !bloss
+    real(crm_rknd) dummy(nz,ncrms)
+    real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms), difftmp(nz,ncrms), wsbtmp(nz,ncrms) !bloss
     integer k,icrm
     
     do icrm = 1 , ncrms
-
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,icrm),fluxbt,fluxtt,tdiff(:,icrm),twsb(:,icrm))
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,icrm),fluxbt(:,:,icrm),fluxtt(:,:,icrm),tdiff(:,icrm),twsb(:,icrm))
 
       if(advect_sgs) then
-        call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,icrm),fzero,fzero,dummy,sgswsb(:,:,icrm))
+        wsbtmp(:,icrm) = sgswsb(:,1,icrm)
+        call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,icrm),fzero(:,:,icrm),fzero(:,:,icrm),dummy(:,icrm),wsbtmp(:,icrm))
+        sgswsb(:,1,icrm) = wsbtmp(:,icrm)
       end if
 
       !    diffusion of microphysics prognostics:
@@ -423,7 +424,11 @@ CONTAINS
         .or. doprecip.and.flag_precip(k).eq.1 ) then
           fluxbtmp(1:nx,1:ny,icrm) = fluxbmk(1:nx,1:ny,k,icrm)
           fluxttmp(1:nx,1:ny,icrm) = fluxtmk(1:nx,1:ny,k,icrm)
-          call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm),mkdiff(:,k,icrm),mkwsb(:,k,icrm))
+          difftmp(:,icrm) = mkdiff(:,k,icrm)
+          wsbtmp (:,icrm) = mkwsb (:,k,icrm)
+          call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm),difftmp(:,icrm),wsbtmp(:,icrm))
+          mkdiff(:,k,icrm) = difftmp(:,icrm)
+          mkwsb (:,k,icrm) = wsbtmp (:,icrm)
         end if
       end do
 
@@ -431,10 +436,8 @@ CONTAINS
 
 #if defined(SP_ESMT)
       ! diffusion of scalar momentum tracers
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
-                          u_esmt(:,:,:,icrm),fluxb_u_esmt(:,:,icrm),fluxt_u_esmt(:,:,icrm),u_esmt_diff(:,icrm),u_esmt_sgs(:,icrm))
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
-                          v_esmt(:,:,:,icrm),fluxb_v_esmt(:,:,icrm),fluxt_v_esmt(:,:,icrm),v_esmt_diff(:,icrm),v_esmt_sgs(:,icrm))
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,u_esmt(:,:,:,icrm),fluxb_u_esmt(:,:,icrm),fluxt_u_esmt(:,:,icrm),u_esmt_diff(:,icrm),u_esmt_sgs(:,icrm))
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,v_esmt(:,:,:,icrm),fluxb_v_esmt(:,:,icrm),fluxt_v_esmt(:,:,icrm),v_esmt_diff(:,icrm),v_esmt_sgs(:,icrm))
 #endif
     enddo
   end subroutine sgs_scalars
