@@ -21,29 +21,31 @@ contains
     integer i,j,k,icrm
 
     if(docolumn) then
-      flux(:,:) = 0.
+      do icrm = 1 , ncrms
+        flux(:,icrm) = 0.
+      enddo
       return
     end if
 
     do icrm = 1 , ncrms
-
-    f0(:,:,:,icrm) = f(:,:,:,icrm)
+      f0(:,:,:,icrm) = f(:,:,:,icrm)
+    enddo
 
     if(RUN3D) then
-      call advect_scalar3D(ncrms, icrm, f(:,:,:,icrm), u, v, w, rho, rhow, flux(:,icrm))
+      call advect_scalar3D(ncrms, f, u, v, w, rho, rhow, flux)
     else
-      call advect_scalar2D(ncrms, icrm, f(:,:,:,icrm), u, w, rho, rhow, flux(:,icrm))
+      call advect_scalar2D(ncrms, f, u, w, rho, rhow, flux)
     endif
 
-    do k=1,nzm
-      fadv(k,icrm)=0.
-      do j=1,ny
-        do i=1,nx
-          fadv(k,icrm)=fadv(k,icrm)+f(i,j,k,icrm)-f0(i,j,k,icrm)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        fadv(k,icrm)=0.
+        do j=1,ny
+          do i=1,nx
+            fadv(k,icrm)=fadv(k,icrm)+f(i,j,k,icrm)-f0(i,j,k,icrm)
+          end do
         end do
       end do
-    end do
-
     enddo
 
   end subroutine advect_scalar
