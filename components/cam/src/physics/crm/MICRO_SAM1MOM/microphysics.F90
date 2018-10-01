@@ -302,8 +302,8 @@ CONTAINS
 
     if(docloud) then
       call cloud(ncrms,micro_field,qn)
+      if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,micro_field,qn)
       do icrm = 1 , ncrms
-        if(doprecip) call precip_proc(ncrms,icrm,qpsrc,qpevp,micro_field,qn)
         call micro_diagnose(ncrms,icrm)
       enddo
     end if
