@@ -469,7 +469,7 @@ end subroutine micro_setparm
 !
 ! this one is guaranteed to be called by SAM at the
 !   beginning of each run, initial or restart:
-subroutine micro_init(ncrms,icrm)
+subroutine micro_init(ncrms)
 
   use vars
 #if (defined MODAL_AERO)
@@ -477,13 +477,15 @@ subroutine micro_init(ncrms,icrm)
 #endif
 
   implicit none
-  integer, intent(in) :: ncrms,icrm
+  integer, intent(in) :: ncrms
 
   real(crm_rknd), dimension(nzm) :: qc0, qi0
 
 ! Commented out by dschanen UWM 23 Nov 2009 to avoid a linking error
 ! real, external :: satadj_water
-  integer :: k
+  integer :: k,icrm
+
+  do icrm = 1 , ncrms
 
   ! initialize flag arrays
   if(dopredictNc) then
@@ -579,6 +581,8 @@ subroutine micro_init(ncrms,icrm)
 
 
   end if
+
+  enddo
 
 end subroutine micro_init
 

@@ -499,9 +499,7 @@ contains
     integer :: ii, jj, kk
     integer :: icl, icls, ipr
 
-    real(crm_rknd),dimension(nx, ny, nzm) :: &
-    qcloud, qrain, qice, qsnow, qgraup, &
-    precall, alt, xkhv
+    real(crm_rknd), dimension(nx, ny, nzm) :: qcloud, qrain, qice, qsnow, qgraup, precall, alt, xkhv
     real(crm_rknd), dimension(nx, ny, nzstag) :: ww, wwsq
 
     real(crm_rknd) :: EVS
