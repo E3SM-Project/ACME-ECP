@@ -136,43 +136,46 @@ contains
 
     !  Vertical diffusion:
     do icrm = 1 , ncrms
-    flux(1,icrm) = 0.
-    tmp=1./adzw(nz,icrm)
-    do j=1,ny
-      do i=1,nx
-        rdz=1./dz(icrm)
-        flx_z(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
-        flx_z(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
-        flux(1,icrm) = flux(1,icrm) + flx_z(i,j,0,icrm)
+      do k = 1 , nzm
+        flux(k,icrm) = 0.
       enddo
     enddo
 
-    do k=1,nzm-1
-      kc=k+1
-      flux(kc,icrm)=0.
-      rhoi = rhow(kc,icrm)/adzw(kc,icrm)
-      rdz2=1./(dz(icrm)*dz(icrm))
-      rdz5=0.5*rdz2 * grdf_z(k,icrm)
-      do j=1,ny
-        do i=1,nx
-          tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
-          flx_z(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
-          flux(kc,icrm) = flux(kc,icrm) + flx_z(i,j,k,icrm)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            if (k <= nzm-1) then
+              kc=k+1
+              rhoi = rhow(kc,icrm)/adzw(kc,icrm)
+              rdz2=1./(dz(icrm)*dz(icrm))
+              rdz5=0.5*rdz2 * grdf_z(k,icrm)
+              tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
+              flx_z(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
+              flux(kc,icrm) = flux(kc,icrm) + flx_z(i,j,k,icrm)
+            elseif (k == nzm) then
+              tmp=1./adzw(nz,icrm)
+              rdz=1./dz(icrm)
+              flx_z(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
+              flx_z(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
+              flux(1,icrm) = flux(1,icrm) + flx_z(i,j,0,icrm)
+            endif
+          enddo
         enddo
       enddo
     enddo
 
-    do k=1,nzm
-      kb=k-1
-      rhoi = 1./(adz(k,icrm)*rho(k,icrm))
-      do j=1,ny
-        do i=1,nx
-          dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx_z(i,j,k,icrm)-flx_z(i,j,kb,icrm))*rhoi)
-          field(i,j,k,icrm)=field(i,j,k,icrm)+dfdt(i,j,k,icrm)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            kb=k-1
+            rhoi = 1./(adz(k,icrm)*rho(k,icrm))
+            dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx_z(i,j,k,icrm)-flx_z(i,j,kb,icrm))*rhoi)
+            field(i,j,k,icrm)=field(i,j,k,icrm)+dfdt(i,j,k,icrm)
+          enddo
         enddo
       enddo
-    enddo
-
     enddo
 
   end subroutine diffuse_scalar3D
