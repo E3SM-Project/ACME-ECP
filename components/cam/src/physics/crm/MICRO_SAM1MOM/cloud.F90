@@ -3,7 +3,7 @@ module cloud_mod
 
 contains
 
-  subroutine cloud(ncrms,icrm,micro_field,qn)
+  subroutine cloud(ncrms,micro_field,qn)
 
     !  Condensation of cloud water/cloud ice.
 
@@ -13,11 +13,11 @@ contains
     use sat_mod
 
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     real(crm_rknd), target :: micro_field(dimx1_s:, dimy1_s:, :, :,:)
     real(crm_rknd) qn(nx,ny,nzm,ncrms)  ! cloud condensate (liquid + ice)
 
-    integer i,j,k, kb, kc
+    integer i,j,k, kb, kc,icrm
     real(crm_rknd) dtabs, tabs1, an, bn, ap, bp, om, ag, omp
     real(crm_rknd) fac1,fac2
     real(crm_rknd) fff,dfff,qsatt,dqsat
@@ -37,109 +37,107 @@ contains
     fac2 = fac_fus*ap
     ag = 1./(tgrmax-tgrmin)
 
-    !call t_startf ('cloud')
+    do icrm = 1 , ncrms
+      do k = 1, nzm
+        do j = 1, ny
+          do i = 1, nx
 
-    do k = 1, nzm
-      do j = 1, ny
-        do i = 1, nx
-
-          q(i,j,k,icrm)=max(real(0.,crm_rknd),q(i,j,k,icrm))
-
-
-          ! Initail guess for temperature assuming no cloud water/ice:
+            q(i,j,k,icrm)=max(real(0.,crm_rknd),q(i,j,k,icrm))
 
 
-          tabs(i,j,k,icrm) = t(i,j,k,icrm)-gamaz(k,icrm)
-          tabs1=(tabs(i,j,k,icrm)+fac1*qp(i,j,k,icrm))/(1.+fac2*qp(i,j,k,icrm))
-
-          ! Warm cloud:
-
-          if(tabs1.ge.tbgmax) then
-
-            tabs1=tabs(i,j,k,icrm)+fac_cond*qp(i,j,k,icrm)
-            qsatt = qsatw_crm(tabs1,pres(k,icrm))
-
-            ! Ice cloud:
-
-          elseif(tabs1.le.tbgmin) then
-
-            tabs1=tabs(i,j,k,icrm)+fac_sub*qp(i,j,k,icrm)
-            qsatt = qsati_crm(tabs1,pres(k,icrm))
-
-            ! Mixed-phase cloud:
-
-          else
-
-            om = an*tabs1-bn
-            qsatt = om*qsatw_crm(tabs1,pres(k,icrm))+(1.-om)*qsati_crm(tabs1,pres(k,icrm))
-
-          endif
+            ! Initail guess for temperature assuming no cloud water/ice:
 
 
-          !  Test if condensation is possible:
+            tabs(i,j,k,icrm) = t(i,j,k,icrm)-gamaz(k,icrm)
+            tabs1=(tabs(i,j,k,icrm)+fac1*qp(i,j,k,icrm))/(1.+fac2*qp(i,j,k,icrm))
+
+            ! Warm cloud:
+
+            if(tabs1.ge.tbgmax) then
+
+              tabs1=tabs(i,j,k,icrm)+fac_cond*qp(i,j,k,icrm)
+              qsatt = qsatw_crm(tabs1,pres(k,icrm))
+
+              ! Ice cloud:
+
+            elseif(tabs1.le.tbgmin) then
+
+              tabs1=tabs(i,j,k,icrm)+fac_sub*qp(i,j,k,icrm)
+              qsatt = qsati_crm(tabs1,pres(k,icrm))
+
+              ! Mixed-phase cloud:
+
+            else
+
+              om = an*tabs1-bn
+              qsatt = om*qsatw_crm(tabs1,pres(k,icrm))+(1.-om)*qsati_crm(tabs1,pres(k,icrm))
+
+            endif
 
 
-          if(q(i,j,k,icrm).gt.qsatt) then
+            !  Test if condensation is possible:
 
-            niter=0
-            dtabs = 100.
-            do while(abs(dtabs).gt.0.01.and.niter.lt.10)
-              if(tabs1.ge.tbgmax) then
-                om=1.
-                lstarn=fac_cond
-                dlstarn=0.
-                qsatt=qsatw_crm(tabs1,pres(k,icrm))
-                dqsat=dtqsatw_crm(tabs1,pres(k,icrm))
-              else if(tabs1.le.tbgmin) then
-                om=0.
-                lstarn=fac_sub
-                dlstarn=0.
-                qsatt=qsati_crm(tabs1,pres(k,icrm))
-                dqsat=dtqsati_crm(tabs1,pres(k,icrm))
-              else
-                om=an*tabs1-bn
-                lstarn=fac_cond+(1.-om)*fac_fus
-                dlstarn=an*fac_fus
-                qsatt=om*qsatw_crm(tabs1,pres(k,icrm))+(1.-om)*qsati_crm(tabs1,pres(k,icrm))
-                dqsat=om*dtqsatw_crm(tabs1,pres(k,icrm))+(1.-om)*dtqsati_crm(tabs1,pres(k,icrm))
-              endif
-              if(tabs1.ge.tprmax) then
-                omp=1.
-                lstarp=fac_cond
-                dlstarp=0.
-              else if(tabs1.le.tprmin) then
-                omp=0.
-                lstarp=fac_sub
-                dlstarp=0.
-              else
-                omp=ap*tabs1-bp
-                lstarp=fac_cond+(1.-omp)*fac_fus
-                dlstarp=ap*fac_fus
-              endif
-              fff = tabs(i,j,k,icrm)-tabs1+lstarn*(q(i,j,k,icrm)-qsatt)+lstarp*qp(i,j,k,icrm)
-              dfff=dlstarn*(q(i,j,k,icrm)-qsatt)+dlstarp*qp(i,j,k,icrm)-lstarn*dqsat-1.
-              dtabs=-fff/dfff
-              niter=niter+1
-              tabs1=tabs1+dtabs
-            end do
 
-            qsatt = qsatt + dqsat * dtabs
-            qn(i,j,k,icrm) = max(real(0.,crm_rknd),q(i,j,k,icrm)-qsatt)
+            if(q(i,j,k,icrm).gt.qsatt) then
 
-          else
+              niter=0
+              dtabs = 100.
+              do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+                if(tabs1.ge.tbgmax) then
+                  om=1.
+                  lstarn=fac_cond
+                  dlstarn=0.
+                  qsatt=qsatw_crm(tabs1,pres(k,icrm))
+                  dqsat=dtqsatw_crm(tabs1,pres(k,icrm))
+                else if(tabs1.le.tbgmin) then
+                  om=0.
+                  lstarn=fac_sub
+                  dlstarn=0.
+                  qsatt=qsati_crm(tabs1,pres(k,icrm))
+                  dqsat=dtqsati_crm(tabs1,pres(k,icrm))
+                else
+                  om=an*tabs1-bn
+                  lstarn=fac_cond+(1.-om)*fac_fus
+                  dlstarn=an*fac_fus
+                  qsatt=om*qsatw_crm(tabs1,pres(k,icrm))+(1.-om)*qsati_crm(tabs1,pres(k,icrm))
+                  dqsat=om*dtqsatw_crm(tabs1,pres(k,icrm))+(1.-om)*dtqsati_crm(tabs1,pres(k,icrm))
+                endif
+                if(tabs1.ge.tprmax) then
+                  omp=1.
+                  lstarp=fac_cond
+                  dlstarp=0.
+                else if(tabs1.le.tprmin) then
+                  omp=0.
+                  lstarp=fac_sub
+                  dlstarp=0.
+                else
+                  omp=ap*tabs1-bp
+                  lstarp=fac_cond+(1.-omp)*fac_fus
+                  dlstarp=ap*fac_fus
+                endif
+                fff = tabs(i,j,k,icrm)-tabs1+lstarn*(q(i,j,k,icrm)-qsatt)+lstarp*qp(i,j,k,icrm)
+                dfff=dlstarn*(q(i,j,k,icrm)-qsatt)+dlstarp*qp(i,j,k,icrm)-lstarn*dqsat-1.
+                dtabs=-fff/dfff
+                niter=niter+1
+                tabs1=tabs1+dtabs
+              end do
 
-            qn(i,j,k,icrm) = 0.
+              qsatt = qsatt + dqsat * dtabs
+              qn(i,j,k,icrm) = max(real(0.,crm_rknd),q(i,j,k,icrm)-qsatt)
 
-          endif
+            else
 
-          tabs(i,j,k,icrm) = tabs1
-          qp(i,j,k,icrm) = max(real(0.,crm_rknd),qp(i,j,k,icrm)) ! just in case
+              qn(i,j,k,icrm) = 0.
 
+            endif
+
+            tabs(i,j,k,icrm) = tabs1
+            qp(i,j,k,icrm) = max(real(0.,crm_rknd),qp(i,j,k,icrm)) ! just in case
+
+          end do
         end do
       end do
     end do
-
-    !call t_stopf ('cloud')
 
   end subroutine cloud
 
