@@ -897,13 +897,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       if(docloud.or.dosmoke) call micro_proc(ncrms)
 #endif /*CLUBB_CRM*/
 
-      do icrm = 1 , ncrms
-        !-----------------------------------------------------------
-        !    Compute diagnostics fields:
-        call diagnose(ncrms,icrm)
+      !-----------------------------------------------------------
+      !    Compute diagnostics fields:
+      call diagnose(ncrms)
 
         !----------------------------------------------------------
         ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
+      do icrm = 1 , ncrms
         nn=na(icrm)
         na(icrm)=nc(icrm)
         nc(icrm)=nb(icrm)
