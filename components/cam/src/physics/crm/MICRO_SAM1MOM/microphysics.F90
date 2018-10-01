@@ -167,7 +167,7 @@ CONTAINS
   !!! Initialize microphysics:
 
 
-  subroutine micro_init(ncrms,icrm)
+  subroutine micro_init(ncrms)
 
 #ifdef CLUBB_CRM
     use params, only: doclubb, doclubbnoninter ! dschanen UWM 21 May 2008
@@ -177,8 +177,8 @@ CONTAINS
     use vars, only: q0
     use params, only: dosmoke
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer k, n
+    integer, intent(in) :: ncrms
+    integer k, n,icrm
 #ifdef CLUBB_CRM
     !  if ( nclubb /= 1 ) then
     !    write(0,*) "The namelist parameter nclubb is not equal to 1,",  &
@@ -189,67 +189,57 @@ CONTAINS
     !  end if
 #endif
 
+
     a_bg = 1./(tbgmax-tbgmin)
     a_pr = 1./(tprmax-tprmin)
     a_gr = 1./(tgrmax-tgrmin)
 
-    ! if(doprecip) call precip_init()
-
     if(nrestart.eq.0) then
-
-#ifndef CRM
-      micro_field(:,:,:,:,icrm) = 0.
-      do k=1,nzm
-        q(:,:,k,icrm) = q0(k,icrm)
-      end do
-      qn(:,:,:,icrm) = 0.
-#endif
-
-      fluxbmk(:,:,:,icrm) = 0.
-      fluxtmk(:,:,:,icrm) = 0.
+      do icrm = 1 , ncrms
+        fluxbmk(:,:,:,icrm) = 0.
+        fluxtmk(:,:,:,icrm) = 0.
+      enddo
 
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
 #else
       if(docloud) then
 #endif
-#ifndef CRM
-        call cloud(ncrms,icrm,micro_field,qn)
-#endif
-        call micro_diagnose(ncrms,icrm)
+        call micro_diagnose(ncrms)
       end if
       if(dosmoke) then
-        call micro_diagnose(ncrms,icrm)
+        call micro_diagnose(ncrms)
       end if
-
     end if
 
-    mkwle  (:,:,icrm) = 0.
-    mkwsb  (:,:,icrm) = 0.
-    mkadv  (:,:,icrm) = 0.
-    mkdiff (:,:,icrm) = 0.
-    mklsadv(:,:,icrm) = 0.
-    mstor  (:,:,icrm) = 0.
+    do icrm = 1 , ncrms
+      mkwle  (:,:,icrm) = 0.
+      mkwsb  (:,:,icrm) = 0.
+      mkadv  (:,:,icrm) = 0.
+      mkdiff (:,:,icrm) = 0.
+      mklsadv(:,:,icrm) = 0.
+      mstor  (:,:,icrm) = 0.
 
-    qpsrc(:,icrm) = 0.
-    qpevp(:,icrm) = 0.
+      qpsrc(:,icrm) = 0.
+      qpevp(:,icrm) = 0.
 
-    mkname(1) = 'QT'
-    mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'
-    mkunits(1) = 'g/kg'
-    mkoutputscale(1) = 1.e3
+      mkname(1) = 'QT'
+      mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'
+      mkunits(1) = 'g/kg'
+      mkoutputscale(1) = 1.e3
 
-    mkname(2) = 'QP'
-    mklongname(2) = 'PRECIPITATING WATER'
-    mkunits(2) = 'g/kg'
-    mkoutputscale(2) = 1.e3
+      mkname(2) = 'QP'
+      mklongname(2) = 'PRECIPITATING WATER'
+      mkunits(2) = 'g/kg'
+      mkoutputscale(2) = 1.e3
 
-    ! set mstor to be the inital microphysical mixing ratios
-    do n=1, nmicro_fields
-      do k=1, nzm
-        mstor(k, n,icrm) = SUM(micro_field(1:nx,1:ny,k,n,icrm))
+      ! set mstor to be the inital microphysical mixing ratios
+      do n=1, nmicro_fields
+        do k=1, nzm
+          mstor(k, n,icrm) = SUM(micro_field(1:nx,1:ny,k,n,icrm))
+        end do
       end do
-    end do
+    enddo
 
   end subroutine micro_init
 
@@ -303,53 +293,48 @@ CONTAINS
     if(docloud) then
       call cloud(ncrms,micro_field,qn)
       if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,micro_field,qn)
-      do icrm = 1 , ncrms
-        call micro_diagnose(ncrms,icrm)
-      enddo
+      call micro_diagnose(ncrms)
     end if
-    do icrm = 1 , ncrms
-      if(dosmoke) then
-        call micro_diagnose(ncrms,icrm)
-      end if
+    if(dosmoke) then
+      call micro_diagnose(ncrms)
+    end if
 #ifdef CLUBB_CRM
-      if ( doclubb ) then ! -dschanen UWM 21 May 2008
+    if ( doclubb ) then ! -dschanen UWM 21 May 2008
+      do icrm = 1 , ncrms
         CF3D(:,:, 1:nzm,icrm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
         ! so it is set here first  +++mhwang
         if(doprecip) call precip_proc_clubb(ncrms,icrm)
-        call micro_diagnose(ncrms,icrm)
-      end if
+      enddo
+      call micro_diagnose(ncrms)
+    end if
 #endif /*CLUBB_CRM*/
-    enddo
   end subroutine micro_proc
 
   !----------------------------------------------------------------------
   !!! Diagnose arrays nessesary for dynamical core and statistics:
   !
-  subroutine micro_diagnose(ncrms,icrm)
-
+  subroutine micro_diagnose(ncrms)
     use vars
     implicit none
-    integer, intent(in) :: ncrms,icrm
-
+    integer, intent(in) :: ncrms
     real(crm_rknd) omn, omp
-    integer i,j,k
+    integer i,j,k,icrm
 
-    do k=1,nzm
-      do j=1,ny
-        do i=1,nx
-          qv(i,j,k,icrm) = q(i,j,k,icrm) - qn(i,j,k,icrm)
-          omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
-          qcl(i,j,k,icrm) = qn(i,j,k,icrm)*omn
-          qci(i,j,k,icrm) = qn(i,j,k,icrm)*(1.-omn)
-          omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
-          qpl(i,j,k,icrm) = qp(i,j,k,icrm)*omp
-          qpi(i,j,k,icrm) = qp(i,j,k,icrm)*(1.-omp)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            qv(i,j,k,icrm) = q(i,j,k,icrm) - qn(i,j,k,icrm)
+            omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
+            qcl(i,j,k,icrm) = qn(i,j,k,icrm)*omn
+            qci(i,j,k,icrm) = qn(i,j,k,icrm)*(1.-omn)
+            omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
+            qpl(i,j,k,icrm) = qp(i,j,k,icrm)*omp
+            qpi(i,j,k,icrm) = qp(i,j,k,icrm)*(1.-omp)
+          end do
         end do
       end do
     end do
-
-
-
   end subroutine micro_diagnose
 
 #ifdef CLUBB_CRM
