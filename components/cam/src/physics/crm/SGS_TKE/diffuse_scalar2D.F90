@@ -23,90 +23,93 @@ contains
     real(crm_rknd) flx(0:nx,1,0:nzm,ncrms)
     real(crm_rknd) dfdt(nx,ny,nzm,ncrms)
     real(crm_rknd) rdx2,rdz2,rdz,rdx5,rdz5,tmp
-    real(crm_rknd) dxz,dzx,tkx,tkz,rhoi
+    real(crm_rknd) tkx,tkz,rhoi
     integer i,j,k,ib,ic,kc,kb,icrm
-
-    do icrm = 1 , ncrms
 
     if(.not.dosgs.and..not.docolumn) return
 
     rdx2=1./(dx*dx)
-    rdz2=1./(dz(icrm)*dz(icrm))
-    rdz=1./dz(icrm)
-    dxz=dx/dz(icrm)
-    dzx=dz(icrm)/dx
-
     j=1
 
-    dfdt(:,:,:,icrm)=0.
+    do icrm = 1 , ncrms
+      dfdt(:,:,:,icrm)=0.
+    enddo
 
     if(dowallx) then
-
       if(mod(rank,nsubdomains_x).eq.0) then
-        do k=1,nzm
-          field(0,j,k,icrm) = field(1,j,k,icrm)
-        end do
-      end if
+        do icrm = 1 , ncrms
+          do k=1,nzm
+            field(0,j,k,icrm) = field(1,j,k,icrm)
+          enddo
+        enddo
+      endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        do k=1,nzm
-          field(nx+1,j,k,icrm) = field(nx,j,k,icrm)
-        end do
-      end if
-
-    end if
-
+        do icrm = 1 , ncrms
+          do k=1,nzm
+            field(nx+1,j,k,icrm) = field(nx,j,k,icrm)
+          enddo
+        enddo
+      endif
+    endif
 
     if(.not.docolumn) then
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          do i=0,nx
+            rdx5=0.5*rdx2  *grdf_x(k,icrm)
+            ic=i+1
+            tkx=rdx5*(tkh(i,j,k,icrm)+tkh(ic,j,k,icrm))
+            flx(i,j,k,icrm)=-tkx*(field(ic,j,k,icrm)-field(i,j,k,icrm))
+          enddo
+        enddo
+      enddo
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          do i=1,nx
+            ib=i-1
+            dfdt(i,j,k,icrm)=dfdt(i,j,k,icrm)-(flx(i,j,k,icrm)-flx(ib,j,k,icrm))
+          enddo
+        enddo
+      enddo
+    endif
 
+    do icrm = 1 , ncrms
+      do k = 1 , nzm
+        flux(k,icrm) = 0.
+      enddo
+    enddo
 
+    do icrm = 1 , ncrms
       do k=1,nzm
-
-        rdx5=0.5*rdx2  *grdf_x(k,icrm)
-
-        do i=0,nx
-          ic=i+1
-          tkx=rdx5*(tkh(i,j,k,icrm)+tkh(ic,j,k,icrm))
-          flx(i,j,k,icrm)=-tkx*(field(ic,j,k,icrm)-field(i,j,k,icrm))
-        end do
         do i=1,nx
-          ib=i-1
-          dfdt(i,j,k,icrm)=dfdt(i,j,k,icrm)-(flx(i,j,k,icrm)-flx(ib,j,k,icrm))
-        end do
+          if (k <= nzm-1) then
+            kc=k+1
+            rhoi = rhow(kc,icrm)/adzw(kc,icrm)
+            rdz2=1./(dz(icrm)*dz(icrm))
+            rdz5=0.5*rdz2 * grdf_z(k,icrm)
+            tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
+            flx(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
+            flux(kc,icrm) = flux(kc,icrm) + flx(i,j,k,icrm)
+          elseif (k == nzm) then
+            tmp=1./adzw(nz,icrm)
+            rdz=1./dz(icrm)
+            flx(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
+            flx(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
+            flux(1,icrm) = flux(1,icrm) + flx(i,j,0,icrm)
+          endif
+        enddo
+      enddo
+    enddo
 
-      end do
-
-    end if
-
-    flux(1,icrm) = 0.
-    tmp=1./adzw(nz,icrm)
-    do i=1,nx
-      flx(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
-      flx(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
-      flux(1,icrm) = flux(1,icrm) + flx(i,j,0,icrm)
-    end do
-
-
-    do k=1,nzm-1
-      kc=k+1
-      flux(kc,icrm)=0.
-      rhoi = rhow(kc,icrm)/adzw(kc,icrm)
-      rdz5=0.5*rdz2 * grdf_z(k,icrm)
-      do i=1,nx
-        tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
-        flx(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
-        flux(kc,icrm) = flux(kc,icrm) + flx(i,j,k,icrm)
-      end do
-    end do
-
-    do k=1,nzm
-      kb=k-1
-      rhoi = 1./(adz(k,icrm)*rho(k,icrm))
-      do i=1,nx
-        dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx(i,j,k,icrm)-flx(i,j,kb,icrm))*rhoi)
-        field(i,j,k,icrm)=field(i,j,k,icrm) + dfdt(i,j,k,icrm)
-      end do
-    end do
-
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do i=1,nx
+          kb=k-1
+          rhoi = 1./(adz(k,icrm)*rho(k,icrm))
+          dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx(i,j,k,icrm)-flx(i,j,kb,icrm))*rhoi)
+          field(i,j,k,icrm)=field(i,j,k,icrm) + dfdt(i,j,k,icrm)
+        enddo
+      enddo
     enddo
 
   end subroutine diffuse_scalar2D
