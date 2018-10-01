@@ -26,7 +26,7 @@ contains
     logical :: nonos
     real(crm_rknd) :: y,pp,pn
     real(crm_rknd) :: lat_heat, wmax
-    real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nzm), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), rhofac(nzm,ncrms), prec_cfl(nx,ny,ncrms)
+    real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nzm), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), rhofac(nzm,ncrms), prec_cfl
     integer nprec, iprec
     real(crm_rknd) :: flagstat
     real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
@@ -51,11 +51,11 @@ contains
     enddo
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
+    prec_cfl = 0.
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
           ! Compute precipitation velocity and flux column-by-column
-          prec_cfl(i,j,icrm) = 0.
           do k=1,nzm
             select case (hydro_type)
             case(0)
@@ -77,7 +77,7 @@ contains
               endif
             end select
             wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel(ncrms,icrm,i,j,k,ind)
-            prec_cfl(i,j,icrm) = max(prec_cfl(i,j,icrm),wp(i,j,k,icrm)*iwmax(k,icrm)) ! Keep column maximum CFL
+            prec_cfl = max(prec_cfl,wp(i,j,k,icrm)*iwmax(k,icrm)) ! Keep column maximum CFL
             wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)
           enddo  ! k
         enddo
@@ -93,8 +93,8 @@ contains
 
           ! If maximum CFL due to precipitation velocity is greater than 0.9,
           ! take more than one advection step to maintain stability.
-          if (prec_cfl(i,j,icrm).gt.0.9) then
-            nprec = CEILING(prec_cfl(i,j,icrm)/0.9)
+          if (prec_cfl.gt.0.9) then
+            nprec = CEILING(prec_cfl/0.9)
             do k = 1,nzm
               ! wp already includes factor of dt, so reduce it by a
               ! factor equal to the number of precipitation steps.
