@@ -19,7 +19,7 @@ contains
     ! Terminal velocity fnction
     real(crm_rknd), external :: term_vel  ! terminal velocity function
     ! Local:
-    real(crm_rknd) :: mx(nzm),mn(nzm), lfac(nx,ny,nz,ncrms)
+    real(crm_rknd) :: mx(nx,ny,nzm,ncrms),mn(nx,ny,nzm,ncrms), lfac(nx,ny,nz,ncrms)
     real(crm_rknd) :: www(nx,ny,nz,ncrms),fz(nx,ny,nz,ncrms)
     real(crm_rknd) :: eps
     integer :: i,j,k,kc,kb,icrm
@@ -110,9 +110,9 @@ contains
     !  loop over iterations
     do iprec = 1,nprec
       do icrm = 1 , ncrms
-        do j=1,ny
-          do i=1,nx
-            do k = 1,nzm
+        do k = 1,nzm
+          do j=1,ny
+            do i=1,nx
               tmp_qp(i,j,k,icrm) = qp(i,j,k,icrm) ! Temporary array for qp in this column
             enddo
           enddo
@@ -120,25 +120,37 @@ contains
       enddo
 
       do icrm = 1 , ncrms
-        do j=1,ny
-          do i=1,nx
-            do k=1,nzm
+        do k=1,nzm
+          do j=1,ny
+            do i=1,nx
               if(nonos) then
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(k)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
-                mn(k)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
+                mx(i,j,k,icrm)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
+                mn(i,j,k,icrm)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
               endif  ! nonos
               ! Define upwind precipitation flux
               fz(i,j,k,icrm)=tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)
             enddo
+          enddo
+        enddo
+      enddo
 
-            do k=1,nzm
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          do j=1,ny
+            do i=1,nx
               kc=k+1
               tmp_qp(i,j,k,icrm)=tmp_qp(i,j,k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm) !Update temporary qp
             enddo
+          enddo
+        enddo
+      enddo
 
-            do k=1,nzm
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          do j=1,ny
+            do i=1,nx
               ! Also, compute anti-diffusive correction to previous
               ! (upwind) approximation to the flux
               kb=max(1,k-1)
@@ -149,29 +161,45 @@ contains
               ! this and results in reduced numerical diffusion.
               www(i,j,k,icrm) = 0.5*(1.+wp(i,j,k,icrm)*irhoadz(k,icrm))*(tmp_qp(i,j,kb,icrm)*wp(i,j,kb,icrm) - tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)) ! works for wp(k)<0
             enddo
+          enddo
+        enddo
+      enddo
 
-            !---------- non-osscilatory option ---------------
-            if(nonos) then
-              do k=1,nzm
+      !---------- non-osscilatory option ---------------
+      if(nonos) then
+        do icrm = 1 , ncrms
+          do k=1,nzm
+            do j=1,ny
+              do i=1,nx
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(k)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mx(k))
-                mn(k)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mn(k))
-              enddo
-              do k=1,nzm
+                mx(i,j,k,icrm)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mx(i,j,k,icrm))
+                mn(i,j,k,icrm)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mn(i,j,k,icrm))
                 kc=min(nzm,k+1)
-                mx(k)=rho(k,icrm)*adz(k,icrm)*(mx(k)-tmp_qp(i,j,k,icrm))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
-                mn(k)=rho(k,icrm)*adz(k,icrm)*(tmp_qp(i,j,k,icrm)-mn(k))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
+                mx(i,j,k,icrm)=rho(k,icrm)*adz(k,icrm)*(mx(i,j,k,icrm)-tmp_qp(i,j,k,icrm))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
+                mn(i,j,k,icrm)=rho(k,icrm)*adz(k,icrm)*(tmp_qp(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
               enddo
-              do k=1,nzm
+            enddo
+          enddo
+        enddo
+        do icrm = 1 , ncrms
+          do k=1,nzm
+            do j=1,ny
+              do i=1,nx
                 kb=max(1,k-1)
                 ! Add limited flux correction to fz(k).
-                fz(i,j,k,icrm) = fz(i,j,k,icrm) + pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(k), mn(kb)) - pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(kb),mn(k)) ! Anti-diffusive flux
+                fz(i,j,k,icrm) = fz(i,j,k,icrm) + pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) - pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm)) ! Anti-diffusive flux
               enddo
-            endif ! nonos
+            enddo
+          enddo
+        enddo
+      endif ! nonos
 
-            ! Update precipitation mass fraction and liquid-ice static
-            ! energy using precipitation fluxes computed in this column.
+      ! Update precipitation mass fraction and liquid-ice static
+      ! energy using precipitation fluxes computed in this column.
+      do icrm = 1 , ncrms
+        do j=1,ny
+          do i=1,nx
             do k=1,nzm
               kc=k+1
               ! Update precipitation mass fraction.
