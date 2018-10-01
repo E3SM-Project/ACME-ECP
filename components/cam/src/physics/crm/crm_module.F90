@@ -449,9 +449,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     p   (1:nx,1:ny,1:nzm,icrm) = 0.
 
     CF3D(1:nx,1:ny,1:nzm,icrm) = 1.
+  enddo
 
-    call micro_init(ncrms,icrm)
+  call micro_init(ncrms)
 
+  do icrm = 1 , ncrms
     ! initialize sgs fields
     call sgs_init(ncrms,icrm)
 
