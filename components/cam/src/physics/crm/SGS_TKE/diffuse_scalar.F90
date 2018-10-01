@@ -27,24 +27,24 @@ contains
     integer i,j,k,icrm
 
     do icrm = 1 , ncrms
-
-    df(:,:,:,icrm) = f(:,:,:,icrm)
+      df(:,:,:,icrm) = f(:,:,:,icrm)
+    enddo
 
     if(RUN3D) then
-      call diffuse_scalar3D (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,f(:,:,:,icrm),fluxb(:,:,icrm),fluxt(:,:,icrm),tkh,rho,rhow,flux(:,icrm))
+      call diffuse_scalar3D (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
     else
-      call diffuse_scalar2D (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,       f(:,:,:,icrm),fluxb(:,:,icrm),fluxt(:,:,icrm),tkh,rho,rhow,flux(:,icrm))
+      call diffuse_scalar2D (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,       f,fluxb,fluxt,tkh,rho,rhow,flux)
     endif
 
-    do k=1,nzm
-      fdiff(k,icrm)=0.
-      do j=1,ny
-        do i=1,nx
-          fdiff(k,icrm)=fdiff(k,icrm)+f(i,j,k,icrm)-df(i,j,k,icrm)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        fdiff(k,icrm)=0.
+        do j=1,ny
+          do i=1,nx
+            fdiff(k,icrm)=fdiff(k,icrm)+f(i,j,k,icrm)-df(i,j,k,icrm)
+          end do
         end do
       end do
-    end do
-
     enddo
 
   end subroutine diffuse_scalar
