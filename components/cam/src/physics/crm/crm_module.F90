@@ -646,11 +646,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     qpfall(:,icrm)   = 0.
     precflux(:,icrm) = 0.
 
+  enddo
 !--------------------------------------------------
 #ifdef sam1mom
-    if(doprecip) call precip_init(ncrms,icrm)
+  if(doprecip) call precip_init(ncrms)
 #endif
 
+  do icrm = 1 , ncrms
     if ( igstep <= 1 ) then
         iseed = get_gcol_p(lchnk,icol(icrm)) * perturb_seed_scale
         call setperturb(ncrms,icrm,iseed)
