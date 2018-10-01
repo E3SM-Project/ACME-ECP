@@ -255,27 +255,27 @@ CONTAINS
 
   !----------------------------------------------------------------------
   !!! fill-in surface and top boundary fluxes:
-  !
-  subroutine micro_flux(ncrms,icrm)
-
+  subroutine micro_flux(ncrms)
     use vars, only: fluxbq, fluxtq
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
+    integer :: icrm
 
+    do icrm = 1 , ncrms
 #ifdef CLUBB_CRM
-    ! Added by dschanen UWM
-    use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
-    if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
-      ! Add this in later
-      fluxbmk(:,:,index_water_vapor,icrm) = 0.0
-    else
-      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
-    end if
+      ! Added by dschanen UWM
+      use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
+      if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
+        ! Add this in later
+        fluxbmk(:,:,index_water_vapor,icrm) = 0.0
+      else
+        fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
+      end if
 #else
-    fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
-#endif /*CLUBB_CRM*/
-    fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm)
-
+      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
+#endif
+      fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm)
+    enddo
   end subroutine micro_flux
 
   !----------------------------------------------------------------------

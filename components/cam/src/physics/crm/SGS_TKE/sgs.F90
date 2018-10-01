@@ -417,8 +417,8 @@ CONTAINS
     end if
 
     !    diffusion of microphysics prognostics:
+    call micro_flux(ncrms)
     do icrm = 1, ncrms
-      call micro_flux(ncrms,icrm)
       total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
     enddo
 
