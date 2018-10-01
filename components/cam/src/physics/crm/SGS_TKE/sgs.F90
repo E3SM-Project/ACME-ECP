@@ -401,45 +401,56 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) dummy(nz,ncrms)
-    real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms), difftmp(nz,ncrms), wsbtmp(nz,ncrms) !bloss
+    real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms), difftmp(nz,ncrms), wsbtmp(nz,ncrms), micro_field_tmp(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,ncrms)
     integer k,icrm
     
-    do icrm = 1 , ncrms
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,icrm),fluxbt(:,:,icrm),fluxtt(:,:,icrm),tdiff(:,icrm),twsb(:,icrm))
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb)
 
-      if(advect_sgs) then
+    if(advect_sgs) then
+      do icrm = 1, ncrms
         wsbtmp(:,icrm) = sgswsb(:,1,icrm)
-        call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,icrm),fzero(:,:,icrm),fzero(:,:,icrm),dummy(:,icrm),wsbtmp(:,icrm))
+      enddo
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,wsbtmp)
+      do icrm = 1, ncrms
         sgswsb(:,1,icrm) = wsbtmp(:,icrm)
-      end if
+      enddo
+    end if
 
-      !    diffusion of microphysics prognostics:
+    !    diffusion of microphysics prognostics:
+    do icrm = 1, ncrms
       call micro_flux(ncrms,icrm)
-
       total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
+    enddo
 
-      do k = 1,nmicro_fields
-        if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
-        .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
-        .or. doprecip.and.flag_precip(k).eq.1 ) then
+    do k = 1,nmicro_fields
+      if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
+      .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+      .or. doprecip.and.flag_precip(k).eq.1 ) then
+        do icrm = 1 , ncrms
+          micro_field_tmp(:,:,:,icrm) = micro_field(:,:,:,k,icrm)
           fluxbtmp(1:nx,1:ny,icrm) = fluxbmk(1:nx,1:ny,k,icrm)
           fluxttmp(1:nx,1:ny,icrm) = fluxtmk(1:nx,1:ny,k,icrm)
           difftmp(:,icrm) = mkdiff(:,k,icrm)
           wsbtmp (:,icrm) = mkwsb (:,k,icrm)
-          call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm),difftmp(:,icrm),wsbtmp(:,icrm))
+        enddo
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field_tmp,fluxbtmp,fluxttmp,difftmp,wsbtmp)
+        do icrm = 1 , ncrms
+          micro_field(:,:,:,k,icrm) = micro_field_tmp(:,:,:,icrm)
           mkdiff(:,k,icrm) = difftmp(:,icrm)
           mkwsb (:,k,icrm) = wsbtmp (:,icrm)
-        end if
-      end do
+        enddo
+      end if
+    end do
 
+    do icrm = 1 , ncrms
       total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
+    enddo
 
 #if defined(SP_ESMT)
-      ! diffusion of scalar momentum tracers
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,u_esmt(:,:,:,icrm),fluxb_u_esmt(:,:,icrm),fluxt_u_esmt(:,:,icrm),u_esmt_diff(:,icrm),u_esmt_sgs(:,icrm))
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,v_esmt(:,:,:,icrm),fluxb_v_esmt(:,:,icrm),fluxt_v_esmt(:,:,icrm),v_esmt_diff(:,icrm),v_esmt_sgs(:,icrm))
+    ! diffusion of scalar momentum tracers
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
 #endif
-    enddo
   end subroutine sgs_scalars
 
 !----------------------------------------------------------------------
