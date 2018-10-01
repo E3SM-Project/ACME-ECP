@@ -18,10 +18,11 @@ contains
     use scalar_momentum_mod
     implicit none
     integer, intent(in) :: ncrms
-    ! real dummy(nz)
-    real(crm_rknd) dummy(nz)
-    integer k,icrm
-    real(crm_rknd) esmt_offset    ! whannah - offset for advecting scalar momentum tracers
+    integer k,icrm, i, j, kk
+    real(crm_rknd) :: micro_field_tmp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms)
+    real(crm_rknd) :: adv_tmp(nz,ncrms)
+    real(crm_rknd) :: wle_tmp(nz,ncrms)
+    real(crm_rknd) :: esmt_offset    ! whannah - offset for advecting scalar momentum tracers
 
     do icrm = 1 , ncrms
 
@@ -37,14 +38,45 @@ contains
 #else
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
-      .or. doprecip.and.flag_precip(k).eq.1 ) &
-      call advect_scalar(ncrms,icrm,micro_field(:,:,:,k,icrm),mkadv(:,k,icrm),mkwle(:,k,icrm))
+      .or. doprecip.and.flag_precip(k).eq.1 ) then
+        do kk = 1 , nzm
+          do j = dimy1_s,dimy2_s
+            do i = dimx1_s,dimx2_s
+              micro_field_tmp(i,j,kk,icrm) = micro_field(i,j,kk,k,icrm)
+            enddo
+          enddo
+        enddo
+        do kk = 1 , nz
+          adv_tmp(kk,icrm) = mkadv(kk,k,icrm)
+          wle_tmp(kk,icrm) = mkwle(kk,k,icrm)
+        enddo
+        call advect_scalar(ncrms,icrm,micro_field_tmp(:,:,:,icrm),adv_tmp(:,icrm),wle_tmp(:,icrm))
+        do kk = 1 , nzm
+          do j = dimy1_s,dimy2_s
+            do i = dimx1_s,dimx2_s
+              micro_field(i,j,kk,k,icrm) = micro_field_tmp(i,j,kk,icrm)
+            enddo
+          enddo
+        enddo
+        do kk = 1 , nz
+          mkadv(kk,k,icrm) = adv_tmp(kk,icrm)
+          mkwle(kk,k,icrm) = wle_tmp(kk,icrm)
+        enddo
+      endif
     end do
 
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(ncrms,icrm,sgs_field(:,:,:,icrm,k),sgsadv(:,k,icrm),sgswle(:,k,icrm))
+        do kk = 1 , nz
+          adv_tmp(kk,icrm) = sgsadv(kk,k,icrm)
+          wle_tmp(kk,icrm) = sgswle(kk,k,icrm)
+        enddo
+        call advect_scalar(ncrms,icrm,sgs_field(:,:,:,icrm,k),adv_tmp(:,icrm),wle_tmp(:,icrm))
+        do kk = 1 , nz
+          sgsadv(kk,k,icrm) = adv_tmp(kk,icrm)
+          sgswle(kk,k,icrm) = wle_tmp(kk,icrm)
+        enddo
       end do
     end if
 
@@ -56,11 +88,12 @@ contains
     end if
 
     ! advection of tracers:
-    if(dotracers) then
-      do k = 1,ntracers
-        call advect_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),tradv(:,k,icrm),trwle(:,k,icrm))
-      end do
-    end if
+    !There aren't any of these
+    !if(dotracers) then
+    !  do k = 1,ntracers
+    !    call advect_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),tradv(:,k,icrm),trwle(:,k,icrm))
+    !  end do
+    !end if
 
 #if defined(SP_ESMT)
     ! whannah - the esmt_offset simply ensures that the scalar momentum
