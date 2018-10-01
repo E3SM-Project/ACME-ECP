@@ -477,17 +477,15 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sedimentation
   !
-  subroutine micro_precip_fall(ncrms,icrm)
-
+  subroutine micro_precip_fall(ncrms)
     use vars
     use params, only : pi
     use precip_fall_mod
     implicit none
-    integer, intent(in) :: ncrms,icrm
-
-    real(crm_rknd) omega(nx,ny,nzm)
+    integer, intent(in) :: ncrms
+    real(crm_rknd) omega(nx,ny,nzm,ncrms)
     integer ind
-    integer i,j,k
+    integer i,j,k,icrm
 
     crain = b_rain / 4.
     csnow = b_snow / 4.
@@ -496,16 +494,17 @@ CONTAINS
     vsnow = a_snow * gams3 / 6. / (pi * rhos * nzeros) ** csnow
     vgrau = a_grau * gamg3 / 6. / (pi * rhog * nzerog) ** cgrau
 
-    do k=1,nzm
-      do j=1,ny
-        do i=1,nx
-          omega(i,j,k) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            omega(i,j,k,icrm) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
+          end do
         end do
       end do
     end do
 
-    call precip_fall(ncrms,icrm, micro_field, term_vel_qp, 2, omega, ind)
-
+    call precip_fall(ncrms, micro_field, term_vel_qp, 2, omega, ind)
 
   end subroutine micro_precip_fall
 

@@ -1412,81 +1412,12 @@ end subroutine micro_adjust
 ! are some microphysics variables like water content and concentration.
 ! Don't change the number of arguments or their meaning!
 
-!!$real function term_vel_qr(qr,nr,tabs,rho)
-!!$! .......
-!!$end function term_vel_qr
-!!$
-!!$real function term_vel_Nr(qr,nr,tabs,rho)
-!!$! .......
-!!$end function term_vel_Nr
-!!$
-!!$real function term_vel_qs(qs,ns,tabs,rho)
-!!$! .......
-!!$end function term_vel_qs
-
-! etc.
-
 !----------------------------------------------------------------------
 !!! compute sedimentation
-!
-!  The perpose of this subroutine is to prepare variables needed to call
-! the precip_all() for each of the falling hydrometeor varibles
-subroutine micro_precip_fall(ncrms,icrm)
-
-! before calling precip_fall() for each of falling prognostic variables,
-! you need to set hydro_type and omega(:,:,:) variables.
-! hydro_type can have four values:
-! 0 - variable is liquid water mixing ratio
-! 1 - hydrometeor is ice mixing ratio
-! 2 - hydrometeor is mixture-of-liquid-and-ice mixing ratio. (As in original SAM microphysics).
-! 3 - variable is not mixing ratio, but, for example, rain drop concentration
-! OMEGA(:,:,:) is used only for hydro_type=2, and is the fraction of liquid phase (0-1).
-! for hour hypothetical case, there is no mixed hydrometeor, so omega is not actually used.
+subroutine micro_precip_fall(ncrms)
   implicit none
-  integer, intent(in) :: ncrms,icrm
-
-integer hydro_type
-real(crm_rknd) omega(nx,ny,nzm)
-
-integer i,j,k
-
-return ! do not need this routine -- sedimentation done in m2005micro.
-
-!!$! Initialize arrays that accumulate surface precipitation flux
-!!$
-!!$ if(mod(nstep-1,nstatis).eq.0.and.icycle.eq.1) then
-!!$   do j=1,ny
-!!$    do i=1,nx
-!!$     precsfc(i,j,icrm)=0.
-!!$    end do
-!!$   end do
-!!$   do k=1,nzm
-!!$    precflux(k,icrm) = 0.
-!!$   end do
-!!$ end if
-!!$
-!!$ do k = 1,nzm ! Initialize arrays which hold precipitation fluxes for stats.
-!!$    qpfall(k,icrm)=0.
-!!$    tlat(k,icrm) = 0.
-!!$ end do
-!!$
-!!$! Compute sedimentation of falling variables:
-!!$
-!!$ hydro_type=0
-!!$ call precip_fall(qr, term_vel_qr, hydro_type, omega)
-!!$ hydro_type=3
-!!$ call precip_fall(Nr, term_vel_Nr, hydro_type, omega)
-!!$ hydro_type=1
-!!$ call precip_fall(qs, term_vel_qs, hydro_type, omega)
-!!$ hydro_type=3
-!!$ call precip_fall(Ns, term_vel_Ns, hydro_type, omega)
-!!$ hydro_type=1
-!!$ call precip_fall(qg, term_vel_qg, hydro_type, omega)
-!!$ hydro_type=3
-!!$ call precip_fall(Ng, term_vel_Ng, hydro_type, omega)
-!!$
-
-
+  integer, intent(in) :: ncrms
+  return ! do not need this routine -- sedimentation done in m2005micro.
 end subroutine micro_precip_fall
 
 !----------------------------------------------------------------------
