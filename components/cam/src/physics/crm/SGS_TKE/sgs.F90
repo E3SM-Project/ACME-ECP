@@ -391,7 +391,7 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute sgs diffusion of scalars:
   !
-  subroutine sgs_scalars(ncrms,icrm)
+  subroutine sgs_scalars(ncrms)
     use diffuse_scalar_mod, only: diffuse_scalar
     use vars
     use microphysics
@@ -399,42 +399,45 @@ CONTAINS
     use scalar_momentum_mod
     use params, only: dotracers
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     real(crm_rknd) dummy(nz)
     real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms) !bloss
-    integer k
+    integer k,icrm
+    
+    do icrm = 1 , ncrms
 
-    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,icrm),fluxbt,fluxtt,tdiff(:,icrm),twsb(:,icrm))
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,icrm),fluxbt,fluxtt,tdiff(:,icrm),twsb(:,icrm))
 
-    if(advect_sgs) then
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,icrm),fzero,fzero,dummy,sgswsb(:,:,icrm))
-    end if
+      if(advect_sgs) then
+        call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,icrm),fzero,fzero,dummy,sgswsb(:,:,icrm))
+      end if
 
-    !    diffusion of microphysics prognostics:
-    call micro_flux(ncrms,icrm)
+      !    diffusion of microphysics prognostics:
+      call micro_flux(ncrms,icrm)
 
-    total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
+      total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
 
-    do k = 1,nmicro_fields
-      if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
-      .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
-      .or. doprecip.and.flag_precip(k).eq.1 ) then
-      fluxbtmp(1:nx,1:ny,icrm) = fluxbmk(1:nx,1:ny,k,icrm)
-      fluxttmp(1:nx,1:ny,icrm) = fluxtmk(1:nx,1:ny,k,icrm)
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm),mkdiff(:,k,icrm),mkwsb(:,k,icrm))
-    end if
-  end do
+      do k = 1,nmicro_fields
+        if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
+        .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
+        .or. doprecip.and.flag_precip(k).eq.1 ) then
+          fluxbtmp(1:nx,1:ny,icrm) = fluxbmk(1:nx,1:ny,k,icrm)
+          fluxttmp(1:nx,1:ny,icrm) = fluxtmk(1:nx,1:ny,k,icrm)
+          call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm),mkdiff(:,k,icrm),mkwsb(:,k,icrm))
+        end if
+      end do
 
-  total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
+      total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
 
 #if defined(SP_ESMT)
-  ! diffusion of scalar momentum tracers
-  call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
-                      u_esmt(:,:,:,icrm),fluxb_u_esmt(:,:,icrm),fluxt_u_esmt(:,:,icrm),u_esmt_diff(:,icrm),u_esmt_sgs(:,icrm))
-  call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
-                      v_esmt(:,:,:,icrm),fluxb_v_esmt(:,:,icrm),fluxt_v_esmt(:,:,icrm),v_esmt_diff(:,icrm),v_esmt_sgs(:,icrm))
+      ! diffusion of scalar momentum tracers
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
+                          u_esmt(:,:,:,icrm),fluxb_u_esmt(:,:,icrm),fluxt_u_esmt(:,:,icrm),u_esmt_diff(:,icrm),u_esmt_sgs(:,icrm))
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
+                          v_esmt(:,:,:,icrm),fluxb_v_esmt(:,:,icrm),fluxt_v_esmt(:,:,icrm),v_esmt_diff(:,icrm),v_esmt_sgs(:,icrm))
 #endif
-end subroutine sgs_scalars
+    enddo
+  end subroutine sgs_scalars
 
 !----------------------------------------------------------------------
 !!! compute sgs processes (beyond advection):
