@@ -94,7 +94,9 @@ contains
     if(doprecip) then
       do icrm = 1 , ncrms
         total_water_prec(icrm) = total_water_prec(icrm) + total_water(ncrms,icrm)
-        call micro_precip_fall(ncrms,icrm)
+      enddo
+      call micro_precip_fall(ncrms)
+      do icrm = 1 , ncrms
         total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
       enddo
     end if
