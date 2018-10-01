@@ -873,11 +873,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !     Update boundaries for scalars to prepare for SGS effects:
       call boundaries(ncrms,3)
 
-      do icrm = 1 , ncrms
-        !---------------------------------------------------------
-        !      SGS effects on scalars :
-        if (dosgs) call sgs_scalars(ncrms,icrm)
+      !---------------------------------------------------------
+      !      SGS effects on scalars :
+      if (dosgs) call sgs_scalars(ncrms)
 
+      do icrm = 1 , ncrms
         !-----------------------------------------------------------
         !       Calculate PGF for scalar momentum tendency
 #if defined( SP_ESMT ) && defined( SP_ESMT_PGF )
