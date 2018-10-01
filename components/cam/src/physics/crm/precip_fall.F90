@@ -211,13 +211,21 @@ contains
               t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat
               tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
               precflux(k,icrm) = precflux(k,icrm) - fz(i,j,k,icrm)*flagstat   ! For statistics
+              if (k == 1) then
+                precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For statistics
+                precssfc(i,j,icrm) = precssfc(i,j,icrm) - fz(i,j,1,icrm)*(1.-omega(i,j,1,icrm))*flagstat ! For statistics
+                prec_xy(i,j,icrm) = prec_xy(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For 2D output
+              endif
             enddo
-            precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For statistics
-            precssfc(i,j,icrm) = precssfc(i,j,icrm) - fz(i,j,1,icrm)*(1.-omega(i,j,1,icrm))*flagstat ! For statistics
-            prec_xy(i,j,icrm) = prec_xy(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For 2D output
+          enddo
+        enddo
+      enddo
 
-            if (iprec.lt.nprec) then
-              ! Re-compute precipitation velocity using new value of qp.
+      if (iprec.lt.nprec) then
+        ! Re-compute precipitation velocity using new value of qp.
+        do icrm = 1 , ncrms
+          do j=1,ny
+            do i=1,nx
               do k=1,nzm
                 wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel(ncrms,icrm,i,j,k,ind)
                 ! Decrease precipitation velocity by factor of nprec
@@ -226,15 +234,16 @@ contains
                 ! substep since it's unlikely that the CFL will
                 ! increase very much between substeps when using
                 ! monotonic advection schemes.
+                if (k == 1) then
+                  fz(i,j,nz,icrm)=0.
+                  www(i,j,nz,icrm)=0.
+                  lfac(i,j,nz,icrm)=0.
+                endif
               enddo
-              fz(i,j,nz,icrm)=0.
-              www(i,j,nz,icrm)=0.
-              lfac(i,j,nz,icrm)=0.
-            endif
-
-          enddo !iprec
+            enddo
+          enddo
         enddo
-      enddo
+      endif
 
     enddo
 
