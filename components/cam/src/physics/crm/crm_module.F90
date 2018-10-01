@@ -877,21 +877,23 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !      SGS effects on scalars :
       if (dosgs) call sgs_scalars(ncrms)
 
-      do icrm = 1 , ncrms
         !-----------------------------------------------------------
         !       Calculate PGF for scalar momentum tendency
 #if defined( SP_ESMT ) && defined( SP_ESMT_PGF )
-            call scalar_momentum_tend()
+      do icrm = 1 , ncrms
+        call scalar_momentum_tend()
+      enddo
 #endif
 
-        !-----------------------------------------------------------
-        !       Cloud condensation/evaporation and precipitation processes:
+      !-----------------------------------------------------------
+      !       Cloud condensation/evaporation and precipitation processes:
 #ifdef CLUBB_CRM
-        if(docloud.or.dosmoke.or.doclubb) call micro_proc(ncrms,icrm)
+      if(docloud.or.dosmoke.or.doclubb) call micro_proc(ncrms)
 #else
-        if(docloud.or.dosmoke) call micro_proc(ncrms,icrm)
+      if(docloud.or.dosmoke) call micro_proc(ncrms)
 #endif /*CLUBB_CRM*/
 
+      do icrm = 1 , ncrms
         !-----------------------------------------------------------
         !    Compute diagnostics fields:
         call diagnose(ncrms,icrm)
