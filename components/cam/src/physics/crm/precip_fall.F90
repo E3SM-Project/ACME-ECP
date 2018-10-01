@@ -26,7 +26,7 @@ contains
     logical :: nonos
     real(crm_rknd) :: y,pp,pn
     real(crm_rknd) :: lat_heat, wmax
-    real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nzm), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), rhofac(nzm,ncrms), prec_cfl
+    real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nx,ny,nzm,ncrms), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), rhofac(nzm,ncrms), prec_cfl
     integer nprec, iprec
     real(crm_rknd) :: flagstat
     real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
@@ -53,10 +53,9 @@ contains
     ! 	Add sedimentation of precipitation field to the vert. vel.
     prec_cfl = 0.
     do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
-          ! Compute precipitation velocity and flux column-by-column
-          do k=1,nzm
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
             select case (hydro_type)
             case(0)
               lfac(i,j,k,icrm) = fac_cond
@@ -94,9 +93,9 @@ contains
     if (prec_cfl.gt.0.9) then
       nprec = CEILING(prec_cfl/0.9)
       do icrm = 1 , ncrms
-        do j=1,ny
-          do i=1,nx
-            do k = 1,nzm
+        do k = 1,nzm
+          do j=1,ny
+            do i=1,nx
               ! wp already includes factor of dt, so reduce it by a
               ! factor equal to the number of precipitation steps.
               wp(i,j,k,icrm) = wp(i,j,k,icrm)/real(nprec,crm_rknd)
@@ -114,26 +113,29 @@ contains
         do j=1,ny
           do i=1,nx
             do k = 1,nzm
-              tmp_qp(k) = qp(i,j,k,icrm) ! Temporary array for qp in this column
+              tmp_qp(i,j,k,icrm) = qp(i,j,k,icrm) ! Temporary array for qp in this column
             enddo
+          enddo
+        enddo
+      enddo
 
-            if(nonos) then
-              do k=1,nzm
+      do icrm = 1 , ncrms
+        do j=1,ny
+          do i=1,nx
+            do k=1,nzm
+              if(nonos) then
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(k)=max(tmp_qp(kb),tmp_qp(kc),tmp_qp(k))
-                mn(k)=min(tmp_qp(kb),tmp_qp(kc),tmp_qp(k))
-              enddo
-            endif  ! nonos
-
-            do k=1,nzm
+                mx(k)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
+                mn(k)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
+              endif  ! nonos
               ! Define upwind precipitation flux
-              fz(i,j,k,icrm)=tmp_qp(k)*wp(i,j,k,icrm)
+              fz(i,j,k,icrm)=tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)
             enddo
 
             do k=1,nzm
               kc=k+1
-              tmp_qp(k)=tmp_qp(k)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm) !Update temporary qp
+              tmp_qp(i,j,k,icrm)=tmp_qp(i,j,k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm) !Update temporary qp
             enddo
 
             do k=1,nzm
@@ -145,7 +147,7 @@ contains
               ! precipitation mass fraction.  Therefore, a reformulated
               ! anti-diffusive flux is used here which accounts for
               ! this and results in reduced numerical diffusion.
-              www(i,j,k,icrm) = 0.5*(1.+wp(i,j,k,icrm)*irhoadz(k,icrm))*(tmp_qp(kb)*wp(i,j,kb,icrm) - tmp_qp(k)*wp(i,j,k,icrm)) ! works for wp(k)<0
+              www(i,j,k,icrm) = 0.5*(1.+wp(i,j,k,icrm)*irhoadz(k,icrm))*(tmp_qp(i,j,kb,icrm)*wp(i,j,kb,icrm) - tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)) ! works for wp(k)<0
             enddo
 
             !---------- non-osscilatory option ---------------
@@ -153,13 +155,13 @@ contains
               do k=1,nzm
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(k)=max(tmp_qp(kb),tmp_qp(kc),tmp_qp(k),mx(k))
-                mn(k)=min(tmp_qp(kb),tmp_qp(kc),tmp_qp(k),mn(k))
+                mx(k)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mx(k))
+                mn(k)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mn(k))
               enddo
               do k=1,nzm
                 kc=min(nzm,k+1)
-                mx(k)=rho(k,icrm)*adz(k,icrm)*(mx(k)-tmp_qp(k))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
-                mn(k)=rho(k,icrm)*adz(k,icrm)*(tmp_qp(k)-mn(k))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
+                mx(k)=rho(k,icrm)*adz(k,icrm)*(mx(k)-tmp_qp(i,j,k,icrm))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
+                mn(k)=rho(k,icrm)*adz(k,icrm)*(tmp_qp(i,j,k,icrm)-mn(k))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
               enddo
               do k=1,nzm
                 kb=max(1,k-1)
