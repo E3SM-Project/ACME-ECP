@@ -921,8 +921,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       ! This is what the original MMF model did (crm_rad%temperature, crm_rad%qv, ...). Do we want to call ecpp_crm_stat
       ! every subcycle time step??? +++mhwang
       call ecpp_crm_stat(ncrms,icrm)
-#endif /*ECPP*/
-
+#endif
       cwp (:,:,icrm) = 0.
       cwph(:,:,icrm) = 0.
       cwpm(:,:,icrm) = 0.
