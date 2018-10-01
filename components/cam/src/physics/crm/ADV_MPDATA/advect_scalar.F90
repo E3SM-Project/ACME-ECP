@@ -5,7 +5,7 @@ module advect_scalar_mod
 
 contains
 
-  subroutine advect_scalar (ncrms,icrm,f,fadv,flux)
+  subroutine advect_scalar (ncrms,f,fadv,flux)
 
     !     positively definite monotonic advection with non-oscillatory option
 
@@ -14,37 +14,37 @@ contains
     use params, only: docolumn, crm_rknd
 
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    real(crm_rknd) flux(nz), fadv(nz)
-    real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    integer i,j,k
+    integer, intent(in) :: ncrms
+    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
+    real(crm_rknd) flux(nz,ncrms), fadv(nz,ncrms)
+    real(crm_rknd) f0(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
+    integer i,j,k,icrm
 
     if(docolumn) then
-      flux = 0.
+      flux(:,:) = 0.
       return
     end if
 
-    !call t_startf ('advect_scalars')
+    do icrm = 1 , ncrms
 
-    df(:,:,:) = f(:,:,:)
+    f0(:,:,:,icrm) = f(:,:,:,icrm)
 
     if(RUN3D) then
-      call advect_scalar3D(ncrms, icrm, f, u, v, w, rho, rhow, flux)
+      call advect_scalar3D(ncrms, icrm, f(:,:,:,icrm), u, v, w, rho, rhow, flux(:,icrm))
     else
-      call advect_scalar2D(ncrms, icrm, f, u, w, rho, rhow, flux)
+      call advect_scalar2D(ncrms, icrm, f(:,:,:,icrm), u, w, rho, rhow, flux(:,icrm))
     endif
 
     do k=1,nzm
-      fadv(k)=0.
+      fadv(k,icrm)=0.
       do j=1,ny
         do i=1,nx
-          fadv(k)=fadv(k)+f(i,j,k)-df(i,j,k)
+          fadv(k,icrm)=fadv(k,icrm)+f(i,j,k,icrm)-f0(i,j,k,icrm)
         end do
       end do
     end do
 
-    !call t_stopf ('advect_scalars')
+    enddo
 
   end subroutine advect_scalar
 
