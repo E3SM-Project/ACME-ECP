@@ -404,19 +404,13 @@ CONTAINS
     real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms) !bloss
     integer k
 
-
-    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,icrm),fluxbt,fluxtt,tdiff(:,icrm),twsb(:,icrm), &
-    t2lediff(:,icrm),t2lediss(:,icrm),twlediff(:,icrm),.true.)
+    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t(:,:,:,icrm),fluxbt,fluxtt,tdiff(:,icrm),twsb(:,icrm))
 
     if(advect_sgs) then
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,icrm),fzero,fzero,dummy,sgswsb(:,:,icrm), &
-      dummy,dummy,dummy,.false.)
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke(:,:,:,icrm),fzero,fzero,dummy,sgswsb(:,:,icrm))
     end if
 
-
-    !
     !    diffusion of microphysics prognostics:
-    !
     call micro_flux(ncrms,icrm)
 
     total_water_evap(icrm) = total_water_evap(icrm) - total_water(ncrms,icrm)
@@ -427,50 +421,19 @@ CONTAINS
       .or. doprecip.and.flag_precip(k).eq.1 ) then
       fluxbtmp(1:nx,1:ny,icrm) = fluxbmk(1:nx,1:ny,k,icrm)
       fluxttmp(1:nx,1:ny,icrm) = fluxtmk(1:nx,1:ny,k,icrm)
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm), &
-      mkdiff(:,k,icrm),mkwsb(:,k,icrm), dummy,dummy,dummy,.false.)
+      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm),mkdiff(:,k,icrm),mkwsb(:,k,icrm))
     end if
   end do
 
   total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
 
-  ! diffusion of tracers:
-
-  if(dotracers) then
-
-    call tracers_flux()
-
-    do k = 1,ntracers
-
-      fluxbtmp(1:nx,1:ny,icrm) = fluxbtr(:,:,k,icrm)
-      fluxttmp(1:nx,1:ny,icrm) = fluxttr(:,:,k,icrm)
-      call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm), &
-      trdiff(:,k,icrm),trwsb(:,k,icrm), &
-      dummy,dummy,dummy,.false.)
-      !!$          call diffuse_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),fluxbtr(:,:,k,icrm),fluxttr(:,:,k,icrm),trdiff(:,k,icrm),trwsb(:,k,icrm), &
-      !!$                           dummy,dummy,dummy,.false.)
-
-    end do
-
-  end if
-
-
 #if defined(SP_ESMT)
-
-    ! diffusion of scalar momentum tracers
-
-    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
-                        u_esmt(:,:,:,icrm),fluxb_u_esmt(:,:,icrm),fluxt_u_esmt(:,:,icrm),u_esmt_diff(:,icrm),u_esmt_sgs(:,icrm),    &
-                        dummy,dummy,dummy,.false.)
-
-    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
-                        v_esmt(:,:,:,icrm),fluxb_v_esmt(:,:,icrm),fluxt_v_esmt(:,:,icrm),v_esmt_diff(:,icrm),v_esmt_sgs(:,icrm),    &
-                        dummy,dummy,dummy,.false.)
-
+  ! diffusion of scalar momentum tracers
+  call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
+                      u_esmt(:,:,:,icrm),fluxb_u_esmt(:,:,icrm),fluxt_u_esmt(:,:,icrm),u_esmt_diff(:,icrm),u_esmt_sgs(:,icrm))
+  call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,   &
+                      v_esmt(:,:,:,icrm),fluxb_v_esmt(:,:,icrm),fluxt_v_esmt(:,:,icrm),v_esmt_diff(:,icrm),v_esmt_sgs(:,icrm))
 #endif
-
-
-
 end subroutine sgs_scalars
 
 !----------------------------------------------------------------------

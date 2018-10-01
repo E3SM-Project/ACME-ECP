@@ -5,7 +5,7 @@ module diffuse_scalar_mod
 
 contains
 
-  subroutine diffuse_scalar (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,f,fluxb,fluxt,fdiff,flux,f2lediff,f2lediss,fwlediff,doit)
+  subroutine diffuse_scalar (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,f,fluxb,fluxt,fdiff,flux)
     use grid
     use vars, only: rho, rhow
     use params
@@ -21,9 +21,7 @@ contains
     real(crm_rknd) fluxb(nx,ny)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny)   ! top flux
     real(crm_rknd) flux(nz)
-    real(crm_rknd) f2lediff(nz),f2lediss(nz),fwlediff(nz)
     real(crm_rknd) fdiff(nz)
-    logical doit
     ! Local
     real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
     integer i,j,k
