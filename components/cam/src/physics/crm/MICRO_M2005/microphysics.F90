@@ -588,28 +588,29 @@ end subroutine micro_init
 ! Obviously, for liquid/ice water variables those fluxes are zero. They are not zero
 ! only for water vapor variable and, possibly, for CCN and IN if you have those.
 
-subroutine micro_flux(ncrms,icrm)
-
-use vars, only: fluxbq, fluxtq
+subroutine micro_flux(ncrms)
+  use vars, only: fluxbq, fluxtq
 #ifdef CLUBB_CRM
-use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
+  use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
 #endif
-implicit none
-integer, intent(in) :: ncrms,icrm
+  implicit none
+  integer, intent(in) :: ncrms
+  integer :: icrm
 
-fluxbmk(:,:,:,icrm) = 0. ! initialize all fluxes at surface to zero
-fluxtmk(:,:,:,icrm) = 0. ! initialize all fluxes at top of domain to zero
+  do icrm = 1 , ncrms
+    fluxbmk(:,:,:,icrm) = 0. ! initialize all fluxes at surface to zero
+    fluxtmk(:,:,:,icrm) = 0. ! initialize all fluxes at top of domain to zero
 #ifdef CLUBB_CRM
-if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
-  fluxbmk(:,:,index_water_vapor,icrm) = 0.0 ! surface qv (latent heat,icrm) flux
-else
-  fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
-end if
+    if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
+      fluxbmk(:,:,index_water_vapor,icrm) = 0.0 ! surface qv (latent heat,icrm) flux
+    else
+      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
+    end if
 #else
-fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
+    fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
 #endif
-fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm) ! top of domain qv flux
-
+    fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm) ! top of domain qv flux
+  enddo
 end subroutine micro_flux
 
 !----------------------------------------------------------------------
