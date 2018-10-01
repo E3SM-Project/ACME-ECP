@@ -281,8 +281,7 @@ CONTAINS
   !----------------------------------------------------------------------
   !!! compute local microphysics processes (bayond advection and SGS diffusion):
   !
-  subroutine micro_proc(ncrms,icrm)
-
+  subroutine micro_proc(ncrms)
     use grid, only: nstep,dt,icycle
     use params, only: dosmoke
     use cloud_mod
@@ -295,28 +294,30 @@ CONTAINS
     use grid, only: nzm
 #endif
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
+    integer :: icrm
 
-    ! Update bulk coefficient
-    if(doprecip.and.icycle.eq.1) call precip_init(ncrms,icrm)
+    do icrm = 1 , ncrms
+      ! Update bulk coefficient
+      if(doprecip.and.icycle.eq.1) call precip_init(ncrms,icrm)
 
-    if(docloud) then
-      call cloud(ncrms,icrm,micro_field,qn)
-      if(doprecip) call precip_proc(ncrms,icrm,qpsrc,qpevp,micro_field,qn)
-      call micro_diagnose(ncrms,icrm)
-    end if
-    if(dosmoke) then
-      call micro_diagnose(ncrms,icrm)
-    end if
+      if(docloud) then
+        call cloud(ncrms,icrm,micro_field,qn)
+        if(doprecip) call precip_proc(ncrms,icrm,qpsrc,qpevp,micro_field,qn)
+        call micro_diagnose(ncrms,icrm)
+      end if
+      if(dosmoke) then
+        call micro_diagnose(ncrms,icrm)
+      end if
 #ifdef CLUBB_CRM
-    if ( doclubb ) then ! -dschanen UWM 21 May 2008
-      CF3D(:,:, 1:nzm,icrm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
-      ! so it is set here first  +++mhwang
-      if(doprecip) call precip_proc_clubb(ncrms,icrm)
-      call micro_diagnose(ncrms,icrm)
-    end if
+      if ( doclubb ) then ! -dschanen UWM 21 May 2008
+        CF3D(:,:, 1:nzm,icrm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
+        ! so it is set here first  +++mhwang
+        if(doprecip) call precip_proc_clubb(ncrms,icrm)
+        call micro_diagnose(ncrms,icrm)
+      end if
 #endif /*CLUBB_CRM*/
-
+    enddo
   end subroutine micro_proc
 
   !----------------------------------------------------------------------

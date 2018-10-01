@@ -629,7 +629,7 @@ end subroutine micro_flux
 ! proceses is the liquid/ice water static energy: t = tabs + gz - Lc (qc+qr) - Ls (qi+qs+qg)
 ! It should not be changed during all of your point microphysical processes!
 
-subroutine micro_proc(ncrms,icrm)
+subroutine micro_proc(ncrms)
 
 use params, only: fac_cond, fac_sub, rgas
 use grid, only: z, zi
@@ -661,7 +661,7 @@ use constants_clubb, only: T_freeze_K
 use vars, only: CF3D
 #endif
 implicit none
-  integer, intent(in) :: ncrms,icrm
+  integer, intent(in) :: ncrms
 
 
 real(crm_rknd), dimension(nzm) :: &
@@ -693,9 +693,11 @@ real(crm_rknd), dimension(nzm) :: accre_enhan   ! optional accretion enhancement
 
 real(crm_rknd), dimension(nzm,nmicro_fields) :: stend1d, mtend1d
 real(crm_rknd) :: tmpc, tmpr, tmpi, tmps, tmpg
-integer :: i1, i2, j1, j2, i, j, k, m, n
+integer :: i1, i2, j1, j2, i, j, k, m, n, icrm
 
 real(8) :: tmp_total, tmptot
+
+do icrm = 1 , ncrms
 
 ! call t_startf ('micro_proc')
 
@@ -1286,6 +1288,8 @@ if (docloud)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 #endif
 
 ! call t_stopf ('micro_proc')
+
+enddo
 
 end subroutine micro_proc
 
