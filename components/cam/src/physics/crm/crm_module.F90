@@ -885,12 +885,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !      SGS effects on scalars :
       if (dosgs) call sgs_scalars(ncrms)
 
-        !-----------------------------------------------------------
-        !       Calculate PGF for scalar momentum tendency
+      !-----------------------------------------------------------
+      !       Calculate PGF for scalar momentum tendency
 #if defined( SP_ESMT ) && defined( SP_ESMT_PGF )
-      do icrm = 1 , ncrms
-        call scalar_momentum_tend()
-      enddo
+      call scalar_momentum_tend(ncrms)
 #endif
 
       !-----------------------------------------------------------
@@ -905,8 +903,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !    Compute diagnostics fields:
       call diagnose(ncrms)
 
-        !----------------------------------------------------------
-        ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
+      !----------------------------------------------------------
+      ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
       do icrm = 1 , ncrms
         nn=na(icrm)
         na(icrm)=nc(icrm)
