@@ -120,6 +120,7 @@ _TESTS = {
                         ("ERP_Ld3_P96.ne4_ne4.FSP1V1-TEST",
                          "ERS_Ld3_P96.ne4_ne4.FSP1V1-TEST",
                          "ERP_Ld3_P96.ne4_ne4.FSP2V1-TEST",
+                         "ERP_Ld3_P96.ne4_ne4.FSP2V1-ECPP-TEST",
                          "SMS_D_Ld1_P96.ne4_ne4.FSP1V1-TEST",
                          "SMS_D_Ld1_P96.ne4_ne4.FSP2V1-TEST",
                         )
