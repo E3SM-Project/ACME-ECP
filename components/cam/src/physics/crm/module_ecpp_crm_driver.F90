@@ -89,7 +89,7 @@ module  module_ecpp_crm_driver
   integer :: ntavg1_ss  ! # of seconds to average when computing categories
   integer :: ntavg2_ss  ! # of seconds to average between outputs.
   integer :: ntavg1, ntavg2  ! number of CRM steps in ntavg[12]_ss period
-  integer, allocatable :: itavg1(:), itavg2(:)  ! level-1 and level-2 counters
+  integer :: itavg1, itavg2  ! level-1 and level-2 counters
 
   integer :: mode_updnthresh
   integer :: areaavgtype
@@ -372,8 +372,6 @@ contains
     qlsink_bf_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
     qlsink_avg_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
     prain_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms)  )
-    allocate(itavg1(ncrms))
-    allocate(itavg2(ncrms))
 
     ! Initialize the running sums.
     do icrm = 1 , ncrms
@@ -404,9 +402,9 @@ contains
 
       wup_thresh(:,icrm) = 0.0
       wdown_thresh(:,icrm) = 0.0
-      itavg1(icrm) = 0
-      itavg2(icrm) = 0
     enddo
+    itavg1 = 0
+    itavg2 = 0
 
     ! set ntavg[12] and initialize itavg[12] counters
     call ecpp_set_ntavg(dt_gl)
@@ -416,9 +414,6 @@ contains
 
   !=======================================================================================
   subroutine ecpp_crm_cleanup ()
-
-    deallocate(itavg1)
-    deallocate(itavg2)
     ! deallocate variables
     deallocate (updraftbase, &
     updrafttop )
@@ -496,14 +491,14 @@ contains
     !------------------------------------------------------------------------
     ! Main code section...
     !------------------------------------------------------------------------
-    do icrm = 1 , ncrms
 
     ndn = ndndraft ; nup = nupdraft
-    itavg1(icrm) = itavg1(icrm) + 1
-    itavg2(icrm) = itavg2(icrm) + 1
+    itavg1 = itavg1 + 1
+    itavg2 = itavg2 + 1
     ndn = ndndraft ; nup = nupdraft
 
     ! Get values from SAM cloud fields
+    do icrm = 1 , ncrms
     qcloud(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
     qrain (1:nx,1:ny,1:nzm,icrm)  = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
     qice  (1:nx,1:ny,1:nzm,icrm)   = micro_field(1:nx,1:ny,1:nzm,iqci,icrm)
@@ -569,10 +564,10 @@ contains
 
     ! Check if we have reached the end of the level 1 time averaging period.
     do icrm = 1 , ncrms
-    if( mod(itavg1(icrm),ntavg1) == 0 ) then
+    if( mod(itavg1,ntavg1) == 0 ) then
 
       ! Turn the running sums into averages.
-      if( itavg1(icrm) /= 0 ) then
+      if( itavg1 /= 0 ) then
         ncnt1 = ntavg1
       else
         ncnt1 = 1
@@ -620,7 +615,7 @@ contains
       ! If we want final area categories based on the last avg1 period in each
       ! avg2 then we need to zero out the running sum just created for the areas
       ! if it is not the last block of time in ntavg2
-      if( areaavgtype==1 .and. .not. mod(itavg2(icrm),ntavg2)==0 ) then
+      if( areaavgtype==1 .and. .not. mod(itavg2,ntavg2)==0 ) then
         call zero_out_areas( &
         area_bnd_final(:,:,1:1+ndn+nup,:,icrm), &
         area_cen_final(:,:,1:1+ndn+nup,:,icrm) )
@@ -638,12 +633,12 @@ contains
     end if !End of time level one averaging period
 
     ! Check if we have reached the end of a level 2 averaging period.
-    if( mod(itavg2(icrm),ntavg2) == 0 ) then
+    if( mod(itavg2,ntavg2) == 0 ) then
 
       ! Turn the running sums into averages. ncnt1 in this case is the number
       ! of calls to categorization_stats during the level 2 averaging period,
       ! which increment the bnd/cen arrays.
-      if( itavg2(icrm) /= 0 ) then
+      if( itavg2 /= 0 ) then
         ncnt1 = ntavg2_ss/ntavg1_ss
         ncnt2 = ntavg2
       else
