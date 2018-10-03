@@ -95,6 +95,7 @@ _TESTS = {
                            ("SMS.ne30_oECv3.BGCEXP_BCRC_CNPECACNT_1850","clm-bgcexp"),
                            ("SMS.ne30_oECv3.BGCEXP_BCRC_CNPRDCTC_1850","clm-bgcexp"))
                           ),
+
     #e3sm tests for extra coverage
     "e3sm_extra_coverage" : (("e3sm_atm_extra_coverage",), None,
                              ("SMS_D_Ln5.enax4v1_enax4v1.FC5AV1C-L",
@@ -113,6 +114,25 @@ _TESTS = {
                    "SMS_D_Ln5.enax4v1_enax4v1.FC5AV1C-L",
                    "SMS_D_Ln5.twpx4v1_twpx4v1.FC5AV1C-L")
                  ),
+
+    #e3sm tests for ECP development
+    "e3sm_ecp_sp" : (None, "04:00:00",
+                     ("ERP_Ld3_P96.ne4_ne4.FSP1V1-TEST",
+                      "ERS_Ld3_P96.ne4_ne4.FSP1V1-TEST",
+                      "ERP_Ld3_P96.ne4_ne4.FSP2V1-TEST",
+                      "ERP_Ld3_P96.ne4_ne4.FSP2V1-ECPP-TEST",
+                      "SMS_D_Ld1_P96.ne4_ne4.FSP1V1-TEST",
+                      "SMS_D_Ld1_P96.ne4_ne4.FSP2V1-TEST",
+                     )
+                    ),
+    "e3sm_ecp_nonsp" : (None, None,
+                        ("ERP_Ld11.ne4_oQU240.A_WCYCL2000",
+                         "ERP_Ld5.ne4_ne4.FC5AV1C-L",
+                         "ERP_Ld5.ne30_ne30.FC5AV1C-L",
+                         "ERS_Ld5.ne30_ne30.FC5AV1C-L",
+                        )
+                       ),
+    "e3sm_ecp" : (("e3sm_ecp_sp", "e3sm_ecp_nonsp"), None, ()),
 
     #e3sm tests to mimic production runs
     "e3sm_prod" : (("e3sm_atm_prod",),None,
