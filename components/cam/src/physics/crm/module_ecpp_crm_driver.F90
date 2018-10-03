@@ -569,17 +569,9 @@ contains
       else
         ncnt1 = 1
       end if
-      do icrm = 1 , ncrms
-      call rsums1ToAvg( ncnt1, qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
-      qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), &
-      qgraupsum1(:,:,:,icrm), &
-      qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
-      precsolidsum1(:,:,:,icrm), precallsum1(:,:,:,icrm), &
-      altsum1(:,:,:,icrm), rhsum1(:,:,:,icrm), cf3dsum1(:,:,:,icrm), &
-      wwsum1(:,:,:,icrm), wwsqsum1(:,:,:,icrm), &
-      tkesgssum1(:,:,:,icrm), qlsink_bfsum1(:,:,:,icrm), &
-      prainsum1(:,:,:,icrm), qvssum1(:,:,:,icrm)  )
-      enddo
+      call rsums1ToAvg( ncrms, ncnt1, qcloudsum1, qcloud_bfsum1, qrainsum1, &
+      qicesum1, qsnowsum1, qgraupsum1, qlsinksum1, precrsum1, precsolidsum1, precallsum1, &
+      altsum1, rhsum1, cf3dsum1, wwsum1, wwsqsum1, tkesgssum1, qlsink_bfsum1, prainsum1, qvssum1  )
 
       ! Determine draft categories and get running sums of them.
       do icrm = 1 , ncrms

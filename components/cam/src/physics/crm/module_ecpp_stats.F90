@@ -171,7 +171,7 @@ contains
 
 
   !------------------------------------------------------------------------
-  subroutine rsums1ToAvg( nt, qcloudsum, qcloud_bfsum, qrainsum, &
+  subroutine rsums1ToAvg( ncrms, nt, qcloudsum, qcloud_bfsum, qrainsum, &
     qicesum, qsnowsum, qgraupsum, &
     qlsinksum, precrsum, precsolidsum, precallsum, &
     altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum )
@@ -180,37 +180,37 @@ contains
     ! William.Gustafson@pnl.gov; 20-Jul-2006
     ! Last modified: William.Gustafson@pnl.gov; 25-Nov-2008
     !------------------------------------------------------------------------
-    integer, intent(in) :: nt
-    real(crm_rknd), dimension(:,:,:), intent(inout) :: &
+    integer, intent(in) :: nt, ncrms
+    real(crm_rknd), dimension(:,:,:,:), intent(inout) :: &
     qcloudsum, qcloud_bfsum, qrainsum, qicesum, qsnowsum, qgraupsum, &
     qlsinksum, precrsum, precsolidsum, precallsum, &
     altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum
-
     real(crm_rknd) :: ncount
-
-    !  print*,"...end of level one averaging period."
-
+    integer :: icrm
+    
     ncount = real(nt,crm_rknd)
 
-    qcloudsum    = qcloudsum/ncount
-    qcloud_bfsum = qcloud_bfsum/ncount
-    qrainsum     = qrainsum/ncount
-    qicesum      = qicesum/ncount
-    qsnowsum     = qsnowsum/ncount
-    qgraupsum    = qgraupsum/ncount
-    qlsinksum    = qlsinksum/ncount
-    precrsum     = precrsum/ncount
-    precsolidsum = precsolidsum/ncount
-    precallsum   = precallsum/ncount
-    altsum       = altsum/ncount
-    rhsum        = rhsum/ncount
-    cf3dsum      = cf3dsum/ncount
-    wwsum        = wwsum/ncount
-    wwsqsum      = wwsqsum/ncount
-    tkesgssum    = tkesgssum/ncount
-    qlsink_bfsum = qlsink_bfsum/ncount
-    prainsum     = prainsum/ncount
-    qvssum       = qvssum/ncount
+    do icrm = 1 , ncrms
+      qcloudsum   (:,:,:,icrm) = qcloudsum   (:,:,:,icrm)/ncount
+      qcloud_bfsum(:,:,:,icrm) = qcloud_bfsum(:,:,:,icrm)/ncount
+      qrainsum    (:,:,:,icrm) = qrainsum    (:,:,:,icrm)/ncount
+      qicesum     (:,:,:,icrm) = qicesum     (:,:,:,icrm)/ncount
+      qsnowsum    (:,:,:,icrm) = qsnowsum    (:,:,:,icrm)/ncount
+      qgraupsum   (:,:,:,icrm) = qgraupsum   (:,:,:,icrm)/ncount
+      qlsinksum   (:,:,:,icrm) = qlsinksum   (:,:,:,icrm)/ncount
+      precrsum    (:,:,:,icrm) = precrsum    (:,:,:,icrm)/ncount
+      precsolidsum(:,:,:,icrm) = precsolidsum(:,:,:,icrm)/ncount
+      precallsum  (:,:,:,icrm) = precallsum  (:,:,:,icrm)/ncount
+      altsum      (:,:,:,icrm) = altsum      (:,:,:,icrm)/ncount
+      rhsum       (:,:,:,icrm) = rhsum       (:,:,:,icrm)/ncount
+      cf3dsum     (:,:,:,icrm) = cf3dsum     (:,:,:,icrm)/ncount
+      wwsum       (:,:,:,icrm) = wwsum       (:,:,:,icrm)/ncount
+      wwsqsum     (:,:,:,icrm) = wwsqsum     (:,:,:,icrm)/ncount
+      tkesgssum   (:,:,:,icrm) = tkesgssum   (:,:,:,icrm)/ncount
+      qlsink_bfsum(:,:,:,icrm) = qlsink_bfsum(:,:,:,icrm)/ncount
+      prainsum    (:,:,:,icrm) = prainsum    (:,:,:,icrm)/ncount
+      qvssum      (:,:,:,icrm) = qvssum      (:,:,:,icrm)/ncount
+    enddo
   end subroutine rsums1ToAvg
 
   !------------------------------------------------------------------------
