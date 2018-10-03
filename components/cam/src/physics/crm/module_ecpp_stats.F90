@@ -214,9 +214,7 @@ contains
   end subroutine rsums1ToAvg
 
   !------------------------------------------------------------------------
-  subroutine rsums2( &
-    nx, ny, nz, &
-    xkhv, xkhvsum )
+  subroutine rsums2(ncrms, xkhv, xkhvsum )
     ! Increment the running sums for the level 2 time averaging period for
     ! variables that are not already incremented (i.e. not the area and mass
     ! flux categories and in/out-flow speed that are already done). The 3-D
@@ -224,18 +222,11 @@ contains
     ! William.Gustafson@pnl.gov; 20-Jul-2006
     ! Last modified: William.Gustafson@pnl.gov; 25-Nov-2008
     !------------------------------------------------------------------------
-    integer, intent(in) :: nx, ny, nz
-    real(crm_rknd), dimension(:,:,:), intent(in) :: &
-    xkhv
-    real(crm_rknd), dimension(:), intent(inout) :: &
-    xkhvsum
-
-    integer :: i
-    !
+    integer, intent(in) :: ncrms
+    real(crm_rknd), dimension(:,:,:,:), intent(in) :: xkhv
+    real(crm_rknd), dimension(:,:), intent(inout) :: xkhvsum
     ! Running sums of the simple variables that will be averaged...
-    !
-
-    call xyrsumof3d(xkhv,xkhvsum)
+    call xyrsumof3d(ncrms,xkhv,xkhvsum)
   end subroutine rsums2
 
 
@@ -352,18 +343,19 @@ contains
 
 
   !------------------------------------------------------------------------
-  subroutine xyrsumof3d(xin,sumout)
+  subroutine xyrsumof3d(ncrms,xin,sumout)
     ! For a 3-D intput variable (x,y,z), the x & y dimensions are summed and
     ! added to a column  to return a running sum.
     ! William.Gustafson@pnl.gov; 26-Jun-2006
     !------------------------------------------------------------------------
-    real(crm_rknd), dimension(:,:,:), intent(in) :: xin
-    real(crm_rknd), dimension(:), intent(out) :: sumout
-
-    integer :: k
-
-    do k=1,ubound(sumout,1)
-      sumout(k) = sumout(k) + sum(xin(:,:,k))
+    integer, intent(in) :: ncrms
+    real(crm_rknd), dimension(:,:,:,:), intent(in) :: xin
+    real(crm_rknd), dimension(:,:), intent(out) :: sumout
+    integer :: k, icrm
+    do icrm = 1 , ncrms
+      do k=1,ubound(sumout,1)
+        sumout(k,icrm) = sumout(k,icrm) + sum(xin(:,:,k,icrm))
+      end do
     end do
   end subroutine xyrsumof3d
 

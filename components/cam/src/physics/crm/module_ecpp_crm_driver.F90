@@ -558,11 +558,7 @@ contains
 
     ! Increment the running sums for the level two variables that are not
     ! already incremented. Consolidate from 3-D to 1-D columns.
-    do icrm = 1 , ncrms
-    call rsums2( &
-    nx, ny, nzm, &
-    xkhv(:,:,:,icrm),      xkhvsum(:,icrm) )
-    enddo
+    call rsums2(ncrms, xkhv, xkhvsum )
 
     ! Check if we have reached the end of the level 1 time averaging period.
     if( mod(itavg1,ntavg1) == 0 ) then
