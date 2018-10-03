@@ -108,7 +108,7 @@ contains
   end subroutine boundary_inout
 
   !------------------------------------------------------------------------
-  subroutine rsums1( qcloud,    qcloudsum1,    &
+  subroutine rsums1( ncrms, qcloud,    qcloudsum1,    &
     qcloud_bf, qcloud_bfsum1, &
     qrain,     qrainsum1,     &
     qice,      qicesum1,      &
@@ -133,36 +133,40 @@ contains
     ! William.Gustafson@pnl.gov; 20-Jul-2006
     ! Last modified: William.Gustafson@pnl.gof; 25-Nov-2008
     !------------------------------------------------------------------------
-    real(crm_rknd), dimension(:,:,:), intent(in) :: &
+    integer, intent(in) :: ncrms
+    real(crm_rknd), dimension(:,:,:,:), intent(in) :: &
     qcloud, qcloud_bf, qrain, qice, qsnow, qgraup, &
     qlsink, precr, precsolid, precall, &
     alt, rh, cf3d, ww, wwsq, tkesgs, qlsink_bf, prain, qvs
-    real(crm_rknd), dimension(:,:,:), intent(inout) :: &
+    real(crm_rknd), dimension(:,:,:,:), intent(inout) :: &
     qcloudsum1, qcloud_bfsum1, qrainsum1, &
     qicesum1, qsnowsum1, qgraupsum1, &
     qlsinksum1, precrsum1, precsolidsum1, precallsum1, &
     altsum1, rhsum1, cf3dsum1, wwsum1, wwsqsum1, tkesgssum1, &
     qlsink_bfsum1, prainsum1, qvssum1
+    integer :: icrm
 
-    qcloudsum1    = qcloudsum1 + qcloud
-    qcloud_bfsum1 = qcloud_bfsum1 + qcloud_bf
-    qrainsum1     = qrainsum1 + qrain
-    qicesum1      = qicesum1 + qice
-    qsnowsum1     = qsnowsum1 + qsnow
-    qgraupsum1    = qgraupsum1 + qgraup
-    qlsinksum1    = qlsinksum1 + qlsink*qcloud  ! Note this is converted back in rsum2ToAvg
-    precrsum1     = precrsum1 + precr
-    precsolidsum1 = precsolidsum1 + precsolid
-    precallsum1   = precallsum1 + precall
-    altsum1       = altsum1 + alt
-    rhsum1        = rhsum1 + rh
-    cf3dsum1      = cf3dsum1 + cf3d
-    wwsum1        = wwsum1 + ww
-    wwsqsum1      = wwsqsum1 + wwsq
-    tkesgssum1    = tkesgssum1 + tkesgs
-    qlsink_bfsum1 = qlsink_bfsum1 + qlsink_bf*qcloud_bf  ! Note this is converted back in rsum2ToAvg
-    prainsum1     = prainsum1 + prain
-    qvssum1       = qvssum1 + qvs
+    do icrm = 1 , ncrms
+      qcloudsum1   (:,:,:,icrm) = qcloudsum1   (:,:,:,icrm) + qcloud(:,:,:,icrm)
+      qcloud_bfsum1(:,:,:,icrm) = qcloud_bfsum1(:,:,:,icrm) + qcloud_bf(:,:,:,icrm)
+      qrainsum1    (:,:,:,icrm) = qrainsum1    (:,:,:,icrm) + qrain(:,:,:,icrm)
+      qicesum1     (:,:,:,icrm) = qicesum1     (:,:,:,icrm) + qice(:,:,:,icrm)
+      qsnowsum1    (:,:,:,icrm) = qsnowsum1    (:,:,:,icrm) + qsnow(:,:,:,icrm)
+      qgraupsum1   (:,:,:,icrm) = qgraupsum1   (:,:,:,icrm) + qgraup(:,:,:,icrm)
+      qlsinksum1   (:,:,:,icrm) = qlsinksum1   (:,:,:,icrm) + qlsink(:,:,:,icrm)*qcloud(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
+      precrsum1    (:,:,:,icrm) = precrsum1    (:,:,:,icrm) + precr(:,:,:,icrm)
+      precsolidsum1(:,:,:,icrm) = precsolidsum1(:,:,:,icrm) + precsolid(:,:,:,icrm)
+      precallsum1  (:,:,:,icrm) = precallsum1  (:,:,:,icrm) + precall(:,:,:,icrm)
+      altsum1      (:,:,:,icrm) = altsum1      (:,:,:,icrm) + alt(:,:,:,icrm)
+      rhsum1       (:,:,:,icrm) = rhsum1       (:,:,:,icrm) + rh(:,:,:,icrm)
+      cf3dsum1     (:,:,:,icrm) = cf3dsum1     (:,:,:,icrm) + cf3d(:,:,:,icrm)
+      wwsum1       (:,:,:,icrm) = wwsum1       (:,:,:,icrm) + ww(:,:,:,icrm)
+      wwsqsum1     (:,:,:,icrm) = wwsqsum1     (:,:,:,icrm) + wwsq(:,:,:,icrm)
+      tkesgssum1   (:,:,:,icrm) = tkesgssum1   (:,:,:,icrm) + tkesgs(:,:,:,icrm)
+      qlsink_bfsum1(:,:,:,icrm) = qlsink_bfsum1(:,:,:,icrm) + qlsink_bf(:,:,:,icrm)*qcloud_bf(:,:,:,icrm)  ! Note this is converted back in rsum2ToAvg
+      prainsum1    (:,:,:,icrm) = prainsum1    (:,:,:,icrm) + prain(:,:,:,icrm)
+      qvssum1      (:,:,:,icrm) = qvssum1      (:,:,:,icrm) + qvs(:,:,:,icrm)
+    enddo
   end subroutine rsums1
 
 

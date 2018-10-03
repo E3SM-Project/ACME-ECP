@@ -484,7 +484,7 @@ contains
     integer :: kbase, ktop, m
     integer :: ii, jj, kk
     integer :: icl, icls, ipr
-    real(crm_rknd), dimension(nx, ny, nzm   , ncrms) :: qcloud, qrain, qice, qsnow, qgraup, precall, alt, xkhv
+    real(crm_rknd), dimension(nx, ny, nzm   , ncrms) :: qcloud, qrain, qice, qsnow, qgraup, precall, alt, xkhv, tketmp
     real(crm_rknd), dimension(nx, ny, nzstag, ncrms) :: ww, wwsq
     real(crm_rknd) :: EVS
 
@@ -533,26 +533,28 @@ contains
 
     ! Increment the 3-D running sums for averaging period 1.
     do icrm = 1 , ncrms
-    call rsums1( qcloud(:,:,:,icrm),    qcloudsum1(:,:,:,icrm),    &
-    qcloud_bf(:,:,:,icrm),    qcloud_bfsum1(:,:,:,icrm),    &
-    qrain(:,:,:,icrm),     qrainsum1(:,:,:,icrm),     &
-    qice(:,:,:,icrm),      qicesum1(:,:,:,icrm),      &
-    qsnow(:,:,:,icrm),     qsnowsum1(:,:,:,icrm),     &
-    qgraup(:,:,:,icrm),    qgraupsum1(:,:,:,icrm),    &
-    qlsink(:,:,:,icrm),    qlsinksum1(:,:,:,icrm),    &
-    precr(:,:,:,icrm),     precrsum1(:,:,:,icrm),     &
-    precsolid(:,:,:,icrm), precsolidsum1(:,:,:,icrm), &
-    precall(:,:,:,icrm),   precallsum1(:,:,:,icrm),   &
-    alt(:,:,:,icrm),       altsum1(:,:,:,icrm),       &
-    rh(:,:,:,icrm),        rhsum1(:,:,:,icrm),        &
-    CF3D(:,:,:,icrm),      cf3dsum1(:,:,:,icrm),       &
-    ww(:,:,:,icrm),        wwsum1(:,:,:,icrm),        &
-    wwsq(:,:,:,icrm),      wwsqsum1(:,:,:,icrm),      &
-    tke(1:nx,1:ny,1:nzm,icrm),       tkesgssum1(:,:,:,icrm),    &
-    qlsink_bf(:,:,:,icrm), qlsink_bfsum1(:,:,:,icrm), &
-    prain(:,:,:,icrm),     prainsum1(:,:,:,icrm),     &
-    qvs(:,:,:,icrm),       qvssum1(:,:,:,icrm)   )
+      tketmp(:,:,:,icrm) = tke(1:nx,1:ny,:,icrm)
     enddo
+    call rsums1( ncrms, &
+                 qcloud,    qcloudsum1,    &
+                 qcloud_bf, qcloud_bfsum1, &
+                 qrain,     qrainsum1,     &
+                 qice,      qicesum1,      &
+                 qsnow,     qsnowsum1,     &
+                 qgraup,    qgraupsum1,    &
+                 qlsink,    qlsinksum1,    &
+                 precr,     precrsum1,     &
+                 precsolid, precsolidsum1, &
+                 precall,   precallsum1,   &
+                 alt,       altsum1,       &
+                 rh,        rhsum1,        &
+                 CF3D,      cf3dsum1,      &
+                 ww,        wwsum1,        &
+                 wwsq,      wwsqsum1,      &
+                 tketmp,    tkesgssum1,    &
+                 qlsink_bf, qlsink_bfsum1, &
+                 prain,     prainsum1,     &
+                 qvs,       qvssum1   )
 
     ! Increment the running sums for the level two variables that are not
     ! already incremented. Consolidate from 3-D to 1-D columns.
