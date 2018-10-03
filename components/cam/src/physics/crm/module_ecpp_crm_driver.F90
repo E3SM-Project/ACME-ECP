@@ -89,7 +89,7 @@ module  module_ecpp_crm_driver
   integer :: ntavg1_ss  ! # of seconds to average when computing categories
   integer :: ntavg2_ss  ! # of seconds to average between outputs.
   integer :: ntavg1, ntavg2  ! number of CRM steps in ntavg[12]_ss period
-  integer :: itavg1, itavg2  ! level-1 and level-2 counters
+  integer, allocatable :: itavg1(:), itavg2(:)  ! level-1 and level-2 counters
 
   integer :: mode_updnthresh
   integer :: areaavgtype
@@ -119,13 +119,13 @@ module  module_ecpp_crm_driver
 
 contains
 
-  subroutine ecpp_crm_init(ncrms,icrm,dt_gl)
+  subroutine ecpp_crm_init(ncrms,dt_gl)
     use grid, only: nx, ny, nzm
     use module_ecpp_stats, only: zero_out_sums1, zero_out_sums2
     use module_ecpp_ppdriver2, only: nupdraft_in, ndndraft_in, ncls_ecpp_in
     implicit none
     real(r8), intent(in) :: dt_gl  ! global model's time step
-    integer , intent(in) :: ncrms,icrm
+    integer , intent(in) :: ncrms
     integer :: kbase, ktop
     integer :: m
     integer :: nup, ndn, icrm
@@ -408,15 +408,8 @@ contains
       itavg2(icrm) = 0
     enddo
 
-<<<<<<< HEAD
     ! set ntavg[12] and initialize itavg[12] counters
     call ecpp_set_ntavg(dt_gl)
-    itavg1 = 0
-    itavg2 = 0
-=======
-    ntavg1 = ntavg1_ss  / dt
-    ntavg2 = ntavg2_ss  / dt
->>>>>>> had to fix some non-threadable indexing in ECPP, but it appears I've successfully permuted the loop now, at long last. Now to get some real work done.
 
   end subroutine ecpp_crm_init
   !---------------------------------------------------------------------------------------
@@ -477,7 +470,7 @@ contains
   !---------------------------------------------------------------------------------------
 
   !========================================================================================
-  subroutine ecpp_crm_stat(ncrms,icrm)
+  subroutine ecpp_crm_stat(ncrms)
     use module_ecpp_stats
     use module_data_ecpp1, only: afrac_cut
     use grid,  only: nx, ny, nzm, pres
@@ -490,109 +483,92 @@ contains
     use sgs, only: tk_clubb
 #endif
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer :: i, ierr, i_tidx, j, &
-    ncnt1, ncnt2
-
+    integer, intent(in) :: ncrms
+    integer :: i, ierr, i_tidx, j, ncnt1, ncnt2, icrm
     integer :: nup, ndn
     integer :: kbase, ktop, m
     integer :: ii, jj, kk
     integer :: icl, icls, ipr
-
-    real(crm_rknd), dimension(nx, ny, nzm) :: qcloud, qrain, qice, qsnow, qgraup, precall, alt, xkhv
-    real(crm_rknd), dimension(nx, ny, nzstag) :: ww, wwsq
-
+    real(crm_rknd), dimension(nx, ny, nzm   , ncrms) :: qcloud, qrain, qice, qsnow, qgraup, precall, alt, xkhv
+    real(crm_rknd), dimension(nx, ny, nzstag, ncrms) :: ww, wwsq
     real(crm_rknd) :: EVS
 
     !------------------------------------------------------------------------
     ! Main code section...
     !------------------------------------------------------------------------
+    do icrm = 1 , ncrms
 
     ndn = ndndraft ; nup = nupdraft
-
     itavg1(icrm) = itavg1(icrm) + 1
     itavg2(icrm) = itavg2(icrm) + 1
     ndn = ndndraft ; nup = nupdraft
 
     ! Get values from SAM cloud fields
-    qcloud(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
-    qrain(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
-    qice(1:nx,1:ny,1:nzm)   = micro_field(1:nx,1:ny,1:nzm,iqci,icrm)
-    qsnow(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqs,icrm)
-    qgraup(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqg,icrm)
+    qcloud(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
+    qrain (1:nx,1:ny,1:nzm,icrm)  = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
+    qice  (1:nx,1:ny,1:nzm,icrm)   = micro_field(1:nx,1:ny,1:nzm,iqci,icrm)
+    qsnow (1:nx,1:ny,1:nzm,icrm)  = micro_field(1:nx,1:ny,1:nzm,iqs,icrm)
+    qgraup(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqg,icrm)
 
-    precall(:,:,:)= precr(:,:,:,icrm) + precsolid(:,:,:,icrm)
+    precall(:,:,:,icrm)= precr(:,:,:,icrm) + precsolid(:,:,:,icrm)
 
     do ii=1, nx
       do jj=1, ny
         do kk=1, nzm
           EVS = POLYSVP(tabs(ii,jj,kk,icrm),0)   ! saturation water vapor pressure (PA)
           qvs(ii,jj,kk,icrm) = .622*EVS/(pres(kk,icrm)*100.-EVS)  ! pres(kk,icrm) with unit of hPa
-          !         rh(ii,jj,kk,icrm) = micro_field(ii,jj,kk,iqv,icrm)/QVS ! unit 0-1
-          !         rh(ii,jj,kk,icrm) = min(1.0, rh(ii,jj,kk,icrm))    ! RH is diagnosed in microphysics
-          alt(ii,jj,kk) =  287.*tabs(ii,jj,kk,icrm)/(100.*pres(kk,icrm))
-
+          alt(ii,jj,kk,icrm) =  287.*tabs(ii,jj,kk,icrm)/(100.*pres(kk,icrm))
         end do
       end do
     end do
 
-    ww(:,:,:)     = w(1:nx,1:ny,1:nzstag,icrm)
+    ww(:,:,:,icrm)     = w(1:nx,1:ny,1:nzstag,icrm)
 #ifdef CLUBB_CRM
-    wwsq(:,:,:)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
+    wwsq(:,:,:,icrm)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
 #else
-    wwsq(:,:,:)   = 0.  ! subgrid vertical velocity is not used in the current version of ECPP.
+    wwsq(:,:,:,icrm)   = 0.  ! subgrid vertical velocity is not used in the current version of ECPP.
 #endif
 
 #ifdef CLUBB_CRM
-    xkhv(:,:,:)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
+    xkhv(:,:,:,icrm)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
 #else
-    xkhv(:,:,:)   = tk(1:nx,1:ny,1:nzm,icrm)  ! eddy viscosity m2/s
+    xkhv(:,:,:,icrm)   = tk(1:nx,1:ny,1:nzm,icrm)  ! eddy viscosity m2/s
 #endif
-
-    !+++mhwangtest
-    !     do ii=1, nx
-    !       do jj=1, ny
-    !        do kk=1, nzm
-    !          if(prain(ii,jj,kk,icrm).gt.1.0e-15) then
-    !            if(qcloud_bf(ii,jj,kk,icrm)*qlsink_bf(ii,jj,kk,icrm)/prain(ii,jj,kk,icrm)  .lt. 0.90) then
-    !             write(0, *) 'qcloud_bf*qlsink_bf/prain, qlsink_bf, qlsink, qlcoud_bf, qcloud, prain', qcloud_bf(ii,jj,kk,icrm)*qlsink_bf(ii,jj,kk,icrm)/prain(ii,jj,kk,icrm),  &
-    !                 qlsink_bf(ii, jj, kk,icrm) * 86400, qlsink(ii, jj, kk,icrm)*86400, qcloud_bf(ii, jj, kk,icrm), qcloud(ii, jj, kk), prain(ii, jj, kk,icrm)
-    !            end if
-    !          end if
-    !        end do
-    !       end do
-    !     end do
-    !---mhwangest
-
+    enddo
 
     ! Increment the 3-D running sums for averaging period 1.
-    call rsums1( qcloud,    qcloudsum1(:,:,:,icrm),    &
+    do icrm = 1 , ncrms
+    call rsums1( qcloud(:,:,:,icrm),    qcloudsum1(:,:,:,icrm),    &
     qcloud_bf(:,:,:,icrm),    qcloud_bfsum1(:,:,:,icrm),    &
-    qrain,     qrainsum1(:,:,:,icrm),     &
-    qice,      qicesum1(:,:,:,icrm),      &
-    qsnow,     qsnowsum1(:,:,:,icrm),     &
-    qgraup,    qgraupsum1(:,:,:,icrm),    &
+    qrain(:,:,:,icrm),     qrainsum1(:,:,:,icrm),     &
+    qice(:,:,:,icrm),      qicesum1(:,:,:,icrm),      &
+    qsnow(:,:,:,icrm),     qsnowsum1(:,:,:,icrm),     &
+    qgraup(:,:,:,icrm),    qgraupsum1(:,:,:,icrm),    &
     qlsink(:,:,:,icrm),    qlsinksum1(:,:,:,icrm),    &
     precr(:,:,:,icrm),     precrsum1(:,:,:,icrm),     &
     precsolid(:,:,:,icrm), precsolidsum1(:,:,:,icrm), &
-    precall,   precallsum1(:,:,:,icrm),   &
-    alt,       altsum1(:,:,:,icrm),       &
+    precall(:,:,:,icrm),   precallsum1(:,:,:,icrm),   &
+    alt(:,:,:,icrm),       altsum1(:,:,:,icrm),       &
     rh(:,:,:,icrm),        rhsum1(:,:,:,icrm),        &
     CF3D(:,:,:,icrm),      cf3dsum1(:,:,:,icrm),       &
-    ww,        wwsum1(:,:,:,icrm),        &
-    wwsq,      wwsqsum1(:,:,:,icrm),      &
+    ww(:,:,:,icrm),        wwsum1(:,:,:,icrm),        &
+    wwsq(:,:,:,icrm),      wwsqsum1(:,:,:,icrm),      &
     tke(1:nx,1:ny,1:nzm,icrm),       tkesgssum1(:,:,:,icrm),    &
     qlsink_bf(:,:,:,icrm), qlsink_bfsum1(:,:,:,icrm), &
     prain(:,:,:,icrm),     prainsum1(:,:,:,icrm),     &
     qvs(:,:,:,icrm),       qvssum1(:,:,:,icrm)   )
+    enddo
 
     ! Increment the running sums for the level two variables that are not
     ! already incremented. Consolidate from 3-D to 1-D columns.
+    do icrm = 1 , ncrms
     call rsums2( &
     nx, ny, nzm, &
-    xkhv,      xkhvsum(:,icrm) )
+    xkhv(:,:,:,icrm),      xkhvsum(:,icrm) )
+    enddo
 
     ! Check if we have reached the end of the level 1 time averaging period.
+    do icrm = 1 , ncrms
     if( mod(itavg1(icrm),ntavg1) == 0 ) then
 
       ! Turn the running sums into averages.
@@ -767,12 +743,14 @@ contains
 
     end if !End of level two time averaging period
 
+    enddo
+
   end subroutine ecpp_crm_stat
 
   subroutine ecpp_set_ntavg(dt_gl)
   !----------------------------------------------------------------------------
   ! Sets ntavg1_ss and ntavg2_ss periods for "level-1" and "level-2" averages,
-  ! respectively. Also sets ntavg1 and ntavg2 which are the number of CRM 
+  ! respectively. Also sets ntavg1 and ntavg2 which are the number of CRM
   ! steps in each averaging period.
   !----------------------------------------------------------------------------
     use grid, only: dt    ! CRM timestep (calling frequency of ecpp_crm_stat)
@@ -782,8 +760,8 @@ contains
     ! set level-1 and level-2 averaging periods for ECPP
     ntavg1_ss = min(600._r8, dt_gl)  ! lesser of 10 minutes or the GCM timestep
     ntavg2_ss = dt_gl                ! level-2 averaging period is GCM timestep
-   
-    ! Current implementation of ECPP requires that ntavg2_ss is a multiple of 
+
+    ! Current implementation of ECPP requires that ntavg2_ss is a multiple of
     ! ntavg1_ss. Adjust ntavg1_ss upward from 10 minutes necessary.
     ! Ex. 1: ntavg2_ss = 1200 => ntavg1_ss = 1200/ (1200/600) = 1200 / 2 = 600
     ! Ex. 2: ntavg2_ss = 900 => ntavg1_ss = 900 / (900/600) = 900 / 1 = 900

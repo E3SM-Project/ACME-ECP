@@ -189,7 +189,7 @@ contains
     ncount = real(nt,crm_rknd)
 
     qcloudsum    = qcloudsum/ncount
-    qcloud_bfsum    = qcloud_bfsum/ncount
+    qcloud_bfsum = qcloud_bfsum/ncount
     qrainsum     = qrainsum/ncount
     qicesum      = qicesum/ncount
     qsnowsum     = qsnowsum/ncount

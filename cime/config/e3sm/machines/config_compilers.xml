@@ -1951,13 +1951,13 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
 
 <compiler COMPILER="pgi" MACH="thatchroof">
   <LDFLAGS>
-    <append MODEL="driver"> -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L${PNETCDF_PATH}/lib -L/opt/lapack3.6.1_pgi15.9/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl</append>
+    <append MODEL="driver"> -L/opt/netcdf-4.3.3.1_pgi/lib -lnetcdff -L/opt/hdf5_1.8.5p1_pgi/lib -L/opt/netcdf-4.3.3.1_pgi/lib -lnetcdf -lnetcdf -lhdf5_hl -lhdf5 -L/opt/netcdf-4.3.3.1_pgi/lib -L/opt/hdf5_1.8.5p1_pgi/lib -L/opt/szip_2.1_pgi/lib -lnetcdf -ldl -lm -lz -lhdf5_hl -lhdf5 -lsz </append>
   </LDFLAGS>
 </compiler>
 
 <compiler COMPILER="gnu" MACH="thatchroof">
   <LDFLAGS>
-    <append MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L${PNETCDF_PATH}/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl -lidn -lrtmp -lssh2 -lssl -lcrypto -lssl -lcrypto -llber -lldap -lz </append>
+    <append MODEL="driver" > -L/opt/netcdf-4.3.3.1_gnu/lib -lnetcdff -L/opt/hdf5_1.8.5p1_gnu/lib -L/opt/netcdf-4.3.3.1_gnu/lib -lnetcdf -lnetcdf -lhdf5_hl -lhdf5 -L/opt/netcdf-4.3.3.1_gnu/lib -L/opt/hdf5_1.8.5p1_gnu/lib -L/opt/szip_2.1_gnu/lib -lnetcdf -lhdf5_hl -lhdf5 -ldl -lm -lz -lhdf5_hl -lhdf5 -lsz </append>
   </LDFLAGS>
 </compiler>
 

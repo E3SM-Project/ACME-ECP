@@ -726,7 +726,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   enddo
 
 #ifdef ECPP
-    call ecpp_crm_init(ncrms,icrm,dt_gl)
+  call ecpp_crm_init(ncrms,dt_gl)
 
   qlsink    = 0.0
   qlsink_bf = 0.0
@@ -909,15 +909,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       enddo ! icrm
     enddo ! icycle
 
+#ifdef ECPP
+    ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
+    ! This is what the original MMF model did (crm_rad%temperature, crm_rad%qv, ...). Do we want to call ecpp_crm_stat
+    ! every subcycle time step??? +++mhwang
+    call ecpp_crm_stat(ncrms)
+#endif
     do icrm = 1 , ncrms
       !----------------------------------------------------------
       !----------------------------------------------------------
-#ifdef ECPP
-      ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
-      ! This is what the original MMF model did (crm_rad%temperature, crm_rad%qv, ...). Do we want to call ecpp_crm_stat
-      ! every subcycle time step??? +++mhwang
-      call ecpp_crm_stat(ncrms,icrm)
-#endif
       cwp (:,:,icrm) = 0.
       cwph(:,:,icrm) = 0.
       cwpm(:,:,icrm) = 0.
