@@ -17,10 +17,10 @@ contains
       do k = 1 , nz
         do j = 1 , nyp1
           do i = 1 , nxp1
-            if (i <= nxp1 .and. j <= ny   .and. k <= nzm) dudt(i,j,k,na(icrm),icrm) = 0.
-            if (i <= nx   .and. j <= nyp1 .and. k <= nzm) dvdt(i,j,k,na(icrm),icrm) = 0.
-            if (i <= nx   .and. j <= ny   .and. k <= nz ) dwdt(i,j,k,na(icrm),icrm) = 0.
-            if (i <= nx   .and. j <= ny   .and. k <= nz ) misc(i,j,k,         icrm) = 0.
+            if (i <= nxp1 .and. j <= ny   .and. k <= nzm) dudt(i,j,k,na,icrm) = 0.
+            if (i <= nx   .and. j <= nyp1 .and. k <= nzm) dvdt(i,j,k,na,icrm) = 0.
+            if (i <= nx   .and. j <= ny   .and. k <= nz ) dwdt(i,j,k,na,icrm) = 0.
+            if (i <= nx   .and. j <= ny   .and. k <= nz ) misc(i,j,k,   icrm) = 0.
           enddo
         enddo
       enddo

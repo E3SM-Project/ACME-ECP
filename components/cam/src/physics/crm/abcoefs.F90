@@ -15,8 +15,8 @@ contains
 
     do icrm = 1 , ncrms
       if(nstep.ge.3.and.nadams.eq.3.or.nrestart.eq.2) then
-        alpha = dt3(nb(icrm),icrm) / dt3(na(icrm),icrm)
-        beta = dt3(nc(icrm),icrm) / dt3(na(icrm),icrm)
+        alpha = dt3(nb) / dt3(na)
+        beta = dt3(nc) / dt3(na)
         ct = (2.+3.* alpha) / (6.* (alpha + beta) * beta)
         bt = -(1.+2.*(alpha + beta) * ct)/(2. * alpha)
         at = 1. - bt - ct

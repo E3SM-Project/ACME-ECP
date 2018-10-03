@@ -769,7 +769,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       icycle = icyc
       dtn = dt/ncycle
       do icrm = 1 , ncrms
-        dt3(na(icrm),icrm) = dtn
+        dt3(na) = dtn
       enddo
       dtfactor = dtn/dt
 
@@ -901,12 +901,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
       !----------------------------------------------------------
       ! Rotate the dynamic tendency arrays for Adams-bashforth scheme:
-      do icrm = 1 , ncrms
-        nn=na(icrm)
-        na(icrm)=nc(icrm)
-        nc(icrm)=nb(icrm)
-        nb(icrm)=nn
-      enddo ! icrm
+      nn=na
+      na=nc
+      nc=nb
+      nb=nn
     enddo ! icycle
 
 #ifdef ECPP
@@ -927,11 +925,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
       cltemp(:,:,icrm) = 0.0; cmtemp(:,:,icrm) = 0.0
       chtemp(:,:,icrm) = 0.0; cttemp(:,:,icrm) = 0.0
+    enddo
 
+    do icrm = 1 , ncrms
       do k=1,nzm
-        l = plev-k+1
         do j=1,ny
           do i=1,nx
+            l = plev-k+1
             tmp1 = rho(nz-k,icrm)*adz(nz-k,icrm)*dz(icrm)*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
             cwp(i,j,icrm) = cwp(i,j,icrm)+tmp1
             cttemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j,icrm))
@@ -995,13 +995,15 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           enddo
         enddo
       enddo
+    enddo
 
-      ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
-      ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
+    ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
+    ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
+    do icrm = 1 , ncrms
       do k=1, nzm+1
-        l=plev+1-k+1
         do j=1, ny
           do i=1, nx
+            l=plev+1-k+1
             if(w(i,j,k,icrm).gt.0.) then
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx,icrm))
@@ -1020,7 +1022,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           enddo
         enddo
       enddo
+    enddo
 
+    do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
           if(cwp (i,j,icrm).gt.cwp_threshold) crm_output%cltot(icrm) = crm_output%cltot(icrm) + cttemp(i,j,icrm)
@@ -1029,8 +1033,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           if(cwpl(i,j,icrm).gt.cwp_threshold) crm_output%cllow(icrm) = crm_output%cllow(icrm) + cltemp(i,j,icrm)
         enddo
       enddo
-
-    enddo ! icrm
+    enddo
   enddo ! nstep
   !========================================================================================
   !----------------------------------------------------------------------------------------

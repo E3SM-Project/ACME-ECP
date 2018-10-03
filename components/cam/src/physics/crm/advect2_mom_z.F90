@@ -82,8 +82,8 @@ contains
             dz25=1./(4.*dz(icrm))
             kc = k+1
             rhoi = 1./(rho(k,icrm)*adz(k,icrm))
-            dudt(i,j,k,na(icrm),icrm)=dudt(i,j,k,na(icrm),icrm)-(fuz(i,j,kc,icrm)-fuz(i,j,k,icrm))*rhoi
-            dvdt(i,j,k,na(icrm),icrm)=dvdt(i,j,k,na(icrm),icrm)-(fvz(i,j,kc,icrm)-fvz(i,j,k,icrm))*rhoi
+            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fuz(i,j,kc,icrm)-fuz(i,j,k,icrm))*rhoi
+            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fvz(i,j,kc,icrm)-fvz(i,j,k,icrm))*rhoi
             fwz(i,j,k,icrm)=dz25*(w(i,j,kc,icrm)*rhow(kc,icrm)+w(i,j,k,icrm)*rhow(k,icrm))*(w(i,j,kc,icrm)+w(i,j,k,icrm))
           end do
         end do
@@ -96,7 +96,7 @@ contains
           do i=1,nx
             kb=k-1
             rhoi = 1./(rhow(k,icrm)*adzw(k,icrm))
-            dwdt(i,j,k,na(icrm),icrm)=dwdt(i,j,k,na(icrm),icrm)-(fwz(i,j,k,icrm)-fwz(i,j,kb,icrm))*rhoi
+            dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fwz(i,j,k,icrm)-fwz(i,j,kb,icrm))*rhoi
           end do
         end do
       end do ! k

@@ -31,13 +31,13 @@ contains
               ic = i+1
               fu1 = dx25*(u(ic-1,j,k,icrm)+u(i-1,j,k,icrm))*(u(i-1,j,k,icrm)+u(ic-1,j,k,icrm))
               fu2 = dx25*(u(ic  ,j,k,icrm)+u(i  ,j,k,icrm))*(u(i  ,j,k,icrm)+u(ic  ,j,k,icrm))
-              dudt(i,j,k,na(icrm),icrm)  = dudt(i,j,k,na(icrm),icrm)  - (fu2-fu1)
+              dudt(i,j,k,na,icrm)  = dudt(i,j,k,na,icrm)  - (fu2-fu1)
               fv1 = dx25*(u(ic-1,j,k,icrm)+u(ic-1,jb,k,icrm))*(v(i-1,j,k,icrm)+v(ic-1,j,k,icrm))
               fv2 = dx25*(u(ic  ,j,k,icrm)+u(ic  ,jb,k,icrm))*(v(i  ,j,k,icrm)+v(ic  ,j,k,icrm))
-              dvdt(i,j,k,na(icrm),icrm)  = dvdt(i,j,k,na(icrm),icrm)  - (fv2-fv1)
+              dvdt(i,j,k,na,icrm)  = dvdt(i,j,k,na,icrm)  - (fv2-fv1)
               fw1 = dx25*(u(ic-1,j,k,icrm)*rho(k,icrm)*adz(k,icrm)+u(ic-1,j,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i-1,j,kc,icrm)+w(ic-1,j,kc,icrm))
               fw2 = dx25*(u(ic  ,j,k,icrm)*rho(k,icrm)*adz(k,icrm)+u(ic  ,j,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i  ,j,kc,icrm)+w(ic  ,j,kc,icrm))
-              dwdt(i,j,kc,na(icrm),icrm) = dwdt(i,j,kc,na(icrm),icrm)-irho*(fw2-fw1)
+              dwdt(i,j,kc,na,icrm) = dwdt(i,j,kc,na,icrm)-irho*(fw2-fw1)
 
               kc= k+1
               kcu =min(kc, nzm)
@@ -46,13 +46,13 @@ contains
               ib = i-1
               fu1 = dy25*(v(i,jc-1,k,icrm)+v(ib,jc-1,k,icrm))*(u(i,j-1,k,icrm)+u(i,jc-1,k,icrm))
               fu2 = dy25*(v(i,jc  ,k,icrm)+v(ib,jc  ,k,icrm))*(u(i,j  ,k,icrm)+u(i,jc  ,k,icrm))
-              dudt(i,j,k,na(icrm),icrm) = dudt(i,j,k,na(icrm),icrm) - (fu2-fu1)
+              dudt(i,j,k,na,icrm) = dudt(i,j,k,na,icrm) - (fu2-fu1)
               fv1 = dy25*(v(i,jc-1,k,icrm)+v(i,j-1,k,icrm))*(v(i,j-1,k,icrm)+v(i,jc-1,k,icrm))
               fv2 = dy25*(v(i,jc  ,k,icrm)+v(i,j  ,k,icrm))*(v(i,j  ,k,icrm)+v(i,jc  ,k,icrm))
-              dvdt(i,j,k,na(icrm),icrm) = dvdt(i,j,k,na(icrm),icrm) - (fv2-fv1)
+              dvdt(i,j,k,na,icrm) = dvdt(i,j,k,na,icrm) - (fv2-fv1)
               fw1 = dy25*(v(i,jc-1,k,icrm)*rho(k,icrm)*adz(k,icrm)+v(i,jc-1,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j-1,kc,icrm)+w(i,jc-1,kc,icrm))
               fw2 = dy25*(v(i,jc  ,k,icrm)*rho(k,icrm)*adz(k,icrm)+v(i,jc  ,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i,j  ,kc,icrm)+w(i,jc  ,kc,icrm))
-              dwdt(i,j,kc,na(icrm),icrm)= dwdt(i,j,kc,na(icrm),icrm)-irho*(fw2-fw1)
+              dwdt(i,j,kc,na,icrm)= dwdt(i,j,kc,na,icrm)-irho*(fw2-fw1)
             end do
           end do
         end do ! k
@@ -70,13 +70,13 @@ contains
             ic = i+1
             fu1 = dx25*(u(ic-1,j,k,icrm)+u(i-1,j,k,icrm))*(u(i-1,j,k,icrm)+u(ic-1,j,k,icrm))
             fu2 = dx25*(u(ic  ,j,k,icrm)+u(i  ,j,k,icrm))*(u(i  ,j,k,icrm)+u(ic  ,j,k,icrm))
-            dudt(i,j,k,na(icrm),icrm)  = dudt(i,j,k,na(icrm),icrm)  - (fu2-fu1)
+            dudt(i,j,k,na,icrm)  = dudt(i,j,k,na,icrm)  - (fu2-fu1)
             fv1 = dx25*(u(ic-1,j,k,icrm)+u(i-1,j,k,icrm))*(v(i-1,j,k,icrm)+v(ic-1,j,k,icrm))
             fv2 = dx25*(u(ic  ,j,k,icrm)+u(i  ,j,k,icrm))*(v(i  ,j,k,icrm)+v(ic  ,j,k,icrm))
-            dvdt(i,j,k,na(icrm),icrm)  = dvdt(i,j,k,na(icrm),icrm)  - (fv2-fv1)
+            dvdt(i,j,k,na,icrm)  = dvdt(i,j,k,na,icrm)  - (fv2-fv1)
             fw1 = dx25*(u(ic-1,j,k,icrm)*rho(k,icrm)*adz(k,icrm)+u(ic-1,j,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i-1,j,kc,icrm)+w(ic-1,j,kc,icrm))
             fw2 = dx25*(u(ic  ,j,k,icrm)*rho(k,icrm)*adz(k,icrm)+u(ic  ,j,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i  ,j,kc,icrm)+w(ic  ,j,kc,icrm))
-            dwdt(i,j,kc,na(icrm),icrm) = dwdt(i,j,kc,na(icrm),icrm)-irho*(fw2-fw1)
+            dwdt(i,j,kc,na,icrm) = dwdt(i,j,kc,na,icrm)-irho*(fw2-fw1)
           end do
         end do ! k
       end do

@@ -25,9 +25,9 @@ contains
             rdz = 1./(dz(icrm)*adzw(k,icrm))
             jb=j-YES3D
             ib=i-1
-            dudt(i,j,k,na(icrm),icrm)=dudt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx
-            dvdt(i,j,k,na(icrm),icrm)=dvdt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(i,jb,k,icrm))*rdy
-            dwdt(i,j,k,na(icrm),icrm)=dwdt(i,j,k,na(icrm),icrm)-(p(i,j,k,icrm)-p(i,j,kb,icrm))*rdz
+            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx
+            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(i,jb,k,icrm))*rdy
+            dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(i,j,kb,icrm))*rdz
           end do ! i
         end do ! j
       end do ! k
@@ -48,7 +48,7 @@ contains
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
-            dudt(1,j,k,na(icrm),icrm) = 0.
+            dudt(1,j,k,na,icrm) = 0.
           end do
         end do
       enddo
@@ -60,7 +60,7 @@ contains
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
-            dvdt(i,1,k,na(icrm),icrm) = 0.
+            dvdt(i,1,k,na,icrm) = 0.
           end do
         end do
       enddo

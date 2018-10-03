@@ -15,9 +15,9 @@ contains
       do k = 1 , nzm
         do j = 1 , ny
           do i = 1 , nx
-            u(i,j,k,icrm) = dudt(i,j,k,nc(icrm),icrm)
-            v(i,j,k,icrm) = dvdt(i,j,k,nc(icrm),icrm)
-            w(i,j,k,icrm) = dwdt(i,j,k,nc(icrm),icrm)
+            u(i,j,k,icrm) = dudt(i,j,k,nc,icrm)
+            v(i,j,k,icrm) = dvdt(i,j,k,nc,icrm)
+            w(i,j,k,icrm) = dwdt(i,j,k,nc,icrm)
           enddo
         enddo
       enddo

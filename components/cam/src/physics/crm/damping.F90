@@ -71,9 +71,9 @@ contains
       do k = nzm, nzm-n_damp(icrm), -1
         do j=1,ny
           do i=1,nx
-            dudt(i,j,k,na(icrm),icrm)= dudt(i,j,k,na(icrm),icrm)-(u(i,j,k,icrm)-u0(k,icrm)) * tau(k,icrm)
-            dvdt(i,j,k,na(icrm),icrm)= dvdt(i,j,k,na(icrm),icrm)-(v(i,j,k,icrm)-v0(k,icrm)) * tau(k,icrm)
-            dwdt(i,j,k,na(icrm),icrm)= dwdt(i,j,k,na(icrm),icrm)-w(i,j,k,icrm) * tau(k,icrm)
+            dudt(i,j,k,na,icrm)= dudt(i,j,k,na,icrm)-(u(i,j,k,icrm)-u0(k,icrm)) * tau(k,icrm)
+            dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(i,j,k,icrm)-v0(k,icrm)) * tau(k,icrm)
+            dwdt(i,j,k,na,icrm)= dwdt(i,j,k,na,icrm)-w(i,j,k,icrm) * tau(k,icrm)
             t(i,j,k,icrm)= t(i,j,k,icrm)-dtn*(t(i,j,k,icrm)-t0(k,icrm)) * tau(k,icrm)
             micro_field(i,j,k,index_water_vapor,icrm)= micro_field(i,j,k,index_water_vapor,icrm)-dtn*(qv(i,j,k,icrm)-qv0(k,icrm)) * tau(k,icrm)
           end do! i
