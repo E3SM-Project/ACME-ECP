@@ -187,7 +187,7 @@ contains
     altsum, rhsum, cf3dsum, wwsum, wwsqsum, tkesgssum, qlsink_bfsum, prainsum, qvssum
     real(crm_rknd) :: ncount
     integer :: icrm
-    
+
     ncount = real(nt,crm_rknd)
 
     do icrm = 1 , ncrms
@@ -479,8 +479,6 @@ contains
     cloudthresh_trans, precthresh_trans,  &
     qvs,                    &
     plumetype, allcomb, &
-    !     ctime, &
-    updraftbase, updrafttop, dndraftbase, dndrafttop, &
     qcloud, qcloud_bf, qrain, qice, qsnow, qgraup, &
     qlsink, precr, precsolid, precall, &
     alt, rh, cf3d, ww, wwsq, tkesgs, &
@@ -512,10 +510,6 @@ contains
     downthresh, upthresh, &
     downthresh2, upthresh2
     real(crm_rknd), intent(in) :: cloudthresh_trans,  precthresh_trans
-    !  type(time), intent(in) :: ctime
-    integer, dimension(:), intent(in) :: &
-    updraftbase, updrafttop, &
-    dndraftbase, dndrafttop
     real(crm_rknd), dimension(:,:,:), intent(in) :: &
     qcloud, qcloud_bf, qrain, qice, qsnow, qgraup, &
     qlsink, precr, precsolid, precall, &

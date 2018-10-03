@@ -582,8 +582,6 @@ contains
       cloudthresh_trans, precthresh_trans,  &
       qvssum1(:,:,:,icrm),          &
       plumetype, allcomb, &
-      updraftbase(1:nupdraft,icrm), updrafttop(1:nupdraft,icrm), &
-      dndraftbase(1:ndndraft,icrm), dndrafttop(1:ndndraft,icrm), &
       qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
       qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), qgraupsum1(:,:,:,icrm), &
       qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
