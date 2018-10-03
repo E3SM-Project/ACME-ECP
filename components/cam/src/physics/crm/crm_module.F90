@@ -37,7 +37,7 @@ use setparm_mod, only : setparm
 
 contains
 
-subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
+subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 crm_input, crm_state, crm_rad,  &
 #ifdef CLUBB_CRM
                 clubb_buffer,           &
@@ -94,7 +94,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
     integer , intent(in   ) :: lchnk                            ! chunk identifier (only for lat/lon and random seed)
     integer , intent(in   ) :: ncrms                            ! Number of "vector" GCM columns to push down into CRM for SIMD vectorization / more threading
-    integer , intent(in   ) :: phys_stage                       ! physics run stage indicator (1 or 2 = bc or ac)
     integer , intent(in   ) :: plev                             ! number of levels in parent model
     real(r8), intent(in   ) :: dt_gl                            ! global model's time step
     integer , intent(in   ) :: icol                (ncrms)      ! column identifier (only for lat/lon and random seed)
@@ -121,7 +120,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8),       parameter :: wmin = 2.                      ! minimum up/downdraft velocity for stat
     real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation
     integer,        parameter :: perturb_seed_scale = 1000      ! scaling value for setperturb() seed value (seed = gcol * perturb_seed_scale)
-    real(r8)        :: crm_run_time                             ! length of CRM integration (=dt_gl*0.5 if SP_CRM_SPLIT is defined)
+    real(r8)        :: crm_run_time                             ! length of CRM integration
     real(r8)        :: icrm_run_time                            ! = 1 / crm_run_time
     real(r8)        :: factor_xy, factor_xyt, idt_gl
     real(crm_rknd)  :: tmp1, tmp2
@@ -765,14 +764,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     ncycle = 0
     day=day0
 
-#if defined( SP_CRM_SPLIT )
-    nstop  = ceiling( nstop * 0.5 )
-    crm_run_time  = dt_gl * 0.5
-    icrm_run_time = 1._r8/crm_run_time
-#else
     crm_run_time  = dt_gl
     icrm_run_time = 1._r8/crm_run_time
-#endif
 
     factor_xyt = factor_xy / real(nstop,crm_rknd)
 
@@ -1041,26 +1034,23 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 !             crm_rad%ns(icrm,i,j,k) = crm_rad%ns(icrm,i,j,k)+micro_field(i,j,k,ins,icrm)
 ! #endif
 
-            !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
-            if ( phys_stage == 1 ) then
 
-              !!! Reduced radiation method allows for fewer radiation calculations
-              !!! by collecting statistics and doing radiation over column groups
-              i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
-              j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+            !!! Reduced radiation method allows for fewer radiation calculations
+            !!! by collecting statistics and doing radiation over column groups
+            i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
+            j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
-              crm_rad%temperature  (icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
-              crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
-              crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
-              crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
-              crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
+            crm_rad%temperature  (icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
+            crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
+            crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
+            crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
+            crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
 #ifdef m2005
-              crm_rad%nc(icrm,i_rad,j_rad,k) = crm_rad%nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl,icrm)
-              crm_rad%ni(icrm,i_rad,j_rad,k) = crm_rad%ni(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci,icrm)
-              crm_rad%qs(icrm,i_rad,j_rad,k) = crm_rad%qs(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs,icrm)
-              crm_rad%ns(icrm,i_rad,j_rad,k) = crm_rad%ns(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins,icrm)
+            crm_rad%nc(icrm,i_rad,j_rad,k) = crm_rad%nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl,icrm)
+            crm_rad%ni(icrm,i_rad,j_rad,k) = crm_rad%ni(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci,icrm)
+            crm_rad%qs(icrm,i_rad,j_rad,k) = crm_rad%qs(icrm,i_rad,j_rad,k) + micro_field(i,j,k,iqs,icrm)
+            crm_rad%ns(icrm,i_rad,j_rad,k) = crm_rad%ns(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins,icrm)
 #endif
-            endif
 
             crm_output%gliqwp(icrm,l) = crm_output%gliqwp(icrm,l) + qcl(i,j,k,icrm)
             crm_output%gicewp(icrm,l) = crm_output%gicewp(icrm,l) + qci(i,j,k,icrm)
@@ -1127,24 +1117,19 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !----------------------------------------------------------------------------------------
     !========================================================================================
 
-    !!! only collect radiative inputs during tphysbc()
-    if ( phys_stage == 1 ) then
+    tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
 
-      tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
-
-      crm_rad%temperature  (icrm,:,:,:) = crm_rad%temperature  (icrm,:,:,:) * tmp1
-      crm_rad%qv (icrm,:,:,:) = crm_rad%qv (icrm,:,:,:) * tmp1
-      crm_rad%qc (icrm,:,:,:) = crm_rad%qc (icrm,:,:,:) * tmp1
-      crm_rad%qi (icrm,:,:,:) = crm_rad%qi (icrm,:,:,:) * tmp1
-      crm_rad%cld(icrm,:,:,:) = crm_rad%cld(icrm,:,:,:) * tmp1
+    crm_rad%temperature  (icrm,:,:,:) = crm_rad%temperature  (icrm,:,:,:) * tmp1
+    crm_rad%qv (icrm,:,:,:) = crm_rad%qv (icrm,:,:,:) * tmp1
+    crm_rad%qc (icrm,:,:,:) = crm_rad%qc (icrm,:,:,:) * tmp1
+    crm_rad%qi (icrm,:,:,:) = crm_rad%qi (icrm,:,:,:) * tmp1
+    crm_rad%cld(icrm,:,:,:) = crm_rad%cld(icrm,:,:,:) * tmp1
 #ifdef m2005
-      crm_rad%nc(icrm,:,:,:) = crm_rad%nc(icrm,:,:,:) * tmp1
-      crm_rad%ni(icrm,:,:,:) = crm_rad%ni(icrm,:,:,:) * tmp1
-      crm_rad%qs(icrm,:,:,:) = crm_rad%qs(icrm,:,:,:) * tmp1
-      crm_rad%ns(icrm,:,:,:) = crm_rad%ns(icrm,:,:,:) * tmp1
+    crm_rad%nc(icrm,:,:,:) = crm_rad%nc(icrm,:,:,:) * tmp1
+    crm_rad%ni(icrm,:,:,:) = crm_rad%ni(icrm,:,:,:) * tmp1
+    crm_rad%qs(icrm,:,:,:) = crm_rad%qs(icrm,:,:,:) * tmp1
+    crm_rad%ns(icrm,:,:,:) = crm_rad%ns(icrm,:,:,:) * tmp1
 #endif /* m2005 */
-
-    endif
 
     ! no CRM tendencies above its top
     tln  (1:ptop-1,icrm) =   crm_input%tl(icrm,1:ptop-1)

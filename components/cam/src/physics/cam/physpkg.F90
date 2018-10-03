@@ -1473,14 +1473,6 @@ subroutine tphysac (ztodt,   cam_in,  &
     logical :: l_gw_drag
     logical :: l_ac_energy_chk
 
-#if defined( SP_CRM_SPLIT )
-    logical           :: use_SPCAM
-    character(len=16) :: SPCAM_microp_scheme
-    integer           :: phys_stage
-    call phys_getopts( use_SPCAM_out           = use_SPCAM )
-    call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
-#endif
-
     !
     !-----------------------------------------------------------------------
     !
@@ -1741,23 +1733,6 @@ if (l_gw_drag) then
 end if ! l_gw_drag
 
 
-
-#if defined( SP_CRM_SPLIT )
-    !===================================================
-    ! SP_CRM_SPLIT splits the CRM integration equally
-    ! between tphysbc and tphysac, instead of running 
-    ! the whole integration from tphysbc. The idea is 
-    ! have the CRM handle the diffusion of sfc fluxes.
-    ! for tphysac() > phys_stage = 2
-    !===================================================
-    if (use_SPCAM) then
-      phys_stage = 2
-      call crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out, species_class, phys_stage)
-    endif
-#endif
-    
-
-
 if (l_ac_energy_chk) then
     !-------------- Energy budget checks vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -1852,11 +1827,6 @@ end if ! l_ac_energy_chk
     end do
     water_vap_ac_2d(:ncol) = ftem(:ncol,1)
 
-#if defined( SP_CRM_SPLIT )
-    ! Accumulate convection tendencies when using second CRM call
-    call diag_conv(state, ztodt*0.5, pbuf)
-#endif
-
 end subroutine tphysac
 
 subroutine tphysbc (ztodt,               &
@@ -1942,10 +1912,6 @@ subroutine tphysbc (ztodt,               &
    use module_ecpp_ppdriver2,  only: parampollu_driver2
    use module_data_ecpp1,      only: dtstep_pp_input
    use crmclouds_camaerosols,  only: crmclouds_mixnuc_tend
-#endif
-
-#if defined( SP_CRM_BULK )
-    use crm_bulk_mod,    only: crm_bulk_transport, crm_bulk_aero_mix_nuc
 #endif
 
 #endif /* CRM */
@@ -2124,7 +2090,6 @@ subroutine tphysbc (ztodt,               &
     logical           :: use_ECPP
     character(len=16) :: SPCAM_microp_scheme
 #ifdef CRM
-    integer           :: phys_stage                ! physics stage indicator (tphysbc => 1)
     real(r8)          :: crm_run_time              ! length of CRM integration
     real(r8), dimension(pcols) :: sp_qchk_prec_dp  ! CRM precipitation diagostic (liq+ice)  used for check_energy_chng
     real(r8), dimension(pcols) :: sp_qchk_snow_dp  ! CRM precipitation diagostic (ice only) used for check_energy_chng
@@ -2770,11 +2735,7 @@ end if
 #ifdef CRM
 
    if (use_SPCAM) then
-#if defined( SP_CRM_SPLIT ) 
-      crm_run_time = ztodt * 0.5
-#else
       crm_run_time = ztodt
-#endif
       !---------------------------------------------------------------------------
       ! Recall the state after dynamics
       !---------------------------------------------------------------------------
@@ -2800,9 +2761,8 @@ end if
       !---------------------------------------------------------------------------
       ! Run the CRM 
       !---------------------------------------------------------------------------
-      phys_stage = 1  ! for tphysbc() => phys_stage = 1
       call crm_physics_tend(ztodt, state, tend,ptend, pbuf, cam_in, cam_out,    &
-                            species_class, phys_stage, crm_ecpp_output,         &
+                            species_class, crm_ecpp_output,                     &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
       call physics_update(state, ptend, crm_run_time, tend)
@@ -2830,19 +2790,6 @@ end if
       call physics_update (state, ptend, crm_run_time, tend)
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time, zero, zero, zero, zero)
 #endif /* MODAL_AERO */
-
-      !---------------------------------------------------------------------------
-      ! CRM Bulk Calculations (i.e. ECPP-lite) 
-      !---------------------------------------------------------------------------
-#if defined( SP_CRM_BULK )
-      ! !!! aerosol tendency from droplet activation and mixing
-      ! call crm_bulk_aero_mix_nuc( state, ptend, pbuf, crm_run_time, &
-      !                             cam_in%cflx, pblh,                &
-      !                             wwqui_cen, wwqui_cloudy_cen,      &
-      !                             wwqui_bnd, wwqui_cloudy_bnd,      &
-      !                             species_class)
-      ! call physics_update(state, ptend, crm_run_time, tend)
-#endif /* SP_CRM_BULK */
 
       !---------------------------------------------------------------------------
       ! ECPP - Explicit-Cloud Parameterized-Pollutant
@@ -2949,18 +2896,13 @@ end if
         if (do_clubb_sgs) then
           sh_e_ed_ratio = 0.0_r8
         endif
-#if defined( SP_CRM_BULK )
-         ! !!!  wet scavenging of aerosols
-         ! call crm_bulk_aero_wet_dep_scav()
-         ! call physics_update(state, ptend, crm_run_time, tend)
-#else
+
         call aero_model_wetdep( ztodt, dlf, dlf2, cmfmc2, state, sh_e_ed_ratio,      & !Intent-ins
             mu, md, du, eu, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class,&
             cam_out,                                                                 & !Intent-inout
             pbuf,                                                                    & !Pointer
             ptend                                                                    ) !Intent-out
         call physics_update(state, ptend, ztodt, tend)
-#endif
 
         if (carma_do_wetdep) then
           ! CARMA wet deposition
@@ -2974,19 +2916,12 @@ end if
           call t_stopf ('carma_wetdep_tend')
         end if
 
-#if defined( SP_CRM_BULK )
-        !!! calculate bulk transport tendencies (CRM)
-        call crm_bulk_transport(state, pbuf, ptend)
-        ! call physics_update (state, ptend, crm_run_time, tend)
-        call physics_update (state, ptend, ztodt, tend)
-#else
         !!! deep convective transport (ZM)
         call t_startf ('convect_deep_tend2')
         call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
           du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
         call physics_update(state, ptend, ztodt, tend)
         call t_stopf ('convect_deep_tend2')
-#endif
 
         ! check tracer integrals
         call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
@@ -3014,11 +2949,7 @@ end if ! l_tracer_aero
 
     call t_startf('bc_history_write')
     call diag_phys_writeout(state, cam_out%psl)
-#if defined( SP_CRM_SPLIT )
-    call diag_conv(state, ztodt*0.5, pbuf)
-#else
     call diag_conv(state, ztodt, pbuf)
-#endif
     call t_stopf('bc_history_write')
 
     !===================================================
