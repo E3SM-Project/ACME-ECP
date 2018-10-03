@@ -464,11 +464,11 @@ contains
       ! If we are doing SP-CAM, then we need to do radiation every timestep. To
       ! control this, set iradsw and iradlw to calculate radiative transfer
       ! every timestep
-      !call phys_getopts(use_SPCAM_out=use_SPCAM)
-      !if (use_SPCAM) then
-      !   iradsw = 1
-      !   iradlw = 1
-      !end if
+      call phys_getopts(use_SPCAM_out=use_SPCAM)
+      if (use_SPCAM) then
+         iradsw = 1
+         iradlw = 1
+      end if
 
       ! Initialize cloud optics
       call cloud_rad_props_init()
