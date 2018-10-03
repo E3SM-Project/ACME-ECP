@@ -563,7 +563,6 @@ contains
     enddo
 
     ! Check if we have reached the end of the level 1 time averaging period.
-    do icrm = 1 , ncrms
     if( mod(itavg1,ntavg1) == 0 ) then
 
       ! Turn the running sums into averages.
@@ -572,6 +571,7 @@ contains
       else
         ncnt1 = 1
       end if
+      do icrm = 1 , ncrms
       call rsums1ToAvg( ncnt1, qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
       qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), &
       qgraupsum1(:,:,:,icrm), &
@@ -581,8 +581,10 @@ contains
       wwsum1(:,:,:,icrm), wwsqsum1(:,:,:,icrm), &
       tkesgssum1(:,:,:,icrm), qlsink_bfsum1(:,:,:,icrm), &
       prainsum1(:,:,:,icrm), qvssum1(:,:,:,icrm)  )
+      enddo
 
       ! Determine draft categories and get running sums of them.
+      do icrm = 1 , ncrms
       call categorization_stats( .true., &
       nx, ny, nzm, nupdraft, ndndraft, ndraft_max, &
       mode_updnthresh, upthresh, downthresh, &
@@ -611,17 +613,21 @@ contains
       qlsink_bf_cen_sum(:,:,1:1+nup+ndn,:,icrm), prain_cen_sum(:,:,1:1+nup+ndn,:,icrm),  &
       wwqui_cen_sum(:,icrm), wwqui_bnd_sum(:,icrm), wwqui_cloudy_cen_sum(:,icrm), wwqui_cloudy_bnd_sum(:,icrm), &
       wup_thresh(:,icrm), wdown_thresh(:,icrm) )
+      enddo
 
       ! If we want final area categories based on the last avg1 period in each
       ! avg2 then we need to zero out the running sum just created for the areas
       ! if it is not the last block of time in ntavg2
       if( areaavgtype==1 .and. .not. mod(itavg2,ntavg2)==0 ) then
+        do icrm = 1 , ncrms
         call zero_out_areas( &
         area_bnd_final(:,:,1:1+ndn+nup,:,icrm), &
         area_cen_final(:,:,1:1+ndn+nup,:,icrm) )
+        enddo
       end if
 
       ! Done with time level one averages so zero them out for next period.
+      do icrm = 1 , ncrms
       call zero_out_sums1( qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
       qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), qgraupsum1(:,:,:,icrm), &
       qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
@@ -629,6 +635,7 @@ contains
       altsum1(:,:,:,icrm), rhsum1(:,:,:,icrm), cf3dsum1(:,:,:,icrm), &
       wwsum1(:,:,:,icrm), wwsqsum1(:,:,:,icrm), tkesgssum1(:,:,:,icrm), &
       qlsink_bfsum1(:,:,:,icrm), prainsum1(:,:,:,icrm), qvssum1(:,:,:,icrm) )
+      enddo
 
     end if !End of time level one averaging period
 
@@ -646,6 +653,7 @@ contains
         ncnt2 = 1
       end if
 
+      do icrm = 1 , ncrms
       call rsums2ToAvg( areaavgtype, nx, ny, ncnt1, ncnt2, &
       xkhvsum(:,icrm), &
       wwqui_cen_sum(:,icrm), wwqui_bnd_sum(:,icrm), wwqui_cloudy_cen_sum(:,icrm), wwqui_cloudy_bnd_sum(:,icrm),  &
@@ -661,9 +669,11 @@ contains
       qlsink_cen_sum(:,:,1:1+ndn+nup,:,icrm), precr_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
       precsolid_cen_sum(:,:,1:1+ndn+nup,:,icrm), precall_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
       qlsink_bf_cen_sum(:,:,1:1+ndn+nup,:,icrm), prain_cen_sum(:,:,1:1+ndn+nup,:,icrm) )
+      enddo
 
       ! get in-cloud value for rh, qcloud, qrain, qice, qsnow, qgraup,
       ! percr, precsolid, and precall. (qlsink is already in-cloud values)
+      do icrm = 1 , ncrms
       do kk=1, nzm
         do icl=1, NCLASS_CL
           do icls=1, ncls_ecpp_in
@@ -735,10 +745,9 @@ contains
           wwqui_cloudy_bnd_sum(kk,icrm) = 0.0
         end if
       end do
+      enddo
 
     end if !End of level two time averaging period
-
-    enddo
 
   end subroutine ecpp_crm_stat
 
