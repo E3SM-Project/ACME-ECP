@@ -464,9 +464,6 @@ end function radiation_nextsw_cday
        iradlw = 1
     end if
 
-    ! Initialize solar variability interface
-    call rad_solar_var_init()
-
     ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then
        dtime  = get_step_size()
@@ -956,21 +953,6 @@ end function radiation_nextsw_cday
     call addfld('COSZRS', horiz_only, 'I', '1', &
                 'Cosine of solar zenith angle', &
                 sampling_seq='rad_lwsw', flag_xyfill=.true.)
-
-   ! Band-by-band cloud optical properties
-   ! Register new dimensions
-   call get_sw_spectral_midpoints(sw_band_midpoints, 'm')
-   call get_lw_spectral_midpoints(lw_band_midpoints, 'm')
-   call add_hist_coord('swband', nswbands, 'Shortwave band', 'wavelength', sw_band_midpoints)
-   call add_hist_coord('lwband', nlwbands, 'Longwave band', 'wavelength', lw_band_midpoints)
-   call addfld('CLOUD_TAU_SW', (/'lev','swband'/), 'I', '1', &
-               'Cloud extinction optical depth', sampling_seq='rad_lwsw')
-   call addfld('CLOUD_SSA_SW', (/'lev','swband'/), 'I', '1', &
-               'Cloud shortwave single scattering albedo', sampling_seq='rad_lwsw')
-   call addfld('CLOUD_G_SW', (/'lev','swband'/), 'I', '1', &
-               'Cloud shortwave assymmetry parameter', sampling_seq='rad_lwsw')
-   call addfld('CLOUD_TAU_LW', (/'lev','lwband'/), 'I', '1', &
-               'Cloud absorption optical depth', sampling_seq='rad_lwsw')
 
   end subroutine radiation_init
 
@@ -1466,7 +1448,7 @@ end function radiation_nextsw_cday
       cld_tau_idx = pbuf_get_index('cld_tau')
     end if
    
-!  For CRM, make cloud equal to input observations:
+    ! For CRM, make cloud equal to input observations:
     if (single_column.and.scm_crm_mode.and.have_cld) then
        do k = 1,pver
           cld(:ncol,k)= cldobs(k)
@@ -2072,7 +2054,7 @@ end function radiation_nextsw_cday
                            sd(i,:,:) = sd_m(i,:,:,icall)
                         end if
                         swcf(i)=fsntoa(i) - fsntoac(i)
-         fsutoac(i) = solin(i) - fsntoac(i)
+                        fsutoac(i) = solin(i) - fsntoac(i)
                       end do
                      endif
                   end if ! (use_SPCAM)
@@ -2213,7 +2195,7 @@ end function radiation_nextsw_cday
             tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
           endif 
 
-         ! add fillvalue for night columns
+          ! add fillvalue for night columns
           if ( (use_SPCAM .and. last_column) .or. .not. use_SPCAM) then
             do i = 1, Nnite
               tot_cld_vistau(IdxNite(i),:)   = fillvalue
@@ -2403,7 +2385,7 @@ end function radiation_nextsw_cday
 
             end if  ! active_calls(icall)
           end do ! icall
-                  
+
           call t_stopf ('rad_lw_loop')    !==Guangxing Lin
           call t_stopf ('rad_lw')         !==Guangxing Lin
 
@@ -2583,12 +2565,10 @@ end function radiation_nextsw_cday
 
     end if   !  if (dosw .or. dolw) then
 
-    call t_startf ('radheat_tend')    !==Guangxing Lin
-
     ! Compute net radiative heating tendency
+    call t_startf ('radheat_tend')    !==Guangxing Lin
     call radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
                       fsnt, flns, flnt, cam_in%asdir, net_flx)
-
     call t_stopf ('radheat_tend')   !==Guangxing Lin
 
     ! Compute heating rate for dtheta/dt 
@@ -2598,9 +2578,7 @@ end function radiation_nextsw_cday
           ftem(i,k) = (qrs(i,k) + qrl(i,k))/cpair * (1.e5_r8/state%pmid(i,k))**cappa
        end do
     end do
-
     call t_stopf ('heating_rate')   !==Guangxing Lin
-
     call outfld('HR      ',ftem    ,pcols   ,lchnk   )
 
     ! convert radiative heating rates to Q*dp for energy conservation
@@ -2612,7 +2590,7 @@ end function radiation_nextsw_cday
           end do
        end do
     end if
- 
+
     if (pergro_mods) then
        !write kissvec seeds for random numbers
        do iseed = 1, kiss_seed_num    
@@ -2626,10 +2604,11 @@ end function radiation_nextsw_cday
     ! Note that units have already been converted to mks in RADCTL.  Since
     ! fsns and flwds are in the buffer, array values will be carried across
     ! timesteps when the radiation code is not invoked.
- !   cam_out%srfrad(:ncol) = fsns(:ncol) + cam_out%flwds(:ncol)
- !   call outfld('SRFRAD  ',cam_out%srfrad,pcols,lchnk)
+    !cam_out%srfrad(:ncol) = fsns(:ncol) + cam_out%flwds(:ncol)
+    !call outfld('SRFRAD  ',cam_out%srfrad,pcols,lchnk)
 
-     cam_out%netsw(:ncol) = fsns(:ncol)
+    cam_out%netsw(:ncol) = fsns(:ncol)
+
 end subroutine radiation_tend
 
 !===============================================================================
