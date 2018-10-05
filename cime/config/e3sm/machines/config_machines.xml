@@ -2073,7 +2073,7 @@
 <DESC>Ubuntu 16.04 Desktop</DESC>
     <NODENAME_REGEX>thatchroof</NODENAME_REGEX>
     <TESTS>acme_developer</TESTS>
-    <COMPILERS>pgi,gnu</COMPILERS>
+    <COMPILERS>pgi,gnu,pgigpu</COMPILERS>
     <MPILIBS>mpich,openmpi</MPILIBS>
     <CIME_OUTPUT_ROOT>/proj/imn/acme_scratch</CIME_OUTPUT_ROOT>
     <RUNDIR>/proj/imn/acme_runs/$CASE/run</RUNDIR>
@@ -2127,12 +2127,17 @@
         <command name="load">pgi/17.10</command>
         <command name="load">openmpi</command>
       </modules>
+      <modules compiler="pgigpu">
+        <command name="load">pgi/17.10</command>
+        <command name="load">openmpi</command>
+      </modules>
       <modules>
         <command name="load">netcdf</command>
         <command name="load">hdf5</command>
         <command name="load">curl</command>
         <command name="load">szip</command>
         <command name="load">zlib</command>
+        <command name="load">lapack</command>
         <command name="load">parallel-netcdf</command>
       </modules>
     </module_system>
