@@ -2136,8 +2136,6 @@ end function radiation_nextsw_cday
           ! multiply by total cloud fraction to get gridbox value
           tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
 
-           call t_stopf ('rad_sw_loop')   !==Guangxing Lin
- 
           if(use_SPCAM .and. last_column) then
             do i = 1, nnite 
               crm_aodvis(idxnite(i), :, :) = fillvalue
