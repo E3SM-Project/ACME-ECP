@@ -1877,6 +1877,18 @@ contains
       nday = count(day_indices(1:ncol) > 0)
       nnight = count(night_indices(1:ncol) > 0)
 
+      ! If all columns in chunk are night columns, then we zero out the fluxes
+      ! and heating rates and immediately return, because RRTMGP will choke if
+      ! encounters coszrs <= 0 for any columns, and allocation routines will die
+      ! if nday == 0.
+      if (nday <= 0) then
+         qrs = 0
+         qrsc = 0
+         call reset_fluxes(fluxes_allsky)
+         call reset_fluxes(fluxes_clrsky)
+         return
+      end if
+
       ! Get albedo. This uses CAM routines internally and just provides a
       ! wrapper to improve readability of the code here.
       call set_albedo(cam_in, albedo_direct(1:nswbands,1:ncol), albedo_diffuse(1:nswbands,1:ncol))
