@@ -14,7 +14,7 @@
 <f12vmr>0.0</f12vmr>
 
 <!-- Ice nucleation mods-->
-<use_hetfrz_classnuc>.true.</use_hetfrz_classnuc>
+<use_hetfrz_classnuc>.false.</use_hetfrz_classnuc>
 <use_preexisting_ice>.false.</use_preexisting_ice>
 <hist_hetfrz_classnuc>.false.</hist_hetfrz_classnuc>
 <micro_mg_dcs_tdep>.true.</micro_mg_dcs_tdep>
