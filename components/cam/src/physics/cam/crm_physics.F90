@@ -46,7 +46,6 @@ module crm_physics
    integer :: cldo_idx
 
    integer :: clubb_buffer_idx
-
 !MAML-Guangxing Lin
    integer :: crm_pcp_idx,crm_snw_idx
 !MAML-Guangxing Lin
@@ -175,7 +174,6 @@ subroutine crm_physics_register()
 
   ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
   call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
-
 !MAML-Guangxing Lin...adding new variables for passing precipition/snow into CLM. Added new variables
   call pbuf_add_field('CRM_PCP',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_pcp_idx)
   call pbuf_add_field('CRM_SNW',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_snw_idx)
@@ -403,7 +401,6 @@ subroutine crm_physics_init(species_class)
   call addfld ('SPKVH     ',(/ 'ilev' /), 'A', 'm2/s    ', 'Vertical diffusivity used in dropmixnuc in the MMF call')
   call addfld ('SPWTKE   ', (/ 'lev' /), 'A', 'm/s',      'Standard deviation of updraft velocity')
   call addfld ('SPLCLOUD  ',(/ 'lev' /), 'A', '        ', 'Liquid cloud fraction')
-
 !MAML-Guangxing Lin
   call addfld ('CRM_SHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc sensible heat flux'          )
   call addfld ('CRM_LHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc latent heat flux'            )
@@ -719,6 +716,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm) 
    fromcrm = .false.
    
+
    !------------------------------------------------------------
    ! Initialize CRM state (nullify pointers, allocate memory, etc)
    !------------------------------------------------------------
