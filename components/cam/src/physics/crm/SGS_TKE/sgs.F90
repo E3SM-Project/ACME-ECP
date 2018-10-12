@@ -352,13 +352,13 @@ CONTAINS
     real(crm_rknd), intent(inout) :: cfl
     integer k,icrm, j, i
     real(crm_rknd) tkhmax(nz,ncrms), tmp
-    !_dir _par _loop _gang _vector collapse(2) _kout(tkhmax)
+    !_dir _par _loop _gang _vector collapse(2) _kout(tkhmax) _async(1)
     do icrm = 1 , ncrms
       do k = 1,nzm
         tkhmax(k,icrm) = 0.
       enddo
     enddo
-    !_dir _par _loop _gang _vector collapse(4) _kinout(tkhmax) _kin(tkh)
+    !_dir _par _loop _gang _vector collapse(4) _kinout(tkhmax) _kin(tkh) _async(1)
     do icrm = 1 , ncrms
       do k = 1,nzm
         do j = 1 , ny
@@ -368,7 +368,7 @@ CONTAINS
         enddo
       end do
     end do
-    !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(tkhmax,grdf_z,dz,adzw,grdf_x,grdf_y)
+    !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(tkhmax,grdf_z,dz,adzw,grdf_x,grdf_y) _async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2  , &

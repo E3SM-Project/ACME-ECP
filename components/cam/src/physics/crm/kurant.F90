@@ -19,7 +19,9 @@ module kurant_mod
       real(crm_rknd) cfl, cfl_sgs, tmp
       ncycle = 1
 
-      !_dir _par _loop _gang _vector collapse(2) _kout(wm,uhm)
+      !_dir _enter_data _dcreate(wm,uhm) _async(1)
+
+      !_dir _par _loop _gang _vector collapse(2) _kout(wm,uhm) _async(1)
       do icrm = 1 , ncrms
         do k = 1 , nz
           wm (k,icrm) = 0.
@@ -27,7 +29,7 @@ module kurant_mod
         enddo
       enddo
 
-      !_dir _par _loop _gang _vector collapse(4) private(tmp) _kinout(wm,w_max,uhm,u_max) _kin(u,v,w)
+      !_dir _par _loop _gang _vector collapse(4) private(tmp) _kinout(wm,w_max,uhm,u_max) _kin(u,v,w) _async(1)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j = 1 , ny
@@ -49,7 +51,7 @@ module kurant_mod
       enddo
 
       cfl = 0.
-      !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(uhm,wm,dz,adzw)
+      !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(uhm,wm,dz,adzw) _async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           tmp = max( uhm(k,icrm)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(k,icrm),wm(k+1,icrm))*dt/(dz(icrm)*adzw(k,icrm)) )
@@ -59,9 +61,11 @@ module kurant_mod
       end do
 
       call kurant_sgs(ncrms,cfl)
+      !_wait(1)
       ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 
       if(ncycle.gt.4) then
+        !$_dir _update_host(wm,uhm,tabs,latitude,longitude)
         if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
         do icrm = 1 , ncrms
           write(0, 5550) cfl, cfl_sgs, latitude(1,1,icrm), longitude(1,1,icrm)
@@ -71,6 +75,8 @@ module kurant_mod
         end do
         call task_abort()
       end if
+
+      !_dir _exit_data _ddelete(wm,uhm) _async(1)
 
 5550 format('kurant() - cfl: ',f12.2,'  cfl_sgs: ',f12.2,'  lat: ',f6.2,'  lon: ',f6.2)
 5551 format('k: ',i5,'  wm: ',f10.2,'  uhm: ',f10.2,'  tabs: ',f8.2)

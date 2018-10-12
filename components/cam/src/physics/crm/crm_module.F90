@@ -757,7 +757,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !----------------------------------------------------------------------------------------
   !========================================================================================
   do nstep = 1 , nstop
-    !_dir _par _loop _gang _vector _kinout(crm_output%timing_factor)
+    !_dir _par _loop _gang _vector _kinout(crm_output%timing_factor) _async(1)
     do icrm = 1 , ncrms
       crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
     enddo
@@ -771,9 +771,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     do icyc=1,ncycle
       icycle = icyc
       dtn = dt/ncycle
-      do icrm = 1 , ncrms
-        dt3(na) = dtn
-      enddo
+      dt3(na) = dtn
       dtfactor = dtn/dt
 
       !---------------------------------------------
