@@ -1787,7 +1787,7 @@ contains
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_concentrations, only: ty_gas_concs
       use radiation_state, only: set_rad_state
-      use radiation_utils, only: calculate_heating_rate
+      use radiation_utils, only: calculate_heating_rate, clip_values
       use cam_optics, only: set_cloud_optics_sw, set_aerosol_optics_sw
 
       ! Inputs
@@ -1927,6 +1927,10 @@ contains
                          pint(1:nday,1:nlev_rad+1), &
                          col_indices=day_indices(1:nday))
 
+      ! Make sure temperatures are within range
+      call clip_values(tmid, k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tmid', warn=.true.)
+      call clip_values(tint, k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tint', warn=.true.)
+
       ! Do shortwave cloud optics calculations
       ! TODO: refactor the set_cloud_optics codes to allow passing arrays
       ! rather than state/pbuf so that we can use this for superparameterized
@@ -2032,7 +2036,7 @@ contains
       use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_concentrations, only: ty_gas_concs
       use radiation_state, only: set_rad_state
-      use radiation_utils, only: calculate_heating_rate
+      use radiation_utils, only: calculate_heating_rate, clip_values
       use cam_optics, only: set_cloud_optics_lw, set_aerosol_optics_lw
       use crmdims, only: crm_nx_rad, crm_ny_rad, crm_nz
 
@@ -2109,6 +2113,10 @@ contains
                          tint(1:ncol,1:nlev_rad+1), &
                          pmid(1:ncol,1:nlev_rad), &
                          pint(1:ncol,1:nlev_rad+1))
+
+      ! Make sure temperatures are within range
+      call clip_values(tmid, k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tmid', warn=.true.)
+      call clip_values(tint, k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tint', warn=.true.)
 
       ! Do longwave cloud optics calculations
       call t_startf('longwave cloud optics')
