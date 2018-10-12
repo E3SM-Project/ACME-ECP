@@ -1395,6 +1395,11 @@ contains
          dolw = radiation_do('lw')
       end if
 
+#if defined( RCEMIP )
+      dosw = .true.
+      dolw = .true.
+#endif
+
       ! Do shortwave stuff...
       if (dosw) then
 

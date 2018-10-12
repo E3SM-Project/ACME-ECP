@@ -280,6 +280,12 @@
     <lname>2000_CAM%ADIAB_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <!-- data ocean component for custom SST pattern -->
+  <compset>
+    <alias>FC5AV1C-L-AQUA</alias>
+    <lname>2000_CAM5%AV1C-L_SLND_SICE_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
   <!-- ************ -->
   <!-- SCM compsets -->
   <!-- ************ -->
@@ -308,6 +314,17 @@
   <compset>
     <alias>FSP2V1</alias>
     <lname>2000_CAM5%SP2V1_CLM45%SPBC_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+
+  <!-- Custom Aqua-Planet -->
+   <compset>
+    <alias>SP1V1-AQUA</alias>
+    <lname>2000_CAM5%SP1V1_SLND_SICE_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+   <compset>
+    <alias>SP1V1-AQUAP</alias>
+    <lname>2000_CAM5%SP1V1_SLND_SICE_DOCN%AQP1_SROF_SGLC_SWAV</lname>
   </compset>
 
   <!-- F testing compsets w/ reduced CRM dimensions -->
