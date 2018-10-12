@@ -43,6 +43,14 @@ subroutine zenith(calday  ,clat    , clon   ,coszrs  ,ncol, dt_avg    )
 !
 !-----------------------------------------------------------------------
 !
+
+#if defined( RCEMIP )
+   do i=1,ncol
+      coszrs(i) = 0.74256103117 ! = cos( 42.05 * 3.14159/180. )
+   end do
+#else
+
+
    call shr_orb_decl (calday  ,eccen     ,mvelpp  ,lambm0  ,obliqr  , &
                       delta   ,eccf      )
 !
@@ -51,6 +59,8 @@ subroutine zenith(calday  ,clat    , clon   ,coszrs  ,ncol, dt_avg    )
    do i=1,ncol
       coszrs(i) = shr_orb_cosz( calday, clat(i), clon(i), delta, dt_avg )
    end do
+
+#endif /* RCEMIP */
 
 end subroutine zenith
 end module orbit
