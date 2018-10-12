@@ -21,11 +21,8 @@ contains
       kmin(icrm)=nzm+1
     enddo
     do icrm = 1 , ncrms
-      !$acc loop seq
       do k = 1,nzm
-        !$acc loop seq
         do j = 1, ny
-          !$acc loop seq
           do i = 1, nx
             if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.0..and. tabs(i,j,k,icrm).lt.273.15) then
               kmin(icrm) = min(kmin(icrm),k)

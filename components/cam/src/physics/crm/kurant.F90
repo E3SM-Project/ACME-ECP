@@ -1,3 +1,6 @@
+
+#include "directives.inc"
+
 module kurant_mod
    use task_util_mod
    implicit none
@@ -16,6 +19,7 @@ module kurant_mod
       real(crm_rknd) cfl, cfl_sgs, tmp
       ncycle = 1
 
+      !_dir _par _loop _gang _vector collapse(2) _kout(wm,uhm)
       do icrm = 1 , ncrms
         do k = 1 , nz
           wm (k,icrm) = 0.
@@ -23,6 +27,7 @@ module kurant_mod
         enddo
       enddo
 
+      !_dir _par _loop _gang _vector collapse(4) private(tmp) _kinout(wm,w_max,uhm,u_max) _kin(u,v,w)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j = 1 , ny
@@ -44,6 +49,7 @@ module kurant_mod
       enddo
 
       cfl = 0.
+      !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(uhm,wm,dz,adzw)
       do icrm = 1 , ncrms
         do k=1,nzm
           tmp = max( uhm(k,icrm)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(k,icrm),wm(k+1,icrm))*dt/(dz(icrm)*adzw(k,icrm)) )

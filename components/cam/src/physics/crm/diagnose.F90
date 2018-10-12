@@ -22,7 +22,6 @@ contains
       k200(icrm) = nzm
       k500(icrm) = nzm
       k850(icrm) = nzm
-      !$acc loop seq
       do k=1,nzm
         u0(k,icrm)=0.
         v0(k,icrm)=0.

@@ -24,7 +24,6 @@ contains
     end if
 
     do icrm = 1 , ncrms
-      !$acc loop seq
       do k=nzm,1,-1
         if(z(nzm,icrm)-z(k,icrm).lt.damp_depth*z(nzm,icrm)) then
           n_damp(icrm)=nzm-k+1
@@ -54,13 +53,10 @@ contains
         do j=1, ny
           do i=1, nx
             tmp = u(i,j,k,icrm)/(nx*ny)
-            !$acc atomic update
             u0(k,icrm) = u0(k,icrm) + tmp
             tmp = v(i,j,k,icrm)/(nx*ny)
-            !$acc atomic update
             v0(k,icrm) = v0(k,icrm) + tmp
             tmp = t(i,j,k,icrm)/(nx*ny)
-            !$acc atomic update
             t0(k,icrm) = t0(k,icrm) + tmp
           end do
         end do

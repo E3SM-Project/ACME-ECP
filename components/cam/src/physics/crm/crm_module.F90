@@ -1,4 +1,6 @@
 
+#include "directives.inc"
+
 module crm_module
   use task_init_mod, only: task_init
   use abcoefs_mod, only: abcoefs
@@ -755,6 +757,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !----------------------------------------------------------------------------------------
   !========================================================================================
   do nstep = 1 , nstop
+    !_dir _par _loop _gang _vector _kinout(crm_output%timing_factor)
     do icrm = 1 , ncrms
       crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
     enddo
