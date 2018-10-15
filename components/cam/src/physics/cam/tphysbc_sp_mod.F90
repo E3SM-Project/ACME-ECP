@@ -1,5 +1,7 @@
 module tphysbc_sp_mod
 
+#if defined( SP_ALT_TPHYSBC )
+
    use shr_kind_mod,       only: r8 => shr_kind_r8
    use shr_sys_mod,        only: shr_sys_flush
    use spmd_utils,         only: masterproc, iam
@@ -7,7 +9,6 @@ module tphysbc_sp_mod
    use physics_types,      only: physics_state, physics_tend, physics_state_set_grid,  &
                                  physics_ptend, physics_tend_init,                     &
                                  physics_type_alloc, physics_ptend_dealloc,            &
-                                 physics_state_alloc, physics_state_dealloc,           &
                                  physics_tend_alloc, physics_tend_dealloc
    use physics_update_mod, only: physics_update, physics_update_init, hist_vars,       &
                                  nvars_prtrb_hist, get_var
@@ -21,17 +22,27 @@ module tphysbc_sp_mod
    use zm_conv,            only: trigmem
    use scamMod,            only: single_column, scm_crm_mode
    use flux_avg,           only: flux_avg_init
+   use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
 #ifdef SPMD
    use mpishorthand
 #endif
    use perf_mod
    use cam_logfile,        only: iulog
    use camsrfexch,         only: cam_export
+   use dyn_comp,           only: dyn_import_t
+
+   !!! can't use this - circular dependency!
+   ! use physpkg,            only: shallow_scheme, macrop_scheme, microp_scheme,            &
+   !                               cld_macmic_num_steps, do_clubb_sgs, use_subcol_microp,   &
+   !                               state_debug_checks, clim_modal_aero, prog_modal_aero,    &
+   !                               micro_do_icesupersat, is_cmip6_volc
    
    use modal_aero_calcsize,   only: modal_aero_calcsize_init, modal_aero_calcsize_diag, &
                                     modal_aero_calcsize_reg, modal_aero_calcsize_sub
    use modal_aero_wateruptake,only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, &
                                     modal_aero_wateruptake_reg
+
+   
 
    implicit none
    private 
@@ -54,27 +65,26 @@ module tphysbc_sp_mod
    character(len=16) :: shallow_scheme
    character(len=16) :: macrop_scheme
    character(len=16) :: microp_scheme 
-   integer           :: cld_macmic_num_steps    ! Number of macro/micro substeps
+   integer           :: cld_macmic_num_steps       ! Number of macro/micro substeps
    logical           :: do_clubb_sgs
-   logical           :: use_subcol_microp   ! if true, use subcolumns in microphysics
-   logical           :: state_debug_checks  ! Debug physics_state.
-   logical           :: clim_modal_aero     ! climate controled by prognostic or prescribed modal aerosols
-   logical           :: prog_modal_aero     ! Prognostic modal aerosols present
+   logical           :: use_subcol_microp          ! if true, use subcolumns in microphysics
+   logical           :: state_debug_checks         ! Debug physics_state.
+   logical           :: clim_modal_aero            ! climate controled by prognostic or prescribed modal aerosols
+   logical           :: prog_modal_aero            ! Prognostic modal aerosols present
    logical           :: micro_do_icesupersat
-   logical           :: pergro_test_active= .false.
+   logical           :: pergro_test_active = .false.
    logical           :: pergro_mods = .false.
-   logical           :: is_cmip6_volc !true if cmip6 style volcanic file is read otherwise false
+   logical           :: is_cmip6_volc = .false.    !true if cmip6 style volcanic file is read otherwise false
    
    contains
 
-#if defined( SP_ALT_TPHYSBC )
-
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
-subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
+! subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, dyn_dum, &
+   subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
                       fsns_in, fsnt_in, flns_in, flnt_in, fsds_in,   & 
                       state_in, tend_in, cam_in_in, cam_out_in,      &
-                      species_class )
+                      sgh, sgh30, species_class )
    !---------------------------------------------------------------------------
    ! Purpose: 
    ! Evaluate and apply physical processes that occur 
@@ -141,6 +151,7 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
    real(r8),            intent(in   ) :: ztodt                                ! physics time step
    type(physics_buffer_desc), pointer :: pbuf2d   (:,:)                       ! physics buffer
    real(r8),            intent(in   ), target :: landm_in (pcols,begchunk:endchunk)   ! land fraction ramp
+   ! type(dyn_import_t),  intent(inout)         :: dyn_dum
    real(r8),            intent(inout), target :: fsns_in  (pcols,begchunk:endchunk)   ! Surface solar absorbed flux
    real(r8),            intent(inout), target :: fsnt_in  (pcols,begchunk:endchunk)   ! Net column abs solar flux at model top
    real(r8),            intent(inout), target :: flns_in  (pcols,begchunk:endchunk)   ! Srf longwave cooling (up-down) flux
@@ -150,6 +161,8 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
    type(physics_tend ), intent(inout), target :: tend_in        (begchunk:endchunk)   ! physics tend (for dynamics)
    type(cam_in_t),      intent(in   ), target :: cam_in_in      (begchunk:endchunk)   ! atmos comp input structure
    type(cam_out_t),     intent(inout), target :: cam_out_in     (begchunk:endchunk)   ! atmos comp output structure
+   real(r8),            intent(in)            :: sgh      (pcols,begchunk:endchunk)   ! Std. deviation of orography
+   real(r8),            intent(in)            :: sgh30    (pcols,begchunk:endchunk)   ! Std. deviation of 30 s orography for tms
    integer,             intent(inout), target :: species_class(pcnst)
    !---------------------------------------------------------------------------
    !!! Local variables
@@ -219,27 +232,61 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
    real(r8),pointer :: snow_pcw(:)                 ! snow from prognostic cloud scheme
    real(r8),pointer :: prec_sed(:)                 ! total precip from cloud sedimentation
    real(r8),pointer :: snow_sed(:)                 ! snow from cloud ice sedimentation
-   real(r8)         :: sh_e_ed_ratio(pcols,pver)   ! shallow conv [ent/(ent+det)] ratio  
+   
 
    !!! energy checking variables
+   type(check_tracers_data) :: tracerint           ! energy integrals and cummulative boundary fluxes
    real(r8) :: zero(pcols)                         ! array of zeros
    real(r8) :: zero_tracers(pcols,pcnst)           ! array of zeros
    real(r8) :: flx_heat(pcols)
-   type(check_tracers_data) :: tracerint           ! energy integrals and cummulative boundary fluxes
-   logical  :: lq(pcnst)
    real(r8) :: ftem(pcols,pver)                    ! tmp space
    real(r8), pointer, dimension(:) :: static_ener_ac_2d ! Vertically integrated static energy
    real(r8), pointer, dimension(:) :: water_vap_ac_2d   ! Vertically integrated water vapor
    real(r8) :: CIDiff(pcols)                            ! Difference in vertically integrated static energy
 
-   logical :: l_bc_energy_fix
-   logical :: l_dry_adj
-   logical :: l_tracer_aero
-   logical :: l_st_mac
-   logical :: l_st_mic
-   logical :: l_rad
+   logical  :: lq(pcnst)
+   logical  :: l_bc_energy_fix
+   logical  :: l_dry_adj
+   logical  :: l_tracer_aero
+   logical  :: l_st_mac
+   logical  :: l_st_mic
+   logical  :: l_rad
 
-   real(r8) :: qexcess(pcols)
+   integer  :: nmodes
+   real(r8) :: qexcess(pcols)   
+
+   !!! variables for deep convection and aerosol transport
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: mu 
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: eu
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: du
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: md
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: ed
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: dp
+   real(r8), dimension(begchunk:endchunk,pcols)       :: dsubcld        ! wg layer thickness in mbs (between upper/lower interface).
+   integer , dimension(begchunk:endchunk,pcols)       :: jt             ! wg layer thickness in mbs between lcl and maxi.    
+   integer , dimension(begchunk:endchunk,pcols)       :: maxg           ! wg top  level index of deep cumulus convection.
+   integer , dimension(begchunk:endchunk,pcols)       :: ideep          ! wg gathered values of maxi.
+   real(r8), dimension(begchunk:endchunk,pcols)       :: rliq           ! vertical integral of liquid not yet in q(ixcldliq)
+   real(r8), dimension(begchunk:endchunk,pcols)       :: rliq2          ! vertical integral of liquid from shallow scheme
+   integer , dimension(begchunk:endchunk)             :: lengath        ! w holds position of gathered points vs longitude index
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: zdu            ! detraining mass flux from deep convection
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: cmfcme         ! cmf condensation - evaporation
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: dlf            ! Detraining cld H20 from shallow + deep convections
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: dlf2           ! Detraining cld H20 from shallow convections
+   real(r8), dimension(begchunk:endchunk,pcols,pverp) :: cmfmc          ! Convective mass flux--m sub c
+   real(r8), dimension(begchunk:endchunk,pcols,pverp) :: cmfmc2         ! Moist convection cloud mass flux
+   real(r8), dimension(begchunk:endchunk,pcols,pverp) :: pflx           ! Conv rain flux thru out btm of lev
+   real(r8), dimension(begchunk:endchunk,pcols,pver)  :: sh_e_ed_ratio  ! shallow conv [ent/(ent+det)] ratio  
+
+   type(physics_ptend)   :: ptend_aero          ! ptend for microp_aero
+   real(r8), dimension(pcols,pver) :: lcldo     ! Pass old liqclf from macro_driver to micro_driver
+   real(r8), dimension(pcols)      :: det_s     ! vertical integral of detrained static energy from ice
+   real(r8), dimension(pcols)      :: det_ice   ! vertical integral of detrained ice
+
+   !!! for macro/micro co-substepping
+   integer  :: macmic_it                        ! iteration variables
+   real(r8) :: cld_macmic_ztodt                 ! modified timestep
+   
 
    logical                    :: use_SPCAM
    logical                    :: use_ECPP
@@ -262,20 +309,24 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
 
    !---------------------------------------------------------------------------
    !---------------------------------------------------------------------------
-   call phys_getopts( use_SPCAM_out           = use_SPCAM )
-   call phys_getopts( use_ECPP_out            = use_ECPP)
-   call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
-   call phys_getopts( microp_scheme_out       = microp_scheme      &
-                     ,macrop_scheme_out       = macrop_scheme      &
-                     ,use_subcol_microp_out   = use_subcol_microp  &
-                     ,deep_scheme_out         = deep_scheme        &
-                     ,state_debug_checks_out  = state_debug_checks &
-                     ,l_bc_energy_fix_out     = l_bc_energy_fix    &
-                     ,l_dry_adj_out           = l_dry_adj          &
-                     ,l_tracer_aero_out       = l_tracer_aero      &
-                     ,l_st_mac_out            = l_st_mac           &
-                     ,l_st_mic_out            = l_st_mic           &
-                     ,l_rad_out               = l_rad              &
+   call phys_getopts( microp_scheme_out        = microp_scheme             &
+                     ,macrop_scheme_out        = macrop_scheme             &
+                     ,use_SPCAM_out            = use_SPCAM                 &
+                     ,use_ECPP_out             = use_ECPP                  &
+                     ,SPCAM_microp_scheme_out  = SPCAM_microp_scheme       &
+                     ,use_subcol_microp_out    = use_subcol_microp         &
+                     ,cld_macmic_num_steps_out = cld_macmic_num_steps      &
+                     ,deep_scheme_out          = deep_scheme               &
+                     ,shallow_scheme_out       = shallow_scheme            &
+                     ,do_clubb_sgs_out         = do_clubb_sgs              &
+                     ,micro_do_icesupersat_out = micro_do_icesupersat      &
+                     ,state_debug_checks_out   = state_debug_checks        &
+                     ,l_bc_energy_fix_out      = l_bc_energy_fix           &
+                     ,l_dry_adj_out            = l_dry_adj                 &
+                     ,l_tracer_aero_out        = l_tracer_aero             &
+                     ,l_st_mac_out             = l_st_mac                  &
+                     ,l_st_mic_out             = l_st_mic                  &
+                     ,l_rad_out                = l_rad                     &
                      )
    
    teout_idx     = pbuf_get_index('TEOUT')
@@ -289,13 +340,14 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
    !---------------------------------------------------------------------------
    lq(:) = .true.
    do c = begchunk, endchunk
-      call physics_ptend_init(ptend_crm(c), state_in(c)%psetcols, 'crm', lu=.true., lv=.true., ls=.true., lq=lq, fromcrm=.true.) 
+      call physics_ptend_init(ptend_crm(c), state_in(c)%psetcols, 'crm', &
+                              lu=.true., lv=.true., ls=.true., lq=lq, fromcrm=.true.) 
    end do 
 
    ! call physics_tend_alloc(tend, pcols)
 
    !---------------------------------------------------------------------------
-   ! start loop over chunks
+   ! re-start loop over chunks
    !---------------------------------------------------------------------------
    do c = begchunk, endchunk
       !---------------------------------------------------------------------------
@@ -304,20 +356,6 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
 
       lchnk = state_in(c)%lchnk
       ncol  = state_in(c)%ncol
-
-      !!! need to allocate state here because we need the correct lchnk
-      ! call physics_state_alloc(state, lchnk, pcols)
-
-      ! landm   = landm_in(:,c) 
-      ! fsns    = fsns_in (:,c) 
-      ! fsnt    = fsnt_in (:,c) 
-      ! flns    = flns_in (:,c) 
-      ! flnt    = flnt_in (:,c) 
-      ! fsds    = fsds_in (:,c) 
-      ! state   = state_in  (c)
-      ! tend    = tend_in   (c)
-      ! cam_in  = cam_in_in (c)
-      ! cam_out = cam_out_in(c)
 
       landm   => landm_in(:,c) 
       fsns    => fsns_in (:,c) 
@@ -464,7 +502,7 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
       call diag_state_b4_phys_write(state)
 
       !!! compute mass integrals of input tracers state
-      call check_tracers_init(state, tracerint)
+      ! call check_tracers_init(state, tracerint)
 
       call t_stopf('tphysbc_sp_init')
 
@@ -534,6 +572,72 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
 
       end if
 
+      !---------------------------------------------------------------------------
+      ! Save state to recall for CRM call
+      !---------------------------------------------------------------------------  
+#ifdef CRM
+      call crm_save_state_tend(state, tend, pbuf)
+#endif
+
+      !---------------------------------------------------------------------------
+      ! parameterized deel convection (omit physics update - just need stuff for aerosols)
+      !---------------------------------------------------------------------------
+      call convect_deep_tend( cmfmc(c,:,:), cmfcme(c,:,:), dlf(c,:,:),           &
+                              pflx(c,:,:), zdu(c,:,:), rliq(c,:),                &
+                              ztodt, state, ptend, cam_in%landfrac, pbuf,        &
+                              mu(c,:,:), eu(c,:,:), du(c,:,:),                   &
+                              md(c,:,:), ed(c,:,:), dp(c,:,:),                   &
+                              dsubcld(c,:), jt(c,:), maxg(c,:),                  &
+                              ideep(c,:), lengath(c) ) 
+      ! call physics_update(state, ptend, ztodt, tend)
+
+      call convect_shallow_tend( ztodt, cmfmc(c,:,:), cmfmc2(c,:,:),             &
+                                 dlf(c,:,:), dlf2(c,:,:), rliq(c,:), rliq2(c,:), &
+                                 state, ptend, pbuf,                             &
+                                 sh_e_ed_ratio(c,:,:), sgh(:,c), sgh30(:,c),     &
+                                 cam_in)       
+      ! call physics_update(state, ptend, ztodt, tend)
+
+      !---------------------------------------------------------------------------
+      ! macro/micro physics
+      !---------------------------------------------------------------------------
+      cld_macmic_ztodt = ztodt/cld_macmic_num_steps
+      do macmic_it = 1, cld_macmic_num_steps
+         
+         if (micro_do_icesupersat) then 
+            call microp_aero_run(state, ptend, cld_macmic_ztodt, pbuf, lcldo, species_class)
+            ! call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
+            ! call physics_update(state, ptend, ztodt, tend)
+         end if
+
+         call macrop_driver_tend( &
+                     state,           ptend,          cld_macmic_ztodt, &
+                     cam_in%landfrac, cam_in%ocnfrac, cam_in%snowhland, & ! sediment
+                     dlf,             dlf2,                             & ! detrain
+                     cmfmc,           cmfmc2,                           &
+                     cam_in%ts,       cam_in%sst,     zdu,              &
+                     pbuf,            det_s,          det_ice,          &
+                     lcldo)
+         ! call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)          
+         ! call physics_update(state, ptend, ztodt, tend)
+      
+         if (.not. micro_do_icesupersat) then 
+            call microp_aero_run(state, ptend_aero, cld_macmic_ztodt, pbuf, lcldo, species_class)
+         end if
+
+         call microp_driver_tend(state, ptend, cld_macmic_ztodt, pbuf)
+         
+         ! combine aero and micro tendencies for the grid
+         if (.not. micro_do_icesupersat) then
+            call physics_ptend_sum(ptend_aero, ptend, ncol)
+            call physics_ptend_dealloc(ptend_aero)
+         endif
+
+         ! call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
+         ! call physics_update (state, ptend, ztodt, tend)
+
+      end do ! end substepping over macrophysics/microphysics
+
       !======================================================================================
       !--------------------------------------------------------------------------------------
       ! CRM Physics
@@ -542,6 +646,12 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
 #ifdef CRM
 
       crm_run_time = ztodt
+
+      !---------------------------------------------------------------------------
+      ! Recall the state after dynamics
+      !---------------------------------------------------------------------------
+      call crm_recall_state_tend(state, tend, pbuf)
+
       !---------------------------------------------------------------------------
       ! Apply surface fluxes if using SP_FLUX_BYPASS
       !---------------------------------------------------------------------------
@@ -559,6 +669,7 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
          call crm_ecpp_output%initialize(pcols,pver)
       end if ! use_ECPP
 #endif
+
       !---------------------------------------------------------------------------
       ! Run the CRM 
       !---------------------------------------------------------------------------
@@ -570,14 +681,11 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
       ptend_crm(c) = ptend
       !---------------------------------------------------------------------------
       !---------------------------------------------------------------------------
-      !!! this deallocation is necessary
-      ! call physics_state_dealloc(state)
-      !---------------------------------------------------------------------------
-      !---------------------------------------------------------------------------
    end do ! c = begchunk, endchunk
 
 
 #if defined( DIFFUSE_PHYS_TEND )
+   ! call phys_hyperviscosity(ptend_crm, dyn_dum)
    call phys_hyperviscosity(ptend_crm)
 #endif
       
@@ -589,9 +697,6 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
       !---------------------------------------------------------------------------
       lchnk = state_in(c)%lchnk
       ncol  = state_in(c)%ncol
-
-      !!! need to re-allocate state here because we need the correct lchnk
-      ! call physics_state_alloc(state, lchnk, pcols)
 
       landm   => landm_in(:,c) 
       fsns    => fsns_in (:,c) 
@@ -614,8 +719,8 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
 
       call physics_update(state, ptend, crm_run_time, tend)
 
-      call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
-                             zero, sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
+      ! call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
+      !                        zero, sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
       !---------------------------------------------------------------------------
       ! Modal aerosol wet radius for radiative calculation
@@ -708,6 +813,64 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
 
 
       !---------------------------------------------------------------------------
+      ! Aerosols
+      !---------------------------------------------------------------------------
+      if (l_tracer_aero) then
+
+         if(use_SPCAM .and. use_ECPP .and. SPCAM_microp_scheme .eq. 'm2005') then
+           ! As ECPP is not linked with the sam1mom yet, conventional convective transport
+           ! and wet savenging are still needed for sam1mom to drive the BAM aerosol treatment
+         else if ( .not. deep_scheme_does_scav_trans() ) then
+
+            ! -------------------------------------------------------------------------------
+            ! 1. Wet Scavenging of Aerosols by Convective and Stratiform Precipitation.
+            ! 2. Convective Transport of Non-Water Aerosol Species.
+            !
+            !  . Aerosol wet chemistry determines scavenging fractions, and transformations
+            !  . Then do convective transport of all trace species except qv,ql,qi.
+            !  . We needed to do the scavenging first to determine the interstitial fraction.
+            !  . When UNICON is used as unified convection, we should still perform
+            !    wet scavenging but not 'convect_deep_tend2'.
+            ! -------------------------------------------------------------------------------
+            
+            call rad_cnst_get_info(0, nmodes=nmodes)
+            clim_modal_aero = (nmodes > 0)
+
+            if (clim_modal_aero .and. .not. prog_modal_aero) then
+               call modal_aero_calcsize_diag(state, pbuf)
+               call modal_aero_wateruptake_dr(state, pbuf)
+            endif
+
+            if (do_clubb_sgs) then
+               sh_e_ed_ratio(c,:,:) = 0.0_r8
+            endif
+
+            !!! scavenging
+            call aero_model_wetdep(ztodt, dlf(c,:,:), dlf2(c,:,:), cmfmc2(c,:,:),   &
+                                   state, sh_e_ed_ratio(c,:,:),                     &
+                                   mu(c,:,:), md(c,:,:), du(c,:,:), eu(c,:,:),      &
+                                   ed(c,:,:), dp(c,:,:), dsubcld(c,:),              &
+                                   jt(c,:), maxg(c,:), ideep(c,:), lengath(c),      &
+                                   species_class, cam_out, pbuf,                    & 
+                                   ptend                                           ) !Intent-out
+            call physics_update(state, ptend, ztodt, tend)
+
+            !!! convective transport
+            call convect_deep_tend_2( state, ptend, ztodt, pbuf,                       &
+                                      mu(c,:,:), md(c,:,:), du(c,:,:), eu(c,:,:),      &
+                                      ed(c,:,:), dp(c,:,:), dsubcld(c,:),              &
+                                      jt(c,:), maxg(c,:), ideep(c,:), lengath(c),      &
+                                      species_class )  
+            call physics_update(state, ptend, ztodt, tend)
+
+            !!! check tracer integrals
+            ! call check_tracers_chng(state, tracerint, "cmfmca", nstep, ztodt,  zero_tracers)
+
+         endif ! deep_scheme_does_scav_trans
+
+      end if ! l_tracer_aero
+
+      !---------------------------------------------------------------------------
       ! Moist physical parameteriztions complete, send data to history file
       !---------------------------------------------------------------------------
       call t_startf('bc_history_write')
@@ -723,17 +886,16 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
       call t_stopf('bc_cld_diag_history_write')
 
       !---------------------------------------------------------------------------
-      ! Radiation computations
+      ! Radiation
       !---------------------------------------------------------------------------
       if (l_rad) then
          
          call t_startf('radiation')
-         call radiation_tend( state,ptend, pbuf,                  &
-                              cam_out, cam_in,                    &
-                              cam_in%landfrac,landm,              &
-                              cam_in%icefrac, cam_in%snowhland,   &
-                              fsns, fsnt, flns, flnt,             &
-                              fsds, net_flx,is_cmip6_volc)
+         call radiation_tend( state, ptend, pbuf, cam_out, cam_in,   &
+                              cam_in%landfrac, landm,                &
+                              cam_in%icefrac, cam_in%snowhland,      &
+                              fsns, fsnt, flns, flnt, fsds,          &
+                              net_flx, is_cmip6_volc )
 
          ! Set net flux used by spectral dycores
          do i=1,ncol
@@ -781,7 +943,6 @@ subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
       !---------------------------------------------------------------------------
    end do ! c = begchunk, endchunk
 
-   ! call physics_state_dealloc(state)
    ! call physics_tend_dealloc(tend)
    call physics_ptend_dealloc(ptend)
 

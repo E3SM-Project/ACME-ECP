@@ -745,6 +745,10 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use crm_physics,        only: crm_physics_init 
 #endif /* CRM */
 
+#if defined( DIFFUSE_PHYS_TEND )
+    use phys_hyperviscosity_mod, only: phys_hyperviscosity_init
+#endif
+
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -949,12 +953,17 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
    !BSINGH -  addfld and adddefault calls for perturb growth testing    
     if(pergro_test_active)call add_fld_default_calls()
 
+#if defined( DIFFUSE_PHYS_TEND )
+    call phys_hyperviscosity_init()
+#endif
+
 end subroutine phys_init
 
   !
   !-----------------------------------------------------------------------
   !
 
+! subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out, dyn_dum)
 subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
     !----------------------------------------------------------------------- 
     ! 
@@ -965,6 +974,7 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
     use check_energy,   only: check_energy_gmean
+    use dyn_comp,       only: dyn_import_t
 
     use physics_buffer,         only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
 #if (defined BFB_CAM_SCAM_IOP )
@@ -993,6 +1003,7 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
     type(physics_buffer_desc), pointer, dimension(:,:) :: pbuf2d
     type(cam_in_t),                     dimension(begchunk:endchunk) :: cam_in
     type(cam_out_t),                    dimension(begchunk:endchunk) :: cam_out
+    ! type(dyn_import_t), intent(inout) :: dyn_dum
     !-----------------------------------------------------------------------
     !
     !---------------------------Local workspace-----------------------------
@@ -1068,10 +1079,11 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
 !$OMP PARALLEL DO PRIVATE (C, phys_buffer_chunk)
 #if defined( SP_ALT_TPHYSBC )
 
-        call tphysbc_sp(ztodt, pbuf2d, landm(:,:),  &
+        ! call tphysbc_sp(ztodt, pbuf2d, landm(:,:), dyn_dum,  &
+          call tphysbc_sp(ztodt, pbuf2d, landm(:,:),  &
                         fsns(:,:), fsnt(:,:), flns(:,:), flnt(:,:), fsds(:,:),  &
                         phys_state(:), phys_tend(:), cam_in(:), cam_out(:),     &
-                        species_class(:) )
+                        sgh(:,:), sgh30(:,:), species_class(:) )
 
 #else /* SP_ALT_TPHYSBC */
        do c=begchunk, endchunk

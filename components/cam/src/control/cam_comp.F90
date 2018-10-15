@@ -54,6 +54,8 @@ module cam_comp
   type(dyn_import_t) :: dyn_in   ! Dynamics import container
   type(dyn_export_t) :: dyn_out  ! Dynamics export container
 
+  ! type(dyn_import_t) :: dyn_dum  ! dummy dynamics container
+
   type(physics_state), pointer :: phys_state(:) => null()
   type(physics_tend ), pointer :: phys_tend(:) => null()
   type(physics_buffer_desc), pointer :: pbuf2d(:,:) => null()
@@ -244,8 +246,10 @@ subroutine cam_run1(cam_in, cam_out)
    ! PHYS_RUN Call the Physics package
    !----------------------------------------------------------
    !
+   ! dyn_dum = dyn_in
    call t_barrierf ('sync_phys_run1', mpicom)
    call t_startf ('phys_run1')
+   ! call phys_run1(phys_state, dtime, phys_tend, pbuf2d,  cam_in, cam_out, dyn_dum)
    call phys_run1(phys_state, dtime, phys_tend, pbuf2d,  cam_in, cam_out)
    call t_stopf  ('phys_run1')
 
