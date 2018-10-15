@@ -790,9 +790,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !       Large-scale and surface forcing:
       call forcing(ncrms)
 
-      !_dir _wait(1)
-
       !!! Apply radiative tendency
+      !_dir _par _loop _gang _vector collapse(4) private(i_rad,j_rad,tmp) _kin(crm_rad%qrad) _kinout(t) _async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -806,6 +805,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           enddo
         enddo
       enddo
+
+      !_dir _wait(1)
 
       !----------------------------------------------------------
       !   	suppress turbulence near the upper boundary (spange):
