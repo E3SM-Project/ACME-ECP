@@ -368,13 +368,13 @@ CONTAINS
         enddo
       end do
     end do
-    !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(tkhmax,grdf_z,dz,adzw,grdf_x,grdf_y) _async(1)
+    !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(tkhmax,grdf_z,dz,adzw,grdf_x,grdf_y) _kinout(cfl) _async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2  , &
                    0.5*tkhmax(k,icrm)*grdf_x(k,icrm)*dt/dx**2  , &
                    YES3D*0.5*tkhmax(k,icrm)*grdf_y(k,icrm)*dt/dy**2  )
-        !$acc atomic update
+        !_dir atomic update
         cfl = max( cfl , tmp )
       end do
     end do

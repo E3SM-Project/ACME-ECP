@@ -35,15 +35,15 @@ module kurant_mod
           do j = 1 , ny
             do i = 1 , nx
               tmp = abs(w(i,j,k,icrm))
-              !$acc atomic update
+              !_dir atomic update
               wm(k,icrm) = max( wm(k,icrm) , tmp )
-              !$acc atomic update
+              !_dir atomic update
               w_max(icrm) = max( w_max(icrm) , tmp )
 
               tmp = sqrt(u(i,j,k,icrm)**2+YES3D*v(i,j,k,icrm)**2)
-              !$acc atomic update
+              !_dir atomic update
               uhm(k,icrm) = max( uhm(k,icrm) , tmp )
-              !$acc atomic update
+              !_dir atomic update
               u_max(icrm) = max( u_max(icrm) , tmp )
             enddo
           enddo
@@ -51,17 +51,17 @@ module kurant_mod
       enddo
 
       cfl = 0.
-      !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(uhm,wm,dz,adzw) _async(1)
+      !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(uhm,wm,dz,adzw) _kinout(cfl) _async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           tmp = max( uhm(k,icrm)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(k,icrm),wm(k+1,icrm))*dt/(dz(icrm)*adzw(k,icrm)) )
-          !$acc atomic update
+          !_dir atomic update
           cfl = max( cfl , tmp )
         end do
       end do
 
       call kurant_sgs(ncrms,cfl)
-      !_wait(1)
+      !_dir _wait(1)
       ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 
       if(ncycle.gt.4) then

@@ -790,6 +790,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !       Large-scale and surface forcing:
       call forcing(ncrms)
 
+      !_dir _wait(1)
+
       !!! Apply radiative tendency
       do icrm = 1 , ncrms
         do k=1,nzm
