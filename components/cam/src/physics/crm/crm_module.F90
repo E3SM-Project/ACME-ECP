@@ -778,8 +778,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)
 
-      !_dir _wait(1)
-
       !---------------------------------------------
       !  	initialize stuff:
       call zero(ncrms)
