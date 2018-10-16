@@ -791,16 +791,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       call forcing(ncrms)
 
       !!! Apply radiative tendency
-      !_dir _par _loop _gang _vector collapse(4) private(i_rad,j_rad,tmp) _kin(crm_rad%qrad) _kinout(t) _async(1)
+      !_dir _par _loop _gang _vector collapse(4) private(i_rad,j_rad) _kin(crm_rad%qrad) _kinout(t) _async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              tmp = crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
-              !$acc atomic update
-              t(i,j,k,icrm) = t(i,j,k,icrm) + tmp
+              t(i,j,k,icrm) = t(i,j,k,icrm) + crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
