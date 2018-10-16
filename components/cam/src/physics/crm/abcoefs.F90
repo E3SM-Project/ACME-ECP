@@ -15,7 +15,7 @@ contains
     real(crm_rknd) alpha, beta
     integer :: icrm
 
-    !_dir _par _loop _gang _vector _kin(dt3) _async(1)
+    !_dir _par _loop _gang _vector _kin(dt3) private(alpha,beta) _kout(ct,bt,at) _async(1)
     do icrm = 1 , ncrms
       if(nstep.ge.3.and.nadams.eq.3.or.nrestart.eq.2) then
         alpha = dt3(nb) / dt3(na)

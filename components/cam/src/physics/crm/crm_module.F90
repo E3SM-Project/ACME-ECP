@@ -778,17 +778,25 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)
 
+      !_dir _wait(1)
+
       !---------------------------------------------
       !  	initialize stuff:
       call zero(ncrms)
+
+      !_dir _wait(1)
 
       !-----------------------------------------------------------
       !       Buoyancy term:
       call buoyancy(ncrms)
 
+      !_dir _wait(1)
+
       !------------------------------------------------------------
       !       Large-scale and surface forcing:
       call forcing(ncrms)
+
+      !_dir _wait(1)
 
       !!! Apply radiative tendency
       !_dir _par _loop _gang _vector collapse(4) private(i_rad,j_rad) _kin(crm_rad%qrad) _kinout(t) _async(1)
@@ -809,6 +817,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !----------------------------------------------------------
       !   	suppress turbulence near the upper boundary (spange):
       if (dodamping) call damping(ncrms)
+
+      !_dir _wait(1)
 
       !---------------------------------------------------------
       !   Ice fall-out

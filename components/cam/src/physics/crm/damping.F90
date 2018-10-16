@@ -1,3 +1,6 @@
+
+#include "directives.inc"
+
 module damping_mod
   use task_util_mod
   implicit none
@@ -23,6 +26,7 @@ contains
       call task_abort()
     end if
 
+    !_dir _par _loop _gang _vector _kout(n_damp) _kin(z) _async(1)
     do icrm = 1 , ncrms
       do k=nzm,1,-1
         if(z(nzm,icrm)-z(k,icrm).lt.damp_depth*z(nzm,icrm)) then
@@ -30,6 +34,8 @@ contains
         endif
       end do
     end do
+
+    !_dir _wait(1)
 
     do icrm = 1 , ncrms
       do k=nzm,nzm-n_damp(icrm),-1

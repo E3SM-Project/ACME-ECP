@@ -19,7 +19,7 @@ contains
 
     coef = 1./3600.
 
-    !_dir _par _loop _gang _vector collapse(2) _kout(qpoz,pneg,nneg) _async(1)
+    !_dir _par _loop _gang _vector collapse(2) _kout(qpoz,qneg,nneg) _async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         qpoz(k,icrm) = 0.
@@ -35,12 +35,12 @@ contains
             t(i,j,k,icrm)=t(i,j,k,icrm) + ttend(k,icrm) * dtn
             micro_field(i,j,k,index_water_vapor,icrm)=micro_field(i,j,k,index_water_vapor,icrm) + qtend(k,icrm) * dtn
             if(micro_field(i,j,k,index_water_vapor,icrm).lt.0.) then
-              !_dir atomic
+              !_dir atomic update
               nneg(k,icrm) = nneg(k,icrm) + 1
-              !_dir atomic
+              !_dir atomic update
               qneg(k,icrm) = qneg(k,icrm) + micro_field(i,j,k,index_water_vapor,icrm)
             else
-              !_dir atomic
+              !_dir atomic update
               qpoz(k,icrm) = qpoz(k,icrm) + micro_field(i,j,k,index_water_vapor,icrm)
             end if
             dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm) + utend(k,icrm)
