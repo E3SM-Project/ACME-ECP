@@ -782,8 +782,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  	initialize stuff:
       call zero(ncrms)
 
-      !_dir _wait(1)
-
       !-----------------------------------------------------------
       !       Buoyancy term:
       call buoyancy(ncrms)

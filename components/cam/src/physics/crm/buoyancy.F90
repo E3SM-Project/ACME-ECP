@@ -16,7 +16,7 @@ contains
 
     if(docolumn) return
 
-    !_dir _par _loop _gang _vector collapse(4) private(kb,betu,betd) _kin(adz,bet,tabs0,qv,qv0,acl,qci,qn0,qpl,qpi,qp0,tabs) _kinout(dwdt) _async(1)
+    !_dir _par _loop _gang _vector collapse(4) private(kb,betu,betd) _kin(adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs) _kinout(dwdt) _async(1)
     do icrm = 1 , ncrms
       do k=2,nzm
         do j=1,ny
