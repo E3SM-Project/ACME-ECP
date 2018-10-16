@@ -17,7 +17,7 @@ contains
     !dwdt(nx  , ny  , nz , 3, ncrms)
     !misc(nx  , ny  , nz ,    ncrms)
     
-    !_dir _par _loop _gang _vector collapse(4) _kin(na) _kout(dudt,dvdt,dwdt,misc) _async(1)
+    !_dir _par _loop _gang _vector collapse(4) _async(1)
     do icrm = 1 , ncrms
       do k = 1 , nz
         do j = 1 , nyp1
