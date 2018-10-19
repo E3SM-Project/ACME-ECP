@@ -252,7 +252,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           ratio = smix/grd
           Cee = Ce1+Ce2*ratio
           if(dosmagor) then
-            tk(i,j,k,icrm) = sqrt(Ck**3/Cee*max(0.,def2(i,j,k,icrm)-Pr*buoy_sgs))*smix**2
+            tk(i,j,k,icrm) = sqrt(Ck**3/Cee*max(0._crm_rknd,def2(i,j,k,icrm)-Pr*buoy_sgs))*smix**2
 #if defined( SP_TK_LIM )
               !!! put a hard lower limit on near-surface tk
               if ( z(k,icrm).lt.tk_min_depth ) then
@@ -270,7 +270,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
             a_prod_bu = 0.5*( a_prod_bu_vert(i,j,k-1,icrm) + a_prod_bu_vert(i,j,k,icrm) )
             !!! cap the diss rate (useful for large time steps)
             a_diss = min(tke(i,j,k,icrm)/(4.*dt),Cee/smix*tke(i,j,k,icrm)**1.5)
-            tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm)+dtn*(max(0.,a_prod_sh+a_prod_bu)-a_diss))
+            tke(i,j,k,icrm) = max(real(0.,crm_rknd),tke(i,j,k,icrm)+dtn*(max(0._crm_rknd,a_prod_sh+a_prod_bu)-a_diss))
             tk(i,j,k,icrm)  = Ck*smix*sqrt(tke(i,j,k,icrm))
           end if
           tk(i,j,k,icrm)  = min(tk(i,j,k,icrm),tkmax)

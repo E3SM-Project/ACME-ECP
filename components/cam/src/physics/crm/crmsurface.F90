@@ -27,9 +27,7 @@ contains
             tau00 = rho(1,icrm) * diag_ustar(z(1,icrm),bflx(icrm),u_h0,z0(icrm))**2
             fluxbu(i,j,icrm) = -(0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug-uhl(icrm))/u_h0*tau00
             fluxbv(i,j,icrm) = -(0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg-vhl(icrm))/u_h0*tau00
-            !$acc atomic update
             taux0(icrm) = taux0(icrm) + fluxbu(i,j,icrm)/dble(nx*ny)
-            !$acc atomic update
             tauy0(icrm) = tauy0(icrm) + fluxbv(i,j,icrm)/dble(nx*ny)
           end do
         end do

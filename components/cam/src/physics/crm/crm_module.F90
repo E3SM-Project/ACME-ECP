@@ -113,7 +113,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
     type(crm_ecpp_output_type),intent(inout) :: crm_ecpp_output
-    type(crm_output_type),     intent(inout) :: crm_output
+    type(crm_output_type), target,     intent(inout) :: crm_output
 
     !-----------------------------------------------------------------------------------------------
     ! Local variable declarations
@@ -183,6 +183,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8), allocatable :: dd_crm (:,:)     ! mass entraiment from downdraft
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
+
+    real(crm_rknd), pointer :: ptr1d(:), ptr2d(:,:)
 
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
@@ -757,10 +759,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !----------------------------------------------------------------------------------------
   !========================================================================================
   do nstep = 1 , nstop
-    !_dir _par _loop _gang _vector _kinout(crm_output%timing_factor) _async(1)
+    ptr1d => crm_output%timing_factor(:)
+    !_dir _par _loop _gang _vector _kinout(ptr1d) _async(1)
     do icrm = 1 , ncrms
-      crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
+      ptr1d(icrm) = ptr1d(icrm)+1
     enddo
+
+    !_dir _wait(1)
 
     !------------------------------------------------------------------
     !  Check if the dynamical time step should be decreased
@@ -786,16 +791,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !       Buoyancy term:
       call buoyancy(ncrms)
 
-      !_dir _wait(1)
-
       !------------------------------------------------------------
       !       Large-scale and surface forcing:
       call forcing(ncrms)
 
-      !_dir _wait(1)
-
       !!! Apply radiative tendency
-      !_dir _par _loop _gang _vector collapse(4) private(i_rad,j_rad) _kin(crm_rad%qrad) _kinout(t) _async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -808,13 +808,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         enddo
       enddo
 
-      !_dir _wait(1)
-
       !----------------------------------------------------------
       !   	suppress turbulence near the upper boundary (spange):
       if (dodamping) call damping(ncrms)
-
-      !_dir _wait(1)
 
       !---------------------------------------------------------
       !   Ice fall-out

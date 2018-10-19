@@ -67,5 +67,5 @@ for v in nc1.variables.keys() :
 
     #Only print ratios that are > 2, meaning 2-3 diff is >2x more than the 1-2 diff.
     #In the future, this should be added as a command line parameter for the user to choose.
-    if (normRatio > 1) :
+    if (normRatio > 2) :
       print(v.ljust(20)+":  %20.10e  ,  %20.10e  ,  %20.10e"%(norm12,norm23,norm23/norm12))
