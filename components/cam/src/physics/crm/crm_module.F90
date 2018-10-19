@@ -765,8 +765,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       ptr1d(icrm) = ptr1d(icrm)+1
     enddo
 
-    !_dir _wait(1)
-
     !------------------------------------------------------------------
     !  Check if the dynamical time step should be decreased
     !  to handle the cases when the flow being locally linearly unstable
