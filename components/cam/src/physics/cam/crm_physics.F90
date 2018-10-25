@@ -401,6 +401,7 @@ subroutine crm_physics_init(species_class)
   call addfld ('SPKVH     ',(/ 'ilev' /), 'A', 'm2/s    ', 'Vertical diffusivity used in dropmixnuc in the MMF call')
   call addfld ('SPWTKE   ', (/ 'lev' /), 'A', 'm/s',      'Standard deviation of updraft velocity')
   call addfld ('SPLCLOUD  ',(/ 'lev' /), 'A', '        ', 'Liquid cloud fraction')
+
 !MAML-Guangxing Lin
   call addfld ('CRM_SHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc sensible heat flux'          )
   call addfld ('CRM_LHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc latent heat flux'            )
@@ -627,13 +628,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
 
    real(r8) :: cs(pcols, pver)  ! air density  [kg/m3]
-!MAML-Guangxing Lin
-   real(r8) tau00(pcols,crm_nx)  ! surface stress
-   real(r8) bflx(pcols,crm_nx)   ! surface buoyancy flux (Km/s)
-   !real(r8) tau00(pcols)  ! surface stress
-   !real(r8) bflx (pcols)  ! surface buoyancy flux (Km/s)
-!MAML-Guangxing Lin
-
 
    ! CRM column radiation stuff:
    real(r8), pointer, dimension(:,:) :: qrs        ! shortwave radiative heating rate
@@ -663,6 +657,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    integer :: icol(pcols)
 
+
    !!! variables for changing CRM orientation
    real(crm_rknd), parameter        :: pi   = 3.14159265359
    real(crm_rknd), parameter        :: pix2 = 6.28318530718
@@ -673,6 +668,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(crm_rad_type)    :: crm_rad
    type(crm_input_type)  :: crm_input
    type(crm_output_type) :: crm_output
+!MAML-Guangxing Lin
+   real(r8), pointer, dimension(:,:,:)   :: crm_pcp
+   real(r8), pointer, dimension(:,:,:)   :: crm_snw
+   real(r8) :: factor_xy
+   factor_xy = 1._r8/dble(crm_nx*crm_ny)
+!MAML-Guangxing Lin
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -716,14 +717,16 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm) 
    fromcrm = .false.
    
-
    !------------------------------------------------------------
    ! Initialize CRM state (nullify pointers, allocate memory, etc)
    !------------------------------------------------------------
    call crm_state%initialize()
    call crm_rad%initialize()
-   call crm_input%initialize(pcols,pver)
+!MAML-Guangxing Lin   
+!   call crm_input%initialize(pcols,pver)
    call crm_output%initialize(pcols,pver)
+   call crm_input%initialize(pcols,pver,crm_nx)
+!MAML-Guangxing Lin   
 
    !------------------------------------------------------------
    ! Set CRM orientation angle
@@ -868,7 +871,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    itim = pbuf_old_tim_idx()
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-
+!MAML-Guangxing Lin
+   call pbuf_get_field (pbuf, crm_pcp_idx, crm_pcp)
+   call pbuf_get_field (pbuf, crm_snw_idx, crm_snw)
+!MAML-Guangxing Lin
    !------------------------------------------------------------
    !------------------------------------------------------------
 
@@ -929,7 +935,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
          end do
       end do
-
 !MAML-Guangxing Lin
        crm_pcp(:,:,:) = 0.
        crm_snw(:,:,:) = 0.
@@ -958,6 +963,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 
    else  ! not is_first_step
+
 !MAML-Guangxing Lin
        crm_pcp = 0.
        crm_snw = 0.
@@ -1031,13 +1037,24 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       crm_input%vl(1:ncol,1:pver) = state%v(1:ncol,1:pver)
       crm_input%ocnfrac(1:ncol) = cam_in%ocnfrac(1:ncol)
       do i = 1,ncol
-         crm_input%tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
          crm_input%wndls(i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
-         crm_input%bflxls(i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
-         crm_input%fluxu00(i) = cam_in%wsx(i)     !N/m2
-         crm_input%fluxv00(i) = cam_in%wsy(i)     !N/m2
-         crm_input%fluxt00(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
-         crm_input%fluxq00(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
+!MAML-Guangxing Lin
+         do ii = 1, crm_nx
+         
+            crm_input%tau00(i,ii) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
+            crm_input%bflxls(i,ii) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
+            crm_input%fluxu00(i,ii) = cam_in%wsx(i,ii)     !N/m2
+            crm_input%fluxv00(i,ii) = cam_in%wsy(i,ii)     !N/m2
+            crm_input%fluxt00(i,ii) = cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
+            crm_input%fluxq00(i,ii) = cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
+         end do !ii, crm_nx
+         !crm_input%tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
+         !crm_input%bflxls(i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
+         !crm_input%fluxu00(i) = cam_in%wsx(i)     !N/m2
+         !crm_input%fluxv00(i) = cam_in%wsy(i)     !N/m2
+         !crm_input%fluxt00(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
+         !crm_input%fluxq00(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
+!MAML-Guangxing Lin
       end do
 #if (defined m2005 && defined MODAL_AERO)
       ! Set aerosol
@@ -1093,6 +1110,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
               clubb_tkh(:ncol, :, :, :),   relvar(:ncol,:, :, :),       &
               accre_enhan(:ncol, :, :, :), qclvar(:ncol, :, :, :),      &
 #endif /* CLUBB_CRM */
+!MAML-Guangxing Lin
+               crm_pcp(:ncol,:,:),     crm_snw(:ncol,:,:),              &
+!MAML-Guangxing Lin
               crm_ecpp_output, crm_output )
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
@@ -1163,7 +1183,13 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CRM_PREC',crm_output%prec_crm       ,pcols   ,lchnk   )
       call outfld('CRM_TK ', crm_output%tk(:, :, :, :)  ,pcols   ,lchnk   )  
       call outfld('CRM_TKH', crm_output%tkh(:, :, :, :)  ,pcols   ,lchnk   ) 
-
+!MAML-Guangxing Lin
+       call outfld('CRM_SHF ', cam_in%shf ,pcols ,lchnk)
+       call outfld('CRM_LHF ', cam_in%lhf ,pcols ,lchnk)
+       call outfld('CRM_SNOW', crm_snw    ,pcols ,lchnk)
+       call outfld('CRM_PCP',  crm_pcp    ,pcols ,lchnk)
+       !call outfld('CRM_SPD ', spd_crm    ,pcols ,lchnk)
+!MAML-Guangxing Lin
 #ifdef m2005
       if (SPCAM_microp_scheme .eq. 'm2005') then
          ! index is defined in ./crm/MICRO_M2005/microphysics.F90
@@ -1229,13 +1255,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 !----------------------------------------------------------------------
 ! Add radiative heating tendency above CRM
 !----------------------------------------------------------------------
-!MAML-Guangxing Lin
-       call outfld('CRM_SHF ', cam_in%shf ,pcols ,lchnk)
-       call outfld('CRM_LHF ', cam_in%lhf ,pcols ,lchnk)
-       call outfld('CRM_SNOW', crm_snw    ,pcols ,lchnk)
-       call outfld('CRM_PCP',  crm_pcp    ,pcols ,lchnk)
-       !call outfld('CRM_SPD ', spd_crm    ,pcols ,lchnk)
-!MAML-Guangxing Lin
 
       ifld = pbuf_get_index('QRL')
       call pbuf_get_field(pbuf, ifld, qrl)
@@ -1641,7 +1660,7 @@ subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
       g_dp = gravit * state%rpdel(ii,pver)             ! note : rpdel = 1./pdel
       ptend%s(ii,:)   = 0.
       ptend%q(ii,:,1) = 0.
-      ptend%s(ii,pver)   = g_dp * cam_in%shf(ii)
+      ptend%s(ii,pver)   = g_dp * cam_in%shf(ii,1)
       ptend%q(ii,pver,1) = g_dp * cam_in%cflx(ii,1)
    end do
 

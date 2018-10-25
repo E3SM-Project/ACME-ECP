@@ -3,12 +3,19 @@ module crmsurface_mod
 
 contains
 
-  subroutine crmsurface(ncrms,icrm,bflx)
+!MAML-Guangxing Lin
+  !subroutine crmsurface(ncrms,icrm,bflx)
+  subroutine crmsurface(ncrms,icrm,bflx,z0_loc)
+!MAML-Guangxing Lin
     use vars
     use params
     implicit none
     integer, intent(in) :: ncrms,icrm
-    real(crm_rknd), intent (in) :: bflx
+!MAML-Guangxing Lin
+    !real(crm_rknd), intent (in) :: bflx
+    real(crm_rknd), intent (in) :: bflx(nx)
+    real(crm_rknd), intent (in) :: z0_loc(nx)
+!MAML-Guangxing Lin
     real(crm_rknd) u_h0, tau00, tauxm, tauym
     integer i,j
 
@@ -22,7 +29,10 @@ contains
         do i=1,nx
           u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug)**2+ &
           (0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg)**2))
-          tau00 = rho(1,icrm) * diag_ustar(z(1,icrm),bflx,u_h0,z0(icrm))**2
+!MAML-Guangxing Lin
+          !tau00 = rho(1,icrm) * diag_ustar(z(1,icrm),bflx,u_h0,z0(icrm))**2
+          tau00 = rho(1,icrm) * diag_ustar(z(1,icrm),bflx(i),u_h0,z0_loc(i))**2
+!MAML-Guangxing Lin
           fluxbu(i,j,icrm) = -(0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug-uhl(icrm))/u_h0*tau00
           fluxbv(i,j,icrm) = -(0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg-vhl(icrm))/u_h0*tau00
           tauxm = tauxm + fluxbu(i,j,icrm)

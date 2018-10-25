@@ -22,13 +22,21 @@ module crm_input_module
       real(crm_rknd), allocatable :: ul(:,:)             ! Global grid u (m/s)
       real(crm_rknd), allocatable :: vl(:,:)             ! Global grid v (m/s)
       real(crm_rknd), allocatable :: ocnfrac(:)          ! area fraction of the ocean
-      real(crm_rknd), allocatable :: tau00  (:)          ! large-scale surface stress (N/m2)
+!MAML-Guangxing Lin
+      real(crm_rknd), allocatable :: tau00  (:,:)          ! large-scale surface stress (N/m2)
+      real(crm_rknd), allocatable :: bflxls (:,:)          ! large-scale surface buoyancy flux (K m/s)
+      real(crm_rknd), allocatable :: fluxu00(:,:)          ! surface momenent fluxes [N/m2]
+      real(crm_rknd), allocatable :: fluxv00(:,:)          ! surface momenent fluxes [N/m2]
+      real(crm_rknd), allocatable :: fluxt00(:,:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
+      real(crm_rknd), allocatable :: fluxq00(:,:)          ! surface latent heat fluxes [ kg/(m2 s)]
+    !  real(crm_rknd), allocatable :: tau00  (:)          ! large-scale surface stress (N/m2)
       real(crm_rknd), allocatable :: wndls  (:)          ! large-scale surface wind (m/s)
-      real(crm_rknd), allocatable :: bflxls (:)          ! large-scale surface buoyancy flux (K m/s)
-      real(crm_rknd), allocatable :: fluxu00(:)          ! surface momenent fluxes [N/m2]
-      real(crm_rknd), allocatable :: fluxv00(:)          ! surface momenent fluxes [N/m2]
-      real(crm_rknd), allocatable :: fluxt00(:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
-      real(crm_rknd), allocatable :: fluxq00(:)          ! surface latent heat fluxes [ kg/(m2 s)]
+    !  real(crm_rknd), allocatable :: bflxls (:)          ! large-scale surface buoyancy flux (K m/s)
+    !  real(crm_rknd), allocatable :: fluxu00(:)          ! surface momenent fluxes [N/m2]
+    !  real(crm_rknd), allocatable :: fluxv00(:)          ! surface momenent fluxes [N/m2]
+    !  real(crm_rknd), allocatable :: fluxt00(:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
+    !  real(crm_rknd), allocatable :: fluxq00(:)          ! surface latent heat fluxes [ kg/(m2 s)]
+!MAML-Guangxing Lin
 
 #if defined( m2005 ) && defined( MODAL_AERO )
       real(crm_rknd), allocatable :: naermod (:,:,:)     ! Aerosol number concentration [/m3]
@@ -50,9 +58,14 @@ module crm_input_module
 contains
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_input_type
-   subroutine crm_input_initialize(this, ncrms, nlev)
+!MAML-Guangxing Lin
+   !subroutine crm_input_initialize(this, ncrms, nlev)
+   !   class(crm_input_type), intent(inout) :: this
+   subroutine crm_input_initialize(this, ncrms, nlev,crm_nx)
       class(crm_input_type), intent(inout) :: this
-      integer, intent(in) :: ncrms, nlev
+    !  integer, intent(in) :: ncrms, nlev
+      integer, intent(in) :: ncrms, nlev,crm_nx
+!MAML-Guangxing Lin
       
       if (.not. allocated(this%zmid))     allocate(this%zmid(ncrms,nlev))
       if (.not. allocated(this%zint))     allocate(this%zint(ncrms,nlev+1))
@@ -68,13 +81,21 @@ contains
       if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))
       if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
       if (.not. allocated(this%ocnfrac))  allocate(this%ocnfrac(ncrms))
-      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms))
+!MAML-Guangxing Lin      
+      !if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms))
+      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms,crm_nx))
       if (.not. allocated(this%wndls))    allocate(this%wndls(ncrms))
-      if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms))
-      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms))
-      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms))
-      if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
-      if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
+      if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms,crm_nx))
+      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms,crm_nx))
+      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms,crm_nx))
+      if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms,crm_nx))
+      if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms,crm_nx))
+      !if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms))
+      !if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms))
+      !if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms))
+      !if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
+      !if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
+!MAML-Guangxing Lin      
 
 #if defined( m2005 ) && defined( MODAL_AERO )
       if (.not. allocated(this%naermod))  allocate(this%naermod(ncrms,nlev,ntot_amode))

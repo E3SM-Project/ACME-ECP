@@ -37,9 +37,6 @@ use setparm_mod, only : setparm
 
 contains
 
-!MAML-Guangxing Lin
-!                crm_pcp, crm_snw,                         &
-!MAML-Guangxing Lin
 subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 crm_input, crm_state, crm_rad,  &
 #ifdef CLUBB_CRM
@@ -48,12 +45,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 clubb_tkh, relvar,      &
                 accre_enhan, qclvar,    &
 #endif
+!MAML-Guangxing Lin
+               crm_pcp,     crm_snw,              &
+!MAML-Guangxing Lin
                 crm_ecpp_output, crm_output )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
     use shr_kind_mod          , only: r8 => shr_kind_r8
     use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
-
     use ppgrid                , only: pcols
     use vars
     use params
@@ -61,7 +60,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     use sgs
     use crmtracers
     use scalar_momentum_mod
-
 #ifdef MODAL_AERO
     use modal_aero_data       , only: ntot_amode
 #endif
@@ -114,6 +112,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
+!MAML-Guangxing Lin
+    real(r8), intent(inout) :: crm_pcp(ncrms, crm_nx,crm_ny)  ! CRM precip rate (m/s)
+    real(r8), intent(inout) :: crm_snw(ncrms,crm_nx,crm_ny) ! CRM snow rate (m/s)
+!MAML-Guangxing Lin 
     type(crm_ecpp_output_type),intent(inout) :: crm_ecpp_output
     type(crm_output_type),     intent(inout) :: crm_output
 
@@ -121,6 +123,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     ! Local variable declarations
     !-----------------------------------------------------------------------------------------------
 
+    real(r8),       parameter :: umax = 0.5*crm_dx/crm_dt       ! maxumum ampitude of the l.s. wind
+    real(r8),       parameter :: wmin = 2.                      ! minimum up/downdraft velocity for stat
+    real(crm_rknd), parameter :: cwp_threshold = 0.001          ! threshold for cloud condensate for shaded fraction calculation
+    integer,        parameter :: perturb_seed_scale = 1000      ! scaling value for setperturb() seed value (seed = gcol * perturb_seed_scale)
     real(r8)        :: crm_run_time                             ! length of CRM integration
     real(r8)        :: icrm_run_time                            ! = 1 / crm_run_time
     real(r8)        :: factor_xy, factor_xyt, idt_gl
@@ -132,6 +138,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd)  ::  ustar(crm_nx), bflx(crm_nx), wnd,  qsat, omg
     integer :: ii
  !   real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
+    real(r8) z0_loc(crm_nx)  ! local z0; should it be dimensioned nx?
+    real(r8) pcp_check   ! precip amount over all CRMs
 !MAML-Guangxing Lin
     real(crm_rknd)  :: colprec,colprecs
     real(r8)        :: zs                ! surface elevation
@@ -144,7 +152,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     integer         :: myrank, ierr
 
     !!! variables for radiation grouping method
-
     real(crm_rknd) :: crm_nx_rad_fac
     real(crm_rknd) :: crm_ny_rad_fac
     integer        :: i_rad
@@ -303,7 +310,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_rad%ns(icrm,:,:,:) = 0.0
 #endif /* m2005 */
     zs=crm_input%phis(icrm)/ggr
-    bflx = crm_input%bflxls(icrm)
+!MAML-Guangxing Lin
+    !bflx = crm_input%bflxls(icrm)
+    bflx(:) = crm_input%bflxls(icrm,:)
+!MAML-Guangxing Lin
     wnd = crm_input%wndls(icrm)
 
 !-----------------------------------------
@@ -380,15 +390,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     endif
 #else
     rhow(nz,icrm)= 2.*rhow(nzm,icrm) - rhow(nzm-1,icrm)
-
-
 #endif /*CLUBB_CRM*/
     colprec=0
     colprecs=0
 
     !  Initialize CRM fields:
     u   (1:nx,1:ny,1:nzm,icrm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
-    v   (1:nx,1:ny,1:nzm,icrm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
+!MAML-Guangxing Lin
+    !v   (1:nx,1:ny,1:nzm,icrm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
+    v   (1:nx,1:ny,1:nzm,icrm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)
+!MAML-Guangxing Lin
     w   (1:nx,1:ny,1:nzm,icrm) = crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)
     tabs(1:nx,1:ny,1:nzm,icrm) = crm_state%temperature(icrm,1:nx,1:ny,1:nzm)
 
@@ -398,7 +409,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do j=1,ny
           do i=1,nx
             u(i,j,k,icrm) = min( umax, max(-umax,u(i,j,k,icrm)) )
-            v(i,j,k,icrm) = min( umax, max(-umax,v(i,j,k,icrm)) )*YES3D
+!MAML-Guangxing Lin
+            !v(i,j,k,icrm) = min( umax, max(-umax,v(i,j,k,icrm)) )*YES3D
+            v(i,j,k,icrm) = min( umax, max(-umax,v(i,j,k,icrm)) )
+!MAML-Guangxing Lin
           enddo
         enddo
       enddo
@@ -522,7 +536,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       l = plev-k+1
       uln(l,icrm) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
-      vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+!MAML-Guangxing Lin      
+      !vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+      vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )
+!MAML-Guangxing Lin      
       ttend(k,icrm) = (crm_input%tl(icrm,l)+gamaz(k,icrm)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
       qtend(k,icrm) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
       utend(k,icrm) = (uln(l,icrm)-u0(k,icrm))*idt_gl
@@ -538,10 +555,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     vhl(icrm) = v0(1,icrm)
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
-
-    ustar = sqrt(crm_input%tau00(icrm)/rho(1,icrm))
-    z0(icrm) = z0_est(z(1,icrm),bflx,wnd,ustar)
-    z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
+!MAML-Guangxing Lin...adjusted for CRM-resolution
+    do i =1,nx
+       ustar(i) = sqrt(crm_input%tau00(icrm,i)/rho(1,icrm))
+       z0_loc(i) = z0_est(z(1,icrm),bflx(i),wnd,ustar(i))
+       z0_loc(i) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0_loc(i)))
+    end do
+    !ustar = sqrt(crm_input%tau00(icrm)/rho(1,icrm))
+    !z0(icrm) = z0_est(z(1,icrm),bflx,wnd,ustar)
+    !z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
+!MAML-Guangxing Lin...adjusted for CRM-resolution
 
     crm_output%timing_factor = 0.
 
@@ -551,10 +574,18 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(:, :,icrm) = crm_input%fluxu00(icrm)/rhow(1,icrm)
-      fluxbv(:, :,icrm) = crm_input%fluxv00(icrm)/rhow(1,icrm)
-      fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1,icrm)
-      fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1,icrm)
+!MAML-Guangxing Lin
+      do i = 1, nx
+         fluxbu(i, :,icrm) = crm_input%fluxu00(icrm,i)/rhow(1,icrm)
+         fluxbv(i, :,icrm) = crm_input%fluxv00(icrm,i)/rhow(1,icrm)
+         fluxbt(i, :,icrm) = crm_input%fluxt00(icrm,i)/rhow(1,icrm)
+         fluxbq(i, :,icrm) = crm_input%fluxq00(icrm,i)/rhow(1,icrm)
+      end do
+         !fluxbu(:, :,icrm) = crm_input%fluxu00(icrm)/rhow(1,icrm)
+         !fluxbv(:, :,icrm) = crm_input%fluxv00(icrm)/rhow(1,icrm)
+         !fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1,icrm)
+         !fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1,icrm)
+!MAML-Guangxing Lin
     else
       fluxbu(:, :,icrm) = 0.
       fluxbv(:, :,icrm) = 0.
@@ -562,10 +593,19 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       fluxbq(:, :,icrm) = 0.
     endif
 #else
+!MAML-Guangxing: crm-level surface fluxes
+    do i=1,nx
+       do j=1,ny
+         fluxbt(i, j,icrm) = crm_input%fluxt00(icrm,i)/rhow(1,icrm)
+         fluxbq(i, j,icrm) = crm_input%fluxq00(icrm,i)/rhow(1,icrm)
+       enddo
+    enddo
+
     fluxbu(:,:,icrm)=0.
     fluxbv(:,:,icrm)=0.
-    fluxbt(:,:,icrm)=0.
-    fluxbq(:,:,icrm)=0.
+    !fluxbt(:,:,icrm)=0.
+    !fluxbq(:,:,icrm)=0.
+!MAML-Guangxing: crm-level surface fluxes
 #endif /* CLUBB_CRM */
     fluxtu  (:,:,icrm)=0.
     fluxtv  (:,:,icrm)=0.
@@ -863,7 +903,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
         !-----------------------------------------------
         !     surface fluxes:
-        if (dosurface) call crmsurface(ncrms,icrm,bflx)
+!MAML-Guangxing Lin
+        if (dosurface) call crmsurface(ncrms,icrm,bflx,z0_loc)
+        !if (dosurface) call crmsurface(ncrms,icrm,bflx)
+!MAML-Guangxing Lin
 
         !-----------------------------------------------------------
         !  SGS physics:
@@ -1041,9 +1084,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 !             crm_rad%qs(icrm,i,j,k) = crm_rad%qs(icrm,i,j,k)+micro_field(i,j,k,iqs,icrm)
 !             crm_rad%ns(icrm,i,j,k) = crm_rad%ns(icrm,i,j,k)+micro_field(i,j,k,ins,icrm)
 ! #endif
-          
-            !!! only collect radiative inputs during tphysbc() when using SP_CRM_SPLIT
-            if ( phys_stage == 1 ) then
 
 
             !!! Reduced radiation method allows for fewer radiation calculations
@@ -1163,7 +1203,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     vln_esmt(1:ptop-1,icrm)  = crm_input%vl_esmt(icrm,1:ptop-1)
     uln_esmt(ptop:plev,icrm) = 0.
     vln_esmt(ptop:plev,icrm) = 0.
-
 #endif /* SP_ESMT */
 
     colprec=0
@@ -1402,27 +1441,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #ifdef sam1mom
         precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)
         precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)
-=======
-    aut_crm_a (icrm,:) = aut_crm_a (icrm,:) * factor_xyt / dt
-    acc_crm_a (icrm,:) = acc_crm_a (icrm,:) * factor_xyt / dt
-    evpc_crm_a(icrm,:) = evpc_crm_a(icrm,:) * factor_xyt / dt
-    evpr_crm_a(icrm,:) = evpr_crm_a(icrm,:) * factor_xyt / dt
-    mlt_crm_a (icrm,:) = mlt_crm_a (icrm,:) * factor_xyt / dt
-    sub_crm_a (icrm,:) = sub_crm_a (icrm,:) * factor_xyt / dt
-    dep_crm_a (icrm,:) = dep_crm_a (icrm,:) * factor_xyt / dt
-    con_crm_a (icrm,:) = con_crm_a (icrm,:) * factor_xyt / dt
-#endif /* m2005 */
-
-    precc (icrm) = 0.
-    precl (icrm) = 0.
-    precsc(icrm) = 0.
-    precsl(icrm) = 0.
-    do j=1,ny
-      do i=1,nx
-#ifdef sam1mom
-        precsfc(i,j) = precsfc(i,j)*dz/dt/dble(nstop)
-        precssfc(i,j) = precssfc(i,j)*dz/dt/dble(nstop)
->>>>>>> Just trying to merge my local MAML branch to the current master
 #endif /* sam1mom */
 #ifdef m2005
         ! precsfc and precssfc from the subroutine of micro_proc in M2005 have a unit mm/s/dz
@@ -1432,6 +1450,13 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
         precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
+!MAML-Guangxing Lin precip is aggregated and a mean value is determined. We need
+!  to change this so that individual CRM precip values are passed down
+!  to CLM.
+          crm_pcp(icrm,i,j) = precsfc(i,j,icrm)/1000.      ! mm/s --> m/s
+          crm_snw(icrm,i,j) = precssfc(i,j,icrm)/1000.     ! mm/s --> m/s
+!MAML-Guangxing Lin
+
         if(precsfc(i,j,icrm).gt.10./86400.) then
            crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(i,j,icrm)
            crm_output%precsc(icrm) = crm_output%precsc(icrm) + precssfc(i,j,icrm)
