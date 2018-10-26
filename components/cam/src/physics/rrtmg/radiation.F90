@@ -405,6 +405,14 @@ end function radiation_nextsw_cday
     call radsw_init()
     call radlw_init()
 
+      ! If we are using superparameterization, then we need to make sure that
+    ! iradsw and iradlw are both set to 1 to make sure that radiation is updated
+    ! every timestep.
+    if (use_SPCAM) then
+       iradsw = 1
+       iradlw = 1
+    end if
+
 !==Guangxing Lin
      ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then
