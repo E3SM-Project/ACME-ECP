@@ -83,6 +83,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
+#ifdef CRMACCEL
+    use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, &
+                                      crm_accel_nstop, crm_accel_reset_nstop, &
+                                      accelerate_crm, crm_accel_verbose_debug, accelerate_crm_orig
+#endif
     use cam_abortutils        , only: endrun
     use time_manager          , only: get_nstep
 
@@ -143,6 +148,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd) :: crm_ny_rad_fac
     integer        :: i_rad
     integer        :: j_rad
+
+#ifdef CRMACCEL
+    logical :: crm_accel_ceaseflag = .false.
+    logical :: accel_skipping = .false.
+#endif
 
     !!! Arrays
     real(crm_rknd), allocatable :: t00(:,:)
@@ -270,6 +280,12 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #endif
 #if defined(SP_ESMT)
   call allocate_scalar_momentum(ncrms)
+#endif
+
+#if defined(CRMACCEL) && !defined(sam1mom)
+  ! ensure CRMACCEL runs with sam1mom only
+  write(0,*) "CRMACCEL is only compatible with sam1mom microphysics"
+  call endrun('crm main')
 #endif
 
   !Loop over "vector columns"
@@ -769,6 +785,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     factor_xyt = factor_xy / real(nstop,crm_rknd)
 
+#ifdef CRMACCEL
+    if (use_crm_accel) then
+      call crm_accel_nstop(nstop)  ! reduce nstop by factor of (1 + crm_accel_factor)
+    end if
+    accel_skipping = .false.
+#endif
+
+
     !========================================================================================
     !----------------------------------------------------------------------------------------
     !   Main time loop
@@ -779,7 +803,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       nstep = nstep + 1
       time = time + dt
       day = day0 + time/86400.
-      crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
+
+#ifdef CRMACCEL
+      ! Copied from UPCAM implementation -- crjones
+      ! INSERT pritch and parish need to understand how this will work in the context of SP...
+      ! apparently the variable day is not used, but not quite sure.
+      if (.not. accel_skipping) then
+        time = time + crm_accel_factor*dt
+        day = day + crm_accel_factor*dt/86400.
+      end if
+#endif
       !------------------------------------------------------------------
       !  Check if the dynamical time step should be decreased
       !  to handle the cases when the flow being locally linearly unstable
@@ -789,6 +822,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call kurant(ncrms,icrm)
 
       do icyc=1,ncycle
+        ! note: timing_factor should be inside ncycle loop (recent move from above)
+        crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
 
         icycle = icyc
         dtn = dt/ncycle
@@ -921,6 +956,38 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #else
         if(docloud.or.dosmoke) call micro_proc(ncrms,icrm)
 #endif /*CLUBB_CRM*/
+
+#ifdef CRMACCEL
+        !-----------------------------------------------------------
+        !       Apply mean-state acceleration
+        if (use_crm_accel) then
+          ! Use Jones-Bretherton-Pritchard methodology to accelerate
+          ! CRM horizontal mean evolution artificially.
+          if (.not. accel_skipping) then
+            ! call accelerate_crm_orig(crm_accel_ceaseflag)
+	          call accelerate_crm(crm_accel_ceaseflag)
+            if (crm_accel_ceaseflag) then
+              ! Tendencies were too large, so acceleration turned off for
+              ! remainder of steps. Need to adjust nstop to account for remaining
+              ! steps advancing at unaccelerated pace
+              accel_skipping = .true.
+              write (0,*) 'crm: accel_skipping triggered @ lat,lon,nstep,icyc=',latitude0,longitude0,nstep,icyc
+	            write (0,*) 'crm: crm_accel_factor = ',crm_accel_factor
+              write (0,*) 'verbose debug output for remainder of ncycle'
+              call crm_accel_reset_nstop(nstop, nstep)
+              ! crjones: reset time to correct (non-accelerated) value
+	            ! commented out in case reducing day/time caused problems ...
+              time = time - crm_accel_factor*dt
+              day = day - crm_accel_factor*dt/86400.
+            endif
+          endif
+          ! verbose debug output!
+          !if (accel_skipping) then
+          !  write (0,*) '(debug) accel_skipping after micro_adust: nstep = ', nstep
+          !  call crm_accel_verbose_debug()
+          !endif
+        endif
+#endif
 
         !-----------------------------------------------------------
         !    Compute diagnostics fields:

@@ -1,0 +1,439 @@
+module test_accelerate_crm
+  ! Tests of accelerate_crm_mod
+  use pfunit_mod
+  use accelerate_crm_mod
+
+  implicit none
+
+contains
+
+  subroutine init_for_test(fld, fld_mean, con, ck, fac_xy, xcoef, ycoef)
+  ! initialize fld for test purposes to
+  ! fld(i, j, k) = con + ck * k + fac_xy * sin(xcoef * i) * cos(ycoef * j)
+
+  implicit none
+  real(rc), intent(out) :: fld(nx, ny, nzm)
+  real(rc), intent(out) :: fld_mean(nzm)
+  real(rc), intent(in) :: con, ck, fac_xy, xcoef, ycoef
+
+  ! local variables
+  integer :: i, j, k
+  real(rc) :: fxy(nx, ny)
+  real(rc) :: sin_xi, cos_yj
+
+  fld_mean(:) = 0._rc
+  do j = 1, ny
+    cos_yj = cos(real(ycoef * j, rc))
+    do i = 1, nx
+      sin_xi = sin(real(xcoef * i, rc))
+      fxy(i, j) = fac_xy * sin_xi * cos_yj
+      fld_mean(1) = fld_mean(1) + fxy(i, j)
+    end do
+  end do
+
+  ! independently calculate horizontal mean
+  fld_mean(1) = fld_mean(1) * 1._rc / dble(nx * ny)
+  fld_mean(:) = fld_mean(1)
+
+  do k = 1, nzm
+    fld(:, :, k) = con + ck * k + fxy(:, :)
+    fld_mean(k) = fld_mean(k) + con + ck * k
+  end do
+  end subroutine init_for_test
+
+  ! -------------------------------------------------------------------
+  ! Tests
+  ! -------------------------------------------------------------------
+  @test
+  subroutine test_nstop()
+    implicit none
+    integer, parameter :: r8 = selected_real_kind(12)
+    integer :: nstop = 60
+    real(r8), dimension(9) :: accel_factors = (/0., 1., 2., 3., 4., 5., 6., 7., 14. /)
+    integer, dimension(9) :: answers =        (/60, 30, 20, 15, 12, 10, -1, -1, 4/)
+    integer i, ans
+    real(r8) afac
+
+    do i = 1, size(accel_factors)
+      nstop = 60
+      afac = accel_factors(i)
+      ans = answers(i)
+      call crm_accel_nstop(nstop, afac)
+      @assertEqual(ans, nstop)
+    end do
+  end subroutine test_nstop
+
+  @test
+  subroutine test_horiz_mean()
+    use unittest_mod, only: nx, ny, nzm
+
+    implicit none
+
+    real(r8), dimension(nzm) :: ans, out
+    real(r8), dimension(nx, ny, nzm) :: in
+    real(r8), parameter :: inx = 1._r8/dble(nx)
+    integer i, j, k
+
+    ! constant
+    in(:,:,:) = 0.015
+    ans(:) = 0.015
+
+    call crm_horiz_mean(out, in)
+    @assertEqual(ans, out, message='horiz_mean_test1')
+
+    ! test2: vary along nx:
+    in(:, :, :) = 0._r8
+    ans(:) = 0._r8
+    do i = 1, nx
+      in(i, :, 1) = real(i, r8)
+      ans(1) = ans(1) + i
+    end do
+    ans(1) = ans(1) * inx
+
+    call crm_horiz_mean(out, in)
+    @assertEqual(ans, out, message='horiz_mean_test2')
+
+    ! test3: vary along k:
+    in(:, :, :) = 0._r8
+    ans(:) = 0._r8
+    do k = 1, nzm
+      in(:, :, k) = real(k, r8) * 1.0e-3
+      ans(k) = real(k, r8) * 1.0e-3
+    end do
+    call crm_horiz_mean(out, in)
+    @assertEqual(ans, out, message='horiz_mean_test3')
+  end subroutine test_horiz_mean
+
+  @test
+  subroutine test_partition_micro()
+    ! tests:
+    !  (1) micro <= 0
+    !  (2) qcl and qci = 0
+    !  (3) qcl, qci > 0 but all goes into qv
+    !  (4) qv = 0, qcl and qci reduced
+    !  (5) Tests (1)-(4) with arrays instead of single values
+    use unittest_mod, only: nx, ny, nzm
+    implicit none
+
+    real(r8), parameter :: tol = 1.0e-9
+    real(r8) :: qcl1, qci1, qv1, micro1
+    real(r8), dimension(nx, ny, nzm) :: qcl, qci, qv
+    real(r8), dimension(nx, ny, nzm, 2) :: micro
+
+    ! (1)
+    qv(:,:,:) = 1._r8
+    qcl(1, 1, 1) = 1._r8
+    qci(1, 1, 1) = 1._r8
+    micro(:,:,:,:) = 0._r8
+
+    call partition_micro(qv(1,1,1), qcl(1,1,1), qci(1,1,1), micro(1,1,1,1))
+    @assertEqual(0._r8, qv(1,1,1))
+    @assertEqual(0._r8, qcl(1,1,1))
+    @assertEqual(0._r8, qci(1,1,1))
+
+    ! (2)
+    qcl1 = 0._r8
+    qci1 = 0._r8
+    micro1 = 1.2e-3
+    call partition_micro(qv1, qcl1, qci1, micro1)
+    @assertEqual(micro1, qv1)
+    @assertEqual(0._r8, qcl1)
+    @assertEqual(0._r8, qci1)
+
+    ! (3) qcl, qci > 0 but micro - qcl - qci > 0:
+    qcl1 = 1.e-3
+    qci1 = 2.e-3
+    micro1 = 4.75e-3
+    qv1 = 0._r8
+    call partition_micro(qv1, qcl1, qci1, micro1)
+    @assertEqual(micro1 - qcl1 - qci1, qv1)
+    @assertEqual(1.e-3, qcl1)
+    @assertEqual(2.e-3, qci1)
+
+    ! (4) qcl, qci > 0 but micro - qcl - qci < 0:
+    qcl1 = 2.e-3
+    qci1 = 6.e-3
+    micro1 = 1.e-3
+    qv1 = 0._r8
+    call partition_micro(qv1, qcl1, qci1, micro1)
+    @assertEqual(0._r8, qv1)
+    @assertTrue(abs(0.25e-3 - qcl1) < tol)
+    @assertTrue(abs(0.75e-3 -qci1) .lt. tol, "partition_micro (4)")
+
+    ! (5) verify it works for arrays as well
+    qv(:,:,:) = 1._r8
+    qcl(:,:,:) = 1._r8
+    qci(:,:,:) = 2._r8
+    micro(:,:,:,1) = 0._r8
+    micro(:,:,:,2) = 4.75_r8
+
+    call partition_micro(qv, qcl, qci, micro(:,:,:,1))
+    @assertEqual(0._r8, qv)
+    @assertEqual(0._r8, qcl)
+    @assertEqual(0._r8, qci)
+
+    qcl(:,:,:) = 1._r8
+    qci(:,:,:) = 2._r8
+    call partition_micro(qv, qcl, qci, micro(:,:,:,2))
+    @assertEqual(1.75_r8, qv)
+    @assertEqual(1._r8, qcl)
+    @assertEqual(2._r8, qci)
+  end subroutine test_partition_micro
+
+  @test
+  subroutine test_accelerate_t()
+    ! Tests: (accel_factor = [0, 1, 5] for each)
+    !   (1) calls endrun if |dT| > 5 somewhere
+    !   (2) if <t(:,:,:)> == t0, tend = 0
+    !   (3) Right answer for given t, t0
+    !   (5) Verify tfinal(:,:,:) == tinitial(:,:,:) + a(<tinitial> - t0)
+    !   (6) Verify t >= 50
+    use unittest_mod, only: nx, ny, nzm, t, t0
+    implicit none
+
+    integer i, k
+    real(r8), dimension(3) :: afactors = (/0., 1., 5./)
+    real(r8), dimension(nzm) :: t00
+    real(r8), dimension(nx, ny, nzm) :: tsol, tdummy
+    real(r8) :: afac
+    real(r8) :: tol = 1.0e-11  ! tolerance for tests
+    logical :: ceaseflag
+
+    ! Initialize:
+    t0(:) = 249._r8
+    t0(nzm) = 244._r8
+    t(:,:,:) = 250._r8
+    t00(:) = 250._r8
+
+    ! test(1)
+    do i = 1, 3
+      afac = afactors(i)
+      call accelerate_t(afac, ceaseflag)
+      @assertTrue(ceaseflag)
+      @assertEqual(250._r8, t)
+    end do
+
+    ! test(2)
+    t0(:) = 250._r8
+    t(:,:,:) = 250._r8
+    do i = 1, 3
+      afac = afactors(i)
+      call accelerate_t(afac, ceaseflag)
+      @assertFalse(ceaseflag)
+      @assertEqual(250._r8, t)
+    end do
+
+    ! test(3)
+    t0(:) = 247._r8
+    do i = 1, 3
+      t(:,:,:) = 250._r8
+      afac = afactors(i)
+      call accelerate_t(afac, ceaseflag)
+      @assertFalse(ceaseflag)
+      @assertEqual(250._r8 + afac * (3._r8), t)
+    end do
+
+    ! give specified function
+    call init_for_test(tdummy, t0, 255._r8, 3.0e-3_r8, 0.123_r8, 3.75_r8, 0.1_r8) ! "initial t0 from previous step"
+    call init_for_test(t, t00, 256._r8, 2.0e-3_r8, 0.123_r8, 3.75_r8, 0.1_r8) ! t at this step before applying accel
+    tdummy = t ! t before acceleration is applied
+
+    do i = 1, 3
+      t = tdummy ! reset to t before acceleration ...
+      afac = afactors(i)
+      call accelerate_t(afac, ceaseflag)
+      @assertFalse(ceaseflag, 'fancy accelerate_t test ceaseflag')
+
+      do k=1, nzm
+        tsol(:,:,k) = tdummy(:, :, k) + afac * (1.0_r8 + (2.0e-3_r8 - 3.0e-3_r8) * real(k, rc))
+        ! alternate:
+        ! tsol(:, : , k) = tdummy(:, :, k) + afac * (t00(k) - t0(k))
+      end do
+      @assertEqual(tsol, t, tol, 'fancy accelerate_t test')
+    end do
+
+    ! test (6): verify t after acceleration always greater than 50
+    call init_for_test(tdummy, t0, 52._r8, 3.0e-3_r8, 0.123_r8, 3.75_r8, 0.1_r8) ! "initial t0 from previous step"
+    call init_for_test(t, t00, 50._r8, 2.0e-3_r8, 0.123_r8, 3.75_r8, 0.1_r8) ! t at this step before applying accel
+    tdummy = t ! t before acceleration is applied
+
+    do i = 1, 3
+      t = tdummy ! reset to t before acceleration ...
+      afac = afactors(i)
+      call accelerate_t(afac, ceaseflag)
+      @assertFalse(ceaseflag, 'fancy accelerate_t test ceaseflag')
+      @assertTrue(minval(t) .ge. 50._r8)
+    end do
+  end subroutine test_accelerate_t
+
+  @test
+  subroutine test_accelerate_momentum()
+  ! test (1): verify works for given u, v
+  use unittest_mod, only: nx, ny, nzm, u, u0, v, v0
+  implicit none
+
+  integer i, k
+  real(r8), dimension(3) :: afactors = (/0., 1., 5./)
+  real(r8), dimension(nzm) :: u00, v00
+  real(r8), dimension(nx, ny, nzm) :: usol, udummy, vsol, vdummy
+  real(r8) :: afac
+  real(r8) :: tol = 1.0e-11  ! tolerance for tests
+  logical :: ceaseflag
+
+  ! give specified function for u:
+  call init_for_test(udummy, u0, 0._r8, -0.5_r8, 0.7_r8, 0.1_r8, 2.5_r8) ! "initial t0 from previous step"
+  call init_for_test(u, u00, 5._r8, 1.5_r8, 0.7_r8, 0.1_r8, 2.5_r8) ! t at this step before applying accel
+  udummy = u ! t before acceleration is applied
+
+  ! give specified function for u:
+  call init_for_test(vdummy, v0, 2._r8, 0.5_r8, 1.7_r8, 3.3_r8, 0.25_r8) ! "initial t0 from previous step"
+  call init_for_test(v, v00, -5._r8, -1.5_r8, 1.7_r8, 3.3_r8, 0.25_r8) ! t at this step before applying accel
+  vdummy = v ! t before acceleration is applied
+
+  do i = 1, 3
+    u = udummy ! reset to value before acceleration
+    v = vdummy
+    afac = afactors(i)
+    call accelerate_momentum(afac)
+
+    ! construct solution
+    do k=1, nzm
+      usol(:,:,k) = udummy(:, :, k) + afac * (u00(k) - u0(k))
+      vsol(:,:,k) = vdummy(:, :, k) + afac * (v00(k) - v0(k))
+    end do
+    @assertEqual(usol, u, tol, message='accelerate_momentum u-mom test')
+    @assertEqual(vsol, v, tol, message='accelerate_momentum v-mom test')
+  end do
+  end subroutine test_accelerate_momentum
+
+  @test
+  subroutine test_accelerate_micro()
+  ! Tests:
+  !   (1) distribute_qneg = False:
+  !       test for both qtend > 0, qtend < 0 (use appropriate IC)
+  !       qv, qcl, qci, (micro) >= 0
+  !   (2) distribute_qneg = True [already tested?]
+  !       test for both qtend > 0, qtend < 0 (use appropriate IC)
+  !       qv, qcl, qci, (micro) >= 0
+  !       micro = qv + qcl + qci
+  use unittest_mod, only: nx, ny, nzm, q0, qv, qcl, qci, micro_field, &
+                          index_water_vapor
+  implicit none
+
+  integer a, k
+  real(r8), dimension(3) :: afactors = (/0., 1., 5./)
+  real(r8), dimension(nzm) :: q00
+  real(r8), dimension(nx, ny, nzm) :: qsol, qdummy
+  real(r8) :: afac, tmp
+  real(r8) :: tol = 1.0e-11  ! tolerance for tests
+  real(r8) :: lapse_rate
+  logical :: distribute_qneg
+
+  distribute_qneg = .false.
+  lapse_rate = 1.5e-3 / nzm
+  micro_field = 0._r8
+
+  ! give specified function for u:
+  call init_for_test(qdummy, q0, 5.0e-3_r8, lapse_rate, 0.1e-3_r8, 0.1_r8, 2.5_r8) ! "initial t0 from previous step"
+  call init_for_test(qdummy, q00, 6.0e-3_r8, 0._r8, 0.1e-3_r8, 0.1_r8, 2.5_r8) ! "initial t0 from previous step"
+
+  do a = 1, 3
+    afac = afactors(a)
+    micro_field(:,:,:,1) = qdummy
+    qv = qdummy
+    qcl = 0._r8
+    qci = 0._r8
+    call accelerate_micro(afac, distribute_qneg)
+    @assertEqual(micro_field(:,:,:,1), qv, tol, message='consistent micro1')
+    @assertTrue(minval(qv) .ge. 0._r8, message='micro qv positivity1')
+  end do
+
+  ! qtot = qcl, qv = 0
+  do a = 1, 3
+    afac = afactors(a)
+    micro_field(:,:,:,1) = qdummy
+    qv = 0._r8
+    qcl = qdummy
+    qci = 0._r8
+    call accelerate_micro(afac, distribute_qneg)
+    @assertEqual(qdummy, qcl, tol, message='qcl untouched')
+    @assertTrue(minval(qv) .ge. 0._r8, message='micro qv positivity2')
+    @assertTrue(minval(micro_field(:,:,:,1)) .ge. 0._r8, message='micro_field positivity2')
+    ! note: the following is not necessarily true - is this a problem?
+    ! @assertEqual(micro_field(:,:,:,1), qv + qcl + qci, message='consistent micro2')
+    ! ... need to check original implementation
+    do k = 1, nzm
+      qsol(:,:,k) = max(0._r8, afac * (q00(k) - q0(k)))
+    end do
+    @assertEqual(qsol, qv, tol, message='micro qv correct2')
+  end do
+
+  ! with distribute_qneg:
+  distribute_qneg = .true.
+  do a = 1, 3
+    afac = afactors(a)
+    micro_field(:,:,:,1) = qdummy
+    qv = 0._r8
+    qcl = qdummy
+    qci = 0._r8
+    call accelerate_micro(afac, distribute_qneg)
+    @assertEqual(0._r8, qci, 1.0e-15_r8, message='qci untouched')
+    @assertTrue(minval(qv) .ge. 0._r8, message='micro qv positivity3')
+    @assertTrue(minval(qcl) .ge. 0._r8, message='micro qcl positivity3')
+    @assertEqual(micro_field(:,:,:,1), qv + qcl + qci, tol, message='consistent micro3')
+    do k = 1, nzm
+      qsol(:,:,k) = max(0._r8, qdummy(:,:,k) + afac * (q00(k) - q0(k)))
+    end do
+    @assertEqual(qsol, micro_field(:,:,:,1), tol, message='micro_field correct3')
+  end do
+  end subroutine test_accelerate_micro
+
+  ! note: nothing here, since partition_micro and test_accelerate_micro already
+  !       provide adequate coverage.
+  ! @test
+  ! subroutine test_apply_accel_tend_micro()
+  ! end subroutine test_apply_accel_tend_micro
+
+  @test
+  subroutine test_accel_reset_nstep()
+    ! Tests: (accel_factor = [0, 1, 5] for each)
+    !   (0) [nothing happens if accel_factor = 0]
+    !   (1) nstep=1, nstop => original
+    !   (2) nstep = nstop: nstop => nstop + accel_factor
+    !   (3) nstep = (some number), nstop => (correct number)
+    implicit none
+    real(r8), dimension(4) :: afactors = (/1., 5., 14., 29./)
+    real(r8) :: afac
+    integer :: nstop = 60
+    integer i, nstop_out, nstep
+
+    ! case 1: afactor = 0, nstop never changes
+    do i = 1, nstop
+      nstep = i
+      nstop_out = nstop
+      afac = 0._r8
+      call crm_accel_nstop(nstop_out, afac)
+      call crm_accel_reset_nstop(nstop_out, nstep, afac)
+      @assertEqual(nstop, nstop_out, message='nstep_reset_afac_0')
+    end do
+
+    ! case 2: nstep = 1, nstop = original
+    do i = 1, 4
+      nstep = 1
+      nstop_out = nstop
+      afac = afactors(i)
+      call crm_accel_nstop(nstop_out, afac)
+      call crm_accel_reset_nstop(nstop_out, nstep, afac)
+      @assertEqual(nstop, nstop_out, message='crm_accel_reset_nstop_nstep1')
+      @assertEqual(1, nstep, message='crm_accel_reset_nstop: nstep unchanged')
+
+      call crm_accel_nstop(nstop_out, afac)
+      nstep = nstop_out
+      call crm_accel_reset_nstop(nstop_out, nstep, afac)
+      ! accel turned off on this step, so still needs "afac steps"
+      @assertEqual(nstep + afac, nstop_out, message='crm_accel_rest_nstop: nstep at nstop')
+    end do
+
+  end subroutine test_accel_reset_nstep
+
+end module test_accelerate_crm
