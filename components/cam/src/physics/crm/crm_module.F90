@@ -1022,29 +1022,19 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                  endif
             endif
 
-!             crm_rad%temperature  (icrm,i,j,k) = crm_rad%temperature  (icrm,i,j,k)+tabs(i,j,k,icrm)
-!             crm_rad%qv (icrm,i,j,k) = crm_rad%qv (icrm,i,j,k)+max(real(0.,crm_rknd),qv(i,j,k,icrm))
-!             crm_rad%qc (icrm,i,j,k) = crm_rad%qc (icrm,i,j,k)+qcl(i,j,k,icrm)
-!             crm_rad%qi (icrm,i,j,k) = crm_rad%qi (icrm,i,j,k)+qci(i,j,k,icrm)
-!             crm_rad%cld(icrm,i,j,k) = crm_rad%cld(icrm,i,j,k) +  CF3D(i,j,k,icrm)
-! #ifdef m2005
-!             crm_rad%nc(icrm,i,j,k) = crm_rad%nc(icrm,i,j,k)+micro_field(i,j,k,incl,icrm)
-!             crm_rad%ni(icrm,i,j,k) = crm_rad%ni(icrm,i,j,k)+micro_field(i,j,k,inci,icrm)
-!             crm_rad%qs(icrm,i,j,k) = crm_rad%qs(icrm,i,j,k)+micro_field(i,j,k,iqs,icrm)
-!             crm_rad%ns(icrm,i,j,k) = crm_rad%ns(icrm,i,j,k)+micro_field(i,j,k,ins,icrm)
-! #endif
-
-
             !!! Reduced radiation method allows for fewer radiation calculations
             !!! by collecting statistics and doing radiation over column groups
             i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
             j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
-            crm_rad%temperature  (icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
+            crm_rad%temperature(icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
             crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
             crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
             crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
             crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
+            if (qcl(i,j,k,icrm) + qci(i,j,k,icrm) > 0) then
+               crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + 1.0
+            end if
 #ifdef m2005
             crm_rad%nc(icrm,i_rad,j_rad,k) = crm_rad%nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,incl,icrm)
             crm_rad%ni(icrm,i_rad,j_rad,k) = crm_rad%ni(icrm,i_rad,j_rad,k) + micro_field(i,j,k,inci,icrm)
@@ -1117,8 +1107,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     !----------------------------------------------------------------------------------------
     !========================================================================================
 
-    tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
-
+    tmp1 = real(crm_nx_rad_fac * crm_ny_rad_fac, crm_rknd) / real(nstop,crm_rknd)
     crm_rad%temperature  (icrm,:,:,:) = crm_rad%temperature  (icrm,:,:,:) * tmp1
     crm_rad%qv (icrm,:,:,:) = crm_rad%qv (icrm,:,:,:) * tmp1
     crm_rad%qc (icrm,:,:,:) = crm_rad%qc (icrm,:,:,:) * tmp1
