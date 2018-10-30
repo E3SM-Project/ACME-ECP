@@ -1038,6 +1038,8 @@ end function radiation_nextsw_cday
     real(r8),pointer :: qs_rad(:,:,:,:) ! rad cloud snow crystal mass (kg/kg)
     real(r8),pointer :: ns_rad(:,:,:,:) ! rad cloud snow crystal number (#/kg)
 
+    real(r8), pointer :: cld_rad(:,:,:,:)  ! Cloud fraction averaged over CRM integration
+
     real(r8),pointer :: t_rad (:,:,:,:) ! rad temperuture
     real(r8),pointer :: qv_rad(:,:,:,:) ! rad vapor
     real(r8),pointer :: qc_rad(:,:,:,:) ! rad cloud water
@@ -1529,6 +1531,9 @@ end function radiation_nextsw_cday
         call pbuf_get_field(pbuf, pbuf_get_index('CRM_NS_RAD'), ns_rad, &
                             start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
       endif
+
+      ! Cloud fraction averaged over CRM integration
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), cld_rad)
 
       cicewp(1:ncol,1:pver) = 0.  
       cliqwp(1:ncol,1:pver) = 0.
