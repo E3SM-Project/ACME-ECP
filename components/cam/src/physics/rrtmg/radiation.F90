@@ -1622,12 +1622,13 @@ end function radiation_nextsw_cday
 #endif
 
                 ! Calculate water paths and fraction of ice
-                if (qtot > qtot_cld_threshold) then
+                if (cld(i,k) > 0) then
+                !if (qtot > qtot_cld_threshold) then
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
-                           / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
+                           / cld(i,k) !max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
                   cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
-                           / max(0.01_r8,cld(i,k)) ! In-cloud liquid water path. 
+                           / cld(i,k) !max(0.01_r8,cld(i,k)) ! In-cloud liquid water path. 
                 else
                   fice(i,k)= 0.
                   cicewp(i,k) = 0.           ! In-cloud ice water path.
