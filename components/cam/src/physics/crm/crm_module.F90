@@ -784,14 +784,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)
 
-      !_dir _enter_data _din(dudt,dvdt,dwdt,misc) _async(1)
+      !_dir _enter_data _din(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend) _async(1)
 
       !---------------------------------------------
       !  	initialize stuff:
       call zero(ncrms)
-
-      !_dir _exit_data _dout(dudt,dvdt,dwdt,misc) _async(1)
-      !_dir _wait(1)
 
       !-----------------------------------------------------------
       !       Buoyancy term:
@@ -800,6 +797,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !------------------------------------------------------------
       !       Large-scale and surface forcing:
       call forcing(ncrms)
+
+      !_dir _exit_data _dout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend) _async(1)
+      !_dir _wait(1)
 
       !!! Apply radiative tendency
       do icrm = 1 , ncrms
