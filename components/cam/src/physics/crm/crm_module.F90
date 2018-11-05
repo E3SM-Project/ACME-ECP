@@ -102,7 +102,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     integer , intent(in   ) :: icol                (ncrms)      ! column identifier (only for lat/lon and random seed)
     type(crm_input_type),      intent(in   ) :: crm_input
     type(crm_state_type),      intent(inout) :: crm_state
-    type(crm_rad_type),        intent(inout) :: crm_rad
+    type(crm_rad_type), target,intent(inout) :: crm_rad
 #ifdef CLUBB_CRM
     real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
     real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
@@ -184,7 +184,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
 
-    real(crm_rknd), pointer :: ptr1d(:), ptr2d(:,:)
+    real(crm_rknd), pointer :: ptr1d(:), ptr2d(:,:), ptr3d(:,:,:), ptr4d(:,:,:,:)
 
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
@@ -784,7 +784,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)
 
-      !_dir _enter_data _din(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend) _async(1)
+      !_dir _enter_data _din(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,t) _async(1)
 
       !---------------------------------------------
       !  	initialize stuff:
@@ -798,21 +798,23 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !       Large-scale and surface forcing:
       call forcing(ncrms)
 
-      !_dir _exit_data _dout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend) _async(1)
-      !_dir _wait(1)
-
       !!! Apply radiative tendency
+      ptr4d => crm_rad%qrad
+      !_dir _par _loop _gang _vector collapse(4) private(i_rad,j_rad) _kinout(t) _kin(ptr3d) _async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(i,j,k,icrm) = t(i,j,k,icrm) + crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
+              t(i,j,k,icrm) = t(i,j,k,icrm) + ptr4d(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
       enddo
+
+      !_dir _exit_data _dout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,t) _async(1)
+      !_dir _wait(1)
 
       !----------------------------------------------------------
       !   	suppress turbulence near the upper boundary (spange):
