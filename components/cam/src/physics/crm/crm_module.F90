@@ -760,6 +760,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !========================================================================================
   do nstep = 1 , nstop
     ptr1d => crm_output%timing_factor(:)
+    !_dir _enter_data _din(tkh,grdf_x,grdf_y,grdf_z,dz,adzw,w_max,u_max,u,v,w) _async(1)
     !_dir _par _loop _gang _vector _kinout(ptr1d) _async(1)
     do icrm = 1 , ncrms
       ptr1d(icrm) = ptr1d(icrm)+1
@@ -770,6 +771,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !  to handle the cases when the flow being locally linearly unstable
     !------------------------------------------------------------------
     call kurant(ncrms)
+    !_dir _exit_data _dout(tkh,grdf_x,grdf_y,grdf_z,dz,adzw,w_max,u_max,u,v,w) _async(1)
+    !_dir _wait(1)
 
     do icyc=1,ncycle
       icycle = icyc
@@ -781,9 +784,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)
 
+      !_dir _enter_data _din(dudt,dvdt,dwdt,misc) _async(1)
+
       !---------------------------------------------
       !  	initialize stuff:
       call zero(ncrms)
+
+      !_dir _exit_data _dout(dudt,dvdt,dwdt,misc) _async(1)
+      !_dir _wait(1)
 
       !-----------------------------------------------------------
       !       Buoyancy term:
