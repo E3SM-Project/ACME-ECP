@@ -685,8 +685,9 @@ module tphysbc_sp_mod
 
 
 #if defined( DIFFUSE_PHYS_TEND )
-   ! call phys_hyperviscosity(ptend_crm, dyn_dum)
+   call t_startf ('phys_hyperviscosity')
    call phys_hyperviscosity(ptend_crm)
+   call t_stopf ('phys_hyperviscosity')
 #endif
       
 
