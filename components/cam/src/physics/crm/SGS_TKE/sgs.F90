@@ -1,6 +1,4 @@
 
-#include "directives.inc"
-
 module sgs
 
   ! module for original SAM subgrid-scale SGS closure (Smagorinsky or 1st-order TKE)
@@ -353,32 +351,32 @@ CONTAINS
     integer k,icrm, j, i
     real(crm_rknd) tkhmax(nz,ncrms), tmp
 
-    !_dir _par _loop _gang _vector collapse(2) _kout(tkhmax) _async(1)
+    !$acc parallel loop collapse(2) copyout(tkhmax) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzm
         tkhmax(k,icrm) = 0.
       enddo
     enddo
 
-    !_dir _par _loop _gang _vector collapse(4) _kinout(tkhmax) _kin(tkh) _async(1)
+    !$acc parallel loop collapse(4) copy(tkhmax) copyin(tkh) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzm
         do j = 1 , ny
           do i = 1 , nx
-            !_dir atomic update
+            !$acc atomic update
             tkhmax(k,icrm) = max(tkhmax(k,icrm),tkh(i,j,k,icrm))
           enddo
         enddo
       end do
     end do
 
-    !_dir _par _loop _gang _vector collapse(2) private(tmp) _kinout(cfl) _kin(tkhmax,grdf_x,grdf_y,grdf_z,dz,adzw) _async(1)
+    !$acc parallel loop collapse(2) private(tmp) copy(cfl) copyin(tkhmax,grdf_x,grdf_y,grdf_z,dz,adzw) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2  , &
                    0.5*tkhmax(k,icrm)*grdf_x(k,icrm)*dt/dx**2  , &
                    YES3D*0.5*tkhmax(k,icrm)*grdf_y(k,icrm)*dt/dy**2  )
-        !_dir atomic update
+        !$acc atomic update
         cfl = max( cfl , tmp )
       end do
     end do

@@ -1,6 +1,4 @@
 
-#include "directives.inc"
-
 module crm_module
   use task_init_mod, only: task_init
   use abcoefs_mod, only: abcoefs
@@ -760,8 +758,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !========================================================================================
   do nstep = 1 , nstop
     ptr1d => crm_output%timing_factor(:)
-    !_dir _enter_data _din(tkh,grdf_x,grdf_y,grdf_z,dz,adzw,w_max,u_max,u,v,w) _async(1)
-    !_dir _par _loop _gang _vector _kinout(ptr1d) _async(1)
+    !$acc enter data copyin(tkh,grdf_x,grdf_y,grdf_z,dz,adzw,w_max,u_max,u,v,w) async(1)
+    !$acc parallel loop copy(ptr1d) async(1)
     do icrm = 1 , ncrms
       ptr1d(icrm) = ptr1d(icrm)+1
     enddo
@@ -771,8 +769,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !  to handle the cases when the flow being locally linearly unstable
     !------------------------------------------------------------------
     call kurant(ncrms)
-    !_dir _exit_data _dout(tkh,grdf_x,grdf_y,grdf_z,dz,adzw,w_max,u_max,u,v,w) _async(1)
-    !_dir _wait(1)
+    !$acc exit data copyout(tkh,grdf_x,grdf_y,grdf_z,dz,adzw,w_max,u_max,u,v,w) async(1)
+    !$acc wait(1)
 
     do icyc=1,ncycle
       icycle = icyc
@@ -784,7 +782,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)
 
-      !_dir _enter_data _din(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,t) _async(1)
+      !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(1)
 
       !---------------------------------------------
       !  	initialize stuff:
@@ -800,7 +798,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
 
       !!! Apply radiative tendency
       ptr4d => crm_rad%qrad
-      !_dir _par _loop _gang _vector collapse(4) private(i_rad,j_rad) _kinout(t) _kin(ptr3d) _async(1)
+      !$acc parallel loop collapse(4) private(i_rad,j_rad) copy(t) copyin(ptr4d) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -812,9 +810,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
           enddo
         enddo
       enddo
-
-      !_dir _exit_data _dout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,t) _async(1)
-      !_dir _wait(1)
 
       !----------------------------------------------------------
       !   	suppress turbulence near the upper boundary (spange):
@@ -831,6 +826,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
         call ice_fall(ncrms)
       endif
 #endif
+
+      !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(1)
+      !$acc wait(1)
 
       !----------------------------------------------------------
       !     Update scalar boundaries after large-scale processes:

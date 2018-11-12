@@ -1,6 +1,4 @@
 
-#include "directives.inc"
-
 module kurant_mod
    use task_util_mod
    implicit none
@@ -19,7 +17,7 @@ module kurant_mod
       real(crm_rknd) cfl, cfl_sgs, tmp
 
       ncycle = 1
-      !_dir _par _loop _gang _vector collapse(2) _kout(wm,uhm) _async(1)
+      !$acc parallel loop collapse(2) copyout(wm,uhm) async(1)
       do icrm = 1 , ncrms
         do k = 1 , nz
           wm (k,icrm) = 0.
@@ -27,21 +25,21 @@ module kurant_mod
         enddo
       enddo
 
-      !_dir _par _loop _gang _vector collapse(4) private(tmp) _kinout(wm,w_max,uhm,u_max) _kin(u,v,w) _async(1)
+      !$acc parallel loop collapse(4) private(tmp) copy(wm,w_max,uhm,u_max) copyin(u,v,w) async(1)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j = 1 , ny
             do i = 1 , nx
               tmp = abs(w(i,j,k,icrm))
-              !_dir atomic update
+              !$acc atomic update
               wm(k,icrm) = max( wm(k,icrm) , tmp )
-              !_dir atomic update
+              !$acc atomic update
               w_max(icrm) = max( w_max(icrm) , tmp )
 
               tmp = sqrt(u(i,j,k,icrm)**2+YES3D*v(i,j,k,icrm)**2)
-              !_dir atomic update
+              !$acc atomic update
               uhm(k,icrm) = max( uhm(k,icrm) , tmp )
-              !_dir atomic update
+              !$acc atomic update
               u_max(icrm) = max( u_max(icrm) , tmp )
             enddo
           enddo
@@ -49,17 +47,17 @@ module kurant_mod
       enddo
 
       cfl = 0.
-      !_dir _par _loop _gang _vector collapse(2) private(tmp) _kin(wm,uhm,dz,adzw) _kinout(cfl) _async(1)
+      !$acc parallel loop collapse(2) private(tmp) copyin(wm,uhm,dz,adzw) copy(cfl) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           tmp = max( uhm(k,icrm)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(k,icrm),wm(k+1,icrm))*dt/(dz(icrm)*adzw(k,icrm)) )
-          !_dir atomic update
+          !$acc atomic update
           cfl = max( cfl , tmp )
         end do
       end do
 
       call kurant_sgs(ncrms,cfl)
-      !_dir _wait(1)
+      !$acc wait(1)
       ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 
       if(ncycle.gt.4) then
