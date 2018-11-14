@@ -129,6 +129,7 @@ module crm_output_module
       real(crm_rknd), allocatable :: tauy     (:)    ! merid CRM surface stress perturbation      [N/m2]
       real(crm_rknd), allocatable :: z0m          (:)    ! surface stress                             [N/m2]
       real(crm_rknd), allocatable :: timing_factor(:)    ! crm cpu efficiency
+      real(crm_rknd), allocatable :: u2bot(:)  ! mean surface wind variance [m2/s2]
 
    contains
       procedure, public :: initialize=>crm_output_initialize
@@ -257,6 +258,7 @@ contains
          if (.not. allocated(this%tauy         )) allocate(this%tauy         (ncol))
          if (.not. allocated(this%z0m          )) allocate(this%z0m          (ncol))
          if (.not. allocated(this%timing_factor)) allocate(this%timing_factor(ncol))
+         if (.not. allocated(this%u2bot        )) allocate(this%u2bot        (ncol))
 
       end if ! present(ncol)
 
@@ -370,6 +372,7 @@ contains
       this%tauy      = 0
       this%z0m           = 0
       this%timing_factor = 0
+      this%u2bot = 0
 
    end subroutine crm_output_initialize
    !------------------------------------------------------------------------------------------------
@@ -480,6 +483,7 @@ contains
       if (allocated(this%tauy)) deallocate(this%tauy)
       if (allocated(this%z0m)) deallocate(this%z0m)
       if (allocated(this%timing_factor)) deallocate(this%timing_factor)
+      if (allocated(this%u2bot)) deallocate(this%u2bot)
 
    end subroutine crm_output_finalize
    !------------------------------------------------------------------------------------------------

@@ -1529,6 +1529,17 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_output%t_ls      (icrm,l) = ttend(k,icrm)
     enddo
 
+    ! crjones: get (u'^2 + v'^2) at surface for gustiness calc
+    u2z = 0.
+    v2z = 0.
+    do j=1, ny
+      do i=1,nx
+        u2z = u2z + (u(i, j, 1, icrm) - u0(1, icrm))**2
+        v2z = v2z + (v(i, j, 1, icrm) - v0(1, icrm))**2
+      enddo
+    enddo
+    crm_output%u2bot(icrm) = (u2z + v2z*YES3D) * factor_xy
+
 #ifdef ECPP
     crm_ecpp_output%abnd         (icrm,:,:,:,:)=0.0
     crm_ecpp_output%abnd_tf      (icrm,:,:,:,:)=0.0
