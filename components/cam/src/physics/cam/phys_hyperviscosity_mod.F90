@@ -331,7 +331,7 @@ subroutine phys_hyperviscosity_Tq( elem, hvcoord, hybrid, deriv, nt, nets, nete,
    !----------------------------------------------
    !----------------------------------------------
    factor_subcycle = 1
-   factor_nu       = 1.
+   factor_nu       = 1
 
 #if defined( PHYS_HYPERVIS_FACTOR_5X5 )
    factor_subcycle = 5
@@ -362,35 +362,35 @@ subroutine phys_hyperviscosity_Tq( elem, hvcoord, hybrid, deriv, nt, nets, nete,
       !------------------------------------
       ! Populate the tensor variables
       !------------------------------------
-      ! do ie = nets, nete
-      !    do k = 1, nlev
-      !       tensor_T(:,:,k,ie) = elem(ie)%state%T(:,:,k,nt)
-      !       tensor_q(:,:,k,ie) = elem(ie)%state%q(:,:,k,nt)
-      !    end do ! k
-      ! end do ! ie
+      do ie = nets, nete
+         ! do k = 1, nlev
+         !    tensor_T(:,:,k,ie) = elem(ie)%state%T(:,:,k,nt)
+         !    tensor_q(:,:,k,ie) = elem(ie)%state%q(:,:,k,nt)
+         ! end do ! k
+         tensor_T(:,:,:,ie) = elem(ie)%state%T(:,:,:,nt)
+         tensor_q(:,:,:,ie) = elem(ie)%state%q(:,:,:,nt)
+      end do ! ie
 
       !------------------------------------
       ! compute laplacian
       !------------------------------------
-      ! call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_T)
-      ! call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_q)
+      call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_T)
+      call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_q)
 
       !------------------------------------
       ! Apply hyperviscosity
       !------------------------------------
       do ie = nets, nete
 
+         !!! Apply hyperviscosity and mass matrix weighting
          do k = 1, nlev
-
-            tensor_T(:,:,k,ie) = laplace_sphere_wk( elem(ie)%state%T(:,:,k,nt), deriv, elem(ie), var_coef=.false. )
-            tensor_q(:,:,k,ie) = laplace_sphere_wk( elem(ie)%state%q(:,:,k,nt), deriv, elem(ie), var_coef=.false. )
-
+            !!! regular viscosity tensor - this results in too much diffusion and is unstable
+            ! tensor_T(:,:,k,ie) = laplace_sphere_wk( elem(ie)%state%T(:,:,k,nt), deriv, elem(ie), var_coef=.false. )
+            ! tensor_q(:,:,k,ie) = laplace_sphere_wk( elem(ie)%state%q(:,:,k,nt), deriv, elem(ie), var_coef=.false. )
             do j = 1, np
                do i = 1, np
-
-                  elem(ie)%state%T(i,j,k,nt) = elem(ie)%state%T(i,j,k,nt) - dt * nu_s * factor_nu * tensor_T(i,j,k,ie) !* elem(ie)%spheremp(i,j)
-                  elem(ie)%state%q(i,j,k,nt) = elem(ie)%state%q(i,j,k,nt) - dt * nu_s * factor_nu * tensor_q(i,j,k,ie) !* elem(ie)%spheremp(i,j)
-
+                  elem(ie)%state%T(i,j,k,nt) = elem(ie)%state%T(i,j,k,nt) * elem(ie)%spheremp(i,j) - dt*nu_s*factor_nu*tensor_T(i,j,k,ie)
+                  elem(ie)%state%q(i,j,k,nt) = elem(ie)%state%q(i,j,k,nt) * elem(ie)%spheremp(i,j) - dt*nu_s*factor_nu*tensor_q(i,j,k,ie)
                enddo ! i = 1, np
             enddo ! j = 1, np
          enddo ! k = 1, nlev
@@ -455,7 +455,7 @@ subroutine phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, qtens)
 
    !!! Local Variables
    integer :: i,j,k,ie
-   real (kind=real_kind), dimension(np,np) :: lap_p
+   real (kind=real_kind), dimension(np,np) :: lap_tmp
    logical var_coef1
 
    !!! if tensor hyperviscosity with tensor V is used, 
@@ -465,34 +465,34 @@ subroutine phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, qtens)
    if(hypervis_scaling > 0) var_coef1 = .false.
 
    !----------------------------------------------
-   ! Calculate laplacian tensor
+   ! Calculate Laplacian and pack edge buffer
    !----------------------------------------------
-   do ie=nets,nete
-      do k=1,nlev
-         lap_p(:,:) = qtens(:,:,k,ie)
-         ! qtens(:,:,k,ie) = phys_laplace_sphere_wk(lap_p, deriv, elem(ie), var_coef=var_coef1)
-         qtens(:,:,k,ie) = laplace_sphere_wk(lap_p, deriv, elem(ie), var_coef=var_coef1)
-      enddo
+   do ie = nets,nete
+      do k = 1,nlev
+         lap_tmp(:,:) = qtens(:,:,k,ie)
+         qtens(:,:,k,ie) = laplace_sphere_wk(lap_tmp, deriv, elem(ie), var_coef=var_coef1)
+      end do ! k
       !!! prepare edge buffer
       call edgeVpack_nlyr(edge_g, elem(ie)%desc, qtens(:,:,:,ie),nlev, 0, nlev)
-   enddo
+   end do ! ie
 
    !----------------------------------------------
-   ! update boundaries
+   ! Update boundaries
    !----------------------------------------------
    call bndry_exchangeV(hybrid,edge_g)
    
    !----------------------------------------------
-   ! apply inverse mass matrix, then apply laplace again
+   ! Unpack edge buffer and reapply Laplacian
    !----------------------------------------------
    do ie=nets,nete
       call edgeVunpack_nlyr(edge_g, elem(ie)%desc, qtens(:,:,:,ie), nlev, 0, nlev)
-      do k=1,nlev 
-         lap_p(:,:) = elem(ie)%rspheremp(:,:)*qtens(:,:,k,ie)
-         ! qtens(:,:,k,ie) = phys_laplace_sphere_wk(lap_p, deriv, elem(ie), var_coef=.true.)
-         qtens(:,:,k,ie) = laplace_sphere_wk(lap_p, deriv, elem(ie), var_coef=.true.)
-      enddo
-   enddo
+      do k = 1,nlev 
+         !!! apply inverse mass matrix
+         lap_tmp(:,:) = elem(ie)%rspheremp(:,:)*qtens(:,:,k,ie)
+         !!! Apply Laplacian again
+         qtens(:,:,k,ie) = laplace_sphere_wk(lap_tmp, deriv, elem(ie), var_coef=.true.)
+      end do ! k
+   end do ! ie
 
   !----------------------------------------------
   !----------------------------------------------

@@ -685,6 +685,11 @@ module tphysbc_sp_mod
 
 
 #if defined( DIFFUSE_PHYS_TEND )
+   !!! is this barrier needed???
+   ! call t_barrierf('sync_phys_hypervis', mpicom)
+   ! call MPI_Barrier(MPI_COMM_WORLD,ierr)
+   call mpibarrier(mpicom)
+
    call t_startf ('phys_hyperviscosity')
    call phys_hyperviscosity(ptend_crm)
    call t_stopf ('phys_hyperviscosity')
