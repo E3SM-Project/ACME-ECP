@@ -1613,7 +1613,7 @@ end if ! l_tracer_aero
        call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
 !MAML-Guangxing Lin
             state%q(1,pver,1),state%rpdel(1,pver) ,shfavg_in ,         &
-            lhfavg_in , cam_in%cflx )
+            lhfavg_in , cam_in%cflx,qexcess )
             !state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
             !cam_in%lhf , cam_in%cflx )
 !MAML-Guangxing Lin
