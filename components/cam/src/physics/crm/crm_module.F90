@@ -150,8 +150,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     integer        :: j_rad
 
 #ifdef CRMACCEL
-    logical :: crm_accel_ceaseflag = .false.
-    logical :: accel_skipping = .false.
+    logical :: crm_accel_ceaseflag(ncrms)
+    logical :: accel_skipping(ncrms)
 #endif
 
     !!! Arrays
@@ -282,6 +282,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call allocate_scalar_momentum(ncrms)
 #endif
 
+#ifdef CRMACCEL
+  crm_accel_ceaseflag(:) = .false.
+  accel_skipping(:) = .false.
+#endif
 #if defined(CRMACCEL) && !defined(sam1mom)
   ! ensure CRMACCEL runs with sam1mom only
   write(0,*) "CRMACCEL is only compatible with sam1mom microphysics"
@@ -789,7 +793,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     if (use_crm_accel) then
       call crm_accel_nstop(nstop)  ! reduce nstop by factor of (1 + crm_accel_factor)
     end if
-    accel_skipping = .false.
+    accel_skipping(icrm) = .false.
 #endif
 
 
@@ -808,7 +812,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       ! Copied from UPCAM implementation -- crjones
       ! INSERT pritch and parish need to understand how this will work in the context of SP...
       ! apparently the variable day is not used, but not quite sure.
-      if (.not. accel_skipping) then
+      if (.not. accel_skipping(icrm)) then
         time = time + crm_accel_factor*dt
         day = day + crm_accel_factor*dt/86400.
       end if
@@ -963,14 +967,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         if (use_crm_accel) then
           ! Use Jones-Bretherton-Pritchard methodology to accelerate
           ! CRM horizontal mean evolution artificially.
-          if (.not. accel_skipping) then
+          if (.not. accel_skipping(icrm)) then
             ! call accelerate_crm_orig(crm_accel_ceaseflag)
-	          call accelerate_crm(crm_accel_ceaseflag)
-            if (crm_accel_ceaseflag) then
+	          call accelerate_crm(crm_accel_ceaseflag(icrm), icrm)
+            if (crm_accel_ceaseflag(icrm)) then
               ! Tendencies were too large, so acceleration turned off for
               ! remainder of steps. Need to adjust nstop to account for remaining
               ! steps advancing at unaccelerated pace
-              accel_skipping = .true.
+              accel_skipping(icrm) = .true.
               write (0,*) 'crm: accel_skipping triggered @ lat,lon,nstep,icyc=',latitude0,longitude0,nstep,icyc
 	            write (0,*) 'crm: crm_accel_factor = ',crm_accel_factor
               write (0,*) 'verbose debug output for remainder of ncycle'

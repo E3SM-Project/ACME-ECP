@@ -1,4 +1,4 @@
-! --------------------------------------------------------------------
+! -----------------------------------------------------------------------------
 ! MODULE  accelerate_crm_mod
 !    This module provides functionality to apply mean-state acceleration
 !    (Jones et al., 2015) to CRM. ... (to be continued)
@@ -10,7 +10,10 @@
 !  Contains subroutines:
 !    crm_accel_nstop() - adjusts nstop based on crm_accel_factor
 !    accelerate_crm()  - applies mean state acceleration tendency to crm fields
-! --------------------------------------------------------------------
+!
+! updated: 11/2018
+!    need to account for additional "ncrms" dimension to most variables
+! -----------------------------------------------------------------------------
 module accelerate_crm_mod
 #ifdef UNITTEST
   use unittest_mod
@@ -144,40 +147,42 @@ contains
   end subroutine crm_accel_reset_nstop
 
 
-  subroutine accelerate_crm(crm_accel_ceaseflag)
+  subroutine accelerate_crm(crm_accel_ceaseflag, icrm)
     implicit none
 
     logical, intent(out) :: crm_accel_ceaseflag
+    integer, intent(in) :: icrm
 
     ! namelist variable: crm_accel_uv, crm_accel_micro_opt
 
-    ! accelerate scalars t and q (and micro_field(:,:,:, index_water_vapor))
+    ! accelerate scalars t and q (and micro_field(:,:,:, index_water_vapor, icrm))
     ! raise crm_accel_ceaseflag and cancel mean-state acceleration
-    ! if magnitude of t-tend is too great
-    call accelerate_scalars(crm_accel_ceaseflag)
+    !   if magnitude of t-tend is too great
+    call accelerate_scalars(crm_accel_ceaseflag, icrm)
 
     ! accelerate velocity u, v
     if (crm_accel_uv .and. .not. crm_accel_ceaseflag) then
-      call accelerate_momentum()
+      call accelerate_momentum(icrm)
     end if
   end subroutine accelerate_crm
 
-  subroutine accelerate_scalars(ceaseflag)
+  subroutine accelerate_scalars(ceaseflag, icrm)
     ! accelerates the scalar fields (t and q)
     implicit none
 
-    logical, intent (out)   :: ceaseflag
+    logical, intent(out) :: ceaseflag
+    integer, intent(in) :: icrm
 
     ! initializations
     ceaseflag = .false.    ! flag to stop applying accelerat_crm
 
-    call accelerate_t(ceaseflag)
+    call accelerate_t(ceaseflag, icrm)
     if (.not. ceaseflag) then
-      call accelerate_micro()
+      call accelerate_micro(icrm)
     end if
   end subroutine accelerate_scalars
 
-  subroutine accelerate_t(ceaseflag)
+  subroutine accelerate_t(ceaseflag, icrm)
     ! accelerates liquid static energy (t)
 #ifdef UNITTEST
     use unittest_mod
@@ -189,6 +194,7 @@ contains
 
     implicit none
     logical, intent (out) :: ceaseflag
+    integer, intent(in) :: icrm
 
     ! local variables
     integer i, j, k
@@ -199,8 +205,8 @@ contains
     ceaseflag = .false.    ! flag to stop applying accelerate_crm
 
     ! calculate tendency * dtn
-    call crm_horiz_mean(tbaccel, t(1:nx, 1:ny, :))
-    ttend_acc(1:nzm) = tbaccel(1:nzm) - t0(1:nzm)
+    call crm_horiz_mean(tbaccel, t(1:nx, 1:ny, :, icrm))
+    ttend_acc(1:nzm) = tbaccel(1:nzm) - t0(1:nzm, icrm)
 
     ! stop accelerating if acceleration tendency is too large anywhere
     if(maxval(abs(ttend_acc)) .gt. 5.) then ! special clause for dT/dt too large
@@ -213,14 +219,14 @@ contains
         do j = 1, ny
           do i = 1, nx
             ! don't let T go negative!
-            t(i, j, k) = max(50._rc, t(i, j, k) + ttend_acc(k))
+            t(i, j, k, icrm) = max(50._rc, t(i, j, k, icrm) + ttend_acc(k))
           end do
         end do
       end do
     end if
   end subroutine accelerate_t
 
-  subroutine accelerate_micro()
+  subroutine accelerate_micro(icrm)
 #ifdef UNITTEST
     use unittest_mod
 #else
@@ -230,6 +236,7 @@ contains
     use cam_logfile,  only: iulog
 #endif
     implicit none
+    integer, intent(in) :: icrm
 
     ! local variables
     integer i, j, k
@@ -238,17 +245,17 @@ contains
 
     do k = 1, nzm
       ! crjones: better to work with micro_field direcly?
-      qtbaccel(k) = sum(qcl(1:nx, 1:ny, k) + qci(1:nx, 1:ny, k) + qv(1:nx, 1:ny, k)) * coef
+      qtbaccel(k) = sum(qcl(1:nx, 1:ny, k, icrm) + qci(1:nx, 1:ny, k, icrm) + qv(1:nx, 1:ny, k, icrm)) * coef
       ! neg_qacc(k) = 0.
     end do
 
     ! tendency * dtn
-    qtend_acc(1:nzm) = qtbaccel(1:nzm) - q0(1:nzm)
+    qtend_acc(1:nzm) = qtbaccel(1:nzm) - q0(1:nzm, icrm)
     qtend_acc = crm_accel_factor * qtend_acc
 
     if(distribute_qneg) then
       ! redistribute moistre in level by removing from cells with positive q
-      call apply_accel_tend_micro(qtend_acc)
+      call apply_accel_tend_micro(qtend_acc, icrm)
     else
       ! original version: simply remove negative moisture
       ! crjones concern: since qcl and qci are not touched, this could lead to
@@ -260,14 +267,14 @@ contains
       do k = 1, nzm
         do j = 1, ny
           do i = 1, nx
-            micro_field(i,j,k,ixw) = &
-              micro_field(i,j,k,ixw)+qtend_acc(k)
+            micro_field(i,j,k,ixw, icrm) = &
+              micro_field(i,j,k,ixw, icrm)+qtend_acc(k)
             ! enforce positivity and accumulate (negative) excess
-            if(micro_field(i,j,k,ixw) .lt. 0.) then
+            if(micro_field(i,j,k,ixw, icrm) .lt. 0.) then
               ! neg_qacc(k)=neg_qacc(k)+micro_field(i,j,k)
-              micro_field(i,j,k,ixw)=0.
+              micro_field(i,j,k,ixw, icrm)=0.
             end if
-            qv(i, j, k) = max(0._rc, qv(i, j, k) + qtend_acc(k))
+            qv(i, j, k, icrm) = max(0._rc, qv(i, j, k, icrm) + qtend_acc(k))
           end do
         end do
       end do
@@ -292,7 +299,7 @@ contains
     end do
   end subroutine crm_horiz_mean
 
-  subroutine apply_accel_tend_micro(deltaq)
+  subroutine apply_accel_tend_micro(deltaq, icrm)
 #ifdef UNITTEST
     use unittest_mod
 #else
@@ -301,8 +308,8 @@ contains
     use grid, only: nx, ny, nzm
 #endif
     implicit none
-
     real(rc), intent(in) :: deltaq(nzm)
+    integer, intent(in) :: icrm
 
     integer i, j, k, nneg
     real(r8) :: qpoz, qneg, factor
@@ -312,22 +319,22 @@ contains
       qneg = 0.
 
       ! update micro_field
-      micro_field(1:nx, 1:ny, k, ixw) = &
-        micro_field(1:nx, 1:ny, k, ixw) + deltaq(k)
+      micro_field(1:nx, 1:ny, k, ixw, icrm) = &
+        micro_field(1:nx, 1:ny, k, ixw, icrm) + deltaq(k)
 
       if (deltaq(k) .ge. 0.) then
         ! skip the hole-filling logic, dump all deltaq(k) all into qv
-        qv(1:nx, 1:ny, k) = qv(1:nx, 1:ny, k) + deltaq(k)
+        qv(1:nx, 1:ny, k, icrm) = qv(1:nx, 1:ny, k, icrm) + deltaq(k)
         cycle
       end if
 
       ! accumulate negative excess (if any)
-      do j=1, ny
-        do i=1, nx
-          if (micro_field(i, j, k, ixw) .lt. 0.) then
-            qneg = qneg + micro_field(i, j, k, ixw)
+      do j = 1, ny
+        do i = 1, nx
+          if (micro_field(i, j, k, ixw, icrm) .lt. 0.) then
+            qneg = qneg + micro_field(i, j, k, ixw, icrm)
           else
-            qpoz = qpoz + micro_field(i, j, k, ixw)
+            qpoz = qpoz + micro_field(i, j, k, ixw, icrm)
           end if
         end do
       end do
@@ -336,17 +343,17 @@ contains
       ! note to self: can possibly improve performance by adding loops in future
       if (qpoz + qneg .lt. 0.) then
         write(*, *) "crm_accel_warning: all moisture depleted in layer ",k
-        micro_field(1:nx, 1:ny, k, ixw) = 0._rc
-        qv(1:nx, 1:ny, k) = 0._rc
-        qcl(1:nx, 1:ny, k) = 0._rc
-        qci(1:nx, 1:ny, k) = 0._rc
+        micro_field(1:nx, 1:ny, k, ixw, icrm) = 0._rc
+        qv(1:nx, 1:ny, k, icrm) = 0._rc
+        qcl(1:nx, 1:ny, k, icrm) = 0._rc
+        qci(1:nx, 1:ny, k, icrm) = 0._rc
       else
         factor = 1._r8 + qneg / qpoz
         ! apply to micro_field and partition qv, qcl, qci appropriately
-        micro_field(1:nx, 1:ny, k, ixw) = &
-          max(0._rc, micro_field(1:nx, 1:ny, k, ixw) * factor)
-        call partition_micro(qv(1:nx, 1:ny, k), qcl(1:nx, 1:ny, k), qci(1:nx, 1:ny, k), &
-                             micro_field(1:nx, 1:ny, k, ixw))
+        micro_field(1:nx, 1:ny, k, ixw, icrm) = &
+          max(0._rc, micro_field(1:nx, 1:ny, k, ixw, icrm) * factor)
+        call partition_micro(qv(1:nx, 1:ny, k, icrm), qcl(1:nx, 1:ny, k, icrm), qci(1:nx, 1:ny, k, icrm), &
+                             micro_field(1:nx, 1:ny, k, ixw, icrm))
       end if
     end do  ! k = 1, nzm
   end subroutine apply_accel_tend_micro
@@ -383,7 +390,7 @@ contains
     end if
   end subroutine partition_micro
 
-  subroutine accelerate_momentum()
+  subroutine accelerate_momentum(icrm)
   ! accelerates the velocity fields (u and v)
 #ifdef UNITTEST
     use unittest_mod
@@ -394,6 +401,7 @@ contains
 #endif
 
   implicit none
+  integer, intent(in) :: icrm
 
   ! local variables
   integer k
@@ -401,46 +409,48 @@ contains
   real(rc) :: utend_acc(nzm), vtend_acc(nzm)  ! accel tendencies
 
   ! always accelerate u
-  call crm_horiz_mean(ubaccel, u(1:nx, 1:ny, :))
-  utend_acc(1:nzm) = crm_accel_factor * (ubaccel(1:nzm) - u0(1:nzm))
+  call crm_horiz_mean(ubaccel, u(1:nx, 1:ny, :, icrm))
+  utend_acc(1:nzm) = crm_accel_factor * (ubaccel(1:nzm) - u0(1:nzm, icrm))
   do k = 1, nzm
-    u(1:nx, 1:ny, k) = u(1:nx, 1:ny, k) + utend_acc(k)
+    u(1:nx, 1:ny, k, icrm) = u(1:nx, 1:ny, k, icrm) + utend_acc(k)
   end do
 
   ! only mess with v if 3D:
   if (yes3d .gt. 0) then
-    call crm_horiz_mean(vbaccel, v(1:nx, 1:ny, :))
-    vtend_acc(1:nzm) = crm_accel_factor * (vbaccel(1:nzm) - v0(1:nzm))
+    call crm_horiz_mean(vbaccel, v(1:nx, 1:ny, :, icrm))
+    vtend_acc(1:nzm) = crm_accel_factor * (vbaccel(1:nzm) - v0(1:nzm, icrm))
     do k = 1, nzm
-      v(1:nx, 1:ny, k) = v(1:nx, 1:ny, k) + vtend_acc(k)
+      v(1:nx, 1:ny, k, icrm) = v(1:nx, 1:ny, k, icrm) + vtend_acc(k)
     end do
   endif
 end subroutine accelerate_momentum
 
-subroutine crm_accel_verbose_debug
+subroutine crm_accel_verbose_debug(icrm)
   ! verbose log output (kinda crazy)
   use vars
   use microphysics, only: micro_field, ixw=>index_water_vapor
   use grid, only: nzm
 
   implicit none
+  integer, intent(in) :: icrm
 
   integer k
   do k=1,nzm
+    write (0,*) '(debug) accel_skipping: icrm = ', icrm
     write (0,*) '(debug) accel_skipping: lev k =', k
-    write (0,*) '(debug) accel_skipping: t = ', t(1:nx, 1:ny, k)
-    write (0,*) '(debug) accel_skipping: t0 = ', t0(k)
-    write (0,*) '(debug) accel_skipping: qv = ', qv(1:nx, 1:ny, k)
-    write (0,*) '(debug) accel_skipping: qcl = ', qcl(1:nx, 1:ny, k)
-    write (0,*) '(debug) accel_skipping: qci = ', qci(1:nx, 1:ny, k)
-    write (0,*) '(debug) accel_skipping: q0 = ', q0(k)
-    write (0,*) '(debug) accel_skipping: micro_field(:,:,k,1) = ', micro_field(1:nx, 1:ny, k, ixw)
-    write (0,*) '(debug) accel_skipping: u = ', u(1:nx, 1:ny, k)
-    write (0,*) '(debug) accel_skipping: u0 = ', u0(k)
+    write (0,*) '(debug) accel_skipping: t = ', t(1:nx, 1:ny, k, icrm)
+    write (0,*) '(debug) accel_skipping: t0 = ', t0(k, icrm)
+    write (0,*) '(debug) accel_skipping: qv = ', qv(1:nx, 1:ny, k, icrm)
+    write (0,*) '(debug) accel_skipping: qcl = ', qcl(1:nx, 1:ny, k, icrm)
+    write (0,*) '(debug) accel_skipping: qci = ', qci(1:nx, 1:ny, k, icrm)
+    write (0,*) '(debug) accel_skipping: q0 = ', q0(k, icrm)
+    write (0,*) '(debug) accel_skipping: micro_field(:,:,k,1) = ', micro_field(1:nx, 1:ny, k, ixw, icrm)
+    write (0,*) '(debug) accel_skipping: u = ', u(1:nx, 1:ny, k, icrm)
+    write (0,*) '(debug) accel_skipping: u0 = ', u0(k, icrm)
   end do
 end subroutine crm_accel_verbose_debug
 
-subroutine accelerate_crm_orig(ceaseflag)
+subroutine accelerate_crm_orig(ceaseflag, icrm)
 ! original version of accelerate_crm from UPCAM port ...
   use shr_kind_mod, only: r8=>shr_kind_r8
   use vars
@@ -449,6 +459,8 @@ subroutine accelerate_crm_orig(ceaseflag)
   implicit none
 
   logical, intent (out):: ceaseflag
+  integer, intent(in) :: icrm
+
   integer i,j,k
   real(r8) :: coefxy
   real(r8) :: dq_accel,tbaccel(nzm),qtbaccel(nzm)
@@ -470,8 +482,8 @@ subroutine accelerate_crm_orig(ceaseflag)
     neg_qacc(k) = 0. ! excess qt that cannot be depleted
     do j=1,ny
       do i=1,nx
-       tbaccel(k) = tbaccel(k)+t(i,j,k)
-       qtbaccel(k) = qtbaccel(k) + qcl(i,j,k)+qci(i,j,k)+qv(i,j,k)
+       tbaccel(k) = tbaccel(k)+t(i,j,k,icrm)
+       qtbaccel(k) = qtbaccel(k) + qcl(i,j,k,icrm)+qci(i,j,k,icrm)+qv(i,j,k,icrm)
       end do
     end do
     tbaccel(k)=tbaccel(k)*coefxy
@@ -482,10 +494,10 @@ subroutine accelerate_crm_orig(ceaseflag)
   do k=1,nzm
     do j=1,ny
         do i=1,nx
-           if (abs(tbaccel(k)-t0(k)) .gt. 5.) then ! special clause for cases when dTdt is too large
+           if (abs(tbaccel(k)-t0(k,icrm)) .gt. 5.) then ! special clause for cases when dTdt is too large
               ceaseflag = .true.
   ! Note host crm_module receives this and adjusts number of integration steps accordingly
-              write (6,*) 'MDEBUG: |dT|>5K; dT,i,k=',tbaccel(k)-t0(k),i,k
+              write (6,*) 'MDEBUG: |dT|>5K; dT,i,k,icrm=',tbaccel(k)-t0(k,icrm),i,k,icrm
            endif
         end do
     end do
@@ -506,24 +518,25 @@ subroutine accelerate_crm_orig(ceaseflag)
   !               t0,q0 = mean domain profiles prior to CRM time
   !               integration loop.
 
-     ttend_acc(k) = accel_factor*(tbaccel(k)-t0(k))/dtn
-     dq_accel = accel_factor*(qtbaccel(k) - q0(k))
+     ttend_acc(k) = accel_factor*(tbaccel(k)-t0(k,icrm))/dtn
+     dq_accel = accel_factor*(qtbaccel(k) - q0(k,icrm))
      qtend_acc(k) = dq_accel/dtn
      do j=1,ny
         do i=1,nx
   !         t(i,j,k)   = t(i,j,k)  +accel_factor*(tbaccel(k)-t0(k))
-           t(i,j,k)   = max(50.,t(i,j,k) +accel_factor*(tbaccel(k)-t0(k))) ! pritch, avoid abs T going negative in cases of extreme horizontal mean temperature change
-           micro_field(i,j,k,index_water_vapor) = &
-                micro_field(i,j,k,index_water_vapor)+dq_accel
+           t(i,j,k,icrm) = max(50.,t(i,j,k,icrm) +accel_factor*(tbaccel(k)-t0(k,icrm))) 
+           ! pritch, avoid abs T going negative in cases of extreme horizontal mean temperature change
+           micro_field(i,j,k,index_water_vapor,icrm) = &
+                micro_field(i,j,k,index_water_vapor,icrm)+dq_accel
 
            ! enforce positivity and accumulate (negative) excess
-           if(micro_field(i,j,k,index_water_vapor) .lt. 0.) then
-              neg_qacc(k)=neg_qacc(k)+micro_field(i,j,k,index_water_vapor)
-              micro_field(i,j,k,index_water_vapor)=0.
+           if(micro_field(i,j,k,index_water_vapor,icrm) .lt. 0.) then
+              neg_qacc(k)=neg_qacc(k)+micro_field(i,j,k,index_water_vapor,icrm)
+              micro_field(i,j,k,index_water_vapor,icrm)=0.
            end if
 
            ! add qt tendency to qv
-           qv(i,j,k) = max(0.,qv(i,j,k)+dq_accel)   !hparish: the current calcultion of qv is not consistent with line 1185 of
+           qv(i,j,k,icrm) = max(0.,qv(i,j,k,icrm)+dq_accel)   !hparish: the current calcultion of qv is not consistent with line 1185 of
   !                                                 microphysics.f90. because dq_qccel represents the total water and not the water vapor.
   !                                                 the possible reason is unknown. The introduction of parallel variables is questionble.
   !                                                 like micro_field and qv, qcl, etc. which requires clean up. The variable doubling
