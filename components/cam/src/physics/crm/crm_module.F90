@@ -778,11 +778,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     nstop = dt_gl/dt
     dt = dt_gl/nstop
-    nsave3D = nint(60/dt)
+    nsave3D = nint(60/dt)  ! note: appears to be unused
     nstep  = 0
     nprint = 1
     ncycle = 0
-    day=day0
+    day=day0   ! crjones notes: day appears to be unused
 
     crm_run_time  = dt_gl
     icrm_run_time = 1._r8/crm_run_time
@@ -805,6 +805,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     do while (nstep.lt.nstop)
       nstep = nstep + 1
+      
+      !!! crjones notes: these don't appear to be used ... (commented out for testing)
+      !   also may not be correct because inside ncrms loop
       time = time + dt
       day = day0 + time/86400.
 
@@ -968,8 +971,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           ! Use Jones-Bretherton-Pritchard methodology to accelerate
           ! CRM horizontal mean evolution artificially.
           if (.not. accel_skipping(icrm)) then
-            ! call accelerate_crm_orig(crm_accel_ceaseflag)
-	          call accelerate_crm(crm_accel_ceaseflag(icrm), icrm)
+            call accelerate_crm_orig(crm_accel_ceaseflag(icrm), icrm)
+	          ! call accelerate_crm(crm_accel_ceaseflag(icrm), icrm)
             if (crm_accel_ceaseflag(icrm)) then
               ! Tendencies were too large, so acceleration turned off for
               ! remainder of steps. Need to adjust nstop to account for remaining
@@ -985,11 +988,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
               day = day - crm_accel_factor*dt/86400.
             endif
           endif
-          ! verbose debug output!
-          !if (accel_skipping) then
-          !  write (0,*) '(debug) accel_skipping after micro_adust: nstep = ', nstep
-          !  call crm_accel_verbose_debug()
-          !endif
         endif
 #endif
 

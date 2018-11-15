@@ -523,7 +523,6 @@ subroutine accelerate_crm_orig(ceaseflag, icrm)
      qtend_acc(k) = dq_accel/dtn
      do j=1,ny
         do i=1,nx
-  !         t(i,j,k)   = t(i,j,k)  +accel_factor*(tbaccel(k)-t0(k))
            t(i,j,k,icrm) = max(50.,t(i,j,k,icrm) +accel_factor*(tbaccel(k)-t0(k,icrm))) 
            ! pritch, avoid abs T going negative in cases of extreme horizontal mean temperature change
            micro_field(i,j,k,index_water_vapor,icrm) = &
