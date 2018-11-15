@@ -235,7 +235,7 @@ contains
           a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i)   
           a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i)   
 #ifdef SP_GUST
-          a2x(index_a2_Sa_spu2    ,ig) = cam_out(c)%spu2(i)
+          a2x(index_a2x_Sa_spu2    ,ig) = cam_out(c)%spu2(i)
 #endif
           a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)   
           a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i)  
