@@ -102,13 +102,19 @@ module seq_flux_mct
   real(r8), allocatable ::  re   (:)  ! saved re
   real(r8), allocatable ::  ssq  (:)  ! saved sq
 
+#ifdef SP_GUST 
+  real(r8), allocatable :: sp_u2bot(:)  ! input surface wind variance from SP
+#endif
+
   ! Conversion from degrees to radians
 
   real(r8),parameter :: const_pi      = SHR_CONST_PI       ! pi
   real(r8),parameter :: const_deg2rad = const_pi/180.0_r8  ! deg to rads
 
   ! Coupler field indices
-
+#ifdef SP_GUST
+  integer :: index_a2x_Sa_spu2
+#endif
   integer :: index_a2x_Sa_z
   integer :: index_a2x_Sa_u
   integer :: index_a2x_Sa_v
@@ -219,6 +225,11 @@ contains
     nloc = mct_avect_lsize(dom%data)
 
     ! Input fields atm
+#ifdef SP_GUST 
+    allocate( sp_u2bot(nloc), stat=ier)
+    if(ier/=0) call mct_die(subName,'allocate sp_u2bot',ier)
+    sp_u2bot = 0.0_r8
+#endif
     allocate( zbot(nloc),stat=ier)
     if(ier/=0) call mct_die(subName,'allocate zbot',ier)
     zbot = 0.0_r8
@@ -587,6 +598,10 @@ contains
     call mct_gsmap_clean(gsmap_oe)
 
     ! Input fields atm
+#ifdef SP_GUST 
+    allocate( sp_u2bot(nloc_a2o), stat=ier)
+    if(ier/=0) call mct_die(subName,'allocate sp_u2bot', ier)
+#endif
     allocate( emask(nloc_a2o),stat=ier)
     if(ier/=0) call mct_die(subName,'allocate emask',ier)
     allocate( zbot(nloc_a2o),stat=ier)
@@ -954,6 +969,9 @@ contains
           zbot(n) =  55.0_r8 ! atm height of bottom layer ~ m
           ubot(n) =   0.0_r8 ! atm velocity, zonal        ~ m/s
           vbot(n) =   2.0_r8 ! atm velocity, meridional   ~ m/s
+#ifdef SP_GUST 
+          sp_u2bot(n) = 0.0_r8  ! SP atm velocity variance ~ m2/s2
+#endif
           thbot(n)= 301.0_r8 ! atm potential temperature  ~ Kelvin
           shum(n) = 1.e-2_r8 ! atm specific humidity      ~ kg/kg
           shum_16O(n) = 1.e-2_r8 ! H216O specific humidity    ~ kg/kg
@@ -989,6 +1007,9 @@ contains
           zbot(n) = a2x_e%rAttr(index_a2x_Sa_z   ,ia)
           ubot(n) = a2x_e%rAttr(index_a2x_Sa_u   ,ia)
           vbot(n) = a2x_e%rAttr(index_a2x_Sa_v   ,ia)
+#ifdef SP_GUST 
+          sp_u2bot(n) = a2x_e%rAttr(index_a2x_Sa_spu2, ia)
+#endif
           thbot(n)= a2x_e%rAttr(index_a2x_Sa_ptem,ia)
           shum(n) = a2x_e%rAttr(index_a2x_Sa_shum,ia)
           shum_16O(n) = a2x_e%rAttr(index_a2x_Sa_shum_16O,ia)
@@ -1024,6 +1045,9 @@ contains
             cold_start=cold_start)
     else
        call shr_flux_atmocn (nloc_a2o , zbot , ubot, vbot, thbot, prec_gust, gust_fac, &
+#ifdef SP_GUST 
+            sp_u2bot, &
+#endif
             shum , shum_16O , shum_HDO, shum_18O, dens , tbot, uocn, vocn , &
             tocn , emask, sen , lat , lwup , &
             roce_16O, roce_HDO, roce_18O,    &
@@ -1263,6 +1287,9 @@ contains
        index_a2x_Sa_z      = mct_aVect_indexRA(a2x,'Sa_z')
        index_a2x_Sa_u      = mct_aVect_indexRA(a2x,'Sa_u')
        index_a2x_Sa_v      = mct_aVect_indexRA(a2x,'Sa_v')
+#ifdef SP_GUST
+       index_a2x_Sa_spu2   = mct_aVect_indexRA(a2x,'Sa_spu2')
+#endif       
        index_a2x_Sa_tbot   = mct_aVect_indexRA(a2x,'Sa_tbot')
        index_a2x_Sa_ptem   = mct_aVect_indexRA(a2x,'Sa_ptem')
        index_a2x_Sa_shum   = mct_aVect_indexRA(a2x,'Sa_shum')
@@ -1315,6 +1342,9 @@ contains
           zbot(n) =  55.0_r8 ! atm height of bottom layer ~ m
           ubot(n) =   0.0_r8 ! atm velocity, zonal        ~ m/s
           vbot(n) =   2.0_r8 ! atm velocity, meridional   ~ m/s
+#ifdef SP_GUST
+          sp_u2bot(n) = 0.0_r8 ! ~m2/s2
+#endif
           thbot(n)= 301.0_r8 ! atm potential temperature  ~ Kelvin
           shum(n) = 1.e-2_r8 ! atm specific humidity      ~ kg/kg
           !wiso note: shum_* should be multiplied by Rstd_* here?
@@ -1362,6 +1392,9 @@ contains
              zbot(n) = a2x%rAttr(index_a2x_Sa_z   ,n)
              ubot(n) = a2x%rAttr(index_a2x_Sa_u   ,n)
              vbot(n) = a2x%rAttr(index_a2x_Sa_v   ,n)
+#ifdef SP_GUST
+             sp_u2bot(n) = a2x%rAttr(index_a2x_Sa_spu2, n)
+#endif
              thbot(n)= a2x%rAttr(index_a2x_Sa_ptem,n)
              shum(n) = a2x%rAttr(index_a2x_Sa_shum,n)
              if ( index_a2x_Sa_shum_16O /= 0 ) shum_16O(n) = a2x%rAttr(index_a2x_Sa_shum_16O,n)
@@ -1437,6 +1470,9 @@ contains
             cold_start=cold_start)
     else
        call shr_flux_atmocn (nloc , zbot , ubot, vbot, thbot, prec_gust, gust_fac, &
+#ifdef SP_GUST 
+            sp_u2bot, &
+#endif
             shum , shum_16O , shum_HDO, shum_18O, dens , tbot, uocn, vocn , &
             tocn , emask, sen , lat , lwup , &
             roce_16O, roce_HDO, roce_18O,    &

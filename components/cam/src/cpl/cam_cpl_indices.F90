@@ -13,6 +13,9 @@ module cam_cpl_indices
   integer :: index_a2x_Sa_z            ! bottom atm level height
   integer :: index_a2x_Sa_u            ! bottom atm level zon wind
   integer :: index_a2x_Sa_v            ! bottom atm level mer wind
+#ifdef SP_GUST
+  integer :: index_a2x_Sa_spu2         ! mean variance subrid wind^2
+#endif 
   integer :: index_a2x_Sa_tbot         ! bottom atm level temp
   integer :: index_a2x_Sa_ptem         ! bottom atm level pot temp
   integer :: index_a2x_Sa_shum         ! bottom atm level spec hum
@@ -148,6 +151,9 @@ contains
        index_x2a_Sl_ddvel   = 0
     end if
 
+#ifdef SP_GUST
+    index_a2x_Sa_spu2       = mct_avect_indexra(a2x,'Sa_spu2')
+#endif
     index_a2x_Sa_z          = mct_avect_indexra(a2x,'Sa_z')
     index_a2x_Sa_u          = mct_avect_indexra(a2x,'Sa_u')
     index_a2x_Sa_v          = mct_avect_indexra(a2x,'Sa_v')

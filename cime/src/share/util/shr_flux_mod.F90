@@ -135,6 +135,9 @@ end subroutine shr_flux_adjust_constants
 ! !INTERFACE: ------------------------------------------------------------------
 
 SUBROUTINE shr_flux_atmOcn(nMax  ,zbot  ,ubot  ,vbot  ,thbot ,  prec_gust, gust_fac, &
+#ifdef SP_GUST
+           &               sp_u2bot, &
+#endif
            &               qbot  ,s16O  ,sHDO  ,s18O  ,rbot  ,   &
            &               tbot  ,us    ,vs    ,   &
            &               ts    ,mask  ,sen   ,lat   ,lwup  ,   &
@@ -173,6 +176,9 @@ SUBROUTINE shr_flux_atmOcn(nMax  ,zbot  ,ubot  ,vbot  ,thbot ,  prec_gust, gust_
    real(R8)   ,intent(in) :: ts   (nMax) ! ocn temperature       (K)
    real(R8)   ,intent(in) :: prec_gust (nMax) ! atm precip for convective gustiness (kg/m^3)
    real(R8)   ,intent(in) :: gust_fac    ! wind gustiness factor
+#ifdef SP_GUST
+   real(R8)   ,intent(in) :: sp_u2bot(nMax)  ! subgrid variance from crm for gustiness (m2/s2)
+#endif
 
    !--- output arguments -------------------------------
    real(R8),intent(out)  ::  sen  (nMax) ! heat flux: sensible    (W/m^2)
@@ -319,6 +325,9 @@ SUBROUTINE shr_flux_atmOcn(nMax  ,zbot  ,ubot  ,vbot  ,thbot ,  prec_gust, gust_
         else
          vmag       = vmag_old
         endif
+#ifdef SP_GUST
+        vmag = max(umin, sqrt( (ubot(n) - us(n))**2 + (vbot(n)-vs(n))**2 + sp_u2bot(n)))
+#endif
          if (use_coldair_outbreak_mod) then
             ! Cold Air Outbreak Modification:
             ! Increase windspeed for negative tbot-ts
