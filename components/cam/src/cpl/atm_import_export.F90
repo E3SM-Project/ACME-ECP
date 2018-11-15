@@ -234,11 +234,14 @@ contains
           a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i)   
           a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i)   
           a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i)   
+#ifdef SP_GUST
+          a2x(index_a2_Sa_spu2    ,ig) = cam_out(c)%spu2(i)
+#endif
           a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)   
           a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i)  
           a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i)   
           a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1) 
-	  a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i)
+	       a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i)
           a2x(index_a2x_Faxa_swnet,ig) = cam_out(c)%netsw(i)      
           a2x(index_a2x_Faxa_lwdn ,ig) = cam_out(c)%flwds(i)  
           a2x(index_a2x_Faxa_rainc,ig) = (cam_out(c)%precc(i)-cam_out(c)%precsc(i))*1000._r8

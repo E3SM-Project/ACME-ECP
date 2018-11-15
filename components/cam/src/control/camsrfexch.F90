@@ -47,6 +47,9 @@ module camsrfexch
      real(r8) :: zbot(pcols)         ! bot level height above surface
      real(r8) :: ubot(pcols)         ! bot level u wind
      real(r8) :: vbot(pcols)         ! bot level v wind
+#ifdef SP_GUST
+     real(r8) :: spu2(pcols)         ! bot level u'^2+v'^2 wind 
+#endif
      real(r8) :: qbot(pcols,pcnst)   ! bot level specific humidity
      real(r8) :: pbot(pcols)         ! bot level pressure
      real(r8) :: rho(pcols)          ! bot level density	
@@ -302,6 +305,9 @@ CONTAINS
        cam_out(c)%tbot(:)     = 0._r8
        cam_out(c)%zbot(:)     = 0._r8
        cam_out(c)%ubot(:)     = 0._r8
+#ifdef SP_GUST
+       cam_out(c)%spu2(:)     = 0._r8
+#endif
        cam_out(c)%vbot(:)     = 0._r8
        cam_out(c)%qbot(:,:)   = 0._r8
        cam_out(c)%pbot(:)     = 0._r8
@@ -428,6 +434,11 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
    integer :: prec_sed_idx,snow_sed_idx,prec_pcw_idx,snow_pcw_idx
 
+#ifdef SP_GUST
+   integer :: u2bot_idx
+   real(r8), pointer :: sp_u2bot(:)
+#endif
+
    real(r8), pointer :: prec_dp(:)                 ! total precipitation   from ZM convection
    real(r8), pointer :: snow_dp(:)                 ! snow from ZM   convection
    real(r8), pointer :: prec_sh(:)                 ! total precipitation   from Hack convection
@@ -449,6 +460,14 @@ subroutine cam_export(state,cam_out,pbuf)
    snow_sed_idx = pbuf_get_index('SNOW_SED')
    prec_pcw_idx = pbuf_get_index('PREC_PCW')
    snow_pcw_idx = pbuf_get_index('SNOW_PCW')
+
+#ifdef SP_GUST
+   u2bot_idx = pbuf_get_index('SP_U2')
+   call pbuf_get_field(pbuf, u2bot_idx, sp_u2bot)
+   do i = 1, ncol
+      cam_out%spu2(i) = sp_u2bot(i)
+   end do
+#endif
 
    call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
    call pbuf_get_field(pbuf, snow_dp_idx, snow_dp)
