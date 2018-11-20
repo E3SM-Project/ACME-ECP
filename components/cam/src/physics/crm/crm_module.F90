@@ -971,8 +971,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           ! Use Jones-Bretherton-Pritchard methodology to accelerate
           ! CRM horizontal mean evolution artificially.
           if (.not. accel_skipping(icrm)) then
-            call accelerate_crm_orig(crm_accel_ceaseflag(icrm), icrm)
-	          ! call accelerate_crm(crm_accel_ceaseflag(icrm), icrm)
+            ! call accelerate_crm_orig(crm_accel_ceaseflag(icrm), icrm)
+	    call accelerate_crm(crm_accel_ceaseflag(icrm), icrm)
             if (crm_accel_ceaseflag(icrm)) then
               ! Tendencies were too large, so acceleration turned off for
               ! remainder of steps. Need to adjust nstop to account for remaining
