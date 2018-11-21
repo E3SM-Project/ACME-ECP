@@ -173,6 +173,9 @@ subroutine crm_physics_register()
   ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
   call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
 
+#ifdef SP_GUST
+  call pbuf_add_field('SP_U2', 'physpkg', dtype_r8, (/pcols/), idx)
+#endif 
 
 end subroutine crm_physics_register
 
