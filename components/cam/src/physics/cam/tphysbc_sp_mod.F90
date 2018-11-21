@@ -80,8 +80,8 @@ module tphysbc_sp_mod
 
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
-! subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, dyn_dum, &
-   subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
+subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, elem, &
+   ! subroutine tphysbc_sp(ztodt, pbuf2d, landm_in, &
                       fsns_in, fsnt_in, flns_in, flnt_in, fsds_in,   & 
                       state_in, tend_in, cam_in_in, cam_out_in,      &
                       sgh, sgh30, species_class )
@@ -125,6 +125,7 @@ module tphysbc_sp_mod
    use subcol,             only: subcol_gen, subcol_ptend_avg
    use subcol_utils,       only: subcol_ptend_copy, is_subcol_on
    use phys_control,       only: use_qqflx_fixer, use_mass_borrower
+   use element_mod,        only: element_t
 
 #ifdef CRM
    !!! CRM modules
@@ -151,7 +152,7 @@ module tphysbc_sp_mod
    real(r8),            intent(in   ) :: ztodt                                ! physics time step
    type(physics_buffer_desc), pointer :: pbuf2d   (:,:)                       ! physics buffer
    real(r8),            intent(in   ), target :: landm_in (pcols,begchunk:endchunk)   ! land fraction ramp
-   ! type(dyn_import_t),  intent(inout)         :: dyn_dum
+   type(element_t),     intent(inout)         :: elem(:)
    real(r8),            intent(inout), target :: fsns_in  (pcols,begchunk:endchunk)   ! Surface solar absorbed flux
    real(r8),            intent(inout), target :: fsnt_in  (pcols,begchunk:endchunk)   ! Net column abs solar flux at model top
    real(r8),            intent(inout), target :: flns_in  (pcols,begchunk:endchunk)   ! Srf longwave cooling (up-down) flux
@@ -691,7 +692,7 @@ module tphysbc_sp_mod
    call mpibarrier(mpicom)
 
    call t_startf ('phys_hyperviscosity')
-   call phys_hyperviscosity(ptend_crm)
+   call phys_hyperviscosity(ptend_crm,elem)
    call t_stopf ('phys_hyperviscosity')
 #endif
       

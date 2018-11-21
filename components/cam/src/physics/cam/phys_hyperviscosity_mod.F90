@@ -93,7 +93,7 @@ end subroutine phys_hyperviscosity_init
 
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
-subroutine phys_hyperviscosity(ptend)
+subroutine phys_hyperviscosity(ptend,elem)
    !----------------------------------------------
    ! Main interface for hyperviscosity calculation on state after being modifed by physics.
    ! This mimics what happens in dynamics hypervis calculation, but is not identical.
@@ -116,16 +116,17 @@ subroutine phys_hyperviscosity(ptend)
    use ppgrid,             only: begchunk, endchunk, pcols, pver, pverp
    use dof_mod,            only: PutUniquePoints, UniquePoints
    use physics_types,      only: physics_ptend 
+   use constituents,       only: cnst_get_ind
    !!! Interface arguments
    type(physics_ptend), intent(inout) :: ptend(begchunk:endchunk)
-   ! type(dyn_import_t),  intent(inout) :: dyn_dum
+   type(element_t),     intent(inout) :: elem(:)
    !!! Local variables
-   ! type (element_t), dimension(nelem), target :: phys_elem
    integer :: nt
    integer :: ithr
    integer :: icol, ncols, lchnk
    integer :: nets, nete            ! start/end of element index
    integer :: ie, ioff, k, i
+   integer :: ixcldliq, ixcldice
    integer :: pgcols(pcols), idmb1(1), idmb2(1), idmb3(1)
    type (hybrid_t)            :: hybrid
    type (derivative_t)        :: deriv
@@ -138,21 +139,26 @@ subroutine phys_hyperviscosity(ptend)
    real (kind=real_kind), allocatable, dimension(:) :: bbuffer       ! transpose buffer
    real (kind=real_kind), allocatable, dimension(:) :: cbuffer       ! transpose buffer
 
-   real (kind=real_kind), dimension(npsq,pver,nelemd) :: T_tmp       ! temporary array to physics temperature tend
-   real (kind=real_kind), dimension(npsq,pver,nelemd) :: q_tmp       ! temporary array to physics sp humidity tend
+   real (kind=real_kind), dimension(npsq,pver,nelemd) :: T_tend_tmp       ! temporary array to physics temperature tend
+   real (kind=real_kind), dimension(npsq,pver,nelemd) :: qv_tend_tmp       ! temporary array to physics sp humidity tend
+   real (kind=real_kind), dimension(npsq,pver,nelemd) :: ql_tend_tmp       ! temporary array to physics sp humidity tend
+   real (kind=real_kind), dimension(npsq,pver,nelemd) :: qi_tend_tmp       ! temporary array to physics sp humidity tend
 
+   !----------------------------------------------
+   !----------------------------------------------
+   call cnst_get_ind('CLDLIQ', ixcldliq)
+   call cnst_get_ind('CLDICE', ixcldice)
    !----------------------------------------------
    ! setup element and TimeLevel structure
    !----------------------------------------------
-
    ithr = omp_get_thread_num()
    nets = dom_mt(ithr)%start
    nete = dom_mt(ithr)%end 
 
    hybrid = hybrid_create(par,ithr,hthreads)
 
-   ! nt = TimeLevel%n0
-   nt = TimeLevel%np1
+   nt = TimeLevel%n0
+   ! nt = TimeLevel%np1
 
    !----------------------------------------------
    ! initialize hybrid and derivative structure
@@ -175,15 +181,16 @@ subroutine phys_hyperviscosity(ptend)
       !       ie   = idmb3(1)
       !       ioff = idmb2(1)
       !       do k = 1,pver
-      !          T_tmp(ioff,k,ie) = ptend(lchnk)%s(icol,k)
-      !          q_tmp(ioff,k,ie) = ptend(lchnk)%q(icol,k,1)
+      !          T_tend_tmp(ioff,k,ie) = ptend(lchnk)%s(icol,k)
+      !          q_tend_tmp(ioff,k,ie) = ptend(lchnk)%q(icol,k,1)
       !       end do ! k
       !    end do ! icol
       ! end do ! lchnk
 
    ! else ! .not. local_dp_map
 
-      tsize = 2
+      tsize = 4
+
       allocate( bbuffer(tsize*block_buf_nrecs) )
       allocate( cbuffer(tsize*chunk_buf_nrecs) )
       do lchnk = begchunk,endchunk
@@ -196,6 +203,8 @@ subroutine phys_hyperviscosity(ptend)
             do k = 1,pver
                cbuffer (cpter(icol,k)  ) = ptend(lchnk)%s(icol,k)
                cbuffer (cpter(icol,k)+1) = ptend(lchnk)%q(icol,k,1)
+               cbuffer (cpter(icol,k)+2) = ptend(lchnk)%q(icol,k,ixcldliq)
+               cbuffer (cpter(icol,k)+3) = ptend(lchnk)%q(icol,k,ixcldice)
             end do
          end do
       end do
@@ -203,11 +212,15 @@ subroutine phys_hyperviscosity(ptend)
       call transpose_chunk_to_block(tsize, cbuffer, bbuffer)
       if (par%dynproc) then
          do ie = 1,nelemd
-            call chunk_to_block_recv_pters(phys_elem(ie)%GlobalID,npsq,pver+1,tsize,bpter)
-            do icol = 1,phys_elem(ie)%idxP%NumUniquePts
+            call chunk_to_block_recv_pters(elem(ie)%GlobalID,npsq,pver+1,tsize,bpter)
+            do icol = 1,elem(ie)%idxP%NumUniquePts
+            ! call chunk_to_block_recv_pters(phys_elem(ie)%GlobalID,npsq,pver+1,tsize,bpter)
+            ! do icol = 1,phys_elem(ie)%idxP%NumUniquePts
                do k = 1,pver
-                  T_tmp(icol,k,ie) = bbuffer( bpter(icol,k)   )
-                  q_tmp(icol,k,ie) = bbuffer( bpter(icol,k)+1 )
+                  T_tend_tmp(icol,k,ie)  = bbuffer( bpter(icol,k)   )
+                  qv_tend_tmp(icol,k,ie) = bbuffer( bpter(icol,k)+1 )
+                  ql_tend_tmp(icol,k,ie) = bbuffer( bpter(icol,k)+2 )
+                  qi_tend_tmp(icol,k,ie) = bbuffer( bpter(icol,k)+3 )
                end do
             end do
          end do
@@ -219,25 +232,42 @@ subroutine phys_hyperviscosity(ptend)
 
    ! if (par%dynproc) then
       do ie = 1,nelemd
-         ncols = phys_elem(ie)%idxP%NumUniquePts
          ! ncols = get_ncols_p(lchnk)
-         call PutUniquePoints( phys_elem(ie)%idxP, nlev, T_tmp(1:ncols,:,ie), phys_elem(ie)%state%T(:,:,:,nt) )
-         call PutUniquePoints( phys_elem(ie)%idxP, nlev, q_tmp(1:ncols,:,ie), phys_elem(ie)%state%q(:,:,:,nt) )
+
+         ncols = elem(ie)%idxP%NumUniquePts
+         call PutUniquePoints( elem(ie)%idxP, nlev, T_tend_tmp(1:ncols,:,ie),  elem(ie)%T_tend(:,:,:) )
+         call PutUniquePoints( elem(ie)%idxP, nlev, qv_tend_tmp(1:ncols,:,ie), elem(ie)%qv_tend(:,:,:) )
+         call PutUniquePoints( elem(ie)%idxP, nlev, ql_tend_tmp(1:ncols,:,ie), elem(ie)%ql_tend(:,:,:) )
+         call PutUniquePoints( elem(ie)%idxP, nlev, qi_tend_tmp(1:ncols,:,ie), elem(ie)%qi_tend(:,:,:) )
+
+         ! ncols = phys_elem(ie)%idxP%NumUniquePts
+         ! call PutUniquePoints( phys_elem(ie)%idxP, nlev, T_tend_tmp(1:ncols,:,ie),  phys_elem(ie)%T_tend(:,:,:) )
+         ! call PutUniquePoints( phys_elem(ie)%idxP, nlev, qv_tend_tmp(1:ncols,:,ie), phys_elem(ie)%qv_tend(:,:,:) )
+         ! call PutUniquePoints( phys_elem(ie)%idxP, nlev, ql_tend_tmp(1:ncols,:,ie), phys_elem(ie)%ql_tend(:,:,:) )
+         ! call PutUniquePoints( phys_elem(ie)%idxP, nlev, qi_tend_tmp(1:ncols,:,ie), phys_elem(ie)%qi_tend(:,:,:) )
+         
       end do ! ie
    ! end if ! par%dynproc
    
    !----------------------------------------------
    ! diffuse temperature tendency
    !----------------------------------------------
-
-   call phys_hyperviscosity_Tq( phys_elem, hvcoord, hybrid, deriv, nt, nets, nete, dt_in=tstep )
+   call phys_hyperviscosity_Tq( elem, hvcoord, hybrid, deriv, nt, nets, nete, dt_in=tstep )
+   ! call phys_hyperviscosity_Tq( phys_elem, hvcoord, hybrid, deriv, nt, nets, nete, dt_in=tstep )
 
    !----------------------------------------------
    ! copy smoothed tendencies back to physics columns
    !----------------------------------------------
    do ie = 1,nelemd
-      call UniquePoints( phys_elem(ie)%idxP, nlev, phys_elem(ie)%state%T(:,:,:,nt), T_tmp(1:ncols,:,ie) )
-      call UniquePoints( phys_elem(ie)%idxP, nlev, phys_elem(ie)%state%q(:,:,:,nt), q_tmp(1:ncols,:,ie) )
+      call UniquePoints( elem(ie)%idxP, nlev, elem(ie)%T_tend(:,:,:),  T_tend_tmp(1:ncols,:,ie) )
+      call UniquePoints( elem(ie)%idxP, nlev, elem(ie)%qv_tend(:,:,:), qv_tend_tmp(1:ncols,:,ie) )
+      call UniquePoints( elem(ie)%idxP, nlev, elem(ie)%ql_tend(:,:,:), ql_tend_tmp(1:ncols,:,ie) )
+      call UniquePoints( elem(ie)%idxP, nlev, elem(ie)%qi_tend(:,:,:), qi_tend_tmp(1:ncols,:,ie) )
+
+      ! call UniquePoints( phys_elem(ie)%idxP, nlev, phys_elem(ie)%T_tend(:,:,:),  T_tend_tmp(1:ncols,:,ie) )
+      ! call UniquePoints( phys_elem(ie)%idxP, nlev, phys_elem(ie)%qv_tend(:,:,:), qv_tend_tmp(1:ncols,:,ie) )
+      ! call UniquePoints( phys_elem(ie)%idxP, nlev, phys_elem(ie)%ql_tend(:,:,:), ql_tend_tmp(1:ncols,:,ie) )
+      ! call UniquePoints( phys_elem(ie)%idxP, nlev, phys_elem(ie)%qi_tend(:,:,:), qi_tend_tmp(1:ncols,:,ie) )
    end do ! ie
    
    ! if (local_dp_map) then
@@ -250,8 +280,8 @@ subroutine phys_hyperviscosity(ptend)
       !       ie   = idmb3(1)
       !       ioff = idmb2(1)
       !       do k = 1,pver
-      !          ptend(lchnk)%s(icol,k)   = T_tmp(ioff,k,ie) 
-      !          ptend(lchnk)%q(icol,k,1) = q_tmp(ioff,k,ie)
+      !          ptend(lchnk)%s(icol,k)   = T_tend_tmp(ioff,k,ie) 
+      !          ptend(lchnk)%q(icol,k,1) = q_tend_tmp(ioff,k,ie)
       !       end do ! k
       !    end do ! icol
       ! end do ! lchnk
@@ -262,12 +292,16 @@ subroutine phys_hyperviscosity(ptend)
       allocate(cbuffer(tsize*chunk_buf_nrecs))
       if (par%dynproc) then
          do ie = 1,nelemd
-            call block_to_chunk_send_pters(phys_elem(ie)%GlobalID,npsq,pver+1,tsize,bpter)
-            do icol = 1,phys_elem(ie)%idxP%NumUniquePts
+            call block_to_chunk_send_pters(elem(ie)%GlobalID,npsq,pver+1,tsize,bpter)
+            do icol = 1,elem(ie)%idxP%NumUniquePts
+            ! call block_to_chunk_send_pters(phys_elem(ie)%GlobalID,npsq,pver+1,tsize,bpter)
+            ! do icol = 1,phys_elem(ie)%idxP%NumUniquePts
                bbuffer(bpter(icol,0):bpter(icol,0)+tsize-1) = 0.0_r8
                do k = 1,pver
-                  bbuffer(bpter(icol,k)  ) = T_tmp(icol,k,ie)
-                  bbuffer(bpter(icol,k)+1) = q_tmp(icol,k,ie)
+                  bbuffer(bpter(icol,k)  ) = T_tend_tmp(icol,k,ie)
+                  bbuffer(bpter(icol,k)+1) = qv_tend_tmp(icol,k,ie)
+                  bbuffer(bpter(icol,k)+2) = ql_tend_tmp(icol,k,ie)
+                  bbuffer(bpter(icol,k)+3) = qi_tend_tmp(icol,k,ie)
                end do ! k
             end do ! icol
          end do ! ie
@@ -281,8 +315,10 @@ subroutine phys_hyperviscosity(ptend)
          call block_to_chunk_recv_pters(lchnk,pcols,pver+1,tsize,cpter)
          do icol = 1,ncols
             do k = 1,pver
-               ptend(lchnk)%s (icol,k)   = cbuffer(cpter(icol,k)  )
-               ptend(lchnk)%q (icol,k,1) = cbuffer(cpter(icol,k)+1)
+               ptend(lchnk)%s (icol,k)          = cbuffer(cpter(icol,k)  )
+               ptend(lchnk)%q (icol,k,1)        = cbuffer(cpter(icol,k)+1)
+               ptend(lchnk)%q (icol,k,ixcldliq) = cbuffer(cpter(icol,k)+2)
+               ptend(lchnk)%q (icol,k,ixcldice) = cbuffer(cpter(icol,k)+3)
             end do ! k
          end do ! icol
       end do ! lchnk
@@ -320,18 +356,23 @@ subroutine phys_hyperviscosity_Tq( elem, hvcoord, hybrid, deriv, nt, nets, nete,
    real (kind=real_kind), intent(in   ) :: dt_in
    !!! Local variables
    real (kind=real_kind), dimension(np,np,nlev,nets:nete) :: tensor_T 
-   real (kind=real_kind), dimension(np,np,nlev,nets:nete) :: tensor_q 
-   real (kind=real_kind), dimension(np,np,nlev)           :: dp
+   real (kind=real_kind), dimension(np,np,nlev,nets:nete) :: tensor_qv 
+   real (kind=real_kind), dimension(np,np,nlev,nets:nete) :: tensor_ql 
+   real (kind=real_kind), dimension(np,np,nlev,nets:nete) :: tensor_qi 
+   ! real (kind=real_kind), dimension(np,np,nlev)           :: dp
+   real (kind=real_kind) :: dp_tmp
    real (kind=real_kind) :: dt
    integer :: k, i, j, ie, ic, q
-
+   
    integer                :: factor_subcycle
-   real (kind=real_kind)  :: factor_nu 
+   real (kind=real_kind)  :: factor_nu    
+
+
 
    !----------------------------------------------
    !----------------------------------------------
    factor_subcycle = 1
-   factor_nu       = 1
+   factor_nu       = 1.
 
 #if defined( PHYS_HYPERVIS_FACTOR_5X5 )
    factor_subcycle = 5
@@ -359,46 +400,69 @@ subroutine phys_hyperviscosity_Tq( elem, hvcoord, hybrid, deriv, nt, nets, nete,
 
    do ic = 1, ( hypervis_subcycle * factor_subcycle )
 
+#ifndef SP_DUMMY_HYPERVIS
+      
+      !------------------------------------
+      ! apply pressure weighting
+      !------------------------------------
+      ! do ie = nets, nete
+      !    do k = 1, nlev
+      !       do j = 1, np
+      !          do i = 1, np
+      !             dp_tmp = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+      !                      ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%ps_v(i,j,nt)
+      !             elem(ie)%qv_tend(i,j,k) = elem(ie)%qv_tend(i,j,k) * dp_tmp
+      !             elem(ie)%ql_tend(i,j,k) = elem(ie)%ql_tend(i,j,k) * dp_tmp
+      !             elem(ie)%qi_tend(i,j,k) = elem(ie)%qi_tend(i,j,k) * dp_tmp
+      !          enddo ! i = 1, np
+      !       enddo ! j = 1, np
+      !    enddo ! k = 1, nlev
+      ! enddo ! ie = nets, nete
+
       !------------------------------------
       ! Populate the tensor variables
       !------------------------------------
       do ie = nets, nete
-         ! do k = 1, nlev
-         !    tensor_T(:,:,k,ie) = elem(ie)%state%T(:,:,k,nt)
-         !    tensor_q(:,:,k,ie) = elem(ie)%state%q(:,:,k,nt)
-         ! end do ! k
-         tensor_T(:,:,:,ie) = elem(ie)%state%T(:,:,:,nt)
-         tensor_q(:,:,:,ie) = elem(ie)%state%q(:,:,:,nt)
+         tensor_T(:,:,:,ie)  = elem(ie)%T_tend(:,:,:)
+         tensor_qv(:,:,:,ie) = elem(ie)%qv_tend(:,:,:)
+         tensor_ql(:,:,:,ie) = elem(ie)%ql_tend(:,:,:)
+         tensor_qi(:,:,:,ie) = elem(ie)%qi_tend(:,:,:)
       end do ! ie
 
       !------------------------------------
       ! compute laplacian
       !------------------------------------
       call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_T)
-      call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_q)
+      call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_qv)
+      call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_ql)
+      call phys_biharmonic_wk_scalar(hybrid, deriv, nets, nete, elem, tensor_qi)
+
+      !!! regular viscosity tensor - this results in too much diffusion and is unstable
+      ! tensor_T(:,:,k,ie) = laplace_sphere_wk( elem(ie)%T_tend(:,:,k),  deriv, elem(ie), var_coef=.false. )
+      ! tensor_q(:,:,k,ie) = laplace_sphere_wk( elem(ie)%qv_tend(:,:,k), deriv, elem(ie), var_coef=.false. )
 
       !------------------------------------
       ! Apply hyperviscosity
       !------------------------------------
       do ie = nets, nete
-
          !!! Apply hyperviscosity and mass matrix weighting
          do k = 1, nlev
-            !!! regular viscosity tensor - this results in too much diffusion and is unstable
-            ! tensor_T(:,:,k,ie) = laplace_sphere_wk( elem(ie)%state%T(:,:,k,nt), deriv, elem(ie), var_coef=.false. )
-            ! tensor_q(:,:,k,ie) = laplace_sphere_wk( elem(ie)%state%q(:,:,k,nt), deriv, elem(ie), var_coef=.false. )
             do j = 1, np
                do i = 1, np
-                  elem(ie)%state%T(i,j,k,nt) = elem(ie)%state%T(i,j,k,nt) * elem(ie)%spheremp(i,j) - dt*nu_s*factor_nu*tensor_T(i,j,k,ie)
-                  elem(ie)%state%q(i,j,k,nt) = elem(ie)%state%q(i,j,k,nt) * elem(ie)%spheremp(i,j) - dt*nu_s*factor_nu*tensor_q(i,j,k,ie)
+                  ! dp_tmp = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+                  !          ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%ps_v(i,j,nt)
+                  elem(ie)%T_tend(i,j,k)  = elem(ie)%T_tend(i,j,k)  * elem(ie)%spheremp(i,j) - dt*nu_s*factor_nu*tensor_T(i,j,k,ie)
+                  elem(ie)%qv_tend(i,j,k) = elem(ie)%qv_tend(i,j,k) * elem(ie)%spheremp(i,j) - dt*nu_s*factor_nu*tensor_qv(i,j,k,ie)
+                  elem(ie)%ql_tend(i,j,k) = elem(ie)%ql_tend(i,j,k) * elem(ie)%spheremp(i,j) - dt*nu_s*factor_nu*tensor_ql(i,j,k,ie)
+                  elem(ie)%qi_tend(i,j,k) = elem(ie)%qi_tend(i,j,k) * elem(ie)%spheremp(i,j) - dt*nu_s*factor_nu*tensor_qi(i,j,k,ie)
                enddo ! i = 1, np
             enddo ! j = 1, np
          enddo ! k = 1, nlev
-
          !!! prepare edge buffer
-         call edgeVpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%state%T(:,:,1:nlev,nt), nlev, nlev*0, nlev*2 )
-         call edgeVpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%state%q(:,:,1:nlev,nt), nlev, nlev*1, nlev*2 )
-
+         call edgeVpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%T_tend(:,:,1:nlev),  nlev, nlev*0, nlev*4 )
+         call edgeVpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%qv_tend(:,:,1:nlev), nlev, nlev*1, nlev*4 )
+         call edgeVpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%ql_tend(:,:,1:nlev), nlev, nlev*2, nlev*4 )
+         call edgeVpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%qi_tend(:,:,1:nlev), nlev, nlev*3, nlev*4 )
       enddo ! ie = nets, nete
 
       !------------------------------------
@@ -412,18 +476,92 @@ subroutine phys_hyperviscosity_Tq( elem, hvcoord, hybrid, deriv, nt, nets, nete,
       do ie = nets, nete
 
          !!! unpack edge buffer
-         call edgeVunpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%state%T(:,:,1:nlev,nt), nlev, nlev*0, nlev*2)
-         call edgeVunpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%state%q(:,:,1:nlev,nt), nlev, nlev*1, nlev*2)
+         call edgeVunpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%T_tend(:,:,1:nlev),  nlev, nlev*0, nlev*4)
+         call edgeVunpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%qv_tend(:,:,1:nlev), nlev, nlev*1, nlev*4)
+         call edgeVunpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%ql_tend(:,:,1:nlev), nlev, nlev*2, nlev*4)
+         call edgeVunpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%qi_tend(:,:,1:nlev), nlev, nlev*3, nlev*4)
          
          !!! apply inverse mass matrix
          do k = 1, nlev
-            elem(ie)%state%T(:,:,k,nt) = elem(ie)%rspheremp(:,:) * elem(ie)%state%T(:,:,k,nt)
-            elem(ie)%state%q(:,:,k,nt) = elem(ie)%rspheremp(:,:) * elem(ie)%state%q(:,:,k,nt)
+            elem(ie)%T_tend(:,:,k)  = elem(ie)%rspheremp(:,:) * elem(ie)%T_tend(:,:,k)
+            elem(ie)%qv_tend(:,:,k) = elem(ie)%rspheremp(:,:) * elem(ie)%qv_tend(:,:,k)
+            elem(ie)%ql_tend(:,:,k) = elem(ie)%rspheremp(:,:) * elem(ie)%ql_tend(:,:,k)
+            elem(ie)%qi_tend(:,:,k) = elem(ie)%rspheremp(:,:) * elem(ie)%qi_tend(:,:,k)
          enddo ! k
+
+         ! !!! apply inverse mass matrix and undo pressure weighting
+         ! do k = 1, nlev
+         !    do j = 1, np
+         !       do i = 1, np
+         !          dp_tmp = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+         !                   ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%ps_v(i,j,nt)
+         !          elem(ie)%T_tend(i,j,k)  = elem(ie)%T_tend(i,j,k)  * elem(ie)%rspheremp(i,j)
+         !          elem(ie)%qv_tend(i,j,k) = elem(ie)%qv_tend(i,j,k) * elem(ie)%rspheremp(i,j) / dp_tmp
+         !          elem(ie)%ql_tend(i,j,k) = elem(ie)%ql_tend(i,j,k) * elem(ie)%rspheremp(i,j) / dp_tmp
+         !          elem(ie)%qi_tend(i,j,k) = elem(ie)%qi_tend(i,j,k) * elem(ie)%rspheremp(i,j) / dp_tmp
+         !       enddo ! i = 1, np
+         !    enddo ! j = 1, np
+         ! enddo ! k = 1, nlev
          
       enddo ! ie = nets, nete
       !------------------------------------
       !------------------------------------
+
+#else
+      !------------------------------------
+      ! DUMMY TESTING VERSION - NO HYPERVIS
+      !------------------------------------
+      do ie = nets, nete
+         !!! apply mass matrix
+         do k = 1, nlev
+            ! elem(ie)%qv_tend(:,:,k) = elem(ie)%qv_tend(:,:,k) * elem(ie)%spheremp(:,:) 
+            
+            ! elem(ie)%qv_tend(:,:,k) = elem(ie)%qv_tend(:,:,k) * elem(ie)%spheremp(:,:) * elem(ie)%derived%dpdiss_ave(:,:,k) / hvcoord%dp0(k)
+
+            do j = 1, np
+               do i = 1, np
+                  dp_tmp = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+                           ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%ps_v(i,j,nt)
+                  elem(ie)%qv_tend(i,j,k) = elem(ie)%qv_tend(i,j,k) * elem(ie)%spheremp(i,j) * dp_tmp
+               end do
+            end do
+            
+            ! elem(ie)%qv_tend(:,:,k) = elem(ie)%qv_tend(:,:,k) * elem(ie)%spheremp(:,:) * elem(ie)%state%dp3d(:,:,k,nt)
+            ! elem(ie)%qv_tend(:,:,k) = elem(ie)%qv_tend(:,:,k) * elem(ie)%spheremp(:,:) * elem(ie)%derived%dp(:,:,k)
+
+         enddo ! k
+         !!! prepare edge buffer
+         call edgeVpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%qv_tend(:,:,1:nlev), nlev, nlev*0, nlev )
+
+      enddo ! ie = nets, nete
+      
+      !!! boundary exchange
+      call bndry_exchangeV(hybrid,edge_g)
+      
+      do ie = nets, nete
+         !!! unpack edge buffer
+         call edgeVunpack_nlyr(edge_g, elem(ie)%desc, elem(ie)%qv_tend(:,:,1:nlev), nlev, nlev*0, nlev )
+         !!! apply inverse mass matrix
+         do k = 1, nlev
+            ! elem(ie)%qv_tend(:,:,k) = elem(ie)%qv_tend(:,:,k) * elem(ie)%rspheremp(:,:)
+
+            do j = 1, np
+               do i = 1, np
+                  dp_tmp = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+                           ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%ps_v(i,j,nt)
+                  elem(ie)%qv_tend(i,j,k) = elem(ie)%qv_tend(i,j,k) * elem(ie)%rspheremp(i,j) / dp_tmp
+               end do
+            end do
+
+            ! elem(ie)%qv_tend(:,:,k) = elem(ie)%qv_tend(:,:,k) * elem(ie)%rspheremp(:,:) / elem(ie)%state%dp3d(:,:,k,nt)
+            ! elem(ie)%qv_tend(:,:,k) = elem(ie)%qv_tend(:,:,k) * elem(ie)%rspheremp(:,:) / elem(ie)%derived%dp(:,:,k)
+
+         enddo ! k
+      enddo ! ie = nets, nete
+      !------------------------------------
+      ! DUMMY TESTING VERSION - NO HYPERVIS
+      !------------------------------------
+#endif
 
    enddo ! ic = 1, hypervis_subcycle
    !----------------------------------------------
