@@ -782,7 +782,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)
 
-      !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(1)
+      !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+      !$acc&                  sstxy,sgs_field,sgs_field_diag) async(1)
 
       !---------------------------------------------
       !  	initialize stuff:
@@ -827,9 +828,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       endif
 #endif
 
-      !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(1)
-      !$acc wait(1)
-
       !----------------------------------------------------------
       !     Update scalar boundaries after large-scale processes:
       call boundaries(ncrms,3)
@@ -837,6 +835,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !---------------------------------------------------------
       !     Update boundaries for velocities:
       call boundaries(ncrms,0)
+
+      !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+      !$acc&                  sstxy,sgs_field,sgs_field_diag) async(1)
+      !$acc wait(1)
 
       !-----------------------------------------------
       !     surface fluxes:
@@ -849,6 +851,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !----------------------------------------------------------
       !     Fill boundaries for SGS diagnostic fields:
       call boundaries(ncrms,4)
+      !$acc wait(1)
 
       !-----------------------------------------------
       !       advection of momentum:
@@ -874,6 +877,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !----------------------------------------------------------
       !     Update boundaries for all prognostic scalar fields for advection:
       call boundaries(ncrms,2)
+      !$acc wait(1)
 
       !---------------------------------------------------------
       !      advection of scalars :
@@ -886,6 +890,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !----------------------------------------------------------
       !     Update boundaries for scalars to prepare for SGS effects:
       call boundaries(ncrms,3)
+      !$acc wait(1)
 
       !---------------------------------------------------------
       !      SGS effects on scalars :
@@ -1353,6 +1358,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     crm_output%clmed(icrm) = crm_output%clmed(icrm) * factor_xyt
     crm_output%cllow(icrm) = crm_output%cllow(icrm) * factor_xyt
 
+      !$acc wait(1)
     crm_output%jt_crm(icrm) = plev * 1.0
     crm_output%mx_crm(icrm) = 1.0
     do k=1, plev

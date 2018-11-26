@@ -18,18 +18,22 @@ contains
 #endif
     implicit none
     integer, intent(in) :: ncrms,flag
-    integer :: i,icrm, j
+    integer :: i,icrm, j, ii, k
+    real(crm_rknd) :: micro_tmp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms)
+
+    !$acc enter data create(micro_tmp) async(1)
 
     !-------------------------------------------------
     ! Update velocity fields
     !-------------------------------------------------
     if(flag.eq.0) then
-      do icrm = 1 , ncrms
-        call bound_exchange(u(:,:,:,icrm),dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,1,1,1,1,1)
-        call bound_exchange(v(:,:,:,icrm),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
-      enddo
+      !$acc enter data copyin(u,v,sstxy,w) async(1)
+
+      call bound_exchange(ncrms,u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,1,1,1,1,1)
+      call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
+      !$acc parallel loop collapse(3) async(1)
       do icrm = 1 , ncrms
         do j = 1 , ny
           do i = 1 , nx
@@ -37,9 +41,8 @@ contains
           enddo
         enddo
       enddo
-      do icrm = 1 , ncrms
-        call bound_exchange(w(:,:,:,icrm),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
-      enddo
+      call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
+      !$acc parallel loop collapse(3) async(1)
       do icrm = 1 , ncrms
         do j = 1-YES3D , ny+YES3D
           do i = 0 , nx+1
@@ -48,89 +51,143 @@ contains
           enddo
         enddo
       enddo
+
+      !$acc exit data copyout(u,v,sstxy,w) async(1)
     endif
 
     !-------------------------------------------------
     ! update prognostic scalar fields for advection
     !-------------------------------------------------
     if(flag.eq.2) then
-      do icrm = 1 , ncrms
-        call bound_exchange(u(:,:,:,icrm),dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
-        call bound_exchange(v(:,:,:,icrm),dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2+NADV,2+NADV,2,3,2)
-        call bound_exchange(w(:,:,:,icrm),dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
-        call bound_exchange(t(:,:,:,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4)
-        do i = 1,nsgs_fields
-          if(dosgs.and.advect_sgs) call bound_exchange(sgs_field(:,:,:,icrm,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+i)
-        end do
-        do i = 1,nmicro_fields
-          if(   i.eq.index_water_vapor             &
+      !$acc enter data copyin(u,v,w,t,sgs_field,micro_field) async(1)
+
+      call bound_exchange(ncrms,u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
+      call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2+NADV,2+NADV,2,3,2)
+      call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
+      call bound_exchange(ncrms,t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4)
+      do i = 1,nsgs_fields
+        if(dosgs.and.advect_sgs) call bound_exchange(ncrms,sgs_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+i)
+      end do
+      do i = 1,nmicro_fields
+        if(   i.eq.index_water_vapor             &
 #ifdef CLUBB_CRM
-          ! Vince Larson (UWM) changed so that bound_exchange is called even if
-          !     docloud = .false. and doclubb = .true.    11 Nov 2007
-          .or. (docloud.or.doclubb.or.doclubbnoninter) .and.flag_precip(i).ne.1    &
+        ! Vince Larson (UWM) changed so that bound_exchange is called even if
+        !     docloud = .false. and doclubb = .true.    11 Nov 2007
+        .or. (docloud.or.doclubb.or.doclubbnoninter) .and.flag_precip(i).ne.1    &
 #else
-          .or. docloud.and.flag_precip(i).ne.1    &
+        .or. docloud.and.flag_precip(i).ne.1    &
 #endif
-          .or. doprecip.and.flag_precip(i).eq.1 ) &
-          call bound_exchange(micro_field(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
-        end do
-        if(dotracers) then
-          do i=1,ntracers
-            call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
-          end do
-        end if
+        .or. doprecip.and.flag_precip(i).eq.1 ) then
+          !$acc parallel loop collapse(4) async(1)
+          do icrm = 1 , ncrms
+            do k = 1 , nzm
+              do j = dimy1_s,dimy2_s
+                do ii = dimx1_s,dimx2_s
+                  micro_tmp(ii,j,k,icrm) = micro_field(ii,j,k,i,icrm)
+                enddo
+              enddo
+            enddo
+          enddo
+          call bound_exchange(ncrms,micro_tmp,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
+          !$acc parallel loop collapse(4) async(1)
+          do icrm = 1 , ncrms
+            do k = 1 , nzm
+              do j = dimy1_s,dimy2_s
+                do ii = dimx1_s,dimx2_s
+                  micro_field(ii,j,k,i,icrm) = micro_tmp(ii,j,k,icrm)
+                enddo
+              enddo
+            enddo
+          enddo
+        endif
+      end do
+      !if(dotracers) then
+      !  do i=1,ntracers
+      !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
+      !  end do
+      !end if
 #if defined(SP_ESMT)
-        call bound_exchange(u_esmt(:,:,:,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
-        call bound_exchange(v_esmt(:,:,:,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+      !$acc enter data copyin(u_esmt,v_esmt) async(1)
+      call bound_exchange(ncrms,u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
+      call bound_exchange(ncrms,v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+      !$acc exit data copyout(u_esmt,v_esmt) async(1)
 #endif
-      enddo
+
+      !$acc exit data copyout(u,v,w,t,sgs_field,micro_field) async(1)
     endif
 
     !-------------------------------------------------
     ! Update all scalars before SGS
     !-------------------------------------------------
     if(flag.eq.3) then
-      do icrm = 1 , ncrms
-        call bound_exchange(t(:,:,:,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4)
-        do i = 1,nsgs_fields
-          if(dosgs.and.advect_sgs) &
-          call bound_exchange(sgs_field(:,:,:,icrm,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+i)
-        end do
-        do i = 1,nmicro_fields
-          if(   i.eq.index_water_vapor             &
+      !$acc enter data copyin(t,sgs_field,micro_field) async(1)
+
+      call bound_exchange(ncrms,t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4)
+      do i = 1,nsgs_fields
+        if(dosgs.and.advect_sgs) &
+        call bound_exchange(ncrms,sgs_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+i)
+      end do
+      do i = 1,nmicro_fields
+        if(   i.eq.index_water_vapor             &
 #ifdef CLUBB_CRM
-          ! Vince Larson (UWM) changed so that bound_exchange is called even if
-          !     docloud = .false. and doclubb = .true.    11 Nov 2007
-          .or. (docloud.or.doclubb.or.doclubbnoninter) .and.flag_precip(i).ne.1    &
+        ! Vince Larson (UWM) changed so that bound_exchange is called even if
+        !     docloud = .false. and doclubb = .true.    11 Nov 2007
+        .or. (docloud.or.doclubb.or.doclubbnoninter) .and.flag_precip(i).ne.1    &
 #else
-          .or. docloud.and.flag_precip(i).ne.1    &
+        .or. docloud.and.flag_precip(i).ne.1    &
 #endif
-          .or. doprecip.and.flag_precip(i).eq.1 ) &
-          call bound_exchange(micro_field(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
-        end do
-        if(dotracers) then
-          do i=1,ntracers
-            call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
-          end do
-        end if
+        .or. doprecip.and.flag_precip(i).eq.1 ) then
+          !$acc parallel loop collapse(4) async(1)
+          do icrm = 1 , ncrms
+            do k = 1 , nzm
+              do j = dimy1_s,dimy2_s
+                do ii = dimx1_s,dimx2_s
+                  micro_tmp(ii,j,k,icrm) = micro_field(ii,j,k,i,icrm)
+                enddo
+              enddo
+            enddo
+          enddo
+          call bound_exchange(ncrms,micro_tmp,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
+          !$acc parallel loop collapse(4) async(1)
+          do icrm = 1 , ncrms
+            do k = 1 , nzm
+              do j = dimy1_s,dimy2_s
+                do ii = dimx1_s,dimx2_s
+                  micro_field(ii,j,k,i,icrm) = micro_tmp(ii,j,k,icrm)
+                enddo
+              enddo
+            enddo
+          enddo
+        endif
+      end do
+      !if(dotracers) then
+      !  do i=1,ntracers
+      !    call bound_exchange(tracer(:,:,:,i,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+i)
+      !  end do
+      !end if
 #if defined(SP_ESMT)
-        call bound_exchange(u_esmt(:,:,:,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
-        call bound_exchange(v_esmt(:,:,:,icrm),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+      !$acc enter data copyin(u_esmt,v_esmt) async(1)
+      call bound_exchange(ncrms,u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
+      call bound_exchange(ncrms,v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
+      !$acc exit data copyout(u_esmt,v_esmt) async(1)
 #endif
-      enddo
+
+      !$acc exit data copyout(t,sgs_field,micro_field) async(1)
     endif
 
     !-------------------------------------------------
     ! SGS diagnostic fields
     !-------------------------------------------------
     if(flag.eq.4) then
-      do icrm = 1 , ncrms
-        do i = 1,nsgs_fields_diag
-          if(dosgs.and.do_sgsdiag_bound) &
-          call bound_exchange(sgs_field_diag(:,:,:,icrm,i),dimx1_d,dimx2_d,dimy1_d,dimy2_d,nzm,1+dimx1_d,dimx2_d-nx,YES3D+dimy1_d,1-YES3D+dimy2_d-ny,4+nsgs_fields+i)
-        end do
+      !$acc enter data copyin(sgs_field_diag) async(1)
+      do i = 1,nsgs_fields_diag
+        if(dosgs.and.do_sgsdiag_bound) &
+        call bound_exchange(ncrms,sgs_field_diag(:,:,:,:,i),dimx1_d,dimx2_d,dimy1_d,dimy2_d,nzm,1+dimx1_d,dimx2_d-nx,YES3D+dimy1_d,1-YES3D+dimy2_d-ny,4+nsgs_fields+i)
       end do
+      !$acc exit data copyout(sgs_field_diag) async(1)
     end if
+
+    !$acc exit data delete(micro_tmp) async(1)
 
   end subroutine periodic
 
