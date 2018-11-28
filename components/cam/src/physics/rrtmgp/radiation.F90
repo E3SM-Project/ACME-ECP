@@ -1396,6 +1396,7 @@ contains
       end if
 
 #if defined( RCEMIP )
+      !!! always do LW and SW for homogenized rad
       dosw = .true.
       dolw = .true.
 #endif
@@ -1860,14 +1861,26 @@ contains
       ! throughout this subroutine, so set once for convenience
       ncol = state%ncol
 
+#if defined( RCEMIP )
+      !!! fix zenith angle every for homogenized rad
+      coszrs(1:ncol) = 0.74256103117 ! = cos( 42.05 * 3.14159/180. )
+      swrad_off = .false.
+#else
       ! Get cosine solar zenith angle for current time step. 
       call set_cosine_solar_zenith_angle(state, dt_avg, coszrs(1:ncol))
+#endif
 
       ! Send values for this chunk to history buffer
       call outfld('COSZRS', coszrs(1:ncol), ncol, state%lchnk)
 
       ! Get orbital eccentricity factor to scale total sky irradiance
       tsi_scaling = get_eccentricity_factor()
+
+#if defined( RCEMIP )
+      ! tsi_scaling = 1._r8
+      ! tsi_scaling = 0.3010879233_r8 
+      tsi_scaling = 0.40547229206_r8      ! gives constant insolation of 409.6 W/m2
+#endif
 
       ! If the swrad_off flag is set, meaning we should not do SW radiation, then 
       ! we just set coszrs to zero everywhere. TODO: why not just set dosw false 
@@ -1897,6 +1910,11 @@ contains
       ! Get albedo. This uses CAM routines internally and just provides a
       ! wrapper to improve readability of the code here.
       call set_albedo(cam_in, albedo_direct(1:nswbands,1:ncol), albedo_diffuse(1:nswbands,1:ncol))
+
+#if defined( RCEMIP )
+      albedo_direct(1:nswbands,1:ncol)  = 0.07
+      albedo_diffuse(1:nswbands,1:ncol) = 0.07
+#endif
 
       ! Send albedos to history buffer (useful for debugging)
       call outfld('SW_ALBEDO_DIR', transpose(albedo_direct(1:nswbands,1:ncol)), ncol, state%lchnk)
@@ -1933,8 +1951,13 @@ contains
                          col_indices=day_indices(1:nday))
 
       ! Make sure temperatures are within range
+#ifdef RCEMIP
+      call clip_values(tmid, k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tmid', warn=.false.)
+      call clip_values(tint, k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tint', warn=.false.)
+#else
       call clip_values(tmid, k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tmid', warn=.true.)
       call clip_values(tint, k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tint', warn=.true.)
+#endif /* RCEMIP */
 
       ! Do shortwave cloud optics calculations
       ! TODO: refactor the set_cloud_optics codes to allow passing arrays
@@ -1956,7 +1979,7 @@ contains
       ! private routines internal to the optics class.
       call handle_error(aerosol_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber()))
       call aerosol_optics_sw%set_name('shortwave aerosol optics')
-
+#ifndef RCEMIP
       ! Get shortwave aerosol optics
       call t_startf('rad_aerosol_optics_sw')
       call set_aerosol_optics_sw(icall, state, pbuf, &
@@ -1965,7 +1988,7 @@ contains
                                  is_cmip6_volc, &
                                  aerosol_optics_sw)
       call t_stopf('rad_aerosol_optics_sw')
-
+#endif /* RCEMIP */
       ! Set gas concentrations (I believe the gases may change for
       ! different values of icall, which is why we do this within the
       ! loop)
@@ -1986,7 +2009,9 @@ contains
                                albedo_diffuse_day(1:nswbands,1:nday), &
                                cloud_optics_sw, &
                                fluxes_allsky_day, fluxes_clrsky_day, &
+#ifndef RCEMIP 
                                aer_props=aerosol_optics_sw, &
+#endif
                                tsi_scaling=tsi_scaling))
       call t_stopf('rad_calculations_sw')
 
@@ -2145,10 +2170,12 @@ contains
       call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
       call t_stopf('rad_gas_concentrations_lw')
 
+#ifndef RCEMIP
       ! Get longwave aerosol optics
       call t_startf('rad_aerosol_optics_lw')
       call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aerosol_optics_lw)
       call t_stopf('rad_aerosol_optics_lw')
+#endif /* RCEMIP */
 
       ! Do longwave radiative transfer calculations
       call t_startf('rad_calculations_lw')
@@ -2159,7 +2186,9 @@ contains
          surface_emissivity(1:nlwbands,1:ncol), &
          cloud_optics_lw, &
          fluxes_allsky, fluxes_clrsky, &
+#ifndef RCEMIP 
          aer_props=aerosol_optics_lw, &
+#endif
          t_lev=tint(1:ncol,1:nlev_rad+1), &
          n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
       ))
@@ -2821,8 +2850,17 @@ subroutine set_gas_concentrations(icall, state, pbuf, &
    real(r8), parameter :: mol_weight_air = 28.97  ! g/mol
                                     
    ! Defaults for gases that are not available (TODO: is this still accurate?)
+#if defined( RCEMIP )
+   real(r8), parameter :: co_vol_mix_ratio  =    0.0_r8
+   ! real(r8), parameter :: n2_vol_mix_ratio  =    0.0_r8
+   real(r8), parameter :: n2_vol_mix_ratio  =    0.7906_r8
+   real(r8), parameter :: co2_vol_mix_ratio =  348.0e-6_r8
+   real(r8), parameter :: n2o_vol_mix_ratio =  306.0e-9_r8
+   real(r8), parameter :: ch4_vol_mix_ratio = 1650.0e-9_r8
+#else
    real(r8), parameter :: co_vol_mix_ratio = 1.0e-7_r8
    real(r8), parameter :: n2_vol_mix_ratio = 0.7906_r8
+#endif
 
    ! Loop indices
    integer :: igas, iday, icol
@@ -2890,6 +2928,14 @@ subroutine set_gas_concentrations(icall, state, pbuf, &
             ! molecular weight of dry air to molecular weight of gas
             vol_mix_ratio(1:ncol,1:pver) = mass_mix_ratio(1:ncol,1:pver) &
                                          * mol_weight_air / mol_weight_gas(igas)
+
+#if defined( RCEMIP )
+            ! vol_mix_ratio(1:ncol,1:pver) = 0.0_r8
+            ! if ( trim(gas_species(igas)) == 'O3'  ) vol_mix_ratio(1:ncol,1:pver) = 0.0_r8
+            if ( trim(gas_species(igas)) == 'CO2' ) vol_mix_ratio(1:ncol,1:pver) = co2_vol_mix_ratio
+            if ( trim(gas_species(igas)) == 'N2O' ) vol_mix_ratio(1:ncol,1:pver) = n2o_vol_mix_ratio
+            if ( trim(gas_species(igas)) == 'CH4' ) vol_mix_ratio(1:ncol,1:pver) = ch4_vol_mix_ratio
+#endif
 
       end select
 
