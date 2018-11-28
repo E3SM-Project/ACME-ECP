@@ -9,17 +9,19 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd), intent (in) :: bflx(ncrms)
-    real(crm_rknd) u_h0, tau00
+    real(crm_rknd) u_h0, tau00, tmp
     integer i,j,icrm
 
     !--------------------------------------------------------
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
+      !$acc parallel loop async(1)
       do icrm = 1 , ncrms
         uhl(icrm) = uhl(icrm) + dtn*utend(1,icrm)
         vhl(icrm) = vhl(icrm) + dtn*vtend(1,icrm)
         taux0(icrm) = 0.
         tauy0(icrm) = 0.
       enddo
+      !$acc parallel loop collapse(3) async(1)
       do icrm = 1 , ncrms
         do j=1,ny
           do i=1,nx
@@ -27,8 +29,12 @@ contains
             tau00 = rho(1,icrm) * diag_ustar(z(1,icrm),bflx(icrm),u_h0,z0(icrm))**2
             fluxbu(i,j,icrm) = -(0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug-uhl(icrm))/u_h0*tau00
             fluxbv(i,j,icrm) = -(0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg-vhl(icrm))/u_h0*tau00
-            taux0(icrm) = taux0(icrm) + fluxbu(i,j,icrm)/dble(nx*ny)
-            tauy0(icrm) = tauy0(icrm) + fluxbv(i,j,icrm)/dble(nx*ny)
+            tmp = fluxbu(i,j,icrm)/dble(nx*ny)
+            !$acc atomic update
+            taux0(icrm) = taux0(icrm) + tmp
+            tmp = fluxbv(i,j,icrm)/dble(nx*ny)
+            !$acc atomic update
+            tauy0(icrm) = tauy0(icrm) + tmp
           end do
         end do
       enddo
@@ -60,6 +66,7 @@ contains
   ! so now used as reciprocal of obukhov length)
   real(crm_rknd) function diag_ustar(z,bflx,wnd,z0)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
     real(crm_rknd), parameter      :: g    = 9.81   ! gravitational acceleration

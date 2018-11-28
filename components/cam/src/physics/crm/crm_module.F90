@@ -783,7 +783,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       call abcoefs(ncrms)
 
       !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-      !$acc&                  sstxy,sgs_field,sgs_field_diag) async(1)
+      !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx) async(1)
 
       !---------------------------------------------
       !  	initialize stuff:
@@ -836,13 +836,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !     Update boundaries for velocities:
       call boundaries(ncrms,0)
 
-      !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-      !$acc&                  sstxy,sgs_field,sgs_field_diag) async(1)
-      !$acc wait(1)
-
       !-----------------------------------------------
       !     surface fluxes:
       if (dosurface) call crmsurface(ncrms,bflx)
+
+      !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+      !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx) async(1)
+      !$acc wait(1)
 
       !-----------------------------------------------------------
       !  SGS physics:
