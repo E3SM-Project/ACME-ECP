@@ -478,6 +478,7 @@ subroutine sgs_proc(ncrms)
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
                           tke, tk, tkh)
 
+  !$acc parallel loop collapse(4) async(1)
   do icrm = 1 , ncrms
     do k = 1 , nzm
       do j = dimy1_s,dimy2_s
@@ -487,6 +488,7 @@ subroutine sgs_proc(ncrms)
       enddo
     enddo
   enddo
+  !$acc parallel loop collapse(4) async(1)
   do icrm = 1 , ncrms
     do k = 1 , nzm
       do j = dimy1_d,dimy2_d

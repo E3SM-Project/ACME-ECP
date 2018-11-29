@@ -11,6 +11,7 @@ contains
 
   real(crm_rknd) function esatw_crm(t)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
@@ -34,6 +35,7 @@ contains
 
   real(crm_rknd) function qsatw_crm(t,p)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) p  ! pressure    (mb)
@@ -45,6 +47,7 @@ contains
 
   real(crm_rknd) function dtesatw_crm(t)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
@@ -65,6 +68,7 @@ contains
 
   real(crm_rknd) function dtqsatw_crm(t,p)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) p  ! pressure    (mb)
@@ -74,6 +78,7 @@ contains
 
   real(crm_rknd) function esati_crm(t)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
@@ -94,6 +99,7 @@ contains
 
   real(crm_rknd) function qsati_crm(t,p)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) p  ! pressure    (mb)
@@ -105,6 +111,7 @@ contains
 
   real(crm_rknd) function dtesati_crm(t)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) a0,a1,a2,a3,a4,a5,a6,a7,a8
@@ -124,6 +131,7 @@ contains
 
   real(crm_rknd) function dtqsati_crm(t,p)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd) t  ! temperature (K)
     real(crm_rknd) p  ! pressure    (mb)

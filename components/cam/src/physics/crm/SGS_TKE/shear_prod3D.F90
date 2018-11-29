@@ -17,6 +17,7 @@ contains
     rdx0=1./dx
     rdy0=1./dy
 
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny

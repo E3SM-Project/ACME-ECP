@@ -36,9 +36,13 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbshear  ! TKE production by shear
   real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbbuoy   ! TKE production by buoyancy
 
-  real(crm_rknd), intent(out), dimension(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms) :: tke   ! SGS TKE
-  real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, ncrms) :: tk    ! SGS eddy viscosity
-  real(crm_rknd), intent(out), dimension(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, ncrms) :: tkh   ! SGS eddy conductivity
+  !real(crm_rknd), intent(out) :: tke( dimx1_s:dimx2_s , dimy1_s:dimy2_s , nzm , ncrms)   ! SGS TKE
+  !real(crm_rknd), intent(out) :: tk ( dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm , ncrms)   ! SGS eddy viscosity
+  !real(crm_rknd), intent(out) :: tkh( dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm , ncrms)   ! SGS eddy conductivity
+
+  real(crm_rknd), intent(out), pointer :: tke(:,:,:,:)   ! SGS TKE
+  real(crm_rknd), intent(out), pointer :: tk (:,:,:,:)   ! SGS eddy viscosity
+  real(crm_rknd), intent(out), pointer :: tkh(:,:,:,:)   ! SGS eddy conductivity
 
   !-----------------------------------------------------------------------
   !!! Local Variables
@@ -85,6 +89,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
   real(crm_rknd) :: tk_min_value      ! min value for eddy viscosity (TK)
   real(crm_rknd) :: tk_min_depth      ! near-surface depth to apply tk_min (meters)
+  real(crm_rknd) :: tmp
+
+  !$acc enter data create(def2,buoy_sgs_vert,a_prod_bu_vert) async(1)
 
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------
@@ -105,6 +112,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   endif
 
   !!! initialize surface buoyancy flux to zero
+  !$acc parallel loop collapse(3) async(1)
   do icrm = 1 , ncrms
     do j = 1 , ny
       do i = 1 , nx
@@ -121,6 +129,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   !-----------------------------------------------------------------------
   !!! compute subgrid buoyancy flux assuming clear conditions
   !!! we will over-write this later if conditions are cloudy
+  !$acc parallel loop collapse(4) async(1)
   do icrm = 1 , ncrms
     do k = 1,nzm-1
       do j = 1,ny
@@ -226,6 +235,17 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     enddo !k
   enddo !icrm
 
+  !$acc parallel loop collapse(2) async(1)
+  do icrm = 1 , ncrms
+    do k = 1,nzm-1
+      tkelediss(k,icrm)  = 0.
+      tkesbdiss(k,icrm)  = 0.
+      tkesbshear(k,icrm) = 0.
+      tkesbbuoy(k,icrm)  = 0.
+    enddo
+  enddo
+
+  !$acc parallel loop collapse(4) async(1)
   do icrm = 1 , ncrms
     do k = 1,nzm-1
       do j = 1,ny
@@ -233,10 +253,6 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           grd = dz(icrm)*adz(k,icrm)
           Ce1 = Ce/0.7*0.19
           Ce2 = Ce/0.7*0.51
-          tkelediss(k,icrm)  = 0.
-          tkesbdiss(k,icrm)  = 0.
-          tkesbshear(k,icrm) = 0.
-          tkesbbuoy(k,icrm)  = 0.
           !!! compute correction factors for eddy visc/cond not to acceed 3D stability
           cx = dx**2/dt/grdf_x(k,icrm)
           cy = dy**2/dt/grdf_y(k,icrm)
@@ -276,14 +292,21 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           tk(i,j,k,icrm)  = min(tk(i,j,k,icrm),tkmax)
           tkh(i,j,k,icrm) = Pr*tk(i,j,k,icrm)
 
-          tkelediss(k,icrm)  = tkelediss(k,icrm) - a_prod_sh/float(nx*ny)
+          tmp = a_prod_sh/float(nx*ny)
+          !$acc atomic update
+          tkelediss(k,icrm)  = tkelediss(k,icrm) - tmp
+          !$acc atomic update
           tkesbdiss(k,icrm)  = tkesbdiss(k,icrm) + a_diss
+          !$acc atomic update
           tkesbshear(k,icrm) = tkesbshear(k,icrm)+ a_prod_sh
+          !$acc atomic update
           tkesbbuoy(k,icrm)  = tkesbbuoy(k,icrm) + a_prod_bu
         end do ! i
       end do ! j
     end do ! k
   enddo !icrm
+
+  !$acc exit data delete(def2,buoy_sgs_vert,a_prod_bu_vert) async(1)
 
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------
