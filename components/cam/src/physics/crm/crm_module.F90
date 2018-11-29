@@ -783,7 +783,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       call abcoefs(ncrms)
 
       !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-      !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh) attach(tk,tke,tkh) async(1)
+      !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
+      !$acc&                  rhow,uwle,vwle) attach(tk,tke,tkh) async(1)
 
       !---------------------------------------------
       !  	initialize stuff:
@@ -844,10 +845,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !  SGS physics:
       if (dosgs) call sgs_proc(ncrms)
 
-      !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-      !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh) detach(tk,tke,tkh) async(1)
-      !$acc wait(1)
-
       !----------------------------------------------------------
       !     Fill boundaries for SGS diagnostic fields:
       call boundaries(ncrms,4)
@@ -855,6 +852,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       !-----------------------------------------------
       !       advection of momentum:
       call advect_mom(ncrms)
+
+      !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+      !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
+      !$acc&                  rhow,uwle,vwle) detach(tk,tke,tkh) async(1)
+      !$acc wait(1)
 
       !----------------------------------------------------------
       !	SGS effects on momentum:

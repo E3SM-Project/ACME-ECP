@@ -15,6 +15,9 @@ contains
     integer i, j, k, kc, kb,icrm
     real(crm_rknd) dz25, www, rhoi
 
+    !$acc enter data create(fuz,fvz,fwz) async(1)
+
+    !$acc parallel loop collapse(2) async(1)
     do icrm = 1 , ncrms
       do k = 1 , nz
         uwle(k,icrm) = 0.
@@ -22,6 +25,7 @@ contains
       enddo
     enddo
 
+    !$acc parallel loop collapse(3) async(1)
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
@@ -38,6 +42,7 @@ contains
 
     if(RUN3D) then
 
+      !$acc parallel loop collapse(4) async(1)
       do icrm = 1 , ncrms
         do k=2,nzm
           do j=1,ny
@@ -47,7 +52,9 @@ contains
               rhoi = dz25 * rhow(k,icrm)
               fuz(i,j,k,icrm) = rhoi*(w(i,j,k,icrm)+w(i-1,j  ,k,icrm))*(u(i,j,k,icrm)+u(i,j,kb,icrm))
               fvz(i,j,k,icrm) = rhoi*(w(i,j,k,icrm)+w(i  ,j-1,k,icrm))*(v(i,j,k,icrm)+v(i,j,kb,icrm))
+              !$acc atomic update
               uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k,icrm)
+              !$acc atomic update
               vwle(k,icrm) = vwle(k,icrm)+fvz(i,j,k,icrm)
             end do
           end do
@@ -56,6 +63,7 @@ contains
 
     else
 
+      !$acc parallel loop collapse(4) async(1)
       do icrm = 1 , ncrms
         do k=2,nzm
           do j=1,ny
@@ -66,7 +74,9 @@ contains
               www = rhoi*(w(i,j,k,icrm)+w(i-1,j,k,icrm))
               fuz(i,j,k,icrm) = www*(u(i,j,k,icrm)+u(i,j,kb,icrm))
               fvz(i,j,k,icrm) = www*(v(i,j,k,icrm)+v(i,j,kb,icrm))
+              !$acc atomic update
               uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k,icrm)
+              !$acc atomic update
               vwle(k,icrm) = vwle(k,icrm)+fvz(i,j,k,icrm)
             end do
           end do
@@ -75,6 +85,7 @@ contains
 
     endif
 
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -90,6 +101,7 @@ contains
       end do
     end do
 
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=2,nzm
         do j=1,ny
@@ -101,6 +113,8 @@ contains
         end do
       end do ! k
     end do
+
+    !$acc exit data delete(fuz,fvz,fwz) async(1)
 
   end subroutine advect2_mom_z
 
