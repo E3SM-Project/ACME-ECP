@@ -963,8 +963,7 @@ end subroutine phys_init
   !-----------------------------------------------------------------------
   !
 
-subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out, elem)
-! subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
+subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
     !----------------------------------------------------------------------- 
     ! 
     ! Purpose: 
@@ -974,8 +973,6 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out, ele
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
     use check_energy,   only: check_energy_gmean
-    use dyn_comp,       only: dyn_import_t
-    use element_mod,    only: element_t
 
     use physics_buffer,         only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
 #if (defined BFB_CAM_SCAM_IOP )
@@ -1004,7 +1001,6 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out, ele
     type(physics_buffer_desc), pointer, dimension(:,:) :: pbuf2d
     type(cam_in_t),                     dimension(begchunk:endchunk) :: cam_in
     type(cam_out_t),                    dimension(begchunk:endchunk) :: cam_out
-    type(element_t),     intent(inout) :: elem(:)
     !-----------------------------------------------------------------------
     !
     !---------------------------Local workspace-----------------------------
@@ -1080,8 +1076,7 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out, ele
 !$OMP PARALLEL DO PRIVATE (C, phys_buffer_chunk)
 #if defined( SP_ALT_TPHYSBC )
 
-          call tphysbc_sp(ztodt, pbuf2d, landm(:,:), elem,  &
-          ! call tphysbc_sp(ztodt, pbuf2d, landm(:,:),  &
+          call tphysbc_sp(ztodt, pbuf2d, landm(:,:),  &
                         fsns(:,:), fsnt(:,:), flns(:,:), flnt(:,:), fsds(:,:),  &
                         phys_state(:), phys_tend(:), cam_in(:), cam_out(:),     &
                         sgh(:,:), sgh30(:,:), species_class(:) )

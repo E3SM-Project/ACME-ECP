@@ -578,6 +578,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     crm_output%mcdn  (icrm,:) = 0.
     crm_output%mcuup (icrm,:) = 0.
     crm_output%mcudn (icrm,:) = 0.
+    crm_output%ta_mean(icrm,:) = 0.
+    crm_output%qv_mean(icrm,:) = 0.
     crm_output%qc_mean(icrm,:) = 0.
     crm_output%qi_mean(icrm,:) = 0.
     crm_output%qs_mean(icrm,:) = 0.
@@ -1326,6 +1328,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       l = plev-k+1
       do j=1,ny
         do i=1,nx
+          crm_output%ta_mean(icrm,l) = crm_output%ta_mean(icrm,l) + tabs(i,j,k,icrm)
+          crm_output%qv_mean(icrm,l) = crm_output%qv_mean(icrm,l) + qv(i,j,k,icrm)
           crm_output%qc_mean(icrm,l) = crm_output%qc_mean(icrm,l) + qcl(i,j,k,icrm)
           crm_output%qi_mean(icrm,l) = crm_output%qi_mean(icrm,l) + qci(i,j,k,icrm)
           crm_output%qr_mean(icrm,l) = crm_output%qr_mean(icrm,l) + qpl(i,j,k,icrm)
@@ -1359,6 +1363,8 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     crm_output%mcudn (icrm,:) = crm_output%mcudn(icrm,:) * factor_xyt
     crm_output%mctot (icrm,:) = crm_output%mcup(icrm,:) + crm_output%mcdn(icrm,:) + crm_output%mcuup(icrm,:) + crm_output%mcudn(icrm,:)
 
+    crm_output%ta_mean(icrm,:) = crm_output%ta_mean(icrm,:) * factor_xy
+    crm_output%qv_mean(icrm,:) = crm_output%qv_mean(icrm,:) * factor_xy
     crm_output%qc_mean(icrm,:) = crm_output%qc_mean(icrm,:) * factor_xy
     crm_output%qi_mean(icrm,:) = crm_output%qi_mean(icrm,:) * factor_xy
     crm_output%qs_mean(icrm,:) = crm_output%qs_mean(icrm,:) * factor_xy

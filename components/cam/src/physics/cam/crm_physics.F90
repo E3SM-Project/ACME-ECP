@@ -1267,6 +1267,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('SPMCDN  ',crm_output%mcdn   ,pcols ,lchnk )
       call outfld('SPMCUUP ',crm_output%mcuup  ,pcols ,lchnk )
       call outfld('SPMCUDN ',crm_output%mcudn  ,pcols ,lchnk )
+      call outfld('SPTA    ',crm_output%ta_mean   ,pcols ,lchnk )
+      call outfld('SPQV    ',crm_output%qv_mean   ,pcols ,lchnk )
       call outfld('SPQC    ',crm_output%qc_mean   ,pcols ,lchnk )
       call outfld('SPQI    ',crm_output%qi_mean   ,pcols ,lchnk )
       call outfld('SPQS    ',crm_output%qs_mean   ,pcols ,lchnk )

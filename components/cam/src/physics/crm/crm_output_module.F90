@@ -49,6 +49,8 @@ module crm_output_module
       ! do not need to be calculated here, and might make more sense to calculate at the
       ! crm_physics_tend level. For example, I think tendencies should be calculated in
       ! crm_physics_tend, from, for example, something like crm_output%uwind - crm_input%uwind.
+      real(crm_rknd), allocatable :: ta_mean(:,:)  ! mean cloud water
+      real(crm_rknd), allocatable :: qv_mean(:,:)  ! mean cloud water
       real(crm_rknd), allocatable :: qc_mean(:,:)  ! mean cloud water
       real(crm_rknd), allocatable :: qi_mean(:,:)  ! mean cloud ice
       real(crm_rknd), allocatable :: qs_mean(:,:)  ! mean snow
@@ -181,6 +183,8 @@ contains
          ! NOTE: this output had a bug in the previous implementation
          if (.not. allocated(this%cldtop)) allocate(this%cldtop(ncol,nlev))
 
+         if (.not. allocated(this%ta_mean)) allocate(this%ta_mean(ncol,nlev))
+         if (.not. allocated(this%qv_mean)) allocate(this%qv_mean(ncol,nlev))
          if (.not. allocated(this%qc_mean)) allocate(this%qc_mean(ncol,nlev))
          if (.not. allocated(this%qi_mean)) allocate(this%qi_mean(ncol,nlev))
          if (.not. allocated(this%qs_mean)) allocate(this%qs_mean(ncol,nlev))
@@ -292,6 +296,8 @@ contains
       this%precsc = 0
       this%precsl = 0
 
+      this%ta_mean = 0
+      this%qv_mean = 0
       this%qc_mean = 0
       this%qi_mean = 0
       this%qs_mean = 0
@@ -403,6 +409,8 @@ contains
       if (allocated(this%precsc)) deallocate(this%precsc)
       if (allocated(this%precsl)) deallocate(this%precsl)
 
+      if (allocated(this%ta_mean)) deallocate(this%ta_mean)
+      if (allocated(this%qv_mean)) deallocate(this%qv_mean)
       if (allocated(this%qc_mean)) deallocate(this%qc_mean)
       if (allocated(this%qi_mean)) deallocate(this%qi_mean)
       if (allocated(this%qs_mean)) deallocate(this%qs_mean)
