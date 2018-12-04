@@ -401,7 +401,7 @@ for mct, etc.
     <!--  -target=linux   => Specifies the target architecture to Compute Node Linux (CNL only) -->
     <!--  -fast           => Chooses generally optimal flags for the target platform -->
     <!--  -Mnovect        => Disables automatic vector pipelining -->
-    <!--  -Mvect=nosse    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
+    <!--  -Mvect=nosimd    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
     <!--  -Mflushz        => Set SSE to flush-to-zero mode (underflow) loops where possible  -->
     <!--  -Kieee          => Perform fp ops in strict conformance with the IEEE 754 standard.  -->
     <!--                     Some optimizations disabled, slightly slower, more accurate math.  -->
@@ -423,7 +423,7 @@ for mct, etc.
     <base> -r8 </base>
   </FC_AUTO_R8>
   <FFLAGS>
-    <base> -O2 -Mvect=nosse -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz -ta=nvidia,cc35,cuda9.0,ptxinfo -Minfo=accel </base>
+    <base> -O2 -Mvect=nosimd -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz -ta=nvidia,cc35,cuda9.0,ptxinfo -Minfo=accel </base>
     <append compile_threaded="false"> </append>
     <append compile_threaded="true"> -mp </append>
     <append DEBUG="TRUE"> -O0 -g -Ktrap=fp -Mbounds -Kieee </append>
@@ -480,7 +480,7 @@ for mct, etc.
     <!--  -target=linux   => Specifies the target architecture to Compute Node Linux (CNL only) -->
     <!--  -fast           => Chooses generally optimal flags for the target platform -->
     <!--  -Mnovect        => Disables automatic vector pipelining -->
-    <!--  -Mvect=nosse    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
+    <!--  -Mvect=nosimd    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
     <!--  -Mflushz        => Set SSE to flush-to-zero mode (underflow) loops where possible  -->
     <!--  -Kieee          => Perform fp ops in strict conformance with the IEEE 754 standard.  -->
     <!--                     Some optimizations disabled, slightly slower, more accurate math.  -->
@@ -502,7 +502,7 @@ for mct, etc.
     <base> -r8 </base>
   </FC_AUTO_R8>
   <FFLAGS>
-    <base> -O2 -Mvect=nosse -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
+    <base> -O2 -Mvect=nosimd -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
     <append compile_threaded="false"> </append>
     <append compile_threaded="true"> -mp </append>
     <append DEBUG="TRUE"> -O0 -g -Ktrap=fp -Mbounds -Kieee </append>
@@ -559,7 +559,7 @@ for mct, etc.
     <!--  -target=linux   => Specifies the target architecture to Compute Node Linux (CNL only) -->
     <!--  -fast           => Chooses generally optimal flags for the target platform -->
     <!--  -Mnovect        => Disables automatic vector pipelining -->
-    <!--  -Mvect=nosse    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
+    <!--  -Mvect=nosimd    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
     <!--  -Mflushz        => Set SSE to flush-to-zero mode (underflow) loops where possible  -->
     <!--  -Kieee          => Perform fp ops in strict conformance with the IEEE 754 standard.  -->
     <!--                     Some optimizations disabled, slightly slower, more accurate math.  -->

@@ -2975,16 +2975,16 @@
 	 <COMPILERS>ibm,pgi,pgiacc,gnu</COMPILERS>
 	 <MPILIBS>spectrum-mpi,mpi-serial</MPILIBS>
 	 <!-- <CIME_OUTPUT_ROOT>$ENV{HOME}/e3sm_scratch/$PROJECT</CIME_OUTPUT_ROOT> -->
-	 <CIME_OUTPUT_ROOT>/gpfs/alpinetds/scratch/$ENV{USER}/$PROJECT/e3sm_scratch</CIME_OUTPUT_ROOT>
-	 <RUNDIR>/gpfs/alpinetds/scratch/$ENV{USER}/$PROJECT/e3sm/$CASE/run</RUNDIR>
+	 <CIME_OUTPUT_ROOT>/gpfs/alpine/scratch/$ENV{USER}/$PROJECT/e3sm_scratch</CIME_OUTPUT_ROOT>
+	 <RUNDIR>/gpfs/alpine/scratch/$ENV{USER}/$PROJECT/e3sm/$CASE/run</RUNDIR>
 	 <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
-	 <DIN_LOC_ROOT>/gpfs/alpinetds/world-shared/csc190/e3sm/cesm/inputdata</DIN_LOC_ROOT>
-	 <DIN_LOC_ROOT_CLMFORC>/gpfs/alpinetds/world-shared/csc190/e3sm/cesm/inputdata/atm/datm7</DIN_LOC_ROOT_CLMFORC>
-	 <DOUT_S_ROOT>/gpfs/alpinetds/scratch/$ENV{USER}/$PROJECT/e3sm/archive/$CASE</DOUT_S_ROOT>
+	 <DIN_LOC_ROOT>/gpfs/alpine/world-shared/csc190/e3sm/cesm/inputdata</DIN_LOC_ROOT>
+	 <DIN_LOC_ROOT_CLMFORC>/gpfs/alpine/world-shared/csc190/e3sm/cesm/inputdata/atm/datm7</DIN_LOC_ROOT_CLMFORC>
+	 <DOUT_S_ROOT>/gpfs/alpine/scratch/$ENV{USER}/$PROJECT/e3sm/archive/$CASE</DOUT_S_ROOT>
 	 <DOUT_L_MSROOT>csm/$CASE</DOUT_L_MSROOT>
-	 <BASELINE_ROOT>/gpfs/alpinetds/world-shared/csc190/e3sm/cesm/baselines/$COMPILER</BASELINE_ROOT>
-	 <CCSM_CPRNC>/gpfs/alpinetds/world-shared/csc190/e3sm/cesm/tools/cprnc/cprnc</CCSM_CPRNC>
-	 <SAVE_TIMING_DIR>/gpfs/alpinetds/proj-shared/$PROJECT/e3sm</SAVE_TIMING_DIR>
+	 <BASELINE_ROOT>/gpfs/alpine/world-shared/csc190/e3sm/cesm/baselines/$COMPILER</BASELINE_ROOT>
+	 <CCSM_CPRNC>/gpfs/alpine/world-shared/csc190/e3sm/cesm/tools/cprnc/cprnc</CCSM_CPRNC>
+	 <SAVE_TIMING_DIR>/gpfs/alpine/proj-shared/$PROJECT/e3sm</SAVE_TIMING_DIR>
      <SAVE_TIMING_DIR_PROJECTS>cli115,csc190</SAVE_TIMING_DIR_PROJECTS>
 	 <OS>LINUX</OS>
 	 <BATCH_SYSTEM>lsf</BATCH_SYSTEM>
@@ -3000,7 +3000,7 @@
 
 	 <mpirun mpilib="spectrum-mpi">
 	 <!-- Use a helper script to tweak jsrun options -->
-	 <executable>/gpfs/alpinetds/world-shared/csc190/e3sm/mpirun.summit</executable>
+	 <executable>/gpfs/alpine/world-shared/csc190/e3sm/mpirun.summit</executable>
 	 <!-- <executable>jsrun</executable> -->
 	 <arguments>
 	     <arg name="num_tasks" > -n {{ total_tasks }} -N $MAX_MPITASKS_PER_NODE </arg>
