@@ -36,13 +36,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbshear  ! TKE production by shear
   real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbbuoy   ! TKE production by buoyancy
 
-  !real(crm_rknd), intent(out) :: tke( dimx1_s:dimx2_s , dimy1_s:dimy2_s , nzm , ncrms)   ! SGS TKE
-  !real(crm_rknd), intent(out) :: tk ( dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm , ncrms)   ! SGS eddy viscosity
-  !real(crm_rknd), intent(out) :: tkh( dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm , ncrms)   ! SGS eddy conductivity
-
-  real(crm_rknd), intent(out), pointer :: tke(:,:,:,:)   ! SGS TKE
-  real(crm_rknd), intent(out), pointer :: tk (:,:,:,:)   ! SGS eddy viscosity
-  real(crm_rknd), intent(out), pointer :: tkh(:,:,:,:)   ! SGS eddy conductivity
+  real(crm_rknd), intent(out) :: tke( dimx1_s:dimx2_s , dimy1_s:dimy2_s , nzm , ncrms)   ! SGS TKE
+  real(crm_rknd), intent(out) :: tk ( dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm , ncrms)   ! SGS eddy viscosity
+  real(crm_rknd), intent(out) :: tkh( dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm , ncrms)   ! SGS eddy conductivity
 
   !-----------------------------------------------------------------------
   !!! Local Variables

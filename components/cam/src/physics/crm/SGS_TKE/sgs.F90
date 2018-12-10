@@ -392,7 +392,7 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
-    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk(dimx1_d,dimy1_d,1,1))
 
   end subroutine sgs_mom
 
@@ -476,7 +476,7 @@ subroutine sgs_proc(ncrms)
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
-                          tke, tk, tkh)
+                          tke(dimx1_s,dimy1_s,1,1), tk(dimx1_d,dimy1_d,1,1), tkh(dimx1_d,dimy1_d,1,1))
 
   !$acc parallel loop collapse(4) async(1)
   do icrm = 1 , ncrms

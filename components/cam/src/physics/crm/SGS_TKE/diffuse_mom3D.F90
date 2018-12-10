@@ -25,6 +25,8 @@ contains
     real(crm_rknd) :: fv(0:nx,0:ny,nz,ncrms)
     real(crm_rknd) :: fw(0:nx,0:ny,nz,ncrms)
 
+    !$acc enter data create(fu,fv,fw) async(1)
+
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
     rdx25=0.25*rdx2
@@ -32,6 +34,7 @@ contains
     dxy=dx/dy
     dyx=dy/dx
 
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -53,6 +56,7 @@ contains
         enddo
       enddo
     enddo
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -67,6 +71,7 @@ contains
       enddo
     enddo
 
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=0,ny
@@ -88,6 +93,7 @@ contains
         enddo
       enddo
     enddo
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -102,6 +108,7 @@ contains
       enddo
     enddo
 
+    !$acc parallel loop collapse(2) async(1)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         uwsb(k,icrm)=0.
@@ -110,6 +117,7 @@ contains
     enddo
 
     !-------------------------
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm-1
         do j=1,ny
@@ -130,13 +138,16 @@ contains
             fu(i,j,kc,icrm)=-tkz*( (u(i,j,kc,icrm)-u(i,j,k,icrm))*iadzw + (w(i,j,kc,icrm)-w(ib,j,kc,icrm))*dzx)*rhow(kc,icrm)
             tkz=rdz25*(tk(i,j,k,icrm)+tk(i,jb,k,icrm)+tk(i,j,kc,icrm)+tk(i,jb,kc,icrm))
             fv(i,j,kc,icrm)=-tkz*( (v(i,j,kc,icrm)-v(i,j,k,icrm))*iadzw + (w(i,j,kc,icrm)-w(i,jb,kc,icrm))*dzy)*rhow(kc,icrm)
+            !$acc atomic update
             uwsb(kc,icrm)=uwsb(kc,icrm)+fu(i,j,kc,icrm)
+            !$acc atomic update
             vwsb(kc,icrm)=vwsb(kc,icrm)+fv(i,j,kc,icrm)
           enddo
         enddo
       enddo
     enddo
 
+    !$acc parallel loop collapse(3) async(1)
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
@@ -148,12 +159,15 @@ contains
           fv(i,j,1,icrm)=fluxbv(i,j,icrm) * rdz * rhow(1,icrm)
           fu(i,j,nz,icrm)=fluxtu(i,j,icrm) * rdz * rhow(nz,icrm)
           fv(i,j,nz,icrm)=fluxtv(i,j,icrm) * rdz * rhow(nz,icrm)
+          !$acc atomic update
           uwsb(1,icrm) = uwsb(1,icrm) + fu(i,j,1,icrm)
+          !$acc atomic update
           vwsb(1,icrm) = vwsb(1,icrm) + fv(i,j,1,icrm)
         enddo
       enddo
     enddo
 
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -167,6 +181,7 @@ contains
       enddo ! k
     enddo
 
+    !$acc parallel loop collapse(4) async(1)
     do icrm = 1 , ncrms
       do k=2,nzm
         do j=1,ny
@@ -177,6 +192,8 @@ contains
         enddo
       enddo ! k
     enddo
+
+    !$acc exit data delete(fu,fv,fw) async(1)
 
   end subroutine diffuse_mom3D
 
