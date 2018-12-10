@@ -316,7 +316,11 @@ elemental function estblf(t) result(es)
   t_tmp = max(min(t,tmax)-tmin, 0._r8)   ! Number of table entries above tmin
   i = int(t_tmp) + 1                     ! Corresponding index.
   weight = t_tmp - aint(t_tmp, r8)       ! Fractional part of t_tmp (for interpolation).
-  es = (1._r8 - weight)*estbl(i) + weight*estbl(i+1)
+  if (i >= 1 .and. i <= plenest) then
+    es = (1._r8 - weight)*estbl(i) + weight*estbl(i+1)
+  else
+    es = 0
+  endif
 
 end function estblf
 

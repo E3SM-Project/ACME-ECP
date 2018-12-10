@@ -74,11 +74,11 @@ contains
     !  Compute the r.h.s. of the Poisson equation for pressure
     call press_rhs(ncrms)
 
+    !-----------------------------------------------------------------
+    !   Form the horizontal slabs of right-hand-sides of Poisson equation
+    !   for the global domain. Request sending and receiving tasks.
+    n = rank*nzslab
     do icrm = 1 , ncrms
-      !-----------------------------------------------------------------
-      !   Form the horizontal slabs of right-hand-sides of Poisson equation
-      !   for the global domain. Request sending and receiving tasks.
-      n = rank*nzslab
       do k = 1,nzslab
         do j = 1,ny
           do i = 1,nx
@@ -86,23 +86,29 @@ contains
           enddo
         enddo
       enddo
+    enddo
 
-      !-------------------------------------------------
-      ! Perform Fourier transformation for a slab:
-      if(rank.lt.npressureslabs) then
+    !-------------------------------------------------
+    ! Perform Fourier transformation for a slab:
+    if(rank.lt.npressureslabs) then
+      do icrm = 1 , ncrms
         call fftfax_crm(nx_gl,ifaxi,trigxi)
         if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
+      enddo
+      do icrm = 1 , ncrms
         do k=1,nzslab
           call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
           if(RUN3D) then
             call fft991_crm(f(1,1,k,icrm),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
           endif
         enddo
-      endif
+      enddo
+    endif
 
-      !-------------------------------------------------
-      !   Send Fourier coeffiecients back to subdomains:
-      n = rank*nzslab
+    !-------------------------------------------------
+    !   Send Fourier coeffiecients back to subdomains:
+    n = rank*nzslab
+    do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,nyp22-jwall
           do i = 1,nxp1-iwall
@@ -110,30 +116,34 @@ contains
           enddo
         enddo
       enddo
+    enddo
 
       !-------------------------------------------------
       !   Solve the tri-diagonal system for Fourier coeffiecients
       !   in the vertical for each subdomain:
+    do icrm = 1 , ncrms
       do k=1,nzm
         a(k,icrm)=rhow(k,icrm)/(adz(k,icrm)*adzw(k,icrm)*dz(icrm)*dz(icrm))
         c(k,icrm)=rhow(k+1,icrm)/(adz(k,icrm)*adzw(k+1,icrm)*dz(icrm)*dz(icrm))
       enddo
+    enddo
 
-      ddx2=1._8/(dx*dx)
-      ddy2=1._8/(dy*dy)
-      pii = acos(-1._8)
-      xnx=pii/nx_gl
-      xny=pii/ny_gl
+    do icrm = 1 , ncrms
       do j=1,nyp22-jwall
-        if(dowally) then
-          jd=j+jt-1
-          facty = 1.d0
-        else
-          jd=(j+jt-0.1)/2.
-          facty = 2.d0
-        endif
-        xj=jd
         do i=1,nxp1-iwall
+          ddx2=1._8/(dx*dx)
+          ddy2=1._8/(dy*dy)
+          pii = acos(-1._8)
+          xnx=pii/nx_gl
+          xny=pii/ny_gl
+          if(dowally) then
+            jd=j+jt-1
+            facty = 1.d0
+          else
+            jd=(j+jt-0.1)/2.
+            facty = 2.d0
+          endif
+          xj=jd
           if(dowallx) then
             id=i+it-1
             factx = 1.d0
@@ -165,11 +175,13 @@ contains
           ff(i,j,1:nzm,icrm) = fff(1:nzm)
         enddo
       enddo
+    enddo
 
-      !-----------------------------------------------------------------
-      !   Send the Fourier coefficient to the tasks performing
-      !   the inverse Fourier transformation:
-      n = rank*nzslab
+    !-----------------------------------------------------------------
+    !   Send the Fourier coefficient to the tasks performing
+    !   the inverse Fourier transformation:
+    n = rank*nzslab
+    do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,nyp22-jwall
           do i = 1,nxp1-iwall
@@ -177,30 +189,34 @@ contains
           enddo
         enddo
       enddo
+    enddo
 
-      !-------------------------------------------------
-      !   Perform inverse Fourier transformation:
-      if(rank.lt.npressureslabs) then
+    !-------------------------------------------------
+    !   Perform inverse Fourier transformation:
+    if(rank.lt.npressureslabs) then
+      do icrm = 1 , ncrms
         do k=1,nzslab
           if(RUN3D) then
             call fft991_crm(f(1,1,k,icrm),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
           endif
           call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
         enddo
-      endif
-
-      !-----------------------------------------------------------------
-      !   Fill the pressure field for each subdomain:
-      do i=1,nx_gl
-        iii(i)=i
       enddo
-      iii(0)=nx_gl
-      do j=1,ny_gl
-        jjj(j)=j
-      enddo
-      jjj(0)=ny_gl
+    endif
 
-      n = rank*nzslab
+    !-----------------------------------------------------------------
+    !   Fill the pressure field for each subdomain:
+    do i=1,nx_gl
+      iii(i)=i
+    enddo
+    iii(0)=nx_gl
+    do j=1,ny_gl
+      jjj(j)=j
+    enddo
+    jjj(0)=ny_gl
+
+    n = rank*nzslab
+    do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1-YES3D,ny
           jj=jjj(j+jt)
@@ -210,7 +226,6 @@ contains
           enddo
         enddo
       enddo
-
     enddo
 
     !  Add pressure gradient term to the rhs of the momentum equation:
