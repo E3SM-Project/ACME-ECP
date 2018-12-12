@@ -35,6 +35,8 @@ contains
     integer iii(0:nx_gl),jjj(0:ny_gl)
     integer iwall,jwall
 
+    !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(1)
+
     ! check if the grid size allows the computation:
     if(nsubdomains.gt.nzm) then
       if(masterproc) print*,'pressure_orig: nzm < nsubdomains. STOP'
@@ -78,11 +80,12 @@ contains
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
     !   for the global domain. Request sending and receiving tasks.
     n = rank*nzslab
+    !$acc parallel loop collapse(4) copyin(p) copyout(f) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,ny
           do i = 1,nx
-            f(i+it,j+jt,k,icrm) = p(i,j,k+n,icrm)
+            f(i,j,k,icrm) = p(i,j,k,icrm)
           enddo
         enddo
       enddo
@@ -91,10 +94,12 @@ contains
     !-------------------------------------------------
     ! Perform Fourier transformation for a slab:
     if(rank.lt.npressureslabs) then
-      do icrm = 1 , ncrms
+      !$acc parallel loop copyout(ifaxi,trigxi,ifaxj,trigxj) async(1)
+      do icrm = 1 , 1
         call fftfax_crm(nx_gl,ifaxi,trigxi)
         if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
       enddo
+      !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(1)
       do icrm = 1 , ncrms
         do k=1,nzslab
           call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
@@ -107,20 +112,21 @@ contains
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
-    n = rank*nzslab
+    !$acc parallel loop collapse(4) copyin(f) copyout(ff) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,nyp22-jwall
           do i = 1,nxp1-iwall
-            ff(i,j,k+n,icrm) = f(i+it,j+jt,k,icrm)
+            ff(i,j,k,icrm) = f(i,j,k,icrm)
           enddo
         enddo
       enddo
     enddo
 
-      !-------------------------------------------------
-      !   Solve the tri-diagonal system for Fourier coeffiecients
-      !   in the vertical for each subdomain:
+    !-------------------------------------------------
+    !   Solve the tri-diagonal system for Fourier coeffiecients
+    !   in the vertical for each subdomain:
+    !$acc parallel loop collapse(2) copyin(adz,adzw,dz,rhow) copyout(a,c) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         a(k,icrm)=rhow(k,icrm)/(adz(k,icrm)*adzw(k,icrm)*dz(icrm)*dz(icrm))
@@ -128,6 +134,7 @@ contains
       enddo
     enddo
 
+    !$acc parallel loop collapse(3) private(fff,alfa,beta) copyin(a,c,rho) copy(ff) async(1)
     do icrm = 1 , ncrms
       do j=1,nyp22-jwall
         do i=1,nxp1-iwall
@@ -181,11 +188,12 @@ contains
     !   Send the Fourier coefficient to the tasks performing
     !   the inverse Fourier transformation:
     n = rank*nzslab
+    !$acc parallel loop collapse(4) copyin(ff) copyout(f) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,nyp22-jwall
           do i = 1,nxp1-iwall
-            f(i+it,j+jt,k,icrm) = ff(i,j,k+n,icrm)
+            f(i,j,k,icrm) = ff(i,j,k,icrm)
           enddo
         enddo
       enddo
@@ -194,6 +202,7 @@ contains
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
     if(rank.lt.npressureslabs) then
+      !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(1)
       do icrm = 1 , ncrms
         do k=1,nzslab
           if(RUN3D) then
@@ -206,23 +215,27 @@ contains
 
     !-----------------------------------------------------------------
     !   Fill the pressure field for each subdomain:
-    do i=1,nx_gl
-      iii(i)=i
+    !$acc parallel loop copyout(iii,jjj) async(1)
+    do icrm = 1,1
+      do i=1,nx_gl
+        iii(i)=i
+      enddo
+      iii(0)=nx_gl
+      do j=1,ny_gl
+        jjj(j)=j
+      enddo
+      jjj(0)=ny_gl
     enddo
-    iii(0)=nx_gl
-    do j=1,ny_gl
-      jjj(j)=j
-    enddo
-    jjj(0)=ny_gl
 
     n = rank*nzslab
+    !$acc parallel loop collapse(4) copyin(iii,jjj,f) copyout(p) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1-YES3D,ny
-          jj=jjj(j+jt)
           do i = 0,nx
-            ii=iii(i+it)
-            p(i,j,k+n,icrm) = f(ii,jj,k,icrm)
+            jj=jjj(j)
+            ii=iii(i)
+            p(i,j,k,icrm) = f(ii,jj,k,icrm)
           enddo
         enddo
       enddo
@@ -230,6 +243,8 @@ contains
 
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
+
+    !$acc exit data delete(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(1)
 
   end subroutine pressure
 

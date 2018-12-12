@@ -11,6 +11,7 @@ contains
     integer, intent(in) :: ncrms
     integer i,j,k,icrm
 
+    !$acc parallel loop collapse(3) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -21,6 +22,7 @@ contains
 
     if(RUN3D) then
 
+      !$acc parallel loop collapse(3) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -30,6 +32,8 @@ contains
       end do
 
     endif
+
+    !$acc wait(1)
 
   end subroutine bound_duvdt
 

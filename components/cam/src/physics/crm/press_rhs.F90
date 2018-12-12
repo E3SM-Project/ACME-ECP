@@ -15,6 +15,7 @@ contains
     integer i,j,k,ic,jc,kc, icrm
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
+      !$acc parallel loop collapse(3) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -25,6 +26,7 @@ contains
     end if
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
+      !$acc parallel loop collapse(3) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -43,6 +45,7 @@ contains
 
     if(RUN3D) then
 
+      !$acc parallel loop collapse(4) async(1) copyout(p)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -75,6 +78,7 @@ contains
     else
 
       j=1
+      !$acc parallel loop collapse(3) async(1) copyout(p)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx

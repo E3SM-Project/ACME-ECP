@@ -17,6 +17,7 @@ contains
     rdx=1./dx
     rdy=1./dy
 
+    !$acc parallel loop collapse(4) copyin(p) copy(dudt,dvdt,dwdt) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -33,6 +34,7 @@ contains
       end do ! k
     enddo
 
+    !$acc parallel loop collapse(4) copy(p) copyin(rho) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
@@ -45,6 +47,7 @@ contains
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
+      !$acc parallel loop collapse(3) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -57,6 +60,7 @@ contains
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
+      !$acc parallel loop collapse(3) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
