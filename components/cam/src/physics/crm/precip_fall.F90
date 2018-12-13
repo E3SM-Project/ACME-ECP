@@ -28,18 +28,16 @@ contains
     real(crm_rknd) :: lat_heat, wmax
     real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nx,ny,nzm,ncrms), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), rhofac(nzm,ncrms), prec_cfl
     integer nprec, iprec
-    real(crm_rknd) :: flagstat
-    real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
+    real(crm_rknd) :: flagstat, tmp
 
     !Statement functions
     pp(y)= max(real(0.,crm_rknd),y)
     pn(y)=-min(real(0.,crm_rknd),y)
 
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
-
     eps = 1.e-10
     nonos = .true.
 
+    !!$acc parallel loop collapse(2)
     do icrm = 1 , ncrms
       do k = 1,nzm
         rhofac(k,icrm) = sqrt(1.29/rho(k,icrm))
@@ -52,6 +50,7 @@ contains
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
     prec_cfl = 0.
+    !!$acc parallel loop collapse(4)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -76,7 +75,9 @@ contains
               endif
             end select
             wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel(ncrms,icrm,i,j,k,ind)
-            prec_cfl = max(prec_cfl,wp(i,j,k,icrm)*iwmax(k,icrm)) ! Keep column maximum CFL
+            tmp = wp(i,j,k,icrm)*iwmax(k,icrm)
+            !!$acc atomic update
+            prec_cfl = max(prec_cfl,tmp) ! Keep column maximum CFL
             wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)
             if (k == 1) then
               fz(i,j,nz,icrm)=0.
@@ -92,6 +93,7 @@ contains
     ! take more than one advection step to maintain stability.
     if (prec_cfl.gt.0.9) then
       nprec = CEILING(prec_cfl/0.9)
+      !!$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j=1,ny
@@ -109,16 +111,18 @@ contains
 
     !  loop over iterations
     do iprec = 1,nprec
+      !!$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j=1,ny
             do i=1,nx
-              tmp_qp(i,j,k,icrm) = qp(i,j,k,icrm) ! Temporary array for qp in this column
+              tmp_qp(i,j,k,icrm) = micro_field(i,j,k,2,icrm) ! Temporary array for qp in this column
             enddo
           enddo
         enddo
       enddo
 
+      !!$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -136,6 +140,7 @@ contains
         enddo
       enddo
 
+      !!$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -147,6 +152,7 @@ contains
         enddo
       enddo
 
+      !!$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -167,6 +173,7 @@ contains
 
       !---------- non-osscilatory option ---------------
       if(nonos) then
+        !!$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
@@ -182,6 +189,7 @@ contains
             enddo
           enddo
         enddo
+        !!$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
@@ -197,6 +205,7 @@ contains
 
       ! Update precipitation mass fraction and liquid-ice static
       ! energy using precipitation fluxes computed in this column.
+      !!$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do j=1,ny
           do i=1,nx
@@ -205,12 +214,15 @@ contains
               ! Update precipitation mass fraction.
               ! Note that fz is the total flux, including both the
               ! upwind flux and the anti-diffusive correction.
-              qp(i,j,k,icrm)=qp(i,j,k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)
+              micro_field(i,j,k,2,icrm)=micro_field(i,j,k,2,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)
               qpfall(k,icrm)=qpfall(k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)*flagstat  ! For qp budget
               lat_heat = -(lfac(i,j,kc,icrm)*fz(i,j,kc,icrm)-lfac(i,j,k,icrm)*fz(i,j,k,icrm))*irhoadz(k,icrm)
               t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat
+              !!$acc atomic update
               tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
-              precflux(k,icrm) = precflux(k,icrm) - fz(i,j,k,icrm)*flagstat   ! For statistics
+              tmp = fz(i,j,k,icrm)*flagstat
+              !!$acc atomic update
+              precflux(k,icrm) = precflux(k,icrm) - tmp   ! For statistics
               if (k == 1) then
                 precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For statistics
                 precssfc(i,j,icrm) = precssfc(i,j,icrm) - fz(i,j,1,icrm)*(1.-omega(i,j,1,icrm))*flagstat ! For statistics
@@ -223,6 +235,7 @@ contains
 
       if (iprec.lt.nprec) then
         ! Re-compute precipitation velocity using new value of qp.
+        !!$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do j=1,ny
             do i=1,nx
