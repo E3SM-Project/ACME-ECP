@@ -98,15 +98,13 @@ contains
 
     !   Precipitation fallout:
     if(doprecip) then
-      !!$acc parallel loop
-      do icrm = 1 , ncrms
-        total_water_prec(icrm) = total_water_prec(icrm) + total_water(ncrms,icrm)
-      enddo
+      !do icrm = 1 , ncrms
+      !  total_water_prec(icrm) = total_water_prec(icrm) + total_water(ncrms,icrm)
+      !enddo
       call micro_precip_fall(ncrms)
-      !!$acc parallel loop
-      do icrm = 1 , ncrms
-        total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
-      enddo
+      !do icrm = 1 , ncrms
+      !  total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
+      !enddo
     end if
 
     ! advection of tracers:
