@@ -38,8 +38,6 @@ contains
 
     j=1
 
-    !$acc enter data copyin(f,u,w,rho,rhow,flux) async(1)
-
     !$acc enter data create(mx,mn,uuu,www,iadz,irho,irhow) async(1)
 
     !$acc parallel loop collapse(2) copy(www) async(1)
@@ -209,10 +207,7 @@ contains
       enddo
     enddo
 
-    !$acc exit data copyout(mx,mn,uuu,www,iadz,irho,irhow) async(1)
-
-    !$acc exit data copyout(f,u,w,rho,rhow,flux) async(1)
-    !$acc wait(1)
+    !$acc exit data delete(mx,mn,uuu,www,iadz,irho,irhow) async(1)
 
   end subroutine advect_scalar2D
 
