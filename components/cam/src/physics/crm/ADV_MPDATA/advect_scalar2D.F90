@@ -102,15 +102,14 @@ contains
       enddo
     enddo
 
-    !$acc exit data copyout(mx,mn,uuu,www,iadz,irho,irhow) async(1)
-
-    !$acc exit data copyout(f,u,w,rho,rhow,flux) async(1)
-    !$acc wait(1)
-
+    !$acc parallel loop collapse(3) copyin(rho,adz,rhow,uuu,www) copy(irho,iadz,irhow,f,flux) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=-1,nxp2
-          if (i >= 1 .and. i <= nx) flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
+          if (i >= 1 .and. i <= nx) then
+            !$acc atomic update
+            flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
+          endif
           if (i == -1) then
             irho(k,icrm) = 1./rho(k,icrm)
             iadz(k,icrm) = 1./adz(k,icrm)
@@ -121,6 +120,12 @@ contains
       enddo
     enddo
 
+    !$acc exit data copyout(mx,mn,uuu,www,iadz,irho,irhow) async(1)
+
+    !$acc exit data copyout(f,u,w,rho,rhow,flux) async(1)
+    !$acc wait(1)
+
+    !!$acc parallel loop collapse(3) copyin(adz,f,u,irho,w,irhow) copy(uuu,www) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=0,nxp2
@@ -140,6 +145,7 @@ contains
         enddo
       enddo
     enddo
+    !!$acc parallel loop collapse(2) copy(www) async(1)
     do icrm = 1 , ncrms
       do i = -1 , nxp2
         www(i,j,1,icrm) = 0.
@@ -148,6 +154,7 @@ contains
     !---------- non-osscilatory option ---------------
 
     if (nonos) then
+      !!$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nxp1
@@ -161,6 +168,7 @@ contains
         enddo
       enddo
 
+      !!$acc parallel loop collapse(3) copyin(f,rho,uuu,www,iadz) copy(mx,mn) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nxp1
@@ -172,6 +180,7 @@ contains
         enddo
       enddo
 
+      !!$acc parallel loop collapse(3) copyin(mx,mn) copy(uuu,www,flux) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nxp1
@@ -180,6 +189,7 @@ contains
             if (i <= nx) then
               kb=max(1,k-1)
               www(i,j,k,icrm)= pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) - pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm))
+              !$acc atomic update
               flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
             endif
           enddo
@@ -187,6 +197,7 @@ contains
       enddo
     endif ! nonos
 
+    !!$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
