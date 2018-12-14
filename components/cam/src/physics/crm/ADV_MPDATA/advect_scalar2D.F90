@@ -15,6 +15,7 @@ contains
     real(crm_rknd) rho(nzm,ncrms)
     real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz,ncrms)
+
     real(crm_rknd) mx (0:nxp1 ,1,nzm,ncrms)
     real(crm_rknd) mn (0:nxp1 ,1,nzm,ncrms)
     real(crm_rknd) uuu(-1:nxp3,1,nzm,ncrms)
@@ -37,6 +38,11 @@ contains
 
     j=1
 
+    !$acc enter data copyin(f,u,w,rho,rhow,flux) async(1)
+
+    !$acc enter data create(mx,mn,uuu,www,iadz,irho,irhow) async(1)
+
+    !$acc parallel loop collapse(2) copy(www) async(1)
     do icrm = 1 , ncrms
       do i = -1 , nxp2
         www(i,j,nz,icrm)=0.
@@ -45,6 +51,7 @@ contains
 
     if (dowallx) then
       if (mod(rank,nsubdomains_x).eq.0) then
+        !$acc parallel loop collapse(3) copy(u) async(1)
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=dimx1_u,1
@@ -54,6 +61,7 @@ contains
         enddo
       endif
       if (mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+        !$acc parallel loop collapse(3) copy(u) async(1)
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=nx+1,dimx2_u
@@ -67,6 +75,7 @@ contains
     !-----------------------------------------
 
     if (nonos) then
+      !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nxp1
@@ -81,6 +90,7 @@ contains
       enddo
     endif  ! nonos
 
+    !$acc parallel loop collapse(3) copyin(u,f,w) copy(uuu,www,flux) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=-1,nxp3
@@ -91,6 +101,11 @@ contains
         enddo
       enddo
     enddo
+
+    !$acc exit data copyout(mx,mn,uuu,www,iadz,irho,irhow) async(1)
+
+    !$acc exit data copyout(f,u,w,rho,rhow,flux) async(1)
+    !$acc wait(1)
 
     do icrm = 1 , ncrms
       do k=1,nzm
