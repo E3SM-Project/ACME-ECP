@@ -101,8 +101,15 @@ contains
         enddo
       enddo
     enddo
-
-    !$acc parallel loop collapse(3) copyin(rho,adz,rhow,uuu,www) copy(irho,iadz,irhow,f,flux) async(1)
+    !$acc parallel loop collapse(2) copyin(rho,adz,rhow) copy(irho,iadz,irhow) async(1)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        irho(k,icrm) = 1./rho(k,icrm)
+        iadz(k,icrm) = 1./adz(k,icrm)
+        irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
+      enddo
+    enddo
+    !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f,flux) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=-1,nxp2
@@ -110,22 +117,12 @@ contains
             !$acc atomic update
             flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
           endif
-          if (i == -1) then
-            irho(k,icrm) = 1./rho(k,icrm)
-            iadz(k,icrm) = 1./adz(k,icrm)
-            irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
-          endif
           f(i,j,k,icrm) = f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)  + (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm)
         enddo
       enddo
     enddo
 
-    !$acc exit data copyout(mx,mn,uuu,www,iadz,irho,irhow) async(1)
-
-    !$acc exit data copyout(f,u,w,rho,rhow,flux) async(1)
-    !$acc wait(1)
-
-    !!$acc parallel loop collapse(3) copyin(adz,f,u,irho,w,irhow) copy(uuu,www) async(1)
+    !$acc parallel loop collapse(3) copyin(adz,f,u,irho,w,irhow) copy(uuu,www) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=0,nxp2
@@ -145,7 +142,8 @@ contains
         enddo
       enddo
     enddo
-    !!$acc parallel loop collapse(2) copy(www) async(1)
+
+    !$acc parallel loop collapse(2) copy(www) async(1)
     do icrm = 1 , ncrms
       do i = -1 , nxp2
         www(i,j,1,icrm) = 0.
@@ -154,7 +152,7 @@ contains
     !---------- non-osscilatory option ---------------
 
     if (nonos) then
-      !!$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(1)
+      !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nxp1
@@ -168,7 +166,7 @@ contains
         enddo
       enddo
 
-      !!$acc parallel loop collapse(3) copyin(f,rho,uuu,www,iadz) copy(mx,mn) async(1)
+      !$acc parallel loop collapse(3) copyin(f,rho,uuu,www,iadz) copy(mx,mn) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nxp1
@@ -180,7 +178,7 @@ contains
         enddo
       enddo
 
-      !!$acc parallel loop collapse(3) copyin(mx,mn) copy(uuu,www,flux) async(1)
+      !$acc parallel loop collapse(3) copyin(mx,mn) copy(uuu,www,flux) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nxp1
@@ -197,7 +195,7 @@ contains
       enddo
     endif ! nonos
 
-    !!$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f) async(1)
+    !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
@@ -210,6 +208,11 @@ contains
         enddo
       enddo
     enddo
+
+    !$acc exit data copyout(mx,mn,uuu,www,iadz,irho,irhow) async(1)
+
+    !$acc exit data copyout(f,u,w,rho,rhow,flux) async(1)
+    !$acc wait(1)
 
   end subroutine advect_scalar2D
 
