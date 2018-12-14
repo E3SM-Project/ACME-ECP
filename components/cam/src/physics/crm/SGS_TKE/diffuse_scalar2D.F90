@@ -31,12 +31,22 @@ contains
     rdx2=1./(dx*dx)
     j=1
 
+    !$acc enter data copyin(flx,dfdt) async(1)
+
+    !$acc parallel loop collapse(4) copy(dfdt) async(1)
     do icrm = 1 , ncrms
-      dfdt(:,:,:,icrm)=0.
+      do k = 1 , nzm
+        do j = 1 , ny
+          do i = 1 , nx
+            dfdt(i,j,k,icrm)=0.
+          enddo
+        enddo
+      enddo
     enddo
 
     if(dowallx) then
       if(mod(rank,nsubdomains_x).eq.0) then
+        !$acc parallel loop collapse(2) copy(field) async(1)
         do icrm = 1 , ncrms
           do k=1,nzm
             field(0,j,k,icrm) = field(1,j,k,icrm)
@@ -44,6 +54,7 @@ contains
         enddo
       endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+        !$acc parallel loop collapse(2) copy(field) async(1)
         do icrm = 1 , ncrms
           do k=1,nzm
             field(nx+1,j,k,icrm) = field(nx,j,k,icrm)
@@ -53,6 +64,7 @@ contains
     endif
 
     if(.not.docolumn) then
+      !$acc parallel loop collapse(3) copyin(grdf_x,tkh,field) copy(flx) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nx
@@ -63,6 +75,7 @@ contains
           enddo
         enddo
       enddo
+      !$acc parallel loop collapse(3) copyin(flx) copy(dfdt) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -73,12 +86,14 @@ contains
       enddo
     endif
 
+    !$acc parallel loop collapse(2) copy(flux) async(1)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         flux(k,icrm) = 0.
       enddo
     enddo
 
+    !$acc parallel loop collapse(3) copyin(rhow,adzw,dz,grdf_z,tkh,field,flx,fluxb,fluxt) copy(flx,flux) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
@@ -89,18 +104,21 @@ contains
             rdz5=0.5*rdz2 * grdf_z(k,icrm)
             tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
             flx(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
+            !$acc atomic update
             flux(kc,icrm) = flux(kc,icrm) + flx(i,j,k,icrm)
           elseif (k == nzm) then
             tmp=1./adzw(nz,icrm)
             rdz=1./dz(icrm)
             flx(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
             flx(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
+            !$acc atomic update
             flux(1,icrm) = flux(1,icrm) + flx(i,j,0,icrm)
           endif
         enddo
       enddo
     enddo
 
+    !$acc parallel loop collapse(3) copyin(flx,rho,adz) copy(dfdt,field) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
@@ -111,6 +129,9 @@ contains
         enddo
       enddo
     enddo
+
+    !$acc exit data delete(flx,dfdt) async(1)
+    !$acc wait(1)
 
   end subroutine diffuse_scalar2D
 
