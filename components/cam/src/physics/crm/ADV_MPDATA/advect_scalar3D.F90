@@ -38,7 +38,11 @@ contains
     eps = 1.e-10
 
     do icrm = 1 , ncrms
-      www(:,:,nz,icrm)=0.
+      do j = -1 , nyp2
+        do i = -1 , nxp2
+          www(i,j,nz,icrm)=0.
+        enddo
+      enddo
     enddo
 
     if (dowallx) then
@@ -192,7 +196,11 @@ contains
     enddo
 
     do icrm = 1 , ncrms
-      www(:,:,1,icrm) = 0.
+      do j = -1 , nyp2
+        do i = -1 , nxp2
+          www(i,j,1,icrm) = 0.
+        enddo
+      enddo
     enddo
 
     !---------- non-osscilatory option ---------------

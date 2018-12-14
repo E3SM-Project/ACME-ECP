@@ -38,7 +38,9 @@ contains
     j=1
 
     do icrm = 1 , ncrms
-      www(:,:,nz,icrm)=0.
+      do i = -1 , nxp2
+        www(i,j,nz,icrm)=0.
+      enddo
     enddo
 
     if (dowallx) then
@@ -124,7 +126,9 @@ contains
       enddo
     enddo
     do icrm = 1 , ncrms
-      www(:,:,1,icrm) = 0.
+      do i = -1 , nxp2
+        www(i,j,1,icrm) = 0.
+      enddo
     enddo
     !---------- non-osscilatory option ---------------
 

@@ -22,13 +22,21 @@ contains
 
     if(docolumn) then
       do icrm = 1 , ncrms
-        flux(:,icrm) = 0.
+        do k = 1 , nz
+          flux(k,icrm) = 0.
+        enddo
       enddo
       return
     end if
 
     do icrm = 1 , ncrms
-      f0(:,:,:,icrm) = f(:,:,:,icrm)
+      do k = 1 , nzm
+        do j = dimy1_s,dimy2_s
+          do i = dimx1_s,dimx2_s
+            f0(i,j,k,icrm) = f(i,j,k,icrm)
+          enddo
+        enddo
+      enddo
     enddo
 
     if(RUN3D) then
@@ -40,6 +48,10 @@ contains
     do icrm = 1 , ncrms
       do k=1,nzm
         fadv(k,icrm)=0.
+      enddo
+    enddo
+    do icrm = 1 , ncrms
+      do k=1,nzm
         do j=1,ny
           do i=1,nx
             fadv(k,icrm)=fadv(k,icrm)+f(i,j,k,icrm)-f0(i,j,k,icrm)
