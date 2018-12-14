@@ -534,7 +534,7 @@ CONTAINS
     eps = 1.e-10
     nonos = .true.
 
-    !!$acc enter data create(mx,mn,lfac,www,fz,qp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
+    !$acc enter data create(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
 
     !$acc parallel loop collapse(2) copyin(rho,adz,dz) copy(rhofac,irhoadz,iwmax) async(1)
     do icrm = 1 , ncrms
@@ -588,7 +588,7 @@ CONTAINS
       enddo
     enddo
     
-    !!$acc exit data copyout(mx,mn,lfac,www,fz,qp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
+    !$acc exit data copyout(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
     !$acc wait(1)
 
     ! If maximum CFL due to precipitation velocity is greater than 0.9,
