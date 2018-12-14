@@ -19,10 +19,13 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
+
     real(crm_rknd) :: micro_field_tmp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms)
     real(crm_rknd) :: adv_tmp(nz,ncrms)
     real(crm_rknd) :: wle_tmp(nz,ncrms)
     real(crm_rknd) :: esmt_offset(ncrms)    ! whannah - offset for advecting scalar momentum tracers
+
+    !$acc enter data create(micro_field_tmp,adv_tmp,wle_tmp) async(1)
 
     !      advection of scalars :
     call advect_scalar(ncrms,t,tadv,twle)
@@ -37,6 +40,7 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
+        !$acc parallel loop collapse(4) copyin(micro_field) copy(micro_field_tmp) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nzm
             do j = dimy1_s,dimy2_s
@@ -46,6 +50,7 @@ contains
             enddo
           enddo
         enddo
+        !$acc parallel loop collapse(2) copyin(mkadv,mkwle) copy(adv_tmp,wle_tmp) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             adv_tmp(kk,icrm) = mkadv(kk,k,icrm)
@@ -53,6 +58,7 @@ contains
           enddo
         enddo
         call advect_scalar(ncrms,micro_field_tmp,adv_tmp,wle_tmp)
+        !$acc parallel loop collapse(4) copyin(micro_field_tmp) copy(micro_field) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nzm
             do j = dimy1_s,dimy2_s
@@ -62,6 +68,7 @@ contains
             enddo
           enddo
         enddo
+        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(mkadv,mkwle) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             mkadv(kk,k,icrm) = adv_tmp(kk,icrm)
@@ -74,6 +81,7 @@ contains
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
+        !$acc parallel loop collapse(2) copyin(sgsadv,sgswle) copy(adv_tmp,wle_tmp) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             adv_tmp(kk,icrm) = sgsadv(kk,k,icrm)
@@ -81,6 +89,7 @@ contains
           enddo
         enddo
         call advect_scalar(ncrms,sgs_field(:,:,:,:,k),adv_tmp,wle_tmp)
+        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copyout(sgsadv,sgswle) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             sgsadv(kk,k,icrm) = adv_tmp(kk,icrm)
@@ -89,6 +98,9 @@ contains
         enddo
       end do
     end if
+
+    !$acc exit data delete(micro_field_tmp,adv_tmp,wle_tmp) async(1)
+    !$acc wait(1)
 
     !   Precipitation fallout:
     if(doprecip) then

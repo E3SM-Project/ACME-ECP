@@ -21,8 +21,6 @@ contains
     real(crm_rknd) tmp
     integer i,j,k,icrm
 
-    !$acc enter data copyin(f,flux,fadv) async(1)
-
     !$acc enter data create(f0) async(1)
 
     if(docolumn) then
@@ -72,10 +70,6 @@ contains
     enddo
 
     !$acc exit data delete(f0) async(1)
-
-    !$acc exit data copyout(f,flux,fadv) async(1)
-
-    !$acc wait(1)
 
   end subroutine advect_scalar
 
