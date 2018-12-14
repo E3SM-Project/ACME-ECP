@@ -587,14 +587,12 @@ CONTAINS
         enddo
       enddo
     enddo
-    
-    !$acc exit data copyout(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
-    !$acc wait(1)
 
     ! If maximum CFL due to precipitation velocity is greater than 0.9,
     ! take more than one advection step to maintain stability.
     if (prec_cfl.gt.0.9) then
       nprec = CEILING(prec_cfl/0.9)
+      !$acc parallel loop collapse(4) copy(wp) async(1)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j=1,ny
@@ -612,6 +610,7 @@ CONTAINS
 
     !  loop over iterations
     do iprec = 1,nprec
+      !$acc parallel loop collapse(4) copyin(qp) copy(tmp_qp) async(1)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j=1,ny
@@ -622,6 +621,7 @@ CONTAINS
         enddo
       enddo
 
+      !$acc parallel loop collapse(4) copyin(tmp_qp,wp) copy(mn,mx,fz) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -639,6 +639,7 @@ CONTAINS
         enddo
       enddo
 
+      !$acc parallel loop collapse(4) copyin(fz,irhoadz) copy(tmp_qp) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -650,6 +651,7 @@ CONTAINS
         enddo
       enddo
 
+      !$acc parallel loop collapse(4) copyin(wp,irhoadz,tmp_qp,wp) copy(www) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -670,6 +672,7 @@ CONTAINS
 
       !---------- non-osscilatory option ---------------
       if(nonos) then
+        !$acc parallel loop collapse(4) copyin(tmp_qp,rho,adz,www) copy(mn,mx) async(1)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
@@ -685,6 +688,7 @@ CONTAINS
             enddo
           enddo
         enddo
+        !$acc parallel loop collapse(4) copyin(www,mn,mx) copy(fz) async(1)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
@@ -700,6 +704,7 @@ CONTAINS
 
       ! Update precipitation mass fraction and liquid-ice static
       ! energy using precipitation fluxes computed in this column.
+      !$acc parallel loop collapse(4) copyin(fz,irhoadz,lfac,flagstat,omega) copy(qp,qpfall,t,tlat,precflux,precsfc,precssfc,prec_xy) async(1)
       do icrm = 1 , ncrms
         do j=1,ny
           do i=1,nx
@@ -712,8 +717,11 @@ CONTAINS
               qpfall(k,icrm)=qpfall(k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)*flagstat  ! For qp budget
               lat_heat = -(lfac(i,j,kc,icrm)*fz(i,j,kc,icrm)-lfac(i,j,k,icrm)*fz(i,j,k,icrm))*irhoadz(k,icrm)
               t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat
+              !$acc atomic update
               tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
-              precflux(k,icrm) = precflux(k,icrm) - fz(i,j,k,icrm)*flagstat   ! For statistics
+              tmp = fz(i,j,k,icrm)*flagstat
+              !$acc atomic update
+              precflux(k,icrm) = precflux(k,icrm) - tmp   ! For statistics
               if (k == 1) then
                 precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For statistics
                 precssfc(i,j,icrm) = precssfc(i,j,icrm) - fz(i,j,1,icrm)*(1.-omega(i,j,1,icrm))*flagstat ! For statistics
@@ -726,6 +734,7 @@ CONTAINS
 
       if (iprec.lt.nprec) then
         ! Re-compute precipitation velocity using new value of qp.
+        !$acc parallel loop collapse(4) copyin(rhofac,micro_field,rho,tabs,rhow,dz) copy(wp,fz,www,lfac) async(1)
         do icrm = 1 , ncrms
           do j=1,ny
             do i=1,nx
@@ -749,6 +758,9 @@ CONTAINS
       endif
 
     enddo
+    
+    !$acc exit data copyout(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
+    !$acc wait(1)
 
   end subroutine precip_fall
 
