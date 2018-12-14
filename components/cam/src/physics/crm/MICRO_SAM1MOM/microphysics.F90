@@ -482,7 +482,6 @@ CONTAINS
     vsnow = a_snow * gams3 / 6. / (pi * rhos * nzeros) ** csnow
     vgrau = a_grau * gamg3 / 6. / (pi * rhog * nzerog) ** cgrau
 
-    !$acc parallel loop collapse(4)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -511,17 +510,18 @@ CONTAINS
     integer i,j,k,m
 
     total_water = 0.
-    !$acc parallel loop collapse(4)
     do m=1,nmicro_fields
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
-            if(flag_wmass(m,icrm).eq.1) then
-              total_water = total_water + micro_field(i,j,k,m,icrm)*adz(k,icrm)*dz(icrm)*rho(k,icrm)
-            end if
+      if(flag_wmass(m,icrm).eq.1) then
+        do k=1,nzm
+          tmp = 0.
+          do j=1,ny
+            do i=1,nx
+              tmp = tmp + micro_field(i,j,k,m,icrm)
+            end do
           end do
+          total_water = total_water + tmp*adz(k,icrm)*dz(icrm)*rho(k,icrm)
         end do
-      end do
+      end if
     end do
 
   end function total_water

@@ -16,7 +16,6 @@ contains
     real(crm_rknd) rho(nzm,ncrms)
     real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz,ncrms)
-
     real(crm_rknd) mx (0:nxp1 ,0:nyp1 ,nzm,ncrms)
     real(crm_rknd) mn (0:nxp1 ,0:nyp1 ,nzm,ncrms)
     real(crm_rknd) uuu(-1:nxp3,-1:nyp2,nzm,ncrms)
@@ -35,23 +34,15 @@ contains
     pp(y)= max(real(0.,crm_rknd),y)
     pn(y)=-min(real(0.,crm_rknd),y)
 
-    !$acc enter data create(mx,mn,uuu,vvv,www,iadz,irho,irhow)
-
     nonos = .true.
     eps = 1.e-10
 
-    !$acc parallel loop collapse(3)
     do icrm = 1 , ncrms
-      do j = -1 , nyp2
-        do i = -1 , nxp2
-          www(i,j,nz,icrm)=0.
-        enddo
-      enddo
+      www(:,:,nz,icrm)=0.
     enddo
 
     if (dowallx) then
       if (mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=dimy1_u,dimy2_u
@@ -63,7 +54,6 @@ contains
         enddo
       endif
       if (mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=dimy1_u,dimy2_u
@@ -78,7 +68,6 @@ contains
 
     if (dowally) then
       if (rank.lt.nsubdomains_x) then
-        !$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=dimy1_v,1
@@ -90,7 +79,6 @@ contains
         enddo
       endif
       if (rank.gt.nsubdomains-nsubdomains_x-1) then
-        !$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=ny+1,dimy2_v
@@ -106,7 +94,6 @@ contains
     !-----------------------------------------
 
     if (nonos) then
-      !$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=0,nyp1
@@ -125,7 +112,6 @@ contains
       enddo
     endif  ! nonos
 
-    !$acc parallel loop collapse(4)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=-1,nyp3
@@ -140,7 +126,6 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=-1,nyp2
@@ -159,7 +144,6 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=0,nyp2
@@ -207,18 +191,12 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3)
     do icrm = 1 , ncrms
-      do j = -1 , nyp2
-        do i = -1 , nxp2
-          www(i,j,1,icrm) = 0.
-        enddo
-      enddo
+      www(:,:,1,icrm) = 0.
     enddo
 
     !---------- non-osscilatory option ---------------
     if (nonos) then
-      !$acc parallel loop collapse(3)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=0,nyp1
@@ -236,7 +214,6 @@ contains
         enddo
       enddo
 
-      !$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=0,nyp1
@@ -257,7 +234,6 @@ contains
         enddo
       enddo
 
-      !$acc parallel loop collapse(4)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,nyp1
@@ -276,7 +252,6 @@ contains
                 kb=max(1,k-1)
                 www(i,j,k,icrm) = pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) &
                                  -pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm))
-                !$acc atomic update
                 flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
               endif
             enddo
@@ -285,7 +260,6 @@ contains
       enddo
     endif ! nonos
 
-    !$acc parallel loop collapse(4)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -300,8 +274,6 @@ contains
         enddo
       enddo
     enddo
-
-    !$acc exit data delete(mx,mn,uuu,vvv,www,iadz,irho,irhow)
 
   end subroutine advect_scalar3D
 

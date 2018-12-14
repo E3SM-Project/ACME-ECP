@@ -37,7 +37,6 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        !$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do kk = 1 , nzm
             do j = dimy1_s,dimy2_s
@@ -47,7 +46,6 @@ contains
             enddo
           enddo
         enddo
-        !$acc parallel loop collapse(2)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             adv_tmp(kk,icrm) = mkadv(kk,k,icrm)
@@ -55,7 +53,6 @@ contains
           enddo
         enddo
         call advect_scalar(ncrms,micro_field_tmp,adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(4)
         do icrm = 1 , ncrms
           do kk = 1 , nzm
             do j = dimy1_s,dimy2_s
@@ -65,7 +62,6 @@ contains
             enddo
           enddo
         enddo
-        !$acc parallel loop collapse(2)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             mkadv(kk,k,icrm) = adv_tmp(kk,icrm)
@@ -78,7 +74,6 @@ contains
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        !$acc parallel loop collapse(2)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             adv_tmp(kk,icrm) = sgsadv(kk,k,icrm)
@@ -86,7 +81,6 @@ contains
           enddo
         enddo
         call advect_scalar(ncrms,sgs_field(:,:,:,:,k),adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(2)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             sgsadv(kk,k,icrm) = adv_tmp(kk,icrm)
@@ -98,12 +92,10 @@ contains
 
     !   Precipitation fallout:
     if(doprecip) then
-      !!$acc parallel loop
       do icrm = 1 , ncrms
         total_water_prec(icrm) = total_water_prec(icrm) + total_water(ncrms,icrm)
       enddo
       call micro_precip_fall(ncrms)
-      !!$acc parallel loop
       do icrm = 1 , ncrms
         total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
       enddo

@@ -20,27 +20,15 @@ contains
     real(crm_rknd) f0(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
     integer i,j,k,icrm
 
-    !$acc enter data create(f0)
-
     if(docolumn) then
-      !$acc parallel loop collapse(2)
       do icrm = 1 , ncrms
-        do k = 1 , nz
-          flux(k,icrm) = 0.
-        enddo
+        flux(:,icrm) = 0.
       enddo
       return
     end if
 
-    !$acc parallel loop collapse(4)
     do icrm = 1 , ncrms
-      do k = 1 , nzm
-        do j = dimy1_s,dimy2_s
-          do i = dimx1_s,dimx2_s
-            f0(i,j,k,icrm) = f(i,j,k,icrm)
-          enddo
-        enddo
-      enddo
+      f0(:,:,:,icrm) = f(:,:,:,icrm)
     enddo
 
     if(RUN3D) then
@@ -49,15 +37,9 @@ contains
       call advect_scalar2D(ncrms, f, u, w, rho, rhow, flux)
     endif
 
-    !$acc parallel loop collapse(2)
     do icrm = 1 , ncrms
       do k=1,nzm
         fadv(k,icrm)=0.
-      enddo
-    enddo
-    !$acc parallel loop collapse(4)
-    do icrm = 1 , ncrms
-      do k=1,nzm
         do j=1,ny
           do i=1,nx
             fadv(k,icrm)=fadv(k,icrm)+f(i,j,k,icrm)-f0(i,j,k,icrm)
@@ -65,8 +47,6 @@ contains
         end do
       end do
     enddo
-
-    !$acc exit data delete(f0)
 
   end subroutine advect_scalar
 
