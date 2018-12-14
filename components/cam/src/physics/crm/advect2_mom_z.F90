@@ -17,7 +17,7 @@ contains
 
     !$acc enter data create(fuz,fvz,fwz) async(1)
 
-    !$acc parallel loop collapse(2) async(1)
+    !$acc parallel loop collapse(2) copyout(vwle,uwle) async(1)
     do icrm = 1 , ncrms
       do k = 1 , nz
         uwle(k,icrm) = 0.
@@ -25,7 +25,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) async(1)
+    !$acc parallel loop collapse(3) copy(fuz,fwz,fvz) async(1)
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
@@ -63,7 +63,7 @@ contains
 
     else
 
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copyin(u,v,w,rhow,dz) copy(fvz,vwle,uwle,fuz) async(1)
       do icrm = 1 , ncrms
         do k=2,nzm
           do j=1,ny
@@ -85,7 +85,7 @@ contains
 
     endif
 
-    !$acc parallel loop collapse(4) async(1)
+    !$acc parallel loop collapse(4) copyin(fvz,rho,w,rhow,fuz,dz,adz) copy(dudt,dvdt,fwz) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -101,7 +101,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(4) async(1)
+    !$acc parallel loop collapse(4) copyin(rhow,fwz,adzw) copy(dwdt) async(1)
     do icrm = 1 , ncrms
       do k=2,nzm
         do j=1,ny

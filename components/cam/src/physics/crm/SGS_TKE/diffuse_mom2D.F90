@@ -33,7 +33,7 @@ contains
     j=1
 
     if( .not. docolumn ) then
-      !$acc parallel loop collapse(3) async(1)
+      !$acc parallel loop collapse(3) copyin(w,v,grdf_x,u,dz,tk,adzw) copy(fv,fu,fw) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nx
@@ -51,7 +51,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(3) async(1)
+      !$acc parallel loop collapse(3) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -67,7 +67,7 @@ contains
 
     !-------------------------
 
-    !$acc parallel loop collapse(2) async(1)
+    !$acc parallel loop collapse(2) copy(uwsb,vwsb) async(1)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         uwsb(k,icrm)=0.
@@ -75,7 +75,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) async(1)
+    !$acc parallel loop collapse(3) copyin(u,adzw,adz,w,grdf_z,rhow,tk,rho,dz,v) copy(fw,vwsb,fv,uwsb,fu) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm-1
         do i=1,nx
@@ -100,7 +100,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(2) async(1)
+    !$acc parallel loop collapse(2) copyin(fluxtu,fluxbv,fluxbu,fluxtv,rho,dz,grdf_z,w,rhow,adz,tk) copy(uwsb,fu,fv,vwsb,fw) async(1)
     do icrm = 1 , ncrms
       do i=1,nx
         rdz=1./dz(icrm)
@@ -118,7 +118,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(3) async(1)
+    !$acc parallel loop collapse(3) copyin(fu,adz,rho,fv) copy(dudt,dvdt) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
@@ -130,7 +130,7 @@ contains
       end do ! k
     end do ! k
 
-    !$acc parallel loop collapse(3) async(1)
+    !$acc parallel loop collapse(3) copyin(rhow,fw,adzw) copy(dwdt) async(1)
     do icrm = 1 , ncrms
       do k=2,nzm
         do i=1,nx

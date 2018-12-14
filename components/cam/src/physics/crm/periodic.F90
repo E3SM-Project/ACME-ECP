@@ -33,7 +33,7 @@ contains
       call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
-      !$acc parallel loop collapse(3) async(1)
+      !$acc parallel loop collapse(3) copyin(sstxy) copy(w) async(1)
       do icrm = 1 , ncrms
         do j = 1 , ny
           do i = 1 , nx
@@ -42,7 +42,7 @@ contains
         enddo
       enddo
       call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
-      !$acc parallel loop collapse(3) async(1)
+      !$acc parallel loop collapse(3) copy(w,sstxy) async(1)
       do icrm = 1 , ncrms
         do j = 1-YES3D , ny+YES3D
           do i = 0 , nx+1
@@ -78,7 +78,7 @@ contains
         .or. docloud.and.flag_precip(i).ne.1    &
 #endif
         .or. doprecip.and.flag_precip(i).eq.1 ) then
-          !$acc parallel loop collapse(4) async(1)
+          !$acc parallel loop collapse(4) copyin(micro_field) copy(micro_tmp) async(1)
           do icrm = 1 , ncrms
             do k = 1 , nzm
               do j = dimy1_s,dimy2_s
@@ -89,7 +89,7 @@ contains
             enddo
           enddo
           call bound_exchange(ncrms,micro_tmp,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
-          !$acc parallel loop collapse(4) async(1)
+          !$acc parallel loop collapse(4) copyin(micro_tmp) copy(micro_field) async(1)
           do icrm = 1 , ncrms
             do k = 1 , nzm
               do j = dimy1_s,dimy2_s
@@ -137,7 +137,7 @@ contains
         .or. docloud.and.flag_precip(i).ne.1    &
 #endif
         .or. doprecip.and.flag_precip(i).eq.1 ) then
-          !$acc parallel loop collapse(4) async(1)
+          !$acc parallel loop collapse(4) copyin(micro_field) copy(micro_tmp) async(1)
           do icrm = 1 , ncrms
             do k = 1 , nzm
               do j = dimy1_s,dimy2_s
@@ -148,7 +148,7 @@ contains
             enddo
           enddo
           call bound_exchange(ncrms,micro_tmp,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
-          !$acc parallel loop collapse(4) async(1)
+          !$acc parallel loop collapse(4) copyin(micro_tmp) copy(micro_field) async(1)
           do icrm = 1 , ncrms
             do k = 1 , nzm
               do j = dimy1_s,dimy2_s

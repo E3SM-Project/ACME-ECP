@@ -29,7 +29,7 @@ contains
 
     if(RUN3D) then
       ! "North" -> "South":
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=ny-j1,ny
@@ -40,7 +40,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=-j1,0
@@ -53,7 +53,7 @@ contains
       end do
 
       ! "North-East" -> "South-West":
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=ny-j1,ny
@@ -64,7 +64,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=-j1,0
@@ -77,7 +77,7 @@ contains
       end do
 
       ! "South-East" -> "North-West":
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=1,1+j2
@@ -88,7 +88,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=nyp1,nyp1+j2
@@ -101,7 +101,7 @@ contains
       end do
 
       ! "South" -> "North":
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=1,1+j2
@@ -112,7 +112,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=nyp1,nyp1+j2
@@ -125,7 +125,7 @@ contains
       end do
 
       ! "South-West" -> "North-East":
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=1,1+j2
@@ -136,7 +136,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=nyp1,nyp1+j2
@@ -150,7 +150,7 @@ contains
 
 
       ! To "North-West" -> "South-East":
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=ny-j1,ny
@@ -161,7 +161,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(1)
       do icrm = 1 , ncrms
         do k=1,dimz
           do j=-j1,0
@@ -177,7 +177,7 @@ contains
     endif
 
     !  "East" -> "West":
-    !$acc parallel loop collapse(4) async(1)
+    !$acc parallel loop collapse(4) copy(f,buffer) async(1)
     do icrm = 1 , ncrms
       do k=1,dimz
         do j=1,ny
@@ -188,7 +188,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop collapse(4) async(1)
+    !$acc parallel loop collapse(4) copy(f,buffer) async(1)
     do icrm = 1 , ncrms
       do k=1,dimz
         do j=1,ny
@@ -201,7 +201,7 @@ contains
     end do
 
     ! "West" -> "East":
-    !$acc parallel loop collapse(4) async(1)
+    !$acc parallel loop collapse(4) copy(f,buffer) async(1)
     do icrm = 1 , ncrms
       do k=1,dimz
         do j=1,ny
@@ -212,7 +212,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop collapse(4) async(1)
+    !$acc parallel loop collapse(4) copy(f,buffer) async(1)
     do icrm = 1 , ncrms
       do k=1,dimz
         do j=1,ny

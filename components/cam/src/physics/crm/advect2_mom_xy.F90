@@ -62,7 +62,7 @@ contains
     else
 
       j=1
-      !$acc parallel loop collapse(3) async(1)
+      !$acc parallel loop collapse(3) copy(dudt,dvdt,dwdt) copyin(w,v,u,adzw,rhow,rho,adz) async(1)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do i = 1, nx
