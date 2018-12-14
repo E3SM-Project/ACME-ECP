@@ -99,9 +99,6 @@ contains
       end do
     end if
 
-    !$acc exit data delete(micro_field_tmp,adv_tmp,wle_tmp) async(1)
-    !$acc wait(1)
-
     !   Precipitation fallout:
     if(doprecip) then
       !do icrm = 1 , ncrms
@@ -112,6 +109,8 @@ contains
       !  total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
       !enddo
     end if
+
+    !$acc exit data delete(micro_field_tmp,adv_tmp,wle_tmp) async(1)
 
     ! advection of tracers:
     !There aren't any of these. We need to delete crmtracers.F90 too at some point

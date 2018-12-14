@@ -759,8 +759,7 @@ CONTAINS
 
     enddo
     
-    !$acc exit data copyout(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
-    !$acc wait(1)
+    !$acc exit data delete(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
 
   end subroutine precip_fall
 
