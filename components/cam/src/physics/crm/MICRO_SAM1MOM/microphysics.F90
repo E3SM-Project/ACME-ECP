@@ -432,7 +432,9 @@ CONTAINS
   ! In this particular case there is only one precipitating variable.
 
   real(crm_rknd) function term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field,rho,tabs,qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
+    !$acc routine seq
     use vars
+    implicit none
     integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: i,j,k,ind
     real(crm_rknd), intent(in) :: micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields,ncrms)
@@ -483,6 +485,7 @@ CONTAINS
     vsnow = a_snow * gams3 / 6. / (pi * rhos * nzeros) ** csnow
     vgrau = a_grau * gamg3 / 6. / (pi * rhog * nzerog) ** cgrau
 
+    !$acc parallel loop collapse(4) copyin(tabs) copy(omega) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -493,19 +496,18 @@ CONTAINS
       end do
     end do
 
-    call precip_fall(ncrms, micro_field, 2, omega, ind)
+    call precip_fall(ncrms, 2, omega, ind)
 
   end subroutine micro_precip_fall
 
 
-  subroutine precip_fall(ncrms,micro_field, hydro_type, omega, ind)
+  subroutine precip_fall(ncrms,hydro_type, omega, ind)
     !     positively definite monotonic advection with non-oscillatory option
     !     and gravitational sedimentation
     use vars
     use params
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd), target :: micro_field(dimx1_s:,dimy1_s:, :, :,:)
     integer :: hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
     real(crm_rknd) :: omega(nx,ny,nzm,ncrms)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
     integer :: ind
@@ -520,7 +522,7 @@ CONTAINS
     real(crm_rknd) :: lat_heat, wmax
     real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nx,ny,nzm,ncrms), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), rhofac(nzm,ncrms), prec_cfl
     integer nprec, iprec
-    real(crm_rknd) :: flagstat
+    real(crm_rknd) :: flagstat, tmp
     real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
 
     !Statement functions
@@ -532,6 +534,9 @@ CONTAINS
     eps = 1.e-10
     nonos = .true.
 
+    !!$acc enter data create(mx,mn,lfac,www,fz,qp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
+
+    !$acc parallel loop collapse(2) copyin(rho,adz,dz) copy(rhofac,irhoadz,iwmax) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzm
         rhofac(k,icrm) = sqrt(1.29/rho(k,icrm))
@@ -544,6 +549,7 @@ CONTAINS
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
     prec_cfl = 0.
+    !$acc parallel loop collapse(4) copyin(omega,rhofac,micro_field,rho,tabs,iwmax,rhow,dz) copy(prec_cfl,wp,fz,www,lfac,flagstat) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -563,12 +569,14 @@ CONTAINS
               flagstat = 0.
             case default
               if(masterproc) then
-                print*, 'unknown hydro_type in precip_fall. exitting ...'
-                call task_abort
+                !print*, 'unknown hydro_type in precip_fall. exitting ...'
+                !call task_abort
               endif
             end select
-            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(dimx1_s,dimy1_s,1,1,1),rho(1,1),tabs(1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
-            prec_cfl = max(prec_cfl,wp(i,j,k,icrm)*iwmax(k,icrm)) ! Keep column maximum CFL
+            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(:,:,:,:,:),rho(:,:),tabs(:,:,:,:),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
+            tmp = wp(i,j,k,icrm)*iwmax(k,icrm)
+            !$acc atomic update
+            prec_cfl = max(prec_cfl,tmp) ! Keep column maximum CFL
             wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)
             if (k == 1) then
               fz(i,j,nz,icrm)=0.
@@ -579,6 +587,9 @@ CONTAINS
         enddo
       enddo
     enddo
+    
+    !!$acc exit data copyout(mx,mn,lfac,www,fz,qp,tmp_qp,irhoadz,iwmax,rhofac) async(1)
+    !$acc wait(1)
 
     ! If maximum CFL due to precipitation velocity is greater than 0.9,
     ! take more than one advection step to maintain stability.
@@ -719,7 +730,7 @@ CONTAINS
           do j=1,ny
             do i=1,nx
               do k=1,nzm
-                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(dimx1_s,dimy1_s,1,1,1),rho(1,1),tabs(1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
+                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(dimx1_s,dimy1_s,1,1,1),rho(1,1),tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
                 ! Decrease precipitation velocity by factor of nprec
                 wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)/real(nprec,crm_rknd)
                 ! Note: Don't bother checking CFL condition at each
