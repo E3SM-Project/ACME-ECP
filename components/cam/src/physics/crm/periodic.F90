@@ -78,27 +78,7 @@ contains
         .or. docloud.and.flag_precip(i).ne.1    &
 #endif
         .or. doprecip.and.flag_precip(i).eq.1 ) then
-          !$acc parallel loop collapse(4) copyin(micro_field) copy(micro_tmp) async(1)
-          do icrm = 1 , ncrms
-            do k = 1 , nzm
-              do j = dimy1_s,dimy2_s
-                do ii = dimx1_s,dimx2_s
-                  micro_tmp(ii,j,k,icrm) = micro_field(ii,j,k,icrm,i)
-                enddo
-              enddo
-            enddo
-          enddo
-          call bound_exchange(ncrms,micro_tmp,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
-          !$acc parallel loop collapse(4) copyin(micro_tmp) copy(micro_field) async(1)
-          do icrm = 1 , ncrms
-            do k = 1 , nzm
-              do j = dimy1_s,dimy2_s
-                do ii = dimx1_s,dimx2_s
-                  micro_field(ii,j,k,icrm,i) = micro_tmp(ii,j,k,icrm)
-                enddo
-              enddo
-            enddo
-          enddo
+          call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+i)
         endif
       end do
       !if(dotracers) then
@@ -137,27 +117,7 @@ contains
         .or. docloud.and.flag_precip(i).ne.1    &
 #endif
         .or. doprecip.and.flag_precip(i).eq.1 ) then
-          !$acc parallel loop collapse(4) copyin(micro_field) copy(micro_tmp) async(1)
-          do icrm = 1 , ncrms
-            do k = 1 , nzm
-              do j = dimy1_s,dimy2_s
-                do ii = dimx1_s,dimx2_s
-                  micro_tmp(ii,j,k,icrm) = micro_field(ii,j,k,icrm,i)
-                enddo
-              enddo
-            enddo
-          enddo
-          call bound_exchange(ncrms,micro_tmp,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
-          !$acc parallel loop collapse(4) copyin(micro_tmp) copy(micro_field) async(1)
-          do icrm = 1 , ncrms
-            do k = 1 , nzm
-              do j = dimy1_s,dimy2_s
-                do ii = dimx1_s,dimx2_s
-                  micro_field(ii,j,k,icrm,i) = micro_tmp(ii,j,k,icrm)
-                enddo
-              enddo
-            enddo
-          enddo
+          call bound_exchange(ncrms,micro_field(:,:,:,:,i),dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+i)
         endif
       end do
       !if(dotracers) then

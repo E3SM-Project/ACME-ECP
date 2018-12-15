@@ -409,10 +409,10 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) dummy(nz,ncrms)
-    real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms), difftmp(nz,ncrms), wsbtmp(nz,ncrms), micro_field_tmp(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,ncrms)
+    real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms), difftmp(nz,ncrms), wsbtmp(nz,ncrms)
     integer i,j,kk,k,icrm
 
-    !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp,micro_field_tmp) async(1)
+    !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(1)
     
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb)
 
@@ -442,16 +442,6 @@ CONTAINS
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        !$acc parallel loop collapse(4) copyin(micro_field) copy(micro_field_tmp) async(1)
-        do icrm = 1 , ncrms
-          do kk = 1 , nzm
-            do j = dimy1_s,dimy2_s
-              do i = dimx1_s,dimx2_s
-                micro_field_tmp(i,j,kk,icrm) = micro_field(i,j,kk,icrm,k)
-              enddo
-            enddo
-          enddo
-        enddo
         !$acc parallel loop collapse(2) copyin(fluxbmk,fluxtmk) copy(fluxbtmp,fluxttmp) async(1)
         do icrm = 1 , ncrms
           do j = 1 , ny
@@ -468,17 +458,7 @@ CONTAINS
             wsbtmp (kk,icrm) = mkwsb (kk,k,icrm)
           enddo
         enddo
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field_tmp,fluxbtmp,fluxttmp,difftmp,wsbtmp)
-        !$acc parallel loop collapse(4) copyin(micro_field_tmp) copy(micro_field) async(1)
-        do icrm = 1 , ncrms
-          do kk = 1 , nzm
-            do j = dimy1_s,dimy2_s
-              do i = dimx1_s,dimx2_s
-                micro_field(i,j,kk,icrm,k) = micro_field_tmp(i,j,kk,icrm)
-              enddo
-            enddo
-          enddo
-        enddo
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
         !$acc parallel loop collapse(2) copyin(difftmp,wsbtmp) copy(mkdiff,mkwsb) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
@@ -489,7 +469,7 @@ CONTAINS
       end if
     end do
 
-    !$acc exit data delete(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp,micro_field_tmp) async(1)
+    !$acc exit data delete(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(1)
 
     !do icrm = 1 , ncrms
     !  total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)

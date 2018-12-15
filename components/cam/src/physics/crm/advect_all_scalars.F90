@@ -20,12 +20,11 @@ contains
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
 
-    real(crm_rknd) :: micro_field_tmp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms)
     real(crm_rknd) :: adv_tmp(nz,ncrms)
     real(crm_rknd) :: wle_tmp(nz,ncrms)
     real(crm_rknd) :: esmt_offset(ncrms)    ! whannah - offset for advecting scalar momentum tracers
 
-    !$acc enter data create(micro_field_tmp,adv_tmp,wle_tmp) async(1)
+    !$acc enter data create(adv_tmp,wle_tmp) async(1)
 
     !      advection of scalars :
     call advect_scalar(ncrms,t,tadv,twle)
@@ -40,16 +39,6 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        !$acc parallel loop collapse(4) copyin(micro_field) copy(micro_field_tmp) async(1)
-        do icrm = 1 , ncrms
-          do kk = 1 , nzm
-            do j = dimy1_s,dimy2_s
-              do i = dimx1_s,dimx2_s
-                micro_field_tmp(i,j,kk,icrm) = micro_field(i,j,kk,icrm,k)
-              enddo
-            enddo
-          enddo
-        enddo
         !$acc parallel loop collapse(2) copyin(mkadv,mkwle) copy(adv_tmp,wle_tmp) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
@@ -57,17 +46,7 @@ contains
             wle_tmp(kk,icrm) = mkwle(kk,k,icrm)
           enddo
         enddo
-        call advect_scalar(ncrms,micro_field_tmp,adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(4) copyin(micro_field_tmp) copy(micro_field) async(1)
-        do icrm = 1 , ncrms
-          do kk = 1 , nzm
-            do j = dimy1_s,dimy2_s
-              do i = dimx1_s,dimx2_s
-                micro_field(i,j,kk,icrm,k) = micro_field_tmp(i,j,kk,icrm)
-              enddo
-            enddo
-          enddo
-        enddo
+        call advect_scalar(ncrms,micro_field(:,:,:,:,k),adv_tmp,wle_tmp)
         !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(mkadv,mkwle) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
@@ -110,7 +89,7 @@ contains
       !enddo
     end if
 
-    !$acc exit data delete(micro_field_tmp,adv_tmp,wle_tmp) async(1)
+    !$acc exit data delete(adv_tmp,wle_tmp) async(1)
 
     ! advection of tracers:
     !There aren't any of these. We need to delete crmtracers.F90 too at some point
