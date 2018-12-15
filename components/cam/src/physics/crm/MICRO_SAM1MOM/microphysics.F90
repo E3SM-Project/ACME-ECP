@@ -249,22 +249,36 @@ CONTAINS
     use vars, only: fluxbq, fluxtq
     implicit none
     integer, intent(in) :: ncrms
-    integer :: icrm
+    integer :: icrm, i, j
 
-    do icrm = 1 , ncrms
 #ifdef CLUBB_CRM
-      ! Added by dschanen UWM
-      use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
+    ! Added by dschanen UWM
+    use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
+    do icrm = 1 , ncrms
       if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
         ! Add this in later
         fluxbmk(:,:,index_water_vapor,icrm) = 0.0
       else
         fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
       end if
+    enddo
 #else
-      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
+    !$acc parallel loop collapse(3) copyin(fluxbq) copy(fluxbmk) async(1)
+    do icrm = 1 , ncrms
+      do j = 1 , ny
+        do i = 1 , nx
+          fluxbmk(i,j,index_water_vapor,icrm) = fluxbq(i,j,icrm)
+        enddo
+      enddo
+    enddo
 #endif
-      fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm)
+    !$acc parallel loop collapse(3) copyin(fluxtq) copy(fluxtmk) async(1)
+    do icrm = 1 , ncrms
+      do j = 1 , ny
+        do i = 1 , nx
+          fluxtmk(i,j,index_water_vapor,icrm) = fluxtq(i,j,icrm)
+        enddo
+      enddo
     enddo
   end subroutine micro_flux
 

@@ -24,6 +24,7 @@ contains
     real(crm_rknd) flux (nz,ncrms)
     ! Local
     real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)  ! scalar
+    real(crm_rknd) :: tmp
     integer i,j,k,icrm
 
     !$acc enter data create(df) async(1)
@@ -56,7 +57,9 @@ contains
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            fdiff(k,icrm)=fdiff(k,icrm)+f(i,j,k,icrm)-df(i,j,k,icrm)
+            tmp = f(i,j,k,icrm)-df(i,j,k,icrm)
+            !$acc atomic update
+            fdiff(k,icrm)=fdiff(k,icrm)+tmp
           end do
         end do
       end do
