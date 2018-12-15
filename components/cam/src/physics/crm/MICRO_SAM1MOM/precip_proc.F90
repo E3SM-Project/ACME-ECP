@@ -3,7 +3,7 @@ module precip_proc_mod
 
 contains
 
-  subroutine precip_proc(ncrms,qpsrc,qpevp,micro_field,qn)
+  subroutine precip_proc(ncrms,qpsrc,qpevp,q,qp,qn)
 
     use vars
     use micro_params
@@ -12,7 +12,8 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd), target :: micro_field(dimx1_s:, dimy1_s:, :, :,:)
+    real(crm_rknd) :: q (dimx1_s:dimx2_s, dimy1_s:dimy2_s, 1:nzm, 1:ncrms)
+    real(crm_rknd) :: qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, 1:nzm, 1:ncrms)
     real(crm_rknd) qn(nx,ny,nzm,ncrms)  ! cloud condensate (liquid + ice)
     real(crm_rknd) qpsrc(nz,ncrms)  ! source of precipitation microphysical processes
     real(crm_rknd) qpevp(nz,ncrms)  ! sink of precipitating water due to evaporation
@@ -22,11 +23,6 @@ contains
     real(crm_rknd) dq, omn, omp, omg, qsatt
     real(crm_rknd) pows1, pows2, powg1, powg2, powr1, powr2, tmp
     real(crm_rknd) qii, qcc, qrr, qss, qgg
-    real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
-    real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
-
-    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,1)
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,2)
 
     powr1 = (3 + b_rain) / 4.
     powr2 = (5 + b_rain) / 8.
@@ -35,6 +31,7 @@ contains
     powg1 = (3 + b_grau) / 4.
     powg2 = (5 + b_grau) / 8.
 
+    !$acc parallel loop collapse(2) copy(qpsrc,qpevp) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         qpsrc(k,icrm)=0.
@@ -42,6 +39,7 @@ contains
       enddo
     enddo
 
+    !$acc parallel loop collapse(2) copyin(accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) copy(qpevp,pres,tabs,qpsrc,qp,qn,q) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -96,12 +94,12 @@ contains
                 endif
                 qcc = (qcc+dtn*autor*qcw0)/(1.+dtn*(accrr+accrcs+accrcg+autor))
                 qii = (qii+dtn*autos*qci0)/(1.+dtn*(accris+accrig+autos))
-                dq = dtn *(accrr*qcc + autor*(qcc-qcw0)+ &
-                (accris+accrig)*qii + (accrcs+accrcg)*qcc + autos*(qii-qci0))
+                dq = dtn *(accrr*qcc + autor*(qcc-qcw0)+(accris+accrig)*qii + (accrcs+accrcg)*qcc + autos*(qii-qci0))
                 dq = min(dq,qn(i,j,k,icrm))
                 qp(i,j,k,icrm) = qp(i,j,k,icrm) + dq
                 q(i,j,k,icrm) = q(i,j,k,icrm) - dq
                 qn(i,j,k,icrm) = qn(i,j,k,icrm) - dq
+                !$acc atomic update
                 qpsrc(k,icrm) = qpsrc(k,icrm) + dq
 
               elseif(qp(i,j,k,icrm).gt.qp_threshold.and.qn(i,j,k,icrm).eq.0.) then
@@ -126,11 +124,13 @@ contains
                 dq = max(-0.5*qp(i,j,k,icrm),dq)
                 qp(i,j,k,icrm) = qp(i,j,k,icrm) + dq
                 q(i,j,k,icrm) = q(i,j,k,icrm) - dq
+                !$acc atomic update
                 qpevp(k,icrm) = qpevp(k,icrm) + dq
 
               else
 
                 q(i,j,k,icrm) = q(i,j,k,icrm) + qp(i,j,k,icrm)
+                !$acc atomic update
                 qpevp(k,icrm) = qpevp(k,icrm) - qp(i,j,k,icrm)
                 qp(i,j,k,icrm) = 0.
 
