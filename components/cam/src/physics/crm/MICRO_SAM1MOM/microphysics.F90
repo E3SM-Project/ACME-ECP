@@ -303,6 +303,7 @@ CONTAINS
 
     ! Update bulk coefficient
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
+    !$acc wait(1)
 
     if(docloud) then
       call cloud(ncrms,micro_field,qn)
