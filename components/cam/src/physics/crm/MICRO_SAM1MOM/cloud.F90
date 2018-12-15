@@ -3,7 +3,7 @@ module cloud_mod
 
 contains
 
-  subroutine cloud(ncrms,micro_field,qn)
+  subroutine cloud(ncrms,q,qp,qn)
 
     !  Condensation of cloud water/cloud ice.
 
@@ -14,7 +14,8 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd), target :: micro_field(dimx1_s:, dimy1_s:, :, :,:)
+    real(crm_rknd) :: q (dimx1_s:dimx2_s, dimy1_s:dimy2_s, 1:nzm, 1:ncrms)
+    real(crm_rknd) :: qp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, 1:nzm, 1:ncrms)
     real(crm_rknd) qn(nx,ny,nzm,ncrms)  ! cloud condensate (liquid + ice)
 
     integer i,j,k, kb, kc,icrm
@@ -23,11 +24,6 @@ contains
     real(crm_rknd) fff,dfff,qsatt,dqsat
     real(crm_rknd) lstarn,dlstarn,lstarp,dlstarp
     integer niter
-    real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
-    real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
-
-    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,1)
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,2)
 
     an = 1./(tbgmax-tbgmin)
     bn = tbgmin * an
@@ -37,9 +33,9 @@ contains
     fac2 = fac_fus*ap
     ag = 1./(tgrmax-tgrmin)
 
-    !!$acc enter data copyin(q,qp) async(1)
+    !$acc enter data copyin(t,gamaz,q,qp,tabs,qn,pres,qsatt,dtabs,dqsat) async(1)
 
-    !!$acc parallel loop collapse(4) copyin(t,gamaz) copy(micro_field,tabs,qn,pres,qsatt,dtabs,dqsat) async(1)
+    !$acc parallel loop collapse(4) default(present) async(1)
     do icrm = 1 , ncrms
       do k = 1, nzm
         do j = 1, ny
@@ -142,7 +138,7 @@ contains
       end do
     end do
 
-    !!$acc exit data copyout(q,qp) async(1)
+    !$acc exit data copyout(t,gamaz,q,qp,tabs,qn,pres,qsatt,dtabs,dqsat) async(1)
 
   end subroutine cloud
 

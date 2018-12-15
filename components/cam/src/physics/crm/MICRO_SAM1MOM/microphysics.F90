@@ -306,7 +306,7 @@ CONTAINS
     !$acc wait(1)
 
     if(docloud) then
-      call cloud(ncrms,micro_field,qn)
+      call cloud(ncrms,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
       !$acc wait(1)
       if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,micro_field,qn)
       call micro_diagnose(ncrms)
