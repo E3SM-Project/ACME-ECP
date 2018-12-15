@@ -83,7 +83,7 @@ contains
             do k = 1 , nzm
               do j = dimy1_s,dimy2_s
                 do ii = dimx1_s,dimx2_s
-                  micro_tmp(ii,j,k,icrm) = micro_field(ii,j,k,i,icrm)
+                  micro_tmp(ii,j,k,icrm) = micro_field(ii,j,k,icrm,i)
                 enddo
               enddo
             enddo
@@ -94,7 +94,7 @@ contains
             do k = 1 , nzm
               do j = dimy1_s,dimy2_s
                 do ii = dimx1_s,dimx2_s
-                  micro_field(ii,j,k,i,icrm) = micro_tmp(ii,j,k,icrm)
+                  micro_field(ii,j,k,icrm,i) = micro_tmp(ii,j,k,icrm)
                 enddo
               enddo
             enddo
@@ -142,7 +142,7 @@ contains
             do k = 1 , nzm
               do j = dimy1_s,dimy2_s
                 do ii = dimx1_s,dimx2_s
-                  micro_tmp(ii,j,k,icrm) = micro_field(ii,j,k,i,icrm)
+                  micro_tmp(ii,j,k,icrm) = micro_field(ii,j,k,icrm,i)
                 enddo
               enddo
             enddo
@@ -153,7 +153,7 @@ contains
             do k = 1 , nzm
               do j = dimy1_s,dimy2_s
                 do ii = dimx1_s,dimx2_s
-                  micro_field(ii,j,k,i,icrm) = micro_tmp(ii,j,k,icrm)
+                  micro_field(ii,j,k,icrm,i) = micro_tmp(ii,j,k,icrm)
                 enddo
               enddo
             enddo

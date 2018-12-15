@@ -82,7 +82,7 @@ contains
             dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(i,j,k,icrm)-v0(k,icrm)) * tau(k,icrm)
             dwdt(i,j,k,na,icrm)= dwdt(i,j,k,na,icrm)-w(i,j,k,icrm) * tau(k,icrm)
             t(i,j,k,icrm)= t(i,j,k,icrm)-dtn*(t(i,j,k,icrm)-t0(k,icrm)) * tau(k,icrm)
-            micro_field(i,j,k,index_water_vapor,icrm)= micro_field(i,j,k,index_water_vapor,icrm)-dtn*(qv(i,j,k,icrm)-qv0(k,icrm)) * tau(k,icrm)
+            micro_field(i,j,k,icrm,index_water_vapor)= micro_field(i,j,k,icrm,index_water_vapor)-dtn*(qv(i,j,k,icrm)-qv0(k,icrm)) * tau(k,icrm)
           end do! i
         end do! j
       end do ! k

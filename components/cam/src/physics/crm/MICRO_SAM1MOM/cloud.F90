@@ -26,8 +26,8 @@ contains
     real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
     real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
 
-    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,1,:)
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
+    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,1)
+    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,2)
 
     an = 1./(tbgmax-tbgmin)
     bn = tbgmin * an
@@ -37,6 +37,9 @@ contains
     fac2 = fac_fus*ap
     ag = 1./(tgrmax-tgrmin)
 
+    !!$acc enter data copyin(q,qp) async(1)
+
+    !!$acc parallel loop collapse(4) copyin(t,gamaz) copy(micro_field,tabs,qn,pres,qsatt,dtabs,dqsat) async(1)
     do icrm = 1 , ncrms
       do k = 1, nzm
         do j = 1, ny
@@ -138,6 +141,8 @@ contains
         end do
       end do
     end do
+
+    !!$acc exit data copyout(q,qp) async(1)
 
   end subroutine cloud
 

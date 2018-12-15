@@ -447,7 +447,7 @@ CONTAINS
           do kk = 1 , nzm
             do j = dimy1_s,dimy2_s
               do i = dimx1_s,dimx2_s
-                micro_field_tmp(i,j,kk,icrm) = micro_field(i,j,kk,k,icrm)
+                micro_field_tmp(i,j,kk,icrm) = micro_field(i,j,kk,icrm,k)
               enddo
             enddo
           enddo
@@ -474,7 +474,7 @@ CONTAINS
           do kk = 1 , nzm
             do j = dimy1_s,dimy2_s
               do i = dimx1_s,dimx2_s
-                micro_field(i,j,kk,k,icrm) = micro_field_tmp(i,j,kk,icrm)
+                micro_field(i,j,kk,icrm,k) = micro_field_tmp(i,j,kk,icrm)
               enddo
             enddo
           enddo

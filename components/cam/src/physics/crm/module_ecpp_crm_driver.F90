@@ -500,10 +500,10 @@ contains
     ! Get values from SAM cloud fields
     do icrm = 1 , ncrms
     qcloud(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
-    qrain (1:nx,1:ny,1:nzm,icrm)  = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
-    qice  (1:nx,1:ny,1:nzm,icrm)   = micro_field(1:nx,1:ny,1:nzm,iqci,icrm)
-    qsnow (1:nx,1:ny,1:nzm,icrm)  = micro_field(1:nx,1:ny,1:nzm,iqs,icrm)
-    qgraup(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqg,icrm)
+    qrain (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqr )
+    qice  (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqci)
+    qsnow (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqs )
+    qgraup(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqg )
 
     precall(:,:,:,icrm)= precr(:,:,:,icrm) + precsolid(:,:,:,icrm)
 

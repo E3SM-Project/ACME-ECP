@@ -25,8 +25,8 @@ contains
     real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
     real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
 
-    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,1,:)
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
+    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,1)
+    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,2)
 
     powr1 = (3 + b_rain) / 4.
     powr2 = (5 + b_rain) / 8.

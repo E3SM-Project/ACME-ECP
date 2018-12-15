@@ -77,7 +77,7 @@ CONTAINS
     integer, intent(in) :: ncrms
     integer :: icrm
     real(crm_rknd) :: zero
-    allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields,ncrms))
+    allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms, nmicro_fields))
     allocate( fluxbmk (nx, ny, 1:nmicro_fields,ncrms) )
     allocate( fluxtmk (nx, ny, 1:nmicro_fields,ncrms) )
     allocate( mkwle  (nz,1:nmicro_fields,ncrms)  )
@@ -98,8 +98,8 @@ CONTAINS
     allocate( flag_wmass     (nmicro_fields,ncrms) )
     allocate( flag_number    (nmicro_fields,ncrms) )
 
-    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,1,:)
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
+    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,1)
+    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,2)
 
     zero = 0
 
@@ -236,7 +236,7 @@ CONTAINS
       ! set mstor to be the inital microphysical mixing ratios
       do n=1, nmicro_fields
         do k=1, nzm
-          mstor(k, n,icrm) = SUM(micro_field(1:nx,1:ny,k,n,icrm))
+          mstor(k, n,icrm) = SUM(micro_field(1:nx,1:ny,k,icrm,n))
         end do
       end do
     enddo
@@ -307,6 +307,7 @@ CONTAINS
 
     if(docloud) then
       call cloud(ncrms,micro_field,qn)
+      !$acc wait(1)
       if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,micro_field,qn)
       call micro_diagnose(ncrms)
     end if
@@ -452,12 +453,12 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: i,j,k,ind
-    real(crm_rknd), intent(in) :: micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields,ncrms)
+    real(crm_rknd), intent(in) :: micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms, nmicro_fields)
     real(crm_rknd), intent(in) :: rho(nzm,ncrms), tabs(nx, ny, nzm, ncrms)
     real(crm_rknd), intent(in) :: qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg, qploc
 
-    qploc = micro_field(i,j,k,2,icrm)
+    qploc = micro_field(i,j,k,icrm,2)
 
     term_vel_qp = 0.
     if(qploc.gt.qp_threshold) then
@@ -544,7 +545,7 @@ CONTAINS
     pp(y)= max(real(0.,crm_rknd),y)
     pn(y)=-min(real(0.,crm_rknd),y)
 
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,2,:)
+    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,2)
 
     eps = 1.e-10
     nonos = .true.
@@ -798,7 +799,7 @@ CONTAINS
           tmp = 0.
           do j=1,ny
             do i=1,nx
-              tmp = tmp + micro_field(i,j,k,m,icrm)
+              tmp = tmp + micro_field(i,j,k,icrm,m)
             end do
           end do
           total_water = total_water + tmp*adz(k,icrm)*dz(icrm)*rho(k,icrm)

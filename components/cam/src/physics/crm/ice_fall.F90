@@ -126,7 +126,7 @@ contains
             ! The cloud ice increment is the difference of the fluxes.
             dqi=coef*(fz(i,j,k,icrm)-fz(i,j,k+1,icrm))
             ! Add this increment to both non-precipitating and total water.
-            micro_field(i,j,k,ici,icrm)  = micro_field(i,j,k,ici,icrm)  + dqi
+            micro_field(i,j,k,icrm,ici)  = micro_field(i,j,k,icrm,ici)  + dqi
             ! Include this effect in the total moisture budget.
             !$acc atomic update
             qifall(k,icrm) = qifall(k,icrm) + dqi
