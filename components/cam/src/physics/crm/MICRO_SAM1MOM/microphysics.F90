@@ -206,9 +206,11 @@ CONTAINS
       if(docloud) then
 #endif
         call micro_diagnose(ncrms)
+        !$acc wait(1)
       end if
       if(dosmoke) then
         call micro_diagnose(ncrms)
+        !$acc wait(1)
       end if
     end if
 
@@ -303,12 +305,10 @@ CONTAINS
 
     ! Update bulk coefficient
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
-    !$acc wait(1)
 
     if(docloud) then
       call cloud(ncrms,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
       if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
-      !$acc wait(1)
       call micro_diagnose(ncrms)
     end if
     if(dosmoke) then
@@ -336,6 +336,7 @@ CONTAINS
     real(crm_rknd) omn, omp
     integer i,j,k,icrm
 
+    !$acc parallel loop collapse(4) copy(qv,q,qn,tabs,qp,qpl,qpi,qcl,qci) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
