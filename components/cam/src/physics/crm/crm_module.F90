@@ -757,11 +757,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !----------------------------------------------------------------------------------------
   !========================================================================================
   do nstep = 1 , nstop
-    ptr1d => crm_output%timing_factor(:)
-    !$acc enter data copyin(tkh,grdf_x,grdf_y,grdf_z,dz,adzw,w_max,u_max,u,v,w) async(1)
-    !$acc parallel loop copy(ptr1d) async(1)
+    !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+    !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
+    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3) async(1)
+
+    !$acc parallel loop copy(crm_output%timing_factor) async(1)
     do icrm = 1 , ncrms
-      ptr1d(icrm) = ptr1d(icrm)+1
+      crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
     enddo
 
     !------------------------------------------------------------------
@@ -769,22 +771,18 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !  to handle the cases when the flow being locally linearly unstable
     !------------------------------------------------------------------
     call kurant(ncrms)
-    !$acc exit data copyout(tkh,grdf_x,grdf_y,grdf_z,dz,adzw,w_max,u_max,u,v,w) async(1)
     !$acc wait(1)
 
     do icyc=1,ncycle
       icycle = icyc
       dtn = dt/ncycle
       dt3(na) = dtn
+      !$acc update device(dt3) async(1)
       dtfactor = dtn/dt
 
       !---------------------------------------------
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)
-
-      !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-      !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
-      !$acc&                  rhow,uwle,vwle,uwsb,vwsb) async(1)
 
       !---------------------------------------------
       !  	initialize stuff:
@@ -904,11 +902,6 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       if(docloud.or.dosmoke) call micro_proc(ncrms)
 #endif /*CLUBB_CRM*/
 
-      !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-      !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
-      !$acc&                  rhow,uwle,vwle,uwsb,vwsb) async(1)
-      !$acc wait(1)
-
       !-----------------------------------------------------------
       !    Compute diagnostics fields:
       call diagnose(ncrms)
@@ -920,6 +913,11 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       nc=nb
       nb=nn
     enddo ! icycle
+
+    !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+    !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
+    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3) async(1)
+    !$acc wait(1)
 
 #ifdef ECPP
     ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
