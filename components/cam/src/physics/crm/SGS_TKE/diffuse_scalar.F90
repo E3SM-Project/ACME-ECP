@@ -26,8 +26,17 @@ contains
     real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)  ! scalar
     integer i,j,k,icrm
 
+    !$acc enter data create(df) async(1)
+
+    !$acc parallel loop collapse(4) copyin(f) copy(df) async(1)
     do icrm = 1 , ncrms
-      df(:,:,:,icrm) = f(:,:,:,icrm)
+      do k = 1 , nzm
+        do j = dimy1_s , dimy2_s
+          do i = dimx1_s , dimx2_s
+            df(i,j,k,icrm) = f(i,j,k,icrm)
+          enddo
+        enddo
+      enddo
     enddo
 
     if(RUN3D) then
@@ -36,9 +45,15 @@ contains
       call diffuse_scalar2D (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,       f,fluxb,fluxt,tkh,rho,rhow,flux)
     endif
 
+    !$acc parallel loop collapse(2) copy(fdiff) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         fdiff(k,icrm)=0.
+      enddo
+    enddo
+    !$acc parallel loop collapse(2) copyin(f,df) copy(fdiff) async(1)
+    do icrm = 1 , ncrms
+      do k=1,nzm
         do j=1,ny
           do i=1,nx
             fdiff(k,icrm)=fdiff(k,icrm)+f(i,j,k,icrm)-df(i,j,k,icrm)
@@ -46,6 +61,8 @@ contains
         end do
       end do
     enddo
+
+    !$acc exit data delete(df) async(1)
 
   end subroutine diffuse_scalar
 

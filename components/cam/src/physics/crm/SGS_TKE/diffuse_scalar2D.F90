@@ -131,7 +131,6 @@ contains
     enddo
 
     !$acc exit data delete(flx,dfdt) async(1)
-    !$acc wait(1)
 
   end subroutine diffuse_scalar2D
 

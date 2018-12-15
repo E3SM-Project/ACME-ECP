@@ -415,18 +415,21 @@ CONTAINS
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
+      !$acc parallel loop collapse(2) copyin(sgswsb) copy(wsbtmp) async(1)
       do icrm = 1, ncrms
         do k = 1 , nz
           wsbtmp(k,icrm) = sgswsb(k,1,icrm)
         enddo
       enddo
       call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,wsbtmp)
+      !$acc parallel loop collapse(2) copyin(wsbtmp) copy(sgswsb) async(1)
       do icrm = 1, ncrms
         do k = 1 , nz
           sgswsb(k,1,icrm) = wsbtmp(k,icrm)
         enddo
       enddo
     end if
+    !$acc wait(1)
 
     !    diffusion of microphysics prognostics:
     call micro_flux(ncrms)
@@ -462,6 +465,7 @@ CONTAINS
           enddo
         enddo
         call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field_tmp,fluxbtmp,fluxttmp,difftmp,wsbtmp)
+        !$acc wait(1)
         do icrm = 1 , ncrms
           do kk = 1 , nzm
             do j = dimy1_s,dimy2_s
