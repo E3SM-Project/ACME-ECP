@@ -804,7 +804,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   do nstep = 1 , nstop
     !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
     !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
-    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3) async(1)
+    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(1)
 
     !$acc parallel loop copy(crm_output_timing_factor) async(1)
     do icrm = 1 , ncrms
@@ -958,30 +958,33 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       nb=nn
     enddo ! icycle
 
-    !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-    !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
-    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3) async(1)
-    !$acc wait(1)
-
 #ifdef ECPP
     ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
     ! This is what the original MMF model did (crm_rad%temperature, crm_rad%qv, ...). Do we want to call ecpp_crm_stat
     ! every subcycle time step??? +++mhwang
     call ecpp_crm_stat(ncrms)
 #endif
+    !$acc parallel loop collapse(3) copy(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(1)
     do icrm = 1 , ncrms
-      !----------------------------------------------------------
-      !----------------------------------------------------------
-      cwp (:,:,icrm) = 0.
-      cwph(:,:,icrm) = 0.
-      cwpm(:,:,icrm) = 0.
-      cwpl(:,:,icrm) = 0.
+      do j = 1 , ny
+        do i = 1 , nx
+          cwp (i,j,icrm) = 0.
+          cwph(i,j,icrm) = 0.
+          cwpm(i,j,icrm) = 0.
+          cwpl(i,j,icrm) = 0.
 
-      flag_top(:,:,icrm) = .true.
+          flag_top(i,j,icrm) = .true.
 
-      cltemp(:,:,icrm) = 0.0; cmtemp(:,:,icrm) = 0.0
-      chtemp(:,:,icrm) = 0.0; cttemp(:,:,icrm) = 0.0
+          cltemp(i,j,icrm) = 0.0; cmtemp(i,j,icrm) = 0.0
+          chtemp(i,j,icrm) = 0.0; cttemp(i,j,icrm) = 0.0
+        enddo
+      enddo
     enddo
+
+    !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+    !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
+    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(1)
+    !$acc wait(1)
 
     do icrm = 1 , ncrms
       do k=1,nzm
