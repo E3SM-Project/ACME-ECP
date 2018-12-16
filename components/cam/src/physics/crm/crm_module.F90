@@ -182,7 +182,28 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
 
-    real(crm_rknd), pointer :: ptr1d(:), ptr2d(:,:), ptr3d(:,:,:), ptr4d(:,:,:,:)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !! These pointers are workarounds for OpenACC PGI bugs
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    real(crm_rknd), pointer :: crm_rad_qrad(:,:,:,:)
+    real(crm_rknd), pointer :: crm_output_timing_factor(:)
+    real(crm_rknd), pointer :: crm_output_cldtop(:,:)
+    real(crm_rknd), pointer :: crm_output_cld(:,:)
+    real(crm_rknd), pointer :: crm_output_mcup(:,:)
+    real(crm_rknd), pointer :: crm_output_mcuup(:,:)
+    real(crm_rknd), pointer :: crm_output_mcdn(:,:)
+    real(crm_rknd), pointer :: crm_output_mcudn(:,:)
+    real(crm_rknd), pointer :: crm_rad_temperature(:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qv(:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qc(:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qi(:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_cld(:,:,:,:)
+    real(crm_rknd), pointer :: crm_output_gliqwp(:,:)
+    real(crm_rknd), pointer :: crm_output_gicewp(:,:)
+    real(crm_rknd), pointer :: crm_output_cltot(:)
+    real(crm_rknd), pointer :: crm_output_clhgh(:)
+    real(crm_rknd), pointer :: crm_output_clmed(:)
+    real(crm_rknd), pointer :: crm_output_cllow(:)
 
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
@@ -222,6 +243,30 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     allocate( dd_crm (ncrms,plev)   )
     allocate( mui_crm(ncrms,plev+1) )
     allocate( mdi_crm(ncrms,plev+1) )
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !! These pointers are workarounds for OpenACC PGI bugs
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    crm_rad_qrad             => crm_rad%qrad                
+    crm_output_timing_factor => crm_output%timing_factor    
+    crm_output_cldtop        => crm_output%cldtop           
+    crm_output_cld           => crm_output%cld              
+    crm_output_mcup          => crm_output%mcup             
+    crm_output_mcuup         => crm_output%mcuup            
+    crm_output_mcdn          => crm_output%mcdn             
+    crm_output_mcudn         => crm_output%mcudn            
+    crm_output_mcudn         => crm_output%mcudn            
+    crm_rad_temperature      => crm_rad%temperature         
+    crm_rad_qv               => crm_rad%qv                  
+    crm_rad_qc               => crm_rad%qc                  
+    crm_rad_qi               => crm_rad%qi                  
+    crm_rad_cld              => crm_rad%cld                 
+    crm_output_gliqwp        => crm_output%gliqwp           
+    crm_output_gicewp        => crm_output%gicewp           
+    crm_output_cltot         => crm_output%cltot            
+    crm_output_clhgh         => crm_output%clhgh            
+    crm_output_clmed         => crm_output%clmed            
+    crm_output_cllow         => crm_output%cllow            
 
     zeroval = 0
 
@@ -761,9 +806,9 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
     !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3) async(1)
 
-    !$acc parallel loop copy(crm_output%timing_factor) async(1)
+    !$acc parallel loop copy(crm_output_timing_factor) async(1)
     do icrm = 1 , ncrms
-      crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm)+1
+      crm_output_timing_factor(icrm) = crm_output_timing_factor(icrm)+1
     enddo
 
     !------------------------------------------------------------------
@@ -797,15 +842,14 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       call forcing(ncrms)
 
       !!! Apply radiative tendency
-      ptr4d => crm_rad%qrad
-      !$acc parallel loop collapse(4) private(i_rad,j_rad) copy(t) copyin(ptr4d) async(1)
+      !$acc parallel loop collapse(4) private(i_rad,j_rad) copy(t) copyin(crm_rad_qrad) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
             do i=1,nx
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
-              t(i,j,k,icrm) = t(i,j,k,icrm) + ptr4d(icrm,i_rad,j_rad,k)*dtn
+              t(i,j,k,icrm) = t(i,j,k,icrm) + crm_rad_qrad(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
@@ -948,7 +992,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             cwp(i,j,icrm) = cwp(i,j,icrm)+tmp1
             cttemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j,icrm))
             if(cwp(i,j,icrm).gt.cwp_threshold.and.flag_top(i,j,icrm)) then
-                crm_output%cldtop(icrm,l) = crm_output%cldtop(icrm,l) + 1
+                crm_output_cldtop(icrm,l) = crm_output_cldtop(icrm,l) + 1
                 flag_top(i,j,icrm) = .false.
             endif
             if(pres(nz-k,icrm).ge.700.) then
@@ -963,21 +1007,21 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             endif
             tmp1 = rho(k,icrm)*adz(k,icrm)*dz(icrm)
             if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
-                 crm_output%cld(icrm,l) = crm_output%cld(icrm,l) + CF3D(i,j,k,icrm)
+                 crm_output_cld(icrm,l) = crm_output_cld(icrm,l) + CF3D(i,j,k,icrm)
                  if(w(i,j,k+1,icrm)+w(i,j,k,icrm).gt.2*wmin) then
-                   crm_output%mcup (icrm,l) = crm_output%mcup (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
-                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1.0 - CF3D(i,j,k,icrm))
+                   crm_output_mcup (icrm,l) = crm_output_mcup (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
+                   crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1.0 - CF3D(i,j,k,icrm))
                  endif
                  if(w(i,j,k+1,icrm)+w(i,j,k,icrm).lt.-2*wmin) then
-                   crm_output%mcdn (icrm,l) = crm_output%mcdn (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
-                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1. - CF3D(i,j,k,icrm))
+                   crm_output_mcdn (icrm,l) = crm_output_mcdn (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
+                   crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1. - CF3D(i,j,k,icrm))
                  endif
             else
                  if(w(i,j,k+1,icrm)+w(i,j,k,icrm).gt.2*wmin) then
-                   crm_output%mcuup(icrm,l) = crm_output%mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
+                   crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
                  endif
                  if(w(i,j,k+1,icrm)+w(i,j,k,icrm).lt.-2*wmin) then
-                   crm_output%mcudn(icrm,l) = crm_output%mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
+                   crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
                  endif
             endif
 
@@ -989,21 +1033,21 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
-              crm_rad%temperature  (icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
-              crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
-              crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
-              crm_rad%qi (icrm,i_rad,j_rad,k) = crm_rad%qi (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
-              crm_rad%cld(icrm,i_rad,j_rad,k) = crm_rad%cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
+              crm_rad_temperature  (icrm,i_rad,j_rad,k) = crm_rad_temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
+              crm_rad_qv (icrm,i_rad,j_rad,k) = crm_rad_qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
+              crm_rad_qc (icrm,i_rad,j_rad,k) = crm_rad_qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
+              crm_rad_qi (icrm,i_rad,j_rad,k) = crm_rad_qi (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
+              crm_rad_cld(icrm,i_rad,j_rad,k) = crm_rad_cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
 #ifdef m2005
-              crm_rad%nc(icrm,i_rad,j_rad,k) = crm_rad%nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,incl)
-              crm_rad%ni(icrm,i_rad,j_rad,k) = crm_rad%ni(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,inci)
-              crm_rad%qs(icrm,i_rad,j_rad,k) = crm_rad%qs(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,iqs )
-              crm_rad%ns(icrm,i_rad,j_rad,k) = crm_rad%ns(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,ins )
+              crm_rad_nc(icrm,i_rad,j_rad,k) = crm_rad_nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,incl)
+              crm_rad_ni(icrm,i_rad,j_rad,k) = crm_rad_ni(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,inci)
+              crm_rad_qs(icrm,i_rad,j_rad,k) = crm_rad_qs(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,iqs )
+              crm_rad_ns(icrm,i_rad,j_rad,k) = crm_rad_ns(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,ins )
 #endif
             endif
 
-            crm_output%gliqwp(icrm,l) = crm_output%gliqwp(icrm,l) + qcl(i,j,k,icrm)
-            crm_output%gicewp(icrm,l) = crm_output%gicewp(icrm,l) + qci(i,j,k,icrm)
+            crm_output_gliqwp(icrm,l) = crm_output_gliqwp(icrm,l) + qcl(i,j,k,icrm)
+            crm_output_gicewp(icrm,l) = crm_output_gicewp(icrm,l) + qci(i,j,k,icrm)
           enddo
         enddo
       enddo
@@ -1039,10 +1083,10 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
-          if(cwp (i,j,icrm).gt.cwp_threshold) crm_output%cltot(icrm) = crm_output%cltot(icrm) + cttemp(i,j,icrm)
-          if(cwph(i,j,icrm).gt.cwp_threshold) crm_output%clhgh(icrm) = crm_output%clhgh(icrm) + chtemp(i,j,icrm)
-          if(cwpm(i,j,icrm).gt.cwp_threshold) crm_output%clmed(icrm) = crm_output%clmed(icrm) + cmtemp(i,j,icrm)
-          if(cwpl(i,j,icrm).gt.cwp_threshold) crm_output%cllow(icrm) = crm_output%cllow(icrm) + cltemp(i,j,icrm)
+          if(cwp (i,j,icrm).gt.cwp_threshold) crm_output_cltot(icrm) = crm_output_cltot(icrm) + cttemp(i,j,icrm)
+          if(cwph(i,j,icrm).gt.cwp_threshold) crm_output_clhgh(icrm) = crm_output_clhgh(icrm) + chtemp(i,j,icrm)
+          if(cwpm(i,j,icrm).gt.cwp_threshold) crm_output_clmed(icrm) = crm_output_clmed(icrm) + cmtemp(i,j,icrm)
+          if(cwpl(i,j,icrm).gt.cwp_threshold) crm_output_cllow(icrm) = crm_output_cllow(icrm) + cltemp(i,j,icrm)
         enddo
       enddo
     enddo
