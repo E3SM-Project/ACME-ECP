@@ -1079,37 +1079,44 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-    !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
-    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(1)
-    !$acc wait(1)
-
     ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
     ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
+    !$acc parallel loop collapse(3) copyin(tabs,pres,qcl,qci,qpl,qpi,rhow,w) copy(mdi_crm,mui_crm) async(1)
     do icrm = 1 , ncrms
-      do k=1, nzm+1
-        do j=1, ny
-          do i=1, nx
+      do j=1, ny
+        do i=1, nx
+          do k=1, nzm+1
             l=plev+1-k+1
             if(w(i,j,k,icrm).gt.0.) then
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx,icrm))
               if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mui_crm(icrm,l) = mui_crm(icrm,l)+rhow(k,icrm)*w(i,j,k,icrm)
+                tmp = rhow(k,icrm)*w(i,j,k,icrm)
+                !$acc atomic update
+                mui_crm(icrm,l) = mui_crm(icrm,l)+tmp
               endif
             else if (w(i,j,k,icrm).lt.0.) then
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(i,j,kx,icrm),pres(kx,icrm))
               if(qcl(i,j,kx,icrm)+qci(i,j,kx,icrm).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k,icrm)
+                tmp = rhow(k,icrm)*w(i,j,k,icrm)
+                !$acc atomic update
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+tmp
               else if(qpl(i,j,kx,icrm)+qpi(i,j,kx,icrm).gt.1.0e-4) then
-                mdi_crm(icrm,l) = mdi_crm(icrm,l)+rhow(k,icrm)*w(i,j,k,icrm)
+                tmp = rhow(k,icrm)*w(i,j,k,icrm)
+                !$acc atomic update
+                mdi_crm(icrm,l) = mdi_crm(icrm,l)+tmp
               endif
             endif
           enddo
         enddo
       enddo
     enddo
+
+    !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+    !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
+    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(1)
+    !$acc wait(1)
 
     do icrm = 1 , ncrms
       do j=1,ny
