@@ -981,20 +981,19 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-    !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
-    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(1)
-    !$acc wait(1)
-
+    !$acc parallel loop collapse(3) copyin(cf3d,pres,qci,qv,dz,adz,w,tabs,qcl,rho) &
+    !$acc& copy(crm_output_mcudn,crm_output_mcup,cwp,cltemp,cwpl,flag_top,crm_output_cld,cwpm,cttemp,cmtemp,cwph,chtemp,crm_output_mcdn,crm_output_gliqwp,&
+    !$acc&      crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature,crm_rad_qv,crm_output_gicewp,crm_output_cldtop) async(1)
     do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+      do j=1,ny
+        do i=1,nx
+          do k=1,nzm
             l = plev-k+1
             tmp1 = rho(nz-k,icrm)*adz(nz-k,icrm)*dz(icrm)*(qcl(i,j,nz-k,icrm)+qci(i,j,nz-k,icrm))
             cwp(i,j,icrm) = cwp(i,j,icrm)+tmp1
             cttemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j,icrm))
             if(cwp(i,j,icrm).gt.cwp_threshold.and.flag_top(i,j,icrm)) then
+                !$acc atomic update
                 crm_output_cldtop(icrm,l) = crm_output_cldtop(icrm,l) + 1
                 flag_top(i,j,icrm) = .false.
             endif
@@ -1010,21 +1009,34 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
             endif
             tmp1 = rho(k,icrm)*adz(k,icrm)*dz(icrm)
             if(tmp1*(qcl(i,j,k,icrm)+qci(i,j,k,icrm)).gt.cwp_threshold) then
+                 !$acc atomic update
                  crm_output_cld(icrm,l) = crm_output_cld(icrm,l) + CF3D(i,j,k,icrm)
                  if(w(i,j,k+1,icrm)+w(i,j,k,icrm).gt.2*wmin) then
-                   crm_output_mcup (icrm,l) = crm_output_mcup (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
-                   crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1.0 - CF3D(i,j,k,icrm))
+                   tmp = rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
+                   !$acc atomic update
+                   crm_output_mcup (icrm,l) = crm_output_mcup (icrm,l) + tmp
+                   tmp = rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1.0 - CF3D(i,j,k,icrm))
+                   !$acc atomic update
+                   crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + tmp
                  endif
                  if(w(i,j,k+1,icrm)+w(i,j,k,icrm).lt.-2*wmin) then
-                   crm_output_mcdn (icrm,l) = crm_output_mcdn (icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
-                   crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1. - CF3D(i,j,k,icrm))
+                   tmp = rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * CF3D(i,j,k,icrm)
+                   !$acc atomic update
+                   crm_output_mcdn (icrm,l) = crm_output_mcdn (icrm,l) + tmp
+                   tmp = rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm)) * (1. - CF3D(i,j,k,icrm))
+                   !$acc atomic update
+                   crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + tmp
                  endif
             else
                  if(w(i,j,k+1,icrm)+w(i,j,k,icrm).gt.2*wmin) then
-                   crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
+                   tmp = rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
+                   !$acc atomic update
+                   crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + tmp
                  endif
                  if(w(i,j,k+1,icrm)+w(i,j,k,icrm).lt.-2*wmin) then
-                   crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
+                    tmp = rho(k,icrm)*0.5*(w(i,j,k+1,icrm)+w(i,j,k,icrm))
+                   !$acc atomic update
+                   crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + tmp
                  endif
             endif
 
@@ -1036,25 +1048,41 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
-              crm_rad_temperature  (icrm,i_rad,j_rad,k) = crm_rad_temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
-              crm_rad_qv (icrm,i_rad,j_rad,k) = crm_rad_qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
-              crm_rad_qc (icrm,i_rad,j_rad,k) = crm_rad_qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
-              crm_rad_qi (icrm,i_rad,j_rad,k) = crm_rad_qi (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
-              crm_rad_cld(icrm,i_rad,j_rad,k) = crm_rad_cld(icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
+              !$acc atomic update
+              crm_rad_temperature(icrm,i_rad,j_rad,k) = crm_rad_temperature(icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
+              tmp = max(real(0.,crm_rknd),qv(i,j,k,icrm))
+              !$acc atomic update
+              crm_rad_qv         (icrm,i_rad,j_rad,k) = crm_rad_qv         (icrm,i_rad,j_rad,k) + tmp
+              !$acc atomic update
+              crm_rad_qc         (icrm,i_rad,j_rad,k) = crm_rad_qc         (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
+              !$acc atomic update
+              crm_rad_qi         (icrm,i_rad,j_rad,k) = crm_rad_qi         (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
+              !$acc atomic update
+              crm_rad_cld        (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
 #ifdef m2005
-              crm_rad_nc(icrm,i_rad,j_rad,k) = crm_rad_nc(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,incl)
-              crm_rad_ni(icrm,i_rad,j_rad,k) = crm_rad_ni(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,inci)
-              crm_rad_qs(icrm,i_rad,j_rad,k) = crm_rad_qs(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,iqs )
-              crm_rad_ns(icrm,i_rad,j_rad,k) = crm_rad_ns(icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,ins )
+              !$acc atomic update
+              crm_rad_nc         (icrm,i_rad,j_rad,k) = crm_rad_nc         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,incl)
+              !$acc atomic update
+              crm_rad_ni         (icrm,i_rad,j_rad,k) = crm_rad_ni         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,inci)
+              !$acc atomic update
+              crm_rad_qs         (icrm,i_rad,j_rad,k) = crm_rad_qs         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,iqs )
+              !$acc atomic update
+              crm_rad_ns         (icrm,i_rad,j_rad,k) = crm_rad_ns         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,ins )
 #endif
             endif
-
+            !$acc atomic update
             crm_output_gliqwp(icrm,l) = crm_output_gliqwp(icrm,l) + qcl(i,j,k,icrm)
+            !$acc atomic update
             crm_output_gicewp(icrm,l) = crm_output_gicewp(icrm,l) + qci(i,j,k,icrm)
           enddo
         enddo
       enddo
     enddo
+
+    !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+    !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
+    !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(1)
+    !$acc wait(1)
 
     ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
     ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
