@@ -1113,21 +1113,34 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
       enddo
     enddo
 
+    !$acc parallel loop collapse(3) copyin(cwp,cwph,cwpm,cwpl,cttemp,chtemp,cmtemp,cltemp) copy(crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow) async(1)
+    do icrm = 1 , ncrms
+      do j=1,ny
+        do i=1,nx
+          if(cwp (i,j,icrm).gt.cwp_threshold) then
+            !$acc atomic update
+            crm_output_cltot(icrm) = crm_output_cltot(icrm) + cttemp(i,j,icrm)
+          endif
+          if(cwph(i,j,icrm).gt.cwp_threshold) then
+            !$acc atomic update
+            crm_output_clhgh(icrm) = crm_output_clhgh(icrm) + chtemp(i,j,icrm)
+          endif
+          if(cwpm(i,j,icrm).gt.cwp_threshold) then
+            !$acc atomic update
+            crm_output_clmed(icrm) = crm_output_clmed(icrm) + cmtemp(i,j,icrm)
+          endif
+          if(cwpl(i,j,icrm).gt.cwp_threshold) then
+            !$acc atomic update
+            crm_output_cllow(icrm) = crm_output_cllow(icrm) + cltemp(i,j,icrm)
+          endif
+        enddo
+      enddo
+    enddo
+
     !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
     !$acc&                  sstxy,sgs_field,sgs_field_diag,uhl,vhl,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,tke2,tk2,tk,tke,tkh, &
     !$acc&                  rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(1)
     !$acc wait(1)
-
-    do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
-          if(cwp (i,j,icrm).gt.cwp_threshold) crm_output_cltot(icrm) = crm_output_cltot(icrm) + cttemp(i,j,icrm)
-          if(cwph(i,j,icrm).gt.cwp_threshold) crm_output_clhgh(icrm) = crm_output_clhgh(icrm) + chtemp(i,j,icrm)
-          if(cwpm(i,j,icrm).gt.cwp_threshold) crm_output_clmed(icrm) = crm_output_clmed(icrm) + cmtemp(i,j,icrm)
-          if(cwpl(i,j,icrm).gt.cwp_threshold) crm_output_cllow(icrm) = crm_output_cllow(icrm) + cltemp(i,j,icrm)
-        enddo
-      enddo
-    enddo
   enddo ! nstep
   !========================================================================================
   !----------------------------------------------------------------------------------------
