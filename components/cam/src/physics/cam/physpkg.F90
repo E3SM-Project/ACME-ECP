@@ -833,8 +833,8 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     call prescribed_aero_init()
     call aerodep_flx_init()
     call aircraft_emit_init()
-    !when is_cmip6_volc is true ,cmip6 style volcanic file is read
-    !Initialized to .false. here but it gets its values from prescribed_volcaero_init
+	!when is_cmip6_volc is true ,cmip6 style volcanic file is read
+	!Initialized to .false. here but it gets its values from prescribed_volcaero_init
     is_cmip6_volc = .false. 
     call prescribed_volcaero_init(is_cmip6_volc)
 
@@ -1593,6 +1593,7 @@ if (l_tracer_aero) then
     if (chem_is_active()) then
        call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, &
             pbuf,  fh2o, fsds)
+
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "chem", nstep, ztodt, fh2o, zero, zero, zero)
        call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, &

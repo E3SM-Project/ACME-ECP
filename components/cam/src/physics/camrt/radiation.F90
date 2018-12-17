@@ -541,7 +541,7 @@ end function radiation_nextsw_cday
     ! 2004-08-30  B. Eaton         Replace chem_get_cnst by rad_constituent_get.
     !-----------------------------------------------------------------------
 
-    use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx, pbuf_get_index
+    use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     
     use phys_grid,       only: get_rlat_all_p, get_rlon_all_p
     use physics_types,   only: physics_state, physics_ptend
@@ -1060,17 +1060,15 @@ end function radiation_nextsw_cday
 
           if ( (use_SPCAM .and. first_column) .or. .not.use_SPCAM) then 
 
-          ! Get Oxygen mass mixing ratio.
-            call rad_cnst_get_gas(0,'O2', state, pbuf,  o2)
-            call calc_col_mean(state, o2, o2_col)
-   
-          ! Get aerosol radiative properties.
-          call t_startf('aero_optics_sw')
-          call aer_rad_props_sw(0, state, pbuf,  nnite, idxnite, is_cmip6_volc, &
-               aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
-          call t_stopf('aero_optics_sw')
-
-  ! call outfld('aer_tau     ',aer_tau  ,pcols,lchnk) ! whannah
+             ! Get Oxygen mass mixing ratio.
+             call rad_cnst_get_gas(0,'O2', state, pbuf,  o2)
+             call calc_col_mean(state, o2, o2_col)
+      
+             ! Get aerosol radiative properties.
+             call t_startf('aero_optics_sw')
+             call aer_rad_props_sw(0, state, pbuf,  nnite, idxnite, is_cmip6_volc, &
+                  aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
+             call t_stopf('aero_optics_sw')
 
           endif
 ! whannah - the block below is just for temporary reference - delete it
