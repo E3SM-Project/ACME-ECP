@@ -19,9 +19,6 @@ contains
     implicit none
     integer, intent(in) :: ncrms,flag
     integer :: i,icrm, j, ii, k
-    real(crm_rknd) :: micro_tmp(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms)
-
-    !$acc enter data create(micro_tmp) async(1)
 
     !-------------------------------------------------
     ! Update velocity fields
@@ -146,8 +143,6 @@ contains
       end do
       !$acc exit data copyout(sgs_field_diag) async(1)
     end if
-
-    !$acc exit data delete(micro_tmp) async(1)
 
   end subroutine periodic
 
