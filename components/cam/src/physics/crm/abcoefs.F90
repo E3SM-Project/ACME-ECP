@@ -1,6 +1,4 @@
 
-#include "directives.inc"
-
 module abcoefs_mod
   implicit none
 
