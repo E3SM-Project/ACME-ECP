@@ -18,6 +18,8 @@ contains
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
     real(crm_rknd) tau(nzm)
+    ! crjones tests: make changes to u0, v0, t0 local instead of shared with vars
+    real(crm_rknd) :: t0_loc(nzm), u0_loc(nzm), v0_loc(nzm)
     integer i, j, k, n_damp
 
     if(tau_min.lt.2*dt) then
@@ -40,14 +42,14 @@ contains
     ! as t have been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
     do k=1, nzm
-      u0(k,icrm)=0.0
-      v0(k,icrm)=0.0
-      t0(k,icrm)=0.0
+      u0_loc(k)=0.0
+      v0_loc(k)=0.0
+      t0_loc(k)=0.0
       do j=1, ny
         do i=1, nx
-          u0(k,icrm) = u0(k,icrm) + u(i,j,k,icrm)/(nx*ny)
-          v0(k,icrm) = v0(k,icrm) + v(i,j,k,icrm)/(nx*ny)
-          t0(k,icrm) = t0(k,icrm) + t(i,j,k,icrm)/(nx*ny)
+          u0_loc(k) = u0_loc(k) + u(i,j,k,icrm)/(nx*ny)
+          v0_loc(k) = v0_loc(k) + v(i,j,k,icrm)/(nx*ny)
+          t0_loc(k) = t0_loc(k) + t(i,j,k,icrm)/(nx*ny)
         end do
       end do
     end do
@@ -56,10 +58,10 @@ contains
     do k = nzm, nzm-n_damp, -1
       do j=1,ny
         do i=1,nx
-          dudt(i,j,k,na,icrm)= dudt(i,j,k,na,icrm)-(u(i,j,k,icrm)-u0(k,icrm)) * tau(k)
-          dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(i,j,k,icrm)-v0(k,icrm)) * tau(k)
+          dudt(i,j,k,na,icrm)= dudt(i,j,k,na,icrm)-(u(i,j,k,icrm)-u0_loc(k)) * tau(k)
+          dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(i,j,k,icrm)-v0_loc(k)) * tau(k)
           dwdt(i,j,k,na,icrm)= dwdt(i,j,k,na,icrm)-w(i,j,k,icrm) * tau(k)
-          t(i,j,k,icrm)= t(i,j,k,icrm)-dtn*(t(i,j,k,icrm)-t0(k,icrm)) * tau(k)
+          t(i,j,k,icrm)= t(i,j,k,icrm)-dtn*(t(i,j,k,icrm)-t0_loc(k)) * tau(k)
           ! In the old version (SAM7.5?) of SAM, water vapor is the prognostic variable for the two-moment microphyscs.
           ! So the following damping approach can lead to the negative water vapor.
           !      micro_field(i,j,k,index_water_vapor,icrm)= micro_field(i,j,k,index_water_vapor,icrm)- &
