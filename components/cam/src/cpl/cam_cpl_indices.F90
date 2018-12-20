@@ -14,7 +14,7 @@ module cam_cpl_indices
   integer :: index_a2x_Sa_u            ! bottom atm level zon wind
   integer :: index_a2x_Sa_v            ! bottom atm level mer wind
 #ifdef SP_GUST
-  integer :: index_a2x_Sa_spu2         ! mean variance subrid wind^2
+  integer :: index_a2x_Sa_spu2         ! mean variance subgrid wind^2
 #endif 
   integer :: index_a2x_Sa_tbot         ! bottom atm level temp
   integer :: index_a2x_Sa_ptem         ! bottom atm level pot temp

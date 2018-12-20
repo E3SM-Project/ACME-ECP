@@ -1323,8 +1323,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
        call outfld('ICLDIWP' ,cicewp , pcols,lchnk)
 
 #ifdef SP_GUST
-       ifld = pbuf_get_index('SP_U2')
-       call pbuf_set_field(pbuf, ifld, crm_output%u2bot(:ncol), start=(/1/), kount=(/ncol/) )
+       cam_out%spu2(:ncol) = crm_output%u2bot(:ncol)
 #endif
 
        if (use_ECPP) then

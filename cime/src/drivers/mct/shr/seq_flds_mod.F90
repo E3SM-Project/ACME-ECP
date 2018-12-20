@@ -586,14 +586,14 @@ contains
     attname  = 'Sa_topo'
     call metadata_set(attname, longname, stdname, units)
 
-#ifdef SP_GUST
+    ! ++crjones for super-parameterized gustiness SP_GUST
     call seq_flds_add(a2x_states,"Sa_spu2")
     longname = 'subrid horizontal wind variance from CRM'
     stdname = 'sp_wind_variance'
     units = 'm^2 s-2'
     attname = 'Sa_spu2'
     call metadata_set(attname, longname, stdname, units)
-#endif
+    ! --crjones
 
     ! zonal wind at the lowest model level (m/s)
     call seq_flds_add(a2x_states,"Sa_u")

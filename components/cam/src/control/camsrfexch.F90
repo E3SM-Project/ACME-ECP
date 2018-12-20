@@ -434,10 +434,6 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
    integer :: prec_sed_idx,snow_sed_idx,prec_pcw_idx,snow_pcw_idx
 
-#ifdef SP_GUST
-   integer :: u2bot_idx
-   real(r8), pointer :: sp_u2bot(:)
-#endif
 
    real(r8), pointer :: prec_dp(:)                 ! total precipitation   from ZM convection
    real(r8), pointer :: snow_dp(:)                 ! snow from ZM   convection
@@ -460,14 +456,6 @@ subroutine cam_export(state,cam_out,pbuf)
    snow_sed_idx = pbuf_get_index('SNOW_SED')
    prec_pcw_idx = pbuf_get_index('PREC_PCW')
    snow_pcw_idx = pbuf_get_index('SNOW_PCW')
-
-#ifdef SP_GUST
-   u2bot_idx = pbuf_get_index('SP_U2')
-   call pbuf_get_field(pbuf, u2bot_idx, sp_u2bot)
-   do i = 1, ncol
-      cam_out%spu2(i) = sp_u2bot(i)
-   end do
-#endif
 
    call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
    call pbuf_get_field(pbuf, snow_dp_idx, snow_dp)
