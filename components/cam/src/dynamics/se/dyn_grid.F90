@@ -74,6 +74,10 @@ module dyn_grid
   public :: dyn_grid_get_colndx
   public :: physgrid_copy_attributes_d
 
+#if defined( PHYS_GRID_1x1_TEST )
+  public :: get_horiz_grid_e, get_horiz_grid_dim_e
+#endif
+
   integer(kind=iMap), pointer :: fdofP_local(:,:) => null()
 
   real(r8), public, pointer :: w(:) => null()        ! weights
@@ -141,9 +145,14 @@ contains
     integer :: ic
     if(gblocks_need_initialized) call gblocks_init()
     do ic=1,size
+#if defined( PHYS_GRID_1x1_TEST )
+       ! cdex(ic) = gblocks(blockid)%GlobalID
+       ! cdex(ic) = elem(blockid)%GlobalID
+       cdex(ic) = blockid
+#else    
        cdex(ic)=gblocks(blockid)%UniquePtOffset+ic-1
+#endif /* PHYS_GRID_1x1_TEST */
     end do
-
     return
   end subroutine get_block_gcol_d
 
@@ -161,11 +170,17 @@ contains
     ! Author: Jim Edwards
     ! 
     !-----------------------------------------------------------------------
+    ! use dimensions_mod,  only: nelemd
+
     integer, intent(in) :: blockid
     integer :: ie
 
     if(gblocks_need_initialized) call gblocks_init()
+! #if defined( PHYS_GRID_1x1_TEST )
+!     get_block_gcol_cnt_d = 1
+! #else
     get_block_gcol_cnt_d=gblocks(blockid)%NumUniqueP
+! #endif /* PHYS_GRID_1x1_TEST */
 
     return
   end function get_block_gcol_cnt_d
@@ -427,6 +442,35 @@ end function get_block_owner_d
   !
   !========================================================================
   !
+#if defined( PHYS_GRID_1x1_TEST )
+  subroutine get_horiz_grid_dim_e(hdim1_d,hdim2_d)
+
+    !----------------------------------------------------------------------- 
+    ! 
+    !                          
+    ! Purpose: Returns declared horizontal dimensions of computational grid.
+    !          For non-lon/lat grids, declare grid to be one-dimensional,
+    !          i.e., (ngcols_d x 1)
+    ! 
+    ! Method: 
+    ! 
+    ! Author: Patrick Worley
+    ! 
+    !-----------------------------------------------------------------------
+    use dimensions_mod, only: nelem
+    !------------------------------Arguments--------------------------------
+    integer, intent(out) :: hdim1_d           ! first horizontal dimension
+    integer, intent(out), optional :: hdim2_d           ! second horizontal dimension
+    !-----------------------------------------------------------------------
+    ! hdim1_d = nelemd  ! number of elements on local task
+    hdim1_d = nelem  ! total number of elements
+    if(present(hdim2_d)) hdim2_d = 1
+    return
+  end subroutine get_horiz_grid_dim_e
+#endif /* PHYS_GRID_1x1_TEST */
+  !
+  !========================================================================
+  !
   subroutine get_horiz_grid_dim_d(hdim1_d,hdim2_d)
 
     !----------------------------------------------------------------------- 
@@ -441,14 +485,13 @@ end function get_block_owner_d
     ! Author: Patrick Worley
     ! 
     !-----------------------------------------------------------------------
-
+    use dimensions_mod, only: nelem
     !------------------------------Arguments--------------------------------
     integer, intent(out) :: hdim1_d           ! first horizontal dimension
     integer, intent(out), optional :: hdim2_d           ! second horizontal dimension
     !-----------------------------------------------------------------------
     hdim1_d = ngcols_d
     if(present(hdim2_d)) hdim2_d = 1
-
     return
   end subroutine get_horiz_grid_dim_d
   !
@@ -527,6 +570,169 @@ end function get_block_owner_d
   !
   !========================================================================
   !
+#if defined( PHYS_GRID_1x1_TEST )
+  subroutine get_horiz_grid_e(nxy, lat_rad_out, lon_rad_out, &
+                                   lat_deg_out, lon_deg_out, &
+                                   area_out,  wght_out   )
+    !----------------------------------------------------------------------- 
+    ! Purpose: Return latitude and longitude (in radians), column surface
+    !          area (in radians squared) and surface integration weights
+    !          for global column indices that will be passed to/from physics
+    ! Author: Walter Hannah
+    !-----------------------------------------------------------------------
+    use spmd_utils,             only: iam, mpi_integer, mpi_real8, mpicom, npes, masterproc
+    use dimensions_mod,         only: nelem, nelemd, nelemdmax, np, npsq
+    use coordinate_systems_mod, only: sphere_tri_area
+    use physical_constants,     only: DD_PI
+    !!! interface arguments
+    integer,  intent(in)            :: nxy            ! array sizes
+    real(r8), intent(out), optional :: lat_rad_out(:) ! column latitudes
+    real(r8), intent(out), optional :: lon_rad_out(:) ! column longitudes
+    real(r8), intent(out), optional :: lat_deg_out(:) ! column degree latitudes
+    real(r8), intent(out), optional :: lon_deg_out(:) ! column degree longitudes
+    real(r8), intent(out), optional :: area_out(:)    ! column surface area
+    real(r8), intent(out), optional :: wght_out(:)    ! column integration weight
+    !!! local variables
+    integer   :: ie, ii, jj       ! loop iterators
+    integer   :: ibuffer          ! integer buffer for gathering displacements and send buffer counts
+    integer   :: ierr             ! MPI error code
+    real(r8)  :: area1, area2     ! used to compute element area
+    real(r8)  :: avg_wgt          ! used to average coordinates
+    integer,  dimension(npes)   :: displace         ! MPI data displacement for gathering
+    integer,  dimension(npes)   :: send_cnt         ! MPI send buffer count for gathering
+    real(r8), dimension(nelemd) :: lat_rad_local
+    real(r8), dimension(nelemd) :: lon_rad_local
+    real(r8), dimension(nelemd) :: area_local
+    real(r8)                       :: max_lon_change
+    real(r8), dimension(np-2,np-2) :: tmp_lon
+
+    if (nxy /= nelem) call endrun('GET_HORIZ_GRID_E: arrays sizes are incorrect')
+
+    !------------------------------------------------------
+    ! Set up data for MPI gather statements
+    !------------------------------------------------------
+    send_cnt(:) = 0
+    displace(:) = 0
+
+    !!! gather displacements using first global element ID on local task
+    ibuffer = elem(1)%GlobalId-1
+    call mpi_allgather(ibuffer, 1, mpi_integer, displace, 1, mpi_integer, mpicom, ierr)
+
+    !!! gather send buffer count as local element number
+    ibuffer = nelemd
+    call mpi_allgather(ibuffer, 1, mpi_integer, send_cnt, 1, mpi_integer, mpicom, ierr)
+
+    avg_wgt = 1. / ( (np-2)*(np-2) )
+
+    !------------------------------------------------------
+    ! Latitude 
+    !------------------------------------------------------
+    if ( present(lat_rad_out) .or. present(lat_deg_out) ) then
+      lat_rad_local(:) = 0.
+      !!! Calculate coordinate using middle GLL nodes to avoid dealing with boundaries
+      do ie = 1, nelemd
+        lat_rad_local(ie)  = sum( elem(ie)%spherep(2:np-1,2:np-1)%lat ) * avg_wgt 
+      end do ! ie
+      call mpi_allgatherv( lat_rad_local(1:nelemd), send_cnt(iam+1), mpi_real8, lat_rad_out, send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
+      lat_deg_out = lat_rad_out * rad2deg
+    end if
+    !------------------------------------------------------
+    ! Longitude
+    !------------------------------------------------------
+    if ( present(lon_rad_out) .or. present(lon_deg_out) ) then
+      lon_rad_local(:) = 0.
+      !!! Calculate coordinate using middle GLL nodes to avoid dealing with boundaries
+      do ie = 1, nelemd
+        tmp_lon = elem(ie)%spherep(2:np-1,2:np-1)%lon
+        !!! adjust longitudes if the element crosses the prime meridian
+        max_lon_change = maxval(tmp_lon) - minval(tmp_lon)
+        if ( max_lon_change < DD_PI ) then
+          do ii = 1,np-2
+            do jj = 1,np-2
+              if ( tmp_lon(ii,jj)>DD_PI ) tmp_lon(ii,jj) = tmp_lon(ii,jj) - 2.*DD_PI
+            end do
+          end do
+        end if
+        !!! average adjusted longitude values to get centroid lon
+        lon_rad_local(ie) = sum( tmp_lon ) * avg_wgt 
+        !!! make sure element centroid longitude is 0<=lon<2*pi
+        if ( lon_rad_local(ie) < 0. ) lon_rad_local(ie) = lon_rad_local(ie) + 2.*DD_PI
+      end do ! ie
+      call mpi_allgatherv( lon_rad_local(1:nelemd), send_cnt(iam+1), mpi_real8, lon_rad_out, send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
+      lon_deg_out = lon_rad_out * rad2deg
+    end if
+    !------------------------------------------------------
+    ! Area and Weight (weights might not matter here)
+    !------------------------------------------------------
+    if ( present(area_out) .or. present(wght_out) ) then 
+      
+      area_local(:) = 0.
+      !!! Obtain area of element as sum of areas of 2 triangles.
+      do ie = 1, nelemd
+        call sphere_tri_area( elem(ie)%corners3D(1), &
+                              elem(ie)%corners3D(2), &
+                              elem(ie)%corners3D(3), area1 )
+        call sphere_tri_area( elem(ie)%corners3D(1), &
+                              elem(ie)%corners3D(3), &
+                              elem(ie)%corners3D(4), area2 )
+        area_local(ie)  = area1 + area2
+      end do ! ie
+
+      call mpi_allgatherv( area_local(1:nelemd), send_cnt(iam+1), mpi_real8, area_out, send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
+      
+      if ( present(wght_out) )  wght_out(:) = area_out(:) 
+    end if ! present(area_out) .or. present(wght_out)
+    !------------------------------------------------------
+    !------------------------------------------------------
+  
+
+! #if defined( JUST_FOR_REFERENCE )
+!     !!! from compute_global_area() below:
+!     ! Input variables
+!     real(r8), pointer           :: area_d(:)
+
+!     ! Local variables
+!     real(r8)                    :: areaw(np,np)
+!     real(r8)                    :: rbuf(ngcols_d)
+!     integer                     :: rdispls(npes), recvcounts(npes)
+!     integer                     :: ie, sb, eb
+!     integer                     :: ierr
+!     integer                     :: ibuf
+
+!     do ie = 1, nelemdmax     
+
+!       if(ie <= nelemd) then
+!         rdispls(iam+1) = elem(ie)%idxp%UniquePtOffset-1
+!         eb = rdispls(iam+1) + elem(ie)%idxp%NumUniquePts
+!         recvcounts(iam+1) = elem(ie)%idxP%NumUniquePts
+!         areaw = 1.0_r8 / elem(ie)%rspheremp(:,:)         
+!         call UniquePoints(elem(ie)%idxP, areaw, area_d(rdispls(iam+1)+1:eb))
+!       else
+!         rdispls(iam+1) = 0
+!         recvcounts(iam+1) = 0
+!       end if
+
+!       ibuf = rdispls(iam+1)
+!       call mpi_allgather(ibuf, 1, mpi_integer, rdispls, 1, mpi_integer, mpicom, ierr)
+!       ibuf = recvcounts(iam+1)
+!       call mpi_allgather(ibuf, 1, mpi_integer, recvcounts, 1, mpi_integer, mpicom, ierr)
+
+!       sb = rdispls(iam+1) + 1
+!       eb = rdispls(iam+1) + recvcounts(iam+1)
+
+!       rbuf(1:recvcounts(iam+1)) = area_d(sb:eb)
+!       call mpi_allgatherv(rbuf, recvcounts(iam+1), mpi_real8, area_d, recvcounts(:), rdispls(:), mpi_real8, mpicom, ierr)
+    
+!     end do
+! #endif
+
+
+    return
+  end subroutine get_horiz_grid_e
+#endif /* PHYS_GRID_1x1_TEST */
+  !
+  !========================================================================
+  !
   subroutine get_horiz_grid_d(nxy,clat_d_out,clon_d_out,area_d_out, &
        wght_d_out,lat_d_out,lon_d_out)
 
@@ -542,6 +748,8 @@ end function get_block_owner_d
     ! Author: Jim Edwards
     ! 
     !-----------------------------------------------------------------------
+    use dimensions_mod, only: nelem, nelemd, np, npsq
+
     integer, intent(in)   :: nxy                     ! array sizes
 
     real(r8), intent(out), optional :: clat_d_out(:) ! column latitudes

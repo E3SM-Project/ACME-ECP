@@ -338,11 +338,17 @@ contains
          get_block_levels_d, get_block_lvl_cnt_d, &
          get_block_owner_d, &
          get_gcol_block_d, get_gcol_block_cnt_d, &
+#if defined( PHYS_GRID_1x1_TEST )
+         get_horiz_grid_e, get_horiz_grid_dim_e, &
+#endif
          get_horiz_grid_dim_d, get_horiz_grid_d, physgrid_copy_attributes_d
     use spmd_utils, only: pair, ceil2
     use cam_grid_support, only: cam_grid_register, iMap, max_hcoordname_len
     use cam_grid_support, only: horiz_coord_t, horiz_coord_create
     use cam_grid_support, only: cam_grid_attribute_copy
+#if defined( PHYS_GRID_1x1_TEST )
+    use dimensions_mod,  only: nelem, nelemd
+#endif
 
     !
     !------------------------------Arguments--------------------------------
@@ -426,12 +432,19 @@ contains
     ! Initialize physics grid, using dynamics grid
     ! a) column coordinates
     if (single_column .and. dycore_is ('SE')) lbal_opt = -1 !+PAB make this default option for SCM
+#if defined( PHYS_GRID_1x1_TEST )
+    call get_horiz_grid_dim_e(hdim1_d,hdim2_d)
+#else
     call get_horiz_grid_dim_d(hdim1_d,hdim2_d)
+#endif
     if (single_column .and. dycore_is('SE')) then
       ngcols = 1
     else
       ngcols = hdim1_d*hdim2_d
     endif
+#if defined( PHYS_GRID_1x1_TEST )
+    lbal_opt = -1     ! need local mapping of dyn and phys columns (i.e. local_dp_map = .true. )
+#endif
     allocate( clat_d(1:ngcols) )
     allocate( clon_d(1:ngcols) )
     allocate( lat_d(1:ngcols) )
@@ -445,7 +458,11 @@ contains
       clat_d = scmlat * deg2rad
       clon_d = scmlon * deg2rad
     else
+#if defined( PHYS_GRID_1x1_TEST )
+      call get_horiz_grid_e(ngcols, lat_rad_out=clat_d, lon_rad_out=clon_d, lat_deg_out=lat_d, lon_deg_out=lon_d)
+#else
       call get_horiz_grid_d(ngcols, clat_d_out=clat_d, clon_d_out=clon_d, lat_d_out=lat_d, lon_d_out=lon_d)
+#endif /* PHYS_GRID_1x1_TEST */
     endif
     latmin = MINVAL(ABS(lat_d))
     lonmin = MINVAL(ABS(lon_d))
@@ -626,13 +643,13 @@ contains
        maxblksiz = 0
        do jb=firstblock,lastblock
           if (single_column .and. dycore_is('SE')) then
-	    maxblksiz = 1
-	  else
+            maxblksiz = 1
+          else
             maxblksiz = max(maxblksiz,get_block_gcol_cnt_d(jb))
-	  endif
+          endif
        enddo
        if (pcols < maxblksiz) then
-	  write(iulog,*) 'pcols = ',pcols, ' maxblksiz=',maxblksiz
+	        write(iulog,*) 'pcols = ',pcols, ' maxblksiz=',maxblksiz
           call endrun ('PHYS_GRID_INIT error: phys_loadbalance -1 specified but PCOLS < MAXBLKSIZ')
        endif
 
@@ -642,7 +659,7 @@ contains
        if (single_column .and. dycore_is('SE')) then
          nchunks = 1
        else
-	 nchunks = (lastblock-firstblock+1)
+          nchunks = (lastblock-firstblock+1)
        endif
 
        !
@@ -659,10 +676,13 @@ contains
        do cid=1,nchunks
           ! get number of global column indices in block
           if (single_column .and. dycore_is('SE')) then
-	    max_ncols = 1
-	  else
-	    max_ncols = get_block_gcol_cnt_d(cid+firstblock-1)
-	  endif
+            max_ncols = 1
+          else
+            max_ncols = get_block_gcol_cnt_d(cid+firstblock-1)
+          endif
+#if defined( PHYS_GRID_1x1_TEST )
+            max_ncols = 1
+#endif
           ! fill cdex array with global indices from current block
           call get_block_gcol_d(cid+firstblock-1,max_ncols,cdex)
 
@@ -706,7 +726,7 @@ contains
        !
        local_dp_map = .true. 
        !
-    else
+    else ! (lbal_opt == -1)
        !
        ! Option == 0: split local blocks into chunks,
        !               while attempting to create load-balanced chunks.
@@ -858,7 +878,11 @@ contains
       area_d = 4.0_r8*pi
       wght_d = 4.0_r8*pi
     else
+#if defined( PHYS_GRID_1x1_TEST )
+      call get_horiz_grid_e(ngcols, area_out=area_d, wght_out=wght_d)
+#else
       call get_horiz_grid_d(ngcols, area_d_out=area_d, wght_d_out=wght_d)
+#endif /* PHYS_GRID_1x1_TEST */
     endif
 
     if ( abs(sum(area_d) - 4.0_r8*pi) > 1.e-10_r8 ) then

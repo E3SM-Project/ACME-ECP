@@ -2145,8 +2145,13 @@ contains
                          pint(1:ncol,1:nlev_rad+1))
 
       ! Make sure temperatures are within range
+#ifdef RCEMIP
+      call clip_values(tmid, k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tmid', warn=.false.)
+      call clip_values(tint, k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tint', warn=.false.)
+#else
       call clip_values(tmid, k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tmid', warn=.true.)
       call clip_values(tint, k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tint', warn=.true.)
+#endif
 
       ! Do longwave cloud optics calculations
       call t_startf('longwave cloud optics')

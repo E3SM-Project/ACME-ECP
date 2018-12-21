@@ -1,7 +1,10 @@
 #!/bin/tcsh -f 
 #SBATCH -N 1
-#SBATCH --account=FY127788
+#SBATCH --account=m2861
 #SBATCH --time=0:10:00
+#SBATCH -q regular
+#SBATCH -C knl
+#SBATCH -L SCRATCH
 
 set NCPU = 1
 if ( ${?PBS_NODEFILE} ) then
@@ -26,14 +29,15 @@ echo using NCPU = $NCPU
 # to plot the control volumes, see:   plotgrid.ncl
 #
 # GLL points within each element:
-set NPTS = 4
-set ne = 0 ; 
+set NPTS = 1
+set ne = 4 ; 
 
 set HOMME = `cd ../.. ; pwd`  # path to HOMME code. assume we are running from homme/test/template
 #set MACH = $HOMME/cmake/machineFiles/skybridge.cmake
 #set MACH = $HOMME/cmake/machineFiles/climate.cmake
 #set MACH = $HOMME/cmake/machineFiles/rhel5.cmake
 #set MACH = $HOMME/cmake/machineFiles/darwin.cmake
+set MACH = $HOMME/cmake/machineFiles/cori-knl.cmake
 if (! ${?MACH} ) then
    echo "edit this script to set MACH to your cmake machine file"
    exit 1

@@ -43,6 +43,10 @@ module ncdio_atm
 
   public :: infld
 
+#if defined( PHYS_GRID_1x1_TEST )
+  private :: avg_over_element
+#endif
+
   integer STATUS
   real(r8) surfdat
   !-----------------------------------------------------------------------
@@ -295,6 +299,11 @@ contains
 
     nullify(iodesc)
 
+#if defined( PHYS_GRID_1x1_TEST )
+    ! real(r8), dimension(dim1b:dim1e,dim2b:dim2e) :: field_in
+    ! real(r8), allocatable, dimension(:,:) :: field_in
+#endif /* PHYS_GRID_1x1_TEST */
+
     !
     !-----------------------------------------------------------------------
     !
@@ -427,9 +436,15 @@ contains
           end if
         else
           ! All distributed array processing
+#if defined( PHYS_GRID_1x1_TEST )
           call cam_grid_get_decomp(grid_map, arraydimsize, dimlens(1:2),      &
                pio_double, iodesc, field_dnames=field_dnames)
           call pio_read_darray(ncid, varid, iodesc, field, ierr)
+#else
+          call cam_grid_get_decomp(grid_map, arraydimsize, dimlens(1:2),      &
+               pio_double, iodesc, field_dnames=field_dnames)
+          call pio_read_darray(ncid, varid, iodesc, field, ierr)
+#endif /* PHYS_GRID_1x1_TEST */
         end if
       end if  ! end of readvar_tmp
 
@@ -857,6 +872,83 @@ contains
     end if ! end of call infld_real_2d_3d instead
 
   end subroutine infld_real_3d_3d
+
+
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+#if defined( PHYS_GRID_1x1_TEST )
+
+
+
+  subroutine avg_over_element(field_in, field_out)
+
+    !-------------------------------------------------------- 
+    ! Purpose:  Average the input field over the element
+    !           Note that this assumes local_dp_map is true!
+    ! Author: Walter Hannah
+    !--------------------------------------------------------
+    use parallel_mod,   only: par
+    use dimensions_mod, only: np, npsq, nelemd, nelem, nlev
+    use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp, psubcols
+    use dyn_grid,       only: elem, get_gcol_block_d
+    !!! Interface arguments
+    real(r8), dimension(begchunk:endchunk,pcols,pver), intent(in) :: field_in
+    ! real(r8), dimension(d_in_1b:d_in_1e,d_in_2b:d_in_2e), intent(in) :: field_in
+    real(r8), dimension(nelemd),                       intent(out) :: field_out
+#if defined( DUMMY_BARRIER )
+    !!! Local variables
+    real(r8), dimension(npsq,pver,nelemd)   :: field_tmp1
+    ! real(r8), dimension(np,np,pver,nelemd)  :: field_tmp2
+    real(r8), dimension(np,np)              :: gll_tmp
+    integer  :: gbl_blk_id      ! global block/element id
+    integer  :: col_id          ! column index within block
+    integer  :: elm_id          ! local block/element id 
+    integer  :: ncols           ! 
+    integer  :: ie, ii, ilyr    ! loop iterators for elements, layers, unique points
+    integer  :: i, j            ! loop iterrators for GLL nodes
+    ! integer :: elm_ncol        ! number of columns in element
+    real(r8) :: avg_wgt         ! weight needed for averaging over element
+    !--------------------------------------------------------
+    !--------------------------------------------------------
+    do lchnk = begchunk,endchunk
+      ncols = get_ncols_p(lchnk)
+      call get_gcol_all_p(lchnk,pcols,pgcols)
+      do icol = 1,ncols
+        call get_gcol_block_d(pgcols(icol), 1, blk_id, blk_col_id, lcl_blk_id)
+        do ilyr = 1,pver
+          ! field_tmp1(col_id(1),ilyr,elm_id(1)) = field_in(lchnk)%dtdt(icol,ilyr)
+          field_tmp1(col_id(1),ilyr,elm_id(1)) = field_in(lchnk,icol,ilyr)
+        end do
+      end do  
+    end do
+    !--------------------------------------------------------
+    ! Average over non-edge nodes
+    !--------------------------------------------------------
+    avg_wgt = 1. / ( (np-2)*(np-2) )
+    if (par%dynproc) then
+      do ie = 1,nelemd
+        ! ncols = elem(ie)%idxP%NumUniquePts
+        ! call PutUniquePoints( elem(ie)%idxP, nlev, field_tmp1(1:ncols,:,ie),  field_tmp2(ie,:,:,:) )
+        !!! from PutUniquePoints() in dof_mod:
+        gll_tmp = 0.0D0
+        do ii = 1,elem(ie)%idx%NumUniquePts
+          i = elem(ie)%idx%ia(ii)
+          j = elem(ie)%idx%ja(ii)
+          gll_tmp(i,j) = src(ii)
+        enddo
+        field_out(ie) = sum( gll_tmp(2:np-1,2:np-1) ) * avg_wgt
+      end do ! ie
+   end if ! par%dynproc
+    !--------------------------------------------------------
+    !--------------------------------------------------------
+#ENDIF /* DUMMY_BARRIER */
+  end subroutine avg_over_element
+
+
+
+#endif /* PHYS_GRID_1x1_TEST */
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 
 
 end module ncdio_atm

@@ -680,6 +680,9 @@ contains
 
     call mpi_reduce(max_diff,tot_diff,1,MPI_REAL8,MPI_MAX,0,mpicom,ier)
     if (iamroot) then
+       do n = 1,npts
+          write(logunit,"(' seq_domain_check_grid - n,data1,data2:  ',i12,'  ',g23.15,'  ',g23.15)"),n,data1(n),data2(n)
+       end do
        write(logunit,F02) " maximum           difference for ",trim(attr),tot_diff
        write(logunit,F02) " maximum allowable difference for ",trim(attr),eps
        call shr_sys_flush(logunit)

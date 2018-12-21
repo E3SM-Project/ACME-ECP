@@ -86,6 +86,11 @@ CONTAINS
 
     type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
+#if defined( PHYS_GRID_1x1_TEST )
+    integer :: g1,g2                  ! GLL index bounds for averaging data for physics grid
+    real (kind=real_kind) :: avg_wgt  ! weighting for averaging GLL nodes (must be consistent with g1 & g2)
+#endif
+
     !----------------------------------------------------------------------
 
     nullify(pbuf_chnk)
@@ -101,6 +106,47 @@ CONTAINS
        if (ierr /= 0) call endrun("dp_coupling: Allocate of frontga failed.")
 
     end if
+
+#if defined( PHYS_GRID_1x1_TEST )
+
+    !!! only use middle element nodes to force physics column
+    g1 = 2
+    g2 = np-1
+    avg_wgt = 1./( real((np-2),kind=real_kind)**2. ) !0.25
+
+    elem => dyn_out%elem
+    tl_f = TimeLevel%n0   ! time split physics (with forward-in-time RK)
+
+    do ie=1,nelemd
+      lchnk = begchunk + ie-1
+      icol = 1
+
+      phys_state(lchnk)%ps  (icol) = sum( elem(ie)%state%ps_v(g1:g2,g1:g2,tl_f) )*avg_wgt
+      phys_state(lchnk)%phis(icol) = sum( elem(ie)%state%phis(g1:g2,g1:g2)      )*avg_wgt
+
+      do ilyr=1,pver
+
+        phys_state(lchnk)%t    (icol,ilyr) = sum( elem(ie)%state%T        (g1:g2,g1:g2  ,ilyr,tl_f) )*avg_wgt
+        phys_state(lchnk)%u    (icol,ilyr) = sum( elem(ie)%state%V        (g1:g2,g1:g2,1,ilyr,tl_f) )*avg_wgt
+        phys_state(lchnk)%v    (icol,ilyr) = sum( elem(ie)%state%V        (g1:g2,g1:g2,2,ilyr,tl_f) )*avg_wgt
+        phys_state(lchnk)%omega(icol,ilyr) = sum( elem(ie)%derived%omega_p(g1:g2,g1:g2  ,ilyr)      )*avg_wgt
+        
+        do m=1,pcnst
+           phys_state(lchnk)%q(icol,ilyr,m) = sum( elem(ie)%state%Q(g1:g2,g1:g2,ilyr,m) )*avg_wgt
+        end do ! m
+
+      end do ! ilyr
+
+      if (use_gw_front) then
+        do ilyr=1,pver
+          pbuf_frontgf(icol,ilyr) = frontgf(icol,ilyr,ie)
+          pbuf_frontga(icol,ilyr) = frontgf(icol,ilyr,ie)
+        end do ! ilyr
+      endif ! use_gw_front
+
+    end do ! icol
+
+#else /* PHYS_GRID_1x1_TEST */
 
     if( par%dynproc) then
 
@@ -271,6 +317,8 @@ CONTAINS
     end if
     call t_stopf('dpcopy')
 
+#endif /* PHYS_GRID_1x1_TEST */
+
     call t_startf('derived_phys')
     call derived_phys(phys_state,phys_tend,pbuf2d)
     call t_stopf('derived_phys')
@@ -337,6 +385,20 @@ CONTAINS
     else
        nullify(elem)
     end if
+
+#if defined( PHYS_GRID_1x1_TEST )
+    do ie=1,nelemd
+      do ilyr=1,pver
+        elem(ie)%derived%FT(:,:,ilyr)     = phys_tend(ie)%dtdt(1,ilyr)
+        elem(ie)%derived%FM(:,:,1,ilyr)   = phys_tend(ie)%dudt(1,ilyr)
+        elem(ie)%derived%FM(:,:,2,ilyr)   = phys_tend(ie)%dudt(1,ilyr)
+        do m=1,pcnst
+          elem(ie)%derived%FQ(:,:,ilyr,m) = phys_state(ie)%q(1,ilyr,m)
+        end do
+      end do ! ilyr
+    end do ! ie
+
+#else /* PHYS_GRID_1x1_TEST */
 
     T_tmp=0.0_r8
     uv_tmp=0.0_r8
@@ -449,6 +511,9 @@ CONTAINS
        end do
        call t_stopf('putUniquePoints')
     end if
+
+#endif /* PHYS_GRID_1x1_TEST */
+
   end subroutine p_d_coupling
 
   subroutine derived_phys(phys_state, phys_tend, pbuf2d)

@@ -199,6 +199,10 @@
 <ncdata dyn="se" hgrid="ne16np4"  nlev="30"  ocn="aquaplanet" ic_ymd="101" >atm/cam/inic/homme/cami_0000-01-01_ne16np4_L30_ape_c101201.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="30"  ocn="aquaplanet" ic_ymd="101" >atm/cam/inic/homme/cami_0000-01-01_ne30np4_L30_ape_c111020.nc</ncdata>
 
+<!-- <ncdata dyn="se" hgrid="ne16np4"  nlev="72" ic_ymd="101" >atm/cam/inic/homme/cami_mam3_Linoz_ne16np4_L72_c160614.nc</ncdata> -->
+<ncdata dyn="se" hgrid="ne16np8" nlev="72" >atm/cam/inic/homme/cami_mam3_Linoz_ne16np4_L72_c160614.nc</ncdata>
+
+<ncdata dyn="se" hgrid="ne4pg1"  nlev="72" >atm/cam/inic/homme/cami_mam3_Linoz_ne4np4_L72_c160909.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>

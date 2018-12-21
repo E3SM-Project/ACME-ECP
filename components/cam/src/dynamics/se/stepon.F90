@@ -246,10 +246,115 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
 
    if(.not.par%dynproc) return
 
+
+
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+#if defined( PHYS_GRID_REDUCED_TEST )
+    
+   do ie = 1,nelemd
+
+      dyn_in%elem(ie)%derived%FT(1,1,:) = dyn_in%elem(ie)%derived%FT(2,2,:)
+      dyn_in%elem(ie)%derived%FT(1,2,:) = dyn_in%elem(ie)%derived%FT(2,2,:)
+      dyn_in%elem(ie)%derived%FT(2,1,:) = dyn_in%elem(ie)%derived%FT(2,2,:)
+      dyn_in%elem(ie)%derived%FT(3,1,:) = dyn_in%elem(ie)%derived%FT(3,2,:)
+      dyn_in%elem(ie)%derived%FT(4,1,:) = dyn_in%elem(ie)%derived%FT(3,2,:)
+      dyn_in%elem(ie)%derived%FT(4,2,:) = dyn_in%elem(ie)%derived%FT(3,2,:)
+      dyn_in%elem(ie)%derived%FT(1,3,:) = dyn_in%elem(ie)%derived%FT(2,3,:)
+      dyn_in%elem(ie)%derived%FT(1,4,:) = dyn_in%elem(ie)%derived%FT(2,3,:)
+      dyn_in%elem(ie)%derived%FT(2,4,:) = dyn_in%elem(ie)%derived%FT(2,3,:)
+      dyn_in%elem(ie)%derived%FT(4,3,:) = dyn_in%elem(ie)%derived%FT(3,3,:)
+      dyn_in%elem(ie)%derived%FT(4,4,:) = dyn_in%elem(ie)%derived%FT(3,3,:)
+      dyn_in%elem(ie)%derived%FT(3,4,:) = dyn_in%elem(ie)%derived%FT(3,3,:)
+
+      dyn_in%elem(ie)%derived%FM(1,1,:,:) = dyn_in%elem(ie)%derived%FM(2,2,:,:)
+      dyn_in%elem(ie)%derived%FM(1,2,:,:) = dyn_in%elem(ie)%derived%FM(2,2,:,:)
+      dyn_in%elem(ie)%derived%FM(2,1,:,:) = dyn_in%elem(ie)%derived%FM(2,2,:,:)
+      dyn_in%elem(ie)%derived%FM(3,1,:,:) = dyn_in%elem(ie)%derived%FM(3,2,:,:)
+      dyn_in%elem(ie)%derived%FM(4,1,:,:) = dyn_in%elem(ie)%derived%FM(3,2,:,:)
+      dyn_in%elem(ie)%derived%FM(4,2,:,:) = dyn_in%elem(ie)%derived%FM(3,2,:,:)
+      dyn_in%elem(ie)%derived%FM(1,3,:,:) = dyn_in%elem(ie)%derived%FM(2,3,:,:)
+      dyn_in%elem(ie)%derived%FM(1,4,:,:) = dyn_in%elem(ie)%derived%FM(2,3,:,:)
+      dyn_in%elem(ie)%derived%FM(2,4,:,:) = dyn_in%elem(ie)%derived%FM(2,3,:,:)
+      dyn_in%elem(ie)%derived%FM(4,3,:,:) = dyn_in%elem(ie)%derived%FM(3,3,:,:)
+      dyn_in%elem(ie)%derived%FM(4,4,:,:) = dyn_in%elem(ie)%derived%FM(3,3,:,:)
+      dyn_in%elem(ie)%derived%FM(3,4,:,:) = dyn_in%elem(ie)%derived%FM(3,3,:,:)
+
+      dyn_in%elem(ie)%derived%FQ(1,1,:,:) = dyn_in%elem(ie)%derived%FQ(2,2,:,:)
+      dyn_in%elem(ie)%derived%FQ(1,2,:,:) = dyn_in%elem(ie)%derived%FQ(2,2,:,:)
+      dyn_in%elem(ie)%derived%FQ(2,1,:,:) = dyn_in%elem(ie)%derived%FQ(2,2,:,:)
+      dyn_in%elem(ie)%derived%FQ(3,1,:,:) = dyn_in%elem(ie)%derived%FQ(3,2,:,:)
+      dyn_in%elem(ie)%derived%FQ(4,1,:,:) = dyn_in%elem(ie)%derived%FQ(3,2,:,:)
+      dyn_in%elem(ie)%derived%FQ(4,2,:,:) = dyn_in%elem(ie)%derived%FQ(3,2,:,:)
+      dyn_in%elem(ie)%derived%FQ(1,3,:,:) = dyn_in%elem(ie)%derived%FQ(2,3,:,:)
+      dyn_in%elem(ie)%derived%FQ(1,4,:,:) = dyn_in%elem(ie)%derived%FQ(2,3,:,:)
+      dyn_in%elem(ie)%derived%FQ(2,4,:,:) = dyn_in%elem(ie)%derived%FQ(2,3,:,:)
+      dyn_in%elem(ie)%derived%FQ(4,3,:,:) = dyn_in%elem(ie)%derived%FQ(3,3,:,:)
+      dyn_in%elem(ie)%derived%FQ(4,4,:,:) = dyn_in%elem(ie)%derived%FQ(3,3,:,:)
+      dyn_in%elem(ie)%derived%FQ(3,4,:,:) = dyn_in%elem(ie)%derived%FQ(3,3,:,:)
+
+   end do ! ie
+    
+   ! do ie = 1,nelemd
+   !    do mid_i = 2,3
+   !    do mid_j = 2,3
+   !       if (mid_i==2) offset_i = -1
+   !       if (mid_i==3) offset_i =  1
+   !       if (mid_j==2) offset_j = -1
+   !       if (mid_j==3) offset_j =  1
+   !       do offset = 1,3
+   !          if (offset==1) edge_i = mid_i+offset_i ; edge_j = mid_j+offset_j
+   !          if (offset==2) edge_i = mid_i          ; edge_j = mid_j+offset_j
+   !          if (offset==3) edge_i = mid_i+offset_i ; edge_j = mid_j   
+   !          dyn_in%elem(ie)%derived%FT(edge_i,edge_j,:)   = dyn_in%elem(ie)%derived%FT(mid_i,mid_j,:)
+   !          dyn_in%elem(ie)%derived%FM(edge_i,edge_j,:,:) = dyn_in%elem(ie)%derived%FM(mid_i,mid_j,:,:)
+   !          dyn_in%elem(ie)%derived%FQ(edge_i,edge_j,:,:) = dyn_in%elem(ie)%derived%FQ(mid_i,mid_j,:,:)
+   !       end do ! offset
+   !    end do ! mid_i
+   !    end do ! mid_j
+   ! end do ! ie
+
+
+
+   ! do ie = 1,nelemd
+   !    do mi = 2,3
+   !    do mj = 2,3
+   !       if (mi==2) di = -1
+   !       if (mi==3) di =  1
+   !       if (mj==2) dj = -1
+   !       if (mj==3) dj =  1
+   !       dyn_in%elem(ie)%derived%FT(mi+di,mj+dj,:) = dyn_in%elem(ie)%derived%FT(mi,mj,:)
+   !       dyn_in%elem(ie)%derived%FT(mi   ,mj+dj,:) = dyn_in%elem(ie)%derived%FT(mi,mj,:)
+   !       dyn_in%elem(ie)%derived%FT(mi+di,mj   ,:) = dyn_in%elem(ie)%derived%FT(mi,mj,:)
+   !    end do ! ci
+   !    end do ! cj
+   ! end do ! ie
+   
+
+#endif /* PHYS_GRID_REDUCED_TEST */
+!--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------------- 
+
+
+
    call t_startf('stepon_bndry_exch')
    ! do boundary exchange
    if (.not. single_column) then 
      do ie=1,nelemd
+
+#if defined( PHYS_GRID_REDUCED_TEST ) || defined( PHYS_GRID_1x1_TEST )
+       !!! Apply mass matrix weighting since we made the fields continuous above
+       do k = 1, nlev
+          dyn_in%elem(ie)%derived%FT(:,:,k)      = dyn_in%elem(ie)%derived%FT(:,:,k)    * dyn_in%elem(ie)%spheremp(:,:)
+          dyn_in%elem(ie)%derived%FM(:,:,1,k)    = dyn_in%elem(ie)%derived%FM(:,:,1,k)  * dyn_in%elem(ie)%spheremp(:,:)
+          dyn_in%elem(ie)%derived%FM(:,:,2,k)    = dyn_in%elem(ie)%derived%FM(:,:,2,k)  * dyn_in%elem(ie)%spheremp(:,:)
+          do ic=1,pcnst
+            dyn_in%elem(ie)%derived%FQ(:,:,k,ic) = dyn_in%elem(ie)%derived%FQ(:,:,k,ic) * dyn_in%elem(ie)%spheremp(:,:)
+          end do
+       enddo ! k = 1, nlev
+#endif /* PHYS_GRID_REDUCED_TEST or PHYS_GRID_1x1_TEST */
        kptr=0
        call edgeVpack(edgebuf,dyn_in%elem(ie)%derived%FM(:,:,:,:),2*nlev,kptr,ie)
        kptr=kptr+2*nlev
@@ -283,11 +388,24 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
        call edgeVunpack(edgebuf,dyn_in%elem(ie)%derived%FQ(:,:,:,:),nlev*pcnst,kptr,ie)
      endif
 
+#if defined( PHYS_GRID_REDUCED_TEST ) || defined( PHYS_GRID_1x1_TEST )
+       !!! Apply inverse mass matrix weighting since we applied mass weighting above
+       do k = 1, nlev
+          dyn_in%elem(ie)%derived%FT(:,:,k)      = dyn_in%elem(ie)%derived%FT(:,:,k)    * dyn_in%elem(ie)%rspheremp(:,:)
+          dyn_in%elem(ie)%derived%FM(:,:,1,k)    = dyn_in%elem(ie)%derived%FM(:,:,1,k)  * dyn_in%elem(ie)%rspheremp(:,:)
+          dyn_in%elem(ie)%derived%FM(:,:,2,k)    = dyn_in%elem(ie)%derived%FM(:,:,2,k)  * dyn_in%elem(ie)%rspheremp(:,:)
+          do ic=1,pcnst
+            dyn_in%elem(ie)%derived%FQ(:,:,k,ic) = dyn_in%elem(ie)%derived%FQ(:,:,k,ic) * dyn_in%elem(ie)%rspheremp(:,:)
+          end do
+       enddo ! k = 1, nlev
+#endif /* PHYS_GRID_REDUCED_TEST or PHYS_GRID_1x1_TEST */
+
       tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
 
       call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
 
       dyn_ps0=ps0
+
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! ftype=2:  apply forcing to Q,ps.  Return dynamics tendencies

@@ -673,6 +673,16 @@
       <mask>gx1v6</mask>
     </model_grid>
 
+    <model_grid alias="ne4pg1" compset="(DOCN|XOCN|SOCN|AQP1)">
+      <grid name="atm">ne4np4</grid>
+      <grid name="lnd">ne4np4</grid>
+      <grid name="ocnice">ne4np4</grid>
+      <grid name="rof">r05</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>oQU240</mask>
+    </model_grid>
+
     <model_grid alias="ne4_ne4" compset="(DOCN|XOCN|SOCN|AQP1)">
       <grid name="atm">ne4np4</grid>
       <grid name="lnd">ne4np4</grid>
@@ -767,6 +777,16 @@
       <grid name="atm">ne30np4</grid>
       <grid name="lnd">ne30np4</grid>
       <grid name="ocnice">ne30np4</grid>
+      <grid name="rof">r05</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>gx1v6</mask>
+    </model_grid>
+
+    <model_grid alias="ne16np8_ne16np8" compset="(DOCN|XOCN|SOCN|AQP1)">
+      <grid name="atm">ne16np8</grid>
+      <grid name="lnd">ne16np8</grid>
+      <grid name="ocnice">ne16np8</grid>
       <grid name="rof">r05</grid>
       <grid name="glc">null</grid>
       <grid name="wav">null</grid>
@@ -1398,6 +1418,18 @@
       <desc>T31 is Gaussian grid:</desc>
     </domain>
 
+    
+    <domain name="ne4pg1">
+      <nx>96</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="oQU480">UNSET</file>
+      <file grid="atm|lnd" mask="oQU240">UNSET</file>
+      <file grid="ice|ocn" mask="oQU480">UNSET</file>
+      <file grid="ice|ocn" mask="oQU240">UNSET</file>
+      <desc>ne4np4 is Spectral Elem  7.5-deg grid w/ experimental 1x1 physics grid</desc>
+    </domain>
+    
+
     <domain name="ne4np4">
       <nx>866</nx>
       <ny>1</ny>
@@ -1424,6 +1456,16 @@
       <file grid="ice|ocn" mask="gx3v7">$DIN_LOC_ROOT/share/domains/domain.ocn.ne16np4_gx3v7.121113.nc</file>
       <file grid="ice|ocn" mask="oQU240">$DIN_LOC_ROOT/share/domains/domain.ocn.ne16np4_oQU240.151211.nc</file>
       <desc>ne16np4 is Spectral Elem 2-deg grid:</desc>
+    </domain>
+
+    <domain name="ne16np8">
+      <nx>75266</nx>
+      <ny>1</ny>
+      <file grid="atm|lnd" mask="gx3v7">$DIN_LOC_ROOT/share/domains/domain.lnd.ne16np4_gx3v7.120406.nc</file>
+      <file grid="atm|lnd" mask="oQU240">$DIN_LOC_ROOT/share/domains/domain.lnd.ne16np4_oQU240.151211.nc</file>
+      <file grid="ice|ocn" mask="gx3v7">$DIN_LOC_ROOT/share/domains/domain.ocn.ne16np4_gx3v7.121113.nc</file>
+      <file grid="ice|ocn" mask="oQU240">$DIN_LOC_ROOT/share/domains/domain.ocn.ne16np4_oQU240.151211.nc</file>
+      <desc>ne16np8 is Spectral Elem 1-deg grid:</desc>
     </domain>
 
     <domain name="ne30np4">
@@ -1865,6 +1907,14 @@
       <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/oQU240/map_oQU240_to_ne4np4_aave.160614.nc</map>
     </gridmap>
 
+    <gridmap atm_grid="ne4pg1" ocn_grid="oQU240">
+      <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/ne4np4/map_ne4np4_to_oQU240_aave.160614.nc</map>
+      <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/ne4np4/map_ne4np4_to_oQU240_aave.160614.nc</map>
+      <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/ne4np4/map_ne4np4_to_oQU240_aave.160614.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/oQU240/map_oQU240_to_ne4np4_aave.160614.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/oQU240/map_oQU240_to_ne4np4_aave.160614.nc</map>
+    </gridmap>
+
     <gridmap atm_grid="ne11np4" ocn_grid="gx3v7">
       <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/ne11np4/</map>
       <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/ne11np4/</map>
@@ -1874,6 +1924,14 @@
     </gridmap>
 
     <gridmap atm_grid="ne16np4" ocn_grid="gx3v7">
+      <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_TO_gx3v7_aave.120406.nc</map>
+      <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_TO_gx3v7_aave.120406.nc</map>
+      <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_TO_gx3v7_aave.120406.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/gx3v7/map_gx3v7_TO_ne16np4_aave.120406.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/gx3v7/map_gx3v7_TO_ne16np4_aave.120406.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne16np8" ocn_grid="gx3v7">
       <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_TO_gx3v7_aave.120406.nc</map>
       <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_TO_gx3v7_aave.120406.nc</map>
       <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_TO_gx3v7_aave.120406.nc</map>
@@ -2311,6 +2369,11 @@
       <map name="ROF2LND_FMAPNAME">lnd/clm2/mappingdata/maps/ne16np4/map_0.5x0.5_nomask_to_ne16np4_nomask_aave_da_c110922.nc</map>
     </gridmap>
 
+    <gridmap lnd_grid="ne16np8" rof_grid="r05">
+      <map name="LND2ROF_FMAPNAME">lnd/clm2/mappingdata/maps/ne16np4/map_ne16np4_nomask_to_0.5x0.5_nomask_aave_da_c110922.nc</map>
+      <map name="ROF2LND_FMAPNAME">lnd/clm2/mappingdata/maps/ne16np4/map_0.5x0.5_nomask_to_ne16np4_nomask_aave_da_c110922.nc</map>
+    </gridmap>
+
     <gridmap lnd_grid="ne30np4" rof_grid="r05">
       <map name="LND2ROF_FMAPNAME">lnd/clm2/mappingdata/maps/ne30np4/map_ne30np4_to_0.5x0.5rtm_aave_da_110320.nc</map>
       <map name="ROF2LND_FMAPNAME">lnd/clm2/mappingdata/maps/ne30np4/map_0.5x0.5_nomask_to_ne30np4_nomask_aave_da_c121019.nc</map>
@@ -2662,6 +2725,14 @@
     </gridmap>
 
     <gridmap atm_grid="ne16np4" ocn_grid="oQU240">
+      <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_to_oQU240_aave.151209.nc</map>
+      <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_to_oQU240_conserve.151209.nc</map>
+      <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_to_oQU240_conserve.151209.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/oQU240/map_oQU240_to_ne16np4_aave.151209.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/oQU240/map_oQU240_to_ne16np4_aave.151209.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="ne16np8" ocn_grid="oQU240">
       <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_to_oQU240_aave.151209.nc</map>
       <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_to_oQU240_conserve.151209.nc</map>
       <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/ne16np4/map_ne16np4_to_oQU240_conserve.151209.nc</map>

@@ -601,6 +601,9 @@ CONTAINS
 
     !-------------------------------------------------------------------
     use phys_grid, only : get_nlcols_p
+#if defined( PHYS_GRID_1x1_TEST )
+    ! use dimensions_mod,  only: ngcols_d
+#endif    
     !
     ! Arguments
     !
@@ -640,9 +643,12 @@ CONTAINS
        end do
     end do
 
+! #if defined( PHYS_GRID_1x1_TEST )
+!     call mct_gsMap_init( gsMap_atm, gindex, mpicom_atm, ATMID, nelemd, nelem)
+! #else
     nlcols = get_nlcols_p()
     call mct_gsMap_init( gsMap_atm, gindex, mpicom_atm, ATMID, nlcols, ngcols)
-
+! #endif /* PHYS_GRID_1x1_TEST */
     deallocate(gindex)
 
   end subroutine atm_SetgsMap_mct
