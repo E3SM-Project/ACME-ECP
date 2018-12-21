@@ -2054,18 +2054,19 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
 <compiler MACH="rhapsody" COMPILER="gnu">
   <!-- Mac OSX workstation -->
   <FFLAGS>
-    <append> -ffree-line-length-none  -ffixed-line-length-none </append>
+    <!-- <append> -ffree-line-length-none  -ffixed-line-length-none </append> -->
   </FFLAGS>
   <FFLAGS_NOOPT>
-    <append> -ffree-line-length-none  -ffixed-line-length-none </append>
+    <!-- <append> -ffree-line-length-none  -ffixed-line-length-none </append> -->
   </FFLAGS_NOOPT>
   <!-- use homebrew lapack library -->
   <LDFLAGS>
-    <append MODEL="driver"> -L/usr/local/opt/lapack/lib   -llapack -lblas </append>
+    <append> -framework Accelerate </append>
+    <!-- <append MODEL="driver"> -L/usr/local/opt/lapack/lib   -llapack -lblas </append> -->
   </LDFLAGS>
-  <CMAKE_OPTS>
-    <append MODEL="cism"> -D PIO_USE_MPIMOD:BOOL=OFF </append>
-  </CMAKE_OPTS>
+  <!-- <CMAKE_OPTS> -->
+    <!-- <append MODEL="cism"> -D PIO_USE_MPIMOD:BOOL=OFF </append> -->
+  <!-- </CMAKE_OPTS> -->
 </compiler>
 
 <compiler MACH="wolf" COMPILER="gnu">
