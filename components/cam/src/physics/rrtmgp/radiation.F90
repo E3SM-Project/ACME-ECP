@@ -593,13 +593,13 @@ contains
       call add_default('TOT_ICLD_VISTAU', 1, ' ')
 
       ! Band-by-band cloud optical properties
-      call addfld('CLOUD_TAU_SW', (/'lev','swband'/), 'I', '1', &
+      call addfld('CLOUD_TAU_SW', (/'lev   ','swband'/), 'I', '1', &
                   'Cloud shortwave extinction optical depth', sampling_seq='rad_lwsw') 
-      call addfld('CLOUD_SSA_SW', (/'lev','swband'/), 'I', '1', &
+      call addfld('CLOUD_SSA_SW', (/'lev   ','swband'/), 'I', '1', &
                   'Cloud shortwave single scattering albedo', sampling_seq='rad_lwsw') 
-      call addfld('CLOUD_G_SW', (/'lev','swband'/), 'I', '1', &
+      call addfld('CLOUD_G_SW',   (/'lev   ','swband'/), 'I', '1', &
                   'Cloud shortwave assymmetry parameter', sampling_seq='rad_lwsw') 
-      call addfld('CLOUD_TAU_LW', (/'lev','lwband'/), 'I', '1', &
+      call addfld('CLOUD_TAU_LW', (/'lev   ','lwband'/), 'I', '1', &
                   'Cloud longwave absorption optical depth', sampling_seq='rad_lwsw') 
 
       ! Band-by-band shortwave albedos

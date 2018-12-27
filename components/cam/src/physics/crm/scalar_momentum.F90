@@ -131,7 +131,7 @@ end subroutine deallocate_scalar_momentum
 !========================================================================================
 !========================================================================================
 
-#ifdef SP_ESMT_PGF
+#if defined( SP_ESMT_PGF )
 
 subroutine scalar_momentum_tend()
    !------------------------------------------------------------------
@@ -524,7 +524,7 @@ end subroutine esmt_fft_backward
 
 ! whannah - this #endif is just to hide the PGF code
 ! without commenting it out during development
-#endif
+#endif /* SP_ESMT_PGF */
 
 !========================================================================================
 !========================================================================================

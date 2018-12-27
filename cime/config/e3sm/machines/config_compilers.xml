@@ -2053,19 +2053,19 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
 
 <compiler MACH="rhapsody" COMPILER="gnu">
   <!-- Mac OSX workstation -->
-  <FFLAGS>
-    <append> -ffree-line-length-none  -ffixed-line-length-none </append>
-  </FFLAGS>
   <FFLAGS_NOOPT>
-    <append> -ffree-line-length-none  -ffixed-line-length-none </append>
+    <append> -ffree-line-length-none -ffixed-line-length-none </append>
+    <!-- <append> -mcmodel=medium </append> -->
+    <!-- <append> -mcmodel=large </append> -->
+    <!-- <append> -fPIC </append> -->
   </FFLAGS_NOOPT>
-  <!-- use homebrew lapack library -->
+  <!-- <MPI_PATH MPILIB="mpich"> /Users/hannah6/mpich/install</MPI_PATH> -->
   <LDFLAGS>
-    <append MODEL="driver"> -L/usr/local/opt/lapack/lib   -llapack -lblas </append>
+    <append> -L/usr/local/opt/lapack/lib -llapack -lblas </append>
+    <append> -L/usr/local/opt/hdf5/lib -lhdf5_hl -lhdf5 </append>
+    <append> -L/usr/local/opt/curl/lib -lcurl </append>
+    <!-- <append> -L/Users/hannah6/curl/bld/lib -lcurl </append> -->
   </LDFLAGS>
-  <CMAKE_OPTS>
-    <append MODEL="cism"> -D PIO_USE_MPIMOD:BOOL=OFF </append>
-  </CMAKE_OPTS>
 </compiler>
 
 <compiler MACH="wolf" COMPILER="gnu">

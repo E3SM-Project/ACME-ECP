@@ -44,7 +44,9 @@ module ncdio_atm
   public :: infld
 
 #if defined( PHYS_GRID_1x1_TEST )
+#if defined( DUMMY_BARRIER )
   private :: avg_over_element
+#endif
 #endif
 
   integer STATUS
@@ -877,11 +879,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
 #if defined( PHYS_GRID_1x1_TEST )
-
-
+#if defined( DUMMY_BARRIER )
 
   subroutine avg_over_element(field_in, field_out)
-
     !-------------------------------------------------------- 
     ! Purpose:  Average the input field over the element
     !           Note that this assumes local_dp_map is true!
@@ -895,7 +895,7 @@ contains
     real(r8), dimension(begchunk:endchunk,pcols,pver), intent(in) :: field_in
     ! real(r8), dimension(d_in_1b:d_in_1e,d_in_2b:d_in_2e), intent(in) :: field_in
     real(r8), dimension(nelemd),                       intent(out) :: field_out
-#if defined( DUMMY_BARRIER )
+
     !!! Local variables
     real(r8), dimension(npsq,pver,nelemd)   :: field_tmp1
     ! real(r8), dimension(np,np,pver,nelemd)  :: field_tmp2
@@ -941,11 +941,9 @@ contains
    end if ! par%dynproc
     !--------------------------------------------------------
     !--------------------------------------------------------
-#ENDIF /* DUMMY_BARRIER */
   end subroutine avg_over_element
 
-
-
+#endif /* DUMMY_BARRIER */
 #endif /* PHYS_GRID_1x1_TEST */
 !--------------------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------------------
