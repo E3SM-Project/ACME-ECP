@@ -681,7 +681,7 @@ contains
             max_ncols = get_block_gcol_cnt_d(cid+firstblock-1)
           endif
 #if defined( PHYS_GRID_1x1_TEST )
-            max_ncols = 1
+          max_ncols = 1
 #endif
           ! fill cdex array with global indices from current block
           call get_block_gcol_d(cid+firstblock-1,max_ncols,cdex)
@@ -701,6 +701,8 @@ contains
           enddo
           chunks(cid)%ncols = ncols
        enddo
+
+       if (masterproc) write(iulog,*) 'phys_grid_init: ncols = ',ncols
 
        ! Clean-up
        deallocate( cdex )

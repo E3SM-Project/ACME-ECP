@@ -2342,6 +2342,8 @@ contains
       if (associated(attr%map)) then
         ! This is a distributed variable, use pio_write_darray
         allocate(iodesc)
+if(masterproc) write(iulog,*) 'write_cam_grid_val_1d_r8: attr%dimsize: ',attr%dimsize
+if(masterproc) write(iulog,*) 'write_cam_grid_val_1d_r8: attr%long_name: ',attr%long_name
         call cam_pio_newdecomp(iodesc, (/attr%dimsize/), attr%map, pio_double)
         call pio_write_darray(File, attr%vardesc, iodesc, attr%values, ierr, -900._r8)
         call pio_freedecomp(File, iodesc)

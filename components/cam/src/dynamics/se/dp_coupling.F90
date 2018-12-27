@@ -117,33 +117,32 @@ CONTAINS
     elem => dyn_out%elem
     tl_f = TimeLevel%n0   ! time split physics (with forward-in-time RK)
 
-    do ie=1,nelemd
+    do ie = 1,nelemd
       lchnk = begchunk + ie-1
       icol = 1
+
+      pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+      if (use_gw_front) then
+        call pbuf_get_field(pbuf_chnk, frontgf_idx, pbuf_frontgf)
+        call pbuf_get_field(pbuf_chnk, frontga_idx, pbuf_frontga)
+      end if ! use_gw_front
 
       phys_state(lchnk)%ps  (icol) = sum( elem(ie)%state%ps_v(g1:g2,g1:g2,tl_f) )*avg_wgt
       phys_state(lchnk)%phis(icol) = sum( elem(ie)%state%phis(g1:g2,g1:g2)      )*avg_wgt
 
-      do ilyr=1,pver
-
+      do ilyr = 1,pver
         phys_state(lchnk)%t    (icol,ilyr) = sum( elem(ie)%state%T        (g1:g2,g1:g2  ,ilyr,tl_f) )*avg_wgt
         phys_state(lchnk)%u    (icol,ilyr) = sum( elem(ie)%state%V        (g1:g2,g1:g2,1,ilyr,tl_f) )*avg_wgt
         phys_state(lchnk)%v    (icol,ilyr) = sum( elem(ie)%state%V        (g1:g2,g1:g2,2,ilyr,tl_f) )*avg_wgt
         phys_state(lchnk)%omega(icol,ilyr) = sum( elem(ie)%derived%omega_p(g1:g2,g1:g2  ,ilyr)      )*avg_wgt
-        
         do m=1,pcnst
            phys_state(lchnk)%q(icol,ilyr,m) = sum( elem(ie)%state%Q(g1:g2,g1:g2,ilyr,m) )*avg_wgt
         end do ! m
-
-      end do ! ilyr
-
-      if (use_gw_front) then
-        do ilyr=1,pver
+        if (use_gw_front) then
           pbuf_frontgf(icol,ilyr) = frontgf(icol,ilyr,ie)
           pbuf_frontga(icol,ilyr) = frontgf(icol,ilyr,ie)
-        end do ! ilyr
-      endif ! use_gw_front
-
+        end if ! use_gw_front
+      end do ! ilyr
     end do ! icol
 
 #else /* PHYS_GRID_1x1_TEST */
@@ -388,12 +387,13 @@ CONTAINS
 
 #if defined( PHYS_GRID_1x1_TEST )
     do ie=1,nelemd
+      lchnk = begchunk + ie-1
       do ilyr=1,pver
-        elem(ie)%derived%FT(:,:,ilyr)     = phys_tend(ie)%dtdt(1,ilyr)
-        elem(ie)%derived%FM(:,:,1,ilyr)   = phys_tend(ie)%dudt(1,ilyr)
-        elem(ie)%derived%FM(:,:,2,ilyr)   = phys_tend(ie)%dudt(1,ilyr)
+        elem(ie)%derived%FT(:,:,ilyr)     = phys_tend(lchnk)%dtdt(1,ilyr)
+        elem(ie)%derived%FM(:,:,1,ilyr)   = phys_tend(lchnk)%dudt(1,ilyr)
+        elem(ie)%derived%FM(:,:,2,ilyr)   = phys_tend(lchnk)%dudt(1,ilyr)
         do m=1,pcnst
-          elem(ie)%derived%FQ(:,:,ilyr,m) = phys_state(ie)%q(1,ilyr,m)
+          elem(ie)%derived%FQ(:,:,ilyr,m) = phys_state(lchnk)%q(1,ilyr,m)
         end do
       end do ! ilyr
     end do ! ie

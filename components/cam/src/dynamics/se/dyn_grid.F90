@@ -749,6 +749,7 @@ end function get_block_owner_d
     ! 
     !-----------------------------------------------------------------------
     use dimensions_mod, only: nelem, nelemd, np, npsq
+    use spmd_utils,     only: iam
 
     integer, intent(in)   :: nxy                     ! array sizes
 
@@ -764,6 +765,8 @@ end function get_block_owner_d
 
     real(r8), pointer :: area_d(:)
     real(r8), pointer :: temp(:)
+
+    write(iulog,*) 'get_horiz_grid_d - iam: ',iam
 
     if (nxy < ngcols_d) then
       write(iulog,*)'GET_HORIZ_GRID_D: arrays not large enough (', &
