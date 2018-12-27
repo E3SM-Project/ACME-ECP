@@ -621,52 +621,52 @@
     <MAX_MPITASKS_PER_NODE>2</MAX_MPITASKS_PER_NODE>
 </machine>
 
-  <machine MACH="rhapsody">
-    <DESC>Mac OS/X workstation</DESC>
-    <NODENAME_REGEX>rhapsody</NODENAME_REGEX>
-    <TESTS>e3sm_developer</TESTS>
-    <OS>Darwin</OS>
-    <COMPILERS>gnu</COMPILERS>
-    <MPILIBS>mpi-serial,mpich</MPILIBS>
-    <!-- <MPILIBS>mpi-serial</MPILIBS> -->
-    <RUNDIR>$ENV{HOME}/E3SM/scratch/$CASE/run</RUNDIR>
-    <EXEROOT>$ENV{HOME}/E3SM/scratch/$CASE/bld</EXEROOT>
-    <DIN_LOC_ROOT>$ENV{HOME}/E3SM/scratch/cesm-inputdata</DIN_LOC_ROOT> 
-    <DIN_LOC_ROOT_CLMFORC>$ENV{HOME}/projects/acme/ptclm-data</DIN_LOC_ROOT_CLMFORC>
-    <DOUT_S_ROOT>$ENV{HOME}/E3SM/scratch/archive/$CASE</DOUT_S_ROOT>
-    <DOUT_L_MSROOT>csm/$CASE</DOUT_L_MSROOT>
-    <CIME_OUTPUT_ROOT>$ENV{HOME}/E3SM/scratch</CIME_OUTPUT_ROOT>
-    <BASELINE_ROOT>$ENV{HOME}/E3SM/scratch/baselines/$COMPILER</BASELINE_ROOT>
-    <CCSM_CPRNC>$CCSMROOT/tools/cprnc/build/cprnc</CCSM_CPRNC>
-    <BATCH_SYSTEM>none</BATCH_SYSTEM>
-    <SUPPORTED_BY>Walter Hannah, hannah6@llnl.gov</SUPPORTED_BY>
-    <GMAKE>gmake</GMAKE>
-    <!-- <GMAKE>make</GMAKE> -->
-    <GMAKE_J>4</GMAKE_J>
-    <MAX_TASKS_PER_NODE>4</MAX_TASKS_PER_NODE>
-    <MAX_MPITASKS_PER_NODE>4</MAX_MPITASKS_PER_NODE>
-    <module_system type="none"/>
-    <mpirun mpilib="mpich">
-      <executable>mpirun</executable>
-      <arguments>
-        <arg name="anum_tasks"> -np {{ total_tasks }}</arg>
-        <!-- <arg name="labelstdout">-prepend-rank</arg> -->
-        <!-- <arg name="num_tasks"> -n 1 </arg> -->
-      </arguments>
-    </mpirun>
-    <environment_variables>
-      <!-- ===================================== -->
-      <!-- homebrew NetCDF libraries -->
-      <!-- <env name="NETCDF_PATH">/usr/local/opt/netcdf</env> -->
-      <env name="NETCDF_PATH">/usr/local</env>
-      <!-- ===================================== -->
-      <!-- custom NetCDF build w/ parallel support -->
-      <!-- <env name="NETCDF_PATH">/Users/hannah6/netcdf/bld</env> -->
-      <!-- custom NetCDF build (no parallel)  -->
-      <!-- <env name="NETCDF_PATH">/Users/hannah6/netcdf/bld-serial</env> -->
-      <!-- ===================================== -->
-    </environment_variables>
-  </machine>
+<machine MACH="rhapsody">
+  <DESC>Mac OS/X workstation</DESC>
+  <NODENAME_REGEX>rhapsody</NODENAME_REGEX>
+  <TESTS>e3sm_developer</TESTS>
+  <OS>Darwin</OS>
+  <COMPILERS>gnu</COMPILERS>
+  <MPILIBS>mpi-serial,mpich</MPILIBS>
+  <!-- <MPILIBS>mpi-serial</MPILIBS> -->
+  <RUNDIR>$ENV{HOME}/E3SM/scratch/$CASE/run</RUNDIR>
+  <EXEROOT>$ENV{HOME}/E3SM/scratch/$CASE/bld</EXEROOT>
+  <DIN_LOC_ROOT>$ENV{HOME}/E3SM/scratch/cesm-inputdata</DIN_LOC_ROOT> 
+  <DIN_LOC_ROOT_CLMFORC>$ENV{HOME}/projects/acme/ptclm-data</DIN_LOC_ROOT_CLMFORC>
+  <DOUT_S_ROOT>$ENV{HOME}/E3SM/scratch/archive/$CASE</DOUT_S_ROOT>
+  <DOUT_L_MSROOT>csm/$CASE</DOUT_L_MSROOT>
+  <CIME_OUTPUT_ROOT>$ENV{HOME}/E3SM/scratch</CIME_OUTPUT_ROOT>
+  <BASELINE_ROOT>$ENV{HOME}/E3SM/scratch/baselines/$COMPILER</BASELINE_ROOT>
+  <CCSM_CPRNC>$CCSMROOT/tools/cprnc/build/cprnc</CCSM_CPRNC>
+  <BATCH_SYSTEM>none</BATCH_SYSTEM>
+  <SUPPORTED_BY>Walter Hannah, hannah6@llnl.gov</SUPPORTED_BY>
+  <GMAKE>gmake</GMAKE>
+  <!-- <GMAKE>make</GMAKE> -->
+  <GMAKE_J>4</GMAKE_J>
+  <MAX_TASKS_PER_NODE>4</MAX_TASKS_PER_NODE>
+  <MAX_MPITASKS_PER_NODE>4</MAX_MPITASKS_PER_NODE>
+  <module_system type="none"/>
+  <mpirun mpilib="mpich">
+    <executable>mpirun</executable>
+    <arguments>
+      <arg name="anum_tasks"> -np {{ total_tasks }}</arg>
+      <arg name="labelstdout">-prepend-rank</arg>
+      <!-- <arg name="num_tasks"> -n 1 </arg> -->
+    </arguments>
+  </mpirun>
+  <environment_variables>
+    <!-- ===================================== -->
+    <!-- homebrew NetCDF libraries -->
+    <!-- <env name="NETCDF_PATH">/usr/local/opt/netcdf</env> -->
+    <!-- <env name="NETCDF_PATH">/usr/local</env> -->
+    <!-- ===================================== -->
+    <!-- custom NetCDF build w/ parallel support -->
+    <!-- <env name="NETCDF_PATH">/Users/hannah6/netcdf/bld</env> -->
+    <!-- custom NetCDF build (no parallel)  -->
+    <env name="NETCDF_PATH">/Users/hannah6/netcdf/bld-hb-gcc6-serial</env>
+    <!-- ===================================== -->
+  </environment_variables>
+</machine>
 
 <machine MACH="linux-generic">
     <DESC>Linux workstation or laptop</DESC>
