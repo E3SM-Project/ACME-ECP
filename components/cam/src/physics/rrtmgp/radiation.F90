@@ -1000,8 +1000,6 @@ contains
           endif
        end if
 
-#else
-      write(iulog,*) subname // ': PERGRO not implemented for RRTMGP, doing nothing.'
 #endif /* DO_PERGRO_MODS */
 
    end subroutine perturbation_growth_init
@@ -1215,7 +1213,8 @@ contains
       real(r8), pointer, dimension(:,:,:,:) :: &
             crm_temperature, crm_qv, &
             crm_qc, crm_qi, crm_qr, crm_qs, crm_qg, &
-            crm_nc, crm_ni, crm_nr, crm_ns, crm_ng
+            crm_nc, crm_ni, crm_nr, crm_ns, crm_ng, &
+            crm_cld
       real(r8) :: qrs_col(pcols,pver), qrsc_col(pcols,pver)
       real(r8) :: qrl_col(pcols,pver), qrlc_col(pcols,pver)
 
@@ -1305,6 +1304,9 @@ contains
             call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_nc)
             call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), crm_ni)
          end if
+
+         ! CRM cloud fraction on radiation grid
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_cld)
 
          ! Initialize CRM radiative heating
          crm_qrs = 0
@@ -1659,8 +1661,14 @@ contains
          end do
 
          ! Overwrite cloud fractions
-         ! TODO: replace with actual CRM cloud fraction? We should still allow
-         ! McICA sampling here
+#ifdef MCICA_SP_RAD
+         do crm_iz = 1,crm_nz
+            gcm_iz = pver - crm_iz + 1
+            do icol = 1,ncol
+               cld(icol,gcm_iz) = crm_cld(icol,crm_ix,crm_iy,crm_iz)
+            end do
+         end do
+#else
          do crm_iz = 1,crm_nz
             gcm_iz = pver - crm_iz + 1
             do icol = 1,ncol
@@ -1672,6 +1680,7 @@ contains
                end if
             end do
          end do
+#endif
 
          ! Overwrite snow fraction; again, we should take this from the CRM,
          ! rather than calculating based on a threshold here
