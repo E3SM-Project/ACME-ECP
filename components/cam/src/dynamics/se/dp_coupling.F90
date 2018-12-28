@@ -117,6 +117,8 @@ CONTAINS
     elem => dyn_out%elem
     tl_f = TimeLevel%n0   ! time split physics (with forward-in-time RK)
 
+    if (use_gw_front) call gws_src_fnct(elem, tl_f, frontgf, frontga)
+
     do ie = 1,nelemd
       lchnk = begchunk + ie-1
       icol = 1
@@ -140,7 +142,7 @@ CONTAINS
         end do ! m
         if (use_gw_front) then
           pbuf_frontgf(icol,ilyr) = frontgf(icol,ilyr,ie)
-          pbuf_frontga(icol,ilyr) = frontgf(icol,ilyr,ie)
+          pbuf_frontga(icol,ilyr) = frontga(icol,ilyr,ie)
         end if ! use_gw_front
       end do ! ilyr
     end do ! icol
@@ -166,7 +168,7 @@ CONTAINS
        end do
        call t_stopf('UniquePoints')
 
-       if (use_gw_front) call gws_src_fnct(elem, tl_f, frontgf, frontga)
+       
     else
        ps_tmp(:,:) = 0._r8
        T_tmp(:,:,:) = 0._r8

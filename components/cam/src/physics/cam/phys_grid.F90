@@ -347,7 +347,8 @@ contains
     use cam_grid_support, only: horiz_coord_t, horiz_coord_create
     use cam_grid_support, only: cam_grid_attribute_copy
 #if defined( PHYS_GRID_1x1_TEST )
-    use dimensions_mod,  only: nelem, nelemd
+    use cam_grid_support, only: cam_grid_attribute_register
+    use dimensions_mod,   only: nelem, nelemd, ne
 #endif
 
     !
@@ -416,6 +417,11 @@ contains
     character(len=max_hcoordname_len)   :: copy_gridname
     logical                             :: unstructured
     real(r8)                            :: lonmin, latmin
+
+#if defined( PHYS_GRID_1x1_TEST )
+    real(r8), dimension(:), allocatable :: local_pe_area
+#endif
+
 
     nullify(lonvals)
     nullify(latvals)
@@ -1120,12 +1126,26 @@ contains
     nullify(coord_map)
     call cam_grid_register('physgrid', phys_decomp, lat_coord, lon_coord,     &
          grid_map, unstruct=unstructured, block_indexed=.true.)
+#if defined( PHYS_GRID_1x1_TEST )
+    allocate( local_pe_area( pcols*(endchunk-begchunk+1) ) )
+    p = 0
+    do lcid = begchunk, endchunk
+      do i = 1,lchunks(lcid)%ncols
+        p = p+1
+        local_pe_area(p) = lchunks(lcid)%area(i)
+      end do ! i
+    end do ! lcid
+    call cam_grid_attribute_register('physgrid','area','physics grid areas','ncol', local_pe_area, map=coord_map)
+    call cam_grid_attribute_register('physgrid','ne','',ne)
+    call cam_grid_attribute_register('physgrid','pg','',1)
+#else /* PHYS_GRID_1x1_TEST */
     ! Copy required attributes from the dynamics array
     nullify(copy_attributes)
     call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
     do i = 1, size(copy_attributes)
       call cam_grid_attribute_copy(copy_gridname, 'physgrid', copy_attributes(i))
     end do
+#endif /* PHYS_GRID_1x1_TEST */
     ! Cleanup pointers (they belong to the grid now)
     nullify(grid_map)
     deallocate(latvals)
