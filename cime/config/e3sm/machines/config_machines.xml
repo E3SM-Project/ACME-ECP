@@ -3094,10 +3094,10 @@
 
 <machine MACH="summit">
 <!-- Ref: https://www.olcf.ornl.gov/for-users/system-user-guides/summit/ -->
-	 <DESC>ORNL Summit. Node: 2x POWER9 + 6x Volta V100, 22 cores/socket, 4 HW threads/core.</DESC>
+	 <DESC>ORNL Summit. Node: 2x POWER9 + 6x Volta V100, 21 cores/socket, 4 HW threads/core.</DESC>
 	 <NODENAME_REGEX>.*summit.*</NODENAME_REGEX>
 	 <TESTS>e3sm_developer</TESTS>
-	 <COMPILERS>ibm,pgi,pgiacc,gnu</COMPILERS>
+	 <COMPILERS>ibm,pgi,pgigpu,gnu</COMPILERS>
 	 <MPILIBS>spectrum-mpi,mpi-serial</MPILIBS>
 	 <!-- <CIME_OUTPUT_ROOT>$ENV{HOME}/e3sm_scratch/$PROJECT</CIME_OUTPUT_ROOT> -->
 	 <CIME_OUTPUT_ROOT>/gpfs/alpine/scratch/$ENV{USER}/$PROJECT/e3sm_scratch</CIME_OUTPUT_ROOT>
@@ -3116,8 +3116,10 @@
 	 <SUPPORTED_BY>e3sm</SUPPORTED_BY>
 	 <GMAKE_J>32</GMAKE_J>
 	 <!-- 1 core/socket not available for application, so 168 = 42cores*4 in smt4 mode  -->
-	 <MAX_MPITASKS_PER_NODE>84</MAX_MPITASKS_PER_NODE>
-	 <MAX_TASKS_PER_NODE>84</MAX_TASKS_PER_NODE>
+	 <MAX_MPITASKS_PER_NODE compiler="!pgigpu">84</MAX_MPITASKS_PER_NODE>
+	 <MAX_TASKS_PER_NODE compiler="!pgigpu">84</MAX_TASKS_PER_NODE>
+	 <MAX_MPITASKS_PER_NODE compiler="pgigpu">36</MAX_MPITASKS_PER_NODE>
+	 <MAX_TASKS_PER_NODE compiler="pgigpu">36</MAX_TASKS_PER_NODE>
 	 <PROJECT_REQUIRED>TRUE</PROJECT_REQUIRED>
 	 <PROJECT>csc190</PROJECT>
 	 <CHARGE_ACCOUNT>CSC190ACME</CHARGE_ACCOUNT>
@@ -3127,8 +3129,11 @@
 	 <!-- Use a helper script to tweak jsrun options -->
 	 <executable>/gpfs/alpine/world-shared/csc190/e3sm/mpirun.summit</executable>
 	 <!-- <executable>jsrun</executable> -->
-	 <arguments>
-	     <arg name="num_tasks" > -n {{ total_tasks }} -N $MAX_MPITASKS_PER_NODE </arg>
+	 <arguments compiler="!pgigpu">
+	     <arg name="num_tasks" > -n {{ total_tasks }} -N 84 </arg>
+	 </arguments>
+	 <arguments compiler="pgigpu">
+	     <arg name="num_tasks" > -n {{ total_tasks }} -N 36 -gpu </arg>
 	 </arguments>
 	 </mpirun>
 		<!-- Useful jsrun options:
@@ -3159,41 +3164,45 @@
 		<command name="load">python/3.5.2</command>
 		<command name="load">subversion/1.9.3</command>
 		<command name="load">git/2.13.0</command>
-		<command name="load">cmake/3.9.2</command>
+		<command name="load">cmake/3.11.3</command>
 		<command name="load">essl/6.1.0-20180406</command>
-		<command name="load">netlib-lapack/3.6.1</command>
+		<command name="load">netlib-lapack/3.8.0</command>
       </modules>
       <!-- List of modules elements, executing commands if compiler and mpilib condition applies -->
-      <modules compiler="pgi.*">
-        <command name="load">pgi/18.3</command>
+      <modules compiler="pgi">
+        <command name="load">pgi/18.7</command>
+      </modules>
+      <modules compiler="pgigpu">
+        <command name="load">pgi/18.7</command>
+        <command name="load">cuda</command>
       </modules>
       <modules compiler="ibm">
-        <command name="load">xl/20180502</command>
+        <command name="load">xl/16.1.1-1</command>
       </modules>
       <modules compiler="gnu">
         <command name="load">gcc/6.4.0</command>
       </modules>
 
       <modules>
-        <command name="load">netcdf/4.4.1</command>
+        <command name="load">netcdf/4.6.1</command>
         <command name="load">netcdf-fortran/4.4.4</command>
       </modules>
       <!-- mpi lib settings -->
 	  <!-- Sometimes,same versions of libraries are not available for different compilers, hence the split below -->
       <modules compiler="ibm" mpilib="!mpi-serial">
-        <command name="load">spectrum-mpi/10.2.0.0-20180508</command>
+        <command name="load">spectrum-mpi/10.2.0.10-20181214</command>
         <command name="load">parallel-netcdf/1.8.0</command>
-        <command name="load">hdf5/1.10.0-patch1</command>
+        <command name="load">hdf5/1.10.3</command>
       </modules>
       <modules compiler="pgi.*" mpilib="!mpi-serial">
-        <command name="load">spectrum-mpi/10.2.0.0-20180508</command>
+        <command name="load">spectrum-mpi/10.2.0.10-20181214</command>
         <command name="load">parallel-netcdf/1.8.0</command>
-        <command name="load">hdf5/1.10.0-patch1</command>
+        <command name="load">hdf5/1.10.3</command>
       </modules>
       <modules compiler="gnu" mpilib="!mpi-serial">
-        <command name="load">spectrum-mpi/10.2.0.0-20180508</command>
+        <command name="load">spectrum-mpi/10.2.0.10-20181214</command>
         <command name="load">parallel-netcdf/1.8.0</command>
-        <command name="load">hdf5/1.10.0-patch1</command>
+        <command name="load">hdf5/1.10.3</command>
       </modules>
     </module_system>
       <!-- Default -->

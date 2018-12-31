@@ -1,0 +1,133 @@
+
+crm_module.o: crm_module.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+kurant.o: kurant.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+sgs.o: sgs.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+abcoefs.o: abcoefs.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+zero.o: zero.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+buoyancy.o: buoyancy.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+forcing.o: forcing.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+damping.o: damping.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+ice_fall.o: ice_fall.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+boundaries.o: boundaries.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+periodic.o: periodic.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+bound_exchange.o: bound_exchange.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+crmsurface.o: crmsurface.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+tke_full.o: tke_full.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+shear_prod2D.o: shear_prod2D.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+shear_prod3D.o: shear_prod3D.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+advect_mom.o: advect_mom.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+advect2_mom_xy.o: advect2_mom_xy.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+advect2_mom_z.o: advect2_mom_z.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+sat.o: sat.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+diffuse_mom.o: diffuse_mom.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+diffuse_mom2D.o: diffuse_mom2D.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+diffuse_mom3D.o: diffuse_mom3D.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+coriolis.o: coriolis.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+pressure.o: pressure.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+press_rhs.o: press_rhs.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+press_grad.o: press_grad.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+fft.o: fft.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+bound_duvdt.o: bound_duvdt.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+adams.o: adams.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+advect_all_scalars.o: advect_all_scalars.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+microphysics.o: microphysics.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+advect_scalar.o: advect_scalar.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+advect_scalar2D.o: advect_scalar2D.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+advect_scalar3D.o: advect_scalar3D.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+precip_fall.o: precip_fall.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+uvw.o: uvw.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+diffuse_scalar.o: diffuse_scalar.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+diffuse_scalar2D.o: diffuse_scalar2D.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+diffuse_scalar3D.o: diffuse_scalar3D.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+diagnose.o: diagnose.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+precip_init.o: precip_init.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+cloud.o: cloud.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
+precip_proc.o: precip_proc.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
