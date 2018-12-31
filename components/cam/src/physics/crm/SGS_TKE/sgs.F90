@@ -414,7 +414,7 @@ CONTAINS
 
     !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(1)
     
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
       !$acc parallel loop collapse(2) copyin(sgswsb) copy(wsbtmp) async(1)
@@ -423,7 +423,7 @@ CONTAINS
           wsbtmp(k,icrm) = sgswsb(k,1,icrm)
         enddo
       enddo
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,wsbtmp)
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),tke,fzero,fzero,dummy,wsbtmp)
       !$acc parallel loop collapse(2) copyin(wsbtmp) copy(sgswsb) async(1)
       do icrm = 1, ncrms
         do k = 1 , nz
@@ -458,7 +458,7 @@ CONTAINS
             wsbtmp (kk,icrm) = mkwsb (kk,k,icrm)
           enddo
         enddo
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
         !$acc parallel loop collapse(2) copyin(difftmp,wsbtmp) copy(mkdiff,mkwsb) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
@@ -477,8 +477,8 @@ CONTAINS
 
 #if defined(SP_ESMT)
     ! diffusion of scalar momentum tracers
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
 #endif
   end subroutine sgs_scalars
 

@@ -33,8 +33,6 @@ contains
 
     endif
 
-    !$acc wait(1)
-
   end subroutine bound_duvdt
 
 end module bound_duvdt_mod

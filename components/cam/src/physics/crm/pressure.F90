@@ -33,7 +33,7 @@ contains
     integer i, j, k, id, jd, m, n, it, jt, ii, jj, icrm
     integer nyp22
     integer iii(0:nx_gl),jjj(0:ny_gl)
-    integer iwall,jwall
+    integer iwall,jwall, numgangs
 
     !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(1)
 
@@ -134,7 +134,8 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) private(fff,alfa,beta) copyin(a,c,rho) copy(ff) async(1)
+    numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
+    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(fff,alfa,beta) copyin(a,c,rho) copy(ff) async(1)
     do icrm = 1 , ncrms
       do j=1,nyp22-jwall
         do i=1,nxp1-iwall

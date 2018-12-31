@@ -33,7 +33,7 @@ contains
     fac2 = fac_fus*ap
     ag = 1./(tgrmax-tgrmin)
 
-    !$acc enter data copyin(t,gamaz,q,qp,tabs,qn,pres,qsatt,dtabs,dqsat) async(1)
+    !$acc enter data copyin(t,gamaz,q,qp,tabs,qn,pres) async(1)
 
     !$acc parallel loop collapse(4) default(present) async(1)
     do icrm = 1 , ncrms
@@ -138,7 +138,7 @@ contains
       end do
     end do
 
-    !$acc exit data copyout(t,gamaz,q,qp,tabs,qn,pres,qsatt,dtabs,dqsat) async(1)
+    !$acc exit data copyout(t,gamaz,q,qp,tabs,qn,pres) async(1)
 
   end subroutine cloud
 

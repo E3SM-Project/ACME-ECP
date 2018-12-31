@@ -13,7 +13,7 @@ contains
     real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
     real(crm_rknd) field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms) ! scalar
-    real(crm_rknd) tkh(0:nxp1, 1-YES3D:nyp1, nzm,ncrms) ! eddy conductivity
+    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms) ! SGS eddy conductivity
     real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
     real(crm_rknd) rho(nzm,ncrms)
@@ -24,22 +24,21 @@ contains
     real(crm_rknd) dfdt(nx,ny,nzm,ncrms)
     real(crm_rknd) rdx2,rdz2,rdz,rdx5,rdz5,tmp
     real(crm_rknd) tkx,tkz,rhoi
-    integer i,j,k,ib,ic,kc,kb,icrm
+    integer i,j,k,ib,ic,kc,kb,icrm, numgangs
 
     if(.not.dosgs.and..not.docolumn) return
 
     rdx2=1./(dx*dx)
     j=1
 
-    !$acc enter data copyin(flx,dfdt) async(1)
+    !$acc enter data create(flx,dfdt) async(1)
 
-    !$acc parallel loop collapse(4) copy(dfdt) async(1)
+    numgangs = ceiling(ncrms*nzm*ny*nx/128.)
+    !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) copy(dfdt) async(1)
     do icrm = 1 , ncrms
       do k = 1 , nzm
-        do j = 1 , ny
-          do i = 1 , nx
-            dfdt(i,j,k,icrm)=0.
-          enddo
+        do i = 1 , nx
+          dfdt(i,j,k,icrm)=0.
         enddo
       enddo
     enddo

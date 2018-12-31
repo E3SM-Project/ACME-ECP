@@ -17,7 +17,7 @@ contains
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
     real(crm_rknd) tau(nzm,ncrms), tmp
-    integer i, j, k, n_damp(ncrms), icrm
+    integer i, j, k, n_damp(ncrms), icrm, numgangs
 
     !$acc enter data create(tau,n_damp) async(1)
 
@@ -73,7 +73,8 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(3) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,u0,v,v0,tau,w,t0,qv,qv0) async(1)
+    numgangs = ceiling(ncrms*ny*nx/128.)
+    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,u0,v,v0,tau,w,t0,qv,qv0) async(1)
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx

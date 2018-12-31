@@ -24,6 +24,7 @@ contains
     real(crm_rknd) fu(0:nx,1,nz,ncrms)
     real(crm_rknd) fv(0:nx,1,nz,ncrms)
     real(crm_rknd) fw(0:nx,1,nz,ncrms)
+    integer :: numgangs
 
     !$acc enter data create(fu,fv,fw) async(1)
 
@@ -33,9 +34,11 @@ contains
     j=1
 
     if( .not. docolumn ) then
-      !$acc parallel loop collapse(3) copyin(w,v,grdf_x,u,dz,tk,adzw) copy(fv,fu,fw) async(1)
+      numgangs = ceiling( ncrms*nzm*nx/128. )
+      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(w,v,grdf_x,u,dz,tk,adzw) copy(fv,fu,fw) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
+          !$acc loop vector
           do i=0,nx
             kc=k+1
             kcu=min(kc,nzm)
@@ -51,9 +54,11 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(3) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(1)
+      numgangs = ceiling( ncrms*nzm*nx/128. )
+      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(1)
       do icrm = 1 , ncrms
         do k=1,nzm
+          !$acc loop vector
           do i=1,nx
             kc=k+1
             ib=i-1
@@ -75,7 +80,8 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(u,adzw,adz,w,grdf_z,rhow,tk,rho,dz,v) copy(fw,vwsb,fv,uwsb,fu) async(1)
+    numgangs = ceiling( ncrms*(nzm-1)*nx/128. )
+    !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) copyin(u,adzw,adz,w,grdf_z,rhow,tk,rho,dz,v) copy(fw,vwsb,fv,uwsb,fu) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm-1
         do i=1,nx
