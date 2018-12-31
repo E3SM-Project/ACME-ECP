@@ -423,7 +423,7 @@ for mct, etc.
     <base> -r8 </base>
   </FC_AUTO_R8>
   <FFLAGS>
-    <base> -O2 -Mvect=nosimd -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz -ta=nvidia,cc35,cuda9.0,ptxinfo -Minfo=accel </base>
+    <base> -O2 -Mvect=nosimd -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
     <append compile_threaded="false"> </append>
     <append compile_threaded="true"> -mp </append>
     <append DEBUG="TRUE"> -O0 -g -Ktrap=fp -Mbounds -Kieee </append>
@@ -452,7 +452,7 @@ for mct, etc.
        the "contiguous" attribute is incompatible with "intent".-->
   <HAS_F2008_CONTIGUOUS>FALSE</HAS_F2008_CONTIGUOUS>
   <LDFLAGS>
-    <base> -time -Wl,--allow-multiple-definition  -ta=nvidia,cc35,cuda9.0 </base>
+    <base> -time -Wl,--allow-multiple-definition </base>
     <append compile_threaded="false"> </append>
     <append compile_threaded="true"> -mp </append>
   </LDFLAGS>
@@ -1856,13 +1856,13 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
 
 <compiler MACH="summit" COMPILER="pgi">
   <CFLAGS>
-    <append DEBUG="FALSE"> -O2 -Mvect=nosmid </append>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd </append>
   </CFLAGS>
   <CONFIG_ARGS>
     <base> --host=Linux </base>
   </CONFIG_ARGS>
   <FFLAGS>
-    <append DEBUG="FALSE"> -O2 -Mvect=nosmid -DSUMMITDEV_PGI </append>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd -DSUMMITDEV_PGI </append>
   </FFLAGS>
   <LDFLAGS>
     <append>-L$ENV{NETCDF_C_PATH}/lib -lnetcdf -L$ENV{NETCDF_FORTRAN_PATH}/lib -lnetcdff -L$ENV{ESSL_PATH}/lib64 -lessl -L$ENV{NETLIB_LAPACK_PATH}/lib -llapack</append>
@@ -1878,13 +1878,13 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
 
 <compiler MACH="summit" COMPILER="pgigpu">
   <CFLAGS>
-    <append DEBUG="FALSE"> -O2 -Mvect=nosmid </append>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd </append>
   </CFLAGS>
   <CONFIG_ARGS>
     <base> --host=Linux </base>
   </CONFIG_ARGS>
   <FFLAGS>
-    <append DEBUG="FALSE"> -O2 -Mvect=nosmid -DSUMMITDEV_PGI </append>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd -DSUMMITDEV_PGI </append>
   </FFLAGS>
   <LDFLAGS>
     <append>-L$ENV{NETCDF_C_PATH}/lib -lnetcdf -L$ENV{NETCDF_FORTRAN_PATH}/lib -lnetcdff -L$ENV{ESSL_PATH}/lib64 -lessl -L$ENV{NETLIB_LAPACK_PATH}/lib -llapack -ta=nvidia,cc70</append>

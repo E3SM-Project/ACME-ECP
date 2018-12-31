@@ -3116,10 +3116,10 @@
 	 <SUPPORTED_BY>e3sm</SUPPORTED_BY>
 	 <GMAKE_J>32</GMAKE_J>
 	 <!-- 1 core/socket not available for application, so 168 = 42cores*4 in smt4 mode  -->
-	 <MAX_MPITASKS_PER_NODE compiler="!pgigpu">84</MAX_MPITASKS_PER_NODE>
-	 <MAX_TASKS_PER_NODE compiler="!pgigpu">84</MAX_TASKS_PER_NODE>
-	 <MAX_MPITASKS_PER_NODE compiler="pgigpu">36</MAX_MPITASKS_PER_NODE>
-	 <MAX_TASKS_PER_NODE compiler="pgigpu">36</MAX_TASKS_PER_NODE>
+	 <!--<MAX_MPITASKS_PER_NODE compiler="!pgigpu">84</MAX_MPITASKS_PER_NODE>
+	 <MAX_TASKS_PER_NODE compiler="!pgigpu">84</MAX_TASKS_PER_NODE>-->
+	 <MAX_MPITASKS_PER_NODE>36</MAX_MPITASKS_PER_NODE>
+	 <MAX_TASKS_PER_NODE>36</MAX_TASKS_PER_NODE>
 	 <PROJECT_REQUIRED>TRUE</PROJECT_REQUIRED>
 	 <PROJECT>csc190</PROJECT>
 	 <CHARGE_ACCOUNT>CSC190ACME</CHARGE_ACCOUNT>
@@ -3129,10 +3129,10 @@
 	 <!-- Use a helper script to tweak jsrun options -->
 	 <executable>/gpfs/alpine/world-shared/csc190/e3sm/mpirun.summit</executable>
 	 <!-- <executable>jsrun</executable> -->
-	 <arguments compiler="!pgigpu">
+	 <!--<arguments compiler="!pgigpu">
 	     <arg name="num_tasks" > -n {{ total_tasks }} -N 84 </arg>
-	 </arguments>
-	 <arguments compiler="pgigpu">
+	 </arguments>-->
+	 <arguments>
 	     <arg name="num_tasks" > -n {{ total_tasks }} -N 36 -gpu </arg>
 	 </arguments>
 	 </mpirun>

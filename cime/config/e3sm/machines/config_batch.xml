@@ -510,7 +510,7 @@
        <directive>-alloc_flags gpumps</directive>
      </directives>
      <queues>
-       <queue walltimemax="24:00" default="true">batch</queue>
+       <queue walltimemax="02:00" default="true">batch</queue>
      </queues>
    </batch_system>
 
