@@ -1067,13 +1067,13 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
               crm_rad_cld        (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
 #ifdef m2005
               !$acc atomic update
-              crm_rad_nc         (icrm,i_rad,j_rad,k) = crm_rad_nc         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,incl)
+              crm_rad%nc         (icrm,i_rad,j_rad,k) = crm_rad%nc         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,incl)
               !$acc atomic update
-              crm_rad_ni         (icrm,i_rad,j_rad,k) = crm_rad_ni         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,inci)
+              crm_rad%ni         (icrm,i_rad,j_rad,k) = crm_rad%ni         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,inci)
               !$acc atomic update
-              crm_rad_qs         (icrm,i_rad,j_rad,k) = crm_rad_qs         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,iqs )
+              crm_rad%qs         (icrm,i_rad,j_rad,k) = crm_rad%qs         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,iqs )
               !$acc atomic update
-              crm_rad_ns         (icrm,i_rad,j_rad,k) = crm_rad_ns         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,ins )
+              crm_rad%ns         (icrm,i_rad,j_rad,k) = crm_rad%ns         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,ins )
 #endif
             endif
             !$acc atomic update
