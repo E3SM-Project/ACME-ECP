@@ -593,18 +593,29 @@ end function get_block_owner_d
     real(r8), intent(out), optional :: area_out(:)    ! column surface area
     real(r8), intent(out), optional :: wght_out(:)    ! column integration weight
     !!! local variables
-    integer   :: ie, ii, jj       ! loop iterators
+    integer   :: ie, ip, ii, jj   ! loop iterators
     integer   :: ibuffer          ! integer buffer for gathering displacements and send buffer counts
     integer   :: ierr             ! MPI error code
     real(r8)  :: area1, area2     ! used to compute element area
+    real(r8)  :: area3, area4     ! used to compute element area
     real(r8)  :: avg_wgt          ! used to average coordinates
     integer,  dimension(npes)   :: displace         ! MPI data displacement for gathering
     integer,  dimension(npes)   :: send_cnt         ! MPI send buffer count for gathering
+    integer,  dimension(nelem)  :: elem_id_global
+    integer,  dimension(nelemd) :: elem_id_local
     real(r8), dimension(nelemd) :: lat_rad_local
     real(r8), dimension(nelemd) :: lon_rad_local
     real(r8), dimension(nelemd) :: area_local
     real(r8)                       :: max_lon_change
     real(r8), dimension(np-2,np-2) :: tmp_lon
+
+    integer :: idx                              ! sorting index
+    real(r8), dimension(nelem) :: lat_rad_tmp   ! temporary unsorted variable
+    real(r8), dimension(nelem) :: lon_rad_tmp   ! temporary unsorted variable
+    real(r8), dimension(nelem) :: area_tmp      ! temporary unsorted variable
+
+    CHARACTER*100 :: elem_gid_list
+    CHARACTER*10  :: tmp_id
 
     if (nxy /= nelem) call endrun('GET_HORIZ_GRID_E: arrays sizes are incorrect')
 
@@ -614,14 +625,25 @@ end function get_block_owner_d
     send_cnt(:) = 0
     displace(:) = 0
 
-    !!! gather displacements using first global element ID on local task
-    ibuffer = elem(1)%GlobalId-1
-    call mpi_allgather(ibuffer, 1, mpi_integer, displace, 1, mpi_integer, mpicom, ierr)
-
     !!! gather send buffer count as local element number
     ibuffer = nelemd
     call mpi_allgather(ibuffer, 1, mpi_integer, send_cnt, 1, mpi_integer, mpicom, ierr)
 
+    !!! determine displacement for MPI gather
+    displace(1) = 0
+    do ip = 2,npes
+      displace(ip) = displace(ip-1) + send_cnt(ip)
+    end do
+
+    !!! gather element IDs for sorting
+    elem_id_global = -1
+    do ie = 1, nelemd
+      elem_id_local(ie) = elem(ie)%GlobalId
+    end do
+    call mpi_allgatherv( elem_id_local(1:nelemd), send_cnt(iam+1), mpi_integer, elem_id_global, &
+                         send_cnt(:), displace(:), mpi_integer, mpicom, ierr)
+
+    !!! weight used for averaging middle node coordinates (i.e there are (n-2)^2 "non-edge" nodes)
     avg_wgt = 1. / ( (np-2)*(np-2) )
 
     !------------------------------------------------------
@@ -633,9 +655,17 @@ end function get_block_owner_d
       do ie = 1, nelemd
         lat_rad_local(ie)  = sum( elem(ie)%spherep(2:np-1,2:np-1)%lat ) * avg_wgt 
       end do ! ie
-      call mpi_allgatherv( lat_rad_local(1:nelemd), send_cnt(iam+1), mpi_real8, lat_rad_out, send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
+      call mpi_allgatherv( lat_rad_local(1:nelemd), send_cnt(iam+1), mpi_real8, lat_rad_tmp, &
+                           send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
+
+      !!! sort according to global element ID
+      do ie = 1, nelem
+        lat_rad_out( elem_id_global(ie) ) = lat_rad_tmp(ie)
+      end do
+
       lat_deg_out = lat_rad_out * rad2deg
-    end if
+      
+    end if ! present(lat_rad_out) .or. present(lat_deg_out)
     !------------------------------------------------------
     ! Longitude
     !------------------------------------------------------
@@ -652,20 +682,26 @@ end function get_block_owner_d
               if ( tmp_lon(ii,jj)>DD_PI ) tmp_lon(ii,jj) = tmp_lon(ii,jj) - 2.*DD_PI
             end do
           end do
-        end if
+        end if ! present(lon_rad_out) .or. present(lon_deg_out)
         !!! average adjusted longitude values to get centroid lon
         lon_rad_local(ie) = sum( tmp_lon ) * avg_wgt 
         !!! make sure element centroid longitude is 0<=lon<2*pi
         if ( lon_rad_local(ie) < 0. ) lon_rad_local(ie) = lon_rad_local(ie) + 2.*DD_PI
       end do ! ie
-      call mpi_allgatherv( lon_rad_local(1:nelemd), send_cnt(iam+1), mpi_real8, lon_rad_out, send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
+      call mpi_allgatherv( lon_rad_local(1:nelemd), send_cnt(iam+1), mpi_real8, lon_rad_tmp, &
+                           send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
+
+      do ie = 1, nelem
+        lon_rad_out( elem_id_global(ie) ) = lon_rad_tmp(ie)
+      end do
+
       lon_deg_out = lon_rad_out * rad2deg
     end if
     !------------------------------------------------------
-    ! Area and Weight (weights might not matter here)
+    ! Area and Weight
     !------------------------------------------------------
     if ( present(area_out) .or. present(wght_out) ) then 
-      
+
       area_local(:) = 0.
       !!! Obtain area of element as sum of areas of 2 triangles.
       do ie = 1, nelemd
@@ -678,54 +714,17 @@ end function get_block_owner_d
         area_local(ie)  = area1 + area2
       end do ! ie
 
-      call mpi_allgatherv( area_local(1:nelemd), send_cnt(iam+1), mpi_real8, area_out, send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
+      call mpi_allgatherv( area_local(1:nelemd), send_cnt(iam+1), mpi_real8, area_tmp, &
+                           send_cnt(:), displace(:), mpi_real8, mpicom, ierr)
       
+      do ie = 1, nelem
+        area_out( elem_id_global(ie) ) = area_tmp(ie)
+      end do
+
       if ( present(wght_out) )  wght_out(:) = area_out(:) 
     end if ! present(area_out) .or. present(wght_out)
     !------------------------------------------------------
     !------------------------------------------------------
-  
-
-! #if defined( JUST_FOR_REFERENCE )
-!     !!! from compute_global_area() below:
-!     ! Input variables
-!     real(r8), pointer           :: area_d(:)
-
-!     ! Local variables
-!     real(r8)                    :: areaw(np,np)
-!     real(r8)                    :: rbuf(ngcols_d)
-!     integer                     :: rdispls(npes), recvcounts(npes)
-!     integer                     :: ie, sb, eb
-!     integer                     :: ierr
-!     integer                     :: ibuf
-
-!     do ie = 1, nelemdmax     
-
-!       if(ie <= nelemd) then
-!         rdispls(iam+1) = elem(ie)%idxp%UniquePtOffset-1
-!         eb = rdispls(iam+1) + elem(ie)%idxp%NumUniquePts
-!         recvcounts(iam+1) = elem(ie)%idxP%NumUniquePts
-!         areaw = 1.0_r8 / elem(ie)%rspheremp(:,:)         
-!         call UniquePoints(elem(ie)%idxP, areaw, area_d(rdispls(iam+1)+1:eb))
-!       else
-!         rdispls(iam+1) = 0
-!         recvcounts(iam+1) = 0
-!       end if
-
-!       ibuf = rdispls(iam+1)
-!       call mpi_allgather(ibuf, 1, mpi_integer, rdispls, 1, mpi_integer, mpicom, ierr)
-!       ibuf = recvcounts(iam+1)
-!       call mpi_allgather(ibuf, 1, mpi_integer, recvcounts, 1, mpi_integer, mpicom, ierr)
-
-!       sb = rdispls(iam+1) + 1
-!       eb = rdispls(iam+1) + recvcounts(iam+1)
-
-!       rbuf(1:recvcounts(iam+1)) = area_d(sb:eb)
-!       call mpi_allgatherv(rbuf, recvcounts(iam+1), mpi_real8, area_d, recvcounts(:), rdispls(:), mpi_real8, mpicom, ierr)
-    
-!     end do
-! #endif
-
 
     return
   end subroutine get_horiz_grid_e
