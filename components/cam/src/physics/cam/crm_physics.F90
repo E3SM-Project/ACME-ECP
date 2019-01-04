@@ -1536,8 +1536,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! Aerosol stuff
    !----------------------------------------------------------------------
     
-   !!! calculate aerosol water at CRM domain using water vapor at CRM domain
-   !!! note: only used in src/chemistry/utils/modal_aero_wateruptake.F90
+!  !!! calculate aerosol water at CRM domain using water vapor at CRM domain
+!  !!! note: only used in src/chemistry/utils/modal_aero_wateruptake.F90
+!  !!! NOTE: This comment is misleading, there is nothing about water vapor here
+#ifdef RESET_CRM_CLD_RAD
    do  m=1,crm_nz
       do jj=1,crm_ny_rad
          do ii=1,crm_nx_rad
@@ -1549,7 +1551,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          enddo
       enddo
    enddo
-   !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
+#endif
+!  !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 
    !----------------------------------------------------------------------
    !----------------------------------------------------------------------
