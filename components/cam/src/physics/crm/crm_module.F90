@@ -1022,11 +1022,21 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                  endif
             endif
 
-            !!! Reduced radiation method allows for fewer radiation calculations
-            !!! by collecting statistics and doing radiation over column groups
+            ! Aggregate time and area average liquid and ice water paths
+            ! NOTE: this just aggregates the liquid and ice water *contents*,
+            ! and the water paths are calculated later outside the time-stepping
+            ! loop to save cost associated with division
+            crm_output%gliqwp(icrm,l) = crm_output%gliqwp(icrm,l) + qcl(i,j,k,icrm)
+            crm_output%gicewp(icrm,l) = crm_output%gicewp(icrm,l) + qci(i,j,k,icrm)
+
+            ! Reduced radiation method allows for fewer radiation calculations
+            ! by collecting statistics and doing radiation over column groups.
+            ! First, find index to radiation column corresponding to this CRM
+            ! column:
             i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
             j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
+            ! Now aggregate time and column-group averages:
             crm_rad%temperature(icrm,i_rad,j_rad,k) = crm_rad%temperature  (icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
             crm_rad%qv (icrm,i_rad,j_rad,k) = crm_rad%qv (icrm,i_rad,j_rad,k) + max(real(0.,crm_rknd),qv(i,j,k,icrm))
             crm_rad%qc (icrm,i_rad,j_rad,k) = crm_rad%qc (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
@@ -1041,8 +1051,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             crm_rad%ns(icrm,i_rad,j_rad,k) = crm_rad%ns(icrm,i_rad,j_rad,k) + micro_field(i,j,k,ins,icrm)
 #endif
 
-            crm_output%gliqwp(icrm,l) = crm_output%gliqwp(icrm,l) + qcl(i,j,k,icrm)
-            crm_output%gicewp(icrm,l) = crm_output%gicewp(icrm,l) + qci(i,j,k,icrm)
           enddo
         enddo
       enddo
@@ -1106,6 +1114,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     !----------------------------------------------------------------------------------------
     !========================================================================================
 
+    ! Calculate averages on (potentially reduced) radiation grid
     tmp1 = real(crm_nx_rad_fac * crm_ny_rad_fac, crm_rknd) / real(nstop,crm_rknd)
     crm_rad%temperature  (icrm,:,:,:) = crm_rad%temperature  (icrm,:,:,:) * tmp1
     crm_rad%qv (icrm,:,:,:) = crm_rad%qv (icrm,:,:,:) * tmp1
