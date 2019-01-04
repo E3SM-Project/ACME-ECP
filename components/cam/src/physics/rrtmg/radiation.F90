@@ -931,7 +931,7 @@ end function radiation_nextsw_cday
     use rad_solar_var,    only: get_variability
     use radiation_data,   only: output_rad_data
     use rrtmg_state,      only: rrtmg_state_create, rrtmg_state_update, rrtmg_state_destroy, rrtmg_state_t, num_rrtmg_levs
-    use crmdims,              only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
+    use crmdims,              only: crm_nz, crm_nx_rad, crm_ny_rad
     use physconst,            only: gravit
     use constituents,         only: cnst_get_ind
     use radconstants,         only: idx_sw_diag
