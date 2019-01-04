@@ -1257,6 +1257,12 @@ contains
       ! TODO: rip this out, this is not being used
       real(r8) :: effl_fn  ! effl for fixed number concentration of nlic = 1.e8
 
+      ! Variable to hold average of radiative heating
+      real(r8) :: qrad_mean
+
+      ! Inverse domain size of CRM (1 / (crm_nx_rad * crm_ny_rad))
+      real(r8) :: crm_rad_factor
+
       ! Temporary fluxes to hold outputs for a single CRM column
       type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
 
@@ -1603,6 +1609,31 @@ contains
                end do
             end do
          end do
+
+#ifdef HOMOGENIZE_CRM_HEATING
+         ! Replace CRM heating rate with the GCM column average (average
+         ! over all CRM columns)
+         crm_rad_factor = 1._r8 / real(crm_nx_rad * crm_ny_rad)
+         do icol = 1,ncol
+            do crm_iz = 1,crm_nz
+               ! Calculate domain average
+               qrad_mean = 0
+               do crm_iy = 1,crm_ny_rad
+                  do crm_ix = 1,crm_nx_rad
+                     qrad_mean = qrad_mean + crm_qrad(icol,crm_ix,crm_iy,crm_iz)
+                  end do
+               end do 
+               qrad_mean = qrad_mean * crm_rad_factor
+               
+               ! Replace resolved heating with domain average
+               do crm_iy = 1,crm_ny_rad
+                  do crm_ix = 1,crm_nx_rad
+                     crm_qrad(icol,crm_ix,crm_iy,crm_iz) = qrad_mean
+                  end do
+               end do 
+            end do
+         end do
+#endif HOMOGENIZE_CRM_HEATING
 
          ! Output CRM heating
          call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
