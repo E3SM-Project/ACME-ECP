@@ -423,7 +423,7 @@ for mct, etc.
     <base> -r8 </base>
   </FC_AUTO_R8>
   <FFLAGS>
-    <base> -O2 -Mvect=nosimd -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
+    <base> -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
     <append compile_threaded="false"> </append>
     <append compile_threaded="true"> -mp </append>
     <append DEBUG="TRUE"> -O0 -g -Ktrap=fp -Mbounds -Kieee </append>
@@ -502,7 +502,7 @@ for mct, etc.
     <base> -r8 </base>
   </FC_AUTO_R8>
   <FFLAGS>
-    <base> -O2 -Mvect=nosimd -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
+    <base> -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
     <append compile_threaded="false"> </append>
     <append compile_threaded="true"> -mp </append>
     <append DEBUG="TRUE"> -O0 -g -Ktrap=fp -Mbounds -Kieee </append>
