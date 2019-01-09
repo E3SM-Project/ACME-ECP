@@ -448,7 +448,8 @@ CONTAINS
   !!! function to compute terminal velocity for precipitating variables:
   ! In this particular case there is only one precipitating variable.
 
-  real(crm_rknd) function term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field,rho,tabs,qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
+  real(crm_rknd) function term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field,rho,tabs,qp_threshold,tprmin,&
+                                      a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
     !$acc routine seq
     use vars
     implicit none
@@ -478,7 +479,8 @@ CONTAINS
         qss=qploc-qrr
         qgg=omg*qss
         qss=qss-qgg
-        term_vel_qp = (omp*vrain*(rho(k,icrm)*qrr)**crain + (1.-omp)*(omg*vgrau*(rho(k,icrm)*qgg)**cgrau + (1.-omg)*vsnow*(rho(k,icrm)*qss)**csnow))
+        term_vel_qp = (omp*vrain*(rho(k,icrm)*qrr)**crain + (1.-omp)*(omg*vgrau*(rho(k,icrm)*qgg)**cgrau + &
+                      (1.-omg)*vsnow*(rho(k,icrm)*qss)**csnow))
       endif
     end if
   end function term_vel_qp
@@ -541,7 +543,8 @@ CONTAINS
     logical :: nonos
     real(crm_rknd) :: y,pp,pn
     real(crm_rknd) :: lat_heat, wmax
-    real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nx,ny,nzm,ncrms), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), rhofac(nzm,ncrms), prec_cfl
+    real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nx,ny,nzm,ncrms), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), &
+                      rhofac(nzm,ncrms), prec_cfl
     integer nprec, iprec
     real(crm_rknd) :: flagstat, tmp
     real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
@@ -570,7 +573,8 @@ CONTAINS
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
     prec_cfl = 0.
-    !$acc parallel loop gang vector collapse(4) copyin(omega,rhofac,micro_field,rho,tabs,iwmax,rhow,dz) copy(prec_cfl,wp,fz,www,lfac,flagstat) async(1)
+    !$acc parallel loop gang vector collapse(4) copyin(omega,rhofac,micro_field,rho,tabs,iwmax,rhow,dz) &
+    !$acc&                                      copy(prec_cfl,wp,fz,www,lfac,flagstat) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -594,7 +598,9 @@ CONTAINS
                 !call task_abort
               endif
             end select
-            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(:,:,:,:,:),rho(:,:),tabs(:,:,:,:),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
+            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(:,:,:,:,:),rho(:,:),&
+                                                      tabs(:,:,:,:),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
+                                                      a_gr,vgrau,cgrau,vsnow,csnow)
             tmp = wp(i,j,k,icrm)*iwmax(k,icrm)
             !$acc atomic update
             prec_cfl = max(prec_cfl,tmp) ! Keep column maximum CFL
@@ -685,7 +691,8 @@ CONTAINS
               ! precipitation mass fraction.  Therefore, a reformulated
               ! anti-diffusive flux is used here which accounts for
               ! this and results in reduced numerical diffusion.
-              www(i,j,k,icrm) = 0.5*(1.+wp(i,j,k,icrm)*irhoadz(k,icrm))*(tmp_qp(i,j,kb,icrm)*wp(i,j,kb,icrm) - tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)) ! works for wp(k)<0
+              www(i,j,k,icrm) = 0.5*(1.+wp(i,j,k,icrm)*irhoadz(k,icrm))*(tmp_qp(i,j,kb,icrm)*wp(i,j,kb,icrm) - &
+                                     tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)) ! works for wp(k)<0
             enddo
           enddo
         enddo
@@ -716,7 +723,8 @@ CONTAINS
               do i=1,nx
                 kb=max(1,k-1)
                 ! Add limited flux correction to fz(k).
-                fz(i,j,k,icrm) = fz(i,j,k,icrm) + pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) - pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm)) ! Anti-diffusive flux
+                fz(i,j,k,icrm) = fz(i,j,k,icrm) + pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) - &
+                                                  pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm)) ! Anti-diffusive flux
               enddo
             enddo
           enddo
@@ -725,7 +733,8 @@ CONTAINS
 
       ! Update precipitation mass fraction and liquid-ice static
       ! energy using precipitation fluxes computed in this column.
-      !$acc parallel loop gang vector collapse(4) copyin(fz,irhoadz,lfac,flagstat,omega) copy(qp,qpfall,t,tlat,precflux,precsfc,precssfc,prec_xy) async(1)
+      !$acc parallel loop gang vector collapse(4) copyin(fz,irhoadz,lfac,flagstat,omega) &
+      !$acc&                                      copy(qp,qpfall,t,tlat,precflux,precsfc,precssfc,prec_xy) async(1)
       do icrm = 1 , ncrms
         do j=1,ny
           do i=1,nx
@@ -760,7 +769,8 @@ CONTAINS
           do j=1,ny
             do i=1,nx
               do k=1,nzm
-                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(dimx1_s,dimy1_s,1,1,1),rho(1,1),tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
+                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(dimx1_s,dimy1_s,1,1,1),rho(1,1),&
+                                 tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
                 ! Decrease precipitation velocity by factor of nprec
                 wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)/real(nprec,crm_rknd)
                 ! Note: Don't bother checking CFL condition at each
