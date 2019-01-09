@@ -392,6 +392,7 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
+    !Passing tk via first element to avoid PGI pointer bug
     call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk(dimx1_d,dimy1_d,1,1))
 
   end subroutine sgs_mom
@@ -414,6 +415,7 @@ CONTAINS
 
     !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(1)
     
+    !Passing tkh via first element to avoid PGI pointer bug
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
@@ -423,6 +425,7 @@ CONTAINS
           wsbtmp(k,icrm) = sgswsb(k,1,icrm)
         enddo
       enddo
+      !Passing tkh via first element to avoid PGI pointer bug
       call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),tke,fzero,fzero,dummy,wsbtmp)
       !$acc parallel loop collapse(2) copyin(wsbtmp) copy(sgswsb) async(1)
       do icrm = 1, ncrms
@@ -458,6 +461,7 @@ CONTAINS
             wsbtmp (kk,icrm) = mkwsb (kk,k,icrm)
           enddo
         enddo
+        !Passing tkh via first element to avoid PGI pointer bug
         call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
         !$acc parallel loop collapse(2) copyin(difftmp,wsbtmp) copy(mkdiff,mkwsb) async(1)
         do icrm = 1 , ncrms
@@ -477,7 +481,9 @@ CONTAINS
 
 #if defined(SP_ESMT)
     ! diffusion of scalar momentum tracers
+    !Passing tkh via first element to avoid PGI pointer bug
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
+    !Passing tkh via first element to avoid PGI pointer bug
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
 #endif
   end subroutine sgs_scalars
@@ -494,6 +500,7 @@ subroutine sgs_proc(ncrms)
   integer :: icrm, k, j, i
   !    SGS TKE equation:
 
+  !Passing tke, tk, and tkh via first element to avoid PGI pointer bug
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &

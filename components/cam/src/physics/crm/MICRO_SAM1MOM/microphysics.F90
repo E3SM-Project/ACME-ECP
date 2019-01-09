@@ -307,7 +307,9 @@ CONTAINS
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
 
     if(docloud) then
+      !Passing q and qp via the first element because PGI has a bug with pointers here
       call cloud(ncrms,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
+      !Passing q and qp via the first element because PGI has a bug with pointers here
       if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
       call micro_diagnose(ncrms)
     end if
@@ -769,6 +771,7 @@ CONTAINS
           do j=1,ny
             do i=1,nx
               do k=1,nzm
+                !Passing variables via first index because of PGI bug with pointers
                 wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(dimx1_s,dimy1_s,1,1,1),rho(1,1),&
                                  tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
                 ! Decrease precipitation velocity by factor of nprec
