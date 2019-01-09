@@ -94,7 +94,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(rhow,adzw,dz,grdf_z,tkh,field,flx,fluxb,fluxt) copy(flx,flux) async(1)
+    !$acc parallel loop collapse(3) copyin(rhow,adzw,dz,grdf_z,tkh,field,fluxb,fluxt) copy(flx,flux) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
