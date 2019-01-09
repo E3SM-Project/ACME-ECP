@@ -17,7 +17,8 @@ contains
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
     real(crm_rknd) tau(nzm,ncrms), tmp
-    integer i, j, k, n_damp(ncrms), icrm, numgangs
+    integer i, j, k, n_damp(ncrms), icrm
+    integer :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
 
     !$acc enter data create(tau,n_damp) async(1)
 
@@ -73,6 +74,7 @@ contains
       end do
     end do
 
+   !For working around PGI OpenACC bug where it didn't create enough gangs 
     numgangs = ceiling(ncrms*ny*nx/128.)
     !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,u0,v,v0,tau,w,t0,qv,qv0) async(1)
     do icrm = 1 , ncrms

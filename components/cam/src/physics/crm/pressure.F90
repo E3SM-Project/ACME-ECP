@@ -33,7 +33,8 @@ contains
     integer i, j, k, id, jd, m, n, it, jt, ii, jj, icrm
     integer nyp22
     integer iii(0:nx_gl),jjj(0:ny_gl)
-    integer iwall,jwall, numgangs
+    integer iwall,jwall
+    integer :: numgangs  !For working aroung PGI OpenACC bug where it didn't create enough gangs
 
     !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(1)
 
@@ -134,6 +135,7 @@ contains
       enddo
     enddo
 
+    !For working aroung PGI OpenACC bug where it didn't create enough gangs
     numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
     !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(fff,alfa,beta) copyin(a,c,rho) copy(ff) async(1)
     do icrm = 1 , ncrms

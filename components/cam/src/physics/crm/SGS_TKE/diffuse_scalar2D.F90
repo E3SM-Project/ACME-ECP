@@ -24,7 +24,8 @@ contains
     real(crm_rknd) dfdt(nx,ny,nzm,ncrms)
     real(crm_rknd) rdx2,rdz2,rdz,rdx5,rdz5,tmp
     real(crm_rknd) tkx,tkz,rhoi
-    integer i,j,k,ib,ic,kc,kb,icrm, numgangs
+    integer i,j,k,ib,ic,kc,kb,icrm
+    integer :: numgangs  !For working around PGI bug where it didn't create enough OpenACC gangs
 
     if(.not.dosgs.and..not.docolumn) return
 
@@ -33,6 +34,7 @@ contains
 
     !$acc enter data create(flx,dfdt) async(1)
 
+    !For working around PGI bug where it didn't create enough OpenACC gangs
     numgangs = ceiling(ncrms*nzm*ny*nx/128.)
     !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) copy(dfdt) async(1)
     do icrm = 1 , ncrms

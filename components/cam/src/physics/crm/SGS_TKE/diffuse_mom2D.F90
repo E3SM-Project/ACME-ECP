@@ -24,7 +24,7 @@ contains
     real(crm_rknd) fu(0:nx,1,nz,ncrms)
     real(crm_rknd) fv(0:nx,1,nz,ncrms)
     real(crm_rknd) fw(0:nx,1,nz,ncrms)
-    integer :: numgangs
+    integer :: numgangs  !For working around PGI bugs where PGI did not allocate enough gangs
 
     !$acc enter data create(fu,fv,fw) async(1)
 
@@ -34,6 +34,7 @@ contains
     j=1
 
     if( .not. docolumn ) then
+      !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
       !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(w,v,grdf_x,u,dz,tk,adzw) copy(fv,fu,fw) async(1)
       do icrm = 1 , ncrms
@@ -54,6 +55,7 @@ contains
           end do
         end do
       end do
+      !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
       !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(1)
       do icrm = 1 , ncrms
@@ -80,6 +82,7 @@ contains
       enddo
     enddo
 
+    !For working around PGI bugs where PGI did not allocate enough gangs
     numgangs = ceiling( ncrms*(nzm-1)*nx/128. )
     !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) copyin(u,adzw,adz,w,grdf_z,rhow,tk,rho,dz,v) copy(fw,vwsb,fv,uwsb,fu) async(1)
     do icrm = 1 , ncrms
