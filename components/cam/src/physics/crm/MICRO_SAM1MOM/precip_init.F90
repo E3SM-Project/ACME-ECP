@@ -43,7 +43,7 @@ contains
       call task_abort
     end if
 
-    !$acc parallel loop collapse(2) copyin(rho,pres) copy(tabs0,evaps2,evapr1,evapg2,accrgi,evapg1,coefice,accrgc,evaps1,evapr2,accrsi,accrrc,accrsc) async(1)
+    !$acc parallel loop collapse(2) copyin(rho,pres,tabs0) copy(evaps2,evapr1,evapg2,accrgi,evapg1,coefice,accrgc,evaps1,evapr2,accrsi,accrrc,accrsc) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         pratio = sqrt(1.29 / rho(k,icrm))
