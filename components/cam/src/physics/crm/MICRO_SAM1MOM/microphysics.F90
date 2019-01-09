@@ -225,16 +225,6 @@ CONTAINS
       qpsrc(:,icrm) = 0.
       qpevp(:,icrm) = 0.
 
-      mkname(1) = 'QT'
-      mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'
-      mkunits(1) = 'g/kg'
-      mkoutputscale(1) = 1.e3
-
-      mkname(2) = 'QP'
-      mklongname(2) = 'PRECIPITATING WATER'
-      mkunits(2) = 'g/kg'
-      mkoutputscale(2) = 1.e3
-
       ! set mstor to be the inital microphysical mixing ratios
       do n=1, nmicro_fields
         do k=1, nzm
@@ -242,6 +232,16 @@ CONTAINS
         end do
       end do
     enddo
+
+    mkname(1) = 'QT'
+    mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'
+    mkunits(1) = 'g/kg'
+    mkoutputscale(1) = 1.e3
+
+    mkname(2) = 'QP'
+    mklongname(2) = 'PRECIPITATING WATER'
+    mkunits(2) = 'g/kg'
+    mkoutputscale(2) = 1.e3
 
   end subroutine micro_init
 
