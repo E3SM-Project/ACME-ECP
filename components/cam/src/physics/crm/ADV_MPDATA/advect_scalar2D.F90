@@ -93,8 +93,10 @@ contains
       do k=1,nzm
         do i=-1,nxp3
           kb=max(1,k-1)
-          uuu(i,j,k,icrm)=max(real(0.,crm_rknd),u(i,j,k,icrm))*f(i-1,j,k,icrm)+min(real(0.,crm_rknd),u(i,j,k,icrm))*f(i,j,k,icrm)
-          if (i <= nxp2) www(i,j,k,icrm)=max(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,kb,icrm)+min(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,k,icrm)
+          uuu(i,j,k,icrm)=max(real(0.,crm_rknd),u(i,j,k,icrm))*f(i-1,j,k,icrm)+&
+                          min(real(0.,crm_rknd),u(i,j,k,icrm))*f(i,j,k,icrm)
+          if (i <= nxp2) www(i,j,k,icrm)=max(real(0.,crm_rknd),w(i,j,k,icrm))*&
+                                          f(i,j,kb,icrm)+min(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,k,icrm)
           if (i == 0) flux(k,icrm) = 0.
         enddo
       enddo
@@ -115,7 +117,8 @@ contains
             !$acc atomic update
             flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
           endif
-          f(i,j,k,icrm) = f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)  + (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm)
+          f(i,j,k,icrm) = f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)  + &
+                                          (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm)
         enddo
       enddo
     enddo
@@ -170,8 +173,10 @@ contains
           do i=0,nxp1
             kc=min(nzm,k+1)
             ic=i+1
-            mx(i,j,k,icrm)=rho(k,icrm)*(mx(i,j,k,icrm)-f(i,j,k,icrm))/(pn(uuu(ic,j,k,icrm)) + pp(uuu(i,j,k,icrm))+iadz(k,icrm)*(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm)))+eps)
-            mn(i,j,k,icrm)=rho(k,icrm)*(f(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(uuu(ic,j,k,icrm)) + pn(uuu(i,j,k,icrm))+iadz(k,icrm)*(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm)))+eps)
+            mx(i,j,k,icrm)=rho(k,icrm)*(mx(i,j,k,icrm)-f(i,j,k,icrm))/(pn(uuu(ic,j,k,icrm)) + &
+                           pp(uuu(i,j,k,icrm))+iadz(k,icrm)*(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm)))+eps)
+            mn(i,j,k,icrm)=rho(k,icrm)*(f(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(uuu(ic,j,k,icrm)) + &
+                           pn(uuu(i,j,k,icrm))+iadz(k,icrm)*(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm)))+eps)
           enddo
         enddo
       enddo
@@ -181,10 +186,12 @@ contains
         do k=1,nzm
           do i=1,nxp1
             ib=i-1
-            uuu(i,j,k,icrm)= pp(uuu(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(ib,j,k,icrm)) - pn(uuu(i,j,k,icrm))*min(real(1.,crm_rknd),mx(ib,j,k,icrm),mn(i,j,k,icrm))
+            uuu(i,j,k,icrm)= pp(uuu(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(ib,j,k,icrm)) - &
+                             pn(uuu(i,j,k,icrm))*min(real(1.,crm_rknd),mx(ib,j,k,icrm),mn(i,j,k,icrm))
             if (i <= nx) then
               kb=max(1,k-1)
-              www(i,j,k,icrm)= pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) - pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm))
+              www(i,j,k,icrm)= pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) - &
+                               pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm))
               !$acc atomic update
               flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
             endif
@@ -202,7 +209,8 @@ contains
           !     especially  when such large numbers as
           !     hydrometeor concentrations are advected. The reason for negative values is
           !     most likely truncation error.
-          f(i,j,k,icrm)= max(real(0.,crm_rknd), f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm) + (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm))
+          f(i,j,k,icrm)= max(real(0.,crm_rknd), f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm) + &
+                         (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm))
         enddo
       enddo
     enddo

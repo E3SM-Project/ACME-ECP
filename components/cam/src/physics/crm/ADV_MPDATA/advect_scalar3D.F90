@@ -108,8 +108,10 @@ contains
               jc=j+1
               ib=i-1
               ic=i+1
-              mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm))
-              mn(i,j,k,icrm)=min(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm))
+              mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),&
+                                 f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm))
+              mn(i,j,k,icrm)=min(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),&
+                                 f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm))
             enddo
           enddo
         enddo
@@ -121,9 +123,12 @@ contains
         do j=-1,nyp3
           do i=-1,nxp3
             kb=max(1,k-1)
-            if (j <= nyp2                ) uuu(i,j,k,icrm)=max(real(0.,crm_rknd),u(i,j,k,icrm))*f(i-1,j,k,icrm)+min(real(0.,crm_rknd),u(i,j,k,icrm))*f(i,j,k,icrm)
-            if (i <= nxp2                ) vvv(i,j,k,icrm)=max(real(0.,crm_rknd),v(i,j,k,icrm))*f(i,j-1,k,icrm)+min(real(0.,crm_rknd),v(i,j,k,icrm))*f(i,j,k,icrm)
-            if (i <= nxp2 .and. j <= nyp2) www(i,j,k,icrm)=max(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,kb ,icrm)+min(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,k,icrm)
+            if (j <= nyp2                ) uuu(i,j,k,icrm)=max(real(0.,crm_rknd),u(i,j,k,icrm))*f(i-1,j,k,icrm)+&
+                                                           min(real(0.,crm_rknd),u(i,j,k,icrm))*f(i,j,k,icrm)
+            if (i <= nxp2                ) vvv(i,j,k,icrm)=max(real(0.,crm_rknd),v(i,j,k,icrm))*f(i,j-1,k,icrm)+&
+                                                           min(real(0.,crm_rknd),v(i,j,k,icrm))*f(i,j,k,icrm)
+            if (i <= nxp2 .and. j <= nyp2) www(i,j,k,icrm)=max(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,kb ,icrm)+&
+                                                           min(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,k,icrm)
             if (i == -1 .and. j == -1) flux(k,icrm) = 0.
           enddo
         enddo
@@ -215,8 +220,10 @@ contains
             do i=0,nxp1
               ib=i-1
               ic=i+1
-              mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm),mx(i,j,k,icrm))
-              mn(i,j,k,icrm)=min(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm),mn(i,j,k,icrm))
+              mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),&
+                                 f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm),mx(i,j,k,icrm))
+              mn(i,j,k,icrm)=min(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),&
+                                 f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm),mn(i,j,k,icrm))
             enddo
           enddo
         enddo
@@ -277,7 +284,8 @@ contains
             !     hydrometeor concentrations are advected. The reason for negative values is
             !     most likely truncation error.
             kc=k+1
-            f(i,j,k,icrm)=max(real(0.,crm_rknd),f(i,j,k,icrm) -(uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)+vvv(i,j+1,k,icrm)-vvv(i,j,k,icrm)+(www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm))
+            f(i,j,k,icrm)=max(real(0.,crm_rknd),f(i,j,k,icrm) -(uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)+&
+                             vvv(i,j+1,k,icrm)-vvv(i,j,k,icrm)+(www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm))
           enddo
         enddo
       enddo
