@@ -125,7 +125,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   !-----------------------------------------------------------------------
   !!! compute subgrid buoyancy flux assuming clear conditions
   !!! we will over-write this later if conditions are cloudy
-  !$acc parallel loop collapse(4) copyin(tkh,tabs,bet,qv,qpi,qcl,qpl,t,qci,adzw,dz) copy(presi,buoy_sgs_vert,a_prod_bu_vert) async(1)
+  !$acc parallel loop collapse(4) copyin(tkh,tabs,bet,qv,qpi,qcl,qpl,t,qci,adzw,presi,dz) copy(buoy_sgs_vert,a_prod_bu_vert) async(1)
   do icrm = 1 , ncrms
     do k = 1,nzm-1
       do j = 1,ny
