@@ -44,7 +44,7 @@ contains
             q(i,j,k,icrm)=max(real(0.,crm_rknd),q(i,j,k,icrm))
 
 
-            ! Initail guess for temperature assuming no cloud water/ice:
+            ! Initial guess for temperature assuming no cloud water/ice:
 
 
             tabs(i,j,k,icrm) = t(i,j,k,icrm)-gamaz(k,icrm)
