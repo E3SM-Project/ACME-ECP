@@ -1127,6 +1127,10 @@ contains
     call cam_grid_register('physgrid', phys_decomp, lat_coord, lon_coord,     &
          grid_map, unstruct=unstructured, block_indexed=.true.)
 #if defined( PHYS_GRID_1x1_TEST )
+    !----------------------------------------------------------------------------
+    ! Normally grid attributes are registered in dyn_grid and copied to physgrid
+    ! here, but for the 1x1 grid we need to directly regsiter attributes here.
+    !----------------------------------------------------------------------------
     allocate( local_pe_area( pcols*(endchunk-begchunk+1) ) )
     p = 0
     do lcid = begchunk, endchunk
@@ -1138,6 +1142,20 @@ contains
     call cam_grid_attribute_register('physgrid','area','physics grid areas','ncol', local_pe_area, map=coord_map)
     call cam_grid_attribute_register('physgrid','ne','',ne)
     call cam_grid_attribute_register('physgrid','pg','',1)
+    !----------------------------------------------------------------------------
+    ! In order to get output on the dynamics grid (GLL), we need to 
+    ! register a 3rd grid consisting of the unique GLL nodes.
+    !----------------------------------------------------------------------------
+    ! call cam_grid_register('gll_grid', phys_decomp, lat_coord, lon_coord,     &
+    !      grid_map, unstruct=unstructured, block_indexed=.true.)
+    ! !!! Copy required attributes from the dynamics array
+    ! nullify(copy_attributes)
+    ! call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
+    ! do i = 1, size(copy_attributes)
+    !   call cam_grid_attribute_copy(copy_gridname, 'gll_grid', copy_attributes(i))
+    ! end do
+    !----------------------------------------------------------------------------
+    !----------------------------------------------------------------------------
 #else /* PHYS_GRID_1x1_TEST */
     ! Copy required attributes from the dynamics array
     nullify(copy_attributes)

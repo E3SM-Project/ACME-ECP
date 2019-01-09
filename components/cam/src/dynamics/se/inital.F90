@@ -1,5 +1,7 @@
 module inital
 
+use spmd_utils,       only: masterproc, iam
+
 ! Dynamics initialization
 
 implicit none
@@ -20,6 +22,10 @@ subroutine cam_initial(dyn_in, dyn_out, NLFileName)
    use startup_initialconds, only: initial_conds
    use cam_logfile,          only: iulog
 
+#if defined( PHYS_GRID_1x1_TEST )
+   use gll_grid_mod,         only: gll_grid_init 
+#endif /* PHYS_GRID_1x1_TEST */
+
    ! modules from SE
    use parallel_mod, only : par
 
@@ -33,6 +39,11 @@ subroutine cam_initial(dyn_in, dyn_out, NLFileName)
    ! Define physics data structures
    if(par%masterproc  ) write(iulog,*) 'Running phys_grid_init()'
    call phys_grid_init( )
+
+#if defined( PHYS_GRID_1x1_TEST )
+   if(par%masterproc  ) write(*,*) iam,'  Running gll_grid_init()'
+   call gll_grid_init( )
+#endif /* PHYS_GRID_1x1_TEST */
 
    ! Initialize ghg surface values before default initial distributions
    ! are set in inidat.

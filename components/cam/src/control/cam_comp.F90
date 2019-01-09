@@ -58,6 +58,11 @@ module cam_comp
   type(physics_tend ), pointer :: phys_tend(:) => null()
   type(physics_buffer_desc), pointer :: pbuf2d(:,:) => null()
 
+#if defined( PHYS_GRID_1x1_TEST )
+  ! type(physics_state), dimension(begchunk:endchunk) :: gll_state
+  type(physics_state), pointer :: gll_state(:) => null()
+#endif
+
   real(r8) :: wcstart, wcend     ! wallclock timestamp at start, end of timestep
   real(r8) :: usrstart, usrend   ! user timestamp at start, end of timestep
   real(r8) :: sysstart, sysend   ! sys timestamp at start, end of timestep
@@ -99,6 +104,12 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
 
+#if defined( PHYS_GRID_1x1_TEST )
+   use gll_grid_mod,     only: get_ncols_gll, get_rlon_gll_all, get_rlat_gll_all
+   use ppgrid,           only: pcols
+   use physics_types,    only: physics_state_alloc
+#endif /* PHYS_GRID_1x1_TEST */
+
 #if ( defined SPMD )   
    real(r8) :: mpi_wtime  ! External
 #endif
@@ -124,6 +135,13 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
    integer :: dtime_cam        ! Time-step
    logical :: log_print        ! Flag to print out log information or not
    character(len=cs) :: filein ! Input namelist filename
+
+#if defined( PHYS_GRID_1x1_TEST )
+   integer  :: lchnk, i             ! loop iterators
+   integer  :: ierr, ncol
+   real(r8) :: rlon(pcols)          ! global longitude indices
+   real(r8) :: rlat(pcols)          ! global latitude indices
+#endif /* PHYS_GRID_1x1_TEST */
    !-----------------------------------------------------------------------
    etamid = nan
    !
@@ -177,6 +195,36 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
    end if
 
    call phys_init( phys_state, phys_tend, pbuf2d,  cam_out )
+
+#if defined( PHYS_GRID_1x1_TEST )
+   !----------------------------------------------------------------------------
+   ! need to allocate and initialize gll_state for dynamics grid output
+   !----------------------------------------------------------------------------
+   !!! Instead of calling physics_type_alloc() we'll allocate here explicitly for now
+   allocate(gll_state(begchunk:endchunk), stat=ierr)
+   if (ierr/=0) write(iulog,*) 'physics_types: gll_state allocation error = ',ierr
+   if (ierr/=0) call endrun('physics_types: failed to allocate gll_state')
+   !!! allocate gll_state 
+   do lchnk = begchunk,endchunk
+      call physics_state_alloc(gll_state(lchnk),lchnk,pcols)
+   end do ! lchnk
+   !!! loop over chunks to set gll_state coordinates
+   do lchnk = begchunk, endchunk
+      !!! this mimics what is done in physics_state_set_grid()
+      ! ncol = get_ncols_p(lchnk)
+      call get_rlon_gll_all(lchnk, ncol, rlon)
+      call get_rlat_gll_all(lchnk, ncol, rlat)
+      gll_state(lchnk)%ncol  = get_ncols_gll(lchnk)
+      gll_state(lchnk)%lchnk = lchnk
+      do i = 1,ncol
+         gll_state(lchnk)%lat(i) = rlat(i)
+         gll_state(lchnk)%lon(i) = rlon(i)
+      end do ! i
+   end do ! lchnk
+   ! call init_geo_unique(phys_state,ncol)  !!! I think this could be problematic so ignore for now
+   !----------------------------------------------------------------------------
+   !----------------------------------------------------------------------------
+#endif /* PHYS_GRID_1x1_TEST */
 
    call bldfld ()       ! master field list (if branch, only does hash tables)
 
@@ -289,7 +337,12 @@ subroutine cam_run2( cam_out, cam_in )
    !
    call t_barrierf ('sync_stepon_run2', mpicom)
    call t_startf ('stepon_run2')
+#if defined( PHYS_GRID_1x1_TEST )
+   call stepon_run2( phys_state, gll_state, phys_tend, dyn_in, dyn_out )
+   ! call stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
+#else
    call stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
+#endif /* PHYS_GRID_1x1_TEST */
 
    call t_stopf  ('stepon_run2')
 
@@ -462,6 +515,10 @@ subroutine cam_final( cam_out, cam_in )
    integer :: signal          ! MPI message buffer
 !------------------------------Externals--------------------------------
    real(r8) :: mpi_wtime
+#endif
+
+#if defined( PHYS_GRID_1x1_TEST )
+   deallocate( gll_state)
 #endif
 
    call phys_final( phys_state, phys_tend , pbuf2d)
