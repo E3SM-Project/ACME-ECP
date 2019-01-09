@@ -450,7 +450,7 @@ CONTAINS
   !!! function to compute terminal velocity for precipitating variables:
   ! In this particular case there is only one precipitating variable.
 
-  real(crm_rknd) function term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field,rho,tabs,qp_threshold,tprmin,&
+  real(crm_rknd) function term_vel_qp(ncrms,icrm,i,j,k,ind,qploc,rho,tabs,qp_threshold,tprmin,&
                                       a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
     !$acc routine seq
     use vars
@@ -460,9 +460,7 @@ CONTAINS
     real(crm_rknd), intent(in) :: micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms, nmicro_fields)
     real(crm_rknd), intent(in) :: rho(nzm,ncrms), tabs(nx, ny, nzm, ncrms)
     real(crm_rknd), intent(in) :: qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow
-    real(crm_rknd) wmax, omp, omg, qrr, qss, qgg, qploc
-
-    qploc = micro_field(i,j,k,icrm,2)
+    real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
 
     term_vel_qp = 0.
     if(qploc.gt.qp_threshold) then
@@ -600,7 +598,7 @@ CONTAINS
                 !call task_abort
               endif
             end select
-            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(:,:,:,:,:),rho(:,:),&
+            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(i,j,k,icrm,2),rho(:,:),&
                                                       tabs(:,:,:,:),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
                                                       a_gr,vgrau,cgrau,vsnow,csnow)
             tmp = wp(i,j,k,icrm)*iwmax(k,icrm)
@@ -772,7 +770,7 @@ CONTAINS
             do i=1,nx
               do k=1,nzm
                 !Passing variables via first index because of PGI bug with pointers
-                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(dimx1_s,dimy1_s,1,1,1),rho(1,1),&
+                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(i,j,k,icrm,2),rho(1,1),&
                                  tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
                 ! Decrease precipitation velocity by factor of nprec
                 wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)/real(nprec,crm_rknd)
