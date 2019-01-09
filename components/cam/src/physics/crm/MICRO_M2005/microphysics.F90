@@ -1288,7 +1288,7 @@ if (docloud)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 
 ! call t_stopf ('micro_proc')
 
-enddo
+enddo !icrm
 
 end subroutine micro_proc
 
