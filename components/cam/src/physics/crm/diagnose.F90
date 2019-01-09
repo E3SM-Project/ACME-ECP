@@ -201,6 +201,8 @@ contains
     !=====================================================
 
     ! compute some sgs diagnostics:
+    !This doesn't actually do anything, so commenting out
+
     !call sgs_diagnose()
 
     !$acc exit data delete(k200,k500,k850) async(1)
