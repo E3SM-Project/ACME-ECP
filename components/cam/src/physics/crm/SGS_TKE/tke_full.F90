@@ -107,7 +107,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     call shear_prod2D(ncrms,def2)
   endif
 
-  !!! initialize surface buoyancy flux to zero
+  !!! initialize surface and top buoyancy flux to zero
   !$acc parallel loop collapse(3) copy(buoy_sgs_vert,a_prod_bu_vert) async(1)
   do icrm = 1 , ncrms
     do j = 1 , ny
