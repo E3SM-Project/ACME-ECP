@@ -787,8 +787,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_run_time  = dt_gl
     icrm_run_time = 1._r8/crm_run_time
 
-    factor_xyt = factor_xy / real(nstop,crm_rknd)
-
 #ifdef CRMACCEL
     if (use_crm_accel) then
       call crm_accel_nstop(nstop)  ! reduce nstop by factor of (1 + crm_accel_factor)
@@ -1399,6 +1397,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
+    ! crm_accel: nstop not same for each icrm if acceleration cuts out early
+    factor_xyt = factor_xy / real(nstop,crm_rknd)
+
     crm_output%cld   (icrm,:) = min( 1._r8, crm_output%cld   (icrm,:) * factor_xyt )
     crm_output%cldtop(icrm,:) = min( 1._r8, crm_output%cldtop(icrm,:) * factor_xyt )
     crm_output%gicewp(icrm,:) = crm_output%gicewp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
@@ -1667,7 +1668,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     call ecpp_crm_cleanup ()
 #endif
 
-  enddo
+  enddo  ! icrm loop
 
   deallocate( t00)
   deallocate( fluxbtmp)
