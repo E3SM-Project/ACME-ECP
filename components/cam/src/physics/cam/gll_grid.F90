@@ -308,6 +308,59 @@ subroutine get_rlon_gll_all(lcid, rlondim, rlon)
 end subroutine get_rlon_gll_all
 !==================================================================================================
 !==================================================================================================
+!!! This duplicates init_geo_unique() from physics_types.F90 with a minor change
+subroutine gll_state_init_geo_unique( ncol, phys_state )
+   use physics_types, only: physics_state
+   integer,             intent(in)    :: ncol
+   type(physics_state), intent(inout) :: phys_state
+   logical :: match
+   integer :: i, j, ulatcnt, uloncnt
+
+   phys_state%ulat = -999._r8
+   phys_state%ulon = -999._r8
+   phys_state%latmapback = 0
+   phys_state%lonmapback = 0
+   ulatcnt = 0
+   uloncnt = 0
+
+   do i = 1,ncol
+      
+      match = .false.
+      do j = 1,ulatcnt
+         if ( phys_state%lat(i) .eq. phys_state%ulat(j) ) then
+         match=.true.
+         phys_state%latmapback(i) = j
+         end if
+      end do
+      if (.not.match) then
+         ulatcnt=ulatcnt+1
+         phys_state%ulat(ulatcnt) = phys_state%lat(i)
+         phys_state%latmapback(i) = ulatcnt
+      end if
+
+      match = .false.
+      do j = 1,uloncnt
+         if ( phys_state%lon(i) .eq. phys_state%ulon(j) ) then
+            match=.true.
+            phys_state%lonmapback(i) = j
+         end if
+      end do
+      if (.not.match) then
+         uloncnt=uloncnt+1
+         phys_state%ulon(uloncnt) = phys_state%lon(i)
+         phys_state%lonmapback(i) = uloncnt
+      end if
+
+   end do ! i
+
+   phys_state%uloncnt=uloncnt
+   phys_state%ulatcnt=ulatcnt
+
+   call get_gcol_all_gll(phys_state%lchnk,pcols,phys_state%cid)
+
+end subroutine gll_state_init_geo_unique
+!==================================================================================================
+!==================================================================================================
 subroutine gll_grid_init( )
     !----------------------------------------------------------------------- 
     ! 
@@ -405,9 +458,7 @@ subroutine gll_grid_init( )
     logical                             :: unstructured
     real(r8)                            :: lonmin, latmin
 
-! #if defined( PHYS_GRID_1x1_TEST )
-!     real(r8), dimension(:), allocatable :: local_pe_area
-! #endif
+    real(r8), dimension(:), allocatable :: local_pe_area
 
 
     nullify(lonvals)
@@ -1108,7 +1159,7 @@ subroutine gll_grid_init( )
     !   lat_coord => horiz_coord_create('lat', 'lat', hdim2_d, 'latitude',      &
     !        'degrees_north', 1, size(latvals), latvals, map=coord_map)
     end if
-    nullify(coord_map)
+    ! nullify(coord_map)
     ! call cam_grid_register('physgrid', phys_decomp, lat_coord, lon_coord,     &
     !      grid_map, unstruct=unstructured, block_indexed=.true.)
 ! #if defined( PHYS_GRID_1x1_TEST )
@@ -1116,14 +1167,14 @@ subroutine gll_grid_init( )
     ! Normally grid attributes are registered in dyn_grid and copied to physgrid
     ! here, but for the 1x1 grid we need to directly regsiter attributes here.
     !----------------------------------------------------------------------------
-    ! allocate( local_pe_area( pcols*(endchunk-begchunk+1) ) )
-    ! p = 0
-    ! do lcid = begchunk, endchunk
-    !   do i = 1,lchunks(lcid)%ncols
-    !     p = p+1
-    !     local_pe_area(p) = lchunks(lcid)%area(i)
-    !   end do ! i
-    ! end do ! lcid
+    allocate( local_pe_area( pcols*(endchunk-begchunk+1) ) )
+    p = 0
+    do lcid = begchunk, endchunk
+      do i = 1,gll_lchunks(lcid)%ncols
+        p = p+1
+        local_pe_area(p) = gll_lchunks(lcid)%area(i)
+      end do ! i
+    end do ! lcid
     ! call cam_grid_attribute_register('physgrid','area','physics grid areas','ncol', local_pe_area, map=coord_map)
     ! call cam_grid_attribute_register('physgrid','ne','',ne)
     ! call cam_grid_attribute_register('physgrid','pg','',1)
@@ -1133,12 +1184,19 @@ subroutine gll_grid_init( )
     !----------------------------------------------------------------------------
     call cam_grid_register('gll_grid', gll_decomp, lat_coord, lon_coord,     &
          grid_map, unstruct=unstructured, block_indexed=.true.)
+    
     !!! Copy required attributes from the dynamics array
-    nullify(copy_attributes)
-    call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
-    do i = 1, size(copy_attributes)
-      call cam_grid_attribute_copy(copy_gridname, 'gll_grid', copy_attributes(i))
-    end do
+    ! nullify(copy_attributes)
+    ! call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
+    ! do i = 1, size(copy_attributes)
+    !   call cam_grid_attribute_copy(copy_gridname, 'gll_grid', copy_attributes(i))
+    ! end do
+
+    !!! register unique attributes
+    call cam_grid_attribute_register('gll_grid','gll_area','physics grid areas','ncol', local_pe_area, map=coord_map)
+    call cam_grid_attribute_register('gll_grid','gll_ne','',ne)
+    call cam_grid_attribute_register('gll_grid','gll_pg','',1)
+    nullify(coord_map)
 
     !----------------------------------------------------------------------------
     !----------------------------------------------------------------------------

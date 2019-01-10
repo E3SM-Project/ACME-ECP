@@ -105,7 +105,8 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
    use cam_instance,     only: inst_suffix
 
 #if defined( PHYS_GRID_1x1_TEST )
-   use gll_grid_mod,     only: get_ncols_gll, get_rlon_gll_all, get_rlat_gll_all
+   use spmd_utils,       only: iam
+   use gll_grid_mod,     only: get_ncols_gll, get_rlon_gll_all, get_rlat_gll_all, gll_state_init_geo_unique
    use ppgrid,           only: pcols
    use physics_types,    only: physics_state_alloc
 #endif /* PHYS_GRID_1x1_TEST */
@@ -212,16 +213,18 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
    do lchnk = begchunk, endchunk
       !!! this mimics what is done in physics_state_set_grid()
       ! ncol = get_ncols_p(lchnk)
+      ncol = get_ncols_gll(lchnk)
       call get_rlon_gll_all(lchnk, ncol, rlon)
       call get_rlat_gll_all(lchnk, ncol, rlat)
-      gll_state(lchnk)%ncol  = get_ncols_gll(lchnk)
+      gll_state(lchnk)%ncol  = ncol
       gll_state(lchnk)%lchnk = lchnk
       do i = 1,ncol
          gll_state(lchnk)%lat(i) = rlat(i)
          gll_state(lchnk)%lon(i) = rlon(i)
       end do ! i
+      call gll_state_init_geo_unique( ncol, gll_state(lchnk) )
    end do ! lchnk
-   ! call init_geo_unique(phys_state,ncol)  !!! I think this could be problematic so ignore for now
+   ! call init_geo_unique(phys_state,ncol)         !!! I think this could be problematic so ignore for now
    !----------------------------------------------------------------------------
    !----------------------------------------------------------------------------
 #endif /* PHYS_GRID_1x1_TEST */
@@ -264,8 +267,19 @@ subroutine cam_run1(cam_in, cam_out)
 #endif
    use time_manager,     only: get_nstep
 
+! #if defined( PHYS_GRID_1x1_TEST )
+!    use spmd_utils,      only: iam, masterproc, mpicom
+!    use dimensions_mod,  only: nlev, nelemd, np, npsq
+!    use ppgrid,          only: pcols, pver, pverp
+!    use dyn_comp,        only: dyn_run, TimeLevel
+! #endif /* PHYS_GRID_1x1_TEST */
+
    type(cam_in_t)  :: cam_in(begchunk:endchunk)
    type(cam_out_t) :: cam_out(begchunk:endchunk)
+
+! #if defined( PHYS_GRID_1x1_TEST )
+!    integer :: lchnk, icol, ilyr, ie, i, j                ! loop iterators
+! #endif /* PHYS_GRID_1x1_TEST */
 
 #if ( defined SPMD )
    real(r8) :: mpi_wtime
@@ -279,6 +293,8 @@ subroutine cam_run1(cam_in, cam_out)
    if (masterproc .and. print_step_cost) then
       call t_stampf (wcstart, usrstart, sysstart)
    end if
+
+
    !----------------------------------------------------------
    ! First phase of dynamics (at least couple from dynamics to physics)
    ! Return time-step for physics from dynamics.
@@ -296,6 +312,21 @@ subroutine cam_run1(cam_in, cam_out)
    call t_startf ('phys_run1')
    call phys_run1(phys_state, dtime, phys_tend, pbuf2d,  cam_in, cam_out)
    call t_stopf  ('phys_run1')
+
+! #if defined( PHYS_GRID_1x1_TEST )
+!    do ie = 1,nelemd
+!       do j = 1,np
+!          do i = 1,np
+!             write(*,100) iam,ie,i,j &
+!                         ,dyn_in%elem(ie)%state%ps_v(i,j,TimeLevel%nm1) &
+!                         ,dyn_in%elem(ie)%state%ps_v(i,j,TimeLevel%n0)  &
+!                         ,dyn_in%elem(ie)%state%ps_v(i,j,TimeLevel%np1) 
+!          end do
+!       end do
+!    end do
+! 100 format( 'iam: ',i3,' ie: ',i3,' i,j: ',', ',i3,', ',i3,'   PS:',f12.2,'  ,  ',f12.2,'  ,  ',f12.2 )
+!    stop
+! #endif /* PHYS_GRID_1x1_TEST */
 
 end subroutine cam_run1
 
@@ -380,7 +411,11 @@ subroutine cam_run3( cam_out )
    !
    call t_barrierf ('sync_stepon_run3', mpicom)
    call t_startf ('stepon_run3')
+#if defined( PHYS_GRID_1x1_TEST )
+   call stepon_run3( dtime, cam_out, phys_state, gll_state, dyn_in, dyn_out )
+#else
    call stepon_run3( dtime, cam_out, phys_state, dyn_in, dyn_out )
+#endif /* PHYS_GRID_1x1_TEST */
 
    call t_stopf  ('stepon_run3')
 
@@ -517,16 +552,16 @@ subroutine cam_final( cam_out, cam_in )
    real(r8) :: mpi_wtime
 #endif
 
-#if defined( PHYS_GRID_1x1_TEST )
-   deallocate( gll_state)
-#endif
-
    call phys_final( phys_state, phys_tend , pbuf2d)
    call stepon_final(dyn_in, dyn_out)
 
    if(nsrest==0) then
       call cam_initfiles_close()
    end if
+
+#if defined( PHYS_GRID_1x1_TEST )
+   deallocate( gll_state )
+#endif
 
    call hub2atm_deallocate(cam_in)
    call atm2hub_deallocate(cam_out)
