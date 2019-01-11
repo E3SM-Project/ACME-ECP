@@ -999,9 +999,6 @@ contains
              enddo
           endif
        end if
-
-#else
-      write(iulog,*) subname // ': PERGRO not implemented for RRTMGP, doing nothing.'
 #endif /* DO_PERGRO_MODS */
 
    end subroutine perturbation_growth_init
