@@ -7,7 +7,7 @@ module kurant_mod
 
    subroutine kurant(ncrms)
       use vars
-      use sgs, only: kurant_sgs, grdf_x, grdf_y, grdf_z, tkh
+      use sgs, only: kurant_sgs
       use params, only: crm_rknd
       implicit none
       integer, intent(in) :: ncrms
