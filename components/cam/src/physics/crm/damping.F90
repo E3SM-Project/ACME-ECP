@@ -36,7 +36,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop copyin(z,n_damp) copyout(tau) async(1)
+    !$acc parallel loop copyin(z,n_damp) copy(tau) async(1)
     do icrm = 1 , ncrms
       do k=nzm,nzm-n_damp(icrm),-1
         tau(k,icrm) = tau_min *(tau_max/tau_min)**((z(nzm,icrm)-z(k,icrm))/(z(nzm,icrm)-z(nzm-n_damp(icrm),icrm)))
