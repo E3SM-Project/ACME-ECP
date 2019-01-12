@@ -3133,7 +3133,7 @@
 	     <arg name="num_tasks" > -n {{ total_tasks }} -N 84 </arg>
 	 </arguments>-->
 	 <arguments>
-	     <arg name="num_tasks" > -n {{ total_tasks }} -N 84 </arg>
+	     <arg name="num_tasks" > -n {{ total_tasks }} -N $MAX_MPITASKS_PER_NODE </arg>
 	 </arguments>
 	 </mpirun>
 		<!-- Useful jsrun options:
@@ -3265,7 +3265,7 @@
 	     <arg name="num_tasks" > -n {{ total_tasks }} -N 84 </arg>
 	 </arguments>-->
 	 <arguments>
-	     <arg name="num_tasks" > -n {{ total_tasks }} -N 36 -gpu </arg>
+	     <arg name="num_tasks" > -n {{ total_tasks }} -N $MAX_MPITASKS_PER_NODE -gpu </arg>
 	 </arguments>
 	 </mpirun>
 		<!-- Useful jsrun options:
