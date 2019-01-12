@@ -195,6 +195,15 @@ CONTAINS
     a_gr = 1./(tgrmax-tgrmin)
 
     if(nrestart.eq.0) then
+
+#ifndef CRM
+      micro_field(:,:,:,:,icrm) = 0.
+      do k=1,nzm
+        q(:,:,k,icrm) = q0(k,icrm)
+      end do
+      qn(:,:,:,icrm) = 0.
+#endif
+
       do icrm = 1 , ncrms
         fluxbmk(:,:,:,icrm) = 0.
         fluxtmk(:,:,:,icrm) = 0.
@@ -204,6 +213,10 @@ CONTAINS
       if ( docloud .or. doclubb ) then
 #else
       if(docloud) then
+#endif
+#ifndef CRM
+        call cloud(ncrms,q,qp,qn)
+        !$acc wait(1)
 #endif
         call micro_diagnose(ncrms)
         !$acc wait(1)
