@@ -38,17 +38,6 @@ contains
 
     !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(1)
 
-    ! check if the grid size allows the computation:
-    if(nsubdomains.gt.nzm) then
-      if(masterproc) print*,'pressure_orig: nzm < nsubdomains. STOP'
-      call task_abort
-    endif
-
-    if(mod(nzm,npressureslabs).ne.0) then
-      if(masterproc) print*,'pressure_orig: nzm/npressureslabs is not round number. STOP'
-      call task_abort
-    endif
-
     it = 0
     jt = 0
 
@@ -79,8 +68,7 @@ contains
 
     !-----------------------------------------------------------------
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
-    !   for the global domain. Request sending and receiving tasks.
-    n = rank*nzslab
+    n = 0
     !$acc parallel loop collapse(4) copyin(p) copyout(f) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzslab
@@ -94,22 +82,20 @@ contains
 
     !-------------------------------------------------
     ! Perform Fourier transformation for a slab:
-    if(rank.lt.npressureslabs) then
-      !$acc parallel loop copyout(ifaxi,trigxi,ifaxj,trigxj) async(1)
-      do icrm = 1 , 1
-        call fftfax_crm(nx_gl,ifaxi,trigxi)
-        if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
+    !$acc parallel loop copyout(ifaxi,trigxi,ifaxj,trigxj) async(1)
+    do icrm = 1 , 1
+      call fftfax_crm(nx_gl,ifaxi,trigxi)
+      if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
+    enddo
+    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(1)
+    do icrm = 1 , ncrms
+      do k=1,nzslab
+        call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
+        if(RUN3D) then
+          call fft991_crm(f(1,1,k,icrm),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
+        endif
       enddo
-      !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(1)
-      do icrm = 1 , ncrms
-        do k=1,nzslab
-          call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
-          if(RUN3D) then
-            call fft991_crm(f(1,1,k,icrm),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
-          endif
-        enddo
-      enddo
-    endif
+    enddo
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
@@ -188,9 +174,7 @@ contains
     enddo
 
     !-----------------------------------------------------------------
-    !   Send the Fourier coefficient to the tasks performing
-    !   the inverse Fourier transformation:
-    n = rank*nzslab
+    n = 0
     !$acc parallel loop collapse(4) copyin(ff) copyout(f) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzslab
@@ -204,17 +188,15 @@ contains
 
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
-    if(rank.lt.npressureslabs) then
-      !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(1)
-      do icrm = 1 , ncrms
-        do k=1,nzslab
-          if(RUN3D) then
-            call fft991_crm(f(1,1,k,icrm),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
-          endif
-          call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
-        enddo
+    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(1)
+    do icrm = 1 , ncrms
+      do k=1,nzslab
+        if(RUN3D) then
+          call fft991_crm(f(1,1,k,icrm),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
+        endif
+        call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
       enddo
-    endif
+    enddo
 
     !-----------------------------------------------------------------
     !   Fill the pressure field for each subdomain:
@@ -230,7 +212,7 @@ contains
       jjj(0)=ny_gl
     enddo
 
-    n = rank*nzslab
+    n = 0
     !$acc parallel loop collapse(4) copyin(iii,jjj,f) copyout(p) async(1)
     do icrm = 1 , ncrms
       do k = 1,nzslab
