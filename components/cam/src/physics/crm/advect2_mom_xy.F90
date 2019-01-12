@@ -40,9 +40,6 @@ contains
               fw2 = dx25*(u(ic  ,j,k,icrm)*rho(k,icrm)*adz(k,icrm)+u(ic  ,j,kcu,icrm)*rho(kcu,icrm)*adz(kcu,icrm))*(w(i  ,j,kc,icrm)+w(ic  ,j,kc,icrm))
               dwdt(i,j,kc,na,icrm) = dwdt(i,j,kc,na,icrm)-irho*(fw2-fw1)
 
-              kc= k+1
-              kcu =min(kc, nzm)
-              irho = 1./(rhow(kc,icrm)*adzw(kc,icrm))
               jc = j+1
               ib = i-1
               fu1 = dy25*(v(i,jc-1,k,icrm)+v(ib,jc-1,k,icrm))*(u(i,j-1,k,icrm)+u(i,jc-1,k,icrm))
