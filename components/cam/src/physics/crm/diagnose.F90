@@ -127,7 +127,7 @@ contains
     !=====================================================
     ! UW ADDITIONS
     ! FIND VERTICAL INDICES OF 850MB, COMPUTE SWVP
-    !$acc parallel loop collapse(4) copyin(rho,adz,dz) copy(pres,tabs,swvp_xy) async(1)
+    !$acc parallel loop collapse(4) copyin(rho,adz,pres,tabs,dz) copy(swvp_xy) async(1)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
