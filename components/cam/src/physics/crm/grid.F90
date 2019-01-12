@@ -54,7 +54,7 @@ module grid
   integer :: nstep = 0! current number of performed time steps
   integer  ncycle  ! number of subcycles over the dynamical timestep
   integer icycle  ! current subcycle
-  integer :: na, nb, nc ! indeces for swapping the rhs arrays for AB scheme
+  integer :: na, nb, nc ! indices for swapping the rhs arrays for AB scheme
   real(crm_rknd) at, bt, ct ! coefficients for the Adams-Bashforth scheme
   real(crm_rknd) dtn  ! current dynamical timestep (can be smaller than dt)
   real(crm_rknd) dtfactor   ! dtn/dt
