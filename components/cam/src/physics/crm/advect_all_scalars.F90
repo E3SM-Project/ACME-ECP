@@ -54,7 +54,7 @@ contains
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
         call advect_scalar(ncrms,sgs_field(:,:,:,:,k),adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copyout(sgsadv,sgswle) async(1)
+        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(sgsadv,sgswle) async(1)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             sgsadv(kk,k,icrm) = adv_tmp(kk,icrm)
