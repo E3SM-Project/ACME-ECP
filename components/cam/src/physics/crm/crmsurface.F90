@@ -21,7 +21,7 @@ contains
         taux0(icrm) = 0.
         tauy0(icrm) = 0.
       enddo
-      !$acc parallel loop collapse(3) copyin(rho,uhl,vhl,u,v) copy(tauy0,z0,z,fluxbv,bflx,fluxbu,taux0) async(1)
+      !$acc parallel loop collapse(3) copyin(rho,uhl,vhl,u,v,z0,bflx,z) copy(tauy0,fluxbv,fluxbu,taux0) async(1)
       do icrm = 1 , ncrms
         do j=1,ny
           do i=1,nx
