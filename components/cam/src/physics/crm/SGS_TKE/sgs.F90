@@ -475,6 +475,19 @@ CONTAINS
 
     !$acc exit data delete(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(1)
 
+    !if(dotracers) then
+    !  call tracers_flux()
+    !  do k = 1,ntracers
+    !    fluxbtmp(1:nx,1:ny,icrm) = fluxbtr(:,:,k,icrm)
+    !    fluxttmp(1:nx,1:ny,icrm) = fluxttr(:,:,k,icrm)
+    !    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm), &
+    !    trdiff(:,k,icrm),trwsb(:,k,icrm), &
+    !    dummy,dummy,dummy,.false.)
+    !    !!$          call diffuse_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),fluxbtr(:,:,k,icrm),fluxttr(:,:,k,icrm),trdiff(:,k,icrm),trwsb(:,k,icrm), &
+    !    !!$                           dummy,dummy,dummy,.false.)
+    !  end do
+    !end if
+
     !do icrm = 1 , ncrms
     !  total_water_evap(icrm) = total_water_evap(icrm) + total_water(ncrms,icrm)
     !enddo
