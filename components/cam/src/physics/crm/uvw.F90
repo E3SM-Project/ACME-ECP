@@ -11,7 +11,7 @@ contains
     integer, intent(in) :: ncrms
     integer :: i, j, k, icrm
 
-    !$acc parallel loop collapse(4) copyin(dudt,dvdt,dwdt) copy(u,v,w) async(1)
+    !$acc parallel loop collapse(4) copyin(dudt,dvdt,dwdt) copy(u,v,w) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         do j = 1 , ny

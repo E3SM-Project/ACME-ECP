@@ -5,7 +5,7 @@ module sgs
   ! Marat Khairoutdinov, 2012
 
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
-  use params, only: dosgs, crm_rknd
+  use params, only: dosgs, crm_rknd, asyncid
   use vars, only: tke2, tk2
   implicit none
 
@@ -351,14 +351,14 @@ CONTAINS
     integer k,icrm, j, i
     real(crm_rknd) tkhmax(nz,ncrms), tmp
 
-    !$acc parallel loop collapse(2) copyout(tkhmax) async(1)
+    !$acc parallel loop collapse(2) copyout(tkhmax) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzm
         tkhmax(k,icrm) = 0.
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copy(tkhmax) copyin(tkh) async(1)
+    !$acc parallel loop collapse(4) copy(tkhmax) copyin(tkh) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzm
         do j = 1 , ny
@@ -370,7 +370,7 @@ CONTAINS
       end do
     end do
 
-    !$acc parallel loop collapse(2) private(tmp) copy(cfl) copyin(tkhmax,grdf_x,grdf_y,grdf_z,dz,adzw) async(1)
+    !$acc parallel loop collapse(2) private(tmp) copy(cfl) copyin(tkhmax,grdf_x,grdf_y,grdf_z,dz,adzw) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2  , &
@@ -413,13 +413,13 @@ CONTAINS
     real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms), difftmp(nz,ncrms), wsbtmp(nz,ncrms)
     integer i,j,kk,k,icrm
 
-    !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(1)
+    !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(asyncid)
     
     !Passing tkh via first element to avoid PGI pointer bug
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
-      !$acc parallel loop collapse(2) copyin(sgswsb) copy(wsbtmp) async(1)
+      !$acc parallel loop collapse(2) copyin(sgswsb) copy(wsbtmp) async(asyncid)
       do icrm = 1, ncrms
         do k = 1 , nz
           wsbtmp(k,icrm) = sgswsb(k,1,icrm)
@@ -427,7 +427,7 @@ CONTAINS
       enddo
       !Passing tkh via first element to avoid PGI pointer bug
       call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),tke,fzero,fzero,dummy,wsbtmp)
-      !$acc parallel loop collapse(2) copyin(wsbtmp) copy(sgswsb) async(1)
+      !$acc parallel loop collapse(2) copyin(wsbtmp) copy(sgswsb) async(asyncid)
       do icrm = 1, ncrms
         do k = 1 , nz
           sgswsb(k,1,icrm) = wsbtmp(k,icrm)
@@ -445,7 +445,7 @@ CONTAINS
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        !$acc parallel loop collapse(2) copyin(fluxbmk,fluxtmk) copy(fluxbtmp,fluxttmp) async(1)
+        !$acc parallel loop collapse(2) copyin(fluxbmk,fluxtmk) copy(fluxbtmp,fluxttmp) async(asyncid)
         do icrm = 1 , ncrms
           do j = 1 , ny
             do i = 1 , nx
@@ -454,7 +454,7 @@ CONTAINS
             enddo
           enddo
         enddo
-        !$acc parallel loop collapse(2) copyin(mkdiff,mkwsb) copy(difftmp,wsbtmp) async(1)
+        !$acc parallel loop collapse(2) copyin(mkdiff,mkwsb) copy(difftmp,wsbtmp) async(asyncid)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             difftmp(kk,icrm) = mkdiff(kk,k,icrm)
@@ -463,7 +463,7 @@ CONTAINS
         enddo
         !Passing tkh via first element to avoid PGI pointer bug
         call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
-        !$acc parallel loop collapse(2) copyin(difftmp,wsbtmp) copy(mkdiff,mkwsb) async(1)
+        !$acc parallel loop collapse(2) copyin(difftmp,wsbtmp) copy(mkdiff,mkwsb) async(asyncid)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             mkdiff(kk,k,icrm) = difftmp(kk,icrm)
@@ -473,7 +473,7 @@ CONTAINS
       end if
     end do
 
-    !$acc exit data delete(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(1)
+    !$acc exit data delete(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(asyncid)
 
     !if(dotracers) then
     !  call tracers_flux()
@@ -519,7 +519,7 @@ subroutine sgs_proc(ncrms)
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
                           tke(dimx1_s,dimy1_s,1,1), tk(dimx1_d,dimy1_d,1,1), tkh(dimx1_d,dimy1_d,1,1))
 
-  !$acc parallel loop collapse(4) copyin(tke) copy(tke2) async(1)
+  !$acc parallel loop collapse(4) copyin(tke) copy(tke2) async(asyncid)
   do icrm = 1 , ncrms
     do k = 1 , nzm
       do j = dimy1_s,dimy2_s
@@ -529,7 +529,7 @@ subroutine sgs_proc(ncrms)
       enddo
     enddo
   enddo
-  !$acc parallel loop collapse(4) copyin(tk) copy(tk2) async(1)
+  !$acc parallel loop collapse(4) copyin(tk) copy(tk2) async(asyncid)
   do icrm = 1 , ncrms
     do k = 1 , nzm
       do j = dimy1_d,dimy2_d

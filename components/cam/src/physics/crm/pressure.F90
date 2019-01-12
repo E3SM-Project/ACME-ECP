@@ -36,7 +36,7 @@ contains
     integer iwall,jwall
     integer :: numgangs  !For working aroung PGI OpenACC bug where it didn't create enough gangs
 
-    !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(1)
+    !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(asyncid)
 
     it = 0
     jt = 0
@@ -69,7 +69,7 @@ contains
     !-----------------------------------------------------------------
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
     n = 0
-    !$acc parallel loop collapse(4) copyin(p) copyout(f) async(1)
+    !$acc parallel loop collapse(4) copyin(p) copyout(f) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,ny
@@ -82,12 +82,12 @@ contains
 
     !-------------------------------------------------
     ! Perform Fourier transformation for a slab:
-    !$acc parallel loop copyout(ifaxi,trigxi,ifaxj,trigxj) async(1)
+    !$acc parallel loop copyout(ifaxi,trigxi,ifaxj,trigxj) async(asyncid)
     do icrm = 1 , 1
       call fftfax_crm(nx_gl,ifaxi,trigxi)
       if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
     enddo
-    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(1)
+    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzslab
         call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
@@ -99,7 +99,7 @@ contains
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
-    !$acc parallel loop collapse(4) copyin(f) copyout(ff) async(1)
+    !$acc parallel loop collapse(4) copyin(f) copyout(ff) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,nyp22-jwall
@@ -113,7 +113,7 @@ contains
     !-------------------------------------------------
     !   Solve the tri-diagonal system for Fourier coeffiecients
     !   in the vertical for each subdomain:
-    !$acc parallel loop collapse(2) copyin(adz,adzw,dz,rhow) copyout(a,c) async(1)
+    !$acc parallel loop collapse(2) copyin(adz,adzw,dz,rhow) copyout(a,c) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         a(k,icrm)=rhow(k,icrm)/(adz(k,icrm)*adzw(k,icrm)*dz(icrm)*dz(icrm))
@@ -123,7 +123,7 @@ contains
 
     !For working aroung PGI OpenACC bug where it didn't create enough gangs
     numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
-    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(fff,alfa,beta) copyin(a,c,rho) copy(ff) async(1)
+    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(fff,alfa,beta) copyin(a,c,rho) copy(ff) async(asyncid)
     do icrm = 1 , ncrms
       do j=1,nyp22-jwall
         do i=1,nxp1-iwall
@@ -175,7 +175,7 @@ contains
 
     !-----------------------------------------------------------------
     n = 0
-    !$acc parallel loop collapse(4) copyin(ff) copyout(f) async(1)
+    !$acc parallel loop collapse(4) copyin(ff) copyout(f) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,nyp22-jwall
@@ -188,7 +188,7 @@ contains
 
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
-    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(1)
+    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzslab
         if(RUN3D) then
@@ -200,7 +200,7 @@ contains
 
     !-----------------------------------------------------------------
     !   Fill the pressure field for each subdomain:
-    !$acc parallel loop copyout(iii,jjj) async(1)
+    !$acc parallel loop copyout(iii,jjj) async(asyncid)
     do icrm = 1,1
       do i=1,nx_gl
         iii(i)=i
@@ -213,7 +213,7 @@ contains
     enddo
 
     n = 0
-    !$acc parallel loop collapse(4) copyin(iii,jjj,f) copyout(p) async(1)
+    !$acc parallel loop collapse(4) copyin(iii,jjj,f) copyout(p) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1-YES3D,ny
@@ -229,7 +229,7 @@ contains
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
 
-    !$acc exit data delete(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(1)
+    !$acc exit data delete(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(asyncid)
 
   end subroutine pressure
 

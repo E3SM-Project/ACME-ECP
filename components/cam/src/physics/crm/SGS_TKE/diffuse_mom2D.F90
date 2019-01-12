@@ -1,4 +1,5 @@
 module diffuse_mom2D_mod
+  use params, only: asyncid
   implicit none
 
 contains
@@ -26,7 +27,7 @@ contains
     real(crm_rknd) fw(0:nx,1,nz,ncrms)
     integer :: numgangs  !For working around PGI bugs where PGI did not allocate enough gangs
 
-    !$acc enter data create(fu,fv,fw) async(1)
+    !$acc enter data create(fu,fv,fw) async(asyncid)
 
     rdx2=1./dx/dx
     rdx25=0.25*rdx2
@@ -36,7 +37,7 @@ contains
     if( .not. docolumn ) then
       !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
-      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(w,v,grdf_x,u,dz,tk,adzw) copy(fv,fu,fw) async(1)
+      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(w,v,grdf_x,u,dz,tk,adzw) copy(fv,fu,fw) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           !$acc loop vector
@@ -57,7 +58,7 @@ contains
       end do
       !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
-      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(1)
+      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           !$acc loop vector
@@ -74,7 +75,7 @@ contains
 
     !-------------------------
 
-    !$acc parallel loop collapse(2) copy(uwsb,vwsb) async(1)
+    !$acc parallel loop collapse(2) copy(uwsb,vwsb) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         uwsb(k,icrm)=0.
@@ -84,7 +85,7 @@ contains
 
     !For working around PGI bugs where PGI did not allocate enough gangs
     numgangs = ceiling( ncrms*(nzm-1)*nx/128. )
-    !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) copyin(u,adzw,adz,w,grdf_z,rhow,tk,rho,dz,v) copy(fw,vwsb,fv,uwsb,fu) async(1)
+    !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) copyin(u,adzw,adz,w,grdf_z,rhow,tk,rho,dz,v) copy(fw,vwsb,fv,uwsb,fu) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm-1
         do i=1,nx
@@ -109,7 +110,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(2) copyin(fluxtu,fluxbv,fluxbu,fluxtv,rho,dz,grdf_z,w,rhow,adz,tk) copy(uwsb,fu,fv,vwsb,fw) async(1)
+    !$acc parallel loop collapse(2) copyin(fluxtu,fluxbv,fluxbu,fluxtv,rho,dz,grdf_z,w,rhow,adz,tk) copy(uwsb,fu,fv,vwsb,fw) async(asyncid)
     do icrm = 1 , ncrms
       do i=1,nx
         rdz=1./dz(icrm)
@@ -127,7 +128,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(3) copyin(fu,adz,rho,fv) copy(dudt,dvdt) async(1)
+    !$acc parallel loop collapse(3) copyin(fu,adz,rho,fv) copy(dudt,dvdt) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
@@ -139,7 +140,7 @@ contains
       end do ! k
     end do ! k
 
-    !$acc parallel loop collapse(3) copyin(rhow,fw,adzw) copy(dwdt) async(1)
+    !$acc parallel loop collapse(3) copyin(rhow,fw,adzw) copy(dwdt) async(asyncid)
     do icrm = 1 , ncrms
       do k=2,nzm
         do i=1,nx
@@ -149,7 +150,7 @@ contains
       end do ! k
     end do ! k
 
-    !$acc exit data delete(fu,fv,fw) async(1)
+    !$acc exit data delete(fu,fv,fw) async(asyncid)
 
   end subroutine diffuse_mom2D
 

@@ -1,4 +1,5 @@
 module advect_scalar2D_mod
+  use params, only: asyncid
   implicit none
 
 contains
@@ -38,9 +39,9 @@ contains
 
     j=1
 
-    !$acc enter data create(mx,mn,uuu,www,iadz,irho,irhow) async(1)
+    !$acc enter data create(mx,mn,uuu,www,iadz,irho,irhow) async(asyncid)
 
-    !$acc parallel loop collapse(2) copy(www) async(1)
+    !$acc parallel loop collapse(2) copy(www) async(asyncid)
     do icrm = 1 , ncrms
       do i = -1 , nxp2
         www(i,j,nz,icrm)=0.
@@ -49,7 +50,7 @@ contains
 
     if (dowallx) then
       if (mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop collapse(3) copy(u) async(1)
+        !$acc parallel loop collapse(3) copy(u) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=dimx1_u,1
@@ -59,7 +60,7 @@ contains
         enddo
       endif
       if (mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop collapse(3) copy(u) async(1)
+        !$acc parallel loop collapse(3) copy(u) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=nx+1,dimx2_u
@@ -73,7 +74,7 @@ contains
     !-----------------------------------------
 
     if (nonos) then
-      !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(1)
+      !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nxp1
@@ -88,7 +89,7 @@ contains
       enddo
     endif  ! nonos
 
-    !$acc parallel loop collapse(3) copyin(u,f,w) copy(uuu,www,flux) async(1)
+    !$acc parallel loop collapse(3) copyin(u,f,w) copy(uuu,www,flux) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=-1,nxp3
@@ -101,7 +102,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(2) copyin(rho,adz,rhow) copy(irho,iadz,irhow) async(1)
+    !$acc parallel loop collapse(2) copyin(rho,adz,rhow) copy(irho,iadz,irhow) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         irho(k,icrm) = 1./rho(k,icrm)
@@ -109,7 +110,7 @@ contains
         irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
       enddo
     enddo
-    !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f,flux) async(1)
+    !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f,flux) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=-1,nxp2
@@ -123,7 +124,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(adz,f,u,irho,w,irhow) copy(uuu,www) async(1)
+    !$acc parallel loop collapse(3) copyin(adz,f,u,irho,w,irhow) copy(uuu,www) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=0,nxp2
@@ -144,7 +145,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copy(www) async(1)
+    !$acc parallel loop collapse(2) copy(www) async(asyncid)
     do icrm = 1 , ncrms
       do i = -1 , nxp2
         www(i,j,1,icrm) = 0.
@@ -153,7 +154,7 @@ contains
     !---------- non-osscilatory option ---------------
 
     if (nonos) then
-      !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(1)
+      !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nxp1
@@ -167,7 +168,7 @@ contains
         enddo
       enddo
 
-      !$acc parallel loop collapse(3) copyin(f,rho,uuu,www,iadz) copy(mx,mn) async(1)
+      !$acc parallel loop collapse(3) copyin(f,rho,uuu,www,iadz) copy(mx,mn) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nxp1
@@ -181,7 +182,7 @@ contains
         enddo
       enddo
 
-      !$acc parallel loop collapse(3) copyin(mx,mn) copy(uuu,www,flux) async(1)
+      !$acc parallel loop collapse(3) copyin(mx,mn) copy(uuu,www,flux) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nxp1
@@ -200,7 +201,7 @@ contains
       enddo
     endif ! nonos
 
-    !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f) async(1)
+    !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
@@ -215,7 +216,7 @@ contains
       enddo
     enddo
 
-    !$acc exit data delete(mx,mn,uuu,www,iadz,irho,irhow) async(1)
+    !$acc exit data delete(mx,mn,uuu,www,iadz,irho,irhow) async(asyncid)
 
   end subroutine advect_scalar2D
 

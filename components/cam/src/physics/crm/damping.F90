@@ -1,5 +1,6 @@
 
 module damping_mod
+  use params, only: asyncid
   use task_util_mod
   implicit none
 
@@ -20,14 +21,14 @@ contains
     integer i, j, k, n_damp(ncrms), icrm
     integer :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
 
-    !$acc enter data create(tau,n_damp) async(1)
+    !$acc enter data create(tau,n_damp) async(asyncid)
 
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'
       call task_abort()
     end if
 
-    !$acc parallel loop copyin(z) copyout(n_damp) async(1)
+    !$acc parallel loop copyin(z) copyout(n_damp) async(asyncid)
     do icrm = 1 , ncrms
       do k=nzm,1,-1
         if(z(nzm,icrm)-z(k,icrm).lt.damp_depth*z(nzm,icrm)) then
@@ -36,7 +37,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop copyin(z,n_damp) copy(tau) async(1)
+    !$acc parallel loop copyin(z,n_damp) copy(tau) async(asyncid)
     do icrm = 1 , ncrms
       do k=nzm,nzm-n_damp(icrm),-1
         tau(k,icrm) = tau_min *(tau_max/tau_min)**((z(nzm,icrm)-z(k,icrm))/(z(nzm,icrm)-z(nzm-n_damp(icrm),icrm)))
@@ -47,7 +48,7 @@ contains
     ! recalculate grid-mean u0, v0, t0 first,
     ! as t has been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
-    !$acc parallel loop collapse(2) copyout(u0,v0,t0) async(1)
+    !$acc parallel loop collapse(2) copyout(u0,v0,t0) async(asyncid)
     do icrm = 1 , ncrms
       do k=1, nzm
         u0(k,icrm)=0.0
@@ -55,7 +56,7 @@ contains
         t0(k,icrm)=0.0
       end do
     end do
-    !$acc parallel loop collapse(4) copyin(u,v,t) copy(u0,v0,t0) async(1)
+    !$acc parallel loop collapse(4) copyin(u,v,t) copy(u0,v0,t0) async(asyncid)
     do icrm = 1 , ncrms
       do k=1, nzm
         do j=1, ny
@@ -76,7 +77,7 @@ contains
 
    !For working around PGI OpenACC bug where it didn't create enough gangs 
     numgangs = ceiling(ncrms*ny*nx/128.)
-    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,u0,v,v0,tau,w,t0,qv,qv0) async(1)
+    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,u0,v,v0,tau,w,t0,qv,qv0) async(asyncid)
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
@@ -91,7 +92,7 @@ contains
       end do ! k
     end do
 
-    !$acc exit data delete(tau,n_damp) async(1)
+    !$acc exit data delete(tau,n_damp) async(asyncid)
 
   end subroutine damping
 

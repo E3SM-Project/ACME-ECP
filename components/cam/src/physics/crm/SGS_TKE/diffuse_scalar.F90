@@ -27,9 +27,9 @@ contains
     real(crm_rknd) :: tmp
     integer i,j,k,icrm
 
-    !$acc enter data create(df) async(1)
+    !$acc enter data create(df) async(asyncid)
 
-    !$acc parallel loop collapse(4) copyin(f) copy(df) async(1)
+    !$acc parallel loop collapse(4) copyin(f) copy(df) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         do j = dimy1_s , dimy2_s
@@ -46,13 +46,13 @@ contains
       call diffuse_scalar2D (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,       grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
     endif
 
-    !$acc parallel loop collapse(2) copy(fdiff) async(1)
+    !$acc parallel loop collapse(2) copy(fdiff) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         fdiff(k,icrm)=0.
       enddo
     enddo
-    !$acc parallel loop collapse(2) copyin(f,df) copy(fdiff) async(1)
+    !$acc parallel loop collapse(2) copyin(f,df) copy(fdiff) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -65,7 +65,7 @@ contains
       end do
     enddo
 
-    !$acc exit data delete(df) async(1)
+    !$acc exit data delete(df) async(asyncid)
 
   end subroutine diffuse_scalar
 

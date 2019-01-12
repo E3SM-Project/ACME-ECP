@@ -1,4 +1,5 @@
 module advect2_mom_z_mod
+  use params, only: asyncid
   implicit none
 
 contains
@@ -15,9 +16,9 @@ contains
     integer i, j, k, kc, kb,icrm
     real(crm_rknd) dz25, www, rhoi
 
-    !$acc enter data create(fuz,fvz,fwz) async(1)
+    !$acc enter data create(fuz,fvz,fwz) async(asyncid)
 
-    !$acc parallel loop collapse(2) copyout(vwle,uwle) async(1)
+    !$acc parallel loop collapse(2) copyout(vwle,uwle) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nz
         uwle(k,icrm) = 0.
@@ -25,7 +26,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copy(fuz,fwz,fvz) async(1)
+    !$acc parallel loop collapse(3) copy(fuz,fwz,fvz) async(asyncid)
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
@@ -42,7 +43,7 @@ contains
 
     if(RUN3D) then
 
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) async(asyncid)
       do icrm = 1 , ncrms
         do k=2,nzm
           do j=1,ny
@@ -63,7 +64,7 @@ contains
 
     else
 
-      !$acc parallel loop collapse(4) copyin(u,v,w,rhow,dz) copy(fvz,vwle,uwle,fuz) async(1)
+      !$acc parallel loop collapse(4) copyin(u,v,w,rhow,dz) copy(fvz,vwle,uwle,fuz) async(asyncid)
       do icrm = 1 , ncrms
         do k=2,nzm
           do j=1,ny
@@ -85,7 +86,7 @@ contains
 
     endif
 
-    !$acc parallel loop collapse(4) copyin(fvz,rho,w,rhow,fuz,dz,adz) copy(dudt,dvdt,fwz) async(1)
+    !$acc parallel loop collapse(4) copyin(fvz,rho,w,rhow,fuz,dz,adz) copy(dudt,dvdt,fwz) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -101,7 +102,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(4) copyin(rhow,fwz,adzw) copy(dwdt) async(1)
+    !$acc parallel loop collapse(4) copyin(rhow,fwz,adzw) copy(dwdt) async(asyncid)
     do icrm = 1 , ncrms
       do k=2,nzm
         do j=1,ny
@@ -114,7 +115,7 @@ contains
       end do ! k
     end do
 
-    !$acc exit data delete(fuz,fvz,fwz) async(1)
+    !$acc exit data delete(fuz,fvz,fwz) async(asyncid)
 
   end subroutine advect2_mom_z
 

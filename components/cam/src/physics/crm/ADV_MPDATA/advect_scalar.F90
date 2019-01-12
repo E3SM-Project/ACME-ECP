@@ -21,10 +21,10 @@ contains
     real(crm_rknd) tmp
     integer i,j,k,icrm
 
-    !$acc enter data create(f0) async(1)
+    !$acc enter data create(f0) async(asyncid)
 
     if(docolumn) then
-      !$acc parallel loop collapse(2) copy(flux) async(1)
+      !$acc parallel loop collapse(2) copy(flux) async(asyncid)
       do icrm = 1 , ncrms
         do k = 1 , nz
           flux(k,icrm) = 0.
@@ -33,7 +33,7 @@ contains
       return
     end if
 
-    !$acc parallel loop collapse(4) copyin(f) copy(f0) async(1)
+    !$acc parallel loop collapse(4) copyin(f) copy(f0) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         do j = dimy1_s,dimy2_s
@@ -50,13 +50,13 @@ contains
       call advect_scalar2D(ncrms, f, u, w, rho, rhow, flux)
     endif
 
-    !$acc parallel loop collapse(2) copy(fadv) async(1)
+    !$acc parallel loop collapse(2) copy(fadv) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         fadv(k,icrm)=0.
       enddo
     enddo
-    !$acc parallel loop collapse(4) copyin(f,f0) copy(fadv) async(1)
+    !$acc parallel loop collapse(4) copyin(f,f0) copy(fadv) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -69,7 +69,7 @@ contains
       end do
     enddo
 
-    !$acc exit data delete(f0) async(1)
+    !$acc exit data delete(f0) async(asyncid)
 
   end subroutine advect_scalar
 

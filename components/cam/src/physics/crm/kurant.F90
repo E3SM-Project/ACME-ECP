@@ -1,5 +1,6 @@
 
 module kurant_mod
+   use params, only: asyncid
    use task_util_mod
    implicit none
 
@@ -17,7 +18,7 @@ module kurant_mod
       real(crm_rknd) cfl, cfl_sgs, tmp
 
       ncycle = 1
-      !$acc parallel loop collapse(2) copyout(wm,uhm) async(1)
+      !$acc parallel loop collapse(2) copyout(wm,uhm) async(asyncid)
       do icrm = 1 , ncrms
         do k = 1 , nz
           wm (k,icrm) = 0.
@@ -25,7 +26,7 @@ module kurant_mod
         enddo
       enddo
 
-      !$acc parallel loop collapse(4) private(tmp) copy(wm,w_max,uhm,u_max) copyin(u,v,w) async(1)
+      !$acc parallel loop collapse(4) private(tmp) copy(wm,w_max,uhm,u_max) copyin(u,v,w) async(asyncid)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j = 1 , ny
@@ -47,7 +48,7 @@ module kurant_mod
       enddo
 
       cfl = 0.
-      !$acc parallel loop collapse(2) private(tmp) copyin(wm,uhm,dz,adzw) copy(cfl) async(1)
+      !$acc parallel loop collapse(2) private(tmp) copyin(wm,uhm,dz,adzw) copy(cfl) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           tmp = max( uhm(k,icrm)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(k,icrm),wm(k+1,icrm))*dt/(dz(icrm)*adzw(k,icrm)) )

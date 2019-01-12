@@ -1,4 +1,5 @@
 module shear_prod2D_mod
+  use params, only: asyncid
   implicit none
 
 contains
@@ -16,7 +17,7 @@ contains
     rdx0=1./dx
     j=1
 
-    !$acc parallel loop collapse(3) copyin(adz,w,v0,dz,u,v,u0,adzw) copy(def2) async(1)
+    !$acc parallel loop collapse(3) copyin(adz,w,v0,dz,u,v,u0,adzw) copy(def2) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx

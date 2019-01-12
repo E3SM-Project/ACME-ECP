@@ -1,4 +1,5 @@
 module precip_proc_mod
+  use params, only: asyncid
   implicit none
 
 contains
@@ -31,7 +32,7 @@ contains
     powg1 = (3 + b_grau) / 4.
     powg2 = (5 + b_grau) / 8.
 
-    !$acc parallel loop collapse(2) copy(qpsrc,qpevp) async(1)
+    !$acc parallel loop collapse(2) copy(qpsrc,qpevp) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         qpsrc(k,icrm)=0.
@@ -39,7 +40,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copyin(accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,tabs,pres,evapr2) copy(qpevp,qpsrc,qp,qn,q) async(1)
+    !$acc parallel loop collapse(2) copyin(accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,tabs,pres,evapr2) copy(qpevp,qpsrc,qp,qn,q) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny

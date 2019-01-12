@@ -87,7 +87,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd) :: tk_min_depth      ! near-surface depth to apply tk_min (meters)
   real(crm_rknd) :: tmp
 
-  !$acc enter data create(def2,buoy_sgs_vert,a_prod_bu_vert) async(1)
+  !$acc enter data create(def2,buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
 
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------
@@ -108,7 +108,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   endif
 
   !!! initialize surface and top buoyancy flux to zero
-  !$acc parallel loop collapse(3) copy(buoy_sgs_vert,a_prod_bu_vert) async(1)
+  !$acc parallel loop collapse(3) copy(buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
   do icrm = 1 , ncrms
     do j = 1 , ny
       do i = 1 , nx
@@ -125,7 +125,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   !-----------------------------------------------------------------------
   !!! compute subgrid buoyancy flux assuming clear conditions
   !!! we will over-write this later if conditions are cloudy
-  !$acc parallel loop collapse(4) copyin(tkh,tabs,bet,qv,qpi,qcl,qpl,t,qci,adzw,presi,dz) copy(buoy_sgs_vert,a_prod_bu_vert) async(1)
+  !$acc parallel loop collapse(4) copyin(tkh,tabs,bet,qv,qpi,qcl,qpl,t,qci,adzw,presi,dz) copy(buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
   do icrm = 1 , ncrms
     do k = 1,nzm-1
       do j = 1,ny
@@ -231,7 +231,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     enddo !k
   enddo !icrm
 
-  !$acc parallel loop collapse(2) copy(tkelediss,tkesbshear,tkesbdiss,tkesbbuoy) async(1)
+  !$acc parallel loop collapse(2) copy(tkelediss,tkesbshear,tkesbdiss,tkesbbuoy) async(asyncid)
   do icrm = 1 , ncrms
     do k = 1,nzm-1
       tkelediss(k,icrm)  = 0.
@@ -241,7 +241,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     enddo
   enddo
 
-  !$acc parallel loop collapse(4) copyin(z,buoy_sgs_vert,def2,a_prod_bu_vert,dz,grdf_x,adz,grdf_y,adzw,grdf_z) copy(tkelediss,tkesbbuoy,tkesbshear,tkh,tk,tke,tkesbdiss) async(1)
+  !$acc parallel loop collapse(4) copyin(z,buoy_sgs_vert,def2,a_prod_bu_vert,dz,grdf_x,adz,grdf_y,adzw,grdf_z) copy(tkelediss,tkesbbuoy,tkesbshear,tkh,tk,tke,tkesbdiss) async(asyncid)
   do icrm = 1 , ncrms
     do k = 1,nzm-1
       do j = 1,ny
@@ -302,7 +302,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     end do ! k
   enddo !icrm
 
-  !$acc exit data delete(def2,buoy_sgs_vert,a_prod_bu_vert) async(1)
+  !$acc exit data delete(def2,buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
 
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------

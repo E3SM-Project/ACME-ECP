@@ -1,4 +1,5 @@
 module coriolis_mod
+  use params, only: asyncid
   implicit none
 
 contains
@@ -12,7 +13,7 @@ contains
     integer i,j,k,ib,ic,jb,jc,kc,icrm
 
     if(RUN3D) then
-      !$acc parallel loop collapse(4) copyin(w,vg0,ug0,v,fcory,fcorzy,u) copy(dvdt,dudt) async(1)
+      !$acc parallel loop collapse(4) copyin(w,vg0,ug0,v,fcory,fcorzy,u) copy(dvdt,dudt) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -32,7 +33,7 @@ contains
         end do ! k
       end do
     else
-      !$acc parallel loop collapse(4) copyin(u,v,w,ug0,vg0,fcorzy,fcory) copy(dudt,dvdt) async(1)
+      !$acc parallel loop collapse(4) copyin(u,v,w,ug0,vg0,fcorzy,fcory) copy(dudt,dvdt) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny

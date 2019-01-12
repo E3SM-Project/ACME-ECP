@@ -32,11 +32,11 @@ contains
     rdx2=1./(dx*dx)
     j=1
 
-    !$acc enter data create(flx,dfdt) async(1)
+    !$acc enter data create(flx,dfdt) async(asyncid)
 
     !For working around PGI bug where it didn't create enough OpenACC gangs
     numgangs = ceiling(ncrms*nzm*ny*nx/128.)
-    !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) copy(dfdt) async(1)
+    !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) copy(dfdt) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         do i = 1 , nx
@@ -47,7 +47,7 @@ contains
 
     if(dowallx) then
       if(mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop collapse(2) copy(field) async(1)
+        !$acc parallel loop collapse(2) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             field(0,j,k,icrm) = field(1,j,k,icrm)
@@ -55,7 +55,7 @@ contains
         enddo
       endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop collapse(2) copy(field) async(1)
+        !$acc parallel loop collapse(2) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             field(nx+1,j,k,icrm) = field(nx,j,k,icrm)
@@ -65,7 +65,7 @@ contains
     endif
 
     if(.not.docolumn) then
-      !$acc parallel loop collapse(3) copyin(grdf_x,tkh,field) copy(flx) async(1)
+      !$acc parallel loop collapse(3) copyin(grdf_x,tkh,field) copy(flx) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nx
@@ -76,7 +76,7 @@ contains
           enddo
         enddo
       enddo
-      !$acc parallel loop collapse(3) copyin(flx) copy(dfdt) async(1)
+      !$acc parallel loop collapse(3) copyin(flx) copy(dfdt) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -87,14 +87,14 @@ contains
       enddo
     endif
 
-    !$acc parallel loop collapse(2) copy(flux) async(1)
+    !$acc parallel loop collapse(2) copy(flux) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         flux(k,icrm) = 0.
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(rhow,adzw,dz,grdf_z,tkh,field,fluxb,fluxt) copy(flx,flux) async(1)
+    !$acc parallel loop collapse(3) copyin(rhow,adzw,dz,grdf_z,tkh,field,fluxb,fluxt) copy(flx,flux) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
@@ -119,7 +119,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(flx,rho,adz) copy(dfdt,field) async(1)
+    !$acc parallel loop collapse(3) copyin(flx,rho,adz) copy(dfdt,field) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do i=1,nx
@@ -131,7 +131,7 @@ contains
       enddo
     enddo
 
-    !$acc exit data delete(flx,dfdt) async(1)
+    !$acc exit data delete(flx,dfdt) async(asyncid)
 
   end subroutine diffuse_scalar2D
 

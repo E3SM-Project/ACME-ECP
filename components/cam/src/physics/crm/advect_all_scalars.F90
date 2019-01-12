@@ -24,7 +24,7 @@ contains
     real(crm_rknd) :: wle_tmp(nz,ncrms)
     real(crm_rknd) :: esmt_offset(ncrms)    ! whannah - offset for advecting scalar momentum tracers
 
-    !$acc enter data create(adv_tmp,wle_tmp) async(1)
+    !$acc enter data create(adv_tmp,wle_tmp) async(asyncid)
 
     !      advection of scalars :
     call advect_scalar(ncrms,t,tadv,twle)
@@ -40,7 +40,7 @@ contains
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
         call advect_scalar(ncrms,micro_field(:,:,:,:,k),adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(mkadv,mkwle) async(1)
+        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(mkadv,mkwle) async(asyncid)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             mkadv(kk,k,icrm) = adv_tmp(kk,icrm)
@@ -54,7 +54,7 @@ contains
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
         call advect_scalar(ncrms,sgs_field(:,:,:,:,k),adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(sgsadv,sgswle) async(1)
+        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(sgsadv,sgswle) async(asyncid)
         do icrm = 1 , ncrms
           do kk = 1 , nz
             sgsadv(kk,k,icrm) = adv_tmp(kk,icrm)
@@ -75,7 +75,7 @@ contains
       !enddo
     end if
 
-    !$acc exit data delete(adv_tmp,wle_tmp) async(1)
+    !$acc exit data delete(adv_tmp,wle_tmp) async(asyncid)
 
     ! advection of tracers:
     !There aren't any of these. We need to delete crmtracers.F90 too at some point

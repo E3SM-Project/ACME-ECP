@@ -1,4 +1,5 @@
 module adams_mod
+  use params, only: asyncid
   implicit none
 
 contains
@@ -15,7 +16,7 @@ contains
     dtdx = dtn/dx
     dtdy = dtn/dy
 
-    !$acc parallel loop collapse(4) copyin(dz,rho,rhow,dt3) copy(dudt,dvdt,dwdt,u,v,w,misc) async(1)
+    !$acc parallel loop collapse(4) copyin(dz,rho,rhow,dt3) copy(dudt,dvdt,dwdt,u,v,w,misc) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny

@@ -15,7 +15,7 @@ contains
     integer i,j,k,ic,jc,kc, icrm
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
-      !$acc parallel loop collapse(3) copy(dudt) async(1)
+      !$acc parallel loop collapse(3) copy(dudt) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -26,7 +26,7 @@ contains
     end if
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
-      !$acc parallel loop collapse(3) copy(dvdt) async(1)
+      !$acc parallel loop collapse(3) copy(dvdt) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -45,7 +45,7 @@ contains
 
     if(RUN3D) then
 
-      !$acc parallel loop collapse(4) copyin(rhow,u,v,w,dt3,dvdt,dudt,adz,rho,dwdt,dz) copy(p) async(1)
+      !$acc parallel loop collapse(4) copyin(rhow,u,v,w,dt3,dvdt,dudt,adz,rho,dwdt,dz) copy(p) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,ny
@@ -78,7 +78,7 @@ contains
     else
 
       j=1
-      !$acc parallel loop collapse(3) copyin(rhow,u,w,dt3,dudt,adz,rho,dwdt,dz) copy(p) async(1)
+      !$acc parallel loop collapse(3) copyin(rhow,u,w,dt3,dudt,adz,rho,dwdt,dz) copy(p) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx

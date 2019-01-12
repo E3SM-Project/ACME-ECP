@@ -1,4 +1,5 @@
 module advect2_mom_xy_mod
+  use params, only: asyncid
   implicit none
 
 contains
@@ -20,7 +21,7 @@ contains
 
     if(RUN3D) then
 
-      !$acc parallel loop collapse(4) async(1)
+      !$acc parallel loop collapse(4) async(asyncid)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do j = 1, ny
@@ -59,7 +60,7 @@ contains
     else
 
       j=1
-      !$acc parallel loop collapse(3) copy(dudt,dvdt,dwdt) copyin(w,v,u,adzw,rhow,rho,adz) async(1)
+      !$acc parallel loop collapse(3) copy(dudt,dvdt,dwdt) copyin(w,v,u,adzw,rhow,rho,adz) async(asyncid)
       do icrm = 1 , ncrms
         do k = 1,nzm
           do i = 1, nx

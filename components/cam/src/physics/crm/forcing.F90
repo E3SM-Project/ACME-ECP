@@ -13,11 +13,11 @@ contains
     real(crm_rknd) coef,qneg(nzm,ncrms),qpoz(nzm,ncrms), factor
     integer i,j,k,nneg(nzm,ncrms),icrm
 
-    !$acc enter data create(qneg,qpoz,nneg) async(1)
+    !$acc enter data create(qneg,qpoz,nneg) async(asyncid)
 
     coef = 1./3600.
 
-    !$acc parallel loop collapse(2) copyout(qpoz,qneg,nneg) async(1)
+    !$acc parallel loop collapse(2) copyout(qpoz,qneg,nneg) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         qpoz(k,icrm) = 0.
@@ -26,7 +26,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copy(t,micro_field,nneg,qneg,qpoz,dudt,dvdt) copyin(ttend,qtend,utend,vtend) async(1)
+    !$acc parallel loop collapse(4) copy(t,micro_field,nneg,qneg,qpoz,dudt,dvdt) copyin(ttend,qtend,utend,vtend) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -49,7 +49,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(4) private(factor) copy(micro_field) copyin(qneg,qpoz,nneg) async(1)
+    !$acc parallel loop collapse(4) private(factor) copy(micro_field) copyin(qneg,qpoz,nneg) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -63,7 +63,7 @@ contains
       end do
     end do
 
-    !$acc exit data delete(qneg,qpoz,nneg) async(1)
+    !$acc exit data delete(qneg,qpoz,nneg) async(asyncid)
 
   end subroutine forcing
 

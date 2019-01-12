@@ -1,4 +1,5 @@
 module advect_scalar3D_mod
+  use params, only: asyncid
   implicit none
 
 contains
