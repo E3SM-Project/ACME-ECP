@@ -134,7 +134,6 @@ module crm_output_module
 contains
 
    !------------------------------------------------------------------------------------------------
-   ! Type-bound procedures for crm_output_type
    subroutine crm_output_initialize(output, ncol, nlev)
       type(crm_output_type), intent(inout) :: output
       integer, intent(in), optional :: ncol, nlev
