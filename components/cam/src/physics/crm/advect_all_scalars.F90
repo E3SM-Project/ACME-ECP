@@ -39,13 +39,6 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        !$acc parallel loop collapse(2) copyin(mkadv,mkwle) copy(adv_tmp,wle_tmp) async(1)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            adv_tmp(kk,icrm) = mkadv(kk,k,icrm)
-            wle_tmp(kk,icrm) = mkwle(kk,k,icrm)
-          enddo
-        enddo
         call advect_scalar(ncrms,micro_field(:,:,:,:,k),adv_tmp,wle_tmp)
         !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(mkadv,mkwle) async(1)
         do icrm = 1 , ncrms
@@ -60,13 +53,6 @@ contains
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        !$acc parallel loop collapse(2) copyin(sgsadv,sgswle) copy(adv_tmp,wle_tmp) async(1)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            adv_tmp(kk,icrm) = sgsadv(kk,k,icrm)
-            wle_tmp(kk,icrm) = sgswle(kk,k,icrm)
-          enddo
-        enddo
         call advect_scalar(ncrms,sgs_field(:,:,:,:,k),adv_tmp,wle_tmp)
         !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copyout(sgsadv,sgswle) async(1)
         do icrm = 1 , ncrms
