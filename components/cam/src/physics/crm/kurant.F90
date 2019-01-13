@@ -58,7 +58,7 @@ module kurant_mod
       end do
 
       call kurant_sgs(ncrms,cfl)
-      !$acc wait(1)
+      !$acc wait(asyncid)
       ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 
       if(ncycle.gt.4) then

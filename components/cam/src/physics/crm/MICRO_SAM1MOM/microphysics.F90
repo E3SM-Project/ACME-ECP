@@ -216,14 +216,14 @@ CONTAINS
 #endif
 #ifndef CRM
         call cloud(ncrms,q,qp,qn)
-        !$acc wait(1)
+        !$acc wait(asyncid)
 #endif
         call micro_diagnose(ncrms)
-        !$acc wait(1)
+        !$acc wait(asyncid)
       end if
       if(dosmoke) then
         call micro_diagnose(ncrms)
-        !$acc wait(1)
+        !$acc wait(asyncid)
       end if
     end if
 

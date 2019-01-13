@@ -822,7 +822,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
     !  to handle the cases when the flow being locally linearly unstable
     !------------------------------------------------------------------
     call kurant(ncrms)
-    !$acc wait(1)
+    !$acc wait(asyncid)
 
     do icyc=1,ncycle
       icycle = icyc
@@ -1160,7 +1160,7 @@ subroutine crm(lchnk, icol, ncrms, phys_stage, dt_gl, plev, &
   !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
   !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
 
-  !$acc wait(1)
+  !$acc wait(asyncid)
 
   do icrm = 1 , ncrms
     !!! only collect radiative inputs during tphysbc()
