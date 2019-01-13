@@ -27,14 +27,15 @@ contains
     real(crm_rknd) ff(nx+1,ny+2*YES3D,nzm,ncrms)  ! local (subdomain's) version of f
     real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
     integer ifaxj(100),ifaxi(100)
-    real(8) a(nzm,ncrms),b,c(nzm,ncrms),e,fff(nzm)
-    real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty,eign
+    real(8) a(nzm,ncrms),b,c(nzm,ncrms),e
+    real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty
     real(8) alfa(nzm-1),beta(nzm-1)
     integer i, j, k, id, jd, m, n, it, jt, ii, jj, icrm
     integer nyp22
     integer iii(0:nx_gl),jjj(0:ny_gl)
     integer iwall,jwall
     integer :: numgangs  !For working aroung PGI OpenACC bug where it didn't create enough gangs
+    real(8), allocatable :: eign(:,:)
 
     !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(asyncid)
 
@@ -61,6 +62,9 @@ contains
         jwall=0
       endif
     endif
+
+    allocate(eign(nxp1-iwall,nyp22-jwall))
+    !$acc enter data create(eign) async(asyncid)
 
     !-----------------------------------------------------------------
     !  Compute the r.h.s. of the Poisson equation for pressure
@@ -121,54 +125,73 @@ contains
       enddo
     enddo
 
+      do j=1,nyp22-jwall
+        do i=1,nxp1-iwall
+      enddo
+    enddo
+
+    !$acc parallel loop collapse(2) copy(eign) async(asyncid)
+    do j=1,nyp22-jwall
+      do i=1,nxp1-iwall
+        ddx2=1._8/(dx*dx)
+        ddy2=1._8/(dy*dy)
+        pii = 3.14159265358979323846D0
+        xnx=pii/nx_gl
+        xny=pii/ny_gl
+        if(dowally) then
+          jd=j+jt-1
+          facty = 1.d0
+        else
+          jd=(j+jt-0.1)/2.
+          facty = 2.d0
+        endif
+        xj=jd
+        if(dowallx) then
+          id=i+it-1
+          factx = 1.d0
+        else
+          id=(i+it-0.1)/2.
+          factx = 2.d0
+        endif
+        xi=id
+        eign(i,j)=(2._8*cos(factx*xnx*xi)-2._8)*ddx2+(2._8*cos(facty*xny*xj)-2._8)*ddy2
+      enddo
+    enddo
+
     !For working aroung PGI OpenACC bug where it didn't create enough gangs
     numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
-    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(fff,alfa,beta) copyin(a,c,rho) copy(ff) async(asyncid)
+    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) copyin(a,c,rho,eign) copy(ff) async(asyncid)
     do icrm = 1 , ncrms
       do j=1,nyp22-jwall
         do i=1,nxp1-iwall
-          ddx2=1._8/(dx*dx)
-          ddy2=1._8/(dy*dy)
-          pii = acos(-1._8)
-          xnx=pii/nx_gl
-          xny=pii/ny_gl
           if(dowally) then
             jd=j+jt-1
-            facty = 1.d0
           else
             jd=(j+jt-0.1)/2.
-            facty = 2.d0
           endif
-          xj=jd
           if(dowallx) then
             id=i+it-1
-            factx = 1.d0
           else
             id=(i+it-0.1)/2.
-            factx = 2.d0
           endif
-          fff(1:nzm) = ff(i,j,1:nzm,icrm)
-          xi=id
-          eign=(2._8*cos(factx*xnx*xi)-2._8)*ddx2+(2._8*cos(facty*xny*xj)-2._8)*ddy2
           if(id+jd.eq.0) then
-            b=1._8/(eign*rho(1,icrm)-a(1,icrm)-c(1,icrm))
+            b=1._8/(eign(i,j)*rho(1,icrm)-a(1,icrm)-c(1,icrm))
             alfa(1)=-c(1,icrm)*b
-            beta(1)=fff(1)*b
+            beta(1)=ff(i,j,1,icrm)*b
           else
-            b=1._8/(eign*rho(1,icrm)-c(1,icrm))
+            b=1._8/(eign(i,j)*rho(1,icrm)-c(1,icrm))
             alfa(1)=-c(1,icrm)*b
-            beta(1)=fff(1)*b
+            beta(1)=ff(i,j,1,icrm)*b
           endif
           do k=2,nzm-1
-            e=1._8/(eign*rho(k,icrm)-a(k,icrm)-c(k,icrm)+a(k,icrm)*alfa(k-1))
+            e=1._8/(eign(i,j)*rho(k,icrm)-a(k,icrm)-c(k,icrm)+a(k,icrm)*alfa(k-1))
             alfa(k)=-c(k,icrm)*e
-            beta(k)=(fff(k)-a(k,icrm)*beta(k-1))*e
+            beta(k)=(ff(i,j,k,icrm)-a(k,icrm)*beta(k-1))*e
           enddo
-          fff(nzm)=(fff(nzm)-a(nzm,icrm)*beta(nzm-1))/(eign*rho(nzm,icrm)-a(nzm,icrm)+a(nzm,icrm)*alfa(nzm-1))
+          ff(i,j,nzm,icrm)=(ff(i,j,nzm,icrm)-a(nzm,icrm)*beta(nzm-1))/(eign(i,j)*rho(nzm,icrm)-a(nzm,icrm)+a(nzm,icrm)*alfa(nzm-1))
           do k=nzm-1,1,-1
-            fff(k)=alfa(k)*fff(k+1)+beta(k)
+            ff(i,j,k,icrm)=alfa(k)*ff(i,j,k+1,icrm)+beta(k)
           enddo
-          ff(i,j,1:nzm,icrm) = fff(1:nzm)
         enddo
       enddo
     enddo
@@ -228,6 +251,9 @@ contains
 
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
+
+    !$acc exit data delete(eign) async(asyncid)
+    deallocate(eign)
 
     !$acc exit data delete(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(asyncid)
 
