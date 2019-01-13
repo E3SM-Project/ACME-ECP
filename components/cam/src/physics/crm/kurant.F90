@@ -17,6 +17,8 @@ module kurant_mod
       real(crm_rknd) uhm(nz,ncrms) ! maximum horizontal wind velocity
       real(crm_rknd) cfl, cfl_sgs, tmp
 
+      !$acc enter data create(wm,uhm) async(asyncid)
+
       ncycle = 1
       !$acc parallel loop collapse(2) copyout(wm,uhm) async(asyncid)
       do icrm = 1 , ncrms
@@ -71,6 +73,8 @@ module kurant_mod
         end do
         call task_abort()
       end if
+
+      !$acc exit data delete(wm,uhm) async(asyncid)
 
 5550 format('kurant() - cfl: ',f12.2,'  cfl_sgs: ',f12.2,'  lat: ',f6.2,'  lon: ',f6.2)
 5551 format('k: ',i5,'  wm: ',f10.2,'  uhm: ',f10.2,'  tabs: ',f8.2)

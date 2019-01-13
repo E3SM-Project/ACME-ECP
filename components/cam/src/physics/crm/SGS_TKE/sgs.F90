@@ -351,6 +351,8 @@ CONTAINS
     integer k,icrm, j, i
     real(crm_rknd) tkhmax(nz,ncrms), tmp
 
+    !$acc enter data create(tkhmax) async(asyncid)
+
     !$acc parallel loop collapse(2) copyout(tkhmax) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzm
@@ -380,6 +382,8 @@ CONTAINS
         cfl = max( cfl , tmp )
       end do
     end do
+
+    !$acc exit data delete(tkhmax) async(asyncid)
 
   end subroutine kurant_sgs
 
