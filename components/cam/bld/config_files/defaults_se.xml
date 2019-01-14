@@ -4,6 +4,6 @@
 
 <entry id="dyn"   value="se"  />
 <entry id="hgrid" value="ne16np4" />
-<entry id="pcols" value="16" />
+<entry id="pcols" value="256" />
 
 </config_definition>

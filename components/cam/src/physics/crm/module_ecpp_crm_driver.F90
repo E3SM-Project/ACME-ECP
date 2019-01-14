@@ -108,35 +108,27 @@ module  module_ecpp_crm_driver
   logical :: allcomb
   ! true if updrafts and downdrafts have all
   ! combinations of bases and tops.
-  real(crm_rknd) :: cloudthresh, &
-  prcpthresh, &
-  downthresh, downthresh2, &
-  upthresh, upthresh2
+  real(crm_rknd) :: cloudthresh, prcpthresh, downthresh, downthresh2, upthresh, upthresh2
 
-  real(crm_rknd) :: cloudthresh_trans,   &   !  the threshold total cloud water for updraft or downdraft
-  precthresh_trans         !  the threshold total rain, snow and graupel for clear, updraft or downdraft
+  real(crm_rknd) :: cloudthresh_trans        !  the threshold total cloud water for updraft or downdraft
+  real(crm_rknd) :: precthresh_trans         !  the threshold total rain, snow and graupel for clear, updraft or downdraft
 
-  integer, dimension(:),allocatable :: &
-  updraftbase, updrafttop, dndrafttop, dndraftbase
+  integer, dimension(:,:), allocatable :: updraftbase, updrafttop, dndrafttop, dndraftbase
   integer :: nupdraft, ndndraft
   integer :: ndraft_max, nupdraft_max, ndndraft_max
 
 contains
 
-  !========================================================================================
-  subroutine ecpp_crm_init(dt_gl)
-
+  subroutine ecpp_crm_init(ncrms,dt_gl)
     use grid, only: nx, ny, nzm
     use module_ecpp_stats, only: zero_out_sums1, zero_out_sums2
     use module_ecpp_ppdriver2, only: nupdraft_in, ndndraft_in, ncls_ecpp_in
     implicit none
-
     real(r8), intent(in) :: dt_gl  ! global model's time step
-
-
+    integer , intent(in) :: ncrms
     integer :: kbase, ktop
     integer :: m
-    integer :: nup, ndn
+    integer :: nup, ndn, icrm
     character(len=100) :: msg
 
     nxstag = nx+1
@@ -286,141 +278,142 @@ contains
       call endrun('nupdraft or ndndraft is not set correctly')
     end if
 
-    allocate (updraftbase(nupdraft_max), &
-    updrafttop( nupdraft_max) )
-    allocate (dndraftbase(ndndraft_max), &
-    dndrafttop( ndndraft_max) )
+    allocate (updraftbase(nupdraft_max,ncrms), updrafttop( nupdraft_max,ncrms) )
+    allocate (dndraftbase(ndndraft_max,ncrms), dndrafttop( ndndraft_max,ncrms) )
 
-    select case (plumetype)
-    case (1) !single plume
-      updraftbase(1)=1
-      updrafttop( 1)=nzm
-      dndrafttop( 1)=nzm
-      dndraftbase(1)=1
-    case (2)
-      updraftbase(1:2)=1
-      updrafttop( 1:2)=nzm
-      dndrafttop( 1:2)=nzm
-      dndraftbase(1:2)=1
-    case (3)
-      m=0
-      do kbase=1,nzm-1
-        if(allcomb)then     ! loop over all possible tops.
-          do ktop=kbase+1,nzm
+    do icrm = 1 , ncrms
+      select case (plumetype)
+      case (1) !single plume
+        updraftbase(1,icrm)=1
+        updrafttop( 1,icrm)=nzm
+        dndrafttop( 1,icrm)=nzm
+        dndraftbase(1,icrm)=1
+      case (2)
+        updraftbase(1:2,icrm)=1
+        updrafttop( 1:2,icrm)=nzm
+        dndrafttop( 1:2,icrm)=nzm
+        dndraftbase(1:2,icrm)=1
+      case (3)
+        m=0
+        do kbase=1,nzm-1
+          if(allcomb)then     ! loop over all possible tops.
+            do ktop=kbase+1,nzm
+              m=m+1
+              updraftbase(m,icrm)=kbase
+              updrafttop( m,icrm)=ktop
+            enddo
+          else                ! only one top per base
             m=m+1
-            updraftbase(m)=kbase
-            updrafttop( m)=ktop
-          enddo
-        else                ! only one top per base
-          m=m+1
-          updraftbase(m)=kbase
-          updrafttop( m)=nzm
-        endif
-      enddo
+            updraftbase(m,icrm)=kbase
+            updrafttop( m,icrm)=nzm
+          endif
+        enddo
 
-      m=0
-      do ktop=nzm,2,-1
-        if(allcomb)then    ! loop over all possible bases.
-          do kbase=ktop-1,1,-1
+        m=0
+        do ktop=nzm,2,-1
+          if(allcomb)then    ! loop over all possible bases.
+            do kbase=ktop-1,1,-1
+              m=m+1
+              dndrafttop( m,icrm)=ktop
+              dndraftbase(m,icrm)=kbase
+            enddo
+          else               ! only one base per top
             m=m+1
-            dndrafttop( m)=ktop
-            dndraftbase(m)=kbase
-          enddo
-        else               ! only one base per top
-          m=m+1
-          dndrafttop( m)=ktop
-          dndraftbase(m)=1
-        endif
-      enddo
-    end select
+            dndrafttop( m,icrm)=ktop
+            dndraftbase(m,icrm)=1
+          endif
+        enddo
+      end select
+    enddo
 
     !---------------------------------------------------------------------------
     ! Allocate arrays
     !---------------------------------------------------------------------------
-    allocate( qlsink(nx,ny,nzm), precr(nx,ny,nzm), precsolid(nx,ny,nzm), rh(nx, ny, nzm), qvs(nx, ny, nzm))
+    allocate( qlsink(nx,ny,nzm,ncrms), precr(nx,ny,nzm,ncrms), precsolid(nx,ny,nzm,ncrms), rh(nx, ny, nzm,ncrms), qvs(nx, ny, nzm,ncrms))
 
-    allocate( qlsink_bf(nx, ny, nzm), prain(nx, ny, nzm), qcloud_bf(nx, ny, nzm))
+    allocate( qlsink_bf(nx, ny, nzm,ncrms), prain(nx, ny, nzm,ncrms), qcloud_bf(nx, ny, nzm,ncrms))
 
-    allocate( qcloudsum1(nx,ny,nzm), qcloud_bfsum1(nx,ny,nzm), qrainsum1(nx,ny,nzm), &
-    qicesum1(nx,ny,nzm), qsnowsum1(nx,ny,nzm), qgraupsum1(nx,ny,nzm), &
-    qlsinksum1(nx,ny,nzm), precrsum1(nx,ny,nzm), &
-    precsolidsum1(nx,ny,nzm), precallsum1(nx,ny,nzm), &
-    altsum1(nx,ny,nzm), rhsum1(nx,ny,nzm), cf3dsum1(nx,ny,nzm), &
-    wwsum1(nx,ny,nzstag), wwsqsum1(nx,ny,nzstag), &
-    tkesgssum1(nx, ny, nzm), qlsink_bfsum1(nx, ny, nzm), prainsum1(nx, ny, nzm), qvssum1(nx, ny, nzm) )
+    allocate( qcloudsum1(nx,ny,nzm,ncrms), qcloud_bfsum1(nx,ny,nzm,ncrms), qrainsum1(nx,ny,nzm,ncrms), &
+    qicesum1(nx,ny,nzm,ncrms), qsnowsum1(nx,ny,nzm,ncrms), qgraupsum1(nx,ny,nzm,ncrms), &
+    qlsinksum1(nx,ny,nzm,ncrms), precrsum1(nx,ny,nzm,ncrms), &
+    precsolidsum1(nx,ny,nzm,ncrms), precallsum1(nx,ny,nzm,ncrms), &
+    altsum1(nx,ny,nzm,ncrms), rhsum1(nx,ny,nzm,ncrms), cf3dsum1(nx,ny,nzm,ncrms), &
+    wwsum1(nx,ny,nzstag,ncrms), wwsqsum1(nx,ny,nzstag,ncrms), &
+    tkesgssum1(nx, ny, nzm,ncrms), qlsink_bfsum1(nx, ny, nzm,ncrms), prainsum1(nx, ny, nzm,ncrms), qvssum1(nx, ny, nzm,ncrms) )
 
     allocate(           &
-    xkhvsum(nzm) )
+    xkhvsum(nzm,ncrms) )
 
-    allocate( wwqui_cen_sum(nzm), wwqui_bnd_sum(nzm+1),  &
-    wwqui_cloudy_cen_sum(nzm), wwqui_cloudy_bnd_sum(nzm+1))
+    allocate( wwqui_cen_sum(nzm,ncrms), wwqui_bnd_sum(nzm+1,ncrms),  &
+    wwqui_cloudy_cen_sum(nzm,ncrms), wwqui_cloudy_bnd_sum(nzm+1,ncrms))
 
-    allocate( wup_thresh(nzm+1), wdown_thresh(nzm+1))
+    allocate( wup_thresh(nzm+1,ncrms), wdown_thresh(nzm+1,ncrms))
 
-    allocate( area_bnd_final( nzstag,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    area_bnd_sum(   nzstag,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    area_cen_final( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    area_cen_sum(   nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    mass_bnd_final( nzstag,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    mass_bnd_sum(   nzstag,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    mass_cen_final( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    mass_cen_sum(   nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    ent_bnd_sum(    nzstag,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    rh_cen_sum(     nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qcloud_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qcloud_bf_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qrain_cen_sum(  nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qice_cen_sum(   nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qsnow_cen_sum(  nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qgraup_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qlsink_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    precr_cen_sum(  nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    precsolid_cen_sum(nzm  ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    precall_cen_sum(nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qlsink_bf_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    qlsink_avg_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR), &
-    prain_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR)  )
+    allocate( area_bnd_final( nzstag,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    area_bnd_sum(   nzstag,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    area_cen_final( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    area_cen_sum(   nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    mass_bnd_final( nzstag,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    mass_bnd_sum(   nzstag,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    mass_cen_final( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    mass_cen_sum(   nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    ent_bnd_sum(    nzstag,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    rh_cen_sum(     nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qcloud_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qcloud_bf_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qrain_cen_sum(  nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qice_cen_sum(   nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qsnow_cen_sum(  nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qgraup_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qlsink_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    precr_cen_sum(  nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    precsolid_cen_sum(nzm  ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    precall_cen_sum(nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qlsink_bf_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    qlsink_avg_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms), &
+    prain_cen_sum( nzm    ,NCLASS_CL,ndraft_max,NCLASS_PR,ncrms)  )
 
     ! Initialize the running sums.
-    call zero_out_sums1( qcloudsum1(:,:,:), qcloud_bfsum1(:,:,:), qrainsum1(:,:,:), &
-    qicesum1(:,:,:), qsnowsum1(:,:,:), qgraupsum1(:,:,:), &
-    qlsinksum1(:,:,:), precrsum1(:,:,:), &
-    precsolidsum1(:,:,:), precallsum1(:,:,:), &
-    altsum1(:,:,:), rhsum1(:,:,:), cf3dsum1(:,:,:), &
-    wwsum1(:,:,:), wwsqsum1(:,:,:), tkesgssum1(:,:,:), &
-    qlsink_bfsum1(:,:,:), prainsum1(:,:,:), qvssum1(:,:,:) )
-    ndn = ndndraft ; nup = nupdraft
-    call zero_out_sums2( &
-    xkhvsum(:), &
-    wwqui_cen_sum(:), wwqui_bnd_sum(:), wwqui_cloudy_cen_sum(:), wwqui_cloudy_bnd_sum(:),  &
-    area_bnd_final(:,:,1:1+nup+ndn,:), area_bnd_sum(:,:,1:1+nup+ndn,:), &
-    area_cen_final(:,:,1:1+nup+ndn,:), area_cen_sum(:,:,1:1+nup+ndn,:), &
-    mass_bnd_final(:,:,1:1+nup+ndn,:), mass_bnd_sum(:,:,1:1+nup+ndn,:), &
-    mass_cen_final(:,:,1:1+nup+ndn,:), mass_cen_sum(:,:,1:1+nup+ndn,:), &
-    ent_bnd_sum(:,:,1:1+nup+ndn,:), &
-    rh_cen_sum(:,:,1:1+nup+ndn,:), &
-    qcloud_cen_sum(:,:,1:1+nup+ndn,:), qcloud_bf_cen_sum(:,:,1:1+nup+ndn,:), qrain_cen_sum(:,:,1:1+nup+ndn,:), &
-    qice_cen_sum(:,:,1:1+nup+ndn,:),  qsnow_cen_sum(:,:,1:1+nup+ndn,:), &
-    qgraup_cen_sum(:,:,1:1+nup+ndn,:), &
-    qlsink_cen_sum(:,:,1:1+nup+ndn,:), precr_cen_sum(:,:,1:1+nup+ndn,:), &
-    precsolid_cen_sum(:,:,1:1+nup+ndn,:), precall_cen_sum(:,:,1:1+nup+ndn,:), &
-    qlsink_bf_cen_sum(:,:,1:1+nup+ndn,:), qlsink_avg_cen_sum(:,:,1:1+nup+ndn,:), &
-    prain_cen_sum(:,:,1:1+nup+ndn,:)  )
+    do icrm = 1 , ncrms
+      call zero_out_sums1( qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
+      qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), qgraupsum1(:,:,:,icrm), &
+      qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
+      precsolidsum1(:,:,:,icrm), precallsum1(:,:,:,icrm), &
+      altsum1(:,:,:,icrm), rhsum1(:,:,:,icrm), cf3dsum1(:,:,:,icrm), &
+      wwsum1(:,:,:,icrm), wwsqsum1(:,:,:,icrm), tkesgssum1(:,:,:,icrm), &
+      qlsink_bfsum1(:,:,:,icrm), prainsum1(:,:,:,icrm), qvssum1(:,:,:,icrm) )
+      ndn = ndndraft ; nup = nupdraft
+      call zero_out_sums2( &
+      xkhvsum(:,icrm), &
+      wwqui_cen_sum(:,icrm), wwqui_bnd_sum(:,icrm), wwqui_cloudy_cen_sum(:,icrm), wwqui_cloudy_bnd_sum(:,icrm),  &
+      area_bnd_final(:,:,1:1+nup+ndn,:,icrm), area_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
+      area_cen_final(:,:,1:1+nup+ndn,:,icrm), area_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      mass_bnd_final(:,:,1:1+nup+ndn,:,icrm), mass_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
+      mass_cen_final(:,:,1:1+nup+ndn,:,icrm), mass_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      ent_bnd_sum(:,:,1:1+nup+ndn,:,icrm), &
+      rh_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qcloud_cen_sum(:,:,1:1+nup+ndn,:,icrm), qcloud_bf_cen_sum(:,:,1:1+nup+ndn,:,icrm), qrain_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qice_cen_sum(:,:,1:1+nup+ndn,:,icrm),  qsnow_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qgraup_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qlsink_cen_sum(:,:,1:1+nup+ndn,:,icrm), precr_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      precsolid_cen_sum(:,:,1:1+nup+ndn,:,icrm), precall_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      qlsink_bf_cen_sum(:,:,1:1+nup+ndn,:,icrm), qlsink_avg_cen_sum(:,:,1:1+nup+ndn,:,icrm), &
+      prain_cen_sum(:,:,1:1+nup+ndn,:,icrm)  )
 
-    wup_thresh(:) = 0.0
-    wdown_thresh(:) = 0.0
+      wup_thresh(:,icrm) = 0.0
+      wdown_thresh(:,icrm) = 0.0
+    enddo
+    itavg1 = 0
+    itavg2 = 0
 
     ! set ntavg[12] and initialize itavg[12] counters
     call ecpp_set_ntavg(dt_gl)
-    itavg1 = 0
-    itavg2 = 0
 
   end subroutine ecpp_crm_init
   !---------------------------------------------------------------------------------------
 
   !=======================================================================================
   subroutine ecpp_crm_cleanup ()
-
     ! deallocate variables
     deallocate (updraftbase, &
     updrafttop )
@@ -472,7 +465,7 @@ contains
   !---------------------------------------------------------------------------------------
 
   !========================================================================================
-  subroutine ecpp_crm_stat(ncrms,icrm)
+  subroutine ecpp_crm_stat(ncrms)
     use module_ecpp_stats
     use module_data_ecpp1, only: afrac_cut
     use grid,  only: nx, ny, nzm, pres
@@ -485,20 +478,14 @@ contains
     use sgs, only: tk_clubb
 #endif
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer :: i, ierr, i_tidx, j, &
-    ncnt1, ncnt2
-
+    integer, intent(in) :: ncrms
+    integer :: i, ierr, i_tidx, j, ncnt1, ncnt2, icrm
     integer :: nup, ndn
     integer :: kbase, ktop, m
     integer :: ii, jj, kk
     integer :: icl, icls, ipr
-
-    real(crm_rknd),dimension(nx, ny, nzm) :: &
-    qcloud, qrain, qice, qsnow, qgraup, &
-    precall, alt, xkhv
-    real(crm_rknd), dimension(nx, ny, nzstag) :: ww, wwsq
-
+    real(crm_rknd), dimension(nx, ny, nzm   , ncrms) :: qcloud, qrain, qice, qsnow, qgraup, precall, alt, xkhv, tketmp
+    real(crm_rknd), dimension(nx, ny, nzstag, ncrms) :: ww, wwsq
     real(crm_rknd) :: EVS
 
     !------------------------------------------------------------------------
@@ -506,88 +493,72 @@ contains
     !------------------------------------------------------------------------
 
     ndn = ndndraft ; nup = nupdraft
-
     itavg1 = itavg1 + 1
     itavg2 = itavg2 + 1
     ndn = ndndraft ; nup = nupdraft
 
     ! Get values from SAM cloud fields
-    qcloud(1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
-    qrain(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
-    qice(1:nx,1:ny,1:nzm)   = micro_field(1:nx,1:ny,1:nzm,iqci,icrm)
-    qsnow(1:nx,1:ny,1:nzm)  = micro_field(1:nx,1:ny,1:nzm,iqs,icrm)
-    qgraup(1:nx,1:ny,1:nzm) = micro_field(1:nx,1:ny,1:nzm,iqg,icrm)
+    do icrm = 1 , ncrms
+    qcloud(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
+    qrain (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqr )
+    qice  (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqci)
+    qsnow (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqs )
+    qgraup(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqg )
 
-    precall(:,:,:)= precr(:,:,:) + precsolid(:,:,:)
+    precall(:,:,:,icrm)= precr(:,:,:,icrm) + precsolid(:,:,:,icrm)
 
     do ii=1, nx
       do jj=1, ny
         do kk=1, nzm
           EVS = POLYSVP(tabs(ii,jj,kk,icrm),0)   ! saturation water vapor pressure (PA)
-          qvs(ii,jj,kk) = .622*EVS/(pres(kk,icrm)*100.-EVS)  ! pres(kk,icrm) with unit of hPa
-          !         rh(ii,jj,kk) = micro_field(ii,jj,kk,iqv,icrm)/QVS ! unit 0-1
-          !         rh(ii,jj,kk) = min(1.0, rh(ii,jj,kk))    ! RH is diagnosed in microphysics
-          alt(ii,jj,kk) =  287.*tabs(ii,jj,kk,icrm)/(100.*pres(kk,icrm))
-
+          qvs(ii,jj,kk,icrm) = .622*EVS/(pres(kk,icrm)*100.-EVS)  ! pres(kk,icrm) with unit of hPa
+          alt(ii,jj,kk,icrm) =  287.*tabs(ii,jj,kk,icrm)/(100.*pres(kk,icrm))
         end do
       end do
     end do
 
-    ww(:,:,:)     = w(1:nx,1:ny,1:nzstag,icrm)
+    ww(:,:,:,icrm)     = w(1:nx,1:ny,1:nzstag,icrm)
 #ifdef CLUBB_CRM
-    wwsq(:,:,:)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
+    wwsq(:,:,:,icrm)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
 #else
-    wwsq(:,:,:)   = 0.  ! subgrid vertical velocity is not used in the current version of ECPP.
+    wwsq(:,:,:,icrm)   = 0.  ! subgrid vertical velocity is not used in the current version of ECPP.
 #endif
 
 #ifdef CLUBB_CRM
-    xkhv(:,:,:)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
+    xkhv(:,:,:,icrm)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
 #else
-    xkhv(:,:,:)   = tk(1:nx,1:ny,1:nzm,icrm)  ! eddy viscosity m2/s
+    xkhv(:,:,:,icrm)   = tk(1:nx,1:ny,1:nzm,icrm)  ! eddy viscosity m2/s
 #endif
-
-    !+++mhwangtest
-    !     do ii=1, nx
-    !       do jj=1, ny
-    !        do kk=1, nzm
-    !          if(prain(ii,jj,kk).gt.1.0e-15) then
-    !            if(qcloud_bf(ii,jj,kk)*qlsink_bf(ii,jj,kk)/prain(ii,jj,kk)  .lt. 0.90) then
-    !             write(0, *) 'qcloud_bf*qlsink_bf/prain, qlsink_bf, qlsink, qlcoud_bf, qcloud, prain', qcloud_bf(ii,jj,kk)*qlsink_bf(ii,jj,kk)/prain(ii,jj,kk),  &
-    !                 qlsink_bf(ii, jj, kk) * 86400, qlsink(ii, jj, kk)*86400, qcloud_bf(ii, jj, kk), qcloud(ii, jj, kk), prain(ii, jj, kk)
-    !            end if
-    !          end if
-    !        end do
-    !       end do
-    !     end do
-    !---mhwangest
-
+    enddo
 
     ! Increment the 3-D running sums for averaging period 1.
-    call rsums1( qcloud,    qcloudsum1(:,:,:),    &
-    qcloud_bf,    qcloud_bfsum1(:,:,:),    &
-    qrain,     qrainsum1(:,:,:),     &
-    qice,      qicesum1(:,:,:),      &
-    qsnow,     qsnowsum1(:,:,:),     &
-    qgraup,    qgraupsum1(:,:,:),    &
-    qlsink,    qlsinksum1(:,:,:),    &
-    precr,     precrsum1(:,:,:),     &
-    precsolid, precsolidsum1(:,:,:), &
-    precall,   precallsum1(:,:,:),   &
-    alt,       altsum1(:,:,:),       &
-    rh,        rhsum1(:,:,:),        &
-    CF3D(:,:,:,icrm),      cf3dsum1(:,:,:),       &
-    ww,        wwsum1(:,:,:),        &
-    wwsq,      wwsqsum1(:,:,:),      &
-    tke(1:nx,1:ny,1:nzm,icrm),       tkesgssum1(:,:,:),    &
-    qlsink_bf, qlsink_bfsum1(:,:,:), &
-    prain,     prainsum1(:,:,:),     &
-    qvs,       qvssum1(:,:,:)   )
+    do icrm = 1 , ncrms
+      tketmp(:,:,:,icrm) = tke(1:nx,1:ny,:,icrm)
+    enddo
+    call rsums1( ncrms, &
+                 qcloud,    qcloudsum1,    &
+                 qcloud_bf, qcloud_bfsum1, &
+                 qrain,     qrainsum1,     &
+                 qice,      qicesum1,      &
+                 qsnow,     qsnowsum1,     &
+                 qgraup,    qgraupsum1,    &
+                 qlsink,    qlsinksum1,    &
+                 precr,     precrsum1,     &
+                 precsolid, precsolidsum1, &
+                 precall,   precallsum1,   &
+                 alt,       altsum1,       &
+                 rh,        rhsum1,        &
+                 CF3D,      cf3dsum1,      &
+                 ww,        wwsum1,        &
+                 wwsq,      wwsqsum1,      &
+                 tketmp,    tkesgssum1,    &
+                 qlsink_bf, qlsink_bfsum1, &
+                 prain,     prainsum1,     &
+                 qvs,       qvssum1   )
 
     ! Increment the running sums for the level two variables that are not
     ! already incremented. Consolidate from 3-D to 1-D columns.
-    call rsums2( &
-    nx, ny, nzm, &
-    xkhv,      xkhvsum(:) )
+    call rsums2(ncrms, xkhv, xkhvsum )
 
     ! Check if we have reached the end of the level 1 time averaging period.
     if( mod(itavg1,ntavg1) == 0 ) then
@@ -598,63 +569,61 @@ contains
       else
         ncnt1 = 1
       end if
-      call rsums1ToAvg( ncnt1, qcloudsum1(:,:,:), qcloud_bfsum1(:,:,:), qrainsum1(:,:,:), &
-      qicesum1(:,:,:), qsnowsum1(:,:,:), &
-      qgraupsum1(:,:,:), &
-      qlsinksum1(:,:,:), precrsum1(:,:,:), &
-      precsolidsum1(:,:,:), precallsum1(:,:,:), &
-      altsum1(:,:,:), rhsum1(:,:,:), cf3dsum1(:,:,:), &
-      wwsum1(:,:,:), wwsqsum1(:,:,:), &
-      tkesgssum1(:,:,:), qlsink_bfsum1(:,:,:), &
-      prainsum1(:,:,:), qvssum1(:,:,:)  )
+      call rsums1ToAvg( ncrms, ncnt1, qcloudsum1, qcloud_bfsum1, qrainsum1, &
+      qicesum1, qsnowsum1, qgraupsum1, qlsinksum1, precrsum1, precsolidsum1, precallsum1, &
+      altsum1, rhsum1, cf3dsum1, wwsum1, wwsqsum1, tkesgssum1, qlsink_bfsum1, prainsum1, qvssum1  )
 
       ! Determine draft categories and get running sums of them.
+      do icrm = 1 , ncrms
       call categorization_stats( .true., &
       nx, ny, nzm, nupdraft, ndndraft, ndraft_max, &
       mode_updnthresh, upthresh, downthresh, &
       upthresh2, downthresh2, cloudthresh, prcpthresh, &
       cloudthresh_trans, precthresh_trans,  &
-      qvssum1(:,:,:),          &
+      qvssum1(:,:,:,icrm),          &
       plumetype, allcomb, &
-      updraftbase(1:nupdraft), updrafttop(1:nupdraft), &
-      dndraftbase(1:ndndraft), dndrafttop(1:ndndraft), &
-      qcloudsum1(:,:,:), qcloud_bfsum1(:,:,:), qrainsum1(:,:,:), &
-      qicesum1(:,:,:), qsnowsum1(:,:,:), qgraupsum1(:,:,:), &
-      qlsinksum1(:,:,:), precrsum1(:,:,:), &
-      precsolidsum1(:,:,:), precallsum1(:,:,:), &
-      altsum1(:,:,:), rhsum1(:,:,:), cf3dsum1(:,:,:), &
-      wwsum1(:,:,:), wwsqsum1(:,:,:), tkesgssum1(:,:,:),  &
-      qlsink_bfsum1(:,:,:), prainsum1(:,:,:), &
-      area_bnd_final(:,:,1:1+ndn+nup,:), area_cen_final(:,:,1:1+ndn+nup,:), &
-      area_bnd_sum(:,:,1:1+ndn+nup,:), area_cen_sum(:,:,1:1+ndn+nup,:), &
-      ent_bnd_sum(:,:,1:1+ndn+nup,:), mass_bnd_sum(:,:,1:1+ndn+nup,:), &
-      rh_cen_sum(:,:,1:1+ndn+nup,:), &
-      qcloud_cen_sum(:,:,1:1+ndn+nup,:), qcloud_bf_cen_sum(:,:,1:1+ndn+nup,:), qrain_cen_sum(:,:,1:1+ndn+nup,:), &
-      qice_cen_sum(:,:,1:1+ndn+nup,:), qsnow_cen_sum(:,:,1:1+ndn+nup,:), &
-      qgraup_cen_sum(:,:,1:1+ndn+nup,:), &
-      qlsink_cen_sum(:,:,1:1+ndn+nup,:), precr_cen_sum(:,:,1:1+ndn+nup,:), &
-      precsolid_cen_sum(:,:,1:1+nup+ndn,:), precall_cen_sum(:,:,1:1+nup+ndn,:),  &
-      qlsink_bf_cen_sum(:,:,1:1+nup+ndn,:), prain_cen_sum(:,:,1:1+nup+ndn,:),  &
-      wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
-      wup_thresh, wdown_thresh )
+      qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
+      qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), qgraupsum1(:,:,:,icrm), &
+      qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
+      precsolidsum1(:,:,:,icrm), precallsum1(:,:,:,icrm), &
+      altsum1(:,:,:,icrm), rhsum1(:,:,:,icrm), cf3dsum1(:,:,:,icrm), &
+      wwsum1(:,:,:,icrm), wwsqsum1(:,:,:,icrm), tkesgssum1(:,:,:,icrm),  &
+      qlsink_bfsum1(:,:,:,icrm), prainsum1(:,:,:,icrm), &
+      area_bnd_final(:,:,1:1+ndn+nup,:,icrm), area_cen_final(:,:,1:1+ndn+nup,:,icrm), &
+      area_bnd_sum(:,:,1:1+ndn+nup,:,icrm), area_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      ent_bnd_sum(:,:,1:1+ndn+nup,:,icrm), mass_bnd_sum(:,:,1:1+ndn+nup,:,icrm), &
+      rh_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qcloud_cen_sum(:,:,1:1+ndn+nup,:,icrm), qcloud_bf_cen_sum(:,:,1:1+ndn+nup,:,icrm), qrain_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qice_cen_sum(:,:,1:1+ndn+nup,:,icrm), qsnow_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qgraup_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qlsink_cen_sum(:,:,1:1+ndn+nup,:,icrm), precr_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      precsolid_cen_sum(:,:,1:1+nup+ndn,:,icrm), precall_cen_sum(:,:,1:1+nup+ndn,:,icrm),  &
+      qlsink_bf_cen_sum(:,:,1:1+nup+ndn,:,icrm), prain_cen_sum(:,:,1:1+nup+ndn,:,icrm),  &
+      wwqui_cen_sum(:,icrm), wwqui_bnd_sum(:,icrm), wwqui_cloudy_cen_sum(:,icrm), wwqui_cloudy_bnd_sum(:,icrm), &
+      wup_thresh(:,icrm), wdown_thresh(:,icrm) )
+      enddo
 
       ! If we want final area categories based on the last avg1 period in each
       ! avg2 then we need to zero out the running sum just created for the areas
       ! if it is not the last block of time in ntavg2
       if( areaavgtype==1 .and. .not. mod(itavg2,ntavg2)==0 ) then
+        do icrm = 1 , ncrms
         call zero_out_areas( &
-        area_bnd_final(:,:,1:1+ndn+nup,:), &
-        area_cen_final(:,:,1:1+ndn+nup,:) )
+        area_bnd_final(:,:,1:1+ndn+nup,:,icrm), &
+        area_cen_final(:,:,1:1+ndn+nup,:,icrm) )
+        enddo
       end if
 
       ! Done with time level one averages so zero them out for next period.
-      call zero_out_sums1( qcloudsum1(:,:,:), qcloud_bfsum1(:,:,:), qrainsum1(:,:,:), &
-      qicesum1(:,:,:), qsnowsum1(:,:,:), qgraupsum1(:,:,:), &
-      qlsinksum1(:,:,:), precrsum1(:,:,:), &
-      precsolidsum1(:,:,:), precallsum1(:,:,:), &
-      altsum1(:,:,:), rhsum1(:,:,:), cf3dsum1(:,:,:), &
-      wwsum1(:,:,:), wwsqsum1(:,:,:), tkesgssum1(:,:,:), &
-      qlsink_bfsum1(:,:,:), prainsum1(:,:,:), qvssum1(:,:,:) )
+      do icrm = 1 , ncrms
+      call zero_out_sums1( qcloudsum1(:,:,:,icrm), qcloud_bfsum1(:,:,:,icrm), qrainsum1(:,:,:,icrm), &
+      qicesum1(:,:,:,icrm), qsnowsum1(:,:,:,icrm), qgraupsum1(:,:,:,icrm), &
+      qlsinksum1(:,:,:,icrm), precrsum1(:,:,:,icrm), &
+      precsolidsum1(:,:,:,icrm), precallsum1(:,:,:,icrm), &
+      altsum1(:,:,:,icrm), rhsum1(:,:,:,icrm), cf3dsum1(:,:,:,icrm), &
+      wwsum1(:,:,:,icrm), wwsqsum1(:,:,:,icrm), tkesgssum1(:,:,:,icrm), &
+      qlsink_bfsum1(:,:,:,icrm), prainsum1(:,:,:,icrm), qvssum1(:,:,:,icrm) )
+      enddo
 
     end if !End of time level one averaging period
 
@@ -672,95 +641,99 @@ contains
         ncnt2 = 1
       end if
 
+      do icrm = 1 , ncrms
       call rsums2ToAvg( areaavgtype, nx, ny, ncnt1, ncnt2, &
-      xkhvsum(:), &
-      wwqui_cen_sum(:), wwqui_bnd_sum(:), wwqui_cloudy_cen_sum(:), wwqui_cloudy_bnd_sum(:),  &
-      area_bnd_final(:,:,1:1+ndn+nup,:), area_bnd_sum(:,:,1:1+ndn+nup,:), &
-      area_cen_final(:,:,1:1+ndn+nup,:), area_cen_sum(:,:,1:1+ndn+nup,:), &
-      mass_bnd_final(:,:,1:1+ndn+nup,:), mass_bnd_sum(:,:,1:1+ndn+nup,:), &
-      mass_cen_final(:,:,1:1+ndn+nup,:), mass_cen_sum(:,:,1:1+ndn+nup,:), &
-      ent_bnd_sum(:,:,1:1+ndn+nup,:), &
-      rh_cen_sum(:,:,1:1+ndn+nup,:), &
-      qcloud_cen_sum(:,:,1:1+ndn+nup,:), qcloud_bf_cen_sum(:,:,1:1+ndn+nup,:), qrain_cen_sum(:,:,1:1+ndn+nup,:), &
-      qice_cen_sum(:,:,1:1+ndn+nup,:), qsnow_cen_sum(:,:,1:1+ndn+nup,:), &
-      qgraup_cen_sum(:,:,1:1+ndn+nup,:), &
-      qlsink_cen_sum(:,:,1:1+ndn+nup,:), precr_cen_sum(:,:,1:1+ndn+nup,:), &
-      precsolid_cen_sum(:,:,1:1+ndn+nup,:), precall_cen_sum(:,:,1:1+ndn+nup,:), &
-      qlsink_bf_cen_sum(:,:,1:1+ndn+nup,:), prain_cen_sum(:,:,1:1+ndn+nup,:) )
+      xkhvsum(:,icrm), &
+      wwqui_cen_sum(:,icrm), wwqui_bnd_sum(:,icrm), wwqui_cloudy_cen_sum(:,icrm), wwqui_cloudy_bnd_sum(:,icrm),  &
+      area_bnd_final(:,:,1:1+ndn+nup,:,icrm), area_bnd_sum(:,:,1:1+ndn+nup,:,icrm), &
+      area_cen_final(:,:,1:1+ndn+nup,:,icrm), area_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      mass_bnd_final(:,:,1:1+ndn+nup,:,icrm), mass_bnd_sum(:,:,1:1+ndn+nup,:,icrm), &
+      mass_cen_final(:,:,1:1+ndn+nup,:,icrm), mass_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      ent_bnd_sum(:,:,1:1+ndn+nup,:,icrm), &
+      rh_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qcloud_cen_sum(:,:,1:1+ndn+nup,:,icrm), qcloud_bf_cen_sum(:,:,1:1+ndn+nup,:,icrm), qrain_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qice_cen_sum(:,:,1:1+ndn+nup,:,icrm), qsnow_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qgraup_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qlsink_cen_sum(:,:,1:1+ndn+nup,:,icrm), precr_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      precsolid_cen_sum(:,:,1:1+ndn+nup,:,icrm), precall_cen_sum(:,:,1:1+ndn+nup,:,icrm), &
+      qlsink_bf_cen_sum(:,:,1:1+ndn+nup,:,icrm), prain_cen_sum(:,:,1:1+ndn+nup,:,icrm) )
+      enddo
 
       ! get in-cloud value for rh, qcloud, qrain, qice, qsnow, qgraup,
       ! percr, precsolid, and precall. (qlsink is already in-cloud values)
+      do icrm = 1 , ncrms
       do kk=1, nzm
         do icl=1, NCLASS_CL
           do icls=1, ncls_ecpp_in
             do ipr=1, NCLASS_PR
-              if(area_cen_sum(kk, icl, icls, ipr).gt.afrac_cut) then
-                rh_cen_sum(kk,icl,icls,ipr) = rh_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                qcloud_cen_sum(kk,icl,icls,ipr) = qcloud_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                qcloud_bf_cen_sum(kk,icl,icls,ipr) = qcloud_bf_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                qrain_cen_sum(kk,icl,icls,ipr) = qrain_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                qice_cen_sum(kk,icl,icls,ipr) = qice_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                qsnow_cen_sum(kk,icl,icls,ipr) = qsnow_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                qgraup_cen_sum(kk,icl,icls,ipr) = qgraup_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                precr_cen_sum(kk,icl,icls,ipr) = precr_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                precsolid_cen_sum(kk,icl,icls,ipr) = precsolid_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                precall_cen_sum(kk,icl,icls,ipr) = precall_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                prain_cen_sum(kk,icl,icls,ipr) = prain_cen_sum(kk,icl,icls,ipr)/area_cen_sum(kk,icl,icls,ipr)
-                if(qcloud_bf_cen_sum(kk,icl,icls,ipr).gt.1.0e-10) then
-                  qlsink_avg_cen_sum(kk,icl,icls,ipr) = min(1.0/ntavg2_ss, prain_cen_sum(kk,icl,icls,ipr)/qcloud_bf_cen_sum(kk,icl,icls,ipr))
+              if(area_cen_sum(kk, icl, icls, ipr,icrm).gt.afrac_cut) then
+                rh_cen_sum(kk,icl,icls,ipr,icrm) = rh_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                qcloud_cen_sum(kk,icl,icls,ipr,icrm) = qcloud_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                qcloud_bf_cen_sum(kk,icl,icls,ipr,icrm) = qcloud_bf_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                qrain_cen_sum(kk,icl,icls,ipr,icrm) = qrain_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                qice_cen_sum(kk,icl,icls,ipr,icrm) = qice_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                qsnow_cen_sum(kk,icl,icls,ipr,icrm) = qsnow_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                qgraup_cen_sum(kk,icl,icls,ipr,icrm) = qgraup_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                precr_cen_sum(kk,icl,icls,ipr,icrm) = precr_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                precsolid_cen_sum(kk,icl,icls,ipr,icrm) = precsolid_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                precall_cen_sum(kk,icl,icls,ipr,icrm) = precall_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                prain_cen_sum(kk,icl,icls,ipr,icrm) = prain_cen_sum(kk,icl,icls,ipr,icrm)/area_cen_sum(kk,icl,icls,ipr,icrm)
+                if(qcloud_bf_cen_sum(kk,icl,icls,ipr,icrm).gt.1.0e-10) then
+                  qlsink_avg_cen_sum(kk,icl,icls,ipr,icrm) = min(1.0/ntavg2_ss, prain_cen_sum(kk,icl,icls,ipr,icrm)/qcloud_bf_cen_sum(kk,icl,icls,ipr,icrm))
                 else
-                  qlsink_avg_cen_sum(kk,icl,icls,ipr) = 0.0
+                  qlsink_avg_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
                 end if
-                qlsink_bf_cen_sum(kk,icl,icls,ipr) = min(1.0/ntavg2_ss, qlsink_bf_cen_sum(kk,icl,icls,ipr))
-                qlsink_cen_sum(kk,icl,icls,ipr) = min(1.0/ntavg2_ss, qlsink_cen_sum(kk,icl,icls,ipr))
+                qlsink_bf_cen_sum(kk,icl,icls,ipr,icrm) = min(1.0/ntavg2_ss, qlsink_bf_cen_sum(kk,icl,icls,ipr,icrm))
+                qlsink_cen_sum(kk,icl,icls,ipr,icrm) = min(1.0/ntavg2_ss, qlsink_cen_sum(kk,icl,icls,ipr,icrm))
               else
-                rh_cen_sum(kk,icl,icls,ipr) = 0.0
-                qcloud_cen_sum(kk,icl,icls,ipr) = 0.0
-                qcloud_bf_cen_sum(kk,icl,icls,ipr) = 0.0
-                qrain_cen_sum(kk,icl,icls,ipr) = 0.0
-                qice_cen_sum(kk,icl,icls,ipr) = 0.0
-                qsnow_cen_sum(kk,icl,icls,ipr) = 0.0
-                qgraup_cen_sum(kk,icl,icls,ipr) = 0.0
-                precr_cen_sum(kk,icl,icls,ipr) = 0.0
-                precsolid_cen_sum(kk,icl,icls,ipr) = 0.0
-                precall_cen_sum(kk,icl,icls,ipr) = 0.0
-                qlsink_bf_cen_sum(kk,icl,icls,ipr) = 0.0
-                prain_cen_sum(kk,icl,icls,ipr) = 0.0
-                qlsink_avg_cen_sum(kk,icl,icls,ipr) = 0.0
-                qlsink_bf_cen_sum(kk,icl,icls,ipr) = 0.0
-                qlsink_cen_sum(kk,icl,icls,ipr) = 0.0
+                rh_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qcloud_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qcloud_bf_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qrain_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qice_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qsnow_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qgraup_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                precr_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                precsolid_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                precall_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qlsink_bf_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                prain_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qlsink_avg_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qlsink_bf_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
+                qlsink_cen_sum(kk,icl,icls,ipr,icrm) = 0.0
               end if
             end do
           end do
         end do
         !
         ! calculate vertical velocity variance for quiescent class
-        if(sum(area_cen_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR)).gt.afrac_cut) then
-          wwqui_cen_sum(kk) = wwqui_cen_sum(kk) / sum(area_cen_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR))
+        if(sum(area_cen_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR,icrm)).gt.afrac_cut) then
+          wwqui_cen_sum(kk,icrm) = wwqui_cen_sum(kk,icrm) / sum(area_cen_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR,icrm))
         else
-          wwqui_cen_sum(kk) = 0.0
+          wwqui_cen_sum(kk,icrm) = 0.0
         end if
-        if(sum(area_cen_sum(kk,CLD, QUI, 1:NCLASS_PR)).gt.afrac_cut) then
-          wwqui_cloudy_cen_sum(kk) = wwqui_cloudy_cen_sum(kk) / sum(area_cen_sum(kk, CLD, QUI, 1:NCLASS_PR))
+        if(sum(area_cen_sum(kk,CLD, QUI, 1:NCLASS_PR,icrm)).gt.afrac_cut) then
+          wwqui_cloudy_cen_sum(kk,icrm) = wwqui_cloudy_cen_sum(kk,icrm) / sum(area_cen_sum(kk, CLD, QUI, 1:NCLASS_PR,icrm))
         else
-          wwqui_cloudy_cen_sum(kk) = 0.0
+          wwqui_cloudy_cen_sum(kk,icrm) = 0.0
         end if
 
       end do  ! kk
       !
       ! calcualte vertical velocity variance for quiescent class at layer boundary
       do kk=1, nzm+1
-        if(sum(area_bnd_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR)).gt.afrac_cut) then
-          wwqui_bnd_sum(kk) = wwqui_bnd_sum(kk) / sum(area_bnd_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR))
+        if(sum(area_bnd_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR,icrm)).gt.afrac_cut) then
+          wwqui_bnd_sum(kk,icrm) = wwqui_bnd_sum(kk,icrm) / sum(area_bnd_sum(kk,1:NCLASS_CL, QUI, 1:NCLASS_PR,icrm))
         else
-          wwqui_bnd_sum(kk) = 0.0
+          wwqui_bnd_sum(kk,icrm) = 0.0
         end if
-        if(sum(area_bnd_sum(kk,CLD, QUI, 1:NCLASS_PR)).gt.afrac_cut) then
-          wwqui_cloudy_bnd_sum(kk) = wwqui_cloudy_bnd_sum(kk) / sum(area_bnd_sum(kk, CLD, QUI, 1:NCLASS_PR))
+        if(sum(area_bnd_sum(kk,CLD, QUI, 1:NCLASS_PR,icrm)).gt.afrac_cut) then
+          wwqui_cloudy_bnd_sum(kk,icrm) = wwqui_cloudy_bnd_sum(kk,icrm) / sum(area_bnd_sum(kk, CLD, QUI, 1:NCLASS_PR,icrm))
         else
-          wwqui_cloudy_bnd_sum(kk) = 0.0
+          wwqui_cloudy_bnd_sum(kk,icrm) = 0.0
         end if
       end do
+      enddo
 
     end if !End of level two time averaging period
 
@@ -769,7 +742,7 @@ contains
   subroutine ecpp_set_ntavg(dt_gl)
   !----------------------------------------------------------------------------
   ! Sets ntavg1_ss and ntavg2_ss periods for "level-1" and "level-2" averages,
-  ! respectively. Also sets ntavg1 and ntavg2 which are the number of CRM 
+  ! respectively. Also sets ntavg1 and ntavg2 which are the number of CRM
   ! steps in each averaging period.
   !----------------------------------------------------------------------------
     use grid, only: dt    ! CRM timestep (calling frequency of ecpp_crm_stat)
@@ -779,8 +752,8 @@ contains
     ! set level-1 and level-2 averaging periods for ECPP
     ntavg1_ss = min(600._r8, dt_gl)  ! lesser of 10 minutes or the GCM timestep
     ntavg2_ss = dt_gl                ! level-2 averaging period is GCM timestep
-   
-    ! Current implementation of ECPP requires that ntavg2_ss is a multiple of 
+
+    ! Current implementation of ECPP requires that ntavg2_ss is a multiple of
     ! ntavg1_ss. Adjust ntavg1_ss upward from 10 minutes necessary.
     ! Ex. 1: ntavg2_ss = 1200 => ntavg1_ss = 1200/ (1200/600) = 1200 / 2 = 600
     ! Ex. 2: ntavg2_ss = 900 => ntavg1_ss = 900 / (900/600) = 900 / 1 = 900

@@ -31,46 +31,43 @@ module crm_rad_module
       real(crm_rknd), pointer :: ni(:,:,:,:) ! rad cloud ice crystal number (#/kg)
       real(crm_rknd), pointer :: qs(:,:,:,:) ! rad cloud snow (kg/kg)
       real(crm_rknd), pointer :: ns(:,:,:,:) ! rad cloud snow crystal number (#/kg)
-   contains
-      procedure, public :: initialize=>crm_rad_initialize
-      procedure, public :: finalize=>crm_rad_finalize
    end type crm_rad_type
 
 contains
 
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_rad_type
-   subroutine crm_rad_initialize(this)
-      class(crm_rad_type), intent(inout) :: this
+   subroutine crm_rad_initialize(rad)
+      class(crm_rad_type), intent(inout) :: rad
 
       ! Nullify pointers
-      this%qrad => null()
-      this%temperature => null()
-      this%qv => null()
-      this%qi => null()
-      this%cld => null()
+      rad%qrad => null()
+      rad%temperature => null()
+      rad%qv => null()
+      rad%qi => null()
+      rad%cld => null()
 
-      this%nc => null()
-      this%ni => null()
-      this%qs => null()
-      this%ns => null()
+      rad%nc => null()
+      rad%ni => null()
+      rad%qs => null()
+      rad%ns => null()
 
    end subroutine crm_rad_initialize
    !------------------------------------------------------------------------------------------------
-   subroutine crm_rad_finalize(this)
-      class(crm_rad_type), intent(inout) :: this
+   subroutine crm_rad_finalize(rad)
+      class(crm_rad_type), intent(inout) :: rad
 
       ! Nullify pointers
-      this%qrad => null()
-      this%temperature => null()
-      this%qv => null()
-      this%qi => null()
-      this%cld => null()
+      rad%qrad => null()
+      rad%temperature => null()
+      rad%qv => null()
+      rad%qi => null()
+      rad%cld => null()
 
-      this%nc => null()
-      this%ni => null()
-      this%qs => null()
-      this%ns => null()
+      rad%nc => null()
+      rad%ni => null()
+      rad%qs => null()
+      rad%ns => null()
 
    end subroutine crm_rad_finalize
    !------------------------------------------------------------------------------------------------

@@ -1,94 +1,121 @@
 module advect2_mom_z_mod
+  use params, only: asyncid
   implicit none
 
 contains
 
-  subroutine advect2_mom_z(ncrms,icrm)
+  subroutine advect2_mom_z(ncrms)
     !       momentum tendency due to the 2nd-order-central vertical advection
     use vars
     use params, only: crm_rknd
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    real(crm_rknd) fuz(nx,ny,nz),fvz(nx,ny,nz),fwz(nx,ny,nzm)
-    integer i, j, k, kc, kb
-    real(crm_rknd) dz2, dz25, www, rhoi
+    integer, intent(in) :: ncrms
+    real(crm_rknd) :: fuz(nx,ny,nz ,ncrms)
+    real(crm_rknd) :: fvz(nx,ny,nz ,ncrms)
+    real(crm_rknd) :: fwz(nx,ny,nzm,ncrms)
+    integer i, j, k, kc, kb,icrm
+    real(crm_rknd) dz25, www, rhoi
 
-    dz25=1./(4.*dz(icrm))
-    dz2=dz25*2.
+    !$acc enter data create(fuz,fvz,fwz) async(asyncid)
 
-    do j=1,ny
-      do i=1,nx
-        fuz(i,j,1) = 0.
-        fvz(i,j,1) = 0.
-        fuz(i,j,nz) = 0.
-        fvz(i,j,nz) = 0.
-        fwz(i,j,1) = 0.
-        fwz(i,j,nzm) = 0.
+    !$acc parallel loop collapse(2) copyout(vwle,uwle) async(asyncid)
+    do icrm = 1 , ncrms
+      do k = 1 , nz
+        uwle(k,icrm) = 0.
+        vwle(k,icrm) = 0.
+      enddo
+    enddo
+
+    !$acc parallel loop collapse(3) copy(fuz,fwz,fvz) async(asyncid)
+    do icrm = 1 , ncrms
+      do j=1,ny
+        do i=1,nx
+          dz25=1./(4.*dz(icrm))
+          fuz(i,j,1  ,icrm) = 0.
+          fuz(i,j,nz ,icrm) = 0.
+          fvz(i,j,1  ,icrm) = 0.
+          fvz(i,j,nz ,icrm) = 0.
+          fwz(i,j,1  ,icrm) = 0.
+          fwz(i,j,nzm,icrm) = 0.
+        end do
       end do
-    end do
-
-    uwle(1,icrm) = 0.
-    vwle(1,icrm) = 0.
+    enddo
 
     if(RUN3D) then
 
-      do k=2,nzm
-        kb = k-1
-        rhoi = dz25 * rhow(k,icrm)
-        uwle(k,icrm) = 0.
-        vwle(k,icrm) = 0.
-        do j=1,ny
-          do i=1,nx
-            fuz(i,j,k) = rhoi*(w(i,j,k,icrm)+w(i-1,j,k,icrm))*(u(i,j,k,icrm)+u(i,j,kb,icrm))
-            fvz(i,j,k) = rhoi*(w(i,j,k,icrm)+w(i,j-1,k,icrm))*(v(i,j,k,icrm)+v(i,j,kb,icrm))
-            uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k)
-            vwle(k,icrm) = vwle(k,icrm)+fvz(i,j,k)
+      !$acc parallel loop collapse(4) async(asyncid)
+      do icrm = 1 , ncrms
+        do k=2,nzm
+          do j=1,ny
+            do i=1,nx
+              dz25=1./(4.*dz(icrm))
+              kb = k-1
+              rhoi = dz25 * rhow(k,icrm)
+              fuz(i,j,k,icrm) = rhoi*(w(i,j,k,icrm)+w(i-1,j  ,k,icrm))*(u(i,j,k,icrm)+u(i,j,kb,icrm))
+              fvz(i,j,k,icrm) = rhoi*(w(i,j,k,icrm)+w(i  ,j-1,k,icrm))*(v(i,j,k,icrm)+v(i,j,kb,icrm))
+              !$acc atomic update
+              uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k,icrm)
+              !$acc atomic update
+              vwle(k,icrm) = vwle(k,icrm)+fvz(i,j,k,icrm)
+            end do
           end do
         end do
       end do
 
     else
 
-      do k=2,nzm
-        kb = k-1
-        rhoi = dz25 * rhow(k,icrm)
-        uwle(k,icrm) = 0.
-        vwle(k,icrm) = 0.
-        do j=1,ny
-          do i=1,nx
-            www = rhoi*(w(i,j,k,icrm)+w(i-1,j,k,icrm))
-            fuz(i,j,k) = www*(u(i,j,k,icrm)+u(i,j,kb,icrm))
-            fvz(i,j,k) = www*(v(i,j,k,icrm)+v(i,j,kb,icrm))
-            uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k)
-            vwle(k,icrm) = vwle(k,icrm)+fvz(i,j,k)
+      !$acc parallel loop collapse(4) copyin(u,v,w,rhow,dz) copy(fvz,vwle,uwle,fuz) async(asyncid)
+      do icrm = 1 , ncrms
+        do k=2,nzm
+          do j=1,ny
+            do i=1,nx
+              dz25=1./(4.*dz(icrm))
+              kb = k-1
+              rhoi = dz25 * rhow(k,icrm)
+              www = rhoi*(w(i,j,k,icrm)+w(i-1,j,k,icrm))
+              fuz(i,j,k,icrm) = www*(u(i,j,k,icrm)+u(i,j,kb,icrm))
+              fvz(i,j,k,icrm) = www*(v(i,j,k,icrm)+v(i,j,kb,icrm))
+              !$acc atomic update
+              uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k,icrm)
+              !$acc atomic update
+              vwle(k,icrm) = vwle(k,icrm)+fvz(i,j,k,icrm)
+            end do
           end do
         end do
       end do
 
-
     endif
 
-    do k=1,nzm
-      kc = k+1
-      rhoi = 1./(rho(k,icrm)*adz(k,icrm))
-      do j=1,ny
-        do i=1,nx
-          dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fuz(i,j,kc)-fuz(i,j,k))*rhoi
-          dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fvz(i,j,kc)-fvz(i,j,k))*rhoi
-          fwz(i,j,k)=dz25*(w(i,j,kc,icrm)*rhow(kc,icrm)+w(i,j,k,icrm)*rhow(k,icrm))*(w(i,j,kc,icrm)+w(i,j,k,icrm))
+    !$acc parallel loop collapse(4) copyin(fvz,rho,w,rhow,fuz,dz,adz) copy(dudt,dvdt,fwz) async(asyncid)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            dz25=1./(4.*dz(icrm))
+            kc = k+1
+            rhoi = 1./(rho(k,icrm)*adz(k,icrm))
+            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fuz(i,j,kc,icrm)-fuz(i,j,k,icrm))*rhoi
+            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fvz(i,j,kc,icrm)-fvz(i,j,k,icrm))*rhoi
+            fwz(i,j,k,icrm)=dz25*(w(i,j,kc,icrm)*rhow(kc,icrm)+w(i,j,k,icrm)*rhow(k,icrm))*(w(i,j,kc,icrm)+w(i,j,k,icrm))
+          end do
         end do
       end do
     end do
 
-    do k=2,nzm
-      kb=k-1
-      rhoi = 1./(rhow(k,icrm)*adzw(k,icrm))
-      do j=1,ny
-        do i=1,nx
-          dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fwz(i,j,k)-fwz(i,j,kb))*rhoi
+    !$acc parallel loop collapse(4) copyin(rhow,fwz,adzw) copy(dwdt) async(asyncid)
+    do icrm = 1 , ncrms
+      do k=2,nzm
+        do j=1,ny
+          do i=1,nx
+            kb=k-1
+            rhoi = 1./(rhow(k,icrm)*adzw(k,icrm))
+            dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fwz(i,j,k,icrm)-fwz(i,j,kb,icrm))*rhoi
+          end do
         end do
-      end do
-    end do ! k
+      end do ! k
+    end do
+
+    !$acc exit data delete(fuz,fvz,fwz) async(asyncid)
 
   end subroutine advect2_mom_z
 

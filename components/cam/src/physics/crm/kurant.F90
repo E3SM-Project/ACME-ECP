@@ -1,68 +1,81 @@
+
 module kurant_mod
+   use params, only: asyncid
    use task_util_mod
    implicit none
 
    contains
 
-   subroutine kurant(ncrms,icrm)
+   subroutine kurant(ncrms)
       use vars
       use sgs, only: kurant_sgs
       use params, only: crm_rknd
       implicit none
-      integer, intent(in) :: ncrms,icrm
-      integer i, j, k, ncycle1(1),ncycle2(1)
-      real(crm_rknd) wm(nz)  ! maximum vertical wind velocity
-      real(crm_rknd) uhm(nz) ! maximum horizontal wind velocity
-      real(crm_rknd) cfl, cfl_sgs
-      ncycle = 1
+      integer, intent(in) :: ncrms
+      integer i, j, k, ncycle1(1),ncycle2(1),icrm
+      real(crm_rknd) wm(nz,ncrms)  ! maximum vertical wind velocity
+      real(crm_rknd) uhm(nz,ncrms) ! maximum horizontal wind velocity
+      real(crm_rknd) cfl, cfl_sgs, tmp
 
-      wm(nz)=0.
-      do k = 1,nzm
-         wm(k) = maxval(abs(w(1:nx,1:ny,k,icrm)))
-         uhm(k) = sqrt(maxval(u(1:nx,1:ny,k,icrm)**2+YES3D*v(1:nx,1:ny,k,icrm)**2))
-      end do
-      w_max(icrm)=max( w_max(icrm), real(maxval(w(1:nx,1:ny,1:nz,icrm)),kind(w_max(icrm))) )
-      u_max(icrm)=max( u_max(icrm), real(maxval(uhm(1:nzm))       ,kind(u_max(icrm))) )
+      !$acc enter data create(wm,uhm) async(asyncid)
+
+      ncycle = 1
+      !$acc parallel loop collapse(2) copyout(wm,uhm) async(asyncid)
+      do icrm = 1 , ncrms
+        do k = 1 , nz
+          wm (k,icrm) = 0.
+          uhm(k,icrm) = 0.
+        enddo
+      enddo
+
+      !$acc parallel loop collapse(4) private(tmp) copy(wm,w_max,uhm,u_max) copyin(u,v,w) async(asyncid)
+      do icrm = 1 , ncrms
+        do k = 1,nzm
+          do j = 1 , ny
+            do i = 1 , nx
+              tmp = abs(w(i,j,k,icrm))
+              !$acc atomic update
+              wm(k,icrm) = max( wm(k,icrm) , tmp )
+              !$acc atomic update
+              w_max(icrm) = max( w_max(icrm) , tmp )
+
+              tmp = sqrt(u(i,j,k,icrm)**2+YES3D*v(i,j,k,icrm)**2)
+              !$acc atomic update
+              uhm(k,icrm) = max( uhm(k,icrm) , tmp )
+              !$acc atomic update
+              u_max(icrm) = max( u_max(icrm) , tmp )
+            enddo
+          enddo
+        enddo
+      enddo
 
       cfl = 0.
-      do k=1,nzm
-         cfl = max(cfl,uhm(k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2), &
-                   max(wm(k),wm(k+1))*dt/(dz(icrm)*adzw(k,icrm)) )
+      !$acc parallel loop collapse(2) private(tmp) copyin(wm,uhm,dz,adzw) copy(cfl) async(asyncid)
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          tmp = max( uhm(k,icrm)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(k,icrm),wm(k+1,icrm))*dt/(dz(icrm)*adzw(k,icrm)) )
+          !$acc atomic update
+          cfl = max( cfl , tmp )
+        end do
       end do
 
-      call kurant_sgs(ncrms,icrm,cfl_sgs)
-      cfl = max(cfl,cfl_sgs)
-
-      ncycle = max(1,ceiling(cfl/0.7))
-
-      if(dompi) then
-         ncycle1(1)=ncycle
-         call task_max_integer(ncycle1,ncycle2,1)
-         ncycle=ncycle2(1)
-      end if
+      call kurant_sgs(ncrms,cfl)
+      !$acc wait(asyncid)
+      ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 
       if(ncycle.gt.4) then
-         if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
-         !+++ test +++mhwang
-         ! write(0, *) 'cfl', cfl, cfl_sgs, latitude(1, 1,icrm), longitude(1,1,icrm)
-         ! do k=1, nzm
-         !    write(0, *) 'k=', k, wm(k), uhm(k)
-         ! end do
-         ! do i=1, nx
-         !   write(0, *) 'i=', i,  u(i, 1, 4,icrm), v(i, 1, 4,icrm), tabs(i,1,4,icrm)
-         ! end do
-         !---mhwang
-
-         ! whannah - formatted debug info - easier to read
-         write(0, 5550) cfl, cfl_sgs, latitude(1,1,icrm), longitude(1,1,icrm)
-         do k=1, nzm
-            write(0, 5551) k, wm(k), uhm(k), tabs(1,1,k,icrm)
-         end do
-
-         call task_abort()
+        if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
+        do icrm = 1 , ncrms
+          write(0, 5550) cfl, cfl_sgs, latitude(1,1,icrm), longitude(1,1,icrm)
+          do k=1, nzm
+            write(0, 5551) k, wm(k,icrm), uhm(k,icrm), tabs(1,1,k,icrm)
+          end do
+        end do
+        call task_abort()
       end if
 
-! whannah
+      !$acc exit data delete(wm,uhm) async(asyncid)
+
 5550 format('kurant() - cfl: ',f12.2,'  cfl_sgs: ',f12.2,'  lat: ',f6.2,'  lon: ',f6.2)
 5551 format('k: ',i5,'  wm: ',f10.2,'  uhm: ',f10.2,'  tabs: ',f8.2)
 

@@ -1099,6 +1099,7 @@ contains
   end subroutine cam_pio_createfile
 
   subroutine cam_pio_openfile(file, fname, mode)
+    use mpi
     use pio,            only: pio_openfile, file_desc_t, pio_noerr, pio_iotask_rank
     use cam_abortutils, only: endrun
 

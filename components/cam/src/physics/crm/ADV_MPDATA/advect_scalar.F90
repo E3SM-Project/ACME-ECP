@@ -5,7 +5,7 @@ module advect_scalar_mod
 
 contains
 
-  subroutine advect_scalar (ncrms,icrm,f,fadv,flux,f2leadv,f2legrad,fwleadv,doit)
+  subroutine advect_scalar (ncrms,f,fadv,flux)
 
     !     positively definite monotonic advection with non-oscillatory option
 
@@ -14,40 +14,62 @@ contains
     use params, only: docolumn, crm_rknd
 
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    real(crm_rknd) flux(nz), fadv(nz)
-    real(crm_rknd) f2leadv(nz),f2legrad(nz),fwleadv(nz)
-    logical doit
+    integer, intent(in) :: ncrms
+    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
+    real(crm_rknd) flux(nz,ncrms), fadv(nz,ncrms)
+    real(crm_rknd) f0(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
+    real(crm_rknd) tmp
+    integer i,j,k,icrm
 
-    real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    integer i,j,k
+    !$acc enter data create(f0) async(asyncid)
 
     if(docolumn) then
-      flux = 0.
+      !$acc parallel loop collapse(2) copy(flux) async(asyncid)
+      do icrm = 1 , ncrms
+        do k = 1 , nz
+          flux(k,icrm) = 0.
+        enddo
+      enddo
       return
     end if
 
-    !call t_startf ('advect_scalars')
-
-    df(:,:,:) = f(:,:,:)
+    !$acc parallel loop collapse(4) copyin(f) copy(f0) async(asyncid)
+    do icrm = 1 , ncrms
+      do k = 1 , nzm
+        do j = dimy1_s,dimy2_s
+          do i = dimx1_s,dimx2_s
+            f0(i,j,k,icrm) = f(i,j,k,icrm)
+          enddo
+        enddo
+      enddo
+    enddo
 
     if(RUN3D) then
-      call advect_scalar3D(ncrms, icrm, f, u, v, w, rho, rhow, flux)
+      call advect_scalar3D(ncrms, f, u, v, w, rho, rhow, flux)
     else
-      call advect_scalar2D(ncrms, icrm, f, u, w, rho, rhow, flux)
+      call advect_scalar2D(ncrms, f, u, w, rho, rhow, flux)
     endif
 
-    do k=1,nzm
-      fadv(k)=0.
-      do j=1,ny
-        do i=1,nx
-          fadv(k)=fadv(k)+f(i,j,k)-df(i,j,k)
+    !$acc parallel loop collapse(2) copy(fadv) async(asyncid)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        fadv(k,icrm)=0.
+      enddo
+    enddo
+    !$acc parallel loop collapse(4) copyin(f,f0) copy(fadv) async(asyncid)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            tmp = f(i,j,k,icrm)-f0(i,j,k,icrm)
+            !$acc atomic update
+            fadv(k,icrm)=fadv(k,icrm)+tmp
+          end do
         end do
       end do
-    end do
+    enddo
 
-    !call t_stopf ('advect_scalars')
+    !$acc exit data delete(f0) async(asyncid)
 
   end subroutine advect_scalar
 
