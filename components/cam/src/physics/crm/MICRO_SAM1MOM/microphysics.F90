@@ -320,10 +320,14 @@ CONTAINS
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
 
     if(docloud) then
+#ifdef __PGI
       !Passing q and qp via the first element because PGI has a bug with pointers here
       call cloud(ncrms,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
-      !Passing q and qp via the first element because PGI has a bug with pointers here
       if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
+#else
+      call cloud(ncrms, q, qp, qn)
+      if(doprecip) call precip_proc(ncrms, qpsrc, qpevp, q, qp, qn)
+#endif
       call micro_diagnose(ncrms)
     end if
     if(dosmoke) then
@@ -466,7 +470,6 @@ CONTAINS
   real(crm_rknd) function term_vel_qp(ncrms,icrm,i,j,k,ind,qploc,rho,tabs,qp_threshold,tprmin,&
                                       a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
     !$acc routine seq
-    use vars
     implicit none
     integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: i,j,k,ind

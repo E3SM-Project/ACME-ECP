@@ -396,9 +396,12 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
+#ifdef __PGI
     !Passing tk via first element to avoid PGI pointer bug
     call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk(dimx1_d,dimy1_d,1,1))
-
+#else
+    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+#endif
   end subroutine sgs_mom
 
   !----------------------------------------------------------------------
@@ -419,8 +422,12 @@ CONTAINS
 
     !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(asyncid)
     
+#ifdef __PGI
     !Passing tkh via first element to avoid PGI pointer bug
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),t,fluxbt,fluxtt,tdiff,twsb)
+#else
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb)
+#endif
 
     if(advect_sgs) then
       !$acc parallel loop collapse(2) copyin(sgswsb) copy(wsbtmp) async(asyncid)
@@ -429,8 +436,12 @@ CONTAINS
           wsbtmp(k,icrm) = sgswsb(k,1,icrm)
         enddo
       enddo
+#ifdef __PGI
       !Passing tkh via first element to avoid PGI pointer bug
       call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),tke,fzero,fzero,dummy,wsbtmp)
+#else
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,wsbtmp)
+#endif
       !$acc parallel loop collapse(2) copyin(wsbtmp) copy(sgswsb) async(asyncid)
       do icrm = 1, ncrms
         do k = 1 , nz
@@ -465,8 +476,12 @@ CONTAINS
             wsbtmp (kk,icrm) = mkwsb (kk,k,icrm)
           enddo
         enddo
+#ifdef __PGI
         !Passing tkh via first element to avoid PGI pointer bug
         call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
+#else
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
+#endif
         !$acc parallel loop collapse(2) copyin(difftmp,wsbtmp) copy(mkdiff,mkwsb) async(asyncid)
         do icrm = 1 , ncrms
           do kk = 1 , nz
@@ -517,12 +532,18 @@ subroutine sgs_proc(ncrms)
   integer :: icrm, k, j, i
   !    SGS TKE equation:
 
+#ifdef __PGI
   !Passing tke, tk, and tkh via first element to avoid PGI pointer bug
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
                           tke(dimx1_s,dimy1_s,1,1), tk(dimx1_d,dimy1_d,1,1), tkh(dimx1_d,dimy1_d,1,1))
-
+#else
+  if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
+                          grdf_x, grdf_y, grdf_z, dosmagor,   &
+                          tkesbdiss, tkesbshear, tkesbbuoy,   &
+                          tke, tk, tkh)
+#endif
   !$acc parallel loop collapse(4) copyin(tke) copy(tke2) async(asyncid)
   do icrm = 1 , ncrms
     do k = 1 , nzm
