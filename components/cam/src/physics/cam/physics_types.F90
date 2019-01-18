@@ -1158,59 +1158,6 @@ end subroutine physics_ptend_copy
 
   end subroutine init_geo_unique
 
-! #if defined( PHYS_GRID_1x1_TEST )
-!   subroutine gll_state_init_geo_unique(phys_state,ncol)
-!      integer,             intent(in)    :: ncol
-!      type(physics_state), intent(inout) :: phys_state
-!      logical :: match
-!      integer :: i, j, ulatcnt, uloncnt
-
-!      phys_state%ulat=-999._r8
-!      phys_state%ulon=-999._r8
-!      phys_state%latmapback=0
-!      phys_state%lonmapback=0
-!      match=.false.
-!      ulatcnt=0
-!      uloncnt=0
-!      match=.false.
-!      do i=1,ncol
-!         !!! 
-!         do j=1,ulatcnt
-!            if(phys_state%lat(i) .eq. phys_state%ulat(j)) then
-!            match=.true.
-!            phys_state%latmapback(i)=j
-!            end if
-!         end do
-!         if(.not. match) then
-!            ulatcnt=ulatcnt+1
-!            phys_state%ulat(ulatcnt)=phys_state%lat(i)
-!            phys_state%latmapback(i)=ulatcnt
-!         end if
-
-!         match=.false.
-!         do j=1,uloncnt
-!            if(phys_state%lon(i) .eq. phys_state%ulon(j)) then
-!               match=.true.
-!               phys_state%lonmapback(i)=j
-!            end if
-!         end do
-!         if(.not. match) then
-!            uloncnt=uloncnt+1
-!            phys_state%ulon(uloncnt)=phys_state%lon(i)
-!            phys_state%lonmapback(i)=uloncnt
-!         end if
-!         match=.false.
-
-!      end do
-!      phys_state%uloncnt=uloncnt
-!      phys_state%ulatcnt=ulatcnt
-
-!      ! call get_gcol_all_p(phys_state%lchnk,pcols,phys_state%cid)
-!      call get_gcol_all_p(phys_state%lchnk,pcols,phys_state%cid)
-
-!   end subroutine init_geo_unique
-! #endif /* PHYS_GRID_1x1_TEST */
-
 !===============================================================================
   subroutine physics_dme_adjust(state, tend, qini, dt)
     !----------------------------------------------------------------------- 

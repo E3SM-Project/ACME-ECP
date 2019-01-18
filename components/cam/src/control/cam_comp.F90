@@ -21,6 +21,10 @@ module cam_comp
    use perf_mod
    use cam_logfile,       only: iulog
    use physics_buffer,            only: physics_buffer_desc
+! #if defined( PHYS_GRID_1x1_TEST )
+!    use quadrature_mod,    only: quadrature_t, gausslobatto
+!    use dimensions_mod,    only: np
+! #endif /* PHYS_GRID_1x1_TEST */
 
    implicit none
    private
@@ -59,9 +63,9 @@ module cam_comp
   type(physics_buffer_desc), pointer :: pbuf2d(:,:) => null()
 
 #if defined( PHYS_GRID_1x1_TEST )
-  ! type(physics_state), dimension(begchunk:endchunk) :: gll_state
   type(physics_state), pointer :: gll_state(:) => null()
-#endif
+  ! type (quadrature_t)   :: gp                     ! element GLL points
+#endif /* PHYS_GRID_1x1_TEST */
 
   real(r8) :: wcstart, wcend     ! wallclock timestamp at start, end of timestep
   real(r8) :: usrstart, usrend   ! user timestamp at start, end of timestep
@@ -198,6 +202,7 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
    call phys_init( phys_state, phys_tend, pbuf2d,  cam_out )
 
 #if defined( PHYS_GRID_1x1_TEST )
+   ! gp = gausslobatto(np)
    !----------------------------------------------------------------------------
    ! need to allocate and initialize gll_state for dynamics grid output
    !----------------------------------------------------------------------------
@@ -313,21 +318,6 @@ subroutine cam_run1(cam_in, cam_out)
    call phys_run1(phys_state, dtime, phys_tend, pbuf2d,  cam_in, cam_out)
    call t_stopf  ('phys_run1')
 
-! #if defined( PHYS_GRID_1x1_TEST )
-!    do ie = 1,nelemd
-!       do j = 1,np
-!          do i = 1,np
-!             write(*,100) iam,ie,i,j &
-!                         ,dyn_in%elem(ie)%state%ps_v(i,j,TimeLevel%nm1) &
-!                         ,dyn_in%elem(ie)%state%ps_v(i,j,TimeLevel%n0)  &
-!                         ,dyn_in%elem(ie)%state%ps_v(i,j,TimeLevel%np1) 
-!          end do
-!       end do
-!    end do
-! 100 format( 'iam: ',i3,' ie: ',i3,' i,j: ',', ',i3,', ',i3,'   PS:',f12.2,'  ,  ',f12.2,'  ,  ',f12.2 )
-!    stop
-! #endif /* PHYS_GRID_1x1_TEST */
-
 end subroutine cam_run1
 
 !
@@ -370,7 +360,6 @@ subroutine cam_run2( cam_out, cam_in )
    call t_startf ('stepon_run2')
 #if defined( PHYS_GRID_1x1_TEST )
    call stepon_run2( phys_state, gll_state, phys_tend, dyn_in, dyn_out )
-   ! call stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
 #else
    call stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
 #endif /* PHYS_GRID_1x1_TEST */
@@ -411,12 +400,7 @@ subroutine cam_run3( cam_out )
    !
    call t_barrierf ('sync_stepon_run3', mpicom)
    call t_startf ('stepon_run3')
-#if defined( PHYS_GRID_1x1_TEST )
-   call stepon_run3( dtime, cam_out, phys_state, gll_state, dyn_in, dyn_out )
-#else
    call stepon_run3( dtime, cam_out, phys_state, dyn_in, dyn_out )
-#endif /* PHYS_GRID_1x1_TEST */
-
    call t_stopf  ('stepon_run3')
 
    if (is_first_step() .or. is_first_restart_step()) then

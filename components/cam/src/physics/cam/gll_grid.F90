@@ -1,4 +1,5 @@
 module gll_grid_mod
+#if defined( PHYS_GRID_1x1_TEST )
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: Definition of GLL grid for output of dynamics fields 
@@ -210,10 +211,9 @@ integer function get_ncols_gll(lcid)
 end function get_ncols_gll
 !==================================================================================================
 !==================================================================================================
-subroutine get_gcol_all_gll(lcid, latdim, gcols)
+subroutine get_gcol_all_gll(lcid, gcols)
    ! Purpose: Return all global column indices for chunk
    integer, intent(in)  :: lcid           ! local chunk id
-   integer, intent(in)  :: latdim         ! declared size of output array
    integer, intent(out) :: gcols(pcols)   ! array of global latitude indices
    integer :: i                           ! loop index
    gcols = -1
@@ -356,7 +356,7 @@ subroutine gll_state_init_geo_unique( ncol, phys_state )
    phys_state%uloncnt=uloncnt
    phys_state%ulatcnt=ulatcnt
 
-   call get_gcol_all_gll(phys_state%lchnk,pcols,phys_state%cid)
+   call get_gcol_all_gll(phys_state%lchnk,phys_state%cid)
 
 end subroutine gll_state_init_geo_unique
 !==================================================================================================
@@ -727,8 +727,7 @@ subroutine gll_grid_init( )
 
           ncols = 0
           do i=1,max_ncols
-             ! check whether global index is for a column that dynamics
-             ! intends to pass to the physics
+             !!! check whether global index is for a column that dyn will pass to physics
              curgcol_d = cdex(i)
              if (dyn_to_latlon_gcol_map(curgcol_d) .ne. -1) then
                 ! yes - then save the information
@@ -1095,7 +1094,7 @@ subroutine gll_grid_init( )
     p = 0
     do lcid = begchunk, endchunk
       ncols = gll_lchunks(lcid)%ncols
-      call get_gcol_all_gll(lcid, pcols, gcols)
+      call get_gcol_all_gll(lcid, gcols)
       ! collect latvals and lonvals
       cid = gll_lchunks(lcid)%cid
       do i = 1, chunks(cid)%ncols
@@ -1134,9 +1133,9 @@ subroutine gll_grid_init( )
 
     if (unstructured) then
       coord_map => grid_map(3,:)
-      lon_coord => horiz_coord_create('lon', 'ncol', ngcols_p, 'longitude',   &
+      lon_coord => horiz_coord_create('gll_lon', 'gll_ncol', ngcols_p, 'longitude',   &
            'degrees_east', 1, size(lonvals), lonvals, map=coord_map)
-      lat_coord => horiz_coord_create('lat', 'ncol', ngcols_p, 'latitude',    &
+      lat_coord => horiz_coord_create('gll_lat', 'gll_ncol', ngcols_p, 'latitude',    &
            'degrees_north', 1, size(latvals), latvals, map=coord_map)
     ! else
     !   ! Create a lon coord map which only writes from one of each unique lon
@@ -1184,6 +1183,10 @@ subroutine gll_grid_init( )
     !----------------------------------------------------------------------------
     call cam_grid_register('gll_grid', gll_decomp, lat_coord, lon_coord,     &
          grid_map, unstruct=unstructured, block_indexed=.true.)
+
+    !!! this matches dyn_grid - maybe block_indexed=false will fix output areas?
+    ! call cam_grid_register('gll_grid', gll_decomp, lat_coord, lon_coord,      &
+    !      grid_map, block_indexed=.false., unstruct=unstructured)
     
     !!! Copy required attributes from the dynamics array
     ! nullify(copy_attributes)
@@ -1193,7 +1196,7 @@ subroutine gll_grid_init( )
     ! end do
 
     !!! register unique attributes
-    call cam_grid_attribute_register('gll_grid','gll_area','physics grid areas','ncol', local_pe_area, map=coord_map)
+    call cam_grid_attribute_register('gll_grid','gll_area','physics grid areas','gll_ncol', local_pe_area, map=coord_map)
     call cam_grid_attribute_register('gll_grid','gll_ne','',ne)
     call cam_grid_attribute_register('gll_grid','gll_pg','',1)
     nullify(coord_map)
@@ -1238,4 +1241,5 @@ subroutine gll_grid_init( )
 end subroutine gll_grid_init
 !==================================================================================================
 !==================================================================================================
+#endif /* PHYS_GRID_1x1_TEST */
 end module gll_grid_mod

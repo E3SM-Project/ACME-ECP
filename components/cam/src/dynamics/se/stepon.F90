@@ -118,15 +118,13 @@ subroutine stepon_init(dyn_in, dyn_out )
   call addfld ('DIV', (/ 'lev' /), 'A', '1/s',  'Divergence',                  gridname='GLL')
 
 #if defined( PHYS_GRID_1x1_TEST )
-
+  !!! add dynamics grid variables for testing alternate physics grids
   call addfld ('dyn_PS'   ,horiz_only,'A','Pa'  ,'Surface pressure'          , gridname='gll_grid')
   call addfld ('dyn_T'    ,(/'lev'/) ,'A','K'   ,'Temperature'               , gridname='gll_grid')
   call addfld ('dyn_U'    ,(/'lev'/) ,'A','m/s' ,'Zonal wind'                , gridname='gll_grid')
   call addfld ('dyn_V'    ,(/'lev'/) ,'A','m/s' ,'Meridional wind'           , gridname='gll_grid')
   call addfld ('dyn_OMEGA',(/'lev'/) ,'A','Pa/s','Vertical pressure velocity', gridname='gll_grid')
-
-  ! call addfld ('dyn_'//trim(cnst_name(1)),(/'lev'/),'A','kg/kg',cnst_longname(1), gridname='dyngrid')
-
+  call addfld ('dyn_'//trim(cnst_name(1)),(/'lev'/),'A','kg/kg',cnst_longname(1), gridname='gll_grid')
 #endif /* PHYS_GRID_1x1_TEST */
 
   if (smooth_phis_numcycle>0) then
@@ -243,6 +241,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    use nctopo_util_mod, only: phisdyn,sghdyn,sgh30dyn
 
 #if defined( PHYS_GRID_1x1_TEST )
+   use spmd_utils,      only: iam, masterproc, mpicom
    use ppgrid,          only: pcols, pver, pverp
    use kinds,           only: real_kind, int_kind
    use dof_mod,         only: UniquePoints, PutUniquePoints
@@ -266,7 +265,10 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
 #if defined( PHYS_GRID_1x1_TEST )
    integer :: lchnk, icol, ilyr                                     ! loop iterators
    integer :: pgcols(pcols), ncol
-   integer :: idmb1(1), idmb2(1), idmb3(1), ioff                    ! used for calling get_gcol_block_d()
+   integer :: ioff
+   integer :: idmb1(1), idmb2(1), idmb3(1)                          ! used for calling get_gcol_block_d()
+   ! integer, dimension(1) :: blk_id, blk_col_id, local_blk_id        ! used for calling get_gcol_block_d()
+   integer :: blk_id(1), blk_col_id(1), local_blk_id(1)        ! used for calling get_gcol_block_d()
    type (element_t), pointer :: elem(:)
    real (r8),dimension(npsq,nelemd)        :: ps_tmp    ! temporary array to hold ps
    real (r8),dimension(npsq,nelemd)        :: phis_tmp  ! temporary array to hold phis  
@@ -677,97 +679,68 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    
    
 #if defined( PHYS_GRID_1x1_TEST )
-  !----------------------------------------------------------------------------
-  !----------------------------------------------------------------------------
-  ! elem => dyn_out%elem
-  elem => dyn_in%elem
-  do ie=1,nelemd
-    ncol = elem(ie)%idxP%NumUniquePts
-    call UniquePoints(elem(ie)%idxP,       elem(ie)%state%ps_v(:,:,tl_f) , ps_tmp(1:ncol,ie)      )
-    call UniquePoints(elem(ie)%idxP,  nlev,elem(ie)%state%T(:,:,:,tl_f)  , T_tmp(1:ncol,:,ie)     )
-    call UniquePoints(elem(ie)%idxP,2,nlev,elem(ie)%state%V(:,:,:,:,tl_f), uv_tmp(1:ncol,:,:,ie)  )
-    call UniquePoints(elem(ie)%idxP,  nlev,elem(ie)%derived%omega_p      , omega_tmp(1:ncol,:,ie) )
-    ! call UniquePoints(elem(ie)%idxP, nlev,pcnst, elem(ie)%state%Q(:,:,:,:), q_tmp(1:ncols,:,:,ie))
-  end do
-  !----------------------------------------------------------------------------
-  !----------------------------------------------------------------------------
-  ! if (local_dp_map) then ! NOTE: this should always be true for PHYS_GRID_1x1_TEST
-       do lchnk = begchunk,endchunk
-          ncol = get_ncols_gll(lchnk)
-          call get_gcol_all_gll(lchnk,pcols,pgcols)
-          do icol = 1,ncol
-             call get_gcol_block_d(pgcols(icol),1,idmb1,idmb2,idmb3)
-             ie = idmb3(1)
-             ioff = idmb2(1)
-             gll_state(lchnk)%ps(icol) = ps_tmp(ioff,ie)
-             do ilyr=1,pver
-                gll_state(lchnk)%t(icol,ilyr) = T_tmp(ioff,ilyr,ie)     
-                gll_state(lchnk)%u(icol,ilyr) = uv_tmp(ioff,1,ilyr,ie)
-                gll_state(lchnk)%v(icol,ilyr) = uv_tmp(ioff,2,ilyr,ie)
-                gll_state(lchnk)%omega(icol,ilyr) = omega_tmp(ioff,ilyr,ie)
-                ! gll_state(lchnk)%q(icol,ilyr,1) = q_tmp(ioff,ilyr,1,ie)
-             end do ! ilyr
-          end do ! icol
-
-          call outfld('dyn_T    ',gll_state(lchnk)%t    , pcols, lchnk )
-          call outfld('dyn_PS   ',gll_state(lchnk)%ps   , pcols, lchnk )
-          call outfld('dyn_U    ',gll_state(lchnk)%u    , pcols, lchnk )
-          call outfld('dyn_V    ',gll_state(lchnk)%v    , pcols, lchnk )
-          call outfld('dyn_OMEGA',gll_state(lchnk)%omega, pcols, lchnk )
-          ! call outfld('dyn_'//trim(cnst_name(1)),gll_state%q(1,1,m),pcols ,lchnk )
-       end do ! lchnk
-    ! end if  ! local_dp_map
-  !----------------------------------------------------------------------------
-  !----------------------------------------------------------------------------
+   !----------------------------------------------------------------------------
+   !----------------------------------------------------------------------------
+   elem => dyn_out%elem
+   !!! copy data from unique points to temporary  variable
+   do ie=1,nelemd
+      ncol = elem(ie)%idxP%NumUniquePts
+      call UniquePoints(elem(ie)%idxP,       elem(ie)%state%ps_v(:,:,tl_f) , ps_tmp(1:ncol,ie)      )
+      call UniquePoints(elem(ie)%idxP,  nlev,elem(ie)%state%T(:,:,:,tl_f)  , T_tmp(1:ncol,:,ie)     )
+      call UniquePoints(elem(ie)%idxP,2,nlev,elem(ie)%state%V(:,:,:,:,tl_f), uv_tmp(1:ncol,:,:,ie)  )
+      call UniquePoints(elem(ie)%idxP,  nlev,elem(ie)%derived%omega_p      , omega_tmp(1:ncol,:,ie) )
+      call UniquePoints(elem(ie)%idxP, nlev,pcnst, elem(ie)%state%Q(:,:,:,:), q_tmp(1:ncol,:,:,ie))
+   end do
+   !----------------------------------------------------------------------------
+   !----------------------------------------------------------------------------
+   ! if (local_dp_map) then ! NOTE: this should always be true for PHYS_GRID_1x1_TEST
+      do lchnk = begchunk,endchunk
+         !!! populate gll_state with unique points for outfld calls
+         ncol = get_ncols_gll(lchnk)
+         call get_gcol_all_gll(lchnk,pgcols)
+         do icol = 1,ncol
+            call get_gcol_block_d(pgcols(icol), 1, blk_id, blk_col_id, local_blk_id)
+            ie = local_blk_id(1)
+            ioff = blk_col_id(1)
+            gll_state(lchnk)%ps(icol) = ps_tmp(ioff,ie)
+            do ilyr = 1,pver
+               gll_state(lchnk)%t(icol,ilyr) = T_tmp(ioff,ilyr,ie)     
+               gll_state(lchnk)%u(icol,ilyr) = uv_tmp(ioff,1,ilyr,ie)
+               gll_state(lchnk)%v(icol,ilyr) = uv_tmp(ioff,2,ilyr,ie)
+               gll_state(lchnk)%omega(icol,ilyr) = omega_tmp(ioff,ilyr,ie)
+               gll_state(lchnk)%q(icol,ilyr,1) = q_tmp(ioff,ilyr,1,ie)
+            end do ! ilyr
+         end do ! icol
+         !!! Dynamics grid outfld calls
+         call outfld('dyn_T    ',gll_state(lchnk)%t    , pcols, lchnk )
+         call outfld('dyn_PS   ',gll_state(lchnk)%ps   , pcols, lchnk )
+         call outfld('dyn_U    ',gll_state(lchnk)%u    , pcols, lchnk )
+         call outfld('dyn_V    ',gll_state(lchnk)%v    , pcols, lchnk )
+         call outfld('dyn_OMEGA',gll_state(lchnk)%omega, pcols, lchnk )
+         call outfld('dyn_'//trim(cnst_name(1)),gll_state%q(1,1,1),pcols ,lchnk )
+      end do ! lchnk
+   ! end if  ! local_dp_map
+   !----------------------------------------------------------------------------
+   !----------------------------------------------------------------------------
 #endif /* PHYS_GRID_1x1_TEST */
 
    
    end subroutine stepon_run2
    
-#if defined( PHYS_GRID_1x1_TEST )
-subroutine stepon_run3(dtime, cam_out, phys_state, gll_state, dyn_in, dyn_out)
-#else
 subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
-#endif /* PHYS_GRID_1x1_TEST */
    use camsrfexch,  only: cam_out_t     
    use dyn_comp,    only: dyn_run
    use time_mod,    only: tstep
    use hycoef,      only: hyam, hybm
    use se_single_column_mod, only: scm_setfield, scm_setinitial
-#if defined( PHYS_GRID_1x1_TEST )
-   use cam_history,     only: outfld, hist_fld_active
-   use dimensions_mod,  only: nlev, nelemd, np, npsq
-   use ppgrid,          only: pcols, pver, pverp
-   use kinds,           only: real_kind, int_kind
-   use dof_mod,         only: UniquePoints, PutUniquePoints
-   use dyn_grid,        only: get_gcol_block_d
-   use dyn_comp,        only: dyn_run, TimeLevel
-   use gll_grid_mod,    only: get_ncols_gll, get_gcol_all_gll
-#endif /* PHYS_GRID_1x1_TEST */
 
    real(r8), intent(in) :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
-#if defined( PHYS_GRID_1x1_TEST )
-   type(physics_state), intent(inout) :: gll_state(begchunk:endchunk)
-#endif /* PHYS_GRID_1x1_TEST */
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
    type (element_t), pointer :: elem(:)
    integer :: rc
-
-#if defined( PHYS_GRID_1x1_TEST )
-   integer :: lchnk, icol, ilyr, ie                     ! loop iterators
-   integer :: pgcols(pcols), ncol
-   integer :: idmb1(1), idmb2(1), idmb3(1), ioff        ! used for calling get_gcol_block_d()
-   integer :: tl_f
-   real (r8),dimension(npsq,nelemd)        :: ps_tmp    ! temporary array to hold ps
-   real (r8),dimension(npsq,nelemd)        :: phis_tmp  ! temporary array to hold phis  
-   real (r8),dimension(npsq,pver,nelemd)   :: T_tmp     ! temporary array to hold T
-   real (r8),dimension(npsq,pver,nelemd)   :: omega_tmp ! temporary array to hold omega
-   real (r8),dimension(npsq,2,pver,nelemd) :: uv_tmp    ! temporary array to hold u and v
-   real (r8),dimension(npsq,pver,pcnst,nelemd) :: q_tmp ! temporary to hold advected constituents
-#endif /* PHYS_GRID_1x1_TEST */
    
    elem => dyn_out%elem
    
@@ -788,52 +761,6 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    call t_startf ('dyn_run')
    call dyn_run(dyn_out,rc)	
    call t_stopf  ('dyn_run')
-
-
-! #if defined( PHYS_GRID_1x1_TEST )
-!   !----------------------------------------------------------------------------
-!   !----------------------------------------------------------------------------
-!   tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
-!   elem => dyn_out%elem
-!   do ie=1,nelemd
-!     ncol = elem(ie)%idxP%NumUniquePts
-!     call UniquePoints(elem(ie)%idxP,       elem(ie)%state%ps_v(:,:,tl_f) , ps_tmp(1:ncol,ie)      )
-!     call UniquePoints(elem(ie)%idxP,  nlev,elem(ie)%state%T(:,:,:,tl_f)  , T_tmp(1:ncol,:,ie)     )
-!     call UniquePoints(elem(ie)%idxP,2,nlev,elem(ie)%state%V(:,:,:,:,tl_f), uv_tmp(1:ncol,:,:,ie)  )
-!     call UniquePoints(elem(ie)%idxP,  nlev,elem(ie)%derived%omega_p      , omega_tmp(1:ncol,:,ie) )
-!     ! call UniquePoints(elem(ie)%idxP, nlev,pcnst, elem(ie)%state%Q(:,:,:,:), q_tmp(1:ncols,:,:,ie))
-!   end do
-!   !----------------------------------------------------------------------------
-!   !----------------------------------------------------------------------------
-!   ! if (local_dp_map) then ! NOTE: this should always be true for PHYS_GRID_1x1_TEST
-!        do lchnk = begchunk,endchunk
-!           ncol = get_ncols_gll(lchnk)
-!           call get_gcol_all_gll(lchnk,pcols,pgcols)
-!           do icol = 1,ncol
-!              call get_gcol_block_d(pgcols(icol),1,idmb1,idmb2,idmb3)
-!              ie = idmb3(1)
-!              ioff = idmb2(1)
-!              gll_state(lchnk)%ps(icol) = ps_tmp(ioff,ie)
-!              do ilyr=1,pver
-!                 gll_state(lchnk)%t(icol,ilyr) = T_tmp(ioff,ilyr,ie)     
-!                 gll_state(lchnk)%u(icol,ilyr) = uv_tmp(ioff,1,ilyr,ie)
-!                 gll_state(lchnk)%v(icol,ilyr) = uv_tmp(ioff,2,ilyr,ie)
-!                 gll_state(lchnk)%omega(icol,ilyr) = omega_tmp(ioff,ilyr,ie)
-!                 ! gll_state(lchnk)%q(icol,ilyr,1) = q_tmp(ioff,ilyr,1,ie)
-!              end do ! ilyr
-!           end do ! icol
-
-!           call outfld('dyn_T    ',gll_state(lchnk)%t    , pcols, lchnk )
-!           call outfld('dyn_PS   ',gll_state(lchnk)%ps   , pcols, lchnk )
-!           call outfld('dyn_U    ',gll_state(lchnk)%u    , pcols, lchnk )
-!           call outfld('dyn_V    ',gll_state(lchnk)%v    , pcols, lchnk )
-!           call outfld('dyn_OMEGA',gll_state(lchnk)%omega, pcols, lchnk )
-!           ! call outfld('dyn_'//trim(cnst_name(1)),gll_state%q(1,1,m),pcols ,lchnk )
-!        end do ! lchnk
-!     ! end if  ! local_dp_map
-!   !----------------------------------------------------------------------------
-!   !----------------------------------------------------------------------------
-! #endif /* PHYS_GRID_1x1_TEST */
 
 end subroutine stepon_run3
 

@@ -75,7 +75,7 @@ module dyn_grid
   public :: physgrid_copy_attributes_d
 
 #if defined( PHYS_GRID_1x1_TEST )
-  public :: get_horiz_grid_e, get_horiz_grid_dim_e
+  public :: get_block_gcol_e, get_horiz_grid_e, get_horiz_grid_dim_e
 #endif
 
   integer(kind=iMap), pointer :: fdofP_local(:,:) => null()
@@ -145,17 +145,34 @@ contains
     integer :: ic
     if(gblocks_need_initialized) call gblocks_init()
     do ic=1,size
-#if defined( PHYS_GRID_1x1_TEST )
-       ! cdex(ic) = gblocks(blockid)%GlobalID
-       ! cdex(ic) = elem(blockid)%GlobalID
-       cdex(ic) = blockid
-#else    
        cdex(ic)=gblocks(blockid)%UniquePtOffset+ic-1
-#endif /* PHYS_GRID_1x1_TEST */
     end do
     return
   end subroutine get_block_gcol_d
-
+  !
+  !========================================================================
+  !
+#if defined( PHYS_GRID_1x1_TEST )
+  subroutine get_block_gcol_e(blockid,size,cdex)
+    !----------------------------------------------------------------------- 
+    ! Purpose: Return list of dynamics column indices in given block
+    ! Author: Walter Hannah
+    !-----------------------------------------------------------------------
+    implicit none
+    !------------------------------Arguments--------------------------------
+    integer, intent(in) :: blockid      ! global block id
+    integer, intent(in) :: size         ! array size
+    integer, intent(out):: cdex(size)   ! global column indices
+    integer :: ic
+    if(gblocks_need_initialized) call gblocks_init()
+    do ic=1,size
+       ! cdex(ic) = gblocks(blockid)%GlobalID
+       ! cdex(ic) = elem(blockid)%GlobalID
+       cdex(ic) = blockid
+    end do
+    return
+  end subroutine get_block_gcol_e
+#endif /* PHYS_GRID_1x1_TEST */
   !
   !========================================================================
   !

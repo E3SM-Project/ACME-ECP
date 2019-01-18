@@ -43,6 +43,11 @@ CONTAINS
     use gravity_waves_sources, only: gws_src_fnct
     use dyn_comp,       only: frontgf_idx, frontga_idx
     use phys_control,   only: use_gw_front
+#if defined( PHYS_GRID_1x1_TEST )
+    use quadrature_mod, only: quadrature_t, gausslobatto
+    use dimensions_mod, only: np
+    use spmd_utils,     only: iam, masterproc
+#endif /* PHYS_GRID_1x1_TEST */
     implicit none
 !-----------------------------------------------------------------------
 ! !INPUT PARAMETERS:
@@ -89,6 +94,8 @@ CONTAINS
 #if defined( PHYS_GRID_1x1_TEST )
     integer :: g1,g2                  ! GLL index bounds for averaging data for physics grid
     real (kind=real_kind) :: avg_wgt  ! weighting for averaging GLL nodes (must be consistent with g1 & g2)
+    type (quadrature_t)   :: gp       ! element GLL points
+    real (kind=r8)        :: gp_sum
 #endif
 
     !----------------------------------------------------------------------
@@ -109,43 +116,104 @@ CONTAINS
 
 #if defined( PHYS_GRID_1x1_TEST )
 
-    !!! only use middle element nodes to force physics column
-    g1 = 2
-    g2 = np-1
-    avg_wgt = 1./( real((np-2),kind=real_kind)**2. ) !0.25
-
     elem => dyn_out%elem
     tl_f = TimeLevel%n0   ! time split physics (with forward-in-time RK)
 
     if (use_gw_front) call gws_src_fnct(elem, tl_f, frontgf, frontga)
+    !------------------------------------------------------
+    ! only use middle element nodes to force physics column
+    !------------------------------------------------------
+    ! g1 = 2
+    ! g2 = np-1
+    ! avg_wgt = 1./( real((np-2),kind=real_kind)**2. ) !0.25
+
+    ! do ie = 1,nelemd
+    !   lchnk = begchunk + ie-1
+    !   icol = 1
+
+    !   pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+    !   if (use_gw_front) then
+    !     call pbuf_get_field(pbuf_chnk, frontgf_idx, pbuf_frontgf)
+    !     call pbuf_get_field(pbuf_chnk, frontga_idx, pbuf_frontga)
+    !   end if ! use_gw_front
+
+    !   phys_state(lchnk)%ps  (icol) = sum( elem(ie)%state%ps_v(g1:g2,g1:g2,tl_f) )*avg_wgt
+    !   phys_state(lchnk)%phis(icol) = sum( elem(ie)%state%phis(g1:g2,g1:g2)      )*avg_wgt
+
+    !   do ilyr = 1,pver
+    !     phys_state(lchnk)%t    (icol,ilyr) = sum( elem(ie)%state%T        (g1:g2,g1:g2  ,ilyr,tl_f) )*avg_wgt
+    !     phys_state(lchnk)%u    (icol,ilyr) = sum( elem(ie)%state%V        (g1:g2,g1:g2,1,ilyr,tl_f) )*avg_wgt
+    !     phys_state(lchnk)%v    (icol,ilyr) = sum( elem(ie)%state%V        (g1:g2,g1:g2,2,ilyr,tl_f) )*avg_wgt
+    !     phys_state(lchnk)%omega(icol,ilyr) = sum( elem(ie)%derived%omega_p(g1:g2,g1:g2  ,ilyr)      )*avg_wgt
+    !     do m=1,pcnst
+    !        phys_state(lchnk)%q(icol,ilyr,m) = sum( elem(ie)%state%Q(g1:g2,g1:g2,ilyr,m) )*avg_wgt
+    !     end do ! m
+    !     if (use_gw_front) then
+    !       pbuf_frontgf(icol,ilyr) = frontgf(icol,ilyr,ie)
+    !       pbuf_frontga(icol,ilyr) = frontga(icol,ilyr,ie)
+    !     end if ! use_gw_front
+    !   end do ! ilyr
+    ! end do ! ie
+
+    !------------------------------------------------------
+    ! average over entire element to force physics
+    !------------------------------------------------------
+    gp = gausslobatto(np)
+    gp_sum = 0.
+    do j = 1,np
+      do i = 1,np
+        gp_sum = gp_sum + gp%weights(i)*gp%weights(j)
+      end do
+    end do
 
     do ie = 1,nelemd
       lchnk = begchunk + ie-1
       icol = 1
 
-      pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+      phys_state(lchnk)%ps   (icol)     = 0.0_r8
+      phys_state(lchnk)%phis (icol)     = 0.0_r8
+      phys_state(lchnk)%t    (icol,:)   = 0.0_r8
+      phys_state(lchnk)%u    (icol,:)   = 0.0_r8
+      phys_state(lchnk)%v    (icol,:)   = 0.0_r8
+      phys_state(lchnk)%omega(icol,:)   = 0.0_r8
+      phys_state(lchnk)%q    (icol,:,:) = 0.0_r8 
+
       if (use_gw_front) then
+        pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
         call pbuf_get_field(pbuf_chnk, frontgf_idx, pbuf_frontgf)
         call pbuf_get_field(pbuf_chnk, frontga_idx, pbuf_frontga)
-      end if ! use_gw_front
-
-      phys_state(lchnk)%ps  (icol) = sum( elem(ie)%state%ps_v(g1:g2,g1:g2,tl_f) )*avg_wgt
-      phys_state(lchnk)%phis(icol) = sum( elem(ie)%state%phis(g1:g2,g1:g2)      )*avg_wgt
-
-      do ilyr = 1,pver
-        phys_state(lchnk)%t    (icol,ilyr) = sum( elem(ie)%state%T        (g1:g2,g1:g2  ,ilyr,tl_f) )*avg_wgt
-        phys_state(lchnk)%u    (icol,ilyr) = sum( elem(ie)%state%V        (g1:g2,g1:g2,1,ilyr,tl_f) )*avg_wgt
-        phys_state(lchnk)%v    (icol,ilyr) = sum( elem(ie)%state%V        (g1:g2,g1:g2,2,ilyr,tl_f) )*avg_wgt
-        phys_state(lchnk)%omega(icol,ilyr) = sum( elem(ie)%derived%omega_p(g1:g2,g1:g2  ,ilyr)      )*avg_wgt
-        do m=1,pcnst
-           phys_state(lchnk)%q(icol,ilyr,m) = sum( elem(ie)%state%Q(g1:g2,g1:g2,ilyr,m) )*avg_wgt
-        end do ! m
-        if (use_gw_front) then
+        do ilyr = 1,pver
           pbuf_frontgf(icol,ilyr) = frontgf(icol,ilyr,ie)
           pbuf_frontga(icol,ilyr) = frontga(icol,ilyr,ie)
-        end if ! use_gw_front
+        end do
+      end if ! use_gw_front
+
+      do j = 1,np
+        do i = 1,np
+          avg_wgt = gp%weights(i)*gp%weights(j) / gp_sum
+          phys_state(lchnk)%ps  (icol) = phys_state(lchnk)%ps  (icol) + avg_wgt*elem(ie)%state%ps_v(i,j,tl_f) 
+          phys_state(lchnk)%phis(icol) = phys_state(lchnk)%phis(icol) + avg_wgt*elem(ie)%state%phis(i,j)      
+        end do ! i
+      end do ! j
+
+      do ilyr = 1,pver
+        do j = 1,np
+          do i = 1,np
+            avg_wgt = gp%weights(i)*gp%weights(j) / gp_sum
+            phys_state(lchnk)%t    (icol,ilyr) = phys_state(lchnk)%t    (icol,ilyr) + avg_wgt*elem(ie)%state%T        (i,j  ,ilyr,tl_f)
+            phys_state(lchnk)%u    (icol,ilyr) = phys_state(lchnk)%u    (icol,ilyr) + avg_wgt*elem(ie)%state%V        (i,j,1,ilyr,tl_f)
+            phys_state(lchnk)%v    (icol,ilyr) = phys_state(lchnk)%v    (icol,ilyr) + avg_wgt*elem(ie)%state%V        (i,j,2,ilyr,tl_f)
+            phys_state(lchnk)%omega(icol,ilyr) = phys_state(lchnk)%omega(icol,ilyr) + avg_wgt*elem(ie)%derived%omega_p(i,j  ,ilyr)     
+            do m=1,pcnst
+              phys_state(lchnk)%q(icol,ilyr,m) = phys_state(lchnk)%q(icol,ilyr,m)   + avg_wgt*elem(ie)%state%Q(i,j,ilyr,m)
+            end do ! m
+          end do ! i
+        end do ! j
       end do ! ilyr
-    end do ! icol
+    end do ! ie
+    !------------------------------------------------------
+    !------------------------------------------------------
+    
 
 #else /* PHYS_GRID_1x1_TEST */
 
@@ -324,6 +392,18 @@ CONTAINS
     call derived_phys(phys_state,phys_tend,pbuf2d)
     call t_stopf('derived_phys')
 
+
+    ! ! if (masterproc)
+    !   do lchnk=begchunk,endchunk
+    !     ncols=get_ncols_p(lchnk)
+    !     do icol = 1,ncols
+    !       do ilyr = 1,pver
+    !         write(*,*) 'd_p_coupling - pmid(',lchnk,',',icol,',',ilyr,'): ',phys_state(lchnk)%pmid(icol,ilyr)
+    !       end do ! ilyr
+    !     end do ! icol
+    !   end do ! lchnk
+    ! ! end if
+
 !$omp parallel do private (lchnk, ncols, ilyr, icol)
     do lchnk=begchunk,endchunk
       ncols=get_ncols_p(lchnk)
@@ -388,16 +468,20 @@ CONTAINS
     end if
 
 #if defined( PHYS_GRID_1x1_TEST )
-    do ie=1,nelemd
+
+    do ie = 1,nelemd
       lchnk = begchunk + ie-1
-      do ilyr=1,pver
-        elem(ie)%derived%FT(:,:,ilyr)     = phys_tend(lchnk)%dtdt(1,ilyr)
-        elem(ie)%derived%FM(:,:,1,ilyr)   = phys_tend(lchnk)%dudt(1,ilyr)
-        elem(ie)%derived%FM(:,:,2,ilyr)   = phys_tend(lchnk)%dudt(1,ilyr)
-        do m=1,pcnst
-          elem(ie)%derived%FQ(:,:,ilyr,m) = phys_state(lchnk)%q(1,ilyr,m)
-        end do
-      end do ! ilyr
+      ncols = get_ncols_p(lchnk)
+      do icol = 1,ncols
+        do ilyr = 1,pver
+          elem(ie)%derived%FT(:,:,ilyr)     = phys_tend(lchnk)%dtdt(icol,ilyr)
+          elem(ie)%derived%FM(:,:,1,ilyr)   = phys_tend(lchnk)%dudt(icol,ilyr)
+          elem(ie)%derived%FM(:,:,2,ilyr)   = phys_tend(lchnk)%dvdt(icol,ilyr)
+          do m=1,pcnst
+            elem(ie)%derived%FQ(:,:,ilyr,m) = phys_state(lchnk)%q(icol,ilyr,m)
+          end do
+        end do ! ilyr
+      end do ! icol
     end do ! ie
 
 #else /* PHYS_GRID_1x1_TEST */

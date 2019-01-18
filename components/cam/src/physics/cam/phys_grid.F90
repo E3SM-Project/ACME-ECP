@@ -339,7 +339,7 @@ contains
          get_block_owner_d, &
          get_gcol_block_d, get_gcol_block_cnt_d, &
 #if defined( PHYS_GRID_1x1_TEST )
-         get_horiz_grid_e, get_horiz_grid_dim_e, &
+         get_block_gcol_e, get_horiz_grid_e, get_horiz_grid_dim_e, &
 #endif
          get_horiz_grid_dim_d, get_horiz_grid_d, physgrid_copy_attributes_d
     use spmd_utils, only: pair, ceil2
@@ -688,9 +688,12 @@ contains
           endif
 #if defined( PHYS_GRID_1x1_TEST )
           max_ncols = 1
-#endif
+          ! fill cdex array with global indices from current block
+          call get_block_gcol_e(cid+firstblock-1,max_ncols,cdex)
+#else
           ! fill cdex array with global indices from current block
           call get_block_gcol_d(cid+firstblock-1,max_ncols,cdex)
+#endif /* PHYS_GRID_1x1_TEST */
 
           ncols = 0
           do i=1,max_ncols
@@ -1142,18 +1145,6 @@ contains
     call cam_grid_attribute_register('physgrid','area','physics grid areas','ncol', local_pe_area, map=coord_map)
     call cam_grid_attribute_register('physgrid','ne','',ne)
     call cam_grid_attribute_register('physgrid','pg','',1)
-    !----------------------------------------------------------------------------
-    ! In order to get output on the dynamics grid (GLL), we need to 
-    ! register a 3rd grid consisting of the unique GLL nodes.
-    !----------------------------------------------------------------------------
-    ! call cam_grid_register('gll_grid', phys_decomp, lat_coord, lon_coord,     &
-    !      grid_map, unstruct=unstructured, block_indexed=.true.)
-    ! !!! Copy required attributes from the dynamics array
-    ! nullify(copy_attributes)
-    ! call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
-    ! do i = 1, size(copy_attributes)
-    !   call cam_grid_attribute_copy(copy_gridname, 'gll_grid', copy_attributes(i))
-    ! end do
     !----------------------------------------------------------------------------
     !----------------------------------------------------------------------------
 #else /* PHYS_GRID_1x1_TEST */
