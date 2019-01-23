@@ -1375,6 +1375,7 @@ contains
 
     ! Local variables
     integer                                 :: gridid
+    character(len=120)                      :: errormsg
     gridid = get_cam_grid_index(id)
     if (gridid > 0) then
       if (.not. associated(cam_grids(gridid)%map)) then
@@ -1383,7 +1384,8 @@ contains
         call cam_grids(gridid)%map%array_bounds(dims)
       end if
     else
-      call endrun('cam_grid_get_array_bounds: Bad grid ID')
+      write(errormsg, *) 'cam_grid_get_array_bounds: Bad grid ID, id: ', id
+      call endrun(errormsg)
     end if
 
   end subroutine cam_grid_get_array_bounds

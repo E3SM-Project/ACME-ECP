@@ -301,6 +301,10 @@ end subroutine restart_printopts
       use filenames,        only: caseid, brnch_retain_casename
       use ref_pres,         only: ref_pres_init
 
+#if defined( PHYS_GRID_1x1_TEST )
+      use gll_grid_mod,     only: gll_grid_init 
+#endif /* PHYS_GRID_1x1_TEST */
+
 !
 !-----------------------------------------------------------------------
 !
@@ -397,6 +401,11 @@ end subroutine restart_printopts
    call read_restart_dynamics(File, dyn_in, dyn_out, NLFileName)   
 
    call phys_grid_init
+
+#if defined( PHYS_GRID_1x1_TEST )
+   if(masterproc) write(*,*) iam,'  Running gll_grid_init()'
+   call gll_grid_init( )
+#endif /* PHYS_GRID_1x1_TEST */
 
    call hub2atm_alloc( cam_in )
    call atm2hub_alloc( cam_out )

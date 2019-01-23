@@ -338,6 +338,21 @@ do
 done
 
 #----------------------------------------------------------------------
+# Print list of input files found from the query
+#----------------------------------------------------------------------
+
+echo ""
+echo "  input grids:"
+declare -i nfile=1
+until ((nfile>${#INGRID[*]})); do
+  echo "      ${INGRID[nfile]}"
+  nfile=nfile+1
+done
+echo ""
+# exit
+# stop
+
+#----------------------------------------------------------------------
 # Determine supported machine specific stuff
 #----------------------------------------------------------------------
 
@@ -394,7 +409,8 @@ case $hostname in
   ## edison
   edison* )
   .  /opt/modules/default/init/bash
-  module load ncl/6.1.1
+  # module load ncl/6.1.1
+  module load ncl
   module load nco
   if [ -z "$ESMFBIN_PATH" ]; then
      module use -a /project/projectdirs/ccsm1/modulefiles/edison
@@ -409,7 +425,8 @@ case $hostname in
      ESMFBIN_PATH=$ESMF_LIBDIR/../bin
   fi
   if [ -z "$MPIEXEC" ]; then
-    MPIEXEC="aprun -n $REGRID_PROC"
+    # MPIEXEC="aprun -n $REGRID_PROC"
+    MPIEXEC="srun -n $REGRID_PROC"
   fi
 
   ;;
@@ -443,11 +460,11 @@ if [ "$interactive" = "NO" ]; then
       echo "Set the environment variable: MPIEXEC"
       exit 1
    fi
-   if [ ! -x `which $MPIEXEC` ]; then
-      echo "The MPIEXEC pathname given is NOT an executable: $MPIEXEC"
-      echo "Set the environment variable: MPIEXEC or run in interactive mode without MPI"
-      exit 1
-   fi
+   # if [ ! -x `which $MPIEXEC` ]; then
+   #    echo "The MPIEXEC pathname given is NOT an executable: $MPIEXEC"
+   #    echo "Set the environment variable: MPIEXEC or run in interactive mode without MPI"
+   #    exit 1
+   # fi
    mpirun=$MPIEXEC
    echo "Running in batch mode"
 else
@@ -463,7 +480,7 @@ if [ ! -x "$ESMF_REGRID" ]; then
 fi
 
 # Remove previous log files
-rm PET*.Log
+# rm PET*.Log
 
 #
 # Now run the mapping for each file, checking that input files exist
@@ -511,13 +528,20 @@ until ((nfile>${#INGRID[*]})); do
       echo "Skipping creation of ${OUTFILE[nfile]} as already exists"
    else
 
-      cmd="$mpirun $ESMF_REGRID --ignore_unmapped -s ${INGRID[nfile]} "
-      cmd="$cmd -d $GRIDFILE -m conserve -w ${OUTFILE[nfile]}"
+      cmd="$mpirun $ESMF_REGRID  "
+      cmd="$cmd --ignore_unmapped  "
+      cmd="$cmd --source ${INGRID[nfile]} "
+      cmd="$cmd --destination $GRIDFILE "
+      cmd="$cmd --method conserve"
+      cmd="$cmd --weight ${OUTFILE[nfile]}"
       if [ $type = "regional" ]; then
         cmd="$cmd --dst_regional"
       fi
 
-      cmd="$cmd --src_type ${SRC_TYPE[nfile]} ${SRC_EXTRA_ARGS[nfile]} --dst_type $DST_TYPE $DST_EXTRA_ARGS"
+      cmd="$cmd --src_type ${SRC_TYPE[nfile]}"
+      cmd="$cmd --dst_type $DST_TYPE "
+      cmd="$cmd  ${SRC_EXTRA_ARGS[nfile]} "
+      cmd="$cmd  $DST_EXTRA_ARGS"
       cmd="$cmd $lrgfil"
 
       runcmd $cmd
