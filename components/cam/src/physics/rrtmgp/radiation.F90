@@ -1525,6 +1525,15 @@ contains
                qrl = 0
                qrlc = 0
 
+               ! Calculate clearsky fluxes (only once); note that allsky fluxes
+               ! and heating rates using the "col" version as a dummy variable
+               call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
+                                        fluxes_allsky_col, fluxes_clrsky,          &
+                                        qrl_col, qrlc,                             &
+                                        do_clrsky=.true., do_allsky=.false.        )
+
+               ! Loop over CRM columns to update optics and calculate allsky
+               ! fluxes from each column, and aggregate the results
                number_crm_columns = crm_nx_rad * crm_ny_rad
                do crm_iy = 1,crm_ny_rad
                   do crm_ix = 1,crm_nx_rad
@@ -1536,13 +1545,14 @@ contains
 
                      ! Call the longwave radiation driver to calculate fluxes and heating rates
                      call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                              fluxes_allsky_col, fluxes_clrsky_col, qrl_col, qrlc_col)
+                                              fluxes_allsky_col, fluxes_clrsky_col,      &
+                                              qrl_col, qrlc_col,                         &
+                                              do_clrsky=.false., do_allsky=.true.        )
+                                             
 
                      ! Aggregate means
                      call aggregate_flux_averages(number_crm_columns, fluxes_allsky_col, fluxes_allsky)
-                     call aggregate_flux_averages(number_crm_columns, fluxes_clrsky_col, fluxes_clrsky)
                      qrl  = qrl  + qrl_col  / number_crm_columns
-                     qrlc = qrlc + qrlc_col / number_crm_columns
 
                      ! Save CRM heating
                      if (use_SPCAM) then
@@ -2075,7 +2085,7 @@ contains
 
    subroutine radiation_driver_lw(icall, state_in, pbuf, cam_in, is_cmip6_volc, &
                                   fluxes_allsky, fluxes_clrsky, &
-                                  qrl, qrlc)
+                                  qrl, qrlc, do_clrsky, do_allsky)
     
       use rad_constituents, only: N_DIAG, rad_cnst_get_call_list
       use perf_mod, only: t_startf, t_stopf
@@ -2106,6 +2116,7 @@ contains
       type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
       real(r8), intent(inout) :: qrl(:,:), qrlc(:,:)
       logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false 
+      logical,  intent(in)    :: do_clrsky, do_allsky
 
       ! Make a temporary copy of state to modify here since (for now) all the
       ! optics and gas routines take state objects that we want populated with
@@ -2230,28 +2241,34 @@ contains
       ! Determine vertical level ordering (top to bottom or bottom to top)
       top_at_1 = (pmid(1,1) < pmid(1,nlev_rad))
 
-      ! Do clearsky (gas + aerosol)
-      call t_startf('rad_clrsky_lw')
+      ! Add gas and aerosol to combined optics
       call handle_error(gas_optics%increment(combined_optics))
       call handle_error(aerosol_optics_lw%increment(combined_optics))
-      call handle_error(rte_lw(combined_optics, top_at_1, source_function, &
-                               surface_emissivity(1:nlwbands,1:ncol), fluxes_clrsky,          &
-                               n_gauss_angles=1))
-      call t_stopf('rad_clrsky_lw')
+
+      ! Do clearsky (gas + aerosol)
+      if (do_clrsky) then
+         call t_startf('rad_clrsky_lw')
+         call handle_error(rte_lw(combined_optics, top_at_1, source_function, &
+                                  surface_emissivity(1:nlwbands,1:ncol), fluxes_clrsky,          &
+                                  n_gauss_angles=1))
+         call t_stopf('rad_clrsky_lw')
+      end if
 
       ! Do allsky (gas + aerosol + clouds)
-      call t_startf('rad_allsky_lw')
-      call handle_error(cloud_optics_lw%increment(combined_optics))
-      call handle_error(rte_lw(combined_optics, top_at_1, source_function, &
-                               surface_emissivity(1:nlwbands,1:ncol), fluxes_allsky,          &
-                               n_gauss_angles=1))
-      call t_stopf('rad_allsky_lw')
+      if (do_allsky) then
+         call t_startf('rad_allsky_lw')
+         call handle_error(cloud_optics_lw%increment(combined_optics))
+         call handle_error(rte_lw(combined_optics, top_at_1, source_function, &
+                                  surface_emissivity(1:nlwbands,1:ncol), fluxes_allsky,          &
+                                  n_gauss_angles=1))
+         call t_stopf('rad_allsky_lw')
+      end if
 
       ! Calculate heating rates
-      call calculate_heating_rate(fluxes_allsky, pint(1:ncol,1:nlev_rad+1), &
-                                  qrl_rad(1:ncol,1:nlev_rad))
-      call calculate_heating_rate(fluxes_clrsky, pint(1:ncol,1:nlev_rad+1), &
-                                  qrlc_rad(1:ncol,1:nlev_rad))
+      if (do_allsky) call calculate_heating_rate(fluxes_allsky, pint(1:ncol,1:nlev_rad+1), &
+                                                 qrl_rad(1:ncol,1:nlev_rad))
+      if (do_clrsky) call calculate_heating_rate(fluxes_clrsky, pint(1:ncol,1:nlev_rad+1), &
+                                                 qrlc_rad(1:ncol,1:nlev_rad))
 
       ! Map heating rates to CAM columns and levels
       qrl(1:ncol,1:pver) = qrl_rad(1:ncol,ktop:kbot)
