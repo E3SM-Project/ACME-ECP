@@ -1423,6 +1423,12 @@ contains
                qrs = 0
                qrsc = 0
 
+               ! Call driver to calculate clearsky fluxes
+               call radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
+                                        fluxes_allsky_col, fluxes_clrsky, &
+                                        qrs_col, qrsc, &
+                                        do_clrsky=.true., do_allsky=.false.)
+
                number_crm_columns = crm_nx_rad * crm_ny_rad
                do crm_iy = 1,crm_ny_rad
                   do crm_ix = 1,crm_nx_rad
@@ -1440,13 +1446,14 @@ contains
                      ! Call the shortwave radiation driver; do separately for
                      ! allsky and clearsky?
                      call radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                              fluxes_allsky_col, fluxes_clrsky_col, qrs_col, qrsc_col)
+                                              fluxes_allsky_col, fluxes_clrsky_col, &
+                                              qrs_col, qrsc_col, &
+                                              do_clrsky=.false., do_allsky=.true.)
+                                          
 
                      ! Aggregate means
                      call aggregate_flux_averages(number_crm_columns, fluxes_allsky_col, fluxes_allsky)
-                     call aggregate_flux_averages(number_crm_columns, fluxes_clrsky_col, fluxes_clrsky)
                      qrs  = qrs  + qrs_col  / number_crm_columns
-                     qrsc = qrsc + qrsc_col / number_crm_columns
 
                      ! Save CRM heating
                      if (use_SPCAM) then
@@ -1772,7 +1779,8 @@ contains
    !----------------------------------------------------------------------------
 
    subroutine radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                  fluxes_allsky, fluxes_clrsky, qrs, qrsc)
+                                  fluxes_allsky, fluxes_clrsky, qrs, qrsc,   &
+                                  do_clrsky, do_allsky                       )
      
       use perf_mod, only: t_startf, t_stopf
       use cam_history, only: outfld
@@ -1796,6 +1804,7 @@ contains
       type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
       real(r8), intent(inout) :: qrs(:,:), qrsc(:,:)
       logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false 
+      logical, intent (in) :: do_clrsky, do_allsky
 
       ! Temporary fluxes compressed to daytime only arrays
       type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day
@@ -2001,46 +2010,50 @@ contains
                                  aerosol_optics)
       call t_stopf('rad_aerosol_optics_sw')
 
-      ! Clearsky fluxes; gases + aerosol
-      call t_startf('rte_sw_clrsky') 
-      !call handle_error(combined_optics%alloc_2str(nday, nlev_rad, k_dist_sw))
-      !call handle_error(gas_optics%increment(combined_optics))
+      ! Add aerosol to combined optics
       call handle_error(aerosol_optics%increment(combined_optics))
-      call handle_error(rte_sw(combined_optics   , top_at_1                   , &
-                               coszrs_day(1:nday), toa_flux(1:nday,1:nswgpts) , &
-                               albedo_direct_day(1:nswbands,1:nday)           , &
-                               albedo_diffuse_day(1:nswbands,1:nday)          , &
-                               fluxes_clrsky_day                                ))
-      call t_stopf('rte_sw_clrsky')
+
+      ! Clearsky fluxes; gases + aerosol
+      if (do_clrsky) then
+         call t_startf('rte_sw_clrsky') 
+         call handle_error(rte_sw(combined_optics   , top_at_1                   , &
+                                  coszrs_day(1:nday), toa_flux(1:nday,1:nswgpts) , &
+                                  albedo_direct_day(1:nswbands,1:nday)           , &
+                                  albedo_diffuse_day(1:nswbands,1:nday)          , &
+                                  fluxes_clrsky_day                                ))
+         call t_stopf('rte_sw_clrsky')
+      end if
 
       ! Allsky fluxes; gases + aerosol + clouds
-      call t_startf('rte_sw_allsky')
-      call handle_error(cloud_optics%increment(combined_optics))
-      call handle_error(rte_sw(combined_optics   , top_at_1                   , &
-                               coszrs_day(1:nday), toa_flux(1:nday,1:nswgpts) , &
-                               albedo_direct_day(1:nswbands,1:nday)           , &
-                               albedo_diffuse_day(1:nswbands,1:nday)          , &
-                               fluxes_allsky_day                                ))
-      call t_stopf('rte_sw_allsky')
+      if (do_allsky) then
+         call t_startf('rte_sw_allsky')
+         call handle_error(cloud_optics%increment(combined_optics))
+         call handle_error(rte_sw(combined_optics   , top_at_1                   , &
+                                  coszrs_day(1:nday), toa_flux(1:nday,1:nswgpts) , &
+                                  albedo_direct_day(1:nswbands,1:nday)           , &
+                                  albedo_diffuse_day(1:nswbands,1:nday)          , &
+                                  fluxes_allsky_day                                ))
+         call t_stopf('rte_sw_allsky')
+      end if
 
       ! Calculate heating rates on the DAYTIME columns
       call t_startf('rad_heating_rate_sw')
-      call calculate_heating_rate(fluxes_allsky_day, pint(1:nday,1:nlev_rad+1), &
-                                  qrs_rad(1:nday,1:nlev_rad))
-      call calculate_heating_rate(fluxes_clrsky_day, pint(1:nday,1:nlev_rad+1), &
-                                  qrsc_rad(1:nday,1:nlev_rad))
+      if (do_allsky) call calculate_heating_rate(fluxes_allsky_day, pint(1:nday,1:nlev_rad+1), &
+                                                 qrs_rad(1:nday,1:nlev_rad))
+      if (do_clrsky) call calculate_heating_rate(fluxes_clrsky_day, pint(1:nday,1:nlev_rad+1), &
+                                                 qrsc_rad(1:nday,1:nlev_rad))
       call t_stopf('rad_heating_rate_sw')
 
       ! Expand fluxes from daytime-only arrays to full chunk arrays
       call t_startf('rad_expand_fluxes_sw')
-      call expand_day_fluxes(fluxes_allsky_day, fluxes_allsky, day_indices(1:nday))
-      call expand_day_fluxes(fluxes_clrsky_day, fluxes_clrsky, day_indices(1:nday))
+      if (do_allsky) call expand_day_fluxes(fluxes_allsky_day, fluxes_allsky, day_indices(1:nday))
+      if (do_clrsky) call expand_day_fluxes(fluxes_clrsky_day, fluxes_clrsky, day_indices(1:nday))
       call t_stopf('rad_expand_fluxes_sw')
 
       ! Expand heating rates to all columns and map back to CAM levels
       call t_startf('rad_expand_heating_rate_sw')
-      call expand_day_columns(qrs_rad(1:nday,ktop:kbot), qrs(1:ncol,1:pver), day_indices(1:nday))
-      call expand_day_columns(qrsc_rad(1:nday,ktop:kbot), qrsc(1:ncol,1:pver), day_indices(1:nday))
+      if (do_allsky) call expand_day_columns(qrs_rad(1:nday,ktop:kbot), qrs(1:ncol,1:pver), day_indices(1:nday))
+      if (do_clrsky) call expand_day_columns(qrsc_rad(1:nday,ktop:kbot), qrsc(1:ncol,1:pver), day_indices(1:nday))
       call t_stopf('rad_expand_heating_rate_sw')
 
       ! Free optical properties
@@ -2074,9 +2087,11 @@ contains
       use phys_control, only: phys_getopts
       use constituents, only: cnst_get_ind
       use camsrfexch, only: cam_in_t
-      use mo_rrtmgp_clr_all_sky, only: rte_lw
+      !use mo_rrtmgp_clr_all_sky, only: rte_lw
+      use mo_rte_lw, only: rte_lw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
+      use mo_source_functions, only: ty_source_func_lw
       use mo_gas_concentrations, only: ty_gas_concs
       use radiation_state, only: set_rad_state
       use radiation_utils, only: calculate_heating_rate, clip_values
@@ -2114,8 +2129,11 @@ contains
 
       ! RRTMGP types
       type(ty_gas_concs) :: gas_concentrations
+      type(ty_optical_props_1scl) :: gas_optics
       type(ty_optical_props_1scl) :: aerosol_optics_lw
       type(ty_optical_props_1scl) :: cloud_optics_lw
+      type(ty_optical_props_1scl) :: combined_optics
+      type(ty_source_func_lw) :: source_function
 
       ! Indices
       integer :: ncol, crm_ix, crm_iy, crm_iz, gcm_iz
@@ -2123,6 +2141,8 @@ contains
       logical :: use_SPCAM
       real(r8), pointer, dimension(:,:,:,:) :: crm_temperature, crm_qv, crm_qc, crm_qi
       integer :: ixcldliq, ixcldice
+
+      logical :: top_at_1
 
       ! Make a copy of state
       call physics_state_copy(state_in, state)
@@ -2183,25 +2203,49 @@ contains
       call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
       call t_stopf('rad_gas_concentrations_lw')
 
+      ! Calculate gas optics; NOTE: this probably only needs to be done ONCE
+      ! each timestep, not repeated for each CRM column, but we should evaluate
+      ! this separately; it will need to be repeated for every CRM column if the
+      ! water vapor/temperature is different enough from column to column that
+      ! neglecting the CRM variability impacts the heating.
+      call t_startf('longwave gas optics')
+      call handle_error(source_function%init(k_dist_lw))
+      call handle_error(source_function%alloc(ncol, nlev_rad))
+      call handle_error(gas_optics%alloc_1scl(ncol, nlev_rad, k_dist_lw))
+      call handle_error(k_dist_lw%gas_optics(pmid(1:ncol,1:nlev_rad)   , pint(1:ncol,1:nlev_rad+1), &
+                                             tmid(1:ncol,1:nlev_rad)   , tint(1:ncol,nlev_rad+1)  , &
+                                             gas_concentrations        , gas_optics               , &
+                                             source_function           , tlev=tint(1:ncol,1:nlev_rad+1)))
+      call t_stopf('longwave gas optics')
+
       ! Get longwave aerosol optics
       call t_startf('rad_aerosol_optics_lw')
       call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aerosol_optics_lw)
       call t_stopf('rad_aerosol_optics_lw')
 
-      ! Do longwave radiative transfer calculations
-      call t_startf('rad_calculations_lw')
-      call handle_error(rte_lw( &
-         k_dist_lw, gas_concentrations, &
-         pmid(1:ncol,1:nlev_rad), tmid(1:ncol,1:nlev_rad), &
-         pint(1:ncol,1:nlev_rad+1), tint(1:ncol,nlev_rad+1), &
-         surface_emissivity(1:nlwbands,1:ncol), &
-         cloud_optics_lw, &
-         fluxes_allsky, fluxes_clrsky, &
-         aer_props=aerosol_optics_lw, &
-         t_lev=tint(1:ncol,1:nlev_rad+1), &
-         n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
-      ))
-      call t_stopf('rad_calculations_lw')
+      ! Initialize combined optics
+      call handle_error(combined_optics%alloc_1scl(ncol, nlev_rad, k_dist_lw))
+      combined_optics%tau = 0
+
+      ! Determine vertical level ordering (top to bottom or bottom to top)
+      top_at_1 = (pmid(1,1) < pmid(1,nlev_rad))
+
+      ! Do clearsky (gas + aerosol)
+      call t_startf('rad_clrsky_lw')
+      call handle_error(gas_optics%increment(combined_optics))
+      call handle_error(aerosol_optics_lw%increment(combined_optics))
+      call handle_error(rte_lw(combined_optics, top_at_1, source_function, &
+                               surface_emissivity(1:nlwbands,1:ncol), fluxes_clrsky,          &
+                               n_gauss_angles=1))
+      call t_stopf('rad_clrsky_lw')
+
+      ! Do allsky (gas + aerosol + clouds)
+      call t_startf('rad_allsky_lw')
+      call handle_error(cloud_optics_lw%increment(combined_optics))
+      call handle_error(rte_lw(combined_optics, top_at_1, source_function, &
+                               surface_emissivity(1:nlwbands,1:ncol), fluxes_allsky,          &
+                               n_gauss_angles=1))
+      call t_stopf('rad_allsky_lw')
 
       ! Calculate heating rates
       call calculate_heating_rate(fluxes_allsky, pint(1:ncol,1:nlev_rad+1), &
