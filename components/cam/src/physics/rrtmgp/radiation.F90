@@ -1437,7 +1437,8 @@ contains
                         call overwrite_state_with_crm()
                      end if
 
-                     ! Call the shortwave radiation driver
+                     ! Call the shortwave radiation driver; do separately for
+                     ! allsky and clearsky?
                      call radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
                                               fluxes_allsky_col, fluxes_clrsky_col, qrs_col, qrsc_col)
 
@@ -1779,7 +1780,7 @@ contains
       use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
                                 pbuf_get_index
       use camsrfexch, only: cam_in_t
-      use mo_rrtmgp_clr_all_sky, only: rte_sw
+      use mo_rte_sw, only: rte_sw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_concentrations, only: ty_gas_concs
@@ -1807,7 +1808,7 @@ contains
       real(r8) :: albedo_diffuse(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
 
       ! Cloud and aerosol optics
-      type(ty_optical_props_2str) :: aerosol_optics_sw, cloud_optics_sw
+      type(ty_optical_props_2str) :: gas_optics, combined_optics, aerosol_optics, cloud_optics
 
       ! Gas concentrations
       type(ty_gas_concs) :: gas_concentrations
@@ -1844,6 +1845,11 @@ contains
       real(r8), dimension(pcols,nlev_rad) :: tmid, pmid
       real(r8), dimension(pcols,nlev_rad+1) :: pint, tint
 
+      real(r8), allocatable :: toa_flux(:,:)
+
+      ! Logical flag to tell RRTMGP if the first lev index is TOA or SFC
+      logical :: top_at_1
+
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_sw'
 
@@ -1857,9 +1863,6 @@ contains
 
       ! Send values for this chunk to history buffer
       call outfld('COSZRS', coszrs(1:ncol), ncol, state%lchnk)
-
-      ! Get orbital eccentricity factor to scale total sky irradiance
-      tsi_scaling = get_eccentricity_factor()
 
       ! If the swrad_off flag is set, meaning we should not do SW radiation, then 
       ! we just set coszrs to zero everywhere. TODO: why not just set dosw false 
@@ -1876,8 +1879,8 @@ contains
 
       ! If all columns in chunk are night columns, then we zero out the fluxes
       ! and heating rates and immediately return, because RRTMGP will choke if
-      ! encounters coszrs <= 0 for any columns, and allocation routines will die
-      ! if nday == 0.
+      ! coszrs <= 0 for any columns, and allocation routines will die if
+      ! nday == 0.
       if (nday <= 0) then
          qrs = 0
          qrsc = 0
@@ -1925,38 +1928,11 @@ contains
                          col_indices=day_indices(1:nday))
 
       ! Make sure temperatures are within range
-      call clip_values(tmid, k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tmid', warn=.true.)
-      call clip_values(tint, k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tint', warn=.true.)
+      call clip_values(tmid(1:nday,1:nlev_rad), k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tmid', warn=.true.)
+      call clip_values(tint(1:nday,1:nlev_rad+1), k_dist_sw%get_temp_ref_min(), k_dist_sw%get_temp_ref_max(), varname='tint', warn=.true.)
 
-      ! Do shortwave cloud optics calculations
-      ! TODO: refactor the set_cloud_optics codes to allow passing arrays
-      ! rather than state/pbuf so that we can use this for superparameterized
-      ! simulations...or alternatively add logic within the set_cloud_optics
-      ! routines to handle this.
-      call t_startf('shortwave cloud optics')
-      call set_cloud_optics_sw(state, pbuf, &
-                               day_indices(1:nday), &
-                               k_dist_sw, cloud_optics_sw)
-      call t_stopf('shortwave cloud optics')
-
-      ! Initialize aerosol optics; passing only the wavenumber bounds for each
-      ! "band" rather than passing the full spectral discretization object, and
-      ! omitting the "g-point" mapping forces the optics to be indexed and
-      ! stored by band rather than by g-point. This is most consistent with our
-      ! treatment of aerosol optics in the model, and prevents us from having to
-      ! map bands to g-points ourselves since that will all be handled by the
-      ! private routines internal to the optics class.
-      call handle_error(aerosol_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber()))
-      call aerosol_optics_sw%set_name('shortwave aerosol optics')
-
-      ! Get shortwave aerosol optics
-      call t_startf('rad_aerosol_optics_sw')
-      call set_aerosol_optics_sw(icall, state, pbuf, &
-                                 day_indices(1:nday), &
-                                 night_indices(1:nnight), &
-                                 is_cmip6_volc, &
-                                 aerosol_optics_sw)
-      call t_stopf('rad_aerosol_optics_sw')
+      ! Determine vertical level ordering (top to bottom or bottom to top)
+      top_at_1 = (pmid(1,1) < pmid(1,nlev_rad))
 
       ! Set gas concentrations (I believe the gases may change for
       ! different values of icall, which is why we do this within the
@@ -1967,20 +1943,85 @@ contains
                                   day_indices=day_indices(1:nday))
       call t_stopf('rad_gas_concentrations_sw')
 
-      ! Do shortwave radiative transfer calculations
-      call t_startf('rad_calculations_sw')
-      call handle_error(rte_sw(k_dist_sw, gas_concentrations, &
-                               pmid(1:nday,1:nlev_rad), &
-                               tmid(1:nday,1:nlev_rad), &
-                               pint(1:nday,1:nlev_rad+1), &
-                               coszrs_day(1:nday), &
-                               albedo_direct_day(1:nswbands,1:nday), &
-                               albedo_diffuse_day(1:nswbands,1:nday), &
-                               cloud_optics_sw, &
-                               fluxes_allsky_day, fluxes_clrsky_day, &
-                               aer_props=aerosol_optics_sw, &
-                               tsi_scaling=tsi_scaling))
-      call t_stopf('rad_calculations_sw')
+      allocate(toa_flux(nday, nswgpts))
+
+      ! Calculate gas optics; NOTE: this probably only needs to be done ONCE
+      ! each timestep, not repeated for each CRM column, but we should evaluate
+      ! this separately; it will need to be repeated for every CRM column if the
+      ! water vapor/temperature is different enough from column to column that
+      ! neglecting the CRM variability impacts the heating.
+      call t_startf('shortwave gas optics')
+      call handle_error(gas_optics%init(k_dist_sw%get_band_lims_wavenumber(), &
+                                             k_dist_sw%get_band_lims_gpoint(), name='gas_optics'    ))
+      call handle_error(gas_optics%alloc_2str(nday, nlev_rad))
+      call handle_error(k_dist_sw%gas_optics(pmid(1:nday,1:nlev_rad), pint(1:nday,1:nlev_rad+1), &
+                                             tmid(1:nday,1:nlev_rad), gas_concentrations       , &
+                                             gas_optics, toa_flux(1:nday,1:nswgpts)             ))
+      call t_stopf('shortwave gas optics')
+
+      ! Allocate and increment combined optics
+      call handle_error(combined_optics%init(k_dist_sw%get_band_lims_wavenumber(), &
+                                             k_dist_sw%get_band_lims_gpoint(), name='combined_optics'))
+      call handle_error(combined_optics%alloc_2str(nday, nlev_rad))
+      combined_optics%tau = 0 ! gas_optics%tau
+      combined_optics%ssa = 0 ! gas_optics%ssa
+      combined_optics%g = 0
+      call handle_error(gas_optics%increment(combined_optics))
+
+      ! Scale total sky irradiance by orbital eccentricity factor
+      tsi_scaling = get_eccentricity_factor()
+      toa_flux(:,:) = tsi_scaling * toa_flux(:,:)
+
+      ! Do shortwave cloud optics calculations
+      ! TODO: refactor the set_cloud_optics codes to allow passing arrays
+      ! rather than state/pbuf so that we can use this for superparameterized
+      ! simulations...or alternatively add logic within the set_cloud_optics
+      ! routines to handle this.
+      call t_startf('shortwave cloud optics')
+      call set_cloud_optics_sw(state, pbuf,              &
+                               day_indices(1:nday),      &
+                               k_dist_sw, cloud_optics)
+      call t_stopf('shortwave cloud optics')
+
+      ! Get shortwave aerosol optics
+      ! Initialize aerosol optics; passing only the wavenumber bounds for each
+      ! "band" rather than passing the full spectral discretization object, and
+      ! omitting the "g-point" mapping forces the optics to be indexed and
+      ! stored by band rather than by g-point. This is most consistent with our
+      ! treatment of aerosol optics in the model, and prevents us from having to
+      ! map bands to g-points ourselves since that will all be handled by the
+      ! private routines internal to the optics class.
+      call t_startf('rad_aerosol_optics_sw')
+      call handle_error(aerosol_optics%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber()))
+      call aerosol_optics%set_name('shortwave aerosol optics')
+      call set_aerosol_optics_sw(icall, state, pbuf, &
+                                 day_indices(1:nday), &
+                                 night_indices(1:nnight), &
+                                 is_cmip6_volc, &
+                                 aerosol_optics)
+      call t_stopf('rad_aerosol_optics_sw')
+
+      ! Clearsky fluxes; gases + aerosol
+      call t_startf('rte_sw_clrsky') 
+      !call handle_error(combined_optics%alloc_2str(nday, nlev_rad, k_dist_sw))
+      !call handle_error(gas_optics%increment(combined_optics))
+      call handle_error(aerosol_optics%increment(combined_optics))
+      call handle_error(rte_sw(combined_optics   , top_at_1                   , &
+                               coszrs_day(1:nday), toa_flux(1:nday,1:nswgpts) , &
+                               albedo_direct_day(1:nswbands,1:nday)           , &
+                               albedo_diffuse_day(1:nswbands,1:nday)          , &
+                               fluxes_clrsky_day                                ))
+      call t_stopf('rte_sw_clrsky')
+
+      ! Allsky fluxes; gases + aerosol + clouds
+      call t_startf('rte_sw_allsky')
+      call handle_error(cloud_optics%increment(combined_optics))
+      call handle_error(rte_sw(combined_optics   , top_at_1                   , &
+                               coszrs_day(1:nday), toa_flux(1:nday,1:nswgpts) , &
+                               albedo_direct_day(1:nswbands,1:nday)           , &
+                               albedo_diffuse_day(1:nswbands,1:nday)          , &
+                               fluxes_allsky_day                                ))
+      call t_stopf('rte_sw_allsky')
 
       ! Calculate heating rates on the DAYTIME columns
       call t_startf('rad_heating_rate_sw')
@@ -2003,12 +2044,17 @@ contains
       call t_stopf('rad_expand_heating_rate_sw')
 
       ! Free optical properties
-      call free_optics_sw(cloud_optics_sw)
-      call free_optics_sw(aerosol_optics_sw)
+      call free_optics_sw(combined_optics)
+      call free_optics_sw(gas_optics)
+      call free_optics_sw(cloud_optics)
+      call free_optics_sw(aerosol_optics)
 
       ! Free fluxes
       call free_fluxes(fluxes_allsky_day)
       call free_fluxes(fluxes_clrsky_day)
+
+      ! Free memory allocated for total sky irradiance
+      deallocate(toa_flux)
 
    end subroutine radiation_driver_sw
 
@@ -2112,8 +2158,8 @@ contains
                          pint(1:ncol,1:nlev_rad+1))
 
       ! Make sure temperatures are within range
-      call clip_values(tmid, k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tmid', warn=.true.)
-      call clip_values(tint, k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tint', warn=.true.)
+      call clip_values(tmid(1:ncol,1:nlev_rad), k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tmid', warn=.true.)
+      call clip_values(tint(1:ncol,1:nlev_rad+1), k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tint', warn=.true.)
 
       ! Do longwave cloud optics calculations
       call t_startf('longwave cloud optics')
