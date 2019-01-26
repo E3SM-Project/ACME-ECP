@@ -1140,8 +1140,7 @@ contains
       ! used?
       logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false 
 
-      ! These are not used anymore and exist only because the radiation call is
-      ! inflexible
+      ! Used for single-moment microphysics call to cldefr
       real(r8), intent(in)    :: landfrac(pcols)  ! land fraction
       real(r8), intent(in)    :: landm(pcols)     ! land fraction ramp
       real(r8), intent(in)    :: icefrac(pcols)   ! land fraction
@@ -1192,8 +1191,6 @@ contains
       ! Whether or not we are doing SP-CAM
       logical :: use_SPCAM
       character(len=16) :: SPCAM_microp_scheme
-
-      logical :: use_snow = .false.
 
       ! For SP, we need CRM-scale heating
       real(r8), allocatable :: crm_qrs(:,:,:,:), crm_qrl(:,:,:,:)
@@ -1326,16 +1323,6 @@ contains
          call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), cliqwp)
          call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), cicewp)
          call pbuf_get_field(pbuf, pbuf_get_index('ICSWP'), csnowp)
-
-         ! Save this stuff to restore at end of routine
-         allocate(cld_save(pcols,pver), cldfsnow_save(pcols,pver), &
-                  mu_save(pcols,pver), lambdac_save(pcols,pver), &
-                  des_save(pcols,pver), dei_save(pcols,pver), &
-                  rel_save(pcols,pver), rei_save(pcols,pver), &
-                  cliqwp_save(pcols,pver), cicewp_save(pcols,pver), &
-                  csnowp_save(pcols, pver))
-
-         ! TODO: I think we always have snow now
          ! Snow may or may not be present. The easy way to query this is to try
          ! to find the field in the pbuf. If errcode is passed as an optional
          ! argument, then this query will not crash the model if the index is
@@ -1344,39 +1331,29 @@ contains
          cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=errcode)
          if (cldfsnow_idx > 0) then
             call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow)
-            cldfsnow_save = cldfsnow
-            use_snow = .true.
          end if
 
-         ! Save water paths before modifying
-         cliqwp_save = cliqwp
-         cicewp_save = cicewp
-         csnowp_save = csnowp
-
-         ! Save cloud fraction
-         cld_save = cld
-
-         ! Save size distribution parameters before modifying in-place
-         mu_save = mu
-         lambdac_save = lambdac
-         des_save = des
-         dei_save = dei
-         rel_save = rel
-         rei_save = rei
-
+         ! Save this stuff to restore at end of routine
+         allocate(cld_save   (pcols,pver), cldfsnow_save(pcols,pver), &
+                  mu_save    (pcols,pver), lambdac_save (pcols,pver), &
+                  des_save   (pcols,pver), dei_save     (pcols,pver), &
+                  rel_save   (pcols,pver), rei_save     (pcols,pver), &
+                  cliqwp_save(pcols,pver), cicewp_save  (pcols,pver), &
+                  csnowp_save(pcols,pver)                             )
 #ifdef MODAL_AERO
-         call pbuf_get_field(pbuf, qaerwat_idx, qaerwat, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/))
-         call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/))
-
-         ! Save aerosol stuff
          allocate(qaerwat_save(pcols,pver,ntot_amode), dgnumwet(pcols,pver,ntot_amode))
-         qaerwat_save = qaerwat
-         dgnumwet_save = dgnumwet
-
-         ! Get CRM-scale aerosol pointers
-         call pbuf_get_field(pbuf, crm_qaerwat_idx, crm_qaerwat)
-         call pbuf_get_field(pbuf, crm_dgnumwet_idx, crm_dgnumwet)
+#else
+         allocate(qaerwat_save(1,1,1), dgnumwet(1,1,1))
 #endif
+         call save_pbuf_fields(pbuf        ,                &
+                               cld_save    , cldfsnow_save, &
+                               mu_save     , lambdac_save , &
+                               des_save    , dei_save     , &
+                               rel_save    , rei_save     , &
+                               cliqwp_save , cicewp_save  , &
+                               csnowp_save ,                &
+                               qaerwat_save, dgnumwet_save  )
+
       end if
 
       ! Temporary hack to get radiation to run at every timestep. This should be
@@ -1623,27 +1600,25 @@ contains
 
       ! Restore pbuf stuff for hackish solution to use cloud optics
       if (use_SPCAM) then
-         cld = cld_save
-         if (use_snow) cldfsnow = cldfsnow_save
-         lambdac = lambdac_save
-         mu = mu_save
-         des = des_save
-         dei = dei_save
-         rel = rel_save
-         rei = rei_save
-         cliqwp = cliqwp_save
-         cicewp = cicewp_save
-         csnowp = csnowp_save
+         call restore_pbuf_fields(pbuf        ,                &
+                                  cld_save    , cldfsnow_save, &
+                                  mu_save     , lambdac_save , &
+                                  des_save    , dei_save     , &
+                                  rel_save    , rei_save     , &
+                                  cliqwp_save , cicewp_save  , &
+                                  csnowp_save ,                &
+                                  qaerwat_save, dgnumwet_save  )
+
+
          deallocate(lambdac_save, mu_save, des_save, dei_save, rel_save, rei_save, &
                     cliqwp_save, cicewp_save, csnowp_save)
-#ifdef MODAL_AERO
-         qaerwat = qaerwat_save
-         dgnumwet = dgnumwet_save
-         deallocate(qaerwat_save, dgnumwet_save)
-#endif
+         if (allocated(qaerwat_save)) deallocate(qaerwat_save)
+         if (allocated(dgnumwet_save)) deallocate(dgnumwet_save)
       end if
 
    contains
+
+
       ! Modify copied state and pbuf to hold CRM variables so
       ! that we can use the CAM cloud and aerosol optics routines
       ! as-is. NOTE: this is kind of a hack, but consistent with
@@ -1663,6 +1638,34 @@ contains
          real(r8) :: total_cloud_water
          real(r8), parameter :: cloud_water_threshold = 1.e-9
          real(r8), parameter :: snow_water_threshold = 1.e-7
+
+         ! CRM fields used in this routine:
+         ! crm_temperature
+         ! crm_qv
+         ! crm_qc
+         ! crm_qi
+         ! crm_qs
+         ! crm_qaerwat
+         ! crm_dgnumwet
+         !
+         ! PBUF fields used in this routine
+         ! cld
+         ! cldfsnow
+         ! cliqwp
+         ! cicewp
+         ! csnowp
+         ! rel
+         ! rei
+         ! dei
+         ! des
+         ! lambdac
+         ! mu
+         !
+         ! intent(in)'s used in this routine
+         ! landfrac
+         ! icefrac
+         ! landm
+         ! snowh
 
          ! Overwrite state fields; temperature, humidity, and cloud water
          do crm_iz = 1,crm_nz
@@ -1785,6 +1788,167 @@ contains
       end subroutine overwrite_state_with_crm
 
    end subroutine radiation_tend
+
+   subroutine save_pbuf_fields(pbuf        ,                &
+                               cld_save    , cldfsnow_save, &
+                               mu_save     , lambdac_save , &
+                               des_save    , dei_save     , &
+                               rel_save    , rei_save     , &
+                               cliqwp_save , cicewp_save  , &
+                               csnowp_save ,                &
+                               qaerwat_save, dgnumwet_save  )
+
+      ! Utilities for interacting with the physics buffer
+      use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
+                                pbuf_get_index
+
+      type(physics_buffer_desc), pointer :: pbuf(:)
+      real(r8), intent(inout) :: cld_save   (:,:), cldfsnow_save(:,:), &
+                                 mu_save    (:,:), lambdac_save (:,:), &
+                                 des_save   (:,:), dei_save     (:,:), &
+                                 rel_save   (:,:), rei_save     (:,:), &
+                                 cliqwp_save(:,:), cicewp_save  (:,:), &
+                                 csnowp_save(:,:),                     &
+                                 qaerwat_save(:,:,:), dgnumwet_save(:,:,:)
+
+      ! Pointers for pbuf access
+      real(r8), pointer :: cld    (:,:), cldfsnow(:,:), &
+                           lambdac(:,:), mu      (:,:), &
+                           des    (:,:), dei     (:,:), &
+                           rel    (:,:), rei     (:,:), &
+                           cliqwp (:,:), cicewp  (:,:), &
+                           csnowp (:,:)
+
+      integer :: cldfsnow_idx, errcode
+
+
+      call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld)
+      call pbuf_get_field(pbuf, pbuf_get_index('LAMBDAC'), lambdac)
+      call pbuf_get_field(pbuf, pbuf_get_index('MU'), mu)
+      call pbuf_get_field(pbuf, pbuf_get_index('DES'), des)
+      call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
+      call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
+      call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), cliqwp)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), cicewp)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICSWP'), csnowp)
+
+      ! TODO: I think we always have snow now
+      ! Snow may or may not be present. The easy way to query this is to try
+      ! to find the field in the pbuf. If errcode is passed as an optional
+      ! argument, then this query will not crash the model if the index is
+      ! not found, but rather just exit and return the error code, along with
+      ! a pbuf index of -1.
+      cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=errcode)
+      if (cldfsnow_idx > 0) then
+         call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow)
+         cldfsnow_save = cldfsnow
+      end if
+
+      ! Save water paths before modifying
+      cliqwp_save = cliqwp
+      cicewp_save = cicewp
+      csnowp_save = csnowp
+
+      ! Save cloud fraction
+      cld_save = cld
+
+      ! Save size distribution parameters before modifying in-place
+      mu_save = mu
+      lambdac_save = lambdac
+      des_save = des
+      dei_save = dei
+      rel_save = rel
+      rei_save = rei
+
+#ifdef MODAL_AERO
+      call pbuf_get_field(pbuf, qaerwat_idx, qaerwat, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/))
+      call pbuf_get_field(pbuf, dgnumwet_idx, dgnumwet, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/))
+
+      ! Save aerosol stuff
+      qaerwat_save = qaerwat
+      dgnumwet_save = dgnumwet
+
+      ! Get CRM-scale aerosol pointers
+      call pbuf_get_field(pbuf, crm_qaerwat_idx, crm_qaerwat)
+      call pbuf_get_field(pbuf, crm_dgnumwet_idx, crm_dgnumwet)
+#endif
+   end subroutine save_pbuf_fields
+
+
+   subroutine restore_pbuf_fields(pbuf        ,                &
+                                  cld_save    , cldfsnow_save, &
+                                  mu_save     , lambdac_save , &
+                                  des_save    , dei_save     , &
+                                  rel_save    , rei_save     , &
+                                  cliqwp_save , cicewp_save  , &
+                                  csnowp_save ,                &
+                                  qaerwat_save, dgnumwet_save  )
+
+      ! Utilities for interacting with the physics buffer
+      use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
+                                pbuf_get_index
+
+      type(physics_buffer_desc), pointer :: pbuf(:)
+      real(r8), intent(in) :: cld_save   (:,:), cldfsnow_save(:,:), &
+                              mu_save    (:,:), lambdac_save (:,:), &
+                              des_save   (:,:), dei_save     (:,:), &
+                              rel_save   (:,:), rei_save     (:,:), &
+                              cliqwp_save(:,:), cicewp_save  (:,:), &
+                              csnowp_save(:,:),                     &
+                              qaerwat_save(:,:,:), dgnumwet_save(:,:,:)
+
+      ! Pointers for pbuf access
+      real(r8), pointer :: cld    (:,:), cldfsnow(:,:), &
+                           lambdac(:,:), mu      (:,:), &
+                           des    (:,:), dei     (:,:), &
+                           rel    (:,:), rei     (:,:), &
+                           cliqwp (:,:), cicewp  (:,:), &
+                           csnowp (:,:)
+
+      integer :: cldfsnow_idx, errcode
+
+      ! Snow may or may not be present. The easy way to query this is to try
+      ! to find the field in the pbuf. If errcode is passed as an optional
+      ! argument, then this query will not crash the model if the index is
+      ! not found, but rather just exit and return the error code, along with
+      ! a pbuf index of -1.
+      cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=errcode)
+      if (cldfsnow_idx > 0) then
+         call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow)
+         cldfsnow = cldfsnow_save
+      end if
+
+      ! Get pbuf fields (TODO: find indices at init time!)
+      call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld)
+      call pbuf_get_field(pbuf, pbuf_get_index('LAMBDAC'), lambdac)
+      call pbuf_get_field(pbuf, pbuf_get_index('MU'), mu)
+      call pbuf_get_field(pbuf, pbuf_get_index('DES'), des)
+      call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
+      call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
+      call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), cliqwp)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), cicewp)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICSWP'), csnowp)
+
+      ! Overwrite with saved fields
+      cld = cld_save
+      lambdac = lambdac_save
+      mu = mu_save
+      des = des_save
+      dei = dei_save
+      rel = rel_save
+      rei = rei_save
+      cliqwp = cliqwp_save
+      cicewp = cicewp_save
+      csnowp = csnowp_save
+#ifdef MODAL_AERO
+      qaerwat = qaerwat_save
+      dgnumwet = dgnumwet_save
+#endif
+
+   end subroutine restore_pbuf_fields
+
 
    !----------------------------------------------------------------------------
 
@@ -2192,11 +2356,6 @@ contains
       call clip_values(tmid(1:ncol,1:nlev_rad), k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tmid', warn=.true.)
       call clip_values(tint(1:ncol,1:nlev_rad+1), k_dist_lw%get_temp_ref_min(), k_dist_lw%get_temp_ref_max(), varname='tint', warn=.true.)
 
-      ! Do longwave cloud optics calculations
-      call t_startf('longwave cloud optics')
-      call set_cloud_optics_lw(state, pbuf, k_dist_lw, cloud_optics_lw)
-      call t_stopf('longwave cloud optics')
-
       ! Initialize aerosol optics; passing only the wavenumber bounds for each
       ! "band" rather than passing the full spectral discretization object, and
       ! omitting the "g-point" mapping forces the optics to be indexed and
@@ -2247,21 +2406,28 @@ contains
 
       ! Do clearsky (gas + aerosol)
       if (do_clrsky) then
-         call t_startf('rad_clrsky_lw')
+         call t_startf('rte_lw_clrsky')
          call handle_error(rte_lw(combined_optics, top_at_1, source_function, &
                                   surface_emissivity(1:nlwbands,1:ncol), fluxes_clrsky,          &
                                   n_gauss_angles=1))
-         call t_stopf('rad_clrsky_lw')
+         call t_stopf('rte_lw_clrsky')
       end if
 
       ! Do allsky (gas + aerosol + clouds)
       if (do_allsky) then
-         call t_startf('rad_allsky_lw')
+
+         ! Do longwave cloud optics calculations
+         call t_startf('longwave cloud optics')
+         call set_cloud_optics_lw(state, pbuf, k_dist_lw, cloud_optics_lw)
          call handle_error(cloud_optics_lw%increment(combined_optics))
+         call t_stopf('longwave cloud optics')
+
+         ! Do longwave flux calculations
+         call t_startf('rte_lw_allsky')
          call handle_error(rte_lw(combined_optics, top_at_1, source_function, &
                                   surface_emissivity(1:nlwbands,1:ncol), fluxes_allsky,          &
                                   n_gauss_angles=1))
-         call t_stopf('rad_allsky_lw')
+         call t_stopf('rte_lw_allsky')
       end if
 
       ! Calculate heating rates
