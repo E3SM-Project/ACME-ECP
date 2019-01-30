@@ -3,36 +3,43 @@ module crmsurface_mod
 
 contains
 
-  subroutine crmsurface(ncrms,icrm,bflx)
+  subroutine crmsurface(ncrms,bflx)
     use vars
     use params
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    real(crm_rknd), intent (in) :: bflx
-    real(crm_rknd) u_h0, tau00, tauxm, tauym
-    integer i,j
+    integer, intent(in) :: ncrms
+    real(crm_rknd), intent (in) :: bflx(ncrms)
+    real(crm_rknd) u_h0, tau00, tmp
+    integer i,j,icrm
 
     !--------------------------------------------------------
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
-      uhl(icrm) = uhl(icrm) + dtn*utend(1,icrm)
-      vhl(icrm) = vhl(icrm) + dtn*vtend(1,icrm)
-      tauxm = 0.
-      tauym = 0.
-      do j=1,ny
-        do i=1,nx
-          u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug)**2+ &
-          (0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg)**2))
-          tau00 = rho(1,icrm) * diag_ustar(z(1,icrm),bflx,u_h0,z0(icrm))**2
-          fluxbu(i,j,icrm) = -(0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug-uhl(icrm))/u_h0*tau00
-          fluxbv(i,j,icrm) = -(0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg-vhl(icrm))/u_h0*tau00
-          tauxm = tauxm + fluxbu(i,j,icrm)
-          tauym = tauym + fluxbv(i,j,icrm)
+      !$acc parallel loop copyin(vtend,utend) copy(uhl,tauy0,vhl,taux0) async(asyncid)
+      do icrm = 1 , ncrms
+        uhl(icrm) = uhl(icrm) + dtn*utend(1,icrm)
+        vhl(icrm) = vhl(icrm) + dtn*vtend(1,icrm)
+        taux0(icrm) = 0.
+        tauy0(icrm) = 0.
+      enddo
+      !$acc parallel loop collapse(3) copyin(rho,uhl,vhl,u,v,z0,bflx,z) copy(tauy0,fluxbv,fluxbu,taux0) async(asyncid)
+      do icrm = 1 , ncrms
+        do j=1,ny
+          do i=1,nx
+            u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug)**2+(0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg)**2))
+            tau00 = rho(1,icrm) * diag_ustar(z(1,icrm),bflx(icrm),u_h0,z0(icrm))**2
+            fluxbu(i,j,icrm) = -(0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug-uhl(icrm))/u_h0*tau00
+            fluxbv(i,j,icrm) = -(0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg-vhl(icrm))/u_h0*tau00
+            tmp = fluxbu(i,j,icrm)/dble(nx*ny)
+            !$acc atomic update
+            taux0(icrm) = taux0(icrm) + tmp
+            tmp = fluxbv(i,j,icrm)/dble(nx*ny)
+            !$acc atomic update
+            tauy0(icrm) = tauy0(icrm) + tmp
+          end do
         end do
-      end do
-      taux0(icrm) = taux0(icrm) + tauxm/dble(nx*ny)
-      tauy0(icrm) = tauy0(icrm) + tauym/dble(nx*ny)
+      enddo
     end if ! SFC_FLX_FXD
-  end
+  end subroutine crmsurface
 
   ! ----------------------------------------------------------------------
   !
@@ -59,6 +66,7 @@ contains
   ! so now used as reciprocal of obukhov length)
   real(crm_rknd) function diag_ustar(z,bflx,wnd,z0)
     use params, only: crm_rknd
+    !$acc routine seq
     implicit none
     real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
     real(crm_rknd), parameter      :: g    = 9.81   ! gravitational acceleration

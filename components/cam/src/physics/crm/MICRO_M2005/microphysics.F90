@@ -50,12 +50,13 @@ integer :: nmicro_fields ! total number of prognostic water vars
 
 real(crm_rknd), allocatable, dimension(:,:,:,:,:) :: micro_field  ! holds mphys quantities
 
-! indices of water quantities in micro_field, e.g. qv = micro_field(:,:,:,iqv,icrm)
+! indices of water quantities in micro_field, e.g. qv = micro_field(:,:,:,iqv)
 integer :: iqv, iqci, iqr, iqs, iqg, incl, inci, inr, ins, ing
 integer :: index_water_vapor ! separate water vapor index used by SAM
 
 real(crm_rknd), allocatable, dimension(:,:) :: lfac
-integer, allocatable, dimension(:,:) :: flag_wmass, flag_precip, flag_number
+integer, allocatable, dimension(:) :: flag_precip
+integer, allocatable, dimension(:,:) :: flag_wmass, flag_number
 integer, allocatable, dimension(:,:) :: flag_micro3Dout
 
 integer, parameter :: index_cloud_ice = -1 ! historical variable (don't change)
@@ -130,7 +131,7 @@ subroutine allocate_micro(ncrms)
   implicit none
   integer, intent(in) :: ncrms
   ! allocate microphysical variables
-  allocate(micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,nmicro_fields,ncrms))
+  allocate(micro_field(dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,ncrms,nmicro_fields))
   allocate(fluxbmk(nx,ny,nmicro_fields,ncrms))
   allocate(fluxtmk(nx,ny,nmicro_fields,ncrms))
   allocate(reffc(nx,ny,nzm,ncrms))
@@ -151,7 +152,7 @@ subroutine allocate_micro(ncrms)
   allocate(tmtend3d(nx,ny,nzm,ncrms))
   allocate(flag_micro3Dout(nmicro_fields,ncrms))
   allocate(flag_wmass(nmicro_fields,ncrms))
-  allocate(flag_precip(nmicro_fields,ncrms))
+  allocate(flag_precip(nmicro_fields))
   allocate(flag_number(nmicro_fields,ncrms))
   allocate(lfac(nmicro_fields,ncrms))
   allocate(mkname(nmicro_fields))
@@ -468,7 +469,7 @@ end subroutine micro_setparm
 !
 ! this one is guaranteed to be called by SAM at the
 !   beginning of each run, initial or restart:
-subroutine micro_init(ncrms,icrm)
+subroutine micro_init(ncrms)
 
   use vars
 #if (defined MODAL_AERO)
@@ -476,13 +477,15 @@ subroutine micro_init(ncrms,icrm)
 #endif
 
   implicit none
-  integer, intent(in) :: ncrms,icrm
+  integer, intent(in) :: ncrms
 
   real(crm_rknd), dimension(nzm) :: qc0, qi0
 
 ! Commented out by dschanen UWM 23 Nov 2009 to avoid a linking error
 ! real, external :: satadj_water
-  integer :: k
+  integer :: k,icrm
+
+  do icrm = 1 , ncrms
 
   ! initialize flag arrays
   if(dopredictNc) then
@@ -491,24 +494,24 @@ subroutine micro_init(ncrms,icrm)
         if(dograupel) then
           !bloss/qt: qt, Nc, qr, Nr, qi, Ni, qs, Ns, qg, Ng
            flag_wmass (:,icrm) = (/1,0,1,0,1,0,1,0,1,0/)
-           flag_precip(:,icrm) = (/0,0,1,1,0,0,1,1,1,1/)
+           flag_precip(:) = (/0,0,1,1,0,0,1,1,1,1/)
            flag_number(:,icrm) = (/0,1,0,1,0,1,0,1,0,1/)
         else
           !bloss/qt: qt, Nc, qr, Nr, qi, Ni, qs, Ns
            flag_wmass (:,icrm) = (/1,0,1,0,1,0,1,0/)
-           flag_precip(:,icrm) = (/0,0,1,1,0,0,1,1/)
+           flag_precip(:) = (/0,0,1,1,0,0,1,1/)
            flag_number(:,icrm) = (/0,1,0,1,0,1,0,1/)
         end if
      else
         if(doprecip) then
           !bloss/qt: qt, Nc, qr, Nr
            flag_wmass (:,icrm) = (/1,0,1,0/)
-           flag_precip(:,icrm) = (/0,0,1,1/)
+           flag_precip(:) = (/0,0,1,1/)
            flag_number(:,icrm) = (/0,1,0,1/)
         else
           !bloss/qt: qt, Nc
            flag_wmass (:,icrm) = (/1,0/)
-           flag_precip(:,icrm) = (/0,0/)
+           flag_precip(:) = (/0,0/)
            flag_number(:,icrm) = (/0,1/)
         end if
      end if
@@ -518,25 +521,25 @@ subroutine micro_init(ncrms,icrm)
         if(dograupel) then
           !bloss/qt: qt, qr, Nr, qi, Ni, qs, Ns, qg, Ng
            flag_wmass (:,icrm) = (/1,1,0,1,0,1,0,1,0/)
-           flag_precip(:,icrm) = (/0,1,1,0,0,1,1,1,1/)
+           flag_precip(:) = (/0,1,1,0,0,1,1,1,1/)
            flag_number(:,icrm) = (/0,0,1,0,1,0,1,0,1/)
         else
           !bloss/qt: qt, qr, Nr, qi, Ni, qs, Ns
            flag_wmass (:,icrm) = (/1,1,0,1,0,1,0/)
-           flag_precip(:,icrm) = (/0,1,1,0,0,1,1/)
+           flag_precip(:) = (/0,1,1,0,0,1,1/)
            flag_number(:,icrm) = (/0,0,1,0,1,0,1/)
         end if
      else
         if(doprecip) then
           !bloss/qt: qt, qr, Nr
            flag_wmass (:,icrm) = (/1,1,0/)
-           flag_precip(:,icrm) = (/0,1,1/)
+           flag_precip(:) = (/0,1,1/)
            flag_number(:,icrm) = (/0,0,1/)
         else
           !bloss/qt: only total water variable is needed for no-precip,
           !            fixed droplet number, warm cloud and no cloud simulations.
            flag_wmass (:,icrm) = (/1/)
-           flag_precip(:,icrm) = (/0/)
+           flag_precip(:) = (/0/)
            flag_number(:,icrm) = (/0/)
         end if
      end if
@@ -579,6 +582,8 @@ subroutine micro_init(ncrms,icrm)
 
   end if
 
+  enddo
+
 end subroutine micro_init
 
 !----------------------------------------------------------------------
@@ -587,28 +592,29 @@ end subroutine micro_init
 ! Obviously, for liquid/ice water variables those fluxes are zero. They are not zero
 ! only for water vapor variable and, possibly, for CCN and IN if you have those.
 
-subroutine micro_flux(ncrms,icrm)
-
-use vars, only: fluxbq, fluxtq
+subroutine micro_flux(ncrms)
+  use vars, only: fluxbq, fluxtq
 #ifdef CLUBB_CRM
-use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
+  use params, only: doclubb, doclubb_sfc_fluxes, docam_sfc_fluxes
 #endif
-implicit none
-integer, intent(in) :: ncrms,icrm
+  implicit none
+  integer, intent(in) :: ncrms
+  integer :: icrm
 
-fluxbmk(:,:,:,icrm) = 0. ! initialize all fluxes at surface to zero
-fluxtmk(:,:,:,icrm) = 0. ! initialize all fluxes at top of domain to zero
+  do icrm = 1 , ncrms
+    fluxbmk(:,:,:,icrm) = 0. ! initialize all fluxes at surface to zero
+    fluxtmk(:,:,:,icrm) = 0. ! initialize all fluxes at top of domain to zero
 #ifdef CLUBB_CRM
-if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
-  fluxbmk(:,:,index_water_vapor,icrm) = 0.0 ! surface qv (latent heat,icrm) flux
-else
-  fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
-end if
+    if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
+      fluxbmk(:,:,index_water_vapor,icrm) = 0.0 ! surface qv (latent heat,icrm) flux
+    else
+      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
+    end if
 #else
-fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
+    fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
 #endif
-fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm) ! top of domain qv flux
-
+    fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm) ! top of domain qv flux
+  enddo
 end subroutine micro_flux
 
 !----------------------------------------------------------------------
@@ -623,7 +629,7 @@ end subroutine micro_flux
 ! proceses is the liquid/ice water static energy: t = tabs + gz - Lc (qc+qr) - Ls (qi+qs+qg)
 ! It should not be changed during all of your point microphysical processes!
 
-subroutine micro_proc(ncrms,icrm)
+subroutine micro_proc(ncrms)
 
 use params, only: fac_cond, fac_sub, rgas
 use grid, only: z, zi
@@ -655,7 +661,7 @@ use constants_clubb, only: T_freeze_K
 use vars, only: CF3D
 #endif
 implicit none
-  integer, intent(in) :: ncrms,icrm
+  integer, intent(in) :: ncrms
 
 
 real(crm_rknd), dimension(nzm) :: &
@@ -687,9 +693,11 @@ real(crm_rknd), dimension(nzm) :: accre_enhan   ! optional accretion enhancement
 
 real(crm_rknd), dimension(nzm,nmicro_fields) :: stend1d, mtend1d
 real(crm_rknd) :: tmpc, tmpr, tmpi, tmps, tmpg
-integer :: i1, i2, j1, j2, i, j, k, m, n
+integer :: i1, i2, j1, j2, i, j, k, m, n, icrm
 
 real(8) :: tmp_total, tmptot
+
+do icrm = 1 , ncrms
 
 ! call t_startf ('micro_proc')
 
@@ -723,23 +731,22 @@ do j = 1,ny
       tmpng(:) = 0.
 
       ! get microphysical quantities in this grid column
-      tmpqv(:) = micro_field(i,j,:,iqv,icrm) !bloss/qt: This is total water (qv+qcl)
+      tmpqv(:) = micro_field(i,j,:,icrm,iqv) !bloss/qt: This is total water (qv+qcl)
 !bloss/qt: compute below from saturation adjustment.
-!bloss/qt      tmpqcl(:) = micro_field(i,j,:,iqcl,icrm)
-      if(dopredictNc) tmpncl(:) = micro_field(i,j,:,incl,icrm)
+      if(dopredictNc) tmpncl(:) = micro_field(i,j,:,icrm,incl)
       if(doprecip) then
-         tmpqr(:) = micro_field(i,j,:,iqr,icrm)
-         tmpnr(:) = micro_field(i,j,:,inr,icrm)
+         tmpqr(:) = micro_field(i,j,:,icrm,iqr)
+         tmpnr(:) = micro_field(i,j,:,icrm,inr)
       end if
 
       if(doicemicro) then
-         tmpqci(:) = micro_field(i,j,:,iqci,icrm)
-         tmpnci(:) = micro_field(i,j,:,inci,icrm)
-         tmpqs(:) = micro_field(i,j,:,iqs,icrm)
-         tmpns(:) = micro_field(i,j,:,ins,icrm)
+         tmpqci(:) = micro_field(i,j,:,icrm,iqci)
+         tmpnci(:) = micro_field(i,j,:,icrm,inci)
+         tmpqs(:) = micro_field(i,j,:,icrm,iqs)
+         tmpns(:) = micro_field(i,j,:,icrm,ins)
          if(dograupel) then
-            tmpqg(:) = micro_field(i,j,:,iqg,icrm)
-            tmpng(:) = micro_field(i,j,:,ing,icrm)
+            tmpqg(:) = micro_field(i,j,:,icrm,iqg)
+            tmpng(:) = micro_field(i,j,:,icrm,ing)
          end if
       end if
 
@@ -842,7 +849,7 @@ do j = 1,ny
 #ifdef ECPP
 ! save cloud water before microphysics process for the calculation
 ! of qlsink in ECPP
-      qcloud_bf(i,j,:) =  tmpqcl(:)
+      qcloud_bf(i,j,:,icrm) =  tmpqcl(:)
 #endif /*ECPP*/
 
       i1 = 1 ! dummy variables used by WRF convention in subroutine call
@@ -1030,8 +1037,8 @@ do j = 1,ny
 !---mhwang
          precssfc(i,j,icrm) = precssfc(i,j,icrm) + sfcicepcp/dz(icrm)    ! the corect unit of precssfc should be mm/dz +++mhwang
          ! update rain
-         micro_field(i,j,:,iqr,icrm) = tmpqr(:)
-         micro_field(i,j,:,inr,icrm) = tmpnr(:)
+         micro_field(i,j,:,icrm,iqr) = tmpqr(:)
+         micro_field(i,j,:,icrm,inr) = tmpnr(:)
       else
          ! add rain to cloud
          tmpqcl(:) = tmpqcl(:) + tmpqr(:) ! add rain mass back to cloud water
@@ -1055,20 +1062,20 @@ do j = 1,ny
       !bloss/qt: update total water and cloud liquid.
       !          Note: update of total water moved to after if(doprecip),
       !                  since no precip moves rain --> cloud liq.
-      micro_field(i,j,:,iqv,icrm) = tmpqv(:) + tmpqcl(:) !bloss/qt: total water
+      micro_field(i,j,:,icrm,iqv) = tmpqv(:) + tmpqcl(:) !bloss/qt: total water
       cloudliq(i,j,:,icrm) = tmpqcl(:) !bloss/qt: auxilliary cloud liquid water variable
-      if(dopredictNc) micro_field(i,j,:,incl,icrm) = tmpncl(:)
+      if(dopredictNc) micro_field(i,j,:,icrm,incl) = tmpncl(:)
 
       reffc(i,j,:,icrm) = effc1d(:)
 
       if(doicemicro) then
-         micro_field(i,j,:,iqci,icrm) = tmpqci(:)
-         micro_field(i,j,:,inci,icrm) = tmpnci(:)
-         micro_field(i,j,:,iqs,icrm) = tmpqs(:)
-         micro_field(i,j,:,ins,icrm) = tmpns(:)
+         micro_field(i,j,:,icrm,iqci) = tmpqci(:)
+         micro_field(i,j,:,icrm,inci) = tmpnci(:)
+         micro_field(i,j,:,icrm,iqs) = tmpqs(:)
+         micro_field(i,j,:,icrm,ins) = tmpns(:)
          if(dograupel) then
-            micro_field(i,j,:,iqg,icrm) = tmpqg(:)
-            micro_field(i,j,:,ing,icrm) = tmpng(:)
+            micro_field(i,j,:,icrm,iqg) = tmpqg(:)
+            micro_field(i,j,:,icrm,ing) = tmpng(:)
          end if
          reffi(i,j,:,icrm) = effi1d(:)
       end if
@@ -1108,7 +1115,7 @@ do j = 1,ny
 
          do n = 1,nmicro_fields
             do k = 1,nzm
-               if(micro_field(i,j,k,n,icrm).ge.1.e-6) mfrac(k,n,icrm) = mfrac(k,n,icrm)+1.
+               if(micro_field(i,j,k,icrm,n).ge.1.e-6) mfrac(k,n,icrm) = mfrac(k,n,icrm)+1.
             end do
          end do
 
@@ -1170,17 +1177,17 @@ do j = 1,ny
 
 #ifdef ECPP
       do k=1, nzm
-        qlsink_bf(i,j,k)  = min(1.0/dt, QSINK_TMP(k))     ! /s
-        rh(i,j,k)      = RH3D(k)       !0-1
-        prain(i,j,k) = C2PREC(K)    ! kg/kg/s
+        qlsink_bf(i,j,k,icrm)  = min(1.0/dt, QSINK_TMP(k))     ! /s
+        rh(i,j,k,icrm)      = RH3D(k)       !0-1
+        prain(i,j,k,icrm) = C2PREC(K)    ! kg/kg/s
         if(cloudliq(i,j,k,icrm).gt.1.0e-10) then
-          qlsink(i,j,k) = min(1.0/dt, C2PREC(k)/cloudliq(i,j,k,icrm))
+          qlsink(i,j,k,icrm) = min(1.0/dt, C2PREC(k)/cloudliq(i,j,k,icrm))
         else
-          qlsink(i,j,k) = 0.0
+          qlsink(i,j,k,icrm) = 0.0
         end if
       end do
-      precr(i,j,:)=(RSED(:))    ! kg/m2/s
-      precsolid(i,j,:)=(SSED(:)+GSED(:))  !kg/m2/s leave ISED out for the momenent, and we may want to
+      precr(i,j,:,icrm)=(RSED(:))    ! kg/m2/s
+      precsolid(i,j,:,icrm)=(SSED(:)+GSED(:))  !kg/m2/s leave ISED out for the momenent, and we may want to
                                     ! test it effects in the future. +++mhwang
 #endif /*ECPP*/
 
@@ -1261,12 +1268,12 @@ if(doclubb) then
 ! Ice cloud fraction: 0 at 0 C, and 100% at -35C.
 !           ice_cldfrac(k) = -(tmptabs(k)-T_freeze_K)/35.0
 !           ice_cldfrac(k) = min(1.0, max(ice_cldfrac(k), 0.0))
-           if(micro_field(i,j,k,iqci,icrm) .gt. 1.0e-8) then
+           if(micro_field(i,j,k,icrm,iqci) .gt. 1.0e-8) then
              ice_cldfrac(k) = 1.0
            end if
-           if(cloudliq(i,j,k,icrm) + micro_field(i,j,k,iqci,icrm) .gt.1.0e-9) then
-             CF3D(i,j,k,icrm) = (CF3D(i,j,k,icrm)* cloudliq(i,j,k,icrm) + ice_cldfrac(k) * micro_field(i,j,k,iqci,icrm))  &
-                           / (cloudliq(i,j,k,icrm) + micro_field(i,j,k,iqci,icrm))
+           if(cloudliq(i,j,k,icrm) + micro_field(i,j,k,icrm,iqci) .gt.1.0e-9) then
+             CF3D(i,j,k,icrm) = (CF3D(i,j,k,icrm)* cloudliq(i,j,k,icrm) + ice_cldfrac(k) * micro_field(i,j,k,icrm,iqci))  &
+                           / (cloudliq(i,j,k,icrm) + micro_field(i,j,k,icrm,iqci))
            else
              CF3D(i,j,k,icrm) = 0.0
            end if
@@ -1280,6 +1287,8 @@ if (docloud)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 #endif
 
 ! call t_stopf ('micro_proc')
+
+enddo !icrm
 
 end subroutine micro_proc
 
@@ -1303,7 +1312,7 @@ real(crm_rknd) omn, omp
 integer i,j,k
 
 ! water vapor = total water - cloud liquid
-qv(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqv,icrm) &
+qv(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqv) &
      - cloudliq(1:nx,1:ny,1:nzm,icrm)
 
 #ifdef CLUBB_CRM
@@ -1332,17 +1341,17 @@ end do ! 1.. nx
 qcl(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
 
 ! rain water
-if(doprecip) qpl(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqr,icrm)
+if(doprecip) qpl(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqr)
 
 ! cloud ice
 if(doicemicro) then
-   qci(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqci,icrm)
+   qci(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqci)
 
    if(dograupel) then
-      qpi(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqs,icrm) &
-           + micro_field(1:nx,1:ny,1:nzm,iqg,icrm)
+      qpi(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqs) &
+           + micro_field(1:nx,1:ny,1:nzm,icrm,iqg)
    else
-      qpi(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,iqs,icrm)
+      qpi(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqs)
    end if
 end if
 
@@ -1386,7 +1395,7 @@ subroutine micro_adjust( new_qv, new_qc )
     new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg]
 
   ! Total water mixing ratio
-  micro_field(1:nx,1:ny,1:nzm,iqv,icrm) = new_qv(1:nx,1:ny,1:nzm) &
+  micro_field(1:nx,1:ny,1:nzm,icrm,iqv) = new_qv(1:nx,1:ny,1:nzm) &
                                    + new_qc(1:nx,1:ny,1:nzm)
 
   ! Cloud water mixing ratio
@@ -1407,81 +1416,12 @@ end subroutine micro_adjust
 ! are some microphysics variables like water content and concentration.
 ! Don't change the number of arguments or their meaning!
 
-!!$real function term_vel_qr(qr,nr,tabs,rho)
-!!$! .......
-!!$end function term_vel_qr
-!!$
-!!$real function term_vel_Nr(qr,nr,tabs,rho)
-!!$! .......
-!!$end function term_vel_Nr
-!!$
-!!$real function term_vel_qs(qs,ns,tabs,rho)
-!!$! .......
-!!$end function term_vel_qs
-
-! etc.
-
 !----------------------------------------------------------------------
 !!! compute sedimentation
-!
-!  The perpose of this subroutine is to prepare variables needed to call
-! the precip_all() for each of the falling hydrometeor varibles
-subroutine micro_precip_fall(ncrms,icrm)
-
-! before calling precip_fall() for each of falling prognostic variables,
-! you need to set hydro_type and omega(:,:,:) variables.
-! hydro_type can have four values:
-! 0 - variable is liquid water mixing ratio
-! 1 - hydrometeor is ice mixing ratio
-! 2 - hydrometeor is mixture-of-liquid-and-ice mixing ratio. (As in original SAM microphysics).
-! 3 - variable is not mixing ratio, but, for example, rain drop concentration
-! OMEGA(:,:,:) is used only for hydro_type=2, and is the fraction of liquid phase (0-1).
-! for hour hypothetical case, there is no mixed hydrometeor, so omega is not actually used.
+subroutine micro_precip_fall(ncrms)
   implicit none
-  integer, intent(in) :: ncrms,icrm
-
-integer hydro_type
-real(crm_rknd) omega(nx,ny,nzm)
-
-integer i,j,k
-
-return ! do not need this routine -- sedimentation done in m2005micro.
-
-!!$! Initialize arrays that accumulate surface precipitation flux
-!!$
-!!$ if(mod(nstep-1,nstatis).eq.0.and.icycle.eq.1) then
-!!$   do j=1,ny
-!!$    do i=1,nx
-!!$     precsfc(i,j,icrm)=0.
-!!$    end do
-!!$   end do
-!!$   do k=1,nzm
-!!$    precflux(k,icrm) = 0.
-!!$   end do
-!!$ end if
-!!$
-!!$ do k = 1,nzm ! Initialize arrays which hold precipitation fluxes for stats.
-!!$    qpfall(k,icrm)=0.
-!!$    tlat(k,icrm) = 0.
-!!$ end do
-!!$
-!!$! Compute sedimentation of falling variables:
-!!$
-!!$ hydro_type=0
-!!$ call precip_fall(qr, term_vel_qr, hydro_type, omega)
-!!$ hydro_type=3
-!!$ call precip_fall(Nr, term_vel_Nr, hydro_type, omega)
-!!$ hydro_type=1
-!!$ call precip_fall(qs, term_vel_qs, hydro_type, omega)
-!!$ hydro_type=3
-!!$ call precip_fall(Ns, term_vel_Ns, hydro_type, omega)
-!!$ hydro_type=1
-!!$ call precip_fall(qg, term_vel_qg, hydro_type, omega)
-!!$ hydro_type=3
-!!$ call precip_fall(Ng, term_vel_Ng, hydro_type, omega)
-!!$
-
-
+  integer, intent(in) :: ncrms
+  return ! do not need this routine -- sedimentation done in m2005micro.
 end subroutine micro_precip_fall
 
 !----------------------------------------------------------------------
@@ -1567,7 +1507,7 @@ end subroutine satadj_liquid
 ! Supply function that computes total water in a domain:
 !
 real(8) function total_water(ncrms,icrm)
-  use vars, only : nstep,nprint,adz,dz,rho
+  use vars, only : nstep,adz,dz,rho
   implicit none
   integer, intent(in) :: ncrms,icrm
   real(8) tmp
@@ -1580,7 +1520,7 @@ real(8) function total_water(ncrms,icrm)
       tmp = 0.
       do j=1,ny
         do i=1,nx
-          tmp = tmp + micro_field(i,j,k,m,icrm)
+          tmp = tmp + micro_field(i,j,k,icrm,m)
         end do
       end do
       total_water = total_water + tmp*adz(k,icrm)*dz(icrm)*rho(k,icrm)

@@ -487,15 +487,39 @@
      </queues>
    </batch_system>
 
+   <batch_system MACH="ascent" type="lsf" >
+     <directives>
+       <directive>-P {{ project }}</directive>
+     </directives>
+     <directives>
+       <directive>-alloc_flags "gpumps smt2"</directive>
+     </directives>
+     <queues>
+       <queue walltimemax="02:00" default="true">batch</queue>
+     </queues>
+   </batch_system>
+
+   <batch_system MACH="summit-cpu" type="lsf" >
+     <directives>
+       <directive>-P {{ project }}</directive>
+     </directives>
+     <directives>
+       <directive>-alloc_flags smt2</directive>
+     </directives>
+     <queues>
+       <queue walltimemax="02:00" default="true">batch</queue>
+     </queues>
+   </batch_system>
+
    <batch_system MACH="summit" type="lsf" >
      <directives>
        <directive>-P {{ project }}</directive>
      </directives>
-     <directives compiler="!pgiacc">
+     <directives compiler="!pgigpu">
        <directive>-alloc_flags smt2</directive>
      </directives>
-     <directives compiler="pgiacc">
-       <directive>-alloc_flags "gpumps smt2"</directive>
+     <directives compiler="pgigpu">
+       <directive>-alloc_flags gpumps</directive>
      </directives>
      <queues>
        <queue walltimemax="02:00" default="true">batch</queue>

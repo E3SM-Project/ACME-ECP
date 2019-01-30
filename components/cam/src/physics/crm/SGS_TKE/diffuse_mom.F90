@@ -5,13 +5,13 @@ module diffuse_mom_mod
 
 contains
 
-  subroutine diffuse_mom(ncrms,icrm,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+  subroutine diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
 
     !  Interface to the diffusion routines
 
     use vars
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     integer i,j,k
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms) ! SGS eddy viscosity
@@ -22,9 +22,9 @@ contains
     !call t_startf ('diffuse_mom')
 
     if(RUN3D) then
-      call diffuse_mom3D(ncrms,icrm,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+      call diffuse_mom3D(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
     else
-      call diffuse_mom2D(ncrms,icrm,grdf_x,         grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
+      call diffuse_mom2D(ncrms,grdf_x,         grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
     endif
 
     !call t_stopf ('diffuse_mom')

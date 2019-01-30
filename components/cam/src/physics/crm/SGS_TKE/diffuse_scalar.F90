@@ -5,49 +5,67 @@ module diffuse_scalar_mod
 
 contains
 
-  subroutine diffuse_scalar (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,f,fluxb,fluxt,fdiff,flux,f2lediff,f2lediss,fwlediff,doit)
+  subroutine diffuse_scalar (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,f,fluxb,fluxt,fdiff,flux)
     use grid
     use vars, only: rho, rhow
     use params
     implicit none
-    integer, intent(in) :: ncrms,icrm
+    integer, intent(in) :: ncrms
     ! input:
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
     real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms) ! SGS eddy conductivity
-    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
-    real(crm_rknd) fluxb(nx,ny)   ! bottom flux
-    real(crm_rknd) fluxt(nx,ny)   ! top flux
-    real(crm_rknd) flux(nz)
-    real(crm_rknd) f2lediff(nz),f2lediss(nz),fwlediff(nz)
-    real(crm_rknd) fdiff(nz)
-    logical doit
+    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms) ! scalar
+    real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
+    real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
+    real(crm_rknd) fdiff(nz,ncrms)
+    real(crm_rknd) flux (nz,ncrms)
     ! Local
-    real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
-    integer i,j,k
+    real(crm_rknd) df(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)  ! scalar
+    real(crm_rknd) :: tmp
+    integer i,j,k,icrm
 
-    !call t_startf ('diffuse_scalars')
+    !$acc enter data create(df) async(asyncid)
 
-    df(:,:,:) = f(:,:,:)
+    !$acc parallel loop collapse(4) copyin(f) copy(df) async(asyncid)
+    do icrm = 1 , ncrms
+      do k = 1 , nzm
+        do j = dimy1_s , dimy2_s
+          do i = dimx1_s , dimx2_s
+            df(i,j,k,icrm) = f(i,j,k,icrm)
+          enddo
+        enddo
+      enddo
+    enddo
 
     if(RUN3D) then
-      call diffuse_scalar3D (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
+      call diffuse_scalar3D (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
     else
-      call diffuse_scalar2D (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,       grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
+      call diffuse_scalar2D (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,       grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
     endif
 
-    do k=1,nzm
-      fdiff(k)=0.
-      do j=1,ny
-        do i=1,nx
-          fdiff(k)=fdiff(k)+f(i,j,k)-df(i,j,k)
+    !$acc parallel loop collapse(2) copy(fdiff) async(asyncid)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        fdiff(k,icrm)=0.
+      enddo
+    enddo
+    !$acc parallel loop collapse(2) copyin(f,df) copy(fdiff) async(asyncid)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            tmp = f(i,j,k,icrm)-df(i,j,k,icrm)
+            !$acc atomic update
+            fdiff(k,icrm)=fdiff(k,icrm)+tmp
+          end do
         end do
       end do
-    end do
+    enddo
 
-    !call t_stopf ('diffuse_scalars')
+    !$acc exit data delete(df) async(asyncid)
 
   end subroutine diffuse_scalar
 

@@ -385,7 +385,7 @@ for mct, etc.
   <MPIFC> mpif90 </MPIFC>
 </compiler>
 
-<compiler COMPILER="pgi">
+<compiler COMPILER="pgigpu">
   <CFLAGS>
     <base> -gopt -time </base>
     <append compile_threaded="false"> </append>
@@ -401,7 +401,7 @@ for mct, etc.
     <!--  -target=linux   => Specifies the target architecture to Compute Node Linux (CNL only) -->
     <!--  -fast           => Chooses generally optimal flags for the target platform -->
     <!--  -Mnovect        => Disables automatic vector pipelining -->
-    <!--  -Mvect=nosse    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
+    <!--  -Mvect=nosimd    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
     <!--  -Mflushz        => Set SSE to flush-to-zero mode (underflow) loops where possible  -->
     <!--  -Kieee          => Perform fp ops in strict conformance with the IEEE 754 standard.  -->
     <!--                     Some optimizations disabled, slightly slower, more accurate math.  -->
@@ -423,7 +423,7 @@ for mct, etc.
     <base> -r8 </base>
   </FC_AUTO_R8>
   <FFLAGS>
-    <base>  -i4 -gopt  -time -Mstack_arrays  -Mextend -byteswapio -Mflushz -Kieee  </base>
+    <base> -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
     <append compile_threaded="false"> </append>
     <append compile_threaded="true"> -mp </append>
     <append DEBUG="TRUE"> -O0 -g -Ktrap=fp -Mbounds -Kieee </append>
@@ -435,7 +435,86 @@ for mct, etc.
     <append MODEL="docn"> -Mnovect </append>
   </FFLAGS>
   <FFLAGS_NOOPT>
-    <base> -O0 -g -Ktrap=fp -Mbounds -Kieee  </base>
+    <base> -O0 -Kieee  </base>
+    <append compile_threaded="false"> </append>
+    <append compile_threaded="true"> -mp </append>
+  </FFLAGS_NOOPT>
+  <FIXEDFLAGS>
+    <base> -Mfixed </base>
+  </FIXEDFLAGS>
+  <FREEFLAGS>
+    <base> -Mfree </base>
+  </FREEFLAGS>
+  <!-- Note that SUPPORTS_CXX is false for pgi in general, because we
+       need some machine-specific libraries -->
+  <!-- Technically, PGI does recognize this keyword during parsing,
+       but support is either buggy or incomplete, notably in that
+       the "contiguous" attribute is incompatible with "intent".-->
+  <HAS_F2008_CONTIGUOUS>FALSE</HAS_F2008_CONTIGUOUS>
+  <LDFLAGS>
+    <base> -time -Wl,--allow-multiple-definition </base>
+    <append compile_threaded="false"> </append>
+    <append compile_threaded="true"> -mp </append>
+  </LDFLAGS>
+  <MPICC> mpicc </MPICC>
+  <MPICXX> mpicxx </MPICXX>
+  <MPIFC> mpif90 </MPIFC>
+  <SCC> pgcc </SCC>
+  <SCXX> pgc++ </SCXX>
+  <SFC> pgf95 </SFC>
+</compiler>
+
+<compiler COMPILER="pgi">
+  <CFLAGS>
+    <base> -gopt -time </base>
+    <append compile_threaded="false"> </append>
+    <append compile_threaded="true"> -mp </append>
+  </CFLAGS>
+  <CPPDEFS>
+    <!-- http://www.pgroup.com/resources/docs.htm                                              -->
+    <!-- Notes:  (see pgi man page & user's guide for the details) -->
+    <!--  -Mextend        => Allow 132-column source lines -->
+    <!--  -Mfixed         => Assume fixed-format source -->
+    <!--  -Mfree          => Assume free-format source -->
+    <!--  -byteswapio     => Swap byte-order for unformatted i/o (big/little-endian) -->
+    <!--  -target=linux   => Specifies the target architecture to Compute Node Linux (CNL only) -->
+    <!--  -fast           => Chooses generally optimal flags for the target platform -->
+    <!--  -Mnovect        => Disables automatic vector pipelining -->
+    <!--  -Mvect=nosimd    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
+    <!--  -Mflushz        => Set SSE to flush-to-zero mode (underflow) loops where possible  -->
+    <!--  -Kieee          => Perform fp ops in strict conformance with the IEEE 754 standard.  -->
+    <!--                     Some optimizations disabled, slightly slower, more accurate math.  -->
+    <!--  -mp=nonuma      => Don't use thread/processors affinity (for NUMA architectures)  -->
+    <!-- -->
+    <!--  -g              => Generate symbolic debug information. Turns off optimization.   -->
+    <!--  -gopt           => Generate information for debugger without disabling optimizations  -->
+    <!--  -Mbounds        => Add array bounds checking  -->
+    <!--  -Ktrap=fp       => Determine IEEE Trap conditions fp => inv,divz,ovf   -->
+    <!--                     * inv: invalid operands         -->
+    <!--                     * divz divide by zero           -->
+    <!--                     * ovf: floating point overflow   -->
+    <!--  -F              => leaves file.f for each preprocessed file.F file  -->
+    <!--  -time           => Print execution time for each compiler step  -->
+    <append> -DFORTRANUNDERSCORE -DNO_SHR_VMATH -DNO_R16 -DCPRPGI </append>
+  </CPPDEFS>
+  <CXX_LINKER>CXX</CXX_LINKER>
+  <FC_AUTO_R8>
+    <base> -r8 </base>
+  </FC_AUTO_R8>
+  <FFLAGS>
+    <base> -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
+    <append compile_threaded="false"> </append>
+    <append compile_threaded="true"> -mp </append>
+    <append DEBUG="TRUE"> -O0 -g -Ktrap=fp -Mbounds -Kieee </append>
+    <append MODEL="datm"> -Mnovect </append>
+    <append MODEL="dlnd"> -Mnovect </append>
+    <append MODEL="drof"> -Mnovect </append>
+    <append MODEL="dwav"> -Mnovect </append>
+    <append MODEL="dice"> -Mnovect </append>
+    <append MODEL="docn"> -Mnovect </append>
+  </FFLAGS>
+  <FFLAGS_NOOPT>
+    <base> -O0 -Kieee  </base>
     <append compile_threaded="false"> </append>
     <append compile_threaded="true"> -mp </append>
   </FFLAGS_NOOPT>
@@ -480,7 +559,7 @@ for mct, etc.
     <!--  -target=linux   => Specifies the target architecture to Compute Node Linux (CNL only) -->
     <!--  -fast           => Chooses generally optimal flags for the target platform -->
     <!--  -Mnovect        => Disables automatic vector pipelining -->
-    <!--  -Mvect=nosse    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
+    <!--  -Mvect=nosimd    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
     <!--  -Mflushz        => Set SSE to flush-to-zero mode (underflow) loops where possible  -->
     <!--  -Kieee          => Perform fp ops in strict conformance with the IEEE 754 standard.  -->
     <!--                     Some optimizations disabled, slightly slower, more accurate math.  -->
@@ -1753,7 +1832,7 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
   <SFC> xlf_r </SFC>
 </compiler>
 
-<compiler MACH="summit" COMPILER="pgi">
+<compiler MACH="ascent" COMPILER="pgi">
   <CFLAGS>
     <append DEBUG="FALSE"> -O2 </append>
   </CFLAGS>
@@ -1775,19 +1854,62 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
   <SFC> pgfortran </SFC>
 </compiler>
 
-<compiler MACH="summit" COMPILER="pgiacc">
+<compiler MACH="summit" COMPILER="pgi">
   <CFLAGS>
-    <append DEBUG="FALSE"> -O2 </append>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd </append>
   </CFLAGS>
   <CONFIG_ARGS>
     <base> --host=Linux </base>
   </CONFIG_ARGS>
   <FFLAGS>
-    <append DEBUG="FALSE"> -O2 -DSUMMITDEV_PGI </append>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd -DSUMMITDEV_PGI </append>
   </FFLAGS>
   <LDFLAGS>
-    <append>-ta=tesla:cc70,pinned</append>
     <append>-L$ENV{NETCDF_C_PATH}/lib -lnetcdf -L$ENV{NETCDF_FORTRAN_PATH}/lib -lnetcdff -L$ENV{ESSL_PATH}/lib64 -lessl -L$ENV{NETLIB_LAPACK_PATH}/lib -llapack</append>
+    <append MPILIB="!mpi-serial"> -L$ENV{PNETCDF_PATH}/lib -lpnetcdf -L$ENV{HDF5_PATH}/lib -lhdf5_hl -lhdf5 </append>
+  </LDFLAGS>
+  <MPICC> mpicc </MPICC>
+  <MPICXX> mpiCC </MPICXX>
+  <MPIFC> mpif90 </MPIFC>
+  <PIO_FILESYSTEM_HINTS>gpfs</PIO_FILESYSTEM_HINTS>
+  <SCC> pgcc </SCC>
+  <SFC> pgfortran </SFC>
+</compiler>
+
+<compiler MACH="summit-cpu" COMPILER="pgi">
+  <CFLAGS>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd </append>
+  </CFLAGS>
+  <CONFIG_ARGS>
+    <base> --host=Linux </base>
+  </CONFIG_ARGS>
+  <FFLAGS>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd -DSUMMITDEV_PGI </append>
+  </FFLAGS>
+  <LDFLAGS>
+    <append>-L$ENV{NETCDF_C_PATH}/lib -lnetcdf -L$ENV{NETCDF_FORTRAN_PATH}/lib -lnetcdff -L$ENV{ESSL_PATH}/lib64 -lessl -L$ENV{NETLIB_LAPACK_PATH}/lib -llapack</append>
+    <append MPILIB="!mpi-serial"> -L$ENV{PNETCDF_PATH}/lib -lpnetcdf -L$ENV{HDF5_PATH}/lib -lhdf5_hl -lhdf5 </append>
+  </LDFLAGS>
+  <MPICC> mpicc </MPICC>
+  <MPICXX> mpiCC </MPICXX>
+  <MPIFC> mpif90 </MPIFC>
+  <PIO_FILESYSTEM_HINTS>gpfs</PIO_FILESYSTEM_HINTS>
+  <SCC> pgcc </SCC>
+  <SFC> pgfortran </SFC>
+</compiler>
+
+<compiler MACH="summit" COMPILER="pgigpu">
+  <CFLAGS>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd </append>
+  </CFLAGS>
+  <CONFIG_ARGS>
+    <base> --host=Linux </base>
+  </CONFIG_ARGS>
+  <FFLAGS>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd -DSUMMITDEV_PGI </append>
+  </FFLAGS>
+  <LDFLAGS>
+    <append>-L$ENV{NETCDF_C_PATH}/lib -lnetcdf -L$ENV{NETCDF_FORTRAN_PATH}/lib -lnetcdff -L$ENV{ESSL_PATH}/lib64 -lessl -L$ENV{NETLIB_LAPACK_PATH}/lib -llapack -ta=nvidia,cc70</append>
     <append MPILIB="!mpi-serial"> -L$ENV{PNETCDF_PATH}/lib -lpnetcdf -L$ENV{HDF5_PATH}/lib -lhdf5_hl -lhdf5 </append>
   </LDFLAGS>
   <MPICC> mpicc </MPICC>
@@ -1951,13 +2073,19 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
 
 <compiler COMPILER="pgi" MACH="thatchroof">
   <LDFLAGS>
-    <append MODEL="driver"> -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L${PNETCDF_PATH}/lib -L/opt/lapack3.6.1_pgi15.9/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl</append>
+    <append MODEL="driver"> -L/opt/netcdf-4.3.3.1_pgi/lib -lnetcdff -L/opt/hdf5_1.8.5p1_pgi/lib -L/opt/netcdf-4.3.3.1_pgi/lib -lnetcdf -lnetcdf -lhdf5_hl -lhdf5 -L/opt/netcdf-4.3.3.1_pgi/lib -L/opt/hdf5_1.8.5p1_pgi/lib -L/opt/szip_2.1_pgi/lib -lnetcdf -ldl -lm -lz -lhdf5_hl -lhdf5 -lsz -L/opt/lapack-3.6.1_pgi/lib -llapack -lblas </append>
+  </LDFLAGS>
+</compiler>
+
+<compiler COMPILER="pgigpu" MACH="thatchroof">
+  <LDFLAGS>
+    <append MODEL="driver"> -L/opt/netcdf-4.3.3.1_pgi/lib -lnetcdff -L/opt/hdf5_1.8.5p1_pgi/lib -L/opt/netcdf-4.3.3.1_pgi/lib -lnetcdf -lnetcdf -lhdf5_hl -lhdf5 -L/opt/netcdf-4.3.3.1_pgi/lib -L/opt/hdf5_1.8.5p1_pgi/lib -L/opt/szip_2.1_pgi/lib -lnetcdf -ldl -lm -lz -lhdf5_hl -lhdf5 -lsz -L/opt/lapack-3.6.1_pgi/lib -llapack -lblas </append>
   </LDFLAGS>
 </compiler>
 
 <compiler COMPILER="gnu" MACH="thatchroof">
   <LDFLAGS>
-    <append MODEL="driver" > -L${NETCDF_PATH}/lib -L${HDF5_PATH}/lib -L${SZIP_PATH}/lib -L${ZLIB_PATH}/lib -L${CURL_PATH}/lib -L${PNETCDF_PATH}/lib -llapack -lblas -lpnetcdf -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lz -lsz -lcurl -ldl -lidn -lrtmp -lssh2 -lssl -lcrypto -lssl -lcrypto -llber -lldap -lz </append>
+    <append MODEL="driver" > -L/opt/netcdf-4.3.3.1_gnu/lib -lnetcdff -L/opt/hdf5_1.8.5p1_gnu/lib -L/opt/netcdf-4.3.3.1_gnu/lib -lnetcdf -lnetcdf -lhdf5_hl -lhdf5 -L/opt/netcdf-4.3.3.1_gnu/lib -L/opt/hdf5_1.8.5p1_gnu/lib -L/opt/szip_2.1_gnu/lib -lnetcdf -lhdf5_hl -lhdf5 -ldl -lm -lz -lhdf5_hl -lhdf5 -lsz </append>
   </LDFLAGS>
 </compiler>
 
