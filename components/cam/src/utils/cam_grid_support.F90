@@ -2559,7 +2559,8 @@ contains
     ! Local variables
     integer                                :: dims(2)
     integer                                :: dstrt, dend
-    integer(iMap)                          :: gridlen, gridloc, ierr
+    integer(iMap)                          :: gridlen, gridloc
+    integer                                :: ierr
 
     ! Check to make sure the map meets our needs
     call this%coord_lengths(dims)
