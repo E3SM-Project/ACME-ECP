@@ -198,6 +198,9 @@ subroutine crm_physics_init(species_class)
   use module_ecpp_ppdriver2,  only: papampollu_init
   use ecppvars,               only: NCLASS_CL,ncls_ecpp_in,NCLASS_PR
 #endif
+#ifdef CRMACCEL
+  use accelerate_crm_mod, only: crm_accel_init
+#endif
 #ifdef MODAL_AERO
   use cam_history,   only: fieldname_len
   use spmd_utils,    only: masterproc
@@ -471,6 +474,10 @@ subroutine crm_physics_init(species_class)
     snow_str_idx =  pbuf_get_index('SNOW_STR')
     prec_pcw_idx =  pbuf_get_index('PREC_PCW')
     snow_pcw_idx =  pbuf_get_index('SNOW_PCW')
+
+#ifdef CRMACCEL
+    call crm_accel_init()
+#endif
 
 end subroutine crm_physics_init
 
