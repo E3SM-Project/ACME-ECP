@@ -92,9 +92,9 @@ module accelerate_crm_mod
         call endrun('crm main')
       endif
 #endif
-    
     end subroutine crm_accel_init
-  
+
+
     subroutine crm_accel_nstop(nstop)
     ! reduce nstop to appropriate value give crm_accel_factor
       use cam_abortutils, only: endrun
@@ -147,7 +147,8 @@ module accelerate_crm_mod
         call accelerate_momentum(ncrms)
       end if
     end subroutine accelerate_crm
-  
+
+
     subroutine accelerate_scalars(ncrms, ceaseflag)
       ! accelerates the scalar fields (t and q)
       ! aborts and returns ceaseflag = .true. if t-tendency exceeds threshhold anywhere
@@ -164,7 +165,8 @@ module accelerate_crm_mod
         call accelerate_micro(ncrms)
       end if
     end subroutine accelerate_scalars
-  
+
+
     subroutine accelerate_t(ncrms, ceaseflag)
       ! accelerates liquid static energy (t)
       use grid, only: nx, ny, nzm
@@ -190,7 +192,7 @@ module accelerate_crm_mod
       end do
 
       ! stop accelerating if acceleration tendency is too large anywhere
-      if(maxval(abs(ttend_acc)) .gt. 5.) then ! special clause for dT/dt too large
+      if(maxval(abs(ttend_acc)) .gt. 5.) then ! special case for dT/dt too large
         ceaseflag = .true.
         write (iulog, *) 'accelerate_crm: |dT|>5K; dT = ', ttend_acc  ! write full array
         write (iulog, *) 'mean-state acceleration not applied this step'
@@ -251,11 +253,11 @@ module accelerate_crm_mod
           do k = 1, nzm
             do j = 1, ny
               do i = 1, nx
-                micro_field(i,j,k,ixw, icrm) = &
-                  micro_field(i,j,k,ixw, icrm)+qtend_acc(k, icrm)
+                micro_field(i, j, k, icrm, ixw) = &
+                  micro_field(i, j, k, icrm, ixw) + qtend_acc(k, icrm)
                 ! enforce positivity and accumulate (negative) excess
-                if(micro_field(i,j,k,ixw, icrm) .lt. 0.) then
-                  micro_field(i,j,k,ixw, icrm)=0.
+                if(micro_field(i, j, k, icrm, ixw) .lt. 0.) then
+                  micro_field(i, j, k, icrm, ixw) = 0.
                 end if
                 qv(i, j, k, icrm) = max(0._rc, qv(i, j, k, icrm) + qtend_acc(k, icrm))
               end do
@@ -298,8 +300,8 @@ module accelerate_crm_mod
           qneg = 0.
   
           ! update micro_field
-          micro_field(1:nx, 1:ny, k, ixw, icrm) = &
-            micro_field(1:nx, 1:ny, k, ixw, icrm) + deltaq(k, icrm)
+          micro_field(1:nx, 1:ny, k, icrm, ixw) = &
+            micro_field(1:nx, 1:ny, k, icrm, ixw) + deltaq(k, icrm)
   
           ! crjones note: this should probably change with gpu acceleration
           if (deltaq(k, icrm) .ge. 0.) then
@@ -310,26 +312,26 @@ module accelerate_crm_mod
           ! accumulate negative excess (if any)
           do j = 1, ny
             do i = 1, nx
-              if (micro_field(i, j, k, ixw, icrm) .lt. 0.) then
-                qneg = qneg + micro_field(i, j, k, ixw, icrm)
+              if (micro_field(i, j, k, icrm, ixw) .lt. 0.) then
+                qneg = qneg + micro_field(i, j, k, icrm, ixw)
               else
-                qpoz = qpoz + micro_field(i, j, k, ixw, icrm)
+                qpoz = qpoz + micro_field(i, j, k, icrm, ixw)
               end if
             end do
           end do
   
           if (qpoz + qneg .lt. 0.) then
-            micro_field(1:nx, 1:ny, k, ixw, icrm) = 0._rc
+            micro_field(1:nx, 1:ny, k, icrm, ixw) = 0._rc
             qv(1:nx, 1:ny, k, icrm) = 0._rc
             qcl(1:nx, 1:ny, k, icrm) = 0._rc
             qci(1:nx, 1:ny, k, icrm) = 0._rc
           else
             factor = 1._r8 + qneg / qpoz
             ! apply to micro_field and partition qv, qcl, qci appropriately
-            micro_field(1:nx, 1:ny, k, ixw, icrm) = &
-              max(0._rc, micro_field(1:nx, 1:ny, k, ixw, icrm) * factor)
+            micro_field(1:nx, 1:ny, k, icrm, ixw) = &
+              max(0._rc, micro_field(1:nx, 1:ny, k, icrm, ixw) * factor)
             call partition_micro(qv(1:nx, 1:ny, k, icrm), qcl(1:nx, 1:ny, k, icrm), qci(1:nx, 1:ny, k, icrm), &
-                                micro_field(1:nx, 1:ny, k, ixw, icrm))
+                                micro_field(1:nx, 1:ny, k, icrm, ixw))
           end if
         end do  ! k = 1, nzm
       end do ! icrm = 1, ncrms
