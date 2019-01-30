@@ -308,60 +308,6 @@ module accelerate_crm_mod
 
       !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
     end subroutine accelerate_crm
-  
-    subroutine accelerate_micro(ncrms)
-      use grid, only: nx, ny, nzm
-      use vars, only: qcl, qci, qv, q0
-      use microphysics, only: micro_field, ixw=>index_water_vapor
-      use cam_logfile,  only: iulog
-
-      implicit none
-      integer, intent(in) :: ncrms
-  
-      ! local variables
-      integer i, j, k, icrm
-      real(rc) :: qtbaccel(nzm, ncrms)  ! t and q before acceleration
-      real(rc) :: qtend_acc(nzm, ncrms) ! accel tendencies
-
-      if(distribute_qneg) then
-        ! redistribute moistre in level by removing from cells with positive q
-        call apply_accel_tend_micro(ncrms, qtend_acc)
-      else
-        ! original version: simply remove negative moisture
-        ! crjones concern: since qcl and qci are not touched, this could lead to
-        !   inconsistent acceleration tendency, since q0 at start of next step is
-        !   diagnosed from qv + qcl + qci after micro_init, but saturation
-        !   adjustment is not applied until micro_proc (so it's possible that
-        !   micro_field(:,:,k,index_water_vapor) = 0, but q0(k) > 0, leading to
-        !   incorrect acceleration tendency that may even have incorrect sign).
-        do icrm = 1, ncrms
-          do k = 1, nzm
-            do j = 1, ny
-              do i = 1, nx
-                micro_field(i, j, k, icrm, ixw) = micro_field(i, j, k, icrm, ixw) + crm_accel_factor * qtend_acc(k, icrm)
-                ! enforce positivity and accumulate (negative) excess
-                if(micro_field(i, j, k, icrm, ixw) < 0.) micro_field(i, j, k, icrm, ixw) = 0.
-                qv(i, j, k, icrm) = max(0._rc, qv(i, j, k, icrm) + crm_accel_factor * qtend_acc(k, icrm))
-              enddo
-            enddo
-          enddo
-        enddo
-      endif
-    end subroutine accelerate_micro
-  
-
-    subroutine apply_accel_tend_micro(ncrms, qtend_acc)
-      use vars, only: qv, qcl, qci
-      use microphysics, only: micro_field, ixw=>index_water_vapor
-      use grid, only: nx, ny, nzm
-      implicit none
-      integer , intent(in) :: ncrms
-      real(rc), intent(in) :: qtend_acc(nzm, ncrms)
-      integer i, j, k, nneg, icrm
-      real(r8) :: qpoz(nzm,ncrms), qneg(nzm,ncrms), factor, qfactor
-
-
-    end subroutine apply_accel_tend_micro
     
 end module accelerate_crm_mod
   
