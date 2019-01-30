@@ -356,6 +356,11 @@ contains
 
    !----------------------------------------------------------------------------
 
+   ! Calculate and set shortwave cloud optics. NOTE: this routine will calculate
+   ! cloud optics for ALL columns, but then only populates the DAYTIME columns.
+   ! We could save some computation here by refactoring the optics routines to
+   ! accept array arguments, and then only calculating optics for the columns we
+   ! actually intend to use (the daytime ones).
    subroutine set_cloud_optics_sw(state, pbuf, day_indices, kdist, optics_out)
       
       use ppgrid, only: pcols, pver, pverp
