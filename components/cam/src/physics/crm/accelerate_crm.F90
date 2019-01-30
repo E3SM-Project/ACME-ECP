@@ -65,12 +65,10 @@ module accelerate_crm_mod
       crm_accel_factor = 0.
       crm_accel_uv = .false.
   
-#ifdef CRMACCEL
       call phys_getopts(use_crm_accel_out = use_crm_accel, &
                         crm_accel_factor_out = crm_accel_factor, &
                         crm_accel_uv_out = crm_accel_uv, &
                         crm_accel_micro_opt_out = crm_accel_micro_opt)
-#endif
       if (crm_accel_micro_opt .eq. 1) then
         distribute_qneg = .true.
       else
@@ -84,11 +82,10 @@ module accelerate_crm_mod
          write(iulog, *) 'crm_accel: crm_accel_uv = ', crm_accel_uv
          write(iulog, *) 'crm_accel: crm_accel_micro_opt = ', crm_accel_micro_opt
          write(iulog, *) 'crm_accel: setting distribute_qneg = ', distribute_qneg
-      end if
-#if defined(CRMACCEL) && !defined(sam1mom)
-      ! ensure CRMACCEL runs with sam1mom only
+      endif
+#if !defined(sam1mom)
       if (masterproc) then
-        write(0,*) "CRMACCEL is only compatible with sam1mom microphysics"
+        write(0,*) "CRM time step relaxation is only compatible with sam1mom microphysics"
         call endrun('crm main')
       endif
 #endif
@@ -112,7 +109,7 @@ module accelerate_crm_mod
         call endrun('crm main: bad crm_accel_factor and nstop pair')
       else
         nstop = nstop / (1.D0 + crm_accel_factor)
-      end if
+      endif
     end subroutine crm_accel_nstop
 
 
@@ -132,84 +129,185 @@ module accelerate_crm_mod
     end subroutine crm_accel_reset_nstop
 
 
-    subroutine accelerate_crm(ncrms, crm_accel_ceaseflag)
+    subroutine accelerate_crm(ncrms, nstop, ceaseflag)
       ! accelerate scalars t and q (and micro_field(:,:,:, index_water_vapor, icrm))
       ! raise crm_accel_ceaseflag and cancel mean-state acceleration
       !       if magnitude of t-tendency is too great
-      implicit none
-  
-      integer, intent(in) :: ncrms
-      logical, intent(out) :: crm_accel_ceaseflag    
-      call accelerate_scalars(ncrms, crm_accel_ceaseflag)
-  
-      ! accelerate velocity u, v
-      if (crm_accel_uv .and. .not. crm_accel_ceaseflag) then
-        call accelerate_momentum(ncrms)
-      end if
-    end subroutine accelerate_crm
-
-
-    subroutine accelerate_scalars(ncrms, ceaseflag)
-      ! accelerates the scalar fields (t and q)
-      ! aborts and returns ceaseflag = .true. if t-tendency exceeds threshhold anywhere
-      implicit none
-  
-      integer, intent(in) :: ncrms
-      logical, intent(out) :: ceaseflag
-  
-      ! initializations
-      ceaseflag = .false.    ! flag to stop applying accelerate_crm
-  
-      call accelerate_t(ncrms, ceaseflag)
-      if (.not. ceaseflag) then
-        call accelerate_micro(ncrms)
-      end if
-    end subroutine accelerate_scalars
-
-
-    subroutine accelerate_t(ncrms, ceaseflag)
-      ! accelerates liquid static energy (t)
-      use grid, only: nx, ny, nzm
-      use vars, only: t, t0
+      use domain, only: yes3d
+      use grid, only: nzm
+      use vars, only: u, v, u0, v0, t0,q0, t,qcl,qci,qv
+      use microphysics, only: micro_field, ixw=>index_water_vapor
       use cam_logfile,  only: iulog
-  
       implicit none
-      integer, intent(in) :: ncrms
-      logical, intent(out) :: ceaseflag
-  
-      ! local variables
-      integer i, j, k, icrm
-      real(rc) :: tbaccel(nzm, ncrms)   ! t before acceleration
-      real(rc) :: ttend_acc(nzm, ncrms) ! mean-state acceleration tendency
-  
-      ! initializations
-      ceaseflag = .false.    ! flag to stop applying accelerate_crm
-  
-      do icrm = 1, ncrms
-        ! calculate tendency * dtn
-        call crm_horiz_mean(tbaccel(:, icrm), t(1:nx, 1:ny, :, icrm))
-        ttend_acc(1:nzm, icrm) = tbaccel(1:nzm, icrm) - t0(1:nzm, icrm)
-      end do
+      integer, intent(in   ) :: ncrms
+      integer, intent(inout) :: nstop
+      integer, intent(inout) :: ceaseflag
+      real(rc) :: ubaccel(nzm,ncrms), vbaccel(nzm,ncrms), tbaccel(nzm,ncrms), qtbaccel(nzm,ncrms)
+      real(rc) :: ttend_acc(nzm,ncrms), qtend_acc(nzm,ncrms), utend_acc(nzm,ncrms), vtend_acc(nzm,ncrms), tmp
+      integer i, j, k, nneg, icrm
+      real(r8) :: qpoz(nzm,ncrms), qneg(nzm,ncrms), factor, qfactor
 
-      ! stop accelerating if acceleration tendency is too large anywhere
-      if(maxval(abs(ttend_acc)) .gt. 5.) then ! special case for dT/dt too large
-        ceaseflag = .true.
+      !$acc enter data create(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !! Compute the average among horizontal columns for each variable
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      !$acc parallel loop collapse(2) async(asyncid)
+      do icrm = 1, ncrms
+        do k = 1, nzm
+          tbaccel (k,icrm) = 0
+          qtbaccel(k,icrm) = 0
+          if (crm_accel_uv) then
+            ubaccel (k,icrm) = 0
+            vbaccel(k,icrm) = 0
+          endif
+        enddo
+      enddo
+      !$acc parallel loop collapse(4) copyin(t,qcl,qci,qv,u,v) async(asyncid)
+      do icrm = 1, ncrms
+        do k = 1, nzm
+          do j = 1 , ny
+            do i = 1 , nx
+              ! calculate tendency * dtn
+              tmp = t(i,j,k,icrm) * coef
+              !$acc atomic update
+              tbaccel (k,icrm) = tbaccel (k,icrm) + tmp
+              tmp = (qcl(i,j, k, icrm) + qci(i,j, k, icrm) + qv(i,j, k, icrm)) * coef
+              qtbaccel(k,icrm) = qtbaccel(k,icrm) + tmp
+              if (crm_accel_uv) then
+                tmp = u(i,j,k,icrm) * coef
+                !$acc atomic update
+                ubaccel(k,icrm) = ubaccel(k,icrm) + tmp
+                tmp = v(i,j,k,icrm) * coef
+                !$acc atomic update
+                vbaccel(k,icrm) = vbaccel(k,icrm) + tmp
+              endif
+            enddo
+          enddo
+        enddo
+      enddo
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !! Compute the accelerated tendencies
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      !$acc parallel loop collapse(2) copyin(t0,q0,u0,v0) copy(ceaseflag) async(asyncid)
+      do icrm = 1, ncrms
+        do k = 1, nzm
+          ttend_acc(k,icrm) = tbaccel (k,icrm) - t0(k,icrm)
+          qtend_acc(k,icrm) = qtbaccel(k,icrm) - q0(k,icrm)
+          if (crm_accel_uv) then
+            utend_acc(k,icrm) = ubaccel(k,icrm) - u0(k,icrm)
+            vtend_acc(k,icrm) = vbaccel(k,icrm) - v0(k,icrm)
+          endif
+          if (ttend_acc(k,icrm) > 5.) then
+            ceaseflag = .true.
+          endif
+        enddo
+      enddo
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !! Make sure it isn't insane
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      !$acc wait(asyncid)
+      if (ceaseflag) then ! special case for dT/dt too large
         write (iulog, *) 'accelerate_crm: |dT|>5K; dT = ', ttend_acc  ! write full array
         write (iulog, *) 'mean-state acceleration not applied this step'
-      else
-        do icrm = 1, ncrms
-          ttend_acc(1:nzm, icrm) = crm_accel_factor * ttend_acc(1:nzm, icrm)
-          do k = 1, nzm
-            do j = 1, ny
-              do i = 1, nx
-                ! don't let T go negative!
-                t(i, j, k, icrm) = max(50._rc, t(i, j, k, icrm) + ttend_acc(k, icrm))
-              end do
-            end do
-          end do
-        end do
-      end if
-    end subroutine accelerate_t
+        write (iulog,*) 'crm: nstop increased from ', nstop, ' to ', int(nstop+(nstop-nstep+1)*crm_accel_factor)
+        nstop = nstop + (nstop - nstep + 1)*crm_accel_factor ! only can happen once
+        return
+      endif
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !! Apply the accelerated tendencies
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      !$acc parallel loop collapse(4) copy(t,u,v,micro_field) async(asyncid)
+      do icrm = 1, ncrms
+        do k = 1, nzm
+          do j = 1, ny
+            do i = 1, nx
+              ! don't let T go negative!
+              t(i,j,k,icrm) = max(50._rc, t(i,j,k,icrm) + crm_accel_factor * ttend_acc(k,icrm))
+              if (crm_accel_uv) then
+                u(i,j,k,icrm) =             u(i,j,k,icrm) + crm_accel_factor * utend_acc(k,icrm) 
+                v(i,j,k,icrm) =             v(i,j,k,icrm) + crm_accel_factor * vtend_acc(k,icrm) 
+              endif
+              micro_field(i,j,k,icrm,ixw) = micro_field(i,j,k,icrm,ixw) + crm_accel_factor * qtend_acc(k,icrm)
+            enddo
+          enddo
+        enddo
+      enddo
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !! Fix negative micro and readjust among micro components
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      !$acc parallel loop collapse(2) async(asyncid)
+      do icrm = 1, ncrms
+        do k = 1, nzm
+          qpoz(k,icrm) = 0.
+          qneg(k,icrm) = 0.
+        enddo
+      enddo
+      !$acc parallel loop collapse(4) copyin(micro_field) async(asyncid)
+      do icrm = 1, ncrms
+        do k = 1, nzm
+          do j = 1, ny
+            do i = 1, nx
+              if (micro_field(i,j,k,icrm,ixw) < 0.) then
+                !$acc atomic update
+                qneg(k,icrm) = qneg(k,icrm) + micro_field(i,j,k,icrm,ixw)
+              else
+                !$acc atomic update
+                qpoz(k,icrm) = qpoz(k,icrm) + micro_field(i,j,k,icrm,ixw)
+              endif
+            enddo
+          enddo
+        enddo
+      enddo
+      !$acc parallel loop collapse(4) copy(micro_field,qv,qcl,qci) async(asyncid)
+      do icrm = 1, ncrms
+        do k = 1, nzm
+          do j = 1 , ny
+            do i = 1 , nx
+              if (qpoz(k,icrm) + qneg(k,icrm) < 0.) then
+                micro_field(i,j,k,icrm,ixw) = 0.
+                qv         (i,j,k,icrm    ) = 0.
+                qcl        (i,j,k,icrm    ) = 0.
+                qci        (i,j,k,icrm    ) = 0.
+              else
+                factor = 1._r8 + qneg(k,icrm) / qpoz(k,icrm)
+                ! apply to micro_field and partition qv, qcl, qci appropriately
+                micro_field(i,j,k,icrm,ixw) = max(0._rc, micro_field(i,j,k,icrm,ixw) * factor)
+                ! partition micro_field into qv, qcl, and qci
+                ! such that micro_field = qv + qcl + qci, following these rules:
+                !  (1) adjust qv first
+                !  (2) adjust qcl and qci only if needed to ensure positivity
+                if (micro_field(i,j,k,icrm,ixw) <= 0._rc) then
+                  qv (i,j,k,icrm) = 0.
+                  qcl(i,j,k,icrm) = 0.
+                  qci(i,j,k,icrm) = 0.
+                else
+                  qfactor = micro_field(i,j,k,icrm,ixw) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
+                  qv(i,j,k,icrm) = max(0._rc, qfactor)
+                  if (qfactor < 0._r8) then
+                    ! note: this theoretically is guaranteed to work
+                    qfactor = 1._r8 + qfactor / (qcl(i,j,k,icrm) + qci(i,j,k,icrm))
+                    qcl(i,j,k,icrm) = qcl(i,j,k,icrm) * qfactor
+                    qci(i,j,k,icrm) = qci(i,j,k,icrm) * qfactor
+                  endif
+                endif
+              endif ! qpoz + qneg < 0.
+            enddo
+          enddo
+        enddo  ! k = 1, nzm
+      enddo ! icrm = 1, ncrms
+
+      !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
+    end subroutine accelerate_crm
   
     subroutine accelerate_micro(ncrms)
       use grid, only: nx, ny, nzm
@@ -225,19 +323,6 @@ module accelerate_crm_mod
       real(rc) :: qtbaccel(nzm, ncrms)  ! t and q before acceleration
       real(rc) :: qtend_acc(nzm, ncrms) ! accel tendencies
 
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          ! crjones: better to work with micro_field direcly?
-          qtbaccel(k, icrm) = sum(qcl(1:nx, 1:ny, k, icrm) + qci(1:nx, 1:ny, k, icrm) + qv(1:nx, 1:ny, k, icrm)) * coef
-        end do
-      end do
-  
-      do icrm = 1, ncrms
-        ! tendency * dtn
-        qtend_acc(1:nzm, icrm) = qtbaccel(1:nzm, icrm) - q0(1:nzm, icrm)
-        qtend_acc(1:nzm, icrm) = crm_accel_factor * qtend_acc(1:nzm, icrm)
-      end do
-  
       if(distribute_qneg) then
         ! redistribute moistre in level by removing from cells with positive q
         call apply_accel_tend_micro(ncrms, qtend_acc)
@@ -253,151 +338,30 @@ module accelerate_crm_mod
           do k = 1, nzm
             do j = 1, ny
               do i = 1, nx
-                micro_field(i, j, k, icrm, ixw) = &
-                  micro_field(i, j, k, icrm, ixw) + qtend_acc(k, icrm)
+                micro_field(i, j, k, icrm, ixw) = micro_field(i, j, k, icrm, ixw) + crm_accel_factor * qtend_acc(k, icrm)
                 ! enforce positivity and accumulate (negative) excess
-                if(micro_field(i, j, k, icrm, ixw) .lt. 0.) then
-                  micro_field(i, j, k, icrm, ixw) = 0.
-                end if
-                qv(i, j, k, icrm) = max(0._rc, qv(i, j, k, icrm) + qtend_acc(k, icrm))
-              end do
-            end do
-          end do
-        end do
-      end if
+                if(micro_field(i, j, k, icrm, ixw) < 0.) micro_field(i, j, k, icrm, ixw) = 0.
+                qv(i, j, k, icrm) = max(0._rc, qv(i, j, k, icrm) + crm_accel_factor * qtend_acc(k, icrm))
+              enddo
+            enddo
+          enddo
+        enddo
+      endif
     end subroutine accelerate_micro
   
-    subroutine crm_horiz_mean(out1D, in3D)
-      ! returns horizontal mean of in3D(1:nx, 1:ny, 1:nzm) as out1D
-      use grid, only: nx, ny, nzm
-  
-      implicit none
-  
-      real(rc), intent(in) :: in3D(:, :, :)
-      real(rc), intent(out) :: out1D(nzm)
-  
-      integer k
-      do k = 1, nzm
-        out1D(k) = sum(in3D(1:nx, 1:ny, k)) * coef
-      end do
-    end subroutine crm_horiz_mean
-  
 
-    subroutine apply_accel_tend_micro(ncrms, deltaq)
+    subroutine apply_accel_tend_micro(ncrms, qtend_acc)
       use vars, only: qv, qcl, qci
       use microphysics, only: micro_field, ixw=>index_water_vapor
       use grid, only: nx, ny, nzm
       implicit none
-      integer, intent(in) :: ncrms
-      real(rc), intent(in) :: deltaq(nzm, ncrms)
-  
+      integer , intent(in) :: ncrms
+      real(rc), intent(in) :: qtend_acc(nzm, ncrms)
       integer i, j, k, nneg, icrm
-      real(r8) :: qpoz, qneg, factor
+      real(r8) :: qpoz(nzm,ncrms), qneg(nzm,ncrms), factor, qfactor
 
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          qpoz = 0.
-          qneg = 0.
-  
-          ! update micro_field
-          micro_field(1:nx, 1:ny, k, icrm, ixw) = &
-            micro_field(1:nx, 1:ny, k, icrm, ixw) + deltaq(k, icrm)
-  
-          ! crjones note: this should probably change with gpu acceleration
-          if (deltaq(k, icrm) .ge. 0.) then
-            ! skip the hole-filling logic, dump all deltaq(k) all into qv
-            qv(1:nx, 1:ny, k, icrm) = qv(1:nx, 1:ny, k, icrm) + deltaq(k, icrm)
-            cycle
-          end if
-          ! accumulate negative excess (if any)
-          do j = 1, ny
-            do i = 1, nx
-              if (micro_field(i, j, k, icrm, ixw) .lt. 0.) then
-                qneg = qneg + micro_field(i, j, k, icrm, ixw)
-              else
-                qpoz = qpoz + micro_field(i, j, k, icrm, ixw)
-              end if
-            end do
-          end do
-  
-          if (qpoz + qneg .lt. 0.) then
-            micro_field(1:nx, 1:ny, k, icrm, ixw) = 0._rc
-            qv(1:nx, 1:ny, k, icrm) = 0._rc
-            qcl(1:nx, 1:ny, k, icrm) = 0._rc
-            qci(1:nx, 1:ny, k, icrm) = 0._rc
-          else
-            factor = 1._r8 + qneg / qpoz
-            ! apply to micro_field and partition qv, qcl, qci appropriately
-            micro_field(1:nx, 1:ny, k, icrm, ixw) = &
-              max(0._rc, micro_field(1:nx, 1:ny, k, icrm, ixw) * factor)
-            call partition_micro(qv(1:nx, 1:ny, k, icrm), qcl(1:nx, 1:ny, k, icrm), qci(1:nx, 1:ny, k, icrm), &
-                                micro_field(1:nx, 1:ny, k, icrm, ixw))
-          end if
-        end do  ! k = 1, nzm
-      end do ! icrm = 1, ncrms
+
     end subroutine apply_accel_tend_micro
-  
-    elemental subroutine partition_micro(qvx, qclx, qcix, micro_fieldx)
-      ! partition micro_field into qv, qcl, and qci
-      ! such that micro_field = qv + qcl + qci, following these rules:
-      !  (1) adjust qv first
-      !  (2) adjust qcl and qci only if needed to ensure positivity
-      implicit none
-  
-      real(rc), intent(out) :: qvx
-      real(rc), intent(inout) :: qclx, qcix
-      real(rc), intent(in) :: micro_fieldx
-  
-      real(r8) :: qfactor
-  
-      if (micro_fieldx .le. 0._rc) then
-        qvx = 0.
-        qclx = 0.
-        qcix = 0.
-      else
-        qfactor = micro_fieldx - qclx - qcix
-        qvx = max(0._rc, qfactor)
-        if (qfactor .lt. 0._r8) then
-          ! note: this theoretically is guaranteed to work
-          qfactor = 1._r8 + qfactor / (qclx + qcix)
-          qclx = qclx * qfactor
-          qcix = qcix * qfactor
-        end if
-      end if
-    end subroutine partition_micro
-  
-    subroutine accelerate_momentum(ncrms)
-    ! accelerates the velocity fields (u and v)
-      use domain, only: yes3d
-      use grid, only: nzm
-      use vars, only: u, v, u0, v0
-  
-    implicit none
-    integer, intent(in) :: ncrms
-  
-    ! local variables
-    integer k, icrm
-    real(rc) :: ubaccel(nzm, ncrms), vbaccel(nzm, ncrms)      ! u and v before acceleration
-    real(rc) :: utend_acc(nzm, ncrms), vtend_acc(nzm, ncrms)  ! accel tendencies
-  
-    do icrm = 1, ncrms
-      ! always accelerate u
-      call crm_horiz_mean(ubaccel(1:nzm, icrm), u(1:nx, 1:ny, :, icrm))
-      utend_acc(1:nzm, icrm) = crm_accel_factor * (ubaccel(1:nzm, icrm) - u0(1:nzm, icrm))
-      do k = 1, nzm
-        u(1:nx, 1:ny, k, icrm) = u(1:nx, 1:ny, k, icrm) + utend_acc(k, icrm)
-      end do
-    
-      ! only mess with v if 3D:
-      if (yes3d .gt. 0) then
-        call crm_horiz_mean(vbaccel(1:nzm, icrm), v(1:nx, 1:ny, :, icrm))
-        vtend_acc(1:nzm, icrm) = crm_accel_factor * (vbaccel(1:nzm, icrm) - v0(1:nzm, icrm))
-        do k = 1, nzm
-          v(1:nx, 1:ny, k, icrm) = v(1:nx, 1:ny, k, icrm) + vtend_acc(k, icrm)
-        end do
-      endif
-    end do
-  end subroutine accelerate_momentum
     
 end module accelerate_crm_mod
   

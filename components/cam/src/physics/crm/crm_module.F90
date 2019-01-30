@@ -83,10 +83,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
-#ifdef CRMACCEL
-    use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, &
-                                      crm_accel_nstop, crm_accel_reset_nstop, accelerate_crm
-#endif
+    use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, crm_accel_nstop, crm_accel_reset_nstop, accelerate_crm
     use cam_abortutils        , only: endrun
     use time_manager          , only: get_nstep
 
@@ -143,12 +140,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd) :: crm_ny_rad_fac
     integer        :: i_rad
     integer        :: j_rad
-
-#ifdef CRMACCEL
     logical :: crm_accel_ceaseflag   ! indicates if accelerate_crm needs to be aborted for remainder of crm call
-    logical :: accel_skipping        ! indicates that mean state acceleration should be skipped
-#endif
-
 
     !!! Arrays
     real(crm_rknd), allocatable :: t00(:,:)
@@ -325,10 +317,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call allocate_scalar_momentum(ncrms)
 #endif
 
-#ifdef CRMACCEL
-    crm_accel_ceaseflag = .false.
-    accel_skipping = .false.
-#endif
+  crm_accel_ceaseflag = .false.
 
   !Loop over "vector columns"
   do icrm = 1 , ncrms
@@ -802,11 +791,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   crm_run_time  = dt_gl
   icrm_run_time = 1._r8/crm_run_time
 
-#ifdef CRMACCEL
   if (use_crm_accel) then
     call crm_accel_nstop(nstop)  ! reduce nstop by factor of (1 + crm_accel_factor)
   end if
-#endif
 
 
   !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
@@ -824,7 +811,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !   Main time loop
   !----------------------------------------------------------------------------------------
   !========================================================================================
-  do nstep = 1 , nstop
+  nstep = 0
+  do while (nstep < nstop)
+    nstep = nstep + 1
 
     !$acc parallel loop copy(crm_output_timing_factor) async(asyncid)
     do icrm = 1 , ncrms
@@ -966,25 +955,13 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       if(docloud.or.dosmoke) call micro_proc(ncrms)
 #endif /*CLUBB_CRM*/
 
-#ifdef CRMACCEL
-        !-----------------------------------------------------------
-        !       Apply mean-state acceleration
-        if (use_crm_accel .and. .not. accel_skipping) then
-          ! Use Jones-Bretherton-Pritchard methodology to accelerate
-          ! CRM horizontal mean evolution artificially.
-          call accelerate_crm(ncrms, crm_accel_ceaseflag)
-          ! need to sync here to verify crm_accel_ceaseflag is not false ...
-          !$acc wait(asyncid)
-            if (crm_accel_ceaseflag) then
-              ! Tendencies were too large, so acceleration turned off for
-              ! remainder of steps. Need to adjust nstop to account for remaining
-              ! steps advancing at unaccelerated pace
-              ! Note: This will affect each 'icrm' ...
-              accel_skipping = .true.
-              call crm_accel_reset_nstop(nstop, nstep)
-            endif
-        endif
-#endif
+      !-----------------------------------------------------------
+      !       Apply mean-state acceleration
+      if (use_crm_accel .and. .not. crm_accel_ceaseflag) then
+        ! Use Jones-Bretherton-Pritchard methodology to accelerate
+        ! CRM horizontal mean evolution artificially.
+        call accelerate_crm(ncrms, nstop, crm_accel_ceaseflag)
+      endif
 
       !-----------------------------------------------------------
       !    Compute diagnostics fields:
