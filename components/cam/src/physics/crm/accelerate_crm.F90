@@ -48,8 +48,6 @@ module accelerate_crm_mod
     public :: crm_accel_nstop
     public :: crm_accel_reset_nstop
     public :: crm_accel_init
-    public :: crm_accel_verbose_debug
-    public :: accelerate_crm_orig
   contains
 
     subroutine crm_accel_init()
@@ -57,6 +55,7 @@ module accelerate_crm_mod
       use phys_control, only: phys_getopts
       use cam_logfile, only: iulog
       use spmd_utils,  only: masterproc
+      use cam_abortutils, only: endrun
   
       implicit none
       integer :: crm_accel_micro_opt = 0
@@ -66,12 +65,12 @@ module accelerate_crm_mod
       crm_accel_factor = 0.
       crm_accel_uv = .false.
   
-  #ifdef CRMACCEL
+#ifdef CRMACCEL
       call phys_getopts(use_crm_accel_out = use_crm_accel, &
                         crm_accel_factor_out = crm_accel_factor, &
                         crm_accel_uv_out = crm_accel_uv, &
                         crm_accel_micro_opt_out = crm_accel_micro_opt)
-  #endif
+#endif
       if (crm_accel_micro_opt .eq. 1) then
         distribute_qneg = .true.
       else
@@ -86,13 +85,13 @@ module accelerate_crm_mod
          write(iulog, *) 'crm_accel: crm_accel_micro_opt = ', crm_accel_micro_opt
          write(iulog, *) 'crm_accel: setting distribute_qneg = ', distribute_qneg
       end if
-  #if defined(CRMACCEL) && !defined(sam1mom)
+#if defined(CRMACCEL) && !defined(sam1mom)
       ! ensure CRMACCEL runs with sam1mom only
       if (masterproc) then
         write(0,*) "CRMACCEL is only compatible with sam1mom microphysics"
         call endrun('crm main')
       endif
-  #endif
+#endif
     
     end subroutine crm_accel_init
   
@@ -390,7 +389,7 @@ module accelerate_crm_mod
       ! only mess with v if 3D:
       if (yes3d .gt. 0) then
         call crm_horiz_mean(vbaccel(1:nzm, icrm), v(1:nx, 1:ny, :, icrm))
-        vtend_acc(1:nzm) = crm_accel_factor * (vbaccel(1:nzm, icrm) - v0(1:nzm, icrm))
+        vtend_acc(1:nzm, icrm) = crm_accel_factor * (vbaccel(1:nzm, icrm) - v0(1:nzm, icrm))
         do k = 1, nzm
           v(1:nx, 1:ny, k, icrm) = v(1:nx, 1:ny, k, icrm) + vtend_acc(k, icrm)
         end do
