@@ -33,20 +33,10 @@ module accelerate_crm_mod
     ! private constants
     private :: coef, distribute_qneg, crm_accel_uv
     
-    ! private subroutines
-    private :: accelerate_scalars
-    private :: accelerate_momentum
-    private :: accelerate_t
-    private :: accelerate_micro
-    private :: crm_horiz_mean
-    private :: apply_accel_tend_micro
-    private :: partition_micro
-
-    ! public subroutines
+    ! public variables / subroutines
     public :: use_crm_accel, crm_accel_factor
     public :: accelerate_crm
     public :: crm_accel_nstop
-    public :: crm_accel_reset_nstop
     public :: crm_accel_init
   contains
 
@@ -113,23 +103,7 @@ module accelerate_crm_mod
     end subroutine crm_accel_nstop
 
 
-    subroutine crm_accel_reset_nstop(nstop, nstep)
-      ! If acceleration was turned off for remainder of steps at step "nstep",
-      ! need to adjust nstop to account for remaining steps advancing at
-      ! original (unaccelerated) pace.
-      use cam_logfile,  only: iulog
-  
-      implicit none
-  
-      integer, intent(inout) :: nstop
-      integer, intent(in) :: nstep
-      write (iulog,*) 'crm: nstop increased from ', nstop, ' to ', &
-              int(nstop+(nstop-nstep+1)*crm_accel_factor)
-      nstop = nstop + (nstop - nstep + 1)*crm_accel_factor ! only can happen once
-    end subroutine crm_accel_reset_nstop
-
-
-    subroutine accelerate_crm(ncrms, nstop, ceaseflag)
+    subroutine accelerate_crm(ncrms, nstep, nstop, ceaseflag)
       ! accelerate scalars t and q (and micro_field(:,:,:, index_water_vapor, icrm))
       ! raise crm_accel_ceaseflag and cancel mean-state acceleration
       !       if magnitude of t-tendency is too great
@@ -140,8 +114,9 @@ module accelerate_crm_mod
       use cam_logfile,  only: iulog
       implicit none
       integer, intent(in   ) :: ncrms
+      integer, intent(in   ) :: nstep
       integer, intent(inout) :: nstop
-      integer, intent(inout) :: ceaseflag
+      logical, intent(inout) :: ceaseflag
       real(rc) :: ubaccel(nzm,ncrms), vbaccel(nzm,ncrms), tbaccel(nzm,ncrms), qtbaccel(nzm,ncrms)
       real(rc) :: ttend_acc(nzm,ncrms), qtend_acc(nzm,ncrms), utend_acc(nzm,ncrms), vtend_acc(nzm,ncrms), tmp
       integer i, j, k, nneg, icrm

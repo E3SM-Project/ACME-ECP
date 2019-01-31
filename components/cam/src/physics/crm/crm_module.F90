@@ -83,7 +83,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
-    use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, crm_accel_nstop, crm_accel_reset_nstop, accelerate_crm
+    use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, crm_accel_nstop, accelerate_crm
     use cam_abortutils        , only: endrun
     use time_manager          , only: get_nstep
 
@@ -960,7 +960,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       if (use_crm_accel .and. .not. crm_accel_ceaseflag) then
         ! Use Jones-Bretherton-Pritchard methodology to accelerate
         ! CRM horizontal mean evolution artificially.
-        call accelerate_crm(ncrms, nstop, crm_accel_ceaseflag)
+        call accelerate_crm(ncrms, nstep, nstop, crm_accel_ceaseflag)
       endif
 
       !-----------------------------------------------------------
