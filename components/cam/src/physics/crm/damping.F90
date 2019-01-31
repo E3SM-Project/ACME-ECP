@@ -23,7 +23,7 @@ contains
     ! crjones tests: make changes to u0, v0, t0 local instead of shared with vars
     real(crm_rknd) :: t0loc(nzm, ncrms), u0loc(nzm, ncrms), v0loc(nzm, ncrms)
    
-    !$acc enter data create(tau,n_damp) async(asyncid)
+    !$acc enter data create(tau,n_damp,t0loc, u0loc, v0loc) async(asyncid)
 
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'
@@ -50,7 +50,7 @@ contains
     ! recalculate grid-mean u0, v0, t0 first,
     ! as t has been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
-    !$acc parallel loop collapse(2) copyout(u0,v0,t0) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do icrm = 1 , ncrms
       do k=1, nzm
         u0loc(k,icrm)=0.0
@@ -58,7 +58,7 @@ contains
         t0loc(k,icrm)=0.0
       end do
     end do
-    !$acc parallel loop collapse(4) copyin(u,v,t) copy(u0,v0,t0) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(u,v,t) async(asyncid)
     do icrm = 1 , ncrms
       do k=1, nzm
         do j=1, ny
@@ -79,7 +79,7 @@ contains
 
    !For working around PGI OpenACC bug where it didn't create enough gangs 
     numgangs = ceiling(ncrms*ny*nx/128.)
-    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,u0,v,v0,tau,w,t0,qv,qv0) async(asyncid)
+    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,v,tau,w,qv,qv0) async(asyncid)
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
@@ -94,7 +94,7 @@ contains
       end do ! k
     end do
 
-    !$acc exit data delete(tau,n_damp) async(asyncid)
+    !$acc exit data delete(tau,n_damp,t0loc,u0loc,v0loc) async(asyncid)
 
   end subroutine damping
 
