@@ -368,6 +368,7 @@ end function radiation_nextsw_cday
 #ifdef SPMD
     use mpishorthand,   only: mpi_integer, mpicom, mpi_comm_world
 #endif
+    use crmdims,        only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
@@ -404,14 +405,6 @@ end function radiation_nextsw_cday
 
     call radsw_init()
     call radlw_init()
-
-    ! If we are using superparameterization, then we need to make sure that
-    ! iradsw and iradlw are both set to 1 to make sure that radiation is updated
-    ! every timestep.
-    if (use_SPCAM) then
-       iradsw = 1
-       iradlw = 1
-    end if
 
     ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then
@@ -781,28 +774,29 @@ end function radiation_nextsw_cday
           call addfld('FDL'//diag(icall), (/ 'ilev' /),'I',     'W/m2', 'Longwave downward flux')
           call addfld('FULC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky upward flux')
           call addfld('FDLC'//diag(icall), (/ 'ilev' /),'I',    'W/m2', 'Longwave clear-sky downward flux')
-!==Guangxing Lin
  
          if (history_amwg) then
-          call add_default('QRL'//diag(icall),   1, ' ')
-          call add_default('FLNS'//diag(icall),  1, ' ')
-          call add_default('FLDS'//diag(icall),  1, ' ')
-          call add_default('FLNT'//diag(icall),  1, ' ')
-          call add_default('FLUT'//diag(icall),  1, ' ')
-          call add_default('FLUTC'//diag(icall), 1, ' ')
-          call add_default('FLNTC'//diag(icall), 1, ' ')
-          call add_default('FLNSC'//diag(icall), 1, ' ')
-          call add_default('LWCF'//diag(icall),  1, ' ')
+            call add_default('QRL' //diag(icall),   1, ' ')
+            call add_default('FLNS'//diag(icall),  1, ' ')
+            call add_default('FLDS'//diag(icall),  1, ' ')
+            call add_default('FLNT'//diag(icall),  1, ' ')
+            call add_default('FLUT'//diag(icall),  1, ' ')
+            call add_default('FLUTC'//diag(icall), 1, ' ')
+            call add_default('FLNTC'//diag(icall), 1, ' ')
+            call add_default('FLNSC'//diag(icall), 1, ' ')
+            call add_default('LWCF'//diag(icall),  1, ' ')
          endif
 
+         ! Add cloud-scale radiative quantities
+         if (use_SPCAM) then
+            call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'A', 'K/s', 'Radiative heating tendency')
+            call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', 'CRM Shortwave radiative heating rate')
+            call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
+         end if
        end if
     end do
 
-!==Guangxing Lin
-   ! call addfld('EMIS      ',    '1   ', pver,    'A', 'Cloud longwave emissivity',phys_decomp)
-     call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity')
-!==Guangxing Lin
-
+    call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity')
 
     if (single_column.and.scm_crm_mode) then
        call add_default ('FUL     ', 1, ' ')
@@ -813,18 +807,6 @@ end function radiation_nextsw_cday
 
     ! HIRS/MSU diagnostic brightness temperatures
     if (dohirs) then
-!==Guangxing Lin
-     !  call addfld (hirsname(1),'K       ',1,'A','HIRS CH2 infra-red brightness temperature',phys_decomp)
-     !  call addfld (hirsname(2),'K       ',1,'A','HIRS CH4 infra-red brightness temperature',phys_decomp)
-     !  call addfld (hirsname(3),'K       ',1,'A','HIRS CH6 infra-red brightness temperature',phys_decomp)
-     !  call addfld (hirsname(4),'K       ',1,'A','HIRS CH8 infra-red brightness temperature',phys_decomp)
-     !  call addfld (hirsname(5),'K       ',1,'A','HIRS CH10 infra-red brightness temperature',phys_decomp)
-     !  call addfld (hirsname(6),'K       ',1,'A','HIRS CH11 infra-red brightness temperature',phys_decomp)
-     !  call addfld (hirsname(7),'K       ',1,'A','HIRS CH12 infra-red brightness temperature',phys_decomp)
-     !  call addfld (msuname(1),'K       ',1,'A','MSU CH1 microwave brightness temperature',phys_decomp)
-     !  call addfld (msuname(2),'K       ',1,'A','MSU CH2 microwave brightness temperature',phys_decomp)
-     !  call addfld (msuname(3),'K       ',1,'A','MSU CH3 microwave brightness temperature',phys_decomp)
-     !  call addfld (msuname(4),'K       ',1,'A','MSU CH4 microwave brightness temperature',phys_decomp)
        call addfld (hirsname(1),horiz_only,'A','K','HIRS CH2 infra-red brightness temperature')
        call addfld (hirsname(2),horiz_only,'A','K','HIRS CH4 infra-red brightness temperature')
        call addfld (hirsname(3),horiz_only,'A','K','HIRS CH6 infra-red brightness temperature')
@@ -836,7 +818,7 @@ end function radiation_nextsw_cday
        call addfld (msuname(2),horiz_only,'A','K','MSU CH2 microwave brightness temperature')
        call addfld (msuname(3),horiz_only,'A','K','MSU CH3 microwave brightness temperature')
        call addfld (msuname(4),horiz_only,'A','K','MSU CH4 microwave brightness temperature')
-!==Guangxing Lin
+
        call add_default (hirsname(1), 1, ' ')
        call add_default (hirsname(2), 1, ' ')
        call add_default (hirsname(3), 1, ' ')
@@ -1457,123 +1439,128 @@ end function radiation_nextsw_cday
     ! Figure out if we are doing radiation at this timestep. For SP-CAM, these
     ! should ALWAYS return true...this is handled in radiation_init() by setting
     ! iradsw = iradlw = 1
-    dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
-    dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
+    dosw = radiation_do('sw')      ! do shortwave heating calc this timestep?
+    dolw = radiation_do('lw')      ! do longwave heating calc this timestep?
 
     ! Initialize averages over CRM columns to zero. These are aggregated over
     ! the loop over CRM columns below.
     if (use_SPCAM) then 
-      solin_m    = 0.   ; fsntoa_m   = 0. 
-      fsutoa_m   = 0.   ; fsntoac_m  = 0.
-      fsnirt_m   = 0.   ; fsnrtc_m   = 0.
-      fsnirtsq_m = 0.   ; fsntc_m    = 0. 
-      fsnsc_m    = 0.   ; fsdsc_m    = 0.
-      flut_m     = 0.   ; flutc_m    = 0.
-      flntc_m    = 0.   ; flnsc_m    = 0.
-      fldsc_m    = 0.   ; flwds_m    = 0.
-      fsns_m     = 0.   ; fsnt_m     = 0.
-      flns_m     = 0.   ; flnt_m     = 0.
-      fsds_m     = 0.
-      fln200_m   = 0.   ; fln200c_m  = 0.
-      fsn200_m   = 0.   ; fsn200c_m  = 0.
-      sols_m     = 0.   ; soll_m     = 0.
-      solsd_m    = 0.   ; solld_m    = 0.
-      qrs_m      = 0.   ; qrl_m      = 0.
-      qrsc_m     = 0.   ; qrlc_m     = 0.
-      qrs_crm    = 0.   ; qrl_crm    = 0.
-      emis_crm   = 0.   ; cld_tau_crm= 0.
-      crm_aodvisz= 0.   ; crm_aodvis = 0.
-      crm_aod400 = 0.   ; crm_aod700 = 0.
-      aod400     = 0.   ; aod700     = 0.
-      crm_fsnt   = 0.   ; crm_fsntc  = 0. 
-      crm_fsns   = 0.   ; crm_fsnsc  = 0.
-      crm_flnt   = 0.   ; crm_flntc  = 0.
-      crm_flns   = 0.   ; crm_flnsc  = 0.
-      tot_cld_vistau   = 0
-      tot_icld_vistau  = 0. ; nct_tot_icld_vistau  = 0.
-      liq_icld_vistau  = 0. ; nct_liq_icld_vistau  = 0.
-      ice_icld_vistau  = 0. ; nct_ice_icld_vistau  = 0.
-      snow_icld_vistau = 0. ; nct_snow_icld_vistau = 0.
-      if (spectralflux) then
-        su_m = 0. ; sd_m = 0.
-        lu_m = 0. ; ld_m = 0.
-      end if
 
-      i_iciwp  = pbuf_get_index('ICIWP')
-      i_iclwp  = pbuf_get_index('ICLWP')
-      i_icswp  = pbuf_get_index('ICSWP')
-      call pbuf_get_field(pbuf, i_iciwp, cicewp)
-      call pbuf_get_field(pbuf, i_iclwp, cliqwp)
-      ! call pbuf_get_field(pbuf, i_icswp, csnowp)
-      cicewp_save = cicewp     ! save to restore later
-      cliqwp_save = cliqwp     ! save to restore later
-      ! csnowp_save = csnowp     ! save to restore later
+       ! Only zero SP fields when we are going to update the longwave or
+       ! shortwave in case we are NOT going to update the radiation each
+       ! timestep.
+       if (dosw .or. dolw) then
+         solin_m    = 0.   ; fsntoa_m   = 0. 
+         fsutoa_m   = 0.   ; fsntoac_m  = 0.
+         fsnirt_m   = 0.   ; fsnrtc_m   = 0.
+         fsnirtsq_m = 0.   ; fsntc_m    = 0. 
+         fsnsc_m    = 0.   ; fsdsc_m    = 0.
+         flut_m     = 0.   ; flutc_m    = 0.
+         flntc_m    = 0.   ; flnsc_m    = 0.
+         fldsc_m    = 0.   ; flwds_m    = 0.
+         fsns_m     = 0.   ; fsnt_m     = 0.
+         flns_m     = 0.   ; flnt_m     = 0.
+         fsds_m     = 0.
+         fln200_m   = 0.   ; fln200c_m  = 0.
+         fsn200_m   = 0.   ; fsn200c_m  = 0.
+         sols_m     = 0.   ; soll_m     = 0.
+         solsd_m    = 0.   ; solld_m    = 0.
+         qrs_m      = 0.   ; qrl_m      = 0.
+         qrsc_m     = 0.   ; qrlc_m     = 0.
+         qrs_crm    = 0.   ; qrl_crm    = 0.
+         emis_crm   = 0.   ; cld_tau_crm= 0.
+         crm_aodvisz= 0.   ; crm_aodvis = 0.
+         crm_aod400 = 0.   ; crm_aod700 = 0.
+         aod400     = 0.   ; aod700     = 0.
+         crm_fsnt   = 0.   ; crm_fsntc  = 0. 
+         crm_fsns   = 0.   ; crm_fsnsc  = 0.
+         crm_flnt   = 0.   ; crm_flntc  = 0.
+         crm_flns   = 0.   ; crm_flnsc  = 0.
+         tot_cld_vistau   = 0
+         tot_icld_vistau  = 0. ; nct_tot_icld_vistau  = 0.
+         liq_icld_vistau  = 0. ; nct_liq_icld_vistau  = 0.
+         ice_icld_vistau  = 0. ; nct_ice_icld_vistau  = 0.
+         snow_icld_vistau = 0. ; nct_snow_icld_vistau = 0.
+         if (spectralflux) then
+           su_m = 0. ; sd_m = 0.
+           lu_m = 0. ; ld_m = 0.
+         end if
 
-      if (SPCAM_microp_scheme .eq. 'm2005') then 
-        call pbuf_get_field(pbuf, i_icswp, csnowp)
-        csnowp_save = csnowp     ! save to restore later
-      end if
+         i_iciwp  = pbuf_get_index('ICIWP')
+         i_iclwp  = pbuf_get_index('ICLWP')
+         i_icswp  = pbuf_get_index('ICSWP')
+         call pbuf_get_field(pbuf, i_iciwp, cicewp)
+         call pbuf_get_field(pbuf, i_iclwp, cliqwp)
+         ! call pbuf_get_field(pbuf, i_icswp, csnowp)
+         cicewp_save = cicewp     ! save to restore later
+         cliqwp_save = cliqwp     ! save to restore later
+         ! csnowp_save = csnowp     ! save to restore later
 
-      crm_t_rad_idx   = pbuf_get_index('CRM_T_RAD')
-      crm_qc_rad_idx  = pbuf_get_index('CRM_QC_RAD')
-      crm_qi_rad_idx  = pbuf_get_index('CRM_QI_RAD')
-      crm_qv_rad_idx  = pbuf_get_index('CRM_QV_RAD')
-      crm_qrad_idx    = pbuf_get_index('CRM_QRAD')
-      call pbuf_get_field(pbuf, crm_t_rad_idx,  t_rad)
-      call pbuf_get_field(pbuf, crm_qc_rad_idx, qc_rad)
-      call pbuf_get_field(pbuf, crm_qi_rad_idx, qi_rad)
-      call pbuf_get_field(pbuf, crm_qv_rad_idx, qv_rad)
-      call pbuf_get_field(pbuf, crm_qrad_idx,   crm_qrad)
-      crm_qrad=0.
+         if (SPCAM_microp_scheme .eq. 'm2005') then 
+           call pbuf_get_field(pbuf, i_icswp, csnowp)
+           csnowp_save = csnowp     ! save to restore later
+         end if
 
-      if (SPCAM_microp_scheme .eq. 'm2005') then 
-        crm_nc_rad_idx  = pbuf_get_index('CRM_NC_RAD')
-        call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_ni_rad_idx  = pbuf_get_index('CRM_NI_RAD')
-        call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_qs_rad_idx  = pbuf_get_index('CRM_QS_RAD')
-        call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-        crm_ns_rad_idx  = pbuf_get_index('CRM_NS_RAD')
-        call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
-      endif
+         crm_t_rad_idx   = pbuf_get_index('CRM_T_RAD')
+         crm_qc_rad_idx  = pbuf_get_index('CRM_QC_RAD')
+         crm_qi_rad_idx  = pbuf_get_index('CRM_QI_RAD')
+         crm_qv_rad_idx  = pbuf_get_index('CRM_QV_RAD')
+         crm_qrad_idx    = pbuf_get_index('CRM_QRAD')
+         call pbuf_get_field(pbuf, crm_t_rad_idx,  t_rad)
+         call pbuf_get_field(pbuf, crm_qc_rad_idx, qc_rad)
+         call pbuf_get_field(pbuf, crm_qi_rad_idx, qi_rad)
+         call pbuf_get_field(pbuf, crm_qv_rad_idx, qv_rad)
+         call pbuf_get_field(pbuf, crm_qrad_idx,   crm_qrad)
+         crm_qrad=0.
 
-      cicewp(1:ncol,1:pver) = 0.  
-      cliqwp(1:ncol,1:pver) = 0.
-      trad(:ncol,:)  = state%t(:ncol,:)
-      qvrad(:ncol,:) = state%q(:ncol,:,1)  
+         if (SPCAM_microp_scheme .eq. 'm2005') then 
+           crm_nc_rad_idx  = pbuf_get_index('CRM_NC_RAD')
+           call pbuf_get_field(pbuf, crm_nc_rad_idx, nc_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+           crm_ni_rad_idx  = pbuf_get_index('CRM_NI_RAD')
+           call pbuf_get_field(pbuf, crm_ni_rad_idx, ni_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+           crm_qs_rad_idx  = pbuf_get_index('CRM_QS_RAD')
+           call pbuf_get_field(pbuf, crm_qs_rad_idx, qs_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+           crm_ns_rad_idx  = pbuf_get_index('CRM_NS_RAD')
+           call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
+         endif
 
-      factor_xy = 1./real( crm_nx_rad*crm_ny_rad ,r8)
+         cicewp(1:ncol,1:pver) = 0.  
+         cliqwp(1:ncol,1:pver) = 0.
+         trad(:ncol,:)  = state%t(:ncol,:)
+         qvrad(:ncol,:) = state%q(:ncol,:,1)  
 
-      cld_save = cld  ! save to restore later
-      rel_save = rel  ! save to restroe later
-      rei_save = rei  ! save to restore later
-      dei_save = dei  ! save to restore later
-      cld = 0.0_r8
-      rel = 0.0_r8
-      rei = 0.0_r8
-      dei = 0.0_r8
-      if (cldfsnow_idx > 0) then
-        cldfsnow  = 0.0_r8
-        cldfsnow_save = cldfsnow
-      end if
-      if (SPCAM_microp_scheme .eq. 'm2005') then 
-        mu_save      = mu
-        lambdac_save = lambdac
-        des_save     = des
-        mu      = 0.0_r8
-        lambdac = 0.0_r8
-        des     = 0.0_r8
-      endif
+         factor_xy = 1./real( crm_nx_rad*crm_ny_rad ,r8)
+
+         cld_save = cld  ! save to restore later
+         rel_save = rel  ! save to restroe later
+         rei_save = rei  ! save to restore later
+         dei_save = dei  ! save to restore later
+         cld = 0.0_r8
+         rel = 0.0_r8
+         rei = 0.0_r8
+         dei = 0.0_r8
+         if (cldfsnow_idx > 0) then
+           cldfsnow  = 0.0_r8
+           cldfsnow_save = cldfsnow
+         end if
+         if (SPCAM_microp_scheme .eq. 'm2005') then 
+           mu_save      = mu
+           lambdac_save = lambdac
+           des_save     = des
+           mu      = 0.0_r8
+           lambdac = 0.0_r8
+           des     = 0.0_r8
+         endif
 
 #ifdef MODAL_AERO
-      ifld = pbuf_get_index('DGNUMWET')
-      call pbuf_get_field(pbuf, ifld, dgnumwet, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )
-      ifld  = pbuf_get_index( 'QAERWAT' )
-      call pbuf_get_field(pbuf, ifld, qaerwat, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )
-      dgnumwet_save = dgnumwet
-      qaerwat_save = qaerwat
+         ifld = pbuf_get_index('DGNUMWET')
+         call pbuf_get_field(pbuf, ifld, dgnumwet, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )
+         ifld  = pbuf_get_index( 'QAERWAT' )
+         call pbuf_get_field(pbuf, ifld, qaerwat, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )
+         dgnumwet_save = dgnumwet
+         qaerwat_save = qaerwat
 #endif /*MODAL_AERO*/
-
+      end if ! dosw .or. dolw
     endif ! SPCAM
 
     if (dosw .or. dolw) then
@@ -2004,7 +1991,7 @@ end function radiation_nextsw_cday
                            sd(i,:,:) = sd_m(i,:,:,icall)
                         end if
                         swcf(i)=fsntoa(i) - fsntoac(i)
-			fsutoac(i) = solin(i) - fsntoac(i)
+                        fsutoac(i) = solin(i) - fsntoac(i)
                       end do
                      endif
                   end if ! (use_SPCAM)
@@ -2075,7 +2062,7 @@ end function radiation_nextsw_cday
               end if ! (active_calls(icall))
           end do ! icall
 
-           call t_stopf ('rad_sw_loop')   !==Guangxing Lin
+          call t_stopf ('rad_sw_loop')
  
           if(use_SPCAM .and. last_column) then
             do i = 1, nnite 
@@ -2134,7 +2121,7 @@ end function radiation_nextsw_cday
             tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
           endif 
 
-	        ! add fillvalue for night columns
+          ! add fillvalue for night columns
           if ( (use_SPCAM .and. last_column) .or. .not. use_SPCAM) then
             do i = 1, Nnite
               tot_cld_vistau(IdxNite(i),:)   = fillvalue
@@ -2155,9 +2142,9 @@ end function radiation_nextsw_cday
             endif
           end if
 
-          call t_stopf ('rad_sw')    !==Guangxing Lin
+          call t_stopf ('rad_sw')
 
-       end if   ! dosw
+        end if   ! dosw
 
         if( (use_SPCAM .and. last_column) .or. .not. use_SPCAM)  then
           ! Output aerosol mmr
@@ -2168,7 +2155,7 @@ end function radiation_nextsw_cday
 
         if (dolw) then
 
-          call t_startf ('rad_lw')   !==Guangxing Lin
+          call t_startf ('rad_lw')
 
           !
           ! Convert upward longwave flux units to CGS
@@ -2320,8 +2307,8 @@ end function radiation_nextsw_cday
       end do ! ii
     end do ! jj
 
-   if (use_SPCAM) then 
-! restore to the old values in pbuf and for state
+    if (use_SPCAM) then 
+      ! restore to the old values in pbuf and for state
       cld    = cld_save
       cicewp = cicewp_save
       cliqwp = cliqwp_save
@@ -2346,14 +2333,16 @@ end function radiation_nextsw_cday
       dgnumwet = dgnumwet_save
 #endif
 
+      ! Calculate net heating rate
       do m=1,crm_nz
         k = pver-m+1
         do i = 1,ncol
-          crm_qrad(i,:,:,m) = (qrs_crm(i,:,:,m)+qrl_crm(i,:,:,m)) * state%pdel(i,k) ! for energy conservation
+          crm_qrad(i,:,:,m) = (qrs_crm(i,:,:,m) + qrl_crm(i,:,:,m))
         end do
       end do
 
-   endif ! use_SPCAM
+    endif ! use_SPCAM
+
        ! deconstruct the RRTMG state object
        call rrtmg_state_destroy(r_state)
 
@@ -2476,41 +2465,43 @@ end function radiation_nextsw_cday
 
     else   !  if (dosw .or. dolw) then
 
-       ! convert radiative heating rates from Q*dp to Q for energy conservation
+       ! If conserve_energy is true, then heating rates are multiplied by dp at
+       ! the end of this routine to carry Q*dp across timesteps to conserve
+       ! energy. Thus, if this flag is set, we need to divide by dp here before
+       ! working with Q below because it was multiplied by dp in a previous
+       ! call.
        if (conserve_energy) then
-          do k =1 , pver
+          do k = 1,pver
              do i = 1, ncol
                 qrs(i,k) = qrs(i,k)/state%pdel(i,k)
                 qrl(i,k) = qrl(i,k)/state%pdel(i,k)
              end do
           end do
+          if (use_SPCAM) then
+             do m = 1,crm_nz
+                k = pver - m + 1
+                do i = 1,ncol
+                  crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) / state%pdel(i,k)
+                end do
+             end do
+          end if
        end if
-
-      !call t_stopf ('radiation_tend_init') ??  !==Guangxing Lin
 
     end if   !  if (dosw .or. dolw) then
 
-    call t_startf ('radheat_tend')    !==Guangxing Lin
-
     ! Compute net radiative heating tendency
+    call t_startf ('radheat_tend')
     call radheat_tend(state, pbuf,  ptend, qrl, qrs, fsns, &
                       fsnt, flns, flnt, cam_in%asdir, net_flx)
-
-    call t_stopf ('radheat_tend')   !==Guangxing Lin
+    call t_stopf ('radheat_tend')
 
     ! Compute heating rate for dtheta/dt
-
-    call t_startf ('heating_rate')  !==Guangxing Lin
-
     do k=1,pver
        do i=1,ncol
-          ftem(i,k) = (qrs(i,k) + qrl(i,k))/cpair * (1.e5_r8/state%pmid(i,k))**cappa
+          ftem(i,k) = (qrs(i,k) + qrl(i,k)) / cpair * (1.e5_r8/state%pmid(i,k))**cappa
        end do
     end do
-
-    call t_stopf ('heating_rate')   !==Guangxing Lin
-
-    call outfld('HR      ',ftem    ,pcols   ,lchnk   )
+    call outfld('HR', ftem, pcols, lchnk)
 
     ! convert radiative heating rates to Q*dp for energy conservation
     if (conserve_energy) then
@@ -2520,9 +2511,18 @@ end function radiation_nextsw_cday
              qrl(i,k) = qrl(i,k)*state%pdel(i,k)
           end do
        end do
+       if (use_SPCAM) then
+          do m = 1,crm_nz
+             k = pver - m + 1
+             do i = 1,ncol
+               crm_qrad(i,:,:,m) = crm_qrad(i,:,:,m) * state%pdel(i,k)
+             end do
+          end do
+       end if
     end if
+
+    ! write kissvec seeds for random numbers
     if (pergro_mods) then
-       !write kissvec seeds for random numbers
        do iseed = 1, kiss_seed_num    
           do i = 1, ncol          
              rad_randn_seedrst(i,iseed,lchnk) = clm_seed(i,iseed)
@@ -2534,11 +2534,10 @@ end function radiation_nextsw_cday
     ! Note that units have already been converted to mks in RADCTL.  Since
     ! fsns and flwds are in the buffer, array values will be carried across
     ! timesteps when the radiation code is not invoked.
- !   cam_out%srfrad(:ncol) = fsns(:ncol) + cam_out%flwds(:ncol)
- !   call outfld('SRFRAD  ',cam_out%srfrad,pcols,lchnk)
+    !cam_out%srfrad(:ncol) = fsns(:ncol) + cam_out%flwds(:ncol)
+    !call outfld('SRFRAD  ',cam_out%srfrad,pcols,lchnk)
 
      cam_out%netsw(:ncol) = fsns(:ncol)
-!==Guangxing Lin 
  end subroutine radiation_tend
 
 !===============================================================================
