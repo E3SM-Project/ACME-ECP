@@ -107,7 +107,6 @@ module accelerate_crm_mod
       ! accelerate scalars t and q (and micro_field(:,:,:, index_water_vapor, icrm))
       ! raise crm_accel_ceaseflag and cancel mean-state acceleration
       !       if magnitude of t-tendency is too great
-      use domain, only: yes3d
       use grid, only: nzm
       use vars, only: u, v, u0, v0, t0,q0, t,qcl,qci,qv
       use microphysics, only: micro_field, ixw=>index_water_vapor
@@ -119,9 +118,10 @@ module accelerate_crm_mod
       logical, intent(inout) :: ceaseflag
       real(rc) :: ubaccel(nzm,ncrms), vbaccel(nzm,ncrms), tbaccel(nzm,ncrms), qtbaccel(nzm,ncrms)
       real(rc) :: ttend_acc(nzm,ncrms), qtend_acc(nzm,ncrms), utend_acc(nzm,ncrms), vtend_acc(nzm,ncrms), tmp
-      integer i, j, k, nneg, icrm
+      integer i, j, k, icrm
       real(r8) :: qpoz(nzm,ncrms), qneg(nzm,ncrms), factor, qfactor
 
+      ! cjones question: do we also need to create factor, qfactor?
       !$acc enter data create(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -248,7 +248,7 @@ module accelerate_crm_mod
         do k = 1, nzm
           do j = 1 , ny
             do i = 1 , nx
-              if (qpoz(k,icrm) + qneg(k,icrm) < 0.) then
+              if (qpoz(k,icrm) + qneg(k,icrm) <= 0.) then
                 micro_field(i,j,k,icrm,ixw) = 0.
                 qv         (i,j,k,icrm    ) = 0.
                 qcl        (i,j,k,icrm    ) = 0.
@@ -285,4 +285,3 @@ module accelerate_crm_mod
     end subroutine accelerate_crm
     
 end module accelerate_crm_mod
-  
