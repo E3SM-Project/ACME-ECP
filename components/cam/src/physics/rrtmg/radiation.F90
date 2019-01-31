@@ -1576,6 +1576,13 @@ end function radiation_nextsw_cday
         call cldefr( lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh )
       end if
 
+      ! Start loop over CRM columns; the strategy here is to loop over each CRM
+      ! column and separately call the radiative transfer codes with optical
+      ! properties calculated from CRM fields for each of those columns. Note
+      ! that here we loop over "crm_nx_rad" rather than "crm_nx". This is to
+      ! allow the flexibility for the radiation to be calculated on a reduced
+      ! resolution relative to the CRM by grouping (averaging) adjacent columns
+      ! together.
       do jj=1,crm_ny_rad
         do ii=1,crm_nx_rad
 
