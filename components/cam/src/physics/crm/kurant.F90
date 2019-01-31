@@ -16,6 +16,7 @@ module kurant_mod
       real(crm_rknd) wm(nz,ncrms)  ! maximum vertical wind velocity
       real(crm_rknd) uhm(nz,ncrms) ! maximum horizontal wind velocity
       real(crm_rknd) cfl, cfl_sgs, tmp
+      integer, parameter :: max_ncycle = 16
 
       !$acc enter data create(wm,uhm) async(asyncid)
 
@@ -63,7 +64,7 @@ module kurant_mod
       !$acc wait(asyncid)
       ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 
-      if(ncycle.gt.4) then
+      if(ncycle.gt.max_ncycle) then
         if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
         do icrm = 1 , ncrms
           write(0, 5550) cfl, cfl_sgs, latitude(1,1,icrm), longitude(1,1,icrm)
