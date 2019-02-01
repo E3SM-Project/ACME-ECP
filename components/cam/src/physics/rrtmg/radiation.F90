@@ -883,7 +883,7 @@ end function radiation_nextsw_cday
     use phys_control,         only: phys_getopts
     use orbit,                only: zenith
     use output_aerocom_aie,   only: do_aerocom_ind3
-    use pkg_cldoptics,        only: cldefr
+    use pkg_cldoptics,        only: cldefr  ! for sam1mom microphysics
 
 
     ! Arguments
