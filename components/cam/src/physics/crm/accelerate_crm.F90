@@ -121,7 +121,6 @@ module accelerate_crm_mod
       integer i, j, k, icrm
       real(r8) :: qpoz(nzm,ncrms), qneg(nzm,ncrms), factor, qfactor
 
-      ! cjones question: do we also need to create factor, qfactor?
       !$acc enter data create(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -149,6 +148,7 @@ module accelerate_crm_mod
               !$acc atomic update
               tbaccel (k,icrm) = tbaccel (k,icrm) + tmp
               tmp = (qcl(i,j, k, icrm) + qci(i,j, k, icrm) + qv(i,j, k, icrm)) * coef
+              !$acc atomic update
               qtbaccel(k,icrm) = qtbaccel(k,icrm) + tmp
               if (crm_accel_uv) then
                 tmp = u(i,j,k,icrm) * coef
@@ -207,8 +207,8 @@ module accelerate_crm_mod
               ! don't let T go negative!
               t(i,j,k,icrm) = max(50._rc, t(i,j,k,icrm) + crm_accel_factor * ttend_acc(k,icrm))
               if (crm_accel_uv) then
-                u(i,j,k,icrm) =             u(i,j,k,icrm) + crm_accel_factor * utend_acc(k,icrm) 
-                v(i,j,k,icrm) =             v(i,j,k,icrm) + crm_accel_factor * vtend_acc(k,icrm) 
+                u(i,j,k,icrm) = u(i,j,k,icrm) + crm_accel_factor * utend_acc(k,icrm) 
+                v(i,j,k,icrm) = v(i,j,k,icrm) + crm_accel_factor * vtend_acc(k,icrm) 
               endif
               micro_field(i,j,k,icrm,ixw) = micro_field(i,j,k,icrm,ixw) + crm_accel_factor * qtend_acc(k,icrm)
             enddo
