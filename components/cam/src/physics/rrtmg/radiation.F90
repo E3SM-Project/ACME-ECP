@@ -929,6 +929,7 @@ end function radiation_nextsw_cday
     real(r8),pointer :: qv_rad(:,:,:,:) ! rad vapor
     real(r8),pointer :: qc_rad(:,:,:,:) ! rad cloud water
     real(r8),pointer :: qi_rad(:,:,:,:) ! rad cloud ice
+    real(r8),pointer :: cld_rad(:,:,:,:) ! 3D cloud fraction averaged over CRM integration
     real(r8),pointer :: crm_qrad(:,:,:,:) ! rad heating
 
     real(r8),pointer :: qaerwat_crm(:,:,:,:,:) ! aerosol water
@@ -1039,7 +1040,6 @@ end function radiation_nextsw_cday
     real(r8) factor_xy
     real(r8) cld_save   (pcols,pver)
     real(r8) fice       (pcols,pver)
-    real(r8) cld_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cliqwp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cicewp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) rel_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
@@ -1199,6 +1199,9 @@ end function radiation_nextsw_cday
     real(r8) ::  aerindex(pcols)      ! Aerosol index
     integer aod400_idx, aod700_idx, cld_tau_idx
 
+    ! Total cloud water threshold for considering a CRM column "cloudy" or
+    ! "clear"
+    real(r8), parameter :: qtot_cld_threshold = 1.e-9
 
     character(*), parameter :: name = 'radiation_tend'
     character(len=16)       :: SPCAM_microp_scheme  ! SPCAM_microphysics scheme
@@ -1428,6 +1431,9 @@ end function radiation_nextsw_cday
            call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
          endif
 
+         ! Get cloud fraction averaged over the CRM time integration
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), cld_rad)
+
          cicewp(1:ncol,1:pver) = 0.  
          cliqwp(1:ncol,1:pver) = 0.
 
@@ -1511,18 +1517,32 @@ end function radiation_nextsw_cday
                 ! true time-averaged cloud fraction in the CRM and use that
                 ! here.
                 qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
-                if(qtot.gt.1.e-9) then
+                ! Determine cloud fraction for this CRM column. If we set cld
+                ! equal to 1, we will not get any mcica sampling for this column
+                ! (assume clouds are fully resolved). If we set cld to the
+                ! "real" CRM cloud fraction though, we will do mcica subcolumn
+                ! sampling later. This is useful if we are doing something like
+                ! reduced rad, where we average cloud properties over some
+                ! number of CRM columns, which effectively coarsens our CRM grid
+                ! for the purpose of the radiation calculations.
+#ifdef MCICA_SP_RAD
+                cld(i,k) = cld_rad(i,ii,jj,m)
+#else
+                if(qtot > qtot_cld_threshold) then
+                    cld(i,k) = 0.99_r8
+                else
+                    cld(i,k) = 0
+                end if
+#endif
+                ! Calculate water paths and fraction of ice
+                if (cld(i,k) > 0) then
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
-                  cld(i,k) = 0.99_r8
-                  cld_crm(i,ii,jj,m)=0.99_r8
                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
                            / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
                   cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
                            / max(0.01_r8,cld(i,k)) ! In-cloud liquid water path. 
                 else
                   fice(i,k)= 0.
-                  cld(i,k) = 0.
-                  cld_crm(i,ii,jj,m) = 0.
                   cicewp(i,k) = 0.           ! In-cloud ice water path.
                   cliqwp(i,k) = 0.           ! In-cloud liquid water path.
                 end if
