@@ -192,6 +192,7 @@ module accelerate_crm_mod
         write (iulog, *) 'mean-state acceleration not applied this step'
         write (iulog,*) 'crm: nstop increased from ', nstop, ' to ', int(nstop+(nstop-nstep+1)*crm_accel_factor)
         nstop = nstop + (nstop - nstep + 1)*crm_accel_factor ! only can happen once
+        !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
         return
       endif
 
