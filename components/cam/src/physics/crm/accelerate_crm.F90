@@ -18,7 +18,7 @@
 module accelerate_crm_mod
     use grid, only: nx, ny
     use shr_kind_mod, only: r8=>shr_kind_r8
-    use params, only: rc=>crm_rknd
+    use params, only: asyncid, rc=>crm_rknd
   
     implicit none
   
