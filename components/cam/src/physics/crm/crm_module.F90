@@ -1045,28 +1045,28 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
             j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
 
-              !$acc atomic update
-              crm_rad_temperature(icrm,i_rad,j_rad,k) = crm_rad_temperature(icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
-              tmp = max(real(0.,crm_rknd),qv(i,j,k,icrm))
-              !$acc atomic update
-              crm_rad_qv         (icrm,i_rad,j_rad,k) = crm_rad_qv         (icrm,i_rad,j_rad,k) + tmp
-              !$acc atomic update
-              crm_rad_qc         (icrm,i_rad,j_rad,k) = crm_rad_qc         (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
-              !$acc atomic update
-              crm_rad_qi         (icrm,i_rad,j_rad,k) = crm_rad_qi         (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
-              !$acc atomic update
-              if (qcl(i,j,k,icrm) + qci(i,j,k,icrm) > 0) then
-                 crm_rad_cld     (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
-              end if
+            !$acc atomic update
+            crm_rad_temperature(icrm,i_rad,j_rad,k) = crm_rad_temperature(icrm,i_rad,j_rad,k) + tabs(i,j,k,icrm)
+            tmp = max(real(0.,crm_rknd),qv(i,j,k,icrm))
+            !$acc atomic update
+            crm_rad_qv         (icrm,i_rad,j_rad,k) = crm_rad_qv         (icrm,i_rad,j_rad,k) + tmp
+            !$acc atomic update
+            crm_rad_qc         (icrm,i_rad,j_rad,k) = crm_rad_qc         (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
+            !$acc atomic update
+            crm_rad_qi         (icrm,i_rad,j_rad,k) = crm_rad_qi         (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
+            !$acc atomic update
+            if (qcl(i,j,k,icrm) + qci(i,j,k,icrm) > 0) then
+              crm_rad_cld     (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
+            end if
 #ifdef m2005
-              !$acc atomic update
-              crm_rad%nc         (icrm,i_rad,j_rad,k) = crm_rad%nc         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,incl)
-              !$acc atomic update
-              crm_rad%ni         (icrm,i_rad,j_rad,k) = crm_rad%ni         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,inci)
-              !$acc atomic update
-              crm_rad%qs         (icrm,i_rad,j_rad,k) = crm_rad%qs         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,iqs )
-              !$acc atomic update
-              crm_rad%ns         (icrm,i_rad,j_rad,k) = crm_rad%ns         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,ins )
+            !$acc atomic update
+            crm_rad%nc         (icrm,i_rad,j_rad,k) = crm_rad%nc         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,incl)
+            !$acc atomic update
+            crm_rad%ni         (icrm,i_rad,j_rad,k) = crm_rad%ni         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,inci)
+            !$acc atomic update
+            crm_rad%qs         (icrm,i_rad,j_rad,k) = crm_rad%qs         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,iqs )
+            !$acc atomic update
+            crm_rad%ns         (icrm,i_rad,j_rad,k) = crm_rad%ns         (icrm,i_rad,j_rad,k) + micro_field(i,j,k,icrm,ins )
 #endif
             !$acc atomic update
             crm_output_gliqwp(icrm,l) = crm_output_gliqwp(icrm,l) + qcl(i,j,k,icrm)

@@ -160,7 +160,7 @@ subroutine diag_init()
    use tidal_diag,         only: tidal_diag_init 
 
 !-- mdb spcam
-   use crmdims,            only: crm_nx, crm_ny, crm_nz
+   use crmdims,            only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
 #ifdef ECPP
    use ecppvars,           only: NCLASS_CL,ncls_ecpp_in,NCLASS_PR
 #endif
@@ -751,6 +751,10 @@ subroutine diag_init()
       call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
       call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
       call add_hist_coord('crm_nz'       ,crm_nz,  'CRM NZ')
+      call add_hist_coord('crm_nx_rad', crm_nx_rad, 'Number of x columns for radiation')
+      call add_hist_coord('crm_ny_rad', crm_ny_rad, 'Number of y columns for radiation')
+
+      ! Model vertical level coordinates
       call add_hist_coord('pverp'        ,pverp,     'pverp ')
       call add_hist_coord('pver'         ,pver,      'pver  ')
 
@@ -772,8 +776,6 @@ subroutine diag_init()
       call addfld ('CRM_QPC ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'kg/kg   ', 'CRM Precipitating Water'             )
       call addfld ('CRM_QPI ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'kg/kg   ', 'CRM Precipitating Ice'               )
       call addfld ('CRM_PREC',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Precipitation Rate'              )
-      call addfld ('CRM_QRS ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K/s     ', 'CRM Shortwave radiative heating rate')
-      call addfld ('CRM_QRL ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'K/s     ', 'CRM Longwave radiative heating rate' )
 
       !-- MDB 8/2013
       call addfld ('SPTVFLUX ',(/ 'lev' /), 'A', 'W/m2  ','Buoyancy Flux from CRM'             )

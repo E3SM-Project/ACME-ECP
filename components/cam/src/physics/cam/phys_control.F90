@@ -445,9 +445,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
                        ,l_tracer_aero_out, l_vdiff_out, l_rayleigh_out, l_gw_drag_out, l_ac_energy_chk_out  &
                        ,l_bc_energy_fix_out, l_dry_adj_out, l_st_mac_out, l_st_mic_out, l_rad_out  &
                        ,prc_coef1_out,prc_exp_out,prc_exp1_out, cld_sed_out,mg_prc_coeff_fix_out,rrtmg_temp_fix_out &
-!-- WH acme-sp
                        ,use_SPCAM_out, use_ECPP_out, SPCAM_microp_scheme_out)
-!-- WH acme-sp
 
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
