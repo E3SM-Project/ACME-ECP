@@ -38,6 +38,9 @@ contains
     nonos = .true.
     eps = 1.e-10
 
+    !$acc enter data create(mx,mn,uuu,vvv,www,iadz,irho,irhow) async(asyncid)
+
+    !$acc parallel loop collapse(3) async(asyncid)
     do icrm = 1 , ncrms
       do j = -1 , nyp2
         do i = -1 , nxp2
@@ -48,6 +51,7 @@ contains
 
     if (dowallx) then
       if (mod(rank,nsubdomains_x).eq.0) then
+        !$acc parallel loop collapse(4) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=dimy1_u,dimy2_u
@@ -59,6 +63,7 @@ contains
         enddo
       endif
       if (mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+        !$acc parallel loop collapse(4) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=dimy1_u,dimy2_u
@@ -73,6 +78,7 @@ contains
 
     if (dowally) then
       if (rank.lt.nsubdomains_x) then
+        !$acc parallel loop collapse(4) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=dimy1_v,1
@@ -84,6 +90,7 @@ contains
         enddo
       endif
       if (rank.gt.nsubdomains-nsubdomains_x-1) then
+        !$acc parallel loop collapse(4) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=ny+1,dimy2_v
@@ -99,6 +106,7 @@ contains
     !-----------------------------------------
 
     if (nonos) then
+      !$acc parallel loop collapse(4) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=0,nyp1
@@ -119,6 +127,7 @@ contains
       enddo
     endif  ! nonos
 
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=-1,nyp3
@@ -130,12 +139,15 @@ contains
                                                            min(real(0.,crm_rknd),v(i,j,k,icrm))*f(i,j,k,icrm)
             if (i <= nxp2 .and. j <= nyp2) www(i,j,k,icrm)=max(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,kb ,icrm)+&
                                                            min(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,k,icrm)
-            if (i == -1 .and. j == -1) flux(k,icrm) = 0.
+            if (i == -1 .and. j == -1) then
+              flux(k,icrm) = 0.
+            endif
           enddo
         enddo
       enddo
     enddo
 
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=-1,nyp2
@@ -145,7 +157,10 @@ contains
               iadz(k,icrm) = 1./adz(k,icrm)
               irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
             endif
-            if (i >= 1 .and. i <= nx .and. j >= 1 .and. j <= ny) flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
+            if (i >= 1 .and. i <= nx .and. j >= 1 .and. j <= ny) then
+              !$acc atomic update
+              flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
+            endif
             f(i,j,k,icrm)=f(i,j,k,icrm)-( uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)  & 
                               + vvv(i,j+1,k,icrm)-vvv(i,j,k,icrm)  &
                               +(www(i,j,k+1,icrm)-www(i,j,k,icrm) )*iadz(k,icrm))*irho(k,icrm)
@@ -154,6 +169,7 @@ contains
       enddo
     enddo
 
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=0,nyp2
@@ -201,6 +217,7 @@ contains
       enddo
     enddo
 
+    !$acc parallel loop collapse(3) async(asyncid)
     do icrm = 1 , ncrms
       do j = -1 , nyp2
         do i = -1 , nxp2
@@ -211,14 +228,15 @@ contains
 
     !---------- non-osscilatory option ---------------
     if (nonos) then
+      !$acc parallel loop collapse(4) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=0,nyp1
-            kc=min(nzm,k+1)
-            kb=max(1,k-1)
-            jb=j-1
-            jc=j+1
             do i=0,nxp1
+              kc=min(nzm,k+1)
+              kb=max(1,k-1)
+              jb=j-1
+              jc=j+1
               ib=i-1
               ic=i+1
               mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,jb,k,icrm),f(i,jc,k,icrm),&
@@ -230,6 +248,7 @@ contains
         enddo
       enddo
 
+      !$acc parallel loop collapse(4) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=0,nyp1
@@ -250,6 +269,7 @@ contains
         enddo
       enddo
 
+      !$acc parallel loop collapse(4) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do j=1,nyp1
@@ -268,6 +288,7 @@ contains
                 kb=max(1,k-1)
                 www(i,j,k,icrm) = pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) &
                                  -pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm))
+                !$acc atomic update
                 flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
               endif
             enddo
@@ -276,6 +297,7 @@ contains
       enddo
     endif ! nonos
 
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -291,6 +313,8 @@ contains
         enddo
       enddo
     enddo
+
+    !$acc exit data delete(mx,mn,uuu,vvv,www,iadz,irho,irhow) async(asyncid)
 
   end subroutine advect_scalar3D
 
