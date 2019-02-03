@@ -36,13 +36,23 @@ contains
     dxy=dx/dy
     dyx=dy/dx
 
+    !$acc enter data create(flx_x,flx_y,flx_z,dfdt) async(asyncid)
+
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
-      dfdt(:,:,:,icrm)=0.
+      do k = 1 , nzm
+        do j = 1 , ny
+          do i = 1 , nx
+            dfdt(i,j,k,icrm)=0.
+          enddo
+        enddo
+      enddo
     enddo
 
     !-----------------------------------------
     if(dowallx) then
       if(mod(rank,nsubdomains_x).eq.0) then
+        !$acc parallel loop collapse(3) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
@@ -52,6 +62,7 @@ contains
         enddo
       endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+        !$acc parallel loop collapse(3) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
@@ -64,6 +75,7 @@ contains
 
     if(dowally) then
       if(rank.lt.nsubdomains_x) then
+        !$acc parallel loop collapse(3) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=1,nx
@@ -73,6 +85,7 @@ contains
         enddo
       endif
       if(rank.gt.nsubdomains-nsubdomains_x-1) then
+        !$acc parallel loop collapse(3) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=1,ny
@@ -84,6 +97,7 @@ contains
     endif
 
     if(dowally) then
+      !$acc parallel loop collapse(3) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -91,6 +105,7 @@ contains
           enddo
         enddo
       enddo
+      !$acc parallel loop collapse(3) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -101,6 +116,7 @@ contains
     endif
 
     !  Horizontal diffusion:
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=0,ny
@@ -121,6 +137,7 @@ contains
         enddo
       enddo
     enddo
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -135,12 +152,14 @@ contains
     enddo
 
     !  Vertical diffusion:
+    !$acc parallel loop collapse(2) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         flux(k,icrm) = 0.
       enddo
     enddo
 
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -152,12 +171,14 @@ contains
               rdz5=0.5*rdz2 * grdf_z(k,icrm)
               tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
               flx_z(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
+              !$acc atomic update
               flux(kc,icrm) = flux(kc,icrm) + flx_z(i,j,k,icrm)
             elseif (k == nzm) then
               tmp=1./adzw(nz,icrm)
               rdz=1./dz(icrm)
               flx_z(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
               flx_z(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
+              !$acc atomic update
               flux(1,icrm) = flux(1,icrm) + flx_z(i,j,0,icrm)
             endif
           enddo
@@ -165,6 +186,7 @@ contains
       enddo
     enddo
 
+    !$acc parallel loop collapse(4) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -177,6 +199,8 @@ contains
         enddo
       enddo
     enddo
+
+    !$acc exit data delete(flx_x,flx_y,flx_z,dfdt) async(asyncid)
 
   end subroutine diffuse_scalar3D
 
