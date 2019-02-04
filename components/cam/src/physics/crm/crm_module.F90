@@ -1054,8 +1054,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             crm_rad_qc         (icrm,i_rad,j_rad,k) = crm_rad_qc         (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
             !$acc atomic update
             crm_rad_qi         (icrm,i_rad,j_rad,k) = crm_rad_qi         (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
-            !$acc atomic update
             if (qcl(i,j,k,icrm) + qci(i,j,k,icrm) > 0) then
+              !$acc atomic update
               crm_rad_cld     (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
             end if
 #ifdef m2005
