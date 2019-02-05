@@ -140,7 +140,7 @@ module accelerate_crm_mod
       real(rc) :: qtend_acc(nzm,ncrms) ! MSA adjustment of qt
       real(rc) :: utend_acc(nzm,ncrms) ! MSA adjustment of u
       real(rc) :: vtend_acc(nzm,ncrms) ! MSA adjustment of v
-      real(rc) :: tmp  ! temp variable for atomic updates
+      real(rc) :: tmp  ! temporary variable for atomic updates
       integer i, j, k, icrm  ! iteration variables
       real(r8) :: qpoz(nzm,ncrms) ! total positive micro_field(:,:,k,ixw,:) in level k
       real(r8) :: qneg(nzm,ncrms) ! total negative micro_field(:,:,k,ixw,:) in level k
@@ -149,7 +149,7 @@ module accelerate_crm_mod
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
 
       ttend_threshold = 5.  ! 5K, following UP-CAM implementation
-      tmin_allowed = 50.  ! should never get below 50K in crm, following UP-CAM implementation
+      tmin = 50.  ! should never get below 50K in crm, following UP-CAM implementation
 
       !$acc enter data create(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
 
