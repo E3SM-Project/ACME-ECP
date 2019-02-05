@@ -4354,18 +4354,8 @@ Default: 3.0
 <entry id="crm_accel_uv" type="logical" category="conv"
        group="phys_ctl_nl" valid_values="">
 Turn on CRM mean-state acceleration for u,v when use_crm_accel is true
-Default: false
+Default: true
 </entry>
-
-<entry id="crm_accel_micro_opt" type="integer" category="conv"
-       group="phys_ctl_nl" valid_values="0,1">
-Specify option for mean-state acceleration of CRM moisture variables 
-(0) - adjust only qv, enforce positivity
-(1) - enforce positivity; conserve total moisture in horizontal layer by
-      gap-filling; adjust qv, qcl, and qci
-Default: 1
-</entry>
-
 
 <!-- Test Tracers -->
 

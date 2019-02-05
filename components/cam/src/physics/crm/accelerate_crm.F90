@@ -1,45 +1,47 @@
 ! -----------------------------------------------------------------------------
 ! MODULE  accelerate_crm_mod
-!    This module provides functionality to apply mean-state acceleration
-!    (Jones et al., 2015) to CRM. ... (to be continued)
+!   This module provides functionality to apply mean-state acceleration (MSA)
+!   (Jones et al., 2015, doi:10.1002/2015MS000488) to the CRMs when using
+!   superparameterization.
 !
-! author: Christopher R Jones
-! email: christopher.jones@pnnl.gov
-! date: 1/2019
+! PUBLIC SUBROUTINES:
+!   crm_accel_init: initialize quantities needed to apply MSA
+!   crm_accel_nstop: adjusts 'nstop' in crm_module based on crm_accel_factor
+!   accelerate_crm: calculates and applies MSA tendency to CRM
 !
-!  Contains subroutines:
-!    crm_accel_init() - initialize quantities needed to apply acceleration
-!    crm_accel_nstop() - adjusts nstop based on crm_accel_factor
-!    accelerate_crm()  - applies mean state acceleration tendency to crm fields
+! PUBLIC MODULE VARIABLES:
+!   logical  :: use_crm_accel - apply MSA if true (cam namelist variable)
+!   real(r8) :: crm_accel_factor - MSA factor to use (cam namelist variable)
 !
-! updated: 11/2018
-!    need to account for additional "ncrms" dimension to most variables
+! REVISION HISTORY:
+!   2018-Nov-01: Initial implementation
+!   2019-Jan-30: Initial subroutine port to GPU using openacc directives
+!
+! CONTACT: Christopher Jones (christopher.jones@pnnl.gov)
 ! -----------------------------------------------------------------------------
 module accelerate_crm_mod
     use grid, only: nx, ny
     use shr_kind_mod, only: r8=>shr_kind_r8
     use params, only: asyncid, rc=>crm_rknd
-  
+
     implicit none
-  
-    ! variables
-    real(r8) :: coef = 1._r8 / dble(nx * ny)  ! coefficient for horizontal avg
-    ! specify this stuff I need ...
-    logical   :: use_crm_accel
-    logical   :: crm_accel_uv
-    logical   :: distribute_qneg
-    real(r8)  :: crm_accel_factor
-  
-    ! private constants
-    private :: coef, distribute_qneg, crm_accel_uv
-    
-    ! public variables / subroutines
+
+    ! private module variables
+    real(r8), parameter :: coef = 1._r8 / dble(nx * ny)  ! coefficient for horizontal averaging
+    logical :: crm_accel_uv  ! (false) apply MSA only to scalar fields (T and QT)
+                             ! (true) apply MSA to winds (U/V) and scalar fields
+
+    ! public module variables
+    logical :: use_crm_accel  ! use MSA if true
+    real(r8) :: crm_accel_factor  ! 1 + crm_accel_factor = 'a' in Jones etal (2015)
+
+    private :: coef, crm_accel_uv
     public :: use_crm_accel, crm_accel_factor
     public :: accelerate_crm
     public :: crm_accel_nstop
     public :: crm_accel_init
-  contains
 
+  contains
     subroutine crm_accel_init()
     ! initialize namelist options for CRM mean-state acceleration
       use phys_control, only: phys_getopts
@@ -48,7 +50,6 @@ module accelerate_crm_mod
       use cam_abortutils, only: endrun
   
       implicit none
-      integer :: crm_accel_micro_opt = 0
   
       ! initialize defaults
       use_crm_accel = .false.
@@ -57,21 +58,13 @@ module accelerate_crm_mod
   
       call phys_getopts(use_crm_accel_out = use_crm_accel, &
                         crm_accel_factor_out = crm_accel_factor, &
-                        crm_accel_uv_out = crm_accel_uv, &
-                        crm_accel_micro_opt_out = crm_accel_micro_opt)
-      if (crm_accel_micro_opt .eq. 1) then
-        distribute_qneg = .true.
-      else
-        distribute_qneg = .false.
-      endif
+                        crm_accel_uv_out = crm_accel_uv)
   
       if (masterproc) then
          write(iulog, *) 'USING CRM MEAN STATE ACCELERATION'
          write(iulog, *) 'crm_accel: use_crm_accel = ', use_crm_accel
          write(iulog, *) 'crm_accel: crm_accel_factor = ', crm_accel_factor
          write(iulog, *) 'crm_accel: crm_accel_uv = ', crm_accel_uv
-         write(iulog, *) 'crm_accel: crm_accel_micro_opt = ', crm_accel_micro_opt
-         write(iulog, *) 'crm_accel: setting distribute_qneg = ', distribute_qneg
       endif
 #if !defined(sam1mom)
       if (masterproc) then
@@ -83,7 +76,14 @@ module accelerate_crm_mod
 
 
     subroutine crm_accel_nstop(nstop)
-    ! reduce nstop to appropriate value give crm_accel_factor
+      ! Reduces nstop to appropriate value give crm_accel_factor.
+      ! 
+      ! To correctly apply mean-state acceleration in the crm_module/crm
+      ! subroutine, nstop must be reduced to nstop / (1 + crm_accel_factor)
+      !
+      ! Argument(s):
+      !  nstop (inout) - number of crm iterations to apply MSA
+      ! -----------------------------------------------------------------------
       use cam_abortutils, only: endrun
       use cam_logfile,  only: iulog
   
@@ -104,9 +104,25 @@ module accelerate_crm_mod
 
 
     subroutine accelerate_crm(ncrms, nstep, nstop, ceaseflag)
-      ! accelerate scalars t and q (and micro_field(:,:,:, index_water_vapor, icrm))
-      ! raise crm_accel_ceaseflag and cancel mean-state acceleration
-      !       if magnitude of t-tendency is too great
+      ! Applies mean-state acceleration (MSA) to CRM
+      !
+      ! Applies MSA to the following crm fields:
+      !   t, qv, qcl, qci, micro_field(:,:,:,index_water_vapor,:),
+      !   u (optional), v (optional)
+      ! Raises ceaseflag and aborts MSA if the magnitude of 
+      ! the change in "t" exceeds 5K at any point.
+      ! 
+      ! Arguments:
+      !   ncrms (in) - number of crm columns in this group
+      !   nstep (in) - current crm iteration, needed only if 
+      !                ceaseflag is triggered
+      !   nstop (inout) - number of crm iterations, adjusted only
+      !                   if ceaseflag is triggered
+      !   ceaseflag (inout) - returns true if accelerate_crm aborted
+      !                       before MSA applied; otherwise false
+      ! Notes:
+      !   Intended to be called from crm subroutine in crm_module
+      ! -----------------------------------------------------------------------
       use grid, only: nzm
       use vars, only: u, v, u0, v0, t0,q0, t,qcl,qci,qv
       use microphysics, only: micro_field, ixw=>index_water_vapor
@@ -116,10 +132,24 @@ module accelerate_crm_mod
       integer, intent(in   ) :: nstep
       integer, intent(inout) :: nstop
       logical, intent(inout) :: ceaseflag
-      real(rc) :: ubaccel(nzm,ncrms), vbaccel(nzm,ncrms), tbaccel(nzm,ncrms), qtbaccel(nzm,ncrms)
-      real(rc) :: ttend_acc(nzm,ncrms), qtend_acc(nzm,ncrms), utend_acc(nzm,ncrms), vtend_acc(nzm,ncrms), tmp
-      integer i, j, k, icrm
-      real(r8) :: qpoz(nzm,ncrms), qneg(nzm,ncrms), factor, qfactor
+      real(rc) :: ubaccel(nzm,ncrms)   ! u before applying MSA tendency
+      real(rc) :: vbaccel(nzm,ncrms)   ! v before applying MSA tendency
+      real(rc) :: tbaccel(nzm,ncrms)   ! t before applying MSA tendency
+      real(rc) :: qtbaccel(nzm,ncrms)  ! Non-precipitating qt before applying MSA tendency
+      real(rc) :: ttend_acc(nzm,ncrms) ! MSA adjustment of t
+      real(rc) :: qtend_acc(nzm,ncrms) ! MSA adjustment of qt
+      real(rc) :: utend_acc(nzm,ncrms) ! MSA adjustment of u
+      real(rc) :: vtend_acc(nzm,ncrms) ! MSA adjustment of v
+      real(rc) :: tmp  ! temp variable for atomic updates
+      integer i, j, k, icrm  ! iteration variables
+      real(r8) :: qpoz(nzm,ncrms) ! total positive micro_field(:,:,k,ixw,:) in level k
+      real(r8) :: qneg(nzm,ncrms) ! total negative micro_field(:,:,k,ixw,:) in level k
+      real(r8) :: factor, qfactor ! local variables for redistributing moisture
+      real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
+      real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
+
+      ttend_threshold = 5.  ! 5K, following UP-CAM implementation
+      tmin_allowed = 50.  ! should never get below 50K in crm, following UP-CAM implementation
 
       !$acc enter data create(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
 
@@ -176,7 +206,7 @@ module accelerate_crm_mod
             utend_acc(k,icrm) = ubaccel(k,icrm) - u0(k,icrm)
             vtend_acc(k,icrm) = vbaccel(k,icrm) - v0(k,icrm)
           endif
-          if (ttend_acc(k,icrm) > 5.) then
+          if (ttend_acc(k,icrm) > ttend_threshold) then
             ceaseflag = .true.
           endif
         enddo
@@ -188,8 +218,8 @@ module accelerate_crm_mod
 
       !$acc wait(asyncid)
       if (ceaseflag) then ! special case for dT/dt too large
-        write (iulog, *) 'accelerate_crm: |dT|>5K; dT = ', ttend_acc  ! write full array
-        write (iulog, *) 'mean-state acceleration not applied this step'
+        write (iulog, *) 'accelerate_crm: mean-state acceleration not applied this step'
+        ! reset nstop so remainder of this crm integration is carried out without MSA
         write (iulog,*) 'crm: nstop increased from ', nstop, ' to ', int(nstop+(nstop-nstep+1)*crm_accel_factor)
         nstop = nstop + (nstop - nstep + 1)*crm_accel_factor ! only can happen once
         !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
@@ -206,7 +236,7 @@ module accelerate_crm_mod
           do j = 1, ny
             do i = 1, nx
               ! don't let T go negative!
-              t(i,j,k,icrm) = max(50._rc, t(i,j,k,icrm) + crm_accel_factor * ttend_acc(k,icrm))
+              t(i,j,k,icrm) = max(tmin, t(i,j,k,icrm) + crm_accel_factor * ttend_acc(k,icrm))
               if (crm_accel_uv) then
                 u(i,j,k,icrm) = u(i,j,k,icrm) + crm_accel_factor * utend_acc(k,icrm) 
                 v(i,j,k,icrm) = v(i,j,k,icrm) + crm_accel_factor * vtend_acc(k,icrm) 
@@ -256,7 +286,7 @@ module accelerate_crm_mod
                 qci        (i,j,k,icrm    ) = 0.
               else
                 factor = 1._r8 + qneg(k,icrm) / qpoz(k,icrm)
-                ! apply to micro_field and partition qv, qcl, qci appropriately
+                ! apply to micro_field
                 micro_field(i,j,k,icrm,ixw) = max(0._rc, micro_field(i,j,k,icrm,ixw) * factor)
                 ! partition micro_field into qv, qcl, and qci
                 ! such that micro_field = qv + qcl + qci, following these rules:
@@ -270,7 +300,6 @@ module accelerate_crm_mod
                   qfactor = micro_field(i,j,k,icrm,ixw) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
                   qv(i,j,k,icrm) = max(0._rc, qfactor)
                   if (qfactor < 0._r8) then
-                    ! note: this theoretically is guaranteed to work
                     qfactor = 1._r8 + qfactor / (qcl(i,j,k,icrm) + qci(i,j,k,icrm))
                     qcl(i,j,k,icrm) = qcl(i,j,k,icrm) * qfactor
                     qci(i,j,k,icrm) = qci(i,j,k,icrm) * qfactor

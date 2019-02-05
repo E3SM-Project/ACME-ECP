@@ -68,10 +68,9 @@ logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-
 logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
 !-- mdb spcam
-logical           :: use_crm_accel        = .true.     ! true => use crm mean-state acceleration
+logical           :: use_crm_accel        = .false.     ! true => use crm mean-state acceleration
 real(r8)          :: crm_accel_factor     = 3.D0       ! crm acceleration factor
 logical           :: crm_accel_uv         = .true.     ! true => apply crm mean-state acceleration to momentum fields
-integer           :: crm_accel_micro_opt  = 1          ! (see accelerate_crm.F90)
 ! real(r8)          :: crm_min_tk           = huge(1.0_r8)  ! minimum near-surface eddy viscosity - still hardcoded in crm/SGS_TKE/tke_full.F90
 logical           :: atm_dep_flux         = .true.     ! true => deposition fluxes will be provided
                                                        ! to the coupler
@@ -189,7 +188,7 @@ subroutine phys_ctl_readnl(nlfile)
       use_subcol_microp, use_SPCAM, use_ECPP, atm_dep_flux, history_amwg, history_verbose, history_vdiag, &
       history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
-      use_crm_accel, crm_accel_factor, crm_accel_uv, crm_accel_micro_opt, &
+      use_crm_accel, crm_accel_factor, crm_accel_uv, &
       conv_water_in_rad, history_clubb, do_clubb_sgs, do_tms, state_debug_checks, &
       use_mass_borrower, do_aerocom_ind3, &
       l_ieflx_fix, &
@@ -241,7 +240,6 @@ subroutine phys_ctl_readnl(nlfile)
    call mpibcast(use_crm_accel,                   1 , mpilog,  0, mpicom)
    call mpibcast(crm_accel_factor,                1 , mpir8,   0, mpicom)
    call mpibcast(crm_accel_uv,                    1 , mpilog,  0, mpicom)
-   call mpibcast(crm_accel_micro_opt,             1 , mpiint,  0, mpicom)
    call mpibcast(atm_dep_flux,                    1 , mpilog,  0, mpicom)
    call mpibcast(history_amwg,                    1 , mpilog,  0, mpicom)
    call mpibcast(history_verbose,                 1 , mpilog,  0, mpicom)
@@ -454,8 +452,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
                        ,l_tracer_aero_out, l_vdiff_out, l_rayleigh_out, l_gw_drag_out, l_ac_energy_chk_out  &
                        ,l_bc_energy_fix_out, l_dry_adj_out, l_st_mac_out, l_st_mic_out, l_rad_out  &
                        ,prc_coef1_out,prc_exp_out,prc_exp1_out, cld_sed_out,mg_prc_coeff_fix_out,rrtmg_temp_fix_out &
-                       , use_crm_accel_out, crm_accel_factor_out &
-                       , crm_accel_uv_out, crm_accel_micro_opt_out &
+                       , use_crm_accel_out, crm_accel_factor_out, crm_accel_uv_out &
 !-- WH acme-sp
                        ,use_SPCAM_out, use_ECPP_out, SPCAM_microp_scheme_out)
 !-- WH acme-sp
@@ -484,7 +481,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    logical,           intent(out), optional :: use_crm_accel_out
    real(r8),          intent(out), optional :: crm_accel_factor_out
    logical,           intent(out), optional :: crm_accel_uv_out
-   integer,           intent(out), optional :: crm_accel_micro_opt_out
    logical,           intent(out), optional :: use_subcol_microp_out
    logical,           intent(out), optional :: atm_dep_flux_out
    logical,           intent(out), optional :: history_amwg_out
@@ -559,7 +555,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    if ( present(use_crm_accel_out       ) ) use_crm_accel_out        = use_crm_accel
    if ( present(crm_accel_factor_out    ) ) crm_accel_factor_out     = crm_accel_factor
    if ( present(crm_accel_uv_out        ) ) crm_accel_uv_out         = crm_accel_uv
-   if ( present(crm_accel_micro_opt_out ) ) crm_accel_micro_opt_out  = crm_accel_micro_opt
 
    if ( present(use_subcol_microp_out   ) ) use_subcol_microp_out    = use_subcol_microp
    if ( present(macrop_scheme_out       ) ) macrop_scheme_out        = macrop_scheme
