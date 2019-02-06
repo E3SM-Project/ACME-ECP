@@ -68,7 +68,7 @@ logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-
 logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
 !-- mdb spcam
-logical           :: use_crm_accel        = .false.     ! true => use crm mean-state acceleration
+logical           :: use_crm_accel        = .false.    ! true => use crm mean-state acceleration
 real(r8)          :: crm_accel_factor     = 3.D0       ! crm acceleration factor
 logical           :: crm_accel_uv         = .true.     ! true => apply crm mean-state acceleration to momentum fields
 ! real(r8)          :: crm_min_tk           = huge(1.0_r8)  ! minimum near-surface eddy viscosity - still hardcoded in crm/SGS_TKE/tke_full.F90
