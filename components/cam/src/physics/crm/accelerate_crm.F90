@@ -124,11 +124,13 @@ module accelerate_crm_mod
       !   ceaseflag (inout) - returns true if accelerate_crm aborted
       !                       before MSA applied; otherwise false
       ! Notes:
+      !   micro_field(:,:,:,index_water_vapor,:) is the non-precipitating
+      !     _total_ water mixing ratio for sam1mom microphysics.
       !   Intended to be called from crm subroutine in crm_module
       ! -----------------------------------------------------------------------
       use grid, only: nzm
       use vars, only: u, v, u0, v0, t0,q0, t,qcl,qci,qv
-      use microphysics, only: micro_field, ixw=>index_water_vapor
+      use microphysics, only: micro_field, idx_qt=>index_water_vapor
       use cam_logfile,  only: iulog
       implicit none
       integer, intent(in   ) :: ncrms
@@ -145,8 +147,8 @@ module accelerate_crm_mod
       real(rc) :: vtend_acc(nzm,ncrms) ! MSA adjustment of v
       real(rc) :: tmp  ! temporary variable for atomic updates
       integer i, j, k, icrm  ! iteration variables
-      real(r8) :: qpoz(nzm,ncrms) ! total positive micro_field(:,:,k,ixw,:) in level k
-      real(r8) :: qneg(nzm,ncrms) ! total negative micro_field(:,:,k,ixw,:) in level k
+      real(r8) :: qpoz(nzm,ncrms) ! total positive micro_field(:,:,k,idx_qt,:) in level k
+      real(r8) :: qneg(nzm,ncrms) ! total negative micro_field(:,:,k,idx_qt,:) in level k
       real(r8) :: factor, qfactor ! local variables for redistributing moisture
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
@@ -257,7 +259,7 @@ module accelerate_crm_mod
                 u(i,j,k,icrm) = u(i,j,k,icrm) + crm_accel_factor * utend_acc(k,icrm) 
                 v(i,j,k,icrm) = v(i,j,k,icrm) + crm_accel_factor * vtend_acc(k,icrm) 
               endif
-              micro_field(i,j,k,icrm,ixw) = micro_field(i,j,k,icrm,ixw) + crm_accel_factor * qtend_acc(k,icrm)
+              micro_field(i,j,k,icrm,idx_qt) = micro_field(i,j,k,icrm,idx_qt) + crm_accel_factor * qtend_acc(k,icrm)
             enddo
           enddo
         enddo
@@ -279,12 +281,12 @@ module accelerate_crm_mod
         do k = 1, nzm
           do j = 1, ny
             do i = 1, nx
-              if (micro_field(i,j,k,icrm,ixw) < 0.) then
+              if (micro_field(i,j,k,icrm,idx_qt) < 0.) then
                 !$acc atomic update
-                qneg(k,icrm) = qneg(k,icrm) + micro_field(i,j,k,icrm,ixw)
+                qneg(k,icrm) = qneg(k,icrm) + micro_field(i,j,k,icrm,idx_qt)
               else
                 !$acc atomic update
-                qpoz(k,icrm) = qpoz(k,icrm) + micro_field(i,j,k,icrm,ixw)
+                qpoz(k,icrm) = qpoz(k,icrm) + micro_field(i,j,k,icrm,idx_qt)
               endif
             enddo
           enddo
@@ -296,24 +298,24 @@ module accelerate_crm_mod
           do j = 1 , ny
             do i = 1 , nx
               if (qpoz(k,icrm) + qneg(k,icrm) <= 0.) then
-                micro_field(i,j,k,icrm,ixw) = 0.
+                micro_field(i,j,k,icrm,idx_qt) = 0.
                 qv         (i,j,k,icrm    ) = 0.
                 qcl        (i,j,k,icrm    ) = 0.
                 qci        (i,j,k,icrm    ) = 0.
               else
                 factor = 1._r8 + qneg(k,icrm) / qpoz(k,icrm)
                 ! apply to micro_field
-                micro_field(i,j,k,icrm,ixw) = max(0._rc, micro_field(i,j,k,icrm,ixw) * factor)
+                micro_field(i,j,k,icrm,idx_qt) = max(0._rc, micro_field(i,j,k,icrm,idx_qt) * factor)
                 ! partition micro_field into qv, qcl, and qci
                 ! such that micro_field = qv + qcl + qci, following these rules:
                 !  (1) adjust qv first
                 !  (2) adjust qcl and qci only if needed to ensure positivity
-                if (micro_field(i,j,k,icrm,ixw) <= 0._rc) then
+                if (micro_field(i,j,k,icrm,idx_qt) <= 0._rc) then
                   qv (i,j,k,icrm) = 0.
                   qcl(i,j,k,icrm) = 0.
                   qci(i,j,k,icrm) = 0.
                 else
-                  qfactor = micro_field(i,j,k,icrm,ixw) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
+                  qfactor = micro_field(i,j,k,icrm,idx_qt) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
                   qv(i,j,k,icrm) = max(0._rc, qfactor)
                   if (qfactor < 0._r8) then
                     qfactor = 1._r8 + qfactor / (qcl(i,j,k,icrm) + qci(i,j,k,icrm))
