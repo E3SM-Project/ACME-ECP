@@ -322,9 +322,9 @@ module accelerate_crm_mod
                   endif
                 endif
               endif ! qpoz + qneg < 0.
-            enddo
-          enddo
-        enddo  ! k = 1, nzm
+            enddo ! i = 1, nx
+          enddo ! j = 1, ny
+        enddo ! k = 1, nzm
       enddo ! icrm = 1, ncrms
 
       !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
