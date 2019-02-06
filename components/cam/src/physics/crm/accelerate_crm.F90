@@ -149,7 +149,7 @@ module accelerate_crm_mod
       integer i, j, k, icrm  ! iteration variables
       real(r8) :: qpoz(nzm,ncrms) ! total positive micro_field(:,:,k,idx_qt,:) in level k
       real(r8) :: qneg(nzm,ncrms) ! total negative micro_field(:,:,k,idx_qt,:) in level k
-      real(r8) :: factor, qfactor ! local variables for redistributing moisture
+      real(r8) :: factor, qt_res ! local variables for redistributing moisture
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
 
@@ -266,7 +266,7 @@ module accelerate_crm_mod
       enddo
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !! Fix negative micro and readjust among micro components
+      !! Fix negative micro and readjust among separate water species
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       !$acc parallel loop collapse(2) async(asyncid)
@@ -276,6 +276,7 @@ module accelerate_crm_mod
           qneg(k,icrm) = 0.
         enddo
       enddo
+      ! separately accumulate positive and negative qt values in each layer k
       !$acc parallel loop collapse(4) copyin(micro_field) async(asyncid)
       do icrm = 1, ncrms
         do k = 1, nzm
@@ -298,29 +299,32 @@ module accelerate_crm_mod
           do j = 1 , ny
             do i = 1 , nx
               if (qpoz(k,icrm) + qneg(k,icrm) <= 0.) then
+                ! all moisture depleted in layer
                 micro_field(i,j,k,icrm,idx_qt) = 0.
                 qv         (i,j,k,icrm    ) = 0.
                 qcl        (i,j,k,icrm    ) = 0.
                 qci        (i,j,k,icrm    ) = 0.
               else
+                ! Clip qt values at 0 and remove the negative excess in each layer
+                ! proportionally from the positive qt fields in the layer
                 factor = 1._r8 + qneg(k,icrm) / qpoz(k,icrm)
-                ! apply to micro_field
                 micro_field(i,j,k,icrm,idx_qt) = max(0._rc, micro_field(i,j,k,icrm,idx_qt) * factor)
-                ! partition micro_field into qv, qcl, and qci
-                ! such that micro_field = qv + qcl + qci, following these rules:
-                !  (1) adjust qv first
-                !  (2) adjust qcl and qci only if needed to ensure positivity
+                ! Partition micro_field == qv + qcl + qci following these rules:
+                !    (1) attempt to satisfy purely by adjusting qv
+                !    (2) adjust qcl and qci only if needed to ensure positivity
                 if (micro_field(i,j,k,icrm,idx_qt) <= 0._rc) then
                   qv (i,j,k,icrm) = 0.
                   qcl(i,j,k,icrm) = 0.
                   qci(i,j,k,icrm) = 0.
                 else
-                  qfactor = micro_field(i,j,k,icrm,idx_qt) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
-                  qv(i,j,k,icrm) = max(0._rc, qfactor)
-                  if (qfactor < 0._r8) then
-                    qfactor = 1._r8 + qfactor / (qcl(i,j,k,icrm) + qci(i,j,k,icrm))
-                    qcl(i,j,k,icrm) = qcl(i,j,k,icrm) * qfactor
-                    qci(i,j,k,icrm) = qci(i,j,k,icrm) * qfactor
+                  ! deduce qv as residual between qt - qcl - qci
+                  qt_res = micro_field(i,j,k,icrm,idx_qt) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
+                  qv(i,j,k,icrm) = max(0._rc, qt_res)
+                  if (qt_res < 0._r8) then
+                    ! qv was clipped; need to reduce qcl and qci accordingly
+                    factor = 1._r8 + qt_res / (qcl(i,j,k,icrm) + qci(i,j,k,icrm))
+                    qcl(i,j,k,icrm) = qcl(i,j,k,icrm) * factor
+                    qci(i,j,k,icrm) = qci(i,j,k,icrm) * factor
                   endif
                 endif
               endif ! qpoz + qneg < 0.
