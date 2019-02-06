@@ -43,7 +43,7 @@ contains
 
     if(RUN3D) then
 
-      !$acc parallel loop collapse(4) async(asyncid)
+      !$acc parallel loop collapse(4) copyin(rhow,dz,w,u,v) copy(fuz,fvz,uwle,vwle) async(asyncid)
       do icrm = 1 , ncrms
         do k=2,nzm
           do j=1,ny
