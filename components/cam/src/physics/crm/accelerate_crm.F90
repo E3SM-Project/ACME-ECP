@@ -43,7 +43,7 @@ module accelerate_crm_mod
 
   contains
     subroutine crm_accel_init()
-    ! initialize namelist options for CRM mean-state acceleration
+      ! initialize namelist options for CRM mean-state acceleration
       use phys_control, only: phys_getopts
       use cam_logfile, only: iulog
       use spmd_utils,  only: masterproc
@@ -76,10 +76,13 @@ module accelerate_crm_mod
 
 
     subroutine crm_accel_nstop(nstop)
-      ! Reduces nstop to appropriate value give crm_accel_factor.
+      ! Reduces nstop to appropriate value given crm_accel_factor.
       ! 
       ! To correctly apply mean-state acceleration in the crm_module/crm
-      ! subroutine, nstop must be reduced to nstop / (1 + crm_accel_factor)
+      ! subroutine, nstop must be reduced to nstop / (1 + crm_accel_factor).
+      ! This is equivalent to nstop = crm_run_time / dt_a, where 
+      ! dt_a = crm_dt * (1 + crm_accel_factor) is the effective duration of 
+      ! a mean-state accelerated time-step.
       !
       ! Argument(s):
       !  nstop (inout) - number of crm iterations to apply MSA
@@ -91,14 +94,14 @@ module accelerate_crm_mod
   
       integer, intent(inout) :: nstop
   
-      if (mod(real(nstop), (1. + crm_accel_factor)) .ne. 0) then
+      if (mod(real(nstop), (1._r8 + crm_accel_factor)) .ne. 0) then
         write(iulog,*) "CRM acceleration unexpected exception:"
         write(iulog,*) "(1+crm_accel_factor) does not divide equally into nstop"
         write(iulog,*) "nstop = ", nstop
         write(iulog,*) "crm_accel_factor = ", crm_accel_factor
         call endrun('crm main: bad crm_accel_factor and nstop pair')
       else
-        nstop = nstop / (1.D0 + crm_accel_factor)
+        nstop = nstop / (1._r8 + crm_accel_factor)
       endif
     end subroutine crm_accel_nstop
 
@@ -163,7 +166,7 @@ module accelerate_crm_mod
           tbaccel (k,icrm) = 0
           qtbaccel(k,icrm) = 0
           if (crm_accel_uv) then
-            ubaccel (k,icrm) = 0
+            ubaccel(k,icrm) = 0
             vbaccel(k,icrm) = 0
           endif
         enddo
@@ -218,8 +221,21 @@ module accelerate_crm_mod
 
       !$acc wait(asyncid)
       if (ceaseflag) then ! special case for dT/dt too large
+        ! MSA will not be applied here or for the remainder of the CRM integration.
+        ! nstop must be updated to ensure the CRM integration duration is unchanged.
+        ! 
+        ! The effective MSA timestep is dt_a = crm_dt * (1 + crm_accel_factor). When
+        ! ceaseflag is triggered at nstep, we've taken (nstep - 1) previous steps of
+        ! size crm_dt * (1 + crm_accel_factor). The current step, and all future
+        ! steps, will revert to size crm_dt. Therefore, the total crm integration
+        ! time remaining after this step is
+        !     time_remaining = crm_run_time - (nstep - 1)* dt_a + crm_dt
+        !     nsteps_remaining = time_remaining / crm_dt
+        !     updated nstop = nstep + nsteps_remaining
+        ! Because we set nstop = crm_run_time / dt_a in crm_accel_nstop, subbing
+        ! crm_run_time = nstop * dt_a and working through algebra yields 
+        !     updated nstop = nstop + (nstop - nstep + 1) * crm_accel_factor.
         write (iulog, *) 'accelerate_crm: mean-state acceleration not applied this step'
-        ! reset nstop so remainder of this crm integration is carried out without MSA
         write (iulog,*) 'crm: nstop increased from ', nstop, ' to ', int(nstop+(nstop-nstep+1)*crm_accel_factor)
         nstop = nstop + (nstop - nstep + 1)*crm_accel_factor ! only can happen once
         !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
