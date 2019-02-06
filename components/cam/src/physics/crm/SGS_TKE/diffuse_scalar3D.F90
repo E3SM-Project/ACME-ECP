@@ -38,7 +38,7 @@ contains
 
     !$acc enter data create(flx_x,flx_y,flx_z,dfdt) async(asyncid)
 
-    !$acc parallel loop collapse(4) async(asyncid)
+    !$acc parallel loop collapse(4) copy(dfdt) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         do j = 1 , ny
@@ -52,7 +52,7 @@ contains
     !-----------------------------------------
     if(dowallx) then
       if(mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop collapse(3) async(asyncid)
+        !$acc parallel loop collapse(3) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
@@ -62,7 +62,7 @@ contains
         enddo
       endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop collapse(3) async(asyncid)
+        !$acc parallel loop collapse(3) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
@@ -75,7 +75,7 @@ contains
 
     if(dowally) then
       if(rank.lt.nsubdomains_x) then
-        !$acc parallel loop collapse(3) async(asyncid)
+        !$acc parallel loop collapse(3) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=1,nx
@@ -85,7 +85,7 @@ contains
         enddo
       endif
       if(rank.gt.nsubdomains-nsubdomains_x-1) then
-        !$acc parallel loop collapse(3) async(asyncid)
+        !$acc parallel loop collapse(3) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=1,ny
@@ -97,7 +97,7 @@ contains
     endif
 
     if(dowally) then
-      !$acc parallel loop collapse(3) async(asyncid)
+      !$acc parallel loop collapse(3) copy(field) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -105,7 +105,7 @@ contains
           enddo
         enddo
       enddo
-      !$acc parallel loop collapse(3) async(asyncid)
+      !$acc parallel loop collapse(3) copy(field) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
@@ -116,7 +116,7 @@ contains
     endif
 
     !  Horizontal diffusion:
-    !$acc parallel loop collapse(4) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(field,tkh,grdf_x,grdf_y) copy(flx_x,flx_y) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=0,ny
@@ -137,7 +137,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(4) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(flx_x,flx_y) copy(dfdt) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -152,14 +152,14 @@ contains
     enddo
 
     !  Vertical diffusion:
-    !$acc parallel loop collapse(2) async(asyncid)
+    !$acc parallel loop collapse(2) copy(flux) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
         flux(k,icrm) = 0.
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(rhow,adzw,dz,grdf_z,tkh,field,fluxb,fluxt) copy(flx_z,flux) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
@@ -186,7 +186,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(adz,rho,flx_z) copy(dfdt,field) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=1,ny
