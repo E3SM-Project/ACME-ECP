@@ -884,7 +884,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             endif
 
 #ifdef CLUBB_CRM
-            clubb_buffer(i,:,:,k,:) = 0.0  ! In the inital run, variables are set in clubb_sgs_setup at the first time step. 
+            clubb_buffer(i,:,:,k,:) = 0.0  ! In the initial run, variables are set in clubb_sgs_setup at the first time step. 
 #endif
          end do
       end do
@@ -892,12 +892,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do k=1,crm_nz
          m = pver-k+1
          do i=1,ncol
-            crm_rad%qrad (i,:,:,k)    = 0.
-            crm_rad%temperature  (i,:,:,k)      = state%t(i,m)
-            crm_rad%qv (i,:,:,k)      = state%q(i,m,1)
-            crm_rad%qc (i,:,:,k)      = 0.
-            crm_rad%qi (i,:,:,k)      = 0.
-            crm_rad%cld(i,:,:,k)      = 0.
+            crm_rad%qrad         (i,:,:,k) = 0.
+            crm_rad%temperature  (i,:,:,k) = state%t(i,m)
+            crm_rad%qv           (i,:,:,k) = state%q(i,m,1)
+            crm_rad%qc           (i,:,:,k) = 0.
+            crm_rad%qi           (i,:,:,k) = 0.
+            crm_rad%cld          (i,:,:,k) = 0.
 #ifdef m2005
             if (SPCAM_microp_scheme .eq. 'm2005') then
                crm_rad%nc(i,:,:,k) = 0.0
@@ -906,7 +906,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                crm_rad%ns(i,:,:,k) = 0.0
             endif
 #endif
-
          end do
       end do
 
@@ -1107,6 +1106,17 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       !cld(:,:) = 0
       cld(1:ncol,1:pver) = crm_output%cld(1:ncol,1:pver)
 
+      ! Output CRM heating rate
+      ! NOTE: We output the heating rate here because this is the heating that
+      ! is applied to the CRM at this GCM timestep, but note that this heating
+      ! rate is offset in time from when the radiative heating rate is
+      ! calculated in the radiative transfer interface, which comes AFTER this
+      ! routine call (because we want it to use the clouds simulated from this
+      ! CRM call). Thus, comparing this heating rate with CRM_QRS + CRM_QRL
+      ! output in radiation_tend will show a time lag.
+      call outfld('CRM_QRAD', crm_rad%qrad(1:ncol,:,:,:), ncol, lchnk)
+
+      ! Convert heating rate to Q*dp to conserve energy across timesteps
       do m=1,crm_nz
          k = pver-m+1
          do i = 1,ncol
@@ -1525,6 +1535,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                                                   qi_hydro_before(:ncol))/crm_run_time/1000._r8
 
    end if ! (is_first_step())
+
 
    call t_stopf('crm')
    
