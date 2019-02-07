@@ -61,17 +61,17 @@ module accelerate_crm_mod
                         crm_accel_uv_out = crm_accel_uv)
   
       if (masterproc) then
-         write(iulog, *) 'USING CRM MEAN STATE ACCELERATION'
-         write(iulog, *) 'crm_accel: use_crm_accel = ', use_crm_accel
-         write(iulog, *) 'crm_accel: crm_accel_factor = ', crm_accel_factor
-         write(iulog, *) 'crm_accel: crm_accel_uv = ', crm_accel_uv
-      endif
+        if (use_crm_accel) then
 #if !defined(sam1mom)
-      if (masterproc) then
-        write(0,*) "CRM time step relaxation is only compatible with sam1mom microphysics"
-        call endrun('crm main')
-      endif
+          write(0,*) "CRM time step relaxation is only compatible with sam1mom microphysics"
+          call endrun('crm main')
 #endif
+          write(iulog, *) 'USING CRM MEAN STATE ACCELERATION'
+          write(iulog, *) 'crm_accel: use_crm_accel = ', use_crm_accel
+          write(iulog, *) 'crm_accel: crm_accel_factor = ', crm_accel_factor
+          write(iulog, *) 'crm_accel: crm_accel_uv = ', crm_accel_uv
+        endif
+      endif
     end subroutine crm_accel_init
 
 
