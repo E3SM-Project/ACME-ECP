@@ -147,15 +147,21 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copyin(rho,adz,rhow,www,uuu,vvv) copy(irho,iadz,irhow,flux,f) async(asyncid)
+    !$acc parallel loop collapse(2) copyin(rho,adz,rhow) copy(irho,iadz,irhow) async(asyncid)
+    do icrm = 1 , ncrms
+      do k=1,nzm
+        irho(k,icrm) = 1./rho(k,icrm)
+        iadz(k,icrm) = 1./adz(k,icrm)
+        irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
+      enddo
+    enddo
+
+    !$acc parallel loop collapse(4) copyin(irho,iadz,www,uuu,vvv) copy(flux,f) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         do j=-1,nyp2
           do i=-1,nxp2
             if (i == -1 .and. j == -1) then
-              irho(k,icrm) = 1./rho(k,icrm)
-              iadz(k,icrm) = 1./adz(k,icrm)
-              irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
             endif
             if (i >= 1 .and. i <= nx .and. j >= 1 .and. j <= ny) then
               !$acc atomic update
