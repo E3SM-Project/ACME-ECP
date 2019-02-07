@@ -624,8 +624,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! is only used in one place, so should get a more descriptive variable name)
    real(r8), pointer, dimension(:,:)     :: tempPtr
 
-   real(r8) :: tmp4d(pcols,crm_nx_rad,crm_ny_rad,crm_nz)
-
    real(r8), dimension(pcols) :: qli_hydro_before    ! column-integraetd rain + snow + graupel 
    real(r8), dimension(pcols) ::  qi_hydro_before    ! column-integrated snow water + graupel water
    real(r8), dimension(pcols) :: qli_hydro_after     ! column-integraetd rain + snow + graupel 
