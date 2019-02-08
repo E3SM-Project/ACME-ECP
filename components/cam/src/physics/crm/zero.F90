@@ -17,10 +17,10 @@ contains
     !misc(ncrms,nx  , ny  , nz )
     
     !$acc parallel loop collapse(4) copyout(dudt(:,:,:,na,:),dvdt(:,:,:,na,:),dwdt(:,:,:,na,:),misc) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nz
-        do j = 1 , nyp1
-          do i = 1 , nxp1
+    do k = 1 , nz
+      do j = 1 , nyp1
+        do i = 1 , nxp1
+          do icrm = 1 , ncrms
             if (i <= nxp1 .and. j <= ny   .and. k <= nzm) dudt(icrm,i,j,k,na) = 0.
             if (i <= nx   .and. j <= nyp1 .and. k <= nzm) dvdt(icrm,i,j,k,na) = 0.
             if (i <= nx   .and. j <= ny   .and. k <= nz ) dwdt(icrm,i,j,k,na) = 0.

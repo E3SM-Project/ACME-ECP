@@ -222,14 +222,14 @@ CONTAINS
 
     if(LES) then
       do k=1,nzm
-        grdf_x(icrm,k) = dx**2/(adz(k,icrm)*dz(icrm))**2
-        grdf_y(icrm,k) = dy**2/(adz(k,icrm)*dz(icrm))**2
+        grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
+        grdf_y(icrm,k) = dy**2/(adz(icrm,k)*dz(icrm))**2
         grdf_z(icrm,k) = 1.
       end do
     else
       do k=1,nzm
-        grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(k,icrm)*dz(icrm))**2)
-        grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(k,icrm)*dz(icrm))**2)
+        grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
+        grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
         grdf_z(icrm,k) = 1.
       end do
     end if

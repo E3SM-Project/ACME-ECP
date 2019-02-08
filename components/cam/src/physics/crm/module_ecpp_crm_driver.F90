@@ -510,9 +510,9 @@ contains
     do ii=1, nx
       do jj=1, ny
         do kk=1, nzm
-          EVS = POLYSVP(tabs(ii,jj,kk,icrm),0)   ! saturation water vapor pressure (PA)
+          EVS = POLYSVP(tabs(icrm,ii,jj,kk),0)   ! saturation water vapor pressure (PA)
           qvs(ii,jj,kk,icrm) = .622*EVS/(pres(kk,icrm)*100.-EVS)  ! pres(kk,icrm) with unit of hPa
-          alt(ii,jj,kk,icrm) =  287.*tabs(ii,jj,kk,icrm)/(100.*pres(kk,icrm))
+          alt(ii,jj,kk,icrm) =  287.*tabs(icrm,ii,jj,kk)/(100.*pres(kk,icrm))
         end do
       end do
     end do

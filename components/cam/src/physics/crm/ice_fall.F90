@@ -28,7 +28,7 @@ contains
       do j = 1, ny
         do i = 1, nx
           do k = 1,nzm
-            if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.0..and. tabs(i,j,k,icrm).lt.273.15) then
+            if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.0..and. tabs(icrm,i,j,k).lt.273.15) then
               !$acc atomic update
               kmin(icrm) = min(kmin(icrm),k)
               !$acc atomic update
@@ -72,14 +72,14 @@ contains
               kc = min(nzm,k+1)
               kb = max(1,k-1)
               ! CFL number based on grid spacing interpolated to interface i,j,k-1/2
-              coef = dtn/(0.5*(adz(kb,icrm)+adz(k,icrm))*dz(icrm))
+              coef = dtn/(0.5*(adz(icrm,kb)+adz(icrm,k))*dz(icrm))
 
               ! Compute cloud ice density in this cell and the ones above/below.
               ! Since cloud ice is falling, the above cell is u(icrm,upwind),
               ! this cell is c (center) and the one below is d (downwind).
-              qiu = rho(kc,icrm)*qci(i,j,kc,icrm)
-              qic = rho(k,icrm) *qci(i,j,k,icrm)
-              qid = rho(kb,icrm)*qci(i,j,kb,icrm)
+              qiu = rho(kc,icrm)*qci(icrm,i,j,kc)
+              qic = rho(k,icrm) *qci(icrm,i,j,k)
+              qid = rho(kb,icrm)*qci(icrm,i,j,kb)
 
               ! Ice sedimentation velocity depends on ice content. The fiting is
               ! based on the data by Heymsfield (JAS,2003). -Marat
@@ -122,7 +122,7 @@ contains
         do j=1,ny
           do i=1,nx
             if ( k >= max(1,kmin(icrm)-2) .and. k <= kmax(icrm) ) then
-            coef=dtn/(dz(icrm)*adz(k,icrm)*rho(k,icrm))
+            coef=dtn/(dz(icrm)*adz(icrm,k)*rho(k,icrm))
             ! The cloud ice increment is the difference of the fluxes.
             dqi=coef*(fz(i,j,k,icrm)-fz(i,j,k+1,icrm))
             ! Add this increment to both non-precipitating and total water.

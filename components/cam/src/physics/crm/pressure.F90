@@ -120,8 +120,8 @@ contains
     !$acc parallel loop collapse(2) copyin(adz,adzw,dz,rhow) copyout(a,c) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
-        a(k,icrm)=rhow(k,icrm)/(adz(k,icrm)*adzw(icrm,k)*dz(icrm)*dz(icrm))
-        c(k,icrm)=rhow(k+1,icrm)/(adz(k,icrm)*adzw(icrm,k+1)*dz(icrm)*dz(icrm))
+        a(k,icrm)=rhow(k,icrm)/(adz(icrm,k)*adzw(icrm,k)*dz(icrm)*dz(icrm))
+        c(k,icrm)=rhow(k+1,icrm)/(adz(icrm,k)*adzw(icrm,k+1)*dz(icrm)*dz(icrm))
       enddo
     enddo
 

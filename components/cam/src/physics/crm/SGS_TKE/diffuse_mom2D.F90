@@ -94,7 +94,7 @@ contains
           rdz2=rdz*rdz *grdf_z(icrm,k)
           rdz25=0.25*rdz2
           dzx=dz(icrm)/dx
-          iadz = 1./adz(k,icrm)
+          iadz = 1./adz(icrm,k)
           iadzw= 1./adzw(icrm,kc)
           ib=i-1
           tkz=rdz2*tk(icrm,i,j,k)
@@ -116,7 +116,7 @@ contains
         rdz=1./dz(icrm)
         rdz2=rdz*rdz *grdf_z(icrm,k)
         tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
-        fw(i,j,nz,icrm)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm,icrm)*rho(nzm,icrm)
+        fw(i,j,nz,icrm)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(nzm,icrm)
         fu(i,j,1,icrm)=fluxbu(i,j,icrm) * rdz * rhow(1,icrm)
         fv(i,j,1,icrm)=fluxbv(i,j,icrm) * rdz * rhow(1,icrm)
         fu(i,j,nz,icrm)=fluxtu(i,j,icrm) * rdz * rhow(nz,icrm)
@@ -133,7 +133,7 @@ contains
       do k=1,nzm
         do i=1,nx
           kc=k+1
-          rhoi = 1./(rho(k,icrm)*adz(k,icrm))
+          rhoi = 1./(rho(k,icrm)*adz(icrm,k))
           dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,kc,icrm)-fu(i,j,k,icrm))*rhoi
           dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(i,j,kc,icrm)-fv(i,j,k,icrm))*rhoi
         end do
