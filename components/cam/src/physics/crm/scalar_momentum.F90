@@ -237,9 +237,9 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
          u_s_avg(k) = u_s_avg(k) / real(nx,crm_rknd)
       end do
 
-      shr(1) = ( u_s_avg(2) - u_s_avg(1) )/(z(2,icrm)-z(1,icrm))      ! do we even care about first level?
+      shr(1) = ( u_s_avg(2) - u_s_avg(1) )/(z(icrm,2)-z(icrm,1))      ! do we even care about first level?
       do k = 2,nzm-1
-         shr(k) = ( u_s_avg(k+1) - u_s_avg(k-1) )/(z(k+1,icrm)-z(k-1,icrm))
+         shr(k) = ( u_s_avg(k+1) - u_s_avg(k-1) )/(z(icrm,k+1)-z(icrm,k-1))
       end do
 
       !------------------------------------------------------------------------

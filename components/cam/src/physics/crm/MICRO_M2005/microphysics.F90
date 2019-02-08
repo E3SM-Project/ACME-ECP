@@ -760,15 +760,15 @@ do j = 1,ny
 
       tmpdz = adz(icrm,:)*dz(icrm)
 !      tmpw = 0.5*(w(icrm,i,j,1:nzm) + w(icrm,i,j,2:nz))  ! MK: changed for stretched grids
-      tmpw = ((zi(2:nz,icrm)-z(1:nzm,icrm))*w(icrm,i,j,1:nzm)+ &
-             (z(1:nzm,icrm)-zi(1:nzm,icrm))*w(icrm,i,j,2:nz))/(zi(2:nz,icrm)-zi(1:nzm,icrm))
+      tmpw = ((zi(2:nz,icrm)-z(icrm,1:nzm))*w(icrm,i,j,1:nzm)+ &
+             (z(icrm,1:nzm)-zi(1:nzm,icrm))*w(icrm,i,j,2:nz))/(zi(2:nz,icrm)-zi(1:nzm,icrm))
 #ifdef CLUBB_CRM
       ! Added by dschanen on 4 Nov 2008 to account for w_sgs
       if ( doclubb .and. dosubgridw ) then
         ! Compute w_sgs.  Formula is consistent with that used with
         ! TKE from MYJ pbl scheme in WRF (see module_mp_graupel.f90).
         tmpwsub = sqrt( LIN_INT( real( wp2(i,j,2:nz) ,crm_rknd), real( wp2(i,j,1:nzm) ,crm_rknd), &
-                                  zi(2:nz,icrm), zi(1:nzm,icrm), z(1:nzm,icrm) ) )
+                                  zi(2:nz,icrm), zi(1:nzm,icrm), z(icrm,1:nzm) ) )
       else
 !        tmpwsub = 0.
 ! diagnose tmpwsub from tke.

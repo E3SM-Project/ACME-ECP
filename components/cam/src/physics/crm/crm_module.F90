@@ -378,21 +378,21 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     ! Create CRM vertical grid and initialize some vertical reference arrays:
     do k = 1, nzm
-      z(k,icrm) = crm_input%zmid(icrm,plev-k+1) - crm_input%zint(icrm,plev+1)
+      z(icrm,k) = crm_input%zmid(icrm,plev-k+1) - crm_input%zint(icrm,plev+1)
       zi(k,icrm) = crm_input%zint(icrm,plev-k+2)- crm_input%zint(icrm,plev+1)
       pres(k,icrm) = crm_input%pmid(icrm,plev-k+1)/100.
       presi(k,icrm) = crm_input%pint(icrm,plev-k+2)/100.
       prespot(k,icrm)=(1000./pres(k,icrm))**(rgas/cp)
       bet(icrm,k) = ggr/crm_input%tl(icrm,plev-k+1)
-      gamaz(k,icrm)=ggr/cp*z(k,icrm)
+      gamaz(k,icrm)=ggr/cp*z(icrm,k)
     end do ! k
    ! zi(nz,icrm) =  crm_input%zint(plev-nz+2)
     zi(nz,icrm) = crm_input%zint(icrm,plev-nz+2)-crm_input%zint(icrm,plev+1) !+++mhwang, 2012-02-04
     presi(nz,icrm) = crm_input%pint(icrm, plev-nz+2)/100.
 
-    dz(icrm) = 0.5*(z(1,icrm)+z(2,icrm))
+    dz(icrm) = 0.5*(z(icrm,1)+z(icrm,2))
     do k=2,nzm
-      adzw(icrm,k) = (z(k,icrm)-z(k-1,icrm))/dz(icrm)
+      adzw(icrm,k) = (z(icrm,k)-z(icrm,k-1))/dz(icrm)
     end do
     adzw(icrm,1)  = 1.
     adzw(icrm,nz) = adzw(icrm,nzm)
@@ -580,7 +580,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
     ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(1,icrm))
-    z0(icrm) = z0_est(z(1,icrm),bflx(icrm),wnd(icrm),ustar(icrm))
+    z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
     crm_output%timing_factor = 0.
@@ -770,7 +770,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     if ( doclubb .or. doclubbnoninter ) then
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                            latitude(:,:,icrm), longitude(:,:,icrm), z(:,icrm), rho(:,icrm), zi(:,icrm), rhow(:,icrm), tv0(:,icrm), tke(icrm,:,:,:) )
+                            latitude(:,:,icrm), longitude(:,:,icrm), z(icrm,:), rho(:,icrm), zi(:,icrm), rhow(:,icrm), tv0(:,icrm), tke(icrm,:,:,:) )
     endif
 #endif /* CLUBB_CRM */
   enddo
@@ -852,10 +852,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       !!! Apply radiative tendency
       !$acc parallel loop collapse(4) private(i_rad,j_rad) copy(t) copyin(crm_rad_qrad) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
               j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
               t(icrm,i,j,k) = t(icrm,i,j,k) + crm_rad_qrad(icrm,i_rad,j_rad,k)*dtn

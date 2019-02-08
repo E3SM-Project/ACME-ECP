@@ -17,11 +17,11 @@ contains
     real(crm_rknd) tau_max    ! maxim damping time-scale (base of damping layer)
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
-    real(crm_rknd) tau(nzm,ncrms), tmp
+    real(crm_rknd) tau(ncrms,nzm), tmp
     integer i, j, k, n_damp(ncrms), icrm
     integer :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
     ! crjones tests: make changes to u0, v0, t0 local instead of shared with vars
-    real(crm_rknd) :: t0loc(nzm, ncrms), u0loc(nzm, ncrms), v0loc(nzm, ncrms)
+    real(crm_rknd) :: t0loc(ncrms,nzm), u0loc(ncrms,nzm), v0loc(ncrms,nzm)
    
     !$acc enter data create(tau,n_damp,t0loc, u0loc, v0loc) async(asyncid)
 
@@ -33,7 +33,7 @@ contains
     !$acc parallel loop copyin(z) copyout(n_damp) async(asyncid)
     do icrm = 1 , ncrms
       do k=nzm,1,-1
-        if(z(nzm,icrm)-z(k,icrm).lt.damp_depth*z(nzm,icrm)) then
+        if(z(icrm,nzm)-z(icrm,k).lt.damp_depth*z(icrm,nzm)) then
           n_damp(icrm)=nzm-k+1
         endif
       end do
@@ -42,8 +42,8 @@ contains
     !$acc parallel loop copyin(z,n_damp) copy(tau) async(asyncid)
     do icrm = 1 , ncrms
       do k=nzm,nzm-n_damp(icrm),-1
-        tau(k,icrm) = tau_min *(tau_max/tau_min)**((z(nzm,icrm)-z(k,icrm))/(z(nzm,icrm)-z(nzm-n_damp(icrm),icrm)))
-        tau(k,icrm)=1./tau(k,icrm)
+        tau(icrm,k) = tau_min *(tau_max/tau_min)**((z(icrm,nzm)-z(icrm,k))/(z(icrm,nzm)-z(icrm,nzm-n_damp(icrm))))
+        tau(icrm,k)=1./tau(icrm,k)
       end do
     end do
 
@@ -51,27 +51,27 @@ contains
     ! as t has been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
     !$acc parallel loop collapse(2) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1, nzm
-        u0loc(k,icrm)=0.0
-        v0loc(k,icrm)=0.0
-        t0loc(k,icrm)=0.0
+    do k=1, nzm
+      do icrm = 1 , ncrms
+        u0loc(icrm,k)=0.0
+        v0loc(icrm,k)=0.0
+        t0loc(icrm,k)=0.0
       end do
     end do
     !$acc parallel loop collapse(4) copyin(u,v,t) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1, nzm
-        do j=1, ny
-          do i=1, nx
+    do k=1, nzm
+      do j=1, ny
+        do i=1, nx
+          do icrm = 1 , ncrms
             tmp = u(icrm,i,j,k)/(nx*ny)
             !$acc atomic update
-            u0loc(k,icrm) = u0loc(k,icrm) + tmp
+            u0loc(icrm,k) = u0loc(icrm,k) + tmp
             tmp = v(icrm,i,j,k)/(nx*ny)
             !$acc atomic update
-            v0loc(k,icrm) = v0loc(k,icrm) + tmp
+            v0loc(icrm,k) = v0loc(icrm,k) + tmp
             tmp = t(icrm,i,j,k)/(nx*ny)
             !$acc atomic update
-            t0loc(k,icrm) = t0loc(k,icrm) + tmp
+            t0loc(icrm,k) = t0loc(icrm,k) + tmp
           end do
         end do
       end do
@@ -80,15 +80,15 @@ contains
    !For working around PGI OpenACC bug where it didn't create enough gangs 
     numgangs = ceiling(ncrms*ny*nx/128.)
     !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,v,tau,w,qv,qv0) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
           do k = nzm, nzm-n_damp(icrm), -1
-            dudt(icrm,i,j,k,na)= dudt(icrm,i,j,k,na)-(u(icrm,i,j,k)-u0loc(k,icrm)) * tau(k,icrm)
-            dvdt(icrm,i,j,k,na)= dvdt(icrm,i,j,k,na)-(v(icrm,i,j,k)-v0loc(k,icrm)) * tau(k,icrm)
-            dwdt(icrm,i,j,k,na)= dwdt(icrm,i,j,k,na)-w(icrm,i,j,k) * tau(k,icrm)
-            t(icrm,i,j,k)= t(icrm,i,j,k)-dtn*(t(icrm,i,j,k)-t0loc(k,icrm)) * tau(k,icrm)
-            micro_field(icrm,i,j,k,index_water_vapor)= micro_field(icrm,i,j,k,index_water_vapor)-dtn*(qv(icrm,i,j,k)-qv0(icrm,k)) * tau(k,icrm)
+            dudt(icrm,i,j,k,na)= dudt(icrm,i,j,k,na)-(u(icrm,i,j,k)-u0loc(icrm,k)) * tau(icrm,k)
+            dvdt(icrm,i,j,k,na)= dvdt(icrm,i,j,k,na)-(v(icrm,i,j,k)-v0loc(icrm,k)) * tau(icrm,k)
+            dwdt(icrm,i,j,k,na)= dwdt(icrm,i,j,k,na)-w(icrm,i,j,k) * tau(icrm,k)
+            t(icrm,i,j,k)= t(icrm,i,j,k)-dtn*(t(icrm,i,j,k)-t0loc(icrm,k)) * tau(icrm,k)
+            micro_field(icrm,i,j,k,index_water_vapor)= micro_field(icrm,i,j,k,index_water_vapor)-dtn*(qv(icrm,i,j,k)-qv0(icrm,k)) * tau(icrm,k)
           end do! i
         end do! j
       end do ! k

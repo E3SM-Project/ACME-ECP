@@ -172,7 +172,7 @@ contains
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
 
-    allocate( z(nz,ncrms)       )
+    allocate( z(ncrms,nz)       )
     allocate( pres(nzm,ncrms)   )
     allocate( zi(nz,ncrms)      )
     allocate( presi(nz,ncrms)   )
