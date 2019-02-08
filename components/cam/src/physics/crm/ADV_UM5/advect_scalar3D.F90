@@ -81,7 +81,7 @@ contains
 
       ! Inverse of rho, adz, adzw
       do k = 1, nzm
-        irho(k)  = 1. / rho(k,icrm)
+        irho(k)  = 1. / rho(icrm,k)
         iadz(k)  = 1. / adz(icrm,k)
         iadzw(k) = 1. / adzw(icrm,k)
       enddo

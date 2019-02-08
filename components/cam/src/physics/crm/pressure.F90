@@ -175,20 +175,20 @@ contains
             id=(i+it-0.1)/2.
           endif
           if(id+jd.eq.0) then
-            b=1._8/(eign(i,j)*rho(1,icrm)-a(1,icrm)-c(1,icrm))
+            b=1._8/(eign(i,j)*rho(icrm,1)-a(1,icrm)-c(1,icrm))
             alfa(1)=-c(1,icrm)*b
             beta(1)=ff(i,j,1,icrm)*b
           else
-            b=1._8/(eign(i,j)*rho(1,icrm)-c(1,icrm))
+            b=1._8/(eign(i,j)*rho(icrm,1)-c(1,icrm))
             alfa(1)=-c(1,icrm)*b
             beta(1)=ff(i,j,1,icrm)*b
           endif
           do k=2,nzm-1
-            e=1._8/(eign(i,j)*rho(k,icrm)-a(k,icrm)-c(k,icrm)+a(k,icrm)*alfa(k-1))
+            e=1._8/(eign(i,j)*rho(icrm,k)-a(k,icrm)-c(k,icrm)+a(k,icrm)*alfa(k-1))
             alfa(k)=-c(k,icrm)*e
             beta(k)=(ff(i,j,k,icrm)-a(k,icrm)*beta(k-1))*e
           enddo
-          ff(i,j,nzm,icrm)=(ff(i,j,nzm,icrm)-a(nzm,icrm)*beta(nzm-1))/(eign(i,j)*rho(nzm,icrm)-a(nzm,icrm)+a(nzm,icrm)*alfa(nzm-1))
+          ff(i,j,nzm,icrm)=(ff(i,j,nzm,icrm)-a(nzm,icrm)*beta(nzm-1))/(eign(i,j)*rho(icrm,nzm)-a(nzm,icrm)+a(nzm,icrm)*alfa(nzm-1))
           do k=nzm-1,1,-1
             ff(i,j,k,icrm)=alfa(k)*ff(i,j,k+1,icrm)+beta(k)
           enddo

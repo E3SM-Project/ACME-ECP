@@ -37,8 +37,8 @@ contains
               fv1 = dx25*(u(icrm,ic-1,j,k)+u(icrm,ic-1,jb,k))*(v(icrm,i-1,j,k)+v(icrm,ic-1,j,k))
               fv2 = dx25*(u(icrm,ic  ,j,k)+u(icrm,ic  ,jb,k))*(v(icrm,i  ,j,k)+v(icrm,ic  ,j,k))
               dvdt(icrm,i,j,k,na)  = dvdt(icrm,i,j,k,na)  - (fv2-fv1)
-              fw1 = dx25*(u(icrm,ic-1,j,k)*rho(k,icrm)*adz(icrm,k)+u(icrm,ic-1,j,kcu)*rho(kcu,icrm)*adz(icrm,kcu))*(w(icrm,i-1,j,kc)+w(icrm,ic-1,j,kc))
-              fw2 = dx25*(u(icrm,ic  ,j,k)*rho(k,icrm)*adz(icrm,k)+u(icrm,ic  ,j,kcu)*rho(kcu,icrm)*adz(icrm,kcu))*(w(icrm,i  ,j,kc)+w(icrm,ic  ,j,kc))
+              fw1 = dx25*(u(icrm,ic-1,j,k)*rho(icrm,k)*adz(icrm,k)+u(icrm,ic-1,j,kcu)*rho(icrm,kcu)*adz(icrm,kcu))*(w(icrm,i-1,j,kc)+w(icrm,ic-1,j,kc))
+              fw2 = dx25*(u(icrm,ic  ,j,k)*rho(icrm,k)*adz(icrm,k)+u(icrm,ic  ,j,kcu)*rho(icrm,kcu)*adz(icrm,kcu))*(w(icrm,i  ,j,kc)+w(icrm,ic  ,j,kc))
               dwdt(icrm,i,j,kc,na) = dwdt(icrm,i,j,kc,na)-irho*(fw2-fw1)
 
               jc = j+1
@@ -49,8 +49,8 @@ contains
               fv1 = dy25*(v(icrm,i,jc-1,k)+v(icrm,i,j-1,k))*(v(icrm,i,j-1,k)+v(icrm,i,jc-1,k))
               fv2 = dy25*(v(icrm,i,jc  ,k)+v(icrm,i,j  ,k))*(v(icrm,i,j  ,k)+v(icrm,i,jc  ,k))
               dvdt(icrm,i,j,k,na) = dvdt(icrm,i,j,k,na) - (fv2-fv1)
-              fw1 = dy25*(v(icrm,i,jc-1,k)*rho(k,icrm)*adz(icrm,k)+v(icrm,i,jc-1,kcu)*rho(kcu,icrm)*adz(icrm,kcu))*(w(icrm,i,j-1,kc)+w(icrm,i,jc-1,kc))
-              fw2 = dy25*(v(icrm,i,jc  ,k)*rho(k,icrm)*adz(icrm,k)+v(icrm,i,jc  ,kcu)*rho(kcu,icrm)*adz(icrm,kcu))*(w(icrm,i,j  ,kc)+w(icrm,i,jc  ,kc))
+              fw1 = dy25*(v(icrm,i,jc-1,k)*rho(icrm,k)*adz(icrm,k)+v(icrm,i,jc-1,kcu)*rho(icrm,kcu)*adz(icrm,kcu))*(w(icrm,i,j-1,kc)+w(icrm,i,jc-1,kc))
+              fw2 = dy25*(v(icrm,i,jc  ,k)*rho(icrm,k)*adz(icrm,k)+v(icrm,i,jc  ,kcu)*rho(icrm,kcu)*adz(icrm,kcu))*(w(icrm,i,j  ,kc)+w(icrm,i,jc  ,kc))
               dwdt(icrm,i,j,kc,na)= dwdt(icrm,i,j,kc,na)-irho*(fw2-fw1)
             end do
           end do
@@ -74,8 +74,8 @@ contains
             fv1 = dx25*(u(icrm,ic-1,j,k)+u(icrm,i-1,j,k))*(v(icrm,i-1,j,k)+v(icrm,ic-1,j,k))
             fv2 = dx25*(u(icrm,ic  ,j,k)+u(icrm,i  ,j,k))*(v(icrm,i  ,j,k)+v(icrm,ic  ,j,k))
             dvdt(icrm,i,j,k,na)  = dvdt(icrm,i,j,k,na)  - (fv2-fv1)
-            fw1 = dx25*(u(icrm,ic-1,j,k)*rho(k,icrm)*adz(icrm,k)+u(icrm,ic-1,j,kcu)*rho(kcu,icrm)*adz(icrm,kcu))*(w(icrm,i-1,j,kc)+w(icrm,ic-1,j,kc))
-            fw2 = dx25*(u(icrm,ic  ,j,k)*rho(k,icrm)*adz(icrm,k)+u(icrm,ic  ,j,kcu)*rho(kcu,icrm)*adz(icrm,kcu))*(w(icrm,i  ,j,kc)+w(icrm,ic  ,j,kc))
+            fw1 = dx25*(u(icrm,ic-1,j,k)*rho(icrm,k)*adz(icrm,k)+u(icrm,ic-1,j,kcu)*rho(icrm,kcu)*adz(icrm,kcu))*(w(icrm,i-1,j,kc)+w(icrm,ic-1,j,kc))
+            fw2 = dx25*(u(icrm,ic  ,j,k)*rho(icrm,k)*adz(icrm,k)+u(icrm,ic  ,j,kcu)*rho(icrm,kcu)*adz(icrm,kcu))*(w(icrm,i  ,j,kc)+w(icrm,ic  ,j,kc))
             dwdt(icrm,i,j,kc,na) = dwdt(icrm,i,j,kc,na)-irho*(fw2-fw1)
           end do
         end do ! k

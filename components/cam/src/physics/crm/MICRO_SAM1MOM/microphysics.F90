@@ -474,7 +474,7 @@ CONTAINS
     integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: i,j,k,ind
     real(crm_rknd), intent(in) :: qploc
-    real(crm_rknd), intent(in) :: rho(nzm,ncrms), tabs(ncrms,nx, ny, nzm)
+    real(crm_rknd), intent(in) :: rho(ncrms,nzm), tabs(ncrms,nx, ny, nzm)
     real(crm_rknd), intent(in) :: qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
 
@@ -482,21 +482,21 @@ CONTAINS
     if(qploc.gt.qp_threshold) then
       omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
       if(omp.eq.1.) then
-        term_vel_qp = vrain*(rho(k,icrm)*qploc)**crain
+        term_vel_qp = vrain*(rho(icrm,k)*qploc)**crain
       elseif(omp.eq.0.) then
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
         qgg=omg*qploc
         qss=qploc-qgg
-        term_vel_qp = (omg*vgrau*(rho(k,icrm)*qgg)**cgrau &
-        +(1.-omg)*vsnow*(rho(k,icrm)*qss)**csnow)
+        term_vel_qp = (omg*vgrau*(rho(icrm,k)*qgg)**cgrau &
+        +(1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow)
       else
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
         qrr=omp*qploc
         qss=qploc-qrr
         qgg=omg*qss
         qss=qss-qgg
-        term_vel_qp = (omp*vrain*(rho(k,icrm)*qrr)**crain + (1.-omp)*(omg*vgrau*(rho(k,icrm)*qgg)**cgrau + &
-                      (1.-omg)*vsnow*(rho(k,icrm)*qss)**csnow))
+        term_vel_qp = (omp*vrain*(rho(icrm,k)*qrr)**crain + (1.-omp)*(omg*vgrau*(rho(icrm,k)*qgg)**cgrau + &
+                      (1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow))
       endif
     end if
   end function term_vel_qp
@@ -579,8 +579,8 @@ CONTAINS
     !$acc parallel loop gang vector collapse(2) copyin(rho,adz,dz) copy(rhofac,irhoadz,iwmax) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzm
-        rhofac(k,icrm) = sqrt(1.29/rho(k,icrm))
-        irhoadz(k,icrm) = 1./(rho(k,icrm)*adz(icrm,k)) ! Useful factor
+        rhofac(k,icrm) = sqrt(1.29/rho(icrm,k))
+        irhoadz(k,icrm) = 1./(rho(icrm,k)*adz(icrm,k)) ! Useful factor
         kb = max(1,k-1)
         wmax       = dz(icrm)*adz(icrm,kb)/dtn   ! Velocity equivalent to a cfl of 1.0.
         iwmax(k,icrm)   = 1./wmax
@@ -726,8 +726,8 @@ CONTAINS
                 mx(i,j,k,icrm)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mx(i,j,k,icrm))
                 mn(i,j,k,icrm)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mn(i,j,k,icrm))
                 kc=min(nzm,k+1)
-                mx(i,j,k,icrm)=rho(k,icrm)*adz(icrm,k)*(mx(i,j,k,icrm)-tmp_qp(i,j,k,icrm))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
-                mn(i,j,k,icrm)=rho(k,icrm)*adz(icrm,k)*(tmp_qp(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
+                mx(i,j,k,icrm)=rho(icrm,k)*adz(icrm,k)*(mx(i,j,k,icrm)-tmp_qp(i,j,k,icrm))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
+                mn(i,j,k,icrm)=rho(icrm,k)*adz(icrm,k)*(tmp_qp(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
               enddo
             enddo
           enddo
@@ -769,8 +769,8 @@ CONTAINS
               !$acc atomic update
               precflux(k,icrm) = precflux(k,icrm) - tmp   ! For statistics
               if (k == 1) then
-                precsfc(i,j,icrm) = precsfc(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For statistics
-                precssfc(i,j,icrm) = precssfc(i,j,icrm) - fz(i,j,1,icrm)*(1.-omega(i,j,1,icrm))*flagstat ! For statistics
+                precsfc(icrm,i,j) = precsfc(icrm,i,j) - fz(i,j,1,icrm)*flagstat ! For statistics
+                precssfc(icrm,i,j) = precssfc(icrm,i,j) - fz(i,j,1,icrm)*(1.-omega(i,j,1,icrm))*flagstat ! For statistics
                 prec_xy(i,j,icrm) = prec_xy(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For 2D output
               endif
             enddo
@@ -834,7 +834,7 @@ CONTAINS
               tmp = tmp + micro_field(icrm,i,j,k,m)
             end do
           end do
-          total_water = total_water + tmp*adz(icrm,k)*dz(icrm)*rho(k,icrm)
+          total_water = total_water + tmp*adz(icrm,k)*dz(icrm)*rho(icrm,k)
         end do
       end if
     end do

@@ -56,7 +56,7 @@ contains
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            coef1 = rho(k,icrm)*dz(icrm)*adz(icrm,k)*dtfactor
+            coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
             tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k,icrm)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) + fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
             !$acc atomic update
             u0(k,icrm)=u0(k,icrm)+u(icrm,i,j,k)
@@ -132,7 +132,7 @@ contains
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            coef1 = rho(k,icrm)*dz(icrm)*adz(icrm,k)*dtfactor
+            coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
             ! Saturated water vapor path with respect to water. Can be used
             ! with water vapor path (= pw) to compute column-average
             ! relative humidity.
@@ -179,7 +179,7 @@ contains
           ! FIND CLOUD TOP HEIGHT
           tmp_lwp = 0.
           do k = nzm,1,-1
-            tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(k,icrm)*dz(icrm)*adz(icrm,k)
+            tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(icrm,k)*dz(icrm)*adz(icrm,k)
             if (tmp_lwp.gt.0.01) then
               cloudtopheight(i,j,icrm) = z(icrm,k)
               cloudtoptemp(i,j,icrm) = tabs(icrm,i,j,k)

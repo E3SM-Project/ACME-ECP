@@ -16,7 +16,7 @@ contains
     real(crm_rknd) tkh(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
     real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
-    real(crm_rknd) rho(nzm,ncrms)
+    real(crm_rknd) rho(ncrms,nzm)
     real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz,ncrms)
     ! local
@@ -124,7 +124,7 @@ contains
       do k=1,nzm
         do i=1,nx
           kb=k-1
-          rhoi = 1./(adz(icrm,k)*rho(k,icrm))
+          rhoi = 1./(adz(icrm,k)*rho(icrm,k))
           dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx(i,j,k,icrm)-flx(i,j,kb,icrm))*rhoi)
           field(icrm,i,j,k)=field(icrm,i,j,k) + dfdt(i,j,k,icrm)
         enddo
