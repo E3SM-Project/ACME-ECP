@@ -167,7 +167,7 @@ contains
       do j = 1 , ny
         do i = 1 , nx
           cloudtopheight(i,j,icrm) = 0.
-          cloudtoptemp  (i,j,icrm) = sstxy(i,j,icrm)
+          cloudtoptemp  (i,j,icrm) = sstxy(icrm,i,j)
           echotopheight (i,j,icrm) = 0.
         enddo
       enddo
