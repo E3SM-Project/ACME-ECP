@@ -106,8 +106,8 @@
       <value compset="_CAM5%SP1V1"         >-SPCAM_microp_scheme sam1mom </value>
       <value compset="_CAM5%SP2V1"         >-SPCAM_microp_scheme m2005   </value>
       <value compset="_CAM5%SP2V1-ECPP-TEST" >-crm_nx 8 -crm_ny 1 -use_ECPP </value>
-      <value compset="_CAM5%SP1FAST"       >-use_SPCAM           -crm_nx 4 -crm_ny 4 -crm_nx_rad 1 -crm_ny_rad 1 -crm_adv MPDATA -nlev 30 -crm_nz 28 -crm_dx 4000 -crm_dt 20 -SPCAM_microp_scheme sam1mom -microphys mg2 -cppdefs ' -DSP_DIR_NS -DSP_TK_LIM -DAPPLY_POST_DECK_BUGFIXES ' -rad rrtmg -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero</value>
-      <value compset="_CAM5%SP2FAST"       >-use_SPCAM -use_ECPP -crm_nx 6 -crm_ny 1 -crm_nx_rad 1 -crm_ny_rad 1 -crm_adv MPDATA -nlev 30 -crm_nz 28 -crm_dx 4000 -crm_dt 20 -SPCAM_microp_scheme m2005   -microphys mg2 -cppdefs ' -DSP_DIR_NS -DSP_TK_LIM -DAPPLY_POST_DECK_BUGFIXES ' -rad rrtmg -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero</value>
+      <value compset="_CAM5%SP1FAST"       >-use_SPCAM           -crm_nx 4 -crm_ny 4 -crm_nx_rad 1 -crm_ny_rad 1 -crm_adv MPDATA -nlev 30 -crm_nz 28 -crm_dx 4000 -crm_dt 20 -SPCAM_microp_scheme sam1mom -microphys mg2 -cppdefs ' -DSP_DIR_NS -DSP_TK_LIM -DAPPLY_POST_DECK_BUGFIXES ' -rad rrtmg -chem none</value>
+      <value compset="_CAM5%SP2FAST"       >-use_SPCAM -use_ECPP -crm_nx 4 -crm_ny 1 -crm_nx_rad 1 -crm_ny_rad 1 -crm_adv MPDATA -nlev 30 -crm_nz 28 -crm_dx 4000 -crm_dt 20 -SPCAM_microp_scheme m2005   -microphys mg2 -cppdefs ' -DSP_DIR_NS -DSP_TK_LIM -DAPPLY_POST_DECK_BUGFIXES ' -rad rrtmg -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero</value>
       <!--  -->
       <value compset="GEOS_CAM"       >-offline_dyn</value>
       <value compset="GEOS_CAM4"      >-nlev 56</value>

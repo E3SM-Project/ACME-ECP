@@ -5,6 +5,9 @@ crm_module.o: crm_module.F90
 kurant.o: kurant.F90
 	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
 
+accelerate_crm.o: accelerate_crm.F90
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
+
 sgs.o: sgs.F90
 	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) -ta=nvidia,cc70,ptxinfo -Minfo=accel $(FREEFLAGS) $<
 
