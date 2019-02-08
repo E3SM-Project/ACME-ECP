@@ -28,7 +28,7 @@ contains
             do i = 1, nx
               kc= k+1
               kcu =min(kc, nzm)
-              irho = 1./(rhow(kc,icrm)*adzw(kc,icrm))
+              irho = 1./(rhow(kc,icrm)*adzw(icrm,kc))
               jb = j-1
               ic = i+1
               fu1 = dx25*(u(ic-1,j,k,icrm)+u(i-1,j,k,icrm))*(u(i-1,j,k,icrm)+u(ic-1,j,k,icrm))
@@ -66,7 +66,7 @@ contains
           do i = 1, nx
             kc= k+1
             kcu =min(kc, nzm)
-            irho = 1./(rhow(kc,icrm)*adzw(kc,icrm))
+            irho = 1./(rhow(kc,icrm)*adzw(icrm,kc))
             ic = i+1
             fu1 = dx25*(u(ic-1,j,k,icrm)+u(i-1,j,k,icrm))*(u(i-1,j,k,icrm)+u(ic-1,j,k,icrm))
             fu2 = dx25*(u(ic  ,j,k,icrm)+u(i  ,j,k,icrm))*(u(i  ,j,k,icrm)+u(ic  ,j,k,icrm))

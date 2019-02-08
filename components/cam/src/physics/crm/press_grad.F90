@@ -23,7 +23,7 @@ contains
         do j=1,ny
           do i=1,nx
             kb=max(1,k-1)
-            rdz = 1./(dz(icrm)*adzw(k,icrm))
+            rdz = 1./(dz(icrm)*adzw(icrm,k))
             jb=j-YES3D
             ib=i-1
             dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx

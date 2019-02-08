@@ -375,7 +375,7 @@ CONTAINS
     !$acc parallel loop collapse(2) private(tmp) copy(cfl) copyin(tkhmax,grdf_x,grdf_y,grdf_z,dz,adzw) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
-        tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2  , &
+        tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(icrm,k))**2  , &
                    0.5*tkhmax(k,icrm)*grdf_x(k,icrm)*dt/dx**2  , &
                    YES3D*0.5*tkhmax(k,icrm)*grdf_y(k,icrm)*dt/dy**2  )
         !$acc atomic update

@@ -100,7 +100,7 @@ contains
         do i=1,nx
           if (k <= nzm-1) then
             kc=k+1
-            rhoi = rhow(kc,icrm)/adzw(kc,icrm)
+            rhoi = rhow(kc,icrm)/adzw(icrm,kc)
             rdz2=1./(dz(icrm)*dz(icrm))
             rdz5=0.5*rdz2 * grdf_z(k,icrm)
             tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
@@ -108,7 +108,7 @@ contains
             !$acc atomic update
             flux(kc,icrm) = flux(kc,icrm) + flx(i,j,k,icrm)
           elseif (k == nzm) then
-            tmp=1./adzw(nz,icrm)
+            tmp=1./adzw(icrm,nz)
             rdz=1./dz(icrm)
             flx(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
             flx(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
