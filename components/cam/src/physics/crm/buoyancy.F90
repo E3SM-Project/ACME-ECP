@@ -23,7 +23,7 @@ contains
             betu=adz(kb,icrm)/(adz(k,icrm)+adz(kb,icrm))
             betd=adz(k,icrm)/(adz(k,icrm)+adz(kb,icrm))
 
-            dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm) +  &
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na) +  &
             bet(k,icrm)*betu* &
             ( tabs0(k,icrm)*(epsv*(qv(i,j,k,icrm)-qv0(k,icrm))-(qcl(i,j,k,icrm)+qci(i,j,k,icrm)-qn0(k,icrm)+qpl(i,j,k,icrm)+qpi(i,j,k,icrm)-qp0(k,icrm))) &
             +(tabs(i,j,k,icrm)-tabs0(k,icrm))*(1.+epsv*qv0(k,icrm)-qn0(k,icrm)-qp0(k,icrm)) ) &
