@@ -245,7 +245,7 @@ contains
     allocate( ttend(ncrms,nzm)  )
     allocate( utend(ncrms,nzm)  )
     allocate( vtend(ncrms,nzm)  )
-    allocate( sstxy    (0:nx,(1-YES3D):ny,ncrms)   )
+    allocate( sstxy    (ncrms,0:nx,(1-YES3D):ny)   )
     allocate( fcory    (0:ny,ncrms)       )
     allocate( fcorzy   (ny,ncrms)       )
     allocate( latitude (nx,ny,ncrms)        )
