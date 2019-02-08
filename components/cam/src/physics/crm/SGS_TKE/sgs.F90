@@ -299,8 +299,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(z(k,icrm).le.150..and..not.dosmagor) then
-              tke(icrm,i,j,k)=0.15*(1.-z(k,icrm)/150.)
+            if(z(icrm,k).le.150..and..not.dosmagor) then
+              tke(icrm,i,j,k)=0.15*(1.-z(icrm,k)/150.)
             endif
           end do
         end do
@@ -312,8 +312,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(z(k,icrm).le.3000..and..not.dosmagor) then
-              tke(icrm,i,j,k)=1.-z(k,icrm)/3000.
+            if(z(icrm,k).le.3000..and..not.dosmagor) then
+              tke(icrm,i,j,k)=1.-z(icrm,k)/3000.
             endif
           end do
         end do

@@ -181,7 +181,7 @@ contains
           do k = nzm,1,-1
             tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(k,icrm)*dz(icrm)*adz(icrm,k)
             if (tmp_lwp.gt.0.01) then
-              cloudtopheight(i,j,icrm) = z(k,icrm)
+              cloudtopheight(i,j,icrm) = z(icrm,k)
               cloudtoptemp(i,j,icrm) = tabs(icrm,i,j,k)
               cld_xy(i,j,icrm) = cld_xy(i,j,icrm) + dtfactor
               EXIT
@@ -190,7 +190,7 @@ contains
           ! FIND ECHO TOP HEIGHT
           do k = nzm,1,-1
             if (qpl(icrm,i,j,k)+qpi(icrm,i,j,k).gt.1.e-6) then
-              echotopheight(i,j,icrm) = z(k,icrm)
+              echotopheight(i,j,icrm) = z(icrm,k)
               EXIT
             endif
           enddo
