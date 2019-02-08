@@ -30,14 +30,14 @@ contains
       if ( mod(rank,nsubdomains_x) == 0 ) then
         do k = 1, nzm
           do i = dimx1_u, 1
-            u(i,j,k,icrm) = 0.
+            u(icrm,i,j,k) = 0.
           enddo
         enddo
       endif
       if ( mod(rank,nsubdomains_x) == nsubdomains_x-1 ) then
         do k = 1, nzm
           do i = nx+1, dimx2_u
-            u(i,j,k,icrm) = 0.
+            u(icrm,i,j,k) = 0.
           enddo
         enddo
       endif
@@ -64,7 +64,7 @@ contains
       ! x direction
       do k = 1, nzm
         do i = -1, nxp3
-          cu(i,j,k) = u(i,j,k,icrm) * irho(k)
+          cu(i,j,k) = u(icrm,i,j,k) * irho(k)
         enddo
       enddo
 
@@ -74,7 +74,7 @@ contains
       do k = 2, nzm
         irhow(k) = 1. / ( rhow(k,icrm) * adz(k,icrm) )
         do i = -3, nxp4
-          cw(i,j,k) = w(i,j,k,icrm) * irhow(k)
+          cw(i,j,k) = w(icrm,i,j,k) * irhow(k)
         enddo
       enddo
     endif
@@ -120,9 +120,9 @@ contains
       do k = 1, nzm
         do i = 1, nx
           f(i,j,k) = f(i,j,k) &
-          + ( u(i,j,k,icrm) * fx(i,j,k) - u(i+1,j,k,icrm) * fx(i+1,j,k) &
-          + ( w(i,j,k,icrm) * fz(i,j,k) - w(i,j,k+1,icrm) * fz(i,j,k+1) ) * iadz(k) ) * irho(k)
-          flux(k) = flux(k) + w(i,j,k,icrm) * fz(i,j,k)
+          + ( u(icrm,i,j,k) * fx(i,j,k) - u(icrm,i+1,j,k) * fx(i+1,j,k) &
+          + ( w(icrm,i,j,k) * fz(i,j,k) - w(icrm,i,j,k+1) * fz(i,j,k+1) ) * iadz(k) ) * irho(k)
+          flux(k) = flux(k) + w(icrm,i,j,k) * fz(i,j,k)
         enddo
       enddo
     endif

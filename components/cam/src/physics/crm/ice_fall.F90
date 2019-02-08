@@ -75,7 +75,7 @@ contains
               coef = dtn/(0.5*(adz(kb,icrm)+adz(k,icrm))*dz(icrm))
 
               ! Compute cloud ice density in this cell and the ones above/below.
-              ! Since cloud ice is falling, the above cell is u (upwind,icrm),
+              ! Since cloud ice is falling, the above cell is u(icrm,upwind),
               ! this cell is c (center) and the one below is d (downwind).
               qiu = rho(kc,icrm)*qci(i,j,kc,icrm)
               qic = rho(k,icrm) *qci(i,j,k,icrm)
@@ -126,7 +126,7 @@ contains
             ! The cloud ice increment is the difference of the fluxes.
             dqi=coef*(fz(i,j,k,icrm)-fz(i,j,k+1,icrm))
             ! Add this increment to both non-precipitating and total water.
-            micro_field(i,j,k,icrm,ici)  = micro_field(i,j,k,icrm,ici)  + dqi
+            micro_field(icrm,i,j,k,ici)  = micro_field(icrm,i,j,k,ici)  + dqi
             ! Include this effect in the total moisture budget.
             !$acc atomic update
             qifall(k,icrm) = qifall(k,icrm) + dqi
@@ -136,7 +136,7 @@ contains
             ! precipitation.  Note: use latent heat of sublimation.
             lat_heat  = (fac_cond+fac_fus)*dqi
             ! Add divergence of latent heat flux to liquid-ice static energy.
-            t(i,j,k,icrm)  = t(i,j,k,icrm)  - lat_heat
+            t(icrm,i,j,k)  = t(icrm,i,j,k)  - lat_heat
             ! Add divergence to liquid-ice static energy budget.
             !$acc atomic update
             tlatqi(k,icrm) = tlatqi(k,icrm) - lat_heat

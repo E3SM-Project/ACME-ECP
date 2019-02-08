@@ -10,9 +10,9 @@ contains
     use params, only: dowallx, crm_rknd
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
-    real(crm_rknd) u(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm,ncrms)
-    real(crm_rknd) w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ,ncrms)
+    real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+    real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
+    real(crm_rknd) w(ncrms,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
     real(crm_rknd) rho(nzm,ncrms)
     real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz,ncrms)
@@ -54,7 +54,7 @@ contains
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=dimx1_u,1
-              u(i,j,k,icrm) = 0.
+              u(icrm,i,j,k) = 0.
             enddo
           enddo
         enddo
@@ -64,7 +64,7 @@ contains
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=nx+1,dimx2_u
-              u(i,j,k,icrm) = 0.
+              u(icrm,i,j,k) = 0.
             enddo
           enddo
         enddo
@@ -82,8 +82,8 @@ contains
             kb=max(1,k-1)
             ib=i-1
             ic=i+1
-            mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm))
-            mn(i,j,k,icrm)=min(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm))
+            mx(i,j,k,icrm)=max(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k))
+            mn(i,j,k,icrm)=min(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k))
           enddo
         enddo
       enddo
@@ -94,10 +94,10 @@ contains
       do k=1,nzm
         do i=-1,nxp3
           kb=max(1,k-1)
-          uuu(i,j,k,icrm)=max(real(0.,crm_rknd),u(i,j,k,icrm))*f(i-1,j,k,icrm)+&
-                          min(real(0.,crm_rknd),u(i,j,k,icrm))*f(i,j,k,icrm)
-          if (i <= nxp2) www(i,j,k,icrm)=max(real(0.,crm_rknd),w(i,j,k,icrm))*&
-                                          f(i,j,kb,icrm)+min(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,k,icrm)
+          uuu(i,j,k,icrm)=max(real(0.,crm_rknd),u(icrm,i,j,k))*f(icrm,i-1,j,k)+&
+                          min(real(0.,crm_rknd),u(icrm,i,j,k))*f(icrm,i,j,k)
+          if (i <= nxp2) www(i,j,k,icrm)=max(real(0.,crm_rknd),w(icrm,i,j,k))*&
+                                          f(icrm,i,j,kb)+min(real(0.,crm_rknd),w(icrm,i,j,k))*f(icrm,i,j,k)
           if (i == 0) flux(k,icrm) = 0.
         enddo
       enddo
@@ -118,7 +118,7 @@ contains
             !$acc atomic update
             flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
           endif
-          f(i,j,k,icrm) = f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)  + &
+          f(icrm,i,j,k) = f(icrm,i,j,k) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)  + &
                                           (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm)
         enddo
       enddo
@@ -132,14 +132,14 @@ contains
           kb=max(1,k-1)
           dd=2./(kc-kb)/adz(k,icrm)
           ib=i-1
-          uuu(i,j,k,icrm)=andiff(f(ib,j,k,icrm),f(i,j,k,icrm),u(i,j,k,icrm),irho(k,icrm)) &
-          - across(dd*(f(ib,j,kc,icrm)+f(i,j,kc,icrm)-f(ib,j,kb,icrm)-f(i,j,kb,icrm)), &
-          u(i,j,k,icrm), w(ib,j,k,icrm)+w(ib,j,kc,icrm)+w(i,j,k,icrm)+w(i,j,kc,icrm)) *irho(k,icrm)
+          uuu(i,j,k,icrm)=andiff(f(icrm,ib,j,k),f(icrm,i,j,k),u(icrm,i,j,k),irho(k,icrm)) &
+          - across(dd*(f(icrm,ib,j,kc)+f(icrm,i,j,kc)-f(icrm,ib,j,kb)-f(icrm,i,j,kb)), &
+          u(icrm,i,j,k), w(icrm,ib,j,k)+w(icrm,ib,j,kc)+w(icrm,i,j,k)+w(icrm,i,j,kc)) *irho(k,icrm)
           if (i <= nxp1) then
             ic=i+1
-            www(i,j,k,icrm)=andiff(f(i,j,kb,icrm),f(i,j,k,icrm),w(i,j,k,icrm),irhow(k,icrm)) &
-            -across(f(ic,j,kb,icrm)+f(ic,j,k,icrm)-f(ib,j,kb,icrm)-f(ib,j,k,icrm), &
-            w(i,j,k,icrm), u(i,j,kb,icrm)+u(i,j,k,icrm)+u(ic,j,k,icrm)+u(ic,j,kb,icrm)) *irho(k,icrm)
+            www(i,j,k,icrm)=andiff(f(icrm,i,j,kb),f(icrm,i,j,k),w(icrm,i,j,k),irhow(k,icrm)) &
+            -across(f(icrm,ic,j,kb)+f(icrm,ic,j,k)-f(icrm,ib,j,kb)-f(icrm,ib,j,k), &
+            w(icrm,i,j,k), u(icrm,i,j,kb)+u(icrm,i,j,k)+u(icrm,ic,j,k)+u(icrm,ic,j,kb)) *irho(k,icrm)
           endif
         enddo
       enddo
@@ -162,8 +162,8 @@ contains
             kb=max(1,k-1)
             ib=i-1
             ic=i+1
-            mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm),mx(i,j,k,icrm))
-            mn(i,j,k,icrm)=min(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm),mn(i,j,k,icrm))
+            mx(i,j,k,icrm)=max(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k),mx(i,j,k,icrm))
+            mn(i,j,k,icrm)=min(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k),mn(i,j,k,icrm))
           enddo
         enddo
       enddo
@@ -174,9 +174,9 @@ contains
           do i=0,nxp1
             kc=min(nzm,k+1)
             ic=i+1
-            mx(i,j,k,icrm)=rho(k,icrm)*(mx(i,j,k,icrm)-f(i,j,k,icrm))/(pn(uuu(ic,j,k,icrm)) + &
+            mx(i,j,k,icrm)=rho(k,icrm)*(mx(i,j,k,icrm)-f(icrm,i,j,k))/(pn(uuu(ic,j,k,icrm)) + &
                            pp(uuu(i,j,k,icrm))+iadz(k,icrm)*(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm)))+eps)
-            mn(i,j,k,icrm)=rho(k,icrm)*(f(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(uuu(ic,j,k,icrm)) + &
+            mn(i,j,k,icrm)=rho(k,icrm)*(f(icrm,i,j,k)-mn(i,j,k,icrm))/(pp(uuu(ic,j,k,icrm)) + &
                            pn(uuu(i,j,k,icrm))+iadz(k,icrm)*(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm)))+eps)
           enddo
         enddo
@@ -210,7 +210,7 @@ contains
           !     especially  when such large numbers as
           !     hydrometeor concentrations are advected. The reason for negative values is
           !     most likely truncation error.
-          f(i,j,k,icrm)= max(real(0.,crm_rknd), f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm) + &
+          f(icrm,i,j,k)= max(real(0.,crm_rknd), f(icrm,i,j,k) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm) + &
                          (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm))
         enddo
       enddo

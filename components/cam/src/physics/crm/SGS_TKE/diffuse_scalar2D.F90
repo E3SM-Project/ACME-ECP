@@ -12,8 +12,8 @@ contains
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
     real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
-    real(crm_rknd) field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms) ! scalar
-    real(crm_rknd) tkh (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms) ! SGS eddy conductivity
+    real(crm_rknd) field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
+    real(crm_rknd) tkh(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
     real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
     real(crm_rknd) rho(nzm,ncrms)
@@ -50,7 +50,7 @@ contains
         !$acc parallel loop collapse(2) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
-            field(0,j,k,icrm) = field(1,j,k,icrm)
+            field(icrm,0,j,k) = field(icrm,1,j,k)
           enddo
         enddo
       endif
@@ -58,7 +58,7 @@ contains
         !$acc parallel loop collapse(2) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
-            field(nx+1,j,k,icrm) = field(nx,j,k,icrm)
+            field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
           enddo
         enddo
       endif
@@ -71,8 +71,8 @@ contains
           do i=0,nx
             rdx5=0.5*rdx2  *grdf_x(k,icrm)
             ic=i+1
-            tkx=rdx5*(tkh(i,j,k,icrm)+tkh(ic,j,k,icrm))
-            flx(i,j,k,icrm)=-tkx*(field(ic,j,k,icrm)-field(i,j,k,icrm))
+            tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
+            flx(i,j,k,icrm)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
           enddo
         enddo
       enddo
@@ -103,8 +103,8 @@ contains
             rhoi = rhow(kc,icrm)/adzw(icrm,kc)
             rdz2=1./(dz(icrm)*dz(icrm))
             rdz5=0.5*rdz2 * grdf_z(k,icrm)
-            tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
-            flx(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
+            tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
+            flx(i,j,k,icrm)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi
             !$acc atomic update
             flux(kc,icrm) = flux(kc,icrm) + flx(i,j,k,icrm)
           elseif (k == nzm) then
@@ -126,7 +126,7 @@ contains
           kb=k-1
           rhoi = 1./(adz(k,icrm)*rho(k,icrm))
           dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx(i,j,k,icrm)-flx(i,j,kb,icrm))*rhoi)
-          field(i,j,k,icrm)=field(i,j,k,icrm) + dfdt(i,j,k,icrm)
+          field(icrm,i,j,k)=field(icrm,i,j,k) + dfdt(i,j,k,icrm)
         enddo
       enddo
     enddo

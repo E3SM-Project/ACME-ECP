@@ -402,20 +402,20 @@ contains
     do k = 1, nzm
       do j = -1, nyp2
         do i = -1, nxp3
-          flx_x(i,j,k) = f(i-1,j,k) * max( 0., u(i,j,k,icrm) ) + f(i,j,k) * min( 0., u(i,j,k,icrm) )
+          flx_x(i,j,k) = f(i-1,j,k) * max( 0., u(icrm,i,j,k) ) + f(i,j,k) * min( 0., u(icrm,i,j,k) )
         enddo
       enddo
 
       do j = -1, nyp3
         do i = -1, nxp2
-          flx_y(i,j,k) = f(i,j-1,k) * max( 0., v(i,j,k,icrm) ) + f(i,j,k) * min( 0., v(i,j,k,icrm) )
+          flx_y(i,j,k) = f(i,j-1,k) * max( 0., v(icrm,i,j,k) ) + f(i,j,k) * min( 0., v(icrm,i,j,k) )
         enddo
       enddo
     enddo
     do k = 2, nzm
       do j = -1, nyp2
         do i = -1, nxp2
-          flx_z(i,j,k) = f(i,j,k-1) * max( 0., w(i,j,k,icrm) ) + f(i,j,k) * min( 0., w(i,j,k,icrm) )
+          flx_z(i,j,k) = f(i,j,k-1) * max( 0., w(icrm,i,j,k) ) + f(i,j,k) * min( 0., w(icrm,i,j,k) )
         enddo
       enddo
     enddo
@@ -440,20 +440,20 @@ contains
     do k = 1, nzm
       do j = 0, nyp1
         do i = 0, nxp2
-          flx_x(i,j,k) = u(i,j,k,icrm) * fx(i,j,k) - flx_x(i,j,k)
+          flx_x(i,j,k) = u(icrm,i,j,k) * fx(i,j,k) - flx_x(i,j,k)
         enddo
       enddo
 
       do j = 0, nyp2
         do i = 0, nxp1
-          flx_y(i,j,k) = v(i,j,k,icrm) * fy(i,j,k) - flx_y(i,j,k)
+          flx_y(i,j,k) = v(icrm,i,j,k) * fy(i,j,k) - flx_y(i,j,k)
         enddo
       enddo
     enddo
     do k = 2, nzm
       do j = 0, nyp1
         do i = 0, nxp1
-          flx_z(i,j,k) = w(i,j,k,icrm) * fz(i,j,k) - flx_z(i,j,k)
+          flx_z(i,j,k) = w(icrm,i,j,k) * fz(i,j,k) - flx_z(i,j,k)
         enddo
       enddo
     enddo
@@ -573,12 +573,12 @@ contains
     ! 1st order upwind face value and residual higher-order flux
     do k = 1, nzm
       do i = -1, nxp3
-        flx_x(i,k) = f(i-1,1,k) * max( 0., u(i,1,k,icrm) ) + f(i,1,k) * min( 0., u(i,1,k,icrm) )
+        flx_x(i,k) = f(i-1,1,k) * max( 0., u(icrm,i,1,k) ) + f(i,1,k) * min( 0., u(icrm,i,1,k) )
       enddo
     enddo
     do k = 2, nzm
       do i = -1, nxp2
-        flx_z(i,k) = f(i,1,k-1) * max( 0., w(i,1,k,icrm) ) + f(i,1,k) * min( 0., w(i,1,k,icrm) )
+        flx_z(i,k) = f(i,1,k-1) * max( 0., w(icrm,i,1,k) ) + f(i,1,k) * min( 0., w(icrm,i,1,k) )
       enddo
     enddo
 
@@ -596,12 +596,12 @@ contains
     ! Antidiffusive flux
     do k = 1, nzm
       do i = 0, nxp2
-        flx_x(i,k) = u(i,1,k,icrm) * fx(i,1,k) - flx_x(i,k)
+        flx_x(i,k) = u(icrm,i,1,k) * fx(i,1,k) - flx_x(i,k)
       enddo
     enddo
     do k = 2, nzm
       do i = 0, nxp1
-        flx_z(i,k) = w(i,1,k,icrm) * fz(i,1,k) - flx_z(i,k)
+        flx_z(i,k) = w(icrm,i,1,k) * fz(i,1,k) - flx_z(i,k)
       enddo
     enddo
 

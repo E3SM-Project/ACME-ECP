@@ -63,13 +63,13 @@ contains
       do k=1, nzm
         do j=1, ny
           do i=1, nx
-            tmp = u(i,j,k,icrm)/(nx*ny)
+            tmp = u(icrm,i,j,k)/(nx*ny)
             !$acc atomic update
             u0loc(k,icrm) = u0loc(k,icrm) + tmp
-            tmp = v(i,j,k,icrm)/(nx*ny)
+            tmp = v(icrm,i,j,k)/(nx*ny)
             !$acc atomic update
             v0loc(k,icrm) = v0loc(k,icrm) + tmp
-            tmp = t(i,j,k,icrm)/(nx*ny)
+            tmp = t(icrm,i,j,k)/(nx*ny)
             !$acc atomic update
             t0loc(k,icrm) = t0loc(k,icrm) + tmp
           end do
@@ -84,11 +84,11 @@ contains
       do j=1,ny
         do i=1,nx
           do k = nzm, nzm-n_damp(icrm), -1
-            dudt(i,j,k,na,icrm)= dudt(i,j,k,na,icrm)-(u(i,j,k,icrm)-u0loc(k,icrm)) * tau(k,icrm)
-            dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(i,j,k,icrm)-v0loc(k,icrm)) * tau(k,icrm)
-            dwdt(i,j,k,na,icrm)= dwdt(i,j,k,na,icrm)-w(i,j,k,icrm) * tau(k,icrm)
-            t(i,j,k,icrm)= t(i,j,k,icrm)-dtn*(t(i,j,k,icrm)-t0loc(k,icrm)) * tau(k,icrm)
-            micro_field(i,j,k,icrm,index_water_vapor)= micro_field(i,j,k,icrm,index_water_vapor)-dtn*(qv(i,j,k,icrm)-qv0(k,icrm)) * tau(k,icrm)
+            dudt(i,j,k,na,icrm)= dudt(i,j,k,na,icrm)-(u(icrm,i,j,k)-u0loc(k,icrm)) * tau(k,icrm)
+            dvdt(i,j,k,na,icrm)= dvdt(i,j,k,na,icrm)-(v(icrm,i,j,k)-v0loc(k,icrm)) * tau(k,icrm)
+            dwdt(i,j,k,na,icrm)= dwdt(i,j,k,na,icrm)-w(icrm,i,j,k) * tau(k,icrm)
+            t(icrm,i,j,k)= t(icrm,i,j,k)-dtn*(t(icrm,i,j,k)-t0loc(k,icrm)) * tau(k,icrm)
+            micro_field(icrm,i,j,k,index_water_vapor)= micro_field(icrm,i,j,k,index_water_vapor)-dtn*(qv(i,j,k,icrm)-qv0(k,icrm)) * tau(k,icrm)
           end do! i
         end do! j
       end do ! k

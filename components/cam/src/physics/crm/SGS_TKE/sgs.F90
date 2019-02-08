@@ -79,8 +79,8 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms, nsgs_fields) )
-    allocate( sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms, nsgs_fields_diag) )
+    allocate( sgs_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
+    allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
     allocate( fluxbsgs (nx,ny,1:nsgs_fields,ncrms)  )
     allocate( fluxtsgs (nx,ny,1:nsgs_fields,ncrms)  )
     allocate( sgswle(nz,1:nsgs_fields,ncrms)   )
@@ -96,9 +96,9 @@ CONTAINS
     allocate( tkesbdiss(nz,ncrms) )
     allocate( tkesbdiff(nz,ncrms) )
 
-    tke(dimx1_s:,dimy1_s:,1:,1:) => sgs_field     (:,:,:,:,1)
-    tk (dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,1)
-    tkh(dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,2)
+    tke(1:,dimx1_s:,dimy1_s:,1:) => sgs_field     (:,:,:,:,1)
+    tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,:,1)
+    tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,:,2)
 
     zero = 0
 
@@ -204,8 +204,8 @@ CONTAINS
 
     if(nrestart.eq.0) then
 
-      sgs_field(:,:,:,icrm,:) = 0.
-      sgs_field_diag(:,:,:,icrm,:) = 0.
+      sgs_field(icrm,:,:,:,:) = 0.
+      sgs_field_diag(icrm,:,:,:,:) = 0.
 
       fluxbsgs(:,:,:,icrm) = 0.
       fluxtsgs(:,:,:,icrm) = 0.
@@ -261,7 +261,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(k.le.4.and..not.dosmagor) then
-              tke(i,j,k,icrm)=0.04*(5-k)
+              tke(icrm,i,j,k)=0.04*(5-k)
             endif
           end do
         end do
@@ -273,7 +273,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(k,icrm).gt.6.e-3.and..not.dosmagor) then
-              tke(i,j,k,icrm)=1.
+              tke(icrm,i,j,k)=1.
             endif
           end do
         end do
@@ -287,7 +287,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(k,icrm).gt.0.5e-3.and..not.dosmagor) then
-              tke(i,j,k,icrm)=1.
+              tke(icrm,i,j,k)=1.
             endif
           end do
         end do
@@ -300,7 +300,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(k,icrm).le.150..and..not.dosmagor) then
-              tke(i,j,k,icrm)=0.15*(1.-z(k,icrm)/150.)
+              tke(icrm,i,j,k)=0.15*(1.-z(k,icrm)/150.)
             endif
           end do
         end do
@@ -313,7 +313,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(k,icrm).le.3000..and..not.dosmagor) then
-              tke(i,j,k,icrm)=1.-z(k,icrm)/3000.
+              tke(icrm,i,j,k)=1.-z(k,icrm)/3000.
             endif
           end do
         end do
@@ -326,7 +326,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(k,icrm).gt.6.e-3.and..not.dosmagor) then
-              tke(i,j,k,icrm)=1.
+              tke(icrm,i,j,k)=1.
             endif
           end do
         end do
@@ -366,7 +366,7 @@ CONTAINS
         do j = 1 , ny
           do i = 1 , nx
             !$acc atomic update
-            tkhmax(k,icrm) = max(tkhmax(k,icrm),tkh(i,j,k,icrm))
+            tkhmax(k,icrm) = max(tkhmax(k,icrm),tkh(icrm,i,j,k))
           enddo
         enddo
       end do
@@ -398,7 +398,7 @@ CONTAINS
 
 #ifdef __PGI
     !Passing tk via first element to avoid PGI pointer bug
-    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk(dimx1_d,dimy1_d,1,1))
+    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk(1,dimx1_d,dimy1_d,1))
 #else
     call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
 #endif
@@ -424,7 +424,7 @@ CONTAINS
     
 #ifdef __PGI
     !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),t,fluxbt,fluxtt,tdiff,twsb)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),t,fluxbt,fluxtt,tdiff,twsb)
 #else
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb)
 #endif
@@ -438,7 +438,7 @@ CONTAINS
       enddo
 #ifdef __PGI
       !Passing tkh via first element to avoid PGI pointer bug
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),tke,fzero,fzero,dummy,wsbtmp)
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),tke,fzero,fzero,dummy,wsbtmp)
 #else
       call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,wsbtmp)
 #endif
@@ -478,7 +478,7 @@ CONTAINS
         enddo
 #ifdef __PGI
         !Passing tkh via first element to avoid PGI pointer bug
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
 #else
         call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
 #endif
@@ -514,9 +514,9 @@ CONTAINS
 #if defined(SP_ESMT)
     ! diffusion of scalar momentum tracers
     !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
     !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
 #endif
   end subroutine sgs_scalars
 
@@ -537,7 +537,7 @@ subroutine sgs_proc(ncrms)
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
-                          tke(dimx1_s,dimy1_s,1,1), tk(dimx1_d,dimy1_d,1,1), tkh(dimx1_d,dimy1_d,1,1))
+                          tke(1,dimx1_s,dimy1_s,1), tk(1,dimx1_d,dimy1_d,1), tkh(1,dimx1_d,dimy1_d,1))
 #else
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
@@ -549,7 +549,7 @@ subroutine sgs_proc(ncrms)
     do k = 1 , nzm
       do j = dimy1_s,dimy2_s
         do i = dimx1_s,dimx2_s
-          tke2(i,j,k,icrm) = tke(i,j,k,icrm)
+          tke2(i,j,k,icrm) = tke(icrm,i,j,k)
         enddo
       enddo
     enddo
@@ -559,7 +559,7 @@ subroutine sgs_proc(ncrms)
     do k = 1 , nzm
       do j = dimy1_d,dimy2_d
         do i = dimx1_d,dimx2_d
-          tk2 (i,j,k,icrm) = tk (i,j,k,icrm)
+          tk2 (i,j,k,icrm) = tk(icrm,i,j,k)
         enddo
       enddo
     enddo

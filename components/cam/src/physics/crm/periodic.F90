@@ -34,7 +34,7 @@ contains
       do icrm = 1 , ncrms
         do j = 1 , ny
           do i = 1 , nx
-            w(i,j,nz,icrm) = sstxy(i,j,icrm)
+            w(icrm,i,j,nz) = sstxy(i,j,icrm)
           enddo
         enddo
       enddo
@@ -43,8 +43,8 @@ contains
       do icrm = 1 , ncrms
         do j = 1-YES3D , ny+YES3D
           do i = 0 , nx+1
-            if ( i >= 0 .and. i <= nx   .and. j >= 1-YES3D .and. j <= ny       ) sstxy(i,j,icrm) = w(i,j,nz,icrm)
-            if ( i >= 0 .and. i <= nx+1 .and. j >= 1-YES3D .and. j <= ny+YES3D ) w(i,j,nz,icrm) = 0.
+            if ( i >= 0 .and. i <= nx   .and. j >= 1-YES3D .and. j <= ny       ) sstxy(i,j,icrm) = w(icrm,i,j,nz)
+            if ( i >= 0 .and. i <= nx+1 .and. j >= 1-YES3D .and. j <= ny+YES3D ) w(icrm,i,j,nz) = 0.
           enddo
         enddo
       enddo

@@ -33,21 +33,21 @@ contains
             ib=i-1
             ic=i+1
             def2(i,j,k,icrm)=2.* ( &
-            ( (u(ic,j,k,icrm)-u(i,j,k,icrm))*rdx)**2+ &
-            ( (w(i,j,kc,icrm)-w(i,j,k,icrm))*rdz)**2 ) &
+            ( (u(icrm,ic,j,k)-u(icrm,i,j,k))*rdx)**2+ &
+            ( (w(icrm,i,j,kc)-w(icrm,i,j,k))*rdz)**2 ) &
             + 0.5 * ( &
-            ( (v(ic,j ,k,icrm)-v(i ,j ,k,icrm))*rdx )**2 +  &
-            ( (v(i ,j ,k,icrm)-v(ib,j ,k,icrm))*rdx )**2 +   &
-            ( (u(ic,j,kc,icrm)-u0(kc,icrm)-u(ic,j, k,icrm)+u0(k,icrm))*rdzw_up+ &
-            (w(ic,j,kc,icrm)-w(i ,j,kc,icrm))*rdx_up )**2 + &
-            ( (u(i ,j,kc,icrm)-u0(kc,icrm)-u(i ,j, k,icrm)+u0(k,icrm))*rdzw_up+ &
-            (w(i ,j,kc,icrm)-w(ib,j,kc,icrm))*rdx_up )**2 + &
-            ( (u(ic,j,k ,icrm)-u0(k,icrm)-u(ic,j,kb,icrm)+u0(kb,icrm))*rdzw_dn+ &
-            (w(ic,j,k ,icrm)-w(i ,j,k ,icrm))*rdx_dn )**2 + &
-            ( (u(i ,j,k ,icrm)-u0(k,icrm)-u(i ,j,kb,icrm)+u0(kb,icrm))*rdzw_dn+ &
-            (w(i ,j,k ,icrm)-w(ib,j,k ,icrm))*rdx_dn )**2 + &
-            ( (v(i,j ,kc,icrm)-v0(kc,icrm)-v(i,j , k,icrm)+v0(k,icrm))*rdzw_up )**2 + &
-            ( (v(i,j ,k ,icrm)-v0(k,icrm)-v(i,j ,kb,icrm)+v0(kb,icrm))*rdzw_dn )**2 )
+            ( (v(icrm,ic,j ,k)-v(icrm,i ,j ,k))*rdx )**2 +  &
+            ( (v(icrm,i ,j ,k)-v(icrm,ib,j ,k))*rdx )**2 +   &
+            ( (u(icrm,ic,j,kc)-u0(kc,icrm)-u(icrm,ic,j, k)+u0(k,icrm))*rdzw_up+ &
+            (w(icrm,ic,j,kc)-w(icrm,i ,j,kc))*rdx_up )**2 + &
+            ( (u(icrm,i ,j,kc)-u0(kc,icrm)-u(icrm,i ,j, k)+u0(k,icrm))*rdzw_up+ &
+            (w(icrm,i ,j,kc)-w(icrm,ib,j,kc))*rdx_up )**2 + &
+            ( (u(icrm,ic,j,k )-u0(k,icrm)-u(icrm,ic,j,kb)+u0(kb,icrm))*rdzw_dn+ &
+            (w(icrm,ic,j,k )-w(icrm,i ,j,k ))*rdx_dn )**2 + &
+            ( (u(icrm,i ,j,k )-u0(k,icrm)-u(icrm,i ,j,kb)+u0(kb,icrm))*rdzw_dn+ &
+            (w(icrm,i ,j,k )-w(icrm,ib,j,k ))*rdx_dn )**2 + &
+            ( (v(icrm,i,j ,kc)-v0(kc,icrm)-v(icrm,i,j , k)+v0(k,icrm))*rdzw_up )**2 + &
+            ( (v(icrm,i,j ,k )-v0(k,icrm)-v(icrm,i,j ,kb)+v0(kb,icrm))*rdzw_dn )**2 )
           elseif (k == 1) then
             kc=k+1
             rdz = 1./(dz(icrm)*adz(k,icrm))
@@ -57,17 +57,17 @@ contains
             ib=i-1
             ic=i+1
             def2(i,j,k,icrm)=2.* ( &
-            ( (u(ic,j,k,icrm)-u(i,j,k,icrm))*rdx)**2+ &
-            ( (w(i,j,kc,icrm)-w(i,j,k,icrm))*rdz)**2 ) &
+            ( (u(icrm,ic,j,k)-u(icrm,i,j,k))*rdx)**2+ &
+            ( (w(icrm,i,j,kc)-w(icrm,i,j,k))*rdz)**2 ) &
             + 0.5 * ( &
-            ( (v(ic,j ,k,icrm)-v(i ,j ,k,icrm))*rdx )**2 + &
-            ( (v(i ,j ,k,icrm)-v(ib,j ,k,icrm))*rdx )**2 ) &
-            +( (v(i,j ,kc,icrm)-v0(kc,icrm)-v(i,j,k,icrm)+v0(k,icrm))*rdzw_up )**2 &
+            ( (v(icrm,ic,j ,k)-v(icrm,i ,j ,k))*rdx )**2 + &
+            ( (v(icrm,i ,j ,k)-v(icrm,ib,j ,k))*rdx )**2 ) &
+            +( (v(icrm,i,j ,kc)-v0(kc,icrm)-v(icrm,i,j,k)+v0(k,icrm))*rdzw_up )**2 &
             + 0.5 * ( &
-            ( (u(ic,j,kc,icrm)-u0(kc,icrm)-u(ic,j, k,icrm)+u0(k,icrm))*rdzw_up+ &
-            (w(ic,j,kc,icrm)-w(i ,j,kc,icrm))*rdx_up )**2 + &
-            ( (u(i ,j,kc,icrm)-u0(kc,icrm)-u(i ,j, k,icrm)+u0(k,icrm))*rdzw_up+ &
-            (w(i ,j,kc,icrm)-w(ib,j,kc,icrm))*rdx_up )**2 )
+            ( (u(icrm,ic,j,kc)-u0(kc,icrm)-u(icrm,ic,j, k)+u0(k,icrm))*rdzw_up+ &
+            (w(icrm,ic,j,kc)-w(icrm,i ,j,kc))*rdx_up )**2 + &
+            ( (u(icrm,i ,j,kc)-u0(kc,icrm)-u(icrm,i ,j, k)+u0(k,icrm))*rdzw_up+ &
+            (w(icrm,i ,j,kc)-w(icrm,ib,j,kc))*rdx_up )**2 )
           elseif (k == nzm) then
             kc=k+1
             kb=k-1
@@ -78,17 +78,17 @@ contains
             ib=i-1
             ic=i+1
             def2(i,j,k,icrm)=2.* ( &
-            ( (u(ic,j,k,icrm)-u(i,j,k,icrm))*rdx)**2+ &
-            ( (w(i,j,kc,icrm)-w(i,j,k,icrm))*rdz)**2 ) &
+            ( (u(icrm,ic,j,k)-u(icrm,i,j,k))*rdx)**2+ &
+            ( (w(icrm,i,j,kc)-w(icrm,i,j,k))*rdz)**2 ) &
             + 0.5 * ( &
-            ( (v(ic,j ,k,icrm)-v(i ,j ,k,icrm))*rdx )**2 +  &
-            ( (v(i ,j ,k,icrm)-v(ib,j ,k,icrm))*rdx )**2 )   &
-            + ( (v(i,j ,k ,icrm)-v0(k,icrm)-v(i,j ,kb,icrm)+v0(kb,icrm))*rdzw_dn )**2 &
+            ( (v(icrm,ic,j ,k)-v(icrm,i ,j ,k))*rdx )**2 +  &
+            ( (v(icrm,i ,j ,k)-v(icrm,ib,j ,k))*rdx )**2 )   &
+            + ( (v(icrm,i,j ,k )-v0(k,icrm)-v(icrm,i,j ,kb)+v0(kb,icrm))*rdzw_dn )**2 &
             + 0.5 * ( &
-            ( (u(ic,j,k ,icrm)-u0(k,icrm)-u(ic,j,kb,icrm)+u0(kb,icrm))*rdzw_dn+ &
-            (w(ic,j,k ,icrm)-w(i ,j,k ,icrm))*rdx_dn )**2 + &
-            ( (u(i ,j,k ,icrm)-u0(k,icrm)-u(i ,j,kb,icrm)+u0(kb,icrm))*rdzw_dn+ &
-            (w(i ,j,k ,icrm)-w(ib,j,k ,icrm))*rdx_dn )**2 )
+            ( (u(icrm,ic,j,k )-u0(k,icrm)-u(icrm,ic,j,kb)+u0(kb,icrm))*rdzw_dn+ &
+            (w(icrm,ic,j,k )-w(icrm,i ,j,k ))*rdx_dn )**2 + &
+            ( (u(icrm,i ,j,k )-u0(k,icrm)-u(icrm,i ,j,kb)+u0(kb,icrm))*rdzw_dn+ &
+            (w(icrm,i ,j,k )-w(icrm,ib,j,k ))*rdx_dn )**2 )
           endif
         end do
       end do ! k

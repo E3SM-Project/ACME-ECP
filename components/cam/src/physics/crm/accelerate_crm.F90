@@ -179,17 +179,17 @@ module accelerate_crm_mod
           do j = 1 , ny
             do i = 1 , nx
               ! calculate tendency * dtn
-              tmp = t(i,j,k,icrm) * coef
+              tmp = t(icrm,i,j,k) * coef
               !$acc atomic update
               tbaccel (k,icrm) = tbaccel (k,icrm) + tmp
               tmp = (qcl(i,j, k, icrm) + qci(i,j, k, icrm) + qv(i,j, k, icrm)) * coef
               !$acc atomic update
               qtbaccel(k,icrm) = qtbaccel(k,icrm) + tmp
               if (crm_accel_uv) then
-                tmp = u(i,j,k,icrm) * coef
+                tmp = u(icrm,i,j,k) * coef
                 !$acc atomic update
                 ubaccel(k,icrm) = ubaccel(k,icrm) + tmp
-                tmp = v(i,j,k,icrm) * coef
+                tmp = v(icrm,i,j,k) * coef
                 !$acc atomic update
                 vbaccel(k,icrm) = vbaccel(k,icrm) + tmp
               endif
@@ -254,12 +254,12 @@ module accelerate_crm_mod
           do j = 1, ny
             do i = 1, nx
               ! don't let T go negative!
-              t(i,j,k,icrm) = max(tmin, t(i,j,k,icrm) + crm_accel_factor * ttend_acc(k,icrm))
+              t(icrm,i,j,k) = max(tmin, t(icrm,i,j,k) + crm_accel_factor * ttend_acc(k,icrm))
               if (crm_accel_uv) then
-                u(i,j,k,icrm) = u(i,j,k,icrm) + crm_accel_factor * utend_acc(k,icrm) 
-                v(i,j,k,icrm) = v(i,j,k,icrm) + crm_accel_factor * vtend_acc(k,icrm) 
+                u(icrm,i,j,k) = u(icrm,i,j,k) + crm_accel_factor * utend_acc(k,icrm) 
+                v(icrm,i,j,k) = v(icrm,i,j,k) + crm_accel_factor * vtend_acc(k,icrm) 
               endif
-              micro_field(i,j,k,icrm,idx_qt) = micro_field(i,j,k,icrm,idx_qt) + crm_accel_factor * qtend_acc(k,icrm)
+              micro_field(icrm,i,j,k,idx_qt) = micro_field(icrm,i,j,k,idx_qt) + crm_accel_factor * qtend_acc(k,icrm)
             enddo
           enddo
         enddo
@@ -282,12 +282,12 @@ module accelerate_crm_mod
         do k = 1, nzm
           do j = 1, ny
             do i = 1, nx
-              if (micro_field(i,j,k,icrm,idx_qt) < 0.) then
+              if (micro_field(icrm,i,j,k,idx_qt) < 0.) then
                 !$acc atomic update
-                qneg(k,icrm) = qneg(k,icrm) + micro_field(i,j,k,icrm,idx_qt)
+                qneg(k,icrm) = qneg(k,icrm) + micro_field(icrm,i,j,k,idx_qt)
               else
                 !$acc atomic update
-                qpoz(k,icrm) = qpoz(k,icrm) + micro_field(i,j,k,icrm,idx_qt)
+                qpoz(k,icrm) = qpoz(k,icrm) + micro_field(icrm,i,j,k,idx_qt)
               endif
             enddo
           enddo
@@ -300,7 +300,7 @@ module accelerate_crm_mod
             do i = 1 , nx
               if (qpoz(k,icrm) + qneg(k,icrm) <= 0.) then
                 ! all moisture depleted in layer
-                micro_field(i,j,k,icrm,idx_qt) = 0.
+                micro_field(icrm,i,j,k,idx_qt) = 0.
                 qv         (i,j,k,icrm    ) = 0.
                 qcl        (i,j,k,icrm    ) = 0.
                 qci        (i,j,k,icrm    ) = 0.
@@ -308,17 +308,17 @@ module accelerate_crm_mod
                 ! Clip qt values at 0 and remove the negative excess in each layer
                 ! proportionally from the positive qt fields in the layer
                 factor = 1._r8 + qneg(k,icrm) / qpoz(k,icrm)
-                micro_field(i,j,k,icrm,idx_qt) = max(0._rc, micro_field(i,j,k,icrm,idx_qt) * factor)
+                micro_field(icrm,i,j,k,idx_qt) = max(0._rc, micro_field(icrm,i,j,k,idx_qt) * factor)
                 ! Partition micro_field == qv + qcl + qci following these rules:
                 !    (1) attempt to satisfy purely by adjusting qv
                 !    (2) adjust qcl and qci only if needed to ensure positivity
-                if (micro_field(i,j,k,icrm,idx_qt) <= 0._rc) then
+                if (micro_field(icrm,i,j,k,idx_qt) <= 0._rc) then
                   qv (i,j,k,icrm) = 0.
                   qcl(i,j,k,icrm) = 0.
                   qci(i,j,k,icrm) = 0.
                 else
                   ! deduce qv as residual between qt - qcl - qci
-                  qt_res = micro_field(i,j,k,icrm,idx_qt) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
+                  qt_res = micro_field(icrm,i,j,k,idx_qt) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
                   qv(i,j,k,icrm) = max(0._rc, qt_res)
                   if (qt_res < 0._r8) then
                     ! qv was clipped; need to reduce qcl and qci accordingly

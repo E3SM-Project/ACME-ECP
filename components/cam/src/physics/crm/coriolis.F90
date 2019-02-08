@@ -23,10 +23,10 @@ contains
               jc=j+1
               ib=i-1
               ic=i+1
-              v_av=0.25*(v(i,j,k,icrm)+v(i,jc,k,icrm)+v(ib,j,k,icrm)+v(ib,jc,k,icrm))
-              w_av=0.25*(w(i,j,kc,icrm)+w(ib,j,kc,icrm)+w(i,j,k,icrm)+w(ib,j,k,icrm))
+              v_av=0.25*(v(icrm,i,j,k)+v(icrm,i,jc,k)+v(icrm,ib,j,k)+v(icrm,ib,jc,k))
+              w_av=0.25*(w(icrm,i,j,kc)+w(icrm,ib,j,kc)+w(icrm,i,j,k)+w(icrm,ib,j,k))
               dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)+fcory(j,icrm)*(v_av-vg0(k,icrm))-fcorzy(j,icrm)*w_av
-              u_av=0.25*(u(i,j,k,icrm)+u(ic,j,k,icrm)+u(i,jb,k,icrm)+u(ic,jb,k,icrm))
+              u_av=0.25*(u(icrm,i,j,k)+u(icrm,ic,j,k)+u(icrm,i,jb,k)+u(icrm,ic,jb,k))
               dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-0.5*(fcory(j,icrm)+fcory(jb,icrm))*(u_av-ug0(k,icrm))
             end do ! i
           end do ! j
@@ -41,9 +41,9 @@ contains
               kc=k+1
               ib=i-1
               ic=i+1
-              w_av=0.25*(w(i,j,kc,icrm)+w(ib,j,kc,icrm)+w(i,j,k,icrm)+w(ib,j,k,icrm))
-              dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)+fcory(j,icrm)*(v(i,j,k,icrm)-vg0(k,icrm))-fcorzy(j,icrm)*w_av
-              dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-fcory(j,icrm)*(u(i,j,k,icrm)-ug0(k,icrm))
+              w_av=0.25*(w(icrm,i,j,kc)+w(icrm,ib,j,kc)+w(icrm,i,j,k)+w(icrm,ib,j,k))
+              dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)+fcory(j,icrm)*(v(icrm,i,j,k)-vg0(k,icrm))-fcorzy(j,icrm)*w_av
+              dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-fcory(j,icrm)*(u(icrm,i,j,k)-ug0(k,icrm))
             end do ! i
           end do ! i
         end do ! k
