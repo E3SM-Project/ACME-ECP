@@ -6,7 +6,7 @@ module crm_physics
 
 #ifdef CRM
 
-!-----------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! Purpose: 
 ! 
 !    Provides the CAM interface to the crm code.  
@@ -16,7 +16,7 @@ module crm_physics
 !          crm_physics_tend 
 ! July, 2009, Minghuai Wang: m2005_effradius
 !
-!---------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
    use shr_kind_mod,    only: r8 => shr_kind_r8
    use shr_sys_mod,     only: shr_sys_flush
    use cam_abortutils,  only: endrun
@@ -64,15 +64,15 @@ module crm_physics
 
 
 contains
-!==================================================================================================
-!==================================================================================================
+!===================================================================================================
+!===================================================================================================
 
 subroutine crm_physics_register()
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! 
-! Purpose:  add necessary fileds into physics buffer
+! Purpose:  add necessary fields into physics buffer
 !
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
   use spmd_utils,      only: masterproc
   use physconst,       only: mwdry, cpair
   use ppgrid,          only: pcols, pver, pverp
@@ -176,15 +176,15 @@ subroutine crm_physics_register()
 
 end subroutine crm_physics_register
 
-!==================================================================================================
-!==================================================================================================
+!===================================================================================================
+!===================================================================================================
 
 subroutine crm_physics_init(species_class)
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 ! 
 ! Purpose: initialize some variables, and add necessary fields into output fields 
 !
-!--------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
   use physics_buffer,  only: pbuf_get_index
   ! use physics_types,   only: physics_tend_alloc
   use physconst,       only: mwdry, cpair, spec_class_gas
@@ -474,33 +474,39 @@ subroutine crm_physics_init(species_class)
 
 end subroutine crm_physics_init
 
-!==================================================================================================
-!==================================================================================================
+!===================================================================================================
+!===================================================================================================
 
 subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,    &
                             species_class, crm_ecpp_output,          &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
-!------------------------------------------------------------------------------------------
-!  Purpose: to update state from CRM physics. 
-! 
-! Revision history: 
-!
-! June, 2009, Minghuai Wang: 
-!          These codes are taken out from tphysbc.F90 
-!       in the spcam3.5, developed by Marat Khairoutdinov 
-!       (mkhairoutdin@ms.cc.sunysb.edu). Here we try to follow the procedure 
-!      in 'Interface to Column Physics and Chemistry packages' to implement 
-!      the CRM physics.
-! July, 13, 2009, Minghuai Wang: 
-!      Hydrometer numbers are outputed from SAM when Morrison's microphysics is used, 
-!      and will be used in the radiative transfer code to calculate radius. 
-! July, 15, 2009, Minghuai Wang: 
-!      Get modal aerosol, and use it in the SAM. 
-! 
-!-------------------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
+   !
+   ! CRM interface for Super-Parameterization
+   !
+   ! Author: Marat Khairoutdinov (mkhairoutdin@ms.cc.sunysb.edu)
+   !
+   ! Purpose: to update state from CRM physics. 
+   ! 
+   ! Revision history: 
+   !
+   ! June, 2009, Minghuai Wang: 
+   !    These codes are taken out from tphysbc.F90 in the spcam3.5, developed by Marat Khairoutdinov 
+   !    (mkhairoutdin@ms.cc.sunysb.edu). Here we try to follow the procedure in 'Interface to Column
+   !    Physics and Chemistry packages' to implement the CRM physics.
+   !    
+   ! July, 13, 2009, Minghuai Wang: 
+   !    Hydrometer numbers are output from SAM when Morrison's microphysics is used, and will be
+   !    used in the radiative transfer code to calculate effective radius. 
+   !      
+   ! July, 15, 2009, Minghuai Wang: 
+   !    Get modal aerosol, and use it in the SAM. 
+   ! 
+   !------------------------------------------------------------------------------------------------
    use ppgrid
-   use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, dyn_time_lvls, pbuf_get_field, pbuf_set_field
+   use physics_buffer,  only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, &
+                              dyn_time_lvls, pbuf_get_field, pbuf_set_field
    use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
    use camsrfexch,      only: cam_in_t, cam_out_t
    use time_manager,    only: is_first_step, get_nstep
@@ -560,9 +566,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ! real(r8), intent(in) :: dlf(pcols,pver)  ! shallow+deep convective detrainment [kg/kg/s] - used for aerosol_wet_intr - no longer needed
 
 #ifdef CRM
-!--------------------------------------------------------------------------------------------------
-! Local variables 
-!--------------------------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
+   ! Local variables 
+   !------------------------------------------------------------------------------------------------
 
    ! convective precipitation variables
    real(r8), pointer :: prec_dp(:)          ! total precip from deep convection (ZM)    [m/s]
@@ -671,12 +677,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    crm_run_time = ztodt
 
-!==================================================================================================
-!==================================================================================================
-! CRM interface for Super-Parameterization
-! Author: Marat Khairoutdinov (mkhairoutdin@ms.cc.sunysb.edu)
-!==================================================================================================
-!==================================================================================================
    
    call phys_getopts(use_ECPP_out            = use_ECPP)
    call phys_getopts(use_SPCAM_out           = use_SPCAM)
@@ -688,33 +688,33 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    call t_startf ('crm')
 
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Initialize ptend
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    lu = .true. 
    lv = .true.
    ls = .true.
    lq(:) = .true.
    fromcrm = .true.
-   call physics_ptend_init(ptend,     state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm) 
+   call physics_ptend_init(ptend, state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)
    fromcrm = .false.
    
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Initialize CRM state (nullify pointers, allocate memory, etc)
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    call crm_state%initialize()
    call crm_rad_initialize(crm_rad)
    call crm_input%initialize(pcols,pver)
    call crm_output_initialize(crm_output,pcols,pver)
 
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Set CRM orientation angle
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
 
 #if defined( SP_ORIENT_RAND )
-   !---------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Rotate the CRM using a random walk
-   !---------------------------------------------
+   !------------------------------------------------------------------------------------------------
    if ( (crm_ny.eq.1) .or. (crm_nx.eq.1) ) then
 
       do i=1,ncol
@@ -744,9 +744,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    endif
 #else /* SP_ORIENT_RAND */
-   !---------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! use static CRM orientation (no rotation)
-   !---------------------------------------------
+   !------------------------------------------------------------------------------------------------
 #if defined( SP_DIR_NS )
     if (crm_ny.eq.1) then
        crm_angle(:ncol) = pi/2.
@@ -759,9 +759,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 #endif /* SP_ORIENT_RAND */
 
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Retreive pbuf fields
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    if (SPCAM_microp_scheme .eq. 'm2005') then
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_rad%nc, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NI_RAD'), crm_rad%ni, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
@@ -818,9 +818,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Retreive CRM state data from pbuf
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
 
    ! Set pointers from crm_state to fields that persist on physics buffer
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_U'), crm_state%u_wind)
@@ -851,8 +851,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
 
-   !------------------------------------------------------------
-   !------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
 
    if(is_first_step()) then
       ! call check_energy_timestep_init(state, tend, pbuf)
@@ -941,8 +941,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%s(:,:) = 0. ! necessary?
       cwp    = 0.
 
-      call t_startf ('crm_call')
-
       do m=1,crm_nz
          k = pver-m+1
          do i = 1,ncol
@@ -954,9 +952,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       cs(1:ncol,1:pver) = state%pmid(1:ncol,1:pver) / (287.15*state%t(1:ncol,1:pver))
 #endif
 
-      !----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
       ! calculate total water before calling crm - used for check_energy_chng() after CRM
-      !----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
       do i = 1,ncol
          qli_hydro_before(i) = 0.0_r8
          qi_hydro_before(i) = 0.0_r8
@@ -1028,9 +1026,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          end do
       end do
 #endif
-      !----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
       ! Set the input wind (also sets CRM orientation)
-      !----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
       do i = 1,ncol
          do k=1,pver
             crm_input%ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
@@ -1050,28 +1048,21 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          icol(i) = i
       end do
 
-!---------------------------------------------------------------------------------------------------
-!---------------------------------------------------------------------------------------------------
-! Run the CRM
-!---------------------------------------------------------------------------------------------------
-!---------------------------------------------------------------------------------------------------
-    if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
-    if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
-    call crm( lchnk, icol(:ncol), ncol, ztodt, pver,                    &
-              crm_input, crm_state, crm_rad,                            &
+      !---------------------------------------------------------------------------------------------
+      ! Run the CRM
+      !---------------------------------------------------------------------------------------------
+      if (.not.allocated(ptend%q)) write(*,*) '=== ptend%q not allocated ==='
+      if (.not.allocated(ptend%s)) write(*,*) '=== ptend%s not allocated ==='
+      call t_startf ('crm_call')
+      call crm( lchnk, icol(:ncol), ncol, ztodt, pver,                    &
+                crm_input, crm_state, crm_rad,                            &
 #ifdef CLUBB_CRM
-              clubb_buffer(:ncol,:,:,:,:),                              &
-              crm_cld(:ncol,:, :, :),      clubb_tk(:ncol, :, :, :),    &
-              clubb_tkh(:ncol, :, :, :),   relvar(:ncol,:, :, :),       &
-              accre_enhan(:ncol, :, :, :), qclvar(:ncol, :, :, :),      &
+                clubb_buffer(:ncol,:,:,:,:),                              &
+                crm_cld(:ncol,:, :, :),      clubb_tk(:ncol, :, :, :),    &
+                clubb_tkh(:ncol, :, :, :),   relvar(:ncol,:, :, :),       &
+                accre_enhan(:ncol, :, :, :), qclvar(:ncol, :, :, :),      &
 #endif /* CLUBB_CRM */
-              crm_ecpp_output, crm_output )
-!---------------------------------------------------------------------------------------------------
-!---------------------------------------------------------------------------------------------------
-!---------------------------------------------------------------------------------------------------
-!---------------------------------------------------------------------------------------------------
-
-
+                crm_ecpp_output, crm_output )
       call t_stopf('crm_call')
 
       ! Copy tendencies from CRM output
@@ -1209,9 +1200,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('QCLVAR'     , qclvar(:, :, :, :)       ,pcols, lchnk )
 #endif /* CLUBB_CRM */
 
-!----------------------------------------------------------------------
-! Add radiative heating tendency above CRM
-!----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
+      ! Add radiative heating tendency above CRM
+      !---------------------------------------------------------------------------------------------
 
       ifld = pbuf_get_index('QRL')
       call pbuf_get_field(pbuf, ifld, qrl)
@@ -1229,8 +1220,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('SPQRL   ',qrl/cpair      ,pcols   ,lchnk   )
       call outfld('SPQRS   ',qrs/cpair      ,pcols   ,lchnk   )
 
-      ! The radiation tendencies in the GCM levels above the CRM and the top 2 CRM levels 
-      ! are set to be zero in the CRM, So add radiation tendencies to these levels 
+      ! The radiation tendencies in the GCM levels above the CRM and the top 2 CRM levels are set to
+      ! be zero in the CRM, So add radiation tendencies to these levels 
       ptend%s(:ncol, :pver-crm_nz+2) = qrs(:ncol,:pver-crm_nz+2) + qrl(:ncol,:pver-crm_nz+2)
 
       !!! This will be used to check energy conservation
@@ -1244,8 +1235,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       !!! Subtract radiative heating for SPDT output
       ftem(:ncol,:pver) = ( ptend%s(:ncol,:pver) - qrs(:ncol,:pver) - qrl(:ncol,:pver) )/cpair
 
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
+      ! Output SP-specific fields
+      !---------------------------------------------------------------------------------------------
       call outfld('SPDQ    ',ptend%q(1,1,1)        ,pcols ,lchnk )
       call outfld('SPDQC   ',ptend%q(1,1,ixcldliq) ,pcols ,lchnk )
       call outfld('SPDQI   ',ptend%q(1,1,ixcldice) ,pcols ,lchnk )
@@ -1306,10 +1298,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CLOUDTOP',crm_output%cldtop, pcols,lchnk)
 
       call outfld('TIMINGF ',crm_output%timing_factor  ,pcols,lchnk)
-!----------------------------------------------------------------------
-! Compute liquid water paths (for diagnostics only)
-!----------------------------------------------------------------------
 
+      !---------------------------------------------------------------------------------------------
+      ! Compute liquid water paths (for diagnostics only)
+      !---------------------------------------------------------------------------------------------
        tgicewp(:ncol) = 0.
        tgliqwp(:ncol) = 0.
        do k=1,pver
@@ -1400,9 +1392,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
        end if ! use_ECPP
 #endif /* ECPP */
 
-!----------------------------------------------------------------------
-! Set ptend logicals with physics tendencies from CRM
-!----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
+      ! Set ptend logicals with physics tendencies from CRM
+      !---------------------------------------------------------------------------------------------
       ptend%name = 'crm'
       ptend%ls           = .TRUE.
       ptend%lq(1)        = .TRUE.
@@ -1411,9 +1403,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%lu           = .FALSE.
       ptend%lv           = .FALSE.
 
-!----------------------------------------------------------------------
-! Output CRM momentum tendencies
-!----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
+      ! Output CRM momentum tendencies
+      !---------------------------------------------------------------------------------------------
 
 #if defined( SP_ESMT )
       call outfld('U_ESMT',crm_output%u_tend_esmt,pcols   ,lchnk   )
@@ -1443,8 +1435,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
 #endif /* SP_USE_ESMT */
 
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
 
        call phys_getopts(microp_scheme_out=microp_scheme)
        if(microp_scheme .eq. 'MG' ) then
@@ -1501,10 +1493,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif /* m2005 */
        end if
 
-      !----------------------------------------------------------------------
+      !---------------------------------------------------------------------------------------------
       ! calculate column integrated water for energy check
-      !----------------------------------------------------------------------
-         
+      !---------------------------------------------------------------------------------------------
       do i = 1,ncol
          qli_hydro_after(i) = 0.0_r8
          qi_hydro_after(i) = 0.0_r8
@@ -1541,20 +1532,18 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    call t_stopf('crm')
    
-   !----------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Aerosol stuff
-   !----------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
     
-   !!! calculate aerosol water at CRM domain using water vapor at CRM domain
-   !!! note: only used in src/chemistry/utils/modal_aero_wateruptake.F90
-   !!! NOTE: This is commented out because we are now calculating crm_rad%cld
-   !!! intelligently in crm_module. Previously, crm_rad%cld was all 1s (probably
-   !!! an unintended bug), and this would reset columns with negligible total
-   !!! cloud water to zero to make sort of an effective resolved cloud fraction
-   !!! of 0 or 1 for each CRM column. This seems problematic though because it
-   !!! seems like the threshold used should depend on the length of the timestep,
-   !!! so removing this in favor of handling it in crm_module seems like it
-   !!! would be a better thing to do.
+   !!! Calculate aerosol water at CRM domain using water vapor at CRM domain
+   !!! NOTE: only used in src/chemistry/utils/modal_aero_wateruptake.F90
+   !!! NOTE: This is commented out because we are now calculating crm_rad%cld intelligently in 
+   !!! crm_module. Previously, crm_rad%cld was all 1s (probably an unintended bug), and this would 
+   !!! reset columns with negligible total cloud water to zero to make sort of an effective 
+   !!! resolved cloud fraction of 0 or 1 for each CRM column. This seems problematic though because
+   !!! it seems like the threshold used should depend on the timestep, so handling it in crm_module 
+   !!! seems like a better thing to do.
    !do  m=1,crm_nz
    !   do jj=1,crm_ny_rad
    !      do ii=1,crm_nx_rad
@@ -1568,8 +1557,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !enddo
    !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 
-   !----------------------------------------------------------------------
-   !----------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
 
    !!! Free memory in derived types
    call crm_state%finalize()
@@ -1584,7 +1572,7 @@ end subroutine crm_physics_tend
 !==================================================================================================
 
 subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
-   !-----------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! This subroutine is used to apply the fluxes when SP_FLUX_BYPASS is used.
    ! The surface flux bypass option was originally used by Mike Pritchard (UCI)
    ! Without this bypass the surface flux tendencies are applied to the lowest 
@@ -1594,7 +1582,7 @@ subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
    ! in diffusion_solver.F90 is disabled). This is a more natural progression 
    ! and does not expose the GCM dynamical core to unrealistic gradients.
    ! (only sensible and latent heat fluxes are affected)
-   !-----------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
    use physics_buffer,  only: physics_buffer_desc
    use camsrfexch,      only: cam_in_t
@@ -1636,10 +1624,10 @@ end subroutine crm_surface_flux_bypass_tend
 !==================================================================================================
 
 subroutine crm_save_state_tend(state,tend,pbuf)
-   !-----------------------------------------------------------------------------
-   ! This subroutine is used to save state variables at the beginning of tphysbc
-   ! so they can be recalled after they have been changed by conventional physics
-   !-----------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
+   ! This subroutine is used to save state variables at the beginning of tphysbc so they can be 
+   ! recalled after they have been changed by conventional physics.
+   !------------------------------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_tend, physics_tend_dealloc, &
                               physics_state_copy, physics_tend_copy, physics_state_dealloc
    use time_manager,    only: is_first_step
@@ -1719,10 +1707,10 @@ end subroutine crm_save_state_tend
 !==================================================================================================
 
 subroutine crm_recall_state_tend(state,tend,pbuf)
-   !-----------------------------------------------------------------------------
-   ! This subroutine is used to recall the state that was saved prior
-   ! to running the conventional GCM physics routines
-   !-----------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
+   ! This subroutine is used to recall the state that was saved prior to running the conventional 
+   ! GCM physics routines.
+   !------------------------------------------------------------------------------------------------
    use physics_types,   only: physics_state, physics_tend, physics_tend_dealloc,&
                               physics_state_copy, physics_tend_copy, physics_state_dealloc
    use time_manager,    only: is_first_step
@@ -1805,20 +1793,19 @@ end subroutine crm_recall_state_tend
 subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, &
                            effl, effi, effl_fn, deffi,         &
                            lamcrad, pgamrad, des)
-   !-----------------------------------------------------------------------------------------------------
-   ! This subroutine is used to calculate droplet and ice crystal effective radius, which will be used 
-   ! in the CAM radiation code. The method to calculate effective radius is taken out of the Morrision's
-   ! two moment scheme from M2005MICRO_GRAUPEL. It is also very similar to the subroutine of effradius in 
-   ! the module of cldwat2m in the CAM source codes. 
+   !------------------------------------------------------------------------------------------------
+   ! This subroutine is used to calculate droplet and ice crystal effective radius, which will be
+   ! used in the CAM radiation code. The method to calculate effective radius is taken out of the
+   ! Morrision two moment scheme from M2005MICRO_GRAUPEL. It is also very similar to the subroutine
+   ! effradius in the module of cldwat2m in the CAM source codes. 
    ! Adopted by Minghuai Wang (Minghuai.Wang@pnl.gov). 
-   !-----------------------------------------------------------------------------------------------------
-   ! ----------------------------------------------------------- !
-   ! Calculate effective radius for pass to radiation code       !
-   ! If no cloud water, default value is:                        !
-   !   10 micron for droplets,                                   !
-   !   25 micron for cloud ice.                                  !
-   ! Be careful of the unit of effective radius : [micro meter]  !
-   ! ----------------------------------------------------------- !
+   !------------------------------------------------------------------------------------------------
+   ! Calculate effective radius for radiation code
+   ! If no cloud water, default value is:
+   !   10 micron for droplets,
+   !   25 micron for cloud ice.
+   ! Be careful of the unit of effective radius : [micro meter]
+   !------------------------------------------------------------------------------------------------
    use shr_spfn_mod,    only: gamma => shr_spfn_gamma
    implicit none
 
@@ -1865,9 +1852,9 @@ subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, &
    real(r8)  pi          !
    real(r8)  tempnc      !
 
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Main computation 
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
 
    pi = 3.1415926535897932384626434
    ! qsmall = 1.0e-18  ! in the CAM source code (cldwat2m)
@@ -1896,9 +1883,9 @@ subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, &
    nlic    = max(nl,0._r8)/cldm
    niic    = max(ni,0._r8)/cldm
 
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Effective diameters of snow crystals
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    if(qs.gt.1.0e-7) then 
       lammaxs=1._r8/10.e-6_r8
       lammins=1._r8/2000.e-6_r8
@@ -1916,9 +1903,9 @@ subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, &
 
    des = res * rhos/917._r8 *2._r8
 
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Effective radius of cloud ice droplet 
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
 
    if( qiic.ge.qsmall ) then
       niic   = min(niic,qiic*1.e20_r8)
@@ -1938,9 +1925,9 @@ subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, &
    !--ac morrison indicates 917 (for the density of pure ice..)
    deffi  = effi *rhoi/917._r8*2._r8
 
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    ! Effective radius of cloud liquid droplet 
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
 
    if( qlic.ge.qsmall ) then
       ! Matin et al., 1994 (JAS) formula for pgam (the same is used in both CAM and SAM).
@@ -1987,10 +1974,10 @@ subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, &
       pgamrad  = 0.0_r8
    endif
 
-   !------------------------------------------------------------------------------
-   ! Recalculate effective radius for constant number, in order to separate 
-   ! first and second indirect effects. Assume constant number of 10^8 kg-1 
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
+   ! Recalculate effective radius for constant number, in order to separate first and second 
+   ! indirect effects. Assume constant number of 10^8 kg-1 
+   !------------------------------------------------------------------------------------------------
 
    nlic = 1.e8
    if( qlic.ge.qsmall ) then
@@ -2016,8 +2003,8 @@ subroutine m2005_effradius(ql, nl,qi,ni,qs, ns, cld, pres, tk, &
       effl_fn   = 10._r8     ! in cldwat2m, CAM
       ! effl_fn   = 25._r8     ! in module_mp_graupel, SAM
    endif
-   !------------------------------------------------------------------------------
-   !------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
    return
 end subroutine m2005_effradius
 
