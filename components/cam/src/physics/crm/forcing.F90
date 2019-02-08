@@ -31,16 +31,16 @@ contains
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            t(i,j,k,icrm)=t(i,j,k,icrm) + ttend(k,icrm) * dtn
-            micro_field(i,j,k,icrm,index_water_vapor)=micro_field(i,j,k,icrm,index_water_vapor) + qtend(k,icrm) * dtn
-            if(micro_field(i,j,k,icrm,index_water_vapor).lt.0.) then
+            t(icrm,i,j,k)=t(icrm,i,j,k) + ttend(k,icrm) * dtn
+            micro_field(icrm,i,j,k,index_water_vapor)=micro_field(icrm,i,j,k,index_water_vapor) + qtend(k,icrm) * dtn
+            if(micro_field(icrm,i,j,k,index_water_vapor).lt.0.) then
               !$acc atomic update
               nneg(k,icrm) = nneg(k,icrm) + 1
               !$acc atomic update
-              qneg(k,icrm) = qneg(k,icrm) + micro_field(i,j,k,icrm,index_water_vapor)
+              qneg(k,icrm) = qneg(k,icrm) + micro_field(icrm,i,j,k,index_water_vapor)
             else
               !$acc atomic update
-              qpoz(k,icrm) = qpoz(k,icrm) + micro_field(i,j,k,icrm,index_water_vapor)
+              qpoz(k,icrm) = qpoz(k,icrm) + micro_field(icrm,i,j,k,index_water_vapor)
             end if
             dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm) + utend(k,icrm)
             dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm) + vtend(k,icrm)
@@ -56,7 +56,7 @@ contains
           do i=1,nx
             if(nneg(k,icrm).gt.0.and.qpoz(k,icrm)+qneg(k,icrm).gt.0.) then
               factor = 1. + qneg(k,icrm)/qpoz(k,icrm)
-              micro_field(i,j,k,icrm,index_water_vapor) = max(real(0.,crm_rknd),micro_field(i,j,k,icrm,index_water_vapor)*factor)
+              micro_field(icrm,i,j,k,index_water_vapor) = max(real(0.,crm_rknd),micro_field(icrm,i,j,k,index_water_vapor)*factor)
             end if
           end do
         end do

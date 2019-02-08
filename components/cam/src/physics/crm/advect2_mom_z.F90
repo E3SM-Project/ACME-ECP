@@ -51,8 +51,8 @@ contains
               dz25=1./(4.*dz(icrm))
               kb = k-1
               rhoi = dz25 * rhow(k,icrm)
-              fuz(i,j,k,icrm) = rhoi*(w(i,j,k,icrm)+w(i-1,j  ,k,icrm))*(u(i,j,k,icrm)+u(i,j,kb,icrm))
-              fvz(i,j,k,icrm) = rhoi*(w(i,j,k,icrm)+w(i  ,j-1,k,icrm))*(v(i,j,k,icrm)+v(i,j,kb,icrm))
+              fuz(i,j,k,icrm) = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j  ,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
+              fvz(i,j,k,icrm) = rhoi*(w(icrm,i,j,k)+w(icrm,i  ,j-1,k))*(v(icrm,i,j,k)+v(icrm,i,j,kb))
               !$acc atomic update
               uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k,icrm)
               !$acc atomic update
@@ -72,9 +72,9 @@ contains
               dz25=1./(4.*dz(icrm))
               kb = k-1
               rhoi = dz25 * rhow(k,icrm)
-              www = rhoi*(w(i,j,k,icrm)+w(i-1,j,k,icrm))
-              fuz(i,j,k,icrm) = www*(u(i,j,k,icrm)+u(i,j,kb,icrm))
-              fvz(i,j,k,icrm) = www*(v(i,j,k,icrm)+v(i,j,kb,icrm))
+              www = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))
+              fuz(i,j,k,icrm) = www*(u(icrm,i,j,k)+u(icrm,i,j,kb))
+              fvz(i,j,k,icrm) = www*(v(icrm,i,j,k)+v(icrm,i,j,kb))
               !$acc atomic update
               uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k,icrm)
               !$acc atomic update
@@ -96,7 +96,7 @@ contains
             rhoi = 1./(rho(k,icrm)*adz(k,icrm))
             dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fuz(i,j,kc,icrm)-fuz(i,j,k,icrm))*rhoi
             dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fvz(i,j,kc,icrm)-fvz(i,j,k,icrm))*rhoi
-            fwz(i,j,k,icrm)=dz25*(w(i,j,kc,icrm)*rhow(kc,icrm)+w(i,j,k,icrm)*rhow(k,icrm))*(w(i,j,kc,icrm)+w(i,j,k,icrm))
+            fwz(i,j,k,icrm)=dz25*(w(icrm,i,j,kc)*rhow(kc,icrm)+w(icrm,i,j,k)*rhow(k,icrm))*(w(icrm,i,j,kc)+w(icrm,i,j,k))
           end do
         end do
       end do

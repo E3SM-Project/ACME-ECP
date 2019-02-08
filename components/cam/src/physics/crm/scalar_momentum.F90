@@ -60,8 +60,8 @@ module scalar_momentum_mod
      integer, intent(in) :: ncrms
      real(crm_rknd) :: zero
 
-     allocate( u_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms) )
-     allocate( v_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms) )
+     allocate( u_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+     allocate( v_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
      allocate( fluxb_u_esmt (nx, ny,ncrms) )
      allocate( fluxb_v_esmt (nx, ny,ncrms) )
@@ -150,15 +150,15 @@ subroutine scalar_momentum_tend(ncrms)
    do icrm = 1 , ncrms
      factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
 
-     call scalar_momentum_pgf(ncrms,icrm,u_esmt(:,:,:,icrm),u_esmt_pgf_3D)
-     call scalar_momentum_pgf(ncrms,icrm,v_esmt(:,:,:,icrm),v_esmt_pgf_3D)
+     call scalar_momentum_pgf(ncrms,icrm,u_esmt(icrm,:,:,:),u_esmt_pgf_3D)
+     call scalar_momentum_pgf(ncrms,icrm,v_esmt(icrm,:,:,:),v_esmt_pgf_3D)
 
      ! Add PGF tendency
      do k=1,nzm
         do j=1,ny
            do i=1,nx
-              u_esmt(i,j,k,icrm) = u_esmt(i,j,k,icrm) + u_esmt_pgf_3D(i,j,k)*dtn
-              v_esmt(i,j,k,icrm) = v_esmt(i,j,k,icrm) + v_esmt_pgf_3D(i,j,k)*dtn
+              u_esmt(icrm,i,j,k) = u_esmt(icrm,i,j,k) + u_esmt_pgf_3D(i,j,k)*dtn
+              v_esmt(icrm,i,j,k) = v_esmt(icrm,i,j,k) + v_esmt_pgf_3D(i,j,k)*dtn
            end do
         end do
      end do
@@ -232,7 +232,7 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
          do i = 1,nx
             u_s_avg(k) = u_s_avg(k) + u_s(i,j,k)
             ! note that w is on interface levels
-            w_i(i,k) = ( w(i,j,k,icrm) + w(i,j,k+1,icrm) )/2.
+            w_i(i,k) = ( w(icrm,i,j,k) + w(icrm,i,j,k+1) )/2.
          end do
          u_s_avg(k) = u_s_avg(k) / real(nx,crm_rknd)
       end do

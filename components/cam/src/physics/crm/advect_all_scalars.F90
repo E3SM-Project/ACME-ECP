@@ -89,16 +89,16 @@ contains
     ! whannah - the esmt_offset simply ensures that the scalar momentum
     ! tracers are positive definite during the advection calculation
     do icrm = 1 , ncrms
-      esmt_offset(icrm) = abs( minval( (/ minval(u_esmt(:,:,:,icrm)), minval(v_esmt(:,:,:,icrm)) /) ) ) + 50.
-      u_esmt(:,:,:,icrm) = u_esmt(:,:,:,icrm) + esmt_offset(icrm)
-      v_esmt(:,:,:,icrm) = v_esmt(:,:,:,icrm) + esmt_offset(icrm)
+      esmt_offset(icrm) = abs( minval( (/ minval(u_esmt(icrm,:,:,:)), minval(v_esmt(icrm,:,:,:)) /) ) ) + 50.
+      u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) + esmt_offset(icrm)
+      v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) + esmt_offset(icrm)
     enddo
     ! advection of scalar momentum tracers
     call advect_scalar(ncrms,u_esmt,u_esmt_adv,u_esmt_wle)
     call advect_scalar(ncrms,v_esmt,v_esmt_adv,v_esmt_wle)
     do icrm = 1 , ncrms
-      u_esmt(:,:,:,icrm) = u_esmt(:,:,:,icrm) - esmt_offset(icrm)
-      v_esmt(:,:,:,icrm) = v_esmt(:,:,:,icrm) - esmt_offset(icrm)
+      u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) - esmt_offset(icrm)
+      v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) - esmt_offset(icrm)
     enddo
 #endif
 

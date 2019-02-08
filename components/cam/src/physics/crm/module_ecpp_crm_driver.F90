@@ -500,10 +500,10 @@ contains
     ! Get values from SAM cloud fields
     do icrm = 1 , ncrms
     qcloud(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
-    qrain (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqr )
-    qice  (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqci)
-    qsnow (1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqs )
-    qgraup(1:nx,1:ny,1:nzm,icrm) = micro_field(1:nx,1:ny,1:nzm,icrm,iqg )
+    qrain (1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqr )
+    qice  (1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqci)
+    qsnow (1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqs )
+    qgraup(1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqg )
 
     precall(:,:,:,icrm)= precr(:,:,:,icrm) + precsolid(:,:,:,icrm)
 
@@ -517,7 +517,7 @@ contains
       end do
     end do
 
-    ww(:,:,:,icrm)     = w(1:nx,1:ny,1:nzstag,icrm)
+    ww(:,:,:,icrm)     = w(icrm,1:nx,1:ny,1:nzstag)
 #ifdef CLUBB_CRM
     wwsq(:,:,:,icrm)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
 #else
@@ -527,13 +527,13 @@ contains
 #ifdef CLUBB_CRM
     xkhv(:,:,:,icrm)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
 #else
-    xkhv(:,:,:,icrm)   = tk(1:nx,1:ny,1:nzm,icrm)  ! eddy viscosity m2/s
+    xkhv(:,:,:,icrm)   = tk(icrm,1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
 #endif
     enddo
 
     ! Increment the 3-D running sums for averaging period 1.
     do icrm = 1 , ncrms
-      tketmp(:,:,:,icrm) = tke(1:nx,1:ny,:,icrm)
+      tketmp(:,:,:,icrm) = tke(icrm,1:nx,1:ny,:)
     enddo
     call rsums1( ncrms, &
                  qcloud,    qcloudsum1,    &

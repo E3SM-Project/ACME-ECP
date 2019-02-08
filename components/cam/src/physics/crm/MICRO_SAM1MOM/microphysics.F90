@@ -77,7 +77,7 @@ CONTAINS
     integer, intent(in) :: ncrms
     integer :: icrm
     real(crm_rknd) :: zero
-    allocate( micro_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms, nmicro_fields))
+    allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields))
     allocate( fluxbmk (nx, ny, 1:nmicro_fields,ncrms) )
     allocate( fluxtmk (nx, ny, 1:nmicro_fields,ncrms) )
     allocate( mkwle  (nz,1:nmicro_fields,ncrms)  )
@@ -98,8 +98,8 @@ CONTAINS
     allocate( flag_wmass     (nmicro_fields,ncrms) )
     allocate( flag_number    (nmicro_fields,ncrms) )
 
-    q (dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,1)
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,2)
+    q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,:,1)
+    qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,:,2)
 
     zero = 0
 
@@ -197,9 +197,9 @@ CONTAINS
     if(nrestart.eq.0) then
 
 #ifndef CRM
-      micro_field(:,:,:,:,icrm) = 0.
+      micro_field(icrm,:,:,:,:) = 0.
       do k=1,nzm
-        q(:,:,k,icrm) = q0(k,icrm)
+        q(icrm,:,:,k) = q0(k,icrm)
       end do
       qn(:,:,:,icrm) = 0.
 #endif
@@ -241,7 +241,7 @@ CONTAINS
       ! set mstor to be the inital microphysical mixing ratios
       do n=1, nmicro_fields
         do k=1, nzm
-          mstor(k, n,icrm) = SUM(micro_field(1:nx,1:ny,k,icrm,n))
+          mstor(k, n,icrm) = SUM(micro_field(icrm,1:nx,1:ny,k,n))
         end do
       end do
     enddo
@@ -322,8 +322,8 @@ CONTAINS
     if(docloud) then
 #ifdef __PGI
       !Passing q and qp via the first element because PGI has a bug with pointers here
-      call cloud(ncrms,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
-      if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,q(dimx1_s,dimy1_s,1,1),qp(dimx1_s,dimy1_s,1,1),qn)
+      call cloud(ncrms,q(1,dimx1_s,dimy1_s,1),qp(1,dimx1_s,dimy1_s,1),qn)
+      if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,q(1,dimx1_s,dimy1_s,1),qp(1,dimx1_s,dimy1_s,1),qn)
 #else
       call cloud(ncrms, q, qp, qn)
       if(doprecip) call precip_proc(ncrms, qpsrc, qpevp, q, qp, qn)
@@ -360,13 +360,13 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            qv(i,j,k,icrm) = q(i,j,k,icrm) - qn(i,j,k,icrm)
+            qv(i,j,k,icrm) = q(icrm,i,j,k) - qn(i,j,k,icrm)
             omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
             qcl(i,j,k,icrm) = qn(i,j,k,icrm)*omn
             qci(i,j,k,icrm) = qn(i,j,k,icrm)*(1.-omn)
             omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
-            qpl(i,j,k,icrm) = qp(i,j,k,icrm)*omp
-            qpi(i,j,k,icrm) = qp(i,j,k,icrm)*(1.-omp)
+            qpl(i,j,k,icrm) = qp(icrm,i,j,k)*omp
+            qpi(i,j,k,icrm) = qp(icrm,i,j,k)*(1.-omp)
           end do
         end do
       end do
@@ -413,7 +413,7 @@ CONTAINS
     new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg].
     ! For the single moment microphysics, it is liquid + ice
 
-    q(1:nx,1:ny,1:nzm,icrm) = new_qv + new_qc ! Vapor + Liquid + Ice
+    q(icrm,1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
     qn(1:nx,1:ny,1:nzm,icrm) = new_qc ! Liquid + Ice
 
     return
@@ -435,7 +435,7 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(i,j,k,icrm) = q(i,j,k,icrm) - qn(i,j,k,icrm)
+          qv(i,j,k,icrm) = q(icrm,i,j,k) - qn(i,j,k,icrm)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011
@@ -454,8 +454,8 @@ CONTAINS
           qcl(i,j,k,icrm) = qn(i,j,k,icrm)
           qci(i,j,k,icrm) = 0.0
           omp = max(0.,min(1.,(tabs(i,j,k,icrm)-tprmin)*a_pr))
-          qpl(i,j,k,icrm) = qp(i,j,k,icrm)*omp
-          qpi(i,j,k,icrm) = qp(i,j,k,icrm)*(1.-omp)
+          qpl(i,j,k,icrm) = qp(icrm,i,j,k)*omp
+          qpi(i,j,k,icrm) = qp(icrm,i,j,k)*(1.-omp)
         end do
       end do
     end do
@@ -569,7 +569,7 @@ CONTAINS
     pp(y)= max(real(0.,crm_rknd),y)
     pn(y)=-min(real(0.,crm_rknd),y)
 
-    qp(dimx1_s:,dimy1_s:,1:,1:) => micro_field(:,:,:,:,2)
+    qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,:,2)
 
     eps = 1.e-10
     nonos = .true.
@@ -614,7 +614,7 @@ CONTAINS
                 !call task_abort
               endif
             end select
-            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(i,j,k,icrm,2),rho(:,:),&
+            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(:,:),&
                                                       tabs(:,:,:,:),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
                                                       a_gr,vgrau,cgrau,vsnow,csnow)
             tmp = wp(i,j,k,icrm)*iwmax(k,icrm)
@@ -658,7 +658,7 @@ CONTAINS
         do k = 1,nzm
           do j=1,ny
             do i=1,nx
-              tmp_qp(i,j,k,icrm) = qp(i,j,k,icrm) ! Temporary array for qp in this column
+              tmp_qp(i,j,k,icrm) = qp(icrm,i,j,k) ! Temporary array for qp in this column
             enddo
           enddo
         enddo
@@ -759,10 +759,10 @@ CONTAINS
               ! Update precipitation mass fraction.
               ! Note that fz is the total flux, including both the
               ! upwind flux and the anti-diffusive correction.
-              qp(i,j,k,icrm)=qp(i,j,k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)
+              qp(icrm,i,j,k)=qp(icrm,i,j,k)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)
               qpfall(k,icrm)=qpfall(k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)*flagstat  ! For qp budget
               lat_heat = -(lfac(i,j,kc,icrm)*fz(i,j,kc,icrm)-lfac(i,j,k,icrm)*fz(i,j,k,icrm))*irhoadz(k,icrm)
-              t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat
+              t(icrm,i,j,k)=t(icrm,i,j,k)-lat_heat
               !$acc atomic update
               tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
               tmp = fz(i,j,k,icrm)*flagstat
@@ -786,7 +786,7 @@ CONTAINS
             do i=1,nx
               do k=1,nzm
                 !Passing variables via first index because of PGI bug with pointers
-                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(i,j,k,icrm,2),rho(1,1),&
+                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
                                  tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
                 ! Decrease precipitation velocity by factor of nprec
                 wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)/real(nprec,crm_rknd)
@@ -831,7 +831,7 @@ CONTAINS
           tmp = 0.
           do j=1,ny
             do i=1,nx
-              tmp = tmp + micro_field(i,j,k,icrm,m)
+              tmp = tmp + micro_field(icrm,i,j,k,m)
             end do
           end do
           total_water = total_water + tmp*adz(k,icrm)*dz(icrm)*rho(k,icrm)

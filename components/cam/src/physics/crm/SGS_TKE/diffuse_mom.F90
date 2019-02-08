@@ -14,7 +14,7 @@ contains
     integer, intent(in) :: ncrms
     integer i,j,k
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
-    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms) ! SGS eddy viscosity
+    real(crm_rknd) tk(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
     real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z

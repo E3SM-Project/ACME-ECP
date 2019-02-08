@@ -15,8 +15,8 @@ contains
     real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
     real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
     real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
-    real(crm_rknd) field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms) ! scalar
-    real(crm_rknd) tkh(0:nxp1,1-YES3D:nyp1,nzm,ncrms) ! eddy conductivity
+    real(crm_rknd) field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
+    real(crm_rknd) tkh(ncrms,0:nxp1,1-YES3D:nyp1,nzm) ! eddy conductivity
     real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
     real(crm_rknd) rho(nzm,ncrms)
@@ -56,7 +56,7 @@ contains
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
-              field(0,j,k,icrm) = field(1,j,k,icrm)
+              field(icrm,0,j,k) = field(icrm,1,j,k)
             enddo
           enddo
         enddo
@@ -66,7 +66,7 @@ contains
         do icrm = 1 , ncrms
           do k=1,nzm
             do j=1,ny
-              field(nx+1,j,k,icrm) = field(nx,j,k,icrm)
+              field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
             enddo
           enddo
         enddo
@@ -79,7 +79,7 @@ contains
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=1,nx
-              field(i,1-YES3D,k,icrm) = field(i,1,k,icrm)
+              field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
             enddo
           enddo
         enddo
@@ -89,7 +89,7 @@ contains
         do icrm = 1 , ncrms
           do k=1,nzm
             do i=1,ny
-              field(i,ny+YES3D,k,icrm) = field(i,ny,k,icrm)
+              field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
             enddo
           enddo
         enddo
@@ -101,7 +101,7 @@ contains
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
-            field(i,1-YES3D,k,icrm) = field(i,1,k,icrm)
+            field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
           enddo
         enddo
       enddo
@@ -109,7 +109,7 @@ contains
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=1,nx
-            field(i,ny+YES3D,k,icrm) = field(i,ny,k,icrm)
+            field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
           enddo
         enddo
       enddo
@@ -124,14 +124,14 @@ contains
             if (j >= 1) then
               ic=i+1
               rdx5=0.5*rdx2  * grdf_x(k,icrm)
-              tkx=rdx5*(tkh(i,j,k,icrm)+tkh(ic,j,k,icrm))
-              flx_x(i,j,k,icrm)=-tkx*(field(ic,j,k,icrm)-field(i,j,k,icrm))
+              tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
+              flx_x(i,j,k,icrm)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
             endif
             if (i >= 1) then
               jc=j+1
               rdy5=0.5*rdy2  * grdf_y(k,icrm)
-              tky=rdy5*(tkh(i,j,k,icrm)+tkh(i,jc,k,icrm))
-              flx_y(i,j,k,icrm)=-tky*(field(i,jc,k,icrm)-field(i,j,k,icrm))
+              tky=rdy5*(tkh(icrm,i,j,k)+tkh(icrm,i,jc,k))
+              flx_y(i,j,k,icrm)=-tky*(field(icrm,i,jc,k)-field(icrm,i,j,k))
             endif
           enddo
         enddo
@@ -169,8 +169,8 @@ contains
               rhoi = rhow(kc,icrm)/adzw(icrm,kc)
               rdz2=1./(dz(icrm)*dz(icrm))
               rdz5=0.5*rdz2 * grdf_z(k,icrm)
-              tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
-              flx_z(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
+              tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
+              flx_z(i,j,k,icrm)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi
               !$acc atomic update
               flux(kc,icrm) = flux(kc,icrm) + flx_z(i,j,k,icrm)
             elseif (k == nzm) then
@@ -194,7 +194,7 @@ contains
             kb=k-1
             rhoi = 1./(adz(k,icrm)*rho(k,icrm))
             dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx_z(i,j,k,icrm)-flx_z(i,j,kb,icrm))*rhoi)
-            field(i,j,k,icrm)=field(i,j,k,icrm)+dfdt(i,j,k,icrm)
+            field(icrm,i,j,k)=field(icrm,i,j,k)+dfdt(i,j,k,icrm)
           enddo
         enddo
       enddo

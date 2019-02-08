@@ -34,13 +34,13 @@ module kurant_mod
         do k = 1,nzm
           do j = 1 , ny
             do i = 1 , nx
-              tmp = abs(w(i,j,k,icrm))
+              tmp = abs(w(icrm,i,j,k))
               !$acc atomic update
               wm(icrm,k) = max( wm(icrm,k) , tmp )
               !$acc atomic update
               w_max(icrm) = max( w_max(icrm) , tmp )
 
-              tmp = sqrt(u(i,j,k,icrm)**2+YES3D*v(i,j,k,icrm)**2)
+              tmp = sqrt(u(icrm,i,j,k)**2+YES3D*v(icrm,i,j,k)**2)
               !$acc atomic update
               uhm(icrm,k) = max( uhm(icrm,k) , tmp )
               !$acc atomic update

@@ -15,9 +15,9 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
+    real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) flux(nz,ncrms), fadv(nz,ncrms)
-    real(crm_rknd) f0(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
+    real(crm_rknd) f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) tmp
     integer i,j,k,icrm
 
@@ -38,7 +38,7 @@ contains
       do k = 1 , nzm
         do j = dimy1_s,dimy2_s
           do i = dimx1_s,dimx2_s
-            f0(i,j,k,icrm) = f(i,j,k,icrm)
+            f0(icrm,i,j,k) = f(icrm,i,j,k)
           enddo
         enddo
       enddo
@@ -61,7 +61,7 @@ contains
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            tmp = f(i,j,k,icrm)-f0(i,j,k,icrm)
+            tmp = f(icrm,i,j,k)-f0(icrm,i,j,k)
             !$acc atomic update
             fadv(k,icrm)=fadv(k,icrm)+tmp
           end do
