@@ -392,10 +392,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     dz(icrm) = 0.5*(z(1,icrm)+z(2,icrm))
     do k=2,nzm
-      adzw(k,icrm) = (z(k,icrm)-z(k-1,icrm))/dz(icrm)
+      adzw(icrm,k) = (z(k,icrm)-z(k-1,icrm))/dz(icrm)
     end do
-    adzw(1,icrm)  = 1.
-    adzw(nz,icrm) = adzw(nzm,icrm)
+    adzw(icrm,1)  = 1.
+    adzw(icrm,nz) = adzw(icrm,nzm)
     !+++mhwang fix the adz bug. (adz needs to be consistent with zi)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
     do k=1, nzm
@@ -409,7 +409,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     ! rhow(k,icrm) = 0.5*(rho(k,icrm)+rho(k-1,icrm))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with crm_input%pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(k,icrm)*dz(icrm))
+      rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
     end do
     rhow(1,icrm) = 2.*rhow(2,icrm) - rhow(3,icrm)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */

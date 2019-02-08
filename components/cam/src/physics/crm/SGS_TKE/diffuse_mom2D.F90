@@ -44,7 +44,7 @@ contains
           do i=0,nx
             kc=k+1
             kcu=min(kc,nzm)
-            dxz=dx/(dz(icrm)*adzw(kc,icrm))
+            dxz=dx/(dz(icrm)*adzw(icrm,kc))
             rdx21=rdx2 * grdf_x(k,icrm)
             rdx251=rdx25 * grdf_x(k,icrm)
             ic=i+1
@@ -95,7 +95,7 @@ contains
           rdz25=0.25*rdz2
           dzx=dz(icrm)/dx
           iadz = 1./adz(k,icrm)
-          iadzw= 1./adzw(kc,icrm)
+          iadzw= 1./adzw(icrm,kc)
           ib=i-1
           tkz=rdz2*tk(i,j,k,icrm)
           fw(i,j,kc,icrm)=-2.*tkz*(w(i,j,kc,icrm)-w(i,j,k,icrm))*rho(k,icrm)*iadz
@@ -144,7 +144,7 @@ contains
     do icrm = 1 , ncrms
       do k=2,nzm
         do i=1,nx
-          rhoi = 1./(rhow(k,icrm)*adzw(k,icrm))
+          rhoi = 1./(rhow(k,icrm)*adzw(icrm,k))
           dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fw(i,j,k+1,icrm)-fw(i,j,k,icrm))*rhoi
         end do
       end do ! k

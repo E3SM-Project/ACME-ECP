@@ -27,8 +27,8 @@ contains
               kb=k-1
               kc=k+1
               rdz = 1./(dz(icrm)*adz(k,icrm))
-              rdzw_up = 1./(dz(icrm)*adzw(kc,icrm))
-              rdzw_dn = 1./(dz(icrm)*adzw(k,icrm))
+              rdzw_up = 1./(dz(icrm)*adzw(icrm,kc))
+              rdzw_dn = 1./(dz(icrm)*adzw(icrm,k))
               rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
               rdy=rdy0 * sqrt(dy*rdz)
               rdx_up=rdx0 * sqrt(dx*rdzw_up)
@@ -71,7 +71,7 @@ contains
             elseif (k == 1) then
               kc=k+1
               rdz = 1./(dz(icrm)*adz(k,icrm))
-              rdzw_up = 1./(dz(icrm)*adzw(kc,icrm))
+              rdzw_up = 1./(dz(icrm)*adzw(icrm,kc))
               rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
               rdy=rdy0 * sqrt(dy*rdz)
               rdx_up=rdx0 * sqrt(dx*rdzw_up)
@@ -103,7 +103,7 @@ contains
               kc=k+1
               kb=k-1
               rdz = 1./(dz(icrm)*adz(k,icrm))
-              rdzw_dn = 1./(dz(icrm)*adzw(k,icrm))
+              rdzw_dn = 1./(dz(icrm)*adzw(icrm,k))
               rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
               rdy=rdy0 * sqrt(dy*rdz)
               rdx_dn=rdx0 * sqrt(dx*rdzw_dn)

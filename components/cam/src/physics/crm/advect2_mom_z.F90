@@ -108,7 +108,7 @@ contains
         do j=1,ny
           do i=1,nx
             kb=k-1
-            rhoi = 1./(rhow(k,icrm)*adzw(k,icrm))
+            rhoi = 1./(rhow(k,icrm)*adzw(icrm,k))
             dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fwz(i,j,k,icrm)-fwz(i,j,kb,icrm))*rhoi
           end do
         end do

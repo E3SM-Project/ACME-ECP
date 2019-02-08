@@ -139,7 +139,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           end if
           !!! first compute subgrid buoyancy flux at interface above this level.
           !!! average betdz to w-levels
-          betdz = 0.5*(bet(kc,icrm)+bet(kb,icrm))/dz(icrm)/adzw(k+1,icrm)
+          betdz = 0.5*(bet(kc,icrm)+bet(kb,icrm))/dz(icrm)/adzw(icrm,k+1)
 
           !!! compute temperature of mixture between two grid levels if all cloud
           !!!   were evaporated and sublimated
@@ -252,7 +252,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           !!! compute correction factors for eddy visc/cond not to acceed 3D stability
           cx = dx**2/dt/grdf_x(k,icrm)
           cy = dy**2/dt/grdf_y(k,icrm)
-          cz = (dz(icrm)*min(adzw(k,icrm),adzw(k+1,icrm)))**2/dt/grdf_z(k,icrm)
+          cz = (dz(icrm)*min(adzw(icrm,k),adzw(icrm,k+1)))**2/dt/grdf_z(k,icrm)
           !!! maximum value of eddy visc/cond
           tkmax = 0.09/(1./cx+1./cy+1./cz)
           buoy_sgs = 0.5*( buoy_sgs_vert(i,j,k-1,icrm) + buoy_sgs_vert(i,j,k,icrm) )
