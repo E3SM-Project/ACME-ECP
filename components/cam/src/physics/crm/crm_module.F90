@@ -403,10 +403,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     end do
 
     do k = 1,nzm
-      rho(k,icrm) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(icrm,k)*dz(icrm))
+      rho(icrm,k) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(icrm,k)*dz(icrm))
     end do
     do k=2,nzm
-    ! rhow(k,icrm) = 0.5*(rho(k,icrm)+rho(k-1,icrm))
+    ! rhow(k,icrm) = 0.5*(rho(icrm,k)+rho(icrm,k-1))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with crm_input%pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
       rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
@@ -480,7 +480,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do i=1, nx
           if(cloudliq(i,j,k,icrm).gt.0) then
             if(dopredictNc) then
-              if( micro_field(icrm,i,j,k,incl).eq.0) micro_field(icrm,i,j,k,incl) = 1.0e6*Nc0/rho(k,icrm)
+              if( micro_field(icrm,i,j,k,incl).eq.0) micro_field(icrm,i,j,k,incl) = 1.0e6*Nc0/rho(icrm,k)
             endif
           endif
         enddo
@@ -579,7 +579,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
-    ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(1,icrm))
+    ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(icrm,1))
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
@@ -612,8 +612,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     fluxtt  (:,:,icrm)=0.
     fluxtq  (:,:,icrm)=0.
     fzero   (:,:,icrm) =0.
-    precsfc (:,:,icrm)=0.
-    precssfc(:,:,icrm)=0.
+    precsfc(icrm,:,:)=0.
+    precssfc(icrm,:,:)=0.
 
 !---------------------------------------------------
     crm_output%cld   (icrm,:) = 0.
@@ -770,7 +770,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     if ( doclubb .or. doclubbnoninter ) then
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                            latitude(:,:,icrm), longitude(:,:,icrm), z(icrm,:), rho(:,icrm), zi(:,icrm), rhow(:,icrm), tv0(:,icrm), tke(icrm,:,:,:) )
+                            latitude(:,:,icrm), longitude(:,:,icrm), z(icrm,:), rho(icrm,:), zi(:,icrm), rhow(:,icrm), tv0(:,icrm), tke(icrm,:,:,:) )
     endif
 #endif /* CLUBB_CRM */
   enddo
@@ -1006,7 +1006,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do i=1,nx
           do k=1,nzm
             l = plev-k+1
-            tmp1 = rho(nz-k,icrm)*adz(icrm,nz-k)*dz(icrm)*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
+            tmp1 = rho(icrm,nz-k)*adz(icrm,nz-k)*dz(icrm)*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
             cwp(i,j,icrm) = cwp(i,j,icrm)+tmp1
             cttemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j,icrm))
             if(cwp(i,j,icrm).gt.cwp_threshold.and.flag_top(i,j,icrm)) then
@@ -1024,34 +1024,34 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 cwpm(i,j,icrm) = cwpm(i,j,icrm)+tmp1
                 cmtemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cmtemp(i,j,icrm))
             endif
-            tmp1 = rho(k,icrm)*adz(icrm,k)*dz(icrm)
+            tmp1 = rho(icrm,k)*adz(icrm,k)*dz(icrm)
             if(tmp1*(qcl(icrm,i,j,k)+qci(icrm,i,j,k)).gt.cwp_threshold) then
                  !$acc atomic update
                  crm_output_cld(icrm,l) = crm_output_cld(icrm,l) + CF3D(i,j,k,icrm)
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
-                   tmp = rho(k,icrm)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k,icrm)
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k,icrm)
                    !$acc atomic update
                    crm_output_mcup (icrm,l) = crm_output_mcup (icrm,l) + tmp
-                   tmp = rho(k,icrm)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(i,j,k,icrm))
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(i,j,k,icrm))
                    !$acc atomic update
                    crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + tmp
                  endif
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
-                   tmp = rho(k,icrm)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k,icrm)
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k,icrm)
                    !$acc atomic update
                    crm_output_mcdn (icrm,l) = crm_output_mcdn (icrm,l) + tmp
-                   tmp = rho(k,icrm)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(i,j,k,icrm))
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(i,j,k,icrm))
                    !$acc atomic update
                    crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + tmp
                  endif
             else
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
-                   tmp = rho(k,icrm)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
                    !$acc atomic update
                    crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + tmp
                  endif
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
-                    tmp = rho(k,icrm)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
+                    tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k))
                    !$acc atomic update
                    crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + tmp
                  endif
@@ -1444,23 +1444,23 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     do j=1,ny
       do i=1,nx
 #ifdef sam1mom
-        precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)
-        precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)
+        precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
+        precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
 #endif /* sam1mom */
 #ifdef m2005
-        precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
-        precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
+        precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
+        precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
-        if(precsfc(i,j,icrm).gt.10./86400.) then
-           crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(i,j,icrm)
-           crm_output%precsc(icrm) = crm_output%precsc(icrm) + precssfc(i,j,icrm)
+        if(precsfc(icrm,i,j).gt.10./86400.) then
+           crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(icrm,i,j)
+           crm_output%precsc(icrm) = crm_output%precsc(icrm) + precssfc(icrm,i,j)
         else
-           crm_output%precl (icrm) = crm_output%precl (icrm) + precsfc(i,j,icrm)
-           crm_output%precsl(icrm) = crm_output%precsl(icrm) + precssfc(i,j,icrm)
+           crm_output%precl (icrm) = crm_output%precl (icrm) + precsfc(icrm,i,j)
+           crm_output%precsl(icrm) = crm_output%precsl(icrm) + precssfc(icrm,i,j)
         endif
       enddo
     enddo
-    crm_output%prec_crm(icrm,:,:) = precsfc(:,:,icrm)/1000.           !mm/s --> m/s
+    crm_output%prec_crm(icrm,:,:) = precsfc(icrm,:,:)/1000.           !mm/s --> m/s
     crm_output%precc   (icrm)     = crm_output%precc (icrm)*factor_xy/1000.
     crm_output%precl   (icrm)     = crm_output%precl (icrm)*factor_xy/1000.
     crm_output%precsc  (icrm)     = crm_output%precsc(icrm)*factor_xy/1000.
@@ -1550,8 +1550,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_output%qp_trans  (icrm,l) = mkadv (k,iqr,icrm) + mkadv (k,iqs,icrm) + mkadv (k,iqg,icrm) + &
                          mkdiff(k,iqr,icrm) + mkdiff(k,iqs,icrm) + mkdiff(k,iqg,icrm)
 #endif /* m2005 */
-      crm_output%tkesgsz   (icrm,l)= rho(k,icrm)*sum(tke(icrm,1:nx,1:ny,k))*factor_xy
-      crm_output%tkez      (icrm,l)= rho(k,icrm)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
+      crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(icrm,1:nx,1:ny,k))*factor_xy
+      crm_output%tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
       crm_output%tkz       (icrm,l) = sum(tk(icrm,1:nx, 1:ny, k)) * factor_xy
       crm_output%precflux      (icrm,l) = precflux(k,icrm)/1000.       !mm/s  -->m/s
 

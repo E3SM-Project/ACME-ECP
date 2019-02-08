@@ -93,7 +93,7 @@ contains
           do i=1,nx
             dz25=1./(4.*dz(icrm))
             kc = k+1
-            rhoi = 1./(rho(k,icrm)*adz(icrm,k))
+            rhoi = 1./(rho(icrm,k)*adz(icrm,k))
             dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fuz(i,j,kc,icrm)-fuz(i,j,k,icrm))*rhoi
             dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fvz(i,j,kc,icrm)-fvz(i,j,k,icrm))*rhoi
             fwz(i,j,k,icrm)=dz25*(w(icrm,i,j,kc)*rhow(kc,icrm)+w(icrm,i,j,k)*rhow(k,icrm))*(w(icrm,i,j,kc)+w(icrm,i,j,k))

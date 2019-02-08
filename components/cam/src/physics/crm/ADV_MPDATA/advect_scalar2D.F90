@@ -13,7 +13,7 @@ contains
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) w(ncrms,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
-    real(crm_rknd) rho(nzm,ncrms)
+    real(crm_rknd) rho(ncrms,nzm)
     real(crm_rknd) rhow(nz,ncrms)
     real(crm_rknd) flux(nz,ncrms)
 
@@ -105,7 +105,7 @@ contains
     !$acc parallel loop collapse(2) copyin(rho,adz,rhow) copy(irho,iadz,irhow) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
-        irho(k,icrm) = 1./rho(k,icrm)
+        irho(k,icrm) = 1./rho(icrm,k)
         iadz(k,icrm) = 1./adz(icrm,k)
         irhow(k,icrm)=1./(rhow(k,icrm)*adz(icrm,k))
       enddo
@@ -174,9 +174,9 @@ contains
           do i=0,nxp1
             kc=min(nzm,k+1)
             ic=i+1
-            mx(i,j,k,icrm)=rho(k,icrm)*(mx(i,j,k,icrm)-f(icrm,i,j,k))/(pn(uuu(ic,j,k,icrm)) + &
+            mx(i,j,k,icrm)=rho(icrm,k)*(mx(i,j,k,icrm)-f(icrm,i,j,k))/(pn(uuu(ic,j,k,icrm)) + &
                            pp(uuu(i,j,k,icrm))+iadz(k,icrm)*(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm)))+eps)
-            mn(i,j,k,icrm)=rho(k,icrm)*(f(icrm,i,j,k)-mn(i,j,k,icrm))/(pp(uuu(ic,j,k,icrm)) + &
+            mn(i,j,k,icrm)=rho(icrm,k)*(f(icrm,i,j,k)-mn(i,j,k,icrm))/(pp(uuu(ic,j,k,icrm)) + &
                            pn(uuu(i,j,k,icrm))+iadz(k,icrm)*(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm)))+eps)
           enddo
         enddo
