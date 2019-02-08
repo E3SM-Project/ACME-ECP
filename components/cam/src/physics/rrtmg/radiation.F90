@@ -1199,8 +1199,7 @@ end function radiation_nextsw_cday
     real(r8) ::  aerindex(pcols)      ! Aerosol index
     integer aod400_idx, aod700_idx, cld_tau_idx
 
-    ! Total cloud water threshold for considering a CRM column "cloudy" or
-    ! "clear"
+    ! Total cloud water threshold for considering a CRM column "cloudy" or "clear"
     real(r8), parameter :: qtot_cld_threshold = 1.e-9
 
     character(*), parameter :: name = 'radiation_tend'
