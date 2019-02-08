@@ -10,8 +10,8 @@ contains
     integer, intent(in) :: ncrms
     ! input
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
-    real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
-    real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
+    real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
     real(crm_rknd) tkh(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
     real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
@@ -69,7 +69,7 @@ contains
       do icrm = 1 , ncrms
         do k=1,nzm
           do i=0,nx
-            rdx5=0.5*rdx2  *grdf_x(k,icrm)
+            rdx5=0.5*rdx2  *grdf_x(icrm,k)
             ic=i+1
             tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
             flx(i,j,k,icrm)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
@@ -102,7 +102,7 @@ contains
             kc=k+1
             rhoi = rhow(kc,icrm)/adzw(icrm,kc)
             rdz2=1./(dz(icrm)*dz(icrm))
-            rdz5=0.5*rdz2 * grdf_z(k,icrm)
+            rdz5=0.5*rdz2 * grdf_z(icrm,k)
             tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
             flx(i,j,k,icrm)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi
             !$acc atomic update

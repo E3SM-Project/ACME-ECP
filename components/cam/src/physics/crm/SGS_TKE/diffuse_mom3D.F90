@@ -14,9 +14,9 @@ contains
     integer, intent(in) :: ncrms
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tk(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
-    real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
-    real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
-    real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
+    real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
+    real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx25,rdy25
     real(crm_rknd) rdx21,rdy21,rdx251,rdy251,rdz25
     real(crm_rknd) dxy,dxz,dyx,dyz,dzx,dzy
@@ -45,8 +45,8 @@ contains
             kcu=min(kc,nzm)
             ic=i+1
             dxz=dx/(dz(icrm)*adzw(icrm,kc))
-            rdx21=rdx2    * grdf_x(k,icrm)
-            rdx251=rdx25  * grdf_x(k,icrm)
+            rdx21=rdx2    * grdf_x(icrm,k)
+            rdx251=rdx25  * grdf_x(icrm,k)
             tkx=rdx21*tk(icrm,i,j,k)
             fu(i,j,k,icrm)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
             tkx=rdx251*(tk(icrm,i,j,k)+tk(icrm,i,jb,k)+tk(icrm,ic,j,k)+tk(icrm,ic,jb,k))
@@ -82,8 +82,8 @@ contains
             kcu=min(kc,nzm)
             ib=i-1
             dyz=dy/(dz(icrm)*adzw(icrm,kc))
-            rdy21=rdy2    * grdf_y(k,icrm)
-            rdy251=rdy25  * grdf_y(k,icrm)
+            rdy21=rdy2    * grdf_y(icrm,k)
+            rdy251=rdy25  * grdf_y(icrm,k)
             tky=rdy21*tk(icrm,i,j,k)
             fv(i,j,k,icrm)=-2.*tky*(v(icrm,i,jc,k)-v(icrm,i,j,k))
             tky=rdy251*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,jc,k)+tk(icrm,ib,jc,k))
@@ -127,7 +127,7 @@ contains
             kc=k+1
             ib=i-1
             rdz=1./dz(icrm)
-            rdz2 = rdz*rdz * grdf_z(k,icrm)
+            rdz2 = rdz*rdz * grdf_z(icrm,k)
             rdz25 = 0.25*rdz2
             iadz = 1./adz(k,icrm)
             iadzw= 1./adzw(icrm,kc)
@@ -153,8 +153,8 @@ contains
       do j=1,ny
         do i=1,nx
           rdz=1./dz(icrm)
-          rdz2 = rdz*rdz * grdf_z(k,icrm)
-          tkz=rdz2*grdf_z(nzm,icrm)*tk(icrm,i,j,nzm)
+          rdz2 = rdz*rdz * grdf_z(icrm,k)
+          tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
           fw(i,j,nz,icrm)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm,icrm)*rho(nzm,icrm)
           fu(i,j,1,icrm)=fluxbu(i,j,icrm) * rdz * rhow(1,icrm)
           fv(i,j,1,icrm)=fluxbv(i,j,icrm) * rdz * rhow(1,icrm)
