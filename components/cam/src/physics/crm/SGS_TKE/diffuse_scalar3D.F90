@@ -192,7 +192,7 @@ contains
         do j=1,ny
           do i=1,nx
             kb=k-1
-            rhoi = 1./(adz(k,icrm)*rho(k,icrm))
+            rhoi = 1./(adz(icrm,k)*rho(k,icrm))
             dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx_z(i,j,k,icrm)-flx_z(i,j,kb,icrm))*rhoi)
             field(icrm,i,j,k)=field(icrm,i,j,k)+dfdt(i,j,k,icrm)
           enddo

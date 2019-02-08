@@ -51,9 +51,9 @@ contains
             if(qn(i,j,k,icrm)+qp(icrm,i,j,k).gt.0.) then
 
 
-              omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
-              omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
-              omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
+              omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
+              omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
+              omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
 
               if(qn(i,j,k,icrm).gt.0.) then
 
@@ -106,8 +106,8 @@ contains
               elseif(qp(icrm,i,j,k).gt.qp_threshold.and.qn(i,j,k,icrm).eq.0.) then
 
                 qsatt = 0.
-                if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(i,j,k,icrm),pres(k,icrm))
-                if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(i,j,k,icrm),pres(k,icrm))
+                if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(icrm,i,j,k),pres(k,icrm))
+                if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k,icrm))
                 dq = 0.
                 if(omp.gt.0.001) then
                   qrr = qp(icrm,i,j,k) * omp

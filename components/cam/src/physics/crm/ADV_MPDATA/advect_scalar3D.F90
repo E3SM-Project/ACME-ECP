@@ -151,8 +151,8 @@ contains
     do icrm = 1 , ncrms
       do k=1,nzm
         irho(k,icrm) = 1./rho(k,icrm)
-        iadz(k,icrm) = 1./adz(k,icrm)
-        irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
+        iadz(k,icrm) = 1./adz(icrm,k)
+        irhow(k,icrm)=1./(rhow(k,icrm)*adz(icrm,k))
       enddo
     enddo
 
@@ -183,7 +183,7 @@ contains
             if (j <= nyp1) then
               kc=min(nzm,k+1)
               kb=max(1,k-1)
-              dd=2./(kc-kb)/adz(k,icrm)
+              dd=2./(kc-kb)/adz(icrm,k)
               jb=j-1
               jc=j+1
               ib=i-1
@@ -196,7 +196,7 @@ contains
             if (i <= nxp1) then
               kc=min(nzm,k+1)
               kb=max(1,k-1)
-              dd=2./(kc-kb)/adz(k,icrm)
+              dd=2./(kc-kb)/adz(icrm,k)
               jb=j-1
               ib=i-1
               ic=i+1

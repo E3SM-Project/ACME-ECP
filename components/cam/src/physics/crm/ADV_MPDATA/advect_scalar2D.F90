@@ -106,8 +106,8 @@ contains
     do icrm = 1 , ncrms
       do k=1,nzm
         irho(k,icrm) = 1./rho(k,icrm)
-        iadz(k,icrm) = 1./adz(k,icrm)
-        irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
+        iadz(k,icrm) = 1./adz(icrm,k)
+        irhow(k,icrm)=1./(rhow(k,icrm)*adz(icrm,k))
       enddo
     enddo
     !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f,flux) async(asyncid)
@@ -130,7 +130,7 @@ contains
         do i=0,nxp2
           kc=min(nzm,k+1)
           kb=max(1,k-1)
-          dd=2./(kc-kb)/adz(k,icrm)
+          dd=2./(kc-kb)/adz(icrm,k)
           ib=i-1
           uuu(i,j,k,icrm)=andiff(f(icrm,ib,j,k),f(icrm,i,j,k),u(icrm,i,j,k),irho(k,icrm)) &
           - across(dd*(f(icrm,ib,j,kc)+f(icrm,i,j,kc)-f(icrm,ib,j,kb)-f(icrm,i,j,kb)), &

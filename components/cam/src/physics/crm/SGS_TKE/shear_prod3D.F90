@@ -26,7 +26,7 @@ contains
             if ( k >= 2 .and. k <= nzm-1 ) then
               kb=k-1
               kc=k+1
-              rdz = 1./(dz(icrm)*adz(k,icrm))
+              rdz = 1./(dz(icrm)*adz(icrm,k))
               rdzw_up = 1./(dz(icrm)*adzw(icrm,kc))
               rdzw_dn = 1./(dz(icrm)*adzw(icrm,k))
               rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
@@ -70,7 +70,7 @@ contains
               (w(icrm,i,j ,k )-w(icrm,i,jb,k ))*rdy_dn )**2 )
             elseif (k == 1) then
               kc=k+1
-              rdz = 1./(dz(icrm)*adz(k,icrm))
+              rdz = 1./(dz(icrm)*adz(icrm,k))
               rdzw_up = 1./(dz(icrm)*adzw(icrm,kc))
               rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
               rdy=rdy0 * sqrt(dy*rdz)
@@ -102,7 +102,7 @@ contains
             elseif (k == nzm) then
               kc=k+1
               kb=k-1
-              rdz = 1./(dz(icrm)*adz(k,icrm))
+              rdz = 1./(dz(icrm)*adz(icrm,k))
               rdzw_dn = 1./(dz(icrm)*adzw(icrm,k))
               rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
               rdy=rdy0 * sqrt(dy*rdz)

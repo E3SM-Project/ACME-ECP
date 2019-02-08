@@ -82,9 +82,9 @@ contains
           if(qn(i,j,k,icrm)+qp(icrm,i,j,k).gt.0.) then
 
 
-            omn = max(0.,min(1.,(tabs(i,j,k,icrm)-tbgmin)*a_bg))
-            omp = max(0.,min(1.,(tabs(i,j,k,icrm)-tprmin)*a_pr))
-            omg = max(0.,min(1.,(tabs(i,j,k,icrm)-tgrmin)*a_gr))
+            omn = max(0.,min(1.,(tabs(icrm,i,j,k)-tbgmin)*a_bg))
+            omp = max(0.,min(1.,(tabs(icrm,i,j,k)-tprmin)*a_pr))
+            omg = max(0.,min(1.,(tabs(icrm,i,j,k)-tgrmin)*a_gr))
 
             !	 if(qn(i,j,k,icrm).gt.0.) then
             if(cld3d(i,j,k).gt.0.) then  ! the generation of precipitating condensate
@@ -147,8 +147,8 @@ contains
             if(qp(icrm,i,j,k).gt.qp_threshold.and.qn(i,j,k,icrm).eq.0.) then
 
               qsatt = 0.
-              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(i,j,k,icrm),pres(k,icrm))
-              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(i,j,k,icrm),pres(k,icrm))
+              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(icrm,i,j,k),pres(k,icrm))
+              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k,icrm))
               dq = 0.
               if(omp.gt.0.001) then
                 qrr = qp(icrm,i,j,k) * omp /cldmax(i,j,k)

@@ -606,12 +606,12 @@ subroutine micro_flux(ncrms)
     fluxtmk(:,:,:,icrm) = 0. ! initialize all fluxes at top of domain to zero
 #ifdef CLUBB_CRM
     if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
-      fluxbmk(:,:,index_water_vapor,icrm) = 0.0 ! surface qv (latent heat,icrm) flux
+      fluxbmk(:,:,index_water_vapor,icrm) = 0.0 ! surface qv(icrm,latent heat) flux
     else
-      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
+      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv(icrm,latent heat) flux
     end if
 #else
-    fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv (latent heat,icrm) flux
+    fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv(icrm,latent heat) flux
 #endif
     fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm) ! top of domain qv flux
   enddo
@@ -752,13 +752,13 @@ do j = 1,ny
 
       ! get absolute temperature in this column
       !bloss/qt: before saturation adjustment for liquid,
-      !          this is Tcl = T - (L/Cp)*qcl (the cloud liquid water temperature,icrm)
+      !          this is Tcl = T - (L/Cp)*qcl(icrm,the cloud liquid water temperature)
       tmptabs(:) = t(icrm,i,j,:)  &           ! liquid water-ice static energy over Cp
            - gamaz(:,icrm) &                                   ! potential energy
            + fac_cond * (tmpqr(:)) &    ! bloss/qt: liquid latent energy due to rain only
            + fac_sub  * (tmpqci(:) + tmpqs(:) + tmpqg(:)) ! ice latent energy
 
-      tmpdz = adz(:,icrm)*dz(icrm)
+      tmpdz = adz(icrm,:)*dz(icrm)
 !      tmpw = 0.5*(w(icrm,i,j,1:nzm) + w(icrm,i,j,2:nz))  ! MK: changed for stretched grids
       tmpw = ((zi(2:nz,icrm)-z(1:nzm,icrm))*w(icrm,i,j,1:nzm)+ &
              (z(1:nzm,icrm)-zi(1:nzm,icrm))*w(icrm,i,j,2:nz))/(zi(2:nz,icrm)-zi(1:nzm,icrm))
@@ -775,7 +775,7 @@ do j = 1,ny
 ! Notes: tke has to be already prognsotic or diagnostic.
         tmpwsub = sqrt(tke2(i,j,:,icrm)/3.)  ! diagnosed tmpwsub from tke
 ! diagnose tmpwsub from tk
-!        tmpwsub = sqrt(2*3.141593)*tk(icrm,i,j,:)/(dz(icrm)*adz(:,icrm))  ! from Ghan et al. (1997, JGR).
+!        tmpwsub = sqrt(2*3.141593)*tk(icrm,i,j,:)/(dz(icrm)*adz(icrm,:))  ! from Ghan et al. (1997, JGR).
       end if
 
       if ( doclubb ) then
@@ -791,7 +791,7 @@ do j = 1,ny
 ! Notes: tke has to be already prognsotic or diagnostic.
       tmpwsub = sqrt(tke2(i,j,:,icrm)/3.)  ! diagnosed tmpwsub from tke
 ! diagnose tmpwsub from tk
-!      tmpwsub = sqrt(2*3.141593)*tk(icrm,i,j,:)/(dz(icrm)*adz(:,icrm))  ! from Ghan et al. (1997, JGR).
+!      tmpwsub = sqrt(2*3.141593)*tk(icrm,i,j,:)/(dz(icrm)*adz(icrm,:))  ! from Ghan et al. (1997, JGR).
 #endif
       wvar(i,j,:,icrm) = tmpwsub(:)
 
@@ -1128,16 +1128,16 @@ do j = 1,ny
          tmpg = 0.
 
          do k = 1,nzm
-            tmpc = tmpc + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqcl(k)/(1.e-20+1.e-6*effc1d(k))
-            tmpr = tmpr + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqr(k)/(1.e-20+1.e-6*effr1d(k))
+            tmpc = tmpc + 0.0018*rho(k,icrm)*dz(icrm)*adz(icrm,k)*tmpqcl(k)/(1.e-20+1.e-6*effc1d(k))
+            tmpr = tmpr + 0.0018*rho(k,icrm)*dz(icrm)*adz(icrm,k)*tmpqr(k)/(1.e-20+1.e-6*effr1d(k))
             !bloss/qt: put cloud liquid optical depth in trtau(:,iqv,icrm)
             trtau(k,iqv,icrm) = trtau(k,iqv,icrm) + tmpc
             if(doprecip) trtau(k,iqr,icrm) = trtau(k,iqr,icrm) + tmpr
 
             if(doicemicro) then
-               tmpi = tmpi + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqci(k)/(1.e-20+1.e-6*effi1d(k))
-               tmps = tmps + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqs(k)/(1.e-20+1.e-6*effs1d(k))
-               tmpg = tmpg + 0.0018*rho(k,icrm)*dz(icrm)*adz(k,icrm)*tmpqg(k)/(1.e-20+1.e-6*effg1d(k))
+               tmpi = tmpi + 0.0018*rho(k,icrm)*dz(icrm)*adz(icrm,k)*tmpqci(k)/(1.e-20+1.e-6*effi1d(k))
+               tmps = tmps + 0.0018*rho(k,icrm)*dz(icrm)*adz(icrm,k)*tmpqs(k)/(1.e-20+1.e-6*effs1d(k))
+               tmpg = tmpg + 0.0018*rho(k,icrm)*dz(icrm)*adz(icrm,k)*tmpqg(k)/(1.e-20+1.e-6*effg1d(k))
 
                trtau(k,iqci,icrm) = trtau(k,iqci,icrm) + tmpi
                trtau(k,iqs,icrm) = trtau(k,iqs,icrm) + tmps
@@ -1198,7 +1198,7 @@ end do ! j = 1,ny
 tmpc = 0.
 do k = 1,nzm
    m = nz-k
-   tmpc = tmpc + stend(m,iqv,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)  !bloss/qt: iqcl --> iqv
+   tmpc = tmpc + stend(m,iqv,icrm)*rho(m,icrm)*dz(icrm)*adz(icrm,m)  !bloss/qt: iqcl --> iqv
    mksed(m,iqv,icrm) = tmpc
 end do
 precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqv,icrm)*dtn/dz(icrm)
@@ -1207,7 +1207,7 @@ if(doprecip) then
    tmpr = 0.
    do k = 1,nzm
       m = nz-k
-      tmpr = tmpr + stend(m,iqr,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+      tmpr = tmpr + stend(m,iqr,icrm)*rho(m,icrm)*dz(icrm)*adz(icrm,m)
       mksed(m,iqr,icrm) = tmpr
    end do
    precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqr,icrm)*dtn/dz(icrm)
@@ -1219,16 +1219,16 @@ if(doicemicro) then
    tmpg = 0.
    do k = 1,nzm
       m = nz-k
-      tmpi = tmpi + stend(m,iqci,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
-      tmps = tmps + stend(m,iqs,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+      tmpi = tmpi + stend(m,iqci,icrm)*rho(m,icrm)*dz(icrm)*adz(icrm,m)
+      tmps = tmps + stend(m,iqs,icrm)*rho(m,icrm)*dz(icrm)*adz(icrm,m)
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
       if ( dograupel ) then
-        tmpg = tmpg + stend(m,iqg,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+        tmpg = tmpg + stend(m,iqg,icrm)*rho(m,icrm)*dz(icrm)*adz(icrm,m)
       else
         tmpg = 0.
       end if
 #else
-      tmpg = tmpg + stend(m,iqg,icrm)*rho(m,icrm)*dz(icrm)*adz(m,icrm)
+      tmpg = tmpg + stend(m,iqg,icrm)*rho(m,icrm)*dz(icrm)*adz(icrm,m)
 #endif
       mksed(m,iqci,icrm) = tmpi
       mksed(m,iqs,icrm) = tmps
@@ -1312,7 +1312,7 @@ real(crm_rknd) omn, omp
 integer i,j,k
 
 ! water vapor = total water - cloud liquid
-qv(1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqv) &
+qv(icrm,1:nx,1:ny,1:nzm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqv) &
      - cloudliq(1:nx,1:ny,1:nzm,icrm)
 
 #ifdef CLUBB_CRM
@@ -1322,9 +1322,9 @@ do i = 1, nx
       ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
       ! static energy should be conserved, so updating temperature is not
       ! needed here. -dschanen 31 August 2011
-      if ( qv(i,j,k,icrm) < zero_threshold ) then
-        cloudliq(i,j,k,icrm) = cloudliq(i,j,k,icrm) + qv(i,j,k,icrm)
-        qv(i,j,k,icrm) = zero_threshold
+      if ( qv(icrm,i,j,k) < zero_threshold ) then
+        cloudliq(i,j,k,icrm) = cloudliq(i,j,k,icrm) + qv(icrm,i,j,k)
+        qv(icrm,i,j,k) = zero_threshold
         if ( cloudliq(i,j,k,icrm) < zero_threshold ) then
           if ( clubb_at_least_debug_level( 1 ) ) then
             write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &
@@ -1338,20 +1338,20 @@ do i = 1, nx
 end do ! 1.. nx
 #endif /* CLUBB_CRM */
 ! cloud liquid water
-qcl(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
+qcl(icrm,1:nx,1:ny,1:nzm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
 
 ! rain water
-if(doprecip) qpl(1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqr)
+if(doprecip) qpl(icrm,1:nx,1:ny,1:nzm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqr)
 
 ! cloud ice
 if(doicemicro) then
-   qci(1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqci)
+   qci(icrm,1:nx,1:ny,1:nzm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqci)
 
    if(dograupel) then
-      qpi(1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqs) &
+      qpi(icrm,1:nx,1:ny,1:nzm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqs) &
            + micro_field(icrm,1:nx,1:ny,1:nzm,iqg)
    else
-      qpi(1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqs)
+      qpi(icrm,1:nx,1:ny,1:nzm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqs)
    end if
 end if
 
@@ -1523,7 +1523,7 @@ real(8) function total_water(ncrms,icrm)
           tmp = tmp + micro_field(icrm,i,j,k,m)
         end do
       end do
-      total_water = total_water + tmp*adz(k,icrm)*dz(icrm)*rho(k,icrm)
+      total_water = total_water + tmp*adz(icrm,k)*dz(icrm)*rho(k,icrm)
     end do
    end if
   end do

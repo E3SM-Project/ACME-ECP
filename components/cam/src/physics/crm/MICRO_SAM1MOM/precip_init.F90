@@ -48,33 +48,33 @@ contains
     do icrm = 1 , ncrms
       do k=1,nzm
         pratio = sqrt(1.29 / rho(k,icrm))
-        rrr1=393./(tabs0(k,icrm)+120.)*(tabs0(k,icrm)/273.)**1.5
-        rrr2=(tabs0(k,icrm)/273.)**1.94*(1000./pres(k,icrm))
-        estw = 100.*esatw_crm(tabs0(k,icrm))
-        esti = 100.*esati_crm(tabs0(k,icrm))
+        rrr1=393./(tabs0(icrm,k)+120.)*(tabs0(icrm,k)/273.)**1.5
+        rrr2=(tabs0(icrm,k)/273.)**1.94*(1000./pres(k,icrm))
+        estw = 100.*esatw_crm(tabs0(icrm,k))
+        esti = 100.*esati_crm(tabs0(icrm,k))
 
         ! accretion by snow:
         coef1 = 0.25 * pi * nzeros * a_snow * gams1 * pratio/(pi * rhos * nzeros/rho(k,icrm) ) ** ((3+b_snow)/4.)
-        coef2 = exp(0.025*(tabs0(k,icrm) - 273.15))
+        coef2 = exp(0.025*(tabs0(icrm,k) - 273.15))
         accrsi(k,icrm) =  coef1 * coef2 * esicoef
         accrsc(k,icrm) =  coef1 * esccoef
         coefice(k,icrm) =  coef2
 
         ! evaporation of snow:
-        coef1  =(lsub/(tabs0(k,icrm)*rv)-1.)*lsub/(therco*rrr1*tabs0(k,icrm))
-        coef2  = rv*tabs0(k,icrm)/(diffelq*rrr2*esti)
+        coef1  =(lsub/(tabs0(icrm,k)*rv)-1.)*lsub/(therco*rrr1*tabs0(icrm,k))
+        coef2  = rv*tabs0(icrm,k)/(diffelq*rrr2*esti)
         evaps1(k,icrm)  =  0.65*4.*nzeros/sqrt(pi*rhos*nzeros)/(coef1+coef2)/sqrt(rho(k,icrm))
         evaps2(k,icrm)  =  0.49*4.*nzeros*gams2*sqrt(a_snow/(muelq*rrr1))/(pi*rhos*nzeros)**((5+b_snow)/8.) / (coef1+coef2) * rho(k,icrm)**((1+b_snow)/8.)*sqrt(pratio)
 
         ! accretion by graupel:
         coef1 = 0.25*pi*nzerog*a_grau*gamg1*pratio/(pi*rhog*nzerog/rho(k,icrm))**((3+b_grau)/4.)
-        coef2 = exp(0.025*(tabs0(k,icrm) - 273.15))
+        coef2 = exp(0.025*(tabs0(icrm,k) - 273.15))
         accrgi(k,icrm) =  coef1 * coef2 * egicoef
         accrgc(k,icrm) =  coef1 * egccoef
 
         ! evaporation of graupel:
-        coef1  =(lsub/(tabs0(k,icrm)*rv)-1.)*lsub/(therco*rrr1*tabs0(k,icrm))
-        coef2  = rv*tabs0(k,icrm)/(diffelq*rrr2*esti)
+        coef1  =(lsub/(tabs0(icrm,k)*rv)-1.)*lsub/(therco*rrr1*tabs0(icrm,k))
+        coef2  = rv*tabs0(icrm,k)/(diffelq*rrr2*esti)
         evapg1(k,icrm)  = 0.65*4.*nzerog/sqrt(pi*rhog*nzerog)/(coef1+coef2)/sqrt(rho(k,icrm))
         evapg2(k,icrm)  = 0.49*4.*nzerog*gamg2*sqrt(a_grau/(muelq*rrr1))/(pi * rhog * nzerog)**((5+b_grau)/8.) / (coef1+coef2) * rho(k,icrm)**((1+b_grau)/8.)*sqrt(pratio)
 
@@ -82,8 +82,8 @@ contains
         accrrc(k,icrm)=  0.25 * pi * nzeror * a_rain * gamr1 * pratio/(pi * rhor * nzeror / rho(k,icrm)) ** ((3+b_rain)/4.)* erccoef
 
         ! evaporation of rain:
-        coef1  =(lcond/(tabs0(k,icrm)*rv)-1.)*lcond/(therco*rrr1*tabs0(k,icrm))
-        coef2  = rv*tabs0(k,icrm)/(diffelq * rrr2 * estw)
+        coef1  =(lcond/(tabs0(icrm,k)*rv)-1.)*lcond/(therco*rrr1*tabs0(icrm,k))
+        coef2  = rv*tabs0(icrm,k)/(diffelq * rrr2 * estw)
         evapr1(k,icrm)  =  0.78 * 2. * pi * nzeror / &
         sqrt(pi * rhor * nzeror) / (coef1+coef2) / sqrt(rho(k,icrm))
         evapr2(k,icrm)  =  0.31 * 2. * pi  * nzeror * gamr2 * 0.89 * sqrt(a_rain/(muelq*rrr1))/(pi * rhor * nzeror)**((5+b_rain)/8.) / (coef1+coef2) * rho(k,icrm)**((1+b_rain)/8.)*sqrt(pratio)

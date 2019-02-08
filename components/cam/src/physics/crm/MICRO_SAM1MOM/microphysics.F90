@@ -360,13 +360,13 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            qv(i,j,k,icrm) = q(icrm,i,j,k) - qn(i,j,k,icrm)
-            omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tbgmin)*a_bg))
-            qcl(i,j,k,icrm) = qn(i,j,k,icrm)*omn
-            qci(i,j,k,icrm) = qn(i,j,k,icrm)*(1.-omn)
-            omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
-            qpl(i,j,k,icrm) = qp(icrm,i,j,k)*omp
-            qpi(i,j,k,icrm) = qp(icrm,i,j,k)*(1.-omp)
+            qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(i,j,k,icrm)
+            omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
+            qcl(icrm,i,j,k) = qn(i,j,k,icrm)*omn
+            qci(icrm,i,j,k) = qn(i,j,k,icrm)*(1.-omn)
+            omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
+            qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
+            qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
           end do
         end do
       end do
@@ -435,13 +435,13 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(i,j,k,icrm) = q(icrm,i,j,k) - qn(i,j,k,icrm)
+          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(i,j,k,icrm)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011
-          if ( qv(i,j,k,icrm) < zero_threshold ) then
-            qn(i,j,k,icrm) = qn(i,j,k,icrm) + qv(i,j,k,icrm)
-            qv(i,j,k,icrm) = zero_threshold
+          if ( qv(icrm,i,j,k) < zero_threshold ) then
+            qn(i,j,k,icrm) = qn(i,j,k,icrm) + qv(icrm,i,j,k)
+            qv(icrm,i,j,k) = zero_threshold
             if ( qn(i,j,k,icrm) < zero_threshold ) then
               if ( clubb_at_least_debug_level( 1 ) ) then
                 write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &
@@ -451,11 +451,11 @@ CONTAINS
             end if ! cloud_liq < 0
           end if ! qv < 0
 
-          qcl(i,j,k,icrm) = qn(i,j,k,icrm)
-          qci(i,j,k,icrm) = 0.0
-          omp = max(0.,min(1.,(tabs(i,j,k,icrm)-tprmin)*a_pr))
-          qpl(i,j,k,icrm) = qp(icrm,i,j,k)*omp
-          qpi(i,j,k,icrm) = qp(icrm,i,j,k)*(1.-omp)
+          qcl(icrm,i,j,k) = qn(i,j,k,icrm)
+          qci(icrm,i,j,k) = 0.0
+          omp = max(0.,min(1.,(tabs(icrm,i,j,k)-tprmin)*a_pr))
+          qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
+          qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
         end do
       end do
     end do
@@ -474,23 +474,23 @@ CONTAINS
     integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: i,j,k,ind
     real(crm_rknd), intent(in) :: qploc
-    real(crm_rknd), intent(in) :: rho(nzm,ncrms), tabs(nx, ny, nzm, ncrms)
+    real(crm_rknd), intent(in) :: rho(nzm,ncrms), tabs(ncrms,nx, ny, nzm)
     real(crm_rknd), intent(in) :: qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
 
     term_vel_qp = 0.
     if(qploc.gt.qp_threshold) then
-      omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
+      omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
       if(omp.eq.1.) then
         term_vel_qp = vrain*(rho(k,icrm)*qploc)**crain
       elseif(omp.eq.0.) then
-        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
+        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
         qgg=omg*qploc
         qss=qploc-qgg
         term_vel_qp = (omg*vgrau*(rho(k,icrm)*qgg)**cgrau &
         +(1.-omg)*vsnow*(rho(k,icrm)*qss)**csnow)
       else
-        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tgrmin)*a_gr))
+        omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
         qrr=omp*qploc
         qss=qploc-qrr
         qgg=omg*qss
@@ -527,7 +527,7 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            omega(i,j,k,icrm) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(i,j,k,icrm)-tprmin)*a_pr))
+            omega(i,j,k,icrm) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
           end do
         end do
       end do
@@ -580,9 +580,9 @@ CONTAINS
     do icrm = 1 , ncrms
       do k = 1,nzm
         rhofac(k,icrm) = sqrt(1.29/rho(k,icrm))
-        irhoadz(k,icrm) = 1./(rho(k,icrm)*adz(k,icrm)) ! Useful factor
+        irhoadz(k,icrm) = 1./(rho(k,icrm)*adz(icrm,k)) ! Useful factor
         kb = max(1,k-1)
-        wmax       = dz(icrm)*adz(kb,icrm)/dtn   ! Velocity equivalent to a cfl of 1.0.
+        wmax       = dz(icrm)*adz(icrm,kb)/dtn   ! Velocity equivalent to a cfl of 1.0.
         iwmax(k,icrm)   = 1./wmax
       enddo
     enddo
@@ -726,8 +726,8 @@ CONTAINS
                 mx(i,j,k,icrm)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mx(i,j,k,icrm))
                 mn(i,j,k,icrm)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mn(i,j,k,icrm))
                 kc=min(nzm,k+1)
-                mx(i,j,k,icrm)=rho(k,icrm)*adz(k,icrm)*(mx(i,j,k,icrm)-tmp_qp(i,j,k,icrm))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
-                mn(i,j,k,icrm)=rho(k,icrm)*adz(k,icrm)*(tmp_qp(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
+                mx(i,j,k,icrm)=rho(k,icrm)*adz(icrm,k)*(mx(i,j,k,icrm)-tmp_qp(i,j,k,icrm))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
+                mn(i,j,k,icrm)=rho(k,icrm)*adz(icrm,k)*(tmp_qp(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
               enddo
             enddo
           enddo
@@ -834,7 +834,7 @@ CONTAINS
               tmp = tmp + micro_field(icrm,i,j,k,m)
             end do
           end do
-          total_water = total_water + tmp*adz(k,icrm)*dz(icrm)*rho(k,icrm)
+          total_water = total_water + tmp*adz(icrm,k)*dz(icrm)*rho(k,icrm)
         end do
       end if
     end do

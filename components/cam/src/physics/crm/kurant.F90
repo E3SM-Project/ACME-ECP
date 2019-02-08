@@ -69,7 +69,7 @@ module kurant_mod
         do icrm = 1 , ncrms
           write(0, 5550) cfl, cfl_sgs, latitude(1,1,icrm), longitude(1,1,icrm)
           do k=1, nzm
-            write(0, 5551) k, wm(icrm,k), uhm(icrm,k), tabs(1,1,k,icrm)
+            write(0, 5551) k, wm(icrm,k), uhm(icrm,k), tabs(icrm,1,1,k)
           end do
         end do
         call task_abort()

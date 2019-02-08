@@ -25,13 +25,13 @@ contains
       do k=1,nzm
         u0(k,icrm)=0.
         v0(k,icrm)=0.
-        t01(k,icrm) = tabs0(k,icrm)
+        t01(k,icrm) = tabs0(icrm,k)
         q01(k,icrm) = q0(k,icrm)
         t0(k,icrm)=0.
-        tabs0(k,icrm)=0.
+        tabs0(icrm,k)=0.
         q0(k,icrm)=0.
-        qn0(k,icrm)=0.
-        qp0(k,icrm)=0.
+        qn0(icrm,k)=0.
+        qp0(icrm,k)=0.
         p0(k,icrm)=0.
       enddo
     enddo
@@ -56,8 +56,8 @@ contains
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            coef1 = rho(k,icrm)*dz(icrm)*adz(k,icrm)*dtfactor
-            tabs(i,j,k,icrm) = t(icrm,i,j,k)-gamaz(k,icrm)+ fac_cond * (qcl(i,j,k,icrm)+qpl(i,j,k,icrm)) + fac_sub *(qci(i,j,k,icrm) + qpi(i,j,k,icrm))
+            coef1 = rho(k,icrm)*dz(icrm)*adz(icrm,k)*dtfactor
+            tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k,icrm)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) + fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
             !$acc atomic update
             u0(k,icrm)=u0(k,icrm)+u(icrm,i,j,k)
             !$acc atomic update
@@ -67,23 +67,23 @@ contains
             !$acc atomic update
             t0(k,icrm)=t0(k,icrm)+t(icrm,i,j,k)
             !$acc atomic update
-            tabs0(k,icrm)=tabs0(k,icrm)+tabs(i,j,k,icrm)
-            tmp = qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)
+            tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
+            tmp = qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
             !$acc atomic update
             q0(k,icrm)=q0(k,icrm)+tmp
-            tmp = qcl(i,j,k,icrm) + qci(i,j,k,icrm)
+            tmp = qcl(icrm,i,j,k) + qci(icrm,i,j,k)
             !$acc atomic update
-            qn0(k,icrm) = qn0(k,icrm) + tmp
-            tmp = qpl(i,j,k,icrm) + qpi(i,j,k,icrm)
+            qn0(icrm,k) = qn0(icrm,k) + tmp
+            tmp = qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
             !$acc atomic update
-            qp0(k,icrm) = qp0(k,icrm) + tmp
-            tmp = qv(i,j,k,icrm)*coef1
+            qp0(icrm,k) = qp0(icrm,k) + tmp
+            tmp = qv(icrm,i,j,k)*coef1
             !$acc atomic update
             pw_xy(i,j,icrm) = pw_xy(i,j,icrm)+tmp
-            tmp = qcl(i,j,k,icrm)*coef1
+            tmp = qcl(icrm,i,j,k)*coef1
             !$acc atomic update
             cw_xy(i,j,icrm) = cw_xy(i,j,icrm)+tmp
-            tmp = qci(i,j,k,icrm)*coef1
+            tmp = qci(icrm,i,j,k)*coef1
             !$acc atomic update
             iw_xy(i,j,icrm) = iw_xy(i,j,icrm)+tmp
           enddo
@@ -96,10 +96,10 @@ contains
         u0(k,icrm)=u0(k,icrm)*coef
         v0(k,icrm)=v0(k,icrm)*coef
         t0(k,icrm)=t0(k,icrm)*coef
-        tabs0(k,icrm)=tabs0(k,icrm)*coef
+        tabs0(icrm,k)=tabs0(icrm,k)*coef
         q0(k,icrm)=q0(k,icrm)*coef
-        qn0(k,icrm)=qn0(k,icrm)*coef
-        qp0(k,icrm)=qp0(k,icrm)*coef
+        qn0(icrm,k)=qn0(icrm,k)*coef
+        qp0(icrm,k)=qp0(icrm,k)*coef
         p0(k,icrm)=p0(k,icrm)*coef
       enddo ! k
     enddo
@@ -120,7 +120,7 @@ contains
     !$acc parallel loop collapse(2) copyin(qn0,q0) copy(qv0) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
-        qv0(k,icrm) = q0(k,icrm) - qn0(k,icrm)
+        qv0(icrm,k) = q0(k,icrm) - qn0(icrm,k)
       enddo
     enddo
 
@@ -132,11 +132,11 @@ contains
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            coef1 = rho(k,icrm)*dz(icrm)*adz(k,icrm)*dtfactor
+            coef1 = rho(k,icrm)*dz(icrm)*adz(icrm,k)*dtfactor
             ! Saturated water vapor path with respect to water. Can be used
             ! with water vapor path (= pw) to compute column-average
             ! relative humidity.
-            tmp = qsatw_crm(tabs(i,j,k,icrm),pres(k,icrm))*coef1
+            tmp = qsatw_crm(tabs(icrm,i,j,k),pres(k,icrm))*coef1
             !$acc atomic update
             swvp_xy(i,j,icrm) = swvp_xy(i,j,icrm)+tmp
           enddo
@@ -179,17 +179,17 @@ contains
           ! FIND CLOUD TOP HEIGHT
           tmp_lwp = 0.
           do k = nzm,1,-1
-            tmp_lwp = tmp_lwp + (qcl(i,j,k,icrm)+qci(i,j,k,icrm))*rho(k,icrm)*dz(icrm)*adz(k,icrm)
+            tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(k,icrm)*dz(icrm)*adz(icrm,k)
             if (tmp_lwp.gt.0.01) then
               cloudtopheight(i,j,icrm) = z(k,icrm)
-              cloudtoptemp(i,j,icrm) = tabs(i,j,k,icrm)
+              cloudtoptemp(i,j,icrm) = tabs(icrm,i,j,k)
               cld_xy(i,j,icrm) = cld_xy(i,j,icrm) + dtfactor
               EXIT
             endif
           enddo
           ! FIND ECHO TOP HEIGHT
           do k = nzm,1,-1
-            if (qpl(i,j,k,icrm)+qpi(i,j,k,icrm).gt.1.e-6) then
+            if (qpl(icrm,i,j,k)+qpi(icrm,i,j,k).gt.1.e-6) then
               echotopheight(i,j,icrm) = z(k,icrm)
               EXIT
             endif

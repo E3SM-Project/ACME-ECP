@@ -182,7 +182,7 @@ module accelerate_crm_mod
               tmp = t(icrm,i,j,k) * coef
               !$acc atomic update
               tbaccel (k,icrm) = tbaccel (k,icrm) + tmp
-              tmp = (qcl(i,j, k, icrm) + qci(i,j, k, icrm) + qv(i,j, k, icrm)) * coef
+              tmp = (qcl(icrm,i,j, k) + qci(icrm,i,j, k) + qv(icrm,i,j, k)) * coef
               !$acc atomic update
               qtbaccel(k,icrm) = qtbaccel(k,icrm) + tmp
               if (crm_accel_uv) then
@@ -301,9 +301,9 @@ module accelerate_crm_mod
               if (qpoz(k,icrm) + qneg(k,icrm) <= 0.) then
                 ! all moisture depleted in layer
                 micro_field(icrm,i,j,k,idx_qt) = 0.
-                qv         (i,j,k,icrm    ) = 0.
-                qcl        (i,j,k,icrm    ) = 0.
-                qci        (i,j,k,icrm    ) = 0.
+                qv(icrm,i,j,k    ) = 0.
+                qcl(icrm,i,j,k    ) = 0.
+                qci(icrm,i,j,k    ) = 0.
               else
                 ! Clip qt values at 0 and remove the negative excess in each layer
                 ! proportionally from the positive qt fields in the layer
@@ -313,18 +313,18 @@ module accelerate_crm_mod
                 !    (1) attempt to satisfy purely by adjusting qv
                 !    (2) adjust qcl and qci only if needed to ensure positivity
                 if (micro_field(icrm,i,j,k,idx_qt) <= 0._rc) then
-                  qv (i,j,k,icrm) = 0.
-                  qcl(i,j,k,icrm) = 0.
-                  qci(i,j,k,icrm) = 0.
+                  qv(icrm,i,j,k) = 0.
+                  qcl(icrm,i,j,k) = 0.
+                  qci(icrm,i,j,k) = 0.
                 else
                   ! deduce qv as residual between qt - qcl - qci
-                  qt_res = micro_field(icrm,i,j,k,idx_qt) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
-                  qv(i,j,k,icrm) = max(0._rc, qt_res)
+                  qt_res = micro_field(icrm,i,j,k,idx_qt) - qcl(icrm,i,j,k) - qci(icrm,i,j,k)
+                  qv(icrm,i,j,k) = max(0._rc, qt_res)
                   if (qt_res < 0._r8) then
                     ! qv was clipped; need to reduce qcl and qci accordingly
-                    factor = 1._r8 + qt_res / (qcl(i,j,k,icrm) + qci(i,j,k,icrm))
-                    qcl(i,j,k,icrm) = qcl(i,j,k,icrm) * factor
-                    qci(i,j,k,icrm) = qci(i,j,k,icrm) * factor
+                    factor = 1._r8 + qt_res / (qcl(icrm,i,j,k) + qci(icrm,i,j,k))
+                    qcl(icrm,i,j,k) = qcl(icrm,i,j,k) * factor
+                    qci(icrm,i,j,k) = qci(icrm,i,j,k) * factor
                   endif
                 endif
               endif ! qpoz + qneg < 0.

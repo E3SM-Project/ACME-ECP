@@ -46,21 +46,21 @@ contains
             ! Initial guess for temperature assuming no cloud water/ice:
 
 
-            tabs(i,j,k,icrm) = t(icrm,i,j,k)-gamaz(k,icrm)
-            tabs1=(tabs(i,j,k,icrm)+fac1*qp(icrm,i,j,k))/(1.+fac2*qp(icrm,i,j,k))
+            tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k,icrm)
+            tabs1=(tabs(icrm,i,j,k)+fac1*qp(icrm,i,j,k))/(1.+fac2*qp(icrm,i,j,k))
 
             ! Warm cloud:
 
             if(tabs1.ge.tbgmax) then
 
-              tabs1=tabs(i,j,k,icrm)+fac_cond*qp(icrm,i,j,k)
+              tabs1=tabs(icrm,i,j,k)+fac_cond*qp(icrm,i,j,k)
               qsatt = qsatw_crm(tabs1,pres(k,icrm))
 
               ! Ice cloud:
 
             elseif(tabs1.le.tbgmin) then
 
-              tabs1=tabs(i,j,k,icrm)+fac_sub*qp(icrm,i,j,k)
+              tabs1=tabs(icrm,i,j,k)+fac_sub*qp(icrm,i,j,k)
               qsatt = qsati_crm(tabs1,pres(k,icrm))
 
               ! Mixed-phase cloud:
@@ -113,7 +113,7 @@ contains
                   lstarp=fac_cond+(1.-omp)*fac_fus
                   dlstarp=ap*fac_fus
                 endif
-                fff = tabs(i,j,k,icrm)-tabs1+lstarn*(q(icrm,i,j,k)-qsatt)+lstarp*qp(icrm,i,j,k)
+                fff = tabs(icrm,i,j,k)-tabs1+lstarn*(q(icrm,i,j,k)-qsatt)+lstarp*qp(icrm,i,j,k)
                 dfff=dlstarn*(q(icrm,i,j,k)-qsatt)+dlstarp*qp(icrm,i,j,k)-lstarn*dqsat-1.
                 dtabs=-fff/dfff
                 niter=niter+1
@@ -129,7 +129,7 @@ contains
 
             endif
 
-            tabs(i,j,k,icrm) = tabs1
+            tabs(icrm,i,j,k) = tabs1
             qp(icrm,i,j,k) = max(real(0.,crm_rknd),qp(icrm,i,j,k)) ! just in case
 
           end do
