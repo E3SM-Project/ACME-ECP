@@ -12,9 +12,9 @@ contains
     integer, intent(in) :: ncrms
     ! input
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
-    real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
-    real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
-    real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
+    real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
+    real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
     real(crm_rknd) tkh(ncrms,0:nxp1,1-YES3D:nyp1,nzm) ! eddy conductivity
     real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
@@ -123,13 +123,13 @@ contains
           do i=0,nx
             if (j >= 1) then
               ic=i+1
-              rdx5=0.5*rdx2  * grdf_x(k,icrm)
+              rdx5=0.5*rdx2  * grdf_x(icrm,k)
               tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
               flx_x(i,j,k,icrm)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
             endif
             if (i >= 1) then
               jc=j+1
-              rdy5=0.5*rdy2  * grdf_y(k,icrm)
+              rdy5=0.5*rdy2  * grdf_y(icrm,k)
               tky=rdy5*(tkh(icrm,i,j,k)+tkh(icrm,i,jc,k))
               flx_y(i,j,k,icrm)=-tky*(field(icrm,i,jc,k)-field(icrm,i,j,k))
             endif
@@ -168,7 +168,7 @@ contains
               kc=k+1
               rhoi = rhow(kc,icrm)/adzw(icrm,kc)
               rdz2=1./(dz(icrm)*dz(icrm))
-              rdz5=0.5*rdz2 * grdf_z(k,icrm)
+              rdz5=0.5*rdz2 * grdf_z(icrm,k)
               tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
               flx_z(i,j,k,icrm)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi
               !$acc atomic update

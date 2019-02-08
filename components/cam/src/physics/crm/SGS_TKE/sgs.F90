@@ -88,9 +88,9 @@ CONTAINS
     allocate( sgsadv(nz,1:nsgs_fields,ncrms)   )
     allocate( sgslsadv(nz,1:nsgs_fields,ncrms)   )
     allocate( sgsdiff(nz,1:nsgs_fields,ncrms)   )
-    allocate( grdf_x(nzm,ncrms) )
-    allocate( grdf_y(nzm,ncrms) )
-    allocate( grdf_z(nzm,ncrms) )
+    allocate( grdf_x(ncrms,nzm) )
+    allocate( grdf_y(ncrms,nzm) )
+    allocate( grdf_z(ncrms,nzm) )
     allocate( tkesbbuoy(nz,ncrms) )
     allocate( tkesbshear(nz,ncrms) )
     allocate( tkesbdiss(nz,ncrms) )
@@ -222,15 +222,15 @@ CONTAINS
 
     if(LES) then
       do k=1,nzm
-        grdf_x(k,icrm) = dx**2/(adz(k,icrm)*dz(icrm))**2
-        grdf_y(k,icrm) = dy**2/(adz(k,icrm)*dz(icrm))**2
-        grdf_z(k,icrm) = 1.
+        grdf_x(icrm,k) = dx**2/(adz(k,icrm)*dz(icrm))**2
+        grdf_y(icrm,k) = dy**2/(adz(k,icrm)*dz(icrm))**2
+        grdf_z(icrm,k) = 1.
       end do
     else
       do k=1,nzm
-        grdf_x(k,icrm) = min( real(16.,crm_rknd), dx**2/(adz(k,icrm)*dz(icrm))**2)
-        grdf_y(k,icrm) = min( real(16.,crm_rknd), dy**2/(adz(k,icrm)*dz(icrm))**2)
-        grdf_z(k,icrm) = 1.
+        grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(k,icrm)*dz(icrm))**2)
+        grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(k,icrm)*dz(icrm))**2)
+        grdf_z(icrm,k) = 1.
       end do
     end if
 
@@ -349,35 +349,35 @@ CONTAINS
     integer, intent(in) :: ncrms
     real(crm_rknd), intent(inout) :: cfl
     integer k,icrm, j, i
-    real(crm_rknd) tkhmax(nz,ncrms), tmp
+    real(crm_rknd) tkhmax(ncrms,nz), tmp
 
     !$acc enter data create(tkhmax) async(asyncid)
 
     !$acc parallel loop collapse(2) copyout(tkhmax) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzm
-        tkhmax(k,icrm) = 0.
+    do k = 1,nzm
+      do icrm = 1 , ncrms
+        tkhmax(icrm,k) = 0.
       enddo
     enddo
 
     !$acc parallel loop collapse(4) copy(tkhmax) copyin(tkh) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzm
-        do j = 1 , ny
-          do i = 1 , nx
+    do k = 1,nzm
+      do j = 1 , ny
+        do i = 1 , nx
+          do icrm = 1 , ncrms
             !$acc atomic update
-            tkhmax(k,icrm) = max(tkhmax(k,icrm),tkh(icrm,i,j,k))
+            tkhmax(icrm,k) = max(tkhmax(icrm,k),tkh(icrm,i,j,k))
           enddo
         enddo
       end do
     end do
 
     !$acc parallel loop collapse(2) private(tmp) copy(cfl) copyin(tkhmax,grdf_x,grdf_y,grdf_z,dz,adzw) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(icrm,k))**2  , &
-                   0.5*tkhmax(k,icrm)*grdf_x(k,icrm)*dt/dx**2  , &
-                   YES3D*0.5*tkhmax(k,icrm)*grdf_y(k,icrm)*dt/dy**2  )
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        tmp = max( 0.5*tkhmax(icrm,k)*grdf_z(icrm,k)*dt/(dz(icrm)*adzw(icrm,k))**2  , &
+                   0.5*tkhmax(icrm,k)*grdf_x(icrm,k)*dt/dx**2  , &
+                   YES3D*0.5*tkhmax(icrm,k)*grdf_y(icrm,k)*dt/dy**2  )
         !$acc atomic update
         cfl = max( cfl , tmp )
       end do

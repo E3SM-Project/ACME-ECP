@@ -27,9 +27,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   integer       , intent(in)                 :: dimx2_d     ! scalar dimension parameter
   integer       , intent(in)                 :: dimy1_d     ! scalar dimension parameter
   integer       , intent(in)                 :: dimy2_d     ! scalar dimension parameter
-  real(crm_rknd), intent(in), dimension(nzm,ncrms) :: grdf_x      ! grid length in x direction
-  real(crm_rknd), intent(in), dimension(nzm,ncrms) :: grdf_y      ! grid length in y direction
-  real(crm_rknd), intent(in), dimension(nzm,ncrms) :: grdf_z      ! grid length in z direction
+  real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_x      ! grid length in x direction
+  real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_y      ! grid length in y direction
+  real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_z      ! grid length in z direction
   logical       , intent(in)                 :: dosmagor    ! flag for diagnostic smagorinsky scheme
 
   real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbdiss   ! TKE dissipation
@@ -250,9 +250,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           Ce1 = Ce/0.7*0.19
           Ce2 = Ce/0.7*0.51
           !!! compute correction factors for eddy visc/cond not to acceed 3D stability
-          cx = dx**2/dt/grdf_x(k,icrm)
-          cy = dy**2/dt/grdf_y(k,icrm)
-          cz = (dz(icrm)*min(adzw(icrm,k),adzw(icrm,k+1)))**2/dt/grdf_z(k,icrm)
+          cx = dx**2/dt/grdf_x(icrm,k)
+          cy = dy**2/dt/grdf_y(icrm,k)
+          cz = (dz(icrm)*min(adzw(icrm,k),adzw(icrm,k+1)))**2/dt/grdf_z(icrm,k)
           !!! maximum value of eddy visc/cond
           tkmax = 0.09/(1./cx+1./cy+1./cz)
           buoy_sgs = 0.5*( buoy_sgs_vert(i,j,k-1,icrm) + buoy_sgs_vert(i,j,k,icrm) )

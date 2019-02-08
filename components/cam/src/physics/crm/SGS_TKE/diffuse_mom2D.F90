@@ -14,8 +14,8 @@ contains
     integer, intent(in) :: ncrms
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
     real(crm_rknd) tk(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
-    real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
-    real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
+    real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
 
     real(crm_rknd) rdx2,rdz2,rdz,rdx25,rdz25,rdx21,rdx251
     real(crm_rknd) dxz,dzx
@@ -45,8 +45,8 @@ contains
             kc=k+1
             kcu=min(kc,nzm)
             dxz=dx/(dz(icrm)*adzw(icrm,kc))
-            rdx21=rdx2 * grdf_x(k,icrm)
-            rdx251=rdx25 * grdf_x(k,icrm)
+            rdx21=rdx2 * grdf_x(icrm,k)
+            rdx251=rdx25 * grdf_x(icrm,k)
             ic=i+1
             tkx=rdx21*tk(icrm,i,j,k)
             fu(i,j,k,icrm)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
@@ -91,7 +91,7 @@ contains
         do i=1,nx
           kc=k+1
           rdz=1./dz(icrm)
-          rdz2=rdz*rdz *grdf_z(k,icrm)
+          rdz2=rdz*rdz *grdf_z(icrm,k)
           rdz25=0.25*rdz2
           dzx=dz(icrm)/dx
           iadz = 1./adz(k,icrm)
@@ -114,8 +114,8 @@ contains
     do icrm = 1 , ncrms
       do i=1,nx
         rdz=1./dz(icrm)
-        rdz2=rdz*rdz *grdf_z(k,icrm)
-        tkz=rdz2*grdf_z(nzm,icrm)*tk(icrm,i,j,nzm)
+        rdz2=rdz*rdz *grdf_z(icrm,k)
+        tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
         fw(i,j,nz,icrm)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(nzm,icrm)*rho(nzm,icrm)
         fu(i,j,1,icrm)=fluxbu(i,j,icrm) * rdz * rhow(1,icrm)
         fv(i,j,1,icrm)=fluxbv(i,j,icrm) * rdz * rhow(1,icrm)
