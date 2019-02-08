@@ -16,8 +16,8 @@ contains
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
       !$acc parallel loop copyin(vtend,utend) copy(uhl,tauy0,vhl,taux0) async(asyncid)
       do icrm = 1 , ncrms
-        uhl(icrm) = uhl(icrm) + dtn*utend(1,icrm)
-        vhl(icrm) = vhl(icrm) + dtn*vtend(1,icrm)
+        uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
+        vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
         taux0(icrm) = 0.
         tauy0(icrm) = 0.
       enddo

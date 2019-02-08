@@ -563,10 +563,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       l = plev-k+1
       uln(l,icrm) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
       vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
-      ttend(k,icrm) = (crm_input%tl(icrm,l)+gamaz(k,icrm)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
-      qtend(k,icrm) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
-      utend(k,icrm) = (uln(l,icrm)-u0(k,icrm))*idt_gl
-      vtend(k,icrm) = (vln(l,icrm)-v0(k,icrm))*idt_gl
+      ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(k,icrm)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
+      qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
+      utend(icrm,k) = (uln(l,icrm)-u0(k,icrm))*idt_gl
+      vtend(icrm,k) = (vln(l,icrm)-v0(k,icrm))*idt_gl
       ug0(k,icrm) = uln(l,icrm)
       vg0(k,icrm) = vln(l,icrm)
       tg0(k,icrm) = crm_input%tl(icrm,l)+gamaz(k,icrm)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
@@ -1559,8 +1559,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_output%qp_evp    (icrm,l) = qpevp(k,icrm)
       crm_output%qp_src    (icrm,l) = qpsrc(k,icrm)
 
-      crm_output%qt_ls     (icrm,l) = qtend(k,icrm)
-      crm_output%t_ls      (icrm,l) = ttend(k,icrm)
+      crm_output%qt_ls     (icrm,l) = qtend(icrm,k)
+      crm_output%t_ls      (icrm,l) = ttend(icrm,k)
     enddo
 
 #ifdef ECPP
