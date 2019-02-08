@@ -64,9 +64,9 @@ contains
           do i=1,nx
             kc=k+1
             ib=i-1
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fu(i,j,k,icrm)-fu(ib,j,k,icrm))
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fv(i,j,k,icrm)-fv(ib,j,k,icrm))
-            dwdt(i,j,kc,na,icrm)=dwdt(i,j,kc,na,icrm)-(fw(i,j,k,icrm)-fw(ib,j,k,icrm))
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,k,icrm)-fu(ib,j,k,icrm))
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(i,j,k,icrm)-fv(ib,j,k,icrm))
+            dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(fw(i,j,k,icrm)-fw(ib,j,k,icrm))
           enddo
         enddo
       enddo
@@ -101,9 +101,9 @@ contains
           do i=1,nx
             jb=j-1
             kc=k+1
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fu(i,j,k,icrm)-fu(i,jb,k,icrm))
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fv(i,j,k,icrm)-fv(i,jb,k,icrm))
-            dwdt(i,j,kc,na,icrm)=dwdt(i,j,kc,na,icrm)-(fw(i,j,k,icrm)-fw(i,jb,k,icrm))
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,k,icrm)-fu(i,jb,k,icrm))
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(i,j,k,icrm)-fv(i,jb,k,icrm))
+            dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(fw(i,j,k,icrm)-fw(i,jb,k,icrm))
           enddo
         enddo
       enddo
@@ -175,8 +175,8 @@ contains
           do i=1,nx
             kc=k+1
             rhoi = 1./(rho(k,icrm)*adz(k,icrm))
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fu(i,j,kc,icrm)-fu(i,j,k,icrm))*rhoi
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fv(i,j,kc,icrm)-fv(i,j,k,icrm))*rhoi
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,kc,icrm)-fu(i,j,k,icrm))*rhoi
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(i,j,kc,icrm)-fv(i,j,k,icrm))*rhoi
           enddo
         enddo
       enddo ! k
@@ -188,7 +188,7 @@ contains
         do j=1,ny
           do i=1,nx
             rhoi = 1./(rhow(k,icrm)*adzw(icrm,k))
-            dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fw(i,j,k+1,icrm)-fw(i,j,k,icrm))*rhoi
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(i,j,k+1,icrm)-fw(i,j,k,icrm))*rhoi
           enddo
         enddo
       enddo ! k

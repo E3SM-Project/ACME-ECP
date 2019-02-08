@@ -490,9 +490,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     w(icrm,:,:,nz)=0.
     wsub (:,icrm) = 0.      !used in clubb, +++mhwang
-    dudt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
-    dvdt(1:nx,1:ny,1:nzm,1:3,icrm) = 0.
-    dwdt(1:nx,1:ny,1:nz,1:3,icrm) = 0.
+    dudt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
+    dvdt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
+    dwdt(icrm,1:nx,1:ny,1:nz,1:3) = 0.
     tke(icrm,1:nx,1:ny,1:nzm) = 0.
     tk(icrm,1:nx,1:ny,1:nzm) = 0.
     tkh(icrm,1:nx,1:ny,1:nzm) = 0.

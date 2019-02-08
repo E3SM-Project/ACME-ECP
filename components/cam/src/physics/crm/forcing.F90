@@ -42,8 +42,8 @@ contains
               !$acc atomic update
               qpoz(k,icrm) = qpoz(k,icrm) + micro_field(icrm,i,j,k,index_water_vapor)
             end if
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm) + utend(k,icrm)
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm) + vtend(k,icrm)
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na) + utend(k,icrm)
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na) + vtend(k,icrm)
           end do
         end do
       end do
