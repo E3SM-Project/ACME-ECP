@@ -87,7 +87,7 @@ contains
       if(rank.gt.nsubdomains-nsubdomains_x-1) then
         !$acc parallel loop collapse(3) copy(field) async(asyncid)
         do k=1,nzm
-          do i=1,ny
+          do i=1,nx
             do icrm = 1 , ncrms
               field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
             enddo
