@@ -22,9 +22,9 @@ contains
 
     integer i,j,k,ic,ib,kc,kcu,icrm
     real(crm_rknd) tkx, tkz, rhoi, iadzw, iadz
-    real(crm_rknd) fu(0:nx,1,nz,ncrms)
-    real(crm_rknd) fv(0:nx,1,nz,ncrms)
-    real(crm_rknd) fw(0:nx,1,nz,ncrms)
+    real(crm_rknd) fu(ncrms,0:nx,1,nz)
+    real(crm_rknd) fv(ncrms,0:nx,1,nz)
+    real(crm_rknd) fw(ncrms,0:nx,1,nz)
     integer :: numgangs  !For working around PGI bugs where PGI did not allocate enough gangs
 
     !$acc enter data create(fu,fv,fw) async(asyncid)
@@ -38,10 +38,10 @@ contains
       !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
       !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(w,v,grdf_x,u,dz,tk,adzw) copy(fv,fu,fw) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
+      do k=1,nzm
+        do i=0,nx
           !$acc loop vector
-          do i=0,nx
+          do icrm = 1 , ncrms
             kc=k+1
             kcu=min(kc,nzm)
             dxz=dx/(dz(icrm)*adzw(icrm,kc))
@@ -49,25 +49,25 @@ contains
             rdx251=rdx25 * grdf_x(icrm,k)
             ic=i+1
             tkx=rdx21*tk(icrm,i,j,k)
-            fu(i,j,k,icrm)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
-            fv(i,j,k,icrm)=-tkx*(v(icrm,ic,j,k)-v(icrm,i,j,k))
+            fu(icrm,i,j,k)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
+            fv(icrm,i,j,k)=-tkx*(v(icrm,ic,j,k)-v(icrm,i,j,k))
             tkx=rdx251*(tk(icrm,i,j,k)+tk(icrm,ic,j,k)+tk(icrm,i,j,kcu)+tk(icrm,ic,j,kcu))
-            fw(i,j,k,icrm)=-tkx*(w(icrm,ic,j,kc)-w(icrm,i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz)
+            fw(icrm,i,j,k)=-tkx*(w(icrm,ic,j,kc)-w(icrm,i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz)
           end do
         end do
       end do
       !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
       !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
+      do k=1,nzm
+        do i=1,nx
           !$acc loop vector
-          do i=1,nx
+          do icrm = 1 , ncrms
             kc=k+1
             ib=i-1
-            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,k,icrm)-fu(ib,j,k,icrm))
-            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(i,j,k,icrm)-fv(ib,j,k,icrm))
-            dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(fw(i,j,k,icrm)-fw(ib,j,k,icrm))
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(icrm,i,j,k)-fu(icrm,ib,j,k))
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(icrm,i,j,k)-fv(icrm,ib,j,k))
+            dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(fw(icrm,i,j,k)-fw(icrm,ib,j,k))
           end do
         end do
       end do
@@ -76,19 +76,19 @@ contains
     !-------------------------
 
     !$acc parallel loop collapse(2) copy(uwsb,vwsb) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        uwsb(k,icrm)=0.
-        vwsb(k,icrm)=0.
+    do k = 1 , nzm
+      do icrm = 1 , ncrms
+        uwsb(icrm,k)=0.
+        vwsb(icrm,k)=0.
       enddo
     enddo
 
     !For working around PGI bugs where PGI did not allocate enough gangs
     numgangs = ceiling( ncrms*(nzm-1)*nx/128. )
     !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) copyin(u,adzw,adz,w,grdf_z,rhow,tk,rho,dz,v) copy(fw,vwsb,fv,uwsb,fu) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm-1
-        do i=1,nx
+    do k=1,nzm-1
+      do i=1,nx
+        do icrm = 1 , ncrms
           kc=k+1
           rdz=1./dz(icrm)
           rdz2=rdz*rdz *grdf_z(icrm,k)
@@ -98,54 +98,54 @@ contains
           iadzw= 1./adzw(icrm,kc)
           ib=i-1
           tkz=rdz2*tk(icrm,i,j,k)
-          fw(i,j,kc,icrm)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(icrm,k)*iadz
+          fw(icrm,i,j,kc)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(icrm,k)*iadz
           tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,j,kc)+tk(icrm,ib,j,kc))
-          fu(i,j,kc,icrm)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(icrm,kc)
-          fv(i,j,kc,icrm)=-tkz*(v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw*rhow(icrm,kc)
+          fu(icrm,i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(icrm,kc)
+          fv(icrm,i,j,kc)=-tkz*(v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw*rhow(icrm,kc)
           !$acc atomic update
-          uwsb(kc,icrm)=uwsb(kc,icrm)+fu(i,j,kc,icrm)
+          uwsb(icrm,kc)=uwsb(icrm,kc)+fu(icrm,i,j,kc)
           !$acc atomic update
-          vwsb(kc,icrm)=vwsb(kc,icrm)+fv(i,j,kc,icrm)
+          vwsb(icrm,kc)=vwsb(icrm,kc)+fv(icrm,i,j,kc)
         end do
       end do
     end do
 
     !$acc parallel loop collapse(2) copyin(fluxtu,fluxbv,fluxbu,fluxtv,rho,dz,grdf_z,w,rhow,adz,tk) copy(uwsb,fu,fv,vwsb,fw) async(asyncid)
-    do icrm = 1 , ncrms
-      do i=1,nx
+    do i=1,nx
+      do icrm = 1 , ncrms
         rdz=1./dz(icrm)
         rdz2=rdz*rdz *grdf_z(icrm,k)
         tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
-        fw(i,j,nz,icrm)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(icrm,nzm)
-        fu(i,j,1,icrm)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
-        fv(i,j,1,icrm)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
-        fu(i,j,nz,icrm)=fluxtu(i,j,icrm) * rdz * rhow(icrm,nz)
-        fv(i,j,nz,icrm)=fluxtv(i,j,icrm) * rdz * rhow(icrm,nz)
+        fw(icrm,i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(icrm,nzm)
+        fu(icrm,i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
+        fv(icrm,i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
+        fu(icrm,i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(icrm,nz)
+        fv(icrm,i,j,nz)=fluxtv(icrm,i,j) * rdz * rhow(icrm,nz)
         !$acc atomic update
-        uwsb(1,icrm) = uwsb(1,icrm) + fu(i,j,1,icrm)
+        uwsb(icrm,1) = uwsb(icrm,1) + fu(icrm,i,j,1)
         !$acc atomic update
-        vwsb(1,icrm) = vwsb(1,icrm) + fv(i,j,1,icrm)
+        vwsb(icrm,1) = vwsb(icrm,1) + fv(icrm,i,j,1)
       end do
     end do
 
     !$acc parallel loop collapse(3) copyin(fu,adz,rho,fv) copy(dudt,dvdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do i=1,nx
+    do k=1,nzm
+      do i=1,nx
+        do icrm = 1 , ncrms
           kc=k+1
           rhoi = 1./(rho(icrm,k)*adz(icrm,k))
-          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(i,j,kc,icrm)-fu(i,j,k,icrm))*rhoi
-          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(i,j,kc,icrm)-fv(i,j,k,icrm))*rhoi
+          dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(icrm,i,j,kc)-fu(icrm,i,j,k))*rhoi
+          dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(icrm,i,j,kc)-fv(icrm,i,j,k))*rhoi
         end do
       end do ! k
     end do ! k
 
     !$acc parallel loop collapse(3) copyin(rhow,fw,adzw) copy(dwdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=2,nzm
-        do i=1,nx
+    do k=2,nzm
+      do i=1,nx
+        do icrm = 1 , ncrms
           rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
-          dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(i,j,k+1,icrm)-fw(i,j,k,icrm))*rhoi
+          dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(icrm,i,j,k+1)-fw(icrm,i,j,k))*rhoi
         end do
       end do ! k
     end do ! k
