@@ -63,7 +63,7 @@ contains
             !$acc atomic update
             v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
             !$acc atomic update
-            p0(k,icrm)=p0(k,icrm)+p(i,j,k,icrm)
+            p0(k,icrm)=p0(k,icrm)+p(icrm,i,j,k)
             !$acc atomic update
             t0(k,icrm)=t0(k,icrm)+t(icrm,i,j,k)
             !$acc atomic update
@@ -149,7 +149,7 @@ contains
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
-          psfc_xy(i,j,icrm) = psfc_xy(i,j,icrm) + (100.*pres(1,icrm) + p(i,j,1,icrm))*dtfactor
+          psfc_xy(i,j,icrm) = psfc_xy(i,j,icrm) + (100.*pres(1,icrm) + p(icrm,i,j,1))*dtfactor
           ! 850 mbar horizontal winds
           u850_xy(i,j,icrm) = u850_xy(i,j,icrm) + u(icrm,i,j,k850(icrm))*dtfactor
           v850_xy(i,j,icrm) = v850_xy(i,j,icrm) + v(icrm,i,j,k850(icrm))*dtfactor

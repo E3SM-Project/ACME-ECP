@@ -26,9 +26,9 @@ contains
             rdz = 1./(dz(icrm)*adzw(icrm,k))
             jb=j-YES3D
             ib=i-1
-            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx
-            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(p(i,j,k,icrm)-p(i,jb,k,icrm))*rdy
-            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(p(i,j,k,icrm)-p(i,j,kb,icrm))*rdz
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,ib,j,k))*rdx
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,i,jb,k))*rdy
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,i,j,kb))*rdz
           end do ! i
         end do ! j
       end do ! k
@@ -39,7 +39,7 @@ contains
       do k=1,nzm
         do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
           do i=0,nx
-            p(i,j,k,icrm)=p(i,j,k,icrm)*rho(icrm,k)  ! convert p'/rho to p'
+            p(icrm,i,j,k)=p(icrm,i,j,k)*rho(icrm,k)  ! convert p'/rho to p'
           end do
         end do
       end do

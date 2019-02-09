@@ -193,7 +193,7 @@ contains
     allocate( v(ncrms,dimx1_v:dimx2_v,dimy1_v:dimy2_v,nzm)  )
     allocate( w(ncrms,dimx1_w:dimx2_w,dimy1_w:dimy2_w,nz )  )
     allocate( t(ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm)  )
-    allocate( p       (0:nx, (1-YES3D):ny, nzm, ncrms)      )
+    allocate( p       (ncrms,0:nx, (1-YES3D):ny, nzm)      )
     allocate( tabs(ncrms,nx, ny, nzm)                  )
     allocate( qv(ncrms,nx, ny, nzm)                 )
     allocate( qcl(ncrms,nx, ny, nzm)                 )
