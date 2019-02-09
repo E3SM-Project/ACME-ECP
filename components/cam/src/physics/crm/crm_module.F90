@@ -591,19 +591,19 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(:, :,icrm) = crm_input%fluxu00(icrm)/rhow(1,icrm)
-      fluxbv(:, :,icrm) = crm_input%fluxv00(icrm)/rhow(1,icrm)
+      fluxbu(icrm,:, :) = crm_input%fluxu00(icrm)/rhow(1,icrm)
+      fluxbv(icrm,:, :) = crm_input%fluxv00(icrm)/rhow(1,icrm)
       fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1,icrm)
       fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1,icrm)
     else
-      fluxbu(:, :,icrm) = 0.
-      fluxbv(:, :,icrm) = 0.
+      fluxbu(icrm,:, :) = 0.
+      fluxbv(icrm,:, :) = 0.
       fluxbt(:, :,icrm) = 0.
       fluxbq(:, :,icrm) = 0.
     endif
 #else
-    fluxbu(:,:,icrm)=0.
-    fluxbv(:,:,icrm)=0.
+    fluxbu(icrm,:,:)=0.
+    fluxbv(icrm,:,:)=0.
     fluxbt(:,:,icrm)=0.
     fluxbq(:,:,icrm)=0.
 #endif /* CLUBB_CRM */

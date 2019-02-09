@@ -117,8 +117,8 @@ contains
         rdz2=rdz*rdz *grdf_z(icrm,k)
         tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
         fw(i,j,nz,icrm)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(icrm,nzm)
-        fu(i,j,1,icrm)=fluxbu(i,j,icrm) * rdz * rhow(1,icrm)
-        fv(i,j,1,icrm)=fluxbv(i,j,icrm) * rdz * rhow(1,icrm)
+        fu(i,j,1,icrm)=fluxbu(icrm,i,j) * rdz * rhow(1,icrm)
+        fv(i,j,1,icrm)=fluxbv(icrm,i,j) * rdz * rhow(1,icrm)
         fu(i,j,nz,icrm)=fluxtu(i,j,icrm) * rdz * rhow(nz,icrm)
         fv(i,j,nz,icrm)=fluxtv(i,j,icrm) * rdz * rhow(nz,icrm)
         !$acc atomic update
