@@ -705,8 +705,8 @@ if(dostatis) then ! initialize arrays for statistics
    mfrac(:,:,icrm) = 0.
    mtend(:,:,icrm) = 0.
    trtau(:,:,icrm) = 0.
-!   qpfall(:,icrm)=0.     ! in SPCAM, done in crm.F90
-   tlat(:,icrm) = 0.
+!   qpfall(icrm,:)=0.     ! in SPCAM, done in crm.F90
+   tlat(icrm,:) = 0.
    tmtend3d(:,:,:,icrm) = 0.
 end if
 stend(:,:,icrm) = 0.
@@ -1031,7 +1031,7 @@ do j = 1,ny
 
          ! take care of surface precipitation
          precsfc(icrm,i,j) = precsfc(icrm,i,j) + sfcpcp/dz(icrm)
-         prec_xy(i,j,icrm) = prec_xy(i,j,icrm) + sfcpcp/dtn/dz(icrm)
+         prec_xy(icrm,i,j) = prec_xy(icrm,i,j) + sfcpcp/dtn/dz(icrm)
 !+++mhwang
          sfcpcp2D(i,j,icrm) = sfcpcp/dtn/dz(icrm)
 !---mhwang
@@ -1151,10 +1151,10 @@ do j = 1,ny
             end if
          end do
 
-         tlat(1:nzm,icrm) = tlat(1:nzm,icrm) &
+         tlat(icrm,1:nzm) = tlat(icrm,1:nzm) &
               - dtn*fac_cond*(stendqcl+stendqr) &
               - dtn*fac_sub*(stendqci+stendqs+stendqg)
-         qpfall(1:nzm,icrm) = qpfall(1:nzm,icrm) + dtn*(stendqr+stendqs+stendqg)
+         qpfall(icrm,1:nzm) = qpfall(icrm,1:nzm) + dtn*(stendqr+stendqs+stendqg)
 
          qpsrc(1:nzm,icrm) = qpsrc(1:nzm,icrm) + dtn*(mtendqr+mtendqs+mtendqg)
          qpevp(1:nzm,icrm) = 0.0
@@ -1201,7 +1201,7 @@ do k = 1,nzm
    tmpc = tmpc + stend(m,iqv,icrm)*rho(icrm,m)*dz(icrm)*adz(icrm,m)  !bloss/qt: iqcl --> iqv
    mksed(m,iqv,icrm) = tmpc
 end do
-precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqv,icrm)*dtn/dz(icrm)
+precflux(icrm,1:nzm) = precflux(icrm,1:nzm) - mksed(:,iqv,icrm)*dtn/dz(icrm)
 
 if(doprecip) then
    tmpr = 0.
@@ -1210,7 +1210,7 @@ if(doprecip) then
       tmpr = tmpr + stend(m,iqr,icrm)*rho(icrm,m)*dz(icrm)*adz(icrm,m)
       mksed(m,iqr,icrm) = tmpr
    end do
-   precflux(1:nzm,icrm) = precflux(1:nzm,icrm) - mksed(:,iqr,icrm)*dtn/dz(icrm)
+   precflux(icrm,1:nzm) = precflux(icrm,1:nzm) - mksed(:,iqr,icrm)*dtn/dz(icrm)
 end if
 
 if(doicemicro) then
@@ -1242,14 +1242,14 @@ if(doicemicro) then
    end do
 #ifdef CLUBB_CRM /* Bug fix -dschanen 9 Mar 2012 */
    if ( dograupel ) then
-     precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
+     precflux(icrm,1:nzm) = precflux(icrm,1:nzm) &
           - (mksed(:,iqci,icrm) + mksed(:,iqs,icrm) + mksed(:,iqg,icrm))*dtn/dz(icrm)
    else
-     precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
+     precflux(icrm,1:nzm) = precflux(icrm,1:nzm) &
           - (mksed(:,iqci,icrm) + mksed(:,iqs,icrm))*dtn/dz(icrm)
    end if
 #else
-   precflux(1:nzm,icrm) = precflux(1:nzm,icrm) &
+   precflux(icrm,1:nzm) = precflux(icrm,1:nzm) &
         - (mksed(:,iqci,icrm) + mksed(:,iqs,icrm) + mksed(:,iqg,icrm))*dtn/dz(icrm)
 #endif
 end if
