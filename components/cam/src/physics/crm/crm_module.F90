@@ -361,8 +361,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     fcor(icrm)= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
     fcorz(icrm) = sqrt(4.*(2*pi/(3600.*24.))**2-fcor(icrm)**2)
-    fcory(:,icrm) = fcor(icrm)
-    fcorzy(:,icrm) = fcorz(icrm)
+    fcory(icrm,:) = fcor(icrm)
+    fcorzy(icrm,:) = fcorz(icrm)
     do j=1,ny
       do i=1,nx
         latitude (i,j,icrm) = latitude0(icrm)
@@ -567,8 +567,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
       utend(icrm,k) = (uln(l,icrm)-u0(icrm,k))*idt_gl
       vtend(icrm,k) = (vln(l,icrm)-v0(icrm,k))*idt_gl
-      ug0(k,icrm) = uln(l,icrm)
-      vg0(k,icrm) = vln(l,icrm)
+      ug0(icrm,k) = uln(l,icrm)
+      vg0(icrm,k) = vln(l,icrm)
       tg0(k,icrm) = crm_input%tl(icrm,l)+gamaz(k,icrm)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
       qg0(k,icrm) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
 
