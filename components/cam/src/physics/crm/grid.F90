@@ -175,7 +175,7 @@ contains
     allocate( z(ncrms,nz)       )
     allocate( pres(nzm,ncrms)   )
     allocate( zi(nz,ncrms)      )
-    allocate( presi(nz,ncrms)   )
+    allocate( presi(ncrms,nz)   )
     allocate( adz(ncrms,nzm)    )
     allocate( adzw(ncrms,nz)    )
     allocate( dt3(3)      )

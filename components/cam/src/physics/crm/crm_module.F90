@@ -381,14 +381,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       z(icrm,k) = crm_input%zmid(icrm,plev-k+1) - crm_input%zint(icrm,plev+1)
       zi(k,icrm) = crm_input%zint(icrm,plev-k+2)- crm_input%zint(icrm,plev+1)
       pres(k,icrm) = crm_input%pmid(icrm,plev-k+1)/100.
-      presi(k,icrm) = crm_input%pint(icrm,plev-k+2)/100.
+      presi(icrm,k) = crm_input%pint(icrm,plev-k+2)/100.
       prespot(k,icrm)=(1000./pres(k,icrm))**(rgas/cp)
       bet(icrm,k) = ggr/crm_input%tl(icrm,plev-k+1)
       gamaz(k,icrm)=ggr/cp*z(icrm,k)
     end do ! k
    ! zi(nz,icrm) =  crm_input%zint(plev-nz+2)
     zi(nz,icrm) = crm_input%zint(icrm,plev-nz+2)-crm_input%zint(icrm,plev+1) !+++mhwang, 2012-02-04
-    presi(nz,icrm) = crm_input%pint(icrm, plev-nz+2)/100.
+    presi(icrm,nz) = crm_input%pint(icrm, plev-nz+2)/100.
 
     dz(icrm) = 0.5*(z(icrm,1)+z(icrm,2))
     do k=2,nzm
@@ -510,8 +510,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     colprec=0
     colprecs=0
     do k=1,nzm
-      u0(k,icrm)=0.
-      v0(k,icrm)=0.
+      u0(icrm,k)=0.
+      v0(icrm,k)=0.
       t0(k,icrm)=0.
       t00(k,icrm)=0.
       tabs0(icrm,k)=0.
@@ -529,8 +529,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                     -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
           colprec=colprec+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
           colprecs=colprecs+qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
-          u0(k,icrm)=u0(k,icrm)+u(icrm,i,j,k)
-          v0(k,icrm)=v0(k,icrm)+v(icrm,i,j,k)
+          u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
+          v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
           t0(k,icrm)=t0(k,icrm)+t(icrm,i,j,k)
           t00(k,icrm)=t00(k,icrm)+t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
           tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
@@ -542,8 +542,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         enddo
       enddo
 
-      u0(k,icrm) = u0(k,icrm) * factor_xy
-      v0(k,icrm) = v0(k,icrm) * factor_xy
+      u0(icrm,k) = u0(icrm,k) * factor_xy
+      v0(icrm,k) = v0(icrm,k) * factor_xy
       t0(k,icrm) = t0(k,icrm) * factor_xy
       t00(k,icrm) = t00(k,icrm) * factor_xy
       tabs0(icrm,k) = tabs0(icrm,k) * factor_xy
@@ -565,8 +565,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(k,icrm)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
-      utend(icrm,k) = (uln(l,icrm)-u0(k,icrm))*idt_gl
-      vtend(icrm,k) = (vln(l,icrm)-v0(k,icrm))*idt_gl
+      utend(icrm,k) = (uln(l,icrm)-u0(icrm,k))*idt_gl
+      vtend(icrm,k) = (vln(l,icrm)-v0(icrm,k))*idt_gl
       ug0(k,icrm) = uln(l,icrm)
       vg0(k,icrm) = vln(l,icrm)
       tg0(k,icrm) = crm_input%tl(icrm,l)+gamaz(k,icrm)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
@@ -574,8 +574,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     end do ! k
 
-    uhl(icrm) = u0(1,icrm)
-    vhl(icrm) = v0(1,icrm)
+    uhl(icrm) = u0(icrm,1)
+    vhl(icrm) = v0(icrm,1)
 
 ! estimate roughness length assuming logarithmic profile of velocity near the surface:
 
@@ -1504,8 +1504,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       w2z = 0.
       do j=1,ny
         do i=1,nx
-          u2z = u2z+(u(icrm,i,j,k)-u0(k,icrm))**2
-          v2z = v2z+(v(icrm,i,j,k)-v0(k,icrm))**2
+          u2z = u2z+(u(icrm,i,j,k)-u0(icrm,k))**2
+          v2z = v2z+(v(icrm,i,j,k)-v0(icrm,k))**2
           w2z = w2z+0.5*(w(icrm,i,j,k+1)**2+w(icrm,i,j,k)**2)
         enddo
       enddo

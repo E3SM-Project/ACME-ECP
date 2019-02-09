@@ -208,8 +208,8 @@ module accelerate_crm_mod
           ttend_acc(k,icrm) = tbaccel (k,icrm) - t0(k,icrm)
           qtend_acc(k,icrm) = qtbaccel(k,icrm) - q0(k,icrm)
           if (crm_accel_uv) then
-            utend_acc(k,icrm) = ubaccel(k,icrm) - u0(k,icrm)
-            vtend_acc(k,icrm) = vbaccel(k,icrm) - v0(k,icrm)
+            utend_acc(k,icrm) = ubaccel(k,icrm) - u0(icrm,k)
+            vtend_acc(k,icrm) = vbaccel(k,icrm) - v0(icrm,k)
           endif
           if (ttend_acc(k,icrm) > ttend_threshold) then
             ceaseflag = .true.
