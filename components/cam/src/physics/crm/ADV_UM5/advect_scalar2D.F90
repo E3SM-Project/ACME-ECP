@@ -72,7 +72,7 @@ contains
       cw(:,:,nz) = 0.
       cw(:,:,1) = 0.
       do k = 2, nzm
-        irhow(k) = 1. / ( rhow(k,icrm) * adz(icrm,k) )
+        irhow(k) = 1. / ( rhow(icrm,k) * adz(icrm,k) )
         do i = -3, nxp4
           cw(i,j,k) = w(icrm,i,j,k) * irhow(k)
         enddo

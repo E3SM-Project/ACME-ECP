@@ -22,13 +22,13 @@ contains
     if(RUN3D) then
 
       !$acc parallel loop collapse(4) copyin(rhow,adzw,u,v,w,adz,rho) copy(dudt,dvdt,dwdt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k = 1,nzm
-          do j = 1, ny
-            do i = 1, nx
+      do k = 1,nzm
+        do j = 1, ny
+          do i = 1, nx
+            do icrm = 1 , ncrms
               kc= k+1
               kcu =min(kc, nzm)
-              irho = 1./(rhow(kc,icrm)*adzw(icrm,kc))
+              irho = 1./(rhow(icrm,kc)*adzw(icrm,kc))
               jb = j-1
               ic = i+1
               fu1 = dx25*(u(icrm,ic-1,j,k)+u(icrm,i-1,j,k))*(u(icrm,i-1,j,k)+u(icrm,ic-1,j,k))
@@ -61,12 +61,12 @@ contains
 
       j=1
       !$acc parallel loop collapse(3) copy(dudt,dvdt,dwdt) copyin(w,v,u,adzw,rhow,rho,adz) async(asyncid)
-      do icrm = 1 , ncrms
-        do k = 1,nzm
-          do i = 1, nx
+      do k = 1,nzm
+        do i = 1, nx
+          do icrm = 1 , ncrms
             kc= k+1
             kcu =min(kc, nzm)
-            irho = 1./(rhow(kc,icrm)*adzw(icrm,kc))
+            irho = 1./(rhow(icrm,kc)*adzw(icrm,kc))
             ic = i+1
             fu1 = dx25*(u(icrm,ic-1,j,k)+u(icrm,i-1,j,k))*(u(icrm,i-1,j,k)+u(icrm,ic-1,j,k))
             fu2 = dx25*(u(icrm,ic  ,j,k)+u(icrm,i  ,j,k))*(u(icrm,i  ,j,k)+u(icrm,ic  ,j,k))

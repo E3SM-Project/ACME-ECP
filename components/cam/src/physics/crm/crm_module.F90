@@ -406,20 +406,20 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       rho(icrm,k) = crm_input%pdel(icrm,plev-k+1)/ggr/(adz(icrm,k)*dz(icrm))
     end do
     do k=2,nzm
-    ! rhow(k,icrm) = 0.5*(rho(icrm,k)+rho(icrm,k-1))
+    ! rhow(icrm,k) = 0.5*(rho(icrm,k)+rho(icrm,k-1))
     !+++mhwang fix the rhow bug (rhow needes to be consistent with crm_input%pmid)
     !2012-02-04 Minghuai Wang (minghuai.wang@pnnl.gov)
-      rhow(k,icrm) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
+      rhow(icrm,k) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
     end do
-    rhow(1,icrm) = 2.*rhow(2,icrm) - rhow(3,icrm)
+    rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
 #ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
-    if (  2.*rhow(nzm,icrm) - rhow(nzm-1,icrm) > 0. ) then
-       rhow(nz,icrm)= 2.*rhow(nzm,icrm) - rhow(nzm-1,icrm)
+    if (  2.*rhow(icrm,nzm) - rhow(icrm,nzm-1) > 0. ) then
+       rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
     else
-       rhow(nz,icrm)= sqrt( rhow(nzm,icrm) )
+       rhow(icrm,nz)= sqrt( rhow(icrm,nzm) )
     endif
 #else
-    rhow(nz,icrm)= 2.*rhow(nzm,icrm) - rhow(nzm-1,icrm)
+    rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
 #endif /*CLUBB_CRM*/
 
     !  Initialize CRM fields:
@@ -591,10 +591,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
 #ifdef CLUBB_CRM
     if(doclubb) then
-      fluxbu(icrm,:, :) = crm_input%fluxu00(icrm)/rhow(1,icrm)
-      fluxbv(icrm,:, :) = crm_input%fluxv00(icrm)/rhow(1,icrm)
-      fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1,icrm)
-      fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1,icrm)
+      fluxbu(icrm,:, :) = crm_input%fluxu00(icrm)/rhow(icrm,1)
+      fluxbv(icrm,:, :) = crm_input%fluxv00(icrm)/rhow(icrm,1)
+      fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(icrm,1)
+      fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(icrm,1)
     else
       fluxbu(icrm,:, :) = 0.
       fluxbv(icrm,:, :) = 0.
@@ -689,9 +689,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output%qt_ls     (icrm,:) = 0.
     crm_output%t_ls      (icrm,:) = 0.
 
-    uwle(:,icrm)     = 0.
+    uwle(icrm,:)     = 0.
     uwsb(:,icrm)     = 0.
-    vwle(:,icrm)     = 0.
+    vwle(icrm,:)     = 0.
     vwsb(:,icrm)     = 0.
     qpsrc(:,icrm)    = 0.
     qpevp(:,icrm)    = 0.
@@ -770,7 +770,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     if ( doclubb .or. doclubbnoninter ) then
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                            latitude(:,:,icrm), longitude(:,:,icrm), z(icrm,:), rho(icrm,:), zi(:,icrm), rhow(:,icrm), tv0(:,icrm), tke(icrm,:,:,:) )
+                            latitude(:,:,icrm), longitude(:,:,icrm), z(icrm,:), rho(icrm,:), zi(:,icrm), rhow(icrm,:), tv0(:,icrm), tke(icrm,:,:,:) )
     endif
 #endif /* CLUBB_CRM */
   enddo
@@ -1105,7 +1105,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
               kx=max(1, k-1)
               qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx,icrm))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                tmp = rhow(k,icrm)*w(icrm,i,j,k)
+                tmp = rhow(icrm,k)*w(icrm,i,j,k)
                 !$acc atomic update
                 mui_crm(icrm,l) = mui_crm(icrm,l)+tmp
               endif
@@ -1113,11 +1113,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
               kx=min(k+1, nzm)
               qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx,icrm))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
-                tmp = rhow(k,icrm)*w(icrm,i,j,k)
+                tmp = rhow(icrm,k)*w(icrm,i,j,k)
                 !$acc atomic update
                 mdi_crm(icrm,l) = mdi_crm(icrm,l)+tmp
               else if(qpl(icrm,i,j,kx)+qpi(icrm,i,j,kx).gt.1.0e-4) then
-                tmp = rhow(k,icrm)*w(icrm,i,j,k)
+                tmp = rhow(icrm,k)*w(icrm,i,j,k)
                 !$acc atomic update
                 mdi_crm(icrm,l) = mdi_crm(icrm,l)+tmp
               endif
@@ -1515,11 +1515,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       ! time step.
       !---mhwang
 
-      tmp1 = dz(icrm)/rhow(k,icrm)
+      tmp1 = dz(icrm)/rhow(icrm,k)
       tmp2 = tmp1/dtn                        ! dtn is calculated inside of the icyc loop.
                                              ! It seems wrong to use it here ???? +++mhwang
-      mkwsb (k,:,icrm) = mkwsb (k,:,icrm) * tmp1*rhow(k,icrm) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
-      mkwle (k,:,icrm) = mkwle (k,:,icrm) * tmp2*rhow(k,icrm) * factor_xy/nstop     !kg/m3   --> kg/m2/s
+      mkwsb (k,:,icrm) = mkwsb (k,:,icrm) * tmp1*rhow(icrm,k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
+      mkwle (k,:,icrm) = mkwle (k,:,icrm) * tmp2*rhow(icrm,k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
       mkadv (k,:,icrm) = mkadv (k,:,icrm) * factor_xy*icrm_run_time     ! kg/kg  --> kg/kg/s
       mkdiff(k,:,icrm) = mkdiff(k,:,icrm) * factor_xy*icrm_run_time   ! kg/kg  --> kg/kg/s
 
@@ -1530,8 +1530,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz(icrm)/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
-      crm_output%flux_u    (icrm,l) = (uwle(k,icrm) + uwsb(k,icrm))*tmp1*factor_xy/nstop
-      crm_output%flux_v    (icrm,l) = (vwle(k,icrm) + vwsb(k,icrm))*tmp1*factor_xy/nstop
+      crm_output%flux_u    (icrm,l) = (uwle(icrm,k) + uwsb(k,icrm))*tmp1*factor_xy/nstop
+      crm_output%flux_v    (icrm,l) = (vwle(icrm,k) + vwsb(k,icrm))*tmp1*factor_xy/nstop
 #ifdef sam1mom
       crm_output%flux_qt   (icrm,l) = mkwle(k,1,icrm) + mkwsb(k,1,icrm)
       crm_output%fluxsgs_qt(icrm,l) = mkwsb(k,1,icrm)

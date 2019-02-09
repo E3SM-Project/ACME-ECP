@@ -20,7 +20,7 @@ contains
     real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
     real(crm_rknd) rho(ncrms,nzm)
-    real(crm_rknd) rhow(nz,ncrms)
+    real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(nz,ncrms)
     ! local
     real(crm_rknd) flx_x(0:nx,0:ny,0:nzm,ncrms), flx_y(0:nx,0:ny,0:nzm,ncrms), flx_z(0:nx,0:ny,0:nzm,ncrms)
@@ -166,7 +166,7 @@ contains
           do i=1,nx
             if (k <= nzm-1) then
               kc=k+1
-              rhoi = rhow(kc,icrm)/adzw(icrm,kc)
+              rhoi = rhow(icrm,kc)/adzw(icrm,kc)
               rdz2=1./(dz(icrm)*dz(icrm))
               rdz5=0.5*rdz2 * grdf_z(icrm,k)
               tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
@@ -176,8 +176,8 @@ contains
             elseif (k == nzm) then
               tmp=1./adzw(icrm,nz)
               rdz=1./dz(icrm)
-              flx_z(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
-              flx_z(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
+              flx_z(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(icrm,1)
+              flx_z(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(icrm,nz)
               !$acc atomic update
               flux(1,icrm) = flux(1,icrm) + flx_z(i,j,0,icrm)
             endif

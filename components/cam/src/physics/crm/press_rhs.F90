@@ -52,8 +52,8 @@ contains
             do i=1,nx
               kc=k+1
               rdz=1./(adz(icrm,k)*dz(icrm))
-              rup = rhow(kc,icrm)/rho(icrm,k)*rdz
-              rdn = rhow(k,icrm)/rho(icrm,k)*rdz
+              rup = rhow(icrm,kc)/rho(icrm,k)*rdz
+              rdn = rhow(icrm,k)/rho(icrm,k)*rdz
               jc=j+1
               ic=i+1
               dta=1./dt3(na)/at
@@ -84,8 +84,8 @@ contains
           do i=1,nx
             kc=k+1
             rdz=1./(adz(icrm,k)*dz(icrm))
-            rup = rhow(kc,icrm)/rho(icrm,k)*rdz
-            rdn = rhow(k,icrm)/rho(icrm,k)*rdz
+            rup = rhow(icrm,kc)/rho(icrm,k)*rdz
+            rdn = rhow(icrm,k)/rho(icrm,k)*rdz
             ic=i+1
             dta=1./dt3(na)/at
             p(i,j,k,icrm)=(rdx*(u(icrm,ic,j,k)-u(icrm,i,j,k))+ &

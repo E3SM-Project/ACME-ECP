@@ -10,9 +10,9 @@ contains
     use params, only: crm_rknd
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) :: fuz(nx,ny,nz ,ncrms)
-    real(crm_rknd) :: fvz(nx,ny,nz ,ncrms)
-    real(crm_rknd) :: fwz(nx,ny,nzm,ncrms)
+    real(crm_rknd) :: fuz(ncrms,nx,ny,nz )
+    real(crm_rknd) :: fvz(ncrms,nx,ny,nz )
+    real(crm_rknd) :: fwz(ncrms,nx,ny,nzm)
     integer i, j, k, kc, kb,icrm
     real(crm_rknd) dz25, www, rhoi
 
@@ -21,8 +21,8 @@ contains
     !$acc parallel loop collapse(2) copyout(vwle,uwle) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nz
-        uwle(k,icrm) = 0.
-        vwle(k,icrm) = 0.
+        uwle(icrm,k) = 0.
+        vwle(icrm,k) = 0.
       enddo
     enddo
 
@@ -31,12 +31,12 @@ contains
       do j=1,ny
         do i=1,nx
           dz25=1./(4.*dz(icrm))
-          fuz(i,j,1  ,icrm) = 0.
-          fuz(i,j,nz ,icrm) = 0.
-          fvz(i,j,1  ,icrm) = 0.
-          fvz(i,j,nz ,icrm) = 0.
-          fwz(i,j,1  ,icrm) = 0.
-          fwz(i,j,nzm,icrm) = 0.
+          fuz(icrm,i,j,1  ) = 0.
+          fuz(icrm,i,j,nz ) = 0.
+          fvz(icrm,i,j,1  ) = 0.
+          fvz(icrm,i,j,nz ) = 0.
+          fwz(icrm,i,j,1  ) = 0.
+          fwz(icrm,i,j,nzm) = 0.
         end do
       end do
     enddo
@@ -50,13 +50,13 @@ contains
             do i=1,nx
               dz25=1./(4.*dz(icrm))
               kb = k-1
-              rhoi = dz25 * rhow(k,icrm)
-              fuz(i,j,k,icrm) = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j  ,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
-              fvz(i,j,k,icrm) = rhoi*(w(icrm,i,j,k)+w(icrm,i  ,j-1,k))*(v(icrm,i,j,k)+v(icrm,i,j,kb))
+              rhoi = dz25 * rhow(icrm,k)
+              fuz(icrm,i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j  ,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
+              fvz(icrm,i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i  ,j-1,k))*(v(icrm,i,j,k)+v(icrm,i,j,kb))
               !$acc atomic update
-              uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k,icrm)
+              uwle(icrm,k) = uwle(icrm,k)+fuz(icrm,i,j,k)
               !$acc atomic update
-              vwle(k,icrm) = vwle(k,icrm)+fvz(i,j,k,icrm)
+              vwle(icrm,k) = vwle(icrm,k)+fvz(icrm,i,j,k)
             end do
           end do
         end do
@@ -71,14 +71,14 @@ contains
             do i=1,nx
               dz25=1./(4.*dz(icrm))
               kb = k-1
-              rhoi = dz25 * rhow(k,icrm)
+              rhoi = dz25 * rhow(icrm,k)
               www = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))
-              fuz(i,j,k,icrm) = www*(u(icrm,i,j,k)+u(icrm,i,j,kb))
-              fvz(i,j,k,icrm) = www*(v(icrm,i,j,k)+v(icrm,i,j,kb))
+              fuz(icrm,i,j,k) = www*(u(icrm,i,j,k)+u(icrm,i,j,kb))
+              fvz(icrm,i,j,k) = www*(v(icrm,i,j,k)+v(icrm,i,j,kb))
               !$acc atomic update
-              uwle(k,icrm) = uwle(k,icrm)+fuz(i,j,k,icrm)
+              uwle(icrm,k) = uwle(icrm,k)+fuz(icrm,i,j,k)
               !$acc atomic update
-              vwle(k,icrm) = vwle(k,icrm)+fvz(i,j,k,icrm)
+              vwle(icrm,k) = vwle(icrm,k)+fvz(icrm,i,j,k)
             end do
           end do
         end do
@@ -94,9 +94,9 @@ contains
             dz25=1./(4.*dz(icrm))
             kc = k+1
             rhoi = 1./(rho(icrm,k)*adz(icrm,k))
-            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fuz(i,j,kc,icrm)-fuz(i,j,k,icrm))*rhoi
-            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fvz(i,j,kc,icrm)-fvz(i,j,k,icrm))*rhoi
-            fwz(i,j,k,icrm)=dz25*(w(icrm,i,j,kc)*rhow(kc,icrm)+w(icrm,i,j,k)*rhow(k,icrm))*(w(icrm,i,j,kc)+w(icrm,i,j,k))
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fuz(icrm,i,j,kc)-fuz(icrm,i,j,k))*rhoi
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fvz(icrm,i,j,kc)-fvz(icrm,i,j,k))*rhoi
+            fwz(icrm,i,j,k)=dz25*(w(icrm,i,j,kc)*rhow(icrm,kc)+w(icrm,i,j,k)*rhow(icrm,k))*(w(icrm,i,j,kc)+w(icrm,i,j,k))
           end do
         end do
       end do
@@ -108,8 +108,8 @@ contains
         do j=1,ny
           do i=1,nx
             kb=k-1
-            rhoi = 1./(rhow(k,icrm)*adzw(icrm,k))
-            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fwz(i,j,k,icrm)-fwz(i,j,kb,icrm))*rhoi
+            rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fwz(icrm,i,j,k)-fwz(icrm,i,j,kb))*rhoi
           end do
         end do
       end do ! k

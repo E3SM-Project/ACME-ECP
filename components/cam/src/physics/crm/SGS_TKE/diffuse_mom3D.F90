@@ -136,9 +136,9 @@ contains
             tkz=rdz2*tk(icrm,i,j,k)
             fw(i,j,kc,icrm)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(icrm,k)*iadz
             tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,j,kc)+tk(icrm,ib,j,kc))
-            fu(i,j,kc,icrm)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(kc,icrm)
+            fu(i,j,kc,icrm)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(icrm,kc)
             tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,i,jb,k)+tk(icrm,i,j,kc)+tk(icrm,i,jb,kc))
-            fv(i,j,kc,icrm)=-tkz*( (v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,i,jb,kc))*dzy)*rhow(kc,icrm)
+            fv(i,j,kc,icrm)=-tkz*( (v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,i,jb,kc))*dzy)*rhow(icrm,kc)
             !$acc atomic update
             uwsb(kc,icrm)=uwsb(kc,icrm)+fu(i,j,kc,icrm)
             !$acc atomic update
@@ -156,10 +156,10 @@ contains
           rdz2 = rdz*rdz * grdf_z(icrm,k)
           tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
           fw(i,j,nz,icrm)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(icrm,nzm)
-          fu(i,j,1,icrm)=fluxbu(icrm,i,j) * rdz * rhow(1,icrm)
-          fv(i,j,1,icrm)=fluxbv(icrm,i,j) * rdz * rhow(1,icrm)
-          fu(i,j,nz,icrm)=fluxtu(i,j,icrm) * rdz * rhow(nz,icrm)
-          fv(i,j,nz,icrm)=fluxtv(i,j,icrm) * rdz * rhow(nz,icrm)
+          fu(i,j,1,icrm)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
+          fv(i,j,1,icrm)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
+          fu(i,j,nz,icrm)=fluxtu(i,j,icrm) * rdz * rhow(icrm,nz)
+          fv(i,j,nz,icrm)=fluxtv(i,j,icrm) * rdz * rhow(icrm,nz)
           !$acc atomic update
           uwsb(1,icrm) = uwsb(1,icrm) + fu(i,j,1,icrm)
           !$acc atomic update
@@ -187,7 +187,7 @@ contains
       do k=2,nzm
         do j=1,ny
           do i=1,nx
-            rhoi = 1./(rhow(k,icrm)*adzw(icrm,k))
+            rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
             dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(i,j,k+1,icrm)-fw(i,j,k,icrm))*rhoi
           enddo
         enddo
