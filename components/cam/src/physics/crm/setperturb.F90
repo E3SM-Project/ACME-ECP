@@ -45,7 +45,7 @@ contains
       call RNG_MT_set_seed(iseed)
 
       !!! find number of layers under some pressure level
-      perturb_num_layers = count( pres(1:nzm,icrm) > perturbation_level_top )
+      perturb_num_layers = count( pres(icrm,1:nzm) > perturbation_level_top )
 
       !--------------------------------------------------------
       ! Apply random liquid static energy (LSE) perturbations

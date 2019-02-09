@@ -70,8 +70,8 @@ contains
 
 
     do k=1,nzm
-      qpsrc(k,icrm)=0.
-      qpevp(k,icrm)=0.
+      qpsrc(icrm,k)=0.
+      qpevp(icrm,k)=0.
       do j=1,ny
         do i=1,nx
           dqpsrc = 0.0
@@ -79,18 +79,18 @@ contains
 
           !-------     Autoconversion/accretion
 
-          if(qn(i,j,k,icrm)+qp(icrm,i,j,k).gt.0.) then
+          if(qn(icrm,i,j,k)+qp(icrm,i,j,k).gt.0.) then
 
 
             omn = max(0.,min(1.,(tabs(icrm,i,j,k)-tbgmin)*a_bg))
             omp = max(0.,min(1.,(tabs(icrm,i,j,k)-tprmin)*a_pr))
             omg = max(0.,min(1.,(tabs(icrm,i,j,k)-tgrmin)*a_gr))
 
-            !	 if(qn(i,j,k,icrm).gt.0.) then
+            !	 if(qn(icrm,i,j,k).gt.0.) then
             if(cld3d(i,j,k).gt.0.) then  ! the generation of precipitating condensate
 
-              qcc = qn(i,j,k,icrm) * omn /cld3d_temp(i,j,k)
-              qii = qn(i,j,k,icrm) * (1.-omn)/cld3d_temp(i,j,k)
+              qcc = qn(icrm,i,j,k) * omn /cld3d_temp(i,j,k)
+              qii = qn(icrm,i,j,k) * (1.-omn)/cld3d_temp(i,j,k)
 
               if(qcc .gt. qcw0) then
                 autor = alphaelq
@@ -99,7 +99,7 @@ contains
               endif
 
               if(qii .gt. qci0) then
-                autos = betaelq*coefice(k,icrm)
+                autos = betaelq*coefice(icrm,k)
               else
                 autos = 0.
               endif
@@ -107,23 +107,23 @@ contains
               accrr = 0.
               if(omp.gt.0.001) then
                 qrr = qp(icrm,i,j,k) * omp / cldmax(i,j,k)
-                accrr = accrrc(k,icrm) * qrr ** powr1
+                accrr = accrrc(icrm,k) * qrr ** powr1
               end if
               accrcs = 0.
               accris = 0.
               if(omp.lt.0.999.and.omg.lt.0.999) then
                 qss = qp(icrm,i,j,k) * (1.-omp)*(1.-omg) / cldmax(i,j,k)
                 tmp = qss ** pows1
-                accrcs = accrsc(k,icrm) * tmp
-                accris = accrsi(k,icrm) * tmp
+                accrcs = accrsc(icrm,k) * tmp
+                accris = accrsi(icrm,k) * tmp
               end if
               accrcg = 0.
               accrig = 0.
               if(omp.lt.0.999.and.omg.gt.0.001) then
                 qgg = qp(icrm,i,j,k) * (1.-omp)*omg / cldmax(i,j,k)
                 tmp = qgg ** powg1
-                accrcg = accrgc(k,icrm) * tmp
-                accrig = accrgi(k,icrm) * tmp
+                accrcg = accrgc(icrm,k) * tmp
+                accrig = accrgi(icrm,k) * tmp
               endif
               qcc = (qcc+dtn*autor*qcw0)/(1.+dtn*(accrr+accrcs+accrcg+autor))
               qii = (qii+dtn*autos*qci0)/(1.+dtn*(accris+accrig+autos))
@@ -132,39 +132,39 @@ contains
 
               dq = dq * cld3d(i,j,k)  ! convert fro the in-cloud value to grid-mean value
 
-              dq = min(dq,qn(i,j,k,icrm))
+              dq = min(dq,qn(icrm,i,j,k))
               !           qp(icrm,i,j,k) = qp(icrm,i,j,k) + dq
               !           q(icrm,i,j,k) = q(icrm,i,j,k) - dq
-              !           qn(i,j,k,icrm) = qn(i,j,k,icrm) - dq
+              !           qn(icrm,i,j,k) = qn(icrm,i,j,k) - dq
               dqpsrc = dq
-              qpsrc(k,icrm) = qpsrc(k,icrm) + dq
+              qpsrc(icrm,k) = qpsrc(icrm,k) + dq
 
             end if
 
-            !elseif(qp(icrm,i,j,k).gt.qp_threshold.and.qn(i,j,k,icrm).eq.0.) then
+            !elseif(qp(icrm,i,j,k).gt.qp_threshold.and.qn(icrm,i,j,k).eq.0.) then
             ! Evaporation is only allowed when cldmax exceeds cld3d_temp
             !         if(qp(icrm,i,j,k).gt.qp_threshold.and.cldmax(i,j,k).gt.cld3d_temp(i,j,k)) then
-            if(qp(icrm,i,j,k).gt.qp_threshold.and.qn(i,j,k,icrm).eq.0.) then
+            if(qp(icrm,i,j,k).gt.qp_threshold.and.qn(icrm,i,j,k).eq.0.) then
 
               qsatt = 0.
-              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(icrm,i,j,k),pres(k,icrm))
-              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(k,icrm))
+              if(omn.gt.0.001) qsatt = qsatt + omn*qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))
+              if(omn.lt.0.999) qsatt = qsatt + (1.-omn)*qsati_crm(tabs(icrm,i,j,k),pres(icrm,k))
               dq = 0.
               if(omp.gt.0.001) then
                 qrr = qp(icrm,i,j,k) * omp /cldmax(i,j,k)
-                dq = dq + evapr1(k,icrm)*sqrt(qrr) + evapr2(k,icrm)*qrr**powr2
+                dq = dq + evapr1(icrm,k)*sqrt(qrr) + evapr2(icrm,k)*qrr**powr2
               end if
               if(omp.lt.0.999.and.omg.lt.0.999) then
                 qss = qp(icrm,i,j,k) * (1.-omp)*(1.-omg) / cldmax(i,j,k)
-                dq = dq + evaps1(k,icrm)*sqrt(qss) + evaps2(k,icrm)*qss**pows2
+                dq = dq + evaps1(icrm,k)*sqrt(qss) + evaps2(icrm,k)*qss**pows2
               end if
               if(omp.lt.0.999.and.omg.gt.0.001) then
                 qgg = qp(icrm,i,j,k) * (1.-omp)*omg /cldmax(i,j,k)
-                dq = dq + evapg1(k,icrm)*sqrt(qgg) + evapg2(k,icrm)*qgg**powg2
+                dq = dq + evapg1(icrm,k)*sqrt(qgg) + evapg2(icrm,k)*qgg**powg2
               end if
 
               !           dq = dq * dtn * (q(icrm,i,j,k) /qsatt-1.)
-              qclr = max(0., (q(icrm,i,j,k)-qn(i,j,k,icrm)-qsatt * cld3d(i,j,k)))/max(0.001, (1-cld3d(i,j,k)))
+              qclr = max(0., (q(icrm,i,j,k)-qn(icrm,i,j,k)-qsatt * cld3d(i,j,k)))/max(0.001, (1-cld3d(i,j,k)))
               qclr = min(qclr, qsatt)
               dq = dq * dtn * (qclr/qsatt-1.)
               dq = dq * (cldmax(i,j,k) - cld3d_temp(i,j,k))  ! convert this to the grid-mean value
@@ -173,14 +173,14 @@ contains
               !           qp(icrm,i,j,k) = qp(icrm,i,j,k) + dq
               !           q(icrm,i,j,k) = q(icrm,i,j,k) - dq
               dqpevp = dq
-              qpevp(k,icrm) = qpevp(k,icrm) + dq
+              qpevp(icrm,k) = qpevp(icrm,k) + dq
 
             end if
 
             if(qp(icrm,i,j,k).le.qp_threshold .and. cld3d(i,j,k).le.0) then
               !           q(icrm,i,j,k) = q(icrm,i,j,k) + qp(icrm,i,j,k)
               dqpevp = dqpevp - qp(icrm,i,j,k)
-              qpevp(k,icrm) = qpevp(k,icrm) - qp(icrm,i,j,k)
+              qpevp(icrm,k) = qpevp(icrm,k) - qp(icrm,i,j,k)
               !           qp(icrm,i,j,k) = 0.
             endif
 
@@ -188,7 +188,7 @@ contains
 
           qp(icrm,i,j,k) = qp(icrm,i,j,k) + dqpsrc + dqpevp
           q(icrm,i,j,k) = q(icrm,i,j,k) - dqpsrc - dqpevp
-          qn(i,j,k,icrm) = qn(i,j,k,icrm) - dqpsrc
+          qn(icrm,i,j,k) = qn(icrm,i,j,k) - dqpsrc
 
           dq = qp(icrm,i,j,k)
           qp(icrm,i,j,k)=max(0.,qp(icrm,i,j,k))

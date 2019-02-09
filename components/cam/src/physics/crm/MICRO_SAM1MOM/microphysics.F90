@@ -90,9 +90,9 @@ CONTAINS
     allocate( mklongname   (nmicro_fields))
     allocate( mkunits      (nmicro_fields))
     allocate( mkoutputscale(nmicro_fields))
-    allocate( qn(nx,ny,nzm,ncrms)  )
-    allocate( qpsrc(nz,ncrms)  )
-    allocate( qpevp(nz,ncrms)  )
+    allocate( qn(ncrms,nx,ny,nzm)  )
+    allocate( qpsrc(ncrms,nz)  )
+    allocate( qpevp(ncrms,nz)  )
     allocate( flag_micro3Dout(nmicro_fields,ncrms) )
     allocate( flag_precip    (nmicro_fields) )
     allocate( flag_wmass     (nmicro_fields,ncrms) )
@@ -201,7 +201,7 @@ CONTAINS
       do k=1,nzm
         q(icrm,:,:,k) = q0(k,icrm)
       end do
-      qn(:,:,:,icrm) = 0.
+      qn(icrm,:,:,:) = 0.
 #endif
 
       do icrm = 1 , ncrms
@@ -235,8 +235,8 @@ CONTAINS
       mklsadv(:,:,icrm) = 0.
       mstor  (:,:,icrm) = 0.
 
-      qpsrc(:,icrm) = 0.
-      qpevp(:,icrm) = 0.
+      qpsrc(icrm,:) = 0.
+      qpevp(icrm,:) = 0.
 
       ! set mstor to be the inital microphysical mixing ratios
       do n=1, nmicro_fields
@@ -360,10 +360,10 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(i,j,k,icrm)
+            qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
             omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
-            qcl(icrm,i,j,k) = qn(i,j,k,icrm)*omn
-            qci(icrm,i,j,k) = qn(i,j,k,icrm)*(1.-omn)
+            qcl(icrm,i,j,k) = qn(icrm,i,j,k)*omn
+            qci(icrm,i,j,k) = qn(icrm,i,j,k)*(1.-omn)
             omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
             qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
             qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
@@ -414,7 +414,7 @@ CONTAINS
     ! For the single moment microphysics, it is liquid + ice
 
     q(icrm,1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
-    qn(1:nx,1:ny,1:nzm,icrm) = new_qc ! Liquid + Ice
+    qn(icrm,1:nx,1:ny,1:nzm) = new_qc ! Liquid + Ice
 
     return
   end subroutine micro_adjust
@@ -435,23 +435,23 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(i,j,k,icrm)
+          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011
           if ( qv(icrm,i,j,k) < zero_threshold ) then
-            qn(i,j,k,icrm) = qn(i,j,k,icrm) + qv(icrm,i,j,k)
+            qn(icrm,i,j,k) = qn(icrm,i,j,k) + qv(icrm,i,j,k)
             qv(icrm,i,j,k) = zero_threshold
-            if ( qn(i,j,k,icrm) < zero_threshold ) then
+            if ( qn(icrm,i,j,k) < zero_threshold ) then
               if ( clubb_at_least_debug_level( 1 ) ) then
                 write(fstderr,*) "Total water at", "i =", i, "j =", j, "k =", k, "is negative.", &
                 "Applying non-conservative hard clipping."
               end if
-              qn(i,j,k,icrm) = zero_threshold
+              qn(icrm,i,j,k) = zero_threshold
             end if ! cloud_liq < 0
           end if ! qv < 0
 
-          qcl(icrm,i,j,k) = qn(i,j,k,icrm)
+          qcl(icrm,i,j,k) = qn(icrm,i,j,k)
           qci(icrm,i,j,k) = 0.0
           omp = max(0.,min(1.,(tabs(icrm,i,j,k)-tprmin)*a_pr))
           qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp

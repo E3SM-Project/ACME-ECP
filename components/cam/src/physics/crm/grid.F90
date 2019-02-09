@@ -173,7 +173,7 @@ contains
     real(crm_rknd) :: zero
 
     allocate( z(ncrms,nz)       )
-    allocate( pres(nzm,ncrms)   )
+    allocate( pres(ncrms,nzm)   )
     allocate( zi(nz,ncrms)      )
     allocate( presi(ncrms,nz)   )
     allocate( adz(ncrms,nzm)    )
