@@ -102,18 +102,18 @@ contains
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
 
-    allocate( accrsc (nzm,ncrms) )
-    allocate( accrsi (nzm,ncrms) )
-    allocate( accrrc (nzm,ncrms) )
-    allocate( coefice(nzm,ncrms) )
-    allocate( accrgc (nzm,ncrms) )
-    allocate( accrgi (nzm,ncrms) )
-    allocate( evaps1 (nzm,ncrms) )
-    allocate( evaps2 (nzm,ncrms) )
-    allocate( evapr1 (nzm,ncrms) )
-    allocate( evapr2 (nzm,ncrms) )
-    allocate( evapg1 (nzm,ncrms) )
-    allocate( evapg2 (nzm,ncrms) )
+    allocate( accrsc(ncrms,nzm) )
+    allocate( accrsi(ncrms,nzm) )
+    allocate( accrrc(ncrms,nzm) )
+    allocate( coefice(ncrms,nzm) )
+    allocate( accrgc(ncrms,nzm) )
+    allocate( accrgi(ncrms,nzm) )
+    allocate( evaps1(ncrms,nzm) )
+    allocate( evaps2(ncrms,nzm) )
+    allocate( evapr1(ncrms,nzm) )
+    allocate( evapr2(ncrms,nzm) )
+    allocate( evapg1(ncrms,nzm) )
+    allocate( evapg2(ncrms,nzm) )
 
     zero = 0
 

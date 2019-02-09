@@ -160,8 +160,8 @@ subroutine allocate_micro(ncrms)
   allocate(mkunits(nmicro_fields))
   allocate(mkoutputscale(nmicro_fields))
   allocate(wvar(nx,ny,nzm,ncrms))
-  allocate(qpevp(nz,ncrms))
-  allocate(qpsrc(nz,ncrms))
+  allocate(qpevp(ncrms,nz))
+  allocate(qpsrc(ncrms,nz))
   allocate(aut1(nx,ny,nzm,ncrms))
   allocate(acc1(nx,ny,nzm,ncrms))
   allocate(evpc1(nx,ny,nzm,ncrms))
@@ -754,7 +754,7 @@ do j = 1,ny
       !bloss/qt: before saturation adjustment for liquid,
       !          this is Tcl = T - (L/Cp)*qcl(icrm,the cloud liquid water temperature)
       tmptabs(:) = t(icrm,i,j,:)  &           ! liquid water-ice static energy over Cp
-           - gamaz(:,icrm) &                                   ! potential energy
+           - gamaz(icrm,:) &                                   ! potential energy
            + fac_cond * (tmpqr(:)) &    ! bloss/qt: liquid latent energy due to rain only
            + fac_sub  * (tmpqci(:) + tmpqs(:) + tmpqg(:)) ! ice latent energy
 
@@ -795,7 +795,7 @@ do j = 1,ny
 #endif
       wvar(i,j,:,icrm) = tmpwsub(:)
 
-      tmppres(:) = 100.*pres(1:nzm,icrm)
+      tmppres(:) = 100.*pres(icrm,1:nzm)
 
       !bloss/qt: saturation adjustment to compute cloud liquid water content.
       !          Note: tmpqv holds qv+qcl on input, qv on output.
@@ -1156,8 +1156,8 @@ do j = 1,ny
               - dtn*fac_sub*(stendqci+stendqs+stendqg)
          qpfall(icrm,1:nzm) = qpfall(icrm,1:nzm) + dtn*(stendqr+stendqs+stendqg)
 
-         qpsrc(1:nzm,icrm) = qpsrc(1:nzm,icrm) + dtn*(mtendqr+mtendqs+mtendqg)
-         qpevp(1:nzm,icrm) = 0.0
+         qpsrc(icrm,1:nzm) = qpsrc(icrm,1:nzm) + dtn*(mtendqr+mtendqs+mtendqg)
+         qpevp(icrm,1:nzm) = 0.0
 
          !bloss: temperature tendency (sensible heating) due to phase changes
          tmtend3d(i,j,1:nzm,icrm) = tmtend1d(1:nzm)

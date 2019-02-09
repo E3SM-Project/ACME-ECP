@@ -44,9 +44,9 @@ contains
       do k=1,nzm
         kc=min(nzm,k+1)
         kb=max(1,k-1)
-        if(pres(kc,icrm).le.200..and.pres(kb,icrm).gt.200.) k200(icrm)=k
-        if(pres(kc,icrm).le.500..and.pres(kb,icrm).gt.500.) k500(icrm)=k
-        if(pres(kc,icrm).le.850..and.pres(kb,icrm).gt.850.) k850(icrm)=k
+        if(pres(icrm,kc).le.200..and.pres(icrm,kb).gt.200.) k200(icrm)=k
+        if(pres(icrm,kc).le.500..and.pres(icrm,kb).gt.500.) k500(icrm)=k
+        if(pres(icrm,kc).le.850..and.pres(icrm,kb).gt.850.) k850(icrm)=k
       enddo
     enddo
 
@@ -57,7 +57,7 @@ contains
         do j=1,ny
           do i=1,nx
             coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
-            tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k,icrm)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) + fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
+            tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) + fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
             !$acc atomic update
             u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
             !$acc atomic update
@@ -136,7 +136,7 @@ contains
             ! Saturated water vapor path with respect to water. Can be used
             ! with water vapor path (= pw) to compute column-average
             ! relative humidity.
-            tmp = qsatw_crm(tabs(icrm,i,j,k),pres(k,icrm))*coef1
+            tmp = qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))*coef1
             !$acc atomic update
             swvp_xy(i,j,icrm) = swvp_xy(i,j,icrm)+tmp
           enddo
@@ -149,7 +149,7 @@ contains
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
-          psfc_xy(i,j,icrm) = psfc_xy(i,j,icrm) + (100.*pres(1,icrm) + p(icrm,i,j,1))*dtfactor
+          psfc_xy(i,j,icrm) = psfc_xy(i,j,icrm) + (100.*pres(icrm,1) + p(icrm,i,j,1))*dtfactor
           ! 850 mbar horizontal winds
           u850_xy(i,j,icrm) = u850_xy(i,j,icrm) + u(icrm,i,j,k850(icrm))*dtfactor
           v850_xy(i,j,icrm) = v850_xy(i,j,icrm) + v(icrm,i,j,k850(icrm))*dtfactor

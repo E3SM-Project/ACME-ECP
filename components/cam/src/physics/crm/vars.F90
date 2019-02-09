@@ -239,7 +239,7 @@ contains
     allocate( rho(ncrms,nzm)     )
     allocate( rhow(ncrms,nz )    )
     allocate( bet(ncrms,nzm)     )
-    allocate( gamaz  (nzm,ncrms)  )
+    allocate( gamaz(ncrms,nzm)  )
     allocate( wsub   (nz ,ncrms)    )
     allocate( qtend(ncrms,nzm)  )
     allocate( ttend(ncrms,nzm)  )

@@ -380,11 +380,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     do k = 1, nzm
       z(icrm,k) = crm_input%zmid(icrm,plev-k+1) - crm_input%zint(icrm,plev+1)
       zi(k,icrm) = crm_input%zint(icrm,plev-k+2)- crm_input%zint(icrm,plev+1)
-      pres(k,icrm) = crm_input%pmid(icrm,plev-k+1)/100.
+      pres(icrm,k) = crm_input%pmid(icrm,plev-k+1)/100.
       presi(icrm,k) = crm_input%pint(icrm,plev-k+2)/100.
-      prespot(k,icrm)=(1000./pres(k,icrm))**(rgas/cp)
+      prespot(k,icrm)=(1000./pres(icrm,k))**(rgas/cp)
       bet(icrm,k) = ggr/crm_input%tl(icrm,plev-k+1)
-      gamaz(k,icrm)=ggr/cp*z(icrm,k)
+      gamaz(icrm,k)=ggr/cp*z(icrm,k)
     end do ! k
    ! zi(nz,icrm) =  crm_input%zint(plev-nz+2)
     zi(nz,icrm) = crm_input%zint(icrm,plev-nz+2)-crm_input%zint(icrm,plev+1) !+++mhwang, 2012-02-04
@@ -464,7 +464,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #else
       micro_field(icrm,1:nx,1:ny,1:nzm,1) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
       micro_field(icrm,1:nx,1:ny,1:nzm,2) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
-      qn(1:nx,1:ny,1:nzm,icrm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
+      qn(icrm,1:nx,1:ny,1:nzm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 
 #ifdef m2005
@@ -524,7 +524,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       !---mhwang
       do j=1,ny
         do i=1,nx
-          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(k,icrm) &
+          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
                     -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
                     -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
           colprec=colprec+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
@@ -563,13 +563,13 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       l = plev-k+1
       uln(l,icrm) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
       vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
-      ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(k,icrm)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
+      ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
       utend(icrm,k) = (uln(l,icrm)-u0(icrm,k))*idt_gl
       vtend(icrm,k) = (vln(l,icrm)-v0(icrm,k))*idt_gl
       ug0(icrm,k) = uln(l,icrm)
       vg0(icrm,k) = vln(l,icrm)
-      tg0(k,icrm) = crm_input%tl(icrm,l)+gamaz(k,icrm)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
+      tg0(k,icrm) = crm_input%tl(icrm,l)+gamaz(icrm,k)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
       qg0(k,icrm) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
 
     end do ! k
@@ -693,8 +693,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     uwsb(icrm,:)     = 0.
     vwle(icrm,:)     = 0.
     vwsb(icrm,:)     = 0.
-    qpsrc(:,icrm)    = 0.
-    qpevp(:,icrm)    = 0.
+    qpsrc(icrm,:)    = 0.
+    qpevp(icrm,:)    = 0.
     qpfall(icrm,:)   = 0.
     precflux(icrm,:) = 0.
 
@@ -1014,10 +1014,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 crm_output_cldtop(icrm,l) = crm_output_cldtop(icrm,l) + 1
                 flag_top(i,j,icrm) = .false.
             endif
-            if(pres(nz-k,icrm).ge.700.) then
+            if(pres(icrm,nz-k).ge.700.) then
                 cwpl(i,j,icrm) = cwpl(i,j,icrm)+tmp1
                 cltemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cltemp(i,j,icrm))
-            else if(pres(nz-k,icrm).lt.400.) then
+            else if(pres(icrm,nz-k).lt.400.) then
                 cwph(i,j,icrm) = cwph(i,j,icrm)+tmp1
                 chtemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), chtemp(i,j,icrm))
             else
@@ -1103,7 +1103,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             l=plev+1-k+1
             if(w(icrm,i,j,k).gt.0.) then
               kx=max(1, k-1)
-              qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx,icrm))
+              qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(icrm,kx))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                 tmp = rhow(icrm,k)*w(icrm,i,j,k)
                 !$acc atomic update
@@ -1111,7 +1111,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
               endif
             else if (w(icrm,i,j,k).lt.0.) then
               kx=min(k+1, nzm)
-              qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(kx,icrm))
+              qsat = qsatw_crm(tabs(icrm,i,j,kx),pres(icrm,kx))
               if(qcl(icrm,i,j,kx)+qci(icrm,i,j,kx).gt.min(real(1.e-5,crm_rknd),0.01*qsat)) then
                 tmp = rhow(icrm,k)*w(icrm,i,j,k)
                 !$acc atomic update
@@ -1300,7 +1300,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #else
       crm_state%qt(icrm,1:nx,1:ny,1:nzm) = micro_field(icrm,1:nx,1:ny,1:nzm,1)
       crm_state%qp(icrm,1:nx,1:ny,1:nzm) = micro_field(icrm,1:nx,1:ny,1:nzm,2)
-      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(1:nx,1:ny,1:nzm,icrm)
+      crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 
     crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = tk(icrm,1:nx, 1:ny, 1:nzm)
@@ -1524,8 +1524,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       mkdiff(icrm,k,:) = mkdiff(icrm,k,:) * factor_xy*icrm_run_time   ! kg/kg  --> kg/kg/s
 
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
-      qpsrc   (k,icrm) = qpsrc   (k,icrm) * factor_xy*icrm_run_time
-      qpevp   (k,icrm) = qpevp   (k,icrm) * factor_xy*icrm_run_time
+      qpsrc(icrm,k) = qpsrc(icrm,k) * factor_xy*icrm_run_time
+      qpevp(icrm,k) = qpevp(icrm,k) * factor_xy*icrm_run_time
       qpfall(icrm,k) = qpfall(icrm,k) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
       precflux(icrm,k) = precflux(icrm,k) * factor_xy*dz(icrm)/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
@@ -1556,8 +1556,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_output%precflux      (icrm,l) = precflux(icrm,k)/1000.       !mm/s  -->m/s
 
       crm_output%qp_fall   (icrm,l) = qpfall(icrm,k)
-      crm_output%qp_evp    (icrm,l) = qpevp(k,icrm)
-      crm_output%qp_src    (icrm,l) = qpsrc(k,icrm)
+      crm_output%qp_evp    (icrm,l) = qpevp(icrm,k)
+      crm_output%qp_src    (icrm,l) = qpsrc(icrm,k)
 
       crm_output%qt_ls     (icrm,l) = qtend(icrm,k)
       crm_output%t_ls      (icrm,l) = ttend(icrm,k)

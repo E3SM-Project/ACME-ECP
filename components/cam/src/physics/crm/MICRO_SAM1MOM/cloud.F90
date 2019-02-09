@@ -17,7 +17,7 @@ contains
     integer, intent(in) :: ncrms
     real(crm_rknd) :: q(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) :: qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    real(crm_rknd) qn(nx,ny,nzm,ncrms)  ! cloud condensate (liquid + ice)
+    real(crm_rknd) qn(ncrms,nx,ny,nzm)  ! cloud condensate (liquid + ice)
 
     integer i,j,k, kb, kc,icrm
     real(crm_rknd) dtabs, tabs1, an, bn, ap, bp, om, ag, omp
@@ -46,7 +46,7 @@ contains
             ! Initial guess for temperature assuming no cloud water/ice:
 
 
-            tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k,icrm)
+            tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)
             tabs1=(tabs(icrm,i,j,k)+fac1*qp(icrm,i,j,k))/(1.+fac2*qp(icrm,i,j,k))
 
             ! Warm cloud:
@@ -54,21 +54,21 @@ contains
             if(tabs1.ge.tbgmax) then
 
               tabs1=tabs(icrm,i,j,k)+fac_cond*qp(icrm,i,j,k)
-              qsatt = qsatw_crm(tabs1,pres(k,icrm))
+              qsatt = qsatw_crm(tabs1,pres(icrm,k))
 
               ! Ice cloud:
 
             elseif(tabs1.le.tbgmin) then
 
               tabs1=tabs(icrm,i,j,k)+fac_sub*qp(icrm,i,j,k)
-              qsatt = qsati_crm(tabs1,pres(k,icrm))
+              qsatt = qsati_crm(tabs1,pres(icrm,k))
 
               ! Mixed-phase cloud:
 
             else
 
               om = an*tabs1-bn
-              qsatt = om*qsatw_crm(tabs1,pres(k,icrm))+(1.-om)*qsati_crm(tabs1,pres(k,icrm))
+              qsatt = om*qsatw_crm(tabs1,pres(icrm,k))+(1.-om)*qsati_crm(tabs1,pres(icrm,k))
 
             endif
 
@@ -85,20 +85,20 @@ contains
                   om=1.
                   lstarn=fac_cond
                   dlstarn=0.
-                  qsatt=qsatw_crm(tabs1,pres(k,icrm))
-                  dqsat=dtqsatw_crm(tabs1,pres(k,icrm))
+                  qsatt=qsatw_crm(tabs1,pres(icrm,k))
+                  dqsat=dtqsatw_crm(tabs1,pres(icrm,k))
                 else if(tabs1.le.tbgmin) then
                   om=0.
                   lstarn=fac_sub
                   dlstarn=0.
-                  qsatt=qsati_crm(tabs1,pres(k,icrm))
-                  dqsat=dtqsati_crm(tabs1,pres(k,icrm))
+                  qsatt=qsati_crm(tabs1,pres(icrm,k))
+                  dqsat=dtqsati_crm(tabs1,pres(icrm,k))
                 else
                   om=an*tabs1-bn
                   lstarn=fac_cond+(1.-om)*fac_fus
                   dlstarn=an*fac_fus
-                  qsatt=om*qsatw_crm(tabs1,pres(k,icrm))+(1.-om)*qsati_crm(tabs1,pres(k,icrm))
-                  dqsat=om*dtqsatw_crm(tabs1,pres(k,icrm))+(1.-om)*dtqsati_crm(tabs1,pres(k,icrm))
+                  qsatt=om*qsatw_crm(tabs1,pres(icrm,k))+(1.-om)*qsati_crm(tabs1,pres(icrm,k))
+                  dqsat=om*dtqsatw_crm(tabs1,pres(icrm,k))+(1.-om)*dtqsati_crm(tabs1,pres(icrm,k))
                 endif
                 if(tabs1.ge.tprmax) then
                   omp=1.
@@ -121,11 +121,11 @@ contains
               end do
 
               qsatt = qsatt + dqsat * dtabs
-              qn(i,j,k,icrm) = max(real(0.,crm_rknd),q(icrm,i,j,k)-qsatt)
+              qn(icrm,i,j,k) = max(real(0.,crm_rknd),q(icrm,i,j,k)-qsatt)
 
             else
 
-              qn(i,j,k,icrm) = 0.
+              qn(icrm,i,j,k) = 0.
 
             endif
 
