@@ -91,9 +91,9 @@ CONTAINS
     allocate( grdf_x(ncrms,nzm) )
     allocate( grdf_y(ncrms,nzm) )
     allocate( grdf_z(ncrms,nzm) )
-    allocate( tkesbbuoy(nz,ncrms) )
-    allocate( tkesbshear(nz,ncrms) )
-    allocate( tkesbdiss(nz,ncrms) )
+    allocate( tkesbbuoy(ncrms,nz) )
+    allocate( tkesbshear(ncrms,nz) )
+    allocate( tkesbdiss(ncrms,nz) )
     allocate( tkesbdiff(nz,ncrms) )
 
     tke(1:,dimx1_s:,dimy1_s:,1:) => sgs_field     (:,:,:,:,1)
@@ -545,21 +545,21 @@ subroutine sgs_proc(ncrms)
                           tke, tk, tkh)
 #endif
   !$acc parallel loop collapse(4) copyin(tke) copy(tke2) async(asyncid)
-  do icrm = 1 , ncrms
-    do k = 1 , nzm
-      do j = dimy1_s,dimy2_s
-        do i = dimx1_s,dimx2_s
-          tke2(i,j,k,icrm) = tke(icrm,i,j,k)
+  do k = 1 , nzm
+    do j = dimy1_s,dimy2_s
+      do i = dimx1_s,dimx2_s
+        do icrm = 1 , ncrms
+          tke2(icrm,i,j,k) = tke(icrm,i,j,k)
         enddo
       enddo
     enddo
   enddo
   !$acc parallel loop collapse(4) copyin(tk) copy(tk2) async(asyncid)
-  do icrm = 1 , ncrms
-    do k = 1 , nzm
-      do j = dimy1_d,dimy2_d
-        do i = dimx1_d,dimx2_d
-          tk2 (i,j,k,icrm) = tk(icrm,i,j,k)
+  do k = 1 , nzm
+    do j = dimy1_d,dimy2_d
+      do i = dimx1_d,dimx2_d
+        do icrm = 1 , ncrms
+          tk2(icrm,i,j,k) = tk(icrm,i,j,k)
         enddo
       enddo
     enddo

@@ -23,8 +23,8 @@ contains
     !$acc parallel loop collapse(2) copy(u0,v0,t01,q01,t0,tabs0,q0,qn0,qp0,p0) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
-        u0(k,icrm)=0.
-        v0(k,icrm)=0.
+        u0(icrm,k)=0.
+        v0(icrm,k)=0.
         t01(k,icrm) = tabs0(icrm,k)
         q01(k,icrm) = q0(k,icrm)
         t0(k,icrm)=0.
@@ -59,9 +59,9 @@ contains
             coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
             tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(k,icrm)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) + fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
             !$acc atomic update
-            u0(k,icrm)=u0(k,icrm)+u(icrm,i,j,k)
+            u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
             !$acc atomic update
-            v0(k,icrm)=v0(k,icrm)+v(icrm,i,j,k)
+            v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
             !$acc atomic update
             p0(k,icrm)=p0(k,icrm)+p(i,j,k,icrm)
             !$acc atomic update
@@ -93,8 +93,8 @@ contains
     !$acc parallel loop collapse(2) copy(qn0,q0,p0,t0,qp0,v0,u0,tabs0) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
-        u0(k,icrm)=u0(k,icrm)*coef
-        v0(k,icrm)=v0(k,icrm)*coef
+        u0(icrm,k)=u0(icrm,k)*coef
+        v0(icrm,k)=v0(icrm,k)*coef
         t0(k,icrm)=t0(k,icrm)*coef
         tabs0(icrm,k)=tabs0(icrm,k)*coef
         q0(k,icrm)=q0(k,icrm)*coef

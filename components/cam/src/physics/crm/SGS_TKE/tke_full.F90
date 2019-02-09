@@ -32,9 +32,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd), intent(in), dimension(ncrms,nzm) :: grdf_z      ! grid length in z direction
   logical       , intent(in)                 :: dosmagor    ! flag for diagnostic smagorinsky scheme
 
-  real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbdiss   ! TKE dissipation
-  real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbshear  ! TKE production by shear
-  real(crm_rknd), intent(out), dimension(nz,ncrms) :: tkesbbuoy   ! TKE production by buoyancy
+  real(crm_rknd), intent(out), dimension(ncrms,nz) :: tkesbdiss   ! TKE dissipation
+  real(crm_rknd), intent(out), dimension(ncrms,nz) :: tkesbshear  ! TKE production by shear
+  real(crm_rknd), intent(out), dimension(ncrms,nz) :: tkesbbuoy   ! TKE production by buoyancy
 
   real(crm_rknd), intent(  out) :: tke(ncrms, dimx1_s:dimx2_s , dimy1_s:dimy2_s , nzm )   ! SGS TKE
   real(crm_rknd), intent(inout) :: tk(ncrms, dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm )   ! SGS eddy viscosity
@@ -42,9 +42,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
   !-----------------------------------------------------------------------
   !!! Local Variables
-  real(crm_rknd), dimension(nx,ny,nzm,ncrms) :: def2
-  real(crm_rknd), dimension(nx,ny,0:nzm,ncrms)     :: buoy_sgs_vert
-  real(crm_rknd), dimension(nx,ny,0:nzm,ncrms)     :: a_prod_bu_vert
+  real(crm_rknd), dimension(ncrms,nx,ny,nzm)   :: def2
+  real(crm_rknd), dimension(ncrms,nx,ny,0:nzm) :: buoy_sgs_vert
+  real(crm_rknd), dimension(ncrms,nx,ny,0:nzm) :: a_prod_bu_vert
   real(crm_rknd) :: grd           !
   real(crm_rknd) :: betdz         !
   real(crm_rknd) :: Ck            !
@@ -109,13 +109,13 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
   !!! initialize surface and top buoyancy flux to zero
   !$acc parallel loop collapse(3) copy(buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
-  do icrm = 1 , ncrms
-    do j = 1 , ny
-      do i = 1 , nx
-        a_prod_bu_vert(i,j,0,icrm) = 0
-        buoy_sgs_vert(i,j,0,icrm) = 0
-        a_prod_bu_vert(i,j,nzm,icrm) = 0
-        buoy_sgs_vert(i,j,nzm,icrm) = 0
+  do j = 1 , ny
+    do i = 1 , nx
+      do icrm = 1 , ncrms
+        a_prod_bu_vert(icrm,i,j,0) = 0
+        buoy_sgs_vert(icrm,i,j,0) = 0
+        a_prod_bu_vert(icrm,i,j,nzm) = 0
+        buoy_sgs_vert(icrm,i,j,nzm) = 0
       enddo
     enddo
   enddo
@@ -126,10 +126,10 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   !!! compute subgrid buoyancy flux assuming clear conditions
   !!! we will over-write this later if conditions are cloudy
   !$acc parallel loop collapse(4) copyin(tkh,tabs,bet,qv,qpi,qcl,qpl,t,qci,adzw,presi,dz) copy(buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
-  do icrm = 1 , ncrms
-    do k = 1,nzm-1
-      do j = 1,ny
-        do i = 1,nx
+  do k = 1,nzm-1
+    do j = 1,ny
+      do i = 1,nx
+        do icrm = 1 , ncrms
           if (k.lt.nzm) then
             kc = k+1
             kb = k
@@ -161,8 +161,8 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                +(bbb*fac_cond-tabs_interface)*(qpl(icrm,i,j,kc)-qpl(icrm,i,j,kb)) &
                +(bbb*fac_sub -tabs_interface)*(qpi(icrm,i,j,kc)-qpi(icrm,i,j,kb)) )
 
-          buoy_sgs_vert(i,j,k,icrm) = buoy_sgs
-          a_prod_bu_vert(i,j,k,icrm) = -0.5*(tkh(icrm,i,j,kc)+tkh(icrm,i,j,kb)+0.002)*buoy_sgs
+          buoy_sgs_vert(icrm,i,j,k) = buoy_sgs
+          a_prod_bu_vert(icrm,i,j,k) = -0.5*(tkh(icrm,i,j,kc)+tkh(icrm,i,j,kb)+0.002)*buoy_sgs
 
           !-----------------------------------------------------------------------
           ! now go back and check for cloud
@@ -188,8 +188,8 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                      + qv(icrm,i,j,kb) + qcl(icrm,i,j,kb) + qci(icrm,i,j,kb) )
 
             !!! compute saturation mixing ratio at this temperature
-            qsat_check =      omn*qsatw_crm(tabs_interface,presi(k+1,icrm)) &
-                        +(1.-omn)*qsati_crm(tabs_interface,presi(k+1,icrm))
+            qsat_check =      omn*qsatw_crm(tabs_interface,presi(icrm,k+1)) &
+                        +(1.-omn)*qsati_crm(tabs_interface,presi(icrm,k+1))
 
             !!! check to see if the total water exceeds this saturation mixing ratio.
             !!! if so, apply the cloudy relations for subgrid buoyancy flux
@@ -205,10 +205,10 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
               qp_interface = 0.5*( qpl(icrm,i,j,kc) + qpi(icrm,i,j,kc) + qpl(icrm,i,j,kb) + qpi(icrm,i,j,kb) )
 
-              dqsat =     omn*dtqsatw_crm(tabs_interface,presi(k+1,icrm)) + &
-                     (1.-omn)*dtqsati_crm(tabs_interface,presi(k+1,icrm))
-              qsatt =       omn*qsatw_crm(tabs_interface,presi(k+1,icrm)) + &
-                       (1.-omn)*qsati_crm(tabs_interface,presi(k+1,icrm))
+              dqsat =     omn*dtqsatw_crm(tabs_interface,presi(icrm,k+1)) + &
+                     (1.-omn)*dtqsati_crm(tabs_interface,presi(icrm,k+1))
+              qsatt =       omn*qsatw_crm(tabs_interface,presi(icrm,k+1)) + &
+                       (1.-omn)*qsati_crm(tabs_interface,presi(icrm,k+1))
 
               !!! condensate loading term
               bbb = 1. + epsv*qsatt &
@@ -222,8 +222,8 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
                    + ( bbb*fac_cond-(1.+fac_cond*dqsat)*tabs(icrm,i,j,k) ) * ( qpl(icrm,i,j,kc)-qpl(icrm,i,j,kb) )  &
                    + ( bbb*fac_sub -(1.+fac_sub *dqsat)*tabs(icrm,i,j,k) ) * ( qpi(icrm,i,j,kc)-qpi(icrm,i,j,kb) ) )
 
-              buoy_sgs_vert(i,j,k,icrm) = buoy_sgs
-              a_prod_bu_vert(i,j,k,icrm) = -0.5*(tkh(icrm,i,j,kc)+tkh(icrm,i,j,kb)+0.002)*buoy_sgs
+              buoy_sgs_vert(icrm,i,j,k) = buoy_sgs
+              a_prod_bu_vert(icrm,i,j,k) = -0.5*(tkh(icrm,i,j,kc)+tkh(icrm,i,j,kb)+0.002)*buoy_sgs
             end if ! if saturated at interface
           end if ! if either layer is cloudy
         end do ! i
@@ -232,20 +232,20 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   enddo !icrm
 
   !$acc parallel loop collapse(2) copy(tkelediss,tkesbshear,tkesbdiss,tkesbbuoy) async(asyncid)
-  do icrm = 1 , ncrms
-    do k = 1,nzm-1
-      tkelediss(k,icrm)  = 0.
-      tkesbdiss(k,icrm)  = 0.
-      tkesbshear(k,icrm) = 0.
-      tkesbbuoy(k,icrm)  = 0.
+  do k = 1,nzm-1
+    do icrm = 1 , ncrms
+      tkelediss(icrm,k)  = 0.
+      tkesbdiss(icrm,k)  = 0.
+      tkesbshear(icrm,k) = 0.
+      tkesbbuoy(icrm,k)  = 0.
     enddo
   enddo
 
   !$acc parallel loop collapse(4) copyin(z,buoy_sgs_vert,def2,a_prod_bu_vert,dz,grdf_x,adz,grdf_y,adzw,grdf_z) copy(tkelediss,tkesbbuoy,tkesbshear,tkh,tk,tke,tkesbdiss) async(asyncid)
-  do icrm = 1 , ncrms
-    do k = 1,nzm-1
-      do j = 1,ny
-        do i = 1,nx
+  do k = 1,nzm-1
+    do j = 1,ny
+      do i = 1,nx
+        do icrm = 1 , ncrms
           grd = dz(icrm)*adz(icrm,k)
           Ce1 = Ce/0.7*0.19
           Ce2 = Ce/0.7*0.51
@@ -255,7 +255,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           cz = (dz(icrm)*min(adzw(icrm,k),adzw(icrm,k+1)))**2/dt/grdf_z(icrm,k)
           !!! maximum value of eddy visc/cond
           tkmax = 0.09/(1./cx+1./cy+1./cz)
-          buoy_sgs = 0.5*( buoy_sgs_vert(i,j,k-1,icrm) + buoy_sgs_vert(i,j,k,icrm) )
+          buoy_sgs = 0.5*( buoy_sgs_vert(icrm,i,j,k-1) + buoy_sgs_vert(icrm,i,j,k) )
           if(buoy_sgs.le.0.) then
             smix = grd
           else
@@ -264,7 +264,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
           ratio = smix/grd
           Cee = Ce1+Ce2*ratio
           if(dosmagor) then
-            tk(icrm,i,j,k) = sqrt(Ck**3/Cee*max(0._crm_rknd,def2(i,j,k,icrm)-Pr*buoy_sgs))*smix**2
+            tk(icrm,i,j,k) = sqrt(Ck**3/Cee*max(0._crm_rknd,def2(icrm,i,j,k)-Pr*buoy_sgs))*smix**2
 #if defined( SP_TK_LIM )
               !!! put a hard lower limit on near-surface tk
               if ( z(icrm,k).lt.tk_min_depth ) then
@@ -272,14 +272,14 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
               end if
 #endif
             tke(icrm,i,j,k) = (tk(icrm,i,j,k)/(Ck*smix))**2
-            a_prod_sh = (tk(icrm,i,j,k)+0.001)*def2(i,j,k,icrm)
+            a_prod_sh = (tk(icrm,i,j,k)+0.001)*def2(icrm,i,j,k)
             ! a_prod_bu=-(tk(icrm,i,j,k)+0.001)*Pr*buoy_sgs
-            a_prod_bu = 0.5*( a_prod_bu_vert(i,j,k-1,icrm) + a_prod_bu_vert(i,j,k,icrm) )
+            a_prod_bu = 0.5*( a_prod_bu_vert(icrm,i,j,k-1) + a_prod_bu_vert(icrm,i,j,k) )
             a_diss = a_prod_sh+a_prod_bu
           else
             tke(icrm,i,j,k) = max(real(0.,crm_rknd),tke(icrm,i,j,k))
-            a_prod_sh = (tk(icrm,i,j,k)+0.001)*def2(i,j,k,icrm)
-            a_prod_bu = 0.5*( a_prod_bu_vert(i,j,k-1,icrm) + a_prod_bu_vert(i,j,k,icrm) )
+            a_prod_sh = (tk(icrm,i,j,k)+0.001)*def2(icrm,i,j,k)
+            a_prod_bu = 0.5*( a_prod_bu_vert(icrm,i,j,k-1) + a_prod_bu_vert(icrm,i,j,k) )
             !!! cap the diss rate (useful for large time steps)
             a_diss = min(tke(icrm,i,j,k)/(4.*dt),Cee/smix*tke(icrm,i,j,k)**1.5)
             tke(icrm,i,j,k) = max(real(0.,crm_rknd),tke(icrm,i,j,k)+dtn*(max(0._crm_rknd,a_prod_sh+a_prod_bu)-a_diss))
@@ -290,13 +290,13 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
           tmp = a_prod_sh/float(nx*ny)
           !$acc atomic update
-          tkelediss(k,icrm)  = tkelediss(k,icrm) - tmp
+          tkelediss(icrm,k)  = tkelediss(icrm,k) - tmp
           !$acc atomic update
-          tkesbdiss(k,icrm)  = tkesbdiss(k,icrm) + a_diss
+          tkesbdiss(icrm,k)  = tkesbdiss(icrm,k) + a_diss
           !$acc atomic update
-          tkesbshear(k,icrm) = tkesbshear(k,icrm)+ a_prod_sh
+          tkesbshear(icrm,k) = tkesbshear(icrm,k)+ a_prod_sh
           !$acc atomic update
-          tkesbbuoy(k,icrm)  = tkesbbuoy(k,icrm) + a_prod_bu
+          tkesbbuoy(icrm,k)  = tkesbbuoy(icrm,k) + a_prod_bu
         end do ! i
       end do ! j
     end do ! k
