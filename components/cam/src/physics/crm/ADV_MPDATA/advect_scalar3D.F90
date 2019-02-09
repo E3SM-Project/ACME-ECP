@@ -161,8 +161,6 @@ contains
       do k=1,nzm
         do j=-1,nyp2
           do i=-1,nxp2
-            if (i == -1 .and. j == -1) then
-            endif
             if (i >= 1 .and. i <= nx .and. j >= 1 .and. j <= ny) then
               !$acc atomic update
               flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
