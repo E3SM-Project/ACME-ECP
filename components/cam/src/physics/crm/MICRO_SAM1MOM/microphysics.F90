@@ -78,13 +78,13 @@ CONTAINS
     integer :: icrm
     real(crm_rknd) :: zero
     allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields))
-    allocate( fluxbmk (nx, ny, 1:nmicro_fields,ncrms) )
-    allocate( fluxtmk (nx, ny, 1:nmicro_fields,ncrms) )
+    allocate( fluxbmk(ncrms,nx, ny, 1:nmicro_fields) )
+    allocate( fluxtmk(ncrms,nx, ny, 1:nmicro_fields) )
     allocate( mkwle(ncrms,nz,1:nmicro_fields)  )
-    allocate( mkwsb  (nz,1:nmicro_fields,ncrms)  )
+    allocate( mkwsb(ncrms,nz,1:nmicro_fields)  )
     allocate( mkadv(ncrms,nz,1:nmicro_fields)  )
     allocate( mklsadv(nz,1:nmicro_fields,ncrms)  )
-    allocate( mkdiff (nz,1:nmicro_fields,ncrms)  )
+    allocate( mkdiff(ncrms,nz,1:nmicro_fields)  )
     allocate( mstor  (nz,1:nmicro_fields,ncrms)  )
     allocate( mkname       (nmicro_fields))
     allocate( mklongname   (nmicro_fields))
@@ -205,8 +205,8 @@ CONTAINS
 #endif
 
       do icrm = 1 , ncrms
-        fluxbmk(:,:,:,icrm) = 0.
-        fluxtmk(:,:,:,icrm) = 0.
+        fluxbmk(icrm,:,:,:) = 0.
+        fluxtmk(icrm,:,:,:) = 0.
       enddo
 
 #ifdef CLUBB_CRM
@@ -229,9 +229,9 @@ CONTAINS
 
     do icrm = 1 , ncrms
       mkwle(icrm,:,:) = 0.
-      mkwsb  (:,:,icrm) = 0.
+      mkwsb(icrm,:,:) = 0.
       mkadv(icrm,:,:) = 0.
-      mkdiff (:,:,icrm) = 0.
+      mkdiff(icrm,:,:) = 0.
       mklsadv(:,:,icrm) = 0.
       mstor  (:,:,icrm) = 0.
 
@@ -272,9 +272,9 @@ CONTAINS
     do icrm = 1 , ncrms
       if ( doclubb .and. (doclubb_sfc_fluxes .or. docam_sfc_fluxes) ) then
         ! Add this in later
-        fluxbmk(:,:,index_water_vapor,icrm) = 0.0
+        fluxbmk(icrm,:,:,index_water_vapor) = 0.0
       else
-        fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm)
+        fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(:,:,icrm)
       end if
     enddo
 #else
@@ -282,7 +282,7 @@ CONTAINS
     do icrm = 1 , ncrms
       do j = 1 , ny
         do i = 1 , nx
-          fluxbmk(i,j,index_water_vapor,icrm) = fluxbq(i,j,icrm)
+          fluxbmk(icrm,i,j,index_water_vapor) = fluxbq(i,j,icrm)
         enddo
       enddo
     enddo
@@ -291,7 +291,7 @@ CONTAINS
     do icrm = 1 , ncrms
       do j = 1 , ny
         do i = 1 , nx
-          fluxtmk(i,j,index_water_vapor,icrm) = fluxtq(i,j,icrm)
+          fluxtmk(icrm,i,j,index_water_vapor) = fluxtq(i,j,icrm)
         enddo
       enddo
     enddo
