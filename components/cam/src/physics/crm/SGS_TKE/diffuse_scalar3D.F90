@@ -39,10 +39,10 @@ contains
     !$acc enter data create(flx_x,flx_y,flx_z,dfdt) async(asyncid)
 
     !$acc parallel loop collapse(4) copy(dfdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        do j = 1 , ny
-          do i = 1 , nx
+    do k = 1 , nzm
+      do j = 1 , ny
+        do i = 1 , nx
+          do icrm = 1 , ncrms
             dfdt(icrm,i,j,k)=0.
           enddo
         enddo
@@ -53,9 +53,9 @@ contains
     if(dowallx) then
       if(mod(rank,nsubdomains_x).eq.0) then
         !$acc parallel loop collapse(3) copy(field) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do j=1,ny
+        do k=1,nzm
+          do j=1,ny
+            do icrm = 1 , ncrms
               field(icrm,0,j,k) = field(icrm,1,j,k)
             enddo
           enddo
@@ -63,9 +63,9 @@ contains
       endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
         !$acc parallel loop collapse(3) copy(field) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do j=1,ny
+        do k=1,nzm
+          do j=1,ny
+            do icrm = 1 , ncrms
               field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
             enddo
           enddo
@@ -76,9 +76,9 @@ contains
     if(dowally) then
       if(rank.lt.nsubdomains_x) then
         !$acc parallel loop collapse(3) copy(field) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do i=1,nx
+        do k=1,nzm
+          do i=1,nx
+            do icrm = 1 , ncrms
               field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
             enddo
           enddo
@@ -86,9 +86,9 @@ contains
       endif
       if(rank.gt.nsubdomains-nsubdomains_x-1) then
         !$acc parallel loop collapse(3) copy(field) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do i=1,ny
+        do k=1,nzm
+          do i=1,ny
+            do icrm = 1 , ncrms
               field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
             enddo
           enddo
@@ -98,17 +98,17 @@ contains
 
     if(dowally) then
       !$acc parallel loop collapse(3) copy(field) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
             field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
           enddo
         enddo
       enddo
       !$acc parallel loop collapse(3) copy(field) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
             field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
           enddo
         enddo
@@ -117,10 +117,10 @@ contains
 
     !  Horizontal diffusion:
     !$acc parallel loop collapse(4) copyin(field,tkh,grdf_x,grdf_y) copy(flx_x,flx_y) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=0,ny
-          do i=0,nx
+    do k=1,nzm
+      do j=0,ny
+        do i=0,nx
+          do icrm = 1 , ncrms
             if (j >= 1) then
               ic=i+1
               rdx5=0.5*rdx2  * grdf_x(icrm,k)
@@ -138,10 +138,10 @@ contains
       enddo
     enddo
     !$acc parallel loop collapse(4) copyin(flx_x,flx_y) copy(dfdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             ib=i-1
             dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(flx_x(icrm,i,j,k)-flx_x(icrm,ib,j,k))
             jb=j-1
@@ -153,17 +153,17 @@ contains
 
     !  Vertical diffusion:
     !$acc parallel loop collapse(2) copy(flux) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
+    do k = 1 , nzm
+      do icrm = 1 , ncrms
         flux(icrm,k) = 0.
       enddo
     enddo
 
     !$acc parallel loop collapse(4) copyin(rhow,adzw,dz,grdf_z,tkh,field,fluxb,fluxt) copy(flx_z,flux) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             if (k <= nzm-1) then
               kc=k+1
               rhoi = rhow(icrm,kc)/adzw(icrm,kc)
@@ -187,10 +187,10 @@ contains
     enddo
 
     !$acc parallel loop collapse(4) copyin(adz,rho,flx_z) copy(dfdt,field) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             kb=k-1
             rhoi = 1./(adz(icrm,k)*rho(icrm,k))
             dfdt(icrm,i,j,k)=dtn*(dfdt(icrm,i,j,k)-(flx_z(icrm,i,j,k)-flx_z(icrm,i,j,kb))*rhoi)

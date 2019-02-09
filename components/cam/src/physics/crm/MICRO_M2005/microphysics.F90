@@ -608,12 +608,12 @@ subroutine micro_flux(ncrms)
     if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
       fluxbmk(icrm,:,:,index_water_vapor) = 0.0 ! surface qv(icrm,latent heat) flux
     else
-      fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(:,:,icrm) ! surface qv(icrm,latent heat) flux
+      fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(icrm,:,:) ! surface qv(icrm,latent heat) flux
     end if
 #else
-    fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(:,:,icrm) ! surface qv(icrm,latent heat) flux
+    fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(icrm,:,:) ! surface qv(icrm,latent heat) flux
 #endif
-    fluxtmk(icrm,:,:,index_water_vapor) = fluxtq(:,:,icrm) ! top of domain qv flux
+    fluxtmk(icrm,:,:,index_water_vapor) = fluxtq(icrm,:,:) ! top of domain qv flux
   enddo
 end subroutine micro_flux
 
