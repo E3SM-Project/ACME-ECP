@@ -18,10 +18,10 @@ contains
     rdy=1./dy
 
     !$acc parallel loop collapse(4) copyin(p,dz,adzw) copy(dudt,dvdt,dwdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             kb=max(1,k-1)
             rdz = 1./(dz(icrm)*adzw(icrm,k))
             jb=j-YES3D
@@ -35,10 +35,10 @@ contains
     enddo
 
     !$acc parallel loop collapse(4) copy(p) copyin(rho) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
-          do i=0,nx
+    do k=1,nzm
+      do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
+        do i=0,nx
+          do icrm = 1 , ncrms
             p(icrm,i,j,k)=p(icrm,i,j,k)*rho(icrm,k)  ! convert p'/rho to p'
           end do
         end do
@@ -48,9 +48,9 @@ contains
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
       !$acc parallel loop collapse(3) copy(dudt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
+      do k=1,nzm
+        do j=1,ny
+            do icrm = 1 , ncrms
             dudt(icrm,1,j,k,na) = 0.
           end do
         end do

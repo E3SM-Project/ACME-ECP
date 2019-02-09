@@ -80,9 +80,9 @@ CONTAINS
     allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields))
     allocate( fluxbmk (nx, ny, 1:nmicro_fields,ncrms) )
     allocate( fluxtmk (nx, ny, 1:nmicro_fields,ncrms) )
-    allocate( mkwle  (nz,1:nmicro_fields,ncrms)  )
+    allocate( mkwle(ncrms,nz,1:nmicro_fields)  )
     allocate( mkwsb  (nz,1:nmicro_fields,ncrms)  )
-    allocate( mkadv  (nz,1:nmicro_fields,ncrms)  )
+    allocate( mkadv(ncrms,nz,1:nmicro_fields)  )
     allocate( mklsadv(nz,1:nmicro_fields,ncrms)  )
     allocate( mkdiff (nz,1:nmicro_fields,ncrms)  )
     allocate( mstor  (nz,1:nmicro_fields,ncrms)  )
@@ -228,9 +228,9 @@ CONTAINS
     end if
 
     do icrm = 1 , ncrms
-      mkwle  (:,:,icrm) = 0.
+      mkwle(icrm,:,:) = 0.
       mkwsb  (:,:,icrm) = 0.
-      mkadv  (:,:,icrm) = 0.
+      mkadv(icrm,:,:) = 0.
       mkdiff (:,:,icrm) = 0.
       mklsadv(:,:,icrm) = 0.
       mstor  (:,:,icrm) = 0.
@@ -552,8 +552,8 @@ CONTAINS
     integer :: ind
     ! Terminal velocity fnction
     ! Local:
-    real(crm_rknd) :: mx(nx,ny,nzm,ncrms),mn(nx,ny,nzm,ncrms), lfac(nx,ny,nz,ncrms)
-    real(crm_rknd) :: www(nx,ny,nz,ncrms),fz(nx,ny,nz,ncrms)
+    real(crm_rknd) :: mx(ncrms,nx,ny,nzm),mn(ncrms,nx,ny,nzm), lfac(nx,ny,nz,ncrms)
+    real(crm_rknd) :: www(ncrms,nx,ny,nz),fz(nx,ny,nz,ncrms)
     real(crm_rknd) :: eps
     integer :: i,j,k,kc,kb,icrm
     logical :: nonos
@@ -623,7 +623,7 @@ CONTAINS
             wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(icrm,k)*dtn/dz(icrm)
             if (k == 1) then
               fz(i,j,nz,icrm)=0.
-              www(i,j,nz,icrm)=0.
+              www(icrm,i,j,nz)=0.
               lfac(i,j,nz,icrm)=0
             endif
           enddo  ! k
@@ -672,8 +672,8 @@ CONTAINS
               if(nonos) then
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(i,j,k,icrm)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
-                mn(i,j,k,icrm)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
+                mx(icrm,i,j,k)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
+                mn(icrm,i,j,k)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
               endif  ! nonos
               ! Define upwind precipitation flux
               fz(i,j,k,icrm)=tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)
@@ -707,7 +707,7 @@ CONTAINS
               ! precipitation mass fraction.  Therefore, a reformulated
               ! anti-diffusive flux is used here which accounts for
               ! this and results in reduced numerical diffusion.
-              www(i,j,k,icrm) = 0.5*(1.+wp(i,j,k,icrm)*irhoadz(k,icrm))*(tmp_qp(i,j,kb,icrm)*wp(i,j,kb,icrm) - &
+              www(icrm,i,j,k) = 0.5*(1.+wp(i,j,k,icrm)*irhoadz(k,icrm))*(tmp_qp(i,j,kb,icrm)*wp(i,j,kb,icrm) - &
                                      tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)) ! works for wp(k)<0
             enddo
           enddo
@@ -723,11 +723,11 @@ CONTAINS
               do i=1,nx
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(i,j,k,icrm)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mx(i,j,k,icrm))
-                mn(i,j,k,icrm)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mn(i,j,k,icrm))
+                mx(icrm,i,j,k)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mx(icrm,i,j,k))
+                mn(icrm,i,j,k)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mn(icrm,i,j,k))
                 kc=min(nzm,k+1)
-                mx(i,j,k,icrm)=rho(icrm,k)*adz(icrm,k)*(mx(i,j,k,icrm)-tmp_qp(i,j,k,icrm))/(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm))+eps)
-                mn(i,j,k,icrm)=rho(icrm,k)*adz(icrm,k)*(tmp_qp(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm))+eps)
+                mx(icrm,i,j,k)=rho(icrm,k)*adz(icrm,k)*(mx(icrm,i,j,k)-tmp_qp(i,j,k,icrm))/(pn(www(icrm,i,j,kc)) + pp(www(icrm,i,j,k))+eps)
+                mn(icrm,i,j,k)=rho(icrm,k)*adz(icrm,k)*(tmp_qp(i,j,k,icrm)-mn(icrm,i,j,k))/(pp(www(icrm,i,j,kc)) + pn(www(icrm,i,j,k))+eps)
               enddo
             enddo
           enddo
@@ -739,8 +739,8 @@ CONTAINS
               do i=1,nx
                 kb=max(1,k-1)
                 ! Add limited flux correction to fz(k).
-                fz(i,j,k,icrm) = fz(i,j,k,icrm) + pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) - &
-                                                  pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm)) ! Anti-diffusive flux
+                fz(i,j,k,icrm) = fz(i,j,k,icrm) + pp(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,k), mn(icrm,i,j,kb)) - &
+                                                  pn(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,kb),mn(icrm,i,j,k)) ! Anti-diffusive flux
               enddo
             enddo
           enddo
@@ -796,7 +796,7 @@ CONTAINS
                 ! monotonic advection schemes.
                 if (k == 1) then
                   fz(i,j,nz,icrm)=0.
-                  www(i,j,nz,icrm)=0.
+                  www(icrm,i,j,nz)=0.
                   lfac(i,j,nz,icrm)=0.
                 endif
               enddo

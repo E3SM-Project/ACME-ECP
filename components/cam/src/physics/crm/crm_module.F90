@@ -1519,8 +1519,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       tmp2 = tmp1/dtn                        ! dtn is calculated inside of the icyc loop.
                                              ! It seems wrong to use it here ???? +++mhwang
       mkwsb (k,:,icrm) = mkwsb (k,:,icrm) * tmp1*rhow(icrm,k) * factor_xy/nstop     !kg/m3/s --> kg/m2/s
-      mkwle (k,:,icrm) = mkwle (k,:,icrm) * tmp2*rhow(icrm,k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
-      mkadv (k,:,icrm) = mkadv (k,:,icrm) * factor_xy*icrm_run_time     ! kg/kg  --> kg/kg/s
+      mkwle(icrm,k,:) = mkwle(icrm,k,:) * tmp2*rhow(icrm,k) * factor_xy/nstop     !kg/m3   --> kg/m2/s
+      mkadv(icrm,k,:) = mkadv(icrm,k,:) * factor_xy*icrm_run_time     ! kg/kg  --> kg/kg/s
       mkdiff(k,:,icrm) = mkdiff(k,:,icrm) * factor_xy*icrm_run_time   ! kg/kg  --> kg/kg/s
 
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
@@ -1533,21 +1533,21 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_output%flux_u    (icrm,l) = (uwle(icrm,k) + uwsb(icrm,k))*tmp1*factor_xy/nstop
       crm_output%flux_v    (icrm,l) = (vwle(icrm,k) + vwsb(icrm,k))*tmp1*factor_xy/nstop
 #ifdef sam1mom
-      crm_output%flux_qt   (icrm,l) = mkwle(k,1,icrm) + mkwsb(k,1,icrm)
+      crm_output%flux_qt   (icrm,l) = mkwle(icrm,k,1) + mkwsb(k,1,icrm)
       crm_output%fluxsgs_qt(icrm,l) = mkwsb(k,1,icrm)
-      crm_output%flux_qp   (icrm,l) = mkwle(k,2,icrm) + mkwsb(k,2,icrm)
-      crm_output%qt_trans  (icrm,l) = mkadv(k,1,icrm) + mkdiff(k,1,icrm)
-      crm_output%qp_trans  (icrm,l) = mkadv(k,2,icrm) + mkdiff(k,2,icrm)
+      crm_output%flux_qp   (icrm,l) = mkwle(icrm,k,2) + mkwsb(k,2,icrm)
+      crm_output%qt_trans  (icrm,l) = mkadv(icrm,k,1) + mkdiff(k,1,icrm)
+      crm_output%qp_trans  (icrm,l) = mkadv(icrm,k,2) + mkdiff(k,2,icrm)
 #endif /* sam1mom */
 #ifdef m2005
-      crm_output%flux_qt   (icrm,l) = mkwle(k,1   ,icrm) + mkwsb(k,1   ,icrm) +  &
-                         mkwle(k,iqci,icrm) + mkwsb(k,iqci,icrm)
+      crm_output%flux_qt   (icrm,l) = mkwle(icrm,k,1   ) + mkwsb(k,1   ,icrm) +  &
+                         mkwle(icrm,k,iqci) + mkwsb(k,iqci,icrm)
       crm_output%fluxsgs_qt(icrm,l) = mkwsb(k,1   ,icrm) + mkwsb(k,iqci,icrm)
-      crm_output%flux_qp   (icrm,l) = mkwle(k,iqr,icrm) + mkwsb(k,iqr,icrm) +  &
-                         mkwle(k,iqs,icrm) + mkwsb(k,iqs,icrm) + mkwle(k,iqg,icrm) + mkwsb(k,iqg,icrm)
-      crm_output%qt_trans  (icrm,l) = mkadv (k,1,icrm) + mkadv (k,iqci,icrm) + &
+      crm_output%flux_qp   (icrm,l) = mkwle(icrm,k,iqr) + mkwsb(k,iqr,icrm) +  &
+                         mkwle(icrm,k,iqs) + mkwsb(k,iqs,icrm) + mkwle(icrm,k,iqg) + mkwsb(k,iqg,icrm)
+      crm_output%qt_trans  (icrm,l) = mkadv(icrm,k,1) + mkadv(icrm,k,iqci) + &
                          mkdiff(k,1,icrm) + mkdiff(k,iqci,icrm)
-      crm_output%qp_trans  (icrm,l) = mkadv (k,iqr,icrm) + mkadv (k,iqs,icrm) + mkadv (k,iqg,icrm) + &
+      crm_output%qp_trans  (icrm,l) = mkadv(icrm,k,iqr) + mkadv(icrm,k,iqs) + mkadv(icrm,k,iqg) + &
                          mkdiff(k,iqr,icrm) + mkdiff(k,iqs,icrm) + mkdiff(k,iqg,icrm)
 #endif /* m2005 */
       crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(icrm,1:nx,1:ny,k))*factor_xy

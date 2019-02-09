@@ -21,7 +21,7 @@ contains
     real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
     real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
     real(crm_rknd) fdiff(nz,ncrms)
-    real(crm_rknd) flux (nz,ncrms)
+    real(crm_rknd) flux(ncrms,nz)
     ! Local
     real(crm_rknd) df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
     real(crm_rknd) :: tmp
