@@ -84,7 +84,7 @@ CONTAINS
     allocate( fluxbsgs (nx,ny,1:nsgs_fields,ncrms)  )
     allocate( fluxtsgs (nx,ny,1:nsgs_fields,ncrms)  )
     allocate( sgswle(ncrms,nz,1:nsgs_fields)   )
-    allocate( sgswsb(nz,1:nsgs_fields,ncrms)   )
+    allocate( sgswsb(ncrms,nz,1:nsgs_fields)   )
     allocate( sgsadv(ncrms,nz,1:nsgs_fields)   )
     allocate( sgslsadv(nz,1:nsgs_fields,ncrms)   )
     allocate( sgsdiff(nz,1:nsgs_fields,ncrms)   )
@@ -235,7 +235,7 @@ CONTAINS
     end if
 
     sgswle(icrm,:,:) = 0.
-    sgswsb  (:,:,icrm) = 0.
+    sgswsb(icrm,:,:) = 0.
     sgsadv(icrm,:,:) = 0.
     sgsdiff (:,:,icrm) = 0.
     sgslsadv(:,:,icrm) = 0.
@@ -416,11 +416,10 @@ CONTAINS
     use params, only: dotracers
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) dummy(nz,ncrms)
-    real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms), difftmp(nz,ncrms), wsbtmp(nz,ncrms)
+    real(crm_rknd) dummy(ncrms,nz)
     integer i,j,kk,k,icrm
 
-    !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(asyncid)
+    !$acc enter data create(dummy) async(asyncid)
     
 #ifdef __PGI
     !Passing tkh via first element to avoid PGI pointer bug
@@ -430,24 +429,12 @@ CONTAINS
 #endif
 
     if(advect_sgs) then
-      !$acc parallel loop collapse(2) copyin(sgswsb) copy(wsbtmp) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1 , nz
-          wsbtmp(k,icrm) = sgswsb(k,1,icrm)
-        enddo
-      enddo
 #ifdef __PGI
       !Passing tkh via first element to avoid PGI pointer bug
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),tke,fzero,fzero,dummy,wsbtmp)
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),tke,fzero,fzero,dummy,sgswsb(:,:,1))
 #else
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,wsbtmp)
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,sgswsb(:,:,1))
 #endif
-      !$acc parallel loop collapse(2) copyin(wsbtmp) copy(sgswsb) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1 , nz
-          sgswsb(k,1,icrm) = wsbtmp(k,icrm)
-        enddo
-      enddo
     end if
 
     !    diffusion of microphysics prognostics:
@@ -460,39 +447,16 @@ CONTAINS
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        !$acc parallel loop collapse(2) copyin(fluxbmk,fluxtmk) copy(fluxbtmp,fluxttmp) async(asyncid)
-        do icrm = 1 , ncrms
-          do j = 1 , ny
-            do i = 1 , nx
-              fluxbtmp(i,j,icrm) = fluxbmk(i,j,k,icrm)
-              fluxttmp(i,j,icrm) = fluxtmk(i,j,k,icrm)
-            enddo
-          enddo
-        enddo
-        !$acc parallel loop collapse(2) copyin(mkdiff,mkwsb) copy(difftmp,wsbtmp) async(asyncid)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            difftmp(kk,icrm) = mkdiff(kk,k,icrm)
-            wsbtmp (kk,icrm) = mkwsb (kk,k,icrm)
-          enddo
-        enddo
 #ifdef __PGI
         !Passing tkh via first element to avoid PGI pointer bug
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
 #else
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
 #endif
-        !$acc parallel loop collapse(2) copyin(difftmp,wsbtmp) copy(mkdiff,mkwsb) async(asyncid)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            mkdiff(kk,k,icrm) = difftmp(kk,icrm)
-            mkwsb (kk,k,icrm) = wsbtmp (kk,icrm)
-          enddo
-        enddo
       end if
     end do
 
-    !$acc exit data delete(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(asyncid)
+    !$acc exit data delete(dummy) async(asyncid)
 
     !if(dotracers) then
     !  call tracers_flux()

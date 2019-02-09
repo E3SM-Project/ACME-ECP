@@ -18,9 +18,9 @@ contains
     real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) tkh(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy conductivity
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
-    real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
-    real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
-    real(crm_rknd) fdiff(nz,ncrms)
+    real(crm_rknd) fluxb(ncrms,nx,ny)   ! bottom flux
+    real(crm_rknd) fluxt(ncrms,nx,ny)   ! top flux
+    real(crm_rknd) fdiff(ncrms,nz)
     real(crm_rknd) flux(ncrms,nz)
     ! Local
     real(crm_rknd) df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
@@ -49,7 +49,7 @@ contains
     !$acc parallel loop collapse(2) copy(fdiff) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
-        fdiff(k,icrm)=0.
+        fdiff(icrm,k)=0.
       enddo
     enddo
     !$acc parallel loop collapse(2) copyin(f,df) copy(fdiff) async(asyncid)
@@ -59,7 +59,7 @@ contains
           do i=1,nx
             tmp = f(icrm,i,j,k)-df(icrm,i,j,k)
             !$acc atomic update
-            fdiff(k,icrm)=fdiff(k,icrm)+tmp
+            fdiff(icrm,k)=fdiff(icrm,k)+tmp
           end do
         end do
       end do

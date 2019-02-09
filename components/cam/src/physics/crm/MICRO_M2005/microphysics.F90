@@ -132,14 +132,14 @@ subroutine allocate_micro(ncrms)
   integer, intent(in) :: ncrms
   ! allocate microphysical variables
   allocate(micro_field(ncrms,dimx1_s:dimx2_s,dimy1_s:dimy2_s,nzm,nmicro_fields))
-  allocate(fluxbmk(nx,ny,nmicro_fields,ncrms))
-  allocate(fluxtmk(nx,ny,nmicro_fields,ncrms))
+  allocate(fluxbmk(ncrms,nx,ny,nmicro_fields))
+  allocate(fluxtmk(ncrms,nx,ny,nmicro_fields))
   allocate(reffc(nx,ny,nzm,ncrms))
   allocate(reffi(nx,ny,nzm,ncrms))
   allocate(mkwle(ncrms,nz,nmicro_fields))
-  allocate(mkwsb(nz,nmicro_fields,ncrms))
+  allocate(mkwsb(ncrms,nz,nmicro_fields))
   allocate(mkadv(ncrms,nz,nmicro_fields))
-  allocate(mkdiff(nz,nmicro_fields,ncrms))
+  allocate(mkdiff(ncrms,nz,nmicro_fields))
   allocate(mklsadv(nz,nmicro_fields,ncrms))
   allocate(stend(nzm,nmicro_fields,ncrms))
   allocate(mtend(nzm,nmicro_fields,ncrms))
@@ -602,18 +602,18 @@ subroutine micro_flux(ncrms)
   integer :: icrm
 
   do icrm = 1 , ncrms
-    fluxbmk(:,:,:,icrm) = 0. ! initialize all fluxes at surface to zero
-    fluxtmk(:,:,:,icrm) = 0. ! initialize all fluxes at top of domain to zero
+    fluxbmk(icrm,:,:,:) = 0. ! initialize all fluxes at surface to zero
+    fluxtmk(icrm,:,:,:) = 0. ! initialize all fluxes at top of domain to zero
 #ifdef CLUBB_CRM
     if ( doclubb .and. (doclubb_sfc_fluxes.or.docam_sfc_fluxes) ) then
-      fluxbmk(:,:,index_water_vapor,icrm) = 0.0 ! surface qv(icrm,latent heat) flux
+      fluxbmk(icrm,:,:,index_water_vapor) = 0.0 ! surface qv(icrm,latent heat) flux
     else
-      fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv(icrm,latent heat) flux
+      fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(:,:,icrm) ! surface qv(icrm,latent heat) flux
     end if
 #else
-    fluxbmk(:,:,index_water_vapor,icrm) = fluxbq(:,:,icrm) ! surface qv(icrm,latent heat) flux
+    fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(:,:,icrm) ! surface qv(icrm,latent heat) flux
 #endif
-    fluxtmk(:,:,index_water_vapor,icrm) = fluxtq(:,:,icrm) ! top of domain qv flux
+    fluxtmk(icrm,:,:,index_water_vapor) = fluxtq(:,:,icrm) ! top of domain qv flux
   enddo
 end subroutine micro_flux
 
