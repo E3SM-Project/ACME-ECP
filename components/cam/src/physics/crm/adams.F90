@@ -17,10 +17,10 @@ contains
     dtdy = dtn/dy
 
     !$acc parallel loop collapse(4) copyin(dz,rho,rhow,dt3) copy(dudt,dvdt,dwdt,u,v,w,misc) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             dtdz = dtn/dz(icrm)
             rhox = rho(icrm,k)*dtdx
             rhoy = rho(icrm,k)*dtdy

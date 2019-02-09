@@ -695,8 +695,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     vwsb(icrm,:)     = 0.
     qpsrc(:,icrm)    = 0.
     qpevp(:,icrm)    = 0.
-    qpfall(:,icrm)   = 0.
-    precflux(:,icrm) = 0.
+    qpfall(icrm,:)   = 0.
+    precflux(icrm,:) = 0.
 
   enddo
 !--------------------------------------------------
@@ -1526,8 +1526,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       ! qpsrc, qpevp, qpfall in M2005 are calculated in micro_flux.
       qpsrc   (k,icrm) = qpsrc   (k,icrm) * factor_xy*icrm_run_time
       qpevp   (k,icrm) = qpevp   (k,icrm) * factor_xy*icrm_run_time
-      qpfall  (k,icrm) = qpfall  (k,icrm) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
-      precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz(icrm)/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
+      qpfall(icrm,k) = qpfall(icrm,k) * factor_xy*icrm_run_time   ! kg/kg in M2005 ---> kg/kg/s
+      precflux(icrm,k) = precflux(icrm,k) * factor_xy*dz(icrm)/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
       crm_output%flux_u    (icrm,l) = (uwle(icrm,k) + uwsb(icrm,k))*tmp1*factor_xy/nstop
@@ -1553,9 +1553,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(icrm,1:nx,1:ny,k))*factor_xy
       crm_output%tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
       crm_output%tkz       (icrm,l) = sum(tk(icrm,1:nx, 1:ny, k)) * factor_xy
-      crm_output%precflux      (icrm,l) = precflux(k,icrm)/1000.       !mm/s  -->m/s
+      crm_output%precflux      (icrm,l) = precflux(icrm,k)/1000.       !mm/s  -->m/s
 
-      crm_output%qp_fall   (icrm,l) = qpfall(k,icrm)
+      crm_output%qp_fall   (icrm,l) = qpfall(icrm,k)
       crm_output%qp_evp    (icrm,l) = qpevp(k,icrm)
       crm_output%qp_src    (icrm,l) = qpsrc(k,icrm)
 

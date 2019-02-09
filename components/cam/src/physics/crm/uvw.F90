@@ -12,10 +12,10 @@ contains
     integer :: i, j, k, icrm
 
     !$acc parallel loop collapse(4) copyin(dudt,dvdt,dwdt) copy(u,v,w) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        do j = 1 , ny
-          do i = 1 , nx
+    do k = 1 , nzm
+      do j = 1 , ny
+        do i = 1 , nx
+          do icrm = 1 , ncrms
             u(icrm,i,j,k) = dudt(icrm,i,j,k,nc)
             v(icrm,i,j,k) = dvdt(icrm,i,j,k,nc)
             w(icrm,i,j,k) = dwdt(icrm,i,j,k,nc)

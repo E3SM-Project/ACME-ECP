@@ -509,7 +509,7 @@ CONTAINS
     use params, only : pi
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) omega(nx,ny,nzm,ncrms)
+    real(crm_rknd) omega(ncrms,nx,ny,nzm)
     integer ind
     integer i,j,k,icrm
 
@@ -523,11 +523,11 @@ CONTAINS
     vgrau = a_grau * gamg3 / 6. / (pi * rhog * nzerog) ** cgrau
 
     !$acc parallel loop collapse(4) copyin(tabs) copy(omega) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
-            omega(i,j,k,icrm) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            omega(icrm,i,j,k) = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
           end do
         end do
       end do
@@ -548,19 +548,19 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
     integer :: hydro_type   ! 0 - all liquid, 1 - all ice, 2 - mixed
-    real(crm_rknd) :: omega(nx,ny,nzm,ncrms)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
+    real(crm_rknd) :: omega(ncrms,nx,ny,nzm)   !  = 1: liquid, = 0: ice;  = 0-1: mixed : used only when hydro_type=2
     integer :: ind
     ! Terminal velocity fnction
     ! Local:
-    real(crm_rknd) :: mx(ncrms,nx,ny,nzm),mn(ncrms,nx,ny,nzm), lfac(nx,ny,nz,ncrms)
-    real(crm_rknd) :: www(ncrms,nx,ny,nz),fz(nx,ny,nz,ncrms)
+    real(crm_rknd) :: mx(ncrms,nx,ny,nzm),mn(ncrms,nx,ny,nzm), lfac(ncrms,nx,ny,nz)
+    real(crm_rknd) :: www(ncrms,nx,ny,nz),fz(ncrms,nx,ny,nz)
     real(crm_rknd) :: eps
     integer :: i,j,k,kc,kb,icrm
     logical :: nonos
     real(crm_rknd) :: y,pp,pn
     real(crm_rknd) :: lat_heat, wmax
-    real(crm_rknd) :: wp(nx,ny,nzm,ncrms), tmp_qp(nx,ny,nzm,ncrms), irhoadz(nzm,ncrms), iwmax(nzm,ncrms), &
-                      rhofac(nzm,ncrms), prec_cfl
+    real(crm_rknd) :: wp(ncrms,nx,ny,nzm), tmp_qp(ncrms,nx,ny,nzm), irhoadz(ncrms,nzm), iwmax(ncrms,nzm), &
+                      rhofac(ncrms,nzm), prec_cfl
     integer nprec, iprec
     real(crm_rknd) :: flagstat, tmp
     real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
@@ -577,13 +577,13 @@ CONTAINS
     !$acc enter data create(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(asyncid)
 
     !$acc parallel loop gang vector collapse(2) copyin(rho,adz,dz) copy(rhofac,irhoadz,iwmax) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzm
-        rhofac(k,icrm) = sqrt(1.29/rho(icrm,k))
-        irhoadz(k,icrm) = 1./(rho(icrm,k)*adz(icrm,k)) ! Useful factor
+    do k = 1,nzm
+      do icrm = 1 , ncrms
+        rhofac(icrm,k) = sqrt(1.29/rho(icrm,k))
+        irhoadz(icrm,k) = 1./(rho(icrm,k)*adz(icrm,k)) ! Useful factor
         kb = max(1,k-1)
         wmax       = dz(icrm)*adz(icrm,kb)/dtn   ! Velocity equivalent to a cfl of 1.0.
-        iwmax(k,icrm)   = 1./wmax
+        iwmax(icrm,k)   = 1./wmax
       enddo
     enddo
 
@@ -591,22 +591,22 @@ CONTAINS
     prec_cfl = 0.
     !$acc parallel loop gang vector collapse(4) copyin(omega,rhofac,micro_field,rho,tabs,iwmax,rhow,dz) &
     !$acc&                                      copy(prec_cfl,wp,fz,www,lfac,flagstat) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             select case (hydro_type)
             case(0)
-              lfac(i,j,k,icrm) = fac_cond
+              lfac(icrm,i,j,k) = fac_cond
               flagstat = 1.
             case(1)
-              lfac(i,j,k,icrm) = fac_sub
+              lfac(icrm,i,j,k) = fac_sub
               flagstat = 1.
             case(2)
-              lfac(i,j,k,icrm) = fac_cond + (1-omega(i,j,k,icrm))*fac_fus
+              lfac(icrm,i,j,k) = fac_cond + (1-omega(icrm,i,j,k))*fac_fus
               flagstat = 1.
             case(3)
-              lfac(i,j,k,icrm) = 0.
+              lfac(icrm,i,j,k) = 0.
               flagstat = 0.
             case default
               if(masterproc) then
@@ -614,17 +614,17 @@ CONTAINS
                 !call task_abort
               endif
             end select
-            wp(i,j,k,icrm)=rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(:,:),&
+            wp(icrm,i,j,k)=rhofac(icrm,k)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(:,:),&
                                                       tabs(:,:,:,:),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
                                                       a_gr,vgrau,cgrau,vsnow,csnow)
-            tmp = wp(i,j,k,icrm)*iwmax(k,icrm)
+            tmp = wp(icrm,i,j,k)*iwmax(icrm,k)
             !$acc atomic update
             prec_cfl = max(prec_cfl,tmp) ! Keep column maximum CFL
-            wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(icrm,k)*dtn/dz(icrm)
+            wp(icrm,i,j,k) = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)
             if (k == 1) then
-              fz(i,j,nz,icrm)=0.
+              fz(icrm,i,j,nz)=0.
               www(icrm,i,j,nz)=0.
-              lfac(i,j,nz,icrm)=0
+              lfac(icrm,i,j,nz)=0
             endif
           enddo  ! k
         enddo
@@ -636,13 +636,13 @@ CONTAINS
     if (prec_cfl.gt.0.9) then
       nprec = CEILING(prec_cfl/0.9)
       !$acc parallel loop gang vector collapse(4) copy(wp) async(asyncid)
-      do icrm = 1 , ncrms
-        do k = 1,nzm
-          do j=1,ny
-            do i=1,nx
+      do k = 1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               ! wp already includes factor of dt, so reduce it by a
               ! factor equal to the number of precipitation steps.
-              wp(i,j,k,icrm) = wp(i,j,k,icrm)/real(nprec,crm_rknd)
+              wp(icrm,i,j,k) = wp(icrm,i,j,k)/real(nprec,crm_rknd)
             enddo
           enddo
         enddo
@@ -654,51 +654,51 @@ CONTAINS
     !  loop over iterations
     do iprec = 1,nprec
       !$acc parallel loop gang vector collapse(4) copyin(qp) copy(tmp_qp) async(asyncid)
-      do icrm = 1 , ncrms
-        do k = 1,nzm
-          do j=1,ny
-            do i=1,nx
-              tmp_qp(i,j,k,icrm) = qp(icrm,i,j,k) ! Temporary array for qp in this column
+      do k = 1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
+              tmp_qp(icrm,i,j,k) = qp(icrm,i,j,k) ! Temporary array for qp in this column
             enddo
           enddo
         enddo
       enddo
 
       !$acc parallel loop gang vector collapse(4) copyin(tmp_qp,wp) copy(mn,mx,fz) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               if(nonos) then
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(icrm,i,j,k)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
-                mn(icrm,i,j,k)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm))
+                mx(icrm,i,j,k)=max(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k))
+                mn(icrm,i,j,k)=min(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k))
               endif  ! nonos
               ! Define upwind precipitation flux
-              fz(i,j,k,icrm)=tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)
+              fz(icrm,i,j,k)=tmp_qp(icrm,i,j,k)*wp(icrm,i,j,k)
             enddo
           enddo
         enddo
       enddo
 
       !$acc parallel loop gang vector collapse(4) copyin(fz,irhoadz) copy(tmp_qp) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               kc=k+1
-              tmp_qp(i,j,k,icrm)=tmp_qp(i,j,k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm) !Update temporary qp
+              tmp_qp(icrm,i,j,k)=tmp_qp(icrm,i,j,k)-(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k) !Update temporary qp
             enddo
           enddo
         enddo
       enddo
 
       !$acc parallel loop gang vector collapse(4) copyin(wp,irhoadz,tmp_qp,wp) copy(www) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               ! Also, compute anti-diffusive correction to previous
               ! (upwind) approximation to the flux
               kb=max(1,k-1)
@@ -707,8 +707,8 @@ CONTAINS
               ! precipitation mass fraction.  Therefore, a reformulated
               ! anti-diffusive flux is used here which accounts for
               ! this and results in reduced numerical diffusion.
-              www(icrm,i,j,k) = 0.5*(1.+wp(i,j,k,icrm)*irhoadz(k,icrm))*(tmp_qp(i,j,kb,icrm)*wp(i,j,kb,icrm) - &
-                                     tmp_qp(i,j,k,icrm)*wp(i,j,k,icrm)) ! works for wp(k)<0
+              www(icrm,i,j,k) = 0.5*(1.+wp(icrm,i,j,k)*irhoadz(icrm,k))*(tmp_qp(icrm,i,j,kb)*wp(icrm,i,j,kb) - &
+                                     tmp_qp(icrm,i,j,k)*wp(icrm,i,j,k)) ! works for wp(k)<0
             enddo
           enddo
         enddo
@@ -717,29 +717,29 @@ CONTAINS
       !---------- non-osscilatory option ---------------
       if(nonos) then
         !$acc parallel loop gang vector collapse(4) copyin(tmp_qp,rho,adz,www) copy(mn,mx) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do j=1,ny
-              do i=1,nx
+        do k=1,nzm
+          do j=1,ny
+            do i=1,nx
+              do icrm = 1 , ncrms
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(icrm,i,j,k)=max(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mx(icrm,i,j,k))
-                mn(icrm,i,j,k)=min(tmp_qp(i,j,kb,icrm),tmp_qp(i,j,kc,icrm),tmp_qp(i,j,k,icrm),mn(icrm,i,j,k))
+                mx(icrm,i,j,k)=max(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k),mx(icrm,i,j,k))
+                mn(icrm,i,j,k)=min(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k),mn(icrm,i,j,k))
                 kc=min(nzm,k+1)
-                mx(icrm,i,j,k)=rho(icrm,k)*adz(icrm,k)*(mx(icrm,i,j,k)-tmp_qp(i,j,k,icrm))/(pn(www(icrm,i,j,kc)) + pp(www(icrm,i,j,k))+eps)
-                mn(icrm,i,j,k)=rho(icrm,k)*adz(icrm,k)*(tmp_qp(i,j,k,icrm)-mn(icrm,i,j,k))/(pp(www(icrm,i,j,kc)) + pn(www(icrm,i,j,k))+eps)
+                mx(icrm,i,j,k)=rho(icrm,k)*adz(icrm,k)*(mx(icrm,i,j,k)-tmp_qp(icrm,i,j,k))/(pn(www(icrm,i,j,kc)) + pp(www(icrm,i,j,k))+eps)
+                mn(icrm,i,j,k)=rho(icrm,k)*adz(icrm,k)*(tmp_qp(icrm,i,j,k)-mn(icrm,i,j,k))/(pp(www(icrm,i,j,kc)) + pn(www(icrm,i,j,k))+eps)
               enddo
             enddo
           enddo
         enddo
         !$acc parallel loop gang vector collapse(4) copyin(www,mn,mx) copy(fz) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do j=1,ny
-              do i=1,nx
+        do k=1,nzm
+          do j=1,ny
+            do i=1,nx
+              do icrm = 1 , ncrms
                 kb=max(1,k-1)
                 ! Add limited flux correction to fz(k).
-                fz(i,j,k,icrm) = fz(i,j,k,icrm) + pp(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,k), mn(icrm,i,j,kb)) - &
+                fz(icrm,i,j,k) = fz(icrm,i,j,k) + pp(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,k), mn(icrm,i,j,kb)) - &
                                                   pn(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,kb),mn(icrm,i,j,k)) ! Anti-diffusive flux
               enddo
             enddo
@@ -751,27 +751,27 @@ CONTAINS
       ! energy using precipitation fluxes computed in this column.
       !$acc parallel loop gang vector collapse(4) copyin(fz,irhoadz,lfac,flagstat,omega) &
       !$acc&                                      copy(qp,qpfall,t,tlat,precflux,precsfc,precssfc,prec_xy) async(asyncid)
-      do icrm = 1 , ncrms
-        do j=1,ny
-          do i=1,nx
-            do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do k=1,nzm
+            do icrm = 1 , ncrms
               kc=k+1
               ! Update precipitation mass fraction.
               ! Note that fz is the total flux, including both the
               ! upwind flux and the anti-diffusive correction.
-              qp(icrm,i,j,k)=qp(icrm,i,j,k)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)
-              qpfall(k,icrm)=qpfall(k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)*flagstat  ! For qp budget
-              lat_heat = -(lfac(i,j,kc,icrm)*fz(i,j,kc,icrm)-lfac(i,j,k,icrm)*fz(i,j,k,icrm))*irhoadz(k,icrm)
+              qp(icrm,i,j,k)=qp(icrm,i,j,k)-(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k)
+              qpfall(icrm,k)=qpfall(icrm,k)-(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k)*flagstat  ! For qp budget
+              lat_heat = -(lfac(icrm,i,j,kc)*fz(icrm,i,j,kc)-lfac(icrm,i,j,k)*fz(icrm,i,j,k))*irhoadz(icrm,k)
               t(icrm,i,j,k)=t(icrm,i,j,k)-lat_heat
               !$acc atomic update
-              tlat(k,icrm)=tlat(k,icrm)-lat_heat            ! For energy budget
-              tmp = fz(i,j,k,icrm)*flagstat
+              tlat(icrm,k)=tlat(icrm,k)-lat_heat            ! For energy budget
+              tmp = fz(icrm,i,j,k)*flagstat
               !$acc atomic update
-              precflux(k,icrm) = precflux(k,icrm) - tmp   ! For statistics
+              precflux(icrm,k) = precflux(icrm,k) - tmp   ! For statistics
               if (k == 1) then
-                precsfc(icrm,i,j) = precsfc(icrm,i,j) - fz(i,j,1,icrm)*flagstat ! For statistics
-                precssfc(icrm,i,j) = precssfc(icrm,i,j) - fz(i,j,1,icrm)*(1.-omega(i,j,1,icrm))*flagstat ! For statistics
-                prec_xy(i,j,icrm) = prec_xy(i,j,icrm) - fz(i,j,1,icrm)*flagstat ! For 2D output
+                precsfc(icrm,i,j) = precsfc(icrm,i,j) - fz(icrm,i,j,1)*flagstat ! For statistics
+                precssfc(icrm,i,j) = precssfc(icrm,i,j) - fz(icrm,i,j,1)*(1.-omega(icrm,i,j,1))*flagstat ! For statistics
+                prec_xy(icrm,i,j) = prec_xy(icrm,i,j) - fz(icrm,i,j,1)*flagstat ! For 2D output
               endif
             enddo
           enddo
@@ -781,23 +781,23 @@ CONTAINS
       if (iprec.lt.nprec) then
         ! Re-compute precipitation velocity using new value of qp.
         !$acc parallel loop gang vector collapse(4) copyin(rhofac,micro_field,rho,tabs,rhow,dz) copy(wp,fz,www,lfac) async(asyncid)
-        do icrm = 1 , ncrms
-          do j=1,ny
-            do i=1,nx
-              do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do k=1,nzm
+              do icrm = 1 , ncrms
                 !Passing variables via first index because of PGI bug with pointers
-                wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
+                wp(icrm,i,j,k) = rhofac(icrm,k)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
                                  tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
                 ! Decrease precipitation velocity by factor of nprec
-                wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
+                wp(icrm,i,j,k) = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
                 ! Note: Don't bother checking CFL condition at each
                 ! substep since it's unlikely that the CFL will
                 ! increase very much between substeps when using
                 ! monotonic advection schemes.
                 if (k == 1) then
-                  fz(i,j,nz,icrm)=0.
+                  fz(icrm,i,j,nz)=0.
                   www(icrm,i,j,nz)=0.
-                  lfac(i,j,nz,icrm)=0.
+                  lfac(icrm,i,j,nz)=0.
                 endif
               enddo
             enddo
