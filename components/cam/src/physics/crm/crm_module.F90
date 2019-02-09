@@ -496,7 +496,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     tke(icrm,1:nx,1:ny,1:nzm) = 0.
     tk(icrm,1:nx,1:ny,1:nzm) = 0.
     tkh(icrm,1:nx,1:ny,1:nzm) = 0.
-    p   (1:nx,1:ny,1:nzm,icrm) = 0.
+    p(icrm,1:nx,1:ny,1:nzm) = 0.
 
     CF3D(1:nx,1:ny,1:nzm,icrm) = 1.
   enddo

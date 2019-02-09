@@ -14,10 +14,10 @@ contains
 
     if(RUN3D) then
       !$acc parallel loop collapse(4) copyin(w,vg0,ug0,v,fcory,fcorzy,u) copy(dvdt,dudt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               kc=k+1
               jb=j-1
               jc=j+1
@@ -34,10 +34,10 @@ contains
       end do
     else
       !$acc parallel loop collapse(4) copyin(u,v,w,ug0,vg0,fcorzy,fcory) copy(dudt,dvdt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               kc=k+1
               ib=i-1
               ic=i+1
