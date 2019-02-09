@@ -55,9 +55,7 @@ module microphysics
   real(crm_rknd), allocatable :: mkwle  (:,:,:)  ! resolved vertical flux
   real(crm_rknd), allocatable :: mkwsb  (:,:,:)  ! SGS vertical flux
   real(crm_rknd), allocatable :: mkadv  (:,:,:)  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: mklsadv(:,:,:)  ! tendency due to large-scale vertical advection
   real(crm_rknd), allocatable :: mkdiff (:,:,:)  ! tendency due to vertical diffusion
-  real(crm_rknd), allocatable :: mstor  (:,:,:)  ! storage terms of microphysical variables
   character*3   , allocatable :: mkname       (:)
   character*80  , allocatable :: mklongname   (:)
   character*10  , allocatable :: mkunits      (:)
@@ -83,9 +81,7 @@ CONTAINS
     allocate( mkwle(ncrms,nz,1:nmicro_fields)  )
     allocate( mkwsb(ncrms,nz,1:nmicro_fields)  )
     allocate( mkadv(ncrms,nz,1:nmicro_fields)  )
-    allocate( mklsadv(nz,1:nmicro_fields,ncrms)  )
     allocate( mkdiff(ncrms,nz,1:nmicro_fields)  )
-    allocate( mstor  (nz,1:nmicro_fields,ncrms)  )
     allocate( mkname       (nmicro_fields))
     allocate( mklongname   (nmicro_fields))
     allocate( mkunits      (nmicro_fields))
@@ -109,9 +105,7 @@ CONTAINS
     mkwle   = zero
     mkwsb   = zero
     mkadv   = zero
-    mklsadv = zero
     mkdiff  = zero
-    mstor   = zero
     mkname        = ''
     mklongname    = ''
     mkunits       = ''
@@ -136,9 +130,7 @@ CONTAINS
     deallocate(mkwle    )
     deallocate(mkwsb    )
     deallocate(mkadv    )
-    deallocate(mklsadv  )
     deallocate(mkdiff   )
-    deallocate(mstor    )
     deallocate(mkname         )
     deallocate(mklongname     )
     deallocate(mkunits        )
@@ -232,18 +224,9 @@ CONTAINS
       mkwsb(icrm,:,:) = 0.
       mkadv(icrm,:,:) = 0.
       mkdiff(icrm,:,:) = 0.
-      mklsadv(:,:,icrm) = 0.
-      mstor  (:,:,icrm) = 0.
 
       qpsrc(icrm,:) = 0.
       qpevp(icrm,:) = 0.
-
-      ! set mstor to be the inital microphysical mixing ratios
-      do n=1, nmicro_fields
-        do k=1, nzm
-          mstor(k, n,icrm) = SUM(micro_field(icrm,1:nx,1:ny,k,n))
-        end do
-      end do
     enddo
 
     mkname(1) = 'QT'

@@ -54,20 +54,15 @@ module sgs
 
   real(crm_rknd), allocatable, target :: sgs_field     (:,:,:,:,:)
   real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:,:)
-  real(crm_rknd), allocatable :: fluxbsgs (:,:,:,:) ! surface fluxes
-  real(crm_rknd), allocatable :: fluxtsgs (:,:,:,:) ! top boundary fluxes
   real(crm_rknd), allocatable :: sgswle   (:,:,:)  ! resolved vertical flux
   real(crm_rknd), allocatable :: sgswsb   (:,:,:)  ! SGS vertical flux
   real(crm_rknd), allocatable :: sgsadv   (:,:,:)  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: sgslsadv (:,:,:)  ! tendency due to large-scale vertical advection
-  real(crm_rknd), allocatable :: sgsdiff  (:,:,:)  ! tendency due to vertical diffusion
   real(crm_rknd), allocatable :: grdf_x(:,:)! grid factor for eddy diffusion in x
   real(crm_rknd), allocatable :: grdf_y(:,:)! grid factor for eddy diffusion in y
   real(crm_rknd), allocatable :: grdf_z(:,:)! grid factor for eddy diffusion in z
   real(crm_rknd), allocatable :: tkesbbuoy (:,:)
   real(crm_rknd), allocatable :: tkesbshear(:,:)
   real(crm_rknd), allocatable :: tkesbdiss (:,:)
-  real(crm_rknd), allocatable :: tkesbdiff (:,:)
   real(crm_rknd), pointer :: tke (:,:,:,:)   ! SGS TKE
   real(crm_rknd), pointer :: tk  (:,:,:,:) ! SGS eddy viscosity
   real(crm_rknd), pointer :: tkh (:,:,:,:) ! SGS eddy conductivity
@@ -81,20 +76,15 @@ CONTAINS
     real(crm_rknd) :: zero
     allocate( sgs_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
     allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
-    allocate( fluxbsgs (nx,ny,1:nsgs_fields,ncrms)  )
-    allocate( fluxtsgs (nx,ny,1:nsgs_fields,ncrms)  )
     allocate( sgswle(ncrms,nz,1:nsgs_fields)   )
     allocate( sgswsb(ncrms,nz,1:nsgs_fields)   )
     allocate( sgsadv(ncrms,nz,1:nsgs_fields)   )
-    allocate( sgslsadv(nz,1:nsgs_fields,ncrms)   )
-    allocate( sgsdiff(nz,1:nsgs_fields,ncrms)   )
     allocate( grdf_x(ncrms,nzm) )
     allocate( grdf_y(ncrms,nzm) )
     allocate( grdf_z(ncrms,nzm) )
     allocate( tkesbbuoy(ncrms,nz) )
     allocate( tkesbshear(ncrms,nz) )
     allocate( tkesbdiss(ncrms,nz) )
-    allocate( tkesbdiff(nz,ncrms) )
 
     tke(1:,dimx1_s:,dimy1_s:,1:) => sgs_field     (:,:,:,:,1)
     tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,:,1)
@@ -104,20 +94,15 @@ CONTAINS
 
     sgs_field = zero
     sgs_field_diag = zero
-    fluxbsgs  = zero
-    fluxtsgs  = zero
     sgswle = zero
     sgswsb = zero
     sgsadv = zero
-    sgslsadv = zero
-    sgsdiff = zero
     grdf_x = zero
     grdf_y = zero
     grdf_z = zero
     tkesbbuoy = zero
     tkesbshear = zero
     tkesbdiss = zero
-    tkesbdiff = zero
   end subroutine allocate_sgs
 
 
@@ -125,20 +110,15 @@ CONTAINS
     implicit none
     deallocate( sgs_field  )
     deallocate( sgs_field_diag  )
-    deallocate( fluxbsgs   )
-    deallocate( fluxtsgs   )
     deallocate( sgswle  )
     deallocate( sgswsb  )
     deallocate( sgsadv  )
-    deallocate( sgslsadv  )
-    deallocate( sgsdiff  )
     deallocate( grdf_x  )
     deallocate( grdf_y  )
     deallocate( grdf_z  )
     deallocate( tkesbbuoy  )
     deallocate( tkesbshear  )
     deallocate( tkesbdiss  )
-    deallocate( tkesbdiff  )
     nullify(tke)
     nullify(tk )
     nullify(tkh)
@@ -207,8 +187,6 @@ CONTAINS
       sgs_field(icrm,:,:,:,:) = 0.
       sgs_field_diag(icrm,:,:,:,:) = 0.
 
-      fluxbsgs(:,:,:,icrm) = 0.
-      fluxtsgs(:,:,:,icrm) = 0.
 
     end if
 
@@ -237,8 +215,6 @@ CONTAINS
     sgswle(icrm,:,:) = 0.
     sgswsb(icrm,:,:) = 0.
     sgsadv(icrm,:,:) = 0.
-    sgsdiff (:,:,icrm) = 0.
-    sgslsadv(:,:,icrm) = 0.
 
 
   end subroutine sgs_init

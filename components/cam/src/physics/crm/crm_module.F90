@@ -144,8 +144,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     !!! Arrays
     real(crm_rknd), allocatable :: t00(:,:)
-    real(crm_rknd), allocatable :: fluxbtmp(:,:,:)
-    real(crm_rknd), allocatable :: fluxttmp(:,:,:)    !bloss
     real(crm_rknd), allocatable :: tln  (:,:)
     real(crm_rknd), allocatable :: qln  (:,:)
     real(crm_rknd), allocatable :: qccln(:,:)
@@ -165,7 +163,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd), allocatable  :: cmtemp  (:,:,:)
     real(crm_rknd), allocatable  :: chtemp  (:,:,:)
     real(crm_rknd), allocatable  :: cttemp  (:,:,:)
-    integer       , allocatable  :: gcolindex(:,:)  ! array of global latitude indices
 #ifdef CLUBB_CRM
     !Array indicies for spurious RTM check
     real(kind=core_rknd), allocatable :: thlm_flux_top, thlm_flux_sfc, rtm_flux_top, rtm_flux_sfc
@@ -210,8 +207,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     !-----------------------------------------------------------------------------------------------
 
     allocate( t00(ncrms,nz) )
-    allocate( fluxbtmp(nx,ny,ncrms) )
-    allocate( fluxttmp(nx,ny,ncrms) )
     allocate( tln(ncrms,plev) )
     allocate( qln(ncrms,plev) )
     allocate( qccln(ncrms,plev) )
@@ -227,7 +222,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     allocate( cwpm(ncrms,nx,ny) )
     allocate( cwpl(ncrms,nx,ny) )
     allocate( flag_top(ncrms,nx,ny) )
-    allocate( gcolindex(pcols,ncrms) )
     allocate( cltemp(ncrms,nx,ny) )
     allocate( cmtemp(ncrms,nx,ny) )
     allocate( chtemp(ncrms,nx,ny) )
@@ -272,8 +266,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     zeroval = 0
 
     t00  = zeroval
-    fluxbtmp  = zeroval
-    fluxttmp  = zeroval
     tln  = zeroval
     qln  = zeroval
     qccln  = zeroval
@@ -289,7 +281,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     cwpm = zeroval
     cwpl = zeroval
     flag_top = .false.
-    gcolindex = zeroval
     cltemp = zeroval
     cmtemp = zeroval
     chtemp = zeroval
@@ -1635,8 +1626,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #endif
 
   deallocate( t00)
-  deallocate( fluxbtmp)
-  deallocate( fluxttmp)
   deallocate( tln)
   deallocate( qln)
   deallocate( qccln)
@@ -1652,7 +1641,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   deallocate( cwpm)
   deallocate( cwpl)
   deallocate( flag_top)
-  deallocate( gcolindex)
   deallocate( cltemp)
   deallocate( cmtemp)
   deallocate( chtemp)
