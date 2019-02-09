@@ -607,8 +607,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     fluxbt(:,:,icrm)=0.
     fluxbq(:,:,icrm)=0.
 #endif /* CLUBB_CRM */
-    fluxtu  (:,:,icrm)=0.
-    fluxtv  (:,:,icrm)=0.
+    fluxtu(icrm,:,:)=0.
+    fluxtv(icrm,:,:)=0.
     fluxtt  (:,:,icrm)=0.
     fluxtq  (:,:,icrm)=0.
     fzero   (:,:,icrm) =0.
@@ -690,9 +690,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output%t_ls      (icrm,:) = 0.
 
     uwle(icrm,:)     = 0.
-    uwsb(:,icrm)     = 0.
+    uwsb(icrm,:)     = 0.
     vwle(icrm,:)     = 0.
-    vwsb(:,icrm)     = 0.
+    vwsb(icrm,:)     = 0.
     qpsrc(:,icrm)    = 0.
     qpevp(:,icrm)    = 0.
     qpfall(:,icrm)   = 0.
@@ -1530,8 +1530,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       precflux(k,icrm) = precflux(k,icrm) * factor_xy*dz(icrm)/dt/nstop  !kg/m2/dz in M2005 -->kg/m2/s or mm/s (idt_gl=1/dt/nstop)
 
       l = plev-k+1
-      crm_output%flux_u    (icrm,l) = (uwle(icrm,k) + uwsb(k,icrm))*tmp1*factor_xy/nstop
-      crm_output%flux_v    (icrm,l) = (vwle(icrm,k) + vwsb(k,icrm))*tmp1*factor_xy/nstop
+      crm_output%flux_u    (icrm,l) = (uwle(icrm,k) + uwsb(icrm,k))*tmp1*factor_xy/nstop
+      crm_output%flux_v    (icrm,l) = (vwle(icrm,k) + vwsb(icrm,k))*tmp1*factor_xy/nstop
 #ifdef sam1mom
       crm_output%flux_qt   (icrm,l) = mkwle(k,1,icrm) + mkwsb(k,1,icrm)
       crm_output%fluxsgs_qt(icrm,l) = mkwsb(k,1,icrm)
