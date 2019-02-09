@@ -45,8 +45,8 @@ contains
     end if
 
     !$acc parallel loop collapse(2) copyin(rho,pres,tabs0) copy(evaps2,evapr1,evapg2,accrgi,evapg1,coefice,accrgc,evaps1,evapr2,accrsi,accrrc,accrsc) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
+    do k=1,nzm
+      do icrm = 1 , ncrms
         pratio = sqrt(1.29 / rho(icrm,k))
         rrr1=393./(tabs0(icrm,k)+120.)*(tabs0(icrm,k)/273.)**1.5
         rrr2=(tabs0(icrm,k)/273.)**1.94*(1000./pres(icrm,k))

@@ -498,7 +498,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     tkh(icrm,1:nx,1:ny,1:nzm) = 0.
     p(icrm,1:nx,1:ny,1:nzm) = 0.
 
-    CF3D(1:nx,1:ny,1:nzm,icrm) = 1.
+    cf3d(icrm,1:nx,1:ny,1:nzm) = 1.
   enddo
 
   call micro_init(ncrms)
@@ -1008,7 +1008,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             l = plev-k+1
             tmp1 = rho(icrm,nz-k)*adz(icrm,nz-k)*dz(icrm)*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
             cwp(i,j,icrm) = cwp(i,j,icrm)+tmp1
-            cttemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cttemp(i,j,icrm))
+            cttemp(i,j,icrm) = max(cf3d(icrm,i,j,nz-k), cttemp(i,j,icrm))
             if(cwp(i,j,icrm).gt.cwp_threshold.and.flag_top(i,j,icrm)) then
                 !$acc atomic update
                 crm_output_cldtop(icrm,l) = crm_output_cldtop(icrm,l) + 1
@@ -1016,31 +1016,31 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             endif
             if(pres(icrm,nz-k).ge.700.) then
                 cwpl(i,j,icrm) = cwpl(i,j,icrm)+tmp1
-                cltemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cltemp(i,j,icrm))
+                cltemp(i,j,icrm) = max(cf3d(icrm,i,j,nz-k), cltemp(i,j,icrm))
             else if(pres(icrm,nz-k).lt.400.) then
                 cwph(i,j,icrm) = cwph(i,j,icrm)+tmp1
-                chtemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), chtemp(i,j,icrm))
+                chtemp(i,j,icrm) = max(cf3d(icrm,i,j,nz-k), chtemp(i,j,icrm))
             else
                 cwpm(i,j,icrm) = cwpm(i,j,icrm)+tmp1
-                cmtemp(i,j,icrm) = max(CF3D(i,j,nz-k,icrm), cmtemp(i,j,icrm))
+                cmtemp(i,j,icrm) = max(cf3d(icrm,i,j,nz-k), cmtemp(i,j,icrm))
             endif
             tmp1 = rho(icrm,k)*adz(icrm,k)*dz(icrm)
             if(tmp1*(qcl(icrm,i,j,k)+qci(icrm,i,j,k)).gt.cwp_threshold) then
                  !$acc atomic update
-                 crm_output_cld(icrm,l) = crm_output_cld(icrm,l) + CF3D(i,j,k,icrm)
+                 crm_output_cld(icrm,l) = crm_output_cld(icrm,l) + cf3d(icrm,i,j,k)
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).gt.2*wmin) then
-                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k,icrm)
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * cf3d(icrm,i,j,k)
                    !$acc atomic update
                    crm_output_mcup (icrm,l) = crm_output_mcup (icrm,l) + tmp
-                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - CF3D(i,j,k,icrm))
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1.0 - cf3d(icrm,i,j,k))
                    !$acc atomic update
                    crm_output_mcuup(icrm,l) = crm_output_mcuup(icrm,l) + tmp
                  endif
                  if(w(icrm,i,j,k+1)+w(icrm,i,j,k).lt.-2*wmin) then
-                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * CF3D(i,j,k,icrm)
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * cf3d(icrm,i,j,k)
                    !$acc atomic update
                    crm_output_mcdn (icrm,l) = crm_output_mcdn (icrm,l) + tmp
-                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - CF3D(i,j,k,icrm))
+                   tmp = rho(icrm,k)*0.5*(w(icrm,i,j,k+1)+w(icrm,i,j,k)) * (1. - cf3d(icrm,i,j,k))
                    !$acc atomic update
                    crm_output_mcudn(icrm,l) = crm_output_mcudn(icrm,l) + tmp
                  endif
@@ -1073,7 +1073,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             !$acc atomic update
             crm_rad_qi         (icrm,i_rad,j_rad,k) = crm_rad_qi         (icrm,i_rad,j_rad,k) + qci(icrm,i,j,k)
             !$acc atomic update
-            crm_rad_cld        (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
+            crm_rad_cld        (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + cf3d(icrm,i,j,k)
 #ifdef m2005
             !$acc atomic update
             crm_rad%nc         (icrm,i_rad,j_rad,k) = crm_rad%nc         (icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,incl)

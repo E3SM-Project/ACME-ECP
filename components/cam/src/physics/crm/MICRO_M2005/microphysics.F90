@@ -816,7 +816,7 @@ do j = 1,ny
                                        ! simply set cloud_frac_in to be zero.
            liq_cldfrac(1:nzm) = cloud_frac(i,j,2:nz)
 
-           CF3D(i, j, 1:nzm,icrm) = cloud_frac(i, j, 2:nz)
+           cf3d(icrm,i, j, 1:nzm) = cloud_frac(i, j, 2:nz)
            ice_cldfrac(:)= 0.0
            if(doicemicro) then
              do k=1, nzm
@@ -824,12 +824,12 @@ do j = 1,ny
                  ice_cldfrac(k) = 1.0
                end if
                if((tmpqcl(k) + tmpqci(k)).gt.1.0e-9) then
-                 CF3D(i,j,k,icrm) = (CF3D(i,j,k,icrm) * tmpqcl(k) + ice_cldfrac(k) * tmpqci(k))  &
+                 cf3d(icrm,i,j,k) = (cf3d(icrm,i,j,k) * tmpqcl(k) + ice_cldfrac(k) * tmpqci(k))  &
                            / (tmpqcl(k) + tmpqci(k))
                else
-                 CF3D(i,j,k,icrm) = 0.0
+                 cf3d(icrm,i,j,k) = 0.0
                end if
-               ice_cldfrac(k) = max(CF3D(i,j,k,icrm), liq_cldfrac(k))
+               ice_cldfrac(k) = max(cf3d(icrm,i,j,k), liq_cldfrac(k))
              end do
            endif
          end if
@@ -1259,7 +1259,7 @@ end if
 #ifdef CLUBB_CRM
 if (docloud.or.doclubb)  call micro_diagnose(ncrms,icrm)   ! leave this line here
 if(doclubb) then
-   CF3D(1:nx, 1:ny, 1:nzm,icrm) = cloud_frac(1:nx, 1:ny, 2:nzm+1)
+   cf3d(icrm,1:nx, 1:ny, 1:nzm) = cloud_frac(1:nx, 1:ny, 2:nzm+1)
    if(doicemicro) then
      do i=1, nx
        do j=1, ny
@@ -1272,10 +1272,10 @@ if(doclubb) then
              ice_cldfrac(k) = 1.0
            end if
            if(cloudliq(i,j,k,icrm) + micro_field(icrm,i,j,k,iqci) .gt.1.0e-9) then
-             CF3D(i,j,k,icrm) = (CF3D(i,j,k,icrm)* cloudliq(i,j,k,icrm) + ice_cldfrac(k) * micro_field(icrm,i,j,k,iqci))  &
+             cf3d(icrm,i,j,k) = (cf3d(icrm,i,j,k)* cloudliq(i,j,k,icrm) + ice_cldfrac(k) * micro_field(icrm,i,j,k,iqci))  &
                            / (cloudliq(i,j,k,icrm) + micro_field(icrm,i,j,k,iqci))
            else
-             CF3D(i,j,k,icrm) = 0.0
+             cf3d(icrm,i,j,k) = 0.0
            end if
           end do
         end do
