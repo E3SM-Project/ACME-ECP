@@ -19,17 +19,17 @@ contains
     !$acc enter data create(fuz,fvz,fwz) async(asyncid)
 
     !$acc parallel loop collapse(2) copyout(vwle,uwle) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nz
+    do k = 1 , nz
+      do icrm = 1 , ncrms
         uwle(icrm,k) = 0.
         vwle(icrm,k) = 0.
       enddo
     enddo
 
     !$acc parallel loop collapse(3) copy(fuz,fwz,fvz) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
           dz25=1./(4.*dz(icrm))
           fuz(icrm,i,j,1  ) = 0.
           fuz(icrm,i,j,nz ) = 0.
@@ -44,10 +44,10 @@ contains
     if(RUN3D) then
 
       !$acc parallel loop collapse(4) copyin(rhow,dz,w,u,v) copy(fuz,fvz,uwle,vwle) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=2,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=2,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               dz25=1./(4.*dz(icrm))
               kb = k-1
               rhoi = dz25 * rhow(icrm,k)
@@ -65,10 +65,10 @@ contains
     else
 
       !$acc parallel loop collapse(4) copyin(u,v,w,rhow,dz) copy(fvz,vwle,uwle,fuz) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=2,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=2,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               dz25=1./(4.*dz(icrm))
               kb = k-1
               rhoi = dz25 * rhow(icrm,k)
@@ -87,10 +87,10 @@ contains
     endif
 
     !$acc parallel loop collapse(4) copyin(fvz,rho,w,rhow,fuz,dz,adz) copy(dudt,dvdt,fwz) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             dz25=1./(4.*dz(icrm))
             kc = k+1
             rhoi = 1./(rho(icrm,k)*adz(icrm,k))
@@ -103,10 +103,10 @@ contains
     end do
 
     !$acc parallel loop collapse(4) copyin(rhow,fwz,adzw) copy(dwdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=2,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=2,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             kb=k-1
             rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
             dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fwz(icrm,i,j,k)-fwz(icrm,i,j,kb))*rhoi

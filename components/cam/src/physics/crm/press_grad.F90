@@ -61,9 +61,9 @@ contains
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
       !$acc parallel loop collapse(3) copy(dvdt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
             dvdt(icrm,i,1,k,na) = 0.
           end do
         end do
