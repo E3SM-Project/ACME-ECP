@@ -108,7 +108,7 @@ contains
       cw(:,:,nz) = 0.   ! non-mass weighted and adz adjusted
       cw(:,:,1) = 0.
       do k = 2, nzm
-        irhow(k) = 1. / ( rhow(k,icrm) * adz(icrm,k) )  ! adz adjustment here
+        irhow(k) = 1. / ( rhow(icrm,k) * adz(icrm,k) )  ! adz adjustment here
         do j = -3, nyp4
           do i = -3, nxp4
             cw(i,j,k) = w(icrm,i,j,k) * irhow(k)

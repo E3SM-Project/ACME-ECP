@@ -24,7 +24,7 @@ contains
             dtdz = dtn/dz(icrm)
             rhox = rho(icrm,k)*dtdx
             rhoy = rho(icrm,k)*dtdy
-            rhoz = rhow(k,icrm)*dtdz
+            rhoz = rhow(icrm,k)*dtdz
             dudt(icrm,i,j,k,nc) = u(icrm,i,j,k) + dt3(na) *(at*dudt(icrm,i,j,k,na)+bt*dudt(icrm,i,j,k,nb)+ct*dudt(icrm,i,j,k,nc))
             dvdt(icrm,i,j,k,nc) = v(icrm,i,j,k) + dt3(na) *(at*dvdt(icrm,i,j,k,na)+bt*dvdt(icrm,i,j,k,nb)+ct*dvdt(icrm,i,j,k,nc))
             dwdt(icrm,i,j,k,nc) = w(icrm,i,j,k) + dt3(na) *(at*dwdt(icrm,i,j,k,na)+bt*dwdt(icrm,i,j,k,nb)+ct*dwdt(icrm,i,j,k,nc))

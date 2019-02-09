@@ -14,7 +14,7 @@ contains
     real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
     real(crm_rknd) w(ncrms,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
     real(crm_rknd) rho(ncrms,nzm)
-    real(crm_rknd) rhow(nz,ncrms)
+    real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(nz,ncrms)
 
     real(crm_rknd) mx (0:nxp1 ,1,nzm,ncrms)
@@ -107,7 +107,7 @@ contains
       do k=1,nzm
         irho(k,icrm) = 1./rho(icrm,k)
         iadz(k,icrm) = 1./adz(icrm,k)
-        irhow(k,icrm)=1./(rhow(k,icrm)*adz(icrm,k))
+        irhow(k,icrm)=1./(rhow(icrm,k)*adz(icrm,k))
       enddo
     enddo
     !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f,flux) async(asyncid)

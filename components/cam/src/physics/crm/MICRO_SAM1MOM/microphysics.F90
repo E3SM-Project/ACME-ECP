@@ -620,7 +620,7 @@ CONTAINS
             tmp = wp(i,j,k,icrm)*iwmax(k,icrm)
             !$acc atomic update
             prec_cfl = max(prec_cfl,tmp) ! Keep column maximum CFL
-            wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)
+            wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(icrm,k)*dtn/dz(icrm)
             if (k == 1) then
               fz(i,j,nz,icrm)=0.
               www(i,j,nz,icrm)=0.
@@ -789,7 +789,7 @@ CONTAINS
                 wp(i,j,k,icrm) = rhofac(k,icrm)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
                                  tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
                 ! Decrease precipitation velocity by factor of nprec
-                wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(k,icrm)*dtn/dz(icrm)/real(nprec,crm_rknd)
+                wp(i,j,k,icrm) = -wp(i,j,k,icrm)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
                 ! Note: Don't bother checking CFL condition at each
                 ! substep since it's unlikely that the CFL will
                 ! increase very much between substeps when using
