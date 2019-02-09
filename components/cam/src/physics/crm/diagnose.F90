@@ -26,10 +26,10 @@ contains
         u0(icrm,k)=0.
         v0(icrm,k)=0.
         t01(k,icrm) = tabs0(icrm,k)
-        q01(k,icrm) = q0(k,icrm)
-        t0(k,icrm)=0.
+        q01(k,icrm) = q0(icrm,k)
+        t0(icrm,k)=0.
         tabs0(icrm,k)=0.
-        q0(k,icrm)=0.
+        q0(icrm,k)=0.
         qn0(icrm,k)=0.
         qp0(icrm,k)=0.
         p0(k,icrm)=0.
@@ -65,12 +65,12 @@ contains
             !$acc atomic update
             p0(k,icrm)=p0(k,icrm)+p(icrm,i,j,k)
             !$acc atomic update
-            t0(k,icrm)=t0(k,icrm)+t(icrm,i,j,k)
+            t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
             !$acc atomic update
             tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
             tmp = qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
             !$acc atomic update
-            q0(k,icrm)=q0(k,icrm)+tmp
+            q0(icrm,k)=q0(icrm,k)+tmp
             tmp = qcl(icrm,i,j,k) + qci(icrm,i,j,k)
             !$acc atomic update
             qn0(icrm,k) = qn0(icrm,k) + tmp
@@ -95,9 +95,9 @@ contains
       do k=1,nzm
         u0(icrm,k)=u0(icrm,k)*coef
         v0(icrm,k)=v0(icrm,k)*coef
-        t0(k,icrm)=t0(k,icrm)*coef
+        t0(icrm,k)=t0(icrm,k)*coef
         tabs0(icrm,k)=tabs0(icrm,k)*coef
-        q0(k,icrm)=q0(k,icrm)*coef
+        q0(icrm,k)=q0(icrm,k)*coef
         qn0(icrm,k)=qn0(icrm,k)*coef
         qp0(icrm,k)=qp0(icrm,k)*coef
         p0(k,icrm)=p0(k,icrm)*coef
@@ -120,7 +120,7 @@ contains
     !$acc parallel loop collapse(2) copyin(qn0,q0) copy(qv0) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
-        qv0(icrm,k) = q0(k,icrm) - qn0(icrm,k)
+        qv0(icrm,k) = q0(icrm,k) - qn0(icrm,k)
       enddo
     enddo
 
