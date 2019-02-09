@@ -199,7 +199,7 @@ CONTAINS
 #ifndef CRM
       micro_field(icrm,:,:,:,:) = 0.
       do k=1,nzm
-        q(icrm,:,:,k) = q0(k,icrm)
+        q(icrm,:,:,k) = q0(icrm,k)
       end do
       qn(icrm,:,:,:) = 0.
 #endif

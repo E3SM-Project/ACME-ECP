@@ -272,7 +272,7 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k,icrm).gt.6.e-3.and..not.dosmagor) then
+            if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
               tke(icrm,i,j,k)=1.
             endif
           end do
@@ -286,7 +286,7 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k,icrm).gt.0.5e-3.and..not.dosmagor) then
+            if(q0(icrm,k).gt.0.5e-3.and..not.dosmagor) then
               tke(icrm,i,j,k)=1.
             endif
           end do
@@ -325,7 +325,7 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k,icrm).gt.6.e-3.and..not.dosmagor) then
+            if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
               tke(icrm,i,j,k)=1.
             endif
           end do

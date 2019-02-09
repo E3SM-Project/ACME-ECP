@@ -512,10 +512,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     do k=1,nzm
       u0(icrm,k)=0.
       v0(icrm,k)=0.
-      t0(k,icrm)=0.
+      t0(icrm,k)=0.
       t00(k,icrm)=0.
       tabs0(icrm,k)=0.
-      q0(k,icrm)=0.
+      q0(icrm,k)=0.
       qv0(icrm,k)=0.
       !+++mhwang these are not initialized ??
       qn0(icrm,k) = 0.0
@@ -531,10 +531,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           colprecs=colprecs+qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
           u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
           v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
-          t0(k,icrm)=t0(k,icrm)+t(icrm,i,j,k)
+          t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
           t00(k,icrm)=t00(k,icrm)+t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
           tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
-          q0(k,icrm)=q0(k,icrm)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
+          q0(icrm,k)=q0(icrm,k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
           qv0(icrm,k) = qv0(icrm,k) + qv(icrm,i,j,k)
           qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
           qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
@@ -544,10 +544,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       u0(icrm,k) = u0(icrm,k) * factor_xy
       v0(icrm,k) = v0(icrm,k) * factor_xy
-      t0(k,icrm) = t0(k,icrm) * factor_xy
+      t0(icrm,k) = t0(icrm,k) * factor_xy
       t00(k,icrm) = t00(k,icrm) * factor_xy
       tabs0(icrm,k) = tabs0(icrm,k) * factor_xy
-      q0(k,icrm) = q0(k,icrm) * factor_xy
+      q0(icrm,k) = q0(icrm,k) * factor_xy
       qv0(icrm,k) = qv0(icrm,k) * factor_xy
       qn0(icrm,k) = qn0(icrm,k) * factor_xy
       qp0(icrm,k) = qp0(icrm,k) * factor_xy
@@ -557,14 +557,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       ! than is in the sounding, because we subsequently use tv0 to initialize
       ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
       ! -dschanen UWM 11 Feb 2010
-      tv0(k,icrm) = tabs0(icrm,k)*prespot(k,icrm)*(1.+epsv*q0(k,icrm))
+      tv0(k,icrm) = tabs0(icrm,k)*prespot(k,icrm)*(1.+epsv*q0(icrm,k))
 #endif /* CLUBB_CRM */
 
       l = plev-k+1
       uln(l,icrm) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
       vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
-      qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
+      qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(icrm,k))*idt_gl
       utend(icrm,k) = (uln(l,icrm)-u0(icrm,k))*idt_gl
       vtend(icrm,k) = (vln(l,icrm)-v0(icrm,k))*idt_gl
       ug0(icrm,k) = uln(l,icrm)
