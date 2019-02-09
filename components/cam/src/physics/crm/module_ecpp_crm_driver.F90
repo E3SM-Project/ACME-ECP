@@ -499,7 +499,7 @@ contains
 
     ! Get values from SAM cloud fields
     do icrm = 1 , ncrms
-    qcloud(1:nx,1:ny,1:nzm,icrm) = cloudliq(1:nx,1:ny,1:nzm,icrm)
+    qcloud(1:nx,1:ny,1:nzm,icrm) = cloudliq(icrm,1:nx,1:ny,1:nzm)
     qrain (1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqr )
     qice  (1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqci)
     qsnow (1:nx,1:ny,1:nzm,icrm) = micro_field(icrm,1:nx,1:ny,1:nzm,iqs )

@@ -67,7 +67,7 @@ module kurant_mod
       if(ncycle.gt.max_ncycle) then
         if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
         do icrm = 1 , ncrms
-          write(0, 5550) cfl, cfl_sgs, latitude(1,1,icrm), longitude(1,1,icrm)
+          write(0, 5550) cfl, cfl_sgs, latitude(icrm,1,1), longitude(icrm,1,1)
           do k=1, nzm
             write(0, 5551) k, wm(icrm,k), uhm(icrm,k), tabs(icrm,1,1,k)
           end do
