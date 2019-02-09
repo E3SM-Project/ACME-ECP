@@ -336,7 +336,7 @@ CONTAINS
 #ifdef CLUBB_CRM
     if ( doclubb ) then ! -dschanen UWM 21 May 2008
       do icrm = 1 , ncrms
-        CF3D(:,:, 1:nzm,icrm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
+        cf3d(icrm,:,:, 1:nzm) = cloud_frac(:,:,2:nzm+1) ! CF3D is used in precip_proc_clubb,
         ! so it is set here first  +++mhwang
         if(doprecip) call precip_proc_clubb(ncrms,icrm)
       enddo
@@ -356,10 +356,10 @@ CONTAINS
     integer i,j,k,icrm
 
     !$acc parallel loop collapse(4) copy(qv,q,qn,tabs,qp,qpl,qpi,qcl,qci) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
             omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
             qcl(icrm,i,j,k) = qn(icrm,i,j,k)*omn

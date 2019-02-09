@@ -292,7 +292,7 @@ contains
     allocate( tlatqi(ncrms,nz) )
     allocate( qifall(ncrms,nz) )
     allocate( qpfall(ncrms,nz) )
-    allocate( CF3D(1:nx, 1:ny, 1:nzm,ncrms)   )
+    allocate( cf3d(ncrms,1:nx, 1:ny, 1:nzm)   )
     allocate( u850_xy(nx,ny,ncrms)  )
     allocate( v850_xy(nx,ny,ncrms)  )
     allocate( psfc_xy(nx,ny,ncrms)  )

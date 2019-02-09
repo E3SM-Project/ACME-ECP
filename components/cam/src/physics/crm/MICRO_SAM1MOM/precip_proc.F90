@@ -33,18 +33,18 @@ contains
     powg2 = (5 + b_grau) / 8.
 
     !$acc parallel loop collapse(2) copy(qpsrc,qpevp) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
+    do k=1,nzm
+      do icrm = 1 , ncrms
         qpsrc(icrm,k)=0.
         qpevp(icrm,k)=0.
       enddo
     enddo
 
     !$acc parallel loop collapse(2) copyin(accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,tabs,pres,evapr2) copy(qpevp,qpsrc,qp,qn,q) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
 
             !-------     Autoconversion/accretion
 

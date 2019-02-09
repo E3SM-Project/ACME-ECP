@@ -35,10 +35,10 @@ contains
     ag = 1./(tgrmax-tgrmin)
 
     !$acc parallel loop collapse(4) copyin(t,gamaz,pres) copy(q,qn,tabs,qp) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1, nzm
-        do j = 1, ny
-          do i = 1, nx
+    do k = 1, nzm
+      do j = 1, ny
+        do i = 1, nx
+          do icrm = 1 , ncrms
 
             q(icrm,i,j,k)=max(real(0.,crm_rknd),q(icrm,i,j,k))
 
