@@ -16,7 +16,7 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    real(crm_rknd) flux(nz,ncrms), fadv(nz,ncrms)
+    real(crm_rknd) flux(ncrms,nz), fadv(ncrms,nz)
     real(crm_rknd) f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) tmp
     integer i,j,k,icrm
@@ -25,19 +25,19 @@ contains
 
     if(docolumn) then
       !$acc parallel loop collapse(2) copy(flux) async(asyncid)
-      do icrm = 1 , ncrms
-        do k = 1 , nz
-          flux(k,icrm) = 0.
+      do k = 1 , nz
+        do icrm = 1 , ncrms
+          flux(icrm,k) = 0.
         enddo
       enddo
       return
     end if
 
     !$acc parallel loop collapse(4) copyin(f) copy(f0) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        do j = dimy1_s,dimy2_s
-          do i = dimx1_s,dimx2_s
+    do k = 1 , nzm
+      do j = dimy1_s,dimy2_s
+        do i = dimx1_s,dimx2_s
+          do icrm = 1 , ncrms
             f0(icrm,i,j,k) = f(icrm,i,j,k)
           enddo
         enddo
@@ -51,19 +51,19 @@ contains
     endif
 
     !$acc parallel loop collapse(2) copy(fadv) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        fadv(k,icrm)=0.
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        fadv(icrm,k)=0.
       enddo
     enddo
     !$acc parallel loop collapse(4) copyin(f,f0) copy(fadv) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             tmp = f(icrm,i,j,k)-f0(icrm,i,j,k)
             !$acc atomic update
-            fadv(k,icrm)=fadv(k,icrm)+tmp
+            fadv(icrm,k)=fadv(icrm,k)+tmp
           end do
         end do
       end do

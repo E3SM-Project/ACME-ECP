@@ -83,9 +83,9 @@ CONTAINS
     allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
     allocate( fluxbsgs (nx,ny,1:nsgs_fields,ncrms)  )
     allocate( fluxtsgs (nx,ny,1:nsgs_fields,ncrms)  )
-    allocate( sgswle(nz,1:nsgs_fields,ncrms)   )
+    allocate( sgswle(ncrms,nz,1:nsgs_fields)   )
     allocate( sgswsb(nz,1:nsgs_fields,ncrms)   )
-    allocate( sgsadv(nz,1:nsgs_fields,ncrms)   )
+    allocate( sgsadv(ncrms,nz,1:nsgs_fields)   )
     allocate( sgslsadv(nz,1:nsgs_fields,ncrms)   )
     allocate( sgsdiff(nz,1:nsgs_fields,ncrms)   )
     allocate( grdf_x(ncrms,nzm) )
@@ -234,9 +234,9 @@ CONTAINS
       end do
     end if
 
-    sgswle  (:,:,icrm) = 0.
+    sgswle(icrm,:,:) = 0.
     sgswsb  (:,:,icrm) = 0.
-    sgsadv  (:,:,icrm) = 0.
+    sgsadv(icrm,:,:) = 0.
     sgsdiff (:,:,icrm) = 0.
     sgslsadv(:,:,icrm) = 0.
 

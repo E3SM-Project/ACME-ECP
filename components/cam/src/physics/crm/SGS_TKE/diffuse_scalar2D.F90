@@ -18,7 +18,7 @@ contains
     real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
     real(crm_rknd) rho(ncrms,nzm)
     real(crm_rknd) rhow(ncrms,nz)
-    real(crm_rknd) flux(nz,ncrms)
+    real(crm_rknd) flux(ncrms,nz)
     ! local
     real(crm_rknd) flx(0:nx,1,0:nzm,ncrms)
     real(crm_rknd) dfdt(nx,ny,nzm,ncrms)
@@ -90,7 +90,7 @@ contains
     !$acc parallel loop collapse(2) copy(flux) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nzm
-        flux(k,icrm) = 0.
+        flux(icrm,k) = 0.
       enddo
     enddo
 
@@ -106,14 +106,14 @@ contains
             tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
             flx(i,j,k,icrm)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi
             !$acc atomic update
-            flux(kc,icrm) = flux(kc,icrm) + flx(i,j,k,icrm)
+            flux(icrm,kc) = flux(icrm,kc) + flx(i,j,k,icrm)
           elseif (k == nzm) then
             tmp=1./adzw(icrm,nz)
             rdz=1./dz(icrm)
             flx(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(icrm,1)
             flx(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(icrm,nz)
             !$acc atomic update
-            flux(1,icrm) = flux(1,icrm) + flx(i,j,0,icrm)
+            flux(icrm,1) = flux(icrm,1) + flx(i,j,0,icrm)
           endif
         enddo
       enddo

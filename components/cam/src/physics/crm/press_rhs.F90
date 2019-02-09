@@ -16,9 +16,9 @@ contains
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
       !$acc parallel loop collapse(3) copy(dudt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
+      do k=1,nzm
+        do j=1,ny
+            do icrm = 1 , ncrms
             dudt(icrm,1,j,k,na) = 0.
           end do
         end do
@@ -27,9 +27,9 @@ contains
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
       !$acc parallel loop collapse(3) copy(dvdt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
             dvdt(icrm,i,1,k,na) = 0.
           end do
         end do
@@ -46,10 +46,10 @@ contains
     if(RUN3D) then
 
       !$acc parallel loop collapse(4) copyin(rhow,u,v,w,dt3,dvdt,dudt,adz,rho,dwdt,dz) copy(p) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               kc=k+1
               rdz=1./(adz(icrm,k)*dz(icrm))
               rup = rhow(icrm,kc)/rho(icrm,k)*rdz
@@ -79,9 +79,9 @@ contains
 
       j=1
       !$acc parallel loop collapse(3) copyin(rhow,u,w,dt3,dudt,adz,rho,dwdt,dz) copy(p) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
             kc=k+1
             rdz=1./(adz(icrm,k)*dz(icrm))
             rup = rhow(icrm,kc)/rho(icrm,k)*rdz

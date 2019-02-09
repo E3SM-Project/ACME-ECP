@@ -20,11 +20,7 @@ contains
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
 
-    real(crm_rknd) :: adv_tmp(nz,ncrms)
-    real(crm_rknd) :: wle_tmp(nz,ncrms)
     real(crm_rknd) :: esmt_offset(ncrms)    ! whannah - offset for advecting scalar momentum tracers
-
-    !$acc enter data create(adv_tmp,wle_tmp) async(asyncid)
 
     !      advection of scalars :
     call advect_scalar(ncrms,t,tadv,twle)
@@ -39,28 +35,14 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        call advect_scalar(ncrms,micro_field(:,:,:,:,k),adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(mkadv,mkwle) async(asyncid)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            mkadv(kk,k,icrm) = adv_tmp(kk,icrm)
-            mkwle(kk,k,icrm) = wle_tmp(kk,icrm)
-          enddo
-        enddo
+        call advect_scalar(ncrms,micro_field(:,:,:,:,k),mkadv(:,:,k),mkwle(:,:,k))
       endif
     end do
 
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(ncrms,sgs_field(:,:,:,:,k),adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(sgsadv,sgswle) async(asyncid)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            sgsadv(kk,k,icrm) = adv_tmp(kk,icrm)
-            sgswle(kk,k,icrm) = wle_tmp(kk,icrm)
-          enddo
-        enddo
+        call advect_scalar(ncrms,sgs_field(:,:,:,:,k),sgsadv(:,:,k),sgswle(:,:,k))
       end do
     end if
 
@@ -74,8 +56,6 @@ contains
       !  total_water_prec(icrm) = total_water_prec(icrm) - total_water(ncrms,icrm)
       !enddo
     end if
-
-    !$acc exit data delete(adv_tmp,wle_tmp) async(asyncid)
 
     ! advection of tracers:
     !There aren't any of these. We need to delete crmtracers.F90 too at some point
