@@ -222,16 +222,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     allocate( uln_esmt(plev,ncrms) )
     allocate( vln_esmt(plev,ncrms) )
 #endif
-    allocate( cwp(nx,ny,ncrms) )
-    allocate( cwph(nx,ny,ncrms) )
-    allocate( cwpm(nx,ny,ncrms) )
-    allocate( cwpl(nx,ny,ncrms) )
-    allocate( flag_top(nx,ny,ncrms) )
+    allocate( cwp(ncrms,nx,ny) )
+    allocate( cwph(ncrms,nx,ny) )
+    allocate( cwpm(ncrms,nx,ny) )
+    allocate( cwpl(ncrms,nx,ny) )
+    allocate( flag_top(ncrms,nx,ny) )
     allocate( gcolindex(pcols,ncrms) )
-    allocate( cltemp(nx,ny,ncrms) )
-    allocate( cmtemp(nx,ny,ncrms) )
-    allocate( chtemp(nx,ny,ncrms) )
-    allocate( cttemp(nx,ny,ncrms) )
+    allocate( cltemp(ncrms,nx,ny) )
+    allocate( cmtemp(ncrms,nx,ny) )
+    allocate( chtemp(ncrms,nx,ny) )
+    allocate( cttemp(ncrms,nx,ny) )
 #ifdef CLUBB_CRM
     allocate( rtm_integral_before (nx,ny) )
     allocate( rtm_integral_after (nx,ny) )
@@ -982,18 +982,18 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     call ecpp_crm_stat(ncrms)
 #endif
     !$acc parallel loop collapse(3) copy(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(asyncid)
-    do icrm = 1 , ncrms
-      do j = 1 , ny
-        do i = 1 , nx
-          cwp (i,j,icrm) = 0.
-          cwph(i,j,icrm) = 0.
-          cwpm(i,j,icrm) = 0.
-          cwpl(i,j,icrm) = 0.
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          cwp(icrm,i,j) = 0.
+          cwph(icrm,i,j) = 0.
+          cwpm(icrm,i,j) = 0.
+          cwpl(icrm,i,j) = 0.
 
-          flag_top(i,j,icrm) = .true.
+          flag_top(icrm,i,j) = .true.
 
-          cltemp(i,j,icrm) = 0.0; cmtemp(i,j,icrm) = 0.0
-          chtemp(i,j,icrm) = 0.0; cttemp(i,j,icrm) = 0.0
+          cltemp(icrm,i,j) = 0.0; cmtemp(icrm,i,j) = 0.0
+          chtemp(icrm,i,j) = 0.0; cttemp(icrm,i,j) = 0.0
         enddo
       enddo
     enddo
@@ -1001,28 +1001,28 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     !$acc parallel loop gang vector collapse(3) copyin(cf3d,pres,qci,qv,dz,adz,w,tabs,qcl,rho) &
     !$acc& copy(crm_output_mcudn,crm_output_mcup,cwp,cltemp,cwpl,flag_top,crm_output_cld,cwpm,cttemp,cmtemp,cwph,chtemp,crm_output_mcdn,crm_output_gliqwp,&
     !$acc&      crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature,crm_rad_qv,crm_output_gicewp,crm_output_cldtop) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
           do k=1,nzm
             l = plev-k+1
             tmp1 = rho(icrm,nz-k)*adz(icrm,nz-k)*dz(icrm)*(qcl(icrm,i,j,nz-k)+qci(icrm,i,j,nz-k))
-            cwp(i,j,icrm) = cwp(i,j,icrm)+tmp1
-            cttemp(i,j,icrm) = max(cf3d(icrm,i,j,nz-k), cttemp(i,j,icrm))
-            if(cwp(i,j,icrm).gt.cwp_threshold.and.flag_top(i,j,icrm)) then
+            cwp(icrm,i,j) = cwp(icrm,i,j)+tmp1
+            cttemp(icrm,i,j) = max(cf3d(icrm,i,j,nz-k), cttemp(icrm,i,j))
+            if(cwp(icrm,i,j).gt.cwp_threshold.and.flag_top(icrm,i,j)) then
                 !$acc atomic update
                 crm_output_cldtop(icrm,l) = crm_output_cldtop(icrm,l) + 1
-                flag_top(i,j,icrm) = .false.
+                flag_top(icrm,i,j) = .false.
             endif
             if(pres(icrm,nz-k).ge.700.) then
-                cwpl(i,j,icrm) = cwpl(i,j,icrm)+tmp1
-                cltemp(i,j,icrm) = max(cf3d(icrm,i,j,nz-k), cltemp(i,j,icrm))
+                cwpl(icrm,i,j) = cwpl(icrm,i,j)+tmp1
+                cltemp(icrm,i,j) = max(cf3d(icrm,i,j,nz-k), cltemp(icrm,i,j))
             else if(pres(icrm,nz-k).lt.400.) then
-                cwph(i,j,icrm) = cwph(i,j,icrm)+tmp1
-                chtemp(i,j,icrm) = max(cf3d(icrm,i,j,nz-k), chtemp(i,j,icrm))
+                cwph(icrm,i,j) = cwph(icrm,i,j)+tmp1
+                chtemp(icrm,i,j) = max(cf3d(icrm,i,j,nz-k), chtemp(icrm,i,j))
             else
-                cwpm(i,j,icrm) = cwpm(i,j,icrm)+tmp1
-                cmtemp(i,j,icrm) = max(cf3d(icrm,i,j,nz-k), cmtemp(i,j,icrm))
+                cwpm(icrm,i,j) = cwpm(icrm,i,j)+tmp1
+                cmtemp(icrm,i,j) = max(cf3d(icrm,i,j,nz-k), cmtemp(icrm,i,j))
             endif
             tmp1 = rho(icrm,k)*adz(icrm,k)*dz(icrm)
             if(tmp1*(qcl(icrm,i,j,k)+qci(icrm,i,j,k)).gt.cwp_threshold) then
@@ -1096,9 +1096,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
     ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
     !$acc parallel loop collapse(3) copyin(tabs,pres,qcl,qci,qpl,qpi,rhow,w) copy(mdi_crm,mui_crm) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1, ny
-        do i=1, nx
+    do j=1, ny
+      do i=1, nx
+        do icrm = 1 , ncrms
           do k=1, nzm+1
             l=plev+1-k+1
             if(w(icrm,i,j,k).gt.0.) then
@@ -1128,24 +1128,24 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
 
     !$acc parallel loop collapse(3) copyin(cwp,cwph,cwpm,cwpl,cttemp,chtemp,cmtemp,cltemp) copy(crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
-          if(cwp (i,j,icrm).gt.cwp_threshold) then
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          if(cwp(icrm,i,j).gt.cwp_threshold) then
             !$acc atomic update
-            crm_output_cltot(icrm) = crm_output_cltot(icrm) + cttemp(i,j,icrm)
+            crm_output_cltot(icrm) = crm_output_cltot(icrm) + cttemp(icrm,i,j)
           endif
-          if(cwph(i,j,icrm).gt.cwp_threshold) then
+          if(cwph(icrm,i,j).gt.cwp_threshold) then
             !$acc atomic update
-            crm_output_clhgh(icrm) = crm_output_clhgh(icrm) + chtemp(i,j,icrm)
+            crm_output_clhgh(icrm) = crm_output_clhgh(icrm) + chtemp(icrm,i,j)
           endif
-          if(cwpm(i,j,icrm).gt.cwp_threshold) then
+          if(cwpm(icrm,i,j).gt.cwp_threshold) then
             !$acc atomic update
-            crm_output_clmed(icrm) = crm_output_clmed(icrm) + cmtemp(i,j,icrm)
+            crm_output_clmed(icrm) = crm_output_clmed(icrm) + cmtemp(icrm,i,j)
           endif
-          if(cwpl(i,j,icrm).gt.cwp_threshold) then
+          if(cwpl(icrm,i,j).gt.cwp_threshold) then
             !$acc atomic update
-            crm_output_cllow(icrm) = crm_output_cllow(icrm) + cltemp(i,j,icrm)
+            crm_output_cllow(icrm) = crm_output_cllow(icrm) + cltemp(icrm,i,j)
           endif
         enddo
       enddo
