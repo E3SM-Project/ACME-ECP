@@ -212,7 +212,7 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
 
    ! Calculate layer thickness
    do k = 1,nzm
-      dz(k) = zi(k+1,icrm)-zi(k,icrm)
+      dz(k) = zi(icrm,k+1)-zi(icrm,k)
    enddo
    dz(nzm+1) = dz(nzm)
 
