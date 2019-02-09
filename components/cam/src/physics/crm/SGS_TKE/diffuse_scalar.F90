@@ -30,10 +30,10 @@ contains
     !$acc enter data create(df) async(asyncid)
 
     !$acc parallel loop collapse(4) copyin(f) copy(df) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        do j = dimy1_s , dimy2_s
-          do i = dimx1_s , dimx2_s
+    do k = 1 , nzm
+      do j = dimy1_s , dimy2_s
+        do i = dimx1_s , dimx2_s
+          do icrm = 1 , ncrms
             df(icrm,i,j,k) = f(icrm,i,j,k)
           enddo
         enddo
@@ -47,16 +47,16 @@ contains
     endif
 
     !$acc parallel loop collapse(2) copy(fdiff) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
+    do k=1,nzm
+      do icrm = 1 , ncrms
         fdiff(icrm,k)=0.
       enddo
     enddo
     !$acc parallel loop collapse(2) copyin(f,df) copy(fdiff) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             tmp = f(icrm,i,j,k)-df(icrm,i,j,k)
             !$acc atomic update
             fdiff(icrm,k)=fdiff(icrm,k)+tmp

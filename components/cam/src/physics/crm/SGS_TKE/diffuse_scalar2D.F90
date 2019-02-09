@@ -37,9 +37,9 @@ contains
     !For working around PGI bug where it didn't create enough OpenACC gangs
     numgangs = ceiling(ncrms*nzm*ny*nx/128.)
     !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) copy(dfdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        do i = 1 , nx
+    do k = 1 , nzm
+      do i = 1 , nx
+        do icrm = 1 , ncrms
           dfdt(icrm,i,j,k)=0.
         enddo
       enddo
@@ -48,16 +48,16 @@ contains
     if(dowallx) then
       if(mod(rank,nsubdomains_x).eq.0) then
         !$acc parallel loop collapse(2) copy(field) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
+        do k=1,nzm
+          do icrm = 1 , ncrms
             field(icrm,0,j,k) = field(icrm,1,j,k)
           enddo
         enddo
       endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
         !$acc parallel loop collapse(2) copy(field) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
+        do k=1,nzm
+          do icrm = 1 , ncrms
             field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
           enddo
         enddo
@@ -66,9 +66,9 @@ contains
 
     if(.not.docolumn) then
       !$acc parallel loop collapse(3) copyin(grdf_x,tkh,field) copy(flx) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=0,nx
+      do k=1,nzm
+        do i=0,nx
+          do icrm = 1 , ncrms
             rdx5=0.5*rdx2  *grdf_x(icrm,k)
             ic=i+1
             tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
@@ -77,9 +77,9 @@ contains
         enddo
       enddo
       !$acc parallel loop collapse(3) copyin(flx) copy(dfdt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
             ib=i-1
             dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,ib,j,k))
           enddo
@@ -88,16 +88,16 @@ contains
     endif
 
     !$acc parallel loop collapse(2) copy(flux) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
+    do k = 1 , nzm
+      do icrm = 1 , ncrms
         flux(icrm,k) = 0.
       enddo
     enddo
 
     !$acc parallel loop collapse(3) copyin(rhow,adzw,dz,grdf_z,tkh,field,fluxb,fluxt) copy(flx,flux) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do i=1,nx
+    do k=1,nzm
+      do i=1,nx
+        do icrm = 1 , ncrms
           if (k <= nzm-1) then
             kc=k+1
             rhoi = rhow(icrm,kc)/adzw(icrm,kc)
@@ -120,9 +120,9 @@ contains
     enddo
 
     !$acc parallel loop collapse(3) copyin(flx,rho,adz) copy(dfdt,field) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do i=1,nx
+    do k=1,nzm
+      do i=1,nx
+        do icrm = 1 , ncrms
           kb=k-1
           rhoi = 1./(adz(icrm,k)*rho(icrm,k))
           dfdt(icrm,i,j,k)=dtn*(dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,i,j,kb))*rhoi)

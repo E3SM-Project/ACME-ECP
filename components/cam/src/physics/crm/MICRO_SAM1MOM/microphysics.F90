@@ -274,24 +274,24 @@ CONTAINS
         ! Add this in later
         fluxbmk(icrm,:,:,index_water_vapor) = 0.0
       else
-        fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(:,:,icrm)
+        fluxbmk(icrm,:,:,index_water_vapor) = fluxbq(icrm,:,:)
       end if
     enddo
 #else
     !$acc parallel loop collapse(3) copyin(fluxbq) copy(fluxbmk) async(asyncid)
-    do icrm = 1 , ncrms
-      do j = 1 , ny
-        do i = 1 , nx
-          fluxbmk(icrm,i,j,index_water_vapor) = fluxbq(i,j,icrm)
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          fluxbmk(icrm,i,j,index_water_vapor) = fluxbq(icrm,i,j)
         enddo
       enddo
     enddo
 #endif
     !$acc parallel loop collapse(3) copyin(fluxtq) copy(fluxtmk) async(asyncid)
-    do icrm = 1 , ncrms
-      do j = 1 , ny
-        do i = 1 , nx
-          fluxtmk(icrm,i,j,index_water_vapor) = fluxtq(i,j,icrm)
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          fluxtmk(icrm,i,j,index_water_vapor) = fluxtq(icrm,i,j)
         enddo
       enddo
     enddo
