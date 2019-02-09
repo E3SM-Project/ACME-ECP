@@ -88,7 +88,7 @@ contains
         !$acc parallel loop collapse(3) copy(field) async(asyncid)
         do icrm = 1 , ncrms
           do k=1,nzm
-            do i=1,ny
+            do i=1,nx
               field(i,ny+YES3D,k,icrm) = field(i,ny,k,icrm)
             enddo
           enddo
