@@ -1565,7 +1565,7 @@ end function radiation_nextsw_cday
                 ! aerosol water uptake for cloudy sky on CRM grids. This is not really physically
                 ! correct, but if we assume 100% of relative humidity for aerosol water uptake, this
                 ! will bias 'AODVIS' to be large, since 'AODVIS' is used to compare with observed
-                ! clear sky AOD. In the future, AODVIS should be calcualted from clear sky CRM AOD
+                ! clear sky AOD. In the future, AODVIS should be calculated from clear sky CRM AOD
                 ! only. But before this is done, we will assume no water uptake on CRM grids for 
                 ! cloudy conditions (The radiative effects of this assumption will be small, since 
                 ! aerosol effects are small relative to cloud effects for cloudy sky anyway. 
