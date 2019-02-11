@@ -1537,24 +1537,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !------------------------------------------------------------------------------------------------
     
    !!! Calculate aerosol water at CRM domain using water vapor at CRM domain
-   !!! NOTE: only used in src/chemistry/utils/modal_aero_wateruptake.F90
-   !!! NOTE: This is commented out because we are now calculating crm_rad%cld intelligently in 
-   !!! crm_module. Previously, crm_rad%cld was all 1s (probably an unintended bug), and this would 
-   !!! reset columns with negligible total cloud water to zero to make sort of an effective 
-   !!! resolved cloud fraction of 0 or 1 for each CRM column. This seems problematic though because
-   !!! it seems like the threshold used should depend on the timestep, so handling it in crm_module 
-   !!! seems like a better thing to do.
-   !do  m=1,crm_nz
-   !   do jj=1,crm_ny_rad
-   !      do ii=1,crm_nx_rad
-   !         do  i=1,ncol
-   !            if(crm_rad%qc(i,ii,jj,m)+crm_rad%qi(i,ii,jj,m).le.1.0e-10) then
-   !               crm_rad%cld(i,ii,jj,m) = 0.0_r8
-   !            endif
-   !         enddo
-   !      enddo
-   !   enddo
-   !enddo
    !!!call aerosol_wet_intr (state, ptend, ztodt, pbuf, cam_out, dlf)
 
    !------------------------------------------------------------------------------------------------
