@@ -411,7 +411,13 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
                ! duplicating code)
                if(use_SPCAM) then
 
-                  ! Calculate a temporary cloud fraction to check for overcast conditions
+                  ! Calculate a temporary cloud fraction to check for overcast conditions. This is
+                  ! done following how "cloud" used to be diagnosed in crm_physics for this purpose.
+                  ! Cloud fraction is set to 0 (clear) or 1 (overcast) by comparing total cloud
+                  ! water against a threshold value. Note that this is inconsistent with how we are
+                  ! diagnosing "cloud" in the radiative transfer now with subcolumn sampling for the
+                  ! CRM columns, and we should probably use the same cloud fraction here (the time
+                  ! and possibly spatially-averaged cloud fraction calculated within the CRM).
                   mm=pver-k+1
                   if (mm <= crm_nz) then
                      if (qcl_crm(i,ii,jj,mm) + qci_crm(i,ii,jj,mm) > 1.e-10) then
