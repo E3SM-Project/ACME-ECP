@@ -167,7 +167,6 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 !==Guangxing Lin
    real(r8), pointer :: h2ommr_crm(:,:,:,:)        ! specfic humidity in CRM domain
    real(r8), pointer :: t_crm(:,:,:,:)             ! temperature at the CRM domain
-   real(r8), pointer :: cldn_crm(:,:,:,:)          ! cloud fraction in CRM domain
    real(r8), pointer :: qcl_crm(:,:,:,:), qci_crm(:,:,:,:)
    real(r8), pointer :: qaerwat_crm(:,:,:,:,:)     ! aerosol water at CRM domain
    real(r8), pointer :: dgncur_awet_crm(:,:,:,:,:) ! wet mode diameter at CRM domain
@@ -217,11 +216,9 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    character(len=3) :: trnum       ! used to hold mode number (as characters)
 
    real(r8) :: cldnt(pcols, pver)     ! Temporary cloud fraction
-   real(r8) :: rh_crm(pcols, pver)    ! Relative humidity on the CRM grid
    real(r8) :: es_crm_tmp, qs_crm_tmp 
    logical :: last_column
    integer :: ii, jj, mm
-   integer :: idx
    logical :: use_SPCAM
    !-----------------------------------------------------------------------
 
@@ -234,19 +231,13 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
                      use_SPCAM_out = use_SPCAM)
    
    if (use_SPCAM) then
-      idx = pbuf_get_index('CRM_QV_RAD')
-      call pbuf_get_field (pbuf, idx, h2ommr_crm)
-      idx = pbuf_get_index('CRM_T_RAD')
-      call pbuf_get_field (pbuf, idx, t_crm)
-      idx = pbuf_get_index('CRM_CLD_RAD')
-      call pbuf_get_field (pbuf, idx, cldn_crm)
-      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD'), qcl_crm)
-      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD'), qci_crm)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QV_RAD'), h2ommr_crm)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_T_RAD' ), t_crm     )
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD'), qcl_crm   )
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD'), qci_crm   )
 #ifdef MODAL_AERO
-      idx = pbuf_get_index('CRM_QAERWAT')
-      call pbuf_get_field (pbuf, idx, qaerwat_crm)
-      idx = pbuf_get_index('CRM_DGNUMWET')
-      call pbuf_get_field (pbuf, idx, dgncur_awet_crm)
+      call pbuf_get_field (pbuf, pbuf_get_index('CRM_QAERWAT' ), qaerwat_crm    )
+      call pbuf_get_field (pbuf, pbuf_get_index('CRM_DGNUMWET'), dgncur_awet_crm)
 #endif MODAL_AERO
    end if
 
@@ -390,6 +381,8 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    wetvol_grid   = 0.0_r8
    qaerwat       = 0.0_r8
 
+   ! Loop over CRM radiative colummns (which may differ from total CRM columns) in case we are using
+   ! super-parameterization. In non-SP configurations, crm_nx_rad = 1 and crm_ny_rad = 1.
    do jj = 1, crm_ny_rad
       do ii = 1, crm_nx_rad
        
@@ -413,41 +406,46 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
                rh(i,k) = max(rh(i,k), 0.0_r8)
 
                ! Overwrite relative humidity and cloud fraction based on cloud-scale fields from
-               ! the CRM when using super-parameterization
+               ! the CRM when using super-parameterization (NOTE: much of this looks like it could
+               ! be combined with the above calculation of relative humidity so we are not
+               ! duplicating code)
                if(use_SPCAM) then
-                  rh_crm(i,k) = rh(i,k)
-                  mm=pver-k+1
-                  if(mm.le.crm_nz) then
-                     call qsat_water(t_crm(i,ii,jj,mm), pmid(i,k), es_crm_tmp, qs_crm_tmp)
-                     rh_crm(i,k) = h2ommr_crm(i,ii,jj,mm)/qs_crm_tmp
-                     rh_crm(i,k) = max(rh_crm(i,k), 0.0_r8)
-                     rh_crm(i,k) = min(rh_crm(i,k), 0.98_r8)
-                     !if(cldn_crm(i, ii, jj, mm).gt.0.98_r8) then
-                     if (qcl_crm(i,ii,jj,mm) + qci_crm(i,ii,jj,mm) > 1.e-10) then
-                        ! aerosol water uptake is not calculated at overcast sky in MMF. +++mhwang
-                        rh_crm(i,k) = 0.0_r8
-                     end if
-                  end if
 
-                  rh(i,k) = rh_crm(i,k)
-                  cldnt(i, k) = cldn(i,k)
+                  ! Calculate a temporary cloud fraction to check for overcast conditions
                   mm=pver-k+1
-                  if(mm.le.crm_nz) then
+                  if (mm <= crm_nz) then
                      if (qcl_crm(i,ii,jj,mm) + qci_crm(i,ii,jj,mm) > 1.e-10) then
                         cldnt(i,k) = 1
                      else
-                        cldnt(i,k) = 0._r8 !cldn_crm(i, ii, jj, mm)
+                        cldnt(i,k) = 0 
+                     end if
+                  else
+                     cldnt(i,k) = cldn(i,k)
+                  end if
+
+                  ! Re-calculate relative humidity based on CRM temperature and GCM pressure
+                  mm=pver-k+1
+                  if(mm.le.crm_nz) then
+                     call qsat_water(t_crm(i,ii,jj,mm), pmid(i,k), es_crm_tmp, qs_crm_tmp)
+                     rh(i,k) = h2ommr_crm(i,ii,jj,mm)/qs_crm_tmp
+                     rh(i,k) = max(rh(i,k), 0.0_r8)
+                     rh(i,k) = min(rh(i,k), 0.98_r8)
+
+                     ! aerosol water uptake is not calculated for overcast sky in MMF. +++mhwang
+                     if (cldnt(i,k) > 0) then
+                        rh(i,k) = 0.0_r8
                      end if
                   end if
 
+                  ! Count number of clear columns in this level
                   do m=1,nmodes
                      ncount_clear(i,k,m) = ncount_clear(i,k,m) + (1._r8 - cldnt(i,k))
                   end do
 
                end if  ! use_SPCAM
 
-            end do
-         end do
+            end do  ! i = 1,ncol
+         end do  ! k = 1,pver
 
          call modal_aero_wateruptake_sub( &
             ncol, nmodes, rhcrystal, rhdeliques, dryrad, &
