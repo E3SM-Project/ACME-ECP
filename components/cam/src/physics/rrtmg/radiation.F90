@@ -1518,7 +1518,7 @@ end function radiation_nextsw_cday
                 ! both of these cases, the assumption that clouds are fully resolved on the time and
                 ! space scales that the radiation sees becomes less reasonable.
                 qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
-#ifdef MCICA_SP_RAD
+#ifdef SP_MCICA_RAD
                 cld(i,k) = cld_rad(i,ii,jj,m)
 #else
                 if(qtot > qtot_cld_threshold) then
