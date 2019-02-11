@@ -1576,8 +1576,8 @@ end function radiation_nextsw_cday
               end do ! i
             end do ! m
 
-! update effective radius
 #ifdef CRM  
+            ! update effective radius
             if (SPCAM_microp_scheme .eq. 'm2005') then 
               do m=1,crm_nz
                 k = pver-m+1
@@ -1600,10 +1600,7 @@ end function radiation_nextsw_cday
                   rei_crm(i,ii,jj,m) = rei(i,k)
                 end do ! i
               end do ! m
-            end if ! m2005
-
-            ! whannah 
-            if (SPCAM_microp_scheme .eq. 'sam1mom') then 
+            else if (SPCAM_microp_scheme .eq. 'sam1mom') then 
               ! for sam1mom, rel and rei are calcualted above, and are the same for all CRM columns
               do m=1,crm_nz
                 k = pver-m+1
