@@ -92,8 +92,9 @@ contains
       call fftfax_crm(nx_gl,ifaxi,trigxi)
       if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
     enddo
-    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work,ftmp) async(asyncid)
+    !$acc parallel loop gang copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) async(asyncid)
     do k=1,nzslab
+      !$acc loop vector private(work,ftmp)
       do icrm = 1 , ncrms
         ftmp = f(icrm,:,:,k)
         call fft991_crm(ftmp,work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
@@ -209,8 +210,9 @@ contains
 
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
-    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work,ftmp) async(asyncid)
+    !$acc parallel loop gang copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) async(asyncid)
     do k=1,nzslab
+      !$acc loop vector private(work,ftmp)
       do icrm = 1 , ncrms
         ftmp = f(icrm,:,:,k)
         if(RUN3D) then
