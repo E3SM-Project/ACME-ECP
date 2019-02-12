@@ -39,11 +39,13 @@ contains
       end do
     end do
 
-    !$acc parallel loop copyin(z,n_damp) copy(tau) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=nzm,nzm-n_damp(icrm),-1
-        tau(icrm,k) = tau_min *(tau_max/tau_min)**((z(icrm,nzm)-z(icrm,k))/(z(icrm,nzm)-z(icrm,nzm-n_damp(icrm))))
-        tau(icrm,k)=1./tau(icrm,k)
+    !$acc parallel loop collapse(2) copyin(z,n_damp) copy(tau) async(asyncid)
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        if ( k <= nzm .and. k >= nzm-n_damp(icrm) ) then
+          tau(icrm,k) = tau_min *(tau_max/tau_min)**((z(icrm,nzm)-z(icrm,k))/(z(icrm,nzm)-z(icrm,nzm-n_damp(icrm))))
+          tau(icrm,k)=1./tau(icrm,k)
+        endif
       end do
     end do
 
@@ -79,16 +81,18 @@ contains
 
    !For working around PGI OpenACC bug where it didn't create enough gangs 
     numgangs = ceiling(ncrms*ny*nx/128.)
-    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,v,tau,w,qv,qv0) async(asyncid)
-    do j=1,ny
-      do i=1,nx
-        do icrm = 1 , ncrms
-          do k = nzm, nzm-n_damp(icrm), -1
-            dudt(icrm,i,j,k,na)= dudt(icrm,i,j,k,na)-(u(icrm,i,j,k)-u0loc(icrm,k)) * tau(icrm,k)
-            dvdt(icrm,i,j,k,na)= dvdt(icrm,i,j,k,na)-(v(icrm,i,j,k)-v0loc(icrm,k)) * tau(icrm,k)
-            dwdt(icrm,i,j,k,na)= dwdt(icrm,i,j,k,na)-w(icrm,i,j,k) * tau(icrm,k)
-            t(icrm,i,j,k)= t(icrm,i,j,k)-dtn*(t(icrm,i,j,k)-t0loc(icrm,k)) * tau(icrm,k)
-            micro_field(icrm,i,j,k,index_water_vapor)= micro_field(icrm,i,j,k,index_water_vapor)-dtn*(qv(icrm,i,j,k)-qv0(icrm,k)) * tau(icrm,k)
+    !$acc parallel loop collapse(4) vector_length(128) num_gangs(numgangs) copy(dudt,dvdt,dwdt,t,micro_field) copyin(n_damp,u,v,tau,w,qv,qv0) async(asyncid)
+    do k = 1 , nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            if ( k <= nzm .and. k >= nzm-n_damp(icrm) ) then
+              dudt(icrm,i,j,k,na)= dudt(icrm,i,j,k,na)-(u(icrm,i,j,k)-u0loc(icrm,k)) * tau(icrm,k)
+              dvdt(icrm,i,j,k,na)= dvdt(icrm,i,j,k,na)-(v(icrm,i,j,k)-v0loc(icrm,k)) * tau(icrm,k)
+              dwdt(icrm,i,j,k,na)= dwdt(icrm,i,j,k,na)-w(icrm,i,j,k) * tau(icrm,k)
+              t(icrm,i,j,k)= t(icrm,i,j,k)-dtn*(t(icrm,i,j,k)-t0loc(icrm,k)) * tau(icrm,k)
+              micro_field(icrm,i,j,k,index_water_vapor)= micro_field(icrm,i,j,k,index_water_vapor)-dtn*(qv(icrm,i,j,k)-qv0(icrm,k)) * tau(icrm,k)
+            endif
           end do! i
         end do! j
       end do ! k

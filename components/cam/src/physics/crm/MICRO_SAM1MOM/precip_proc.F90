@@ -40,7 +40,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copyin(accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,tabs,pres,evapr2) copy(qpevp,qpsrc,qp,qn,q) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,tabs,pres,evapr2) copy(qpevp,qpsrc,qp,qn,q) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
