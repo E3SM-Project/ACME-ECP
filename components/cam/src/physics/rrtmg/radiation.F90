@@ -929,6 +929,7 @@ end function radiation_nextsw_cday
     real(r8),pointer :: qv_rad(:,:,:,:) ! rad vapor
     real(r8),pointer :: qc_rad(:,:,:,:) ! rad cloud water
     real(r8),pointer :: qi_rad(:,:,:,:) ! rad cloud ice
+    real(r8),pointer :: cld_rad(:,:,:,:) ! 3D cloud fraction averaged over CRM integration
     real(r8),pointer :: crm_qrad(:,:,:,:) ! rad heating
 
     real(r8),pointer :: qaerwat_crm(:,:,:,:,:) ! aerosol water
@@ -1039,7 +1040,6 @@ end function radiation_nextsw_cday
     real(r8) factor_xy
     real(r8) cld_save   (pcols,pver)
     real(r8) fice       (pcols,pver)
-    real(r8) cld_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cliqwp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) cicewp_crm (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) rel_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
@@ -1199,6 +1199,8 @@ end function radiation_nextsw_cday
     real(r8) ::  aerindex(pcols)      ! Aerosol index
     integer aod400_idx, aod700_idx, cld_tau_idx
 
+    ! Total cloud water threshold for considering a CRM column "cloudy" or "clear"
+    real(r8), parameter :: qtot_cld_threshold = 1.e-9
 
     character(*), parameter :: name = 'radiation_tend'
     character(len=16)       :: SPCAM_microp_scheme  ! SPCAM_microphysics scheme
@@ -1428,6 +1430,9 @@ end function radiation_nextsw_cday
            call pbuf_get_field(pbuf, crm_ns_rad_idx, ns_rad, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
          endif
 
+         ! Get cloud fraction averaged over the CRM time integration
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), cld_rad)
+
          cicewp(1:ncol,1:pver) = 0.  
          cliqwp(1:ncol,1:pver) = 0.
 
@@ -1501,35 +1506,44 @@ end function radiation_nextsw_cday
               k = pver-m+1
               do i=1,ncol
 
-                ! Calculate cloud fraction and in-cloud water paths; this is
-                ! done based on a total water threshold here, assuming that
-                ! the CRM element is "cloudy" if the total cloud water exceeds
-                ! some threshold (set arbitrarily here), and is "clear"
-                ! otherwise. Note that this application turns OFF MCICA sampling
-                ! in the cloud optics routines, since cloud fraction is either 0
-                ! or 1 (or close to). A better approach would be to calculate a
-                ! true time-averaged cloud fraction in the CRM and use that
-                ! here.
+                ! Calculate cloud fraction and in-cloud water paths. Cloud fraction can either be
+                ! adopted from the calculation done within the CRM integration or can be calculated
+                ! here based on a total water threshold, assuming that the CRM element is "cloudy"
+                ! if the total water exceeds some threshold (set arbitrarily here), and is "clear"
+                ! otherwise. Note that setting cloud fraction to 0 or 1 based on the total water
+                ! threshold effectively turns OFF MCICA sampling in the cloud optics routines. This
+                ! may be undesireable, especially for longer radiation update intervals (iradsw and
+                ! iradlw > 1 or longer physics timesteps) or when using the reduced radiation
+                ! option in which we average cloud properties over some number of CRM columns. In
+                ! both of these cases, the assumption that clouds are fully resolved on the time and
+                ! space scales that the radiation sees becomes less reasonable.
                 qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
-                if(qtot.gt.1.e-9) then
+#ifdef SP_MCICA_RAD
+                cld(i,k) = cld_rad(i,ii,jj,m)
+#else
+                if(qtot > qtot_cld_threshold) then
+                    cld(i,k) = 0.99_r8
+                else
+                    cld(i,k) = 0
+                end if
+#endif
+                ! Calculate water paths and fraction of ice
+                if (cld(i,k) > 0) then
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
-                  cld(i,k) = 0.99_r8
-                  cld_crm(i,ii,jj,m)=0.99_r8
                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
                            / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
                   cliqwp(i,k) = qc_rad(i,ii,jj,m)*state%pdel(i,k)/gravit     &
                            / max(0.01_r8,cld(i,k)) ! In-cloud liquid water path. 
                 else
                   fice(i,k)= 0.
-                  cld(i,k) = 0.
-                  cld_crm(i,ii,jj,m) = 0.
                   cicewp(i,k) = 0.           ! In-cloud ice water path.
                   cliqwp(i,k) = 0.           ! In-cloud liquid water path.
                 end if
 
                 ! snow water-related variables: 
                 ! snow water is an important component in m2005 microphysics, and is therefore taken
-                ! account in the radiative calculation (snow water path is several times larger than ice water path in m2005 globally). 
+                ! into account in the radiative calculation (snow water path is several times larger
+                ! than ice water path in m2005 globally). 
                 if (SPCAM_microp_scheme .eq. 'm2005') then 
                   if( qs_rad(i, ii, jj, m).gt.1.0e-7) then
                     cldfsnow(i,k) = 0.99_r8   
@@ -1547,24 +1561,23 @@ end function radiation_nextsw_cday
                 state%q(i,k,1)        =  max(1.e-9_r8,qv_rad(i,ii,jj,m))
                 state%t(i,k)          =  t_rad(i, ii, jj, m)
 #ifdef MODAL_AERO
-                !!! Using CRM scale aerosol water to calculate aerosol optical depth. 
-                !!! Here we assume no aerosol water uptake at cloudy sky at CRM grids. 
-                !!! This is not really phyisically correct. But if we assume 100% of relative humidity for 
-                !!! aerosol water uptake, this will bias 'AODVIS' to be large, since 'AODVIS' is used 
-                !!! to compare with observated clear sky AOD. In the future, AODVIS is needed to be calcualted
-                !!! from clear sky CRM AOD only. But before this is done, we will assume no water uptake at CRM
-                !!! cloudy grids (The radiative effects of this assumption will be small, since in cloudy sky, 
-                !!! aerosol effects is small anyway. 
-                !!! -Minghuai Wang (minghuai.wang@pnl.gov)
-                !!! 
+                ! Use CRM scale aerosol water to calculate aerosol optical depth. Here we assume no
+                ! aerosol water uptake for cloudy sky on CRM grids. This is not really physically
+                ! correct, but if we assume 100% of relative humidity for aerosol water uptake, this
+                ! will bias 'AODVIS' to be large, since 'AODVIS' is used to compare with observed
+                ! clear sky AOD. In the future, AODVIS should be calculated from clear sky CRM AOD
+                ! only. But before this is done, we will assume no water uptake on CRM grids for 
+                ! cloudy conditions (The radiative effects of this assumption will be small, since 
+                ! aerosol effects are small relative to cloud effects for cloudy sky anyway. 
+                ! -Minghuai Wang (minghuai.wang@pnl.gov)
                 qaerwat (i, k, 1:ntot_amode) =  qaerwat_crm(i, ii, jj, m, 1:ntot_amode)
                 dgnumwet(i, k, 1:ntot_amode) = dgnumwet_crm(i, ii, jj, m, 1:ntot_amode)
 #endif 
               end do ! i
             end do ! m
 
-! update effective radius
 #ifdef CRM  
+            ! update effective radius
             if (SPCAM_microp_scheme .eq. 'm2005') then 
               do m=1,crm_nz
                 k = pver-m+1
@@ -1587,10 +1600,7 @@ end function radiation_nextsw_cday
                   rei_crm(i,ii,jj,m) = rei(i,k)
                 end do ! i
               end do ! m
-            end if ! m2005
-
-            ! whannah 
-            if (SPCAM_microp_scheme .eq. 'sam1mom') then 
+            else if (SPCAM_microp_scheme .eq. 'sam1mom') then 
               ! for sam1mom, rel and rei are calcualted above, and are the same for all CRM columns
               do m=1,crm_nz
                 k = pver-m+1
