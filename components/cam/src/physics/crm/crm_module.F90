@@ -40,12 +40,6 @@ contains
 
 subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 crm_input, crm_state, crm_rad,  &
-#ifdef CLUBB_CRM
-                clubb_buffer,           &
-                crm_cld, clubb_tk,      &
-                clubb_tkh, relvar,      &
-                accre_enhan, qclvar,    &
-#endif
                 crm_ecpp_output, crm_output )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
@@ -61,19 +55,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #ifdef MODAL_AERO
     use modal_aero_data       , only: ntot_amode
 #endif
-    use crmdims               , only: nclubbvars, crm_nx_rad, crm_ny_rad
-#ifdef CLUBB_CRM
-    use clubb_sgs             , only: advance_clubb_sgs, clubb_sgs_setup, clubb_sgs_cleanup, apply_clubb_sgs_tndcy, apply_clubb_sgs_tndcy_scalars, &
-                                      apply_clubb_sgs_tndcy_mom, t2thetal, total_energy
-    use clubb_precision       , only: time_precision, core_rknd
-    use clubbvars             , only: up2, vp2, wprtp, wpthlp, wp2, wp3, rtp2, thlp2, rtpthlp, upwp, vpwp, cloud_frac, t_tndcy, qc_tndcy, qv_tndcy, &
-                                      u_tndcy, v_tndcy, lrestart_clubb, rho_ds_zt, rho_ds_zm, thv_ds_zt, thv_ds_zm, invrs_rho_ds_zt, invrs_rho_ds_zm, &
-                                      tracer_tndcy, sclrp2, sclrprtp, sclrpthlp, wpsclrp, relvarg, accre_enhang, qclvarg, edsclr_dim, sclr_dim, rho_ds_zt, &
-                                      rho_ds_zm, rtm_spurious_source, thlm_spurious_source
-    use fill_holes            , only: vertical_integral
-    use numerical_check       , only: calculate_spurious_source
-    use grid_class            , only: gr
-#endif
+    use crmdims               , only: crm_nx_rad, crm_ny_rad
 #ifdef ECPP
     use ecppvars              , only: qlsink, precr, precsolid, &
                                       area_bnd_final, area_bnd_sum, area_cen_final, area_cen_sum, &
@@ -102,15 +84,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     type(crm_input_type),      intent(in   ) :: crm_input
     type(crm_state_type),      intent(inout) :: crm_state
     type(crm_rad_type), target,intent(inout) :: crm_rad
-#ifdef CLUBB_CRM
-    real(r8), intent(inout), target :: clubb_buffer(ncrms,crm_nx, crm_ny, crm_nz+1,1:nclubbvars)
-    real(r8), intent(  out) :: crm_cld             (ncrms,crm_nx, crm_ny, crm_nz+1)
-    real(r8), intent(  out) :: clubb_tk            (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: clubb_tkh           (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: relvar              (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
-    real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
-#endif /* CLUBB_CRM */
     type(crm_ecpp_output_type),intent(inout) :: crm_ecpp_output
     type(crm_output_type), target,     intent(inout) :: crm_output
 
@@ -164,17 +137,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd), allocatable  :: cmtemp  (:,:,:)
     real(crm_rknd), allocatable  :: chtemp  (:,:,:)
     real(crm_rknd), allocatable  :: cttemp  (:,:,:)
-#ifdef CLUBB_CRM
-    !Array indicies for spurious RTM check
-    real(kind=core_rknd), allocatable :: thlm_flux_top, thlm_flux_sfc, rtm_flux_top, rtm_flux_sfc
-    real(kind=core_rknd), allocatable :: rtm_integral_before (:,:)
-    real(kind=core_rknd), allocatable :: rtm_integral_after  (:,:)
-    real(kind=core_rknd), allocatable :: thlm_integral_before(:,:)
-    real(kind=core_rknd), allocatable :: thlm_integral_after (:,:)
-    real(kind=core_rknd), allocatable :: thlm_before(:)
-    real(kind=core_rknd), allocatable :: thlm_after (:)
-    real(kind=core_rknd), allocatable :: rtm_column (:) ! Total water (vapor + liquid)     [kg/kg]
-#endif /* CLUBB_CRM */
     real(crm_rknd) :: zeroval
 
     real(r8), allocatable :: dd_crm (:,:)     ! mass entraiment from downdraft
@@ -227,15 +189,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     allocate( cmtemp(ncrms,nx,ny) )
     allocate( chtemp(ncrms,nx,ny) )
     allocate( cttemp(ncrms,nx,ny) )
-#ifdef CLUBB_CRM
-    allocate( rtm_integral_before (nx,ny) )
-    allocate( rtm_integral_after (nx,ny) )
-    allocate( thlm_integral_before(nx,ny) )
-    allocate( thlm_integral_after(nx,ny) )
-    allocate( thlm_before(nzm) )
-    allocate( thlm_after(nzm) )
-    allocate( rtm_column(nzm) )
-#endif /* CLUBB_CRM */
     allocate( dd_crm (ncrms,plev)   )
     allocate( mui_crm(ncrms,plev+1) )
     allocate( mdi_crm(ncrms,plev+1) )
@@ -286,15 +239,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     cmtemp = zeroval
     chtemp = zeroval
     cttemp = zeroval
-#ifdef CLUBB_CRM
-    rtm_integral_before  = zeroval
-    rtm_integral_after  = zeroval
-    thlm_integral_before = zeroval
-    thlm_integral_after = zeroval
-    thlm_before = zeroval
-    thlm_after = zeroval
-    rtm_column = zeroval
-#endif /* CLUBB_CRM */
 
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
@@ -339,14 +283,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     wnd(icrm) = crm_input%wndls(icrm)
 
 !-----------------------------------------
-
-#ifdef CLUBB_CRM
-    if(igstep == 1) then
-      lrestart_clubb = .false.
-    else
-     lrestart_clubb = .true.
-    endif
-#endif /* CLUBB_CRM */
 
     call task_init ()
     call setparm()
@@ -404,15 +340,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       rhow(icrm,k) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
     end do
     rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
-#ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
-    if (  2.*rhow(icrm,nzm) - rhow(icrm,nzm-1) > 0. ) then
-       rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
-    else
-       rhow(icrm,nz)= sqrt( rhow(icrm,nzm) )
-    endif
-#else
     rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
-#endif /*CLUBB_CRM*/
 
     !  Initialize CRM fields:
     u(icrm,1:nx,1:ny,1:nzm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
@@ -544,13 +472,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       qn0(icrm,k) = qn0(icrm,k) * factor_xy
       qp0(icrm,k) = qp0(icrm,k) * factor_xy
       tke0(icrm,k) = tke0(icrm,k) * factor_xy
-#ifdef CLUBB_CRM
-      ! Update thetav for CLUBB.  This is needed when we have a higher model top
-      ! than is in the sounding, because we subsequently use tv0 to initialize
-      ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
-      ! -dschanen UWM 11 Feb 2010
-      tv0(icrm,k) = tabs0(icrm,k)*prespot(icrm,k)*(1.+epsv*q0(icrm,k))
-#endif /* CLUBB_CRM */
 
       l = plev-k+1
       uln(icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
@@ -581,24 +502,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output%precstend(icrm)=colprecs
 
 
-#ifdef CLUBB_CRM
-    if(doclubb) then
-      fluxbu(icrm,:, :) = crm_input%fluxu00(icrm)/rhow(icrm,1)
-      fluxbv(icrm,:, :) = crm_input%fluxv00(icrm)/rhow(icrm,1)
-      fluxbt(icrm,:, :) = crm_input%fluxt00(icrm)/rhow(icrm,1)
-      fluxbq(icrm,:, :) = crm_input%fluxq00(icrm)/rhow(icrm,1)
-    else
-      fluxbu(icrm,:, :) = 0.
-      fluxbv(icrm,:, :) = 0.
-      fluxbt(icrm,:, :) = 0.
-      fluxbq(icrm,:, :) = 0.
-    endif
-#else
     fluxbu(icrm,:,:)=0.
     fluxbv(icrm,:,:)=0.
     fluxbt(icrm,:,:)=0.
     fluxbq(icrm,:,:)=0.
-#endif /* CLUBB_CRM */
     fluxtu(icrm,:,:)=0.
     fluxtv(icrm,:,:)=0.
     fluxtt(icrm,:,:)=0.
@@ -713,58 +620,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call endrun('crm main')
     end if
 
-#ifndef CLUBB_CRM
-    !--------------------------
-    ! do a CLUBB sanity check
-    if ( doclubb .or. doclubbnoninter ) then
-      write(0,*) "Cannot call CLUBB if -DCLUBB is not in FFLAGS"
-      call endrun('crm main')
-    endif
-#endif
-#ifdef CLUBB_CRM
-    !------------------------------------------------------------------
-    ! Do initialization for UWM CLUBB
-    !------------------------------------------------------------------
-    up2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1)
-    vp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2)
-    wprtp     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3)
-    wpthlp    (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4)
-    wp2       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5)
-    wp3       (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6)
-    rtp2      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7)
-    thlp2     (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8)
-    rtpthlp   (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9)
-    upwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10)
-    vpwp      (1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11)
-    cloud_frac(1:nx, 1:ny, 1:nz ) = clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12)
-    t_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13)
-    qc_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14)
-    qv_tndcy  (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15)
-    u_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16)
-    v_tndcy   (1:nx, 1:ny, 1:nzm) = clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17)
-
-    ! since no tracer is carried in the current version of MMF, these
-    ! tracer-related restart varialbes are set to zero. +++mhwang, 2011-08
-    tracer_tndcy = 0.0
-    sclrp2       = 0.0
-    sclrprtp     = 0.0
-    sclrpthlp    = 0.0
-    wpsclrp      = 0.0
-
-    if((doclubb.and.docloud).or.(.not.doclubb .and. .not.docloud)) then
-      write(0, *) 'doclubb and docloud can not both be true or be false'
-      call endrun('crm_clubb2')
-    endif
-    if((doclubb_sfc_fluxes.and.docam_sfc_fluxes)) then
-      write(0, *) 'doclubb_sfc_fluxes and dosam_sfc_fluxes can not both be true'
-      call endrun('crm_clubb_fluxes')
-    endif
-
-    if ( doclubb .or. doclubbnoninter ) then
-      call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                            latitude(icrm,:,:), longitude(icrm,:,:), z(icrm,:), rho(icrm,:), zi(icrm,:), rhow(icrm,:), tv0(icrm,:), tke(icrm,:,:,:) )
-    endif
-#endif /* CLUBB_CRM */
   enddo
 
 #ifdef ECPP
@@ -863,15 +718,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       !---------------------------------------------------------
       !   Ice fall-out
-#ifdef CLUBB_CRM
-      if ( docloud .or. doclubb ) then
-        call ice_fall(ncrms)
-      endif
-#else
       if(docloud) then
         call ice_fall(ncrms)
       endif
-#endif
 
       !----------------------------------------------------------
       !     Update scalar boundaries after large-scale processes:
@@ -942,11 +791,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       !-----------------------------------------------------------
       !       Cloud condensation/evaporation and precipitation processes:
-#ifdef CLUBB_CRM
-      if(docloud.or.dosmoke.or.doclubb) call micro_proc(ncrms)
-#else
       if(docloud.or.dosmoke) call micro_proc(ncrms)
-#endif /*CLUBB_CRM*/
 
       !-----------------------------------------------------------
       !       Apply mean-state acceleration
@@ -1300,32 +1145,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = tk(icrm,1:nx, 1:ny, 1:nzm)
     crm_output%tkh  (icrm,1:nx,1:ny,1:nzm) = tkh(icrm,1:nx, 1:ny, 1:nzm)
-#ifdef CLUBB_CRM
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3) = wprtp     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4) = wpthlp    (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5) = wp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6) = wp3       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7) = rtp2      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8) = thlp2     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9) = rtpthlp   (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10) = upwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11) = vpwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12) = cloud_frac(1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13) = t_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14) = qc_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15) = qv_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16) = u_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17) = v_tndcy   (1:nx, 1:ny, 1:nzm)
-
-    crm_cld    (icrm,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
-    clubb_tk   (icrm,1:nx, 1:ny, 1:nzm) = tk_clubb    (1:nx, 1:ny, 1:nzm)
-    clubb_tkh  (icrm,1:nx, 1:ny, 1:nzm) = tkh_clubb   (1:nx, 1:ny, 1:nzm)
-    relvar     (icrm,1:nx, 1:ny, 1:nzm) = relvarg     (1:nx, 1:ny, 1:nzm)
-    accre_enhan(icrm,1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm)
-    qclvar     (icrm,1:nx, 1:ny, 1:nzm) = qclvarg     (1:nx, 1:ny, 1:nzm)
-#endif /* CLUBB_CRM */
 
     do k=1,nzm
      do j=1,ny
@@ -1616,12 +1435,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #endif /* ECPP */
 
     crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm) / nstop
-
-#ifdef CLUBB_CRM
-    ! Deallocate CLUBB variables, etc.
-    ! -UWM
-    if ( doclubb .or. doclubbnoninter ) call clubb_sgs_cleanup( )
-#endif
   enddo
 
 #ifdef ECPP
@@ -1649,15 +1462,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   deallocate( cmtemp)
   deallocate( chtemp)
   deallocate( cttemp)
-#ifdef CLUBB_CRM
-  deallocate( rtm_integral_before )
-  deallocate( rtm_integral_after )
-  deallocate( thlm_integral_before)
-  deallocate( thlm_integral_after)
-  deallocate( thlm_before)
-  deallocate( thlm_after)
-  deallocate( rtm_column)
-#endif /* CLUBB_CRM */
   deallocate( dd_crm  )
   deallocate( mui_crm )
   deallocate( mdi_crm )

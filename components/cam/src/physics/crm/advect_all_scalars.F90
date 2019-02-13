@@ -10,11 +10,7 @@ contains
     use microphysics
     use sgs
     use crmtracers
-#ifdef CLUBB_CRM
-    use params, only: dotracers, doclubb, doclubbnoninter
-#else
     use params, only: dotracers
-#endif
     use scalar_momentum_mod
     implicit none
     integer, intent(in) :: ncrms
@@ -28,12 +24,7 @@ contains
     !    Advection of microphysics prognostics:
     do k = 1,nmicro_fields
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
-#ifdef CLUBB_CRM
-      !Added preprocessor directives. - nielsenb UWM 30 July 2008
-      .or. ( docloud .or. doclubb .or. doclubbnoninter ) .and.flag_precip(k).ne.1    & ! transport non-precipitation vars
-#else
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
-#endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
         call advect_scalar(ncrms,micro_field(:,:,:,:,k),mkadv(:,:,k),mkwle(:,:,k))
       endif

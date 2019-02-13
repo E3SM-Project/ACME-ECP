@@ -160,13 +160,7 @@ contains
     upthresh2   = 0.5   ! ...ditto, except for weaker 2nd draft type when plumetype=2
     downthresh2 = 0.5
 
-#ifdef CLUBB_CRM
-    cloudthresh = 2e-7  !Cloud mixing ratio beyond which cell is "cloudy(liquid)" (kg/kg)
-    ! As now fractional cloudiness is used for classifying cloudy vs. clear,
-    ! reduce it from 1.0e-6 to 2.0e-7
-#else
     cloudthresh = 1e-6  !Cloud mixing ratio beyond which cell is "cloudy(liquid)" (kg/kg)
-#endif
 
     prcpthresh  = 1e-6  !Preciptation rate (precr) beyond which cell is raining (kg/m2/s)
     ! this is used to classify precipitating vs. nonprecipitating class for wet scavenging.
@@ -473,10 +467,6 @@ contains
     use sgs, only: tke, tk
     use microphysics, only: micro_field, iqv, iqci, iqr, iqs, iqg, cloudliq
     use module_mp_GRAUPEL, only: POLYSVP
-#ifdef CLUBB_CRM
-    use clubbvars, only: wp2
-    use sgs, only: tk_clubb
-#endif
     implicit none
     integer, intent(in) :: ncrms
     integer :: i, ierr, i_tidx, j, ncnt1, ncnt2, icrm
@@ -518,17 +508,8 @@ contains
     end do
 
     ww(:,:,:,icrm)     = w(icrm,1:nx,1:ny,1:nzstag)
-#ifdef CLUBB_CRM
-    wwsq(:,:,:,icrm)  = sqrt(wp2(1:nx, 1:ny, 1:nzstag))
-#else
     wwsq(:,:,:,icrm)   = 0.  ! subgrid vertical velocity is not used in the current version of ECPP.
-#endif
-
-#ifdef CLUBB_CRM
-    xkhv(:,:,:,icrm)   = tk_clubb(1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
-#else
     xkhv(:,:,:,icrm)   = tk(icrm,1:nx,1:ny,1:nzm)  ! eddy viscosity m2/s
-#endif
     enddo
 
     ! Increment the 3-D running sums for averaging period 1.
