@@ -665,7 +665,7 @@ implicit none
 
 
 real(crm_rknd), dimension(nzm) :: &
-     tmpqcl, tmpqci, tmpqr, tmpqs, tmpqg, tmpqv, &
+     tmpqcl, tmpqci, tmpqr, tmpqs, tmpqg,  &
      tmpncl, tmpnci, tmpnr, tmpns, tmpng,  &
      tmpw, tmpwsub, tmppres, tmpdz, tmptabs, &
 ! hm 7/26/11, new output
@@ -677,6 +677,7 @@ real(crm_rknd), dimension(nzm) :: &
      stendqcl, stendqci, stendqr, stendqs, stendqg, stendqv, &
      stendncl, stendnci, stendnr, stendns, stendng,  &
      effg1d, effr1d, effs1d, effc1d, effi1d
+real(crm_rknd) tmpqv(nx,ny,nzm,ncrms)
 
 #ifdef ECPP
 real(crm_rknd), dimension(nzm) :: C2PREC,QSINK_TMP, CSED,ISED,SSED,GSED,RSED,RH3D   ! used for cloud chemistry and wet deposition in ECPP
@@ -711,14 +712,23 @@ if(dostatis) then ! initialize arrays for statistics
 end if
 stend(:,:,icrm) = 0.
 mksed(:,:,icrm) = 0.
+enddo
+
+do icrm = 1, ncrms
+  do j = 1,ny
+     do i = 1,nx
+        tmpqv(i,j,:,icrm) = 0.
+     enddo
+  enddo
+ enddo
 
 !!$if(doprecip) total_water_prec = total_water_prec + total_water()
+do icrm = 1, ncrms
 
-do j = 1,ny
+ do j = 1,ny
    do i = 1,nx
 
       ! zero out mixing ratios of microphysical species
-      tmpqv(:) = 0.
       tmpqcl(:) = 0.
       tmpncl(:) = 0.
       tmpqr(:) = 0.
@@ -731,7 +741,7 @@ do j = 1,ny
       tmpng(:) = 0.
 
       ! get microphysical quantities in this grid column
-      tmpqv(:) = micro_field(i,j,:,icrm,iqv) !bloss/qt: This is total water (qv+qcl)
+      tmpqv(i,j,:,icrm) = micro_field(i,j,:,icrm,iqv) !bloss/qt: This is total water (qv+qcl)
 !bloss/qt: compute below from saturation adjustment.
       if(dopredictNc) tmpncl(:) = micro_field(i,j,:,icrm,incl)
       if(doprecip) then
@@ -809,7 +819,7 @@ do j = 1,ny
       if ( .not. ( docloud .or. dosmoke ) ) then
         if(.not.doclubb_tb) then
          tmpqcl  = cloudliq(i,j,:,icrm) ! Liquid updated by CLUBB just prior to this
-         tmpqv   = tmpqv - tmpqcl ! Vapor
+         tmpqv(i,j,:,icrm)   = tmpqv(i,j,:,icrm) - tmpqcl ! Vapor
          tmptabs = tmptabs + fac_cond * tmpqcl ! Update temperature
          if(doclubb_gridmean) then
            cloud_frac_in(1:nzm) = 0.0  ! to use grid mean for Morrison microphysics, just
@@ -834,15 +844,15 @@ do j = 1,ny
            endif
          end if
         else
-          call satadj_liquid(nzm,tmptabs,tmpqv,tmpqcl,tmppres)
+          call satadj_liquid(nzm,tmptabs,tmpqv(i,j,:,icrm),tmpqcl,tmppres)
           cloudliq(i,j,:,icrm) = tmpqcl
           cloud_frac_in(1:nzm) = 0.0
         end if
       else
-        call satadj_liquid(nzm,tmptabs,tmpqv,tmpqcl,tmppres)
+        call satadj_liquid(nzm,tmptabs,tmpqv(i,j,:,icrm),tmpqcl,tmppres)
       end if
 #else
-      call satadj_liquid(nzm,tmptabs,tmpqv,tmpqcl,tmppres)
+      call satadj_liquid(nzm,tmptabs,tmpqv(i,j,:,icrm),tmpqcl,tmppres)
 #endif
 
 
@@ -893,14 +903,14 @@ do j = 1,ny
       relvar(:) = 8.
       accre_enhan(:) = 1.
       if ( doclubb ) then
-        if ( any( tmpqv < 0. ) ) then
-          qv_clip(2:nz) = tmpqv(1:nzm)
+        if ( any( tmpqv(i,j,:,icrm) < 0. ) ) then
+          qv_clip(2:nz) = tmpqv(i,j,1:nzm,icrm)
           qv_clip(1) = 0.0_core_rknd
           if ( clubb_at_least_debug_level( 1 ) ) then
             write(0,*) "M2005 has received a negative water vapor"
           end if
           call fill_holes_driver( 2, 0._core_rknd, "zt", rho_ds_zt, rho_ds_zm, qv_clip )
-          tmpqv = qv_clip(2:nz)
+          tmpqv(i,j,:,icrm) = qv_clip(2:nz)
         end if
         if ( any( tmpqcl < 0. ) ) then
           qcl_clip(2:nz) = tmpqcl(1:nzm)
@@ -939,7 +949,7 @@ do j = 1,ny
            tmpqcl,tmpqci,tmpqs,tmpqr, &
            tmpncl,tmpnci,tmpns,tmpnr, &
            tmtend1d,mtendqv, &
-           tmptabs,tmpqv,tmppres,rho(:,icrm),tmpdz,tmpw,tmpwsub, &
+           tmptabs,tmpqv(i,j,:,icrm),tmppres,rho(:,icrm),tmpdz,tmpw,tmpwsub, &
 ! hm 7/26/11, new output
            tmpacc,tmpaut,tmpevpc,tmpevpr,tmpmlt, &
            tmpsub,tmpdep,tmpcon, &
@@ -955,14 +965,14 @@ do j = 1,ny
                                         )
 
       if ( doclubb ) then
-        if ( any( tmpqv < 0. ) ) then
-          qv_clip(2:nz) = tmpqv(1:nzm)
+        if ( any( tmpqv(i,j,:,icrm) < 0. ) ) then
+          qv_clip(2:nz) = tmpqv(i,j,1:nzm,icrm)
           qv_clip(1) = 0.0_core_rknd
           if ( clubb_at_least_debug_level( 1 ) ) then
             write(0,*) "M2005 has produced a negative water vapor"
           end if
           call fill_holes_driver( 2, 0._core_rknd, "zt", rho_ds_zt, rho_ds_zm, qv_clip )
-          tmpqv = qv_clip(2:nz)
+          tmpqv(i,j,:,icrm) = qv_clip(2:nz)
         end if
         if ( any( tmpqcl < 0. ) ) then
           qcl_clip(2:nz) = tmpqcl(1:nzm)
@@ -986,7 +996,7 @@ do j = 1,ny
            tmpqcl,tmpqci,tmpqs,tmpqr, &
            tmpncl,tmpnci,tmpns,tmpnr, &
            tmtend1d,mtendqv, &
-           tmptabs,tmpqv,tmppres,rho(:,icrm),tmpdz,tmpw,tmpwsub, &
+           tmptabs,tmpqv(i,j,:,icrm),tmppres,rho(:,icrm),tmpdz,tmpw,tmpwsub, &
 ! hm 7/26/11, new output
            tmpacc,tmpaut,tmpevpc,tmpevpr,tmpmlt, &
            tmpsub,tmpdep,tmpcon, &
@@ -1062,7 +1072,7 @@ do j = 1,ny
       !bloss/qt: update total water and cloud liquid.
       !          Note: update of total water moved to after if(doprecip),
       !                  since no precip moves rain --> cloud liq.
-      micro_field(i,j,:,icrm,iqv) = tmpqv(:) + tmpqcl(:) !bloss/qt: total water
+      micro_field(i,j,:,icrm,iqv) = tmpqv(i,j,:,icrm) + tmpqcl(:) !bloss/qt: total water
       cloudliq(i,j,:,icrm) = tmpqcl(:) !bloss/qt: auxilliary cloud liquid water variable
       if(dopredictNc) micro_field(i,j,:,icrm,incl) = tmpncl(:)
 
