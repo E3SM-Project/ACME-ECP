@@ -181,29 +181,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !! These pointers are workarounds for OpenACC PGI bugs
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    real(crm_rknd), pointer :: crm_rad_qrad(:,:,:,:)
-    real(crm_rknd), pointer :: crm_output_timing_factor(:)
-    real(crm_rknd), pointer :: crm_output_cldtop(:,:)
-    real(crm_rknd), pointer :: crm_output_cld(:,:)
-    real(crm_rknd), pointer :: crm_output_mcup(:,:)
-    real(crm_rknd), pointer :: crm_output_mcuup(:,:)
-    real(crm_rknd), pointer :: crm_output_mcdn(:,:)
-    real(crm_rknd), pointer :: crm_output_mcudn(:,:)
-    real(crm_rknd), pointer :: crm_rad_temperature(:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_qv(:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_qc(:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_qi(:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_cld(:,:,:,:)
-    real(crm_rknd), pointer :: crm_output_gliqwp(:,:)
-    real(crm_rknd), pointer :: crm_output_gicewp(:,:)
-    real(crm_rknd), pointer :: crm_output_cltot(:)
-    real(crm_rknd), pointer :: crm_output_clhgh(:)
-    real(crm_rknd), pointer :: crm_output_clmed(:)
-    real(crm_rknd), pointer :: crm_output_cllow(:)
-
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
 
@@ -240,33 +217,28 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     allocate( mui_crm(ncrms,plev+1) )
     allocate( mdi_crm(ncrms,plev+1) )
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !! These pointers are workarounds for OpenACC PGI bugs
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    crm_rad_qrad             => crm_rad%qrad                
-    crm_output_timing_factor => crm_output%timing_factor    
-    crm_output_cldtop        => crm_output%cldtop           
-    crm_output_cld           => crm_output%cld              
-    crm_output_mcup          => crm_output%mcup             
-    crm_output_mcuup         => crm_output%mcuup            
-    crm_output_mcdn          => crm_output%mcdn             
-    crm_output_mcudn         => crm_output%mcudn            
-    crm_output_mcudn         => crm_output%mcudn            
-    crm_rad_temperature      => crm_rad%temperature         
-    crm_rad_qv               => crm_rad%qv                  
-    crm_rad_qc               => crm_rad%qc                  
-    crm_rad_qi               => crm_rad%qi                  
-    crm_rad_cld              => crm_rad%cld                 
-    crm_output_gliqwp        => crm_output%gliqwp           
-    crm_output_gicewp        => crm_output%gicewp           
-    crm_output_cltot         => crm_output%cltot            
-    crm_output_clhgh         => crm_output%clhgh            
-    crm_output_clmed         => crm_output%clmed            
-    crm_output_cllow         => crm_output%cllow            
+    associate(crm_rad_qrad             => crm_rad%qrad                , &
+              crm_output_timing_factor => crm_output%timing_factor    , &
+              crm_output_cldtop        => crm_output%cldtop           , &
+              crm_output_cld           => crm_output%cld              , &
+              crm_output_mcup          => crm_output%mcup             , &
+              crm_output_mcuup         => crm_output%mcuup            , &
+              crm_output_mcdn          => crm_output%mcdn             , &
+              crm_output_mcudn         => crm_output%mcudn            , &
+              crm_rad_temperature      => crm_rad%temperature         , &
+              crm_rad_qv               => crm_rad%qv                  , &
+              crm_rad_qc               => crm_rad%qc                  , &
+              crm_rad_qi               => crm_rad%qi                  , &
+              crm_rad_cld              => crm_rad%cld                 , &
+              crm_output_gliqwp        => crm_output%gliqwp           , &
+              crm_output_gicewp        => crm_output%gicewp           , &
+              crm_output_cltot         => crm_output%cltot            , &
+              crm_output_clhgh         => crm_output%clhgh            , &
+              crm_output_clmed         => crm_output%clmed            , &
+              crm_output_cllow         => crm_output%cllow            )
 
     zeroval = 0
 
-    t00  = zeroval
     tln  = zeroval
     qln  = zeroval
     qccln  = zeroval
@@ -1674,6 +1646,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #if defined( SP_ESMT )
   call deallocate_scalar_momentum()
 #endif
+
+  end associate
 
 end subroutine crm
 
