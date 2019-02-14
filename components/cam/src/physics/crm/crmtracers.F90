@@ -47,16 +47,16 @@ CONTAINS
 
     zero = 0
 
-    tracer   = zero
-    fluxbtr  = zero
-    fluxttr  = zero
-    trwle    = zero
-    trwsb    = zero
-    tradv    = zero
-    trdiff   = zero
-    trphys   = zero
-    tracername  = ''
-    tracerunits = ''
+    !tracer   = zero
+    !fluxbtr  = zero
+    !fluxttr  = zero
+    !trwle    = zero
+    !trwsb    = zero
+    !tradv    = zero
+    !trdiff   = zero
+    !trphys   = zero
+    !tracername  = ''
+    !tracerunits = ''
   end subroutine allocate_tracers
 
 

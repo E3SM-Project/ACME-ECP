@@ -90,19 +90,19 @@ CONTAINS
     tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,:,1)
     tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,:,2)
 
-    zero = 0
+    !zero = 0
 
-    sgs_field = zero
-    sgs_field_diag = zero
-    sgswle = zero
-    sgswsb = zero
-    sgsadv = zero
-    grdf_x = zero
-    grdf_y = zero
-    grdf_z = zero
-    tkesbbuoy = zero
-    tkesbshear = zero
-    tkesbdiss = zero
+    !sgs_field = zero
+    !sgs_field_diag = zero
+    !sgswle = zero
+    !sgswsb = zero
+    !sgsadv = zero
+    !grdf_x = zero
+    !grdf_y = zero
+    !grdf_z = zero
+    !tkesbbuoy = zero
+    !tkesbshear = zero
+    !tkesbdiss = zero
   end subroutine allocate_sgs
 
 

@@ -175,7 +175,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(kind=core_rknd), allocatable :: thlm_after (:)
     real(kind=core_rknd), allocatable :: rtm_column (:) ! Total water (vapor + liquid)     [kg/kg]
 #endif /* CLUBB_CRM */
-    real(crm_rknd) :: zeroval
 
     real(r8), allocatable :: dd_crm (:,:)     ! mass entraiment from downdraft
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
@@ -236,37 +235,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
               crm_output_clhgh         => crm_output%clhgh            , &
               crm_output_clmed         => crm_output%clmed            , &
               crm_output_cllow         => crm_output%cllow            )
-
-    zeroval = 0
-
-    tln  = zeroval
-    qln  = zeroval
-    qccln  = zeroval
-    qiiln  = zeroval
-    uln  = zeroval
-    vln  = zeroval
-#if defined(SP_ESMT)
-    uln_esmt = zeroval
-    vln_esmt = zeroval
-#endif
-    cwp = zeroval
-    cwph = zeroval
-    cwpm = zeroval
-    cwpl = zeroval
-    flag_top = .false.
-    cltemp = zeroval
-    cmtemp = zeroval
-    chtemp = zeroval
-    cttemp = zeroval
-#ifdef CLUBB_CRM
-    rtm_integral_before  = zeroval
-    rtm_integral_after  = zeroval
-    thlm_integral_before = zeroval
-    thlm_integral_after = zeroval
-    thlm_before = zeroval
-    thlm_after = zeroval
-    rtm_column = zeroval
-#endif /* CLUBB_CRM */
 
   call allocate_params(ncrms)
   call allocate_vars(ncrms)

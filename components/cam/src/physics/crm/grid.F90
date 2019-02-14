@@ -186,14 +186,14 @@ contains
     na=1
     nb=2
     nc=3
-    z = zero
-    pres = zero
-    zi = zero
-    presi = zero
-    adz = zero
-    adzw = zero
-    dt3 = zero
-    dz = zero
+    !z = zero
+    !pres = zero
+    !zi = zero
+    !presi = zero
+    !adz = zero
+    !adzw = zero
+    !dt3 = zero
+    !dz = zero
   end subroutine allocate_grid
 
 

@@ -97,22 +97,22 @@ CONTAINS
     q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,:,1)
     qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,:,2)
 
-    zero = 0
+    !zero = 0
 
-    micro_field = zero
-    fluxbmk  = zero
-    fluxtmk  = zero
-    mkwle   = zero
-    mkwsb   = zero
-    mkadv   = zero
-    mkdiff  = zero
-    mkname        = ''
-    mklongname    = ''
-    mkunits       = ''
-    mkoutputscale = zero
-    qn = zero
-    qpsrc = zero
-    qpevp = zero
+    !micro_field = zero
+    !fluxbmk  = zero
+    !fluxtmk  = zero
+    !mkwle   = zero
+    !mkwsb   = zero
+    !mkadv   = zero
+    !mkdiff  = zero
+    !mkname        = ''
+    !mklongname    = ''
+    !mkunits       = ''
+    !mkoutputscale = zero
+    !qn = zero
+    !qpsrc = zero
+    !qpevp = zero
     flag_precip    (:)  = (/0,1/)
     do icrm = 1 , ncrms
       flag_micro3Dout(:,icrm)  = (/0,0/)
