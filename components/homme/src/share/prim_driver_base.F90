@@ -406,6 +406,14 @@ contains
        do ie=1,nelemd
           call cube_init_atomic(elem(ie),gp%points)
        enddo
+! do ie=1,nelemd
+!   do j=1,np
+!     do i=1,np
+!       write(*,*) 'ie: ',ie,' i: ',i,' j: ',j,'    fcor: ',elem(ie)%fcor(i,j)
+!     end do
+!   end do
+! end do
+! stop
     end if
 
     ! =================================================================
