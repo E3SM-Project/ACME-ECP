@@ -1352,6 +1352,12 @@ end function radiation_nextsw_cday
     ! the loop over CRM columns below.
     if (use_SPCAM) then 
 
+       ! Get CRM radiative heating from the physics buffer; we need to do this regardless of whether
+       ! or not we are going to do radiative calculations this timestep, because this is still
+       ! accessed outside the dosw .or. dolw logical block.
+       crm_qrad_idx = pbuf_get_index('CRM_QRAD')
+       call pbuf_get_field(pbuf, crm_qrad_idx, crm_qrad)
+
        ! Only zero SP fields when we are going to update the longwave or
        ! shortwave in case we are NOT going to update the radiation each
        ! timestep.
@@ -1411,12 +1417,12 @@ end function radiation_nextsw_cday
          crm_qc_rad_idx  = pbuf_get_index('CRM_QC_RAD')
          crm_qi_rad_idx  = pbuf_get_index('CRM_QI_RAD')
          crm_qv_rad_idx  = pbuf_get_index('CRM_QV_RAD')
-         crm_qrad_idx    = pbuf_get_index('CRM_QRAD')
          call pbuf_get_field(pbuf, crm_t_rad_idx,  t_rad)
          call pbuf_get_field(pbuf, crm_qc_rad_idx, qc_rad)
          call pbuf_get_field(pbuf, crm_qi_rad_idx, qi_rad)
          call pbuf_get_field(pbuf, crm_qv_rad_idx, qv_rad)
-         call pbuf_get_field(pbuf, crm_qrad_idx,   crm_qrad)
+
+         ! Zero out radiative heating
          crm_qrad=0.
 
          if (SPCAM_microp_scheme .eq. 'm2005') then 
