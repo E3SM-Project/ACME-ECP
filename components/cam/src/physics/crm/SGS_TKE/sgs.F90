@@ -353,7 +353,7 @@ CONTAINS
 
     !$acc enter data create(tkhmax) async(asyncid)
 
-    !$acc parallel loop collapse(2) copyout(tkhmax) async(asyncid)
+    !$acc parallel loop collapse(2) copy(tkhmax) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzm
         tkhmax(k,icrm) = 0.

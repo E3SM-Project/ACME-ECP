@@ -17,7 +17,7 @@ contains
 
     coef = 1./3600.
 
-    !$acc parallel loop collapse(2) copyout(qpoz,qneg,nneg) async(asyncid)
+    !$acc parallel loop collapse(2) copy(qpoz,qneg,nneg) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         qpoz(k,icrm) = 0.

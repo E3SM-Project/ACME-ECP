@@ -18,12 +18,12 @@ contains
 
     !$acc enter data create(kmax,kmin,fz) async(asyncid)
 
-    !$acc parallel loop copyout(kmax,kmin) async(asyncid)
+    !$acc parallel loop copy(kmax,kmin) async(asyncid)
     do icrm = 1 , ncrms
       kmax(icrm)=0
       kmin(icrm)=nzm+1
     enddo
-    !$acc parallel loop collapse(3) copyin(qcl,qci,tabs) copyout(kmin,kmax) async(asyncid)
+    !$acc parallel loop collapse(3) copyin(qcl,qci,tabs) copy(kmin,kmax) async(asyncid)
     do icrm = 1 , ncrms
       do j = 1, ny
         do i = 1, nx
@@ -38,7 +38,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop collapse(2) copyout(qifall,tlatqi) async(asyncid)
+    !$acc parallel loop collapse(2) copy(qifall,tlatqi) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzm
         qifall(k,icrm) = 0.
@@ -48,7 +48,7 @@ contains
 
     if(index_cloud_ice.eq.-1) return
 
-    !$acc parallel loop collapse(4) copyout(fz) async(asyncid)
+    !$acc parallel loop collapse(4) copy(fz) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nz
         do j = 1, ny
@@ -62,7 +62,7 @@ contains
     ! Compute cloud ice flux (using flux limited advection scheme, as in
     ! chapter 6 of Finite Volume Methods for Hyperbolic Problems by R.J.
     ! LeVeque, Cambridge University Press, 2002).
-    !$acc parallel loop collapse(4) copyin(kmin,kmax,adz,dz,rho,qci) copyout(fz) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(kmin,kmax,adz,dz,rho,qci) copy(fz) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nz
         do j = 1,ny
@@ -105,7 +105,7 @@ contains
         end do
       end do
     enddo
-    !$acc parallel loop collapse(3) copyout(fz) async(asyncid)
+    !$acc parallel loop collapse(3) copy(fz) async(asyncid)
     do icrm = 1 , ncrms
       do j = 1, ny
         do i = 1, nx
