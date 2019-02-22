@@ -180,6 +180,26 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
 
+    real(crm_rknd), pointer :: crm_rad_qrad            (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_temperature     (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qv              (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qc              (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qi              (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_cld             (:,:,:,:)
+    real(crm_rknd), pointer :: crm_output_timing_factor(:) 
+    real(crm_rknd), pointer :: crm_output_cldtop       (:,:) 
+    real(crm_rknd), pointer :: crm_output_cld          (:,:) 
+    real(crm_rknd), pointer :: crm_output_mcup         (:,:) 
+    real(crm_rknd), pointer :: crm_output_mcuup        (:,:) 
+    real(crm_rknd), pointer :: crm_output_mcdn         (:,:) 
+    real(crm_rknd), pointer :: crm_output_mcudn        (:,:) 
+    real(crm_rknd), pointer :: crm_output_gliqwp       (:,:) 
+    real(crm_rknd), pointer :: crm_output_gicewp       (:,:) 
+    real(crm_rknd), pointer :: crm_output_cltot        (:) 
+    real(crm_rknd), pointer :: crm_output_clhgh        (:) 
+    real(crm_rknd), pointer :: crm_output_clmed        (:) 
+    real(crm_rknd), pointer :: crm_output_cllow        (:) 
+
   !-----------------------------------------------------------------------------------------------
   !-----------------------------------------------------------------------------------------------
 
@@ -229,25 +249,25 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call allocate_scalar_momentum(ncrms)
 #endif
 
-  associate( crm_rad_qrad             => crm_rad%qrad                , &
-             crm_output_timing_factor => crm_output%timing_factor    , &
-             crm_output_cldtop        => crm_output%cldtop           , &
-             crm_output_cld           => crm_output%cld              , &
-             crm_output_mcup          => crm_output%mcup             , &
-             crm_output_mcuup         => crm_output%mcuup            , &
-             crm_output_mcdn          => crm_output%mcdn             , &
-             crm_output_mcudn         => crm_output%mcudn            , &
-             crm_rad_temperature      => crm_rad%temperature         , &
-             crm_rad_qv               => crm_rad%qv                  , &
-             crm_rad_qc               => crm_rad%qc                  , &
-             crm_rad_qi               => crm_rad%qi                  , &
-             crm_rad_cld              => crm_rad%cld                 , &
-             crm_output_gliqwp        => crm_output%gliqwp           , &
-             crm_output_gicewp        => crm_output%gicewp           , &
-             crm_output_cltot         => crm_output%cltot            , &
-             crm_output_clhgh         => crm_output%clhgh            , &
-             crm_output_clmed         => crm_output%clmed            , &
-             crm_output_cllow         => crm_output%cllow             )
+  crm_rad_qrad             => crm_rad%qrad            
+  crm_rad_temperature      => crm_rad%temperature     
+  crm_rad_qv               => crm_rad%qv              
+  crm_rad_qc               => crm_rad%qc              
+  crm_rad_qi               => crm_rad%qi              
+  crm_rad_cld              => crm_rad%cld             
+  crm_output_timing_factor => crm_output%timing_factor
+  crm_output_cldtop        => crm_output%cldtop       
+  crm_output_cld           => crm_output%cld          
+  crm_output_mcup          => crm_output%mcup         
+  crm_output_mcuup         => crm_output%mcuup        
+  crm_output_mcdn          => crm_output%mcdn         
+  crm_output_mcudn         => crm_output%mcudn        
+  crm_output_gliqwp        => crm_output%gliqwp       
+  crm_output_gicewp        => crm_output%gicewp       
+  crm_output_cltot         => crm_output%cltot        
+  crm_output_clhgh         => crm_output%clhgh        
+  crm_output_clmed         => crm_output%clmed        
+  crm_output_cllow         => crm_output%cllow        
 
   crm_accel_ceaseflag = .false.
 
@@ -731,14 +751,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   call t_startf('crm_gpu_region')
 
-  !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
-  !$acc enter data copyin(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
-  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
-  !$acc enter data copyin(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
-  !$acc enter data copyin(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
-  !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
-  !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
+  !$acc data copy(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
+  !$acc&          sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p, &
+  !$acc&          rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy, &
+  !$acc&          usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d, &
+  !$acc&          crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature, &
+  !$acc&          crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero, &
+  !$acc&          fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2, &
+  !$acc&          sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv)
 
   !========================================================================================
   !----------------------------------------------------------------------------------------
@@ -998,10 +1018,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc wait(1)
-    !$acc update host(tabs,qv,qcl,qci,cf3d) 
-
-    !!$acc parallel loop gang vector collapse(4) private(i_rad,j_rad) default(present) async(asyncid)
+    !$acc parallel loop gang vector collapse(4) private(i_rad,j_rad) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -1036,8 +1053,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         enddo
       enddo
     enddo
-
-    !$acc update device(crm_rad_temperature,crm_rad_qv,crm_rad_qc,crm_rad_qi,crm_rad_cld)
 
     ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
     ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
@@ -1099,16 +1114,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   enddo ! nstep
 
-  !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
-  !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
-  !$acc exit data copyout(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
-  !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
-  !$acc exit data copyout(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
-  !$acc exit data copyout(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
-  !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
-  !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-
   !$acc wait(asyncid)
+
+  !$acc end data
 
   ! for time-averaging crm output statistics
   factor_xyt = factor_xy / real(nstop,crm_rknd) 
@@ -1626,8 +1634,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #if defined( SP_ESMT )
   call deallocate_scalar_momentum()
 #endif
-
-  end associate
 
 end subroutine crm
 
