@@ -2766,6 +2766,9 @@ end if
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
       call physics_update(state, ptend, crm_run_time, tend)
+#ifdef CRJONESDEBUG
+      call physics_state_check(state, name="after_crm")
+#endif
 
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
                              zero, sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)

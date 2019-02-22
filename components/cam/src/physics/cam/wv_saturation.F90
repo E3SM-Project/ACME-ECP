@@ -304,7 +304,9 @@ end function svp_trans
 ! Does linear interpolation from nearest values found
 ! in the table (estbl).
 elemental function estblf(t) result(es)
-
+#ifdef CRJONESDEBUG
+  use cam_logfile,    only: iulog
+#endif
   real(r8), intent(in) :: t ! Temperature 
   real(r8) :: es            ! SVP (Pa)
 
@@ -315,6 +317,16 @@ elemental function estblf(t) result(es)
 
   t_tmp = max(min(t,tmax)-tmin, 0._r8)   ! Number of table entries above tmin
   i = int(t_tmp) + 1                     ! Corresponding index.
+#ifdef CRJONESDEBUG
+  if(i < 1) then
+     write(iulog,*) 'CRJONESDEBUG: wv_saturation i < 1 in estblf. i, t, t_tmp = ', i, t, t_tmp
+     i = 1
+  endif
+  if(i >= plenest - 1) then
+     write(iulog,*) 'CRJONESDEBUG: wv_saturation i >= plenest - 1 in estblf. i, t, t_tmp = ', i, t, t_tmp
+     i = plenest - 1
+  endif
+#endif
   weight = t_tmp - aint(t_tmp, r8)       ! Fractional part of t_tmp (for interpolation).
   es = (1._r8 - weight)*estbl(i) + weight*estbl(i+1)
 
