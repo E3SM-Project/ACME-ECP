@@ -17,7 +17,7 @@ contains
 
     coef = 1./3600.
 
-    !$acc parallel loop collapse(2) copyout(qpoz,qneg,nneg) async(asyncid)
+    !$acc parallel loop collapse(2) default(present) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         qpoz(icrm,k) = 0.
@@ -26,7 +26,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copy(t,micro_field,nneg,qneg,qpoz,dudt,dvdt) copyin(ttend,qtend,utend,vtend) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -49,7 +49,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(4) private(factor) copy(micro_field) copyin(qneg,qpoz,nneg) async(asyncid)
+    !$acc parallel loop collapse(4) private(factor) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

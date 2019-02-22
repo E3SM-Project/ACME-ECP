@@ -14,7 +14,7 @@ contains
 
     if(docolumn) return
 
-    !$acc parallel loop gang vector collapse(4) copyin(adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs) private(betu,betd,kb) copy(dwdt) async(asyncid)
+    !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
     do k=2,nzm
       do j=1,ny
         do i=1,nx

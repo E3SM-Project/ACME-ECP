@@ -63,8 +63,6 @@ module microphysics
   real(crm_rknd), allocatable :: qn(:,:,:,:)  ! cloud condensate (liquid + ice)
   real(crm_rknd), allocatable :: qpsrc(:,:)  ! source of precipitation microphysical processes
   real(crm_rknd), allocatable :: qpevp(:,:)  ! sink of precipitating water due to evaporation
-  real(crm_rknd), pointer :: q (:,:,:,:)   ! total nonprecipitating water
-  real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
 
 
 CONTAINS
@@ -94,25 +92,22 @@ CONTAINS
     allocate( flag_wmass     (nmicro_fields,ncrms) )
     allocate( flag_number    (nmicro_fields,ncrms) )
 
-    q (1:,dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,:,1)
-    qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,:,2)
+    zero = 0
 
-    !zero = 0
-
-    !micro_field = zero
-    !fluxbmk  = zero
-    !fluxtmk  = zero
-    !mkwle   = zero
-    !mkwsb   = zero
-    !mkadv   = zero
-    !mkdiff  = zero
-    !mkname        = ''
-    !mklongname    = ''
-    !mkunits       = ''
-    !mkoutputscale = zero
-    !qn = zero
-    !qpsrc = zero
-    !qpevp = zero
+    micro_field = zero
+    fluxbmk  = zero
+    fluxtmk  = zero
+    mkwle   = zero
+    mkwsb   = zero
+    mkadv   = zero
+    mkdiff  = zero
+    mkname        = ''
+    mklongname    = ''
+    mkunits       = ''
+    mkoutputscale = zero
+    qn = zero
+    qpsrc = zero
+    qpevp = zero
     flag_precip    (:)  = (/0,1/)
     do icrm = 1 , ncrms
       flag_micro3Dout(:,icrm)  = (/0,0/)
@@ -138,8 +133,6 @@ CONTAINS
     deallocate(qn  )
     deallocate(qpsrc  )
     deallocate(qpevp  )
-    nullify(q )
-    nullify(qp)
     deallocate(flag_micro3Dout)
     deallocate(flag_precip    )
     deallocate(flag_wmass     )
@@ -166,11 +159,12 @@ CONTAINS
     use params, only: nclubb
 #endif
     use grid, only: nrestart
-    use vars, only: q0
+    use vars
     use params, only: dosmoke
     implicit none
     integer, intent(in) :: ncrms
     integer k, n,icrm
+
 #ifdef CLUBB_CRM
     !  if ( nclubb /= 1 ) then
     !    write(0,*) "The namelist parameter nclubb is not equal to 1,",  &
@@ -191,7 +185,7 @@ CONTAINS
 #ifndef CRM
       micro_field(icrm,:,:,:,:) = 0.
       do k=1,nzm
-        q(icrm,:,:,k) = q0(icrm,k)
+        micro_field(icrm,:,:,k,1) = q0(icrm,k)
       end do
       qn(icrm,:,:,:) = 0.
 #endif
@@ -207,15 +201,19 @@ CONTAINS
       if(docloud) then
 #endif
 #ifndef CRM
-        call cloud(ncrms,q,qp,qn)
+        call cloud(ncrms,micro_field(:,:,:,:,1),micro_field(:,:,:,:,2),qn)
         !$acc wait(asyncid)
 #endif
+        !$acc data copy(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi)
         call micro_diagnose(ncrms)
         !$acc wait(asyncid)
+        !$acc end data
       end if
       if(dosmoke) then
+        !$acc data copy(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi)
         call micro_diagnose(ncrms)
         !$acc wait(asyncid)
+        !$acc end data
       end if
     end if
 
@@ -261,7 +259,7 @@ CONTAINS
       end if
     enddo
 #else
-    !$acc parallel loop collapse(3) copyin(fluxbq) copy(fluxbmk) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -270,7 +268,7 @@ CONTAINS
       enddo
     enddo
 #endif
-    !$acc parallel loop collapse(3) copyin(fluxtq) copy(fluxtmk) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -303,14 +301,8 @@ CONTAINS
     if(doprecip.and.icycle.eq.1) call precip_init(ncrms)
 
     if(docloud) then
-#ifdef __PGI
-      !Passing q and qp via the first element because PGI has a bug with pointers here
-      call cloud(ncrms,q(1,dimx1_s,dimy1_s,1),qp(1,dimx1_s,dimy1_s,1),qn)
-      if(doprecip) call precip_proc(ncrms,qpsrc,qpevp,q(1,dimx1_s,dimy1_s,1),qp(1,dimx1_s,dimy1_s,1),qn)
-#else
-      call cloud(ncrms, q, qp, qn)
-      if(doprecip) call precip_proc(ncrms, qpsrc, qpevp, q, qp, qn)
-#endif
+      call cloud(ncrms, micro_field(:,:,:,:,1), micro_field(:,:,:,:,2), qn)
+      if(doprecip) call precip_proc(ncrms, qpsrc, qpevp, micro_field(:,:,:,:,1), micro_field(:,:,:,:,2), qn)
       call micro_diagnose(ncrms)
     end if
     if(dosmoke) then
@@ -338,18 +330,18 @@ CONTAINS
     real(crm_rknd) omn, omp
     integer i,j,k,icrm
 
-    !$acc parallel loop collapse(4) copy(qv,q,qn,tabs,qp,qpl,qpi,qcl,qci) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms
-            qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
+            qv(icrm,i,j,k) = micro_field(icrm,i,j,k,1) - qn(icrm,i,j,k)
             omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
             qcl(icrm,i,j,k) = qn(icrm,i,j,k)*omn
             qci(icrm,i,j,k) = qn(icrm,i,j,k)*(1.-omn)
             omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
-            qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
-            qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
+            qpl(icrm,i,j,k) = micro_field(icrm,i,j,k,2)*omp
+            qpi(icrm,i,j,k) = micro_field(icrm,i,j,k,2)*(1.-omp)
           end do
         end do
       end do
@@ -396,7 +388,7 @@ CONTAINS
     new_qc    ! Cloud water mixing ratio that has been adjusted by CLUBB [kg/kg].
     ! For the single moment microphysics, it is liquid + ice
 
-    q(icrm,1:nx,1:ny,1:nzm) = new_qv + new_qc ! Vapor + Liquid + Ice
+    micro_field(icrm,1:nx,1:ny,1:nzm,1) = new_qv + new_qc ! Vapor + Liquid + Ice
     qn(icrm,1:nx,1:ny,1:nzm) = new_qc ! Liquid + Ice
 
     return
@@ -418,7 +410,7 @@ CONTAINS
           ! so set qcl to qn while qci to zero. This also allows us to call CLUBB
           ! every nclubb th time step  (see sgs_proc in sgs.F90)
 
-          qv(icrm,i,j,k) = q(icrm,i,j,k) - qn(icrm,i,j,k)
+          qv(icrm,i,j,k) = micro_field(icrm,i,j,k,1) - qn(icrm,i,j,k)
           ! Apply local hole-filling to vapor by converting liquid to vapor. Moist
           ! static energy should be conserved, so updating temperature is not
           ! needed here. -dschanen 31 August 2011
@@ -437,8 +429,8 @@ CONTAINS
           qcl(icrm,i,j,k) = qn(icrm,i,j,k)
           qci(icrm,i,j,k) = 0.0
           omp = max(0.,min(1.,(tabs(icrm,i,j,k)-tprmin)*a_pr))
-          qpl(icrm,i,j,k) = qp(icrm,i,j,k)*omp
-          qpi(icrm,i,j,k) = qp(icrm,i,j,k)*(1.-omp)
+          qpl(icrm,i,j,k) = micro_field(icrm,i,j,k,2)*omp
+          qpi(icrm,i,j,k) = micro_field(icrm,i,j,k,2)*(1.-omp)
         end do
       end do
     end do
@@ -505,7 +497,7 @@ CONTAINS
     vsnow = a_snow * gams3 / 6. / (pi * rhos * nzeros) ** csnow
     vgrau = a_grau * gamg3 / 6. / (pi * rhog * nzerog) ** cgrau
 
-    !$acc parallel loop collapse(4) copyin(tabs) copy(omega) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -546,20 +538,17 @@ CONTAINS
                       rhofac(ncrms,nzm), prec_cfl
     integer nprec, iprec
     real(crm_rknd) :: flagstat, tmp
-    real(crm_rknd), pointer :: qp(:,:,:,:)  ! total precipitating water
 
     !Statement functions
     pp(y)= max(real(0.,crm_rknd),y)
     pn(y)=-min(real(0.,crm_rknd),y)
-
-    qp(1:,dimx1_s:,dimy1_s:,1:) => micro_field(:,:,:,:,2)
 
     eps = 1.e-10
     nonos = .true.
 
     !$acc enter data create(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(asyncid)
 
-    !$acc parallel loop gang vector collapse(2) copyin(rho,adz,dz) copy(rhofac,irhoadz,iwmax) async(asyncid)
+    !$acc parallel loop gang vector collapse(2) default(present) async(asyncid)
     do k = 1,nzm
       do icrm = 1 , ncrms
         rhofac(icrm,k) = sqrt(1.29/rho(icrm,k))
@@ -572,8 +561,7 @@ CONTAINS
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
     prec_cfl = 0.
-    !$acc parallel loop gang vector collapse(4) copyin(omega,rhofac,micro_field,rho,tabs,iwmax,rhow,dz) &
-    !$acc&                                      copy(prec_cfl,wp,fz,www,lfac,flagstat) async(asyncid)
+    !$acc parallel loop gang vector collapse(4) default(present) copy(prec_cfl) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -618,7 +606,7 @@ CONTAINS
     ! take more than one advection step to maintain stability.
     if (prec_cfl.gt.0.9) then
       nprec = CEILING(prec_cfl/0.9)
-      !$acc parallel loop gang vector collapse(4) copy(wp) async(asyncid)
+      !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
       do k = 1,nzm
         do j=1,ny
           do i=1,nx
@@ -636,18 +624,18 @@ CONTAINS
 
     !  loop over iterations
     do iprec = 1,nprec
-      !$acc parallel loop gang vector collapse(4) copyin(qp) copy(tmp_qp) async(asyncid)
+      !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
       do k = 1,nzm
         do j=1,ny
           do i=1,nx
             do icrm = 1 , ncrms
-              tmp_qp(icrm,i,j,k) = qp(icrm,i,j,k) ! Temporary array for qp in this column
+              tmp_qp(icrm,i,j,k) = micro_field(icrm,i,j,k,2) ! Temporary array for qp in this column
             enddo
           enddo
         enddo
       enddo
 
-      !$acc parallel loop gang vector collapse(4) copyin(tmp_qp,wp) copy(mn,mx,fz) async(asyncid)
+      !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -665,7 +653,7 @@ CONTAINS
         enddo
       enddo
 
-      !$acc parallel loop gang vector collapse(4) copyin(fz,irhoadz) copy(tmp_qp) async(asyncid)
+      !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -677,7 +665,7 @@ CONTAINS
         enddo
       enddo
 
-      !$acc parallel loop gang vector collapse(4) copyin(wp,irhoadz,tmp_qp,wp) copy(www) async(asyncid)
+      !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -699,7 +687,7 @@ CONTAINS
 
       !---------- non-osscilatory option ---------------
       if(nonos) then
-        !$acc parallel loop gang vector collapse(4) copyin(tmp_qp,rho,adz,www) copy(mn,mx) async(asyncid)
+        !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
         do k=1,nzm
           do j=1,ny
             do i=1,nx
@@ -715,7 +703,7 @@ CONTAINS
             enddo
           enddo
         enddo
-        !$acc parallel loop gang vector collapse(4) copyin(www,mn,mx) copy(fz) async(asyncid)
+        !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
         do k=1,nzm
           do j=1,ny
             do i=1,nx
@@ -732,8 +720,7 @@ CONTAINS
 
       ! Update precipitation mass fraction and liquid-ice static
       ! energy using precipitation fluxes computed in this column.
-      !$acc parallel loop gang vector collapse(4) copyin(fz,irhoadz,lfac,flagstat,omega) &
-      !$acc&                                      copy(qp,qpfall,t,tlat,precflux,precsfc,precssfc,prec_xy) async(asyncid)
+      !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
       do j=1,ny
         do i=1,nx
           do k=1,nzm
@@ -742,8 +729,10 @@ CONTAINS
               ! Update precipitation mass fraction.
               ! Note that fz is the total flux, including both the
               ! upwind flux and the anti-diffusive correction.
-              qp(icrm,i,j,k)=qp(icrm,i,j,k)-(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k)
-              qpfall(icrm,k)=qpfall(icrm,k)-(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k)*flagstat  ! For qp budget
+              micro_field(icrm,i,j,k,2)=micro_field(icrm,i,j,k,2)-(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k)
+              tmp = -(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k)*flagstat  ! For qp budget
+              !$acc atomic update
+              qpfall(icrm,k)=qpfall(icrm,k)+tmp
               lat_heat = -(lfac(icrm,i,j,kc)*fz(icrm,i,j,kc)-lfac(icrm,i,j,k)*fz(icrm,i,j,k))*irhoadz(icrm,k)
               t(icrm,i,j,k)=t(icrm,i,j,k)-lat_heat
               !$acc atomic update
@@ -763,7 +752,7 @@ CONTAINS
 
       if (iprec.lt.nprec) then
         ! Re-compute precipitation velocity using new value of qp.
-        !$acc parallel loop gang vector collapse(4) copyin(rhofac,micro_field,rho,tabs,rhow,dz) copy(wp,fz,www,lfac) async(asyncid)
+        !$acc parallel loop gang vector collapse(4) default(present) async(asyncid)
         do j=1,ny
           do i=1,nx
             do k=1,nzm

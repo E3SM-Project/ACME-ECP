@@ -108,7 +108,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   endif
 
   !!! initialize surface and top buoyancy flux to zero
-  !$acc parallel loop collapse(3) copy(buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
+  !$acc parallel loop collapse(3) default(present) async(asyncid)
   do j = 1 , ny
     do i = 1 , nx
       do icrm = 1 , ncrms
@@ -125,7 +125,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   !-----------------------------------------------------------------------
   !!! compute subgrid buoyancy flux assuming clear conditions
   !!! we will over-write this later if conditions are cloudy
-  !$acc parallel loop collapse(4) copyin(tkh,tabs,bet,qv,qpi,qcl,qpl,t,qci,adzw,presi,dz) copy(buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
+  !$acc parallel loop collapse(4) default(present) async(asyncid)
   do k = 1,nzm-1
     do j = 1,ny
       do i = 1,nx
@@ -231,7 +231,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     enddo !k
   enddo !icrm
 
-  !$acc parallel loop collapse(2) copy(tkelediss,tkesbshear,tkesbdiss,tkesbbuoy) async(asyncid)
+  !$acc parallel loop collapse(2) default(present) async(asyncid)
   do k = 1,nzm-1
     do icrm = 1 , ncrms
       tkelediss(icrm,k)  = 0.
@@ -241,7 +241,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     enddo
   enddo
 
-  !$acc parallel loop collapse(4) copyin(z,buoy_sgs_vert,def2,a_prod_bu_vert,dz,grdf_x,adz,grdf_y,adzw,grdf_z) copy(tkelediss,tkesbbuoy,tkesbshear,tkh,tk,tke,tkesbdiss) async(asyncid)
+  !$acc parallel loop collapse(4) default(present) async(asyncid)
   do k = 1,nzm-1
     do j = 1,ny
       do i = 1,nx

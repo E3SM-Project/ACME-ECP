@@ -140,17 +140,17 @@ contains
     allocate(taux0     (ncrms))
     allocate(tauy0     (ncrms))
 
-    !fcor  = 0
-    !fcorz = 0
-    !longitude0 = 0
-    !latitude0  = 0
-    !z0 = 0.035
-    !ocean = .false.
-    !land = .false.
-    !uhl = 0
-    !vhl = 0
-    !taux0 = 0
-    !tauy0 = 0
+    fcor  = 0
+    fcorz = 0
+    longitude0 = 0
+    latitude0  = 0
+    z0 = 0.035
+    ocean = .false.
+    land = .false.
+    uhl = 0
+    vhl = 0
+    taux0 = 0
+    tauy0 = 0
   end subroutine allocate_params
 
   

@@ -21,7 +21,7 @@ contains
 
     if(RUN3D) then
 
-      !$acc parallel loop collapse(4) copyin(rhow,adzw,u,v,w,adz,rho) copy(dudt,dvdt,dwdt) async(asyncid)
+      !$acc parallel loop collapse(4) default(present) async(asyncid)
       do k = 1,nzm
         do j = 1, ny
           do i = 1, nx
@@ -60,7 +60,7 @@ contains
     else
 
       j=1
-      !$acc parallel loop collapse(3) copy(dudt,dvdt,dwdt) copyin(w,v,u,adzw,rhow,rho,adz) async(asyncid)
+      !$acc parallel loop collapse(3) default(present) async(asyncid)
       do k = 1,nzm
         do i = 1, nx
           do icrm = 1 , ncrms

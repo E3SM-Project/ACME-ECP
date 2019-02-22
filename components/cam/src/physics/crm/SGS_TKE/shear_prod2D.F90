@@ -17,7 +17,7 @@ contains
     rdx0=1./dx
     j=1
 
-    !$acc parallel loop collapse(3) copyin(adz,w,v0,dz,u,v,u0,adzw) copy(def2) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms

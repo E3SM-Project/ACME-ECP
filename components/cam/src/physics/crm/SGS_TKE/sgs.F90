@@ -63,9 +63,6 @@ module sgs
   real(crm_rknd), allocatable :: tkesbbuoy (:,:)
   real(crm_rknd), allocatable :: tkesbshear(:,:)
   real(crm_rknd), allocatable :: tkesbdiss (:,:)
-  real(crm_rknd), pointer :: tke (:,:,:,:)   ! SGS TKE
-  real(crm_rknd), pointer :: tk  (:,:,:,:) ! SGS eddy viscosity
-  real(crm_rknd), pointer :: tkh (:,:,:,:) ! SGS eddy conductivity
 
 CONTAINS
 
@@ -86,23 +83,19 @@ CONTAINS
     allocate( tkesbshear(ncrms,nz) )
     allocate( tkesbdiss(ncrms,nz) )
 
-    tke(1:,dimx1_s:,dimy1_s:,1:) => sgs_field     (:,:,:,:,1)
-    tk (1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,:,1)
-    tkh(1:,dimx1_d:,dimy1_d:,1:) => sgs_field_diag(:,:,:,:,2)
+    zero = 0
 
-    !zero = 0
-
-    !sgs_field = zero
-    !sgs_field_diag = zero
-    !sgswle = zero
-    !sgswsb = zero
-    !sgsadv = zero
-    !grdf_x = zero
-    !grdf_y = zero
-    !grdf_z = zero
-    !tkesbbuoy = zero
-    !tkesbshear = zero
-    !tkesbdiss = zero
+    sgs_field = zero
+    sgs_field_diag = zero
+    sgswle = zero
+    sgswsb = zero
+    sgsadv = zero
+    grdf_x = zero
+    grdf_y = zero
+    grdf_z = zero
+    tkesbbuoy = zero
+    tkesbshear = zero
+    tkesbdiss = zero
   end subroutine allocate_sgs
 
 
@@ -119,9 +112,6 @@ CONTAINS
     deallocate( tkesbbuoy  )
     deallocate( tkesbshear  )
     deallocate( tkesbdiss  )
-    nullify(tke)
-    nullify(tk )
-    nullify(tkh)
   end subroutine deallocate_sgs
 
 
@@ -237,7 +227,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(k.le.4.and..not.dosmagor) then
-              tke(icrm,i,j,k)=0.04*(5-k)
+              sgs_field(icrm,i,j,k,1)=0.04*(5-k)
             endif
           end do
         end do
@@ -249,7 +239,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
-              tke(icrm,i,j,k)=1.
+              sgs_field(icrm,i,j,k,1)=1.
             endif
           end do
         end do
@@ -263,7 +253,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.0.5e-3.and..not.dosmagor) then
-              tke(icrm,i,j,k)=1.
+              sgs_field(icrm,i,j,k,1)=1.
             endif
           end do
         end do
@@ -276,7 +266,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(icrm,k).le.150..and..not.dosmagor) then
-              tke(icrm,i,j,k)=0.15*(1.-z(icrm,k)/150.)
+              sgs_field(icrm,i,j,k,1)=0.15*(1.-z(icrm,k)/150.)
             endif
           end do
         end do
@@ -289,7 +279,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(z(icrm,k).le.3000..and..not.dosmagor) then
-              tke(icrm,i,j,k)=1.-z(icrm,k)/3000.
+              sgs_field(icrm,i,j,k,1)=1.-z(icrm,k)/3000.
             endif
           end do
         end do
@@ -302,7 +292,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
-              tke(icrm,i,j,k)=1.
+              sgs_field(icrm,i,j,k,1)=1.
             endif
           end do
         end do
@@ -329,26 +319,26 @@ CONTAINS
 
     !$acc enter data create(tkhmax) async(asyncid)
 
-    !$acc parallel loop collapse(2) copyout(tkhmax) async(asyncid)
+    !$acc parallel loop collapse(2) default(present) async(asyncid)
     do k = 1,nzm
       do icrm = 1 , ncrms
         tkhmax(icrm,k) = 0.
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copy(tkhmax) copyin(tkh) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k = 1,nzm
       do j = 1 , ny
         do i = 1 , nx
           do icrm = 1 , ncrms
             !$acc atomic update
-            tkhmax(icrm,k) = max(tkhmax(icrm,k),tkh(icrm,i,j,k))
+            tkhmax(icrm,k) = max(tkhmax(icrm,k),sgs_field_diag(icrm,i,j,k,2))
           enddo
         enddo
       end do
     end do
 
-    !$acc parallel loop collapse(2) private(tmp) copy(cfl) copyin(tkhmax,grdf_x,grdf_y,grdf_z,dz,adzw) async(asyncid)
+    !$acc parallel loop collapse(2) private(tmp) default(present) copy(cfl) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         tmp = max( 0.5*tkhmax(icrm,k)*grdf_z(icrm,k)*dt/(dz(icrm)*adzw(icrm,k))**2  , &
@@ -372,12 +362,7 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
-#ifdef __PGI
-    !Passing tk via first element to avoid PGI pointer bug
-    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk(1,dimx1_d,dimy1_d,1))
-#else
-    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
-#endif
+    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, sgs_field_diag(:,:,:,:,1))
   end subroutine sgs_mom
 
   !----------------------------------------------------------------------
@@ -397,20 +382,10 @@ CONTAINS
 
     !$acc enter data create(dummy) async(asyncid)
     
-#ifdef __PGI
-    !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),t,fluxbt,fluxtt,tdiff,twsb)
-#else
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb)
-#endif
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
-#ifdef __PGI
-      !Passing tkh via first element to avoid PGI pointer bug
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),tke,fzero,fzero,dummy,sgswsb(:,:,1))
-#else
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,sgswsb(:,:,1))
-#endif
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),sgs_field(:,:,:,:,1),fzero,fzero,dummy,sgswsb(:,:,1))
     end if
 
     !    diffusion of microphysics prognostics:
@@ -423,12 +398,7 @@ CONTAINS
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-#ifdef __PGI
-        !Passing tkh via first element to avoid PGI pointer bug
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
-#else
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
-#endif
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
       end if
     end do
 
@@ -439,7 +409,7 @@ CONTAINS
     !  do k = 1,ntracers
     !    fluxbtmp(1:nx,1:ny,icrm) = fluxbtr(:,:,k,icrm)
     !    fluxttmp(1:nx,1:ny,icrm) = fluxttr(:,:,k,icrm)
-    !    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm), &
+    !    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),tracer(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm), &
     !    trdiff(:,k,icrm),trwsb(:,k,icrm), &
     !    dummy,dummy,dummy,.false.)
     !    !!$          call diffuse_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),fluxbtr(:,:,k,icrm),fluxttr(:,:,k,icrm),trdiff(:,k,icrm),trwsb(:,k,icrm), &
@@ -453,10 +423,8 @@ CONTAINS
 
 #if defined(SP_ESMT)
     ! diffusion of scalar momentum tracers
-    !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
-    !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(1,dimx1_d,dimy1_d,1),v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
 #endif
   end subroutine sgs_scalars
 
@@ -472,34 +440,26 @@ subroutine sgs_proc(ncrms)
   integer :: icrm, k, j, i
   !    SGS TKE equation:
 
-#ifdef __PGI
-  !Passing tke, tk, and tkh via first element to avoid PGI pointer bug
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
-                          tke(1,dimx1_s,dimy1_s,1), tk(1,dimx1_d,dimy1_d,1), tkh(1,dimx1_d,dimy1_d,1))
-#else
-  if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
-                          grdf_x, grdf_y, grdf_z, dosmagor,   &
-                          tkesbdiss, tkesbshear, tkesbbuoy,   &
-                          tke, tk, tkh)
-#endif
-  !$acc parallel loop collapse(4) copyin(tke) copy(tke2) async(asyncid)
+                          sgs_field(:,:,:,:,1), sgs_field_diag(:,:,:,:,1), sgs_field_diag(:,:,:,:,2))
+  !$acc parallel loop collapse(4) default(present) async(asyncid)
   do k = 1 , nzm
     do j = dimy1_s,dimy2_s
       do i = dimx1_s,dimx2_s
         do icrm = 1 , ncrms
-          tke2(icrm,i,j,k) = tke(icrm,i,j,k)
+          tke2(icrm,i,j,k) = sgs_field(icrm,i,j,k,1)
         enddo
       enddo
     enddo
   enddo
-  !$acc parallel loop collapse(4) copyin(tk) copy(tk2) async(asyncid)
+  !$acc parallel loop collapse(4) default(present) async(asyncid)
   do k = 1 , nzm
     do j = dimy1_d,dimy2_d
       do i = dimx1_d,dimx2_d
         do icrm = 1 , ncrms
-          tk2(icrm,i,j,k) = tk(icrm,i,j,k)
+          tk2(icrm,i,j,k) = sgs_field_diag(icrm,i,j,k,1)
         enddo
       enddo
     enddo

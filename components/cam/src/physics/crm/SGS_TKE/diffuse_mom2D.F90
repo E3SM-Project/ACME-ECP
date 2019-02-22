@@ -37,7 +37,7 @@ contains
     if( .not. docolumn ) then
       !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
-      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(w,v,grdf_x,u,dz,tk,adzw) copy(fv,fu,fw) async(asyncid)
+      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) default(present) async(asyncid)
       do k=1,nzm
         do i=0,nx
           !$acc loop vector
@@ -58,7 +58,7 @@ contains
       end do
       !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
-      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(asyncid)
+      !$acc parallel loop gang collapse(2) vector_length(128) num_gangs(numgangs) default(present) async(asyncid)
       do k=1,nzm
         do i=1,nx
           !$acc loop vector
@@ -75,7 +75,7 @@ contains
 
     !-------------------------
 
-    !$acc parallel loop collapse(2) copy(uwsb,vwsb) async(asyncid)
+    !$acc parallel loop collapse(2) default(present) async(asyncid)
     do k = 1 , nzm
       do icrm = 1 , ncrms
         uwsb(icrm,k)=0.
@@ -85,7 +85,7 @@ contains
 
     !For working around PGI bugs where PGI did not allocate enough gangs
     numgangs = ceiling( ncrms*(nzm-1)*nx/128. )
-    !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) copyin(u,adzw,adz,w,grdf_z,rhow,tk,rho,dz,v) copy(fw,vwsb,fv,uwsb,fu) async(asyncid)
+    !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) default(present) async(asyncid)
     do k=1,nzm-1
       do i=1,nx
         do icrm = 1 , ncrms
@@ -110,7 +110,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(2) copyin(fluxtu,fluxbv,fluxbu,fluxtv,rho,dz,grdf_z,w,rhow,adz,tk) copy(uwsb,fu,fv,vwsb,fw) async(asyncid)
+    !$acc parallel loop collapse(2) default(present) async(asyncid)
     do i=1,nx
       do icrm = 1 , ncrms
         rdz=1./dz(icrm)
@@ -128,7 +128,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(3) copyin(fu,adz,rho,fv) copy(dudt,dvdt) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -140,7 +140,7 @@ contains
       end do ! k
     end do ! k
 
-    !$acc parallel loop collapse(3) copyin(rhow,fw,adzw) copy(dwdt) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do k=2,nzm
       do i=1,nx
         do icrm = 1 , ncrms

@@ -12,15 +12,13 @@ contains
     use sgs, only: sgs_diagnose
     implicit none
     integer, intent(in) :: ncrms
-    integer i,j,k,kb,kc,k200(ncrms),k500(ncrms),k850(ncrms),icrm
+    integer i,j,k,kb,kc,icrm
     real(8) coef, coef1
     real(crm_rknd) tmp_lwp, tmp
 
     coef = 1./real(nx*ny,crm_rknd)
 
-    !$acc enter data create(k200,k500,k850) async(asyncid)
-
-    !$acc parallel loop collapse(2) copy(u0,v0,t01,q01,t0,tabs0,q0,qn0,qp0,p0) async(asyncid)
+    !$acc parallel loop collapse(2) default(present) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         u0(icrm,k)=0.
@@ -36,22 +34,8 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop copy(k200,k500,k850) copyin(pres) async(asyncid)
-    do icrm = 1 , ncrms
-      k200(icrm) = nzm
-      k500(icrm) = nzm
-      k850(icrm) = nzm
-      do k=1,nzm
-        kc=min(nzm,k+1)
-        kb=max(1,k-1)
-        if(pres(icrm,kc).le.200..and.pres(icrm,kb).gt.200.) k200(icrm)=k
-        if(pres(icrm,kc).le.500..and.pres(icrm,kb).gt.500.) k500(icrm)=k
-        if(pres(icrm,kc).le.850..and.pres(icrm,kb).gt.850.) k850(icrm)=k
-      enddo
-    enddo
 
-
-    !$acc parallel loop collapse(4) copyin(gamaz,qcl,qpl,p,u,qv,v,t,adz,qpi,qci,rho,dz) copy(p0,tabs,iw_xy,tabs0,cw_xy,qp0,q0,t0,u0,v0,pw_xy,qn0) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -90,7 +74,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(2) copy(qn0,q0,p0,t0,qp0,v0,u0,tabs0) async(asyncid)
+    !$acc parallel loop collapse(2) default(present) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         u0(icrm,k)=u0(icrm,k)*coef
@@ -104,20 +88,17 @@ contains
       enddo ! k
     enddo
 
-    !$acc parallel loop collapse(3) copyin(k500,u,v,k200,w) copy(u200_xy,v200_xy,usfc_xy,vsfc_xy,w500_xy) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
           usfc_xy(icrm,i,j) = usfc_xy(icrm,i,j) + u(icrm,i,j,1)*dtfactor
           vsfc_xy(icrm,i,j) = vsfc_xy(icrm,i,j) + v(icrm,i,j,1)*dtfactor
-          u200_xy(icrm,i,j) = u200_xy(icrm,i,j) + u(icrm,i,j,k200(icrm))*dtfactor
-          v200_xy(icrm,i,j) = v200_xy(icrm,i,j) + v(icrm,i,j,k200(icrm))*dtfactor
-          w500_xy(icrm,i,j) = w500_xy(icrm,i,j) + w(icrm,i,j,k500(icrm))*dtfactor
         enddo
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copyin(qn0,q0) copy(qv0) async(asyncid)
+    !$acc parallel loop collapse(2) default(present) async(asyncid)
     do k = 1 , nzm
       do icrm = 1 , ncrms
         qv0(icrm,k) = q0(icrm,k) - qn0(icrm,k)
@@ -127,7 +108,7 @@ contains
     !=====================================================
     ! UW ADDITIONS
     ! FIND VERTICAL INDICES OF 850MB, COMPUTE SWVP
-    !$acc parallel loop collapse(4) copyin(rho,adz,pres,tabs,dz) copy(swvp_xy) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -145,14 +126,11 @@ contains
     enddo
 
     ! ACCUMULATE AVERAGES OF TWO-DIMENSIONAL STATISTICS
-    !$acc parallel loop collapse(3) copyin(k850,p,pres,u,v) copy(psfc_xy,u850_xy,v850_xy) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
           psfc_xy(icrm,i,j) = psfc_xy(icrm,i,j) + (100.*pres(icrm,1) + p(icrm,i,j,1))*dtfactor
-          ! 850 mbar horizontal winds
-          u850_xy(icrm,i,j) = u850_xy(icrm,i,j) + u(icrm,i,j,k850(icrm))*dtfactor
-          v850_xy(icrm,i,j) = v850_xy(icrm,i,j) + v(icrm,i,j,k850(icrm))*dtfactor
         enddo
       enddo
     enddo
@@ -162,7 +140,7 @@ contains
     ! CONDENSATE PATH OF 0.01 kg/m2 ABOVE.  ECHO TOP IS THE HIGHEST LEVEL
     ! WHERE THE PRECIPITATE MIXING RATIO > 0.001 G/KG.
     ! initially, zero out heights and set cloudtoptemp to SST
-    !$acc parallel loop collapse(3) copyin(sstxy) copy(cloudtopheight,cloudtoptemp,echotopheight) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -172,7 +150,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(3) copyin(qcl,qpi,qci,qpl,adz,rho,z,tabs,dz) copy(echotopheight,cloudtoptemp,cloudtopheight,cld_xy) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j = 1,ny
       do i = 1,nx
         do icrm = 1 , ncrms
@@ -204,8 +182,6 @@ contains
     !This doesn't actually do anything, so commenting out
 
     !call sgs_diagnose()
-
-    !$acc exit data delete(k200,k500,k850) async(asyncid)
 
   end subroutine diagnose
 

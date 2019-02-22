@@ -16,7 +16,7 @@ contains
     dtdx = dtn/dx
     dtdy = dtn/dy
 
-    !$acc parallel loop collapse(4) copyin(dz,rho,rhow,dt3) copy(dudt,dvdt,dwdt,u,v,w,misc) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

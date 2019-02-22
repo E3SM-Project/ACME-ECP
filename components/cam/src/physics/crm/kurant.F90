@@ -21,7 +21,7 @@ module kurant_mod
       !$acc enter data create(wm,uhm) async(asyncid)
 
       ncycle = 1
-      !$acc parallel loop collapse(2) copyout(wm,uhm) async(asyncid)
+      !$acc parallel loop collapse(2) default(present) async(asyncid)
       do k = 1 , nz
         do icrm = 1 , ncrms
           wm(icrm,k) = 0.
@@ -29,7 +29,7 @@ module kurant_mod
         enddo
       enddo
 
-      !$acc parallel loop collapse(4) private(tmp) copy(wm,w_max,uhm,u_max) copyin(u,v,w) async(asyncid)
+      !$acc parallel loop collapse(4) private(tmp) default(present) async(asyncid)
       do k = 1,nzm
         do j = 1 , ny
           do i = 1 , nx
@@ -37,21 +37,17 @@ module kurant_mod
               tmp = abs(w(icrm,i,j,k))
               !$acc atomic update
               wm(icrm,k) = max( wm(icrm,k) , tmp )
-              !$acc atomic update
-              w_max(icrm) = max( w_max(icrm) , tmp )
 
               tmp = sqrt(u(icrm,i,j,k)**2+YES3D*v(icrm,i,j,k)**2)
               !$acc atomic update
               uhm(icrm,k) = max( uhm(icrm,k) , tmp )
-              !$acc atomic update
-              u_max(icrm) = max( u_max(icrm) , tmp )
             enddo
           enddo
         enddo
       enddo
 
       cfl = 0.
-      !$acc parallel loop collapse(2) private(tmp) copyin(wm,uhm,dz,adzw) copy(cfl) async(asyncid)
+      !$acc parallel loop collapse(2) private(tmp) default(present) copy(cfl) async(asyncid)
       do k=1,nzm
         do icrm = 1 , ncrms
           tmp = max( uhm(icrm,k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(icrm,k),wm(icrm,k+1))*dt/(dz(icrm)*adzw(icrm,k)) )

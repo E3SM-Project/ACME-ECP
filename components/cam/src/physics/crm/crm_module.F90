@@ -180,61 +180,41 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
 
-    !-----------------------------------------------------------------------------------------------
-    !-----------------------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------------------------
 
-    allocate( t00(ncrms,nz) )
-    allocate( tln(ncrms,plev) )
-    allocate( qln(ncrms,plev) )
-    allocate( qccln(ncrms,plev) )
-    allocate( qiiln(ncrms,plev) )
-    allocate( uln(ncrms,plev) )
-    allocate( vln(ncrms,plev) )
+  allocate( t00(ncrms,nz) )
+  allocate( tln(ncrms,plev) )
+  allocate( qln(ncrms,plev) )
+  allocate( qccln(ncrms,plev) )
+  allocate( qiiln(ncrms,plev) )
+  allocate( uln(ncrms,plev) )
+  allocate( vln(ncrms,plev) )
 #if defined(SP_ESMT)
-    allocate( uln_esmt(plev,ncrms) )
-    allocate( vln_esmt(plev,ncrms) )
+  allocate( uln_esmt(plev,ncrms) )
+  allocate( vln_esmt(plev,ncrms) )
 #endif
-    allocate( cwp(ncrms,nx,ny) )
-    allocate( cwph(ncrms,nx,ny) )
-    allocate( cwpm(ncrms,nx,ny) )
-    allocate( cwpl(ncrms,nx,ny) )
-    allocate( flag_top(ncrms,nx,ny) )
-    allocate( cltemp(ncrms,nx,ny) )
-    allocate( cmtemp(ncrms,nx,ny) )
-    allocate( chtemp(ncrms,nx,ny) )
-    allocate( cttemp(ncrms,nx,ny) )
+  allocate( cwp(ncrms,nx,ny) )
+  allocate( cwph(ncrms,nx,ny) )
+  allocate( cwpm(ncrms,nx,ny) )
+  allocate( cwpl(ncrms,nx,ny) )
+  allocate( flag_top(ncrms,nx,ny) )
+  allocate( cltemp(ncrms,nx,ny) )
+  allocate( cmtemp(ncrms,nx,ny) )
+  allocate( chtemp(ncrms,nx,ny) )
+  allocate( cttemp(ncrms,nx,ny) )
 #ifdef CLUBB_CRM
-    allocate( rtm_integral_before (nx,ny) )
-    allocate( rtm_integral_after (nx,ny) )
-    allocate( thlm_integral_before(nx,ny) )
-    allocate( thlm_integral_after(nx,ny) )
-    allocate( thlm_before(nzm) )
-    allocate( thlm_after(nzm) )
-    allocate( rtm_column(nzm) )
+  allocate( rtm_integral_before (nx,ny) )
+  allocate( rtm_integral_after (nx,ny) )
+  allocate( thlm_integral_before(nx,ny) )
+  allocate( thlm_integral_after(nx,ny) )
+  allocate( thlm_before(nzm) )
+  allocate( thlm_after(nzm) )
+  allocate( rtm_column(nzm) )
 #endif /* CLUBB_CRM */
-    allocate( dd_crm (ncrms,plev)   )
-    allocate( mui_crm(ncrms,plev+1) )
-    allocate( mdi_crm(ncrms,plev+1) )
-
-    associate(crm_rad_qrad             => crm_rad%qrad                , &
-              crm_output_timing_factor => crm_output%timing_factor    , &
-              crm_output_cldtop        => crm_output%cldtop           , &
-              crm_output_cld           => crm_output%cld              , &
-              crm_output_mcup          => crm_output%mcup             , &
-              crm_output_mcuup         => crm_output%mcuup            , &
-              crm_output_mcdn          => crm_output%mcdn             , &
-              crm_output_mcudn         => crm_output%mcudn            , &
-              crm_rad_temperature      => crm_rad%temperature         , &
-              crm_rad_qv               => crm_rad%qv                  , &
-              crm_rad_qc               => crm_rad%qc                  , &
-              crm_rad_qi               => crm_rad%qi                  , &
-              crm_rad_cld              => crm_rad%cld                 , &
-              crm_output_gliqwp        => crm_output%gliqwp           , &
-              crm_output_gicewp        => crm_output%gicewp           , &
-              crm_output_cltot         => crm_output%cltot            , &
-              crm_output_clhgh         => crm_output%clhgh            , &
-              crm_output_clmed         => crm_output%clmed            , &
-              crm_output_cllow         => crm_output%cllow            )
+  allocate( dd_crm (ncrms,plev)   )
+  allocate( mui_crm(ncrms,plev+1) )
+  allocate( mdi_crm(ncrms,plev+1) )
 
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
@@ -248,6 +228,26 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #if defined(SP_ESMT)
   call allocate_scalar_momentum(ncrms)
 #endif
+
+  associate( crm_rad_qrad             => crm_rad%qrad                , &
+             crm_output_timing_factor => crm_output%timing_factor    , &
+             crm_output_cldtop        => crm_output%cldtop           , &
+             crm_output_cld           => crm_output%cld              , &
+             crm_output_mcup          => crm_output%mcup             , &
+             crm_output_mcuup         => crm_output%mcuup            , &
+             crm_output_mcdn          => crm_output%mcdn             , &
+             crm_output_mcudn         => crm_output%mcudn            , &
+             crm_rad_temperature      => crm_rad%temperature         , &
+             crm_rad_qv               => crm_rad%qv                  , &
+             crm_rad_qc               => crm_rad%qc                  , &
+             crm_rad_qi               => crm_rad%qi                  , &
+             crm_rad_cld              => crm_rad%cld                 , &
+             crm_output_gliqwp        => crm_output%gliqwp           , &
+             crm_output_gicewp        => crm_output%gicewp           , &
+             crm_output_cltot         => crm_output%cltot            , &
+             crm_output_clhgh         => crm_output%clhgh            , &
+             crm_output_clmed         => crm_output%clmed            , &
+             crm_output_cllow         => crm_output%cllow             )
 
   crm_accel_ceaseflag = .false.
 
@@ -425,9 +425,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     dudt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
     dvdt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
     dwdt(icrm,1:nx,1:ny,1:nz,1:3) = 0.
-    tke(icrm,1:nx,1:ny,1:nzm) = 0.
-    tk(icrm,1:nx,1:ny,1:nzm) = 0.
-    tkh(icrm,1:nx,1:ny,1:nzm) = 0.
+    sgs_field(icrm,1:nx,1:ny,1:nzm,:) = 0.
+    sgs_field_diag(icrm,1:nx,1:ny,1:nzm,:) = 0.
     p(icrm,1:nx,1:ny,1:nzm) = 0.
 
     cf3d(icrm,1:nx,1:ny,1:nzm) = 1.
@@ -470,7 +469,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           qv0(icrm,k) = qv0(icrm,k) + qv(icrm,i,j,k)
           qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
           qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
-          tke0(icrm,k)=tke0(icrm,k)+tke(icrm,i,j,k)
+          tke0(icrm,k)=tke0(icrm,k)+sgs_field(icrm,i,j,k,1)
         enddo
       enddo
 
@@ -633,7 +632,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   enddo
 !--------------------------------------------------
 #ifdef sam1mom
+  !$acc data copy(tabs0,rho,pres,accrsi,accrsc,coefice,evaps1,evaps2,accrgi,accrgc,evapg1,evapg2,accrrc,evapr1,evapr2)
   if(doprecip) call precip_init(ncrms)
+  !$acc wait(asyncid)
+  !$acc end data
 #endif
 
   do icrm = 1 , ncrms
@@ -702,7 +704,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     if ( doclubb .or. doclubbnoninter ) then
       call clubb_sgs_setup( real( dt*real( nclubb ), kind=time_precision), &
-                            latitude(icrm,:,:), longitude(icrm,:,:), z(icrm,:), rho(icrm,:), zi(icrm,:), rhow(icrm,:), tv0(icrm,:), tke(icrm,:,:,:) )
+                            latitude(icrm,:,:), longitude(icrm,:,:), z(icrm,:), rho(icrm,:), zi(icrm,:), rhow(icrm,:), tv0(icrm,:), sgs_field(icrm,:,:,:,1) )
     endif
 #endif /* CLUBB_CRM */
   enddo
@@ -731,13 +733,12 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
   !$acc enter data copyin(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
-  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
+  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
   !$acc enter data copyin(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
   !$acc enter data copyin(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
   !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
   !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-
-  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,tk,tke,tkh,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
+  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
 
   !========================================================================================
   !----------------------------------------------------------------------------------------
@@ -748,7 +749,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   do while (nstep < nstop)
     nstep = nstep + 1
 
-    !$acc parallel loop copy(crm_output_timing_factor) async(asyncid)
+    !$acc parallel loop default(present) async(asyncid)
     do icrm = 1 , ncrms
       crm_output_timing_factor(icrm) = crm_output_timing_factor(icrm)+1
     enddo
@@ -784,13 +785,13 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call forcing(ncrms)
 
       !!! Apply radiative tendency
-      !$acc parallel loop collapse(4) private(i_rad,j_rad) copy(t) copyin(crm_rad_qrad) async(asyncid)
+      !$acc parallel loop collapse(4) private(i_rad,j_rad) default(present) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
             do icrm = 1 , ncrms
-              i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
-              j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+              i_rad = (i-1) / (nx/crm_nx_rad) + 1
+              j_rad = (j-1) / (ny/crm_ny_rad) + 1
               t(icrm,i,j,k) = t(icrm,i,j,k) + crm_rad_qrad(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
@@ -914,7 +915,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     ! every subcycle time step??? +++mhwang
     call ecpp_crm_stat(ncrms)
 #endif
-    !$acc parallel loop collapse(3) copy(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -931,9 +932,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(3) copyin(cf3d,pres,qci,qv,dz,adz,w,tabs,qcl,rho) &
-    !$acc& copy(crm_output_mcudn,crm_output_mcup,cwp,cltemp,cwpl,flag_top,crm_output_cld,cwpm,cttemp,cmtemp,cwph,chtemp,crm_output_mcdn,crm_output_gliqwp,&
-    !$acc&      crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature,crm_rad_qv,crm_output_gicewp,crm_output_cldtop) async(asyncid)
+    !$acc parallel loop gang vector collapse(3) default(present) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -990,11 +989,27 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                  endif
             endif
 
+            !$acc atomic update
+            crm_output_gliqwp(icrm,l) = crm_output_gliqwp(icrm,l) + qcl(icrm,i,j,k)
+            !$acc atomic update
+            crm_output_gicewp(icrm,l) = crm_output_gicewp(icrm,l) + qci(icrm,i,j,k)
+          enddo
+        enddo
+      enddo
+    enddo
 
+    !$acc wait(1)
+    !$acc update host(tabs,qv,qcl,qci,cf3d) 
+
+    !!$acc parallel loop gang vector collapse(4) private(i_rad,j_rad) default(present) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             !!! Reduced radiation method allows for fewer radiation calculations
             !!! by collecting statistics and doing radiation over column groups
-            i_rad = ceiling( real(i,crm_rknd) * crm_nx_rad_fac )
-            j_rad = ceiling( real(j,crm_rknd) * crm_ny_rad_fac )
+            i_rad = (i-1) / (nx/crm_nx_rad) + 1
+            j_rad = (j-1) / (ny/crm_ny_rad) + 1
 
             !$acc atomic update
             crm_rad_temperature(icrm,i_rad,j_rad,k) = crm_rad_temperature(icrm,i_rad,j_rad,k) + tabs(icrm,i,j,k)
@@ -1017,18 +1032,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             !$acc atomic update
             crm_rad%ns         (icrm,i_rad,j_rad,k) = crm_rad%ns         (icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,ins )
 #endif
-            !$acc atomic update
-            crm_output_gliqwp(icrm,l) = crm_output_gliqwp(icrm,l) + qcl(icrm,i,j,k)
-            !$acc atomic update
-            crm_output_gicewp(icrm,l) = crm_output_gicewp(icrm,l) + qci(icrm,i,j,k)
           enddo
         enddo
       enddo
     enddo
 
+    !$acc update device(crm_rad_temperature,crm_rad_qv,crm_rad_qc,crm_rad_qi,crm_rad_cld)
+
     ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
     ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
-    !$acc parallel loop collapse(3) copyin(tabs,pres,qcl,qci,qpl,qpi,rhow,w) copy(mdi_crm,mui_crm) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j=1, ny
       do i=1, nx
         do icrm = 1 , ncrms
@@ -1060,7 +1073,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(cwp,cwph,cwpm,cwpl,cttemp,chtemp,cmtemp,cltemp) copy(crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -1086,6 +1099,17 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   enddo ! nstep
 
+  !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
+  !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
+  !$acc exit data copyout(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
+  !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
+  !$acc exit data copyout(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
+  !$acc exit data copyout(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
+  !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
+  !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
+
+  !$acc wait(asyncid)
+
   ! for time-averaging crm output statistics
   factor_xyt = factor_xy / real(nstop,crm_rknd) 
 
@@ -1094,18 +1118,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   ! End main time loop
   !----------------------------------------------------------------------------------------
   !========================================================================================
-
-  !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,tk,tke,tkh,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
-
-  !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
-  !$acc exit data copyout(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
-  !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
-  !$acc exit data copyout(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
-  !$acc exit data copyout(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
-  !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
-  !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-
-  !$acc wait(asyncid)
 
   call t_stopf('crm_gpu_region')
 
@@ -1238,8 +1250,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_state%qn(icrm,1:nx,1:ny,1:nzm) = qn(icrm,1:nx,1:ny,1:nzm)
 #endif
 
-    crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = tk(icrm,1:nx, 1:ny, 1:nzm)
-    crm_output%tkh  (icrm,1:nx,1:ny,1:nzm) = tkh(icrm,1:nx, 1:ny, 1:nzm)
+    crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = sgs_field_diag(icrm,1:nx, 1:ny, 1:nzm,1)
+    crm_output%tkh  (icrm,1:nx,1:ny,1:nzm) = sgs_field_diag(icrm,1:nx, 1:ny, 1:nzm,2)
 #ifdef CLUBB_CRM
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
     clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
@@ -1485,9 +1497,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_output%qp_trans  (icrm,l) = mkadv(icrm,k,iqr) + mkadv(icrm,k,iqs) + mkadv(icrm,k,iqg) + &
                          mkdiff(icrm,k,iqr) + mkdiff(icrm,k,iqs) + mkdiff(icrm,k,iqg)
 #endif /* m2005 */
-      crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*sum(tke(icrm,1:nx,1:ny,k))*factor_xy
+      crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*sum(sgs_field(icrm,1:nx,1:ny,k,1))*factor_xy
       crm_output%tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
-      crm_output%tkz       (icrm,l) = sum(tk(icrm,1:nx, 1:ny, k)) * factor_xy
+      crm_output%tkz       (icrm,l) = sum(sgs_field_diag(icrm,1:nx, 1:ny, k,1)) * factor_xy
       crm_output%precflux      (icrm,l) = precflux(icrm,k)/1000.       !mm/s  -->m/s
 
       crm_output%qp_fall   (icrm,l) = qpfall(icrm,k)

@@ -24,13 +24,11 @@ contains
     ! Update velocity fields
     !-------------------------------------------------
     if(flag.eq.0) then
-      !$acc enter data copyin(u,v,sstxy,w) async(asyncid)
-
       call bound_exchange(ncrms,u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,1,1,1,1,1)
       call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
-      !$acc parallel loop collapse(3) copyin(sstxy) copy(w) async(asyncid)
+      !$acc parallel loop collapse(3) default(present) async(asyncid)
       do j = 1 , ny
         do i = 1 , nx
           do icrm = 1 , ncrms
@@ -39,7 +37,7 @@ contains
         enddo
       enddo
       call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
-      !$acc parallel loop collapse(3) copy(w,sstxy) async(asyncid)
+      !$acc parallel loop collapse(3) default(present) async(asyncid)
       do j = 1-YES3D , ny+YES3D
         do i = 0 , nx+1
           do icrm = 1 , ncrms
@@ -48,16 +46,12 @@ contains
           enddo
         enddo
       enddo
-
-      !$acc exit data copyout(u,v,sstxy,w) async(asyncid)
     endif
 
     !-------------------------------------------------
     ! update prognostic scalar fields for advection
     !-------------------------------------------------
     if(flag.eq.2) then
-      !$acc enter data copyin(u,v,w,t,sgs_field,micro_field) async(asyncid)
-
       call bound_exchange(ncrms,u,dimx1_u,dimx2_u,dimy1_u,dimy2_u,nzm,2,3,2+NADV,2+NADV,1)
       call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,2+NADV,2+NADV,2,3,2)
       call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,2+NADV,2+NADV,2+NADV,2+NADV,3)
@@ -84,21 +78,15 @@ contains
       !  end do
       !end if
 #if defined(SP_ESMT)
-      !$acc enter data copyin(u_esmt,v_esmt) async(asyncid)
       call bound_exchange(ncrms,u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
       call bound_exchange(ncrms,v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,3+NADVS,3+NADVS,3+NADVS,3+NADVS,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
-      !$acc exit data copyout(u_esmt,v_esmt) async(asyncid)
 #endif
-
-      !$acc exit data copyout(u,v,w,t,sgs_field,micro_field) async(asyncid)
     endif
 
     !-------------------------------------------------
     ! Update all scalars before SGS
     !-------------------------------------------------
     if(flag.eq.3) then
-      !$acc enter data copyin(t,sgs_field,micro_field) async(asyncid)
-
       call bound_exchange(ncrms,t,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4)
       do i = 1,nsgs_fields
         if(dosgs.and.advect_sgs) &
@@ -123,25 +111,19 @@ contains
       !  end do
       !end if
 #if defined(SP_ESMT)
-      !$acc enter data copyin(u_esmt,v_esmt) async(asyncid)
       call bound_exchange(ncrms,u_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+1)
       call bound_exchange(ncrms,v_esmt,dimx1_s,dimx2_s,dimy1_s,dimy2_s,nzm,1,1,1,1,4+nsgs_fields+nsgs_fields_diag+nmicro_fields+ntracers+2)
-      !$acc exit data copyout(u_esmt,v_esmt) async(asyncid)
 #endif
-
-      !$acc exit data copyout(t,sgs_field,micro_field) async(asyncid)
     endif
 
     !-------------------------------------------------
     ! SGS diagnostic fields
     !-------------------------------------------------
     if(flag.eq.4) then
-      !$acc enter data copyin(sgs_field_diag) async(asyncid)
       do i = 1,nsgs_fields_diag
         if(dosgs.and.do_sgsdiag_bound) &
         call bound_exchange(ncrms,sgs_field_diag(:,:,:,:,i),dimx1_d,dimx2_d,dimy1_d,dimy2_d,nzm,1+dimx1_d,dimx2_d-nx,YES3D+dimy1_d,1-YES3D+dimy2_d-ny,4+nsgs_fields+i)
       end do
-      !$acc exit data copyout(sgs_field_diag) async(asyncid)
     end if
 
   end subroutine periodic

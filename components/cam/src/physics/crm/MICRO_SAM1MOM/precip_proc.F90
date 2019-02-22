@@ -32,7 +32,7 @@ contains
     powg1 = (3 + b_grau) / 4.
     powg2 = (5 + b_grau) / 8.
 
-    !$acc parallel loop collapse(2) copy(qpsrc,qpevp) async(asyncid)
+    !$acc parallel loop collapse(2) default(present) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         qpsrc(icrm,k)=0.
@@ -40,7 +40,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copyin(accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,tabs,pres,evapr2) copy(qpevp,qpsrc,qp,qn,q) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

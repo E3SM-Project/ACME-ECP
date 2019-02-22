@@ -34,7 +34,7 @@ contains
     fac2 = fac_fus*ap
     ag = 1./(tgrmax-tgrmin)
 
-    !$acc parallel loop collapse(4) copyin(t,gamaz,pres) copy(q,qn,tabs,qp) async(asyncid)
+    !$acc parallel loop collapse(4) default(present) async(asyncid)
     do k = 1, nzm
       do j = 1, ny
         do i = 1, nx
