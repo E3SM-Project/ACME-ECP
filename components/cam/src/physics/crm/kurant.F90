@@ -21,7 +21,7 @@ module kurant_mod
       !$acc enter data create(wm,uhm) async(asyncid)
 
       ncycle = 1
-      !$acc parallel loop collapse(2) copyout(wm,uhm) async(asyncid)
+      !$acc parallel loop collapse(2) copy(wm,uhm) async(asyncid)
       do icrm = 1 , ncrms
         do k = 1 , nz
           wm (k,icrm) = 0.

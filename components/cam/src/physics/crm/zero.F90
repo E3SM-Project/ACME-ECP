@@ -16,7 +16,7 @@ contains
     !dwdt(nx  , ny  , nz , 3, ncrms)
     !misc(nx  , ny  , nz ,    ncrms)
     
-    !$acc parallel loop collapse(4) copyout(dudt(:,:,:,na,:),dvdt(:,:,:,na,:),dwdt(:,:,:,na,:),misc) async(asyncid)
+    !$acc parallel loop collapse(4) copy(dudt,dvdt,dwdt,misc) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nz
         do j = 1 , nyp1

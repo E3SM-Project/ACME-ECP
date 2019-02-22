@@ -701,7 +701,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   enddo
 !--------------------------------------------------
 #ifdef sam1mom
-  if(doprecip) call precip_init(ncrms)
+  if(doprecip) then
+    call precip_init(ncrms)
+    !$acc wait(asyncid)
+  endif
 #endif
 
   do icrm = 1 , ncrms

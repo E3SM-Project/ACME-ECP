@@ -18,7 +18,7 @@ contains
 
     !$acc enter data create(fuz,fvz,fwz) async(asyncid)
 
-    !$acc parallel loop collapse(2) copyout(vwle,uwle) async(asyncid)
+    !$acc parallel loop collapse(2) copy(vwle,uwle) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1 , nz
         uwle(k,icrm) = 0.

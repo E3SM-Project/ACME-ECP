@@ -139,7 +139,7 @@ contains
       end do
     end do
 
-    !$acc exit data copyout(t,gamaz,q,qp,tabs,qn,pres) async(asyncid)
+    !$acc exit data copy(t,gamaz,q,qp,tabs,qn,pres) async(asyncid)
 
   end subroutine cloud
 

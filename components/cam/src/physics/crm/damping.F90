@@ -30,7 +30,7 @@ contains
       call task_abort()
     end if
 
-    !$acc parallel loop copyin(z) copyout(n_damp) async(asyncid)
+    !$acc parallel loop copyin(z) copy(n_damp) async(asyncid)
     do icrm = 1 , ncrms
       do k=nzm,1,-1
         if(z(nzm,icrm)-z(k,icrm).lt.damp_depth*z(nzm,icrm)) then

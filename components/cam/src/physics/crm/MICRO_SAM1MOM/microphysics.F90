@@ -760,7 +760,9 @@ CONTAINS
               ! Note that fz is the total flux, including both the
               ! upwind flux and the anti-diffusive correction.
               qp(i,j,k,icrm)=qp(i,j,k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)
-              qpfall(k,icrm)=qpfall(k,icrm)-(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)*flagstat  ! For qp budget
+              tmp = -(fz(i,j,kc,icrm)-fz(i,j,k,icrm))*irhoadz(k,icrm)*flagstat  ! For qp budget
+              !$acc atomic update
+              qpfall(k,icrm)=qpfall(k,icrm) + tmp
               lat_heat = -(lfac(i,j,kc,icrm)*fz(i,j,kc,icrm)-lfac(i,j,k,icrm)*fz(i,j,k,icrm))*irhoadz(k,icrm)
               t(i,j,k,icrm)=t(i,j,k,icrm)-lat_heat
               !$acc atomic update

@@ -73,7 +73,7 @@ contains
     !-----------------------------------------------------------------
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
     n = 0
-    !$acc parallel loop collapse(4) copyin(p) copyout(f) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(p) copy(f) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,ny
@@ -86,7 +86,7 @@ contains
 
     !-------------------------------------------------
     ! Perform Fourier transformation for a slab:
-    !$acc parallel loop copyout(ifaxi,trigxi,ifaxj,trigxj) async(asyncid)
+    !$acc parallel loop copy(ifaxi,trigxi,ifaxj,trigxj) async(asyncid)
     do icrm = 1 , 1
       call fftfax_crm(nx_gl,ifaxi,trigxi)
       if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
@@ -103,7 +103,7 @@ contains
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
-    !$acc parallel loop collapse(4) copyin(f) copyout(ff) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(f) copy(ff) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,nyp22-jwall
@@ -117,7 +117,7 @@ contains
     !-------------------------------------------------
     !   Solve the tri-diagonal system for Fourier coeffiecients
     !   in the vertical for each subdomain:
-    !$acc parallel loop collapse(2) copyin(adz,adzw,dz,rhow) copyout(a,c) async(asyncid)
+    !$acc parallel loop collapse(2) copyin(adz,adzw,dz,rhow) copy(a,c) async(asyncid)
     do icrm = 1 , ncrms
       do k=1,nzm
         a(k,icrm)=rhow(k,icrm)/(adz(k,icrm)*adzw(k,icrm)*dz(icrm)*dz(icrm))
@@ -198,7 +198,7 @@ contains
 
     !-----------------------------------------------------------------
     n = 0
-    !$acc parallel loop collapse(4) copyin(ff) copyout(f) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(ff) copy(f) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1,nyp22-jwall
@@ -223,7 +223,7 @@ contains
 
     !-----------------------------------------------------------------
     !   Fill the pressure field for each subdomain:
-    !$acc parallel loop copyout(iii,jjj) async(asyncid)
+    !$acc parallel loop copy(iii,jjj) async(asyncid)
     do icrm = 1,1
       do i=1,nx_gl
         iii(i)=i
@@ -236,7 +236,7 @@ contains
     enddo
 
     n = 0
-    !$acc parallel loop collapse(4) copyin(iii,jjj,f) copyout(p) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(iii,jjj,f) copy(p) async(asyncid)
     do icrm = 1 , ncrms
       do k = 1,nzslab
         do j = 1-YES3D,ny
