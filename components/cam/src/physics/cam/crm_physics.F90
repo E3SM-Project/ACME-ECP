@@ -1127,9 +1127,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CRM_T   ',crm_state%temperature, pcols, lchnk)
 
       if (SPCAM_microp_scheme .eq. 'sam1mom') then
-         call outfld('CRM_QV  ',(crm_state%qt-crm_output%qcl-crm_output%qci),ncol   ,lchnk   )
+         call outfld('CRM_QV  ',(crm_state%qt-crm_output%qcl-crm_output%qci), pcols, lchnk)
       else if (SPCAM_microp_scheme .eq. 'm2005') then 
-         call outfld('CRM_QV  ',crm_state%qt-crm_output%qcl, ncol   ,lchnk   )
+         call outfld('CRM_QV  ',crm_state%qt-crm_output%qcl, pcols, lchnk)
       endif
       call outfld('CRM_QC  ',crm_output%qcl   ,pcols   ,lchnk   )
       call outfld('CRM_QI  ',crm_output%qci   ,pcols   ,lchnk   )
