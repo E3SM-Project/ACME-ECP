@@ -2766,6 +2766,7 @@ end if
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
       call physics_update(state, ptend, crm_run_time, tend)
+
 #ifdef CRJONESDEBUG
       call physics_state_check(state, name="after_crm")
 #endif
@@ -2791,6 +2792,9 @@ end if
       ! in mz_aero_wet_intr (mz_aerosols_intr.F90)
       ! tendency from other parts of crmclouds_aerosol_wet_intr() are still updated here.
       call physics_update (state, ptend, crm_run_time, tend)
+#ifdef CRJONESDEBUG
+      call physics_state_check(state, name="after_crm_modal_aero")
+#endif
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time, zero, zero, zero, zero)
 #endif /* MODAL_AERO */
 
@@ -2906,7 +2910,9 @@ end if
             pbuf,                                                                    & !Pointer
             ptend                                                                    ) !Intent-out
         call physics_update(state, ptend, ztodt, tend)
-
+#ifdef CRJONESDEBUG
+        call physics_state_check(state, name="after_aero_model_wetdep")
+#endif  
         if (carma_do_wetdep) then
           ! CARMA wet deposition
           !
@@ -2916,7 +2922,10 @@ end if
           call t_startf ('carma_wetdep_tend')
           call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
           call physics_update(state, ptend, ztodt, tend)
-          call t_stopf ('carma_wetdep_tend')
+#ifdef CRJONESDEBUG
+          call physics_state_check(state, name="after_carma_wetdep_tend")
+#endif
+            call t_stopf ('carma_wetdep_tend')
         end if
 
         !!! deep convective transport (ZM)
@@ -2924,6 +2933,9 @@ end if
         call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
           du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
         call physics_update(state, ptend, ztodt, tend)
+#ifdef CRJONESDEBUG
+        call physics_state_check(state, name="after_convect_deep_tend_2")
+#endif
         call t_stopf ('convect_deep_tend2')
 
         ! check tracer integrals
@@ -2990,7 +3002,10 @@ if (l_rad) then
     !-- mdb spcam
 
     call physics_update(state, ptend, ztodt, tend)
-    
+#ifdef CRJONESDEBUG
+    call physics_state_check(state, name="after_radiation_tend")
+#endif
+
     !-- mdb spcam
     !call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
     if (use_SPCAM) then
