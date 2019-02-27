@@ -12,7 +12,7 @@ module crm_rad_module
 
    implicit none
 
-   public crm_rad_type
+   public crm_rad_type, crm_rad_initialize, crm_rad_finalize, crm_rad_zero
 
    type crm_rad_type
       ! Radiative heating
@@ -71,5 +71,21 @@ contains
 
    end subroutine crm_rad_finalize
    !------------------------------------------------------------------------------------------------
+   subroutine crm_rad_zero(rad)
+      class(crm_rad_type), intent(inout) :: rad
+
+      ! Zero out arrays
+      rad%qrad = 0
+      rad%temperature = 0
+      rad%qv = 0
+      rad%qi = 0
+      rad%cld = 0
+
+      rad%nc = 0
+      rad%ni = 0
+      rad%qs = 0
+      rad%ns = 0
+
+   end subroutine crm_rad_zero
 
 end module crm_rad_module
