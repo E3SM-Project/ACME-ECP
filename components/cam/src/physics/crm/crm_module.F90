@@ -180,25 +180,25 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
 
-    real(crm_rknd), pointer :: crm_rad_qrad            (:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_temperature     (:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_qv              (:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_qc              (:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_qi              (:,:,:,:)
-    real(crm_rknd), pointer :: crm_rad_cld             (:,:,:,:)
-    real(crm_rknd), pointer :: crm_output_timing_factor(:) 
-    real(crm_rknd), pointer :: crm_output_cldtop       (:,:) 
-    real(crm_rknd), pointer :: crm_output_cld          (:,:) 
-    real(crm_rknd), pointer :: crm_output_mcup         (:,:) 
-    real(crm_rknd), pointer :: crm_output_mcuup        (:,:) 
-    real(crm_rknd), pointer :: crm_output_mcdn         (:,:) 
-    real(crm_rknd), pointer :: crm_output_mcudn        (:,:) 
-    real(crm_rknd), pointer :: crm_output_gliqwp       (:,:) 
-    real(crm_rknd), pointer :: crm_output_gicewp       (:,:) 
-    real(crm_rknd), pointer :: crm_output_cltot        (:) 
-    real(crm_rknd), pointer :: crm_output_clhgh        (:) 
-    real(crm_rknd), pointer :: crm_output_clmed        (:) 
-    real(crm_rknd), pointer :: crm_output_cllow        (:) 
+    real(crm_rknd) :: crm_rad_qrad             (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+    real(crm_rknd) :: crm_rad_temperature      (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+    real(crm_rknd) :: crm_rad_qv               (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+    real(crm_rknd) :: crm_rad_qc               (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+    real(crm_rknd) :: crm_rad_qi               (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+    real(crm_rknd) :: crm_rad_cld              (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+    real(crm_rknd) :: crm_output_timing_factor (1:ncrms) 
+    real(crm_rknd) :: crm_output_cldtop        (1:ncrms,1:plev) 
+    real(crm_rknd) :: crm_output_cld           (1:ncrms,1:plev) 
+    real(crm_rknd) :: crm_output_mcup          (1:ncrms,1:plev) 
+    real(crm_rknd) :: crm_output_mcuup         (1:ncrms,1:plev) 
+    real(crm_rknd) :: crm_output_mcdn          (1:ncrms,1:plev) 
+    real(crm_rknd) :: crm_output_mcudn         (1:ncrms,1:plev) 
+    real(crm_rknd) :: crm_output_gliqwp        (1:ncrms,1:plev) 
+    real(crm_rknd) :: crm_output_gicewp        (1:ncrms,1:plev) 
+    real(crm_rknd) :: crm_output_cltot         (1:ncrms) 
+    real(crm_rknd) :: crm_output_clhgh         (1:ncrms) 
+    real(crm_rknd) :: crm_output_clmed         (1:ncrms) 
+    real(crm_rknd) :: crm_output_cllow         (1:ncrms) 
 
   !-----------------------------------------------------------------------------------------------
   !-----------------------------------------------------------------------------------------------
@@ -249,25 +249,25 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call allocate_scalar_momentum(ncrms)
 #endif
 
-  crm_rad_qrad             => crm_rad%qrad            
-  crm_rad_temperature      => crm_rad%temperature     
-  crm_rad_qv               => crm_rad%qv              
-  crm_rad_qc               => crm_rad%qc              
-  crm_rad_qi               => crm_rad%qi              
-  crm_rad_cld              => crm_rad%cld             
-  crm_output_timing_factor => crm_output%timing_factor
-  crm_output_cldtop        => crm_output%cldtop       
-  crm_output_cld           => crm_output%cld          
-  crm_output_mcup          => crm_output%mcup         
-  crm_output_mcuup         => crm_output%mcuup        
-  crm_output_mcdn          => crm_output%mcdn         
-  crm_output_mcudn         => crm_output%mcudn        
-  crm_output_gliqwp        => crm_output%gliqwp       
-  crm_output_gicewp        => crm_output%gicewp       
-  crm_output_cltot         => crm_output%cltot        
-  crm_output_clhgh         => crm_output%clhgh        
-  crm_output_clmed         => crm_output%clmed        
-  crm_output_cllow         => crm_output%cllow        
+  crm_rad_qrad             = crm_rad%qrad            (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+  crm_rad_temperature      = crm_rad%temperature     (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+  crm_rad_qv               = crm_rad%qv              (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+  crm_rad_qc               = crm_rad%qc              (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+  crm_rad_qi               = crm_rad%qi              (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+  crm_rad_cld              = crm_rad%cld             (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm)
+  crm_output_timing_factor = crm_output%timing_factor(1:ncrms) 
+  crm_output_cldtop        = crm_output%cldtop       (1:ncrms,1:plev) 
+  crm_output_cld           = crm_output%cld          (1:ncrms,1:plev) 
+  crm_output_mcup          = crm_output%mcup         (1:ncrms,1:plev) 
+  crm_output_mcuup         = crm_output%mcuup        (1:ncrms,1:plev) 
+  crm_output_mcdn          = crm_output%mcdn         (1:ncrms,1:plev) 
+  crm_output_mcudn         = crm_output%mcudn        (1:ncrms,1:plev) 
+  crm_output_gliqwp        = crm_output%gliqwp       (1:ncrms,1:plev) 
+  crm_output_gicewp        = crm_output%gicewp       (1:ncrms,1:plev) 
+  crm_output_cltot         = crm_output%cltot        (1:ncrms) 
+  crm_output_clhgh         = crm_output%clhgh        (1:ncrms) 
+  crm_output_clmed         = crm_output%clmed        (1:ncrms) 
+  crm_output_cllow         = crm_output%cllow        (1:ncrms) 
 
   crm_accel_ceaseflag = .false.
 
@@ -284,16 +284,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     idt_gl    = 1._r8/dt_gl
     ptop      = plev-nzm+1
     factor_xy = 1._r8/dble(nx*ny)
-    crm_rad%temperature  (icrm,:,:,:) = 0.
-    crm_rad%qv (icrm,:,:,:) = 0.
-    crm_rad%qc (icrm,:,:,:) = 0.
-    crm_rad%qi (icrm,:,:,:) = 0.
-    crm_rad%cld(icrm,:,:,:) = 0.
+    crm_rad_temperature  (icrm,:,:,:) = 0.
+    crm_rad_qv (icrm,:,:,:) = 0.
+    crm_rad_qc (icrm,:,:,:) = 0.
+    crm_rad_qi (icrm,:,:,:) = 0.
+    crm_rad_cld(icrm,:,:,:) = 0.
 #ifdef m2005
-    crm_rad%nc(icrm,:,:,:) = 0.0
-    crm_rad%ni(icrm,:,:,:) = 0.0
-    crm_rad%qs(icrm,:,:,:) = 0.0
-    crm_rad%ns(icrm,:,:,:) = 0.0
+    crm_rad_nc(icrm,:,:,:) = 0.0
+    crm_rad_ni(icrm,:,:,:) = 0.0
+    crm_rad_qs(icrm,:,:,:) = 0.0
+    crm_rad_ns(icrm,:,:,:) = 0.0
 #endif /* m2005 */
     bflx(icrm) = crm_input%bflxls(icrm)
     wnd(icrm) = crm_input%wndls(icrm)
@@ -534,7 +534,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
 
-    crm_output%timing_factor = 0.
+    crm_output_timing_factor = 0.
 
     crm_output%prectend(icrm)=colprec
     crm_output%precstend(icrm)=colprecs
@@ -567,15 +567,15 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     precssfc(icrm,:,:)=0.
 
 !---------------------------------------------------
-    crm_output%cld   (icrm,:) = 0.
-    crm_output%cldtop(icrm,:) = 0.
-    crm_output%gicewp(icrm,:) = 0
-    crm_output%gliqwp(icrm,:) = 0
+    crm_output_cld   (icrm,:) = 0.
+    crm_output_cldtop(icrm,:) = 0.
+    crm_output_gicewp(icrm,:) = 0
+    crm_output_gliqwp(icrm,:) = 0
     crm_output%mctot (icrm,:) = 0.
-    crm_output%mcup  (icrm,:) = 0.
-    crm_output%mcdn  (icrm,:) = 0.
-    crm_output%mcuup (icrm,:) = 0.
-    crm_output%mcudn (icrm,:) = 0.
+    crm_output_mcup  (icrm,:) = 0.
+    crm_output_mcdn  (icrm,:) = 0.
+    crm_output_mcuup (icrm,:) = 0.
+    crm_output_mcudn (icrm,:) = 0.
     crm_output%qc_mean(icrm,:) = 0.
     crm_output%qi_mean(icrm,:) = 0.
     crm_output%qs_mean(icrm,:) = 0.
@@ -931,7 +931,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
 #ifdef ECPP
     ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
-    ! This is what the original MMF model did (crm_rad%temperature, crm_rad%qv, ...). Do we want to call ecpp_crm_stat
+    ! This is what the original MMF model did (crm_rad_temperature, crm_rad_qv, ...). Do we want to call ecpp_crm_stat
     ! every subcycle time step??? +++mhwang
     call ecpp_crm_stat(ncrms)
 #endif
@@ -1132,16 +1132,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   do icrm = 1 , ncrms
     tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
 
-    crm_rad%temperature  (icrm,:,:,:) = crm_rad%temperature  (icrm,:,:,:) * tmp1
-    crm_rad%qv (icrm,:,:,:) = crm_rad%qv (icrm,:,:,:) * tmp1
-    crm_rad%qc (icrm,:,:,:) = crm_rad%qc (icrm,:,:,:) * tmp1
-    crm_rad%qi (icrm,:,:,:) = crm_rad%qi (icrm,:,:,:) * tmp1
-    crm_rad%cld(icrm,:,:,:) = crm_rad%cld(icrm,:,:,:) * tmp1
+    crm_rad_temperature  (icrm,:,:,:) = crm_rad_temperature  (icrm,:,:,:) * tmp1
+    crm_rad_qv (icrm,:,:,:) = crm_rad_qv (icrm,:,:,:) * tmp1
+    crm_rad_qc (icrm,:,:,:) = crm_rad_qc (icrm,:,:,:) * tmp1
+    crm_rad_qi (icrm,:,:,:) = crm_rad_qi (icrm,:,:,:) * tmp1
+    crm_rad_cld(icrm,:,:,:) = crm_rad_cld(icrm,:,:,:) * tmp1
 #ifdef m2005
-    crm_rad%nc(icrm,:,:,:) = crm_rad%nc(icrm,:,:,:) * tmp1
-    crm_rad%ni(icrm,:,:,:) = crm_rad%ni(icrm,:,:,:) * tmp1
-    crm_rad%qs(icrm,:,:,:) = crm_rad%qs(icrm,:,:,:) * tmp1
-    crm_rad%ns(icrm,:,:,:) = crm_rad%ns(icrm,:,:,:) * tmp1
+    crm_rad_nc(icrm,:,:,:) = crm_rad_nc(icrm,:,:,:) * tmp1
+    crm_rad_ni(icrm,:,:,:) = crm_rad_ni(icrm,:,:,:) * tmp1
+    crm_rad_qs(icrm,:,:,:) = crm_rad_qs(icrm,:,:,:) * tmp1
+    crm_rad_ns(icrm,:,:,:) = crm_rad_ns(icrm,:,:,:) * tmp1
 #endif /* m2005 */
 
     ! no CRM tendencies above its top
@@ -1341,15 +1341,15 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    crm_output%cld   (icrm,:) = min( 1._r8, crm_output%cld   (icrm,:) * factor_xyt )
-    crm_output%cldtop(icrm,:) = min( 1._r8, crm_output%cldtop(icrm,:) * factor_xyt )
-    crm_output%gicewp(icrm,:) = crm_output%gicewp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
-    crm_output%gliqwp(icrm,:) = crm_output%gliqwp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
-    crm_output%mcup  (icrm,:) = crm_output%mcup (icrm,:) * factor_xyt
-    crm_output%mcdn  (icrm,:) = crm_output%mcdn (icrm,:) * factor_xyt
-    crm_output%mcuup (icrm,:) = crm_output%mcuup(icrm,:) * factor_xyt
-    crm_output%mcudn (icrm,:) = crm_output%mcudn(icrm,:) * factor_xyt
-    crm_output%mctot (icrm,:) = crm_output%mcup(icrm,:) + crm_output%mcdn(icrm,:) + crm_output%mcuup(icrm,:) + crm_output%mcudn(icrm,:)
+    crm_output_cld   (icrm,:) = min( 1._r8, crm_output_cld   (icrm,:) * factor_xyt )
+    crm_output_cldtop(icrm,:) = min( 1._r8, crm_output_cldtop(icrm,:) * factor_xyt )
+    crm_output_gicewp(icrm,:) = crm_output_gicewp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
+    crm_output_gliqwp(icrm,:) = crm_output_gliqwp(icrm,:)*crm_input%pdel(icrm,:)*1000./ggr * factor_xyt
+    crm_output_mcup  (icrm,:) = crm_output_mcup (icrm,:) * factor_xyt
+    crm_output_mcdn  (icrm,:) = crm_output_mcdn (icrm,:) * factor_xyt
+    crm_output_mcuup (icrm,:) = crm_output_mcuup(icrm,:) * factor_xyt
+    crm_output_mcudn (icrm,:) = crm_output_mcudn(icrm,:) * factor_xyt
+    crm_output%mctot (icrm,:) = crm_output_mcup(icrm,:) + crm_output_mcdn(icrm,:) + crm_output_mcuup(icrm,:) + crm_output_mcudn(icrm,:)
 
     crm_output%qc_mean(icrm,:) = crm_output%qc_mean(icrm,:) * factor_xy
     crm_output%qi_mean(icrm,:) = crm_output%qi_mean(icrm,:) * factor_xy
@@ -1421,10 +1421,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output%precsc  (icrm)     = crm_output%precsc(icrm)*factor_xy/1000.
     crm_output%precsl  (icrm)     = crm_output%precsl(icrm)*factor_xy/1000.
 
-    crm_output%cltot(icrm) = crm_output%cltot(icrm) * factor_xyt
-    crm_output%clhgh(icrm) = crm_output%clhgh(icrm) * factor_xyt
-    crm_output%clmed(icrm) = crm_output%clmed(icrm) * factor_xyt
-    crm_output%cllow(icrm) = crm_output%cllow(icrm) * factor_xyt
+    crm_output_cltot(icrm) = crm_output_cltot(icrm) * factor_xyt
+    crm_output_clhgh(icrm) = crm_output_clhgh(icrm) * factor_xyt
+    crm_output_clmed(icrm) = crm_output_clmed(icrm) * factor_xyt
+    crm_output_cllow(icrm) = crm_output_cllow(icrm) * factor_xyt
 
     crm_output%jt_crm(icrm) = plev * 1.0
     crm_output%mx_crm(icrm) = 1.0
@@ -1575,7 +1575,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
 #endif /* ECPP */
 
-    crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm) / nstop
+    crm_output_timing_factor(icrm) = crm_output_timing_factor(icrm) / nstop
 
 #ifdef CLUBB_CRM
     ! Deallocate CLUBB variables, etc.
@@ -1583,6 +1583,26 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     if ( doclubb .or. doclubbnoninter ) call clubb_sgs_cleanup( )
 #endif
   enddo
+
+  crm_rad%qrad            (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm) = crm_rad_qrad            
+  crm_rad%temperature     (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm) = crm_rad_temperature     
+  crm_rad%qv              (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm) = crm_rad_qv              
+  crm_rad%qc              (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm) = crm_rad_qc              
+  crm_rad%qi              (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm) = crm_rad_qi              
+  crm_rad%cld             (1:ncrms,1:crm_nx_rad,1:crm_ny_rad,1:nzm) = crm_rad_cld             
+  crm_output%timing_factor(1:ncrms)                                 = crm_output_timing_factor
+  crm_output%cldtop       (1:ncrms,1:plev)                          = crm_output_cldtop       
+  crm_output%cld          (1:ncrms,1:plev)                          = crm_output_cld          
+  crm_output%mcup         (1:ncrms,1:plev)                          = crm_output_mcup         
+  crm_output%mcuup        (1:ncrms,1:plev)                          = crm_output_mcuup        
+  crm_output%mcdn         (1:ncrms,1:plev)                          = crm_output_mcdn         
+  crm_output%mcudn        (1:ncrms,1:plev)                          = crm_output_mcudn        
+  crm_output%gliqwp       (1:ncrms,1:plev)                          = crm_output_gliqwp       
+  crm_output%gicewp       (1:ncrms,1:plev)                          = crm_output_gicewp       
+  crm_output%cltot        (1:ncrms)                                 = crm_output_cltot         
+  crm_output%clhgh        (1:ncrms)                                 = crm_output_clhgh         
+  crm_output%clmed        (1:ncrms)                                 = crm_output_clmed         
+  crm_output%cllow        (1:ncrms)                                 = crm_output_cllow         
 
 #ifdef ECPP
   !!! Deallocate ECPP variables
