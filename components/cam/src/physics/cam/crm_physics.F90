@@ -540,8 +540,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
 
 #ifdef CRM
-   use crm_state_module,       only: crm_state_type
-   use crm_rad_module,         only: crm_rad_type, crm_rad_initialize, crm_rad_finalize
+   use crm_state_module,       only: crm_state_type, crm_state_zero
+   use crm_rad_module,         only: crm_rad_type, crm_rad_initialize, crm_rad_finalize, crm_rad_zero
    use crm_input_module,       only: crm_input_type
    use crm_output_module,      only: crm_output_type, crm_output_initialize, crm_output_finalize
 #endif /* CRM */
@@ -856,6 +856,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !------------------------------------------------------------------------------------------------
 
    if(is_first_step()) then
+      ! Explicitly zero out arrays
+      call crm_state%zero()
+      call crm_rad_zero(crm_rad)
+
       ! call check_energy_timestep_init(state, tend, pbuf)
       do i=1,ncol
          do k=1,crm_nz
