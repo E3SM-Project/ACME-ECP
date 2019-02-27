@@ -51,6 +51,7 @@ module crm_state_module
       ! Type-bound procedures. Initialization should nullify fields
       procedure, public :: initialize=>crm_state_initialize
       procedure, public :: finalize=>crm_state_finalize
+      procedure, public :: zero=>crm_state_zero
       !procedure, public :: dump=>crm_state_dump
 
    end type crm_state_type
@@ -113,4 +114,28 @@ contains
 #endif
 
    end subroutine crm_state_finalize
+
+   subroutine crm_state_zero(this)
+      class(crm_state_type), intent(inout) :: this 
+      this%u_wind = 0
+      this%v_wind = 0
+      this%w_wind = 0
+      this%temperature = 0
+
+      this%qt = 0
+      this%qc = 0
+      this%qi = 0
+      this%qr = 0
+      this%qs = 0
+      this%qg = 0
+      this%nc = 0
+      this%ni = 0
+      this%nr = 0
+      this%ns = 0
+      this%ng = 0
+
+      this%qp = 0
+      this%qn = 0
+   end subroutine crm_state_zero
+
 end module crm_state_module
