@@ -1,7 +1,4 @@
 module params
-#ifdef _OPENACC
-  use openacc
-#endif
   ! use grid, only: nzm
 #ifdef CLUBB_CRM
   ! Use the CLUBB values for these constants for consistency
@@ -115,7 +112,7 @@ module params
   logical:: dotracers = .false.
   logical:: dosmoke = .false.
 
-  integer, parameter :: asyncid = acc_async_sync
+  integer, parameter :: asyncid = 1
 
   integer:: nclubb = 1 ! SAM timesteps per CLUBB timestep
 
