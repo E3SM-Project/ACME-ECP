@@ -34,7 +34,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copyin(rho,dz,adz,gamaz,qcl,qpl,qci,qpi,qv,u,v,p,t) copy(tabs,u0,v0,p0,t0,tabs0,q0,qn0,qp0,pw_xy,cw_xy,iw_xy) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(rho,dz,adz,gamaz,qcl,qpl,qci,qpi,qv,u,v,p,t) copy(tabs,u0,v0,p0,t0,tabs0,q0,qn0,qp0) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -61,14 +61,6 @@ contains
             !$acc atomic update
             qp0(icrm,k) = qp0(icrm,k) + tmp
             tmp = qv(icrm,i,j,k)*coef1
-            !$acc atomic update
-            pw_xy(icrm,i,j) = pw_xy(icrm,i,j)+tmp
-            tmp = qcl(icrm,i,j,k)*coef1
-            !$acc atomic update
-            cw_xy(icrm,i,j) = cw_xy(icrm,i,j)+tmp
-            tmp = qci(icrm,i,j,k)*coef1
-            !$acc atomic update
-            iw_xy(icrm,i,j) = iw_xy(icrm,i,j)+tmp
           enddo
         enddo
       enddo
