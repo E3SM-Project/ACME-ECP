@@ -148,7 +148,9 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) default(present) async(asyncid) &
+    !$acc&  copyin(dz,grdf_z,tk,w,adz,rho,fluxbu,fluxbv,fluxtu,fluxtv,rhow) &
+    !$acc&  copy(fu,fv,fw,uwsb,vwsb)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms

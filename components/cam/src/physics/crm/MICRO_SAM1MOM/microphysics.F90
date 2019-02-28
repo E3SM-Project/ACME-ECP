@@ -204,16 +204,16 @@ CONTAINS
         call cloud(ncrms,micro_field(:,:,:,:,1),micro_field(:,:,:,:,2),qn)
         !$acc wait(asyncid)
 #endif
-        !$acc data copy(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi)
+        !$acc enter data copyin(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         call micro_diagnose(ncrms)
+        !$acc exit data copyout(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         !$acc wait(asyncid)
-        !$acc end data
       end if
       if(dosmoke) then
-        !$acc data copy(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi)
+        !$acc enter data copyin(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         call micro_diagnose(ncrms)
+        !$acc exit data copyout(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         !$acc wait(asyncid)
-        !$acc end data
       end if
     end if
 
@@ -442,8 +442,8 @@ CONTAINS
   !!! function to compute terminal velocity for precipitating variables:
   ! In this particular case there is only one precipitating variable.
 
-  real(crm_rknd) function term_vel_qp(ncrms,icrm,i,j,k,ind,qploc,rho,tabs,qp_threshold,tprmin,&
-                                      a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
+  subroutine term_vel_qp(ncrms,icrm,i,j,k,ind,qploc,rho,tabs,qp_threshold,tprmin,&
+                                      a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,term_vel)
     !$acc routine seq
     implicit none
     integer, intent(in) :: ncrms,icrm
@@ -451,18 +451,19 @@ CONTAINS
     real(crm_rknd), intent(in) :: qploc
     real(crm_rknd), intent(in) :: rho(ncrms,nzm), tabs(ncrms,nx, ny, nzm)
     real(crm_rknd), intent(in) :: qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow
+    real(crm_rknd), intent(out) :: term_vel
     real(crm_rknd) wmax, omp, omg, qrr, qss, qgg
 
-    term_vel_qp = 0.
+    term_vel = 0.
     if(qploc.gt.qp_threshold) then
       omp = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tprmin)*a_pr))
       if(omp.eq.1.) then
-        term_vel_qp = vrain*(rho(icrm,k)*qploc)**crain
+        term_vel = vrain*(rho(icrm,k)*qploc)**crain
       elseif(omp.eq.0.) then
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
         qgg=omg*qploc
         qss=qploc-qgg
-        term_vel_qp = (omg*vgrau*(rho(icrm,k)*qgg)**cgrau &
+        term_vel = (omg*vgrau*(rho(icrm,k)*qgg)**cgrau &
         +(1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow)
       else
         omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
@@ -470,11 +471,11 @@ CONTAINS
         qss=qploc-qrr
         qgg=omg*qss
         qss=qss-qgg
-        term_vel_qp = (omp*vrain*(rho(icrm,k)*qrr)**crain + (1.-omp)*(omg*vgrau*(rho(icrm,k)*qgg)**cgrau + &
+        term_vel = (omp*vrain*(rho(icrm,k)*qrr)**crain + (1.-omp)*(omg*vgrau*(rho(icrm,k)*qgg)**cgrau + &
                       (1.-omg)*vsnow*(rho(icrm,k)*qss)**csnow))
       endif
     end if
-  end function term_vel_qp
+  end subroutine term_vel_qp
 
   !----------------------------------------------------------------------
   !!! compute sedimentation
@@ -561,7 +562,7 @@ CONTAINS
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
     prec_cfl = 0.
-    !$acc parallel loop gang vector collapse(4) default(present) copy(prec_cfl) async(asyncid)
+    !$acc parallel loop gang vector collapse(4) default(present) reduction(max:prec_cfl) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -585,11 +586,11 @@ CONTAINS
                 !call task_abort
               endif
             end select
-            wp(icrm,i,j,k)=rhofac(icrm,k)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(:,:),&
-                                                      tabs(:,:,:,:),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
-                                                      a_gr,vgrau,cgrau,vsnow,csnow)
+            call  term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
+                                                      tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
+                                                      a_gr,vgrau,cgrau,vsnow,csnow,tmp)
+            wp(icrm,i,j,k)=rhofac(icrm,k)*tmp
             tmp = wp(icrm,i,j,k)*iwmax(icrm,k)
-            !$acc atomic update
             prec_cfl = max(prec_cfl,tmp) ! Keep column maximum CFL
             wp(icrm,i,j,k) = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)
             if (k == 1) then
@@ -758,8 +759,9 @@ CONTAINS
             do k=1,nzm
               do icrm = 1 , ncrms
                 !Passing variables via first index because of PGI bug with pointers
-                wp(icrm,i,j,k) = rhofac(icrm,k)*term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
-                                 tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow)
+                call term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
+                                 tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,tmp)
+                wp(icrm,i,j,k) = rhofac(icrm,k)*tmp
                 ! Decrease precipitation velocity by factor of nprec
                 wp(icrm,i,j,k) = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
                 ! Note: Don't bother checking CFL condition at each
