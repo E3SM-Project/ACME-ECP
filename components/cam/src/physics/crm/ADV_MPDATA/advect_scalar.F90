@@ -24,7 +24,7 @@ contains
     !$acc enter data create(f0) async(asyncid)
 
     if(docolumn) then
-      !$acc parallel loop collapse(2) default(present) async(asyncid)
+      !$acc parallel loop collapse(2) copy(flux) async(asyncid)
       do k = 1 , nz
         do icrm = 1 , ncrms
           flux(icrm,k) = 0.
@@ -33,7 +33,7 @@ contains
       return
     end if
 
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(f) copy(f0) async(asyncid)
     do k = 1 , nzm
       do j = dimy1_s,dimy2_s
         do i = dimx1_s,dimx2_s
@@ -50,13 +50,13 @@ contains
       call advect_scalar2D(ncrms, f, u, w, rho, rhow, flux)
     endif
 
-    !$acc parallel loop collapse(2) default(present) async(asyncid)
+    !$acc parallel loop collapse(2) copy(fadv) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         fadv(icrm,k)=0.
       enddo
     enddo
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(f,f0) copy(fadv) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

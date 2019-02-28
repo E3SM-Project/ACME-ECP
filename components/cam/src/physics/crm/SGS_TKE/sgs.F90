@@ -319,14 +319,14 @@ CONTAINS
 
     !$acc enter data create(tkhmax) async(asyncid)
 
-    !$acc parallel loop collapse(2) default(present) async(asyncid)
+    !$acc parallel loop collapse(2) copy(tkhmax) async(asyncid)
     do k = 1,nzm
       do icrm = 1 , ncrms
         tkhmax(icrm,k) = 0.
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(sgs_field_diag) copy(tkhmax) async(asyncid)
     do k = 1,nzm
       do j = 1 , ny
         do i = 1 , nx
@@ -338,13 +338,12 @@ CONTAINS
       end do
     end do
 
-    !$acc parallel loop collapse(2) private(tmp) default(present) copy(cfl) async(asyncid)
+    !$acc parallel loop collapse(2) private(tmp) copyin(tkhmax,grdf_z,grdf_x,grdf_y,dz,adzw) reduction(max:cfl) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         tmp = max( 0.5*tkhmax(icrm,k)*grdf_z(icrm,k)*dt/(dz(icrm)*adzw(icrm,k))**2  , &
                    0.5*tkhmax(icrm,k)*grdf_x(icrm,k)*dt/dx**2  , &
                    YES3D*0.5*tkhmax(icrm,k)*grdf_y(icrm,k)*dt/dy**2  )
-        !$acc atomic update
         cfl = max( cfl , tmp )
       end do
     end do
@@ -444,7 +443,7 @@ subroutine sgs_proc(ncrms)
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
                           sgs_field(:,:,:,:,1), sgs_field_diag(:,:,:,:,1), sgs_field_diag(:,:,:,:,2))
-  !$acc parallel loop collapse(4) default(present) async(asyncid)
+  !$acc parallel loop collapse(4) copyin(sgs_field) copy(tke2) async(asyncid)
   do k = 1 , nzm
     do j = dimy1_s,dimy2_s
       do i = dimx1_s,dimx2_s
@@ -454,7 +453,7 @@ subroutine sgs_proc(ncrms)
       enddo
     enddo
   enddo
-  !$acc parallel loop collapse(4) default(present) async(asyncid)
+  !$acc parallel loop collapse(4) copyin(sgs_field_diag) copy(tk2) async(asyncid)
   do k = 1 , nzm
     do j = dimy1_d,dimy2_d
       do i = dimx1_d,dimx2_d

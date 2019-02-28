@@ -751,14 +751,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   call t_startf('crm_gpu_region')
 
-  !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-  !$acc&          sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p, &
-  !$acc&          rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy, &
-  !$acc&          usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d, &
-  !$acc&          crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature, &
-  !$acc&          crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero, &
-  !$acc&          fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2, &
-  !$acc&          sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
+  !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
+  !$acc enter data copyin(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
+  !!$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
+  !$acc enter data copyin(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
+  !$acc enter data copyin(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
+  !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
+  !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
+  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
 
   !========================================================================================
   !----------------------------------------------------------------------------------------
@@ -769,7 +769,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   do while (nstep < nstop)
     nstep = nstep + 1
 
-    !$acc parallel loop default(present) async(asyncid)
+    !$acc parallel loop copy(crm_output_timing_factor) async(asyncid)
     do icrm = 1 , ncrms
       crm_output_timing_factor(icrm) = crm_output_timing_factor(icrm)+1
     enddo
@@ -784,8 +784,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     do icyc=1,ncycle
       icycle = icyc
       dtn = dt/ncycle
+      !$acc parallel copy(dt3) async(asyncid)
       dt3(na) = dtn
-      !$acc update device(dt3) async(asyncid)
+      !$acc end parallel
       dtfactor = dtn/dt
 
       !---------------------------------------------
@@ -805,7 +806,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call forcing(ncrms)
 
       !!! Apply radiative tendency
-      !$acc parallel loop collapse(4) private(i_rad,j_rad) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) private(i_rad,j_rad) copyin(crm_rad_qrad) copy(t) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -935,7 +936,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     ! every subcycle time step??? +++mhwang
     call ecpp_crm_stat(ncrms)
 #endif
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) copy(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(asyncid)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -952,7 +953,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(3) default(present) async(asyncid)
+    !$acc parallel loop gang vector collapse(3) copyin(rho,adz,dz,qcl,qci,cf3d,pres,w) &
+    !$acc&  copy(cwp,cttemp,crm_output_cldtop,flag_top,cwpl,cltemp,cwph,chtemp,cwpm,cmtemp,crm_output_cld,crm_output_mcup, &
+    !$acc&       crm_output_mcuup,crm_output_mcdn,crm_output_mcudn,crm_output_gliqwp,crm_output_gicewp) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -1018,7 +1021,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(4) private(i_rad,j_rad) default(present) async(asyncid)
+    !$acc parallel loop gang vector collapse(4) private(i_rad,j_rad) copyin(tabs,qcl,qci,cf3d,qv) copy(crm_rad_temperature,crm_rad_qv,crm_rad_qc,crm_rad_qi,crm_rad_cld) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -1056,7 +1059,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     ! Diagnose mass fluxes to drive CAM's convective transport of tracers.
     ! definition of mass fluxes is taken from Xu et al., 2002, QJRMS.
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) copyin(w,tabs,pres,qcl,qci,rhow,qpl,qpi) copy(mui_crm,mdi_crm) async(asyncid)
     do j=1, ny
       do i=1, nx
         do icrm = 1 , ncrms
@@ -1088,7 +1091,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) copyin(cttemp,chtemp,cmtemp,cltemp,cwp,cwph,cwpm,cwpl) copy(crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -1114,14 +1117,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   enddo ! nstep
 
-  !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi, &
-  !$acc&          sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p, &
-  !$acc&          rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy, &
-  !$acc&          usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d, &
-  !$acc&          crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature, &
-  !$acc&          crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero, &
-  !$acc&          fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2, &
-  !$acc&          sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
+  !$acc exit data copyout(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
+  !$acc exit data copyout(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
+  !!$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
+  !$acc exit data copyout(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
+  !$acc exit data copyout(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
+  !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
+  !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
+  !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
 
   !$acc wait(asyncid)
 

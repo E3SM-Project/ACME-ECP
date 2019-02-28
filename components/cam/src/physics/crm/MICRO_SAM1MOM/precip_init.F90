@@ -45,9 +45,9 @@ contains
     end if
 
 
-    !$acc parallel loop collapse(2) default(present) async(asyncid) &
+    !$acc parallel loop collapse(2)  async(asyncid) &
     !$acc&  copyin(rho,tabs0,pres) &
-    !$acc&  copy(accrsi,accrsc,coefice,evaps1,evaps2,accrgi,accrgc,evapg1,evapg2,accrrc,evapr1,evapr1)
+    !$acc&  copy(accrsi,accrsc,coefice,evaps1,evaps2,accrgi,accrgc,evapg1,evapg2,accrrc,evapr1,evapr2)
     do k=1,nzm
       do icrm = 1 , ncrms
         pratio = sqrt(1.29 / rho(icrm,k))

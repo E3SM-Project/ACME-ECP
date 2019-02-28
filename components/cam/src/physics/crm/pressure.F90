@@ -74,7 +74,7 @@ contains
     !-----------------------------------------------------------------
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
     n = 0
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(p) copy(f) async(asyncid)
     do k = 1,nzslab
       do j = 1,ny
         do i = 1,nx
@@ -87,12 +87,12 @@ contains
 
     !-------------------------------------------------
     ! Perform Fourier transformation for a slab:
-    !$acc parallel loop default(present) async(asyncid)
+    !$acc parallel loop copy(ifaxi,trigxi,ifaxj,trigxj) async(asyncid)
     do icrm = 1 , 1
       call fftfax_crm(nx_gl,ifaxi,trigxi)
       if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
     enddo
-    !$acc parallel loop gang default(present) async(asyncid)
+    !$acc parallel loop gang copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) async(asyncid)
     do k=1,nzslab
       !$acc loop vector private(work,ftmp)
       do icrm = 1 , ncrms
@@ -107,7 +107,7 @@ contains
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(f) copy(ff) async(asyncid)
     do k = 1,nzslab
       do j = 1,nyp22-jwall
         do i = 1,nxp1-iwall
@@ -121,7 +121,7 @@ contains
     !-------------------------------------------------
     !   Solve the tri-diagonal system for Fourier coeffiecients
     !   in the vertical for each subdomain:
-    !$acc parallel loop collapse(2) default(present) async(asyncid)
+    !$acc parallel loop collapse(2) copyin(rhow,adz,adzw,dz) copy(a,c) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         a(icrm,k)=rhow(icrm,k)/(adz(icrm,k)*adzw(icrm,k)*dz(icrm)*dz(icrm))
@@ -129,7 +129,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) default(present) async(asyncid)
+    !$acc parallel loop collapse(2) copy(eign) async(asyncid)
     do j=1,nyp22-jwall
       do i=1,nxp1-iwall
         ddx2=1._8/(dx*dx)
@@ -159,7 +159,7 @@ contains
 
     !For working aroung PGI OpenACC bug where it didn't create enough gangs
     numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
-    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) copyin(eign,rho,a,c) copy(ff) async(asyncid)
     do j=1,nyp22-jwall
       do i=1,nxp1-iwall
         do icrm = 1 , ncrms
@@ -197,7 +197,7 @@ contains
 
     !-----------------------------------------------------------------
     n = 0
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(ff) copy(f) async(asyncid)
     do k = 1,nzslab
       do j = 1,nyp22-jwall
         do i = 1,nxp1-iwall
@@ -210,7 +210,7 @@ contains
 
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
-    !$acc parallel loop gang default(present) async(asyncid)
+    !$acc parallel loop gang copyin(trigxj,ifaxj,trigxi,ifaxi) copy(f) async(asyncid)
     do k=1,nzslab
       !$acc loop vector private(work,ftmp)
       do icrm = 1 , ncrms
@@ -225,7 +225,7 @@ contains
 
     !-----------------------------------------------------------------
     !   Fill the pressure field for each subdomain:
-    !$acc parallel loop default(present) async(asyncid)
+    !$acc parallel loop copy(iii,jjj) async(asyncid)
     do icrm = 1,1
       do i=1,nx_gl
         iii(i)=i
@@ -238,7 +238,7 @@ contains
     enddo
 
     n = 0
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(f,iii,jjj) copy(p) async(asyncid)
     do k = 1,nzslab
       do j = 1-YES3D,ny
         do i = 0,nx

@@ -18,7 +18,7 @@ contains
 
     !$acc enter data create(fuz,fvz,fwz) async(asyncid)
 
-    !$acc parallel loop collapse(2) default(present) async(asyncid)
+    !$acc parallel loop collapse(2) copy(uwle,vwle) async(asyncid)
     do k = 1 , nz
       do icrm = 1 , ncrms
         uwle(icrm,k) = 0.
@@ -26,7 +26,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) copyin(dz) copy(fuz,fvz,fwz) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -43,7 +43,7 @@ contains
 
     if(RUN3D) then
 
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copyin(rhow,dz,w,u,v) copy(fuz,fvz,uwle,vwle) async(asyncid)
       do k=2,nzm
         do j=1,ny
           do i=1,nx
@@ -64,7 +64,7 @@ contains
 
     else
 
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copyin(dz,rhow,w,u,v) copy(fuz,fvz,uwle,vwle) async(asyncid)
       do k=2,nzm
         do j=1,ny
           do i=1,nx
@@ -86,7 +86,7 @@ contains
 
     endif
 
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(dz,rho,adz,fuz,fvz,rhow,w) copy(dudt,dvdt,fwz) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -102,7 +102,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(fwz,adzw,rhow) copy(dwdt) async(asyncid)
     do k=2,nzm
       do j=1,ny
         do i=1,nx

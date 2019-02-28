@@ -37,7 +37,7 @@ contains
 
     if(RUN3D) then
       ! "North" -> "South":
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=ny-j1,ny
           do i=1,nx
@@ -48,7 +48,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=-j1,0
           do i=1,nx
@@ -61,7 +61,7 @@ contains
       end do
 
       ! "North-East" -> "South-West":
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=ny-j1,ny
           do i=nx-i1,nx
@@ -72,7 +72,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=-j1,0
           do i=-i1,0
@@ -85,7 +85,7 @@ contains
       end do
 
       ! "South-East" -> "North-West":
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=1,1+j2
           do i=nx-i1,nx
@@ -96,7 +96,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=nyp1,nyp1+j2
           do i=-i1,0
@@ -109,7 +109,7 @@ contains
       end do
 
       ! "South" -> "North":
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=1,1+j2
           do i=1,nx
@@ -120,7 +120,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=nyp1,nyp1+j2
           do i=1,nx
@@ -133,7 +133,7 @@ contains
       end do
 
       ! "South-West" -> "North-East":
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=1,1+j2
           do i=1,1+i2
@@ -144,7 +144,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=nyp1,nyp1+j2
           do i=nxp1,nxp1+i2
@@ -158,7 +158,7 @@ contains
 
 
       ! To "North-West" -> "South-East":
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=ny-j1,ny
           do i=1,1+i2
@@ -169,7 +169,7 @@ contains
           end do
         end do
       end do
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
       do k=1,dimz
         do j=-j1,0
           do i=nxp1,nxp1+i2
@@ -185,7 +185,7 @@ contains
     endif
 
     !  "East" -> "West":
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
     do k=1,dimz
       do j=1,ny
         do i=nx-i1,nx
@@ -196,7 +196,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
     do k=1,dimz
       do j=1,ny
         do i=-i1,0
@@ -209,7 +209,7 @@ contains
     end do
 
     ! "West" -> "East":
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
     do k=1,dimz
       do j=1,ny
         do i=1,1+i2
@@ -220,7 +220,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copy(f,buffer) async(asyncid)
     do k=1,dimz
       do j=1,ny
         do i=nxp1,nxp1+i2

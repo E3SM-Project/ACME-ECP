@@ -13,7 +13,7 @@ contains
     integer i,j,k,ib,ic,jb,jc,kc,icrm
 
     if(RUN3D) then
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copyin(u,v,w,vg0,fcory,fcorzy,ug0) copy(dudt,dvdt) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -33,7 +33,7 @@ contains
         end do ! k
       end do
     else
-      !$acc parallel loop collapse(4) default(present) async(asyncid)
+      !$acc parallel loop collapse(4) copyin(ug0,vg0,fcorzy,fcory,w,u,v) copy(dudt,dvdt) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx

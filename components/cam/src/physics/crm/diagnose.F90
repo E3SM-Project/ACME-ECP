@@ -18,7 +18,7 @@ contains
 
     coef = 1./real(nx*ny,crm_rknd)
 
-    !$acc parallel loop collapse(2) default(present) async(asyncid)
+    !$acc parallel loop collapse(2) copyin(tabs0,q0) copy(u0,v0,t01,q01,t0,tabs0,q0,qn0,qp0,p0) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         u0(icrm,k)=0.
@@ -34,8 +34,7 @@ contains
       enddo
     enddo
 
-
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(rho,dz,adz,gamaz,qcl,qpl,qci,qpi,qv,u,v,p,t) copy(tabs,u0,v0,p0,t0,tabs0,q0,qn0,qp0,pw_xy,cw_xy,iw_xy) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -74,7 +73,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(2) default(present) async(asyncid)
+    !$acc parallel loop collapse(2) copy(u0,v0,t0,tabs0,q0,qn0,qp0,p0) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         u0(icrm,k)=u0(icrm,k)*coef
@@ -88,7 +87,7 @@ contains
       enddo ! k
     enddo
 
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) copyin(u,v) copy(usfc_xy,vsfc_xy) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -98,7 +97,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) default(present) async(asyncid)
+    !$acc parallel loop collapse(2) copyin(q0,qn0) copy(qv0) async(asyncid)
     do k = 1 , nzm
       do icrm = 1 , ncrms
         qv0(icrm,k) = q0(icrm,k) - qn0(icrm,k)
@@ -108,7 +107,7 @@ contains
     !=====================================================
     ! UW ADDITIONS
     ! FIND VERTICAL INDICES OF 850MB, COMPUTE SWVP
-    !$acc parallel loop collapse(4) default(present) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(rho,dz,adz,pres,tabs) copy(swvp_xy) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -126,7 +125,7 @@ contains
     enddo
 
     ! ACCUMULATE AVERAGES OF TWO-DIMENSIONAL STATISTICS
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) copyin(p,pres) copy(psfc_xy) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -140,7 +139,7 @@ contains
     ! CONDENSATE PATH OF 0.01 kg/m2 ABOVE.  ECHO TOP IS THE HIGHEST LEVEL
     ! WHERE THE PRECIPITATE MIXING RATIO > 0.001 G/KG.
     ! initially, zero out heights and set cloudtoptemp to SST
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) copyin(sstxy) copy(cloudtopheight,cloudtoptemp,echotopheight) async(asyncid)
     do j = 1 , ny
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -150,7 +149,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(3) default(present) async(asyncid)
+    !$acc parallel loop collapse(3) copyin(dz,adz,rho,qcl,qci,z,tabs,qpl,qpi) copy(cloudtopheight,cloudtoptemp,cld_xy,echotopheight) async(asyncid)
     do j = 1,ny
       do i = 1,nx
         do icrm = 1 , ncrms
