@@ -7,7 +7,7 @@ contains
   subroutine forcing(ncrms)
     use vars
     use params
-    use microphysics, only: micro_field, index_water_vapor, total_water
+    use microphysics, only: micro_field, index_water_vapor
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) coef,qneg(ncrms,nzm),qpoz(ncrms,nzm), factor

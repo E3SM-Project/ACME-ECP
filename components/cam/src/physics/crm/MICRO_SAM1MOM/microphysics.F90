@@ -24,10 +24,7 @@ module microphysics
 
   ! both variables correspond to mass, not number
   ! SAM1MOM 3D microphysical fields are output by default.
-  integer, allocatable :: flag_micro3Dout(:,:)
   integer, allocatable :: flag_precip    (:)
-  integer, allocatable :: flag_wmass     (:,:)
-  integer, allocatable :: flag_number    (:,:)
 
 
   !!! these arrays are needed for output statistics:
@@ -87,10 +84,7 @@ CONTAINS
     allocate( qn(ncrms,nx,ny,nzm)  )
     allocate( qpsrc(ncrms,nz)  )
     allocate( qpevp(ncrms,nz)  )
-    allocate( flag_micro3Dout(nmicro_fields,ncrms) )
     allocate( flag_precip    (nmicro_fields) )
-    allocate( flag_wmass     (nmicro_fields,ncrms) )
-    allocate( flag_number    (nmicro_fields,ncrms) )
 
     zero = 0
 
@@ -109,11 +103,6 @@ CONTAINS
     qpsrc = zero
     qpevp = zero
     flag_precip    (:)  = (/0,1/)
-    do icrm = 1 , ncrms
-      flag_micro3Dout(:,icrm)  = (/0,0/)
-      flag_wmass     (:,icrm)  = (/1,1/)
-      flag_number    (:,icrm)  = (/0,0/)
-    enddo
   end subroutine allocate_micro
 
 
@@ -133,10 +122,7 @@ CONTAINS
     deallocate(qn  )
     deallocate(qpsrc  )
     deallocate(qpevp  )
-    deallocate(flag_micro3Dout)
     deallocate(flag_precip    )
-    deallocate(flag_wmass     )
-    deallocate(flag_number    )
   end subroutine deallocate_micro
 
 
@@ -791,28 +777,5 @@ CONTAINS
   !-----------------------------------------------------------------------
   ! Supply function that computes total water in a domain:
   !
-  real(8) function total_water(ncrms,icrm)
-    use vars, only : nstep,adz,dz,rho
-    implicit none
-    integer, intent(in) :: ncrms,icrm
-    real(8) tmp
-    integer i,j,k,m
-
-    total_water = 0.
-    do m=1,nmicro_fields
-      if(flag_wmass(m,icrm).eq.1) then
-        do k=1,nzm
-          tmp = 0.
-          do j=1,ny
-            do i=1,nx
-              tmp = tmp + micro_field(icrm,i,j,k,m)
-            end do
-          end do
-          total_water = total_water + tmp*adz(icrm,k)*dz(icrm)*rho(icrm,k)
-        end do
-      end if
-    end do
-
-  end function total_water
 
 end module microphysics

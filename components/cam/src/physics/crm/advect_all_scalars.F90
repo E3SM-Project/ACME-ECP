@@ -19,11 +19,13 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
-
     real(crm_rknd) :: esmt_offset(ncrms)    ! whannah - offset for advecting scalar momentum tracers
+    real(crm_rknd) :: dummy(ncrms,nz)
+
+    !$acc enter data create(dummy) async(asyncid)
 
     !      advection of scalars :
-    call advect_scalar(ncrms,t,tadv,twle)
+    call advect_scalar(ncrms,t,dummy,dummy)
 
     !    Advection of microphysics prognostics:
     do k = 1,nmicro_fields
@@ -42,7 +44,7 @@ contains
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(ncrms,sgs_field(1,dimx1_s,dimy1_s,1,k),sgsadv(1,1,k),sgswle(1,1,k))
+        call advect_scalar(ncrms,sgs_field(1,dimx1_s,dimy1_s,1,k),dummy,dummy)
       end do
     end if
 
@@ -74,13 +76,15 @@ contains
       v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) + esmt_offset(icrm)
     enddo
     ! advection of scalar momentum tracers
-    call advect_scalar(ncrms,u_esmt,u_esmt_adv,u_esmt_wle)
-    call advect_scalar(ncrms,v_esmt,v_esmt_adv,v_esmt_wle)
+    call advect_scalar(ncrms,u_esmt,dummy,dummy)
+    call advect_scalar(ncrms,v_esmt,dummy,dummy)
     do icrm = 1 , ncrms
       u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) - esmt_offset(icrm)
       v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) - esmt_offset(icrm)
     enddo
 #endif
+
+    !$acc exit data delete(dummy) async(asyncid)
 
   end subroutine advect_all_scalars
 

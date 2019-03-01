@@ -756,9 +756,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !$acc enter data copyin(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
   !$acc enter data copyin(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
   !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
-  !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
-  !!$acc enter data copyin(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,sgsadv,sgswle) async(asyncid)
+  !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
+  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
+  !!$acc enter data copyin(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(asyncid)
   !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,gamaz,mkadv,mkwle) async(asyncid)
 
   !========================================================================================
@@ -1122,9 +1122,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !$acc exit data copyout(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
   !$acc exit data copyout(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
   !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
-  !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-  !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
-  !!$acc exit data copyout(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,sgsadv,sgswle) async(asyncid)
+  !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
+  !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
+  !!$acc exit data copyout(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(asyncid)
   !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,gamaz,mkadv,mkwle) async(asyncid)
 
   !$acc wait(asyncid)

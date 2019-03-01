@@ -116,7 +116,6 @@ module vars
   real(crm_rknd), allocatable :: w_max(:)
   real(crm_rknd), allocatable :: u_max(:)
 
-  real(crm_rknd), allocatable :: twle(:,:)
   real(crm_rknd), allocatable :: twsb(:,:)
   real(crm_rknd), allocatable :: precflux(:,:)
   real(crm_rknd), allocatable :: uwle(:,:)
@@ -124,7 +123,6 @@ module vars
   real(crm_rknd), allocatable :: vwle(:,:)
   real(crm_rknd), allocatable :: vwsb(:,:)
   real(crm_rknd), allocatable :: tkelediss(:,:)
-  real(crm_rknd), allocatable :: tadv(:,:)
   real(crm_rknd), allocatable :: tdiff(:,:)
   real(crm_rknd), allocatable :: tlat(:,:)
   real(crm_rknd), allocatable :: tlatqi(:,:)
@@ -240,7 +238,6 @@ contains
     allocate( v200_xy(ncrms,nx,ny)  )
     allocate( vsfc_xy(ncrms,nx,ny)  )
     allocate( w500_xy(ncrms,nx,ny)  )
-    allocate( twle(ncrms,nz) )
     allocate( twsb(ncrms,nz) )
     allocate( precflux(ncrms,nz) )
     allocate( uwle(ncrms,nz) )
@@ -248,7 +245,6 @@ contains
     allocate( vwle(ncrms,nz) )
     allocate( vwsb(ncrms,nz) )
     allocate( tkelediss(ncrms,nz) )
-    allocate( tadv     (ncrms,nz) )
     allocate( tdiff    (ncrms,nz) )
     allocate( tlat(ncrms,nz) )
     allocate( tlatqi(ncrms,nz) )
@@ -344,7 +340,6 @@ contains
     v200_xy = zero
     vsfc_xy = zero
     w500_xy = zero
-    twle = zero
     twsb = zero
     precflux = zero
     uwle = zero
@@ -352,7 +347,6 @@ contains
     vwle = zero
     vwsb = zero
     tkelediss = zero
-    tadv = zero
     tdiff = zero
     tlat = zero
     tlatqi = zero
@@ -450,7 +444,6 @@ contains
     deallocate( v200_xy )
     deallocate( vsfc_xy )
     deallocate( w500_xy )
-    deallocate( twle )
     deallocate( twsb )
     deallocate( precflux )
     deallocate( uwle )
@@ -458,7 +451,6 @@ contains
     deallocate( vwle )
     deallocate( vwsb )
     deallocate( tkelediss )
-    deallocate( tadv )
     deallocate( tdiff )
     deallocate( tlat )
     deallocate( tlatqi )

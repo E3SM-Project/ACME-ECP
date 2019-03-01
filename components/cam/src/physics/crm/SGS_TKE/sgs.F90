@@ -54,9 +54,6 @@ module sgs
 
   real(crm_rknd), allocatable, target :: sgs_field     (:,:,:,:,:)
   real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:,:)
-  real(crm_rknd), allocatable :: sgswle   (:,:,:)  ! resolved vertical flux
-  real(crm_rknd), allocatable :: sgswsb   (:,:,:)  ! SGS vertical flux
-  real(crm_rknd), allocatable :: sgsadv   (:,:,:)  ! tendency due to vertical advection
   real(crm_rknd), allocatable :: grdf_x(:,:)! grid factor for eddy diffusion in x
   real(crm_rknd), allocatable :: grdf_y(:,:)! grid factor for eddy diffusion in y
   real(crm_rknd), allocatable :: grdf_z(:,:)! grid factor for eddy diffusion in z
@@ -73,9 +70,6 @@ CONTAINS
     real(crm_rknd) :: zero
     allocate( sgs_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
     allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
-    allocate( sgswle(ncrms,nz,1:nsgs_fields)   )
-    allocate( sgswsb(ncrms,nz,1:nsgs_fields)   )
-    allocate( sgsadv(ncrms,nz,1:nsgs_fields)   )
     allocate( grdf_x(ncrms,nzm) )
     allocate( grdf_y(ncrms,nzm) )
     allocate( grdf_z(ncrms,nzm) )
@@ -87,9 +81,6 @@ CONTAINS
 
     sgs_field = zero
     sgs_field_diag = zero
-    sgswle = zero
-    sgswsb = zero
-    sgsadv = zero
     grdf_x = zero
     grdf_y = zero
     grdf_z = zero
@@ -103,9 +94,6 @@ CONTAINS
     implicit none
     deallocate( sgs_field  )
     deallocate( sgs_field_diag  )
-    deallocate( sgswle  )
-    deallocate( sgswsb  )
-    deallocate( sgsadv  )
     deallocate( grdf_x  )
     deallocate( grdf_y  )
     deallocate( grdf_z  )
@@ -201,12 +189,6 @@ CONTAINS
         grdf_z(icrm,k) = 1.
       end do
     end if
-
-    sgswle(icrm,:,:) = 0.
-    sgswsb(icrm,:,:) = 0.
-    sgsadv(icrm,:,:) = 0.
-
-
   end subroutine sgs_init
 
   !----------------------------------------------------------------------
@@ -384,7 +366,7 @@ CONTAINS
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),sgs_field(:,:,:,:,1),fzero,fzero,dummy,sgswsb(:,:,1))
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),sgs_field(:,:,:,:,1),fzero,fzero,dummy,dummy)
     end if
 
     !    diffusion of microphysics prognostics:

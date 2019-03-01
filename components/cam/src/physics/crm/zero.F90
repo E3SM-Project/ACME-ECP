@@ -7,7 +7,6 @@ contains
 
   subroutine zero(ncrms)
     use vars
-    use microphysics, only : total_water
     implicit none
     integer, intent(in) :: ncrms
     integer k,icrm, j, i

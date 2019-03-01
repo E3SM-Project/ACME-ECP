@@ -29,12 +29,8 @@ module scalar_momentum_mod
    real(crm_rknd), allocatable :: u_esmt(:,:,:,:)       ! scalar zonal velocity
    real(crm_rknd), allocatable :: v_esmt(:,:,:,:)       ! scalar meridonal velocity
 
-   real(crm_rknd), allocatable :: u_esmt_wle (:,:)      ! resolved vertical flux
-   real(crm_rknd), allocatable :: v_esmt_wle (:,:)      !
    real(crm_rknd), allocatable :: u_esmt_sgs (:,:)      ! SGS vertical flux
    real(crm_rknd), allocatable :: v_esmt_sgs (:,:)      !
-   real(crm_rknd), allocatable :: u_esmt_adv (:,:)      ! large-scale tendency due to vertical advection
-   real(crm_rknd), allocatable :: v_esmt_adv (:,:)      !
    real(crm_rknd), allocatable :: u_esmt_diff(:,:)      ! large-scale tendency due to vertical diffusion
    real(crm_rknd), allocatable :: v_esmt_diff(:,:)      !
 
@@ -68,12 +64,8 @@ module scalar_momentum_mod
      allocate( fluxt_u_esmt (nx, ny,ncrms) )
      allocate( fluxt_v_esmt (nx, ny,ncrms) )
 
-     allocate( u_esmt_wle   (nz,ncrms)  )
-     allocate( v_esmt_wle   (nz,ncrms)  )
      allocate( u_esmt_sgs   (nz,ncrms)  )
      allocate( v_esmt_sgs   (nz,ncrms)  )
-     allocate( u_esmt_adv   (nz,ncrms)  )
-     allocate( v_esmt_adv   (nz,ncrms)  )
      allocate( u_esmt_diff  (nz,ncrms)  )
      allocate( v_esmt_diff  (nz,ncrms)  )
 
@@ -87,14 +79,10 @@ module scalar_momentum_mod
      fluxt_u_esmt = zero
      fluxt_v_esmt = zero
 
-     u_esmt_wle  = zero
      u_esmt_sgs  = zero
-     u_esmt_adv  = zero
      u_esmt_diff = zero
 
-     v_esmt_wle  = zero
      v_esmt_sgs  = zero
-     v_esmt_adv  = zero
      v_esmt_diff = zero
 
      u_esmt_name = 'Zonal Velocity'
@@ -118,12 +106,8 @@ module scalar_momentum_mod
      deallocate( fluxb_v_esmt )
      deallocate( fluxt_u_esmt )
      deallocate( fluxt_v_esmt )
-     deallocate( u_esmt_wle   )
-     deallocate( v_esmt_wle   )
      deallocate( u_esmt_sgs   )
      deallocate( v_esmt_sgs   )
-     deallocate( u_esmt_adv   )
-     deallocate( v_esmt_adv   )
      deallocate( u_esmt_diff  )
      deallocate( v_esmt_diff  )
   end subroutine deallocate_scalar_momentum
