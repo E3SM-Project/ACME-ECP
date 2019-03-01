@@ -62,7 +62,6 @@ module vars
   real(crm_rknd), allocatable :: q0   (:,:)
   real(crm_rknd), allocatable :: qv0  (:,:)
   real(crm_rknd), allocatable :: tabs0(:,:)
-  real(crm_rknd), allocatable :: tl0  (:,:)
   real(crm_rknd), allocatable :: tv0  (:,:)
   real(crm_rknd), allocatable :: u0   (:,:)
   real(crm_rknd), allocatable :: v0   (:,:)
@@ -101,17 +100,6 @@ module vars
   real(crm_rknd), allocatable :: latitude (:,:,:)      ! latitude (degrees,:)
   real(crm_rknd), allocatable :: longitude(:,:,:)      ! longitude(degrees,:)
   real(crm_rknd), allocatable :: prec_xy  (:,:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: shf_xy   (:,:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: lhf_xy   (:,:,:) ! mean precip. rate for outout
-  real(crm_rknd), allocatable :: lwns_xy  (:,:,:) ! mean net lw at SFC
-  real(crm_rknd), allocatable :: swns_xy  (:,:,:) ! mean net sw at SFC
-  real(crm_rknd), allocatable :: lwnsc_xy (:,:,:) ! clear-sky mean net lw at SFC
-  real(crm_rknd), allocatable :: swnsc_xy (:,:,:) ! clear-sky mean net sw at SFC
-  real(crm_rknd), allocatable :: lwnt_xy  (:,:,:) ! mean net lw at TOA
-  real(crm_rknd), allocatable :: swnt_xy  (:,:,:) ! mean net sw at TOA
-  real(crm_rknd), allocatable :: lwntc_xy (:,:,:) ! clear-sky mean net lw at TOA
-  real(crm_rknd), allocatable :: swntc_xy (:,:,:) ! clear-sky mean net sw at TOA
-  real(crm_rknd), allocatable :: solin_xy (:,:,:) ! solar TOA insolation
   real(crm_rknd), allocatable :: pw_xy    (:,:,:)   ! precipitable water
   real(crm_rknd), allocatable :: cw_xy    (:,:,:)   ! cloud water path
   real(crm_rknd), allocatable :: iw_xy    (:,:,:)   ! ice water path
@@ -121,7 +109,6 @@ module vars
   real(crm_rknd), allocatable :: v200_xy  (:,:,:) ! v-wind at 200 mb
   real(crm_rknd), allocatable :: vsfc_xy  (:,:,:) ! v-wind at the surface
   real(crm_rknd), allocatable :: w500_xy  (:,:,:) ! w at 500 mb
-  real(crm_rknd), allocatable :: qocean_xy(:,:,:) ! ocean cooling in W/m2
 
   !----------------------------------------------------------------------
   ! Vertical profiles of quantities sampled for statitistics purposes:
@@ -137,12 +124,6 @@ module vars
   real(crm_rknd), allocatable :: vwle(:,:)
   real(crm_rknd), allocatable :: vwsb(:,:)
   real(crm_rknd), allocatable :: tkelediss(:,:)
-  real(crm_rknd), allocatable :: t2leadv(:,:)
-  real(crm_rknd), allocatable :: t2legrad(:,:)
-  real(crm_rknd), allocatable :: t2lediff(:,:)
-  real(crm_rknd), allocatable :: t2lediss(:,:)
-  real(crm_rknd), allocatable :: twleadv(:,:)
-  real(crm_rknd), allocatable :: twlediff(:,:)
   real(crm_rknd), allocatable :: tadv(:,:)
   real(crm_rknd), allocatable :: tdiff(:,:)
   real(crm_rknd), allocatable :: tlat(:,:)
@@ -221,7 +202,6 @@ contains
     allocate( q0(ncrms,nzm) )
     allocate( qv0(ncrms,nzm) )
     allocate( tabs0(ncrms,nzm) )
-    allocate( tl0  (nzm,ncrms) )
     allocate( tv0(ncrms,nzm) )
     allocate( u0(ncrms,nzm) )
     allocate( v0(ncrms,nzm) )
@@ -251,17 +231,6 @@ contains
     allocate( latitude(ncrms,nx,ny)        )
     allocate( longitude(ncrms,nx,ny)        )
     allocate( prec_xy(ncrms,nx,ny)  )
-    allocate( shf_xy   (nx,ny,ncrms)  )
-    allocate( lhf_xy   (nx,ny,ncrms)  )
-    allocate( lwns_xy  (nx,ny,ncrms)  )
-    allocate( swns_xy  (nx,ny,ncrms)  )
-    allocate( lwnsc_xy (nx,ny,ncrms)  )
-    allocate( swnsc_xy (nx,ny,ncrms)  )
-    allocate( lwnt_xy  (nx,ny,ncrms)  )
-    allocate( swnt_xy  (nx,ny,ncrms)  )
-    allocate( lwntc_xy (nx,ny,ncrms)  )
-    allocate( swntc_xy (nx,ny,ncrms)  )
-    allocate( solin_xy (nx,ny,ncrms)  )
     allocate( pw_xy(ncrms,nx,ny)    )
     allocate( cw_xy(ncrms,nx,ny)    )
     allocate( iw_xy(ncrms,nx,ny)    )
@@ -271,23 +240,16 @@ contains
     allocate( v200_xy(ncrms,nx,ny)  )
     allocate( vsfc_xy(ncrms,nx,ny)  )
     allocate( w500_xy(ncrms,nx,ny)  )
-    allocate( qocean_xy(nx,ny,ncrms)  )
-    allocate( twle(nz,ncrms) )
-    allocate( twsb(nz,ncrms) )
+    allocate( twle(ncrms,nz) )
+    allocate( twsb(ncrms,nz) )
     allocate( precflux(ncrms,nz) )
     allocate( uwle(ncrms,nz) )
     allocate( uwsb(ncrms,nz) )
     allocate( vwle(ncrms,nz) )
     allocate( vwsb(ncrms,nz) )
     allocate( tkelediss(ncrms,nz) )
-    allocate( t2leadv(nz,ncrms) )
-    allocate( t2legrad(nz,ncrms) )
-    allocate( t2lediff(nz,ncrms) )
-    allocate( t2lediss(nz,ncrms) )
-    allocate( twleadv(nz,ncrms) )
-    allocate( twlediff(nz,ncrms) )
-    allocate( tadv(nz,ncrms) )
-    allocate( tdiff(nz,ncrms) )
+    allocate( tadv     (ncrms,nz) )
+    allocate( tdiff    (ncrms,nz) )
     allocate( tlat(ncrms,nz) )
     allocate( tlatqi(ncrms,nz) )
     allocate( qifall(ncrms,nz) )
@@ -344,7 +306,6 @@ contains
     q0 = zero
     qv0 = zero
     tabs0 = zero
-    tl0 = zero
     tv0 = zero
     u0 = zero
     v0 = zero
@@ -374,17 +335,6 @@ contains
     latitude = zero
     longitude = zero
     prec_xy = zero
-    shf_xy = zero
-    lhf_xy = zero
-    lwns_xy = zero
-    swns_xy = zero
-    lwnsc_xy = zero
-    swnsc_xy = zero
-    lwnt_xy = zero
-    swnt_xy = zero
-    lwntc_xy = zero
-    swntc_xy = zero
-    solin_xy = zero
     pw_xy = zero
     cw_xy = zero
     iw_xy = zero
@@ -394,7 +344,6 @@ contains
     v200_xy = zero
     vsfc_xy = zero
     w500_xy = zero
-    qocean_xy = zero
     twle = zero
     twsb = zero
     precflux = zero
@@ -403,12 +352,6 @@ contains
     vwle = zero
     vwsb = zero
     tkelediss = zero
-    t2leadv = zero
-    t2legrad = zero
-    t2lediff = zero
-    t2lediss = zero
-    twleadv = zero
-    twlediff = zero
     tadv = zero
     tdiff = zero
     tlat = zero
@@ -469,7 +412,6 @@ contains
     deallocate( q0 )
     deallocate( qv0 )
     deallocate( tabs0 )
-    deallocate( tl0 )
     deallocate( tv0 )
     deallocate( u0 )
     deallocate( v0 )
@@ -499,17 +441,6 @@ contains
     deallocate( latitude )
     deallocate( longitude )
     deallocate( prec_xy )
-    deallocate( shf_xy )
-    deallocate( lhf_xy )
-    deallocate( lwns_xy )
-    deallocate( swns_xy )
-    deallocate( lwnsc_xy )
-    deallocate( swnsc_xy )
-    deallocate( lwnt_xy )
-    deallocate( swnt_xy )
-    deallocate( lwntc_xy )
-    deallocate( swntc_xy )
-    deallocate( solin_xy )
     deallocate( pw_xy )
     deallocate( cw_xy )
     deallocate( iw_xy )
@@ -519,7 +450,6 @@ contains
     deallocate( v200_xy )
     deallocate( vsfc_xy )
     deallocate( w500_xy )
-    deallocate( qocean_xy )
     deallocate( twle )
     deallocate( twsb )
     deallocate( precflux )
@@ -528,12 +458,6 @@ contains
     deallocate( vwle )
     deallocate( vwsb )
     deallocate( tkelediss )
-    deallocate( t2leadv )
-    deallocate( t2legrad )
-    deallocate( t2lediff )
-    deallocate( t2lediss )
-    deallocate( twleadv )
-    deallocate( twlediff )
     deallocate( tadv )
     deallocate( tdiff )
     deallocate( tlat )
