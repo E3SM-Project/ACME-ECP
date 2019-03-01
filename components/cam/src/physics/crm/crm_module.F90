@@ -758,8 +758,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
   !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
   !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
-  !!$acc enter data copyin(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz) async(asyncid)
-  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3) async(asyncid)
+  !!$acc enter data copyin(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle) async(asyncid)
+  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,gamaz) async(asyncid)
 
   !========================================================================================
   !----------------------------------------------------------------------------------------
@@ -1124,8 +1124,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
   !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
   !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,twle,tadv,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
-  !!$acc exit data copyout(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz) async(asyncid)
-  !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3) async(asyncid)
+  !!$acc exit data copyout(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle) async(asyncid)
+  !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,gamaz) async(asyncid)
 
   !$acc wait(asyncid)
 
