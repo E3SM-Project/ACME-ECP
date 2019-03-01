@@ -35,14 +35,14 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        call advect_scalar(ncrms,micro_field(:,:,:,:,k),mkadv(:,:,k),mkwle(:,:,k))
+        call advect_scalar(ncrms,micro_field(1,dimx1_s,dimy1_s,1,k),mkadv(1,1,k),mkwle(1,1,k))
       endif
     end do
 
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(ncrms,sgs_field(:,:,:,:,k),sgsadv(:,:,k),sgswle(:,:,k))
+        call advect_scalar(ncrms,sgs_field(1,dimx1_s,dimy1_s,1,k),sgsadv(1,1,k),sgswle(1,1,k))
       end do
     end if
 
