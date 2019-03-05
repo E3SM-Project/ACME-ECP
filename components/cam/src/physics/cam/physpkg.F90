@@ -1297,7 +1297,7 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
 
        if(ieflx_opt>0) then
 !MAML-Guangxing Lin
-          call check_ieflx_fix(c, ncol, nstep, shfavg_in(:ncol))
+          call check_ieflx_fix(c, ncol, nstep, num_inst_atm,cam_in(c)%shf(:ncol,:))
           !call check_ieflx_fix(c, ncol, nstep, cam_in(c)%shf)
 !MAML-Guangxing Lin       
        end if
@@ -1612,10 +1612,9 @@ end if ! l_tracer_aero
 
        call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
 !MAML-Guangxing Lin
-            state%q(1,pver,1),state%rpdel(1,pver) ,shfavg_in ,         &
-            lhfavg_in , cam_in%cflx,qexcess )
+            num_inst_atm,state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf(:,:) ,         &
+            cam_in%lhf(:,:) , cam_in%cflx,qexcess )
             !state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
-            !cam_in%lhf , cam_in%cflx )
 !MAML-Guangxing Lin
 
     end if 
@@ -2314,10 +2313,9 @@ subroutine tphysbc (ztodt,               &
        ! lowest model layer, thereby creating negative moisture.
        call qneg4('TPHYSBC '       ,lchnk               ,ncol  ,ztodt ,               &
 !MAML-Guangxing Lin
-            state%q(1,pver,1),state%rpdel(1,pver) ,shfavg_in ,         &
-            lhfavg_in , cam_in%cflx ,qexcess)
-!            state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
-!            cam_in%lhf , cam_in%cflx ,qexcess)
+            num_inst_atm,state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf(:,:) ,         &
+            cam_in%lhf(:,:) , cam_in%cflx,qexcess )
+            !state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
 !MAML-Guangxing Lin
     end if 
     call outfld('QEXCESS',qexcess,pcols,lchnk)

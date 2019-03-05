@@ -405,10 +405,10 @@ contains
        coszrs_pos(icol)  = max(coszen(icol),0._r8)
 !MAML-Guangxing Lin
        do j= 1, num_inst_atm
-         asdir_pos(i,j) = cam_in%asdir(i,j) * coszrs_pos(i)
-         asdif_pos(i,j) = cam_in%asdif(i,j) * coszrs_pos(i)
-         aldir_pos(i,j) = cam_in%aldir(i,j) * coszrs_pos(i)
-         aldif_pos(i,j) = cam_in%aldif(i,j) * coszrs_pos(i)
+         asdir_pos(icol,j) = cam_in%asdir(icol,j) * coszrs_pos(i)
+         asdif_pos(icol,j) = cam_in%asdif(icol,j) * coszrs_pos(i)
+         aldir_pos(icol,j) = cam_in%aldir(icol,j) * coszrs_pos(i)
+         aldif_pos(icol,j) = cam_in%aldif(icol,j) * coszrs_pos(i)
        enddo
     enddo
    ! asdir_pos(:ncol)  = cam_in%asdir(:ncol) * coszrs_pos(:ncol)
