@@ -112,7 +112,7 @@ contains
     do i=1,nx
       do icrm = 1 , ncrms
         rdz=1./dz(icrm)
-        rdz2=rdz*rdz *grdf_z(icrm,k)
+        rdz2=rdz*rdz *grdf_z(icrm,nzm-1)
         tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
         fw(icrm,i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(icrm,nzm)
         fu(icrm,i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
