@@ -60,6 +60,7 @@ module kurant_mod
       ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 
       if(ncycle.gt.max_ncycle) then
+        !$acc update host(wm,uhm,tabs)
         if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
         do icrm = 1 , ncrms
           write(0, 5550) cfl, cfl_sgs, latitude(icrm,1,1), longitude(icrm,1,1)

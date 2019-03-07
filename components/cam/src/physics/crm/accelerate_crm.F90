@@ -211,7 +211,7 @@ module accelerate_crm_mod
             utend_acc(icrm,k) = ubaccel(icrm,k) - u0(icrm,k)
             vtend_acc(icrm,k) = vbaccel(icrm,k) - v0(icrm,k)
           endif
-          if (ttend_acc(icrm,k) > ttend_threshold) then
+          if (abs(ttend_acc(icrm,k)) > ttend_threshold) then
             ceaseflag = .true.
           endif
         enddo
@@ -240,7 +240,7 @@ module accelerate_crm_mod
         write (iulog, *) 'accelerate_crm: mean-state acceleration not applied this step'
         write (iulog,*) 'crm: nstop increased from ', nstop, ' to ', int(nstop+(nstop-nstep+1)*crm_accel_factor)
         nstop = nstop + (nstop - nstep + 1)*crm_accel_factor ! only can happen once
-        !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
+        !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc)
         return
       endif
 
