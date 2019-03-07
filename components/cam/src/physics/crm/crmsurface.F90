@@ -14,25 +14,25 @@ contains
 
     !--------------------------------------------------------
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
-      !$acc parallel loop copyin(vtend,utend) copy(uhl,tauy0,vhl,taux0) async(asyncid)
+      !$acc parallel loop copyin(utend,vtend) copy(uhl,vhl,taux0,tauy0) async(asyncid)
       do icrm = 1 , ncrms
-        uhl(icrm) = uhl(icrm) + dtn*utend(1,icrm)
-        vhl(icrm) = vhl(icrm) + dtn*vtend(1,icrm)
+        uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
+        vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
         taux0(icrm) = 0.
         tauy0(icrm) = 0.
       enddo
-      !$acc parallel loop collapse(3) copyin(rho,uhl,vhl,u,v,z0,bflx,z) copy(tauy0,fluxbv,fluxbu,taux0) async(asyncid)
-      do icrm = 1 , ncrms
-        do j=1,ny
-          do i=1,nx
-            u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug)**2+(0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg)**2))
-            tau00 = rho(1,icrm) * diag_ustar(z(1,icrm),bflx(icrm),u_h0,z0(icrm))**2
-            fluxbu(i,j,icrm) = -(0.5*(u(i+1,j,1,icrm)+u(i,j,1,icrm))+ug-uhl(icrm))/u_h0*tau00
-            fluxbv(i,j,icrm) = -(0.5*(v(i,j+YES3D,1,icrm)+v(i,j,1,icrm))+vg-vhl(icrm))/u_h0*tau00
-            tmp = fluxbu(i,j,icrm)/dble(nx*ny)
+      !$acc parallel loop collapse(3) copyin(u,v,rho,z,bflx,z0,uhl,vhl) copy(fluxbu,fluxbv,taux0,tauy0) async(asyncid)
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)**2))
+            tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm),u_h0,z0(icrm))**2
+            fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
+            fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
+            tmp = fluxbu(icrm,i,j)/dble(nx*ny)
             !$acc atomic update
             taux0(icrm) = taux0(icrm) + tmp
-            tmp = fluxbv(i,j,icrm)/dble(nx*ny)
+            tmp = fluxbv(icrm,i,j)/dble(nx*ny)
             !$acc atomic update
             tauy0(icrm) = tauy0(icrm) + tmp
           end do

@@ -10,21 +10,21 @@ contains
     use params, only: dowallx, crm_rknd
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) f(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms)
-    real(crm_rknd) u(dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm,ncrms)
-    real(crm_rknd) w(dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz ,ncrms)
-    real(crm_rknd) rho(nzm,ncrms)
-    real(crm_rknd) rhow(nz,ncrms)
-    real(crm_rknd) flux(nz,ncrms)
+    real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+    real(crm_rknd) u(ncrms,dimx1_u:dimx2_u, dimy1_u:dimy2_u, nzm)
+    real(crm_rknd) w(ncrms,dimx1_w:dimx2_w, dimy1_w:dimy2_w, nz )
+    real(crm_rknd) rho(ncrms,nzm)
+    real(crm_rknd) rhow(ncrms,nz)
+    real(crm_rknd) flux(ncrms,nz)
 
-    real(crm_rknd) mx (0:nxp1 ,1,nzm,ncrms)
-    real(crm_rknd) mn (0:nxp1 ,1,nzm,ncrms)
-    real(crm_rknd) uuu(-1:nxp3,1,nzm,ncrms)
-    real(crm_rknd) www(-1:nxp2,1,nz ,ncrms)
+    real(crm_rknd) mx(ncrms,0:nxp1 ,1,nzm)
+    real(crm_rknd) mn(ncrms,0:nxp1 ,1,nzm)
+    real(crm_rknd) uuu(ncrms,-1:nxp3,1,nzm)
+    real(crm_rknd) www(ncrms,-1:nxp2,1,nz )
     real(crm_rknd) eps, dd
     integer i,j,k,ic,ib,kc,kb,icrm
     logical nonos
-    real(crm_rknd) iadz(nzm,ncrms),irho(nzm,ncrms),irhow(nzm,ncrms)
+    real(crm_rknd) iadz(ncrms,nzm),irho(ncrms,nzm),irhow(ncrms,nzm)
     real(crm_rknd) x1, x2, a, b, a1, a2, y
     real(crm_rknd) andiff,across,pp,pn
 
@@ -42,29 +42,29 @@ contains
     !$acc enter data create(mx,mn,uuu,www,iadz,irho,irhow) async(asyncid)
 
     !$acc parallel loop collapse(2) copy(www) async(asyncid)
-    do icrm = 1 , ncrms
-      do i = -1 , nxp2
-        www(i,j,nz,icrm)=0.
+    do i = -1 , nxp2
+      do icrm = 1 , ncrms
+        www(icrm,i,j,nz)=0.
       enddo
     enddo
 
     if (dowallx) then
       if (mod(rank,nsubdomains_x).eq.0) then
         !$acc parallel loop collapse(3) copy(u) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do i=dimx1_u,1
-              u(i,j,k,icrm) = 0.
+        do k=1,nzm
+          do i=dimx1_u,1
+            do icrm = 1 , ncrms
+              u(icrm,i,j,k) = 0.
             enddo
           enddo
         enddo
       endif
       if (mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
         !$acc parallel loop collapse(3) copy(u) async(asyncid)
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do i=nx+1,dimx2_u
-              u(i,j,k,icrm) = 0.
+        do k=1,nzm
+          do i=nx+1,dimx2_u
+            do icrm = 1 , ncrms
+              u(icrm,i,j,k) = 0.
             enddo
           enddo
         enddo
@@ -75,143 +75,143 @@ contains
 
     if (nonos) then
       !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=0,nxp1
+      do k=1,nzm
+        do i=0,nxp1
+          do icrm = 1 , ncrms
             kc=min(nzm,k+1)
             kb=max(1,k-1)
             ib=i-1
             ic=i+1
-            mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm))
-            mn(i,j,k,icrm)=min(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm))
+            mx(icrm,i,j,k)=max(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k))
+            mn(icrm,i,j,k)=min(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k))
           enddo
         enddo
       enddo
     endif  ! nonos
 
     !$acc parallel loop collapse(3) copyin(u,f,w) copy(uuu,www,flux) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do i=-1,nxp3
+    do k=1,nzm
+      do i=-1,nxp3
+        do icrm = 1 , ncrms
           kb=max(1,k-1)
-          uuu(i,j,k,icrm)=max(real(0.,crm_rknd),u(i,j,k,icrm))*f(i-1,j,k,icrm)+&
-                          min(real(0.,crm_rknd),u(i,j,k,icrm))*f(i,j,k,icrm)
-          if (i <= nxp2) www(i,j,k,icrm)=max(real(0.,crm_rknd),w(i,j,k,icrm))*&
-                                          f(i,j,kb,icrm)+min(real(0.,crm_rknd),w(i,j,k,icrm))*f(i,j,k,icrm)
-          if (i == 0) flux(k,icrm) = 0.
+          uuu(icrm,i,j,k)=max(real(0.,crm_rknd),u(icrm,i,j,k))*f(icrm,i-1,j,k)+&
+                          min(real(0.,crm_rknd),u(icrm,i,j,k))*f(icrm,i,j,k)
+          if (i <= nxp2) www(icrm,i,j,k)=max(real(0.,crm_rknd),w(icrm,i,j,k))*&
+                                          f(icrm,i,j,kb)+min(real(0.,crm_rknd),w(icrm,i,j,k))*f(icrm,i,j,k)
+          if (i == 0) flux(icrm,k) = 0.
         enddo
       enddo
     enddo
     !$acc parallel loop collapse(2) copyin(rho,adz,rhow) copy(irho,iadz,irhow) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        irho(k,icrm) = 1./rho(k,icrm)
-        iadz(k,icrm) = 1./adz(k,icrm)
-        irhow(k,icrm)=1./(rhow(k,icrm)*adz(k,icrm))
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        irho(icrm,k) = 1./rho(icrm,k)
+        iadz(icrm,k) = 1./adz(icrm,k)
+        irhow(icrm,k)=1./(rhow(icrm,k)*adz(icrm,k))
       enddo
     enddo
-    !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f,flux) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do i=-1,nxp2
+    !$acc parallel loop collapse(3) copyin(www,uuu,iadz,irho) copy(flux,f) async(asyncid)
+    do k=1,nzm
+      do i=-1,nxp2
+        do icrm = 1 , ncrms
           if (i >= 1 .and. i <= nx) then
             !$acc atomic update
-            flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
+            flux(icrm,k) = flux(icrm,k) + www(icrm,i,j,k)
           endif
-          f(i,j,k,icrm) = f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm)  + &
-                                          (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm)
+          f(icrm,i,j,k) = f(icrm,i,j,k) - (uuu(icrm,i+1,j,k)-uuu(icrm,i,j,k)  + &
+                                          (www(icrm,i,j,k+1)-www(icrm,i,j,k))*iadz(icrm,k))*irho(icrm,k)
         enddo
       enddo
     enddo
 
     !$acc parallel loop collapse(3) copyin(adz,f,u,irho,w,irhow) copy(uuu,www) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do i=0,nxp2
+    do k=1,nzm
+      do i=0,nxp2
+        do icrm = 1 , ncrms
           kc=min(nzm,k+1)
           kb=max(1,k-1)
-          dd=2./(kc-kb)/adz(k,icrm)
+          dd=2./(kc-kb)/adz(icrm,k)
           ib=i-1
-          uuu(i,j,k,icrm)=andiff(f(ib,j,k,icrm),f(i,j,k,icrm),u(i,j,k,icrm),irho(k,icrm)) &
-          - across(dd*(f(ib,j,kc,icrm)+f(i,j,kc,icrm)-f(ib,j,kb,icrm)-f(i,j,kb,icrm)), &
-          u(i,j,k,icrm), w(ib,j,k,icrm)+w(ib,j,kc,icrm)+w(i,j,k,icrm)+w(i,j,kc,icrm)) *irho(k,icrm)
+          uuu(icrm,i,j,k)=andiff(f(icrm,ib,j,k),f(icrm,i,j,k),u(icrm,i,j,k),irho(icrm,k)) &
+          - across(dd*(f(icrm,ib,j,kc)+f(icrm,i,j,kc)-f(icrm,ib,j,kb)-f(icrm,i,j,kb)), &
+          u(icrm,i,j,k), w(icrm,ib,j,k)+w(icrm,ib,j,kc)+w(icrm,i,j,k)+w(icrm,i,j,kc)) *irho(icrm,k)
           if (i <= nxp1) then
             ic=i+1
-            www(i,j,k,icrm)=andiff(f(i,j,kb,icrm),f(i,j,k,icrm),w(i,j,k,icrm),irhow(k,icrm)) &
-            -across(f(ic,j,kb,icrm)+f(ic,j,k,icrm)-f(ib,j,kb,icrm)-f(ib,j,k,icrm), &
-            w(i,j,k,icrm), u(i,j,kb,icrm)+u(i,j,k,icrm)+u(ic,j,k,icrm)+u(ic,j,kb,icrm)) *irho(k,icrm)
+            www(icrm,i,j,k)=andiff(f(icrm,i,j,kb),f(icrm,i,j,k),w(icrm,i,j,k),irhow(icrm,k)) &
+            -across(f(icrm,ic,j,kb)+f(icrm,ic,j,k)-f(icrm,ib,j,kb)-f(icrm,ib,j,k), &
+            w(icrm,i,j,k), u(icrm,i,j,kb)+u(icrm,i,j,k)+u(icrm,ic,j,k)+u(icrm,ic,j,kb)) *irho(icrm,k)
           endif
         enddo
       enddo
     enddo
 
     !$acc parallel loop collapse(2) copy(www) async(asyncid)
-    do icrm = 1 , ncrms
-      do i = -1 , nxp2
-        www(i,j,1,icrm) = 0.
+    do i = -1 , nxp2
+      do icrm = 1 , ncrms
+        www(icrm,i,j,1) = 0.
       enddo
     enddo
     !---------- non-osscilatory option ---------------
 
     if (nonos) then
       !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=0,nxp1
+      do k=1,nzm
+        do i=0,nxp1
+          do icrm = 1 , ncrms
             kc=min(nzm,k+1)
             kb=max(1,k-1)
             ib=i-1
             ic=i+1
-            mx(i,j,k,icrm)=max(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm),mx(i,j,k,icrm))
-            mn(i,j,k,icrm)=min(f(ib,j,k,icrm),f(ic,j,k,icrm),f(i,j,kb,icrm),f(i,j,kc,icrm),f(i,j,k,icrm),mn(i,j,k,icrm))
+            mx(icrm,i,j,k)=max(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k),mx(icrm,i,j,k))
+            mn(icrm,i,j,k)=min(f(icrm,ib,j,k),f(icrm,ic,j,k),f(icrm,i,j,kb),f(icrm,i,j,kc),f(icrm,i,j,k),mn(icrm,i,j,k))
           enddo
         enddo
       enddo
 
-      !$acc parallel loop collapse(3) copyin(f,rho,uuu,www,iadz) copy(mx,mn) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=0,nxp1
+      !$acc parallel loop collapse(3) copyin(rho,f,uuu,www,iadz) copy(mx,mn) async(asyncid)
+      do k=1,nzm
+        do i=0,nxp1
+          do icrm = 1 , ncrms
             kc=min(nzm,k+1)
             ic=i+1
-            mx(i,j,k,icrm)=rho(k,icrm)*(mx(i,j,k,icrm)-f(i,j,k,icrm))/(pn(uuu(ic,j,k,icrm)) + &
-                           pp(uuu(i,j,k,icrm))+iadz(k,icrm)*(pn(www(i,j,kc,icrm)) + pp(www(i,j,k,icrm)))+eps)
-            mn(i,j,k,icrm)=rho(k,icrm)*(f(i,j,k,icrm)-mn(i,j,k,icrm))/(pp(uuu(ic,j,k,icrm)) + &
-                           pn(uuu(i,j,k,icrm))+iadz(k,icrm)*(pp(www(i,j,kc,icrm)) + pn(www(i,j,k,icrm)))+eps)
+            mx(icrm,i,j,k)=rho(icrm,k)*(mx(icrm,i,j,k)-f(icrm,i,j,k))/(pn(uuu(icrm,ic,j,k)) + &
+                           pp(uuu(icrm,i,j,k))+iadz(icrm,k)*(pn(www(icrm,i,j,kc)) + pp(www(icrm,i,j,k)))+eps)
+            mn(icrm,i,j,k)=rho(icrm,k)*(f(icrm,i,j,k)-mn(icrm,i,j,k))/(pp(uuu(icrm,ic,j,k)) + &
+                           pn(uuu(icrm,i,j,k))+iadz(icrm,k)*(pp(www(icrm,i,j,kc)) + pn(www(icrm,i,j,k)))+eps)
           enddo
         enddo
       enddo
 
       !$acc parallel loop collapse(3) copyin(mx,mn) copy(uuu,www,flux) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nxp1
+      do k=1,nzm
+        do i=1,nxp1
+          do icrm = 1 , ncrms
             ib=i-1
-            uuu(i,j,k,icrm)= pp(uuu(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(ib,j,k,icrm)) - &
-                             pn(uuu(i,j,k,icrm))*min(real(1.,crm_rknd),mx(ib,j,k,icrm),mn(i,j,k,icrm))
+            uuu(icrm,i,j,k)= pp(uuu(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,k), mn(icrm,ib,j,k)) - &
+                             pn(uuu(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,ib,j,k),mn(icrm,i,j,k))
             if (i <= nx) then
               kb=max(1,k-1)
-              www(i,j,k,icrm)= pp(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,k,icrm), mn(i,j,kb,icrm)) - &
-                               pn(www(i,j,k,icrm))*min(real(1.,crm_rknd),mx(i,j,kb,icrm),mn(i,j,k,icrm))
+              www(icrm,i,j,k)= pp(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,k), mn(icrm,i,j,kb)) - &
+                               pn(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,kb),mn(icrm,i,j,k))
               !$acc atomic update
-              flux(k,icrm) = flux(k,icrm) + www(i,j,k,icrm)
+              flux(icrm,k) = flux(icrm,k) + www(icrm,i,j,k)
             endif
           enddo
         enddo
       enddo
     endif ! nonos
 
-    !$acc parallel loop collapse(3) copyin(uuu,www,iadz,irho) copy(f) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do i=1,nx
+    !$acc parallel loop collapse(3) copyin(f,uuu,www,iadz,irho) copy(f) async(asyncid)
+    do k=1,nzm
+      do i=1,nx
+        do icrm = 1 , ncrms
           kc=k+1
           ! MK: added fix for very small negative values (relative to positive values)
           !     especially  when such large numbers as
           !     hydrometeor concentrations are advected. The reason for negative values is
           !     most likely truncation error.
-          f(i,j,k,icrm)= max(real(0.,crm_rknd), f(i,j,k,icrm) - (uuu(i+1,j,k,icrm)-uuu(i,j,k,icrm) + &
-                         (www(i,j,k+1,icrm)-www(i,j,k,icrm))*iadz(k,icrm))*irho(k,icrm))
+          f(icrm,i,j,k)= max(real(0.,crm_rknd), f(icrm,i,j,k) - (uuu(icrm,i+1,j,k)-uuu(icrm,i,j,k) + &
+                         (www(icrm,i,j,k+1)-www(icrm,i,j,k))*iadz(icrm,k))*irho(icrm,k))
         enddo
       enddo
     enddo

@@ -12,19 +12,19 @@ contains
     integer, intent(in) :: ncrms
     ! input
     integer :: dimx1_d,dimx2_d,dimy1_d,dimy2_d
-    real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
-    real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
-    real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
-    real(crm_rknd) field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, ncrms) ! scalar
-    real(crm_rknd) tkh(0:nxp1,1-YES3D:nyp1,nzm,ncrms) ! eddy conductivity
-    real(crm_rknd) fluxb(nx,ny,ncrms)   ! bottom flux
-    real(crm_rknd) fluxt(nx,ny,ncrms)   ! top flux
-    real(crm_rknd) rho(nzm,ncrms)
-    real(crm_rknd) rhow(nz,ncrms)
-    real(crm_rknd) flux(nz,ncrms)
+    real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
+    real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
+    real(crm_rknd) field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) ! scalar
+    real(crm_rknd) tkh(ncrms,0:nxp1,1-YES3D:nyp1,nzm) ! eddy conductivity
+    real(crm_rknd) fluxb(ncrms,nx,ny)   ! bottom flux
+    real(crm_rknd) fluxt(ncrms,nx,ny)   ! top flux
+    real(crm_rknd) rho(ncrms,nzm)
+    real(crm_rknd) rhow(ncrms,nz)
+    real(crm_rknd) flux(ncrms,nz)
     ! local
-    real(crm_rknd) flx_x(0:nx,0:ny,0:nzm,ncrms), flx_y(0:nx,0:ny,0:nzm,ncrms), flx_z(0:nx,0:ny,0:nzm,ncrms)
-    real(crm_rknd) dfdt(nx,ny,nz,ncrms)
+    real(crm_rknd) flx_x(ncrms,0:nx,0:ny,0:nzm), flx_y(ncrms,0:nx,0:ny,0:nzm), flx_z(ncrms,0:nx,0:ny,0:nzm)
+    real(crm_rknd) dfdt(ncrms,nx,ny,nz)
     real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx5,rdy5,rdz5,tmp
     real(crm_rknd) dxy,dyx,tkx,tky,tkz,rhoi
     integer i,j,k,ib,ic,jb,jc,kc,kb,icrm
@@ -36,26 +36,37 @@ contains
     dxy=dx/dy
     dyx=dy/dx
 
-    do icrm = 1 , ncrms
-      dfdt(:,:,:,icrm)=0.
+    !$acc enter data create(flx_x,flx_y,flx_z,dfdt) async(asyncid)
+
+    !$acc parallel loop collapse(4) copy(dfdt) async(asyncid)
+    do k = 1 , nzm
+      do j = 1 , ny
+        do i = 1 , nx
+          do icrm = 1 , ncrms
+            dfdt(icrm,i,j,k)=0.
+          enddo
+        enddo
+      enddo
     enddo
 
     !-----------------------------------------
     if(dowallx) then
       if(mod(rank,nsubdomains_x).eq.0) then
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do j=1,ny
-              field(0,j,k,icrm) = field(1,j,k,icrm)
+        !$acc parallel loop collapse(3) copy(field) async(asyncid)
+        do k=1,nzm
+          do j=1,ny
+            do icrm = 1 , ncrms
+              field(icrm,0,j,k) = field(icrm,1,j,k)
             enddo
           enddo
         enddo
       endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do j=1,ny
-              field(nx+1,j,k,icrm) = field(nx,j,k,icrm)
+        !$acc parallel loop collapse(3) copy(field) async(asyncid)
+        do k=1,nzm
+          do j=1,ny
+            do icrm = 1 , ncrms
+              field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
             enddo
           enddo
         enddo
@@ -64,19 +75,21 @@ contains
 
     if(dowally) then
       if(rank.lt.nsubdomains_x) then
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do i=1,nx
-              field(i,1-YES3D,k,icrm) = field(i,1,k,icrm)
+        !$acc parallel loop collapse(3) copy(field) async(asyncid)
+        do k=1,nzm
+          do i=1,nx
+            do icrm = 1 , ncrms
+              field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
             enddo
           enddo
         enddo
       endif
       if(rank.gt.nsubdomains-nsubdomains_x-1) then
-        do icrm = 1 , ncrms
-          do k=1,nzm
-            do i=1,ny
-              field(i,ny+YES3D,k,icrm) = field(i,ny,k,icrm)
+        !$acc parallel loop collapse(3) copy(field) async(asyncid)
+        do k=1,nzm
+          do i=1,nx
+            do icrm = 1 , ncrms
+              field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
             enddo
           enddo
         enddo
@@ -84,99 +97,110 @@ contains
     endif
 
     if(dowally) then
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
-            field(i,1-YES3D,k,icrm) = field(i,1,k,icrm)
+      !$acc parallel loop collapse(3) copy(field) async(asyncid)
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
+            field(icrm,i,1-YES3D,k) = field(icrm,i,1,k)
           enddo
         enddo
       enddo
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
-            field(i,ny+YES3D,k,icrm) = field(i,ny,k,icrm)
+      !$acc parallel loop collapse(3) copy(field) async(asyncid)
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
+            field(icrm,i,ny+YES3D,k) = field(icrm,i,ny,k)
           enddo
         enddo
       enddo
     endif
 
     !  Horizontal diffusion:
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=0,ny
-          do i=0,nx
+    !$acc parallel loop collapse(4) copyin(grdf_x,grdf_y,tkh,field) copy(flx_x,flx_y) async(asyncid)
+    do k=1,nzm
+      do j=0,ny
+        do i=0,nx
+          do icrm = 1 , ncrms
             if (j >= 1) then
               ic=i+1
-              rdx5=0.5*rdx2  * grdf_x(k,icrm)
-              tkx=rdx5*(tkh(i,j,k,icrm)+tkh(ic,j,k,icrm))
-              flx_x(i,j,k,icrm)=-tkx*(field(ic,j,k,icrm)-field(i,j,k,icrm))
+              rdx5=0.5*rdx2  * grdf_x(icrm,k)
+              tkx=rdx5*(tkh(icrm,i,j,k)+tkh(icrm,ic,j,k))
+              flx_x(icrm,i,j,k)=-tkx*(field(icrm,ic,j,k)-field(icrm,i,j,k))
             endif
             if (i >= 1) then
               jc=j+1
-              rdy5=0.5*rdy2  * grdf_y(k,icrm)
-              tky=rdy5*(tkh(i,j,k,icrm)+tkh(i,jc,k,icrm))
-              flx_y(i,j,k,icrm)=-tky*(field(i,jc,k,icrm)-field(i,j,k,icrm))
+              rdy5=0.5*rdy2  * grdf_y(icrm,k)
+              tky=rdy5*(tkh(icrm,i,j,k)+tkh(icrm,i,jc,k))
+              flx_y(icrm,i,j,k)=-tky*(field(icrm,i,jc,k)-field(icrm,i,j,k))
             endif
           enddo
         enddo
       enddo
     enddo
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    !$acc parallel loop collapse(4) copyin(flx_x,flx_y) copy(dfdt) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             ib=i-1
-            dfdt(i,j,k,icrm)=dfdt(i,j,k,icrm)-(flx_x(i,j,k,icrm)-flx_x(ib,j,k,icrm))
+            dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(flx_x(icrm,i,j,k)-flx_x(icrm,ib,j,k))
             jb=j-1
-            dfdt(i,j,k,icrm)=dfdt(i,j,k,icrm)-(flx_y(i,j,k,icrm)-flx_y(i,jb,k,icrm))
+            dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(flx_y(icrm,i,j,k)-flx_y(icrm,i,jb,k))
           enddo
         enddo
       enddo ! k
     enddo
 
     !  Vertical diffusion:
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        flux(k,icrm) = 0.
+    !$acc parallel loop collapse(2) copy(flux) async(asyncid)
+    do k = 1 , nzm
+      do icrm = 1 , ncrms
+        flux(icrm,k) = 0.
       enddo
     enddo
 
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    !$acc parallel loop collapse(4) copyin(rhow,adzw,dz,grdf_z,tkh,field,fluxt,fluxb) copy(flx_z,flux) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             if (k <= nzm-1) then
               kc=k+1
-              rhoi = rhow(kc,icrm)/adzw(kc,icrm)
+              rhoi = rhow(icrm,kc)/adzw(icrm,kc)
               rdz2=1./(dz(icrm)*dz(icrm))
-              rdz5=0.5*rdz2 * grdf_z(k,icrm)
-              tkz=rdz5*(tkh(i,j,k,icrm)+tkh(i,j,kc,icrm))
-              flx_z(i,j,k,icrm)=-tkz*(field(i,j,kc,icrm)-field(i,j,k,icrm))*rhoi
-              flux(kc,icrm) = flux(kc,icrm) + flx_z(i,j,k,icrm)
+              rdz5=0.5*rdz2 * grdf_z(icrm,k)
+              tkz=rdz5*(tkh(icrm,i,j,k)+tkh(icrm,i,j,kc))
+              flx_z(icrm,i,j,k)=-tkz*(field(icrm,i,j,kc)-field(icrm,i,j,k))*rhoi
+              !$acc atomic update
+              flux(icrm,kc) = flux(icrm,kc) + flx_z(icrm,i,j,k)
             elseif (k == nzm) then
-              tmp=1./adzw(nz,icrm)
+              tmp=1./adzw(icrm,nz)
               rdz=1./dz(icrm)
-              flx_z(i,j,0,icrm)=fluxb(i,j,icrm)*rdz*rhow(1,icrm)
-              flx_z(i,j,nzm,icrm)=fluxt(i,j,icrm)*rdz*tmp*rhow(nz,icrm)
-              flux(1,icrm) = flux(1,icrm) + flx_z(i,j,0,icrm)
+              flx_z(icrm,i,j,0)=fluxb(icrm,i,j)*rdz*rhow(icrm,1)
+              flx_z(icrm,i,j,nzm)=fluxt(icrm,i,j)*rdz*tmp*rhow(icrm,nz)
+              !$acc atomic update
+              flux(icrm,1) = flux(icrm,1) + flx_z(icrm,i,j,0)
             endif
           enddo
         enddo
       enddo
     enddo
 
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    !$acc parallel loop collapse(4) copyin(adz,rho,flx_z) copy(dfdt,field) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             kb=k-1
-            rhoi = 1./(adz(k,icrm)*rho(k,icrm))
-            dfdt(i,j,k,icrm)=dtn*(dfdt(i,j,k,icrm)-(flx_z(i,j,k,icrm)-flx_z(i,j,kb,icrm))*rhoi)
-            field(i,j,k,icrm)=field(i,j,k,icrm)+dfdt(i,j,k,icrm)
+            rhoi = 1./(adz(icrm,k)*rho(icrm,k))
+            dfdt(icrm,i,j,k)=dtn*(dfdt(icrm,i,j,k)-(flx_z(icrm,i,j,k)-flx_z(icrm,i,j,kb))*rhoi)
+            field(icrm,i,j,k)=field(icrm,i,j,k)+dfdt(icrm,i,j,k)
           enddo
         enddo
       enddo
     enddo
+
+    !$acc exit data delete(flx_x,flx_y,flx_z,dfdt) async(asyncid)
 
   end subroutine diffuse_scalar3D
 

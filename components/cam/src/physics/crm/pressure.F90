@@ -23,11 +23,12 @@ contains
     integer, parameter :: nzslab = max(1,nzm / npressureslabs)
     integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
     integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
-    real(crm_rknd) f(nx2,ny2,nzslab,ncrms) ! global rhs and array for FTP coefficeients
-    real(crm_rknd) ff(nx+1,ny+2*YES3D,nzm,ncrms)  ! local (subdomain's) version of f
+    real(crm_rknd) f(ncrms,nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
+    real(crm_rknd) ff(ncrms,nx+1,ny+2*YES3D,nzm)  ! local (subdomain's) version of f
     real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
+    real(crm_rknd) ftmp(nx2,ny2)
     integer ifaxj(100),ifaxi(100)
-    real(8) a(nzm,ncrms),b,c(nzm,ncrms),e
+    real(8) a(ncrms,nzm),b,c(ncrms,nzm),e
     real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty
     real(8) alfa(nzm-1),beta(nzm-1)
     integer i, j, k, id, jd, m, n, it, jt, ii, jj, icrm
@@ -74,11 +75,11 @@ contains
     !   Form the horizontal slabs of right-hand-sides of Poisson equation
     n = 0
     !$acc parallel loop collapse(4) copyin(p) copy(f) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzslab
-        do j = 1,ny
-          do i = 1,nx
-            f(i,j,k,icrm) = p(i,j,k,icrm)
+    do k = 1,nzslab
+      do j = 1,ny
+        do i = 1,nx
+          do icrm = 1 , ncrms
+            f(icrm,i,j,k) = p(icrm,i,j,k)
           enddo
         enddo
       enddo
@@ -91,24 +92,27 @@ contains
       call fftfax_crm(nx_gl,ifaxi,trigxi)
       if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
     enddo
-    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzslab
-        call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
+    !$acc parallel loop gang copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) async(asyncid)
+    do k=1,nzslab
+      !$acc loop vector private(work,ftmp)
+      do icrm = 1 , ncrms
+        ftmp = f(icrm,:,:,k)
+        call fft991_crm(ftmp,work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
         if(RUN3D) then
-          call fft991_crm(f(1,1,k,icrm),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
+          call fft991_crm(ftmp,work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
         endif
+        f(icrm,:,:,k) = ftmp
       enddo
     enddo
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
     !$acc parallel loop collapse(4) copyin(f) copy(ff) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzslab
-        do j = 1,nyp22-jwall
-          do i = 1,nxp1-iwall
-            ff(i,j,k,icrm) = f(i,j,k,icrm)
+    do k = 1,nzslab
+      do j = 1,nyp22-jwall
+        do i = 1,nxp1-iwall
+          do icrm = 1 , ncrms
+            ff(icrm,i,j,k) = f(icrm,i,j,k)
           enddo
         enddo
       enddo
@@ -117,16 +121,11 @@ contains
     !-------------------------------------------------
     !   Solve the tri-diagonal system for Fourier coeffiecients
     !   in the vertical for each subdomain:
-    !$acc parallel loop collapse(2) copyin(adz,adzw,dz,rhow) copy(a,c) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        a(k,icrm)=rhow(k,icrm)/(adz(k,icrm)*adzw(k,icrm)*dz(icrm)*dz(icrm))
-        c(k,icrm)=rhow(k+1,icrm)/(adz(k,icrm)*adzw(k+1,icrm)*dz(icrm)*dz(icrm))
-      enddo
-    enddo
-
-      do j=1,nyp22-jwall
-        do i=1,nxp1-iwall
+    !$acc parallel loop collapse(2) copyin(rhow,adz,adzw,dz) copy(a,c) async(asyncid)
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        a(icrm,k)=rhow(icrm,k)/(adz(icrm,k)*adzw(icrm,k)*dz(icrm)*dz(icrm))
+        c(icrm,k)=rhow(icrm,k+1)/(adz(icrm,k)*adzw(icrm,k+1)*dz(icrm)*dz(icrm))
       enddo
     enddo
 
@@ -160,10 +159,10 @@ contains
 
     !For working aroung PGI OpenACC bug where it didn't create enough gangs
     numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
-    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) copyin(a,c,rho,eign) copy(ff) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1,nyp22-jwall
-        do i=1,nxp1-iwall
+    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) copyin(eign,rho,a,c) copy(ff) async(asyncid)
+    do j=1,nyp22-jwall
+      do i=1,nxp1-iwall
+        do icrm = 1 , ncrms
           if(dowally) then
             jd=j+jt-1
           else
@@ -175,22 +174,22 @@ contains
             id=(i+it-0.1)/2.
           endif
           if(id+jd.eq.0) then
-            b=1._8/(eign(i,j)*rho(1,icrm)-a(1,icrm)-c(1,icrm))
-            alfa(1)=-c(1,icrm)*b
-            beta(1)=ff(i,j,1,icrm)*b
+            b=1._8/(eign(i,j)*rho(icrm,1)-a(icrm,1)-c(icrm,1))
+            alfa(1)=-c(icrm,1)*b
+            beta(1)=ff(icrm,i,j,1)*b
           else
-            b=1._8/(eign(i,j)*rho(1,icrm)-c(1,icrm))
-            alfa(1)=-c(1,icrm)*b
-            beta(1)=ff(i,j,1,icrm)*b
+            b=1._8/(eign(i,j)*rho(icrm,1)-c(icrm,1))
+            alfa(1)=-c(icrm,1)*b
+            beta(1)=ff(icrm,i,j,1)*b
           endif
           do k=2,nzm-1
-            e=1._8/(eign(i,j)*rho(k,icrm)-a(k,icrm)-c(k,icrm)+a(k,icrm)*alfa(k-1))
-            alfa(k)=-c(k,icrm)*e
-            beta(k)=(ff(i,j,k,icrm)-a(k,icrm)*beta(k-1))*e
+            e=1._8/(eign(i,j)*rho(icrm,k)-a(icrm,k)-c(icrm,k)+a(icrm,k)*alfa(k-1))
+            alfa(k)=-c(icrm,k)*e
+            beta(k)=(ff(icrm,i,j,k)-a(icrm,k)*beta(k-1))*e
           enddo
-          ff(i,j,nzm,icrm)=(ff(i,j,nzm,icrm)-a(nzm,icrm)*beta(nzm-1))/(eign(i,j)*rho(nzm,icrm)-a(nzm,icrm)+a(nzm,icrm)*alfa(nzm-1))
+          ff(icrm,i,j,nzm)=(ff(icrm,i,j,nzm)-a(icrm,nzm)*beta(nzm-1))/(eign(i,j)*rho(icrm,nzm)-a(icrm,nzm)+a(icrm,nzm)*alfa(nzm-1))
           do k=nzm-1,1,-1
-            ff(i,j,k,icrm)=alfa(k)*ff(i,j,k+1,icrm)+beta(k)
+            ff(icrm,i,j,k)=alfa(k)*ff(icrm,i,j,k+1)+beta(k)
           enddo
         enddo
       enddo
@@ -199,11 +198,11 @@ contains
     !-----------------------------------------------------------------
     n = 0
     !$acc parallel loop collapse(4) copyin(ff) copy(f) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzslab
-        do j = 1,nyp22-jwall
-          do i = 1,nxp1-iwall
-            f(i,j,k,icrm) = ff(i,j,k,icrm)
+    do k = 1,nzslab
+      do j = 1,nyp22-jwall
+        do i = 1,nxp1-iwall
+          do icrm = 1 , ncrms
+            f(icrm,i,j,k) = ff(icrm,i,j,k)
           enddo
         enddo
       enddo
@@ -211,13 +210,16 @@ contains
 
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
-    !$acc parallel loop collapse(2) copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) private(work) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzslab
+    !$acc parallel loop gang copyin(trigxj,ifaxj,trigxi,ifaxi) copy(f) async(asyncid)
+    do k=1,nzslab
+      !$acc loop vector private(work,ftmp)
+      do icrm = 1 , ncrms
+        ftmp = f(icrm,:,:,k)
         if(RUN3D) then
-          call fft991_crm(f(1,1,k,icrm),work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
+          call fft991_crm(ftmp,work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
         endif
-        call fft991_crm(f(1,1,k,icrm),work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
+        call fft991_crm(ftmp,work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
+        f(icrm,:,:,k) = ftmp
       enddo
     enddo
 
@@ -236,14 +238,14 @@ contains
     enddo
 
     n = 0
-    !$acc parallel loop collapse(4) copyin(iii,jjj,f) copy(p) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzslab
-        do j = 1-YES3D,ny
-          do i = 0,nx
+    !$acc parallel loop collapse(4) copyin(f,iii,jjj) copy(p) async(asyncid)
+    do k = 1,nzslab
+      do j = 1-YES3D,ny
+        do i = 0,nx
+          do icrm = 1 , ncrms
             jj=jjj(j)
             ii=iii(i)
-            p(i,j,k,icrm) = f(ii,jj,k,icrm)
+            p(icrm,i,j,k) = f(icrm,ii,jj,k)
           enddo
         enddo
       enddo

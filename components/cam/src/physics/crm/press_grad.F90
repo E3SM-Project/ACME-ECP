@@ -18,28 +18,28 @@ contains
     rdy=1./dy
 
     !$acc parallel loop collapse(4) copyin(p,dz,adzw) copy(dudt,dvdt,dwdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             kb=max(1,k-1)
-            rdz = 1./(dz(icrm)*adzw(k,icrm))
+            rdz = 1./(dz(icrm)*adzw(icrm,k))
             jb=j-YES3D
             ib=i-1
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(ib,j,k,icrm))*rdx
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(i,jb,k,icrm))*rdy
-            dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(p(i,j,k,icrm)-p(i,j,kb,icrm))*rdz
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,ib,j,k))*rdx
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,i,jb,k))*rdy
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(p(icrm,i,j,k)-p(icrm,i,j,kb))*rdz
           end do ! i
         end do ! j
       end do ! k
     enddo
 
-    !$acc parallel loop collapse(4) copy(p) copyin(rho) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
-          do i=0,nx
-            p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)  ! convert p'/rho to p'
+    !$acc parallel loop collapse(4) copyin(rho) copy(p) async(asyncid)
+    do k=1,nzm
+      do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
+        do i=0,nx
+          do icrm = 1 , ncrms
+            p(icrm,i,j,k)=p(icrm,i,j,k)*rho(icrm,k)  ! convert p'/rho to p'
           end do
         end do
       end do
@@ -48,10 +48,10 @@ contains
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
       !$acc parallel loop collapse(3) copy(dudt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            dudt(1,j,k,na,icrm) = 0.
+      do k=1,nzm
+        do j=1,ny
+            do icrm = 1 , ncrms
+            dudt(icrm,1,j,k,na) = 0.
           end do
         end do
       enddo
@@ -61,10 +61,10 @@ contains
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
       !$acc parallel loop collapse(3) copy(dvdt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
-            dvdt(i,1,k,na,icrm) = 0.
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
+            dvdt(icrm,i,1,k,na) = 0.
           end do
         end do
       enddo

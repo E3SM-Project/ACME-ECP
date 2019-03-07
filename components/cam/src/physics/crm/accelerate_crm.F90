@@ -137,18 +137,18 @@ module accelerate_crm_mod
       integer, intent(in   ) :: nstep
       integer, intent(inout) :: nstop
       logical, intent(inout) :: ceaseflag
-      real(rc) :: ubaccel(nzm,ncrms)   ! u before applying MSA tendency
-      real(rc) :: vbaccel(nzm,ncrms)   ! v before applying MSA tendency
-      real(rc) :: tbaccel(nzm,ncrms)   ! t before applying MSA tendency
-      real(rc) :: qtbaccel(nzm,ncrms)  ! Non-precipitating qt before applying MSA tendency
-      real(rc) :: ttend_acc(nzm,ncrms) ! MSA adjustment of t
-      real(rc) :: qtend_acc(nzm,ncrms) ! MSA adjustment of qt
-      real(rc) :: utend_acc(nzm,ncrms) ! MSA adjustment of u
-      real(rc) :: vtend_acc(nzm,ncrms) ! MSA adjustment of v
+      real(rc) :: ubaccel(ncrms,nzm)   ! u before applying MSA tendency
+      real(rc) :: vbaccel(ncrms,nzm)   ! v before applying MSA tendency
+      real(rc) :: tbaccel(ncrms,nzm)   ! t before applying MSA tendency
+      real(rc) :: qtbaccel(ncrms,nzm)  ! Non-precipitating qt before applying MSA tendency
+      real(rc) :: ttend_acc(ncrms,nzm) ! MSA adjustment of t
+      real(rc) :: qtend_acc(ncrms,nzm) ! MSA adjustment of qt
+      real(rc) :: utend_acc(ncrms,nzm) ! MSA adjustment of u
+      real(rc) :: vtend_acc(ncrms,nzm) ! MSA adjustment of v
       real(rc) :: tmp  ! temporary variable for atomic updates
       integer i, j, k, icrm  ! iteration variables
-      real(r8) :: qpoz(nzm,ncrms) ! total positive micro_field(:,:,k,idx_qt,:) in level k
-      real(r8) :: qneg(nzm,ncrms) ! total negative micro_field(:,:,k,idx_qt,:) in level k
+      real(r8) :: qpoz(ncrms,nzm) ! total positive micro_field(:,:,k,idx_qt,:) in level k
+      real(r8) :: qneg(ncrms,nzm) ! total negative micro_field(:,:,k,idx_qt,:) in level k
       real(r8) :: factor, qt_res ! local variables for redistributing moisture
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
@@ -162,36 +162,36 @@ module accelerate_crm_mod
       !! Compute the average among horizontal columns for each variable
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      !$acc parallel loop collapse(2) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          tbaccel (k,icrm) = 0
-          qtbaccel(k,icrm) = 0
+      !$acc parallel loop collapse(2) copy(tbaccel,qtbaccel,vbaccel,ubaccel) async(asyncid)
+      do k = 1, nzm
+        do icrm = 1, ncrms
+          tbaccel(icrm,k) = 0
+          qtbaccel(icrm,k) = 0
           if (crm_accel_uv) then
-            ubaccel(k,icrm) = 0
-            vbaccel(k,icrm) = 0
+            ubaccel(icrm,k) = 0
+            vbaccel(icrm,k) = 0
           endif
         enddo
       enddo
-      !$acc parallel loop collapse(4) copyin(t,qcl,qci,qv,u,v) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          do j = 1 , ny
-            do i = 1 , nx
+      !$acc parallel loop collapse(4) copyin(t,qcl,qci,qv,u,v) copy(tbaccel,qtbaccel,ubaccel,vbaccel) async(asyncid)
+      do k = 1, nzm
+        do j = 1 , ny
+          do i = 1 , nx
+            do icrm = 1, ncrms
               ! calculate tendency * dtn
-              tmp = t(i,j,k,icrm) * coef
+              tmp = t(icrm,i,j,k) * coef
               !$acc atomic update
-              tbaccel (k,icrm) = tbaccel (k,icrm) + tmp
-              tmp = (qcl(i,j, k, icrm) + qci(i,j, k, icrm) + qv(i,j, k, icrm)) * coef
+              tbaccel(icrm,k) = tbaccel(icrm,k) + tmp
+              tmp = (qcl(icrm,i,j, k) + qci(icrm,i,j, k) + qv(icrm,i,j, k)) * coef
               !$acc atomic update
-              qtbaccel(k,icrm) = qtbaccel(k,icrm) + tmp
+              qtbaccel(icrm,k) = qtbaccel(icrm,k) + tmp
               if (crm_accel_uv) then
-                tmp = u(i,j,k,icrm) * coef
+                tmp = u(icrm,i,j,k) * coef
                 !$acc atomic update
-                ubaccel(k,icrm) = ubaccel(k,icrm) + tmp
-                tmp = v(i,j,k,icrm) * coef
+                ubaccel(icrm,k) = ubaccel(icrm,k) + tmp
+                tmp = v(icrm,i,j,k) * coef
                 !$acc atomic update
-                vbaccel(k,icrm) = vbaccel(k,icrm) + tmp
+                vbaccel(icrm,k) = vbaccel(icrm,k) + tmp
               endif
             enddo
           enddo
@@ -202,16 +202,16 @@ module accelerate_crm_mod
       !! Compute the accelerated tendencies
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      !$acc parallel loop collapse(2) copyin(t0,q0,u0,v0) copy(ceaseflag) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          ttend_acc(k,icrm) = tbaccel (k,icrm) - t0(k,icrm)
-          qtend_acc(k,icrm) = qtbaccel(k,icrm) - q0(k,icrm)
+      !$acc parallel loop collapse(2) copyin(t0,q0,u0,v0,tbaccel,qtbaccel,ubaccel,vbaccel) copy(ttend_acc,qtend_acc,utend_acc,vtend_acc) copy(ceaseflag) async(asyncid)
+      do k = 1, nzm
+        do icrm = 1, ncrms
+          ttend_acc(icrm,k) = tbaccel(icrm,k) - t0(icrm,k)
+          qtend_acc(icrm,k) = qtbaccel(icrm,k) - q0(icrm,k)
           if (crm_accel_uv) then
-            utend_acc(k,icrm) = ubaccel(k,icrm) - u0(k,icrm)
-            vtend_acc(k,icrm) = vbaccel(k,icrm) - v0(k,icrm)
+            utend_acc(icrm,k) = ubaccel(icrm,k) - u0(icrm,k)
+            vtend_acc(icrm,k) = vbaccel(icrm,k) - v0(icrm,k)
           endif
-          if (ttend_acc(k,icrm) > ttend_threshold) then
+          if (ttend_acc(icrm,k) > ttend_threshold) then
             ceaseflag = .true.
           endif
         enddo
@@ -248,18 +248,18 @@ module accelerate_crm_mod
       !! Apply the accelerated tendencies
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      !$acc parallel loop collapse(4) copy(t,u,v,micro_field) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          do j = 1, ny
-            do i = 1, nx
+      !$acc parallel loop collapse(4) copyin(ttend_acc,utend_acc,vtend_acc,qtend_acc) copy(t,u,v,micro_field) async(asyncid)
+      do k = 1, nzm
+        do j = 1, ny
+          do i = 1, nx
+            do icrm = 1, ncrms
               ! don't let T go negative!
-              t(i,j,k,icrm) = max(tmin, t(i,j,k,icrm) + crm_accel_factor * ttend_acc(k,icrm))
+              t(icrm,i,j,k) = max(tmin, t(icrm,i,j,k) + crm_accel_factor * ttend_acc(icrm,k))
               if (crm_accel_uv) then
-                u(i,j,k,icrm) = u(i,j,k,icrm) + crm_accel_factor * utend_acc(k,icrm) 
-                v(i,j,k,icrm) = v(i,j,k,icrm) + crm_accel_factor * vtend_acc(k,icrm) 
+                u(icrm,i,j,k) = u(icrm,i,j,k) + crm_accel_factor * utend_acc(icrm,k) 
+                v(icrm,i,j,k) = v(icrm,i,j,k) + crm_accel_factor * vtend_acc(icrm,k) 
               endif
-              micro_field(i,j,k,icrm,idx_qt) = micro_field(i,j,k,icrm,idx_qt) + crm_accel_factor * qtend_acc(k,icrm)
+              micro_field(icrm,i,j,k,idx_qt) = micro_field(icrm,i,j,k,idx_qt) + crm_accel_factor * qtend_acc(icrm,k)
             enddo
           enddo
         enddo
@@ -269,62 +269,62 @@ module accelerate_crm_mod
       !! Fix negative micro and readjust among separate water species
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      !$acc parallel loop collapse(2) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          qpoz(k,icrm) = 0.
-          qneg(k,icrm) = 0.
+      !$acc parallel loop collapse(2) copy(qpoz,qneg) async(asyncid)
+      do k = 1, nzm
+        do icrm = 1, ncrms
+          qpoz(icrm,k) = 0.
+          qneg(icrm,k) = 0.
         enddo
       enddo
       ! separately accumulate positive and negative qt values in each layer k
-      !$acc parallel loop collapse(4) copyin(micro_field) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          do j = 1, ny
-            do i = 1, nx
-              if (micro_field(i,j,k,icrm,idx_qt) < 0.) then
+      !$acc parallel loop collapse(4) copyin(micro_field) copy(qneg,qpoz) async(asyncid)
+      do k = 1, nzm
+        do j = 1, ny
+          do i = 1, nx
+            do icrm = 1, ncrms
+              if (micro_field(icrm,i,j,k,idx_qt) < 0.) then
                 !$acc atomic update
-                qneg(k,icrm) = qneg(k,icrm) + micro_field(i,j,k,icrm,idx_qt)
+                qneg(icrm,k) = qneg(icrm,k) + micro_field(icrm,i,j,k,idx_qt)
               else
                 !$acc atomic update
-                qpoz(k,icrm) = qpoz(k,icrm) + micro_field(i,j,k,icrm,idx_qt)
+                qpoz(icrm,k) = qpoz(icrm,k) + micro_field(icrm,i,j,k,idx_qt)
               endif
             enddo
           enddo
         enddo
       enddo
-      !$acc parallel loop collapse(4) copy(micro_field,qv,qcl,qci) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1, nzm
-          do j = 1 , ny
-            do i = 1 , nx
-              if (qpoz(k,icrm) + qneg(k,icrm) <= 0.) then
+      !$acc parallel loop collapse(4) copyin(qpoz,qneg) copy(micro_field,qv,qcl,qci,micro_field) async(asyncid)
+      do k = 1, nzm
+        do j = 1 , ny
+          do i = 1 , nx
+            do icrm = 1, ncrms
+              if (qpoz(icrm,k) + qneg(icrm,k) <= 0.) then
                 ! all moisture depleted in layer
-                micro_field(i,j,k,icrm,idx_qt) = 0.
-                qv         (i,j,k,icrm    ) = 0.
-                qcl        (i,j,k,icrm    ) = 0.
-                qci        (i,j,k,icrm    ) = 0.
+                micro_field(icrm,i,j,k,idx_qt) = 0.
+                qv(icrm,i,j,k    ) = 0.
+                qcl(icrm,i,j,k    ) = 0.
+                qci(icrm,i,j,k    ) = 0.
               else
                 ! Clip qt values at 0 and remove the negative excess in each layer
                 ! proportionally from the positive qt fields in the layer
-                factor = 1._r8 + qneg(k,icrm) / qpoz(k,icrm)
-                micro_field(i,j,k,icrm,idx_qt) = max(0._rc, micro_field(i,j,k,icrm,idx_qt) * factor)
+                factor = 1._r8 + qneg(icrm,k) / qpoz(icrm,k)
+                micro_field(icrm,i,j,k,idx_qt) = max(0._rc, micro_field(icrm,i,j,k,idx_qt) * factor)
                 ! Partition micro_field == qv + qcl + qci following these rules:
                 !    (1) attempt to satisfy purely by adjusting qv
                 !    (2) adjust qcl and qci only if needed to ensure positivity
-                if (micro_field(i,j,k,icrm,idx_qt) <= 0._rc) then
-                  qv (i,j,k,icrm) = 0.
-                  qcl(i,j,k,icrm) = 0.
-                  qci(i,j,k,icrm) = 0.
+                if (micro_field(icrm,i,j,k,idx_qt) <= 0._rc) then
+                  qv(icrm,i,j,k) = 0.
+                  qcl(icrm,i,j,k) = 0.
+                  qci(icrm,i,j,k) = 0.
                 else
                   ! deduce qv as residual between qt - qcl - qci
-                  qt_res = micro_field(i,j,k,icrm,idx_qt) - qcl(i,j,k,icrm) - qci(i,j,k,icrm)
-                  qv(i,j,k,icrm) = max(0._rc, qt_res)
+                  qt_res = micro_field(icrm,i,j,k,idx_qt) - qcl(icrm,i,j,k) - qci(icrm,i,j,k)
+                  qv(icrm,i,j,k) = max(0._rc, qt_res)
                   if (qt_res < 0._r8) then
                     ! qv was clipped; need to reduce qcl and qci accordingly
-                    factor = 1._r8 + qt_res / (qcl(i,j,k,icrm) + qci(i,j,k,icrm))
-                    qcl(i,j,k,icrm) = qcl(i,j,k,icrm) * factor
-                    qci(i,j,k,icrm) = qci(i,j,k,icrm) * factor
+                    factor = 1._r8 + qt_res / (qcl(icrm,i,j,k) + qci(icrm,i,j,k))
+                    qcl(icrm,i,j,k) = qcl(icrm,i,j,k) * factor
+                    qci(icrm,i,j,k) = qci(icrm,i,j,k) * factor
                   endif
                 endif
               endif ! qpoz + qneg < 0.

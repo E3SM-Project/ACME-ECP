@@ -13,8 +13,8 @@ module kurant_mod
       implicit none
       integer, intent(in) :: ncrms
       integer i, j, k, ncycle1(1),ncycle2(1),icrm
-      real(crm_rknd) wm(nz,ncrms)  ! maximum vertical wind velocity
-      real(crm_rknd) uhm(nz,ncrms) ! maximum horizontal wind velocity
+      real(crm_rknd) wm(ncrms,nz)  ! maximum vertical wind velocity
+      real(crm_rknd) uhm(ncrms,nz) ! maximum horizontal wind velocity
       real(crm_rknd) cfl, cfl_sgs, tmp
       integer, parameter :: max_ncycle = 16
 
@@ -22,40 +22,35 @@ module kurant_mod
 
       ncycle = 1
       !$acc parallel loop collapse(2) copy(wm,uhm) async(asyncid)
-      do icrm = 1 , ncrms
-        do k = 1 , nz
-          wm (k,icrm) = 0.
-          uhm(k,icrm) = 0.
+      do k = 1 , nz
+        do icrm = 1 , ncrms
+          wm(icrm,k) = 0.
+          uhm(icrm,k) = 0.
         enddo
       enddo
 
-      !$acc parallel loop collapse(4) private(tmp) copy(wm,w_max,uhm,u_max) copyin(u,v,w) async(asyncid)
-      do icrm = 1 , ncrms
-        do k = 1,nzm
-          do j = 1 , ny
-            do i = 1 , nx
-              tmp = abs(w(i,j,k,icrm))
+      !$acc parallel loop collapse(4) private(tmp) copyin(u,v,w) copy(uhm,wm) async(asyncid)
+      do k = 1,nzm
+        do j = 1 , ny
+          do i = 1 , nx
+            do icrm = 1 , ncrms
+              tmp = abs(w(icrm,i,j,k))
               !$acc atomic update
-              wm(k,icrm) = max( wm(k,icrm) , tmp )
-              !$acc atomic update
-              w_max(icrm) = max( w_max(icrm) , tmp )
+              wm(icrm,k) = max( wm(icrm,k) , tmp )
 
-              tmp = sqrt(u(i,j,k,icrm)**2+YES3D*v(i,j,k,icrm)**2)
+              tmp = sqrt(u(icrm,i,j,k)**2+YES3D*v(icrm,i,j,k)**2)
               !$acc atomic update
-              uhm(k,icrm) = max( uhm(k,icrm) , tmp )
-              !$acc atomic update
-              u_max(icrm) = max( u_max(icrm) , tmp )
+              uhm(icrm,k) = max( uhm(icrm,k) , tmp )
             enddo
           enddo
         enddo
       enddo
 
       cfl = 0.
-      !$acc parallel loop collapse(2) private(tmp) copyin(wm,uhm,dz,adzw) copy(cfl) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          tmp = max( uhm(k,icrm)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(k,icrm),wm(k+1,icrm))*dt/(dz(icrm)*adzw(k,icrm)) )
-          !$acc atomic update
+      !$acc parallel loop collapse(2) private(tmp) copyin(uhm,wm,dz,adzw) reduction(max:cfl) async(asyncid)
+      do k=1,nzm
+        do icrm = 1 , ncrms
+          tmp = max( uhm(icrm,k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(icrm,k),wm(icrm,k+1))*dt/(dz(icrm)*adzw(icrm,k)) )
           cfl = max( cfl , tmp )
         end do
       end do
@@ -67,9 +62,9 @@ module kurant_mod
       if(ncycle.gt.max_ncycle) then
         if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
         do icrm = 1 , ncrms
-          write(0, 5550) cfl, cfl_sgs, latitude(1,1,icrm), longitude(1,1,icrm)
+          write(0, 5550) cfl, cfl_sgs, latitude(icrm,1,1), longitude(icrm,1,1)
           do k=1, nzm
-            write(0, 5551) k, wm(k,icrm), uhm(k,icrm), tabs(1,1,k,icrm)
+            write(0, 5551) k, wm(icrm,k), uhm(icrm,k), tabs(icrm,1,1,k)
           end do
         end do
         call task_abort()

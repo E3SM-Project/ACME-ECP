@@ -31,7 +31,7 @@ contains
         do k = 1, nzm
           do j = dimy1_u, dimy2_u
             do i = dimx1_u, 1
-              u(i,j,k,icrm) = 0.
+              u(icrm,i,j,k) = 0.
             enddo
           enddo
         enddo
@@ -40,7 +40,7 @@ contains
         do k = 1, nzm
           do j = dimy1_u, dimy2_u
             do i = nx+1, dimx2_u
-              u(i,j,k,icrm) = 0.
+              u(icrm,i,j,k) = 0.
             enddo
           enddo
         enddo
@@ -52,7 +52,7 @@ contains
         do k = 1, nzm
           do j = dimy1_v, 1
             do i = dimx1_v, dimx2_v
-              v(i,j,k,icrm) = 0.
+              v(icrm,i,j,k) = 0.
             enddo
           enddo
         enddo
@@ -61,7 +61,7 @@ contains
         do k = 1, nzm
           do j = ny+1, dimy2_v
             do i = dimx1_v, dimx2_v
-              v(i,j,k,icrm) = 0.
+              v(icrm,i,j,k) = 0.
             enddo
           enddo
         enddo
@@ -81,16 +81,16 @@ contains
 
       ! Inverse of rho, adz, adzw
       do k = 1, nzm
-        irho(k)  = 1. / rho(k,icrm)
-        iadz(k)  = 1. / adz(k,icrm)
-        iadzw(k) = 1. / adzw(k,icrm)
+        irho(k)  = 1. / rho(icrm,k)
+        iadz(k)  = 1. / adz(icrm,k)
+        iadzw(k) = 1. / adzw(icrm,k)
       enddo
 
       ! x direction
       do k = 1, nzm
         do j = -3, nyp4
           do i = -1, nxp3
-            cu(i,j,k) = u(i,j,k,icrm) * irho(k)
+            cu(i,j,k) = u(icrm,i,j,k) * irho(k)
           enddo
         enddo
       enddo
@@ -99,7 +99,7 @@ contains
       do k = 1, nzm
         do j = -1, nyp3
           do i = -3, nxp4
-            cv(i,j,k) = v(i,j,k,icrm) * irho(k)
+            cv(i,j,k) = v(icrm,i,j,k) * irho(k)
           enddo
         enddo
       enddo
@@ -108,10 +108,10 @@ contains
       cw(:,:,nz) = 0.   ! non-mass weighted and adz adjusted
       cw(:,:,1) = 0.
       do k = 2, nzm
-        irhow(k) = 1. / ( rhow(k,icrm) * adz(k,icrm) )  ! adz adjustment here
+        irhow(k) = 1. / ( rhow(icrm,k) * adz(icrm,k) )  ! adz adjustment here
         do j = -3, nyp4
           do i = -3, nxp4
-            cw(i,j,k) = w(i,j,k,icrm) * irhow(k)
+            cw(i,j,k) = w(icrm,i,j,k) * irhow(k)
           enddo
         enddo
       enddo
@@ -220,10 +220,10 @@ contains
         do j = 1, ny
           do i = 1, nx
             f(i,j,k) = max(0.,f(i,j,k) &
-            + ( u(i,j,k,icrm) * fx(i,j,k) - u(i+1,j,k,icrm) * fx(i+1,j,k) &
-            +   v(i,j,k,icrm) * fy(i,j,k) - v(i,j+1,k,icrm) * fy(i,j+1,k) &
-            + ( w(i,j,k,icrm) * fz(i,j,k) - w(i,j,k+1,icrm) * fz(i,j,k+1) ) * iadz(k) ) * irho(k))
-            flux(k) = flux(k) + w(i,j,k,icrm) * fz(i,j,k)
+            + ( u(icrm,i,j,k) * fx(i,j,k) - u(icrm,i+1,j,k) * fx(i+1,j,k) &
+            +   v(icrm,i,j,k) * fy(i,j,k) - v(icrm,i,j+1,k) * fy(i,j+1,k) &
+            + ( w(icrm,i,j,k) * fz(i,j,k) - w(icrm,i,j,k+1) * fz(i,j,k+1) ) * iadz(k) ) * irho(k))
+            flux(k) = flux(k) + w(icrm,i,j,k) * fz(i,j,k)
           enddo
         enddo
       enddo

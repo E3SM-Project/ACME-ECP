@@ -17,21 +17,21 @@ contains
     dtdy = dtn/dy
 
     !$acc parallel loop collapse(4) copyin(dz,rho,rhow,dt3) copy(dudt,dvdt,dwdt,u,v,w,misc) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             dtdz = dtn/dz(icrm)
-            rhox = rho(k,icrm)*dtdx
-            rhoy = rho(k,icrm)*dtdy
-            rhoz = rhow(k,icrm)*dtdz
-            dudt(i,j,k,nc,icrm) = u(i,j,k,icrm) + dt3(na) *(at*dudt(i,j,k,na,icrm)+bt*dudt(i,j,k,nb,icrm)+ct*dudt(i,j,k,nc,icrm))
-            dvdt(i,j,k,nc,icrm) = v(i,j,k,icrm) + dt3(na) *(at*dvdt(i,j,k,na,icrm)+bt*dvdt(i,j,k,nb,icrm)+ct*dvdt(i,j,k,nc,icrm))
-            dwdt(i,j,k,nc,icrm) = w(i,j,k,icrm) + dt3(na) *(at*dwdt(i,j,k,na,icrm)+bt*dwdt(i,j,k,nb,icrm)+ct*dwdt(i,j,k,nc,icrm))
-            u(i,j,k,icrm) = 0.5*(u(i,j,k,icrm)+dudt(i,j,k,nc,icrm)) * rhox
-            v(i,j,k,icrm) = 0.5*(v(i,j,k,icrm)+dvdt(i,j,k,nc,icrm)) * rhoy
-            misc(i,j,k,icrm) = 0.5*(w(i,j,k,icrm)+dwdt(i,j,k,nc,icrm))
-            w(i,j,k,icrm) = 0.5*(w(i,j,k,icrm)+dwdt(i,j,k,nc,icrm)) * rhoz
+            rhox = rho(icrm,k)*dtdx
+            rhoy = rho(icrm,k)*dtdy
+            rhoz = rhow(icrm,k)*dtdz
+            dudt(icrm,i,j,k,nc) = u(icrm,i,j,k) + dt3(na) *(at*dudt(icrm,i,j,k,na)+bt*dudt(icrm,i,j,k,nb)+ct*dudt(icrm,i,j,k,nc))
+            dvdt(icrm,i,j,k,nc) = v(icrm,i,j,k) + dt3(na) *(at*dvdt(icrm,i,j,k,na)+bt*dvdt(icrm,i,j,k,nb)+ct*dvdt(icrm,i,j,k,nc))
+            dwdt(icrm,i,j,k,nc) = w(icrm,i,j,k) + dt3(na) *(at*dwdt(icrm,i,j,k,na)+bt*dwdt(icrm,i,j,k,nb)+ct*dwdt(icrm,i,j,k,nc))
+            u(icrm,i,j,k) = 0.5*(u(icrm,i,j,k)+dudt(icrm,i,j,k,nc)) * rhox
+            v(icrm,i,j,k) = 0.5*(v(icrm,i,j,k)+dvdt(icrm,i,j,k,nc)) * rhoy
+            misc(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(icrm,i,j,k,nc))
+            w(icrm,i,j,k) = 0.5*(w(icrm,i,j,k)+dwdt(icrm,i,j,k,nc)) * rhoz
           end do
         end do
       end do

@@ -183,9 +183,9 @@ subroutine drop_activation_Ghan(ncrms,icrm,wnuc4, tair4, rhoair4,  &
       rhoair = rhoair4
 
 ! Set aerosol fields
-      na = naer(k, :,icrm) 
-      volume = vaer(k, :,icrm)
-      hygro = hgaer(k, :,icrm) 
+      na = naer(icrm,k, :) 
+      volume = vaer(icrm,k, :)
+      hygro = hgaer(icrm,k, :) 
 
       nmode = ntot_amode
       wmaxf = 10.0

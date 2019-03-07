@@ -29,12 +29,8 @@ module scalar_momentum_mod
    real(crm_rknd), allocatable :: u_esmt(:,:,:,:)       ! scalar zonal velocity
    real(crm_rknd), allocatable :: v_esmt(:,:,:,:)       ! scalar meridonal velocity
 
-   real(crm_rknd), allocatable :: u_esmt_wle (:,:)      ! resolved vertical flux
-   real(crm_rknd), allocatable :: v_esmt_wle (:,:)      !
    real(crm_rknd), allocatable :: u_esmt_sgs (:,:)      ! SGS vertical flux
    real(crm_rknd), allocatable :: v_esmt_sgs (:,:)      !
-   real(crm_rknd), allocatable :: u_esmt_adv (:,:)      ! large-scale tendency due to vertical advection
-   real(crm_rknd), allocatable :: v_esmt_adv (:,:)      !
    real(crm_rknd), allocatable :: u_esmt_diff(:,:)      ! large-scale tendency due to vertical diffusion
    real(crm_rknd), allocatable :: v_esmt_diff(:,:)      !
 
@@ -60,20 +56,16 @@ module scalar_momentum_mod
      integer, intent(in) :: ncrms
      real(crm_rknd) :: zero
 
-     allocate( u_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms) )
-     allocate( v_esmt (dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms) )
+     allocate( u_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+     allocate( v_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
      allocate( fluxb_u_esmt (nx, ny,ncrms) )
      allocate( fluxb_v_esmt (nx, ny,ncrms) )
      allocate( fluxt_u_esmt (nx, ny,ncrms) )
      allocate( fluxt_v_esmt (nx, ny,ncrms) )
 
-     allocate( u_esmt_wle   (nz,ncrms)  )
-     allocate( v_esmt_wle   (nz,ncrms)  )
      allocate( u_esmt_sgs   (nz,ncrms)  )
      allocate( v_esmt_sgs   (nz,ncrms)  )
-     allocate( u_esmt_adv   (nz,ncrms)  )
-     allocate( v_esmt_adv   (nz,ncrms)  )
      allocate( u_esmt_diff  (nz,ncrms)  )
      allocate( v_esmt_diff  (nz,ncrms)  )
 
@@ -87,14 +79,10 @@ module scalar_momentum_mod
      fluxt_u_esmt = zero
      fluxt_v_esmt = zero
 
-     u_esmt_wle  = zero
      u_esmt_sgs  = zero
-     u_esmt_adv  = zero
      u_esmt_diff = zero
 
-     v_esmt_wle  = zero
      v_esmt_sgs  = zero
-     v_esmt_adv  = zero
      v_esmt_diff = zero
 
      u_esmt_name = 'Zonal Velocity'
@@ -118,12 +106,8 @@ module scalar_momentum_mod
      deallocate( fluxb_v_esmt )
      deallocate( fluxt_u_esmt )
      deallocate( fluxt_v_esmt )
-     deallocate( u_esmt_wle   )
-     deallocate( v_esmt_wle   )
      deallocate( u_esmt_sgs   )
      deallocate( v_esmt_sgs   )
-     deallocate( u_esmt_adv   )
-     deallocate( v_esmt_adv   )
      deallocate( u_esmt_diff  )
      deallocate( v_esmt_diff  )
   end subroutine deallocate_scalar_momentum
@@ -150,15 +134,15 @@ subroutine scalar_momentum_tend(ncrms)
    do icrm = 1 , ncrms
      factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
 
-     call scalar_momentum_pgf(ncrms,icrm,u_esmt(:,:,:,icrm),u_esmt_pgf_3D)
-     call scalar_momentum_pgf(ncrms,icrm,v_esmt(:,:,:,icrm),v_esmt_pgf_3D)
+     call scalar_momentum_pgf(ncrms,icrm,u_esmt(icrm,:,:,:),u_esmt_pgf_3D)
+     call scalar_momentum_pgf(ncrms,icrm,v_esmt(icrm,:,:,:),v_esmt_pgf_3D)
 
      ! Add PGF tendency
      do k=1,nzm
         do j=1,ny
            do i=1,nx
-              u_esmt(i,j,k,icrm) = u_esmt(i,j,k,icrm) + u_esmt_pgf_3D(i,j,k)*dtn
-              v_esmt(i,j,k,icrm) = v_esmt(i,j,k,icrm) + v_esmt_pgf_3D(i,j,k)*dtn
+              u_esmt(icrm,i,j,k) = u_esmt(icrm,i,j,k) + u_esmt_pgf_3D(i,j,k)*dtn
+              v_esmt(icrm,i,j,k) = v_esmt(icrm,i,j,k) + v_esmt_pgf_3D(i,j,k)*dtn
            end do
         end do
      end do
@@ -212,7 +196,7 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
 
    ! Calculate layer thickness
    do k = 1,nzm
-      dz(k) = zi(k+1,icrm)-zi(k,icrm)
+      dz(k) = zi(icrm,k+1)-zi(icrm,k)
    enddo
    dz(nzm+1) = dz(nzm)
 
@@ -232,14 +216,14 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
          do i = 1,nx
             u_s_avg(k) = u_s_avg(k) + u_s(i,j,k)
             ! note that w is on interface levels
-            w_i(i,k) = ( w(i,j,k,icrm) + w(i,j,k+1,icrm) )/2.
+            w_i(i,k) = ( w(icrm,i,j,k) + w(icrm,i,j,k+1) )/2.
          end do
          u_s_avg(k) = u_s_avg(k) / real(nx,crm_rknd)
       end do
 
-      shr(1) = ( u_s_avg(2) - u_s_avg(1) )/(z(2,icrm)-z(1,icrm))      ! do we even care about first level?
+      shr(1) = ( u_s_avg(2) - u_s_avg(1) )/(z(icrm,2)-z(icrm,1))      ! do we even care about first level?
       do k = 2,nzm-1
-         shr(k) = ( u_s_avg(k+1) - u_s_avg(k-1) )/(z(k+1,icrm)-z(k-1,icrm))
+         shr(k) = ( u_s_avg(k+1) - u_s_avg(k-1) )/(z(icrm,k+1)-z(icrm,k-1))
       end do
 
       !------------------------------------------------------------------------

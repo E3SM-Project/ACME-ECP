@@ -12,147 +12,116 @@ contains
     use sgs, only: sgs_diagnose
     implicit none
     integer, intent(in) :: ncrms
-    integer i,j,k,kb,kc,k200(ncrms),k500(ncrms),k850(ncrms),icrm
+    integer i,j,k,kb,kc,icrm
     real(8) coef, coef1
     real(crm_rknd) tmp_lwp, tmp
 
     coef = 1./real(nx*ny,crm_rknd)
 
-    !$acc enter data create(k200,k500,k850) async(asyncid)
-
-    !$acc parallel loop collapse(2) copy(u0,v0,t01,q01,t0,tabs0,q0,qn0,qp0,p0) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        u0(k,icrm)=0.
-        v0(k,icrm)=0.
-        t01(k,icrm) = tabs0(k,icrm)
-        q01(k,icrm) = q0(k,icrm)
-        t0(k,icrm)=0.
-        tabs0(k,icrm)=0.
-        q0(k,icrm)=0.
-        qn0(k,icrm)=0.
-        qp0(k,icrm)=0.
-        p0(k,icrm)=0.
+    !$acc parallel loop collapse(2) copyin(tabs0,q0) copy(u0,v0,t01,q01,t0,tabs0,q0,qn0,qp0,p0) async(asyncid)
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        u0(icrm,k)=0.
+        v0(icrm,k)=0.
+        t01(icrm,k) = tabs0(icrm,k)
+        q01(icrm,k) = q0(icrm,k)
+        t0(icrm,k)=0.
+        tabs0(icrm,k)=0.
+        q0(icrm,k)=0.
+        qn0(icrm,k)=0.
+        qp0(icrm,k)=0.
+        p0(icrm,k)=0.
       enddo
     enddo
 
-    !$acc parallel loop copy(k200,k500,k850) copyin(pres) async(asyncid)
-    do icrm = 1 , ncrms
-      k200(icrm) = nzm
-      k500(icrm) = nzm
-      k850(icrm) = nzm
-      do k=1,nzm
-        kc=min(nzm,k+1)
-        kb=max(1,k-1)
-        if(pres(kc,icrm).le.200..and.pres(kb,icrm).gt.200.) k200(icrm)=k
-        if(pres(kc,icrm).le.500..and.pres(kb,icrm).gt.500.) k500(icrm)=k
-        if(pres(kc,icrm).le.850..and.pres(kb,icrm).gt.850.) k850(icrm)=k
-      enddo
-    enddo
-
-
-    !$acc parallel loop collapse(4) copyin(gamaz,qcl,qpl,p,u,qv,v,t,adz,qpi,qci,rho,dz) copy(p0,tabs,iw_xy,tabs0,cw_xy,qp0,q0,t0,u0,v0,pw_xy,qn0) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
-            coef1 = rho(k,icrm)*dz(icrm)*adz(k,icrm)*dtfactor
-            tabs(i,j,k,icrm) = t(i,j,k,icrm)-gamaz(k,icrm)+ fac_cond * (qcl(i,j,k,icrm)+qpl(i,j,k,icrm)) + fac_sub *(qci(i,j,k,icrm) + qpi(i,j,k,icrm))
+    !$acc parallel loop collapse(4) copyin(rho,dz,adz,gamaz,qcl,qpl,qci,qpi,qv,u,v,p,t) copy(tabs,u0,v0,p0,t0,tabs0,q0,qn0,qp0) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
+            tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)+ fac_cond * (qcl(icrm,i,j,k)+qpl(icrm,i,j,k)) + fac_sub *(qci(icrm,i,j,k) + qpi(icrm,i,j,k))
             !$acc atomic update
-            u0(k,icrm)=u0(k,icrm)+u(i,j,k,icrm)
+            u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
             !$acc atomic update
-            v0(k,icrm)=v0(k,icrm)+v(i,j,k,icrm)
+            v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
             !$acc atomic update
-            p0(k,icrm)=p0(k,icrm)+p(i,j,k,icrm)
+            p0(icrm,k)=p0(icrm,k)+p(icrm,i,j,k)
             !$acc atomic update
-            t0(k,icrm)=t0(k,icrm)+t(i,j,k,icrm)
+            t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
             !$acc atomic update
-            tabs0(k,icrm)=tabs0(k,icrm)+tabs(i,j,k,icrm)
-            tmp = qv(i,j,k,icrm)+qcl(i,j,k,icrm)+qci(i,j,k,icrm)
+            tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
+            tmp = qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
             !$acc atomic update
-            q0(k,icrm)=q0(k,icrm)+tmp
-            tmp = qcl(i,j,k,icrm) + qci(i,j,k,icrm)
+            q0(icrm,k)=q0(icrm,k)+tmp
+            tmp = qcl(icrm,i,j,k) + qci(icrm,i,j,k)
             !$acc atomic update
-            qn0(k,icrm) = qn0(k,icrm) + tmp
-            tmp = qpl(i,j,k,icrm) + qpi(i,j,k,icrm)
+            qn0(icrm,k) = qn0(icrm,k) + tmp
+            tmp = qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
             !$acc atomic update
-            qp0(k,icrm) = qp0(k,icrm) + tmp
-            tmp = qv(i,j,k,icrm)*coef1
-            !$acc atomic update
-            pw_xy(i,j,icrm) = pw_xy(i,j,icrm)+tmp
-            tmp = qcl(i,j,k,icrm)*coef1
-            !$acc atomic update
-            cw_xy(i,j,icrm) = cw_xy(i,j,icrm)+tmp
-            tmp = qci(i,j,k,icrm)*coef1
-            !$acc atomic update
-            iw_xy(i,j,icrm) = iw_xy(i,j,icrm)+tmp
+            qp0(icrm,k) = qp0(icrm,k) + tmp
+            tmp = qv(icrm,i,j,k)*coef1
           enddo
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(2) copy(qn0,q0,p0,t0,qp0,v0,u0,tabs0) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        u0(k,icrm)=u0(k,icrm)*coef
-        v0(k,icrm)=v0(k,icrm)*coef
-        t0(k,icrm)=t0(k,icrm)*coef
-        tabs0(k,icrm)=tabs0(k,icrm)*coef
-        q0(k,icrm)=q0(k,icrm)*coef
-        qn0(k,icrm)=qn0(k,icrm)*coef
-        qp0(k,icrm)=qp0(k,icrm)*coef
-        p0(k,icrm)=p0(k,icrm)*coef
+    !$acc parallel loop collapse(2) copy(u0,v0,t0,tabs0,q0,qn0,qp0,p0) async(asyncid)
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        u0(icrm,k)=u0(icrm,k)*coef
+        v0(icrm,k)=v0(icrm,k)*coef
+        t0(icrm,k)=t0(icrm,k)*coef
+        tabs0(icrm,k)=tabs0(icrm,k)*coef
+        q0(icrm,k)=q0(icrm,k)*coef
+        qn0(icrm,k)=qn0(icrm,k)*coef
+        qp0(icrm,k)=qp0(icrm,k)*coef
+        p0(icrm,k)=p0(icrm,k)*coef
       enddo ! k
     enddo
 
-    !$acc parallel loop collapse(3) copyin(k500,u,v,k200,w) copy(u200_xy,v200_xy,usfc_xy,vsfc_xy,w500_xy) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
-          usfc_xy(i,j,icrm) = usfc_xy(i,j,icrm) + u(i,j,1,icrm)*dtfactor
-          vsfc_xy(i,j,icrm) = vsfc_xy(i,j,icrm) + v(i,j,1,icrm)*dtfactor
-          u200_xy(i,j,icrm) = u200_xy(i,j,icrm) + u(i,j,k200(icrm),icrm)*dtfactor
-          v200_xy(i,j,icrm) = v200_xy(i,j,icrm) + v(i,j,k200(icrm),icrm)*dtfactor
-          w500_xy(i,j,icrm) = w500_xy(i,j,icrm) + w(i,j,k500(icrm),icrm)*dtfactor
+    !$acc parallel loop collapse(3) copyin(u,v) copy(usfc_xy,vsfc_xy) async(asyncid)
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          usfc_xy(icrm,i,j) = usfc_xy(icrm,i,j) + u(icrm,i,j,1)*dtfactor
+          vsfc_xy(icrm,i,j) = vsfc_xy(icrm,i,j) + v(icrm,i,j,1)*dtfactor
         enddo
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copyin(qn0,q0) copy(qv0) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        qv0(k,icrm) = q0(k,icrm) - qn0(k,icrm)
+    !$acc parallel loop collapse(2) copyin(q0,qn0) copy(qv0) async(asyncid)
+    do k = 1 , nzm
+      do icrm = 1 , ncrms
+        qv0(icrm,k) = q0(icrm,k) - qn0(icrm,k)
       enddo
     enddo
 
     !=====================================================
     ! UW ADDITIONS
     ! FIND VERTICAL INDICES OF 850MB, COMPUTE SWVP
-    !$acc parallel loop collapse(4) copyin(rho,adz,pres,tabs,dz) copy(swvp_xy) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
-            coef1 = rho(k,icrm)*dz(icrm)*adz(k,icrm)*dtfactor
+    !$acc parallel loop collapse(4) copyin(rho,dz,adz,pres,tabs) copy(swvp_xy) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            coef1 = rho(icrm,k)*dz(icrm)*adz(icrm,k)*dtfactor
             ! Saturated water vapor path with respect to water. Can be used
             ! with water vapor path (= pw) to compute column-average
             ! relative humidity.
-            tmp = qsatw_crm(tabs(i,j,k,icrm),pres(k,icrm))*coef1
+            tmp = qsatw_crm(tabs(icrm,i,j,k),pres(icrm,k))*coef1
             !$acc atomic update
-            swvp_xy(i,j,icrm) = swvp_xy(i,j,icrm)+tmp
+            swvp_xy(icrm,i,j) = swvp_xy(icrm,i,j)+tmp
           enddo
         enddo
       enddo ! k
     enddo
 
     ! ACCUMULATE AVERAGES OF TWO-DIMENSIONAL STATISTICS
-    !$acc parallel loop collapse(3) copyin(k850,p,pres,u,v) copy(psfc_xy,u850_xy,v850_xy) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
-          psfc_xy(i,j,icrm) = psfc_xy(i,j,icrm) + (100.*pres(1,icrm) + p(i,j,1,icrm))*dtfactor
-          ! 850 mbar horizontal winds
-          u850_xy(i,j,icrm) = u850_xy(i,j,icrm) + u(i,j,k850(icrm),icrm)*dtfactor
-          v850_xy(i,j,icrm) = v850_xy(i,j,icrm) + v(i,j,k850(icrm),icrm)*dtfactor
+    !$acc parallel loop collapse(3) copyin(p,pres) copy(psfc_xy) async(asyncid)
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          psfc_xy(icrm,i,j) = psfc_xy(icrm,i,j) + (100.*pres(icrm,1) + p(icrm,i,j,1))*dtfactor
         enddo
       enddo
     enddo
@@ -163,34 +132,34 @@ contains
     ! WHERE THE PRECIPITATE MIXING RATIO > 0.001 G/KG.
     ! initially, zero out heights and set cloudtoptemp to SST
     !$acc parallel loop collapse(3) copyin(sstxy) copy(cloudtopheight,cloudtoptemp,echotopheight) async(asyncid)
-    do icrm = 1 , ncrms
-      do j = 1 , ny
-        do i = 1 , nx
-          cloudtopheight(i,j,icrm) = 0.
-          cloudtoptemp  (i,j,icrm) = sstxy(i,j,icrm)
-          echotopheight (i,j,icrm) = 0.
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          cloudtopheight(icrm,i,j) = 0.
+          cloudtoptemp(icrm,i,j) = sstxy(icrm,i,j)
+          echotopheight(icrm,i,j) = 0.
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(3) copyin(qcl,qpi,qci,qpl,adz,rho,z,tabs,dz) copy(echotopheight,cloudtoptemp,cloudtopheight,cld_xy) async(asyncid)
-    do icrm = 1 , ncrms
-      do j = 1,ny
-        do i = 1,nx
+    !$acc parallel loop collapse(3) copyin(dz,adz,rho,qcl,qci,z,tabs,qpl,qpi) copy(cloudtopheight,cloudtoptemp,cld_xy,echotopheight) async(asyncid)
+    do j = 1,ny
+      do i = 1,nx
+        do icrm = 1 , ncrms
           ! FIND CLOUD TOP HEIGHT
           tmp_lwp = 0.
           do k = nzm,1,-1
-            tmp_lwp = tmp_lwp + (qcl(i,j,k,icrm)+qci(i,j,k,icrm))*rho(k,icrm)*dz(icrm)*adz(k,icrm)
+            tmp_lwp = tmp_lwp + (qcl(icrm,i,j,k)+qci(icrm,i,j,k))*rho(icrm,k)*dz(icrm)*adz(icrm,k)
             if (tmp_lwp.gt.0.01) then
-              cloudtopheight(i,j,icrm) = z(k,icrm)
-              cloudtoptemp(i,j,icrm) = tabs(i,j,k,icrm)
-              cld_xy(i,j,icrm) = cld_xy(i,j,icrm) + dtfactor
+              cloudtopheight(icrm,i,j) = z(icrm,k)
+              cloudtoptemp(icrm,i,j) = tabs(icrm,i,j,k)
+              cld_xy(icrm,i,j) = cld_xy(icrm,i,j) + dtfactor
               EXIT
             endif
           enddo
           ! FIND ECHO TOP HEIGHT
           do k = nzm,1,-1
-            if (qpl(i,j,k,icrm)+qpi(i,j,k,icrm).gt.1.e-6) then
-              echotopheight(i,j,icrm) = z(k,icrm)
+            if (qpl(icrm,i,j,k)+qpi(icrm,i,j,k).gt.1.e-6) then
+              echotopheight(icrm,i,j) = z(icrm,k)
               EXIT
             endif
           enddo
@@ -204,8 +173,6 @@ contains
     !This doesn't actually do anything, so commenting out
 
     !call sgs_diagnose()
-
-    !$acc exit data delete(k200,k500,k850) async(asyncid)
 
   end subroutine diagnose
 

@@ -14,21 +14,21 @@ contains
     integer i,j,k, kb, kc, kmax(ncrms), kmin(ncrms), ici,icrm
     real(crm_rknd) coef,dqi,lat_heat,vt_ice
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
-    real(crm_rknd) fz(nx,ny,nz,ncrms)
+    real(crm_rknd) fz(ncrms,nx,ny,nz)
 
     !$acc enter data create(kmax,kmin,fz) async(asyncid)
 
-    !$acc parallel loop copy(kmax,kmin) async(asyncid)
+    !$acc parallel loop copy(kmin,kmax) async(asyncid)
     do icrm = 1 , ncrms
       kmax(icrm)=0
       kmin(icrm)=nzm+1
     enddo
     !$acc parallel loop collapse(3) copyin(qcl,qci,tabs) copy(kmin,kmax) async(asyncid)
-    do icrm = 1 , ncrms
-      do j = 1, ny
-        do i = 1, nx
+    do j = 1, ny
+      do i = 1, nx
+        do icrm = 1 , ncrms
           do k = 1,nzm
-            if(qcl(i,j,k,icrm)+qci(i,j,k,icrm).gt.0..and. tabs(i,j,k,icrm).lt.273.15) then
+            if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.0..and. tabs(icrm,i,j,k).lt.273.15) then
               !$acc atomic update
               kmin(icrm) = min(kmin(icrm),k)
               !$acc atomic update
@@ -39,21 +39,21 @@ contains
       end do
     end do
     !$acc parallel loop collapse(2) copy(qifall,tlatqi) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzm
-        qifall(k,icrm) = 0.
-        tlatqi(k,icrm) = 0.
+    do k = 1,nzm
+      do icrm = 1 , ncrms
+        qifall(icrm,k) = 0.
+        tlatqi(icrm,k) = 0.
       end do
     end do
 
     if(index_cloud_ice.eq.-1) return
 
     !$acc parallel loop collapse(4) copy(fz) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nz
-        do j = 1, ny
-          do i = 1, nx
-            fz(i,j,k,icrm) = 0.
+    do k = 1,nz
+      do j = 1, ny
+        do i = 1, nx
+          do icrm = 1 , ncrms
+            fz(icrm,i,j,k) = 0.
           end do
         end do
       end do
@@ -63,23 +63,23 @@ contains
     ! chapter 6 of Finite Volume Methods for Hyperbolic Problems by R.J.
     ! LeVeque, Cambridge University Press, 2002).
     !$acc parallel loop collapse(4) copyin(kmin,kmax,adz,dz,rho,qci) copy(fz) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nz
-        do j = 1,ny
-          do i = 1,nx
+    do k = 1 , nz
+      do j = 1,ny
+        do i = 1,nx
+          do icrm = 1 , ncrms
             if (k >= max(1,kmin(icrm)-1) .and. k <= kmax(icrm) ) then
               ! Set up indices for x-y planes above and below current plane.
               kc = min(nzm,k+1)
               kb = max(1,k-1)
               ! CFL number based on grid spacing interpolated to interface i,j,k-1/2
-              coef = dtn/(0.5*(adz(kb,icrm)+adz(k,icrm))*dz(icrm))
+              coef = dtn/(0.5*(adz(icrm,kb)+adz(icrm,k))*dz(icrm))
 
               ! Compute cloud ice density in this cell and the ones above/below.
-              ! Since cloud ice is falling, the above cell is u (upwind,icrm),
+              ! Since cloud ice is falling, the above cell is u(icrm,upwind),
               ! this cell is c (center) and the one below is d (downwind).
-              qiu = rho(kc,icrm)*qci(i,j,kc,icrm)
-              qic = rho(k,icrm) *qci(i,j,k,icrm)
-              qid = rho(kb,icrm)*qci(i,j,kb,icrm)
+              qiu = rho(icrm,kc)*qci(icrm,i,j,kc)
+              qic = rho(icrm,k) *qci(icrm,i,j,k)
+              qid = rho(icrm,kb)*qci(icrm,i,j,kb)
 
               ! Ice sedimentation velocity depends on ice content. The fiting is
               ! based on the data by Heymsfield (JAS,2003). -Marat
@@ -99,17 +99,17 @@ contains
               ! Compute limited flux.
               ! Since falling cloud ice is a 1D advection problem, this
               ! flux-limited advection scheme is monotonic.
-              fz(i,j,k,icrm) = -vt_ice*(qic - 0.5*(1.-coef*vt_ice)*tmp_phi*(qic-qid))
+              fz(icrm,i,j,k) = -vt_ice*(qic - 0.5*(1.-coef*vt_ice)*tmp_phi*(qic-qid))
             endif
           end do
         end do
       end do
     enddo
     !$acc parallel loop collapse(3) copy(fz) async(asyncid)
-    do icrm = 1 , ncrms
-      do j = 1, ny
-        do i = 1, nx
-          fz(i,j,nz,icrm) = 0.
+    do j = 1, ny
+      do i = 1, nx
+        do icrm = 1 , ncrms
+          fz(icrm,i,j,nz) = 0.
         end do
       end do
     end do
@@ -117,29 +117,29 @@ contains
     ici = index_cloud_ice
 
     !$acc parallel loop collapse(4) copyin(kmin,kmax,dz,adz,rho,fz) copy(micro_field,qifall,t,tlatqi) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1, nz
-        do j=1,ny
-          do i=1,nx
+    do k=1, nz
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             if ( k >= max(1,kmin(icrm)-2) .and. k <= kmax(icrm) ) then
-            coef=dtn/(dz(icrm)*adz(k,icrm)*rho(k,icrm))
+            coef=dtn/(dz(icrm)*adz(icrm,k)*rho(icrm,k))
             ! The cloud ice increment is the difference of the fluxes.
-            dqi=coef*(fz(i,j,k,icrm)-fz(i,j,k+1,icrm))
+            dqi=coef*(fz(icrm,i,j,k)-fz(icrm,i,j,k+1))
             ! Add this increment to both non-precipitating and total water.
-            micro_field(i,j,k,icrm,ici)  = micro_field(i,j,k,icrm,ici)  + dqi
+            micro_field(icrm,i,j,k,ici)  = micro_field(icrm,i,j,k,ici)  + dqi
             ! Include this effect in the total moisture budget.
             !$acc atomic update
-            qifall(k,icrm) = qifall(k,icrm) + dqi
+            qifall(icrm,k) = qifall(icrm,k) + dqi
 
             ! The latent heat flux induced by the falling cloud ice enters
             ! the liquid-ice static energy budget in the same way as the
             ! precipitation.  Note: use latent heat of sublimation.
             lat_heat  = (fac_cond+fac_fus)*dqi
             ! Add divergence of latent heat flux to liquid-ice static energy.
-            t(i,j,k,icrm)  = t(i,j,k,icrm)  - lat_heat
+            t(icrm,i,j,k)  = t(icrm,i,j,k)  - lat_heat
             ! Add divergence to liquid-ice static energy budget.
             !$acc atomic update
-            tlatqi(k,icrm) = tlatqi(k,icrm) - lat_heat
+            tlatqi(icrm,k) = tlatqi(icrm,k) - lat_heat
             endif
           end do
         end do
@@ -147,13 +147,13 @@ contains
     end do
 
     !$acc parallel loop collapse(3) copyin(dz,fz) copy(precsfc,precssfc) async(asyncid)
-    do icrm = 1 , ncrms
-      do j=1,ny
-        do i=1,nx
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
           coef=dtn/dz(icrm)
-          dqi=-coef*fz(i,j,1,icrm)
-          precsfc(i,j,icrm) = precsfc(i,j,icrm)+dqi
-          precssfc(i,j,icrm) = precssfc(i,j,icrm)+dqi
+          dqi=-coef*fz(icrm,i,j,1)
+          precsfc(icrm,i,j) = precsfc(icrm,i,j)+dqi
+          precssfc(icrm,i,j) = precssfc(icrm,i,j)+dqi
         end do
       end do
     end do
