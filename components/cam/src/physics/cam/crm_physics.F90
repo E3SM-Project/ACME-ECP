@@ -542,7 +542,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #ifdef CRM
    use crm_state_module,       only: crm_state_type
    use crm_rad_module,         only: crm_rad_type, crm_rad_initialize, crm_rad_finalize
-   use crm_input_module,       only: crm_input_type
+   use crm_input_module,       only: crm_input_type, crm_input_initialize, crm_input_finalize
    use crm_output_module,      only: crm_output_type, crm_output_initialize, crm_output_finalize
 #endif /* CRM */
    use crm_ecpp_output_module, only: crm_ecpp_output_type
@@ -705,7 +705,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !------------------------------------------------------------------------------------------------
    call crm_state%initialize()
    call crm_rad_initialize(crm_rad)
-   call crm_input%initialize(pcols,pver)
+   call crm_input_initialize(crm_input,pcols,pver)
    call crm_output_initialize(crm_output,pcols,pver)
 
    !------------------------------------------------------------------------------------------------
@@ -1545,7 +1545,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !!! Free memory in derived types
    call crm_state%finalize()
    call crm_rad_finalize(crm_rad)
-   call crm_input%finalize()
+   call crm_input_finalize(crm_input)
    call crm_output_finalize(crm_output)
 
 #endif /* CRM */

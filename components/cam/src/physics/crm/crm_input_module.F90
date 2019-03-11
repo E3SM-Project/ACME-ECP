@@ -4,7 +4,6 @@ module crm_input_module
    use modal_aero_data, only: ntot_amode
 #endif
    implicit none
-   private
    public crm_input_type
    type crm_input_type
 
@@ -40,122 +39,118 @@ module crm_input_module
       real(crm_rknd), allocatable :: ul_esmt(:,:)        ! input u for ESMT
       real(crm_rknd), allocatable :: vl_esmt(:,:)        ! input v for ESMT
 #endif
-
-   contains
-      procedure, public :: initialize=>crm_input_initialize
-      procedure, public :: finalize=>crm_input_finalize
    end type crm_input_type
    !------------------------------------------------------------------------------------------------
 
 contains
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_input_type
-   subroutine crm_input_initialize(this, ncrms, nlev)
-      class(crm_input_type), intent(inout) :: this
+   subroutine crm_input_initialize(input, ncrms, nlev)
+      class(crm_input_type), intent(inout) :: input
       integer, intent(in) :: ncrms, nlev
       
-      if (.not. allocated(this%zmid))     allocate(this%zmid(ncrms,nlev))
-      if (.not. allocated(this%zint))     allocate(this%zint(ncrms,nlev+1))
-      if (.not. allocated(this%tl))       allocate(this%tl(ncrms,nlev))
-      if (.not. allocated(this%ql))       allocate(this%ql(ncrms,nlev))
-      if (.not. allocated(this%qccl))     allocate(this%qccl(ncrms,nlev))
-      if (.not. allocated(this%qiil))     allocate(this%qiil(ncrms,nlev))
-      if (.not. allocated(this%ps))       allocate(this%ps(ncrms))
-      if (.not. allocated(this%pmid))     allocate(this%pmid(ncrms,nlev))
-      if (.not. allocated(this%pint))     allocate(this%pint(ncrms,nlev+1))
-      if (.not. allocated(this%pdel))     allocate(this%pdel(ncrms,nlev))
-      if (.not. allocated(this%phis))     allocate(this%phis(ncrms))
-      if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))
-      if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
-      if (.not. allocated(this%ocnfrac))  allocate(this%ocnfrac(ncrms))
-      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms))
-      if (.not. allocated(this%wndls))    allocate(this%wndls(ncrms))
-      if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms))
-      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms))
-      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms))
-      if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
-      if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
+      if (.not. allocated(input%zmid))     allocate(input%zmid(ncrms,nlev))
+      if (.not. allocated(input%zint))     allocate(input%zint(ncrms,nlev+1))
+      if (.not. allocated(input%tl))       allocate(input%tl(ncrms,nlev))
+      if (.not. allocated(input%ql))       allocate(input%ql(ncrms,nlev))
+      if (.not. allocated(input%qccl))     allocate(input%qccl(ncrms,nlev))
+      if (.not. allocated(input%qiil))     allocate(input%qiil(ncrms,nlev))
+      if (.not. allocated(input%ps))       allocate(input%ps(ncrms))
+      if (.not. allocated(input%pmid))     allocate(input%pmid(ncrms,nlev))
+      if (.not. allocated(input%pint))     allocate(input%pint(ncrms,nlev+1))
+      if (.not. allocated(input%pdel))     allocate(input%pdel(ncrms,nlev))
+      if (.not. allocated(input%phis))     allocate(input%phis(ncrms))
+      if (.not. allocated(input%ul))       allocate(input%ul(ncrms,nlev))
+      if (.not. allocated(input%vl))       allocate(input%vl(ncrms,nlev))
+      if (.not. allocated(input%ocnfrac))  allocate(input%ocnfrac(ncrms))
+      if (.not. allocated(input%tau00))    allocate(input%tau00(ncrms))
+      if (.not. allocated(input%wndls))    allocate(input%wndls(ncrms))
+      if (.not. allocated(input%bflxls))   allocate(input%bflxls(ncrms))
+      if (.not. allocated(input%fluxu00))  allocate(input%fluxu00(ncrms))
+      if (.not. allocated(input%fluxv00))  allocate(input%fluxv00(ncrms))
+      if (.not. allocated(input%fluxt00))  allocate(input%fluxt00(ncrms))
+      if (.not. allocated(input%fluxq00))  allocate(input%fluxq00(ncrms))
 
 #if defined( m2005 ) && defined( MODAL_AERO )
-      if (.not. allocated(this%naermod))  allocate(this%naermod(ncrms,nlev,ntot_amode))
-      if (.not. allocated(this%vaerosol)) allocate(this%vaerosol(ncrms,nlev,ntot_amode))
-      if (.not. allocated(this%hygro))    allocate(this%hygro(ncrms,nlev,ntot_amode))
+      if (.not. allocated(input%naermod))  allocate(input%naermod(ncrms,nlev,ntot_amode))
+      if (.not. allocated(input%vaerosol)) allocate(input%vaerosol(ncrms,nlev,ntot_amode))
+      if (.not. allocated(input%hygro))    allocate(input%hygro(ncrms,nlev,ntot_amode))
 #endif
 
 #if defined(SP_ESMT)
-      if (.not. allocated(this%ul_esmt))  allocate(this%ul_esmt(ncrms,nlev))
-      if (.not. allocated(this%vl_esmt))  allocate(this%vl_esmt(ncrms,nlev))
+      if (.not. allocated(input%ul_esmt))  allocate(input%ul_esmt(ncrms,nlev))
+      if (.not. allocated(input%vl_esmt))  allocate(input%vl_esmt(ncrms,nlev))
 #endif
 
       ! Initialize
-      this%zmid = 0
-      this%zint = 0
-      this%tl = 0
-      this%ql = 0
-      this%qccl = 0
-      this%qiil = 0
-      this%ps = 0
-      this%pmid = 0
-      this%pint = 0
-      this%pdel = 0
-      this%phis = 0
-      this%ul = 0
-      this%vl = 0
-      this%ocnfrac = 0
-      this%tau00   = 0
-      this%wndls   = 0
-      this%bflxls  = 0
-      this%fluxu00 = 0
-      this%fluxv00 = 0
-      this%fluxt00 = 0
-      this%fluxq00 = 0
+      input%zmid = 0
+      input%zint = 0
+      input%tl = 0
+      input%ql = 0
+      input%qccl = 0
+      input%qiil = 0
+      input%ps = 0
+      input%pmid = 0
+      input%pint = 0
+      input%pdel = 0
+      input%phis = 0
+      input%ul = 0
+      input%vl = 0
+      input%ocnfrac = 0
+      input%tau00   = 0
+      input%wndls   = 0
+      input%bflxls  = 0
+      input%fluxu00 = 0
+      input%fluxv00 = 0
+      input%fluxt00 = 0
+      input%fluxq00 = 0
 #if defined( m2005 ) && defined( MODAL_AERO )
-      this%naermod  = 0
-      this%vaerosol = 0
-      this%hygro    = 0
+      input%naermod  = 0
+      input%vaerosol = 0
+      input%hygro    = 0
 #endif
 #if defined( SP_ESMT )
-      this%ul_esmt = 0
-      this%vl_esmt = 0
+      input%ul_esmt = 0
+      input%vl_esmt = 0
 #endif
 
    end subroutine crm_input_initialize
    !------------------------------------------------------------------------------------------------
-   subroutine crm_input_finalize(this)
-      class(crm_input_type), intent(inout) :: this
+   subroutine crm_input_finalize(input)
+      class(crm_input_type), intent(inout) :: input
 
-      deallocate(this%zmid)
-      deallocate(this%zint)
-      deallocate(this%tl)
-      deallocate(this%ql)
-      deallocate(this%qccl)
-      deallocate(this%qiil)
-      deallocate(this%ps)
-      deallocate(this%pmid)
-      deallocate(this%pint)
-      deallocate(this%pdel)
-      deallocate(this%phis)
-      deallocate(this%ul)
-      deallocate(this%vl)
+      deallocate(input%zmid)
+      deallocate(input%zint)
+      deallocate(input%tl)
+      deallocate(input%ql)
+      deallocate(input%qccl)
+      deallocate(input%qiil)
+      deallocate(input%ps)
+      deallocate(input%pmid)
+      deallocate(input%pint)
+      deallocate(input%pdel)
+      deallocate(input%phis)
+      deallocate(input%ul)
+      deallocate(input%vl)
 
-      deallocate(this%ocnfrac)
-      deallocate(this%tau00)
-      deallocate(this%wndls)
-      deallocate(this%bflxls)
-      deallocate(this%fluxu00)
-      deallocate(this%fluxv00)
-      deallocate(this%fluxt00)
-      deallocate(this%fluxq00)
+      deallocate(input%ocnfrac)
+      deallocate(input%tau00)
+      deallocate(input%wndls)
+      deallocate(input%bflxls)
+      deallocate(input%fluxu00)
+      deallocate(input%fluxv00)
+      deallocate(input%fluxt00)
+      deallocate(input%fluxq00)
 
 #if defined( m2005 ) && defined( MODAL_AERO )
-      deallocate(this%naermod)
-      deallocate(this%vaerosol)
-      deallocate(this%hygro)
+      deallocate(input%naermod)
+      deallocate(input%vaerosol)
+      deallocate(input%hygro)
 #endif
 
 #if defined(SP_ESMT)
-      deallocate(this%ul_esmt)
-      deallocate(this%vl_esmt)
+      deallocate(input%ul_esmt)
+      deallocate(input%vl_esmt)
 #endif
 
    end subroutine crm_input_finalize 

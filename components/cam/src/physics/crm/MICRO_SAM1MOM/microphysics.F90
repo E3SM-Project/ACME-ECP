@@ -139,11 +139,6 @@ CONTAINS
 
 
   subroutine micro_init(ncrms)
-
-#ifdef CLUBB_CRM
-    use params, only: doclubb, doclubbnoninter ! dschanen UWM 21 May 2008
-    use params, only: nclubb
-#endif
     use grid, only: nrestart
     use vars
     use params, only: dosmoke
@@ -151,67 +146,26 @@ CONTAINS
     integer, intent(in) :: ncrms
     integer k, n,icrm
 
-#ifdef CLUBB_CRM
-    !  if ( nclubb /= 1 ) then
-    !    write(0,*) "The namelist parameter nclubb is not equal to 1,",  &
-    !      " but SAM single moment microphysics is enabled."
-    !    write(0,*) "This will create unrealistic results in subsaturated grid boxes. ", &
-    !      "Exiting..."
-    !    call task_abort()
-    !  end if
-#endif
-
-
     a_bg = 1./(tbgmax-tbgmin)
     a_pr = 1./(tprmax-tprmin)
     a_gr = 1./(tgrmax-tgrmin)
 
     if(nrestart.eq.0) then
-
 #ifndef CRM
-      micro_field(icrm,:,:,:,:) = 0.
       do k=1,nzm
-        micro_field(icrm,:,:,k,1) = q0(icrm,k)
+        micro_field(:,:,k,1) = q0(:,k)
       end do
-      qn(icrm,:,:,:) = 0.
 #endif
-
-      do icrm = 1 , ncrms
-        fluxbmk(icrm,:,:,:) = 0.
-        fluxtmk(icrm,:,:,:) = 0.
-      enddo
-
-#ifdef CLUBB_CRM
-      if ( docloud .or. doclubb ) then
-#else
       if(docloud) then
-#endif
 #ifndef CRM
         call cloud(ncrms,micro_field(:,:,:,:,1),micro_field(:,:,:,:,2),qn)
-        !$acc wait(asyncid)
 #endif
-        !$acc enter data copyin(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         call micro_diagnose(ncrms)
-        !$acc exit data copyout(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
-        !$acc wait(asyncid)
       end if
       if(dosmoke) then
-        !$acc enter data copyin(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         call micro_diagnose(ncrms)
-        !$acc exit data copyout(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
-        !$acc wait(asyncid)
       end if
     end if
-
-    do icrm = 1 , ncrms
-      mkwle(icrm,:,:) = 0.
-      mkwsb(icrm,:,:) = 0.
-      mkadv(icrm,:,:) = 0.
-      mkdiff(icrm,:,:) = 0.
-
-      qpsrc(icrm,:) = 0.
-      qpevp(icrm,:) = 0.
-    enddo
 
     mkname(1) = 'QT'
     mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'

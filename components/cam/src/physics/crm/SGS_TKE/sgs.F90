@@ -153,13 +153,14 @@ CONTAINS
   !!! Initialize sgs:
 
 
-  subroutine sgs_init(ncrms,icrm)
+  subroutine sgs_init(ncrms)
     use grid, only: nrestart, dx, dy, dz, adz, masterproc
     use params, only: LES
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer k
+    integer, intent(in) :: ncrms
+    integer k,icrm
     if(LES) then
+      !$acc parallel loop collapse(2) copyin(adz,dz) copy(grdf_x,grdf_y,grdf_z) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
@@ -168,6 +169,7 @@ CONTAINS
         end do
       end do
     else
+      !$acc parallel loop collapse(2) copyin(adz,dz) copy(grdf_x,grdf_y,grdf_z) async(asyncid)
       do icrm = 1 , ncrms
         do k=1,nzm
           grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
