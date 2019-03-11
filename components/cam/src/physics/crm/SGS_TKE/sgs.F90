@@ -159,34 +159,21 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms,icrm
     integer k
-
-    if(nrestart.eq.0) then
-
-      sgs_field(icrm,:,:,:,:) = 0.
-      sgs_field_diag(icrm,:,:,:,:) = 0.
-
-
-    end if
-
-    !  if(masterproc) then
-    !     if(dosmagor) then
-    !        write(*,*) 'Smagorinsky SGS Closure'
-    !     else
-    !        write(*,*) 'Prognostic TKE 1.5-order SGS Closure'
-    !     end if
-    !  end if
-
     if(LES) then
-      do k=1,nzm
-        grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
-        grdf_y(icrm,k) = dy**2/(adz(icrm,k)*dz(icrm))**2
-        grdf_z(icrm,k) = 1.
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
+          grdf_y(icrm,k) = dy**2/(adz(icrm,k)*dz(icrm))**2
+          grdf_z(icrm,k) = 1.
+        end do
       end do
     else
-      do k=1,nzm
-        grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
-        grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
-        grdf_z(icrm,k) = 1.
+      do icrm = 1 , ncrms
+        do k=1,nzm
+          grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
+          grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
+          grdf_z(icrm,k) = 1.
+        end do
       end do
     end if
   end subroutine sgs_init

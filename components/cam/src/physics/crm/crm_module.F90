@@ -129,7 +129,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd)  :: u2z,v2z,w2z
     integer         :: i,j,k,l,ptop,nn,icyc,icrm
     integer         :: kx
-    real(crm_rknd)  :: ustar(ncrms), bflx(ncrms), wnd(ncrms), qsat, omg
+    real(crm_rknd)  :: ustar, bflx(ncrms), wnd(ncrms), qsat, omg
     real(crm_rknd)  :: colprec,colprecs
     real(r8)        :: qtot(ncrms,20)    ! Total water for water conservation check
 
@@ -270,7 +270,31 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
              crm_output_qp_evp        => crm_output%qp_evp       , &
              crm_output_qp_src        => crm_output%qp_src       , &
              crm_output_qt_ls         => crm_output%qt_ls        , &
-             crm_output_t_ls          => crm_output%t_ls         )
+             crm_output_t_ls          => crm_output%t_ls         , &
+#ifdef m2005
+             crm_output_nc_mean       => crm_output%nc_mean      , &
+             crm_output_ni_mean       => crm_output%ni_mean      , &
+             crm_output_ns_mean       => crm_output%ns_mean      , &
+             crm_output_ng_mean       => crm_output%ng_mean      , &
+             crm_output_nr_mean       => crm_output%nr_mean      , &
+             crm_output_aut_a         => crm_output%aut_a        , &
+             crm_output_acc_a         => crm_output%acc_a        , &
+             crm_output_evpc_a        => crm_output%evpc_a       , &
+             crm_output_evpr_a        => crm_output%evpr_a       , &
+             crm_output_mlt_a         => crm_output%mlt_a        , &
+             crm_output_sub_a         => crm_output%sub_a        , &
+             crm_output_dep_a         => crm_output%dep_a        , &
+             crm_output_con_a         => crm_output%con_a        , &
+#endif
+             crm_output_mctot         => crm_output%mctot        , &
+             crm_output_qc_mean       => crm_output%qc_mean      , &
+             crm_output_qi_mean       => crm_output%qi_mean      , &
+             crm_output_qs_mean       => crm_output%qs_mean      , &
+             crm_output_qg_mean       => crm_output%qg_mean      , &
+             crm_output_qr_mean       => crm_output%qr_mean      , &
+             crm_input_tau00          => crm_input%tau00         , &
+             crm_output_prectend      => crm_output%prectend     , &
+             crm_output_precstend     => crm_output%precstend )
 
 
   crm_accel_ceaseflag = .false.
@@ -458,91 +482,100 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   call micro_init(ncrms)
 
-  do icrm = 1 , ncrms
-    ! initialize sgs fields
-    call sgs_init(ncrms,icrm)
+  call sgs_init(ncrms,icrm)
 
-    colprec=0
-    colprecs=0
+  do icrm = 1 , ncrms
     do k=1,nzm
-      u0(icrm,k)=0.
-      v0(icrm,k)=0.
-      t0(icrm,k)=0.
-      t00(icrm,k)=0.
-      tabs0(icrm,k)=0.
-      q0(icrm,k)=0.
-      qv0(icrm,k)=0.
-      !+++mhwang these are not initialized ??
-      qn0(icrm,k) = 0.0
-      qp0(icrm,k) = 0.0
-      tke0(icrm,k) = 0.0
-      !---mhwang
+      if (k == 1) then
+        crm_output_prectend (icrm) = 0.
+        crm_output_precstend(icrm) = 0.
+      endif
+      u0   (icrm,k) = 0.
+      v0   (icrm,k) = 0.
+      t0   (icrm,k) = 0.
+      t00  (icrm,k) = 0.
+      tabs0(icrm,k) = 0.
+      q0   (icrm,k) = 0.
+      qv0  (icrm,k) = 0.
+      qn0  (icrm,k) = 0.
+      qp0  (icrm,k) = 0.
+      tke0 (icrm,k) = 0.
+    enddo
+  enddo
+  do icrm = 1 , ncrms
+    do k=1,nzm
       do j=1,ny
         do i=1,nx
           t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
-                    -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
-                    -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
-          colprec=colprec+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
-          colprecs=colprecs+qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
-          u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
-          v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
-          t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
-          t00(icrm,k)=t00(icrm,k)+t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
-          tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
-          q0(icrm,k)=q0(icrm,k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
-          qv0(icrm,k) = qv0(icrm,k) + qv(icrm,i,j,k)
-          qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
-          qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
-          tke0(icrm,k)=tke0(icrm,k)+sgs_field(icrm,i,j,k,1)
+                          -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
+                          -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
+          crm_output_prectend (icrm) = crm_output_prectend (icrm) + (qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
+          crm_output_precstend(icrm) = crm_output_precstend(icrm) + qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
+          u0   (icrm,k) = u0   (icrm,k) + u(icrm,i,j,k)
+          v0   (icrm,k) = v0   (icrm,k) + v(icrm,i,j,k)
+          t0   (icrm,k) = t0   (icrm,k) + t(icrm,i,j,k)
+          t00  (icrm,k) = t00  (icrm,k) + t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
+          tabs0(icrm,k) = tabs0(icrm,k) + tabs(icrm,i,j,k)
+          q0   (icrm,k) = q0   (icrm,k) + qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
+          qv0  (icrm,k) = qv0  (icrm,k) + qv(icrm,i,j,k)
+          qn0  (icrm,k) = qn0  (icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
+          qp0  (icrm,k) = qp0  (icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
+          tke0 (icrm,k) = tke0 (icrm,k) + sgs_field(icrm,i,j,k,1)
         enddo
       enddo
 
-      u0(icrm,k) = u0(icrm,k) * factor_xy
-      v0(icrm,k) = v0(icrm,k) * factor_xy
-      t0(icrm,k) = t0(icrm,k) * factor_xy
-      t00(icrm,k) = t00(icrm,k) * factor_xy
+      u0   (icrm,k) = u0   (icrm,k) * factor_xy
+      v0   (icrm,k) = v0   (icrm,k) * factor_xy
+      t0   (icrm,k) = t0   (icrm,k) * factor_xy
+      t00  (icrm,k) = t00  (icrm,k) * factor_xy
       tabs0(icrm,k) = tabs0(icrm,k) * factor_xy
-      q0(icrm,k) = q0(icrm,k) * factor_xy
-      qv0(icrm,k) = qv0(icrm,k) * factor_xy
-      qn0(icrm,k) = qn0(icrm,k) * factor_xy
-      qp0(icrm,k) = qp0(icrm,k) * factor_xy
-      tke0(icrm,k) = tke0(icrm,k) * factor_xy
-#ifdef CLUBB_CRM
-      ! Update thetav for CLUBB.  This is needed when we have a higher model top
-      ! than is in the sounding, because we subsequently use tv0 to initialize
-      ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
-      ! -dschanen UWM 11 Feb 2010
-      tv0(icrm,k) = tabs0(icrm,k)*prespot(icrm,k)*(1.+epsv*q0(icrm,k))
-#endif /* CLUBB_CRM */
-
+      q0   (icrm,k) = q0   (icrm,k) * factor_xy
+      qv0  (icrm,k) = qv0  (icrm,k) * factor_xy
+      qn0  (icrm,k) = qn0  (icrm,k) * factor_xy
+      qp0  (icrm,k) = qp0  (icrm,k) * factor_xy
+      tke0 (icrm,k) = tke0 (icrm,k) * factor_xy
       l = plev-k+1
-      uln(icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
-      vln(icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+      uln  (icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
+      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(icrm,k))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(icrm,k))*idt_gl
       utend(icrm,k) = (uln(icrm,l)-u0(icrm,k))*idt_gl
       vtend(icrm,k) = (vln(icrm,l)-v0(icrm,k))*idt_gl
-      ug0(icrm,k) = uln(icrm,l)
-      vg0(icrm,k) = vln(icrm,l)
-      tg0(icrm,k) = crm_input%tl(icrm,l)+gamaz(icrm,k)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
-      qg0(icrm,k) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
+      ug0  (icrm,k) = uln(icrm,l)
+      vg0  (icrm,k) = vln(icrm,l)
+      tg0  (icrm,k) = crm_input%tl(icrm,l)+gamaz(icrm,k)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
+      qg0  (icrm,k) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
 
     end do ! k
-
-    uhl(icrm) = u0(icrm,1)
-    vhl(icrm) = v0(icrm,1)
-
-    ! estimate roughness length assuming logarithmic profile of velocity near the surface:
-    ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(icrm,1))
-    z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
-    z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
-
-    crm_output_timing_factor = 0.
-
-    crm_output%prectend(icrm)=colprec
-    crm_output%precstend(icrm)=colprecs
   enddo
 
+  call t_startf('crm_gpu_region')
+
+  !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
+  !$acc enter data copyin(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
+  !$acc enter data copyin(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
+  !$acc enter data copyin(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
+  !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
+  !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
+  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv,wnd,crm_input_tau00,crm_output_prectend,crm_output_precstend) async(asyncid)
+  !$acc enter data copyin(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,crm_output_mctot,crm_output_qc_mean,crm_output_qi_mean,crm_output_qs_mean,crm_output_qg_mean,crm_output_qr_mean) async(asyncid)
+  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,gamaz,mkadv,mkwle,crm_output_mu_crm,crm_output_md_crm,crm_output_eu_crm,crm_output_du_crm,crm_output_ed_crm) async(asyncid)
+  !$acc enter data copyin(crm_output_flux_qt,crm_output_flux_u,crm_output_flux_v,crm_output_fluxsgs_qt,crm_output_tkez,crm_output_tkesgsz,crm_output_tkz,crm_output_flux_qp,crm_output_precflux) async(asyncid)
+  !$acc enter data copyin(crm_output_qt_trans,crm_output_qp_trans,crm_output_qp_fall,crm_output_qp_evp,crm_output_qp_src,crm_output_qt_ls,crm_output_t_ls) async(asyncid)
+  !$acc enter data copyin(dd_crm,crm_output_jt_crm,crm_output_mx_crm) async(asyncid)
+
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    uhl(icrm) = u0(icrm,1)
+    vhl(icrm) = v0(icrm,1)
+    ! estimate roughness length assuming logarithmic profile of velocity near the surface:
+    ustar = sqrt(crm_input_tau00(icrm)/rho(icrm,1))
+    z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar)
+    z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
+    crm_output_timing_factor(icrm) = 0.
+  enddo
+
+  !$acc kernels async(asyncid)
   fluxbu=0.
   fluxbv=0.
   fluxbt=0.
@@ -559,31 +592,31 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   crm_output_cldtop = 0.
   crm_output_gicewp = 0
   crm_output_gliqwp = 0
-  crm_output%mctot  = 0.
+  crm_output_mctot  = 0.
   crm_output_mcup   = 0.
   crm_output_mcdn   = 0.
   crm_output_mcuup  = 0.
   crm_output_mcudn  = 0.
-  crm_output%qc_mean = 0.
-  crm_output%qi_mean = 0.
-  crm_output%qs_mean = 0.
-  crm_output%qg_mean = 0.
-  crm_output%qr_mean = 0.
+  crm_output_qc_mean = 0.
+  crm_output_qi_mean = 0.
+  crm_output_qs_mean = 0.
+  crm_output_qg_mean = 0.
+  crm_output_qr_mean = 0.
 #ifdef m2005
-  crm_output%nc_mean = 0.
-  crm_output%ni_mean = 0.
-  crm_output%ns_mean = 0.
-  crm_output%ng_mean = 0.
-  crm_output%nr_mean = 0.
+  crm_output_nc_mean = 0.
+  crm_output_ni_mean = 0.
+  crm_output_ns_mean = 0.
+  crm_output_ng_mean = 0.
+  crm_output_nr_mean = 0.
   ! hm 8/31/11 add new variables
-  crm_output%aut_a  = 0.
-  crm_output%acc_a  = 0.
-  crm_output%evpc_a = 0.
-  crm_output%evpr_a = 0.
-  crm_output%mlt_a  = 0.
-  crm_output%sub_a  = 0.
-  crm_output%dep_a  = 0.
-  crm_output%con_a  = 0.
+  crm_output_aut_a  = 0.
+  crm_output_acc_a  = 0.
+  crm_output_evpc_a = 0.
+  crm_output_evpr_a = 0.
+  crm_output_mlt_a  = 0.
+  crm_output_sub_a  = 0.
+  crm_output_dep_a  = 0.
+  crm_output_con_a  = 0.
 
   ! hm 8/31/11 add new output
   ! these are increments added to calculate gcm-grid and time-step avg
@@ -607,10 +640,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   dd_crm  = 0.
   crm_output_jt_crm    = 0.
   crm_output_mx_crm    = 0.
-
   mui_crm = 0.
   mdi_crm = 0.
-
   crm_output_flux_qt    = 0.
   crm_output_flux_u     = 0.
   crm_output_flux_v     = 0.
@@ -627,20 +658,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   crm_output_qp_src     = 0.
   crm_output_qt_ls      = 0.
   crm_output_t_ls       = 0.
-
-  call t_startf('crm_gpu_region')
-
-  !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
-  !$acc enter data copyin(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
-  !$acc enter data copyin(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
-  !$acc enter data copyin(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
-  !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
-  !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
-  !$acc enter data copyin(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(asyncid)
-  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,gamaz,mkadv,mkwle) async(asyncid)
-
-  !$acc kernels async(asyncid)
   uwle     = 0.
   uwsb     = 0.
   vwle     = 0.
@@ -1059,9 +1076,12 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !$acc exit data copyout(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
   !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
   !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-  !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv) async(asyncid)
-  !$acc exit data copyout(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp) async(asyncid)
-  !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,gamaz,mkadv,mkwle) async(asyncid)
+  !$acc exit data copyout(sgs_field,sgs_field_diag,tke2,tk2,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv,wnd,crm_input_tau00,crm_output_prectend,crm_output_precstend) async(asyncid)
+  !$acc exit data copyout(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,crm_output_mctot,crm_output_qc_mean,crm_output_qi_mean,crm_output_qs_mean,crm_output_qg_mean,crm_output_qr_mean) async(asyncid)
+  !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,gamaz,mkadv,mkwle,crm_output_mu_crm,crm_output_md_crm,crm_output_eu_crm,crm_output_du_crm,crm_output_ed_crm) async(asyncid)
+  !$acc exit data copyout(crm_output_flux_qt,crm_output_flux_u,crm_output_flux_v,crm_output_fluxsgs_qt,crm_output_tkez,crm_output_tkesgsz,crm_output_tkz,crm_output_flux_qp,crm_output_precflux) async(asyncid)
+  !$acc exit data copyout(crm_output_qt_trans,crm_output_qp_trans,crm_output_qp_fall,crm_output_qp_evp,crm_output_qp_src,crm_output_qt_ls,crm_output_t_ls) async(asyncid)
+  !$acc exit data copyout(dd_crm,crm_output_jt_crm,crm_output_mx_crm) async(asyncid)
 
   !$acc wait(asyncid)
 
@@ -1170,8 +1190,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output%qltend (icrm,:) =      (qln(icrm,:) - crm_input%ql  (icrm,:)) * icrm_run_time
     crm_output%qcltend(icrm,:) =      (qccln(icrm,:) - crm_input%qccl(icrm,:)) * icrm_run_time
     crm_output%qiltend(icrm,:) =      (qiiln(icrm,:) - crm_input%qiil(icrm,:)) * icrm_run_time
-    crm_output%prectend (icrm) = (colprec -crm_output%prectend (icrm))/ggr*factor_xy * icrm_run_time
-    crm_output%precstend(icrm) = (colprecs-crm_output%precstend(icrm))/ggr*factor_xy * icrm_run_time
+    crm_output_prectend (icrm) = (colprec -crm_output_prectend (icrm))/ggr*factor_xy * icrm_run_time
+    crm_output_precstend(icrm) = (colprecs-crm_output_precstend(icrm))/ggr*factor_xy * icrm_run_time
 
     !!! don't use CRM tendencies from two crm top levels
     !!! radiation tendencies are added back after the CRM call (see crm_physics_tend)
@@ -1267,22 +1287,22 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          crm_output%qc_mean(icrm,l) = crm_output%qc_mean(icrm,l) + qcl(icrm,i,j,k)
-          crm_output%qi_mean(icrm,l) = crm_output%qi_mean(icrm,l) + qci(icrm,i,j,k)
-          crm_output%qr_mean(icrm,l) = crm_output%qr_mean(icrm,l) + qpl(icrm,i,j,k)
+          crm_output_qc_mean(icrm,l) = crm_output_qc_mean(icrm,l) + qcl(icrm,i,j,k)
+          crm_output_qi_mean(icrm,l) = crm_output_qi_mean(icrm,l) + qci(icrm,i,j,k)
+          crm_output_qr_mean(icrm,l) = crm_output_qr_mean(icrm,l) + qpl(icrm,i,j,k)
 #ifdef sam1mom
           omg = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tgrmin)*a_gr))
-          crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + qpi(icrm,i,j,k)*omg
-          crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + qpi(icrm,i,j,k)*(1.-omg)
+          crm_output_qg_mean(icrm,l) = crm_output_qg_mean(icrm,l) + qpi(icrm,i,j,k)*omg
+          crm_output_qs_mean(icrm,l) = crm_output_qs_mean(icrm,l) + qpi(icrm,i,j,k)*(1.-omg)
 #else
-          crm_output%qg_mean(icrm,l) = crm_output%qg_mean(icrm,l) + micro_field(icrm,i,j,k,iqg)
-          crm_output%qs_mean(icrm,l) = crm_output%qs_mean(icrm,l) + micro_field(icrm,i,j,k,iqs)
+          crm_output_qg_mean(icrm,l) = crm_output_qg_mean(icrm,l) + micro_field(icrm,i,j,k,iqg)
+          crm_output_qs_mean(icrm,l) = crm_output_qs_mean(icrm,l) + micro_field(icrm,i,j,k,iqs)
 
-          crm_output%nc_mean(icrm,l) = crm_output%nc_mean(icrm,l) + micro_field(icrm,i,j,k,incl)
-          crm_output%ni_mean(icrm,l) = crm_output%ni_mean(icrm,l) + micro_field(icrm,i,j,k,inci)
-          crm_output%nr_mean(icrm,l) = crm_output%nr_mean(icrm,l) + micro_field(icrm,i,j,k,inr )
-          crm_output%ng_mean(icrm,l) = crm_output%ng_mean(icrm,l) + micro_field(icrm,i,j,k,ing )
-          crm_output%ns_mean(icrm,l) = crm_output%ns_mean(icrm,l) + micro_field(icrm,i,j,k,ins )
+          crm_output_nc_mean(icrm,l) = crm_output_nc_mean(icrm,l) + micro_field(icrm,i,j,k,incl)
+          crm_output_ni_mean(icrm,l) = crm_output_ni_mean(icrm,l) + micro_field(icrm,i,j,k,inci)
+          crm_output_nr_mean(icrm,l) = crm_output_nr_mean(icrm,l) + micro_field(icrm,i,j,k,inr )
+          crm_output_ng_mean(icrm,l) = crm_output_ng_mean(icrm,l) + micro_field(icrm,i,j,k,ing )
+          crm_output_ns_mean(icrm,l) = crm_output_ns_mean(icrm,l) + micro_field(icrm,i,j,k,ins )
 #endif /* sam1mom */
         enddo
       enddo
@@ -1296,19 +1316,19 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output_mcdn  (icrm,:) = crm_output_mcdn (icrm,:) * factor_xyt
     crm_output_mcuup (icrm,:) = crm_output_mcuup(icrm,:) * factor_xyt
     crm_output_mcudn (icrm,:) = crm_output_mcudn(icrm,:) * factor_xyt
-    crm_output%mctot (icrm,:) = crm_output_mcup(icrm,:) + crm_output_mcdn(icrm,:) + crm_output_mcuup(icrm,:) + crm_output_mcudn(icrm,:)
+    crm_output_mctot (icrm,:) = crm_output_mcup(icrm,:) + crm_output_mcdn(icrm,:) + crm_output_mcuup(icrm,:) + crm_output_mcudn(icrm,:)
 
-    crm_output%qc_mean(icrm,:) = crm_output%qc_mean(icrm,:) * factor_xy
-    crm_output%qi_mean(icrm,:) = crm_output%qi_mean(icrm,:) * factor_xy
-    crm_output%qs_mean(icrm,:) = crm_output%qs_mean(icrm,:) * factor_xy
-    crm_output%qg_mean(icrm,:) = crm_output%qg_mean(icrm,:) * factor_xy
-    crm_output%qr_mean(icrm,:) = crm_output%qr_mean(icrm,:) * factor_xy
+    crm_output_qc_mean(icrm,:) = crm_output_qc_mean(icrm,:) * factor_xy
+    crm_output_qi_mean(icrm,:) = crm_output_qi_mean(icrm,:) * factor_xy
+    crm_output_qs_mean(icrm,:) = crm_output_qs_mean(icrm,:) * factor_xy
+    crm_output_qg_mean(icrm,:) = crm_output_qg_mean(icrm,:) * factor_xy
+    crm_output_qr_mean(icrm,:) = crm_output_qr_mean(icrm,:) * factor_xy
 #ifdef m2005
-    crm_output%nc_mean(icrm,:) = crm_output%nc_mean(icrm,:) * factor_xy
-    crm_output%ni_mean(icrm,:) = crm_output%ni_mean(icrm,:) * factor_xy
-    crm_output%ns_mean(icrm,:) = crm_output%ns_mean(icrm,:) * factor_xy
-    crm_output%ng_mean(icrm,:) = crm_output%ng_mean(icrm,:) * factor_xy
-    crm_output%nr_mean(icrm,:) = crm_output%nr_mean(icrm,:) * factor_xy
+    crm_output_nc_mean(icrm,:) = crm_output_nc_mean(icrm,:) * factor_xy
+    crm_output_ni_mean(icrm,:) = crm_output_ni_mean(icrm,:) * factor_xy
+    crm_output_ns_mean(icrm,:) = crm_output_ns_mean(icrm,:) * factor_xy
+    crm_output_ng_mean(icrm,:) = crm_output_ng_mean(icrm,:) * factor_xy
+    crm_output_nr_mean(icrm,:) = crm_output_nr_mean(icrm,:) * factor_xy
 
     ! hm 8/31/11 new output, gcm-grid- and time-step avg
     ! add loop over i,j do get horizontal avg, and flip vertical array
@@ -1316,27 +1336,27 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       l = plev-k+1
       do j=1,ny
         do i=1,nx
-          crm_output%aut_a (icrm,l) = crm_output%aut_a (icrm,l) + aut1a(icrm,i,j,k)
-          crm_output%acc_a (icrm,l) = crm_output%acc_a (icrm,l) + acc1a(icrm,i,j,k)
-          crm_output%evpc_a(icrm,l) = crm_output%evpc_a(icrm,l) + evpc1a(icrm,i,j,k)
-          crm_output%evpr_a(icrm,l) = crm_output%evpr_a(icrm,l) + evpr1a(icrm,i,j,k)
-          crm_output%mlt_a (icrm,l) = crm_output%mlt_a (icrm,l) + mlt1a(icrm,i,j,k)
-          crm_output%sub_a (icrm,l) = crm_output%sub_a (icrm,l) + sub1a(icrm,i,j,k)
-          crm_output%dep_a (icrm,l) = crm_output%dep_a (icrm,l) + dep1a(icrm,i,j,k)
-          crm_output%con_a (icrm,l) = crm_output%con_a (icrm,l) + con1a(icrm,i,j,k)
+          crm_output_aut_a (icrm,l) = crm_output_aut_a (icrm,l) + aut1a(icrm,i,j,k)
+          crm_output_acc_a (icrm,l) = crm_output_acc_a (icrm,l) + acc1a(icrm,i,j,k)
+          crm_output_evpc_a(icrm,l) = crm_output_evpc_a(icrm,l) + evpc1a(icrm,i,j,k)
+          crm_output_evpr_a(icrm,l) = crm_output_evpr_a(icrm,l) + evpr1a(icrm,i,j,k)
+          crm_output_mlt_a (icrm,l) = crm_output_mlt_a (icrm,l) + mlt1a(icrm,i,j,k)
+          crm_output_sub_a (icrm,l) = crm_output_sub_a (icrm,l) + sub1a(icrm,i,j,k)
+          crm_output_dep_a (icrm,l) = crm_output_dep_a (icrm,l) + dep1a(icrm,i,j,k)
+          crm_output_con_a (icrm,l) = crm_output_con_a (icrm,l) + con1a(icrm,i,j,k)
         enddo
       enddo
     enddo
 
     ! note, rates are divded by dt to get mean rate over step
-    crm_output%aut_a (icrm,:) = crm_output%aut_a (icrm,:) * factor_xyt / dt
-    crm_output%acc_a (icrm,:) = crm_output%acc_a (icrm,:) * factor_xyt / dt
-    crm_output%evpc_a(icrm,:) = crm_output%evpc_a(icrm,:) * factor_xyt / dt
-    crm_output%evpr_a(icrm,:) = crm_output%evpr_a(icrm,:) * factor_xyt / dt
-    crm_output%mlt_a (icrm,:) = crm_output%mlt_a (icrm,:) * factor_xyt / dt
-    crm_output%sub_a (icrm,:) = crm_output%sub_a (icrm,:) * factor_xyt / dt
-    crm_output%dep_a (icrm,:) = crm_output%dep_a (icrm,:) * factor_xyt / dt
-    crm_output%con_a (icrm,:) = crm_output%con_a (icrm,:) * factor_xyt / dt
+    crm_output_aut_a (icrm,:) = crm_output_aut_a (icrm,:) * factor_xyt / dt
+    crm_output_acc_a (icrm,:) = crm_output_acc_a (icrm,:) * factor_xyt / dt
+    crm_output_evpc_a(icrm,:) = crm_output_evpc_a(icrm,:) * factor_xyt / dt
+    crm_output_evpr_a(icrm,:) = crm_output_evpr_a(icrm,:) * factor_xyt / dt
+    crm_output_mlt_a (icrm,:) = crm_output_mlt_a (icrm,:) * factor_xyt / dt
+    crm_output_sub_a (icrm,:) = crm_output_sub_a (icrm,:) * factor_xyt / dt
+    crm_output_dep_a (icrm,:) = crm_output_dep_a (icrm,:) * factor_xyt / dt
+    crm_output_con_a (icrm,:) = crm_output_con_a (icrm,:) * factor_xyt / dt
 #endif /* m2005 */
 
     crm_output%precc (icrm) = 0.
