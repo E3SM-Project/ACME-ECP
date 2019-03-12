@@ -490,14 +490,18 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call micro_init(ncrms)
 
   call sgs_init(ncrms)
+  !$acc wait(asyncid)
 
-  !!$acc parallel loop collapse(2) copy(crm_output_prectend,crm_output_precstend,u0,v0,t0,t00,tabs0,q0,qv0,qn0,qp0,tke0) async(asyncid)
+
+  !!$acc parallel loop copy(crm_output_prectend,crm_output_precstend) async(asyncid)
+  do icrm = 1 , ncrms
+    crm_output_prectend (icrm) = 0.
+    crm_output_precstend(icrm) = 0.
+  enddo
+
+  !!$acc parallel loop collapse(2) copy(u0,v0,t0,t00,tabs0,q0,qv0,qn0,qp0,tke0) async(asyncid)
   do k=1,nzm
     do icrm = 1 , ncrms
-      if (k == 1) then
-        crm_output_prectend (icrm) = 0.
-        crm_output_precstend(icrm) = 0.
-      endif
       u0   (icrm,k) = 0.
       v0   (icrm,k) = 0.
       t0   (icrm,k) = 0.
@@ -511,8 +515,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
   enddo
 
-  !!$acc parallel loop collapse(4) copyin(tabs,gamaz,qcl,qpl,qci,qpi,crm_input_pdel,u,v,tabs,qv,sgs_field) &
-  !!$acc&  copy(t,crm_output_prectend,crm_output_precstend,u0,v0,t0,t00,tabs0,q0,qv0,qn0,qp0,tke0) async(asyncid)
+  !!$acc parallel loop collapse(4) async(asyncid)
   do k=1,nzm
     do j=1,ny
       do i=1,nx
@@ -520,7 +523,32 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
                           -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
                           -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
+        enddo
+      enddo
+    enddo
+  enddo
 
+  call t_startf('crm_gpu_region')
+
+  !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
+  !$acc enter data copyin(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
+  !$acc enter data copyin(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
+  !$acc enter data copyin(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
+  !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
+  !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
+  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv,wnd,crm_input_tau00,crm_output_prectend,crm_output_precstend) async(asyncid)
+  !$acc enter data copyin(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,crm_output_mctot,crm_output_qc_mean,crm_output_qi_mean,crm_output_qs_mean,crm_output_qg_mean,crm_output_qr_mean) async(asyncid)
+  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,mkadv,mkwle,crm_output_mu_crm,crm_output_md_crm,crm_output_eu_crm,crm_output_du_crm,crm_output_ed_crm) async(asyncid)
+  !$acc enter data copyin(crm_output_flux_qt,crm_output_flux_u,crm_output_flux_v,crm_output_fluxsgs_qt,crm_output_tkez,crm_output_tkesgsz,crm_output_tkz,crm_output_flux_qp,crm_output_precflux) async(asyncid)
+  !$acc enter data copyin(crm_output_qt_trans,crm_output_qp_trans,crm_output_qp_fall,crm_output_qp_evp,crm_output_qp_src,crm_output_qt_ls,crm_output_t_ls,t00,tke0) async(asyncid)
+  !$acc enter data copyin(dd_crm,crm_output_jt_crm,crm_output_mx_crm,crm_input_pdel,crm_input_ul,crm_input_vl,crm_input_tl,crm_input_qccl,crm_input_qiil,crm_input_qiil,crm_input_ql) async(asyncid)
+  !$acc enter data copyin(uln,vln,tg0,qg0) async(asyncid)
+
+  !$acc parallel loop collapse(4) async(asyncid)
+  do k=1,nzm
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
           tmp = (qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input_pdel(icrm,plev-k+1)
           !$acc atomic update
           crm_output_prectend (icrm) = crm_output_prectend (icrm) + tmp
@@ -566,21 +594,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
   enddo
-
-  call t_startf('crm_gpu_region')
-  !$acc enter data copyin(dudt,dvdt,dwdt,misc,adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs,t,micro_field,ttend,qtend,utend,vtend,u,u0,v,v0,w,t0,dz,precsfc,precssfc,rho,qifall,tlatqi) async(asyncid)
-  !$acc enter data copyin(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
-  !$acc enter data copyin(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
-  !$acc enter data copyin(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
-  !$acc enter data copyin(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
-  !$acc enter data copyin(fluxbq,fluxbmk,fluxtq,fluxtmk,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
-  !$acc enter data copyin(sgs_field,sgs_field_diag,tke2,tk2,q0,qpfall,tlat,precflux,prec_xy,fluxtu,fluxtv,wnd,crm_input_tau00,crm_output_prectend,crm_output_precstend) async(asyncid)
-  !$acc enter data copyin(cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,crm_output_mctot,crm_output_qc_mean,crm_output_qi_mean,crm_output_qs_mean,crm_output_qg_mean,crm_output_qr_mean) async(asyncid)
-  !$acc enter data copyin(rhow,uwle,vwle,uwsb,vwsb,gamaz,dt3,mkadv,mkwle,crm_output_mu_crm,crm_output_md_crm,crm_output_eu_crm,crm_output_du_crm,crm_output_ed_crm) async(asyncid)
-  !$acc enter data copyin(crm_output_flux_qt,crm_output_flux_u,crm_output_flux_v,crm_output_fluxsgs_qt,crm_output_tkez,crm_output_tkesgsz,crm_output_tkz,crm_output_flux_qp,crm_output_precflux) async(asyncid)
-  !$acc enter data copyin(crm_output_qt_trans,crm_output_qp_trans,crm_output_qp_fall,crm_output_qp_evp,crm_output_qp_src,crm_output_qt_ls,crm_output_t_ls,t00,tke0) async(asyncid)
-  !$acc enter data copyin(dd_crm,crm_output_jt_crm,crm_output_mx_crm,crm_input_pdel,crm_input_ul,crm_input_vl,crm_input_tl,crm_input_qccl,crm_input_qiil,crm_input_qiil,crm_input_ql) async(asyncid)
-  !$acc enter data copyin(uln,vln,tg0,qg0) async(asyncid)
 
   !$acc parallel loop collapse(2) copyin(crm_input_ul,crm_input_vl,gamaz,crm_input_tl,crm_input_ql,crm_input_qccl,crm_input_qiil) &
   !$acc&  copy(u0,v0,t0,t00,tabs0,q0,qv0,qn0,qp0,tke0,uln,vln,ttend,qtend,utend,vtend,ug0,vg0,tg0,qg0) async(asyncid)
