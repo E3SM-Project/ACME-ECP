@@ -27,6 +27,8 @@ contains
     real(crm_rknd) ff(ncrms,nx+1,ny+2*YES3D,nzm)  ! local (subdomain's) version of f
     real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
     real(crm_rknd) ftmp(nx2,ny2)
+    real(crm_rknd) ftmp_x(nx2)
+    real(crm_rknd) ftmp_y(ny2)
     integer ifaxj(100),ifaxi(100)
     real(8) a(ncrms,nzm),b,c(ncrms,nzm),e
     real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty
@@ -92,18 +94,30 @@ contains
       call fftfax_crm(nx_gl,ifaxi,trigxi)
       if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
     enddo
-    !$acc parallel loop gang copyin(trigxi,ifaxi,trigxj,ifaxj) copy(f) async(asyncid)
+    !$acc parallel loop gang vector collapse(3) copyin(trigxi,ifaxi) copy(f) private(work,ftmp_x) async(asyncid)
     do k=1,nzslab
-      !$acc loop vector private(work,ftmp)
-      do icrm = 1 , ncrms
-        ftmp = f(icrm,:,:,k)
-        call fft991_crm(ftmp,work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,-1)
-        if(RUN3D) then
-          call fft991_crm(ftmp,work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,-1)
-        endif
-        f(icrm,:,:,k) = ftmp
+      do j = 1 , ny_gl
+        do icrm = 1 , ncrms
+          !$acc cache(ftmp_x,work)
+          ftmp_x = f(icrm,:,j,k)
+          call fft991_crm(ftmp_x,work,trigxi,ifaxi,1,nx2,nx_gl,1,-1)
+          f(icrm,:,j,k) = ftmp_x
+        enddo
       enddo
     enddo
+    if(RUN3D) then
+      !$acc parallel loop gang vector collapse(3) copyin(trigxj,ifaxj) copy(f) private(work,ftmp_y) async(asyncid)
+      do k=1,nzslab
+        do i = 1 , nx_gl+1
+          do icrm = 1 , ncrms
+            !$acc cache(ftmp_y,work)
+            ftmp_y = f(icrm,i,:,k)
+            call fft991_crm(ftmp_y,work,trigxj,ifaxj,1,nx2,ny_gl,1,-1)
+            f(icrm,i,:,k) = ftmp_y
+          enddo
+        enddo
+      enddo
+    endif
 
     !-------------------------------------------------
     !   Send Fourier coeffiecients back to subdomains:
