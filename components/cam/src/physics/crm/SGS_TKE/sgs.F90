@@ -320,7 +320,7 @@ CONTAINS
       end do
     end do
 
-    !$acc parallel loop collapse(2) private(tmp) copyin(tkhmax,grdf_z,grdf_x,grdf_y,dz,adzw) reduction(max:cfl) async(asyncid)
+    !$acc parallel loop collapse(2) copyin(tkhmax,grdf_z,grdf_x,grdf_y,dz,adzw) reduction(max:cfl) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         tmp = max( 0.5*tkhmax(icrm,k)*grdf_z(icrm,k)*dt/(dz(icrm)*adzw(icrm,k))**2  , &

@@ -49,7 +49,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(4) private(factor) copyin(nneg,qpoz,qneg) copy(micro_field) async(asyncid)
+    !$acc parallel loop collapse(4) copyin(nneg,qpoz,qneg) copy(micro_field) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

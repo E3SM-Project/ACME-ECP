@@ -806,7 +806,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call forcing(ncrms)
 
       !!! Apply radiative tendency
-      !$acc parallel loop collapse(4) private(i_rad,j_rad) copyin(crm_rad_qrad) copy(t) async(asyncid)
+      !$acc parallel loop collapse(4) copyin(crm_rad_qrad) copy(t) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -1021,7 +1021,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(4) private(i_rad,j_rad) copyin(tabs,qcl,qci,cf3d,qv) copy(crm_rad_temperature,crm_rad_qv,crm_rad_qc,crm_rad_qi,crm_rad_cld) async(asyncid)
+    !$acc parallel loop gang vector collapse(4) copyin(tabs,qcl,qci,cf3d,qv) copy(crm_rad_temperature,crm_rad_qv,crm_rad_qc,crm_rad_qi,crm_rad_cld) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

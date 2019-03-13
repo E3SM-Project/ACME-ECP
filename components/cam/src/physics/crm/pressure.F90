@@ -173,10 +173,11 @@ contains
 
     !For working aroung PGI OpenACC bug where it didn't create enough gangs
     numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
-    !$acc parallel loop collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) copyin(eign,rho,a,c) copy(ff) async(asyncid)
+    !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) copyin(eign,rho,a,c) copy(ff) async(asyncid)
     do j=1,nyp22-jwall
       do i=1,nxp1-iwall
         do icrm = 1 , ncrms
+          !$acc cache(alfa,beta)
           if(dowally) then
             jd=j+jt-1
           else
