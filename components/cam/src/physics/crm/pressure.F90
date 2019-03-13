@@ -224,16 +224,28 @@ contains
 
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
-    !$acc parallel loop gang copyin(trigxj,ifaxj,trigxi,ifaxi) copy(f) async(asyncid)
+    if(RUN3D) then
+      !$acc parallel loop gang vector collapse(3) copyin(trigxj,ifaxj) copy(f) private(ftmp_y,work) async(asyncid)
+      do k=1,nzslab
+        do i = 1 , nx_gl+1
+          do icrm = 1 , ncrms
+            !$acc cache(ftmp_y,work)
+            ftmp_y = f(icrm,i,:,k)
+            call fft991_crm(ftmp_y,work,trigxj,ifaxj,1,nx2,ny_gl,1,+1)
+            f(icrm,i,:,k) = ftmp_y
+          enddo
+        enddo
+      enddo
+    endif
+    !$acc parallel loop gang vector collapse(3) copyin(trigxi,ifaxi) copy(f) private(ftmp_x,work) async(asyncid)
     do k=1,nzslab
-      !$acc loop vector private(work,ftmp)
-      do icrm = 1 , ncrms
-        ftmp = f(icrm,:,:,k)
-        if(RUN3D) then
-          call fft991_crm(ftmp,work,trigxj,ifaxj,nx2,1,ny_gl,nx_gl+1,+1)
-        endif
-        call fft991_crm(ftmp,work,trigxi,ifaxi,1,nx2,nx_gl,ny_gl,+1)
-        f(icrm,:,:,k) = ftmp
+      do j = 1 , ny_gl
+        do icrm = 1 , ncrms
+          !$acc cache(ftmp_x,work)
+          ftmp_x = f(icrm,:,j,k)
+          call fft991_crm(ftmp_x,work,trigxi,ifaxi,1,nx2,nx_gl,1,+1)
+          f(icrm,:,j,k) = ftmp_x
+        enddo
       enddo
     enddo
 
