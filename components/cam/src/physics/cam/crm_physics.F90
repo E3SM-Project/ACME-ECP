@@ -113,6 +113,14 @@ subroutine crm_physics_register()
      call setparm()
   end if
 
+  ! crjones: move add_hist_coord here to fix restart problems (?)
+  ! Adding crm dimensions to cam history 
+  call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
+  call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
+  call add_hist_coord('crm_nz'       ,crm_nz,  'CRM NZ')
+  call add_hist_coord('crm_nx_rad', crm_nx_rad, 'Number of x columns for radiation')
+  call add_hist_coord('crm_ny_rad', crm_ny_rad, 'Number of y columns for radiation')
+
   call pbuf_add_field('CRM_U',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
   call pbuf_add_field('CRM_V',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
   call pbuf_add_field('CRM_W',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
