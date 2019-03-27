@@ -114,7 +114,6 @@ subroutine crm_physics_register()
      call setparm()
   end if
 
-  ! crjones: move add_hist_coord here to fix restart problems (?)
   ! Adding crm dimensions to cam history 
   call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
   call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')

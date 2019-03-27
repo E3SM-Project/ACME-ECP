@@ -155,8 +155,6 @@ subroutine phys_register
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on
     use output_aerocom_aie, only: output_aerocom_aie_register, do_aerocom_ind3
-    use cam_history_support,only: add_hist_coord
-    use crmdims,            only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
 
 #ifdef CRM
     use crm_physics,        only: crm_physics_register
@@ -351,15 +349,6 @@ subroutine phys_register
     call cnst_chk_dim()
 
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
-
-    if (use_SPCAM) then
-      ! Adding crm dimensions to cam history 
-      call add_hist_coord('crm_nx',     crm_nx,    'CRM NX')
-      call add_hist_coord('crm_ny',     crm_ny,    'CRM NY')
-      call add_hist_coord('crm_nz',     crm_nz,    'CRM NZ')
-      call add_hist_coord('crm_nx_rad', crm_nx_rad,'Number of x columns for radiation')
-      call add_hist_coord('crm_ny_rad', crm_ny_rad,'Number of y columns for radiation')
-    end if ! use_SPCAM
 
 end subroutine phys_register
 
