@@ -20,7 +20,7 @@ dobuild=true
 donamelist=true
 dosubmit=false
 
-datestamp=20190222
+datestamp=yyyymmdd
 
 ### BASIC INFO FOR create_newcase
 case_name=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
