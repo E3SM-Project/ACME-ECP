@@ -79,6 +79,7 @@ subroutine crm_physics_register()
   use physics_buffer,  only: dyn_time_lvls, pbuf_add_field, dtype_r8, pbuf_get_index
   use phys_control,    only: phys_getopts
   use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_dx, crm_dy, crm_dt, nclubbvars, crm_nx_rad, crm_ny_rad
+  use cam_history_support,only: add_hist_coord
 #ifdef CRM
   use setparm_mod,     only: setparm
 #endif
@@ -112,6 +113,14 @@ subroutine crm_physics_register()
   if (use_SPCAM) then
      call setparm()
   end if
+
+  ! crjones: move add_hist_coord here to fix restart problems (?)
+  ! Adding crm dimensions to cam history 
+  call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
+  call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
+  call add_hist_coord('crm_nz'       ,crm_nz,  'CRM NZ')
+  call add_hist_coord('crm_nx_rad', crm_nx_rad, 'Number of x columns for radiation')
+  call add_hist_coord('crm_ny_rad', crm_ny_rad, 'Number of y columns for radiation')
 
   call pbuf_add_field('CRM_U',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
   call pbuf_add_field('CRM_V',     'global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz/), idx)
