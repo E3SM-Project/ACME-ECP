@@ -7,22 +7,16 @@
 # See https://confluence.exascaleproject.org/x/SIOWAw for further details 
 
 
-create_newcase=false
-dosetup=false
-dobuild=false
-donamelist=false
-dosubmit=true
+create_newcase=true
+dosetup=true
+dobuild=true
+donamelist=true
+dosubmit=false
 
-continue_run=false
-
-shakeout=false
-
-# datestamp=$(date +"%Y%m%d")
-datestamp=20190326
+datestamp=20190327
 
 ### BASIC INFO FOR create_newcase
-case_name=earlyscience_branch.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
-# case_name=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
+case_name=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
 compset=FC5AV1C-H01A
 resolution=ne120_ne120
 project=atm111
@@ -44,10 +38,8 @@ sp_micro=sam1mom
 cppdefs="'-DCRJONESDEBUG -DSP_DIR_NS -DSP_MCICA_RAD'"
 
 ### local directory info
-# repo_dir=$HOME/git_repos/ACME-ECP
-repo_dir=$HOME/E3SM/E3SM_SRC_master
-# case_dir_root=$repo_dir/Cases
-case_dir_root=$HOME/E3SM/Cases
+repo_dir=$HOME/git_repos/Summit-Early-Science
+case_dir_root=$repo_dir/Cases
 case_dir=$case_dir_root/$case_name
 cime_dir=$repo_dir/cime/scripts
 
@@ -60,18 +52,6 @@ fi
 cd $case_dir
 ### case setup:
 if [ "$dosetup" = true ] ; then
-    # Initial branch from 4-month ES run w/ restart bug
-    ./xmlchange -file env_run.xml RUN_TYPE=branch
-    ./xmlchange -file env_run.xml GET_REFCASE=FALSE
-    ./xmlchange -file env_run.xml RUN_REFCASE=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.20190222
-    ./xmlchange -file env_run.xml RUN_REFDATE=0001-05-01
-
-    # New hybrid run using data from previous branch to avoid data offset in history files
-    # ./xmlchange -file env_run.xml RUN_TYPE=hybrid
-    # ./xmlchange -file env_run.xml GET_REFCASE=FALSE
-    # ./xmlchange -file env_run.xml RUN_REFCASE=earlyscience_branch.FC5AV1C-H01A.ne120.sp1_64x1_1000m.20190326
-    # ./xmlchange -file env_run.xml RUN_REFDATE=????-??-??
-
     ./case.setup
 fi
 
@@ -83,28 +63,20 @@ if [ "$dobuild" = true ] ; then
 fi
 
 ### Run options
-if [ "$continue_run" = false ] ; then
-  ./xmlchange ATM_NCPL=288
-  ./xmlchange RUN_STARTDATE=0001-01-01
-fi
+# Initial branch from 4-month ES run w/ restart bug
+./xmlchange -file env_run.xml RUN_TYPE=branch
+./xmlchange -file env_run.xml GET_REFCASE=FALSE
+./xmlchange -file env_run.xml RUN_REFCASE=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.20190222
+./xmlchange -file env_run.xml RUN_REFDATE=0001-05-01
+# this shouldn't be used in a branch run, but just to be safe ...
+./xmlchange RUN_STARTDATE=0001-05-01
 
+./xmlchange ATM_NCPL=288
 ./xmlchange STOP_OPTION=nmonths
-./xmlchange STOP_N=1
+./xmlchange STOP_N=6
 ./xmlchange REST_OPTION=nmonths
-./xmlchange REST_N=1
+./xmlchange REST_N=2
 ./xmlchange RESUBMIT=0
-
-# ./xmlchange STOP_OPTION=ndays
-# ./xmlchange REST_OPTION=ndays
-# ./xmlchange STOP_N=1
-# ./xmlchange REST_N=1
-# ./xmlchange RESUBMIT=0
-
-if [ "$shakeout" = true ] ; then
-    ./xmlchange STOP_OPTION=ndays
-    ./xmlchange STOP_N=5
-fi
-
 
 ### namelist options
 if [ "$donamelist" = true ] ; then
@@ -152,24 +124,18 @@ cat <<EOF >> user_nl_cam
   fincl4 = 'CRM_U:I','CRM_W:I','CRM_T:I','CRM_QV:I','CRM_QC:I','CRM_QI:I','CRM_QPC:I','CRM_QPI:I','CRM_QRAD:I','Z3:I','U:I','V:I','OMEGA:I','T:I','PS:I','Q:I','CLDLIQ:I','CLDICE:I'
   fincl4lonlat = '97.8w:97.2w_36.27n:36.75n'
 
+  ! write cam.i file at end of run (need for hybrid runs)
   inithist = 'ENDOFRUN'
 
 EOF
 fi
 
-if [ "$continue_run" = true ] ; then
-  ./xmlchange CONTINUE_RUN=TRUE
-fi
-if [ "$continue_run" = false ] ; then
-  ./xmlchange CONTINUE_RUN=FALSE
-fi
-
 ### batch options
 ./xmlchange JOB_WALLCLOCK_TIME=24:00:00
-
 ./xmlchange CHARGE_ACCOUNT=ATM111
 
 ### submit
+# NOTE: prior to submission, must stage restart files and rpointer files from RUN_REFCASE in the case run directory
 if [ "$dosubmit" = true ] ; then
     ./case.submit
 fi
