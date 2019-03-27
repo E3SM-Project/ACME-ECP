@@ -153,7 +153,8 @@ module accelerate_crm_mod
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
 
-      ttend_threshold = 5.  ! 5K, following UP-CAM implementation
+      ! ttend_threshold = 5.  ! 5K, following UP-CAM implementation
+      ttend_threshold = 2.  ! 2K, use smaller value to be safe
       tmin = 50.  ! should never get below 50K in crm, following UP-CAM implementation
 
       !$acc enter data create(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)

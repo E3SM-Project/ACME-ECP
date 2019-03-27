@@ -10,18 +10,19 @@
 create_newcase=false
 dosetup=false
 dobuild=false
-donamelist=true
+donamelist=false
 dosubmit=true
 
-continue_run=true
+continue_run=false
 
 shakeout=false
 
 # datestamp=$(date +"%Y%m%d")
-datestamp=20190222
+datestamp=20190326
 
 ### BASIC INFO FOR create_newcase
-case_name=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
+case_name=earlyscience_branch.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
+# case_name=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
 compset=FC5AV1C-H01A
 resolution=ne120_ne120
 project=atm111
@@ -59,6 +60,18 @@ fi
 cd $case_dir
 ### case setup:
 if [ "$dosetup" = true ] ; then
+    # Initial branch from 4-month ES run w/ restart bug
+    ./xmlchange -file env_run.xml RUN_TYPE=branch
+    ./xmlchange -file env_run.xml GET_REFCASE=FALSE
+    ./xmlchange -file env_run.xml RUN_REFCASE=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.20190222
+    ./xmlchange -file env_run.xml RUN_REFDATE=0001-05-01
+
+    # New hybrid run using data from previous branch to avoid data offset in history files
+    # ./xmlchange -file env_run.xml RUN_TYPE=hybrid
+    # ./xmlchange -file env_run.xml GET_REFCASE=FALSE
+    # ./xmlchange -file env_run.xml RUN_REFCASE=earlyscience_branch.FC5AV1C-H01A.ne120.sp1_64x1_1000m.20190326
+    # ./xmlchange -file env_run.xml RUN_REFDATE=????-??-??
+
     ./case.setup
 fi
 
@@ -75,17 +88,17 @@ if [ "$continue_run" = false ] ; then
   ./xmlchange RUN_STARTDATE=0001-01-01
 fi
 
-# ./xmlchange STOP_OPTION=nmonths
-# ./xmlchange STOP_N=4
-# ./xmlchange REST_OPTION=nmonths
-# ./xmlchange REST_N=2
-# ./xmlchange RESUBMIT=1
-
-./xmlchange STOP_OPTION=ndays
-./xmlchange REST_OPTION=ndays
+./xmlchange STOP_OPTION=nmonths
 ./xmlchange STOP_N=1
+./xmlchange REST_OPTION=nmonths
 ./xmlchange REST_N=1
 ./xmlchange RESUBMIT=0
+
+# ./xmlchange STOP_OPTION=ndays
+# ./xmlchange REST_OPTION=ndays
+# ./xmlchange STOP_N=1
+# ./xmlchange REST_N=1
+# ./xmlchange RESUBMIT=0
 
 if [ "$shakeout" = true ] ; then
     ./xmlchange STOP_OPTION=ndays

@@ -747,12 +747,12 @@ subroutine diag_init()
       call addfld ('U_ESMT',(/ 'lev' /), 'A', 'm/s2 ','U tendency due to CRM (ESMT)'            )
       call addfld ('V_ESMT',(/ 'lev' /), 'A', 'm/s2 ','V tendency due to CRM (ESMT)'            )
 #endif
-      ! Adding crm dimensions to cam history 
-      call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
-      call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
-      call add_hist_coord('crm_nz'       ,crm_nz,  'CRM NZ')
-      call add_hist_coord('crm_nx_rad', crm_nx_rad, 'Number of x columns for radiation')
-      call add_hist_coord('crm_ny_rad', crm_ny_rad, 'Number of y columns for radiation')
+      ! ! Adding crm dimensions to cam history 
+      ! call add_hist_coord('crm_nx'       ,crm_nx,  'CRM NX')
+      ! call add_hist_coord('crm_ny'       ,crm_ny,  'CRM NY')
+      ! call add_hist_coord('crm_nz'       ,crm_nz,  'CRM NZ')
+      ! call add_hist_coord('crm_nx_rad', crm_nx_rad, 'Number of x columns for radiation')
+      ! call add_hist_coord('crm_ny_rad', crm_ny_rad, 'Number of y columns for radiation')
 
       ! Model vertical level coordinates
       call add_hist_coord('pverp'        ,pverp,     'pverp ')

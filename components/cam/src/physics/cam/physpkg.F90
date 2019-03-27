@@ -155,6 +155,8 @@ subroutine phys_register
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on
     use output_aerocom_aie, only: output_aerocom_aie_register, do_aerocom_ind3
+    use cam_history_support,only: add_hist_coord
+    use crmdims,            only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
 
 #ifdef CRM
     use crm_physics,        only: crm_physics_register
@@ -349,6 +351,15 @@ subroutine phys_register
     call cnst_chk_dim()
 
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
+
+    if (use_SPCAM) then
+      ! Adding crm dimensions to cam history 
+      call add_hist_coord('crm_nx',     crm_nx,    'CRM NX')
+      call add_hist_coord('crm_ny',     crm_ny,    'CRM NY')
+      call add_hist_coord('crm_nz',     crm_nz,    'CRM NZ')
+      call add_hist_coord('crm_nx_rad', crm_nx_rad,'Number of x columns for radiation')
+      call add_hist_coord('crm_ny_rad', crm_ny_rad,'Number of y columns for radiation')
+    end if ! use_SPCAM
 
 end subroutine phys_register
 
@@ -2792,9 +2803,9 @@ end if
       ! in mz_aero_wet_intr (mz_aerosols_intr.F90)
       ! tendency from other parts of crmclouds_aerosol_wet_intr() are still updated here.
       call physics_update (state, ptend, crm_run_time, tend)
-#ifdef CRJONESDEBUG
-      call physics_state_check(state, name="after_crm_modal_aero")
-#endif
+! #ifdef CRJONESDEBUG
+!       call physics_state_check(state, name="after_crm_modal_aero")
+! #endif
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time, zero, zero, zero, zero)
 #endif /* MODAL_AERO */
 
@@ -2910,9 +2921,9 @@ end if
             pbuf,                                                                    & !Pointer
             ptend                                                                    ) !Intent-out
         call physics_update(state, ptend, ztodt, tend)
-#ifdef CRJONESDEBUG
-        call physics_state_check(state, name="after_aero_model_wetdep")
-#endif  
+! #ifdef CRJONESDEBUG
+!         call physics_state_check(state, name="after_aero_model_wetdep")
+! #endif  
         if (carma_do_wetdep) then
           ! CARMA wet deposition
           !
@@ -2922,9 +2933,9 @@ end if
           call t_startf ('carma_wetdep_tend')
           call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
           call physics_update(state, ptend, ztodt, tend)
-#ifdef CRJONESDEBUG
-          call physics_state_check(state, name="after_carma_wetdep_tend")
-#endif
+! #ifdef CRJONESDEBUG
+!           call physics_state_check(state, name="after_carma_wetdep_tend")
+! #endif
             call t_stopf ('carma_wetdep_tend')
         end if
 
@@ -2933,9 +2944,9 @@ end if
         call convect_deep_tend_2( state,   ptend,  ztodt,  pbuf, mu, eu, &
           du, md, ed, dp, dsubcld, jt, maxg, ideep, lengath, species_class )  
         call physics_update(state, ptend, ztodt, tend)
-#ifdef CRJONESDEBUG
-        call physics_state_check(state, name="after_convect_deep_tend_2")
-#endif
+! #ifdef CRJONESDEBUG
+!         call physics_state_check(state, name="after_convect_deep_tend_2")
+! #endif
         call t_stopf ('convect_deep_tend2')
 
         ! check tracer integrals
@@ -3002,9 +3013,9 @@ if (l_rad) then
     !-- mdb spcam
 
     call physics_update(state, ptend, ztodt, tend)
-#ifdef CRJONESDEBUG
-    call physics_state_check(state, name="after_radiation_tend")
-#endif
+! #ifdef CRJONESDEBUG
+!     call physics_state_check(state, name="after_radiation_tend")
+! #endif
 
     !-- mdb spcam
     !call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
