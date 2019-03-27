@@ -23,7 +23,7 @@ dosubmit=false
 datestamp=yyyymmdd
 
 ### BASIC INFO FOR create_newcase
-case_name=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
+# case_name=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.$datestamp
 compset=FC5AV1C-H01A
 resolution=ne120_ne120
 project=atm111
@@ -43,6 +43,9 @@ crm_dx=1000
 crm_dt=5
 sp_micro=sam1mom
 cppdefs="'-DCRJONESDEBUG -DSP_DIR_NS -DSP_MCICA_RAD'"
+
+### Create case_name:
+case_name=earlyscience.${compset}.${resolution%_*}.sp1_${crm_nx}x${crm_ny}_${crm_dx}m.$datestamp
 
 ### local directory info
 repo_dir=$HOME/git_repos/ACME-ECP
