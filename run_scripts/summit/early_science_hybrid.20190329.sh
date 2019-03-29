@@ -1,18 +1,12 @@
 #!/bin/bash
 # Run script for SP-E3SM early science runs on summit
-# 
-# Branch for this simulation campaign:
+#
+# Hybrid run to get back to "00000" TOD for history files for this simulation campaign:
 # E3SM-Project/ACME-ECP.git/crjones/crm/summit_early_science (commit fdee19e)
-# 
+#
 # See https://confluence.exascaleproject.org/x/SIOWAw for further details 
 #
-# This should serve as a template. For these summit early science 
-# runs, the preferred approach is to create a new run script titled
-#              early_science.$datestamp.sh 
-# that corresponds to the appropriately datestamp in the case name.
-#
 # Contact: christopher.jones@pnnl.gov
-#
 
 create_newcase=true
 dosetup=true
@@ -20,7 +14,7 @@ dobuild=true
 donamelist=true
 dosubmit=false
 
-datestamp=yyyymmdd
+datestamp=20190329
 
 ### BASIC INFO FOR create_newcase
 compset=FC5AV1C-H01A
@@ -47,7 +41,7 @@ cppdefs="'-DCRJONESDEBUG -DSP_DIR_NS -DSP_MCICA_RAD'"
 case_name=earlyscience.${compset}.${resolution%_*}.sp1_${crm_nx}x${crm_ny}_${crm_dx}m.$datestamp
 
 ### local directory info
-repo_dir=$HOME/git_repos/ACME-ECP
+repo_dir=$HOME/git_repos/Summit-Early-Science
 case_dir_root=$repo_dir/Cases
 case_dir=$case_dir_root/$case_name
 cime_dir=$repo_dir/cime/scripts
@@ -72,8 +66,15 @@ if [ "$dobuild" = true ] ; then
 fi
 
 ### Run options
+# Initial branch from 4-month ES run w/ restart bug
+./xmlchange -file env_run.xml RUN_TYPE=hybrid
+./xmlchange -file env_run.xml GET_REFCASE=FALSE
+./xmlchange -file env_run.xml RUN_REFCASE=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.20190327
+./xmlchange -file env_run.xml RUN_REFDATE=0001-11-01
+# this shouldn't be used in a branch run, but just to be safe ...
+./xmlchange RUN_STARTDATE=0001-11-01
+
 ./xmlchange ATM_NCPL=288
-./xmlchange RUN_STARTDATE=0001-01-01
 ./xmlchange STOP_OPTION=nmonths
 ./xmlchange STOP_N=6
 ./xmlchange REST_OPTION=nmonths
@@ -126,17 +127,18 @@ cat <<EOF >> user_nl_cam
   fincl4 = 'CRM_U:I','CRM_W:I','CRM_T:I','CRM_QV:I','CRM_QC:I','CRM_QI:I','CRM_QPC:I','CRM_QPI:I','CRM_QRAD:I','Z3:I','U:I','V:I','OMEGA:I','T:I','PS:I','Q:I','CLDLIQ:I','CLDICE:I'
   fincl4lonlat = '97.8w:97.2w_36.27n:36.75n'
 
+  ! write cam.i file at end of run (need for hybrid runs)
   inithist = 'ENDOFRUN'
 
 EOF
 fi
-
 
 ### batch options
 ./xmlchange JOB_WALLCLOCK_TIME=24:00:00
 ./xmlchange CHARGE_ACCOUNT=ATM111
 
 ### submit
+# NOTE: prior to submission, must stage restart files and rpointer files from RUN_REFCASE in the case run directory
 if [ "$dosubmit" = true ] ; then
     ./case.submit
 fi
