@@ -11,10 +11,16 @@ contains
     use params
     implicit none
     integer, intent(in) :: ncrms
-    integer i,j,k, kb, kc, kmax(ncrms), kmin(ncrms), ici,icrm
+    integer, allocatable :: kmax(:)
+    integer, allocatable :: kmin(:)
+    real(crm_rknd), allocatable :: fz(:,:,:,:)
+    integer :: i,j,k, kb, kc, ici,icrm
     real(crm_rknd) coef,dqi,lat_heat,vt_ice
     real(crm_rknd) omnu, omnc, omnd, qiu, qic, qid, tmp_theta, tmp_phi
-    real(crm_rknd) fz(ncrms,nx,ny,nz)
+
+    allocate( kmax(ncrms) )
+    allocate( kmin(ncrms) )
+    allocate( fz(ncrms,nx,ny,nz) )
 
     !$acc enter data create(kmax,kmin,fz) async(asyncid)
 
@@ -159,6 +165,10 @@ contains
     end do
 
     !$acc exit data delete(kmax,kmin,fz) async(asyncid)
+
+    deallocate( kmax )
+    deallocate( kmin )
+    deallocate( fz )
 
   end subroutine ice_fall
 

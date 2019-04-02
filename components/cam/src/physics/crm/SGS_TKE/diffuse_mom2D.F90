@@ -22,10 +22,14 @@ contains
 
     integer i,j,k,ic,ib,kc,kcu,icrm
     real(crm_rknd) tkx, tkz, rhoi, iadzw, iadz
-    real(crm_rknd) fu(ncrms,0:nx,1,nz)
-    real(crm_rknd) fv(ncrms,0:nx,1,nz)
-    real(crm_rknd) fw(ncrms,0:nx,1,nz)
+    real(crm_rknd), allocatable :: fu(:,:,:,:)
+    real(crm_rknd), allocatable :: fv(:,:,:,:)
+    real(crm_rknd), allocatable :: fw(:,:,:,:)
     integer :: numgangs  !For working around PGI bugs where PGI did not allocate enough gangs
+
+    allocate( fu(ncrms,0:nx,1,nz) )
+    allocate( fv(ncrms,0:nx,1,nz) )
+    allocate( fw(ncrms,0:nx,1,nz) )
 
     !$acc enter data create(fu,fv,fw) async(asyncid)
 
@@ -149,6 +153,10 @@ contains
     end do ! k
 
     !$acc exit data delete(fu,fv,fw) async(asyncid)
+
+    deallocate( fu )
+    deallocate( fv )
+    deallocate( fw )
 
   end subroutine diffuse_mom2D
 

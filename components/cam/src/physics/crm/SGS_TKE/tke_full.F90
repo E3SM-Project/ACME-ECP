@@ -37,14 +37,14 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd), intent(out), dimension(ncrms,nz) :: tkesbbuoy   ! TKE production by buoyancy
 
   real(crm_rknd), intent(  out) :: tke(ncrms, dimx1_s:dimx2_s , dimy1_s:dimy2_s , nzm )   ! SGS TKE
-  real(crm_rknd), intent(inout) :: tk(ncrms, dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm )   ! SGS eddy viscosity
+  real(crm_rknd), intent(inout) :: tk (ncrms, dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm )   ! SGS eddy viscosity
   real(crm_rknd), intent(inout) :: tkh(ncrms, dimx1_d:dimx2_d , dimy1_d:dimy2_d , nzm )   ! SGS eddy conductivity
 
   !-----------------------------------------------------------------------
   !!! Local Variables
-  real(crm_rknd), dimension(ncrms,nx,ny,nzm)   :: def2
-  real(crm_rknd), dimension(ncrms,nx,ny,0:nzm) :: buoy_sgs_vert
-  real(crm_rknd), dimension(ncrms,nx,ny,0:nzm) :: a_prod_bu_vert
+  real(crm_rknd), allocatable :: def2          (:,:,:,:)
+  real(crm_rknd), allocatable :: buoy_sgs_vert (:,:,:,:)
+  real(crm_rknd), allocatable :: a_prod_bu_vert(:,:,:,:)
   real(crm_rknd) :: grd           !
   real(crm_rknd) :: betdz         !
   real(crm_rknd) :: Ck            !
@@ -86,6 +86,10 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   real(crm_rknd) :: tk_min_value      ! min value for eddy viscosity (TK)
   real(crm_rknd) :: tk_min_depth      ! near-surface depth to apply tk_min (meters)
   real(crm_rknd) :: tmp
+
+  allocate( def2          (ncrms,nx,ny,nzm  ) )
+  allocate( buoy_sgs_vert (ncrms,nx,ny,0:nzm) )
+  allocate( a_prod_bu_vert(ncrms,nx,ny,0:nzm) )
 
   !$acc enter data create(def2,buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
 
@@ -303,6 +307,10 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   enddo !icrm
 
   !$acc exit data delete(def2,buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
+
+  deallocate( def2           )
+  deallocate( buoy_sgs_vert  )
+  deallocate( a_prod_bu_vert )
 
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------

@@ -10,11 +10,15 @@ contains
     use params, only: crm_rknd
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) :: fuz(ncrms,nx,ny,nz )
-    real(crm_rknd) :: fvz(ncrms,nx,ny,nz )
-    real(crm_rknd) :: fwz(ncrms,nx,ny,nzm)
+    real(crm_rknd), allocatable :: fuz(:,:,:,:)
+    real(crm_rknd), allocatable :: fvz(:,:,:,:)
+    real(crm_rknd), allocatable :: fwz(:,:,:,:)
     integer i, j, k, kc, kb,icrm
     real(crm_rknd) dz25, www, rhoi
+
+    allocate( fuz(ncrms,nx,ny,nz ) )
+    allocate( fvz(ncrms,nx,ny,nz ) )
+    allocate( fwz(ncrms,nx,ny,nzm) )
 
     !$acc enter data create(fuz,fvz,fwz) async(asyncid)
 
@@ -116,6 +120,10 @@ contains
     end do
 
     !$acc exit data delete(fuz,fvz,fwz) async(asyncid)
+
+    deallocate( fuz )
+    deallocate( fvz )
+    deallocate( fwz )
 
   end subroutine advect2_mom_z
 
