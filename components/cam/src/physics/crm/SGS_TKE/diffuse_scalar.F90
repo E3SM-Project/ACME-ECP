@@ -23,9 +23,11 @@ contains
     real(crm_rknd) fdiff(ncrms,nz)
     real(crm_rknd) flux(ncrms,nz)
     ! Local
-    real(crm_rknd) df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)  ! scalar
+    real(crm_rknd), allocatable :: df(:,:,:,:)  ! scalar
     real(crm_rknd) :: tmp
     integer i,j,k,icrm
+
+    allocate( df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
     !$acc enter data create(df) async(asyncid)
 
@@ -66,6 +68,8 @@ contains
     enddo
 
     !$acc exit data delete(df) async(asyncid)
+
+    deallocate( df )
 
   end subroutine diffuse_scalar
 

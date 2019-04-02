@@ -514,15 +514,22 @@ CONTAINS
     integer :: ind
     ! Terminal velocity fnction
     ! Local:
-    real(crm_rknd) :: mx(ncrms,nx,ny,nzm),mn(ncrms,nx,ny,nzm), lfac(ncrms,nx,ny,nz)
-    real(crm_rknd) :: www(ncrms,nx,ny,nz),fz(ncrms,nx,ny,nz)
+    real(crm_rknd), allocatable :: mx     (:,:,:,:)
+    real(crm_rknd), allocatable :: mn     (:,:,:,:)
+    real(crm_rknd), allocatable :: lfac   (:,:,:,:)
+    real(crm_rknd), allocatable :: www    (:,:,:,:)
+    real(crm_rknd), allocatable :: fz     (:,:,:,:)
+    real(crm_rknd), allocatable :: wp     (:,:,:,:)
+    real(crm_rknd), allocatable :: tmp_qp (:,:,:,:)
+    real(crm_rknd), allocatable :: irhoadz(:,:)
+    real(crm_rknd), allocatable :: iwmax  (:,:)
+    real(crm_rknd), allocatable :: rhofac (:,:)
+    real(crm_rknd) :: prec_cfl
     real(crm_rknd) :: eps
     integer :: i,j,k,kc,kb,icrm
     logical :: nonos
     real(crm_rknd) :: y,pp,pn
     real(crm_rknd) :: lat_heat, wmax
-    real(crm_rknd) :: wp(ncrms,nx,ny,nzm), tmp_qp(ncrms,nx,ny,nzm), irhoadz(ncrms,nzm), iwmax(ncrms,nzm), &
-                      rhofac(ncrms,nzm), prec_cfl
     integer nprec, iprec
     real(crm_rknd) :: flagstat, tmp
 
@@ -532,6 +539,17 @@ CONTAINS
 
     eps = 1.e-10
     nonos = .true.
+
+    allocate( mx     (ncrms,nx,ny,nzm) )
+    allocate( mn     (ncrms,nx,ny,nzm) )
+    allocate( lfac   (ncrms,nx,ny,nz ) )
+    allocate( www    (ncrms,nx,ny,nz ) )
+    allocate( fz     (ncrms,nx,ny,nz ) )
+    allocate( wp     (ncrms,nx,ny,nzm) )
+    allocate( tmp_qp (ncrms,nx,ny,nzm) )
+    allocate( irhoadz(ncrms,nzm) )
+    allocate( iwmax  (ncrms,nzm) )
+    allocate( rhofac (ncrms,nzm) )
 
     !$acc enter data create(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(asyncid)
 
@@ -768,6 +786,17 @@ CONTAINS
     enddo
     
     !$acc exit data delete(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(asyncid)
+
+    deallocate( mx      )
+    deallocate( mn      )
+    deallocate( lfac    )
+    deallocate( www     )
+    deallocate( fz      )
+    deallocate( wp      )
+    deallocate( tmp_qp  )
+    deallocate( irhoadz )
+    deallocate( iwmax   )
+    deallocate( rhofac  )
 
   end subroutine precip_fall
 

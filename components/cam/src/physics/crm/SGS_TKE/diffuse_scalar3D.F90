@@ -23,13 +23,20 @@ contains
     real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(ncrms,nz)
     ! local
-    real(crm_rknd) flx_x(ncrms,0:nx,0:ny,0:nzm), flx_y(ncrms,0:nx,0:ny,0:nzm), flx_z(ncrms,0:nx,0:ny,0:nzm)
-    real(crm_rknd) dfdt(ncrms,nx,ny,nz)
+    real(crm_rknd), allocatable :: flx_x(:,:,:,:)
+    real(crm_rknd), allocatable :: flx_y(:,:,:,:)
+    real(crm_rknd), allocatable :: flx_z(:,:,:,:)
+    real(crm_rknd), allocatable :: dfdt (:,:,:,:)
     real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx5,rdy5,rdz5,tmp
     real(crm_rknd) dxy,dyx,tkx,tky,tkz,rhoi
     integer i,j,k,ib,ic,jb,jc,kc,kb,icrm
 
     if(.not.dosgs) return
+
+    allocate( flx_x(ncrms,0:nx,0:ny,0:nzm) )
+    allocate( flx_y(ncrms,0:nx,0:ny,0:nzm) )
+    allocate( flx_z(ncrms,0:nx,0:ny,0:nzm) )
+    allocate( dfdt (ncrms,nx,ny,nz) )
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
@@ -201,6 +208,11 @@ contains
     enddo
 
     !$acc exit data delete(flx_x,flx_y,flx_z,dfdt) async(asyncid)
+
+    deallocate( flx_x )
+    deallocate( flx_y )
+    deallocate( flx_z )
+    deallocate( dfdt  )
 
   end subroutine diffuse_scalar3D
 

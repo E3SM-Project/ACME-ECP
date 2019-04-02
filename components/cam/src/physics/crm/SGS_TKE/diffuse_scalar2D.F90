@@ -20,8 +20,8 @@ contains
     real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(ncrms,nz)
     ! local
-    real(crm_rknd) flx(ncrms,0:nx,1,0:nzm)
-    real(crm_rknd) dfdt(ncrms,nx,ny,nzm)
+    real(crm_rknd), allocatable :: flx(:,:,:,:)
+    real(crm_rknd), allocatable :: dfdt(:,:,:,:)
     real(crm_rknd) rdx2,rdz2,rdz,rdx5,rdz5,tmp
     real(crm_rknd) tkx,tkz,rhoi
     integer i,j,k,ib,ic,kc,kb,icrm
@@ -31,6 +31,9 @@ contains
 
     rdx2=1./(dx*dx)
     j=1
+
+    allocate( flx(ncrms,0:nx,1,0:nzm) )
+    allocate( dfdt(ncrms,nx,ny,nzm) )
 
     !$acc enter data create(flx,dfdt) async(asyncid)
 
@@ -132,6 +135,9 @@ contains
     enddo
 
     !$acc exit data delete(flx,dfdt) async(asyncid)
+
+    deallocate( flx )
+    deallocate( dfdt )
 
   end subroutine diffuse_scalar2D
 

@@ -17,9 +17,11 @@ contains
     integer, intent(in) :: ncrms
     real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) flux(ncrms,nz), fadv(ncrms,nz)
-    real(crm_rknd) f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
+    real(crm_rknd), allocatable :: f0(:,:,:,:)
     real(crm_rknd) tmp
     integer i,j,k,icrm
+
+    allocate( f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
     !$acc enter data create(f0) async(asyncid)
 
@@ -70,6 +72,8 @@ contains
     enddo
 
     !$acc exit data delete(f0) async(asyncid)
+
+    deallocate( f0 )
 
   end subroutine advect_scalar
 

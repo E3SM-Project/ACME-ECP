@@ -17,13 +17,15 @@ contains
     real(crm_rknd) rho(ncrms,nzm)
     real(crm_rknd) rhow(ncrms,nz)
     real(crm_rknd) flux(ncrms,nz)
-    real(crm_rknd) mx(ncrms,0:nxp1 ,0:nyp1 ,nzm)
-    real(crm_rknd) mn(ncrms,0:nxp1 ,0:nyp1 ,nzm)
-    real(crm_rknd) uuu(ncrms,-1:nxp3,-1:nyp2,nzm)
-    real(crm_rknd) vvv(ncrms,-1:nxp2,-1:nyp3,nzm)
-    real(crm_rknd) www(ncrms,-1:nxp2,-1:nyp2,nz )
+    real(crm_rknd), allocatable :: mx (:,:,:,:)
+    real(crm_rknd), allocatable :: mn (:,:,:,:)
+    real(crm_rknd), allocatable :: uuu(:,:,:,:)
+    real(crm_rknd), allocatable :: vvv(:,:,:,:)
+    real(crm_rknd), allocatable :: www(:,:,:,:)
+    real(crm_rknd), allocatable :: iadz (:,:)
+    real(crm_rknd), allocatable :: irho (:,:)
+    real(crm_rknd), allocatable :: irhow(:,:)
     real(crm_rknd) eps, dd
-    real(crm_rknd) iadz(ncrms,nzm),irho(ncrms,nzm),irhow(ncrms,nzm)
     integer i,j,k,ic,ib,jc,jb,kc,kb, icrm
     logical nonos
     real(crm_rknd) x1, x2, a, b, a1, a2, y
@@ -37,6 +39,15 @@ contains
 
     nonos = .true.
     eps = 1.e-10
+
+    allocate( mx (ncrms,0:nxp1 ,0:nyp1 ,nzm) )
+    allocate( mn (ncrms,0:nxp1 ,0:nyp1 ,nzm) )
+    allocate( uuu(ncrms,-1:nxp3,-1:nyp2,nzm) )
+    allocate( vvv(ncrms,-1:nxp2,-1:nyp3,nzm) )
+    allocate( www(ncrms,-1:nxp2,-1:nyp2,nz ) )
+    allocate( iadz (ncrms,nzm) )
+    allocate( irho (ncrms,nzm) )
+    allocate( irhow(ncrms,nzm) )
 
     !$acc enter data create(mx,mn,uuu,vvv,www,iadz,irho,irhow) async(asyncid)
 
@@ -319,6 +330,15 @@ contains
     enddo
 
     !$acc exit data delete(mx,mn,uuu,vvv,www,iadz,irho,irhow) async(asyncid)
+
+    deallocate( mx  )
+    deallocate( mn  )
+    deallocate( uuu )
+    deallocate( vvv )
+    deallocate( www )
+    deallocate( iadz  )
+    deallocate( irho  )
+    deallocate( irhow )
 
   end subroutine advect_scalar3D
 

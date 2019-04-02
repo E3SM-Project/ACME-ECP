@@ -19,8 +19,11 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
-    real(crm_rknd) :: esmt_offset(ncrms)    ! whannah - offset for advecting scalar momentum tracers
-    real(crm_rknd) :: dummy(ncrms,nz)
+    real(crm_rknd), allocatable :: esmt_offset(:)    ! whannah - offset for advecting scalar momentum tracers
+    real(crm_rknd), allocatable :: dummy(:,:)
+
+    allocate( esmt_offset(ncrms) )
+    allocate( dummy(ncrms,nz) )
 
     !$acc enter data create(dummy) async(asyncid)
 
@@ -85,6 +88,9 @@ contains
 #endif
 
     !$acc exit data delete(dummy) async(asyncid)
+
+    deallocate( esmt_offset )
+    deallocate( dummy )
 
   end subroutine advect_all_scalars
 

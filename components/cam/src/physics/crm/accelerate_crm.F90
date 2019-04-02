@@ -137,24 +137,35 @@ module accelerate_crm_mod
       integer, intent(in   ) :: nstep
       integer, intent(inout) :: nstop
       logical, intent(inout) :: ceaseflag
-      real(rc) :: ubaccel(ncrms,nzm)   ! u before applying MSA tendency
-      real(rc) :: vbaccel(ncrms,nzm)   ! v before applying MSA tendency
-      real(rc) :: tbaccel(ncrms,nzm)   ! t before applying MSA tendency
-      real(rc) :: qtbaccel(ncrms,nzm)  ! Non-precipitating qt before applying MSA tendency
-      real(rc) :: ttend_acc(ncrms,nzm) ! MSA adjustment of t
-      real(rc) :: qtend_acc(ncrms,nzm) ! MSA adjustment of qt
-      real(rc) :: utend_acc(ncrms,nzm) ! MSA adjustment of u
-      real(rc) :: vtend_acc(ncrms,nzm) ! MSA adjustment of v
+      real(rc), allocatable :: ubaccel  (:,:)   ! u before applying MSA tendency
+      real(rc), allocatable :: vbaccel  (:,:)   ! v before applying MSA tendency
+      real(rc), allocatable :: tbaccel  (:,:)   ! t before applying MSA tendency
+      real(rc), allocatable :: qtbaccel (:,:)  ! Non-precipitating qt before applying MSA tendency
+      real(rc), allocatable :: ttend_acc(:,:) ! MSA adjustment of t
+      real(rc), allocatable :: qtend_acc(:,:) ! MSA adjustment of qt
+      real(rc), allocatable :: utend_acc(:,:) ! MSA adjustment of u
+      real(rc), allocatable :: vtend_acc(:,:) ! MSA adjustment of v
+      real(r8), allocatable :: qpoz     (:,:) ! total positive micro_field(:,:,k,idx_qt,:) in level k
+      real(r8), allocatable :: qneg     (:,:) ! total negative micro_field(:,:,k,idx_qt,:) in level k
       real(rc) :: tmp  ! temporary variable for atomic updates
       integer i, j, k, icrm  ! iteration variables
-      real(r8) :: qpoz(ncrms,nzm) ! total positive micro_field(:,:,k,idx_qt,:) in level k
-      real(r8) :: qneg(ncrms,nzm) ! total negative micro_field(:,:,k,idx_qt,:) in level k
       real(r8) :: factor, qt_res ! local variables for redistributing moisture
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
 
       ttend_threshold = 5.  ! 5K, following UP-CAM implementation
       tmin = 50.  ! should never get below 50K in crm, following UP-CAM implementation
+
+      allocate( ubaccel  (ncrms,nzm) )
+      allocate( vbaccel  (ncrms,nzm) )
+      allocate( tbaccel  (ncrms,nzm) )
+      allocate( qtbaccel (ncrms,nzm) )
+      allocate( ttend_acc(ncrms,nzm) )
+      allocate( qtend_acc(ncrms,nzm) )
+      allocate( utend_acc(ncrms,nzm) )
+      allocate( vtend_acc(ncrms,nzm) )
+      allocate( qpoz     (ncrms,nzm) )
+      allocate( qneg     (ncrms,nzm) )
 
       !$acc enter data create(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
 
@@ -334,6 +345,18 @@ module accelerate_crm_mod
       enddo ! icrm = 1, ncrms
 
       !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
+
+      deallocate( ubaccel   )
+      deallocate( vbaccel   )
+      deallocate( tbaccel   )
+      deallocate( qtbaccel  )
+      deallocate( ttend_acc )
+      deallocate( qtend_acc )
+      deallocate( utend_acc )
+      deallocate( vtend_acc )
+      deallocate( qpoz      )
+      deallocate( qneg      )
+
     end subroutine accelerate_crm
     
 end module accelerate_crm_mod
