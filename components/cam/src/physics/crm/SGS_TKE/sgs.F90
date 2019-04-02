@@ -297,7 +297,10 @@ CONTAINS
     integer, intent(in) :: ncrms
     real(crm_rknd), intent(inout) :: cfl
     integer k,icrm, j, i
-    real(crm_rknd) tkhmax(ncrms,nz), tmp
+    real(crm_rknd), allocatable :: tkhmax(:,:)
+    real(crm_rknd) tmp
+
+    allocate(tkhmax(ncrms,nz))
 
     !$acc enter data create(tkhmax) async(asyncid)
 
@@ -331,6 +334,8 @@ CONTAINS
     end do
 
     !$acc exit data delete(tkhmax) async(asyncid)
+
+    deallocate(tkhmax)
 
   end subroutine kurant_sgs
 

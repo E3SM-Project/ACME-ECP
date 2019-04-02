@@ -1071,7 +1071,7 @@ contains
 
   subroutine cam_pio_createfile(file, fname, mode_in)
     use pio, only : pio_createfile, file_desc_t, pio_noerr, pio_clobber,      &
-         pio_64bit_offset, pio_iotask_rank
+         pio_64bit_offset, pio_64bit_data, pio_iotask_rank
     use cam_abortutils, only : endrun
 
     ! Dummy arguments
@@ -1083,7 +1083,7 @@ contains
     integer                                   :: ierr
     integer                                   :: mode
     
-    mode = ior(PIO_CLOBBER, PIO_64BIT_OFFSET)
+    mode = ior(PIO_CLOBBER, PIO_64BIT_DATA)
     if (present(mode_in)) then
       mode = ior(mode, mode_in)
     end if

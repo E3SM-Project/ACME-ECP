@@ -10,8 +10,15 @@ contains
     use microphysics, only: micro_field, index_water_vapor
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) coef,qneg(ncrms,nzm),qpoz(ncrms,nzm), factor
-    integer i,j,k,nneg(ncrms,nzm),icrm
+    real(crm_rknd), allocatable :: qneg(:,:)
+    real(crm_rknd), allocatable :: qpoz(:,:)
+    integer       , allocatable :: nneg(:,:)
+    real(crm_rknd) :: coef, factor
+    integer        :: i,j,k,icrm
+
+    allocate( qneg(ncrms,nzm) )
+    allocate( qpoz(ncrms,nzm) )
+    allocate( nneg(ncrms,nzm) )
 
     !$acc enter data create(qneg,qpoz,nneg) async(asyncid)
 
@@ -64,6 +71,10 @@ contains
     end do
 
     !$acc exit data delete(qneg,qpoz,nneg) async(asyncid)
+
+    deallocate( qneg )
+    deallocate( qpoz )
+    deallocate( nneg )
 
   end subroutine forcing
 

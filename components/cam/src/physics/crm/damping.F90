@@ -18,10 +18,18 @@ contains
     real(crm_rknd) damp_depth ! damping depth as a fraction of the domain height
     parameter(tau_min=60., tau_max=450., damp_depth=0.4)
     real(crm_rknd) tau(ncrms,nzm), tmp
-    integer i, j, k, n_damp(ncrms), icrm
+    integer, allocatable :: n_damp(:)
+    integer :: i, j, k, icrm
     integer :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
     ! crjones tests: make changes to u0, v0, t0 local instead of shared with vars
-    real(crm_rknd) :: t0loc(ncrms,nzm), u0loc(ncrms,nzm), v0loc(ncrms,nzm)
+    real(crm_rknd), allocatable :: t0loc(:,:)
+    real(crm_rknd), allocatable :: u0loc(:,:)
+    real(crm_rknd), allocatable :: v0loc(:,:)
+
+    allocate( n_damp(ncrms) )
+    allocate( t0loc(ncrms,nzm) )
+    allocate( u0loc(ncrms,nzm) )
+    allocate( v0loc(ncrms,nzm) )
    
     !$acc enter data create(tau,n_damp,t0loc, u0loc, v0loc) async(asyncid)
 
@@ -99,6 +107,11 @@ contains
     end do
 
     !$acc exit data delete(tau,n_damp,t0loc,u0loc,v0loc) async(asyncid)
+
+    deallocate( n_damp )
+    deallocate( t0loc )
+    deallocate( u0loc )
+    deallocate( v0loc )
 
   end subroutine damping
 

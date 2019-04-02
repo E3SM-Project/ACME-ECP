@@ -13,10 +13,13 @@ module kurant_mod
       implicit none
       integer, intent(in) :: ncrms
       integer i, j, k, ncycle1(1),ncycle2(1),icrm
-      real(crm_rknd) wm(ncrms,nz)  ! maximum vertical wind velocity
-      real(crm_rknd) uhm(ncrms,nz) ! maximum horizontal wind velocity
+      real(crm_rknd), allocatable :: wm (:,:)  ! maximum vertical wind velocity
+      real(crm_rknd), allocatable :: uhm(:,:) ! maximum horizontal wind velocity
       real(crm_rknd) cfl, cfl_sgs, tmp
       integer, parameter :: max_ncycle = 16
+
+      allocate(wm (ncrms,nz))
+      allocate(uhm(ncrms,nz))
 
       !$acc enter data create(wm,uhm) async(asyncid)
 
@@ -72,6 +75,9 @@ module kurant_mod
       end if
 
       !$acc exit data delete(wm,uhm) async(asyncid)
+
+      deallocate(wm )
+      deallocate(uhm)
 
 5550 format('kurant() - cfl: ',f12.2,'  cfl_sgs: ',f12.2,'  lat: ',f6.2,'  lon: ',f6.2)
 5551 format('k: ',i5,'  wm: ',f10.2,'  uhm: ',f10.2,'  tabs: ',f8.2)
