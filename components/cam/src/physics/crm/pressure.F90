@@ -23,22 +23,39 @@ contains
     integer, parameter :: nzslab = max(1,nzm / npressureslabs)
     integer, parameter :: nx2=nx_gl+2, ny2=ny_gl+2*YES3D
     integer, parameter :: n3i=3*nx_gl/2+1,n3j=3*ny_gl/2+1
-    real(crm_rknd) f(ncrms,nx2,ny2,nzslab) ! global rhs and array for FTP coefficeients
-    real(crm_rknd) ff(ncrms,nx+1,ny+2*YES3D,nzm)  ! local (subdomain's) version of f
-    real(crm_rknd) work(nx2,ny2),trigxi(n3i),trigxj(n3j) ! FFT stuff
+    real(crm_rknd) work(nx2,ny2)
     real(crm_rknd) ftmp(nx2,ny2)
     real(crm_rknd) ftmp_x(nx2)
     real(crm_rknd) ftmp_y(ny2)
-    integer ifaxj(100),ifaxi(100)
-    real(8) a(ncrms,nzm),b,c(ncrms,nzm),e
+    real(8) b,e
     real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty
     real(8) alfa(nzm-1),beta(nzm-1)
     integer i, j, k, id, jd, m, n, it, jt, ii, jj, icrm
     integer nyp22
-    integer iii(0:nx_gl),jjj(0:ny_gl)
+    real(crm_rknd), allocatable :: f (:,:,:,:)       ! global rhs and array for FTP coefficeients
+    real(crm_rknd), allocatable :: ff(:,:,:,:)  ! local (subdomain's) version of f
+    integer       , allocatable :: iii(:)
+    integer       , allocatable :: jjj(:)
+    integer       , allocatable :: ifaxi(:)
+    integer       , allocatable :: ifaxj(:)
+    real(crm_rknd), allocatable :: trigxi(:)
+    real(crm_rknd), allocatable :: trigxj(:)
+    real(8)       , allocatable :: a(:,:)
+    real(8)       , allocatable :: c(:,:)
     integer iwall,jwall
     integer :: numgangs  !For working aroung PGI OpenACC bug where it didn't create enough gangs
     real(8), allocatable :: eign(:,:)
+
+    allocate( f (ncrms,nx2,ny2,nzslab)      )
+    allocate( ff(ncrms,nx+1,ny+2*YES3D,nzm) )
+    allocate( iii(0:nx_gl) )
+    allocate( jjj(0:ny_gl) )
+    allocate( ifaxi(100) )
+    allocate( ifaxj(100) )
+    allocate( trigxi(n3i) )
+    allocate( trigxj(n3j) )
+    allocate( a(ncrms,nzm) )
+    allocate( c(ncrms,nzm) )
 
     !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(asyncid)
 
@@ -285,6 +302,17 @@ contains
     deallocate(eign)
 
     !$acc exit data delete(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(asyncid)
+
+    deallocate( f  )
+    deallocate( ff )
+    deallocate( iii )
+    deallocate( jjj )
+    deallocate( ifaxi )
+    deallocate( ifaxj )
+    deallocate( trigxi )
+    deallocate( trigxj )
+    deallocate( a )
+    deallocate( c )
 
   end subroutine pressure
 
