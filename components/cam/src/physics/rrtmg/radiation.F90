@@ -405,7 +405,7 @@ end function radiation_nextsw_cday
     call radsw_init()
     call radlw_init()
 
-      ! If we are using superparameterization, then we need to make sure that
+    ! If we are using superparameterization, then we need to make sure that
     ! iradsw and iradlw are both set to 1 to make sure that radiation is updated
     ! every timestep.
     if (use_SPCAM) then
@@ -413,20 +413,17 @@ end function radiation_nextsw_cday
        iradlw = 1
     end if
 
-!==Guangxing Lin
-     ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
+    ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then
        dtime  = get_step_size()
        dt_avg = iradsw*dtime
     end if
-
 
     call phys_getopts(history_amwg_out   = history_amwg,    &
                       history_vdiag_out  = history_vdiag,   &
                       history_budget_out = history_budget,  &
                       history_budget_histfile_num_out = history_budget_histfile_num, &
                       pergro_mods_out    = pergro_mods)
-!==Guangxing Lin
    
     ! Determine whether modal aerosols are affecting the climate, and if so
     ! then initialize the modal aerosol optics module
@@ -854,8 +851,6 @@ end function radiation_nextsw_cday
     end if
 
     ! Heating rate needed for d(theta)/dt computation
-    ! call addfld ('HR      ','K/s     ',pver, 'A','Heating rate needed for d(theta)/dt computation',phys_decomp)
-!==Guangxing Lin
     call addfld ('HR',(/ 'lev' /), 'A','K/s','Heating rate needed for d(theta)/dt computation')
 
     if ( history_budget .and. history_budget_histfile_num > 1 ) then
@@ -898,15 +893,14 @@ end function radiation_nextsw_cday
     end if
 
     if (cldfsnow_idx > 0) then
-      ! call addfld ('CLDFSNOW','1',pver,'I','CLDFSNOW',phys_decomp,flag_xyfill=.true.)
-      ! call add_default ('CLDFSNOW',1,' ')
-      ! call addfld('SNOW_ICLD_VISTAU', '1', pver, 'A', 'Snow in-cloud extinction visible sw optical depth', phys_decomp, &
-      !                                               sampling_seq='rad_lwsw', flag_xyfill=.true.)
        call addfld ('CLDFSNOW',(/ 'lev' /),'I','1','CLDFSNOW',flag_xyfill=.true.)
        call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1', 'Snow in-cloud extinction visible sw optical depth', &
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
     endif
-!==Guangxing Lin
+
+    call addfld('COSZRS', horiz_only, 'I', '1', &
+                'Cosine of solar zenith angle', &
+                sampling_seq='rad_lwsw', flag_xyfill=.true.)
 
   end subroutine radiation_init
 
@@ -1228,6 +1222,13 @@ end function radiation_nextsw_cday
     logical :: last_column
     integer ii,jj,m
     real(r8) lwup_loc !MAML-Guangxing Lin
+    real(r8) :: sols_loc(pcols)
+    real(r8) :: soll_loc(pcols)
+    real(r8) :: solsd_loc(pcols)
+    real(r8) ::  solld_loc(pcols)
+    real(r8) :: fsns_loc
+    real(r8) :: flwds_loc(pcols)
+ !MAML-Guangxing Lin
 
     integer ixcldliq, ixcldice
     integer  i_iciwp, i_iclwp, i_icswp
@@ -1428,6 +1429,9 @@ end function radiation_nextsw_cday
        coszrs(:)=0._r8 ! coszrs is only output for zenith
     endif    
 
+    ! Output cosine solar zenith angle
+    call outfld('COSZRS', coszrs(1:ncol), ncol, lchnk)
+
     call output_rad_data(  pbuf, state, cam_in, landm, coszrs )
 
     ! Gather night/day column indices.
@@ -1443,6 +1447,8 @@ end function radiation_nextsw_cday
       end if
     end do ! i
 
+    ! Allocate "save" variables that will be used to restore fields that are
+    ! modified in-place in pbuf to populate with each crm column one at a time
     if (use_SPCAM) then
       allocate(dei_save(pcols, pver))
       allocate(dei_crm(pcols, crm_nx_rad, crm_ny_rad, crm_nz))
@@ -1454,14 +1460,16 @@ end function radiation_nextsw_cday
         allocate(lambdac_crm  (pcols, crm_nx_rad, crm_ny_Rad, crm_nz))
         allocate(des_crm      (pcols, crm_nx_rad, crm_ny_Rad, crm_nz))
       end if
-      ! calculate radiation every timestep for SP
-      dosw = .true. 
-      dolw = .true.
-    else
-      dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
-      dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
-    endif ! use_SPCAM
+    end if
 
+    ! Figure out if we are doing radiation at this timestep. For SP-CAM, these
+    ! should ALWAYS return true...this is handled in radiation_init() by setting
+    ! iradsw = iradlw = 1
+    dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
+    dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
+
+    ! Initialize averages over CRM columns to zero. These are aggregated over
+    ! the loop over CRM columns below.
     if (use_SPCAM) then 
       solin_m    = 0.   ; fsntoa_m   = 0. 
       fsutoa_m   = 0.   ; fsntoac_m  = 0.
@@ -1891,13 +1899,13 @@ end function radiation_nextsw_cday
                        eccf,         coszrs,       solin,        sfac,                         &
 !MAML-Guangxing Lin
                        !cam_in%asdir, cam_in%asdif, cam_in%aldir, cam_in%aldif,                 &
-                       cam_in%asdir(:ncol,ii), cam_in%asdif(:ncol,ii), cam_in%aldir(:ncol,ii), cam_in%aldif(:ncol,ii),                 &
+                       cam_in%asdir(:ncol,ii), cam_in%asdif(:ncol,ii), cam_in%aldir(:ncol,ii), cam_in%aldif(:ncol,ii), & 
 !MAML-Guangxing Lin
                        qrs,          qrsc,         fsnt,         fsntc,        fsntoa, fsutoa, &
                        fsntoac,      fsnirt,       fsnrtc,       fsnirtsq,     fsns,           &
 !MAML-Guangxing Lin
-                       fsnsc,        fsdsc,        fsds,         cam_out%sols(:ncol,ii), cam_out%soll(:ncol,ii),   &
-                       cam_out%solsd(:ncol,ii),cam_out%solld(:ncol,ii),fns,          fcns,                         &
+                       fsnsc,        fsdsc,        fsds,         sols_loc, soll_loc,   &
+                       solsd_loc, solld_loc ,fns,          fcns,                               & 
                        !fsnsc,        fsdsc,        fsds,         cam_out%sols, cam_out%soll,   &
                        !cam_out%solsd,cam_out%solld,fns,          fcns,                         &
 !MAML-Guangxing Lin
@@ -1935,10 +1943,10 @@ end function radiation_nextsw_cday
                         fsutoa_m  (i, icall) = fsutoa_m  (i, icall)+fsutoa  (i)*factor_xy
                         fsntoac_m (i, icall) = fsntoac_m (i, icall)+fsntoac (i)*factor_xy
 !MAML-Guangxing Lin
-                        sols_m    (i, icall) = sols_m    (i, icall)+cam_out%sols (i,ii)*factor_xy
-                        soll_m    (i, icall) = soll_m    (i, icall)+cam_out%soll (i,ii)*factor_xy
-                        solsd_m   (i, icall) = solsd_m   (i, icall)+cam_out%solsd(i,ii)*factor_xy
-                        solld_m   (i, icall) = solld_m   (i, icall)+cam_out%solld(i,ii)*factor_xy
+                        sols_m    (i, icall) = sols_m    (i, icall)+sols_loc(i)*factor_xy
+                        soll_m    (i, icall) = soll_m    (i, icall)+soll_loc(i)*factor_xy
+                        solsd_m   (i, icall) = solsd_m   (i, icall)+solsd_loc(i)*factor_xy
+                        solld_m   (i, icall) = solld_m   (i, icall)+solld_loc(i)*factor_xy
                         !sols_m    (i, icall) = sols_m    (i, icall)+cam_out%sols (i)*factor_xy
                         !soll_m    (i, icall) = soll_m    (i, icall)+cam_out%soll (i)*factor_xy
                         !solsd_m   (i, icall) = solsd_m   (i, icall)+cam_out%solsd(i)*factor_xy
@@ -1959,6 +1967,10 @@ end function radiation_nextsw_cday
                          crm_fsns  (i,ii,jj) = fsns(i)
 !MAML-Guangxing Lin
                          cam_out%netsw(i,ii) = fsns(i)
+                         cam_out%sols(i,ii) = sols_loc(i)
+                         cam_out%soll(i,ii) = soll_loc(i)
+                         cam_out%solsd(i,ii) = solsd_loc(i)
+                         cam_out%solld(i,ii) = solld_loc(i)
 !MAML-Guangxing Lin
                          crm_fsnsc (i,ii,jj) = fsnsc(i)
                          crm_aodvis(i,ii,jj) = sum(aer_tau(i, :, idx_sw_diag))
@@ -2013,10 +2025,14 @@ end function radiation_nextsw_cday
                         fsutoa(i)=fsutoa_m(i, icall)
                         fsntoac(i)=fsntoac_m(i, icall)
 !MAML-Guangxing Lin
-                        !cam_out%sols(i)   =sols_m(i, icall)
-                        !cam_out%soll(i)   =soll_m(i, icall)
-                        !cam_out%solsd(i)   =solsd_m(i, icall)
-                        !cam_out%solld(i)   =solld_m(i, icall)
+                       ! cam_out%sols(i)   =sols_m(i, icall)
+                       ! cam_out%soll(i)   =soll_m(i, icall)
+                       ! cam_out%solsd(i)   =solsd_m(i, icall)
+                       ! cam_out%solld(i)   =solld_m(i, icall)
+                       sols_loc(i)   =sols_m(i, icall)
+                        soll_loc(i)   =soll_m(i, icall)
+                        solsd_loc(i)   =solsd_m(i, icall)
+                        solld_loc(i)   =solld_m(i, icall)
 !MAML-Guangxing Lin
                         fsn200(i)  = fsn200_m(i, icall)
                         fsn200c(i) = fsn200c_m(i, icall)
@@ -2050,14 +2066,14 @@ end function radiation_nextsw_cday
                       call outfld('FSUTOA'//diag(icall),fsutoa,pcols,lchnk)
                       call outfld('FSNTOAC'//diag(icall),fsntoac,pcols,lchnk)
 !MAML-Guangxing Lin
+                      call outfld('SOLS'//diag(icall),sols_loc  ,pcols,lchnk)
+                      call outfld('SOLL'//diag(icall),soll_loc  ,pcols,lchnk)
+                      call outfld('SOLSD'//diag(icall),solsd_loc ,pcols,lchnk)
+                      call outfld('SOLLD'//diag(icall),solld_loc ,pcols,lchnk)
                       !call outfld('SOLS'//diag(icall),cam_out%sols  ,pcols,lchnk)
                       !call outfld('SOLL'//diag(icall),cam_out%soll  ,pcols,lchnk)
                       !call outfld('SOLSD'//diag(icall),cam_out%solsd ,pcols,lchnk)
                       !call outfld('SOLLD'//diag(icall),cam_out%solld ,pcols,lchnk)
-                      call outfld('SOLS'//diag(icall),sols_m(i, icall)  ,pcols,lchnk)
-                      call outfld('SOLL'//diag(icall),soll_m(i, icall)  ,pcols,lchnk)
-                      call outfld('SOLSD'//diag(icall),solsd_m(i, icall) ,pcols,lchnk)
-                      call outfld('SOLLD'//diag(icall),solld_m(i, icall) ,pcols,lchnk)
 !MAML-Guangxing Lin
                       call outfld('FSN200'//diag(icall),fsn200,pcols,lchnk)
                       call outfld('FSN200C'//diag(icall),fsn200c,pcols,lchnk)
@@ -2205,7 +2221,7 @@ end function radiation_nextsw_cday
             !lwupcgs(i) = cam_in%lwup(i)*1000._r8
             lwupcgs(i) = cam_in%lwup(i,ii)*1000._r8
 !MAML-Guangxing Lin
-            if(single_column.and.scm_crm_mode.and.have_tg) &
+             if(single_column.and.scm_crm_mode.and.have_tg) &
               lwupcgs(i) = 1000*stebol*tground(1)**4
           end do
 
@@ -2229,8 +2245,9 @@ end function radiation_nextsw_cday
                        state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
                        qrl,          qrlc,                                                       &
 !MAML-Guangxing Lin
-                       flns,         flnt,         flnsc,           flntc,        cam_out%flwds(:,ii), &
-                      !flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
+                       !flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
+                       flns,         flnt,         flnsc,           flntc,        flwds_loc, &
+!MAML-Guangxing Lin
                        flut,         flutc,        fnl,             fcnl,         fldsc,         &
                        clm_seed,     lu,           ld                                            )
               call t_stopf ('rad_rrtmg_lw')
@@ -2245,6 +2262,7 @@ end function radiation_nextsw_cday
 !MAML-Guangxing Lin
                 !cam_out%flwds(:) = 0._r8
                 cam_out%flwds(:,ii) = 0._r8
+!MAML-Guangxing Lin
                 flut(:) = 0._r8
                 flutc(:) = 0._r8
                 fnl(:,:) = 0._r8
@@ -2274,7 +2292,8 @@ end function radiation_nextsw_cday
                   fldsc_m  (i, icall) = fldsc_m  (i, icall)+fldsc(i)         *factor_xy
 !MAML-Guangxing Lin
                   !flwds_m  (i, icall) = flwds_m  (i, icall)+cam_out%flwds(i) *factor_xy
-                  flwds_m  (i, icall) = flwds_m  (i, icall)+cam_out%flwds(i,ii) *factor_xy
+                  flwds_m  (i, icall) = flwds_m  (i, icall)+flwds_loc(i) *factor_xy
+!MAML-Guangxing Lin
                   fln200_m (i, icall) = fln200_m (i, icall)+fln200(i)        *factor_xy
                   fln200c_m(i, icall) = fln200c_m(i, icall)+fln200c(i)       *factor_xy
                   if (spectralflux) then
@@ -2287,6 +2306,9 @@ end function radiation_nextsw_cday
                     crm_flntc(i,ii,jj) = flntc(i)
                     crm_flns (i,ii,jj) = flns(i)
                     crm_flnsc(i,ii,jj) = flnsc(i)
+!MAML-Guangxing Lin
+                    cam_out%flwds(i,ii) = flwds_loc(i)
+!MAML-Guangxing Lin
                     do m=1,crm_nz
                        k = pver-m+1
                        qrl_crm(:ncol,ii,jj,m) = qrl(:ncol,k) / cpair
@@ -2307,7 +2329,9 @@ end function radiation_nextsw_cday
                     flnsc(i) = flnsc_m(i, icall)
                     fldsc(i) = fldsc_m(i, icall)
 !MAML-Guangxing Lin
-                   ! cam_out%flwds(i) = flwds_m(i, icall)
+                    !cam_out%flwds(i) = flwds_m(i, icall)
+                    flwds_loc(i) = flwds_m(i, icall)
+!MAML-Guangxing Lin
                     fln200 (i) = fln200_m (i, icall)
                     fln200c(i) = fln200c_m(i, icall)
                     if (spectralflux) then
@@ -2337,7 +2361,8 @@ end function radiation_nextsw_cday
                 call outfld('FLN200C'//diag(icall),fln200c,pcols,lchnk)
 !MAML-Guangxing Lin
                 !call outfld('FLDS'//diag(icall),cam_out%flwds ,pcols,lchnk)
-                call outfld('FLDS'//diag(icall),flwds_m(:, icall) ,pcols,lchnk)
+                call outfld('FLDS'//diag(icall),flwds_loc ,pcols,lchnk)
+!MAML-Guangxing Lin
               end if
               if (use_SPCAM .and. last_column ) then
                 if(icall.eq.0) then  ! the climate call
@@ -2417,7 +2442,7 @@ end function radiation_nextsw_cday
              lwup_loc = lwup_loc/crm_nx
              ts(i) = sqrt(sqrt(lwup_loc/stebol))
              !ts(i) = sqrt(sqrt(cam_in%lwup(i)/stebol))
-!MAML-Guangxing Lin
+!MAML-Guangxing Lin             
              ! Set oro (land/sea flag) for compatibility with landfrac/icefrac/ocnfrac
              ! oro=0 (sea or ice); oro=1 (land)
              if (landfrac(i).ge.0.001) then

@@ -379,39 +379,39 @@ module restart_physics
       end do
       call pio_write_darray(File, solld_desc, iodesc, tmpfld_crm, ierr)
      
-        ! do i = begchunk, endchunk
-        !    ncol = cam_out(i)%ncol
-        !    tmpfield(:ncol, i) = cam_out(i)%flwds(:ncol)
-        !    ! Only have to do this once (cam_in/out vars all same shape)
-        !    if (ncol < pcols) then
-        !       tmpfield(ncol+1:, i) = fillvalue
-        !    end if
-        ! end do
-        ! call pio_write_darray(File, flwds_desc, iodesc, tmpfield, ierr)
+!         do i = begchunk, endchunk
+!            ncol = cam_out(i)%ncol
+!            tmpfield(:ncol, i) = cam_out(i)%flwds(:ncol)
+            ! Only have to do this once (cam_in/out vars all same shape)
+!            if (ncol < pcols) then
+!               tmpfield(ncol+1:, i) = fillvalue
+!            end if
+!         end do
+!         call pio_write_darray(File, flwds_desc, iodesc, tmpfield, ierr)
 
-        ! do i = begchunk, endchunk
-        !    ncol = cam_out(i)%ncol
-        !    tmpfield(:ncol, i) = cam_out(i)%sols(:ncol)
-        ! end do
-        ! call pio_write_darray(File, sols_desc, iodesc, tmpfield, ierr)
+!         do i = begchunk, endchunk
+!            ncol = cam_out(i)%ncol
+!            tmpfield(:ncol, i) = cam_out(i)%sols(:ncol)
+!         end do
+!         call pio_write_darray(File, sols_desc, iodesc, tmpfield, ierr)
 
-        ! do i = begchunk, endchunk
-        !    ncol = cam_out(i)%ncol
-        !    tmpfield(:ncol, i) = cam_out(i)%soll(:ncol)
-        ! end do
-        ! call pio_write_darray(File, soll_desc, iodesc, tmpfield, ierr)
+!         do i = begchunk, endchunk
+!            ncol = cam_out(i)%ncol
+!            tmpfield(:ncol, i) = cam_out(i)%soll(:ncol)
+!         end do
+!         call pio_write_darray(File, soll_desc, iodesc, tmpfield, ierr)
 
-        ! do i = begchunk, endchunk
-        !    ncol = cam_out(i)%ncol
-        !    tmpfield(:ncol, i) = cam_out(i)%solsd(:ncol)
-        ! end do
-        ! call pio_write_darray(File, solsd_desc, iodesc, tmpfield, ierr)
+!         do i = begchunk, endchunk
+!            ncol = cam_out(i)%ncol
+!            tmpfield(:ncol, i) = cam_out(i)%solsd(:ncol)
+!         end do
+!         call pio_write_darray(File, solsd_desc, iodesc, tmpfield, ierr)
 
-        ! do i = begchunk, endchunk
-        !    ncol = cam_out(i)%ncol
-        !    tmpfield(:ncol, i) = cam_out(i)%solld(:ncol)
-        ! end do
-        ! call pio_write_darray(File, solld_desc, iodesc, tmpfield, ierr)
+!         do i = begchunk, endchunk
+!            ncol = cam_out(i)%ncol
+!            tmpfield(:ncol, i) = cam_out(i)%solld(:ncol)
+!         end do
+!         call pio_write_darray(File, solld_desc, iodesc, tmpfield, ierr)
 !MAML-Guangxing Lin
 
          do i = begchunk, endchunk
@@ -721,37 +721,37 @@ module restart_physics
         ierr = pio_inq_varid(File, 'TREFMNAV', vardesc)
         call pio_read_darray(File, vardesc, iodesc, trefmnav, ierr)
 !MAML-Guangxing Lin
-        !ierr = pio_inq_varid(File, 'FLWDS', vardesc)
-        !call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
-        !do c=begchunk,endchunk
-        !   do i=1,pcols
-        !      cam_out(c)%flwds(i) = tmpfield2(i, c)
-        !   end do
-        !end do
+!        ierr = pio_inq_varid(File, 'FLWDS', vardesc)
+!        call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
+!        do c=begchunk,endchunk
+!           do i=1,pcols
+!              cam_out(c)%flwds(i) = tmpfield2(i, c)
+!           end do
+!        end do
 
-        !ierr = pio_inq_varid(File, 'SOLS', vardesc)
-        !call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
-        !do c=begchunk,endchunk
-        !   do i=1,pcols
-        !      cam_out(c)%sols(i) = tmpfield2(i, c)
-        !   end do
-        !end do
+!        ierr = pio_inq_varid(File, 'SOLS', vardesc)
+!        call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
+!        do c=begchunk,endchunk
+!           do i=1,pcols
+!              cam_out(c)%sols(i) = tmpfield2(i, c)
+!           end do
+!        end do
 
-        !ierr = pio_inq_varid(File, 'SOLL', vardesc)
-        !call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
-        !do c=begchunk,endchunk
-        !   do i=1,pcols
-        !      cam_out(c)%soll(i) = tmpfield2(i, c)
-        !   end do
-        !end do
+!        ierr = pio_inq_varid(File, 'SOLL', vardesc)
+!        call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
+!        do c=begchunk,endchunk
+!           do i=1,pcols
+!              cam_out(c)%soll(i) = tmpfield2(i, c)
+!           end do
+!        end do
 
-        !ierr = pio_inq_varid(File, 'SOLSD', vardesc)
-        !call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
-        !do c=begchunk,endchunk
-        !   do i=1,pcols
-        !      cam_out(c)%solsd(i) = tmpfield2(i, c)
-        !   end do
-        !end do
+!        ierr = pio_inq_varid(File, 'SOLSD', vardesc)
+!        call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
+!        do c=begchunk,endchunk
+!           do i=1,pcols
+!              cam_out(c)%solsd(i) = tmpfield2(i, c)
+!           end do
+!        end do
      ierr = pio_inq_varid(File, 'FLWDS', vardesc)
      call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
      ii=0
@@ -814,13 +814,13 @@ module restart_physics
        end do
      end do
 
-      !  ierr = pio_inq_varid(File, 'SOLLD', vardesc)
-      !  call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
-       ! do c=begchunk,endchunk
-       !    do i=1,pcols
-       !       cam_out(c)%solld(i) = tmpfield2(i, c)
-       !    end do
-       ! end do
+     !   ierr = pio_inq_varid(File, 'SOLLD', vardesc)
+     !   call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
+     !  do c=begchunk,endchunk
+     !      do i=1,pcols
+     !         cam_out(c)%solld(i) = tmpfield2(i, c)
+     !      end do
+     !   end do
 !MAML-Guangxing Lin
 
         ierr = pio_inq_varid(File, 'BCPHIDRY', vardesc)

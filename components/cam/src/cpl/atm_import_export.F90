@@ -69,35 +69,31 @@ contains
              ! occurs at the restart time step
              ! Modified by Wuyin Lin
 ! MAML-Guangxing Lin
-             !cam_in(c)%shf(i)    = -x2a(index_x2a_Faxx_sen, ig)     
-             cam_in(c)%shf(i,inst_index)    = -x2a(index_x2a_Faxx_sen, ig)     
-! MAML-Guangxing Lin
+             !cam_in(c)%shf(i)    = -x2a(index_x2a_Faxx_sen, ig) 
+             cam_in(c)%shf(i,inst_index)    = -x2a(index_x2a_Faxx_sen, ig)    
              cam_in(c)%cflx(i,1) = -x2a(index_x2a_Faxx_evap,ig)                
-! MAML-Guangxing Lin
              !cam_in(c)%lhf(i)    = -x2a(index_x2a_Faxx_lat, ig)     
              cam_in(c)%lhf(i,inst_index)    = -x2a(index_x2a_Faxx_lat, ig)     
-! MAML-Guangxing Lin
           endif
-! MAML-Guangxing Lin  
-         ! cam_in(c)%wsx(i)    = -x2a(index_x2a_Faxx_taux,ig)     
-         ! cam_in(c)%wsy(i)    = -x2a(index_x2a_Faxx_tauy,ig)     
-         ! cam_in(c)%lwup(i)      = -x2a(index_x2a_Faxx_lwup,ig)    
-         ! cam_in(c)%asdir(i)     =  x2a(index_x2a_Sx_avsdr, ig)  
-         ! cam_in(c)%aldir(i)     =  x2a(index_x2a_Sx_anidr, ig)  
-         ! cam_in(c)%asdif(i)     =  x2a(index_x2a_Sx_avsdf, ig)  
-         ! cam_in(c)%aldif(i)     =  x2a(index_x2a_Sx_anidf, ig)
-          cam_in(c)%wsx(i,inst_index)    = -x2a(index_x2a_Faxx_taux,ig)     
-          cam_in(c)%wsy(i,inst_index)    = -x2a(index_x2a_Faxx_tauy,ig)     
-          cam_in(c)%lwup(i,inst_index)      = -x2a(index_x2a_Faxx_lwup,ig)    
-          cam_in(c)%asdir(i,inst_index)     =  x2a(index_x2a_Sx_avsdr, ig)  
-          cam_in(c)%aldir(i,inst_index)     =  x2a(index_x2a_Sx_anidr, ig)  
-          cam_in(c)%asdif(i,inst_index)     =  x2a(index_x2a_Sx_avsdf, ig)  
+          !cam_in(c)%wsx(i)    = -x2a(index_x2a_Faxx_taux,ig)     
+          !cam_in(c)%wsy(i)    = -x2a(index_x2a_Faxx_tauy,ig)     
+          !cam_in(c)%lwup(i)      = -x2a(index_x2a_Faxx_lwup,ig)    
+          !cam_in(c)%asdir(i)     =  x2a(index_x2a_Sx_avsdr, ig)  
+          !cam_in(c)%aldir(i)     =  x2a(index_x2a_Sx_anidr, ig)  
+          !cam_in(c)%asdif(i)     =  x2a(index_x2a_Sx_avsdf, ig)  
+          !cam_in(c)%aldif(i)     =  x2a(index_x2a_Sx_anidf, ig)
+          cam_in(c)%ts(i)        =  x2a(index_x2a_Sx_t,     ig)  
+          cam_in(c)%sst(i)       =  x2a(index_x2a_So_t,     ig)             
+          !cam_in(c)%snowhland(i) =  x2a(index_x2a_Sl_snowh, ig)
+          cam_in(c)%wsx(i,inst_index)    = -x2a(index_x2a_Faxx_taux,ig)
+          cam_in(c)%wsy(i,inst_index)    = -x2a(index_x2a_Faxx_tauy,ig)
+          cam_in(c)%lwup(i,inst_index)      = -x2a(index_x2a_Faxx_lwup,ig)
+          cam_in(c)%asdir(i,inst_index)     =  x2a(index_x2a_Sx_avsdr, ig)
+          cam_in(c)%aldir(i,inst_index)     =  x2a(index_x2a_Sx_anidr, ig)
+          cam_in(c)%asdif(i,inst_index)     =  x2a(index_x2a_Sx_avsdf, ig)
           cam_in(c)%aldif(i,inst_index)     =  x2a(index_x2a_Sx_anidf, ig)
           cam_in(c)%snowhland(i,inst_index) =  x2a(index_x2a_Sl_snowh, ig)
 ! MAML-Guangxing Lin  
-          cam_in(c)%ts(i)        =  x2a(index_x2a_Sx_t,     ig)  
-          cam_in(c)%sst(i)       =  x2a(index_x2a_So_t,     ig)             
-         ! cam_in(c)%snowhland(i) =  x2a(index_x2a_Sl_snowh, ig)  
           cam_in(c)%snowhice(i)  =  x2a(index_x2a_Si_snowh, ig)  
           cam_in(c)%tref(i)      =  x2a(index_x2a_Sx_tref,  ig)  
           cam_in(c)%qref(i)      =  x2a(index_x2a_Sx_qref,  ig)
@@ -264,25 +260,7 @@ contains
        ncols = get_ncols_p(c)
        do i=1,ncols
           a2x(index_a2x_Sa_pslv   ,ig) = cam_out(c)%psl(i)
-! MAML-Guangxing Lin
-          !a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i)   
-          !a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i)   
-          !a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i)   
-          !a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)   
-          !a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i)  
-          !a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i)   
-          !a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1) 
-	  !a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i)
-          !a2x(index_a2x_Faxa_swnet,ig) = cam_out(c)%netsw(i)      
-          !a2x(index_a2x_Faxa_lwdn ,ig) = cam_out(c)%flwds(i)  
-          !a2x(index_a2x_Faxa_rainc,ig) = (cam_out(c)%precc(i)-cam_out(c)%precsc(i))*1000._r8
-          !a2x(index_a2x_Faxa_rainl,ig) = (cam_out(c)%precl(i)-cam_out(c)%precsl(i))*1000._r8
-          !a2x(index_a2x_Faxa_snowc,ig) = cam_out(c)%precsc(i)*1000._r8
-          !a2x(index_a2x_Faxa_snowl,ig) = cam_out(c)%precsl(i)*1000._r8
-          !a2x(index_a2x_Faxa_swndr,ig) = cam_out(c)%soll(i)   
-          !a2x(index_a2x_Faxa_swvdr,ig) = cam_out(c)%sols(i)   
-          !a2x(index_a2x_Faxa_swndf,ig) = cam_out(c)%solld(i)  
-          !a2x(index_a2x_Faxa_swvdf,ig) = cam_out(c)%solsd(i)  
+!MAML-Guangxing Lin          
           a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i,inst_index)   
           a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i,inst_index)   
           a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i,inst_index)   
@@ -291,31 +269,35 @@ contains
           a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i,inst_index)   
           a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1,inst_index) 
 	  a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i,inst_index)
-          a2x(index_a2x_Faxa_swnet,ig) = cam_out(c)%netsw(i,inst_index)      
-          a2x(index_a2x_Faxa_lwdn ,ig) = cam_out(c)%flwds(i,inst_index)  
+          !a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i)   
+          !a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i)   
+          !a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i)   
+          !a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)   
+          !a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i)  
+          !a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i)   
+          !a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1) 
+	  !a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i)
           a2x(index_a2x_Faxa_rainc,ig) = (cam_out(c)%precc(i,inst_index)-cam_out(c)%precsc(i,inst_index))*1000._r8
           a2x(index_a2x_Faxa_rainl,ig) = (cam_out(c)%precl(i,inst_index)-cam_out(c)%precsl(i,inst_index))*1000._r8
           a2x(index_a2x_Faxa_snowc,ig) = cam_out(c)%precsc(i,inst_index)*1000._r8
           a2x(index_a2x_Faxa_snowl,ig) = cam_out(c)%precsl(i,inst_index)*1000._r8
-          a2x(index_a2x_Faxa_swndr,ig) = cam_out(c)%soll(i,inst_index)   
-          a2x(index_a2x_Faxa_swvdr,ig) = cam_out(c)%sols(i,inst_index)   
-          a2x(index_a2x_Faxa_swndf,ig) = cam_out(c)%solld(i,inst_index)  
-          a2x(index_a2x_Faxa_swvdf,ig) = cam_out(c)%solsd(i,inst_index)  
-! MAML-Guangxing Lin
-
-          ! aerosol deposition fluxes
-          a2x(index_a2x_Faxa_bcphidry,ig) = cam_out(c)%bcphidry(i)
-          a2x(index_a2x_Faxa_bcphodry,ig) = cam_out(c)%bcphodry(i)
-          a2x(index_a2x_Faxa_bcphiwet,ig) = cam_out(c)%bcphiwet(i)
-          a2x(index_a2x_Faxa_ocphidry,ig) = cam_out(c)%ocphidry(i)
-          a2x(index_a2x_Faxa_ocphodry,ig) = cam_out(c)%ocphodry(i)
-          a2x(index_a2x_Faxa_ocphiwet,ig) = cam_out(c)%ocphiwet(i)
-          a2x(index_a2x_Faxa_dstwet1,ig)  = cam_out(c)%dstwet1(i)
-          a2x(index_a2x_Faxa_dstdry1,ig)  = cam_out(c)%dstdry1(i)
-          a2x(index_a2x_Faxa_dstwet2,ig)  = cam_out(c)%dstwet2(i)
-          a2x(index_a2x_Faxa_dstdry2,ig)  = cam_out(c)%dstdry2(i)
-          a2x(index_a2x_Faxa_dstwet3,ig)  = cam_out(c)%dstwet3(i)
-          a2x(index_a2x_Faxa_dstdry3,ig)  = cam_out(c)%dstdry3(i)
+          a2x(index_a2x_Faxa_swnet,ig) = cam_out(c)%netsw(i,inst_index)
+          a2x(index_a2x_Faxa_lwdn ,ig) = cam_out(c)%flwds(i,inst_index)
+          !a2x(index_a2x_Faxa_swnet,ig) = cam_out(c)%netsw(i)      
+          !a2x(index_a2x_Faxa_lwdn ,ig) = cam_out(c)%flwds(i)  
+          !a2x(index_a2x_Faxa_rainc,ig) = (cam_out(c)%precc(i)-cam_out(c)%precsc(i))*1000._r8
+          !a2x(index_a2x_Faxa_rainl,ig) = (cam_out(c)%precl(i)-cam_out(c)%precsl(i))*1000._r8
+          !a2x(index_a2x_Faxa_snowc,ig) = cam_out(c)%precsc(i)*1000._r8
+          !a2x(index_a2x_Faxa_snowl,ig) = cam_out(c)%precsl(i)*1000._r8
+          a2x(index_a2x_Faxa_swndr,ig) = cam_out(c)%soll(i,inst_index)
+          a2x(index_a2x_Faxa_swvdr,ig) = cam_out(c)%sols(i,inst_index)
+          a2x(index_a2x_Faxa_swndf,ig) = cam_out(c)%solld(i,inst_index)
+          a2x(index_a2x_Faxa_swvdf,ig) = cam_out(c)%solsd(i,inst_index)
+         ! a2x(index_a2x_Faxa_swndr,ig) = cam_out(c)%soll(i)   
+         ! a2x(index_a2x_Faxa_swvdr,ig) = cam_out(c)%sols(i)   
+         ! a2x(index_a2x_Faxa_swndf,ig) = cam_out(c)%solld(i)  
+         ! a2x(index_a2x_Faxa_swvdf,ig) = cam_out(c)%solsd(i)  
+!MAML-Guangxing Lin
 
           ! aerosol deposition fluxes
           a2x(index_a2x_Faxa_bcphidry,ig) = cam_out(c)%bcphidry(i)

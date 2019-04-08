@@ -401,7 +401,6 @@ subroutine crm_physics_init(species_class)
   call addfld ('SPKVH     ',(/ 'ilev' /), 'A', 'm2/s    ', 'Vertical diffusivity used in dropmixnuc in the MMF call')
   call addfld ('SPWTKE   ', (/ 'lev' /), 'A', 'm/s',      'Standard deviation of updraft velocity')
   call addfld ('SPLCLOUD  ',(/ 'lev' /), 'A', '        ', 'Liquid cloud fraction')
-
 !MAML-Guangxing Lin
   call addfld ('CRM_SHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc sensible heat flux'          )
   call addfld ('CRM_LHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc latent heat flux'            )
@@ -657,7 +656,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    integer :: icol(pcols)
 
-
    !!! variables for changing CRM orientation
    real(crm_rknd), parameter        :: pi   = 3.14159265359
    real(crm_rknd), parameter        :: pix2 = 6.28318530718
@@ -674,6 +672,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8) :: factor_xy
    factor_xy = 1._r8/dble(crm_nx*crm_ny)
 !MAML-Guangxing Lin
+
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -727,6 +726,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call crm_output%initialize(pcols,pver)
    call crm_input%initialize(pcols,pver,crm_nx)
 !MAML-Guangxing Lin   
+
 
    !------------------------------------------------------------
    ! Set CRM orientation angle
@@ -964,16 +964,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    else  ! not is_first_step
 
-!MAML-Guangxing Lin
-       crm_pcp = 0.
-       crm_snw = 0.
-!MAML-Guangxing Lin
-
       ptend%q(:,:,1) = 0.  ! necessary?
       ptend%q(:,:,ixcldliq) = 0.
       ptend%q(:,:,ixcldice) = 0.
       ptend%s(:,:) = 0. ! necessary?
       cwp    = 0.
+!MAML-Guangxing Lin
+       crm_pcp = 0.
+       crm_snw = 0.
+!MAML-Guangxing Lin
 
       call t_startf ('crm_call')
 
@@ -1039,8 +1038,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do i = 1,ncol
          crm_input%wndls(i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
 !MAML-Guangxing Lin
+         !crm_input%tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
          do ii = 1, crm_nx
-         
+
             crm_input%tau00(i,ii) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
             crm_input%bflxls(i,ii) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
             crm_input%fluxu00(i,ii) = cam_in%wsx(i,ii)     !N/m2
@@ -1048,7 +1048,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             crm_input%fluxt00(i,ii) = cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
             crm_input%fluxq00(i,ii) = cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
          end do !ii, crm_nx
-         !crm_input%tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
          !crm_input%bflxls(i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
          !crm_input%fluxu00(i) = cam_in%wsx(i)     !N/m2
          !crm_input%fluxv00(i) = cam_in%wsy(i)     !N/m2
@@ -1660,7 +1659,10 @@ subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
       g_dp = gravit * state%rpdel(ii,pver)             ! note : rpdel = 1./pdel
       ptend%s(ii,:)   = 0.
       ptend%q(ii,:,1) = 0.
+!MAML-Guangxing Lin
+      !ptend%s(ii,pver)   = g_dp * cam_in%shf(ii)
       ptend%s(ii,pver)   = g_dp * cam_in%shf(ii,1)
+!MAML-Guangxing Lin
       ptend%q(ii,pver,1) = g_dp * cam_in%cflx(ii,1)
    end do
 

@@ -693,8 +693,8 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
        preccavg_out =0._r8
        preclavg_out =0._r8
        tbotavg_out =0._r8
-       factor_xy = 1._r8 / dble(num_inst_atm)
-       do i =1, ncol
+       factor_xy = 1._r8 / dble(num_inst_atm)       
+        do i =1, ncol
          do ii=1,num_inst_atm
             precscavg_out(i) = precscavg_out(i)+cam_out(lchnk)%precsc(i,ii)*factor_xy
             precslavg_out(i) = precslavg_out(i)+cam_out(lchnk)%precsl(i,ii)*factor_xy
@@ -704,11 +704,11 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
          enddo
        enddo !i
        snow(:ncol,lchnk) = precscavg_out(:ncol) + precslavg_out(:ncol)
-       rain(:ncol,lchnk) = preccavg_out(:ncol)  + preclavg_out(:ncol) - snow(:ncol,lchnk) 
+       rain(:ncol,lchnk) = preccavg_out(:ncol)  + preclavg_out(:ncol) - snow(:ncol,lchnk)
        !snow(:ncol,lchnk) = cam_out(lchnk)%precsc(:ncol) + cam_out(lchnk)%precsl(:ncol)
        !rain(:ncol,lchnk) = cam_out(lchnk)%precc(:ncol)  + cam_out(lchnk)%precl(:ncol) - snow(:ncol,lchnk) 
-
 !MAML-Guangxing Lin
+
        select case (ieflx_opt) 
 
        !!..................................................................................... 
@@ -723,12 +723,12 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
        !!..................................................................................... 
 
        case(1) 
-          ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - &
+          ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - & 
 !MAML-Guangxing Lin 
                                cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * tbotavg_out(:ncol)
                                !cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * cam_out(lchnk)%tbot(:ncol)
-!MAML-Guangxing Lin 
-       case(2) 
+!MAML-Guangxing Lin
+        case(2) 
           ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - & 
                                cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * cam_in(lchnk)%ts(:ncol)
        case default 
@@ -779,24 +779,24 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     integer, intent(in   ) :: ncol
 !MAML-Guangxing Lin
     integer, intent(in   ) :: ncrm
-    real(r8),intent(inout) :: shflx(pcols,ncrm) 
+    real(r8),intent(inout) :: shflx(pcols,ncrm)
     !real(r8),intent(inout) :: shflx(pcols) 
     integer :: ii
 !MAML-Guangxing Lin
 
+
+
     integer :: i
 
-!MAML-Guangxing Lin
-   ! call outfld('SHFLXORI', shflx, pcols, lchnk)
-!MAML-Guangxing Lin
+    call outfld('SHFLXORI', shflx, pcols, lchnk)
 
     if(nstep>1) then 
        do i = 1, ncol
 !MAML-Guangxing Lin
          do ii=1, ncrm
-          shflx(i,ii) = shflx(i,ii) + ieflx_glob/dble(ncrm) 
+          shflx(i,ii) = shflx(i,ii) + ieflx_glob/dble(ncrm)
           !shflx(i) = shflx(i) + ieflx_glob
-         end do 
+         end do
 !MAML-Guangxing Lin
        end do
     end if 

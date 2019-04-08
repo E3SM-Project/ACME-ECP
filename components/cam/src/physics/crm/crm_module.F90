@@ -137,7 +137,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 !MAML-Guangxing Lin
     real(crm_rknd)  ::  ustar(crm_nx), bflx(crm_nx), wnd,  qsat, omg
     integer :: ii
- !   real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
+  !  real(crm_rknd)  :: ustar, bflx, wnd, qsat, omg
     real(r8) z0_loc(crm_nx)  ! local z0; should it be dimensioned nx?
     real(r8) pcp_check   ! precip amount over all CRMs
 !MAML-Guangxing Lin
@@ -539,7 +539,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 !MAML-Guangxing Lin      
       !vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
       vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )
-!MAML-Guangxing Lin      
+!MAML-Guangxing Lin  
       ttend(k,icrm) = (crm_input%tl(icrm,l)+gamaz(k,icrm)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
       qtend(k,icrm) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
       utend(k,icrm) = (uln(l,icrm)-u0(k,icrm))*idt_gl
@@ -581,10 +581,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
          fluxbt(i, :,icrm) = crm_input%fluxt00(icrm,i)/rhow(1,icrm)
          fluxbq(i, :,icrm) = crm_input%fluxq00(icrm,i)/rhow(1,icrm)
       end do
-         !fluxbu(:, :,icrm) = crm_input%fluxu00(icrm)/rhow(1,icrm)
-         !fluxbv(:, :,icrm) = crm_input%fluxv00(icrm)/rhow(1,icrm)
-         !fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1,icrm)
-         !fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1,icrm)
+
+      !fluxbu(:, :,icrm) = crm_input%fluxu00(icrm)/rhow(1,icrm)
+      !fluxbv(:, :,icrm) = crm_input%fluxv00(icrm)/rhow(1,icrm)
+      !fluxbt(:, :,icrm) = crm_input%fluxt00(icrm)/rhow(1,icrm)
+      !fluxbq(:, :,icrm) = crm_input%fluxq00(icrm)/rhow(1,icrm)
 !MAML-Guangxing Lin
     else
       fluxbu(:, :,icrm) = 0.
@@ -594,17 +595,17 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     endif
 #else
 !MAML-Guangxing: crm-level surface fluxes
-    do i=1,nx
-       do j=1,ny
-         fluxbt(i, j,icrm) = crm_input%fluxt00(icrm,i)/rhow(1,icrm)
-         fluxbq(i, j,icrm) = crm_input%fluxq00(icrm,i)/rhow(1,icrm)
-       enddo
-    enddo
+    !do i=1,nx
+    !   do j=1,ny
+    !     fluxbt(i, j,icrm) = crm_input%fluxt00(icrm,i)/rhow(1,icrm)
+    !     fluxbq(i, j,icrm) = crm_input%fluxq00(icrm,i)/rhow(1,icrm)
+    !   enddo
+    !enddo
 
     fluxbu(:,:,icrm)=0.
     fluxbv(:,:,icrm)=0.
-    !fluxbt(:,:,icrm)=0.
-    !fluxbq(:,:,icrm)=0.
+    fluxbt(:,:,icrm)=0.
+    fluxbq(:,:,icrm)=0.
 !MAML-Guangxing: crm-level surface fluxes
 #endif /* CLUBB_CRM */
     fluxtu  (:,:,icrm)=0.
@@ -1456,7 +1457,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           crm_pcp(icrm,i,j) = precsfc(i,j,icrm)/1000.      ! mm/s --> m/s
           crm_snw(icrm,i,j) = precssfc(i,j,icrm)/1000.     ! mm/s --> m/s
 !MAML-Guangxing Lin
-
         if(precsfc(i,j,icrm).gt.10./86400.) then
            crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(i,j,icrm)
            crm_output%precsc(icrm) = crm_output%precsc(icrm) + precssfc(i,j,icrm)

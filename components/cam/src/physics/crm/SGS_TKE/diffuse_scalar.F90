@@ -35,7 +35,8 @@ contains
     if(RUN3D) then
       call diffuse_scalar3D (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
     else
-      call diffuse_scalar2D (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,       f,fluxb,fluxt,tkh,rho,rhow,flux)
+      call diffuse_scalar2D (ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_z,       f,fluxb,fluxt,tkh,rho,rhow,flux)
+     !Guangxing Lin change grdf_y to grdf_z
     endif
 
     do k=1,nzm

@@ -90,11 +90,6 @@ contains
       if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms,crm_nx))
       if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms,crm_nx))
       if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms,crm_nx))
-      !if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms))
-      !if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms))
-      !if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms))
-      !if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
-      !if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
 !MAML-Guangxing Lin      
 
 #if defined( m2005 ) && defined( MODAL_AERO )

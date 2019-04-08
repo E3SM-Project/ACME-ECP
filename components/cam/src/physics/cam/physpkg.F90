@@ -45,7 +45,6 @@ module physpkg
 !MAML-Guangxing Lin
   use seq_comm_mct,       only : num_inst_atm
 !MAML-Guangxing Lin
-
   implicit none
   private
 
@@ -99,7 +98,6 @@ module physpkg
   logical           :: pergro_test_active= .false.
   logical           :: pergro_mods = .false.
   logical           :: is_cmip6_volc !true if cmip6 style volcanic file is read otherwise false
-
 !MAML-Guangxing Lin
   real(r8) :: shfavg_in(pcols)
   real(r8) :: lhfavg_in(pcols)
@@ -108,7 +106,6 @@ module physpkg
   real(r8) :: snowhlandavg_in(pcols)
   real(r8) :: factor_xy
 !MAML-Guangxing Lin
-
   !======================================================================= 
 contains
 
@@ -1291,6 +1288,7 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
        end do
 !MAML-Guangxing Lin
 
+
        !! 
        !! add the implied internal energy flux to sensible heat flux
        !! 
@@ -1299,7 +1297,8 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
 !MAML-Guangxing Lin
           call check_ieflx_fix(c, ncol, nstep, num_inst_atm,cam_in(c)%shf(:ncol,:))
           !call check_ieflx_fix(c, ncol, nstep, cam_in(c)%shf)
-!MAML-Guangxing Lin       
+!MAML-Guangxing Lin 
+
        end if
 
        !
@@ -1491,7 +1490,6 @@ subroutine tphysac (ztodt,   cam_in,  &
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction 
     real(r8) :: qexcess (pcols)
     logical :: do_clubb_sgs 
-
 !MAML-Guangxing Lin
     real(r8) :: factor_xy    ! for converting from CRM to GCM-level
     integer  :: ii           ! loop index for CRM
@@ -1555,23 +1553,18 @@ subroutine tphysac (ztodt,   cam_in,  &
     ! accumulate fluxes into net flux array for spectral dycores
     ! jrm Include latent heat of fusion for snow
     !
-
 !MAML-Guangxing Lin
     !do i=1,ncol
-    !   tend%flx_net(i) = tend%flx_net(i) + cam_in%shf(i) + (cam_out%precc(i) &
-    !        + cam_out%precl(i))*latvap*rhoh2o &
-    !        + (cam_out%precsc(i) + cam_out%precsl(i))*latice*rhoh2o
+     !  tend%flx_net(i) = tend%flx_net(i) + cam_in%shf(i) + (cam_out%precc(i) &
+     !       + cam_out%precl(i))*latvap*rhoh2o &
+     !       + (cam_out%precsc(i) + cam_out%precsl(i))*latice*rhoh2o
     !end do
-
-    shfavg_in =0._r8
-    lhfavg_in =0._r8
-    wsxavg_in =0._r8
-    wsyavg_in =0._r8
     factor_xy = 1._r8 / dble(num_inst_atm)
+
     do i=1,ncol
       do ii=1,num_inst_atm
         tend%flx_net(i) = tend%flx_net(i) + ( ( cam_in%shf(i,ii) +               &
-            ( (cam_out%precc(i,ii)  + cam_out%precl(i,ii) ) * latvap*rhoh2o ) +      &
+             ((cam_out%precc(i,ii)  + cam_out%precl(i,ii) ) * latvap*rhoh2o ) +      &
             ( (cam_out%precsc(i,ii) + cam_out%precsl(i,ii)) * latice*rhoh2o ) ) * factor_xy)
         shfavg_in(i) = shfavg_in(i)+cam_in%shf(i,ii)*factor_xy
         lhfavg_in(i) = lhfavg_in(i)+cam_in%lhf(i,ii)*factor_xy
@@ -1581,6 +1574,16 @@ subroutine tphysac (ztodt,   cam_in,  &
     end do
 !MAML-Guangxing Lin
 
+   !debug-Guangxing Lin
+    call outfld('SHFLX3',    cam_in%shf,       pcols, lchnk)
+    call outfld('LHFLX3',    cam_in%lhf,       pcols, lchnk)
+    call outfld('SOLL3',    cam_out%soll,       pcols, lchnk)
+    call outfld('SOLS3',    cam_out%sols,       pcols, lchnk)
+    call outfld('SOLLD3',    cam_out%solld,       pcols, lchnk)
+    call outfld('SOLSD3',    cam_out%solsd,       pcols, lchnk)
+    call outfld('FLWDS3',    cam_out%flwds,       pcols, lchnk)
+    call outfld('NETSW3',    cam_out%netsw,       pcols, lchnk)
+   !debug-Guangxing Lin
 
 if (l_tracer_aero) then
 
@@ -1609,12 +1612,12 @@ end if ! l_tracer_aero
 
        ! Check if latent heat flux exceeds the total moisture content of the
        ! lowest model layer, thereby creating negative moisture.
-
-       call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
 !MAML-Guangxing Lin
+       call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
             num_inst_atm,state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf(:,:) ,         &
-            cam_in%lhf(:,:) , cam_in%cflx,qexcess )
+            cam_in%lhf(:,:) , cam_in%cflx, qexcess )
             !state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
+            !cam_in%lhf , cam_in%cflx, qexcess )
 !MAML-Guangxing Lin
 
     end if 
@@ -1682,9 +1685,9 @@ end if ! l_tracer_aero
              shfavg_in     ,cam_in%cflx     ,surfric  ,obklen   ,ptend    ,ast    ,&
        !call vertical_diffusion_tend (ztodt ,state ,cam_in%wsx, cam_in%wsy,   &
        !     cam_in%shf     ,cam_in%cflx     ,surfric  ,obklen   ,ptend    ,ast    ,&
-!MAML-Guangxing Lin
             cam_in%ocnfrac  , cam_in%landfrac ,        &
             sgh30    ,pbuf )
+!MAML-Guangxing Lin
 
     !------------------------------------------
     ! Call major diffusion for extended model
@@ -1716,7 +1719,7 @@ if (l_rayleigh) then
 !MAML-Guangxing Lin
            zero, shfavg_in)
 !           zero, cam_in%shf)
-!MAML-Guangxing Lin
+!MAML-Guangxing Lin           
     endif
     
     call check_tracers_chng(state, tracerint, "vdiff", nstep, ztodt, cam_in%cflx)
@@ -1890,6 +1893,10 @@ end if ! l_ac_energy_chk
     end do
     water_vap_ac_2d(:ncol) = ftem(:ncol,1)
 
+    !debug-Guangxing Lin
+    call outfld('SHFLX4',    cam_in%shf,       pcols, lchnk)
+    call outfld('LHFLX4',    cam_in%lhf,       pcols, lchnk)
+   !debug-Guangxing Lin
 end subroutine tphysac
 
 subroutine tphysbc (ztodt,               &
@@ -1976,10 +1983,10 @@ subroutine tphysbc (ztodt,               &
    use module_data_ecpp1,      only: dtstep_pp_input
    use crmclouds_camaerosols,  only: crmclouds_mixnuc_tend
 #endif
+
 !MAML-Guangxing Lin
     use seq_comm_mct,       only : num_inst_atm
 !MAML-Guangxing Lin
-
 #endif /* CRM */
 
     implicit none
@@ -2207,7 +2214,6 @@ subroutine tphysbc (ztodt,               &
     rtdt = 1._r8/ztodt
 
     nstep = get_nstep()
-
 !MAML-Guangxing Lin
     shfavg_in =0._r8
     lhfavg_in =0._r8
@@ -2225,6 +2231,10 @@ subroutine tphysbc (ztodt,               &
       enddo
     end do
 !MAML-Guangxing Lin
+    !debug-Guangxing Lin
+    call outfld('SHFLX1',    cam_in%shf,       pcols, lchnk)
+    call outfld('LHFLX1',    cam_in%lhf,       pcols, lchnk)
+    !debug-Guangxing Lin
 
     if (pergro_test_active) then 
        !call outfld calls
@@ -2314,8 +2324,9 @@ subroutine tphysbc (ztodt,               &
        call qneg4('TPHYSBC '       ,lchnk               ,ncol  ,ztodt ,               &
 !MAML-Guangxing Lin
             num_inst_atm,state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf(:,:) ,         &
-            cam_in%lhf(:,:) , cam_in%cflx,qexcess )
+            cam_in%lhf(:,:) , cam_in%cflx ,qexcess)
             !state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
+            !cam_in%lhf , cam_in%cflx ,qexcess)
 !MAML-Guangxing Lin
     end if 
     call outfld('QEXCESS',qexcess,pcols,lchnk)
@@ -2705,11 +2716,11 @@ end if
 
                 !  Since we "added" the reserved liquid back in this routine, we need 
                 !    to account for it in the energy checker
-                flx_cnd(:ncol) = -1._r8*rliq(:ncol)
+                flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
 !MAML-Guangxing Lin , hack for now
                 !flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
                 flx_heat(:ncol) = shfavg_in(:ncol) + det_s(:ncol)
-!MAML-Guangxing Lin 
+!MAML-Guangxing Lin
 
                 ! Unfortunately, physics_update does not know what time period
                 ! "tend" is supposed to cover, and therefore can't update it
@@ -2852,8 +2863,8 @@ end if
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
 !MAML-Guangxing Lin                             
                              !cam_in%shf(:), zero, zero, cam_in%cflx(:,1)) 
-                             shfavg_in(:ncol), zero, zero, cam_in%cflx(:,1)) 
-!MAML-Guangxing Lin                             
+                             shfavg_in(:ncol), zero, zero, cam_in%cflx(:,1))
+!MAML-Guangxing Lin       
 #endif
       !---------------------------------------------------------------------------
       ! Initialize variabale for ECPP data
@@ -3124,6 +3135,17 @@ end if ! l_rad
     call t_startf('diag_export')
     call diag_export(cam_out)
     call t_stopf('diag_export')
+
+    !debug-Guangxing Lin
+    call outfld('SHFLX2',    cam_in%shf,       pcols, lchnk)
+    call outfld('LHFLX2',    cam_in%lhf,       pcols, lchnk)
+    call outfld('SOLL2',    cam_out%soll,       pcols, lchnk)
+    call outfld('SOLS2',    cam_out%sols,       pcols, lchnk)
+    call outfld('SOLLD2',    cam_out%solld,       pcols, lchnk)
+    call outfld('SOLSD2',    cam_out%solsd,       pcols, lchnk)
+    call outfld('FLWDS2',    cam_out%flwds,       pcols, lchnk)
+    call outfld('NETSW2',    cam_out%netsw,       pcols, lchnk)
+    !debug-Guangxing Lin
 
 end subroutine tphysbc
 
