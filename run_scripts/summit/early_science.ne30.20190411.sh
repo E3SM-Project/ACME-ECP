@@ -75,10 +75,10 @@ fi
 ./xmlchange ATM_NCPL=72
 ./xmlchange RUN_STARTDATE=0001-01-01
 ./xmlchange STOP_OPTION=nmonths
-./xmlchange STOP_N=12
+./xmlchange STOP_N=3
 ./xmlchange REST_OPTION=nmonths
 ./xmlchange REST_N=3
-./xmlchange RESUBMIT=0
+./xmlchange RESUBMIT=3
 
 ### namelist options
 if [ "$donamelist" = true ] ; then
@@ -133,7 +133,7 @@ fi
 
 
 ### batch options
-./xmlchange JOB_WALLCLOCK_TIME=24:00:00
+./xmlchange JOB_WALLCLOCK_TIME=06:00:00
 ./xmlchange CHARGE_ACCOUNT=CLI115
 
 ### submit
