@@ -71,7 +71,6 @@ fi
 ./xmlchange -file env_run.xml GET_REFCASE=FALSE
 ./xmlchange -file env_run.xml RUN_REFCASE=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.20190327
 ./xmlchange -file env_run.xml RUN_REFDATE=0001-11-01
-# this shouldn't be used in a branch run, but just to be safe ...
 ./xmlchange RUN_STARTDATE=0001-11-01
 
 ./xmlchange ATM_NCPL=288

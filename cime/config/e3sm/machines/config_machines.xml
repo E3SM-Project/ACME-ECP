@@ -3110,7 +3110,7 @@
 	 <BASELINE_ROOT>/gpfs/alpine/world-shared/csc190/e3sm/cesm/baselines/$COMPILER</BASELINE_ROOT>
 	 <CCSM_CPRNC>/gpfs/alpine/world-shared/csc190/e3sm/cesm/tools/cprnc/cprnc</CCSM_CPRNC>
 	 <SAVE_TIMING_DIR>/gpfs/alpine/proj-shared/$PROJECT/e3sm</SAVE_TIMING_DIR>
-     <SAVE_TIMING_DIR_PROJECTS>cli115,csc190</SAVE_TIMING_DIR_PROJECTS>
+     <SAVE_TIMING_DIR_PROJECTS>cli115,csc190,atm111</SAVE_TIMING_DIR_PROJECTS>
 	 <OS>LINUX</OS>
 	 <BATCH_SYSTEM>lsf</BATCH_SYSTEM>
 	 <SUPPORTED_BY>e3sm</SUPPORTED_BY>
@@ -3242,7 +3242,7 @@
 	 <BASELINE_ROOT>/gpfs/alpine/world-shared/csc190/e3sm/cesm/baselines/$COMPILER</BASELINE_ROOT>
 	 <CCSM_CPRNC>/gpfs/alpine/world-shared/csc190/e3sm/cesm/tools/cprnc/cprnc</CCSM_CPRNC>
 	 <SAVE_TIMING_DIR>/gpfs/alpine/proj-shared/$PROJECT/e3sm</SAVE_TIMING_DIR>
-     <SAVE_TIMING_DIR_PROJECTS>cli115,csc190</SAVE_TIMING_DIR_PROJECTS>
+     <SAVE_TIMING_DIR_PROJECTS>cli115,csc190,atm111</SAVE_TIMING_DIR_PROJECTS>
 	 <OS>LINUX</OS>
 	 <BATCH_SYSTEM>lsf</BATCH_SYSTEM>
 	 <SUPPORTED_BY>e3sm</SUPPORTED_BY>
