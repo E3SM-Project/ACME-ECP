@@ -1,12 +1,18 @@
 #!/bin/bash
 # Run script for SP-E3SM early science runs on summit
-#
-# Hybrid run to get back to "00000" TOD for history files for this simulation campaign:
+# 
+# Branch for this simulation campaign:
 # E3SM-Project/ACME-ECP.git/crjones/crm/summit_early_science (commit fdee19e)
-#
+# 
 # See https://confluence.exascaleproject.org/x/SIOWAw for further details 
 #
+# This should serve as a template. For these summit early science 
+# runs, the preferred approach is to create a new run script titled
+#              early_science.$datestamp.sh 
+# that corresponds to the appropriately datestamp in the case name.
+#
 # Contact: christopher.jones@pnnl.gov
+#
 
 create_newcase=true
 dosetup=true
@@ -14,15 +20,15 @@ dobuild=true
 donamelist=true
 dosubmit=false
 
-datestamp=20190329
+datestamp=20190411
 
 ### BASIC INFO FOR create_newcase
-compset=FC5AV1C-H01A
-resolution=ne120_ne120
-project=atm111
+compset=FC5AV1C-L
+resolution=ne30_ne30
+project=cli115
 machine=summit
 compiler=pgigpu
-pecount=36864x1
+pecount=2160x1
 
 ### CRM details specified in CAM_CONFIG_OPTS
 # additional options specified directly in CAM_CONFIG_OPTS include:
@@ -66,19 +72,13 @@ if [ "$dobuild" = true ] ; then
 fi
 
 ### Run options
-# Initial branch from 4-month ES run w/ restart bug
-./xmlchange -file env_run.xml RUN_TYPE=hybrid
-./xmlchange -file env_run.xml GET_REFCASE=FALSE
-./xmlchange -file env_run.xml RUN_REFCASE=earlyscience.FC5AV1C-H01A.ne120.sp1_64x1_1000m.20190327
-./xmlchange -file env_run.xml RUN_REFDATE=0001-11-01
-./xmlchange RUN_STARTDATE=0001-11-01
-
-./xmlchange ATM_NCPL=288
+./xmlchange ATM_NCPL=72
+./xmlchange RUN_STARTDATE=0001-01-01
 ./xmlchange STOP_OPTION=nmonths
-./xmlchange STOP_N=6
+./xmlchange STOP_N=3
 ./xmlchange REST_OPTION=nmonths
-./xmlchange REST_N=2
-./xmlchange RESUBMIT=1
+./xmlchange REST_N=3
+./xmlchange RESUBMIT=3
 
 ### namelist options
 if [ "$donamelist" = true ] ; then
@@ -98,13 +98,13 @@ cat <<EOF >> user_nl_cam
   ! enable surface flux smoothing (stability requirement ?)
   srf_flux_avg = 1
 
-  ! dycore options
-  se_nsplit = 5
-  rsplit = 1
+  ! dycore options (5-min effective dynamics step)
+  se_nsplit = 2
+  rsplit = 2
 
-  ! radiation every 30 minutes
-  iradlw = 6
-  iradsw = 6
+  ! radiation every 20 minutes
+  iradlw = 1
+  iradsw = 1
 
   ! crm mean-state acceleration
   use_crm_accel = .true.
@@ -124,20 +124,19 @@ cat <<EOF >> user_nl_cam
 
   ! CRM-fields near SGP site (halo of 9 crms)
   fincl4 = 'CRM_U:I','CRM_W:I','CRM_T:I','CRM_QV:I','CRM_QC:I','CRM_QI:I','CRM_QPC:I','CRM_QPI:I','CRM_QRAD:I','Z3:I','U:I','V:I','OMEGA:I','T:I','PS:I','Q:I','CLDLIQ:I','CLDICE:I'
-  fincl4lonlat = '97.8w:97.2w_36.27n:36.75n'
+  fincl4lonlat = '98.5w:95.6w_35.3n:38.4n'
 
-  ! write cam.i file at end of run (need for hybrid runs)
   inithist = 'ENDOFRUN'
 
 EOF
 fi
 
+
 ### batch options
-./xmlchange JOB_WALLCLOCK_TIME=24:00:00
-./xmlchange CHARGE_ACCOUNT=ATM111
+./xmlchange JOB_WALLCLOCK_TIME=06:00:00
+./xmlchange CHARGE_ACCOUNT=CLI115
 
 ### submit
-# NOTE: prior to submission, must stage restart files and rpointer files from RUN_REFCASE in the case run directory
 if [ "$dosubmit" = true ] ; then
     ./case.submit
 fi
