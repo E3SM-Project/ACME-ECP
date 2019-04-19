@@ -69,16 +69,19 @@ fi
 if [ "$donamelist" = true ] ; then
 rm user_nl_cam
 cat <<EOF >> user_nl_cam
-  ! prescribed aerosol options
-  prescribed_aero_cycle_yr = 01
-  prescribed_aero_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
-  prescribed_aero_datapath = '/project/projectdirs/acme/inputdata/atm/cam/chem/presc_aero'
+  !! prescribed aerosols 
+  !! (disabled because model failed to initialize; need to update CAM_CONFIG_OPTS with proper 
+  !!  chemistry options in future runs if prescribed aerosols important)
+  ! prescribed_aero_cycle_yr = 01
+  ! prescribed_aero_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
+  ! prescribed_aero_datapath = '/project/projectdirs/acme/inputdata/atm/cam/chem/presc_aero'
+  ! prescribed_aero_type = 'CYCLICAL'
+  ! aerodep_flx_type = 'CYCLICAL'
+  ! aerodep_flx_datapath = '/project/projectdirs/acme/inputdata/atm/cam/chem/presc_aero'
+  ! aerodep_flx_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
+  ! aerodep_flx_cycle_yr = 01
+
   use_hetfrz_classnuc = .false.
-  prescribed_aero_type = 'CYCLICAL'
-  aerodep_flx_type = 'CYCLICAL'
-  aerodep_flx_datapath = '/project/projectdirs/acme/inputdata/atm/cam/chem/presc_aero'
-  aerodep_flx_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
-  aerodep_flx_cycle_yr = 01
 
   ! file i/o
   nhtfrq = 0,-1,-3
