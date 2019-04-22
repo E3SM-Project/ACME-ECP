@@ -26,9 +26,9 @@ contains
     real(crm_rknd), allocatable :: fv(:,:,:,:)
     real(crm_rknd), allocatable :: fw(:,:,:,:)
 
-    allocate( fu(ncrms,0:nx,1,nz) )
-    allocate( fv(ncrms,0:nx,1,nz) )
-    allocate( fw(ncrms,0:nx,1,nz) )
+    allocate( fu(ncrms,0:nx,0:ny,nz) )
+    allocate( fv(ncrms,0:nx,0:ny,nz) )
+    allocate( fw(ncrms,0:nx,0:ny,nz) )
 
     !$acc enter data create(fu,fv,fw) async(asyncid)
 
