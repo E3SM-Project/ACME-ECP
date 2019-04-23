@@ -31,8 +31,6 @@ contains
     allocate( fv(ncrms,0:nx,1,nz) )
     allocate( fw(ncrms,0:nx,1,nz) )
 
-    !$acc enter data create(fu,fv,fw) async(asyncid)
-
     rdx2=1./dx/dx
     rdx25=0.25*rdx2
 
@@ -151,8 +149,6 @@ contains
         end do
       end do ! k
     end do ! k
-
-    !$acc exit data delete(fu,fv,fw) async(asyncid)
 
     deallocate( fu )
     deallocate( fv )

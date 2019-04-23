@@ -91,8 +91,6 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   allocate( buoy_sgs_vert (ncrms,nx,ny,0:nzm) )
   allocate( a_prod_bu_vert(ncrms,nx,ny,0:nzm) )
 
-  !$acc enter data create(def2,buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
-
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------
 
@@ -305,8 +303,6 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
       end do ! j
     end do ! k
   enddo !icrm
-
-  !$acc exit data delete(def2,buoy_sgs_vert,a_prod_bu_vert) async(asyncid)
 
   deallocate( def2           )
   deallocate( buoy_sgs_vert  )

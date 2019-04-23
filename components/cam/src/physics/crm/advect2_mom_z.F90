@@ -20,8 +20,6 @@ contains
     allocate( fvz(ncrms,nx,ny,nz ) )
     allocate( fwz(ncrms,nx,ny,nzm) )
 
-    !$acc enter data create(fuz,fvz,fwz) async(asyncid)
-
     !$acc parallel loop collapse(2) copy(uwle,vwle) async(asyncid)
     do k = 1 , nz
       do icrm = 1 , ncrms
@@ -118,8 +116,6 @@ contains
         end do
       end do ! k
     end do
-
-    !$acc exit data delete(fuz,fvz,fwz) async(asyncid)
 
     deallocate( fuz )
     deallocate( fvz )

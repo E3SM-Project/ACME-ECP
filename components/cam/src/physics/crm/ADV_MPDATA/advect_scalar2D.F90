@@ -49,8 +49,6 @@ contains
     allocate( irho(ncrms,nzm) )
     allocate( irhow(ncrms,nzm) )
 
-    !$acc enter data create(mx,mn,uuu,www,iadz,irho,irhow) async(asyncid)
-
     !$acc parallel loop collapse(2) copy(www) async(asyncid)
     do i = -1 , nxp2
       do icrm = 1 , ncrms
@@ -225,8 +223,6 @@ contains
         enddo
       enddo
     enddo
-
-    !$acc exit data delete(mx,mn,uuu,www,iadz,irho,irhow) async(asyncid)
 
     deallocate( mx )
     deallocate( mn )

@@ -22,8 +22,6 @@ contains
     allocate( kmin(ncrms) )
     allocate( fz(ncrms,nx,ny,nz) )
 
-    !$acc enter data create(kmax,kmin,fz) async(asyncid)
-
     !$acc parallel loop copy(kmin,kmax) async(asyncid)
     do icrm = 1 , ncrms
       kmax(icrm)=0
@@ -163,8 +161,6 @@ contains
         end do
       end do
     end do
-
-    !$acc exit data delete(kmax,kmin,fz) async(asyncid)
 
     deallocate( kmax )
     deallocate( kmin )

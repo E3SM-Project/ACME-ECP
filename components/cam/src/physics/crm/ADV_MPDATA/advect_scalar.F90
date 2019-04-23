@@ -23,8 +23,6 @@ contains
 
     allocate( f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
-    !$acc enter data create(f0) async(asyncid)
-
     if(docolumn) then
       !$acc parallel loop collapse(2) copy(flux) async(asyncid)
       do k = 1 , nz
@@ -70,8 +68,6 @@ contains
         end do
       end do
     enddo
-
-    !$acc exit data delete(f0) async(asyncid)
 
     deallocate( f0 )
 

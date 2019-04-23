@@ -20,8 +20,6 @@ contains
     allocate( qpoz(ncrms,nzm) )
     allocate( nneg(ncrms,nzm) )
 
-    !$acc enter data create(qneg,qpoz,nneg) async(asyncid)
-
     coef = 1./3600.
 
     !$acc parallel loop collapse(2) copy(qpoz,qneg,nneg) async(asyncid)
@@ -69,8 +67,6 @@ contains
         end do
       end do
     end do
-
-    !$acc exit data delete(qneg,qpoz,nneg) async(asyncid)
 
     deallocate( qneg )
     deallocate( qpoz )

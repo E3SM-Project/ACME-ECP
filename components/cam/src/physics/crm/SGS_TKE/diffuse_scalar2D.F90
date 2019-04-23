@@ -35,8 +35,6 @@ contains
     allocate( flx(ncrms,0:nx,1,0:nzm) )
     allocate( dfdt(ncrms,nx,ny,nzm) )
 
-    !$acc enter data create(flx,dfdt) async(asyncid)
-
     !For working around PGI bug where it didn't create enough OpenACC gangs
     numgangs = ceiling(ncrms*nzm*ny*nx/128.)
     !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) copy(dfdt) async(asyncid)
@@ -133,8 +131,6 @@ contains
         enddo
       enddo
     enddo
-
-    !$acc exit data delete(flx,dfdt) async(asyncid)
 
     deallocate( flx )
     deallocate( dfdt )

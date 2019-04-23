@@ -43,8 +43,6 @@ contains
     dxy=dx/dy
     dyx=dy/dx
 
-    !$acc enter data create(flx_x,flx_y,flx_z,dfdt) async(asyncid)
-
     !$acc parallel loop collapse(4) copy(dfdt) async(asyncid)
     do k = 1 , nzm
       do j = 1 , ny
@@ -206,8 +204,6 @@ contains
         enddo
       enddo
     enddo
-
-    !$acc exit data delete(flx_x,flx_y,flx_z,dfdt) async(asyncid)
 
     deallocate( flx_x )
     deallocate( flx_y )

@@ -190,15 +190,11 @@ CONTAINS
         call cloud(ncrms,micro_field(:,:,:,:,1),micro_field(:,:,:,:,2),qn)
         !$acc wait(asyncid)
 #endif
-        !$acc enter data copyin(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         call micro_diagnose(ncrms)
-        !$acc exit data copyout(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         !$acc wait(asyncid)
       end if
       if(dosmoke) then
-        !$acc enter data copyin(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         call micro_diagnose(ncrms)
-        !$acc exit data copyout(qv,micro_field,qn,qcl,qci,tabs,qpl,qpi) async(asyncid)
         !$acc wait(asyncid)
       end if
     end if
@@ -475,8 +471,6 @@ CONTAINS
     integer ind
     integer i,j,k,icrm
 
-    !$acc enter data create(omega) async(asyncid)
-
     crain = b_rain / 4.
     csnow = b_snow / 4.
     cgrau = b_grau / 4.
@@ -496,8 +490,6 @@ CONTAINS
     end do
 
     call precip_fall(ncrms, 2, omega, ind)
-
-    !$acc exit data delete(omega) async(asyncid)
 
   end subroutine micro_precip_fall
 
@@ -550,8 +542,6 @@ CONTAINS
     allocate( irhoadz(ncrms,nzm) )
     allocate( iwmax  (ncrms,nzm) )
     allocate( rhofac (ncrms,nzm) )
-
-    !$acc enter data create(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(asyncid)
 
     !$acc parallel loop gang vector collapse(2) copyin(rho,adz,dz) copy(irhoadz,rhofac,iwmax) async(asyncid)
     do k = 1,nzm
@@ -785,8 +775,6 @@ CONTAINS
 
     enddo
     
-    !$acc exit data delete(mx,mn,lfac,www,fz,wp,tmp_qp,irhoadz,iwmax,rhofac) async(asyncid)
-
     deallocate( mx      )
     deallocate( mn      )
     deallocate( lfac    )

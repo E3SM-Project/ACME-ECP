@@ -21,8 +21,6 @@ module kurant_mod
       allocate(wm (ncrms,nz))
       allocate(uhm(ncrms,nz))
 
-      !$acc enter data create(wm,uhm) async(asyncid)
-
       ncycle = 1
       !$acc parallel loop collapse(2) copy(wm,uhm) async(asyncid)
       do k = 1 , nz
@@ -73,8 +71,6 @@ module kurant_mod
         end do
         call task_abort()
       end if
-
-      !$acc exit data delete(wm,uhm) async(asyncid)
 
       deallocate(wm )
       deallocate(uhm)

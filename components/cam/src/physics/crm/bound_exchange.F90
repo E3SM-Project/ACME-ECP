@@ -26,8 +26,6 @@ contains
 
     allocate(buffer((nx+ny)*3*nz*ncrms))
 
-    !$acc enter data create(buffer) async(asyncid)
-
     i1 = i_1 - 1
     i2 = i_2 - 1
     j1 = j_1 - 1
@@ -233,8 +231,6 @@ contains
         end do
       end do
     end do
-
-    !$acc exit data delete(buffer) async(asyncid)
 
     deallocate(buffer)
 

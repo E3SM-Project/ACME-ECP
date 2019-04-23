@@ -31,8 +31,6 @@ contains
     allocate( u0loc(ncrms,nzm) )
     allocate( v0loc(ncrms,nzm) )
    
-    !$acc enter data create(tau,n_damp,t0loc, u0loc, v0loc) async(asyncid)
-
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'
       call task_abort()
@@ -105,8 +103,6 @@ contains
         end do! j
       end do ! k
     end do
-
-    !$acc exit data delete(tau,n_damp,t0loc,u0loc,v0loc) async(asyncid)
 
     deallocate( n_damp )
     deallocate( t0loc )

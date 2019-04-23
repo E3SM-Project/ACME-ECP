@@ -167,8 +167,6 @@ module accelerate_crm_mod
       allocate( qpoz     (ncrms,nzm) )
       allocate( qneg     (ncrms,nzm) )
 
-      !$acc enter data create(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
-
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Compute the average among horizontal columns for each variable
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -251,7 +249,6 @@ module accelerate_crm_mod
         write (iulog, *) 'accelerate_crm: mean-state acceleration not applied this step'
         write (iulog,*) 'crm: nstop increased from ', nstop, ' to ', int(nstop+(nstop-nstep+1)*crm_accel_factor)
         nstop = nstop + (nstop - nstep + 1)*crm_accel_factor ! only can happen once
-        !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc)
         return
       endif
 
@@ -343,8 +340,6 @@ module accelerate_crm_mod
           enddo ! j = 1, ny
         enddo ! k = 1, nzm
       enddo ! icrm = 1, ncrms
-
-      !$acc exit data delete(qpoz,qneg,ubaccel,vbaccel,tbaccel,qtbaccel,ttend_acc,qtend_acc,utend_acc,vtend_acc) async(asyncid)
 
       deallocate( ubaccel   )
       deallocate( vbaccel   )

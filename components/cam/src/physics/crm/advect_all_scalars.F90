@@ -25,8 +25,6 @@ contains
     allocate( esmt_offset(ncrms) )
     allocate( dummy(ncrms,nz) )
 
-    !$acc enter data create(dummy) async(asyncid)
-
     !      advection of scalars :
     call advect_scalar(ncrms,t,dummy,dummy)
 
@@ -86,8 +84,6 @@ contains
       v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) - esmt_offset(icrm)
     enddo
 #endif
-
-    !$acc exit data delete(dummy) async(asyncid)
 
     deallocate( esmt_offset )
     deallocate( dummy )

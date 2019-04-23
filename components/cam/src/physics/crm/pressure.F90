@@ -57,8 +57,6 @@ contains
     allocate( a(ncrms,nzm) )
     allocate( c(ncrms,nzm) )
 
-    !$acc enter data create(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(asyncid)
-
     it = 0
     jt = 0
 
@@ -84,8 +82,6 @@ contains
     endif
 
     allocate(eign(nxp1-iwall,nyp22-jwall))
-    !$acc enter data create(eign) async(asyncid)
-
     !-----------------------------------------------------------------
     !  Compute the r.h.s. of the Poisson equation for pressure
     call press_rhs(ncrms)
@@ -298,10 +294,7 @@ contains
     !  Add pressure gradient term to the rhs of the momentum equation:
     call press_grad(ncrms)
 
-    !$acc exit data delete(eign) async(asyncid)
     deallocate(eign)
-
-    !$acc exit data delete(iii,jjj,f,ff,trigxi,trigxj,ifaxi,ifaxj,a,c) async(asyncid)
 
     deallocate( f  )
     deallocate( ff )

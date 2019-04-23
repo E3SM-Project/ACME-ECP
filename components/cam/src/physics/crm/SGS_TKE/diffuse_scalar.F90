@@ -29,8 +29,6 @@ contains
 
     allocate( df(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
-    !$acc enter data create(df) async(asyncid)
-
     !$acc parallel loop collapse(4) copyin(f) copy(df) async(asyncid)
     do k = 1 , nzm
       do j = dimy1_s , dimy2_s
@@ -66,8 +64,6 @@ contains
         end do
       end do
     enddo
-
-    !$acc exit data delete(df) async(asyncid)
 
     deallocate( df )
 

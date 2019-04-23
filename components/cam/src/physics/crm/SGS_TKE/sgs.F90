@@ -302,8 +302,6 @@ CONTAINS
 
     allocate(tkhmax(ncrms,nz))
 
-    !$acc enter data create(tkhmax) async(asyncid)
-
     !$acc parallel loop collapse(2) copy(tkhmax) async(asyncid)
     do k = 1,nzm
       do icrm = 1 , ncrms
@@ -332,8 +330,6 @@ CONTAINS
         cfl = max( cfl , tmp )
       end do
     end do
-
-    !$acc exit data delete(tkhmax) async(asyncid)
 
     deallocate(tkhmax)
 
@@ -368,8 +364,6 @@ CONTAINS
 
     allocate( dummy(ncrms,nz) )
 
-    !$acc enter data create(dummy) async(asyncid)
-    
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
@@ -389,8 +383,6 @@ CONTAINS
         call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
       end if
     end do
-
-    !$acc exit data delete(dummy) async(asyncid)
 
     !if(dotracers) then
     !  call tracers_flux()

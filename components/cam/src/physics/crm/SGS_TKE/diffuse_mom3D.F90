@@ -30,8 +30,6 @@ contains
     allocate( fv(ncrms,0:nx,0:ny,nz) )
     allocate( fw(ncrms,0:nx,0:ny,nz) )
 
-    !$acc enter data create(fu,fv,fw) async(asyncid)
-
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
     rdx25=0.25*rdx2
@@ -197,8 +195,6 @@ contains
         enddo
       enddo ! k
     enddo
-
-    !$acc exit data delete(fu,fv,fw) async(asyncid)
 
     deallocate( fu )
     deallocate( fv )
