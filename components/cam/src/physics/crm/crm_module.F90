@@ -1035,21 +1035,29 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   call t_stopf('crm_gpu_region')
 
-  do icrm = 1 , ncrms
-    tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
+  tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
 
-    crm_rad%temperature  (icrm,:,:,:) = crm_rad%temperature  (icrm,:,:,:) * tmp1
-    crm_rad%qv (icrm,:,:,:) = crm_rad%qv (icrm,:,:,:) * tmp1
-    crm_rad%qc (icrm,:,:,:) = crm_rad%qc (icrm,:,:,:) * tmp1
-    crm_rad%qi (icrm,:,:,:) = crm_rad%qi (icrm,:,:,:) * tmp1
-    crm_rad%cld(icrm,:,:,:) = crm_rad%cld(icrm,:,:,:) * tmp1
+  do k=1,nzm
+    do j=1,crm_ny_rad
+      do i=1,crm_nx_rad
+        do icrm = 1 , ncrms
+          crm_rad%temperature(icrm,i,j,k) = crm_rad%temperature(icrm,i,j,k) * tmp1
+          crm_rad%qv         (icrm,i,j,k) = crm_rad%qv         (icrm,i,j,k) * tmp1
+          crm_rad%qc         (icrm,i,j,k) = crm_rad%qc         (icrm,i,j,k) * tmp1
+          crm_rad%qi         (icrm,i,j,k) = crm_rad%qi         (icrm,i,j,k) * tmp1
+          crm_rad%cld        (icrm,i,j,k) = crm_rad%cld        (icrm,i,j,k) * tmp1
 #ifdef m2005
-    crm_rad%nc(icrm,:,:,:) = crm_rad%nc(icrm,:,:,:) * tmp1
-    crm_rad%ni(icrm,:,:,:) = crm_rad%ni(icrm,:,:,:) * tmp1
-    crm_rad%qs(icrm,:,:,:) = crm_rad%qs(icrm,:,:,:) * tmp1
-    crm_rad%ns(icrm,:,:,:) = crm_rad%ns(icrm,:,:,:) * tmp1
+          crm_rad%nc         (icrm,i,j,k) = crm_rad%nc         (icrm,i,j,k) * tmp1
+          crm_rad%ni         (icrm,i,j,k) = crm_rad%ni         (icrm,i,j,k) * tmp1
+          crm_rad%qs         (icrm,i,j,k) = crm_rad%qs         (icrm,i,j,k) * tmp1
+          crm_rad%ns         (icrm,i,j,k) = crm_rad%ns         (icrm,i,j,k) * tmp1
 #endif /* m2005 */
+        enddo
+      enddo
+    enddo
+  enddo
 
+  do icrm = 1 , ncrms
     ! no CRM tendencies above its top
     tln(icrm,1:ptop-1) =   crm_input%tl(icrm,1:ptop-1)
     qln(icrm,1:ptop-1) =   crm_input%ql(icrm,1:ptop-1)
