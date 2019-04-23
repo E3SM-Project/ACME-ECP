@@ -1070,55 +1070,74 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
   enddo
 
-  !$acc wait(asyncid)
+  !$acc kernels async(asyncid)
+  ! no CRM tendencies above its top
+  tln  (:,1:ptop-1) = crm_input%tl  (:,1:ptop-1)
+  qln  (:,1:ptop-1) = crm_input%ql  (:,1:ptop-1)
+  qccln(:,1:ptop-1) = crm_input%qccl(:,1:ptop-1)
+  qiiln(:,1:ptop-1) = crm_input%qiil(:,1:ptop-1)
+  uln  (:,1:ptop-1) = crm_input%ul  (:,1:ptop-1)
+  vln  (:,1:ptop-1) = crm_input%vl  (:,1:ptop-1)
 
-  do icrm = 1 , ncrms
-    ! no CRM tendencies above its top
-    tln(icrm,1:ptop-1) =   crm_input%tl(icrm,1:ptop-1)
-    qln(icrm,1:ptop-1) =   crm_input%ql(icrm,1:ptop-1)
-    qccln(icrm,1:ptop-1) = crm_input%qccl(icrm,1:ptop-1)
-    qiiln(icrm,1:ptop-1) = crm_input%qiil(icrm,1:ptop-1)
-    uln(icrm,1:ptop-1) =   crm_input%ul(icrm,1:ptop-1)
-    vln(icrm,1:ptop-1) =   crm_input%vl(icrm,1:ptop-1)
-
-    !  Compute tendencies due to CRM:
-    tln(icrm,ptop:plev) = 0.
-    qln(icrm,ptop:plev) = 0.
-    qccln(icrm,ptop:plev) = 0.
-    qiiln(icrm,ptop:plev) = 0.
-    uln(icrm,ptop:plev) = 0.
-    vln(icrm,ptop:plev) = 0.
+  !  Compute tendencies due to CRM:
+  tln  (:,ptop:plev) = 0.
+  qln  (:,ptop:plev) = 0.
+  qccln(:,ptop:plev) = 0.
+  qiiln(:,ptop:plev) = 0.
+  uln  (:,ptop:plev) = 0.
+  vln  (:,ptop:plev) = 0.
+  colprec (:)=0
+  colprecs(:)=0
+  !$acc end kernels
 
 #if defined( SP_ESMT )
-    uln_esmt(1:ptop-1,icrm)  = crm_input%ul_esmt(icrm,1:ptop-1)
-    vln_esmt(1:ptop-1,icrm)  = crm_input%vl_esmt(icrm,1:ptop-1)
-    uln_esmt(ptop:plev,icrm) = 0.
-    vln_esmt(ptop:plev,icrm) = 0.
+  uln_esmt(1:ptop-1,:)  = crm_input%ul_esmt(:,1:ptop-1)
+  vln_esmt(1:ptop-1,:)  = crm_input%vl_esmt(:,1:ptop-1)
+  uln_esmt(ptop:plev,:) = 0.
+  vln_esmt(ptop:plev,:) = 0.
 #endif /* SP_ESMT */
 
-    colprec (icrm)=0
-    colprecs(icrm)=0
+  !$acc parallel loop collapse(4) async(asyncid)
+  do icrm=1,ncrms
     do k = 1,nzm
-      l = plev-k+1
       do i=1,nx
         do j=1,ny
-          colprec (icrm)= colprec (icrm)+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
-          colprecs(icrm)= colprecs(icrm)+qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
+          l = plev-k+1
+
+          tmp = (qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
+          !$acc atomic update
+          colprec (icrm)= colprec (icrm)+tmp
+
+          tmp = qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
+          !$acc atomic update
+          colprecs(icrm)= colprecs(icrm)+tmp
+          !$acc atomic update
           tln(icrm,l)  = tln(icrm,l)  +tabs(icrm,i,j,k)
+          !$acc atomic update
           qln(icrm,l)  = qln(icrm,l)  +qv(icrm,i,j,k)
+          !$acc atomic update
           qccln(icrm,l)= qccln(icrm,l)+qcl(icrm,i,j,k)
+          !$acc atomic update
           qiiln(icrm,l)= qiiln(icrm,l)+qci(icrm,i,j,k)
+          !$acc atomic update
           uln(icrm,l)  = uln(icrm,l)  +u(icrm,i,j,k)
+          !$acc atomic update
           vln(icrm,l)  = vln(icrm,l)  +v(icrm,i,j,k)
 
 #if defined(SP_ESMT)
+          !$acc atomic update
           uln_esmt(l,icrm) = uln_esmt(l,icrm)+u_esmt(icrm,i,j,k)
+          !$acc atomic update
           vln_esmt(l,icrm) = vln_esmt(l,icrm)+v_esmt(icrm,i,j,k)
 #endif
         enddo ! j
       enddo ! i
     enddo ! k
+  enddo ! icrm
 
+  !$acc wait(asyncid)
+
+  do icrm=1,ncrms
     tln(icrm,ptop:plev) = tln(icrm,ptop:plev) * factor_xy
     qln(icrm,ptop:plev) = qln(icrm,ptop:plev) * factor_xy
     qccln(icrm,ptop:plev) = qccln(icrm,ptop:plev) * factor_xy
