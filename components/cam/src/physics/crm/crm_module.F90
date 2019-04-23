@@ -484,6 +484,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       qg0(icrm,k) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
 
     end do ! k
+    crm_output%prectend (icrm)=colprec
+    crm_output%precstend(icrm)=colprecs
   end do ! icrm
 
   !$acc parallel loop
@@ -501,10 +503,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   !$acc kernels
   crm_output%timing_factor = 0.
-
-  crm_output%prectend=colprec
-  crm_output%precstend=colprecs
-
 
   fluxbu  =0.
   fluxbv  =0.
