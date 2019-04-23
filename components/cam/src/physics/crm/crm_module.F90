@@ -181,6 +181,13 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
     real(r8), allocatable :: mdi_crm(:,:)     ! mass flux down at the interface
 
+    real(crm_rknd), pointer :: crm_rad_temperature(:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qv         (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qc         (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qi         (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_cld        (:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qrad       (:,:,:,:)
+
   !-----------------------------------------------------------------------------------------------
   !-----------------------------------------------------------------------------------------------
 
@@ -236,6 +243,13 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call allocate_scalar_momentum(ncrms)
 #endif
 
+  crm_rad_temperature => crm_rad%temperature(1:ncrms,:,:,:)
+  crm_rad_qv          => crm_rad%qv         (1:ncrms,:,:,:)
+  crm_rad_qc          => crm_rad%qc         (1:ncrms,:,:,:)
+  crm_rad_qi          => crm_rad%qi         (1:ncrms,:,:,:)
+  crm_rad_cld         => crm_rad%cld        (1:ncrms,:,:,:)
+  crm_rad_qrad        => crm_rad%qrad       (1:ncrms,:,:,:)
+  
   crm_accel_ceaseflag = .false.
 
   !Loop over "vector columns"
@@ -252,11 +266,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   idt_gl    = 1._r8/dt_gl
   ptop      = plev-nzm+1
   factor_xy = 1._r8/dble(nx*ny)
-  crm_rad%temperature = 0.
-  crm_rad%qv  = 0.
-  crm_rad%qc  = 0.
-  crm_rad%qi  = 0.
-  crm_rad%cld = 0.
+  crm_rad_temperature = 0.
+  crm_rad_qv  = 0.
+  crm_rad_qc  = 0.
+  crm_rad_qi  = 0.
+  crm_rad_cld = 0.
 #ifdef m2005
   crm_rad%nc = 0.0
   crm_rad%ni = 0.0
@@ -720,7 +734,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             do icrm = 1 , ncrms
               i_rad = (i-1) / (nx/crm_nx_rad) + 1
               j_rad = (j-1) / (ny/crm_ny_rad) + 1
-              t(icrm,i,j,k) = t(icrm,i,j,k) + crm_rad%qrad(icrm,i_rad,j_rad,k)*dtn
+              t(icrm,i,j,k) = t(icrm,i,j,k) + crm_rad_qrad(icrm,i_rad,j_rad,k)*dtn
             enddo
           enddo
         enddo
@@ -839,7 +853,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
 #ifdef ECPP
     ! Here ecpp_crm_stat is called every CRM time step (dt), not every subcycle time step (dtn).
-    ! This is what the original MMF model did (crm_rad%temperature, crm_rad%qv, ...). Do we want to call ecpp_crm_stat
+    ! This is what the original MMF model did (crm_rad_temperature, crm_rad_qv, ...). Do we want to call ecpp_crm_stat
     ! every subcycle time step??? +++mhwang
     call ecpp_crm_stat(ncrms)
 #endif
@@ -937,16 +951,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             j_rad = (j-1) / (ny/crm_ny_rad) + 1
 
             !$acc atomic update
-            crm_rad%temperature(icrm,i_rad,j_rad,k) = crm_rad%temperature(icrm,i_rad,j_rad,k) + tabs(icrm,i,j,k)
+            crm_rad_temperature(icrm,i_rad,j_rad,k) = crm_rad_temperature(icrm,i_rad,j_rad,k) + tabs(icrm,i,j,k)
             tmp = max(real(0.,crm_rknd),qv(icrm,i,j,k))
             !$acc atomic update
-            crm_rad%qv         (icrm,i_rad,j_rad,k) = crm_rad%qv         (icrm,i_rad,j_rad,k) + tmp
+            crm_rad_qv         (icrm,i_rad,j_rad,k) = crm_rad_qv         (icrm,i_rad,j_rad,k) + tmp
             !$acc atomic update
-            crm_rad%qc         (icrm,i_rad,j_rad,k) = crm_rad%qc         (icrm,i_rad,j_rad,k) + qcl(icrm,i,j,k)
+            crm_rad_qc         (icrm,i_rad,j_rad,k) = crm_rad_qc         (icrm,i_rad,j_rad,k) + qcl(icrm,i,j,k)
             !$acc atomic update
-            crm_rad%qi         (icrm,i_rad,j_rad,k) = crm_rad%qi         (icrm,i_rad,j_rad,k) + qci(icrm,i,j,k)
+            crm_rad_qi         (icrm,i_rad,j_rad,k) = crm_rad_qi         (icrm,i_rad,j_rad,k) + qci(icrm,i,j,k)
             !$acc atomic update
-            crm_rad%cld        (icrm,i_rad,j_rad,k) = crm_rad%cld        (icrm,i_rad,j_rad,k) + cf3d(icrm,i,j,k)
+            crm_rad_cld        (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + cf3d(icrm,i,j,k)
 #ifdef m2005
             !$acc atomic update
             crm_rad%nc         (icrm,i_rad,j_rad,k) = crm_rad%nc         (icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,incl)
@@ -1022,8 +1036,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   enddo ! nstep
 
-  !$acc wait(asyncid)
-
   ! for time-averaging crm output statistics
   factor_xyt = factor_xy / real(nstop,crm_rknd) 
 
@@ -1037,15 +1049,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
 
+  !$acc parallel loop collapse(4) async(asyncid)
   do k=1,nzm
     do j=1,crm_ny_rad
       do i=1,crm_nx_rad
         do icrm = 1 , ncrms
-          crm_rad%temperature(icrm,i,j,k) = crm_rad%temperature(icrm,i,j,k) * tmp1
-          crm_rad%qv         (icrm,i,j,k) = crm_rad%qv         (icrm,i,j,k) * tmp1
-          crm_rad%qc         (icrm,i,j,k) = crm_rad%qc         (icrm,i,j,k) * tmp1
-          crm_rad%qi         (icrm,i,j,k) = crm_rad%qi         (icrm,i,j,k) * tmp1
-          crm_rad%cld        (icrm,i,j,k) = crm_rad%cld        (icrm,i,j,k) * tmp1
+          crm_rad_temperature(icrm,i,j,k) = crm_rad_temperature(icrm,i,j,k) * tmp1
+          crm_rad_qv         (icrm,i,j,k) = crm_rad_qv         (icrm,i,j,k) * tmp1
+          crm_rad_qc         (icrm,i,j,k) = crm_rad_qc         (icrm,i,j,k) * tmp1
+          crm_rad_qi         (icrm,i,j,k) = crm_rad_qi         (icrm,i,j,k) * tmp1
+          crm_rad_cld        (icrm,i,j,k) = crm_rad_cld        (icrm,i,j,k) * tmp1
 #ifdef m2005
           crm_rad%nc         (icrm,i,j,k) = crm_rad%nc         (icrm,i,j,k) * tmp1
           crm_rad%ni         (icrm,i,j,k) = crm_rad%ni         (icrm,i,j,k) * tmp1
@@ -1056,6 +1069,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
   enddo
+
+  !$acc wait(asyncid)
 
   do icrm = 1 , ncrms
     ! no CRM tendencies above its top
