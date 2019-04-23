@@ -242,15 +242,17 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   do icrm = 1 , ncrms
     latitude0 (icrm) = get_rlat_p(lchnk, icol(icrm)) * 57.296_r8
     longitude0(icrm) = get_rlon_p(lchnk, icol(icrm)) * 57.296_r8
+  enddo
 
-    igstep = get_nstep()
+  igstep = get_nstep()
 
 !-----------------------------------------------
 
-    dostatis  = .false.    ! no statistics are collected.
-    idt_gl    = 1._r8/dt_gl
-    ptop      = plev-nzm+1
-    factor_xy = 1._r8/dble(nx*ny)
+  dostatis  = .false.    ! no statistics are collected.
+  idt_gl    = 1._r8/dt_gl
+  ptop      = plev-nzm+1
+  factor_xy = 1._r8/dble(nx*ny)
+  do icrm = 1 , ncrms
     crm_rad%temperature  (icrm,:,:,:) = 0.
     crm_rad%qv (icrm,:,:,:) = 0.
     crm_rad%qc (icrm,:,:,:) = 0.
@@ -264,20 +266,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #endif /* m2005 */
     bflx(icrm) = crm_input%bflxls(icrm)
     wnd(icrm) = crm_input%wndls(icrm)
+  enddo
 
 !-----------------------------------------
 
-#ifdef CLUBB_CRM
-    if(igstep == 1) then
-      lrestart_clubb = .false.
-    else
-     lrestart_clubb = .true.
-    endif
-#endif /* CLUBB_CRM */
+  call task_init ()
+  call setparm()
 
-    call task_init ()
-    call setparm()
-
+  do icrm = 1 , ncrms
     fcor(icrm)= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
     fcorz(icrm) = sqrt(4.*(2*pi/(3600.*24.))**2-fcor(icrm)**2)
     fcory(icrm,:) = fcor(icrm)
