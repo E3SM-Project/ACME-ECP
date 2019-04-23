@@ -252,20 +252,20 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   idt_gl    = 1._r8/dt_gl
   ptop      = plev-nzm+1
   factor_xy = 1._r8/dble(nx*ny)
-  do icrm = 1 , ncrms
-    crm_rad%temperature  (icrm,:,:,:) = 0.
-    crm_rad%qv (icrm,:,:,:) = 0.
-    crm_rad%qc (icrm,:,:,:) = 0.
-    crm_rad%qi (icrm,:,:,:) = 0.
-    crm_rad%cld(icrm,:,:,:) = 0.
+    crm_rad%temperature = 0.
+    crm_rad%qv  = 0.
+    crm_rad%qc  = 0.
+    crm_rad%qi  = 0.
+    crm_rad%cld = 0.
 #ifdef m2005
-    crm_rad%nc(icrm,:,:,:) = 0.0
-    crm_rad%ni(icrm,:,:,:) = 0.0
-    crm_rad%qs(icrm,:,:,:) = 0.0
-    crm_rad%ns(icrm,:,:,:) = 0.0
+    crm_rad%nc = 0.0
+    crm_rad%ni = 0.0
+    crm_rad%qs = 0.0
+    crm_rad%ns = 0.0
 #endif /* m2005 */
+  do icrm = 1 , ncrms
     bflx(icrm) = crm_input%bflxls(icrm)
-    wnd(icrm) = crm_input%wndls(icrm)
+    wnd (icrm) = crm_input%wndls (icrm)
   enddo
 
 !-----------------------------------------
