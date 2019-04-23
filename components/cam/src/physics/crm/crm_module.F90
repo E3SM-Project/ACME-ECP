@@ -252,16 +252,16 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   idt_gl    = 1._r8/dt_gl
   ptop      = plev-nzm+1
   factor_xy = 1._r8/dble(nx*ny)
-    crm_rad%temperature = 0.
-    crm_rad%qv  = 0.
-    crm_rad%qc  = 0.
-    crm_rad%qi  = 0.
-    crm_rad%cld = 0.
+  crm_rad%temperature = 0.
+  crm_rad%qv  = 0.
+  crm_rad%qc  = 0.
+  crm_rad%qi  = 0.
+  crm_rad%cld = 0.
 #ifdef m2005
-    crm_rad%nc = 0.0
-    crm_rad%ni = 0.0
-    crm_rad%qs = 0.0
-    crm_rad%ns = 0.0
+  crm_rad%nc = 0.0
+  crm_rad%ni = 0.0
+  crm_rad%qs = 0.0
+  crm_rad%ns = 0.0
 #endif /* m2005 */
   do icrm = 1 , ncrms
     bflx(icrm) = crm_input%bflxls(icrm)
@@ -341,10 +341,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   ! limit the velocity at the very first step:
   if(u(1,1,1,1).eq.u(1,2,1,1).and.u(1,3,1,2).eq.u(1,4,1,2)) then
     !$acc parallel loop collapse(4) async(asyncid)
-    do icrm=1,ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
             v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
           enddo
@@ -352,7 +352,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
   endif
-
 
 #if defined(SP_ESMT)
   do k=1,nzm
@@ -440,10 +439,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !$acc end kernels
 
   !$acc parallel loop collapse(4) async(asyncid)
-  do icrm = 1 , ncrms
-    do k=1,nzm
-      do j=1,ny
-        do i=1,nx
+  do k=1,nzm
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
           t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k)-fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
                                                         -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
 
@@ -488,8 +487,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   enddo
 
   !$acc parallel loop collapse(2) async(asyncid)
-  do icrm = 1 , ncrms
-    do k=1,nzm
+  do k=1,nzm
+    do icrm = 1 , ncrms
       u0   (icrm,k) = u0   (icrm,k) * factor_xy
       v0   (icrm,k) = v0   (icrm,k) * factor_xy
       t0   (icrm,k) = t0   (icrm,k) * factor_xy
@@ -1167,32 +1166,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     crm_output%tk   (icrm,1:nx,1:ny,1:nzm) = sgs_field_diag(icrm,1:nx, 1:ny, 1:nzm,1)
     crm_output%tkh  (icrm,1:nx,1:ny,1:nzm) = sgs_field_diag(icrm,1:nx, 1:ny, 1:nzm,2)
-#ifdef CLUBB_CRM
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  1) = up2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  2) = vp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  3) = wprtp     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  4) = wpthlp    (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  5) = wp2       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  6) = wp3       (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  7) = rtp2      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  8) = thlp2     (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz ,  9) = rtpthlp   (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 10) = upwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 11) = vpwp      (1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nz , 12) = cloud_frac(1:nx, 1:ny, 1:nz )
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 13) = t_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 14) = qc_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 15) = qv_tndcy  (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 16) = u_tndcy   (1:nx, 1:ny, 1:nzm)
-    clubb_buffer(icrm,1:nx, 1:ny, 1:nzm, 17) = v_tndcy   (1:nx, 1:ny, 1:nzm)
-
-    crm_cld    (icrm,1:nx, 1:ny, 1:nz ) = cloud_frac  (1:nx, 1:ny, 1:nz )
-    clubb_tk   (icrm,1:nx, 1:ny, 1:nzm) = tk_clubb    (1:nx, 1:ny, 1:nzm)
-    clubb_tkh  (icrm,1:nx, 1:ny, 1:nzm) = tkh_clubb   (1:nx, 1:ny, 1:nzm)
-    relvar     (icrm,1:nx, 1:ny, 1:nzm) = relvarg     (1:nx, 1:ny, 1:nzm)
-    accre_enhan(icrm,1:nx, 1:ny, 1:nzm) = accre_enhang(1:nx, 1:ny, 1:nzm)
-    qclvar     (icrm,1:nx, 1:ny, 1:nzm) = qclvarg     (1:nx, 1:ny, 1:nzm)
-#endif /* CLUBB_CRM */
 
     do k=1,nzm
      do j=1,ny
@@ -1483,12 +1456,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #endif /* ECPP */
 
     crm_output%timing_factor(icrm) = crm_output%timing_factor(icrm) / nstop
-
-#ifdef CLUBB_CRM
-    ! Deallocate CLUBB variables, etc.
-    ! -UWM
-    if ( doclubb .or. doclubbnoninter ) call clubb_sgs_cleanup( )
-#endif
   enddo
 
 #ifdef ECPP
