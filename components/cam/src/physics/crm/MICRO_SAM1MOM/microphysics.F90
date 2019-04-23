@@ -203,7 +203,6 @@ CONTAINS
     qpsrc(:,:) = 0.
     qpevp(:,:) = 0.
     !$acc end kernels
-    !$acc wait(asyncid)
 
     mkname(1) = 'QT'
     mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'

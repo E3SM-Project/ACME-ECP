@@ -331,24 +331,21 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       rhow(icrm,k) = (crm_input%pmid(icrm,plev-k+2)-crm_input%pmid(icrm,plev-k+1))/ggr/(adzw(icrm,k)*dz(icrm))
     end do
     rhow(icrm,1) = 2.*rhow(icrm,2) - rhow(icrm,3)
-#ifdef CLUBB_CRM /* Fix extrapolation for 30 point grid */
-    if (  2.*rhow(icrm,nzm) - rhow(icrm,nzm-1) > 0. ) then
-       rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
-    else
-       rhow(icrm,nz)= sqrt( rhow(icrm,nzm) )
-    endif
-#else
     rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
-#endif /*CLUBB_CRM*/
+  enddo
 
-    !  Initialize CRM fields:
-    u(icrm,1:nx,1:ny,1:nzm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
-    v(icrm,1:nx,1:ny,1:nzm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
-    w(icrm,1:nx,1:ny,1:nzm) = crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)
-    tabs(icrm,1:nx,1:ny,1:nzm) = crm_state%temperature(icrm,1:nx,1:ny,1:nzm)
+  !  Initialize CRM fields:
+  !$acc kernels async(asyncid)
+  u(:,1:nx,1:ny,1:nzm) = crm_state%u_wind(:,1:nx,1:ny,1:nzm)
+  v(:,1:nx,1:ny,1:nzm) = crm_state%v_wind(:,1:nx,1:ny,1:nzm)*YES3D
+  w(:,1:nx,1:ny,1:nzm) = crm_state%w_wind(:,1:nx,1:ny,1:nzm)
+  tabs(:,1:nx,1:ny,1:nzm) = crm_state%temperature(:,1:nx,1:ny,1:nzm)
+  !$acc end kernels
 
-    ! limit the velocity at the very first step:
-    if(u(icrm,1,1,1).eq.u(icrm,2,1,1).and.u(icrm,3,1,2).eq.u(icrm,4,1,2)) then
+  ! limit the velocity at the very first step:
+  if(u(1,1,1,1).eq.u(1,2,1,1).and.u(1,3,1,2).eq.u(1,4,1,2)) then
+    !$acc parallel loop collapse(4) async(asyncid)
+    do icrm=1,ncrms
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -357,36 +354,40 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           enddo
         enddo
       enddo
-    endif
+    enddo
+  endif
 
 
 #if defined(SP_ESMT)
-    do k=1,nzm
-      u_esmt(icrm,:,:,k) = crm_input%ul_esmt(icrm,plev-k+1)
-      v_esmt(icrm,:,:,k) = crm_input%vl_esmt(icrm,plev-k+1)
-    end do
+  do k=1,nzm
+    u_esmt(:,:,:,k) = crm_input%ul_esmt(:,plev-k+1)
+    v_esmt(:,:,:,k) = crm_input%vl_esmt(:,plev-k+1)
+  end do
 #endif
 
       ! Populate microphysics array from crm_state
+  !$acc kernels async(asyncid)
 #ifdef m2005
-      micro_field(icrm,1:nx,1:ny,1:nzm,1 )  = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,2 )  = crm_state%nc(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,3 )  = crm_state%qr(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,4 )  = crm_state%nr(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,5 )  = crm_state%qi(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,6 )  = crm_state%ni(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,7 )  = crm_state%qs(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,8 )  = crm_state%ns(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,9 )  = crm_state%qg(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,10) = crm_state%ng(icrm,1:nx,1:ny,1:nzm)
-      cloudliq(icrm,1:nx,1:ny,1:nzm) = crm_state%qc(icrm,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,1 )  = crm_state%qt(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,2 )  = crm_state%nc(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,3 )  = crm_state%qr(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,4 )  = crm_state%nr(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,5 )  = crm_state%qi(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,6 )  = crm_state%ni(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,7 )  = crm_state%qs(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,8 )  = crm_state%ns(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,9 )  = crm_state%qg(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,10) = crm_state%ng(:,1:nx,1:ny,1:nzm)
+  cloudliq(:,1:nx,1:ny,1:nzm) = crm_state%qc(:,1:nx,1:ny,1:nzm)
 #else
-      micro_field(icrm,1:nx,1:ny,1:nzm,1) = crm_state%qt(icrm,1:nx,1:ny,1:nzm)
-      micro_field(icrm,1:nx,1:ny,1:nzm,2) = crm_state%qp(icrm,1:nx,1:ny,1:nzm)
-      qn(icrm,1:nx,1:ny,1:nzm) = crm_state%qn(icrm,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,1) = crm_state%qt(:,1:nx,1:ny,1:nzm)
+  micro_field(:,1:nx,1:ny,1:nzm,2) = crm_state%qp(:,1:nx,1:ny,1:nzm)
+  qn(:,1:nx,1:ny,1:nzm) = crm_state%qn(:,1:nx,1:ny,1:nzm)
 #endif
+  !$acc end kernels
 
 #ifdef m2005
+  do icrm = 1 , ncrms
     do k=1, nzm
 #ifdef MODAL_AERO
       ! set aerosol data
@@ -405,28 +406,27 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         enddo
       enddo
     enddo
+  enddo
 #endif /* m2005 */
 
-    w(icrm,:,:,nz)=0.
-    wsub(icrm,:) = 0.      !used in clubb, +++mhwang
-    dudt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
-    dvdt(icrm,1:nx,1:ny,1:nzm,1:3) = 0.
-    dwdt(icrm,1:nx,1:ny,1:nz,1:3) = 0.
-    sgs_field(icrm,1:nx,1:ny,1:nzm,:) = 0.
-    sgs_field_diag(icrm,1:nx,1:ny,1:nzm,:) = 0.
-    p(icrm,1:nx,1:ny,1:nzm) = 0.
+  !$acc kernels async(asyncid)
+  w             (:,:,:,nz)=0.
+  wsub          (:,:) = 0.   
+  dudt          (:,1:nx,1:ny,1:nzm,1:3) = 0.
+  dvdt          (:,1:nx,1:ny,1:nzm,1:3) = 0.
+  dwdt          (:,1:nx,1:ny,1:nz,1:3) = 0.
+  sgs_field     (:,1:nx,1:ny,1:nzm,:) = 0.
+  sgs_field_diag(:,1:nx,1:ny,1:nzm,:) = 0.
+  p             (:,1:nx,1:ny,1:nzm) = 0.
+  cf3d          (:,1:nx,1:ny,1:nzm) = 1.
+  !$acc end kernels
 
-    cf3d(icrm,1:nx,1:ny,1:nzm) = 1.
-  enddo
+  call t_startf('crm_gpu_region')
 
   call micro_init(ncrms)
 
-  do icrm = 1 , ncrms
-    ! initialize sgs fields
-    call sgs_init(ncrms,icrm)
-  enddo
-
-  call t_startf('crm_gpu_region')
+  ! initialize sgs fields
+  call sgs_init(ncrms)
 
   !$acc kernels async(asyncid)
   colprec =0
