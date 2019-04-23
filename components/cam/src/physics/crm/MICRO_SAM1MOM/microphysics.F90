@@ -168,18 +168,17 @@ CONTAINS
 
     if(nrestart.eq.0) then
 
+    !$acc kernels async(asyncid)
 #ifndef CRM
-      micro_field(icrm,:,:,:,:) = 0.
+      micro_field(:,:,:,:,:) = 0.
       do k=1,nzm
-        micro_field(icrm,:,:,k,1) = q0(icrm,k)
+        micro_field(:,:,:,k,1) = q0(:,k)
       end do
-      qn(icrm,:,:,:) = 0.
+      qn(:,:,:,:) = 0.
 #endif
-
-      do icrm = 1 , ncrms
-        fluxbmk(icrm,:,:,:) = 0.
-        fluxtmk(icrm,:,:,:) = 0.
-      enddo
+    fluxbmk(:,:,:,:) = 0.
+    fluxtmk(:,:,:,:) = 0.
+    !$acc end kernels
 
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
@@ -188,26 +187,23 @@ CONTAINS
 #endif
 #ifndef CRM
         call cloud(ncrms,micro_field(:,:,:,:,1),micro_field(:,:,:,:,2),qn)
-        !$acc wait(asyncid)
 #endif
         call micro_diagnose(ncrms)
-        !$acc wait(asyncid)
       end if
       if(dosmoke) then
         call micro_diagnose(ncrms)
-        !$acc wait(asyncid)
       end if
     end if
 
-    do icrm = 1 , ncrms
-      mkwle(icrm,:,:) = 0.
-      mkwsb(icrm,:,:) = 0.
-      mkadv(icrm,:,:) = 0.
-      mkdiff(icrm,:,:) = 0.
-
-      qpsrc(icrm,:) = 0.
-      qpevp(icrm,:) = 0.
-    enddo
+    !$acc kernels async(asyncid)
+    mkwle(:,:,:) = 0.
+    mkwsb(:,:,:) = 0.
+    mkadv(:,:,:) = 0.
+    mkdiff(:,:,:) = 0.
+    qpsrc(:,:) = 0.
+    qpevp(:,:) = 0.
+    !$acc end kernels
+    !$acc wait(asyncid)
 
     mkname(1) = 'QT'
     mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'

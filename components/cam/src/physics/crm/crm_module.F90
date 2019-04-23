@@ -129,9 +129,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd)  :: u2z,v2z,w2z
     integer         :: i,j,k,l,ptop,nn,icyc,icrm
     integer         :: kx
-    real(crm_rknd)  :: ustar(ncrms), bflx(ncrms), wnd(ncrms), qsat, omg
-    real(crm_rknd)  :: colprec,colprecs
-    real(r8)        :: qtot(ncrms,20)    ! Total water for water conservation check
+    real(crm_rknd)  :: qsat, omg
+    real(crm_rknd), allocatable  :: colprec(:), colprecs(:)
+    real(crm_rknd), allocatable  :: ustar(:), bflx(:), wnd(:)
+    real(r8)      , allocatable  :: qtot (:,:)    ! Total water for water conservation check
 
     !!! These should all be inputs
     integer         :: igstep            ! GCM time steps
@@ -215,6 +216,12 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   allocate( dd_crm (ncrms,plev)   )
   allocate( mui_crm(ncrms,plev+1) )
   allocate( mdi_crm(ncrms,plev+1) )
+  allocate( ustar(ncrms) )
+  allocate( bflx(ncrms) )
+  allocate( wnd(ncrms) )
+  allocate( qtot (ncrms,20) )
+  allocate( colprec (ncrms) )
+  allocate( colprecs(ncrms) )
 
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
@@ -417,92 +424,114 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   do icrm = 1 , ncrms
     ! initialize sgs fields
     call sgs_init(ncrms,icrm)
+  enddo
 
-    colprec=0
-    colprecs=0
+  call t_startf('crm_gpu_region')
+
+  !$acc kernels async(asyncid)
+  colprec =0
+  colprecs=0
+  u0   =0.
+  v0   =0.
+  t0   =0.
+  t00  =0.
+  tabs0=0.
+  q0   =0.
+  qv0  =0.
+  qn0  =0.0
+  qp0  =0.0
+  tke0 =0.0
+  !$acc end kernels
+
+  !$acc parallel loop collapse(4) async(asyncid)
+  do icrm = 1 , ncrms
     do k=1,nzm
-      u0(icrm,k)=0.
-      v0(icrm,k)=0.
-      t0(icrm,k)=0.
-      t00(icrm,k)=0.
-      tabs0(icrm,k)=0.
-      q0(icrm,k)=0.
-      qv0(icrm,k)=0.
-      !+++mhwang these are not initialized ??
-      qn0(icrm,k) = 0.0
-      qp0(icrm,k) = 0.0
-      tke0(icrm,k) = 0.0
-      !---mhwang
       do j=1,ny
         do i=1,nx
-          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k) &
-                    -fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
-                    -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
-          colprec=colprec+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
-          colprecs=colprecs+qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
-          u0(icrm,k)=u0(icrm,k)+u(icrm,i,j,k)
-          v0(icrm,k)=v0(icrm,k)+v(icrm,i,j,k)
-          t0(icrm,k)=t0(icrm,k)+t(icrm,i,j,k)
-          t00(icrm,k)=t00(icrm,k)+t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
+          t(icrm,i,j,k) = tabs(icrm,i,j,k)+gamaz(icrm,k)-fac_cond*qcl(icrm,i,j,k)-fac_sub*qci(icrm,i,j,k) &
+                                                        -fac_cond*qpl(icrm,i,j,k)-fac_sub*qpi(icrm,i,j,k)
+
+          tmp = (qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
+          !$acc atomic update
+          colprec (icrm)=colprec (icrm)+tmp
+
+          tmp = qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
+          !$acc atomic update
+          colprecs(icrm)=colprecs(icrm)+tmp
+          !$acc atomic update
+          u0   (icrm,k)=u0   (icrm,k)+u(icrm,i,j,k)
+          !$acc atomic update
+          v0   (icrm,k)=v0   (icrm,k)+v(icrm,i,j,k)
+          !$acc atomic update
+          t0   (icrm,k)=t0   (icrm,k)+t(icrm,i,j,k)
+
+          tmp = t(icrm,i,j,k)+fac_cond*qpl(icrm,i,j,k)+fac_sub*qpi(icrm,i,j,k)
+          !$acc atomic update
+          t00  (icrm,k)=t00  (icrm,k)+tmp
+          !$acc atomic update
           tabs0(icrm,k)=tabs0(icrm,k)+tabs(icrm,i,j,k)
-          q0(icrm,k)=q0(icrm,k)+qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
-          qv0(icrm,k) = qv0(icrm,k) + qv(icrm,i,j,k)
-          qn0(icrm,k) = qn0(icrm,k) + qcl(icrm,i,j,k) + qci(icrm,i,j,k)
-          qp0(icrm,k) = qp0(icrm,k) + qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
-          tke0(icrm,k)=tke0(icrm,k)+sgs_field(icrm,i,j,k,1)
+
+          tmp = qv(icrm,i,j,k)+qcl(icrm,i,j,k)+qci(icrm,i,j,k)
+          !$acc atomic update
+          q0   (icrm,k)=q0   (icrm,k)+tmp
+          !$acc atomic update
+          qv0  (icrm,k)=qv0  (icrm,k)+qv(icrm,i,j,k)
+
+          tmp = qcl(icrm,i,j,k) + qci(icrm,i,j,k)
+          !$acc atomic update
+          qn0  (icrm,k)=qn0  (icrm,k)+tmp
+
+          tmp = qpl(icrm,i,j,k) + qpi(icrm,i,j,k)
+          !$acc atomic update
+          qp0  (icrm,k)=qp0  (icrm,k)+tmp
+          !$acc atomic update
+          tke0 (icrm,k)=tke0 (icrm,k)+sgs_field(icrm,i,j,k,1)
         enddo
       enddo
+    enddo
+  enddo
 
-      u0(icrm,k) = u0(icrm,k) * factor_xy
-      v0(icrm,k) = v0(icrm,k) * factor_xy
-      t0(icrm,k) = t0(icrm,k) * factor_xy
-      t00(icrm,k) = t00(icrm,k) * factor_xy
+  !$acc parallel loop collapse(2) async(asyncid)
+  do icrm = 1 , ncrms
+    do k=1,nzm
+      u0   (icrm,k) = u0   (icrm,k) * factor_xy
+      v0   (icrm,k) = v0   (icrm,k) * factor_xy
+      t0   (icrm,k) = t0   (icrm,k) * factor_xy
+      t00  (icrm,k) = t00  (icrm,k) * factor_xy
       tabs0(icrm,k) = tabs0(icrm,k) * factor_xy
-      q0(icrm,k) = q0(icrm,k) * factor_xy
-      qv0(icrm,k) = qv0(icrm,k) * factor_xy
-      qn0(icrm,k) = qn0(icrm,k) * factor_xy
-      qp0(icrm,k) = qp0(icrm,k) * factor_xy
-      tke0(icrm,k) = tke0(icrm,k) * factor_xy
-#ifdef CLUBB_CRM
-      ! Update thetav for CLUBB.  This is needed when we have a higher model top
-      ! than is in the sounding, because we subsequently use tv0 to initialize
-      ! thv_ds_zt/zm, which appear in CLUBB's anelastic buoyancy terms.
-      ! -dschanen UWM 11 Feb 2010
-      tv0(icrm,k) = tabs0(icrm,k)*prespot(icrm,k)*(1.+epsv*q0(icrm,k))
-#endif /* CLUBB_CRM */
-
+      q0   (icrm,k) = q0   (icrm,k) * factor_xy
+      qv0  (icrm,k) = qv0  (icrm,k) * factor_xy
+      qn0  (icrm,k) = qn0  (icrm,k) * factor_xy
+      qp0  (icrm,k) = qp0  (icrm,k) * factor_xy
+      tke0 (icrm,k) = tke0 (icrm,k) * factor_xy
       l = plev-k+1
-      uln(icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
-      vln(icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+      uln  (icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
+      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(icrm,k))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(icrm,k))*idt_gl
       utend(icrm,k) = (uln(icrm,l)-u0(icrm,k))*idt_gl
       vtend(icrm,k) = (vln(icrm,l)-v0(icrm,k))*idt_gl
-      ug0(icrm,k) = uln(icrm,l)
-      vg0(icrm,k) = vln(icrm,l)
-      tg0(icrm,k) = crm_input%tl(icrm,l)+gamaz(icrm,k)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
-      qg0(icrm,k) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
-
+      ug0  (icrm,k) = uln(icrm,l)
+      vg0  (icrm,k) = vln(icrm,l)
+      tg0  (icrm,k) = crm_input%tl(icrm,l)+gamaz(icrm,k)-fac_cond*crm_input%qccl(icrm,l)-fac_sub*crm_input%qiil(icrm,l)
+      qg0  (icrm,k) = crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)
     end do ! k
-    crm_output%prectend (icrm)=colprec
-    crm_output%precstend(icrm)=colprecs
   end do ! icrm
 
-  !$acc parallel loop
+  !$acc parallel loop async(asyncid)
   do icrm = 1 , ncrms
     uhl(icrm) = u0(icrm,1)
     vhl(icrm) = v0(icrm,1)
-
     ! estimate roughness length assuming logarithmic profile of velocity near the surface:
-
     ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(icrm,1))
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
-
   enddo
 
-  !$acc kernels
+  !$acc kernels async(asyncid)
   crm_output%timing_factor = 0.
+  crm_output%prectend =colprec 
+  crm_output%precstend=colprecs
 
   fluxbu  =0.
   fluxbv  =0.
@@ -603,8 +632,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 !--------------------------------------------------
 #ifdef sam1mom
   if(doprecip) call precip_init(ncrms)
-  !$acc wait(asyncid)
 #endif
+  !$acc wait(asyncid)
 
   do icrm = 1 , ncrms
     if ( igstep <= 1 ) then
@@ -644,8 +673,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   if (use_crm_accel) then
     call crm_accel_nstop(nstop)  ! reduce nstop by factor of (1 + crm_accel_factor)
   end if
-
-  call t_startf('crm_gpu_region')
 
   !========================================================================================
   !----------------------------------------------------------------------------------------
@@ -1051,14 +1078,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     vln_esmt(ptop:plev,icrm) = 0.
 #endif /* SP_ESMT */
 
-    colprec=0
-    colprecs=0
+    colprec (icrm)=0
+    colprecs(icrm)=0
     do k = 1,nzm
       l = plev-k+1
       do i=1,nx
         do j=1,ny
-          colprec = colprec +(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
-          colprecs= colprecs+qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
+          colprec (icrm)= colprec (icrm)+(qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
+          colprecs(icrm)= colprecs(icrm)+qpi(icrm,i,j,k)*crm_input%pdel(icrm,plev-k+1)
           tln(icrm,l)  = tln(icrm,l)  +tabs(icrm,i,j,k)
           qln(icrm,l)  = qln(icrm,l)  +qv(icrm,i,j,k)
           qccln(icrm,l)= qccln(icrm,l)+qcl(icrm,i,j,k)
@@ -1107,8 +1134,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output%qltend (icrm,:) =      (qln(icrm,:) - crm_input%ql  (icrm,:)) * icrm_run_time
     crm_output%qcltend(icrm,:) =      (qccln(icrm,:) - crm_input%qccl(icrm,:)) * icrm_run_time
     crm_output%qiltend(icrm,:) =      (qiiln(icrm,:) - crm_input%qiil(icrm,:)) * icrm_run_time
-    crm_output%prectend (icrm) = (colprec -crm_output%prectend (icrm))/ggr*factor_xy * icrm_run_time
-    crm_output%precstend(icrm) = (colprecs-crm_output%precstend(icrm))/ggr*factor_xy * icrm_run_time
+    crm_output%prectend (icrm) = (colprec (icrm)-crm_output%prectend (icrm))/ggr*factor_xy * icrm_run_time
+    crm_output%precstend(icrm) = (colprecs(icrm)-crm_output%precstend(icrm))/ggr*factor_xy * icrm_run_time
 
     !!! don't use CRM tendencies from two crm top levels
     !!! radiation tendencies are added back after the CRM call (see crm_physics_tend)
@@ -1421,7 +1448,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_ecpp_output%wupthresh_bnd   (icrm,:)=0.0
     crm_ecpp_output%wdownthresh_bnd (icrm,:)=0.0
     crm_ecpp_output%wwqui_cen       (icrm,:)=0.0
-    crm_ecpp_output%wwqui_bnd       (icrm,:)=0.0
+    crm_ecpp_output%wwqui_bnd       (icrm,:)=0.0c
     crm_ecpp_output%wwqui_cloudy_cen(icrm,:)=0.0
     crm_ecpp_output%wwqui_cloudy_bnd(icrm,:)=0.0
 
@@ -1454,7 +1481,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_ecpp_output%massflxbnd      (icrm,l,:,:,:) = mass_bnd_sum        (k,:,1:ncls_ecpp_in,:,icrm)
       crm_ecpp_output%wupthresh_bnd   (icrm,l)       = wup_thresh          (k,icrm)
       crm_ecpp_output%wdownthresh_bnd (icrm,l)       = wdown_thresh        (k,icrm)
-      crm_ecpp_output%wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k,icrm)
+      crm_ecpp_output%wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k,icrm)c
       crm_ecpp_output%wwqui_cloudy_bnd(icrm,l)       = wwqui_cloudy_bnd_sum(k,icrm)
     enddo
 #endif /* ECPP */
@@ -1505,6 +1532,12 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   deallocate( dd_crm  )
   deallocate( mui_crm )
   deallocate( mdi_crm )
+  deallocate( ustar )
+  deallocate( bflx )
+  deallocate( wnd )
+  deallocate( qtot )
+  deallocate( colprec  )
+  deallocate( colprecs )
 
   call deallocate_params()
   call deallocate_grid()
