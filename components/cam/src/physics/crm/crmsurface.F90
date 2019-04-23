@@ -106,6 +106,7 @@ contains
     ! Compute z0 from buoyancy flux, wind, and friction velocity
     ! 2004, Marat Khairoutdinov
     implicit none
+    !$acc routine seq
     real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
     real(crm_rknd), parameter      :: g    = 9.81   ! gravitational acceleration
     real(crm_rknd), parameter      :: am   =  4.8   !   "          "         "
