@@ -1083,25 +1083,36 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
   enddo
 
-  !$acc kernels async(asyncid)
   ! no CRM tendencies above its top
-  tln  (:,1:ptop-1) = crm_input%tl  (:,1:ptop-1)
-  qln  (:,1:ptop-1) = crm_input%ql  (:,1:ptop-1)
-  qccln(:,1:ptop-1) = crm_input%qccl(:,1:ptop-1)
-  qiiln(:,1:ptop-1) = crm_input%qiil(:,1:ptop-1)
-  uln  (:,1:ptop-1) = crm_input%ul  (:,1:ptop-1)
-  vln  (:,1:ptop-1) = crm_input%vl  (:,1:ptop-1)
+  !$acc parallel loop collapse(2) async(asyncid)
+  do k = 1 , ptop-1
+    do icrm = 1 , ncrms
+      tln  (icrm,k) = crm_input%tl  (icrm,k)
+      qln  (icrm,k) = crm_input%ql  (icrm,k)
+      qccln(icrm,k) = crm_input%qccl(icrm,k)
+      qiiln(icrm,k) = crm_input%qiil(icrm,k)
+      uln  (icrm,k) = crm_input%ul  (icrm,k)
+      vln  (icrm,k) = crm_input%vl  (icrm,k)
+    enddo
+  enddo
 
   !  Compute tendencies due to CRM:
-  tln  (:,ptop:plev) = 0.
-  qln  (:,ptop:plev) = 0.
-  qccln(:,ptop:plev) = 0.
-  qiiln(:,ptop:plev) = 0.
-  uln  (:,ptop:plev) = 0.
-  vln  (:,ptop:plev) = 0.
-  colprec (:)=0
-  colprecs(:)=0
-  !$acc end kernels
+  !$acc parallel loop collapse(2) async(asyncid)
+  do k = ptop,plev
+    do icrm = 1 , ncrms
+      tln  (icrm,k) = 0.
+      qln  (icrm,k) = 0.
+      qccln(icrm,k) = 0.
+      qiiln(icrm,k) = 0.
+      uln  (icrm,k) = 0.
+      vln  (icrm,k) = 0.
+    enddo
+  enddo
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    colprec (icrm)=0
+    colprecs(icrm)=0
+  enddo
 
 #if defined( SP_ESMT )
   uln_esmt(1:ptop-1,:)  = crm_input%ul_esmt(:,1:ptop-1)
@@ -1172,97 +1183,111 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   enddo
 #endif
 
-  !$acc kernels async(asyncid)
-  tln  (:,ptop:plev) = tln  (:,ptop:plev) * factor_xy
-  qln  (:,ptop:plev) = qln  (:,ptop:plev) * factor_xy
-  qccln(:,ptop:plev) = qccln(:,ptop:plev) * factor_xy
-  qiiln(:,ptop:plev) = qiiln(:,ptop:plev) * factor_xy
-  uln  (:,ptop:plev) = uln  (:,ptop:plev) * factor_xy
-  vln  (:,ptop:plev) = vln  (:,ptop:plev) * factor_xy
+  !$acc parallel loop collapse(2) async(asyncid)
+  do k = ptop , plev
+    do icrm = 1 , ncrms
+      tln  (icrm,k) = tln  (icrm,k) * factor_xy
+      qln  (icrm,k) = qln  (icrm,k) * factor_xy
+      qccln(icrm,k) = qccln(icrm,k) * factor_xy
+      qiiln(icrm,k) = qiiln(icrm,k) * factor_xy
+      uln  (icrm,k) = uln  (icrm,k) * factor_xy
+      vln  (icrm,k) = vln  (icrm,k) * factor_xy
+    enddo
+  enddo
 
-  crm_output%sltend (:,:) = cp * (tln  (:,:) - crm_input%tl  (:,:)) * icrm_run_time
-  crm_output%qltend (:,:) =      (qln  (:,:) - crm_input%ql  (:,:)) * icrm_run_time
-  crm_output%qcltend(:,:) =      (qccln(:,:) - crm_input%qccl(:,:)) * icrm_run_time
-  crm_output%qiltend(:,:) =      (qiiln(:,:) - crm_input%qiil(:,:)) * icrm_run_time
-  crm_output%prectend (:) = (colprec (:)-crm_output%prectend (:))/ggr*factor_xy * icrm_run_time
-  crm_output%precstend(:) = (colprecs(:)-crm_output%precstend(:))/ggr*factor_xy * icrm_run_time
+  !$acc parallel loop collapse(2) async(asyncid)
+  do k = 1 , plev
+    do icrm = 1 , ncrms
+      crm_output%sltend (icrm,k) = cp * (tln  (icrm,k) - crm_input%tl  (icrm,k)) * icrm_run_time
+      crm_output%qltend (icrm,k) =      (qln  (icrm,k) - crm_input%ql  (icrm,k)) * icrm_run_time
+      crm_output%qcltend(icrm,k) =      (qccln(icrm,k) - crm_input%qccl(icrm,k)) * icrm_run_time
+      crm_output%qiltend(icrm,k) =      (qiiln(icrm,k) - crm_input%qiil(icrm,k)) * icrm_run_time
+    enddo
+  enddo
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    crm_output%prectend (icrm) = (colprec (icrm)-crm_output%prectend (icrm))/ggr*factor_xy * icrm_run_time
+    crm_output%precstend(icrm) = (colprecs(icrm)-crm_output%precstend(icrm))/ggr*factor_xy * icrm_run_time
+  enddo
 
   !!! don't use CRM tendencies from two crm top levels
   !!! radiation tendencies are added back after the CRM call (see crm_physics_tend)
-  crm_output%sltend (:,ptop:ptop+1) = 0.
-  crm_output%qltend (:,ptop:ptop+1) = 0.
-  crm_output%qcltend(:,ptop:ptop+1) = 0.
-  crm_output%qiltend(:,ptop:ptop+1) = 0.
+  !$acc parallel loop collapse(2) async(asyncid)
+  do k = ptop,ptop+1
+    do icrm = 1 , ncrms
+      crm_output%sltend (icrm,k) = 0.
+      crm_output%qltend (icrm,k) = 0.
+      crm_output%qcltend(icrm,k) = 0.
+      crm_output%qiltend(icrm,k) = 0.
+    enddo
+  enddo
 
   !-------------------------------------------------------------
   !
   ! Save the last step to the permanent core:
-  crm_state_u_wind     (:,1:nx,1:ny,1:nzm) = u   (:,1:nx,1:ny,1:nzm)
-  crm_state_v_wind     (:,1:nx,1:ny,1:nzm) = v   (:,1:nx,1:ny,1:nzm)
-  crm_state_w_wind     (:,1:nx,1:ny,1:nzm) = w   (:,1:nx,1:ny,1:nzm)
-  crm_state_temperature(:,1:nx,1:ny,1:nzm) = tabs(:,1:nx,1:ny,1:nzm)
-
-#ifdef m2005
-  crm_state%qt(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,1 )
-  crm_state%nc(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,2 )
-  crm_state%qr(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,3 )
-  crm_state%nr(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,4 )
-  crm_state%qi(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,5 )
-  crm_state%ni(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,6 )
-  crm_state%qs(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,7 )
-  crm_state%ns(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,8 )
-  crm_state%qg(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,9 )
-  crm_state%ng(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,10)
-  crm_state%qc(:,1:nx,1:ny,1:nzm) = cloudliq   (:,1:nx,1:ny,1:nzm)
-#else
-  crm_state_qt(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,1)
-  crm_state_qp(:,1:nx,1:ny,1:nzm) = micro_field(:,1:nx,1:ny,1:nzm,2)
-  crm_state_qn(:,1:nx,1:ny,1:nzm) = qn         (:,1:nx,1:ny,1:nzm)
-#endif
-
-  crm_output%tk (:,1:nx,1:ny,1:nzm) = sgs_field_diag(:,1:nx, 1:ny, 1:nzm,1)
-  crm_output%tkh(:,1:nx,1:ny,1:nzm) = sgs_field_diag(:,1:nx, 1:ny, 1:nzm,2)
-  !$acc end kernels
-
   !$acc parallel loop collapse(4) async(asyncid)
-  do icrm=1,ncrms
-    do k=1,nzm
-     do j=1,ny
-      do i=1,nx
-        crm_output%qcl (icrm,i,j,k) = qcl  (icrm,i,j,k)
-        crm_output%qci (icrm,i,j,k) = qci  (icrm,i,j,k)
-        crm_output%qpl (icrm,i,j,k) = qpl  (icrm,i,j,k)
-        crm_output%qpi (icrm,i,j,k) = qpi  (icrm,i,j,k)
+  do k = 1 , nzm
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          crm_state_u_wind     (icrm,i,j,k) = u   (icrm,i,j,k)
+          crm_state_v_wind     (icrm,i,j,k) = v   (icrm,i,j,k)
+          crm_state_w_wind     (icrm,i,j,k) = w   (icrm,i,j,k)
+          crm_state_temperature(icrm,i,j,k) = tabs(icrm,i,j,k)
+        #ifdef m2005
+          crm_state%qt(icrm,i,j,k) = micro_field(icrm,i,j,k,1 )
+          crm_state%nc(icrm,i,j,k) = micro_field(icrm,i,j,k,2 )
+          crm_state%qr(icrm,i,j,k) = micro_field(icrm,i,j,k,3 )
+          crm_state%nr(icrm,i,j,k) = micro_field(icrm,i,j,k,4 )
+          crm_state%qi(icrm,i,j,k) = micro_field(icrm,i,j,k,5 )
+          crm_state%ni(icrm,i,j,k) = micro_field(icrm,i,j,k,6 )
+          crm_state%qs(icrm,i,j,k) = micro_field(icrm,i,j,k,7 )
+          crm_state%ns(icrm,i,j,k) = micro_field(icrm,i,j,k,8 )
+          crm_state%qg(icrm,i,j,k) = micro_field(icrm,i,j,k,9 )
+          crm_state%ng(icrm,i,j,k) = micro_field(icrm,i,j,k,10)
+          crm_state%qc(icrm,i,j,k) = cloudliq   (icrm,i,j,k)
+        #else
+          crm_state_qt(icrm,i,j,k) = micro_field(icrm,i,j,k,1)
+          crm_state_qp(icrm,i,j,k) = micro_field(icrm,i,j,k,2)
+          crm_state_qn(icrm,i,j,k) = qn         (icrm,i,j,k)
+        #endif
+          crm_output%tk (icrm,i,j,k) = sgs_field_diag(icrm,i,j,k,1)
+          crm_output%tkh(icrm,i,j,k) = sgs_field_diag(icrm,i,j,k,2)
+          crm_output%qcl (icrm,i,j,k) = qcl  (icrm,i,j,k)
+          crm_output%qci (icrm,i,j,k) = qci  (icrm,i,j,k)
+          crm_output%qpl (icrm,i,j,k) = qpl  (icrm,i,j,k)
+          crm_output%qpi (icrm,i,j,k) = qpi  (icrm,i,j,k)
 #ifdef m2005
-        crm_output%wvar(icrm,i,j,k) = wvar (icrm,i,j,k)
-        crm_output%aut (icrm,i,j,k) = aut1 (icrm,i,j,k)
-        crm_output%acc (icrm,i,j,k) = acc1 (icrm,i,j,k)
-        crm_output%evpc(icrm,i,j,k) = evpc1(icrm,i,j,k)
-        crm_output%evpr(icrm,i,j,k) = evpr1(icrm,i,j,k)
-        crm_output%mlt (icrm,i,j,k) = mlt1 (icrm,i,j,k)
-        crm_output%sub (icrm,i,j,k) = sub1 (icrm,i,j,k)
-        crm_output%dep (icrm,i,j,k) = dep1 (icrm,i,j,k)
-        crm_output%con (icrm,i,j,k) = con1 (icrm,i,j,k)
+          crm_output%wvar(icrm,i,j,k) = wvar (icrm,i,j,k)
+          crm_output%aut (icrm,i,j,k) = aut1 (icrm,i,j,k)
+          crm_output%acc (icrm,i,j,k) = acc1 (icrm,i,j,k)
+          crm_output%evpc(icrm,i,j,k) = evpc1(icrm,i,j,k)
+          crm_output%evpr(icrm,i,j,k) = evpr1(icrm,i,j,k)
+          crm_output%mlt (icrm,i,j,k) = mlt1 (icrm,i,j,k)
+          crm_output%sub (icrm,i,j,k) = sub1 (icrm,i,j,k)
+          crm_output%dep (icrm,i,j,k) = dep1 (icrm,i,j,k)
+          crm_output%con (icrm,i,j,k) = con1 (icrm,i,j,k)
 #endif /* m2005 */
         enddo
       enddo
     enddo
   enddo
-  !$acc kernels async(asyncid)
-  crm_output%z0m (:) = z0   (:)
-  crm_output%taux(:) = taux0(:) / dble(nstop)
-  crm_output%tauy(:) = tauy0(:) / dble(nstop)
-  !$acc end kernels
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    crm_output%z0m (icrm) = z0   (icrm)
+    crm_output%taux(icrm) = taux0(icrm) / dble(nstop)
+    crm_output%tauy(icrm) = tauy0(icrm) / dble(nstop)
+  enddo
 
   !---------------------------------------------------------------
   !  Diagnostics:
 
   ! hm add 9/7/11, change from GCM-time step avg to end-of-timestep
   !$acc parallel loop collapse(4) async(asyncid)
-  do icrm=1,ncrms
-    do k=1,nzm
-      do j=1,ny
-        do i=1,nx
+  do k=1,nzm
+    do j=1,ny
+      do i=1,nx
+        do icrm=1,ncrms
           l = plev-k+1
           !$acc atomic update
           crm_output%qc_mean(icrm,l) = crm_output%qc_mean(icrm,l) + qcl(icrm,i,j,k)
