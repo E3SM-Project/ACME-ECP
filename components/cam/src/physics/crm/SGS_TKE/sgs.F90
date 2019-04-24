@@ -169,8 +169,8 @@ CONTAINS
 
     if(LES) then
       !$acc parallel loop collapse(2) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
+      do k=1,nzm
+        do icrm = 1 , ncrms
           grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
           grdf_y(icrm,k) = dy**2/(adz(icrm,k)*dz(icrm))**2
           grdf_z(icrm,k) = 1.
@@ -178,8 +178,8 @@ CONTAINS
       end do
     else
       !$acc parallel loop collapse(2) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
+      do k=1,nzm
+        do icrm = 1 , ncrms
           grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
           grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
           grdf_z(icrm,k) = 1.

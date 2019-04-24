@@ -362,12 +362,19 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call t_startf('crm_gpu_region')
 
   !  Initialize CRM fields:
-  !$acc kernels async(asyncid)
-  u   (:,1:nx,1:ny,1:nzm) = crm_state_u_wind     (:,1:nx,1:ny,1:nzm)
-  v   (:,1:nx,1:ny,1:nzm) = crm_state_v_wind     (:,1:nx,1:ny,1:nzm)*YES3D
-  w   (:,1:nx,1:ny,1:nzm) = crm_state_w_wind     (:,1:nx,1:ny,1:nzm)
-  tabs(:,1:nx,1:ny,1:nzm) = crm_state_temperature(:,1:nx,1:ny,1:nzm)
-  !$acc end kernels
+  !$acc parallel loop collapse(4) async(asyncid)
+  do k = 1 , nzm
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
+          u   (icrm,i,j,k) = crm_state_u_wind     (icrm,i,j,k)
+          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YES3D
+          w   (icrm,i,j,k) = crm_state_w_wind     (icrm,i,j,k)
+          tabs(icrm,i,j,k) = crm_state_temperature(icrm,i,j,k)
+        enddo
+      enddo
+    enddo
+  enddo
 
   ! limit the velocity at the very first step:
   if(u(1,1,1,1).eq.u(1,2,1,1).and.u(1,3,1,2).eq.u(1,4,1,2)) then
@@ -391,26 +398,33 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   end do
 #endif
 
-      ! Populate microphysics array from crm_state
-  !$acc kernels async(asyncid)
+  ! Populate microphysics array from crm_state
+  !$acc parallel loop collapse(4) async(asyncid)
+  do k = 1 , nzm
+    do j = 1 , ny
+      do i = 1 , nx
+        do icrm = 1 , ncrms
 #ifdef m2005
-  micro_field(:,1:nx,1:ny,1:nzm,1 )  = crm_state%qt(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,2 )  = crm_state%nc(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,3 )  = crm_state%qr(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,4 )  = crm_state%nr(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,5 )  = crm_state%qi(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,6 )  = crm_state%ni(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,7 )  = crm_state%qs(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,8 )  = crm_state%ns(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,9 )  = crm_state%qg(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,10)  = crm_state%ng(:,1:nx,1:ny,1:nzm)
-  cloudliq   (:,1:nx,1:ny,1:nzm)     = crm_state%qc(:,1:nx,1:ny,1:nzm)
+          micro_field(icrm,i,j,k,1 )  = crm_state%qt(icrm,i,j,k)
+          micro_field(icrm,i,j,k,2 )  = crm_state%nc(icrm,i,j,k)
+          micro_field(icrm,i,j,k,3 )  = crm_state%qr(icrm,i,j,k)
+          micro_field(icrm,i,j,k,4 )  = crm_state%nr(icrm,i,j,k)
+          micro_field(icrm,i,j,k,5 )  = crm_state%qi(icrm,i,j,k)
+          micro_field(icrm,i,j,k,6 )  = crm_state%ni(icrm,i,j,k)
+          micro_field(icrm,i,j,k,7 )  = crm_state%qs(icrm,i,j,k)
+          micro_field(icrm,i,j,k,8 )  = crm_state%ns(icrm,i,j,k)
+          micro_field(icrm,i,j,k,9 )  = crm_state%qg(icrm,i,j,k)
+          micro_field(icrm,i,j,k,10)  = crm_state%ng(icrm,i,j,k)
+          cloudliq   (icrm,i,j,k)     = crm_state%qc(icrm,i,j,k)
 #else
-  micro_field(:,1:nx,1:ny,1:nzm,1) = crm_state_qt(:,1:nx,1:ny,1:nzm)
-  micro_field(:,1:nx,1:ny,1:nzm,2) = crm_state_qp(:,1:nx,1:ny,1:nzm)
-  qn         (:,1:nx,1:ny,1:nzm)   = crm_state_qn(:,1:nx,1:ny,1:nzm)
+          micro_field(icrm,i,j,k,1) = crm_state_qt(icrm,i,j,k)
+          micro_field(icrm,i,j,k,2) = crm_state_qp(icrm,i,j,k)
+          qn         (icrm,i,j,k)   = crm_state_qn(icrm,i,j,k)
 #endif
-  !$acc end kernels
+        enddo
+      enddo
+    enddo
+  enddo
 
 #ifdef m2005
   do icrm = 1 , ncrms
@@ -552,11 +566,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
   enddo
 
-  !$acc kernels async(asyncid)
-  crm_output%timing_factor = 0.
-  crm_output%prectend =colprec 
-  crm_output%precstend=colprecs
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    crm_output%timing_factor(icrm) = 0.
+    crm_output%prectend (icrm)=colprec (icrm)
+    crm_output%precstend(icrm)=colprecs(icrm)
+  enddo
 
+  !$acc kernels async(asyncid)
   fluxbu  =0.
   fluxbv  =0.
   fluxbt  =0.
@@ -1327,23 +1344,26 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
   enddo
 
-  !$acc kernels async(asyncid)
-  crm_output%cld   (:,:) = min( 1._r8, crm_output%cld   (:,:) * factor_xyt )
-  crm_output%cldtop(:,:) = min( 1._r8, crm_output%cldtop(:,:) * factor_xyt )
-  crm_output%gicewp(:,:) = crm_output%gicewp(:,:)*crm_input%pdel(:,:)*1000./ggr * factor_xyt
-  crm_output%gliqwp(:,:) = crm_output%gliqwp(:,:)*crm_input%pdel(:,:)*1000./ggr * factor_xyt
-  crm_output%mcup  (:,:) = crm_output%mcup (:,:) * factor_xyt
-  crm_output%mcdn  (:,:) = crm_output%mcdn (:,:) * factor_xyt
-  crm_output%mcuup (:,:) = crm_output%mcuup(:,:) * factor_xyt
-  crm_output%mcudn (:,:) = crm_output%mcudn(:,:) * factor_xyt
-  crm_output%mctot (:,:) = crm_output%mcup(:,:) + crm_output%mcdn(:,:) + crm_output%mcuup(:,:) + crm_output%mcudn(:,:)
+  !$acc parallel loop collapse(2) async(asyncid)
+  do k = 1 , plev
+    do icrm = 1 , ncrms
+      crm_output%cld   (icrm,k) = min( 1._r8, crm_output%cld   (icrm,k) * factor_xyt )
+      crm_output%cldtop(icrm,k) = min( 1._r8, crm_output%cldtop(icrm,k) * factor_xyt )
+      crm_output%gicewp(icrm,k) = crm_output%gicewp(icrm,k)*crm_input%pdel(icrm,k)*1000./ggr * factor_xyt
+      crm_output%gliqwp(icrm,k) = crm_output%gliqwp(icrm,k)*crm_input%pdel(icrm,k)*1000./ggr * factor_xyt
+      crm_output%mcup  (icrm,k) = crm_output%mcup (icrm,k) * factor_xyt
+      crm_output%mcdn  (icrm,k) = crm_output%mcdn (icrm,k) * factor_xyt
+      crm_output%mcuup (icrm,k) = crm_output%mcuup(icrm,k) * factor_xyt
+      crm_output%mcudn (icrm,k) = crm_output%mcudn(icrm,k) * factor_xyt
+      crm_output%mctot (icrm,k) = crm_output%mcup(icrm,k) + crm_output%mcdn(icrm,k) + crm_output%mcuup(icrm,k) + crm_output%mcudn(icrm,k)
 
-  crm_output%qc_mean(:,:) = crm_output%qc_mean(:,:) * factor_xy
-  crm_output%qi_mean(:,:) = crm_output%qi_mean(:,:) * factor_xy
-  crm_output%qs_mean(:,:) = crm_output%qs_mean(:,:) * factor_xy
-  crm_output%qg_mean(:,:) = crm_output%qg_mean(:,:) * factor_xy
-  crm_output%qr_mean(:,:) = crm_output%qr_mean(:,:) * factor_xy
-  !$acc end kernels
+      crm_output%qc_mean(icrm,k) = crm_output%qc_mean(icrm,k) * factor_xy
+      crm_output%qi_mean(icrm,k) = crm_output%qi_mean(icrm,k) * factor_xy
+      crm_output%qs_mean(icrm,k) = crm_output%qs_mean(icrm,k) * factor_xy
+      crm_output%qg_mean(icrm,k) = crm_output%qg_mean(icrm,k) * factor_xy
+      crm_output%qr_mean(icrm,k) = crm_output%qr_mean(icrm,k) * factor_xy
+    enddo
+  enddo
 
 #ifdef m2005
   do icrm=1,ncrms
@@ -1383,17 +1403,18 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   enddo
 #endif /* m2005 */
 
-  !$acc kernels async(asyncid)
-  crm_output%precc (:) = 0.
-  crm_output%precl (:) = 0.
-  crm_output%precsc(:) = 0.
-  crm_output%precsl(:) = 0.
-  !$acc end kernels
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    crm_output%precc (icrm) = 0.
+    crm_output%precl (icrm) = 0.
+    crm_output%precsc(icrm) = 0.
+    crm_output%precsl(icrm) = 0.
+  enddo
 
   !$acc parallel loop collapse(3) async(asyncid)
-  do icrm = 1 , ncrms
-    do j=1,ny
-      do i=1,nx
+  do j=1,ny
+    do i=1,nx
+      do icrm = 1 , ncrms
 #ifdef sam1mom
         precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)
@@ -1417,25 +1438,34 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
   enddo
 
-  !$acc kernels async(asyncid)
-  crm_output%prec_crm(:,:,:) = precsfc(:,:,:)/1000.           !mm/s --> m/s
-  crm_output%precc   (:)     = crm_output%precc (:)*factor_xy/1000.
-  crm_output%precl   (:)     = crm_output%precl (:)*factor_xy/1000.
-  crm_output%precsc  (:)     = crm_output%precsc(:)*factor_xy/1000.
-  crm_output%precsl  (:)     = crm_output%precsl(:)*factor_xy/1000.
+  !$acc parallel loop collapse(3) async(asyncid)
+  do j = 1 , ny
+    do i = 1 , nx
+      do icrm = 1 , ncrms
+        crm_output%prec_crm(icrm,i,j) = precsfc(icrm,i,j)/1000.           !mm/s --> m/s
+      enddo
+    enddo
+  enddo
 
-  crm_output%cltot(:) = crm_output%cltot(:) * factor_xyt
-  crm_output%clhgh(:) = crm_output%clhgh(:) * factor_xyt
-  crm_output%clmed(:) = crm_output%clmed(:) * factor_xyt
-  crm_output%cllow(:) = crm_output%cllow(:) * factor_xyt
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    crm_output%precc (icrm) = crm_output%precc (icrm)*factor_xy/1000.
+    crm_output%precl (icrm) = crm_output%precl (icrm)*factor_xy/1000.
+    crm_output%precsc(icrm) = crm_output%precsc(icrm)*factor_xy/1000.
+    crm_output%precsl(icrm) = crm_output%precsl(icrm)*factor_xy/1000.
 
-  crm_output%jt_crm(:) = plev * 1.0
-  crm_output%mx_crm(:) = 1.0
-  !$acc end kernels
+    crm_output%cltot(icrm) = crm_output%cltot(icrm) * factor_xyt
+    crm_output%clhgh(icrm) = crm_output%clhgh(icrm) * factor_xyt
+    crm_output%clmed(icrm) = crm_output%clmed(icrm) * factor_xyt
+    crm_output%cllow(icrm) = crm_output%cllow(icrm) * factor_xyt
+
+    crm_output%jt_crm(icrm) = plev * 1.0
+    crm_output%mx_crm(icrm) = 1.0
+  enddo
 
   !$acc parallel loop collapse(2) async(asyncid)
-  do icrm = 1 , ncrms
-    do k=1, plev
+  do k=1, plev
+    do icrm = 1 , ncrms
       crm_output%mu_crm(icrm,k)=0.5*(mui_crm(icrm,k)+mui_crm(icrm,k+1))
       crm_output%md_crm(icrm,k)=0.5*(mdi_crm(icrm,k)+mdi_crm(icrm,k+1))
       crm_output%mu_crm(icrm,k)=crm_output%mu_crm(icrm,k)*ggr/100.          !kg/m2/s --> mb/s
@@ -1462,12 +1492,12 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
   enddo
 
-    !-------------------------------------------------------------
-    !       Fluxes and other stat:
-    !-------------------------------------------------------------
+  !-------------------------------------------------------------
+  !       Fluxes and other stat:
+  !-------------------------------------------------------------
   !$acc parallel loop collapse(2) async(asyncid)
-  do icrm = 1 , ncrms
-    do k=1,nzm
+  do k=1,nzm
+    do icrm = 1 , ncrms
       u2z = 0.
       v2z = 0.
       w2z = 0.
