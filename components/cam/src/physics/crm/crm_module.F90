@@ -359,6 +359,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     rhow(icrm,nz)= 2.*rhow(icrm,nzm) - rhow(icrm,nzm-1)
   enddo
 
+  call t_startf('crm_gpu_region')
+
   !  Initialize CRM fields:
   !$acc kernels async(asyncid)
   u   (:,1:nx,1:ny,1:nzm) = crm_state_u_wind     (:,1:nx,1:ny,1:nzm)
@@ -444,8 +446,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   p             (:,1:nx,1:ny,1:nzm) = 0.
   cf3d          (:,1:nx,1:ny,1:nzm) = 1.
   !$acc end kernels
-
-  call t_startf('crm_gpu_region')
 
   call micro_init(ncrms)
 
@@ -1060,8 +1060,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !----------------------------------------------------------------------------------------
   !========================================================================================
 
-  call t_stopf('crm_gpu_region')
-
   tmp1 = crm_nx_rad_fac * crm_ny_rad_fac / real(nstop,crm_rknd)
 
   !$acc parallel loop collapse(4) async(asyncid)
@@ -1510,6 +1508,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo
   enddo
 
+  !$acc wait(asyncid)
+
+  call t_stopf('crm_gpu_region')
+
 #ifdef ECPP
   do icrm = 1 , ncrms
     crm_ecpp_output%abnd         (icrm,:,:,:,:)=0.0
@@ -1570,8 +1572,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #endif /* ECPP */
 
   crm_output%timing_factor(:) = crm_output%timing_factor(:) / nstop
-
-  !$acc wait(asyncid)
 
 #ifdef ECPP
   !!! Deallocate ECPP variables
