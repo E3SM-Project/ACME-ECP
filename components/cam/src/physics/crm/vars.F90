@@ -453,7 +453,7 @@ contains
     tlatqi = zero
     qifall = zero
     qpfall = zero
-    CF3D = zero
+    CF3D = 1.
     u850_xy = zero
     v850_xy = zero
     psfc_xy = zero

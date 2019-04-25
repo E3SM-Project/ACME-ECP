@@ -163,7 +163,7 @@ CONTAINS
     use params, only: dosmoke
     implicit none
     integer, intent(in) :: ncrms
-    integer k, n,icrm
+    integer k, n,icrm, i, j, l
 
 #ifdef CLUBB_CRM
     !  if ( nclubb /= 1 ) then
@@ -182,7 +182,6 @@ CONTAINS
 
     if(nrestart.eq.0) then
 
-    !$acc kernels async(asyncid)
 #ifndef CRM
       micro_field(:,:,:,:,:) = 0.
       do k=1,nzm
@@ -190,9 +189,17 @@ CONTAINS
       end do
       qn(:,:,:,:) = 0.
 #endif
-    fluxbmk(:,:,:,:) = 0.
-    fluxtmk(:,:,:,:) = 0.
-    !$acc end kernels
+    !$acc parallel loop collapse(4) async(asyncid)
+    do l=1,nmicro_fields
+      do j=1,ny
+        do i=1,nx
+          do icrm=1,ncrms
+            fluxbmk(icrm,i,j,l) = 0.
+            fluxtmk(icrm,i,j,l) = 0.
+          enddo
+        enddo
+      enddo
+    enddo
 
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
@@ -209,14 +216,24 @@ CONTAINS
       end if
     end if
 
-    !$acc kernels async(asyncid)
-    mkwle = 0.
-    mkwsb = 0.
-    mkadv = 0.
-    mkdiff = 0.
-    qpsrc = 0.
-    qpevp = 0.
-    !$acc end kernels
+    !$acc parallel loop collapse(3) async(asyncid)
+    do l=1,nmicro_fields
+      do k=1,nz
+        do icrm = 1 , ncrms
+          mkwle (icrm,k,l) = 0.
+          mkwsb (icrm,k,l) = 0.
+          mkadv (icrm,k,l) = 0.
+          mkdiff(icrm,k,l) = 0.
+        enddo
+      enddo
+    enddo
+    !$acc parallel loop collapse(2) async(asyncid)
+    do k=1,nz
+      do icrm=1,ncrms
+        qpsrc(icrm,k) = 0.
+        qpevp(icrm,k) = 0.
+      enddo
+    enddo
 
     mkname(1) = 'QT'
     mklongname(1) = 'TOTAL WATER (VAPOR + CONDENSATE)'

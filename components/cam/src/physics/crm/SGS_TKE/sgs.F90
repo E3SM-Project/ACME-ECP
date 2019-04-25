@@ -169,13 +169,33 @@ CONTAINS
     use params, only: LES
     implicit none
     integer, intent(in) :: ncrms
-    integer k,icrm
+    integer k,icrm, i, j, l
 
     if(nrestart.eq.0) then
-      !$acc kernels async(asyncid)
-      sgs_field(:,:,:,:,:) = 0.
-      sgs_field_diag(:,:,:,:,:) = 0.
-      !$acc end kernels
+      !$acc parallel loop collapse(5) async(asyncid)
+      do l=1,nsgs_fields
+        do k=1,nzm
+          do j=dimy1_s,dimy2_s
+            do i=dimx1_s,dimx2_s
+              do icrm = 1 , ncrms
+                sgs_field(icrm,i,j,k,l) = 0.
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
+      !$acc parallel loop collapse(5) async(asyncid)
+      do l=1,nsgs_fields_diag
+        do k=1,nzm
+          do j=dimy1_s,dimy2_s
+            do i=dimx1_s,dimx2_s
+              do icrm = 1 , ncrms
+                sgs_field_diag(icrm,i,j,k,l) = 0.
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
     end if
 
     if(LES) then

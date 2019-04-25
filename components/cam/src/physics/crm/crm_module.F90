@@ -456,37 +456,31 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   enddo
 #endif /* m2005 */
 
-  !$acc kernels async(asyncid)
-  w             (:,:,:,nz)=0.
-  wsub          (:,:) = 0.   
-  dudt          (:,1:nx,1:ny,1:nzm,1:3) = 0.
-  dvdt          (:,1:nx,1:ny,1:nzm,1:3) = 0.
-  dwdt          (:,1:nx,1:ny,1:nz,1:3) = 0.
-  sgs_field     (:,1:nx,1:ny,1:nzm,:) = 0.
-  sgs_field_diag(:,1:nx,1:ny,1:nzm,:) = 0.
-  p             (:,1:nx,1:ny,1:nzm) = 0.
-  cf3d          (:,1:nx,1:ny,1:nzm) = 1.
-  !$acc end kernels
-
   call micro_init(ncrms)
 
   ! initialize sgs fields
   call sgs_init(ncrms)
 
-  !$acc kernels async(asyncid)
-  colprec =0
-  colprecs=0
-  u0   =0.
-  v0   =0.
-  t0   =0.
-  t00  =0.
-  tabs0=0.
-  q0   =0.
-  qv0  =0.
-  qn0  =0.0
-  qp0  =0.0
-  tke0 =0.0
-  !$acc end kernels
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    colprec (icrm)=0
+    colprecs(icrm)=0
+  enddo
+  !$acc parallel loop collapse(2) async(asyncid)
+  do k = 1 , nzm
+    do icrm = 1 , ncrms
+      u0   (icrm,k)=0.
+      v0   (icrm,k)=0.
+      t0   (icrm,k)=0.
+      t00  (icrm,k)=0.
+      tabs0(icrm,k)=0.
+      q0   (icrm,k)=0.
+      qv0  (icrm,k)=0.
+      qn0  (icrm,k)=0.0
+      qp0  (icrm,k)=0.0
+      tke0 (icrm,k)=0.0
+    enddo
+  enddo
 
   !$acc parallel loop collapse(4) async(asyncid)
   do k=1,nzm
@@ -580,41 +574,13 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output%precstend(icrm)=colprecs(icrm)
   enddo
 
-  !$acc kernels async(asyncid)
-  fluxbu  =0.
-  fluxbv  =0.
-  fluxbt  =0.
-  fluxbq  =0.
-  fluxtu  =0.
-  fluxtv  =0.
-  fluxtt  =0.
-  fluxtq  =0.
-  fzero   =0.
-  precsfc =0.
-  precssfc=0.
-
 !---------------------------------------------------
-  crm_output%cld     = 0.
-  crm_output%cldtop  = 0.
-  crm_output%gicewp  = 0
-  crm_output%gliqwp  = 0
-  crm_output%mctot   = 0.
-  crm_output%mcup    = 0.
-  crm_output%mcdn    = 0.
-  crm_output%mcuup   = 0.
-  crm_output%mcudn   = 0.
-  crm_output%qc_mean = 0.
-  crm_output%qi_mean = 0.
-  crm_output%qs_mean = 0.
-  crm_output%qg_mean = 0.
-  crm_output%qr_mean = 0.
 #ifdef m2005
   crm_output%nc_mean = 0.
   crm_output%ni_mean = 0.
   crm_output%ns_mean = 0.
   crm_output%ng_mean = 0.
   crm_output%nr_mean = 0.
-  ! hm 8/31/11 add new variables
   crm_output%aut_a  = 0.
   crm_output%acc_a  = 0.
   crm_output%evpc_a = 0.
@@ -623,11 +589,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   crm_output%sub_a  = 0.
   crm_output%dep_a  = 0.
   crm_output%con_a  = 0.
-
-  ! hm 8/31/11 add new output
-  ! these are increments added to calculate gcm-grid and time-step avg
-  ! note - these values are also averaged over the icycle loop following
-  ! the approach for precsfc
   aut1a  = 0.
   acc1a  = 0.
   evpc1a = 0.
@@ -637,45 +598,56 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   dep1a  = 0.
   con1a  = 0.
 #endif /* m2005 */
-
-  crm_output%mu_crm  = 0.
-  crm_output%md_crm  = 0.
-  crm_output%eu_crm  = 0.
-  crm_output%du_crm  = 0.
-  crm_output%ed_crm  = 0.
-  dd_crm             = 0.
-  crm_output%jt_crm  = 0.
-  crm_output%mx_crm  = 0.
-
-  mui_crm = 0.
-  mdi_crm = 0.
-
-  crm_output%flux_qt    = 0.
-  crm_output%flux_u     = 0.
-  crm_output%flux_v     = 0.
-  crm_output%fluxsgs_qt = 0.
-  crm_output%tkez       = 0.
-  crm_output%tkesgsz    = 0.
-  crm_output%tkz        = 0.
-  crm_output%flux_qp    = 0.
-  crm_output%precflux   = 0.
-  crm_output%qt_trans   = 0.
-  crm_output%qp_trans   = 0.
-  crm_output%qp_fall    = 0.
-  crm_output%qp_evp     = 0.
-  crm_output%qp_src     = 0.
-  crm_output%qt_ls      = 0.
-  crm_output%t_ls       = 0.
-
-  uwle     = 0.
-  uwsb     = 0.
-  vwle     = 0.
-  vwsb     = 0.
-  qpsrc    = 0.
-  qpevp    = 0.
-  qpfall   = 0.
-  precflux = 0.
-  !$acc end kernels
+  !$acc parallel loop collapse(2) async(asyncid)
+  do k = 1 , plev+1
+    do icrm = 1 , ncrms
+      if (k <= plev) then
+        crm_output%cld       (icrm,k) = 0.
+        crm_output%cldtop    (icrm,k) = 0.
+        crm_output%gicewp    (icrm,k) = 0
+        crm_output%gliqwp    (icrm,k) = 0
+        crm_output%mctot     (icrm,k) = 0.
+        crm_output%mcup      (icrm,k) = 0.
+        crm_output%mcdn      (icrm,k) = 0.
+        crm_output%mcuup     (icrm,k) = 0.
+        crm_output%mcudn     (icrm,k) = 0.
+        crm_output%qc_mean   (icrm,k) = 0.
+        crm_output%qi_mean   (icrm,k) = 0.
+        crm_output%qs_mean   (icrm,k) = 0.
+        crm_output%qg_mean   (icrm,k) = 0.
+        crm_output%qr_mean   (icrm,k) = 0.
+        crm_output%mu_crm    (icrm,k) = 0.
+        crm_output%md_crm    (icrm,k) = 0.
+        crm_output%eu_crm    (icrm,k) = 0.
+        crm_output%du_crm    (icrm,k) = 0.
+        crm_output%ed_crm    (icrm,k) = 0.
+        crm_output%flux_qt   (icrm,k) = 0.
+        crm_output%flux_u    (icrm,k) = 0.
+        crm_output%flux_v    (icrm,k) = 0.
+        crm_output%fluxsgs_qt(icrm,k) = 0.
+        crm_output%tkez      (icrm,k) = 0.
+        crm_output%tkesgsz   (icrm,k) = 0.
+        crm_output%tkz       (icrm,k) = 0.
+        crm_output%flux_qp   (icrm,k) = 0.
+        crm_output%precflux  (icrm,k) = 0.
+        crm_output%qt_trans  (icrm,k) = 0.
+        crm_output%qp_trans  (icrm,k) = 0.
+        crm_output%qp_fall   (icrm,k) = 0.
+        crm_output%qp_evp    (icrm,k) = 0.
+        crm_output%qp_src    (icrm,k) = 0.
+        crm_output%qt_ls     (icrm,k) = 0.
+        crm_output%t_ls      (icrm,k) = 0.
+        dd_crm               (icrm,k) = 0.
+      endif
+      mui_crm(icrm,k) = 0.
+      mdi_crm(icrm,k) = 0.
+    enddo
+  enddo
+  !$acc parallel loop async(asyncid)
+  do icrm = 1 , ncrms
+    crm_output%jt_crm(icrm) = 0.
+    crm_output%mx_crm(icrm) = 0.
+  enddo
 
 !--------------------------------------------------
 #ifdef sam1mom
