@@ -10,6 +10,7 @@ contains
 
     use vars
     use params, only: docolumn, crm_rknd
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
@@ -30,6 +31,9 @@ contains
     allocate( fu(ncrms,0:nx,1,nz) )
     allocate( fv(ncrms,0:nx,1,nz) )
     allocate( fw(ncrms,0:nx,1,nz) )
+    call prefetch( fu )
+    call prefetch( fv )
+    call prefetch( fw )
 
     rdx2=1./dx/dx
     rdx25=0.25*rdx2

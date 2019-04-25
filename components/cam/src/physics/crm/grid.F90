@@ -168,6 +168,7 @@ contains
 
 
   subroutine allocate_grid(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
@@ -180,6 +181,15 @@ contains
     allocate( adzw(ncrms,nz)    )
     allocate( dt3(3)      )
     allocate( dz(ncrms)         )
+
+    call prefetch( z )
+    call prefetch( pres )
+    call prefetch( zi )
+    call prefetch( presi )
+    call prefetch( adz )
+    call prefetch( adzw )
+    call prefetch( dt3 )
+    call prefetch( dz )
 
     zero = 0
 

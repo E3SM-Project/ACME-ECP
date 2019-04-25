@@ -179,6 +179,7 @@ subroutine allocate_micro(ncrms)
   allocate(dep1a(ncrms,nx,ny,nzm))
   allocate(con1a(ncrms,nx,ny,nzm))
   allocate(sfcpcp2D(nx,ny,ncrms))
+
   ! initialize these arrays
   micro_field = 0.
   cloudliq = 0. !bloss/qt: auxially cloud liquid water variable, analogous to qn in MICRO_SAM1MOM

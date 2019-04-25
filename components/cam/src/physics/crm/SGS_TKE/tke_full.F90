@@ -18,7 +18,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
 
   use vars
   use params
-
+  use openacc_utils
   implicit none
   integer, intent(in) :: ncrms
   !-----------------------------------------------------------------------
@@ -90,6 +90,9 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   allocate( def2          (ncrms,nx,ny,nzm  ) )
   allocate( buoy_sgs_vert (ncrms,nx,ny,0:nzm) )
   allocate( a_prod_bu_vert(ncrms,nx,ny,0:nzm) )
+  call prefetch( def2           )
+  call prefetch( buoy_sgs_vert  )
+  call prefetch( a_prod_bu_vert )
 
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------

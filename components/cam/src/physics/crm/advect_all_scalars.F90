@@ -16,6 +16,7 @@ contains
     use params, only: dotracers
 #endif
     use scalar_momentum_mod
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
@@ -24,6 +25,8 @@ contains
 
     allocate( esmt_offset(ncrms) )
     allocate( dummy(ncrms,nz) )
+    call prefetch( esmt_offset )
+    call prefetch( dummy )
 
     !      advection of scalars :
     call advect_scalar(ncrms,t,dummy,dummy)

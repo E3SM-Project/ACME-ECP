@@ -7,6 +7,7 @@ module sgs
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
   use params, only: dosgs, crm_rknd, asyncid
   use vars, only: tke2, tk2
+  use openacc_utils
   implicit none
 
   !----------------------------------------------------------------------
@@ -65,6 +66,7 @@ CONTAINS
 
 
   subroutine allocate_sgs(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
@@ -76,6 +78,15 @@ CONTAINS
     allocate( tkesbbuoy(ncrms,nz) )
     allocate( tkesbshear(ncrms,nz) )
     allocate( tkesbdiss(ncrms,nz) )
+
+    call prefetch( sgs_field  )
+    call prefetch( sgs_field_diag  )
+    call prefetch( grdf_x  )
+    call prefetch( grdf_y  )
+    call prefetch( grdf_z  )
+    call prefetch( tkesbbuoy  )
+    call prefetch( tkesbshear  )
+    call prefetch( tkesbdiss  )
 
     zero = 0
 
@@ -298,6 +309,7 @@ CONTAINS
     real(crm_rknd) tmp
 
     allocate(tkhmax(ncrms,nz))
+    call prefetch(tkhmax)
 
     !$acc parallel loop collapse(2) copy(tkhmax) async(asyncid)
     do k = 1,nzm
@@ -360,6 +372,7 @@ CONTAINS
     integer i,j,kk,k,icrm
 
     allocate( dummy(ncrms,nz) )
+    call prefetch(dummy)
 
     call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),t,fluxbt,fluxtt,tdiff,twsb)
 

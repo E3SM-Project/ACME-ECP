@@ -1,6 +1,7 @@
 module advect_scalar_mod
   use advect_scalar2D_mod
   use advect_scalar3D_mod
+  use openacc_utils
   implicit none
 
 contains
@@ -22,6 +23,7 @@ contains
     integer i,j,k,icrm
 
     allocate( f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+    call prefetch(f0)
 
     if(docolumn) then
       !$acc parallel loop collapse(2) copy(flux) async(asyncid)

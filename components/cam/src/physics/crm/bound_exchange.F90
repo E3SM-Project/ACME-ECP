@@ -15,6 +15,7 @@ contains
     ! periodic boundary exchange
     use grid
     use params, only: crm_rknd
+    use openacc_utils
     implicit none
     integer dimx1, dimx2, dimy1, dimy2, dimz, ncrms
     integer i_1, i_2, j_1, j_2
@@ -25,6 +26,7 @@ contains
     integer i1, i2, j1, j2
 
     allocate(buffer((nx+ny)*3*nz*ncrms))
+    call prefetch( buffer )
 
     i1 = i_1 - 1
     i2 = i_2 - 1

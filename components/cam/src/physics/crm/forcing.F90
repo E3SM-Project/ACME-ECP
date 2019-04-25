@@ -8,6 +8,7 @@ contains
     use vars
     use params
     use microphysics, only: micro_field, index_water_vapor
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd), allocatable :: qneg(:,:)
@@ -19,6 +20,9 @@ contains
     allocate( qneg(ncrms,nzm) )
     allocate( qpoz(ncrms,nzm) )
     allocate( nneg(ncrms,nzm) )
+    call prefetch( qneg )
+    call prefetch( qpoz )
+    call prefetch( nneg )
 
     coef = 1./3600.
 

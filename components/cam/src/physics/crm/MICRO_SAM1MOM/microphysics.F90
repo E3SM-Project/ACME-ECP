@@ -66,6 +66,7 @@ CONTAINS
 
 
   subroutine allocate_micro(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     integer :: icrm
@@ -85,6 +86,19 @@ CONTAINS
     allocate( qpsrc(ncrms,nz)  )
     allocate( qpevp(ncrms,nz)  )
     allocate( flag_precip    (nmicro_fields) )
+
+    call prefetch(micro_field  )
+    call prefetch(fluxbmk   )
+    call prefetch(fluxtmk   )
+    call prefetch(mkwle    )
+    call prefetch(mkwsb    )
+    call prefetch(mkadv    )
+    call prefetch(mkdiff   )
+    call prefetch(mkoutputscale  )
+    call prefetch(qn  )
+    call prefetch(qpsrc  )
+    call prefetch(qpevp  )
+    call prefetch(flag_precip    )
 
     zero = 0
 
@@ -196,12 +210,12 @@ CONTAINS
     end if
 
     !$acc kernels async(asyncid)
-    mkwle(:,:,:) = 0.
-    mkwsb(:,:,:) = 0.
-    mkadv(:,:,:) = 0.
-    mkdiff(:,:,:) = 0.
-    qpsrc(:,:) = 0.
-    qpevp(:,:) = 0.
+    mkwle = 0.
+    mkwsb = 0.
+    mkadv = 0.
+    mkdiff = 0.
+    qpsrc = 0.
+    qpevp = 0.
     !$acc end kernels
 
     mkname(1) = 'QT'
@@ -493,6 +507,7 @@ CONTAINS
     !     positively definite monotonic advection with non-oscillatory option
     !     and gravitational sedimentation
     use vars
+    use openacc_utils
     use params
     implicit none
     integer, intent(in) :: ncrms
@@ -537,6 +552,17 @@ CONTAINS
     allocate( irhoadz(ncrms,nzm) )
     allocate( iwmax  (ncrms,nzm) )
     allocate( rhofac (ncrms,nzm) )
+    
+    call prefetch( mx      )
+    call prefetch( mn      )
+    call prefetch( lfac    )
+    call prefetch( www     )
+    call prefetch( fz      )
+    call prefetch( wp      )
+    call prefetch( tmp_qp  )
+    call prefetch( irhoadz )
+    call prefetch( iwmax   )
+    call prefetch( rhofac  )
 
     !$acc parallel loop gang vector collapse(2) copyin(rho,adz,dz) copy(irhoadz,rhofac,iwmax) async(asyncid)
     do k = 1,nzm

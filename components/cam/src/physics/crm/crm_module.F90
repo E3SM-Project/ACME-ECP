@@ -1,5 +1,6 @@
 
 module crm_module
+  use openacc_utils, only: prefetch
   use perf_mod
   use task_init_mod, only: task_init
   use abcoefs_mod, only: abcoefs
@@ -165,17 +166,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd), allocatable  :: cmtemp  (:,:,:)
     real(crm_rknd), allocatable  :: chtemp  (:,:,:)
     real(crm_rknd), allocatable  :: cttemp  (:,:,:)
-#ifdef CLUBB_CRM
-    !Array indicies for spurious RTM check
-    real(kind=core_rknd), allocatable :: thlm_flux_top, thlm_flux_sfc, rtm_flux_top, rtm_flux_sfc
-    real(kind=core_rknd), allocatable :: rtm_integral_before (:,:)
-    real(kind=core_rknd), allocatable :: rtm_integral_after  (:,:)
-    real(kind=core_rknd), allocatable :: thlm_integral_before(:,:)
-    real(kind=core_rknd), allocatable :: thlm_integral_after (:,:)
-    real(kind=core_rknd), allocatable :: thlm_before(:)
-    real(kind=core_rknd), allocatable :: thlm_after (:)
-    real(kind=core_rknd), allocatable :: rtm_column (:) ! Total water (vapor + liquid)     [kg/kg]
-#endif /* CLUBB_CRM */
 
     real(r8), allocatable :: dd_crm (:,:)     ! mass entraiment from downdraft
     real(r8), allocatable :: mui_crm(:,:)     ! mass flux up at the interface
@@ -218,15 +208,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   allocate( cmtemp(ncrms,nx,ny) )
   allocate( chtemp(ncrms,nx,ny) )
   allocate( cttemp(ncrms,nx,ny) )
-#ifdef CLUBB_CRM
-  allocate( rtm_integral_before (nx,ny) )
-  allocate( rtm_integral_after (nx,ny) )
-  allocate( thlm_integral_before(nx,ny) )
-  allocate( thlm_integral_after(nx,ny) )
-  allocate( thlm_before(nzm) )
-  allocate( thlm_after(nzm) )
-  allocate( rtm_column(nzm) )
-#endif /* CLUBB_CRM */
   allocate( dd_crm (ncrms,plev)   )
   allocate( mui_crm(ncrms,plev+1) )
   allocate( mdi_crm(ncrms,plev+1) )
@@ -236,6 +217,32 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   allocate( qtot (ncrms,20) )
   allocate( colprec (ncrms) )
   allocate( colprecs(ncrms) )
+
+  call prefetch( t00      )
+  call prefetch( tln      )
+  call prefetch( qln      )
+  call prefetch( qccln    )
+  call prefetch( qiiln    )
+  call prefetch( uln      )
+  call prefetch( vln      )
+  call prefetch( cwp      ) 
+  call prefetch( cwph     ) 
+  call prefetch( cwpm     ) 
+  call prefetch( cwpl     ) 
+  call prefetch( flag_top ) 
+  call prefetch( cltemp   ) 
+  call prefetch( cmtemp   ) 
+  call prefetch( chtemp   ) 
+  call prefetch( cttemp   ) 
+  call prefetch( dd_crm   ) 
+  call prefetch( mui_crm  ) 
+  call prefetch( mdi_crm  ) 
+  call prefetch( ustar    ) 
+  call prefetch( bflx     ) 
+  call prefetch( wnd      ) 
+  call prefetch( qtot     ) 
+  call prefetch( colprec  ) 
+  call prefetch( colprecs ) 
 
   call allocate_params(ncrms)
   call allocate_vars(ncrms)
@@ -1549,10 +1556,22 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_output%qp_trans  (icrm,l) = mkadv(icrm,k,iqr) + mkadv(icrm,k,iqs) + mkadv(icrm,k,iqg) + &
                          mkdiff(icrm,k,iqr) + mkdiff(icrm,k,iqs) + mkdiff(icrm,k,iqg)
 #endif /* m2005 */
-      crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*sum(sgs_field(icrm,1:nx,1:ny,k,1))*factor_xy
+      tmp = 0
+      do j = 1 , ny
+        do i = 1 , nx
+          tmp = tmp + sgs_field(icrm,i,j,k,1)
+        enddo
+      enddo
+      crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*tmp*factor_xy
       crm_output%tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
-      crm_output%tkz       (icrm,l) = sum(sgs_field_diag(icrm,1:nx, 1:ny, k,1)) * factor_xy
-      crm_output%precflux      (icrm,l) = precflux(icrm,k)/1000.       !mm/s  -->m/s
+      tmp = 0
+      do j = 1 , ny
+        do i = 1 , nx
+          tmp = tmp + sgs_field_diag(icrm,i,j,k,1)
+        enddo
+      enddo
+      crm_output%tkz       (icrm,l) = tmp * factor_xy
+      crm_output%precflux  (icrm,l) = precflux(icrm,k)/1000.       !mm/s  -->m/s
 
       crm_output%qp_fall   (icrm,l) = qpfall(icrm,k)
       crm_output%qp_evp    (icrm,l) = qpevp(icrm,k)

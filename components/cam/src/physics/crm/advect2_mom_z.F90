@@ -8,6 +8,7 @@ contains
     !       momentum tendency due to the 2nd-order-central vertical advection
     use vars
     use params, only: crm_rknd
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd), allocatable :: fuz(:,:,:,:)
@@ -19,6 +20,9 @@ contains
     allocate( fuz(ncrms,nx,ny,nz ) )
     allocate( fvz(ncrms,nx,ny,nz ) )
     allocate( fwz(ncrms,nx,ny,nzm) )
+    call prefetch( fuz )
+    call prefetch( fvz )
+    call prefetch( fwz )
 
     !$acc parallel loop collapse(2) copy(uwle,vwle) async(asyncid)
     do k = 1 , nz

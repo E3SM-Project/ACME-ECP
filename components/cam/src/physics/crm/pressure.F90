@@ -17,6 +17,7 @@ contains
     use press_rhs_mod
     use press_grad_mod
     use fft_mod
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     integer, parameter :: npressureslabs = nsubdomains
@@ -57,6 +58,17 @@ contains
     allocate( a(ncrms,nzm) )
     allocate( c(ncrms,nzm) )
 
+    call prefetch( f      )
+    call prefetch( ff     )
+    call prefetch( iii    )
+    call prefetch( jjj    )
+    call prefetch( ifaxi  )
+    call prefetch( ifaxj  )
+    call prefetch( trigxi )
+    call prefetch( trigxj )
+    call prefetch( a      )
+    call prefetch( c      )
+
     it = 0
     jt = 0
 
@@ -82,6 +94,7 @@ contains
     endif
 
     allocate(eign(nxp1-iwall,nyp22-jwall))
+    call prefetch(eign)
     !-----------------------------------------------------------------
     !  Compute the r.h.s. of the Poisson equation for pressure
     call press_rhs(ncrms)

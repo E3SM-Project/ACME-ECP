@@ -6,6 +6,7 @@ contains
 
     use grid
     use params
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     ! input
@@ -34,6 +35,8 @@ contains
 
     allocate( flx(ncrms,0:nx,1,0:nzm) )
     allocate( dfdt(ncrms,nx,ny,nzm) )
+    call prefetch( flx  )
+    call prefetch( dfdt )
 
     !For working around PGI bug where it didn't create enough OpenACC gangs
     numgangs = ceiling(ncrms*nzm*ny*nx/128.)

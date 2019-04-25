@@ -98,6 +98,7 @@ contains
 
 
   subroutine allocate_micro_params(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
@@ -114,6 +115,19 @@ contains
     allocate( evapr2(ncrms,nzm) )
     allocate( evapg1(ncrms,nzm) )
     allocate( evapg2(ncrms,nzm) )
+
+    call prefetch( accrsc  )
+    call prefetch( accrsi  )
+    call prefetch( accrrc  )
+    call prefetch( coefice )
+    call prefetch( accrgc  )
+    call prefetch( accrgi  )
+    call prefetch( evaps1  )
+    call prefetch( evaps2  )
+    call prefetch( evapr1  )
+    call prefetch( evapr2  )
+    call prefetch( evapg1  )
+    call prefetch( evapg2  )
 
     zero = 0
 

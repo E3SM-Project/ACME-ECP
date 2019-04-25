@@ -8,6 +8,7 @@ contains
     use grid
     use params
     use task_util_mod, only: task_rank_to_index
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     ! input
@@ -37,6 +38,10 @@ contains
     allocate( flx_y(ncrms,0:nx,0:ny,0:nzm) )
     allocate( flx_z(ncrms,0:nx,0:ny,0:nzm) )
     allocate( dfdt (ncrms,nx,ny,nz) )
+    call prefetch( flx_x )
+    call prefetch( flx_y )
+    call prefetch( flx_z )
+    call prefetch( dfdt  )
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
