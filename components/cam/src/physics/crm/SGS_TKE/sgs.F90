@@ -61,6 +61,9 @@ module sgs
   real(crm_rknd), allocatable :: tkesbbuoy (:,:)
   real(crm_rknd), allocatable :: tkesbshear(:,:)
   real(crm_rknd), allocatable :: tkesbdiss (:,:)
+  real(crm_rknd), pointer :: tke(:,:,:,:)
+  real(crm_rknd), pointer :: tk (:,:,:,:)
+  real(crm_rknd), pointer :: tkh(:,:,:,:)
 
 CONTAINS
 
@@ -78,6 +81,10 @@ CONTAINS
     allocate( tkesbbuoy(ncrms,nz) )
     allocate( tkesbshear(ncrms,nz) )
     allocate( tkesbdiss(ncrms,nz) )
+
+    tke(dimx1_s:,dimy1_s:,1:,1:) => sgs_field     (:,:,:,:,1)
+    tk (dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,1)
+    tkh(dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,2)
 
     call prefetch( sgs_field  )
     call prefetch( sgs_field_diag  )

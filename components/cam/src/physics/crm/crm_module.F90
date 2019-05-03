@@ -1578,7 +1578,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_ecpp_output%wupthresh_bnd   (icrm,:)=0.0
     crm_ecpp_output%wdownthresh_bnd (icrm,:)=0.0
     crm_ecpp_output%wwqui_cen       (icrm,:)=0.0
-    crm_ecpp_output%wwqui_bnd       (icrm,:)=0.0c
+    crm_ecpp_output%wwqui_bnd       (icrm,:)=0.0
     crm_ecpp_output%wwqui_cloudy_cen(icrm,:)=0.0
     crm_ecpp_output%wwqui_cloudy_bnd(icrm,:)=0.0
 
@@ -1611,7 +1611,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       crm_ecpp_output%massflxbnd      (icrm,l,:,:,:) = mass_bnd_sum        (k,:,1:ncls_ecpp_in,:,icrm)
       crm_ecpp_output%wupthresh_bnd   (icrm,l)       = wup_thresh          (k,icrm)
       crm_ecpp_output%wdownthresh_bnd (icrm,l)       = wdown_thresh        (k,icrm)
-      crm_ecpp_output%wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k,icrm)c
+      crm_ecpp_output%wwqui_bnd       (icrm,l)       = wwqui_bnd_sum       (k,icrm)
       crm_ecpp_output%wwqui_cloudy_bnd(icrm,l)       = wwqui_cloudy_bnd_sum(k,icrm)
     enddo
   enddo
