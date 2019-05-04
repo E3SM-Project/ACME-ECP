@@ -525,8 +525,8 @@ subroutine remap_Q_ppm(Qdp,nx,qsize,dp1,dp2)
   real (kind=real_kind), intent(in) :: dp1(nx,nx,nlev),dp2(nx,nx,nlev)
   ! Local Variables
   integer, parameter :: gs = 2                              !Number of cells to place in the ghost region
-  real(kind=real_kind), dimension(       nlev+2 ) :: pi_old !Pressure at interfaces for old grid
-  real(kind=real_kind), dimension(       nlev+1 ) :: pi_new !Pressure at interfaces for new grid
+  real(kind=real_kind), dimension(       nlev+2 ) :: pio    !Pressure at interfaces for old grid
+  real(kind=real_kind), dimension(       nlev+1 ) :: pin    !Pressure at interfaces for new grid
   real(kind=real_kind), dimension(       nlev+1 ) :: masso  !Accumulate mass up to each interface
   real(kind=real_kind), dimension(  1-gs:nlev+gs) :: ao     !Tracer value on old grid
   real(kind=real_kind), dimension(  1-gs:nlev+gs) :: dpo    !change in pressure over a cell for old grid
@@ -541,20 +541,20 @@ subroutine remap_Q_ppm(Qdp,nx,qsize,dp1,dp2)
   do j = 1 , nx
     do i = 1 , nx
 
-      pi_new(1)=0
-      pi_old(1)=0
+      pin(1)=0
+      pio(1)=0
       do k=1,nlev
          dpn(k)=dp2(i,j,k)
          dpo(k)=dp1(i,j,k)
-         pi_new(k+1)=pi_new(k)+dpn(k)
-         pi_old(k+1)=pi_old(k)+dpo(k)
+         pin(k+1)=pin(k)+dpn(k)
+         pio(k+1)=pio(k)+dpo(k)
       enddo
 
 
 
-      pi_old(nlev+2) = pi_old(nlev+1) + 1.  !This is here to allow an entire block of k threads to run in the remapping phase.
+      pio(nlev+2) = pio(nlev+1) + 1.  !This is here to allow an entire block of k threads to run in the remapping phase.
                                       !It makes sure there's an old interface value below the domain that is larger.
-      pi_new(nlev+1) = pi_old(nlev+1)       !The total mass in a column does not change.
+      pin(nlev+1) = pio(nlev+1)       !The total mass in a column does not change.
                                       !Therefore, the pressure of that mass cannot either.
       !Fill in the ghost regions with mirrored values. if vert_remap_q_alg is defined, this is of no consequence.
       do k = 1 , gs
@@ -585,7 +585,7 @@ subroutine remap_Q_ppm(Qdp,nx,qsize,dp1,dp2)
         kid(k) = kk                   !Save for reuse
         z1(k) = -0.5D0                !This remapping assumes we're starting from the left interface of an old grid cell
                                       !In fact, we're usually integrating very little or almost all of the cell in question
-        z2(k) = ( pi_new(k+1) - ( pi_old(kk) + pi_old(kk+1) ) * 0.5 ) / dpo(kk)  !PPM interpolants are normalized to an independent
+        z2(k) = ( pin(k+1) - ( pio(kk) + pio(kk+1) ) * 0.5 ) / dpo(kk)  !PPM interpolants are normalized to an independent
                                                                         !coordinate domain [-0.5,0.5].
       enddo
 
