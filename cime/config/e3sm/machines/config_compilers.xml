@@ -394,8 +394,8 @@ for mct, etc.
 <compiler COMPILER="pgigpu">
   <CFLAGS>
     <base> -gopt -time </base>
-    <append compile_threaded="false"> </append>
-    <append compile_threaded="true"> -mp </append>
+    <append compile_threaded="FALSE"> </append>
+    <append compile_threaded="TRUE"> -mp </append>
   </CFLAGS>
   <CPPDEFS>
     <!-- http://www.pgroup.com/resources/docs.htm                                              -->
@@ -430,8 +430,8 @@ for mct, etc.
   </FC_AUTO_R8>
   <FFLAGS>
     <base> -i4 -time -Mstack_arrays  -Mextend -byteswapio -Mflushz </base>
-    <append compile_threaded="false"> </append>
-    <append compile_threaded="true"> -mp </append>
+    <append compile_threaded="FALSE"> </append>
+    <append compile_threaded="TRUE"> -mp </append>
     <append DEBUG="TRUE"> -O0 -g -Ktrap=fp -Mbounds -Kieee </append>
     <append MODEL="datm"> -Mnovect </append>
     <append MODEL="dlnd"> -Mnovect </append>
@@ -442,8 +442,8 @@ for mct, etc.
   </FFLAGS>
   <FFLAGS_NOOPT>
     <base> -O0 -Kieee  </base>
-    <append compile_threaded="false"> </append>
-    <append compile_threaded="true"> -mp </append>
+    <append compile_threaded="FALSE"> </append>
+    <append compile_threaded="TRUE"> -mp </append>
   </FFLAGS_NOOPT>
   <FIXEDFLAGS>
     <base> -Mfixed </base>
@@ -459,8 +459,8 @@ for mct, etc.
   <HAS_F2008_CONTIGUOUS>FALSE</HAS_F2008_CONTIGUOUS>
   <LDFLAGS>
     <base> -time -Wl,--allow-multiple-definition </base>
-    <append compile_threaded="false"> </append>
-    <append compile_threaded="true"> -mp </append>
+    <append compile_threaded="FALSE"> </append>
+    <append compile_threaded="TRUE"> -mp </append>
   </LDFLAGS>
   <MPICC> mpicc </MPICC>
   <MPICXX> mpicxx </MPICXX>
