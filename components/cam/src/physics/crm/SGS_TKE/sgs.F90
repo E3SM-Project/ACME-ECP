@@ -194,8 +194,8 @@ CONTAINS
       !$acc parallel loop collapse(5) async(asyncid)
       do l=1,nsgs_fields_diag
         do k=1,nzm
-          do j=dimy1_s,dimy2_s
-            do i=dimx1_s,dimx2_s
+          do j=dimy1_d,dimy2_d
+            do i=dimx1_d,dimx2_d
               do icrm = 1 , ncrms
                 sgs_field_diag(icrm,i,j,k,l) = 0.
               enddo
