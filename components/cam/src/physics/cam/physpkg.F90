@@ -164,7 +164,8 @@ subroutine phys_register
     !---------------------------Local variables-----------------------------
     !
     integer  :: m        ! loop index
-    integer  :: mm       ! constituent index 
+    integer  :: mm       ! constituent index
+    integer  :: dummy    ! for unused output from pbuf_add_field calls
     !-----------------------------------------------------------------------
 
     integer :: nmodes
@@ -236,7 +237,13 @@ subroutine phys_register
        end if
        
        ! Register CLUBB_SGS here
-       if (do_clubb_sgs) call clubb_register_cam()
+       if (do_clubb_sgs) then 
+         call clubb_register_cam()
+       else
+         ! vmag_gust must be registered even if clubb is not used
+         ! TODO: find a better (less error-prone) way to register this
+         call pbuf_add_field('vmag_gust', 'global', dtype_r8, (/pcols/), dummy)
+       end if
        
 
        call pbuf_add_field('PREC_STR',  'physpkg',dtype_r8,(/pcols/),prec_str_idx)
