@@ -172,6 +172,9 @@ module radiation
    ! this mean?)
    integer, public, allocatable :: tot_chnk_till_this_prc(:,:,:)
 
+   ! Indices into PBUF for CRM fields
+   integer :: crm_qc_rad_idx, crm_qi_rad_idx, crm_qrad_idx
+
    !============================================================================
 
 contains
@@ -411,7 +414,7 @@ contains
       use modal_aer_opt,      only: modal_aer_opt_init
       use time_manager,       only: get_nstep, get_step_size, is_first_restart_step
       use radiation_data,     only: init_rad_data
-      use physics_types, only: physics_state
+      use physics_types,      only: physics_state
 
       ! RRTMGP modules
       use mo_load_coefficients, only: rrtmgp_load_coefficients=>load_and_init
@@ -790,6 +793,17 @@ contains
          end if
       end do
 
+      ! Add cloud-scale radiative quantities
+      call phys_getopts(use_SPCAM_out=use_SPCAM)
+      if (use_SPCAM) then
+         call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'A', 'K/s', &
+                      'Radiative heating tendency')
+         call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+                      'CRM Shortwave radiative heating rate')
+         call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+                      'CRM Longwave radiative heating rate' )
+      end if
+
       call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity')
 
       ! Add default fields for single column mode
@@ -851,6 +865,12 @@ contains
                      'Snow in-cloud extinction visible sw optical depth', &
                      sampling_seq='rad_lwsw', flag_xyfill=.true.)
       endif
+
+      ! Set PBUF indices for CRM fields
+      call phys_getopts(use_SPCAM_out=use_SPCAM)
+      if (use_SPCAM) then
+         crm_qrad_idx = pbuf_get_index('CRM_QRAD')
+      end if
 
    end subroutine radiation_init
 
@@ -1080,6 +1100,9 @@ contains
       use cam_optics, only: cam_optics_type
       use physconst, only: cpair, stebol
 
+      use phys_control, only: phys_getopts
+      use crmdims, only: crm_nx_rad, crm_ny_rad, crm_nz
+
       ! ---------------------------------------------------------------------------
       ! Arguments
       ! ---------------------------------------------------------------------------
@@ -1132,12 +1155,22 @@ contains
       real(r8) :: qrsc(pcols,pver) = 0._r8
       real(r8) :: qrlc(pcols,pver) = 0._r8
 
+      ! Pointers to CRM fields on physics buffer
+      real(r8), pointer, dimension(:,:,:,:) :: crm_qrad
+
+      ! Options for MMF/SP
+      logical :: use_SPCAM
+      character(len=128) :: SPCAM_microp_scheme
+
       ! Flag to carry (QRS,QRL)*dp across time steps. 
       ! TODO: what does this mean?
       logical :: conserve_energy = .true.
 
       ! Number of columns
       integer :: ncol
+
+      ! Loop indices
+      integer :: ic, ix, iy, iz, ilev
 
       ! Everyone needs a name
       character(*), parameter :: subroutine_name = 'radiation_tend'
@@ -1150,10 +1183,17 @@ contains
       ! Number of physics columns in this "chunk"
       ncol = state%ncol
 
+      ! Set flags for MMF/SP
+      call phys_getopts(use_SPCAM_out           = use_SPCAM          )
+      call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
+
       ! Set pointers to heating rates stored on physics buffer. These will be
       ! modified in this routine.
       call pbuf_get_field(pbuf, pbuf_get_index('QRS'), qrs)
       call pbuf_get_field(pbuf, pbuf_get_index('QRL'), qrl)
+
+      ! If using MMF/SP, get CRM heating
+      if (use_SPCAM) call pbuf_get_field(pbuf, crm_qrad_idx, crm_qrad)
      
       ! Do shortwave stuff...
       if (radiation_do('sw')) then
@@ -1231,6 +1271,22 @@ contains
          qrs(1:ncol,1:pver) = qrs(1:ncol,1:pver) * state%pdel(1:ncol,1:pver)
          qrl(1:ncol,1:pver) = qrl(1:ncol,1:pver) * state%pdel(1:ncol,1:pver)
       end if
+
+      ! Populate net CRM heating tendency. For now, this just uses the domain
+      ! averaged radiative heating, so will apply homogeneous heating to the
+      ! CRM, calculated from the GCM fields.
+      crm_qrad = 0
+      do iz = 1,crm_nz
+         do iy = 1,crm_ny_rad
+            do ix = 1,crm_nx_rad
+               do ic = 1,ncol
+                  ilev = pver - iz + 1
+                  crm_qrad(ic,ix,iy,iz) = (qrs(ic,ilev) + qrl(ic,ilev)) / cpair
+               end do
+            end do
+         end do
+      end do
+      call assert_valid(crm_qrad, 'radiation_tend: crm_qrad')
 
    end subroutine radiation_tend
 
