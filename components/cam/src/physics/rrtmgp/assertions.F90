@@ -11,7 +11,7 @@ module assertions
 
    ! Interface blocks to allow overloading procedures
    interface assert_valid
-      module procedure assert_valid_0d, assert_valid_1d, assert_valid_2d, assert_valid_3d
+      module procedure assert_valid_0d, assert_valid_1d, assert_valid_2d, assert_valid_3d, assert_valid_4d
    end interface
 
    interface assert_range
@@ -147,8 +147,8 @@ contains
       character(len=*), intent(in) :: message
       integer :: i, j
 
-      do i = 1,size(x,1)
-         do j = 1,size(x,2)
+      do j = 1,size(x,2)
+         do i = 1,size(x,1)
             if (isnan(x(i,j))) then
                call endrun('assert_valid failed (NaN): ' // message)
             else if (isinf(x(i,j))) then
@@ -165,9 +165,9 @@ contains
       character(len=*), intent(in) :: message
       integer :: i, j, k
 
-      do i = 1,size(x,1)
+      do k = 1,size(x,3)
          do j = 1,size(x,2)
-            do k = 1,size(x,3)
+            do i = 1,size(x,1)
                if (isnan(x(i,j,k))) then
                   call endrun('assert_valid failed (NaN): ' // message)
                else if (isinf(x(i,j,k))) then
@@ -178,7 +178,28 @@ contains
       end do
    end subroutine assert_valid_3d
    !-------------------------------------------------------------------------------
+   subroutine assert_valid_4d(x, message)
+      use infnan, only: isnan, isinf
 
+      real(r8), intent(in) :: x(:,:,:,:)
+      character(len=*), intent(in) :: message
+      integer :: i, j, k, m
+
+      do m = 1,size(x,4)
+         do k = 1,size(x,3)
+            do j = 1,size(x,2)
+               do i = 1,size(x,1)
+                  if (isnan(x(i,j,k,m))) then
+                     call endrun('assert_valid failed (NaN): ' // message)
+                  else if (isinf(x(i,j,k,m))) then
+                     call endrun('assert_valid failed (inf): ' // message)
+                  end if
+               end do
+            end do
+         end do
+      end do
+   end subroutine assert_valid_4d
+   !-------------------------------------------------------------------------------
 
    ! Assert just checks that condition is true, and aborts execution of the
    ! program if it is not.
