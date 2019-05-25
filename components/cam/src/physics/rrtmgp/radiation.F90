@@ -277,6 +277,7 @@ contains
       !----------------------------------------------------------------------------
 
       use physics_buffer, only: pbuf_add_field, dtype_r8
+      use crmdims, only: crm_nx_rad, crm_ny_rad, crm_nz
 
       integer :: idx  ! dummy index for adding fields to physics buffer
 
@@ -288,6 +289,10 @@ contains
       ! module, just overwritten, so they may not need to be written to restarts.
       call pbuf_add_field('QRS', 'global', dtype_r8, (/pcols,pver/), idx)
       call pbuf_add_field('QRL', 'global', dtype_r8, (/pcols,pver/), idx)
+
+      ! CRM cloud radiative heating
+      call pbuf_add_field('CRM_QRS', 'physpkg', dtype_r8,(/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+      call pbuf_add_field('CRM_QRL', 'physpkg', dtype_r8,(/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
 
       ! If the namelist has been configured for preserving the spectral fluxes, then create
       ! physics buffer variables to store the results. These are fluxes per
@@ -478,10 +483,8 @@ contains
       ! impossible from this initialization routine because I do not thing the
       ! rad_cnst objects are setup yet.
       call set_available_gases(active_gases, available_gases)
-      print *, 'Load RRTMGP coefficients from file...'
       call rrtmgp_load_coefficients(k_dist_sw, coefficients_file_sw, available_gases)
       call rrtmgp_load_coefficients(k_dist_lw, coefficients_file_lw, available_gases)
-      print *, 'Done loading RRTMGP coefficients.'
 
       ! Get number of bands used in shortwave and longwave and set module data
       ! appropriately so that these sizes can be used to allocate array sizes.
@@ -1098,7 +1101,7 @@ contains
       ! properties, and subroutines to get CAM aerosol and cloud optical properties
       ! via CAM parameterizations
       use cam_optics, only: cam_optics_type
-      use physconst, only: cpair, stebol
+      use physconst, only: cpair
 
       use phys_control, only: phys_getopts
       use crmdims, only: crm_nx_rad, crm_ny_rad, crm_nz
@@ -1547,30 +1550,38 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine radiation_driver_lw(state, pbuf, cam_in, is_cmip6_volc, &
+   subroutine radiation_driver_lw(state_in, pbuf, cam_in, is_cmip6_volc, &
                                   fluxes_allsky, fluxes_clrsky, qrl, qrlc)
     
       use rad_constituents, only: N_DIAG, rad_cnst_get_call_list
+      use constituents,     only: cnst_get_ind
       use perf_mod, only: t_startf, t_stopf
       use cam_history, only: outfld
-      use physics_types, only: physics_state
-      use physics_buffer, only: physics_buffer_desc
+      use physics_types, only: physics_state, physics_state_copy
+      use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
       use camsrfexch, only: cam_in_t
       use mo_rrtmgp_clr_all_sky, only: rte_lw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_concentrations, only: ty_gas_concs
+      use mo_util_string, only: lower_case
       use radiation_state, only: set_rad_state
       use radiation_utils, only: calculate_heating_rate
       use cam_optics, only: set_cloud_optics_lw, set_aerosol_optics_lw
+      use crmdims, only: crm_nx_rad, crm_ny_rad, crm_nz
+      use physconst,      only: gravit
 
       ! Inputs
-      type(physics_state), intent(in) :: state
+      type(physics_state), intent(in) :: state_in
       type(physics_buffer_desc), pointer :: pbuf(:)
       type(cam_in_t), intent(in) :: cam_in
       type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
+                                           
       real(r8), intent(inout) :: qrl(:,:), qrlc(:,:)
       logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false 
+
+      type(physics_state) :: state
+      type(ty_fluxes_byband) :: fluxes_allsky_all, fluxes_clrsky_all
 
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_lw'
@@ -1581,45 +1592,68 @@ contains
       ! State fields that are passed into RRTMGP. Some of these may need to
       ! modified from what exist in the physics_state object, i.e. to clip
       ! temperatures to make sure they are within the valid range.
-      real(r8), dimension(pcols,nlev_rad) :: tmid, pmid
-      real(r8), dimension(pcols,nlev_rad+1) :: pint, tint
+      real(r8), dimension(:,:), allocatable :: tmid    , pmid    , &
+                                               pint    , tint    , &
+                                               tmid_col, pmid_col, &
+                                               pint_col, tint_col
 
       ! Surface emissivity needed for longwave
-      real(r8) :: surface_emissivity(nlwbands,pcols)
+      real(r8), allocatable :: surface_emissivity(:,:)
 
       ! Temporary heating rates on radiation vertical grid
-      real(r8), dimension(pcols,nlev_rad) :: qrl_rad, qrlc_rad
+      real(r8), dimension(:,:), allocatable :: qrl_rad, qrlc_rad, qrl_all, qrlc_all
 
       ! RRTMGP types
-      type(ty_gas_concs) :: gas_concentrations
-      type(ty_optical_props_1scl) :: aerosol_optics_lw
-      type(ty_optical_props_1scl) :: cloud_optics_lw
+      type(ty_gas_concs) :: gas_concentrations_all, gas_concentrations_col
+      type(ty_optical_props_1scl) :: aer_optics_all, aer_optics_col
+      type(ty_optical_props_1scl) :: cld_optics_all, cld_optics_col
 
-      integer :: ncol, icall
+      real(r8), pointer, dimension(:,:) :: iclwp, iciwp, cld
+      real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrl
+
+      real(r8), dimension(pcols,pver) :: iclwp_save, iciwp_save, cld_save
+      integer :: ncol, icall, ic, ix, iy, iz, ilev, ncol_tot, j
+      integer :: ixwatvap, ixcldliq, ixcldice
+      integer :: igas
+      real(r8), dimension(:,:,:), allocatable :: vmr_col, vmr_all
+
+      ! Copy state so we can use CAM routines with arrays replaced with data
+      ! from CRM fields
+      call physics_state_copy(state_in, state)
 
       ! Number of physics columns in this "chunk"; used in multiple places
       ! throughout this subroutine, so set once for convenience
       ncol = state%ncol
 
-      ! Set rad state variables
-      call set_rad_state(state, cam_in, &
-                         tmid(1:ncol,1:nlev_rad), &
-                         tint(1:ncol,1:nlev_rad+1), &
-                         pmid(1:ncol,1:nlev_rad), &
-                         pint(1:ncol,1:nlev_rad+1))
-       
+      ! Loop over columns, overwrite key state and pbuf fields with those from
+      ! the CRM, and pack state and optics into objects dimensioned ncol *
+      ! crm_nx_rad * crm_ny_rad as opposed to ncol
+      ncol_tot = ncol * crm_nx_rad * crm_ny_rad
+
+      call initialize_rrtmgp_fluxes(ncol_tot, nlev_rad+1, nlwbands, fluxes_allsky_all)
+      call initialize_rrtmgp_fluxes(ncol_tot, nlev_rad+1, nlwbands, fluxes_clrsky_all)
+      
       ! Set surface emissivity to 1 here. There is a note in the RRTMG
       ! implementation that this is treated in the land model, but the old
       ! RRTMG implementation also sets this to 1. This probably does not make
       ! a lot of difference either way, but if a more intelligent value
       ! exists or is assumed in the model we should use it here as well.
       ! TODO: set this more intelligently?
-      surface_emissivity(1:nlwbands,1:ncol) = 1.0_r8
+      allocate(surface_emissivity(nlwbands,ncol_tot))
+      surface_emissivity = 1.0_r8
 
-      ! Do longwave cloud optics calculations
-      call t_startf('longwave cloud optics')
-      call set_cloud_optics_lw(state, pbuf, k_dist_lw, cloud_optics_lw)
-      call t_stopf('longwave cloud optics')
+      ! Allocate gas mixing ratio arrays here; one for all single CRM column,
+      ! one for packed data
+      allocate(vmr_col(size(active_gases),ncol,nlev_rad))
+      allocate(vmr_all(size(active_gases),ncol_tot,nlev_rad))
+
+      ! Allocate our optics objects. For both clouds and aerosol, we allocate
+      ! two separate optics objects: one of size ncol to hold optics for a
+      ! single CRM column index (to use the inflexible CAM optics routines that
+      ! need to be refactored), and a second to pack the data into a single
+      ! column dimension for all columns to minimize kernel launches.
+      call handle_error(cld_optics_col%alloc_1scl(ncol    , nlev_rad, k_dist_lw))
+      call handle_error(cld_optics_all%alloc_1scl(ncol_tot, nlev_rad, k_dist_lw))
 
       ! Initialize aerosol optics; passing only the wavenumber bounds for each
       ! "band" rather than passing the full spectral discretization object, and
@@ -1628,55 +1662,177 @@ contains
       ! treatment of aerosol optics in the model, and prevents us from having to
       ! map bands to g-points ourselves since that will all be handled by the
       ! private routines internal to the optics class.
-      call handle_error(aerosol_optics_lw%alloc_1scl(ncol, nlev_rad, k_dist_lw%get_band_lims_wavenumber()))
-      call aerosol_optics_lw%set_name('longwave aerosol optics')
+      call handle_error(aer_optics_col%alloc_1scl(ncol    , nlev_rad, k_dist_lw%get_band_lims_wavenumber()))
+      call handle_error(aer_optics_all%alloc_1scl(ncol_tot, nlev_rad, k_dist_lw%get_band_lims_wavenumber()))
+
+      ! pbuf fields we need to overwrite with CRM fields to work with optics
+      call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
+      call pbuf_get_field(pbuf, pbuf_get_index('CLD'  ), cld  )
+
+      ! CRM fields
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_T_RAD'  ), crm_t  )
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QV_RAD' ), crm_qv )
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD' ), crm_qc )
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD' ), crm_qi )
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_cld)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRL')    , crm_qrl)
+
+      ! Save pbuf things to restore when we are done working with them. This is
+      ! needed because the CAM optics routines are inflexible and bury pbuf down
+      ! keep in the call stack, so we need to overwrite with CRM state here in
+      ! order to use CRM information to calculate optics.
+      iclwp_save = iclwp
+      iciwp_save = iciwp
+      cld_save   = cld
+      
+      ! State vectors
+      allocate(pmid    (ncol_tot,nlev_rad  ), tmid    (ncol_tot,nlev_rad  ), &
+               pint    (ncol_tot,nlev_rad+1), tint    (ncol_tot,nlev_rad+1), &
+               pmid_col(ncol    ,nlev_rad  ), tmid_col(ncol    ,nlev_rad  ), &
+               pint_col(ncol    ,nlev_rad+1), tint_col(ncol    ,nlev_rad+1))
+
+      allocate(qrl_rad(ncol_tot,nlev_rad), qrlc_rad(ncol_tot,nlev_rad), &
+               qrl_all(ncol_tot,pver    ), qrlc_all(ncol_tot,pver    ))
+
+      ! Indices into rad constituents arrays
+      ixwatvap = 1
+      call cnst_get_ind('CLDLIQ', ixcldliq)
+      call cnst_get_ind('CLDICE', ixcldice)
 
       ! Loop over diagnostic calls (what does this mean?)
       call rad_cnst_get_call_list(active_calls)
       do icall = N_DIAG,0,-1
          if (active_calls(icall)) then
 
-            ! Set gas concentrations (I believe the active gases may change
-            ! for different values of icall, which is why we do this within
-            ! the loop).
-            call t_startf('rad_gas_concentrations_lw')
-            call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
-            call t_stopf('rad_gas_concentrations_lw')
+            ! Loop over CRM columns; call routines designed to work with
+            ! pbuf/state over ncol columns for each CRM column index, and pack
+            ! into arrays dimensions ncol_tot = ncol * ncrms
+            j = 1
+            do iy = 1,crm_ny_rad
+               do ix = 1,crm_nx_rad
+                  do iz = 1,crm_nz
+                     ilev = pver - iz + 1
+                     do ic = 1,ncol
 
-            ! Get longwave aerosol optics
-            call t_startf('rad_aerosol_optics_lw')
-            call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aerosol_optics_lw)
-            call t_stopf('rad_aerosol_optics_lw')
+                        ! NOTE: I do not think these are used by optics
+                        state%q(ic,ilev,ixcldliq) = crm_qc(ic,ix,iy,iz)
+                        state%q(ic,ilev,ixcldice) = crm_qi(ic,ix,iy,iz)
+                        state%q(ic,ilev,ixwatvap) = crm_qv(ic,ix,iy,iz)
+                        state%t(ic,ilev)          = crm_t (ic,ix,iy,iz)
+
+                        ! In-cloud liquid and ice water paths (used by cloud optics)
+                        cld(ic,ilev) = crm_cld(ic,ix,iy,iz)
+                        if (cld(ic,ilev) > 0) then
+                           iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / cld(ic,ilev)
+                           iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / cld(ic,ilev)
+                        else
+                           iclwp(ic,ilev) = 0
+                           iciwp(ic,ilev) = 0
+                        end if
+
+                     end do  ! ic = 1,ncol
+                  end do  ! iz = 1,crm_nz
+
+                  ! Set rad state variables
+                  call set_rad_state(state, cam_in, &
+                                     tmid_col(1:ncol,1:nlev_rad), &
+                                     tint_col(1:ncol,1:nlev_rad+1), &
+                                     pmid_col(1:ncol,1:nlev_rad), &
+                                     pint_col(1:ncol,1:nlev_rad+1))
+
+                  ! Do optics
+                  call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_optics_col)
+                  call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_optics_col)
+
+                  ! Set gas concentrations (I believe the active gases may change
+                  ! for different values of icall, which is why we do this within
+                  ! the loop).
+                  call t_startf('rad_gas_concentrations_lw')
+                  call set_gas_concentrations(icall, state, pbuf, gas_concentrations_col)
+                  call t_stopf('rad_gas_concentrations_lw')
+
+                  do igas = 1,size(active_gases)
+                     call handle_error(gas_concentrations_col%get_vmr(trim(lower_case(active_gases(igas))), vmr_col(igas,:,:)))
+                  end do
+
+                  ! Copy optics into bigger optics object
+                  do ic = 1,ncol
+                     tmid(j,:) = tmid_col(ic,:)
+                     tint(j,:) = tint_col(ic,:)
+                     pmid(j,:) = pmid_col(ic,:)
+                     pint(j,:) = pint_col(ic,:)
+                     cld_optics_all%tau(j,:,:) = cld_optics_col%tau(ic,:,:)
+                     aer_optics_all%tau(j,:,:) = aer_optics_col%tau(ic,:,:)
+                     ! Copy gases here
+                     do igas = 1,size(active_gases)
+                        vmr_all(igas,j,:) = vmr_col(igas,ic,:)
+                     end do
+                     j = j + 1
+                  end do
+
+               end do
+            end do
+
+            ! Populate gas concentrations object
+            do igas = 1,size(active_gases)
+               call handle_error(gas_concentrations_all%set_vmr( &
+                  trim(lower_case(active_gases(igas))), vmr_all(igas,:,:)) & 
+               )
+            end do
+
+            ! Restore state and pbuf fields
+            iclwp = iclwp_save
+            iciwp = iciwp_save
+            cld   = cld_save
 
             ! Do longwave radiative transfer calculations
             call t_startf('rad_calculations_lw')
             call handle_error(rte_lw( &
-               k_dist_lw, gas_concentrations, &
-               pmid(1:ncol,1:nlev_rad), tmid(1:ncol,1:nlev_rad), &
-               pint(1:ncol,1:nlev_rad+1), tint(1:ncol,nlev_rad+1), &
-               surface_emissivity(1:nlwbands,1:ncol), &
-               cloud_optics_lw, &
-               fluxes_allsky, fluxes_clrsky, &
-               aer_props=aerosol_optics_lw, &
-               t_lev=tint(1:ncol,1:nlev_rad+1), &
+               k_dist_lw, gas_concentrations_all, &
+               pmid, tmid, &
+               pint, tint(1:ncol_tot,nlev_rad+1), &
+               surface_emissivity, &
+               cld_optics_all, &
+               fluxes_allsky_all, fluxes_clrsky_all, &
+               aer_props=aer_optics_all, &
+               t_lev=tint, &
                n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
             ))
             call t_stopf('rad_calculations_lw')
 
-            ! Check stuff
-            call assert_valid(fluxes_allsky%flux_up, 'flux_up invalid')
-            call assert_valid(fluxes_allsky%flux_dn, 'flux_dn invalid')
-
             ! Calculate heating rates
-            call calculate_heating_rate(fluxes_allsky, pint(1:ncol,1:nlev_rad+1), &
-                                        qrl_rad(1:ncol,1:nlev_rad))
-            call calculate_heating_rate(fluxes_clrsky, pint(1:ncol,1:nlev_rad+1), &
-                                        qrlc_rad(1:ncol,1:nlev_rad))
+            call calculate_heating_rate(fluxes_allsky_all, pint, qrl_rad)
+            call calculate_heating_rate(fluxes_clrsky_all, pint, qrlc_rad)
 
             ! Map heating rates to CAM columns and levels
-            qrl(1:ncol,1:pver) = qrl_rad(1:ncol,ktop:kbot)
-            qrlc(1:ncol,1:pver) = qrlc_rad(1:ncol,ktop:kbot)
-                        
+            qrl_all(:,1:pver) = qrl_rad(:,ktop:kbot)
+            qrlc_all(:,1:pver) = qrlc_rad(:,ktop:kbot)
+
+            ! Map to CRM columns
+            j = 1
+            do iy = 1,crm_ny_rad
+               do ix = 1,crm_nx_rad
+                  do ic = 1,ncol
+                     do iz = 1,crm_nz
+                        ilev = pver - iz + 1
+                        crm_qrl(ic,ix,iy,iz) = qrl(j,ilev)
+                     end do
+                     j = j + 1
+                  end do
+               end do
+            end do
+
+            ! Calculate domain averages
+            call average_packed_array(qrl_all , qrl(1:ncol,:))
+            call average_packed_array(qrlc_all, qrlc(1:ncol,:))
+            call average_packed_array(fluxes_allsky_all%flux_up , fluxes_allsky%flux_up )
+            call average_packed_array(fluxes_allsky_all%flux_dn , fluxes_allsky%flux_dn )
+            call average_packed_array(fluxes_allsky_all%flux_net, fluxes_allsky%flux_net)
+            call average_packed_array(fluxes_clrsky_all%flux_up , fluxes_clrsky%flux_up )
+            call average_packed_array(fluxes_clrsky_all%flux_dn , fluxes_clrsky%flux_dn )
+            call average_packed_array(fluxes_clrsky_all%flux_net, fluxes_clrsky%flux_net)
+                       
             ! Send fluxes to history buffer
             call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
 
@@ -1684,10 +1840,40 @@ contains
       end do  ! loop over diagnostic calls
 
       ! Free fluxes and optical properties
-      call free_optics_lw(cloud_optics_lw)
-      call free_optics_lw(aerosol_optics_lw)
+      call free_optics_lw(cld_optics_all)
+      call free_optics_lw(aer_optics_all)
+      call free_optics_lw(cld_optics_col)
+      call free_optics_lw(aer_optics_col)
 
    end subroutine radiation_driver_lw
+
+   !----------------------------------------------------------------------------
+
+   subroutine average_packed_array(array_packed, array_avg)
+      use crmdims, only: crm_nx_rad, crm_ny_rad, crm_nz
+      real(r8), intent(in) :: array_packed(:,:)
+      real(r8), intent(out) :: array_avg(:,:)
+      real(r8) :: ncol, ncol_tot, inverse_ncol
+      integer :: ic, ix, iy, iz, j
+
+      ncol = size(array_avg, 1)
+      ncol_tot = ncol * crm_nx_rad * crm_ny_rad
+      call assert(size(array_packed,1) == ncol_tot, 'size(array_packed,1) /= ncol_tot')
+      inverse_ncol = 1._r8 / ncol
+
+      array_avg = 0
+      do iz = 1,size(array_packed,2)
+         j = 1
+         do iy = 1,crm_ny_rad
+            do ix = 1,crm_nx_rad
+               do ic = 1,ncol
+                  array_avg(ic,iz) = array_avg(ic,iz) + array_packed(j,iz) * inverse_ncol
+                  j = j + 1
+               end do
+            end do
+         end do 
+      end do
+   end subroutine average_packed_array
 
    !----------------------------------------------------------------------------
 
