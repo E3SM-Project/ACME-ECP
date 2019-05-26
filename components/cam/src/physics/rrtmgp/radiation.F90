@@ -1159,7 +1159,7 @@ contains
       real(r8) :: qrlc(pcols,pver) = 0._r8
 
       ! Pointers to CRM fields on physics buffer
-      real(r8), pointer, dimension(:,:,:,:) :: crm_qrad
+      real(r8), pointer, dimension(:,:,:,:) :: crm_qrad, crm_qrl
 
       ! Options for MMF/SP
       logical :: use_SPCAM
@@ -1278,13 +1278,14 @@ contains
       ! Populate net CRM heating tendency. For now, this just uses the domain
       ! averaged radiative heating, so will apply homogeneous heating to the
       ! CRM, calculated from the GCM fields.
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRL'), crm_qrl)
       crm_qrad = 0
       do iz = 1,crm_nz
          do iy = 1,crm_ny_rad
             do ix = 1,crm_nx_rad
                do ic = 1,ncol
                   ilev = pver - iz + 1
-                  crm_qrad(ic,ix,iy,iz) = (qrs(ic,ilev) + qrl(ic,ilev)) / cpair
+                  crm_qrad(ic,ix,iy,iz) = (qrs(ic,ilev) + crm_qrl(ic,ix,iy,iz)) / cpair
                end do
             end do
          end do
