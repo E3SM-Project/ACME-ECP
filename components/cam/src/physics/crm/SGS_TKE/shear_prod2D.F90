@@ -27,9 +27,9 @@ contains
             rdz = 1./(dz(icrm)*adz(k,icrm))
             rdzw_up = 1./(dz(icrm)*adzw(kc,icrm))
             rdzw_dn = 1./(dz(icrm)*adzw(k,icrm))
-            rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
-            rdx_up=rdx0 * sqrt(dx*rdzw_up)
-            rdx_dn=rdx0 * sqrt(dx*rdzw_dn)
+            rdx=rdx0 !!* sqrt(dx*rdz) ! take into account grid anisotropy
+            rdx_up=rdx0 !!* sqrt(dx*rdzw_up)
+            rdx_dn=rdx0 !!* sqrt(dx*rdzw_dn)
             ib=i-1
             ic=i+1
             def2(i,j,k,icrm)=2.* ( &
@@ -52,8 +52,8 @@ contains
             kc=k+1
             rdz = 1./(dz(icrm)*adz(k,icrm))
             rdzw_up = 1./(dz(icrm)*adzw(kc,icrm))
-            rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
-            rdx_up=rdx0 * sqrt(dx*rdzw_up)
+            rdx=rdx0 !!* sqrt(dx*rdz) ! take into account grid anisotropy
+            rdx_up=rdx0 !!* sqrt(dx*rdzw_up)
             ib=i-1
             ic=i+1
             def2(i,j,k,icrm)=2.* ( &
@@ -73,8 +73,8 @@ contains
             kb=k-1
             rdz = 1./(dz(icrm)*adz(k,icrm))
             rdzw_dn = 1./(dz(icrm)*adzw(k,icrm))
-            rdx=rdx0 * sqrt(dx*rdz) ! take into account grid anisotropy
-            rdx_dn=rdx0 * sqrt(dx*rdzw_dn)
+            rdx=rdx0 !!* sqrt(dx*rdz) ! take into account grid anisotropy
+            rdx_dn=rdx0 !!* sqrt(dx*rdzw_dn)
             ib=i-1
             ic=i+1
             def2(i,j,k,icrm)=2.* ( &
