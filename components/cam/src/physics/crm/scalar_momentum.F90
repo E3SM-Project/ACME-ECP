@@ -18,6 +18,7 @@ module scalar_momentum_mod
 !---------------------------------------------------------------------------
    use params
    use grid, only: nx,ny,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
+   use openacc_utils
    implicit none
 
    public allocate_scalar_momentum
@@ -59,15 +60,26 @@ module scalar_momentum_mod
      allocate( u_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
      allocate( v_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
 
-     allocate( fluxb_u_esmt (nx, ny,ncrms) )
-     allocate( fluxb_v_esmt (nx, ny,ncrms) )
-     allocate( fluxt_u_esmt (nx, ny,ncrms) )
-     allocate( fluxt_v_esmt (nx, ny,ncrms) )
+     allocate( fluxb_u_esmt (ncrms,nx, ny) )
+     allocate( fluxb_v_esmt (ncrms,nx, ny) )
+     allocate( fluxt_u_esmt (ncrms,nx, ny) )
+     allocate( fluxt_v_esmt (ncrms,nx, ny) )
 
-     allocate( u_esmt_sgs   (nz,ncrms)  )
-     allocate( v_esmt_sgs   (nz,ncrms)  )
-     allocate( u_esmt_diff  (nz,ncrms)  )
-     allocate( v_esmt_diff  (nz,ncrms)  )
+     allocate( u_esmt_sgs   (ncrms,nz)  )
+     allocate( v_esmt_sgs   (ncrms,nz)  )
+     allocate( u_esmt_diff  (ncrms,nz)  )
+     allocate( v_esmt_diff  (ncrms,nz)  )
+
+     call prefetch( u_esmt       )
+     call prefetch( v_esmt       )
+     call prefetch( fluxb_u_esmt )
+     call prefetch( fluxb_v_esmt )
+     call prefetch( fluxt_u_esmt )
+     call prefetch( fluxt_v_esmt )
+     call prefetch( u_esmt_sgs   )
+     call prefetch( v_esmt_sgs   )
+     call prefetch( u_esmt_diff  )
+     call prefetch( v_esmt_diff  )
 
      zero = 0.
 
@@ -125,15 +137,11 @@ subroutine scalar_momentum_tend(ncrms)
    use grid
    implicit none
    integer, intent(in) :: ncrms
-
    real(crm_rknd), dimension(nx,ny,nzm) :: u_esmt_pgf_3D
    real(crm_rknd), dimension(nx,ny,nzm) :: v_esmt_pgf_3D
-   real(crm_rknd) factor_xy
    integer :: i,j,k,icrm
 
    do icrm = 1 , ncrms
-     factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
-
      call scalar_momentum_pgf(ncrms,icrm,u_esmt(icrm,:,:,:),u_esmt_pgf_3D)
      call scalar_momentum_pgf(ncrms,icrm,v_esmt(icrm,:,:,:),v_esmt_pgf_3D)
 

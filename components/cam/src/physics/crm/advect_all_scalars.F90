@@ -22,6 +22,7 @@ contains
     integer k,icrm, i, j, kk
     real(crm_rknd), allocatable :: esmt_offset(:)    ! whannah - offset for advecting scalar momentum tracers
     real(crm_rknd), allocatable :: dummy(:,:)
+    real(crm_rknd) :: tmp
 
     allocate( esmt_offset(ncrms) )
     allocate( dummy(ncrms,nz) )
@@ -74,17 +75,46 @@ contains
 #if defined(SP_ESMT)
     ! whannah - the esmt_offset simply ensures that the scalar momentum
     ! tracers are positive definite during the advection calculation
+    !$acc parallel loop async(asyncid)
     do icrm = 1 , ncrms
-      esmt_offset(icrm) = abs( minval( (/ minval(u_esmt(icrm,:,:,:)), minval(v_esmt(icrm,:,:,:)) /) ) ) + 50.
-      u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) + esmt_offset(icrm)
-      v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) + esmt_offset(icrm)
+      esmt_offset(icrm) = 10000.
+    enddo
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm
+      do j = dimy1_s,dimy2_s
+        do i = dimx1_s,dimx2_s
+          do icrm = 1 , ncrms
+            tmp = min( u_esmt(icrm,i,j,k) , v_esmt(icrm,i,j,k) )
+            !$acc atomic update
+            esmt_offset(icrm) = min(esmt_offset(icrm),tmp)
+          enddo
+        enddo
+      enddo
+    enddo
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm
+      do j = dimy1_s,dimy2_s
+        do i = dimx1_s,dimx2_s
+          do icrm = 1 , ncrms
+            u_esmt(icrm,i,j,k) = u_esmt(icrm,i,j,k) + ( abs( esmt_offset(icrm) ) + 50. )
+            v_esmt(icrm,i,j,k) = v_esmt(icrm,i,j,k) + ( abs( esmt_offset(icrm) ) + 50. )
+          enddo
+        enddo
+      enddo
     enddo
     ! advection of scalar momentum tracers
     call advect_scalar(ncrms,u_esmt,dummy,dummy)
     call advect_scalar(ncrms,v_esmt,dummy,dummy)
-    do icrm = 1 , ncrms
-      u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) - esmt_offset(icrm)
-      v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) - esmt_offset(icrm)
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm
+      do j = dimy1_s,dimy2_s
+        do i = dimx1_s,dimx2_s
+          do icrm = 1 , ncrms
+            u_esmt(icrm,i,j,k) = u_esmt(icrm,i,j,k) - ( abs( esmt_offset(icrm) ) + 50. )
+            v_esmt(icrm,i,j,k) = v_esmt(icrm,i,j,k) - ( abs( esmt_offset(icrm) ) + 50. )
+          enddo
+        enddo
+      enddo
     enddo
 #endif
 
