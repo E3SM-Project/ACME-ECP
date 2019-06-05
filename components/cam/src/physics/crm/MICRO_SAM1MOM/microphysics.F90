@@ -491,11 +491,15 @@ CONTAINS
   subroutine micro_precip_fall(ncrms)
     use vars
     use params, only : pi
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) omega(ncrms,nx,ny,nzm)
+    real(crm_rknd), allocatable :: omega(:,:,:,:)
     integer ind
     integer i,j,k,icrm
+
+    allocate(omega(ncrms,nx,ny,nzm))
+    call prefetch( omega )
 
     crain = b_rain / 4.
     csnow = b_snow / 4.
@@ -516,6 +520,8 @@ CONTAINS
     end do
 
     call precip_fall(ncrms, 2, omega, ind)
+
+    deallocate(omega)
 
   end subroutine micro_precip_fall
 
