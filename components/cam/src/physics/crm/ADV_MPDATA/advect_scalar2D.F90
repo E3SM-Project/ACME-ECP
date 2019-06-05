@@ -58,7 +58,7 @@ contains
     call prefetch( irho )
     call prefetch( irhow )
 
-    !$acc parallel loop collapse(2) copy(www) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do i = -1 , nxp2
       do icrm = 1 , ncrms
         www(icrm,i,j,nz)=0.
@@ -67,7 +67,7 @@ contains
 
     if (dowallx) then
       if (mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop collapse(3) copy(u) async(asyncid)
+        !$acc parallel loop collapse(3) async(asyncid)
         do k=1,nzm
           do i=dimx1_u,1
             do icrm = 1 , ncrms
@@ -77,7 +77,7 @@ contains
         enddo
       endif
       if (mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop collapse(3) copy(u) async(asyncid)
+        !$acc parallel loop collapse(3) async(asyncid)
         do k=1,nzm
           do i=nx+1,dimx2_u
             do icrm = 1 , ncrms
@@ -91,7 +91,7 @@ contains
     !-----------------------------------------
 
     if (nonos) then
-      !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=0,nxp1
           do icrm = 1 , ncrms
@@ -106,7 +106,7 @@ contains
       enddo
     endif  ! nonos
 
-    !$acc parallel loop collapse(3) copyin(u,f,w) copy(uuu,www,flux) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do k=1,nzm
       do i=-1,nxp3
         do icrm = 1 , ncrms
@@ -119,7 +119,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(2) copyin(rho,adz,rhow) copy(irho,iadz,irhow) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         irho(icrm,k) = 1./rho(icrm,k)
@@ -127,7 +127,7 @@ contains
         irhow(icrm,k)=1./(rhow(icrm,k)*adz(icrm,k))
       enddo
     enddo
-    !$acc parallel loop collapse(3) copyin(www,uuu,iadz,irho) copy(flux,f) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do k=1,nzm
       do i=-1,nxp2
         do icrm = 1 , ncrms
@@ -141,7 +141,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(adz,f,u,irho,w,irhow) copy(uuu,www) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do k=1,nzm
       do i=0,nxp2
         do icrm = 1 , ncrms
@@ -162,7 +162,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copy(www) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do i = -1 , nxp2
       do icrm = 1 , ncrms
         www(icrm,i,j,1) = 0.
@@ -171,7 +171,7 @@ contains
     !---------- non-osscilatory option ---------------
 
     if (nonos) then
-      !$acc parallel loop collapse(3) copyin(f) copy(mx,mn) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=0,nxp1
           do icrm = 1 , ncrms
@@ -185,7 +185,7 @@ contains
         enddo
       enddo
 
-      !$acc parallel loop collapse(3) copyin(rho,f,uuu,www,iadz) copy(mx,mn) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=0,nxp1
           do icrm = 1 , ncrms
@@ -199,7 +199,7 @@ contains
         enddo
       enddo
 
-      !$acc parallel loop collapse(3) copyin(mx,mn) copy(uuu,www,flux) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=1,nxp1
           do icrm = 1 , ncrms
@@ -218,7 +218,7 @@ contains
       enddo
     endif ! nonos
 
-    !$acc parallel loop collapse(3) copyin(f,uuu,www,iadz,irho) copy(f) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms

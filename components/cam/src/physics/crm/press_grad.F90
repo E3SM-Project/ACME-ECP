@@ -17,7 +17,7 @@ contains
     rdx=1./dx
     rdy=1./dy
 
-    !$acc parallel loop collapse(4) copyin(p,dz,adzw) copy(dudt,dvdt,dwdt) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -34,7 +34,7 @@ contains
       end do ! k
     enddo
 
-    !$acc parallel loop collapse(4) copyin(rho) copy(p) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
         do i=0,nx
@@ -47,7 +47,7 @@ contains
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
 
-      !$acc parallel loop collapse(3) copy(dudt) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do j=1,ny
             do icrm = 1 , ncrms
@@ -60,7 +60,7 @@ contains
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
 
-      !$acc parallel loop collapse(3) copy(dvdt) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms

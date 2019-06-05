@@ -41,7 +41,7 @@ contains
     dxy=dx/dy
     dyx=dy/dx
 
-    !$acc parallel loop collapse(4) copyin(dz,adzw,grdf_x,u,v,w,tk) copy(fu,fv,fw) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=0,nx
@@ -63,7 +63,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(4) copyin(fu,fv,fw) copy(dudt,dvdt,dwdt) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -78,7 +78,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copyin(dz,adzw,grdf_y,tk,v,u,w) copy(fu,fv,fw) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=0,ny
         do i=1,nx
@@ -100,7 +100,7 @@ contains
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(4) copyin(fu,fv,fw) copy(dudt,dvdt,dwdt) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -115,7 +115,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copy(uwsb,vwsb) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k = 1 , nzm
       do icrm = 1 , ncrms
         uwsb(icrm,k)=0.
@@ -124,7 +124,7 @@ contains
     enddo
 
     !-------------------------
-    !$acc parallel loop collapse(4) copyin(dz,grdf_z,adz,adzw,w,u,v,tk,rhow,rho) copy(fu,fv,fw,uwsb,vwsb) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm-1
       do j=1,ny
         do i=1,nx
@@ -154,7 +154,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(dz,grdf_z,tk,w,adz,rho,fluxbu,fluxbv,fluxtu,fluxtv,rhow) copy(fu,fv,fw,uwsb,vwsb) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -174,7 +174,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copyin(rho,adz,fu,fv) copy(dudt,dvdt) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -188,7 +188,7 @@ contains
       enddo ! k
     enddo
 
-    !$acc parallel loop collapse(4) copyin(rhow,adzw,fw) copy(dwdt) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=2,nzm
       do j=1,ny
         do i=1,nx

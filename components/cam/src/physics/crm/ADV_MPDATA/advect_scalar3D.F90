@@ -59,7 +59,7 @@ contains
     call prefetch( irho  )
     call prefetch( irhow )
 
-    !$acc parallel loop collapse(3) copy(www) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do j = -1 , nyp2
       do i = -1 , nxp2
         do icrm = 1 , ncrms
@@ -70,7 +70,7 @@ contains
 
     if (dowallx) then
       if (mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop collapse(4) copy(u) async(asyncid)
+        !$acc parallel loop collapse(4) async(asyncid)
         do k=1,nzm
           do j=dimy1_u,dimy2_u
             do i=dimx1_u,1
@@ -82,7 +82,7 @@ contains
         enddo
       endif
       if (mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop collapse(4) copy(u) async(asyncid)
+        !$acc parallel loop collapse(4) async(asyncid)
         do k=1,nzm
           do j=dimy1_u,dimy2_u
             do i=nx+1,dimx2_u
@@ -97,7 +97,7 @@ contains
 
     if (dowally) then
       if (rank.lt.nsubdomains_x) then
-        !$acc parallel loop collapse(4) copy(v) async(asyncid)
+        !$acc parallel loop collapse(4) async(asyncid)
         do k=1,nzm
           do j=dimy1_v,1
             do i=dimx1_v,dimx2_v
@@ -109,7 +109,7 @@ contains
         enddo
       endif
       if (rank.gt.nsubdomains-nsubdomains_x-1) then
-        !$acc parallel loop collapse(4) copy(v) async(asyncid)
+        !$acc parallel loop collapse(4) async(asyncid)
         do k=1,nzm
           do j=ny+1,dimy2_v
             do i=dimx1_v,dimx2_v
@@ -125,7 +125,7 @@ contains
     !-----------------------------------------
 
     if (nonos) then
-      !$acc parallel loop collapse(4) copyin(f) copy(mx,mn) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k=1,nzm
         do j=0,nyp1
           do i=0,nxp1
@@ -146,7 +146,7 @@ contains
       enddo
     endif  ! nonos
 
-    !$acc parallel loop collapse(4) copyin(u,v,w,f) copy(flux,uuu,vvv,www) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=-1,nyp3
         do i=-1,nxp3
@@ -166,7 +166,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copyin(rho,adz,rhow) copy(irho,iadz,irhow) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         irho(icrm,k) = 1./rho(icrm,k)
@@ -175,7 +175,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copyin(www,uuu,vvv,iadz,irho) copy(flux,f) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=-1,nyp2
         do i=-1,nxp2
@@ -192,7 +192,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copyin(adz,f,u,irho,v,w,irhow) copy(uuu,vvv,www) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=0,nyp2
         do i=0,nxp2
@@ -240,7 +240,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copy(www) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do j = -1 , nyp2
       do i = -1 , nxp2
         do icrm = 1 , ncrms
@@ -251,7 +251,7 @@ contains
 
     !---------- non-osscilatory option ---------------
     if (nonos) then
-      !$acc parallel loop collapse(4) copyin(f) copy(mx,mn) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k=1,nzm
         do j=0,nyp1
           do i=0,nxp1
@@ -271,7 +271,7 @@ contains
         enddo
       enddo
 
-      !$acc parallel loop collapse(4) copyin(rho,f,uuu,vvv,www,iadz) copy(mx,mn) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k=1,nzm
         do j=0,nyp1
           do i=0,nxp1
@@ -292,7 +292,7 @@ contains
         enddo
       enddo
 
-      !$acc parallel loop collapse(4) copyin(mx,mn) copy(uuu,vvv,www,flux) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k=1,nzm
         do j=1,nyp1
           do i=1,nxp1
@@ -320,7 +320,7 @@ contains
       enddo
     endif ! nonos
 
-    !$acc parallel loop collapse(4) copyin(uuu,vvv,www,irho,iadz) copy(f) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

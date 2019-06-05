@@ -41,7 +41,7 @@ contains
       call task_abort()
     end if
 
-    !$acc parallel loop copyin(z) copy(n_damp) async(asyncid)
+    !$acc parallel loop async(asyncid)
     do icrm = 1 , ncrms
       do k=nzm,1,-1
         if(z(icrm,nzm)-z(icrm,k).lt.damp_depth*z(icrm,nzm)) then
@@ -50,7 +50,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(2) copyin(z,n_damp) copy(tau) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
         if ( k <= nzm .and. k >= nzm-n_damp(icrm) ) then
@@ -63,7 +63,7 @@ contains
     ! recalculate grid-mean u0, v0, t0 first,
     ! as t has been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
-    !$acc parallel loop collapse(2) copy(u0loc,v0loc,t0loc) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k=1, nzm
       do icrm = 1 , ncrms
         u0loc(icrm,k)=0.0
@@ -71,7 +71,7 @@ contains
         t0loc(icrm,k)=0.0
       end do
     end do
-    !$acc parallel loop collapse(4) copyin(u,v,t) copy(u0loc,v0loc,t0loc) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1, nzm
       do j=1, ny
         do i=1, nx
@@ -92,7 +92,7 @@ contains
 
    !For working around PGI OpenACC bug where it didn't create enough gangs 
     numgangs = ceiling(ncrms*ny*nx/128.)
-    !$acc parallel loop collapse(4) vector_length(128) num_gangs(numgangs) copyin(u,v,w,u0loc,tau,v0loc,t0loc,qv,qv0,n_damp) copy(dudt,dvdt,dwdt,t,micro_field) async(asyncid)
+    !$acc parallel loop collapse(4) vector_length(128) num_gangs(numgangs) async(asyncid)
     do k = 1 , nzm
       do j=1,ny
         do i=1,nx

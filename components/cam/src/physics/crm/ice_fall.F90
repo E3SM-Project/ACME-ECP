@@ -26,12 +26,12 @@ contains
     call prefetch( kmin )
     call prefetch( fz )
 
-    !$acc parallel loop copy(kmin,kmax) async(asyncid)
+    !$acc parallel loop async(asyncid)
     do icrm = 1 , ncrms
       kmax(icrm)=0
       kmin(icrm)=nzm+1
     enddo
-    !$acc parallel loop collapse(3) copyin(qcl,qci,tabs) copy(kmin,kmax) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do j = 1, ny
       do i = 1, nx
         do icrm = 1 , ncrms
@@ -46,7 +46,7 @@ contains
         end do
       end do
     end do
-    !$acc parallel loop collapse(2) copy(qifall,tlatqi) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k = 1,nzm
       do icrm = 1 , ncrms
         qifall(icrm,k) = 0.
@@ -56,7 +56,7 @@ contains
 
     if(index_cloud_ice.eq.-1) return
 
-    !$acc parallel loop collapse(4) copy(fz) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k = 1,nz
       do j = 1, ny
         do i = 1, nx
@@ -70,7 +70,7 @@ contains
     ! Compute cloud ice flux (using flux limited advection scheme, as in
     ! chapter 6 of Finite Volume Methods for Hyperbolic Problems by R.J.
     ! LeVeque, Cambridge University Press, 2002).
-    !$acc parallel loop collapse(4) copyin(kmin,kmax,adz,dz,rho,qci) copy(fz) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k = 1 , nz
       do j = 1,ny
         do i = 1,nx
@@ -113,7 +113,7 @@ contains
         end do
       end do
     enddo
-    !$acc parallel loop collapse(3) copy(fz) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do j = 1, ny
       do i = 1, nx
         do icrm = 1 , ncrms
@@ -124,7 +124,7 @@ contains
 
     ici = index_cloud_ice
 
-    !$acc parallel loop collapse(4) copyin(kmin,kmax,dz,adz,rho,fz) copy(micro_field,qifall,t,tlatqi) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1, nz
       do j=1,ny
         do i=1,nx
@@ -154,7 +154,7 @@ contains
       end do
     end do
 
-    !$acc parallel loop collapse(3) copyin(dz,fz) copy(precsfc,precssfc) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms

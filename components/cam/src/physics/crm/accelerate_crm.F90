@@ -182,7 +182,7 @@ module accelerate_crm_mod
       !! Compute the average among horizontal columns for each variable
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      !$acc parallel loop collapse(2) copy(tbaccel,qtbaccel,vbaccel,ubaccel) async(asyncid)
+      !$acc parallel loop collapse(2) async(asyncid)
       do k = 1, nzm
         do icrm = 1, ncrms
           tbaccel(icrm,k) = 0
@@ -193,7 +193,7 @@ module accelerate_crm_mod
           endif
         enddo
       enddo
-      !$acc parallel loop collapse(4) copyin(t,qcl,qci,qv,u,v) copy(tbaccel,qtbaccel,ubaccel,vbaccel) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k = 1, nzm
         do j = 1 , ny
           do i = 1 , nx
@@ -222,7 +222,7 @@ module accelerate_crm_mod
       !! Compute the accelerated tendencies
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      !$acc parallel loop collapse(2) copyin(t0,q0,u0,v0,tbaccel,qtbaccel,ubaccel,vbaccel) copy(ttend_acc,qtend_acc,utend_acc,vtend_acc) copy(ceaseflag) async(asyncid)
+      !$acc parallel loop collapse(2) async(asyncid)
       do k = 1, nzm
         do icrm = 1, ncrms
           ttend_acc(icrm,k) = tbaccel(icrm,k) - t0(icrm,k)
@@ -267,7 +267,7 @@ module accelerate_crm_mod
       !! Apply the accelerated tendencies
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      !$acc parallel loop collapse(4) copyin(ttend_acc,utend_acc,vtend_acc,qtend_acc) copy(t,u,v,micro_field) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k = 1, nzm
         do j = 1, ny
           do i = 1, nx
@@ -288,7 +288,7 @@ module accelerate_crm_mod
       !! Fix negative micro and readjust among separate water species
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      !$acc parallel loop collapse(2) copy(qpoz,qneg) async(asyncid)
+      !$acc parallel loop collapse(2) async(asyncid)
       do k = 1, nzm
         do icrm = 1, ncrms
           qpoz(icrm,k) = 0.
@@ -296,7 +296,7 @@ module accelerate_crm_mod
         enddo
       enddo
       ! separately accumulate positive and negative qt values in each layer k
-      !$acc parallel loop collapse(4) copyin(micro_field) copy(qneg,qpoz) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k = 1, nzm
         do j = 1, ny
           do i = 1, nx
@@ -312,7 +312,7 @@ module accelerate_crm_mod
           enddo
         enddo
       enddo
-      !$acc parallel loop collapse(4) copyin(qpoz,qneg) copy(micro_field,qv,qcl,qci,micro_field) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k = 1, nzm
         do j = 1 , ny
           do i = 1 , nx

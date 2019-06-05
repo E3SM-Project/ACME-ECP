@@ -25,7 +25,7 @@ module kurant_mod
       call prefetch(uhm )
 
       ncycle = 1
-      !$acc parallel loop collapse(2) copy(wm,uhm) async(asyncid)
+      !$acc parallel loop collapse(2) async(asyncid)
       do k = 1 , nz
         do icrm = 1 , ncrms
           wm(icrm,k) = 0.
@@ -33,7 +33,7 @@ module kurant_mod
         enddo
       enddo
 
-      !$acc parallel loop collapse(4) copyin(u,v,w) copy(uhm,wm) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k = 1,nzm
         do j = 1 , ny
           do i = 1 , nx
@@ -51,7 +51,7 @@ module kurant_mod
       enddo
 
       cfl = 0.
-      !$acc parallel loop collapse(2) copyin(uhm,wm,dz,adzw) reduction(max:cfl) async(asyncid)
+      !$acc parallel loop collapse(2) reduction(max:cfl) async(asyncid)
       do k=1,nzm
         do icrm = 1 , ncrms
           tmp = max( uhm(icrm,k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(icrm,k),wm(icrm,k+1))*dt/(dz(icrm)*adzw(icrm,k)) )
@@ -64,7 +64,6 @@ module kurant_mod
       ncycle = max(ncycle,max(1,ceiling(cfl/0.7)))
 
       if(ncycle.gt.max_ncycle) then
-        !$acc update host(wm,uhm,tabs)
         if(masterproc) print *,'kurant() - the number of cycles exceeded 4.'
         do icrm = 1 , ncrms
           write(0, 5550) cfl, cfl_sgs, latitude(icrm,1,1), longitude(icrm,1,1)

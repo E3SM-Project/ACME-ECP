@@ -14,14 +14,14 @@ contains
 
     !--------------------------------------------------------
     if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
-      !$acc parallel loop copyin(utend,vtend) copy(uhl,vhl,taux0,tauy0) async(asyncid)
+      !$acc parallel loop async(asyncid)
       do icrm = 1 , ncrms
         uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
         vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
         taux0(icrm) = 0.
         tauy0(icrm) = 0.
       enddo
-      !$acc parallel loop collapse(3) copyin(u,v,rho,z,bflx,z0,uhl,vhl) copy(fluxbu,fluxbv,taux0,tauy0) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms

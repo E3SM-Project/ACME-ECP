@@ -40,7 +40,7 @@ contains
 
     !For working around PGI bug where it didn't create enough OpenACC gangs
     numgangs = ceiling(ncrms*nzm*ny*nx/128.)
-    !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) copy(dfdt) async(asyncid)
+    !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) async(asyncid)
     do k = 1 , nzm
       do i = 1 , nx
         do icrm = 1 , ncrms
@@ -51,7 +51,7 @@ contains
 
     if(dowallx) then
       if(mod(rank,nsubdomains_x).eq.0) then
-        !$acc parallel loop collapse(2) copy(field) async(asyncid)
+        !$acc parallel loop collapse(2) async(asyncid)
         do k=1,nzm
           do icrm = 1 , ncrms
             field(icrm,0,j,k) = field(icrm,1,j,k)
@@ -59,7 +59,7 @@ contains
         enddo
       endif
       if(mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
-        !$acc parallel loop collapse(2) copy(field) async(asyncid)
+        !$acc parallel loop collapse(2) async(asyncid)
         do k=1,nzm
           do icrm = 1 , ncrms
             field(icrm,nx+1,j,k) = field(icrm,nx,j,k)
@@ -69,7 +69,7 @@ contains
     endif
 
     if(.not.docolumn) then
-      !$acc parallel loop collapse(3) copyin(grdf_x,tkh,field) copy(flx) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=0,nx
           do icrm = 1 , ncrms
@@ -80,7 +80,7 @@ contains
           enddo
         enddo
       enddo
-      !$acc parallel loop collapse(3) copyin(flx) copy(dfdt) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
@@ -91,14 +91,14 @@ contains
       enddo
     endif
 
-    !$acc parallel loop collapse(2) copy(flux) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k = 1 , nzm
       do icrm = 1 , ncrms
         flux(icrm,k) = 0.
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(rhow,adzw,dz,grdf_z,tkh,field,fluxb,fluxt) copy(flx,flux) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -123,7 +123,7 @@ contains
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(adz,rho,flx) copy(dfdt,field) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms

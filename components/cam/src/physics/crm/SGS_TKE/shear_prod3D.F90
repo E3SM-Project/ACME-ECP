@@ -18,7 +18,7 @@ contains
     rdx0=1./dx
     rdy0=1./dy
 
-    !$acc parallel loop collapse(4) copyin(dz,adz,adzw,u,v,w,u0,v0) copy(def2) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
