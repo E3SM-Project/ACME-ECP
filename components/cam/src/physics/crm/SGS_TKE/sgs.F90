@@ -61,9 +61,9 @@ module sgs
   real(crm_rknd), allocatable :: tkesbbuoy (:,:)
   real(crm_rknd), allocatable :: tkesbshear(:,:)
   real(crm_rknd), allocatable :: tkesbdiss (:,:)
-  real(crm_rknd), pointer :: tke(:,:,:,:)
-  real(crm_rknd), pointer :: tk (:,:,:,:)
-  real(crm_rknd), pointer :: tkh(:,:,:,:)
+  real(crm_rknd), pointer :: tke(:,:,:,:) ! SGS TKE
+  real(crm_rknd), pointer :: tk (:,:,:,:) ! SGS eddy viscosity
+  real(crm_rknd), pointer :: tkh(:,:,:,:) ! SGS eddy conductivity
 
 CONTAINS
 
@@ -417,7 +417,8 @@ CONTAINS
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+                            micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
       end if
     end do
 
@@ -440,8 +441,10 @@ CONTAINS
 
 #if defined(SP_ESMT)
     ! diffusion of scalar momentum tracers
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+                        u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+                        v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
 #endif
 
     deallocate( dummy )

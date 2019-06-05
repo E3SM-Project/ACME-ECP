@@ -565,10 +565,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(icrm,1))
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
     z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
-  enddo
-
-  !$acc parallel loop async(asyncid)
-  do icrm = 1 , ncrms
     crm_output%timing_factor(icrm) = 0.
     crm_output%prectend (icrm)=colprec (icrm)
     crm_output%precstend(icrm)=colprecs(icrm)
@@ -1118,10 +1114,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #endif /* SP_ESMT */
 
   !$acc parallel loop collapse(4) async(asyncid)
-  do icrm=1,ncrms
-    do k = 1,nzm
-      do i=1,nx
-        do j=1,ny
+  do k = 1,nzm
+    do i=1,nx
+      do j=1,ny
+        do icrm=1,ncrms
           l = plev-k+1
 
           tmp = (qpl(icrm,i,j,k)+qpi(icrm,i,j,k))*crm_input%pdel(icrm,plev-k+1)
@@ -1464,6 +1460,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         tmp = k
         !$acc atomic update
         crm_output%jt_crm(icrm) = min( tmp , crm_output%jt_crm(icrm) )
+
         tmp = k
         !$acc atomic update
         crm_output%mx_crm(icrm) = max( tmp , crm_output%mx_crm(icrm) )
