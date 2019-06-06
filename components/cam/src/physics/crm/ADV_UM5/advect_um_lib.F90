@@ -58,7 +58,7 @@ contains
     integer, intent(in) :: i
 
     ! Face value
-    face_2nd_z = 0.5 * ( f_i + f_im1 - cn * adz(i,icrm) * iadzw(i) * ( f_i - f_im1 ) )
+    face_2nd_z = 0.5 * ( f_i + f_im1 - cn * adz(icrm,i) * iadzw(i) * ( f_i - f_im1 ) )
 
   end function face_2nd_z
 
@@ -97,13 +97,13 @@ contains
     ! local
     real(crm_rknd) :: positive_3rd, negative_3rd
 
-    positive_3rd = 1./6. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i) * iadzw(i-1) - 1. ) &
-      * ( adzw(i-1,icrm) * iadz(i-1) * ( f_i - f_im1 ) - adzw(i,icrm) * iadz(i-1) * ( f_im1 - f_im2 ) )
-    negative_3rd = 1./6. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * adzw(i,icrm) - 1. ) &
-      * ( adzw(i,icrm) * iadz(i) * ( f_ip1 - f_i ) - adzw(i+1,icrm) * iadz(i) * ( f_i - f_im1 ) )
+    positive_3rd = 1./6. * ( cn * cn * adz(icrm,i) * adz(icrm,i) * iadzw(i) * iadzw(i-1) - 1. ) &
+      * ( adzw(icrm,i-1) * iadz(i-1) * ( f_i - f_im1 ) - adzw(icrm,i) * iadz(i-1) * ( f_im1 - f_im2 ) )
+    negative_3rd = 1./6. * ( cn * cn * adz(icrm,i) * adz(icrm,i) * iadzw(i+1) * adzw(icrm,i) - 1. ) &
+      * ( adzw(icrm,i) * iadz(i) * ( f_ip1 - f_i ) - adzw(icrm,i+1) * iadz(i) * ( f_i - f_im1 ) )
 
     ! Face value
-    face_3rd_z = 0.5 * ( f_i + f_im1 - cn * adz(i,icrm) * iadzw(i) * ( f_i - f_im1 ) &
+    face_3rd_z = 0.5 * ( f_i + f_im1 - cn * adz(icrm,i) * iadzw(i) * ( f_i - f_im1 ) &
       + positive_3rd + negative_3rd + sign(1._crm_rknd,cn) * ( positive_3rd - negative_3rd ) )
 
   end function face_3rd_z
@@ -146,33 +146,33 @@ contains
     ! local
     real(crm_rknd) :: positive_5th, negative_5th
 
-    positive_5th = 1./120. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i) * iadzw(i-1) - 1. ) &
-      * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * iadzw(i-2) - 4. ) &
-      * ( adzw(i-1,icrm) * adzw(i-2,icrm) * iadz(i) * iadz(i-1) * ( f_ip1 - f_i ) &
-        - adzw(i+1,icrm) * adzw(i-2,icrm) * (adzw(i-1,icrm) * adz(i-1,icrm) + adzw(i-1,icrm) * adz(i,icrm) + adzw(i,icrm) * adz(i,icrm)) &
+    positive_5th = 1./120. * ( cn * cn * adz(icrm,i) * adz(icrm,i) * iadzw(i) * iadzw(i-1) - 1. ) &
+      * ( cn * cn * adz(icrm,i) * adz(icrm,i) * iadzw(i+1) * iadzw(i-2) - 4. ) &
+      * ( adzw(icrm,i-1) * adzw(icrm,i-2) * iadz(i) * iadz(i-1) * ( f_ip1 - f_i ) &
+        - adzw(icrm,i+1) * adzw(icrm,i-2) * (adzw(icrm,i-1) * adz(icrm,i-1) + adzw(icrm,i-1) * adz(icrm,i) + adzw(icrm,i) * adz(icrm,i)) &
           * iadzw(i) * iadz(i) * iadz(i-1) * iadz(i-1) * ( f_i - f_im1 ) &
-        + adzw(i+1,icrm) * adzw(i-2,icrm) * (adzw(i-1,icrm) * adz(i-2,icrm) + adzw(i,icrm) * adz(i-2,icrm) + adzw(i,icrm) *adz(i-1,icrm))&
+        + adzw(icrm,i+1) * adzw(icrm,i-2) * (adzw(icrm,i-1) * adz(icrm,i-2) + adzw(icrm,i) * adz(icrm,i-2) + adzw(icrm,i) *adz(icrm,i-1))&
           * iadzw(i-1) * iadz(i-1) * iadz(i-1) * iadz(i-2) * ( f_im1 - f_im2 ) &
-        - adzw(i+1,icrm) * adzw(i,icrm) * iadz(i-1) * iadz(i-2) * ( f_im2 - f_im3 ) )
+        - adzw(icrm,i+1) * adzw(icrm,i) * iadz(i-1) * iadz(i-2) * ( f_im2 - f_im3 ) )
 
-    negative_5th = 1./120. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * iadzw(i) - 1. ) &
-      * ( cn  * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+2) * iadzw(i-1) - 4. ) &
-      * ( adzw(i,icrm) * adzw(i-1,icrm) * iadz(i+1) * iadz(i) * ( f_ip2 - f_ip1 ) &
-        - adzw(i+2,icrm) * adzw(i-1,icrm) * (adzw(i,icrm) * adz(i,icrm) + adzw(i,icrm) * adz(i+1,icrm) + adzw(i+1,icrm) * adz(i+1,icrm)) &
+    negative_5th = 1./120. * ( cn * cn * adz(icrm,i) * adz(icrm,i) * iadzw(i+1) * iadzw(i) - 1. ) &
+      * ( cn  * cn * adz(icrm,i) * adz(icrm,i) * iadzw(i+2) * iadzw(i-1) - 4. ) &
+      * ( adzw(icrm,i) * adzw(icrm,i-1) * iadz(i+1) * iadz(i) * ( f_ip2 - f_ip1 ) &
+        - adzw(icrm,i+2) * adzw(icrm,i-1) * (adzw(icrm,i) * adz(icrm,i) + adzw(icrm,i) * adz(icrm,i+1) + adzw(icrm,i+1) * adz(icrm,i+1)) &
           * iadzw(i+1) * iadz(i+1) * iadz(i) * iadz(i) * ( f_ip1 - f_i ) &
-        + adzw(i+2,icrm) * adzw(i-1,icrm) * (adzw(i,icrm) * adz(i-1,icrm) + adzw(i+1,icrm) * adz(i-1,icrm) + adzw(i+1,icrm) *adz(i,icrm))&
+        + adzw(icrm,i+2) * adzw(icrm,i-1) * (adzw(icrm,i) * adz(icrm,i-1) + adzw(icrm,i+1) * adz(icrm,i-1) + adzw(icrm,i+1) *adz(icrm,i))&
           * iadzw(i) * iadz(i) * iadz(i) * iadz(i-1) * ( f_i - f_im1 ) &
-        - adzw(i+2,icrm) * adzw(i+1,icrm) * iadz(i) * iadz(i-1) * ( f_im1 - f_im2 ) )
+        - adzw(icrm,i+2) * adzw(icrm,i+1) * iadz(i) * iadz(i-1) * ( f_im1 - f_im2 ) )
 
     ! Face value
-    face_5th_z = 0.5 * ( f_i + f_im1 - cn * adz(i,icrm) * iadzw(i) * ( f_i - f_im1 ) &
-      + 1./3. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * iadzw(i-1) - 1. ) &
-        * ( adzw(i-1,icrm) / ( adz(i,icrm) + adz(i-1,icrm) ) * ( f_ip1 - f_i ) &
-          - adzw(i+1,icrm) / ( adz(i,icrm) + adz(i-1,icrm) )  * ( f_im1 - f_im2 ) ) &
-      - 1./12. * ( cn * cn * adz(i,icrm) * adz(i,icrm) * iadzw(i+1) * adzw(i-1,icrm) - 1. ) * cn*adz(i,icrm)*iadzw(i)&
-        * ( adzw(i-1,icrm) * iadz(i) * ( f_ip1 - f_i ) &
-          - adzw(i+1,icrm)*adzw(i-1,icrm)*(adz(i-1,icrm)+adz(i,icrm))*iadzw(i)*iadz(i)*iadz(i-1) * ( f_i - f_im1 ) &
-          + adzw(i+1,icrm) * iadz(i-1) * ( f_im1 - f_im2 ) ) &
+    face_5th_z = 0.5 * ( f_i + f_im1 - cn * adz(icrm,i) * iadzw(i) * ( f_i - f_im1 ) &
+      + 1./3. * ( cn * cn * adz(icrm,i) * adz(icrm,i) * iadzw(i+1) * iadzw(i-1) - 1. ) &
+        * ( adzw(icrm,i-1) / ( adz(icrm,i) + adz(icrm,i-1) ) * ( f_ip1 - f_i ) &
+          - adzw(icrm,i+1) / ( adz(icrm,i) + adz(icrm,i-1) )  * ( f_im1 - f_im2 ) ) &
+      - 1./12. * ( cn * cn * adz(icrm,i) * adz(icrm,i) * iadzw(i+1) * adzw(icrm,i-1) - 1. ) * cn*adz(icrm,i)*iadzw(i)&
+        * ( adzw(icrm,i-1) * iadz(i) * ( f_ip1 - f_i ) &
+          - adzw(icrm,i+1)*adzw(icrm,i-1)*(adz(icrm,i-1)+adz(icrm,i))*iadzw(i)*iadz(i)*iadz(i-1) * ( f_i - f_im1 ) &
+          + adzw(icrm,i+1) * iadz(i-1) * ( f_im1 - f_im2 ) ) &
       + positive_5th + negative_5th + sign(1._crm_rknd,cn) * ( positive_5th - negative_5th ) )
 
   end function face_5th_z
@@ -402,20 +402,20 @@ contains
     do k = 1, nzm
       do j = -1, nyp2
         do i = -1, nxp3
-          flx_x(i,j,k) = f(i-1,j,k) * max( 0., u(i,j,k,icrm) ) + f(i,j,k) * min( 0., u(i,j,k,icrm) )
+          flx_x(i,j,k) = f(i-1,j,k) * max( 0., u(icrm,i,j,k) ) + f(i,j,k) * min( 0., u(icrm,i,j,k) )
         enddo
       enddo
 
       do j = -1, nyp3
         do i = -1, nxp2
-          flx_y(i,j,k) = f(i,j-1,k) * max( 0., v(i,j,k,icrm) ) + f(i,j,k) * min( 0., v(i,j,k,icrm) )
+          flx_y(i,j,k) = f(i,j-1,k) * max( 0., v(icrm,i,j,k) ) + f(i,j,k) * min( 0., v(icrm,i,j,k) )
         enddo
       enddo
     enddo
     do k = 2, nzm
       do j = -1, nyp2
         do i = -1, nxp2
-          flx_z(i,j,k) = f(i,j,k-1) * max( 0., w(i,j,k,icrm) ) + f(i,j,k) * min( 0., w(i,j,k,icrm) )
+          flx_z(i,j,k) = f(i,j,k-1) * max( 0., w(icrm,i,j,k) ) + f(i,j,k) * min( 0., w(icrm,i,j,k) )
         enddo
       enddo
     enddo
@@ -440,20 +440,20 @@ contains
     do k = 1, nzm
       do j = 0, nyp1
         do i = 0, nxp2
-          flx_x(i,j,k) = u(i,j,k,icrm) * fx(i,j,k) - flx_x(i,j,k)
+          flx_x(i,j,k) = u(icrm,i,j,k) * fx(i,j,k) - flx_x(i,j,k)
         enddo
       enddo
 
       do j = 0, nyp2
         do i = 0, nxp1
-          flx_y(i,j,k) = v(i,j,k,icrm) * fy(i,j,k) - flx_y(i,j,k)
+          flx_y(i,j,k) = v(icrm,i,j,k) * fy(i,j,k) - flx_y(i,j,k)
         enddo
       enddo
     enddo
     do k = 2, nzm
       do j = 0, nyp1
         do i = 0, nxp1
-          flx_z(i,j,k) = w(i,j,k,icrm) * fz(i,j,k) - flx_z(i,j,k)
+          flx_z(i,j,k) = w(icrm,i,j,k) * fz(i,j,k) - flx_z(i,j,k)
         enddo
       enddo
     enddo
@@ -573,12 +573,12 @@ contains
     ! 1st order upwind face value and residual higher-order flux
     do k = 1, nzm
       do i = -1, nxp3
-        flx_x(i,k) = f(i-1,1,k) * max( 0., u(i,1,k,icrm) ) + f(i,1,k) * min( 0., u(i,1,k,icrm) )
+        flx_x(i,k) = f(i-1,1,k) * max( 0., u(icrm,i,1,k) ) + f(i,1,k) * min( 0., u(icrm,i,1,k) )
       enddo
     enddo
     do k = 2, nzm
       do i = -1, nxp2
-        flx_z(i,k) = f(i,1,k-1) * max( 0., w(i,1,k,icrm) ) + f(i,1,k) * min( 0., w(i,1,k,icrm) )
+        flx_z(i,k) = f(i,1,k-1) * max( 0., w(icrm,i,1,k) ) + f(i,1,k) * min( 0., w(icrm,i,1,k) )
       enddo
     enddo
 
@@ -596,12 +596,12 @@ contains
     ! Antidiffusive flux
     do k = 1, nzm
       do i = 0, nxp2
-        flx_x(i,k) = u(i,1,k,icrm) * fx(i,1,k) - flx_x(i,k)
+        flx_x(i,k) = u(icrm,i,1,k) * fx(i,1,k) - flx_x(i,k)
       enddo
     enddo
     do k = 2, nzm
       do i = 0, nxp1
-        flx_z(i,k) = w(i,1,k,icrm) * fz(i,1,k) - flx_z(i,k)
+        flx_z(i,k) = w(icrm,i,1,k) * fz(i,1,k) - flx_z(i,k)
       enddo
     enddo
 

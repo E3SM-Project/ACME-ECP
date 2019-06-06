@@ -14,22 +14,22 @@ contains
 
     if(docolumn) return
 
-    !$acc parallel loop gang vector collapse(4) copyin(adz,bet,tabs0,qv,qv0,qcl,qci,qn0,qpl,qpi,qp0,tabs) private(betu,betd,kb) copy(dwdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=2,nzm
-        do j=1,ny
-          do i=1,nx
+    !$acc parallel loop gang vector collapse(4) async(asyncid)
+    do k=2,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             kb=k-1
-            betu=adz(kb,icrm)/(adz(k,icrm)+adz(kb,icrm))
-            betd=adz(k,icrm)/(adz(k,icrm)+adz(kb,icrm))
+            betu=adz(icrm,kb)/(adz(icrm,k)+adz(icrm,kb))
+            betd=adz(icrm,k)/(adz(icrm,k)+adz(icrm,kb))
 
-            dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm) +  &
-            bet(k,icrm)*betu* &
-            ( tabs0(k,icrm)*(epsv*(qv(i,j,k,icrm)-qv0(k,icrm))-(qcl(i,j,k,icrm)+qci(i,j,k,icrm)-qn0(k,icrm)+qpl(i,j,k,icrm)+qpi(i,j,k,icrm)-qp0(k,icrm))) &
-            +(tabs(i,j,k,icrm)-tabs0(k,icrm))*(1.+epsv*qv0(k,icrm)-qn0(k,icrm)-qp0(k,icrm)) ) &
-            + bet(kb,icrm)*betd* &
-            ( tabs0(kb,icrm)*(epsv*(qv(i,j,kb,icrm)-qv0(kb,icrm))-(qcl(i,j,kb,icrm)+qci(i,j,kb,icrm)-qn0(kb,icrm)+qpl(i,j,kb,icrm)+qpi(i,j,kb,icrm)-qp0(kb,icrm))) &
-            +(tabs(i,j,kb,icrm)-tabs0(kb,icrm))*(1.+epsv*qv0(kb,icrm)-qn0(kb,icrm)-qp0(kb,icrm)) )
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na) +  &
+            bet(icrm,k)*betu* &
+            ( tabs0(icrm,k)*(epsv*(qv(icrm,i,j,k)-qv0(icrm,k))-(qcl(icrm,i,j,k)+qci(icrm,i,j,k)-qn0(icrm,k)+qpl(icrm,i,j,k)+qpi(icrm,i,j,k)-qp0(icrm,k))) &
+            +(tabs(icrm,i,j,k)-tabs0(icrm,k))*(1.+epsv*qv0(icrm,k)-qn0(icrm,k)-qp0(icrm,k)) ) &
+            + bet(icrm,kb)*betd* &
+            ( tabs0(icrm,kb)*(epsv*(qv(icrm,i,j,kb)-qv0(icrm,kb))-(qcl(icrm,i,j,kb)+qci(icrm,i,j,kb)-qn0(icrm,kb)+qpl(icrm,i,j,kb)+qpi(icrm,i,j,kb)-qp0(icrm,kb))) &
+            +(tabs(icrm,i,j,kb)-tabs0(icrm,kb))*(1.+epsv*qv0(icrm,kb)-qn0(icrm,kb)-qp0(icrm,kb)) )
           end do ! i
         end do ! j
       end do ! k

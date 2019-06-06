@@ -159,7 +159,7 @@ contains
       precallsum1  (:,:,:,icrm) = precallsum1  (:,:,:,icrm) + precall(:,:,:,icrm)
       altsum1      (:,:,:,icrm) = altsum1      (:,:,:,icrm) + alt(:,:,:,icrm)
       rhsum1       (:,:,:,icrm) = rhsum1       (:,:,:,icrm) + rh(:,:,:,icrm)
-      cf3dsum1     (:,:,:,icrm) = cf3dsum1     (:,:,:,icrm) + cf3d(:,:,:,icrm)
+      cf3dsum1     (:,:,:,icrm) = cf3dsum1     (:,:,:,icrm) + cf3d(icrm,:,:,:)
       wwsum1       (:,:,:,icrm) = wwsum1       (:,:,:,icrm) + ww(:,:,:,icrm)
       wwsqsum1     (:,:,:,icrm) = wwsqsum1     (:,:,:,icrm) + wwsq(:,:,:,icrm)
       tkesgssum1   (:,:,:,icrm) = tkesgssum1   (:,:,:,icrm) + tkesgs(:,:,:,icrm)

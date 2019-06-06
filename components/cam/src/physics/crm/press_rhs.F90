@@ -15,22 +15,22 @@ contains
     integer i,j,k,ic,jc,kc, icrm
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
-      !$acc parallel loop collapse(3) copy(dudt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            dudt(1,j,k,na,icrm) = 0.
+      !$acc parallel loop collapse(3) async(asyncid)
+      do k=1,nzm
+        do j=1,ny
+            do icrm = 1 , ncrms
+            dudt(icrm,1,j,k,na) = 0.
           end do
         end do
       end do
     end if
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
-      !$acc parallel loop collapse(3) copy(dvdt) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
-            dvdt(i,1,k,na,icrm) = 0.
+      !$acc parallel loop collapse(3) async(asyncid)
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
+            dvdt(icrm,i,1,k,na) = 0.
           end do
         end do
       end do
@@ -45,31 +45,31 @@ contains
 
     if(RUN3D) then
 
-      !$acc parallel loop collapse(4) copyin(rhow,u,v,w,dt3,dvdt,dudt,adz,rho,dwdt,dz) copy(p) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do j=1,ny
-            do i=1,nx
+      !$acc parallel loop collapse(4) async(asyncid)
+      do k=1,nzm
+        do j=1,ny
+          do i=1,nx
+            do icrm = 1 , ncrms
               kc=k+1
-              rdz=1./(adz(k,icrm)*dz(icrm))
-              rup = rhow(kc,icrm)/rho(k,icrm)*rdz
-              rdn = rhow(k,icrm)/rho(k,icrm)*rdz
+              rdz=1./(adz(icrm,k)*dz(icrm))
+              rup = rhow(icrm,kc)/rho(icrm,k)*rdz
+              rdn = rhow(icrm,k)/rho(icrm,k)*rdz
               jc=j+1
               ic=i+1
               dta=1./dt3(na)/at
-              p(i,j,k,icrm)=(rdx*(u(ic,j,k,icrm)-u(i,j,k,icrm))+ &
-              rdy*(v(i,jc,k,icrm)-v(i,j,k,icrm))+ &
-              (w(i,j,kc,icrm)*rup-w(i,j,k,icrm)*rdn) )*dta + &
-              (rdx*(dudt(ic,j,k,na,icrm)-dudt(i,j,k,na,icrm))+ &
-              rdy*(dvdt(i,jc,k,na,icrm)-dvdt(i,j,k,na,icrm))+ &
-              (dwdt(i,j,kc,na,icrm)*rup-dwdt(i,j,k,na,icrm)*rdn) ) + &
-              btat*(rdx*(dudt(ic,j,k,nb,icrm)-dudt(i,j,k,nb,icrm))+ &
-              rdy*(dvdt(i,jc,k,nb,icrm)-dvdt(i,j,k,nb,icrm))+ &
-              (dwdt(i,j,kc,nb,icrm)*rup-dwdt(i,j,k,nb,icrm)*rdn) ) + &
-              ctat*(rdx*(dudt(ic,j,k,nc,icrm)-dudt(i,j,k,nc,icrm))+ &
-              rdy*(dvdt(i,jc,k,nc,icrm)-dvdt(i,j,k,nc,icrm))+ &
-              (dwdt(i,j,kc,nc,icrm)*rup-dwdt(i,j,k,nc,icrm)*rdn) )
-              p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)
+              p(icrm,i,j,k)=(rdx*(u(icrm,ic,j,k)-u(icrm,i,j,k))+ &
+              rdy*(v(icrm,i,jc,k)-v(icrm,i,j,k))+ &
+              (w(icrm,i,j,kc)*rup-w(icrm,i,j,k)*rdn) )*dta + &
+              (rdx*(dudt(icrm,ic,j,k,na)-dudt(icrm,i,j,k,na))+ &
+              rdy*(dvdt(icrm,i,jc,k,na)-dvdt(icrm,i,j,k,na))+ &
+              (dwdt(icrm,i,j,kc,na)*rup-dwdt(icrm,i,j,k,na)*rdn) ) + &
+              btat*(rdx*(dudt(icrm,ic,j,k,nb)-dudt(icrm,i,j,k,nb))+ &
+              rdy*(dvdt(icrm,i,jc,k,nb)-dvdt(icrm,i,j,k,nb))+ &
+              (dwdt(icrm,i,j,kc,nb)*rup-dwdt(icrm,i,j,k,nb)*rdn) ) + &
+              ctat*(rdx*(dudt(icrm,ic,j,k,nc)-dudt(icrm,i,j,k,nc))+ &
+              rdy*(dvdt(icrm,i,jc,k,nc)-dvdt(icrm,i,j,k,nc))+ &
+              (dwdt(icrm,i,j,kc,nc)*rup-dwdt(icrm,i,j,k,nc)*rdn) )
+              p(icrm,i,j,k)=p(icrm,i,j,k)*rho(icrm,k)
             end do
           end do
         end do
@@ -78,25 +78,25 @@ contains
     else
 
       j=1
-      !$acc parallel loop collapse(3) copyin(rhow,u,w,dt3,dudt,adz,rho,dwdt,dz) copy(p) async(asyncid)
-      do icrm = 1 , ncrms
-        do k=1,nzm
-          do i=1,nx
+      !$acc parallel loop collapse(3) async(asyncid)
+      do k=1,nzm
+        do i=1,nx
+          do icrm = 1 , ncrms
             kc=k+1
-            rdz=1./(adz(k,icrm)*dz(icrm))
-            rup = rhow(kc,icrm)/rho(k,icrm)*rdz
-            rdn = rhow(k,icrm)/rho(k,icrm)*rdz
+            rdz=1./(adz(icrm,k)*dz(icrm))
+            rup = rhow(icrm,kc)/rho(icrm,k)*rdz
+            rdn = rhow(icrm,k)/rho(icrm,k)*rdz
             ic=i+1
             dta=1./dt3(na)/at
-            p(i,j,k,icrm)=(rdx*(u(ic,j,k,icrm)-u(i,j,k,icrm))+ &
-            (w(i,j,kc,icrm)*rup-w(i,j,k,icrm)*rdn) )*dta + &
-            (rdx*(dudt(ic,j,k,na,icrm)-dudt(i,j,k,na,icrm))+ &
-            (dwdt(i,j,kc,na,icrm)*rup-dwdt(i,j,k,na,icrm)*rdn) ) + &
-            btat*(rdx*(dudt(ic,j,k,nb,icrm)-dudt(i,j,k,nb,icrm))+ &
-            (dwdt(i,j,kc,nb,icrm)*rup-dwdt(i,j,k,nb,icrm)*rdn) ) + &
-            ctat*(rdx*(dudt(ic,j,k,nc,icrm)-dudt(i,j,k,nc,icrm))+ &
-            (dwdt(i,j,kc,nc,icrm)*rup-dwdt(i,j,k,nc,icrm)*rdn) )
-            p(i,j,k,icrm)=p(i,j,k,icrm)*rho(k,icrm)
+            p(icrm,i,j,k)=(rdx*(u(icrm,ic,j,k)-u(icrm,i,j,k))+ &
+            (w(icrm,i,j,kc)*rup-w(icrm,i,j,k)*rdn) )*dta + &
+            (rdx*(dudt(icrm,ic,j,k,na)-dudt(icrm,i,j,k,na))+ &
+            (dwdt(icrm,i,j,kc,na)*rup-dwdt(icrm,i,j,k,na)*rdn) ) + &
+            btat*(rdx*(dudt(icrm,ic,j,k,nb)-dudt(icrm,i,j,k,nb))+ &
+            (dwdt(icrm,i,j,kc,nb)*rup-dwdt(icrm,i,j,k,nb)*rdn) ) + &
+            ctat*(rdx*(dudt(icrm,ic,j,k,nc)-dudt(icrm,i,j,k,nc))+ &
+            (dwdt(icrm,i,j,kc,nc)*rup-dwdt(icrm,i,j,k,nc)*rdn) )
+            p(icrm,i,j,k)=p(icrm,i,j,k)*rho(icrm,k)
           end do
         end do
       end do

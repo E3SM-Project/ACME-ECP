@@ -16,18 +16,20 @@ contains
     use params, only: dotracers
 #endif
     use scalar_momentum_mod
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
+    real(crm_rknd), allocatable :: esmt_offset(:)    ! whannah - offset for advecting scalar momentum tracers
+    real(crm_rknd), allocatable :: dummy(:,:)
 
-    real(crm_rknd) :: adv_tmp(nz,ncrms)
-    real(crm_rknd) :: wle_tmp(nz,ncrms)
-    real(crm_rknd) :: esmt_offset(ncrms)    ! whannah - offset for advecting scalar momentum tracers
-
-    !$acc enter data create(adv_tmp,wle_tmp) async(asyncid)
+    allocate( esmt_offset(ncrms) )
+    allocate( dummy(ncrms,nz) )
+    call prefetch( esmt_offset )
+    call prefetch( dummy )
 
     !      advection of scalars :
-    call advect_scalar(ncrms,t,tadv,twle)
+    call advect_scalar(ncrms,t,dummy,dummy)
 
     !    Advection of microphysics prognostics:
     do k = 1,nmicro_fields
@@ -39,28 +41,14 @@ contains
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
 #endif
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        call advect_scalar(ncrms,micro_field(:,:,:,:,k),adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(mkadv,mkwle) async(asyncid)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            mkadv(kk,k,icrm) = adv_tmp(kk,icrm)
-            mkwle(kk,k,icrm) = wle_tmp(kk,icrm)
-          enddo
-        enddo
+        call advect_scalar(ncrms,micro_field(1,dimx1_s,dimy1_s,1,k),mkadv(1,1,k),mkwle(1,1,k))
       endif
     end do
 
     !    Advection of sgs prognostics:
     if(dosgs.and.advect_sgs) then
       do k = 1,nsgs_fields
-        call advect_scalar(ncrms,sgs_field(:,:,:,:,k),adv_tmp,wle_tmp)
-        !$acc parallel loop collapse(2) copyin(adv_tmp,wle_tmp) copy(sgsadv,sgswle) async(asyncid)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            sgsadv(kk,k,icrm) = adv_tmp(kk,icrm)
-            sgswle(kk,k,icrm) = wle_tmp(kk,icrm)
-          enddo
-        enddo
+        call advect_scalar(ncrms,sgs_field(1,dimx1_s,dimy1_s,1,k),dummy,dummy)
       end do
     end if
 
@@ -75,8 +63,6 @@ contains
       !enddo
     end if
 
-    !$acc exit data delete(adv_tmp,wle_tmp) async(asyncid)
-
     ! advection of tracers:
     !There aren't any of these. We need to delete crmtracers.F90 too at some point
     !if(dotracers) then
@@ -89,18 +75,21 @@ contains
     ! whannah - the esmt_offset simply ensures that the scalar momentum
     ! tracers are positive definite during the advection calculation
     do icrm = 1 , ncrms
-      esmt_offset(icrm) = abs( minval( (/ minval(u_esmt(:,:,:,icrm)), minval(v_esmt(:,:,:,icrm)) /) ) ) + 50.
-      u_esmt(:,:,:,icrm) = u_esmt(:,:,:,icrm) + esmt_offset(icrm)
-      v_esmt(:,:,:,icrm) = v_esmt(:,:,:,icrm) + esmt_offset(icrm)
+      esmt_offset(icrm) = abs( minval( (/ minval(u_esmt(icrm,:,:,:)), minval(v_esmt(icrm,:,:,:)) /) ) ) + 50.
+      u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) + esmt_offset(icrm)
+      v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) + esmt_offset(icrm)
     enddo
     ! advection of scalar momentum tracers
-    call advect_scalar(ncrms,u_esmt,u_esmt_adv,u_esmt_wle)
-    call advect_scalar(ncrms,v_esmt,v_esmt_adv,v_esmt_wle)
+    call advect_scalar(ncrms,u_esmt,dummy,dummy)
+    call advect_scalar(ncrms,v_esmt,dummy,dummy)
     do icrm = 1 , ncrms
-      u_esmt(:,:,:,icrm) = u_esmt(:,:,:,icrm) - esmt_offset(icrm)
-      v_esmt(:,:,:,icrm) = v_esmt(:,:,:,icrm) - esmt_offset(icrm)
+      u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) - esmt_offset(icrm)
+      v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) - esmt_offset(icrm)
     enddo
 #endif
+
+    deallocate( esmt_offset )
+    deallocate( dummy )
 
   end subroutine advect_all_scalars
 

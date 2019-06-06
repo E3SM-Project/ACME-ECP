@@ -7,6 +7,7 @@ module sgs
   use grid, only: nx,nxp1,ny,nyp1,YES3D,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
   use params, only: dosgs, crm_rknd, asyncid
   use vars, only: tke2, tk2
+  use openacc_utils
   implicit none
 
   !----------------------------------------------------------------------
@@ -54,70 +55,56 @@ module sgs
 
   real(crm_rknd), allocatable, target :: sgs_field     (:,:,:,:,:)
   real(crm_rknd), allocatable, target :: sgs_field_diag(:,:,:,:,:)
-  real(crm_rknd), allocatable :: fluxbsgs (:,:,:,:) ! surface fluxes
-  real(crm_rknd), allocatable :: fluxtsgs (:,:,:,:) ! top boundary fluxes
-  real(crm_rknd), allocatable :: sgswle   (:,:,:)  ! resolved vertical flux
-  real(crm_rknd), allocatable :: sgswsb   (:,:,:)  ! SGS vertical flux
-  real(crm_rknd), allocatable :: sgsadv   (:,:,:)  ! tendency due to vertical advection
-  real(crm_rknd), allocatable :: sgslsadv (:,:,:)  ! tendency due to large-scale vertical advection
-  real(crm_rknd), allocatable :: sgsdiff  (:,:,:)  ! tendency due to vertical diffusion
   real(crm_rknd), allocatable :: grdf_x(:,:)! grid factor for eddy diffusion in x
   real(crm_rknd), allocatable :: grdf_y(:,:)! grid factor for eddy diffusion in y
   real(crm_rknd), allocatable :: grdf_z(:,:)! grid factor for eddy diffusion in z
   real(crm_rknd), allocatable :: tkesbbuoy (:,:)
   real(crm_rknd), allocatable :: tkesbshear(:,:)
   real(crm_rknd), allocatable :: tkesbdiss (:,:)
-  real(crm_rknd), allocatable :: tkesbdiff (:,:)
-  real(crm_rknd), pointer :: tke (:,:,:,:)   ! SGS TKE
-  real(crm_rknd), pointer :: tk  (:,:,:,:) ! SGS eddy viscosity
-  real(crm_rknd), pointer :: tkh (:,:,:,:) ! SGS eddy conductivity
+  real(crm_rknd), pointer :: tke(:,:,:,:) ! SGS TKE
+  real(crm_rknd), pointer :: tk (:,:,:,:) ! SGS eddy viscosity
+  real(crm_rknd), pointer :: tkh(:,:,:,:) ! SGS eddy conductivity
 
 CONTAINS
 
 
   subroutine allocate_sgs(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
-    allocate( sgs_field(dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm,ncrms, nsgs_fields) )
-    allocate( sgs_field_diag(dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms, nsgs_fields_diag) )
-    allocate( fluxbsgs (nx,ny,1:nsgs_fields,ncrms)  )
-    allocate( fluxtsgs (nx,ny,1:nsgs_fields,ncrms)  )
-    allocate( sgswle(nz,1:nsgs_fields,ncrms)   )
-    allocate( sgswsb(nz,1:nsgs_fields,ncrms)   )
-    allocate( sgsadv(nz,1:nsgs_fields,ncrms)   )
-    allocate( sgslsadv(nz,1:nsgs_fields,ncrms)   )
-    allocate( sgsdiff(nz,1:nsgs_fields,ncrms)   )
-    allocate( grdf_x(nzm,ncrms) )
-    allocate( grdf_y(nzm,ncrms) )
-    allocate( grdf_z(nzm,ncrms) )
-    allocate( tkesbbuoy(nz,ncrms) )
-    allocate( tkesbshear(nz,ncrms) )
-    allocate( tkesbdiss(nz,ncrms) )
-    allocate( tkesbdiff(nz,ncrms) )
+    allocate( sgs_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nsgs_fields) )
+    allocate( sgs_field_diag(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm, nsgs_fields_diag) )
+    allocate( grdf_x(ncrms,nzm) )
+    allocate( grdf_y(ncrms,nzm) )
+    allocate( grdf_z(ncrms,nzm) )
+    allocate( tkesbbuoy(ncrms,nz) )
+    allocate( tkesbshear(ncrms,nz) )
+    allocate( tkesbdiss(ncrms,nz) )
 
     tke(dimx1_s:,dimy1_s:,1:,1:) => sgs_field     (:,:,:,:,1)
     tk (dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,1)
     tkh(dimx1_d:,dimy1_d:,1:,1:) => sgs_field_diag(:,:,:,:,2)
 
+    call prefetch( sgs_field  )
+    call prefetch( sgs_field_diag  )
+    call prefetch( grdf_x  )
+    call prefetch( grdf_y  )
+    call prefetch( grdf_z  )
+    call prefetch( tkesbbuoy  )
+    call prefetch( tkesbshear  )
+    call prefetch( tkesbdiss  )
+
     zero = 0
 
     sgs_field = zero
     sgs_field_diag = zero
-    fluxbsgs  = zero
-    fluxtsgs  = zero
-    sgswle = zero
-    sgswsb = zero
-    sgsadv = zero
-    sgslsadv = zero
-    sgsdiff = zero
     grdf_x = zero
     grdf_y = zero
     grdf_z = zero
     tkesbbuoy = zero
     tkesbshear = zero
     tkesbdiss = zero
-    tkesbdiff = zero
   end subroutine allocate_sgs
 
 
@@ -125,23 +112,12 @@ CONTAINS
     implicit none
     deallocate( sgs_field  )
     deallocate( sgs_field_diag  )
-    deallocate( fluxbsgs   )
-    deallocate( fluxtsgs   )
-    deallocate( sgswle  )
-    deallocate( sgswsb  )
-    deallocate( sgsadv  )
-    deallocate( sgslsadv  )
-    deallocate( sgsdiff  )
     deallocate( grdf_x  )
     deallocate( grdf_y  )
     deallocate( grdf_z  )
     deallocate( tkesbbuoy  )
     deallocate( tkesbshear  )
     deallocate( tkesbdiss  )
-    deallocate( tkesbdiff  )
-    nullify(tke)
-    nullify(tk )
-    nullify(tkh)
   end subroutine deallocate_sgs
 
 
@@ -195,52 +171,59 @@ CONTAINS
   !!! Initialize sgs:
 
 
-  subroutine sgs_init(ncrms,icrm)
+  subroutine sgs_init(ncrms)
     use grid, only: nrestart, dx, dy, dz, adz, masterproc
     use params, only: LES
     implicit none
-    integer, intent(in) :: ncrms,icrm
-    integer k
+    integer, intent(in) :: ncrms
+    integer k,icrm, i, j, l
 
     if(nrestart.eq.0) then
-
-      sgs_field(:,:,:,icrm,:) = 0.
-      sgs_field_diag(:,:,:,icrm,:) = 0.
-
-      fluxbsgs(:,:,:,icrm) = 0.
-      fluxtsgs(:,:,:,icrm) = 0.
-
+      !$acc parallel loop collapse(5) async(asyncid)
+      do l=1,nsgs_fields
+        do k=1,nzm
+          do j=dimy1_s,dimy2_s
+            do i=dimx1_s,dimx2_s
+              do icrm = 1 , ncrms
+                sgs_field(icrm,i,j,k,l) = 0.
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
+      !$acc parallel loop collapse(5) async(asyncid)
+      do l=1,nsgs_fields_diag
+        do k=1,nzm
+          do j=dimy1_d,dimy2_d
+            do i=dimx1_d,dimx2_d
+              do icrm = 1 , ncrms
+                sgs_field_diag(icrm,i,j,k,l) = 0.
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
     end if
-
-    !  if(masterproc) then
-    !     if(dosmagor) then
-    !        write(*,*) 'Smagorinsky SGS Closure'
-    !     else
-    !        write(*,*) 'Prognostic TKE 1.5-order SGS Closure'
-    !     end if
-    !  end if
 
     if(LES) then
+      !$acc parallel loop collapse(2) async(asyncid)
       do k=1,nzm
-        grdf_x(k,icrm) = dx**2/(adz(k,icrm)*dz(icrm))**2
-        grdf_y(k,icrm) = dy**2/(adz(k,icrm)*dz(icrm))**2
-        grdf_z(k,icrm) = 1.
+        do icrm = 1 , ncrms
+          grdf_x(icrm,k) = dx**2/(adz(icrm,k)*dz(icrm))**2
+          grdf_y(icrm,k) = dy**2/(adz(icrm,k)*dz(icrm))**2
+          grdf_z(icrm,k) = 1.
+        end do
       end do
     else
+      !$acc parallel loop collapse(2) async(asyncid)
       do k=1,nzm
-        grdf_x(k,icrm) = min( real(16.,crm_rknd), dx**2/(adz(k,icrm)*dz(icrm))**2)
-        grdf_y(k,icrm) = min( real(16.,crm_rknd), dy**2/(adz(k,icrm)*dz(icrm))**2)
-        grdf_z(k,icrm) = 1.
+        do icrm = 1 , ncrms
+          grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
+          grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
+          grdf_z(icrm,k) = 1.
+        end do
       end do
     end if
-
-    sgswle  (:,:,icrm) = 0.
-    sgswsb  (:,:,icrm) = 0.
-    sgsadv  (:,:,icrm) = 0.
-    sgsdiff (:,:,icrm) = 0.
-    sgslsadv(:,:,icrm) = 0.
-
-
   end subroutine sgs_init
 
   !----------------------------------------------------------------------
@@ -261,7 +244,7 @@ CONTAINS
         do j=1,ny
           do i=1,nx
             if(k.le.4.and..not.dosmagor) then
-              tke(i,j,k,icrm)=0.04*(5-k)
+              sgs_field(icrm,i,j,k,1)=0.04*(5-k)
             endif
           end do
         end do
@@ -272,8 +255,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k,icrm).gt.6.e-3.and..not.dosmagor) then
-              tke(i,j,k,icrm)=1.
+            if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
+              sgs_field(icrm,i,j,k,1)=1.
             endif
           end do
         end do
@@ -286,8 +269,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k,icrm).gt.0.5e-3.and..not.dosmagor) then
-              tke(i,j,k,icrm)=1.
+            if(q0(icrm,k).gt.0.5e-3.and..not.dosmagor) then
+              sgs_field(icrm,i,j,k,1)=1.
             endif
           end do
         end do
@@ -299,8 +282,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(z(k,icrm).le.150..and..not.dosmagor) then
-              tke(i,j,k,icrm)=0.15*(1.-z(k,icrm)/150.)
+            if(z(icrm,k).le.150..and..not.dosmagor) then
+              sgs_field(icrm,i,j,k,1)=0.15*(1.-z(icrm,k)/150.)
             endif
           end do
         end do
@@ -312,8 +295,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(z(k,icrm).le.3000..and..not.dosmagor) then
-              tke(i,j,k,icrm)=1.-z(k,icrm)/3000.
+            if(z(icrm,k).le.3000..and..not.dosmagor) then
+              sgs_field(icrm,i,j,k,1)=1.-z(icrm,k)/3000.
             endif
           end do
         end do
@@ -325,8 +308,8 @@ CONTAINS
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-            if(q0(k,icrm).gt.6.e-3.and..not.dosmagor) then
-              tke(i,j,k,icrm)=1.
+            if(q0(icrm,k).gt.6.e-3.and..not.dosmagor) then
+              sgs_field(icrm,i,j,k,1)=1.
             endif
           end do
         end do
@@ -349,41 +332,42 @@ CONTAINS
     integer, intent(in) :: ncrms
     real(crm_rknd), intent(inout) :: cfl
     integer k,icrm, j, i
-    real(crm_rknd) tkhmax(nz,ncrms), tmp
+    real(crm_rknd), allocatable :: tkhmax(:,:)
+    real(crm_rknd) tmp
 
-    !$acc enter data create(tkhmax) async(asyncid)
+    allocate(tkhmax(ncrms,nz))
+    call prefetch(tkhmax)
 
-    !$acc parallel loop collapse(2) copy(tkhmax) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzm
-        tkhmax(k,icrm) = 0.
+    !$acc parallel loop collapse(2) async(asyncid)
+    do k = 1,nzm
+      do icrm = 1 , ncrms
+        tkhmax(icrm,k) = 0.
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copy(tkhmax) copyin(tkh) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1,nzm
-        do j = 1 , ny
-          do i = 1 , nx
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k = 1,nzm
+      do j = 1 , ny
+        do i = 1 , nx
+          do icrm = 1 , ncrms
             !$acc atomic update
-            tkhmax(k,icrm) = max(tkhmax(k,icrm),tkh(i,j,k,icrm))
+            tkhmax(icrm,k) = max(tkhmax(icrm,k),sgs_field_diag(icrm,i,j,k,2))
           enddo
         enddo
       end do
     end do
 
-    !$acc parallel loop collapse(2) private(tmp) copy(cfl) copyin(tkhmax,grdf_x,grdf_y,grdf_z,dz,adzw) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        tmp = max( 0.5*tkhmax(k,icrm)*grdf_z(k,icrm)*dt/(dz(icrm)*adzw(k,icrm))**2  , &
-                   0.5*tkhmax(k,icrm)*grdf_x(k,icrm)*dt/dx**2  , &
-                   YES3D*0.5*tkhmax(k,icrm)*grdf_y(k,icrm)*dt/dy**2  )
-        !$acc atomic update
+    !$acc parallel loop collapse(2) reduction(max:cfl) async(asyncid)
+    do k=1,nzm
+      do icrm = 1 , ncrms
+        tmp = max( 0.5*tkhmax(icrm,k)*grdf_z(icrm,k)*dt/(dz(icrm)*adzw(icrm,k))**2  , &
+                   0.5*tkhmax(icrm,k)*grdf_x(icrm,k)*dt/dx**2  , &
+                   YES3D*0.5*tkhmax(icrm,k)*grdf_y(icrm,k)*dt/dy**2  )
         cfl = max( cfl , tmp )
       end do
     end do
 
-    !$acc exit data delete(tkhmax) async(asyncid)
+    deallocate(tkhmax)
 
   end subroutine kurant_sgs
 
@@ -396,12 +380,7 @@ CONTAINS
     implicit none
     integer, intent(in) :: ncrms
 
-#ifdef __PGI
-    !Passing tk via first element to avoid PGI pointer bug
-    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk(dimx1_d,dimy1_d,1,1))
-#else
-    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, tk)
-#endif
+    call diffuse_mom(ncrms,grdf_x, grdf_y, grdf_z, dimx1_d, dimx2_d, dimy1_d, dimy2_d, sgs_field_diag(:,:,:,:,1))
   end subroutine sgs_mom
 
   !----------------------------------------------------------------------
@@ -416,38 +395,16 @@ CONTAINS
     use params, only: dotracers
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) dummy(nz,ncrms)
-    real(crm_rknd) fluxbtmp(nx,ny,ncrms), fluxttmp(nx,ny,ncrms), difftmp(nz,ncrms), wsbtmp(nz,ncrms)
+    real(crm_rknd), allocatable :: dummy(:,:)
     integer i,j,kk,k,icrm
 
-    !$acc enter data create(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(asyncid)
-    
-#ifdef __PGI
-    !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),t,fluxbt,fluxtt,tdiff,twsb)
-#else
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,t,fluxbt,fluxtt,tdiff,twsb)
-#endif
+    allocate( dummy(ncrms,nz) )
+    call prefetch(dummy)
+
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),t,fluxbt,fluxtt,tdiff,twsb)
 
     if(advect_sgs) then
-      !$acc parallel loop collapse(2) copyin(sgswsb) copy(wsbtmp) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1 , nz
-          wsbtmp(k,icrm) = sgswsb(k,1,icrm)
-        enddo
-      enddo
-#ifdef __PGI
-      !Passing tkh via first element to avoid PGI pointer bug
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),tke,fzero,fzero,dummy,wsbtmp)
-#else
-      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tke,fzero,fzero,dummy,wsbtmp)
-#endif
-      !$acc parallel loop collapse(2) copyin(wsbtmp) copy(sgswsb) async(asyncid)
-      do icrm = 1, ncrms
-        do k = 1 , nz
-          sgswsb(k,1,icrm) = wsbtmp(k,icrm)
-        enddo
-      enddo
+      call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),sgs_field(:,:,:,:,1),fzero,fzero,dummy,dummy)
     end if
 
     !    diffusion of microphysics prognostics:
@@ -460,46 +417,17 @@ CONTAINS
       if(   k.eq.index_water_vapor             &! transport water-vapor variable no metter what
       .or. docloud.and.flag_precip(k).ne.1    & ! transport non-precipitation vars
       .or. doprecip.and.flag_precip(k).eq.1 ) then
-        !$acc parallel loop collapse(2) copyin(fluxbmk,fluxtmk) copy(fluxbtmp,fluxttmp) async(asyncid)
-        do icrm = 1 , ncrms
-          do j = 1 , ny
-            do i = 1 , nx
-              fluxbtmp(i,j,icrm) = fluxbmk(i,j,k,icrm)
-              fluxttmp(i,j,icrm) = fluxtmk(i,j,k,icrm)
-            enddo
-          enddo
-        enddo
-        !$acc parallel loop collapse(2) copyin(mkdiff,mkwsb) copy(difftmp,wsbtmp) async(asyncid)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            difftmp(kk,icrm) = mkdiff(kk,k,icrm)
-            wsbtmp (kk,icrm) = mkwsb (kk,k,icrm)
-          enddo
-        enddo
-#ifdef __PGI
-        !Passing tkh via first element to avoid PGI pointer bug
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
-#else
-        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,micro_field(:,:,:,:,k),fluxbtmp,fluxttmp,difftmp,wsbtmp)
-#endif
-        !$acc parallel loop collapse(2) copyin(difftmp,wsbtmp) copy(mkdiff,mkwsb) async(asyncid)
-        do icrm = 1 , ncrms
-          do kk = 1 , nz
-            mkdiff(kk,k,icrm) = difftmp(kk,icrm)
-            mkwsb (kk,k,icrm) = wsbtmp (kk,icrm)
-          enddo
-        enddo
+        call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+                            micro_field(:,:,:,:,k),fluxbmk(:,:,:,k),fluxtmk(:,:,:,k),mkdiff(:,:,k),mkwsb(:,:,k))
       end if
     end do
-
-    !$acc exit data delete(dummy,fluxbtmp,fluxttmp,difftmp,wsbtmp) async(asyncid)
 
     !if(dotracers) then
     !  call tracers_flux()
     !  do k = 1,ntracers
     !    fluxbtmp(1:nx,1:ny,icrm) = fluxbtr(:,:,k,icrm)
     !    fluxttmp(1:nx,1:ny,icrm) = fluxttr(:,:,k,icrm)
-    !    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh,tracer(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm), &
+    !    call diffuse_scalar(ncrms,icrm,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),tracer(:,:,:,k,icrm),fluxbtmp(:,:,icrm),fluxttmp(:,:,icrm), &
     !    trdiff(:,k,icrm),trwsb(:,k,icrm), &
     !    dummy,dummy,dummy,.false.)
     !    !!$          call diffuse_scalar(ncrms,icrm,tracer(:,:,:,k,icrm),fluxbtr(:,:,k,icrm),fluxttr(:,:,k,icrm),trdiff(:,k,icrm),trwsb(:,k,icrm), &
@@ -513,11 +441,13 @@ CONTAINS
 
 #if defined(SP_ESMT)
     ! diffusion of scalar momentum tracers
-    !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
-    !Passing tkh via first element to avoid PGI pointer bug
-    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,tkh(dimx1_d,dimy1_d,1,1),v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+                        u_esmt,fluxb_u_esmt,fluxt_u_esmt,u_esmt_diff,u_esmt_sgs)
+    call diffuse_scalar(ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,grdf_y,grdf_z,sgs_field_diag(:,:,:,:,2),&
+                        v_esmt,fluxb_v_esmt,fluxt_v_esmt,v_esmt_diff,v_esmt_sgs)
 #endif
+
+    deallocate( dummy )
   end subroutine sgs_scalars
 
 !----------------------------------------------------------------------
@@ -532,34 +462,26 @@ subroutine sgs_proc(ncrms)
   integer :: icrm, k, j, i
   !    SGS TKE equation:
 
-#ifdef __PGI
-  !Passing tke, tk, and tkh via first element to avoid PGI pointer bug
   if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
                           grdf_x, grdf_y, grdf_z, dosmagor,   &
                           tkesbdiss, tkesbshear, tkesbbuoy,   &
-                          tke(dimx1_s,dimy1_s,1,1), tk(dimx1_d,dimy1_d,1,1), tkh(dimx1_d,dimy1_d,1,1))
-#else
-  if(dosgs) call tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d, &
-                          grdf_x, grdf_y, grdf_z, dosmagor,   &
-                          tkesbdiss, tkesbshear, tkesbbuoy,   &
-                          tke, tk, tkh)
-#endif
-  !$acc parallel loop collapse(4) copyin(tke) copy(tke2) async(asyncid)
-  do icrm = 1 , ncrms
-    do k = 1 , nzm
-      do j = dimy1_s,dimy2_s
-        do i = dimx1_s,dimx2_s
-          tke2(i,j,k,icrm) = tke(i,j,k,icrm)
+                          sgs_field(:,:,:,:,1), sgs_field_diag(:,:,:,:,1), sgs_field_diag(:,:,:,:,2))
+  !$acc parallel loop collapse(4) async(asyncid)
+  do k = 1 , nzm
+    do j = dimy1_s,dimy2_s
+      do i = dimx1_s,dimx2_s
+        do icrm = 1 , ncrms
+          tke2(icrm,i,j,k) = sgs_field(icrm,i,j,k,1)
         enddo
       enddo
     enddo
   enddo
-  !$acc parallel loop collapse(4) copyin(tk) copy(tk2) async(asyncid)
-  do icrm = 1 , ncrms
-    do k = 1 , nzm
-      do j = dimy1_d,dimy2_d
-        do i = dimx1_d,dimx2_d
-          tk2 (i,j,k,icrm) = tk (i,j,k,icrm)
+  !$acc parallel loop collapse(4) async(asyncid)
+  do k = 1 , nzm
+    do j = dimy1_d,dimy2_d
+      do i = dimx1_d,dimx2_d
+        do icrm = 1 , ncrms
+          tk2(icrm,i,j,k) = sgs_field_diag(icrm,i,j,k,1)
         enddo
       enddo
     enddo

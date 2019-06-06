@@ -10,23 +10,29 @@ contains
 
     use vars
     use params, only: docolumn, crm_rknd
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
-    real(crm_rknd) tk  (dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm,ncrms) ! SGS eddy viscosity
-    real(crm_rknd) grdf_x(nzm,ncrms)! grid factor for eddy diffusion in x
-    real(crm_rknd) grdf_y(nzm,ncrms)! grid factor for eddy diffusion in y
-    real(crm_rknd) grdf_z(nzm,ncrms)! grid factor for eddy diffusion in z
+    real(crm_rknd) tk(ncrms,dimx1_d:dimx2_d, dimy1_d:dimy2_d, nzm) ! SGS eddy viscosity
+    real(crm_rknd) grdf_x(ncrms,nzm)! grid factor for eddy diffusion in x
+    real(crm_rknd) grdf_y(ncrms,nzm)! grid factor for eddy diffusion in y
+    real(crm_rknd) grdf_z(ncrms,nzm)! grid factor for eddy diffusion in z
     real(crm_rknd) rdx2,rdy2,rdz2,rdz,rdx25,rdy25
     real(crm_rknd) rdx21,rdy21,rdx251,rdy251,rdz25
     real(crm_rknd) dxy,dxz,dyx,dyz,dzx,dzy
     integer i,j,k,ic,ib,jb,jc,kc,kcu,icrm
     real(crm_rknd) tkx, tky, tkz, rhoi, iadzw, iadz
-    real(crm_rknd) :: fu(0:nx,0:ny,nz,ncrms)
-    real(crm_rknd) :: fv(0:nx,0:ny,nz,ncrms)
-    real(crm_rknd) :: fw(0:nx,0:ny,nz,ncrms)
+    real(crm_rknd), allocatable :: fu(:,:,:,:)
+    real(crm_rknd), allocatable :: fv(:,:,:,:)
+    real(crm_rknd), allocatable :: fw(:,:,:,:)
 
-    !$acc enter data create(fu,fv,fw) async(asyncid)
+    allocate( fu(ncrms,0:nx,0:ny,nz) )
+    allocate( fv(ncrms,0:nx,0:ny,nz) )
+    allocate( fw(ncrms,0:nx,0:ny,nz) )
+    call prefetch( fu )
+    call prefetch( fv )
+    call prefetch( fw )
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
@@ -35,166 +41,168 @@ contains
     dxy=dx/dy
     dyx=dy/dx
 
-    !$acc parallel loop collapse(4) copyin(w,v,u,grdf_x,dz,tk,adzw) copy(fv,fu,fw) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=0,nx
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=0,nx
+          do icrm = 1 , ncrms
             jb=j-1
             kc=k+1
             kcu=min(kc,nzm)
             ic=i+1
-            dxz=dx/(dz(icrm)*adzw(kc,icrm))
-            rdx21=rdx2    * grdf_x(k,icrm)
-            rdx251=rdx25  * grdf_x(k,icrm)
-            tkx=rdx21*tk(i,j,k,icrm)
-            fu(i,j,k,icrm)=-2.*tkx*(u(ic,j,k,icrm)-u(i,j,k,icrm))
-            tkx=rdx251*(tk(i,j,k,icrm)+tk(i,jb,k,icrm)+tk(ic,j,k,icrm)+tk(ic,jb,k,icrm))
-            fv(i,j,k,icrm)=-tkx*(v(ic,j,k,icrm)-v(i,j,k,icrm)+(u(ic,j,k,icrm)-u(ic,jb,k,icrm))*dxy)
-            tkx=rdx251*(tk(i,j,k,icrm)+tk(ic,j,k,icrm)+tk(i,j,kcu,icrm)+tk(ic,j,kcu,icrm))
-            fw(i,j,k,icrm)=-tkx*(w(ic,j,kc,icrm)-w(i,j,kc,icrm)+(u(ic,j,kcu,icrm)-u(ic,j,k,icrm))*dxz)
+            dxz=dx/(dz(icrm)*adzw(icrm,kc))
+            rdx21=rdx2    * grdf_x(icrm,k)
+            rdx251=rdx25  * grdf_x(icrm,k)
+            tkx=rdx21*tk(icrm,i,j,k)
+            fu(icrm,i,j,k)=-2.*tkx*(u(icrm,ic,j,k)-u(icrm,i,j,k))
+            tkx=rdx251*(tk(icrm,i,j,k)+tk(icrm,i,jb,k)+tk(icrm,ic,j,k)+tk(icrm,ic,jb,k))
+            fv(icrm,i,j,k)=-tkx*(v(icrm,ic,j,k)-v(icrm,i,j,k)+(u(icrm,ic,j,k)-u(icrm,ic,jb,k))*dxy)
+            tkx=rdx251*(tk(icrm,i,j,k)+tk(icrm,ic,j,k)+tk(icrm,i,j,kcu)+tk(icrm,ic,j,kcu))
+            fw(icrm,i,j,k)=-tkx*(w(icrm,ic,j,kc)-w(icrm,i,j,kc)+(u(icrm,ic,j,kcu)-u(icrm,ic,j,k))*dxz)
           enddo
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(4) copyin(fv,fw,fu) copy(dvdt,dudt,dwdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             kc=k+1
             ib=i-1
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fu(i,j,k,icrm)-fu(ib,j,k,icrm))
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fv(i,j,k,icrm)-fv(ib,j,k,icrm))
-            dwdt(i,j,kc,na,icrm)=dwdt(i,j,kc,na,icrm)-(fw(i,j,k,icrm)-fw(ib,j,k,icrm))
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(icrm,i,j,k)-fu(icrm,ib,j,k))
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(icrm,i,j,k)-fv(icrm,ib,j,k))
+            dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(fw(icrm,i,j,k)-fw(icrm,ib,j,k))
           enddo
         enddo
       enddo
     enddo
 
-    !$acc parallel loop collapse(4) copyin(adzw,tk,dz,grdf_y,u,w,v) copy(fw,fu,fv) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=0,ny
-          do i=1,nx
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm
+      do j=0,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             jc=j+1
             kc=k+1
             kcu=min(kc,nzm)
             ib=i-1
-            dyz=dy/(dz(icrm)*adzw(kc,icrm))
-            rdy21=rdy2    * grdf_y(k,icrm)
-            rdy251=rdy25  * grdf_y(k,icrm)
-            tky=rdy21*tk(i,j,k,icrm)
-            fv(i,j,k,icrm)=-2.*tky*(v(i,jc,k,icrm)-v(i,j,k,icrm))
-            tky=rdy251*(tk(i,j,k,icrm)+tk(ib,j,k,icrm)+tk(i,jc,k,icrm)+tk(ib,jc,k,icrm))
-            fu(i,j,k,icrm)=-tky*(u(i,jc,k,icrm)-u(i,j,k,icrm)+(v(i,jc,k,icrm)-v(ib,jc,k,icrm))*dyx)
-            tky=rdy251*(tk(i,j,k,icrm)+tk(i,jc,k,icrm)+tk(i,j,kcu,icrm)+tk(i,jc,kcu,icrm))
-            fw(i,j,k,icrm)=-tky*(w(i,jc,kc,icrm)-w(i,j,kc,icrm)+(v(i,jc,kcu,icrm)-v(i,jc,k,icrm))*dyz)
+            dyz=dy/(dz(icrm)*adzw(icrm,kc))
+            rdy21=rdy2    * grdf_y(icrm,k)
+            rdy251=rdy25  * grdf_y(icrm,k)
+            tky=rdy21*tk(icrm,i,j,k)
+            fv(icrm,i,j,k)=-2.*tky*(v(icrm,i,jc,k)-v(icrm,i,j,k))
+            tky=rdy251*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,jc,k)+tk(icrm,ib,jc,k))
+            fu(icrm,i,j,k)=-tky*(u(icrm,i,jc,k)-u(icrm,i,j,k)+(v(icrm,i,jc,k)-v(icrm,ib,jc,k))*dyx)
+            tky=rdy251*(tk(icrm,i,j,k)+tk(icrm,i,jc,k)+tk(icrm,i,j,kcu)+tk(icrm,i,jc,kcu))
+            fw(icrm,i,j,k)=-tky*(w(icrm,i,jc,kc)-w(icrm,i,j,kc)+(v(icrm,i,jc,kcu)-v(icrm,i,jc,k))*dyz)
           enddo
         enddo
       enddo
     enddo
-    !$acc parallel loop collapse(4) copyin(fu,fw,fv) copy(dwdt,dudt,dvdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             jb=j-1
             kc=k+1
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fu(i,j,k,icrm)-fu(i,jb,k,icrm))
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fv(i,j,k,icrm)-fv(i,jb,k,icrm))
-            dwdt(i,j,kc,na,icrm)=dwdt(i,j,kc,na,icrm)-(fw(i,j,k,icrm)-fw(i,jb,k,icrm))
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(icrm,i,j,k)-fu(icrm,i,jb,k))
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(icrm,i,j,k)-fv(icrm,i,jb,k))
+            dwdt(icrm,i,j,kc,na)=dwdt(icrm,i,j,kc,na)-(fw(icrm,i,j,k)-fw(icrm,i,jb,k))
           enddo
         enddo
       enddo
     enddo
 
-    !$acc parallel loop collapse(2) copy(uwsb,vwsb) async(asyncid)
-    do icrm = 1 , ncrms
-      do k = 1 , nzm
-        uwsb(k,icrm)=0.
-        vwsb(k,icrm)=0.
+    !$acc parallel loop collapse(2) async(asyncid)
+    do k = 1 , nzm
+      do icrm = 1 , ncrms
+        uwsb(icrm,k)=0.
+        vwsb(icrm,k)=0.
       enddo
     enddo
 
     !-------------------------
-    !$acc parallel loop collapse(4) copyin(v,dz,tk,rho,rhow,w,grdf_z,adz,adzw,u) copy(fu,uwsb,fv,vwsb,fw) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm-1
-        do j=1,ny
-          do i=1,nx
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm-1
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             jb=j-1
             kc=k+1
             ib=i-1
             rdz=1./dz(icrm)
-            rdz2 = rdz*rdz * grdf_z(k,icrm)
+            rdz2 = rdz*rdz * grdf_z(icrm,k)
             rdz25 = 0.25*rdz2
-            iadz = 1./adz(k,icrm)
-            iadzw= 1./adzw(kc,icrm)
+            iadz = 1./adz(icrm,k)
+            iadzw= 1./adzw(icrm,kc)
             dzx=dz(icrm)/dx
             dzy=dz(icrm)/dy
-            tkz=rdz2*tk(i,j,k,icrm)
-            fw(i,j,kc,icrm)=-2.*tkz*(w(i,j,kc,icrm)-w(i,j,k,icrm))*rho(k,icrm)*iadz
-            tkz=rdz25*(tk(i,j,k,icrm)+tk(ib,j,k,icrm)+tk(i,j,kc,icrm)+tk(ib,j,kc,icrm))
-            fu(i,j,kc,icrm)=-tkz*( (u(i,j,kc,icrm)-u(i,j,k,icrm))*iadzw + (w(i,j,kc,icrm)-w(ib,j,kc,icrm))*dzx)*rhow(kc,icrm)
-            tkz=rdz25*(tk(i,j,k,icrm)+tk(i,jb,k,icrm)+tk(i,j,kc,icrm)+tk(i,jb,kc,icrm))
-            fv(i,j,kc,icrm)=-tkz*( (v(i,j,kc,icrm)-v(i,j,k,icrm))*iadzw + (w(i,j,kc,icrm)-w(i,jb,kc,icrm))*dzy)*rhow(kc,icrm)
+            tkz=rdz2*tk(icrm,i,j,k)
+            fw(icrm,i,j,kc)=-2.*tkz*(w(icrm,i,j,kc)-w(icrm,i,j,k))*rho(icrm,k)*iadz
+            tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,j,kc)+tk(icrm,ib,j,kc))
+            fu(icrm,i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(icrm,kc)
+            tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,i,jb,k)+tk(icrm,i,j,kc)+tk(icrm,i,jb,kc))
+            fv(icrm,i,j,kc)=-tkz*( (v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,i,jb,kc))*dzy)*rhow(icrm,kc)
             !$acc atomic update
-            uwsb(kc,icrm)=uwsb(kc,icrm)+fu(i,j,kc,icrm)
+            uwsb(icrm,kc)=uwsb(icrm,kc)+fu(icrm,i,j,kc)
             !$acc atomic update
-            vwsb(kc,icrm)=vwsb(kc,icrm)+fv(i,j,kc,icrm)
+            vwsb(icrm,kc)=vwsb(icrm,kc)+fv(icrm,i,j,kc)
           enddo
         enddo
       enddo
     enddo
 
-    !$acc parallel loop collapse(3) copyin(tk,adz,rhow,grdf_z,w,rho,dz,fluxtv,fluxbu,fluxbv,fluxtu) copy(fw,vwsb,fv,fu,uwsb) async(asyncid)
-    do icrm = 1 , ncrms
+    !$acc parallel loop collapse(3) async(asyncid)
+    do j=1,ny
+      do i=1,nx
+        do icrm = 1 , ncrms
+          rdz=1./dz(icrm)
+          rdz2 = rdz*rdz * grdf_z(icrm,nzm-1)
+          tkz=rdz2*grdf_z(icrm,nzm)*tk(icrm,i,j,nzm)
+          fw(icrm,i,j,nz)=-2.*tkz*(w(icrm,i,j,nz)-w(icrm,i,j,nzm))/adz(icrm,nzm)*rho(icrm,nzm)
+          fu(icrm,i,j,1)=fluxbu(icrm,i,j) * rdz * rhow(icrm,1)
+          fv(icrm,i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
+          fu(icrm,i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(icrm,nz)
+          fv(icrm,i,j,nz)=fluxtv(icrm,i,j) * rdz * rhow(icrm,nz)
+          !$acc atomic update
+          uwsb(icrm,1) = uwsb(icrm,1) + fu(icrm,i,j,1)
+          !$acc atomic update
+          vwsb(icrm,1) = vwsb(icrm,1) + fv(icrm,i,j,1)
+        enddo
+      enddo
+    enddo
+
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=1,nzm
       do j=1,ny
         do i=1,nx
-          rdz=1./dz(icrm)
-          rdz2 = rdz*rdz * grdf_z(k,icrm)
-          tkz=rdz2*grdf_z(nzm,icrm)*tk(i,j,nzm,icrm)
-          fw(i,j,nz,icrm)=-2.*tkz*(w(i,j,nz,icrm)-w(i,j,nzm,icrm))/adz(nzm,icrm)*rho(nzm,icrm)
-          fu(i,j,1,icrm)=fluxbu(i,j,icrm) * rdz * rhow(1,icrm)
-          fv(i,j,1,icrm)=fluxbv(i,j,icrm) * rdz * rhow(1,icrm)
-          fu(i,j,nz,icrm)=fluxtu(i,j,icrm) * rdz * rhow(nz,icrm)
-          fv(i,j,nz,icrm)=fluxtv(i,j,icrm) * rdz * rhow(nz,icrm)
-          !$acc atomic update
-          uwsb(1,icrm) = uwsb(1,icrm) + fu(i,j,1,icrm)
-          !$acc atomic update
-          vwsb(1,icrm) = vwsb(1,icrm) + fv(i,j,1,icrm)
-        enddo
-      enddo
-    enddo
-
-    !$acc parallel loop collapse(4) copyin(rho,fv,adz,fu) copy(dvdt,dudt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=1,nzm
-        do j=1,ny
-          do i=1,nx
+          do icrm = 1 , ncrms
             kc=k+1
-            rhoi = 1./(rho(k,icrm)*adz(k,icrm))
-            dudt(i,j,k,na,icrm)=dudt(i,j,k,na,icrm)-(fu(i,j,kc,icrm)-fu(i,j,k,icrm))*rhoi
-            dvdt(i,j,k,na,icrm)=dvdt(i,j,k,na,icrm)-(fv(i,j,kc,icrm)-fv(i,j,k,icrm))*rhoi
+            rhoi = 1./(rho(icrm,k)*adz(icrm,k))
+            dudt(icrm,i,j,k,na)=dudt(icrm,i,j,k,na)-(fu(icrm,i,j,kc)-fu(icrm,i,j,k))*rhoi
+            dvdt(icrm,i,j,k,na)=dvdt(icrm,i,j,k,na)-(fv(icrm,i,j,kc)-fv(icrm,i,j,k))*rhoi
           enddo
         enddo
       enddo ! k
     enddo
 
-    !$acc parallel loop collapse(4) copyin(adzw,rhow,fw) copy(dwdt) async(asyncid)
-    do icrm = 1 , ncrms
-      do k=2,nzm
-        do j=1,ny
-          do i=1,nx
-            rhoi = 1./(rhow(k,icrm)*adzw(k,icrm))
-            dwdt(i,j,k,na,icrm)=dwdt(i,j,k,na,icrm)-(fw(i,j,k+1,icrm)-fw(i,j,k,icrm))*rhoi
+    !$acc parallel loop collapse(4) async(asyncid)
+    do k=2,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            rhoi = 1./(rhow(icrm,k)*adzw(icrm,k))
+            dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na)-(fw(icrm,i,j,k+1)-fw(icrm,i,j,k))*rhoi
           enddo
         enddo
       enddo ! k
     enddo
 
-    !$acc exit data delete(fu,fv,fw) async(asyncid)
+    deallocate( fu )
+    deallocate( fv )
+    deallocate( fw )
 
   end subroutine diffuse_mom3D
 

@@ -31,6 +31,7 @@ CONTAINS
 
 
   subroutine allocate_tracers(ncrms)
+    use openacc_utils
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
@@ -45,18 +46,27 @@ CONTAINS
     allocate( tracername   (0:ntracers))
     allocate( tracerunits (0:ntracers))
 
+    call prefetch( tracer    )
+    call prefetch( fluxbtr   )
+    call prefetch( fluxttr   )
+    call prefetch( trwle     )
+    call prefetch( trwsb     )
+    call prefetch( tradv     )
+    call prefetch( trdiff    )
+    call prefetch( trphys    )
+
     zero = 0
 
-    tracer   = zero
-    fluxbtr  = zero
-    fluxttr  = zero
-    trwle    = zero
-    trwsb    = zero
-    tradv    = zero
-    trdiff   = zero
-    trphys   = zero
-    tracername  = ''
-    tracerunits = ''
+    !tracer   = zero
+    !fluxbtr  = zero
+    !fluxttr  = zero
+    !trwle    = zero
+    !trwsb    = zero
+    !tradv    = zero
+    !trdiff   = zero
+    !trphys   = zero
+    !tracername  = ''
+    !tracerunits = ''
   end subroutine allocate_tracers
 
 
