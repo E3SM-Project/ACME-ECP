@@ -224,6 +224,9 @@ subroutine allocate_micro(ncrms)
   sub1a = 0.
   dep1a = 0.
   con1a = 0.
+  ! crjones notes: qpsrc must be initialized to zero before start of crm main time loop
+  qpsrc = 0.
+  qpevp = 0.
 end subroutine allocate_micro
 
 

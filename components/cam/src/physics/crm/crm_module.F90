@@ -1226,7 +1226,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           crm_state_v_wind     (icrm,i,j,k) = v   (icrm,i,j,k)
           crm_state_w_wind     (icrm,i,j,k) = w   (icrm,i,j,k)
           crm_state_temperature(icrm,i,j,k) = tabs(icrm,i,j,k)
-        #ifdef m2005
+#ifdef m2005
           crm_state%qt(icrm,i,j,k) = micro_field(icrm,i,j,k,1 )
           crm_state%nc(icrm,i,j,k) = micro_field(icrm,i,j,k,2 )
           crm_state%qr(icrm,i,j,k) = micro_field(icrm,i,j,k,3 )
@@ -1238,11 +1238,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           crm_state%qg(icrm,i,j,k) = micro_field(icrm,i,j,k,9 )
           crm_state%ng(icrm,i,j,k) = micro_field(icrm,i,j,k,10)
           crm_state%qc(icrm,i,j,k) = cloudliq   (icrm,i,j,k)
-        #else
+#else
           crm_state_qt(icrm,i,j,k) = micro_field(icrm,i,j,k,1)
           crm_state_qp(icrm,i,j,k) = micro_field(icrm,i,j,k,2)
           crm_state_qn(icrm,i,j,k) = qn         (icrm,i,j,k)
-        #endif
+#endif
           crm_output%tk (icrm,i,j,k) = sgs_field_diag(icrm,i,j,k,1)
           crm_output%tkh(icrm,i,j,k) = sgs_field_diag(icrm,i,j,k,2)
           crm_output%qcl (icrm,i,j,k) = qcl  (icrm,i,j,k)
