@@ -3483,15 +3483,7 @@
       <command name="load">parallel-netcdf</command>
       <command name="load">hdf5</command>
     </modules>
-
-    <modules>
-       <command name="load">parallel-netcdf/1.8.0</command>
-       <command name="load">hdf5/1.10.3</command>
-     </modules>
-
   </module_system>
-  <!-- Ref: https://www.olcf.ornl.gov/for-users/system-user-guides/summit/ -->
-  <!-- <CIME_OUTPUT_ROOT>$ENV{HOME}/e3sm_scratch/$PROJECT</CIME_OUTPUT_ROOT> -->
   <RUNDIR>$CIME_OUTPUT_ROOT/$CASE/run</RUNDIR>
   <EXEROOT>$CIME_OUTPUT_ROOT/$CASE/bld</EXEROOT>
   <!-- 1 core/socket not available for application, so 168 = 42cores*4 in smt4 mode  -->
