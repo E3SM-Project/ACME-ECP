@@ -85,12 +85,9 @@
 <mg_prc_coeff_fix        >.true.</mg_prc_coeff_fix>
 <rrtmg_temp_fix          >.true.</rrtmg_temp_fix>
 
-<!-- Super-Parameterization
-	 Without surface flux smoothing the SP model crashes due to 
-	 unrealistically large surface fluxes over tropical forests 
-	 that lead to some type of numerical instability 
--->
-<!-- <srf_flux_avg>1</srf_flux_avg> -->
+<!-- Super-Parameterization -->
+<!-- Without srf_flux_avg=1 the SP model develops unstable oscillations near the surface -->
+<srf_flux_avg>1</srf_flux_avg>>
 
 
 <!-- External forcing for BAM or MAM -->
