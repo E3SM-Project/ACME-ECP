@@ -169,7 +169,7 @@ _TESTS = {
         "time" : "04:00:00",
         "tests" : (
             "ERP_Ld3_P96.ne4_ne4.FSP1V1-TEST",
-            "ERS_Ld3_P96.ne4_ne4.FSP1V1-TEST",
+            "ERS_Ld3_P96.ne4_ne4.FSP1V1-TEST.cam-crmout",
             "ERP_Ld3_P96.ne4_ne4.FSP2V1-TEST",
             "ERP_Ld3_P96.ne4_ne4.FSP2V1-ECPP-TEST",
             "SMS_D_Ln5_P96.ne4_ne4.FSP1V1-TEST",
