@@ -1328,7 +1328,8 @@ contains
       real(r8) :: albedo_diffuse(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
 
       ! Cloud and aerosol optics
-      type(ty_optical_props_2str) :: aerosol_optics_sw, cloud_optics_sw, cloud_optics_col
+      type(ty_optical_props_2str) :: aerosol_optics_sw, aerosol_optics_col, &
+                                     cloud_optics_sw, cloud_optics_col
 
       ! Gas concentrations
       type(ty_gas_concs) :: gas_concentrations
@@ -1467,8 +1468,8 @@ contains
       ! treatment of aerosol optics in the model, and prevents us from having to
       ! map bands to g-points ourselves since that will all be handled by the
       ! private routines internal to the optics class.
-      call handle_error(aerosol_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber()))
-      call aerosol_optics_sw%set_name('shortwave aerosol optics')
+      call handle_error(aerosol_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
+      call handle_error(aerosol_optics_col%alloc_2str(nday_tot, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
 
       ! Loop over diagnostic calls 
       ! TODO: more documentation on what this means
@@ -1501,7 +1502,7 @@ contains
                                              day_indices(1:nday), &
                                              night_indices(1:nnight), &
                                              is_cmip6_volc, &
-                                             aerosol_optics_sw)
+                                             aerosol_optics_col)
                   call t_stopf('rad_aerosol_optics_sw')
 
                   ! Set gas concentrations (I believe the gases may change for
@@ -1515,9 +1516,12 @@ contains
 
                   ! Copy optics to larger arrays
                   do iday = 1,nday
-                     cloud_optics_sw%tau(j,:,:) = cloud_optics_col%tau(iday,:,:)
-                     cloud_optics_sw%ssa(j,:,:) = cloud_optics_col%ssa(iday,:,:)
-                     cloud_optics_sw%g  (j,:,:) = cloud_optics_col%g  (iday,:,:)
+                     cloud_optics_sw%tau  (j,:,:) = cloud_optics_col%tau  (iday,:,:)
+                     cloud_optics_sw%ssa  (j,:,:) = cloud_optics_col%ssa  (iday,:,:)
+                     cloud_optics_sw%g    (j,:,:) = cloud_optics_col%g    (iday,:,:)
+                     aerosol_optics_sw%tau(j,:,:) = aerosol_optics_col%tau(iday,:,:)
+                     aerosol_optics_sw%ssa(j,:,:) = aerosol_optics_col%ssa(iday,:,:)
+                     aerosol_optics_sw%g  (j,:,:) = aerosol_optics_col%g  (iday,:,:)
                      j = j + 1
                   end do
                end do
