@@ -1328,7 +1328,7 @@ contains
       real(r8) :: albedo_diffuse(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
 
       ! Cloud and aerosol optics
-      type(ty_optical_props_2str) :: aerosol_optics_sw, cloud_optics_sw
+      type(ty_optical_props_2str) :: aerosol_optics_sw, cloud_optics_sw, cloud_optics_col
 
       ! Gas concentrations
       type(ty_gas_concs) :: gas_concentrations
@@ -1354,10 +1354,10 @@ contains
       real(r8) :: tsi_scaling
 
       ! Number of columns
-      integer :: ncol, ncol_tot
+      integer :: ncol, nday_tot
 
       ! Loop indices
-      integer :: iband
+      integer :: iband, iy, ix, iz, icol, ilev, iday, j
 
       ! For loops over diagnostic calls
       logical :: active_calls(0:N_DIAG)
@@ -1380,12 +1380,6 @@ contains
       ! Number of physics columns in this "chunk"; used in multiple places
       ! throughout this subroutine, so set once for convenience
       ncol = state%ncol
-
-      ! Total number of columns to operate on in one call to the radiative
-      ! transfer solvers. When using superparameterization, this will be ncol
-      ! times the total number of CRM columns so that we can pack all of the
-      ! data together into one call.
-      ncol_tot = ncol * crm_nx_rad * crm_ny_rad
 
       ! Get cosine solar zenith angle for current time step. 
       call set_cosine_solar_zenith_angle(state, dt_avg, coszrs(1:ncol))
@@ -1417,6 +1411,12 @@ contains
          qrsc(1:ncol,1:pver) = 0
          return
       end if
+
+      ! Total number of columns to operate on in one call to the radiative
+      ! transfer solvers. When using superparameterization, this will be ncol
+      ! times the total number of CRM columns so that we can pack all of the
+      ! data together into one call.
+      nday_tot = nday * crm_nx_rad * crm_ny_rad
 
       ! Populate RRTMGP input variables. Use the day_indices index array to
       ! map CAM variables on all columns to the daytime-only arrays, and take
@@ -1458,6 +1458,7 @@ contains
 
       ! Initialize cloud optics object
       call handle_error(cloud_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
+      call handle_error(cloud_optics_col%alloc_2str(nday_tot, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
 
       ! Initialize aerosol optics; passing only the wavenumber bounds for each
       ! "band" rather than passing the full spectral discretization object, and
@@ -1478,34 +1479,49 @@ contains
       do icall = N_DIAG,0,-1
          if (active_calls(icall)) then
 
-            ! Do shortwave cloud optics calculations
-            ! TODO: refactor the set_cloud_optics codes to allow passing arrays
-            ! rather than state/pbuf so that we can use this for superparameterized
-            ! simulations...or alternatively add logic within the set_cloud_optics
-            ! routines to handle this.
-            call t_startf('shortwave cloud optics')
-            call set_cloud_optics_sw(state, pbuf, &
-                                     day_indices(1:nday), &
-                                     k_dist_sw, cloud_optics_sw)
-            call t_stopf('shortwave cloud optics')
+            ! Loop over CRM columns to set cloud optics and state variables
+            j = 1
+            do iy = 1,crm_ny_rad
+               do ix = 1,crm_nx_rad
+                  
+                  ! Do shortwave cloud optics calculations
+                  ! TODO: refactor the set_cloud_optics codes to allow passing arrays
+                  ! rather than state/pbuf so that we can use this for superparameterized
+                  ! simulations...or alternatively add logic within the set_cloud_optics
+                  ! routines to handle this.
+                  call t_startf('shortwave cloud optics')
+                  call set_cloud_optics_sw(state, pbuf, &
+                                           day_indices(1:nday), &
+                                           k_dist_sw, cloud_optics_col)
+                  call t_stopf('shortwave cloud optics')
 
-            ! Get shortwave aerosol optics
-            call t_startf('rad_aerosol_optics_sw')
-            call set_aerosol_optics_sw(icall, state, pbuf, &
-                                       day_indices(1:nday), &
-                                       night_indices(1:nnight), &
-                                       is_cmip6_volc, &
-                                       aerosol_optics_sw)
-            call t_stopf('rad_aerosol_optics_sw')
+                  ! Get shortwave aerosol optics
+                  call t_startf('rad_aerosol_optics_sw')
+                  call set_aerosol_optics_sw(icall, state, pbuf, &
+                                             day_indices(1:nday), &
+                                             night_indices(1:nnight), &
+                                             is_cmip6_volc, &
+                                             aerosol_optics_sw)
+                  call t_stopf('rad_aerosol_optics_sw')
 
-            ! Set gas concentrations (I believe the gases may change for
-            ! different values of icall, which is why we do this within the
-            ! loop)
-            call t_startf('rad_gas_concentrations_sw')
-            call set_gas_concentrations(icall, state, pbuf, &
-                                        gas_concentrations, &
-                                        day_indices=day_indices(1:nday))
-            call t_stopf('rad_gas_concentrations_sw')
+                  ! Set gas concentrations (I believe the gases may change for
+                  ! different values of icall, which is why we do this within the
+                  ! loop)
+                  call t_startf('rad_gas_concentrations_sw')
+                  call set_gas_concentrations(icall, state, pbuf, &
+                                              gas_concentrations, &
+                                              day_indices=day_indices(1:nday))
+                  call t_stopf('rad_gas_concentrations_sw')
+
+                  ! Copy optics to larger arrays
+                  do iday = 1,nday
+                     cloud_optics_sw%tau(j,:,:) = cloud_optics_col%tau(iday,:,:)
+                     cloud_optics_sw%ssa(j,:,:) = cloud_optics_col%ssa(iday,:,:)
+                     cloud_optics_sw%g  (j,:,:) = cloud_optics_col%g  (iday,:,:)
+                     j = j + 1
+                  end do
+               end do
+            end do
 
             ! Do shortwave radiative transfer calculations
             call t_startf('rad_calculations_sw')
