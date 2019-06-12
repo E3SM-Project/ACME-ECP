@@ -1456,16 +1456,8 @@ contains
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_allsky_day, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_clrsky_day, do_direct=.true.)
 
-      ! Do shortwave cloud optics calculations
-      ! TODO: refactor the set_cloud_optics codes to allow passing arrays
-      ! rather than state/pbuf so that we can use this for superparameterized
-      ! simulations...or alternatively add logic within the set_cloud_optics
-      ! routines to handle this.
-      call t_startf('shortwave cloud optics')
-      call set_cloud_optics_sw(state, pbuf, &
-                               day_indices(1:nday), &
-                               k_dist_sw, cloud_optics_sw)
-      call t_stopf('shortwave cloud optics')
+      ! Initialize cloud optics object
+      call handle_error(cloud_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
 
       ! Initialize aerosol optics; passing only the wavenumber bounds for each
       ! "band" rather than passing the full spectral discretization object, and
@@ -1485,6 +1477,17 @@ contains
       call rad_cnst_get_call_list(active_calls)
       do icall = N_DIAG,0,-1
          if (active_calls(icall)) then
+
+            ! Do shortwave cloud optics calculations
+            ! TODO: refactor the set_cloud_optics codes to allow passing arrays
+            ! rather than state/pbuf so that we can use this for superparameterized
+            ! simulations...or alternatively add logic within the set_cloud_optics
+            ! routines to handle this.
+            call t_startf('shortwave cloud optics')
+            call set_cloud_optics_sw(state, pbuf, &
+                                     day_indices(1:nday), &
+                                     k_dist_sw, cloud_optics_sw)
+            call t_stopf('shortwave cloud optics')
 
             ! Get shortwave aerosol optics
             call t_startf('rad_aerosol_optics_sw')
@@ -1506,19 +1509,17 @@ contains
 
             ! Do shortwave radiative transfer calculations
             call t_startf('rad_calculations_sw')
-            call handle_error(rte_sw( &
-               k_dist_sw, gas_concentrations, &
-               pmid(1:nday,1:nlev_rad), &
-               tmid(1:nday,1:nlev_rad), &
-               pint(1:nday,1:nlev_rad+1), &
-               coszrs_day(1:nday), &
-               albedo_direct_day(1:nswbands,1:nday), &
-               albedo_diffuse_day(1:nswbands,1:nday), &
-               cloud_optics_sw, &
-               fluxes_allsky_day, fluxes_clrsky_day, &
-               aer_props=aerosol_optics_sw, &
-               tsi_scaling=tsi_scaling &
-            ))
+            call handle_error(rte_sw(k_dist_sw, gas_concentrations, &
+                                     pmid(1:nday,1:nlev_rad), &
+                                     tmid(1:nday,1:nlev_rad), &
+                                     pint(1:nday,1:nlev_rad+1), &
+                                     coszrs_day(1:nday), &
+                                     albedo_direct_day(1:nswbands,1:nday), &
+                                     albedo_diffuse_day(1:nswbands,1:nday), &
+                                     cloud_optics_sw, &
+                                     fluxes_allsky_day, fluxes_clrsky_day, &
+                                     aer_props=aerosol_optics_sw, &
+                                     tsi_scaling=tsi_scaling))
             call t_stopf('rad_calculations_sw')
 
             ! Calculate heating rates on the DAYTIME columns
