@@ -1293,10 +1293,11 @@ contains
                                   fluxes_allsky, fluxes_clrsky, qrs, qrsc)
      
       use rad_constituents, only: N_DIAG, rad_cnst_get_call_list
+      use constituents,     only: cnst_get_ind
       use perf_mod, only: t_startf, t_stopf
       use cam_history, only: outfld
       use physics_types, only: physics_state, physics_state_copy
-      use physics_buffer, only: physics_buffer_desc
+      use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
       use camsrfexch, only: cam_in_t
       use mo_rrtmgp_clr_all_sky, only: rte_sw
       use mo_fluxes_byband, only: ty_fluxes_byband
@@ -1305,6 +1306,8 @@ contains
       use radiation_state, only: set_rad_state
       use radiation_utils, only: calculate_heating_rate
       use cam_optics, only: set_cloud_optics_sw, set_aerosol_optics_sw
+      use phys_control, only: phys_getopts
+      use physconst,    only: gravit
 
       ! Inputs
       type(physics_state), intent(in) :: state_in
@@ -1324,8 +1327,10 @@ contains
       real(r8), dimension(pcols,nlev_rad) :: qrs_rad, qrsc_rad
 
       ! Albedo for shortwave calculations
-      real(r8) :: albedo_direct(nswbands,pcols), albedo_direct_day(nswbands,pcols)
-      real(r8) :: albedo_diffuse(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
+      real(r8), dimension(nswbands,pcols) :: albedo_direct_col, albedo_diffuse_col, &
+                                             albedo_direct_day, albedo_diffuse_day
+      real(r8), dimension(nswbands,pcols * crm_nx_rad * crm_ny_rad) :: &
+                                             albedo_direct_all, albedo_diffuse_all
 
       ! Cloud and aerosol optics
       type(ty_optical_props_2str) :: aerosol_optics_sw, aerosol_optics_col, &
@@ -1335,7 +1340,7 @@ contains
       type(ty_gas_concs) :: gas_concentrations
 
       ! Cosine solar zenith angle for all columns in chunk
-      real(r8) :: coszrs(pcols)
+      real(r8) :: coszrs(pcols), coszrs_all(pcols * crm_nx_rad * crm_ny_rad)
 
       ! Incoming solar radiation, scaled for solar zenith angle 
       ! and earth-sun distance
@@ -1358,7 +1363,10 @@ contains
       integer :: ncol, nday_tot
 
       ! Loop indices
-      integer :: iband, iy, ix, iz, icol, ilev, iday, j
+      integer :: iband, iy, ix, iz, icol, ilev, iday, j, ic
+
+      ! Indices into rad constituents
+      integer :: ixwatvap, ixcldliq, ixcldice
 
       ! For loops over diagnostic calls
       logical :: active_calls(0:N_DIAG)
@@ -1367,11 +1375,20 @@ contains
       ! State fields that are passed into RRTMGP. Some of these may need to
       ! modified from what exist in the physics_state object, i.e. to clip
       ! temperatures to make sure they are within the valid range.
-      real(r8), dimension(pcols,nlev_rad) :: tmid, pmid
-      real(r8), dimension(pcols,nlev_rad+1) :: pint, tint
+      real(r8), dimension(pcols,nlev_rad) :: tmid_col, pmid_col
+      real(r8), dimension(pcols,nlev_rad+1) :: pint_col, tint_col
+      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,nlev_rad) :: tmid_all, pmid_all
+      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,nlev_rad+1) :: tint_all, pint_all
+
+      ! Stuff for overwriting state and pbuf with CRM
+      real(r8), pointer, dimension(:,:) :: iclwp, iciwp, cld
+      real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrl
+      real(r8), dimension(pcols,pver) :: iclwp_save, iciwp_save, cld_save
 
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_sw'
+
+      logical :: use_SPCAM
 
 
       ! Copy state so we can use CAM routines with arrays replaced with data
@@ -1426,24 +1443,24 @@ contains
       ! shortwave and longwave, because we need to compress to just the daytime
       ! columns for the shortwave, but the longwave uses all columns
       call set_rad_state(state, cam_in, &
-                         tmid(1:nday,1:nlev_rad), & 
-                         tint(1:nday,1:nlev_rad+1), &
-                         pmid(1:nday,1:nlev_rad), &
-                         pint(1:nday,1:nlev_rad+1), &
+                         tmid_col(1:nday,1:nlev_rad), & 
+                         tint_col(1:nday,1:nlev_rad+1), &
+                         pmid_col(1:nday,1:nlev_rad), &
+                         pint_col(1:nday,1:nlev_rad+1), &
                          col_indices=day_indices(1:nday))
 
       ! Get albedo. This uses CAM routines internally and just provides a
       ! wrapper to improve readability of the code here.
-      call set_albedo(cam_in, albedo_direct(1:nswbands,1:ncol), albedo_diffuse(1:nswbands,1:ncol))
+      call set_albedo(cam_in, albedo_direct_col(1:nswbands,1:ncol), albedo_diffuse_col(1:nswbands,1:ncol))
 
       ! Send albedos to history buffer (useful for debugging)
-      call outfld('SW_ALBEDO_DIR', transpose(albedo_direct(1:nswbands,1:ncol)), ncol, state%lchnk)
-      call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse(1:nswbands,1:ncol)), ncol, state%lchnk)
+      call outfld('SW_ALBEDO_DIR', transpose(albedo_direct_col(1:nswbands,1:ncol)), ncol, state%lchnk)
+      call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse_col(1:nswbands,1:ncol)), ncol, state%lchnk)
 
       ! Compress to daytime-only arrays
       do iband = 1,nswbands
-         call compress_day_columns(albedo_direct(iband,1:ncol), albedo_direct_day(iband,1:nday), day_indices(1:nday))
-         call compress_day_columns(albedo_diffuse(iband,1:ncol), albedo_diffuse_day(iband,1:nday), day_indices(1:nday))
+         call compress_day_columns(albedo_direct_col(iband,1:ncol), albedo_direct_day(iband,1:nday), day_indices(1:nday))
+         call compress_day_columns(albedo_diffuse_col(iband,1:ncol), albedo_diffuse_day(iband,1:nday), day_indices(1:nday))
       end do
       call compress_day_columns(coszrs(1:ncol), coszrs_day(1:nday), day_indices(1:nday))
 
@@ -1471,6 +1488,35 @@ contains
       call handle_error(aerosol_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
       call handle_error(aerosol_optics_col%alloc_2str(nday_tot, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
 
+      ! pbuf fields we need to overwrite with CRM fields to work with optics
+      call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
+      call pbuf_get_field(pbuf, pbuf_get_index('CLD'  ), cld  )
+
+      ! CRM fields
+      call phys_getopts(use_SPCAM_out=use_SPCAM)
+      if (use_SPCAM) then
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_T_RAD'  ), crm_t  )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QV_RAD' ), crm_qv )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD' ), crm_qc )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD' ), crm_qi )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_cld)
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRL')    , crm_qrl)
+      end if
+
+      ! Save pbuf things to restore when we are done working with them. This is
+      ! needed because the CAM optics routines are inflexible and bury pbuf down
+      ! deep in the call stack, so we need to overwrite with CRM state here in
+      ! order to use CRM information to calculate optics.
+      iclwp_save = iclwp
+      iciwp_save = iciwp
+      cld_save   = cld
+ 
+      ! Indices into rad constituents arrays
+      ixwatvap = 1
+      call cnst_get_ind('CLDLIQ', ixcldliq)
+      call cnst_get_ind('CLDICE', ixcldice)
+
       ! Loop over diagnostic calls 
       ! TODO: more documentation on what this means
       !
@@ -1484,6 +1530,29 @@ contains
             j = 1
             do iy = 1,crm_ny_rad
                do ix = 1,crm_nx_rad
+                  ! Overwrite state and pbuf fields with this CRM column
+                  if (use_SPCAM) then
+                     do iz = 1,crm_nz
+                        ilev = pver - iz + 1
+                        do ic = 1,ncol
+                           ! NOTE: I do not think these are used by optics
+                           state%q(ic,ilev,ixcldliq) = crm_qc(ic,ix,iy,iz)
+                           state%q(ic,ilev,ixcldice) = crm_qi(ic,ix,iy,iz)
+                           state%q(ic,ilev,ixwatvap) = crm_qv(ic,ix,iy,iz)
+                           state%t(ic,ilev)          = crm_t (ic,ix,iy,iz)
+
+                           ! In-cloud liquid and ice water paths (used by cloud optics)
+                           cld(ic,ilev) = crm_cld(ic,ix,iy,iz)
+                           if (cld(ic,ilev) > 0) then
+                              iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / cld(ic,ilev)
+                              iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / cld(ic,ilev)
+                           else
+                              iclwp(ic,ilev) = 0
+                              iciwp(ic,ilev) = 0
+                           end if
+                        end do  ! ic = 1,ncol
+                     end do  ! iz = 1,crm_nz
+                  end if
                   
                   ! Do shortwave cloud optics calculations
                   ! TODO: refactor the set_cloud_optics codes to allow passing arrays
@@ -1514,8 +1583,22 @@ contains
                                               day_indices=day_indices(1:nday))
                   call t_stopf('rad_gas_concentrations_sw')
 
-                  ! Copy optics to larger arrays
+                  ! Copy data to larger arrays
                   do iday = 1,nday
+                     ! Solar zenith angle
+                     coszrs_all(j) = coszrs_day(iday)
+
+                     ! State variables
+                     pmid_all(j,:) = pmid_col(iday,:)
+                     tmid_all(j,:) = tmid_col(iday,:)
+                     pint_all(j,:) = pint_col(iday,:)
+                     tint_all(j,:) = tint_col(iday,:)
+
+                     ! Albedos
+                     albedo_direct_all(:,j) = albedo_direct_day(:,iday)
+                     albedo_diffuse_all(:,j) = albedo_diffuse_day(:,iday)
+
+                     ! Optics
                      cloud_optics_sw%tau  (j,:,:) = cloud_optics_col%tau  (iday,:,:)
                      cloud_optics_sw%ssa  (j,:,:) = cloud_optics_col%ssa  (iday,:,:)
                      cloud_optics_sw%g    (j,:,:) = cloud_optics_col%g    (iday,:,:)
@@ -1527,15 +1610,20 @@ contains
                end do
             end do
 
+            ! Restore pbuf fields
+            iclwp = iclwp_save
+            iciwp = iciwp_save
+            cld   = cld_save
+
             ! Do shortwave radiative transfer calculations
             call t_startf('rad_calculations_sw')
             call handle_error(rte_sw(k_dist_sw, gas_concentrations, &
-                                     pmid(1:nday,1:nlev_rad), &
-                                     tmid(1:nday,1:nlev_rad), &
-                                     pint(1:nday,1:nlev_rad+1), &
-                                     coszrs_day(1:nday), &
-                                     albedo_direct_day(1:nswbands,1:nday), &
-                                     albedo_diffuse_day(1:nswbands,1:nday), &
+                                     pmid_all(1:nday_tot,1:nlev_rad), &
+                                     tmid_all(1:nday_tot,1:nlev_rad), &
+                                     pint_all(1:nday_tot,1:nlev_rad+1), &
+                                     coszrs_all(1:nday_tot), &
+                                     albedo_direct_all(1:nswbands,1:nday_tot), &
+                                     albedo_diffuse_all(1:nswbands,1:nday_tot), &
                                      cloud_optics_sw, &
                                      fluxes_allsky_day, fluxes_clrsky_day, &
                                      aer_props=aerosol_optics_sw, &
@@ -1544,9 +1632,9 @@ contains
 
             ! Calculate heating rates on the DAYTIME columns
             call t_startf('rad_heating_rate_sw')
-            call calculate_heating_rate(fluxes_allsky_day, pint(1:nday,1:nlev_rad+1), &
+            call calculate_heating_rate(fluxes_allsky_day, pint_all(1:nday,1:nlev_rad+1), &
                                         qrs_rad(1:nday,1:nlev_rad))
-            call calculate_heating_rate(fluxes_clrsky_day, pint(1:nday,1:nlev_rad+1), &
+            call calculate_heating_rate(fluxes_clrsky_day, pint_all(1:nday,1:nlev_rad+1), &
                                         qrsc_rad(1:nday,1:nlev_rad))
             call t_stopf('rad_heating_rate_sw')
 
@@ -1638,7 +1726,6 @@ contains
 
       real(r8), pointer, dimension(:,:) :: iclwp, iciwp, cld
       real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrl
-
       real(r8), dimension(pcols,pver) :: iclwp_save, iciwp_save, cld_save
       integer :: ncol, icall, ic, ix, iy, iz, ilev, ncol_tot, j
       integer :: ixwatvap, ixcldliq, ixcldice
@@ -1818,7 +1905,7 @@ contains
                )
             end do
 
-            ! Restore state and pbuf fields
+            ! Restore pbuf fields
             iclwp = iclwp_save
             iciwp = iciwp_save
             cld   = cld_save
