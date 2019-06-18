@@ -1322,10 +1322,12 @@ contains
       type(physics_state) :: state
 
       ! Temporary fluxes compressed to daytime only arrays
-      type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day
+      type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day, &
+                                fluxes_allsky_all, fluxes_clrsky_all
 
       ! Temporary heating rates on radiation vertical grid (and daytime only)
-      real(r8), dimension(pcols,nlev_rad) :: qrs_rad, qrsc_rad
+      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,nlev_rad) :: qrs_rad, qrsc_rad
+      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,pver) :: qrs_all, qrsc_all
 
       ! Albedo for shortwave calculations
       real(r8), dimension(nswbands,pcols) :: albedo_direct_col, albedo_diffuse_col, &
@@ -1383,7 +1385,7 @@ contains
 
       ! Stuff for overwriting state and pbuf with CRM
       real(r8), pointer, dimension(:,:) :: iclwp, iciwp, cld
-      real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrl
+      real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrs
       real(r8), dimension(pcols,pver) :: iclwp_save, iciwp_save, cld_save
 
       ! Stuff for working with gases
@@ -1478,6 +1480,8 @@ contains
       ! have vertical dimension nlev_rad (defined at midpoints).
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_allsky_day, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_clrsky_day, do_direct=.true.)
+      call initialize_rrtmgp_fluxes(nday_tot, nlev_rad+1, nswbands, fluxes_allsky_all, do_direct=.true.)
+      call initialize_rrtmgp_fluxes(nday_tot, nlev_rad+1, nswbands, fluxes_clrsky_all, do_direct=.true.)
 
       ! Initialize cloud optics object
       call handle_error(cloud_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
@@ -1506,7 +1510,7 @@ contains
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD' ), crm_qc )
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD' ), crm_qi )
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_cld)
-         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRL')    , crm_qrl)
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRS')    , crm_qrs)
       end if
 
       ! Save pbuf things to restore when we are done working with them. This is
@@ -1623,7 +1627,7 @@ contains
 
                      ! Gases
                      gas_vmr_all(:,j,:) = gas_vmr_day(:,iday,:)
-                       
+
                      ! Increment column
                      j = j + 1
                   end do  ! iday = 1,nday
@@ -1651,30 +1655,64 @@ contains
                                      albedo_direct_all(1:nswbands,1:nday_tot), &
                                      albedo_diffuse_all(1:nswbands,1:nday_tot), &
                                      cloud_optics_sw, &
-                                     fluxes_allsky_day, fluxes_clrsky_day, &
+                                     fluxes_allsky_all, fluxes_clrsky_all, &
                                      aer_props=aerosol_optics_sw, &
                                      tsi_scaling=tsi_scaling))
             call t_stopf('rad_calculations_sw')
 
             ! Calculate heating rates on the DAYTIME columns
             call t_startf('rad_heating_rate_sw')
-            call calculate_heating_rate(fluxes_allsky_day, pint_all(1:nday,1:nlev_rad+1), &
-                                        qrs_rad(1:nday,1:nlev_rad))
-            call calculate_heating_rate(fluxes_clrsky_day, pint_all(1:nday,1:nlev_rad+1), &
-                                        qrsc_rad(1:nday,1:nlev_rad))
+            call calculate_heating_rate(fluxes_allsky_all, pint_all(1:nday_tot,1:nlev_rad+1), &
+                                        qrs_rad(1:nday_tot,1:nlev_rad))
+            call calculate_heating_rate(fluxes_clrsky_all, pint_all(1:nday_tot,1:nlev_rad+1), &
+                                        qrsc_rad(1:nday_tot,1:nlev_rad))
             call t_stopf('rad_heating_rate_sw')
 
-            ! Expand fluxes from daytime-only arrays to full chunk arrays
-            call t_startf('rad_expand_fluxes_sw')
-            call expand_day_fluxes(fluxes_allsky_day, fluxes_allsky, day_indices(1:nday))
-            call expand_day_fluxes(fluxes_clrsky_day, fluxes_clrsky, day_indices(1:nday))
-            call t_stopf('rad_expand_fluxes_sw')
+            ! Map to CAM levels
+            qrs_all(1:nday_tot,1:pver) = qrs_rad(1:nday_tot,ktop:kbot)
+            qrsc_all(1:nday_tot,1:pver) = qrsc_rad(1:nday_tot,ktop:kbot)
 
-            ! Expand heating rates to all columns and map back to CAM levels
-            call t_startf('rad_expand_heating_rate_sw')
-            call expand_day_columns(qrs_rad(1:nday,ktop:kbot), qrs(1:ncol,1:pver), day_indices(1:nday))
-            call expand_day_columns(qrsc_rad(1:nday,ktop:kbot), qrsc(1:ncol,1:pver), day_indices(1:nday))
-            call t_stopf('rad_expand_heating_rate_sw')
+            ! Map to CRM columns
+            if (use_SPCAM) then
+               j = 1
+               do iy = 1,crm_ny_rad
+                  do ix = 1,crm_nx_rad
+                     do iday = 1,nday
+                        ic = day_indices(iday)
+                        do iz = 1,crm_nz
+                           ilev = pver - iz + 1
+                           crm_qrs(ic,ix,iy,iz) = qrs_all(j,ilev)
+                        end do
+                        j = j + 1
+                     end do
+                  end do
+               end do
+            end if
+
+            ! Calculate domain averages, simultaneously mapping from
+            ! daytime-only to all columns
+            call average_packed_array(qrs_all (1:nday_tot,:)          , qrs (1:ncol,:), day_indices(1:nday))
+            call average_packed_array(qrsc_all(1:nday_tot,:)          , qrsc(1:ncol,:), day_indices(1:nday))
+            call average_packed_array(fluxes_allsky_all%flux_up    (1:nday_tot,:), fluxes_allsky%flux_up    (1:ncol,:), day_indices(1:nday))
+            call average_packed_array(fluxes_allsky_all%flux_dn    (1:nday_tot,:), fluxes_allsky%flux_dn    (1:ncol,:), day_indices(1:nday))
+            call average_packed_array(fluxes_allsky_all%flux_net   (1:nday_tot,:), fluxes_allsky%flux_net   (1:ncol,:), day_indices(1:nday))
+            call average_packed_array(fluxes_allsky_all%flux_dn_dir(1:nday_tot,:), fluxes_allsky%flux_dn_dir(1:ncol,:), day_indices(1:nday))
+            do iband = 1,nswbands
+               call average_packed_array(fluxes_allsky_all%bnd_flux_up    (1:nday_tot,:,iband), fluxes_allsky%bnd_flux_up    (1:ncol,:,iband), day_indices(1:nday))
+               call average_packed_array(fluxes_allsky_all%bnd_flux_dn    (1:nday_tot,:,iband), fluxes_allsky%bnd_flux_dn    (1:ncol,:,iband), day_indices(1:nday))
+               call average_packed_array(fluxes_allsky_all%bnd_flux_net   (1:nday_tot,:,iband), fluxes_allsky%bnd_flux_net   (1:ncol,:,iband), day_indices(1:nday))
+               call average_packed_array(fluxes_allsky_all%bnd_flux_dn_dir(1:nday_tot,:,iband), fluxes_allsky%bnd_flux_dn_dir(1:ncol,:,iband), day_indices(1:nday))
+            end do
+            call average_packed_array(fluxes_clrsky_all%flux_up    (1:nday_tot,:), fluxes_clrsky%flux_up    (1:ncol,:), day_indices(1:nday))
+            call average_packed_array(fluxes_clrsky_all%flux_dn    (1:nday_tot,:), fluxes_clrsky%flux_dn    (1:ncol,:), day_indices(1:nday))
+            call average_packed_array(fluxes_clrsky_all%flux_net   (1:nday_tot,:), fluxes_clrsky%flux_net   (1:ncol,:), day_indices(1:nday))
+            call average_packed_array(fluxes_clrsky_all%flux_dn_dir(1:nday_tot,:), fluxes_clrsky%flux_dn_dir(1:ncol,:), day_indices(1:nday))
+            do iband = 1,nswbands
+               call average_packed_array(fluxes_clrsky_all%bnd_flux_up    (1:nday_tot,:,iband), fluxes_clrsky%bnd_flux_up    (1:ncol,:,iband), day_indices(1:nday))
+               call average_packed_array(fluxes_clrsky_all%bnd_flux_dn    (1:nday_tot,:,iband), fluxes_clrsky%bnd_flux_dn    (1:ncol,:,iband), day_indices(1:nday))
+               call average_packed_array(fluxes_clrsky_all%bnd_flux_net   (1:nday_tot,:,iband), fluxes_clrsky%bnd_flux_net   (1:ncol,:,iband), day_indices(1:nday))
+               call average_packed_array(fluxes_clrsky_all%bnd_flux_dn_dir(1:nday_tot,:,iband), fluxes_clrsky%bnd_flux_dn_dir(1:ncol,:,iband), day_indices(1:nday))
+            end do
 
             ! Send fluxes to history buffer
             call output_fluxes_sw(icall, state, fluxes_allsky, fluxes_clrsky, qrs,  qrsc)
@@ -1965,7 +2003,7 @@ contains
                      do ic = 1,ncol
                         do iz = 1,crm_nz
                            ilev = pver - iz + 1
-                           crm_qrl(ic,ix,iy,iz) = qrl(j,ilev)
+                           crm_qrl(ic,ix,iy,iz) = qrl_all(j,ilev)
                         end do
                         j = j + 1
                      end do
@@ -2004,30 +2042,49 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine average_packed_array(array_packed, array_avg)
+   subroutine average_packed_array(array_packed, array_avg, day_indices)
       real(r8), intent(in) :: array_packed(:,:)
       real(r8), intent(out) :: array_avg(:,:)
-      integer :: ncol, ncol_tot
+      integer, intent(in), optional :: day_indices(:)
+      integer :: nday, nday_tot, ncol, ncol_tot
       real(r8) :: area_factor
-      integer :: ic, ix, iy, iz, j
+      integer :: id, ic, ix, iy, iz, j
 
-      ncol = size(array_avg, 1)
-      ncol_tot = ncol * crm_nx_rad * crm_ny_rad
-      call assert(size(array_packed,1) == ncol_tot, 'size(array_packed,1) /= ncol_tot')
       area_factor = 1._r8 / (crm_nx_rad * crm_ny_rad)
 
       array_avg = 0
-      do iz = 1,size(array_packed,2)
-         j = 1
-         do iy = 1,crm_ny_rad
-            do ix = 1,crm_nx_rad
-               do ic = 1,ncol
-                  array_avg(ic,iz) = array_avg(ic,iz) + array_packed(j,iz) * area_factor
-                  j = j + 1
+      if (present(day_indices)) then
+         nday = count(day_indices > 0)
+         nday_tot = nday * crm_nx_rad * crm_ny_rad
+         call assert(size(array_packed,1) == nday_tot, 'size(array_packed,1) /= nday_tot')
+         do iz = 1,size(array_packed,2)
+            j = 1
+            do iy = 1,crm_ny_rad
+               do ix = 1,crm_nx_rad
+                  do id = 1,nday
+                     ic = day_indices(id)
+                     array_avg(ic,iz) = array_avg(ic,iz) + array_packed(j,iz) * area_factor
+                     j = j + 1
+                  end do
                end do
-            end do
-         end do 
-      end do
+            end do 
+         end do
+      else
+         ncol = size(array_avg, 1)
+         ncol_tot = ncol * crm_nx_rad * crm_ny_rad
+         call assert(size(array_packed,1) == ncol_tot, 'size(array_packed,1) /= ncol_tot')
+         do iz = 1,size(array_packed,2)
+            j = 1
+            do iy = 1,crm_ny_rad
+               do ix = 1,crm_nx_rad
+                  do ic = 1,ncol
+                     array_avg(ic,iz) = array_avg(ic,iz) + array_packed(j,iz) * area_factor
+                     j = j + 1
+                  end do
+               end do
+            end do 
+         end do
+      end if
    end subroutine average_packed_array
 
    !----------------------------------------------------------------------------
