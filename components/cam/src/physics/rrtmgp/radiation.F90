@@ -1322,8 +1322,7 @@ contains
       type(physics_state) :: state
 
       ! Temporary fluxes compressed to daytime only arrays
-      type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day, &
-                                fluxes_allsky_all, fluxes_clrsky_all
+      type(ty_fluxes_byband) :: fluxes_allsky_all, fluxes_clrsky_all
 
       ! Temporary heating rates on radiation vertical grid (and daytime only)
       real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,nlev_rad) :: qrs_rad, qrsc_rad
@@ -1478,14 +1477,12 @@ contains
       ! NOTE: fluxes defined at interfaces, so initialize to have vertical
       ! dimension nlev_rad+1, while we initialized the RRTMGP input variables to
       ! have vertical dimension nlev_rad (defined at midpoints).
-      call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_allsky_day, do_direct=.true.)
-      call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_clrsky_day, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday_tot, nlev_rad+1, nswbands, fluxes_allsky_all, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday_tot, nlev_rad+1, nswbands, fluxes_clrsky_all, do_direct=.true.)
 
       ! Initialize cloud optics object
-      call handle_error(cloud_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
-      call handle_error(cloud_optics_col%alloc_2str(nday_tot, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
+      call handle_error(cloud_optics_sw%alloc_2str(nday_tot, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
+      call handle_error(cloud_optics_col%alloc_2str(nday, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
 
       ! Initialize aerosol optics; passing only the wavenumber bounds for each
       ! "band" rather than passing the full spectral discretization object, and
@@ -1494,8 +1491,8 @@ contains
       ! treatment of aerosol optics in the model, and prevents us from having to
       ! map bands to g-points ourselves since that will all be handled by the
       ! private routines internal to the optics class.
-      call handle_error(aerosol_optics_sw%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
-      call handle_error(aerosol_optics_col%alloc_2str(nday_tot, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
+      call handle_error(aerosol_optics_sw%alloc_2str(nday_tot, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
+      call handle_error(aerosol_optics_col%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
 
       ! pbuf fields we need to overwrite with CRM fields to work with optics
       call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
@@ -1634,6 +1631,10 @@ contains
                end do  ! ix = 1,crm_nx_rad
             end do  ! iy = 1,crm_ny_rad
 
+            ! Validate
+            call handle_error(cloud_optics_sw%validate())
+            call handle_error(aerosol_optics_sw%validate())
+
             ! Set gas concentrations object from array
             call gas_concentrations%reset()
             do igas = 1,size(active_gases)
@@ -1691,8 +1692,8 @@ contains
 
             ! Calculate domain averages, simultaneously mapping from
             ! daytime-only to all columns
-            call average_packed_array(qrs_all (1:nday_tot,:)          , qrs (1:ncol,:), day_indices(1:nday))
-            call average_packed_array(qrsc_all(1:nday_tot,:)          , qrsc(1:ncol,:), day_indices(1:nday))
+            call average_packed_array(qrs_all (1:nday_tot,:)                     , qrs (1:ncol,:)                     , day_indices(1:nday))
+            call average_packed_array(qrsc_all(1:nday_tot,:)                     , qrsc(1:ncol,:)                     , day_indices(1:nday))
             call average_packed_array(fluxes_allsky_all%flux_up    (1:nday_tot,:), fluxes_allsky%flux_up    (1:ncol,:), day_indices(1:nday))
             call average_packed_array(fluxes_allsky_all%flux_dn    (1:nday_tot,:), fluxes_allsky%flux_dn    (1:ncol,:), day_indices(1:nday))
             call average_packed_array(fluxes_allsky_all%flux_net   (1:nday_tot,:), fluxes_allsky%flux_net   (1:ncol,:), day_indices(1:nday))
@@ -1723,8 +1724,8 @@ contains
       ! Free fluxes and optical properties
       call free_optics_sw(cloud_optics_sw)
       call free_optics_sw(aerosol_optics_sw)
-      call free_fluxes(fluxes_allsky_day)
-      call free_fluxes(fluxes_clrsky_day)
+      call free_fluxes(fluxes_allsky_all)
+      call free_fluxes(fluxes_clrsky_all)
 
    end subroutine radiation_driver_sw
 
