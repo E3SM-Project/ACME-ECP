@@ -83,9 +83,9 @@ contains
           end do
         end do
       enddo
-    do icrm=1, ncrms
-      print *, "tau ",  tauy0(icrm), taux0(icrm), ustar(icrm), uhl(icrm), vhl(icrm),  rho(icrm, 1) 
-    enddo   
+    !do icrm=1, ncrms
+    !  print *, "tau ",  tauy0(icrm), taux0(icrm), ustar(icrm), uhl(icrm), vhl(icrm),  rho(icrm, 1) 
+    !enddo   
     !end if ! SFC_FLX_FXD
   end subroutine crmsurface_better 
 
