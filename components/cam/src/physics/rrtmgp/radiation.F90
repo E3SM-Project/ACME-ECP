@@ -641,6 +641,12 @@ contains
             call addfld('FSUTOA'//diag(icall), horiz_only,  'A',  'W/m2', &
                         'Upwelling solar flux at top of atmosphere', &
                         sampling_seq='rad_lwsw')
+            call addfld('FSUT'//diag(icall), horiz_only,  'A',  'W/m2', &
+                        'Upwelling solar flux at top of model', &
+                        sampling_seq='rad_lwsw')
+            call addfld('FSUTC'//diag(icall), horiz_only,  'A',  'W/m2', &
+                        'Clearsky upwelling solar flux at top of model', &
+                        sampling_seq='rad_lwsw')
             call addfld('FSNTOAC'//diag(icall), horiz_only, 'A',  'W/m2', &
                         'Clearsky net solar flux at top of atmosphere', &
                         sampling_seq='rad_lwsw')
@@ -1098,6 +1104,7 @@ contains
 
       use phys_control, only: phys_getopts
 
+
       ! ---------------------------------------------------------------------------
       ! Arguments
       ! ---------------------------------------------------------------------------
@@ -1172,6 +1179,7 @@ contains
 
       ! Radiative fluxes
       type(ty_fluxes_byband) :: fluxes_allsky, fluxes_clrsky
+
 
       !----------------------------------------------------------------------
 
@@ -1631,10 +1639,6 @@ contains
                end do  ! ix = 1,crm_nx_rad
             end do  ! iy = 1,crm_ny_rad
 
-            ! Validate
-            call handle_error(cloud_optics_sw%validate())
-            call handle_error(aerosol_optics_sw%validate())
-
             ! Set gas concentrations object from array
             call gas_concentrations%reset()
             do igas = 1,size(active_gases)
@@ -1723,7 +1727,10 @@ contains
 
       ! Free fluxes and optical properties
       call free_optics_sw(cloud_optics_sw)
+      call free_optics_sw(cloud_optics_col)
       call free_optics_sw(aerosol_optics_sw)
+      call free_optics_sw(aerosol_optics_col)
+
       call free_fluxes(fluxes_allsky_all)
       call free_fluxes(fluxes_clrsky_all)
 
@@ -2038,6 +2045,9 @@ contains
       call free_optics_lw(aer_optics_all)
       call free_optics_lw(cld_optics_col)
       call free_optics_lw(aer_optics_col)
+
+      call free_fluxes(fluxes_allsky_all)
+      call free_fluxes(fluxes_clrsky_all)
 
    end subroutine radiation_driver_lw
 
@@ -2482,6 +2492,7 @@ contains
       call outfld('FSNT'//diag(icall), flux_all%flux_net(1:ncol,ktop), ncol, state%lchnk)
       call outfld('FSNS'//diag(icall), flux_all%flux_net(1:ncol,kbot+1), ncol, state%lchnk)
       call outfld('FSDS'//diag(icall), flux_all%flux_dn(1:ncol,kbot+1), ncol, state%lchnk)
+      call outfld('FSUT'//diag(icall), flux_all%flux_up(1:ncol,ktop), ncol, state%lchnk)
 
       ! TOA fluxes (above model top, use index to rad top)
       call outfld('FSUTOA'//diag(icall), flux_all%flux_up(1:ncol,ktop_rad), ncol, state%lchnk)
@@ -2493,6 +2504,7 @@ contains
       call outfld('FSDSC'//diag(icall), flux_clr%flux_dn(1:ncol,kbot+1), ncol, state%lchnk)
       call outfld('FSUTOAC'//diag(icall), flux_clr%flux_up(1:ncol,ktop_rad), ncol, state%lchnk)
       call outfld('FSNTOAC'//diag(icall), flux_clr%flux_net(1:ncol,ktop_rad), ncol, state%lchnk)
+      call outfld('FSUTC'//diag(icall), flux_clr%flux_up(1:ncol,ktop), ncol, state%lchnk)
 
       ! Calculate and output the shortwave cloud radiative effect (SWCF in history)
       cloud_radiative_effect(1:ncol) = flux_all%flux_net(1:ncol,ktop_rad) - flux_clr%flux_net(1:ncol,ktop_rad)
