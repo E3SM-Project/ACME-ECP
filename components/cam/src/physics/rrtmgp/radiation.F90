@@ -1780,16 +1780,17 @@ contains
       ! State fields that are passed into RRTMGP. Some of these may need to
       ! modified from what exist in the physics_state object, i.e. to clip
       ! temperatures to make sure they are within the valid range.
-      real(r8), dimension(:,:), allocatable :: tmid    , pmid    , &
-                                               pint    , tint    , &
-                                               tmid_col, pmid_col, &
-                                               pint_col, tint_col
+      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad, nlev_rad) :: tmid, pmid
+      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad, nlev_rad+1) :: tint, pint
+      real(r8), dimension(pcols, nlev_rad) :: tmid_col, pmid_col
+      real(r8), dimension(pcols, nlev_rad+1) :: tint_col, pint_col
 
       ! Surface emissivity needed for longwave
-      real(r8), allocatable :: surface_emissivity(:,:)
+      real(r8) :: surface_emissivity(nlwbands,pcols * crm_nx_rad * crm_ny_rad)
 
       ! Temporary heating rates on radiation vertical grid
-      real(r8), dimension(:,:), allocatable :: qrl_rad, qrlc_rad, qrl_all, qrlc_all
+      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,pver    ) :: qrl_all, qrlc_all
+      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,nlev_rad) :: qrl_rad, qrlc_rad
 
       ! RRTMGP types
       type(ty_gas_concs) :: gas_concentrations_all, gas_concentrations_col
@@ -1802,7 +1803,10 @@ contains
       integer :: ncol, icall, ic, ix, iy, iz, ilev, ncol_tot, j
       integer :: ixwatvap, ixcldliq, ixcldice
       integer :: igas
-      real(r8), dimension(:,:,:), allocatable :: vmr_col, vmr_all
+
+      ! Arrays to hold gas volume mixing ratios
+      real(r8), dimension(size(active_gases),pcols,nlev_rad) :: vmr_col
+      real(r8), dimension(size(active_gases),pcols * crm_nx_rad * crm_ny_rad,nlev_rad) :: vmr_all
 
       logical :: use_SPCAM
 
@@ -1830,13 +1834,7 @@ contains
       ! a lot of difference either way, but if a more intelligent value
       ! exists or is assumed in the model we should use it here as well.
       ! TODO: set this more intelligently?
-      allocate(surface_emissivity(nlwbands,ncol_tot))
       surface_emissivity = 1.0_r8
-
-      ! Allocate gas mixing ratio arrays here; one for a single CRM column 
-      ! index, one for packed data.
-      allocate(vmr_col(size(active_gases),ncol,nlev_rad))
-      allocate(vmr_all(size(active_gases),ncol_tot,nlev_rad))
 
       ! Allocate our optics objects. For both clouds and aerosol, we allocate
       ! two separate optics objects: one of size ncol to hold optics for a
@@ -1880,15 +1878,6 @@ contains
       iciwp_save = iciwp
       cld_save   = cld
       
-      ! State vectors
-      allocate(pmid    (ncol_tot,nlev_rad  ), tmid    (ncol_tot,nlev_rad  ), &
-               pint    (ncol_tot,nlev_rad+1), tint    (ncol_tot,nlev_rad+1), &
-               pmid_col(ncol    ,nlev_rad  ), tmid_col(ncol    ,nlev_rad  ), &
-               pint_col(ncol    ,nlev_rad+1), tint_col(ncol    ,nlev_rad+1))
-
-      allocate(qrl_rad(ncol_tot,nlev_rad), qrlc_rad(ncol_tot,nlev_rad), &
-               qrl_all(ncol_tot,pver    ), qrlc_all(ncol_tot,pver    ))
-
       ! Indices into rad constituents arrays
       ixwatvap = 1
       call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1996,8 +1985,8 @@ contains
             call t_stopf('rad_calculations_lw')
 
             ! Calculate heating rates
-            call calculate_heating_rate(fluxes_allsky_all, pint, qrl_rad)
-            call calculate_heating_rate(fluxes_clrsky_all, pint, qrlc_rad)
+            call calculate_heating_rate(fluxes_allsky_all, pint(1:ncol_tot,1:nlev_rad+1), qrl_rad(1:ncol_tot,1:nlev_rad))
+            call calculate_heating_rate(fluxes_clrsky_all, pint(1:ncol_tot,1:nlev_rad+1), qrlc_rad(1:ncol_tot,1:nlev_rad))
 
             ! Map heating rates to CAM columns and levels
             qrl_all(:,1:pver) = qrl_rad(:,ktop:kbot)
@@ -2034,11 +2023,6 @@ contains
 
          end if  ! active calls
       end do  ! loop over diagnostic calls
-
-      ! Free memory
-      deallocate(pmid    , tmid    , pint    , tint    , &
-                 pmid_col, tmid_col, pint_col, tint_col, &
-                 qrl_rad , qrlc_rad, qrl_all , qrlc_all)
 
       ! Free fluxes and optical properties
       call free_optics_lw(cld_optics_all)
