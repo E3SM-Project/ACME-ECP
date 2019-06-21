@@ -1158,7 +1158,7 @@ contains
       real(r8) :: qrlc(pcols,pver) = 0._r8
 
       ! Pointers to CRM fields on physics buffer
-      real(r8), pointer, dimension(:,:,:,:) :: crm_qrad, crm_qrl
+      real(r8), pointer, dimension(:,:,:,:) :: crm_qrad, crm_qrl, crm_qrs
 
       ! Options for MMF/SP
       logical :: use_SPCAM
@@ -1280,13 +1280,14 @@ contains
       ! CRM, calculated from the GCM fields.
       if (use_SPCAM) then
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRL'), crm_qrl)
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRS'), crm_qrs)
          crm_qrad = 0
          do iz = 1,crm_nz
             do iy = 1,crm_ny_rad
                do ix = 1,crm_nx_rad
                   do ic = 1,ncol
                      ilev = pver - iz + 1
-                     crm_qrad(ic,ix,iy,iz) = (qrs(ic,ilev) + crm_qrl(ic,ix,iy,iz)) / cpair
+                     crm_qrad(ic,ix,iy,iz) = (crm_qrs(ic,ix,iy,iz) + crm_qrl(ic,ix,iy,iz)) / cpair
                   end do
                end do
             end do
@@ -1316,7 +1317,7 @@ contains
       use radiation_utils, only: calculate_heating_rate
       use cam_optics, only: set_cloud_optics_sw, set_aerosol_optics_sw
       use phys_control, only: phys_getopts
-      use physconst,    only: gravit
+      use physconst,    only: gravit, cpair
 
       ! Inputs
       type(physics_state), intent(in) :: state_in
@@ -1725,6 +1726,10 @@ contains
          end if
       end do
 
+      if (use_SPCAM) then
+         call outfld('CRM_QRS', crm_qrs(1:ncol,:,:,:)/cpair, ncol, state%lchnk)
+      end if
+
       ! Free fluxes and optical properties
       call free_optics_sw(cloud_optics_sw)
       call free_optics_sw(cloud_optics_col)
@@ -1756,7 +1761,7 @@ contains
       use radiation_state, only: set_rad_state
       use radiation_utils, only: calculate_heating_rate
       use cam_optics, only: set_cloud_optics_lw, set_aerosol_optics_lw
-      use physconst,      only: gravit
+      use physconst,      only: gravit, cpair
       use phys_control, only: phys_getopts
 
       ! Inputs
@@ -2023,6 +2028,10 @@ contains
 
          end if  ! active calls
       end do  ! loop over diagnostic calls
+
+      if (use_SPCAM) then
+         call outfld('CRM_QRL', crm_qrl(1:ncol,:,:,:)/cpair, ncol, state%lchnk)
+      end if
 
       ! Free fluxes and optical properties
       call free_optics_lw(cld_optics_all)
