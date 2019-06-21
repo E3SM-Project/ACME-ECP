@@ -808,8 +808,12 @@ contains
                       'Radiative heating tendency')
          call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
                       'CRM Shortwave radiative heating rate')
+         call addfld ('CRM_QRSC', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+                      'CRM clear-sky shortwave radiative heating rate')
          call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
                       'CRM Longwave radiative heating rate' )
+         call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+                      'CRM clear-sky longwave radiative heating rate' )
       end if
 
       call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity')
@@ -1397,6 +1401,9 @@ contains
       real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrs
       real(r8), dimension(pcols,pver) :: iclwp_save, iciwp_save, cld_save
 
+      ! CRM clear-sky heating (for debugging/diagnostics)
+      real(r8) :: crm_qrsc(pcols,crm_nx_rad,crm_ny_rad,crm_nz)
+
       ! Stuff for working with gases
       real(r8), dimension(size(active_gases),pcols,nlev_rad) :: gas_vmr, gas_vmr_day, gas_vmr_tmp
       real(r8), dimension(size(active_gases),pcols*crm_nx_rad*crm_ny_rad,nlev_rad) :: gas_vmr_all
@@ -1451,19 +1458,6 @@ contains
       ! times the total number of CRM columns so that we can pack all of the
       ! data together into one call.
       nday_tot = nday * crm_nx_rad * crm_ny_rad
-
-      ! Populate RRTMGP input variables. Use the day_indices index array to
-      ! map CAM variables on all columns to the daytime-only arrays, and take
-      ! only the ktop:kbot vertical levels (mapping CAM vertical grid to
-      ! RRTMGP vertical grid). Note that we populate the state separately for
-      ! shortwave and longwave, because we need to compress to just the daytime
-      ! columns for the shortwave, but the longwave uses all columns
-      call set_rad_state(state, cam_in, &
-                         tmid_col(1:nday,1:nlev_rad), & 
-                         tint_col(1:nday,1:nlev_rad+1), &
-                         pmid_col(1:nday,1:nlev_rad), &
-                         pint_col(1:nday,1:nlev_rad+1), &
-                         col_indices=day_indices(1:nday))
 
       ! Get albedo. This uses CAM routines internally and just provides a
       ! wrapper to improve readability of the code here.
@@ -1574,7 +1568,20 @@ contains
                         end do  ! ic = 1,ncol
                      end do  ! iz = 1,crm_nz
                   end if
-                  
+
+                  ! Populate RRTMGP input variables. Use the day_indices index array to
+                  ! map CAM variables on all columns to the daytime-only arrays, and take
+                  ! only the ktop:kbot vertical levels (mapping CAM vertical grid to
+                  ! RRTMGP vertical grid). Note that we populate the state separately for
+                  ! shortwave and longwave, because we need to compress to just the daytime
+                  ! columns for the shortwave, but the longwave uses all columns
+                  call set_rad_state(state, cam_in, &
+                                     tmid_col(1:nday,1:nlev_rad), & 
+                                     tint_col(1:nday,1:nlev_rad+1), &
+                                     pmid_col(1:nday,1:nlev_rad), &
+                                     pint_col(1:nday,1:nlev_rad+1), &
+                                     col_indices=day_indices(1:nday))
+                 
                   ! Do shortwave cloud optics calculations
                   ! TODO: refactor the set_cloud_optics codes to allow passing arrays
                   ! rather than state/pbuf so that we can use this for superparameterized
@@ -1688,7 +1695,8 @@ contains
                         ic = day_indices(iday)
                         do iz = 1,crm_nz
                            ilev = pver - iz + 1
-                           crm_qrs(ic,ix,iy,iz) = qrs_all(j,ilev)
+                           crm_qrs (ic,ix,iy,iz) = qrs_all(j,ilev)
+                           crm_qrsc(ic,ix,iy,iz) = qrsc_all(j,ilev)
                         end do
                         j = j + 1
                      end do
@@ -1728,7 +1736,8 @@ contains
       end do
 
       if (use_SPCAM) then
-         call outfld('CRM_QRS', crm_qrs(1:ncol,:,:,:)/cpair, ncol, state%lchnk)
+         call outfld('CRM_QRS' , crm_qrs (1:ncol,:,:,:)/cpair, ncol, state%lchnk)
+         call outfld('CRM_QRSC', crm_qrsc(1:ncol,:,:,:)/cpair, ncol, state%lchnk)
       end if
 
       ! Free fluxes and optical properties
@@ -1813,6 +1822,9 @@ contains
       ! Arrays to hold gas volume mixing ratios
       real(r8), dimension(size(active_gases),pcols,nlev_rad) :: vmr_col
       real(r8), dimension(size(active_gases),pcols * crm_nx_rad * crm_ny_rad,nlev_rad) :: vmr_all
+
+      ! Clear-sky CRM heating (for debugging)
+      real(r8) :: crm_qrlc(pcols,crm_nx_rad,crm_ny_rad,crm_nz)
 
       logical :: use_SPCAM
 
@@ -2007,6 +2019,7 @@ contains
                         do iz = 1,crm_nz
                            ilev = pver - iz + 1
                            crm_qrl(ic,ix,iy,iz) = qrl_all(j,ilev)
+                           crm_qrlc(ic,ix,iy,iz) = qrlc_all(j,ilev)
                         end do
                         j = j + 1
                      end do
@@ -2032,6 +2045,7 @@ contains
 
       if (use_SPCAM) then
          call outfld('CRM_QRL', crm_qrl(1:ncol,:,:,:)/cpair, ncol, state%lchnk)
+         call outfld('CRM_QRLC', crm_qrlc(1:ncol,:,:,:)/cpair, ncol, state%lchnk)
       end if
 
       ! Free fluxes and optical properties
