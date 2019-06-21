@@ -1292,6 +1292,7 @@ contains
                end do
             end do
          end do
+         call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
       end if  ! use_SPCAM
 
    end subroutine radiation_tend
