@@ -814,6 +814,8 @@ contains
                       'CRM Longwave radiative heating rate' )
          call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
                       'CRM clear-sky longwave radiative heating rate' )
+         call addfld ('CRM_CLD_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'fraction', &
+                      'CRM cloud fraction')
       end if
 
       call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity')
@@ -1886,6 +1888,9 @@ contains
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD' ), crm_qi )
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_cld)
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRL')    , crm_qrl)
+
+         ! Output CRM cloud fraction
+         call outfld('CRM_CLD_RAD', crm_cld, state%ncol, state%lchnk)
       end if
 
       ! Save pbuf things to restore when we are done working with them. This is
