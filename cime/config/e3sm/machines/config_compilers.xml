@@ -80,6 +80,28 @@ for mct, etc.
   <SUPPORTS_CXX>FALSE</SUPPORTS_CXX>
 </compiler>
 
+
+<compiler MACH="WE37070" COMPILER="gnu">
+  <!-- Mac OSX workstation -->
+  <SCC> gcc-8 </SCC>
+  <SCXX> g++-8 </SCXX>
+  <SFC> gfortran </SFC>
+  <FFLAGS_NOOPT>
+    <append> -ffree-line-length-none -ffixed-line-length-none </append>
+    <!-- <append> -mcmodel=medium </append> -->
+    <!-- <append> -mcmodel=large </append> -->
+    <!-- <append> -fPIC </append> -->
+  </FFLAGS_NOOPT>
+  <!-- <MPI_PATH MPILIB="mpich"> /Users/hannah6/mpich/install</MPI_PATH> -->
+  <LDFLAGS>
+    <append> -L/usr/local/opt/lapack/lib -llapack -lblas </append>
+    <append> -L/usr/local/opt/hdf5/lib -lhdf5_hl -lhdf5 </append>
+    <append> -L/usr/local/opt/curl/lib -lcurl </append>
+    <!-- <append> -L/Users/hannah6/curl/bld/lib -lcurl </append> -->
+  </LDFLAGS>
+</compiler>
+
+
 <compiler COMPILER="cray">
   <CFLAGS>
     <append compile_threaded="FALSE"> -h noomp </append>
