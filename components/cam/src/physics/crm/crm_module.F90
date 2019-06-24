@@ -559,8 +559,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   !$acc parallel loop async(asyncid)
   do icrm = 1 , ncrms
-    uhl(icrm) = u0(icrm,1)
-    vhl(icrm) = min( umax, max(-umax,crm_input%vl(icrm,plev-1+1)) )*YES3D !v0(icrm,1)
+    uhl(icrm) = crm_input%ul(icrm,plev-1+1)
+    vhl(icrm) = crm_input%vl(icrm,plev-1+1)*YES3D !v0(icrm,1)
     ! estimate roughness length assuming logarithmic profile of velocity near the surface:
     ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(icrm,1))
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
