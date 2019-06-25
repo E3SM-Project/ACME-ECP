@@ -72,6 +72,8 @@ contains
       use cloud_rad_props, only: get_ice_optics_sw, &
                                  get_liquid_optics_sw, &
                                  get_snow_optics_sw
+      use slingo, only: slingo_liq_optics_sw
+      use ebert_curry, only: ec_ice_optics_sw 
 
       ! Inputs. Right now, this uses state and pbuf, and passes these along to the
       ! individual get_*_optics routines from cloud_rad_props. This is not very
@@ -113,10 +115,6 @@ contains
       character(len=128) :: SPCAM_microp_scheme
 
 
-      ! Set flags for MMF/SP
-      call phys_getopts(use_SPCAM_out           = use_SPCAM          )
-      call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
-
       ! Initialize
       ice_tau = 0
       ice_tau_ssa = 0
@@ -135,18 +133,23 @@ contains
       combined_tau_ssa_g = 0
       combined_tau_ssa_f = 0
 
-      ! Get ice cloud optics
+      ! Get cloud optics
       !call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
       !call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
       ncol = state%ncol
-      call get_ice_optics_sw(state, pbuf, &
-                             ice_tau, ice_tau_ssa, &
-                             ice_tau_ssa_g, ice_tau_ssa_f)
-      
-      ! Get liquid cloud optics
-      call get_liquid_optics_sw(state, pbuf, &
-                                liquid_tau, liquid_tau_ssa, &
-                                liquid_tau_ssa_g, liquid_tau_ssa_f)
+      call phys_getopts(use_SPCAM_out           = use_SPCAM          )
+      call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
+      if (use_SPCAM .and. (trim(SPCAM_microp_scheme) == 'sam1mom')) then
+         call ec_ice_optics_sw(state, pbuf, ice_tau, ice_tau_ssa, ice_tau_ssa_g, ice_tau_ssa_f)
+         call slingo_liq_optics_sw(state, pbuf, liquid_tau, liquid_tau_ssa, liquid_tau_ssa_g, liquid_tau_ssa_f)
+      else
+         call get_ice_optics_sw(state, pbuf, &
+                                ice_tau, ice_tau_ssa, &
+                                ice_tau_ssa_g, ice_tau_ssa_f)
+         call get_liquid_optics_sw(state, pbuf, &
+                                   liquid_tau, liquid_tau_ssa, &
+                                   liquid_tau_ssa_g, liquid_tau_ssa_f)
+      end if 
 
       ! Combine all cloud optics from CAM routines
       cloud_tau = ice_tau + liquid_tau
@@ -230,6 +233,8 @@ contains
       use cloud_rad_props, only: get_liquid_optics_lw, &
                                  get_ice_optics_lw, &
                                  get_snow_optics_lw
+      use slingo, only: slingo_liq_optics_lw
+      use ebert_curry, only: ec_ice_optics_lw
       use radconstants, only: nlwbands
 
       type(physics_state), intent(in) :: state
@@ -246,6 +251,10 @@ contains
 
       integer :: iband, ncol
 
+      ! Options for MMF/SP
+      logical :: use_SPCAM
+      character(len=128) :: SPCAM_microp_scheme
+
 
       ! Number of columns in this chunk
       ncol = state%ncol
@@ -257,11 +266,15 @@ contains
       cloud_tau(:,:,:) = 0.0
       combined_tau(:,:,:) = 0.0
 
-      ! Get ice optics
-      call get_ice_optics_lw(state, pbuf, ice_tau)
-
-      ! Get liquid optics
-      call get_liquid_optics_lw(state, pbuf, liq_tau)
+      call phys_getopts(use_SPCAM_out           = use_SPCAM          )
+      call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
+      if (use_SPCAM .and. (trim(SPCAM_microp_scheme) == 'sam1mom')) then
+         call ec_ice_optics_lw(state, pbuf, ice_tau)
+         call slingo_liq_optics_lw(state, pbuf, liq_tau)
+      else
+         call get_ice_optics_lw(state, pbuf, ice_tau)
+         call get_liquid_optics_lw(state, pbuf, liq_tau)
+      end if
 
       ! Combined cloud optics
       cloud_tau = liq_tau + ice_tau

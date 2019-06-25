@@ -19,10 +19,8 @@ private
 save
 
 public :: &
-   slingo_rad_props_init,        &
-   cloud_rad_props_get_sw, & ! return SW optical props of total bulk aerosols
-   cloud_rad_props_get_lw,  & ! return LW optical props of total bulk aerosols
-   slingo_liq_get_rad_props_lw, &
+   slingo_rad_props_init, &
+   slingo_liq_optics_lw,  &
    slingo_liq_optics_sw
 
 ! Minimum cloud amount (as a fraction of the grid-box area) to 
@@ -69,10 +67,9 @@ subroutine slingo_rad_props_init()
 #endif
    use constituents,   only: cnst_get_ind
 
-   integer :: err
 
-   iciwp_idx  = pbuf_get_index('ICIWP',errcode=err)
-   iclwp_idx  = pbuf_get_index('ICLWP',errcode=err)
+   iciwp_idx  = pbuf_get_index('ICIWP')
+   iclwp_idx  = pbuf_get_index('ICLWP')
    cld_idx    = pbuf_get_index('CLD')
    rel_idx    = pbuf_get_index('REL')
    rei_idx    = pbuf_get_index('REI')
@@ -81,109 +78,13 @@ subroutine slingo_rad_props_init()
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-   !call addfld ('CLWPTH_OLD','Kg/m2   ',pver, 'I','old In Cloud Liquid Water Path',phys_decomp, sampling_seq='rad_lwsw')
-   !call addfld ('KEXT_OLD','m^2/kg',pver,'I','old extinction',phys_decomp)
-   !call addfld ('CLDOD_OLD','1',pver,'I','old liquid OD',phys_decomp)
-   !call addfld ('REL_OLD','1',pver,'I','old liquid effective radius (liquid)',phys_decomp)
-
-   !call addfld ('CLWPTH_NEW','Kg/m2   ',pver, 'I','In Cloud Liquid Water Path',phys_decomp, sampling_seq='rad_lwsw')
-   !call addfld ('KEXT_NEW','m^2/kg',pver,'I','extinction',phys_decomp)
-   !call addfld ('CLDOD_NEW','1',pver,'I','liquid OD',phys_decomp)
-
-   !call addfld('CIWPTH_NEW','Kg/m2   ',pver, 'I','In Cloud Ice Water Path',phys_decomp, sampling_seq='rad_lwsw')
-   !call addfld('CIWPTH_OLD','Kg/m2   ',pver, 'I','In Cloud Ice Water Path (old)',phys_decomp, sampling_seq='rad_lwsw')
-
    return
 
 end subroutine slingo_rad_props_init
 
 !==============================================================================
 
-subroutine cloud_rad_props_get_sw(state, pbuf, &
-                                  tau, tau_w, tau_w_g, tau_w_f,&
-                                  diagnosticindex)
-
-! return totaled (across all species) layer tau, omega, g, f 
-! for all spectral interval for aerosols affecting the climate
-
-   ! Arguments
-   type(physics_state), intent(in) :: state
-   type(physics_buffer_desc), pointer :: pbuf(:)
-   integer, optional,   intent(in) :: diagnosticindex      ! index (if present) to radiation diagnostic information
-
-   real(r8), intent(out) :: tau    (nswbands,pcols,pver) ! aerosol extinction optical depth
-   real(r8), intent(out) :: tau_w  (nswbands,pcols,pver) ! aerosol single scattering albedo * tau
-   real(r8), intent(out) :: tau_w_g(nswbands,pcols,pver) ! aerosol assymetry parameter * tau * w
-   real(r8), intent(out) :: tau_w_f(nswbands,pcols,pver) ! aerosol forward scattered fraction * tau * w
-
-   ! Local variables
-
-   integer :: ncol
-   integer :: lchnk
-   integer :: k, i    ! lev and daycolumn indices
-   integer :: iswband ! sw band indices
-
-   real(r8) :: liq_tau    (nswbands,pcols,pver) ! aerosol extinction optical depth
-   real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! aerosol single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! aerosol assymetry parameter * tau * w
-   real(r8) :: liq_tau_w_f(nswbands,pcols,pver) ! aerosol forward scattered fraction * tau * w
-
-
-   !-----------------------------------------------------------------------------
-
-   ncol  = state%ncol
-   lchnk = state%lchnk
-
-   call slingo_liq_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f, oldliqwp=.true. )
-
-end subroutine cloud_rad_props_get_sw
-!==============================================================================
-
-subroutine cloud_rad_props_get_lw(state, pbuf, cld_abs_od, diagnosticindex, oldliq, oldice, oldcloud)
-
-! Purpose: Compute cloud longwave absorption optical depth
-!    cloud_rad_props_get_lw() is called by radlw() 
-
-   ! Arguments
-   type(physics_state), intent(in)  :: state
-   type(physics_buffer_desc), pointer  :: pbuf(:)
-   real(r8),            intent(out) :: cld_abs_od(nlwbands,pcols,pver) ! [fraction] absorption optical depth, per layer
-   integer, optional,   intent(in)  :: diagnosticindex
-   logical, optional,   intent(in)  :: oldliq  ! use old liquid optics
-   logical, optional,   intent(in)  :: oldice  ! use old ice optics
-   logical, optional,   intent(in)  :: oldcloud  ! use old optics for both (b4b)
-
-   ! Local variables
-
-   integer :: bnd_idx     ! LW band index
-   integer :: i           ! column index
-   integer :: k           ! lev index
-   integer :: ncol        ! number of columns
-   integer :: lchnk
-
-   ! rad properties for liquid clouds
-   real(r8) :: liq_tau_abs_od(nlwbands,pcols,pver) ! liquid cloud absorption optical depth
-
-   !-----------------------------------------------------------------------------
-
-   ncol = state%ncol
-   lchnk = state%lchnk
-
-   ! compute optical depths cld_absod 
-   cld_abs_od = 0._r8
-
-   call slingo_liq_get_rad_props_lw(state, pbuf, liq_tau_abs_od, oldliqwp=.true.)
-      
-   cld_abs_od(:,1:ncol,:) = liq_tau_abs_od(:,1:ncol,:) 
-
-end subroutine cloud_rad_props_get_lw
-
-!==============================================================================
-! Private methods
-!==============================================================================
-
-
-subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f, oldliqwp)
+subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f)
 
    use physconst, only: gravit
 
@@ -194,7 +95,6 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
    real(r8),intent(out) :: liq_tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
    real(r8),intent(out) :: liq_tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
    real(r8),intent(out) :: liq_tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
-   logical, intent(in)  :: oldliqwp
 
    real(r8), pointer, dimension(:,:) :: rel
    real(r8), pointer, dimension(:,:) :: cldn
@@ -250,20 +150,9 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
    call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
    call pbuf_get_field(pbuf, rel_idx, rel)
 
-   if (oldliqwp) then
-      do k=1,pver
-         do i = 1,Nday
-            cliqwp(i,k) = state%q(i,k,ixcldliq)*state%pdel(i,k)/(gravit*max(0.01_r8,cldn(i,k)))
-         end do
-      end do
-   else
-      if (iclwp_idx<=0) then 
-         call endrun('slingo_liq_optics_sw: oldliqwp must be set to true since ICLWP was not found in pbuf')
-      endif
-      ! The following is the eventual target specification for in cloud liquid water path.
-      call pbuf_get_field(pbuf, iclwp_idx, tmpptr)
-      cliqwp = tmpptr
-   endif
+   ! The following is the eventual target specification for in cloud liquid water path.
+   call pbuf_get_field(pbuf, iclwp_idx, tmpptr)
+   cliqwp = tmpptr
    
    call get_sw_spectral_boundaries(wavmin,wavmax,'microns')
   
@@ -319,21 +208,16 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
       end do ! End do k=1,pver
    end do ! nswbands
 
-   !call outfld('CL_OD_SW_OLD',liq_tau(idx_sw_diag,:,:), pcols, lchnk)
-   !call outfld('REL_OLD',rel(:,:), pcols, lchnk)
-   !call outfld('CLWPTH_OLD',cliqwp(:,:), pcols, lchnk)
-   !call outfld('KEXT_OLD',kext(:,:), pcols, lchnk)
-
-
 end subroutine slingo_liq_optics_sw
 
-subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
+!==============================================================================
+
+subroutine slingo_liq_optics_lw(state, pbuf, abs_od)
    use physconst, only: gravit
 
    type(physics_state), intent(in)  :: state
    type(physics_buffer_desc),pointer  :: pbuf(:)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
-   logical, intent(in) :: oldliqwp
 
    real(r8) :: gicewp(pcols,pver)
    real(r8) :: gliqwp(pcols,pver)
@@ -359,33 +243,14 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
    itim_old  =  pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, rei_idx,   rei)
    call pbuf_get_field(pbuf, cld_idx,   cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
-
-   if (oldliqwp) then
-      do k=1,pver
-         do i = 1,ncol
-            gicewp(i,k) = state%q(i,k,ixcldice)*state%pdel(i,k)/gravit*1000.0_r8  ! Grid box ice water path.
-            gliqwp(i,k) = state%q(i,k,ixcldliq)*state%pdel(i,k)/gravit*1000.0_r8  ! Grid box liquid water path.
-            cicewp(i,k) = gicewp(i,k) / max(0.01_r8,cldn(i,k))                 ! In-cloud ice water path.
-            cliqwp(i,k) = gliqwp(i,k) / max(0.01_r8,cldn(i,k))                 ! In-cloud liquid water path.
-            ficemr(i,k) = state%q(i,k,ixcldice) /                 &
-                 max(1.e-10_r8,(state%q(i,k,ixcldice)+state%q(i,k,ixcldliq)))
-         end do
+   call pbuf_get_field(pbuf, iclwp_idx, iclwpth)
+   call pbuf_get_field(pbuf, iciwp_idx, iciwpth)
+   do k=1,pver
+      do i = 1,ncol
+         cwp   (i,k) = 1000.0_r8 * iclwpth(i,k) + 1000.0_r8 * iciwpth(i, k)
+         ficemr(i,k) = 1000.0_r8 * iciwpth(i,k)/(max(1.e-18_r8, cwp(i,k)))
       end do
-      cwp(:ncol,:pver) = cicewp(:ncol,:pver) + cliqwp(:ncol,:pver)
-   else
-     if (iclwp_idx<=0 .or. iciwp_idx<=0) then 
-        call endrun('slingo_liq_get_rad_props_lw: oldliqwp must be set to true since ICIWP and/or ICLWP were not found in pbuf')
-     endif
-     call pbuf_get_field(pbuf, iclwp_idx, iclwpth)
-     call pbuf_get_field(pbuf, iciwp_idx, iciwpth)
-     do k=1,pver
-         do i = 1,ncol
-              cwp   (i,k) = 1000.0_r8 * iclwpth(i,k) + 1000.0_r8 * iciwpth(i, k)
-              ficemr(i,k) = 1000.0_r8 * iciwpth(i,k)/(max(1.e-18_r8, cwp(i,k)))
-         end do
-     end do
-   endif
-
+   end do
 
    do k=1,pver
       do i=1,ncol
@@ -399,12 +264,13 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
          cldtau(i,k) = kabs*cwp(i,k)
       end do
    end do
-!
+
    do lwband = 1,nlwbands
       abs_od(lwband,1:ncol,1:pver)=cldtau(1:ncol,1:pver)
    enddo
 
+end subroutine slingo_liq_optics_lw
 
-end subroutine slingo_liq_get_rad_props_lw
+!==============================================================================
 
 end module slingo

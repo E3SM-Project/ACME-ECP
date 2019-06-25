@@ -426,6 +426,8 @@ contains
 
       ! For optics
       use cloud_rad_props, only: cloud_rad_props_init
+      use ebert_curry, only: ec_rad_props_init
+      use slingo, only: slingo_rad_props_init
 
       ! Physics state is going to be needed for perturbation growth tests, but we
       ! have yet to implement this in RRTMGP. It is a vector because at the point
@@ -447,6 +449,7 @@ contains
       integer :: cldfsnow_idx = 0 
 
       logical :: use_SPCAM  ! SPCAM flag
+      character(len=16) :: SPCAM_microp_scheme
 
       character(len=128) :: error_message
 
@@ -464,6 +467,12 @@ contains
 
       ! Initialize cloud optics
       call cloud_rad_props_init()
+      call phys_getopts(use_SPCAM_out           = use_SPCAM          )
+      call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
+      if (use_SPCAM .and. trim(SPCAM_microp_scheme) == 'sam1mom') then
+         call ec_rad_props_init()
+         call slingo_rad_props_init()
+      end if
 
       ! Initialize output fields for offline driver.
       ! TODO: do we need to keep this functionality? Where is the offline driver?
@@ -1168,7 +1177,7 @@ contains
 
       ! Options for MMF/SP
       logical :: use_SPCAM
-      character(len=128) :: SPCAM_microp_scheme
+      character(len=16) :: SPCAM_microp_scheme
 
       ! Flag to carry (QRS,QRL)*dp across time steps. 
       ! TODO: what does this mean?
