@@ -1115,8 +1115,9 @@ contains
       ! properties, and subroutines to get CAM aerosol and cloud optical properties
       ! via CAM parameterizations
       use cam_optics, only: cam_optics_type
-      use physconst, only: cpair
+      use pkg_cldoptics, only: cldefr  ! for sam1mom microphysics
 
+      use physconst, only: cpair
       use phys_control, only: phys_getopts
 
 
@@ -1175,6 +1176,9 @@ contains
       ! Pointers to CRM fields on physics buffer
       real(r8), pointer, dimension(:,:,:,:) :: crm_qrad, crm_qrl, crm_qrs
 
+      ! Need to set effective radii for single-moment microphysics optics
+      real(r8), pointer :: rel(:,:), rei(:,:)
+
       ! Options for MMF/SP
       logical :: use_SPCAM
       character(len=16) :: SPCAM_microp_scheme
@@ -1213,6 +1217,13 @@ contains
       ! If using MMF/SP, get CRM heating
       if (use_SPCAM) call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRAD'), crm_qrad)
      
+      ! Calculate effective radius for optics used with single-moment microphysics
+      if (use_SPCAM .and. (trim(SPCAM_microp_scheme) .eq. 'sam1mom')) then 
+         call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
+         call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
+         call cldefr(state%lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh)
+      end if
+
       ! Do shortwave stuff...
       if (radiation_do('sw')) then
 
@@ -1334,6 +1345,9 @@ contains
       use cam_optics, only: set_cloud_optics_sw, set_aerosol_optics_sw
       use phys_control, only: phys_getopts
       use physconst,    only: gravit, cpair
+#ifdef MODAL_AERO
+      use modal_aero_data, only: ntot_amode
+#endif
 
       ! Inputs
       type(physics_state), intent(in) :: state_in
@@ -1409,8 +1423,13 @@ contains
 
       ! Stuff for overwriting state and pbuf with CRM
       real(r8), pointer, dimension(:,:) :: iclwp, iciwp, cld
+      real(r8), pointer, dimension(:,:,:) :: qaerwat, dgnumwet
       real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrs
+      real(r8), pointer, dimension(:,:,:,:,:) :: crm_qaerwat, crm_dgnumwet
       real(r8), dimension(pcols,pver) :: iclwp_save, iciwp_save, cld_save
+#ifdef MODAL_AERO
+      real(r8), dimension(pcols,pver,ntot_amode) :: qaerwat_save, dgnumwet_save
+#endif
 
       ! CRM clear-sky heating (for debugging/diagnostics)
       real(r8) :: crm_qrsc(pcols,crm_nx_rad,crm_ny_rad,crm_nz)
@@ -1513,6 +1532,10 @@ contains
       call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
       call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
       call pbuf_get_field(pbuf, pbuf_get_index('CLD'  ), cld  )
+#ifdef MODAL_AERO
+      call pbuf_get_field(pbuf, pbuf_get_index('QAERWAT'), qaerwat)
+      call pbuf_get_field(pbuf, pbuf_get_index('DGNUMWET'), dgnumwet)
+#endif
 
       ! CRM fields
       call phys_getopts(use_SPCAM_out=use_SPCAM)
@@ -1523,6 +1546,10 @@ contains
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD' ), crm_qi )
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_cld)
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRS')    , crm_qrs)
+#ifdef MODAL_AERO
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QAERWAT' ), crm_qaerwat )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_DGNUMWET'), crm_dgnumwet)
+#endif
       end if
 
       ! Save pbuf things to restore when we are done working with them. This is
@@ -1532,6 +1559,10 @@ contains
       iclwp_save = iclwp
       iciwp_save = iciwp
       cld_save   = cld
+#ifdef MODAL_AERO
+      qaerwat_save = qaerwat
+      dgnumwet_save = dgnumwet
+#endif
  
       ! Indices into rad constituents arrays
       ixwatvap = 1
@@ -1564,14 +1595,27 @@ contains
                            ! NOTE: I do not think these are used by optics
                            state%q(ic,ilev,ixcldliq) = crm_qc(ic,ix,iy,iz)
                            state%q(ic,ilev,ixcldice) = crm_qi(ic,ix,iy,iz)
-                           state%q(ic,ilev,ixwatvap) = crm_qv(ic,ix,iy,iz)
+                           state%q(ic,ilev,ixwatvap) = max(1.e-9_r8, crm_qv(ic,ix,iy,iz))
                            state%t(ic,ilev)          = crm_t (ic,ix,iy,iz)
 
+#ifdef MODAL_AERO
+                           ! Use CRM scale aerosol water to calculate aerosol optical depth. Here we assume no
+                           ! aerosol water uptake for cloudy sky on CRM grids. This is not really physically
+                           ! correct, but if we assume 100% of relative humidity for aerosol water uptake, this
+                           ! will bias 'AODVIS' to be large, since 'AODVIS' is used to compare with observed
+                           ! clear sky AOD. In the future, AODVIS should be calculated from clear sky CRM AOD
+                           ! only. But before this is done, we will assume no water uptake on CRM grids for
+                           ! cloudy conditions (The radiative effects of this assumption will be small, since
+                           ! aerosol effects are small relative to cloud effects for cloudy sky anyway.
+                           ! -Minghuai Wang (minghuai.wang@pnl.gov)
+                           qaerwat (ic,ilev,1:ntot_amode) =  crm_qaerwat(ic,ix,iy,iz,1:ntot_amode)
+                           dgnumwet(ic,ilev,1:ntot_amode) = crm_dgnumwet(ic,ix,iy,iz,1:ntot_amode)
+#endif
                            ! In-cloud liquid and ice water paths (used by cloud optics)
                            cld(ic,ilev) = crm_cld(ic,ix,iy,iz)
                            if (cld(ic,ilev) > 0) then
-                              iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / cld(ic,ilev)
-                              iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / cld(ic,ilev)
+                              iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
+                              iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
                            else
                               iclwp(ic,ilev) = 0
                               iciwp(ic,ilev) = 0
@@ -1669,6 +1713,10 @@ contains
             iclwp = iclwp_save
             iciwp = iciwp_save
             cld   = cld_save
+#ifdef MODAL_AERO
+            qaerwat = qaerwat_save
+            dgnumwet = dgnumwet_save
+#endif
 
             ! Do shortwave radiative transfer calculations
             call t_startf('rad_calculations_sw')
@@ -1941,8 +1989,8 @@ contains
                            ! In-cloud liquid and ice water paths (used by cloud optics)
                            cld(ic,ilev) = crm_cld(ic,ix,iy,iz)
                            if (cld(ic,ilev) > 0) then
-                              iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / cld(ic,ilev)
-                              iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / cld(ic,ilev)
+                              iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
+                              iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
                            else
                               iclwp(ic,ilev) = 0
                               iciwp(ic,ilev) = 0
