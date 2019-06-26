@@ -109,6 +109,7 @@ contains
       real(r8), pointer :: cloud_fraction(:,:), snow_fraction(:,:)
 
       integer :: ncol, iband
+      integer :: icol, ilev
 
       ! Options for MMF/SP
       logical :: use_SPCAM
@@ -149,6 +150,20 @@ contains
          call get_liquid_optics_sw(state, pbuf, &
                                    liquid_tau, liquid_tau_ssa, &
                                    liquid_tau_ssa_g, liquid_tau_ssa_f)
+
+         ! Fix band ordering
+         do ilev = 1,size(liquid_tau,3)
+            do icol = 1,size(liquid_tau,2)
+               liquid_tau      (:,icol,ilev) = reordered(liquid_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               liquid_tau_ssa  (:,icol,ilev) = reordered(liquid_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               liquid_tau_ssa_g(:,icol,ilev) = reordered(liquid_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               liquid_tau_ssa_f(:,icol,ilev) = reordered(liquid_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               ice_tau      (:,icol,ilev) = reordered(ice_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               ice_tau_ssa  (:,icol,ilev) = reordered(ice_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               ice_tau_ssa_g(:,icol,ilev) = reordered(ice_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               ice_tau_ssa_f(:,icol,ilev) = reordered(ice_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+            end do
+         end do
       end if 
 
       ! Combine all cloud optics from CAM routines
@@ -160,6 +175,15 @@ contains
          call get_snow_optics_sw(state, pbuf, &
                                  snow_tau, snow_tau_ssa, &
                                  snow_tau_ssa_g, snow_tau_ssa_f)
+
+         do ilev = 1,size(snow_tau,3)
+            do icol = 1,size(snow_tau,2)
+               snow_tau      (:,icol,ilev) = reordered(snow_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               snow_tau_ssa  (:,icol,ilev) = reordered(snow_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               snow_tau_ssa_g(:,icol,ilev) = reordered(snow_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               snow_tau_ssa_f(:,icol,ilev) = reordered(snow_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+            end do
+         end do
 
          ! Get cloud and snow fractions. This is used to weight the contribution to
          ! the total lw absorption by the fraction of the column that contains
@@ -422,19 +446,19 @@ contains
       ! We need to fix band ordering because the old input files assume RRTMG band
       ! ordering, but this has changed in RRTMGP.
       ! TODO: fix the input files themselves!
-      do icol = 1,size(optics_cam%optical_depth,1)
-         do ilev = 1,size(optics_cam%optical_depth,2)
-            optics_cam%optical_depth(icol,ilev,:) = reordered( &
-               optics_cam%optical_depth(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands &
-            )
-            optics_cam%single_scattering_albedo(icol,ilev,:) = reordered( &
-               optics_cam%single_scattering_albedo(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands &
-            )
-            optics_cam%assymmetry_parameter(icol,ilev,:) = reordered( &
-               optics_cam%assymmetry_parameter(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands &
-            )
-         end do
-      end do
+!     do icol = 1,size(optics_cam%optical_depth,1)
+!        do ilev = 1,size(optics_cam%optical_depth,2)
+!           optics_cam%optical_depth(icol,ilev,:) = reordered( &
+!              optics_cam%optical_depth(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands &
+!           )
+!           optics_cam%single_scattering_albedo(icol,ilev,:) = reordered( &
+!              optics_cam%single_scattering_albedo(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands &
+!           )
+!           optics_cam%assymmetry_parameter(icol,ilev,:) = reordered( &
+!              optics_cam%assymmetry_parameter(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands &
+!           )
+!        end do
+!     end do
 
       ! Send in-cloud optical depth for visible band to history buffer
       call output_cloud_optics_sw(state, optics_cam)
