@@ -1497,13 +1497,6 @@ contains
       call outfld('SW_ALBEDO_DIR', transpose(albedo_direct_col(1:nswbands,1:ncol)), ncol, state%lchnk)
       call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse_col(1:nswbands,1:ncol)), ncol, state%lchnk)
 
-      ! Compress to daytime-only arrays
-      do iband = 1,nswbands
-         call compress_day_columns(albedo_direct_col(iband,1:ncol), albedo_direct_day(iband,1:nday), day_indices(1:nday))
-         call compress_day_columns(albedo_diffuse_col(iband,1:ncol), albedo_diffuse_day(iband,1:nday), day_indices(1:nday))
-      end do
-      call compress_day_columns(coszrs(1:ncol), coszrs_day(1:nday), day_indices(1:nday))
-
       ! Allocate shortwave fluxes (allsky and clearsky)
       ! TODO: why do I need to provide my own routines to do this? Why is 
       ! this not part of the ty_fluxes_byband object?
@@ -1516,7 +1509,7 @@ contains
 
       ! Initialize cloud optics object
       call handle_error(cloud_optics_sw%alloc_2str(nday_tot, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
-      call handle_error(cloud_optics_col%alloc_2str(nday, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
+      call handle_error(cloud_optics_col%alloc_2str(ncol, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
 
       ! Initialize aerosol optics; passing only the wavenumber bounds for each
       ! "band" rather than passing the full spectral discretization object, and
@@ -1526,7 +1519,7 @@ contains
       ! map bands to g-points ourselves since that will all be handled by the
       ! private routines internal to the optics class.
       call handle_error(aerosol_optics_sw%alloc_2str(nday_tot, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
-      call handle_error(aerosol_optics_col%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
+      call handle_error(aerosol_optics_col%alloc_2str(ncol, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
 
       ! pbuf fields we need to overwrite with CRM fields to work with optics
       call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
@@ -1631,11 +1624,10 @@ contains
                   ! shortwave and longwave, because we need to compress to just the daytime
                   ! columns for the shortwave, but the longwave uses all columns
                   call set_rad_state(state, cam_in, &
-                                     tmid_col(1:nday,1:nlev_rad), & 
-                                     tint_col(1:nday,1:nlev_rad+1), &
-                                     pmid_col(1:nday,1:nlev_rad), &
-                                     pint_col(1:nday,1:nlev_rad+1), &
-                                     col_indices=day_indices(1:nday))
+                                     tmid_col(1:ncol,1:nlev_rad), & 
+                                     tint_col(1:ncol,1:nlev_rad+1), &
+                                     pmid_col(1:ncol,1:nlev_rad), &
+                                     pint_col(1:ncol,1:nlev_rad+1))
                  
                   ! Do shortwave cloud optics calculations
                   ! TODO: refactor the set_cloud_optics codes to allow passing arrays
@@ -1644,14 +1636,12 @@ contains
                   ! routines to handle this.
                   call t_startf('shortwave cloud optics')
                   call set_cloud_optics_sw(state, pbuf, &
-                                           day_indices(1:nday), &
                                            k_dist_sw, cloud_optics_col)
                   call t_stopf('shortwave cloud optics')
 
                   ! Get shortwave aerosol optics
                   call t_startf('rad_aerosol_optics_sw')
                   call set_aerosol_optics_sw(icall, state, pbuf, &
-                                             day_indices(1:nday), &
                                              night_indices(1:nnight), &
                                              is_cmip6_volc, &
                                              aerosol_optics_col)
@@ -1665,37 +1655,38 @@ contains
 
                      ! Copy top model level to level above model top
                      gas_vmr(igas,1:ncol,1) = gas_vmr(igas,1:ncol,ktop)
-
-                     ! Compress to daytime-only
-                     call compress_day_columns(gas_vmr(igas,1:ncol,1:nlev_rad), gas_vmr_day(igas,1:nday,1:nlev_rad), day_indices(1:nday))
                   end do
                   call t_stopf('rad_gas_concentrations_sw')
 
                   ! Pack column data into full arrays
                   do iday = 1,nday
+
+                     ! Indices to daytime columns
+                     icol = day_indices(iday)
+
                      ! Solar zenith angle
-                     coszrs_all(j) = coszrs_day(iday)
+                     coszrs_all(j) = coszrs(icol)
 
                      ! State variables
-                     pmid_all(j,:) = pmid_col(iday,:)
-                     tmid_all(j,:) = tmid_col(iday,:)
-                     pint_all(j,:) = pint_col(iday,:)
-                     tint_all(j,:) = tint_col(iday,:)
+                     pmid_all(j,:) = pmid_col(icol,:)
+                     tmid_all(j,:) = tmid_col(icol,:)
+                     pint_all(j,:) = pint_col(icol,:)
+                     tint_all(j,:) = tint_col(icol,:)
 
                      ! Albedos
-                     albedo_direct_all(:,j) = albedo_direct_day(:,iday)
-                     albedo_diffuse_all(:,j) = albedo_diffuse_day(:,iday)
+                     albedo_direct_all(:,j) = albedo_direct_col(:,icol)
+                     albedo_diffuse_all(:,j) = albedo_diffuse_col(:,icol)
 
                      ! Optics
-                     cloud_optics_sw%tau  (j,:,:) = cloud_optics_col%tau  (iday,:,:)
-                     cloud_optics_sw%ssa  (j,:,:) = cloud_optics_col%ssa  (iday,:,:)
-                     cloud_optics_sw%g    (j,:,:) = cloud_optics_col%g    (iday,:,:)
-                     aerosol_optics_sw%tau(j,:,:) = aerosol_optics_col%tau(iday,:,:)
-                     aerosol_optics_sw%ssa(j,:,:) = aerosol_optics_col%ssa(iday,:,:)
-                     aerosol_optics_sw%g  (j,:,:) = aerosol_optics_col%g  (iday,:,:)
+                     cloud_optics_sw%tau  (j,:,:) = cloud_optics_col%tau  (icol,:,:)
+                     cloud_optics_sw%ssa  (j,:,:) = cloud_optics_col%ssa  (icol,:,:)
+                     cloud_optics_sw%g    (j,:,:) = cloud_optics_col%g    (icol,:,:)
+                     aerosol_optics_sw%tau(j,:,:) = aerosol_optics_col%tau(icol,:,:)
+                     aerosol_optics_sw%ssa(j,:,:) = aerosol_optics_col%ssa(icol,:,:)
+                     aerosol_optics_sw%g  (j,:,:) = aerosol_optics_col%g  (icol,:,:)
 
                      ! Gases
-                     gas_vmr_all(:,j,:) = gas_vmr_day(:,iday,:)
+                     gas_vmr_all(:,j,:) = gas_vmr(:,icol,:)
 
                      ! Increment column
                      j = j + 1

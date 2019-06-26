@@ -387,7 +387,7 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine set_cloud_optics_sw(state, pbuf, day_indices, kdist, optics_out)
+   subroutine set_cloud_optics_sw(state, pbuf, kdist, optics_out)
       
       use ppgrid, only: pcols, pver, pverp
       use physics_types, only: physics_state
@@ -401,7 +401,6 @@ contains
 
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
-      integer, intent(in) :: day_indices(:)
       type(ty_gas_optics_rrtmgp), intent(in) :: kdist
       type(ty_optical_props_2str), intent(inout) :: optics_out
 
@@ -418,13 +417,13 @@ contains
       integer, parameter :: changeseed = 1
 
       ! Dimension sizes
-      integer :: ngpt, ncol, nday, nlay
+      integer :: ngpt, ncol, nlay
 
       ! McICA subcolumn cloud flag
       logical, allocatable :: iscloudy(:,:,:)
 
       ! Loop variables
-      integer :: icol, ilev, igpt, iband, iday, ilev_cam, ilev_rad
+      integer :: icol, ilev, igpt, iband, ilev_cam, ilev_rad
 
       ! Set a name for this subroutine to write to error messages
       character(len=32) :: subname = 'set_cloud_optics_sw'
@@ -502,11 +501,7 @@ contains
          ilev_rad = ilev_cam + (nlev_rad - pver)
 
          ! Loop over columns and map CAM columns to those on radiation grid
-         ! (daytime-only columns)
-         do iday = 1,size(day_indices)
-
-            ! Map daytime to column indices
-            icol = day_indices(iday)
+         do icol = 1,ncol
 
             ! Loop over g-points and map bands to g-points; each subcolumn
             ! corresponds to a single g-point. This is how this code implements the
@@ -517,16 +512,16 @@ contains
                    combined_cloud_fraction(icol,ilev_cam) > 0._r8) then
                
                   iband = kdist%convert_gpt2band(igpt)
-                  optics_out%tau(iday,ilev_rad,igpt) = optics_cam%optical_depth(icol,ilev_cam,iband)
-                  optics_out%ssa(iday,ilev_rad,igpt) = optics_cam%single_scattering_albedo(icol,ilev_cam,iband)
-                  optics_out%g(iday,ilev_rad,igpt) = optics_cam%assymmetry_parameter(icol,ilev_cam,iband)
+                  optics_out%tau(icol,ilev_rad,igpt) = optics_cam%optical_depth(icol,ilev_cam,iband)
+                  optics_out%ssa(icol,ilev_rad,igpt) = optics_cam%single_scattering_albedo(icol,ilev_cam,iband)
+                  optics_out%g(icol,ilev_rad,igpt) = optics_cam%assymmetry_parameter(icol,ilev_cam,iband)
                else
-                  optics_out%tau(iday,ilev_rad,igpt) = 0._r8
-                  optics_out%ssa(iday,ilev_rad,igpt) = 1._r8
-                  optics_out%g(iday,ilev_rad,igpt) = 0._r8
+                  optics_out%tau(icol,ilev_rad,igpt) = 0._r8
+                  optics_out%ssa(icol,ilev_rad,igpt) = 1._r8
+                  optics_out%g(icol,ilev_rad,igpt) = 0._r8
                end if
             end do  ! igpt
-         end do  ! iday
+         end do  ! icol
       end do  ! ilev_cam
 
       ! Apply delta scaling to account for forward-scattering
@@ -720,7 +715,7 @@ contains
    !----------------------------------------------------------------------------
 
    subroutine set_aerosol_optics_sw(icall, state, pbuf, &
-                                    day_indices, night_indices, &
+                                    night_indices, &
                                     is_cmip6_volc, &
                                     optics_out)
       use ppgrid, only: pcols, pver
@@ -732,7 +727,7 @@ contains
       integer, intent(in) :: icall
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
-      integer, intent(in) :: day_indices(:), night_indices(:)
+      integer, intent(in) :: night_indices(:)
       logical, intent(in) :: is_cmip6_volc
       type(ty_optical_props_2str), intent(inout) :: optics_out
 
@@ -746,7 +741,7 @@ contains
       real(r8), dimension(pcols,0:pver,nswbands) :: tau, tau_w, tau_w_g, tau_w_f
 
       integer :: ncol
-      integer :: iday, icol, ilay
+      integer :: icol, ilay
 
       ! Everyone needs a name
       character(len=*), parameter :: subroutine_name = 'set_aerosol_optics_sw'
@@ -768,29 +763,26 @@ contains
       optics_out%ssa = 1
       optics_out%g = 0
 
-      ! Assign daytime columns
-      do iday = 1,count(day_indices > 0)
-
-         ! Get index into full chunk-wide array for this daytime index
-         icol = day_indices(iday)
+      ! Assign columns
+      do icol = 1,ncol
 
          ! Copy cloud optical depth over directly
-         optics_out%tau(iday,ktop:kbot,1:nswbands) = tau(icol,1:pver,1:nswbands)
+         optics_out%tau(icol,ktop:kbot,1:nswbands) = tau(icol,1:pver,1:nswbands)
 
          ! Extract single scattering albedo from the product-defined fields
          where (tau(icol,1:pver,1:nswbands) > 0)
-            optics_out%ssa(iday,ktop:kbot,1:nswbands) &
+            optics_out%ssa(icol,ktop:kbot,1:nswbands) &
                = tau_w(icol,1:pver,1:nswbands) / tau(icol,1:pver,1:nswbands)
          elsewhere
-            optics_out%ssa(iday,ktop:kbot,1:nswbands) = 1
+            optics_out%ssa(icol,ktop:kbot,1:nswbands) = 1
          endwhere
 
          ! Extract assymmetry parameter from the product-defined fields
          where (tau_w(icol,1:pver,1:nswbands) > 0)
-            optics_out%g(iday,ktop:kbot,1:nswbands) &
+            optics_out%g(icol,ktop:kbot,1:nswbands) &
                = tau_w_g(icol,1:pver,1:nswbands) / tau_w(icol,1:pver,1:nswbands)
          elsewhere
-            optics_out%g(iday,ktop:kbot,1:nswbands) = 0
+            optics_out%g(icol,ktop:kbot,1:nswbands) = 0
          endwhere
 
       end do
