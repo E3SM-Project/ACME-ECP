@@ -1726,9 +1726,9 @@ contains
 
             ! Calculate heating rates on the DAYTIME columns
             call t_startf('rad_heating_rate_sw')
-            call calculate_heating_rate(fluxes_allsky_all, pint_all(1:nday_tot,1:nlev_rad+1), &
+            call calculate_heating_rate(fluxes_allsky_all%flux_up, fluxes_allsky_all%flux_dn, pint_all(1:nday_tot,1:nlev_rad+1), &
                                         qrs_rad(1:nday_tot,1:nlev_rad))
-            call calculate_heating_rate(fluxes_clrsky_all, pint_all(1:nday_tot,1:nlev_rad+1), &
+            call calculate_heating_rate(fluxes_clrsky_all%flux_up, fluxes_allsky_all%flux_dn, pint_all(1:nday_tot,1:nlev_rad+1), &
                                         qrsc_rad(1:nday_tot,1:nlev_rad))
             call t_stopf('rad_heating_rate_sw')
 
@@ -2056,8 +2056,8 @@ contains
             call t_stopf('rad_calculations_lw')
 
             ! Calculate heating rates
-            call calculate_heating_rate(fluxes_allsky_all, pint(1:ncol_tot,1:nlev_rad+1), qrl_rad(1:ncol_tot,1:nlev_rad))
-            call calculate_heating_rate(fluxes_clrsky_all, pint(1:ncol_tot,1:nlev_rad+1), qrlc_rad(1:ncol_tot,1:nlev_rad))
+            call calculate_heating_rate(fluxes_allsky_all%flux_up, fluxes_allsky_all%flux_dn, pint(1:ncol_tot,1:nlev_rad+1), qrl_rad(1:ncol_tot,1:nlev_rad))
+            call calculate_heating_rate(fluxes_clrsky_all%flux_up, fluxes_allsky_all%flux_dn, pint(1:ncol_tot,1:nlev_rad+1), qrlc_rad(1:ncol_tot,1:nlev_rad))
 
             ! Map heating rates to CAM columns and levels
             qrl_all(:,1:pver) = qrl_rad(:,ktop:kbot)
