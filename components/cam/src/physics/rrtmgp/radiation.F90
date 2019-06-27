@@ -1111,10 +1111,6 @@ contains
       ! buffer to be aggregated and written to disk
       use cam_history, only: outfld
 
-      ! CAM optical properties; includes cam_optics_type class for holding optical
-      ! properties, and subroutines to get CAM aerosol and cloud optical properties
-      ! via CAM parameterizations
-      use cam_optics, only: cam_optics_type
       use pkg_cldoptics, only: cldefr  ! for sam1mom microphysics
 
       use physconst, only: cpair
@@ -1374,8 +1370,8 @@ contains
                                              albedo_direct_all, albedo_diffuse_all
 
       ! Cloud and aerosol optics
-      type(ty_optical_props_2str) :: aerosol_optics_sw, aerosol_optics_col, &
-                                     cloud_optics_sw, cloud_optics_col
+      type(ty_optical_props_2str) :: aerosol_optics_sw, &
+                                     cloud_optics_sw
 
       ! Gas concentrations
       type(ty_gas_concs) :: gas_concentrations
@@ -1437,6 +1433,9 @@ contains
       ! Stuff for working with gases
       real(r8), dimension(size(active_gases),pcols,nlev_rad) :: gas_vmr, gas_vmr_day, gas_vmr_tmp
       real(r8), dimension(size(active_gases),pcols*crm_nx_rad*crm_ny_rad,nlev_rad) :: gas_vmr_all
+
+      real(r8), dimension(pcols,nlev_rad,nswgpts) :: cld_tau_sw, cld_ssa_sw, cld_asm_sw
+      real(r8), dimension(pcols,nlev_rad,nswbands) :: aer_tau_sw, aer_ssa_sw, aer_asm_sw
 
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_sw'
@@ -1509,7 +1508,6 @@ contains
 
       ! Initialize cloud optics object
       call handle_error(cloud_optics_sw%alloc_2str(nday_tot, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
-      call handle_error(cloud_optics_col%alloc_2str(ncol, nlev_rad, k_dist_sw, name='shortwave cloud optics'))
 
       ! Initialize aerosol optics; passing only the wavenumber bounds for each
       ! "band" rather than passing the full spectral discretization object, and
@@ -1519,7 +1517,6 @@ contains
       ! map bands to g-points ourselves since that will all be handled by the
       ! private routines internal to the optics class.
       call handle_error(aerosol_optics_sw%alloc_2str(nday_tot, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
-      call handle_error(aerosol_optics_col%alloc_2str(ncol, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='shortwave aerosol optics'))
 
       ! pbuf fields we need to overwrite with CRM fields to work with optics
       call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
@@ -1635,8 +1632,8 @@ contains
                   ! simulations...or alternatively add logic within the set_cloud_optics
                   ! routines to handle this.
                   call t_startf('shortwave cloud optics')
-                  call set_cloud_optics_sw(state, pbuf, &
-                                           k_dist_sw, cloud_optics_col)
+                  call set_cloud_optics_sw(state, pbuf, k_dist_sw, &
+                                           cld_tau_sw, cld_ssa_sw, cld_asm_sw)
                   call t_stopf('shortwave cloud optics')
 
                   ! Get shortwave aerosol optics
@@ -1644,7 +1641,7 @@ contains
                   call set_aerosol_optics_sw(icall, state, pbuf, &
                                              night_indices(1:nnight), &
                                              is_cmip6_volc, &
-                                             aerosol_optics_col)
+                                             aer_tau_sw, aer_ssa_sw, aer_asm_sw)
                   call t_stopf('rad_aerosol_optics_sw')
 
                   ! Set gas concentrations
@@ -1678,12 +1675,12 @@ contains
                      albedo_diffuse_all(:,j) = albedo_diffuse_col(:,icol)
 
                      ! Optics
-                     cloud_optics_sw%tau  (j,:,:) = cloud_optics_col%tau  (icol,:,:)
-                     cloud_optics_sw%ssa  (j,:,:) = cloud_optics_col%ssa  (icol,:,:)
-                     cloud_optics_sw%g    (j,:,:) = cloud_optics_col%g    (icol,:,:)
-                     aerosol_optics_sw%tau(j,:,:) = aerosol_optics_col%tau(icol,:,:)
-                     aerosol_optics_sw%ssa(j,:,:) = aerosol_optics_col%ssa(icol,:,:)
-                     aerosol_optics_sw%g  (j,:,:) = aerosol_optics_col%g  (icol,:,:)
+                     cloud_optics_sw%tau  (j,:,:) = cld_tau_sw(icol,:,:)
+                     cloud_optics_sw%ssa  (j,:,:) = cld_ssa_sw(icol,:,:)
+                     cloud_optics_sw%g    (j,:,:) = cld_asm_sw(icol,:,:)
+                     aerosol_optics_sw%tau(j,:,:) = aer_tau_sw(icol,:,:)
+                     aerosol_optics_sw%ssa(j,:,:) = aer_ssa_sw(icol,:,:)
+                     aerosol_optics_sw%g  (j,:,:) = aer_asm_sw(icol,:,:)
 
                      ! Gases
                      gas_vmr_all(:,j,:) = gas_vmr(:,icol,:)
@@ -1693,6 +1690,19 @@ contains
                   end do  ! iday = 1,nday
                end do  ! ix = 1,crm_nx_rad
             end do  ! iy = 1,crm_ny_rad
+
+            ! Apply delta scaling to account for forward-scattering
+            ! TODO: delta_scale takes the forward scattering fraction as an optional
+            ! parameter. In the current cloud optics_sw scheme, forward scattering is taken
+            ! just as g^2, which delta_scale assumes if forward scattering fraction is
+            ! omitted in the function call. In the future, we should explicitly pass
+            ! this. This just requires modifying the get_cloud_optics_sw procedures to also
+            ! pass the foward scattering fraction that the CAM cloud optics_sw assumes.
+            call handle_error(cloud_optics_sw%delta_scale())
+
+            ! Check cloud optics_sw
+            call handle_error(cloud_optics_sw%validate())
+            call handle_error(aerosol_optics_sw%validate())
 
             ! Set gas concentrations object from array
             call gas_concentrations%reset()
@@ -1792,9 +1802,7 @@ contains
 
       ! Free fluxes and optical properties
       call free_optics_sw(cloud_optics_sw)
-      call free_optics_sw(cloud_optics_col)
       call free_optics_sw(aerosol_optics_sw)
-      call free_optics_sw(aerosol_optics_col)
 
       call free_fluxes(fluxes_allsky_all)
       call free_fluxes(fluxes_clrsky_all)
@@ -1859,8 +1867,8 @@ contains
 
       ! RRTMGP types
       type(ty_gas_concs) :: gas_concentrations_all, gas_concentrations_col
-      type(ty_optical_props_1scl) :: aer_optics_all, aer_optics_col
-      type(ty_optical_props_1scl) :: cld_optics_all, cld_optics_col
+      type(ty_optical_props_1scl) :: aer_optics_all 
+      type(ty_optical_props_1scl) :: cld_optics_all
 
       real(r8), pointer, dimension(:,:) :: iclwp, iciwp, cld
       real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrl
@@ -1875,6 +1883,9 @@ contains
 
       ! Clear-sky CRM heating (for debugging)
       real(r8) :: crm_qrlc(pcols,crm_nx_rad,crm_ny_rad,crm_nz)
+
+      real(r8) :: cld_tau_lw(pcols,nlev_rad,nlwgpts)
+      real(r8) :: aer_tau_lw(pcols,nlev_rad,nlwbands)
 
       logical :: use_SPCAM
 
@@ -1909,7 +1920,6 @@ contains
       ! single CRM column index (to use the inflexible CAM optics routines that
       ! need to be refactored), and a second to pack the data into a single
       ! column dimension for all columns to minimize kernel launches.
-      call handle_error(cld_optics_col%alloc_1scl(ncol    , nlev_rad, k_dist_lw))
       call handle_error(cld_optics_all%alloc_1scl(ncol_tot, nlev_rad, k_dist_lw))
 
       ! Initialize aerosol optics; passing only the wavenumber bounds for each
@@ -1919,7 +1929,6 @@ contains
       ! treatment of aerosol optics in the model, and prevents us from having to
       ! map bands to g-points ourselves since that will all be handled by the
       ! private routines internal to the optics class.
-      call handle_error(aer_optics_col%alloc_1scl(ncol    , nlev_rad, k_dist_lw%get_band_lims_wavenumber()))
       call handle_error(aer_optics_all%alloc_1scl(ncol_tot, nlev_rad, k_dist_lw%get_band_lims_wavenumber()))
 
       ! pbuf fields we need to overwrite with CRM fields to work with optics
@@ -1998,8 +2007,8 @@ contains
                                      pint_col(1:ncol,1:nlev_rad+1))
 
                   ! Do optics
-                  call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_optics_col)
-                  call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_optics_col)
+                  call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_tau_lw)
+                  call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_tau_lw)
 
                   ! Set gas concentrations
                   call t_startf('rad_gas_concentrations_lw')
@@ -2018,8 +2027,8 @@ contains
                      tint(j,:) = tint_col(ic,:)
                      pmid(j,:) = pmid_col(ic,:)
                      pint(j,:) = pint_col(ic,:)
-                     cld_optics_all%tau(j,:,:) = cld_optics_col%tau(ic,:,:)
-                     aer_optics_all%tau(j,:,:) = aer_optics_col%tau(ic,:,:)
+                     cld_optics_all%tau(j,:,:) = cld_tau_lw(ic,:,:)
+                     aer_optics_all%tau(j,:,:) = aer_tau_lw(ic,:,:)
                      ! Copy gases here
                      do igas = 1,size(active_gases)
                         vmr_all(igas,j,:) = vmr_col(igas,ic,:)
@@ -2029,6 +2038,20 @@ contains
 
                end do  ! ix = 1,crm_nx_rad
             end do  ! iy = 1,crm_ny_rad
+
+            ! Apply delta scaling to account for forward-scattering
+            ! TODO: delta_scale takes the forward scattering fraction as an optional
+            ! parameter. In the current cloud optics_lw scheme, forward scattering is taken
+            ! just as g^2, which delta_scale assumes if forward scattering fraction is
+            ! omitted in the function call. In the future, we should explicitly pass
+            ! this. This just requires modifying the get_cloud_optics_lw procedures to also
+            ! pass the foward scattering fraction that the CAM cloud optics_lw assumes.
+            call handle_error(cld_optics_all%delta_scale())
+            call handle_error(aer_optics_all%delta_scale())
+
+            ! Check cloud optics
+            call handle_error(cld_optics_all%validate())
+            call handle_error(aer_optics_all%validate())
 
             ! Populate gas concentrations object
             do igas = 1,size(active_gases)
@@ -2104,9 +2127,6 @@ contains
       ! Free fluxes and optical properties
       call free_optics_lw(cld_optics_all)
       call free_optics_lw(aer_optics_all)
-      call free_optics_lw(cld_optics_col)
-      call free_optics_lw(aer_optics_col)
-
       call free_fluxes(fluxes_allsky_all)
       call free_fluxes(fluxes_clrsky_all)
 
