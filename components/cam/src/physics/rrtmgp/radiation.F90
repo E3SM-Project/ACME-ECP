@@ -1863,7 +1863,6 @@ contains
 
       ! Temporary heating rates on radiation vertical grid
       real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,pver    ) :: qrl_all, qrlc_all
-      real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,nlev_rad) :: qrl_rad, qrlc_rad
 
       ! RRTMGP types
       type(ty_gas_concs) :: gas_concentrations_all, gas_concentrations_col
@@ -2039,52 +2038,25 @@ contains
                end do  ! ix = 1,crm_nx_rad
             end do  ! iy = 1,crm_ny_rad
 
-            ! Apply delta scaling to account for forward-scattering
-            ! TODO: delta_scale takes the forward scattering fraction as an optional
-            ! parameter. In the current cloud optics_lw scheme, forward scattering is taken
-            ! just as g^2, which delta_scale assumes if forward scattering fraction is
-            ! omitted in the function call. In the future, we should explicitly pass
-            ! this. This just requires modifying the get_cloud_optics_lw procedures to also
-            ! pass the foward scattering fraction that the CAM cloud optics_lw assumes.
-            call handle_error(cld_optics_all%delta_scale())
-            call handle_error(aer_optics_all%delta_scale())
-
-            ! Check cloud optics
-            call handle_error(cld_optics_all%validate())
-            call handle_error(aer_optics_all%validate())
-
-            ! Populate gas concentrations object
-            do igas = 1,size(active_gases)
-               call handle_error(gas_concentrations_all%set_vmr( &
-                  trim(lower_case(active_gases(igas))), vmr_all(igas,1:ncol_tot,:)) & 
-               )
-            end do
-
-            ! Restore pbuf fields
-            iclwp = iclwp_save
-            iciwp = iciwp_save
-            cld   = cld_save
-
-            ! Do longwave radiative transfer calculations
-            call t_startf('rad_calculations_lw')
-            call handle_error(rte_lw(k_dist_lw, gas_concentrations_all, &
-                                     pmid(1:ncol_tot,1:nlev_rad), tmid(1:ncol_tot,1:nlev_rad), &
-                                     pint(1:ncol_tot,1:nlev_rad+1), tint(1:ncol_tot,nlev_rad+1), &
-                                     surface_emissivity(1:nlwbands,1:ncol_tot), &
-                                     cld_optics_all, &
-                                     fluxes_allsky_all, fluxes_clrsky_all, &
-                                     aer_props=aer_optics_all, &
-                                     t_lev=tint(1:ncol_tot,1:nlev_rad+1), &
-                                     n_gauss_angles=1))  ! Set to 3 for consistency with RRTMG
-            call t_stopf('rad_calculations_lw')
+            call t_startf('rad_fluxes_lw')
+            call compute_fluxes_lw(active_gases, &
+                                   vmr_all(:,1:ncol_tot,1:nlev_rad), &
+                                   surface_emissivity(1:nlwbands,1:ncol_tot), &
+                                   pmid(1:ncol_tot,1:nlev_rad), tmid(1:ncol_tot,1:nlev_rad), &
+                                   pint(1:ncol_tot,1:nlev_rad+1), tint(1:ncol_tot,1:nlev_rad+1), &
+                                   cld_optics_all, aer_optics_all, &
+                                   fluxes_allsky_all, fluxes_clrsky_all)
+            call t_stopf('rad_fluxes_lw')
 
             ! Calculate heating rates
-            call calculate_heating_rate(fluxes_allsky_all%flux_up, fluxes_allsky_all%flux_dn, pint(1:ncol_tot,1:nlev_rad+1), qrl_rad(1:ncol_tot,1:nlev_rad))
-            call calculate_heating_rate(fluxes_clrsky_all%flux_up, fluxes_allsky_all%flux_dn, pint(1:ncol_tot,1:nlev_rad+1), qrlc_rad(1:ncol_tot,1:nlev_rad))
-
-            ! Map heating rates to CAM columns and levels
-            qrl_all(:,1:pver) = qrl_rad(:,ktop:kbot)
-            qrlc_all(:,1:pver) = qrlc_rad(:,ktop:kbot)
+            call calculate_heating_rate(fluxes_allsky_all%flux_up(:,ktop:kbot+1), &
+                                        fluxes_allsky_all%flux_dn(:,ktop:kbot+1), &
+                                        pint(1:ncol_tot,ktop:kbot+1)            , &
+                                        qrl_all(1:ncol_tot,1:pver)                )
+            call calculate_heating_rate(fluxes_clrsky_all%flux_up(:,ktop:kbot+1), &
+                                        fluxes_clrsky_all%flux_dn(:,ktop:kbot+1), &
+                                        pint(1:ncol_tot,ktop:kbot+1)            , &
+                                        qrlc_all(1:ncol_tot,1:pver)                )
 
             ! Map to CRM columns
             if (use_SPCAM) then
@@ -2116,6 +2088,11 @@ contains
             ! Send fluxes to history buffer
             call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
 
+            ! Restore pbuf fields
+            iclwp = iclwp_save
+            iciwp = iciwp_save
+            cld   = cld_save
+
          end if  ! active calls
       end do  ! loop over diagnostic calls
 
@@ -2131,6 +2108,64 @@ contains
       call free_fluxes(fluxes_clrsky_all)
 
    end subroutine radiation_driver_lw
+
+   subroutine compute_fluxes_lw(gas_names, gas_vmr, emis_sfc, &
+                                pmid, tmid, pint, tint, &
+                                cld_optics, aer_optics, &
+                                fluxes_allsky, fluxes_clrsky)
+
+      use mo_rrtmgp_clr_all_sky, only: rte_lw
+      use mo_fluxes_byband, only: ty_fluxes_byband
+      use mo_optical_props, only: ty_optical_props_1scl
+      use mo_gas_concentrations, only: ty_gas_concs
+      use mo_util_string, only: lower_case
+
+      character(len=*), intent(in) :: gas_names(:)
+      real(r8), intent(in) :: gas_vmr(:,:,:)
+      real(r8), intent(in) :: emis_sfc(:,:)
+      real(r8), intent(in) :: pmid(:,:), tmid(:,:), pint(:,:), tint(:,:)
+      type(ty_optical_props_1scl), intent(inout) :: cld_optics, aer_optics
+      type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
+
+      type(ty_gas_concs) :: gas_concs
+      integer :: ncol, nlev, igas
+
+      ncol = size(pmid,1)
+      nlev = size(pmid,2)
+
+      ! Apply delta scaling to account for forward-scattering
+      ! TODO: delta_scale takes the forward scattering fraction as an optional
+      ! parameter. In the current cloud optics_lw scheme, forward scattering is taken
+      ! just as g^2, which delta_scale assumes if forward scattering fraction is
+      ! omitted in the function call. In the future, we should explicitly pass
+      ! this. This just requires modifying the get_cloud_optics_lw procedures to also
+      ! pass the foward scattering fraction that the CAM cloud optics_lw assumes.
+      call handle_error(cld_optics%delta_scale())
+      call handle_error(aer_optics%delta_scale())
+
+      ! Check cloud optics
+      call handle_error(cld_optics%validate())
+      call handle_error(aer_optics%validate())
+
+      ! Populate gas concentrations object
+      do igas = 1,size(gas_names)
+         call handle_error(gas_concs%set_vmr( &
+            trim(lower_case(gas_names(igas))), gas_vmr(igas,:,:)) & 
+         )
+      end do
+
+      ! Do longwave radiative transfer calculations
+      call handle_error(rte_lw(k_dist_lw, gas_concs, &
+                               pmid(1:ncol,1:nlev), tmid(1:ncol,1:nlev), &
+                               pint(1:ncol,1:nlev+1), tint(1:ncol,nlev+1), &
+                               emis_sfc(1:nlwbands,1:ncol), &
+                               cld_optics, &
+                               fluxes_allsky, fluxes_clrsky, &
+                               aer_props=aer_optics, &
+                               t_lev=tint(1:ncol,1:nlev+1), &
+                               n_gauss_angles=1))  ! Set to 3 for consistency with RRTMG
+
+   end subroutine compute_fluxes_lw
 
    !----------------------------------------------------------------------------
 
