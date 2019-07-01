@@ -409,7 +409,22 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    end do   ! ie loop
    call t_stopf('stepon_bndry_exch')
 
+   ! copy current dyn state for mapping tendencies to FV phys grid 
+   if (par%dynproc) then
+      if (fv_nphys > 0) then
+         do ie = 1,nelemd
+            dyn_in%elem(ie)%state%T0 = dyn_in%elem(ie)%state%T(:,:,:,TimeLevel%n0) \
+                                      +dyn_in%elem(ie)%derived%fT(:,:,:)*dtime
+            dyn_in%elem(ie)%state%Q0 = dyn_in%elem(ie)%state%q(:,:,:,:)
+            ! elem(ie)%state%v0    = elem(ie)%state%v   (:,:,:,:,TimeLevel%n0)
+            dyn_in%elem(ie)%state%ps_v0 = dyn_in%elem(ie)%state%ps_v(:,:,TimeLevel%n0)
 
+            dyn_out%elem(ie)%state%T0    = dyn_in%elem(ie)%state%T0
+            dyn_out%elem(ie)%state%Q0    = dyn_in%elem(ie)%state%Q0
+            dyn_out%elem(ie)%state%ps_v0 = dyn_in%elem(ie)%state%ps_v0
+         end do
+      end if ! fv_nphys > 0
+   end if ! par%dynproc
 
    ! Most output is done by physics.  We pass to the physics state variables
    ! at timelevel "tl_f".  

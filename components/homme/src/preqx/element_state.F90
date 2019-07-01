@@ -29,6 +29,12 @@ module element_state
     real (kind=real_kind) :: Q   (np,np,nlev,qsize_d)                 ! Tracer concentration               6
     real (kind=real_kind) :: Qdp (np,np,nlev,qsize_d,2)               ! Tracer mass                        7
 
+    ! Variables to hold incoming dynamics state for forcing the CRM when fv_nphys>0
+    real (kind=real_kind) :: v0   (np,np,2,nlev)                       ! velocity            
+    real (kind=real_kind) :: T0   (np,np,nlev)                         ! temperature         
+    real (kind=real_kind) :: Q0   (np,np,nlev,qsize_d)                 ! Tracer concentration
+    real (kind=real_kind) :: ps_v0(np,np)                              ! surface pressure     
+
   end type elem_state_t
 
   !___________________________________________________________________

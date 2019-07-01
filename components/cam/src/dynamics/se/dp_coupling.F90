@@ -28,6 +28,8 @@ module dp_coupling
   private
   public :: d_p_coupling, p_d_coupling
 
+  real(r8) :: dtime_physics    ! Time step for physics, used to set initial dyn state for FV physics 
+
 CONTAINS
   !=================================================================================================
   !=================================================================================================
@@ -176,9 +178,15 @@ CONTAINS
           phys_state(lchnk)%ps(icol)   = ps_tmp(ioff,ie)
           phys_state(lchnk)%phis(icol) = zs_tmp(ioff,ie)
           do ilyr = 1,pver
-            phys_state(lchnk)%t(icol,ilyr)     = T_tmp(ioff,ilyr,ie)	   
-            phys_state(lchnk)%u(icol,ilyr)     = uv_tmp(ioff,1,ilyr,ie)
-            phys_state(lchnk)%v(icol,ilyr)     = uv_tmp(ioff,2,ilyr,ie)
+            ! if (is_first_step()) then
+              phys_state(lchnk)%t(icol,ilyr)     = T_tmp(ioff,ilyr,ie)	 
+              phys_state(lchnk)%u(icol,ilyr)     = uv_tmp(ioff,1,ilyr,ie)
+              phys_state(lchnk)%v(icol,ilyr)     = uv_tmp(ioff,2,ilyr,ie)
+            ! else
+            !   phys_state(lchnk)%t(icol,ilyr)     = T_tmp(ioff,ilyr,ie)    + phys_state(lchnk)%t(icol,ilyr)
+            !   phys_state(lchnk)%u(icol,ilyr)     = uv_tmp(ioff,1,ilyr,ie) + phys_state(lchnk)%u(icol,ilyr)
+            !   phys_state(lchnk)%v(icol,ilyr)     = uv_tmp(ioff,2,ilyr,ie) + phys_state(lchnk)%v(icol,ilyr)
+            ! end if
             phys_state(lchnk)%omega(icol,ilyr) = om_tmp(ioff,ilyr,ie)
             if (use_gw_front) then
               pbuf_frontgf(icol,ilyr) = frontgf(ioff,ilyr,ie)
@@ -188,7 +196,11 @@ CONTAINS
 
           do m = 1,pcnst
             do ilyr = 1,pver
-              phys_state(lchnk)%q(icol,ilyr,m) = q_tmp(ioff,ilyr,m,ie)
+              ! if (is_first_step()) then
+                phys_state(lchnk)%q(icol,ilyr,m) = q_tmp(ioff,ilyr,m,ie)
+              ! else
+              !   phys_state(lchnk)%q(icol,ilyr,m) = q_tmp(ioff,ilyr,m,ie) + phys_state(lchnk)%q(icol,ilyr,m)
+              ! end if
             end do ! ilyr
           end do ! m
         end do ! icol
@@ -254,17 +266,50 @@ CONTAINS
           phys_state(lchnk)%ps  (icol) = cbuffer(cpter(icol,0))
           phys_state(lchnk)%phis(icol) = cbuffer(cpter(icol,0)+1)
           do ilyr = 1,pver
-            phys_state(lchnk)%t    (icol,ilyr) = cbuffer(cpter(icol,ilyr))
-            phys_state(lchnk)%u    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+1)
-            phys_state(lchnk)%v    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+2)
-            phys_state(lchnk)%omega(icol,ilyr) = cbuffer(cpter(icol,ilyr)+3)
-             if (use_gw_front) then
+            if (fv_nphys > 0) then
+              !-----------------------------------------------------------------
+              !-----------------------------------------------------------------
+              if (is_first_step()) then
+                phys_state(lchnk)%t    (icol,ilyr) = cbuffer(cpter(icol,ilyr))  
+                ! phys_state(lchnk)%u    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+1)
+                ! phys_state(lchnk)%v    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+2)
+              else
+                phys_state(lchnk)%t    (icol,ilyr) = cbuffer(cpter(icol,ilyr))   + phys_state(lchnk)%t(icol,ilyr)
+                ! phys_state(lchnk)%u    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+1) + phys_state(lchnk)%u(icol,ilyr)
+                ! phys_state(lchnk)%v    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+2) + phys_state(lchnk)%v(icol,ilyr)
+              end if
+              ! phys_state(lchnk)%t    (icol,ilyr) = cbuffer(cpter(icol,ilyr))  
+              phys_state(lchnk)%u    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+1)
+              phys_state(lchnk)%v    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+2)
+              phys_state(lchnk)%omega(icol,ilyr) = cbuffer(cpter(icol,ilyr)+3)
+              if (use_gw_front) then
                 pbuf_frontgf(icol,ilyr) = cbuffer(cpter(icol,ilyr)+4)
                 pbuf_frontga(icol,ilyr) = cbuffer(cpter(icol,ilyr)+5)
-             end if
-             do m = 1,pcnst
+              end if 
+              do m = 1,pcnst
+                if (.not.is_first_step().and.m==1) then
+                  phys_state(lchnk)%q(icol,ilyr,m) = cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m) + phys_state(lchnk)%q(icol,ilyr,m)
+                else
+                  phys_state(lchnk)%q(icol,ilyr,m) = cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m)
+                end if
+              end do ! m
+              !----------------------------------------------------------------- 
+            else
+              !-----------------------------------------------------------------
+              phys_state(lchnk)%t    (icol,ilyr) = cbuffer(cpter(icol,ilyr))  
+              phys_state(lchnk)%u    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+1)
+              phys_state(lchnk)%v    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+2)
+              phys_state(lchnk)%omega(icol,ilyr) = cbuffer(cpter(icol,ilyr)+3)
+              if (use_gw_front) then
+                pbuf_frontgf(icol,ilyr) = cbuffer(cpter(icol,ilyr)+4)
+                pbuf_frontga(icol,ilyr) = cbuffer(cpter(icol,ilyr)+5)
+              end if 
+              do m = 1,pcnst
                 phys_state(lchnk)%q(icol,ilyr,m) = cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m)
-             end do ! m
+              end do ! m
+              !-----------------------------------------------------------------
+              !-----------------------------------------------------------------
+            end if ! fv_nphys > 0
           end do ! ilyr
         end do ! icol
       end do ! lchnk
@@ -333,6 +378,7 @@ CONTAINS
     use cam_control_mod,         only: adiabatic
     use fv_physics_coupling_mod, only: fv_phys_to_dyn
     use control_mod,             only: ftype
+    use time_manager,            only: get_step_size, is_first_step
     implicit none
     ! INPUT PARAMETERS:
     type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state

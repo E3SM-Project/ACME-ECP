@@ -37,7 +37,7 @@ contains
   subroutine fv_phys_to_dyn(elem,T_tmp,uv_tmp,q_tmp)
     ! Purpose: Copy physics state to dynamics grid
     use control_mod,    only: ftype
-    use dyn_comp,       only: TimeLevel
+    use dyn_comp,       only: TimeLevel, hvcoord
     use derivative_mod, only: subcell_integration
     implicit none
     !---------------------------------------------------------------------------
@@ -63,7 +63,8 @@ contains
       !-------------------------------------------------------------------------
       if (ftype==2.or.ftype==4) then
         do ilyr = 1,pver
-          dp_gll = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
+          dp_gll(:,:) = ( hvcoord%hyai(ilyr+1)-hvcoord%hyai(ilyr) )*hvcoord%ps0 + &
+                        ( hvcoord%hybi(ilyr+1)-hvcoord%hybi(ilyr) )*elem(ie)%state%ps_v(:,:,tl_f)
           inv_dp_fvm = 1.0 / subcell_integration(dp_gll,np,fv_nphys,elem(ie)%metdet(:,:))
           do m = 1,pcnst
             qo_phys(:,ilyr,m)  = RESHAPE( subcell_integration(              &
@@ -207,11 +208,12 @@ contains
   subroutine dyn_to_fv_phys(elem,ps_tmp,zs_tmp,T_tmp,uv_tmp,om_tmp,Q_tmp)
     ! Purpose: average dynamics state over subcells and assign to physics state
     use derivative_mod,     only: subcell_integration
-    use dyn_comp,           only: TimeLevel
+    use dyn_comp,           only: TimeLevel, hvcoord
+    use time_manager,       only: is_first_step
     implicit none
     !---------------------------------------------------------------------------
     ! interface arguments
-    type(element_t),      intent(inout) :: elem(:)          ! dynamics element structure
+    type(element_t),      intent(inout) :: elem(:)      ! dynamics element structure (dyn_out)
     real(kind=real_kind), intent(inout) :: ps_tmp(:,:)      ! temp array to hold ps
     real(kind=real_kind), intent(inout) :: zs_tmp(:,:)      ! temp array to hold phis  
     real(kind=real_kind), intent(inout) :: T_tmp (:,:,:)    ! temp array to hold T
@@ -224,8 +226,15 @@ contains
     integer                :: ncol
     real(r8), dimension(np,np)             :: tmp_area
     real(r8), dimension(fv_nphys,fv_nphys) :: inv_area
-    real(r8), dimension(np,np)             :: dp_gll
-    real(r8), dimension(fv_nphys,fv_nphys) :: inv_dp_fvm
+    real(r8), dimension(np,np)             :: dp_gll, dp_gll_prv
+    real(r8), dimension(fv_nphys,fv_nphys) :: inv_dp_fvm, inv_dp_fvm_prv
+
+    real(kind=real_kind), dimension(npsq,pver,nelemd)       :: T_prv  ! temp array to hold previuos T 
+    real(kind=real_kind), dimension(npsq,pver,pcnst,nelemd) :: Q_prv  ! temp array to hold previuos q 
+    real(kind=real_kind), dimension(npsq,2,pver,nelemd)     :: uv_prv ! temp array to hold previuos uv
+    
+    real(kind=real_kind), dimension(np,np) :: delta_T
+    real(kind=real_kind), dimension(np,np) :: delta_Q
     !---------------------------------------------------------------------------
     ! Integrate dynamics field with appropriate weighting 
     ! to get average state in each physics cell
@@ -238,44 +247,99 @@ contains
 
       inv_area(:,:) = 1.0_r8/subcell_integration(tmp_area,np,fv_nphys,elem(ie)%metdet(:,:))
 
-      ps_tmp(:,ie) = RESHAPE( subcell_integration(                  &
-                     elem(ie)%state%ps_v(:,:,tl_f),                 &
-                     np, fv_nphys, elem(ie)%metdet(:,:) )           &
+      ps_tmp(:,ie) = RESHAPE( subcell_integration(              &
+                     elem(ie)%state%ps_v(:,:,tl_f),             &
+                     np, fv_nphys, elem(ie)%metdet(:,:) )       &
                      *inv_area , (/ncol/) )
-      zs_tmp(:,ie) = RESHAPE( subcell_integration(                  &
-                     elem(ie)%state%phis(:,:),                      &
-                     np, fv_nphys, elem(ie)%metdet(:,:) )           &
+      zs_tmp(:,ie) = RESHAPE( subcell_integration(              &
+                     elem(ie)%state%phis(:,:),                  &
+                     np, fv_nphys, elem(ie)%metdet(:,:) )       &
                      *inv_area , (/ncol/) )
 
       do ilyr = 1,pver
 
-        dp_gll = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
+        !-----------------------------------------------------------------------
+        ! calculate difference to map instead of state
+        !-----------------------------------------------------------------------
+        ! if (.not.is_first_step()) then
+        !   ! delta_T = elem(ie)%state%T(:,:,ilyr,tl_f) - elem(ie)%state%T0(:,:,ilyr)
+        !   delta_Q = elem(ie)%state%Q(:,:,ilyr,1)    - elem(ie)%state%Q0(:,:,ilyr,1)
+        ! else
+        !   ! delta_T = elem(ie)%state%T(:,:,ilyr,tl_f) 
+        !   delta_Q = elem(ie)%state%Q(:,:,ilyr,1)    
+        ! end if
+        !-----------------------------------------------------------------------
+        !-----------------------------------------------------------------------
+
+        ! dp_gll = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
+        dp_gll(:,:) = ( hvcoord%hyai(ilyr+1)-hvcoord%hyai(ilyr) )*hvcoord%ps0 + &
+                      ( hvcoord%hybi(ilyr+1)-hvcoord%hybi(ilyr) )*elem(ie)%state%ps_v(:,:,tl_f)
         inv_dp_fvm = 1.0 / subcell_integration(dp_gll,np,fv_nphys,elem(ie)%metdet(:,:))
 
-        T_tmp(:ncol,ilyr,ie)      = RESHAPE( subcell_integration(             &
-                                    elem(ie)%state%T(:,:,ilyr,tl_f)*dp_gll,   &
-                                    np, fv_nphys, elem(ie)%metdet(:,:) )      &
+        T_tmp(:ncol,ilyr,ie)      = RESHAPE( subcell_integration(              &
+                                    elem(ie)%state%T(:,:,ilyr,tl_f)*dp_gll,    &
+                                    ! delta_T*dp_gll,    &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )       &
                                     *inv_dp_fvm, (/ncol/) )
 
-        om_tmp(:ncol,ilyr,ie)      = RESHAPE( subcell_integration(             &
-                                    elem(ie)%derived%omega_p(:,:,ilyr),       &
-                                    np, fv_nphys, elem(ie)%metdet(:,:) )      &
+        om_tmp(:ncol,ilyr,ie)     = RESHAPE( subcell_integration(              &
+                                    elem(ie)%derived%omega_p(:,:,ilyr),        &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )       &
                                     *inv_area , (/ncol/) )
         do m = 1,2
-          uv_tmp(:ncol,m,ilyr,ie) = RESHAPE( subcell_integration(             &
-                                    elem(ie)%state%V(:,:,m,ilyr,tl_f),        &
-                                    np, fv_nphys, elem(ie)%metdet(:,:) )      &
+          uv_tmp(:ncol,m,ilyr,ie) = RESHAPE( subcell_integration(              &
+                                    elem(ie)%state%V(:,:,m,ilyr,tl_f),         &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )       &
                                     *inv_area , (/ncol/) )
         end do
+
+        ! m = 1
+        ! Q_tmp(:ncol,ilyr,m,ie)    = RESHAPE( subcell_integration(              &
+        !                             elem(ie)%state%Q(:,:,ilyr,m)*dp_gll,       &
+        !                             ! delta_Q*dp_gll,                            &
+        !                             np, fv_nphys, elem(ie)%metdet(:,:) )       &
+        !                             *inv_dp_fvm, (/ncol/) )
         do m = 1,pcnst
-          Q_tmp(:ncol,ilyr,m,ie)  = RESHAPE( subcell_integration(             &
-                                    elem(ie)%state%Q(:,:,ilyr,m)*dp_gll,      &
-                                    np, fv_nphys, elem(ie)%metdet(:,:) )      &
+          Q_tmp(:ncol,ilyr,m,ie)  = RESHAPE( subcell_integration(              &
+                                    elem(ie)%state%Q(:,:,ilyr,m)*dp_gll,       &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )       &
                                     *inv_dp_fvm, (/ncol/) )
         end do
+
+        !-----------------------------------------------------------------------
+        ! Map previous dynamics state to physgrid for CRM forcing
+        !-----------------------------------------------------------------------
+        dp_gll_prv(:,:) = ( hvcoord%hyai(ilyr+1)-hvcoord%hyai(ilyr) )*hvcoord%ps0 + &
+                          ( hvcoord%hybi(ilyr+1)-hvcoord%hybi(ilyr) )*elem(ie)%state%ps_v0(:,:)
+        inv_dp_fvm_prv = 1.0 / subcell_integration(dp_gll_prv,np,fv_nphys,elem(ie)%metdet(:,:))
+
+        T_prv(:ncol,ilyr,ie)      = RESHAPE( subcell_integration(              &
+                                    elem(ie)%state%T0(:,:,ilyr)*dp_gll_prv,    &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )       &
+                                    *inv_dp_fvm_prv, (/ncol/) )
+
+        Q_prv(:ncol,ilyr,1,ie)    = RESHAPE( subcell_integration(              &
+                                    elem(ie)%state%Q0(:,:,ilyr,1)*dp_gll_prv,  &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )       &
+                                    *inv_dp_fvm_prv, (/ncol/) )
+
+        ! do m = 1,2
+          ! uv_prv(:ncol,m,ilyr,ie) = RESHAPE( subcell_integration(              &
+          !                           elem(ie)%state%V0(:,:,m,ilyr),             &
+          !                           np, fv_nphys, elem(ie)%metdet(:,:) )       &
+          !                           *inv_area , (/ncol/) )
+        ! end do
+        !-----------------------------------------------------------------------
+        !-----------------------------------------------------------------------
 
       end do ! ilyr
     end do ! ie
+
+    if (.not.is_first_step()) then
+      T_tmp = T_tmp - T_prv
+      Q_tmp(:,:,1,:) = Q_tmp(:,:,1,:) - Q_prv(:,:,1,:)
+      ! uv_tmp = uv_tmp - uv_prv
+    end if
     !---------------------------------------------------------------------------
     !---------------------------------------------------------------------------
   end subroutine dyn_to_fv_phys
