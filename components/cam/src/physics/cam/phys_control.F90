@@ -67,6 +67,9 @@ logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-
 !-- mdb spcam
 logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
+logical           :: use_crm_accel        = .false.
+logical           :: crm_accel_uv         = .false.
+real(r8)          :: crm_accel_factor     = 0
 !-- mdb spcam
 ! real(r8)          :: crm_min_tk           = huge(1.0_r8)  ! minimum near-surface eddy viscosity - still hardcoded in crm/SGS_TKE/tke_full.F90
 logical           :: atm_dep_flux         = .true.     ! true => deposition fluxes will be provided
@@ -182,7 +185,8 @@ subroutine phys_ctl_readnl(nlfile)
 
    namelist /phys_ctl_nl/ cam_physpkg, cam_chempkg, waccmx_opt, deep_scheme, shallow_scheme, &
       eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, SPCAM_microp_scheme, srf_flux_avg, &
-      use_subcol_microp, use_SPCAM, use_ECPP, atm_dep_flux, history_amwg, history_verbose, history_vdiag, &
+      use_subcol_microp, use_SPCAM, use_ECPP, use_crm_accel, crm_accel_uv, crm_accel_factor, &
+      atm_dep_flux, history_amwg, history_verbose, history_vdiag, &
       history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
       conv_water_in_rad, history_clubb, do_clubb_sgs, do_tms, state_debug_checks, &

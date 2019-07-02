@@ -4338,6 +4338,25 @@ Type of SPCAM microphysics scheme employed.
 Default: sam1mom
 </entry>
 
+<entry id="use_crm_accel" type="logical" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Switch to enable CRM mean-state acceleration
+Default: True
+</entry>
+
+<entry id="crm_accel_uv" type="logical" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Switch to enable CRM mean-state acceleration of momentum, 
+otherwise only T and qv will be accelerated
+Default: True
+</entry>
+
+<entry id="crm_accel_factor" type="real" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Acceleration factor for CRM mean-state acceleration
+Default: 2
+</entry>
+
 <!-- Test Tracers -->
 
 <entry id="tracers_flag" type="logical" category="test_tracers"
