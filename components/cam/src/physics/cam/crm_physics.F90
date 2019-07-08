@@ -1,3 +1,4 @@
+#define SPMOMTRANS = 1
 #if defined( SP_ORIENT_RAND ) && defined( SP_DIR_NS )
 #undef SP_DIR_NS
 #endif
@@ -1428,23 +1429,25 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%lv = .TRUE.
       ptend%u  = crm_output%u_tend_esmt
       ptend%v  = crm_output%v_tend_esmt
-#else /* SP_USE_ESMT not defined */  
+
+#endif /* SP_USE_ESMT */
 
 #if defined(SPMOMTRANS)
       ptend%lu = .TRUE.
       ptend%lv = .TRUE.
       
       !!! rotate resolved CRM momentum tendencies back
-      do i = 1, ncol 
-         ptend%u(i) = crm_output%ultend(i) * cos( -1.*crm_angle(i) ) + crm_output%vltend(i) * sin( -1.*crm_angle(i) )
-         ptend%v(i) = crm_output%vltend(i) * cos( -1.*crm_angle(i) ) - crm_output%ultend(i) * sin( -1.*crm_angle(i) )
+      do k=1, pver
+         do i = 1, ncol 
+            ptend%u(i,k) = crm_output%ultend(i,k) * cos( -1.*crm_angle(i) ) + crm_output%vltend(i,k) * sin( -1.*crm_angle(i) )
+            ptend%v(i,k) = crm_output%vltend(i,k) * cos( -1.*crm_angle(i) ) - crm_output%ultend(i,k) * sin( -1.*crm_angle(i) )
+         end do 
       enddo
 
       call outfld('UCONVMOM',ptend%u,pcols   ,lchnk   )
       call outfld('VCONVMOM',ptend%v,pcols   ,lchnk   )
 #endif /* SPMOMTRANS */
 
-#endif /* SP_USE_ESMT */
 
 !---------------------------------------------------------------------------------------------------
 !---------------------------------------------------------------------------------------------------
