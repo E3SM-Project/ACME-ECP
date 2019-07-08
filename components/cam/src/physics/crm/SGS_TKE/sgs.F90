@@ -218,8 +218,8 @@ CONTAINS
       !$acc parallel loop collapse(2) async(asyncid)
       do k=1,nzm
         do icrm = 1 , ncrms
-          grdf_x(icrm,k) = min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
-          grdf_y(icrm,k) = min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
+          grdf_x(icrm,k) = 1.0!min( real(16.,crm_rknd), dx**2/(adz(icrm,k)*dz(icrm))**2)
+          grdf_y(icrm,k) = 1.0!min( real(16.,crm_rknd), dy**2/(adz(icrm,k)*dz(icrm))**2)
           grdf_z(icrm,k) = 1.
         end do
       end do

@@ -41,6 +41,54 @@ contains
     end if ! SFC_FLX_FXD
   end subroutine crmsurface
 
+
+
+  subroutine crmsurface_better(ncrms, ustar)
+    use vars
+    use params
+    implicit none
+    integer, intent(in) :: ncrms
+    real(crm_rknd), intent (in) :: ustar(ncrms)
+    real(crm_rknd) u_h0, tau00, tmp, ubase, vbase, wspd 
+    integer i,j,icrm
+
+    !--------------------------------------------------------
+    !if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
+      !$acc parallel loop async(asyncid)
+      do icrm = 1 , ncrms
+        uhl(icrm) = uhl(icrm)  !+ dtn*utend(icrm,1)
+        vhl(icrm) = vhl(icrm)  !+ dtn*vtend(icrm,1)
+        taux0(icrm) = 0.
+        tauy0(icrm) = 0.
+      enddo
+      !$acc parallel loop collapse(3) async(asyncid)
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
+            u_h0 = max(real(1.0,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg )**2))
+            !tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm),u_h0,z0(icrm))**2
+            tau00 = rho(icrm, 1) * ustar(icrm) ** 2.0
+            wspd = max(real(1.0, crm_rknd), sqrt(uhl(icrm)*uhl(icrm) + vhl(icrm) * vhl(icrm))) 
+            !print *, uhl(icrm), vhl(icrm), wspd 
+            fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-u0(icrm,1))/wspd*tau00 !+  uhl(icrm)/wspd*tau00   
+            !print *, -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)/u_h0*tau00,u_h0, ug, uhl(icrm)/wspd*tau00
+            fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-v0(icrm,1))/wspd*tau00 !+ vhl(icrm)/wspd*tau00 
+            tmp = fluxbu(icrm,i,j)/dble(nx*ny)
+            !tmp = abs(wspd - u_h0)/dble(nx*ny)
+            !$acc atomic update
+            taux0(icrm) = taux0(icrm) + tmp
+            tmp = fluxbv(icrm,i,j)/dble(nx*ny)
+            !$acc atomic update
+            tauy0(icrm) = tauy0(icrm) + tmp 
+          end do
+        end do
+      enddo
+    !do icrm=1, ncrms
+    !  print *, "tau ",  tauy0(icrm), taux0(icrm), ustar(icrm), uhl(icrm), vhl(icrm),  rho(icrm, 1) 
+    !enddo   
+    !end if ! SFC_FLX_FXD
+  end subroutine crmsurface_better 
+
   ! ----------------------------------------------------------------------
   !
   ! DISCLAIMER : this code appears to be correct but has not been

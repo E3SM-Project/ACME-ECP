@@ -1,4 +1,4 @@
-
+#define SPMOMTRANS = 1
 module crm_module
   use openacc_utils, only: prefetch
   use perf_mod
@@ -375,7 +375,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       do i = 1 , nx
         do icrm = 1 , ncrms
           u   (icrm,i,j,k) = crm_state_u_wind     (icrm,i,j,k)
-          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YES3D
+          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)
           w   (icrm,i,j,k) = crm_state_w_wind     (icrm,i,j,k)
           tabs(icrm,i,j,k) = crm_state_temperature(icrm,i,j,k)
         enddo
@@ -391,7 +391,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do i=1,nx
           do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
-            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
+            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )
           enddo
         enddo
       enddo
@@ -545,7 +545,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       tke0 (icrm,k) = tke0 (icrm,k) * factor_xy
       l = plev-k+1
       uln  (icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
-      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(icrm,k))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(icrm,k))*idt_gl
       utend(icrm,k) = (uln(icrm,l)-u0(icrm,k))*idt_gl
@@ -559,8 +559,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   !$acc parallel loop async(asyncid)
   do icrm = 1 , ncrms
-    uhl(icrm) = u0(icrm,1)
-    vhl(icrm) = v0(icrm,1)
+    uhl(icrm) = crm_input%ul(icrm,plev-1+1)
+    vhl(icrm) = crm_input%vl(icrm,plev-1+1)*YES3D !v0(icrm,1)
     ! estimate roughness length assuming logarithmic profile of velocity near the surface:
     ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(icrm,1))
     z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
@@ -773,8 +773,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       !-----------------------------------------------
       !     surface fluxes:
-      if (dosurface) call crmsurface(ncrms,bflx)
-
+      !if (dosurface) call crmsurface(ncrms,bflx)
+      call crmsurface_better(ncrms, ustar) 
       !-----------------------------------------------------------
       !  SGS physics:
       if (dosgs) call sgs_proc(ncrms)
@@ -1153,29 +1153,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     enddo ! k
   enddo ! icrm
 
-#if defined(SP_ESMT)
-  !$acc wait(asyncid)
-  do icrm=1,ncrms
-    uln_esmt(ptop:plev,icrm) = uln_esmt(ptop:plev,icrm) * factor_xy
-    vln_esmt(ptop:plev,icrm) = vln_esmt(ptop:plev,icrm) * factor_xy
-
-    crm_output%u_tend_esmt(icrm,:) = (uln_esmt(:,icrm) - crm_input%ul_esmt(icrm,:))*icrm_run_time
-    crm_output%v_tend_esmt(icrm,:) = (vln_esmt(:,icrm) - crm_input%vl_esmt(icrm,:))*icrm_run_time
-
-    ! don't use tendencies from two top levels,
-    crm_output%u_tend_esmt(icrm,ptop:ptop+1) = 0.
-    crm_output%v_tend_esmt(icrm,ptop:ptop+1) = 0.
-#if defined(SPMOMTRANS)
-    !!! resolved convective momentum transport (CMT) tendencies
-    crm_output%ultend(icrm,:) = (uln(icrm,:) - crm_input%ul(icrm,:))*icrm_run_time
-    crm_output%vltend(icrm,:) = (vln(icrm,:) - crm_input%vl(icrm,:))*icrm_run_time
-
-    !!! don't use tendencies from two top levels
-    crm_output%ultend(icrm,ptop:ptop+1) = 0.
-    crm_output%vltend(icrm,ptop:ptop+1) = 0.
-#endif /* SPMOMTRANS */
-  enddo
-#endif
 
   !$acc parallel loop collapse(2) async(asyncid)
   do k = ptop , plev
@@ -1188,6 +1165,34 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       vln  (icrm,k) = vln  (icrm,k) * factor_xy
     enddo
   enddo
+
+
+
+  !$acc wait(asyncid)
+  do icrm=1,ncrms
+#if defined(SP_ESMT)
+    uln_esmt(ptop:plev,icrm) = uln_esmt(ptop:plev,icrm) * factor_xy
+    vln_esmt(ptop:plev,icrm) = vln_esmt(ptop:plev,icrm) * factor_xy
+
+    crm_output%u_tend_esmt(icrm,:) = (uln_esmt(:,icrm) - crm_input%ul_esmt(icrm,:))*icrm_run_time
+    crm_output%v_tend_esmt(icrm,:) = (vln_esmt(:,icrm) - crm_input%vl_esmt(icrm,:))*icrm_run_time
+
+    ! don't use tendencies from two top levels,
+    crm_output%u_tend_esmt(icrm,ptop:ptop+1) = 0.
+    crm_output%v_tend_esmt(icrm,ptop:ptop+1) = 0.
+#endif
+#if defined(SPMOMTRANS)
+    !!! resolved convective momentum transport (CMT) tendencies
+    crm_output%ultend(icrm,:) = (uln(icrm,:) - crm_input%ul(icrm,:))*icrm_run_time
+    crm_output%vltend(icrm,:) = (vln(icrm,:) - crm_input%vl(icrm,:))*icrm_run_time
+
+    !!! don't use tendencies from two top levels
+    crm_output%ultend(icrm,ptop:ptop+1) = 0.
+    crm_output%vltend(icrm,ptop:ptop+1) = 0.
+#endif /* SPMOMTRANS */
+  enddo
+
+
 
   !$acc parallel loop collapse(2) async(asyncid)
   do k = 1 , plev
@@ -1534,7 +1539,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         enddo
       enddo
       crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*tmp*factor_xy
-      crm_output%tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
+      crm_output%tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
       tmp = 0
       do j = 1 , ny
         do i = 1 , nx

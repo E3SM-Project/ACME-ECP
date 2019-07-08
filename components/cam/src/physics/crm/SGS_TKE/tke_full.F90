@@ -251,7 +251,7 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
     do j = 1,ny
       do i = 1,nx
         do icrm = 1 , ncrms
-          grd = dz(icrm)*adz(icrm,k)
+          grd = (dx * dz(icrm)*adz(icrm,k))**0.5
           Ce1 = Ce/0.7*0.19
           Ce2 = Ce/0.7*0.51
           !!! compute correction factors for eddy visc/cond not to acceed 3D stability

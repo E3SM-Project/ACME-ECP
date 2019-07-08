@@ -1,3 +1,4 @@
+#define SPMOMTRANS = 1
 module crm_output_module
    use params,       only: crm_rknd
    use crmdims,      only: crm_nx, crm_ny, crm_nz
