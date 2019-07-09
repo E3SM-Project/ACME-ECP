@@ -1,4 +1,4 @@
-
+  #define SPMOMTRANS = 1
   module diffusion_solver
 
   !------------------------------------------------------------------------------------ !
@@ -490,12 +490,12 @@
          ! 2. Do 'normal stress' explicitly
 
 ! whannah - bypass adding surface stress here when CRM handles subgrid momentum tendencies
-! #if defined(SPMOMTRANS) || defined(SP_USE_ESMT)
+#if defined(SPMOMTRANS) || defined(SP_USE_ESMT)
 !       ! Do nothing...
-! #else
+#else
            u(:ncol,pver) = u(:ncol,pver) + tmp1(:ncol)*taux(:ncol)
            v(:ncol,pver) = v(:ncol,pver) + tmp1(:ncol)*tauy(:ncol)
-! #endif
+#endif
        end if  ! End of 'do iss' ( implicit surface stress )
 
        ! --------------------------------------------------------------------------------------- !
