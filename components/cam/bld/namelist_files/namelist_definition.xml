@@ -4409,14 +4409,14 @@ Default: sam1mom
 <!-- SPCAM CRMACCEL definitions -->
 <entry id="use_crm_accel" type="logical" category="conv"
        group="phys_ctl_nl" valid_values="">
-Turn on CRM mean-state acceleration when using SPCAM
-Default: false
+Enables CRM mean-state acceleration when using SPCAM.
+Default: true
 </entry>
 
 <entry id="crm_accel_factor" type="real" category="conv"
        group="phys_ctl_nl" valid_values="">
 CRM acceleration factor to apply if use_crm_accel is true
-Default: 3.0
+Default: 2.0
 </entry>
 
 <entry id="crm_accel_uv" type="logical" category="conv"
@@ -4427,7 +4427,6 @@ acceleration will only be applied to scalar fields (liquid/ice static
 energy and non-precipitating total water mixing ratio). This has
 no effect when use_crm_accel is false.
 Default: true
-</entry>
 
 <!-- Test Tracers -->
 

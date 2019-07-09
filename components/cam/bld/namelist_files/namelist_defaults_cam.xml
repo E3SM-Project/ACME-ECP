@@ -1130,6 +1130,19 @@
 <srf_flux_avg eddy_scheme="HBR"      >0</srf_flux_avg>
 <srf_flux_avg eddy_scheme="diag_TKE" >0</srf_flux_avg>
 <srf_flux_avg eddy_scheme="CLUBB_SGS">0</srf_flux_avg>
+<srf_flux_avg use_SPCAM="1"          >1</srf_flux_avg>
+
+<!-- CRM mean state acceleration -->
+<use_crm_accel    use_SPCAM="0">.false.</use_crm_accel>
+<crm_accel_uv     use_SPCAM="0">.false.</crm_accel_uv>
+<crm_accel_factor use_SPCAM="0">0</crm_accel_factor>
+<use_crm_accel    use_SPCAM="1" SPCAM_microp_scheme="sam1mom">.true.</use_crm_accel>
+<crm_accel_uv     use_SPCAM="1" SPCAM_microp_scheme="sam1mom">.true.</crm_accel_uv>
+<!-- Disable MSA for 2-mom microphyics -->
+<use_crm_accel    use_SPCAM="1" SPCAM_microp_scheme="m2005">.false.</use_crm_accel>
+<crm_accel_uv     use_SPCAM="1" SPCAM_microp_scheme="m2005">.false.</crm_accel_uv>
+<crm_accel_factor use_SPCAM="1">2</crm_accel_factor>
+
 
 <!-- Cloud fraction -->
 <cldfrc_freeze_dry             >.true.</cldfrc_freeze_dry>

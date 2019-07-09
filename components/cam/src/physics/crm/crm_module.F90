@@ -966,8 +966,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             crm_rad_qc         (icrm,i_rad,j_rad,k) = crm_rad_qc         (icrm,i_rad,j_rad,k) + qcl(icrm,i,j,k)
             !$acc atomic update
             crm_rad_qi         (icrm,i_rad,j_rad,k) = crm_rad_qi         (icrm,i_rad,j_rad,k) + qci(icrm,i,j,k)
-            !$acc atomic update
-            crm_rad_cld        (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + cf3d(icrm,i,j,k)
+            if (qcl(icrm,i,j,k) + qci(icrm,i,j,k) > 0) then
+               !$acc atomic update
+               crm_rad_cld     (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + cf3d(icrm,i,j,k)
+            endif
 #ifdef m2005
             !$acc atomic update
             crm_rad%nc         (icrm,i_rad,j_rad,k) = crm_rad%nc         (icrm,i_rad,j_rad,k) + micro_field(icrm,i,j,k,incl)

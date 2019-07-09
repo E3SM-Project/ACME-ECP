@@ -857,6 +857,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 
    if(is_first_step()) then
       ! call check_energy_timestep_init(state, tend, pbuf)
+      ! initialize crm_state%qt to zero (needed for ncol < i <= pcols)
+      crm_state%qt(:,:,:,:) = 0.0_r8
       do i=1,ncol
          do k=1,crm_nz
             m = pver-k+1
