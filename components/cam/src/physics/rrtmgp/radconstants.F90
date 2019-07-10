@@ -15,12 +15,17 @@ module radconstants
 ! possible in the future, and we should provide more robust access to the
 ! radiation interface.
 
-use shr_kind_mod,   only: r8 => shr_kind_r8
-use cam_abortutils,     only: endrun
+use shr_kind_mod,         only: r8 => shr_kind_r8
+use cam_abortutils,       only: endrun
+use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
 
 implicit none
 private
 save
+
+type(ty_gas_optics_rrtmgp), public :: k_dist_sw, k_dist_lw
+integer, public :: nlwgpts
+integer, public :: nswgpts
 
 ! SHORTWAVE DATA
 

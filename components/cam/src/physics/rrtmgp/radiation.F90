@@ -29,6 +29,8 @@ module radiation
    use radiation_state, only: ktop, kbot, nlev_rad
    use radiation_utils, only: compress_day_columns, expand_day_columns, &
                               handle_error
+   use radconstants, only: k_dist_sw, nswbands, nswgpts, &
+                           k_dist_lw, nlwbands, nlwgpts
 
    implicit none
    private
@@ -116,31 +118,9 @@ module radiation
    ! angle calculation? What is the other behavior?
    real(r8) :: dt_avg = 0.0_r8  
 
-   ! k-distribution coefficients. These will be populated by reading from the
-   ! RRTMGP coefficients files, specified by coefficients_file_sw and
-   ! coefficients_file_lw in the radiation namelist. They exist as module data
-   ! because we only want to load those files once.
-   type(ty_gas_optics_rrtmgp) :: k_dist_sw, k_dist_lw
-
    ! k-distribution coefficients files to read from. These are set via namelist
    ! variables.
    character(len=cl) :: coefficients_file_sw, coefficients_file_lw
-
-   ! Number of shortwave and longwave bands in use by the RRTMGP radiation code.
-   ! This information will be stored in the k_dist_sw and k_dist_lw objects and may
-   ! be retrieved using the k_dist_sw%get_nband() and k_dist_lw%get_nband()
-   ! methods, but I think we need to save these as private module data so that we
-   ! can automatically allocate arrays later in subroutine headers, i.e.:
-   !
-   !     real(r8) :: cld_tau(pcols,pver,nswbands)
-   !
-   ! and so forth. Previously some of this existed in radconstants.F90, but I do
-   ! not think we need to use that.
-   ! EDIT: maybe these JUST below in radconstants.F90?
-   integer :: nswbands, nlwbands
-
-   ! Also, save number of g-points as private module data
-   integer :: nswgpts, nlwgpts
 
    ! Set name for this module (for purpose of writing output and log files)
    character(len=*), parameter :: module_name = 'radiation'
@@ -475,15 +455,13 @@ contains
       ! impossible from this initialization routine because I do not thing the
       ! rad_cnst objects are setup yet.
       call set_available_gases(active_gases, available_gases)
-      print *, 'Load RRTMGP coefficients from file...'
       call rrtmgp_load_coefficients(k_dist_sw, coefficients_file_sw, available_gases)
       call rrtmgp_load_coefficients(k_dist_lw, coefficients_file_lw, available_gases)
-      print *, 'Done loading RRTMGP coefficients.'
 
       ! Get number of bands used in shortwave and longwave and set module data
       ! appropriately so that these sizes can be used to allocate array sizes.
-      nswbands = k_dist_sw%get_nband()
-      nlwbands = k_dist_lw%get_nband()
+      !nswbands = k_dist_sw%get_nband()
+      !nlwbands = k_dist_lw%get_nband()
 
       ! Likewise for g-points
       nswgpts = k_dist_sw%get_ngpt()
