@@ -1517,9 +1517,6 @@ contains
       ! Surface emissivity needed for longwave
       real(r8) :: surface_emissivity(nlwbands,pcols)
 
-      ! Temporary heating rates on radiation vertical grid
-      real(r8), dimension(pcols,nlev_rad) :: qrl_rad, qrlc_rad
-
       ! RRTMGP types
       type(ty_gas_concs) :: gas_concentrations
       type(ty_optical_props_1scl) :: aerosol_optics_lw
@@ -1615,19 +1612,15 @@ contains
                   call assert_valid(fluxes_allsky%flux_dn, 'flux_dn invalid')
 
                   ! Calculate heating rates
-                  call calculate_heating_rate(fluxes_allsky%flux_up, &
-                                              fluxes_allsky%flux_dn, &
-                                              pint(1:ncol,1:nlev_rad+1), &
-                                              qrl_rad(1:ncol,1:nlev_rad))
-                  call calculate_heating_rate(fluxes_clrsky%flux_up, &
-                                              fluxes_allsky%flux_dn, &
-                                              pint(1:ncol,1:nlev_rad+1), &
-                                              qrlc_rad(1:ncol,1:nlev_rad))
+                  call calculate_heating_rate(fluxes_allsky%flux_up(1:ncol,ktop:kbot+1), &
+                                              fluxes_allsky%flux_dn(1:ncol,ktop:kbot+1), &
+                                              pint(1:ncol,ktop:kbot+1), &
+                                              qrl(1:ncol,1:pver))
+                  call calculate_heating_rate(fluxes_clrsky%flux_up(1:ncol,ktop:kbot+1), &
+                                              fluxes_allsky%flux_dn(1:ncol,ktop:kbot+1), &
+                                              pint(1:ncol,ktop:kbot+1), &
+                                              qrlc(1:ncol,1:pver))
 
-                  ! Map heating rates to CAM columns and levels
-                  qrl(1:ncol,1:pver) = qrl_rad(1:ncol,ktop:kbot)
-                  qrlc(1:ncol,1:pver) = qrlc_rad(1:ncol,ktop:kbot)
-                              
                   ! Send fluxes to history buffer
                   call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
 
