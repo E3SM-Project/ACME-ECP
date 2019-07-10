@@ -1433,9 +1433,13 @@ contains
 
             ! Calculate heating rates on the DAYTIME columns
             call t_startf('rad_heating_rate_sw')
-            call calculate_heating_rate(fluxes_allsky_day, pint(1:nday,1:nlev_rad+1), &
+            call calculate_heating_rate(fluxes_allsky_day%flux_up, &
+                                        fluxes_allsky_day%flux_dn, &
+                                        pint(1:nday,1:nlev_rad+1), &
                                         qrs_rad(1:nday,1:nlev_rad))
-            call calculate_heating_rate(fluxes_clrsky_day, pint(1:nday,1:nlev_rad+1), &
+            call calculate_heating_rate(fluxes_clrsky_day%flux_up, &
+                                        fluxes_clrsky_day%flux_dn, &
+                                        pint(1:nday,1:nlev_rad+1), &
                                         qrsc_rad(1:nday,1:nlev_rad))
             call t_stopf('rad_heating_rate_sw')
 
@@ -1611,9 +1615,13 @@ contains
                   call assert_valid(fluxes_allsky%flux_dn, 'flux_dn invalid')
 
                   ! Calculate heating rates
-                  call calculate_heating_rate(fluxes_allsky, pint(1:ncol,1:nlev_rad+1), &
+                  call calculate_heating_rate(fluxes_allsky%flux_up, &
+                                              fluxes_allsky%flux_dn, &
+                                              pint(1:ncol,1:nlev_rad+1), &
                                               qrl_rad(1:ncol,1:nlev_rad))
-                  call calculate_heating_rate(fluxes_clrsky, pint(1:ncol,1:nlev_rad+1), &
+                  call calculate_heating_rate(fluxes_clrsky%flux_up, &
+                                              fluxes_allsky%flux_dn, &
+                                              pint(1:ncol,1:nlev_rad+1), &
                                               qrlc_rad(1:ncol,1:nlev_rad))
 
                   ! Map heating rates to CAM columns and levels
