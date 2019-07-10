@@ -422,6 +422,7 @@ end function radiation_nextsw_cday
     use hirsbtpar,      only: hirsname, msuname
 
     use radiation_data, only: init_rad_data
+    use rad_solar_var,  only: rad_solar_var_init
     use modal_aer_opt, only: modal_aer_opt_init
     use rrtmg_state,   only: rrtmg_state_init
     use time_manager,   only: get_step_size
@@ -466,6 +467,9 @@ end function radiation_nextsw_cday
 
     call radsw_init()
     call radlw_init()
+
+    ! Initialize solar variability
+    call rad_solar_var_init()
 
     ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then

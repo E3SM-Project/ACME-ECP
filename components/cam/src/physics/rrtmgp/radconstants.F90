@@ -32,23 +32,6 @@ integer, public :: nswgpts
 ! number of shorwave spectral intervals
 integer, parameter, public :: nswbands = 14
 
-! Wavenumbers of band boundaries
-!
-! Note: Currently rad_solar_var extends the lowest band down to
-! 100 cm^-1 if it is too high to cover the far-IR. Any changes meant
-! to affect IR solar variability should take note of this.
-
-! Solar irradiance at 1 A.U. in W/m^2 assumed by radiation code
-! Rescaled so that sum is precisely 1368.22 and fractional amounts sum to 1.0
-! NOTE: this is outdated for RRTMGP (and probably in the wrong order?)
-real(r8), parameter :: solar_ref_band_irradiance(nswbands) = & 
-   (/ &
-    12.89_r8,  12.11_r8,  20.3600000000001_r8, 23.73_r8, &
-    22.43_r8,  55.63_r8, 102.93_r8, 24.29_r8, &
-   345.74_r8, 218.19_r8, 347.20_r8, &
-   129.49_r8,  50.15_r8,   3.08_r8 &
-   /)
-
 ! These are indices to the band for diagnostic output
 integer, parameter, public :: idx_sw_diag = 11 ! index to sw visible band
 integer, parameter, public :: idx_nir_diag = 9 ! index to sw near infrared (778-1240 nm) band
@@ -114,43 +97,12 @@ public :: rad_gas_index
 
 public :: get_number_sw_bands, &
           get_sw_spectral_boundaries, &
-          get_lw_spectral_boundaries, &
-          get_ref_solar_band_irrad, &
-          get_ref_total_solar_irrad, &
-          get_solar_band_fraction_irrad
+          get_lw_spectral_boundaries
 
 contains
+
 !------------------------------------------------------------------------------
-subroutine get_solar_band_fraction_irrad(fractional_irradiance)
-   ! provide Solar Irradiance for each band in RRTMG
 
-   ! fraction of solar irradiance in each band
-   real(r8), intent(out) :: fractional_irradiance(1:nswbands)
-   real(r8) :: tsi ! total solar irradiance
-
-   tsi = sum(solar_ref_band_irradiance)
-   fractional_irradiance = solar_ref_band_irradiance / tsi
-
-end subroutine get_solar_band_fraction_irrad
-!------------------------------------------------------------------------------
-subroutine get_ref_total_solar_irrad(tsi)
-   ! provide Total Solar Irradiance assumed by RRTMG
-
-   real(r8), intent(out) :: tsi
-
-   tsi = sum(solar_ref_band_irradiance)
-
-end subroutine get_ref_total_solar_irrad
-!------------------------------------------------------------------------------
-subroutine get_ref_solar_band_irrad( band_irrad )
-
-   ! solar irradiance in each band (W/m^2)
-   real(r8), intent(out) :: band_irrad(nswbands)
- 
-   band_irrad = solar_ref_band_irradiance
-
-end subroutine get_ref_solar_band_irrad
-!------------------------------------------------------------------------------
 subroutine get_number_sw_bands(number_of_bands)
 
    ! number of solar (shortwave) bands in the rrtmg code
