@@ -3664,7 +3664,6 @@ end subroutine print_active_fldlst
     integer                          :: mdimsize
     integer                          :: ierr
     integer,          allocatable    :: mdimids(:)
-    integer                          :: amode
     logical                          :: interpolate
     logical                          :: patch_output
 
@@ -3676,12 +3675,10 @@ end subroutine print_active_fldlst
       if(masterproc) write(iulog,*)'Opening netcdf history file ', trim(nhfil(t))
     end if
 
-    amode = PIO_CLOBBER
-
     if(restart) then
-      call cam_pio_createfile (tape(t)%File, hrestpath(t), amode)
+      call cam_pio_createfile (tape(t)%File, hrestpath(t))
     else
-      call cam_pio_createfile (tape(t)%File, nhfil(t), amode)
+      call cam_pio_createfile (tape(t)%File, nhfil(t))
     end if
     if(is_satfile(t)) then
       interpolate = .false. ! !!XXgoldyXX: Do we ever want to support this?
@@ -4064,6 +4061,13 @@ end subroutine print_active_fldlst
           ierr=pio_put_att (tape(t)%File, varid, 'units', trim(str))
           call cam_pio_handle_error(ierr,                                     &
                'h_define: cannot define units for '//trim(fname_tmp))
+        end if
+
+        str = tape(t)%hlist(f)%field%mixing_ratio
+        if (len_trim(str) > 0) then
+          ierr=pio_put_att (tape(t)%File, varid, 'mixing_ratio', trim(str))
+          call cam_pio_handle_error(ierr,                                     &
+               'h_define: cannot define mixing_ratio for '//trim(fname_tmp))
         end if
 
         str = tape(t)%hlist(f)%field%long_name
@@ -4815,6 +4819,7 @@ end subroutine print_active_fldlst
     !-----------------------------------------------------------------------
     use cam_history_support, only: fillvalue, hist_coord_find_levels
     use cam_grid_support,    only: cam_grid_id
+    use constituents,        only: pcnst, cnst_get_ind, cnst_get_type_byind
 
     !
     ! Arguments
@@ -4838,9 +4843,11 @@ end subroutine print_active_fldlst
     !
     character(len=max_fieldname_len) :: fname_tmp ! local copy of fname
     character(len=128)               :: errormsg
+    character(len=3)                 :: mixing_ratio
     type(master_entry), pointer      :: listentry
 
     integer :: dimcnt
+    integer :: idx
 
     if (htapes_defined) then
       call endrun ('ADDFLD: Attempt to add field '//trim(fname)//' after history files set')
@@ -4873,6 +4880,14 @@ end subroutine print_active_fldlst
       call endrun ('ADDFLD:  '//fname//' already on list')
     end if
 
+    ! If the field is an advected constituent determine whether its concentration
+    ! is based on dry or wet air.
+    call cnst_get_ind(fname_tmp, idx, abort=.false.)
+    mixing_ratio = ''
+    if (idx > 0) then
+       mixing_ratio = cnst_get_type_byind(idx)
+    end if
+
     !
     ! Add field to Master Field List arrays fieldn and iflds
     !
@@ -4881,6 +4896,7 @@ end subroutine print_active_fldlst
     listentry%field%long_name   = long_name
     listentry%field%numlev      = 1        ! Will change if lev or ilev in shape
     listentry%field%units       = units
+    listentry%field%mixing_ratio = mixing_ratio
     listentry%field%meridional_complement = -1
     listentry%field%zonal_complement      = -1
     listentry%htapeindx(:) = -1
