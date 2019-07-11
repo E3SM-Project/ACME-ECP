@@ -1501,6 +1501,7 @@ contains
 
       ! Temporary fluxes for a single CRM column
       type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
+      real(r8) :: qrl_col(pcols,pver), qrlc_col(pcols,pver)
 
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_lw'
@@ -1527,6 +1528,8 @@ contains
 
       ! Loop indices
       integer :: ncol, icall, ix, iy, iz, ilev
+
+      logical :: last_column, first_column
 
       ! Copy state so we can modify it in-place
       call physics_state_copy(state_in, state)
@@ -1557,28 +1560,42 @@ contains
 
       ! Save pbuf to restore later
 
-      ! Loop over CRM columns
-      do iy = 1,crm_ny_rad
-         do ix = 1,crm_nx_rad
+      ! Initialize column fluxes
+      call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_allsky_col)
+      call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_clrsky_col)
 
-            ! Overwrite state and pbuf with CRM for this column
+      ! Loop over different gas configurations (diagnostic)
+      call rad_cnst_get_call_list(active_calls)
+      do icall = N_DIAG,0,-1
+         if (active_calls(icall)) then
 
-            ! Set rad state variables
-            call set_rad_state(state, cam_in, &
-                               tmid(1:ncol,1:nlev_rad), &
-                               tint(1:ncol,1:nlev_rad+1), &
-                               pmid(1:ncol,1:nlev_rad), &
-                               pint(1:ncol,1:nlev_rad+1))
-       
-            ! Do longwave cloud optics calculations
-            call t_startf('longwave cloud optics')
-            call set_cloud_optics_lw(state, pbuf, k_dist_lw, cloud_optics_lw)
-            call t_stopf('longwave cloud optics')
+            ! Initialize means
+            qrl = 0
+            qrlc = 0
+            call reset_fluxes(fluxes_allsky)
+            call reset_fluxes(fluxes_clrsky)
 
-            ! Loop over different gas configurations (diagnostic)
-            call rad_cnst_get_call_list(active_calls)
-            do icall = N_DIAG,0,-1
-               if (active_calls(icall)) then
+            ! Loop over CRM columns
+            do iy = 1,crm_ny_rad
+               do ix = 1,crm_nx_rad
+
+                  first_column = (ix == 1 .and. iy == 1)
+                  last_column  = (ix == crm_nx_rad .and. iy == crm_ny_rad)
+
+                  ! Overwrite state and pbuf with CRM for this column
+
+                  ! Set rad state variables
+                  call set_rad_state(state, cam_in, &
+                                     tmid(1:ncol,1:nlev_rad), &
+                                     tint(1:ncol,1:nlev_rad+1), &
+                                     pmid(1:ncol,1:nlev_rad), &
+                                     pint(1:ncol,1:nlev_rad+1))
+             
+                  ! Do longwave cloud optics calculations
+                  call t_startf('longwave cloud optics')
+                  call set_cloud_optics_lw(state, pbuf, k_dist_lw, cloud_optics_lw)
+                  call t_stopf('longwave cloud optics')
+
 
                   ! Set gas concentrations (I believe the active gases may change
                   ! for different values of icall, which is why we do this within
@@ -1600,38 +1617,52 @@ contains
                      pint(1:ncol,1:nlev_rad+1), tint(1:ncol,nlev_rad+1), &
                      surface_emissivity(1:nlwbands,1:ncol), &
                      cloud_optics_lw, &
-                     fluxes_allsky, fluxes_clrsky, &
+                     fluxes_allsky_col, fluxes_clrsky_col, &
                      aer_props=aerosol_optics_lw, &
                      t_lev=tint(1:ncol,1:nlev_rad+1), &
                      n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
                   ))
                   call t_stopf('rad_calculations_lw')
 
-                  ! Check stuff
-                  call assert_valid(fluxes_allsky%flux_up, 'flux_up invalid')
-                  call assert_valid(fluxes_allsky%flux_dn, 'flux_dn invalid')
-
                   ! Calculate heating rates
-                  call calculate_heating_rate(fluxes_allsky%flux_up(1:ncol,ktop:kbot+1), &
-                                              fluxes_allsky%flux_dn(1:ncol,ktop:kbot+1), &
+                  call calculate_heating_rate(fluxes_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
+                                              fluxes_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
                                               pint(1:ncol,ktop:kbot+1), &
-                                              qrl(1:ncol,1:pver))
-                  call calculate_heating_rate(fluxes_clrsky%flux_up(1:ncol,ktop:kbot+1), &
-                                              fluxes_allsky%flux_dn(1:ncol,ktop:kbot+1), &
+                                              qrl_col(1:ncol,1:pver))
+                  call calculate_heating_rate(fluxes_clrsky_col%flux_up(1:ncol,ktop:kbot+1), &
+                                              fluxes_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
                                               pint(1:ncol,ktop:kbot+1), &
-                                              qrlc(1:ncol,1:pver))
+                                              qrlc_col(1:ncol,1:pver))
+
+                  ! Aggregate means
+                  qrl = qrl + qrl_col * area_factor
+                  qrlc = qrlc + qrlc_col * area_factor
+                  fluxes_allsky%flux_up = fluxes_allsky%flux_up + fluxes_allsky_col%flux_up * area_factor
+                  fluxes_allsky%flux_dn = fluxes_allsky%flux_dn + fluxes_allsky_col%flux_dn * area_factor
+                  fluxes_allsky%flux_net = fluxes_allsky%flux_net + fluxes_allsky_col%flux_net * area_factor
+                  fluxes_clrsky%flux_up = fluxes_clrsky%flux_up + fluxes_clrsky_col%flux_up * area_factor
+                  fluxes_clrsky%flux_dn = fluxes_clrsky%flux_dn + fluxes_clrsky_col%flux_dn * area_factor
+                  fluxes_clrsky%flux_net = fluxes_clrsky%flux_net + fluxes_clrsky_col%flux_net * area_factor
+                  fluxes_allsky%bnd_flux_up = fluxes_allsky%bnd_flux_up + fluxes_allsky_col%bnd_flux_up * area_factor
+                  fluxes_allsky%bnd_flux_dn = fluxes_allsky%bnd_flux_dn + fluxes_allsky_col%bnd_flux_dn * area_factor
+                  fluxes_allsky%bnd_flux_net = fluxes_allsky%bnd_flux_net + fluxes_allsky_col%bnd_flux_net * area_factor
+                  fluxes_clrsky%bnd_flux_up = fluxes_clrsky%bnd_flux_up + fluxes_clrsky_col%bnd_flux_up * area_factor
+                  fluxes_clrsky%bnd_flux_dn = fluxes_clrsky%bnd_flux_dn + fluxes_clrsky_col%bnd_flux_dn * area_factor
+                  fluxes_clrsky%bnd_flux_net = fluxes_clrsky%bnd_flux_net + fluxes_clrsky_col%bnd_flux_net * area_factor
 
                   ! Send fluxes to history buffer
-                  call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
+                  if (last_column) call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
 
-               end if  ! active_calls(icall)
-            end do  ! icall = N_DIAG,0,-1
-         end do  ! ix = 1,crm_nx_rad
-      end do  ! iy = 1,crm_ny_rad
+               end do  ! ix = 1,crm_nx_rad
+            end do  ! iy = 1,crm_ny_rad
+         end if  ! active_calls(icall)
+      end do  ! icall = N_DIAG,0,-1
 
       ! Free fluxes and optical properties
       call free_optics_lw(cloud_optics_lw)
       call free_optics_lw(aerosol_optics_lw)
+      call free_fluxes(fluxes_allsky_col)
+      call free_fluxes(fluxes_clrsky_col)
 
    end subroutine radiation_driver_lw
 
