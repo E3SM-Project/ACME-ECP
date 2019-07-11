@@ -1156,18 +1156,67 @@ contains
          ! Allocate shortwave fluxes
          call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_allsky, do_direct=.true.)
          call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_clrsky, do_direct=.true.)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_allsky_col, do_direct=.true.)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_clrsky_col, do_direct=.true.)
 
          ! Loop over different gas configurations (diagnostic)
          call rad_cnst_get_call_list(active_calls)
          do icall = N_DIAG,0,-1
             if (active_calls(icall)) then
 
-               ! Call the shortwave radiation driver
-               call radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                        fluxes_allsky, fluxes_clrsky, qrs, qrsc)
-              
-               ! Send fluxes to history buffer
-               call output_fluxes_sw(icall, state, fluxes_allsky, fluxes_clrsky, qrs,  qrsc)
+               ! Reset means
+               call reset_fluxes(fluxes_allsky)
+               call reset_fluxes(fluxes_clrsky)
+               qrs = 0
+               qrsc = 0
+
+               ! Loop over CRM columns
+               do iy = 1,crm_ny_rad
+                  do ix = 1,crm_nx_rad
+
+                     first_column = (ix == 1 .and. iy == 1)
+                     last_column  = (ix == crm_nx_rad .and. iy == crm_ny_rad)
+
+
+                     ! Call the shortwave radiation driver
+                     call radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
+                                              fluxes_allsky_col, fluxes_clrsky_col)
+                    
+                     ! Calculate heating rates
+                     call t_startf('rad_heating_rate_sw')
+                     call calculate_heating_rate(fluxes_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
+                                                 fluxes_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
+                                                 state%pint(1:ncol,1:pverp), &
+                                                 qrs_col(1:ncol,1:pver))
+                     call calculate_heating_rate(fluxes_clrsky_col%flux_up(1:ncol,ktop:kbot+1), &
+                                                 fluxes_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
+                                                 state%pint(1:ncol,1:pverp), &
+                                                 qrsc_col(1:ncol,1:pver))
+                     call t_stopf('rad_heating_rate_sw')
+
+                     ! Aggregate means
+                     qrs = qrs + qrs_col * area_factor
+                     qrsc = qrsc + qrsc_col * area_factor
+                     fluxes_allsky%flux_up = fluxes_allsky%flux_up + fluxes_allsky_col%flux_up * area_factor
+                     fluxes_allsky%flux_dn = fluxes_allsky%flux_dn + fluxes_allsky_col%flux_dn * area_factor
+                     fluxes_allsky%flux_net = fluxes_allsky%flux_net + fluxes_allsky_col%flux_net * area_factor
+                     fluxes_clrsky%flux_up = fluxes_clrsky%flux_up + fluxes_clrsky_col%flux_up * area_factor
+                     fluxes_clrsky%flux_dn = fluxes_clrsky%flux_dn + fluxes_clrsky_col%flux_dn * area_factor
+                     fluxes_clrsky%flux_net = fluxes_clrsky%flux_net + fluxes_clrsky_col%flux_net * area_factor
+                     fluxes_allsky%bnd_flux_up = fluxes_allsky%bnd_flux_up + fluxes_allsky_col%bnd_flux_up * area_factor
+                     fluxes_allsky%bnd_flux_dn = fluxes_allsky%bnd_flux_dn + fluxes_allsky_col%bnd_flux_dn * area_factor
+                     fluxes_allsky%bnd_flux_dn_dir = fluxes_allsky%bnd_flux_dn_dir + fluxes_allsky_col%bnd_flux_dn_dir * area_factor
+                     fluxes_allsky%bnd_flux_net = fluxes_allsky%bnd_flux_net + fluxes_allsky_col%bnd_flux_net * area_factor
+                     fluxes_clrsky%bnd_flux_up = fluxes_clrsky%bnd_flux_up + fluxes_clrsky_col%bnd_flux_up * area_factor
+                     fluxes_clrsky%bnd_flux_dn = fluxes_clrsky%bnd_flux_dn + fluxes_clrsky_col%bnd_flux_dn * area_factor
+                     fluxes_clrsky%bnd_flux_dn_dir = fluxes_clrsky%bnd_flux_dn_dir + fluxes_clrsky_col%bnd_flux_dn_dir * area_factor
+                     fluxes_clrsky%bnd_flux_net = fluxes_clrsky%bnd_flux_net + fluxes_clrsky_col%bnd_flux_net * area_factor
+
+                     ! Send fluxes to history buffer
+                     if (last_column) call output_fluxes_sw(icall, state, fluxes_allsky, fluxes_clrsky, qrs,  qrsc)
+
+                  end do  ! ix = 1,crm_nx_rad
+               end do  ! iy = 1,crm_ny_rad
 
             end if
          end do
@@ -1181,6 +1230,8 @@ contains
          ! Free memory allocated for shortwave fluxes
          call free_fluxes(fluxes_allsky)
          call free_fluxes(fluxes_clrsky)
+         call free_fluxes(fluxes_allsky_col)
+         call free_fluxes(fluxes_clrsky_col)
 
       else
 
@@ -1206,10 +1257,10 @@ contains
             if (active_calls(icall)) then
 
                ! Initialize means
-               qrl = 0
-               qrlc = 0
                call reset_fluxes(fluxes_allsky)
                call reset_fluxes(fluxes_clrsky)
+               qrl = 0
+               qrlc = 0
 
                ! Loop over CRM columns
                do iy = 1,crm_ny_rad
@@ -1222,7 +1273,7 @@ contains
 
                      ! Call the longwave radiation driver to calculate fluxes and heating rates
                      call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                              fluxes_allsky_col, fluxes_clrsky_col, qrl_col, qrlc_col)
+                                              fluxes_allsky_col, fluxes_clrsky_col)
                     
                      ! Calculate heating rates
                      call calculate_heating_rate(fluxes_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
@@ -1298,7 +1349,7 @@ contains
    !----------------------------------------------------------------------------
 
    subroutine radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                  fluxes_allsky, fluxes_clrsky, qrs, qrsc)
+                                  fluxes_allsky, fluxes_clrsky)
      
       use perf_mod, only: t_startf, t_stopf
       use cam_history, only: outfld
@@ -1310,7 +1361,6 @@ contains
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_concentrations, only: ty_gas_concs
       use radiation_state, only: set_rad_state
-      use radiation_utils, only: calculate_heating_rate
       use cam_optics, only: set_cloud_optics_sw, set_aerosol_optics_sw
 
       ! Inputs
@@ -1319,14 +1369,10 @@ contains
       type(physics_buffer_desc), pointer :: pbuf(:)
       type(cam_in_t), intent(in) :: cam_in
       type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
-      real(r8), intent(inout) :: qrs(:,:), qrsc(:,:)
       logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false 
 
       ! Temporary fluxes compressed to daytime only arrays
       type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day
-
-      ! Temporary heating rates on radiation vertical grid (and daytime only)
-      real(r8), dimension(pcols,nlev_rad) :: qrs_rad, qrsc_rad
 
       ! Albedo for shortwave calculations
       real(r8) :: albedo_direct(nswbands,pcols), albedo_direct_day(nswbands,pcols)
@@ -1404,8 +1450,6 @@ contains
       if (nday == 0) then
          call reset_fluxes(fluxes_allsky)
          call reset_fluxes(fluxes_clrsky)
-         qrs(1:ncol,1:pver) = 0
-         qrsc(1:ncol,1:pver) = 0
          return
       end if
 
@@ -1503,29 +1547,11 @@ contains
       ))
       call t_stopf('rad_calculations_sw')
 
-      ! Calculate heating rates on the DAYTIME columns
-      call t_startf('rad_heating_rate_sw')
-      call calculate_heating_rate(fluxes_allsky_day%flux_up, &
-                                  fluxes_allsky_day%flux_dn, &
-                                  pint(1:nday,1:nlev_rad+1), &
-                                  qrs_rad(1:nday,1:nlev_rad))
-      call calculate_heating_rate(fluxes_clrsky_day%flux_up, &
-                                  fluxes_clrsky_day%flux_dn, &
-                                  pint(1:nday,1:nlev_rad+1), &
-                                  qrsc_rad(1:nday,1:nlev_rad))
-      call t_stopf('rad_heating_rate_sw')
-
       ! Expand fluxes from daytime-only arrays to full chunk arrays
       call t_startf('rad_expand_fluxes_sw')
       call expand_day_fluxes(fluxes_allsky_day, fluxes_allsky, day_indices(1:nday))
       call expand_day_fluxes(fluxes_clrsky_day, fluxes_clrsky, day_indices(1:nday))
       call t_stopf('rad_expand_fluxes_sw')
-
-      ! Expand heating rates to all columns and map back to CAM levels
-      call t_startf('rad_expand_heating_rate_sw')
-      call expand_day_columns(qrs_rad(1:nday,ktop:kbot), qrs(1:ncol,1:pver), day_indices(1:nday))
-      call expand_day_columns(qrsc_rad(1:nday,ktop:kbot), qrsc(1:ncol,1:pver), day_indices(1:nday))
-      call t_stopf('rad_expand_heating_rate_sw')
 
       ! Free fluxes and optical properties
       call free_optics_sw(cloud_optics_sw)
@@ -1538,7 +1564,7 @@ contains
    !----------------------------------------------------------------------------
 
    subroutine radiation_driver_lw(icall, state_in, pbuf, cam_in, is_cmip6_volc, &
-                                  fluxes_allsky, fluxes_clrsky, qrl, qrlc)
+                                  fluxes_allsky, fluxes_clrsky)
     
       use perf_mod, only: t_startf, t_stopf
       use cam_history, only: outfld
@@ -1558,7 +1584,6 @@ contains
       type(physics_buffer_desc), pointer :: pbuf(:)
       type(cam_in_t), intent(in) :: cam_in
       type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
-      real(r8), intent(inout) :: qrl(:,:), qrlc(:,:)
       logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false 
 
       ! Copy of state to work on
