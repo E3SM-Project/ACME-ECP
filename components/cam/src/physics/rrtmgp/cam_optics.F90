@@ -254,7 +254,7 @@ contains
       ! Get ice optics
       if (trim(ice_optics_scheme) == 'conley') then
          call get_ice_optics_lw(state, pbuf, ice_tau)
-      else if (trim(ice_optics_scheme) == 'ebert_curry') then
+      else if (trim(ice_optics_scheme) == 'ebertcurry') then
          call ec_ice_optics_lw(state, pbuf, ice_tau)
       else
          call endrun('Ice optics scheme ' // trim(ice_optics_scheme) // ' not recognized.')

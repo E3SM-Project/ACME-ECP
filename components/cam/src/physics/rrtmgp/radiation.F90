@@ -401,6 +401,8 @@ contains
 
       ! For optics
       use cloud_rad_props, only: cloud_rad_props_init
+      use ebert_curry, only: ec_rad_props_init
+      use slingo, only: slingo_rad_props_init
 
       ! Physics state is going to be needed for perturbation growth tests, but we
       ! have yet to implement this in RRTMGP. It is a vector because at the point
@@ -439,6 +441,8 @@ contains
 
       ! Initialize cloud optics
       call cloud_rad_props_init()
+      call ec_rad_props_init()
+      call slingo_rad_props_init()
 
       ! Initialize output fields for offline driver.
       ! TODO: do we need to keep this functionality? Where is the offline driver?
@@ -772,6 +776,23 @@ contains
 
       call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity')
 
+      ! Add cloud-scale radiative quantities
+      call phys_getopts(use_SPCAM_out=use_SPCAM)
+      if (use_SPCAM) then
+         call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'A', 'K/s', &
+                      'Radiative heating tendency')
+         call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+                      'CRM Shortwave radiative heating rate')
+         call addfld ('CRM_QRSC', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+                      'CRM clear-sky shortwave radiative heating rate')
+         call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+                      'CRM Longwave radiative heating rate' )
+         call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+                      'CRM clear-sky longwave radiative heating rate' )
+         call addfld ('CRM_CLD_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'fraction', &
+                      'CRM cloud fraction')
+      end if
+
       ! Add default fields for single column mode
       if (single_column.and.scm_crm_mode) then
          call add_default ('FUL     ', 1, ' ')
@@ -1040,6 +1061,7 @@ contains
 
       ! For getting radiative constituent gases
       use rad_constituents, only: N_DIAG, rad_cnst_get_call_list
+      use constituents, only: cnst_get_ind
 
       ! Index to visible channel for diagnostic outputs
       use radconstants, only: idx_sw_diag
@@ -1207,6 +1229,11 @@ contains
 #endif
          ! Output CRM cloud fraction
          call outfld('CRM_CLD_RAD', crm_cld, state%ncol, state%lchnk)
+
+         ! Indices into rad constituents arrays
+         ixwatvap = 1
+         call cnst_get_ind('CLDLIQ', ixcldliq)
+         call cnst_get_ind('CLDICE', ixcldice)
 
          ! Save pbuf things to restore when we are done working with them. This is
          ! needed because the CAM optics routines are inflexible and bury pbuf down
