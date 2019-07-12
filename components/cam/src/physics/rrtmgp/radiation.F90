@@ -1140,6 +1140,10 @@ contains
       ! For MMF
       logical :: use_SPCAM
       logical :: last_column, first_column
+      real(r8), dimension(pcols,crm_nx_rad,crm_ny_rad,crm_nz) :: &
+         crm_qrs, crm_qrsc, crm_qrl, crm_qrlc
+      real(r8), pointer :: crm_qrad(:,:,:,:)
+      
       !----------------------------------------------------------------------
 
       ! Number of physics columns in this "chunk"
@@ -1176,7 +1180,6 @@ contains
 
                      first_column = (ix == 1 .and. iy == 1)
                      last_column  = (ix == crm_nx_rad .and. iy == crm_ny_rad)
-
 
                      ! Call the shortwave radiation driver
                      call radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
@@ -1215,11 +1218,21 @@ contains
                      ! Send fluxes to history buffer
                      if (last_column) call output_fluxes_sw(icall, state, fluxes_allsky, fluxes_clrsky, qrs,  qrsc)
 
+                     ! Populate CRM heating
+                     if (use_SPCAM) then
+                        do iz = 1,crm_nz
+                           ilev = pver - iz + 1
+                           do ic = 1,ncol
+                              crm_qrs(ic,ix,iy,iz) = qrs_col(ic,ilev)
+                              crm_qrsc(ic,ix,iy,iz) = qrsc_col(ic,ilev)
+                           end do
+                        end do
+                     end if
+
                   end do  ! ix = 1,crm_nx_rad
                end do  ! iy = 1,crm_ny_rad
-
-            end if
-         end do
+            end if  ! active_calls
+         end do  ! icall
 
          ! Set net fluxes used by other components (land?) 
          call set_net_fluxes_sw(fluxes_allsky, fsds, fsns, fsnt)
@@ -1304,6 +1317,17 @@ contains
                      ! Send fluxes to history buffer
                      if (last_column) call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
 
+                     ! Populate CRM heating
+                     if (use_SPCAM) then
+                        do iz = 1,crm_nz
+                           ilev = pver - iz + 1
+                           do ic = 1,ncol
+                              crm_qrl(ic,ix,iy,iz) = qrl_col(ic,ilev)
+                              crm_qrlc(ic,ix,iy,iz) = qrlc_col(ic,ilev)
+                           end do
+                        end do
+                     end if
+
                   end do  ! ix = 1,crm_nx_rad
                end do  ! iy = 1,crm_ny_rad
             end if  ! active_calls(icall)
@@ -1343,6 +1367,25 @@ contains
          qrs(1:ncol,1:pver) = qrs(1:ncol,1:pver) * state%pdel(1:ncol,1:pver)
          qrl(1:ncol,1:pver) = qrl(1:ncol,1:pver) * state%pdel(1:ncol,1:pver)
       end if
+
+      ! Update net CRM heating tendency, IF doing radiation this timestep
+      if (use_SPCAM) then
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRAD'), crm_qrad)
+         if (radiation_do('sw') .or. radiation_do('lw')) then
+            crm_qrad = 0
+            do iz = 1,crm_nz
+               do iy = 1,crm_ny_rad
+                  do ix = 1,crm_nx_rad
+                     do ic = 1,ncol
+                        ilev = pver - iz + 1
+                        crm_qrad(ic,ix,iy,iz) = (crm_qrs(ic,ix,iy,iz) + crm_qrl(ic,ix,iy,iz)) / cpair
+                     end do
+                  end do
+               end do
+            end do
+         end if
+         call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
+      end if  ! use_SPCAM
 
    end subroutine radiation_tend
 
