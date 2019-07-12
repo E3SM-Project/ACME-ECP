@@ -1017,7 +1017,7 @@ contains
    ! drivers, and calculates the radiative heating from the resulting fluxes.
    ! Primary output from this routine is the heating tendency due to radiative
    ! transfer, as a ptend object.
-   subroutine radiation_tend(state,   ptend,    pbuf,          cam_out, cam_in,  &
+   subroutine radiation_tend(state_in,ptend,    pbuf,          cam_out, cam_in,  &
                              landfrac,landm,    icefrac,       snowh,            &
                              fsns,    fsnt,     flns,          flnt,             &
                              fsds,    net_flux, is_cmip6_volc                    )
@@ -1028,11 +1028,12 @@ contains
       ! CAM derived types; needed for surface exchange fields, physics state, and
       ! tendency fields
       use camsrfexch, only: cam_out_t, cam_in_t
-      use physics_types, only: physics_state, physics_ptend
+      use physics_types, only: physics_state, physics_ptend, physics_state_copy
 
       ! Utilities for interacting with the physics buffer
       use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
                                 pbuf_get_index
+      use phys_control,   only: phys_getopts
 
       ! For calculating radiative heating tendencies
       use radheat, only: radheat_tend
@@ -1054,15 +1055,20 @@ contains
       ! buffer to be aggregated and written to disk
       use cam_history, only: outfld
 
-      use physconst, only: cpair, stebol
+      use physconst, only: cpair, gravit
       use radiation_utils, only: calculate_heating_rate
+
+#ifdef MODAL_AERO
+      use modal_aero_data, only: ntot_amode
+#endif
+
 
       ! ---------------------------------------------------------------------------
       ! Arguments
       ! ---------------------------------------------------------------------------
 
       ! Physics state variables
-      type(physics_state), intent(in), target :: state
+      type(physics_state), intent(in), target :: state_in
 
       ! Heating tendencies calculated in this subroutine
       type(physics_ptend), intent(out) :: ptend
@@ -1099,6 +1105,9 @@ contains
       ! ---------------------------------------------------------------------------
       ! Local variables
       ! ---------------------------------------------------------------------------
+
+      ! Working copy of state
+      type(physics_state) :: state
 
       ! Pointers to heating rates on physics buffer
       real(r8), pointer :: qrs(:,:)  ! shortwave radiative heating rate 
@@ -1142,9 +1151,28 @@ contains
       logical :: last_column, first_column
       real(r8), dimension(pcols,crm_nx_rad,crm_ny_rad,crm_nz) :: &
          crm_qrs, crm_qrsc, crm_qrl, crm_qrlc
-      real(r8), pointer :: crm_qrad(:,:,:,:)
+
+      ! Pointers to CRM fields on physics buffer
+      real(r8), pointer, dimension(:,:) :: iclwp, iciwp, cld
+      real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, &
+                                               crm_qrad
+      real(r8), pointer, dimension(:,:,:,:,:) :: crm_qaerwat, crm_dgnumwet
+      real(r8), dimension(pcols,pver) :: iclwp_save, iciwp_save, cld_save
+      integer :: ixwatvap, ixcldliq, ixcldice
+
+      real(r8), pointer, dimension(:,:,:) :: qaerwat, dgnumwet
+#ifdef MODAL_AERO
+      real(r8), dimension(pcols,pver,ntot_amode) :: qaerwat_save, dgnumwet_save
+#endif
+      real(r8), pointer :: dei(:,:), rei(:,:)
+      real(r8), dimension(pcols,pver) :: dei_save, rei_save
+
       
       !----------------------------------------------------------------------
+
+
+      ! Make a working copy of state so we can modify it in-place
+      call physics_state_copy(state_in, state)
 
       ! Number of physics columns in this "chunk"
       ncol = state%ncol
@@ -1153,7 +1181,48 @@ contains
       ! modified in this routine.
       call pbuf_get_field(pbuf, pbuf_get_index('QRS'), qrs)
       call pbuf_get_field(pbuf, pbuf_get_index('QRL'), qrl)
-     
+
+      ! For MMF, we need to modify pbuf fields in-place to work with optics routines
+      call phys_getopts(use_SPCAM_out=use_SPCAM)
+      if (use_SPCAM) then
+         ! pbuf fields we need to overwrite with CRM fields to work with optics
+         call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
+         call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
+         call pbuf_get_field(pbuf, pbuf_get_index('CLD'  ), cld  )
+         call pbuf_get_field(pbuf, pbuf_get_index('DEI'  ), dei  )
+         call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
+#ifdef MODAL_AERO
+         call pbuf_get_field(pbuf, pbuf_get_index('QAERWAT'), qaerwat)
+         call pbuf_get_field(pbuf, pbuf_get_index('DGNUMWET'), dgnumwet)
+#endif
+         ! CRM fields to overwrite pbuf fields with
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_T_RAD'  ), crm_t  )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QV_RAD' ), crm_qv )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD' ), crm_qc )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD' ), crm_qi )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_cld)
+#ifdef MODAL_AERO
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QAERWAT' ), crm_qaerwat )
+         call pbuf_get_field(pbuf, pbuf_get_index('CRM_DGNUMWET'), crm_dgnumwet)
+#endif
+         ! Output CRM cloud fraction
+         call outfld('CRM_CLD_RAD', crm_cld, state%ncol, state%lchnk)
+
+         ! Save pbuf things to restore when we are done working with them. This is
+         ! needed because the CAM optics routines are inflexible and bury pbuf down
+         ! deep in the call stack, so we need to overwrite with CRM state here in
+         ! order to use CRM information to calculate optics.
+         iclwp_save = iclwp
+         iciwp_save = iciwp
+         cld_save   = cld
+         dei_save   = dei
+         rei_save   = rei
+#ifdef MODAL_AERO
+         qaerwat_save = qaerwat
+         dgnumwet_save = dgnumwet
+#endif
+      end if
+
       ! Do shortwave stuff...
       if (radiation_do('sw')) then
 
@@ -1180,6 +1249,44 @@ contains
 
                      first_column = (ix == 1 .and. iy == 1)
                      last_column  = (ix == crm_nx_rad .and. iy == crm_ny_rad)
+
+                     ! Overwrite state and pbuf with CRM for this column
+                     if (use_SPCAM) then
+                        do iz = 1,crm_nz
+                           ilev = pver - iz + 1
+                           do ic = 1,ncol
+                              ! NOTE: Only qv, t used by gas optics
+                              state%q(ic,ilev,ixcldliq) = crm_qc(ic,ix,iy,iz)
+                              state%q(ic,ilev,ixcldice) = crm_qi(ic,ix,iy,iz)
+                              state%q(ic,ilev,ixwatvap) = max(1.e-9_r8, crm_qv(ic,ix,iy,iz))  ! DEBUG
+                              state%t(ic,ilev)          = crm_t (ic,ix,iy,iz)
+
+                              ! In-cloud liquid and ice water paths (used by cloud optics)
+                              cld(ic,ilev) = crm_cld(ic,ix,iy,iz)
+                              if (cld(ic,ilev) > 0) then
+                                 iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
+                                 iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
+                              else
+                                 iclwp(ic,ilev) = 0
+                                 iciwp(ic,ilev) = 0
+                              end if
+#ifdef MODAL_AERO
+                              ! Use CRM scale aerosol water to calculate aerosol optical depth. Here we assume no
+                              ! aerosol water uptake for cloudy sky on CRM grids. This is not really physically
+                              ! correct, but if we assume 100% of relative humidity for aerosol water uptake, this
+                              ! will bias 'AODVIS' to be large, since 'AODVIS' is used to compare with observed
+                              ! clear sky AOD. In the future, AODVIS should be calculated from clear sky CRM AOD
+                              ! only. But before this is done, we will assume no water uptake on CRM grids for
+                              ! cloudy conditions (The radiative effects of this assumption will be small, since
+                              ! aerosol effects are small relative to cloud effects for cloudy sky anyway.
+                              ! -Minghuai Wang (minghuai.wang@pnl.gov)
+                              qaerwat (ic,ilev,1:ntot_amode) =  crm_qaerwat(ic,ix,iy,iz,1:ntot_amode)
+                              dgnumwet(ic,ilev,1:ntot_amode) = crm_dgnumwet(ic,ix,iy,iz,1:ntot_amode)
+#endif
+                              dei(1:ncol,1:pver) = 2._r8 * rei(1:ncol,1:pver)
+                           end do  ! ic = 1,ncol
+                        end do  ! iz = 1,crm_nz
+                     end if  ! use_SPCAM
 
                      ! Call the shortwave radiation driver
                      call radiation_driver_sw(icall, state, pbuf, cam_in, is_cmip6_volc, &
@@ -1283,6 +1390,42 @@ contains
                      last_column  = (ix == crm_nx_rad .and. iy == crm_ny_rad)
 
                      ! Overwrite state and pbuf with CRM for this column
+                     if (use_SPCAM) then
+                        do iz = 1,crm_nz
+                           ilev = pver - iz + 1
+                           do ic = 1,ncol
+                              ! NOTE: Only qv, t used by gas optics
+                              state%q(ic,ilev,ixcldliq) = crm_qc(ic,ix,iy,iz)
+                              state%q(ic,ilev,ixcldice) = crm_qi(ic,ix,iy,iz)
+                              state%q(ic,ilev,ixwatvap) = max(1.e-9_r8, crm_qv(ic,ix,iy,iz))  ! DEBUG
+                              state%t(ic,ilev)          = crm_t (ic,ix,iy,iz)
+
+                              ! In-cloud liquid and ice water paths (used by cloud optics)
+                              cld(ic,ilev) = crm_cld(ic,ix,iy,iz)
+                              if (cld(ic,ilev) > 0) then
+                                 iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
+                                 iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
+                              else
+                                 iclwp(ic,ilev) = 0
+                                 iciwp(ic,ilev) = 0
+                              end if
+#ifdef MODAL_AERO
+                              ! Use CRM scale aerosol water to calculate aerosol optical depth. Here we assume no
+                              ! aerosol water uptake for cloudy sky on CRM grids. This is not really physically
+                              ! correct, but if we assume 100% of relative humidity for aerosol water uptake, this
+                              ! will bias 'AODVIS' to be large, since 'AODVIS' is used to compare with observed
+                              ! clear sky AOD. In the future, AODVIS should be calculated from clear sky CRM AOD
+                              ! only. But before this is done, we will assume no water uptake on CRM grids for
+                              ! cloudy conditions (The radiative effects of this assumption will be small, since
+                              ! aerosol effects are small relative to cloud effects for cloudy sky anyway.
+                              ! -Minghuai Wang (minghuai.wang@pnl.gov)
+                              qaerwat (ic,ilev,1:ntot_amode) =  crm_qaerwat(ic,ix,iy,iz,1:ntot_amode)
+                              dgnumwet(ic,ilev,1:ntot_amode) = crm_dgnumwet(ic,ix,iy,iz,1:ntot_amode)
+#endif
+                              dei(1:ncol,1:pver) = 2._r8 * rei(1:ncol,1:pver)
+                           end do  ! ic = 1,ncol
+                        end do  ! iz = 1,crm_nz
+                     end if  ! use_SPCAM
 
                      ! Call the longwave radiation driver to calculate fluxes and heating rates
                      call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
@@ -1353,6 +1496,19 @@ contains
          end if
 
       end if  ! dolw
+
+      ! Restore pbuf fields
+      if (use_SPCAM) then
+         iclwp = iclwp_save
+         iciwp = iciwp_save
+         cld   = cld_save
+         dei   = dei_save
+         rei   = rei_save
+#ifdef MODAL_AERO
+         qaerwat = qaerwat_save
+         dgnumwet = dgnumwet_save
+#endif
+      end if
 
       ! Compute net radiative heating tendency
       call t_startf('radheat_tend')
