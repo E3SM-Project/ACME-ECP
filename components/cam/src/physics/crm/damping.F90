@@ -50,6 +50,7 @@ contains
       end do
     end do
 
+    tau = 0.0 
     !$acc parallel loop collapse(2) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
@@ -57,6 +58,7 @@ contains
           tau(icrm,k) = tau_min *(tau_max/tau_min)**((z(icrm,nzm)-z(icrm,k))/(z(icrm,nzm)-z(icrm,nzm-n_damp(icrm))))
           tau(icrm,k)=1./tau(icrm,k)
         endif
+        tau(icrm,k) = tau(icrm,k) + 1.0/(86400.0/4.0)
       end do
     end do
 
@@ -97,7 +99,7 @@ contains
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms
-            if ( k <= nzm .and. k >= nzm-n_damp(icrm) ) then
+            if ( k <= nzm) then
               dudt(icrm,i,j,k,na)= dudt(icrm,i,j,k,na)-(u(icrm,i,j,k)-u0loc(icrm,k)) * tau(icrm,k)
               dvdt(icrm,i,j,k,na)= dvdt(icrm,i,j,k,na)-(v(icrm,i,j,k)-v0loc(icrm,k)) * tau(icrm,k)
               dwdt(icrm,i,j,k,na)= dwdt(icrm,i,j,k,na)-w(icrm,i,j,k) * tau(icrm,k)
