@@ -18,6 +18,7 @@ module scalar_momentum_mod
 !---------------------------------------------------------------------------
    use params
    use grid, only: nx,ny,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
+   use openacc_utils
    implicit none
 
    public allocate_scalar_momentum
@@ -58,32 +59,36 @@ module scalar_momentum_mod
 
      allocate( u_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
      allocate( v_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
-
      allocate( fluxb_u_esmt (nx, ny,ncrms) )
      allocate( fluxb_v_esmt (nx, ny,ncrms) )
      allocate( fluxt_u_esmt (nx, ny,ncrms) )
      allocate( fluxt_v_esmt (nx, ny,ncrms) )
-
      allocate( u_esmt_sgs   (nz,ncrms)  )
      allocate( v_esmt_sgs   (nz,ncrms)  )
      allocate( u_esmt_diff  (nz,ncrms)  )
      allocate( v_esmt_diff  (nz,ncrms)  )
 
-     zero = 0.
+     call prefetch( u_esmt )
+     call prefetch( v_esmt )
+     call prefetch( fluxb_u_esmt )
+     call prefetch( fluxb_v_esmt )
+     call prefetch( fluxt_u_esmt )
+     call prefetch( fluxt_v_esmt )
+     call prefetch( u_esmt_sgs )
+     call prefetch( v_esmt_sgs )
+     call prefetch( u_esmt_diff )
+     call prefetch( v_esmt_diff )
 
-     u_esmt = zero
-     v_esmt = zero
-
-     fluxb_u_esmt = zero
-     fluxb_v_esmt = zero
-     fluxt_u_esmt = zero
-     fluxt_v_esmt = zero
-
-     u_esmt_sgs  = zero
-     u_esmt_diff = zero
-
-     v_esmt_sgs  = zero
-     v_esmt_diff = zero
+     u_esmt       = 0.
+     v_esmt       = 0.
+     fluxb_u_esmt = 0.
+     fluxb_v_esmt = 0.
+     fluxt_u_esmt = 0.
+     fluxt_v_esmt = 0.
+     u_esmt_sgs   = 0.
+     u_esmt_diff  = 0.
+     v_esmt_sgs   = 0.
+     v_esmt_diff  = 0.
 
      u_esmt_name = 'Zonal Velocity'
      v_esmt_name = 'Meridonal Velocity'
