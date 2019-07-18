@@ -3486,7 +3486,7 @@
       <command name="load">pgi/19.4</command>
     </modules>
     <modules compiler="pgigpu">
-      <command name="load">pgi</command>
+      <command name="load">pgi/19.4</command>
       <command name="load">cuda</command>
     </modules>
     <modules compiler="ibm">
@@ -3516,8 +3516,8 @@
     </modules>
 
     <modules>
-      <command name="load">parallel-netcdf/1.8.1</command>
-      <command name="load">hdf5/1.10.3</command>
+      <command name="load">parallel-netcdf</command>
+      <command name="load">hdf5</command>
     </modules>
 
   </module_system>
