@@ -646,7 +646,7 @@ contains
       real(r8), intent(out) :: tau(pcols,pver,nlwbands)
 
       ! Subroutine name for error messages
-      character(len=*), parameter :: subroutine_name = 'set_aerosol_optics_lw'
+      character(len=*), parameter :: subroutine_name = 'get_aerosol_optics_lw'
 
       ! Get aerosol absorption optical depth from CAM routine
       tau = 0.0
