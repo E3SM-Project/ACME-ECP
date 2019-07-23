@@ -97,7 +97,9 @@ public :: rad_gas_index
 
 public :: get_number_sw_bands, &
           get_sw_spectral_boundaries, &
-          get_lw_spectral_boundaries
+          get_lw_spectral_boundaries, &
+          get_sw_spectral_midpoints, &
+          get_lw_spectral_midpoints
 
 contains
 
@@ -148,6 +150,26 @@ end subroutine get_lw_spectral_boundaries
 
 !------------------------------------------------------------------------------
 
+subroutine get_lw_spectral_midpoints(band_midpoints, units)
+   real(r8), intent(out) :: band_midpoints(nlwbands)
+   character(len=*), intent(in) :: units
+   real(r8) :: lower_boundaries(nlwbands)
+   real(r8) :: upper_boundaries(nlwbands)
+   integer :: iband
+
+   ! Get band boundaries
+   call get_lw_spectral_boundaries(lower_boundaries, upper_boundaries, units)
+
+   ! Get band midpoints
+   do iband = 1,nlwbands
+      band_midpoints(iband) = 0.5 * ( &
+         lower_boundaries(iband) + upper_boundaries(iband) &
+      )
+   end do
+end subroutine get_lw_spectral_midpoints
+
+!------------------------------------------------------------------------------
+
 subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
 
    ! Provide spectral boundaries of each shortwave band
@@ -179,6 +201,26 @@ subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
    end select
 
 end subroutine get_sw_spectral_boundaries
+
+!------------------------------------------------------------------------------
+
+subroutine get_sw_spectral_midpoints(band_midpoints, units)
+   real(r8), intent(out) :: band_midpoints(nswbands)
+   character(len=*), intent(in) :: units
+   real(r8) :: lower_boundaries(nswbands)
+   real(r8) :: upper_boundaries(nswbands)
+   integer :: iband
+
+   ! Get band boundaries
+   call get_sw_spectral_boundaries(lower_boundaries, upper_boundaries, units)
+
+   ! Get band midpoints
+   do iband = 1,nswbands
+      band_midpoints(iband) = 0.5 * ( &
+         lower_boundaries(iband) + upper_boundaries(iband) &
+      )
+   end do
+end subroutine get_sw_spectral_midpoints
 
 !------------------------------------------------------------------------------
 

@@ -15,6 +15,7 @@ module cam_optics
       get_cloud_optics_lw, &
       set_cloud_optics_sw, &
       set_cloud_optics_lw, &
+      get_aerosol_optics_sw, &
       set_aerosol_optics_sw, &
       get_aerosol_optics_lw, &
       set_aerosol_optics_lw
@@ -23,10 +24,13 @@ module cam_optics
    integer, dimension(14) :: map_rrtmg_to_rrtmgp_swbands = (/ &
       14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 &
    /)
+   integer, dimension(14) :: map_rrtmgp_to_rrtmg_swbands = (/ &
+      2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 1 &
+   /)
 
 contains
 
-   subroutine get_cloud_optics_sw(state, pbuf, tau, ssa, asm)
+   subroutine get_cloud_optics_sw(state, pbuf, tau, ssa, asm, liq_tau_out, ice_tau_out)
 
       use ppgrid, only: pcols, pver
       use physics_types, only: physics_state
@@ -55,14 +59,14 @@ contains
       ! corresponding pbuf/state fields were defined for all indices of pver. This
       ! isn't the case right now I don't think, as cloud_rad_props makes explicit
       ! assumptions about array sizes.
-      real(r8), intent(inout), dimension(pcols,pver,nswbands) :: tau, ssa, asm
+      real(r8), intent(out), dimension(pcols,pver,nswbands) :: tau, ssa, asm, liq_tau_out, ice_tau_out
 
       character(len=16) :: liq_optics_scheme, ice_optics_scheme
 
       ! Temporary variables to hold cloud optical properties before combining into
       ! output arrays. Same shape as output arrays, so get shapes from output.
       real(r8), dimension(nswbands,pcols,pver) :: &
-            liquid_tau, liquid_tau_ssa, liquid_tau_ssa_g, liquid_tau_ssa_f, &
+            liq_tau, liq_tau_ssa, liq_tau_ssa_g, liq_tau_ssa_f, &
             ice_tau, ice_tau_ssa, ice_tau_ssa_g, ice_tau_ssa_f, &
             cloud_tau, cloud_tau_ssa, cloud_tau_ssa_g, cloud_tau_ssa_f, &
             snow_tau, snow_tau_ssa, snow_tau_ssa_g, snow_tau_ssa_f, &
@@ -71,7 +75,7 @@ contains
       ! Pointers to fields on the physics buffer
       real(r8), pointer :: cloud_fraction(:,:), snow_fraction(:,:)
 
-      integer :: ncol, iband
+      integer :: ncol, iband, icol, ilev
 
       ! For MMF
       logical :: use_SPCAM
@@ -82,10 +86,10 @@ contains
       ice_tau_ssa = 0
       ice_tau_ssa_g = 0
       ice_tau_ssa_f = 0
-      liquid_tau = 0
-      liquid_tau_ssa = 0
-      liquid_tau_ssa_g = 0
-      liquid_tau_ssa_f = 0
+      liq_tau = 0
+      liq_tau_ssa = 0
+      liq_tau_ssa_g = 0
+      liq_tau_ssa_f = 0
       snow_tau = 0
       snow_tau_ssa = 0
       snow_tau_ssa_g = 0
@@ -113,6 +117,16 @@ contains
          call get_ice_optics_sw(state, pbuf, &
                                 ice_tau, ice_tau_ssa, &
                                 ice_tau_ssa_g, ice_tau_ssa_f)
+
+         ! Conley optics hard-coded for RRTMG band-ordering
+         do ilev = 1,pver
+            do icol = 1,ncol
+               ice_tau      (:,icol,ilev) = reordered(ice_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               ice_tau_ssa  (:,icol,ilev) = reordered(ice_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               ice_tau_ssa_g(:,icol,ilev) = reordered(ice_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               ice_tau_ssa_f(:,icol,ilev) = reordered(ice_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+            end do
+         end do
       else if (trim(ice_optics_scheme) == 'ebertcurry') then
          call ec_ice_optics_sw (state, pbuf, &
                                 ice_tau, ice_tau_ssa, &
@@ -124,20 +138,30 @@ contains
       ! Get liquid cloud optics
       if (trim(liq_optics_scheme) == 'mitchell') then
          call get_liquid_optics_sw(state, pbuf, &
-                                   liquid_tau, liquid_tau_ssa, &
-                                   liquid_tau_ssa_g, liquid_tau_ssa_f)
+                                   liq_tau, liq_tau_ssa, &
+                                   liq_tau_ssa_g, liq_tau_ssa_f)
+
+         ! Mitchell optics hard-coded for RRTMG band-ordering
+         do ilev = 1,pver
+            do icol = 1,ncol
+               liq_tau      (:,icol,ilev) = reordered(liq_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               liq_tau_ssa  (:,icol,ilev) = reordered(liq_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               liq_tau_ssa_g(:,icol,ilev) = reordered(liq_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               liq_tau_ssa_f(:,icol,ilev) = reordered(liq_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+            end do
+         end do
       else if (trim(liq_optics_scheme) == 'slingo') then
          call slingo_liq_optics_sw(state, pbuf, &
-                                   liquid_tau, liquid_tau_ssa, &
-                                   liquid_tau_ssa_g, liquid_tau_ssa_f)
+                                   liq_tau, liq_tau_ssa, &
+                                   liq_tau_ssa_g, liq_tau_ssa_f)
       else
          call endrun('Liquid optics scheme ' // trim(liq_optics_scheme) // ' not recognized.')
       end if 
 
       ! Combine all cloud optics from CAM routines
-      cloud_tau = ice_tau + liquid_tau
-      cloud_tau_ssa = ice_tau_ssa + liquid_tau_ssa
-      cloud_tau_ssa_g = ice_tau_ssa_g + liquid_tau_ssa_g
+      cloud_tau = ice_tau + liq_tau
+      cloud_tau_ssa = ice_tau_ssa + liq_tau_ssa
+      cloud_tau_ssa_g = ice_tau_ssa_g + liq_tau_ssa_g
 
       ! Get snow cloud optics?
       if (do_snow_optics()) then
@@ -145,6 +169,15 @@ contains
          call get_snow_optics_sw(state, pbuf, &
                                  snow_tau, snow_tau_ssa, &
                                  snow_tau_ssa_g, snow_tau_ssa_f)
+         ! Conley optics hard-coded for RRTMG band-ordering
+         do ilev = 1,pver
+            do icol = 1,ncol
+               snow_tau      (:,icol,ilev) = reordered(snow_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               snow_tau_ssa  (:,icol,ilev) = reordered(snow_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               snow_tau_ssa_g(:,icol,ilev) = reordered(snow_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+               snow_tau_ssa_f(:,icol,ilev) = reordered(snow_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+            end do
+         end do
 
          ! Get cloud and snow fractions. This is used to weight the contribution to
          ! the total lw absorption by the fraction of the column that contains
@@ -183,22 +216,25 @@ contains
       ! albedo, and assymmetry parameter from the products that the CAM routines
       ! return. Make sure we do not try to divide by zero.
       ncol = state%ncol
+      tau = 0
+      ssa = 0
+      asm = 0
       do iband = 1,nswbands
-         tau(:ncol,:pver,iband) = combined_tau(iband,:ncol,:pver)
-         where (combined_tau(iband,:ncol,:pver) > 0)
-            ssa(:ncol,:pver,iband) &
-               = combined_tau_ssa(iband,:ncol,:pver) / combined_tau(iband,:ncol,:pver)
-         elsewhere
-            ssa(:ncol,:pver,iband) = 1.0
-         endwhere
-         where (combined_tau_ssa(iband,:ncol,:pver) > 0)
-            asm(:ncol,:pver,iband) &
-               = combined_tau_ssa_g(iband,:ncol,:pver) / combined_tau_ssa(iband,:ncol,:pver)
-         elsewhere
-            asm(:ncol,:pver,iband) = 0.0
-         end where
+         do ilev = 1,pver
+            do icol = 1,ncol
+               tau(icol,ilev,iband) = combined_tau(iband,icol,ilev)
+               liq_tau_out(icol,ilev,iband) = liq_tau(iband,icol,ilev)
+               ice_tau_out(icol,ilev,iband) = ice_tau(iband,icol,ilev)
+               if (combined_tau(iband,icol,ilev) > 0) then
+                  ssa(icol,ilev,iband) = combined_tau_ssa(iband,icol,ilev) / combined_tau(iband,icol,ilev)
+               end if
+               if (combined_tau_ssa(iband,icol,ilev) > 0) then
+                  asm(icol,ilev,iband) = combined_tau_ssa_g(iband,icol,ilev) / combined_tau_ssa(iband,icol,ilev)
+               end if
+            end do
+         end do
       end do
-
+                 
    end subroutine get_cloud_optics_sw
 
    !----------------------------------------------------------------------------
@@ -368,7 +404,7 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine set_cloud_optics_sw(state, pbuf, day_indices, kdist, optics_out)
+   subroutine set_cloud_optics_sw(state, pbuf, kdist, tau, ssa, asm, optics_out)
       
       use ppgrid, only: pcols, pver, pverp
       use physics_types, only: physics_state
@@ -381,12 +417,9 @@ contains
 
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
-      integer, intent(in) :: day_indices(:)
       type(ty_gas_optics_rrtmgp), intent(in) :: kdist
+      real(r8), dimension(pcols,pver,nswbands), intent(in) :: tau, ssa, asm
       type(ty_optical_props_2str), intent(inout) :: optics_out
-
-      ! Type to hold optics on CAM grid
-      real(r8), dimension(pcols,pver,nswbands) :: tau, ssa, asm
 
       ! Pointer to cloud fraction on physics buffer
       real(r8), pointer :: cloud_fraction(:,:), snow_fraction(:,:)
@@ -398,42 +431,18 @@ contains
       integer, parameter :: changeseed = 1
 
       ! Dimension sizes
-      integer :: ncol, nday, nlay
+      integer :: ncol, nlay
 
       ! McICA subcolumn cloud flag
       logical :: iscloudy(nswgpts,pcols,pver)
 
       ! Loop variables
-      integer :: icol, ilev, igpt, iband, iday, ilev_cam, ilev_rad
+      integer :: icol, ilev, igpt, iband, ilev_cam, ilev_rad
 
       ! Set a name for this subroutine to write to error messages
       character(len=32) :: subname = 'set_cloud_optics_sw'
 
       ncol = state%ncol
-
-      ! Number of daytime indices
-      nday = count(day_indices > 0)
-
-      ! Retrieve the mean in-cloud optical properties via CAM cloud radiative
-      ! properties interface (cloud_rad_props). This retrieves cloud optical
-      ! properties by *band* -- these will be mapped to g-points when doing
-      ! the subcolumn sampling to account for cloud overlap.
-      call get_cloud_optics_sw(state, pbuf, tau, ssa, asm)
-
-      ! We need to fix band ordering because the old input files assume RRTMG band
-      ! ordering, but this has changed in RRTMGP.
-      ! TODO: fix the input files themselves!
-      do icol = 1,size(tau,1)
-         do ilev = 1,size(tau,2)
-            tau(icol,ilev,:) = reordered(tau(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
-            ssa(icol,ilev,:) = reordered(ssa(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
-            asm(icol,ilev,:) = reordered(asm(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
-         end do
-      end do
-
-      ! Send in-cloud optical depth for visible band to history buffer
-      ! TODO: do this in radiation_tend for MMF
-      !call output_cloud_optics_sw(state, optics_cam)
 
       ! Initialize (or reset) output cloud optics object
       optics_out%tau = 0.0
@@ -464,10 +473,6 @@ contains
                              combined_cloud_fraction(1:ncol,1:pver), &
                              iscloudy(1:nswgpts,1:ncol,1:pver))
 
-      ! DEBUG!
-      !iscloudy = 1
-      !combined_cloud_fraction = 1
-      
       ! -- generate subcolumns for homogeneous clouds -----
       ! where there is a cloud, set the subcolumn cloud properties;
       optics_out%tau(:,:,:) = 0
@@ -478,12 +483,8 @@ contains
          ! Index to radiation grid
          ilev_rad = ilev_cam + (nlev_rad - pver)
 
-         ! Loop over columns and map CAM columns to those on radiation grid
-         ! (daytime-only columns)
-         do iday = 1,nday
-
-            ! Map daytime to column indices
-            icol = day_indices(iday)
+         ! Loop over columns
+         do icol = 1,ncol
 
             ! Loop over g-points and map bands to g-points; each subcolumn
             ! corresponds to a single g-point. This is how this code implements the
@@ -493,16 +494,16 @@ contains
                if (iscloudy(igpt,icol,ilev_cam) .and. &
                    combined_cloud_fraction(icol,ilev_cam) > 0._r8) then
                   iband = kdist%convert_gpt2band(igpt)
-                  optics_out%tau(iday,ilev_rad,igpt) = tau(icol,ilev_cam,iband)
-                  optics_out%ssa(iday,ilev_rad,igpt) = ssa(icol,ilev_cam,iband)
-                  optics_out%g(iday,ilev_rad,igpt) = asm(icol,ilev_cam,iband)
+                  optics_out%tau(icol,ilev_rad,igpt) = tau(icol,ilev_cam,iband)
+                  optics_out%ssa(icol,ilev_rad,igpt) = ssa(icol,ilev_cam,iband)
+                  optics_out%g(icol,ilev_rad,igpt) = asm(icol,ilev_cam,iband)
                else
-                  optics_out%tau(iday,ilev_rad,igpt) = 0._r8
-                  optics_out%ssa(iday,ilev_rad,igpt) = 1._r8
-                  optics_out%g(iday,ilev_rad,igpt) = 0._r8
+                  optics_out%tau(icol,ilev_rad,igpt) = 0._r8
+                  optics_out%ssa(icol,ilev_rad,igpt) = 1._r8
+                  optics_out%g(icol,ilev_rad,igpt) = 0._r8
                end if
             end do  ! igpt
-         end do  ! iday
+         end do  ! icol
       end do  ! ilev_cam
 
       ! Apply delta scaling to account for forward-scattering
@@ -672,22 +673,24 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine set_aerosol_optics_sw(icall, state, pbuf, &
-                                    day_indices, night_indices, &
+   subroutine get_aerosol_optics_sw(icall, state, pbuf, &
+                                    night_indices, &
                                     is_cmip6_volc, &
-                                    optics_out)
+                                    tau_out, ssa_out, asm_out)
+
       use ppgrid, only: pcols, pver
       use physics_types, only: physics_state
-      use physics_buffer, only: physics_buffer_desc, pbuf_old_tim_idx
+      use physics_buffer, only: physics_buffer_desc
       use aer_rad_props, only: aer_rad_props_sw
-      use radconstants, only: nswbands
-      use mo_optical_props, only: ty_optical_props_2str
+
       integer, intent(in) :: icall
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
-      integer, intent(in) :: day_indices(:), night_indices(:)
+      integer, intent(in) :: night_indices(:)
       logical, intent(in) :: is_cmip6_volc
-      type(ty_optical_props_2str), intent(inout) :: optics_out
+      real(r8), intent(out) :: tau_out(pcols,pver,nswbands)
+      real(r8), intent(out) :: ssa_out(pcols,pver,nswbands)
+      real(r8), intent(out) :: asm_out(pcols,pver,nswbands)
 
       ! NOTE: aer_rad_props expects 0:pver indexing on these! It appears this is to
       ! account for the extra layer added above model top, but it is not entirely
@@ -698,11 +701,8 @@ contains
       ! NOTE: dimension ordering is different than for cloud optics!
       real(r8), dimension(pcols,0:pver,nswbands) :: tau, tau_w, tau_w_g, tau_w_f
 
-      integer :: ncol
-      integer :: iday, icol, ilay
-
-      ! Everyone needs a name
-      character(len=*), parameter :: subroutine_name = 'set_aerosol_optics_sw'
+      ! Loop indices
+      integer :: ncol, icol, ilev, ibnd
 
       ncol = state%ncol
 
@@ -715,47 +715,70 @@ contains
                             count(night_indices > 0), night_indices, is_cmip6_volc, &
                             tau, tau_w, tau_w_g, tau_w_f)
 
+      ! Convert from products to optical properties
+      tau_out = 0
+      ssa_out = 0
+      asm_out = 0
+      do ibnd = 1,nswbands
+         do ilev = 1,pver
+            do icol = 1,ncol 
+               tau_out(icol,ilev,ibnd) = tau(icol,ilev,ibnd)
+               if (tau(icol,ilev,ibnd) > 0) then
+                  ssa_out(icol,ilev,ibnd) = tau_w(icol,ilev,ibnd) / tau(icol,ilev,ibnd)
+               end if
+               if (tau_w(icol,ilev,ibnd) > 0) then
+                  asm_out(icol,ilev,ibnd) = tau_w_g(icol,ilev,ibnd) / tau_w(icol,ilev,ibnd)
+               end if
+            end do
+         end do
+      end do
+
+      ! We need to fix band ordering because the old input files assume RRTMG band
+      ! ordering, but this has changed in RRTMGP.
+      ! TODO: fix the input files themselves!
+      do icol = 1,ncol
+         do ilev = 1,pver
+            tau_out(icol,ilev,:) = reordered(tau_out(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
+            ssa_out(icol,ilev,:) = reordered(ssa_out(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
+            asm_out(icol,ilev,:) = reordered(asm_out(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
+         end do
+      end do
+
+   end subroutine get_aerosol_optics_sw
+
+   !----------------------------------------------------------------------------
+
+   subroutine set_aerosol_optics_sw(tau, ssa, asm, optics_out)
+                                   
+      use ppgrid, only: pcols, pver
+      use radconstants, only: nswbands
+      use mo_optical_props, only: ty_optical_props_2str
+      real(r8), intent(in) :: tau(pcols,pver,nswbands)
+      real(r8), intent(in) :: ssa(pcols,pver,nswbands)
+      real(r8), intent(in) :: asm(pcols,pver,nswbands)
+      type(ty_optical_props_2str), intent(inout) :: optics_out
+
+      integer :: ncol, icol, ilay, ibnd
+
+      ! Everyone needs a name
+      character(len=*), parameter :: subroutine_name = 'set_aerosol_optics_sw'
+
+      ncol = size(optics_out%tau, 1)
+
       ! Reset outputs (also handles case where radiation grid contains an extra
       ! layer above CAM grid)
       optics_out%tau = 0
       optics_out%ssa = 1
       optics_out%g = 0
 
-      ! Assign daytime columns
-      do iday = 1,count(day_indices > 0)
-
-         ! Get index into full chunk-wide array for this daytime index
-         icol = day_indices(iday)
-
-         ! Copy cloud optical depth over directly
-         optics_out%tau(iday,ktop:kbot,1:nswbands) = tau(icol,1:pver,1:nswbands)
-
-         ! Extract single scattering albedo from the product-defined fields
-         where (tau(icol,1:pver,1:nswbands) > 0)
-            optics_out%ssa(iday,ktop:kbot,1:nswbands) &
-               = tau_w(icol,1:pver,1:nswbands) / tau(icol,1:pver,1:nswbands)
-         elsewhere
-            optics_out%ssa(iday,ktop:kbot,1:nswbands) = 1
-         endwhere
-
-         ! Extract assymmetry parameter from the product-defined fields
-         where (tau_w(icol,1:pver,1:nswbands) > 0)
-            optics_out%g(iday,ktop:kbot,1:nswbands) &
-               = tau_w_g(icol,1:pver,1:nswbands) / tau_w(icol,1:pver,1:nswbands)
-         elsewhere
-            optics_out%g(iday,ktop:kbot,1:nswbands) = 0
-         endwhere
-
-      end do
-
-      ! We need to fix band ordering because the old input files assume RRTMG band
-      ! ordering, but this has changed in RRTMGP.
-      ! TODO: fix the input files themselves!
-      do icol = 1,size(optics_out%tau,1)
-         do ilay = 1,size(optics_out%tau,2)
-            optics_out%tau(icol,ilay,:) = reordered(optics_out%tau(icol,ilay,:), map_rrtmg_to_rrtmgp_swbands)
-            optics_out%ssa(icol,ilay,:) = reordered(optics_out%ssa(icol,ilay,:), map_rrtmg_to_rrtmgp_swbands)
-            optics_out%g(icol,ilay,:) = reordered(optics_out%g(icol,ilay,:), map_rrtmg_to_rrtmgp_swbands)
+      ! Set values
+      do ibnd = 1,nswbands
+         do ilay = 1,pver
+            do icol = 1,ncol
+               optics_out%tau(icol,ilay,ibnd) = tau(icol,ilay,ibnd)
+               optics_out%ssa(icol,ilay,ibnd) = ssa(icol,ilay,ibnd)
+               optics_out%g  (icol,ilay,ibnd) = asm(icol,ilay,ibnd)
+            end do
          end do
       end do
 
