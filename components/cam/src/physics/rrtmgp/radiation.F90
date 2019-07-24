@@ -1115,6 +1115,7 @@ contains
                             get_cloud_optics_sw, set_cloud_optics_sw, &
                             get_aerosol_optics_sw, set_aerosol_optics_sw
       use pkg_cldoptics, only: cldefr  ! for sam1mom microphysics
+      use radiation_state, only: set_rad_state
 
       ! ---------------------------------------------------------------------------
       ! Arguments
@@ -1259,6 +1260,10 @@ contains
       real(r8) :: coszrs(pcols)
       integer :: day_indices(pcols), night_indices(pcols)
       integer :: nday, nnight
+
+      ! State variables with extra level added
+      real(r8) :: pmid(pcols,nlev_rad), tmid(pcols,nlev_rad)
+      real(r8) :: pint(pcols,nlev_rad+1), tint(pcols,nlev_rad+1)
 
       !----------------------------------------------------------------------
 
@@ -1440,6 +1445,16 @@ contains
                         end do  ! iz = 1,crm_nz
                      end if  ! use_SPCAM
 
+                     ! Setup state arrays, which may contain an extra level
+                     ! above model top to handle heating above the model
+                     call set_rad_state(state, cam_in, &
+                                        tmid(1:ncol,1:nlev_rad), & 
+                                        tint(1:ncol,1:nlev_rad+1), &
+                                        pmid(1:ncol,1:nlev_rad), &
+                                        pint(1:ncol,1:nlev_rad+1))
+
+                     ! Get gas concentrations (in volume mixing ratio)
+
                      if (radiation_do('sw')) then
 
                         ! Get shortwave cloud optics
@@ -1460,6 +1475,8 @@ contains
 
                         ! Call the shortwave radiation driver
                         call radiation_driver_sw(icall, state, pbuf, cam_in, &
+                                                 pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1), &
+                                                 tmid(1:ncol,1:nlev_rad), tint(1:ncol,1:nlev_rad+1), &
                                                  coszrs, day_indices, &
                                                  cloud_optics_sw, aerosol_optics_sw, &
                                                  fluxes_sw_allsky_col, fluxes_sw_clrsky_col)
@@ -1542,6 +1559,8 @@ contains
 
                         ! Call the longwave radiation driver to calculate fluxes and heating rates
                         call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
+                                                 pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1), &
+                                                 tmid(1:ncol,1:nlev_rad), tint(1:ncol,1:nlev_rad+1), &
                                                  cloud_optics_lw, aerosol_optics_lw, &
                                                  fluxes_lw_allsky_col, fluxes_lw_clrsky_col)
 
@@ -1751,6 +1770,7 @@ contains
    !----------------------------------------------------------------------------
 
    subroutine radiation_driver_sw(icall, state, pbuf, cam_in, &
+                                  pmid, pint, tmid, tint, &
                                   coszrs, day_indices, &
                                   cloud_optics_sw, aerosol_optics_sw, &
                                   fluxes_allsky, fluxes_clrsky)
@@ -1765,7 +1785,6 @@ contains
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_concentrations, only: ty_gas_concs
       use mo_util_string, only: lower_case
-      use radiation_state, only: set_rad_state
 
       ! Inputs
       integer, intent(in) :: icall
@@ -1776,6 +1795,7 @@ contains
       real(r8), intent(in) :: coszrs(pcols)
       integer, intent(in) :: day_indices(pcols)   ! Indicies of daylight coumns
       type(ty_optical_props_2str), intent(in) :: aerosol_optics_sw, cloud_optics_sw
+      real(r8), intent(in) :: tmid(:,:), pmid(:,:), pint(:,:), tint(:,:)
 
       ! Temporary fluxes compressed to daytime only arrays
       type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day
@@ -1813,8 +1833,6 @@ contains
       ! State fields that are passed into RRTMGP. Some of these may need to
       ! modified from what exist in the physics_state object, i.e. to clip
       ! temperatures to make sure they are within the valid range.
-      real(r8), dimension(pcols,nlev_rad) :: tmid, pmid
-      real(r8), dimension(pcols,nlev_rad+1) :: pint, tint
       real(r8), dimension(pcols,nlev_rad) :: tmid_day, pmid_day
       real(r8), dimension(pcols,nlev_rad+1) :: pint_day, tint_day
 
@@ -1841,18 +1859,6 @@ contains
 
       ! Get orbital eccentricity factor to scale total sky irradiance
       tsi_scaling = get_eccentricity_factor()
-
-      ! Populate RRTMGP input variables. Use the day_indices index array to
-      ! map CAM variables on all columns to the daytime-only arrays, and take
-      ! only the ktop:kbot vertical levels (mapping CAM vertical grid to
-      ! RRTMGP vertical grid). Note that we populate the state separately for
-      ! shortwave and longwave, because we need to compress to just the daytime
-      ! columns for the shortwave, but the longwave uses all columns
-      call set_rad_state(state, cam_in, &
-                         tmid(1:ncol,1:nlev_rad), & 
-                         tint(1:ncol,1:nlev_rad+1), &
-                         pmid(1:ncol,1:nlev_rad), &
-                         pint(1:ncol,1:nlev_rad+1))
 
       ! Get albedo. This uses CAM routines internally and just provides a
       ! wrapper to improve readability of the code here.
@@ -1943,6 +1949,7 @@ contains
    !----------------------------------------------------------------------------
 
    subroutine radiation_driver_lw(icall, state_in, pbuf, cam_in, is_cmip6_volc, &
+                                  pmid, pint, tmid, tint, &
                                   cloud_optics_lw, aerosol_optics_lw, &
                                   fluxes_allsky, fluxes_clrsky)
     
@@ -1955,13 +1962,13 @@ contains
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_concentrations, only: ty_gas_concs
-      use radiation_state, only: set_rad_state
 
       ! Inputs
       integer, intent(in) :: icall  ! Diagnostic call (for different gases)
       type(physics_state), intent(in) :: state_in
       type(physics_buffer_desc), pointer :: pbuf(:)
       type(cam_in_t), intent(in) :: cam_in
+      real(r8), intent(in) :: tmid(:,:), pmid(:,:), pint(:,:), tint(:,:)
       type(ty_optical_props_1scl), intent(in) :: aerosol_optics_lw
       type(ty_optical_props_1scl), intent(in) :: cloud_optics_lw
       type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
@@ -1972,12 +1979,6 @@ contains
 
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_lw'
-
-      ! State fields that are passed into RRTMGP. Some of these may need to
-      ! modified from what exist in the physics_state object, i.e. to clip
-      ! temperatures to make sure they are within the valid range.
-      real(r8), dimension(pcols,nlev_rad) :: tmid, pmid
-      real(r8), dimension(pcols,nlev_rad+1) :: pint, tint
 
       ! Surface emissivity needed for longwave
       real(r8) :: surface_emissivity(nlwbands,pcols)
@@ -2003,13 +2004,6 @@ contains
       ! exists or is assumed in the model we should use it here as well.
       ! TODO: set this more intelligently?
       surface_emissivity(1:nlwbands,1:ncol) = 1.0_r8
-
-      ! Set rad state variables
-      call set_rad_state(state, cam_in, &
-                         tmid(1:ncol,1:nlev_rad), &
-                         tint(1:ncol,1:nlev_rad+1), &
-                         pmid(1:ncol,1:nlev_rad), &
-                         pint(1:ncol,1:nlev_rad+1))
 
       ! Set gas concentrations (I believe the active gases may change
       ! for different values of icall, which is why we do this within
