@@ -1182,6 +1182,9 @@ contains
       ! Everyone needs a name
       character(*), parameter :: subroutine_name = 'radiation_tend'
 
+      ! Gas concentrations
+      type(ty_gas_concs) :: gas_concentrations
+
       ! Radiative fluxes
       type(ty_fluxes_byband) :: &
          fluxes_sw_allsky    , fluxes_sw_clrsky    , &
@@ -1265,6 +1268,10 @@ contains
       real(r8) :: pmid(pcols,nlev_rad), tmid(pcols,nlev_rad)
       real(r8) :: pint(pcols,nlev_rad+1), tint(pcols,nlev_rad+1)
 
+      ! Albedo for shortwave calculations
+      real(r8) :: albedo_direct(nswbands,pcols), albedo_direct_day(nswbands,pcols)
+      real(r8) :: albedo_diffuse(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
+
       !----------------------------------------------------------------------
 
 
@@ -1292,6 +1299,14 @@ contains
          ! we just set coszrs to zero everywhere. TODO: why not just set dosw false 
          ! and skip the loop?
          if (swrad_off) coszrs(:) = 0._r8
+
+         ! Get albedo. This uses CAM routines internally and just provides a
+         ! wrapper to improve readability of the code here.
+         call set_albedo(cam_in, albedo_direct(1:nswbands,1:ncol), albedo_diffuse(1:nswbands,1:ncol))
+
+         ! Send albedos to history buffer (useful for debugging)
+         call outfld('SW_ALBEDO_DIR', transpose(albedo_direct(1:nswbands,1:ncol)), ncol, state%lchnk)
+         call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse(1:nswbands,1:ncol)), ncol, state%lchnk)
 
          ! Gather night/day column indices for subsetting SW inputs; we only want to
          ! do the shortwave radiative transfer during the daytime to save
@@ -1454,7 +1469,11 @@ contains
                                         pint(1:ncol,1:nlev_rad+1))
 
                      ! Get gas concentrations (in volume mixing ratio)
+                     call t_startf('rad_gas_concentrations_sw')
+                     call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
+                     call t_stopf('rad_gas_concentrations_sw')
 
+                     ! Do SW specific stuff
                      if (radiation_do('sw')) then
 
                         ! Get shortwave cloud optics
@@ -1474,10 +1493,11 @@ contains
                         call t_stopf('rad_aerosol_optics_sw')
 
                         ! Call the shortwave radiation driver
-                        call radiation_driver_sw(icall, state, pbuf, cam_in, &
-                                                 pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1), &
+                        call radiation_driver_sw(pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1), &
                                                  tmid(1:ncol,1:nlev_rad), tint(1:ncol,1:nlev_rad+1), &
                                                  coszrs, day_indices, &
+                                                 albedo_direct(:,:), albedo_diffuse(:,:), &
+                                                 gas_concentrations, &
                                                  cloud_optics_sw, aerosol_optics_sw, &
                                                  fluxes_sw_allsky_col, fluxes_sw_clrsky_col)
                        
@@ -1558,9 +1578,9 @@ contains
                         call t_stopf('rad_aerosol_optics_lw')
 
                         ! Call the longwave radiation driver to calculate fluxes and heating rates
-                        call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
-                                                 pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1), &
+                        call radiation_driver_lw(pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1), &
                                                  tmid(1:ncol,1:nlev_rad), tint(1:ncol,1:nlev_rad+1), &
+                                                 gas_concentrations, &
                                                  cloud_optics_lw, aerosol_optics_lw, &
                                                  fluxes_lw_allsky_col, fluxes_lw_clrsky_col)
 
@@ -1679,7 +1699,8 @@ contains
 
       end if
 
-      ! Do longwave stuff...
+      ! If we updated longwave fluxes, then we need to update output surface
+      ! and net fluxes, send fields to the history buffer, and free memory
       if (radiation_do('lw')) then
 
          ! Set net fluxes used in other components
@@ -1769,17 +1790,14 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine radiation_driver_sw(icall, state, pbuf, cam_in, &
-                                  pmid, pint, tmid, tint, &
+   subroutine radiation_driver_sw(pmid, pint, tmid, tint, &
                                   coszrs, day_indices, &
+                                  albedo_direct, albedo_diffuse, &
+                                  gas_concentrations, &
                                   cloud_optics_sw, aerosol_optics_sw, &
                                   fluxes_allsky, fluxes_clrsky)
      
       use perf_mod, only: t_startf, t_stopf
-      use cam_history, only: outfld
-      use physics_types, only: physics_state
-      use physics_buffer, only: physics_buffer_desc
-      use camsrfexch, only: cam_in_t
       use mo_rrtmgp_clr_all_sky, only: rte_sw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_2str
@@ -1787,26 +1805,23 @@ contains
       use mo_util_string, only: lower_case
 
       ! Inputs
-      integer, intent(in) :: icall
-      type(physics_state), intent(in) :: state
-      type(physics_buffer_desc), pointer :: pbuf(:)
-      type(cam_in_t), intent(in) :: cam_in
       type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
       real(r8), intent(in) :: coszrs(pcols)
-      integer, intent(in) :: day_indices(pcols)   ! Indicies of daylight coumns
+      integer, intent(in) :: day_indices(pcols)
+      type(ty_gas_concs), intent(in) :: gas_concentrations
       type(ty_optical_props_2str), intent(in) :: aerosol_optics_sw, cloud_optics_sw
       real(r8), intent(in) :: tmid(:,:), pmid(:,:), pint(:,:), tint(:,:)
-
-      ! Temporary fluxes compressed to daytime only arrays
+      real(r8), intent(in) :: albedo_direct(:,:), albedo_diffuse(:,:)
+      
+      ! Temporaries for compressing to daytime-only
       type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day
+      type(ty_gas_concs) :: gas_concentrations_day
       type(ty_optical_props_2str) :: aerosol_optics_sw_day, cloud_optics_sw_day
-
-      ! Albedo for shortwave calculations
-      real(r8) :: albedo_direct(nswbands,pcols), albedo_direct_day(nswbands,pcols)
-      real(r8) :: albedo_diffuse(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
-
-      ! Gas concentrations
-      type(ty_gas_concs) :: gas_concentrations, gas_concentrations_day
+      real(r8), dimension(pcols,nlev_rad) :: tmid_day, pmid_day
+      real(r8), dimension(pcols,nlev_rad+1) :: pint_day, tint_day
+      real(r8) :: albedo_direct_day(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
+      real(r8) :: coszrs_day(pcols)
+      real(r8), dimension(size(active_gases),pcols,nlev_rad) :: gas_vmr, gas_vmr_day
 
       ! Incoming solar radiation, scaled for solar zenith angle 
       ! and earth-sun distance
@@ -1815,9 +1830,6 @@ contains
       ! Gathered indicies of day and night columns 
       ! chunk_column_index = day_indices(daylight_column_index)
       integer :: nday  ! Number of daylight columns
-
-      ! Cosine solar zenith angle for daytime columns
-      real(r8) :: coszrs_day(pcols)  ! cosine solar zenith angle
 
       ! Scaling factor for total sky irradiance; used to account for orbital
       ! eccentricity, and could be used to scale total sky irradiance for different
@@ -1828,26 +1840,12 @@ contains
       integer :: ncol
 
       ! Loop indices
-      integer :: iband
-
-      ! State fields that are passed into RRTMGP. Some of these may need to
-      ! modified from what exist in the physics_state object, i.e. to clip
-      ! temperatures to make sure they are within the valid range.
-      real(r8), dimension(pcols,nlev_rad) :: tmid_day, pmid_day
-      real(r8), dimension(pcols,nlev_rad+1) :: pint_day, tint_day
-
-      real(r8), dimension(size(active_gases),pcols,nlev_rad) :: gas_vmr, gas_vmr_day
-
-      ! Loop indices
       integer :: iday, icol, igas
-
-      ! Everybody needs a name
-      character(*), parameter :: subroutine_name = 'radiation_driver_sw'
 
 
       ! Number of physics columns in this "chunk"; used in multiple places
       ! throughout this subroutine, so set once for convenience
-      ncol = state%ncol
+      ncol = size(cloud_optics_sw%tau, 1)
 
       ! If no daytime columns in this chunk, then we return zeros
       nday = count(day_indices(1:ncol) > 0)
@@ -1860,14 +1858,6 @@ contains
       ! Get orbital eccentricity factor to scale total sky irradiance
       tsi_scaling = get_eccentricity_factor()
 
-      ! Get albedo. This uses CAM routines internally and just provides a
-      ! wrapper to improve readability of the code here.
-      call set_albedo(cam_in, albedo_direct(1:nswbands,1:ncol), albedo_diffuse(1:nswbands,1:ncol))
-
-      ! Send albedos to history buffer (useful for debugging)
-      call outfld('SW_ALBEDO_DIR', transpose(albedo_direct(1:nswbands,1:ncol)), ncol, state%lchnk)
-      call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse(1:nswbands,1:ncol)), ncol, state%lchnk)
-
       ! Allocate shortwave fluxes (allsky and clearsky)
       ! TODO: why do I need to provide my own routines to do this? Why is 
       ! this not part of the ty_fluxes_byband object?
@@ -1878,14 +1868,13 @@ contains
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_allsky_day, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_clrsky_day, do_direct=.true.)
 
-      ! Set gas concentrations
-      call t_startf('rad_gas_concentrations_sw')
-      call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
-      call t_stopf('rad_gas_concentrations_sw')
-
       ! Compress arrays to day-time only
-      call handle_error(cloud_optics_sw_day%alloc_2str(nday, nlev_rad, k_dist_sw, name='sw cloud optics'))
-      call handle_error(aerosol_optics_sw_day%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='sw aerosol optics'))
+      call handle_error(cloud_optics_sw_day%alloc_2str( &
+         nday, nlev_rad, k_dist_sw, name='sw cloud optics' &
+      ))
+      call handle_error(aerosol_optics_sw_day%alloc_2str( &
+         nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='sw aerosol optics' &
+      ))
       do iday = 1,nday
          icol = day_indices(iday)
          cloud_optics_sw_day%tau(iday,:,:) = cloud_optics_sw%tau(icol,:,:)
@@ -1938,7 +1927,7 @@ contains
       call expand_day_fluxes(fluxes_clrsky_day, fluxes_clrsky, day_indices(1:nday))
       call t_stopf('rad_expand_fluxes_sw')
 
-      ! Free fluxes and optical properties
+      ! Free temporary fluxes and optical properties for daytime-only
       call free_optics_sw(cloud_optics_sw_day)
       call free_optics_sw(aerosol_optics_sw_day)
       call free_fluxes(fluxes_allsky_day)
@@ -1948,34 +1937,22 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine radiation_driver_lw(icall, state_in, pbuf, cam_in, is_cmip6_volc, &
-                                  pmid, pint, tmid, tint, &
+   subroutine radiation_driver_lw(pmid, pint, tmid, tint, &
+                                  gas_concentrations, &
                                   cloud_optics_lw, aerosol_optics_lw, &
                                   fluxes_allsky, fluxes_clrsky)
     
-      use perf_mod, only: t_startf, t_stopf
-      use cam_history, only: outfld
-      use physics_types, only: physics_state, physics_state_copy
-      use physics_buffer, only: physics_buffer_desc
-      use camsrfexch, only: cam_in_t
       use mo_rrtmgp_clr_all_sky, only: rte_lw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_concentrations, only: ty_gas_concs
 
       ! Inputs
-      integer, intent(in) :: icall  ! Diagnostic call (for different gases)
-      type(physics_state), intent(in) :: state_in
-      type(physics_buffer_desc), pointer :: pbuf(:)
-      type(cam_in_t), intent(in) :: cam_in
       real(r8), intent(in) :: tmid(:,:), pmid(:,:), pint(:,:), tint(:,:)
+      type(ty_gas_concs), intent(in) :: gas_concentrations
       type(ty_optical_props_1scl), intent(in) :: aerosol_optics_lw
       type(ty_optical_props_1scl), intent(in) :: cloud_optics_lw
       type(ty_fluxes_byband), intent(inout) :: fluxes_allsky, fluxes_clrsky
-      logical,  intent(in)    :: is_cmip6_volc    ! true if cmip6 style volcanic file is read otherwise false 
-
-      ! Copy of state to work on
-      type(physics_state) :: state
 
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_lw'
@@ -1983,19 +1960,12 @@ contains
       ! Surface emissivity needed for longwave
       real(r8) :: surface_emissivity(nlwbands,pcols)
 
-      ! RRTMGP types
-      type(ty_gas_concs) :: gas_concentrations
-
       ! Number of columns in this chunk
       integer :: ncol
 
 
-      ! Copy state so we can modify it in-place
-      call physics_state_copy(state_in, state)
-
-      ! Number of physics columns in this "chunk"; used in multiple places
-      ! throughout this subroutine, so set once for convenience
-      ncol = state%ncol
+      ! Number of physics columns in this "chunk"
+      ncol = size(cloud_optics_lw%tau, 1)
 
       ! Set surface emissivity to 1 here. There is a note in the RRTMG
       ! implementation that this is treated in the land model, but the old
@@ -2005,15 +1975,7 @@ contains
       ! TODO: set this more intelligently?
       surface_emissivity(1:nlwbands,1:ncol) = 1.0_r8
 
-      ! Set gas concentrations (I believe the active gases may change
-      ! for different values of icall, which is why we do this within
-      ! the loop).
-      call t_startf('rad_gas_concentrations_lw')
-      call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
-      call t_stopf('rad_gas_concentrations_lw')
-
       ! Do longwave radiative transfer calculations
-      call t_startf('rad_calculations_lw')
       call handle_error(rte_lw( &
          k_dist_lw, gas_concentrations, &
          pmid(1:ncol,1:nlev_rad), tmid(1:ncol,1:nlev_rad), &
@@ -2025,7 +1987,6 @@ contains
          t_lev=tint(1:ncol,1:nlev_rad+1), &
          n_gauss_angles=1 & ! Set to 3 for consistency with RRTMG
       ))
-      call t_stopf('rad_calculations_lw')
 
    end subroutine radiation_driver_lw
 
