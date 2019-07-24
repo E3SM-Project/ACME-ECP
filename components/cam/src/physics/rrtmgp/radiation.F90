@@ -1764,6 +1764,7 @@ contains
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_concentrations, only: ty_gas_concs
+      use mo_util_string, only: lower_case
       use radiation_state, only: set_rad_state
 
       ! Inputs
@@ -1785,7 +1786,7 @@ contains
       real(r8) :: albedo_diffuse(nswbands,pcols), albedo_diffuse_day(nswbands,pcols)
 
       ! Gas concentrations
-      type(ty_gas_concs) :: gas_concentrations
+      type(ty_gas_concs) :: gas_concentrations, gas_concentrations_day
 
       ! Incoming solar radiation, scaled for solar zenith angle 
       ! and earth-sun distance
@@ -1817,8 +1818,10 @@ contains
       real(r8), dimension(pcols,nlev_rad) :: tmid_day, pmid_day
       real(r8), dimension(pcols,nlev_rad+1) :: pint_day, tint_day
 
+      real(r8), dimension(size(active_gases),pcols,nlev_rad) :: gas_vmr, gas_vmr_day
+
       ! Loop indices
-      integer :: iday, icol
+      integer :: iday, icol, igas
 
       ! Everybody needs a name
       character(*), parameter :: subroutine_name = 'radiation_driver_sw'
@@ -1869,13 +1872,9 @@ contains
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_allsky_day, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_clrsky_day, do_direct=.true.)
 
-      ! Set gas concentrations (I believe the gases may change for
-      ! different values of icall, which is why we do this within the
-      ! loop)
+      ! Set gas concentrations
       call t_startf('rad_gas_concentrations_sw')
-      call set_gas_concentrations(icall, state, pbuf, &
-                                  gas_concentrations, &
-                                  day_indices=day_indices(1:nday))
+      call set_gas_concentrations(icall, state, pbuf, gas_concentrations)
       call t_stopf('rad_gas_concentrations_sw')
 
       ! Compress arrays to day-time only
@@ -1899,11 +1898,21 @@ contains
          albedo_diffuse_day(:,iday) = albedo_diffuse(:,icol)
          coszrs_day(iday) = coszrs(icol)
       end do
+      do igas = 1,size(active_gases)
+         call handle_error(gas_concentrations%get_vmr(trim(lower_case(active_gases(igas))), gas_vmr(igas,1:ncol,:)))
+         do iday = 1,nday
+            icol = day_indices(iday)
+            gas_vmr_day(igas,iday,:) = gas_vmr(igas,icol,:)
+         end do
+         call handle_error(gas_concentrations_day%set_vmr( &
+            trim(lower_case(active_gases(igas))), gas_vmr_day(igas,1:nday,1:nlev_rad)) & 
+         )
+      end do
 
-      ! Do shortwave radiative transfer calculations
+      ! Do shortwave radiative transfer
       call t_startf('rad_calculations_sw')
       call handle_error(rte_sw( &
-         k_dist_sw, gas_concentrations, &
+         k_dist_sw, gas_concentrations_day, &
          pmid_day(1:nday,1:nlev_rad), &
          tmid_day(1:nday,1:nlev_rad), &
          pint_day(1:nday,1:nlev_rad+1), &
@@ -2587,9 +2596,8 @@ contains
       call optics%finalize()
    end subroutine free_optics_lw
 
-   subroutine set_gas_concentrations(icall, state, pbuf, &
-                                     gas_concentrations, &
-                                     day_indices)
+
+   subroutine set_gas_concentrations(icall, state, pbuf, gas_concentrations)
 
       use physics_types, only: physics_state
       use physics_buffer, only: physics_buffer_desc
@@ -2601,7 +2609,6 @@ contains
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
       type(ty_gas_concs), intent(out) :: gas_concentrations
-      integer, intent(in), optional :: day_indices(:)
 
       ! Local variables
       real(r8), dimension(pcols,pver) :: vol_mix_ratio
@@ -2629,10 +2636,10 @@ contains
       real(r8), parameter :: n2_vol_mix_ratio = 0.7906_r8
 
       ! Loop indices
-      integer :: igas, iday, icol
+      integer :: igas, icol
 
-      ! Number of columns and daytime columns
-      integer :: ncol, nday
+      ! Number of columns
+      integer :: ncol
 
       character(len=32) :: subname = 'set_gas_concentrations'
 
@@ -2709,29 +2716,9 @@ contains
          ! Populate the RRTMGP gas concentration object with values for this gas.
          ! NOTE: RRTMGP makes some assumptions about gas names internally, so we
          ! need to pass the gas names as LOWER case here!
-         if (present(day_indices)) then
-
-            ! Number of daytime columns in this chunk is number of indices in
-            ! day_indices array that are greater than zero
-            nday = count(day_indices > 0)
-
-            ! Populate compressed array with just daytime values
-            call compress_day_columns(vol_mix_ratio_out(1:ncol,1:nlev_rad), &
-                                      vol_mix_ratio_day(1:nday,1:nlev_rad), &
-                                      day_indices(1:nday))
-            
-            ! Set volumn mixing ratio in gas concentration object for just daytime
-            ! columns in this chunk
-            call handle_error(gas_concentrations%set_vmr( &
-               trim(lower_case(gas_species(igas))), vol_mix_ratio_day(1:nday,1:nlev_rad)) & 
-            )
-         else
-            ! Set volumn mixing ratio in gas concentration object for just columns
-            ! in this chunk
-            call handle_error(gas_concentrations%set_vmr( &
-               trim(lower_case(gas_species(igas))), vol_mix_ratio_out(1:ncol,1:nlev_rad)) & 
-            )
-         end if
+         call handle_error(gas_concentrations%set_vmr( &
+            trim(lower_case(gas_species(igas))), vol_mix_ratio_out(1:ncol,1:nlev_rad)) & 
+         )
 
       end do
 
