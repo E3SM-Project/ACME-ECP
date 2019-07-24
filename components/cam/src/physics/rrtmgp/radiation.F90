@@ -1187,14 +1187,17 @@ contains
       character(*), parameter :: subroutine_name = 'radiation_tend'
 
       ! Radiative fluxes
-      type(ty_fluxes_byband) :: fluxes_allsky, fluxes_clrsky
+      type(ty_fluxes_byband) :: &
+         fluxes_sw_allsky    , fluxes_sw_clrsky    , &
+         fluxes_sw_allsky_col, fluxes_sw_clrsky_col, &
+         fluxes_lw_allsky    , fluxes_lw_clrsky    , &
+         fluxes_lw_allsky_col, fluxes_lw_clrsky_col
 
       ! For loops over diagnostic configurations (i.e., different active gases)
       integer :: icall
       logical :: active_calls(0:N_DIAG)
 
-      ! Temporary fluxes for a single CRM column
-      type(ty_fluxes_byband) :: fluxes_allsky_col, fluxes_clrsky_col
+      ! Temporary heating rates for a single CRM column
       real(r8) :: qrl_col(pcols,pver), qrlc_col(pcols,pver), &
                   qrs_col(pcols,pver), qrsc_col(pcols,pver)
 
@@ -1364,10 +1367,10 @@ contains
       if (radiation_do('sw')) then
 
          ! Allocate shortwave fluxes
-         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_allsky, do_direct=.true.)
-         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_clrsky, do_direct=.true.)
-         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_allsky_col, do_direct=.true.)
-         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_clrsky_col, do_direct=.true.)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_sw_allsky, do_direct=.true.)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_sw_clrsky, do_direct=.true.)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_sw_allsky_col, do_direct=.true.)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nswbands, fluxes_sw_clrsky_col, do_direct=.true.)
 
          ! Loop over different gas configurations (diagnostic)
          call rad_cnst_get_call_list(active_calls)
@@ -1375,13 +1378,10 @@ contains
             if (active_calls(icall)) then
 
                ! Reset means
-               call reset_fluxes(fluxes_allsky)
-               call reset_fluxes(fluxes_clrsky)
+               call reset_fluxes(fluxes_sw_allsky)
+               call reset_fluxes(fluxes_sw_clrsky)
                qrs = 0
                qrsc = 0
-               sp_qv_rad = 0
-               sp_qc_rad = 0
-               sp_qi_rad = 0
 
                ! Loop over CRM columns
                do iy = 1,crm_ny_rad
@@ -1426,22 +1426,22 @@ contains
                               dei(1:ncol,1:pver) = 2._r8 * rei(1:ncol,1:pver)
                            end do  ! ic = 1,ncol
                         end do  ! iz = 1,crm_nz
-                     end if  ! use_SPCAM
 
-                     ! DEBUG test to see if we are setting things properly
-                     if (first_column) then
-                        sp_qv_rad = 0
-                        sp_qc_rad = 0
-                        sp_qi_rad = 0
-                     end if
-                     sp_qv_rad = sp_qv_rad + state%q(:,:,ixwatvap) * area_factor
-                     sp_qc_rad = sp_qc_rad + iclwp * area_factor
-                     sp_qi_rad = sp_qi_rad + iciwp * area_factor
-                     if (last_column) then
-                        call outfld('SP_QV_RAD', sp_qv_rad(1:ncol,1:pver), state%ncol, state%lchnk)
-                        call outfld('SP_QC_RAD', sp_qc_rad(1:ncol,1:pver), state%ncol, state%lchnk)
-                        call outfld('SP_QI_RAD', sp_qi_rad(1:ncol,1:pver), state%ncol, state%lchnk)
-                     end if
+                        ! DEBUG test to see if we are setting things properly
+                        if (first_column) then
+                           sp_qv_rad = 0
+                           sp_qc_rad = 0
+                           sp_qi_rad = 0
+                        end if
+                        sp_qv_rad = sp_qv_rad + state%q(:,:,ixwatvap) * area_factor
+                        sp_qc_rad = sp_qc_rad + iclwp * area_factor
+                        sp_qi_rad = sp_qi_rad + iciwp * area_factor
+                        if (last_column) then
+                           call outfld('SP_QV_RAD', sp_qv_rad(1:ncol,1:pver), state%ncol, state%lchnk)
+                           call outfld('SP_QC_RAD', sp_qc_rad(1:ncol,1:pver), state%ncol, state%lchnk)
+                           call outfld('SP_QI_RAD', sp_qi_rad(1:ncol,1:pver), state%ncol, state%lchnk)
+                        end if
+                     end if  ! use_SPCAM
 
                      ! Do optics
                      call t_startf('shortwave cloud optics')
@@ -1480,20 +1480,20 @@ contains
                      call radiation_driver_sw(icall, state, pbuf, cam_in, &
                                               coszrs, day_indices, &
                                               cloud_optics_sw, aerosol_optics_sw, &
-                                              fluxes_allsky_col, fluxes_clrsky_col)
+                                              fluxes_sw_allsky_col, fluxes_sw_clrsky_col)
                     
                      ! DEBUG!!!
-                     !call reset_fluxes(fluxes_allsky_col)
-                     !call reset_fluxes(fluxes_clrsky_col)
+                     !call reset_fluxes(fluxes_sw_allsky_col)
+                     !call reset_fluxes(fluxes_sw_clrsky_col)
                    
                      ! Calculate heating rates
                      call t_startf('rad_heating_rate_sw')
-                     call calculate_heating_rate(fluxes_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
-                                                 fluxes_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
+                     call calculate_heating_rate(fluxes_sw_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
+                                                 fluxes_sw_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
                                                  state%pint(1:ncol,1:pverp), &
                                                  qrs_col(1:ncol,1:pver))
-                     call calculate_heating_rate(fluxes_clrsky_col%flux_up(1:ncol,ktop:kbot+1), &
-                                                 fluxes_clrsky_col%flux_dn(1:ncol,ktop:kbot+1), &
+                     call calculate_heating_rate(fluxes_sw_clrsky_col%flux_up(1:ncol,ktop:kbot+1), &
+                                                 fluxes_sw_clrsky_col%flux_dn(1:ncol,ktop:kbot+1), &
                                                  state%pint(1:ncol,1:pverp), &
                                                  qrsc_col(1:ncol,1:pver))
                      call t_stopf('rad_heating_rate_sw')
@@ -1501,23 +1501,23 @@ contains
                      ! Aggregate means
                      qrs = qrs + qrs_col * area_factor
                      qrsc = qrsc + qrsc_col * area_factor
-                     fluxes_allsky%flux_up = fluxes_allsky%flux_up + fluxes_allsky_col%flux_up * area_factor
-                     fluxes_allsky%flux_dn = fluxes_allsky%flux_dn + fluxes_allsky_col%flux_dn * area_factor
-                     fluxes_allsky%flux_net = fluxes_allsky%flux_net + fluxes_allsky_col%flux_net * area_factor
-                     fluxes_clrsky%flux_up = fluxes_clrsky%flux_up + fluxes_clrsky_col%flux_up * area_factor
-                     fluxes_clrsky%flux_dn = fluxes_clrsky%flux_dn + fluxes_clrsky_col%flux_dn * area_factor
-                     fluxes_clrsky%flux_net = fluxes_clrsky%flux_net + fluxes_clrsky_col%flux_net * area_factor
-                     fluxes_allsky%bnd_flux_up = fluxes_allsky%bnd_flux_up + fluxes_allsky_col%bnd_flux_up * area_factor
-                     fluxes_allsky%bnd_flux_dn = fluxes_allsky%bnd_flux_dn + fluxes_allsky_col%bnd_flux_dn * area_factor
-                     fluxes_allsky%bnd_flux_dn_dir = fluxes_allsky%bnd_flux_dn_dir + fluxes_allsky_col%bnd_flux_dn_dir * area_factor
-                     fluxes_allsky%bnd_flux_net = fluxes_allsky%bnd_flux_net + fluxes_allsky_col%bnd_flux_net * area_factor
-                     fluxes_clrsky%bnd_flux_up = fluxes_clrsky%bnd_flux_up + fluxes_clrsky_col%bnd_flux_up * area_factor
-                     fluxes_clrsky%bnd_flux_dn = fluxes_clrsky%bnd_flux_dn + fluxes_clrsky_col%bnd_flux_dn * area_factor
-                     fluxes_clrsky%bnd_flux_dn_dir = fluxes_clrsky%bnd_flux_dn_dir + fluxes_clrsky_col%bnd_flux_dn_dir * area_factor
-                     fluxes_clrsky%bnd_flux_net = fluxes_clrsky%bnd_flux_net + fluxes_clrsky_col%bnd_flux_net * area_factor
+                     fluxes_sw_allsky%flux_up = fluxes_sw_allsky%flux_up + fluxes_sw_allsky_col%flux_up * area_factor
+                     fluxes_sw_allsky%flux_dn = fluxes_sw_allsky%flux_dn + fluxes_sw_allsky_col%flux_dn * area_factor
+                     fluxes_sw_allsky%flux_net = fluxes_sw_allsky%flux_net + fluxes_sw_allsky_col%flux_net * area_factor
+                     fluxes_sw_clrsky%flux_up = fluxes_sw_clrsky%flux_up + fluxes_sw_clrsky_col%flux_up * area_factor
+                     fluxes_sw_clrsky%flux_dn = fluxes_sw_clrsky%flux_dn + fluxes_sw_clrsky_col%flux_dn * area_factor
+                     fluxes_sw_clrsky%flux_net = fluxes_sw_clrsky%flux_net + fluxes_sw_clrsky_col%flux_net * area_factor
+                     fluxes_sw_allsky%bnd_flux_up = fluxes_sw_allsky%bnd_flux_up + fluxes_sw_allsky_col%bnd_flux_up * area_factor
+                     fluxes_sw_allsky%bnd_flux_dn = fluxes_sw_allsky%bnd_flux_dn + fluxes_sw_allsky_col%bnd_flux_dn * area_factor
+                     fluxes_sw_allsky%bnd_flux_dn_dir = fluxes_sw_allsky%bnd_flux_dn_dir + fluxes_sw_allsky_col%bnd_flux_dn_dir * area_factor
+                     fluxes_sw_allsky%bnd_flux_net = fluxes_sw_allsky%bnd_flux_net + fluxes_sw_allsky_col%bnd_flux_net * area_factor
+                     fluxes_sw_clrsky%bnd_flux_up = fluxes_sw_clrsky%bnd_flux_up + fluxes_sw_clrsky_col%bnd_flux_up * area_factor
+                     fluxes_sw_clrsky%bnd_flux_dn = fluxes_sw_clrsky%bnd_flux_dn + fluxes_sw_clrsky_col%bnd_flux_dn * area_factor
+                     fluxes_sw_clrsky%bnd_flux_dn_dir = fluxes_sw_clrsky%bnd_flux_dn_dir + fluxes_sw_clrsky_col%bnd_flux_dn_dir * area_factor
+                     fluxes_sw_clrsky%bnd_flux_net = fluxes_sw_clrsky%bnd_flux_net + fluxes_sw_clrsky_col%bnd_flux_net * area_factor
 
                      ! Send fluxes to history buffer
-                     if (last_column) call output_fluxes_sw(icall, state, fluxes_allsky, fluxes_clrsky, qrs,  qrsc)
+                     if (last_column) call output_fluxes_sw(icall, state, fluxes_sw_allsky, fluxes_sw_clrsky, qrs,  qrsc)
 
                      ! Populate CRM heating
                      if (use_SPCAM) then
@@ -1539,16 +1539,16 @@ contains
          end do  ! icall
 
          ! Set net fluxes used by other components (land?) 
-         call set_net_fluxes_sw(fluxes_allsky, fsds, fsns, fsnt)
+         call set_net_fluxes_sw(fluxes_sw_allsky, fsds, fsns, fsnt)
 
          ! Set surface fluxes that are used by the land model
-         call export_surface_fluxes(fluxes_allsky, cam_out, 'shortwave')
+         call export_surface_fluxes(fluxes_sw_allsky, cam_out, 'shortwave')
                
          ! Free memory allocated for shortwave fluxes
-         call free_fluxes(fluxes_allsky)
-         call free_fluxes(fluxes_clrsky)
-         call free_fluxes(fluxes_allsky_col)
-         call free_fluxes(fluxes_clrsky_col)
+         call free_fluxes(fluxes_sw_allsky)
+         call free_fluxes(fluxes_sw_clrsky)
+         call free_fluxes(fluxes_sw_allsky_col)
+         call free_fluxes(fluxes_sw_clrsky_col)
 
       else
 
@@ -1563,10 +1563,10 @@ contains
       if (radiation_do('lw')) then
 
          ! Allocate longwave fluxes
-         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_allsky)
-         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_clrsky)
-         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_allsky_col)
-         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_clrsky_col)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_lw_allsky)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_lw_clrsky)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_lw_allsky_col)
+         call initialize_rrtmgp_fluxes(ncol, nlev_rad+1, nlwbands, fluxes_lw_clrsky_col)
 
          ! Loop over different gas configurations (diagnostic)
          call rad_cnst_get_call_list(active_calls)
@@ -1574,8 +1574,8 @@ contains
             if (active_calls(icall)) then
 
                ! Initialize means
-               call reset_fluxes(fluxes_allsky)
-               call reset_fluxes(fluxes_clrsky)
+               call reset_fluxes(fluxes_lw_allsky)
+               call reset_fluxes(fluxes_lw_clrsky)
                qrl = 0
                qrlc = 0
 
@@ -1664,44 +1664,44 @@ contains
                      ! Call the longwave radiation driver to calculate fluxes and heating rates
                      call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
                                               cloud_optics_lw, aerosol_optics_lw, &
-                                              fluxes_allsky_col, fluxes_clrsky_col)
+                                              fluxes_lw_allsky_col, fluxes_lw_clrsky_col)
 
                      ! Free fluxes and optical properties
                      call free_optics_lw(cloud_optics_lw)
                      call free_optics_lw(aerosol_optics_lw)
 
                      ! DEBUG!!!
-                     !call reset_fluxes(fluxes_allsky_col)
-                     !call reset_fluxes(fluxes_clrsky_col)
+                     !call reset_fluxes(fluxes_lw_allsky_col)
+                     !call reset_fluxes(fluxes_lw_clrsky_col)
                    
                      ! Calculate heating rates
-                     call calculate_heating_rate(fluxes_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
-                                                 fluxes_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
+                     call calculate_heating_rate(fluxes_lw_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
+                                                 fluxes_lw_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
                                                  state%pint(1:ncol,1:pverp), &
                                                  qrl_col(1:ncol,1:pver))
-                     call calculate_heating_rate(fluxes_clrsky_col%flux_up(1:ncol,ktop:kbot+1), &
-                                                 fluxes_clrsky_col%flux_dn(1:ncol,ktop:kbot+1), &
+                     call calculate_heating_rate(fluxes_lw_clrsky_col%flux_up(1:ncol,ktop:kbot+1), &
+                                                 fluxes_lw_clrsky_col%flux_dn(1:ncol,ktop:kbot+1), &
                                                  state%pint(1:ncol,1:pverp), &
                                                  qrlc_col(1:ncol,1:pver))
 
                      ! Aggregate means
                      qrl = qrl + qrl_col * area_factor
                      qrlc = qrlc + qrlc_col * area_factor
-                     fluxes_allsky%flux_up = fluxes_allsky%flux_up + fluxes_allsky_col%flux_up * area_factor
-                     fluxes_allsky%flux_dn = fluxes_allsky%flux_dn + fluxes_allsky_col%flux_dn * area_factor
-                     fluxes_allsky%flux_net = fluxes_allsky%flux_net + fluxes_allsky_col%flux_net * area_factor
-                     fluxes_clrsky%flux_up = fluxes_clrsky%flux_up + fluxes_clrsky_col%flux_up * area_factor
-                     fluxes_clrsky%flux_dn = fluxes_clrsky%flux_dn + fluxes_clrsky_col%flux_dn * area_factor
-                     fluxes_clrsky%flux_net = fluxes_clrsky%flux_net + fluxes_clrsky_col%flux_net * area_factor
-                     fluxes_allsky%bnd_flux_up = fluxes_allsky%bnd_flux_up + fluxes_allsky_col%bnd_flux_up * area_factor
-                     fluxes_allsky%bnd_flux_dn = fluxes_allsky%bnd_flux_dn + fluxes_allsky_col%bnd_flux_dn * area_factor
-                     fluxes_allsky%bnd_flux_net = fluxes_allsky%bnd_flux_net + fluxes_allsky_col%bnd_flux_net * area_factor
-                     fluxes_clrsky%bnd_flux_up = fluxes_clrsky%bnd_flux_up + fluxes_clrsky_col%bnd_flux_up * area_factor
-                     fluxes_clrsky%bnd_flux_dn = fluxes_clrsky%bnd_flux_dn + fluxes_clrsky_col%bnd_flux_dn * area_factor
-                     fluxes_clrsky%bnd_flux_net = fluxes_clrsky%bnd_flux_net + fluxes_clrsky_col%bnd_flux_net * area_factor
+                     fluxes_lw_allsky%flux_up = fluxes_lw_allsky%flux_up + fluxes_lw_allsky_col%flux_up * area_factor
+                     fluxes_lw_allsky%flux_dn = fluxes_lw_allsky%flux_dn + fluxes_lw_allsky_col%flux_dn * area_factor
+                     fluxes_lw_allsky%flux_net = fluxes_lw_allsky%flux_net + fluxes_lw_allsky_col%flux_net * area_factor
+                     fluxes_lw_clrsky%flux_up = fluxes_lw_clrsky%flux_up + fluxes_lw_clrsky_col%flux_up * area_factor
+                     fluxes_lw_clrsky%flux_dn = fluxes_lw_clrsky%flux_dn + fluxes_lw_clrsky_col%flux_dn * area_factor
+                     fluxes_lw_clrsky%flux_net = fluxes_lw_clrsky%flux_net + fluxes_lw_clrsky_col%flux_net * area_factor
+                     fluxes_lw_allsky%bnd_flux_up = fluxes_lw_allsky%bnd_flux_up + fluxes_lw_allsky_col%bnd_flux_up * area_factor
+                     fluxes_lw_allsky%bnd_flux_dn = fluxes_lw_allsky%bnd_flux_dn + fluxes_lw_allsky_col%bnd_flux_dn * area_factor
+                     fluxes_lw_allsky%bnd_flux_net = fluxes_lw_allsky%bnd_flux_net + fluxes_lw_allsky_col%bnd_flux_net * area_factor
+                     fluxes_lw_clrsky%bnd_flux_up = fluxes_lw_clrsky%bnd_flux_up + fluxes_lw_clrsky_col%bnd_flux_up * area_factor
+                     fluxes_lw_clrsky%bnd_flux_dn = fluxes_lw_clrsky%bnd_flux_dn + fluxes_lw_clrsky_col%bnd_flux_dn * area_factor
+                     fluxes_lw_clrsky%bnd_flux_net = fluxes_lw_clrsky%bnd_flux_net + fluxes_lw_clrsky_col%bnd_flux_net * area_factor
 
                      ! Send fluxes to history buffer
-                     if (last_column) call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
+                     if (last_column) call output_fluxes_lw(icall, state, fluxes_lw_allsky, fluxes_lw_clrsky, qrl, qrlc)
 
                      ! Populate CRM heating
                      if (use_SPCAM) then
@@ -1719,29 +1719,31 @@ contains
             end if  ! active_calls(icall)
          end do  ! icall = N_DIAG,0,-1
 
-         call outfld('CRM_CLD_TAU_LW', crm_cld_tau_lw(1:ncol,:,:,:,:), ncol, state%lchnk)
-         call outfld('CRM_LIQ_TAU_LW', crm_liq_tau_lw(1:ncol,:,:,:,:), ncol, state%lchnk)
-         call outfld('CRM_ICE_TAU_LW', crm_ice_tau_lw(1:ncol,:,:,:,:), ncol, state%lchnk)
-         call outfld('CRM_AER_TAU_LW', crm_aer_tau_lw(1:ncol,:,:,:,:), ncol, state%lchnk)
+         if (use_SPCAM) then
+            call outfld('CRM_CLD_TAU_LW', crm_cld_tau_lw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_LIQ_TAU_LW', crm_liq_tau_lw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_ICE_TAU_LW', crm_ice_tau_lw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_AER_TAU_LW', crm_aer_tau_lw(1:ncol,:,:,:,:), ncol, state%lchnk)
 
-         call outfld('CRM_CLD_TAU_SW', crm_cld_tau_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
-         call outfld('CRM_CLD_SSA_SW', crm_cld_ssa_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
-         call outfld('CRM_CLD_ASM_SW', crm_cld_asm_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
-         call outfld('CRM_LIQ_TAU_SW', crm_liq_tau_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
-         call outfld('CRM_ICE_TAU_SW', crm_ice_tau_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
-         call outfld('CRM_AER_TAU_SW', crm_aer_tau_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_CLD_TAU_SW', crm_cld_tau_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_CLD_SSA_SW', crm_cld_ssa_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_CLD_ASM_SW', crm_cld_asm_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_LIQ_TAU_SW', crm_liq_tau_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_ICE_TAU_SW', crm_ice_tau_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
+            call outfld('CRM_AER_TAU_SW', crm_aer_tau_sw(1:ncol,:,:,:,:), ncol, state%lchnk)
+         end if
 
          ! Set net fluxes used in other components
-         call set_net_fluxes_lw(fluxes_allsky, flns, flnt)
+         call set_net_fluxes_lw(fluxes_lw_allsky, flns, flnt)
 
          ! Export surface fluxes that are used by the land model
-         call export_surface_fluxes(fluxes_allsky, cam_out, 'longwave')
+         call export_surface_fluxes(fluxes_lw_allsky, cam_out, 'longwave')
 
          ! Free memory allocated for fluxes
-         call free_fluxes(fluxes_allsky)
-         call free_fluxes(fluxes_clrsky)
-         call free_fluxes(fluxes_allsky_col)
-         call free_fluxes(fluxes_clrsky_col)
+         call free_fluxes(fluxes_lw_allsky)
+         call free_fluxes(fluxes_lw_clrsky)
+         call free_fluxes(fluxes_lw_allsky_col)
+         call free_fluxes(fluxes_lw_clrsky_col)
 
       else
 
