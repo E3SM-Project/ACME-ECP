@@ -2587,174 +2587,174 @@ contains
       call optics%finalize()
    end subroutine free_optics_lw
 
-subroutine set_gas_concentrations(icall, state, pbuf, &
-                                  gas_concentrations, &
-                                  day_indices)
+   subroutine set_gas_concentrations(icall, state, pbuf, &
+                                     gas_concentrations, &
+                                     day_indices)
 
-   use physics_types, only: physics_state
-   use physics_buffer, only: physics_buffer_desc
-   use rad_constituents, only: rad_cnst_get_gas
-   use mo_gas_concentrations, only: ty_gas_concs
-   use mo_util_string, only: lower_case
+      use physics_types, only: physics_state
+      use physics_buffer, only: physics_buffer_desc
+      use rad_constituents, only: rad_cnst_get_gas
+      use mo_gas_concentrations, only: ty_gas_concs
+      use mo_util_string, only: lower_case
 
-   integer, intent(in) :: icall
-   type(physics_state), intent(in) :: state
-   type(physics_buffer_desc), pointer :: pbuf(:)
-   type(ty_gas_concs), intent(out) :: gas_concentrations
-   integer, intent(in), optional :: day_indices(:)
+      integer, intent(in) :: icall
+      type(physics_state), intent(in) :: state
+      type(physics_buffer_desc), pointer :: pbuf(:)
+      type(ty_gas_concs), intent(out) :: gas_concentrations
+      integer, intent(in), optional :: day_indices(:)
 
-   ! Local variables
-   real(r8), dimension(pcols,pver) :: vol_mix_ratio
-   real(r8), dimension(pcols,nlev_rad) :: vol_mix_ratio_day, &
-                                          vol_mix_ratio_out
-   real(r8), pointer :: mass_mix_ratio(:,:)
+      ! Local variables
+      real(r8), dimension(pcols,pver) :: vol_mix_ratio
+      real(r8), dimension(pcols,nlev_rad) :: vol_mix_ratio_day, &
+                                             vol_mix_ratio_out
+      real(r8), pointer :: mass_mix_ratio(:,:)
 
-   ! Gases and molecular weights. Note that we do NOT have CFCs yet (I think
-   ! this is coming soon in RRTMGP). RRTMGP also allows for absorption due to
-   ! CO and N2, which RRTMG did not have.
-   character(len=3), dimension(8) :: gas_species = (/ &
-      'H2O', 'CO2', 'O3 ', 'N2O', &
-      'CO ', 'CH4', 'O2 ', 'N2 ' &
-   /)
-   real(r8), dimension(8) :: mol_weight_gas = (/ &
-      18.01528, 44.0095, 47.9982, 44.0128, &
-      28.0101, 16.04246, 31.998, 28.0134 &
-   /)  ! g/mol
+      ! Gases and molecular weights. Note that we do NOT have CFCs yet (I think
+      ! this is coming soon in RRTMGP). RRTMGP also allows for absorption due to
+      ! CO and N2, which RRTMG did not have.
+      character(len=3), dimension(8) :: gas_species = (/ &
+         'H2O', 'CO2', 'O3 ', 'N2O', &
+         'CO ', 'CH4', 'O2 ', 'N2 ' &
+      /)
+      real(r8), dimension(8) :: mol_weight_gas = (/ &
+         18.01528, 44.0095, 47.9982, 44.0128, &
+         28.0101, 16.04246, 31.998, 28.0134 &
+      /)  ! g/mol
 
-   ! Molar weight of air
-   real(r8), parameter :: mol_weight_air = 28.97  ! g/mol
-                                    
-   ! Defaults for gases that are not available (TODO: is this still accurate?)
-   real(r8), parameter :: co_vol_mix_ratio = 1.0e-7_r8
-   real(r8), parameter :: n2_vol_mix_ratio = 0.7906_r8
+      ! Molar weight of air
+      real(r8), parameter :: mol_weight_air = 28.97  ! g/mol
+                                       
+      ! Defaults for gases that are not available (TODO: is this still accurate?)
+      real(r8), parameter :: co_vol_mix_ratio = 1.0e-7_r8
+      real(r8), parameter :: n2_vol_mix_ratio = 0.7906_r8
 
-   ! Loop indices
-   integer :: igas, iday, icol
+      ! Loop indices
+      integer :: igas, iday, icol
 
-   ! Number of columns and daytime columns
-   integer :: ncol, nday
+      ! Number of columns and daytime columns
+      integer :: ncol, nday
 
-   character(len=32) :: subname = 'set_gas_concentrations'
+      character(len=32) :: subname = 'set_gas_concentrations'
 
-   ! Indices to model top on the RADIATION VERTICAL GRID
-   integer :: k, k_cam
-   
-   ! Number of columns in chunk
-   ncol = state%ncol
+      ! Indices to model top on the RADIATION VERTICAL GRID
+      integer :: k, k_cam
+      
+      ! Number of columns in chunk
+      ncol = state%ncol
 
-   ! Reset gas concentrations
-   call gas_concentrations%reset()
+      ! Reset gas concentrations
+      call gas_concentrations%reset()
 
-   ! For each gas species needed for RRTMGP, read the mass mixing ratio from the
-   ! CAM rad_constituents interface, convert to volume mixing ratios, and
-   ! subset for daytime-only indices if needed.
-   do igas = 1,size(gas_species)
+      ! For each gas species needed for RRTMGP, read the mass mixing ratio from the
+      ! CAM rad_constituents interface, convert to volume mixing ratios, and
+      ! subset for daytime-only indices if needed.
+      do igas = 1,size(gas_species)
 
-      ! If this gas is not in list of active gases, then skip
-      if (.not.string_in_list(gas_species(igas), active_gases)) cycle
+         ! If this gas is not in list of active gases, then skip
+         if (.not.string_in_list(gas_species(igas), active_gases)) cycle
 
-      ! initialize
-      vol_mix_ratio(:,:) = 0._r8
+         ! initialize
+         vol_mix_ratio(:,:) = 0._r8
 
-      select case(trim(gas_species(igas)))
+         select case(trim(gas_species(igas)))
 
-         case('CO')
+            case('CO')
 
-            ! CO not available, use default
-            vol_mix_ratio(1:ncol,1:pver) = co_vol_mix_ratio
+               ! CO not available, use default
+               vol_mix_ratio(1:ncol,1:pver) = co_vol_mix_ratio
 
-         case('N2')
+            case('N2')
 
-            ! N2 not available, use default
-            vol_mix_ratio(1:ncol,1:pver) = n2_vol_mix_ratio
+               ! N2 not available, use default
+               vol_mix_ratio(1:ncol,1:pver) = n2_vol_mix_ratio
 
-         case('H2O')
+            case('H2O')
 
-            ! Water vapor is represented as specific humidity in CAM, so we
-            ! need to handle water a little differently
-            call rad_cnst_get_gas(icall, trim(gas_species(igas)), state, pbuf, &
-                                  mass_mix_ratio)
+               ! Water vapor is represented as specific humidity in CAM, so we
+               ! need to handle water a little differently
+               call rad_cnst_get_gas(icall, trim(gas_species(igas)), state, pbuf, &
+                                     mass_mix_ratio)
+               
+               ! Convert to volume mixing ratio by multiplying by the ratio of
+               ! molecular weight of dry air to molecular weight of gas. Note that
+               ! first specific humidity (held in the mass_mix_ratio array read
+               ! from rad_constituents) is converted to an actual mass mixing
+               ! ratio.
+               vol_mix_ratio(1:ncol,1:pver) = mass_mix_ratio(1:ncol,1:pver) / ( &
+                  1._r8 - mass_mix_ratio(1:ncol,1:pver) &
+               )  * mol_weight_air / mol_weight_gas(igas)
+
+            case DEFAULT
+
+               ! Get mass mixing ratio from the rad_constituents interface
+               call rad_cnst_get_gas(icall, trim(gas_species(igas)), state, pbuf, &
+                                     mass_mix_ratio)
+
+               ! Convert to volume mixing ratio by multiplying by the ratio of
+               ! molecular weight of dry air to molecular weight of gas
+               vol_mix_ratio(1:ncol,1:pver) = mass_mix_ratio(1:ncol,1:pver) &
+                                            * mol_weight_air / mol_weight_gas(igas)
+
+         end select
+
+         ! Make sure we do not have any negative volume mixing ratios
+         call assert(all(vol_mix_ratio(1:ncol,1:pver) >= 0), &
+                     trim(subname) // ': invalid gas concentration for ' // &
+                     trim(gas_species(igas)))
+
+         ! Map to radiation grid
+         vol_mix_ratio_out(1:ncol,ktop:kbot) = vol_mix_ratio(1:ncol,1:pver)
+         vol_mix_ratio_out(1:ncol,1) = vol_mix_ratio(1:ncol,1)
+
+         ! Populate the RRTMGP gas concentration object with values for this gas.
+         ! NOTE: RRTMGP makes some assumptions about gas names internally, so we
+         ! need to pass the gas names as LOWER case here!
+         if (present(day_indices)) then
+
+            ! Number of daytime columns in this chunk is number of indices in
+            ! day_indices array that are greater than zero
+            nday = count(day_indices > 0)
+
+            ! Populate compressed array with just daytime values
+            call compress_day_columns(vol_mix_ratio_out(1:ncol,1:nlev_rad), &
+                                      vol_mix_ratio_day(1:nday,1:nlev_rad), &
+                                      day_indices(1:nday))
             
-            ! Convert to volume mixing ratio by multiplying by the ratio of
-            ! molecular weight of dry air to molecular weight of gas. Note that
-            ! first specific humidity (held in the mass_mix_ratio array read
-            ! from rad_constituents) is converted to an actual mass mixing
-            ! ratio.
-            vol_mix_ratio(1:ncol,1:pver) = mass_mix_ratio(1:ncol,1:pver) / ( &
-               1._r8 - mass_mix_ratio(1:ncol,1:pver) &
-            )  * mol_weight_air / mol_weight_gas(igas)
+            ! Set volumn mixing ratio in gas concentration object for just daytime
+            ! columns in this chunk
+            call handle_error(gas_concentrations%set_vmr( &
+               trim(lower_case(gas_species(igas))), vol_mix_ratio_day(1:nday,1:nlev_rad)) & 
+            )
+         else
+            ! Set volumn mixing ratio in gas concentration object for just columns
+            ! in this chunk
+            call handle_error(gas_concentrations%set_vmr( &
+               trim(lower_case(gas_species(igas))), vol_mix_ratio_out(1:ncol,1:nlev_rad)) & 
+            )
+         end if
 
-         case DEFAULT
+      end do
 
-            ! Get mass mixing ratio from the rad_constituents interface
-            call rad_cnst_get_gas(icall, trim(gas_species(igas)), state, pbuf, &
-                                  mass_mix_ratio)
-
-            ! Convert to volume mixing ratio by multiplying by the ratio of
-            ! molecular weight of dry air to molecular weight of gas
-            vol_mix_ratio(1:ncol,1:pver) = mass_mix_ratio(1:ncol,1:pver) &
-                                         * mol_weight_air / mol_weight_gas(igas)
-
-      end select
-
-      ! Make sure we do not have any negative volume mixing ratios
-      call assert(all(vol_mix_ratio(1:ncol,1:pver) >= 0), &
-                  trim(subname) // ': invalid gas concentration for ' // &
-                  trim(gas_species(igas)))
-
-      ! Map to radiation grid
-      vol_mix_ratio_out(1:ncol,ktop:kbot) = vol_mix_ratio(1:ncol,1:pver)
-      vol_mix_ratio_out(1:ncol,1) = vol_mix_ratio(1:ncol,1)
-
-      ! Populate the RRTMGP gas concentration object with values for this gas.
-      ! NOTE: RRTMGP makes some assumptions about gas names internally, so we
-      ! need to pass the gas names as LOWER case here!
-      if (present(day_indices)) then
-
-         ! Number of daytime columns in this chunk is number of indices in
-         ! day_indices array that are greater than zero
-         nday = count(day_indices > 0)
-
-         ! Populate compressed array with just daytime values
-         call compress_day_columns(vol_mix_ratio_out(1:ncol,1:nlev_rad), &
-                                   vol_mix_ratio_day(1:nday,1:nlev_rad), &
-                                   day_indices(1:nday))
-         
-         ! Set volumn mixing ratio in gas concentration object for just daytime
-         ! columns in this chunk
-         call handle_error(gas_concentrations%set_vmr( &
-            trim(lower_case(gas_species(igas))), vol_mix_ratio_day(1:nday,1:nlev_rad)) & 
-         )
-      else
-         ! Set volumn mixing ratio in gas concentration object for just columns
-         ! in this chunk
-         call handle_error(gas_concentrations%set_vmr( &
-            trim(lower_case(gas_species(igas))), vol_mix_ratio_out(1:ncol,1:nlev_rad)) & 
-         )
-      end if
-
-   end do
-
-end subroutine set_gas_concentrations
+   end subroutine set_gas_concentrations
 
 
-logical function string_in_list(string, list)
-   character(len=*), intent(in) :: string
-   character(len=*), intent(in) :: list(:)
-   integer :: list_index
-   
-   ! Set to false initially
-   string_in_list = .false.
+   logical function string_in_list(string, list)
+      character(len=*), intent(in) :: string
+      character(len=*), intent(in) :: list(:)
+      integer :: list_index
+      
+      ! Set to false initially
+      string_in_list = .false.
 
-   ! Loop over items in list, and if we find a match then set flag to true and
-   ! exit loop
-   do list_index = 1,size(list)
-      if (trim(list(list_index)) == trim(string)) then
-         string_in_list = .true.
-         exit 
-      end if
-   end do
-end function string_in_list
+      ! Loop over items in list, and if we find a match then set flag to true and
+      ! exit loop
+      do list_index = 1,size(list)
+         if (trim(list(list_index)) == trim(string)) then
+            string_in_list = .true.
+            exit 
+         end if
+      end do
+   end function string_in_list
 
 
    subroutine expand_day_fluxes(daytime_fluxes, expanded_fluxes, day_indices)
