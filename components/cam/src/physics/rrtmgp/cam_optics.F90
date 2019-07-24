@@ -758,7 +758,7 @@ contains
       real(r8), intent(in) :: asm(pcols,pver,nswbands)
       type(ty_optical_props_2str), intent(inout) :: optics_out
 
-      integer :: ncol, icol, ilay, ibnd
+      integer :: ncol, icol, ilev, ibnd, ilev_rad
 
       ! Everyone needs a name
       character(len=*), parameter :: subroutine_name = 'set_aerosol_optics_sw'
@@ -773,11 +773,12 @@ contains
 
       ! Set values
       do ibnd = 1,nswbands
-         do ilay = 1,pver
+         do ilev = 1,pver
             do icol = 1,ncol
-               optics_out%tau(icol,ilay,ibnd) = tau(icol,ilay,ibnd)
-               optics_out%ssa(icol,ilay,ibnd) = ssa(icol,ilay,ibnd)
-               optics_out%g  (icol,ilay,ibnd) = asm(icol,ilay,ibnd)
+               ilev_rad = ilev + (nlev_rad - pver)
+               optics_out%tau(icol,ilev_rad,ibnd) = tau(icol,ilev,ibnd)
+               optics_out%ssa(icol,ilev_rad,ibnd) = ssa(icol,ilev,ibnd)
+               optics_out%g  (icol,ilev_rad,ibnd) = asm(icol,ilev,ibnd)
             end do
          end do
       end do
