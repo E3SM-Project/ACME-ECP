@@ -1458,19 +1458,6 @@ contains
                                                    aerosol_optics_sw)
                         call t_stopf('rad_aerosol_optics_sw')
 
-                        ! Save CRM scale cloud and aersol optics
-                        if (use_SPCAM) then
-                           do iz = 1,crm_nz
-                              ilev = pver - iz + 1
-                              do ic = 1,ncol
-                                 crm_cld_tau_sw(ic,ix,iy,iz,1:nswbands) = cld_tau_sw(ic,ilev,1:nswbands)
-                                 crm_liq_tau_sw(ic,ix,iy,iz,1:nswbands) = liq_tau_sw(ic,ilev,1:nswbands)
-                                 crm_ice_tau_sw(ic,ix,iy,iz,1:nswbands) = ice_tau_sw(ic,ilev,1:nswbands)
-                                 crm_aer_tau_sw(ic,ix,iy,iz,1:nswbands) = aer_tau_sw(ic,ilev,1:nswbands)
-                              end do
-                           end do
-                        end if
-
                         ! Call the shortwave radiation driver
                         call radiation_driver_sw(icall, state, pbuf, cam_in, &
                                                  coszrs, day_indices, &
@@ -1525,6 +1512,19 @@ contains
                            end do
                         end if
 
+                        ! Save CRM scale cloud and aersol optics
+                        if (use_SPCAM) then
+                           do iz = 1,crm_nz
+                              ilev = pver - iz + 1
+                              do ic = 1,ncol
+                                 crm_cld_tau_sw(ic,ix,iy,iz,1:nswbands) = cld_tau_sw(ic,ilev,1:nswbands)
+                                 crm_liq_tau_sw(ic,ix,iy,iz,1:nswbands) = liq_tau_sw(ic,ilev,1:nswbands)
+                                 crm_ice_tau_sw(ic,ix,iy,iz,1:nswbands) = ice_tau_sw(ic,ilev,1:nswbands)
+                                 crm_aer_tau_sw(ic,ix,iy,iz,1:nswbands) = aer_tau_sw(ic,ilev,1:nswbands)
+                              end do
+                           end do
+                        end if
+
                      end if  ! radiation_do('sw')
 
                      if (radiation_do('lw')) then
@@ -1539,19 +1539,6 @@ contains
                         call get_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_tau_lw)
                         call set_aerosol_optics_lw(aer_tau_lw, aerosol_optics_lw)
                         call t_stopf('rad_aerosol_optics_lw')
-
-                        ! Aggregate cloud and aersol optics means
-                        if (use_SPCAM) then
-                           do iz = 1,crm_nz
-                              ilev = pver - iz + 1
-                              do ic = 1,ncol
-                                 crm_cld_tau_lw(ic,ix,iy,iz,1:nlwbands) = cld_tau_lw(ic,ilev,1:nlwbands)
-                                 crm_liq_tau_lw(ic,ix,iy,iz,1:nlwbands) = liq_tau_lw(ic,ilev,1:nlwbands)
-                                 crm_ice_tau_lw(ic,ix,iy,iz,1:nlwbands) = ice_tau_lw(ic,ilev,1:nlwbands)
-                                 crm_aer_tau_lw(ic,ix,iy,iz,1:nlwbands) = aer_tau_lw(ic,ilev,1:nlwbands)
-                              end do
-                           end do
-                        end if
 
                         ! Call the longwave radiation driver to calculate fluxes and heating rates
                         call radiation_driver_lw(icall, state, pbuf, cam_in, is_cmip6_volc, &
@@ -1598,6 +1585,19 @@ contains
                               do ic = 1,ncol
                                  crm_qrl(ic,ix,iy,iz) = qrl_col(ic,ilev)
                                  crm_qrlc(ic,ix,iy,iz) = qrlc_col(ic,ilev)
+                              end do
+                           end do
+                        end if
+
+                        ! Aggregate cloud and aersol optics means
+                        if (use_SPCAM) then
+                           do iz = 1,crm_nz
+                              ilev = pver - iz + 1
+                              do ic = 1,ncol
+                                 crm_cld_tau_lw(ic,ix,iy,iz,1:nlwbands) = cld_tau_lw(ic,ilev,1:nlwbands)
+                                 crm_liq_tau_lw(ic,ix,iy,iz,1:nlwbands) = liq_tau_lw(ic,ilev,1:nlwbands)
+                                 crm_ice_tau_lw(ic,ix,iy,iz,1:nlwbands) = ice_tau_lw(ic,ilev,1:nlwbands)
+                                 crm_aer_tau_lw(ic,ix,iy,iz,1:nlwbands) = aer_tau_lw(ic,ilev,1:nlwbands)
                               end do
                            end do
                         end if
@@ -1814,6 +1814,8 @@ contains
       ! temperatures to make sure they are within the valid range.
       real(r8), dimension(pcols,nlev_rad) :: tmid, pmid
       real(r8), dimension(pcols,nlev_rad+1) :: pint, tint
+      real(r8), dimension(pcols,nlev_rad) :: tmid_day, pmid_day
+      real(r8), dimension(pcols,nlev_rad+1) :: pint_day, tint_day
 
       ! Loop indices
       integer :: iday, icol
@@ -1844,11 +1846,10 @@ contains
       ! shortwave and longwave, because we need to compress to just the daytime
       ! columns for the shortwave, but the longwave uses all columns
       call set_rad_state(state, cam_in, &
-                         tmid(1:nday,1:nlev_rad), & 
-                         tint(1:nday,1:nlev_rad+1), &
-                         pmid(1:nday,1:nlev_rad), &
-                         pint(1:nday,1:nlev_rad+1), &
-                         col_indices=day_indices(1:nday))
+                         tmid(1:ncol,1:nlev_rad), & 
+                         tint(1:ncol,1:nlev_rad+1), &
+                         pmid(1:ncol,1:nlev_rad), &
+                         pint(1:ncol,1:nlev_rad+1))
 
       ! Get albedo. This uses CAM routines internally and just provides a
       ! wrapper to improve readability of the code here.
@@ -1857,13 +1858,6 @@ contains
       ! Send albedos to history buffer (useful for debugging)
       call outfld('SW_ALBEDO_DIR', transpose(albedo_direct(1:nswbands,1:ncol)), ncol, state%lchnk)
       call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse(1:nswbands,1:ncol)), ncol, state%lchnk)
-
-      ! Compress to daytime-only arrays
-      do iband = 1,nswbands
-         call compress_day_columns(albedo_direct(iband,1:ncol), albedo_direct_day(iband,1:nday), day_indices(1:nday))
-         call compress_day_columns(albedo_diffuse(iband,1:ncol), albedo_diffuse_day(iband,1:nday), day_indices(1:nday))
-      end do
-      call compress_day_columns(coszrs(1:ncol), coszrs_day(1:nday), day_indices(1:nday))
 
       ! Allocate shortwave fluxes (allsky and clearsky)
       ! TODO: why do I need to provide my own routines to do this? Why is 
@@ -1875,7 +1869,16 @@ contains
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_allsky_day, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday, nlev_rad+1, nswbands, fluxes_clrsky_day, do_direct=.true.)
 
-      ! Compress optical properties to day-time only
+      ! Set gas concentrations (I believe the gases may change for
+      ! different values of icall, which is why we do this within the
+      ! loop)
+      call t_startf('rad_gas_concentrations_sw')
+      call set_gas_concentrations(icall, state, pbuf, &
+                                  gas_concentrations, &
+                                  day_indices=day_indices(1:nday))
+      call t_stopf('rad_gas_concentrations_sw')
+
+      ! Compress arrays to day-time only
       call handle_error(cloud_optics_sw_day%alloc_2str(nday, nlev_rad, k_dist_sw, name='sw cloud optics'))
       call handle_error(aerosol_optics_sw_day%alloc_2str(nday, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), name='sw aerosol optics'))
       do iday = 1,nday
@@ -1886,24 +1889,24 @@ contains
          aerosol_optics_sw_day%tau(iday,:,:) = aerosol_optics_sw%tau(icol,:,:)
          aerosol_optics_sw_day%ssa(iday,:,:) = aerosol_optics_sw%ssa(icol,:,:)
          aerosol_optics_sw_day%g  (iday,:,:) = aerosol_optics_sw%g  (icol,:,:)
-      end do
 
-      ! Set gas concentrations (I believe the gases may change for
-      ! different values of icall, which is why we do this within the
-      ! loop)
-      call t_startf('rad_gas_concentrations_sw')
-      call set_gas_concentrations(icall, state, pbuf, &
-                                  gas_concentrations, &
-                                  day_indices=day_indices(1:nday))
-      call t_stopf('rad_gas_concentrations_sw')
+         tmid_day(iday,:) = tmid(icol,:)
+         tint_day(iday,:) = tint(icol,:)
+         pmid_day(iday,:) = pmid(icol,:)
+         pint_day(iday,:) = pint(icol,:)
+
+         albedo_direct_day(:,iday) = albedo_direct(:,icol)
+         albedo_diffuse_day(:,iday) = albedo_diffuse(:,icol)
+         coszrs_day(iday) = coszrs(icol)
+      end do
 
       ! Do shortwave radiative transfer calculations
       call t_startf('rad_calculations_sw')
       call handle_error(rte_sw( &
          k_dist_sw, gas_concentrations, &
-         pmid(1:nday,1:nlev_rad), &
-         tmid(1:nday,1:nlev_rad), &
-         pint(1:nday,1:nlev_rad+1), &
+         pmid_day(1:nday,1:nlev_rad), &
+         tmid_day(1:nday,1:nlev_rad), &
+         pint_day(1:nday,1:nlev_rad+1), &
          coszrs_day(1:nday), &
          albedo_direct_day(1:nswbands,1:nday), &
          albedo_diffuse_day(1:nswbands,1:nday), &
