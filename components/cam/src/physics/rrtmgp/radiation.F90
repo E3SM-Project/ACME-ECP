@@ -1383,11 +1383,14 @@ contains
          end if
          call t_stopf('rad_allocate_memory')
 
-         ! calculate effective radius - moved outside of ii,jj loops for 1-moment
-         ! microphysics
+         ! calculate effective radius for 1-moment microphysics
          call t_startf('rad_effective_radius')
          if (use_SPCAM .and. (trim(SPCAM_microp_scheme) .eq. 'sam1mom')) then
-            call cldefr(state%lchnk, state%ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh)
+            call cldefr(                                      &
+               state%lchnk, state%ncol, landfrac, state%t   , &
+               rel        , rei       , state%ps, state%pmid, &
+               landm      , icefrac   , snowh                 &
+            )
          end if
          call t_stopf('rad_effective_radius')
 
@@ -1428,14 +1431,19 @@ contains
                               ! NOTE: Only qv, t used by gas optics
                               state%q(ic,ilev,ixcldliq) = crm_qc(ic,ix,iy,iz)
                               state%q(ic,ilev,ixcldice) = crm_qi(ic,ix,iy,iz)
-                              state%q(ic,ilev,ixwatvap) = max(1.e-9_r8, crm_qv(ic,ix,iy,iz))  ! DEBUG
+                              state%q(ic,ilev,ixwatvap) = crm_qv(ic,ix,iy,iz)
+                              !state%q(ic,ilev,ixwatvap) = max(1.e-9_r8, crm_qv(ic,ix,iy,iz))  ! DEBUG
                               state%t(ic,ilev)          = crm_t (ic,ix,iy,iz)
 
                               ! In-cloud liquid and ice water paths (used by cloud optics)
                               cld(ic,ilev) = crm_cld(ic,ix,iy,iz)
                               if (cld(ic,ilev) > 0) then
-                                 iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
-                                 iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz) * state%pdel(ic,ilev) / gravit / max(0.01_r8, cld(ic,ilev))
+                                 iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz)          &
+                                                * state%pdel(ic,ilev) / gravit &
+                                                / max(0.01_r8, cld(ic,ilev))
+                                 iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz)          &
+                                                * state%pdel(ic,ilev) / gravit &
+                                                / max(0.01_r8, cld(ic,ilev))
                               else
                                  iclwp(ic,ilev) = 0
                                  iciwp(ic,ilev) = 0
@@ -1453,7 +1461,7 @@ contains
                               qaerwat (ic,ilev,1:ntot_amode) =  crm_qaerwat(ic,ix,iy,iz,1:ntot_amode)
                               dgnumwet(ic,ilev,1:ntot_amode) = crm_dgnumwet(ic,ix,iy,iz,1:ntot_amode)
 #endif
-                              ! TODO: is dei used anywhere?
+                              ! DEI is used for 2-moment optics
                               dei(1:ncol,1:pver) = 2._r8 * rei(1:ncol,1:pver)
                            end do  ! ic = 1,ncol
                         end do  ! iz = 1,crm_nz
@@ -1463,11 +1471,12 @@ contains
                      ! Setup state arrays, which may contain an extra level
                      ! above model top to handle heating above the model
                      call t_startf('rad_state')
-                     call set_rad_state(state, cam_in, &
-                                        tmid(1:ncol,1:nlev_rad), & 
-                                        tint(1:ncol,1:nlev_rad+1), &
-                                        pmid(1:ncol,1:nlev_rad), &
-                                        pint(1:ncol,1:nlev_rad+1))
+                     call set_rad_state(                                    &
+                        state                  , cam_in                   , &
+                        tmid(1:ncol,1:nlev_rad), tint(1:ncol,1:nlev_rad+1), & 
+                        pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1)  &
+                     )
+                        
                      call t_stopf('rad_state')
 
                      ! Get gas concentrations (in volume mixing ratio)
@@ -1505,10 +1514,6 @@ contains
                                                  fluxes_sw_allsky_col, fluxes_sw_clrsky_col)
                         call t_stopf('rad_fluxes_sw')
                        
-                        ! DEBUG!!!
-                        !call reset_fluxes(fluxes_sw_allsky_col)
-                        !call reset_fluxes(fluxes_sw_clrsky_col)
-                      
                         ! Calculate heating rates
                         call t_startf('rad_heating_rate_sw')
                         call calculate_heating_rate(fluxes_sw_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
@@ -1590,10 +1595,6 @@ contains
                                                  fluxes_lw_allsky_col, fluxes_lw_clrsky_col)
                         call t_stopf('rad_fluxes_lw')
 
-                        ! DEBUG!!!
-                        !call reset_fluxes(fluxes_lw_allsky_col)
-                        !call reset_fluxes(fluxes_lw_clrsky_col)
-                      
                         ! Calculate heating rates
                         call calculate_heating_rate(fluxes_lw_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
                                                     fluxes_lw_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
