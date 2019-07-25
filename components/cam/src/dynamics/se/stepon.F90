@@ -405,6 +405,26 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    call t_stopf('stepon_bndry_exch')
 
 
+   ! copy current dyn state + phys tend for mapping tendencies back to FV phys grid 
+   if (par%dynproc) then
+      if (fv_nphys > 0) then
+         do ie = 1,nelemd
+            call get_temperature(dyn_in%elem(ie),temperature,hvcoord,tl_f)
+            dyn_out%elem(ie)%state%T_in    = temperature & 
+                                            +dyn_in%elem(ie)%derived%fT(:,:,:)*dtime
+            dyn_out%elem(ie)%state%V_in    = dyn_in%elem(ie)%state%v(:,:,:,:,TimeLevel%n0) &
+                                            +dyn_in%elem(ie)%derived%fM(:,:,:,:)*dtime
+            if ( (ftype==2) .or. (ftype==4) ) then
+              dyn_out%elem(ie)%state%Q_in  = dyn_in%elem(ie)%state%q(:,:,:,:)
+            else
+              dyn_out%elem(ie)%state%Q_in  = dyn_in%elem(ie)%state%q(:,:,:,:) &
+                                            +dyn_in%elem(ie)%derived%fQ(:,:,:,:)*dtime
+            end if
+            dyn_out%elem(ie)%state%dp_in   = dyn_in%elem(ie)%state%dp3d(:,:,:,TimeLevel%n0)
+         end do
+      end if ! fv_nphys > 0
+   end if ! par%dynproc
+
 
    ! Most output is done by physics.  We pass to the physics state variables
    ! at timelevel "tl_f".  
@@ -457,9 +477,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
       call outfld('DYN_U'     ,dyn_in%elem(ie)%state%V(:,:,1,:,tl_f)  ,npsq,ie)
       call outfld('DYN_V'     ,dyn_in%elem(ie)%state%V(:,:,2,:,tl_f)  ,npsq,ie)
       call outfld('DYN_OMEGA' ,dyn_in%elem(ie)%derived%omega_p(:,:,:) ,npsq,ie)
-      call outfld('DYN_PS'    ,dyn_in%elem(ie)%state%ps_v(:,:,tl_f)   ,npsq,ie)
-   end do
-   
+   end do   
    
    
    end subroutine stepon_run2

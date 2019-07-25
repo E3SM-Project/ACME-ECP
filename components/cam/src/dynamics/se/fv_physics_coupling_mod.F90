@@ -63,8 +63,7 @@ contains
       !-------------------------------------------------------------------------
       if (ftype==2.or.ftype==4) then
         do ilyr = 1,pver
-          dp_gll(:,:) = ( hvcoord%hyai(ilyr+1)-hvcoord%hyai(ilyr) )*hvcoord%ps0 + &
-                        ( hvcoord%hybi(ilyr+1)-hvcoord%hybi(ilyr) )*elem(ie)%state%ps_v(:,:,tl_f)
+          dp_gll(:,:) = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
           inv_dp_fvm = 1.0 / subcell_integration(dp_gll,np,fv_nphys,elem(ie)%metdet(:,:))
           do m = 1,pcnst
             qo_phys(:,ilyr,m)  = RESHAPE( subcell_integration(              &
@@ -210,6 +209,7 @@ contains
     use derivative_mod,     only: subcell_integration
     use dyn_comp,           only: TimeLevel, hvcoord
     use element_ops,        only: get_temperature
+    use time_manager,       only: is_first_step
     implicit none
     !---------------------------------------------------------------------------
     ! interface arguments
@@ -228,7 +228,12 @@ contains
     real(r8), dimension(np,np)             :: tmp_area      ! area for weighting
     real(r8), dimension(fv_nphys,fv_nphys) :: inv_area      ! inverse area for weighting
     real(r8), dimension(np,np)             :: dp_gll        ! pressure thickness on GLL grid
+    real(r8), dimension(np,np)             :: dp_gll_in     ! pressure thickness on GLL grid
     real(r8), dimension(fv_nphys,fv_nphys) :: inv_dp_fvm    ! inverted pressure thickness on FV grid
+    real(r8), dimension(fv_nphys,fv_nphys) :: inv_dp_fvm_in ! inverted pressure thickness on FV grid
+    real(r8), dimension(npsq)              :: T_tmp_in      ! temp array to hold previous dyn state T 
+    real(r8), dimension(npsq,pcnst)        :: Q_tmp_in      ! temp array to hold previous dyn state q 
+    real(r8), dimension(npsq,2)            :: uv_tmp_in     ! temp array to hold previous dyn state uv
     !---------------------------------------------------------------------------
     ! Integrate dynamics field with appropriate weighting 
     ! to get average state in each physics cell
@@ -254,11 +259,8 @@ contains
 
       do ilyr = 1,pver
 
-        dp_gll(:,:) = ( hvcoord%hyai(ilyr+1)-hvcoord%hyai(ilyr) )*hvcoord%ps0 + &
-                      ( hvcoord%hybi(ilyr+1)-hvcoord%hybi(ilyr) )*elem(ie)%state%ps_v(:,:,tl_f)
-      
+        dp_gll(:,:) = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
         inv_dp_fvm = 1.0 / subcell_integration(dp_gll,np,fv_nphys,elem(ie)%metdet(:,:))
-
         
         T_tmp(:ncol,ilyr,ie)      = RESHAPE( subcell_integration(             &
                                     temperature(:,:,ilyr)*dp_gll,             &
@@ -281,6 +283,41 @@ contains
                                     np, fv_nphys, elem(ie)%metdet(:,:) )      &
                                     *inv_dp_fvm, (/ncol/) )
         end do
+
+        !-----------------------------------------------------------------------
+        ! Map previous dynamics state to physgrid for CRM forcing
+        !-----------------------------------------------------------------------
+        if (.not.is_first_step()) then
+
+          dp_gll_in(:,:) = elem(ie)%state%dp_in(:,:,ilyr)
+          inv_dp_fvm_in = 1.0 / subcell_integration(dp_gll_in,np,fv_nphys,elem(ie)%metdet(:,:))
+
+          T_tmp_in(:ncol)         = RESHAPE( subcell_integration(             &
+                                    elem(ie)%state%T_in(:,:,ilyr)*dp_gll_in,  &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )      &
+                                    *inv_dp_fvm_in, (/ncol/) )
+
+          do m = 1,pcnst
+            Q_tmp_in(:ncol,m)     = RESHAPE( subcell_integration(             &
+                                    elem(ie)%state%Q_in(:,:,ilyr,m)*dp_gll,   &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )      &
+                                    *inv_dp_fvm_in, (/ncol/) )
+          end do
+
+          do m = 1,2
+            uv_tmp_in(:ncol,m)    = RESHAPE( subcell_integration(             &
+                                    elem(ie)%state%V_in(:,:,m,ilyr),          &
+                                    np, fv_nphys, elem(ie)%metdet(:,:) )      &
+                                    *inv_area , (/ncol/) )
+          end do
+
+          T_tmp (:ncol,ilyr,ie)   =  T_tmp(:ncol,ilyr,ie)   -  T_tmp_in(:ncol)
+          Q_tmp (:ncol,ilyr,:,ie) =  Q_tmp(:ncol,ilyr,:,ie) -  Q_tmp_in(:ncol,:)
+          uv_tmp(:ncol,:,ilyr,ie) = uv_tmp(:ncol,:,ilyr,ie) - uv_tmp_in(:ncol,:)
+
+        end if ! not is_first_step
+        !-----------------------------------------------------------------------
+        !-----------------------------------------------------------------------
 
       end do ! ilyr
     end do ! ie
