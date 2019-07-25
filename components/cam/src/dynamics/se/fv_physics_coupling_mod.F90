@@ -311,6 +311,7 @@ contains
                                     *inv_area , (/ncol/) )
           end do
 
+          ! Calculate tendency from mapped states
           T_tmp (:ncol,ilyr,ie)   =  T_tmp(:ncol,ilyr,ie)   -  T_tmp_in(:ncol)
           Q_tmp (:ncol,ilyr,:,ie) =  Q_tmp(:ncol,ilyr,:,ie) -  Q_tmp_in(:ncol,:)
           uv_tmp(:ncol,:,ilyr,ie) = uv_tmp(:ncol,:,ilyr,ie) - uv_tmp_in(:ncol,:)
