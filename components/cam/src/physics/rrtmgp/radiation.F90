@@ -1470,14 +1470,13 @@ contains
 
                      ! Setup state arrays, which may contain an extra level
                      ! above model top to handle heating above the model
-                     call t_startf('rad_state')
+                     call t_startf('rad_set_state')
                      call set_rad_state(                                    &
                         state                  , cam_in                   , &
                         tmid(1:ncol,1:nlev_rad), tint(1:ncol,1:nlev_rad+1), & 
                         pmid(1:ncol,1:nlev_rad), pint(1:ncol,1:nlev_rad+1)  &
                      )
-                        
-                     call t_stopf('rad_state')
+                     call t_stopf('rad_set_state')
 
                      ! Get gas concentrations (in volume mixing ratio)
                      call t_startf('rad_gas_concentrations')
@@ -1527,6 +1526,7 @@ contains
                         call t_stopf('rad_heating_rate_sw')
 
                         ! Aggregate means
+                        call t_startf('rad_aggregate_means_sw')
                         qrs = qrs + qrs_col * area_factor
                         qrsc = qrsc + qrsc_col * area_factor
                         fluxes_sw_allsky%flux_up = fluxes_sw_allsky%flux_up + fluxes_sw_allsky_col%flux_up * area_factor
@@ -1543,6 +1543,7 @@ contains
                         fluxes_sw_clrsky%bnd_flux_dn = fluxes_sw_clrsky%bnd_flux_dn + fluxes_sw_clrsky_col%bnd_flux_dn * area_factor
                         fluxes_sw_clrsky%bnd_flux_dn_dir = fluxes_sw_clrsky%bnd_flux_dn_dir + fluxes_sw_clrsky_col%bnd_flux_dn_dir * area_factor
                         fluxes_sw_clrsky%bnd_flux_net = fluxes_sw_clrsky%bnd_flux_net + fluxes_sw_clrsky_col%bnd_flux_net * area_factor
+                        call t_stopf('rad_aggregate_means_sw')
 
                         ! Send fluxes to history buffer
                         if (last_column) call output_fluxes_sw(icall, state, fluxes_sw_allsky, fluxes_sw_clrsky, qrs,  qrsc)
@@ -1596,6 +1597,7 @@ contains
                         call t_stopf('rad_fluxes_lw')
 
                         ! Calculate heating rates
+                        call t_startf('rad_heating_rate_lw')
                         call calculate_heating_rate(fluxes_lw_allsky_col%flux_up(1:ncol,ktop:kbot+1), &
                                                     fluxes_lw_allsky_col%flux_dn(1:ncol,ktop:kbot+1), &
                                                     state%pint(1:ncol,1:pverp), &
@@ -1604,8 +1606,10 @@ contains
                                                     fluxes_lw_clrsky_col%flux_dn(1:ncol,ktop:kbot+1), &
                                                     state%pint(1:ncol,1:pverp), &
                                                     qrlc_col(1:ncol,1:pver))
+                        call t_stopf('rad_heating_rate_lw')
 
                         ! Aggregate means
+                        call t_startf('rad_aggregate_means_lw')
                         qrl = qrl + qrl_col * area_factor
                         qrlc = qrlc + qrlc_col * area_factor
                         fluxes_lw_allsky%flux_up = fluxes_lw_allsky%flux_up + fluxes_lw_allsky_col%flux_up * area_factor
@@ -1620,6 +1624,7 @@ contains
                         fluxes_lw_clrsky%bnd_flux_up = fluxes_lw_clrsky%bnd_flux_up + fluxes_lw_clrsky_col%bnd_flux_up * area_factor
                         fluxes_lw_clrsky%bnd_flux_dn = fluxes_lw_clrsky%bnd_flux_dn + fluxes_lw_clrsky_col%bnd_flux_dn * area_factor
                         fluxes_lw_clrsky%bnd_flux_net = fluxes_lw_clrsky%bnd_flux_net + fluxes_lw_clrsky_col%bnd_flux_net * area_factor
+                        call t_stopf('rad_aggregate_means_lw')
 
                         ! Send fluxes to history buffer
                         if (last_column) call output_fluxes_lw(icall, state, fluxes_lw_allsky, fluxes_lw_clrsky, qrl, qrlc)
@@ -1759,6 +1764,7 @@ contains
 
       ! Update net CRM heating tendency, IF doing radiation this timestep
       if (use_SPCAM) then
+         call t_startf('rad_update_crm_heating')
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRAD'), crm_qrad)
          if (radiation_do('sw') .or. radiation_do('lw')) then
             crm_qrad = 0
@@ -1774,6 +1780,7 @@ contains
             end do
          end if
          call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
+         call t_stopf('rad_update_crm_heating')
       end if  ! use_SPCAM
 
    end subroutine radiation_tend
