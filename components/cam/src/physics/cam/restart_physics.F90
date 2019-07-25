@@ -3,7 +3,7 @@ module restart_physics
   use shr_kind_mod,       only: r8 => shr_kind_r8
   use spmd_utils,         only: masterproc
   use co2_cycle,          only: co2_transport
-  use constituents,       only: pcnst
+  use constituents,       only: pcnst, cnst_name
   use radae,              only: abstot_3d, absnxt_3d, emstot_3d, initialize_radbuffer, ntoplw
   use comsrf,             only: sgh, sgh30, landm, trefmxav, trefmnav, initialize_comsrf 
   use ioFileMod
@@ -19,6 +19,8 @@ module restart_physics
                                 pio_put_var, pio_get_var
   use cospsimulator_intr, only: docosp
   use radiation,          only: cosp_cnt_init, cosp_cnt, rad_randn_seedrst, kiss_seed_num
+  use physics_types,      only: physics_state
+  use dyn_grid,           only: fv_nphys
 
   implicit none
   private
@@ -51,6 +53,8 @@ module restart_physics
     type(var_desc_t), allocatable :: abstot_desc(:)
 
     type(var_desc_t) :: cospcnt_desc, rad_randn_seedrst_desc
+
+    type(var_desc_t) :: T_desc, U_desc, V_desc, Q_desc(pcnst)
 
   CONTAINS
     subroutine init_restart_physics ( File, pbuf2d)
@@ -200,16 +204,27 @@ module restart_physics
        dimids(hdimcnt+1) = kiss_seed_dim
        ierr = pio_def_var(File, 'rad_randn_seedrst', pio_int, dimids(1:hdimcnt+1), rad_randn_seedrst_desc)
     endif
+
+    ! phys_state variables are needed for mapping to FV physics grid on restart
+    if (fv_nphys>0) then
+      dimids(hdimcnt+1) = pver_id
+      ierr = pio_def_var(File, 'phys_T', pio_double, dimids(1:hdimcnt+1), T_desc)
+      ierr = pio_def_var(File, 'phys_U', pio_double, dimids(1:hdimcnt+1), U_desc)
+      ierr = pio_def_var(File, 'phys_V', pio_double, dimids(1:hdimcnt+1), V_desc)
+      do i=1,pcnst
+        ierr = pio_def_var(File,'phys_'//trim(cnst_name(i)), pio_double, dimids(1:hdimcnt+1), Q_desc(i))
+      end do
+    end if ! fv_nphys>0
       
   end subroutine init_restart_physics
 
-  subroutine write_restart_physics (File, cam_in, cam_out, pbuf2d)
+  subroutine write_restart_physics (File, cam_in, cam_out, pbuf2d, phys_state)
 
       !-----------------------------------------------------------------------
       use physics_buffer,      only: physics_buffer_desc, pbuf_write_restart
       use phys_grid,           only: phys_decomp
       
-      use ppgrid,              only: begchunk, endchunk, pcols, pverp
+      use ppgrid,              only: begchunk, endchunk, pcols, pverp, pver
       use chemistry,           only: chem_write_restart
       use prescribed_ozone,    only: write_prescribed_ozone_restart
       use prescribed_ghg,      only: write_prescribed_ghg_restart
@@ -231,13 +246,15 @@ module restart_physics
       type(cam_in_t),    intent(in)    :: cam_in(begchunk:endchunk)
       type(cam_out_t),   intent(in)    :: cam_out(begchunk:endchunk)
       type(physics_buffer_desc), pointer        :: pbuf2d(:,:)
+      type(physics_state), pointer     :: phys_state(:)
       !
       ! Local workspace
       !
       type(io_desc_t), pointer :: iodesc
       real(r8):: tmpfield(pcols, begchunk:endchunk)
+      real(r8):: tmpfield3d(pcols, pver, begchunk:endchunk)
       integer :: tmp_seedrst(pcols, kiss_seed_num, begchunk:endchunk)
-      integer :: i, m, iseed, icol          ! loop index
+      integer :: i, m, iseed, icol, k          ! loop index
       integer :: ncol          ! number of vertical columns
       integer :: ierr
       integer :: physgrid
@@ -479,12 +496,64 @@ module restart_physics
          call cam_grid_write_dist_array(File, physgrid, dims(1:3),             &
               gdims(1:nhdims+1), tmp_seedrst, rad_randn_seedrst_desc)
       endif
+
+    !---------------------------------------------------------------------------
+    ! phys_state variables are needed for mapping to FV physics grid on restart
+    !---------------------------------------------------------------------------
+    if (fv_nphys>0) then
+
+      dims(1) = pcols
+      dims(2) = pver
+      dims(3) = endchunk - begchunk + 1
+      gdims(nhdims+1) = pver
+
+      ! write U
+      do i = begchunk, endchunk
+        ncol = cam_in(i)%ncol
+        do k = 1,pver
+          tmpfield3d(:ncol,k,i) = phys_state(i)%u(:ncol,k)
+        end do
+      end do
+      call cam_grid_write_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3d,U_desc)
+
+      ! write V
+      do i = begchunk, endchunk
+        ncol = cam_in(i)%ncol
+        do k = 1,pver
+          tmpfield3d(:ncol,k,i) = phys_state(i)%v(:ncol,k)
+        end do
+      end do
+      call cam_grid_write_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3d,V_desc)
+
+      ! write T
+      do i = begchunk, endchunk
+        ncol = cam_in(i)%ncol
+        do k = 1,pver
+          tmpfield3d(:ncol,k,i) = phys_state(i)%t(:ncol,k)
+        end do
+      end do
+      call cam_grid_write_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3d,T_desc)
+
+      ! write Q
+      do m = 1,pcnst
+        do i = begchunk, endchunk
+          ncol = cam_in(i)%ncol
+          do k = 1,pver
+            tmpfield3d(:ncol,k,i) = phys_state(i)%q(:ncol,k,m)
+          end do
+        end do
+        call cam_grid_write_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3d,Q_desc(m))
+      end do ! m
+
+    end if ! fv_nphys>0
+    !---------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
       
     end subroutine write_restart_physics
 
 !#######################################################################
 
-    subroutine read_restart_physics(File, cam_in, cam_out, pbuf2d)
+    subroutine read_restart_physics(File, cam_in, cam_out, pbuf2d, phys_state)
 
      !-----------------------------------------------------------------------
      use physics_buffer,      only: physics_buffer_desc, pbuf_read_restart
@@ -509,11 +578,13 @@ module restart_physics
      type(cam_in_t),            pointer :: cam_in(:)
      type(cam_out_t),           pointer :: cam_out(:)
      type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+     type(physics_state), pointer       :: phys_state(:)
      !
      ! Local workspace
      !
      real(r8), allocatable :: tmpfield2(:,:)
-     integer :: i, c, m           ! loop index
+     real(r8), allocatable :: tmpfield3(:,:,:)
+     integer :: i, c, m, k       ! loop index
      integer :: ierr             ! I/O status
      type(io_desc_t), pointer :: iodesc
      type(var_desc_t)         :: vardesc
@@ -832,6 +903,71 @@ module restart_physics
            call endrun()
         endif
      endif
+
+      !---------------------------------------------------------------------------
+      ! phys_state variables are needed for mapping to FV physics grid on restart
+      !---------------------------------------------------------------------------
+      if (fv_nphys>0) then
+
+         dims(1) = pcols
+         dims(2) = pver
+         dims(3) = csize
+         gdims(nhdims+1) = dims(2)
+
+         allocate(tmpfield3(pcols, pver, begchunk:endchunk))
+         tmpfield3 = fillvalue
+
+         ! read U
+         ierr = pio_inq_varid(File, 'phys_U', vardesc)
+         call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
+         do c = begchunk, endchunk
+            do k = 1,pver
+               do i = 1,pcols
+                  phys_state(c)%u(i,k) = tmpfield3(i,k,c)
+               end do
+            end do
+         end do
+
+         ! read V
+         ierr = pio_inq_varid(File, 'phys_V', vardesc)
+         call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
+         do c = begchunk, endchunk
+            do k = 1,pver
+               do i = 1,pcols
+                  phys_state(c)%v(i,k) = tmpfield3(i,k,c)
+               end do
+            end do
+         end do
+
+         ! read T
+         ierr = pio_inq_varid(File, 'phys_T', vardesc)
+         call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
+         do c = begchunk, endchunk
+            do k = 1,pver
+               do i = 1,pcols
+                  phys_state(c)%t(i,k) = tmpfield3(i,k,c)
+               end do
+            end do
+         end do
+
+         ! read Q
+         do m = 1,pcnst
+            ierr = pio_inq_varid(File, 'phys_'//trim(cnst_name(m)), vardesc)
+            call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
+            do c = begchunk, endchunk
+               do k = 1,pver
+                  do i = 1,pcols
+                     phys_state(c)%q(i,k,m) = tmpfield3(i,k,c)
+                  end do
+               end do
+            end do
+         end do ! m
+
+         deallocate(tmpfield3)
+
+      end if ! fv_nphys>0
+      !---------------------------------------------------------------------------
+      !---------------------------------------------------------------------------
 
    end subroutine read_restart_physics
 

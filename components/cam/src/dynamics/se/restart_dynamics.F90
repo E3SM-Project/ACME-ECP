@@ -6,6 +6,7 @@ module restart_dynamics
   use spmd_utils,  only : iam
   use cam_logfile, only : iulog
   use control_mod, only : theta_hydrostatic_mode
+  use dyn_grid,    only : fv_nphys
 
   implicit none
 
@@ -15,6 +16,9 @@ module restart_dynamics
   type(var_desc_t) :: FQpsdesc, omegadesc
 
   type(var_desc_t), pointer :: qdesc(:), qdesc_dp(:)
+
+  type(var_desc_t) :: T_in_desc, U_in_desc, V_in_desc, dp_in_desc
+  type(var_desc_t), pointer :: Q_in_desc(:)
 
   integer :: ncol_dimid,  nlev_dimid, nlevp_dimid
   public :: init_restart_dynamics
@@ -81,6 +85,18 @@ CONTAINS
        ierr = PIO_Def_Var(File,cnst_name(i), pio_double, (/ncol_dimid, nlev_dimid, timelevels_dimid/), Qdesc(i))
        ierr = PIO_Def_Var(File,"dp"//cnst_name(i), pio_double, (/ncol_dimid, nlev_dimid, timelevels_dimid/), Qdesc_dp(i))
     end do
+
+    ! Variables needed for mapping dyn tendencies to FV physics grid
+    if (fv_nphys>0) then
+      allocate( Q_in_desc(qsize_d) )
+      ierr = PIO_Def_Var(File, 'dyn_T_in', pio_double, (/ncol_dimid, nlev_dimid/), T_in_desc)
+      ierr = PIO_Def_Var(File, 'dyn_U_in', pio_double, (/ncol_dimid, nlev_dimid/), U_in_desc)
+      ierr = PIO_Def_Var(File, 'dyn_V_in', pio_double, (/ncol_dimid, nlev_dimid/), V_in_desc)
+      ierr = PIO_Def_Var(File, 'dyn_dp_in',pio_double, (/ncol_dimid, nlev_dimid/), dp_in_desc)
+      do i=1,qsize_d
+        ierr = PIO_Def_Var(File,'dyn_'//trim(cnst_name(i))//'_in', pio_double, (/ncol_dimid, nlev_dimid/), Q_in_desc(i))
+      end do
+    end if ! fv_nphys>0
 
   end subroutine init_restart_dynamics
 
@@ -317,6 +333,87 @@ CONTAINS
 
     end do
 
+    !---------------------------------------------------------------------------
+    ! Variables needed for mapping dyn tendencies to FV physics grid
+    !---------------------------------------------------------------------------
+    if (fv_nphys>0) then
+
+      ! Write U_in
+      !$omp parallel do private(ie, k, j, i)
+      do ie=1,nelemd
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              var3d(i,j,ie,k) = elem(ie)%state%V_in(i,j,1,k)
+            end do
+          end do
+        end do
+      end do
+      call PIO_Setframe(File,U_in_desc, t)
+      call PIO_Write_Darray(File,U_in_desc,iodesc3d,var3d,ierr)
+
+      ! Write V_in
+      !$omp parallel do private(ie, k, j, i)
+      do ie=1,nelemd
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              var3d(i,j,ie,k) = elem(ie)%state%V_in(i,j,2,k)
+            end do
+          end do
+        end do
+      end do
+      call PIO_Setframe(File,V_in_desc, t)
+      call PIO_Write_Darray(File,V_in_desc,iodesc3d,var3d,ierr)
+
+      ! Write T_in
+      !$omp parallel do private(ie, k, j, i)
+      do ie=1,nelemd
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              var3d(i,j,ie,k) = elem(ie)%state%T_in(i,j,k)
+            end do
+          end do
+        end do
+      end do
+      call PIO_Setframe(File,T_in_desc, t)
+      call PIO_Write_Darray(File,T_in_desc,iodesc3d,var3d,ierr)
+
+      ! Write dp_in
+      !$omp parallel do private(ie, k, j, i)
+      do ie=1,nelemd
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              var3d(i,j,ie,k) = elem(ie)%state%dp_in(i,j,k)
+            end do
+          end do
+        end do
+      end do
+      call PIO_Setframe(File,dp_in_desc, t)
+      call PIO_Write_Darray(File,dp_in_desc,iodesc3d,var3d,ierr)
+
+      do q=1,qsize_d
+        !$omp parallel do private(ie, k, j, i)
+        do ie=1,nelemd
+          do k=1,nlev
+            do j=1,np
+              do i=1,np
+                var3d(i,j,ie,k) = elem(ie)%state%Q_in(i,j,k,q)
+              end do
+            end do
+          end do
+        end do
+        call PIO_Setframe(File,Q_in_desc(q), t)
+        call PIO_Write_Darray(File,Q_in_desc(q),iodesc3d,var3d,ierr)
+      end do
+      deallocate(Q_in_desc)
+
+    end if ! fv_nphys>0
+    !---------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
+
 
     deallocate(var3d)
     deallocate(var2d)
@@ -503,6 +600,16 @@ CONTAINS
        ierr = PIO_Inq_varid(File, "dp"//cnst_name(q) ,Qdesc_dp(q))
     end do
 
+    ! Variables for mapping tendencies to physics grid
+    ierr = PIO_Inq_varid(File,'dyn_U_in', U_in_desc)
+    ierr = PIO_Inq_varid(File,'dyn_V_in', V_in_desc)
+    ierr = PIO_Inq_varid(File,'dyn_T_in', T_in_desc)
+    ierr = PIO_Inq_varid(File,'dyn_dp_in',dp_in_desc)
+    allocate( Q_in_desc(qsize_d) )
+    do q=1,qsize_d
+       ierr = PIO_Inq_varid(File, 'dyn_'//trim(cnst_name(q))//'_in' ,Q_in_desc(q))
+    end do
+
     call pio_setframe(File,phisdesc, int(1,kind=pio_offset_kind))
 
     call pio_read_darray(File, phisdesc, iodesc2d, var2d, ierr)
@@ -666,6 +773,93 @@ CONTAINS
        end do
 
     end do
+
+    !---------------------------------------------------------------------------
+    ! Variables needed for mapping dyn tendencies to FV physics grid
+    !---------------------------------------------------------------------------
+    if (fv_nphys>0) then
+
+      ! Read U_in
+      call PIO_Setframe(File,U_in_desc, t)
+      call PIO_Read_Darray(File, U_in_desc, iodesc3d, var3d, ierr)
+      cnt=0
+      do k=1,nlev
+        do ie=1,nelemd
+          do j=1,np
+            do i=1,np
+              cnt=cnt+1
+              elem(ie)%state%V_in(i,j,1,k) = var3d(cnt)
+            end do
+          end do
+        end do
+      end do
+      
+      ! Read V_in
+      call PIO_Setframe(File,V_in_desc, t)
+      call PIO_Read_Darray(File, V_in_desc, iodesc3d, var3d, ierr)
+      cnt=0
+      do k=1,nlev
+        do ie=1,nelemd
+          do j=1,np
+            do i=1,np
+              cnt=cnt+1
+              elem(ie)%state%V_in(i,j,2,k) = var3d(cnt)
+            end do
+          end do
+        end do
+      end do
+      
+      ! Read T_in
+      call PIO_Setframe(File,T_in_desc, t)
+      call PIO_Read_Darray(File, T_in_desc, iodesc3d, var3d, ierr)
+      cnt=0
+      do k=1,nlev
+        do ie=1,nelemd
+          do j=1,np
+            do i=1,np
+              cnt=cnt+1
+              elem(ie)%state%T_in(i,j,k) = var3d(cnt)
+            end do
+          end do
+        end do
+      end do
+
+      ! Read dp_in
+      call PIO_Setframe(File,dp_in_desc, t)
+      call PIO_Read_Darray(File, dp_in_desc, iodesc3d, var3d, ierr)
+      cnt=0
+      do k=1,nlev
+        do ie=1,nelemd
+          do j=1,np
+            do i=1,np
+              cnt=cnt+1
+              elem(ie)%state%dp_in(i,j,k) = var3d(cnt)
+            end do
+          end do
+        end do
+      end do
+      
+      ! Read Q_in
+      do q=1,qsize_d
+        call PIO_Setframe(File,Q_in_desc(q), t)
+        call PIO_Read_Darray(File, Q_in_desc(q), iodesc3d, var3d, ierr)
+        cnt=0
+        do k=1,nlev
+          do ie=1,nelemd
+            do j=1,np
+              do i=1,np
+                cnt=cnt+1
+                elem(ie)%state%Q_in(i,j,k,q) = var3d(cnt)
+              end do
+            end do
+          end do
+        end do
+      end do
+      deallocate(Q_in_desc)
+
+    end if ! fv_nphys>0
+    !---------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
 
     deallocate(var3d,var2d)
 
