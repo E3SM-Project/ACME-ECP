@@ -111,7 +111,7 @@ CONTAINS
 
       if (fv_nphys > 0) then
         !-----------------------------------------------------------------------
-        ! Map dynamics state to FV physics grid
+        ! Map dynamics tendencies to FV physics grid
         !-----------------------------------------------------------------------
         call t_startf('dyn_to_fv_phys')
         call dyn_to_fv_phys(elem,ps_tmp(1:nphys_sq,:),zs_tmp(1:nphys_sq,:),     &
