@@ -51,8 +51,9 @@ contains
     integer(kind=int_kind) :: ii, jj, gi, gj                ! GLL loop iterator and indices for pg2
     integer                :: tl_f
     real(kind=real_kind), dimension(fv_nphys*fv_nphys,pver,pcnst) :: qo_phys ! reconstructed initial physics state 
-    real(r8), dimension(np,np)             :: dp_gll
-    real(r8), dimension(fv_nphys,fv_nphys) :: inv_dp_fvm
+    real(r8), dimension(np,np,pver)             :: dp_gll
+    real(r8), dimension(fv_nphys*fv_nphys,pver) :: dp_fvm
+    ! real(r8), dimension(fv_nphys*fv_nphys,pver) :: inv_dp_fvm
     !---------------------------------------------------------------------------
     ! Copy tendencies on the physics grid over to the dynamics grid (GLL)
     !---------------------------------------------------------------------------
@@ -63,13 +64,13 @@ contains
       !-------------------------------------------------------------------------
       if (ftype==2.or.ftype==4) then
         do ilyr = 1,pver
-          dp_gll(:,:) = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
-          inv_dp_fvm = 1.0 / subcell_integration(dp_gll,np,fv_nphys,elem(ie)%metdet(:,:))
+          dp_gll(:,:,ilyr) = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
+          dp_fvm(:,ilyr) = RESHAPE( subcell_integration(dp_gll(:,:,ilyr),np,fv_nphys,elem(ie)%metdet(:,:)), (/fv_nphys*fv_nphys/) )
           do m = 1,pcnst
-            qo_phys(:,ilyr,m)  = RESHAPE( subcell_integration(              &
-                                  elem(ie)%state%Q(:,:,ilyr,m)*dp_gll,      &
-                                  np, fv_nphys, elem(ie)%metdet(:,:) )      &
-                                  *inv_dp_fvm, (/fv_nphys*fv_nphys/) )
+            qo_phys(:,ilyr,m)  = RESHAPE( subcell_integration(                    &
+                                  elem(ie)%state%Q(:,:,ilyr,m)*dp_gll(:,:,ilyr),  &
+                                  np, fv_nphys, elem(ie)%metdet(:,:) ),           &
+                                  (/fv_nphys*fv_nphys/) ) / dp_fvm(:,ilyr)
           end do ! m
         end do ! ilyr
       end if 
@@ -113,9 +114,11 @@ contains
                   do m = 1,pcnst
                     if ( ftype==2 .or. ftype==4 ) then
                       ! subtract initial phys state and add previous dyn state
-                      elem(ie)%derived%FQ(gi,gj,ilyr,m) = q_tmp(icol,ilyr,m,ie)&
-                                                         -qo_phys(icol,ilyr,m) &
-                                                         +elem(ie)%state%q(gi,gj,ilyr,m)
+                      elem(ie)%derived%FQ(gi,gj,ilyr,m) = ( q_tmp(icol,ilyr,m,ie)   &
+                                                           -qo_phys(icol,ilyr,m) )  &
+                                                          *dp_fvm(icol,ilyr)        &
+                                                          /dp_gll(gi,gj,ilyr)       &
+                                                          +elem(ie)%state%q(gi,gj,ilyr,m)
                     else
                       elem(ie)%derived%FQ(gi,gj,ilyr,m) = q_tmp(icol,ilyr,m,ie)
                     end if
