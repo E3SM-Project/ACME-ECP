@@ -142,8 +142,7 @@ contains
     ! Purpose: topo is initially defined on phys grid, 
     !          so this routine copys it to the dynamics grid
     use parallel_mod,   only: par
-    use edgetype_mod,   only: EdgeBuffer_t
-    use edge_mod,       only: initEdgeBuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
+    use edge_mod,       only: edge_g, edgeVpack, edgeVunpack
     use bndry_mod,      only: bndry_exchangeV
     implicit none
     !---------------------------------------------------------------------------
@@ -153,7 +152,6 @@ contains
     ! local variables
     integer(kind=int_kind)   :: ie, i, j, icol            ! loop iterators
     integer(kind=int_kind)   :: ii, jj, gi, gj            ! GLL loop iterator and indices for pg2
-    type(EdgeBuffer_t)       :: edgebuf
     !---------------------------------------------------------------------------
     ! Copy topography on the physics grid over to the dynamics grid (GLL)
     !---------------------------------------------------------------------------
@@ -191,14 +189,13 @@ contains
     ! Boundary exchange to make field continuous
     !---------------------------------------------------------------------------
     if (par%dynproc) then
-      call initEdgeBuffer(par, edgebuf, elem, (3+pcnst)*nlev)
       do ie = 1,nelemd
         elem(ie)%state%phis(:,:) = elem(ie)%state%phis(:,:) * elem(ie)%spheremp(:,:)
-        call edgeVpack(edgebuf,elem(ie)%state%phis(:,:),0,0,ie)
+        call edgeVpack(edge_g,elem(ie)%state%phis(:,:),0,0,ie)
       end do ! ie
-      call bndry_exchangeV(par, edgebuf)
+      call bndry_exchangeV(par, edge_g)
       do ie = 1,nelemd
-        call edgeVunpack(edgebuf,elem(ie)%state%phis(:,:),0,0,ie)
+        call edgeVunpack(edge_g,elem(ie)%state%phis(:,:),0,0,ie)
         elem(ie)%state%phis(:,:) = elem(ie)%state%phis(:,:) * elem(ie)%rspheremp(:,:)
       end do ! ie
     end if ! par%dynproc
