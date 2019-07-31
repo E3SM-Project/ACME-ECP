@@ -90,9 +90,11 @@ contains
               elem(ie)%derived%FM(:,:,2,ilyr)   = uv_tmp(icol,2,ilyr,ie)
               do m = 1,pcnst
                 if ( ftype==2 .or. ftype==4 ) then
-                  elem(ie)%derived%FQ(:,:,ilyr,m) = q_tmp(icol,ilyr,m,ie) &
-                                                   -qo_phys(icol,ilyr,m) &
-                                                   +elem(ie)%state%q(:,:,ilyr,m)
+                  elem(ie)%derived%FQ(:,:,ilyr,m) = ( q_tmp(icol,ilyr,m,ie)   &
+                                                     -qo_phys(icol,ilyr,m) )  &
+                                                    *dp_fvm(icol,ilyr)        &
+                                                    /dp_gll(:,:,ilyr)         &
+                                                    +elem(ie)%state%q(:,:,ilyr,m)
                 else
                   elem(ie)%derived%FQ(:,:,ilyr,m) = q_tmp(icol,ilyr,m,ie)
                 end if
