@@ -276,7 +276,7 @@ CONTAINS
                 cbuffer(cpter(icol,ilyr)+1) = cbuffer(cpter(icol,ilyr)+1) + phys_state(lchnk)%u(icol,ilyr)
                 cbuffer(cpter(icol,ilyr)+2) = cbuffer(cpter(icol,ilyr)+2) + phys_state(lchnk)%v(icol,ilyr)
                 do m = 1,pcnst
-                  cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m) = cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m) \
+                  cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m) = cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m) &
                                                              +phys_state(lchnk)%q(icol,ilyr,m)
                 end do ! m
               end if ! not is_first_step
