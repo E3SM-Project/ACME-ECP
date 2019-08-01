@@ -919,48 +919,64 @@ module restart_physics
 
          ! read U
          ierr = pio_inq_varid(File, 'phys_U', vardesc)
-         call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
-         do c = begchunk, endchunk
-            do k = 1,pver
-               do i = 1,pcols
-                  phys_state(c)%u(i,k) = tmpfield3(i,k,c)
-               end do
-            end do
-         end do
-
-         ! read V
-         ierr = pio_inq_varid(File, 'phys_V', vardesc)
-         call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
-         do c = begchunk, endchunk
-            do k = 1,pver
-               do i = 1,pcols
-                  phys_state(c)%v(i,k) = tmpfield3(i,k,c)
-               end do
-            end do
-         end do
-
-         ! read T
-         ierr = pio_inq_varid(File, 'phys_T', vardesc)
-         call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
-         do c = begchunk, endchunk
-            do k = 1,pver
-               do i = 1,pcols
-                  phys_state(c)%t(i,k) = tmpfield3(i,k,c)
-               end do
-            end do
-         end do
-
-         ! read Q
-         do m = 1,pcnst
-            ierr = pio_inq_varid(File, 'phys_'//trim(cnst_name(m)), vardesc)
+         if(ierr == PIO_NOERR) then
             call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
             do c = begchunk, endchunk
                do k = 1,pver
                   do i = 1,pcols
-                     phys_state(c)%q(i,k,m) = tmpfield3(i,k,c)
+                     phys_state(c)%u(i,k) = tmpfield3(i,k,c)
                   end do
                end do
             end do
+         else
+            if(masterproc) write(iulog,*) 'read_restart_physics: unable to find phys_U in restart file; ierr = ',ierr
+         end if
+
+         ! read V
+         ierr = pio_inq_varid(File, 'phys_V', vardesc)
+         if(ierr == PIO_NOERR) then
+            call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
+            do c = begchunk, endchunk
+               do k = 1,pver
+                  do i = 1,pcols
+                     phys_state(c)%v(i,k) = tmpfield3(i,k,c)
+                  end do
+               end do
+            end do
+         else
+            if(masterproc) write(iulog,*) 'read_restart_physics: unable to find phys_V in restart file; ierr = ',ierr
+         end if
+
+         ! read T
+         ierr = pio_inq_varid(File, 'phys_T', vardesc)
+         if(ierr == PIO_NOERR) then
+            call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
+            do c = begchunk, endchunk
+               do k = 1,pver
+                  do i = 1,pcols
+                     phys_state(c)%t(i,k) = tmpfield3(i,k,c)
+                  end do
+               end do
+            end do
+         else
+            if(masterproc) write(iulog,*) 'read_restart_physics: unable to find phys_T in restart file; ierr = ',ierr
+         end if
+
+         ! read Q
+         do m = 1,pcnst
+            ierr = pio_inq_varid(File, 'phys_'//trim(cnst_name(m)), vardesc)
+            if(ierr == PIO_NOERR) then
+               call cam_grid_read_dist_array(File,physgrid,dims(1:3),gdims(1:nhdims+1),tmpfield3,vardesc)
+               do c = begchunk, endchunk
+                  do k = 1,pver
+                     do i = 1,pcols
+                        phys_state(c)%q(i,k,m) = tmpfield3(i,k,c)
+                     end do
+                  end do
+               end do
+            else
+               if(masterproc) write(iulog,*) 'read_restart_physics: unable to find phys_'//trim(cnst_name(m))//' in restart file; ierr = ',ierr
+            end if
          end do ! m
 
          deallocate(tmpfield3)
