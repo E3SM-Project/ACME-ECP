@@ -45,6 +45,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 clubb_tkh, relvar,      &
                 accre_enhan, qclvar,    &
 #endif
+#ifdef MAML
+                crm_pcp,     crm_snw,              &
+#endif
                 crm_ecpp_output, crm_output )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
@@ -110,6 +113,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
+#ifdef MAML
+!MAML-Guangxing Lin
+    real(r8), intent(inout) :: crm_pcp(ncrms, crm_nx,crm_ny)  ! CRM precip rate (m/s)
+    real(r8), intent(inout) :: crm_snw(ncrms,crm_nx,crm_ny) ! CRM snow rate (m/s)
+#endif
     type(crm_ecpp_output_type),intent(inout) :: crm_ecpp_output
     type(crm_output_type), target,     intent(inout) :: crm_output
 
@@ -424,7 +432,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     !  Initialize CRM fields:
     u   (1:nx,1:ny,1:nzm,icrm) = crm_state%u_wind(icrm,1:nx,1:ny,1:nzm)
-    v   (1:nx,1:ny,1:nzm,icrm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
+#ifdef MAML
+    v   (1:nx,1:ny,1:nzm,icrm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)
+#else
+    v  (1:nx,1:ny,1:nzm,icrm) = crm_state%v_wind(icrm,1:nx,1:ny,1:nzm)*YES3D
+#endif
     w   (1:nx,1:ny,1:nzm,icrm) = crm_state%w_wind(icrm,1:nx,1:ny,1:nzm)
     tabs(1:nx,1:ny,1:nzm,icrm) = crm_state%temperature(icrm,1:nx,1:ny,1:nzm)
 
@@ -434,7 +446,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do j=1,ny
           do i=1,nx
             u(i,j,k,icrm) = min( umax, max(-umax,u(i,j,k,icrm)) )
+#ifdef MAML
+            v(i,j,k,icrm) = min( umax, max(-umax,v(i,j,k,icrm)) )
+#else            
             v(i,j,k,icrm) = min( umax, max(-umax,v(i,j,k,icrm)) )*YES3D
+#endif
           enddo
         enddo
       enddo
@@ -562,7 +578,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       l = plev-k+1
       uln(l,icrm) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
+#ifdef MAML
+      vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )
+#else
       vln(l,icrm) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+#endif
       ttend(k,icrm) = (crm_input%tl(icrm,l)+gamaz(k,icrm)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(k,icrm))*idt_gl
       qtend(k,icrm) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(k,icrm))*idt_gl
       utend(k,icrm) = (uln(l,icrm)-u0(k,icrm))*idt_gl
@@ -1456,6 +1476,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         precsfc(i,j,icrm) = precsfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
         precssfc(i,j,icrm) = precssfc(i,j,icrm)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
+#ifdef MAML
+!MAML-Guangxing Lin precip is aggregated and a mean value is determined. We need
+!  to change this so that individual CRM precip values are passed down
+!  to CLM.
+          crm_pcp(icrm,i,j) = precsfc(i,j,icrm)/1000.      ! mm/s --> m/s
+          crm_snw(icrm,i,j) = precssfc(i,j,icrm)/1000.     ! mm/s --> m/s
+!MAML-Guangxing Lin
+#endif
         if(precsfc(i,j,icrm).gt.10./86400.) then
            crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(i,j,icrm)
            crm_output%precsc(icrm) = crm_output%precsc(icrm) + precssfc(i,j,icrm)

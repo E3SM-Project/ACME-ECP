@@ -43,7 +43,9 @@ module physpkg
 
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg, modal_aero_calcsize_sub
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
-
+!MAML-Guangxing Lin
+  use seq_comm_mct,       only : num_inst_atm
+!MAML-Guangxing Lin
   implicit none
   private
 
@@ -97,6 +99,14 @@ module physpkg
   logical           :: pergro_test_active= .false.
   logical           :: pergro_mods = .false.
   logical           :: is_cmip6_volc !true if cmip6 style volcanic file is read otherwise false
+!MAML-Guangxing Lin
+  real(r8) :: shfavg_in(pcols)
+  real(r8) :: lhfavg_in(pcols)
+  real(r8) :: wsxavg_in(pcols)
+  real(r8) :: wsyavg_in(pcols)
+  real(r8) :: snowhlandavg_in(pcols)
+  real(r8) :: factor_xy
+!MAML-Guangxing Lin
 
   !======================================================================= 
 contains
@@ -1254,6 +1264,9 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
     integer :: c                                 ! chunk index
     integer :: ncol                              ! number of columns
     integer :: nstep                             ! current timestep number
+!MAML-Guangxing Lin
+    integer :: i, ii
+!MAML-Guangxing Lin
 #if (! defined SPMD)
     integer :: mpicom = 0
 #endif
@@ -1309,7 +1322,10 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
        !! 
 
        if(ieflx_opt>0) then
-          call check_ieflx_fix(c, ncol, nstep, cam_in(c)%shf)
+!MAML-Guangxing Lin
+          call check_ieflx_fix(c, ncol, nstep, num_inst_atm,cam_in(c)%shf(:ncol,:))
+!          call check_ieflx_fix(c, ncol, nstep, cam_in(c)%shf)
+!MAML-Guangxing Lin
        end if
 
        !
@@ -1507,6 +1523,10 @@ subroutine tphysac (ztodt,   cam_in,  &
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction 
     real(r8) :: qexcess (pcols)
     logical :: do_clubb_sgs 
+!MAML-Guangxing Lin
+    real(r8) :: factor_xy    ! for converting from CRM to GCM-level
+    integer  :: ii           ! loop index for CRM
+!MAML-Guangxing Lin
 
     ! Debug physics_state.
     logical :: state_debug_checks
@@ -1566,12 +1586,26 @@ subroutine tphysac (ztodt,   cam_in,  &
     ! accumulate fluxes into net flux array for spectral dycores
     ! jrm Include latent heat of fusion for snow
     !
-    do i=1,ncol
-       tend%flx_net(i) = tend%flx_net(i) + cam_in%shf(i) + (cam_out%precc(i) &
-            + cam_out%precl(i))*latvap*rhoh2o &
-            + (cam_out%precsc(i) + cam_out%precsl(i))*latice*rhoh2o
-    end do
+!MAML-Guangxing Lin
+    !do i=1,ncol
+     !  tend%flx_net(i) = tend%flx_net(i) + cam_in%shf(i) + (cam_out%precc(i) &
+     !       + cam_out%precl(i))*latvap*rhoh2o &
+     !       + (cam_out%precsc(i) + cam_out%precsl(i))*latice*rhoh2o
+    !end do
+    factor_xy = 1._r8 / dble(num_inst_atm)
 
+    do i=1,ncol
+      do ii=1,num_inst_atm
+        tend%flx_net(i) = tend%flx_net(i) + ( ( cam_in%shf(i,ii) +               &
+             ((cam_out%precc(i,ii)  + cam_out%precl(i,ii) ) * latvap*rhoh2o ) +      &
+            ( (cam_out%precsc(i,ii) + cam_out%precsl(i,ii)) * latice*rhoh2o ) ) * factor_xy)
+        shfavg_in(i) = shfavg_in(i)+cam_in%shf(i,ii)*factor_xy
+        lhfavg_in(i) = lhfavg_in(i)+cam_in%lhf(i,ii)*factor_xy
+        wsxavg_in(i) = wsxavg_in(i)+cam_in%wsx(i,ii)*factor_xy
+        wsyavg_in(i) = wsyavg_in(i)+cam_in%wsy(i,ii)*factor_xy
+      enddo
+    end do
+!MAML-Guangxing Lin
 
 if (l_tracer_aero) then
 
@@ -1600,11 +1634,13 @@ end if ! l_tracer_aero
 
        ! Check if latent heat flux exceeds the total moisture content of the
        ! lowest model layer, thereby creating negative moisture.
-
+!MAML-Guangxing Lin
        call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
-            state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
-            cam_in%lhf , cam_in%cflx, qexcess )
-
+            num_inst_atm,state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf(:,:) ,         &
+            cam_in%lhf(:,:) , cam_in%cflx, qexcess )
+            !state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
+            !cam_in%lhf , cam_in%cflx, qexcess )
+!MAML-Guangxing Lin
     end if 
     call outfld('QEXCESS',qexcess,pcols,lchnk)
 #endif
@@ -1697,7 +1733,10 @@ if (l_rayleigh) then
       call check_energy_chng(state, tend, "vdiff", nstep, ztodt, zero, zero, zero, zero)
     else
       call check_energy_chng(state, tend, "vdiff", nstep, ztodt, cam_in%cflx(:,1), zero, &
-           zero, cam_in%shf)
+!MAML-Guangxing Lin
+           zero, shfavg_in)
+!           zero, cam_in%shf)
+!MAML-Guangxing Lin    
     endif
     
     call check_tracers_chng(state, tracerint, "vdiff", nstep, ztodt, cam_in%cflx)
@@ -1957,6 +1996,9 @@ subroutine tphysbc (ztodt,               &
    use module_data_ecpp1,      only: dtstep_pp_input
    use crmclouds_camaerosols,  only: crmclouds_mixnuc_tend
 #endif
+!MAML-Guangxing Lin
+    use seq_comm_mct,       only : num_inst_atm
+!MAML-Guangxing Lin
 
 #endif /* CRM */
 
@@ -2110,7 +2152,9 @@ subroutine tphysbc (ztodt,               &
     
     ! w holds position of gathered points vs longitude index
     integer :: lengath
-
+!MAML-Guangxing Lin
+    integer :: ii
+!MAML-Guangxing Lin
     real(r8)  :: lcldo(pcols,pver)              !Pass old liqclf from macro_driver to micro_driver
 
     real(r8) :: ftem(pcols,pver)         ! tmp space
@@ -2183,6 +2227,23 @@ subroutine tphysbc (ztodt,               &
     rtdt = 1._r8/ztodt
 
     nstep = get_nstep()
+!MAML-Guangxing Lin
+    shfavg_in =0._r8
+    lhfavg_in =0._r8
+    wsxavg_in =0._r8
+    wsyavg_in =0._r8
+    snowhlandavg_in =0._r8
+    factor_xy = 1._r8 / dble(num_inst_atm)
+    do i=1,ncol
+      do ii=1,num_inst_atm
+        shfavg_in(i) = shfavg_in(i)+cam_in%shf(i,ii)*factor_xy
+        lhfavg_in(i) = lhfavg_in(i)+cam_in%lhf(i,ii)*factor_xy
+        wsxavg_in(i) = wsxavg_in(i)+cam_in%wsx(i,ii)*factor_xy
+        wsyavg_in(i) = wsyavg_in(i)+cam_in%wsy(i,ii)*factor_xy
+        snowhlandavg_in(i) = snowhlandavg_in(i)+cam_in%snowhland(i,ii)*factor_xy
+      enddo
+    end do
+!MAML-Guangxing Lin
 
     if (pergro_test_active) then 
        !call outfld calls
@@ -2270,8 +2331,12 @@ subroutine tphysbc (ztodt,               &
        ! Check if latent heat flux exceeds the total moisture content of the
        ! lowest model layer, thereby creating negative moisture.
        call qneg4('TPHYSBC '       ,lchnk               ,ncol  ,ztodt ,               &
-            state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
-            cam_in%lhf , cam_in%cflx ,qexcess)
+!MAML-Guangxing Lin
+            num_inst_atm,state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf(:,:) ,         &
+            cam_in%lhf(:,:) , cam_in%cflx ,qexcess)
+            !state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
+            !cam_in%lhf , cam_in%cflx ,qexcess)
+!MAML-Guangxing Lin
     end if 
     call outfld('QEXCESS',qexcess,pcols,lchnk)
 #endif
@@ -2634,8 +2699,12 @@ end if
 
     if(use_qqflx_fixer) then
        call qqflx_fixer('TPHYSBC ', lchnk, ncol, cld_macmic_ztodt, &
-            state%q(1,1,1), state%rpdel(1,1), cam_in%shf, &
-            cam_in%lhf , cam_in%cflx/cld_macmic_num_steps )
+    !MAML-Guangxing Lin, hack for now, since shf is not used in qqffx_fixer
+            state%q(1,1,1), state%rpdel(1,1), shfavg_in(:ncol), &
+            lhfavg_in(:ncol) , cam_in%cflx/cld_macmic_num_steps )
+!MAML-Guangxing Lin, hack for now, since shf is not used in qqffx_fixer
+            !state%q(1,1,1), state%rpdel(1,1), cam_in%shf, &
+            !cam_in%lhf , cam_in%cflx/cld_macmic_num_steps )
 
     end if
 !!== KZ_WATCON 
@@ -2650,8 +2719,11 @@ end if
 
                 !  Since we "added" the reserved liquid back in this routine, we need 
                 !    to account for it in the energy checker
-                flx_cnd(:ncol) = -1._r8*rliq(:ncol) 
-                flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
+                flx_cnd(:ncol) = -1._r8*rliq(:ncol)
+!MAML-Guangxing Lin , hack for now
+                !flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
+                flx_heat(:ncol) = shfavg_in(:ncol) + det_s(:ncol)
+!MAML-Guangxing Lin 
 
                 ! Unfortunately, physics_update does not know what time period
                 ! "tend" is supposed to cover, and therefore can't update it
