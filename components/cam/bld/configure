@@ -2622,9 +2622,7 @@ sub write_filepath
     # CESM has a standard source mods location.
     if ($ccsm_seq) {
 	my $CASEROOT = "$ENV{'CASEROOT'}";
-    #temporay setup
-	print $fh "/global/homes/g/gxlin/CASES_SPACME/E3SM_MMF_MAML_ne30_test3/SourceMods/src.cam\n";
-	#print $fh "$CASEROOT/SourceMods/src.cam\n";
+	print $fh "$CASEROOT/SourceMods/src.cam\n";
     #==Guangxing Lin 
 	print $fh "$CASEROOT/SourceMods/src.cam/ecpp\n";
 	print $fh "$CASEROOT/SourceMods/src.cam/rrtmg\n";
