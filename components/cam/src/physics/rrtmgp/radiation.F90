@@ -1320,7 +1320,6 @@ contains
       ! RRTMG implementation also sets this to 1. This probably does not make
       ! a lot of difference either way, but if a more intelligent value
       ! exists or is assumed in the model we should use it here as well.
-      ! TODO: set this more intelligently?
       surface_emissivity = 1.0_r8
 
       ! pbuf fields we need to overwrite with CRM fields to work with optics
@@ -1359,9 +1358,11 @@ contains
       end if
 
       ! Save pbuf things to restore when we are done working with them. This is
-      ! needed because the CAM optics routines are inflexible and bury pbuf down
-      ! deep in the call stack, so we need to overwrite with CRM state here in
-      ! order to use CRM information to calculate optics.
+      ! needed because the CAM optics routines bury pbuf dependencies down deep
+      ! in the call stack, so we need to overwrite with CRM state here in order
+      ! to use CRM information to calculate optics. This can go away if we
+      ! refactor the optics routines to take array arguments instead of the high
+      ! level pbuf and state data structures.
       iclwp_save = iclwp
       iciwp_save = iciwp
       cld_save   = cld
@@ -1437,11 +1438,6 @@ contains
                call handle_error(cld_optics_lw_all%alloc_1scl( &
                   ncol_tot, nlev_rad, k_dist_lw, name='cld_optics_lw' &
                ))
-               cld_optics_sw_all%tau = 0
-               cld_optics_sw_all%ssa = 0
-               cld_optics_sw_all%g   = 0
-               cld_optics_lw_all%tau = 0
-               cld_optics_lw_col%tau = 0
 
                ! Initialize aerosol optics; passing only the wavenumber bounds for each
                ! "band" rather than passing the full spectral discretization object, and
@@ -1824,7 +1820,7 @@ contains
                   qrl(1:ncol,1:pver) = qrl(1:ncol,1:pver) / state%pdel(1:ncol,1:pver)
                end if
 
-            end if  ! dolw
+            end if  ! radiation_do('lw')
 
          end if  ! active calls
       end do  ! loop over diagnostic calls
@@ -1859,8 +1855,8 @@ contains
       ! Update net CRM heating tendency, IF doing radiation this timestep
       if (use_SPCAM) then
          call t_startf('rad_update_crm_heating')
-         call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRAD'), crm_qrad)
          if (radiation_do('sw') .or. radiation_do('lw')) then
+            call pbuf_get_field(pbuf, pbuf_get_index('CRM_QRAD'), crm_qrad)
             crm_qrad = 0
             do iz = 1,crm_nz
                do iy = 1,crm_ny_rad
@@ -1872,8 +1868,8 @@ contains
                   end do
                end do
             end do
+            call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
          end if
-         call outfld('CRM_QRAD', crm_qrad(1:ncol,:,:,:), ncol, state%lchnk)
          call t_stopf('rad_update_crm_heating')
       end if  ! use_SPCAM
 
