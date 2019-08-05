@@ -1481,6 +1481,7 @@ contains
 
                      ! Overwrite state and pbuf with CRM
                      if (use_SPCAM) then
+                        call t_startf('rad_overwrite_state')
                         do iz = 1,crm_nz
                            ilev = pver - iz + 1
                            do ic = 1,ncol
@@ -1520,6 +1521,7 @@ contains
                               dei(1:ncol,1:pver) = 2._r8 * rei(1:ncol,1:pver)
                            end do  ! ic = 1,ncol
                         end do  ! iz = 1,crm_nz
+                        call t_stopf('rad_overwrite_state')
                      end if  ! use_SPCAM
 
                      ! Setup state arrays, which may contain an extra level
@@ -1629,8 +1631,8 @@ contains
                   qrs(1:ncol,1:pver) = 0
                   qrsc(1:ncol,1:pver) = 0
                else
-                  call t_startf('rad_fluxes_sw')
-                  call compute_fluxes_sw( &
+                  call t_startf('rad_calculate_fluxes_sw')
+                  call calculate_fluxes_sw( &
                      active_gases(:), vmr_all(:,1:ncol_tot,1:nlev_rad), &
                      pmid(1:ncol_tot,1:nlev_rad), tmid(1:ncol_tot,1:nlev_rad), &
                      pint(1:ncol_tot,1:nlev_rad+1), &
@@ -1640,7 +1642,7 @@ contains
                      cld_optics_sw_all, aer_optics_sw_all, &
                      fluxes_allsky_all, fluxes_clrsky_all, tsi_scaling &
                   )
-                  call t_stopf('rad_fluxes_sw')
+                  call t_stopf('rad_calculate_fluxes_sw')
                end if
 
                ! Calculate heating rates
@@ -1656,6 +1658,7 @@ contains
                call t_stopf('rad_heating_rate_sw')
 
                ! Calculate domain averages
+               call t_startf('rad_average_fluxes_sw')
                call average_packed_array(qrs_all (1:ncol_tot,:)                     , qrs (1:ncol,:)                     )
                call average_packed_array(qrsc_all(1:ncol_tot,:)                     , qrsc(1:ncol,:)                     )
                call average_packed_array(fluxes_allsky_all%flux_up    (1:ncol_tot,:), fluxes_allsky%flux_up    (1:ncol,:))
@@ -1678,6 +1681,7 @@ contains
                   call average_packed_array(fluxes_clrsky_all%bnd_flux_net   (1:ncol_tot,:,iband), fluxes_clrsky%bnd_flux_net   (1:ncol,:,iband))
                   call average_packed_array(fluxes_clrsky_all%bnd_flux_dn_dir(1:ncol_tot,:,iband), fluxes_clrsky%bnd_flux_dn_dir(1:ncol,:,iband))
                end do
+               call t_stopf('rad_average_fluxes_sw')
 
                ! Send fluxes to history buffer
                call output_fluxes_sw(icall, state, fluxes_allsky, fluxes_clrsky, qrs,  qrsc)
@@ -1741,7 +1745,7 @@ contains
                call initialize_rrtmgp_fluxes(ncol_tot, nlev_rad+1, nlwbands, fluxes_clrsky_all)
 
                call t_startf('rad_fluxes_lw')
-               call compute_fluxes_lw(                                          &
+               call calculate_fluxes_lw(                                          &
                   active_gases, vmr_all(:,1:ncol_tot,1:nlev_rad),               &
                   surface_emissivity(1:nlwbands,1:ncol_tot),                    &
                   pmid(1:ncol_tot,1:nlev_rad  ), tmid(1:ncol_tot,1:nlev_rad  ), &
@@ -1764,6 +1768,7 @@ contains
                call t_stopf('rad_heating_lw')
 
                ! Calculate domain averages
+               call t_startf('rad_average_fluxes_lw')
                call average_packed_array(qrl_all (1:ncol_tot,:)                  , qrl (1:ncol,:))
                call average_packed_array(qrlc_all(1:ncol_tot,:)                  , qrlc(1:ncol,:))
                call average_packed_array(fluxes_allsky_all%flux_up (1:ncol_tot,:), fluxes_allsky%flux_up (1:ncol,:))
@@ -1772,6 +1777,7 @@ contains
                call average_packed_array(fluxes_clrsky_all%flux_up (1:ncol_tot,:), fluxes_clrsky%flux_up (1:ncol,:))
                call average_packed_array(fluxes_clrsky_all%flux_dn (1:ncol_tot,:), fluxes_clrsky%flux_dn (1:ncol,:))
                call average_packed_array(fluxes_clrsky_all%flux_net(1:ncol_tot,:), fluxes_clrsky%flux_net(1:ncol,:))
+               call t_stopf('rad_average_fluxes_lw')
                          
                ! Send fluxes to history buffer
                call output_fluxes_lw(icall, state, fluxes_allsky, fluxes_clrsky, qrl, qrlc)
@@ -1875,7 +1881,7 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine compute_fluxes_sw(gas_names, gas_vmr, &
+   subroutine calculate_fluxes_sw(gas_names, gas_vmr, &
                                 pmid, tmid, pint, &
                                 coszrs, alb_dir, alb_dif, &
                                 cld_optics, aer_optics, &
@@ -2017,11 +2023,11 @@ contains
       call free_fluxes(fluxes_allsky_day)
       call free_fluxes(fluxes_clrsky_day)
 
-   end subroutine compute_fluxes_sw
+   end subroutine calculate_fluxes_sw
 
    !----------------------------------------------------------------------------
 
-   subroutine compute_fluxes_lw(gas_names, gas_vmr, emis_sfc, &
+   subroutine calculate_fluxes_lw(gas_names, gas_vmr, emis_sfc, &
                                 pmid, tmid, pint, tint, &
                                 cld_optics, aer_optics, &
                                 fluxes_allsky, fluxes_clrsky)
@@ -2063,7 +2069,7 @@ contains
                                t_lev=tint(1:ncol,1:nlev+1), &
                                n_gauss_angles=1))  ! Set to 3 for consistency with RRTMG
 
-   end subroutine compute_fluxes_lw
+   end subroutine calculate_fluxes_lw
 
    !----------------------------------------------------------------------------
 
