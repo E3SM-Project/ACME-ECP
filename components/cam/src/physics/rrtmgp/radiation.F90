@@ -1248,7 +1248,6 @@ contains
       ! Optical property arrays
       real(r8), dimension(pcols,nlev_rad,nlwbands) :: cld_tau_lw, aer_tau_lw
       real(r8), dimension(pcols,nlev_rad,nlwbands) :: liq_tau_lw, ice_tau_lw
-      real(r8), dimension(pcols,pver,nlwbands) :: cld_tau_lw_band, cld_tau_lw_band_avg
 
       ! Albedo for shortwave calculations
       real(r8), dimension(nswbands,pcols) :: albedo_direct_col, albedo_diffuse_col, &
@@ -1467,7 +1466,6 @@ contains
                ! pbuf/state over ncol columns for each CRM column index, and pack
                ! into arrays dimensioned ncol_tot = ncol * ncrms
                j = 1
-               cld_tau_lw_band_avg = 0
                do iy = 1,crm_ny_rad
                   do ix = 1,crm_nx_rad
 
