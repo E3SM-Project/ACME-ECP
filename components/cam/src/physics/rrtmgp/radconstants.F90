@@ -22,6 +22,8 @@ implicit none
 private
 save
 
+integer, public :: nswgpts, nlwgpts
+
 ! SHORTWAVE DATA
 
 ! number of shorwave spectral intervals
