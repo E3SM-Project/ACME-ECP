@@ -1463,10 +1463,6 @@ contains
                   name='aer_optics_lw_col'                              &
                ))
 
-               ! Initialize gases to zero
-               vmr_col = 0
-               vmr_all = 0
-                             
                ! Loop over CRM columns; call routines designed to work with
                ! pbuf/state over ncol columns for each CRM column index, and pack
                ! into arrays dimensioned ncol_tot = ncol * ncrms
