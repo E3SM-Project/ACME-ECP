@@ -167,16 +167,11 @@ CONTAINS
                                 ! hdim2_d == 1.
     character(len=64) :: filein ! Input namelist filename
 #ifdef MAML 
-    !MAML-Guangxing Lin
     logical,save :: first_call = .true.    ! check for sequential calls of multi-instances
     integer :: atm_phase        ! passed from driver
    ! integer :: dtime_sync       ! integer timestep size
    ! integer :: currentymd       ! current year-month-day
-#else
-    integer :: dtime_sync       ! integer timestep size
-    integer :: currentymd       ! current year-month-day
 #endif    
-    !MAML-Guangxing Lin
     !-----------------------------------------------------------------------
     !
     ! Determine cdata points

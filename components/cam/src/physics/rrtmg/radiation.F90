@@ -1837,7 +1837,7 @@ end function radiation_nextsw_cday
 #ifdef MAML
             tint(i,pverp) = sqrt(sqrt(cam_in%lwup(i,ii)/stebol))
 #else
-            tint(i,pverp) = sqrt(sqrt(cam_in%lwp(i)/stebol))
+            tint(i,pverp) = sqrt(sqrt(cam_in%lwup(i)/stebol))
 #endif
             do k = 2,pver
                dy = (state%lnpint(i,k) - state%lnpmid(i,k)) / (state%lnpmid(i,k-1) - state%lnpmid(i,k))

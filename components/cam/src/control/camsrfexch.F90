@@ -679,9 +679,7 @@ subroutine cam_export(state,cam_out,pbuf)
 #else
    do m = 1, pcnst
      do i = 1, ncol
-      do j= 1, num_inst_atm
         cam_out%qbot(i,m) = state%q(i,pver,m) 
-      end do
      end do
    end do
 

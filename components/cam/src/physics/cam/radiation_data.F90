@@ -408,10 +408,9 @@ contains
     lchnk = state%lchnk
     ncol = state%ncol
 
+#ifdef MAML
     do icol = 1, ncol
        coszrs_pos(icol)  = max(coszen(icol),0._r8)
-#ifdef MAML
-!MAML-Guangxing Lin
        do j= 1, num_inst_atm
          asdir_pos(icol,j) = cam_in%asdir(icol,j) * coszrs_pos(i)
          asdif_pos(icol,j) = cam_in%asdif(icol,j) * coszrs_pos(i)
@@ -420,11 +419,13 @@ contains
        enddo
     enddo
 #else 
+    do icol = 1, ncol
+       coszrs_pos(icol)  = max(coszen(icol),0._r8)
+    enddo
     asdir_pos(:ncol)  = cam_in%asdir(:ncol) * coszrs_pos(:ncol)
     asdif_pos(:ncol)  = cam_in%asdif(:ncol) * coszrs_pos(:ncol)
     aldir_pos(:ncol)  = cam_in%aldir(:ncol) * coszrs_pos(:ncol)
     aldif_pos(:ncol)  = cam_in%aldif(:ncol) * coszrs_pos(:ncol)
-!MAML-Guangxing Lin
 #endif
 
     call outfld(lndfrc_fldn, cam_in%landfrac,  pcols, lchnk)
