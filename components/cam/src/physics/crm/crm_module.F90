@@ -404,9 +404,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
 #ifdef MAML
-            v(i,j,k,icrm) = min( umax, max(-umax,v(i,j,k,icrm)) )
-#else            
-            v(i,j,k,icrm) = min( umax, max(-umax,v(i,j,k,icrm)) )*YES3D
+            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) ) 
+#else     
+            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
 #endif
           enddo
         enddo
