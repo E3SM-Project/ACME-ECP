@@ -126,6 +126,10 @@ contains
   subroutine init_rad_data
     use phys_control,     only: phys_getopts
     use physics_buffer, only: pbuf_get_index
+#ifdef MAML
+    use crmdims,       only: crm_nx,crm_ny
+#endif
+
     implicit none
     
     integer :: i
@@ -158,11 +162,36 @@ contains
          'radiation input: land fraction')
     call addfld (icefrc_fldn, horiz_only,    rad_data_avgflag, 'fraction',&
          'radiation input: ice fraction')
-    call addfld (snowh_fldn,        horiz_only,    rad_data_avgflag,  'm',&
-         'radiation input: water equivalent snow depth')
     call addfld (landm_fldn,     horiz_only,    rad_data_avgflag,  'none',&
          'radiation input: land mask: ocean(0), continent(1), transition(0-1)')
+#ifdef MAML
+!MAML-Guangxing Lin
+    call addfld (asdir_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
+         'radiation input: short wave direct albedo',  flag_xyfill=.true.)
+    call addfld (asdif_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
+         'radiation input: short wave diffuse albedo',  flag_xyfill=.true.)
+    call addfld (aldir_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
+         'radiation input: long wave direct albedo',  flag_xyfill=.true.)
+    call addfld (aldif_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
+         'radiation input: long wave diffuse albedo',  flag_xyfill=.true.)
+    call addfld (asdir_pos_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
+         'radiation input: short wave direct albedo weighted by coszen',  flag_xyfill=.true.)
+    call addfld (asdif_pos_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
+         'radiation input: short wave diffuse albedo weighted by coszen',  flag_xyfill=.true.)
+    call addfld (aldir_pos_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
+         'radiation input: long wave direct albedo weighted by coszen',  flag_xyfill=.true.)
+    call addfld (aldif_pos_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
+         'radiation input: long wave diffuse albedo weighted by coszen',  flag_xyfill=.true.)
+    call addfld (lwup_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, 'W/m2', &
+         'radiation input: long wave up radiation flux',  flag_xyfill=.true.)
+    call addfld (ts_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, 'K', &
+         'radiation input: surface temperature',  flag_xyfill=.true.)
+    call addfld (snowh_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, 'm', &
+         'radiation input: water equivalent snow depth',  flag_xyfill=.true.)
+#else 
 
+    call addfld (snowh_fldn,        horiz_only,    rad_data_avgflag,  'm',&
+         'radiation input: water equivalent snow depth')
     call addfld (asdir_fldn,        horiz_only,    rad_data_avgflag,  '1',&
          'radiation input: short wave direct albedo', flag_xyfill=.true.)
     call addfld (asdif_fldn,        horiz_only,    rad_data_avgflag,  '1',&
@@ -172,8 +201,6 @@ contains
     call addfld (aldif_fldn,        horiz_only,    rad_data_avgflag,  '1',&
          'radiation input: long wave difuse albedo', flag_xyfill=.true.)
 
-    call addfld (coszen_fldn, horiz_only,    rad_data_avgflag,     '1',&
-         'radiation input: cosine solar zenith when positive', flag_xyfill=.true.)
     call addfld (asdir_pos_fldn, horiz_only,    rad_data_avgflag,  '1',&
          'radiation input: short wave direct albedo weighted by coszen', flag_xyfill=.true.)
     call addfld (asdif_pos_fldn, horiz_only,    rad_data_avgflag,  '1',&
@@ -187,7 +214,11 @@ contains
          'radiation input: long wave up radiation flux ')
     call addfld (ts_fldn,        horiz_only,    rad_data_avgflag,     'K',&
          'radiation input: surface temperature')
+!MAML-Guangxing Lin
+#endif
 
+    call addfld (coszen_fldn, horiz_only,    rad_data_avgflag,     '1',&
+         'radiation input: cosine solar zenith when positive', flag_xyfill=.true.)
     call addfld (temp_fldn,        (/ 'lev' /), rad_data_avgflag,   'K',&
          'radiation input: midpoint temperature')
     call addfld (pdel_fldn,       (/ 'lev' /), rad_data_avgflag,   'Pa',&
@@ -325,6 +356,11 @@ contains
     
     use constituents,     only: cnst_get_ind
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+#ifdef MAML
+!MAML-Guangxing Lin
+    use seq_comm_mct, only : num_inst_atm
+!MAML-Guangxing Lin
+#endif
     implicit none
     type(physics_buffer_desc), pointer :: pbuf(:)
     
@@ -346,12 +382,22 @@ contains
 
     ! surface albedoes weighted by (positive cosine zenith angle)
     real(r8):: coszrs_pos(pcols)    ! = max(coszrs,0)
+#ifdef MAML
+!MAML-Guangxing Lin
+    real(r8):: asdir_pos (pcols,num_inst_atm)    !
+    real(r8):: asdif_pos (pcols,num_inst_atm)    !
+    real(r8):: aldir_pos (pcols,num_inst_atm)    !
+    real(r8):: aldif_pos (pcols,num_inst_atm)    !
+    integer :: j
+!MAML-Guangxing Lin
+#else
     real(r8):: asdir_pos (pcols)    !
     real(r8):: asdif_pos (pcols)    !
     real(r8):: aldir_pos (pcols)    !
     real(r8):: aldif_pos (pcols)    !
-
+#endif
     real(r8), pointer, dimension(:,:)  :: ptr
+
 
     if (.not.rad_data_output) return
 
@@ -362,6 +408,17 @@ contains
     lchnk = state%lchnk
     ncol = state%ncol
 
+#ifdef MAML
+    do icol = 1, ncol
+       coszrs_pos(icol)  = max(coszen(icol),0._r8)
+       do j= 1, num_inst_atm
+         asdir_pos(icol,j) = cam_in%asdir(icol,j) * coszrs_pos(i)
+         asdif_pos(icol,j) = cam_in%asdif(icol,j) * coszrs_pos(i)
+         aldir_pos(icol,j) = cam_in%aldir(icol,j) * coszrs_pos(i)
+         aldif_pos(icol,j) = cam_in%aldif(icol,j) * coszrs_pos(i)
+       enddo
+    enddo
+#else 
     do icol = 1, ncol
        coszrs_pos(icol)  = max(coszen(icol),0._r8)
     enddo
@@ -369,6 +426,7 @@ contains
     asdif_pos(:ncol)  = cam_in%asdif(:ncol) * coszrs_pos(:ncol)
     aldir_pos(:ncol)  = cam_in%aldir(:ncol) * coszrs_pos(:ncol)
     aldif_pos(:ncol)  = cam_in%aldif(:ncol) * coszrs_pos(:ncol)
+#endif
 
     call outfld(lndfrc_fldn, cam_in%landfrac,  pcols, lchnk)
     call outfld(icefrc_fldn, cam_in%icefrac,   pcols, lchnk)
