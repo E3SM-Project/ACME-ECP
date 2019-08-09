@@ -195,19 +195,13 @@ contains
       end do ! j
     end do ! ie
     !---------------------------------------------------------------------------
-    ! Boundary exchange to make field continuous
+    ! Weight topo field for boundary exchange in read_inidat()
     !---------------------------------------------------------------------------
-    if (par%dynproc) then
-      do ie = 1,nelemd
-        elem(ie)%state%phis(:,:) = elem(ie)%state%phis(:,:) * elem(ie)%spheremp(:,:)
-        call edgeVpack(edge_g,elem(ie)%state%phis(:,:),0,0,ie)
-      end do ! ie
-      call bndry_exchangeV(par, edge_g)
-      do ie = 1,nelemd
-        call edgeVunpack(edge_g,elem(ie)%state%phis(:,:),0,0,ie)
-        elem(ie)%state%phis(:,:) = elem(ie)%state%phis(:,:) * elem(ie)%rspheremp(:,:)
-      end do ! ie
-    end if ! par%dynproc
+    do ie = 1,nelemd
+      elem(ie)%state%phis(:,:) = elem(ie)%state%phis(:,:) &
+                                *elem(ie)%spheremp(:,:)   &
+                                *elem(ie)%rspheremp(:,:)
+    end do ! ie
     !---------------------------------------------------------------------------
     !---------------------------------------------------------------------------
   end subroutine fv_phys_to_dyn_topo
