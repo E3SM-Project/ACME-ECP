@@ -16,12 +16,12 @@
 !---------------------------------------------------------------------------------------------------
 module fv_physics_coupling_mod
   use element_mod,    only: element_t
-  use shr_kind_mod,   only: r8=>shr_kind_r8
-  use kinds,          only: real_kind, int_kind
+  use shr_kind_mod,   only: r8=>shr_kind_r8, i4=>shr_kind_i4
   use constituents,   only: pcnst, cnst_name
   use dimensions_mod, only: np, npsq, nelemd, nlev
   use dyn_grid,       only: fv_nphys
   use ppgrid,         only: pcols, pver, pverp
+  use cam_abortutils, only: endrun
   
   private
 
@@ -39,24 +39,23 @@ contains
     use control_mod,    only: ftype
     use dyn_comp,       only: TimeLevel, hvcoord
     use derivative_mod, only: subcell_integration
+    use dyn_grid,       only: fv_physgrid
     implicit none
     !---------------------------------------------------------------------------
     ! interface arguments
-    type(element_t),      intent(inout) :: elem(:)          ! dynamics element structure
-    real(kind=real_kind), intent(inout) :: T_tmp (:,:,:)    ! temp array to hold T
-    real(kind=real_kind), intent(inout) :: uv_tmp(:,:,:,:)  ! temp array to hold u and v
-    real(kind=real_kind), intent(inout) :: q_tmp (:,:,:,:)  ! temp to hold advected constituents
+    type(element_t), intent(inout) :: elem(:)         ! dynamics element structure
+    real(r8),        intent(inout) :: T_tmp (:,:,:)   ! temp array to hold T
+    real(r8),        intent(inout) :: uv_tmp(:,:,:,:) ! temp array to hold u and v
+    real(r8),        intent(inout) :: q_tmp (:,:,:,:) ! temp to hold advected constituents
     ! local variables
-    integer(kind=int_kind) :: ie, m, i, j, icol, ilyr       ! loop iterators
-    integer(kind=int_kind) :: ii, jj, gi, gj                ! GLL loop iterator and indices for pg2
-    integer                :: tl_f
-    real(kind=real_kind), dimension(fv_nphys*fv_nphys,pver,pcnst) :: qo_phys ! reconstructed initial physics state 
-    real(r8), dimension(np,np)                  :: tmp_area_gll  ! area for weighting
-    real(r8), dimension(fv_nphys*fv_nphys)      :: inv_area_fvm  ! inverse area for weighting
-    real(r8), dimension(np,np,pver)             :: dp_gll
-    real(r8), dimension(fv_nphys*fv_nphys)      :: dp_fvm_sum
-    real(r8), dimension(fv_nphys*fv_nphys,pver) :: dp_fvm_avg
-    ! real(r8), dimension(fv_nphys*fv_nphys,pver) :: inv_dp_fvm
+    integer(i4) :: ie, m, i, j, icol, ilyr            ! loop iterators
+    integer(i4) :: ii, jj, gi, gj                     ! GLL loop iterator and indices for pg2
+    integer     :: tl_f
+    real(r8), dimension(fv_nphys*fv_nphys,pver,pcnst) :: qo_phys       ! reconstructed initial physics state 
+    real(r8), dimension(np,np)                        :: tmp_area_gll  ! area for weighting
+    real(r8), dimension(fv_nphys*fv_nphys)            :: inv_area_fvm  ! inverse area for weighting
+    real(r8), dimension(np,np,pver)                   :: dp_gll
+    real(r8), dimension(fv_nphys*fv_nphys,pver)       :: dp_fvm_sum
     !---------------------------------------------------------------------------
     ! Copy tendencies on the physics grid over to the dynamics grid (GLL)
     !---------------------------------------------------------------------------
@@ -70,14 +69,13 @@ contains
         inv_area_fvm(:) = 1.0_r8/RESHAPE( subcell_integration(tmp_area_gll,np,fv_nphys,elem(ie)%metdet(:,:)), (/fv_nphys*fv_nphys/) )
         do ilyr = 1,pver
           dp_gll(:,:,ilyr) = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
-          dp_fvm_sum = RESHAPE( subcell_integration(dp_gll(:,:,ilyr),np,fv_nphys,elem(ie)%metdet(:,:)), (/fv_nphys*fv_nphys/) )
+          dp_fvm_sum(:,ilyr) = RESHAPE( subcell_integration(dp_gll(:,:,ilyr),np,fv_nphys,elem(ie)%metdet(:,:)), (/fv_nphys*fv_nphys/) )
           do m = 1,pcnst
             qo_phys(:,ilyr,m)  = RESHAPE( subcell_integration(                    &
                                   elem(ie)%state%Q(:,:,ilyr,m)*dp_gll(:,:,ilyr),  &
                                   np, fv_nphys, elem(ie)%metdet(:,:) ),           &
-                                  (/fv_nphys*fv_nphys/) ) / dp_fvm_sum
+                                  (/fv_nphys*fv_nphys/) ) / dp_fvm_sum(:,ilyr)
           end do ! m
-          dp_fvm_avg(:,ilyr) = dp_fvm_sum / inv_area_fvm
         end do ! ilyr
       end if 
       !-------------------------------------------------------------------------
@@ -99,6 +97,9 @@ contains
                   ! subtract initial phys state and add previous dyn state
                   elem(ie)%derived%FQ(:,:,ilyr,m) = ( q_tmp(icol,ilyr,m,ie)   &
                                                      -qo_phys(icol,ilyr,m) )  &
+                                                    *dp_fvm_sum(icol,ilyr)        &
+                                                    /(4.0_r8*dp_gll(gi,gj,ilyr)   &
+                                                      *elem(ie)%spheremp(gi,gj) ) &
                                                     +elem(ie)%state%q(:,:,ilyr,m)
                 else
                   elem(ie)%derived%FQ(:,:,ilyr,m) = q_tmp(icol,ilyr,m,ie)
@@ -123,6 +124,9 @@ contains
                       ! subtract initial phys state and add previous dyn state
                       elem(ie)%derived%FQ(gi,gj,ilyr,m) = ( q_tmp(icol,ilyr,m,ie)       &
                                                            -qo_phys(icol,ilyr,m) )      &
+                                                          *dp_fvm_sum(icol,ilyr)        &
+                                                          /(4.0_r8*dp_gll(gi,gj,ilyr)   &
+                                                            *elem(ie)%spheremp(gi,gj) ) &
                                                           +elem(ie)%state%q(gi,gj,ilyr,m)
                     else
                       elem(ie)%derived%FQ(gi,gj,ilyr,m) = q_tmp(icol,ilyr,m,ie)
@@ -152,11 +156,11 @@ contains
     implicit none
     !---------------------------------------------------------------------------
     ! interface arguments
-    type(element_t),      intent(inout) :: elem(:)        ! dynamics element structure
-    real(kind=real_kind), intent(inout) :: phys_tmp (:,:) ! temp array to hold PHIS field from file
+    type(element_t), intent(inout) :: elem(:)        ! dynamics element structure
+    real(r8),        intent(inout) :: phys_tmp (:,:) ! temp array to hold PHIS field from file
     ! local variables
-    integer(kind=int_kind)   :: ie, i, j, icol            ! loop iterators
-    integer(kind=int_kind)   :: ii, jj, gi, gj            ! GLL loop iterator and indices for pg2
+    integer(i4) :: ie, i, j, icol  ! loop iterators
+    integer(i4) :: ii, jj, gi, gj  ! GLL loop iterator and indices for pg2
     !---------------------------------------------------------------------------
     ! Copy topography on the physics grid over to the dynamics grid (GLL)
     !---------------------------------------------------------------------------
@@ -218,17 +222,17 @@ contains
     implicit none
     !---------------------------------------------------------------------------
     ! interface arguments
-    type(element_t),      intent(inout) :: elem(:)          ! dynamics element structure
-    real(kind=real_kind), intent(inout) :: ps_tmp(:,:)      ! temp array to hold ps
-    real(kind=real_kind), intent(inout) :: zs_tmp(:,:)      ! temp array to hold phis  
-    real(kind=real_kind), intent(inout) :: T_tmp (:,:,:)    ! temp array to hold T
-    real(kind=real_kind), intent(inout) :: uv_tmp(:,:,:,:)  ! temp array to hold u and v
-    real(kind=real_kind), intent(inout) :: om_tmp(:,:,:)    ! temp array to hold omega
-    real(kind=real_kind), intent(inout) :: Q_tmp (:,:,:,:)  ! temp to hold advected constituents
+    type(element_t), intent(inout) :: elem(:)          ! dynamics element structure
+    real(r8),        intent(inout) :: ps_tmp(:,:)      ! temp array to hold ps
+    real(r8),        intent(inout) :: zs_tmp(:,:)      ! temp array to hold phis  
+    real(r8),        intent(inout) :: T_tmp (:,:,:)    ! temp array to hold T
+    real(r8),        intent(inout) :: uv_tmp(:,:,:,:)  ! temp array to hold u and v
+    real(r8),        intent(inout) :: om_tmp(:,:,:)    ! temp array to hold omega
+    real(r8),        intent(inout) :: Q_tmp (:,:,:,:)  ! temp to hold advected constituents
     ! local variables
-    integer(kind=int_kind) :: ie, m, icol, ilyr             ! loop iterators
-    integer                :: tl_f                          ! time level
-    integer                :: ncol
+    integer(i4) :: ie, m, icol, ilyr             ! loop iterators
+    integer     :: tl_f                          ! time level
+    integer     :: ncol
     real(r8), dimension(np,np,nlev)        :: temperature   ! Temperature from dynamics
     real(r8), dimension(np,np)             :: tmp_area      ! area for weighting
     real(r8), dimension(fv_nphys,fv_nphys) :: inv_area      ! inverse area for weighting
