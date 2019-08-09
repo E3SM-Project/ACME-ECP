@@ -3366,10 +3366,10 @@
       </modules>
       <!-- List of modules elements, executing commands if compiler and mpilib condition applies -->
       <modules compiler="pgi">
-        <command name="load">pgi/18.7</command>
+        <command name="load">pgi/19.4</command>
       </modules>
       <modules compiler="pgigpu">
-        <command name="load">pgi/18.7</command>
+        <command name="load">pgi/19.4</command>
         <command name="load">cuda</command>
       </modules>
       <modules compiler="pgi.*">
@@ -3383,8 +3383,8 @@
       </modules>
 
       <modules>
-        <command name="load">netcdf/4.6.1</command>
-        <command name="load">netcdf-fortran/4.4.4</command>
+        <command name="load">netcdf</command>
+        <command name="load">netcdf-fortran</command>
       </modules>
       <!-- mpi lib settings -->
       <!-- Sometimes,same versions of libraries are not available for different compilers, hence the split below -->
@@ -3395,8 +3395,8 @@
       </modules>
       <modules compiler="pgi.*" mpilib="!mpi-serial">
         <command name="load">spectrum-mpi</command>
-        <command name="load">parallel-netcdf/1.8.0</command>
-        <command name="load">hdf5/1.10.3</command>
+        <command name="load">parallel-netcdf</command>
+        <command name="load">hdf5</command>
       </modules>
       <modules compiler="gnu" mpilib="!mpi-serial">
         <command name="load">spectrum-mpi</command>
