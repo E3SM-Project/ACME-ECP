@@ -146,7 +146,7 @@ contains
   end subroutine fv_phys_to_dyn
   !=================================================================================================
   !=================================================================================================
-  subroutine fv_phys_to_dyn_topo(elem,phys_tmp)
+  subroutine (elem,phys_tmp)
     ! Purpose: topo is initially defined on phys grid, 
     !          so this routine copys it to the dynamics grid
     use parallel_mod,   only: par
@@ -168,6 +168,10 @@ contains
       do j = 1,fv_nphys
         do i = 1,fv_nphys 
           icol = icol + 1
+          !-------------------------------------------------------------------
+          ! Store topo data in fv_physgrid to avoid mapping back and forth
+          !-------------------------------------------------------------------
+          fv_physgrid(ie)%topo(i,j) = phys_tmp(icol,ie)
           !-------------------------------------------------------------------
           !-------------------------------------------------------------------
           ! pg1 case 
@@ -252,10 +256,8 @@ contains
                      elem(ie)%state%ps_v(:,:,tl_f),                 &
                      np, fv_nphys, elem(ie)%metdet(:,:) )           &
                      *inv_area , (/ncol/) )
-      zs_tmp(:,ie) = RESHAPE( subcell_integration(                  &
-                     elem(ie)%state%phis(:,:),                      &
-                     np, fv_nphys, elem(ie)%metdet(:,:) )           &
-                     *inv_area , (/ncol/) )
+      
+      zs_tmp(:,ie) = RESHAPE( fv_physgrid(ie)%topo(i,j), (/ncol/) )
 
       call get_temperature(elem(ie),temperature,hvcoord,tl_f)
 
