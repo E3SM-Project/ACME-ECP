@@ -19,7 +19,7 @@ module fv_physics_coupling_mod
   use shr_kind_mod,   only: r8=>shr_kind_r8, i4=>shr_kind_i4
   use constituents,   only: pcnst, cnst_name
   use dimensions_mod, only: np, npsq, nelemd, nlev
-  use dyn_grid,       only: fv_nphys
+  use dyn_grid,       only: fv_nphys, fv_physgrid
   use ppgrid,         only: pcols, pver, pverp
   use cam_abortutils, only: endrun
   
@@ -39,7 +39,6 @@ contains
     use control_mod,    only: ftype
     use dyn_comp,       only: TimeLevel, hvcoord
     use derivative_mod, only: subcell_integration
-    use dyn_grid,       only: fv_physgrid
     implicit none
     !---------------------------------------------------------------------------
     ! interface arguments
