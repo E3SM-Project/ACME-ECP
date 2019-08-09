@@ -146,7 +146,7 @@ contains
   end subroutine fv_phys_to_dyn
   !=================================================================================================
   !=================================================================================================
-  subroutine fv_phys_to_dyn_topo(elem,phys_tmp)
+  subroutine fv_phys_to_dyn_topo(elem,phis_tmp)
     ! Purpose: topo is initially defined on phys grid, 
     !          so this routine copys it to the dynamics grid
     use parallel_mod,   only: par
@@ -156,7 +156,7 @@ contains
     !---------------------------------------------------------------------------
     ! interface arguments
     type(element_t), intent(inout) :: elem(:)        ! dynamics element structure
-    real(r8),        intent(inout) :: phys_tmp(:,:)  ! temp array to hold PHIS field from file
+    real(r8),        intent(inout) :: phis_tmp(:,:)  ! temp array to hold PHIS field from file
     ! local variables
     integer(i4) :: ie, i, j, icol  ! loop iterators
     integer(i4) :: ii, jj, gi, gj  ! GLL loop iterator and indices for pg2
@@ -171,12 +171,12 @@ contains
           !-------------------------------------------------------------------
           ! Store topo data in fv_physgrid to avoid mapping back and forth
           !-------------------------------------------------------------------
-          fv_physgrid(ie)%topo(i,j) = phys_tmp(icol,ie)
+          fv_physgrid(ie)%topo(i,j) = phis_tmp(icol,ie)
           !-------------------------------------------------------------------
           !-------------------------------------------------------------------
           ! pg1 case 
           if (fv_nphys == 1) then
-            elem(ie)%state%phis(:,:) = phys_tmp(icol,ie)
+            elem(ie)%state%phis(:,:) = phis_tmp(icol,ie)
           end if ! fv_nphys == 1
           !-------------------------------------------------------------------
           !-------------------------------------------------------------------
@@ -188,7 +188,7 @@ contains
                 if (j==1) gj = jj
                 if (i==2) gi = ii+2
                 if (j==2) gj = jj+2
-                elem(ie)%state%phis(gi,gj) = phys_tmp(icol,ie)
+                elem(ie)%state%phis(gi,gj) = phis_tmp(icol,ie)
               end do ! ii
             end do ! jj
           end if ! fv_nphys == 2
@@ -257,7 +257,7 @@ contains
                      np, fv_nphys, elem(ie)%metdet(:,:) )           &
                      *inv_area , (/ncol/) )
 
-      zs_tmp(:,ie) = RESHAPE( fv_physgrid(ie)%topo(i,j), (/ncol/) )
+      zs_tmp(:,ie) = RESHAPE( fv_physgrid(ie)%topo(:,:), (/ncol/) )
 
       call get_temperature(elem(ie),temperature,hvcoord,tl_f)
 
