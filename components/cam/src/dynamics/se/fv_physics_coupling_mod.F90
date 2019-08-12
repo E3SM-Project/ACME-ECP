@@ -149,9 +149,6 @@ contains
   subroutine fv_phys_to_dyn_topo(elem,phis_tmp)
     ! Purpose: topo is initially defined on phys grid, 
     !          so this routine copys it to the dynamics grid
-    use parallel_mod,   only: par
-    use edge_mod,       only: edge_g, edgeVpack, edgeVunpack
-    use bndry_mod,      only: bndry_exchangeV
     implicit none
     !---------------------------------------------------------------------------
     ! interface arguments
@@ -196,11 +193,7 @@ contains
           !-------------------------------------------------------------------
         end do ! i
       end do ! j
-    end do ! ie
-    !---------------------------------------------------------------------------
-    ! Weight topo field for boundary exchange in read_inidat()
-    !---------------------------------------------------------------------------
-    do ie = 1,nelemd
+      ! Weight topo field for boundary exchange in read_inidat()
       elem(ie)%state%phis(:,:) = elem(ie)%state%phis(:,:) &
                                 *elem(ie)%spheremp(:,:)   &
                                 *elem(ie)%rspheremp(:,:)
