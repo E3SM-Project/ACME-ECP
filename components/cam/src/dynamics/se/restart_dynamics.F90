@@ -6,7 +6,7 @@ module restart_dynamics
   use spmd_utils,  only : iam
   use cam_logfile, only : iulog
   use control_mod, only : theta_hydrostatic_mode
-  use dyn_grid,    only : fv_nphys
+  use dyn_grid,    only : fv_nphys, fv_physgrid
 
   implicit none
 
@@ -478,6 +478,9 @@ CONTAINS
     use spmd_dyn, only: spmd_readnl
     use control_mod,            only: qsplit
     use time_mod,               only: TimeLevel_Qdp
+    use fv_physics_coupling_mod,  only: fv_phys_to_dyn_topo
+    use cam_initfiles,            only: topo_file_get_id
+    use ncdio_atm,                only: infld
 
     !
     ! Input arguments
@@ -497,6 +500,12 @@ CONTAINS
     integer :: i, k, cnt, st, en, tl, tlQdp, ii, jj, s2d, q, j
     integer :: timelevel_dimid, timelevel_chk
     integer :: npes_se
+
+    integer :: nphys_sq
+    real(r8), allocatable :: phis_tmp(:,:) ! (nphys_sq,nelemd)
+    type(file_desc_t), pointer :: fh_topo
+    logical :: found
+
 !    type(file_desc_t) :: ncid
 !    integer :: ncid
 
@@ -511,6 +520,17 @@ CONTAINS
    else
     allocate (elem(0))
    endif
+
+    ! Read topo data from file when physics is on FV grid
+    if (fv_nphys>0) then
+      fh_topo => topo_file_get_id()
+      nphys_sq = fv_nphys*fv_nphys
+      allocate(phis_tmp(nphys_sq,nelemd))
+      call infld('PHIS', fh_topo, 'ncol', 1, nphys_sq, 1, nelemd, phis_tmp, found, gridname='physgrid_d')
+      if(.not.found) call endrun('read_restart_dynamics(): Could not find PHIS field on input datafile')
+      ! Copy phis field to GLL grid
+      call fv_phys_to_dyn_topo(elem,phis_tmp)
+    end if
 
     ierr = PIO_Get_Att(File, PIO_GLOBAL, 'ne', fne)
     ierr = PIO_Get_Att(File, PIO_GLOBAL, 'np', fnp)
