@@ -757,6 +757,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use rad_solar_var,      only: rad_solar_var_init
     use nudging,            only: Nudge_Model,nudging_init
     use output_aerocom_aie, only: output_aerocom_aie_init, do_aerocom_ind3
+    use dyn_grid,           only: fv_nphys
 
 
     use cam_history,        only: addfld, add_default, horiz_only 
@@ -783,7 +784,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     call phys_getopts(use_SPCAM_out     = use_SPCAM)
 
-    call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
+    if (fv_nphys==0 .or. nsrest==0) call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
 
     do lchnk = begchunk, endchunk
        call physics_state_set_grid(lchnk, phys_state(lchnk))

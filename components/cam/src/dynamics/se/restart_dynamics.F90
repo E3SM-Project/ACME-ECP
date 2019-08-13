@@ -6,6 +6,7 @@ module restart_dynamics
   use spmd_utils,  only : iam
   use cam_logfile, only : iulog
   use control_mod, only : theta_hydrostatic_mode
+  use dyn_grid,    only : fv_nphys, fv_physgrid
 
   implicit none
 
@@ -15,6 +16,9 @@ module restart_dynamics
   type(var_desc_t) :: FQpsdesc, omegadesc
 
   type(var_desc_t), pointer :: qdesc(:), qdesc_dp(:)
+
+  type(var_desc_t) :: T_in_desc, U_in_desc, V_in_desc, dp_in_desc
+  type(var_desc_t), pointer :: Q_in_desc(:)
 
   integer :: ncol_dimid,  nlev_dimid, nlevp_dimid
   public :: init_restart_dynamics
@@ -81,6 +85,18 @@ CONTAINS
        ierr = PIO_Def_Var(File,cnst_name(i), pio_double, (/ncol_dimid, nlev_dimid, timelevels_dimid/), Qdesc(i))
        ierr = PIO_Def_Var(File,"dp"//cnst_name(i), pio_double, (/ncol_dimid, nlev_dimid, timelevels_dimid/), Qdesc_dp(i))
     end do
+
+    ! Variables needed for mapping dyn tendencies to FV physics grid
+    if (fv_nphys>0) then
+      allocate( Q_in_desc(qsize_d) )
+      ierr = PIO_Def_Var(File, 'dyn_T_in', pio_double, (/ncol_dimid, nlev_dimid/), T_in_desc)
+      ierr = PIO_Def_Var(File, 'dyn_U_in', pio_double, (/ncol_dimid, nlev_dimid/), U_in_desc)
+      ierr = PIO_Def_Var(File, 'dyn_V_in', pio_double, (/ncol_dimid, nlev_dimid/), V_in_desc)
+      ierr = PIO_Def_Var(File, 'dyn_dp_in',pio_double, (/ncol_dimid, nlev_dimid/), dp_in_desc)
+      do i=1,qsize_d
+        ierr = PIO_Def_Var(File,'dyn_'//trim(cnst_name(i))//'_in', pio_double, (/ncol_dimid, nlev_dimid/), Q_in_desc(i))
+      end do
+    end if ! fv_nphys>0
 
   end subroutine init_restart_dynamics
 
@@ -182,6 +198,82 @@ CONTAINS
        end do
     end do
     call PIO_Write_Darray(File,omegadesc,iodesc3d, var3d,ierr)
+
+    !---------------------------------------------------------------------------
+    ! Variables needed for mapping dyn tendencies to FV physics grid
+    !---------------------------------------------------------------------------
+    if (fv_nphys>0) then
+
+      ! Write U_in
+!$omp parallel do private(ie, k, j, i)
+      do ie=1,nelemd
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              var3d(i,j,ie,k) = elem(ie)%state%V_in(i,j,1,k)
+            end do
+          end do
+        end do
+      end do
+      call PIO_Write_Darray(File, U_in_desc, iodesc3d, var3d, ierr)
+
+      ! Write V_in
+!$omp parallel do private(ie, k, j, i)
+      do ie=1,nelemd
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              var3d(i,j,ie,k) = elem(ie)%state%V_in(i,j,2,k)
+            end do
+          end do
+        end do
+      end do
+      call PIO_Write_Darray(File, V_in_desc, iodesc3d, var3d, ierr)
+
+      ! Write T_in
+!$omp parallel do private(ie, k, j, i) 
+      do ie=1,nelemd
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              var3d(i,j,ie,k) = elem(ie)%state%T_in(i,j,k)
+            end do
+          end do
+        end do
+      end do
+      call PIO_Write_Darray(File, T_in_desc, iodesc3d, var3d, ierr)
+
+      ! Write dp_in
+!$omp parallel do private(ie, k, j, i)
+      do ie=1,nelemd
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              var3d(i,j,ie,k) = elem(ie)%state%dp_in(i,j,k)
+            end do
+          end do
+        end do
+      end do
+      call PIO_Write_Darray(File, dp_in_desc, iodesc3d, var3d, ierr)
+
+      do q=1,qsize_d
+!$omp parallel do private(ie, k, j, i)
+        do ie=1,nelemd
+          do k=1,nlev
+            do j=1,np
+              do i=1,np
+                var3d(i,j,ie,k) = elem(ie)%state%Q_in(i,j,k,q)
+              end do
+            end do
+          end do
+        end do
+        call PIO_Write_Darray(File, Q_in_desc(q), iodesc3d, var3d, ierr)
+      end do
+      deallocate(Q_in_desc)
+
+    end if ! fv_nphys>0
+    !---------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
 
 
     tl = timelevel%n0
@@ -317,7 +409,6 @@ CONTAINS
 
     end do
 
-
     deallocate(var3d)
     deallocate(var2d)
     deallocate(qdesc, qdesc_dp)
@@ -387,6 +478,9 @@ CONTAINS
     use spmd_dyn, only: spmd_readnl
     use control_mod,            only: qsplit
     use time_mod,               only: TimeLevel_Qdp
+    ! use fv_physics_coupling_mod,  only: fv_phys_to_dyn_topo
+    ! use cam_initfiles,            only: topo_file_get_id
+    ! use ncdio_atm,                only: infld
 
     !
     ! Input arguments
@@ -406,6 +500,12 @@ CONTAINS
     integer :: i, k, cnt, st, en, tl, tlQdp, ii, jj, s2d, q, j
     integer :: timelevel_dimid, timelevel_chk
     integer :: npes_se
+
+    ! integer :: nphys_sq
+    ! real(r8), allocatable :: phis_tmp(:,:) ! (nphys_sq,nelemd)
+    ! type(file_desc_t), pointer :: fh_topo
+    ! logical :: found
+
 !    type(file_desc_t) :: ncid
 !    integer :: ncid
 
@@ -420,6 +520,18 @@ CONTAINS
    else
     allocate (elem(0))
    endif
+
+    ! ! Read topo data from file when physics is on FV grid
+    ! if (fv_nphys>0) then
+    !   fh_topo => topo_file_get_id()
+    !   nphys_sq = fv_nphys*fv_nphys
+    !   allocate(phis_tmp(nphys_sq,nelemd))
+    !   call infld('PHIS', fh_topo, 'ncol', 1, nphys_sq, 1, nelemd, phis_tmp, found, gridname='physgrid_d')
+    !   if(.not.found) call endrun('read_restart_dynamics(): Could not find PHIS field on input datafile')
+    !   ! Copy phis field to GLL grid
+    !   call fv_phys_to_dyn_topo(elem,phis_tmp)
+    !   deallocate(phis_tmp)
+    ! end if
 
     ierr = PIO_Get_Att(File, PIO_GLOBAL, 'ne', fne)
     ierr = PIO_Get_Att(File, PIO_GLOBAL, 'np', fnp)
@@ -538,6 +650,102 @@ CONTAINS
           end do
        end do
     end do
+
+
+    !---------------------------------------------------------------------------
+    ! Variables needed for mapping dyn tendencies to FV physics grid
+    !---------------------------------------------------------------------------
+    if (fv_nphys>0) then
+
+      ierr = PIO_Inq_varid(File,'dyn_U_in', U_in_desc)
+      ierr = PIO_Inq_varid(File,'dyn_V_in', V_in_desc)
+      ierr = PIO_Inq_varid(File,'dyn_T_in', T_in_desc)
+      ierr = PIO_Inq_varid(File,'dyn_dp_in',dp_in_desc)
+      allocate( Q_in_desc(qsize_d) )
+      do q=1,qsize_d
+         ierr = PIO_Inq_varid(File, 'dyn_'//trim(cnst_name(q))//'_in' ,Q_in_desc(q))
+      end do
+
+      ! Switch to dyn_out for these variables
+      if (par%dynproc) elem=>dyn_out%elem
+
+      ! Read U_in
+      call PIO_Read_Darray(File, U_in_desc, iodesc3d, var3d, ierr)
+      cnt=0
+      do k=1,nlev
+        do ie=1,nelemd
+          do j=1,np
+            do i=1,np
+              cnt=cnt+1
+              elem(ie)%state%V_in(i,j,1,k) = var3d(cnt)
+            end do
+          end do
+        end do
+      end do
+      
+      ! Read V_in
+      call PIO_Read_Darray(File, V_in_desc, iodesc3d, var3d, ierr)
+      cnt=0
+      do k=1,nlev
+        do ie=1,nelemd
+          do j=1,np
+            do i=1,np
+              cnt=cnt+1
+              elem(ie)%state%V_in(i,j,2,k) = var3d(cnt)
+            end do
+          end do
+        end do
+      end do
+      
+      ! Read T_in
+      call PIO_Read_Darray(File, T_in_desc, iodesc3d, var3d, ierr)
+      cnt=0
+      do k=1,nlev
+        do ie=1,nelemd
+          do j=1,np
+            do i=1,np
+              cnt=cnt+1
+              elem(ie)%state%T_in(i,j,k) = var3d(cnt)
+            end do
+          end do
+        end do
+      end do
+
+      ! Read dp_in
+      call PIO_Read_Darray(File, dp_in_desc, iodesc3d, var3d, ierr)
+      cnt=0
+      do k=1,nlev
+        do ie=1,nelemd
+          do j=1,np
+            do i=1,np
+              cnt=cnt+1
+              elem(ie)%state%dp_in(i,j,k) = var3d(cnt)
+            end do
+          end do
+        end do
+      end do
+      
+      ! Read Q_in
+      do q=1,qsize_d
+        call PIO_Read_Darray(File, Q_in_desc(q), iodesc3d, var3d, ierr)
+        cnt=0
+        do k=1,nlev
+          do ie=1,nelemd
+            do j=1,np
+              do i=1,np
+                cnt=cnt+1
+                elem(ie)%state%Q_in(i,j,k,q) = var3d(cnt)
+              end do
+            end do
+          end do
+        end do
+
+      end do
+      deallocate(Q_in_desc)
+
+    end if ! fv_nphys>0
+    !---------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
 
 
     tl = timelevel%n0
@@ -666,6 +874,7 @@ CONTAINS
        end do
 
     end do
+
 
     deallocate(var3d,var2d)
 
