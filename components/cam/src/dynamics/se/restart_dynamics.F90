@@ -615,16 +615,6 @@ CONTAINS
        ierr = PIO_Inq_varid(File, "dp"//cnst_name(q) ,Qdesc_dp(q))
     end do
 
-    ! Variables for mapping tendencies to physics grid
-    ierr = PIO_Inq_varid(File,'dyn_U_in', U_in_desc)
-    ierr = PIO_Inq_varid(File,'dyn_V_in', V_in_desc)
-    ierr = PIO_Inq_varid(File,'dyn_T_in', T_in_desc)
-    ierr = PIO_Inq_varid(File,'dyn_dp_in',dp_in_desc)
-    allocate( Q_in_desc(qsize_d) )
-    do q=1,qsize_d
-       ierr = PIO_Inq_varid(File, 'dyn_'//trim(cnst_name(q))//'_in' ,Q_in_desc(q))
-    end do
-
     call pio_setframe(File,phisdesc, int(1,kind=pio_offset_kind))
 
     call pio_read_darray(File, phisdesc, iodesc2d, var2d, ierr)
@@ -666,6 +656,15 @@ CONTAINS
     ! Variables needed for mapping dyn tendencies to FV physics grid
     !---------------------------------------------------------------------------
     if (fv_nphys>0) then
+
+      ierr = PIO_Inq_varid(File,'dyn_U_in', U_in_desc)
+      ierr = PIO_Inq_varid(File,'dyn_V_in', V_in_desc)
+      ierr = PIO_Inq_varid(File,'dyn_T_in', T_in_desc)
+      ierr = PIO_Inq_varid(File,'dyn_dp_in',dp_in_desc)
+      allocate( Q_in_desc(qsize_d) )
+      do q=1,qsize_d
+         ierr = PIO_Inq_varid(File, 'dyn_'//trim(cnst_name(q))//'_in' ,Q_in_desc(q))
+      end do
 
       ! Switch to dyn_out for these variables
       if (par%dynproc) elem=>dyn_out%elem
