@@ -596,8 +596,6 @@ contains
                   'Cloud shortwave assymmetry parameter', sampling_seq='rad_lwsw') 
       call addfld('CLOUD_TAU_LW', (/'lev   ','lwband'/), 'I', '1', &
                   'Cloud longwave absorption optical depth', sampling_seq='rad_lwsw') 
-      ! DEBUG
-      call addfld('SP_QC_RAD', (/'lev'/), 'I', '1', 'Averaged CRM_QC', sampling_seq='rad_lwsw')
 
       ! Band-by-band shortwave albedos
       call addfld('SW_ALBEDO_DIR', (/'swband'/), 'I', '1', &
@@ -1535,19 +1533,6 @@ contains
                      end do
                      call t_stopf('rad_gas_concentrations')
 
-                     ! Do optics; TODO: refactor to take array arguments?
-                     if (radiation_do('lw')) then
-                        call t_startf('rad_cloud_optics_lw')
-                        call get_cloud_optics_lw(state, pbuf, cld_tau_lw, liq_tau_lw, ice_tau_lw)
-                        call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_tau_lw, cld_optics_lw_col)
-                        call t_stopf('rad_cloud_optics_lw')
-
-                        call t_startf('rad_aerosol_optics_lw')
-                        call get_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_tau_lw)
-                        call set_aerosol_optics_lw(aer_tau_lw, aer_optics_lw_col)
-                        call t_stopf('rad_aerosol_optics_lw')
-                     end if
-
                      ! Do shortwave cloud optics calculations
                      ! TODO: refactor the set_cloud_optics codes to allow passing arrays
                      ! rather than state/pbuf so that we can use this for superparameterized
@@ -1568,6 +1553,19 @@ contains
                         call set_aerosol_optics_sw(aer_tau_sw, aer_ssa_sw, aer_asm_sw, &
                                                    aer_optics_sw_col)
                         call t_stopf('rad_aerosol_optics_sw')
+                     end if
+
+                     ! Do optics; TODO: refactor to take array arguments?
+                     if (radiation_do('lw')) then
+                        call t_startf('rad_cloud_optics_lw')
+                        call get_cloud_optics_lw(state, pbuf, cld_tau_lw, liq_tau_lw, ice_tau_lw)
+                        call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_tau_lw, cld_optics_lw_col)
+                        call t_stopf('rad_cloud_optics_lw')
+
+                        call t_startf('rad_aerosol_optics_lw')
+                        call get_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_tau_lw)
+                        call set_aerosol_optics_lw(aer_tau_lw, aer_optics_lw_col)
+                        call t_stopf('rad_aerosol_optics_lw')
                      end if
 
                      ! Pack data
@@ -1734,6 +1732,7 @@ contains
                call initialize_rrtmgp_fluxes(ncol_tot, nlev_rad+1, nlwbands, fluxes_allsky_all)
                call initialize_rrtmgp_fluxes(ncol_tot, nlev_rad+1, nlwbands, fluxes_clrsky_all)
 
+               ! Calculate longwave fluxes
                call t_startf('rad_fluxes_lw')
                call calculate_fluxes_lw(                                          &
                   active_gases, vmr_all(:,1:ncol_tot,1:nlev_rad),               &
@@ -1872,11 +1871,11 @@ contains
    !----------------------------------------------------------------------------
 
    subroutine calculate_fluxes_sw(gas_names, gas_vmr, &
-                                pmid, tmid, pint, &
-                                coszrs, alb_dir, alb_dif, &
-                                cld_optics, aer_optics, &
-                                fluxes_allsky, fluxes_clrsky, &
-                                tsi_scaling)
+                                  pmid, tmid, pint, &
+                                  coszrs, alb_dir, alb_dif, &
+                                  cld_optics, aer_optics, &
+                                  fluxes_allsky, fluxes_clrsky, &
+                                  tsi_scaling)
 
       use mo_rrtmgp_clr_all_sky, only: rte_sw
       use mo_fluxes_byband, only: ty_fluxes_byband
@@ -1913,7 +1912,7 @@ contains
       call set_daynight_indices(coszrs, day_indices, night_indices)
       nday = count(day_indices > 0)
 
-      ! Allocate optics optics
+      ! Allocate daytime-only optics
       call handle_error(cld_optics_day%alloc_2str(nday, nlev, k_dist_sw, name='sw day-time cloud optics'))
       call handle_error(aer_optics_day%alloc_2str(nday, nlev, k_dist_sw%get_band_lims_wavenumber(), name='sw day-time aerosol optics'))
 
@@ -1952,15 +1951,6 @@ contains
          aer_optics_day%ssa(iday,:,:) = aer_optics%ssa(icol,:,:)
          aer_optics_day%g  (iday,:,:) = aer_optics%g  (icol,:,:)
       end do
-
-      ! Apply delta scaling to account for forward-scattering
-      ! TODO: delta_scale takes the forward scattering fraction as an optional
-      ! parameter. In the current cloud optics_sw scheme, forward scattering is taken
-      ! just as g^2, which delta_scale assumes if forward scattering fraction is
-      ! omitted in the function call. In the future, we should explicitly pass
-      ! this. This just requires modifying the get_cloud_optics_sw procedures to also
-      ! pass the foward scattering fraction that the CAM cloud optics_sw assumes.
-      call handle_error(cld_optics_day%delta_scale())
 
       ! Populate gas concentrations
       call gas_concs%reset()
@@ -2022,6 +2012,7 @@ contains
                                 cld_optics, aer_optics, &
                                 fluxes_allsky, fluxes_clrsky)
 
+      use perf_mod, only: t_startf, t_stopf
       use mo_rrtmgp_clr_all_sky, only: rte_lw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
@@ -2049,6 +2040,7 @@ contains
       end do
 
       ! Do longwave radiative transfer calculations
+      call t_startf('rad_rte_lw')
       call handle_error(rte_lw(k_dist_lw, gas_concs, &
                                pmid(1:ncol,1:nlev), tmid(1:ncol,1:nlev), &
                                pint(1:ncol,1:nlev+1), tint(1:ncol,nlev+1), &
@@ -2058,6 +2050,7 @@ contains
                                aer_props=aer_optics, &
                                t_lev=tint(1:ncol,1:nlev+1), &
                                n_gauss_angles=1))  ! Set to 3 for consistency with RRTMG
+      call t_stopf('rad_rte_lw')
 
    end subroutine calculate_fluxes_lw
 
@@ -2070,7 +2063,11 @@ contains
       real(r8) :: area_factor
       integer :: ic, ix, iy, iz, j
 
-      area_factor = 1._r8 / (crm_nx_rad * crm_ny_rad)
+      if (crm_nx_rad * crm_ny_rad > 1) then
+         area_factor = 1._r8 / (crm_nx_rad * crm_ny_rad)
+      else
+         area_factor = 1
+      end if
       array_avg = 0
       ncol = size(array_avg, 1)
       ncol_tot = ncol * crm_nx_rad * crm_ny_rad
