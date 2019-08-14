@@ -1612,26 +1612,18 @@ contains
                call initialize_rrtmgp_fluxes(ncol_tot, nlev_rad+1, nswbands, fluxes_clrsky_all, do_direct=.true.)
 
                ! Do shortwave radiative transfer calculations
-               ! If no daytime columns in this chunk, then we return zeros
-               if (nday == 0) then
-                  call reset_fluxes(fluxes_allsky_all)
-                  call reset_fluxes(fluxes_clrsky_all)
-                  qrs(1:ncol,1:pver) = 0
-                  qrsc(1:ncol,1:pver) = 0
-               else
-                  call t_startf('rad_calculate_fluxes_sw')
-                  call calculate_fluxes_sw( &
-                     active_gases(:), vmr_all(:,1:ncol_tot,1:nlev_rad), &
-                     pmid(1:ncol_tot,1:nlev_rad), tmid(1:ncol_tot,1:nlev_rad), &
-                     pint(1:ncol_tot,1:nlev_rad+1), &
-                     coszrs_all(1:ncol_tot), &
-                     albedo_direct_all(1:nswbands,1:ncol_tot), &
-                     albedo_diffuse_all(1:nswbands,1:ncol_tot), &
-                     cld_optics_sw_all, aer_optics_sw_all, &
-                     fluxes_allsky_all, fluxes_clrsky_all, tsi_scaling &
-                  )
-                  call t_stopf('rad_calculate_fluxes_sw')
-               end if
+               call t_startf('rad_calculate_fluxes_sw')
+               call calculate_fluxes_sw( &
+                  active_gases(:), vmr_all(:,1:ncol_tot,1:nlev_rad), &
+                  pmid(1:ncol_tot,1:nlev_rad), tmid(1:ncol_tot,1:nlev_rad), &
+                  pint(1:ncol_tot,1:nlev_rad+1), &
+                  coszrs_all(1:ncol_tot), &
+                  albedo_direct_all(1:nswbands,1:ncol_tot), &
+                  albedo_diffuse_all(1:nswbands,1:ncol_tot), &
+                  cld_optics_sw_all, aer_optics_sw_all, &
+                  fluxes_allsky_all, fluxes_clrsky_all, tsi_scaling &
+               )
+               call t_stopf('rad_calculate_fluxes_sw')
 
                ! Calculate heating rates
                call t_startf('rad_heating_rate_sw')
@@ -1877,6 +1869,7 @@ contains
                                   fluxes_allsky, fluxes_clrsky, &
                                   tsi_scaling)
 
+      use perf_mod, only: t_startf, t_stopf
       use mo_rrtmgp_clr_all_sky, only: rte_sw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_2str
@@ -1911,6 +1904,13 @@ contains
       ! Get day-night indices
       call set_daynight_indices(coszrs, day_indices, night_indices)
       nday = count(day_indices > 0)
+
+      ! If we don't have any daytime indices, zero fluxes and return
+      if (nday <= 0) then
+         call reset_fluxes(fluxes_allsky)
+         call reset_fluxes(fluxes_clrsky)
+         return
+      end if
 
       ! Allocate daytime-only optics
       call handle_error(cld_optics_day%alloc_2str(nday, nlev, k_dist_sw, name='sw day-time cloud optics'))
@@ -1964,6 +1964,7 @@ contains
       call handle_error(aer_optics_day%validate())
         
       ! Compute fluxes
+      call t_startf('rad_rte_sw')
       call handle_error(rte_sw(k_dist_sw, gas_concs, &
                                pmid_day(1:nday,1:nlev), &
                                tmid_day(1:nday,1:nlev), &
@@ -1975,6 +1976,7 @@ contains
                                fluxes_allsky_day, fluxes_clrsky_day, &
                                aer_props=aer_optics_day, &
                                tsi_scaling=tsi_scaling))
+      call t_stopf('rad_rte_sw')
 
       ! Expand daytime-only fluxes
       call reset_fluxes(fluxes_allsky)
