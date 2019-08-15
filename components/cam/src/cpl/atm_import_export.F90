@@ -1,6 +1,10 @@
 module atm_import_export
 
   use shr_kind_mod  , only: r8 => shr_kind_r8, cl=>shr_kind_cl
+#ifdef MAML
+  use seq_comm_mct, only : num_inst_atm
+  use cam_instance     , only: inst_index
+#endif
   implicit none
 
 contains
@@ -36,6 +40,9 @@ contains
     integer, pointer   :: dst_a5_ndx, dst_a7_ndx
     integer, pointer   :: dst_a1_ndx, dst_a3_ndx
     logical :: overwrite_flds
+#ifdef MAML  
+     integer :: ii !MAML-Guangxing Lin
+#endif
     !-----------------------------------------------------------------------
     overwrite_flds = .true.
     ! don't overwrite fields if invoked during the initialization phase 
@@ -63,10 +70,26 @@ contains
              ! Move lhf to this if-block so that it is not overwritten to ensure BFB restarts when qneg4 correction 
              ! occurs at the restart time step
              ! Modified by Wuyin Lin
-             cam_in(c)%shf(i)    = -x2a(index_x2a_Faxx_sen, ig)     
              cam_in(c)%cflx(i,1) = -x2a(index_x2a_Faxx_evap,ig)                
+#ifdef MAML  
+             cam_in(c)%shf(i,inst_index)    = -x2a(index_x2a_Faxx_sen, ig)    
+             cam_in(c)%lhf(i,inst_index)    = -x2a(index_x2a_Faxx_lat, ig)     
+! MAML-Guangxing Lin
+#else
+             cam_in(c)%shf(i)    = -x2a(index_x2a_Faxx_sen, ig) 
              cam_in(c)%lhf(i)    = -x2a(index_x2a_Faxx_lat, ig)     
+#endif
           endif
+#ifdef MAML  
+          cam_in(c)%wsx(i,inst_index)    = -x2a(index_x2a_Faxx_taux,ig)
+          cam_in(c)%wsy(i,inst_index)    = -x2a(index_x2a_Faxx_tauy,ig)
+          cam_in(c)%lwup(i,inst_index)      = -x2a(index_x2a_Faxx_lwup,ig)
+          cam_in(c)%asdir(i,inst_index)     =  x2a(index_x2a_Sx_avsdr, ig)
+          cam_in(c)%aldir(i,inst_index)     =  x2a(index_x2a_Sx_anidr, ig)
+          cam_in(c)%asdif(i,inst_index)     =  x2a(index_x2a_Sx_avsdf, ig)
+          cam_in(c)%aldif(i,inst_index)     =  x2a(index_x2a_Sx_anidf, ig)
+          cam_in(c)%snowhland(i,inst_index) =  x2a(index_x2a_Sl_snowh, ig)
+#else
           cam_in(c)%wsx(i)    = -x2a(index_x2a_Faxx_taux,ig)     
           cam_in(c)%wsy(i)    = -x2a(index_x2a_Faxx_tauy,ig)     
           cam_in(c)%lwup(i)      = -x2a(index_x2a_Faxx_lwup,ig)    
@@ -74,9 +97,10 @@ contains
           cam_in(c)%aldir(i)     =  x2a(index_x2a_Sx_anidr, ig)  
           cam_in(c)%asdif(i)     =  x2a(index_x2a_Sx_avsdf, ig)  
           cam_in(c)%aldif(i)     =  x2a(index_x2a_Sx_anidf, ig)
+          cam_in(c)%snowhland(i) =  x2a(index_x2a_Sl_snowh, ig)
+#endif
           cam_in(c)%ts(i)        =  x2a(index_x2a_Sx_t,     ig)  
           cam_in(c)%sst(i)       =  x2a(index_x2a_So_t,     ig)             
-          cam_in(c)%snowhland(i) =  x2a(index_x2a_Sl_snowh, ig)  
           cam_in(c)%snowhice(i)  =  x2a(index_x2a_Si_snowh, ig)  
           cam_in(c)%tref(i)      =  x2a(index_x2a_Sx_tref,  ig)  
           cam_in(c)%qref(i)      =  x2a(index_x2a_Sx_qref,  ig)
@@ -191,7 +215,20 @@ contains
           do c=begchunk, endchunk
              ncols = get_ncols_p(c)
              do i=1,ncols
+#ifdef MAML
+! MAML-Guangxing 
+                cam_in(c)%lwup(i,1) = shr_const_stebol*(cam_in(c)%ts(i)**4)
+                do ii=2,num_inst_atm
+                  cam_in(c)%lwup(i,ii) = cam_in(c)%lwup(i,1)
+                  !seems the four lines below are new, not sure why
+                  cam_in(c)%asdir(i,ii) = cam_in(c)%asdir(i,1)
+                  cam_in(c)%aldir(i,ii) = cam_in(c)%aldir(i,1)
+                  cam_in(c)%asdif(i,ii) = cam_in(c)%asdif(i,1)
+                  cam_in(c)%aldif(i,ii) = cam_in(c)%aldif(i,1)
+                end do
+#else
                 cam_in(c)%lwup(i) = shr_const_stebol*(cam_in(c)%ts(i)**4)
+#endif 
              end do
           end do
        end if
@@ -231,6 +268,33 @@ contains
        ncols = get_ncols_p(c)
        do i=1,ncols
           a2x(index_a2x_Sa_pslv   ,ig) = cam_out(c)%psl(i)
+#ifdef MAML
+          a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i,inst_index)   
+          a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i,inst_index)   
+          a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i,inst_index)   
+          a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i,inst_index)   
+          a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i,inst_index)  
+          a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i,inst_index)   
+          a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1,inst_index) 
+	  a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i,inst_index)
+          a2x(index_a2x_Faxa_rainc,ig) = (cam_out(c)%precc(i,inst_index)-cam_out(c)%precsc(i,inst_index))*1000._r8
+          a2x(index_a2x_Faxa_rainl,ig) = (cam_out(c)%precl(i,inst_index)-cam_out(c)%precsl(i,inst_index))*1000._r8
+          a2x(index_a2x_Faxa_snowc,ig) = cam_out(c)%precsc(i,inst_index)*1000._r8
+          a2x(index_a2x_Faxa_snowl,ig) = cam_out(c)%precsl(i,inst_index)*1000._r8
+          a2x(index_a2x_Faxa_swnet,ig) = cam_out(c)%netsw(i,inst_index)
+          a2x(index_a2x_Faxa_lwdn ,ig) = cam_out(c)%flwds(i,inst_index)
+          a2x(index_a2x_Faxa_swndr,ig) = cam_out(c)%soll(i,inst_index)
+          a2x(index_a2x_Faxa_swvdr,ig) = cam_out(c)%sols(i,inst_index)
+          a2x(index_a2x_Faxa_swndf,ig) = cam_out(c)%solld(i,inst_index)
+          a2x(index_a2x_Faxa_swvdf,ig) = cam_out(c)%solsd(i,inst_index)
+#else
+          a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i)   
+          a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i)   
+          a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i)   
+          a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)   
+          a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i)  
+          a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i)   
+          a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1) 
           a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i)   
           a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i)   
           a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i)   
@@ -249,6 +313,7 @@ contains
           a2x(index_a2x_Faxa_swvdr,ig) = cam_out(c)%sols(i)   
           a2x(index_a2x_Faxa_swndf,ig) = cam_out(c)%solld(i)  
           a2x(index_a2x_Faxa_swvdf,ig) = cam_out(c)%solsd(i)  
+#endif
 
           ! aerosol deposition fluxes
           a2x(index_a2x_Faxa_bcphidry,ig) = cam_out(c)%bcphidry(i)

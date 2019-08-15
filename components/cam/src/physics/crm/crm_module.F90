@@ -30,7 +30,10 @@ module crm_module
   use crm_input_module,       only: crm_input_type
   use crm_output_module,      only: crm_output_type
   use crm_ecpp_output_module, only: crm_ecpp_output_type
-
+  use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
+#ifdef ECPP  
+  use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
+#endif
 !---------------------------------------------------------------
 !  Super-parameterization's main driver
 !  Marat Khairoutdinov, 2001-2009
@@ -47,11 +50,13 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 clubb_tkh, relvar,      &
                 accre_enhan, qclvar,    &
 #endif
+#ifdef MAML
+                crm_pcp,     crm_snw,              &
+#endif
                 crm_ecpp_output, crm_output )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
     use shr_kind_mod          , only: r8 => shr_kind_r8
-    use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
     use ppgrid                , only: pcols
     use vars
     use params
@@ -82,7 +87,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                                       qlsink_cen_sum, precr_cen_sum, precsolid_cen_sum, xkhvsum, wup_thresh, wdown_thresh, &
                                       wwqui_cen_sum, wwqui_bnd_sum, wwqui_cloudy_cen_sum, wwqui_cloudy_bnd_sum, &
                                       qlsink_bf_cen_sum, qlsink_avg_cen_sum, prain_cen_sum, qlsink_bf, prain
-    use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
     use ecppvars              , only: NCLASS_CL, ncls_ecpp_in, NCLASS_PR
 #endif /* ECPP */
     use accelerate_crm_mod    , only: use_crm_accel, crm_accel_factor, crm_accel_nstop, accelerate_crm
@@ -112,6 +116,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
+#ifdef MAML
+!MAML-Guangxing Lin
+    real(r8), intent(inout) :: crm_pcp(ncrms, crm_nx,crm_ny)  ! CRM precip rate (m/s)
+    real(r8), intent(inout) :: crm_snw(ncrms,crm_nx,crm_ny) ! CRM snow rate (m/s)
+#endif
     type(crm_ecpp_output_type),intent(inout) :: crm_ecpp_output
     type(crm_output_type), target,     intent(inout) :: crm_output
 
@@ -375,7 +384,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       do i = 1 , nx
         do icrm = 1 , ncrms
           u   (icrm,i,j,k) = crm_state_u_wind     (icrm,i,j,k)
+#ifdef MAML
+          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)
+#else       
           v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YES3D
+#endif
           w   (icrm,i,j,k) = crm_state_w_wind     (icrm,i,j,k)
           tabs(icrm,i,j,k) = crm_state_temperature(icrm,i,j,k)
         enddo
@@ -391,7 +404,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do i=1,nx
           do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
+#ifdef MAML
+            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) ) 
+#else     
             v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
+#endif
           enddo
         enddo
       enddo
@@ -545,7 +562,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       tke0 (icrm,k) = tke0 (icrm,k) * factor_xy
       l = plev-k+1
       uln  (icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
+#ifdef MAML
+      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )
+#else
       vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+#endif
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(icrm,k))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(icrm,k))*idt_gl
       utend(icrm,k) = (uln(icrm,l)-u0(icrm,k))*idt_gl
@@ -1400,6 +1421,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
+#ifdef MAML
+!MAML-Guangxing Lin precip is aggregated and a mean value is determined. We need
+!  to change this so that individual CRM precip values are passed down
+!  to CLM.
+          crm_pcp(icrm,i,j) = precsfc(i,j,icrm)/1000.      ! mm/s --> m/s
+          crm_snw(icrm,i,j) = precssfc(i,j,icrm)/1000.     ! mm/s --> m/s
+!MAML-Guangxing Lin
+#endif
         if(precsfc(icrm,i,j).gt.10./86400.) then
            !$acc atomic update
            crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(icrm,i,j)
