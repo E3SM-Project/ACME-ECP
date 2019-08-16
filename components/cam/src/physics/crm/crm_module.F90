@@ -375,7 +375,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       do i = 1 , nx
         do icrm = 1 , ncrms
           u   (icrm,i,j,k) = crm_state_u_wind     (icrm,i,j,k)
-          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YES3D
+          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YESQ3D
           w   (icrm,i,j,k) = crm_state_w_wind     (icrm,i,j,k)
           tabs(icrm,i,j,k) = crm_state_temperature(icrm,i,j,k)
         enddo
@@ -391,7 +391,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do i=1,nx
           do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
-            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
+            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YESQ3D
           enddo
         enddo
       enddo
@@ -545,7 +545,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       tke0 (icrm,k) = tke0 (icrm,k) * factor_xy
       l = plev-k+1
       uln  (icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
-      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YESQ3D
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(icrm,k))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(icrm,k))*idt_gl
       utend(icrm,k) = (uln(icrm,l)-u0(icrm,k))*idt_gl
@@ -1534,7 +1534,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         enddo
       enddo
       crm_output%tkesgsz   (icrm,l)= rho(icrm,k)*tmp*factor_xy
-      crm_output%tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YES3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
+      crm_output%tkez      (icrm,l)= rho(icrm,k)*0.5*(u2z+v2z*YESQ3D+w2z)*factor_xy + crm_output%tkesgsz(icrm,l)
       tmp = 0
       do j = 1 , ny
         do i = 1 , nx

@@ -6,6 +6,15 @@ module domain
   implicit none
 
   integer, parameter :: YES3D = YES3DVAL  ! Domain dimensionality: 1 - 3D, 0 - 2D
+#if YES3D = 1 
+  integer, parameter :: YESEQ3D = 1 
+#else 
+#ifndef YESQ3DVAL  
+  integer, parameter :: YESQ3D = 0  
+#else
+  integer, parameter :: YESQ3D = YESQ3DVAL
+#endif 
+#endif 
   integer, parameter :: nx_gl = crm_nx ! Number of grid points in X
   integer, parameter :: ny_gl = crm_ny ! Number of grid points in Y
   integer, parameter :: nz_gl = crm_nz ! Number of pressure (scalar) levels
