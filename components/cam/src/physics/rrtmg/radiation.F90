@@ -760,9 +760,9 @@ end function radiation_nextsw_cday
 
          ! Add cloud-scale radiative quantities
          if (use_SPCAM) then
-            call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'A', 'K/s', 'Radiative heating tendency')
-            call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', 'CRM Shortwave radiative heating rate')
-            call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
+            call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'A', 'K/s', 'Radiative heating tendency')
+            call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Shortwave radiative heating rate')
+            call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
          end if
        end if
     end do
