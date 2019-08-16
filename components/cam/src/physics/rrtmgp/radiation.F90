@@ -1115,9 +1115,9 @@ contains
       use radiation_state, only: set_rad_state
       use radiation_utils, only: calculate_heating_rate
       use cam_optics, only: get_cloud_optics_lw  , set_cloud_optics_lw, &
-                            get_aerosol_optics_lw, set_aerosol_optics_lw, &
+                            get_aerosol_optics_lw, &
                             get_cloud_optics_sw  , set_cloud_optics_sw, &
-                            get_aerosol_optics_sw, set_aerosol_optics_sw
+                            get_aerosol_optics_sw
 #ifdef MODAL_AERO
       use modal_aero_data, only: ntot_amode
 #endif
@@ -1244,7 +1244,7 @@ contains
                crm_qrs, crm_qrsc, crm_qrl, crm_qrlc
 
       ! Optical property arrays
-      real(r8), dimension(pcols,nlev_rad,nlwbands) :: cld_tau_lw, aer_tau_lw
+      real(r8), dimension(pcols,nlev_rad,nlwbands) :: cld_tau_lw
       real(r8), dimension(pcols,nlev_rad,nlwbands) :: liq_tau_lw, ice_tau_lw
 
       ! Albedo for shortwave calculations
@@ -1280,7 +1280,6 @@ contains
          cld_optics_lw_col, cld_optics_lw_all
       real(r8), dimension(pcols,nlev_rad,nswbands) :: cld_tau_sw, cld_ssa_sw, cld_asm_sw
       real(r8), dimension(pcols,nlev_rad,nswbands) :: liq_tau_sw, ice_tau_sw
-      real(r8), dimension(pcols,nlev_rad,nswbands) :: aer_tau_sw, aer_ssa_sw, aer_asm_sw
 
       real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,pver) :: qrs_all, qrsc_all
 
@@ -1542,8 +1541,6 @@ contains
                         call get_aerosol_optics_sw(icall, state, pbuf, &
                                                    night_indices(1:nnight), &
                                                    is_cmip6_volc, &
-                                                   aer_tau_sw, aer_ssa_sw, aer_asm_sw)
-                        call set_aerosol_optics_sw(aer_tau_sw, aer_ssa_sw, aer_asm_sw, &
                                                    aer_optics_sw_col)
                         call t_stopf('rad_aerosol_optics_sw')
                      end if
@@ -1556,8 +1553,7 @@ contains
                         call t_stopf('rad_cloud_optics_lw')
 
                         call t_startf('rad_aerosol_optics_lw')
-                        call get_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_tau_lw)
-                        call set_aerosol_optics_lw(aer_tau_lw, aer_optics_lw_col)
+                        call get_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_optics_lw_col)
                         call t_stopf('rad_aerosol_optics_lw')
                      end if
 
