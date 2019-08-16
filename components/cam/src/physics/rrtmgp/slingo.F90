@@ -93,7 +93,10 @@ contains
       real(r8) :: fbarli        ! F coefficient for current spectral band
 
       ! Caution... A. Slingo recommends no less than 4.0 micro-meters nor
-      ! greater than 20 micro-meters
+      ! greater than 20 micro-meters. Here we set effective radius limits
+      ! for liquid to the range 4.2 < rel < 16 micron (Slingo 89)
+      real(r8), parameter :: rel_min = 4.2_r8
+      real(r8), parameter :: rel_max = 16._r8
 
       integer :: ns, i, k, indxsl, Nday
       integer :: i_rel, lchnk, icld, itim_old
@@ -143,14 +146,14 @@ contains
                ! note that optical properties for liquid valid only
                ! in range of 4.2 > rel > 16 micron (Slingo 89)
                if (cldn(i,k) >= cldmin .and. cldn(i,k) >= cldeps) then
-                  tmp1l = abarli + bbarli/min(max(4.2_r8,rel(i,k)),16._r8)
+                  tmp1l = abarli + bbarli/min(max(rel_min,rel(i,k)),rel_max)
                   liq_tau(ns,i,k) = 1000._r8*cliqwp(i,k)*tmp1l
                else
                   liq_tau(ns,i,k) = 0.0_r8
                endif
 
-               tmp2l = 1._r8 - cbarli - dbarli*min(max(4.2_r8,rel(i,k)),16._r8)
-               tmp3l = fbarli*min(max(4.2_r8,rel(i,k)),16._r8)
+               tmp2l = 1._r8 - cbarli - dbarli*min(max(rel_min,rel(i,k)),rel_max)
+               tmp3l = fbarli*min(max(rel_min,rel(i,k)),rel_max)
                ! Do not let single scatter albedo be 1.  Delta-eddington solution
                ! for non-conservative case has different analytic form from solution
                ! for conservative case, and raddedmx is written for non-conservative case.
