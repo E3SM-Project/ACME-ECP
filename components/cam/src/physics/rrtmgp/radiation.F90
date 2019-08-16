@@ -1082,7 +1082,7 @@ contains
 
       ! Utilities for interacting with the physics buffer
       use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
-                                pbuf_get_index, pbuf_old_tim_idx
+                                pbuf_get_index
 
       ! For calculating radiative heating tendencies
       use radheat, only: radheat_tend
@@ -1265,7 +1265,6 @@ contains
       integer :: nday, nnight     ! Number of daylight columns
       integer :: day_indices(pcols), night_indices(pcols)   ! Indicies of daylight coumns
 
-      integer :: itim
 
       ! Scaling factor for total sky irradiance; used to account for orbital
       ! eccentricity, and could be used to scale total sky irradiance for different
@@ -1320,15 +1319,9 @@ contains
       surface_emissivity = 1.0_r8
 
       ! pbuf fields we need to overwrite with CRM fields to work with optics
-      itim = pbuf_old_tim_idx()
       call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
       call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
-      !call pbuf_get_field(pbuf, pbuf_get_index('CLD'  ), cld  )
-      call pbuf_get_field(pbuf, pbuf_get_index('CLD'  ), cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-      !call pbuf_get_field( &
-      !   pbuf, pbuf_get_index('CLD'  ), cld, &
-      !   start=(/1,1,pbuf_old_tim_idx()/), kount=(/pcols,pver,1/) &
-      !)
+      call pbuf_get_field(pbuf, pbuf_get_index('CLD'  ), cld  )
       call pbuf_get_field(pbuf, pbuf_get_index('DEI'  ), dei  )
       call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
       call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
@@ -2058,6 +2051,13 @@ contains
 
    !----------------------------------------------------------------------------
 
+   ! Utility routine to compute domain averages of CRM data that has been
+   ! "packed" into a single dimension to hold both global GCM columns and CRM
+   ! "subcolumns" within each GCM column. Input will be 2D arrays dimensioned
+   ! (ncol_tot,nlev) where ncol_tot is the total number of CRM columns ncol *
+   ! crm_nx_rad * crm_ny_rad and nlev is number of vertical levels. Output will
+   ! be 2D arrays dimensioned (ncol,nlev), where the averaging has been done
+   ! over the CRM columns.
    subroutine average_packed_array(array_packed, array_avg)
       real(r8), intent(in) :: array_packed(:,:)
       real(r8), intent(out) :: array_avg(:,:)
