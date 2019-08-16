@@ -16,9 +16,11 @@ module scalar_momentum_mod
 !              Possoin solver and fft routines provided by Stefan Tulich
 !
 !---------------------------------------------------------------------------
+   use shr_kind_mod, only: r8 => shr_kind_r8
    use params
    use grid, only: nx,ny,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
    use openacc_utils
+
    implicit none
 
    public allocate_scalar_momentum
@@ -42,81 +44,78 @@ module scalar_momentum_mod
 
    character*30 u_esmt_name
    character*30 v_esmt_name
-   character*10   esmt_units
+   character*10 esmt_units
 
- contains
+contains
 
-  !========================================================================================
-  !========================================================================================
-  subroutine allocate_scalar_momentum(ncrms)
-     !------------------------------------------------------------------
-     ! Purpose: Allocate and initialize variables for ESMT
-     ! Author: Walter Hannah - Lawrence Livermore National Lab
-     !------------------------------------------------------------------
-     implicit none
-     integer, intent(in) :: ncrms
-     real(crm_rknd) :: zero
+!========================================================================================
+!========================================================================================
+subroutine allocate_scalar_momentum(ncrms)
+   !------------------------------------------------------------------
+   ! Purpose: Allocate and initialize variables for ESMT
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
+   !------------------------------------------------------------------
+   implicit none
+   integer, intent(in) :: ncrms
 
-     allocate( u_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
-     allocate( v_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
-     allocate( fluxb_u_esmt (nx, ny,ncrms) )
-     allocate( fluxb_v_esmt (nx, ny,ncrms) )
-     allocate( fluxt_u_esmt (nx, ny,ncrms) )
-     allocate( fluxt_v_esmt (nx, ny,ncrms) )
-     allocate( u_esmt_sgs   (nz,ncrms)  )
-     allocate( v_esmt_sgs   (nz,ncrms)  )
-     allocate( u_esmt_diff  (nz,ncrms)  )
-     allocate( v_esmt_diff  (nz,ncrms)  )
+   allocate( u_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+   allocate( v_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+   allocate( fluxb_u_esmt (nx, ny,ncrms) )
+   allocate( fluxb_v_esmt (nx, ny,ncrms) )
+   allocate( fluxt_u_esmt (nx, ny,ncrms) )
+   allocate( fluxt_v_esmt (nx, ny,ncrms) )
+   allocate( u_esmt_sgs   (nz,ncrms)  )
+   allocate( v_esmt_sgs   (nz,ncrms)  )
+   allocate( u_esmt_diff  (nz,ncrms)  )
+   allocate( v_esmt_diff  (nz,ncrms)  )
 
-     call prefetch( u_esmt )
-     call prefetch( v_esmt )
-     call prefetch( fluxb_u_esmt )
-     call prefetch( fluxb_v_esmt )
-     call prefetch( fluxt_u_esmt )
-     call prefetch( fluxt_v_esmt )
-     call prefetch( u_esmt_sgs )
-     call prefetch( v_esmt_sgs )
-     call prefetch( u_esmt_diff )
-     call prefetch( v_esmt_diff )
+   call prefetch( u_esmt )
+   call prefetch( v_esmt )
+   call prefetch( fluxb_u_esmt )
+   call prefetch( fluxb_v_esmt )
+   call prefetch( fluxt_u_esmt )
+   call prefetch( fluxt_v_esmt )
+   call prefetch( u_esmt_sgs )
+   call prefetch( v_esmt_sgs )
+   call prefetch( u_esmt_diff )
+   call prefetch( v_esmt_diff )
 
-     u_esmt       = 0.
-     v_esmt       = 0.
-     fluxb_u_esmt = 0.
-     fluxb_v_esmt = 0.
-     fluxt_u_esmt = 0.
-     fluxt_v_esmt = 0.
-     u_esmt_sgs   = 0.
-     u_esmt_diff  = 0.
-     v_esmt_sgs   = 0.
-     v_esmt_diff  = 0.
+   u_esmt       = 0.0_r8
+   v_esmt       = 0.0_r8
+   fluxb_u_esmt = 0.0_r8
+   fluxb_v_esmt = 0.0_r8
+   fluxt_u_esmt = 0.0_r8
+   fluxt_v_esmt = 0.0_r8
+   u_esmt_sgs   = 0.0_r8
+   u_esmt_diff  = 0.0_r8
+   v_esmt_sgs   = 0.0_r8
+   v_esmt_diff  = 0.0_r8
 
-     u_esmt_name = 'Zonal Velocity'
-     v_esmt_name = 'Meridonal Velocity'
-     esmt_units  = 'm/s'
+   u_esmt_name = 'Zonal Velocity'
+   v_esmt_name = 'Meridonal Velocity'
+   esmt_units  = 'm/s'
 
-  end subroutine allocate_scalar_momentum
+end subroutine allocate_scalar_momentum
 
-
-  !========================================================================================
-  !========================================================================================
-  subroutine deallocate_scalar_momentum()
-     !------------------------------------------------------------------
-     ! Purpose: Deallocate ESMT variables
-     ! Author: Walter Hannah - Lawrence Livermore National Lab
-     !------------------------------------------------------------------
-     implicit none
-     deallocate( u_esmt       )
-     deallocate( v_esmt       )
-     deallocate( fluxb_u_esmt )
-     deallocate( fluxb_v_esmt )
-     deallocate( fluxt_u_esmt )
-     deallocate( fluxt_v_esmt )
-     deallocate( u_esmt_sgs   )
-     deallocate( v_esmt_sgs   )
-     deallocate( u_esmt_diff  )
-     deallocate( v_esmt_diff  )
-  end subroutine deallocate_scalar_momentum
-
+!========================================================================================
+!========================================================================================
+subroutine deallocate_scalar_momentum()
+   !------------------------------------------------------------------
+   ! Purpose: Deallocate ESMT variables
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
+   !------------------------------------------------------------------
+   implicit none
+   deallocate( u_esmt       )
+   deallocate( v_esmt       )
+   deallocate( fluxb_u_esmt )
+   deallocate( fluxb_v_esmt )
+   deallocate( fluxt_u_esmt )
+   deallocate( fluxt_v_esmt )
+   deallocate( u_esmt_sgs   )
+   deallocate( v_esmt_sgs   )
+   deallocate( u_esmt_diff  )
+   deallocate( v_esmt_diff  )
+end subroutine deallocate_scalar_momentum
 
 !========================================================================================
 !========================================================================================
@@ -137,20 +136,20 @@ subroutine scalar_momentum_tend(ncrms)
    integer :: i,j,k,icrm
 
    do icrm = 1 , ncrms
-     factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
+      factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
 
-     call scalar_momentum_pgf(ncrms,icrm,u_esmt(icrm,:,:,:),u_esmt_pgf_3D)
-     call scalar_momentum_pgf(ncrms,icrm,v_esmt(icrm,:,:,:),v_esmt_pgf_3D)
+      call scalar_momentum_pgf(ncrms,icrm,u_esmt(icrm,:,:,:),u_esmt_pgf_3D)
+      call scalar_momentum_pgf(ncrms,icrm,v_esmt(icrm,:,:,:),v_esmt_pgf_3D)
 
-     ! Add PGF tendency
-     do k=1,nzm
-        do j=1,ny
-           do i=1,nx
-              u_esmt(icrm,i,j,k) = u_esmt(icrm,i,j,k) + u_esmt_pgf_3D(i,j,k)*dtn
-              v_esmt(icrm,i,j,k) = v_esmt(icrm,i,j,k) + v_esmt_pgf_3D(i,j,k)*dtn
-           end do
-        end do
-     end do
+      ! Add PGF tendency
+      do k=1,nzm
+         do j=1,ny
+            do i=1,nx
+               u_esmt(icrm,i,j,k) = u_esmt(icrm,i,j,k) + u_esmt_pgf_3D(i,j,k)*dtn
+               v_esmt(icrm,i,j,k) = v_esmt(icrm,i,j,k) + v_esmt_pgf_3D(i,j,k)*dtn
+            end do
+         end do
+      end do
 
    enddo
 
@@ -195,9 +194,9 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
    !------------------------------------------------------------------------
    !------------------------------------------------------------------------
 
-   !!! The loop over "y" points is mostly unessary, since ESMT
-   !!! is meant for 2D CRMs, but I've left it in for comparing
-   !!! ESMT tendencies to fully resolved 3D momentum transport
+   ! The loop over "y" points is mostly unessary, since ESMT
+   ! is for 2D CRMs, but it is useful for directly comparing
+   ! ESMT tendencies to fully resolved 3D momentum transport
 
    ! Calculate layer thickness
    do k = 1,nzm
@@ -355,10 +354,10 @@ subroutine esmt_fft_forward(nx,nzm,dx,arr_in,k_out,arr_out)
    lenr = nx
    jump = nx
    lenwrk = lenr
-   !!! initialization for FFT
+   ! initialization for FFT
    call rfft1i(n,wsave,lensav,ier)
    if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
-   !!!  do the forward transform
+   !  do the forward transform
    do k = 1,nzm
       do i = 1,nx
          arr_out(i,k) = arr_in(i,k)
@@ -412,10 +411,10 @@ subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
    lenr = nx
    jump = nx
    lenwrk = lenr
-   !!! initialization for FFT
+   ! initialization for FFT
    call rfft1i(n,wsave,lensav,ier)
    if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
-   !!!  do the backward transform
+   !  do the backward transform
    do k = 1,nzm
       do i = 1,nx
          arr_out(i,k) = arr_in(i,k)
