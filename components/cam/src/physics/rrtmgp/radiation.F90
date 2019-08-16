@@ -1243,10 +1243,6 @@ contains
       real(r8), dimension(pcols,crm_nx_rad,crm_ny_rad,crm_nz) :: &
                crm_qrs, crm_qrsc, crm_qrl, crm_qrlc
 
-      ! Optical property arrays
-      real(r8), dimension(pcols,nlev_rad,nlwbands) :: cld_tau_lw
-      real(r8), dimension(pcols,nlev_rad,nlwbands) :: liq_tau_lw, ice_tau_lw
-
       ! Albedo for shortwave calculations
       real(r8), dimension(nswbands,pcols) :: albedo_direct_col, albedo_diffuse_col, &
                                              albedo_direct_day, albedo_diffuse_day
@@ -1274,12 +1270,10 @@ contains
       ! Cloud and aerosol optics
       type(ty_optical_props_2str) :: &
          aer_optics_sw_col, aer_optics_sw_all, &
-         cld_optics_sw_col, cld_optics_sw_all
+         cld_optics_sw_col, cld_optics_sw_all, cld_optics_sw_bnd
       type(ty_optical_props_1scl) :: &
          aer_optics_lw_col, aer_optics_lw_all, &
-         cld_optics_lw_col, cld_optics_lw_all
-      real(r8), dimension(pcols,nlev_rad,nswbands) :: cld_tau_sw, cld_ssa_sw, cld_asm_sw
-      real(r8), dimension(pcols,nlev_rad,nswbands) :: liq_tau_sw, ice_tau_sw
+         cld_optics_lw_col, cld_optics_lw_all, cld_optics_lw_bnd
 
       real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,pver) :: qrs_all, qrsc_all
 
@@ -1415,11 +1409,19 @@ contains
                nnight = count(night_indices(1:ncol) > 0)
 
                ! Initialize cloud optics objects
+               call handle_error(cld_optics_sw_bnd%alloc_2str( &
+                  ncol, pver, k_dist_sw%get_band_lims_wavenumber(), &
+                  name='cld_optics_sw' &
+               ))
                call handle_error(cld_optics_sw_col%alloc_2str( &
                   ncol, nlev_rad, k_dist_sw, name='cld_optics_sw' &
                ))
                call handle_error(cld_optics_sw_all%alloc_2str( &
                   ncol_tot, nlev_rad, k_dist_sw, name='cld_optics_sw' &
+               ))
+               call handle_error(cld_optics_lw_bnd%alloc_1scl( &
+                  ncol, pver, k_dist_lw%get_band_lims_wavenumber(), &
+                  name='cld_optics_lw' &
                ))
                call handle_error(cld_optics_lw_col%alloc_1scl( &
                   ncol, nlev_rad, k_dist_lw, name='cld_optics_lw' &
@@ -1532,8 +1534,8 @@ contains
                      ! routines to handle this.
                      if (radiation_do('sw')) then
                         call t_startf('rad_cloud_optics_sw')
-                        call get_cloud_optics_sw(state, pbuf, cld_tau_sw, cld_ssa_sw, cld_asm_sw, liq_tau_sw, ice_tau_sw)
-                        call set_cloud_optics_sw(state, pbuf, k_dist_sw, cld_tau_sw, cld_ssa_sw, cld_asm_sw, cld_optics_sw_col)
+                        call get_cloud_optics_sw(state, pbuf, cld_optics_sw_bnd)
+                        call set_cloud_optics_sw(state, pbuf, k_dist_sw, cld_optics_sw_bnd, cld_optics_sw_col)
                         call t_stopf('rad_cloud_optics_sw')
 
                         ! Get shortwave aerosol optics
@@ -1548,8 +1550,8 @@ contains
                      ! Do optics; TODO: refactor to take array arguments?
                      if (radiation_do('lw')) then
                         call t_startf('rad_cloud_optics_lw')
-                        call get_cloud_optics_lw(state, pbuf, cld_tau_lw, liq_tau_lw, ice_tau_lw)
-                        call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_tau_lw, cld_optics_lw_col)
+                        call get_cloud_optics_lw(state, pbuf, cld_optics_lw_bnd)
+                        call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_optics_lw_bnd, cld_optics_lw_col)
                         call t_stopf('rad_cloud_optics_lw')
 
                         call t_startf('rad_aerosol_optics_lw')
@@ -1689,6 +1691,7 @@ contains
                ! Free optical properties
                call free_optics_sw(cld_optics_sw_all)
                call free_optics_sw(aer_optics_sw_all)
+               call free_optics_sw(cld_optics_sw_bnd)
                call free_optics_sw(cld_optics_sw_col)
                call free_optics_sw(aer_optics_sw_col)
 
@@ -1782,6 +1785,7 @@ contains
                call free_fluxes(fluxes_clrsky)
                call free_fluxes(fluxes_allsky_all)
                call free_fluxes(fluxes_clrsky_all)
+               call free_optics_lw(cld_optics_lw_bnd)
                call free_optics_lw(cld_optics_lw_col)
                call free_optics_lw(cld_optics_lw_all)
                call free_optics_lw(aer_optics_lw_col)
