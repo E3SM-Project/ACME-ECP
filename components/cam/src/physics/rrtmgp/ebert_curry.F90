@@ -87,6 +87,11 @@ contains
       ! 10^-n -> preserve n digits of cloud amount)
       real(r8), parameter :: cldeps = 0.0_r8
 
+      ! Optical properties for ice are valid only in the range of
+      ! 13 < rei < 130 micron (Ebert and Curry 92)
+      real(r8), parameter :: rei_min = 13._r8
+      real(r8), parameter :: rei_max = 130._r8
+
       integer :: ns, i, k, indxsl, lchnk, Nday
       integer :: itim_old
       real(r8) :: tmp1i, tmp2i, tmp3i, g
@@ -127,14 +132,14 @@ contains
                ! note that optical properties for ice valid only
                ! in range of 13 > rei > 130 micron (Ebert and Curry 92)
                if (cldn(i,k) >= cldmin .and. cldn(i,k) >= cldeps) then
-                  tmp1i = abarii + bbarii/max(13._r8,min(scalefactor*rei(i,k),130._r8))
+                  tmp1i = abarii + bbarii/max(rei_min,min(scalefactor*rei(i,k),rei_max))
                   ice_tau(ns,i,k) = cicewp(i,k)*tmp1i
                else
                   ice_tau(ns,i,k) = 0.0_r8
                endif
 
-               tmp2i = 1._r8 - cbarii - dbarii*min(max(13._r8,scalefactor*rei(i,k)),130._r8)
-               tmp3i = fbarii*min(max(13._r8,scalefactor*rei(i,k)),130._r8)
+               tmp2i = 1._r8 - cbarii - dbarii*min(max(rei_min,scalefactor*rei(i,k)),rei_max)
+               tmp3i = fbarii*min(max(rei_min,scalefactor*rei(i,k)),rei_max)
                ! Do not let single scatter albedo be 1.  Delta-eddington solution
                ! for non-conservative case has different analytic form from solution
                ! for conservative case, and raddedmx is written for non-conservative case.
@@ -174,6 +179,11 @@ contains
       real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
       parameter (kabsl = 0.090361_r8)
 
+      ! Optical properties for ice are valid only in the range of
+      ! 13 < rei < 130 micron (Ebert and Curry 92)
+      real(r8), parameter :: rei_min = 13._r8
+      real(r8), parameter :: rei_max = 130._r8
+
       real(r8), pointer, dimension(:,:) :: iclwpth, iciwpth
 
 
@@ -199,9 +209,8 @@ contains
             !  close to bit for bit.  Otherwise we could simply use ice water path
             !note that optical properties for ice valid only
             !in range of 13 > rei > 130 micron (Ebert and Curry 92)
-            kabsi = 0.005_r8 + 1._r8/min(max(13._r8,scalefactor*rei(i,k)),130._r8)
+            kabsi = 0.005_r8 + 1._r8/min(max(rei_min,scalefactor*rei(i,k)),rei_max)
             kabs =  kabsi*ficemr(i,k) ! kabsl*(1._r8-ficemr(i,k)) + kabsi*ficemr(i,k)
-            !emis(i,k) = 1._r8 - exp(-1.66_r8*kabs*clwp(i,k))
             cldtau(i,k) = kabs*cwp(i,k)
          end do
       end do
