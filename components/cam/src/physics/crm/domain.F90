@@ -7,12 +7,12 @@ module domain
 
   integer, parameter :: YES3D = YES3DVAL  ! Domain dimensionality: 1 - 3D, 0 - 2D
 #if YES3D = 1 
-  integer, parameter :: YESEQ3D = 1 
+  integer, parameter :: YESQ3D = 1 
 #else 
 #ifndef YESQ3DVAL  
   integer, parameter :: YESQ3D = 0  
 #else
-  integer, parameter :: YESQ3D = YESQ3DVAL
+  integer, parameter :: YESQ3D = 1  
 #endif 
 #endif 
   integer, parameter :: nx_gl = crm_nx ! Number of grid points in X
