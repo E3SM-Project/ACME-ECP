@@ -24,9 +24,7 @@ module scalar_momentum_mod
 
    public allocate_scalar_momentum
    public deallocate_scalar_momentum
-#ifdef SP_ESMT_PGF
    public scalar_momentum_tend 
-#endif
 
    real(crm_rknd), allocatable :: u_esmt(:,:,:,:)       ! scalar zonal velocity
    real(crm_rknd), allocatable :: v_esmt(:,:,:,:)       ! scalar meridonal velocity
@@ -118,8 +116,6 @@ end subroutine deallocate_scalar_momentum
 
 !========================================================================================
 !========================================================================================
-#ifdef SP_ESMT_PGF
-
 subroutine scalar_momentum_tend(ncrms)
    !------------------------------------------------------------------
    ! Purpose: Calculate pressure gradient effects on scalar momentum
@@ -425,10 +421,5 @@ subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
       if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - backward FFT error ',ier
    enddo
 end subroutine esmt_fft_backward
-
-
-! whannah - this #endif is just to hide the PGF code
-! without commenting it out during development
-#endif
 
 end module scalar_momentum_mod

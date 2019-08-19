@@ -826,7 +826,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       !-----------------------------------------------------------
       !       Calculate PGF for scalar momentum tendency
-#if defined( SP_ESMT ) && defined( SP_ESMT_PGF )
+#if defined( SP_ESMT ) 
       call scalar_momentum_tend(ncrms)
 #endif
 
