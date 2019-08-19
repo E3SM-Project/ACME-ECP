@@ -51,8 +51,6 @@ module cospsimulator_intr
    private
    save
 
-!Public functions/subroutines
-
    public :: &
         cospsimulator_intr_readnl,    &
         cospsimulator_intr_register, &
@@ -64,25 +62,23 @@ module cospsimulator_intr
                                         ! this value is overwritten and cosp is run
 
    ! frequency at which cosp is called, every cosp_nradsteps radiation timestep
-   integer, public :: cosp_nradsteps = 1! CAM namelist variable default, not in COSP namelist
+   integer, public :: cosp_nradsteps = 1  ! CAM namelist variable default, not in COSP namelist
 
-! Private module data
-
-   ! number of dimensions
+   ! COSP-specific dimension sizes
    integer, parameter ::      &
-        nprs_cosp       = 7,  &! number of pressure ranges
-        ntau_cosp       = 7,  &! number of optical depth ranges
-        ntau_cosp_modis = 6,  &! number of optical depth ranges MODIS
-        ndbze_cosp      = 15, &! number of dBZe ranges for COSP radar simulator
-        nsr_cosp        = 15, &! number of scattering ranges for COSP lidar simulator
-        nhtmisr_cosp    = 16, &! number of heights for misr output (per Marchand)
-        nbnds_cosp      = 2,  &! number of bounds of cosp output (for cam_history.F90)
-        nsza_cosp       = 5    ! number of solar zenith angle for COSP parasol output
+        nprs_cosp       = 7,  & ! number of pressure ranges
+        ntau_cosp       = 7,  & ! number of optical depth ranges
+        ntau_cosp_modis = 6,  & ! number of optical depth ranges MODIS
+        ndbze_cosp      = 15, & ! number of dBZe ranges for COSP radar simulator
+        nsr_cosp        = 15, & ! number of scattering ranges for COSP lidar simulator
+        nhtmisr_cosp    = 16, & ! number of heights for misr output (per Marchand)
+        nbnds_cosp      = 2,  & ! number of bounds of cosp output (for cam_history.F90)
+        nsza_cosp       = 5     ! number of solar zenith angle for COSP parasol output
    integer, parameter :: nhtml_cosp = pver  ! number of model levels is pver
    integer    ::  nscol_cosp    ! number of subcolumns for COSP outputs.  
                                 ! use namelist input Ncolumns to set
    integer ::  nht_cosp         ! number of height for COSP radar and lidar simulator outputs.  
-                                                ! set to 40 if csat_vgrid=.true., else set to Nlr
+                                ! set to 40 if csat_vgrid=.true., else set to Nlr
 
    ! limits of dimensions, used here to find mid-points, sza_cosp passed to cam_history.F90
    real(r8), parameter :: &
@@ -198,7 +194,7 @@ module cospsimulator_intr
    logical :: lcllcalipso = .false.
    logical :: lclmcalipso = .false.
    logical :: lcltcalipso = .false.
-   logical :: lclcalipsoliq = .false.	!+cosp1.4
+   logical :: lclcalipsoliq = .false.  !+cosp1.4
    logical :: lclcalipsoice = .false.
    logical :: lclcalipsoun = .false.
    logical :: lclcalipsotmp = .false.
@@ -216,7 +212,7 @@ module cospsimulator_intr
    logical :: lclmcalipsoun = .false.
    logical :: lcllcalipsoliq = .false.
    logical :: lcllcalipsoice = .false.
-   logical :: lcllcalipsoun = .false.	!+cosp1.4
+   logical :: lcllcalipsoun = .false.  !+cosp1.4
    logical :: lctpisccp = .false.
    logical :: ldbze94 = .false.
    logical :: lcltradar = .false.
@@ -368,24 +364,24 @@ subroutine setcospvalues(Nlr_in,use_vgrid_in,csat_vgrid_in,Ncolumns_in,docosp_in
    integer, intent(in) :: cosp_nradsteps_in
 
    ! Local variables
-   integer :: i,k		! indices
+   integer :: i,k    ! indices
    real(r8) :: zstep
 
    ! set vertical grid, reference code from cosp_types.F90, line 549
    ! used to set vgrid_bounds in cosp_io.f90, line 844
-   if (use_vgrid_in) then		!! using fixed vertical grid
-   	if (csat_vgrid_in) then
-     	   nht_cosp = 40
-     	   zstep = 480.0_r8
-   	else
-     	   nht_cosp = Nlr_in
-     	   zstep = 20000.0_r8/Nlr_in  ! constant vertical spacing, top at 20 km
-   	end if
+   if (use_vgrid_in) then     !! using fixed vertical grid
+      if (csat_vgrid_in) then
+         nht_cosp = 40
+         zstep = 480.0_r8
+      else
+         nht_cosp = Nlr_in
+         zstep = 20000.0_r8/Nlr_in  ! constant vertical spacing, top at 20 km
+      end if
    end if
 
 !  if (use_vgrid_in=.false.) then    !using the model vertical height grid
-!	nht_cosp = pver
-!	htlim_cosp = (/0._r8/) ##2check##
+!  nht_cosp = pver
+!  htlim_cosp = (/0._r8/) ##2check##
 !  end if
 
    ! set number of sub-columns using namelist input
@@ -395,12 +391,12 @@ subroutine setcospvalues(Nlr_in,use_vgrid_in,csat_vgrid_in,Ncolumns_in,docosp_in
   
    ! need to allocate memory for these variables
    allocate(htlim_cosp(2,nht_cosp),htlim_cosp_1d(nht_cosp+1),htmid_cosp(nht_cosp),scol_cosp(nscol_cosp),&
-	htdbze_cosp(nht_cosp*ndbze_cosp),htsr_cosp(nht_cosp*nsr_cosp),htmlscol_cosp(nhtml_cosp*nscol_cosp),&
-	htdbze_htmid_cosp(nht_cosp*ndbze_cosp),htdbze_dbzemid_cosp(nht_cosp*ndbze_cosp),&
-	htsr_htmid_cosp(nht_cosp*nsr_cosp),htsr_srmid_cosp(nht_cosp*nsr_cosp),&
-	htmlscol_htmlmid_cosp(nhtml_cosp*nscol_cosp),htmlscol_scol_cosp(nhtml_cosp*nscol_cosp))
+   htdbze_cosp(nht_cosp*ndbze_cosp),htsr_cosp(nht_cosp*nsr_cosp),htmlscol_cosp(nhtml_cosp*nscol_cosp),&
+   htdbze_htmid_cosp(nht_cosp*ndbze_cosp),htdbze_dbzemid_cosp(nht_cosp*ndbze_cosp),&
+   htsr_htmid_cosp(nht_cosp*nsr_cosp),htsr_srmid_cosp(nht_cosp*nsr_cosp),&
+   htmlscol_htmlmid_cosp(nhtml_cosp*nscol_cosp),htmlscol_scol_cosp(nhtml_cosp*nscol_cosp))
 
-   if (use_vgrid_in) then		!! using fixed vertical grid
+   if (use_vgrid_in) then     !! using fixed vertical grid
       htlim_cosp_1d(1)= 0.0_r8
       do i=2,nht_cosp+1
          htlim_cosp_1d(i)=(i-1)*zstep      !! based on cosp_types.F90 line 556
@@ -2773,18 +2769,18 @@ if (cosp_runall) then
    meancldalb_isccp(1:ncol) = isccp%meanalbedocld       ! CAM version of albisccp (time,profile)
    meantb_isccp(1:ncol) = isccp%meantb                  ! CAM version of meantbisccp (time,profile)
    meantbclr_isccp(1:ncol) = isccp%meantbclr            ! CAM version of meantbclrisccp (time,profile)
-   cldlow_cal_ice(1:ncol)=stlidar%cldlayerphase(:,1,1)	! CAM version of cllcalipsoice !+cosp1.4
-   cldmed_cal_ice(1:ncol)=stlidar%cldlayerphase(:,2,1)	! CAM version of clmcalipsoice
-   cldhgh_cal_ice(1:ncol)=stlidar%cldlayerphase(:,3,1)	! CAM version of clhcalipsoice
-   cldtot_cal_ice(1:ncol)=stlidar%cldlayerphase(:,4,1)	! CAM version of cltcalipsoice
-   cldlow_cal_liq(1:ncol)=stlidar%cldlayerphase(:,1,2)	! CAM version of cllcalipsoliq
-   cldmed_cal_liq(1:ncol)=stlidar%cldlayerphase(:,2,2)	! CAM version of clmcalipsoliq
-   cldhgh_cal_liq(1:ncol)=stlidar%cldlayerphase(:,3,2)	! CAM version of clhcalipsoliq
-   cldtot_cal_liq(1:ncol)=stlidar%cldlayerphase(:,4,2)	! CAM version of cltcalipsoliq
-   cldlow_cal_un(1:ncol)=stlidar%cldlayerphase(:,1,3)	! CAM version of cllcalipsoun
-   cldmed_cal_un(1:ncol)=stlidar%cldlayerphase(:,2,3)	! CAM version of clmcalipsoun
-   cldhgh_cal_un(1:ncol)=stlidar%cldlayerphase(:,3,3)	! CAM version of clhcalipsoun
-   cldtot_cal_un(1:ncol)=stlidar%cldlayerphase(:,4,3)  	! CAM version of cltcalipsoun, !+cosp1.4
+   cldlow_cal_ice(1:ncol)=stlidar%cldlayerphase(:,1,1)   ! CAM version of cllcalipsoice !+cosp1.4
+   cldmed_cal_ice(1:ncol)=stlidar%cldlayerphase(:,2,1)   ! CAM version of clmcalipsoice
+   cldhgh_cal_ice(1:ncol)=stlidar%cldlayerphase(:,3,1)   ! CAM version of clhcalipsoice
+   cldtot_cal_ice(1:ncol)=stlidar%cldlayerphase(:,4,1)   ! CAM version of cltcalipsoice
+   cldlow_cal_liq(1:ncol)=stlidar%cldlayerphase(:,1,2)   ! CAM version of cllcalipsoliq
+   cldmed_cal_liq(1:ncol)=stlidar%cldlayerphase(:,2,2)   ! CAM version of clmcalipsoliq
+   cldhgh_cal_liq(1:ncol)=stlidar%cldlayerphase(:,3,2)   ! CAM version of clhcalipsoliq
+   cldtot_cal_liq(1:ncol)=stlidar%cldlayerphase(:,4,2)   ! CAM version of cltcalipsoliq
+   cldlow_cal_un(1:ncol)=stlidar%cldlayerphase(:,1,3) ! CAM version of cllcalipsoun
+   cldmed_cal_un(1:ncol)=stlidar%cldlayerphase(:,2,3) ! CAM version of clmcalipsoun
+   cldhgh_cal_un(1:ncol)=stlidar%cldlayerphase(:,3,3) ! CAM version of clhcalipsoun
+   cldtot_cal_un(1:ncol)=stlidar%cldlayerphase(:,4,3)    ! CAM version of cltcalipsoun, !+cosp1.4
    ! (2d variables)
    cld_cal(1:ncol,1:nht_cosp) = stlidar%lidarcld                        ! CAM version of clcalipso (time,height,profile)
    cld_cal_notcs(1:ncol,1:nht_cosp) = stradar%lidar_only_freq_cloud     ! CAM version of clcalipso2 (time,height,profile)
@@ -2792,13 +2788,13 @@ if (cosp_runall) then
    tau_isccp(1:ncol,1:nscol_cosp) = isccp%boxtau                        ! CAM version of boxtauisccp (time,column,profile)
    cldptop_isccp(1:ncol,1:nscol_cosp) = isccp%boxptop                   ! CAM version of boxptopisccp (time,column,profile)
    refl_parasol(1:ncol,1:nsza_cosp) = stlidar%parasolrefl               ! CAM version of parasolrefl (time,sza,profile)
-   cld_cal_ice(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,1)		! CAM version of clcalipsoice !+cosp1.4
+   cld_cal_ice(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,1)    ! CAM version of clcalipsoice !+cosp1.4
    cld_cal_liq(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,2)          ! CAM version of clcalipsoliq
-   cld_cal_un(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,3)		! CAM version of clcalipsoun
-   cld_cal_tmp(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,1) 		! CAM version of clcalipsotmp
-   cld_cal_tmpliq(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,2)		! CAM version of clcalipsotmpice
-   cld_cal_tmpice(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,3)		! CAM version of clcalipsotmpliq
-   cld_cal_tmpun(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,4)		! CAM version of clcalipsotmpun, !+cosp1.4
+   cld_cal_un(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,3)     ! CAM version of clcalipsoun
+   cld_cal_tmp(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,1)      ! CAM version of clcalipsotmp
+   cld_cal_tmpliq(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,2)      ! CAM version of clcalipsotmpice
+   cld_cal_tmpice(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,3)      ! CAM version of clcalipsotmpliq
+   cld_cal_tmpun(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,4)    ! CAM version of clcalipsotmpun, !+cosp1.4
    ! (3d variables)
    dbze94(1:ncol,1:nscol_cosp,1:nhtml_cosp) = sgradar%Ze_tot            ! dbze94 (time,height_mlev,column,profile)
    atb532(1:ncol,1:nscol_cosp,1:nhtml_cosp) = sglidar%beta_tot          ! atb532 (time,height_mlev,column,profile)
@@ -4014,29 +4010,29 @@ if (llidar_sim) then
       call ExpDayNite(cldhgh_cal,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
       cldtot_cal(1:Natrain) = stlidar%cldlayer(:,4)     ! CAM version of cltcalipso (time,profile)
       call ExpDayNite(cldtot_cal,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
-      cldlow_cal_ice(1:Natrain)=stlidar%cldlayerphase(:,1,1)	! CAM version of cllcalipsoice !+cosp1.4
+      cldlow_cal_ice(1:Natrain)=stlidar%cldlayerphase(:,1,1)   ! CAM version of cllcalipsoice !+cosp1.4
       call ExpDayNite(cldlow_cal_ice,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldmed_cal_ice(1:Natrain)=stlidar%cldlayerphase(:,2,1)	! CAM version of clmcalipsoice
+      cldmed_cal_ice(1:Natrain)=stlidar%cldlayerphase(:,2,1)   ! CAM version of clmcalipsoice
       call ExpDayNite(cldmed_cal_ice,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldhgh_cal_ice(1:Natrain)=stlidar%cldlayerphase(:,3,1)	! CAM version of clhcalipsoice
+      cldhgh_cal_ice(1:Natrain)=stlidar%cldlayerphase(:,3,1)   ! CAM version of clhcalipsoice
       call ExpDayNite(cldhgh_cal_ice,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldtot_cal_ice(1:Natrain)=stlidar%cldlayerphase(:,4,1)	! CAM version of cltcalipsoice
+      cldtot_cal_ice(1:Natrain)=stlidar%cldlayerphase(:,4,1)   ! CAM version of cltcalipsoice
       call ExpDayNite(cldtot_cal_ice,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)     
-      cldlow_cal_liq(1:Natrain)=stlidar%cldlayerphase(:,1,2)	! CAM version of cllcalipsoliq
+      cldlow_cal_liq(1:Natrain)=stlidar%cldlayerphase(:,1,2)   ! CAM version of cllcalipsoliq
       call ExpDayNite(cldlow_cal_liq,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols) 
-      cldmed_cal_liq(1:Natrain)=stlidar%cldlayerphase(:,2,2)	! CAM version of clmcalipsoliq
+      cldmed_cal_liq(1:Natrain)=stlidar%cldlayerphase(:,2,2)   ! CAM version of clmcalipsoliq
       call ExpDayNite(cldmed_cal_liq,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldhgh_cal_liq(1:Natrain)=stlidar%cldlayerphase(:,3,2)	! CAM version of clhcalipsoliq
+      cldhgh_cal_liq(1:Natrain)=stlidar%cldlayerphase(:,3,2)   ! CAM version of clhcalipsoliq
       call ExpDayNite(cldhgh_cal_liq,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldtot_cal_liq(1:Natrain)=stlidar%cldlayerphase(:,4,2)	! CAM version of cltcalipsoliq
+      cldtot_cal_liq(1:Natrain)=stlidar%cldlayerphase(:,4,2)   ! CAM version of cltcalipsoliq
       call ExpDayNite(cldtot_cal_liq,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldlow_cal_un(1:Natrain)=stlidar%cldlayerphase(:,1,3)	! CAM version of cllcalipsoun
+      cldlow_cal_un(1:Natrain)=stlidar%cldlayerphase(:,1,3) ! CAM version of cllcalipsoun
       call ExpDayNite(cldlow_cal_un,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldmed_cal_un(1:Natrain)=stlidar%cldlayerphase(:,2,3)	! CAM version of clmcalipsoun
+      cldmed_cal_un(1:Natrain)=stlidar%cldlayerphase(:,2,3) ! CAM version of clmcalipsoun
       call ExpDayNite(cldmed_cal_un,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldhgh_cal_un(1:Natrain)=stlidar%cldlayerphase(:,3,3)	! CAM version of clhcalipsoun
+      cldhgh_cal_un(1:Natrain)=stlidar%cldlayerphase(:,3,3) ! CAM version of clhcalipsoun
       call ExpDayNite(cldhgh_cal_un,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)   
-      cldtot_cal_un(1:Natrain)=stlidar%cldlayerphase(:,4,3)  	! CAM version of cltcalipsoun
+      cldtot_cal_un(1:Natrain)=stlidar%cldlayerphase(:,4,3)    ! CAM version of cltcalipsoun
       call ExpDayNite(cldtot_cal_un,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols) !+cosp1.4
 
       ! (2d variables from lidar simulator), loop over 2nd dimension to do expansion.
@@ -4076,35 +4072,35 @@ if (llidar_sim) then
       end do
 
       do i=1,nht_cosp
-         tmp(1:Natrain) = stlidar%lidarcldphase(1:Natrain,i,3)		! CAM version of clcalipsoun
+         tmp(1:Natrain) = stlidar%lidarcldphase(1:Natrain,i,3)    ! CAM version of clcalipsoun
          call ExpDayNite(tmp,   Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
          cld_cal_un(1:ncol,i) = tmp(1:ncol)
          tmp(1:pcols)=R_UNDEF
       end do
 
       do i=1,nht_cosp
-         tmp(1:Natrain) = stlidar%lidarcldtmp(1:Natrain,i,1) 		! CAM version of clcalipsotmp
+         tmp(1:Natrain) = stlidar%lidarcldtmp(1:Natrain,i,1)      ! CAM version of clcalipsotmp
          call ExpDayNite(tmp,   Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
          cld_cal_tmp(1:ncol,i) = tmp(1:ncol)
          tmp(1:pcols)=R_UNDEF
       end do
 
       do i=1,nht_cosp
-         tmp(1:Natrain) = stlidar%lidarcldtmp(1:Natrain,i,2)		! CAM version of clcalipsotmpice
+         tmp(1:Natrain) = stlidar%lidarcldtmp(1:Natrain,i,2)      ! CAM version of clcalipsotmpice
          call ExpDayNite(tmp,   Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
          cld_cal_tmpliq(1:ncol,i) = tmp(1:ncol)
          tmp(1:pcols)=R_UNDEF
       end do
 
       do i=1,nht_cosp
-         tmp(1:Natrain) = stlidar%lidarcldtmp(1:Natrain,i,3)		! CAM version of clcalipsotmpliq
+         tmp(1:Natrain) = stlidar%lidarcldtmp(1:Natrain,i,3)      ! CAM version of clcalipsotmpliq
          call ExpDayNite(tmp,   Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
          cld_cal_tmpice(1:ncol,i) = tmp(1:ncol)
          tmp(1:pcols)=R_UNDEF
       end do
 
       do i=1,nht_cosp
-         tmp(1:Natrain) = stlidar%lidarcldtmp(1:Natrain,i,4)		! CAM version of clcalipsotmpun, !+cosp1.4
+         tmp(1:Natrain) = stlidar%lidarcldtmp(1:Natrain,i,4)      ! CAM version of clcalipsotmpun, !+cosp1.4
          call ExpDayNite(tmp,   Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
          cld_cal_tmpun(1:ncol,i) = tmp(1:ncol)
          tmp(1:pcols)=R_UNDEF
@@ -4135,30 +4131,30 @@ if (llidar_sim) then
       cldmed_cal(1:ncol) = stlidar%cldlayer(:,2)                ! CAM version of clmcalipso (time,profile)
       cldhgh_cal(1:ncol) = stlidar%cldlayer(:,3)                ! CAM version of clhcalipso (time,profile)
       cldtot_cal(1:ncol) = stlidar%cldlayer(:,4)                ! CAM version of cltcalipso (time,profile)
-      cldlow_cal_ice(1:ncol)=stlidar%cldlayerphase(:,1,1)	! CAM version of cllcalipsoice !+cosp1.4
-      cldmed_cal_ice(1:ncol)=stlidar%cldlayerphase(:,2,1)	! CAM version of clmcalipsoice
-      cldhgh_cal_ice(1:ncol)=stlidar%cldlayerphase(:,3,1)	! CAM version of clhcalipsoice
-      cldtot_cal_ice(1:ncol)=stlidar%cldlayerphase(:,4,1)	! CAM version of cltcalipsoice
-      cldlow_cal_liq(1:ncol)=stlidar%cldlayerphase(:,1,2)	! CAM version of cllcalipsoliq
-      cldmed_cal_liq(1:ncol)=stlidar%cldlayerphase(:,2,2)	! CAM version of clmcalipsoliq
-      cldhgh_cal_liq(1:ncol)=stlidar%cldlayerphase(:,3,2)	! CAM version of clhcalipsoliq
-      cldtot_cal_liq(1:ncol)=stlidar%cldlayerphase(:,4,2)	! CAM version of cltcalipsoliq
-      cldlow_cal_un(1:ncol)=stlidar%cldlayerphase(:,1,3)	! CAM version of cllcalipsoun
-      cldmed_cal_un(1:ncol)=stlidar%cldlayerphase(:,2,3)	! CAM version of clmcalipsoun
-      cldhgh_cal_un(1:ncol)=stlidar%cldlayerphase(:,3,3)	! CAM version of clhcalipsoun
-      cldtot_cal_un(1:ncol)=stlidar%cldlayerphase(:,4,3)  	! CAM version of cltcalipsoun !+cosp1.4
+      cldlow_cal_ice(1:ncol)=stlidar%cldlayerphase(:,1,1)   ! CAM version of cllcalipsoice !+cosp1.4
+      cldmed_cal_ice(1:ncol)=stlidar%cldlayerphase(:,2,1)   ! CAM version of clmcalipsoice
+      cldhgh_cal_ice(1:ncol)=stlidar%cldlayerphase(:,3,1)   ! CAM version of clhcalipsoice
+      cldtot_cal_ice(1:ncol)=stlidar%cldlayerphase(:,4,1)   ! CAM version of cltcalipsoice
+      cldlow_cal_liq(1:ncol)=stlidar%cldlayerphase(:,1,2)   ! CAM version of cllcalipsoliq
+      cldmed_cal_liq(1:ncol)=stlidar%cldlayerphase(:,2,2)   ! CAM version of clmcalipsoliq
+      cldhgh_cal_liq(1:ncol)=stlidar%cldlayerphase(:,3,2)   ! CAM version of clhcalipsoliq
+      cldtot_cal_liq(1:ncol)=stlidar%cldlayerphase(:,4,2)   ! CAM version of cltcalipsoliq
+      cldlow_cal_un(1:ncol)=stlidar%cldlayerphase(:,1,3) ! CAM version of cllcalipsoun
+      cldmed_cal_un(1:ncol)=stlidar%cldlayerphase(:,2,3) ! CAM version of clmcalipsoun
+      cldhgh_cal_un(1:ncol)=stlidar%cldlayerphase(:,3,3) ! CAM version of clhcalipsoun
+      cldtot_cal_un(1:ncol)=stlidar%cldlayerphase(:,4,3)    ! CAM version of cltcalipsoun !+cosp1.4
 
       ! (2d variables)
       cld_cal(1:ncol,1:nht_cosp) = stlidar%lidarcld             ! CAM version of clcalipso (time,height,profile)
       mol532_cal(1:ncol,1:nhtml_cosp) = sglidar%beta_mol        ! CAM version of beta_mol532 (time,height_mlev,profile)
       refl_parasol(1:ncol,1:nsza_cosp) = stlidar%parasolrefl    ! CAM version of parasolrefl (time,sza,profile)
-      cld_cal_ice(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,1)		! CAM version of clcalipsoice !+cosp1.4
+      cld_cal_ice(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,1)    ! CAM version of clcalipsoice !+cosp1.4
       cld_cal_liq(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,2)          ! CAM version of clcalipsoliq
-      cld_cal_un(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,3)		! CAM version of clcalipsoun
-      cld_cal_tmp(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,1) 		! CAM version of clcalipsotmp
-      cld_cal_tmpliq(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,2)		! CAM version of clcalipsotmpice
-      cld_cal_tmpice(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,3)		! CAM version of clcalipsotmpliq
-      cld_cal_tmpun(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,4)		! CAM version of clcalipsotmpun, !+cosp1.4
+      cld_cal_un(1:ncol,1:nht_cosp)=stlidar%lidarcldphase(:,:,3)     ! CAM version of clcalipsoun
+      cld_cal_tmp(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,1)      ! CAM version of clcalipsotmp
+      cld_cal_tmpliq(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,2)      ! CAM version of clcalipsotmpice
+      cld_cal_tmpice(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,3)      ! CAM version of clcalipsotmpliq
+      cld_cal_tmpun(1:ncol,1:nht_cosp)=stlidar%lidarcldtmp(:,:,4)    ! CAM version of clcalipsotmpun, !+cosp1.4
 
       ! (3d variables)
       atb532(1:ncol,1:nscol_cosp,1:nhtml_cosp) = sglidar%beta_tot       ! atb532 (time,height_mlev,column,profile)
