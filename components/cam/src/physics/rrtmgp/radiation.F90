@@ -1114,10 +1114,10 @@ contains
 
       use radiation_state, only: set_rad_state
       use radiation_utils, only: calculate_heating_rate
-      use cam_optics, only: get_cloud_optics_lw  , set_cloud_optics_lw, &
-                            get_aerosol_optics_lw, &
-                            get_cloud_optics_sw  , set_cloud_optics_sw, &
-                            get_aerosol_optics_sw
+      use cam_optics, only: free_optics_sw       , free_optics_lw       , &
+                            set_cloud_optics_lw  , set_cloud_optics_sw  , &
+                            set_aerosol_optics_lw, set_aerosol_optics_sw
+
 #ifdef MODAL_AERO
       use modal_aero_data, only: ntot_amode
 #endif
@@ -1270,10 +1270,10 @@ contains
       ! Cloud and aerosol optics
       type(ty_optical_props_2str) :: &
          aer_optics_sw_col, aer_optics_sw_all, &
-         cld_optics_sw_col, cld_optics_sw_all, cld_optics_sw_bnd
+         cld_optics_sw_col, cld_optics_sw_all
       type(ty_optical_props_1scl) :: &
          aer_optics_lw_col, aer_optics_lw_all, &
-         cld_optics_lw_col, cld_optics_lw_all, cld_optics_lw_bnd
+         cld_optics_lw_col, cld_optics_lw_all
 
       real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,pver) :: qrs_all, qrsc_all
 
@@ -1409,19 +1409,11 @@ contains
                nnight = count(night_indices(1:ncol) > 0)
 
                ! Initialize cloud optics objects
-               call handle_error(cld_optics_sw_bnd%alloc_2str( &
-                  ncol, pver, k_dist_sw%get_band_lims_wavenumber(), &
-                  name='cld_optics_sw' &
-               ))
                call handle_error(cld_optics_sw_col%alloc_2str( &
                   ncol, nlev_rad, k_dist_sw, name='cld_optics_sw' &
                ))
                call handle_error(cld_optics_sw_all%alloc_2str( &
                   ncol_tot, nlev_rad, k_dist_sw, name='cld_optics_sw' &
-               ))
-               call handle_error(cld_optics_lw_bnd%alloc_1scl( &
-                  ncol, pver, k_dist_lw%get_band_lims_wavenumber(), &
-                  name='cld_optics_lw' &
                ))
                call handle_error(cld_optics_lw_col%alloc_1scl( &
                   ncol, nlev_rad, k_dist_lw, name='cld_optics_lw' &
@@ -1534,13 +1526,12 @@ contains
                      ! routines to handle this.
                      if (radiation_do('sw')) then
                         call t_startf('rad_cloud_optics_sw')
-                        call get_cloud_optics_sw(state, pbuf, cld_optics_sw_bnd)
-                        call set_cloud_optics_sw(state, pbuf, k_dist_sw, cld_optics_sw_bnd, cld_optics_sw_col)
+                        call set_cloud_optics_sw(state, pbuf, k_dist_sw, cld_optics_sw_col)
                         call t_stopf('rad_cloud_optics_sw')
 
                         ! Get shortwave aerosol optics
                         call t_startf('rad_aerosol_optics_sw')
-                        call get_aerosol_optics_sw(icall, state, pbuf, &
+                        call set_aerosol_optics_sw(icall, state, pbuf, &
                                                    night_indices(1:nnight), &
                                                    is_cmip6_volc, &
                                                    aer_optics_sw_col)
@@ -1550,12 +1541,11 @@ contains
                      ! Do optics; TODO: refactor to take array arguments?
                      if (radiation_do('lw')) then
                         call t_startf('rad_cloud_optics_lw')
-                        call get_cloud_optics_lw(state, pbuf, cld_optics_lw_bnd)
-                        call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_optics_lw_bnd, cld_optics_lw_col)
+                        call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_optics_lw_col)
                         call t_stopf('rad_cloud_optics_lw')
 
                         call t_startf('rad_aerosol_optics_lw')
-                        call get_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_optics_lw_col)
+                        call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_optics_lw_col)
                         call t_stopf('rad_aerosol_optics_lw')
                      end if
 
@@ -1628,7 +1618,7 @@ contains
                                            qrsc_all(1:ncol_tot,1:pver))
                call t_stopf('rad_heating_rate_sw')
 
-               ! Calculate domain averages
+               ! Calculate CRM domain averages
                call t_startf('rad_average_fluxes_sw')
                call average_packed_array(qrs_all (1:ncol_tot,:)                     , qrs (1:ncol,:)                     )
                call average_packed_array(qrsc_all(1:ncol_tot,:)                     , qrsc(1:ncol,:)                     )
@@ -1691,7 +1681,6 @@ contains
                ! Free optical properties
                call free_optics_sw(cld_optics_sw_all)
                call free_optics_sw(aer_optics_sw_all)
-               call free_optics_sw(cld_optics_sw_bnd)
                call free_optics_sw(cld_optics_sw_col)
                call free_optics_sw(aer_optics_sw_col)
 
@@ -1785,7 +1774,6 @@ contains
                call free_fluxes(fluxes_clrsky)
                call free_fluxes(fluxes_allsky_all)
                call free_fluxes(fluxes_clrsky_all)
-               call free_optics_lw(cld_optics_lw_bnd)
                call free_optics_lw(cld_optics_lw_col)
                call free_optics_lw(cld_optics_lw_all)
                call free_optics_lw(aer_optics_lw_col)
@@ -1868,6 +1856,7 @@ contains
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_concentrations, only: ty_gas_concs
       use mo_util_string, only: lower_case
+      use cam_optics, only: free_optics_sw
 
       character(len=*), intent(in) :: gas_names(:)
       real(r8), intent(in), dimension(:,:,:) :: gas_vmr
@@ -2633,22 +2622,6 @@ contains
       if (associated(fluxes%bnd_flux_net)) deallocate(fluxes%bnd_flux_net)
       if (associated(fluxes%bnd_flux_dn_dir)) deallocate(fluxes%bnd_flux_dn_dir)
    end subroutine free_fluxes
-
-   subroutine free_optics_sw(optics)
-      use mo_optical_props, only: ty_optical_props_2str
-      type(ty_optical_props_2str), intent(inout) :: optics
-      if (allocated(optics%tau)) deallocate(optics%tau)
-      if (allocated(optics%ssa)) deallocate(optics%ssa)
-      if (allocated(optics%g)) deallocate(optics%g)
-      call optics%finalize()
-   end subroutine free_optics_sw
-
-   subroutine free_optics_lw(optics)
-      use mo_optical_props, only: ty_optical_props_1scl
-      type(ty_optical_props_1scl), intent(inout) :: optics
-      if (allocated(optics%tau)) deallocate(optics%tau)
-      call optics%finalize()
-   end subroutine free_optics_lw
 
 
    subroutine get_gas_vmr(icall, state, pbuf, gas_name, vmr)

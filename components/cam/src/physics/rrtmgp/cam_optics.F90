@@ -10,13 +10,13 @@ module cam_optics
    implicit none
    private
 
-   public :: &
-      get_cloud_optics_sw, &
-      get_cloud_optics_lw, &
-      set_cloud_optics_sw, &
-      set_cloud_optics_lw, &
-      get_aerosol_optics_sw, &
-      get_aerosol_optics_lw
+   public ::                 &
+      free_optics_sw,        &
+      free_optics_lw,        &
+      set_cloud_optics_sw,   &
+      set_cloud_optics_lw,   &
+      set_aerosol_optics_sw, &
+      set_aerosol_optics_lw
 
    ! Mapping from old RRTMG sw bands to new band ordering in RRTMGP
    integer, dimension(14) :: map_rrtmg_to_rrtmgp_swbands = (/ &
@@ -400,7 +400,7 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine set_cloud_optics_sw(state, pbuf, kdist, optics_by_band, optics_out)
+   subroutine set_cloud_optics_sw(state, pbuf, kdist, optics_out)
       
       use ppgrid, only: pcols, pver, pverp
       use physics_types, only: physics_state
@@ -414,8 +414,10 @@ contains
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
       type(ty_gas_optics_rrtmgp), intent(in) :: kdist
-      type(ty_optical_props_2str), intent(in) :: optics_by_band
       type(ty_optical_props_2str), intent(inout) :: optics_out
+
+      ! Temporary optics object to hold optical properties by band
+      type(ty_optical_props_2str) :: optics_bnd
 
       ! Pointer to cloud fraction on physics buffer
       real(r8), pointer :: cloud_fraction(:,:), snow_fraction(:,:)
@@ -439,6 +441,10 @@ contains
       character(len=32) :: subname = 'set_cloud_optics_sw'
 
       ncol = state%ncol
+
+      ! Get optics by band
+      call handle_error(optics_bnd%alloc_2str(ncol, pver, kdist%get_band_lims_wavenumber()))
+      call get_cloud_optics_sw(state, pbuf, optics_bnd)
 
       ! Initialize (or reset) output cloud optics object
       optics_out%tau = 0.0
@@ -490,9 +496,9 @@ contains
                if (iscloudy(igpt,icol,ilev_cam) .and. &
                    combined_cloud_fraction(icol,ilev_cam) > 0._r8) then
                   iband = kdist%convert_gpt2band(igpt)
-                  optics_out%tau(icol,ilev_rad,igpt) = optics_by_band%tau(icol,ilev_cam,iband)
-                  optics_out%ssa(icol,ilev_rad,igpt) = optics_by_band%ssa(icol,ilev_cam,iband)
-                  optics_out%g  (icol,ilev_rad,igpt) = optics_by_band%g  (icol,ilev_cam,iband)
+                  optics_out%tau(icol,ilev_rad,igpt) = optics_bnd%tau(icol,ilev_cam,iband)
+                  optics_out%ssa(icol,ilev_rad,igpt) = optics_bnd%ssa(icol,ilev_cam,iband)
+                  optics_out%g  (icol,ilev_rad,igpt) = optics_bnd%g  (icol,ilev_cam,iband)
                else
                   optics_out%tau(icol,ilev_rad,igpt) = 0._r8
                   optics_out%ssa(icol,ilev_rad,igpt) = 1._r8
@@ -514,11 +520,14 @@ contains
       ! Check cloud optics_sw
       call handle_error(optics_out%validate())
 
+      ! Free memory for optics by band
+      call free_optics_sw(optics_bnd)
+
    end subroutine set_cloud_optics_sw
 
    !----------------------------------------------------------------------------
 
-   subroutine set_cloud_optics_lw(state, pbuf, kdist, optics_by_band, optics_out)
+   subroutine set_cloud_optics_lw(state, pbuf, kdist, optics_out)
       
       use ppgrid, only: pcols, pver
       use physics_types, only: physics_state
@@ -531,8 +540,9 @@ contains
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
       type(ty_gas_optics_rrtmgp), intent(in) :: kdist
-      type(ty_optical_props_1scl), intent(in) :: optics_by_band
       type(ty_optical_props_1scl), intent(inout) :: optics_out
+
+      type(ty_optical_props_1scl) :: optics_bnd
 
       real(r8), pointer :: cloud_fraction(:,:)
       real(r8), pointer :: snow_fraction(:,:)
@@ -552,6 +562,10 @@ contains
 
       ! Set dimension size working variables
       ncol = state%ncol
+
+      ! Get optics by band
+      call handle_error(optics_bnd%alloc_1scl(ncol, pver, kdist%get_band_lims_wavenumber()))
+      call get_cloud_optics_lw(state, pbuf, optics_bnd)
 
       ! Combine cloud and snow fractions for MCICA sampling
       call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cloud_fraction, &
@@ -595,7 +609,7 @@ contains
             do igpt = 1,nlwgpts
                if (iscloudy(igpt,icol,ilev_cam) .and. (combined_cloud_fraction(icol,ilev_cam) > 0._r8) ) then
                   iband = kdist%convert_gpt2band(igpt)
-                  optics_out%tau(icol,ilev_rad,igpt) = optics_by_band%tau(icol,ilev_cam,iband)
+                  optics_out%tau(icol,ilev_rad,igpt) = optics_bnd%tau(icol,ilev_cam,iband)
                else
                   optics_out%tau(icol,ilev_rad,igpt) = 0._r8
                end if
@@ -615,11 +629,14 @@ contains
       ! Check cloud optics
       call handle_error(optics_out%validate())
 
+      ! Free memory for optics by band
+      call free_optics_lw(optics_bnd)
+
    end subroutine set_cloud_optics_lw
 
    !----------------------------------------------------------------------------
 
-   subroutine get_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, optics_out)
+   subroutine set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, optics_out)
      
       use ppgrid, only: pcols, pver
       use physics_types, only: physics_state
@@ -638,7 +655,7 @@ contains
       integer :: ncol
 
       ! Subroutine name for error messages
-      character(len=*), parameter :: subroutine_name = 'get_aerosol_optics_lw'
+      character(len=*), parameter :: subroutine_name = 'set_aerosol_optics_lw'
 
       ! Get aerosol absorption optical depth from CAM routine
       tau = 0.0
@@ -649,11 +666,11 @@ contains
       optics_out%tau(:,:,:) = 0.0
       optics_out%tau(1:ncol,ktop:kbot,1:nlwbands) = tau(1:ncol,1:pver,1:nlwbands)
 
-   end subroutine get_aerosol_optics_lw
+   end subroutine set_aerosol_optics_lw
 
    !----------------------------------------------------------------------------
 
-   subroutine get_aerosol_optics_sw(icall, state, pbuf, &
+   subroutine set_aerosol_optics_sw(icall, state, pbuf, &
                                     night_indices, &
                                     is_cmip6_volc, &
                                     optics_out)
@@ -737,8 +754,28 @@ contains
 
       ! Check values
       call handle_error(optics_out%validate())
-      
-   end subroutine get_aerosol_optics_sw
+
+   end subroutine set_aerosol_optics_sw
+
+   !----------------------------------------------------------------------------
+
+   subroutine free_optics_sw(optics)
+      use mo_optical_props, only: ty_optical_props_2str
+      type(ty_optical_props_2str), intent(inout) :: optics
+      if (allocated(optics%tau)) deallocate(optics%tau)
+      if (allocated(optics%ssa)) deallocate(optics%ssa)
+      if (allocated(optics%g)) deallocate(optics%g)
+      call optics%finalize()
+   end subroutine free_optics_sw
+
+   !----------------------------------------------------------------------------
+
+   subroutine free_optics_lw(optics)
+      use mo_optical_props, only: ty_optical_props_1scl
+      type(ty_optical_props_1scl), intent(inout) :: optics
+      if (allocated(optics%tau)) deallocate(optics%tau)
+      call optics%finalize()
+   end subroutine free_optics_lw
 
    !----------------------------------------------------------------------------
 
