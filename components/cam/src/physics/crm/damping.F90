@@ -53,10 +53,14 @@ contains
     !$acc parallel loop collapse(2) async(asyncid)
     do k=1,nzm
       do icrm = 1 , ncrms
+        tau(icrm,k) = 0.0 
         if ( k <= nzm .and. k >= nzm-n_damp(icrm) ) then
           tau(icrm,k) = tau_min *(tau_max/tau_min)**((z(icrm,nzm)-z(icrm,k))/(z(icrm,nzm)-z(icrm,nzm-n_damp(icrm))))
           tau(icrm,k)=1./tau(icrm,k)
         endif
+#ifdef SUPERGS 
+        tau(icrm,k) = tau(icrm,k) + 1.0/(3600.0 * 6)         
+#endif 
       end do
     end do
 

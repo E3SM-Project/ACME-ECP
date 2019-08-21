@@ -3,21 +3,20 @@ module crmsurface_mod
 
 contains
 
-  subroutine crmsurface(ncrms,bflx)
+  subroutine sp_crmsurface(ncrms, ustar,fluxu00, fluxv00)
     use vars
     use params
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd), intent (in) :: bflx(ncrms)
-    real(crm_rknd) u_h0, tau00, tmp
+    real(crm_rknd), intent (in) :: ustar(ncrms), fluxu00(ncrms), fluxv00(ncrms)
+    real(crm_rknd) u_h0, tau00, tmp, ubase, vbase, wspd 
     integer i,j,icrm
 
     !--------------------------------------------------------
-    if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
       !$acc parallel loop async(asyncid)
       do icrm = 1 , ncrms
-        uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
-        vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
+        uhl(icrm) = uhl(icrm)  !+ dtn*utend(icrm,1)
+        vhl(icrm) = vhl(icrm)  !+ dtn*vtend(icrm,1)
         taux0(icrm) = 0.
         tauy0(icrm) = 0.
       enddo
@@ -26,20 +25,26 @@ contains
         do i=1,nx
           do icrm = 1 , ncrms
             u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)**2))
-            tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm),u_h0,z0(icrm))**2
-            fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
-            fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
+            tau00 = rho(icrm, 1) * ustar(icrm) ** 2.0
+            fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)/u_h0*tau00
+            fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)/u_h0*tau00  
             tmp = fluxbu(icrm,i,j)/dble(nx*ny)
             !$acc atomic update
             taux0(icrm) = taux0(icrm) + tmp
             tmp = fluxbv(icrm,i,j)/dble(nx*ny)
             !$acc atomic update
-            tauy0(icrm) = tauy0(icrm) + tmp
+            tauy0(icrm) = tauy0(icrm) + tmp 
           end do
-        end do
+        end do 
       enddo
-    end if ! SFC_FLX_FXD
-  end subroutine crmsurface
+      !$acc parallel loop async(asyncid)
+      do icrm=1,ncrms
+       !Insure that no net surface stress is added to the model. 
+        taux0(icrm) = taux0(icrm) - (taux0(icrm) - fluxu00(icrm))
+        tauy0(icrm) = tauy0(icrm) - (tauy0(icrm) -  fluxv00(icrm))
+       enddo 
+
+  end subroutine sp_crmsurface 
 
   ! ----------------------------------------------------------------------
   !
