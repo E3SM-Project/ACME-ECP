@@ -1437,8 +1437,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       !!! rotate resolved CRM momentum tendencies back
       do k=1, pver
          do i = 1, ncol 
-            ptend%u(i) = crm_output%ultend(i) * cos( -1.*crm_angle(i) ) + crm_output%vltend(i) * sin( -1.*crm_angle(i) )
-            ptend%v(i) = crm_output%vltend(i) * cos( -1.*crm_angle(i) ) - crm_output%ultend(i) * sin( -1.*crm_angle(i) )
+            ptend%u(i,k) = crm_output%ultend(i,k) * cos( -1.*crm_angle(i) ) + crm_output%vltend(i,k) * sin( -1.*crm_angle(i) )
+            ptend%v(i,k) = crm_output%vltend(i,k) * cos( -1.*crm_angle(i) ) - crm_output%ultend(i,k) * sin( -1.*crm_angle(i) )
          enddo
       enddo 
 
