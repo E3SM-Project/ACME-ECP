@@ -406,7 +406,9 @@ contains
       use constituents,       only: cnst_get_ind
       use phys_control,       only: phys_getopts
       use rad_constituents,   only: N_DIAG, rad_cnst_get_call_list, rad_cnst_get_info
+#ifdef USE_COSP
       use cospsimulator_intr, only: docosp, cospsimulator_intr_init
+#endif
       use hirsbt,             only: hirsbt_init
       use hirsbtpar,          only: hirsname, msuname
       use modal_aer_opt,      only: modal_aer_opt_init
@@ -545,6 +547,7 @@ contains
       ! rather than relying on radiation driver handling this logic. Too much
       ! duplicate code.
       !if (docosp) call cospsimulator_intr_init()
+#ifdef USE_COSP
       if (docosp) then
          ! Initialization for the simulator package.
          call cospsimulator_intr_init
@@ -558,6 +561,7 @@ contains
             cosp_cnt(begchunk:endchunk) = 0     
          end if
       end if
+#endif
 
       !
       ! Add fields to history buffer

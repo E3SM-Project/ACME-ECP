@@ -151,7 +151,9 @@ subroutine phys_register
     use aircraft_emit,      only: aircraft_emit_register
     use cam_diagnostics,    only: diag_register
     use cloud_diagnostics,  only: cloud_diagnostics_register
+#ifdef USE_COSP
     use cospsimulator_intr, only: cospsimulator_intr_register
+#endif
     use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on
@@ -331,8 +333,10 @@ subroutine phys_register
        call radiation_register
        call cloud_diagnostics_register
 
+#ifdef USE_COSP
        ! COSP
        call cospsimulator_intr_register
+#endif
 
        ! vertical diffusion
        if (.not. do_clubb_sgs) call vd_register()

@@ -140,7 +140,7 @@ ifneq ($(strip $(COSP_LIBDIR)),)
 $(COSP_LIBDIR)/libcosp.a: cam_abortutils.o
 	$(MAKE) -C $(COSP_LIBDIR)
 
-cospsimulator_intr.o: $(COSP_LIBDIR)/libcosp.a
+cospsimulator_intr.o: $(COSP_LIBDIR)/libcosp.a $(COSP_LIBDIR)/libsubcol.a
 endif
 
 # Rules to build MCT in its own library. 

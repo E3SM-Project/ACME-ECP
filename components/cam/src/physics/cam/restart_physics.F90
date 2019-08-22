@@ -17,7 +17,9 @@ module restart_physics
                                 pio_inq_varid, &
                                 pio_def_var, pio_def_dim, &
                                 pio_put_var, pio_get_var
+#ifdef USE_COSP
   use cospsimulator_intr, only: docosp
+#endif
   use radiation,          only: cosp_cnt_init, cosp_cnt, rad_randn_seedrst, kiss_seed_num
 
   implicit none
@@ -187,9 +189,11 @@ module restart_physics
 
 
     end if
+#ifdef USE_COSP
     if (docosp) then
       ierr = pio_def_var(File, 'cosp_cnt_init', pio_int, cospcnt_desc)
     end if
+#endif
 
     if (is_subcol_on()) then
       call subcol_init_restart(file, hdimids)
@@ -455,9 +459,11 @@ module restart_physics
       deallocate(abstot_desc)
     end if
 
+#ifdef USE_COSP
       if (docosp) then
         ierr = pio_put_var(File, cospcnt_desc, (/cosp_cnt(begchunk)/))
       end if
+#endif
 
       if (pergro_mods) then
          do i  = begchunk, endchunk
@@ -800,6 +806,7 @@ module restart_physics
         end do
      end if
 
+#ifdef USE_COSP
      if (docosp) then
         !!XXgoldyXX: This hack should be replaced with the PIO interface
         !err_handling = File%iosystem%error_handling !! Hack
@@ -812,6 +819,7 @@ module restart_physics
            ierr = pio_get_var(File, vardesc, cosp_cnt_init)
         end if
      end if
+#endif
 
      if (pergro_mods) then
         dims(2) = kiss_seed_num

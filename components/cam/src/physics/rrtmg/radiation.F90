@@ -415,7 +415,9 @@ end function radiation_nextsw_cday
     use physconst,      only: gravit, stebol, &
                               pstd, mwdry, mwco2, mwo3
     use phys_control,   only: phys_getopts
+#ifdef USE_COSP
     use cospsimulator_intr, only: docosp, cospsimulator_intr_init
+#endif
     use radsw,          only: radsw_init
     use radlw,          only: radlw_init
     use hirsbt,         only: hirsbt_init
@@ -496,7 +498,9 @@ end function radiation_nextsw_cday
     end if
 
 
+#ifdef USE_COSP
     if (docosp) call cospsimulator_intr_init
+#endif
 
     
     allocate(cosp_cnt(begchunk:endchunk))
@@ -911,7 +915,9 @@ end function radiation_nextsw_cday
     
     use phys_grid,       only: get_rlat_all_p, get_rlon_all_p
     use physics_types,   only: physics_state, physics_ptend
+#ifdef USE_COSP
     use cospsimulator_intr, only: docosp, cospsimulator_intr_run,cosp_nradsteps
+#endif
     use time_manager,    only: get_curr_calday
     use camsrfexch,      only: cam_out_t, cam_in_t
     use cam_history,     only: outfld
@@ -2413,6 +2419,7 @@ end function radiation_nextsw_cday
              enddo
           end if
 
+#ifdef USE_COSP
           if (docosp) then
              !! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
              !! advance counter for this timestep
@@ -2432,6 +2439,7 @@ end function radiation_nextsw_cday
 
               end if
           end if
+#endif
       endif  ! use_SPCAM
 
       if (use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
