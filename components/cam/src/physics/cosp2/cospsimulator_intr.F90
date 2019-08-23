@@ -1266,8 +1266,6 @@ CONTAINS
     
     ! Microphysics variables
     integer, parameter :: ncnstmax=4                      ! number of constituents
-    character(len=8), dimension(ncnstmax), parameter :: & ! constituent names
-         cnst_names = (/'CLDLIQ', 'CLDICE','NUMLIQ','NUMICE'/)
     integer :: ncnst                                      ! number of constituents (can vary)
     integer :: ixcldliq                                   ! cloud liquid amount index for state%q
     integer :: ixcldice                                   ! cloud ice amount index
@@ -1493,7 +1491,6 @@ CONTAINS
     real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
     real(r8) :: clrlmodis_cam(pcols,ntau_cosp*numMODISReffLiqBins)
     real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
-    !real(r8) :: tau067_out(pcols,nhtml_cosp*nscol_cosp),emis11_out(pcols,nhtml_cosp*nscol_cosp)
     real(r8),dimension(pcols,nhtml_cosp*nscol_cosp) :: &
          tau067_out,emis11_out,fracliq_out,cal_betatot,cal_betatot_ice, &
          cal_betatot_liq,cal_tautot,cal_tautot_ice,cal_tautot_liq,cs_gvol_out,cs_krvol_out,cs_zvol_out,&
@@ -1515,7 +1512,6 @@ CONTAINS
     ncol  = state%ncol     ! number of columns in the chunk
     
     ! Initialize CAM variables as R_UNDEF, important for history files because it will exclude these from averages
-    ! (multi-dimensional output that will be collapsed)
     ! initialize over all pcols, not just ncol.  missing values needed in chunks where ncol<pcols
     clisccp2(1:pcols,1:ntau_cosp,1:nprs_cosp)     = R_UNDEF
     cfad_dbze94(1:pcols,1:ndbze_cosp,1:nht_cosp)  = R_UNDEF
@@ -1672,11 +1668,10 @@ CONTAINS
     !state%q(:,:,ixcldliq) !for CAM4: cldliq= stratiform incld water content * total cloud fraction
     !state%q(:,:,ixcldice) !for CAM4: cldice = stratiform incld ice content * total cloud fraction
     
-    ! need query index for cldliq and cldice
-    ! use cnst_get_ind subroutine in constituents.F90.
+    ! Query index for cldliq and cldice
     ! can also get MG microphysics number from state using similar procedure.
-    call cnst_get_ind('CLDLIQ',ixcldliq)  !! replaced cnst_names(1) not setting abort flag which is optional in cnst_get_ind
-    call cnst_get_ind(cnst_names(2),ixcldice)
+    call cnst_get_ind('CLDLIQ',ixcldliq)
+    call cnst_get_ind('CLDICE',ixcldice)
     
     Npoints = ncol        ! default is running all columns in the chunk, not pcols = maximum number
     Nlevels = pver
