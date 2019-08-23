@@ -1255,50 +1255,6 @@ CONTAINS
     integer :: ncol                              ! number of active atmospheric columns
     integer :: i,k,ip,it,ipt,ih,id,ihd,is,ihs,isc,ihsc,ihm,ihmt,ihml,itim_old,ifld 
     
-    ! Variables for day/nite and orbital subsetting
-    ! Gathered indicies of day and night columns 
-    ! chunk_column_index = IdxDay(daylight_column_index)
-    integer :: Nday                              ! Number of daylight columns
-    integer :: Nno                               ! Number of columns not using for simulator
-    integer, dimension(pcols) :: IdxDay          ! Indices of daylight columns
-    integer, dimension(pcols) :: IdxNo           ! Indices of columns not using for simulator
-    real(r8) :: tmp(pcols)                       ! tempororary variable for array expansion
-    real(r8) :: tmp1(pcols,pver)                 ! tempororary variable for array expansion
-    real(r8) :: tmp2(pcols,pver)                 ! tempororary variable for array expansion
-    real(r8) :: lon_cosp_day(pcols)              ! tempororary variable for sunlit lons
-    real(r8) :: lat_cosp_day(pcols)              ! tempororary variable for sunlit lats
-    real(r8) :: ptop_day(pcols,pver)             ! tempororary variable for sunlit ptop
-    real(r8) :: pmid_day(pcols,pver)             ! tempororary variable for sunlit pmid
-    real(r8) :: ztop_day(pcols,pver)             ! tempororary variable for sunlit ztop
-    real(r8) :: zmid_day(pcols,pver)             ! tempororary variable for sunlit zmid
-    real(r8) :: t_day(pcols,pver)                ! tempororary variable for sunlit t
-    real(r8) :: rh_day(pcols,pver)               ! tempororary variable for sunlit rh
-    real(r8) :: q_day(pcols,pver)                ! tempororary variable for sunlit q
-    real(r8) :: concld_day(pcols,pver)           ! tempororary variable for sunlit concld
-    real(r8) :: cld_day(pcols,pver)              ! tempororary variable for sunlit cld
-    real(r8) :: ps_day(pcols)                    ! tempororary variable for sunlit ps
-    real(r8) :: ts_day(pcols)                    ! tempororary variable for sunlit ts
-    real(r8) :: landmask_day(pcols)              ! tempororary variable for sunlit landmask
-    real(r8) :: o3_day(pcols,pver)               ! tempororary variable for sunlit o3
-    real(r8) :: us_day(pcols)                    ! tempororary variable for sunlit us
-    real(r8) :: vs_day(pcols)                    ! tempororary variable for sunlit vs
-    real(r8) :: mr_lsliq_day(pcols,pver)         ! tempororary variable for sunlit mr_lsliq
-    real(r8) :: mr_lsice_day(pcols,pver)         ! tempororary variable for sunlit mr_lsice
-    real(r8) :: mr_ccliq_day(pcols,pver)         ! tempororary variable for sunlit mr_ccliq
-    real(r8) :: mr_ccice_day(pcols,pver)         ! tempororary variable for sunlit mr_ccice
-    real(r8) :: rain_ls_interp_day(pcols,pver)   ! tempororary variable for sunlit rain_ls_interp
-    real(r8) :: snow_ls_interp_day(pcols,pver)   ! tempororary variable for sunlit snow_ls_interp
-    real(r8) :: grpl_ls_interp_day(pcols,pver)   ! tempororary variable for sunlit grpl_ls_interp
-    real(r8) :: rain_cv_interp_day(pcols,pver)   ! tempororary variable for sunlit rain_cv_interp
-    real(r8) :: snow_cv_interp_day(pcols,pver)   ! tempororary variable for sunlit snow_cv_interp
-    real(r8) :: reff_cosp_day(pcols,pver,nhydro) ! tempororary variable for sunlit reff_cosp(:,:,:)
-    real(r8) :: dtau_s_day(pcols,pver)           ! tempororary variable for sunlit dtau_s
-    real(r8) :: dtau_c_day(pcols,pver)           ! tempororary variable for sunlit dtau_c
-    real(r8) :: dtau_s_snow_day(pcols,pver)      ! tempororary variable for sunlit dtau_s_snow
-    real(r8) :: dem_s_day(pcols,pver)            ! tempororary variable for sunlit dem_s
-    real(r8) :: dem_c_day(pcols,pver)            ! tempororary variable for sunlit dem_c
-    real(r8) :: dem_s_snow_day(pcols,pver)       ! tempororary variable for sunlit dem_s_snow
-    
     ! Constants for optical depth calculation (from radcswmx.F90)
     real(r8), parameter :: abarl = 2.817e-02_r8          ! A coefficient for extinction optical depth
     real(r8), parameter :: bbarl = 1.305_r8              ! b coefficient for extinction optical depth
@@ -1325,8 +1281,6 @@ CONTAINS
     ! COSP input variables that depend on CAM
     ! 1) Npoints = number of gridpoints COSP will process (without subsetting, Npoints=ncol)
     ! 2) Nlevels = number of model levels (Nlevels=pver)
-    real(r8), parameter :: time = 1.0_r8                  ! time ! Time since start of run [days], set to 1 bc running over single CAM timestep
-    real(r8), parameter :: time_bnds(2)=(/0.5_r8,1.5_r8/)        ! time_bnds ! Time boundaries - new in cosp v1.3, set following cosp_test.f90 line 121
     integer :: Npoints                                    ! Number of gridpoints COSP will process
     integer :: Nlevels                                    ! Nlevels
     logical :: use_reff                                   ! True if effective radius to be used by radar simulator 
@@ -1558,12 +1512,6 @@ CONTAINS
     ! Find the chunk and ncol from the state vector
     lchnk = state%lchnk    ! state variable contains a number of columns, one chunk
     ncol  = state%ncol     ! number of columns in the chunk
-    
-    ! Initialize temporary variables as R_UNDEF - need to do this otherwise array expansion puts garbage in history
-    ! file for columns over which COSP did make calculations.
-    tmp(1:pcols)         = R_UNDEF
-    tmp1(1:pcols,1:pver) = R_UNDEF
-    tmp2(1:pcols,1:pver) = R_UNDEF
     
     ! Initialize CAM variables as R_UNDEF, important for history files because it will exclude these from averages
     ! (multi-dimensional output that will be collapsed)
