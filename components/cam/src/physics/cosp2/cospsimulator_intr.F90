@@ -1217,7 +1217,8 @@ CONTAINS
   ! ######################################################################################
   ! SUBROUTINE cospsimulator_intr_run
   ! ######################################################################################
-  subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cld_swtau,snow_tau,snow_emis)    
+  subroutine cospsimulator_intr_run(state, pbuf, cam_in, emis, coszrs, &
+                                    cld_swtau, snow_tau, snow_emis)    
     use physics_types,        only: physics_state
     use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
     use camsrfexch,           only: cam_in_t
