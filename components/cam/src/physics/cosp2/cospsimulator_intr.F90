@@ -1219,7 +1219,7 @@ CONTAINS
   ! ######################################################################################
   subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cld_swtau,snow_tau,snow_emis)    
     use physics_types,        only: physics_state
-    use physics_buffer,       only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
     use camsrfexch,           only: cam_in_t
     use constituents,         only: cnst_get_ind
     use rad_constituents,     only: rad_cnst_get_gas
@@ -1253,7 +1253,7 @@ CONTAINS
     ! ######################################################################################
     integer :: lchnk                             ! chunk identifier
     integer :: ncol                              ! number of active atmospheric columns
-    integer :: i,k,ip,it,ipt,ih,id,ihd,is,ihs,isc,ihsc,ihm,ihmt,ihml,itim_old,ifld 
+    integer :: i,k,ip,it,ipt,ih,id,ihd,is,ihs,isc,ihsc,ihm,ihmt,ihml,ifld 
     
     ! Constants for optical depth calculation (from radcswmx.F90)
     real(r8), parameter :: abarl = 2.817e-02_r8          ! A coefficient for extinction optical depth
@@ -1695,10 +1695,9 @@ CONTAINS
     call rad_cnst_get_gas(0,'N2O', state, pbuf,  n2o)
     
     ! 4) get variables from physics buffer
-    itim_old = pbuf_old_tim_idx()
-    call pbuf_get_field(pbuf, cld_idx,    cld,    start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, concld_idx, concld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, rel_idx, rel  )
+    call pbuf_get_field(pbuf, cld_idx,    cld   )
+    call pbuf_get_field(pbuf, concld_idx, concld)
+    call pbuf_get_field(pbuf, rel_idx, rel)
     call pbuf_get_field(pbuf, rei_idx, rei)
     
     !added some more sizes to physics buffer in stratiform.F90 for COSP inputs
