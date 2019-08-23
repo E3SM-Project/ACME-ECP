@@ -2429,11 +2429,11 @@ end function radiation_nextsw_cday
               if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
                  !call should be compatible with camrt radiation.F90 interface too, should be with (in),optional
                  ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave optical depths are passed.
-
                  call t_startf ('cosp_run')
-                 call cospsimulator_intr_run(state,  pbuf, cam_in, emis, coszrs, &
-                      cld_swtau_in=cld_tau(rrtmg_sw_cloudsim_band,:,:),&
-                      snow_tau_in=gb_snow_tau,snow_emis_in=gb_snow_lw)
+                 call cospsimulator_intr_run( &
+                    state,  pbuf, cam_in, emis, coszrs, &
+                    cld_tau(rrtmg_sw_cloudsim_band,:,:), gb_snow_tau,gb_snow_lw &
+                 )
                  cosp_cnt(lchnk) = 0  !! reset counter
                  call t_stopf ('cosp_run')
 
