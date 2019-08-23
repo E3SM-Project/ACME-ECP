@@ -1290,14 +1290,6 @@ CONTAINS
     
     ! Local vars related to calculations to go from CAM input to COSP input
     ! cosp convective value includes both deep and shallow convection
-    real(r8) :: ptop(pcols,pver)                         ! top interface pressure (Pa)
-    real(r8) :: ztop(pcols,pver)                         ! top interface height asl (m)
-    real(r8) :: pbot(pcols,pver)                         ! bottom interface pressure (Pa)
-    real(r8) :: zbot(pcols,pver)                         ! bottom interface height asl (m)
-    real(r8) :: zmid(pcols,pver)                         ! middle interface height asl (m)
-    real(r8) :: lat_cosp(pcols)                          ! lat for cosp (degrees_north)
-    real(r8) :: lon_cosp(pcols)                          ! lon for cosp (degrees_east)
-    real(r8) :: landmask(pcols)                          ! landmask (0 or 1)
     real(r8) :: mr_lsliq(pcols,pver)                     ! mixing_ratio_large_scale_cloud_liquid (kg/kg)
     real(r8) :: mr_lsice(pcols,pver)                     ! mixing_ratio_large_scale_cloud_ice (kg/kg)
     real(r8) :: mr_ccliq(pcols,pver)                     ! mixing_ratio_convective_cloud_liquid (kg/kg)
@@ -1319,8 +1311,6 @@ CONTAINS
     real(r8) :: dem_s(pcols,pver)                        ! dem_s - Longwave emis of stratiform cloud at 10.5 um
     real(r8) :: dem_c(pcols,pver)                        ! dem_c - Longwave emis of convective cloud at 10.5 um
     real(r8) :: dem_s_snow(pcols,pver)                   ! dem_s_snow - Grid-box mean Optical depth of stratiform snow at 10.5 um
-    integer  :: cam_sunlit(pcols)                        ! cam_sunlit - Sunlit flag(1-sunlit/0-dark).
-    integer  :: nSunLit,nNoSunLit                        ! Number of sunlit (not sunlit) scenes.
     
     ! ######################################################################################
     ! Simulator output info
@@ -1676,11 +1666,6 @@ CONTAINS
     Npoints = ncol        ! default is running all columns in the chunk, not pcols = maximum number
     Nlevels = pver
     
-    ! 2) cam_in variables (see camsrfexch.F90)
-    ! I can reference these as is, e.g., cam_in%ts.  
-    !cam_in%ts                   ! skt - Skin temperature (K)
-    !cam_in%landfrac             ! land fraction, used to define a landmask (0 or 1) for COSP input
-    
     ! 3) radiative constituent interface variables:
     ! specific humidity (q), 03, CH4,C02, N20 mass mixing ratio
     ! Note: these all have dims (pcol,pver) but the values don't change much for the well-mixed gases.
@@ -1728,63 +1713,23 @@ CONTAINS
     !    also reverse CAM height/pressure values for input into CSOP
     !    CAM state%pint from top to surface, COSP wants surface to top.
     
-    ! Initalize
-    ptop(1:ncol,1:pver)=0._r8
-    pbot(1:ncol,1:pver)=0._r8
-    ztop(1:ncol,1:pver)=0._r8
-    zbot(1:ncol,1:pver)=0._r8
-    zmid(1:ncol,1:pver)=0._r8
-    
-    ! assign values from top   
-    do k=1,pverp-1
-       ! assign values from top
-       ptop(1:ncol,k)=state%pint(1:ncol,pverp-k)
-       ztop(1:ncol,k)=state%zi(1:ncol,pverp-k)
-       ! assign values from bottom           
-       pbot(1:ncol,k)=state%pint(1:ncol,pverp-k+1)
-       zbot(1:ncol,k)=state%zi(1:ncol,pverp-k+1)
-    end do
     
     ! add surface height (surface geopotential/gravity) to convert CAM heights based on geopotential above surface into height above sea level
-    do k=1,pver
-       do i=1,ncol
-          ztop(i,k)=ztop(i,k)+state%phis(i)/gravit  
-          zbot(i,k)=zbot(i,k)+state%phis(i)/gravit
-          zmid(i,k)=state%zm(i,k)+state%phis(i)/gravit
-       end do
-    end do
     
-    ! 1) lat/lon - convert from radians to cosp input type
-    ! Initalize
-    lat_cosp(1:ncol)=0._r8
-    lon_cosp(1:ncol)=0._r8
-    ! convert from radians to degrees_north and degrees_east 
-    lat_cosp=state%lat*180._r8/(pi)  ! needs to go from -90 to +90 degrees north
-    lon_cosp=state%lon*180._r8/(pi)  ! needs to go from 0 to 360 degrees east
-    
+   
     ! 2) rh - relative_humidity_liquid_water (%)
     ! calculate from CAM q and t using CAM built-in functions
     call qsat_water(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
          es(1:ncol,1:pver), qs(1:ncol,1:pver))
     
-    ! initialize rh
-    rh(1:ncol,1:pver)=0._r8
-    
     ! calculate rh
+    rh(1:ncol,1:pver)=0._r8
     do k=1,pver
        do i=1,ncol
           rh(i,k)=(q(i,k)/qs(i,k))*100
        end do
     end do
-    
-    ! 3) landmask - calculate from cam_in%landfrac
-    ! initalize landmask
-    landmask(1:ncol)=0._r8
-    ! calculate landmask
-    do i=1,ncol
-       if (cam_in%landfrac(i).gt.0.01_r8) landmask(i)= 1
-    end do
-    
+   
     ! 4) calculate necessary input cloud/precip variables
     ! CAM4 note: don't take the cloud water from the hack shallow convection scheme or the deep convection.  
     ! cloud water values for convection are the same as the stratiform value. (Sungsu)
@@ -1933,26 +1878,6 @@ CONTAINS
     dem_s_snow(1:ncol,1:pver)  = snow_emis(1:ncol,1:pver)     ! 10.5 micron grid-box mean optical depth of stratiform snow
     dtau_s_snow(1:ncol,1:pver) = snow_tau(1:ncol,1:pver)      ! 0.67 micron grid-box mean optical depth of stratiform snow
 
-    ! ######################################################################################
-    ! Compute sunlit flag. If cosp_runall=.true., then run on all points.
-    ! ######################################################################################
-    cam_sunlit(:) = 0
-    if (cosp_runall) then
-       cam_sunlit(:) = 1
-       nSunLit   = ncol
-       nNoSunLit = 0
-    else
-       nSunLit   = 0
-       nNoSunLit = 0
-       do i=1,ncol
-          if ((coszrs(i) > 0.0_r8) .and. (run_cosp(i,lchnk))) then
-             cam_sunlit(i) = 1
-             nSunLit   = nSunLit+1
-          else
-             nNoSunLit = nNoSunlit+1
-          endif
-       enddo
-    endif
     call t_stopf("init_and_stuff")
 
     ! ######################################################################################
@@ -1974,28 +1899,55 @@ CONTAINS
     ! Model state
     call t_startf("construct_cospstateIN")
     call construct_cospstateIN(ncol,pver,0,cospstateIN)      
-    cospstateIN%lat                            = lat_cosp(1:ncol)
-    cospstateIN%lon                            = lon_cosp(1:ncol) 
+ 
+    ! Convert from coordinate variables radians to degrees_north and degrees_east
+    ! Note that -90 < lat < 90; 0 < lon < 360
+    cospstateIN%lat                            = state%lat(1:ncol) * 180._r8 / pi
+    cospstateIN%lon                            = state%lon(1:ncol) * 180._r8 / pi
     cospstateIN%at                             = state%t(1:ncol,1:pver) 
     cospstateIN%qv                             = q(1:ncol,1:pver)
     cospstateIN%o3                             = o3(1:ncol,1:pver)  
-    cospstateIN%sunlit                         = cam_sunlit(1:ncol)
+
+    ! Set sunlit flag
+    if (cosp_runall) then
+       cospstateIN%sunlit = 1
+    else
+       do i=1,ncol
+          if ((coszrs(i) > 0.0_r8) .and. (run_cosp(i,lchnk))) then
+             cospstateIN%sunlit(i) = 1
+          else
+             cospstateIN%sunlit(i) = 0
+          endif
+       enddo
+    end if
+
     cospstateIN%skt                            = cam_in%ts(1:ncol)
-    cospstateIN%land                           = landmask(1:ncol)
+
+    ! Set land mask
+    do i = 1,ncol
+       if (cam_in%landfrac(i) > 0.01_r8) then
+          cospstateIN%land(i) = 1
+       else
+          cospstateIN%land(i) = 0
+       end if
+    end do
     cospstateIN%pfull                          = state%pmid(1:ncol,1:pver)
     cospstateIN%phalf(1:ncol,1)                = 0._r8
-    cospstateIN%phalf(1:ncol,2:pver+1)         = pbot(1:ncol,pver:1:-1)  
-!    cospstateIN%phalf(1:ncol,1:pver+1)         = pbot(1:ncol,pver+1:1:-1)  
-    cospstateIN%hgt_matrix                     = zmid(1:ncol,1:pver) 
+    cospstateIN%phalf(1:ncol,2:pver+1)         = state%pint(1:ncol,2:pver+1)
+    ! This looks like a bug...shouldn't we be *subtracting* phis / gravit from
+    ! z, rather than adding?
+    do k = 1,pver
+       cospstateIN%hgt_matrix(1:ncol,k)      = state%zm(1:ncol,k  ) + state%phis(1:ncol) / gravit
+       cospstateIN%hgt_matrix_half(1:ncol,k) = state%zi(1:ncol,k+1) + state%phis(1:ncol) / gravit 
+    end do  
     cospstateIN%hgt_matrix_half(1:ncol,pver+1) = 0._r8
-    cospstateIN%hgt_matrix_half(1:ncol,1:pver) = zbot(1:ncol,pver:1:-1) 
     cospstateIN%surfelev(1:ncol) = state%zi(1:ncol,pver+1)
     call t_stopf("construct_cospstateIN")
 
     ! Optical inputs
     call t_startf("construct_cospIN")
     call construct_cospIN(ncol,nscol_cosp,pver,cospIN)
-    cospIN%emsfc_lw      = emsfc_lw
+    cospIN%emsfc_lw = emsfc_lw
     if (lradar_sim) cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
     call t_stopf("construct_cospIN")
 
@@ -2080,7 +2032,7 @@ CONTAINS
        ! ISCCP simulator
        if (lisccp_sim) then
           ! 1D
-          where(cam_sunlit(1:ncol) .eq. 0)
+          where(cospstateIN%sunlit(1:ncol) .eq. 0)
              cospOUT%isccp_totalcldarea(1:ncol)  = R_UNDEF
              cospOUT%isccp_meanptop(1:ncol)      = R_UNDEF
              cospOUT%isccp_meantaucld(1:ncol)    = R_UNDEF
@@ -2090,7 +2042,7 @@ CONTAINS
           end where
           ! 2D
           do i=1,nscol_cosp
-             where (cam_sunlit(1:ncol) .eq. 0)
+             where (cospstateIN%sunlit(1:ncol) .eq. 0)
                 cospOUT%isccp_boxtau(1:ncol,i)  = R_UNDEF
                 cospOUT%isccp_boxptop(1:ncol,i) = R_UNDEF
              end where
@@ -2098,7 +2050,7 @@ CONTAINS
           ! 3D
           do i=1,nprs_cosp
              do k=1,ntau_cosp
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cospstateIN%sunlit(1:ncol) .eq. 0)
                    cospOUT%isccp_fq(1:ncol,k,i) = R_UNDEF
                 end where
              end do
@@ -2109,7 +2061,7 @@ CONTAINS
        if (lmisr_sim) then
           do i=1,nhtmisr_cosp
              do k=1,ntau_cosp
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cospstateIN%sunlit(1:ncol) .eq. 0)
                    cospOUT%misr_fq(1:ncol,k,i) = R_UNDEF
                 end where
              end do
@@ -2119,7 +2071,7 @@ CONTAINS
        ! MODIS simulator
        if (lmodis_sim) then
           ! 1D
-          where(cam_sunlit(1:ncol) .eq. 0)
+          where(cospstateIN%sunlit(1:ncol) .eq. 0)
              cospOUT%modis_Cloud_Fraction_Total_Mean(1:ncol)       = R_UNDEF
              cospOUT%modis_Cloud_Fraction_Water_Mean(1:ncol)       = R_UNDEF
              cospOUT%modis_Cloud_Fraction_Ice_Mean(1:ncol)         = R_UNDEF
@@ -2141,17 +2093,17 @@ CONTAINS
           ! 3D
           do i=1,ntau_cosp_modis
              do k=1,nprs_cosp
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cospstateIN%sunlit(1:ncol) .eq. 0)
                    cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure(1:ncol,i,k) = R_UNDEF 
                 end where
              enddo
              do k=1,numMODISReffIceBins
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cospstateIN%sunlit(1:ncol) .eq. 0)
                    cospOUT%modis_Optical_Thickness_vs_ReffICE(1:ncol,i,k) = R_UNDEF
                 end where
              end do
              do k=1,numMODISReffLiqBins
-                where(cam_sunlit(1:ncol) .eq. 0)
+                where(cospstateIN%sunlit(1:ncol) .eq. 0)
                    cospOUT%modis_Optical_Thickness_vs_ReffLIQ(1:ncol,i,k) = R_UNDEF
                 end where
              enddo
