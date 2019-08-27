@@ -303,9 +303,10 @@ end subroutine restart_printopts
       use time_manager,     only: timemgr_read_restart, timemgr_restart
       use filenames,        only: caseid, brnch_retain_casename
       use ref_pres,         only: ref_pres_init
-      use dyn_grid,         only: fv_nphys
+      use dyn_grid,         only: fv_nphys, fv_physgrid
       use ppgrid,           only: begchunk, endchunk, pcols
       use physics_types,    only: physics_type_alloc
+      use cam_control_mod,          only: ideal_phys, aqua_planet
       use fv_physics_coupling_mod,  only: fv_phys_to_dyn_topo
       use cam_initfiles,            only: cam_initfiles_open
       use cam_initfiles,            only: topo_file_get_id
@@ -419,30 +420,35 @@ end subroutine restart_printopts
 
    call phys_grid_init
 
-   
    if (fv_nphys>0) then
-    ! For FV physgrid we need allocate the phys_state before reading restart data
-    call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
-
-    ! Read topo data from file when physics is on FV grid
-    call cam_initfiles_open()
-    fh_topo => topo_file_get_id()
-    nphys_sq = fv_nphys*fv_nphys
-    allocate(phis_tmp(nphys_sq,nelemd))
-    call infld('PHIS', fh_topo, 'ncol', 1, nphys_sq, 1, nelemd, phis_tmp, found, gridname='physgrid_d')
-    if(.not.found) call endrun('read_restart_dynamics(): Could not find PHIS field on input datafile')
-    ! Copy phis field to GLL grid
-    call fv_phys_to_dyn_topo(dyn_out%elem,phis_tmp)
-    deallocate(phis_tmp)
-    ! Do boundary exchange - weights applied in fv_phys_to_dyn_topo
-    do ie = 1,nelemd
-      call edgeVpack(edge_g,dyn_out%elem(ie)%state%phis(:,:),1,0,ie)
-    end do
-    if(par%dynproc) call bndry_exchangeV(par,edge_g)
-    do ie = 1,nelemd
-      call edgeVunpack(edge_g,dyn_out%elem(ie)%state%phis(:,:),1,0,ie)
-    end do
-  end if
+      ! For FV physgrid we need allocate the phys_state before reading restart data
+      call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
+   
+      if ( (ideal_phys .or. aqua_planet)) then
+         do ie = 1,nelemd
+            fv_physgrid(ie)%topo(:,:) = 0.0_r8
+         end do
+      else
+         ! Read topo data from file when physics is on FV grid
+         call cam_initfiles_open()
+         fh_topo => topo_file_get_id()
+         nphys_sq = fv_nphys*fv_nphys
+         allocate(phis_tmp(nphys_sq,nelemd))
+         call infld('PHIS', fh_topo, 'ncol', 1, nphys_sq, 1, nelemd, phis_tmp, found, gridname='physgrid_d')
+         if(.not.found) call endrun('read_restart_dynamics(): Could not find PHIS field on input datafile')
+         ! Copy phis field to GLL grid
+         call fv_phys_to_dyn_topo(dyn_out%elem,phis_tmp)
+         deallocate(phis_tmp)
+         ! Do boundary exchange - weights applied in fv_phys_to_dyn_topo
+         do ie = 1,nelemd
+            call edgeVpack(edge_g,dyn_out%elem(ie)%state%phis(:,:),1,0,ie)
+         end do
+         if(par%dynproc) call bndry_exchangeV(par,edge_g)
+         do ie = 1,nelemd
+            call edgeVunpack(edge_g,dyn_out%elem(ie)%state%phis(:,:),1,0,ie)
+         end do
+      end if
+   end if
 
    call hub2atm_alloc( cam_in )
    call atm2hub_alloc( cam_out )
