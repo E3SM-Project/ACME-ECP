@@ -51,24 +51,22 @@ contains
     integer(i4) :: ii, jj, gi, gj                     ! GLL loop iterator and indices for pg2
     integer     :: tl_f
     real(r8), dimension(fv_nphys*fv_nphys,pver,pcnst) :: qo_phys       ! reconstructed initial physics state 
-    real(r8), dimension(np,np)                        :: tmp_area_gll  ! area for weighting
-    real(r8), dimension(fv_nphys*fv_nphys)            :: inv_area_fvm  ! inverse area for weighting
     real(r8), dimension(np,np,pver)                   :: dp_gll
     real(r8), dimension(fv_nphys*fv_nphys,pver)       :: dp_fvm_sum
     !---------------------------------------------------------------------------
     ! Copy tendencies on the physics grid over to the dynamics grid (GLL)
     !---------------------------------------------------------------------------
     tl_f = TimeLevel%n0
-    tmp_area_gll(:,:) = 1.0_r8
     do ie = 1,nelemd
       !-------------------------------------------------------------------------
       ! Recalculate state that was previously sent to physics 
       !-------------------------------------------------------------------------
       if (ftype==2.or.ftype==4) then
-        inv_area_fvm(:) = 1.0_r8/RESHAPE( subcell_integration(tmp_area_gll,np,fv_nphys,elem(ie)%metdet(:,:)), (/fv_nphys*fv_nphys/) )
         do ilyr = 1,pver
           dp_gll(:,:,ilyr) = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
-          dp_fvm_sum(:,ilyr) = RESHAPE( subcell_integration(dp_gll(:,:,ilyr),np,fv_nphys,elem(ie)%metdet(:,:)), (/fv_nphys*fv_nphys/) )
+          dp_fvm_sum(:,ilyr) = RESHAPE( subcell_integration(dp_gll(:,:,ilyr), &
+                                        np,fv_nphys,elem(ie)%metdet(:,:)),    &
+                                        (/fv_nphys*fv_nphys/) )
           do m = 1,pcnst
             qo_phys(:,ilyr,m)  = RESHAPE( subcell_integration(                    &
                                   elem(ie)%state%Q(:,:,ilyr,m)*dp_gll(:,:,ilyr),  &
@@ -94,8 +92,8 @@ contains
               do m = 1,pcnst
                 if ( ftype==2 .or. ftype==4 ) then
                   ! subtract initial phys state and add previous dyn state
-                  elem(ie)%derived%FQ(:,:,ilyr,m) = ( q_tmp(icol,ilyr,m,ie)   &
-                                                     -qo_phys(icol,ilyr,m) )  &
+                  elem(ie)%derived%FQ(:,:,ilyr,m) = ( q_tmp(icol,ilyr,m,ie)       &
+                                                     -qo_phys(icol,ilyr,m) )      &
                                                     *dp_fvm_sum(icol,ilyr)        &
                                                     /(4.0_r8*dp_gll(gi,gj,ilyr)   &
                                                       *elem(ie)%spheremp(gi,gj) ) &
@@ -314,6 +312,7 @@ contains
           uv_tmp(:ncol,:,ilyr,ie) = uv_tmp(:ncol,:,ilyr,ie) - uv_tmp_in(:ncol,:)
 
         end if ! not is_first_step
+
         !-----------------------------------------------------------------------
         !-----------------------------------------------------------------------
 
