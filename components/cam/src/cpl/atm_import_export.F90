@@ -41,7 +41,7 @@ contains
     integer, pointer   :: dst_a1_ndx, dst_a3_ndx
     logical :: overwrite_flds
 #ifdef MAML  
-     integer :: ii !MAML-Guangxing Lin
+     integer :: ii 
 #endif
     !-----------------------------------------------------------------------
     overwrite_flds = .true.
@@ -74,7 +74,6 @@ contains
 #ifdef MAML  
              cam_in(c)%shf(i,inst_index)    = -x2a(index_x2a_Faxx_sen, ig)    
              cam_in(c)%lhf(i,inst_index)    = -x2a(index_x2a_Faxx_lat, ig)     
-! MAML-Guangxing Lin
 #else
              cam_in(c)%shf(i)    = -x2a(index_x2a_Faxx_sen, ig) 
              cam_in(c)%lhf(i)    = -x2a(index_x2a_Faxx_lat, ig)     
@@ -216,7 +215,6 @@ contains
              ncols = get_ncols_p(c)
              do i=1,ncols
 #ifdef MAML
-! MAML-Guangxing 
                 cam_in(c)%lwup(i,1) = shr_const_stebol*(cam_in(c)%ts(i)**4)
                 do ii=2,num_inst_atm
                   cam_in(c)%lwup(i,ii) = cam_in(c)%lwup(i,1)

@@ -186,7 +186,6 @@ CONTAINS
     call seq_cdata_setptrs(cdata_a, ID=ATMID, mpicom=mpicom_atm, &
          gsMap=gsMap_atm, dom=dom_a, infodata=infodata)
 #ifdef MAML 
-    !MAML-Guangxing Lin
     call seq_infodata_getData(infodata,atm_phase=atm_phase)
     call cam_instance_init(ATMID)
     !write(*,*) '### atm_init_mct: ATMID = ',ATMID
@@ -219,13 +218,11 @@ CONTAINS
        endif
        return
     endif
-    !MAML-Guangxing Lin
-    !   if (first_time) then !MAML-Guangxing Lin
+
     if (atm_phase == 1) then
-    !call cam_instance_init(ATMID) !MAML-Guangxing Lin
 #else
-       if (first_time) then !MAML-Guangxing Lin
-       call cam_instance_init(ATMID) !MAML-Guangxing Lin
+    if (first_time) then 
+       call cam_instance_init(ATMID) 
 #endif       
 
        ! Set filename specifier for restart surface file
@@ -546,10 +543,8 @@ CONTAINS
     integer :: lbnum
     character(len=*), parameter :: subname="atm_run_mct"
 #ifdef MAML 
-    !MAML-Guangxing Lin
     integer :: ATMID
     integer :: atm_phase        ! passed from driver
-    !MAML-Guangxing Lin
 #endif
     !-----------------------------------------------------------------------
 
@@ -567,10 +562,8 @@ CONTAINS
     call shr_file_setLogUnit (iulog)
    
 #ifdef MAML 
-    !MAML-Guangxing Lin
     call seq_cdata_setptrs(cdata_a, infodata=infodata, ID=ATMID)
     call cam_instance_init(ATMID)
-    !MAML-Guangxing Lin
 #endif
  
     ! Note that sync clock time should match cam time at end of time step/loop not beginning
@@ -584,17 +577,15 @@ CONTAINS
        orb_eccen=eccen, orb_mvelpp=mvelpp, orb_lambm0=lambm0, orb_obliqr=obliqr)
 
 #ifdef MAML 
-    !MAML-Guangxing Lin
-     call seq_infodata_getData(infodata,atm_phase=atm_phase)
+    call seq_infodata_getData(infodata,atm_phase=atm_phase)
     !write(6,*) '### atm_run_mct: seq_infodata_getData atm_phase = ',atm_phase
-    !MAML-Guangxing Lin
 #endif
 
     nlend_sync = seq_timemgr_StopAlarmIsOn(EClock)
     rstwr_sync = seq_timemgr_RestartAlarmIsOn(EClock)
     
 #ifdef MAML 
-    !MAML-Guangxing Lin: huge new block 
+    ! huge new block 
     !------------
     ! for special case (sequence instances)
     !   import n instances at atm_phase = 0 and return
@@ -626,7 +617,6 @@ CONTAINS
 
     ! Return if atm_phase is 0 in standard coupling mode
     if (atm_phase == 0) return
-    !MAML-Guangxing Lin: huge new block
 #endif
 
     ! Map input from mct to cam data structure
@@ -759,7 +749,6 @@ CONTAINS
     type(mct_aVect)             ,intent(inout) :: a2x_a
     
 #ifdef MAML 
-      !MAML-Guangxing Lin
 !--- local --- 
     integer :: ATMID
 
@@ -770,7 +759,6 @@ CONTAINS
     if (sequence_instances .and. inst_index > 1) then
        return
     endif
-    !MAML-Guangxing Lin
 #endif
 
     call cam_final( cam_out, cam_in )

@@ -16,9 +16,7 @@ module camsrfexch
   use cam_abortutils,    only: endrun
   use cam_logfile,   only: iulog
 #ifdef MAML
-! MAML-Guangxing Lin  
   use seq_comm_mct, only : num_inst_atm
-! MAML-Guangxing Lin
 #endif
   implicit none
 
@@ -48,7 +46,6 @@ module camsrfexch
      integer  :: lchnk               ! chunk index
      integer  :: ncol                ! number of columns in chunk
 #ifdef MAML
-!MAML-Guangxing Lin
      real(r8) :: tbot(pcols,num_inst_atm)         ! bot level temperature
      real(r8) :: zbot(pcols,num_inst_atm)         ! bot level height above surface
      real(r8) :: ubot(pcols,num_inst_atm)         ! bot level u wind
@@ -67,7 +64,6 @@ module camsrfexch
      real(r8) :: solld(pcols,num_inst_atm)        !
      real(r8) :: solsd(pcols,num_inst_atm)        !
      real(r8) :: thbot(pcols,num_inst_atm)        !  
-!MAML-Guangxing Lin
 #else
      real(r8) :: tbot(pcols)         ! bot level temperature
      real(r8) :: zbot(pcols)         ! bot level height above surface
@@ -116,7 +112,7 @@ module camsrfexch
      integer  :: lchnk                   ! chunk index
      integer  :: ncol                    ! number of active columns
 #ifdef MAML
-!MAML-Guangxing Lin...modifying the CLM-input vars to reflect the added CRM columns
+!MAML...modifying the CLM-input vars to reflect the added CRM columns
      real(r8) :: asdir(pcols,num_inst_atm)            ! albedo: shortwave, direct
      real(r8) :: asdif(pcols,num_inst_atm)            ! albedo: shortwave, diffuse
      real(r8) :: aldir(pcols,num_inst_atm)            ! albedo: longwave, direct
@@ -127,7 +123,7 @@ module camsrfexch
      real(r8) :: wsx(pcols,num_inst_atm)              ! surface u-stress (N)
      real(r8) :: wsy(pcols,num_inst_atm)              ! surface v-stress (N)
      real(r8) :: snowhland(pcols,num_inst_atm)        ! snow depth (liquid water equivalent) over land 
-!MAML-Guangxing Lin...modifying the CLM-input vars to reflect the added CRM columns
+!MAML...modifying the CLM-input vars to reflect the added CRM columns
 #else
      real(r8) :: asdir(pcols)            ! albedo: shortwave, direct
      real(r8) :: asdif(pcols)            ! albedo: shortwave, diffuse
@@ -358,7 +354,6 @@ CONTAINS
        cam_out(c)%lchnk       = c
        cam_out(c)%ncol        = get_ncols_p(c)
 #ifdef MAML
-!MAML-Guangxing Lin 
        cam_out(c)%thbot(:,:)    = 0._r8
        cam_out(c)%tbot(:,:)     = 0._r8
        cam_out(c)%zbot(:,:)     = 0._r8
@@ -377,7 +372,6 @@ CONTAINS
        cam_out(c)%solsd(:,:)    = 0._r8
        cam_out(c)%flwds(:,:)    = 0._r8
        cam_out(c)%netsw(:,:)    = 0._r8
-!MAML-Guangxing Lin
 #else
        cam_out(c)%tbot(:)     = 0._r8
        cam_out(c)%zbot(:)     = 0._r8

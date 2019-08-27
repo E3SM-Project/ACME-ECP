@@ -240,9 +240,7 @@ module restart_physics
       use subcol_utils,        only: is_subcol_on
       use subcol,              only: subcol_write_restart
 #ifdef MAML
-!MAML-Guangxing Lin
       use seq_comm_mct, only : num_inst_atm
-!MAML-Guangxing Lin
 #endif
       !
       ! Input arguments
@@ -259,10 +257,8 @@ module restart_physics
       real(r8):: tmpfield(pcols, begchunk:endchunk)
       real(r8):: tmpfield3d(pcols, pver, begchunk:endchunk)
 #ifdef MAML
-!MAML-Guangxing Lin
       real(r8) :: tmpfld_crm(pcols*(endchunk-begchunk+1)*num_inst_atm)
       integer :: ii, jj, j
-!MAML-Guangxing Lin
 #endif
       integer :: tmp_seedrst(pcols, kiss_seed_num, begchunk:endchunk)
       integer :: i, m, iseed, icol, k          ! loop index
@@ -320,68 +316,70 @@ module restart_physics
          call pio_write_darray(File, trefmxav_desc, iodesc, trefmxav, ierr)
          call pio_write_darray(File, trefmnav_desc, iodesc, trefmnav, ierr)
 #ifdef MAML
-!MAML-Guangxing Lin...five vars need to be adjusted; flwds, sols, soll, solsd, solld
-          ii=0
-      tmpfld_crm(:) = fillvalue
-      do i=begchunk,endchunk
-        ncol = cam_out(i)%ncol
-        do j=1,pcols
-          do jj=1,num_inst_atm
-            ii=ii+1
-                if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%flwds(j,jj)
-          enddo
-        end do
-      end do
-      call pio_write_darray(File, flwds_desc, iodesc, tmpfld_crm, ierr)
-             ii=0
-      tmpfld_crm(:) = fillvalue
-      do i=begchunk,endchunk
-        ncol = cam_out(i)%ncol
-        do j=1,pcols
-          do jj=1,num_inst_atm
-            ii=ii+1
-                if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%sols(j,jj)
-          enddo
-        end do
-      end do
-      call pio_write_darray(File, sols_desc, iodesc, tmpfld_crm, ierr)
          ii=0
-      tmpfld_crm(:) = fillvalue
-      do i=begchunk,endchunk
-        ncol = cam_out(i)%ncol
-        do j=1,pcols
-          do jj=1,num_inst_atm
-            ii=ii+1
-                if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%soll(j,jj)
-          enddo
-        end do
-      end do
-  call pio_write_darray(File, soll_desc, iodesc, tmpfld_crm, ierr)
-              ii=0
-      tmpfld_crm(:) = fillvalue
-      do i=begchunk,endchunk
-        ncol = cam_out(i)%ncol
-        do j=1,pcols
-          do jj=1,num_inst_atm
-            ii=ii+1
-                if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%solsd(j,jj)
-          enddo
-        end do
-      end do
-      call pio_write_darray(File, solsd_desc, iodesc, tmpfld_crm, ierr)
+         tmpfld_crm(:) = fillvalue
+         do i=begchunk,endchunk
+            ncol = cam_out(i)%ncol
+            do j=1,pcols
+               do jj=1,num_inst_atm
+                  ii=ii+1
+                  if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%flwds(j,jj)
+                enddo
+            end do
+         end do
+         call pio_write_darray(File, flwds_desc, iodesc, tmpfld_crm, ierr)
+        
+         ii=0
+         tmpfld_crm(:) = fillvalue
+         do i=begchunk,endchunk
+            ncol = cam_out(i)%ncol
+            do j=1,pcols
+               do jj=1,num_inst_atm
+                  ii=ii+1
+                  if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%sols(j,jj)
+               enddo
+            end do
+         end do
+         call pio_write_darray(File, sols_desc, iodesc, tmpfld_crm, ierr)
+       
+         ii=0
+         tmpfld_crm(:) = fillvalue
+         do i=begchunk,endchunk
+           ncol = cam_out(i)%ncol
+           do j=1,pcols
+             do jj=1,num_inst_atm
+               ii=ii+1
+               if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%soll(j,jj)
+             enddo
+           end do
+         end do
+         call pio_write_darray(File, soll_desc, iodesc, tmpfld_crm, ierr)
+        
+         ii=0
+         tmpfld_crm(:) = fillvalue
+         do i=begchunk,endchunk
+           ncol = cam_out(i)%ncol
+           do j=1,pcols
+             do jj=1,num_inst_atm
+               ii=ii+1
+               if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%solsd(j,jj)
+             enddo
+           end do
+         end do
+         call pio_write_darray(File, solsd_desc, iodesc, tmpfld_crm, ierr)
 
-          ii=0
-      tmpfld_crm(:) = fillvalue
-      do i=begchunk,endchunk
-        ncol = cam_out(i)%ncol
-        do j=1,pcols
-          do jj=1,num_inst_atm
-            ii=ii+1
-                if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%solld(j,jj)
-          enddo
-        end do
-      end do
-      call pio_write_darray(File, solld_desc, iodesc, tmpfld_crm, ierr)
+         ii=0
+         tmpfld_crm(:) = fillvalue
+         do i=begchunk,endchunk
+            ncol = cam_out(i)%ncol
+            do j=1,pcols
+               do jj=1,num_inst_atm
+                  ii=ii+1
+                  if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%solld(j,jj)
+               enddo
+            end do
+         end do
+         call pio_write_darray(File, solld_desc, iodesc, tmpfld_crm, ierr)
 #else
          do i = begchunk, endchunk
             ncol = cam_out(i)%ncol
@@ -489,7 +487,6 @@ module restart_physics
             call pio_write_darray(File, cflx_desc(m), iodesc, tmpfield, ierr)
          end do
 #ifdef MAML
-!MAML-Guangxing Lin
       ii=0
       tmpfld_crm(:) = fillvalue
       do i=begchunk,endchunk

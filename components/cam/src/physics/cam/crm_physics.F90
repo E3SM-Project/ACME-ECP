@@ -183,10 +183,10 @@ subroutine crm_physics_register()
   ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
   call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
 #ifdef MAML
-!MAML-Guangxing Lin...adding new variables for passing precipition/snow into CLM. Added new variables
+!MAML...adding new variables for passing CRM-scale precipition/snow into CLM. Added new variables
   call pbuf_add_field('CRM_PCP',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_pcp_idx)
   call pbuf_add_field('CRM_SNW',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_snw_idx)
-!MAML-Guangxing Lin
+!MAML
 #endif
 
 end subroutine crm_physics_register
@@ -413,13 +413,11 @@ subroutine crm_physics_init(species_class)
   call addfld ('SPWTKE   ', (/ 'lev' /), 'A', 'm/s',      'Standard deviation of updraft velocity')
   call addfld ('SPLCLOUD  ',(/ 'lev' /), 'A', '        ', 'Liquid cloud fraction')
 #ifdef MAML
-!MAML-Guangxing Lin
   call addfld ('CRM_SHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc sensible heat flux'          )
   call addfld ('CRM_LHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc latent heat flux'            )
   call addfld ('CRM_SNOW',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Snow Rate'                       )
   call addfld ('CRM_PCP ',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Precipitation Rate'              )
   call addfld ('CRM_SPD ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'm/s     ', 'CRM Wind Speed'                      )
-!MAML-Guangxing Lin
 #endif
 
    ! call addfld ('SPNDROPMIX','#/kg/s  ',pver,  'A','Droplet number mixing',phys_decomp)
@@ -688,12 +686,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(crm_input_type)  :: crm_input
    type(crm_output_type) :: crm_output
 #ifdef MAML
-!MAML-Guangxing Lin
    real(r8), pointer, dimension(:,:,:)   :: crm_pcp
    real(r8), pointer, dimension(:,:,:)   :: crm_snw
    real(r8) :: factor_xy
    factor_xy = 1._r8/dble(crm_nx*crm_ny)
-!MAML-Guangxing Lin
 #endif
 
 #if defined( SP_ORIENT_RAND )
@@ -884,10 +880,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
 #ifdef MAML
-!MAML-Guangxing Lin
    call pbuf_get_field (pbuf, crm_pcp_idx, crm_pcp)
    call pbuf_get_field (pbuf, crm_snw_idx, crm_snw)
-!MAML-Guangxing Lin
 #endif
 
    !------------------------------------------------------------------------------------------------
@@ -952,10 +946,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          end do
       end do
 #ifdef MAML
-!MAML-Guangxing Lin
        crm_pcp(:,:,:) = 0.
        crm_snw(:,:,:) = 0.
-!MAML-Guangxing Lin
 #endif
 
 ! use radiation from grid-cell mean radctl on first time step
@@ -988,10 +980,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%s(:,:) = 0. ! necessary?
       cwp    = 0.
 #ifdef MAML
-!MAML-Guangxing Lin
       crm_pcp = 0.
       crm_snw = 0.
-!MAML-Guangxing Lin
 #endif
 
       do m=1,crm_nz
@@ -1071,7 +1061,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          crm_input%fluxv00(i) = cam_in%wsy(i)     !N/m2
          crm_input%fluxt00(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
          crm_input%fluxq00(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
-#endif
+#endif  
          crm_input%wndls(i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
       end do
 #if (defined m2005 && defined MODAL_AERO)

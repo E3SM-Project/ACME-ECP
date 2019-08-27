@@ -30,6 +30,9 @@ module crm_module
   use crm_input_module,       only: crm_input_type
   use crm_output_module,      only: crm_output_type
   use crm_ecpp_output_module, only: crm_ecpp_output_type
+  ! The two use commands below are used to in the subroutin crm. 
+  ! The module could not compile them when the two use commands below are put in the original place.  
+  !Putting them here fixed the problem. The reason is not clear, though. 
   use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
 #ifdef ECPP  
   use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
@@ -117,7 +120,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
 #ifdef MAML
-!MAML-Guangxing Lin
     real(r8), intent(inout) :: crm_pcp(ncrms, crm_nx,crm_ny)  ! CRM precip rate (m/s)
     real(r8), intent(inout) :: crm_snw(ncrms,crm_nx,crm_ny) ! CRM snow rate (m/s)
 #endif
@@ -1422,12 +1424,11 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
 #ifdef MAML
-!MAML-Guangxing Lin precip is aggregated and a mean value is determined. We need
+! precip is aggregated and a mean value is determined. We need
 !  to change this so that individual CRM precip values are passed down
 !  to CLM.
-          crm_pcp(icrm,i,j) = precsfc(i,j,icrm)/1000.      ! mm/s --> m/s
-          crm_snw(icrm,i,j) = precssfc(i,j,icrm)/1000.     ! mm/s --> m/s
-!MAML-Guangxing Lin
+        crm_pcp(icrm,i,j) = precsfc(i,j,icrm)/1000.      ! mm/s --> m/s
+        crm_snw(icrm,i,j) = precssfc(i,j,icrm)/1000.     ! mm/s --> m/s
 #endif
         if(precsfc(icrm,i,j).gt.10./86400.) then
            !$acc atomic update

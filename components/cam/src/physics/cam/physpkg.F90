@@ -44,9 +44,7 @@ module physpkg
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg, modal_aero_calcsize_sub
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 #ifdef MAML
-!MAML-Guangxing Lin
   use seq_comm_mct,       only : num_inst_atm
-!MAML-Guangxing Lin
 #endif
 
   implicit none
@@ -103,14 +101,12 @@ module physpkg
   logical           :: pergro_mods = .false.
   logical           :: is_cmip6_volc !true if cmip6 style volcanic file is read otherwise false
 #ifdef MAML
-!MAML-Guangxing Lin
   real(r8) :: shfavg_in(pcols)
   real(r8) :: lhfavg_in(pcols)
   real(r8) :: wsxavg_in(pcols)
   real(r8) :: wsyavg_in(pcols)
   real(r8) :: snowhlandavg_in(pcols)
   real(r8) :: factor_xy
-!MAML-Guangxing Lin
 #endif
 
   !======================================================================= 
@@ -1271,9 +1267,7 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
     integer :: ncol                              ! number of columns
     integer :: nstep                             ! current timestep number
 #ifdef MAML
-!MAML-Guangxing Lin
     integer :: i, ii
-!MAML-Guangxing Lin
 #endif
 
 #if (! defined SPMD)
@@ -1332,9 +1326,7 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
 
        if(ieflx_opt>0) then
 #ifdef MAML
-!MAML-Guangxing Lin
           call check_ieflx_fix(c, ncol, nstep, num_inst_atm,cam_in(c)%shf(:ncol,:))
-!MAML-Guangxing Lin
 #else
           call check_ieflx_fix(c, ncol, nstep, cam_in(c)%shf)
 #endif
@@ -1536,10 +1528,8 @@ subroutine tphysac (ztodt,   cam_in,  &
     real(r8) :: qexcess (pcols)
     logical :: do_clubb_sgs 
 #ifdef MAML
-!MAML-Guangxing Lin
     real(r8) :: factor_xy    ! for converting from CRM to GCM-level
     integer  :: ii           ! loop index for CRM
-!MAML-Guangxing Lin
 #endif
 
     ! Debug physics_state.
@@ -1601,7 +1591,6 @@ subroutine tphysac (ztodt,   cam_in,  &
     ! jrm Include latent heat of fusion for snow
     !
 #ifdef MAML
-    !MAML-Guangxing Lin
     factor_xy = 1._r8 / dble(num_inst_atm)
 
     do i=1,ncol
@@ -1615,7 +1604,6 @@ subroutine tphysac (ztodt,   cam_in,  &
         wsyavg_in(i) = wsyavg_in(i)+cam_in%wsy(i,ii)*factor_xy
       enddo
     end do
-!MAML-Guangxing Lin
 #else
     do i=1,ncol
        tend%flx_net(i) = tend%flx_net(i) + cam_in%shf(i) + (cam_out%precc(i) &
@@ -1652,11 +1640,9 @@ end if ! l_tracer_aero
        ! Check if latent heat flux exceeds the total moisture content of the
        ! lowest model layer, thereby creating negative moisture.
 #ifdef MAML
-!MAML-Guangxing Lin
        call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
             num_inst_atm,state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf(:,:) ,         &
             cam_in%lhf(:,:) , cam_in%cflx, qexcess )
-!MAML-Guangxing Lin
 #else
        call qneg4('TPHYSAC '       ,lchnk               ,ncol  ,ztodt ,               &
             state%q(1,pver,1),state%rpdel(1,pver) ,cam_in%shf ,         &
@@ -2022,9 +2008,7 @@ subroutine tphysbc (ztodt,               &
 #endif
 
 #ifdef MAML
-!MAML-Guangxing Lin
-    use seq_comm_mct,       only : num_inst_atm
-!MAML-Guangxing Lin
+   use seq_comm_mct,       only : num_inst_atm
 #endif
 
 #endif /* CRM */
@@ -2180,9 +2164,7 @@ subroutine tphysbc (ztodt,               &
     ! w holds position of gathered points vs longitude index
     integer :: lengath
 #ifdef MAML
-!MAML-Guangxing Lin
     integer :: ii
-!MAML-Guangxing Lin
 #endif
 
     real(r8)  :: lcldo(pcols,pver)              !Pass old liqclf from macro_driver to micro_driver
@@ -2755,9 +2737,7 @@ end if
                 !    to account for it in the energy checker
                 flx_cnd(:ncol) = -1._r8*rliq(:ncol)
 #ifdef MAML
-!MAML-Guangxing Lin , hack for now
                 flx_heat(:ncol) = shfavg_in(:ncol) + det_s(:ncol)
-!MAML-Guangxing Lin 
 #else
                 flx_heat(:ncol) = cam_in%shf(:ncol) + det_s(:ncol)
 #endif
