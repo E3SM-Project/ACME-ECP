@@ -1508,7 +1508,7 @@ CONTAINS
     cfad_lidarsr532(1:pcols,1:nsr_cosp,1:nht_cosp)= R_UNDEF
     dbze94(1:pcols,1:nscol_cosp,1:nhtml_cosp)     = R_UNDEF
     atb532(1:pcols,1:nscol_cosp,1:nhtml_cosp)     = R_UNDEF
-    clMISR(1:pcols,ntau_cosp,1:nhtmisr_cosp)      = R_UNDEF
+    clMISR(1:pcols,1:ntau_cosp,1:nhtmisr_cosp)      = R_UNDEF
     frac_out(1:pcols,1:nscol_cosp,1:nhtml_cosp)   = R_UNDEF
     
     ! (all CAM output variables. including collapsed variables)
@@ -1970,7 +1970,7 @@ CONTAINS
     ! Call COSP
     ! ######################################################################################
     call t_startf("cosp_simulator")
-    cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol,debug=.false.)
+    cosp_status = COSP_SIMULATOR(cospIN, cospstateIN, cospOUT, start_idx=1, stop_idx=ncol, debug=.false.)
 
     ! Check status flags
     nerror = 0
@@ -2004,6 +2004,8 @@ CONTAINS
        call outfld('Q_COSP',         q(1:ncol,1:pver),             ncol,lchnk)
 
        ! 3D outputs, but first compress to 2D
+       ! TODO: this should not be necessary anymore, this is a relic from the
+       ! old days of cam_history
        do i=1,ncol
           do ihml=1,nhtml_cosp
              do isc=1,nscol_cosp
@@ -2026,88 +2028,46 @@ CONTAINS
 
     ! ######################################################################################
     ! Set dark-scenes to fill value. Only done for passive simulators and when cosp_runall=F
+    ! TODO: we should NOT have to do this, this is supposed to be done
+    ! internally in COSP based on the sunlit flag that is passed, but we need to
+    ! handle some cases explicitly here because of existing bugs in COSP.
     ! ######################################################################################
     call t_startf("sunlit_passive")
     if (.not. cosp_runall) then
+
        ! ISCCP simulator
+       ! TODO: these should not be set undefined for night columns (brightness
+       ! temperature is valid at night), but we set these to fillvalues for now
+       ! to keep results BFB
        if (lisccp_sim) then
-          ! 1D
           where(cospstateIN%sunlit(1:ncol) .eq. 0)
-             cospOUT%isccp_totalcldarea(1:ncol)  = R_UNDEF
-             cospOUT%isccp_meanptop(1:ncol)      = R_UNDEF
-             cospOUT%isccp_meantaucld(1:ncol)    = R_UNDEF
-             cospOUT%isccp_meanalbedocld(1:ncol) = R_UNDEF
              cospOUT%isccp_meantb(1:ncol)        = R_UNDEF
              cospOUT%isccp_meantbclr(1:ncol)     = R_UNDEF
           end where
-          ! 2D
-          do i=1,nscol_cosp
-             where (cospstateIN%sunlit(1:ncol) .eq. 0)
-                cospOUT%isccp_boxtau(1:ncol,i)  = R_UNDEF
-                cospOUT%isccp_boxptop(1:ncol,i) = R_UNDEF
-             end where
-          enddo
-          ! 3D
-          do i=1,nprs_cosp
-             do k=1,ntau_cosp
-                where(cospstateIN%sunlit(1:ncol) .eq. 0)
-                   cospOUT%isccp_fq(1:ncol,k,i) = R_UNDEF
-                end where
-             end do
-          end do
        endif
 
        ! MISR simulator
+       ! TODO: the MISR simulator is supposed to handle this for us, but there
+       ! is a bug in COSP that leaves these set for night columns, so we need to
+       ! explicitly handle sunlit vs not sunlit here for now
        if (lmisr_sim) then
-          do i=1,nhtmisr_cosp
-             do k=1,ntau_cosp
-                where(cospstateIN%sunlit(1:ncol) .eq. 0)
-                   cospOUT%misr_fq(1:ncol,k,i) = R_UNDEF
-                end where
-             end do
+          do i = 1,ncol
+            if (cospstateIN%sunlit(i) == 0) then
+               cospOUT%misr_fq(i,:,:) = R_UNDEF
+            end if
           end do
        end if
 
        ! MODIS simulator
+       ! TODO: again, this is to workaround a bug in COSP, where these two
+       ! variables are not masked properly for night columns
        if (lmodis_sim) then
-          ! 1D
-          where(cospstateIN%sunlit(1:ncol) .eq. 0)
-             cospOUT%modis_Cloud_Fraction_Total_Mean(1:ncol)       = R_UNDEF
-             cospOUT%modis_Cloud_Fraction_Water_Mean(1:ncol)       = R_UNDEF
-             cospOUT%modis_Cloud_Fraction_Ice_Mean(1:ncol)         = R_UNDEF
-             cospOUT%modis_Cloud_Fraction_High_Mean(1:ncol)        = R_UNDEF
-             cospOUT%modis_Cloud_Fraction_Mid_Mean(1:ncol)         = R_UNDEF
-             cospOUT%modis_Cloud_Fraction_Low_Mean(1:ncol)         = R_UNDEF
-             cospOUT%modis_Optical_Thickness_Total_Mean(1:ncol)    = R_UNDEF
-             cospOUT%modis_Optical_Thickness_Water_Mean(1:ncol)    = R_UNDEF
-             cospOUT%modis_Optical_Thickness_Ice_Mean(1:ncol)      = R_UNDEF
-             cospOUT%modis_Optical_Thickness_Total_LogMean(1:ncol) = R_UNDEF
-             cospOUT%modis_Optical_Thickness_Water_LogMean(1:ncol) = R_UNDEF
-             cospOUT%modis_Optical_Thickness_Ice_LogMean(1:ncol)   = R_UNDEF
-             cospOUT%modis_Cloud_Particle_Size_Water_Mean(1:ncol)  = R_UNDEF
-             cospOUT%modis_Cloud_Particle_Size_Ice_Mean(1:ncol)    = R_UNDEF
-             cospOUT%modis_Cloud_Top_Pressure_Total_Mean(1:ncol)   = R_UNDEF
-             cospOUT%modis_Liquid_Water_Path_Mean(1:ncol)          = R_UNDEF
-             cospOUT%modis_Ice_Water_Path_Mean(1:ncol)             = R_UNDEF
-          endwhere
-          ! 3D
-          do i=1,ntau_cosp_modis
-             do k=1,nprs_cosp
-                where(cospstateIN%sunlit(1:ncol) .eq. 0)
-                   cospOUT%modis_Optical_Thickness_vs_Cloud_Top_Pressure(1:ncol,i,k) = R_UNDEF 
-                end where
-             enddo
-             do k=1,numMODISReffIceBins
-                where(cospstateIN%sunlit(1:ncol) .eq. 0)
-                   cospOUT%modis_Optical_Thickness_vs_ReffICE(1:ncol,i,k) = R_UNDEF
-                end where
-             end do
-             do k=1,numMODISReffLiqBins
-                where(cospstateIN%sunlit(1:ncol) .eq. 0)
-                   cospOUT%modis_Optical_Thickness_vs_ReffLIQ(1:ncol,i,k) = R_UNDEF
-                end where
-             enddo
-          enddo
+          do i = 1,ncol
+             if (cospstateIN%sunlit(i) == 0) then
+                cospOUT%modis_Optical_Thickness_vs_ReffLiq(i,:,:) = R_UNDEF
+                cospOUT%modis_Optical_Thickness_vs_ReffIce(i,:,:) = R_UNDEF
+             end if
+          end do
        end if
     end if
     call t_stopf("sunlit_passive")
