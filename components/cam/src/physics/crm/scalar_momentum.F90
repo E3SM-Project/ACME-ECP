@@ -18,13 +18,13 @@ module scalar_momentum_mod
 !---------------------------------------------------------------------------
    use params
    use grid, only: nx,ny,nzm,nz,dimx1_s,dimx2_s,dimy1_s,dimy2_s
+   use openacc_utils
+
    implicit none
 
    public allocate_scalar_momentum
    public deallocate_scalar_momentum
-#ifdef SP_ESMT_PGF
-   public scalar_momentum_tend
-#endif
+   public scalar_momentum_tend 
 
    real(crm_rknd), allocatable :: u_esmt(:,:,:,:)       ! scalar zonal velocity
    real(crm_rknd), allocatable :: v_esmt(:,:,:,:)       ! scalar meridonal velocity
@@ -41,82 +41,81 @@ module scalar_momentum_mod
 
    character*30 u_esmt_name
    character*30 v_esmt_name
-   character*10   esmt_units
+   character*10 esmt_units
 
- contains
-
-  !========================================================================================
-  !========================================================================================
-  subroutine allocate_scalar_momentum(ncrms)
-     !------------------------------------------------------------------
-     ! Purpose: Allocate and initialize variables for ESMT
-     ! Author: Walter Hannah - Lawrence Livermore National Lab
-     !------------------------------------------------------------------
-     implicit none
-     integer, intent(in) :: ncrms
-     real(crm_rknd) :: zero
-
-     allocate( u_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
-     allocate( v_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
-
-     allocate( fluxb_u_esmt (nx, ny,ncrms) )
-     allocate( fluxb_v_esmt (nx, ny,ncrms) )
-     allocate( fluxt_u_esmt (nx, ny,ncrms) )
-     allocate( fluxt_v_esmt (nx, ny,ncrms) )
-
-     allocate( u_esmt_sgs   (nz,ncrms)  )
-     allocate( v_esmt_sgs   (nz,ncrms)  )
-     allocate( u_esmt_diff  (nz,ncrms)  )
-     allocate( v_esmt_diff  (nz,ncrms)  )
-
-     zero = 0.
-
-     u_esmt = zero
-     v_esmt = zero
-
-     fluxb_u_esmt = zero
-     fluxb_v_esmt = zero
-     fluxt_u_esmt = zero
-     fluxt_v_esmt = zero
-
-     u_esmt_sgs  = zero
-     u_esmt_diff = zero
-
-     v_esmt_sgs  = zero
-     v_esmt_diff = zero
-
-     u_esmt_name = 'Zonal Velocity'
-     v_esmt_name = 'Meridonal Velocity'
-     esmt_units  = 'm/s'
-
-  end subroutine allocate_scalar_momentum
-
-
-  !========================================================================================
-  !========================================================================================
-  subroutine deallocate_scalar_momentum()
-     !------------------------------------------------------------------
-     ! Purpose: Deallocate ESMT variables
-     ! Author: Walter Hannah - Lawrence Livermore National Lab
-     !------------------------------------------------------------------
-     implicit none
-     deallocate( u_esmt       )
-     deallocate( v_esmt       )
-     deallocate( fluxb_u_esmt )
-     deallocate( fluxb_v_esmt )
-     deallocate( fluxt_u_esmt )
-     deallocate( fluxt_v_esmt )
-     deallocate( u_esmt_sgs   )
-     deallocate( v_esmt_sgs   )
-     deallocate( u_esmt_diff  )
-     deallocate( v_esmt_diff  )
-  end subroutine deallocate_scalar_momentum
-
+contains
 
 !========================================================================================
 !========================================================================================
-#ifdef SP_ESMT_PGF
+subroutine allocate_scalar_momentum(ncrms)
+   !------------------------------------------------------------------
+   ! Purpose: Allocate and initialize variables for ESMT
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
+   !------------------------------------------------------------------
+   implicit none
+   integer, intent(in) :: ncrms
 
+   allocate( u_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+   allocate( v_esmt(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
+   allocate( fluxb_u_esmt (nx, ny,ncrms) )
+   allocate( fluxb_v_esmt (nx, ny,ncrms) )
+   allocate( fluxt_u_esmt (nx, ny,ncrms) )
+   allocate( fluxt_v_esmt (nx, ny,ncrms) )
+   allocate( u_esmt_sgs   (nz,ncrms)  )
+   allocate( v_esmt_sgs   (nz,ncrms)  )
+   allocate( u_esmt_diff  (nz,ncrms)  )
+   allocate( v_esmt_diff  (nz,ncrms)  )
+
+   call prefetch( u_esmt )
+   call prefetch( v_esmt )
+   call prefetch( fluxb_u_esmt )
+   call prefetch( fluxb_v_esmt )
+   call prefetch( fluxt_u_esmt )
+   call prefetch( fluxt_v_esmt )
+   call prefetch( u_esmt_sgs )
+   call prefetch( v_esmt_sgs )
+   call prefetch( u_esmt_diff )
+   call prefetch( v_esmt_diff )
+
+   u_esmt       = 0.0_crm_rknd
+   v_esmt       = 0.0_crm_rknd
+   fluxb_u_esmt = 0.0_crm_rknd
+   fluxb_v_esmt = 0.0_crm_rknd
+   fluxt_u_esmt = 0.0_crm_rknd
+   fluxt_v_esmt = 0.0_crm_rknd
+   u_esmt_sgs   = 0.0_crm_rknd
+   u_esmt_diff  = 0.0_crm_rknd
+   v_esmt_sgs   = 0.0_crm_rknd
+   v_esmt_diff  = 0.0_crm_rknd
+
+   u_esmt_name = 'Zonal Velocity'
+   v_esmt_name = 'Meridonal Velocity'
+   esmt_units  = 'm/s'
+
+end subroutine allocate_scalar_momentum
+
+!========================================================================================
+!========================================================================================
+subroutine deallocate_scalar_momentum()
+   !------------------------------------------------------------------
+   ! Purpose: Deallocate ESMT variables
+   ! Author: Walter Hannah - Lawrence Livermore National Lab
+   !------------------------------------------------------------------
+   implicit none
+   deallocate( u_esmt       )
+   deallocate( v_esmt       )
+   deallocate( fluxb_u_esmt )
+   deallocate( fluxb_v_esmt )
+   deallocate( fluxt_u_esmt )
+   deallocate( fluxt_v_esmt )
+   deallocate( u_esmt_sgs   )
+   deallocate( v_esmt_sgs   )
+   deallocate( u_esmt_diff  )
+   deallocate( v_esmt_diff  )
+end subroutine deallocate_scalar_momentum
+
+!========================================================================================
+!========================================================================================
 subroutine scalar_momentum_tend(ncrms)
    !------------------------------------------------------------------
    ! Purpose: Calculate pressure gradient effects on scalar momentum
@@ -132,22 +131,22 @@ subroutine scalar_momentum_tend(ncrms)
    integer :: i,j,k,icrm
 
    do icrm = 1 , ncrms
-     factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
+      factor_xy = 1._crm_rknd/real(nx*ny,crm_rknd)
 
-     call scalar_momentum_pgf(ncrms,icrm,u_esmt(icrm,:,:,:),u_esmt_pgf_3D)
-     call scalar_momentum_pgf(ncrms,icrm,v_esmt(icrm,:,:,:),v_esmt_pgf_3D)
+      call scalar_momentum_pgf(ncrms,icrm,u_esmt(icrm,:,:,:),u_esmt_pgf_3D)
+      call scalar_momentum_pgf(ncrms,icrm,v_esmt(icrm,:,:,:),v_esmt_pgf_3D)
 
-     ! Add PGF tendency
-     do k=1,nzm
-        do j=1,ny
-           do i=1,nx
-              u_esmt(icrm,i,j,k) = u_esmt(icrm,i,j,k) + u_esmt_pgf_3D(i,j,k)*dtn
-              v_esmt(icrm,i,j,k) = v_esmt(icrm,i,j,k) + v_esmt_pgf_3D(i,j,k)*dtn
-           end do
-        end do
-     end do
+      ! Add PGF tendency
+      do k=1,nzm
+         do j=1,ny
+            do i=1,nx
+               u_esmt(icrm,i,j,k) = u_esmt(icrm,i,j,k) + u_esmt_pgf_3D(i,j,k)*dtn
+               v_esmt(icrm,i,j,k) = v_esmt(icrm,i,j,k) + v_esmt_pgf_3D(i,j,k)*dtn
+            end do
+         end do
+      end do
 
-   enddo
+   end do
 
 end subroutine scalar_momentum_tend
 
@@ -162,7 +161,7 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
    !------------------------------------------------------------------
    use grid,    only: nx,ny,nz,nzm,z,pres,zi
    use crmdims, only: crm_dx
-   use vars,    only: w
+   use vars,    only: w, rho
 
    implicit none
    integer, intent(in) :: ncrms,icrm
@@ -170,7 +169,7 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
    ! interface variables
    !------------------------------------------------------------------
    real(crm_rknd), dimension(nx,ny,nzm), intent(in ) :: u_s      ! scalar momentum
-   real(crm_rknd), dimension(nx,ny,nzm), intent(out) :: tend     ! output tendency of scalar momentum
+   real(crm_rknd), dimension(nx,ny,nzm), intent(out) :: tend     ! output tendency
    !------------------------------------------------------------------
    ! local variables
    !------------------------------------------------------------------
@@ -180,19 +179,19 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
    real(crm_rknd), dimension(nzm)      :: u_s_avg    ! horizonal average of u_s
    real(crm_rknd), dimension(nzm)      :: a,b,c      ! Poisson solver boundary conditions
    real(crm_rknd), dimension(nzm)      :: rhs        ! right-hand side of pressure equation
-   real(crm_rknd), dimension(nzm)      :: shr        ! vertical shear of scalar momentum (i.e. du/dz)
+   real(crm_rknd), dimension(nzm)      :: shr        ! vertical shear of scalar momentum (du/dz)
    real(crm_rknd), dimension(nx,nzm)   :: w_i        ! w interpolated to scalar levels
    real(crm_rknd), dimension(nx,nzm)   :: w_hat      ! w after Fourier Transform
-   real(crm_rknd), dimension(nx,nzm)   :: pgf_hat    ! pressure gradient force (Fourier transform space)
-   real(crm_rknd), dimension(nx,nzm)   :: pgf        ! pressure gradient force for final tendency
+   real(crm_rknd), dimension(nx,nzm)   :: pgf_hat    ! pressure grad force (Fourier transform space)
+   real(crm_rknd), dimension(nx,nzm)   :: pgf        ! pressure grad force for final tendency
 
    real(crm_rknd), dimension(nzm+1)    :: dz         ! layer thickness
    !------------------------------------------------------------------------
    !------------------------------------------------------------------------
 
-   !!! The loop over "y" points is mostly unessary, since ESMT
-   !!! is meant for 2D CRMs, but I've left it in for comparing
-   !!! ESMT tendencies to fully resolved 3D momentum transport
+   ! The loop over "y" points is mostly unessary, since ESMT
+   ! is for 2D CRMs, but it is useful for directly comparing
+   ! ESMT tendencies to fully resolved 3D momentum transport
 
    ! Calculate layer thickness
    do k = 1,nzm
@@ -206,7 +205,7 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
       ! Initialize stuff for averaging
       !-----------------------------------------
       u_s_avg(:) = 0.0
-      shr(:) = 0
+      shr(:) = 0.0_crm_rknd
 
       !-----------------------------------------
       ! Calculate shear of domain average profile
@@ -216,12 +215,12 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
          do i = 1,nx
             u_s_avg(k) = u_s_avg(k) + u_s(i,j,k)
             ! note that w is on interface levels
-            w_i(i,k) = ( w(icrm,i,j,k) + w(icrm,i,j,k+1) )/2.
+            w_i(i,k) = ( w(icrm,i,j,k) + w(icrm,i,j,k+1) )/2.0_crm_rknd
          end do
          u_s_avg(k) = u_s_avg(k) / real(nx,crm_rknd)
       end do
 
-      shr(1) = ( u_s_avg(2) - u_s_avg(1) )/(z(icrm,2)-z(icrm,1))      ! do we even care about first level?
+      shr(1) = ( u_s_avg(2) - u_s_avg(1) ) / ( z(icrm,2) - z(icrm,1) )
       do k = 2,nzm-1
          shr(k) = ( u_s_avg(k+1) - u_s_avg(k-1) )/(z(icrm,k+1)-z(icrm,k-1))
       end do
@@ -252,31 +251,31 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
       do i = 2,nx
 
          do k = 1,nzm
-            a(k) = dz(k+1)/(dz(k+1)+dz(k))
-            ! b(k) = -.5*k_arr(i)**2*dz(k)*dz(k+1)-1.
-            b(k) = -.5*(1.+.25)*k_arr(i)**2*dz(k)*dz(k+1)-1. ! this crudely accounts for difference between 2D and 3D updraft geometry
-            c(k) = dz(k)/(dz(k+1)+dz(k))
-            rhs(k) = k_arr(i)**2*w_hat(i,k)*shr(k)*dz(k)*dz(k+1)
+            a(k) = dz(k+1) / ( dz(k+1) + dz(k) )
+            ! the factor of 1.25 crudely accounts for difference between 2D and 3D updraft geometry
+            b(k) = -0.5_crm_rknd * 1.25_crm_rknd * k_arr(i)**2.0_crm_rknd * dz(k) * dz(k+1) - 1.0_crm_rknd 
+            c(k) = dz(k) / ( dz(k+1) + dz(k) )
+            rhs(k) = k_arr(i)**2 * w_hat(i,k) * shr(k) * dz(k) * dz(k+1)
          end do ! k
 
          !lower boundary condition (symmetric)
          b(1) = b(1) + a(1)
-         a(1) = 0.
+         a(1) = 0.0_crm_rknd
 
          !upper boundary condition (symmetric)
          b(nzm) = b(nzm) + c(nzm)
-         c(nzm) = 0.
+         c(nzm) = 0.0_crm_rknd
 
          ! gaussian elimination with no pivoting
          do k = 1,nzm-1
-            b(k+1) = b(k+1)-a(k+1)/b(k)*c(k)
-            rhs(k+1) = rhs(k+1)-a(k+1)/b(k)*rhs(k)
+            b(k+1) = b(k+1) - a(k+1) / b(k) * c(k)
+            rhs(k+1) = rhs(k+1) - a(k+1) / b(k) * rhs(k)
          end do ! k
 
          ! backward substitution
-         rhs(nzm)=rhs(nzm)/b(nzm)
+         rhs(nzm) = rhs(nzm) / b(nzm)
          do k=nzm-1,1,-1
-            rhs(k) = (rhs(k)-c(k)*rhs(k+1))/b(k)
+            rhs(k) = ( rhs(k) - c(k) * rhs(k+1) ) / b(k)
          end do
 
          do k = 1,nzm
@@ -284,10 +283,11 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
          end do ! k
       end do ! i - zonal wavelength
 
-      ! Note sure what this part does... something to do with the Nyquist freq?
+      ! Note sure what this part does... 
+      ! something about the Nyquist freq and whether nx is odd or even
       if (mod(nx,2) == 0) then
          do k=1,nzm
-            pgf_hat(nx,k) = pgf_hat(nx,k)/2.
+            pgf_hat(nx,k) = pgf_hat(nx,k) / 2.0_crm_rknd
          end do ! k
       end if
 
@@ -300,10 +300,12 @@ subroutine scalar_momentum_pgf( ncrms, icrm, u_s, tend )
       ! Compute final tendency
       !-----------------------------------------
       do k = 1,nzm
-         dampwt = 0.
-         if (k.eq.1) dampwt=1.
          do i = 1,nx
-            tend(i,j,k) = tend(i,j,k) - (1.-dampwt)*pgf(i,k)
+            if (k.eq.1) then
+               tend(i,j,k) = 0.0_crm_rknd
+            else
+               tend(i,j,k) = -1.0_crm_rknd * pgf(i,k) * rho(icrm,k)
+            end if
          enddo ! i
       end do ! k
 
@@ -350,10 +352,10 @@ subroutine esmt_fft_forward(nx,nzm,dx,arr_in,k_out,arr_out)
    lenr = nx
    jump = nx
    lenwrk = lenr
-   !!! initialization for FFT
+   ! initialization for FFT
    call rfft1i(n,wsave,lensav,ier)
    if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
-   !!!  do the forward transform
+   !  do the forward transform
    do k = 1,nzm
       do i = 1,nx
          arr_out(i,k) = arr_in(i,k)
@@ -407,10 +409,10 @@ subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
    lenr = nx
    jump = nx
    lenwrk = lenr
-   !!! initialization for FFT
+   ! initialization for FFT
    call rfft1i(n,wsave,lensav,ier)
    if(ier /= 0) write(0,*) 'ERROR: rfftmi(): ESMT - FFT initialization error ',ier
-   !!!  do the backward transform
+   !  do the backward transform
    do k = 1,nzm
       do i = 1,nx
          arr_out(i,k) = arr_in(i,k)
@@ -419,10 +421,5 @@ subroutine esmt_fft_backward(nx,nzm,arr_in,arr_out)
       if(ier /= 0) write(0,*) 'ERROR: rfftmb(): ESMT - backward FFT error ',ier
    enddo
 end subroutine esmt_fft_backward
-
-
-! whannah - this #endif is just to hide the PGF code
-! without commenting it out during development
-#endif
 
 end module scalar_momentum_mod

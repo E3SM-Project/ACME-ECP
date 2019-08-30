@@ -400,8 +400,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
 #if defined(SP_ESMT)
   do k=1,nzm
-    u_esmt(:,:,:,k) = crm_input%ul_esmt(:,plev-k+1)
-    v_esmt(:,:,:,k) = crm_input%vl_esmt(:,plev-k+1)
+    u_esmt(:,:,:,k) = crm_input%ul_esmt(icrm,plev-k+1)
+    v_esmt(:,:,:,k) = crm_input%vl_esmt(icrm,plev-k+1)
   end do
 #endif
 
@@ -826,7 +826,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       !-----------------------------------------------------------
       !       Calculate PGF for scalar momentum tendency
-#if defined( SP_ESMT ) && defined( SP_ESMT_PGF )
+#if defined( SP_ESMT ) 
       call scalar_momentum_tend(ncrms)
 #endif
 
@@ -1165,7 +1165,12 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     ! don't use tendencies from two top levels,
     crm_output%u_tend_esmt(icrm,ptop:ptop+1) = 0.
     crm_output%v_tend_esmt(icrm,ptop:ptop+1) = 0.
+  enddo
+#endif
+
 #if defined(SPMOMTRANS)
+  !$acc wait(asyncid)
+  do icrm=1,ncrms
     !!! resolved convective momentum transport (CMT) tendencies
     crm_output%ultend(icrm,:) = (uln(icrm,:) - crm_input%ul(icrm,:))*icrm_run_time
     crm_output%vltend(icrm,:) = (vln(icrm,:) - crm_input%vl(icrm,:))*icrm_run_time
@@ -1173,9 +1178,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     !!! don't use tendencies from two top levels
     crm_output%ultend(icrm,ptop:ptop+1) = 0.
     crm_output%vltend(icrm,ptop:ptop+1) = 0.
-#endif /* SPMOMTRANS */
   enddo
-#endif
+#endif /* SPMOMTRANS */
+
 
   !$acc parallel loop collapse(2) async(asyncid)
   do k = ptop , plev
