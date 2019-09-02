@@ -1986,9 +1986,10 @@ CONTAINS
          dem_s_snow(1:ncol,1:pver), state%ps(1:ncol), cospstateIN, cospIN, &
          mr_hydro, Reff, Np, frac_prec)  ! new outputs, need to be added ...
 
-    call cosp_optics(ncol, pver, nscol_cosp, nhydro, &
+    call calc_cosp_optics(ncol, pver, nscol_cosp, nhydro, &
          lidar_ice_type, sd_cs(lchnk), reff_cosp(1:ncol,1:pver,:), &
          dem_c(1:ncol,1:pver), dem_s(1:ncol,1:pver), &
+         dtau_c(1:ncol, 1:pver), dtau_s(1:ncol, 1:pver), &
          dtau_s_snow(1:ncol,1:pver), dem_s_snow(1:ncol,1:pver), &
          mr_hydro, Reff, Np, frac_prec, &
          cospstateIN, cospIN)
@@ -2589,7 +2590,7 @@ CONTAINS
         nLevels,      & ! Number of vertical levels
         nColumns,     & ! Number of subcolumns
         nHydro,       & ! Number pf hydrometeor types
-        overlap,      & ! Overlap assumption (1/2/3)
+        overlap         ! Overlap assumption (1/2/3)
    real(wp),intent(in),dimension(nPoints,nLevels) :: &
         tca,          & ! Total cloud amount (0-1)
         cca,          & ! Convective cloud amount (0-1)
@@ -2629,7 +2630,6 @@ CONTAINS
    integer,dimension(:),allocatable         :: seed
    real(wp),dimension(:,:),allocatable      :: ls_p_rate,cv_p_rate,frac_ls,frac_cv,     &
                                                prec_ls,prec_cv,g_vol
-   real(wp),dimension(:,:,:,:),allocatable   :: Reff, Np
 
    call t_startf("scops")
    if (Ncolumns .gt. 1) then
@@ -2658,7 +2658,6 @@ CONTAINS
       endif
       
       ! Call PREC_SCOPS
-      allocate(frac_prec(nPoints,nColumns,nLevels))
       call prec_scops(nPoints,nLevels,nColumns,ls_p_rate,cv_p_rate,cospIN%frac_out,frac_prec)
       deallocate(ls_p_rate,cv_p_rate)
             
@@ -2827,8 +2826,6 @@ CONTAINS
 
    else
       cospIN%frac_out(:,:,:) = 1  
-      allocate(mr_hydro(nPoints, 1,nLevels,nHydro),Reff(nPoints,1,nLevels,nHydro),      &
-               Np(nPoints,1,nLevels,nHydro))
       mr_hydro(:,1,:,I_LSCLIQ) = mr_lsliq
       mr_hydro(:,1,:,I_LSCICE) = mr_lsice
       mr_hydro(:,1,:,I_CVCLIQ) = mr_ccliq
@@ -2841,9 +2838,9 @@ CONTAINS
 
 
   ! cosp_optics
-  subroutine cosp_optics(nPoints, nLevels, nColumns, nHydro, &
+  subroutine calc_cosp_optics(nPoints, nLevels, nColumns, nHydro, &
       lidar_ice_type, sd, &
-      reffIN, dem_c, dem_s, dtau_s_snow, dem_s_snow, &
+      reffIN, dem_c, dem_s, dtau_c, dtau_s, dtau_s_snow, dem_s_snow, &
       mr_hydro, Reff, Np, frac_prec, &
       cospstateIN, cospIN)
    ! Dependencies
@@ -2859,13 +2856,15 @@ CONTAINS
       nHydro,     & ! Number pf hydrometeor types
       lidar_ice_type  ! Ice type assumption used by lidar optics
    real(wp),intent(in),dimension(nPoints,nLevels) :: &
+      dtau_c,       & ! 0.67-micron optical depth (convective)
+      dtau_s,       & ! 0.67-micron optical depth (stratiform)
       dtau_s_snow,  & ! 0.67-micron optical depth (snow)
       dem_s_snow,   & ! 11-micron emissivity (snow)
       dem_c,        & ! 11-micron emissivity (convective)
-      dem_s,        & ! 11-micron emissivity (stratiform)
+      dem_s           ! 11-micron emissivity (stratiform)
    real(wp),intent(in),dimension(nPoints, nLevels, nHydro) :: &
       reffIN        ! <description needed>
-   real(wp), dimension(nPoints, nColumns, nLevels, nHydro), intent(in) :: &
+   real(wp), dimension(nPoints, nColumns, nLevels, nHydro), intent(inout) :: &
       mr_hydro, Reff, Np
    real(wp), dimension(nPoints, nColumns, nLevels), intent(in)  :: frac_prec
 
@@ -3038,7 +3037,7 @@ CONTAINS
            MODIS_iceSize*1.0e6_wp, cospIN%fracLiq, cospIN%asym, cospIN%ss_alb) 
    endif ! MODIS simulator optics
    call t_stopf("modis_optics")
-  end subroutine cosp_optics
+  end subroutine calc_cosp_optics
 
   ! ######################################################################################
   ! SUBROUTINE subsample_and_optics
