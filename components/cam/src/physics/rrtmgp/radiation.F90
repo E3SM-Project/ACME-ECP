@@ -806,17 +806,17 @@ contains
       ! Add cloud-scale radiative quantities
       call phys_getopts(use_SPCAM_out=use_SPCAM)
       if (use_SPCAM) then
-         call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'A', 'K/s', &
+         call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'A', 'K/s', &
                       'Radiative heating tendency')
-         call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+         call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', &
                       'CRM Shortwave radiative heating rate')
-         call addfld ('CRM_QRSC', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+         call addfld ('CRM_QRSC', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', &
                       'CRM clear-sky shortwave radiative heating rate')
-         call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+         call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', &
                       'CRM Longwave radiative heating rate' )
-         call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', &
+         call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', &
                       'CRM clear-sky longwave radiative heating rate' )
-         call addfld ('CRM_CLD_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'fraction', &
+         call addfld ('CRM_CLD_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'fraction', &
                       'CRM cloud fraction')
       end if
 
