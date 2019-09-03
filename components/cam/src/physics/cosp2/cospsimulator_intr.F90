@@ -2130,25 +2130,25 @@ CONTAINS
        cldmed_cal(1:ncol)                = cospOUT%calipso_cldlayer(:,2)                          ! CAM version of clmcalipso (time,profile)
        cldhgh_cal(1:ncol)                = cospOUT%calipso_cldlayer(:,3)                          ! CAM version of clhcalipso (time,profile)
        cldtot_cal(1:ncol)                = cospOUT%calipso_cldlayer(:,4)                          ! CAM version of cltcalipso (time,profile)
-       cldlow_cal_ice(1:ncol)            = cospOUT%calipso_cldlayerphase(:,1,1)	           ! CAM version of cllcalipsoice !+cosp1.4
-       cldmed_cal_ice(1:ncol)            = cospOUT%calipso_cldlayerphase(:,2,1)	           ! CAM version of clmcalipsoice
-       cldhgh_cal_ice(1:ncol)            = cospOUT%calipso_cldlayerphase(:,3,1)   	           ! CAM version of clhcalipsoice
-       cldtot_cal_ice(1:ncol)            = cospOUT%calipso_cldlayerphase(:,4,1)	           ! CAM version of cltcalipsoice
-       cldlow_cal_liq(1:ncol)            = cospOUT%calipso_cldlayerphase(:,1,2)	           ! CAM version of cllcalipsoliq
-       cldmed_cal_liq(1:ncol)            = cospOUT%calipso_cldlayerphase(:,2,2)	           ! CAM version of clmcalipsoliq
-       cldhgh_cal_liq(1:ncol)            = cospOUT%calipso_cldlayerphase(:,3,2)	           ! CAM version of clhcalipsoliq
-       cldtot_cal_liq(1:ncol)            = cospOUT%calipso_cldlayerphase(:,4,2)	           ! CAM version of cltcalipsoliq
-       cldlow_cal_un(1:ncol)             = cospOUT%calipso_cldlayerphase(:,1,3)	           ! CAM version of cllcalipsoun
-       cldmed_cal_un(1:ncol)             = cospOUT%calipso_cldlayerphase(:,2,3)	           ! CAM version of clmcalipsoun
-       cldhgh_cal_un(1:ncol)             = cospOUT%calipso_cldlayerphase(:,3,3)	           ! CAM version of clhcalipsoun
+       cldlow_cal_ice(1:ncol)            = cospOUT%calipso_cldlayerphase(:,1,1)           ! CAM version of cllcalipsoice !+cosp1.4
+       cldmed_cal_ice(1:ncol)            = cospOUT%calipso_cldlayerphase(:,2,1)           ! CAM version of clmcalipsoice
+       cldhgh_cal_ice(1:ncol)            = cospOUT%calipso_cldlayerphase(:,3,1)              ! CAM version of clhcalipsoice
+       cldtot_cal_ice(1:ncol)            = cospOUT%calipso_cldlayerphase(:,4,1)           ! CAM version of cltcalipsoice
+       cldlow_cal_liq(1:ncol)            = cospOUT%calipso_cldlayerphase(:,1,2)           ! CAM version of cllcalipsoliq
+       cldmed_cal_liq(1:ncol)            = cospOUT%calipso_cldlayerphase(:,2,2)           ! CAM version of clmcalipsoliq
+       cldhgh_cal_liq(1:ncol)            = cospOUT%calipso_cldlayerphase(:,3,2)           ! CAM version of clhcalipsoliq
+       cldtot_cal_liq(1:ncol)            = cospOUT%calipso_cldlayerphase(:,4,2)           ! CAM version of cltcalipsoliq
+       cldlow_cal_un(1:ncol)             = cospOUT%calipso_cldlayerphase(:,1,3)           ! CAM version of cllcalipsoun
+       cldmed_cal_un(1:ncol)             = cospOUT%calipso_cldlayerphase(:,2,3)           ! CAM version of clmcalipsoun
+       cldhgh_cal_un(1:ncol)             = cospOUT%calipso_cldlayerphase(:,3,3)           ! CAM version of clhcalipsoun
        cldtot_cal_un(1:ncol)             = cospOUT%calipso_cldlayerphase(:,4,3)                   ! CAM version of cltcalipsoun, !+cosp1.4
-       cld_cal_ice(1:ncol,1:nht_cosp)    = cospOUT%calipso_lidarcldphase(:,nht_cosp:1:-1,1)	   ! CAM version of clcalipsoice !+cosp1.4
+       cld_cal_ice(1:ncol,1:nht_cosp)    = cospOUT%calipso_lidarcldphase(:,nht_cosp:1:-1,1)   ! CAM version of clcalipsoice !+cosp1.4
        cld_cal_liq(1:ncol,1:nht_cosp)    = cospOUT%calipso_lidarcldphase(:,nht_cosp:1:-1,2)       ! CAM version of clcalipsoliq
-       cld_cal_un(1:ncol,1:nht_cosp)     = cospOUT%calipso_lidarcldphase(:,nht_cosp:1:-1,3)	   ! CAM version of clcalipsoun
-       cld_cal_tmp(1:ncol,1:nht_cosp)    = cospOUT%calipso_lidarcldtmp(:,:,1)           	   ! CAM version of clcalipsotmp
-       cld_cal_tmpliq(1:ncol,1:nht_cosp) = cospOUT%calipso_lidarcldtmp(:,:,2)	                   ! CAM version of clcalipsotmpice
-       cld_cal_tmpice(1:ncol,1:nht_cosp) = cospOUT%calipso_lidarcldtmp(:,:,3)	                   ! CAM version of clcalipsotmpliq
-       cld_cal_tmpun(1:ncol,1:nht_cosp)  = cospOUT%calipso_lidarcldtmp(:,:,4)	                   ! CAM version of clcalipsotmpun, !+cosp1.4
+       cld_cal_un(1:ncol,1:nht_cosp)     = cospOUT%calipso_lidarcldphase(:,nht_cosp:1:-1,3)   ! CAM version of clcalipsoun
+       cld_cal_tmp(1:ncol,1:nht_cosp)    = cospOUT%calipso_lidarcldtmp(:,:,1)              ! CAM version of clcalipsotmp
+       cld_cal_tmpliq(1:ncol,1:nht_cosp) = cospOUT%calipso_lidarcldtmp(:,:,2)                   ! CAM version of clcalipsotmpice
+       cld_cal_tmpice(1:ncol,1:nht_cosp) = cospOUT%calipso_lidarcldtmp(:,:,3)                   ! CAM version of clcalipsotmpliq
+       cld_cal_tmpun(1:ncol,1:nht_cosp)  = cospOUT%calipso_lidarcldtmp(:,:,4)                   ! CAM version of clcalipsotmpun, !+cosp1.4
        cld_cal(1:ncol,1:nht_cosp)                    = cospOUT%calipso_lidarcld(:,nht_cosp:1:-1)  ! CAM version of clcalipso (time,height,profile)
        mol532_cal(1:ncol,1:nhtml_cosp)               = cospOUT%calipso_beta_mol                   ! CAM version of beta_mol532 (time,height_mlev,profile)
        atb532(1:ncol,1:nscol_cosp,1:nhtml_cosp)      = cospOUT%calipso_beta_tot                   ! atb532 (time,height_mlev,column,profile)
@@ -3000,7 +3000,7 @@ CONTAINS
       call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
            Reff(:,:,:,I_CVCICE),Reff(:,:,:,I_LSCICE),MODIS_iceSize)
       
-      ! Cloud snow and size	
+      ! Cloud snow and size
       MODIS_snowSize(:,:,:)  = Reff(:,:,:,I_LSSNOW)
       do j=1,nColumns
          where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
