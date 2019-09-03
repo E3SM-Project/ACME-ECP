@@ -1828,7 +1828,6 @@ contains
                do iy = 1,crm_ny_rad
                   do ix = 1,crm_nx_rad
                      do ic = 1,ncol
-                        ilev = pver - iz + 1
                         crm_qrad(ic,ix,iy,iz) = (crm_qrs(ic,ix,iy,iz) + crm_qrl(ic,ix,iy,iz)) / cpair
                      end do
                   end do
