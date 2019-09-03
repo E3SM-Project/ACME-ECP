@@ -1622,10 +1622,6 @@ CONTAINS
     ! 0) Create ptop/ztop for gbx%pf and gbx%zlev are for the the interface, 
     !    also reverse CAM height/pressure values for input into CSOP
     !    CAM state%pint from top to surface, COSP wants surface to top.
-    
-    
-    ! add surface height (surface geopotential/gravity) to convert CAM heights based on geopotential above surface into height above sea level
-    
    
     ! 2) rh - relative_humidity_liquid_water (%)
     ! calculate from CAM q and t using CAM built-in functions
@@ -1844,8 +1840,8 @@ CONTAINS
     cospstateIN%pfull                          = state%pmid(1:ncol,1:pver)
     cospstateIN%phalf(1:ncol,1)                = 0._r8
     cospstateIN%phalf(1:ncol,2:pver+1)         = state%pint(1:ncol,2:pver+1)
-    ! This looks like a bug...shouldn't we be *subtracting* phis / gravit from
-    ! z, rather than adding?
+    ! Add surface height (surface geopotential/gravity) to convert CAM heights based on
+    ! geopotential above surface into height above sea level
     do k = 1,pver
        cospstateIN%hgt_matrix(1:ncol,k)      = state%zm(1:ncol,k  ) + state%phis(1:ncol) / gravit
        cospstateIN%hgt_matrix_half(1:ncol,k) = state%zi(1:ncol,k+1) + state%phis(1:ncol) / gravit 
