@@ -1493,7 +1493,7 @@ CONTAINS
     character(len=256),dimension(100) :: cosp_status
     integer :: nerror
 
-    ! crjones: subcolumn stuff
+    ! subcolumn and optics stuff
     real(wp),dimension(:,:,:),  allocatable  :: frac_prec 
     real(wp),dimension(:,:,:,:),allocatable   :: mr_hydro, Reff, Np
 
@@ -1959,7 +1959,6 @@ CONTAINS
     ! *NOTE* Fields passed into subsample_and_optics are ordered from TOA-2-SFC.
     call t_startf("subsample_and_optics")
 
-    ! crjones additions ...
     ! mixing ratios, effective radii and precipitation fluxes for cloud and precipitation
     allocate(mr_hydro(ncol, nscol_cosp, pver, nhydro), &
              Reff(ncol, nscol_cosp, pver, nhydro), &
@@ -1972,8 +1971,6 @@ CONTAINS
     Np(:,:,:,:)       = 0._wp
     frac_prec(:,:,:)  = 0._wp
 
-
-    ! crjones WIP: split subsample_and_optics into cosp_subsample; cosp_optics
     call cosp_subsample(ncol, pver, nscol_cosp, nhydro, overlap, &
          use_precipitation_fluxes, cld(1:ncol, 1:pver), concld(1:ncol, 1:pver), &
          rain_ls_interp(1:ncol, 1:pver), snow_ls_interp(1:ncol, 1:pver), & 
@@ -2000,18 +1997,7 @@ CONTAINS
    deallocate(Np)
    deallocate(frac_prec)
 
-   !  call subsample_and_optics(ncol,pver,nscol_cosp,nhydro,overlap,             &
-   !       use_precipitation_fluxes,lidar_ice_type,sd_cs(lchnk),cld(1:ncol,1:pver),&
-   !       concld(1:ncol,1:pver),rain_ls_interp(1:ncol,1:pver),                  &
-   !       snow_ls_interp(1:ncol,1:pver),grpl_ls_interp(1:ncol,1:pver),          &
-   !       rain_cv_interp(1:ncol,1:pver),snow_cv_interp(1:ncol,1:pver),          &
-   !       mr_lsliq(1:ncol,1:pver),mr_lsice(1:ncol,1:pver),                      &
-   !       mr_ccliq(1:ncol,1:pver),mr_ccice(1:ncol,1:pver),                      &
-   !       reff_cosp(1:ncol,1:pver,:),dtau_c(1:ncol,1:pver),                     &
-   !       dtau_s(1:ncol,1:pver),dem_c(1:ncol,1:pver),                           &
-   !       dem_s(1:ncol,1:pver),dtau_s_snow(1:ncol,1:pver),                      &
-   !       dem_s_snow(1:ncol,1:pver),state%ps(1:ncol),cospstateIN,cospIN)
-    call t_stopf("subsample_and_optics")
+   call t_stopf("subsample_and_optics")
     
     ! ######################################################################################
     ! Call COSP
@@ -2562,12 +2548,9 @@ CONTAINS
   end subroutine cospsimulator_intr_run
 
 #ifdef USE_COSP
-  ! crjones work in progress: separate out subsample_and_optics (below) into separate 
-  ! subroutines, one to do the subsampling into subcolumns, and one to use those subcolumns 
-  ! to do the optics. The reason for this split is that, for the SP version, we want to 
-  ! use the subcolumns from the CRM, rather than generate them from a 2D profile.
-
-  ! cosp_subsample
+  ! ######################################################################################
+  ! SUBROUTINE cosp_subsample
+  ! ######################################################################################
   subroutine cosp_subsample(nPoints, nLevels, nColumns, nHydro, overlap, &
       use_precipitation_fluxes, tca, cca, &
       fl_lsrainIN, fl_lssnowIN, fl_lsgrplIN, fl_ccrainIN, &
@@ -2836,8 +2819,9 @@ CONTAINS
 
   end subroutine cosp_subsample
 
-
-  ! cosp_optics
+  ! ######################################################################################
+  ! SUBROUTINE calc_cosp_optics
+  ! ######################################################################################
   subroutine calc_cosp_optics(nPoints, nLevels, nColumns, nHydro, &
       lidar_ice_type, sd, &
       reffIN, dem_c, dem_s, dtau_c, dtau_s, dtau_s_snow, dem_s_snow, &
@@ -3039,464 +3023,6 @@ CONTAINS
    call t_stopf("modis_optics")
   end subroutine calc_cosp_optics
 
-  ! ######################################################################################
-  ! SUBROUTINE subsample_and_optics
-  ! ######################################################################################
-  subroutine subsample_and_optics(nPoints, nLevels, nColumns, nHydro,overlap,            &
-                                  use_precipitation_fluxes, lidar_ice_type, sd, tca, cca,&
-                                  fl_lsrainIN, fl_lssnowIN, fl_lsgrplIN, fl_ccrainIN,    &
-                                  fl_ccsnowIN, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice,   &
-                                  reffIN, dtau_c, dtau_s, dem_c, dem_s, dtau_s_snow,     &
-                                  dem_s_snow, sfcP, cospstateIN, cospIN)
-    ! Dependencies
-    use cosp_kinds,           only: wp
-    use mod_rng,              only: rng_state, init_rng
-    use mod_cosp_config,      only: R_UNDEF
-    use mod_scops,            only: scops
-    use mod_prec_scops,       only: prec_scops
-    use mod_cosp_utils,       only: cosp_precip_mxratio
-    use mod_quickbeam_optics, only: quickbeam_optics, gases
-    use cosp_optics,          only: cosp_simulator_optics,lidar_optics,modis_optics,    &
-                                    modis_optics_partition
-
-    ! Inputs
-    logical,intent(in) :: &
-         use_precipitation_fluxes
-    integer,intent(in) :: &
-         nPoints,      & ! Number of gridpoints
-         nLevels,      & ! Number of vertical levels
-         nColumns,     & ! Number of subcolumns
-         nHydro,       & ! Number pf hydrometeor types
-         overlap,      & ! Overlap assumption (1/2/3)
-         lidar_ice_type  ! Ice type assumption used by lidar optics
-    real(wp),intent(in),dimension(nPoints,nLevels) :: &
-         tca,          & ! Total cloud amount (0-1)
-         cca,          & ! Convective cloud amount (0-1)
-         mr_lsliq,     & ! Mixing ratio (kg/kg)
-         mr_lsice,     & ! Mixing ratio (kg/kg)
-         mr_ccliq,     & ! Mixing ratio (kg/kg)
-         mr_ccice,     & ! Mixing ratio (kg/kg)
-         dtau_c,       & ! 0.67-micron optical depth (convective)
-         dtau_s,       & ! 0.67-micron optical depth (stratiform)
-         dem_c,        & ! 11-micron emissivity (convective)
-         dem_s,        & ! 11-micron emissivity (stratiform)
-         fl_lsrainIN,  & ! Precipitation flux
-         fl_lssnowIN,  & ! Precipitation flux
-         fl_lsgrplIN,  & ! Precipitation flux
-         fl_ccrainIN,  & ! Precipitation flux
-         fl_ccsnowIN     ! Precipitation flux
-    real(wp),intent(inout),dimension(nPoints,nLevels) :: &    
-         dtau_s_snow,  & ! 0.67-micron optical depth (snow)
-         dem_s_snow      ! 11-micron emissivity (snow)
-    real(wp),intent(in),dimension(nPoints,nLevels,nHydro) :: &
-         reffIN          !
-    real(wp),intent(in),dimension(nPoints) :: &
-         sfcP            ! Surface pressure 
-    type(size_distribution),intent(inout) :: &
-         sd
-    
-    ! Outputs
-    type(cosp_optical_inputs),intent(inout) :: cospIN
-    type(cosp_column_inputs),intent(inout)  :: cospstateIN
-    
-    ! Local variables
-    integer :: i,j,k
-    real(wp),dimension(nPoints,nLevels)      :: column_frac_out,column_prec_out,         &
-                                                fl_lsrain,fl_lssnow,fl_lsgrpl,fl_ccrain, &
-                                                fl_ccsnow
-    real(wp),dimension(nPoints,nLevels,nHydro) :: ReffTemp                                                
-    type(rng_state),allocatable,dimension(:) :: rngs  ! Seeds for random number generator
-    integer,dimension(:),allocatable         :: seed
-    real(wp),dimension(:,:),allocatable      :: ls_p_rate,cv_p_rate,frac_ls,frac_cv,     &
-                                                prec_ls,prec_cv,g_vol
-    real(wp),dimension(:,:,:),  allocatable  :: frac_prec,&
-                                                 MODIS_cloudWater,MODIS_cloudIce,        &
-                                                 MODIS_watersize,MODIS_iceSize,          &
-                                                 MODIS_snowSize,MODIS_cloudSnow,         &
-                                                 MODIS_opticalThicknessLiq,              &
-                                                 MODIS_opticalThicknessSnow,             &
-                                                 MODIS_opticalThicknessIce
-    real(wp),dimension(:,:,:,:),allocatable   :: mr_hydro,Reff,Np
-    logical, parameter :: lground = .false.
-    integer, parameter :: lidar_freq = 532
-
-    call t_startf("scops")
-    if (Ncolumns .gt. 1) then
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       ! Generate subcolumns for clouds (SCOPS) and precipitation type (PREC_SCOPS)
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       ! RNG used for subcolumn generation
-       allocate(rngs(nPoints),seed(nPoints))
-       seed = int(sfcP)
-       if (Npoints .gt. 1) seed=(sfcP-int(sfcP))*1000000 
-       call init_rng(rngs, seed)
-   
-       ! Call scops
-       call scops(NPoints,Nlevels,Ncolumns,rngs,tca,cca,overlap,cospIN%frac_out,0)
-       deallocate(seed,rngs)
-       
-       ! Sum up precipitation rates. If not using preciitation fluxes, mixing ratios are 
-       ! stored in _rate variables.
-       allocate(ls_p_rate(nPoints,nLevels),cv_p_rate(nPoints,Nlevels))
-       if(use_precipitation_fluxes) then
-          ls_p_rate(:,1:nLevels) = fl_lsrainIN + fl_lssnowIN + fl_lsgrplIN
-          cv_p_rate(:,1:nLevels) = fl_ccrainIN + fl_ccsnowIN
-       else
-          ls_p_rate(:,1:nLevels) = 0 ! mixing_ratio(rain) + mixing_ratio(snow) + mixing_ratio (groupel)
-          cv_p_rate(:,1:nLevels) = 0 ! mixing_ratio(rain) + mixing_ratio(snow)
-       endif
-       
-       ! Call PREC_SCOPS
-       allocate(frac_prec(nPoints,nColumns,nLevels))
-       call prec_scops(nPoints,nLevels,nColumns,ls_p_rate,cv_p_rate,cospIN%frac_out,frac_prec)
-       deallocate(ls_p_rate,cv_p_rate)
-             
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       ! Compute precipitation fraction in each gridbox
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       ! Allocate
-       allocate(frac_ls(nPoints,nLevels),prec_ls(nPoints,nLevels),                       &
-                frac_cv(nPoints,nLevels),prec_cv(nPoints,nLevels))
-
-       ! Initialize
-       frac_ls(1:nPoints,1:nLevels) = 0._wp
-       prec_ls(1:nPoints,1:nLevels) = 0._wp
-       frac_cv(1:nPoints,1:nLevels) = 0._wp
-       prec_cv(1:nPoints,1:nLevels) = 0._wp
-       do j=1,nPoints
-          do k=1,nLevels
-             do i=1,nColumns
-                if (cospIN%frac_out(j,i,k)  .eq. 1)  frac_ls(j,k) = frac_ls(j,k)+1._wp
-                if (cospIN%frac_out(j,i,k)  .eq. 2)  frac_cv(j,k) = frac_cv(j,k)+1._wp
-                if (frac_prec(j,i,k) .eq. 1)         prec_ls(j,k) = prec_ls(j,k)+1._wp
-                if (frac_prec(j,i,k) .eq. 2)         prec_cv(j,k) = prec_cv(j,k)+1._wp
-                if (frac_prec(j,i,k) .eq. 3)         prec_cv(j,k) = prec_cv(j,k)+1._wp
-                if (frac_prec(j,i,k) .eq. 3)         prec_ls(j,k) = prec_ls(j,k)+1._wp
-             enddo
-             frac_ls(j,k)=frac_ls(j,k)/nColumns
-             frac_cv(j,k)=frac_cv(j,k)/nColumns
-             prec_ls(j,k)=prec_ls(j,k)/nColumns
-             prec_cv(j,k)=prec_cv(j,k)/nColumns
-
-             ! Adjust grid-box mean snow properties to local properties
-             ! Convert longwave optical depth to longwave emissivity
-             if (prec_ls(j,k) .ne. 0._r8 .and. dtau_s_snow(j,k) .gt. 0._r8) then
-                dtau_s_snow(j,k) = dtau_s_snow(j,k)/prec_ls(j,k) 
-             end if
-             if (prec_ls(j,k) .ne. 0._r8 .and. dem_s_snow(j,k) .gt. 0._r8) then
-                dem_s_snow(j,k) = dem_s_snow(j,k)/prec_ls(j,k)
-                dem_s_snow(j,k) = 1._r8 - exp ( -1._r8*dem_s_snow(j,k))
-             end if !!+JEK
-          enddo
-       enddo
-             
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       ! Compute mixing ratios, effective radii and precipitation fluxes for clouds
-       ! and precipitation
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       allocate(mr_hydro(nPoints,nColumns,nLevels,nHydro),                               &
-                Reff(nPoints,nColumns,nLevels,nHydro),                                   &
-                Np(nPoints,nColumns,nLevels,nHydro))
-
-       ! Initialize
-       mr_hydro(:,:,:,:) = 0._wp
-       Reff(:,:,:,:)     = 0._wp
-       Np(:,:,:,:)       = 0._wp
-       
-       do k=1,nColumns
-          ! Subcolumn clouds
-          column_frac_out = cospIN%frac_out(:,k,:)
-               
-          ! LS clouds
-          where (column_frac_out == I_LSC)
-             mr_hydro(:,k,:,I_LSCLIQ) = mr_lsliq
-             mr_hydro(:,k,:,I_LSCICE) = mr_lsice
-             Reff(:,k,:,I_LSCLIQ)     = ReffIN(:,:,I_LSCLIQ)
-             Reff(:,k,:,I_LSCICE)     = ReffIN(:,:,I_LSCICE)
-          ! CONV clouds   
-          elsewhere (column_frac_out == I_CVC)
-             mr_hydro(:,k,:,I_CVCLIQ) = mr_ccliq
-             mr_hydro(:,k,:,I_CVCICE) = mr_ccice
-             Reff(:,k,:,I_CVCLIQ)     = ReffIN(:,:,I_CVCLIQ)
-             Reff(:,k,:,I_CVCICE)     = ReffIN(:,:,I_CVCICE)
-          end where
-          
-          ! Subcolumn precipitation
-          column_prec_out = frac_prec(:,k,:)
-
-          ! LS Precipitation
-          where ((column_prec_out == 1) .or. (column_prec_out == 3) )
-             Reff(:,k,:,I_LSRAIN) = ReffIN(:,:,I_LSRAIN)
-             Reff(:,k,:,I_LSSNOW) = ReffIN(:,:,I_LSSNOW)
-             Reff(:,k,:,I_LSGRPL) = ReffIN(:,:,I_LSGRPL)
-          ! CONV precipitation   
-          elsewhere ((column_prec_out == 2) .or. (column_prec_out == 3))
-             Reff(:,k,:,I_CVRAIN) = ReffIN(:,:,I_CVRAIN)
-             Reff(:,k,:,I_CVSNOW) = ReffIN(:,:,I_CVSNOW)
-          end where
-       enddo
-
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       ! Convert the mixing ratio and precipitation fluxes from gridbox mean to
-       ! the fraction-based values
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       do k=1,nLevels
-          do j=1,nPoints
-             ! Clouds
-             if (frac_ls(j,k) .ne. 0._r8) then
-                mr_hydro(j,:,k,I_LSCLIQ) = mr_hydro(j,:,k,I_LSCLIQ)/frac_ls(j,k)
-                mr_hydro(j,:,k,I_LSCICE) = mr_hydro(j,:,k,I_LSCICE)/frac_ls(j,k)
-             endif
-             if (frac_cv(j,k) .ne. 0._r8) then
-                mr_hydro(j,:,k,I_CVCLIQ) = mr_hydro(j,:,k,I_CVCLIQ)/frac_cv(j,k)
-                mr_hydro(j,:,k,I_CVCICE) = mr_hydro(j,:,k,I_CVCICE)/frac_cv(j,k)
-             endif
-             
-             ! Precipitation
-             if (use_precipitation_fluxes) then
-                if (prec_ls(j,k) .ne. 0._r8) then
-                   fl_lsrain(j,k) = fl_lsrainIN(j,k)/prec_ls(j,k)
-                   fl_lssnow(j,k) = fl_lssnowIN(j,k)/prec_ls(j,k)
-                   fl_lsgrpl(j,k) = fl_lsgrplIN(j,k)/prec_ls(j,k)
-                endif
-                if (prec_cv(j,k) .ne. 0._r8) then
-                   fl_ccrain(j,k) = fl_ccrainIN(j,k)/prec_cv(j,k)
-                   fl_ccsnow(j,k) = fl_ccsnowIN(j,k)/prec_cv(j,k)
-                endif
-             else
-                if (prec_ls(j,k) .ne. 0._r8) then
-                   mr_hydro(j,:,k,I_LSRAIN) = mr_hydro(j,:,k,I_LSRAIN)/prec_ls(j,k)
-                   mr_hydro(j,:,k,I_LSSNOW) = mr_hydro(j,:,k,I_LSSNOW)/prec_ls(j,k)
-                   mr_hydro(j,:,k,I_LSGRPL) = mr_hydro(j,:,k,I_LSGRPL)/prec_ls(j,k)
-                endif
-                if (prec_cv(j,k) .ne. 0._r8) then
-                   mr_hydro(j,:,k,I_CVRAIN) = mr_hydro(j,:,k,I_CVRAIN)/prec_cv(j,k)
-                   mr_hydro(j,:,k,I_CVSNOW) = mr_hydro(j,:,k,I_CVSNOW)/prec_cv(j,k)
-                endif
-             endif
-          enddo
-       enddo
-             
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       ! Convert precipitation fluxes to mixing ratios
-       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       if (use_precipitation_fluxes) then
-          ! LS rain
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 1._wp, n_ax(I_LSRAIN), n_bx(I_LSRAIN),         &
-               alpha_x(I_LSRAIN), c_x(I_LSRAIN),   d_x(I_LSRAIN),   g_x(I_LSRAIN),       &
-               a_x(I_LSRAIN),   b_x(I_LSRAIN),   gamma_1(I_LSRAIN), gamma_2(I_LSRAIN),   &
-               gamma_3(I_LSRAIN), gamma_4(I_LSRAIN), fl_lsrain,                          &
-               mr_hydro(:,:,:,I_LSRAIN), Reff(:,:,:,I_LSRAIN))
-          ! LS snow
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 1._wp,  n_ax(I_LSSNOW),  n_bx(I_LSSNOW),       &
-               alpha_x(I_LSSNOW), c_x(I_LSSNOW),  d_x(I_LSSNOW),  g_x(I_LSSNOW),         &
-               a_x(I_LSSNOW),   b_x(I_LSSNOW),   gamma_1(I_LSSNOW),  gamma_2(I_LSSNOW),  &
-               gamma_3(I_LSSNOW), gamma_4(I_LSSNOW), fl_lssnow,                          &
-               mr_hydro(:,:,:,I_LSSNOW), Reff(:,:,:,I_LSSNOW))
-          ! CV rain
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 2._wp, n_ax(I_CVRAIN),  n_bx(I_CVRAIN),        &
-               alpha_x(I_CVRAIN), c_x(I_CVRAIN),   d_x(I_CVRAIN),   g_x(I_CVRAIN),       &
-               a_x(I_CVRAIN),   b_x(I_CVRAIN),   gamma_1(I_CVRAIN), gamma_2(I_CVRAIN),   &
-               gamma_3(I_CVRAIN), gamma_4(I_CVRAIN), fl_ccrain,                          &
-               mr_hydro(:,:,:,I_CVRAIN), Reff(:,:,:,I_CVRAIN))
-          ! CV snow
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 2._wp, n_ax(I_CVSNOW),  n_bx(I_CVSNOW),        &
-               alpha_x(I_CVSNOW),  c_x(I_CVSNOW),   d_x(I_CVSNOW),   g_x(I_CVSNOW),      &
-               a_x(I_CVSNOW),   b_x(I_CVSNOW),   gamma_1(I_CVSNOW), gamma_2(I_CVSNOW),   &
-               gamma_3(I_CVSNOW), gamma_4(I_CVSNOW), fl_ccsnow,                          &
-               mr_hydro(:,:,:,I_CVSNOW), Reff(:,:,:,I_CVSNOW))
-          ! LS groupel.
-          call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
-               cospstateIN%at, frac_prec, 1._wp, n_ax(I_LSGRPL),  n_bx(I_LSGRPL),        &
-               alpha_x(I_LSGRPL), c_x(I_LSGRPL),   d_x(I_LSGRPL),   g_x(I_LSGRPL),       &
-               a_x(I_LSGRPL),   b_x(I_LSGRPL),   gamma_1(I_LSGRPL),  gamma_2(I_LSGRPL),  &
-               gamma_3(I_LSGRPL), gamma_4(I_LSGRPL), fl_lsgrpl,                          &
-               mr_hydro(:,:,:,I_LSGRPL), Reff(:,:,:,I_LSGRPL))              
-       endif
-
-    else
-       cospIN%frac_out(:,:,:) = 1  
-       allocate(mr_hydro(nPoints, 1,nLevels,nHydro),Reff(nPoints,1,nLevels,nHydro),      &
-                Np(nPoints,1,nLevels,nHydro))
-       mr_hydro(:,1,:,I_LSCLIQ) = mr_lsliq
-       mr_hydro(:,1,:,I_LSCICE) = mr_lsice
-       mr_hydro(:,1,:,I_CVCLIQ) = mr_ccliq
-       mr_hydro(:,1,:,I_CVCICE) = mr_ccice
-       Reff(:,1,:,:)            = ReffIN
-    endif
-    call t_stopf("scops")
-
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ! CLOUDSAT RADAR OPTICS
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    call t_startf("cloudsat_optics")
-    if (lradar_sim) then
-       ! Compute gaseous absorption (assume identical for each subcolun)
-       allocate(g_vol(nPoints,nLevels))
-       g_vol(:,:)=0._wp
-       do i = 1, nPoints
-          do j = 1, nLevels
-             if (cospIN%rcfg_cloudsat%use_gas_abs == 1 .or. &
-                (cospIN%rcfg_cloudsat%use_gas_abs == 2 .and. j == 1)) then
-                g_vol(i,j) = gases(cospstateIN%pfull(i,j), cospstateIN%at(i,j),    &
-                                   cospstateIN%qv(i,j), cospIN%rcfg_cloudsat%freq)
-             endif
-             cospIN%g_vol_cloudsat(i,:,j) = g_vol(i,j)
-          end do
-       end do
-
-       ! Loop over all subcolumns
-       do k=1,nColumns
-          call quickbeam_optics(sd, cospIN%rcfg_cloudsat, nPoints, nLevels, R_UNDEF, &
-               mr_hydro(:,k,:,1:nHydro)*1000._wp, Reff(:,k,:,1:nHydro)*1.e6_wp,      &
-               Np(:,k,:,1:nHydro), cospstateIN%pfull, cospstateIN%at,                &
-               cospstateIN%qv, cospIN%z_vol_cloudsat(1:nPoints,k,:),                 &
-               cospIN%kr_vol_cloudsat(1:nPoints,k,:))
-       enddo
-    endif
-    call t_stopf("cloudsat_optics")
-    
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ! LIDAR Polarized optics
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    call t_startf("calipso_optics")
-    if (Llidar_sim) then
-       ReffTemp = ReffIN
-       call lidar_optics(nPoints,nColumns,nLevels,5,lidar_ice_type,lidar_freq,lground,   &
-                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSCLIQ),              &
-                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSCICE),              &
-                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_CVCLIQ),              &
-                         mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_CVCICE),              &
-                         !mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSSNOW),              &
-                         ReffTemp(1:nPoints,1:nLevels,I_LSCLIQ),                         &
-                         ReffTemp(1:nPoints,1:nLevels,I_LSCICE),                         &
-                         ReffTemp(1:nPoints,1:nLevels,I_CVCLIQ),                         &
-                         ReffTemp(1:nPoints,1:nLevels,I_CVCICE),                         & 
-                         !ReffTemp(1:nPoints,1:nLevels,I_LSSNOW),                         &
-                         cospstateIN%pfull(1:nPoints,1:nLevels),                         &
-                         cospstateIN%phalf(1:nPoints,1:nLevels+1),                       &
-                         cospstateIN%at(1:nPoints,1:nLevels),                            &
-                         cospIN%beta_mol_calipso(1:nPoints,1:nLevels),                   &
-                         cospIN%betatot_calipso(1:nPoints,1:nColumns,1:nLevels),         &
-                         cospIN%tau_mol_calipso(1:nPoints,1:nLevels),                    &
-                         cospIN%tautot_calipso(1:nPoints,1:nColumns,1:nLevels),          &
-                         cospIN%tautot_S_liq(1:nPoints,1:nColumns),                      &
-                         cospIN%tautot_S_ice(1:nPoints,1:nColumns),                      &
-                         cospIN%betatot_ice_calipso(1:nPoints,1:nColumns,1:nLevels),     &
-                         cospIN%betatot_liq_calipso(1:nPoints,1:nColumns,1:nLevels),     &
-                         cospIN%tautot_ice_calipso(1:nPoints,1:nColumns,1:nLevels),      &
-                         cospIN%tautot_liq_calipso(1:nPoints,1:nColumns,1:nLevels)) 
-    endif
-    call t_stopf("calipso_optics")
-
-    
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ! Compute optical fields for passive simulators (i.e. only sunlit points)
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ! 11 micron emissivity (needed by the ISCCP simulator)
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    call t_startf("11micron_emissivity")
-    if (Lisccp_sim) then
-       call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,dem_c,dem_s,  &
-            cospIN%emiss_11)
-       ! Add in contributions from radiative snow 
-       do j=1,nColumns
-          where(frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3)
-             cospIN%emiss_11(:,j,:) = 1._wp - (1- cospIN%emiss_11(:,j,:))*(1-dem_s_snow)
-          endwhere
-       enddo
-    endif
-    call t_stopf("11micron_emissivity")
-    
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ! 0.67 micron optical depth (needed by ISCCP, MISR and MODIS simulators)
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    call t_startf("067tau")
-    if (Lisccp_sim .or. Lmisr_sim .or. Lmodis_sim) then
-       call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,dtau_c,dtau_s,&
-            cospIN%tau_067)
-       
-       ! Add in contributions from snow 
-       do j=1,nColumns
-          where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
-               Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
-             cospIN%tau_067(:,j,:)  = cospIN%tau_067(:,j,:)+dtau_s_snow
-          endwhere
-       enddo
-    endif
-    call t_stopf("067tau")
-
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ! MODIS optics
-    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    call t_startf("modis_optics")
-    if (lmodis_sim) then
-       allocate(MODIS_cloudWater(nPoints,nColumns,nLevels),                              &
-                MODIS_cloudIce(nPoints,nColumns,nLevels),                                &
-                MODIS_cloudSnow(nPoints,nColumns,nLevels),                               &
-                MODIS_waterSize(nPoints,nColumns,nLevels),                               &
-                MODIS_iceSize(nPoints,nColumns,nLevels),                                 &
-                MODIS_snowSize(nPoints,nColumns,nLevels),                                &
-                MODIS_opticalThicknessLiq(nPoints,nColumns,nLevels),                     &
-                MODIS_opticalThicknessIce(nPoints,nColumns,nLevels),                     &
-                MODIS_opticalThicknessSnow(nPoints,nColumns,nLevels))
-
-       ! Cloud water
-       call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
-            mr_hydro(:,:,:,I_CVCLIQ),mr_hydro(:,:,:,I_LSCLIQ),MODIS_cloudWater)
-       ! Cloud ice
-       call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
-            mr_hydro(:,:,:,I_CVCICE),mr_hydro(:,:,:,I_LSCICE),MODIS_cloudIce)  
-       ! Cloud water droplet size
-       call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
-            Reff(:,:,:,I_CVCLIQ),Reff(:,:,:,I_LSCLIQ),MODIS_waterSize)
-       ! Cloud ice crystal size
-       call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
-            Reff(:,:,:,I_CVCICE),Reff(:,:,:,I_LSCICE),MODIS_iceSize)
-       
-       ! Cloud snow and size	
-       MODIS_snowSize(:,:,:)  = Reff(:,:,:,I_LSSNOW)
-       do j=1,nColumns
-          where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
-               Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
-             MODIS_cloudSnow(:,j,:) = mr_hydro(:,j,:,I_LSSNOW)
-             MODIS_snowSize(:,j,:)  = Reff(:,j,:,I_LSSNOW)
-          elsewhere
-             MODIS_snowSize(:,j,:)  = 0._wp
-             MODIS_cloudSnow(:,j,:) = 0._wp
-          endwhere
-       enddo
-       
-       ! Partition optical thickness into liquid and ice parts
-!      call modis_optics_partition(nPoints, nLevels, nColumns, MODIS_cloudWater,     &
-!           MODIS_cloudIce, MODIS_cloudSnow, MODIS_waterSize, MODIS_iceSize,         &
-!           MODIS_snowSize, cospIN%tau_067, MODIS_opticalThicknessLiq,               &
-!           MODIS_opticalThicknessIce, MODIS_opticalThicknessSnow)                            
-       call modis_optics_partition(nPoints, nLevels, nColumns, MODIS_cloudWater,     &
-            MODIS_cloudIce, MODIS_waterSize, MODIS_iceSize,         &
-            cospIN%tau_067, MODIS_opticalThicknessLiq,               &
-            MODIS_opticalThicknessIce)                            
-       
-       ! Compute assymetry parameter and single scattering albedo 
-!      call modis_optics(nPoints, nLevels, nColumns, MODIS_opticalThicknessLiq,      &
-!           MODIS_waterSize*1.0e6_wp, MODIS_opticalThicknessIce,                     &
-!           MODIS_iceSize*1.0e6_wp, MODIS_opticalThicknessSnow,                      &
-!           MODIS_snowSize*1.0e6_wp, cospIN%fracLiq, cospIN%asym, cospIN%ss_alb)
-       call modis_optics(nPoints, nLevels, nColumns, MODIS_opticalThicknessLiq,      &
-            MODIS_waterSize*1.0e6_wp, MODIS_opticalThicknessIce,                     &
-            MODIS_iceSize*1.0e6_wp, cospIN%fracLiq, cospIN%asym, cospIN%ss_alb) 
-           
-
-    endif ! MODIS simulator optics
-    call t_stopf("modis_optics")
-
-  end subroutine subsample_and_optics
   
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ! SUBROUTINE construct_cospIN
