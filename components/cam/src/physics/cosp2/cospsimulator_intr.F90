@@ -82,39 +82,13 @@ module cospsimulator_intr
   ! ######################################################################################
   ! Local declarations
   ! ######################################################################################
-  integer, parameter :: &
-       nhtml_cosp = pver  ! Mumber of model levels is pver
   integer ::  &
-       nscol_cosp,  &     ! Number of subcolumns, use namelist input Ncolumns to set.
        nht_cosp           ! Number of height for COSP radar and lidar simulator outputs.
                           !  *set to 40 if csat_vgrid=.true., else set to Nlr*
 
-  ! ######################################################################################
-  ! Bin-boundaries for COSP dimensions. Calculated in cospsetupvales OR in cosp_config.F90
-  ! ######################################################################################
-  real(r8), target :: prsmid_cosp(nprs_cosp)            ! pressure midpoints of COSP ISCCP output
-  real(r8), target :: prslim_cosp(2,nprs_cosp)
-  real(r8), target :: taumid_cosp(ntau_cosp)            ! optical depth midpoints of COSP ISCCP output
-  real(r8), target :: taulim_cosp(2,ntau_cosp)
-  real(r8), target :: srmid_cosp(nsr_cosp)              ! sr midpoints of COSP lidar output
-  real(r8), target :: srlim_cosp(2,nsr_cosp)
-  real(r8), target :: sza_cosp(nsza_cosp)
-  real(r8), target :: dbzemid_cosp(ndbze_cosp)          ! dbze midpoints of COSP radar output
-  real(r8), target :: dbzelim_cosp(2,ndbze_cosp)
-  real(r8), target :: htmisrmid_cosp(nhtmisr_cosp)      ! htmisr midpoints of COSP misr simulator output
-  real(r8), target :: htmisrlim_cosp(2,nhtmisr_cosp)
-  real(r8), target :: taumid_cosp_modis(ntau_cosp_modis)! optical depth midpoints of COSP MODIS output
-  real(r8), target :: taulim_cosp_modis(2,ntau_cosp_modis)
-  real(r8), target :: reffICE_binEdges_cosp(2,numMODISReffIceBins)
-  real(r8), target :: reffLIQ_binEdges_cosp(2,numMODISReffLiqBins)
-  real(r8), target :: reffICE_binCenters_cosp(numMODISReffIceBins)
-  real(r8), target :: reffLIQ_binCenters_cosp(numMODISReffLiqBins)
-
-  real(r8) :: htmlmid_cosp(nhtml_cosp)                     ! Model level height midpoints for output
   real(r8),allocatable, target :: htlim_cosp(:,:)          ! height limits for COSP outputs (nht_cosp+1)
   real(r8),allocatable, target :: htmid_cosp(:)            ! height midpoints of COSP radar/lidar output (nht_cosp)
-  real(r8),allocatable         :: htlim_cosp_1d(:)         ! height limits for COSP outputs (nht_cosp+1)
-  integer, allocatable, target :: scol_cosp(:)             ! sub-column number (nscol_cosp)
+  integer, allocatable, target :: scol_cosp(:)             ! sub-column number (nSubcol)
 
   ! ######################################################################################
   ! Default namelists
@@ -144,8 +118,8 @@ module cospsimulator_intr
   logical :: cosp_histfile_aux     = .false. ! CAM namelist variable default
   logical :: cosp_lfrac_out        = .false. ! CAM namelist variable default
   integer :: cosp_ncolumns         = 50      ! CAM namelist variable default
-  integer :: cosp_histfile_num     =1        ! CAM namelist variable default, not in COSP namelist
-  integer :: cosp_histfile_aux_num =-1       ! CAM namelist variable default, not in COSP namelist
+  integer :: cosp_histfile_num     = 1       ! CAM namelist variable default, not in COSP namelist
+  integer :: cosp_histfile_aux_num = -1      ! CAM namelist variable default, not in COSP namelist
 
   ! COSP
   logical :: lradar_sim       = .false.      ! COSP namelist variable, can be changed from default by CAM namelist
@@ -163,7 +137,7 @@ module cospsimulator_intr
   ! COSP parameters
   ! ######################################################################################
   ! Note: Unless otherwise specified, these are parameters that cannot be set by the CAM namelist.
-  integer :: ncolumns = 50                       ! Number of subcolumns in SCOPS (50), can be changed from default by CAM namelist
+  integer :: nSubcol = 50                        ! Number of subcolumns in SCOPS (50), can be changed from default by CAM namelist
   integer :: nlr = 40                            ! Number of levels in statistical outputs
                                                  ! (only used if USE_VGRID=.true.)  (40)
   logical :: use_vgrid = .true.                  ! Use fixed vertical grid for outputs?
@@ -187,7 +161,7 @@ module cospsimulator_intr
                                                  ! (0=ice-spheres ; 1=ice-non-spherical) (0)
   integer, parameter :: overlap = 3              ! overlap type: 1=max, 2=rand, 3=max/rand (3)
 
-  !! namelist variables for COSP input related to ISCCP simulator
+  ! namelist variables for COSP input related to ISCCP simulator
   integer :: isccp_topheight = 1                 ! 1 = adjust top height using both a computed infrared
                                                  ! brightness temperature and the visible
                                                  ! optical depth to adjust cloud top pressure.
@@ -274,39 +248,19 @@ CONTAINS
   ! SUBROUTINE setcosp2values
   ! ######################################################################################
 #ifdef USE_COSP
-  subroutine setcosp2values(Nlr_in,use_vgrid_in,csat_vgrid_in,Ncolumns_in,cosp_nradsteps_in)
+  subroutine setcosp2values(Nlr_in,use_vgrid_in,csat_vgrid_in)
     use mod_cosp,             only: cosp_init
     use mod_cosp_config,      only: vgrid_zl, vgrid_zu, vgrid_z
     use mod_quickbeam_optics, only: hydro_class_init, quickbeam_optics_init
     ! Inputs
     integer, intent(in) :: Nlr_in             ! Number of vertical levels for CALIPSO and Cloudsat products
-    integer, intent(in) :: Ncolumns_in        ! Number of sub-columns
-    integer, intent(in) :: cosp_nradsteps_in  ! How often to call COSP?
     logical, intent(in) :: use_vgrid_in       ! Logical switch to use interpolated, to Nlr_in, grid for CALIPSO and Cloudsat
     logical, intent(in) :: csat_vgrid_in      !
 
     ! Local
     logical :: ldouble=.false.
     logical :: lsingle=.true. ! Default is to use single moment
-    integer :: i,k
-
-    prsmid_cosp  = pres_binCenters
-    prslim_cosp  = pres_binEdges
-    taumid_cosp  = tau_binCenters
-    taulim_cosp  = tau_binEdges
-    srmid_cosp   = calipso_binCenters
-    srlim_cosp   = calipso_binEdges
-    sza_cosp     = parasol_sza
-    dbzemid_cosp = cloudsat_binCenters
-    dbzelim_cosp = cloudsat_binEdges
-    htmisrmid_cosp = misr_histHgtCenters
-    htmisrlim_cosp = misr_histHgtEdges
-    taumid_cosp_modis = tau_binCenters
-    taulim_cosp_modis = tau_binEdges
-    reffICE_binCenters_cosp = reffICE_binCenters
-    reffICE_binEdges_cosp   = reffICE_binEdges
-    reffLIQ_binCenters_cosp = reffLIQ_binCenters
-    reffLIQ_binEdges_cosp   = reffLIQ_binEdges
+    integer :: i, k
 
     ! Initialize the distributional parameters for hydrometeors in radar simulator. In COSPv1.4, this was declared in
     ! cosp_defs.f.
@@ -327,9 +281,6 @@ CONTAINS
          surface_radar,rcfg_cloudsat,use_vgrid_in,csat_vgrid_in,Nlr_in,pver,            &
          cloudsat_micro_scheme)
 
-    ! Set number of sub-columns, from namelist
-    nscol_cosp = Ncolumns_in
-
     if (use_vgrid_in) then  !! using fixed vertical grid
        if (csat_vgrid_in)       then
           nht_cosp = 40
@@ -338,28 +289,18 @@ CONTAINS
        endif
     endif
 
-    ! Set COSP call frequency, from namelist.
-    cosp_nradsteps = cosp_nradsteps_in
-
     ! DJS2017: In COSP2, most of the bin boundaries, centers, and edges are declared in src/cosp_config.F90.
     !          Above I just assign them accordingly in the USE statement. Other bin bounds needed by CAM
     !          are calculated here.
     ! Allocate
-    allocate(htlim_cosp(2,nht_cosp),htlim_cosp_1d(nht_cosp+1),htmid_cosp(nht_cosp),scol_cosp(nscol_cosp))
+    allocate(htlim_cosp(2,nht_cosp),htmid_cosp(nht_cosp),scol_cosp(nSubcol))
 
     ! DJS2017: Just pull from cosp_config
-    if (use_vgrid_in) then
-       htlim_cosp_1d(1)            = vgrid_zu(1)
-       htlim_cosp_1d(2:nht_cosp+1) = vgrid_zl
-    endif
     htmid_cosp      = vgrid_z
     htlim_cosp(1,:) = vgrid_zu
     htlim_cosp(2,:) = vgrid_zl
 
-    scol_cosp(:) = (/(k,k=1,nscol_cosp)/)
-
-    !  Just using an index here, model height is a prognostic variable
-    htmlmid_cosp(:) = (/(k,k=1,nhtml_cosp)/)
+    scol_cosp(:) = (/(k,k=1,nSubcol)/)
 
   end subroutine setcosp2values
 #endif
@@ -533,16 +474,16 @@ CONTAINS
        cosp_nradsteps = 3
     end if
 
-    !! reset COSP namelist variables based on input from cam namelist variables
-    if (cosp_ncolumns .ne. ncolumns) then
-       ncolumns = cosp_ncolumns
+    ! Reset COSP namelist variables based on input from cam namelist variables
+    if (cosp_ncolumns .ne. nSubcol) then
+       nSubcol = cosp_ncolumns
     end if
 
     ! *NOTE* COSP is configured in CAM such that if a simulator is requested, all diagnostics
     ! are output. So no need turn on/aff outputs if simulator is requested.
 
     ! Set vertical coordinate, subcolumn, and calculation frequency cosp options based on namelist inputs
-    call setcosp2values(nlr,use_vgrid,csat_vgrid,ncolumns,cosp_nradsteps)
+    call setcosp2values(nlr,use_vgrid,csat_vgrid)
 
     if (masterproc) then
        if (docosp) then
@@ -577,17 +518,17 @@ CONTAINS
     ! register non-standard variable dimensions
     if (lisccp_sim .or. lmodis_sim) then
        call add_hist_coord('cosp_prs', nprs_cosp, 'COSP Mean ISCCP pressure',  &
-            'hPa', prsmid_cosp, bounds_name='cosp_prs_bnds', bounds=prslim_cosp)
+            'hPa', pres_binCenters, bounds_name='cosp_prs_bnds', bounds=pres_binEdges)
     end if
 
     if (lisccp_sim .or. lmisr_sim) then
        call add_hist_coord('cosp_tau', ntau_cosp,                              &
-            'COSP Mean ISCCP optical depth', '1', taumid_cosp,                 &
-            bounds_name='cosp_tau_bnds', bounds=taulim_cosp)
+            'COSP Mean ISCCP optical depth', '1', tau_binCenters,                 &
+            bounds_name='cosp_tau_bnds', bounds=tau_binEdges)
     end if
 
     if (lisccp_sim .or. llidar_sim .or. lradar_sim .or. lmisr_sim) then
-       call add_hist_coord('cosp_scol', nscol_cosp, 'COSP subcolumn',          &
+       call add_hist_coord('cosp_scol', nSubcol, 'COSP subcolumn',          &
             values=scol_cosp)
     end if
 
@@ -601,36 +542,36 @@ CONTAINS
     if (llidar_sim) then
        call add_hist_coord('cosp_sr', nsr_cosp,                                &
             'COSP Mean Scattering Ratio for lidar simulator CFAD output', '1', &
-            srmid_cosp, bounds_name='cosp_sr_bnds', bounds=srlim_cosp)
+            calipso_binCenters, bounds_name='cosp_sr_bnds', bounds=calipso_binEdges)
     end if
 
     if (llidar_sim) then
        call add_hist_coord('cosp_sza', nsza_cosp, 'COSP Parasol SZA',          &
-            'degrees', sza_cosp)
+            'degrees', parasol_sza)
     end if
 
     if (lradar_sim) then
        call add_hist_coord('cosp_dbze', ndbze_cosp,                            &
             'COSP Mean dBZe for radar simulator CFAD output', 'dBZ',           &
-            dbzemid_cosp, bounds_name='cosp_dbze_bnds', bounds=dbzelim_cosp)
+            cloudsat_binCenters, bounds_name='cosp_dbze_bnds', bounds=cloudsat_binEdges)
     end if
 
     if (lmisr_sim) then
        call add_hist_coord('cosp_htmisr', nhtmisr_cosp, 'COSP MISR height', &
-            'km', htmisrmid_cosp,                                           &
-            bounds_name='cosp_htmisr_bnds', bounds=htmisrlim_cosp)
+            'km', misr_histHgtCenters,                                           &
+            bounds_name='cosp_htmisr_bnds', bounds=misr_histHgtEdges)
     end if
 
     if (lmodis_sim) then
        call add_hist_coord('cosp_tau_modis', ntau_cosp_modis,                  &
-            'COSP Mean MODIS optical depth', '1', taumid_cosp_modis,           &
-            bounds_name='cosp_tau_modis_bnds', bounds=taulim_cosp_modis)
+            'COSP Mean MODIS optical depth', '1', tau_binCenters,           &
+            bounds_name='cosp_tau_modis_bnds', bounds=tau_binEdges)
        call add_hist_coord('cosp_reffice',numMODISReffIceBins,                 &
-            'COSP Mean MODIS effective radius (ice)', 'microns', reffICE_binCenters_cosp, &
-            bounds_name='cosp_reffice_bnds',bounds=reffICE_binEdges_cosp)
+            'COSP Mean MODIS effective radius (ice)', 'microns', reffICE_binCenters, &
+            bounds_name='cosp_reffice_bnds',bounds=reffICE_binEdges)
        call add_hist_coord('cosp_reffliq',numMODISReffLiqBins,                 &
-            'COSP Mean MODIS effective radius (liquid)', 'microns', reffLIQ_binCenters_cosp, &
-            bounds_name='cosp_reffliq_bnds',bounds=reffLIQ_binEdges_cosp)
+            'COSP Mean MODIS effective radius (liquid)', 'microns', reffLIQ_binCenters, &
+            bounds_name='cosp_reffliq_bnds',bounds=reffLIQ_binEdges)
     end if
 
 #endif
@@ -1291,10 +1232,10 @@ CONTAINS
     real(r8) :: clisccp2(pcols,ntau_cosp,nprs_cosp)      ! clisccp2 (time,tau,plev,profile)
     real(r8) :: cfad_dbze94(pcols,ndbze_cosp,nht_cosp)   ! cfad_dbze94 (time,height,dbze,profile)
     real(r8) :: cfad_lidarsr532(pcols,nsr_cosp,nht_cosp) ! cfad_lidarsr532 (time,height,scat_ratio,profile)
-    real(r8) :: dbze94(pcols,nscol_cosp,nhtml_cosp)      ! dbze94 (time,height_mlev,column,profile)
-    real(r8) :: atb532(pcols,nscol_cosp,nhtml_cosp)      ! atb532 (time,height_mlev,column,profile)
+    real(r8) :: dbze94(pcols,nSubcol,pver)      ! dbze94 (time,height_mlev,column,profile)
+    real(r8) :: atb532(pcols,nSubcol,pver)      ! atb532 (time,height_mlev,column,profile)
     real(r8) :: clMISR(pcols,ntau_cosp,nhtmisr_cosp)     ! clMISR (time,tau,CTH_height_bin,profile)
-    real(r8) :: frac_out(pcols,nscol_cosp,nhtml_cosp)    ! frac_out (time,height_mlev,column,profile)
+    real(r8) :: frac_out(pcols,nSubcol,pver)    ! frac_out (time,height_mlev,column,profile)
     real(r8) :: cldtot_isccp(pcols)                      ! CAM tclisccp (time,profile)
     real(r8) :: meancldalb_isccp(pcols)                  ! CAM albisccp (time,profile)
     real(r8) :: meanptop_isccp(pcols)                    ! CAM ctpisccp (time,profile)
@@ -1322,8 +1263,8 @@ CONTAINS
     real(r8) :: cld_cal_tmpliq(pcols,nht_cosp)           ! CAM (time,height,profile)
     real(r8) :: cld_cal_tmpice(pcols,nht_cosp)           ! CAM (time,height,profile)
     real(r8) :: cld_cal_tmpun(pcols,nht_cosp)            ! CAM (time,height,profile) !+cosp1.4
-    real(r8) :: tau_isccp(pcols,nscol_cosp)              ! CAM boxtauisccp (time,column,profile)
-    real(r8) :: cldptop_isccp(pcols,nscol_cosp)          ! CAM boxptopisccp (time,column,profile)
+    real(r8) :: tau_isccp(pcols,nSubcol)                 ! CAM boxtauisccp (time,column,profile)
+    real(r8) :: cldptop_isccp(pcols,nSubcol)          ! CAM boxptopisccp (time,column,profile)
     real(r8) :: meantau_isccp(pcols)                     ! CAM tauisccp (time,profile)
     real(r8) :: meantb_isccp(pcols)                      ! CAM meantbisccp (time,profile)
     real(r8) :: meantbclr_isccp(pcols)                   ! CAM meantbclrisccp (time,profile)
@@ -1331,7 +1272,7 @@ CONTAINS
     real(r8) :: cldtot_cs(pcols)                         ! CAM cltradar (time,profile)
     real(r8) :: cldtot_cs2(pcols)                        ! CAM cltradar2 (time,profile)
     real(r8) :: cld_cal_notcs(pcols,nht_cosp)            ! CAM clcalipso2 (time,height,profile)
-    real(r8) :: mol532_cal(pcols,nhtml_cosp)             ! CAM beta_mol532 (time,height_mlev,profile)
+    real(r8) :: mol532_cal(pcols,pver)             ! CAM beta_mol532 (time,height_mlev,profile)
     real(r8) :: refl_parasol(pcols,nsza_cosp)            ! CAM parasol_refl (time,sza,profile)
     real(r8) :: cltmodis(pcols)
     real(r8) :: clwmodis(pcols)
@@ -1353,10 +1294,6 @@ CONTAINS
     real(r8) :: clmodis(pcols,ntau_cosp_modis,nprs_cosp)
     real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
     real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
-    real(r8),dimension(pcols,nhtml_cosp*nscol_cosp) :: &
-         tau067_out,emis11_out,fracliq_out,cal_betatot,cal_betatot_ice, &
-         cal_betatot_liq,cal_tautot,cal_tautot_ice,cal_tautot_liq,cs_gvol_out,cs_krvol_out,cs_zvol_out,&
-         asym34_out,ssa34_out
 
     type(interp_type)  :: interp_wgts
     integer, parameter :: extrap_method = 1  ! sets extrapolation method to boundary value (1)
@@ -1383,10 +1320,10 @@ CONTAINS
     clisccp2(1:pcols,1:ntau_cosp,1:nprs_cosp)     = R_UNDEF
     cfad_dbze94(1:pcols,1:ndbze_cosp,1:nht_cosp)  = R_UNDEF
     cfad_lidarsr532(1:pcols,1:nsr_cosp,1:nht_cosp)= R_UNDEF
-    dbze94(1:pcols,1:nscol_cosp,1:nhtml_cosp)     = R_UNDEF
-    atb532(1:pcols,1:nscol_cosp,1:nhtml_cosp)     = R_UNDEF
+    dbze94(1:pcols,1:nSubcol,1:pver)     = R_UNDEF
+    atb532(1:pcols,1:nSubcol,1:pver)     = R_UNDEF
     clMISR(1:pcols,1:ntau_cosp,1:nhtmisr_cosp)      = R_UNDEF
-    frac_out(1:pcols,1:nscol_cosp,1:nhtml_cosp)   = R_UNDEF
+    frac_out(1:pcols,1:nSubcol,1:pver)   = R_UNDEF
     cldtot_isccp(1:pcols)                            = R_UNDEF
     meancldalb_isccp(1:pcols)                        = R_UNDEF
     meanptop_isccp(1:pcols)                          = R_UNDEF
@@ -1414,8 +1351,8 @@ CONTAINS
     cld_cal_tmpliq(1:pcols,1:nht_cosp)               = R_UNDEF
     cld_cal_tmpice(1:pcols,1:nht_cosp)               = R_UNDEF
     cld_cal_tmpun(1:pcols,1:nht_cosp)                = R_UNDEF
-    tau_isccp(1:pcols,1:nscol_cosp)                  = R_UNDEF
-    cldptop_isccp(1:pcols,1:nscol_cosp)              = R_UNDEF
+    tau_isccp(1:pcols,1:nSubcol)                  = R_UNDEF
+    cldptop_isccp(1:pcols,1:nSubcol)              = R_UNDEF
     meantau_isccp(1:pcols)                           = R_UNDEF
     meantb_isccp(1:pcols)                            = R_UNDEF
     meantbclr_isccp(1:pcols)                         = R_UNDEF
@@ -1423,7 +1360,7 @@ CONTAINS
     cldtot_cs(1:pcols)                               = R_UNDEF
     cldtot_cs2(1:pcols)                              = R_UNDEF
     cld_cal_notcs(1:pcols,1:nht_cosp)                = R_UNDEF
-    mol532_cal(1:pcols,1:nhtml_cosp)                 = R_UNDEF
+    mol532_cal(1:pcols,1:pver)                 = R_UNDEF
     refl_parasol(1:pcols,1:nsza_cosp)                = R_UNDEF
     cltmodis(1:pcols)                                = R_UNDEF
     clwmodis(1:pcols)                                = R_UNDEF
@@ -1445,11 +1382,6 @@ CONTAINS
     clmodis(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)   = R_UNDEF
     clrimodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffIceBins)   = R_UNDEF ! +cosp2
     clrlmodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffLiqBins)   = R_UNDEF ! +cosp2
-    tau067_out(1:pcols,1:nhtml_cosp*nscol_cosp)      = R_UNDEF ! +cosp2
-    emis11_out(1:pcols,1:nhtml_cosp*nscol_cosp)      = R_UNDEF ! +cosp2
-    asym34_out(1:pcols,1:nhtml_cosp*nscol_cosp)      = R_UNDEF ! +cosp2
-    ssa34_out(1:pcols,1:nhtml_cosp*nscol_cosp)      = R_UNDEF ! +cosp2
-    fracLiq_out(1:pcols,1:nhtml_cosp*nscol_cosp)      = R_UNDEF ! +cosp2
 
     ! ######################################################################################
     ! DECIDE WHICH COLUMNS YOU ARE GOING TO RUN COSP ON....
@@ -1632,7 +1564,7 @@ CONTAINS
     ! Construct COSP output derived type.
     ! ######################################################################################
     call t_startf("construct_cosp_outputs")
-    call construct_cosp_outputs(ncol,nscol_cosp,pver,Nlvgrid,0,cospOUT)
+    call construct_cosp_outputs(ncol,nSubcol,pver,Nlvgrid,0,cospOUT)
     call t_stopf("construct_cosp_outputs")
 
     ! ######################################################################################
@@ -1686,7 +1618,7 @@ CONTAINS
 
     ! Optical inputs
     call t_startf("construct_cospIN")
-    call construct_cospIN(ncol,nscol_cosp,pver,cospIN)
+    call construct_cospIN(ncol,nSubcol,pver,cospIN)
     cospIN%emsfc_lw = emsfc_lw
     if (lradar_sim) cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
     call t_stopf("construct_cospIN")
@@ -1695,12 +1627,12 @@ CONTAINS
     call t_startf("subsample_and_optics")
 
     ! mixing ratios, effective radii and precipitation fluxes for cloud and precipitation
-    allocate(mr_hydro(ncol, nscol_cosp, pver, nhydro), &
-             Reff(ncol, nscol_cosp, pver, nhydro), &
-             Np(ncol, nscol_cosp, pver, nhydro), &
-             frac_prec(ncol, nscol_cosp, pver))
+    allocate(mr_hydro(ncol, nSubcol, pver, nhydro), &
+             Reff(ncol, nSubcol, pver, nhydro), &
+             Np(ncol, nSubcol, pver, nhydro), &
+             frac_prec(ncol, nSubcol, pver))
 
-    call cosp_subsample(ncol, pver, nscol_cosp, nhydro, overlap, &
+    call cosp_subsample(ncol, pver, nSubcol, nhydro, overlap, &
          use_precipitation_fluxes, cld(1:ncol, 1:pver), concld(1:ncol, 1:pver), &
          rain_ls_interp(1:ncol, 1:pver), snow_ls_interp(1:ncol, 1:pver), &
          grpl_ls_interp(1:ncol, 1:pver), rain_cv_interp(1:ncol, 1:pver), &
@@ -1712,7 +1644,7 @@ CONTAINS
          snow_emis(1:ncol,1:pver), state%ps(1:ncol), cospstateIN, cospIN, &
          mr_hydro, Reff, Np, frac_prec)  ! new outputs, need to be added ...
 
-    call calc_cosp_optics(ncol, pver, nscol_cosp, nhydro, &
+    call calc_cosp_optics(ncol, pver, nSubcol, nhydro, &
          lidar_ice_type, sd_cs(lchnk), reff_cosp(1:ncol,1:pver,:), &
          emis(1:ncol,1:pver), emis(1:ncol,1:pver), &
          cld_swtau(1:ncol, 1:pver), cld_swtau(1:ncol, 1:pver), &
@@ -1817,12 +1749,12 @@ CONTAINS
     ! ######################################################################################
     call t_startf("output_copying")
     if (allocated(cospIN%frac_out)) &
-         frac_out(1:ncol,1:nscol_cosp,1:nhtml_cosp) = cospIN%frac_out                             ! frac_out (time,height_mlev,column,profile)
+         frac_out(1:ncol,1:nSubcol,1:pver) = cospIN%frac_out                             ! frac_out (time,height_mlev,column,profile)
 
     ! Cloudsat
     if (lradar_sim) then
        cfad_dbze94(1:ncol,1:ndbze_cosp,1:nht_cosp) = cospOUT%cloudsat_cfad_ze(:,:,nht_cosp:1:-1)  ! cfad_dbze94 (time,height,dbze,profile)
-       dbze94(1:ncol,1:nscol_cosp,1:nhtml_cosp)    = cospOUT%cloudsat_Ze_tot                      ! dbze94 (time,height_mlev,column,profile)
+       dbze94(1:ncol,1:nSubcol,1:pver)    = cospOUT%cloudsat_Ze_tot                      ! dbze94 (time,height_mlev,column,profile)
        cldtot_cs(1:ncol)  = 0._r8!cospOUT%cloudsat_radar_tcc                                      ! CAM version of cltradar (time,profile)  ! NOT COMPUTED IN COSP2
        cldtot_cs2(1:ncol) = 0._r8!cospOUT%cloudsat_radar_tcc2                                     ! CAM version of cltradar2 (time,profile) ! NOT COMPUTED IN COSP2
        ! *NOTE* These two fields are joint-simulator products, but in CAM they are controlled
@@ -1856,9 +1788,9 @@ CONTAINS
        cld_cal_tmpliq(1:ncol,1:nht_cosp) = cospOUT%calipso_lidarcldtmp(:,:,2)                   ! CAM version of clcalipsotmpice
        cld_cal_tmpice(1:ncol,1:nht_cosp) = cospOUT%calipso_lidarcldtmp(:,:,3)                   ! CAM version of clcalipsotmpliq
        cld_cal_tmpun(1:ncol,1:nht_cosp)  = cospOUT%calipso_lidarcldtmp(:,:,4)                   ! CAM version of clcalipsotmpun, !+cosp1.4
-       cld_cal(1:ncol,1:nht_cosp)                    = cospOUT%calipso_lidarcld(:,nht_cosp:1:-1)  ! CAM version of clcalipso (time,height,profile)
-       mol532_cal(1:ncol,1:nhtml_cosp)               = cospOUT%calipso_beta_mol                   ! CAM version of beta_mol532 (time,height_mlev,profile)
-       atb532(1:ncol,1:nscol_cosp,1:nhtml_cosp)      = cospOUT%calipso_beta_tot                   ! atb532 (time,height_mlev,column,profile)
+       cld_cal(1:ncol,1:nht_cosp)        = cospOUT%calipso_lidarcld(:,nht_cosp:1:-1)  ! CAM version of clcalipso (time,height,profile)
+       mol532_cal(1:ncol,1:pver)         = cospOUT%calipso_beta_mol                   ! CAM version of beta_mol532 (time,height_mlev,profile)
+       atb532(1:ncol,1:nSubcol,1:pver) = cospOUT%calipso_beta_tot                   ! atb532 (time,height_mlev,column,profile)
        cfad_lidarsr532(1:ncol,1:nsr_cosp,1:nht_cosp) = cospOUT%calipso_cfad_sr(:,:,nht_cosp:1:-1) ! cfad_lidarsr532 (time,height,scat_ratio,profile)
        ! PARASOL. In COSP2, the Parasol simulator is independent of the lidar simulator.
        refl_parasol(1:ncol,1:nsza_cosp) = cospOUT%parasolGrid_refl                                ! CAM version of parasolrefl (time,sza,profile)
@@ -1867,8 +1799,8 @@ CONTAINS
     ! ISCCP
     if (lisccp_sim) then
        clisccp2(1:ncol,1:ntau_cosp,1:nprs_cosp) = cospOUT%isccp_fq               ! CAM version of clisccp2       (time,tau,plev,profile)
-       tau_isccp(1:ncol,1:nscol_cosp)           = cospOUT%isccp_boxtau           ! CAM version of boxtauisccp    (time,column,profile)
-       cldptop_isccp(1:ncol,1:nscol_cosp)       = cospOUT%isccp_boxptop          ! CAM version of boxptopisccp   (time,column,profile)
+       tau_isccp(1:ncol,1:nSubcol)              = cospOUT%isccp_boxtau           ! CAM version of boxtauisccp    (time,column,profile)
+       cldptop_isccp(1:ncol,1:nSubcol)          = cospOUT%isccp_boxptop          ! CAM version of boxptopisccp   (time,column,profile)
        cldtot_isccp(1:ncol)                     = cospOUT%isccp_totalcldarea     ! CAM version of tclisccp       (time,       profile)
        meanptop_isccp(1:ncol)                   = cospOUT%isccp_meanptop         ! CAM version of ctpisccp       (time,       profile)
        meantau_isccp(1:ncol)                    = cospOUT%isccp_meantaucld       ! CAM version of meantbisccp    (time,       profile)
@@ -2178,7 +2110,7 @@ CONTAINS
   ! ######################################################################################
   ! SUBROUTINE cosp_subsample
   ! ######################################################################################
-  subroutine cosp_subsample(nPoints, nLevels, nColumns, nHydro, overlap, &
+  subroutine cosp_subsample(Npoints, nLevels, Ncolumns, nHydro, overlap, &
       use_precipitation_fluxes, tca, cca, &
       fl_lsrainIN, fl_lssnowIN, fl_lsgrplIN, fl_ccrainIN, &
       fl_ccsnowIN, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice, &
@@ -2196,12 +2128,12 @@ CONTAINS
    logical,intent(in) :: &
         use_precipitation_fluxes
    integer,intent(in) :: &
-        nPoints,      & ! Number of gridpoints
+        Npoints,      & ! Number of gridpoints
         nLevels,      & ! Number of vertical levels
-        nColumns,     & ! Number of subcolumns
+        Ncolumns,      & ! Number of subcolumns
         nHydro,       & ! Number pf hydrometeor types
         overlap         ! Overlap assumption (1/2/3)
-   real(wp),intent(in),dimension(nPoints,nLevels) :: &
+   real(wp),intent(in),dimension(Npoints,nLevels) :: &
         tca,          & ! Total cloud amount (0-1)
         cca,          & ! Convective cloud amount (0-1)
         mr_lsliq,     & ! Mixing ratio (kg/kg)
@@ -2215,27 +2147,27 @@ CONTAINS
         fl_lsgrplIN,  & ! Precipitation flux
         fl_ccrainIN,  & ! Precipitation flux
         fl_ccsnowIN     ! Precipitation flux
-   real(wp),intent(inout),dimension(nPoints,nLevels) :: &
+   real(wp),intent(inout),dimension(Npoints,nLevels) :: &
         dtau_s_snow,  & ! 0.67-micron optical depth (snow)
         dem_s_snow      ! 11-micron emissivity (snow)
-   real(wp),intent(in),dimension(nPoints,nLevels,nHydro) :: &
+   real(wp),intent(in),dimension(Npoints,nLevels,nHydro) :: &
         reffIN          !
-   real(wp),intent(in),dimension(nPoints) :: &
+   real(wp),intent(in),dimension(Npoints) :: &
         sfcP            ! Surface pressure
 
    ! Outputs
    type(cosp_optical_inputs),intent(inout) :: cospIN
    type(cosp_column_inputs),intent(in)  :: cospstateIN
-   real(wp), dimension(nPoints, nColumns, nLevels, nHydro), intent(out) :: &
+   real(wp), dimension(Npoints, Ncolumns, nLevels, nHydro), intent(out) :: &
       mr_hydro, Reff, Np
-   real(wp), dimension(nPoints, nColumns, nLevels), intent(out)  :: frac_prec
+   real(wp), dimension(Npoints, Ncolumns, nLevels), intent(out)  :: frac_prec
 
    ! Local variables
    integer :: i,j,k
-   real(wp),dimension(nPoints,nLevels)      :: column_frac_out,column_prec_out,         &
+   real(wp),dimension(Npoints,nLevels)      :: column_frac_out,column_prec_out,         &
                                                fl_lsrain,fl_lssnow,fl_lsgrpl,fl_ccrain, &
                                                fl_ccsnow
-   real(wp),dimension(nPoints,nLevels,nHydro) :: ReffTemp
+   real(wp),dimension(Npoints,nLevels,nHydro) :: ReffTemp
    type(rng_state),allocatable,dimension(:) :: rngs  ! Seeds for random number generator
    integer,dimension(:),allocatable         :: seed
    real(wp),dimension(:,:),allocatable      :: ls_p_rate,cv_p_rate,frac_ls,frac_cv,     &
@@ -2247,18 +2179,18 @@ CONTAINS
       ! Generate subcolumns for clouds (SCOPS) and precipitation type (PREC_SCOPS)
       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       ! RNG used for subcolumn generation
-      allocate(rngs(nPoints), seed(nPoints))
+      allocate(rngs(Npoints), seed(Npoints))
       seed = int(sfcP)
       if (Npoints .gt. 1) seed=(sfcP-int(sfcP))*1000000
       call init_rng(rngs, seed)
 
       ! Call scops
-      call scops(NPoints,Nlevels,Ncolumns,rngs,tca,cca,overlap,cospIN%frac_out,0)
+      call scops(Npoints,Nlevels,Ncolumns,rngs,tca,cca,overlap,cospIN%frac_out,0)
       deallocate(seed,rngs)
 
       ! Sum up precipitation rates. If not using preciitation fluxes, mixing ratios are
       ! stored in _rate variables.
-      allocate(ls_p_rate(nPoints,nLevels),cv_p_rate(nPoints,Nlevels))
+      allocate(ls_p_rate(Npoints,nLevels),cv_p_rate(Npoints,Nlevels))
       if(use_precipitation_fluxes) then
          ls_p_rate(:,1:nLevels) = fl_lsrainIN + fl_lssnowIN + fl_lsgrplIN
          cv_p_rate(:,1:nLevels) = fl_ccrainIN + fl_ccsnowIN
@@ -2268,24 +2200,24 @@ CONTAINS
       endif
 
       ! Call PREC_SCOPS
-      call prec_scops(nPoints,nLevels,nColumns,ls_p_rate,cv_p_rate,cospIN%frac_out,frac_prec)
+      call prec_scops(Npoints,nLevels,Ncolumns,ls_p_rate,cv_p_rate,cospIN%frac_out,frac_prec)
       deallocate(ls_p_rate,cv_p_rate)
 
       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       ! Compute precipitation fraction in each gridbox
       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       ! Allocate
-      allocate(frac_ls(nPoints,nLevels),prec_ls(nPoints,nLevels),                       &
-               frac_cv(nPoints,nLevels),prec_cv(nPoints,nLevels))
+      allocate(frac_ls(Npoints,nLevels),prec_ls(Npoints,nLevels),                       &
+               frac_cv(Npoints,nLevels),prec_cv(Npoints,nLevels))
 
       ! Initialize
-      frac_ls(1:nPoints,1:nLevels) = 0._wp
-      prec_ls(1:nPoints,1:nLevels) = 0._wp
-      frac_cv(1:nPoints,1:nLevels) = 0._wp
-      prec_cv(1:nPoints,1:nLevels) = 0._wp
-      do j=1,nPoints
+      frac_ls(1:Npoints,1:nLevels) = 0._wp
+      prec_ls(1:Npoints,1:nLevels) = 0._wp
+      frac_cv(1:Npoints,1:nLevels) = 0._wp
+      prec_cv(1:Npoints,1:nLevels) = 0._wp
+      do j=1,Npoints
          do k=1,nLevels
-            do i=1,nColumns
+            do i=1,Ncolumns
                if (cospIN%frac_out(j,i,k)  .eq. 1)  frac_ls(j,k) = frac_ls(j,k)+1._wp
                if (cospIN%frac_out(j,i,k)  .eq. 2)  frac_cv(j,k) = frac_cv(j,k)+1._wp
                if (frac_prec(j,i,k) .eq. 1)         prec_ls(j,k) = prec_ls(j,k)+1._wp
@@ -2293,10 +2225,10 @@ CONTAINS
                if (frac_prec(j,i,k) .eq. 3)         prec_cv(j,k) = prec_cv(j,k)+1._wp
                if (frac_prec(j,i,k) .eq. 3)         prec_ls(j,k) = prec_ls(j,k)+1._wp
             enddo
-            frac_ls(j,k)=frac_ls(j,k)/nColumns
-            frac_cv(j,k)=frac_cv(j,k)/nColumns
-            prec_ls(j,k)=prec_ls(j,k)/nColumns
-            prec_cv(j,k)=prec_cv(j,k)/nColumns
+            frac_ls(j,k)=frac_ls(j,k)/Ncolumns
+            frac_cv(j,k)=frac_cv(j,k)/Ncolumns
+            prec_ls(j,k)=prec_ls(j,k)/Ncolumns
+            prec_cv(j,k)=prec_cv(j,k)/Ncolumns
 
             ! Adjust grid-box mean snow properties to local properties
             ! Convert longwave optical depth to longwave emissivity
@@ -2319,7 +2251,7 @@ CONTAINS
       Reff(:,:,:,:)     = 0._wp
       Np(:,:,:,:)       = 0._wp
 
-      do k=1,nColumns
+      do k=1,Ncolumns
          ! Subcolumn clouds
          column_frac_out = cospIN%frac_out(:,k,:)
 
@@ -2357,7 +2289,7 @@ CONTAINS
       ! the fraction-based values
       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       do k=1,nLevels
-         do j=1,nPoints
+         do j=1,Npoints
             ! Clouds
             if (frac_ls(j,k) .ne. 0._r8) then
                mr_hydro(j,:,k,I_LSCLIQ) = mr_hydro(j,:,k,I_LSCLIQ)/frac_ls(j,k)
@@ -2398,35 +2330,35 @@ CONTAINS
       !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       if (use_precipitation_fluxes) then
          ! LS rain
-         call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+         call cosp_precip_mxratio(Npoints, nLevels, Ncolumns, cospstateIN%pfull,        &
               cospstateIN%at, frac_prec, 1._wp, n_ax(I_LSRAIN), n_bx(I_LSRAIN),         &
               alpha_x(I_LSRAIN), c_x(I_LSRAIN),   d_x(I_LSRAIN),   g_x(I_LSRAIN),       &
               a_x(I_LSRAIN),   b_x(I_LSRAIN),   gamma_1(I_LSRAIN), gamma_2(I_LSRAIN),   &
               gamma_3(I_LSRAIN), gamma_4(I_LSRAIN), fl_lsrain,                          &
               mr_hydro(:,:,:,I_LSRAIN), Reff(:,:,:,I_LSRAIN))
          ! LS snow
-         call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+         call cosp_precip_mxratio(Npoints, nLevels, Ncolumns, cospstateIN%pfull,        &
               cospstateIN%at, frac_prec, 1._wp,  n_ax(I_LSSNOW),  n_bx(I_LSSNOW),       &
               alpha_x(I_LSSNOW), c_x(I_LSSNOW),  d_x(I_LSSNOW),  g_x(I_LSSNOW),         &
               a_x(I_LSSNOW),   b_x(I_LSSNOW),   gamma_1(I_LSSNOW),  gamma_2(I_LSSNOW),  &
               gamma_3(I_LSSNOW), gamma_4(I_LSSNOW), fl_lssnow,                          &
               mr_hydro(:,:,:,I_LSSNOW), Reff(:,:,:,I_LSSNOW))
          ! CV rain
-         call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+         call cosp_precip_mxratio(Npoints, nLevels, Ncolumns, cospstateIN%pfull,        &
               cospstateIN%at, frac_prec, 2._wp, n_ax(I_CVRAIN),  n_bx(I_CVRAIN),        &
               alpha_x(I_CVRAIN), c_x(I_CVRAIN),   d_x(I_CVRAIN),   g_x(I_CVRAIN),       &
               a_x(I_CVRAIN),   b_x(I_CVRAIN),   gamma_1(I_CVRAIN), gamma_2(I_CVRAIN),   &
               gamma_3(I_CVRAIN), gamma_4(I_CVRAIN), fl_ccrain,                          &
               mr_hydro(:,:,:,I_CVRAIN), Reff(:,:,:,I_CVRAIN))
          ! CV snow
-         call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+         call cosp_precip_mxratio(Npoints, nLevels, Ncolumns, cospstateIN%pfull,        &
               cospstateIN%at, frac_prec, 2._wp, n_ax(I_CVSNOW),  n_bx(I_CVSNOW),        &
               alpha_x(I_CVSNOW),  c_x(I_CVSNOW),   d_x(I_CVSNOW),   g_x(I_CVSNOW),      &
               a_x(I_CVSNOW),   b_x(I_CVSNOW),   gamma_1(I_CVSNOW), gamma_2(I_CVSNOW),   &
               gamma_3(I_CVSNOW), gamma_4(I_CVSNOW), fl_ccsnow,                          &
               mr_hydro(:,:,:,I_CVSNOW), Reff(:,:,:,I_CVSNOW))
          ! LS groupel.
-         call cosp_precip_mxratio(nPoints, nLevels, nColumns, cospstateIN%pfull,        &
+         call cosp_precip_mxratio(Npoints, nLevels, Ncolumns, cospstateIN%pfull,        &
               cospstateIN%at, frac_prec, 1._wp, n_ax(I_LSGRPL),  n_bx(I_LSGRPL),        &
               alpha_x(I_LSGRPL), c_x(I_LSGRPL),   d_x(I_LSGRPL),   g_x(I_LSGRPL),       &
               a_x(I_LSGRPL),   b_x(I_LSGRPL),   gamma_1(I_LSGRPL),  gamma_2(I_LSGRPL),  &
@@ -2449,7 +2381,7 @@ CONTAINS
   ! ######################################################################################
   ! SUBROUTINE calc_cosp_optics
   ! ######################################################################################
-  subroutine calc_cosp_optics(nPoints, nLevels, nColumns, nHydro, &
+  subroutine calc_cosp_optics(Npoints, nLevels, nSubcol, nHydro, &
       lidar_ice_type, sd, &
       reffIN, dem_c, dem_s, dtau_c, dtau_s, dtau_s_snow, dem_s_snow, &
       mr_hydro, Reff, Np, frac_prec, &
@@ -2461,23 +2393,23 @@ CONTAINS
    use cosp_optics,          only: cosp_simulator_optics, lidar_optics, modis_optics, &
                                    modis_optics_partition
    integer, intent(in) :: &
-      nPoints,    & ! Number of gridpoints
+      Npoints,    & ! Number of gridpoints
       nLevels,    & ! Number of vertical levels
-      nColumns,   & ! Number of subcolumns
+      nSubcol,   & ! Number of subcolumns
       nHydro,     & ! Number pf hydrometeor types
       lidar_ice_type  ! Ice type assumption used by lidar optics
-   real(wp),intent(in),dimension(nPoints,nLevels) :: &
+   real(wp),intent(in),dimension(Npoints,nLevels) :: &
       dtau_c,       & ! 0.67-micron optical depth (convective)
       dtau_s,       & ! 0.67-micron optical depth (stratiform)
       dtau_s_snow,  & ! 0.67-micron optical depth (snow)
       dem_s_snow,   & ! 11-micron emissivity (snow)
       dem_c,        & ! 11-micron emissivity (convective)
       dem_s           ! 11-micron emissivity (stratiform)
-   real(wp),intent(in),dimension(nPoints, nLevels, nHydro) :: &
+   real(wp),intent(in),dimension(Npoints, nLevels, nHydro) :: &
       reffIN        ! <description needed>
-   real(wp), dimension(nPoints, nColumns, nLevels, nHydro), intent(inout) :: &
+   real(wp), dimension(Npoints, nSubcol, nLevels, nHydro), intent(inout) :: &
       mr_hydro, Reff, Np
-   real(wp), dimension(nPoints, nColumns, nLevels), intent(in)  :: frac_prec
+   real(wp), dimension(Npoints, nSubcol, nLevels), intent(in)  :: frac_prec
 
    type(size_distribution),intent(inout) :: &
       sd
@@ -2488,7 +2420,7 @@ CONTAINS
    ! Local variables
    integer :: i, j, k
    real(wp), dimension(:, :), allocatable :: g_vol
-   real(wp),dimension(nPoints, nLevels, nHydro) :: ReffTemp
+   real(wp),dimension(Npoints, nLevels, nHydro) :: ReffTemp
    logical, parameter :: lground = .false.
    integer, parameter :: lidar_freq = 532
    real(wp),dimension(:,:,:),  allocatable  :: &
@@ -2505,9 +2437,9 @@ CONTAINS
    call t_startf("cloudsat_optics")
    if (lradar_sim) then
       ! Compute gaseous absorption (assume identical for each subcolun)
-      allocate(g_vol(nPoints,nLevels))
+      allocate(g_vol(Npoints,nLevels))
       g_vol(:,:)=0._wp
-      do i = 1, nPoints
+      do i = 1, Npoints
          do j = 1, nLevels
             if (cospIN%rcfg_cloudsat%use_gas_abs == 1 .or. &
                (cospIN%rcfg_cloudsat%use_gas_abs == 2 .and. j == 1)) then
@@ -2519,12 +2451,12 @@ CONTAINS
       end do
 
       ! Loop over all subcolumns
-      do k=1,nColumns
-         call quickbeam_optics(sd, cospIN%rcfg_cloudsat, nPoints, nLevels, R_UNDEF, &
+      do k=1,nSubcol
+         call quickbeam_optics(sd, cospIN%rcfg_cloudsat, Npoints, nLevels, R_UNDEF, &
               mr_hydro(:,k,:,1:nHydro)*1000._wp, Reff(:,k,:,1:nHydro)*1.e6_wp,      &
               Np(:,k,:,1:nHydro), cospstateIN%pfull, cospstateIN%at,                &
-              cospstateIN%qv, cospIN%z_vol_cloudsat(1:nPoints,k,:),                 &
-              cospIN%kr_vol_cloudsat(1:nPoints,k,:))
+              cospstateIN%qv, cospIN%z_vol_cloudsat(1:Npoints,k,:),                 &
+              cospIN%kr_vol_cloudsat(1:Npoints,k,:))
       enddo
    endif
    call t_stopf("cloudsat_optics")
@@ -2535,28 +2467,28 @@ CONTAINS
    call t_startf("calipso_optics")
    if (Llidar_sim) then
       ReffTemp = ReffIN
-      call lidar_optics(nPoints,nColumns,nLevels,5,lidar_ice_type,lidar_freq,lground,   &
-                        mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSCLIQ),              &
-                        mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_LSCICE),              &
-                        mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_CVCLIQ),              &
-                        mr_hydro(1:nPoints,1:nColumns,1:nLevels,I_CVCICE),              &
-                        ReffTemp(1:nPoints,1:nLevels,I_LSCLIQ),                         &
-                        ReffTemp(1:nPoints,1:nLevels,I_LSCICE),                         &
-                        ReffTemp(1:nPoints,1:nLevels,I_CVCLIQ),                         &
-                        ReffTemp(1:nPoints,1:nLevels,I_CVCICE),                         &
-                        cospstateIN%pfull(1:nPoints,1:nLevels),                         &
-                        cospstateIN%phalf(1:nPoints,1:nLevels+1),                       &
-                        cospstateIN%at(1:nPoints,1:nLevels),                            &
-                        cospIN%beta_mol_calipso(1:nPoints,1:nLevels),                   &
-                        cospIN%betatot_calipso(1:nPoints,1:nColumns,1:nLevels),         &
-                        cospIN%tau_mol_calipso(1:nPoints,1:nLevels),                    &
-                        cospIN%tautot_calipso(1:nPoints,1:nColumns,1:nLevels),          &
-                        cospIN%tautot_S_liq(1:nPoints,1:nColumns),                      &
-                        cospIN%tautot_S_ice(1:nPoints,1:nColumns),                      &
-                        cospIN%betatot_ice_calipso(1:nPoints,1:nColumns,1:nLevels),     &
-                        cospIN%betatot_liq_calipso(1:nPoints,1:nColumns,1:nLevels),     &
-                        cospIN%tautot_ice_calipso(1:nPoints,1:nColumns,1:nLevels),      &
-                        cospIN%tautot_liq_calipso(1:nPoints,1:nColumns,1:nLevels))
+      call lidar_optics(Npoints,nSubcol,nLevels,5,lidar_ice_type,lidar_freq,lground,   &
+                        mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_LSCLIQ),              &
+                        mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_LSCICE),              &
+                        mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_CVCLIQ),              &
+                        mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_CVCICE),              &
+                        ReffTemp(1:Npoints,1:nLevels,I_LSCLIQ),                         &
+                        ReffTemp(1:Npoints,1:nLevels,I_LSCICE),                         &
+                        ReffTemp(1:Npoints,1:nLevels,I_CVCLIQ),                         &
+                        ReffTemp(1:Npoints,1:nLevels,I_CVCICE),                         &
+                        cospstateIN%pfull(1:Npoints,1:nLevels),                         &
+                        cospstateIN%phalf(1:Npoints,1:nLevels+1),                       &
+                        cospstateIN%at(1:Npoints,1:nLevels),                            &
+                        cospIN%beta_mol_calipso(1:Npoints,1:nLevels),                   &
+                        cospIN%betatot_calipso(1:Npoints,1:nSubcol,1:nLevels),         &
+                        cospIN%tau_mol_calipso(1:Npoints,1:nLevels),                    &
+                        cospIN%tautot_calipso(1:Npoints,1:nSubcol,1:nLevels),          &
+                        cospIN%tautot_S_liq(1:Npoints,1:nSubcol),                      &
+                        cospIN%tautot_S_ice(1:Npoints,1:nSubcol),                      &
+                        cospIN%betatot_ice_calipso(1:Npoints,1:nSubcol,1:nLevels),     &
+                        cospIN%betatot_liq_calipso(1:Npoints,1:nSubcol,1:nLevels),     &
+                        cospIN%tautot_ice_calipso(1:Npoints,1:nSubcol,1:nLevels),      &
+                        cospIN%tautot_liq_calipso(1:Npoints,1:nSubcol,1:nLevels))
    endif
    call t_stopf("calipso_optics")
 
@@ -2570,10 +2502,10 @@ CONTAINS
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    call t_startf("11micron_emissivity")
    if (Lisccp_sim) then
-      call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,dem_c,dem_s,  &
+      call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,dem_c,dem_s,  &
            cospIN%emiss_11)
       ! Add in contributions from radiative snow
-      do j=1,nColumns
+      do j=1,nSubcol
          where(frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3)
             cospIN%emiss_11(:,j,:) = 1._wp - (1- cospIN%emiss_11(:,j,:))*(1-dem_s_snow)
          endwhere
@@ -2586,11 +2518,11 @@ CONTAINS
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    call t_startf("067tau")
    if (Lisccp_sim .or. Lmisr_sim .or. Lmodis_sim) then
-      call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,dtau_c,dtau_s,&
+      call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,dtau_c,dtau_s,&
            cospIN%tau_067)
 
       ! Add in contributions from snow
-      do j=1,nColumns
+      do j=1,nSubcol
          where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
               Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
             cospIN%tau_067(:,j,:)  = cospIN%tau_067(:,j,:)+dtau_s_snow
@@ -2604,32 +2536,32 @@ CONTAINS
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    call t_startf("modis_optics")
    if (lmodis_sim) then
-      allocate(MODIS_cloudWater(nPoints,nColumns,nLevels),                              &
-               MODIS_cloudIce(nPoints,nColumns,nLevels),                                &
-               MODIS_cloudSnow(nPoints,nColumns,nLevels),                               &
-               MODIS_waterSize(nPoints,nColumns,nLevels),                               &
-               MODIS_iceSize(nPoints,nColumns,nLevels),                                 &
-               MODIS_snowSize(nPoints,nColumns,nLevels),                                &
-               MODIS_opticalThicknessLiq(nPoints,nColumns,nLevels),                     &
-               MODIS_opticalThicknessIce(nPoints,nColumns,nLevels),                     &
-               MODIS_opticalThicknessSnow(nPoints,nColumns,nLevels))
+      allocate(MODIS_cloudWater(Npoints,nSubcol,nLevels),                              &
+               MODIS_cloudIce(Npoints,nSubcol,nLevels),                                &
+               MODIS_cloudSnow(Npoints,nSubcol,nLevels),                               &
+               MODIS_waterSize(Npoints,nSubcol,nLevels),                               &
+               MODIS_iceSize(Npoints,nSubcol,nLevels),                                 &
+               MODIS_snowSize(Npoints,nSubcol,nLevels),                                &
+               MODIS_opticalThicknessLiq(Npoints,nSubcol,nLevels),                     &
+               MODIS_opticalThicknessIce(Npoints,nSubcol,nLevels),                     &
+               MODIS_opticalThicknessSnow(Npoints,nSubcol,nLevels))
 
       ! Cloud water
-      call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
+      call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,              &
            mr_hydro(:,:,:,I_CVCLIQ),mr_hydro(:,:,:,I_LSCLIQ),MODIS_cloudWater)
       ! Cloud ice
-      call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
+      call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,              &
            mr_hydro(:,:,:,I_CVCICE),mr_hydro(:,:,:,I_LSCICE),MODIS_cloudIce)
       ! Cloud water droplet size
-      call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
+      call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,              &
            Reff(:,:,:,I_CVCLIQ),Reff(:,:,:,I_LSCLIQ),MODIS_waterSize)
       ! Cloud ice crystal size
-      call cosp_simulator_optics(nPoints,nColumns,nLevels,cospIN%frac_out,              &
+      call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,              &
            Reff(:,:,:,I_CVCICE),Reff(:,:,:,I_LSCICE),MODIS_iceSize)
 
       ! Cloud snow and size
       MODIS_snowSize(:,:,:)  = Reff(:,:,:,I_LSSNOW)
-      do j=1,nColumns
+      do j=1,nSubcol
          where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
               Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
             MODIS_cloudSnow(:,j,:) = mr_hydro(:,j,:,I_LSSNOW)
@@ -2639,11 +2571,11 @@ CONTAINS
             MODIS_cloudSnow(:,j,:) = 0._wp
          endwhere
       enddo
-      call modis_optics_partition(nPoints, nLevels, nColumns, MODIS_cloudWater,     &
+      call modis_optics_partition(Npoints, nLevels, nSubcol, MODIS_cloudWater,     &
            MODIS_cloudIce, MODIS_waterSize, MODIS_iceSize,         &
            cospIN%tau_067, MODIS_opticalThicknessLiq,               &
            MODIS_opticalThicknessIce)
-      call modis_optics(nPoints, nLevels, nColumns, MODIS_opticalThicknessLiq,      &
+      call modis_optics(Npoints, nLevels, nSubcol, MODIS_opticalThicknessLiq,      &
            MODIS_waterSize*1.0e6_wp, MODIS_opticalThicknessIce,                     &
            MODIS_iceSize*1.0e6_wp, cospIN%fracLiq, cospIN%asym, cospIN%ss_alb)
    endif ! MODIS simulator optics
@@ -2654,12 +2586,12 @@ CONTAINS
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ! SUBROUTINE construct_cospIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  subroutine construct_cospIN(npoints,ncolumns,nlevels,y)
+  subroutine construct_cospIN(Npoints,Ncolumns,Nlevels,y)
     ! Inputs
     integer,intent(in) :: &
-         npoints,  & ! Number of horizontal gridpoints
-         ncolumns, & ! Number of subcolumns
-         nlevels     ! Number of vertical levels
+         Npoints,  & ! Number of horizontal gridpoints
+         Ncolumns, & ! Number of subcolumns
+         Nlevels     ! Number of vertical levels
     ! Outputs
     type(cosp_optical_inputs),intent(out) :: y
 
@@ -2669,49 +2601,49 @@ CONTAINS
     y%Nlevels  = Nlevels
     y%Npart    = 4
     y%Nrefl    = PARASOL_NREFL
-    allocate(y%frac_out(npoints,       ncolumns,nlevels))
+    allocate(y%frac_out(Npoints,       Ncolumns,Nlevels))
 
     if (Lmodis_sim .or. Lmisr_sim .or. Lisccp_sim) then
-       allocate(y%tau_067(npoints,        ncolumns,nlevels),&
-                y%emiss_11(npoints,       ncolumns,nlevels))
+       allocate(y%tau_067(Npoints,        Ncolumns,Nlevels),&
+                y%emiss_11(Npoints,       Ncolumns,Nlevels))
     endif
     if (Llidar_sim) then
-       allocate(y%betatot_calipso(npoints,        ncolumns,nlevels),&
-                y%betatot_ice_calipso(npoints,    ncolumns,nlevels),&
-                y%betatot_liq_calipso(npoints,    ncolumns,nlevels),&
-                y%tautot_calipso(npoints,         ncolumns,nlevels),&
-                y%tautot_ice_calipso(npoints,     ncolumns,nlevels),&
-                y%tautot_liq_calipso(npoints,     ncolumns,nlevels),&
-                y%beta_mol_calipso(npoints,                nlevels),&
-                y%tau_mol_calipso(npoints,                 nlevels),&
-                y%tautot_S_ice(npoints,   ncolumns        ),&
-                y%tautot_S_liq(npoints,   ncolumns        ))
+       allocate(y%betatot_calipso(Npoints,        Ncolumns,Nlevels),&
+                y%betatot_ice_calipso(Npoints,    Ncolumns,Nlevels),&
+                y%betatot_liq_calipso(Npoints,    Ncolumns,Nlevels),&
+                y%tautot_calipso(Npoints,         Ncolumns,Nlevels),&
+                y%tautot_ice_calipso(Npoints,     Ncolumns,Nlevels),&
+                y%tautot_liq_calipso(Npoints,     Ncolumns,Nlevels),&
+                y%beta_mol_calipso(Npoints,                Nlevels),&
+                y%tau_mol_calipso(Npoints,                 Nlevels),&
+                y%tautot_S_ice(Npoints,   Ncolumns        ),&
+                y%tautot_S_liq(Npoints,   Ncolumns        ))
     endif
 
     if (Lgrlidar_sim) then
-       allocate(y%beta_mol_grLidar532(npoints,          nlevels),&
-                y%betatot_grLidar532(npoints,  ncolumns,nlevels),&
-                y%tau_mol_grLidar532(npoints,           nlevels),&
-                y%tautot_grLidar532(npoints,   ncolumns,nlevels))
+       allocate(y%beta_mol_grLidar532(Npoints,          Nlevels),&
+                y%betatot_grLidar532(Npoints,  Ncolumns,Nlevels),&
+                y%tau_mol_grLidar532(Npoints,           Nlevels),&
+                y%tautot_grLidar532(Npoints,   Ncolumns,Nlevels))
     endif
 
     if (Latlid_sim) then
-       allocate(y%beta_mol_atlid(npoints,             nlevels),&
-                y%betatot_atlid(npoints,     ncolumns,nlevels),&
-                y%tau_mol_atlid(npoints,              nlevels),&
-                y%tautot_atlid(npoints,      ncolumns,nlevels))
+       allocate(y%beta_mol_atlid(Npoints,             Nlevels),&
+                y%betatot_atlid(Npoints,     Ncolumns,Nlevels),&
+                y%tau_mol_atlid(Npoints,              Nlevels),&
+                y%tautot_atlid(Npoints,      Ncolumns,Nlevels))
     endif
 
     if (Lradar_sim) then
-       allocate(y%z_vol_cloudsat(npoints,  ncolumns,nlevels),&
-                y%kr_vol_cloudsat(npoints, ncolumns,nlevels),&
-                y%g_vol_cloudsat(npoints,  ncolumns,nlevels),&
-                y%fracPrecipIce(npoints,   ncolumns))
+       allocate(y%z_vol_cloudsat(Npoints,  Ncolumns,Nlevels),&
+                y%kr_vol_cloudsat(Npoints, Ncolumns,Nlevels),&
+                y%g_vol_cloudsat(Npoints,  Ncolumns,Nlevels),&
+                y%fracPrecipIce(Npoints,   Ncolumns))
     endif
     if (Lmodis_sim) then
-       allocate(y%fracLiq(npoints,        ncolumns,nlevels),&
-                y%asym(npoints,           ncolumns,nlevels),&
-                y%ss_alb(npoints,         ncolumns,nlevels))
+       allocate(y%fracLiq(Npoints,        Ncolumns,Nlevels),&
+                y%asym(Npoints,           Ncolumns,Nlevels),&
+                y%ss_alb(Npoints,         Ncolumns,Nlevels))
     endif
 
   end subroutine construct_cospIN
@@ -2719,22 +2651,22 @@ CONTAINS
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ! SUBROUTINE construct_cospstateIN
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  subroutine construct_cospstateIN(npoints,nlevels,nchan,y)
+  subroutine construct_cospstateIN(Npoints,Nlevels,nchan,y)
     ! Inputs
     integer,intent(in) :: &
-         npoints, & ! Number of horizontal gridpoints
-         nlevels, & ! Number of vertical levels
+         Npoints, & ! Number of horizontal gridpoints
+         Nlevels, & ! Number of vertical levels
          nchan      ! Number of channels
     ! Outputs
     type(cosp_column_inputs),intent(out) :: y
 
-    allocate(y%sunlit(npoints),y%skt(npoints),y%land(npoints),y%at(npoints,nlevels),     &
-             y%pfull(npoints,nlevels),y%phalf(npoints,nlevels+1),y%qv(npoints,nlevels),  &
-             y%o3(npoints,nlevels),y%hgt_matrix(npoints,nlevels),y%u_sfc(npoints),       &
-             y%v_sfc(npoints),y%lat(npoints),y%lon(nPoints),y%emis_sfc(nchan),           &
-             y%cloudIce(nPoints,nLevels),y%cloudLiq(nPoints,nLevels),y%surfelev(npoints),&
-             y%fl_snow(nPoints,nLevels),y%fl_rain(nPoints,nLevels),y%seaice(npoints),    &
-             y%tca(nPoints,nLevels),y%hgt_matrix_half(npoints,nlevels+1))
+    allocate(y%sunlit(Npoints),y%skt(Npoints),y%land(Npoints),y%at(Npoints,Nlevels),     &
+             y%pfull(Npoints,Nlevels),y%phalf(Npoints,Nlevels+1),y%qv(Npoints,Nlevels),  &
+             y%o3(Npoints,Nlevels),y%hgt_matrix(Npoints,Nlevels),y%u_sfc(Npoints),       &
+             y%v_sfc(Npoints),y%lat(Npoints),y%lon(Npoints),y%emis_sfc(nchan),           &
+             y%cloudIce(Npoints,Nlevels),y%cloudLiq(Npoints,Nlevels),y%surfelev(Npoints),&
+             y%fl_snow(Npoints,Nlevels),y%fl_rain(Npoints,Nlevels),y%seaice(Npoints),    &
+             y%tca(Npoints,Nlevels),y%hgt_matrix_half(Npoints,Nlevels+1))
 
   end subroutine construct_cospstateIN
   ! ######################################################################################
@@ -2798,9 +2730,9 @@ CONTAINS
        allocate(x%modis_Cloud_Top_Pressure_Total_Mean(Npoints))
        allocate(x%modis_Liquid_Water_Path_Mean(Npoints))
        allocate(x%modis_Ice_Water_Path_Mean(Npoints))
-       allocate(x%modis_Optical_Thickness_vs_Cloud_Top_Pressure(nPoints,numModisTauBins,numMODISPresBins))
-       allocate(x%modis_Optical_thickness_vs_ReffLIQ(nPoints,numMODISTauBins,numMODISReffLiqBins))
-       allocate(x%modis_Optical_Thickness_vs_ReffICE(nPoints,numMODISTauBins,numMODISReffIceBins))
+       allocate(x%modis_Optical_Thickness_vs_Cloud_Top_Pressure(Npoints,numModisTauBins,numMODISPresBins))
+       allocate(x%modis_Optical_thickness_vs_ReffLIQ(Npoints,numMODISTauBins,numMODISReffLiqBins))
+       allocate(x%modis_Optical_Thickness_vs_ReffICE(Npoints,numMODISTauBins,numMODISReffIceBins))
     endif
 
     ! LIDAR simulator
