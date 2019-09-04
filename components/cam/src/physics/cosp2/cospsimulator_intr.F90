@@ -1212,7 +1212,6 @@ CONTAINS
     real(r8) :: rain_ls_interp(pcols,pver)               ! midpoint ls rain flux (kg m^-2 s^-1)
     real(r8) :: snow_ls_interp(pcols,pver)               ! midpoint ls snow flux
     real(r8) :: reff_cosp(pcols,pver,nhydro)             ! effective radius for cosp input
-    real(r8) :: dem_s_snow(pcols,pver)                   ! dem_s_snow - Grid-box mean Optical depth of stratiform snow at 10.5 um
     
     ! ######################################################################################
     ! Simulator output info
@@ -1260,9 +1259,6 @@ CONTAINS
     ! CAM pointers to get variables from radiation interface (get from rad_cnst_get_gas)
     real(r8), pointer, dimension(:,:) :: q               ! specific humidity (kg/kg)
     real(r8), pointer, dimension(:,:) :: o3              ! Mass mixing ratio 03
-    real(r8), pointer, dimension(:,:) :: co2             ! Mass mixing ratio C02
-    real(r8), pointer, dimension(:,:) :: ch4             ! Mass mixing ratio CH4
-    real(r8), pointer, dimension(:,:) :: n2o             ! Mass mixing ratio N20
     
     ! CAM pointers to get variables from the physics buffer
     real(r8), pointer, dimension(:,:) :: cld             ! cloud fraction, tca - total_cloud_amount (0-1)
@@ -1550,9 +1546,6 @@ CONTAINS
     ! Note: these all have dims (pcol,pver) but the values don't change much for the well-mixed gases.
     call rad_cnst_get_gas(0,'H2O', state, pbuf,  q)                     
     call rad_cnst_get_gas(0,'O3',  state, pbuf,  o3)
-    call rad_cnst_get_gas(0,'CH4', state, pbuf,  ch4)
-    call rad_cnst_get_gas(0,'CO2', state, pbuf,  co2)
-    call rad_cnst_get_gas(0,'N2O', state, pbuf,  n2o)
     
     ! 4) get variables from physics buffer
     call pbuf_get_field(pbuf, cld_idx,    cld   )
@@ -1653,11 +1646,9 @@ CONTAINS
        end do
     end do
     
-    !! Previously, I had set use_reff=.false.
-    !! use_reff = .false.  !! if you use this,all sizes use DEFAULT_LIDAR_REFF = 30.0e-6 meters
-    
-    !! The specification of reff_cosp now follows e-mail discussion with Yuying in January 2011. (see above)
-    !! All of the values that I have assembled in the code are in microns... convert to meters here since that is what COSP wants.
+    ! If use_reff = .false., all sizes use DEFAULT_LIDAR_REFF = 30.0e-6 meters
+    ! The specification of reff_cosp now follows e-mail discussion with Yuying in January 2011. (see above)
+    ! All of the values in the code are in microns...convert to meters here since that is what COSP wants.
     use_reff = .true.
     reff_cosp(1:ncol,1:pver,1) = rel(1:ncol,1:pver)*1.e-6_r8          !! LSCLIQ  (same as effc and effliq in stratiform.F90)
     reff_cosp(1:ncol,1:pver,2) = rei(1:ncol,1:pver)*1.e-6_r8          !! LSCICE  (same as effi and effice in stratiform.F90)
@@ -1669,33 +1660,6 @@ CONTAINS
     reff_cosp(1:ncol,1:pver,8) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  !! CVSNOW (same as stratiform per Andrew)
     reff_cosp(1:ncol,1:pver,9) = 0._r8                                !! LSGRPL (using radar default reff)
  
-    !! Need code below for when effective radius is fillvalue, and you multiply it by 1.e-6 to convert units, and value becomes no longer fillvalue.  
-    !! Here, we set it back to zero. 
-    where (rel(1:ncol,1:pver) .eq. R_UNDEF)
-       reff_cosp(1:ncol,1:pver,1) = 0._r8
-    end where
-    where (rei(1:ncol,1:pver) .eq. R_UNDEF)
-       reff_cosp(1:ncol,1:pver,2) = 0._r8
-    end where
-    where (ls_reffrain(1:ncol,1:pver) .eq. R_UNDEF)
-       reff_cosp(1:ncol,1:pver,3) = 0._r8
-    end where
-    where (ls_reffsnow(1:ncol,1:pver) .eq. R_UNDEF)
-       reff_cosp(1:ncol,1:pver,4) = 0._r8
-    end where
-    where (cv_reffliq(1:ncol,1:pver) .eq. R_UNDEF)
-       reff_cosp(1:ncol,1:pver,5) = 0._r8
-    end where
-    where (cv_reffice(1:ncol,1:pver) .eq. R_UNDEF)
-       reff_cosp(1:ncol,1:pver,6) = 0._r8
-    end where
-    where (ls_reffrain(1:ncol,1:pver) .eq. R_UNDEF)
-       reff_cosp(1:ncol,1:pver,7) = 0._r8
-    end where
-    where (ls_reffsnow(1:ncol,1:pver) .eq. R_UNDEF)
-       reff_cosp(1:ncol,1:pver,8) = 0._r8
-    end where
-    
     !! Make sure interpolated values are not less than 0 - COSP was complaining and resetting small negative values to zero.
     !! ----- WARNING: COSP_CHECK_INPUT_2D: minimum value of rain_ls set to:      0.000000000000000 
     !! So I set negative values to zero here... 
@@ -1740,13 +1704,14 @@ CONTAINS
  
     ! Convert from coordinate variables radians to degrees_north and degrees_east
     ! Note that -90 < lat < 90; 0 < lon < 360
-    cospstateIN%lat                            = state%lat(1:ncol) * 180._r8 / pi
-    cospstateIN%lon                            = state%lon(1:ncol) * 180._r8 / pi
-    cospstateIN%at                             = state%t(1:ncol,1:pver) 
-    cospstateIN%qv                             = q(1:ncol,1:pver)
-    cospstateIN%o3                             = o3(1:ncol,1:pver)  
+    cospstateIN%lat = state%lat(1:ncol) * 180._r8 / pi
+    cospstateIN%lon = state%lon(1:ncol) * 180._r8 / pi
+    cospstateIN%at  = state%t(1:ncol,1:pver) 
+    cospstateIN%qv  = q(1:ncol,1:pver)
+    cospstateIN%o3  = o3(1:ncol,1:pver)  
+    cospstateIN%skt = cam_in%ts(1:ncol)
 
-    ! Set sunlit flag
+    ! Set sunlit flag (for cosp_runall, artificially set sunlit to 1)
     if (cosp_runall) then
        cospstateIN%sunlit = 1
     else
@@ -1758,8 +1723,6 @@ CONTAINS
           endif
        enddo
     end if
-
-    cospstateIN%skt                            = cam_in%ts(1:ncol)
 
     ! Set land mask
     do i = 1,ncol
@@ -1774,6 +1737,9 @@ CONTAINS
     cospstateIN%phalf(1:ncol,2:pver+1)         = state%pint(1:ncol,2:pver+1)
     ! Add surface height (surface geopotential/gravity) to convert CAM heights based on
     ! geopotential above surface into height above sea level
+    ! TODO: This looks like a bug to me; hgt_matrix_half USED to be size nlev,
+    ! but now is nlev+1, so should be set appropropriately (here index k is
+    ! given index k+1 from state%zi, which is incorrect).
     do k = 1,pver
        cospstateIN%hgt_matrix(1:ncol,k)      = state%zm(1:ncol,k  ) + state%phis(1:ncol) / gravit
        cospstateIN%hgt_matrix_half(1:ncol,k) = state%zi(1:ncol,k+1) + state%phis(1:ncol) / gravit 
@@ -1824,13 +1790,13 @@ CONTAINS
          mr_hydro, Reff, Np, frac_prec, &
          cospstateIN, cospIN)
 
-   ! done with these now ...
-   deallocate(mr_hydro)
-   deallocate(Reff)
-   deallocate(Np)
-   deallocate(frac_prec)
+    ! done with these now ...
+    deallocate(mr_hydro)
+    deallocate(Reff)
+    deallocate(Np)
+    deallocate(frac_prec)
 
-   call t_stopf("subsample_and_optics")
+    call t_stopf("subsample_and_optics")
     
     ! ######################################################################################
     ! Call COSP
