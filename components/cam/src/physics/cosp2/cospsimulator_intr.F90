@@ -143,7 +143,6 @@ module cospsimulator_intr
   logical :: cosp_lmodis_sim       = .false. ! CAM namelist variable default
   logical :: cosp_histfile_aux     = .false. ! CAM namelist variable default
   logical :: cosp_lfrac_out        = .false. ! CAM namelist variable default
-  logical :: cosp_runall           = .false. ! flag to run all of the cosp simulator package
   integer :: cosp_ncolumns         = 50      ! CAM namelist variable default
   integer :: cosp_histfile_num     =1        ! CAM namelist variable default, not in COSP namelist
   integer :: cosp_histfile_aux_num =-1       ! CAM namelist variable default, not in COSP namelist
@@ -391,7 +390,7 @@ CONTAINS
     namelist /cospsimulator_nl/ docosp, cosp_active, cosp_amwg, cosp_atrainorbitdata, cosp_cfmip_3hr, cosp_cfmip_da, &
          cosp_cfmip_mon, cosp_cfmip_off, cosp_histfile_num, cosp_histfile_aux, cosp_histfile_aux_num, cosp_isccp, cosp_lfrac_out, &
          cosp_lite, cosp_lradar_sim, cosp_llidar_sim, cosp_lisccp_sim,  cosp_lmisr_sim, cosp_lmodis_sim, cosp_ncolumns, &
-         cosp_nradsteps, cosp_passive, cosp_sample_atrain, cosp_runall
+         cosp_nradsteps, cosp_passive, cosp_sample_atrain
 
     !! read in the namelist
     if (masterproc) then
@@ -412,13 +411,12 @@ CONTAINS
 #ifdef SPMD
     ! Broadcast namelist variables
     call mpibcast(docosp,               1,  mpilog, 0, mpicom)
-    !   call mpibcast(cosp_atrainorbitdata, len(cosp_atrainorbitdata), mpichar, 0, mpicom)
+    !call mpibcast(cosp_atrainorbitdata, len(cosp_atrainorbitdata), mpichar, 0, mpicom)
     call mpibcast(cosp_amwg,            1,  mpilog, 0, mpicom)
     call mpibcast(cosp_lite,            1,  mpilog, 0, mpicom)
     call mpibcast(cosp_passive,         1,  mpilog, 0, mpicom)
     call mpibcast(cosp_active,          1,  mpilog, 0, mpicom)
     call mpibcast(cosp_isccp,           1,  mpilog, 0, mpicom)
-    call mpibcast(cosp_runall,          1,  mpilog, 0, mpicom)
     call mpibcast(cosp_cfmip_3hr,       1,  mpilog, 0, mpicom)
     call mpibcast(cosp_cfmip_da,        1,  mpilog, 0, mpicom)
     call mpibcast(cosp_cfmip_mon,       1,  mpilog, 0, mpicom)
@@ -430,7 +428,7 @@ CONTAINS
     call mpibcast(cosp_lmisr_sim,       1,  mpilog, 0, mpicom)
     call mpibcast(cosp_lmodis_sim,      1,  mpilog, 0, mpicom)
     call mpibcast(cosp_ncolumns,        1,  mpiint, 0, mpicom)
-    !   call mpibcast(cosp_sample_atrain,   1,  mpilog, 0, mpicom)
+    !call mpibcast(cosp_sample_atrain,   1,  mpilog, 0, mpicom)
     call mpibcast(cosp_histfile_num,    1,  mpiint, 0, mpicom)
     call mpibcast(cosp_histfile_aux_num,1,  mpiint, 0, mpicom)
     call mpibcast(cosp_histfile_aux,    1,  mpilog, 0, mpicom)
@@ -519,17 +517,7 @@ CONTAINS
        cosp_nradsteps = 3
     end if
 
-    if (cosp_runall) then
-       lradar_sim = .true.
-       llidar_sim = .true.
-       lparasol_sim = .true.
-       lisccp_sim = .true.
-       lmisr_sim = .true.
-       lmodis_sim = .true.
-       lfrac_out = .true.
-    end if
-
-    !! if no simulators are turned on at all and docosp is, set cosp_amwg = .true.
+    ! If no simulators are turned on at all and docosp is, set cosp_amwg = .true.
     if((docosp) .and. (.not.lradar_sim) .and. (.not.llidar_sim) .and. (.not.lisccp_sim) .and. &
          (.not.lmisr_sim) .and. (.not.lmodis_sim)) then
        cosp_amwg = .true.
@@ -1663,18 +1651,14 @@ CONTAINS
     cospstateIN%o3  = o3(1:ncol,1:pver)
     cospstateIN%skt = cam_in%ts(1:ncol)
 
-    ! Set sunlit flag (for cosp_runall, artificially set sunlit to 1)
-    if (cosp_runall) then
-       cospstateIN%sunlit = 1
-    else
-       do i=1,ncol
-          if ((coszrs(i) > 0.0_r8) .and. (run_cosp(i,lchnk))) then
-             cospstateIN%sunlit(i) = 1
-          else
-             cospstateIN%sunlit(i) = 0
-          endif
-       enddo
-    end if
+    ! Set sunlit flag
+    do i=1,ncol
+       if ((coszrs(i) > 0.0_r8) .and. (run_cosp(i,lchnk))) then
+          cospstateIN%sunlit(i) = 1
+       else
+          cospstateIN%sunlit(i) = 0
+       endif
+    enddo
 
     ! Set land mask
     do i = 1,ncol
@@ -1786,48 +1770,45 @@ CONTAINS
     call t_stopf("cosp_histfile_aux")
 
     ! ######################################################################################
-    ! Set dark-scenes to fill value. Only done for passive simulators and when cosp_runall=F
+    ! Set dark-scenes to fill value. Only done for passive simulators
     ! TODO: we should NOT have to do this, this is supposed to be done
     ! internally in COSP based on the sunlit flag that is passed, but we need to
     ! handle some cases explicitly here because of existing bugs in COSP.
     ! ######################################################################################
     call t_startf("sunlit_passive")
-    if (.not. cosp_runall) then
+    ! ISCCP simulator
+    ! TODO: these should not be set undefined for night columns (brightness
+    ! temperature is valid at night), but we set these to fillvalues for now
+    ! to keep results BFB
+    if (lisccp_sim) then
+       where(cospstateIN%sunlit(1:ncol) .eq. 0)
+          cospOUT%isccp_meantb(1:ncol)        = R_UNDEF
+          cospOUT%isccp_meantbclr(1:ncol)     = R_UNDEF
+       end where
+    endif
 
-       ! ISCCP simulator
-       ! TODO: these should not be set undefined for night columns (brightness
-       ! temperature is valid at night), but we set these to fillvalues for now
-       ! to keep results BFB
-       if (lisccp_sim) then
-          where(cospstateIN%sunlit(1:ncol) .eq. 0)
-             cospOUT%isccp_meantb(1:ncol)        = R_UNDEF
-             cospOUT%isccp_meantbclr(1:ncol)     = R_UNDEF
-          end where
-       endif
+    ! MISR simulator
+    ! TODO: the MISR simulator is supposed to handle this for us, but there
+    ! is a bug in COSP that leaves these set for night columns, so we need to
+    ! explicitly handle sunlit vs not sunlit here for now
+    if (lmisr_sim) then
+       do i = 1,ncol
+         if (cospstateIN%sunlit(i) == 0) then
+            cospOUT%misr_fq(i,:,:) = R_UNDEF
+         end if
+       end do
+    end if
 
-       ! MISR simulator
-       ! TODO: the MISR simulator is supposed to handle this for us, but there
-       ! is a bug in COSP that leaves these set for night columns, so we need to
-       ! explicitly handle sunlit vs not sunlit here for now
-       if (lmisr_sim) then
-          do i = 1,ncol
-            if (cospstateIN%sunlit(i) == 0) then
-               cospOUT%misr_fq(i,:,:) = R_UNDEF
-            end if
-          end do
-       end if
-
-       ! MODIS simulator
-       ! TODO: again, this is to workaround a bug in COSP, where these two
-       ! variables are not masked properly for night columns
-       if (lmodis_sim) then
-          do i = 1,ncol
-             if (cospstateIN%sunlit(i) == 0) then
-                cospOUT%modis_Optical_Thickness_vs_ReffLiq(i,:,:) = R_UNDEF
-                cospOUT%modis_Optical_Thickness_vs_ReffIce(i,:,:) = R_UNDEF
-             end if
-          end do
-       end if
+    ! MODIS simulator
+    ! TODO: again, this is to workaround a bug in COSP, where these two
+    ! variables are not masked properly for night columns
+    if (lmodis_sim) then
+       do i = 1,ncol
+          if (cospstateIN%sunlit(i) == 0) then
+             cospOUT%modis_Optical_Thickness_vs_ReffLiq(i,:,:) = R_UNDEF
+             cospOUT%modis_Optical_Thickness_vs_ReffIce(i,:,:) = R_UNDEF
+          end if
+       end do
     end if
     call t_stopf("sunlit_passive")
 

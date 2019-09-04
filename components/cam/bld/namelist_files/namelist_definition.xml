@@ -1923,15 +1923,6 @@ This default logical is set in cospsimulator_intr.F90.
 1236: Default: FALSE
 </entry>
 
-<entry id="cosp_runall" type="logical"  category="cosp"
-       group="cospsimulator_nl" valid_values="">
-If true, run all simulators using the default values cosp_ncolumns=50 and
-cosp_nradsteps=1.  This option is mainly intended for testing, but it also
-must be used in order to output the input fields needed to run the
-simulator in an offline mode (via setting cosp_histfile_aux=.true.).
-Default: FALSE
-</entry>
-
 <entry id="cosp_lradar_sim" type="logical"  category="cosp"
        group="cospsimulator_nl" valid_values="">
 If true, COSP radar simulator will be run and all non-subcolumn output 
