@@ -1173,8 +1173,8 @@ CONTAINS
     real(r8), intent(in) :: emis(pcols,pver)       ! cloud longwave emissivity
     real(r8), intent(in) :: coszrs(pcols)          ! cosine solar zenith angle (to tell if day or night)
     real(r8), intent(in) :: cld_swtau(pcols,pver)  ! RRTM cld_swtau_in, read in using this variable
-    real(r8), intent(in) :: snow_tau(pcols,pver)   ! RRTM grid-box mean SW snow optical depth, used for CAM5 simulations 
-    real(r8), intent(in) :: snow_emis(pcols,pver)  ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations 
+    real(r8), intent(inout) :: snow_tau(pcols,pver)   ! RRTM grid-box mean SW snow optical depth, used for CAM5 simulations 
+    real(r8), intent(inout) :: snow_emis(pcols,pver)  ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations 
 
 #ifdef USE_COSP
     ! ######################################################################################
@@ -1230,11 +1230,6 @@ CONTAINS
     real(r8) :: rain_ls_interp(pcols,pver)               ! midpoint ls rain flux (kg m^-2 s^-1)
     real(r8) :: snow_ls_interp(pcols,pver)               ! midpoint ls snow flux
     real(r8) :: reff_cosp(pcols,pver,nhydro)             ! effective radius for cosp input
-    real(r8) :: dtau_s(pcols,pver)                       ! dtau_s - Optical depth of stratiform cloud at 0.67 um
-    real(r8) :: dtau_c(pcols,pver)                       ! dtau_c - Optical depth of convective cloud at 0.67 um
-    real(r8) :: dtau_s_snow(pcols,pver)                  ! dtau_s_snow - Grid-box mean Optical depth of stratiform snow at 0.67 um
-    real(r8) :: dem_s(pcols,pver)                        ! dem_s - Longwave emis of stratiform cloud at 10.5 um
-    real(r8) :: dem_c(pcols,pver)                        ! dem_c - Longwave emis of convective cloud at 10.5 um
     real(r8) :: dem_s_snow(pcols,pver)                   ! dem_s_snow - Grid-box mean Optical depth of stratiform snow at 10.5 um
     
     ! ######################################################################################
@@ -1744,28 +1739,6 @@ CONTAINS
        end do
     end do
     
-    ! initialize cosp inputs
-    dtau_s(1:ncol,1:pver)      = 0._r8
-    dtau_c(1:ncol,1:pver)      = 0._r8
-    dtau_s_snow(1:ncol,1:pver) = 0._r8
-    dem_s(1:ncol,1:pver)       = 0._r8 
-    dem_c(1:ncol,1:pver)       = 0._r8
-    dem_s_snow(1:ncol,1:pver)  = 0._r8 
-    
-    ! assign values
-    ! NOTES:
-    ! 1) CAM4 assumes same radiative properties for stratiform and convective clouds, 
-    ! (see ISCCP_CLOUD_TYPES subroutine call in cloudsimulator.F90)
-    ! I presume CAM5 is doing the same thing based on the ISCCP simulator calls within RRTM's radiation.F90
-    ! 2) COSP wants in-cloud values.  CAM5 values cld_swtau are in-cloud.
-    ! 3) snow_tau and snow_emis are passed without modification to COSP
-    dtau_s(1:ncol,1:pver)      = cld_swtau(1:ncol,1:pver)        ! mean 0.67 micron optical depth of stratiform (in-cloud)
-    dtau_c(1:ncol,1:pver)      = cld_swtau(1:ncol,1:pver)        ! mean 0.67 micron optical depth of convective (in-cloud)
-    dem_s(1:ncol,1:pver)       = emis(1:ncol,1:pver)             ! 10.5 micron longwave emissivity of stratiform (in-cloud)
-    dem_c(1:ncol,1:pver)       = emis(1:ncol,1:pver)             ! 10.5 micron longwave emissivity of convective (in-cloud)
-    dem_s_snow(1:ncol,1:pver)  = snow_emis(1:ncol,1:pver)     ! 10.5 micron grid-box mean optical depth of stratiform snow
-    dtau_s_snow(1:ncol,1:pver) = snow_tau(1:ncol,1:pver)      ! 0.67 micron grid-box mean optical depth of stratiform snow
-
     call t_stopf("init_and_stuff")
 
     ! ######################################################################################
@@ -1861,16 +1834,16 @@ CONTAINS
          snow_cv_interp(1:ncol, 1:pver), &
          mr_lsliq(1:ncol, 1:pver), mr_lsice(1:ncol, 1:pver), &
          mr_ccliq(1:ncol, 1:pver), mr_ccice(1:ncol, 1:pver), &
-         reff_cosp(1:ncol, 1:pver,:), dtau_c(1:ncol, 1:pver), &
-         dtau_s(1:ncol,1:pver), dtau_s_snow(1:ncol,1:pver), &
-         dem_s_snow(1:ncol,1:pver), state%ps(1:ncol), cospstateIN, cospIN, &
+         reff_cosp(1:ncol, 1:pver,:), cld_swtau(1:ncol, 1:pver), &
+         cld_swtau(1:ncol,1:pver), snow_tau(1:ncol,1:pver), &
+         snow_emis(1:ncol,1:pver), state%ps(1:ncol), cospstateIN, cospIN, &
          mr_hydro, Reff, Np, frac_prec)  ! new outputs, need to be added ...
 
     call calc_cosp_optics(ncol, pver, nscol_cosp, nhydro, &
          lidar_ice_type, sd_cs(lchnk), reff_cosp(1:ncol,1:pver,:), &
-         dem_c(1:ncol,1:pver), dem_s(1:ncol,1:pver), &
-         dtau_c(1:ncol, 1:pver), dtau_s(1:ncol, 1:pver), &
-         dtau_s_snow(1:ncol,1:pver), dem_s_snow(1:ncol,1:pver), &
+         emis(1:ncol,1:pver), emis(1:ncol,1:pver), &
+         cld_swtau(1:ncol, 1:pver), cld_swtau(1:ncol, 1:pver), &
+         snow_tau(1:ncol,1:pver), snow_emis(1:ncol,1:pver), &
          mr_hydro, Reff, Np, frac_prec, &
          cospstateIN, cospIN)
 
