@@ -1429,8 +1429,6 @@ CONTAINS
     atb532(1:pcols,1:nscol_cosp,1:nhtml_cosp)     = R_UNDEF
     clMISR(1:pcols,1:ntau_cosp,1:nhtmisr_cosp)      = R_UNDEF
     frac_out(1:pcols,1:nscol_cosp,1:nhtml_cosp)   = R_UNDEF
-    
-    ! (all CAM output variables. including collapsed variables)
     cldtot_isccp(1:pcols)                            = R_UNDEF
     meancldalb_isccp(1:pcols)                        = R_UNDEF
     meanptop_isccp(1:pcols)                          = R_UNDEF
@@ -1438,7 +1436,7 @@ CONTAINS
     cldmed_cal(1:pcols)                              = R_UNDEF
     cldhgh_cal(1:pcols)                              = R_UNDEF
     cldtot_cal(1:pcols)                              = R_UNDEF
-    cldtot_cal_ice(1:pcols)                          = R_UNDEF !+cosp1.4
+    cldtot_cal_ice(1:pcols)                          = R_UNDEF
     cldtot_cal_liq(1:pcols)                          = R_UNDEF
     cldtot_cal_un(1:pcols)                           = R_UNDEF
     cldhgh_cal_ice(1:pcols)                          = R_UNDEF
@@ -1449,15 +1447,15 @@ CONTAINS
     cldmed_cal_un(1:pcols)                           = R_UNDEF
     cldlow_cal_liq(1:pcols)                          = R_UNDEF
     cldlow_cal_ice(1:pcols)                          = R_UNDEF
-    cldlow_cal_un(1:pcols)                           = R_UNDEF !+cosp1.4
+    cldlow_cal_un(1:pcols)                           = R_UNDEF
     cld_cal(1:pcols,1:nht_cosp)                      = R_UNDEF
-    cld_cal_liq(1:pcols,1:nht_cosp)                  = R_UNDEF !+cosp1.4
+    cld_cal_liq(1:pcols,1:nht_cosp)                  = R_UNDEF
     cld_cal_ice(1:pcols,1:nht_cosp)                  = R_UNDEF
     cld_cal_un(1:pcols,1:nht_cosp)                   = R_UNDEF
     cld_cal_tmp(1:pcols,1:nht_cosp)                  = R_UNDEF
     cld_cal_tmpliq(1:pcols,1:nht_cosp)               = R_UNDEF
     cld_cal_tmpice(1:pcols,1:nht_cosp)               = R_UNDEF
-    cld_cal_tmpun(1:pcols,1:nht_cosp)                = R_UNDEF !+cosp1.4
+    cld_cal_tmpun(1:pcols,1:nht_cosp)                = R_UNDEF
     tau_isccp(1:pcols,1:nscol_cosp)                  = R_UNDEF
     cldptop_isccp(1:pcols,1:nscol_cosp)              = R_UNDEF
     meantau_isccp(1:pcols)                           = R_UNDEF
@@ -1924,11 +1922,8 @@ CONTAINS
     ! ######################################################################################
     call t_startf("cosp_histfile_aux")
     if (cosp_histfile_aux) then
-       ! 1D outputs
        call outfld('PS_COSP',        state%ps(1:ncol),             ncol,lchnk)
        call outfld('TS_COSP',        cospstateIN%skt,              ncol,lchnk)
-       
-       ! 2D outputs
        call outfld('P_COSP',         cospstateIN%pfull,            ncol,lchnk)
        call outfld('PH_COSP',        cospstateIN%phalf,            ncol,lchnk)
        call outfld('ZLEV_COSP',      cospstateIN%hgt_matrix,       ncol,lchnk)
@@ -1936,27 +1931,11 @@ CONTAINS
        call outfld('T_COSP',         cospstateIN%at,               ncol,lchnk)
        call outfld('RH_COSP',        cospstateIN%qv,               ncol,lchnk)
        call outfld('Q_COSP',         q(1:ncol,1:pver),             ncol,lchnk)
-
-       ! 3D outputs, but first compress to 2D
-       ! TODO: this should not be necessary anymore, this is a relic from the
-       ! old days of cam_history
-       do i=1,ncol
-          do ihml=1,nhtml_cosp
-             do isc=1,nscol_cosp
-                ihsc = (ihml-1)*nscol_cosp+isc                 
-                tau067_out(i,ihsc)  = cospIN%tau_067(i,isc,ihml)
-                emis11_out(i,ihsc)  = cospIN%emiss_11(i,isc,ihml)
-                ssa34_out(i,ihsc)   = cospIN%ss_alb(i,isc,ihml)
-                asym34_out(i,ihsc)  = cospIN%asym(i,isc,ihml)
-                fracLiq_out(i,ihsc) = cospIN%fracLiq(i,isc,ihml)
-             end do
-          end do
-       end do
-       call outfld('TAU_067',      tau067_out, pcols,lchnk)
-       call outfld('EMISS_11',     emis11_out, pcols,lchnk)
-       call outfld('MODIS_asym',   asym34_out, pcols,lchnk)
-       call outfld('MODIS_ssa',    ssa34_out,  pcols,lchnk)
-       call outfld('MODIS_fracliq',fracLiq_out,pcols,lchnk)
+       call outfld('TAU_067',        cospIN%tau_067,               ncol,lchnk)
+       call outfld('EMISS_11',       cospIN%emiss_11,              ncol,lchnk)
+       call outfld('MODIS_asym',     cospIN%asym,                  ncol,lchnk)
+       call outfld('MODIS_ssa',      cospIN%ss_alb,                ncol,lchnk)
+       call outfld('MODIS_fracliq',  cospIN%fracLiq,               ncol,lchnk)
     end if
     call t_stopf("cosp_histfile_aux")
 
