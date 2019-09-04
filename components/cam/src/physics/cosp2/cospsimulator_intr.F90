@@ -1230,9 +1230,6 @@ CONTAINS
     real(r8) :: rain_ls_interp(pcols,pver)               ! midpoint ls rain flux (kg m^-2 s^-1)
     real(r8) :: snow_ls_interp(pcols,pver)               ! midpoint ls snow flux
     real(r8) :: reff_cosp(pcols,pver,nhydro)             ! effective radius for cosp input
-    real(r8) :: rh(pcols,pver)                           ! relative_humidity_liquid_water (%)
-    real(r8) :: es(pcols,pver)                           ! saturation vapor pressure
-    real(r8) :: qs(pcols,pver)                           ! saturation mixing ratio (kg/kg), saturation specific humidity
     real(r8) :: dtau_s(pcols,pver)                       ! dtau_s - Optical depth of stratiform cloud at 0.67 um
     real(r8) :: dtau_c(pcols,pver)                       ! dtau_c - Optical depth of convective cloud at 0.67 um
     real(r8) :: dtau_s_snow(pcols,pver)                  ! dtau_s_snow - Grid-box mean Optical depth of stratiform snow at 0.67 um
@@ -1620,19 +1617,6 @@ CONTAINS
     ! 0) Create ptop/ztop for gbx%pf and gbx%zlev are for the the interface, 
     !    also reverse CAM height/pressure values for input into CSOP
     !    CAM state%pint from top to surface, COSP wants surface to top.
-   
-    ! 2) rh - relative_humidity_liquid_water (%)
-    ! calculate from CAM q and t using CAM built-in functions
-    call qsat_water(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
-         es(1:ncol,1:pver), qs(1:ncol,1:pver))
-    
-    ! calculate rh
-    rh(1:ncol,1:pver)=0._r8
-    do k=1,pver
-       do i=1,ncol
-          rh(i,k)=(q(i,k)/qs(i,k))*100
-       end do
-    end do
    
     ! 4) calculate necessary input cloud/precip variables
     ! CAM4 note: don't take the cloud water from the hack shallow convection scheme or the deep convection.  
