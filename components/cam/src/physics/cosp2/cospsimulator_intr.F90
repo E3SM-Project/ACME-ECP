@@ -164,7 +164,6 @@ module cospsimulator_intr
   ! COSP parameters
   ! ######################################################################################
   ! Note: Unless otherwise specified, these are parameters that cannot be set by the CAM namelist.
-  integer, parameter :: Npoints_it = 10000       ! Max # gridpoints to be processed in one iteration (10,000)
   integer :: ncolumns = 50                       ! Number of subcolumns in SCOPS (50), can be changed from default by CAM namelist
   integer :: nlr = 40                            ! Number of levels in statistical outputs 
                                                  ! (only used if USE_VGRID=.true.)  (40)
@@ -1182,23 +1181,11 @@ CONTAINS
     ! ######################################################################################
     integer :: lchnk                             ! chunk identifier
     integer :: ncol                              ! number of active atmospheric columns
-    integer :: i,k,ip,it,ipt,ih,id,ihd,is,ihs,isc,ihsc,ihm,ihmt,ihml,ifld 
-    
-    ! Constants for optical depth calculation (from radcswmx.F90)
-    real(r8), parameter :: abarl = 2.817e-02_r8          ! A coefficient for extinction optical depth
-    real(r8), parameter :: bbarl = 1.305_r8              ! b coefficient for extinction optical depth
-    real(r8), parameter :: abari = 3.448e-03_r8          ! A coefficient for extinction optical depth
-    real(r8), parameter :: bbari = 2.431_r8              ! b coefficient for extinction optical depth
-    real(r8), parameter :: cldmin = 1.0e-80_r8           ! note: cldmin much less than cldmin from cldnrh
-    real(r8), parameter :: cldeps = 0.0_r8 
+    integer :: i,k
     
     ! Microphysics variables
-    integer, parameter :: ncnstmax=4                      ! number of constituents
-    integer :: ncnst                                      ! number of constituents (can vary)
     integer :: ixcldliq                                   ! cloud liquid amount index for state%q
     integer :: ixcldice                                   ! cloud ice amount index
-    integer :: ixnumliq                                   ! cloud liquid number index
-    integer :: ixnumice                                   ! cloud ice water index
     
     ! COSP-related local vars
     type(cosp_outputs)        :: cospOUT                  ! COSP simulator outputs
@@ -1206,15 +1193,10 @@ CONTAINS
     type(cosp_column_inputs)  :: cospstateIN              ! COSP model fields needed by simulators
     
     ! COSP input variables that depend on CAM
-    ! 1) Npoints = number of gridpoints COSP will process (without subsetting, Npoints=ncol)
-    ! 2) Nlevels = number of model levels (Nlevels=pver)
-    integer :: Npoints                                    ! Number of gridpoints COSP will process
-    integer :: Nlevels                                    ! Nlevels
     logical :: use_reff                                   ! True if effective radius to be used by radar simulator 
-    ! (always used by lidar)
+                                                          ! (always used by lidar)
     logical :: use_precipitation_fluxes                   ! True if precipitation fluxes are input to the algorithm 
     real(r8), parameter :: emsfc_lw = 0.99_r8             ! longwave emissivity of surface at 10.5 microns 
-    ! set value same as in cloudsimulator.F90
     
     ! Local vars related to calculations to go from CAM input to COSP input
     ! cosp convective value includes both deep and shallow convection
@@ -1563,9 +1545,6 @@ CONTAINS
     call cnst_get_ind('CLDLIQ',ixcldliq)
     call cnst_get_ind('CLDICE',ixcldice)
     
-    Npoints = ncol        ! default is running all columns in the chunk, not pcols = maximum number
-    Nlevels = pver
-    
     ! 3) radiative constituent interface variables:
     ! specific humidity (q), 03, CH4,C02, N20 mass mixing ratio
     ! Note: these all have dims (pcol,pver) but the values don't change much for the well-mixed gases.
@@ -1631,8 +1610,6 @@ CONTAINS
     rain_cv_interp(1:ncol,1:pver)     = 0._r8
     snow_cv_interp(1:ncol,1:pver)     = 0._r8
     reff_cosp(1:ncol,1:pver,1:nhydro) = 0._r8
-    ! note: reff_cosp dimensions should be same as cosp (reff_cosp has 9 hydrometeor dimension)
-    ! Reff(Npoints,Nlevels,N_HYDRO)
     
     use_precipitation_fluxes = .true.      !!! consistent with cam4 implementation.
     
