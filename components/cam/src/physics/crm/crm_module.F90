@@ -1427,8 +1427,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 ! precip is aggregated and a mean value is determined. We need
 !  to change this so that individual CRM precip values are passed down
 !  to CLM.
-        crm_pcp(icrm,i,j) = precsfc(i,j,icrm)/1000.      ! mm/s --> m/s
-        crm_snw(icrm,i,j) = precssfc(i,j,icrm)/1000.     ! mm/s --> m/s
+        crm_pcp(icrm,i,j) = precsfc(icrm,i,j)/1000.      ! mm/s --> m/s
+        crm_snw(icrm,i,j) = precssfc(icrm,i,j)/1000.     ! mm/s --> m/s
 #endif
         if(precsfc(icrm,i,j).gt.10./86400.) then
            !$acc atomic update
