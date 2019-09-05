@@ -1616,7 +1616,6 @@ CONTAINS
     ! 3) dimensions listed in COSP units are from netcdf output from cosp test case, and are not necessarily in the
     !    correct order.  In fact, most of them are not as I discovered after trying to run COSP in-line.
     !    BE says this could be because FORTRAN and C (netcdf defaults to C) have different conventions.
-    ! 4) !! Note: after running COSP, it looks like height_mlev is actually the model levels after all!!
     real(r8) :: clisccp2(pcols,ntau_cosp,nprs_cosp)      ! clisccp2 (time,tau,plev,profile)
     real(r8) :: cfad_dbze94(pcols,ndbze_cosp,Nlvgrid)   ! cfad_dbze94 (time,height,dbze,profile)
     real(r8) :: cfad_lidarsr532(pcols,nsr_cosp,Nlvgrid) ! cfad_lidarsr532 (time,height,scat_ratio,profile)
