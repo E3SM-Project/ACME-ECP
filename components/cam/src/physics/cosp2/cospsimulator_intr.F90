@@ -1202,80 +1202,6 @@ CONTAINS
     real(r8), pointer, dimension(:,:) :: dp_cldliq       ! deep gbm cloud liquid water (kg/kg)
     real(r8), pointer, dimension(:,:) :: dp_cldice       ! deep gmb cloud ice water (kg/kg)
 
-    ! Output CAM variables
-    ! Notes:
-    ! 1) use pcols (maximum number of columns that code could use, maybe 16)
-    ! pcols vs. ncol.  ncol is the number of columns a chunk is actually using, pcols is maximum number
-    ! 2) ntime=1, nprofile=ncol
-    ! 3) dimensions listed in COSP units are from netcdf output from cosp test case, and are not necessarily in the
-    !    correct order.  In fact, most of them are not as I discovered after trying to run COSP in-line.
-    !    BE says this could be because FORTRAN and C (netcdf defaults to C) have different conventions.
-    ! 4) !! Note: after running COSP, it looks like height_mlev is actually the model levels after all!!
-    real(r8) :: clisccp2(pcols,ntau_cosp,nprs_cosp)      ! clisccp2 (time,tau,plev,profile)
-    real(r8) :: cfad_dbze94(pcols,ndbze_cosp,Nlvgrid)   ! cfad_dbze94 (time,height,dbze,profile)
-    real(r8) :: cfad_lidarsr532(pcols,nsr_cosp,Nlvgrid) ! cfad_lidarsr532 (time,height,scat_ratio,profile)
-    real(r8) :: dbze94(pcols,nSubcol,pver)      ! dbze94 (time,height_mlev,column,profile)
-    real(r8) :: atb532(pcols,nSubcol,pver)      ! atb532 (time,height_mlev,column,profile)
-    real(r8) :: clMISR(pcols,ntau_cosp,nhtmisr_cosp)     ! clMISR (time,tau,CTH_height_bin,profile)
-    real(r8) :: frac_out(pcols,nSubcol,pver)    ! frac_out (time,height_mlev,column,profile)
-    real(r8) :: cldtot_isccp(pcols)                      ! CAM tclisccp (time,profile)
-    real(r8) :: meancldalb_isccp(pcols)                  ! CAM albisccp (time,profile)
-    real(r8) :: meanptop_isccp(pcols)                    ! CAM ctpisccp (time,profile)
-    real(r8) :: cldlow_cal(pcols)                        ! CAM cllcalipso (time,profile)
-    real(r8) :: cldmed_cal(pcols)                        ! CAM clmcalipso (time,profile)
-    real(r8) :: cldhgh_cal(pcols)                        ! CAM clhcalipso (time,profile)
-    real(r8) :: cldtot_cal(pcols)                        ! CAM cltcalipso (time,profile)
-    real(r8) :: cldtot_cal_ice(pcols)                    ! CAM (time,profile) !!+cosp1.4
-    real(r8) :: cldtot_cal_liq(pcols)                    ! CAM (time,profile)
-    real(r8) :: cldtot_cal_un(pcols)                     ! CAM (time,profile)
-    real(r8) :: cldhgh_cal_ice(pcols)                    ! CAM (time,profile)
-    real(r8) :: cldhgh_cal_liq(pcols)                    ! CAM (time,profile)
-    real(r8) :: cldhgh_cal_un(pcols)                     ! CAM (time,profile)
-    real(r8) :: cldmed_cal_ice(pcols)                    ! CAM (time,profile)
-    real(r8) :: cldmed_cal_liq(pcols)                    ! CAM (time,profile)
-    real(r8) :: cldmed_cal_un(pcols)                     ! CAM (time,profile)
-    real(r8) :: cldlow_cal_ice(pcols)                    ! CAM (time,profile)
-    real(r8) :: cldlow_cal_liq(pcols)                    ! CAM (time,profile)
-    real(r8) :: cldlow_cal_un(pcols)                     ! CAM (time,profile) !+cosp1.4
-    real(r8) :: cld_cal(pcols,Nlvgrid)                  ! CAM clcalipso (time,height,profile)
-    real(r8) :: cld_cal_liq(pcols,Nlvgrid)              ! CAM (time,height,profile) !+cosp1.4
-    real(r8) :: cld_cal_ice(pcols,Nlvgrid)              ! CAM (time,height,profile)
-    real(r8) :: cld_cal_un(pcols,Nlvgrid)               ! CAM (time,height,profile)
-    real(r8) :: cld_cal_tmp(pcols,Nlvgrid)              ! CAM (time,height,profile)
-    real(r8) :: cld_cal_tmpliq(pcols,Nlvgrid)           ! CAM (time,height,profile)
-    real(r8) :: cld_cal_tmpice(pcols,Nlvgrid)           ! CAM (time,height,profile)
-    real(r8) :: cld_cal_tmpun(pcols,Nlvgrid)            ! CAM (time,height,profile) !+cosp1.4
-    real(r8) :: tau_isccp(pcols,nSubcol)                 ! CAM boxtauisccp (time,column,profile)
-    real(r8) :: cldptop_isccp(pcols,nSubcol)          ! CAM boxptopisccp (time,column,profile)
-    real(r8) :: meantau_isccp(pcols)                     ! CAM tauisccp (time,profile)
-    real(r8) :: meantb_isccp(pcols)                      ! CAM meantbisccp (time,profile)
-    real(r8) :: meantbclr_isccp(pcols)                   ! CAM meantbclrisccp (time,profile)
-    real(r8) :: cldtot_calcs(pcols)                      ! CAM cltlidarradar (time,profile)
-    real(r8) :: cldtot_cs(pcols)                         ! CAM cltradar (time,profile)
-    real(r8) :: cldtot_cs2(pcols)                        ! CAM cltradar2 (time,profile)
-    real(r8) :: cld_cal_notcs(pcols,Nlvgrid)            ! CAM clcalipso2 (time,height,profile)
-    real(r8) :: mol532_cal(pcols,pver)             ! CAM beta_mol532 (time,height_mlev,profile)
-    real(r8) :: refl_parasol(pcols,nsza_cosp)            ! CAM parasol_refl (time,sza,profile)
-    real(r8) :: cltmodis(pcols)
-    real(r8) :: clwmodis(pcols)
-    real(r8) :: climodis(pcols)
-    real(r8) :: clhmodis(pcols)
-    real(r8) :: clmmodis(pcols)
-    real(r8) :: cllmodis(pcols)
-    real(r8) :: tautmodis(pcols)
-    real(r8) :: tauwmodis(pcols)
-    real(r8) :: tauimodis(pcols)
-    real(r8) :: tautlogmodis(pcols)
-    real(r8) :: tauwlogmodis(pcols)
-    real(r8) :: tauilogmodis(pcols)
-    real(r8) :: reffclwmodis(pcols)
-    real(r8) :: reffclimodis(pcols)
-    real(r8) :: pctmodis(pcols)
-    real(r8) :: lwpmodis(pcols)
-    real(r8) :: iwpmodis(pcols)
-    real(r8) :: clmodis(pcols,ntau_cosp_modis,nprs_cosp)
-    real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
-    real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
 
     type(interp_type)  :: interp_wgts
     integer, parameter :: extrap_method = 1  ! sets extrapolation method to boundary value (1)
@@ -1296,74 +1222,6 @@ CONTAINS
     ! Find the chunk and ncol from the state vector
     lchnk = state%lchnk    ! state variable contains a number of columns, one chunk
     ncol  = state%ncol     ! number of columns in the chunk
-
-    ! Initialize CAM variables as R_UNDEF, important for history files because it will exclude these from averages
-    ! initialize over all pcols, not just ncol.  missing values needed in chunks where ncol<pcols
-    clisccp2(1:pcols,1:ntau_cosp,1:nprs_cosp)     = R_UNDEF
-    cfad_dbze94(1:pcols,1:ndbze_cosp,1:Nlvgrid)  = R_UNDEF
-    cfad_lidarsr532(1:pcols,1:nsr_cosp,1:Nlvgrid)= R_UNDEF
-    dbze94(1:pcols,1:nSubcol,1:pver)     = R_UNDEF
-    atb532(1:pcols,1:nSubcol,1:pver)     = R_UNDEF
-    clMISR(1:pcols,1:ntau_cosp,1:nhtmisr_cosp)      = R_UNDEF
-    frac_out(1:pcols,1:nSubcol,1:pver)   = R_UNDEF
-    cldtot_isccp(1:pcols)                            = R_UNDEF
-    meancldalb_isccp(1:pcols)                        = R_UNDEF
-    meanptop_isccp(1:pcols)                          = R_UNDEF
-    cldlow_cal(1:pcols)                              = R_UNDEF
-    cldmed_cal(1:pcols)                              = R_UNDEF
-    cldhgh_cal(1:pcols)                              = R_UNDEF
-    cldtot_cal(1:pcols)                              = R_UNDEF
-    cldtot_cal_ice(1:pcols)                          = R_UNDEF
-    cldtot_cal_liq(1:pcols)                          = R_UNDEF
-    cldtot_cal_un(1:pcols)                           = R_UNDEF
-    cldhgh_cal_ice(1:pcols)                          = R_UNDEF
-    cldhgh_cal_liq(1:pcols)                          = R_UNDEF
-    cldhgh_cal_un(1:pcols)                           = R_UNDEF
-    cldmed_cal_ice(1:pcols)                          = R_UNDEF
-    cldmed_cal_liq(1:pcols)                          = R_UNDEF
-    cldmed_cal_un(1:pcols)                           = R_UNDEF
-    cldlow_cal_liq(1:pcols)                          = R_UNDEF
-    cldlow_cal_ice(1:pcols)                          = R_UNDEF
-    cldlow_cal_un(1:pcols)                           = R_UNDEF
-    cld_cal(1:pcols,1:Nlvgrid)                      = R_UNDEF
-    cld_cal_liq(1:pcols,1:Nlvgrid)                  = R_UNDEF
-    cld_cal_ice(1:pcols,1:Nlvgrid)                  = R_UNDEF
-    cld_cal_un(1:pcols,1:Nlvgrid)                   = R_UNDEF
-    cld_cal_tmp(1:pcols,1:Nlvgrid)                  = R_UNDEF
-    cld_cal_tmpliq(1:pcols,1:Nlvgrid)               = R_UNDEF
-    cld_cal_tmpice(1:pcols,1:Nlvgrid)               = R_UNDEF
-    cld_cal_tmpun(1:pcols,1:Nlvgrid)                = R_UNDEF
-    tau_isccp(1:pcols,1:nSubcol)                  = R_UNDEF
-    cldptop_isccp(1:pcols,1:nSubcol)              = R_UNDEF
-    meantau_isccp(1:pcols)                           = R_UNDEF
-    meantb_isccp(1:pcols)                            = R_UNDEF
-    meantbclr_isccp(1:pcols)                         = R_UNDEF
-    cldtot_calcs(1:pcols)                            = R_UNDEF
-    cldtot_cs(1:pcols)                               = R_UNDEF
-    cldtot_cs2(1:pcols)                              = R_UNDEF
-    cld_cal_notcs(1:pcols,1:Nlvgrid)                = R_UNDEF
-    mol532_cal(1:pcols,1:pver)                 = R_UNDEF
-    refl_parasol(1:pcols,1:nsza_cosp)                = R_UNDEF
-    cltmodis(1:pcols)                                = R_UNDEF
-    clwmodis(1:pcols)                                = R_UNDEF
-    climodis(1:pcols)                                = R_UNDEF
-    clhmodis(1:pcols)                                = R_UNDEF
-    clmmodis(1:pcols)                                = R_UNDEF
-    cllmodis(1:pcols)                                = R_UNDEF
-    tautmodis(1:pcols)                               = R_UNDEF
-    tauwmodis(1:pcols)                               = R_UNDEF
-    tauimodis(1:pcols)                               = R_UNDEF
-    tautlogmodis(1:pcols)                            = R_UNDEF
-    tauwlogmodis(1:pcols)                            = R_UNDEF
-    tauilogmodis(1:pcols)                            = R_UNDEF
-    reffclwmodis(1:pcols)                            = R_UNDEF
-    reffclimodis(1:pcols)                            = R_UNDEF
-    pctmodis(1:pcols)                                = R_UNDEF
-    lwpmodis(1:pcols)                                = R_UNDEF
-    iwpmodis(1:pcols)                                = R_UNDEF
-    clmodis(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)   = R_UNDEF
-    clrimodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffIceBins)   = R_UNDEF ! +cosp2
-    clrlmodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffLiqBins)   = R_UNDEF ! +cosp2
 
     ! ######################################################################################
     ! DECIDE WHICH COLUMNS YOU ARE GOING TO RUN COSP ON....
@@ -1726,6 +1584,174 @@ CONTAINS
     end if
     call t_stopf("sunlit_passive")
 
+    call cosp_history_output(ncol, lchnk, cospIN, cospOUT)
+
+    ! ######################################################################################
+    ! Clean up
+    ! ######################################################################################
+    call t_startf("destroy_cospIN")
+    call destroy_cospIN(cospIN)
+    call t_stopf("destroy_cospIN")
+    call t_startf("destroy_cospstateIN")
+    call destroy_cospstateIN(cospstateIN)
+    call t_stopf("destroy_cospstateIN")
+    call t_startf("destroy_cospOUT")
+    call destroy_cosp_outputs(cospOUT)
+    call t_stopf("destroy_cospOUT")
+
+#endif
+  end subroutine cospsimulator_intr_run
+
+  subroutine cosp_history_output(ncol, lchnk, cospIN, cospOUT)
+    use cam_history, only: outfld
+    integer, intent(in) :: ncol, lchnk
+    type(cosp_optical_inputs), intent(in) :: cospIN
+    type(cosp_outputs), intent(in) :: cospOUT
+
+    ! Output CAM variables
+    ! Notes:
+    ! 1) use pcols (maximum number of columns that code could use, maybe 16)
+    ! pcols vs. ncol.  ncol is the number of columns a chunk is actually using, pcols is maximum number
+    ! 2) ntime=1, nprofile=ncol
+    ! 3) dimensions listed in COSP units are from netcdf output from cosp test case, and are not necessarily in the
+    !    correct order.  In fact, most of them are not as I discovered after trying to run COSP in-line.
+    !    BE says this could be because FORTRAN and C (netcdf defaults to C) have different conventions.
+    ! 4) !! Note: after running COSP, it looks like height_mlev is actually the model levels after all!!
+    real(r8) :: clisccp2(pcols,ntau_cosp,nprs_cosp)      ! clisccp2 (time,tau,plev,profile)
+    real(r8) :: cfad_dbze94(pcols,ndbze_cosp,Nlvgrid)   ! cfad_dbze94 (time,height,dbze,profile)
+    real(r8) :: cfad_lidarsr532(pcols,nsr_cosp,Nlvgrid) ! cfad_lidarsr532 (time,height,scat_ratio,profile)
+    real(r8) :: dbze94(pcols,nSubcol,pver)      ! dbze94 (time,height_mlev,column,profile)
+    real(r8) :: atb532(pcols,nSubcol,pver)      ! atb532 (time,height_mlev,column,profile)
+    real(r8) :: clMISR(pcols,ntau_cosp,nhtmisr_cosp)     ! clMISR (time,tau,CTH_height_bin,profile)
+    real(r8) :: frac_out(pcols,nSubcol,pver)    ! frac_out (time,height_mlev,column,profile)
+    real(r8) :: cldtot_isccp(pcols)                      ! CAM tclisccp (time,profile)
+    real(r8) :: meancldalb_isccp(pcols)                  ! CAM albisccp (time,profile)
+    real(r8) :: meanptop_isccp(pcols)                    ! CAM ctpisccp (time,profile)
+    real(r8) :: cldlow_cal(pcols)                        ! CAM cllcalipso (time,profile)
+    real(r8) :: cldmed_cal(pcols)                        ! CAM clmcalipso (time,profile)
+    real(r8) :: cldhgh_cal(pcols)                        ! CAM clhcalipso (time,profile)
+    real(r8) :: cldtot_cal(pcols)                        ! CAM cltcalipso (time,profile)
+    real(r8) :: cldtot_cal_ice(pcols)                    ! CAM (time,profile) !!+cosp1.4
+    real(r8) :: cldtot_cal_liq(pcols)                    ! CAM (time,profile)
+    real(r8) :: cldtot_cal_un(pcols)                     ! CAM (time,profile)
+    real(r8) :: cldhgh_cal_ice(pcols)                    ! CAM (time,profile)
+    real(r8) :: cldhgh_cal_liq(pcols)                    ! CAM (time,profile)
+    real(r8) :: cldhgh_cal_un(pcols)                     ! CAM (time,profile)
+    real(r8) :: cldmed_cal_ice(pcols)                    ! CAM (time,profile)
+    real(r8) :: cldmed_cal_liq(pcols)                    ! CAM (time,profile)
+    real(r8) :: cldmed_cal_un(pcols)                     ! CAM (time,profile)
+    real(r8) :: cldlow_cal_ice(pcols)                    ! CAM (time,profile)
+    real(r8) :: cldlow_cal_liq(pcols)                    ! CAM (time,profile)
+    real(r8) :: cldlow_cal_un(pcols)                     ! CAM (time,profile) !+cosp1.4
+    real(r8) :: cld_cal(pcols,Nlvgrid)                  ! CAM clcalipso (time,height,profile)
+    real(r8) :: cld_cal_liq(pcols,Nlvgrid)              ! CAM (time,height,profile) !+cosp1.4
+    real(r8) :: cld_cal_ice(pcols,Nlvgrid)              ! CAM (time,height,profile)
+    real(r8) :: cld_cal_un(pcols,Nlvgrid)               ! CAM (time,height,profile)
+    real(r8) :: cld_cal_tmp(pcols,Nlvgrid)              ! CAM (time,height,profile)
+    real(r8) :: cld_cal_tmpliq(pcols,Nlvgrid)           ! CAM (time,height,profile)
+    real(r8) :: cld_cal_tmpice(pcols,Nlvgrid)           ! CAM (time,height,profile)
+    real(r8) :: cld_cal_tmpun(pcols,Nlvgrid)            ! CAM (time,height,profile) !+cosp1.4
+    real(r8) :: tau_isccp(pcols,nSubcol)                 ! CAM boxtauisccp (time,column,profile)
+    real(r8) :: cldptop_isccp(pcols,nSubcol)          ! CAM boxptopisccp (time,column,profile)
+    real(r8) :: meantau_isccp(pcols)                     ! CAM tauisccp (time,profile)
+    real(r8) :: meantb_isccp(pcols)                      ! CAM meantbisccp (time,profile)
+    real(r8) :: meantbclr_isccp(pcols)                   ! CAM meantbclrisccp (time,profile)
+    real(r8) :: cldtot_calcs(pcols)                      ! CAM cltlidarradar (time,profile)
+    real(r8) :: cldtot_cs(pcols)                         ! CAM cltradar (time,profile)
+    real(r8) :: cldtot_cs2(pcols)                        ! CAM cltradar2 (time,profile)
+    real(r8) :: cld_cal_notcs(pcols,Nlvgrid)            ! CAM clcalipso2 (time,height,profile)
+    real(r8) :: mol532_cal(pcols,pver)             ! CAM beta_mol532 (time,height_mlev,profile)
+    real(r8) :: refl_parasol(pcols,nsza_cosp)            ! CAM parasol_refl (time,sza,profile)
+    real(r8) :: cltmodis(pcols)
+    real(r8) :: clwmodis(pcols)
+    real(r8) :: climodis(pcols)
+    real(r8) :: clhmodis(pcols)
+    real(r8) :: clmmodis(pcols)
+    real(r8) :: cllmodis(pcols)
+    real(r8) :: tautmodis(pcols)
+    real(r8) :: tauwmodis(pcols)
+    real(r8) :: tauimodis(pcols)
+    real(r8) :: tautlogmodis(pcols)
+    real(r8) :: tauwlogmodis(pcols)
+    real(r8) :: tauilogmodis(pcols)
+    real(r8) :: reffclwmodis(pcols)
+    real(r8) :: reffclimodis(pcols)
+    real(r8) :: pctmodis(pcols)
+    real(r8) :: lwpmodis(pcols)
+    real(r8) :: iwpmodis(pcols)
+    real(r8) :: clmodis(pcols,ntau_cosp_modis,nprs_cosp)
+    real(r8) :: clrimodis(pcols,ntau_cosp,numMODISReffIceBins)
+    real(r8) :: clrlmodis(pcols,ntau_cosp,numMODISReffLiqBins)
+
+    ! Initialize CAM variables as R_UNDEF, important for history files because it will exclude these from averages
+    ! initialize over all pcols, not just ncol.  missing values needed in chunks where ncol<pcols
+    clisccp2(1:pcols,1:ntau_cosp,1:nprs_cosp)     = R_UNDEF
+    cfad_dbze94(1:pcols,1:ndbze_cosp,1:Nlvgrid)  = R_UNDEF
+    cfad_lidarsr532(1:pcols,1:nsr_cosp,1:Nlvgrid)= R_UNDEF
+    dbze94(1:pcols,1:nSubcol,1:pver)     = R_UNDEF
+    atb532(1:pcols,1:nSubcol,1:pver)     = R_UNDEF
+    clMISR(1:pcols,1:ntau_cosp,1:nhtmisr_cosp)      = R_UNDEF
+    frac_out(1:pcols,1:nSubcol,1:pver)   = R_UNDEF
+    cldtot_isccp(1:pcols)                            = R_UNDEF
+    meancldalb_isccp(1:pcols)                        = R_UNDEF
+    meanptop_isccp(1:pcols)                          = R_UNDEF
+    cldlow_cal(1:pcols)                              = R_UNDEF
+    cldmed_cal(1:pcols)                              = R_UNDEF
+    cldhgh_cal(1:pcols)                              = R_UNDEF
+    cldtot_cal(1:pcols)                              = R_UNDEF
+    cldtot_cal_ice(1:pcols)                          = R_UNDEF
+    cldtot_cal_liq(1:pcols)                          = R_UNDEF
+    cldtot_cal_un(1:pcols)                           = R_UNDEF
+    cldhgh_cal_ice(1:pcols)                          = R_UNDEF
+    cldhgh_cal_liq(1:pcols)                          = R_UNDEF
+    cldhgh_cal_un(1:pcols)                           = R_UNDEF
+    cldmed_cal_ice(1:pcols)                          = R_UNDEF
+    cldmed_cal_liq(1:pcols)                          = R_UNDEF
+    cldmed_cal_un(1:pcols)                           = R_UNDEF
+    cldlow_cal_liq(1:pcols)                          = R_UNDEF
+    cldlow_cal_ice(1:pcols)                          = R_UNDEF
+    cldlow_cal_un(1:pcols)                           = R_UNDEF
+    cld_cal(1:pcols,1:Nlvgrid)                      = R_UNDEF
+    cld_cal_liq(1:pcols,1:Nlvgrid)                  = R_UNDEF
+    cld_cal_ice(1:pcols,1:Nlvgrid)                  = R_UNDEF
+    cld_cal_un(1:pcols,1:Nlvgrid)                   = R_UNDEF
+    cld_cal_tmp(1:pcols,1:Nlvgrid)                  = R_UNDEF
+    cld_cal_tmpliq(1:pcols,1:Nlvgrid)               = R_UNDEF
+    cld_cal_tmpice(1:pcols,1:Nlvgrid)               = R_UNDEF
+    cld_cal_tmpun(1:pcols,1:Nlvgrid)                = R_UNDEF
+    tau_isccp(1:pcols,1:nSubcol)                  = R_UNDEF
+    cldptop_isccp(1:pcols,1:nSubcol)              = R_UNDEF
+    meantau_isccp(1:pcols)                           = R_UNDEF
+    meantb_isccp(1:pcols)                            = R_UNDEF
+    meantbclr_isccp(1:pcols)                         = R_UNDEF
+    cldtot_calcs(1:pcols)                            = R_UNDEF
+    cldtot_cs(1:pcols)                               = R_UNDEF
+    cldtot_cs2(1:pcols)                              = R_UNDEF
+    cld_cal_notcs(1:pcols,1:Nlvgrid)                = R_UNDEF
+    mol532_cal(1:pcols,1:pver)                 = R_UNDEF
+    refl_parasol(1:pcols,1:nsza_cosp)                = R_UNDEF
+    cltmodis(1:pcols)                                = R_UNDEF
+    clwmodis(1:pcols)                                = R_UNDEF
+    climodis(1:pcols)                                = R_UNDEF
+    clhmodis(1:pcols)                                = R_UNDEF
+    clmmodis(1:pcols)                                = R_UNDEF
+    cllmodis(1:pcols)                                = R_UNDEF
+    tautmodis(1:pcols)                               = R_UNDEF
+    tauwmodis(1:pcols)                               = R_UNDEF
+    tauimodis(1:pcols)                               = R_UNDEF
+    tautlogmodis(1:pcols)                            = R_UNDEF
+    tauwlogmodis(1:pcols)                            = R_UNDEF
+    tauilogmodis(1:pcols)                            = R_UNDEF
+    reffclwmodis(1:pcols)                            = R_UNDEF
+    reffclimodis(1:pcols)                            = R_UNDEF
+    pctmodis(1:pcols)                                = R_UNDEF
+    lwpmodis(1:pcols)                                = R_UNDEF
+    iwpmodis(1:pcols)                                = R_UNDEF
+    clmodis(1:pcols,1:ntau_cosp_modis,1:nprs_cosp)   = R_UNDEF
+    clrimodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffIceBins)   = R_UNDEF ! +cosp2
+    clrlmodis(1:pcols,1:ntau_cosp_modis,1:numMODISReffLiqBins)   = R_UNDEF ! +cosp2
+
+
     ! ######################################################################################
     ! Copy COSP outputs to CAM fields.
     ! ######################################################################################
@@ -1821,19 +1847,6 @@ CONTAINS
     endif
 
     call t_stopf("output_copying")
-
-    ! ######################################################################################
-    ! Clean up
-    ! ######################################################################################
-    call t_startf("destroy_cospIN")
-    call destroy_cospIN(cospIN)
-    call t_stopf("destroy_cospIN")
-    call t_startf("destroy_cospstateIN")
-    call destroy_cospstateIN(cospstateIN)
-    call t_stopf("destroy_cospstateIN")
-    call t_startf("destroy_cospOUT")
-    call destroy_cosp_outputs(cospOUT)
-    call t_stopf("destroy_cospOUT")
 
     ! ######################################################################################
     ! OUTPUT
@@ -2085,8 +2098,7 @@ CONTAINS
        end if
     end if
     call t_stopf("writing_output")
-#endif
-  end subroutine cospsimulator_intr_run
+end subroutine cosp_history_output
 
 #ifdef USE_COSP
   ! ######################################################################################
