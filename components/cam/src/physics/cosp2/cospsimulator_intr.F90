@@ -1215,7 +1215,7 @@ CONTAINS
     real(wp),dimension(:,:,:,:),allocatable :: mr_hydro, Reff, Np
 
 
-    call t_startf("init_and_stuff")
+    call t_startf("cosp_init")
     ! ######################################################################################
     ! Initialization
     ! ######################################################################################
@@ -1311,6 +1311,8 @@ CONTAINS
     call pbuf_get_field(pbuf, lsflxprc_idx, ls_flxprc)
     call pbuf_get_field(pbuf, lsflxsnw_idx, ls_flxsnw)
 
+    call t_stopf('cosp_init')
+
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! CALCULATE COSP INPUT VARIABLES FROM CAM VARIABLES, done for all columns within chunk
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1341,6 +1343,8 @@ CONTAINS
     ! Use precipitation fluxes instead of mixing ratios (and convert to mixing
     ! ratios later)
     use_precipitation_fluxes = .true.
+
+    call t_startf('cosp_get_hydro_fields')
 
     ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
     rain_cv(1:ncol,1:pverp) = (sh_flxprc(1:ncol,1:pverp) - sh_flxsnw(1:ncol,1:pverp)) &
@@ -1398,20 +1402,20 @@ CONTAINS
     reff_cosp(1:ncol,1:pver,I_CVSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
     reff_cosp(1:ncol,1:pver,I_LSGRPL) = 0._r8                                ! using radar default reff
 
-    call t_stopf("init_and_stuff")
+    call t_stopf("cosp_get_hydro_fields")
 
     ! ######################################################################################
     ! Construct COSP output derived type.
     ! ######################################################################################
-    call t_startf("construct_cosp_outputs")
+    call t_startf("cosp_construct_cospOUT")
     call construct_cosp_outputs(ncol,nSubcol,pver,Nlvgrid,0,cospOUT)
-    call t_stopf("construct_cosp_outputs")
+    call t_stopf("cosp_construct_cospOUT")
 
     ! ######################################################################################
     ! Construct and populate COSP input types
     ! ######################################################################################
     ! Model state
-    call t_startf("construct_cospstateIN")
+    call t_startf("cosp_construct_cospstateIN")
     call construct_cospstateIN(ncol,pver,0,cospstateIN)
 
     ! Convert from coordinate variables radians to degrees_north and degrees_east
@@ -1454,17 +1458,17 @@ CONTAINS
     end do
     cospstateIN%hgt_matrix_half(1:ncol,pver+1) = 0._r8
     cospstateIN%surfelev(1:ncol) = state%zi(1:ncol,pver+1)
-    call t_stopf("construct_cospstateIN")
+    call t_stopf("cosp_construct_cospstateIN")
 
     ! Optical inputs
-    call t_startf("construct_cospIN")
+    call t_startf("cosp_construct_cospIN")
     call construct_cospIN(ncol,nSubcol,pver,cospIN)
     cospIN%emsfc_lw = emsfc_lw
     if (lradar_sim) cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
-    call t_stopf("construct_cospIN")
+    call t_stopf("cosp_construct_cospIN")
 
     ! *NOTE* Fields passed into subsample_and_optics are ordered from TOA-2-SFC.
-    call t_startf("subsample_and_optics")
+    call t_startf("cosp_subsample_and_optics")
 
     ! mixing ratios, effective radii and precipitation fluxes for cloud and precipitation
     allocate(mr_hydro(ncol, nSubcol, pver, nhydro), &
@@ -1498,7 +1502,7 @@ CONTAINS
     deallocate(Np)
     deallocate(frac_prec)
 
-    call t_stopf("subsample_and_optics")
+    call t_stopf("cosp_subsample_and_optics")
 
     ! ######################################################################################
     ! Call COSP
@@ -1547,7 +1551,7 @@ CONTAINS
     ! internally in COSP based on the sunlit flag that is passed, but we need to
     ! handle some cases explicitly here because of existing bugs in COSP.
     ! ######################################################################################
-    call t_startf("sunlit_passive")
+    call t_startf("cosp_mask_passive")
     ! ISCCP simulator
     ! TODO: these should not be set undefined for night columns (brightness
     ! temperature is valid at night), but we set these to fillvalues for now
@@ -1582,7 +1586,7 @@ CONTAINS
           end if
        end do
     end if
-    call t_stopf("sunlit_passive")
+    call t_stopf("cosp_mask_passive")
 
     call cosp_history_output(ncol, lchnk, cospIN, cospOUT)
 
