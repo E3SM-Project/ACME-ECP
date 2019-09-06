@@ -1654,67 +1654,68 @@ CONTAINS
 
     ! LIDAR SIMULATOR OUTPUTS
     if (llidar_sim) then
-       call outfld('CLDLOW_CAL',    cospOUT%calipso_cldlayer(:ncol,1), ncol,lchnk)
-       call outfld('CLDMED_CAL',    cospOUT%calipso_cldlayer(:ncol,2), ncol,lchnk)
-       call outfld('CLDHGH_CAL',    cospOUT%calipso_cldlayer(:ncol,3), ncol,lchnk)
-       call outfld('CLDTOT_CAL',    cospOUT%calipso_cldlayer(:ncol,4), ncol,lchnk)
-       call outfld('CLDTOT_CAL_ICE',cospOUT%calipso_cldlayerphase(:ncol,4,1), ncol,lchnk)
-       call outfld('CLDTOT_CAL_LIQ',cospOUT%calipso_cldlayerphase(:ncol,4,2), ncol,lchnk)
-       call outfld('CLDTOT_CAL_UN', cospOUT%calipso_cldlayerphase(:ncol,4,3), ncol,lchnk)
-       call outfld('CLDHGH_CAL_ICE',cospOUT%calipso_cldlayerphase(:ncol,3,1), ncol,lchnk)
-       call outfld('CLDHGH_CAL_LIQ',cospOUT%calipso_cldlayerphase(:ncol,3,2), ncol,lchnk)
-       call outfld('CLDHGH_CAL_UN', cospOUT%calipso_cldlayerphase(:ncol,3,3), ncol,lchnk)
-       call outfld('CLDMED_CAL_ICE',cospOUT%calipso_cldlayerphase(:ncol,2,1), ncol,lchnk)
-       call outfld('CLDMED_CAL_LIQ',cospOUT%calipso_cldlayerphase(:ncol,2,2), ncol,lchnk)
-       call outfld('CLDMED_CAL_UN', cospOUT%calipso_cldlayerphase(:ncol,2,3), ncol,lchnk)
-       call outfld('CLDLOW_CAL_ICE',cospOUT%calipso_cldlayerphase(:ncol,1,1), ncol,lchnk)
-       call outfld('CLDLOW_CAL_LIQ',cospOUT%calipso_cldlayerphase(:ncol,1,2), ncol,lchnk)
-       call outfld('CLDLOW_CAL_UN', cospOUT%calipso_cldlayerphase(:ncol,1,3), ncol,lchnk)
+       call outfld('CLDLOW_CAL',    cospOUT%calipso_cldlayer(:ncol,1), ncol, lchnk)
+       call outfld('CLDMED_CAL',    cospOUT%calipso_cldlayer(:ncol,2), ncol, lchnk)
+       call outfld('CLDHGH_CAL',    cospOUT%calipso_cldlayer(:ncol,3), ncol, lchnk)
+       call outfld('CLDTOT_CAL',    cospOUT%calipso_cldlayer(:ncol,4), ncol, lchnk)
+       call outfld('CLDTOT_CAL_ICE',cospOUT%calipso_cldlayerphase(:ncol,4,1), ncol, lchnk)
+       call outfld('CLDTOT_CAL_LIQ',cospOUT%calipso_cldlayerphase(:ncol,4,2), ncol, lchnk)
+       call outfld('CLDTOT_CAL_UN', cospOUT%calipso_cldlayerphase(:ncol,4,3), ncol, lchnk)
+       call outfld('CLDHGH_CAL_ICE',cospOUT%calipso_cldlayerphase(:ncol,3,1), ncol, lchnk)
+       call outfld('CLDHGH_CAL_LIQ',cospOUT%calipso_cldlayerphase(:ncol,3,2), ncol, lchnk)
+       call outfld('CLDHGH_CAL_UN', cospOUT%calipso_cldlayerphase(:ncol,3,3), ncol, lchnk)
+       call outfld('CLDMED_CAL_ICE',cospOUT%calipso_cldlayerphase(:ncol,2,1), ncol, lchnk)
+       call outfld('CLDMED_CAL_LIQ',cospOUT%calipso_cldlayerphase(:ncol,2,2), ncol, lchnk)
+       call outfld('CLDMED_CAL_UN', cospOUT%calipso_cldlayerphase(:ncol,2,3), ncol, lchnk)
+       call outfld('CLDLOW_CAL_ICE',cospOUT%calipso_cldlayerphase(:ncol,1,1), ncol, lchnk)
+       call outfld('CLDLOW_CAL_LIQ',cospOUT%calipso_cldlayerphase(:ncol,1,2), ncol, lchnk)
+       call outfld('CLDLOW_CAL_UN', cospOUT%calipso_cldlayerphase(:ncol,1,3), ncol, lchnk)
        call outfld('MOL532_CAL', cospOUT%calipso_beta_mol(1:ncol,:), ncol, lchnk)
 
        ! Need to reset missing values to 0 here; CAM history does not like mix
        ! of missing values and valid values in the vertical dimension. The
        ! missing values here are likely values below sea level.
 
+       ! TODO: reversing vertical dimension looks like a bug here
        cfad_lidarsr532(1:ncol,1:nsr_cosp,1:Nlvgrid) = cospOUT%calipso_cfad_sr(:,:,Nlvgrid:1:-1)
        where (cfad_lidarsr532(1:ncol,:,:) .eq. R_UNDEF) cfad_lidarsr532(1:ncol,:,:) = 0._r8
        call outfld('CFAD_SR532_CAL', cfad_lidarsr532(1:ncol,:,:), ncol, lchnk)
 
        refl_parasol(1:ncol,1:nsza_cosp) = cospOUT%parasolGrid_refl
        where (refl_parasol(:ncol,:nsza_cosp) .eq. R_UNDEF) refl_parasol(:ncol,:nsza_cosp) = 0
-       call outfld('RFL_PARASOL',refl_parasol(:ncol,:), ncol, lchnk)
+       call outfld('RFL_PARASOL', refl_parasol(:ncol,:), ncol, lchnk)
 
        cld_cal(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcld(:,Nlvgrid:1:-1)
        where (cld_cal(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal(:ncol,:Nlvgrid) = 0.0_r8
        call outfld('CLD_CAL', cld_cal(:ncol,:), ncol, lchnk)
 
-       cld_cal_liq(1:ncol,1:Nlvgrid)    = cospOUT%calipso_lidarcldphase(:,Nlvgrid:1:-1,2)
+       cld_cal_liq(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcldphase(:,Nlvgrid:1:-1,2)
        where (cld_cal_liq(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal_liq(:ncol,:Nlvgrid) = 0.0_r8
-       call outfld('CLD_CAL_LIQ',cld_cal_liq(:ncol,:),ncol,lchnk)
+       call outfld('CLD_CAL_LIQ', cld_cal_liq(:ncol,:), ncol, lchnk)
 
-       cld_cal_ice(1:ncol,1:Nlvgrid)    = cospOUT%calipso_lidarcldphase(:,Nlvgrid:1:-1,1)
+       cld_cal_ice(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcldphase(:,Nlvgrid:1:-1,1)
        where (cld_cal_ice(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal_ice(:ncol,:Nlvgrid) = 0.0_r8
-       call outfld('CLD_CAL_ICE',cld_cal_ice(:ncol,:),ncol,lchnk)
+       call outfld('CLD_CAL_ICE', cld_cal_ice(:ncol,:), ncol, lchnk)
 
-       cld_cal_un(1:ncol,1:Nlvgrid)     = cospOUT%calipso_lidarcldphase(:,Nlvgrid:1:-1,3)
+       cld_cal_un(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcldphase(:,Nlvgrid:1:-1,3)
        where (cld_cal_un(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal_un(:ncol,:Nlvgrid) = 0.0_r8
-       call outfld('CLD_CAL_UN',cld_cal_un(:ncol,:),ncol,lchnk)
+       call outfld('CLD_CAL_UN', cld_cal_un(:ncol,:), ncol, lchnk)
 
-       cld_cal_tmp(1:ncol,1:Nlvgrid)    = cospOUT%calipso_lidarcldtmp(:,:,1)
+       cld_cal_tmp(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcldtmp(:,:,1)
        where (cld_cal_tmp(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal_tmp(:ncol,:Nlvgrid) = 0.0_r8
-       call outfld('CLD_CAL_TMP',cld_cal_tmp(:ncol,:),ncol,lchnk)
+       call outfld('CLD_CAL_TMP', cld_cal_tmp(:ncol,:), ncol, lchnk)
 
        cld_cal_tmpliq(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcldtmp(:,:,2)
        where (cld_cal_tmpliq(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal_tmpliq(:ncol,:Nlvgrid) = 0.0_r8
-       call outfld('CLD_CAL_TMPLIQ',cld_cal_tmpliq(:ncol,:),ncol,lchnk)
+       call outfld('CLD_CAL_TMPLIQ', cld_cal_tmpliq(:ncol,:), ncol, lchnk)
 
        cld_cal_tmpice(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcldtmp(:,:,3)
        where (cld_cal_tmpice(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal_tmpice(:ncol,:Nlvgrid) = 0.0_r8
-       call outfld('CLD_CAL_TMPICE',cld_cal_tmpice(:ncol,:),ncol,lchnk)
+       call outfld('CLD_CAL_TMPICE', cld_cal_tmpice(:ncol,:), ncol, lchnk)
 
-       cld_cal_tmpun(1:ncol,1:Nlvgrid)  = cospOUT%calipso_lidarcldtmp(:,:,4)
+       cld_cal_tmpun(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcldtmp(:,:,4)
        where (cld_cal_tmpun(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal_tmpun(:ncol,:Nlvgrid) = 0.0_r8
-       call outfld('CLD_CAL_TMPUN',cld_cal_tmpun(:ncol,:),ncol,lchnk)
+       call outfld('CLD_CAL_TMPUN', cld_cal_tmpun(:ncol,:), ncol, lchnk)
     end if
 
     ! RADAR simulator outputs
@@ -1724,8 +1725,8 @@ CONTAINS
        cfad_dbze94(:ncol,:,:) = cospOUT%cloudsat_cfad_ze(:ncol,:,:)
        where (cfad_dbze94(:ncol,:,:) .eq. R_UNDEF) cfad_dbze94(:ncol,:,:) = 0.0_r8
        ! Note levels are flipped, but I think this is maybe a mistake?
-       call outfld('CFAD_DBZE94_CS',cfad_dbze94(:ncol,:,Nlvgrid:1:-1),ncol,lchnk)
-       call outfld('CLDTOT_CALCS',  cospOUT%radar_lidar_tcc(1:ncol), ncol,lchnk)
+       call outfld('CFAD_DBZE94_CS', cfad_dbze94(:ncol,:,Nlvgrid:1:-1), ncol, lchnk)
+       call outfld('CLDTOT_CALCS',   cospOUT%radar_lidar_tcc(1:ncol), ncol, lchnk)
 
        ! TODO: these actually do exist in COSP2 and should be added to the
        ! output, but passing on this for the moment to keep tests BFB.
@@ -1756,37 +1757,37 @@ CONTAINS
 
        ! Weight retrievals by cloud fraction
        tautmodis(1:ncol) = masked_product(cospOUT%modis_Optical_Thickness_Total_Mean, cospOUT%modis_Cloud_Fraction_Total_mean(1:ncol), R_UNDEF)
-       call outfld('TAUTMODIS',tautmodis(1:ncol),ncol,lchnk)
+       call outfld('TAUTMODIS', tautmodis(1:ncol), ncol, lchnk)
 
        tauwmodis(1:ncol) = masked_product(cospOUT%modis_Optical_Thickness_Water_Mean, cospOUT%modis_Cloud_Fraction_Water_mean, R_UNDEF)
-       call outfld('TAUWMODIS',tauwmodis(1:ncol),ncol,lchnk)
+       call outfld('TAUWMODIS', tauwmodis(1:ncol), ncol, lchnk)
 
        tauimodis(1:ncol) = masked_product(cospOUT%modis_Optical_Thickness_Ice_Mean, cospOUT%modis_Cloud_Fraction_Ice_Mean, R_UNDEF)
-       call outfld('TAUIMODIS',tauimodis(1:ncol),ncol,lchnk)
+       call outfld('TAUIMODIS', tauimodis(1:ncol), ncol, lchnk)
 
        tautlogmodis(1:ncol) = masked_product(cospOUT%modis_Optical_Thickness_Total_LogMean, cospOUT%modis_Cloud_Fraction_Total_Mean, R_UNDEF)
-       call outfld('TAUTLOGMODIS',tautlogmodis(1:ncol),ncol,lchnk)
+       call outfld('TAUTLOGMODIS', tautlogmodis(1:ncol), ncol, lchnk)
 
        tauwlogmodis(1:ncol) = masked_product(cospOUT%modis_Optical_Thickness_Water_LogMean, cospOUT%modis_Cloud_Fraction_Water_Mean, R_UNDEF)
-       call outfld('TAUWLOGMODIS',tauwlogmodis(1:ncol),ncol,lchnk)
+       call outfld('TAUWLOGMODIS', tauwlogmodis(1:ncol), ncol, lchnk)
 
        tauilogmodis(1:ncol) = masked_product(cospOUT%modis_Optical_Thickness_Ice_LogMean, cospOUT%modis_Cloud_Fraction_Ice_Mean, R_UNDEF)
-       call outfld('TAUILOGMODIS',tauilogmodis(1:ncol),ncol,lchnk)
+       call outfld('TAUILOGMODIS', tauilogmodis(1:ncol), ncol, lchnk)
 
        reffclwmodis(1:ncol) = masked_product(cospOUT%modis_Cloud_Particle_Size_Water_Mean, cospOUT%modis_Cloud_Fraction_Water_Mean, R_UNDEF)
-       call outfld('REFFCLWMODIS',reffclwmodis(1:ncol),ncol,lchnk)
+       call outfld('REFFCLWMODIS', reffclwmodis(1:ncol), ncol, lchnk)
 
        reffclimodis(1:ncol) = masked_product(cospOUT%modis_Cloud_Particle_Size_Ice_Mean, cospOUT%modis_Cloud_Fraction_Ice_Mean, R_UNDEF)
-       call outfld('REFFCLIMODIS',reffclimodis(1:ncol),ncol,lchnk)
+       call outfld('REFFCLIMODIS', reffclimodis(1:ncol), ncol, lchnk)
 
        pctmodis(1:ncol) = masked_product(cospOUT%modis_Cloud_Top_Pressure_Total_Mean, cospOUT%modis_Cloud_Fraction_Total_Mean, R_UNDEF)
-       call outfld('PCTMODIS',pctmodis(1:ncol),ncol,lchnk)
+       call outfld('PCTMODIS', pctmodis(1:ncol), ncol, lchnk)
 
        lwpmodis(1:ncol) = masked_product(cospOUT%modis_Liquid_Water_Path_Mean, cospOUT%modis_Cloud_Fraction_Water_Mean, R_UNDEF)
-       call outfld('LWPMODIS',lwpmodis(1:ncol),ncol,lchnk)
+       call outfld('LWPMODIS', lwpmodis(1:ncol), ncol, lchnk)
 
        iwpmodis(1:ncol) = masked_product(cospOUT%modis_Ice_Water_Path_Mean, cospOUT%modis_Cloud_Fraction_Ice_Mean, R_UNDEF)
-       call outfld('IWPMODIS',iwpmodis(1:ncol),ncol,lchnk)
+       call outfld('IWPMODIS', iwpmodis(1:ncol), ncol, lchnk)
 
     end if
 
