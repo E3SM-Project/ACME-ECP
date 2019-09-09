@@ -1005,10 +1005,8 @@ CONTAINS
     use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
     use phys_control,         only: phys_getopts
     use camsrfexch,           only: cam_in_t
-    use constituents,         only: cnst_get_ind
     use rad_constituents,     only: rad_cnst_get_gas
     use wv_saturation,        only: qsat_water
-    use interpolate_data,     only: lininterp_init,lininterp,lininterp_finish,interp_type
     use physconst,            only: pi, gravit
     use cam_history,          only: outfld,hist_fld_col_active
     use cam_history_support,  only: max_fieldname_len
@@ -1039,10 +1037,6 @@ CONTAINS
     integer :: ncol                              ! number of active atmospheric columns
     integer :: i,k
 
-    ! Microphysics variables
-    integer :: ixcldliq                                   ! cloud liquid amount index for state%q
-    integer :: ixcldice                                   ! cloud ice amount index
-
     ! COSP-related local vars
     type(cosp_outputs)        :: cospOUT                  ! COSP simulator outputs
     type(cosp_optical_inputs) :: cospIN                   ! COSP optical (or derived?) fields needed by simulators
@@ -1051,10 +1045,6 @@ CONTAINS
     logical :: use_precipitation_fluxes                   ! True if precipitation fluxes are input to the algorithm
     real(r8), parameter :: emsfc_lw = 0.99_r8             ! longwave emissivity of surface at 10.5 microns
 
-    ! Local vars related to calculations to go from CAM input to COSP input
-    ! cosp convective value includes both deep and shallow convection
-    real(r8) :: rain_cv(pcols,pverp)                     ! interface flux_convective_cloud_rain (kg m^-2 s^-1)
-    real(r8) :: snow_cv(pcols,pverp)                     ! interface flux_convective_cloud_snow (kg m^-2 s^-1)
     real(r8) :: cam_reff(pcols,pver,nhydro)              ! effective radius for cosp input
     real(r8) :: cam_hydro(pcols,pver,nhydro)             ! hydrometeor mixing ratios and precip fluxes (kg/kg)
     real(r8) :: cam_np(pcols,pver,nhydro)                ! hydrometeor number concentrations
@@ -1109,36 +1099,6 @@ CONTAINS
     ! CAM pointers to get variables from the physics buffer
     real(r8), pointer, dimension(:,:) :: cld             ! cloud fraction, tca - total_cloud_amount (0-1)
     real(r8), pointer, dimension(:,:) :: concld          ! concld fraction, cca - convective_cloud_amount (0-1)
-    real(r8), pointer, dimension(:,:) :: rel             ! liquid effective drop radius (microns)
-    real(r8), pointer, dimension(:,:) :: rei             ! ice effective drop size (microns)
-    real(r8), pointer, dimension(:,:) :: ls_reffrain     ! rain effective drop radius (microns)
-    real(r8), pointer, dimension(:,:) :: ls_reffsnow     ! snow effective drop size (microns)
-    real(r8), pointer, dimension(:,:) :: cv_reffliq      ! convective cld liq effective drop radius (microns)
-    real(r8), pointer, dimension(:,:) :: cv_reffice      ! convective cld ice effective drop size (microns)
-
-    ! precip flux pointers (use for cam4 or cam5)
-    ! Added pointers;  pbuf in zm_conv_intr.F90, calc in zm_conv.F90
-    real(r8), pointer, dimension(:,:) :: dp_flxprc       ! deep interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
-    real(r8), pointer, dimension(:,:) :: dp_flxsnw       ! deep interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
-    ! More pointers;  pbuf in convect_shallow.F90, calc in hk_conv.F90/convect_shallow.F90 (CAM4), uwshcu.F90 (CAM5)
-    real(r8), pointer, dimension(:,:) :: sh_flxprc       ! shallow interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
-    real(r8), pointer, dimension(:,:) :: sh_flxsnw       ! shallow interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
-    ! More pointers;  pbuf in stratiform.F90, getting from pbuf here
-    ! a) added as output to pcond subroutine in cldwat.F90 and to nmicro_pcond subroutine in cldwat2m_micro.F90
-    real(r8), pointer, dimension(:,:) :: ls_flxprc       ! stratiform interface gbm flux_cloud_rain+snow (kg m^-2 s^-1)
-    real(r8), pointer, dimension(:,:) :: ls_flxsnw       ! stratiform interface gbm flux_cloud_snow (kg m^-2 s^-1)
-
-    !! cloud mixing ratio pointers (note: large-scale in state)
-    ! More pointers;  pbuf in convect_shallow.F90 (cam4) or stratiform.F90 (cam5)
-    ! calc in hk_conv.F90 (CAM4 should be 0!), uwshcu.F90 but then affected by micro so values from stratiform.F90 (CAM5)
-    real(r8), pointer, dimension(:,:) :: sh_cldliq       ! shallow gbm cloud liquid water (kg/kg)
-    real(r8), pointer, dimension(:,:) :: sh_cldice       ! shallow gbm cloud ice water (kg/kg)
-    ! More pointers;  pbuf in zm_conv_intr.F90, calc in zm_conv.F90, 0 for CAM4 and CAM5 (same convection scheme)
-    real(r8), pointer, dimension(:,:) :: dp_cldliq       ! deep gbm cloud liquid water (kg/kg)
-    real(r8), pointer, dimension(:,:) :: dp_cldice       ! deep gmb cloud ice water (kg/kg)
-
-    type(interp_type)  :: interp_wgts
-    integer, parameter :: extrap_method = 1  ! sets extrapolation method to boundary value (1)
 
     ! COSPv2 stuff
     character(len=256),dimension(100) :: cosp_status
@@ -1214,48 +1174,13 @@ CONTAINS
     ! GET CAM GEOPHYSICAL VARIABLES NEEDED FOR COSP INPUT
     ! ######################################################################################
 
-    ! Get variables from physics buffer
-    call pbuf_get_field(pbuf, cld_idx,    cld   )
-    call pbuf_get_field(pbuf, concld_idx, concld)
-
-    ! Convective cloud mixing ratios (use for cam4 and cam5)
-    call pbuf_get_field(pbuf, dpcldliq_idx, dp_cldliq)
-    call pbuf_get_field(pbuf, dpcldice_idx, dp_cldice)
-
-    ! Added to pbuf in stratiform.F90
-    call pbuf_get_field(pbuf, shcldliq1_idx, sh_cldliq)
-    call pbuf_get_field(pbuf, shcldice1_idx, sh_cldice)
-
-    ! Precipitation fluxes
-    call pbuf_get_field(pbuf, dpflxprc_idx, dp_flxprc)
-    call pbuf_get_field(pbuf, dpflxsnw_idx, dp_flxsnw)
-    call pbuf_get_field(pbuf, shflxprc_idx, sh_flxprc)
-    call pbuf_get_field(pbuf, shflxsnw_idx, sh_flxsnw)
-    call pbuf_get_field(pbuf, lsflxprc_idx, ls_flxprc)
-    call pbuf_get_field(pbuf, lsflxsnw_idx, ls_flxsnw)
-
     call phys_getopts(use_SPCAM_out=use_SPCAM)
     call phys_getopts(SPCAM_microp_scheme_out=SPCAM_microp_scheme)
 
     call t_stopf('cosp_init')
 
-    !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    ! CALCULATE COSP INPUT VARIABLES FROM CAM VARIABLES, done for all columns within chunk
-    !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    ! 0) Create ptop/ztop for gbx%pf and gbx%zlev are for the the interface,
-    !    also reverse CAM height/pressure values for input into CSOP
-    !    CAM state%pint from top to surface, COSP wants surface to top.
-
-    ! 4) calculate necessary input cloud/precip variables
-    ! CAM4 note: don't take the cloud water from the hack shallow convection scheme or the deep convection.
-    ! cloud water values for convection are the same as the stratiform value. (Sungsu)
-    ! all precip fluxes are mid points, all values are grid-box mean ("gbm") (Yuying)
-
     ! initialize local variables
-    rain_cv(1:ncol,1:pverp)           = 0._r8
-    snow_cv(1:ncol,1:pverp)           = 0._r8
-    cam_reff(1:ncol,1:pver,1:nhydro) = 0._r8
+    cam_reff(:,:,:) = 0
     cam_hydro(:,:,:) = 0
     cam_np(:,:,:) = 0
 
@@ -1345,66 +1270,11 @@ CONTAINS
        ! ratios later)
        use_precipitation_fluxes = .true.
 
-       ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
-       rain_cv(1:ncol,1:pverp) = (sh_flxprc(1:ncol,1:pverp) - sh_flxsnw(1:ncol,1:pverp)) &
-                               + (dp_flxprc(1:ncol,1:pverp) - dp_flxsnw(1:ncol,1:pverp))
-       snow_cv(1:ncol,1:pverp) =  sh_flxsnw(1:ncol,1:pverp) + dp_flxsnw(1:ncol,1:pverp)
+       call pbuf_get_field(pbuf, cld_idx,    cld   )
+       call pbuf_get_field(pbuf, concld_idx, concld)
 
-       ! interpolate interface precip fluxes to mid points
-       do i=1,ncol
-          ! find weights (pressure weighting?)
-          call lininterp_init(state%zi(i,1:pverp),pverp,state%zm(i,1:pver),pver,extrap_method,interp_wgts)
-          ! interpolate  lininterp1d(arrin, nin, arrout, nout, interp_wgts)
-          ! note: lininterp is an interface, contains lininterp1d -- code figures out to use lininterp1d.
-          call lininterp(  rain_cv(i,1:pverp), pverp, cam_hydro(i,1:pver,I_CVRAIN), pver, interp_wgts)
-          call lininterp(  snow_cv(i,1:pverp), pverp, cam_hydro(i,1:pver,I_CVSNOW), pver, interp_wgts)
-          call lininterp(ls_flxprc(i,1:pverp), pverp, cam_hydro(i,1:pver,I_LSRAIN), pver, interp_wgts)
-          call lininterp(ls_flxsnw(i,1:pverp), pverp, cam_hydro(i,1:pver,I_LSSNOW), pver, interp_wgts)
-          call lininterp_finish(interp_wgts)
-          ! ls_flxprc is for rain+snow, find rain_ls_interp by subtracting off snow_ls_interp
-          cam_hydro(i,1:pver,I_LSRAIN) = cam_hydro(i,1:pver,I_LSRAIN) - cam_hydro(i,1:pver,I_LSSNOW)
-       end do
+       call get_cam_hydros(state, pbuf, cld, cam_hydro, cam_reff, cam_np)
 
-       ! CAM5 cloud mixing ratio calculations
-       ! Note: Although CAM5 has non-zero convective cloud mixing ratios that affect the model state,
-       ! Convective cloud water is NOT part of radiation calculations.
-       call cnst_get_ind('CLDLIQ',ixcldliq)
-       call cnst_get_ind('CLDICE',ixcldice)
-       do k=1,pver
-          do i=1,ncol
-             if (cld(i,k) .gt. 0._r8) then
-                ! note: convective mixing ratio is the sum of shallow and deep convective clouds in CAM5
-                cam_hydro(i,k,I_CVCLIQ) = sh_cldliq(i,k) + dp_cldliq(i,k)
-                cam_hydro(i,k,I_CVCICE) = sh_cldice(i,k) + dp_cldice(i,k)
-                cam_hydro(i,k,I_LSCLIQ) = state%q(i,k,ixcldliq)  ! only includes stratiform (kg/kg)
-                cam_hydro(i,k,I_LSCICE) = state%q(i,k,ixcldice)  ! only includes stratiform (kg/kg)
-             else
-                cam_hydro(i,k,I_CVCLIQ) = 0._r8
-                cam_hydro(i,k,I_CVCICE) = 0._r8
-                cam_hydro(i,k,I_LSCLIQ) = 0._r8
-                cam_hydro(i,k,I_LSCICE) = 0._r8
-             end if
-          end do
-       end do
-
-       ! More sizes added to physics buffer in stratiform.F90
-       call pbuf_get_field(pbuf, rel_idx,    rel   )
-       call pbuf_get_field(pbuf, rei_idx,    rei   )
-       call pbuf_get_field(pbuf, lsreffrain_idx, ls_reffrain)
-       call pbuf_get_field(pbuf, lsreffsnow_idx, ls_reffsnow)
-       call pbuf_get_field(pbuf, cvreffliq_idx,  cv_reffliq )
-       call pbuf_get_field(pbuf, cvreffice_idx,  cv_reffice )
-       cam_reff(1:ncol,1:pver,I_LSCLIQ) = rel(1:ncol,1:pver)*1.e-6_r8          ! same as effc and effliq in stratiform.F90
-       cam_reff(1:ncol,1:pver,I_LSCICE) = rei(1:ncol,1:pver)*1.e-6_r8          ! same as effi and effice in stratiform.F90
-       cam_reff(1:ncol,1:pver,I_LSRAIN) = ls_reffrain(1:ncol,1:pver)*1.e-6_r8  ! calculated in cldwat2m_micro.F90, passed to stratiform.F90
-       cam_reff(1:ncol,1:pver,I_LSSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! calculated in cldwat2m_micro.F90, passed to stratiform.F90
-       cam_reff(1:ncol,1:pver,I_CVCLIQ) = cv_reffliq(1:ncol,1:pver)*1.e-6_r8   ! calculated in stratiform.F90, not actually used in radiation
-       cam_reff(1:ncol,1:pver,I_CVCICE) = cv_reffice(1:ncol,1:pver)*1.e-6_r8   ! calculated in stratiform.F90, not actually used in radiation
-       cam_reff(1:ncol,1:pver,I_CVRAIN) = ls_reffrain(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
-       cam_reff(1:ncol,1:pver,I_CVSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
-       cam_reff(1:ncol,1:pver,I_LSGRPL) = 0._r8                                ! using radar default reff
-
-       !call get_cam_hydros(state, pbuf, cam_hydro, cam_reff, cam_np)
        call cosp_subsample(ncol, pver, nSubcol, nhydro, overlap, &
             use_precipitation_fluxes, cld(1:ncol, 1:pver), concld(1:ncol, 1:pver), &
             cam_hydro(1:ncol,1:pver,1:N_HYDRO), cam_reff(1:ncol,1:pver,1:N_HYDRO), &
@@ -1413,23 +1283,10 @@ CONTAINS
             mr_hydro, Reff, Np, frac_prec)  ! new outputs, need to be added ...
 
     else
-!      ! Use precip mixing ratios instead of fluxes
-!      use_precipitation_fluxes = .false.
-!      mr_hydro = 0
-!      Reff = 0
-!      Np = 0
-!      frac_prec = 0
-!      do icol = 1,ncol
-!         do iz = 1,crm_nz
-!            do iy = 1,crm_ny_rad
-!               do ix = 1,crm_nx_rad
-!                  ilev = pver - iz + 1
-!                  mr_hydro(icol,isubcol,ilev,I_LSCLIQ) = crm_qc(icol,ix,iy,iz)
-!                  mr_hydro(icol,isubcol,ilev,I_LSCICE) = crm_qi(icol,ix,iy,iz)
-!               end do
-!            end do
-!         end do
-!      end do
+
+       use_precipitation_fluxes = .false.
+       call get_crm_hydros(state, pbuf, mr_hydro, Reff, Np, frac_prec)
+
     end if
 
     ! Calculate optical properties
@@ -1553,15 +1410,180 @@ CONTAINS
 #endif
   end subroutine cospsimulator_intr_run
 
-  subroutine get_cam_hydros(state, pbuf, cam_hydro, cam_reff, cam_np)
-     use physics_types,        only: physics_state
-     use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
-     type(physics_state), intent(in) :: state
-     type(physics_buffer_desc), pointer :: pbuf(:)
-     real(r8), intent(out) :: cam_hydro(:,:,:)
-     real(r8), intent(out) :: cam_reff(:,:,:)
-     real(r8), intent(out) :: cam_np(:,:,:)
+
+  subroutine get_cam_hydros(state, pbuf, cld, cam_hydro, cam_reff, cam_np)
+
+    use physics_types,        only: physics_state
+    use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
+    use interpolate_data,     only: lininterp_init,lininterp,lininterp_finish,interp_type
+    use constituents,         only: cnst_get_ind
+
+    type(physics_state), intent(in) :: state
+    type(physics_buffer_desc), pointer :: pbuf(:)
+    real(r8), intent(in) :: cld(:,:)
+    real(r8), intent(out) :: cam_hydro(:,:,:)
+    real(r8), intent(out) :: cam_reff(:,:,:)
+    real(r8), intent(out) :: cam_np(:,:,:)
+
+    real(r8), pointer, dimension(:,:) :: rel             ! liquid effective drop radius (microns)
+    real(r8), pointer, dimension(:,:) :: rei             ! ice effective drop size (microns)
+    real(r8), pointer, dimension(:,:) :: ls_reffrain     ! rain effective drop radius (microns)
+    real(r8), pointer, dimension(:,:) :: ls_reffsnow     ! snow effective drop size (microns)
+    real(r8), pointer, dimension(:,:) :: cv_reffliq      ! convective cld liq effective drop radius (microns)
+    real(r8), pointer, dimension(:,:) :: cv_reffice      ! convective cld ice effective drop size (microns)
+
+    ! precip flux pointers (use for cam4 or cam5)
+    ! Added pointers;  pbuf in zm_conv_intr.F90, calc in zm_conv.F90
+    real(r8), pointer, dimension(:,:) :: dp_flxprc       ! deep interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
+    real(r8), pointer, dimension(:,:) :: dp_flxsnw       ! deep interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
+    ! More pointers;  pbuf in convect_shallow.F90, calc in hk_conv.F90/convect_shallow.F90 (CAM4), uwshcu.F90 (CAM5)
+    real(r8), pointer, dimension(:,:) :: sh_flxprc       ! shallow interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
+    real(r8), pointer, dimension(:,:) :: sh_flxsnw       ! shallow interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
+    ! More pointers;  pbuf in stratiform.F90, getting from pbuf here
+    ! a) added as output to pcond subroutine in cldwat.F90 and to nmicro_pcond subroutine in cldwat2m_micro.F90
+    real(r8), pointer, dimension(:,:) :: ls_flxprc       ! stratiform interface gbm flux_cloud_rain+snow (kg m^-2 s^-1)
+    real(r8), pointer, dimension(:,:) :: ls_flxsnw       ! stratiform interface gbm flux_cloud_snow (kg m^-2 s^-1)
+
+    !! cloud mixing ratio pointers (note: large-scale in state)
+    ! More pointers;  pbuf in convect_shallow.F90 (cam4) or stratiform.F90 (cam5)
+    ! calc in hk_conv.F90 (CAM4 should be 0!), uwshcu.F90 but then affected by micro so values from stratiform.F90 (CAM5)
+    real(r8), pointer, dimension(:,:) :: sh_cldliq       ! shallow gbm cloud liquid water (kg/kg)
+    real(r8), pointer, dimension(:,:) :: sh_cldice       ! shallow gbm cloud ice water (kg/kg)
+    ! More pointers;  pbuf in zm_conv_intr.F90, calc in zm_conv.F90, 0 for CAM4 and CAM5 (same convection scheme)
+    real(r8), pointer, dimension(:,:) :: dp_cldliq       ! deep gbm cloud liquid water (kg/kg)
+    real(r8), pointer, dimension(:,:) :: dp_cldice       ! deep gmb cloud ice water (kg/kg)
+
+    integer, parameter :: extrap_method = 1  ! sets extrapolation method to boundary value (1)
+
+    ! Local vars related to calculations to go from CAM input to COSP input
+    ! cosp convective value includes both deep and shallow convection
+    real(r8) :: rain_cv(pcols,pverp)                     ! interface flux_convective_cloud_rain (kg m^-2 s^-1)
+    real(r8) :: snow_cv(pcols,pverp)                     ! interface flux_convective_cloud_snow (kg m^-2 s^-1)
+
+    ! Microphysics variables
+    integer :: ixcldliq                                   ! cloud liquid amount index for state%q
+    integer :: ixcldice                                   ! cloud ice amount index
+
+    type(interp_type)  :: interp_wgts
+    integer :: ncol, k, i
+
+
+    ncol = state%ncol
+
+    ! Convective cloud mixing ratios (use for cam4 and cam5)
+    call pbuf_get_field(pbuf, dpcldliq_idx, dp_cldliq)
+    call pbuf_get_field(pbuf, dpcldice_idx, dp_cldice)
+
+    ! Added to pbuf in stratiform.F90
+    call pbuf_get_field(pbuf, shcldliq1_idx, sh_cldliq)
+    call pbuf_get_field(pbuf, shcldice1_idx, sh_cldice)
+
+    ! Precipitation fluxes
+    call pbuf_get_field(pbuf, dpflxprc_idx, dp_flxprc)
+    call pbuf_get_field(pbuf, dpflxsnw_idx, dp_flxsnw)
+    call pbuf_get_field(pbuf, shflxprc_idx, sh_flxprc)
+    call pbuf_get_field(pbuf, shflxsnw_idx, sh_flxsnw)
+    call pbuf_get_field(pbuf, lsflxprc_idx, ls_flxprc)
+    call pbuf_get_field(pbuf, lsflxsnw_idx, ls_flxsnw)
+
+    ! Effective radii
+    call pbuf_get_field(pbuf, rel_idx, rel)
+    call pbuf_get_field(pbuf, rei_idx, rei)
+    call pbuf_get_field(pbuf, lsreffrain_idx, ls_reffrain)
+    call pbuf_get_field(pbuf, lsreffsnow_idx, ls_reffsnow)
+    call pbuf_get_field(pbuf, cvreffliq_idx,  cv_reffliq )
+    call pbuf_get_field(pbuf, cvreffice_idx,  cv_reffice )
+
+    ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
+    rain_cv(1:ncol,1:pverp) = (sh_flxprc(1:ncol,1:pverp) - sh_flxsnw(1:ncol,1:pverp)) &
+                            + (dp_flxprc(1:ncol,1:pverp) - dp_flxsnw(1:ncol,1:pverp))
+    snow_cv(1:ncol,1:pverp) =  sh_flxsnw(1:ncol,1:pverp) + dp_flxsnw(1:ncol,1:pverp)
+
+    ! interpolate interface precip fluxes to mid points
+    do i=1,ncol
+       ! find weights (pressure weighting?)
+       call lininterp_init(state%zi(i,1:pverp),pverp,state%zm(i,1:pver),pver,extrap_method,interp_wgts)
+       ! interpolate  lininterp1d(arrin, nin, arrout, nout, interp_wgts)
+       ! note: lininterp is an interface, contains lininterp1d -- code figures out to use lininterp1d.
+       call lininterp(  rain_cv(i,1:pverp), pverp, cam_hydro(i,1:pver,I_CVRAIN), pver, interp_wgts)
+       call lininterp(  snow_cv(i,1:pverp), pverp, cam_hydro(i,1:pver,I_CVSNOW), pver, interp_wgts)
+       call lininterp(ls_flxprc(i,1:pverp), pverp, cam_hydro(i,1:pver,I_LSRAIN), pver, interp_wgts)
+       call lininterp(ls_flxsnw(i,1:pverp), pverp, cam_hydro(i,1:pver,I_LSSNOW), pver, interp_wgts)
+       call lininterp_finish(interp_wgts)
+       ! ls_flxprc is for rain+snow, find rain_ls_interp by subtracting off snow_ls_interp
+       cam_hydro(i,1:pver,I_LSRAIN) = cam_hydro(i,1:pver,I_LSRAIN) - cam_hydro(i,1:pver,I_LSSNOW)
+    end do
+
+    ! CAM5 cloud mixing ratio calculations
+    ! Note: Although CAM5 has non-zero convective cloud mixing ratios that affect the model state,
+    ! Convective cloud water is NOT part of radiation calculations.
+    call cnst_get_ind('CLDLIQ',ixcldliq)
+    call cnst_get_ind('CLDICE',ixcldice)
+    do k=1,pver
+       do i=1,ncol
+          if (cld(i,k) .gt. 0._r8) then
+             ! note: convective mixing ratio is the sum of shallow and deep convective clouds in CAM5
+             cam_hydro(i,k,I_CVCLIQ) = sh_cldliq(i,k) + dp_cldliq(i,k)
+             cam_hydro(i,k,I_CVCICE) = sh_cldice(i,k) + dp_cldice(i,k)
+             cam_hydro(i,k,I_LSCLIQ) = state%q(i,k,ixcldliq)  ! only includes stratiform (kg/kg)
+             cam_hydro(i,k,I_LSCICE) = state%q(i,k,ixcldice)  ! only includes stratiform (kg/kg)
+          else
+             cam_hydro(i,k,I_CVCLIQ) = 0._r8
+             cam_hydro(i,k,I_CVCICE) = 0._r8
+             cam_hydro(i,k,I_LSCLIQ) = 0._r8
+             cam_hydro(i,k,I_LSCICE) = 0._r8
+          end if
+       end do
+    end do
+
+    ! More sizes added to physics buffer in stratiform.F90
+    cam_reff(1:ncol,1:pver,I_LSCLIQ) = rel(1:ncol,1:pver)*1.e-6_r8          ! same as effc and effliq in stratiform.F90
+    cam_reff(1:ncol,1:pver,I_LSCICE) = rei(1:ncol,1:pver)*1.e-6_r8          ! same as effi and effice in stratiform.F90
+    cam_reff(1:ncol,1:pver,I_LSRAIN) = ls_reffrain(1:ncol,1:pver)*1.e-6_r8  ! calculated in cldwat2m_micro.F90, passed to stratiform.F90
+    cam_reff(1:ncol,1:pver,I_LSSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! calculated in cldwat2m_micro.F90, passed to stratiform.F90
+    cam_reff(1:ncol,1:pver,I_CVCLIQ) = cv_reffliq(1:ncol,1:pver)*1.e-6_r8   ! calculated in stratiform.F90, not actually used in radiation
+    cam_reff(1:ncol,1:pver,I_CVCICE) = cv_reffice(1:ncol,1:pver)*1.e-6_r8   ! calculated in stratiform.F90, not actually used in radiation
+    cam_reff(1:ncol,1:pver,I_CVRAIN) = ls_reffrain(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
+    cam_reff(1:ncol,1:pver,I_CVSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
+    cam_reff(1:ncol,1:pver,I_LSGRPL) = 0._r8                                ! using radar default reff
+
   end subroutine get_cam_hydros
+
+
+  subroutine get_crm_hydros(state, pbuf, mr_hydro, reff, np, frac_prec)
+    use physics_types,  only: physics_state
+    use physics_buffer, only: physics_buffer_desc, pbuf_get_field
+    use crmdims,        only: crm_nx_rad, crm_ny_rad, crm_nz
+    type(physics_state), intent(in) :: state
+    type(physics_buffer_desc), pointer :: pbuf(:)
+    real(r8), intent(out), dimension(:,:,:,:) :: mr_hydro, reff, np
+    real(r8), intent(out), dimension(:,:,:) :: frac_prec
+
+    real(r8), pointer, dimension(:,:,:,:) :: crm_qc, crm_qi
+
+    integer :: ncol, icol, isubcol, ilev, ix, iy, iz
+
+    ! Use precip mixing ratios instead of fluxes
+    mr_hydro = 0
+    Reff = 0
+    Np = 0
+    frac_prec = 0
+
+
+    do icol = 1,ncol
+       do iz = 1,crm_nz
+          do iy = 1,crm_ny_rad
+             do ix = 1,crm_nx_rad
+                ilev = pver - iz + 1
+                isubcol = (iy - 1) * crm_nx_rad + ix
+                mr_hydro(icol,isubcol,ilev,I_LSCLIQ) = crm_qc(icol,ix,iy,iz)
+                mr_hydro(icol,isubcol,ilev,I_LSCICE) = crm_qi(icol,ix,iy,iz)
+             end do
+          end do
+       end do
+    end do
+
+  end subroutine get_crm_hydros
 
 
   subroutine cosp_history_output(ncol, lchnk, cospIN, cospOUT)
