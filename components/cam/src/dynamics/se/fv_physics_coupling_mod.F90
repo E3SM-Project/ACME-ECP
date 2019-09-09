@@ -231,6 +231,10 @@ contains
     real(r8), dimension(npsq)              :: T_tmp_in      ! temp array to hold previous dyn state T 
     real(r8), dimension(npsq,pcnst)        :: Q_tmp_in      ! temp array to hold previous dyn state q 
     real(r8), dimension(npsq,2)            :: uv_tmp_in     ! temp array to hold previous dyn state uv
+
+    ! integer, parameter :: nphys_sq = fv_nphys*fv_nphys
+    ! real(r8), dimension(nphys_sq) :: T_tend 
+    ! real(r8), dimension(nphys_sq) :: Q_tend 
     !---------------------------------------------------------------------------
     ! Integrate dynamics field with appropriate weighting 
     ! to get average state in each physics cell
@@ -294,7 +298,7 @@ contains
 
           do m = 1,pcnst
             Q_tmp_in(:ncol,m)     = RESHAPE( subcell_integration(             &
-                                    elem(ie)%state%Q_in(:,:,ilyr,m)*dp_gll,   &
+                                    elem(ie)%state%Q_in(:,:,ilyr,m)*dp_gll_in,&
                                     np, fv_nphys, elem(ie)%metdet(:,:) )      &
                                     *inv_dp_fvm_in, (/ncol/) )
           end do
@@ -313,6 +317,76 @@ contains
 
         end if ! not is_first_step
 
+        !-----------------------------------------------------------------------
+        !-----------------------------------------------------------------------
+        ! Test of alternative method
+        !-----------------------------------------------------------------------
+        !-----------------------------------------------------------------------
+
+        ! dp_gll(:,:) = elem(ie)%state%dp3d(:,:,ilyr,tl_f)
+        ! inv_dp_fvm = 1.0 / subcell_integration(dp_gll,np,fv_nphys,elem(ie)%metdet(:,:))
+
+
+        ! om_tmp(:ncol,ilyr,ie)     = RESHAPE( subcell_integration(             &
+        !                             elem(ie)%derived%omega_p(:,:,ilyr),       &
+        !                             np, fv_nphys, elem(ie)%metdet(:,:) )      &
+        !                             *inv_area , (/ncol/) )
+        ! do m = 1,2
+        !   uv_tmp(:ncol,m,ilyr,ie) = RESHAPE( subcell_integration(             &
+        !                             elem(ie)%state%V(:,:,m,ilyr,tl_f),        &
+        !                             np, fv_nphys, elem(ie)%metdet(:,:) )      &
+        !                             *inv_area , (/ncol/) )
+        ! end do
+
+
+        ! if (.not.is_first_step()) then
+        !   dp_gll_in(:,:) = elem(ie)%state%dp_in(:,:,ilyr)
+        !   ! inv_dp_fvm_in = 1.0 / subcell_integration(dp_gll_in,np,fv_nphys,elem(ie)%metdet(:,:))
+
+        !   T_tmp(:ncol,ilyr,ie)      = RESHAPE( subcell_integration(             &
+        !                               elem(ie)%state%T_in(:,:,ilyr)*dp_gll_in,             &
+        !                               np, fv_nphys, elem(ie)%metdet(:,:) )      &
+        !                               *inv_dp_fvm, (/ncol/) )
+
+        !   T_tend(:ncol)     = RESHAPE( subcell_integration(                   &
+        !                       temperature(:,:,ilyr)*dp_gll                    &
+        !                       - elem(ie)%state%T_in(:,:,ilyr)*dp_gll_in,      &
+        !                       np, fv_nphys, elem(ie)%metdet(:,:) )            &
+        !                       *inv_dp_fvm, (/ncol/) )
+
+        !   T_tmp(:ncol,ilyr,ie) = T_tmp(:ncol,ilyr,ie) + T_tend(:ncol)
+
+        !   do m = 1,pcnst
+        !     Q_tmp(:ncol,ilyr,m,ie)  = RESHAPE( subcell_integration(             &
+        !                               elem(ie)%state%Q_in(:,:,ilyr,m)*dp_gll_in,      &
+        !                               np, fv_nphys, elem(ie)%metdet(:,:) )      &
+        !                               *inv_dp_fvm, (/ncol/) )
+
+        !     Q_tend(:ncol)   = RESHAPE( subcell_integration(                   &
+        !                       elem(ie)%state%Q(:,:,ilyr,m)*dp_gll             &
+        !                       - elem(ie)%state%Q_in(:,:,ilyr,m)*dp_gll_in,    &
+        !                       np, fv_nphys, elem(ie)%metdet(:,:) )            &
+        !                       *inv_dp_fvm, (/ncol/) )
+
+        !     Q_tmp(:ncol,ilyr,m,ie) = Q_tmp(:ncol,ilyr,m,ie) + Q_tend(:ncol)
+        !   end do
+
+        ! else
+        
+        !   T_tmp(:ncol,ilyr,ie)      = RESHAPE( subcell_integration(             &
+        !                               temperature(:,:,ilyr)*dp_gll,             &
+        !                               np, fv_nphys, elem(ie)%metdet(:,:) )      &
+        !                               *inv_dp_fvm, (/ncol/) )
+
+        !   do m = 1,pcnst
+        !     Q_tmp(:ncol,ilyr,m,ie)  = RESHAPE( subcell_integration(             &
+        !                               elem(ie)%state%Q(:,:,ilyr,m)*dp_gll,      &
+        !                               np, fv_nphys, elem(ie)%metdet(:,:) )      &
+        !                               *inv_dp_fvm, (/ncol/) )
+        !   end do
+        
+        ! end if
+        
         !-----------------------------------------------------------------------
         !-----------------------------------------------------------------------
 
