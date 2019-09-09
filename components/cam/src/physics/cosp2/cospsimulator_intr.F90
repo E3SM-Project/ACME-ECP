@@ -192,6 +192,8 @@ module cospsimulator_intr
   integer :: shcldliq_idx, shcldice_idx, shcldliq1_idx, shcldice1_idx, dpflxprc_idx
   integer :: dpflxsnw_idx, shflxprc_idx, shflxsnw_idx, lsflxprc_idx, lsflxsnw_idx
   integer :: rei_idx, rel_idx
+  integer :: crm_qc_idx, crm_qi_idx, crm_qr_idx, crm_qs_idx, crm_qg_idx, &
+             crm_rel_idx, crm_rei_idx, crm_cldtau_idx, crm_cldems_idx
 
   ! ######################################################################################
   ! Declarations specific to COSP2
@@ -567,10 +569,13 @@ CONTAINS
     use netcdf,              only : nf90_open, nf90_inq_varid, nf90_get_var, nf90_close, nf90_nowrite
     use error_messages,      only : handle_ncerr, alloc_err
     use physics_buffer,  only: pbuf_get_index
+    use phys_control, only : phys_getopts
     use mod_cosp_config,  only : R_UNDEF
 
     integer :: ncid,latid,lonid,did,hrid,minid,secid, istat
     integer :: i
+    logical :: use_SPCAM
+    character(len=16) :: SPCAM_microp_scheme
 
     ! ISCCP OUTPUTS
     if (lisccp_sim) then
@@ -966,6 +971,23 @@ CONTAINS
     lsflxprc_idx   = pbuf_get_index('LS_FLXPRC')
     lsflxsnw_idx   = pbuf_get_index('LS_FLXSNW')
 
+    ! pbuf indices for CRM fields when using MMF
+    call phys_getopts(use_SPCAM_out=use_SPCAM)
+    call phys_getopts(SPCAM_microp_scheme_out=SPCAM_microp_scheme)
+    if (use_SPCAM) then
+       crm_qc_idx = pbuf_get_index('CRM_QC_RAD')
+       crm_qi_idx = pbuf_get_index('CRM_QI_RAD')
+       crm_rel_idx = pbuf_get_index('CRM_REL_RAD')
+       crm_rei_idx = pbuf_get_index('CRM_REI_RAD')
+       crm_cldtau_idx = pbuf_get_index('CRM_CLDTAU')
+       crm_cldems_idx = pbuf_get_index('CRM_CLDEMS')
+       if (trim(SPCAM_microp_scheme) == 'm2005') then
+          crm_qs_idx = pbuf_get_index('CRM_QS_RAD')
+          crm_qr_idx = pbuf_get_index('CRM_QR_RAD')
+          crm_qg_idx = pbuf_get_index('CRM_QG_RAD')
+       end if
+    end if
+
     allocate(first_run_cosp(begchunk:endchunk))
     first_run_cosp(begchunk:endchunk)=.true.
     allocate(run_cosp(1:pcols,begchunk:endchunk))
@@ -981,6 +1003,7 @@ CONTAINS
                                     cld_swtau, snow_tau, snow_emis)
     use physics_types,        only: physics_state
     use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
+    use phys_control,         only: phys_getopts
     use camsrfexch,           only: cam_in_t
     use constituents,         only: cnst_get_ind
     use rad_constituents,     only: rad_cnst_get_gas
@@ -1135,6 +1158,9 @@ CONTAINS
     real(wp),dimension(:,:,:),  allocatable :: frac_prec
     real(wp),dimension(:,:,:,:),allocatable :: mr_hydro, Reff, Np
 
+    ! For MMF/SPCAM
+    logical :: use_SPCAM
+    character(len=16) :: SPCAM_microp_scheme
 
     call t_startf("cosp_init")
     ! ######################################################################################
@@ -1231,6 +1257,9 @@ CONTAINS
     call pbuf_get_field(pbuf, lsflxprc_idx, ls_flxprc)
     call pbuf_get_field(pbuf, lsflxsnw_idx, ls_flxsnw)
 
+    call phys_getopts(use_SPCAM_out=use_SPCAM)
+    call phys_getopts(SPCAM_microp_scheme_out=SPCAM_microp_scheme)
+
     call t_stopf('cosp_init')
 
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1260,31 +1289,37 @@ CONTAINS
     snow_cv_interp(1:ncol,1:pver)     = 0._r8
     reff_cosp(1:ncol,1:pver,1:nhydro) = 0._r8
 
-    ! Use precipitation fluxes instead of mixing ratios (and convert to mixing
-    ! ratios later)
-    use_precipitation_fluxes = .true.
-
     call t_startf('cosp_get_hydro_fields')
 
-    ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
-    rain_cv(1:ncol,1:pverp) = (sh_flxprc(1:ncol,1:pverp) - sh_flxsnw(1:ncol,1:pverp)) &
-                            + (dp_flxprc(1:ncol,1:pverp) - dp_flxsnw(1:ncol,1:pverp))
-    snow_cv(1:ncol,1:pverp) =  sh_flxsnw(1:ncol,1:pverp) + dp_flxsnw(1:ncol,1:pverp)
+    ! If using SPCAM, then do not use large-scale precipitation fluxes (we will
+    ! populate subgrid fields directly with precipitation mixing ratios)
+    if (use_SPCAM) then
+       use_precipitation_fluxes = .false.
+    else
+       ! Use precipitation fluxes instead of mixing ratios (and convert to mixing
+       ! ratios later)
+       use_precipitation_fluxes = .true.
 
-    ! interpolate interface precip fluxes to mid points
-    do i=1,ncol
-       ! find weights (pressure weighting?)
-       call lininterp_init(state%zi(i,1:pverp),pverp,state%zm(i,1:pver),pver,extrap_method,interp_wgts)
-       ! interpolate  lininterp1d(arrin, nin, arrout, nout, interp_wgts)
-       ! note: lininterp is an interface, contains lininterp1d -- code figures out to use lininterp1d.
-       call lininterp(rain_cv(i,1:pverp),pverp,rain_cv_interp(i,1:pver),pver,interp_wgts)
-       call lininterp(snow_cv(i,1:pverp),pverp,snow_cv_interp(i,1:pver),pver,interp_wgts)
-       call lininterp(ls_flxprc(i,1:pverp),pverp,rain_ls_interp(i,1:pver),pver,interp_wgts)
-       call lininterp(ls_flxsnw(i,1:pverp),pverp,snow_ls_interp(i,1:pver),pver,interp_wgts)
-       call lininterp_finish(interp_wgts)
-       ! ls_flxprc is for rain+snow, find rain_ls_interp by subtracting off snow_ls_interp
-       rain_ls_interp(i,1:pver)=rain_ls_interp(i,1:pver)-snow_ls_interp(i,1:pver)
-    end do
+       ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
+       rain_cv(1:ncol,1:pverp) = (sh_flxprc(1:ncol,1:pverp) - sh_flxsnw(1:ncol,1:pverp)) &
+                               + (dp_flxprc(1:ncol,1:pverp) - dp_flxsnw(1:ncol,1:pverp))
+       snow_cv(1:ncol,1:pverp) =  sh_flxsnw(1:ncol,1:pverp) + dp_flxsnw(1:ncol,1:pverp)
+
+       ! interpolate interface precip fluxes to mid points
+       do i=1,ncol
+          ! find weights (pressure weighting?)
+          call lininterp_init(state%zi(i,1:pverp),pverp,state%zm(i,1:pver),pver,extrap_method,interp_wgts)
+          ! interpolate  lininterp1d(arrin, nin, arrout, nout, interp_wgts)
+          ! note: lininterp is an interface, contains lininterp1d -- code figures out to use lininterp1d.
+          call lininterp(rain_cv(i,1:pverp),pverp,rain_cv_interp(i,1:pver),pver,interp_wgts)
+          call lininterp(snow_cv(i,1:pverp),pverp,snow_cv_interp(i,1:pver),pver,interp_wgts)
+          call lininterp(ls_flxprc(i,1:pverp),pverp,rain_ls_interp(i,1:pver),pver,interp_wgts)
+          call lininterp(ls_flxsnw(i,1:pverp),pverp,snow_ls_interp(i,1:pver),pver,interp_wgts)
+          call lininterp_finish(interp_wgts)
+          ! ls_flxprc is for rain+snow, find rain_ls_interp by subtracting off snow_ls_interp
+          rain_ls_interp(i,1:pver)=rain_ls_interp(i,1:pver)-snow_ls_interp(i,1:pver)
+       end do
+    end if
 
     ! CAM5 cloud mixing ratio calculations
     ! Note: Although CAM5 has non-zero convective cloud mixing ratios that affect the model state,
