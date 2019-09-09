@@ -1048,26 +1048,16 @@ CONTAINS
     type(cosp_optical_inputs) :: cospIN                   ! COSP optical (or derived?) fields needed by simulators
     type(cosp_column_inputs)  :: cospstateIN              ! COSP model fields needed by simulators
 
-    ! COSP input variables that depend on CAM
-    logical :: use_reff                                   ! True if effective radius to be used by radar simulator
-                                                          ! (always used by lidar)
     logical :: use_precipitation_fluxes                   ! True if precipitation fluxes are input to the algorithm
     real(r8), parameter :: emsfc_lw = 0.99_r8             ! longwave emissivity of surface at 10.5 microns
 
     ! Local vars related to calculations to go from CAM input to COSP input
     ! cosp convective value includes both deep and shallow convection
-    real(r8) :: mr_lsliq(pcols,pver)                     ! mixing_ratio_large_scale_cloud_liquid (kg/kg)
-    real(r8) :: mr_lsice(pcols,pver)                     ! mixing_ratio_large_scale_cloud_ice (kg/kg)
-    real(r8) :: mr_ccliq(pcols,pver)                     ! mixing_ratio_convective_cloud_liquid (kg/kg)
-    real(r8) :: mr_ccice(pcols,pver)                     ! mixing_ratio_convective_cloud_ice (kg/kg)
     real(r8) :: rain_cv(pcols,pverp)                     ! interface flux_convective_cloud_rain (kg m^-2 s^-1)
     real(r8) :: snow_cv(pcols,pverp)                     ! interface flux_convective_cloud_snow (kg m^-2 s^-1)
-    real(r8) :: rain_cv_interp(pcols,pver)               ! midpoint flux_convective_cloud_rain (kg m^-2 s^-1)
-    real(r8) :: snow_cv_interp(pcols,pver)               ! midpoint flux_convective_cloud_snow (kg m^-2 s^-1)
-    real(r8) :: grpl_ls_interp(pcols,pver)               ! midpoint ls grp flux, should be 0
-    real(r8) :: rain_ls_interp(pcols,pver)               ! midpoint ls rain flux (kg m^-2 s^-1)
-    real(r8) :: snow_ls_interp(pcols,pver)               ! midpoint ls snow flux
-    real(r8) :: reff_cosp(pcols,pver,nhydro)             ! effective radius for cosp input
+    real(r8) :: cam_reff(pcols,pver,nhydro)              ! effective radius for cosp input
+    real(r8) :: cam_hydro(pcols,pver,nhydro)             ! hydrometeor mixing ratios and precip fluxes (kg/kg)
+    real(r8) :: cam_np(pcols,pver,nhydro)                ! hydrometeor number concentrations
 
     ! ######################################################################################
     ! Simulator output info
@@ -1224,22 +1214,9 @@ CONTAINS
     ! GET CAM GEOPHYSICAL VARIABLES NEEDED FOR COSP INPUT
     ! ######################################################################################
 
-    ! Radiative constituent interface variables:
-    ! specific humidity (q), 03 mass mixing ratio
-    call rad_cnst_get_gas(0,'H2O', state, pbuf,  q)
-    call rad_cnst_get_gas(0,'O3',  state, pbuf,  o3)
-
     ! Get variables from physics buffer
     call pbuf_get_field(pbuf, cld_idx,    cld   )
     call pbuf_get_field(pbuf, concld_idx, concld)
-    call pbuf_get_field(pbuf, rel_idx,    rel   )
-    call pbuf_get_field(pbuf, rei_idx,    rei   )
-
-    ! More sizes added to physics buffer in stratiform.F90
-    call pbuf_get_field(pbuf, lsreffrain_idx, ls_reffrain)
-    call pbuf_get_field(pbuf, lsreffsnow_idx, ls_reffsnow)
-    call pbuf_get_field(pbuf, cvreffliq_idx,  cv_reffliq )
-    call pbuf_get_field(pbuf, cvreffice_idx,  cv_reffice )
 
     ! Convective cloud mixing ratios (use for cam4 and cam5)
     call pbuf_get_field(pbuf, dpcldliq_idx, dp_cldliq)
@@ -1276,88 +1253,11 @@ CONTAINS
     ! all precip fluxes are mid points, all values are grid-box mean ("gbm") (Yuying)
 
     ! initialize local variables
-    mr_ccliq(1:ncol,1:pver)           = 0._r8
-    mr_ccice(1:ncol,1:pver)           = 0._r8
-    mr_lsliq(1:ncol,1:pver)           = 0._r8
-    mr_lsice(1:ncol,1:pver)           = 0._r8
-    grpl_ls_interp(1:ncol,1:pver)     = 0._r8
-    rain_ls_interp(1:ncol,1:pver)     = 0._r8
-    snow_ls_interp(1:ncol,1:pver)     = 0._r8
     rain_cv(1:ncol,1:pverp)           = 0._r8
     snow_cv(1:ncol,1:pverp)           = 0._r8
-    rain_cv_interp(1:ncol,1:pver)     = 0._r8
-    snow_cv_interp(1:ncol,1:pver)     = 0._r8
-    reff_cosp(1:ncol,1:pver,1:nhydro) = 0._r8
-
-    call t_startf('cosp_get_hydro_fields')
-
-    ! If using SPCAM, then do not use large-scale precipitation fluxes (we will
-    ! populate subgrid fields directly with precipitation mixing ratios)
-    if (use_SPCAM) then
-       use_precipitation_fluxes = .false.
-    else
-       ! Use precipitation fluxes instead of mixing ratios (and convert to mixing
-       ! ratios later)
-       use_precipitation_fluxes = .true.
-
-       ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
-       rain_cv(1:ncol,1:pverp) = (sh_flxprc(1:ncol,1:pverp) - sh_flxsnw(1:ncol,1:pverp)) &
-                               + (dp_flxprc(1:ncol,1:pverp) - dp_flxsnw(1:ncol,1:pverp))
-       snow_cv(1:ncol,1:pverp) =  sh_flxsnw(1:ncol,1:pverp) + dp_flxsnw(1:ncol,1:pverp)
-
-       ! interpolate interface precip fluxes to mid points
-       do i=1,ncol
-          ! find weights (pressure weighting?)
-          call lininterp_init(state%zi(i,1:pverp),pverp,state%zm(i,1:pver),pver,extrap_method,interp_wgts)
-          ! interpolate  lininterp1d(arrin, nin, arrout, nout, interp_wgts)
-          ! note: lininterp is an interface, contains lininterp1d -- code figures out to use lininterp1d.
-          call lininterp(rain_cv(i,1:pverp),pverp,rain_cv_interp(i,1:pver),pver,interp_wgts)
-          call lininterp(snow_cv(i,1:pverp),pverp,snow_cv_interp(i,1:pver),pver,interp_wgts)
-          call lininterp(ls_flxprc(i,1:pverp),pverp,rain_ls_interp(i,1:pver),pver,interp_wgts)
-          call lininterp(ls_flxsnw(i,1:pverp),pverp,snow_ls_interp(i,1:pver),pver,interp_wgts)
-          call lininterp_finish(interp_wgts)
-          ! ls_flxprc is for rain+snow, find rain_ls_interp by subtracting off snow_ls_interp
-          rain_ls_interp(i,1:pver)=rain_ls_interp(i,1:pver)-snow_ls_interp(i,1:pver)
-       end do
-    end if
-
-    ! CAM5 cloud mixing ratio calculations
-    ! Note: Although CAM5 has non-zero convective cloud mixing ratios that affect the model state,
-    ! Convective cloud water is NOT part of radiation calculations.
-    call cnst_get_ind('CLDLIQ',ixcldliq)
-    call cnst_get_ind('CLDICE',ixcldice)
-    do k=1,pver
-       do i=1,ncol
-          if (cld(i,k) .gt. 0._r8) then
-             ! note: convective mixing ratio is the sum of shallow and deep convective clouds in CAM5
-             mr_ccliq(i,k) = sh_cldliq(i,k) + dp_cldliq(i,k)
-             mr_ccice(i,k) = sh_cldice(i,k) + dp_cldice(i,k)
-             mr_lsliq(i,k) = state%q(i,k,ixcldliq)  ! only includes stratiform (kg/kg)
-             mr_lsice(i,k) = state%q(i,k,ixcldice)  ! only includes stratiform (kg/kg)
-          else
-             mr_ccliq(i,k) = 0._r8
-             mr_ccice(i,k) = 0._r8
-             mr_lsliq(i,k) = 0._r8
-             mr_lsice(i,k) = 0._r8
-          end if
-       end do
-    end do
-
-    ! If use_reff = .false., all sizes use DEFAULT_LIDAR_REFF = 30.0e-6 meters
-    ! The specification of reff_cosp now follows e-mail discussion with Yuying in January 2011. (see above)
-    ! All of the values in the code are in microns...convert to meters here since that is what COSP wants.
-    use_reff = .true.
-    reff_cosp(1:ncol,1:pver,I_LSCLIQ) = rel(1:ncol,1:pver)*1.e-6_r8          ! same as effc and effliq in stratiform.F90
-    reff_cosp(1:ncol,1:pver,I_LSCICE) = rei(1:ncol,1:pver)*1.e-6_r8          ! same as effi and effice in stratiform.F90
-    reff_cosp(1:ncol,1:pver,I_LSRAIN) = ls_reffrain(1:ncol,1:pver)*1.e-6_r8  ! calculated in cldwat2m_micro.F90, passed to stratiform.F90
-    reff_cosp(1:ncol,1:pver,I_LSSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! calculated in cldwat2m_micro.F90, passed to stratiform.F90
-    reff_cosp(1:ncol,1:pver,I_CVCLIQ) = cv_reffliq(1:ncol,1:pver)*1.e-6_r8   ! calculated in stratiform.F90, not actually used in radiation
-    reff_cosp(1:ncol,1:pver,I_CVCICE) = cv_reffice(1:ncol,1:pver)*1.e-6_r8   ! calculated in stratiform.F90, not actually used in radiation
-    reff_cosp(1:ncol,1:pver,I_CVRAIN) = ls_reffrain(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
-    reff_cosp(1:ncol,1:pver,I_CVSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
-    reff_cosp(1:ncol,1:pver,I_LSGRPL) = 0._r8                                ! using radar default reff
-
-    call t_stopf("cosp_get_hydro_fields")
+    cam_reff(1:ncol,1:pver,1:nhydro) = 0._r8
+    cam_hydro(:,:,:) = 0
+    cam_np(:,:,:) = 0
 
     ! ######################################################################################
     ! Construct COSP output derived type.
@@ -1378,8 +1278,15 @@ CONTAINS
     cospstateIN%lat = state%lat(1:ncol) * 180._r8 / pi
     cospstateIN%lon = state%lon(1:ncol) * 180._r8 / pi
     cospstateIN%at  = state%t(1:ncol,1:pver)
+
+    ! Radiative constituent interface variables:
+    ! specific humidity (q), 03 mass mixing ratio
+    call rad_cnst_get_gas(0,'H2O', state, pbuf,  q)
+    call rad_cnst_get_gas(0,'O3',  state, pbuf,  o3)
     cospstateIN%qv  = q(1:ncol,1:pver)
     cospstateIN%o3  = o3(1:ncol,1:pver)
+
+    ! Skin temperature comes from cam_in (from land model?)
     cospstateIN%skt = cam_in%ts(1:ncol)
 
     ! Set sunlit flag
@@ -1431,20 +1338,103 @@ CONTAINS
              Np(ncol, nSubcol, pver, nhydro), &
              frac_prec(ncol, nSubcol, pver))
 
-    call cosp_subsample(ncol, pver, nSubcol, nhydro, overlap, &
-         use_precipitation_fluxes, cld(1:ncol, 1:pver), concld(1:ncol, 1:pver), &
-         rain_ls_interp(1:ncol, 1:pver), snow_ls_interp(1:ncol, 1:pver), &
-         grpl_ls_interp(1:ncol, 1:pver), rain_cv_interp(1:ncol, 1:pver), &
-         snow_cv_interp(1:ncol, 1:pver), &
-         mr_lsliq(1:ncol, 1:pver), mr_lsice(1:ncol, 1:pver), &
-         mr_ccliq(1:ncol, 1:pver), mr_ccice(1:ncol, 1:pver), &
-         reff_cosp(1:ncol, 1:pver,:), cld_swtau(1:ncol, 1:pver), &
-         cld_swtau(1:ncol,1:pver), snow_tau(1:ncol,1:pver), &
-         snow_emis(1:ncol,1:pver), state%ps(1:ncol), cospstateIN, cospIN, &
-         mr_hydro, Reff, Np, frac_prec)  ! new outputs, need to be added ...
+    ! If using SPCAM, then do not use large-scale precipitation fluxes (we will
+    ! populate subgrid fields directly with precipitation mixing ratios)
+    if (.not. use_SPCAM) then
+       ! Use precipitation fluxes instead of mixing ratios (and convert to mixing
+       ! ratios later)
+       use_precipitation_fluxes = .true.
 
+       ! add together deep and shallow convection precipitation fluxes, recall *_flxprc variables are rain+snow
+       rain_cv(1:ncol,1:pverp) = (sh_flxprc(1:ncol,1:pverp) - sh_flxsnw(1:ncol,1:pverp)) &
+                               + (dp_flxprc(1:ncol,1:pverp) - dp_flxsnw(1:ncol,1:pverp))
+       snow_cv(1:ncol,1:pverp) =  sh_flxsnw(1:ncol,1:pverp) + dp_flxsnw(1:ncol,1:pverp)
+
+       ! interpolate interface precip fluxes to mid points
+       do i=1,ncol
+          ! find weights (pressure weighting?)
+          call lininterp_init(state%zi(i,1:pverp),pverp,state%zm(i,1:pver),pver,extrap_method,interp_wgts)
+          ! interpolate  lininterp1d(arrin, nin, arrout, nout, interp_wgts)
+          ! note: lininterp is an interface, contains lininterp1d -- code figures out to use lininterp1d.
+          call lininterp(  rain_cv(i,1:pverp), pverp, cam_hydro(i,1:pver,I_CVRAIN), pver, interp_wgts)
+          call lininterp(  snow_cv(i,1:pverp), pverp, cam_hydro(i,1:pver,I_CVSNOW), pver, interp_wgts)
+          call lininterp(ls_flxprc(i,1:pverp), pverp, cam_hydro(i,1:pver,I_LSRAIN), pver, interp_wgts)
+          call lininterp(ls_flxsnw(i,1:pverp), pverp, cam_hydro(i,1:pver,I_LSSNOW), pver, interp_wgts)
+          call lininterp_finish(interp_wgts)
+          ! ls_flxprc is for rain+snow, find rain_ls_interp by subtracting off snow_ls_interp
+          cam_hydro(i,1:pver,I_LSRAIN) = cam_hydro(i,1:pver,I_LSRAIN) - cam_hydro(i,1:pver,I_LSSNOW)
+       end do
+
+       ! CAM5 cloud mixing ratio calculations
+       ! Note: Although CAM5 has non-zero convective cloud mixing ratios that affect the model state,
+       ! Convective cloud water is NOT part of radiation calculations.
+       call cnst_get_ind('CLDLIQ',ixcldliq)
+       call cnst_get_ind('CLDICE',ixcldice)
+       do k=1,pver
+          do i=1,ncol
+             if (cld(i,k) .gt. 0._r8) then
+                ! note: convective mixing ratio is the sum of shallow and deep convective clouds in CAM5
+                cam_hydro(i,k,I_CVCLIQ) = sh_cldliq(i,k) + dp_cldliq(i,k)
+                cam_hydro(i,k,I_CVCICE) = sh_cldice(i,k) + dp_cldice(i,k)
+                cam_hydro(i,k,I_LSCLIQ) = state%q(i,k,ixcldliq)  ! only includes stratiform (kg/kg)
+                cam_hydro(i,k,I_LSCICE) = state%q(i,k,ixcldice)  ! only includes stratiform (kg/kg)
+             else
+                cam_hydro(i,k,I_CVCLIQ) = 0._r8
+                cam_hydro(i,k,I_CVCICE) = 0._r8
+                cam_hydro(i,k,I_LSCLIQ) = 0._r8
+                cam_hydro(i,k,I_LSCICE) = 0._r8
+             end if
+          end do
+       end do
+
+       ! More sizes added to physics buffer in stratiform.F90
+       call pbuf_get_field(pbuf, rel_idx,    rel   )
+       call pbuf_get_field(pbuf, rei_idx,    rei   )
+       call pbuf_get_field(pbuf, lsreffrain_idx, ls_reffrain)
+       call pbuf_get_field(pbuf, lsreffsnow_idx, ls_reffsnow)
+       call pbuf_get_field(pbuf, cvreffliq_idx,  cv_reffliq )
+       call pbuf_get_field(pbuf, cvreffice_idx,  cv_reffice )
+       cam_reff(1:ncol,1:pver,I_LSCLIQ) = rel(1:ncol,1:pver)*1.e-6_r8          ! same as effc and effliq in stratiform.F90
+       cam_reff(1:ncol,1:pver,I_LSCICE) = rei(1:ncol,1:pver)*1.e-6_r8          ! same as effi and effice in stratiform.F90
+       cam_reff(1:ncol,1:pver,I_LSRAIN) = ls_reffrain(1:ncol,1:pver)*1.e-6_r8  ! calculated in cldwat2m_micro.F90, passed to stratiform.F90
+       cam_reff(1:ncol,1:pver,I_LSSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! calculated in cldwat2m_micro.F90, passed to stratiform.F90
+       cam_reff(1:ncol,1:pver,I_CVCLIQ) = cv_reffliq(1:ncol,1:pver)*1.e-6_r8   ! calculated in stratiform.F90, not actually used in radiation
+       cam_reff(1:ncol,1:pver,I_CVCICE) = cv_reffice(1:ncol,1:pver)*1.e-6_r8   ! calculated in stratiform.F90, not actually used in radiation
+       cam_reff(1:ncol,1:pver,I_CVRAIN) = ls_reffrain(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
+       cam_reff(1:ncol,1:pver,I_CVSNOW) = ls_reffsnow(1:ncol,1:pver)*1.e-6_r8  ! same as stratiform per Andrew
+       cam_reff(1:ncol,1:pver,I_LSGRPL) = 0._r8                                ! using radar default reff
+
+       !call get_cam_hydros(state, pbuf, cam_hydro, cam_reff, cam_np)
+       call cosp_subsample(ncol, pver, nSubcol, nhydro, overlap, &
+            use_precipitation_fluxes, cld(1:ncol, 1:pver), concld(1:ncol, 1:pver), &
+            cam_hydro(1:ncol,1:pver,1:N_HYDRO), cam_reff(1:ncol,1:pver,1:N_HYDRO), &
+            snow_tau(1:ncol,1:pver), snow_emis(1:ncol,1:pver), &
+            state%ps(1:ncol), cospstateIN, cospIN, &
+            mr_hydro, Reff, Np, frac_prec)  ! new outputs, need to be added ...
+
+    else
+!      ! Use precip mixing ratios instead of fluxes
+!      use_precipitation_fluxes = .false.
+!      mr_hydro = 0
+!      Reff = 0
+!      Np = 0
+!      frac_prec = 0
+!      do icol = 1,ncol
+!         do iz = 1,crm_nz
+!            do iy = 1,crm_ny_rad
+!               do ix = 1,crm_nx_rad
+!                  ilev = pver - iz + 1
+!                  mr_hydro(icol,isubcol,ilev,I_LSCLIQ) = crm_qc(icol,ix,iy,iz)
+!                  mr_hydro(icol,isubcol,ilev,I_LSCICE) = crm_qi(icol,ix,iy,iz)
+!               end do
+!            end do
+!         end do
+!      end do
+    end if
+
+    ! Calculate optical properties
     call calc_cosp_optics(ncol, pver, nSubcol, nhydro, &
-         lidar_ice_type, sd_cs(lchnk), reff_cosp(1:ncol,1:pver,:), &
+         lidar_ice_type, sd_cs(lchnk), &
          emis(1:ncol,1:pver), emis(1:ncol,1:pver), &
          cld_swtau(1:ncol, 1:pver), cld_swtau(1:ncol, 1:pver), &
          snow_tau(1:ncol,1:pver), snow_emis(1:ncol,1:pver), &
@@ -1562,6 +1552,16 @@ CONTAINS
 
 #endif
   end subroutine cospsimulator_intr_run
+
+  subroutine get_cam_hydros(state, pbuf, cam_hydro, cam_reff, cam_np)
+     use physics_types,        only: physics_state
+     use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
+     type(physics_state), intent(in) :: state
+     type(physics_buffer_desc), pointer :: pbuf(:)
+     real(r8), intent(out) :: cam_hydro(:,:,:)
+     real(r8), intent(out) :: cam_reff(:,:,:)
+     real(r8), intent(out) :: cam_np(:,:,:)
+  end subroutine get_cam_hydros
 
 
   subroutine cosp_history_output(ncol, lchnk, cospIN, cospOUT)
@@ -1810,9 +1810,8 @@ end function masked_product
   ! ######################################################################################
   subroutine cosp_subsample(Npoints, nLevels, Ncolumns, nHydro, overlap, &
       use_precipitation_fluxes, tca, cca, &
-      fl_lsrainIN, fl_lssnowIN, fl_lsgrplIN, fl_ccrainIN, &
-      fl_ccsnowIN, mr_lsliq, mr_lsice, mr_ccliq, mr_ccice, &
-      reffIN, dtau_c, dtau_s, dtau_s_snow, &
+      gb_hydro, gb_reff, &
+      dtau_s_snow, &
       dem_s_snow, sfcP, cospstateIN, cospIN, &
       mr_hydro, Reff, Np, frac_prec)
    ! Dependencies
@@ -1833,23 +1832,13 @@ end function masked_product
         overlap         ! Overlap assumption (1/2/3)
    real(wp),intent(in),dimension(Npoints,nLevels) :: &
         tca,          & ! Total cloud amount (0-1)
-        cca,          & ! Convective cloud amount (0-1)
-        mr_lsliq,     & ! Mixing ratio (kg/kg)
-        mr_lsice,     & ! Mixing ratio (kg/kg)
-        mr_ccliq,     & ! Mixing ratio (kg/kg)
-        mr_ccice,     & ! Mixing ratio (kg/kg)
-        dtau_c,       & ! 0.67-micron optical depth (convective)
-        dtau_s,       & ! 0.67-micron optical depth (stratiform)
-        fl_lsrainIN,  & ! Precipitation flux
-        fl_lssnowIN,  & ! Precipitation flux
-        fl_lsgrplIN,  & ! Precipitation flux
-        fl_ccrainIN,  & ! Precipitation flux
-        fl_ccsnowIN     ! Precipitation flux
+        cca             ! Convective cloud amount (0-1)
    real(wp),intent(inout),dimension(Npoints,nLevels) :: &
         dtau_s_snow,  & ! 0.67-micron optical depth (snow)
         dem_s_snow      ! 11-micron emissivity (snow)
    real(wp),intent(in),dimension(Npoints,nLevels,nHydro) :: &
-        reffIN          !
+        gb_hydro,     & ! Gridbox-mean mixing ratios and precip fluxes (kg/kg)
+        gb_reff          ! Gridbox-mean effective radii
    real(wp),intent(in),dimension(Npoints) :: &
         sfcP            ! Surface pressure
 
@@ -1865,11 +1854,10 @@ end function masked_product
    real(wp),dimension(Npoints,nLevels)      :: column_frac_out,column_prec_out,         &
                                                fl_lsrain,fl_lssnow,fl_lsgrpl,fl_ccrain, &
                                                fl_ccsnow
-   real(wp),dimension(Npoints,nLevels,nHydro) :: ReffTemp
    type(rng_state),allocatable,dimension(:) :: rngs  ! Seeds for random number generator
    integer,dimension(:),allocatable         :: seed
    real(wp),dimension(:,:),allocatable      :: ls_p_rate,cv_p_rate,frac_ls,frac_cv,     &
-                                               prec_ls,prec_cv,g_vol
+                                               prec_ls,prec_cv
 
    call t_startf("scops")
    if (Ncolumns .gt. 1) then
@@ -1886,16 +1874,11 @@ end function masked_product
       call scops(Npoints,Nlevels,Ncolumns,rngs,tca,cca,overlap,cospIN%frac_out,0)
       deallocate(seed,rngs)
 
-      ! Sum up precipitation rates. If not using preciitation fluxes, mixing ratios are
+      ! Sum up precipitation rates. If not using precipitation fluxes, mixing ratios are
       ! stored in _rate variables.
       allocate(ls_p_rate(Npoints,nLevels),cv_p_rate(Npoints,Nlevels))
-      if(use_precipitation_fluxes) then
-         ls_p_rate(:,1:nLevels) = fl_lsrainIN + fl_lssnowIN + fl_lsgrplIN
-         cv_p_rate(:,1:nLevels) = fl_ccrainIN + fl_ccsnowIN
-      else
-         ls_p_rate(:,1:nLevels) = 0 ! mixing_ratio(rain) + mixing_ratio(snow) + mixing_ratio (groupel)
-         cv_p_rate(:,1:nLevels) = 0 ! mixing_ratio(rain) + mixing_ratio(snow)
-      endif
+      ls_p_rate(:,1:nLevels) = gb_hydro(:,:,I_LSRAIN) + gb_hydro(:,:,I_LSSNOW) + gb_hydro(:,:,I_LSGRPL)
+      cv_p_rate(:,1:nLevels) = gb_hydro(:,:,I_CVRAIN) + gb_hydro(:,:,I_CVSNOW)
 
       ! Call PREC_SCOPS
       call prec_scops(Npoints,nLevels,Ncolumns,ls_p_rate,cv_p_rate,cospIN%frac_out,frac_prec)
@@ -1955,16 +1938,16 @@ end function masked_product
 
          ! LS clouds
          where (column_frac_out == I_LSC)
-            mr_hydro(:,k,:,I_LSCLIQ) = mr_lsliq
-            mr_hydro(:,k,:,I_LSCICE) = mr_lsice
-            Reff(:,k,:,I_LSCLIQ)     = ReffIN(:,:,I_LSCLIQ)
-            Reff(:,k,:,I_LSCICE)     = ReffIN(:,:,I_LSCICE)
+            mr_hydro(:,k,:,I_LSCLIQ) = gb_hydro(:,:,I_LSCLIQ)
+            mr_hydro(:,k,:,I_LSCICE) = gb_hydro(:,:,I_LSCICE)
+            Reff(:,k,:,I_LSCLIQ)     = gb_reff(:,:,I_LSCLIQ)
+            Reff(:,k,:,I_LSCICE)     = gb_reff(:,:,I_LSCICE)
          ! CONV clouds
          elsewhere (column_frac_out == I_CVC)
-            mr_hydro(:,k,:,I_CVCLIQ) = mr_ccliq
-            mr_hydro(:,k,:,I_CVCICE) = mr_ccice
-            Reff(:,k,:,I_CVCLIQ)     = ReffIN(:,:,I_CVCLIQ)
-            Reff(:,k,:,I_CVCICE)     = ReffIN(:,:,I_CVCICE)
+            mr_hydro(:,k,:,I_CVCLIQ) = gb_hydro(:,:,I_CVCLIQ)
+            mr_hydro(:,k,:,I_CVCICE) = gb_hydro(:,:,I_CVCICE)
+            Reff(:,k,:,I_CVCLIQ)     = gb_reff(:,:,I_CVCLIQ)
+            Reff(:,k,:,I_CVCICE)     = gb_reff(:,:,I_CVCICE)
          end where
 
          ! Subcolumn precipitation
@@ -1972,13 +1955,13 @@ end function masked_product
 
          ! LS Precipitation
          where ((column_prec_out == 1) .or. (column_prec_out == 3) )
-            Reff(:,k,:,I_LSRAIN) = ReffIN(:,:,I_LSRAIN)
-            Reff(:,k,:,I_LSSNOW) = ReffIN(:,:,I_LSSNOW)
-            Reff(:,k,:,I_LSGRPL) = ReffIN(:,:,I_LSGRPL)
+            Reff(:,k,:,I_LSRAIN) = gb_reff(:,:,I_LSRAIN)
+            Reff(:,k,:,I_LSSNOW) = gb_reff(:,:,I_LSSNOW)
+            Reff(:,k,:,I_LSGRPL) = gb_reff(:,:,I_LSGRPL)
          ! CONV precipitation
          elsewhere ((column_prec_out == 2) .or. (column_prec_out == 3))
-            Reff(:,k,:,I_CVRAIN) = ReffIN(:,:,I_CVRAIN)
-            Reff(:,k,:,I_CVSNOW) = ReffIN(:,:,I_CVSNOW)
+            Reff(:,k,:,I_CVRAIN) = gb_reff(:,:,I_CVRAIN)
+            Reff(:,k,:,I_CVSNOW) = gb_reff(:,:,I_CVSNOW)
          end where
       enddo
 
@@ -2001,13 +1984,13 @@ end function masked_product
             ! Precipitation
             if (use_precipitation_fluxes) then
                if (prec_ls(j,k) .ne. 0._r8) then
-                  fl_lsrain(j,k) = fl_lsrainIN(j,k)/prec_ls(j,k)
-                  fl_lssnow(j,k) = fl_lssnowIN(j,k)/prec_ls(j,k)
-                  fl_lsgrpl(j,k) = fl_lsgrplIN(j,k)/prec_ls(j,k)
+                  fl_lsrain(j,k) = gb_hydro(j,k,I_LSRAIN)/prec_ls(j,k)
+                  fl_lssnow(j,k) = gb_hydro(j,k,I_LSSNOW)/prec_ls(j,k)
+                  fl_lsgrpl(j,k) = gb_hydro(j,k,I_LSGRPL)/prec_ls(j,k)
                endif
                if (prec_cv(j,k) .ne. 0._r8) then
-                  fl_ccrain(j,k) = fl_ccrainIN(j,k)/prec_cv(j,k)
-                  fl_ccsnow(j,k) = fl_ccsnowIN(j,k)/prec_cv(j,k)
+                  fl_ccrain(j,k) = gb_hydro(j,k,I_CVRAIN)/prec_cv(j,k)
+                  fl_ccsnow(j,k) = gb_hydro(j,k,I_CVSNOW)/prec_cv(j,k)
                endif
             else
                if (prec_ls(j,k) .ne. 0._r8) then
@@ -2066,11 +2049,11 @@ end function masked_product
 
    else
       cospIN%frac_out(:,:,:) = 1
-      mr_hydro(:,1,:,I_LSCLIQ) = mr_lsliq
-      mr_hydro(:,1,:,I_LSCICE) = mr_lsice
-      mr_hydro(:,1,:,I_CVCLIQ) = mr_ccliq
-      mr_hydro(:,1,:,I_CVCICE) = mr_ccice
-      Reff(:,1,:,:)            = ReffIN
+      mr_hydro(:,1,:,I_LSCLIQ) = gb_hydro(:,:,I_LSCLIQ)
+      mr_hydro(:,1,:,I_LSCICE) = gb_hydro(:,:,I_LSCICE)
+      mr_hydro(:,1,:,I_CVCLIQ) = gb_hydro(:,:,I_CVCLIQ)
+      mr_hydro(:,1,:,I_CVCICE) = gb_hydro(:,:,I_CVCICE)
+      Reff(:,1,:,:)            = gb_reff(:,:,:)
    endif
    call t_stopf("scops")
 
@@ -2081,7 +2064,7 @@ end function masked_product
   ! ######################################################################################
   subroutine calc_cosp_optics(Npoints, nLevels, nSubcol, nHydro, &
       lidar_ice_type, sd, &
-      reffIN, dem_c, dem_s, dtau_c, dtau_s, dtau_s_snow, dem_s_snow, &
+      dem_c, dem_s, dtau_c, dtau_s, dtau_s_snow, dem_s_snow, &
       mr_hydro, Reff, Np, frac_prec, &
       cospstateIN, cospIN)
    ! Dependencies
@@ -2103,8 +2086,6 @@ end function masked_product
       dem_s_snow,   & ! 11-micron emissivity (snow)
       dem_c,        & ! 11-micron emissivity (convective)
       dem_s           ! 11-micron emissivity (stratiform)
-   real(wp),intent(in),dimension(Npoints, nLevels, nHydro) :: &
-      reffIN        ! <description needed>
    real(wp), dimension(Npoints, nSubcol, nLevels, nHydro), intent(inout) :: &
       mr_hydro, Reff, Np
    real(wp), dimension(Npoints, nSubcol, nLevels), intent(in)  :: frac_prec
@@ -2164,7 +2145,12 @@ end function masked_product
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    call t_startf("calipso_optics")
    if (Llidar_sim) then
-      ReffTemp = ReffIN
+      ! lidar_optics wants gridbox effective radii instead of subcolumn, so back
+      ! this out there by taking the max value along the subcolumn dimension so
+      ! that we do not have to pass a redundant variable into this routine and
+      ! also so that we can use with data only definied on subcolumns (i.e.,
+      ! SP/MMF)
+      ReffTemp = maxval(Reff, dim=2)
       call lidar_optics(Npoints,nSubcol,nLevels,5,lidar_ice_type,lidar_freq,lground,   &
                         mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_LSCLIQ),              &
                         mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_LSCICE),              &
