@@ -247,7 +247,9 @@ contains
    use prescribed_aero,     only: prescribed_aero_readnl
    use prescribed_ghg,      only: prescribed_ghg_readnl
    use aircraft_emit,       only: aircraft_emit_readnl
+#ifdef USE_COSP
    use cospsimulator_intr,  only: cospsimulator_intr_readnl
+#endif
    use sat_hist,            only: sat_hist_readnl
    ! Needed by sat_hist_readnl
    use cam_history,         only: hfilename_spec, mfilt, fincl, nhtfrq, avgflag_pertape
@@ -489,7 +491,9 @@ contains
    call prescribed_ghg_readnl(nlfilename)
    call co2_cycle_readnl(nlfilename)
    call aircraft_emit_readnl(nlfilename)
+#ifdef USE_COSP
    call cospsimulator_intr_readnl(nlfilename)
+#endif
    call sat_hist_readnl(nlfilename, hfilename_spec, mfilt, fincl, nhtfrq, avgflag_pertape)
    call diag_readnl(nlfilename)
    call nudging_readnl(nlfilename)
