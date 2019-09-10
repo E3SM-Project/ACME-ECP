@@ -192,8 +192,8 @@ module cospsimulator_intr
   integer :: shcldliq_idx, shcldice_idx, shcldliq1_idx, shcldice1_idx, dpflxprc_idx
   integer :: dpflxsnw_idx, shflxprc_idx, shflxsnw_idx, lsflxprc_idx, lsflxsnw_idx
   integer :: rei_idx, rel_idx
-  integer :: crm_qc_idx, crm_qi_idx, crm_qr_idx, crm_qs_idx, crm_qg_idx, &
-             crm_rel_idx, crm_rei_idx, crm_cldtau_idx, crm_cldems_idx
+  integer :: crm_qc_idx, crm_qi_idx, crm_qpl_idx, crm_qpi_idx, &
+             crm_qr_idx, crm_qs_idx, crm_qg_idx
 
   ! ######################################################################################
   ! Declarations specific to COSP2
@@ -977,10 +977,8 @@ CONTAINS
     if (use_SPCAM) then
        crm_qc_idx = pbuf_get_index('CRM_QC_RAD')
        crm_qi_idx = pbuf_get_index('CRM_QI_RAD')
-       crm_rel_idx = pbuf_get_index('CRM_REL_RAD')
-       crm_rei_idx = pbuf_get_index('CRM_REI_RAD')
-       crm_cldtau_idx = pbuf_get_index('CRM_CLDTAU')
-       crm_cldems_idx = pbuf_get_index('CRM_CLDEMS')
+       crm_qpl_idx = pbuf_get_index('CRM_QPL_RAD')
+       crm_qpi_idx = pbuf_get_index('CRM_QPI_RAD')
        if (trim(SPCAM_microp_scheme) == 'm2005') then
           crm_qs_idx = pbuf_get_index('CRM_QS_RAD')
           crm_qr_idx = pbuf_get_index('CRM_QR_RAD')
@@ -1000,7 +998,8 @@ CONTAINS
   ! SUBROUTINE cospsimulator_intr_run
   ! ######################################################################################
   subroutine cospsimulator_intr_run(state, pbuf, cam_in, emis, coszrs, &
-                                    cld_swtau, snow_tau, snow_emis)
+                                    cld_swtau, snow_tau, snow_emis,    &
+                                    crm_cld_tau, crm_cld_emis          )
     use physics_types,        only: physics_state
     use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
     use phys_control,         only: phys_getopts
@@ -1028,6 +1027,7 @@ CONTAINS
     real(r8), intent(in) :: cld_swtau(pcols,pver)  ! RRTM cld_swtau_in, read in using this variable
     real(r8), intent(inout) :: snow_tau(pcols,pver)   ! RRTM grid-box mean SW snow optical depth, used for CAM5 simulations
     real(r8), intent(inout) :: snow_emis(pcols,pver)  ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations
+    real(r8), intent(in), optional, dimension(:,:,:,:) :: crm_cld_tau, crm_cld_emis
 
 #ifdef USE_COSP
     ! ######################################################################################
@@ -1559,7 +1559,8 @@ CONTAINS
     real(r8), intent(out), dimension(:,:,:,:) :: mr_hydro, reff, np
     real(r8), intent(out), dimension(:,:,:) :: frac_prec
 
-    real(r8), pointer, dimension(:,:,:,:) :: crm_qc, crm_qi
+    real(r8), pointer, dimension(:,:) :: rel, rei
+    real(r8), pointer, dimension(:,:,:,:) :: crm_qc, crm_qi, crm_qr, crm_qs
 
     integer :: ncol, icol, isubcol, ilev, ix, iy, iz
 
@@ -1569,6 +1570,15 @@ CONTAINS
     Np = 0
     frac_prec = 0
 
+    ! Get fields from pbuf; note this assumes all precipitating ice is snow.
+    ! While the sam1mom physics internally makes some assumptions about graupel
+    ! vs snow, we have not yet separated that out as a diagnostic output.
+    call pbuf_get_field(pbuf, rel_idx, rel)
+    call pbuf_get_field(pbuf, rei_idx, rei)
+    call pbuf_get_field(pbuf, crm_qc_idx, crm_qc)
+    call pbuf_get_field(pbuf, crm_qi_idx, crm_qi)
+    call pbuf_get_field(pbuf, crm_qpl_idx, crm_qr)
+    call pbuf_get_field(pbuf, crm_qpi_idx, crm_qs)
 
     do icol = 1,ncol
        do iz = 1,crm_nz
@@ -1576,8 +1586,32 @@ CONTAINS
              do ix = 1,crm_nx_rad
                 ilev = pver - iz + 1
                 isubcol = (iy - 1) * crm_nx_rad + ix
+
+                ! Set hydrometeor mixing ratios
                 mr_hydro(icol,isubcol,ilev,I_LSCLIQ) = crm_qc(icol,ix,iy,iz)
                 mr_hydro(icol,isubcol,ilev,I_LSCICE) = crm_qi(icol,ix,iy,iz)
+                mr_hydro(icol,isubcol,ilev,I_LSRAIN) = crm_qr(icol,ix,iy,iz)
+                mr_hydro(icol,isubcol,ilev,I_LSSNOW) = crm_qs(icol,ix,iy,iz)
+
+                ! Set effective radii for each hydrometeor type
+                ! TODO: for now, this is using the effective radii from the
+                ! GCM scheme, which I believe is a constant effective radii,
+                ! different values over land vs ocean. This should do something
+                ! more intelligent, but this is also what radiation uses when
+                ! using sam1mom microphysics.
+                ! TODO: confirm that when reff is zero, defaults are used
+                reff(icol,isubcol,ilev,I_LSCLIQ) = rel(icol,ilev)
+                reff(icol,isubcol,ilev,I_LSCICE) = rei(icol,ilev)
+                reff(icol,isubcol,ilev,I_LSRAIN) = 0
+                reff(icol,isubcol,ilev,I_LSSNOW) = 0
+                reff(icol,isubcol,ilev,I_LSGRPL) = 0
+
+                ! Set precipitation fraction
+                if (crm_qr(icol,ix,iy,iz) + crm_qs(icol,ix,iy,iz) > 0._r8) then
+                   frac_prec(icol,isubcol,ilev) = 1
+                else
+                   frac_prec(icol,isubcol,ilev) = 0
+                end if
              end do
           end do
        end do

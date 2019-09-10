@@ -1751,14 +1751,6 @@ end function radiation_nextsw_cday
                   endif
                 enddo
               enddo
-              if (use_SPCAM) then 
-                do m=1,crm_nz
-                   k = pver-m+1
-                   do i=1,ncol
-                      cld_tau_crm(i,ii,jj,m) =  cld_tau(rrtmg_sw_cloudsim_band,i,k)
-                   end do ! i
-                end do ! m
-              endif 
             else  ! cldfsnow_idx > 0
               c_cld_tau    (1:nbndsw,1:ncol,:) = cld_tau    (:,1:ncol,:)
               c_cld_tau_w  (1:nbndsw,1:ncol,:) = cld_tau_w  (:,1:ncol,:)
@@ -1770,7 +1762,17 @@ end function radiation_nextsw_cday
               call pbuf_set_field(pbuf,cld_tau_idx,cld_tau(rrtmg_sw_cloudsim_band, :, :))                   
             end if
 
-          endif
+            ! Save SW cloud optical depth for COSP
+            if (use_SPCAM) then 
+               do m = 1,crm_nz
+                  k = pver - m + 1
+                  do i = 1,ncol
+                     cld_tau_crm(i,ii,jj,m) = cld_tau(rrtmg_sw_cloudsim_band,i,k)
+                  end do ! i
+               end do ! m
+             end if 
+
+          endif  ! dosw
 
           if (dolw) then
             if(oldcldoptics) then
@@ -1809,18 +1811,20 @@ end function radiation_nextsw_cday
                    endif
                 enddo
               enddo
-              if (use_SPCAM) then
-                  do m=1,crm_nz
-                     k = pver-m+1
-                     do i=1,ncol
-                        emis_crm(i,ii,jj,m)=1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,i,k))
-                     end do ! i
-                  end do ! m
-              endif  ! use_SPCAM
             else  ! cldfsnow_idx > 0
                c_cld_lw_abs(1:nbndlw,1:ncol,:)=cld_lw_abs(:,1:ncol,:)
             endif  ! cldfsnow_idx > 0
           endif  ! dolw
+
+          ! Save longwave emissivity for COSP
+          if (use_SPCAM) then
+             do m = 1,crm_nz
+                k = pver-m+1
+                do i = 1,ncol
+                   emis_crm(i,ii,jj,m) = 1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,i,k))
+                end do ! i
+             end do ! m
+          end if  ! use_SPCAM
 
           if (.not.(cldfsnow_idx > 0)) then
             cldfprime(1:ncol,:)=cld(1:ncol,:)
@@ -2397,50 +2401,46 @@ end function radiation_nextsw_cday
       end if
 
       ! Run the CFMIP Observation Simulator Package (COSP)
-      ! For the time being, the MMF stuff is not coupled with the COSP
-      ! simulator, so bypass this code if we are using SP/MMF (for now)
-      if (.not. use_SPCAM) then 
-          !! initialize and calculate emis
-          emis(:,:) = 0._r8
-          emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,:ncol,:))
-          call outfld('EMIS      ',emis    ,pcols   ,lchnk   )
+      !! initialize and calculate emis
+      emis(:,:) = 0._r8
+      emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,:ncol,:))
+      call outfld('EMIS      ',emis    ,pcols   ,lchnk   )
 
-          !! compute grid-box mean SW and LW snow optical depth for use by COSP
-          gb_snow_tau(:,:) = 0._r8
-          gb_snow_lw(:,:) = 0._r8
-          if (cldfsnow_idx > 0) then
-             do i=1,ncol
-                do k=1,pver
-                   if(cldfsnow(i,k) > 0.)then
-                      gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k)
-                      gb_snow_lw(i,k) = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k)
-                   end if
-                enddo
-             enddo
-          end if
+      !! compute grid-box mean SW and LW snow optical depth for use by COSP
+      gb_snow_tau(:,:) = 0._r8
+      gb_snow_lw(:,:) = 0._r8
+      if (cldfsnow_idx > 0) then
+         do i=1,ncol
+            do k=1,pver
+               if(cldfsnow(i,k) > 0.)then
+                  gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k)
+                  gb_snow_lw(i,k) = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k)
+               end if
+            enddo
+         enddo
+      end if
 
 #ifdef USE_COSP
-          if (docosp) then
-             !! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
-             !! advance counter for this timestep
-             cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
+      if (docosp) then
+         ! cosp_cnt referenced for each chunk... cosp_cnt(lchnk)
+         ! advance counter for this timestep
+         cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
 
-             !! if counter is the same as cosp_nradsteps, run cosp and reset counter
-              if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
-                 !call should be compatible with camrt radiation.F90 interface too, should be with (in),optional
-                 ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave optical depths are passed.
-                 call t_startf ('cosp_run')
-                 call cospsimulator_intr_run( &
-                    state,  pbuf, cam_in, emis, coszrs, &
-                    cld_tau(rrtmg_sw_cloudsim_band,:,:), gb_snow_tau,gb_snow_lw &
-                 )
-                 cosp_cnt(lchnk) = 0  !! reset counter
-                 call t_stopf ('cosp_run')
-
-              end if
-          end if
+         ! if counter is the same as cosp_nradsteps, run cosp and reset counter
+         if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
+            ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave optical depths are passed.
+            call t_startf ('cosp_run')
+            call cospsimulator_intr_run( &
+                 state,  pbuf, cam_in, emis, coszrs, &
+                 cld_tau(rrtmg_sw_cloudsim_band,:,:), &
+                 gb_snow_tau, gb_snow_lw, &
+                 crm_cld_tau=cld_tau_crm, crm_cld_emis=emis_crm &
+            )
+            cosp_cnt(lchnk) = 0  !! reset counter
+            call t_stopf ('cosp_run')
+         end if
+      end if
 #endif
-      endif  ! use_SPCAM
 
       if (use_SPCAM .and. SPCAM_microp_scheme .eq. 'm2005') then
           call outfld('CRM_MU    ', mu_crm     , pcols, lchnk)
