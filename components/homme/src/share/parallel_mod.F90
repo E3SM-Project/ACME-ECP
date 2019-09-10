@@ -28,6 +28,10 @@ module parallel_mod
   integer,      public :: MPIreal_t,MPIinteger_t,MPIChar_t,MPILogical_t
   integer,      public :: iam
 
+#ifdef _MPI
+  integer, public            :: MPI2real_t
+#endif
+
   integer,      public, allocatable    :: status(:,:)
   integer,      public, allocatable    :: Rrequest(:)
   integer,      public, allocatable    :: Srequest(:)
@@ -52,7 +56,7 @@ module parallel_mod
 !    integer :: node_rank                  ! local rank in node_comm
 !    integer :: node_nprocs                ! local rank in node_comm
     logical :: masterproc                
-    logical :: dynproc                    ! Designation of a dynamics processor - AaronDonahue
+    logical :: dynproc                    ! Designation of a dynamics processor
   end type
 
 #ifdef CAM
@@ -164,6 +168,7 @@ contains
     if (color == 0) par%dynproc = .TRUE.
 #else
     par%comm     = MPI_COMM_WORLD
+    par%dynproc  = .TRUE.
 #endif
     call MPI_comm_rank(par%comm,par%rank,ierr)
     call MPI_comm_size(par%comm,par%nprocs,ierr)
@@ -180,6 +185,12 @@ contains
     else
        MPIreal_t    = MPI_REAL8
     endif
+
+    ! this type is only to use mpi_minloc and mpi_maxloc in print_state()
+    ! on a machine where MPIreal_t != MPI_DOUBLE_PRECISION there will be
+    ! truncation in calls with maxloc, minloc and loss of reproducibility
+    MPI2real_t   = MPI_2DOUBLE_PRECISION
+
     MPIinteger_t = MPI_INTEGER
     MPIchar_t    = MPI_CHARACTER 
     MPILogical_t = MPI_LOGICAL

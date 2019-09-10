@@ -1168,6 +1168,12 @@ In the low-top model, this helps to conserve momentum and produce a QBO.
 Default: set by build-namelist.
 </entry>
 
+<entry id="gw_convect_hcf" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Heating rate conversion factor associated with convective gravity waves
+Default: 20.0
+</entry>
+
 <entry id="effgw_beres" type="real" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Efficiency associated with convective gravity waves from the Beres
@@ -2522,6 +2528,12 @@ Default: set by build-namelist
 <entry id="zmconv_trigmem" type="logical" category="conv"
        group="zmconv_nl" valid_values="" >
 Trigger and memory option in ZM deep convection scheme.
+Default: FALSE
+</entry>
+
+<entry id="zmconv_trigdcape_ull" type="logical" category="conv"
+       group="zmconv_nl" valid_values="" >
+DCAPE trigger along with unrestricted launching level for ZM deep convection scheme.
 Default: FALSE
 </entry>
 
@@ -6076,7 +6088,21 @@ nearest point in the halo to the departure point, when necessary.
 Default: 0
 </entry>
 
+<entry id="semi_lagrange_hv_q" type="integer" category="se"
+       group="ctl_nl" valid_values="">
+Number of tracers, starting from 1, to which to apply hyperviscosity. For
+example, to apply hyperviscosity to moisture, the first tracer, set the value to
+1. Hyperviscosity is applied using nu_q as the coefficient.
+</entry>
+
 <!-- Physics grid -->
+
+<entry id="se_fv_phys_remap_alg" type="integer" category="se"
+       group="ctl_nl" valid_values="0,1">
+Remap algorithm to use to map between FV physics grid and GLL dynamics
+grid. 0, default, provides the original algorithms; 1 provides
+high-order algorithms implemented in gllfvremap_mod.
+</entry>
 
 <entry id="se_fv_nphys" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
@@ -6085,13 +6111,6 @@ element. A number greater than zero will define [se_fv_nphys] equally
 spaced physics points in each direction (e.g., se_fv_nphys = 2 will
 result in 4 equally-spaced physics points per element).
 Default: 0 = feature disabled, use dynamics GLL points.
-</entry>
-
-<entry id="semi_lagrange_hv_q" type="integer" category="se"
-       group="ctl_nl" valid_values="">
-Number of tracers, starting from 1, to which to apply hyperviscosity. For
-example, to apply hyperviscosity to moisture, the first tracer, set the value to
-1. Hyperviscosity is applied using nu_q as the coefficient.
 </entry>
 
 <!-- CAM I/O  -->
