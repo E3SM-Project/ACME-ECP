@@ -216,7 +216,7 @@ end subroutine stepon_run1
 
 subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
    use bndry_mod,       only: bndry_exchangeV
-   use dimensions_mod,  only: nlev, nelemd, np, npsq
+   use dimensions_mod,  only: nlev, nlevp, nelemd, np, npsq
    use dyn_grid,        only: fv_nphys
    use dp_coupling,     only: p_d_coupling
    use parallel_mod,    only: par
