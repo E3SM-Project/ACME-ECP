@@ -24,6 +24,8 @@ module crm_rad_module
       real(crm_rknd), pointer :: qv (:,:,:,:) ! rad vapor
       real(crm_rknd), pointer :: qc (:,:,:,:) ! rad cloud water
       real(crm_rknd), pointer :: qi (:,:,:,:) ! rad cloud ice
+      real(crm_rknd), pointer :: qpl (:,:,:,:) ! rad precipitating liquid
+      real(crm_rknd), pointer :: qpi (:,:,:,:) ! rad precipitating ice
       real(crm_rknd), pointer :: cld(:,:,:,:) ! rad cloud fraction
 
       ! Only relevant when using 2-moment microphysics
@@ -45,6 +47,9 @@ contains
       rad%temperature => null()
       rad%qv => null()
       rad%qi => null()
+      rad%qc => null()
+      rad%qpl => null()
+      rad%qpi => null()
       rad%cld => null()
 
       rad%nc => null()
@@ -62,6 +67,9 @@ contains
       rad%temperature => null()
       rad%qv => null()
       rad%qi => null()
+      rad%qc => null()
+      rad%qpl => null()
+      rad%qpi => null()
       rad%cld => null()
 
       rad%nc => null()

@@ -122,6 +122,8 @@ subroutine crm_physics_register()
   call pbuf_add_field('CRM_QV_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
   call pbuf_add_field('CRM_QC_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
   call pbuf_add_field('CRM_QI_RAD',  'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+  call pbuf_add_field('CRM_QPL_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
+  call pbuf_add_field('CRM_QPI_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
   call pbuf_add_field('CRM_CLD_RAD', 'physpkg', dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
   call pbuf_add_field('CRM_QRAD',    'global',  dtype_r8, (/pcols,crm_nx_rad,crm_ny_rad,crm_nz/), idx)
 
@@ -779,6 +781,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_QV_RAD'),  crm_rad%qv)
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_QC_RAD'),  crm_rad%qc)
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_QI_RAD'),  crm_rad%qi)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QPL_RAD'), crm_rad%qpl)
+   call pbuf_get_field (pbuf, pbuf_get_index('CRM_QPI_RAD'), crm_rad%qpi)
    call pbuf_get_field (pbuf, pbuf_get_index('CRM_CLD_RAD'), crm_rad%cld)
 
    call pbuf_get_field(pbuf, prec_dp_idx,  prec_dp  )
@@ -900,6 +904,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             crm_rad%qv           (i,:,:,k) = state%q(i,m,1)
             crm_rad%qc           (i,:,:,k) = 0.
             crm_rad%qi           (i,:,:,k) = 0.
+            crm_rad%qpl          (i,:,:,k) = 0.
+            crm_rad%qpi          (i,:,:,k) = 0.
             crm_rad%cld          (i,:,:,k) = 0.
 #ifdef m2005
             if (SPCAM_microp_scheme .eq. 'm2005') then

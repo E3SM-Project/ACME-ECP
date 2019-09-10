@@ -198,6 +198,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd), pointer :: crm_rad_qv(:,:,:,:)
     real(crm_rknd), pointer :: crm_rad_qc(:,:,:,:)
     real(crm_rknd), pointer :: crm_rad_qi(:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qpl(:,:,:,:)
+    real(crm_rknd), pointer :: crm_rad_qpi(:,:,:,:)
     real(crm_rknd), pointer :: crm_rad_cld(:,:,:,:)
     real(crm_rknd), pointer :: crm_output_gliqwp(:,:)
     real(crm_rknd), pointer :: crm_output_gicewp(:,:)
@@ -258,10 +260,12 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_output_mcudn         => crm_output%mcudn            
     crm_output_mcudn         => crm_output%mcudn            
     crm_rad_temperature      => crm_rad%temperature         
-    crm_rad_qv               => crm_rad%qv                  
-    crm_rad_qc               => crm_rad%qc                  
-    crm_rad_qi               => crm_rad%qi                  
-    crm_rad_cld              => crm_rad%cld                 
+    crm_rad_qv               => crm_rad%qv
+    crm_rad_qc               => crm_rad%qc
+    crm_rad_qi               => crm_rad%qi
+    crm_rad_qpi              => crm_rad%qpi
+    crm_rad_qpl              => crm_rad%qpl
+    crm_rad_cld              => crm_rad%cld
     crm_output_gliqwp        => crm_output%gliqwp           
     crm_output_gicewp        => crm_output%gicewp           
     crm_output_cltot         => crm_output%cltot            
@@ -336,6 +340,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_rad%qv (icrm,:,:,:) = 0.
     crm_rad%qc (icrm,:,:,:) = 0.
     crm_rad%qi (icrm,:,:,:) = 0.
+    crm_rad%qpl(icrm,:,:,:) = 0.
+    crm_rad%qpi(icrm,:,:,:) = 0.
     crm_rad%cld(icrm,:,:,:) = 0.
 #ifdef m2005
     crm_rad%nc(icrm,:,:,:) = 0.0
@@ -1003,7 +1009,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     !$acc parallel loop gang vector collapse(3) copyin(cf3d,pres,qci,qv,dz,adz,w,tabs,qcl,rho) &
     !$acc& copy(crm_output_mcudn,crm_output_mcup,cwp,cltemp,cwpl,flag_top,crm_output_cld,cwpm,cttemp,cmtemp,cwph,chtemp,crm_output_mcdn,crm_output_gliqwp,&
-    !$acc&      crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature,crm_rad_qv,crm_output_gicewp,crm_output_cldtop) async(asyncid)
+    !$acc&      crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_qpl,crm_rad_qpi,crm_rad_temperature,crm_rad_qv,crm_output_gicewp,crm_output_cldtop) async(asyncid)
     do icrm = 1 , ncrms
       do j=1,ny
         do i=1,nx
@@ -1075,6 +1081,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
             crm_rad_qc         (icrm,i_rad,j_rad,k) = crm_rad_qc         (icrm,i_rad,j_rad,k) + qcl(i,j,k,icrm)
             !$acc atomic update
             crm_rad_qi         (icrm,i_rad,j_rad,k) = crm_rad_qi         (icrm,i_rad,j_rad,k) + qci(i,j,k,icrm)
+            !$acc atomic update
+            crm_rad_qpl        (icrm,i_rad,j_rad,k) = crm_rad_qpl        (icrm,i_rad,j_rad,k) + qpl(i,j,k,icrm)
+            !$acc atomic update
+            crm_rad_qpi        (icrm,i_rad,j_rad,k) = crm_rad_qpi        (icrm,i_rad,j_rad,k) + qpi(i,j,k,icrm)
             if (qcl(i,j,k,icrm) + qci(i,j,k,icrm) > 0) then
               !$acc atomic update
               crm_rad_cld     (icrm,i_rad,j_rad,k) = crm_rad_cld        (icrm,i_rad,j_rad,k) + CF3D(i,j,k,icrm)
@@ -1173,7 +1183,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   !$acc exit data copyout(sstxy,taux0,tauy0,z,z0,fluxbu,fluxbv,bflx,uhl,vhl,adzw,presi,tkelediss,tkesbdiss,tkesbshear,tkesbbuoy,grdf_x,grdf_y,grdf_z,fcory,fcorzy,ug0,vg0,t01,q01,p0,pres,p) async(asyncid)
   !$acc exit data copyout(rhow,uwle,vwle,uwsb,vwsb,w_max,u_max,dt3,cwp,cwph,cwpm,cwpl,flag_top,cltemp,cmtemp,chtemp,cttemp,mkadv,mkwle,sgsadv,sgswle,gamaz,iw_xy,cw_xy,pw_xy,u200_xy,v200_xy) async(asyncid)
   !$acc exit data copyout(usfc_xy,vsfc_xy,w500_xy,swvp_xy,psfc_xy,u850_xy,v850_xy,cloudtopheight,cloudtoptemp,echotopheight,cld_xy,crm_output_timing_factor,crm_rad_qrad,cf3d) async(asyncid)
-  !$acc exit data copyout(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_temperature) async(asyncid)
+  !$acc exit data copyout(crm_output_mcudn,crm_output_mcup,crm_output_cld,crm_output_mcdn,crm_output_gliqwp,crm_output_mcuup,crm_rad_qc,crm_rad_cld,crm_rad_qi,crm_rad_qpl,crm_rad_qpi,crm_rad_temperature) async(asyncid)
   !$acc exit data copyout(crm_rad_qv,crm_output_gicewp,crm_output_cldtop,mdi_crm,mui_crm,crm_output_cltot,crm_output_clhgh,crm_output_clmed,crm_output_cllow,fluxbt,fluxtt,tdiff,twsb,fzero) async(asyncid)
   !$acc exit data copyout(fluxbq,fluxbmk,fluxtq,fluxtmk,sgswsb,mkdiff,mkwsb,qn,qpsrc,qpevp,accrrc,accrsc,accrsi,accrgi,accrgc,coefice,evapg1,evapg2,evapr1,evaps2,evaps1,evapr2) async(asyncid)
 
@@ -1186,6 +1196,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     crm_rad%qv (icrm,:,:,:) = crm_rad%qv (icrm,:,:,:) * tmp1
     crm_rad%qc (icrm,:,:,:) = crm_rad%qc (icrm,:,:,:) * tmp1
     crm_rad%qi (icrm,:,:,:) = crm_rad%qi (icrm,:,:,:) * tmp1
+    crm_rad%qpl(icrm,:,:,:) = crm_rad%qpl(icrm,:,:,:) * tmp1
+    crm_rad%qpi(icrm,:,:,:) = crm_rad%qpi(icrm,:,:,:) * tmp1
     crm_rad%cld(icrm,:,:,:) = crm_rad%cld(icrm,:,:,:) * tmp1
 #ifdef m2005
     crm_rad%nc(icrm,:,:,:) = crm_rad%nc(icrm,:,:,:) * tmp1
