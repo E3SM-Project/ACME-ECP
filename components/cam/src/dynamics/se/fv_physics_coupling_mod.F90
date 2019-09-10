@@ -51,6 +51,9 @@ contains
     integer(i4) :: ii, jj, gi, gj                     ! GLL loop iterator and indices for pg2
     integer     :: tl_f
     real(r8), dimension(fv_nphys*fv_nphys,pver,pcnst) :: qo_phys       ! reconstructed initial physics state 
+#ifdef FVPG_ALT_DYN_MAP
+    real(r8), dimension(fv_nphys*fv_nphys,pver)       :: To_phys
+#endif
     real(r8), dimension(np,np,pver)                   :: dp_gll
     real(r8), dimension(fv_nphys*fv_nphys,pver)       :: dp_fvm_sum
     !---------------------------------------------------------------------------
@@ -67,6 +70,12 @@ contains
           dp_fvm_sum(:,ilyr) = RESHAPE( subcell_integration(dp_gll(:,:,ilyr), &
                                         np,fv_nphys,elem(ie)%metdet(:,:)),    &
                                         (/fv_nphys*fv_nphys/) )
+#ifdef FVPG_ALT_DYN_MAP
+          To_phys(:,ilyr)    = RESHAPE( subcell_integration(                    &
+                                elem(ie)%state%T(:,:,ilyr)*dp_gll(:,:,ilyr),  &
+                                np, fv_nphys, elem(ie)%metdet(:,:) ),           &
+                                (/fv_nphys*fv_nphys/) ) / dp_fvm_sum(:,ilyr)
+#endif
           do m = 1,pcnst
             qo_phys(:,ilyr,m)  = RESHAPE( subcell_integration(                    &
                                   elem(ie)%state%Q(:,:,ilyr,m)*dp_gll(:,:,ilyr),  &
@@ -113,7 +122,16 @@ contains
                   if (j==1) gj = jj
                   if (i==2) gi = ii+2
                   if (j==2) gj = jj+2
+#ifdef FVPG_ALT_DYN_MAP
+                  elem(ie)%derived%FT(gi,gj,  ilyr)  = ( T_tmp(icol,ilyr,ie)         &
+                                                        -To_phys(icol,ilyr) )        &
+                                                       *dp_fvm_sum(icol,ilyr)        &
+                                                       /(4.0_r8*dp_gll(gi,gj,ilyr)   &
+                                                         *elem(ie)%spheremp(gi,gj) ) !&
+                                                       ! +elem(ie)%state%T(gi,gj,ilyr)
+#else
                   elem(ie)%derived%FT(gi,gj,  ilyr) =  T_tmp(icol,  ilyr,ie)
+#endif
                   elem(ie)%derived%FM(gi,gj,1,ilyr) = uv_tmp(icol,1,ilyr,ie)
                   elem(ie)%derived%FM(gi,gj,2,ilyr) = uv_tmp(icol,2,ilyr,ie)
                   do m = 1,pcnst

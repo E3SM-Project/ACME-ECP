@@ -436,7 +436,11 @@ CONTAINS
           ie = idmb3(1)
           ioff = idmb2(1)
           do ilyr = 1,pver
+#ifdef FVPG_ALT_DYN_MAP
+            T_tmp(ioff,ilyr,ie)    = phys_state(lchnk)%t(icol,ilyr)
+#else
             T_tmp(ioff,ilyr,ie)    = phys_tend(lchnk)%dtdt(icol,ilyr)
+#endif
             uv_tmp(ioff,1,ilyr,ie) = phys_tend(lchnk)%dudt(icol,ilyr)
             uv_tmp(ioff,2,ilyr,ie) = phys_tend(lchnk)%dvdt(icol,ilyr)
             do m = 1,pcnst
