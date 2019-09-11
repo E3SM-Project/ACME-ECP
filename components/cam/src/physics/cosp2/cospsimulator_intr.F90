@@ -1266,37 +1266,54 @@ CONTAINS
     ! If using SPCAM, then do not use large-scale precipitation fluxes (we will
     ! populate subgrid fields directly with precipitation mixing ratios)
     if (.not. use_SPCAM) then
+
        ! Use precipitation fluxes instead of mixing ratios (and convert to mixing
        ! ratios later)
        use_precipitation_fluxes = .true.
 
+       ! Get gridbox mean hydrometeor information from GCM fields
+       ! Get subcolumn hydrometeor information by subsampling, and calculate
+       ! subcolumn optical properties
        call pbuf_get_field(pbuf, cld_idx,    cld   )
        call pbuf_get_field(pbuf, concld_idx, concld)
-
        call get_cam_hydros(state, pbuf, cld, cam_hydro, cam_reff, cam_np)
-
        call cosp_subsample(ncol, pver, nSubcol, nhydro, overlap, &
             use_precipitation_fluxes, cld(1:ncol, 1:pver), concld(1:ncol, 1:pver), &
             cam_hydro(1:ncol,1:pver,1:N_HYDRO), cam_reff(1:ncol,1:pver,1:N_HYDRO), &
+            cld_swtau(1:ncol,1:pver), cld_swtau(1:ncol,1:pver), &
+            emis(1:ncol,1:pver), emis(1:ncol,1:pver), &
             snow_tau(1:ncol,1:pver), snow_emis(1:ncol,1:pver), &
             state%ps(1:ncol), cospstateIN, cospIN, &
             mr_hydro, Reff, Np, frac_prec)  ! new outputs, need to be added ...
+       call calc_cosp_optics( &
+          ncol, pver, nSubcol, nhydro, &
+          lidar_ice_type, sd_cs(lchnk), &
+          mr_hydro, Reff, Np, frac_prec, &
+          cospstateIN, cospIN, &
+          snow_tau(1:ncol,1:pver), snow_emis(1:ncol,1:pver) &
+       )
 
     else
 
+       ! Do not use precip fluxes for CRM because we have and will use the
+       ! precipitation mixing ratios
        use_precipitation_fluxes = .false.
-       call get_crm_hydros(state, pbuf, mr_hydro, Reff, Np, frac_prec)
+
+       ! Get subcolumn hydrometeor information from CRM fields, and calculate
+       ! subcolumn optical properties
+       call get_crm_hydros( &
+          state, pbuf, crm_cld_tau, crm_cld_emis, &
+          mr_hydro, Reff, Np, frac_prec, cospIN &
+       )
+       call calc_cosp_optics( &
+          ncol, pver, nSubcol, nhydro, &
+          lidar_ice_type, sd_cs(lchnk), &
+          mr_hydro, Reff, Np, frac_prec, &
+          cospstateIN, cospIN &
+       )
 
     end if
 
-    ! Calculate optical properties
-    call calc_cosp_optics(ncol, pver, nSubcol, nhydro, &
-         lidar_ice_type, sd_cs(lchnk), &
-         emis(1:ncol,1:pver), emis(1:ncol,1:pver), &
-         cld_swtau(1:ncol, 1:pver), cld_swtau(1:ncol, 1:pver), &
-         snow_tau(1:ncol,1:pver), snow_emis(1:ncol,1:pver), &
-         mr_hydro, Reff, Np, frac_prec, &
-         cospstateIN, cospIN)
 
     ! done with these now ...
     deallocate(mr_hydro)
@@ -1550,14 +1567,16 @@ CONTAINS
   end subroutine get_cam_hydros
 
 
-  subroutine get_crm_hydros(state, pbuf, mr_hydro, reff, np, frac_prec)
+  subroutine get_crm_hydros(state, pbuf, dtau, dems, mr_hydro, reff, np, frac_prec, cospIN)
     use physics_types,  only: physics_state
     use physics_buffer, only: physics_buffer_desc, pbuf_get_field
     use crmdims,        only: crm_nx_rad, crm_ny_rad, crm_nz
     type(physics_state), intent(in) :: state
     type(physics_buffer_desc), pointer :: pbuf(:)
+    real(r8), intent(in ), dimension(:,:,:,:) :: dtau, dems
     real(r8), intent(out), dimension(:,:,:,:) :: mr_hydro, reff, np
     real(r8), intent(out), dimension(:,:,:) :: frac_prec
+    type(cosp_optical_inputs), intent(inout) :: cospIN
 
     real(r8), pointer, dimension(:,:) :: rel, rei
     real(r8), pointer, dimension(:,:,:,:) :: crm_qc, crm_qi, crm_qr, crm_qs
@@ -1584,6 +1603,8 @@ CONTAINS
        do iz = 1,crm_nz
           do iy = 1,crm_ny_rad
              do ix = 1,crm_nx_rad
+
+                ! Find indices
                 ilev = pver - iz + 1
                 isubcol = (iy - 1) * crm_nx_rad + ix
 
@@ -1612,6 +1633,11 @@ CONTAINS
                 else
                    frac_prec(icol,isubcol,ilev) = 0
                 end if
+
+                ! Set optical properties
+                cospIN%tau_067(icol,isubcol,ilev) = dtau(icol,ix,iy,iz)
+                cospIN%emiss_11(icol,isubcol,ilev) = dems(icol,ix,iy,iz)
+
              end do
           end do
        end do
@@ -1867,8 +1893,9 @@ end function masked_product
   subroutine cosp_subsample(Npoints, nLevels, Ncolumns, nHydro, overlap, &
       use_precipitation_fluxes, tca, cca, &
       gb_hydro, gb_reff, &
-      dtau_s_snow, &
-      dem_s_snow, sfcP, cospstateIN, cospIN, &
+      dtau_s, dtau_c, dem_s, dem_c, &
+      dtau_s_snow, dem_s_snow, &
+      sfcP, cospstateIN, cospIN, &
       mr_hydro, Reff, Np, frac_prec)
    ! Dependencies
    use cosp_kinds,           only: wp
@@ -1876,6 +1903,7 @@ end function masked_product
    use mod_scops,            only: scops
    use mod_prec_scops,       only: prec_scops
    use mod_cosp_utils,       only: cosp_precip_mxratio
+   use cosp_optics,          only: cosp_simulator_optics
 
    ! Inputs
    logical,intent(in) :: &
@@ -1883,18 +1911,22 @@ end function masked_product
    integer,intent(in) :: &
         Npoints,      & ! Number of gridpoints
         nLevels,      & ! Number of vertical levels
-        Ncolumns,      & ! Number of subcolumns
+        Ncolumns,     & ! Number of subcolumns
         nHydro,       & ! Number pf hydrometeor types
         overlap         ! Overlap assumption (1/2/3)
    real(wp),intent(in),dimension(Npoints,nLevels) :: &
         tca,          & ! Total cloud amount (0-1)
-        cca             ! Convective cloud amount (0-1)
+        cca,          & ! Convective cloud amount (0-1)
+        dtau_s,       & ! 0.67-micron optical depth (stratiform)
+        dtau_c,       & ! 0.67-micron optical depth (convective)
+        dem_s,        & ! 11-micron emissivity (stratiform)
+        dem_c           ! 11-micron emissivity (convective)
    real(wp),intent(inout),dimension(Npoints,nLevels) :: &
         dtau_s_snow,  & ! 0.67-micron optical depth (snow)
         dem_s_snow      ! 11-micron emissivity (snow)
    real(wp),intent(in),dimension(Npoints,nLevels,nHydro) :: &
         gb_hydro,     & ! Gridbox-mean mixing ratios and precip fluxes (kg/kg)
-        gb_reff          ! Gridbox-mean effective radii
+        gb_reff         ! Gridbox-mean effective radii
    real(wp),intent(in),dimension(Npoints) :: &
         sfcP            ! Surface pressure
 
@@ -2103,8 +2135,20 @@ end function masked_product
               mr_hydro(:,:,:,I_LSGRPL), Reff(:,:,:,I_LSGRPL))
       endif
 
+      ! Subsample input optical properties
+      if (allocated(cospIN%emiss_11)) then
+         call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,dem_c,dem_s,  &
+              cospIN%emiss_11)
+      end if
+      if (allocated(cospIN%tau_067)) then
+         call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,dtau_c,dtau_s,  &
+              cospIN%tau_067)
+      end if
+
    else
-      cospIN%frac_out(:,:,:) = 1
+      cospIN%frac_out(:,1,:) = 1
+      cospIN%emiss_11(:,1,:) = max(dem_s, dem_c)
+      cospIN%tau_067 (:,1,:) = max(dtau_s, dtau_c)
       mr_hydro(:,1,:,I_LSCLIQ) = gb_hydro(:,:,I_LSCLIQ)
       mr_hydro(:,1,:,I_LSCICE) = gb_hydro(:,:,I_LSCICE)
       mr_hydro(:,1,:,I_CVCLIQ) = gb_hydro(:,:,I_CVCLIQ)
@@ -2120,9 +2164,9 @@ end function masked_product
   ! ######################################################################################
   subroutine calc_cosp_optics(Npoints, nLevels, nSubcol, nHydro, &
       lidar_ice_type, sd, &
-      dem_c, dem_s, dtau_c, dtau_s, dtau_s_snow, dem_s_snow, &
       mr_hydro, Reff, Np, frac_prec, &
-      cospstateIN, cospIN)
+      cospstateIN, cospIN, &
+      dtau_snow, dem_snow)
    ! Dependencies
    use cosp_kinds, only: wp
    use mod_cosp_config,      only: R_UNDEF
@@ -2135,13 +2179,9 @@ end function masked_product
       nSubcol,   & ! Number of subcolumns
       nHydro,     & ! Number pf hydrometeor types
       lidar_ice_type  ! Ice type assumption used by lidar optics
-   real(wp),intent(in),dimension(Npoints,nLevels) :: &
-      dtau_c,       & ! 0.67-micron optical depth (convective)
-      dtau_s,       & ! 0.67-micron optical depth (stratiform)
-      dtau_s_snow,  & ! 0.67-micron optical depth (snow)
-      dem_s_snow,   & ! 11-micron emissivity (snow)
-      dem_c,        & ! 11-micron emissivity (convective)
-      dem_s           ! 11-micron emissivity (stratiform)
+   real(wp), intent(in), dimension(Npoints,nLevels), optional :: &
+      dtau_snow,  & ! 0.67-micron optical depth (snow)
+      dem_snow      ! 11-micron emissivity (snow)
    real(wp), dimension(Npoints, nSubcol, nLevels, nHydro), intent(inout) :: &
       mr_hydro, Reff, Np
    real(wp), dimension(Npoints, nSubcol, nLevels), intent(in)  :: frac_prec
@@ -2212,16 +2252,16 @@ end function masked_product
                         mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_LSCICE),              &
                         mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_CVCLIQ),              &
                         mr_hydro(1:Npoints,1:nSubcol,1:nLevels,I_CVCICE),              &
-                        ReffTemp(1:Npoints,1:nLevels,I_LSCLIQ),                         &
-                        ReffTemp(1:Npoints,1:nLevels,I_LSCICE),                         &
-                        ReffTemp(1:Npoints,1:nLevels,I_CVCLIQ),                         &
-                        ReffTemp(1:Npoints,1:nLevels,I_CVCICE),                         &
-                        cospstateIN%pfull(1:Npoints,1:nLevels),                         &
-                        cospstateIN%phalf(1:Npoints,1:nLevels+1),                       &
-                        cospstateIN%at(1:Npoints,1:nLevels),                            &
-                        cospIN%beta_mol_calipso(1:Npoints,1:nLevels),                   &
+                        ReffTemp(1:Npoints,1:nLevels,I_LSCLIQ),                        &
+                        ReffTemp(1:Npoints,1:nLevels,I_LSCICE),                        &
+                        ReffTemp(1:Npoints,1:nLevels,I_CVCLIQ),                        &
+                        ReffTemp(1:Npoints,1:nLevels,I_CVCICE),                        &
+                        cospstateIN%pfull(1:Npoints,1:nLevels),                        &
+                        cospstateIN%phalf(1:Npoints,1:nLevels+1),                      &
+                        cospstateIN%at(1:Npoints,1:nLevels),                           &
+                        cospIN%beta_mol_calipso(1:Npoints,1:nLevels),                  &
                         cospIN%betatot_calipso(1:Npoints,1:nSubcol,1:nLevels),         &
-                        cospIN%tau_mol_calipso(1:Npoints,1:nLevels),                    &
+                        cospIN%tau_mol_calipso(1:Npoints,1:nLevels),                   &
                         cospIN%tautot_calipso(1:Npoints,1:nSubcol,1:nLevels),          &
                         cospIN%tautot_S_liq(1:Npoints,1:nSubcol),                      &
                         cospIN%tautot_S_ice(1:Npoints,1:nSubcol),                      &
@@ -2240,34 +2280,33 @@ end function masked_product
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    ! 11 micron emissivity (needed by the ISCCP simulator)
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   ! Add in contributions from snow
    call t_startf("11micron_emissivity")
-   if (Lisccp_sim) then
-      call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,dem_c,dem_s,  &
-           cospIN%emiss_11)
-      ! Add in contributions from radiative snow
-      do j=1,nSubcol
-         where(frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3)
-            cospIN%emiss_11(:,j,:) = 1._wp - (1- cospIN%emiss_11(:,j,:))*(1-dem_s_snow)
-         endwhere
-      enddo
+   if (allocated(cospIN%emiss_11)) then
+      if (present(dem_snow)) then
+         do j = 1,nSubcol
+            where(frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3)
+               cospIN%emiss_11(:,j,:) = 1._wp - (1- cospIN%emiss_11(:,j,:))*(1-dem_snow(:,:))
+            endwhere
+         end do
+      end if
    endif
    call t_stopf("11micron_emissivity")
 
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    ! 0.67 micron optical depth (needed by ISCCP, MISR and MODIS simulators)
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   ! Add in contributions from snow
    call t_startf("067tau")
-   if (Lisccp_sim .or. Lmisr_sim .or. Lmodis_sim) then
-      call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,dtau_c,dtau_s,&
-           cospIN%tau_067)
-
-      ! Add in contributions from snow
-      do j=1,nSubcol
-         where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
-              Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
-            cospIN%tau_067(:,j,:)  = cospIN%tau_067(:,j,:)+dtau_s_snow
-         endwhere
-      enddo
+   if (allocated(cospIN%tau_067)) then
+      if (present(dtau_snow)) then
+         do j = 1,nSubcol
+            where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
+                 Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_snow(:,:) .gt. 0._r8)
+               cospIN%tau_067(:,j,:)  = cospIN%tau_067(:,j,:)+dtau_snow(:,:)
+            endwhere
+         end do
+      end if
    endif
    call t_stopf("067tau")
 
@@ -2299,18 +2338,23 @@ end function masked_product
       call cosp_simulator_optics(Npoints,nSubcol,nLevels,cospIN%frac_out,              &
            Reff(:,:,:,I_CVCICE),Reff(:,:,:,I_LSCICE),MODIS_iceSize)
 
-      ! Cloud snow and size
-      MODIS_snowSize(:,:,:)  = Reff(:,:,:,I_LSSNOW)
-      do j=1,nSubcol
-         where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
-              Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_s_snow .gt. 0._r8)
-            MODIS_cloudSnow(:,j,:) = mr_hydro(:,j,:,I_LSSNOW)
-            MODIS_snowSize(:,j,:)  = Reff(:,j,:,I_LSSNOW)
-         elsewhere
-            MODIS_snowSize(:,j,:)  = 0._wp
-            MODIS_cloudSnow(:,j,:) = 0._wp
-         endwhere
-      enddo
+!     ! Cloud snow and size; note that these do not appear to be used!
+!     ! TODO: do we need to figure out how to incorporate these?
+!     if (present(dtau_snow)) then
+!        do j=1,nSubcol
+!           where((frac_prec(:,j,:) .eq. 1 .or. frac_prec(:,j,:) .eq. 3) .and. &
+!                Reff(:,j,:,I_LSSNOW) .gt. 0._r8 .and. dtau_snow(:,:) .gt. 0._r8)
+!              MODIS_cloudSnow(:,j,:) = mr_hydro(:,j,:,I_LSSNOW)
+!              MODIS_snowSize(:,j,:)  = Reff(:,j,:,I_LSSNOW)
+!           elsewhere
+!              MODIS_snowSize(:,j,:)  = 0._wp
+!              MODIS_cloudSnow(:,j,:) = 0._wp
+!           endwhere
+!        enddo
+!     else
+!        MODIS_snowSize(:,:,:)  = Reff(:,:,:,I_LSSNOW)
+!        MODIS_cloudSnow(:,:,:) = mr_hydro(:,:,:,I_LSSNOW)
+!     end if
       call modis_optics_partition(Npoints, nLevels, nSubcol, MODIS_cloudWater,     &
            MODIS_cloudIce, MODIS_waterSize, MODIS_iceSize,         &
            cospIN%tau_067, MODIS_opticalThicknessLiq,               &
