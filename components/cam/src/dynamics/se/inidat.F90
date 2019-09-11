@@ -41,7 +41,7 @@ contains
     use cam_abortutils,          only: endrun
     use pio,                     only: file_desc_t, io_desc_t, pio_double, &
                                        pio_get_local_array_size, pio_freedecomp
-    use dyn_grid,                only: get_horiz_grid_dim_d, dyn_decomp, fv_nphys
+    use dyn_grid,                only: get_horiz_grid_dim_d, dyn_decomp, fv_nphys, fv_physgrid
     use chemistry,               only: chem_implements_cnst, chem_init_cnst
     use carma_intr,              only: carma_implements_cnst, carma_init_cnst
     use tracers,                 only: tracers_implements_cnst, tracers_init_cnst
@@ -453,6 +453,7 @@ contains
 
     if ( (ideal_phys .or. aqua_planet)) then
        tmp(:,1,:) = 0._r8
+       if (fv_nphys>0) fv_physgrid(ie)%topo(i,j) = 0
     else    
       fieldname = 'PHIS'
       tmp(:,1,:) = 0.0_r8
