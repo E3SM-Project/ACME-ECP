@@ -74,7 +74,7 @@ module cospsimulator_intr
   logical, public :: docosp = .false.
 
   ! Frequency at which cosp is called, every cosp_nradsteps radiation timestep
-  integer, public :: cosp_nradsteps = 1! CAM namelist variable default, not in COSP namelist
+  integer, public :: cosp_nradsteps = 3! CAM namelist variable default, not in COSP namelist
 
   ! ######################################################################################
   ! Local declarations
@@ -390,7 +390,6 @@ CONTAINS
        cosp_lmisr_sim = .true.
        cosp_lmodis_sim = .true.
        cosp_ncolumns = 10
-       cosp_nradsteps = 3
     end if
 
     if (cosp_passive) then
@@ -398,7 +397,6 @@ CONTAINS
        cosp_lmisr_sim = .true.
        cosp_lmodis_sim = .true.
        cosp_ncolumns = 10
-       cosp_nradsteps = 3
     end if
 
     if (cosp_active) then
@@ -406,13 +404,11 @@ CONTAINS
        cosp_llidar_sim = .true.
        cosp_lparasol_sim = .true.
        cosp_ncolumns = 10
-       cosp_nradsteps = 3
     end if
 
     if (cosp_isccp) then
        cosp_lisccp_sim = .true.
        cosp_ncolumns = 10
-       cosp_nradsteps = 3
     end if
 
     ! If no simulators are turned on at all and docosp is, set cosp_amwg = .true.
@@ -428,7 +424,6 @@ CONTAINS
        cosp_lmisr_sim = .true.
        cosp_lmodis_sim = .true.
        cosp_ncolumns = 10
-       cosp_nradsteps = 3
     end if
 
     ! Reset COSP namelist variables based on input from cam namelist variables
@@ -870,9 +865,9 @@ CONTAINS
             flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('T_COSP',          (/            'lev'/), 'I','K',      'T_COSP',                             &
             flag_xyfill=.true., fill_value=R_UNDEF)
+       ! TODO: What actually gets output for this variable is SPECIFIC HUMIDITY;
+       ! change the name here!
        call addfld ('RH_COSP',         (/            'lev'/), 'I','percent','RH_COSP',                            &
-            flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('Q_COSP',          (/            'lev'/), 'I','kg/kg',  'Q_COSP',                             &
             flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('TAU_067',         (/'cosp_scol','lev      '/), 'I','1',      'Subcolumn 0.67micron optical depth', &
             flag_xyfill=.true., fill_value=R_UNDEF)
@@ -1317,8 +1312,7 @@ CONTAINS
        call outfld('ZLEV_HALF_COSP', cospstateIN%hgt_matrix_half,  ncol,lchnk)
        call outfld('T_COSP',         cospstateIN%at,               ncol,lchnk)
        call outfld('RH_COSP',        cospstateIN%qv,               ncol,lchnk)
-       call outfld('Q_COSP',         q(1:ncol,1:pver),             ncol,lchnk)
-       call outfld('TAU_067',        cospIN%tau_067(1:ncol,:,1:pver),ncol,lchnk)
+       call outfld('TAU_067',        cospIN%tau_067,               ncol,lchnk)
        call outfld('EMISS_11',       cospIN%emiss_11,              ncol,lchnk)
        call outfld('MODIS_asym',     cospIN%asym,                  ncol,lchnk)
        call outfld('MODIS_ssa',      cospIN%ss_alb,                ncol,lchnk)
@@ -1603,8 +1597,8 @@ CONTAINS
                 ! more intelligent, but this is also what radiation uses when
                 ! using sam1mom microphysics.
                 ! TODO: confirm that when reff is zero, defaults are used
-                reff(icol,isubcol,ilev,I_LSCLIQ) = rel(icol,ilev)
-                reff(icol,isubcol,ilev,I_LSCICE) = rei(icol,ilev)
+                reff(icol,isubcol,ilev,I_LSCLIQ) = 0 !rel(icol,ilev) * 1.e-6_r8
+                reff(icol,isubcol,ilev,I_LSCICE) = 0 !rei(icol,ilev) * 1.e-6_r8
                 reff(icol,isubcol,ilev,I_LSRAIN) = 0
                 reff(icol,isubcol,ilev,I_LSSNOW) = 0
                 reff(icol,isubcol,ilev,I_LSGRPL) = 0
