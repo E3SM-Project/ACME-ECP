@@ -17,7 +17,6 @@ module cospsimulator_intr
   use cam_abortutils,       only: endrun
   use phys_control,         only: cam_physpkg_is
   use cam_logfile,          only: iulog
-#ifdef USE_COSP
   use quickbeam,            only: radar_cfg
   use mod_quickbeam_optics, only: size_distribution
   use mod_cosp,             only: cosp_outputs,cosp_optical_inputs,cosp_column_inputs
@@ -55,7 +54,6 @@ module cospsimulator_intr
                                   reffICE_binCenters,reffLIQ_binEdges,      &
                                   reffLIQ_binCenters
    use cosp_kinds, only: wp
-#endif
 
   implicit none
   private
@@ -77,8 +75,6 @@ module cospsimulator_intr
 
   ! Frequency at which cosp is called, every cosp_nradsteps radiation timestep
   integer, public :: cosp_nradsteps = 1! CAM namelist variable default, not in COSP namelist
-
-#ifdef USE_COSP
 
   ! ######################################################################################
   ! Local declarations
@@ -235,18 +231,17 @@ module cospsimulator_intr
        gamma_2 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/),&
        gamma_3 = (/-1._r8, -1._r8,      2.0_r8,      2.0_r8, -1._r8, -1._r8,      2.0_r8,      2.0_r8,      2.0_r8/),&
        gamma_4 = (/-1._r8, -1._r8,      6.0_r8,      6.0_r8, -1._r8, -1._r8,      6.0_r8,      6.0_r8,      6.0_r8/)
-#endif
 
 CONTAINS
 
   ! ######################################################################################
   ! SUBROUTINE setcosp2values
   ! ######################################################################################
-#ifdef USE_COSP
   subroutine setcosp2values()
     use mod_cosp,             only: cosp_init
     use mod_cosp_config,      only: vgrid_zl, vgrid_zu, vgrid_z
     use mod_quickbeam_optics, only: hydro_class_init, quickbeam_optics_init
+    use crmdims,              only: crm_nx_rad, crm_ny_rad
 
     ! Local
     logical :: ldouble=.false.
@@ -255,6 +250,7 @@ CONTAINS
 
     ! Initialize the distributional parameters for hydrometeors in radar simulator. In COSPv1.4, this was declared in
     ! cosp_defs.f.
+    ! TODO: should this stuff go in cospsimulator_intr_init?
     if (cloudsat_micro_scheme == 'MMF_v3.5_two_moment') then
        ldouble = .true.
        lsingle = .false.
@@ -263,7 +259,7 @@ CONTAINS
     call quickbeam_optics_init()
 
     ! DS2017: The setting up of the vertical grid for regridding the CALIPSO and Cloudsat products is
-    !         now donein cosp_init, but these fields are stored in cosp_config.F90.
+    !         now done in cosp_init, but these fields are stored in cosp_config.F90.
     !         Additionally all static fields used by the individual simulators are set up by calls
     !         to _init functions in cosp_init.
     call COSP_INIT(Lisccp_sim,Lmodis_sim,Lmisr_sim,Lradar_sim,Llidar_sim,Lgrlidar_sim,Latlid_sim, &
@@ -286,7 +282,6 @@ CONTAINS
     scol_cosp(:) = (/(k,k=1,nSubcol)/)
 
   end subroutine setcosp2values
-#endif
 
   ! ######################################################################################
   ! SUBROUTINE cospsimulator_intr_readnl
@@ -301,6 +296,7 @@ CONTAINS
 #ifdef SPMD
     use mpishorthand,    only: mpicom, mpilog, mpiint, mpichar
 #endif
+    use crmdims, only: crm_nx_rad, crm_ny_rad
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input  (nlfile=atm_in)
 
@@ -308,7 +304,6 @@ CONTAINS
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'cospsimulator_intr_readnl'
 
-#ifdef USE_COSP
     ! this list should include any variable that you might want to include in the namelist
     ! philosophy is to not include COSP output flags but just important COSP settings and cfmip controls.
     namelist /cospsimulator_nl/ docosp, cosp_active, cosp_amwg, cosp_atrainorbitdata, cosp_cfmip_3hr, cosp_cfmip_da, &
@@ -462,9 +457,6 @@ CONTAINS
        nSubcol = cosp_ncolumns
     end if
 
-    ! Set vertical coordinate, subcolumn, and calculation frequency cosp options based on namelist inputs
-    call setcosp2values()
-
     if (masterproc) then
        if (docosp) then
           write(iulog,*)'COSP configuration:'
@@ -484,7 +476,6 @@ CONTAINS
           write(iulog,*)'COSP not enabled'
        end if
     end if
-#endif
   end subroutine cospsimulator_intr_readnl
 
   ! ######################################################################################
@@ -493,8 +484,19 @@ CONTAINS
   subroutine cospsimulator_intr_register()
 
     use cam_history_support, only: add_hist_coord
+    use phys_control, only: phys_getopts
+    use crmdims, only: crm_nx_rad, crm_ny_rad
+    logical :: use_SPCAM
 
-#ifdef USE_COSP
+    ! Reset number subcolumns if using SP/MMF
+    call phys_getopts(use_SPCAM_out=use_SPCAM)
+    if (use_SPCAM) then
+       nSubcol = crm_nx_rad * crm_ny_rad
+    end if
+
+    ! Set vertical coordinate, subcolumn, and calculation frequency cosp options based on namelist inputs
+    call setcosp2values()
+
     ! register non-standard variable dimensions
     if (lisccp_sim .or. lmodis_sim) then
        call add_hist_coord('cosp_prs', nprs_cosp, 'COSP Mean ISCCP pressure',  &
@@ -553,7 +555,6 @@ CONTAINS
             bounds_name='cosp_reffliq_bnds',bounds=reffLIQ_binEdges)
     end if
 
-#endif
   end subroutine cospsimulator_intr_register
 
   ! ######################################################################################
@@ -561,7 +562,6 @@ CONTAINS
   ! ######################################################################################
   subroutine cospsimulator_intr_init()
 
-#ifdef USE_COSP
     use cam_history,         only: addfld, add_default, horiz_only
 #ifdef SPMD
     use mpishorthand,        only : mpir8, mpiint, mpicom
@@ -991,7 +991,6 @@ CONTAINS
     allocate(run_cosp(1:pcols,begchunk:endchunk))
     run_cosp(1:pcols,begchunk:endchunk)=.false.
 
-#endif
   end subroutine cospsimulator_intr_init
 
   ! ######################################################################################
@@ -1010,11 +1009,9 @@ CONTAINS
     use cam_history,          only: outfld,hist_fld_col_active
     use cam_history_support,  only: max_fieldname_len
     use cmparray_mod,         only: CmpDayNite, ExpDayNite
-#ifdef USE_COSP
     use mod_cosp_config,      only: R_UNDEF,parasol_nrefl,Nlvgrid
     use mod_cosp,             only: cosp_simulator
     use mod_quickbeam_optics, only: size_distribution
-#endif
 
     ! ######################################################################################
     ! Inputs
@@ -1029,7 +1026,6 @@ CONTAINS
     real(r8), intent(inout) :: snow_emis(pcols,pver)  ! RRTM grid-box mean LW snow optical depth, used for CAM5 simulations
     real(r8), intent(in), optional, dimension(:,:,:,:) :: crm_cld_tau, crm_cld_emis
 
-#ifdef USE_COSP
     ! ######################################################################################
     ! Local variables
     ! ######################################################################################
@@ -1047,7 +1043,6 @@ CONTAINS
 
     real(r8) :: cam_reff(pcols,pver,nhydro)              ! effective radius for cosp input
     real(r8) :: cam_hydro(pcols,pver,nhydro)             ! hydrometeor mixing ratios and precip fluxes (kg/kg)
-    real(r8) :: cam_np(pcols,pver,nhydro)                ! hydrometeor number concentrations
 
     ! ######################################################################################
     ! Simulator output info
@@ -1182,7 +1177,6 @@ CONTAINS
     ! initialize local variables
     cam_reff(:,:,:) = 0
     cam_hydro(:,:,:) = 0
-    cam_np(:,:,:) = 0
 
     ! ######################################################################################
     ! Construct COSP output derived type.
@@ -1216,7 +1210,7 @@ CONTAINS
 
     ! Set sunlit flag
     do i=1,ncol
-       if ((coszrs(i) > 0.0_r8) .and. (run_cosp(i,lchnk))) then
+       if ((coszrs(i) > 0.0_r8)) then
           cospstateIN%sunlit(i) = 1
        else
           cospstateIN%sunlit(i) = 0
@@ -1259,12 +1253,13 @@ CONTAINS
 
     ! mixing ratios, effective radii and precipitation fluxes for cloud and precipitation
     allocate(mr_hydro(ncol, nSubcol, pver, nhydro), &
-             Reff(ncol, nSubcol, pver, nhydro), &
-             Np(ncol, nSubcol, pver, nhydro), &
+             reff(ncol, nSubcol, pver, nhydro), &
+             np(ncol, nSubcol, pver, nhydro), &
              frac_prec(ncol, nSubcol, pver))
 
     ! If using SPCAM, then do not use large-scale precipitation fluxes (we will
     ! populate subgrid fields directly with precipitation mixing ratios)
+    call phys_getopts(use_SPCAM_out=use_SPCAM)
     if (.not. use_SPCAM) then
 
        ! Use precipitation fluxes instead of mixing ratios (and convert to mixing
@@ -1276,7 +1271,7 @@ CONTAINS
        ! subcolumn optical properties
        call pbuf_get_field(pbuf, cld_idx,    cld   )
        call pbuf_get_field(pbuf, concld_idx, concld)
-       call get_cam_hydros(state, pbuf, cld, cam_hydro, cam_reff, cam_np)
+       call get_cam_hydros(state, pbuf, cld, cam_hydro, cam_reff)
        call cosp_subsample(ncol, pver, nSubcol, nhydro, overlap, &
             use_precipitation_fluxes, cld(1:ncol, 1:pver), concld(1:ncol, 1:pver), &
             cam_hydro(1:ncol,1:pver,1:N_HYDRO), cam_reff(1:ncol,1:pver,1:N_HYDRO), &
@@ -1301,19 +1296,26 @@ CONTAINS
 
        ! Get subcolumn hydrometeor information from CRM fields, and calculate
        ! subcolumn optical properties
-       call get_crm_hydros( &
-          state, pbuf, crm_cld_tau, crm_cld_emis, &
-          mr_hydro, Reff, Np, frac_prec, cospIN &
-       )
+       call t_startf('cosp_get_crm_hydros')
+       if (present(crm_cld_tau).and.present(crm_cld_emis)) then
+          call get_crm_hydros( &
+             state, pbuf, crm_cld_tau, crm_cld_emis, &
+             mr_hydro, reff, np, frac_prec, cospIN &
+          )
+       else
+          call endrun('cospsimulator_intr_run: crm_cld_tau or crm_cld_emis not present')
+       end if
+       call t_stopf('cosp_get_crm_hydros')
+       call t_startf('cosp_calc_cosp_optics')
        call calc_cosp_optics( &
           ncol, pver, nSubcol, nhydro, &
           lidar_ice_type, sd_cs(lchnk), &
           mr_hydro, Reff, Np, frac_prec, &
           cospstateIN, cospIN &
        )
+       call t_stopf('cosp_calc_cosp_optics')
 
     end if
-
 
     ! done with these now ...
     deallocate(mr_hydro)
@@ -1322,6 +1324,28 @@ CONTAINS
     deallocate(frac_prec)
 
     call t_stopf("cosp_subsample_and_optics")
+
+    ! ######################################################################################
+    ! Write COSP inputs to output file for offline use.
+    ! ######################################################################################
+    call t_startf("cosp_histfile_aux")
+    if (cosp_histfile_aux) then
+       call outfld('PS_COSP',        state%ps(1:ncol),             ncol,lchnk)
+       call outfld('TS_COSP',        cospstateIN%skt,              ncol,lchnk)
+       call outfld('P_COSP',         cospstateIN%pfull,            ncol,lchnk)
+       call outfld('PH_COSP',        cospstateIN%phalf,            ncol,lchnk)
+       call outfld('ZLEV_COSP',      cospstateIN%hgt_matrix,       ncol,lchnk)
+       call outfld('ZLEV_HALF_COSP', cospstateIN%hgt_matrix_half,  ncol,lchnk)
+       call outfld('T_COSP',         cospstateIN%at,               ncol,lchnk)
+       call outfld('RH_COSP',        cospstateIN%qv,               ncol,lchnk)
+       call outfld('Q_COSP',         q(1:ncol,1:pver),             ncol,lchnk)
+       call outfld('TAU_067',        cospIN%tau_067(1:ncol,:,1:pver),ncol,lchnk)
+       call outfld('EMISS_11',       cospIN%emiss_11,              ncol,lchnk)
+       call outfld('MODIS_asym',     cospIN%asym,                  ncol,lchnk)
+       call outfld('MODIS_ssa',      cospIN%ss_alb,                ncol,lchnk)
+       call outfld('MODIS_fracliq',  cospIN%fracLiq,               ncol,lchnk)
+    end if
+    call t_stopf("cosp_histfile_aux")
 
     ! ######################################################################################
     ! Call COSP
@@ -1341,28 +1365,6 @@ CONTAINS
        call endrun('cospsimulator_intr_run: error return from cosp_simulator')
     end if
     call t_stopf("cosp_simulator")
-
-    ! ######################################################################################
-    ! Write COSP inputs to output file for offline use.
-    ! ######################################################################################
-    call t_startf("cosp_histfile_aux")
-    if (cosp_histfile_aux) then
-       call outfld('PS_COSP',        state%ps(1:ncol),             ncol,lchnk)
-       call outfld('TS_COSP',        cospstateIN%skt,              ncol,lchnk)
-       call outfld('P_COSP',         cospstateIN%pfull,            ncol,lchnk)
-       call outfld('PH_COSP',        cospstateIN%phalf,            ncol,lchnk)
-       call outfld('ZLEV_COSP',      cospstateIN%hgt_matrix,       ncol,lchnk)
-       call outfld('ZLEV_HALF_COSP', cospstateIN%hgt_matrix_half,  ncol,lchnk)
-       call outfld('T_COSP',         cospstateIN%at,               ncol,lchnk)
-       call outfld('RH_COSP',        cospstateIN%qv,               ncol,lchnk)
-       call outfld('Q_COSP',         q(1:ncol,1:pver),             ncol,lchnk)
-       call outfld('TAU_067',        cospIN%tau_067,               ncol,lchnk)
-       call outfld('EMISS_11',       cospIN%emiss_11,              ncol,lchnk)
-       call outfld('MODIS_asym',     cospIN%asym,                  ncol,lchnk)
-       call outfld('MODIS_ssa',      cospIN%ss_alb,                ncol,lchnk)
-       call outfld('MODIS_fracliq',  cospIN%fracLiq,               ncol,lchnk)
-    end if
-    call t_stopf("cosp_histfile_aux")
 
     ! ######################################################################################
     ! Set dark-scenes to fill value. Only done for passive simulators
@@ -1424,11 +1426,10 @@ CONTAINS
     call destroy_cosp_outputs(cospOUT)
     call t_stopf("destroy_cospOUT")
 
-#endif
   end subroutine cospsimulator_intr_run
 
 
-  subroutine get_cam_hydros(state, pbuf, cld, cam_hydro, cam_reff, cam_np)
+  subroutine get_cam_hydros(state, pbuf, cld, cam_hydro, cam_reff)
 
     use physics_types,        only: physics_state
     use physics_buffer,       only: physics_buffer_desc, pbuf_get_field
@@ -1440,7 +1441,6 @@ CONTAINS
     real(r8), intent(in) :: cld(:,:)
     real(r8), intent(out) :: cam_hydro(:,:,:)
     real(r8), intent(out) :: cam_reff(:,:,:)
-    real(r8), intent(out) :: cam_np(:,:,:)
 
     real(r8), pointer, dimension(:,:) :: rel             ! liquid effective drop radius (microns)
     real(r8), pointer, dimension(:,:) :: rei             ! ice effective drop size (microns)
@@ -1574,8 +1574,8 @@ CONTAINS
     type(physics_state), intent(in) :: state
     type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8), intent(in ), dimension(:,:,:,:) :: dtau, dems
-    real(r8), intent(out), dimension(:,:,:,:) :: mr_hydro, reff, np
-    real(r8), intent(out), dimension(:,:,:) :: frac_prec
+    real(r8), intent(inout), dimension(:,:,:,:) :: mr_hydro, reff, np
+    real(r8), intent(inout), dimension(:,:,:) :: frac_prec
     type(cosp_optical_inputs), intent(inout) :: cospIN
 
     real(r8), pointer, dimension(:,:) :: rel, rei
@@ -1585,8 +1585,8 @@ CONTAINS
 
     ! Use precip mixing ratios instead of fluxes
     mr_hydro = 0
-    Reff = 0
-    Np = 0
+    reff = 0
+    np = 0
     frac_prec = 0
 
     ! Get fields from pbuf; note this assumes all precipitating ice is snow.
@@ -1599,6 +1599,9 @@ CONTAINS
     call pbuf_get_field(pbuf, crm_qpl_idx, crm_qr)
     call pbuf_get_field(pbuf, crm_qpi_idx, crm_qs)
 
+    cospIN%tau_067 = 0
+    cospIN%emiss_11 = 0
+    ncol = state%ncol
     do icol = 1,ncol
        do iz = 1,crm_nz
           do iy = 1,crm_ny_rad
@@ -1886,7 +1889,6 @@ function masked_product(var1, var2, missing_value)
 end function masked_product
 
 
-#ifdef USE_COSP
   ! ######################################################################################
   ! SUBROUTINE cosp_subsample
   ! ######################################################################################
@@ -2982,7 +2984,6 @@ end function masked_product
      endif
 
    end subroutine destroy_cosp_outputs
-#endif
 
 !#######################################################################
 end module cospsimulator_intr
