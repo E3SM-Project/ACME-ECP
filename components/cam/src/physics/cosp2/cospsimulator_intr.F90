@@ -115,16 +115,10 @@ module cospsimulator_intr
   integer :: cosp_histfile_aux_num = -1      ! CAM namelist variable default, not in COSP namelist
 
   ! COSP
-  logical :: lradar_sim       = .false.      ! COSP namelist variable, can be changed from default by CAM namelist
-  logical :: llidar_sim       = .false.      ! ""
-  logical :: lparasol_sim     = .false.      ! +cosp2
-  logical :: lisccp_sim       = .false.      ! ""
-  logical :: lmisr_sim        = .false.      ! ""
-  logical :: lmodis_sim       = .false.      ! ""
-  logical :: lrttov_sim       = .false.      ! not running rttov, always set to .false.
-  logical :: lfrac_out        = .false.      ! COSP namelist variable, can be changed from default by CAM namelist
-  logical :: lgrlidar_sim     = .false.      ! Ground lidar
-  logical :: latlid_sim       = .false.
+  logical :: cosp_lparasol_sim     = .false.      ! +cosp2
+  logical :: cosp_lrttov_sim       = .false.      ! not running rttov, always set to .false.
+  logical :: cosp_lgrlidar_sim     = .false.      ! Ground lidar
+  logical :: cosp_latlid_sim       = .false.
 
   ! ######################################################################################
   ! COSP parameters
@@ -262,8 +256,9 @@ CONTAINS
     !         now done in cosp_init, but these fields are stored in cosp_config.F90.
     !         Additionally all static fields used by the individual simulators are set up by calls
     !         to _init functions in cosp_init.
-    call COSP_INIT(Lisccp_sim,Lmodis_sim,Lmisr_sim,Lradar_sim,Llidar_sim,Lgrlidar_sim,Latlid_sim, &
-         Lparasol_sim,Lrttov_sim, &
+    call COSP_INIT(cosp_lisccp_sim,cosp_lmodis_sim,cosp_lmisr_sim, &
+         cosp_lradar_sim,cosp_llidar_sim,cosp_lgrlidar_sim,cosp_latlid_sim, &
+         cosp_lparasol_sim,cosp_lrttov_sim, &
          radar_freq,k2,use_gas_abs,do_ray,isccp_topheight,isccp_topheight_direction,    &
          surface_radar,rcfg_cloudsat,use_vgrid,csat_vgrid,Nlr,pver,            &
          cloudsat_micro_scheme)
@@ -358,46 +353,30 @@ CONTAINS
     !DJS2017: The parasol simulator is now separate from the lidar simulator. To maintain consistency, just
     !         mirror whatever the lidar simulator is doing
     if (cosp_cfmip_3hr) then
-       lradar_sim   = .true.
-       llidar_sim   = .true.
-       lparasol_sim = .true.
-       lisccp_sim   = .true.
+       cosp_lradar_sim   = .true.
+       cosp_llidar_sim   = .true.
+       cosp_lparasol_sim = .true.
+       cosp_lisccp_sim   = .true.
     end if
     if (cosp_cfmip_da) then
-       llidar_sim = .true.
-       lparasol_sim = .true.
-       lisccp_sim = .true.
+       cosp_llidar_sim = .true.
+       cosp_lparasol_sim = .true.
+       cosp_lisccp_sim = .true.
     end if
     if (cosp_cfmip_off) then
-       lradar_sim = .true.
-       llidar_sim = .true.
-       lparasol_sim = .true.
-       lisccp_sim = .true.
+       cosp_lradar_sim = .true.
+       cosp_llidar_sim = .true.
+       cosp_lparasol_sim = .true.
+       cosp_lisccp_sim = .true.
     end if
     if (cosp_cfmip_mon) then
-       llidar_sim = .true.
-       lparasol_sim = .true.
-       lisccp_sim = .true.
+       cosp_llidar_sim = .true.
+       cosp_lparasol_sim = .true.
+       cosp_lisccp_sim = .true.
     end if
 
-    if (cosp_lfrac_out) then
-       lfrac_out = .true.
-    end if
-    if (cosp_lradar_sim) then
-       lradar_sim = .true.
-    end if
     if (cosp_llidar_sim) then
-       llidar_sim = .true.
-       lparasol_sim = .true.
-    end if
-    if (cosp_lisccp_sim) then
-       lisccp_sim = .true.
-    end if
-    if (cosp_lmisr_sim) then
-       lmisr_sim = .true.
-    end if
-    if (cosp_lmodis_sim) then
-       lmodis_sim = .true.
+       cosp_lparasol_sim = .true.
     end if
 
     if (cosp_histfile_aux .and. cosp_histfile_aux_num == -1) then
@@ -405,49 +384,49 @@ CONTAINS
     end if
 
     if (cosp_lite) then
-       llidar_sim = .true.
-       lparasol_sim = .true.
-       lisccp_sim = .true.
-       lmisr_sim = .true.
-       lmodis_sim = .true.
+       cosp_llidar_sim = .true.
+       cosp_lparasol_sim = .true.
+       cosp_lisccp_sim = .true.
+       cosp_lmisr_sim = .true.
+       cosp_lmodis_sim = .true.
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
 
     if (cosp_passive) then
-       lisccp_sim = .true.
-       lmisr_sim = .true.
-       lmodis_sim = .true.
+       cosp_lisccp_sim = .true.
+       cosp_lmisr_sim = .true.
+       cosp_lmodis_sim = .true.
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
 
     if (cosp_active) then
-       lradar_sim = .true.
-       llidar_sim = .true.
-       lparasol_sim = .true.
+       cosp_lradar_sim = .true.
+       cosp_llidar_sim = .true.
+       cosp_lparasol_sim = .true.
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
 
     if (cosp_isccp) then
-       lisccp_sim = .true.
+       cosp_lisccp_sim = .true.
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
 
     ! If no simulators are turned on at all and docosp is, set cosp_amwg = .true.
-    if((docosp) .and. (.not.lradar_sim) .and. (.not.llidar_sim) .and. (.not.lisccp_sim) .and. &
-         (.not.lmisr_sim) .and. (.not.lmodis_sim)) then
+    if((docosp) .and. (.not.cosp_lradar_sim) .and. (.not.cosp_llidar_sim) .and. (.not.cosp_lisccp_sim) .and. &
+         (.not.cosp_lmisr_sim) .and. (.not.cosp_lmodis_sim)) then
        cosp_amwg = .true.
     end if
     if (cosp_amwg) then
-       lradar_sim = .true.
-       llidar_sim = .true.
-       lparasol_sim = .true.
-       lisccp_sim = .true.
-       lmisr_sim = .true.
-       lmodis_sim = .true.
+       cosp_lradar_sim = .true.
+       cosp_llidar_sim = .true.
+       cosp_lparasol_sim = .true.
+       cosp_lisccp_sim = .true.
+       cosp_lmisr_sim = .true.
+       cosp_lmodis_sim = .true.
        cosp_ncolumns = 10
        cosp_nradsteps = 3
     end if
@@ -462,11 +441,11 @@ CONTAINS
           write(iulog,*)'COSP configuration:'
           write(iulog,*)'  Number of COSP subcolumns                = ', cosp_ncolumns
           write(iulog,*)'  Frequency at which cosp is called        = ', cosp_nradsteps
-          write(iulog,*)'  Enable radar simulator                   = ', lradar_sim
-          write(iulog,*)'  Enable lidar simulator                   = ', llidar_sim
-          write(iulog,*)'  Enable ISCCP simulator                   = ', lisccp_sim
-          write(iulog,*)'  Enable MISR simulator                    = ', lmisr_sim
-          write(iulog,*)'  Enable MODIS simulator                   = ', lmodis_sim
+          write(iulog,*)'  Enable radar simulator                   = ', cosp_lradar_sim
+          write(iulog,*)'  Enable lidar simulator                   = ', cosp_llidar_sim
+          write(iulog,*)'  Enable ISCCP simulator                   = ', cosp_lisccp_sim
+          write(iulog,*)'  Enable MISR simulator                    = ', cosp_lmisr_sim
+          write(iulog,*)'  Enable MODIS simulator                   = ', cosp_lmodis_sim
           write(iulog,*)'  RADAR_SIM microphysics scheme            = ', trim(cloudsat_micro_scheme)
           write(iulog,*)'  Write COSP output to history file        = ', cosp_histfile_num
           write(iulog,*)'  Write COSP input fields                  = ', cosp_histfile_aux
@@ -498,52 +477,52 @@ CONTAINS
     call setcosp2values()
 
     ! register non-standard variable dimensions
-    if (lisccp_sim .or. lmodis_sim) then
+    if (cosp_lisccp_sim .or. cosp_lmodis_sim) then
        call add_hist_coord('cosp_prs', nprs_cosp, 'COSP Mean ISCCP pressure',  &
             'hPa', pres_binCenters, bounds_name='cosp_prs_bnds', bounds=pres_binEdges)
     end if
 
-    if (lisccp_sim .or. lmisr_sim) then
+    if (cosp_lisccp_sim .or. cosp_lmisr_sim) then
        call add_hist_coord('cosp_tau', ntau_cosp,                 &
             'COSP Mean ISCCP optical depth', '1', tau_binCenters, &
             bounds_name='cosp_tau_bnds', bounds=tau_binEdges      )
     end if
 
-    if (lisccp_sim .or. llidar_sim .or. lradar_sim .or. lmisr_sim) then
+    if (cosp_lisccp_sim .or. cosp_llidar_sim .or. cosp_lradar_sim .or. cosp_lmisr_sim) then
        call add_hist_coord('cosp_scol', nSubcol, 'COSP subcolumn',  values=scol_cosp)
     end if
 
-    if (llidar_sim .or. lradar_sim) then
+    if (cosp_llidar_sim .or. cosp_lradar_sim) then
        call add_hist_coord('cosp_ht', Nlvgrid,                             &
             'COSP Mean Height for lidar and radar simulator outputs', 'm', &
             htmid_cosp, bounds_name='cosp_ht_bnds', bounds=htlim_cosp,     &
             vertical_coord=.true.)
     end if
 
-    if (llidar_sim) then
+    if (cosp_llidar_sim) then
        call add_hist_coord('cosp_sr', nsr_cosp,                                &
             'COSP Mean Scattering Ratio for lidar simulator CFAD output', '1', &
             calipso_binCenters, bounds_name='cosp_sr_bnds', bounds=calipso_binEdges)
     end if
 
-    if (llidar_sim) then
+    if (cosp_llidar_sim) then
        call add_hist_coord('cosp_sza', nsza_cosp, 'COSP Parasol SZA', 'degrees', parasol_sza)
     end if
 
-    if (lradar_sim) then
+    if (cosp_lradar_sim) then
        call add_hist_coord('cosp_dbze', ndbze_cosp,                  &
             'COSP Mean dBZe for radar simulator CFAD output', 'dBZ', &
             cloudsat_binCenters, bounds_name='cosp_dbze_bnds',       &
             bounds=cloudsat_binEdges)
     end if
 
-    if (lmisr_sim) then
+    if (cosp_lmisr_sim) then
        call add_hist_coord('cosp_htmisr', nhtmisr_cosp, 'COSP MISR height', &
             'km', misr_histHgtCenters,                                      &
             bounds_name='cosp_htmisr_bnds', bounds=misr_histHgtEdges)
     end if
 
-    if (lmodis_sim) then
+    if (cosp_lmodis_sim) then
        call add_hist_coord('cosp_tau_modis', ntau_cosp_modis,               &
             'COSP Mean MODIS optical depth', '1', tau_binCenters,           &
             bounds_name='cosp_tau_modis_bnds', bounds=tau_binEdges)
@@ -578,7 +557,7 @@ CONTAINS
     character(len=16) :: SPCAM_microp_scheme
 
     ! ISCCP OUTPUTS
-    if (lisccp_sim) then
+    if (cosp_lisccp_sim) then
        call addfld('FISCCP1_COSP',(/'cosp_tau','cosp_prs'/),'A','percent', &
             'Grid-box fraction covered by each ISCCP D level cloud type',&
             flag_xyfill=.true., fill_value=R_UNDEF)
@@ -629,7 +608,7 @@ CONTAINS
     end if
 
     ! LIDAR SIMULATOR OUTPUTS
-    if (llidar_sim) then
+    if (cosp_llidar_sim) then
        call addfld('CLDLOW_CAL',horiz_only,'A','percent','Lidar Low-level Cloud Fraction',flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDMED_CAL',horiz_only,'A','percent','Lidar Mid-level Cloud Fraction',flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDHGH_CAL',horiz_only,'A','percent','Lidar High-level Cloud Fraction',flag_xyfill=.true., fill_value=R_UNDEF)
@@ -748,7 +727,7 @@ CONTAINS
     end if
 
     ! RADAR SIMULATOR OUTPUTS
-    if (lradar_sim) then
+    if (cosp_lradar_sim) then
 
        allocate(sd_cs(begchunk:endchunk), rcfg_cs(begchunk:endchunk))
        do i = begchunk, endchunk
@@ -791,14 +770,14 @@ CONTAINS
     end if
 
     ! MISR SIMULATOR OUTPUTS
-    if (lmisr_sim) then
+    if (cosp_lmisr_sim) then
        call addfld ('CLD_MISR',(/'cosp_tau   ','cosp_htmisr'/),'A','percent','Cloud Fraction from MISR Simulator',  &
             flag_xyfill=.true., fill_value=R_UNDEF)
        call add_default ('CLD_MISR',cosp_histfile_num,' ')
     end if
 
     ! MODIS OUTPUT
-    if (lmodis_sim) then
+    if (cosp_lmodis_sim) then
        call addfld ('CLTMODIS',horiz_only,'A','%','MODIS Total Cloud Fraction',flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('CLWMODIS',horiz_only,'A','%','MODIS Liquid Cloud Fraction',flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('CLIMODIS',horiz_only,'A','%','MODIS Ice Cloud Fraction',flag_xyfill=.true., fill_value=R_UNDEF)
@@ -856,18 +835,18 @@ CONTAINS
     end if
 
     ! SUB-COLUMN OUTPUT
-    if (lfrac_out) then
+    if (cosp_lfrac_out) then
        call addfld ('SCOPS_OUT',(/'cosp_scol','lev      '/),'I','0=nocld,1=strcld,2=cnvcld','SCOPS Subcolumn output', &
             flag_xyfill=.true., fill_value=R_UNDEF)
        call add_default ('SCOPS_OUT',cosp_histfile_num,' ')
-       if (lisccp_sim) then
+       if (cosp_lisccp_sim) then
           call add_default ('TAU_ISCCP',cosp_histfile_num,' ')
           call add_default ('CLDPTOP_ISCCP',cosp_histfile_num,' ')
        end if
-       if (llidar_sim) then
+       if (cosp_llidar_sim) then
           call add_default ('ATB532_CAL',cosp_histfile_num,' ')
        end if
-       if (lradar_sim) then
+       if (cosp_lradar_sim) then
           call add_default ('DBZE_CS',cosp_histfile_num,' ')
        end if
     end if
@@ -1129,27 +1108,27 @@ CONTAINS
        run_misr(1:nf_misr,1:ncol)=.false.
        run_modis(1:nf_modis,1:ncol)=.false.
 
-       if (lradar_sim) then
+       if (cosp_lradar_sim) then
           do i=1,nf_radar
              run_radar(i,1:pcols)=hist_fld_col_active(fname_radar(i),lchnk,pcols)
           end do
        end if
-       if (llidar_sim) then
+       if (cosp_llidar_sim) then
           do i=1,nf_lidar
              run_lidar(i,1:pcols)=hist_fld_col_active(fname_lidar(i),lchnk,pcols)
           end do
        end if
-       if (lisccp_sim) then
+       if (cosp_lisccp_sim) then
           do i=1,nf_isccp
              run_isccp(i,1:pcols)=hist_fld_col_active(fname_isccp(i),lchnk,pcols)
           end do
        end if
-       if (lmisr_sim) then
+       if (cosp_lmisr_sim) then
           do i=1,nf_misr
              run_misr(i,1:pcols)=hist_fld_col_active(fname_misr(i),lchnk,pcols)
           end do
        end if
-       if (lmodis_sim) then
+       if (cosp_lmodis_sim) then
           do i=1,nf_modis
              run_modis(i,1:pcols)=hist_fld_col_active(fname_modis(i),lchnk,pcols)
           end do
@@ -1245,7 +1224,7 @@ CONTAINS
     call t_startf("cosp_construct_cospIN")
     call construct_cospIN(ncol,nSubcol,pver,cospIN)
     cospIN%emsfc_lw = emsfc_lw
-    if (lradar_sim) cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
+    if (cosp_lradar_sim) cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
     call t_stopf("cosp_construct_cospIN")
 
     ! *NOTE* Fields passed into subsample_and_optics are ordered from TOA-2-SFC.
@@ -1377,7 +1356,7 @@ CONTAINS
     ! TODO: these should not be set undefined for night columns (brightness
     ! temperature is valid at night), but we set these to fillvalues for now
     ! to keep results BFB
-    if (lisccp_sim) then
+    if (cosp_lisccp_sim) then
        where(cospstateIN%sunlit(1:ncol) .eq. 0)
           cospOUT%isccp_meantb(1:ncol)       = R_UNDEF
           cospOUT%isccp_meantbclr(1:ncol)    = R_UNDEF
@@ -1388,7 +1367,7 @@ CONTAINS
     ! TODO: the MISR simulator is supposed to handle this for us, but there
     ! is a bug in COSP that leaves these set for night columns, so we need to
     ! explicitly handle sunlit vs not sunlit here for now
-    if (lmisr_sim) then
+    if (cosp_lmisr_sim) then
        do i = 1,ncol
          if (cospstateIN%sunlit(i) == 0) then
             cospOUT%misr_fq(i,:,:) = R_UNDEF
@@ -1399,7 +1378,7 @@ CONTAINS
     ! MODIS simulator
     ! TODO: again, this is to workaround a bug in COSP, where these two
     ! variables are not masked properly for night columns
-    if (lmodis_sim) then
+    if (cosp_lmodis_sim) then
        do i = 1,ncol
           if (cospstateIN%sunlit(i) == 0) then
              cospOUT%modis_Optical_Thickness_vs_ReffLiq(i,:,:) = R_UNDEF
@@ -1687,7 +1666,7 @@ CONTAINS
     real(r8) :: iwpmodis(pcols)
 
     ! ISCCP OUTPUTS
-    if (lisccp_sim) then
+    if (cosp_lisccp_sim) then
        call outfld('FISCCP1_COSP',    cospOUT%isccp_fq(1:ncol,:,:)      , ncol, lchnk)
        call outfld('CLDTOT_ISCCP',    cospOUT%isccp_totalcldarea(1:ncol), ncol, lchnk)
        call outfld('MEANTB_ISCCP',    cospOUT%isccp_meantb(1:ncol),       ncol, lchnk)
@@ -1713,7 +1692,7 @@ CONTAINS
     end if
 
     ! LIDAR SIMULATOR OUTPUTS
-    if (llidar_sim) then
+    if (cosp_llidar_sim) then
        call outfld('CLDLOW_CAL',    cospOUT%calipso_cldlayer(:ncol,1), ncol, lchnk)
        call outfld('CLDMED_CAL',    cospOUT%calipso_cldlayer(:ncol,2), ncol, lchnk)
        call outfld('CLDHGH_CAL',    cospOUT%calipso_cldlayer(:ncol,3), ncol, lchnk)
@@ -1779,7 +1758,7 @@ CONTAINS
     end if
 
     ! RADAR simulator outputs
-    if (lradar_sim) then
+    if (cosp_lradar_sim) then
        ! Need to reset missing values to zero here to avoid mix of missing and
        ! real values for levels below the surface
        cfad_dbze94(:ncol,:,:) = cospOUT%cloudsat_cfad_ze(:ncol,:,:)
@@ -1798,12 +1777,12 @@ CONTAINS
     end if
 
     ! MISR simulator outputs
-    if (lmisr_sim) then
+    if (cosp_lmisr_sim) then
        call outfld('CLD_MISR', cospOUT%misr_fq(1:ncol,:,:), ncol, lchnk)
     end if
 
     ! MODIS simulator outputs
-    if (lmodis_sim) then
+    if (cosp_lmodis_sim) then
 
        call outfld('CLTMODIS' , cospOUT%modis_Cloud_Fraction_Total_Mean(1:ncol), ncol, lchnk)
        call outfld('CLWMODIS' , cospOUT%modis_Cloud_Fraction_Water_Mean(1:ncol), ncol, lchnk)
@@ -1852,16 +1831,16 @@ CONTAINS
     end if
 
     ! SUB-COLUMN OUTPUT (fail check_accum if 'A')
-    if (lfrac_out) then
+    if (cosp_lfrac_out) then
        call outfld('SCOPS_OUT', cospIN%frac_out(1:ncol,:,:), ncol, lchnk)
-       if (lisccp_sim) then
+       if (cosp_lisccp_sim) then
           call outfld('TAU_ISCCP'    , cospOUT%isccp_boxtau(1:ncol,:) , ncol, lchnk)
           call outfld('CLDPTOP_ISCCP', cospOUT%isccp_boxptop(1:ncol,:), ncol, lchnk)
        end if
-       if (llidar_sim) then
+       if (cosp_llidar_sim) then
           call outfld('ATB532_CAL', cospOUT%calipso_beta_tot(1:ncol,:,:), ncol, lchnk)
        end if
-       if (lradar_sim) then
+       if (cosp_lradar_sim) then
           call outfld('DBZE_CS', cospOUT%cloudsat_Ze_tot(1:ncol,:,:), ncol, lchnk)
        end if
     end if
@@ -2212,7 +2191,7 @@ end function masked_product
    ! CLOUDSAT RADAR OPTICS
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    call t_startf("cloudsat_optics")
-   if (lradar_sim) then
+   if (cosp_lradar_sim) then
       ! Compute gaseous absorption (assume identical for each subcolun)
       allocate(g_vol(Npoints,nLevels))
       g_vol(:,:)=0._wp
@@ -2242,7 +2221,7 @@ end function masked_product
    ! LIDAR Polarized optics
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    call t_startf("calipso_optics")
-   if (Llidar_sim) then
+   if (cosp_llidar_sim) then
       ! lidar_optics wants gridbox effective radii instead of subcolumn, so back
       ! this out there by taking the max value along the subcolumn dimension so
       ! that we do not have to pass a redundant variable into this routine and
@@ -2316,7 +2295,7 @@ end function masked_product
    ! MODIS optics
    !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    call t_startf("modis_optics")
-   if (lmodis_sim) then
+   if (cosp_lmodis_sim) then
       allocate(MODIS_cloudWater(Npoints,nSubcol,nLevels),                              &
                MODIS_cloudIce(Npoints,nSubcol,nLevels),                                &
                MODIS_cloudSnow(Npoints,nSubcol,nLevels),                               &
@@ -2389,11 +2368,11 @@ end function masked_product
     y%Nrefl    = PARASOL_NREFL
     allocate(y%frac_out(Npoints,       Ncolumns,Nlevels))
 
-    if (Lmodis_sim .or. Lmisr_sim .or. Lisccp_sim) then
+    if (cosp_lmodis_sim .or. cosp_lmisr_sim .or. cosp_lisccp_sim) then
        allocate(y%tau_067(Npoints,        Ncolumns,Nlevels),&
                 y%emiss_11(Npoints,       Ncolumns,Nlevels))
     endif
-    if (Llidar_sim) then
+    if (cosp_llidar_sim) then
        allocate(y%betatot_calipso(Npoints,        Ncolumns,Nlevels),&
                 y%betatot_ice_calipso(Npoints,    Ncolumns,Nlevels),&
                 y%betatot_liq_calipso(Npoints,    Ncolumns,Nlevels),&
@@ -2406,27 +2385,27 @@ end function masked_product
                 y%tautot_S_liq(Npoints,   Ncolumns        ))
     endif
 
-    if (Lgrlidar_sim) then
+    if (cosp_lgrlidar_sim) then
        allocate(y%beta_mol_grLidar532(Npoints,          Nlevels),&
                 y%betatot_grLidar532(Npoints,  Ncolumns,Nlevels),&
                 y%tau_mol_grLidar532(Npoints,           Nlevels),&
                 y%tautot_grLidar532(Npoints,   Ncolumns,Nlevels))
     endif
 
-    if (Latlid_sim) then
+    if (cosp_latlid_sim) then
        allocate(y%beta_mol_atlid(Npoints,             Nlevels),&
                 y%betatot_atlid(Npoints,     Ncolumns,Nlevels),&
                 y%tau_mol_atlid(Npoints,              Nlevels),&
                 y%tautot_atlid(Npoints,      Ncolumns,Nlevels))
     endif
 
-    if (Lradar_sim) then
+    if (cosp_lradar_sim) then
        allocate(y%z_vol_cloudsat(Npoints,  Ncolumns,Nlevels),&
                 y%kr_vol_cloudsat(Npoints, Ncolumns,Nlevels),&
                 y%g_vol_cloudsat(Npoints,  Ncolumns,Nlevels),&
                 y%fracPrecipIce(Npoints,   Ncolumns))
     endif
-    if (Lmodis_sim) then
+    if (cosp_lmodis_sim) then
        allocate(y%fracLiq(Npoints,        Ncolumns,Nlevels),&
                 y%asym(Npoints,           Ncolumns,Nlevels),&
                 y%ss_alb(Npoints,         Ncolumns,Nlevels))
@@ -2474,7 +2453,7 @@ end function masked_product
          x           ! COSP output structure
 
      ! ISCCP simulator outputs
-    if (lisccp_sim) then
+    if (cosp_lisccp_sim) then
        allocate(x%isccp_boxtau(Npoints,Ncolumns))
        allocate(x%isccp_boxptop(Npoints,Ncolumns))
        allocate(x%isccp_fq(Npoints,numISCCPTauBins,numISCCPPresBins))
@@ -2487,7 +2466,7 @@ end function masked_product
     endif
 
     ! MISR simulator
-    if (lmisr_sim) then
+    if (cosp_lmisr_sim) then
        allocate(x%misr_fq(Npoints,numMISRTauBins,numMISRHgtBins))
        ! *NOTE* These 3 fields are not output, but were part of the v1.4.0 cosp_misr, so
        !        they are still computed. Should probably have a logical to control these
@@ -2498,7 +2477,7 @@ end function masked_product
     endif
 
     ! MODIS simulator
-    if (lmodis_sim) then
+    if (cosp_lmodis_sim) then
        allocate(x%modis_Cloud_Fraction_Total_Mean(Npoints))
        allocate(x%modis_Cloud_Fraction_Water_Mean(Npoints))
        allocate(x%modis_Cloud_Fraction_Ice_Mean(Npoints))
@@ -2522,7 +2501,7 @@ end function masked_product
     endif
 
     ! LIDAR simulator
-    if (llidar_sim) then
+    if (cosp_llidar_sim) then
        allocate(x%calipso_beta_mol(Npoints,Nlevels))
        allocate(x%calipso_beta_tot(Npoints,Ncolumns,Nlevels))
        allocate(x%calipso_srbval(SR_BINS+1))
@@ -2546,7 +2525,7 @@ end function masked_product
     end if
 
     ! GROUND LIDAR @ 532NM simulator
-    if (lgrlidar_sim) then
+    if (cosp_lgrlidar_sim) then
        allocate(x%grLidar532_beta_mol(Npoints,Nlevels))
        allocate(x%grLidar532_beta_tot(Npoints,Ncolumns,Nlevels))
        allocate(x%grLidar532_srbval(SR_BINS+1))
@@ -2556,7 +2535,7 @@ end function masked_product
     end if
 
     ! ATLID simulator
-    if (latlid_sim) then
+    if (cosp_latlid_sim) then
        allocate(x%atlid_beta_mol(Npoints,Nlevels))
        allocate(x%atlid_beta_tot(Npoints,Ncolumns,Nlevels))
        allocate(x%atlid_srbval(SR_BINS+1))
@@ -2565,13 +2544,13 @@ end function masked_product
     endif
 
     ! PARASOL
-    if (lparasol_sim) then
+    if (cosp_lparasol_sim) then
        allocate(x%parasolPix_refl(Npoints,Ncolumns,PARASOL_NREFL))
        allocate(x%parasolGrid_refl(Npoints,PARASOL_NREFL))
     endif
 
     ! Cloudsat simulator
-    if (lradar_sim) then
+    if (cosp_lradar_sim) then
        allocate(x%cloudsat_Ze_tot(Npoints,Ncolumns,Nlevels))
        allocate(x%cloudsat_cfad_ze(Npoints,cloudsat_DBZE_BINS,Nlvstat))
        allocate(x%cloudsat_precip_cover(Npoints,cloudsat_DBZE_BINS))
@@ -2579,7 +2558,7 @@ end function masked_product
     endif
 
     ! Combined CALIPSO/CLOUDSAT fields
-    if (lradar_sim .and. llidar_sim) then
+    if (cosp_lradar_sim .and. cosp_llidar_sim) then
        allocate(x%lidar_only_freq_cloud(Npoints,Nlvstat))
        allocate(x%radar_lidar_tcc(Npoints))
        allocate(x%cloudsat_tcc(Npoints))
@@ -2587,12 +2566,12 @@ end function masked_product
     endif
 
     ! RTTOV
-    if (lrttov_sim) then
+    if (cosp_lrttov_sim) then
       allocate(x%rttov_tbs(Npoints,Nchan))
     end if
 
     ! Joint MODIS/CloudSat Statistics
-    if (lmodis_sim .and. lradar_sim) then
+    if (cosp_lmodis_sim .and. cosp_lradar_sim) then
        allocate(x%wr_occfreq_ntotal(Npoints,WR_NREGIME))
        allocate(x%cfodd_ntotal(Npoints,CFODD_NDBZE,CFODD_NICOD,CFODD_NCLASS))
     end if
