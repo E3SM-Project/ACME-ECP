@@ -849,10 +849,18 @@ CONTAINS
     if (cosp_lfrac_out) then
        call addfld(                                             &
           'SCOPS_OUT', (/'cosp_scol','lev      '/), 'I',        &
-          '0=nocld,1=strcld,2=cnvcld','SCOPS Subcolumn output', &
+          '0 = no cloud, 1 = strat, 2 = conv',                  &
+          'SCOPS Subcolumn output',                             &
+          flag_xyfill=.true., fill_value=R_UNDEF                &
+       )
+       call addfld(                                             &
+          'COSP_PREC_FRAC', (/'cosp_scol','lev      '/), 'I',   &
+          '0 = no prec, 1 = strat, 2 = conv, 3 = both',         &
+          'PREC_SCOPS subcolumn output',                        &
           flag_xyfill=.true., fill_value=R_UNDEF                &
        )
        call add_default('SCOPS_OUT', cosp_histfile_num, ' ')
+       call add_default('COSP_PREC_FRAC', cosp_histfile_num, ' ')
        if (cosp_lisccp_sim) then
           call add_default('TAU_ISCCP', cosp_histfile_num, ' ')
           call add_default('CLDPTOP_ISCCP', cosp_histfile_num, ' ')
@@ -1312,13 +1320,6 @@ CONTAINS
        call t_stopf('cosp_calc_cosp_optics')
 
     end if
-
-    ! done with these now ...
-    deallocate(mr_hydro)
-    deallocate(Reff)
-    deallocate(Np)
-    deallocate(frac_prec)
-
     call t_stopf("cosp_subsample_and_optics")
 
     ! ######################################################################################
@@ -1326,6 +1327,8 @@ CONTAINS
     ! ######################################################################################
     call t_startf("cosp_histfile_aux")
     if (cosp_histfile_aux) then
+       call outfld('SCOPS_OUT',      cospIN%frac_out(1:ncol,:,:),  ncol,lchnk)
+       call outfld('COSP_PREC_FRAC', frac_prec(1:ncol,:,:),        ncol,lchnk)
        call outfld('PS_COSP',        state%ps(1:ncol),             ncol,lchnk)
        call outfld('TS_COSP',        cospstateIN%skt,              ncol,lchnk)
        call outfld('P_COSP',         cospstateIN%pfull,            ncol,lchnk)
@@ -1341,6 +1344,12 @@ CONTAINS
        call outfld('MODIS_fracliq',  cospIN%fracLiq,               ncol,lchnk)
     end if
     call t_stopf("cosp_histfile_aux")
+
+    ! done with these now ...
+    deallocate(mr_hydro)
+    deallocate(Reff)
+    deallocate(Np)
+    deallocate(frac_prec)
 
     ! ######################################################################################
     ! Call COSP
@@ -1851,7 +1860,6 @@ CONTAINS
 
     ! SUB-COLUMN OUTPUT (fail check_accum if 'A')
     if (cosp_lfrac_out) then
-       call outfld('SCOPS_OUT', cospIN%frac_out(1:ncol,:,:), ncol, lchnk)
        if (cosp_lisccp_sim) then
           call outfld('TAU_ISCCP'    , cospOUT%isccp_boxtau(1:ncol,:) , ncol, lchnk)
           call outfld('CLDPTOP_ISCCP', cospOUT%isccp_boxptop(1:ncol,:), ncol, lchnk)
