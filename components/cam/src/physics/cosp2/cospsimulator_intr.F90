@@ -609,8 +609,6 @@ CONTAINS
        call addfld('CLDHGH_CAL',horiz_only,'A','percent','Lidar High-level Cloud Fraction',flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLDTOT_CAL',horiz_only,'A','percent','Lidar Total Cloud Fraction',flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CLD_CAL',(/'cosp_ht'/),'A','percent','Lidar Cloud Fraction (532 nm)', flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('RFL_PARASOL',(/'cosp_sza'/),'A','fraction','PARASOL-like mono-directional reflectance ',  &
-            flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld('CFAD_SR532_CAL',(/'cosp_sr','cosp_ht'/),'A','fraction',                                    &
             'Lidar Scattering Ratio CFAD (532 nm)',                                                    &
             flag_xyfill=.true., fill_value=R_UNDEF)
@@ -667,7 +665,6 @@ CONTAINS
              call add_default ('CLDHGH_CAL',2,' ')
              call add_default ('CLDTOT_CAL',2,' ')
              call add_default ('CLD_CAL',2,' ')
-             call add_default ('RFL_PARASOL',2,' ')
           end if
           if (cosp_cfmip_mon.or.cosp_cfmip_off) then
              call add_default ('CLDLOW_CAL',1,' ')
@@ -675,7 +672,6 @@ CONTAINS
              call add_default ('CLDHGH_CAL',1,' ')
              call add_default ('CLDTOT_CAL',1,' ')
              call add_default ('CLD_CAL',1,' ')
-             call add_default ('RFL_PARASOL',1,' ')
           end if
           if (cosp_cfmip_3hr) then
              call add_default ('CFAD_SR532_CAL',3,' ')
@@ -684,7 +680,6 @@ CONTAINS
              call add_default ('CLDHGH_CAL',3,' ')
              call add_default ('CLDTOT_CAL',3,' ')
              call add_default ('CLD_CAL',3,' ')
-             call add_default ('RFL_PARASOL',3,' ')
           end if
           if (cosp_cfmip_off) then
              call add_default ('CFAD_SR532_CAL',1,' ')
@@ -696,7 +691,6 @@ CONTAINS
           call add_default ('CLDHGH_CAL',cosp_histfile_num,' ')
           call add_default ('CLDTOT_CAL',cosp_histfile_num,' ')
           call add_default ('CLD_CAL',cosp_histfile_num,' ')
-          call add_default ('RFL_PARASOL',cosp_histfile_num,' ')
           call add_default ('CFAD_SR532_CAL',cosp_histfile_num,' ')
           call add_default ('CLD_CAL_LIQ',cosp_histfile_num,' ')
           call add_default ('CLD_CAL_ICE',cosp_histfile_num,' ')
@@ -721,6 +715,28 @@ CONTAINS
        end if
     end if
 
+    if (cosp_lparasol_sim) then
+       call addfld ('RFL_PARASOL',(/'cosp_sza'/),'A','fraction','PARASOL-like mono-directional reflectance ',  &
+            flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld ('RFL_PARASOL_PIX',(/'cosp_scol','cosp_sza '/),'I','fraction','PARASOL-like mono-directional reflectance ',  &
+            flag_xyfill=.true., fill_value=R_UNDEF)
+
+       ! add_default calls for CFMIP experiments or else all fields are added to history file
+       !     except those with sub-column dimension/experimental variables
+       if (cosp_cfmip_mon .or. cosp_cfmip_off .or. cosp_cfmip_da .or. cosp_cfmip_3hr) then
+          if (cosp_cfmip_da) then
+             call add_default ('RFL_PARASOL',2,' ')
+          end if
+          if (cosp_cfmip_mon.or.cosp_cfmip_off) then
+             call add_default ('RFL_PARASOL',1,' ')
+          end if
+          if (cosp_cfmip_3hr) then
+             call add_default ('RFL_PARASOL',3,' ')
+          end if
+       else
+          call add_default ('RFL_PARASOL',cosp_histfile_num,' ')
+       end if
+    end if
     ! RADAR SIMULATOR OUTPUTS
     if (cosp_lradar_sim) then
 
@@ -831,18 +847,24 @@ CONTAINS
 
     ! SUB-COLUMN OUTPUT
     if (cosp_lfrac_out) then
-       call addfld ('SCOPS_OUT',(/'cosp_scol','lev      '/),'I','0=nocld,1=strcld,2=cnvcld','SCOPS Subcolumn output', &
-            flag_xyfill=.true., fill_value=R_UNDEF)
-       call add_default ('SCOPS_OUT',cosp_histfile_num,' ')
+       call addfld(                                             &
+          'SCOPS_OUT', (/'cosp_scol','lev      '/), 'I',        &
+          '0=nocld,1=strcld,2=cnvcld','SCOPS Subcolumn output', &
+          flag_xyfill=.true., fill_value=R_UNDEF                &
+       )
+       call add_default('SCOPS_OUT', cosp_histfile_num, ' ')
        if (cosp_lisccp_sim) then
-          call add_default ('TAU_ISCCP',cosp_histfile_num,' ')
-          call add_default ('CLDPTOP_ISCCP',cosp_histfile_num,' ')
+          call add_default('TAU_ISCCP', cosp_histfile_num, ' ')
+          call add_default('CLDPTOP_ISCCP', cosp_histfile_num, ' ')
        end if
        if (cosp_llidar_sim) then
-          call add_default ('ATB532_CAL',cosp_histfile_num,' ')
+          call add_default('ATB532_CAL', cosp_histfile_num, ' ')
        end if
        if (cosp_lradar_sim) then
-          call add_default ('DBZE_CS',cosp_histfile_num,' ')
+          call add_default('DBZE_CS', cosp_histfile_num, ' ')
+       end if
+       if (cosp_lparasol_sim) then
+          call add_default('RFL_PARASOL_PIX', cosp_histfile_num, ' ')
        end if
     end if
 
@@ -1556,11 +1578,13 @@ CONTAINS
 
     integer :: ncol, icol, isubcol, ilev, ix, iy, iz
 
-    ! Use precip mixing ratios instead of fluxes
+    ! Initialize
     mr_hydro = 0
     reff = 0
     np = 0
     frac_prec = 0
+    cospIN%tau_067 = 0
+    cospIN%emiss_11 = 0
 
     ! Get fields from pbuf; note this assumes all precipitating ice is snow.
     ! While the sam1mom physics internally makes some assumptions about graupel
@@ -1572,8 +1596,7 @@ CONTAINS
     call pbuf_get_field(pbuf, crm_qpl_idx, crm_qr)
     call pbuf_get_field(pbuf, crm_qpi_idx, crm_qs)
 
-    cospIN%tau_067 = 0
-    cospIN%emiss_11 = 0
+    ! Set values column by column
     ncol = state%ncol
     do icol = 1,ncol
        do iz = 1,crm_nz
@@ -1592,13 +1615,13 @@ CONTAINS
 
                 ! Set effective radii for each hydrometeor type
                 ! TODO: for now, this is using the effective radii from the
-                ! GCM scheme, which I believe is a constant effective radii,
+                ! GCM scheme, which I believe is constant effective radii,
                 ! different values over land vs ocean. This should do something
                 ! more intelligent, but this is also what radiation uses when
                 ! using sam1mom microphysics.
                 ! TODO: confirm that when reff is zero, defaults are used
-                reff(icol,isubcol,ilev,I_LSCLIQ) = 0 !rel(icol,ilev) * 1.e-6_r8
-                reff(icol,isubcol,ilev,I_LSCICE) = 0 !rei(icol,ilev) * 1.e-6_r8
+                reff(icol,isubcol,ilev,I_LSCLIQ) = rel(icol,ilev) * 1.e-6_r8
+                reff(icol,isubcol,ilev,I_LSCICE) = rei(icol,ilev) * 1.e-6_r8
                 reff(icol,isubcol,ilev,I_LSRAIN) = 0
                 reff(icol,isubcol,ilev,I_LSSNOW) = 0
                 reff(icol,isubcol,ilev,I_LSGRPL) = 0
@@ -1714,10 +1737,6 @@ CONTAINS
        where (cfad_lidarsr532(1:ncol,:,:) .eq. R_UNDEF) cfad_lidarsr532(1:ncol,:,:) = 0._r8
        call outfld('CFAD_SR532_CAL', cfad_lidarsr532(1:ncol,:,:), ncol, lchnk)
 
-       refl_parasol(1:ncol,1:nsza_cosp) = cospOUT%parasolGrid_refl
-       where (refl_parasol(:ncol,:nsza_cosp) .eq. R_UNDEF) refl_parasol(:ncol,:nsza_cosp) = 0
-       call outfld('RFL_PARASOL', refl_parasol(:ncol,:), ncol, lchnk)
-
        cld_cal(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcld(:,Nlvgrid:1:-1)
        where (cld_cal(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal(:ncol,:Nlvgrid) = 0.0_r8
        call outfld('CLD_CAL', cld_cal(:ncol,:), ncol, lchnk)
@@ -1749,6 +1768,12 @@ CONTAINS
        cld_cal_tmpun(1:ncol,1:Nlvgrid) = cospOUT%calipso_lidarcldtmp(:,:,4)
        where (cld_cal_tmpun(:ncol,:Nlvgrid) .eq. R_UNDEF) cld_cal_tmpun(:ncol,:Nlvgrid) = 0.0_r8
        call outfld('CLD_CAL_TMPUN', cld_cal_tmpun(:ncol,:), ncol, lchnk)
+    end if
+
+    if (cosp_lparasol_sim) then
+       refl_parasol(1:ncol,1:nsza_cosp) = cospOUT%parasolGrid_refl
+       where (refl_parasol(:ncol,:nsza_cosp) .eq. R_UNDEF) refl_parasol(:ncol,:nsza_cosp) = 0
+       call outfld('RFL_PARASOL', refl_parasol(:ncol,:), ncol, lchnk)
     end if
 
     ! RADAR simulator outputs
@@ -1836,6 +1861,9 @@ CONTAINS
        end if
        if (cosp_lradar_sim) then
           call outfld('DBZE_CS', cospOUT%cloudsat_Ze_tot(1:ncol,:,:), ncol, lchnk)
+       end if
+       if (cosp_lparasol_sim) then
+          call outfld('RFL_PARASOL_PIX', cospOUT%parasolPix_refl(1:ncol,:,:), ncol, lchnk)
        end if
     end if
 
