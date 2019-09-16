@@ -666,7 +666,6 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     real(r8) :: snow(pcols,begchunk:endchunk) !snow [m/s] 
     real(r8) :: ienet(pcols,begchunk:endchunk) !ieflx net [W/m2] or [J/m2/s]
 #ifdef MAML
-!MAML-Guangxing Lin
     real(r8) :: precscavg_out(pcols)
     real(r8) :: precslavg_out(pcols)
     real(r8) :: preccavg_out(pcols)
@@ -674,7 +673,6 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     real(r8) :: tbotavg_out(pcols)
     real(r8) :: factor_xy
     integer :: ii,i
-!MAML-Guangxing Lin
 #endif
 !- 
     ieflx_glob = 0._r8
@@ -690,7 +688,6 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
        ncol = state(lchnk)%ncol
        qflx(:ncol,lchnk) = cam_in(lchnk)%cflx(:ncol,1)
 #ifdef MAML
-!MAML-Guangxing Lin
        precscavg_out =0._r8
        precslavg_out =0._r8
        preccavg_out =0._r8
@@ -708,7 +705,6 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
        enddo !i
        snow(:ncol,lchnk) = precscavg_out(:ncol) + precslavg_out(:ncol)
        rain(:ncol,lchnk) = preccavg_out(:ncol)  + preclavg_out(:ncol) - snow(:ncol,lchnk)
-!MAML-Guangxing Lin
 #else
        snow(:ncol,lchnk) = cam_out(lchnk)%precsc(:ncol) + cam_out(lchnk)%precsl(:ncol)
        rain(:ncol,lchnk) = cam_out(lchnk)%precc(:ncol)  + cam_out(lchnk)%precl(:ncol) - snow(:ncol,lchnk) 

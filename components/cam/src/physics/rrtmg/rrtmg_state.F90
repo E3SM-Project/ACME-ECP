@@ -77,9 +77,7 @@ contains
     use camsrfexch,       only: cam_in_t
     use physconst,        only: stebol
 #ifdef MAML
-!MAML-Guangxing Lin
     use seq_comm_mct,       only : num_inst_atm
-!MAML-Guangxing Lin
 #endif
     implicit none
 
@@ -92,11 +90,9 @@ contains
     real(r8) :: tint(pcols,pverp)    ! Model interface temperature
     integer  :: ncol, i, kk, k
 #ifdef MAML
-!MAML-Guangxing Lin
     real(r8) :: lwupavg_in(pcols)
     real(r8) :: factor_xy
     integer :: ii
-!MAML-Guangxing Lin
 #endif
     allocate( rstate )
 
@@ -124,14 +120,12 @@ contains
     do i = 1,ncol
        tint(i,1) = pstate%t(i,1)
 #ifdef MAML
-!MAML-Guangxing Lin
        lwupavg_in(i) =0._r8
        factor_xy = 1._r8 / dble(num_inst_atm)
        do ii=1,num_inst_atm
            lwupavg_in(i) = lwupavg_in(i)+cam_in%lwup(i,ii)*factor_xy
        enddo
        tint(i,pverp) = sqrt(sqrt(lwupavg_in(i)/stebol))
-!MAML-Guangxing Lin
 #else
        tint(i,pverp) = sqrt(sqrt(cam_in%lwup(i)/stebol))
 #endif

@@ -91,7 +91,6 @@ subroutine flux_avg_init(cam_in,  pbuf2d)
       ncol = get_ncols_p(lchnk)
       pbuf2d_chunk => pbuf_get_chunk(pbuf2d, lchnk)
 #ifdef MAML
-!MAML-Guangxing Lin
        lhfavg_in =0._r8
        shfavg_in =0._r8
        wsxavg_in =0._r8
@@ -109,7 +108,6 @@ subroutine flux_avg_init(cam_in,  pbuf2d)
       call pbuf_set_field(pbuf2d_chunk, shflx_idx,  shfavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )
       call pbuf_set_field(pbuf2d_chunk, taux_idx,   wsxavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )
       call pbuf_set_field(pbuf2d_chunk, tauy_idx,   wsyavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )
-!MAML-Guangxing Lin
 #else
       call pbuf_set_field(pbuf2d_chunk, lhflx_idx,  cam_in(lchnk)%lhf (:ncol)  , start=(/1/), kount=(/ncol/) )
       call pbuf_set_field(pbuf2d_chunk, shflx_idx,  cam_in(lchnk)%shf (:ncol)  , start=(/1/), kount=(/ncol/) )

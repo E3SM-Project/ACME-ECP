@@ -152,9 +152,7 @@ CONTAINS
     logical :: perpetual_run    ! If in perpetual mode or not
     integer :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
     integer :: shrlogunit,shrloglev ! old values
-#ifdef MAML 
-    !logical :: first_time = .true.
-#else 
+#ifndef MAML 
     logical :: first_time = .true.
 #endif
     character(len=SHR_KIND_CS) :: calendar      ! Calendar type
@@ -169,8 +167,6 @@ CONTAINS
 #ifdef MAML 
     logical,save :: first_call = .true.    ! check for sequential calls of multi-instances
     integer :: atm_phase        ! passed from driver
-   ! integer :: dtime_sync       ! integer timestep size
-   ! integer :: currentymd       ! current year-month-day
 #endif    
     !-----------------------------------------------------------------------
     !

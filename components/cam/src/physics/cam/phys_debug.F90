@@ -258,7 +258,6 @@ subroutine phys_debug_flux2(lchnk, srfflx, lhflx, &
    if (icol > 0) then
 
 #ifdef MAML
-!MAML-Guangxing Lin
       write(iulog,*) ' a flux_tweak called, lhflx, oldlhflx ', &
           srfflx%lhf(icol,:), lhflx(icol)
       write (iulog,66) ' residual fractions lhf, shf, taux, tauy, q ', &

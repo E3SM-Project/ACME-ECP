@@ -165,7 +165,6 @@ contains
     call addfld (landm_fldn,     horiz_only,    rad_data_avgflag,  'none',&
          'radiation input: land mask: ocean(0), continent(1), transition(0-1)')
 #ifdef MAML
-!MAML-Guangxing Lin
     call addfld (asdir_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
          'radiation input: short wave direct albedo',  flag_xyfill=.true.)
     call addfld (asdif_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
@@ -214,7 +213,6 @@ contains
          'radiation input: long wave up radiation flux ')
     call addfld (ts_fldn,        horiz_only,    rad_data_avgflag,     'K',&
          'radiation input: surface temperature')
-!MAML-Guangxing Lin
 #endif
 
     call addfld (coszen_fldn, horiz_only,    rad_data_avgflag,     '1',&
@@ -357,9 +355,7 @@ contains
     use constituents,     only: cnst_get_ind
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
 #ifdef MAML
-!MAML-Guangxing Lin
     use seq_comm_mct, only : num_inst_atm
-!MAML-Guangxing Lin
 #endif
     implicit none
     type(physics_buffer_desc), pointer :: pbuf(:)
@@ -383,13 +379,11 @@ contains
     ! surface albedoes weighted by (positive cosine zenith angle)
     real(r8):: coszrs_pos(pcols)    ! = max(coszrs,0)
 #ifdef MAML
-!MAML-Guangxing Lin
     real(r8):: asdir_pos (pcols,num_inst_atm)    !
     real(r8):: asdif_pos (pcols,num_inst_atm)    !
     real(r8):: aldir_pos (pcols,num_inst_atm)    !
     real(r8):: aldif_pos (pcols,num_inst_atm)    !
     integer :: j
-!MAML-Guangxing Lin
 #else
     real(r8):: asdir_pos (pcols)    !
     real(r8):: asdif_pos (pcols)    !

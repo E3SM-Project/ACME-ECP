@@ -236,7 +236,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
    call mpibcast(use_SPCAM,                       1 , mpilog,  0, mpicom) !-- mdb spcam
    call mpibcast(use_ECPP,                        1 , mpilog,  0, mpicom) !-- mdb spcam
-   call mpibcast(use_MAML,                        1 , mpilog,  0, mpicom) !-- Guangxing Lin 
+   call mpibcast(use_MAML,                        1 , mpilog,  0, mpicom) ! 
    call mpibcast(use_crm_accel,                   1 , mpilog,  0, mpicom)
    call mpibcast(crm_accel_factor,                1 , mpir8,   0, mpicom)
    call mpibcast(crm_accel_uv,                    1 , mpilog,  0, mpicom)
@@ -473,7 +473,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    character(len=16), intent(out), optional :: SPCAM_microp_scheme_out
    logical,           intent(out), optional :: use_SPCAM_out
    logical,           intent(out), optional :: use_ECPP_out
-   logical,           intent(out), optional :: use_MAML_out !Guangxing Lin
+   logical,           intent(out), optional :: use_MAML_out 
 !-- mdb spcam
    logical,           intent(out), optional :: use_crm_accel_out
    real(r8),          intent(out), optional :: crm_accel_factor_out
@@ -547,7 +547,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
 
    if ( present(use_SPCAM_out           ) ) use_SPCAM_out            = use_SPCAM
    if ( present(use_ECPP_out            ) ) use_ECPP_out             = use_ECPP
-   if ( present(use_MAML_out            ) ) use_MAML_out             = use_MAML !Guangxing Lin
+   if ( present(use_MAML_out            ) ) use_MAML_out             = use_MAML 
 !-- mdb spcam
    if ( present(use_crm_accel_out       ) ) use_crm_accel_out        = use_crm_accel
    if ( present(crm_accel_factor_out    ) ) crm_accel_factor_out     = crm_accel_factor

@@ -1046,7 +1046,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       do i = 1,ncol
 #ifdef MAML
          do ii = 1, crm_nx
-
+            !seems none of variables below is used, so I don't use the CRM-level
+            !input. Later on, they can be changed if needed   
             crm_input%tau00(i) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
             crm_input%bflxls(i) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
             crm_input%fluxu00(i) = cam_in%wsx(i,ii)     !N/m2

@@ -1170,15 +1170,13 @@ end function radiation_nextsw_cday
     logical :: last_column
     integer :: ii,jj,m
 #ifdef MAML
-!MAML-Guangxing Lin
-   real(r8) lwup_loc !MAML-Guangxing Lin
+    real(r8) lwup_loc 
     real(r8) :: sols_loc(pcols)
     real(r8) :: soll_loc(pcols)
     real(r8) :: solsd_loc(pcols)
     real(r8) ::  solld_loc(pcols)
     real(r8) :: fsns_loc
     real(r8) :: flwds_loc(pcols)
- !MAML-Guangxing Lin
 #endif
 
     integer :: ixcldliq, ixcldice
@@ -1877,9 +1875,9 @@ end function radiation_nextsw_cday
                      aer_tau,      aer_tau_w,    aer_tau_w_g,  aer_tau_w_f,                  &
                      eccf,         coszrs,       solin,        sfac,                         &
 #ifdef MAML
-                      cam_in%asdir(:ncol,ii), cam_in%asdif(:ncol,ii), cam_in%aldir(:ncol,ii), cam_in%aldif(:ncol,ii), &
+                     cam_in%asdir(:ncol,ii), cam_in%asdif(:ncol,ii), cam_in%aldir(:ncol,ii), cam_in%aldif(:ncol,ii), &
 #else
-                       cam_in%asdir, cam_in%asdif, cam_in%aldir, cam_in%aldif,                 &
+                     cam_in%asdir, cam_in%asdif, cam_in%aldir, cam_in%aldif,                 &
 #endif
                      qrs,          qrsc,         fsnt,         fsntc,        fsntoa, fsutoa, &
                      fsntoac,      fsnirt,       fsnrtc,       fsnirtsq,     fsns,           &
@@ -2009,7 +2007,7 @@ end function radiation_nextsw_cday
                         fsutoa(i)=fsutoa_m(i, icall)
                         fsntoac(i)=fsntoac_m(i, icall)
 #ifdef MAML
-                       sols_loc(i)   =sols_m(i, icall)
+                        sols_loc(i)   =sols_m(i, icall)
                         soll_loc(i)   =soll_m(i, icall)
                         solsd_loc(i)   =solsd_m(i, icall)
                         solld_loc(i)   =solld_m(i, icall)
@@ -2277,7 +2275,7 @@ end function radiation_nextsw_cday
 #ifdef MAML
                     flwds_m  (i, icall) = flwds_m  (i, icall)+flwds_loc(i) *factor_xy
 #else
-                   flwds_m  (i, icall) = flwds_m  (i, icall)+cam_out%flwds(i) *factor_xy
+                    flwds_m  (i, icall) = flwds_m  (i, icall)+cam_out%flwds(i) *factor_xy
 #endif
                     fln200_m (i, icall) = fln200_m (i, icall)+fln200(i)        *factor_xy
                     fln200c_m(i, icall) = fln200c_m(i, icall)+fln200c(i)       *factor_xy
@@ -2319,9 +2317,9 @@ end function radiation_nextsw_cday
                       flnsc(i) = flnsc_m(i, icall)
                       fldsc(i) = fldsc_m(i, icall)
 #ifdef MAML
-                    flwds_loc(i) = flwds_m(i, icall)
+                      flwds_loc(i) = flwds_m(i, icall)
 #else
-                    cam_out%flwds(i) = flwds_m(i, icall)
+                      cam_out%flwds(i) = flwds_m(i, icall)
 #endif
                       fln200 (i) = fln200_m (i, icall)
                       fln200c(i) = fln200c_m(i, icall)
@@ -2605,9 +2603,7 @@ end function radiation_nextsw_cday
     !cam_out%srfrad(:ncol) = fsns(:ncol) + cam_out%flwds(:ncol)
     !call outfld('SRFRAD  ',cam_out%srfrad,pcols,lchnk)
 #ifdef MAML
-!MAML-Guangxing Lin
      !cam_out%netsw(:ncol) = fsns(:ncol)
-!MAML-Guangxing Lin
 #else
      cam_out%netsw(:ncol) = fsns(:ncol)
 #endif

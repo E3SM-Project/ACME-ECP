@@ -218,7 +218,6 @@ contains
                 cam_in(c)%lwup(i,1) = shr_const_stebol*(cam_in(c)%ts(i)**4)
                 do ii=2,num_inst_atm
                   cam_in(c)%lwup(i,ii) = cam_in(c)%lwup(i,1)
-                  !seems the four lines below are new, not sure why
                   cam_in(c)%asdir(i,ii) = cam_in(c)%asdir(i,1)
                   cam_in(c)%aldir(i,ii) = cam_in(c)%aldir(i,1)
                   cam_in(c)%asdif(i,ii) = cam_in(c)%asdif(i,1)

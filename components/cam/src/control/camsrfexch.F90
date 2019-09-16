@@ -249,7 +249,6 @@ CONTAINS
        cam_in(c)%lchnk = c
        cam_in(c)%ncol  = get_ncols_p(c)
 #ifdef MAML
-!MAML-Guangxing Lin
        cam_in(c)%asdir    (:,:) = 0._r8
        cam_in(c)%asdif    (:,:) = 0._r8
        cam_in(c)%aldir    (:,:) = 0._r8
@@ -261,7 +260,6 @@ CONTAINS
        cam_in(c)%wsy      (:,:) = 0._r8
        cam_in(c)%snowhland(:,:) = 0._r8
 #else
-!MAML-Guangxing Lin
        cam_in(c)%asdir    (:) = 0._r8
        cam_in(c)%asdif    (:) = 0._r8
        cam_in(c)%aldir    (:) = 0._r8
@@ -505,7 +503,7 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: vmag_gust_idx
    real(r8) :: umb(pcols), vmb(pcols),vmag(pcols)
 #ifdef MAML
-!MAML-Guangxing Lin
+!CRM-level variables 
    integer :: j
    integer :: crm_t_idx
    integer :: crm_qv_idx
@@ -519,7 +517,6 @@ subroutine cam_export(state,cam_out,pbuf)
    real(r8), pointer :: crm_v(:,:,:,:)
    real(r8), pointer :: crm_pcp(:,:,:)
    real(r8), pointer :: crm_snw(:,:,:)
-!MAML-Guangxing Lin
 #endif
 
 
@@ -549,14 +546,12 @@ subroutine cam_export(state,cam_out,pbuf)
    vmag_gust_idx = pbuf_get_index('vmag_gust')
 
 #ifdef MAML
-!MAML-Guangxing Lin
    crm_t_idx    = pbuf_get_index('CRM_T')
    crm_qv_idx   = pbuf_get_index('CRM_QV_RAD')
    crm_u_idx    = pbuf_get_index('CRM_U')
    crm_v_idx    = pbuf_get_index('CRM_V')
    crm_pcp_idx  = pbuf_get_index('CRM_PCP')
    crm_snw_idx  = pbuf_get_index('CRM_SNW')
-!MAML-Guangxing Lin
 #endif
 
    call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
@@ -570,7 +565,6 @@ subroutine cam_export(state,cam_out,pbuf)
    call pbuf_get_field(pbuf, vmag_gust_idx, vmag_gust)
 
 #ifdef MAML
-!MAML-Guangxing Lin
    if (crm_t_idx > 0) then
      call pbuf_get_field(pbuf, crm_t_idx   , crm_t)
    endif
@@ -589,49 +583,33 @@ subroutine cam_export(state,cam_out,pbuf)
    if (crm_snw_idx > 0) then
      call pbuf_get_field(pbuf, crm_snw_idx ,crm_snw)
    endif
-!MAML-Guangxing Lin
 #endif
 
-!PMA adds gustiness to surface scheme c20181128
-
-   do i=1,ncol
 #ifdef MAML
-!MAML-Guangxing Lin
+   do i=1,ncol
       do j= 1, num_inst_atm
-!itb...crm_t is dimensioned (pcols,crm_nx,crm_ny,crm_nz)
+!crm_t is dimensioned (pcols,crm_nx,crm_ny,crm_nz)
          cam_out%tbot(i,j) = crm_t(i,j,1,1)
 
-!itb...use the crm temperature, I don't see a crm-specific exner function anywhere
+!use the crm temperature, I don't see a crm-specific exner function anywhere
          cam_out%thbot(i,j) = crm_t(i,j,1,1) * state%exner(i,pver)
 
-!itb...I think we're just passing in the large-scale grid value for pressure...
+!I think we're just passing in the large-scale grid value for pressure...
          cam_out%pbot(i,j)  = state%pmid(i,pver)
 
-!itb...only using constituent 1 (pcnst=1)
+!only using constituent 1 (pcnst=1)
          cam_out%qbot(i,1,j) = crm_qv(i,j,1,1)
 
-!itb...density uses large-scale (CAM) pressure, local (CRM) temperature
+!density uses large-scale (CAM) pressure, local (CRM) temperature
          cam_out%rho(i,j) = cam_out%pbot(i,j)/(rair*cam_out%tbot(i,j))
 
-!itb...zm will use large-scalel (CAM) value
+!zm will use large-scalel (CAM) value
          cam_out%zbot(i,j)  = state%zm(i,pver)
 
-!itb...u and v will use CRM value
+!u and v will use CRM value
          cam_out%ubot(i,j)  = crm_u(i,j,1,1)
          cam_out%vbot(i,j)  = crm_v(i,j,1,1)
       end do
-#else   
-      umb(i)           = state%u(i,pver)
-      vmb(i)           = state%v(i,pver)
-      vmag(i)          = max(1.e-5_r8,sqrt( umb(i)**2._r8 + vmb(i)**2._r8))            
-      cam_out%tbot(i)  = state%t(i,pver)
-      cam_out%thbot(i) = state%t(i,pver) * state%exner(i,pver)
-      cam_out%zbot(i)  = state%zm(i,pver)
-      cam_out%ubot(i)  = state%u(i,pver) * ((vmag_gust(i)+vmag(i))/vmag(i))
-      cam_out%vbot(i)  = state%v(i,pver) * ((vmag_gust(i)+vmag(i))/vmag(i))
-      cam_out%pbot(i)  = state%pmid(i,pver)
-      cam_out%rho(i)   = cam_out%pbot(i)/(rair*cam_out%tbot(i))
-#endif
       psm1(i,lchnk)    = state%ps(i)
       srfrpdel(i,lchnk)= state%rpdel(i,pver)
    end do
@@ -642,8 +620,6 @@ subroutine cam_export(state,cam_out,pbuf)
          cam_out%co2prog(i) = state%q(i,pver,c_i(4)) * 1.0e+6_r8 *mwdry/mwco2
       end do
    end if
-
-#ifdef MAML 
    do m = 2, pcnst
      do i = 1, ncol
       do j= 1, num_inst_atm
@@ -659,6 +635,9 @@ subroutine cam_export(state,cam_out,pbuf)
    do i=1,ncol
       prcsnw(i,lchnk) =0._r8
       do j=1,num_inst_atm
+        !note assumes that crm_ny =1, crm_nx = num_inst_atm, so if crm_ny is not
+        !equal to 1, the index of crm_pcp and crm-snw should be changed.
+
         cam_out%precc(i,j) = crm_pcp(i,j,1)  ! CRM precip
         cam_out%precl(i,j) = 0._r8     ! large-scale precip set to zero
 
@@ -670,7 +649,31 @@ subroutine cam_export(state,cam_out,pbuf)
       prcsnw(i,lchnk) = prcsnw(i,lchnk)/num_inst_atm 
    end do
 
-#else
+#else   
+!PMA adds gustiness to surface scheme c20181128
+
+   do i=1,ncol
+      umb(i)           = state%u(i,pver)
+      vmb(i)           = state%v(i,pver)
+      vmag(i)          = max(1.e-5_r8,sqrt( umb(i)**2._r8 + vmb(i)**2._r8))            
+      cam_out%tbot(i)  = state%t(i,pver)
+      cam_out%thbot(i) = state%t(i,pver) * state%exner(i,pver)
+      cam_out%zbot(i)  = state%zm(i,pver)
+      cam_out%ubot(i)  = state%u(i,pver) * ((vmag_gust(i)+vmag(i))/vmag(i))
+      cam_out%vbot(i)  = state%v(i,pver) * ((vmag_gust(i)+vmag(i))/vmag(i))
+      cam_out%pbot(i)  = state%pmid(i,pver)
+      cam_out%rho(i)   = cam_out%pbot(i)/(rair*cam_out%tbot(i))
+      psm1(i,lchnk)    = state%ps(i)
+      srfrpdel(i,lchnk)= state%rpdel(i,pver)
+   end do
+   
+   cam_out%co2diag(:ncol) = chem_surfvals_get('CO2VMR') * 1.0e+6_r8 
+   if (co2_transport()) then
+      do i=1,ncol
+         cam_out%co2prog(i) = state%q(i,pver,c_i(4)) * 1.0e+6_r8 *mwdry/mwco2
+      end do
+   end if
+
    do m = 1, pcnst
      do i = 1, ncol
         cam_out%qbot(i,m) = state%q(i,pver,m) 
@@ -697,7 +700,7 @@ subroutine cam_export(state,cam_out,pbuf)
 
    ! total snowfall rate: needed by slab ocean model
    prcsnw(:ncol,lchnk) = cam_out%precsc(:ncol) + cam_out%precsl(:ncol)   
-#endif
+#endif  !MAML
 
 end subroutine cam_export
 
