@@ -1591,8 +1591,12 @@ subroutine tphysac (ztodt,   cam_in,  &
     ! jrm Include latent heat of fusion for snow
     !
 #ifdef MAML
+    !do the average of cam_in surface fluxes over num_inst_atm land instances
     factor_xy = 1._r8 / dble(num_inst_atm)
-
+    shfavg_in =0._r8
+    lhfavg_in =0._r8
+    wsxavg_in =0._r8
+    wsyavg_in =0._r8
     do i=1,ncol
       do ii=1,num_inst_atm
         tend%flx_net(i) = tend%flx_net(i) + ( ( cam_in%shf(i,ii) +               &
@@ -2240,6 +2244,7 @@ subroutine tphysbc (ztodt,               &
 
     nstep = get_nstep()
 #ifdef MAML
+    !do the average of cam_in surface fluxes over num_inst_atm land instances
     shfavg_in =0._r8
     lhfavg_in =0._r8
     wsxavg_in =0._r8

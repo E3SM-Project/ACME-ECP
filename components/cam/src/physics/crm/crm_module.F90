@@ -387,6 +387,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do icrm = 1 , ncrms
           u   (icrm,i,j,k) = crm_state_u_wind     (icrm,i,j,k)
 #ifdef MAML
+          !open the crm v component
           v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)
 #else       
           v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YES3D
@@ -407,6 +408,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
 #ifdef MAML
+          !open the crm v component
             v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) ) 
 #else     
             v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
@@ -565,6 +567,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       l = plev-k+1
       uln  (icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
 #ifdef MAML
+      !open the crm v component
       vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )
 #else
       vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
@@ -1424,8 +1427,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
 #ifdef MAML
-! precip is aggregated and a mean value is determined. We need
-!  to change this so that individual CRM precip values are passed down
+!  output CRM level precip  so that individual CRM precip values are passed down
 !  to CLM.
         crm_pcp(icrm,i,j) = precsfc(icrm,i,j)/1000.      ! mm/s --> m/s
         crm_snw(icrm,i,j) = precssfc(icrm,i,j)/1000.     ! mm/s --> m/s

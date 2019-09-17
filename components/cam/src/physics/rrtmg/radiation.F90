@@ -1170,6 +1170,7 @@ end function radiation_nextsw_cday
     logical :: last_column
     integer :: ii,jj,m
 #ifdef MAML
+    !define local cam_out fluxes for each CRM column  
     real(r8) lwup_loc 
     real(r8) :: sols_loc(pcols)
     real(r8) :: soll_loc(pcols)
