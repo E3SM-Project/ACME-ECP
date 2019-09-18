@@ -760,9 +760,12 @@ end function radiation_nextsw_cday
 
          ! Add cloud-scale radiative quantities
          if (use_SPCAM) then
-            call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'A', 'K/s', 'Radiative heating tendency')
-            call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', 'CRM Shortwave radiative heating rate')
-            call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
+            call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'A', 'K/s', 'Radiative heating tendency')
+            call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Shortwave radiative heating rate')
+            call addfld ('CRM_QRSC', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Clearsky shortwave radiative heating rate')
+            call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
+            call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
+            call addfld ('CRM_CLD_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'fraction', 'CRM cloud fraction' )
          end if
        end if
     end do
@@ -1113,6 +1116,8 @@ end function radiation_nextsw_cday
     real(r8) emis_crm   (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) qrl_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) qrs_crm    (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) qrlc_crm   (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
+    real(r8) qrsc_crm   (pcols, crm_nx_rad, crm_ny_rad, crm_nz)
     real(r8) crm_fsnt   (pcols, crm_nx_rad, crm_ny_rad)   ! net shortwave fluxes at TOA at CRM grids
     real(r8) crm_fsntc  (pcols, crm_nx_rad, crm_ny_rad)   ! net clear-sky shortwave fluxes at TOA at CRM grids
     real(r8) crm_fsns   (pcols, crm_nx_rad, crm_ny_rad)   ! net shortwave fluxes at surface at CRM grids
@@ -1445,6 +1450,7 @@ end function radiation_nextsw_cday
          qrs_m      = 0.   ; qrl_m      = 0.
          qrsc_m     = 0.   ; qrlc_m     = 0.
          qrs_crm    = 0.   ; qrl_crm    = 0.
+         qrsc_crm    = 0.  ; qrlc_crm   = 0.
          emis_crm   = 0.   ; cld_tau_crm= 0.
          crm_aodvisz= 0.   ; crm_aodvis = 0.
          crm_aod400 = 0.   ; crm_aod700 = 0.
@@ -1503,6 +1509,7 @@ end function radiation_nextsw_cday
 
          ! Get cloud fraction averaged over the CRM time integration
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), cld_rad)
+         call outfld('CRM_CLD_RAD', cld_rad, state%ncol, state%lchnk)
 
          cicewp(1:ncol,1:pver) = 0.  
          cliqwp(1:ncol,1:pver) = 0.
@@ -1927,6 +1934,7 @@ end function radiation_nextsw_cday
                        do m=1,crm_nz
                          k = pver-m+1
                          qrs_crm(:ncol,ii,jj,m) = qrs(:ncol,k) / cpair
+                         qrsc_crm(:ncol,ii,jj,m) = qrsc(:ncol,k) / cpair
                          crm_aodvisz(:ncol, ii, jj, m) = aer_tau(:ncol,k,idx_sw_diag)
                        end do
 
@@ -2227,6 +2235,7 @@ end function radiation_nextsw_cday
                       do m=1,crm_nz
                          k = pver-m+1
                          qrl_crm(:ncol,ii,jj,m) = qrl(:ncol,k) / cpair
+                         qrlc_crm(:ncol,ii,jj,m) = qrlc(:ncol,k) / cpair
                       end do
                     end if  ! icall == 0
 
@@ -2440,6 +2449,8 @@ end function radiation_nextsw_cday
           call outfld('CRM_REI  ', rei_crm, pcols, lchnk)
           call outfld('CRM_QRL  ', qrl_crm, pcols, lchnk)
           call outfld('CRM_QRS  ', qrs_crm, pcols, lchnk)
+          call outfld('CRM_QRLC ', qrlc_crm, pcols, lchnk)
+          call outfld('CRM_QRSC ', qrsc_crm, pcols, lchnk)
       endif
 
     else  !  if (dosw .or. dolw) then
