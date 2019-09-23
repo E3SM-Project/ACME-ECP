@@ -185,20 +185,6 @@ CONTAINS
           phys_state(lchnk)%ps(icol)   = ps_tmp(ioff,ie)
           phys_state(lchnk)%phis(icol) = zs_tmp(ioff,ie)
           do ilyr = 1,pver
-#ifdef FVPG_TEND_MAP
-            if (fv_nphys > 0) then
-              if (.not.is_first_step()) then
-                ! Tendencies are mapped rather than states, 
-                ! so we need to add in the previous state here
-                T_tmp(ioff,ilyr,ie)    = T_tmp(ioff,ilyr,ie)    + phys_state(lchnk)%t(icol,ilyr)
-                uv_tmp(ioff,1,ilyr,ie) = uv_tmp(ioff,1,ilyr,ie) + phys_state(lchnk)%u(icol,ilyr)
-                uv_tmp(ioff,2,ilyr,ie) = uv_tmp(ioff,2,ilyr,ie) + phys_state(lchnk)%v(icol,ilyr)
-                do m = 1,pcnst
-                  q_tmp(ioff,ilyr,m,ie) = q_tmp(ioff,ilyr,m,ie) + phys_state(lchnk)%q(icol,ilyr,m)
-                end do ! m
-              end if ! not is_first_step
-            end if ! fv_nphys > 0
-#endif
             phys_state(lchnk)%t(icol,ilyr)     = T_tmp(ioff,ilyr,ie)	   
             phys_state(lchnk)%u(icol,ilyr)     = uv_tmp(ioff,1,ilyr,ie)
             phys_state(lchnk)%v(icol,ilyr)     = uv_tmp(ioff,2,ilyr,ie)
@@ -277,21 +263,6 @@ CONTAINS
           phys_state(lchnk)%ps  (icol) = cbuffer(cpter(icol,0))
           phys_state(lchnk)%phis(icol) = cbuffer(cpter(icol,0)+1)
           do ilyr = 1,pver
-#ifdef FVPG_TEND_MAP
-            if (fv_nphys > 0) then
-              if (.not.is_first_step()) then
-                ! Tendencies are mapped rather than states, 
-                ! so we need to add in the previous state here
-                cbuffer(cpter(icol,ilyr)+0) = cbuffer(cpter(icol,ilyr)+0) + phys_state(lchnk)%t(icol,ilyr)
-                cbuffer(cpter(icol,ilyr)+1) = cbuffer(cpter(icol,ilyr)+1) + phys_state(lchnk)%u(icol,ilyr)
-                cbuffer(cpter(icol,ilyr)+2) = cbuffer(cpter(icol,ilyr)+2) + phys_state(lchnk)%v(icol,ilyr)
-                do m = 1,pcnst
-                  cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m) = cbuffer(cpter(icol,ilyr)+tsize-pcnst-1+m) &
-                                                             +phys_state(lchnk)%q(icol,ilyr,m)
-                end do ! m
-              end if ! not is_first_step
-            end if ! fv_nphys > 0
-#endif
             phys_state(lchnk)%t    (icol,ilyr) = cbuffer(cpter(icol,ilyr))
             phys_state(lchnk)%u    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+1)
             phys_state(lchnk)%v    (icol,ilyr) = cbuffer(cpter(icol,ilyr)+2)
@@ -375,6 +346,7 @@ CONTAINS
     use dyn_comp,                only: dom_mt, hvcoord
     use gllfvremap_mod,          only: gfr_fv_phys_to_dyn
     use time_manager,            only: get_step_size
+    use physconst,               only: cpairv
     implicit none
     ! INPUT PARAMETERS:
     type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -436,11 +408,7 @@ CONTAINS
           ie = idmb3(1)
           ioff = idmb2(1)
           do ilyr = 1,pver
-#ifdef FVPG_ALT_DYN_MAP
-            T_tmp(ioff,ilyr,ie)    = phys_state(lchnk)%t(icol,ilyr)
-#else
             T_tmp(ioff,ilyr,ie)    = phys_tend(lchnk)%dtdt(icol,ilyr)
-#endif
             uv_tmp(ioff,1,ilyr,ie) = phys_tend(lchnk)%dudt(icol,ilyr)
             uv_tmp(ioff,2,ilyr,ie) = phys_tend(lchnk)%dvdt(icol,ilyr)
             do m = 1,pcnst
