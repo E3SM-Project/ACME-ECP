@@ -67,7 +67,7 @@ logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-
 !-- mdb spcam
 logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
-logical           :: use_MAML             = .false.    ! true => use Multiple Atmosphere and Multtiple Land  !Guangxing Lin 
+logical           :: use_MAML             = .false.    ! true => use Multiple Atmosphere and Multtiple Land   
 
 logical           :: use_crm_accel        = .false.    ! true => use crm mean-state acceleration
 real(r8)          :: crm_accel_factor     = 2.D0       ! crm acceleration factor

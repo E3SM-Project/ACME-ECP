@@ -794,9 +794,10 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     if(nstep>1) then 
        do i = 1, ncol
 #ifdef MAML
-         do ii=1, ncrm
-          shflx(i,ii) = shflx(i,ii) + ieflx_glob/dble(ncrm)
-         end do
+          !We have ncrm subcolumns, so add 1/ncrm to each subccolumn
+          do ii=1, ncrm
+             shflx(i,ii) = shflx(i,ii) + ieflx_glob/dble(ncrm)
+          end do
 #else
           shflx(i) = shflx(i) + ieflx_glob
 #endif

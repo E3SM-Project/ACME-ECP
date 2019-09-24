@@ -516,6 +516,9 @@ subroutine diag_init()
 
    call addfld ('SHFLX',horiz_only,    'A','W/m2','Surface sensible heat flux')
    call addfld ('LHFLX',horiz_only,    'A','W/m2','Surface latent heat flux')
+#ifdef MAML   
+   call addfld ('LHFLXSD',  horiz_only, 'A', 'W/m2','Surface latent heat flux standard deviation')
+#endif
    call addfld ('QFLX',horiz_only,    'A','kg/m2/s','Surface water flux')
    call addfld ('QEXCESS',horiz_only,    'A','W/m2','qneg4 excess drying converted to cooling on bottom level')
 
@@ -1731,7 +1734,7 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     call outfld('LHFLX',    lhfavg,       pcols, lchnk)
     call outfld('TAUX',     wsxavg,       pcols, lchnk)
     call outfld('TAUY',     wsyavg,       pcols, lchnk)
-    !call outfld('LHFLXSD',    lhfsd,       pcols, lchnk)
+    call outfld('LHFLXSD',    lhfsd,       pcols, lchnk)
 #else
     call outfld('SHFLX',    cam_in%shf,       pcols, lchnk)
     call outfld('LHFLX',    cam_in%lhf,       pcols, lchnk)

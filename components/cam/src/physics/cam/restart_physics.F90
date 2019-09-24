@@ -982,7 +982,6 @@ module restart_physics
         ! non-BFB for the step needs to be tolerated (because the corrected
         ! LHF/SHF  not carried over thru restart file)
 #ifdef MAML
-!MAML-Guangxing Lin    
         ierr = pio_inq_varid(File, 'SHF', vardesc)
         if (ierr == PIO_NOERR) then ! variable found on restart file
            call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)

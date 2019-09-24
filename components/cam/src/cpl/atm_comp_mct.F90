@@ -98,7 +98,11 @@ module atm_comp_mct
 
   integer,                 pointer :: dof(:) ! needed for pio_init decomp for restarts
   type(seq_infodata_type), pointer :: infodata
-#ifdef MAML 
+#ifdef MAML
+  !sequence_instances stands for running instances sequentially
+  !In the MAML, we don't want to run the mult-instances of atm concurrently. Instead, we want to
+  !run them sequentially. Becasue ATM already has multiple CRM columns. We need to run 1 instance only,
+  !but we still need multi-instances to do the atm-land flux exchange. 
   logical :: sequence_instances = .false.
 #endif
 !
@@ -152,7 +156,9 @@ CONTAINS
     logical :: perpetual_run    ! If in perpetual mode or not
     integer :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
     integer :: shrlogunit,shrloglev ! old values
-#ifndef MAML 
+#ifdef MAML 
+    logical :: first_time = .false.
+#else
     logical :: first_time = .true.
 #endif
     character(len=SHR_KIND_CS) :: calendar      ! Calendar type
@@ -184,11 +190,8 @@ CONTAINS
 #ifdef MAML 
     call seq_infodata_getData(infodata,atm_phase=atm_phase)
     call cam_instance_init(ATMID)
-    !write(*,*) '### atm_init_mct: ATMID = ',ATMID
-    !write(*,*) '### atm_init_mct: inst_index = ',inst_index
 
     !--- auto detect sequence_instances based on calling this more than once in phase 1 ---
-    !write(6,*) '### atm_init_mct: atm_phase,first_call,sequence_instances = ',atm_phase,first_call,sequence_instances
     if (atm_phase == 1 .and. .not.first_call .and. .not.sequence_instances) then
         sequence_instances = .true.
         write(6,*) "Setting sequence_instances to true"
@@ -215,11 +218,11 @@ CONTAINS
        return
     endif
 
-    if (atm_phase == 1) then
-#else
+    if (atm_phase == 1) first_time= .true. 
+#endif
+
     if (first_time) then 
        call cam_instance_init(ATMID) 
-#endif       
 
        ! Set filename specifier for restart surface file
        ! (%c=caseid, $y=year, $m=month, $d=day, $s=seconds in day)
@@ -416,11 +419,7 @@ CONTAINS
        call shr_file_setLogUnit (shrlogunit)
        call shr_file_setLogLevel(shrloglev)
 
-#ifdef MAML 
-       !first_time = .false.
-#else
        first_time = .false.
-#endif
     else
        
        ! For initial run, run cam radiation/clouds and return
@@ -574,7 +573,6 @@ CONTAINS
 
 #ifdef MAML 
     call seq_infodata_getData(infodata,atm_phase=atm_phase)
-    !write(6,*) '### atm_run_mct: seq_infodata_getData atm_phase = ',atm_phase
 #endif
 
     nlend_sync = seq_timemgr_StopAlarmIsOn(EClock)
@@ -593,7 +591,6 @@ CONTAINS
        if (atm_phase == 0) then
           ! Map input from mct to cam data structure and return
           call t_startf ('CAM_import')
-          !write(*,*) '### atm_run_mct call atm_import, atm_phase == 0: inst_index = ',inst_index
           call atm_import( x2a_a%rattr, cam_in )
           call t_stopf  ('CAM_import')
           return
@@ -601,10 +598,8 @@ CONTAINS
           if (inst_index > 1) then
              ! Map output from cam to mct data structures and return
              call t_startf ('CAM_export')
-             !write(*,*) '### atm_run_mct call atm_export: inst_index = ',inst_index
              call atm_export( cam_out, a2x_a%rattr )
              call t_stopf ('CAM_export')
-             !write(iulog,*) 'atm tcx1c ',atm_phase,inst_index
              call shr_sys_flush(iulog)
              return
           endif

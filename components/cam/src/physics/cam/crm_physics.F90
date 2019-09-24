@@ -183,10 +183,9 @@ subroutine crm_physics_register()
   ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
   call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
 #ifdef MAML
-!MAML...adding new variables for passing CRM-scale precipition/snow into CLM. Added new variables
+  !adding new variables for passing CRM-scale precipition/snow into CLM. Added new variables
   call pbuf_add_field('CRM_PCP',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_pcp_idx)
   call pbuf_add_field('CRM_SNW',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_snw_idx)
-!MAML
 #endif
 
 end subroutine crm_physics_register
@@ -417,7 +416,6 @@ subroutine crm_physics_init(species_class)
   call addfld ('CRM_LHF ',(/'crm_nx','crm_ny'/),           'I', 'W/m2    ', 'CRM Sfc latent heat flux'            )
   call addfld ('CRM_SNOW',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Snow Rate'                       )
   call addfld ('CRM_PCP ',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Precipitation Rate'              )
-  call addfld ('CRM_SPD ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'm/s     ', 'CRM Wind Speed'                      )
 #endif
 
    ! call addfld ('SPNDROPMIX','#/kg/s  ',pver,  'A','Droplet number mixing',phys_decomp)
@@ -689,6 +687,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer, dimension(:,:,:)   :: crm_pcp
    real(r8), pointer, dimension(:,:,:)   :: crm_snw
    real(r8) :: factor_xy
+   real(r8) :: tau00_avg, bflxls_avg, fluxu00_avg, fluxv00_avg 
+   real(r8) :: fluxt00_avg, fluxq00_avg 
    factor_xy = 1._r8/dble(crm_nx*crm_ny)
 #endif
 
@@ -1045,16 +1045,29 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       crm_input%ocnfrac(1:ncol) = cam_in%ocnfrac(1:ncol)
       do i = 1,ncol
 #ifdef MAML
-         do ii = 1, crm_nx
+         tau00_avg =0._r8
+         bflxls_avg =0._r8
+         fluxu00_avg =0._r8
+         fluxv00_avg =0._r8
+         fluxt00_avg =0._r8
+         fluxq00_avg =0._r8
+         do ii = 1, crm_nx*crm_ny
             !seems none of variables below is used, so I don't use the CRM-level
             !input. Later on, they can be changed if needed   
-            crm_input%tau00(i) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
-            crm_input%bflxls(i) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
-            crm_input%fluxu00(i) = cam_in%wsx(i,ii)     !N/m2
-            crm_input%fluxv00(i) = cam_in%wsy(i,ii)     !N/m2
-            crm_input%fluxt00(i) = cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
-            crm_input%fluxq00(i) = cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
+            tau00_avg = tau00_avg + sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
+            bflxls_avg = bflxls_avg + cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
+            fluxu00_avg = fluxu00_avg + cam_in%wsx(i,ii)     !N/m2
+            fluxv00_avg = fluxv00_avg + cam_in%wsy(i,ii)     !N/m2
+            fluxt00_avg = fluxt00_avg + cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
+            fluxq00_avg = fluxq00_avg + cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
          end do !ii, crm_nx
+         crm_input%tau00(i) = tau00_avg*factor_xy 
+         crm_input%bflxls(i) = bflxls_avg*factor_xy 
+         crm_input%fluxu00(i) = fluxu00_avg*factor_xy     !N/m2
+         crm_input%fluxv00(i) = fluxv00_avg*factor_xy     !N/m2
+         crm_input%fluxt00(i) = fluxt00_avg*factor_xy  ! K Kg/ (m2 s)
+         crm_input%fluxq00(i) = fluxq00_avg*factor_xy ! Kg/(m2 s)
+
 #else
          crm_input%tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
          crm_input%bflxls(i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
@@ -1201,7 +1214,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
        call outfld('CRM_LHF ', cam_in%lhf ,pcols ,lchnk)
        call outfld('CRM_SNOW', crm_snw    ,pcols ,lchnk)
        call outfld('CRM_PCP',  crm_pcp    ,pcols ,lchnk)
-       !call outfld('CRM_SPD ', spd_crm    ,pcols ,lchnk)
 #endif
 
 #ifdef m2005

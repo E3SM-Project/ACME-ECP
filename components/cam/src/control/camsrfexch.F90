@@ -112,7 +112,7 @@ module camsrfexch
      integer  :: lchnk                   ! chunk index
      integer  :: ncol                    ! number of active columns
 #ifdef MAML
-!MAML...modifying the CLM-input vars to reflect the added CRM columns
+     !MAML...modifying the CLM-input vars to reflect the added CRM columns
      real(r8) :: asdir(pcols,num_inst_atm)            ! albedo: shortwave, direct
      real(r8) :: asdif(pcols,num_inst_atm)            ! albedo: shortwave, diffuse
      real(r8) :: aldir(pcols,num_inst_atm)            ! albedo: longwave, direct
@@ -123,7 +123,7 @@ module camsrfexch
      real(r8) :: wsx(pcols,num_inst_atm)              ! surface u-stress (N)
      real(r8) :: wsy(pcols,num_inst_atm)              ! surface v-stress (N)
      real(r8) :: snowhland(pcols,num_inst_atm)        ! snow depth (liquid water equivalent) over land 
-!MAML...modifying the CLM-input vars to reflect the added CRM columns
+     !MAML...modifying the CLM-input vars to reflect the added CRM columns
 #else
      real(r8) :: asdir(pcols)            ! albedo: shortwave, direct
      real(r8) :: asdif(pcols)            ! albedo: shortwave, diffuse
@@ -503,7 +503,7 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: vmag_gust_idx
    real(r8) :: umb(pcols), vmb(pcols),vmag(pcols)
 #ifdef MAML
-!CRM-level variables 
+   !CRM-level variables 
    integer :: j
    integer :: crm_t_idx
    integer :: crm_qv_idx
@@ -565,48 +565,36 @@ subroutine cam_export(state,cam_out,pbuf)
    call pbuf_get_field(pbuf, vmag_gust_idx, vmag_gust)
 
 #ifdef MAML
-   if (crm_t_idx > 0) then
-     call pbuf_get_field(pbuf, crm_t_idx   , crm_t)
-   endif
-   if (crm_qv_idx > 0) then
-     call pbuf_get_field(pbuf, crm_qv_idx  , crm_qv)
-   endif
-   if (crm_u_idx > 0) then
-     call pbuf_get_field(pbuf, crm_u_idx  , crm_u)
-   endif
-   if (crm_v_idx > 0) then
-     call pbuf_get_field(pbuf, crm_v_idx  , crm_v)
-   endif
-   if (crm_pcp_idx > 0) then
-     call pbuf_get_field(pbuf, crm_pcp_idx ,crm_pcp)
-   endif
-   if (crm_snw_idx > 0) then
-     call pbuf_get_field(pbuf, crm_snw_idx ,crm_snw)
-   endif
+   call pbuf_get_field(pbuf, crm_t_idx   , crm_t)
+   call pbuf_get_field(pbuf, crm_qv_idx  , crm_qv)
+   call pbuf_get_field(pbuf, crm_u_idx  , crm_u)
+   call pbuf_get_field(pbuf, crm_v_idx  , crm_v)
+   call pbuf_get_field(pbuf, crm_pcp_idx ,crm_pcp)
+   call pbuf_get_field(pbuf, crm_snw_idx ,crm_snw)
 #endif
 
 #ifdef MAML
-   do i=1,ncol
-      do j= 1, num_inst_atm
-!crm_t is dimensioned (pcols,crm_nx,crm_ny,crm_nz)
+   do j= 1, num_inst_atm
+      do i=1,ncol
+         !crm_t is dimensioned (pcols,crm_nx,crm_ny,crm_nz)
          cam_out%tbot(i,j) = crm_t(i,j,1,1)
 
-!use the crm temperature, I don't see a crm-specific exner function anywhere
+         !use the crm temperature, I don't see a crm-specific exner function anywhere
          cam_out%thbot(i,j) = crm_t(i,j,1,1) * state%exner(i,pver)
 
-!I think we're just passing in the large-scale grid value for pressure...
+         !I think we're just passing in the large-scale grid value for pressure...
          cam_out%pbot(i,j)  = state%pmid(i,pver)
 
-!only using constituent 1 (pcnst=1)
+         !only using constituent 1 (pcnst=1)
          cam_out%qbot(i,1,j) = crm_qv(i,j,1,1)
 
-!density uses large-scale (CAM) pressure, local (CRM) temperature
+         !density uses large-scale (CAM) pressure, local (CRM) temperature
          cam_out%rho(i,j) = cam_out%pbot(i,j)/(rair*cam_out%tbot(i,j))
 
-!zm will use large-scalel (CAM) value
+         !zm will use large-scalel (CAM) value
          cam_out%zbot(i,j)  = state%zm(i,pver)
 
-!u and v will use CRM value
+         !u and v will use CRM value
          cam_out%ubot(i,j)  = crm_u(i,j,1,1)
          cam_out%vbot(i,j)  = crm_v(i,j,1,1)
       end do
@@ -636,7 +624,7 @@ subroutine cam_export(state,cam_out,pbuf)
       prcsnw(i,lchnk) =0._r8
       do j=1,num_inst_atm
         !note assumes that crm_ny =1, crm_nx = num_inst_atm, so if crm_ny is not
-        !equal to 1, the index of crm_pcp and crm-snw should be changed.
+        !equal to 1, the index of crm_pcp and crm_snw should be changed.
 
         cam_out%precc(i,j) = crm_pcp(i,j,1)  ! CRM precip
         cam_out%precl(i,j) = 0._r8     ! large-scale precip set to zero
@@ -644,7 +632,8 @@ subroutine cam_export(state,cam_out,pbuf)
         cam_out%precsc(i,j) = crm_snw(i,j,1) ! CRM snow
         cam_out%precsl(i,j) = 0._r8     ! large-scale snow set to zero
 
-        prcsnw(i,lchnk) = cam_out%precsc(i,j) + cam_out%precsl(i,j) !because we don't have mutiple instance for slab ocean model, we just take the average   
+        !because we don't have mutiple instance for slab ocean model, we just take the average   
+        prcsnw(i,lchnk) = prcsnw(i,lchnk)+ cam_out%precsc(i,j) + cam_out%precsl(i,j)
       end do
       prcsnw(i,lchnk) = prcsnw(i,lchnk)/num_inst_atm 
    end do

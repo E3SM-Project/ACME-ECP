@@ -285,7 +285,6 @@ OPTIONS
 EOF
 }
 
-##Guangxing Lin add -use_crm_cldfrac, -crm_adv, and -use_MAML above
 #-----------------------------------------------------------------------------------------------
 # Setting autoflush (an IO::Handle method) on STDOUT helps in debugging.  It forces the test
 # descriptions to be printed to STDOUT before the error messages start.
@@ -1879,7 +1878,6 @@ if ($crm_ny eq 1) {$yes3Dval = 0;}
 $cfg_cppdefs .= " -D_$crm_adv -D$SPCAM_microp_scheme -DYES3DVAL=$yes3Dval -DCRM_NX=$crm_nx -DCRM_NY=$crm_ny -DCRM_NZ=$crm_nz -DCRM_DX=$crm_dx -DCRM_DT=$crm_dt ";
 
 if ($crm eq "ON") { $cfg_cppdefs .= " -DCRM " }
-#Added cppdef for ecpp-Guangxing Lin
 if (defined $opts{'use_ECPP'}) { $cfg_cppdefs .= " -DECPP " }
 if (defined $opts{'use_MAML'}) { $cfg_cppdefs .= " -DMAML " }
 
@@ -2623,10 +2621,8 @@ sub write_filepath
     if ($ccsm_seq) {
 	my $CASEROOT = "$ENV{'CASEROOT'}";
 	print $fh "$CASEROOT/SourceMods/src.cam\n";
-    #==Guangxing Lin 
 	print $fh "$CASEROOT/SourceMods/src.cam/ecpp\n";
 	print $fh "$CASEROOT/SourceMods/src.cam/rrtmg\n";
-    #==Guangxing Lin 
     }
 
     # offline unit driver (defaults to stub)
@@ -2697,7 +2693,6 @@ sub write_filepath
            print $fh "$camsrcdir/cam/src/physics/crm/MICRO_SAM1MOM\n";
         }
         if ($SPCAM_microp_scheme eq 'm2005') {
-          ##Guangxing Lin add for new SAM 
           if(defined $opts{'use_crm_cldfrac'}) {
               print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005FRAC\n"; }
            else {
@@ -2706,10 +2701,8 @@ sub write_filepath
         }
         if ( defined $opts{'clubb_crm'}) {
            print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
-          ##Guangxing Lin add for new SAM 
            print $fh "$camsrcdir/cam/src/physics/crm/SGS_CLUBBkvhkvm\n";
         }
-          ##Guangxing Lin add for new SAM 
          else {
            print $fh "$camsrcdir/cam/src/physics/crm/SGS_TKE\n";
         }
@@ -2717,7 +2710,6 @@ sub write_filepath
         if ( defined $opts{'use_ECPP'}) {
            print $fh "$camsrcdir/cam/src/physics/cam/ecpp\n";
         }
-          ##Guangxing Lin add for new SAM 
         if ($crm_adv eq 'UM5') {
            print $fh "$camsrcdir/cam/src/physics/crm/ADV_UM5\n"; }
         else {

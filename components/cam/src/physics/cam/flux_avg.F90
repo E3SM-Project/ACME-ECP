@@ -99,9 +99,9 @@ subroutine flux_avg_init(cam_in,  pbuf2d)
        do i =1, ncol
          do ii=1,num_inst_atm
             lhfavg_in(i) = lhfavg_in(i)+cam_in(lchnk)%lhf(i,ii)*factor_xy
-            shfavg_in(i) = lhfavg_in(i)+cam_in(lchnk)%lhf(i,ii)*factor_xy
-            wsxavg_in(i) = lhfavg_in(i)+cam_in(lchnk)%lhf(i,ii)*factor_xy
-            wsyavg_in(i) = lhfavg_in(i)+cam_in(lchnk)%lhf(i,ii)*factor_xy
+            shfavg_in(i) = shfavg_in(i)+cam_in(lchnk)%shf(i,ii)*factor_xy
+            wsxavg_in(i) = wsxavg_in(i)+cam_in(lchnk)%wsx(i,ii)*factor_xy
+            wsyavg_in(i) = wsyavg_in(i)+cam_in(lchnk)%wsy(i,ii)*factor_xy
          enddo
        enddo !i
       call pbuf_set_field(pbuf2d_chunk, lhflx_idx,  lhfavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )

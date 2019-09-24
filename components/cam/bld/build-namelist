@@ -3532,7 +3532,7 @@ add_default($nl, 'crm_accel_factor');
 add_default($nl, 'do_aerocom_ind3');
 my $aerocom_ind3 = $nl->get_value('do_aerocom_ind3');
 
-# MAML option
+# MAML(Multiple Atmosphere Multiple Land) option
 add_default($nl, 'use_MAML');
 
 #in-cloud scav tuning for cloud-borne aerosol
