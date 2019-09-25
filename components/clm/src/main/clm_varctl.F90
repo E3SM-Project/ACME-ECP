@@ -122,7 +122,14 @@ module clm_varctl
   !----------------------------------------------------------
 
   ! do not irrigate by default
-  logical, public :: irrigate = .false.            
+  logical, public :: irrigate = .false.
+
+  !----------------------------------------------------------
+  ! Two-way coupled irrigation with MOSART
+  !----------------------------------------------------------
+
+  ! True is 2way, false is 1way
+  logical, public :: tw_irr = .false.  
 
   !----------------------------------------------------------
   ! Landunit logic
@@ -363,6 +370,11 @@ module clm_varctl
   !-----------------------------------------------------------------------
   ! flux limiter for phenology flux calculation
   logical, public :: use_pheno_flux_limiter = .false.
+
+  ! Soil erosion
+  !-----------------------------------------------------------------------
+  logical, public :: use_erosion    = .false.
+  logical, public :: ero_ccycle     = .false.
 
   !-----------------------------------------------------------------------
   ! bgc & pflotran interface

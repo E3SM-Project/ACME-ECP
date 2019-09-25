@@ -1040,7 +1040,7 @@ end subroutine diag_conv_tend_ini
 
 
 
-#if (defined BFB_CAM_SCAM_IOP )
+#if (defined E3SM_SCM_REPLAY )
     call outfld('phis    ',state%phis,    pcols,   lchnk     )
 #endif
 
@@ -1198,7 +1198,7 @@ end subroutine diag_conv_tend_ini
 
     call outfld('OMEGA   ',state%omega,    pcols,   lchnk     )
 
-#if (defined BFB_CAM_SCAM_IOP )
+#if (defined E3SM_SCM_REPLAY )
     call outfld('omega   ',state%omega,    pcols,   lchnk     )
 #endif
 
@@ -1615,7 +1615,7 @@ subroutine diag_conv(state, ztodt, pbuf)
    call outfld('PRECLav ', precl, pcols, lchnk )
    call outfld('PRECCav ', precc, pcols, lchnk )
 
-#if ( defined BFB_CAM_SCAM_IOP )
+#if ( defined E3SM_SCM_REPLAY )
    call outfld('Prec   ' , prect, pcols, lchnk )
 #endif
 
@@ -1708,11 +1708,12 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     call outfld('RHREFHT',   ftem,      pcols, lchnk)
 
 
-#if (defined BFB_CAM_SCAM_IOP )
+#if (defined E3SM_SCM_REPLAY )
     call outfld('shflx   ',cam_in%shf,   pcols,   lchnk)
     call outfld('lhflx   ',cam_in%lhf,   pcols,   lchnk)
     call outfld('trefht  ',cam_in%tref,  pcols,   lchnk)
     call outfld('Tg', cam_in%ts, pcols, lchnk)
+    call outfld('Tsair',cam_in%ts, pcols, lchnk)
 #endif
 !
 ! Ouput ocn and ice fractions

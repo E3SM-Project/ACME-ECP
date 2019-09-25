@@ -13,29 +13,30 @@ module zm_conv
 ! Author: Byron Boville, from code in tphysbc
 !
 !---------------------------------------------------------------------------------
-   use shr_kind_mod,    only: r8 => shr_kind_r8
-   use spmd_utils,      only: masterproc
-   use ppgrid,          only: pcols, pver, pverp
-   use cloud_fraction,  only: cldfrc_fice
-   use physconst,       only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
+  use shr_kind_mod,    only: r8 => shr_kind_r8
+  use spmd_utils,      only: masterproc
+  use ppgrid,          only: pcols, pver, pverp
+  use cloud_fraction,  only: cldfrc_fice
+  use physconst,       only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
                              cpwv, cpliq, rh2o
-   use cam_abortutils,      only: endrun
-   use cam_logfile,     only: iulog
+  use cam_abortutils,      only: endrun
+  use cam_logfile,     only: iulog
 
-   implicit none
+  implicit none
 
-   save
-   private                         ! Make default type private to the module
+  save
+  private                         ! Make default type private to the module
 !
 ! PUBLIC: interfaces
 !
-   public zmconv_readnl            ! read zmconv_nl namelist
-   public zm_convi                 ! ZM schemea
-   public zm_convr                 ! ZM schemea
-   public zm_conv_evap             ! evaporation of precip from ZM schemea
-   public convtran                 ! convective transport
-   public momtran                  ! convective momentum transport
-   public trigmem                  ! true if convective memory
+  public zmconv_readnl            ! read zmconv_nl namelist
+  public zm_convi                 ! ZM schemea
+  public zm_convr                 ! ZM schemea
+  public zm_conv_evap             ! evaporation of precip from ZM schemea
+  public convtran                 ! convective transport
+  public momtran                  ! convective momentum transport
+  public trigmem                  ! true if convective memory
+  public trigdcape_ull            ! true if to use dcape-ULL trigger
 
 !
 ! Private data
@@ -50,6 +51,7 @@ module zm_conv
    real(r8) :: zmconv_alfa           = unset_r8   
    real(r8) :: zmconv_tiedke_add     = unset_r8   
    logical  :: zmconv_trigmem        = .false.    
+   logical  :: zmconv_trigdcape_ull  = .false.    
    integer  :: zmconv_cape_cin       = unset_int
    integer  :: zmconv_mx_bot_lyr_adj = unset_int
    real(r8) :: zmconv_tp_fac         = unset_r8
@@ -60,6 +62,14 @@ module zm_conv
 !<songxl 2014-05-20------------------
     real(r8), parameter :: dcapelmt = 1.81e-2_r8  ! threshold value of dcape for deep convection. 65J/kg/hr
 !>songxl 2014-05-20------------------
+
+!DCAPE-ULL
+   real(r8), parameter :: trigdcapelmt = 0._r8  ! threshold value of dcape for deep convection
+   logical :: trigdcape_ull    = .false. !true to use DCAPE trigger and -ULL 
+   integer :: dcapemx(pcols) ! save maxi from 1st call for CAPE calculation and used in 2nd call when DCAPE-ULL active
+!  May need to change to use local variable !  as passed via dummy argument. For now, making it threadprivate as follows,
+!$omp threadprivate (dcapemx)
+
    real(r8) :: ke           ! Tunable evaporation efficiency set from namelist input zmconv_ke
    real(r8) :: c0_lnd       ! set from namelist input zmconv_c0_lnd
    real(r8) :: c0_ocn       ! set from namelist input zmconv_c0_ocn
@@ -107,7 +117,7 @@ subroutine zmconv_readnl(nlfile)
 
    namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_tau, & 
            zmconv_dmpdz, zmconv_alfa, zmconv_trigmem, zmconv_tiedke_add,     &
-           zmconv_cape_cin, zmconv_mx_bot_lyr_adj, zmconv_tp_fac
+           zmconv_cape_cin, zmconv_mx_bot_lyr_adj, zmconv_tp_fac, zmconv_trigdcape_ull
    !-----------------------------------------------------------------------------
 
    zmconv_tau = 3600._r8
@@ -130,6 +140,7 @@ subroutine zmconv_readnl(nlfile)
       ke             = zmconv_ke
       tau            = zmconv_tau
       trigmem        = zmconv_trigmem
+      trigdcape_ull  = zmconv_trigdcape_ull
       tiedke_add     = zmconv_tiedke_add
       num_cin        = zmconv_cape_cin
       mx_bot_lyr_adj = zmconv_mx_bot_lyr_adj
@@ -142,6 +153,10 @@ subroutine zmconv_readnl(nlfile)
            alfa_scalar = 0.1_r8
       end if
 
+      if (trigdcape_ull) then 
+         write(iulog,*)'**** ZMCONV-DCAPE trigger with unrestricted launch level:', trigdcape_ull
+      endif
+
    end if
 
 #ifdef SPMD
@@ -153,6 +168,7 @@ subroutine zmconv_readnl(nlfile)
    call mpibcast(dmpdz,             1, mpir8,  0, mpicom)
    call mpibcast(alfa_scalar,       1, mpir8,  0, mpicom)
    call mpibcast(trigmem,           1, mpilog, 0, mpicom)
+   call mpibcast(trigdcape_ull,     1, mpilog, 0, mpicom)
    call mpibcast(tiedke_add,        1, mpir8,  0, mpicom)
    call mpibcast(num_cin,           1, mpiint, 0, mpicom)
    call mpibcast(mx_bot_lyr_adj,    1, mpiint, 0, mpicom)
@@ -219,7 +235,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
                     mu      ,md      ,du      ,eu      ,ed      , &
                     dp      ,dsubcld ,jt      ,maxg    ,ideep   , &
                     lengath ,ql      ,rliq    ,landfrac,hu_nm1  , &
-                    cnv_nm1 ,tm1     ,qm1     )  !songxl 2014-05-20
+                    cnv_nm1 ,tm1     ,qm1     ,t_star  ,q_star, dcape)
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -247,26 +263,26 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  w  * cape     convective available potential energy.
 !  wg * capeg    gathered convective available potential energy.
 !  c  * capelmt  threshold value for cape for deep convection.
-!  ic  * cpres   specific heat at constant pressure in j/kg-degk.
+!  ic  * cpres    specific heat at constant pressure in j/kg-degk.
 !  i  * dpp      
-!  ic  * delt    length of model time-step in seconds.
+!  ic  * delt     length of model time-step in seconds.
 !  wg * dp       layer thickness in mbs (between upper/lower interface).
 !  wg * dqdt     mixing ratio tendency at gathered points.
 !  wg * dsdt     dry static energy ("temp") tendency at gathered points.
 !  wg * dudt     u-wind tendency at gathered points.
 !  wg * dvdt     v-wind tendency at gathered points.
 !  wg * dsubcld  layer thickness in mbs between lcl and maxi.
-!  ic  * grav    acceleration due to gravity in m/sec2.
+!  ic  * grav     acceleration due to gravity in m/sec2.
 !  wg * du       detrainment in updraft. specified in mid-layer
 !  wg * ed       entrainment in downdraft.
 !  wg * eu       entrainment in updraft.
 !  wg * hmn      moist static energy.
 !  wg * hsat     saturated moist static energy.
 !  w  * ideep    holds position of gathered points vs longitude index.
-!  ic  * pver    number of model levels.
+!  ic  * pver     number of model levels.
 !  wg * j0       detrainment initiation level index.
 !  wg * jd       downdraft   initiation level index.
-!  ic  * jlatpr  gaussian latitude index for printing grids (if needed).
+!  ic  * jlatpr   gaussian latitude index for printing grids (if needed).
 !  wg * jt       top  level index of deep cumulus convection.
 !  w  * lcl      base level index of deep cumulus convection.
 !  wg * lclg     gathered values of lcl.
@@ -280,7 +296,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  wg * md       downward cloud mass flux (positive up).
 !  wg * mu       upward   cloud mass flux (positive up). specified
 !                at interface
-!  ic  * msg     number of missing moisture levels at the top of model.
+!  ic  * msg      number of missing moisture levels at the top of model.
 !  w  * p        grid slice of ambient mid-layer pressure in mbs.
 !  i  * pblt     row of pbl top indices.
 !  w  * pcpdh    scaled surface pressure.
@@ -289,7 +305,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  w  * q        grid slice of mixing ratio.
 !  wg * qd       grid slice of mixing ratio in downdraft.
 !  wg * qg       grid slice of gathered values of q.
-!  i/o * qh      grid slice of specific humidity.
+!  i/o * qh       grid slice of specific humidity.
 !  w  * qh0      grid slice of initial specific humidity.
 !  wg * qhat     grid slice of upper interface mixing ratio.
 !  wg * ql       grid slice of cloud liquid water.
@@ -297,7 +313,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  w  * qstp     grid slice of parcel temp. saturation mixing ratio.
 !  wg * qstpg    grid slice of gathered values of qstp.
 !  wg * qu       grid slice of mixing ratio in updraft.
-!  ic  * rgas    dry air gas constant.
+!  ic  * rgas     dry air gas constant.
 !  wg * rl       latent heat of vaporization.
 !  w  * s        grid slice of scaled dry static energy (t+gz/cp).
 !  wg * sd       grid slice of dry static energy in downdraft.
@@ -312,19 +328,21 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  wg * tlg      grid slice of gathered values of tl.
 !  w  * tp       grid slice of parcel temperatures.
 !  wg * tpg      grid slice of gathered values of tp.
-!  i/o * u       grid slice of u-wind (real).
+!  i/o * u        grid slice of u-wind (real).
 !  wg * ug       grid slice of gathered values of u.
-!  i/o * utg     grid slice of u-wind tendency (real).
-!  i/o * v       grid slice of v-wind (real).
+!  i/o * utg      grid slice of u-wind tendency (real).
+!  i/o * v        grid slice of v-wind (real).
 !  w  * va       work array re-used by called subroutines.
 !  wg * vg       grid slice of gathered values of v.
-!  i/o * vtg     grid slice of v-wind tendency (real).
+!  i/o * vtg      grid slice of v-wind tendency (real).
 !  i  * w        grid slice of diagnosed large-scale vertical velocity.
 !  w  * z        grid slice of ambient mid-layer height in metres.
 !  w  * zf       grid slice of ambient interface height in metres.
 !  wg * zfg      grid slice of gathered values of zf.
 !  wg * zg       grid slice of gathered values of z.
+!
 !-----------------------------------------------------------------------
+!
 ! multi-level i/o fields:
 !  i      => input arrays.
 !  i/o    => input/output arrays.
@@ -332,8 +350,9 @@ subroutine zm_convr(lchnk   ,ncol    , &
 !  wg     => work arrays operating only on gathered points.
 !  ic     => input data constants.
 !  c      => data constants pertaining to subroutine itself.
-!-----------------------------------------------------------------------
+!
 ! input arguments
+!
    integer, intent(in) :: lchnk                   ! chunk identifier
    integer, intent(in) :: ncol                    ! number of atmospheric columns
 
@@ -348,10 +367,19 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8), intent(in) :: pblh(pcols)
    real(r8), intent(in) :: tpert(pcols)
    real(r8), intent(in) :: landfrac(pcols) ! RBN Landfrac
-   real(r8), intent(in) :: tm1(pcols,pver)       ! grid slice of temperature at mid-layer    !<songxl 2014-05-20
-   real(r8), intent(in) :: qm1(pcols,pver)       ! grid slice of specific humidity           !<songxl 2014-05-20
-!-----------------------------------------------------------------------
+!<songxl 2014-05-20------------------
+   real(r8), intent(in) :: tm1(pcols,pver)       ! grid slice of temperature at mid-layer.
+   real(r8), intent(in) :: qm1(pcols,pver)       ! grid slice of specific humidity.
+!>songxl 2014-05-20------------------
+
+!DCAPE-ULL
+   real(r8), intent(in), pointer, dimension(:,:) :: t_star ! intermediate T between n and n-1 time step
+   real(r8), intent(in), pointer, dimension(:,:) :: q_star ! intermediate q between n and n-1 time step
+
+
+!
 ! output arguments
+!
    real(r8), intent(out) :: qtnd(pcols,pver)           ! specific humidity tendency (kg/kg/s)
    real(r8), intent(out) :: heat(pcols,pver)           ! heating rate (dry static energy tendency, W/kg)
    real(r8), intent(out) :: mcon(pcols,pverp)
@@ -361,8 +389,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8), intent(out) :: cape(pcols)        ! w  convective available potential energy.
    real(r8), intent(out) :: zdu(pcols,pver)
    real(r8), intent(out) :: rprd(pcols,pver)     ! rain production rate
-   ! move these vars from local storage to output so that convective
-   ! transports can be done in outside of conv_cam.
+! move these vars from local storage to output so that convective
+! transports can be done in outside of conv_cam.
    real(r8), intent(out) :: mu(pcols,pver)
    real(r8), intent(out) :: eu(pcols,pver)
    real(r8), intent(out) :: du(pcols,pver)
@@ -374,9 +402,12 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8), intent(out) :: jcbot(pcols)  ! o row of base of cloud indices passed out.
    real(r8), intent(out) :: prec(pcols)
    real(r8), intent(out) :: rliq(pcols) ! reserved liquid (not yet in cldliq) for energy integrals
+   real(r8), intent(out) :: dcape(pcols)           ! output dynamical CAPE
 
-   real(r8), intent(inout) :: hu_nm1 (pcols,pver)     !<songxl 2014-05-20
-   real(r8), intent(inout) :: cnv_nm1 (pcols,pver)    !<songxl 2014-05-20
+!<songxl 2014-05-20------------------
+   real(r8), intent(inout) :: hu_nm1 (pcols,pver)
+   real(r8), intent(inout) :: cnv_nm1 (pcols,pver)
+!>songxl 2014-05-20------------------
 
    real(r8) zs(pcols)
    real(r8) dlg(pcols,pver)    ! gathrd version of the detraining cld h2o tend
@@ -388,11 +419,15 @@ subroutine zm_convr(lchnk   ,ncol    , &
    integer maxg(pcols)                        ! wg gathered values of maxi.
    integer ideep(pcols)                       ! w holds position of gathered points vs longitude index.
    integer lengath
-   ! diagnostic field used by chem/wetdep codes
+!     diagnostic field used by chem/wetdep codes
    real(r8) ql(pcols,pver)                    ! wg grid slice of cloud liquid water.
+!
    real(r8) pblt(pcols)           ! i row of pbl top indices.
 
 
+
+
+!
 !-----------------------------------------------------------------------
 !
 ! general work fields (local variables):
@@ -407,17 +442,19 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) qstp(pcols,pver)           ! w  grid slice of parcel temp. saturation mixing ratio.
 
    real(r8) tl(pcols)                  ! w  row of parcel temperature at lcl.
-   !<songxl 2014-05-20-----------------
+!<songxl 2014-05-20-----------------
    real(r8) tpm1(pcols,pver)           ! w parcel temperatures at n-1 time step. 
    real(r8) qstpm1(pcols,pver)         ! w parcel temp. saturation mixing ratio at n-1 time step
    real(r8) tlm1(pcols)                ! w LCL parcel Temperature at n-1 time step
    real(r8) capem1(pcols)              ! w CAPE at n-1 time step 
-   real(r8) dcape(pcols)               ! w CAPE change rate due to adv between n and n-1 step
    integer lclm1(pcols)                ! w base level index of deep cumulus convection.
    integer lelm1(pcols)                ! w index of highest theoretical convective plume.
    integer lonm1(pcols)                ! w index of onset level for deep convection.
    integer maxim1(pcols)               ! w index of level with largest moist static energy.
-   !>songxl 2014-05-20-----------------
+!>songxl 2014-05-20-----------------
+
+   logical iclosure                    ! switch on sequence of call to buoyan_dilute to derive DCAPE
+   real(r8) capelmt_wk                 ! work capelmt to allow diff values passed to closure with trigdcape
 
    integer lcl(pcols)                  ! w  base level index of deep cumulus convection.
    integer lel(pcols)                  ! w  index of highest theoretical convective plume.
@@ -426,9 +463,9 @@ subroutine zm_convr(lchnk   ,ncol    , &
    integer maxi(pcols)                 ! w  index of level with largest moist static energy.
    integer index(pcols)
    real(r8) precip
-!-----------------------------------------------------------------------
+!
 ! gathered work fields:
-
+!
    real(r8) qg(pcols,pver)             ! wg grid slice of gathered values of q.
    real(r8) tg(pcols,pver)             ! w  grid slice of temperature at interface.
    real(r8) pg(pcols,pver)             ! wg grid slice of gathered values of p.
@@ -450,12 +487,12 @@ subroutine zm_convr(lchnk   ,ncol    , &
 
    integer lclg(pcols)       ! wg gathered values of lcl.
    integer lelg(pcols)
-!-----------------------------------------------------------------------
-! work fields arising from gathered calculations
-
+!
+! work fields arising from gathered calculations.
+!
    real(r8) dqdt(pcols,pver)           ! wg mixing ratio tendency at gathered points.
    real(r8) dsdt(pcols,pver)           ! wg dry static energy ("temp") tendency at gathered points.
-   ! real(r8) alpha(pcols,pver)      ! array of vertical differencing used (=1. for upstream).
+!      real(r8) alpha(pcols,pver)      ! array of vertical differencing used (=1. for upstream).
    real(r8) sd(pcols,pver)             ! wg grid slice of dry static energy in downdraft.
    real(r8) qd(pcols,pver)             ! wg grid slice of mixing ratio in downdraft.
    real(r8) mc(pcols,pver)             ! wg net upward (scaled by mb) cloud mass flux.
@@ -469,8 +506,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) qlg(pcols,pver)
    real(r8) dudt(pcols,pver)           ! wg u-wind tendency at gathered points.
    real(r8) dvdt(pcols,pver)           ! wg v-wind tendency at gathered points.
-   ! real(r8) ud(pcols,pver)
-   ! real(r8) vd(pcols,pver)
+!      real(r8) ud(pcols,pver)
+!      real(r8) vd(pcols,pver)
 
    real(r8) mb(pcols)                  ! wg cloud base mass flux.
 
@@ -487,15 +524,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) qdifr
    real(r8) sdifr
 
-! whannah - ZM_TAU_MOD allows tau to be height dependent
-#ifdef ZM_TAU_MOD
-   real(r8) tau_k(pver)          ! height dependent convective timscale - to counter top-heavy heating bias
-   ! real(r8) tau_k_max            ! maximum timescale for tau_k
-   real(r8) tau_k_slp            ! slope of tau profile (linear function of pressure)
-   real(r8) mb_k                 ! temporary container for modified cloud base mass flux
-#endif
-
-
+!
 !--------------------------Data statements------------------------------
 !
 ! Set internal variable "msg" (convection limit) to "limcnv-1"
@@ -615,13 +644,21 @@ subroutine zm_convr(lchnk   ,ncol    , &
 
       !  Evaluate Tparcel, qs(Tparcel), buoyancy and CAPE, 
       !     lcl, lel, parcel launch level at index maxi()=hmax
-!<songxl 2014-05-20-----------------
+      !
+
+      ! 1. First call, iclosure = .true., standard calculation, scanning for launching level up to 600 hPa
+      ! 2. Second call, iclosure = .faklse. pass the launch level from 1st call to determine CAPE at previous step
+      !    The differewnce of CAPE values from the two calls is DCAPE, based on the same launch level
+
+         iclosure = .true.
          call buoyan_dilute(lchnk   ,ncol    , &
                   q       ,t       ,p       ,z       ,pf       , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  tpert   )
+                  tpert   ,iclosure)
+         
+      if (trigdcape_ull) dcapemx(:) = maxi(:)
         
       if(trigmem)then
          call buoyan_dilute(lchnk   ,ncol    , &
@@ -629,13 +666,25 @@ subroutine zm_convr(lchnk   ,ncol    , &
                   tpm1    ,qstpm1  ,tlm1    ,rl      ,capem1   , &
                   pblt    ,lclm1   ,lelm1   ,lonm1   ,maxim1   , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  tpert   )
+                  tpert   ,iclosure)
 
           do i=1,ncol
              dcape(i) = (cape(i)-capem1(i))/(delt*2._r8)
           end do
-       endif
-!>songxl 2014-05-20------------------
+      endif
+
+      !DCAPE-ULL
+      if (.not. is_first_step() .and. trigdcape_ull) then
+         iclosure = .false.
+         call buoyan_dilute(lchnk   ,ncol    , &
+                 q_star  ,t_star     ,p       ,z       ,pf       , &
+                 tpm1    ,qstpm1  ,tlm1    ,rl      ,capem1   , &
+                 pblt    ,lclm1   ,lelm1   ,lonm1   ,maxim1   , &
+                 rgas    ,grav    ,cpres   ,msg     , &
+                 tpert   ,iclosure)
+
+          dcape(:ncol) = (cape(:ncol)-capem1(:ncol))/(delt*2._r8)
+      endif
    end if
 
 !
@@ -643,6 +692,11 @@ subroutine zm_convr(lchnk   ,ncol    , &
 ! (ideep=1) or not (ideep=0), based on values of cape,lcl,lel
 ! (require cape.gt. 0 and lel<lcl as minimum conditions).
 !
+   capelmt_wk = capelmt   ! capelmt_wk default to capelmt for default trigger
+
+   if (trigdcape_ull .and. (.not. is_first_step()) )  &
+      capelmt_wk = 0.0_r8
+
    lengath = 0
    do i=1,ncol
 !<songxl 2014-05-20----------------
@@ -658,6 +712,19 @@ subroutine zm_convr(lchnk   ,ncol    , &
             index(lengath) = i
          end if
       end if
+     else if (trigdcape_ull) then
+     ! DCAPE-ULL
+      if (is_first_step()) then
+         !Will this cause restart to be non-BFB
+           if (cape(i) > capelmt) then
+              lengath = lengath + 1
+              index(lengath) = i
+           end if
+       else if (cape(i) > 0.0_r8 .and. dcape(i) > trigdcapelmt) then
+           ! use constant 0 or a separate threshold for capt because capelmt is for default trigger
+           lengath = lengath + 1
+           index(lengath) = i
+       endif
      else
       if (cape(i) > capelmt) then
          lengath = lengath + 1
@@ -779,7 +846,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
                 qlg     ,dsubcld ,mb      ,capeg   ,tlg     , &
                 lclg    ,lelg    ,jt      ,maxg    ,1       , &
                 lengath ,rgas    ,grav    ,cpres   ,rl      , &
-                msg     ,capelmt    )
+                msg     ,capelmt_wk )
 !
 ! limit cloud base mass flux to theoretical upper bound.
 !
@@ -808,34 +875,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       end do
    end if
 
-! whannah - ZM_TAU_MOD allows tau to be height dependent
-#ifdef ZM_TAU_MOD
-   ! tau_k_max = 3600._r8 * 6._r8
-   ! tau_k_slp = (tau_k_max-tau) / ( 500. - 100.)
-   tau_k_slp = tau*(4.-1.) / 1000.  ! increase by factor of 4 over 1000 mb
-   do k=msg+1,pver
-      ! use fixed slop - linear in pressure
-      if (k <= j0(i))
-         tau_k(k) = tau + tau_k_slp * ( p(i,j0(i)) - p(i,k) )
-      else
-         tau_k(k) = tau
-      end if
-      mb_k = mb(i)/tau_k(k)
-      do i=1,lengath
-         mu   (i,k)  = mu   (i,k)  *mb_k
-         md   (i,k)  = md   (i,k)  *mb_k
-         mc   (i,k)  = mc   (i,k)  *mb_k
-         du   (i,k)  = du   (i,k)  *mb_k
-         eu   (i,k)  = eu   (i,k)  *mb_k
-         ed   (i,k)  = ed   (i,k)  *mb_k
-         cmeg (i,k)  = cmeg (i,k)  *mb_k
-         rprdg(i,k)  = rprdg(i,k)  *mb_k
-         cug  (i,k)  = cug  (i,k)  *mb_k
-         evpg (i,k)  = evpg (i,k)  *mb_k
-         pflxg(i,k+1)= pflxg(i,k+1)*mb_k*100._r8/grav
-      end do
-   end do
-#else
+
    do k=msg+1,pver
       do i=1,lengath
          mu   (i,k)  = mu   (i,k)*mb(i)
@@ -851,7 +891,6 @@ subroutine zm_convr(lchnk   ,ncol    , &
          pflxg(i,k+1)= pflxg(i,k+1)*mb(i)*100._r8/grav
       end do
    end do
-#endif
 !
 ! compute temperature and moisture changes due to convection.
 !
@@ -1712,7 +1751,7 @@ subroutine momtran(lchnk, ncol, &
             kp1 = min(pver,k+1)
             do i = il1g,il2g
                ii = ideep(i)
-	
+  
 ! version 1 hard to check for roundoff errors
                dcondt(i,k) =  &
                            +(mu(i,kp1)* (conu(i,kp1)-chat(i,kp1)) &
@@ -2188,47 +2227,42 @@ subroutine cldprp(lchnk   , &
 
    real(r8), intent(in) :: landfrac(pcols) ! RBN Landfrac
 
-   integer,  intent(in)  :: jb(pcols)              ! updraft base level
-   integer,  intent(in)  :: lel(pcols)             ! updraft launch level
-   integer,  intent(out) :: jt(pcols)              ! updraft plume top
-   integer,  intent(out) :: jlcl(pcols)            ! updraft lifting cond level
-   integer,  intent(in)  :: mx(pcols)              ! updraft base level (same is jb)
-   integer,  intent(out) :: j0(pcols)              ! level where updraft begins detraining
-   integer,  intent(out) :: jd(pcols)              ! level of downdraft
-   integer,  intent(in)  :: limcnv                 ! convection limiting level
-   integer,  intent(in)  :: il2g                   !CORE GROUP REMOVE
-   integer,  intent(in)  :: msg                    ! missing moisture vals (always 0)
-   real(r8), intent(in)  :: rl                     ! latent heat of vap
-   real(r8), intent(in)  :: shat(pcols,pver)       ! interface values of dry stat energy
+   integer, intent(in) :: jb(pcols)              ! updraft base level
+   integer, intent(in) :: lel(pcols)             ! updraft launch level
+   integer, intent(out) :: jt(pcols)              ! updraft plume top
+   integer, intent(out) :: jlcl(pcols)            ! updraft lifting cond level
+   integer, intent(in) :: mx(pcols)              ! updraft base level (same is jb)
+   integer, intent(out) :: j0(pcols)              ! level where updraft begins detraining
+   integer, intent(out) :: jd(pcols)              ! level of downdraft
+   integer, intent(in) :: limcnv                 ! convection limiting level
+   integer, intent(in) :: il2g                   !CORE GROUP REMOVE
+   integer, intent(in) :: msg                    ! missing moisture vals (always 0)
+   real(r8), intent(in) :: rl                    ! latent heat of vap
+   real(r8), intent(in) :: shat(pcols,pver)      ! interface values of dry stat energy
    real(r8), intent(in) :: tpert(pcols)
 !
 ! output
 !
-   real(r8), intent(out) :: rprd  (pcols,pver)     ! rate of production of precip at that layer
-   real(r8), intent(out) :: du   (pcols,pver)      ! detrainement rate of updraft
-   real(r8), intent(out) :: ed   (pcols,pver)      ! entrainment rate of downdraft
-   real(r8), intent(out) :: eu   (pcols,pver)      ! entrainment rate of updraft
-   real(r8), intent(out) :: hmn  (pcols,pver)      ! moist stat energy of env
-   real(r8), intent(out) :: hsat (pcols,pver)      ! sat moist stat energy of env
-   real(r8), intent(out) :: mc   (pcols,pver)      ! net mass flux
-   real(r8), intent(out) :: md   (pcols,pver)      ! downdraft mass flux
-   real(r8), intent(out) :: mu   (pcols,pver)      ! updraft mass flux
-   real(r8), intent(out) :: pflx (pcols,pverp)     ! precipitation flux thru layer
-   real(r8), intent(out) :: qd   (pcols,pver)      ! spec humidity of downdraft
-   real(r8), intent(out) :: ql   (pcols,pver)      ! liq water of updraft
-   real(r8), intent(out) :: qst  (pcols,pver)      ! saturation mixing ratio of env.
-   real(r8), intent(out) :: qu   (pcols,pver)      ! spec hum of updraft
-   real(r8), intent(out) :: sd   (pcols,pver)      ! normalized dry stat energy of downdraft
-   real(r8), intent(out) :: su   (pcols,pver)      ! normalized dry stat energy of updraft
+   real(r8), intent(out) :: rprd(pcols,pver)     ! rate of production of precip at that layer
+   real(r8), intent(out) :: du(pcols,pver)       ! detrainement rate of updraft
+   real(r8), intent(out) :: ed(pcols,pver)       ! entrainment rate of downdraft
+   real(r8), intent(out) :: eu(pcols,pver)       ! entrainment rate of updraft
+   real(r8), intent(out) :: hmn(pcols,pver)      ! moist stat energy of env
+   real(r8), intent(out) :: hsat(pcols,pver)     ! sat moist stat energy of env
+   real(r8), intent(out) :: mc(pcols,pver)       ! net mass flux
+   real(r8), intent(out) :: md(pcols,pver)       ! downdraft mass flux
+   real(r8), intent(out) :: mu(pcols,pver)       ! updraft mass flux
+   real(r8), intent(out) :: pflx(pcols,pverp)    ! precipitation flux thru layer
+   real(r8), intent(out) :: qd(pcols,pver)       ! spec humidity of downdraft
+   real(r8), intent(out) :: ql(pcols,pver)       ! liq water of updraft
+   real(r8), intent(out) :: qst(pcols,pver)      ! saturation mixing ratio of env.
+   real(r8), intent(out) :: qu(pcols,pver)       ! spec hum of updraft
+   real(r8), intent(out) :: sd(pcols,pver)       ! normalized dry stat energy of downdraft
+   real(r8), intent(out) :: su(pcols,pver)       ! normalized dry stat energy of updraft
 
 !<songxl 2014-05-20----------------
    real(r8), intent(inout) :: hu_nm1 (pcols,pver)
 !>songxl 2014-05-20----------------
-
-! whannah - modification to make precipitation efficiency depend on aerosols
-! #IF DEFINED( ZM_PE_MOD )
-!    integer,  intent(in)  :: aero_sum(pcols)
-! #ENDIF
 
    real(r8) rd                   ! gas constant for dry air
    real(r8) grav                 ! gravity
@@ -2237,7 +2271,7 @@ subroutine cldprp(lchnk   , &
 !
 ! Local workspace
 !
-   real(r8) gamma (pcols,pver)
+   real(r8) gamma(pcols,pver)
    real(r8) dz(pcols,pver)
    real(r8) iprm(pcols,pver)
    real(r8) hu(pcols,pver)
@@ -2294,14 +2328,6 @@ subroutine cldprp(lchnk   , &
    real(r8) hu_tot(pcols)
    real(r8) hmn_tot(pcols)
 !>songxl 2014-05-20----------------
-
-
-! whannah - ZM_ED_MOD - allows detrainment below first detrainment level, net mass balance is unaffected
-! #ifdef ZM_ED_MOD
-!    real(r8) min_ed
-! #endif
-
-
 !
 !------------------------------------------------------------------------------
 !
@@ -2309,12 +2335,7 @@ subroutine cldprp(lchnk   , &
       ftemp(i) = 0._r8
       expnum(i) = 0._r8
       expdif(i) = 0._r8
-! whannah - modification to make precipitation efficiency depend on aerosols
-! #ifdef ZM_PE_MOD 
-!       c0mask(i)  =  c0_ocn - aero_sum * ???
-! #else
       c0mask(i)  = c0_ocn * (1._r8-landfrac(i)) +   c0_lnd * landfrac(i) 
-! #endif
    end do
 !
 !jr Change from msg+1 to 1 to prevent blowup
@@ -2498,7 +2519,7 @@ subroutine cldprp(lchnk   , &
                         hsat(i,k)* (z(i,k-1)-zf(i,k)))/(z(i,k-1)-z(i,k))
          end if
          if ((expdif(i) > 100._r8 .and. expnum(i) > 0._r8) .and. &
-	     k1(i,k) > expnum(i)*dz(i,k)) then
+       k1(i,k) > expnum(i)*dz(i,k)) then
             ftemp(i) = expnum(i)/k1(i,k)
             f(i,k) = ftemp(i) + i2(i,k)/k1(i,k)*ftemp(i)**2 + &
                      (2._r8*i2(i,k)**2-k1(i,k)*i3(i,k))/k1(i,k)**2* &
@@ -2552,22 +2573,14 @@ subroutine cldprp(lchnk   , &
          eu(i,jb(i)) = mu(i,jb(i))/dz(i,jb(i))
       end if
    end do
-  
-! whannah - ZM_ED_MOD - allows detrainment below first detrainment level, net mass balance is unaffected
-! #ifdef ZM_ED_MOD
-!    min_ed = 1.E-4_r8  ! (0.1 km-1 => 0.0001 m-1)
-! #else
-!    min_ed = 0._r8
-! #endif
-
    do k = pver,msg + 1,-1
       do i = 1,il2g
          if (eps0(i) > 0._r8 .and. (k >= jt(i) .and. k < jb(i))) then
             zuef(i) = zf(i,k) - zf(i,jb(i))
             rmue(i) = (1._r8/eps0(i))* (exp(eps(i,k+1)*zuef(i))-1._r8)/zuef(i)
             mu(i,k) = (1._r8/eps0(i))* (exp(eps(i,k  )*zuef(i))-1._r8)/zuef(i)
-            eu(i,k) = (rmue(i)-mu(i,k+1))/dz(i,k)  ! + min_ed
-            du(i,k) = (rmue(i)-mu(i,k)  )/dz(i,k)  ! + min_ed
+            eu(i,k) = (rmue(i)-mu(i,k+1))/dz(i,k)
+            du(i,k) = (rmue(i)-mu(i,k))/dz(i,k)
          end if
       end do
    end do
@@ -2581,14 +2594,14 @@ subroutine cldprp(lchnk   , &
 
 !<songxl 2014-05-20--------------
    if(trigmem)then
-      do i=1,il2g
-         hu_tot(i) = 0._r8
-         hmn_tot(i) = 0._r8
-         do k = klowest-1,khighest,-1
-            hu_tot(i) = hu_tot(i) + hu_nm1(i,k)
-            hmn_tot(i) = hmn_tot(i) + hmn(i,k)
-         end do
+    do i=1,il2g
+      hu_tot(i) = 0._r8
+      hmn_tot(i) = 0._r8
+      do k = klowest-1,khighest,-1
+         hu_tot(i) = hu_tot(i) + hu_nm1(i,k)
+         hmn_tot(i) = hmn_tot(i) + hmn(i,k)
       end do
+    end do
    endif
 !>songxl 2014-05-20--------------
 
@@ -2626,8 +2639,8 @@ subroutine cldprp(lchnk   , &
       do i=1,il2g
          if (doit(i) .and. k <= jb(i)-2 .and. k >= lel(i)-1) then
            if(trigmem)then
-  	     if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
-	       .and. mu(i,k) >= 0.02_r8) then
+         if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
+         .and. mu(i,k) >= 0.02_r8) then
                if (hu(i,k)-hsthat(i,k) < -2000._r8) then
                   jt(i) = k + 1
                   doit(i) = .false.
@@ -2649,8 +2662,8 @@ subroutine cldprp(lchnk   , &
                end if
              end if
            else ! not trigmem
-        	     if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
-      	       .and. mu(i,k) >= 0.02_r8) then
+         if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
+         .and. mu(i,k) >= 0.02_r8) then
                if (hu(i,k)-hsthat(i,k) < -2000._r8) then
                   jt(i) = k + 1
                   doit(i) = .false.
@@ -2662,7 +2675,7 @@ subroutine cldprp(lchnk   , &
                jt(i) = k + 1
                doit(i) = .false.
              end if
-           end if ! end trigmem
+          end if ! end trigmem
 !>songxl 2014-06-20------------------------ 
          end if
       end do
@@ -3099,12 +3112,7 @@ subroutine closure(lchnk   , &
    end do
    do i = il1g,il2g
       dltaa = -1._r8* (cape(i)-capelmt)
-! whannah - ZM_TAU_MOD allows tau to be height dependent
-#ifdef ZM_TAU_MOD
-      if (dadt(i) /= 0._r8) mb(i) = max(dltaa/dadt(i),0._r8)
-#else
       if (dadt(i) /= 0._r8) mb(i) = max(dltaa/tau/dadt(i),0._r8)
-#endif
    end do
 !
    return
@@ -3243,7 +3251,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
-                  tpert   )
+                  tpert   ,iclosure)
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -3284,6 +3292,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    real(r8), intent(in) :: pf(pcols,pver+1)     ! pressure at interfaces
    real(r8), intent(in) :: pblt(pcols)          ! index of pbl depth
    real(r8), intent(in) :: tpert(pcols)         ! perturbation temperature by pbl processes
+   logical, intent(in) :: iclosure              ! true for normal procedure, otherwise use dcapemx from 1st call
 !
 ! output arguments
 !
@@ -3315,6 +3324,9 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    logical plge600(pcols)
    integer knt(pcols)
    integer lelten(pcols,num_cin)
+
+! DCAPE-ULL
+   real(r8) pblt600(pcols)
 
    real(r8) cp
    real(r8) e
@@ -3353,6 +3365,15 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    tp(:ncol,:) = t(:ncol,:)
    qstp(:ncol,:) = q(:ncol,:)
 
+!DCAPE-ULL
+   if (trigdcape_ull) then
+      do k = pver - 1,msg + 1,-1
+      do i = 1,ncol
+         if ((p(i,k).le.600._r8) .and. (p(i,k+1).gt.600._r8)) pblt600(i) = dble(k)
+      end do
+      end do
+   endif
+
 !!! RBN - Initialize tv and buoy for output.
 !!! tv=tv : tpv=tpv : qstp=q : buoy=0.
    tv(:ncol,:) = t(:ncol,:) *(1._r8+1.608_r8*q(:ncol,:))/ (1._r8+q(:ncol,:))
@@ -3364,6 +3385,11 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 ! search for this level stops at planetary boundary layer top.
 !
    bot_layer = pver - mx_bot_lyr_adj
+
+! DCAPE-ULL
+  if (trigdcape_ull .and. (.not. iclosure)) then
+     mx(:ncol) = dcapemx(:ncol)
+  else
 #ifdef PERGRO
    do k = bot_layer,msg + 1,-1
       do i = 1,ncol
@@ -3372,9 +3398,18 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 ! Reset max moist static energy level when relative difference exceeds 1.e-4
 !
          rhd = (hmn(i) - hmax(i))/(hmn(i) + hmax(i))
-         if (k >= nint(pblt(i)) .and. k <= lon(i) .and. rhd > -1.e-4_r8) then
-            hmax(i) = hmn(i)
-            mx(i) = k
+
+         !DCAPE-ULL
+         if (trigdcape_ull) then
+           if (k >= nint(pblt600(i)) .and. k <= lon(i) .and. rhd > -1.e-4_r8) then
+              hmax(i) = hmn(i)
+              mx(i) = k
+           end if
+         else
+           if (k >= nint(pblt(i)) .and. k <= lon(i) .and. rhd > -1.e-4_r8) then
+              hmax(i) = hmn(i)
+              mx(i) = k
+           end if
          end if
       end do
    end do
@@ -3382,13 +3417,24 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    do k = bot_layer,msg + 1,-1
       do i = 1,ncol
          hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
-         if (k >= nint(pblt(i)) .and. k <= lon(i) .and. hmn(i) > hmax(i)) then
-            hmax(i) = hmn(i)
-            mx(i) = k
+
+         !DCAPE-ULL
+         if (trigdcape_ull) then
+            if (k >= nint(pblt600(i)) .and. k <= lon(i) .and. hmn(i) > hmax(i)) then
+               hmax(i) = hmn(i)
+               mx(i) = k
+            end if
+         else
+           if (k >= nint(pblt(i)) .and. k <= lon(i) .and. hmn(i) > hmax(i)) then
+              hmax(i) = hmn(i)
+              mx(i) = k
+           end if
          end if
       end do
    end do
 #endif
+
+  end if
 
 ! LCL dilute calculation - initialize to mx(i)
 ! Determine lcl in parcel_dilute and get pl,tl after parcel_dilute
@@ -3858,8 +3904,8 @@ SUBROUTINE ientropy (rcall,icol,lchnk,s,p,qt,T,qst,Tfg)
 
   T = Tfg                  ! Better first guess based on Tprofile from conv.
 
-  a = Tfg-10			!low bracket
-  b = Tfg+10			!high bracket
+  a = Tfg-10      !low bracket
+  b = Tfg+10      !high bracket
 
   fa = entropy(a, p, qt) - s
   fb = entropy(b, p, qt) - s
@@ -3925,8 +3971,6 @@ SUBROUTINE ientropy (rcall,icol,lchnk,s,p,qt,T,qst,Tfg)
   T = b
   call qsat_hPa(T, p, est, qst)
 
-! whannah - bypass this error trap when using ACME-SP
-#ifndef CRM
   if (.not. converged) then
      this_lat = get_rlat_p(lchnk, icol)*57.296_r8
      this_lon = get_rlon_p(lchnk, icol)*57.296_r8
@@ -3937,7 +3981,6 @@ SUBROUTINE ientropy (rcall,icol,lchnk,s,p,qt,T,qst,Tfg)
           ' qst(g/kg) = ', 1000._r8*qst,', s(J/kg) = ',s
      call endrun('**** ZM_CONV IENTROPY: Tmix did not converge ****')
   end if
-#endif
 
 100 format (A,I1,I4,I4,7(A,F6.2))
 

@@ -15,7 +15,7 @@ module zm_conv_intr
    use physconst,    only: cpair                              
    use physconst,    only: latvap, gravit   !songxl 2014-05-20
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
-   use zm_conv,      only: zm_conv_evap, zm_convr, convtran, momtran, trigmem
+   use zm_conv,      only: zm_conv_evap, zm_convr, convtran, momtran, trigmem, trigdcape_ull
    use cam_history,  only: outfld, addfld, horiz_only, add_default
    use perf_mod
    use cam_logfile,  only: iulog
@@ -47,6 +47,10 @@ module zm_conv_intr
    integer :: tm1_idx,     &!tm1 index in physics buffer
               qm1_idx       !qm1 index in physics buffer
 !>songxl 2014-05-20------------------
+
+! DCAPE-ULL
+   integer :: t_star_idx       !t_star index in physics buffer
+   integer :: q_star_idx       !q_star index in physics buffer
 
 !  indices for fields in the physics buffer
    integer  ::    cld_idx          = 0    
@@ -99,6 +103,15 @@ subroutine zm_conv_register
 !  endif
 !>songxl 2014-05-20-------------
 
+! DCAPE-UPL
+
+   if (trigdcape_ull) then
+    ! temperature from physics in n-1 time step
+    call pbuf_add_field('T_STAR','global',dtype_r8,(/pcols,pver/), t_star_idx)
+    ! moisturetendency from physics in n-1 time step 
+    call pbuf_add_field('Q_STAR','global',dtype_r8,(/pcols,pver/), q_star_idx)
+   endif
+
 end subroutine zm_conv_register
 
 !=========================================================================================
@@ -114,7 +127,7 @@ subroutine zm_conv_init(pref_edge)
   use zm_conv,        only: zm_convi
   use pmgrid,         only: plev,plevp
   use spmd_utils,     only: masterproc
-  use error_messages, only: alloc_err	
+  use error_messages, only: alloc_err 
   use phys_control,   only: phys_deepconv_pbl, phys_getopts, cam_physpkg_is
   use physics_buffer, only: pbuf_get_index
   use rad_constituents, only: rad_cnst_get_info 
@@ -159,6 +172,8 @@ subroutine zm_conv_init(pref_edge)
 
     call addfld ('PCONVB',horiz_only , 'A','Pa'    ,'convection base pressure')
     call addfld ('PCONVT',horiz_only , 'A','Pa'    ,'convection top  pressure')
+
+    call addfld ('MAXI',horiz_only , 'A','level'    ,'model level of launching parcel')
 
     call addfld ('CAPE',       horiz_only, 'A',   'J/kg', 'Convectively available potential energy')
     call addfld ('FREQZM',horiz_only  ,'A','fraction', 'Fractional occurance of ZM convection') 
@@ -261,10 +276,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use physconst,     only: gravit
    use phys_control,  only: cam_physpkg_is
 
-#ifdef ZM_PE_MOD 
-   use ndrop,         only: loadaer       ! whannah  - for precip eff. mod
-#endif
-
    ! Arguments
 
    type(physics_state), intent(in )   :: state          ! Physics state variables
@@ -346,6 +357,13 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer, dimension(:,:) :: qm1   ! intermediate q between n and n-1 time step
 !>songxl 2014-05-20---------
 
+   ! DCAPE-ULL
+   real(r8), pointer, dimension(:,:) :: t_star ! intermediate T between n and n-1 time step
+   real(r8), pointer, dimension(:,:) :: q_star ! intermediate q between n and n-1 time step
+   real(r8) :: dcape(pcols)                    ! dynamical cape
+   real(r8) :: maxgsav(pcols)                  ! tmp array for recording and outfld to MAXI
+
+
    real(r8) :: jctop(pcols)  ! o row of top-of-deep-convection indices passed out.
    real(r8) :: jcbot(pcols)  ! o row of base of cloud indices passed out.
 
@@ -369,19 +387,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    integer  :: ii
 
    logical  :: lq(pcnst)
-
-
-#ifdef ZM_PE_MOD 
-! whannah - variables for aerosol scaling of precipitation efficiency
-   integer  phase
-   integer  ntot_amode              ! number of aerosol modes
-   real(r8) rho(pcols, pver)        ! air density  [kg/m3]
-   real(r8) na(pcols)               ! aerosol number concentration [#/m3]
-   real(r8) va(pcols)               ! aerosol voume concentration [m3/m3]
-   real(r8) hy(pcols)               ! aerosol bulk hygroscopicity
-   ! real(r8) aero_sum(pcols,pver)
-   real(r8) aero_sum(pcols)
-#endif
 
    !----------------------------------------------------------------------
 
@@ -431,26 +436,15 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    end if
 !<songxl 2014-05-20-----------------
 
-
-! whannah -----------------------------------------------------------
-#ifdef ZM_PE_MOD 
-   ntot_amode = 2
-   aero_sum = 0._r8      
-   phase = 1  ! phase of aerosol: 1 for interstitial, 2 for cloud-borne, 3 for sum
-   rho(1:ncol, 1:pver) = state%pmid(1:ncol,1:pver) / ( 287.15 * state%t(1:ncol, 1:pver) )
-   ! do i = 1,ncol
-   do k=1, pver
-      do m=1, ntot_amode
-         call loadaer( state, pbuf, 1, ncol, k, m, rho, phase, na, va, hy)
-         ! How should we do this? just sum the number? or use a mass weighting?
-         aero_sum(1:ncol) = aero_sum(1:ncol) + na(1:ncol)
-         ! ftem(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
-      end do    
-   end do
-   ! end do
-   call outfld ('ZM_AERO_SUM', aero_sum, pcols, lchnk )
-#endif
-! whannah -----------------------------------------------------------
+! DCAPE-ULL
+   if(trigdcape_ull)then
+     call pbuf_get_field(pbuf, t_star_idx,     t_star)
+     call pbuf_get_field(pbuf, q_star_idx,     q_star)
+     if ( is_first_step()) then
+       q_star(:ncol,:pver) = state%q(:ncol,:pver,1)
+       t_star(:ncol,:pver) = state%t(:ncol,:pver)
+     end if
+   end if
 
 !
 ! Begin with Zhang-McFarlane (1996) convection parameterization
@@ -464,11 +458,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
                     mu,md,du,eu,ed      , &
                     dp ,dsubcld ,jt,maxg,ideep   , &
-                    lengath ,ql      ,rliq  ,landfrac, hu_nm1, cnv_nm1, tm1, qm1 &  ! songxl 2014-05-20   
-#ifdef ZM_PE_MOD 
-                    ,aero_sum &
-#endif
-                    )  
+                    lengath ,ql      ,rliq  ,landfrac, hu_nm1, cnv_nm1, tm1, qm1, &
+                    t_star, q_star, dcape)  
    call t_stopf ('zm_convr')
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
@@ -508,19 +499,20 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    call outfld('ZMDT    ',ftem           ,pcols   ,lchnk   )
    call outfld('ZMDQ    ',ptend_loc%q(1,1,1) ,pcols   ,lchnk   )
 
-!    do i = 1,pcols
-!    do i = 1,nco
+   maxgsav(:) = 0._r8 ! zero if no convection. true mean to be MAXI/FREQZM
    pcont(:ncol) = state%ps(:ncol)
    pconb(:ncol) = state%ps(:ncol)
    do i = 1,lengath
        if (maxg(i).gt.jt(i)) then
           pcont(ideep(i)) = state%pmid(ideep(i),jt(i))  ! gathered array (or jctop ungathered)
           pconb(ideep(i)) = state%pmid(ideep(i),maxg(i))! gathered array
+          maxgsav(ideep(i)) = dble(maxg(i))             ! gathered array for launching level
        endif
        !     write(iulog,*) ' pcont, pconb ', pcont(i), pconb(i), cnt(i), cnb(i)
-    end do
-    call outfld('PCONVT  ',pcont          ,pcols   ,lchnk   )
-    call outfld('PCONVB  ',pconb          ,pcols   ,lchnk   )
+   end do
+   call outfld('PCONVT  ',pcont          ,pcols   ,lchnk   )
+   call outfld('PCONVB  ',pconb          ,pcols   ,lchnk   )
+   call outfld('MAXI  ',maxgsav          ,pcols   ,lchnk   )
 
   call physics_ptend_init(ptend_all, state%psetcols, 'zm_conv_tend')
 

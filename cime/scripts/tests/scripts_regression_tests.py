@@ -306,7 +306,7 @@ class J_TestCreateNewcase(unittest.TestCase):
         testdir = os.path.join(cls._testroot, 'testcreatenewcase')
         if os.path.exists(testdir):
             shutil.rmtree(testdir)
-        args =  " --case %s --compset X --output-root %s --handle-preexisting-dirs=r --debug " % (testdir, cls._testroot)
+        args =  " --case %s --compset X --output-root %s --handle-preexisting-dirs=r " % (testdir, cls._testroot)
         if TEST_COMPILER is not None:
             args = args +  " --compiler %s"%TEST_COMPILER
         if TEST_MPILIB is not None:
@@ -760,6 +760,29 @@ class J_TestCreateNewcase(unittest.TestCase):
 
             cls._do_teardown.append(testdir)
 
+    def test_n_createnewcase_bad_compset(self):
+        cls = self.__class__
+        model = CIME.utils.get_model()
+
+        testdir = os.path.join(cls._testroot, 'testcreatenewcase_bad_compset')
+        if os.path.exists(testdir):
+            shutil.rmtree(testdir)
+        args =  " --case %s --compset InvalidCompsetName --output-root %s --handle-preexisting-dirs=r " % (testdir, cls._testroot)
+        if model == "cesm":
+            args += " --run-unsupported"
+        if TEST_COMPILER is not None:
+            args = args +  " --compiler %s"%TEST_COMPILER
+        if TEST_MPILIB is not None:
+            args = args +  " --mpilib %s"%TEST_MPILIB
+        if CIME.utils.get_cime_default_driver() == "nuopc":
+            args += " --res f19_g17 "
+        else:
+            args += " --res f19_g16 "
+
+        cls._testdirs.append(testdir)
+        run_cmd_assert_result(self, "./create_newcase %s"%(args),
+                              from_dir=SCRIPT_DIR, expected_stat=1)
+        self.assertFalse(os.path.exists(testdir))
 
     @classmethod
     def tearDownClass(cls):
@@ -1097,6 +1120,11 @@ class TestCreateTestCommon(unittest.TestCase):
     ###########################################################################
     def _create_test(self, extra_args, test_id=None, pre_run_errors=False, run_errors=False, env_changes=""):
     ###########################################################################
+        # All stub model not supported in nuopc driver
+        driver = CIME.utils.get_cime_default_driver()
+        if driver == 'nuopc':
+            extra_args.append(" ^SMS.T42_T42.S")
+
         test_id = CIME.utils.get_timestamp() if test_id is None else test_id
         extra_args.append("-t {}".format(test_id))
         extra_args.append("--baseline-root {}".format(self._baseline_area))
@@ -1837,6 +1865,8 @@ class K_TestCimeCase(TestCreateTestCommon):
 
         run_cmd_assert_result(self, "{}/create_newcase {}".format(SCRIPT_DIR, args),
                               from_dir=SCRIPT_DIR)
+        run_cmd_assert_result(self, "./case.setup", from_dir=testdir)
+
         return testdir
 
     ###########################################################################
