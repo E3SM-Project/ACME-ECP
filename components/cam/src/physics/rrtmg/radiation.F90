@@ -2195,11 +2195,11 @@ end function radiation_nextsw_cday
             call t_startf ('rad_lw')
 
             ! Convert upward longwave flux units to CGS
-            do i=1,ncol
+           do i=1,ncol
 #ifdef MAML
-            lwupcgs(i) = cam_in%lwup(i,ii)*1000._r8
+              lwupcgs(i) = cam_in%lwup(i,ii)*1000._r8
 #else
-            lwupcgs(i) = cam_in%lwup(i)*1000._r8
+              lwupcgs(i) = cam_in%lwup(i)*1000._r8
 #endif
               if(single_column.and.scm_crm_mode.and.have_tg) &
                 lwupcgs(i) = 1000*stebol*tground(1)**4
@@ -2226,9 +2226,9 @@ end function radiation_nextsw_cday
                          state%pmid,   aer_lw_abs,   cldfprime,       c_cld_lw_abs,                &
                          qrl,          qrlc,                                                       &
 #ifdef MAML
-                       flns,         flnt,         flnsc,           flntc,        flwds_loc, &
+                         flns,         flnt,         flnsc,           flntc,        flwds_loc,     &
 #else
-                       flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
+                         flns,         flnt,         flnsc,           flntc,        cam_out%flwds, &
 #endif
                          flut,         flutc,        fnl,             fcnl,         fldsc,         &
                          clm_seed,     lu,           ld                                            )
@@ -2242,9 +2242,9 @@ end function radiation_nextsw_cday
                   flnsc(:) = 0._r8
                   flntc(:) = 0._r8
 #ifdef MAML
-                cam_out%flwds(:,ii) = 0._r8
+                  cam_out%flwds(:,ii) = 0._r8
 #else
-                cam_out%flwds(:) = 0._r8
+                  cam_out%flwds(:) = 0._r8
 #endif
                   flut(:) = 0._r8
                   flutc(:) = 0._r8
@@ -2603,9 +2603,7 @@ end function radiation_nextsw_cday
     ! timesteps when the radiation code is not invoked.
     !cam_out%srfrad(:ncol) = fsns(:ncol) + cam_out%flwds(:ncol)
     !call outfld('SRFRAD  ',cam_out%srfrad,pcols,lchnk)
-#ifdef MAML
-     !cam_out%netsw(:ncol) = fsns(:ncol)
-#else
+#ifndef MAML
      cam_out%netsw(:ncol) = fsns(:ncol)
 #endif
   

@@ -693,8 +693,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       write(0,*) "crm_nx_rad and crm_ny_rad need to be divisible by nx and ny"
       call endrun('crm main')
     end if
-
   enddo
+
+#ifdef MAML
+  if(crm_nx_rad.NE.crm_nx .or. crm_ny_rad.NE.crm_ny) then 
+     write(0,*) "crm_nx_rad and crm_ny_rad have to be equal to crm_nx and crm_ny in the MAML configuration"
+     call endrun('crm main')
+  end if
+#endif
 
 #ifdef ECPP
   call ecpp_crm_init(ncrms,dt_gl)
