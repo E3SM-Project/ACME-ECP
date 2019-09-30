@@ -770,6 +770,10 @@ end function radiation_nextsw_cday
             call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
             call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
             call addfld ('CRM_CLD_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'fraction', 'CRM cloud fraction' )
+            call addfld ('CRM_QC_RAD' , (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'kg/kg', 'CRM cloud liquid', sampling_seq='rad_lwsw')
+            call addfld ('CRM_QI_RAD' , (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'kg/kg', 'CRM cloud ice'   , sampling_seq='rad_lwsw')
+            call addfld ('CRM_QPL_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'kg/kg', 'CRM cloud liquid', sampling_seq='rad_lwsw')
+            call addfld ('CRM_QPI_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'I', 'kg/kg', 'CRM cloud ice'   , sampling_seq='rad_lwsw')
          end if
        end if
     end do
@@ -1515,7 +1519,11 @@ end function radiation_nextsw_cday
 
          ! Get cloud fraction averaged over the CRM time integration
          call pbuf_get_field(pbuf, pbuf_get_index('CRM_CLD_RAD'), cld_rad)
-         call outfld('CRM_CLD_RAD', cld_rad, state%ncol, state%lchnk)
+
+         ! Output CRM radiative stuff
+         call outfld('CRM_CLD_RAD', cld_rad(1:ncol,:,:,:), state%ncol, state%lchnk)
+         call outfld('CRM_QC_RAD', qc_rad(1:ncol,:,:,:), state%ncol, state%lchnk)
+         call outfld('CRM_QI_RAD', qi_rad(1:ncol,:,:,:), state%ncol, state%lchnk)
 
          cicewp(1:ncol,1:pver) = 0.  
          cliqwp(1:ncol,1:pver) = 0.
@@ -2430,12 +2438,20 @@ end function radiation_nextsw_cday
          if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
             ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave optical depths are passed.
             call t_startf ('cosp_run')
-            call cospsimulator_intr_run( &
-                 state,  pbuf, cam_in, emis, coszrs, &
-                 cld_tau(rrtmg_sw_cloudsim_band,:,:), &
-                 gb_snow_tau, gb_snow_lw, &
-                 crm_cld_tau=cld_tau_crm, crm_cld_emis=emis_crm &
-            )
+            if (use_SPCAM) then
+               call cospsimulator_intr_run( &
+                    state,  pbuf, cam_in, emis, coszrs, &
+                    cld_tau(rrtmg_sw_cloudsim_band,:,:), &
+                    gb_snow_tau, gb_snow_lw, &
+                    crm_cld_tau=cld_tau_crm, crm_cld_emis=emis_crm &
+               )
+            else
+               call cospsimulator_intr_run( &
+                    state,  pbuf, cam_in, emis, coszrs, &
+                    cld_tau(rrtmg_sw_cloudsim_band,:,:), &
+                    gb_snow_tau, gb_snow_lw &
+               )
+            end if
             cosp_cnt(lchnk) = 0  !! reset counter
             call t_stopf ('cosp_run')
          end if
