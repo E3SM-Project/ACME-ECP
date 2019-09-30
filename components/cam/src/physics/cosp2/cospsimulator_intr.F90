@@ -784,7 +784,15 @@ CONTAINS
     if (cosp_lmisr_sim) then
        call addfld ('CLD_MISR',(/'cosp_tau   ','cosp_htmisr'/),'A','percent','Cloud Fraction from MISR Simulator',  &
             flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld ('MISR_BOXZTOP',(/'cosp_scol'/),'I','m','MISR subcolumn cloud top height',  &
+            flag_xyfill=.true., fill_value=R_UNDEF)
+       call addfld ('MISR_BOXTAU',(/'cosp_scol'/),'I','m','MISR subcolumn cloud optical depth',  &
+            flag_xyfill=.true., fill_value=R_UNDEF)
        call add_default ('CLD_MISR',cosp_histfile_num,' ')
+       if (cosp_lfrac_out) then
+          call add_default('MISR_BOXZTOP', cosp_histfile_num, ' ')
+          call add_default('MISR_BOXTAU', cosp_histfile_num, ' ')
+       end if
     end if
 
     ! MODIS OUTPUT
@@ -1327,8 +1335,10 @@ CONTAINS
     ! ######################################################################################
     call t_startf("cosp_histfile_aux")
     if (cosp_histfile_aux) then
-       call outfld('SCOPS_OUT',      cospIN%frac_out(1:ncol,:,:),  ncol,lchnk)
-       call outfld('COSP_PREC_FRAC', frac_prec(1:ncol,:,:),        ncol,lchnk)
+       if (cosp_lfrac_out) then
+          call outfld('SCOPS_OUT',      cospIN%frac_out(1:ncol,:,:),  ncol,lchnk)
+          call outfld('COSP_PREC_FRAC', frac_prec(1:ncol,:,:),        ncol,lchnk)
+       end if
        call outfld('PS_COSP',        state%ps(1:ncol),             ncol,lchnk)
        call outfld('TS_COSP',        cospstateIN%skt,              ncol,lchnk)
        call outfld('P_COSP',         cospstateIN%pfull,            ncol,lchnk)
@@ -1396,6 +1406,8 @@ CONTAINS
        do i = 1,ncol
          if (cospstateIN%sunlit(i) == 0) then
             cospOUT%misr_fq(i,:,:) = R_UNDEF
+            cospOUT%misr_boxztop(i,:) = R_UNDEF
+            cospOUT%misr_boxtau(i,:) = R_UNDEF
          end if
        end do
     end if
@@ -1807,6 +1819,10 @@ CONTAINS
     ! MISR simulator outputs
     if (cosp_lmisr_sim) then
        call outfld('CLD_MISR', cospOUT%misr_fq(1:ncol,:,:), ncol, lchnk)
+       if (cosp_lfrac_out) then
+          call outfld('MISR_BOXZTOP', cospOUT%misr_boxztop(1:ncol,:), ncol, lchnk)
+          call outfld('MISR_BOXTAU', cospOUT%misr_boxtau(1:ncol,:), ncol, lchnk)
+       end if
     end if
 
     ! MODIS simulator outputs
@@ -2504,6 +2520,8 @@ end function masked_product
        allocate(x%misr_dist_model_layertops(Npoints,numMISRHgtBins))
        allocate(x%misr_meanztop(Npoints))
        allocate(x%misr_cldarea(Npoints))
+       allocate(x%misr_boxztop(Npoints,Ncolumns))
+       allocate(x%misr_boxtau(Npoints,Ncolumns))
     endif
 
     ! MODIS simulator
@@ -2898,6 +2916,14 @@ end function masked_product
      if (associated(y%misr_cldarea)) then
         deallocate(y%misr_cldarea)
         nullify(y%misr_cldarea)
+     endif
+     if (associated(y%misr_boxztop)) then
+        deallocate(y%misr_boxztop)
+        nullify(y%misr_boxztop)
+     endif
+     if (associated(y%misr_boxtau)) then
+        deallocate(y%misr_boxtau)
+        nullify(y%misr_boxtau)
      endif
      if (associated(y%rttov_tbs)) then
         deallocate(y%rttov_tbs)
