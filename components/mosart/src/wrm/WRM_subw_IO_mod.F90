@@ -374,7 +374,7 @@ MODULE WRM_subw_IO_mod
            enddo
         enddo
         if (cnt /= cntw) then
-           write(iulog,"(a,3i8)"), subname//'ERROR: sMat g2d cnt errora',cntw,cnt
+           write(iulog,"(a,3i8)") subname//'ERROR: sMat g2d cnt errora',cntw,cnt
            call shr_sys_abort(subname//' ERROR: sMat g2d cnt errora')
         endif
 
@@ -396,7 +396,7 @@ MODULE WRM_subw_IO_mod
            enddo
         enddo
         if (cnt /= cntw) then
-           write(iulog,"(a,3i8)"), subname//'ERROR: sMat d2g cnt errora',cntw,cnt
+           write(iulog,"(a,3i8)") subname//'ERROR: sMat d2g cnt errora',cntw,cnt
            call shr_sys_abort(subname//' ERROR: sMat d2g cnt errora')
         endif
 
@@ -422,7 +422,7 @@ MODULE WRM_subw_IO_mod
               enddo
            enddo
            if (cnt /= cntg) then
-              write(iulog,"(a,3i8)"), subname//'ERROR: sMat g2d cnt errorb',cntg,cnt
+              write(iulog,"(a,3i8)") subname//'ERROR: sMat g2d cnt errorb',cntg,cnt
               call shr_sys_abort(subname//' ERROR: sMat g2d cnt errorb')
            endif
         else
@@ -448,7 +448,7 @@ MODULE WRM_subw_IO_mod
               enddo
            enddo
            if (cnt /= cntg) then
-              write(iulog,"(a,3i8)"), subname//'ERROR: sMat d2g cnt errorb',cntg,cnt
+              write(iulog,"(a,3i8)") subname//'ERROR: sMat d2g cnt errorb',cntg,cnt
               call shr_sys_abort(subname//' ERROR: sMat d2g cnt errorb')
            endif
         else
@@ -810,7 +810,7 @@ MODULE WRM_subw_IO_mod
         !fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
         fname = trim(ctlSubwWRM%demandPath)//'1980_'//strMonth//'.nc'   ! constant 1980 demand
 
-        write(iulog,*) subname, ' reading ',trim(fname)
+        write(iulog,*) trim(subname), ' reading ',trim(fname)
 
         call ncd_pio_openfile(ncid, trim(fname), 0)
         ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
@@ -844,7 +844,7 @@ MODULE WRM_subw_IO_mod
      character(len=*),parameter :: subname = '(WRM_computeRelease)'
 
      call get_curr_date(yr, mon, day, tod)
-     write(iulog,'(2a,4i6)') subname,'at ',yr,mon,day,tod
+     write(iulog,'(2a,4i6)') trim(subname),'at ',yr,mon,day,tod
      do idam=1,ctlSubwWRM%localNumDam
         if ( mon .eq. WRMUnit%MthStOp(idam)) then
            WRMUnit%StorMthStOp(idam) = StorWater%storage(idam)
