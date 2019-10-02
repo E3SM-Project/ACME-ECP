@@ -206,7 +206,7 @@ for mct, etc.
 
 <compiler COMPILER="ibm">
   <CFLAGS>
-    <base> -g -qfullpath -qmaxmem=-1 -qphsinfo </base>
+    <base> -g -qfullpath -qmaxmem=-1 -qphsinfo -qlanglvl=90std </base>
     <append DEBUG="FALSE"> -O3  </append>
     <append DEBUG="FALSE" compile_threaded="TRUE"> -qsmp=omp -qsuppress=1520-045 </append>
     <append DEBUG="TRUE" compile_threaded="TRUE"> -qsmp=omp:noopt -qsuppress=1520-045 </append>
@@ -1763,6 +1763,9 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
   <NETCDF_C_PATH>$ENV{NETCDF_C_PATH}</NETCDF_C_PATH>
   <NETCDF_FORTRAN_PATH>$ENV{NETCDF_FORTRAN_PATH}</NETCDF_FORTRAN_PATH>
   <SUPPORTS_CXX>TRUE</SUPPORTS_CXX>
+  <FC_AUTO_R8>
+    <base> -r8 </base>
+  </FC_AUTO_R8>
 </compiler>
 
 <compiler MACH="summit" COMPILER="ibm">
@@ -1818,8 +1821,109 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
   <SFC> pgfortran </SFC>
   <NETCDF_C_PATH>$ENV{NETCDF_C_PATH}</NETCDF_C_PATH>
   <NETCDF_FORTRAN_PATH>$ENV{NETCDF_FORTRAN_PATH}</NETCDF_FORTRAN_PATH>
+  <CPPDEFS>
+    <!-- http://www.pgroup.com/resources/docs.htm                                              -->
+    <!-- Notes:  (see pgi man page & user's guide for the details) -->
+    <!--  -Mextend        => Allow 132-column source lines -->
+    <!--  -Mfixed         => Assume fixed-format source -->
+    <!--  -Mfree          => Assume free-format source -->
+    <!--  -byteswapio     => Swap byte-order for unformatted i/o (big/little-endian) -->
+    <!--  -target=linux   => Specifies the target architecture to Compute Node Linux (CNL only) -->
+    <!--  -fast           => Chooses generally optimal flags for the target platform -->
+    <!--  -Mnovect        => Disables automatic vector pipelining -->
+    <!--  -Mvect=nosse    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
+    <!--  -Mflushz        => Set SSE to flush-to-zero mode (underflow) loops where possible  -->
+    <!--  -Kieee          => Perform fp ops in strict conformance with the IEEE 754 standard.  -->
+    <!--                     Some optimizations disabled, slightly slower, more accurate math.  -->
+    <!--  -mp=nonuma      => Don't use thread/processors affinity (for NUMA architectures)  -->
+    <!-- -->
+    <!--  -g              => Generate symbolic debug information. Turns off optimization.   -->
+    <!--  -gopt           => Generate information for debugger without disabling optimizations  -->
+    <!--  -Mbounds        => Add array bounds checking  -->
+    <!--  -Ktrap=fp       => Determine IEEE Trap conditions fp => inv,divz,ovf   -->
+    <!--                     * inv: invalid operands         -->
+    <!--                     * divz divide by zero           -->
+    <!--                     * ovf: floating point overflow   -->
+    <!--  -F              => leaves file.f for each preprocessed file.F file  -->
+    <!--  -time           => Print execution time for each compiler step  -->
+    <append> -DFORTRANUNDERSCORE -DNO_SHR_VMATH -DNO_R16 -DCPRPGI </append>
+  </CPPDEFS>
   <SUPPORTS_CXX>TRUE</SUPPORTS_CXX>
+  <FC_AUTO_R8>
+    <base> -r8 </base>
+  </FC_AUTO_R8>
 </compiler>
+
+<compiler MACH="summit" COMPILER="pgigpu">
+  <CFLAGS>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd </append>
+  </CFLAGS>
+  <CONFIG_ARGS>
+    <base> --host=Linux </base>
+  </CONFIG_ARGS>
+  <FFLAGS>
+    <append DEBUG="FALSE"> -O2 -Mvect=nosimd -DSUMMITDEV_PGI</append>
+  </FFLAGS>
+  <FFLAGS>
+    <append DEBUG="TRUE"> -g -DSUMMITDEV_PGI</append>
+  </FFLAGS>
+  <LDFLAGS>
+    <append>-L$ENV{NETCDF_C_PATH}/lib -lnetcdf -L$ENV{NETCDF_FORTRAN_PATH}/lib -lnetcdff -L$ENV{ESSL_PATH}/lib64 -lessl -L$ENV{NETLIB_LAPACK_PATH}/lib -llapack -ta=nvidia,cc70,fastmath,loadcache:L1,unroll,fma,managed,ptxinfo -Mcuda</append>
+    <append MPILIB="!mpi-serial"> -L$ENV{PNETCDF_PATH}/lib -lpnetcdf -L$ENV{HDF5_PATH}/lib -lhdf5_hl -lhdf5 </append>
+  </LDFLAGS>
+  <FIXEDFLAGS>
+    <base> -Mfixed </base>
+  </FIXEDFLAGS>
+  <FREEFLAGS>
+    <base> -Mfree </base>
+  </FREEFLAGS>
+  <!-- Note that SUPPORTS_CXX is false for pgi in general, because we
+              need some machine-specific libraries -->
+  <!-- Technically, PGI does recognize this keyword during parsing,
+              but support is either buggy or incomplete, notably in that
+       the "contiguous" attribute is incompatible with "intent".-->
+  <HAS_F2008_CONTIGUOUS>FALSE</HAS_F2008_CONTIGUOUS>
+  <MPICC> mpicc </MPICC>
+  <MPICXX> mpiCC </MPICXX>
+  <MPIFC> mpif90 </MPIFC>
+  <PIO_FILESYSTEM_HINTS>gpfs</PIO_FILESYSTEM_HINTS>
+  <SCC> pgcc </SCC>
+  <SFC> pgf95 </SFC>
+  <NETCDF_C_PATH>$ENV{NETCDF_C_PATH}</NETCDF_C_PATH>
+  <NETCDF_FORTRAN_PATH>$ENV{NETCDF_FORTRAN_PATH}</NETCDF_FORTRAN_PATH>
+  <CPPDEFS>
+    <!-- http://www.pgroup.com/resources/docs.htm                                              -->
+    <!-- Notes:  (see pgi man page & user's guide for the details) -->
+    <!--  -Mextend        => Allow 132-column source lines -->
+    <!--  -Mfixed         => Assume fixed-format source -->
+    <!--  -Mfree          => Assume free-format source -->
+    <!--  -byteswapio     => Swap byte-order for unformatted i/o (big/little-endian) -->
+    <!--  -target=linux   => Specifies the target architecture to Compute Node Linux (CNL only) -->
+    <!--  -fast           => Chooses generally optimal flags for the target platform -->
+    <!--  -Mnovect        => Disables automatic vector pipelining -->
+    <!--  -Mvect=nosse    => Don't generate SSE, SSE2, 3Dnow, and prefetch instructions in loops    -->
+    <!--  -Mflushz        => Set SSE to flush-to-zero mode (underflow) loops where possible  -->
+    <!--  -Kieee          => Perform fp ops in strict conformance with the IEEE 754 standard.  -->
+    <!--                     Some optimizations disabled, slightly slower, more accurate math.  -->
+    <!--  -mp=nonuma      => Don't use thread/processors affinity (for NUMA architectures)  -->
+    <!-- -->
+    <!--  -g              => Generate symbolic debug information. Turns off optimization.   -->
+    <!--  -gopt           => Generate information for debugger without disabling optimizations  -->
+    <!--  -Mbounds        => Add array bounds checking  -->
+    <!--  -Ktrap=fp       => Determine IEEE Trap conditions fp => inv,divz,ovf   -->
+    <!--                     * inv: invalid operands         -->
+    <!--                     * divz divide by zero           -->
+    <!--                     * ovf: floating point overflow   -->
+    <!--  -F              => leaves file.f for each preprocessed file.F file  -->
+    <!--  -time           => Print execution time for each compiler step  -->
+    <append> -DFORTRANUNDERSCORE -DNO_SHR_VMATH -DNO_R16 -DCPRPGI </append>
+  </CPPDEFS>
+  <SUPPORTS_CXX>TRUE</SUPPORTS_CXX>
+  <FC_AUTO_R8>
+    <base> -r8 </base>
+  </FC_AUTO_R8>
+</compiler>
+
 
 <compiler MACH="summit-cpu" COMPILER="pgi">
   <CFLAGS>
@@ -1846,34 +1950,11 @@ ntel/x86_64/2013/composer_xe_2013/composer_xe_2013_sp1.3.174/mkl/include </base>
   <SFC> pgfortran </SFC>
   <NETCDF_C_PATH>$ENV{NETCDF_C_PATH}</NETCDF_C_PATH>
   <NETCDF_FORTRAN_PATH>$ENV{NETCDF_FORTRAN_PATH}</NETCDF_FORTRAN_PATH>
+  <FC_AUTO_R8>
+    <base> -r8 </base>
+  </FC_AUTO_R8>
 </compiler>
 
-<compiler MACH="summit" COMPILER="pgigpu">
-  <CFLAGS>
-    <append DEBUG="FALSE"> -O2 -Mvect=nosimd </append>
-  </CFLAGS>
-  <CONFIG_ARGS>
-    <base> --host=Linux </base>
-  </CONFIG_ARGS>
-  <FFLAGS>
-    <append DEBUG="FALSE"> -O2 -Mvect=nosimd -DSUMMITDEV_PGI </append>
-  </FFLAGS>
-  <FFLAGS>
-    <append DEBUG="TRUE"> -DSUMMITDEV_PGI </append>
-  </FFLAGS>
-  <LDFLAGS>
-    <append>-L$ENV{NETCDF_C_PATH}/lib -lnetcdf -L$ENV{NETCDF_FORTRAN_PATH}/lib -lnetcdff -L$ENV{ESSL_PATH}/lib64 -lessl -L$ENV{NETLIB_LAPACK_PATH}/lib -llapack -ta=nvidia,cc70,fastmath,loadcache:L1,unroll,fma,managed,ptxinfo -Mcuda</append>
-    <append MPILIB="!mpi-serial"> -L$ENV{PNETCDF_PATH}/lib -lpnetcdf -L$ENV{HDF5_PATH}/lib -lhdf5_hl -lhdf5 </append>
-  </LDFLAGS>
-  <MPICC> mpicc </MPICC>
-  <MPICXX> mpiCC </MPICXX>
-  <MPIFC> mpif90 </MPIFC>
-  <PIO_FILESYSTEM_HINTS>gpfs</PIO_FILESYSTEM_HINTS>
-  <SCC> pgcc </SCC>
-  <SFC> pgfortran </SFC>
-  <NETCDF_C_PATH>$ENV{NETCDF_C_PATH}</NETCDF_C_PATH>
-  <NETCDF_FORTRAN_PATH>$ENV{NETCDF_FORTRAN_PATH}</NETCDF_FORTRAN_PATH>
-</compiler>
 
 <compiler MACH="syrah" COMPILER="intel">
   <CFLAGS>
