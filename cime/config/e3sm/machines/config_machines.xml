@@ -3013,7 +3013,7 @@
       <command name="load">pgi/19.4</command>
     </modules>
     <modules compiler="pgigpu">
-      <command name="load">pgi/19.4</command>
+      <command name="load">pgi/19.7</command>
       <command name="load">cuda</command>
     </modules>
     <modules compiler="ibm">
@@ -3071,7 +3071,6 @@
     <env name="NETCDFF">$ENV{OLCF_NETCDF_FORTRAN_ROOT}</env>
     <env name="ESSL_PATH">$ENV{OLCF_ESSL_ROOT}</env>
     <env name="NETLIB_LAPACK_PATH">$ENV{OLCF_NETLIB_LAPACK_ROOT}</env>
-    <env name="PGI_ACC_POOL_ALLOC">0</env>
   </environment_variables>
   <environment_variables SMP_PRESENT="TRUE">
     <env name="OMP_NUM_THREADS">$ENV{OMP_NUM_THREADS}</env>
