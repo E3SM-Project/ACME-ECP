@@ -30,10 +30,7 @@ module crm_module
   use crm_input_module,       only: crm_input_type
   use crm_output_module,      only: crm_output_type
   use crm_ecpp_output_module, only: crm_ecpp_output_type
-  ! The two use commands below are used to in the subroutin crm. 
-  ! The module could not compile them when the two use commands below are put in the original place.  
-  !Putting them here fixed the problem. The reason is not clear, though. 
-  use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  !, get_gcol_all_p
+  use phys_grid             , only: get_rlon_p, get_rlat_p, get_gcol_p  
 #ifdef ECPP  
   use module_ecpp_crm_driver, only: ecpp_crm_stat, ecpp_crm_init, ecpp_crm_cleanup
 #endif
@@ -408,7 +405,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
           do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
 #ifdef MAML
-          !open the crm v component
+            !open the crm v component
             v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) ) 
 #else     
             v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
@@ -1433,8 +1430,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
 #ifdef MAML
-!  output CRM level precip  so that individual CRM precip values are passed down
-!  to CLM.
+        !  output CRM level precip  so that individual CRM precip values are passed down
+        !  to CLM.
         crm_pcp(icrm,i,j) = precsfc(icrm,i,j)/1000.      ! mm/s --> m/s
         crm_snw(icrm,i,j) = precssfc(icrm,i,j)/1000.     ! mm/s --> m/s
 #endif

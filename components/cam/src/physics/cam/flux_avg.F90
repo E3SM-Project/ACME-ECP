@@ -78,12 +78,12 @@ subroutine flux_avg_init(cam_in,  pbuf2d)
    type(physics_buffer_desc), pointer :: pbuf2d_chunk(:)
 
 #ifdef MAML
-    real(r8) :: lhfavg_in(pcols)
-    real(r8) :: shfavg_in(pcols)
-    real(r8) :: wsxavg_in(pcols)
-    real(r8) :: wsyavg_in(pcols)
-    real(r8) :: factor_xy
-    integer :: ii,i
+   real(r8) :: lhfavg_in(pcols)
+   real(r8) :: shfavg_in(pcols)
+   real(r8) :: wsxavg_in(pcols)
+   real(r8) :: wsyavg_in(pcols)
+   real(r8) :: factor_xy
+   integer :: ii,i
 #endif
    !----------------------------------------------------------------------- 
 
@@ -91,19 +91,19 @@ subroutine flux_avg_init(cam_in,  pbuf2d)
       ncol = get_ncols_p(lchnk)
       pbuf2d_chunk => pbuf_get_chunk(pbuf2d, lchnk)
 #ifdef MAML
-       lhfavg_in =0._r8
-       shfavg_in =0._r8
-       wsxavg_in =0._r8
-       wsyavg_in =0._r8
-       factor_xy = 1._r8 / dble(num_inst_atm)
-       do i =1, ncol
-         do ii=1,num_inst_atm
-            lhfavg_in(i) = lhfavg_in(i)+cam_in(lchnk)%lhf(i,ii)*factor_xy
-            shfavg_in(i) = shfavg_in(i)+cam_in(lchnk)%shf(i,ii)*factor_xy
-            wsxavg_in(i) = wsxavg_in(i)+cam_in(lchnk)%wsx(i,ii)*factor_xy
-            wsyavg_in(i) = wsyavg_in(i)+cam_in(lchnk)%wsy(i,ii)*factor_xy
-         enddo
-       enddo !i
+      lhfavg_in =0._r8
+      shfavg_in =0._r8
+      wsxavg_in =0._r8
+      wsyavg_in =0._r8
+      factor_xy = 1._r8 / dble(num_inst_atm)
+      do i =1, ncol
+        do ii=1,num_inst_atm
+           lhfavg_in(i) = lhfavg_in(i)+cam_in(lchnk)%lhf(i,ii)*factor_xy
+           shfavg_in(i) = shfavg_in(i)+cam_in(lchnk)%shf(i,ii)*factor_xy
+           wsxavg_in(i) = wsxavg_in(i)+cam_in(lchnk)%wsx(i,ii)*factor_xy
+           wsyavg_in(i) = wsyavg_in(i)+cam_in(lchnk)%wsy(i,ii)*factor_xy
+        end do
+      end do
       call pbuf_set_field(pbuf2d_chunk, lhflx_idx,  lhfavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )
       call pbuf_set_field(pbuf2d_chunk, shflx_idx,  shfavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )
       call pbuf_set_field(pbuf2d_chunk, taux_idx,   wsxavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )

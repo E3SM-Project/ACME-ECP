@@ -469,12 +469,10 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    character(len=16), intent(out), optional :: microp_scheme_out
    character(len=16), intent(out), optional :: radiation_scheme_out
    character(len=16), intent(out), optional :: macrop_scheme_out
-!-- mdb spcam
    character(len=16), intent(out), optional :: SPCAM_microp_scheme_out
    logical,           intent(out), optional :: use_SPCAM_out
    logical,           intent(out), optional :: use_ECPP_out
    logical,           intent(out), optional :: use_MAML_out 
-!-- mdb spcam
    logical,           intent(out), optional :: use_crm_accel_out
    real(r8),          intent(out), optional :: crm_accel_factor_out
    logical,           intent(out), optional :: crm_accel_uv_out
@@ -542,13 +540,11 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
    if ( present(radiation_scheme_out    ) ) radiation_scheme_out     = radiation_scheme
 
-!-- mdb spcam
    if ( present(SPCAM_microp_scheme_out ) ) SPCAM_microp_scheme_out  = SPCAM_microp_scheme
 
    if ( present(use_SPCAM_out           ) ) use_SPCAM_out            = use_SPCAM
    if ( present(use_ECPP_out            ) ) use_ECPP_out             = use_ECPP
    if ( present(use_MAML_out            ) ) use_MAML_out             = use_MAML 
-!-- mdb spcam
    if ( present(use_crm_accel_out       ) ) use_crm_accel_out        = use_crm_accel
    if ( present(crm_accel_factor_out    ) ) crm_accel_factor_out     = crm_accel_factor
    if ( present(crm_accel_uv_out        ) ) crm_accel_uv_out         = crm_accel_uv

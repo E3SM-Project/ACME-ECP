@@ -1,10 +1,9 @@
 
 subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
 #ifdef MAML
-                  ncrm, qbot    ,srfrpdel,shflx   ,lhflx   ,qflx, excess    )
-#else
-                  qbot    ,srfrpdel,shflx   ,lhflx   ,qflx, excess    )
+                  ncrm,                                       & 
 #endif
+                  qbot    ,srfrpdel,shflx   ,lhflx   ,qflx, excess    )
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -84,8 +83,8 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
          qflx (i,1) = qflx (i,1) - excess(i)
 #ifdef MAML
          do ii=1, ncrm
-           lhflx(i,ii) = lhflx(i,ii) - excess(i)*latvap/dble(ncrm)
-           shflx(i,ii) = shflx(i,ii) + excess(i)*latvap/dble(ncrm)
+            lhflx(i,ii) = lhflx(i,ii) - excess(i)*latvap/dble(ncrm)
+            shflx(i,ii) = shflx(i,ii) + excess(i)*latvap/dble(ncrm)
          end do
 #else
          lhflx(i) = lhflx(i) - excess(i)*latvap

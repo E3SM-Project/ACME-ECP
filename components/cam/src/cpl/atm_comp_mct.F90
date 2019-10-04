@@ -193,8 +193,8 @@ CONTAINS
 
     !--- auto detect sequence_instances based on calling this more than once in phase 1 ---
     if (atm_phase == 1 .and. .not.first_call .and. .not.sequence_instances) then
-        sequence_instances = .true.
-        write(6,*) "Setting sequence_instances to true"
+       sequence_instances = .true.
+       write(6,*) "Setting sequence_instances to true"
     endif
     first_call = .false.
     if (sequence_instances .and. inst_index > 1) then
@@ -740,7 +740,7 @@ CONTAINS
     type(mct_aVect)             ,intent(inout) :: a2x_a
     
 #ifdef MAML 
-!--- local --- 
+    !--- local --- 
     integer :: ATMID
 
     call seq_cdata_setptrs(cdata_a, ID=ATMID)

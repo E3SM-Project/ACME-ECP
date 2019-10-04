@@ -217,11 +217,11 @@ contains
 #ifdef MAML
                 cam_in(c)%lwup(i,1) = shr_const_stebol*(cam_in(c)%ts(i)**4)
                 do ii=2,num_inst_atm
-                  cam_in(c)%lwup(i,ii) = cam_in(c)%lwup(i,1)
-                  cam_in(c)%asdir(i,ii) = cam_in(c)%asdir(i,1)
-                  cam_in(c)%aldir(i,ii) = cam_in(c)%aldir(i,1)
-                  cam_in(c)%asdif(i,ii) = cam_in(c)%asdif(i,1)
-                  cam_in(c)%aldif(i,ii) = cam_in(c)%aldif(i,1)
+                   cam_in(c)%lwup(i,ii) = cam_in(c)%lwup(i,1)
+                   cam_in(c)%asdir(i,ii) = cam_in(c)%asdir(i,1)
+                   cam_in(c)%aldir(i,ii) = cam_in(c)%aldir(i,1)
+                   cam_in(c)%asdif(i,ii) = cam_in(c)%asdif(i,1)
+                   cam_in(c)%aldif(i,ii) = cam_in(c)%aldif(i,1)
                 end do
 #else
                 cam_in(c)%lwup(i) = shr_const_stebol*(cam_in(c)%ts(i)**4)
@@ -273,7 +273,7 @@ contains
           a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i,inst_index)  
           a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i,inst_index)   
           a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1,inst_index) 
-	  a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i,inst_index)
+          a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i,inst_index)
           a2x(index_a2x_Faxa_rainc,ig) = (cam_out(c)%precc(i,inst_index)-cam_out(c)%precsc(i,inst_index))*1000._r8
           a2x(index_a2x_Faxa_rainl,ig) = (cam_out(c)%precl(i,inst_index)-cam_out(c)%precsl(i,inst_index))*1000._r8
           a2x(index_a2x_Faxa_snowc,ig) = cam_out(c)%precsc(i,inst_index)*1000._r8

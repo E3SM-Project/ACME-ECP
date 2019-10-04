@@ -1175,7 +1175,7 @@ end function radiation_nextsw_cday
     real(r8) :: sols_loc(pcols)
     real(r8) :: soll_loc(pcols)
     real(r8) :: solsd_loc(pcols)
-    real(r8) ::  solld_loc(pcols)
+    real(r8) :: solld_loc(pcols)
     real(r8) :: fsns_loc
     real(r8) :: flwds_loc(pcols)
 #endif
@@ -2350,9 +2350,9 @@ end function radiation_nextsw_cday
                   call outfld('FLN200'//diag(icall),fln200,pcols,lchnk)
                   call outfld('FLN200C'//diag(icall),fln200c,pcols,lchnk)
 #ifdef MAML
-                 call outfld('FLDS'//diag(icall),flwds_loc ,pcols,lchnk)
+                  call outfld('FLDS'//diag(icall),flwds_loc ,pcols,lchnk)
 #else
-                call outfld('FLDS'//diag(icall),cam_out%flwds ,pcols,lchnk)
+                  call outfld('FLDS'//diag(icall),cam_out%flwds ,pcols,lchnk)
 #endif
                 end if
                 if (use_SPCAM .and. last_column ) then

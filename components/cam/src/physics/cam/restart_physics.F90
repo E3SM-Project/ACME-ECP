@@ -324,7 +324,7 @@ module restart_physics
                do jj=1,num_inst_atm
                   ii=ii+1
                   if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%flwds(j,jj)
-                enddo
+                end do
             end do
          end do
          call pio_write_darray(File, flwds_desc, iodesc, tmpfld_crm, ierr)
@@ -337,7 +337,7 @@ module restart_physics
                do jj=1,num_inst_atm
                   ii=ii+1
                   if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%sols(j,jj)
-               enddo
+               end do
             end do
          end do
          call pio_write_darray(File, sols_desc, iodesc, tmpfld_crm, ierr)
@@ -345,26 +345,26 @@ module restart_physics
          ii=0
          tmpfld_crm(:) = fillvalue
          do i=begchunk,endchunk
-           ncol = cam_out(i)%ncol
-           do j=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-               if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%soll(j,jj)
-             enddo
-           end do
+            ncol = cam_out(i)%ncol
+            do j=1,pcols
+               do jj=1,num_inst_atm
+                  ii=ii+1
+                  if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%soll(j,jj)
+               end do
+            end do
          end do
          call pio_write_darray(File, soll_desc, iodesc, tmpfld_crm, ierr)
         
          ii=0
          tmpfld_crm(:) = fillvalue
          do i=begchunk,endchunk
-           ncol = cam_out(i)%ncol
-           do j=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-               if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%solsd(j,jj)
-             enddo
-           end do
+            ncol = cam_out(i)%ncol
+            do j=1,pcols
+               do jj=1,num_inst_atm
+                  ii=ii+1
+                  if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%solsd(j,jj)
+               end do
+            end do
          end do
          call pio_write_darray(File, solsd_desc, iodesc, tmpfld_crm, ierr)
 
@@ -376,7 +376,7 @@ module restart_physics
                do jj=1,num_inst_atm
                   ii=ii+1
                   if(j<=ncol) tmpfld_crm(ii) = cam_out(i)%solld(j,jj)
-               enddo
+               end do
             end do
          end do
          call pio_write_darray(File, solld_desc, iodesc, tmpfld_crm, ierr)
@@ -490,25 +490,25 @@ module restart_physics
          ii=0
          tmpfld_crm(:) = fillvalue
          do i=begchunk,endchunk
-           ncol = cam_in(i)%ncol
-           do j=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-                   if(j<=ncol) tmpfld_crm(ii) = cam_in(i)%shf(j,jj)
-             enddo
-           end do
+            ncol = cam_in(i)%ncol
+            do j=1,pcols
+               do jj=1,num_inst_atm
+                  ii=ii+1
+                  if(j<=ncol) tmpfld_crm(ii) = cam_in(i)%shf(j,jj)
+               end do
+            end do
          end do
          call pio_write_darray(File, shf_desc, iodesc, tmpfld_crm, ierr)
          ii=0
          tmpfld_crm(:) = fillvalue
          do i=begchunk,endchunk
-           ncol = cam_in(i)%ncol
-           do j=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-                   if(j<=ncol) tmpfld_crm(ii) = cam_in(i)%lhf(j,jj)
-             enddo
-           end do
+            ncol = cam_in(i)%ncol
+            do j=1,pcols
+               do jj=1,num_inst_atm
+                  ii=ii+1
+                  if(j<=ncol) tmpfld_crm(ii) = cam_in(i)%lhf(j,jj)
+               end do
+            end do
          end do
          call pio_write_darray(File, lhf_desc, iodesc, tmpfld_crm, ierr)
 #else
@@ -580,12 +580,12 @@ module restart_physics
             do iseed = 1 , kiss_seed_num             
                do icol = 1, ncol
                   tmp_seedrst(icol,iseed,i) = rad_randn_seedrst(icol,iseed,i)
-               enddo
+               end do
                if(ncol < pcols) then
                   tmp_seedrst(ncol+1:pcols,iseed,i) = huge(1)
                end if
-            enddo
-         enddo
+            end do
+         end do
          
          dims(1) = size(tmp_seedrst, 1) ! Should be pcols
          dims(2) = size(tmp_seedrst, 2) ! Should be kiss_seed_num
@@ -763,67 +763,67 @@ module restart_physics
         call pio_read_darray(File, vardesc, iodesc, trefmnav, ierr)
 #ifdef MAML
  
-         ierr = pio_inq_varid(File, 'FLWDS', vardesc)
-         call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
-         ii=0
-         do c=begchunk,endchunk
+        ierr = pio_inq_varid(File, 'FLWDS', vardesc)
+        call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
+        ii=0
+        do c=begchunk,endchunk
            do i=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-               cam_out(c)%flwds(i,jj) = tmpfld_crm(ii)
-             enddo
+              do jj=1,num_inst_atm
+                 ii=ii+1
+                 cam_out(c)%flwds(i,jj) = tmpfld_crm(ii)
+              end do
            end do
-         end do
+        end do
 
-         tmpfld_crm(:) = fillvalue
-         ierr = pio_inq_varid(File, 'SOLS', vardesc)
-         call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
-         ii=0
-         do c=begchunk,endchunk
+        tmpfld_crm(:) = fillvalue
+        ierr = pio_inq_varid(File, 'SOLS', vardesc)
+        call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
+        ii=0
+        do c=begchunk,endchunk
            do i=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-               cam_out(c)%sols(i,jj) = tmpfld_crm(ii)
-             enddo
+              do jj=1,num_inst_atm
+                 ii=ii+1
+                 cam_out(c)%sols(i,jj) = tmpfld_crm(ii)
+              end do
            end do
-         end do
-         tmpfld_crm(:) = fillvalue
-         ierr = pio_inq_varid(File, 'SOLL', vardesc)
-         call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
-         ii=0
-         do c=begchunk,endchunk
+        end do
+        tmpfld_crm(:) = fillvalue
+        ierr = pio_inq_varid(File, 'SOLL', vardesc)
+        call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
+        ii=0
+        do c=begchunk,endchunk
            do i=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-               cam_out(c)%soll(i,jj) = tmpfld_crm(ii)
-             enddo
+              do jj=1,num_inst_atm
+                 ii=ii+1
+                 cam_out(c)%soll(i,jj) = tmpfld_crm(ii)
+              end do
            end do
-         end do
+        end do
 
-         tmpfld_crm(:) = fillvalue
-         ierr = pio_inq_varid(File, 'SOLSD', vardesc)
-         call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
-         ii=0
-         do c=begchunk,endchunk
+        tmpfld_crm(:) = fillvalue
+        ierr = pio_inq_varid(File, 'SOLSD', vardesc)
+        call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
+        ii=0
+        do c=begchunk,endchunk
            do i=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-               cam_out(c)%solsd(i,jj) = tmpfld_crm(ii)
-             enddo
+              do jj=1,num_inst_atm
+                 ii=ii+1
+                 cam_out(c)%solsd(i,jj) = tmpfld_crm(ii)
+              end do
            end do
-         end do
-         tmpfld_crm(:) = fillvalue
-         ii=0
-         ierr = pio_inq_varid(File, 'SOLLD', vardesc)
-         call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
-         do c=begchunk,endchunk
+        end do
+        tmpfld_crm(:) = fillvalue
+        ii=0
+        ierr = pio_inq_varid(File, 'SOLLD', vardesc)
+        call pio_read_darray(File, vardesc, iodesc, tmpfld_crm, ierr)
+        do c=begchunk,endchunk
            do i=1,pcols
-             do jj=1,num_inst_atm
-               ii=ii+1
-               cam_out(c)%solld(i,jj) = tmpfld_crm(ii)
-             enddo
+              do jj=1,num_inst_atm
+                 ii=ii+1
+                 cam_out(c)%solld(i,jj) = tmpfld_crm(ii)
+              end do
            end do
-         end do
+        end do
 #else
         ierr = pio_inq_varid(File, 'FLWDS', vardesc)
         call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
@@ -991,7 +991,7 @@ module restart_physics
                  do jj=1,num_inst_atm
                     ii=ii+1
                     cam_in(c)%shf(i,jj) = tmpfld_crm(ii)
-                 enddo
+                 end do
               end do
           end do
         endif
@@ -1005,7 +1005,7 @@ module restart_physics
                   do jj=1,num_inst_atm
                       ii=ii+1
                       cam_in(c)%lhf(i,jj) = tmpfld_crm(ii)
-                  enddo
+                  end do
               end do
            end do
         endif

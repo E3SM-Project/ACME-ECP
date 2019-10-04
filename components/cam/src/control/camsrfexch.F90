@@ -112,7 +112,7 @@ module camsrfexch
      integer  :: lchnk                   ! chunk index
      integer  :: ncol                    ! number of active columns
 #ifdef MAML
-     !MAML...modifying the CLM-input vars to reflect the added CRM columns
+     !modifying the CLM-input vars to reflect the added CRM columns
      real(r8) :: asdir(pcols,num_inst_atm)            ! albedo: shortwave, direct
      real(r8) :: asdif(pcols,num_inst_atm)            ! albedo: shortwave, diffuse
      real(r8) :: aldir(pcols,num_inst_atm)            ! albedo: longwave, direct
@@ -123,7 +123,7 @@ module camsrfexch
      real(r8) :: wsx(pcols,num_inst_atm)              ! surface u-stress (N)
      real(r8) :: wsy(pcols,num_inst_atm)              ! surface v-stress (N)
      real(r8) :: snowhland(pcols,num_inst_atm)        ! snow depth (liquid water equivalent) over land 
-     !MAML...modifying the CLM-input vars to reflect the added CRM columns
+     !modifying the CLM-input vars to reflect the added CRM columns
 #else
      real(r8) :: asdir(pcols)            ! albedo: shortwave, direct
      real(r8) :: asdif(pcols)            ! albedo: shortwave, diffuse
@@ -611,7 +611,7 @@ subroutine cam_export(state,cam_out,pbuf)
    do m = 2, pcnst
      do i = 1, ncol
       do j= 1, num_inst_atm
-        cam_out%qbot(i,m,j) = state%q(i,pver,m)
+         cam_out%qbot(i,m,j) = state%q(i,pver,m)
       end do
      end do
    end do
@@ -623,17 +623,17 @@ subroutine cam_export(state,cam_out,pbuf)
    do i=1,ncol
       prcsnw(i,lchnk) =0._r8
       do j=1,num_inst_atm
-        !note assumes that crm_ny =1, crm_nx = num_inst_atm, so if crm_ny is not
-        !equal to 1, the index of crm_pcp and crm_snw should be changed.
+         !note assumes that crm_ny =1, crm_nx = num_inst_atm, so if crm_ny is not
+         !equal to 1, the index of crm_pcp and crm_snw should be changed.
 
-        cam_out%precc(i,j) = crm_pcp(i,j,1)  ! CRM precip
-        cam_out%precl(i,j) = 0._r8     ! large-scale precip set to zero
+         cam_out%precc(i,j) = crm_pcp(i,j,1)  ! CRM precip
+         cam_out%precl(i,j) = 0._r8     ! large-scale precip set to zero
 
-        cam_out%precsc(i,j) = crm_snw(i,j,1) ! CRM snow
-        cam_out%precsl(i,j) = 0._r8     ! large-scale snow set to zero
+         cam_out%precsc(i,j) = crm_snw(i,j,1) ! CRM snow
+         cam_out%precsl(i,j) = 0._r8     ! large-scale snow set to zero
 
-        !because we don't have mutiple instance for slab ocean model, we just take the average   
-        prcsnw(i,lchnk) = prcsnw(i,lchnk)+ cam_out%precsc(i,j) + cam_out%precsl(i,j)
+         !because we don't have mutiple instance for slab ocean model, we just take the average   
+         prcsnw(i,lchnk) = prcsnw(i,lchnk)+ cam_out%precsc(i,j) + cam_out%precsl(i,j)
       end do
       prcsnw(i,lchnk) = prcsnw(i,lchnk)/num_inst_atm 
    end do

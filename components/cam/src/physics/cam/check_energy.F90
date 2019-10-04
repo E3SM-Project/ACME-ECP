@@ -762,7 +762,7 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
 
 !===============================================================================
 #ifdef MAML
-  subroutine check_ieflx_fix(lchnk, ncol, nstep,ncrm, shflx)
+  subroutine check_ieflx_fix(lchnk, ncol, nstep, ncrm, shflx)
 #else
   subroutine check_ieflx_fix(lchnk, ncol, nstep, shflx)
 #endif

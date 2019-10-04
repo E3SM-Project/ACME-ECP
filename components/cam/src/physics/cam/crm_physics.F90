@@ -946,8 +946,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          end do
       end do
 #ifdef MAML
-       crm_pcp(:,:,:) = 0.
-       crm_snw(:,:,:) = 0.
+      crm_pcp(:,:,:) = 0.
+      crm_snw(:,:,:) = 0.
 #endif
 
 ! use radiation from grid-cell mean radctl on first time step
@@ -1060,7 +1060,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             fluxv00_avg = fluxv00_avg + cam_in%wsy(i,ii)     !N/m2
             fluxt00_avg = fluxt00_avg + cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
             fluxq00_avg = fluxq00_avg + cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
-         end do !ii, crm_nx
+         end do
          crm_input%tau00(i) = tau00_avg*factor_xy 
          crm_input%bflxls(i) = bflxls_avg*factor_xy 
          crm_input%fluxu00(i) = fluxu00_avg*factor_xy     !N/m2
@@ -1132,7 +1132,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                 accre_enhan(:ncol, :, :, :), qclvar(:ncol, :, :, :),      &
 #endif /* CLUBB_CRM */
 #ifdef MAML
-               crm_pcp(:ncol,:,:),     crm_snw(:ncol,:,:),              &
+                crm_pcp(:ncol,:,:),     crm_snw(:ncol,:,:),               &
 #endif
                 crm_ecpp_output, crm_output )
       call t_stopf('crm_call')

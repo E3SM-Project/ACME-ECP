@@ -123,7 +123,7 @@ contains
        lwupavg_in(i) =0._r8
        factor_xy = 1._r8 / dble(num_inst_atm)
        do ii=1,num_inst_atm
-           lwupavg_in(i) = lwupavg_in(i)+cam_in%lwup(i,ii)*factor_xy
+          lwupavg_in(i) = lwupavg_in(i)+cam_in%lwup(i,ii)*factor_xy
        enddo
        tint(i,pverp) = sqrt(sqrt(lwupavg_in(i)/stebol))
 #else
