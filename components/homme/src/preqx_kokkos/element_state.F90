@@ -53,13 +53,6 @@ module element_state
 
     real (kind=real_kind), pointer :: phis (:,:)                  ! surface geopotential (prescribed)  5
 
-    ! Variables for incoming dynamics state used to calculate 
-    ! dynamics tendencies to physics when fv_nphys>0
-    real (kind=real_kind) :: T_in  (np,np,nlev)         ! temperature
-    real (kind=real_kind) :: V_in  (np,np,2,nlev)       ! velocity
-    real (kind=real_kind) :: Q_in  (np,np,nlev,qsize_d) ! Tracer concentration
-    real (kind=real_kind) :: dp_in (np,np,nlev)         ! pressure thickness
-
   end type elem_state_t
 
   !___________________________________________________________________
