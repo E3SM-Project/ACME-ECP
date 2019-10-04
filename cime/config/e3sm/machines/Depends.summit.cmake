@@ -24,44 +24,28 @@ set(FILES_NEED_CUDA_FLAGS
 
 set(FILES_NEED_OPENACC_FLAGS
   cam/src/physics/crm/ADV_MPDATA/advect_scalar.F90
-  cam/src/physics/crm/ADV_UM5/advect_scalar.F90
   cam/src/physics/crm/ADV_MPDATA/advect_scalar2D.F90
-  cam/src/physics/crm/ADV_UM5/advect_scalar2D.F90
   cam/src/physics/crm/ADV_MPDATA/advect_scalar3D.F90
-  cam/src/physics/crm/ADV_UM5/advect_scalar3D.F90
   cam/src/physics/crm/ADV_MPDATA/advection.F90
-  cam/src/physics/crm/ADV_UM5/advection.F90
   cam/src/physics/crm/accelerate_crm.F90
   cam/src/physics/crm/adams.F90
   cam/src/physics/crm/MICRO_SAM1MOM/cloud.F90
   cam/src/physics/crm/MICRO_SAM1MOM/micro_params.F90
-  cam/src/physics/crm/MICRO_M2005/microphysics.F90
   cam/src/physics/crm/MICRO_SAM1MOM/microphysics.F90
-  cam/src/physics/crm/MICRO_M2005FRAC/microphysics.F90
   cam/src/physics/crm/MICRO_SAM1MOM/precip_init.F90
   cam/src/physics/crm/MICRO_SAM1MOM/precip_proc.F90
   cam/src/physics/crm/MICRO_SAM1MOM/precip_proc_clubb.F90
   cam/src/physics/crm/advect2_mom_xy.F90
   cam/src/physics/crm/SGS_TKE/diffuse_mom.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/diffuse_mom.F90
   cam/src/physics/crm/SGS_TKE/diffuse_mom2D.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/diffuse_mom2D.F90
   cam/src/physics/crm/SGS_TKE/diffuse_mom3D.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/diffuse_mom3D.F90
   cam/src/physics/crm/SGS_TKE/diffuse_scalar.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/diffuse_scalar.F90
   cam/src/physics/crm/SGS_TKE/diffuse_scalar2D.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/diffuse_scalar2D.F90
   cam/src/physics/crm/SGS_TKE/diffuse_scalar3D.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/diffuse_scalar3D.F90
   cam/src/physics/crm/SGS_TKE/sgs.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/sgs.F90
   cam/src/physics/crm/SGS_TKE/shear_prod2D.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/shear_prod2D.F90
   cam/src/physics/crm/SGS_TKE/shear_prod3D.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/shear_prod3D.F90
   cam/src/physics/crm/SGS_TKE/tke_full.F90
-  cam/src/physics/crm/SGS_CLUBBkvhkvm/tke_full.F90
   cam/src/physics/crm/abcoefs.F90
   cam/src/physics/crm/advect2_mom_z.F90
   cam/src/physics/crm/advect_all_scalars.F90
