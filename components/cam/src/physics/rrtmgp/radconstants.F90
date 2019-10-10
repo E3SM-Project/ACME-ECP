@@ -16,17 +16,18 @@ module radconstants
 ! radiation interface.
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
-use cam_abortutils,     only: endrun
+use cam_abortutils, only: endrun
 
 implicit none
 private
 save
 
+! Number of "g-points" for correlated-k
 integer, public :: nswgpts, nlwgpts
 
 ! SHORTWAVE DATA
 
-! number of shorwave spectral intervals
+! Number of shorwave spectral intervals
 integer, parameter, public :: nswbands = 14
 
 ! Wavenumbers of band boundaries
@@ -34,7 +35,6 @@ integer, parameter, public :: nswbands = 14
 ! Note: Currently rad_solar_var extends the lowest band down to
 ! 100 cm^-1 if it is too high to cover the far-IR. Any changes meant
 ! to affect IR solar variability should take note of this.
-
 real(r8),parameter :: wavenum_low(nswbands) = & ! in cm^-1
   (/ 820._r8, 2600._r8, 3250._r8, 4000._r8, 4650._r8, 5150._r8, 6150._r8, &
     7700._r8, 8050._r8,12850._r8,16000._r8,22650._r8,29000._r8,38000._r8/)
@@ -52,11 +52,10 @@ real(r8), parameter :: solar_ref_band_irradiance(nswbands) = &
    129.49_r8,  50.15_r8,   3.08_r8 &
    /)
 
-! These are indices to the band for diagnostic output
+! Indices to bands for specific diagnostic outputs
 integer, parameter, public :: idx_sw_diag = 11 ! index to sw visible band
 integer, parameter, public :: idx_nir_diag = 9 ! index to sw near infrared (778-1240 nm) band
 integer, parameter, public :: idx_uv_diag = 12 ! index to sw uv (345-441 nm) band
-
 integer, parameter, public :: rrtmg_sw_cloudsim_band = 10  ! rrtmg band for .67 micron
 
 ! Number of evenly spaced intervals in rh
@@ -74,9 +73,8 @@ integer, parameter, public :: nrh = 1000
 
 ! LONGWAVE DATA
 
-! These are indices to the band for diagnostic output
+! Indices to bands for specific diagnostic outputs
 integer, parameter, public :: idx_lw_diag = 7 ! index to (H20 window) LW band
-
 integer, parameter, public :: rrtmg_lw_cloudsim_band = 6  ! rrtmg band for 10.5 micron
 
 ! number of lw bands
@@ -115,8 +113,7 @@ character(len=gasnamelength), public, parameter :: gaslist(nradgas) &
    = (/'H2O  ','O3   ', 'O2   ', 'CO2  ', 'N2O  ', 'CH4  ', 'CFC11', 'CFC12'/)
 
 ! what is the minimum mass mixing ratio that can be supported by radiation implementation?
-real(r8), public, parameter :: minmmr(nradgas) &
-   = epsilon(1._r8)
+real(r8), public, parameter :: minmmr(nradgas) = epsilon(1._r8)
 
 ! Length of "optics type" string specified in optics files.
 integer, parameter, public :: ot_length = 32
