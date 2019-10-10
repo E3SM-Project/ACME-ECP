@@ -3017,7 +3017,8 @@
       <command name="load">cuda</command>
     </modules>
     <modules compiler="ibm">
-      <command name="load">xl/16.1.1-1</command>
+      <command name="load">xalt/1.1.4</command>
+      <command name="load">xl/16.1.1-3</command>
     </modules>
     <modules compiler="gnu">
       <command name="load">gcc/6.4.0</command>
