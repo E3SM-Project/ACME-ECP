@@ -5,6 +5,7 @@ list(APPEND NOOPT_FILES
   cam/src/dynamics/sld/dyn_comp.F90
   cam/src/physics/cam/microp_aero.F90)
 
+
 set(FILES_NEED_CUDA_FLAGS
   homme/src/preqx_acc/bndry_mod.F90
   homme/src/preqx_acc/derivative_mod.F90
@@ -94,5 +95,13 @@ set(FILES_NEED_OPENACC_FLAGS
   cam/src/physics/crm/vars.F90
   cam/src/physics/crm/zero.F90
   cam/src/physics/crm/openacc_utils.F90
-  cam/src/physics/crm/sat.F90 )
+  cam/src/physics/crm/sat.F90
+  cam/src/physics/crm/gator_mod.F90
+  )
+
+
+set(FILES_NEED_CUDA_C_FLAGS
+  cam/src/physics/crm/BuddyAllocator.cu
+  cam/src/physics/crm/gator.cu
+  )
 
