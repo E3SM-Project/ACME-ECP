@@ -1050,8 +1050,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             crm_input%vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
 #if defined( SP_REMOVE_STRESS_FORCING )
             if (k.eq.pver) then
-               crm_input%ul(i,k) = crm_input%ul(i,k) - crm_input%taux(i) * gravit * state%rpdel(i,pver)
-               crm_input%vl(i,k) = crm_input%vl(i,k) - crm_input%tauy(i) * gravit * state%rpdel(i,pver)
+               ! crm_input%ul(i,k) = crm_input%ul(i,k) - crm_input%taux(i) * ztodt * gravit * state%rpdel(i,pver)
+               ! crm_input%vl(i,k) = crm_input%vl(i,k) - crm_input%tauy(i) * ztodt * gravit * state%rpdel(i,pver)
+               crm_input%ul(i,k) = ( state%u(i,k) - cam_in%wsx(i)*ztodt*gravit*state%rpdel(i,pver) ) * cos( crm_angle(i) ) &
+                                  +( state%v(i,k) - cam_in%wsy(i)*ztodt*gravit*state%rpdel(i,pver) ) * sin( crm_angle(i) )
+               crm_input%vl(i,k) = ( state%v(i,k) - cam_in%wsy(i)*ztodt*gravit*state%rpdel(i,pver) ) * cos( crm_angle(i) ) &
+                                  -( state%u(i,k) - cam_in%wsx(i)*ztodt*gravit*state%rpdel(i,pver) ) * sin( crm_angle(i) )
             end if
 #endif
 #if defined( SP_ESMT )

@@ -14,7 +14,7 @@ contains
     real(crm_rknd) wspd
     real(crm_rknd) fluxbu_avg(ncrms)
     real(crm_rknd) fluxbv_avg(ncrms)
-    real(crm_rknd), parameter :: min_wspd = 1e-2
+    real(crm_rknd), parameter :: min_wspd = 1e-1
 
 #if defined( SP_CRM_STRESS_SCHEME_HET )
 
@@ -58,7 +58,7 @@ contains
         do icrm = 1,ncrms
           ! Apply correction to make sure domain mean stress is equal to CRM input
           fluxbu(icrm,i,j) = fluxbu(icrm,i,j) - ( fluxbu_avg(icrm) - taux_in(icrm) )
-          fluxbv(icrm,i,j) = fluxbv(icrm,i,j) - ( fluxbv_avg(icrm) - taux_in(icrm) )
+          fluxbv(icrm,i,j) = fluxbv(icrm,i,j) - ( fluxbv_avg(icrm) - tauy_in(icrm) )
         end do
       end do
     end do
