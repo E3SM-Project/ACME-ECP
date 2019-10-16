@@ -14,7 +14,7 @@ contains
     real(crm_rknd) wspd
     real(crm_rknd) fluxbu_avg(ncrms)
     real(crm_rknd) fluxbv_avg(ncrms)
-    real(crm_rknd), parameter :: min_wspd = 1e-1
+    real(crm_rknd), parameter :: min_wspd = 1e-4
 
 #if defined( SP_CRM_STRESS_SCHEME_HET )
 
