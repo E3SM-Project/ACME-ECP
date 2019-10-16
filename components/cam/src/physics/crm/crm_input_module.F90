@@ -23,7 +23,9 @@ module crm_input_module
       real(crm_rknd), allocatable :: ul(:,:)             ! Global grid u (m/s)
       real(crm_rknd), allocatable :: vl(:,:)             ! Global grid v (m/s)
       real(crm_rknd), allocatable :: ocnfrac(:)          ! area fraction of the ocean
-      real(crm_rknd), allocatable :: tau00  (:)          ! large-scale surface stress (N/m2)
+      real(crm_rknd), allocatable :: tau00  (:)          ! large-scale surface stress magnitude (N/m2)
+      real(crm_rknd), allocatable :: taux   (:)          ! large-scale zonal surface stress (N/m2)
+      real(crm_rknd), allocatable :: tauy   (:)          ! large-scale meridional surface stress (N/m2)
       real(crm_rknd), allocatable :: wndls  (:)          ! large-scale surface wind (m/s)
       real(crm_rknd), allocatable :: bflxls (:)          ! large-scale surface buoyancy flux (K m/s)
       real(crm_rknd), allocatable :: fluxu00(:)          ! surface momenent fluxes [N/m2]
@@ -70,6 +72,8 @@ contains
       if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
       if (.not. allocated(this%ocnfrac))  allocate(this%ocnfrac(ncrms))
       if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms))
+      if (.not. allocated(this%taux))     allocate(this%taux(ncrms))
+      if (.not. allocated(this%tauy))     allocate(this%tauy(ncrms))
       if (.not. allocated(this%wndls))    allocate(this%wndls(ncrms))
       if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms))
       if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms))
@@ -92,6 +96,8 @@ contains
       call prefetch(this%vl)
       call prefetch(this%ocnfrac)
       call prefetch(this%tau00)
+      call prefetch(this%taux)
+      call prefetch(this%tauy)
       call prefetch(this%wndls)
       call prefetch(this%bflxls)
       call prefetch(this%fluxu00)
@@ -129,6 +135,8 @@ contains
       this%vl = 0
       this%ocnfrac = 0
       this%tau00   = 0
+      this%taux    = 0
+      this%tauy    = 0
       this%wndls   = 0
       this%bflxls  = 0
       this%fluxu00 = 0
@@ -166,6 +174,8 @@ contains
 
       deallocate(this%ocnfrac)
       deallocate(this%tau00)
+      deallocate(this%taux)
+      deallocate(this%tauy)
       deallocate(this%wndls)
       deallocate(this%bflxls)
       deallocate(this%fluxu00)
