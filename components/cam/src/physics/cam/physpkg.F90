@@ -784,7 +784,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     call phys_getopts(use_SPCAM_out     = use_SPCAM)
 
-    if (fv_nphys==0 .or. nsrest==0) call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
+    call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
 
     do lchnk = begchunk, endchunk
        call physics_state_set_grid(lchnk, phys_state(lchnk))

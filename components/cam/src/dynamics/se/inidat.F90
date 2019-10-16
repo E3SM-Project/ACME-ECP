@@ -453,31 +453,32 @@ contains
 
     if ( (ideal_phys .or. aqua_planet)) then
        tmp(:,1,:) = 0._r8
-       phis_tmp(:,:) = 0._r8
+       if (fv_nphys > 0) phis_tmp(:,:) = 0._r8
     else    
       fieldname = 'PHIS'
       tmp(:,1,:) = 0.0_r8
       if (fv_nphys > 0) then
-         ! Load phis field to GLL grid first
+         ! Load phis field to physics grid
          call infld(fieldname, ncid_topo, 'ncol', 1, nphys_sq, &
-              1, nelemd, phis_tmp, found, gridname='physgrid_d')
+                    1, nelemd, phis_tmp, found, gridname='physgrid_d')
       else
-         call infld(fieldname, ncid_topo, ncol_name,      &
-            1, npsq, 1, nelemd, tmp(:,1,:), found, gridname=grid_name)
-      endif
+         call infld(fieldname, ncid_topo, ncol_name, 1, npsq, &
+                    1, nelemd, tmp(:,1,:), found, gridname=grid_name)
+      end if ! fv_nphys > 0
       if(.not. found) then
          call endrun('Could not find PHIS field on input datafile')
       end if
     end if
 
-    if (fv_nphys == 0) then
-      ! Map phis data to FV physics grid
+    if (fv_nphys > 0) then
+      ! Map phis data to dyn grid
       if (se_fv_phys_remap_alg == 0) then
          call fv_phys_to_dyn_topo(elem,phis_tmp)
       else
          call gfr_fv_phys_to_dyn_topo(par, dom_mt, elem, phis_tmp)
       end if
-      ! Copy phis data to element state
+    else
+      ! Copy phis data to dyn element state
       do ie=1,nelemd
          elem(ie)%state%phis=0.0_r8
          indx = 1
@@ -489,7 +490,7 @@ contains
             end do
          end do
       end do
-    end if ! fv_nphys == 0
+    end if ! fv_nphys > 0
     
     if (single_column) then
       iop_update_surface = .false.
