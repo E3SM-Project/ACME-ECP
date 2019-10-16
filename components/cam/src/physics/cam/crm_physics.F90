@@ -36,6 +36,7 @@ module crm_physics
    public :: crm_physics_init
    public :: crm_physics_tend
    public :: crm_surface_flux_bypass_tend
+   public :: crm_surface_stress_bypass_tend
    public :: crm_recall_state_tend
    public :: crm_save_state_tend
    public :: m2005_effradius
@@ -1012,13 +1013,16 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       crm_input%vl(1:ncol,1:pver) = state%v(1:ncol,1:pver)
       crm_input%ocnfrac(1:ncol) = cam_in%ocnfrac(1:ncol)
       do i = 1,ncol
-         crm_input%tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
-         crm_input%wndls(i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
+         crm_input%tau00(i) = sqrt( cam_in%wsx(i)**2 + cam_in%wsy(i)**2 )
+         crm_input%wndls(i) = sqrt( state%u(i,pver)**2 + state%v(i,pver)**2 )
          crm_input%bflxls(i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
          crm_input%fluxu00(i) = cam_in%wsx(i)     !N/m2
          crm_input%fluxv00(i) = cam_in%wsy(i)     !N/m2
          crm_input%fluxt00(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
          crm_input%fluxq00(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
+         ! Project surface stress onto CRM orientation
+         crm_input%taux(i) = cam_in%wsx(i) * cos( crm_angle(i) ) + cam_in%wsy(i) * sin( crm_angle(i) )
+         crm_input%tauy(i) = cam_in%wsy(i) * cos( crm_angle(i) ) - cam_in%wsx(i) * sin( crm_angle(i) )
       end do
 #if (defined m2005 && defined MODAL_AERO)
       ! Set aerosol
@@ -1044,6 +1048,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          do k=1,pver
             crm_input%ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
             crm_input%vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
+#if defined( SP_REMOVE_STRESS_FORCING )
+            if (k.eq.pver) then
+               crm_input%ul(i,k) = crm_input%ul(i,k) - crm_input%taux(i) * gravit * state%rpdel(i,pver)
+               crm_input%vl(i,k) = crm_input%vl(i,k) - crm_input%tauy(i) * gravit * state%rpdel(i,pver)
+            end if
+#endif
 #if defined( SP_ESMT )
             ! Set the input wind for ESMT
             crm_input%ul_esmt(i,k) = state%u(i,k)
@@ -1612,6 +1622,47 @@ subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
    end do
 
 end subroutine crm_surface_flux_bypass_tend
+
+!===================================================================================================
+!===================================================================================================
+subroutine crm_surface_stress_bypass_tend(state, cam_in, ptend)
+   !------------------------------------------------------------------------------------------------
+   !------------------------------------------------------------------------------------------------
+   use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
+   use physics_buffer,  only: physics_buffer_desc
+   use camsrfexch,      only: cam_in_t
+   use ppgrid,          only: begchunk, endchunk, pcols, pver
+   use constituents,    only: pcnst
+   use physconst,       only: gravit
+
+   implicit none
+
+   type(physics_state), intent(in   ) :: state
+   type(cam_in_t),      intent(in   ) :: cam_in
+   type(physics_ptend), intent(  out) :: ptend 
+
+   integer  :: ii       ! loop iterator
+   integer  :: ncol     ! number of columns
+   real(r8) :: g_dp     ! temporary variable for unit conversion
+   logical, dimension(pcnst) :: lq
+
+   ncol  = state%ncol
+
+   ! initialize ptend
+   lq(:) = .false.
+   call physics_ptend_init(ptend, state%psetcols, 'SP_STRESS_BYPASS', &
+                           lu=.true., lv=.true., ls=.false., lq=lq)
+
+   ! apply fluxes to bottom layer
+   do ii = 1,ncol
+      g_dp = gravit * state%rpdel(ii,pver)             ! note : rpdel = 1./pdel
+      ptend%u(ii,:)   = 0.
+      ptend%v(ii,:)   = 0.
+      ptend%u(ii,pver) = g_dp * cam_in%wsx(ii)
+      ptend%v(ii,pver) = g_dp * cam_in%wsy(ii)
+   end do
+
+end subroutine crm_surface_stress_bypass_tend
 
 !==================================================================================================
 !==================================================================================================

@@ -48,6 +48,7 @@ module restart_physics
        dstdry1_desc, dstdry2_desc, dstdry3_desc, dstdry4_desc
 
     type(var_desc_t) :: cflx_desc(pcnst), lhf_desc, shf_desc
+    type(var_desc_t) :: wsx_desc, wsy_desc
 
     type(var_desc_t), allocatable :: abstot_desc(:)
 
@@ -159,6 +160,10 @@ module restart_physics
        ! Add LHF and SHF to restart file to fix non-BFB restart issue due to qneg4 correction at the restart time step
        ierr = pio_def_var(File, 'LHF',  pio_double, hdimids, lhf_desc)
        ierr = pio_def_var(File, 'SHF',  pio_double, hdimids, shf_desc)
+
+       ! Add surface stress variables (i.e. taux and tauy) for CRM stress bypass mode
+       ierr = pio_def_var(File, 'WSX',  pio_double, hdimids, wsx_desc)
+       ierr = pio_def_var(File, 'WSY',  pio_double, hdimids, wsy_desc)
 
     end if
 
@@ -414,6 +419,18 @@ module restart_physics
          end do
 
          call pio_write_darray(File, shf_desc, iodesc, tmpfield, ierr)
+
+         do i = begchunk, endchunk
+            ncol = cam_in(i)%ncol
+            tmpfield(:ncol, i) = cam_in(i)%wsx(:ncol)
+         end do
+         call pio_write_darray(File, wsx_desc, iodesc, tmpfield, ierr)
+
+         do i = begchunk, endchunk
+            ncol = cam_in(i)%ncol
+            tmpfield(:ncol, i) = cam_in(i)%wsy(:ncol)
+         end do
+         call pio_write_darray(File, wsy_desc, iodesc, tmpfield, ierr)
 
       end if
     !
@@ -758,6 +775,22 @@ module restart_physics
         do c= begchunk, endchunk
            do i = 1, pcols
               cam_in(c)%shf(i) = tmpfield2(i, c)
+           end do
+        end do
+
+
+        ierr = pio_inq_varid(File, 'WSX', vardesc)
+        call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
+        do c= begchunk, endchunk
+           do i = 1, pcols
+              cam_in(c)%wsx(i) = tmpfield2(i, c)
+           end do
+        end do
+        ierr = pio_inq_varid(File, 'WSY', vardesc)
+        call pio_read_darray(File, vardesc, iodesc, tmpfield2, ierr)
+        do c= begchunk, endchunk
+           do i = 1, pcols
+              cam_in(c)%wsy(i) = tmpfield2(i, c)
            end do
         end do
 

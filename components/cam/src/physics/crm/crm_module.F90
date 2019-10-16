@@ -185,6 +185,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd), pointer :: crm_state_qp         (:,:,:,:)
     real(crm_rknd), pointer :: crm_state_qn         (:,:,:,:)
 
+    real(crm_rknd), allocatable :: crm_prev_u_avg(:)
+    real(crm_rknd), allocatable :: crm_prev_v_avg(:)
+
   !-----------------------------------------------------------------------------------------------
   !-----------------------------------------------------------------------------------------------
 
@@ -217,6 +220,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   allocate( qtot (ncrms,20) )
   allocate( colprec (ncrms) )
   allocate( colprecs(ncrms) )
+  allocate( crm_prev_u_avg(ncrms) )
+  allocate( crm_prev_v_avg(ncrms) )
 
   call prefetch( t00      )
   call prefetch( tln      )
@@ -375,7 +380,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       do i = 1 , nx
         do icrm = 1 , ncrms
           u   (icrm,i,j,k) = crm_state_u_wind     (icrm,i,j,k)
-          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YES3D
+          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)!*YES3D
           w   (icrm,i,j,k) = crm_state_w_wind     (icrm,i,j,k)
           tabs(icrm,i,j,k) = crm_state_temperature(icrm,i,j,k)
         enddo
@@ -391,7 +396,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do i=1,nx
           do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
-            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
+            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )!*YES3D
           enddo
         enddo
       enddo
@@ -465,6 +470,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   do icrm = 1 , ncrms
     colprec (icrm)=0
     colprecs(icrm)=0
+    crm_prev_u_avg(icrm) = 0
+    crm_prev_v_avg(icrm) = 0
   enddo
   !$acc parallel loop collapse(2) async(asyncid)
   do k = 1 , nzm
@@ -545,7 +552,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       tke0 (icrm,k) = tke0 (icrm,k) * factor_xy
       l = plev-k+1
       uln  (icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
-      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
+      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )!*YES3D
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(icrm,k))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(icrm,k))*idt_gl
       utend(icrm,k) = (uln(icrm,l)-u0(icrm,k))*idt_gl
@@ -557,8 +564,30 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     end do ! k
   end do ! icrm
 
+  ! Average previous CRM state wind to get domain mean wind consistent with incoming tau values
+  !$acc parallel loop collapse(3) async(asyncid)
+  do j = 1,ny
+    do i = 1,nx
+      do icrm = 1,ncrms
+        tmp = crm_state_u_wind(icrm,i,j,1)/dble(nx*ny)
+        !$acc atomic update
+        crm_prev_u_avg(icrm) = crm_prev_u_avg(icrm) + tmp
+        tmp = crm_state_v_wind(icrm,i,j,1)/dble(nx*ny)
+        ! !$acc atomic update
+        crm_prev_v_avg(icrm) = crm_prev_v_avg(icrm) + tmp
+      end do ! icrm
+    end do ! i 
+  end do ! j
+
   !$acc parallel loop async(asyncid)
   do icrm = 1 , ncrms
+! #if defined( SP_REMOVE_STRESS_FORCING )
+!     tau00_scale(icrm) = crm_input%taux(icrm) * max(1e-4,sqrt(uln(icrm,plev)**2+vln(icrm,plev)**2)) / uln(icrm,plev)  
+! #else
+    tau00_scale(icrm) = crm_input%taux(icrm) * max(1e-4,sqrt(crm_prev_u_avg(icrm)**2+crm_prev_u_avg(icrm)**2)) / crm_prev_u_avg(icrm) 
+! #endif    
+    taux_in(icrm) = crm_input%taux(icrm)
+    tauy_in(icrm) = crm_input%tauy(icrm)
     uhl(icrm) = u0(icrm,1)
     vhl(icrm) = v0(icrm,1)
     ! estimate roughness length assuming logarithmic profile of velocity near the surface:
@@ -1666,6 +1695,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   deallocate( qtot )
   deallocate( colprec  )
   deallocate( colprecs )
+  deallocate( crm_prev_u_avg )
+  deallocate( crm_prev_v_avg )
 
   call deallocate_params()
   call deallocate_grid()

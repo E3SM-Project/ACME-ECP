@@ -2,44 +2,120 @@ module crmsurface_mod
   implicit none
 
 contains
-
+  
   subroutine crmsurface(ncrms,bflx)
     use vars
     use params
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd), intent (in) :: bflx(ncrms)
-    real(crm_rknd) u_h0, tau00, tmp
     integer i,j,icrm
+    real(crm_rknd) tmp
+    real(crm_rknd) wspd
+    real(crm_rknd) fluxbu_avg(ncrms)
+    real(crm_rknd) fluxbv_avg(ncrms)
+    real(crm_rknd), parameter :: min_wspd = 1e-2
 
-    !--------------------------------------------------------
-    if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
-      !$acc parallel loop async(asyncid)
-      do icrm = 1 , ncrms
-        uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
-        vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
-        taux0(icrm) = 0.
-        tauy0(icrm) = 0.
-      enddo
-      !$acc parallel loop collapse(3) async(asyncid)
-      do j=1,ny
-        do i=1,nx
-          do icrm = 1 , ncrms
-            u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)**2))
-            tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm),u_h0,z0(icrm))**2
-            fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
-            fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
-            tmp = fluxbu(icrm,i,j)/dble(nx*ny)
-            !$acc atomic update
-            taux0(icrm) = taux0(icrm) + tmp
-            tmp = fluxbv(icrm,i,j)/dble(nx*ny)
-            !$acc atomic update
-            tauy0(icrm) = tauy0(icrm) + tmp
-          end do
+#if defined( SP_CRM_STRESS_SCHEME_HET )
+
+    !$acc parallel loop collapse(3) async(asyncid)
+    do j = 1,ny
+      do i = 1,nx
+        do icrm = 1,ncrms
+          ! Calculate stress at each CRM column based on the tau scale calculated from GCM data
+          wspd = max( min_wspd, sqrt( (0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1)))**2  &
+                                     +(0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1)))**2) )
+          fluxbu(icrm,i,j) = 0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1)) / wspd * tau00_scale(icrm)
+          fluxbv(icrm,i,j) = 0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1)) / wspd * tau00_scale(icrm)
         end do
-      enddo
-    end if ! SFC_FLX_FXD
+      end do
+    end do
+
+    !$acc parallel loop collapse(1) async(asyncid)
+    do icrm = 1,ncrms
+      fluxbu_avg(icrm) = 0
+      fluxbv_avg(icrm) = 0
+    end do
+
+    !$acc parallel loop collapse(3) async(asyncid)
+    do j = 1,ny
+      do i = 1,nx
+        do icrm = 1,ncrms
+          ! Calculate average tau components for correction
+          tmp = fluxbu(icrm,i,j)/dble(nx*ny)
+          !$acc atomic update
+          fluxbu_avg(icrm) = fluxbu_avg(icrm) + tmp
+          tmp = fluxbv(icrm,i,j)/dble(nx*ny)
+          !$acc atomic update
+          fluxbv_avg(icrm) = fluxbv_avg(icrm) + tmp
+        end do
+      end do
+    end do
+
+    !$acc parallel loop collapse(3) async(asyncid)
+    do j = 1,ny
+      do i = 1,nx
+        do icrm = 1,ncrms
+          ! Apply correction to make sure domain mean stress is equal to CRM input
+          fluxbu(icrm,i,j) = fluxbu(icrm,i,j) - ( fluxbu_avg(icrm) - taux_in(icrm) )
+          fluxbv(icrm,i,j) = fluxbv(icrm,i,j) - ( fluxbv_avg(icrm) - taux_in(icrm) )
+        end do
+      end do
+    end do
+    
+#endif /* SP_CRM_STRESS_SCHEME_HET */
+
+#if defined( SP_CRM_STRESS_SCHEME_HOM )
+    !$acc parallel loop collapse(3) async(asyncid)
+    do j = 1,ny
+      do i = 1,nx
+        do icrm = 1,ncrms
+          fluxbu(icrm,i,j) = taux_in(icrm)
+          fluxbv(icrm,i,j) = tauy_in(icrm)
+        end do
+      end do
+    end do
+#endif /* SP_CRM_STRESS_SCHEME_HOM */
+
   end subroutine crmsurface
+
+  ! subroutine crmsurface(ncrms,bflx)
+  !   use varś
+  !   use params
+  !   implicit none
+  !   integer, intent(in) :: ncrms
+  !   real(crm_rknd), intent (in) :: bflx(ncrms)
+  !   real(crm_rknd) u_h0, tau00, tmp
+  !   integer i,j,icrm
+
+  !   !--------------------------------------------------------
+  !   if(SFC_FLX_FXD.and..not.SFC_TAU_FXD) then
+  !     !$acc parallel loop async(asyncid)
+  !     do icrm = 1 , ncrms
+  !       uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
+  !       vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
+  !       taux0(icrm) = 0.
+  !       tauy0(icrm) = 0.
+  !     enddo
+  !     !$acc parallel loop collapse(3) async(asyncid)
+  !     do j=1,ny
+  !       do i=1,nx
+  !         do icrm = 1 , ncrms
+  !           u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)**2))
+  !           tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm),u_h0,z0(icrm))**2
+            ! fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
+  !           fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
+  !           tmp = fluxbu(icrm,i,j)/dble(nx*ny)
+  !           !$acc atomic update
+  !           taux0(icrm) = taux0(icrm) + tmp
+  !           tmp = fluxbv(icrm,i,j)/dble(nx*ny)
+  !           !$acc atomic update
+  !           tauy0(icrm) = tauy0(icrm) + tmp
+  !         end do
+  !       end do
+  !     enddo
+  !   end if ! SFC_FLX_FXD
+  ! end subroutine crmsurface
 
   ! ----------------------------------------------------------------------
   !

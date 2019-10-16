@@ -1967,7 +1967,9 @@ subroutine tphysbc (ztodt,               &
 #ifdef CRM
     !!! CRM modules
     use crmdims,         only: crm_nz, crm_nx, crm_ny, crm_dx, crm_dy, crm_dt
-    use crm_physics,     only: crm_physics_tend, crm_surface_flux_bypass_tend, &
+    use crm_physics,     only: crm_physics_tend, &
+                               crm_surface_flux_bypass_tend, &
+                               crm_surface_stress_bypass_tend, &
                                crm_save_state_tend, crm_recall_state_tend
     use crm_ecpp_output_module, only: crm_ecpp_output_type
 
@@ -2813,6 +2815,10 @@ end if
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
                              cam_in%shf(:), zero, zero, cam_in%cflx(:,1)) 
 #endif
+#if defined( SP_STRESS_BYPASS_1 )
+      call crm_surface_stress_bypass_tend(state, cam_in, ptend)
+      call physics_update(state, ptend, ztodt, tend)  
+#endif
       !---------------------------------------------------------------------------
       ! Initialize variabale for ECPP data
       !---------------------------------------------------------------------------
@@ -2833,6 +2839,10 @@ end if
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
                              zero, sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
+#if defined( SP_STRESS_BYPASS_2 )
+      call crm_surface_stress_bypass_tend(state, cam_in, ptend)
+      call physics_update(state, ptend, ztodt, tend)  
+#endif
       !---------------------------------------------------------------------------
       ! Modal aerosol wet radius for radiative calculation
       !---------------------------------------------------------------------------

@@ -1080,6 +1080,11 @@ contains
 
     call pbuf_get_field(pbuf, kvt_idx, kvt)
 
+#if defined( SP_STRESS_BYPASS_1 ) || defined( SP_STRESS_BYPASS_2 ) 
+    taux(:ncol) = 0.0
+    tauy(:ncol) = 0.0
+#endif
+
     if( any(fieldlist_wet) ) then
 
         call compute_vdiff( state%lchnk   ,                                                                     &

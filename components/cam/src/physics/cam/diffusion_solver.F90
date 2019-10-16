@@ -489,13 +489,9 @@
 
          ! 2. Do 'normal stress' explicitly
 
-! whannah - bypass adding surface stress here when CRM handles subgrid momentum tendencies
-! #if defined(SPMOMTRANS) || defined(SP_USE_ESMT)
-!       ! Do nothing...
-! #else
            u(:ncol,pver) = u(:ncol,pver) + tmp1(:ncol)*taux(:ncol)
            v(:ncol,pver) = v(:ncol,pver) + tmp1(:ncol)*tauy(:ncol)
-! #endif
+
        end if  ! End of 'do iss' ( implicit surface stress )
 
        ! --------------------------------------------------------------------------------------- !
@@ -512,16 +508,12 @@
                           ksrf  , kvm  , tmpi2 , rpdel , ztodt , gravit, &
                           zero  , ntop , nbot  , decomp)
 
-! whannah - bypass vertical diffusion of momentum when CRM handles subgrid momentum tendencies
-! #if defined(SPMOMTRANS) || defined(SP_USE_ESMT)
-!       ! Do nothing...
-! #else
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           u     , decomp, ntop  , nbot , zero )
 
        call vd_lu_solve(  pcols , pver  , ncol  ,                        &
                           v     , decomp, ntop  , nbot , zero )
-! #endif
+
        ! ---------------------------------------------------------------------- !
        ! Calculate 'total' ( tautotx ) and 'tms' ( tautmsx ) stresses that      !
        ! have been actually added into the atmosphere at the current time step. ! 
