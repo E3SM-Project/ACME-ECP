@@ -77,8 +77,8 @@ module kurant_mod
       deallocate(wm )
       deallocate(uhm)
 
-5550 format('kurant() - cfl: ',f12.2,'  cfl_sgs: ',f12.2,'  lat: ',f6.2,'  lon: ',f6.2)
-5551 format('k: ',i5,'  wm: ',f10.2,'  uhm: ',f10.2,'  tabs: ',f8.2)
+5550 format('kurant() - cfl: ',f20.4,'  cfl_sgs: ',f20.4,'  lat: ',f6.2,'  lon: ',f6.2)
+5551 format('k: ',i5,'  wm: ',f20.6,'  uhm: ',f20.3,'  tabs: ',f10.2)
 
    end subroutine kurant
 
