@@ -581,13 +581,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   !$acc parallel loop async(asyncid)
   do icrm = 1 , ncrms
-! #if defined( SP_REMOVE_STRESS_FORCING )
-!     tau00_scale(icrm) = crm_input%taux(icrm) * max(1e-4,sqrt(uln(icrm,plev)**2+vln(icrm,plev)**2)) / uln(icrm,plev)  
-! #else
-    tau00_scale(icrm) = crm_input%taux(icrm) * max(1e-4,sqrt(crm_prev_u_avg(icrm)**2+crm_prev_u_avg(icrm)**2)) / crm_prev_u_avg(icrm) 
-! #endif    
     taux_in(icrm) = crm_input%taux(icrm)
     tauy_in(icrm) = crm_input%tauy(icrm)
+    drag_x(icrm) = -1 * taux_in(icrm) / ( max(1e-0, sqrt(crm_prev_u_avg(icrm)**2+crm_prev_v_avg(icrm)**2) * crm_prev_u_avg(icrm) ) )
+    drag_y(icrm) = -1 * tauy_in(icrm) / ( max(1e-0, sqrt(crm_prev_u_avg(icrm)**2+crm_prev_v_avg(icrm)**2) * crm_prev_v_avg(icrm) ) )
     uhl(icrm) = u0(icrm,1)
     vhl(icrm) = v0(icrm,1)
     ! estimate roughness length assuming logarithmic profile of velocity near the surface:
@@ -1454,6 +1451,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     do i = 1 , nx
       do icrm = 1 , ncrms
         crm_output%prec_crm(icrm,i,j) = precsfc(icrm,i,j)/1000.           !mm/s --> m/s
+        crm_output%wsx(icrm,i,j) = fluxbu(icrm,i,j) * rhow(icrm,1) / dz(icrm)
+        crm_output%wsy(icrm,i,j) = fluxbv(icrm,i,j) * rhow(icrm,1) / dz(icrm)
       enddo
     enddo
   enddo

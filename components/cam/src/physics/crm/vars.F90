@@ -89,9 +89,10 @@ module vars
   real(crm_rknd), allocatable :: utend  (:,:) ! Large-scale tendency for u
   real(crm_rknd), allocatable :: vtend  (:,:) ! Large-scale tendency for v
 
-  real(crm_rknd), allocatable :: tau00_scale  (:)
-  real(crm_rknd), allocatable :: taux_in  (:)
-  real(crm_rknd), allocatable :: tauy_in  (:)
+  real(crm_rknd), allocatable :: taux_in (:)  ! surface stress from GCM projected onto CRM x direction
+  real(crm_rknd), allocatable :: tauy_in (:)  ! surface stress from GCM projected onto CRM y direction
+  real(crm_rknd), allocatable :: drag_x  (:)  ! effective drag coeffecient in CRM x direction
+  real(crm_rknd), allocatable :: drag_y  (:)  ! effective drag coeffecient in CRM y direction
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -228,9 +229,10 @@ contains
     allocate( ttend(ncrms,nzm)  )
     allocate( utend(ncrms,nzm)  )
     allocate( vtend(ncrms,nzm)  )
-    allocate( tau00_scale(ncrms)  )
     allocate( taux_in(ncrms)  )
     allocate( tauy_in(ncrms)  )
+    allocate( drag_x(ncrms)  )
+    allocate( drag_y(ncrms)  )
     allocate( sstxy    (ncrms,0:nx,(1-YES3D):ny)   )
     allocate( fcory(ncrms,0:ny)       )
     allocate( fcorzy(ncrms,ny)       )
@@ -331,9 +333,10 @@ contains
     call prefetch( ttend )
     call prefetch( utend )
     call prefetch( vtend )
-    call prefetch( tau00_scale )
     call prefetch( taux_in )
     call prefetch( tauy_in )
+    call prefetch( drag_x )
+    call prefetch( drag_y )
     call prefetch( sstxy )
     call prefetch( fcory )
     call prefetch( fcorzy )
@@ -436,9 +439,10 @@ contains
     ttend = zero
     utend = zero
     vtend = zero
-    tau00_scale = zero
     taux_in = zero
     tauy_in = zero
+    drag_x = zero
+    drag_y = zero
     sstxy = zero
     fcory = zero
     fcorzy = zero
@@ -543,9 +547,10 @@ contains
     deallocate( ttend )
     deallocate( utend )
     deallocate( vtend )
-    deallocate( tau00_scale )
     deallocate( taux_in )
     deallocate( tauy_in )
+    deallocate( drag_x )
+    deallocate( drag_y )
     deallocate( sstxy )
     deallocate( fcory )
     deallocate( fcorzy )

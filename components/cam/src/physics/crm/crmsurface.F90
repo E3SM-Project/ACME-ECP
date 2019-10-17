@@ -14,7 +14,6 @@ contains
     real(crm_rknd) wspd
     real(crm_rknd) fluxbu_avg(ncrms)
     real(crm_rknd) fluxbv_avg(ncrms)
-    real(crm_rknd), parameter :: min_wspd = 1e-4
 
 #if defined( SP_CRM_STRESS_SCHEME_HET )
 
@@ -22,16 +21,17 @@ contains
     do j = 1,ny
       do i = 1,nx
         do icrm = 1,ncrms
-          ! Calculate stress at each CRM column based on the tau scale calculated from GCM data
-          wspd = max( min_wspd, sqrt( (0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1)))**2  &
-                                     +(0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1)))**2) )
-          fluxbu(icrm,i,j) = 0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1)) / wspd * tau00_scale(icrm)
-          fluxbv(icrm,i,j) = 0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1)) / wspd * tau00_scale(icrm)
+          ! Calculate stress at each CRM column based on the effective drag 
+          ! coefficient calculated from the stress applied to the GCM state
+          wspd = sqrt( (0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1)))**2  &
+                      +(0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1)))**2 ) 
+          fluxbu(icrm,i,j) = -drag_x(icrm) * wspd * 0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1)) 
+          fluxbv(icrm,i,j) = -drag_y(icrm) * wspd * 0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1)) 
         end do
       end do
     end do
 
-    !$acc parallel loop collapse(1) async(asyncid)
+    !$acc parallel loop async(asyncid)
     do icrm = 1,ncrms
       fluxbu_avg(icrm) = 0
       fluxbv_avg(icrm) = 0
