@@ -765,6 +765,9 @@ subroutine diag_init()
       call addfld ('CRM_QPI ',(/'crm_nx','crm_ny', 'crm_nz'/), 'I', 'kg/kg   ', 'CRM Precipitating Ice'               )
       call addfld ('CRM_PREC',(/'crm_nx','crm_ny'/),           'I', 'm/s     ', 'CRM Precipitation Rate'              )
 
+      call addfld ('CRM_WSX', (/'crm_nx','crm_ny'/), 'I',  'm/s/s', 'surface wind stress in x-direction')
+      call addfld ('CRM_WSY', (/'crm_nx','crm_ny'/), 'I',  'm/s/s', 'surface wind stress in y-direction')
+
       !-- MDB 8/2013
       call addfld ('SPTVFLUX ',(/ 'lev' /), 'A', 'W/m2  ','Buoyancy Flux from CRM'             )
       call addfld ('SPBUOY   ',(/ 'lev' /), 'A', 'W/m3  ','Buoyancy Term from CRM'             )
@@ -818,6 +821,9 @@ subroutine diag_init()
       call add_default ('U_ESMT', 1, ' ')
       call add_default ('V_ESMT', 1, ' ')
 #endif
+
+      call add_default ('CRM_WSX', 1, ' ')
+      call add_default ('CRM_WSY', 1, ' ')
 
    endif !/* SPCAM */
 

@@ -1163,6 +1163,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CRM_TK ', crm_output%tk(:, :, :, :)  ,pcols   ,lchnk   )  
       call outfld('CRM_TKH', crm_output%tkh(:, :, :, :)  ,pcols   ,lchnk   ) 
 
+      call outfld('CRM_WSX ',crm_output%wsx, pcols, lchnk)
+      call outfld('CRM_WSY ',crm_output%wsy, pcols, lchnk)
+
 #ifdef m2005
       if (SPCAM_microp_scheme .eq. 'm2005') then
          ! index is defined in ./crm/MICRO_M2005/microphysics.F90

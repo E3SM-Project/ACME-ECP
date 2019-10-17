@@ -18,6 +18,8 @@ module crm_output_module
       real(crm_rknd), allocatable :: tk (:,:,:,:)
       real(crm_rknd), allocatable :: tkh(:,:,:,:)
       real(crm_rknd), allocatable :: prec_crm(:,:,:) ! CRM precipiation rate (surface)
+      real(crm_rknd), allocatable :: wsx(:,:,:)
+      real(crm_rknd), allocatable :: wsy(:,:,:)
 
       ! 2-moment process rates
       real(crm_rknd), allocatable :: wvar(:,:,:,:) ! vertical velocity variance (m/s)
@@ -152,6 +154,9 @@ contains
          if (.not. allocated(output%tkh)) allocate(output%tkh(ncol,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(output%prec_crm)) allocate(output%prec_crm(ncol,crm_nx,crm_ny))
 
+         if (.not. allocated(output%wsx)) allocate(output%wsx(ncol,crm_nx,crm_ny))
+         if (.not. allocated(output%wsy)) allocate(output%wsy(ncol,crm_nx,crm_ny))
+
          if (.not. allocated(output%wvar)) allocate(output%wvar(ncol,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(output%aut))  allocate(output%aut (ncol,crm_nx,crm_ny,crm_nz))
          if (.not. allocated(output%acc))  allocate(output%acc (ncol,crm_nx,crm_ny,crm_nz))
@@ -190,6 +195,8 @@ contains
          call prefetch(output%tk )
          call prefetch(output%tkh)
          call prefetch(output%prec_crm)
+         call prefetch(output%wsx)
+         call prefetch(output%wsy)
          call prefetch(output%wvar)
          call prefetch(output%aut )
          call prefetch(output%acc )
@@ -339,6 +346,8 @@ contains
       output%tk = 0
       output%tkh = 0
       output%prec_crm = 0
+      output%wsx = 0
+      output%wsy = 0
 
       ! 2-moment process rates
       output%wvar = 0
@@ -452,6 +461,8 @@ contains
       if (allocated(output%tk )) deallocate(output%tk )
       if (allocated(output%tkh)) deallocate(output%tkh)
       if (allocated(output%prec_crm)) deallocate(output%prec_crm)
+      if (allocated(output%wsx)) deallocate(output%wsx)
+      if (allocated(output%wsy)) deallocate(output%wsy)
 
       if (allocated(output%wvar)) deallocate(output%wvar)
       if (allocated(output%aut)) deallocate(output%aut)
