@@ -564,27 +564,34 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     end do ! k
   end do ! icrm
 
-  ! Average previous CRM state wind to get domain mean wind consistent with incoming tau values
-  !$acc parallel loop collapse(3) async(asyncid)
-  do j = 1,ny
-    do i = 1,nx
-      do icrm = 1,ncrms
-        tmp = crm_state_u_wind(icrm,i,j,1)/dble(nx*ny)
-        !$acc atomic update
-        crm_prev_u_avg(icrm) = crm_prev_u_avg(icrm) + tmp
-        tmp = crm_state_v_wind(icrm,i,j,1)/dble(nx*ny)
-        ! !$acc atomic update
-        crm_prev_v_avg(icrm) = crm_prev_v_avg(icrm) + tmp
-      end do ! icrm
-    end do ! i 
-  end do ! j
+  ! ! Average previous CRM state wind to get domain mean wind consistent with incoming tau values
+  ! !$acc parallel loop collapse(3) async(asyncid)
+  ! do j = 1,ny
+  !   do i = 1,nx
+  !     do icrm = 1,ncrms
+  !       tmp = crm_state_u_wind(icrm,i,j,1)/dble(nx*ny)
+  !       !$acc atomic update
+  !       crm_prev_u_avg(icrm) = crm_prev_u_avg(icrm) + tmp
+  !       tmp = crm_state_v_wind(icrm,i,j,1)/dble(nx*ny)
+  !       ! !$acc atomic update
+  !       crm_prev_v_avg(icrm) = crm_prev_v_avg(icrm) + tmp
+  !     end do ! icrm
+  !   end do ! i 
+  ! end do ! j
 
   !$acc parallel loop async(asyncid)
   do icrm = 1 , ncrms
     taux_in(icrm) = crm_input%taux(icrm)
     tauy_in(icrm) = crm_input%tauy(icrm)
-    drag_x(icrm) = -1 * taux_in(icrm) / ( max(1e-0, sqrt(crm_prev_u_avg(icrm)**2+crm_prev_v_avg(icrm)**2) * crm_prev_u_avg(icrm) ) )
-    drag_y(icrm) = -1 * tauy_in(icrm) / ( max(1e-0, sqrt(crm_prev_u_avg(icrm)**2+crm_prev_v_avg(icrm)**2) * crm_prev_v_avg(icrm) ) )
+    ! drag_x(icrm) = -1 * taux_in(icrm) / ( max(1e-0, sqrt(crm_prev_u_avg(icrm)**2+crm_prev_v_avg(icrm)**2) * crm_prev_u_avg(icrm) ) )
+    ! drag_y(icrm) = -1 * tauy_in(icrm) / ( max(1e-0, sqrt(crm_prev_u_avg(icrm)**2+crm_prev_v_avg(icrm)**2) * crm_prev_v_avg(icrm) ) )
+    drag_x(icrm) = real(-1,crm_rknd)*taux_in(icrm) / ( max(real(1e-4,crm_rknd), sqrt(crm_input%ubot_prev(icrm)**real(2,crm_rknd)+crm_input%vbot_prev(icrm)**2) * crm_input%ubot_prev(icrm) ) )
+    drag_y(icrm) = real(-1,crm_rknd)*tauy_in(icrm) / ( max(real(1e-4,crm_rknd), sqrt(crm_input%ubot_prev(icrm)**real(2,crm_rknd)+crm_input%vbot_prev(icrm)**2) * crm_input%vbot_prev(icrm) ) )
+    
+    write(*,555) icrm,drag_x(icrm), taux_in(icrm), crm_input%ubot_prev(icrm), crm_input%vbot_prev(icrm), sqrt(crm_input%ubot_prev(icrm)**2+crm_input%vbot_prev(icrm)**2)
+
+555 format(i6,'  drag_x: ',f8.3,'  taux_in: ',f8.3,'  u-wind: ',f8.3,'  v-wind: ',f8.3,'  wind mag',f8.3 )
+
     uhl(icrm) = u0(icrm,1)
     vhl(icrm) = v0(icrm,1)
     ! estimate roughness length assuming logarithmic profile of velocity near the surface:

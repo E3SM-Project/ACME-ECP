@@ -878,6 +878,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             crm_state%w_wind(i,:,:,k) = 0.
             crm_state%temperature(i,:,:,k) = state%t(i,m)
 
+            ! crm_input%taux(i)      = 0.
+            ! crm_input%tauy(i)      = 0.
+            ! crm_input%ubot_prev(i) = 0.
+            ! crm_input%vbot_prev(i) = 0.
+
             ! Initialize microphysics arrays
             if (SPCAM_microp_scheme .eq. 'sam1mom') then
                crm_state%qt(i,:,:,k) = state%q(i,m,1)+state%q(i,m,ixcldliq)+state%q(i,m,ixcldice)
@@ -1021,8 +1026,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          crm_input%fluxt00(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
          crm_input%fluxq00(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
          ! Project surface stress onto CRM orientation
-         crm_input%taux(i) = cam_in%wsx(i) * cos( crm_angle(i) ) + cam_in%wsy(i) * sin( crm_angle(i) )
-         crm_input%tauy(i) = cam_in%wsy(i) * cos( crm_angle(i) ) - cam_in%wsx(i) * sin( crm_angle(i) )
+         crm_input%taux(i)      = cam_in%wsx(i)   *cos(crm_angle(i)) + cam_in%wsy(i)   *sin(crm_angle(i))
+         crm_input%tauy(i)      = cam_in%wsy(i)   *cos(crm_angle(i)) - cam_in%wsx(i)   *sin(crm_angle(i))
+         crm_input%ubot_prev(i) = cam_out%ubot(i) *cos(crm_angle(i)) + cam_out%vbot(i) *sin(crm_angle(i))
+         crm_input%vbot_prev(i) = cam_out%vbot(i) *cos(crm_angle(i)) - cam_out%ubot(i) *sin(crm_angle(i))
+         ! write(*,*) 'ubot_prev: ',crm_input%ubot_prev(i),'  vbot_prev: ',crm_input%vbot_prev(i)
+         ! write(*,*) 'taux: ',crm_input%taux(i),'  tauy: ',crm_input%tauy(i)
       end do
 #if (defined m2005 && defined MODAL_AERO)
       ! Set aerosol
@@ -1046,16 +1055,16 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       !---------------------------------------------------------------------------------------------
       do i = 1,ncol
          do k=1,pver
-            crm_input%ul(i,k) = state%u(i,k) * cos( crm_angle(i) ) + state%v(i,k) * sin( crm_angle(i) )
-            crm_input%vl(i,k) = state%v(i,k) * cos( crm_angle(i) ) - state%u(i,k) * sin( crm_angle(i) )
+            crm_input%ul(i,k) = state%u(i,k) *cos(crm_angle(i)) + state%v(i,k) *sin(crm_angle(i))
+            crm_input%vl(i,k) = state%v(i,k) *cos(crm_angle(i)) - state%u(i,k) *sin(crm_angle(i))
 #if defined( SP_REMOVE_STRESS_FORCING )
             if (k.eq.pver) then
-               ! crm_input%ul(i,k) = crm_input%ul(i,k) - crm_input%taux(i) * ztodt * gravit * state%rpdel(i,pver)
-               ! crm_input%vl(i,k) = crm_input%vl(i,k) - crm_input%tauy(i) * ztodt * gravit * state%rpdel(i,pver)
-               crm_input%ul(i,k) = ( state%u(i,k) - cam_in%wsx(i)*ztodt*gravit*state%rpdel(i,pver) ) * cos( crm_angle(i) ) &
-                                  +( state%v(i,k) - cam_in%wsy(i)*ztodt*gravit*state%rpdel(i,pver) ) * sin( crm_angle(i) )
-               crm_input%vl(i,k) = ( state%v(i,k) - cam_in%wsy(i)*ztodt*gravit*state%rpdel(i,pver) ) * cos( crm_angle(i) ) &
-                                  -( state%u(i,k) - cam_in%wsx(i)*ztodt*gravit*state%rpdel(i,pver) ) * sin( crm_angle(i) )
+               crm_input%ul(i,k) = crm_input%ul(i,k) - crm_input%taux(i)*ztodt*gravit*state%rpdel(i,k)
+               crm_input%vl(i,k) = crm_input%vl(i,k) - crm_input%tauy(i)*ztodt*gravit*state%rpdel(i,k)
+               ! crm_input%ul(i,k) = ( state%u(i,k) - cam_in%wsx(i)*ztodt*gravit*state%rpdel(i,pver) ) * cos( crm_angle(i) ) &
+               !                    +( state%v(i,k) - cam_in%wsy(i)*ztodt*gravit*state%rpdel(i,pver) ) * sin( crm_angle(i) )
+               ! crm_input%vl(i,k) = ( state%v(i,k) - cam_in%wsy(i)*ztodt*gravit*state%rpdel(i,pver) ) * cos( crm_angle(i) ) &
+               !                    -( state%u(i,k) - cam_in%wsx(i)*ztodt*gravit*state%rpdel(i,pver) ) * sin( crm_angle(i) )
             end if
 #endif
 #if defined( SP_ESMT )

@@ -11,11 +11,17 @@ contains
     real(crm_rknd), intent (in) :: bflx(ncrms)
     integer i,j,icrm
     real(crm_rknd) tmp
-    real(crm_rknd) wspd
+    real(crm_rknd) wspd, u_tmp, v_tmp
     real(crm_rknd) fluxbu_avg(ncrms)
     real(crm_rknd) fluxbv_avg(ncrms)
 
+    real(crm_rknd) u_avg(ncrms)
+    real(crm_rknd) v_avg(ncrms)
+
 #if defined( SP_CRM_STRESS_SCHEME_HET )
+  
+    u_avg(:) = 0
+    v_avg(:) = 0
 
     !$acc parallel loop collapse(3) async(asyncid)
     do j = 1,ny
@@ -23,10 +29,15 @@ contains
         do icrm = 1,ncrms
           ! Calculate stress at each CRM column based on the effective drag 
           ! coefficient calculated from the stress applied to the GCM state
-          wspd = sqrt( (0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1)))**2  &
-                      +(0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1)))**2 ) 
-          fluxbu(icrm,i,j) = -drag_x(icrm) * wspd * 0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1)) 
-          fluxbv(icrm,i,j) = -drag_y(icrm) * wspd * 0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1)) 
+          u_tmp = 0.5*(u(icrm,i+1,j      ,1)+u(icrm,i,j,1))
+          v_tmp = 0.5*(v(icrm,i  ,j+YES3D,1)+v(icrm,i,j,1))
+          wspd = sqrt( u_tmp**2 +v_tmp**2 ) 
+          fluxbu(icrm,i,j) = -drag_x(icrm) * wspd * u_tmp 
+          fluxbv(icrm,i,j) = -drag_y(icrm) * wspd * v_tmp 
+
+          u_avg(icrm) = u_avg(icrm) + u_tmp/dble(nx*ny)
+          v_avg(icrm) = v_avg(icrm) + v_tmp/dble(nx*ny)
+
         end do
       end do
     end do
@@ -40,7 +51,7 @@ contains
     !$acc parallel loop collapse(3) async(asyncid)
     do j = 1,ny
       do i = 1,nx
-        do icrm = 1,ncrms
+        do icrm = 1,ncrms 
           ! Calculate average tau components for correction
           tmp = fluxbu(icrm,i,j)/dble(nx*ny)
           !$acc atomic update
@@ -51,6 +62,12 @@ contains
         end do
       end do
     end do
+
+    ! do icrm = 1,ncrms
+    !   write(*,*) 'crmsurface: fluxbu_avg: ',fluxbu_avg(icrm),'  fluxbv_avg: ',fluxbv_avg(icrm)
+    !   write(*,*) 'crmsurface: drag_x: ',drag_x(icrm),'  drag_y: ',drag_y(icrm)
+    !   write(*,*) 'crmsurface: u_avg: ',u_avg(icrm),'  v_avg: ',v_avg(icrm)
+    ! end do
 
     !$acc parallel loop collapse(3) async(asyncid)
     do j = 1,ny
