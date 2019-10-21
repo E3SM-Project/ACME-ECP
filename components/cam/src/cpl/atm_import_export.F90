@@ -88,6 +88,7 @@ contains
           cam_in(c)%asdif(i,inst_index)     =  x2a(index_x2a_Sx_avsdf, ig)
           cam_in(c)%aldif(i,inst_index)     =  x2a(index_x2a_Sx_anidf, ig)
           cam_in(c)%snowhland(i,inst_index) =  x2a(index_x2a_Sl_snowh, ig)
+          cam_in(c)%ts(i,inst_index)        =  x2a(index_x2a_Sx_t,     ig)  
 #else
           cam_in(c)%wsx(i)    = -x2a(index_x2a_Faxx_taux,ig)     
           cam_in(c)%wsy(i)    = -x2a(index_x2a_Faxx_tauy,ig)     
@@ -97,8 +98,8 @@ contains
           cam_in(c)%asdif(i)     =  x2a(index_x2a_Sx_avsdf, ig)  
           cam_in(c)%aldif(i)     =  x2a(index_x2a_Sx_anidf, ig)
           cam_in(c)%snowhland(i) =  x2a(index_x2a_Sl_snowh, ig)
-#endif
           cam_in(c)%ts(i)        =  x2a(index_x2a_Sx_t,     ig)  
+#endif
           cam_in(c)%sst(i)       =  x2a(index_x2a_So_t,     ig)             
           cam_in(c)%snowhice(i)  =  x2a(index_x2a_Si_snowh, ig)  
           cam_in(c)%tref(i)      =  x2a(index_x2a_Sx_tref,  ig)  
@@ -215,7 +216,7 @@ contains
              ncols = get_ncols_p(c)
              do i=1,ncols
 #ifdef MAML
-                cam_in(c)%lwup(i,1) = shr_const_stebol*(cam_in(c)%ts(i)**4)
+                cam_in(c)%lwup(i,1) = shr_const_stebol*(cam_in(c)%ts(i,1)**4)
                 do ii=2,num_inst_atm
                    cam_in(c)%lwup(i,ii) = cam_in(c)%lwup(i,1)
                    cam_in(c)%asdir(i,ii) = cam_in(c)%asdir(i,1)

@@ -105,6 +105,7 @@ module physpkg
   real(r8) :: lhfavg_in(pcols)
   real(r8) :: wsxavg_in(pcols)
   real(r8) :: wsyavg_in(pcols)
+  real(r8) :: tsavg_in(pcols)
   real(r8) :: snowhlandavg_in(pcols)
   real(r8) :: factor_xy
 #endif
@@ -2250,6 +2251,7 @@ subroutine tphysbc (ztodt,               &
     wsxavg_in =0._r8
     wsyavg_in =0._r8
     snowhlandavg_in =0._r8
+    tsavg_in =0._r8
     factor_xy = 1._r8 / dble(num_inst_atm)
     do i=1,ncol
        do ii=1,num_inst_atm
@@ -2258,6 +2260,7 @@ subroutine tphysbc (ztodt,               &
           wsxavg_in(i) = wsxavg_in(i)+cam_in%wsx(i,ii)*factor_xy
           wsyavg_in(i) = wsyavg_in(i)+cam_in%wsy(i,ii)*factor_xy
           snowhlandavg_in(i) = snowhlandavg_in(i)+cam_in%snowhland(i,ii)*factor_xy
+          tsavg_in(i) = tsavg_in(i)+cam_in%ts(i,ii)*factor_xy
        end do
     end do
 #endif
@@ -2636,7 +2639,11 @@ end if
             dlf, dlf2, & ! detrain
             rliq  , & ! check energy after detrain
             cmfmc,   cmfmc2, &
+#ifdef MAML
+            tsavg_in,      cam_in%sst,        zdu)
+#else
             cam_in%ts,      cam_in%sst,        zdu)
+#endif
 
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "cldwat_tend", nstep, ztodt, zero, prec_str(:ncol), snow_str(:ncol), zero)
@@ -2687,7 +2694,11 @@ end if
                   cam_in%landfrac, cam_in%ocnfrac, cam_in%snowhland, & ! sediment
                   dlf,             dlf2,                             & ! detrain
                   cmfmc,           cmfmc2,                           &
+#ifdef MAML
+                  tsavg_in,       cam_in%sst,     zdu,              &
+#else
                   cam_in%ts,       cam_in%sst,     zdu,              &
+#endif
                   pbuf,            det_s,          det_ice,          &
                   lcldo)
 

@@ -1675,6 +1675,7 @@ subroutine crm_surface_flux_bypass_tend(state, cam_in, ptend)
       ptend%s(ii,:)   = 0.
       ptend%q(ii,:,1) = 0.
 #ifdef MAML
+      ! need to add a check here to make sure this subroutine is not used here
       ptend%s(ii,pver)   = g_dp * cam_in%shf(ii,1)
 #else
       ptend%s(ii,pver)   = g_dp * cam_in%shf(ii)

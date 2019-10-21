@@ -671,6 +671,7 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     real(r8) :: preccavg_out(pcols)
     real(r8) :: preclavg_out(pcols)
     real(r8) :: tbotavg_out(pcols)
+    real(r8) :: tsavg_in(pcols)
     real(r8) :: factor_xy
     integer :: ii,i
 #endif
@@ -693,6 +694,7 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
        preccavg_out =0._r8
        preclavg_out =0._r8
        tbotavg_out =0._r8
+       tsavg_in =0._r8
        factor_xy = 1._r8 / dble(num_inst_atm)
         do i =1, ncol
          do ii=1,num_inst_atm
@@ -701,6 +703,7 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
             preccavg_out(i) = preccavg_out(i)+cam_out(lchnk)%precc(i,ii)*factor_xy
             preclavg_out(i) = preclavg_out(i)+cam_out(lchnk)%precl(i,ii)*factor_xy
             tbotavg_out(i) = tbotavg_out(i)+cam_out(lchnk)%tbot(i,ii)*factor_xy
+            tsavg_in(i) = tsavg_in(i)+cam_in(lchnk)%ts(i,ii)*factor_xy
          enddo
        enddo !i
        snow(:ncol,lchnk) = precscavg_out(:ncol) + precslavg_out(:ncol)
@@ -724,15 +727,21 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
        !!..................................................................................... 
 
        case(1) 
-          ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - & 
 #ifdef MAML
+          ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * tsavg_in(:ncol) - & 
                                cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * tbotavg_out(:ncol)
 #else
+          ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - & 
                                cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * cam_out(lchnk)%tbot(:ncol)
 #endif
        case(2) 
-          ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - & 
+#ifdef MAML
+          ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * tsavg_in(:ncol) - &
+                               cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * tsavg_in(:ncol)
+#else 
+          ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - &
                                cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * cam_in(lchnk)%ts(:ncol)
+#endif 
        case default 
           call endrun('*** incorrect ieflx_opt ***')
        end select 

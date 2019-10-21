@@ -1433,6 +1433,10 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
    use phys_grid,        only: get_rlat_all_p, get_rlon_all_p
    use time_manager,     only: get_curr_calday,get_curr_time,get_ref_date
 
+#ifdef MAML
+   use seq_comm_mct,       only : num_inst_atm
+#endif
+
 #ifdef USE_COSP
    ! cosp simulator package, COSP code was copied into CAM source tree and is compiled as a separate library
    use mod_cosp_constants, only : R_UNDEF, i_cvcice, parasol_nrefl, i_cvcliq, i_lscliq, i_lscice
@@ -1450,6 +1454,7 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
 #else
    real(r8),parameter :: R_UNDEF = -1.0E30_r8
 #endif
+
 ! Arguments
    type(physics_state), intent(in), target :: state
    
@@ -1838,6 +1843,12 @@ subroutine cospsimulator_intr_run(state,pbuf, cam_in,emis,coszrs,cliqwp_in,cicew
    type(interp_type)  :: interp_wgts
    integer, parameter :: extrap_method = 1              ! sets extrapolation method to boundary value (1)
 
+#ifdef MAML
+   real(r8) :: tsavg_in(pcols)
+   real(r8) :: factor_xy
+   integer :: isubcol
+#endif
+
   !---------------- End of declaration of variables --------------
 
    !! find the chunk and ncol from the state vector
@@ -1987,6 +1998,17 @@ if (first_run_cosp(lchnk)) then
    !!end if
 
 end if
+
+#ifdef MAML
+    !do the average of cam_in surface fluxes over num_inst_atm land instances
+    factor_xy = 1._r8 / dble(num_inst_atm)
+    tsavg_in = 0._r8
+    do i=1,ncol
+       do isubcol=1,num_inst_atm
+          tsavg_in(i) = tsavg_in(i) + cam_in%ts(i,isubcol)*factor_xy
+       end do
+    end do
+#endif
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! POPULATE COSP CONFIGURATION INPUT VARIABLE ("cfg") FROM CAM NAMELIST
@@ -2655,7 +2677,11 @@ if (cosp_runall) then
    gbx%cca = concld(1:ncol,pver:1:-1)                           ! convective_cloud_amount (0-1)
    gbx%tca = cld(1:ncol,pver:1:-1)                              ! total_cloud_amount (0-1)
    gbx%psfc = state%ps(1:ncol)                                  ! surface pressure (Pa)
+#ifdef MAML
+   gbx%skt  = tsavg_in(1:ncol)                                  ! skin temperature (K)
+#else
    gbx%skt  = cam_in%ts(1:ncol)                                 ! skin temperature (K)
+#endif
    gbx%land = landmask(1:ncol)                                  ! landmask (0 or 1)
    gbx%mr_ozone  = o3(1:ncol,pver:1:-1)                         ! ozone mass mixing ratio (kg/kg)
    gbx%u_wind  = state%u(1:ncol,pver)                           ! surface u_wind (m/s)
@@ -3079,7 +3105,11 @@ call CmpDayNite(q, q_day,               Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, p
 call CmpDayNite(concld, concld_day,     Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
 call CmpDayNite(cld, cld_day,           Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
 call CmpDayNite(state%ps ,ps_day,       Nday, IdxDay, Nno, IdxNo, 1, pcols)
+#ifdef MAML
+call CmpDayNite(tsavg_in ,ts_day,      Nday, IdxDay, Nno, IdxNo, 1, pcols)
+#else
 call CmpDayNite(cam_in%ts ,ts_day,      Nday, IdxDay, Nno, IdxNo, 1, pcols)
+#endif
 call CmpDayNite(landmask,landmask_day,  Nday, IdxDay, Nno, IdxNo, 1, pcols)
 call CmpDayNite(o3, o3_day,             Nday, IdxDay, Nno, IdxNo, 1, pcols, 1, pver)
 call CmpDayNite(state%u(1:ncol,pver),us_day,            Nday, IdxDay, Nno, IdxNo, 1, ncol)
@@ -3735,7 +3765,11 @@ call CmpDayNite(q, q_atrain,                    Natrain, IdxAtrain, Nno, IdxNo, 
 call CmpDayNite(concld, concld_atrain,          Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
 call CmpDayNite(cld, cld_atrain,                Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
 call CmpDayNite(state%ps, ps_atrain,            Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
+#ifdef MAML
+call CmpDayNite(tsavg_in ,ts_atrain,           Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
+#else
 call CmpDayNite(cam_in%ts ,ts_atrain,           Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
+#endif
 call CmpDayNite(landmask,landmask_atrain,       Natrain, IdxAtrain, Nno, IdxNo, 1, pcols)
 call CmpDayNite(o3, o3_atrain,                  Natrain, IdxAtrain, Nno, IdxNo, 1, pcols, 1, pver)
 call CmpDayNite(state%u(1:ncol,pver),us_atrain, Natrain, IdxAtrain, Nno, IdxNo, 1, ncol)
@@ -3779,7 +3813,11 @@ else  !! all columns used
   concld_atrain=concld
   cld_atrain=cld
   ps_atrain=state%ps
+  #ifdef MAML
   ts_atrain=cam_in%ts
+  #else
+  ts_atrain=cam_in%ts
+  #endif
   landmask_atrain(1:ncol)              = landmask(1:ncol)
   o3_atrain=o3
   us_atrain(1:ncol)                    = state%u(1:ncol,pver)

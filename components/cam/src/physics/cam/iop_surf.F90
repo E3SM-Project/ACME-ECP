@@ -33,10 +33,11 @@ subroutine scam_use_iop_srf( cam_in )
           if(have_shflx) cam_in(c)%shf(1) = shflxobs(1)
 #endif
           if(have_tg) then
-             cam_in(c)%ts(1) = tground(1)
 #ifdef MAML
+             cam_in(c)%ts(1,:) = tground(1)
              cam_in(c)%lwup(1,:) = stebol * tground(1)**4
 #else
+             cam_in(c)%ts(1) = tground(1)
              cam_in(c)%lwup(1) = stebol * tground(1)**4
 #endif
           endif

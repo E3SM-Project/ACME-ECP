@@ -1362,7 +1362,10 @@ end function chem_is_active
     use mo_drydep,           only : drydep_update
     use mo_neu_wetdep,       only : neu_wetdep_tend, do_neu_wetdep
     use aerodep_flx,         only : aerodep_flx_prescribed
-    
+#ifdef MAML
+    use seq_comm_mct,       only : num_inst_atm
+#endif  
+
     implicit none
 
 !-----------------------------------------------------------------------
@@ -1402,6 +1405,19 @@ end function chem_is_active
 
     logical :: lq(pcnst)
 
+#ifdef MAML
+    real(r8) :: tsavg_in(pcols)
+    real(r8) :: factor_xy
+    integer :: isubcol
+    !do the average of cam_in surface fluxes over num_inst_atm land instances
+    factor_xy = 1._r8 / dble(num_inst_atm)
+    tsavg_in = 0._r8
+    do i=1,ncol
+       do isubcol=1,num_inst_atm
+          tsavg_in(i) = tsavg_in(i) + cam_in%ts(i,isubcol)*factor_xy
+       end do
+    end do
+#endif
     if ( .not. chem_step ) return
 
     chem_dt = chem_freq*dt
@@ -1461,7 +1477,11 @@ end function chem_is_active
                           state%t, state%pmid, state%pdel, state%pint, &
                           cldw, tropLev, ncldwtr, state%u, state%v, &
                           chem_dt, state%ps, xactive_prates, &
+#ifdef MAML
+                          fsds, tsavg_in, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
+#else                            
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
+#endif                            
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           chem_name, drydepflx, cam_in%cflx, ptend%q, pbuf)
 

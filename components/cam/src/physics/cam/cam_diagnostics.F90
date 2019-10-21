@@ -1689,7 +1689,7 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
 #ifdef MAML
     real(r8) shfavg(pcols),lhfavg(pcols),wsxavg(pcols),wsyavg(pcols)
     real(r8) snowhlandavg(pcols),asdiravg(pcols),aldiravg(pcols)
-    real(r8) asdifavg(pcols),aldifavg(pcols)
+    real(r8) asdifavg(pcols),aldifavg(pcols),tsavg(pcols)
     real(r8) lhfsd(pcols)
     integer :: ii
 #endif
@@ -1701,7 +1701,7 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
 #ifdef MAML
     lhfavg = 0.; shfavg = 0.; wsxavg = 0.; wsyavg = 0.
     snowhlandavg = 0.; asdiravg = 0.; aldiravg = 0.
-    asdifavg = 0.; aldifavg = 0.
+    asdifavg = 0.; aldifavg = 0.; tsavg = 0.
     lhfsd = 0.
     do i = 1,ncol
        do ii = 1,num_inst_atm
@@ -1714,6 +1714,7 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
           aldiravg(i) = aldiravg(i)+cam_in%aldir(i,ii)
           asdifavg(i) = asdifavg(i)+cam_in%asdif(i,ii)
           aldifavg(i) = aldifavg(i)+cam_in%aldif(i,ii)
+          tsavg(i) = tsavg(i)+cam_in%ts(i,ii)
        end do
        lhfavg(i) = lhfavg(i)/float(num_inst_atm)
        shfavg(i) = shfavg(i)/float(num_inst_atm)
@@ -1763,7 +1764,11 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     call outfld('shflx   ',cam_in%shf,   pcols,   lchnk)
     call outfld('lhflx   ',cam_in%lhf,   pcols,   lchnk)
     call outfld('trefht  ',cam_in%tref,  pcols,   lchnk)
+#ifdef MAMAL
+    call outfld('Tg',       tsavg,        pcols, lchnk)
+#else
     call outfld('Tg', cam_in%ts, pcols, lchnk)
+#endif
 #endif
 !
 ! Ouput ocn and ice fractions
@@ -1787,17 +1792,17 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
 
     !write(*,*) '### diag_surf: maxval(cam_in%ts) = ',maxval(cam_in%ts)
     call outfld('TBOT',     cam_out%tbot,     pcols, lchnk)
-    call outfld('TS',       cam_in%ts,        pcols, lchnk)
-    call outfld('TSMN',     cam_in%ts,        pcols, lchnk)
-    call outfld('TSMX',     cam_in%ts,        pcols, lchnk)
-#ifdef MAML
     call outfld('SST',      cam_in%sst,       pcols, lchnk)
+#ifdef MAML
     call outfld('SNOWHLND', snowhlandavg, pcols, lchnk)
     call outfld('SNOWHICE', cam_in%snowhice,  pcols, lchnk)
     call outfld('ASDIR',    asdiravg,     pcols, lchnk)
     call outfld('ASDIF',    asdifavg,     pcols, lchnk)
     call outfld('ALDIR',    aldiravg,     pcols, lchnk)
     call outfld('ALDIF',    aldifavg,     pcols, lchnk)
+    call outfld('TS',       tsavg,        pcols, lchnk)
+    call outfld('TSMN',     tsavg,        pcols, lchnk)
+    call outfld('TSMX',     tsavg,        pcols, lchnk)
 #else
     call outfld('SNOWHLND', cam_in%snowhland, pcols, lchnk)
     call outfld('SNOWHICE', cam_in%snowhice,  pcols, lchnk)
@@ -1805,6 +1810,9 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     call outfld('ASDIF',    cam_in%asdif,     pcols, lchnk)
     call outfld('ALDIR',    cam_in%aldir,     pcols, lchnk)
     call outfld('ALDIF',    cam_in%aldif,     pcols, lchnk)
+    call outfld('TS',       cam_in%ts,        pcols, lchnk)
+    call outfld('TSMN',     cam_in%ts,        pcols, lchnk)
+    call outfld('TSMX',     cam_in%ts,        pcols, lchnk)
 #endif
     if (co2_transport()) then
        do m = 1,4
