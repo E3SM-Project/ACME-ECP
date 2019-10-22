@@ -516,6 +516,9 @@ subroutine diag_init()
 
    call addfld ('SHFLX',horiz_only,    'A','W/m2','Surface sensible heat flux')
    call addfld ('LHFLX',horiz_only,    'A','W/m2','Surface latent heat flux')
+#ifdef MAML   
+   call addfld ('LHFLXSD',  horiz_only, 'A', 'W/m2','Surface latent heat flux standard deviation')
+#endif
    call addfld ('QFLX',horiz_only,    'A','kg/m2/s','Surface water flux')
    call addfld ('QEXCESS',horiz_only,    'A','W/m2','qneg4 excess drying converted to cooling on bottom level')
 
@@ -1661,7 +1664,9 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
    use time_manager,     only: is_end_curr_day
    use co2_cycle,        only: c_i, co2_transport
    use constituents,     only: sflxnam
-
+#ifdef MAML
+   use seq_comm_mct,     only : num_inst_atm
+#endif
 !-----------------------------------------------------------------------
 !
 ! Input arguments
@@ -1681,18 +1686,64 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     integer :: ncol         ! longitude dimension
     real(r8) tem2(pcols)    ! temporary workspace
     real(r8) ftem(pcols)    ! temporary workspace
+#ifdef MAML
+    real(r8) shfavg(pcols),lhfavg(pcols),wsxavg(pcols),wsyavg(pcols)
+    real(r8) snowhlandavg(pcols),asdiravg(pcols),aldiravg(pcols)
+    real(r8) asdifavg(pcols),aldifavg(pcols)
+    real(r8) lhfsd(pcols)
+    integer :: ii
+#endif
 !
 !-----------------------------------------------------------------------
 !
     lchnk = cam_in%lchnk
     ncol  = cam_in%ncol
+#ifdef MAML
+    lhfavg = 0.; shfavg = 0.; wsxavg = 0.; wsyavg = 0.
+    snowhlandavg = 0.; asdiravg = 0.; aldiravg = 0.
+    asdifavg = 0.; aldifavg = 0.
+    lhfsd = 0.
+    do i = 1,ncol
+       do ii = 1,num_inst_atm
+          lhfavg(i) = lhfavg(i)+cam_in%lhf(i,ii)
+          shfavg(i) = shfavg(i)+cam_in%shf(i,ii)
+          wsxavg(i) = wsxavg(i)+cam_in%wsx(i,ii)
+          wsyavg(i) = wsyavg(i)+cam_in%wsy(i,ii)
+          snowhlandavg(i) = snowhlandavg(i)+cam_in%snowhland(i,ii)
+          asdiravg(i) = asdiravg(i)+cam_in%asdir(i,ii)
+          aldiravg(i) = aldiravg(i)+cam_in%aldir(i,ii)
+          asdifavg(i) = asdifavg(i)+cam_in%asdif(i,ii)
+          aldifavg(i) = aldifavg(i)+cam_in%aldif(i,ii)
+       end do
+       lhfavg(i) = lhfavg(i)/float(num_inst_atm)
+       shfavg(i) = shfavg(i)/float(num_inst_atm)
+       wsxavg(i) = wsxavg(i)/float(num_inst_atm)
+       wsyavg(i) = wsyavg(i)/float(num_inst_atm)
+       snowhlandavg(i) = snowhlandavg(i)/float(num_inst_atm)
+       asdiravg(i) = asdiravg(i)/float(num_inst_atm)
+       aldiravg(i) = aldiravg(i)/float(num_inst_atm)
+       asdifavg(i) = asdifavg(i)/float(num_inst_atm)
+       aldifavg(i) = aldifavg(i)/float(num_inst_atm)
+       do ii = 1,num_inst_atm
+          lhfsd(i) = (cam_in%lhf(i,ii)-lhfavg(i))**2
+       end do
+       lhfsd(i) = sqrt(lhfsd(i)/float(ncol))
+    end do
 
+    call outfld('SHFLX',    shfavg,       pcols, lchnk)
+    call outfld('LHFLX',    lhfavg,       pcols, lchnk)
+    call outfld('TAUX',     wsxavg,       pcols, lchnk)
+    call outfld('TAUY',     wsyavg,       pcols, lchnk)
+    call outfld('LHFLXSD',    lhfsd,       pcols, lchnk)
+#else
     call outfld('SHFLX',    cam_in%shf,       pcols, lchnk)
     call outfld('LHFLX',    cam_in%lhf,       pcols, lchnk)
-    call outfld('QFLX',     cam_in%cflx(1,1), pcols, lchnk)
-
     call outfld('TAUX',     cam_in%wsx,       pcols, lchnk)
     call outfld('TAUY',     cam_in%wsy,       pcols, lchnk)
+#endif
+    call outfld('QFLX',     cam_in%cflx(1,1), pcols, lchnk)
+
+
     call outfld('TREFHT  ', cam_in%tref,      pcols, lchnk)
     call outfld('TREFHTMX', cam_in%tref,      pcols, lchnk)
     call outfld('TREFHTMN', cam_in%tref,      pcols, lchnk)
@@ -1740,14 +1791,22 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     call outfld('TS',       cam_in%ts,        pcols, lchnk)
     call outfld('TSMN',     cam_in%ts,        pcols, lchnk)
     call outfld('TSMX',     cam_in%ts,        pcols, lchnk)
+#ifdef MAML
+    call outfld('SST',      cam_in%sst,       pcols, lchnk)
+    call outfld('SNOWHLND', snowhlandavg, pcols, lchnk)
+    call outfld('SNOWHICE', cam_in%snowhice,  pcols, lchnk)
+    call outfld('ASDIR',    asdiravg,     pcols, lchnk)
+    call outfld('ASDIF',    asdifavg,     pcols, lchnk)
+    call outfld('ALDIR',    aldiravg,     pcols, lchnk)
+    call outfld('ALDIF',    aldifavg,     pcols, lchnk)
+#else
     call outfld('SNOWHLND', cam_in%snowhland, pcols, lchnk)
     call outfld('SNOWHICE', cam_in%snowhice,  pcols, lchnk)
     call outfld('ASDIR',    cam_in%asdir,     pcols, lchnk)
     call outfld('ASDIF',    cam_in%asdif,     pcols, lchnk)
     call outfld('ALDIR',    cam_in%aldir,     pcols, lchnk)
     call outfld('ALDIF',    cam_in%aldif,     pcols, lchnk)
-    call outfld('SST',      cam_in%sst,       pcols, lchnk)
-
+#endif
     if (co2_transport()) then
        do m = 1,4
           call outfld(sflxnam(c_i(m)), cam_in%cflx(:,c_i(m)), pcols, lchnk)

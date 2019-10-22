@@ -938,6 +938,8 @@
 <use_SPCAM            use_SPCAM="1"                     > .true.  </use_SPCAM>
 <use_ECPP                                               > .false.  </use_ECPP>
 <use_ECPP             use_ECPP="1"                      > .true.  </use_ECPP>
+<use_MAML                                               > .false.  </use_MAML>
+<use_MAML             use_MAML="1"                      > .true.  </use_MAML>
 
 <do_aerocom_ind3                > .false. </do_aerocom_ind3>
 <do_aerocom_ind3  aerocom_ind3="1" > .true.  </do_aerocom_ind3>

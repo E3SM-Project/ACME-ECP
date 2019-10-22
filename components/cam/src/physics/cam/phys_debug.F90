@@ -202,6 +202,15 @@ subroutine phys_debug_flux1(lchnk, srfflx, lhflx, shflx, taux, tauy, qflx, &
    icol = phys_debug_col(lchnk) 
    if (icol > 0) then
 
+#ifdef MAML
+      write(iulog,*) ' b flux_tweak called, lhflx, oldlhflx ', &
+          srfflx%lhf(icol,:), lhflx(icol)
+      write(iulog,*) ' sfmodel fluxes lhf, shf, taux, tauy, q: ', &
+          srfflx%lhf(icol,:), &
+          srfflx%shf(icol,:), &
+          srfflx%wsx(icol,:), &
+          srfflx%wsy(icol,:), &
+#else
       write(iulog,*) ' b flux_tweak called, lhflx, oldlhflx ', &
           srfflx%lhf(icol), lhflx(icol)
       write(iulog,*) ' sfmodel fluxes lhf, shf, taux, tauy, q: ', &
@@ -209,6 +218,7 @@ subroutine phys_debug_flux1(lchnk, srfflx, lhflx, shflx, taux, tauy, qflx, &
           srfflx%shf(icol), &
           srfflx%wsx(icol), &
           srfflx%wsy(icol), &
+#endif
           srfflx%cflx(icol,1)
       write(iulog,*) ' last fluxes used lhf, shf, taux, tauy, q: ', &
           lhflx(icol), &
@@ -247,6 +257,15 @@ subroutine phys_debug_flux2(lchnk, srfflx, lhflx, &
    icol = phys_debug_col(lchnk) 
    if (icol > 0) then
 
+#ifdef MAML
+      write(iulog,*) ' a flux_tweak called, lhflx, oldlhflx ', &
+          srfflx%lhf(icol,:), lhflx(icol)
+      write (iulog,66) ' residual fractions lhf, shf, taux, tauy, q ', &
+          lhflx_res(icol)/srfflx%lhf(icol,:), &
+          shflx_res(icol)/srfflx%shf(icol,:), &
+          taux_res(icol)/srfflx%wsx(icol,:), &
+          tauy_res(icol)/srfflx%wsy(icol,:), &
+#else
       write(iulog,*) ' a flux_tweak called, lhflx, oldlhflx ', &
           srfflx%lhf(icol), lhflx(icol)
       write (iulog,66) ' residual fractions lhf, shf, taux, tauy, q ', &
@@ -254,6 +273,7 @@ subroutine phys_debug_flux2(lchnk, srfflx, lhflx, &
           shflx_res(icol)/srfflx%shf(icol), &
           taux_res(icol)/srfflx%wsx(icol), &
           tauy_res(icol)/srfflx%wsy(icol), &
+#endif
           qflx_res(icol)/srfflx%cflx(icol,1)
       write(iulog,66) ' residual lhf, shf, taux, tauy, q: ', &
           lhflx_res(icol), &
@@ -262,10 +282,17 @@ subroutine phys_debug_flux2(lchnk, srfflx, lhflx, &
           tauy_res(icol), &
           qflx_res(icol)
       write(iulog,*) ' used fluxes lhf, shf, taux, tauy, q: ', &
+#ifdef MAML
+          srfflx%lhf(icol,:), &
+          srfflx%shf(icol,:), &
+          srfflx%wsx(icol,:), &
+          srfflx%wsy(icol,:), &
+#else
           srfflx%lhf(icol), &
           srfflx%shf(icol), &
           srfflx%wsx(icol), &
           srfflx%wsy(icol), &
+#endif
           srfflx%cflx(icol,1)
 66 format (a, 1p, 5e15.5)
 

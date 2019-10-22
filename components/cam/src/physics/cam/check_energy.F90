@@ -35,7 +35,6 @@ module check_energy
   use cam_logfile,     only: iulog
   use cam_abortutils,  only: endrun 
   use phys_control,    only: ieflx_opt
-
   implicit none
   private
 
@@ -643,6 +642,9 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     use physics_buffer,   only: physics_buffer_desc, pbuf_get_field, pbuf_get_chunk, pbuf_set_field 
     use cam_history,      only: outfld
     use phys_control,     only: ieflx_opt
+#ifdef MAML
+    use seq_comm_mct,       only : num_inst_atm
+#endif
 
     integer , intent(in) :: nstep        ! current timestep number
     type(physics_state), intent(in   ), dimension(begchunk:endchunk) :: state
@@ -663,7 +665,15 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     real(r8) :: rain(pcols,begchunk:endchunk) !rain [m/s] 
     real(r8) :: snow(pcols,begchunk:endchunk) !snow [m/s] 
     real(r8) :: ienet(pcols,begchunk:endchunk) !ieflx net [W/m2] or [J/m2/s]
-
+#ifdef MAML
+    real(r8) :: precscavg_out(pcols)
+    real(r8) :: precslavg_out(pcols)
+    real(r8) :: preccavg_out(pcols)
+    real(r8) :: preclavg_out(pcols)
+    real(r8) :: tbotavg_out(pcols)
+    real(r8) :: factor_xy
+    integer :: ii,i
+#endif
 !- 
     ieflx_glob = 0._r8
 
@@ -677,8 +687,28 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
 
        ncol = state(lchnk)%ncol
        qflx(:ncol,lchnk) = cam_in(lchnk)%cflx(:ncol,1)
+#ifdef MAML
+       precscavg_out =0._r8
+       precslavg_out =0._r8
+       preccavg_out =0._r8
+       preclavg_out =0._r8
+       tbotavg_out =0._r8
+       factor_xy = 1._r8 / dble(num_inst_atm)
+        do i =1, ncol
+         do ii=1,num_inst_atm
+            precscavg_out(i) = precscavg_out(i)+cam_out(lchnk)%precsc(i,ii)*factor_xy
+            precslavg_out(i) = precslavg_out(i)+cam_out(lchnk)%precsl(i,ii)*factor_xy
+            preccavg_out(i) = preccavg_out(i)+cam_out(lchnk)%precc(i,ii)*factor_xy
+            preclavg_out(i) = preclavg_out(i)+cam_out(lchnk)%precl(i,ii)*factor_xy
+            tbotavg_out(i) = tbotavg_out(i)+cam_out(lchnk)%tbot(i,ii)*factor_xy
+         enddo
+       enddo !i
+       snow(:ncol,lchnk) = precscavg_out(:ncol) + precslavg_out(:ncol)
+       rain(:ncol,lchnk) = preccavg_out(:ncol)  + preclavg_out(:ncol) - snow(:ncol,lchnk)
+#else
        snow(:ncol,lchnk) = cam_out(lchnk)%precsc(:ncol) + cam_out(lchnk)%precsl(:ncol)
        rain(:ncol,lchnk) = cam_out(lchnk)%precc(:ncol)  + cam_out(lchnk)%precl(:ncol) - snow(:ncol,lchnk) 
+#endif
 
        select case (ieflx_opt) 
 
@@ -695,7 +725,11 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
 
        case(1) 
           ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - & 
+#ifdef MAML
+                               cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * tbotavg_out(:ncol)
+#else
                                cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * cam_out(lchnk)%tbot(:ncol)
+#endif
        case(2) 
           ienet(:ncol,lchnk) = cpsw * qflx(:ncol,lchnk) * cam_in(lchnk)%ts(:ncol) - & 
                                cpsw * rhow * ( rain(:ncol,lchnk) + snow(:ncol,lchnk) ) * cam_in(lchnk)%ts(:ncol)
@@ -727,8 +761,11 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
 
 
 !===============================================================================
+#ifdef MAML
+  subroutine check_ieflx_fix(lchnk, ncol, nstep, ncrm, shflx)
+#else
   subroutine check_ieflx_fix(lchnk, ncol, nstep, shflx)
-
+#endif
 !!
 !! Add the global mean internal energy flux to the sensible heat flux 
 !!
@@ -742,7 +779,13 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     integer, intent(in   ) :: nstep          ! time step number
     integer, intent(in   ) :: lchnk  
     integer, intent(in   ) :: ncol
+#ifdef MAML
+    integer, intent(in   ) :: ncrm
+    real(r8),intent(inout) :: shflx(pcols,ncrm)
+    integer :: ii
+#else
     real(r8),intent(inout) :: shflx(pcols) 
+#endif
 
     integer :: i
 
@@ -750,7 +793,14 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
 
     if(nstep>1) then 
        do i = 1, ncol
-          shflx(i) = shflx(i) + ieflx_glob 
+#ifdef MAML
+          !We have ncrm subcolumns, so add 1/ncrm to each subccolumn
+          do ii=1, ncrm
+             shflx(i,ii) = shflx(i,ii) + ieflx_glob/dble(ncrm)
+          end do
+#else
+          shflx(i) = shflx(i) + ieflx_glob
+#endif
        end do
     end if 
 

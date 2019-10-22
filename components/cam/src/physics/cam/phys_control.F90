@@ -67,6 +67,8 @@ logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-
 !-- mdb spcam
 logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
+logical           :: use_MAML             = .false.    ! true => use Multiple Atmosphere and Multtiple Land   
+
 logical           :: use_crm_accel        = .false.    ! true => use crm mean-state acceleration
 real(r8)          :: crm_accel_factor     = 2.D0       ! crm acceleration factor
 logical           :: crm_accel_uv         = .true.     ! true => apply crm mean-state acceleration to momentum fields
@@ -183,7 +185,7 @@ subroutine phys_ctl_readnl(nlfile)
 
    namelist /phys_ctl_nl/ cam_physpkg, cam_chempkg, waccmx_opt, deep_scheme, shallow_scheme, &
       eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, SPCAM_microp_scheme, srf_flux_avg, &
-      use_subcol_microp, use_SPCAM, use_ECPP, atm_dep_flux, history_amwg, history_verbose, history_vdiag, &
+      use_subcol_microp, use_SPCAM, use_ECPP, use_MAML, atm_dep_flux, history_amwg, history_verbose, history_vdiag, &
       history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
       use_crm_accel, crm_accel_factor, crm_accel_uv, &
@@ -234,6 +236,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
    call mpibcast(use_SPCAM,                       1 , mpilog,  0, mpicom) !-- mdb spcam
    call mpibcast(use_ECPP,                        1 , mpilog,  0, mpicom) !-- mdb spcam
+   call mpibcast(use_MAML,                        1 , mpilog,  0, mpicom) ! 
    call mpibcast(use_crm_accel,                   1 , mpilog,  0, mpicom)
    call mpibcast(crm_accel_factor,                1 , mpir8,   0, mpicom)
    call mpibcast(crm_accel_uv,                    1 , mpilog,  0, mpicom)
@@ -448,7 +451,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
                        ,l_bc_energy_fix_out, l_dry_adj_out, l_st_mac_out, l_st_mic_out, l_rad_out  &
                        ,prc_coef1_out,prc_exp_out,prc_exp1_out, cld_sed_out,mg_prc_coeff_fix_out,rrtmg_temp_fix_out &
                        , use_crm_accel_out, crm_accel_factor_out, crm_accel_uv_out &
-                       ,use_SPCAM_out, use_ECPP_out, SPCAM_microp_scheme_out)
+                       ,use_SPCAM_out, use_ECPP_out, SPCAM_microp_scheme_out, use_MAML_out)
 
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
@@ -466,11 +469,10 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    character(len=16), intent(out), optional :: microp_scheme_out
    character(len=16), intent(out), optional :: radiation_scheme_out
    character(len=16), intent(out), optional :: macrop_scheme_out
-!-- mdb spcam
    character(len=16), intent(out), optional :: SPCAM_microp_scheme_out
    logical,           intent(out), optional :: use_SPCAM_out
    logical,           intent(out), optional :: use_ECPP_out
-!-- mdb spcam
+   logical,           intent(out), optional :: use_MAML_out 
    logical,           intent(out), optional :: use_crm_accel_out
    real(r8),          intent(out), optional :: crm_accel_factor_out
    logical,           intent(out), optional :: crm_accel_uv_out
@@ -538,12 +540,11 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
    if ( present(radiation_scheme_out    ) ) radiation_scheme_out     = radiation_scheme
 
-!-- mdb spcam
    if ( present(SPCAM_microp_scheme_out ) ) SPCAM_microp_scheme_out  = SPCAM_microp_scheme
 
    if ( present(use_SPCAM_out           ) ) use_SPCAM_out            = use_SPCAM
    if ( present(use_ECPP_out            ) ) use_ECPP_out             = use_ECPP
-!-- mdb spcam
+   if ( present(use_MAML_out            ) ) use_MAML_out             = use_MAML 
    if ( present(use_crm_accel_out       ) ) use_crm_accel_out        = use_crm_accel
    if ( present(crm_accel_factor_out    ) ) crm_accel_factor_out     = crm_accel_factor
    if ( present(crm_accel_uv_out        ) ) crm_accel_uv_out         = crm_accel_uv

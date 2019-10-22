@@ -1,5 +1,8 @@
 
 subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
+#ifdef MAML
+                  ncrm,                                       & 
+#endif
                   qbot    ,srfrpdel,shflx   ,lhflx   ,qflx, excess    )
 !----------------------------------------------------------------------- 
 ! 
@@ -40,8 +43,14 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
 !
 ! Input/Output arguments
 !
+#ifdef MAML
+   integer, intent(in) :: ncrm               ! number of CRM columns
+   real(r8), intent(inout) :: shflx(pcols,ncrm)   ! Surface sensible heat flux (J/m2/s)
+   real(r8), intent(inout) :: lhflx(pcols,ncrm)   ! Surface latent   heat flux (J/m2/s)
+#else
    real(r8), intent(inout) :: shflx(pcols)   ! Surface sensible heat flux (J/m2/s)
    real(r8), intent(inout) :: lhflx(pcols)   ! Surface latent   heat flux (J/m2/s)
+#endif
    real(r8), intent(inout) :: qflx (pcols,pcnst)   ! surface water flux (kg/m^2/s)
    real(r8), intent(out) :: excess(pcols)     ! Excess downward sfc latent heat flux
 
@@ -72,8 +81,15 @@ subroutine qneg4 (subnam  ,lchnk   ,ncol    ,ztodt   ,        &
          nptsexc = nptsexc + 1
          indxexc(nptsexc) = i
          qflx (i,1) = qflx (i,1) - excess(i)
+#ifdef MAML
+         do ii=1, ncrm
+            lhflx(i,ii) = lhflx(i,ii) - excess(i)*latvap/dble(ncrm)
+            shflx(i,ii) = shflx(i,ii) + excess(i)*latvap/dble(ncrm)
+         end do
+#else
          lhflx(i) = lhflx(i) - excess(i)*latvap
          shflx(i) = shflx(i) + excess(i)*latvap
+#endif
        else
           excess(i) = 0._r8
       end if

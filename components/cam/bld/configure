@@ -281,10 +281,10 @@ OPTIONS
      -use_ECPP          use CRM clouds for vertical transport, aqueous chemistry and wet removable of aerosols 
      -use_crm_cldfrac   use fractional cloudiness in CRM
      -crm_adv           CRM advection scheme [MPDATA | UM5]
+     -use_MAML          use multiple atmosphere and multiple land version of MMF
 EOF
 }
 
-##Guangxing Lin add -use_crm_cldfrac and -crm_adv above
 #-----------------------------------------------------------------------------------------------
 # Setting autoflush (an IO::Handle method) on STDOUT helps in debugging.  It forces the test
 # descriptions to be printed to STDOUT before the error messages start.
@@ -343,6 +343,7 @@ GetOptions(
     "cppdefs=s"                 => \$opts{'cppdefs'},
     "use_SPCAM"                 => \$opts{'use_SPCAM'},
     "use_ECPP"                  => \$opts{'use_ECPP'},
+    "use_MAML"                  => \$opts{'use_MAML'},
     "crm_nx=s"                  => \$opts{'crm_nx'},
     "crm_ny=s"                  => \$opts{'crm_ny'},
     "crm_nz=s"                  => \$opts{'crm_nz'},
@@ -1275,6 +1276,7 @@ if ($print>=2) { print "Produce IOP file for SCAM: $e3smreplay$eol"; }
 
 if (defined $opts{'use_SPCAM'}) {
     if (defined $opts{'use_ECPP'})            { $cfg_ref->set('use_ECPP', 1); }
+    if (defined $opts{'use_MAML'})            { $cfg_ref->set('use_MAML', 1); }
     $cfg_ref->set('use_SPCAM', 1);
     $cfg_ref->set('crm', 1);
     $cfg_ref->set('crm_nx', $opts{'crm_nx'});
@@ -1877,8 +1879,8 @@ if ($crm_ny eq 1) {$yes3Dval = 0;}
 $cfg_cppdefs .= " -D_$crm_adv -D$SPCAM_microp_scheme -DYES3DVAL=$yes3Dval -DCRM_NX=$crm_nx -DCRM_NY=$crm_ny -DCRM_NZ=$crm_nz -DCRM_DX=$crm_dx -DCRM_DT=$crm_dt ";
 
 if ($crm eq "ON") { $cfg_cppdefs .= " -DCRM " }
-#Added cppdef for ecpp-Guangxing Lin
 if (defined $opts{'use_ECPP'}) { $cfg_cppdefs .= " -DECPP " }
+if (defined $opts{'use_MAML'}) { $cfg_cppdefs .= " -DMAML " }
 
 # if (defined $opts{'crm_nx_rad'}) { $cfg_cppdefs .= " -DCRM_NX_RAD=$crm_nx_rad " }
 # if (defined $opts{'crm_ny_rad'}) { $cfg_cppdefs .= " -DCRM_NY_RAD=$crm_ny_rad " }
@@ -2620,10 +2622,8 @@ sub write_filepath
     if ($ccsm_seq) {
 	my $CASEROOT = "$ENV{'CASEROOT'}";
 	print $fh "$CASEROOT/SourceMods/src.cam\n";
-    #==Guangxing Lin 
 	print $fh "$CASEROOT/SourceMods/src.cam/ecpp\n";
 	print $fh "$CASEROOT/SourceMods/src.cam/rrtmg\n";
-    #==Guangxing Lin 
     }
 
     # offline unit driver (defaults to stub)
@@ -2694,7 +2694,6 @@ sub write_filepath
            print $fh "$camsrcdir/cam/src/physics/crm/MICRO_SAM1MOM\n";
         }
         if ($SPCAM_microp_scheme eq 'm2005') {
-          ##Guangxing Lin add for new SAM 
           if(defined $opts{'use_crm_cldfrac'}) {
               print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005FRAC\n"; }
            else {
@@ -2703,10 +2702,8 @@ sub write_filepath
         }
         if ( defined $opts{'clubb_crm'}) {
            print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
-          ##Guangxing Lin add for new SAM 
            print $fh "$camsrcdir/cam/src/physics/crm/SGS_CLUBBkvhkvm\n";
         }
-          ##Guangxing Lin add for new SAM 
          else {
            print $fh "$camsrcdir/cam/src/physics/crm/SGS_TKE\n";
         }
@@ -2714,7 +2711,6 @@ sub write_filepath
         if ( defined $opts{'use_ECPP'}) {
            print $fh "$camsrcdir/cam/src/physics/cam/ecpp\n";
         }
-          ##Guangxing Lin add for new SAM 
         if ($crm_adv eq 'UM5') {
            print $fh "$camsrcdir/cam/src/physics/crm/ADV_UM5\n"; }
         else {

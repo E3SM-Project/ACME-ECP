@@ -52,7 +52,9 @@ module atm_comp_mct
   use co2_cycle        , only: co2_readFlux_ocn, co2_readFlux_fuel
   use runtime_opts     , only: read_namelist
   use scamMod          , only: single_column,scmlat,scmlon
-
+#ifdef MAML 
+  use seq_comm_mct, only : num_inst_atm
+#endif 
 !
 ! !PUBLIC TYPES:
   implicit none
@@ -96,6 +98,13 @@ module atm_comp_mct
 
   integer,                 pointer :: dof(:) ! needed for pio_init decomp for restarts
   type(seq_infodata_type), pointer :: infodata
+#ifdef MAML
+  !sequence_instances stands for running instances sequentially
+  !In the MAML, we don't want to run the mult-instances of atm concurrently. Instead, we want to
+  !run them sequentially. Becasue ATM already has multiple CRM columns. We need to run 1 instance only,
+  !but we still need multi-instances to do the atm-land flux exchange. 
+  logical :: sequence_instances = .false.
+#endif
 !
 !================================================================================
 CONTAINS
@@ -147,7 +156,11 @@ CONTAINS
     logical :: perpetual_run    ! If in perpetual mode or not
     integer :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
     integer :: shrlogunit,shrloglev ! old values
+#ifdef MAML 
+    logical :: first_time = .false.
+#else
     logical :: first_time = .true.
+#endif
     character(len=SHR_KIND_CS) :: calendar      ! Calendar type
     character(len=SHR_KIND_CS) :: starttype     ! infodata start type
     character(len=8)           :: c_inst_index  ! instance number
@@ -157,6 +170,10 @@ CONTAINS
                                 ! data structure, If 1D data structure, then
                                 ! hdim2_d == 1.
     character(len=64) :: filein ! Input namelist filename
+#ifdef MAML 
+    logical,save :: first_call = .true.    ! check for sequential calls of multi-instances
+    integer :: atm_phase        ! passed from driver
+#endif    
     !-----------------------------------------------------------------------
     !
     ! Determine cdata points
@@ -170,10 +187,42 @@ CONTAINS
 
     call seq_cdata_setptrs(cdata_a, ID=ATMID, mpicom=mpicom_atm, &
          gsMap=gsMap_atm, dom=dom_a, infodata=infodata)
+#ifdef MAML 
+    call seq_infodata_getData(infodata,atm_phase=atm_phase)
+    call cam_instance_init(ATMID)
 
-    if (first_time) then
-       
-       call cam_instance_init(ATMID)
+    !--- auto detect sequence_instances based on calling this more than once in phase 1 ---
+    if (atm_phase == 1 .and. .not.first_call .and. .not.sequence_instances) then
+       sequence_instances = .true.
+       write(6,*) "Setting sequence_instances to true"
+    endif
+    first_call = .false.
+    if (sequence_instances .and. inst_index > 1) then
+       if (atm_phase == 1) then
+          call atm_SetgsMap_mct( mpicom_atm, ATMID, gsMap_atm )
+          lsize = mct_gsMap_lsize(gsMap_atm, mpicom_atm)
+          call atm_domain_mct( lsize, gsMap_atm, dom_a )
+          call mct_aVect_init(a2x_a, rList=seq_flds_a2x_fields, lsize=lsize)
+          call mct_aVect_zero(a2x_a)
+          call mct_aVect_init(x2a_a, rList=seq_flds_x2a_fields, lsize=lsize)
+          call mct_aVect_zero(x2a_a)
+          call atm_export( cam_out, a2x_a%rattr )
+       else
+          call seq_timemgr_EClockGetData(EClock,StepNo=StepNo)
+          if (StepNo == 0) then
+             call atm_export( cam_out, a2x_a%rattr )
+          else
+             call atm_read_srfrest_mct( EClock, x2a_a, a2x_a )
+          endif
+       endif
+       return
+    endif
+
+    if (atm_phase == 1) first_time= .true. 
+#endif
+
+    if (first_time) then 
+       call cam_instance_init(ATMID) 
 
        ! Set filename specifier for restart surface file
        ! (%c=caseid, $y=year, $m=month, $d=day, $s=seconds in day)
@@ -371,7 +420,6 @@ CONTAINS
        call shr_file_setLogLevel(shrloglev)
 
        first_time = .false.
-
     else
        
        ! For initial run, run cam radiation/clouds and return
@@ -486,6 +534,10 @@ CONTAINS
     logical :: first_time = .true.
     integer :: lbnum
     character(len=*), parameter :: subname="atm_run_mct"
+#ifdef MAML 
+    integer :: ATMID
+    integer :: atm_phase        ! passed from driver
+#endif
     !-----------------------------------------------------------------------
 
 #if (defined _MEMTRACE)
@@ -500,7 +552,12 @@ CONTAINS
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_getLogLevel(shrloglev)
     call shr_file_setLogUnit (iulog)
-    
+   
+#ifdef MAML 
+    call seq_cdata_setptrs(cdata_a, infodata=infodata, ID=ATMID)
+    call cam_instance_init(ATMID)
+#endif
+ 
     ! Note that sync clock time should match cam time at end of time step/loop not beginning
     
     call seq_timemgr_EClockGetData(EClock,curr_ymd=ymd_sync,curr_tod=tod_sync, &
@@ -511,8 +568,44 @@ CONTAINS
     call seq_infodata_GetData( infodata,                                           &
        orb_eccen=eccen, orb_mvelpp=mvelpp, orb_lambm0=lambm0, orb_obliqr=obliqr)
 
+#ifdef MAML 
+    call seq_infodata_getData(infodata,atm_phase=atm_phase)
+#endif
+
     nlend_sync = seq_timemgr_StopAlarmIsOn(EClock)
     rstwr_sync = seq_timemgr_RestartAlarmIsOn(EClock)
+    
+#ifdef MAML 
+    ! huge new block 
+    !------------
+    ! for special case (sequence instances)
+    !   import n instances at atm_phase = 0 and return
+    !   run on instance 1 at atm_phase /= 0
+    !   export final n-1 instances at atm_phase /=0 and return
+    !------------
+
+    if (sequence_instances) then
+       if (atm_phase == 0) then
+          ! Map input from mct to cam data structure and return
+          call t_startf ('CAM_import')
+          call atm_import( x2a_a%rattr, cam_in )
+          call t_stopf  ('CAM_import')
+          return
+       else
+          if (inst_index > 1) then
+             ! Map output from cam to mct data structures and return
+             call t_startf ('CAM_export')
+             call atm_export( cam_out, a2x_a%rattr )
+             call t_stopf ('CAM_export')
+             call shr_sys_flush(iulog)
+             return
+          endif
+       endif
+    endif
+
+    ! Return if atm_phase is 0 in standard coupling mode
+    if (atm_phase == 0) return
+#endif
 
     ! Map input from mct to cam data structure
 
@@ -642,6 +735,19 @@ CONTAINS
     type(seq_cdata)             ,intent(inout) :: cdata_a
     type(mct_aVect)             ,intent(inout) :: x2a_a
     type(mct_aVect)             ,intent(inout) :: a2x_a
+    
+#ifdef MAML 
+    !--- local --- 
+    integer :: ATMID
+
+    call seq_cdata_setptrs(cdata_a, ID=ATMID)
+    call cam_instance_init(ATMID)
+
+    !--- sequence_instances and return ---
+    if (sequence_instances .and. inst_index > 1) then
+       return
+    endif
+#endif
 
     call cam_final( cam_out, cam_in )
 
