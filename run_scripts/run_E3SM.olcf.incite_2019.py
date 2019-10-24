@@ -17,47 +17,33 @@ build        = True
 submit       = True
 # continue_run = True
 
-ne,npg         = 120,2
-num_nodes      = 922             # ne4=>1, ne30=>15, ne120=>??
-tasks_per_node = 18              # only for GPU cases
-pcols          = 32              # should be slightly larger than #CRM/(total mpi tasks)
-arch           = 'GPU'           # GPU / CPU
-compset        = 'FC5AV1C-H01A' 
-
 stop_opt,stop_n,resub = 'ndays',5,0
 
-cld = 'SP1'    # ZM / SP1 / SP2
-crm_nx,crm_ny,crm_dx = 64,1,1000
+ne,npg         = 120,2
+arch           = 'GPU'           # GPU / CPU
+num_nodes      = 922             # ne4=>1, ne30=>15, ne120=>??
+tasks_per_node = 18              # GPU=>18 / CPU=>64
+pcols          = 32              # should be slightly larger than #CRM/(total mpi tasks)
+walltime       = '24:00'
+compset        = 'FC5AV1C-H01A' 
+crm_nx         = 64
+crm_dx         = 1000
 
-res = 'ne'+str(ne) if npg==0 else  'ne'+str(ne)+'pg'+str(npg)
-cldc = '_'+cld+'_'+str(crm_nx)+'x'+str(crm_ny)+'_'+str(crm_dx)+'m' if 'SP' in cld else '_'+cld
-if compset not in ['FSP1V1','FSP2V1'] : cldc = ''
+phys = f'SP1_{crm_nx}x{crm_ny}_{crm_dx}m'
+res  = f'ne{ne}' if npg==0 else  f'ne{ne}pg{npg}'
 
-# timestamp = '20191021'  # added more output
-# timestamp = '20191022'  # reduced irad to 30 min (forgot to set set!), add land output, and use 64bit_data
-# timestamp = '20191023' # reduce pcol => 32 and nx_rad => 4, and increase crm_accel_factor => 4
-timestamp = '20191024' # set irad to 6 and change NTASK for non-ATM components
+timestamp = '20191024'
 
-case = 'E3SM_TEST-INCITE_'+arch+'_'+res+'_'+compset+'_'+timestamp 
+case = '.'.join(['INCITE2019',arch,res,compset,phys,timestamp])
 
-# Impose wall limits for Summit
-if num_nodes>=  1: walltime =  '2:00'
-if num_nodes>= 46: walltime =  '6:00'
-if num_nodes>= 92: walltime = '12:00'
-if num_nodes>=922: walltime = '24:00'
-
-if 'TEST-INCITE' in case : walltime =  '2:00'
 #---------------------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------------------
 print('\n  case : '+case+'\n')
 
-nlev_crm = 58     # limit CRM levels 
-crm_dt   = 5      # CRM time step
+crm_accel_fac  = 4  # CRM mean-state acceleration factor
+
 dtime    = 5*60   # GCM physics time step
 ncpl     = 86400 / dtime
-
-if compset=='FSP1V1' : cld='SP1'
-if compset=='FSP2V1' : cld='SP2'
 #---------------------------------------------------------------------------------------------------
 # Create new case
 #---------------------------------------------------------------------------------------------------
@@ -65,8 +51,9 @@ if newcase :
    grid = res+'_'+res
    cmd = src_dir+'cime/scripts/create_newcase -case '+case_dir+case
    cmd = cmd + ' -compset '+compset+' -res '+grid
+   cmd = cmd + '-pecount '+str(num_nodes*tasks_per_node)+'x1 '
    if arch=='CPU' : cmd = cmd + ' -mach summit-cpu -compiler pgi    -pecount '+str(num_nodes*64)+'x1 '
-   if arch=='GPU' : cmd = cmd + ' -mach summit     -compiler pgigpu -pecount '+str(num_nodes*tasks_per_node)+'x1 '
+   if arch=='GPU' : cmd = cmd + ' -mach summit     -compiler pgigpu '
    os.system(cmd)
 
    # Change run directory to be next to bld directory
@@ -84,45 +71,30 @@ os.chdir(case_dir+case+'/')
 if config : 
    #----------------------------------------------------------------------------
    # Special CAM_CONFIG_OPTS for SP runs not using SP compsets
-   #----------------------------------------------------------------------------
-   if 'SP' in cld and compset not in ['FSP1V1','FSP2V1'] :
-      # set options common to all SP setups
-      
-      cam_opt = ' -phys cam5 -use_SPCAM  -rad rrtmg -nlev 72 -microphys mg2 ' \
-               +' -crm_nz '+str(nlev_crm) +' -crm_adv MPDATA '                \
-               +' -crm_nx '+str(crm_nx)   +' -crm_ny '+str(crm_ny)            \
-               +' -crm_dx '+str(crm_dx)   +' -crm_dt '+str(crm_dt)            \
-               +' -crm_nx_rad 4 -crm_ny_rad 1 -bc_dep_to_snow_updates '
-      # 1-moment microphysics
-      if cld=='SP1': cam_opt = cam_opt + ' -SPCAM_microp_scheme sam1mom -chem none ' 
-      # 2-moment microphysics
-      if cld=='SP2': cam_opt = cam_opt + ' -SPCAM_microp_scheme m2005  '      \
-                                       +' -chem linoz_mam4_resus_mom_soag '   \
-                                       +' -rain_evap_to_coarse_aero '         \
-                                       +' -bc_dep_to_snow_updates '
-      cam_opt = cam_opt+' -cppdefs \' -DSP_DIR_NS -DSP_MCICA_RAD \' '
-
-      os.system('./xmlchange -file env_build.xml -id CAM_CONFIG_OPTS  -val  \"'+cam_opt+'\"' )
+   #----------------------------------------------------------------------------   
+   cam_opt = ' -phys cam5 -use_SPCAM  -rad rrtmg -nlev 72 -microphys mg2 ' \
+            +' -crm_nz 58 -crm_adv MPDATA -crm_dt 5 '                      \
+            +' -crm_nx '+str(crm_nx)+' -crm_ny 1 -crm_dx '+str(crm_dx)     \
+            +' -crm_nx_rad 4 -crm_ny_rad 1 -bc_dep_to_snow_updates '       \
+            + ' -SPCAM_microp_scheme sam1mom -chem none '                  \
+            +' -cppdefs \' -DSP_DIR_NS -DSP_MCICA_RAD \' '
+   os.system('./xmlchange -file env_build.xml -id CAM_CONFIG_OPTS  -val  \"'+cam_opt+'\"' )
    #----------------------------------------------------------------------------
    #----------------------------------------------------------------------------
-
    # Change pcols for GPU runs
    if arch=='GPU' : os.system('./xmlchange --append -file env_build.xml -id CAM_CONFIG_OPTS  -val  \" -pcols '+str(pcols)+' \" ' )
 
    # disable threading for SP
-   if 'SP' in cld : os.system('./xmlchange -file env_mach_pes.xml -id NTHRDS_ATM -val 1 ')
+   os.system('./xmlchange -file env_mach_pes.xml -id NTHRDS_ATM -val 1 ')
    
    # reduce task count for the non-atmos components
    ntask_atm = num_nodes*tasks_per_node
-   os.system('./xmlchange -file env_mach_pes.xml -id NTASKS_OCN -val '+str(ntask_atm/4)+' ')
-   os.system('./xmlchange -file env_mach_pes.xml -id NTASKS_ICE -val '+str(ntask_atm/4)+' ')
-   os.system('./xmlchange -file env_mach_pes.xml -id NTASKS_LND -val '+str(ntask_atm/4)+' ')
-   os.system('./xmlchange -file env_mach_pes.xml -id NTASKS_GLC -val 1 ')
-   os.system('./xmlchange -file env_mach_pes.xml -id NTASKS_WAV -val 1 ')
-   os.system('./xmlchange -file env_mach_pes.xml -id NTASKS_ESP -val 1 ')
-   os.system('./xmlchange -file env_mach_pes.xml -id NTASKS_ROF -val 1 ')
-   os.system('./xmlchange -file env_mach_pes.xml -id NTASKS_IAC -val 1 ')
+   os.system('./xmlchange -file env_mach_pes.xml NTASKS_OCN='+str(ntask_atm/4)+' ')
+   os.system('./xmlchange -file env_mach_pes.xml NTASKS_ICE='+str(ntask_atm/4)+' ')
+   os.system('./xmlchange -file env_mach_pes.xml NTASKS_LND='+str(ntask_atm/4)+' ')
+   os.system('./xmlchange -file env_mach_pes.xml NTASKS_GLC=1,NTASKS_WAV=1,NTASKS_ESP=1,NTASKS_ROF=1,NTASKS_IAC=1 ')
 
+   # 64_data format is needed for ne120 output
    os.system('./xmlchange ATM_PIO_NETCDF_FORMAT=\"64bit_data\" ')
 
    if clean : os.system('./case.setup --clean')
@@ -141,7 +113,6 @@ if build :
 if submit : 
    # Change inputdata from default due to permissions issue
    os.system('./xmlchange -file env_run.xml  DIN_LOC_ROOT=/gpfs/alpine/scratch/hannah6/cli115/inputdata ')
-   
    #-------------------------------------------------------
    # Query some stuff about the case
    #-------------------------------------------------------
@@ -185,26 +156,21 @@ if submit :
    #------------------------------
    # Prescribed aerosol settings
    #------------------------------
-   if 'chem none' in cam_config_opts and compset not in ['FSP1V1','FSP2V1']  :
-      prescribed_aero_path = '/atm/cam/chem/trop_mam/aero'
-      prescribed_aero_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
-      file.write(' use_hetfrz_classnuc = .false. \n')
-      file.write(' aerodep_flx_type = \'CYCLICAL\' \n')
-      file.write(' aerodep_flx_datapath = \''+din_loc_root+prescribed_aero_path+'\' \n')
-      file.write(' aerodep_flx_file = \''+prescribed_aero_file+'\' \n')
-      file.write(' aerodep_flx_cycle_yr = 01 \n')
-      file.write(' prescribed_aero_type = \'CYCLICAL\' \n')
-      file.write(' prescribed_aero_datapath=\''+din_loc_root+prescribed_aero_path+'\' \n')
-      file.write(' prescribed_aero_file = \''+prescribed_aero_file+'\' \n')
-      file.write(' prescribed_aero_cycle_yr = 01 \n')
+   prescribed_aero_path = '/atm/cam/chem/trop_mam/aero'
+   prescribed_aero_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
+   file.write(' use_hetfrz_classnuc = .false. \n')
+   file.write(' aerodep_flx_type = \'CYCLICAL\' \n')
+   file.write(' aerodep_flx_datapath = \''+din_loc_root+prescribed_aero_path+'\' \n')
+   file.write(' aerodep_flx_file = \''+prescribed_aero_file+'\' \n')
+   file.write(' aerodep_flx_cycle_yr = 01 \n')
+   file.write(' prescribed_aero_type = \'CYCLICAL\' \n')
+   file.write(' prescribed_aero_datapath=\''+din_loc_root+prescribed_aero_path+'\' \n')
+   file.write(' prescribed_aero_file = \''+prescribed_aero_file+'\' \n')
+   file.write(' prescribed_aero_cycle_yr = 01 \n')
    
    #------------------------------
    # Other atm namelist stuff
    #------------------------------
-   # num_dyn = ne*ne*6
-   # file.write(' dyn_npes = '+str(num_dyn)+' \n')   # limit dynamics tasks 
-   # file.write(' srf_flux_avg = 1 \n')              # Sfc flux smoothing (for SP stability)
-
    # Write initialization files at the end of each submission
    file.write(' inithist = \'ENDOFRUN\' \n')
 
@@ -214,7 +180,7 @@ if submit :
    # mean-state acceleration
    file.write(' use_crm_accel    = .true. \n')
    file.write(' crm_accel_uv     = .true. \n')
-   file.write(' crm_accel_factor = 4 \n')
+   file.write(' crm_accel_factor = '+str(crm_accel_fac)+' \n')
 
    # radiation every 30 minutes
    file.write(' iradlw = 6 \n')
