@@ -1279,9 +1279,6 @@ end function radiation_nextsw_cday
     real(r8) ::  aerindex(pcols)      ! Aerosol index
     integer aod400_idx, aod700_idx, cld_tau_idx
 
-    ! Total cloud water threshold for considering a CRM column "cloudy" or "clear"
-    real(r8), parameter :: qtot_cld_threshold = 1.e-9
-
     character(*), parameter :: name = 'radiation_tend'
     character(len=16)       :: SPCAM_microp_scheme  ! SPCAM_microphysics scheme
 !----------------------------------------------------------------------
@@ -1594,29 +1591,12 @@ end function radiation_nextsw_cday
               k = pver-m+1
               do i=1,ncol
 
-                ! Calculate cloud fraction and in-cloud water paths. Cloud fraction can either be
-                ! adopted from the calculation done within the CRM integration or can be calculated
-                ! here based on a total water threshold, assuming that the CRM element is "cloudy"
-                ! if the total water exceeds some threshold (set arbitrarily here), and is "clear"
-                ! otherwise. Note that setting cloud fraction to 0 or 1 based on the total water
-                ! threshold effectively turns OFF MCICA sampling in the cloud optics routines. This
-                ! may be undesireable, especially for longer radiation update intervals (iradsw and
-                ! iradlw > 1 or longer physics timesteps) or when using the reduced radiation
-                ! option in which we average cloud properties over some number of CRM columns. In
-                ! both of these cases, the assumption that clouds are fully resolved on the time and
-                ! space scales that the radiation sees becomes less reasonable.
-                qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
-#ifdef SP_MCICA_RAD
+                ! Overwrite cloud fraction with CRM cloud fraction
                 cld(i,k) = cld_rad(i,ii,jj,m)
-#else
-                if(qtot > qtot_cld_threshold) then
-                    cld(i,k) = 0.99_r8
-                else
-                    cld(i,k) = 0
-                end if
-#endif
+
                 ! Calculate water paths and fraction of ice
                 if (cld(i,k) > 0) then
+                  qtot = qc_rad(i,ii,jj,m) + qi_rad(i,ii,jj,m)
                   fice(i,k) = qi_rad(i,ii,jj,m)/qtot
                   cicewp(i,k) = qi_rad(i,ii,jj,m)*state%pdel(i,k)/gravit    &
                            / max(0.01_r8,cld(i,k)) ! In-cloud ice water path.
