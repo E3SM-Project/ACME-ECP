@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# script for running SP-E3SM simulations using the 2019 INICTE allocation (CLI115)
+# Branch for this campaign: https://github.com/E3SM-Project/ACME-ECP/tree/whannah/incite_2019
 #---------------------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------------------
 import os
@@ -17,7 +19,8 @@ build        = True
 submit       = True
 # continue_run = True
 
-stop_opt,stop_n,resub = 'ndays',5,0
+# stop_opt,stop_n,resub = 'ndays',5,0
+stop_opt,stop_n,resub = 'nmonths',6,0
 
 ne,npg         = 120,2
 arch           = 'GPU'           # GPU / CPU
@@ -32,7 +35,7 @@ crm_dx         = 1000
 phys = f'SP1_{crm_nx}x{crm_ny}_{crm_dx}m'
 res  = f'ne{ne}' if npg==0 else  f'ne{ne}pg{npg}'
 
-timestamp = '20191024'
+timestamp = '20191026'
 
 case = '.'.join(['INCITE2019',arch,res,compset,phys,timestamp])
 
@@ -114,14 +117,6 @@ if submit :
    # Change inputdata from default due to permissions issue
    os.system('./xmlchange -file env_run.xml  DIN_LOC_ROOT=/gpfs/alpine/scratch/hannah6/cli115/inputdata ')
    #-------------------------------------------------------
-   # Query some stuff about the case
-   #-------------------------------------------------------
-   (din_loc_root   , err) = sp.Popen('./xmlquery DIN_LOC_ROOT    -value', \
-                                     stdout=sp.PIPE,shell=True,universal_newlines=True).communicate()
-   (cam_config_opts, err) = sp.Popen('./xmlquery CAM_CONFIG_OPTS -value', \
-                                     stdout=sp.PIPE,shell=True,universal_newlines=True).communicate()
-   cam_config_opts = ' '.join(cam_config_opts.split())   # remove extra spaces to simplify string query
-   #-------------------------------------------------------
    # Namelist options
    #-------------------------------------------------------
    nfile = 'user_nl_cam'
@@ -156,6 +151,9 @@ if submit :
    #------------------------------
    # Prescribed aerosol settings
    #------------------------------
+   (din_loc_root, err) = sp.Popen('./xmlquery DIN_LOC_ROOT -value',  \
+                                    stdout=sp.PIPE,shell=True,       \
+                                    universal_newlines=True).communicate()
    prescribed_aero_path = '/atm/cam/chem/trop_mam/aero'
    prescribed_aero_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
    file.write(' use_hetfrz_classnuc = .false. \n')
@@ -193,9 +191,9 @@ if submit :
    #------------------------------
    nfile = 'user_nl_clm'
    file = open(nfile,'w') 
-   # # file.write(' finidat = \'/gpfs/alpine/scratch/hannah6/cli115/init_files/clmi.ICLM45BC.ne30_ne30.d0241119c.clm2.r.nc\' \n')
-   # file.write(' finidat = \'/gpfs/alpine/scratch/hannah6/cli115/init_files/???????\' \n')
-
+   # file.write(' finidat = \'/gpfs/alpine/scratch/hannah6/cli115/init_files/clmi.ICLM45BC.ne30_ne30.d0241119c.clm2.r.nc\' \n')
+   file.write(' finidat = \'/gpfs/alpine/scratch/hannah6/cli115/init_files/E3SM_PG-LAND-SPINUP_ne120pg2_FC5AV1C-H01A_00.clm2.r.0004-02-25-00000.nc\' \n')
+   # file.write(' finidat = \'/ccs/proj/cli115/hannah6/init_files/E3SM_PG-LAND-SPINUP_ne120pg2_FC5AV1C-H01A_00.clm2.r.0004-02-25-00000.nc\' \n')
    file.write(' hist_nhtfrq = 0, -1, -24 \n')
    file.write(" hist_fincl2 = 'EFLX_SOIL_GRND', 'FCEV', 'FCTR', 'FGEV' ")
    file.write(              ",'FSH', 'FSH_G', 'FSH_V' ")
@@ -216,8 +214,14 @@ if submit :
    os.system('./xmlchange -file env_run.xml      STOP_N='            +str(stop_n) )
    os.system('./xmlchange -file env_run.xml      RESUBMIT='          +str(resub)  )
    os.system('./xmlchange -file env_workflow.xml JOB_WALLCLOCK_TIME='+walltime    )
+   os.system('./xmlchange -file env_workflow.xml PROJECT=cli115')
 
-   if ne==120 and npg==2 : os.system('./xmlchange -file env_run.xml      EPS_AGRID=1e-11' )
+   # Restart Frequency
+   os.system('./xmlchange -file env_run.xml      REST_OPTION='       +stop_opt    )
+   os.system('./xmlchange -file env_run.xml      REST_N='            +str(stop_n) )
+
+   # An alternate grid checking threshold is needed for ne120pg2 (still not sure why...)
+   if ne==120 and npg==2 : os.system('./xmlchange -file env_run.xml  EPS_AGRID=1e-11' )
 
    if continue_run :
       os.system('./xmlchange -file env_run.xml CONTINUE_RUN=TRUE ')   
