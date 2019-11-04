@@ -13,26 +13,25 @@ case_dir = os.getenv("HOME")+'/E3SM/Cases/'
 src_dir  = os.getenv("HOME")+'/E3SM/E3SM_SRC1/'
 
 # clean        = True
-newcase      = True
-config       = True
-build        = True
+# newcase      = True
+# config       = True
+# build        = True
 submit       = True
-# continue_run = True
+continue_run = True
 
-# stop_opt,stop_n,resub = 'ndays',5,0
-stop_opt,stop_n,resub = 'nmonths',6,0
+stop_opt,stop_n,resub,walltime = 'nmonths',1,4,'5:00'
+# stop_opt,stop_n,resub,walltime = 'ndays',183,0,'24:00'
 
 ne,npg         = 120,2
+compset        = 'FC5AV1C-H01A' 
+crm_nx         = 64
+crm_dx         = 1000
 arch           = 'GPU'           # GPU / CPU
 num_nodes      = 922             # ne4=>1, ne30=>15, ne120=>??
 tasks_per_node = 18              # GPU=>18 / CPU=>64
 pcols          = 32              # should be slightly larger than #CRM/(total mpi tasks)
-walltime       = '24:00'
-compset        = 'FC5AV1C-H01A' 
-crm_nx         = 64
-crm_dx         = 1000
 
-phys = f'SP1_{crm_nx}x{crm_ny}_{crm_dx}m'
+phys = f'SP1_{crm_nx}x1_{crm_dx}m'
 res  = f'ne{ne}' if npg==0 else  f'ne{ne}pg{npg}'
 
 timestamp = '20191026'
@@ -43,7 +42,7 @@ case = '.'.join(['INCITE2019',arch,res,compset,phys,timestamp])
 #---------------------------------------------------------------------------------------------------
 print('\n  case : '+case+'\n')
 
-crm_accel_fac  = 4  # CRM mean-state acceleration factor
+crm_accel_fac = 4  # CRM mean-state acceleration factor
 
 dtime    = 5*60   # GCM physics time step
 ncpl     = 86400 / dtime
@@ -52,11 +51,11 @@ ncpl     = 86400 / dtime
 #---------------------------------------------------------------------------------------------------
 if newcase :
    grid = res+'_'+res
-   cmd = src_dir+'cime/scripts/create_newcase -case '+case_dir+case
-   cmd = cmd + ' -compset '+compset+' -res '+grid
-   cmd = cmd + '-pecount '+str(num_nodes*tasks_per_node)+'x1 '
-   if arch=='CPU' : cmd = cmd + ' -mach summit-cpu -compiler pgi    -pecount '+str(num_nodes*64)+'x1 '
-   if arch=='GPU' : cmd = cmd + ' -mach summit     -compiler pgigpu '
+   cmd = src_dir+'cime/scripts/create_newcase --case '+case_dir+case
+   cmd = cmd + ' --compset '+compset+' --res '+grid
+   cmd = cmd + ' --pecount '+str(num_nodes*tasks_per_node)+'x1 '
+   if arch=='CPU' : cmd = cmd + ' --machine summit-cpu --compiler pgi    '
+   if arch=='GPU' : cmd = cmd + ' --machine summit     --compiler pgigpu '
    os.system(cmd)
 
    # Change run directory to be next to bld directory
@@ -184,6 +183,10 @@ if submit :
    file.write(' iradlw = 6 \n')
    file.write(' iradsw = 6 \n')
 
+   # Adjust dycore time step to keep 1.25 min dynamics time step [i.e. 15/(6*2) = 5/(2*2) = 1.25 ]
+   file.write(" rsplit    = 2 \n")  # default is 2 
+   file.write(" se_nsplit = 2 \n")  # default is 6
+
    # file.write(' state_debug_checks = .true. \n')
    file.close()
    #------------------------------
@@ -219,6 +222,8 @@ if submit :
    # Restart Frequency
    os.system('./xmlchange -file env_run.xml      REST_OPTION='       +stop_opt    )
    os.system('./xmlchange -file env_run.xml      REST_N='            +str(stop_n) )
+   # os.system('./xmlchange -file env_run.xml      REST_OPTION=nmonths')
+   # os.system('./xmlchange -file env_run.xml      REST_N=2')
 
    # An alternate grid checking threshold is needed for ne120pg2 (still not sure why...)
    if ne==120 and npg==2 : os.system('./xmlchange -file env_run.xml  EPS_AGRID=1e-11' )
