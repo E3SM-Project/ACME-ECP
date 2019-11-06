@@ -44,6 +44,12 @@ module physpkg
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg, modal_aero_calcsize_sub
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
+#ifdef WH_STATE_CHECK    
+  use physics_types,  only: physics_state_check
+  use shr_assert_mod, only: shr_assert_in_domain
+  use shr_infnan_mod, only: assignment(=),shr_infnan_posinf, shr_infnan_neginf
+#endif
+
   implicit none
   private
 
@@ -1319,12 +1325,20 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
        call t_startf('diag_surf')
        call diag_surf(cam_in(c), cam_out(c), phys_state(c)%ps,trefmxav(1,c), trefmnav(1,c))
        call t_stopf('diag_surf')
-
+#ifdef WH_STATE_CHECK
+      call physics_state_check(phys_state(c),"before_tphysac")
+      call shr_assert_in_domain(phys_state(c)%t(:ncol,:), gt=100._r8, &
+                                varname="state%t", msg="Temp is below 100 K before tphysac")
+#endif
        call tphysac(ztodt, cam_in(c),  &
             sgh(1,c), sgh30(1,c), cam_out(c),                              &
             phys_state(c), phys_tend(c), phys_buffer_chunk,&
             fsds(1,c))
-
+#ifdef WH_STATE_CHECK
+      call physics_state_check(phys_state(c),"after_tphysac")
+      call shr_assert_in_domain(phys_state(c)%t(:ncol,:), gt=100._r8, &
+                                varname="state%t", msg="Temp is below 100 K after tphysac")
+#endif
        end_count = shr_sys_irtc(irtc_rate)
        chunk_cost = real( (end_count-beg_count), r8)/real(irtc_rate, r8)
        call update_cost_p(c, chunk_cost)
@@ -2170,6 +2184,12 @@ subroutine tphysbc (ztodt,               &
 
 #endif /* CRM */
 
+#ifdef WH_STATE_CHECK    
+    real(r8) :: posinf_r8, neginf_r8
+    posinf_r8 = shr_infnan_posinf
+    neginf_r8 = shr_infnan_neginf
+#endif
+
     call phys_getopts( use_SPCAM_out           = use_SPCAM )
     call phys_getopts( use_ECPP_out            = use_ECPP)
     call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme)
@@ -2824,11 +2844,24 @@ end if
       !---------------------------------------------------------------------------
       ! Run the CRM 
       !---------------------------------------------------------------------------
+#ifdef WH_STATE_CHECK
+      call physics_state_check(state, name="before_crm")
+      call shr_assert_in_domain(state%t(:ncol,:), gt=100._r8, &
+                                varname="state%t", msg="Temp is below 100 K before CRM")
+#endif
+
       call crm_physics_tend(ztodt, state, tend,ptend, pbuf, cam_in, cam_out,    &
                             species_class, crm_ecpp_output,                     &
                             sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
 
       call physics_update(state, ptend, crm_run_time, tend)
+
+#ifdef WH_STATE_CHECK
+      call physics_state_check(state, name="after_crm")
+      call shr_assert_in_domain(state%t(:ncol,:), gt=100._r8, &
+                                varname="state%t", msg="Temp is below 100 K after CRM")
+#endif
+
 
       call check_energy_chng(state, tend, "crm_tend", nstep, crm_run_time,  &
                              zero, sp_qchk_prec_dp, sp_qchk_snow_dp, sp_rad_flux)
@@ -3042,7 +3075,15 @@ if (l_rad) then
     do i=1,ncol
        tend%flx_net(i) = net_flx(i)
     end do
+
+#ifdef WH_STATE_CHECK
+    call shr_assert_in_domain(ptend%s(:ncol,:), is_nan=.false.,         &
+         varname="ptend%s", msg="NaN found in rad tendencies")
+    call shr_assert_in_domain(ptend%s(:ncol,:), lt=posinf_r8, gt=neginf_r8, &
+         varname="ptend%s", msg="Invalid value found in rad tendencies")
+#endif
     
+
     !-- mdb spcam
     ! don't add radiative tendency to GCM temperature in case of superparameterization
     ! as it was added above as part of crm tendency.
