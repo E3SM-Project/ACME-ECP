@@ -15,12 +15,12 @@ src_dir  = os.getenv("HOME")+'/E3SM/E3SM_SRC1/'
 # clean        = True
 # newcase      = True
 # config       = True
-# build        = True
+build        = True
 submit       = True
-continue_run = True
+# continue_run = True
 
 # stop_opt,stop_n,resub,walltime = 'nmonths',1,4,'5:00'
-stop_opt,stop_n,resub,walltime = 'ndays',45,3,'6:00'
+stop_opt,stop_n,resub,walltime = 'ndays',45,3,'5:00'
 
 ne,npg         = 120,2
 compset        = 'FC5AV1C-H01A' 
@@ -36,13 +36,13 @@ res  = f'ne{ne}' if npg==0 else  f'ne{ne}pg{npg}'
 
 timestamp = '20191026'
 
-case = '.'.join(['INCITE2019',arch,res,compset,phys,timestamp])
+case = '.'.join(['INCITE2019_DEBUG',arch,res,compset,phys,timestamp])
 
 #---------------------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------------------
 print('\n  case : '+case+'\n')
 
-crm_accel_fac = 3  # CRM mean-state acceleration factor
+crm_accel_fac = 4  # CRM mean-state acceleration factor
 
 dtime    = 5*60   # GCM physics time step
 ncpl     = 86400 / dtime
@@ -77,9 +77,9 @@ if config :
    cam_opt = ' -phys cam5 -use_SPCAM  -rad rrtmg -nlev 72 -microphys mg2 ' \
             +' -crm_nz 58 -crm_adv MPDATA -crm_dt 5 '                      \
             +' -crm_nx '+str(crm_nx)+' -crm_ny 1 -crm_dx '+str(crm_dx)     \
-            +' -crm_nx_rad 4 -crm_ny_rad 1 -bc_dep_to_snow_updates '       \
+            +' -crm_nx_rad 1 -crm_ny_rad 1 -bc_dep_to_snow_updates '       \
             + ' -SPCAM_microp_scheme sam1mom -chem none '                  \
-            +' -cppdefs \' -DSP_DIR_NS -DSP_MCICA_RAD \' '
+            +' -cppdefs \' -DSP_DIR_NS -DSP_MCICA_RAD -DWH_STATE_CHECK \' '
    os.system('./xmlchange -file env_build.xml -id CAM_CONFIG_OPTS  -val  \"'+cam_opt+'\"' )
    #----------------------------------------------------------------------------
    #----------------------------------------------------------------------------
@@ -123,29 +123,29 @@ if submit :
    #------------------------------
    # history output frequency and variables
    #------------------------------
-   file.write(' nhtfrq = 0,-1,-3,-6 \n') 
-   file.write(' mfilt = 1,120,40,20 \n')
-   file.write(" avgflag_pertape = 'A','A','A','I' \n")     
+   # file.write(' nhtfrq = 0,-1,-3,-6 \n') 
+   # file.write(' mfilt = 1,120,40,20 \n')
+   # file.write(" avgflag_pertape = 'A','A','A','I' \n")     
 
-   # Add dynamics grid variables to h0 files
-   if npg>0 : file.write(" fincl1 = 'DYN_T','DYN_Q','DYN_U','DYN_OMEGA','DYN_PS' \n")
-   # hourly 2D fields
-   file.write(" fincl2 = 'PRECT','TMQ','LHFLX','SHFLX','TS','PS'")
-   file.write(         ",'TGCLDLWP','TGCLDIWP','SWCF','LWCF'")    
-   file.write(         ",'FLNT','FSNT','FSNS','FLNS'")            # TOA rad fields
-   file.write(         ",'FSDS','FSDSC','FLDS','FLDSC'")          # SFC rad for CRF @ sfc
-   file.write(         ",'TREFHT','QREFHT','U10'")                # for diurnal cycle analysis
-   file.write(         ",'UBOT','VBOT','Z500','Z300','PSL'")      # for TC tracking 
-   file.write("\n")
-   # 3-hourly 3D fields for budget terms 
-   file.write(" fincl3 = 'PS','T','Q','Z3','U','V','OMEGA','CLDLIQ','CLDICE'")
-   file.write(         ",'SPTVFLUX','SPQVFLUX','SPTKE','SPTKES' ")
-   file.write("\n")
-   # CRM-fields near SGP site (halo of 9 crms for ne120np4)
-   file.write(" fincl4 = 'CRM_U:I','CRM_W:I','CRM_QV:I'")
-   file.write(         ",'CRM_QC:I','CRM_QI:I','CRM_QPC:I','CRM_QPI:I'")
-   file.write("\n")
-   file.write(" fincl4lonlat = '97.8w:97.2w_36.27n:36.75n' \n")
+   # # Add dynamics grid variables to h0 files
+   # if npg>0 : file.write(" fincl1 = 'DYN_T','DYN_Q','DYN_U','DYN_OMEGA','DYN_PS' \n")
+   # # hourly 2D fields
+   # file.write(" fincl2 = 'PRECT','TMQ','LHFLX','SHFLX','TS','PS'")
+   # file.write(         ",'TGCLDLWP','TGCLDIWP','SWCF','LWCF'")    
+   # file.write(         ",'FLNT','FSNT','FSNS','FLNS'")            # TOA rad fields
+   # file.write(         ",'FSDS','FSDSC','FLDS','FLDSC'")          # SFC rad for CRF @ sfc
+   # file.write(         ",'TREFHT','QREFHT','U10'")                # for diurnal cycle analysis
+   # file.write(         ",'UBOT','VBOT','Z500','Z300','PSL'")      # for TC tracking 
+   # file.write("\n")
+   # # 3-hourly 3D fields for budget terms 
+   # file.write(" fincl3 = 'PS','T','Q','Z3','U','V','OMEGA','CLDLIQ','CLDICE'")
+   # file.write(         ",'SPTVFLUX','SPQVFLUX','SPTKE','SPTKES' ")
+   # file.write("\n")
+   # # CRM-fields near SGP site (halo of 9 crms for ne120np4)
+   # file.write(" fincl4 = 'CRM_U:I','CRM_W:I','CRM_QV:I'")
+   # file.write(         ",'CRM_QC:I','CRM_QI:I','CRM_QPC:I','CRM_QPI:I'")
+   # file.write("\n")
+   # file.write(" fincl4lonlat = '97.8w:97.2w_36.27n:36.75n' \n")
 
    #------------------------------
    # Prescribed aerosol settings
@@ -197,16 +197,16 @@ if submit :
    # file.write(' finidat = \'/gpfs/alpine/scratch/hannah6/cli115/init_files/clmi.ICLM45BC.ne30_ne30.d0241119c.clm2.r.nc\' \n')
    file.write(' finidat = \'/gpfs/alpine/scratch/hannah6/cli115/init_files/E3SM_PG-LAND-SPINUP_ne120pg2_FC5AV1C-H01A_00.clm2.r.0004-02-25-00000.nc\' \n')
    # file.write(' finidat = \'/ccs/proj/cli115/hannah6/init_files/E3SM_PG-LAND-SPINUP_ne120pg2_FC5AV1C-H01A_00.clm2.r.0004-02-25-00000.nc\' \n')
-   file.write(' hist_nhtfrq = 0, -1, -24 \n')
-   file.write(" hist_fincl2 = 'EFLX_SOIL_GRND', 'FCEV', 'FCTR', 'FGEV' ")
-   file.write(              ",'FSH', 'FSH_G', 'FSH_V' ")
-   file.write(              ",'QINTR', 'QDRIP', 'QH2OSFC', 'QTOPSOIL', 'QINFL' ")
-   file.write(              ",'QDRAI', 'QOVER', 'QRUNOFF' ")
-   file.write(              ", 'SOILWATER_10CM', 'TSOI_10CM' ")
-   file.write(              ",'SWdown', 'SWup', 'LWdown', 'LWup'")
-   file.write('\n')
-   file.write(" hist_fincl3 = 'H2OCAN', 'H2OSNO', 'H2OSOI', 'WA', 'TWS', 'ZWT', 'TSOI' ")
-   file.write('\n')
+   # file.write(' hist_nhtfrq = 0, -1, -24 \n')
+   # file.write(" hist_fincl2 = 'EFLX_SOIL_GRND', 'FCEV', 'FCTR', 'FGEV' ")
+   # file.write(              ",'FSH', 'FSH_G', 'FSH_V' ")
+   # file.write(              ",'QINTR', 'QDRIP', 'QH2OSFC', 'QTOPSOIL', 'QINFL' ")
+   # file.write(              ",'QDRAI', 'QOVER', 'QRUNOFF' ")
+   # file.write(              ", 'SOILWATER_10CM', 'TSOI_10CM' ")
+   # file.write(              ",'SWdown', 'SWup', 'LWdown', 'LWup'")
+   # file.write('\n')
+   # file.write(" hist_fincl3 = 'H2OCAN', 'H2OSNO', 'H2OSOI', 'WA', 'TWS', 'ZWT', 'TSOI' ")
+   # file.write('\n')
    file.close()
    
    #-------------------------------------------------------
