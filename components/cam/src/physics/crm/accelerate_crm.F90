@@ -94,14 +94,14 @@ module accelerate_crm_mod
   
       integer, intent(inout) :: nstop
   
-      if (mod(real(nstop), (1._r8 + crm_accel_factor)) .ne. 0) then
+      if (mod(nstop, int(1 + crm_accel_factor)) .ne. 0) then
         write(iulog,*) "CRM acceleration unexpected exception:"
         write(iulog,*) "(1+crm_accel_factor) does not divide equally into nstop"
         write(iulog,*) "nstop = ", nstop
         write(iulog,*) "crm_accel_factor = ", crm_accel_factor
         call endrun('crm main: bad crm_accel_factor and nstop pair')
       else
-        nstop = nstop / (1._r8 + crm_accel_factor)
+        nstop = nstop / (1 + crm_accel_factor)
       endif
     end subroutine crm_accel_nstop
 
