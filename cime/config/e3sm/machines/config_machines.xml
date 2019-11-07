@@ -3022,7 +3022,7 @@
       <command name="load">cuda</command>
     </modules>
     <modules compiler="ibm">
-      <command name="load">xl/16.1.1-1</command>
+      <command name="load">xl</command>
     </modules>
     <modules compiler="gnu">
       <command name="load">gcc/6.4.0</command>
@@ -3077,6 +3077,11 @@
     <env name="ESSL_PATH">$ENV{OLCF_ESSL_ROOT}</env>
     <env name="NETLIB_LAPACK_PATH">$ENV{OLCF_NETLIB_LAPACK_ROOT}</env>
     <env name="PGI_ACC_POOL_ALLOC">0</env>
+  </environment_variables>
+  <environment_variables compiler="ibm">
+    <env name="OMPI_CC">xlc_r</env>
+    <env name="OMPI_FC">xlf2008_r</env>
+    <env name="OMPI_CXX">xlc++_r</env>
   </environment_variables>
   <environment_variables SMP_PRESENT="TRUE">
     <env name="OMP_NUM_THREADS">$ENV{OMP_NUM_THREADS}</env>
