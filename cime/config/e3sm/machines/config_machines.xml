@@ -2903,7 +2903,7 @@
         <command name="load">pgi/19.4</command>
       </modules>
       <modules compiler="ibm">
-        <command name="load">xl/16.1.1-3</command>
+        <command name="load">xl</command>
       </modules>
       <modules compiler="gnu">
         <command name="load">gcc/6.4.0</command>
@@ -2917,8 +2917,8 @@
       <!-- Sometimes,same versions of libraries are not available for different compilers, hence the split below -->
       <modules compiler="ibm" mpilib="!mpi-serial">
         <command name="load">spectrum-mpi</command>
-        <command name="load">parallel-netcdf/1.8.0</command>
-        <command name="load">hdf5/1.10.3</command>
+        <command name="load">parallel-netcdf</command>
+        <command name="load">hdf5</command>
       </modules>
       <modules compiler="pgi.*" mpilib="!mpi-serial">
         <command name="load">spectrum-mpi</command>
@@ -2927,8 +2927,8 @@
       </modules>
       <modules compiler="gnu" mpilib="!mpi-serial">
         <command name="load">spectrum-mpi</command>
-        <command name="load">parallel-netcdf/1.8.0</command>
-        <command name="load">hdf5/1.10.3</command>
+        <command name="load">parallel-netcdf</command>
+        <command name="load">hdf5</command>
       </modules>
     </module_system>
 
@@ -2943,6 +2943,11 @@
       <env name="NETCDF_FORTRAN_PATH">$ENV{OLCF_NETCDF_FORTRAN_ROOT}</env>
       <env name="ESSL_PATH">$ENV{OLCF_ESSL_ROOT}</env>
       <env name="NETLIB_LAPACK_PATH">$ENV{OLCF_NETLIB_LAPACK_ROOT}</env>
+    </environment_variables>
+    <environment_variables compiler="ibm">
+      <env name="OMPI_CC">xlc_r</env>
+      <env name="OMPI_FC">xlf2008_r</env>
+      <env name="OMPI_CXX">xlc++_r</env>
     </environment_variables>
     <environment_variables SMP_PRESENT="TRUE">
       <env name="OMP_NUM_THREADS">$ENV{OMP_NUM_THREADS}</env>
@@ -3017,7 +3022,7 @@
       <command name="load">cuda</command>
     </modules>
     <modules compiler="ibm">
-      <command name="load">xl/16.1.1-1</command>
+      <command name="load">xl</command>
     </modules>
     <modules compiler="gnu">
       <command name="load">gcc/6.4.0</command>
@@ -3072,6 +3077,11 @@
     <env name="ESSL_PATH">$ENV{OLCF_ESSL_ROOT}</env>
     <env name="NETLIB_LAPACK_PATH">$ENV{OLCF_NETLIB_LAPACK_ROOT}</env>
     <env name="PGI_ACC_POOL_ALLOC">0</env>
+  </environment_variables>
+  <environment_variables compiler="ibm">
+    <env name="OMPI_CC">xlc_r</env>
+    <env name="OMPI_FC">xlf2008_r</env>
+    <env name="OMPI_CXX">xlc++_r</env>
   </environment_variables>
   <environment_variables SMP_PRESENT="TRUE">
     <env name="OMP_NUM_THREADS">$ENV{OMP_NUM_THREADS}</env>
