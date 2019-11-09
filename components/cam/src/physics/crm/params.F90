@@ -112,7 +112,7 @@ module params
   logical:: dotracers = .false.
   logical:: dosmoke = .false.
 
-  integer, parameter :: asyncid = 1
+  integer :: asyncid = 1
 
   integer:: nclubb = 1 ! SAM timesteps per CLUBB timestep
 
