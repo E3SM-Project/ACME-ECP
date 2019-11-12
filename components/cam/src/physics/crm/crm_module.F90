@@ -377,7 +377,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call t_startf('crm_gpu_region')
 
   !  Initialize CRM fields:
-  !$acc parallel loop collapse(4) async(asyncid)
   !$omp target teams distribute parallel do collapse(4) depend(inout:asyncid)
   do k = 1 , nzm
     do j = 1 , ny
@@ -399,7 +398,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   ! limit the velocity at the very first step:
   if(u(1,1,1,1).eq.u(1,2,1,1).and.u(1,3,1,2).eq.u(1,4,1,2)) then
-    !$acc parallel loop collapse(4) async(asyncid)
     !$omp target teams distribute parallel do collapse(4) depend(inout:asyncid)
     do k=1,nzm
       do j=1,ny
@@ -426,7 +424,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 #endif
 
   ! Populate microphysics array from crm_state
-  !$acc parallel loop collapse(4) async(asyncid)
   !$omp target teams distribute parallel do collapse(4) depend(inout:asyncid)
   do k = 1 , nzm
     do j = 1 , ny
@@ -453,8 +450,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
   enddo
-
-  !$omp taskwait
 
 #ifdef m2005
   do icrm = 1 , ncrms
@@ -915,7 +910,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(3) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -981,7 +976,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       enddo
     enddo
 
-    !$acc parallel loop gang vector collapse(4) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx

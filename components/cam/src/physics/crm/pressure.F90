@@ -44,7 +44,6 @@ contains
     real(8)       , allocatable :: a(:,:)
     real(8)       , allocatable :: c(:,:)
     integer iwall,jwall
-    integer :: numgangs  !For working aroung PGI OpenACC bug where it didn't create enough gangs
     real(8), allocatable :: eign(:,:)
 
     allocate( f (ncrms,nx2,ny2,nzslab)      )
@@ -120,11 +119,10 @@ contains
       call fftfax_crm(nx_gl,ifaxi,trigxi)
       if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
     enddo
-    !$acc parallel loop gang vector collapse(3) private(work,ftmp_x) async(asyncid)
+    !$acc parallel loop collapse(3) private(work,ftmp_x) async(asyncid)
     do k=1,nzslab
       do j = 1 , ny_gl
         do icrm = 1 , ncrms
-          !$acc cache(ftmp_x,work)
           ftmp_x = f(icrm,:,j,k)
           call fft991_crm(ftmp_x,work,trigxi,ifaxi,1,nx2,nx_gl,1,-1)
           f(icrm,:,j,k) = ftmp_x
@@ -132,11 +130,10 @@ contains
       enddo
     enddo
     if(RUN3D) then
-      !$acc parallel loop gang vector collapse(3) private(work,ftmp_y) async(asyncid)
+      !$acc parallel loop collapse(3) private(work,ftmp_y) async(asyncid)
       do k=1,nzslab
         do i = 1 , nx_gl+1
           do icrm = 1 , ncrms
-            !$acc cache(ftmp_y,work)
             ftmp_y = f(icrm,i,:,k)
             call fft991_crm(ftmp_y,work,trigxj,ifaxj,1,nx2,ny_gl,1,-1)
             f(icrm,i,:,k) = ftmp_y
@@ -197,13 +194,10 @@ contains
       enddo
     enddo
 
-    !For working aroung PGI OpenACC bug where it didn't create enough gangs
-    numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
-    !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) async(asyncid)
+    !$acc parallel loop collapse(3) private(alfa,beta) async(asyncid)
     do j=1,nyp22-jwall
       do i=1,nxp1-iwall
         do icrm = 1 , ncrms
-          !$acc cache(alfa,beta)
           if(dowally) then
             jd=j+jt-1
           else
@@ -252,11 +246,10 @@ contains
     !-------------------------------------------------
     !   Perform inverse Fourier transformation:
     if(RUN3D) then
-      !$acc parallel loop gang vector collapse(3) private(ftmp_y,work) async(asyncid)
+      !$acc parallel loop collapse(3) private(ftmp_y,work) async(asyncid)
       do k=1,nzslab
         do i = 1 , nx_gl+1
           do icrm = 1 , ncrms
-            !$acc cache(ftmp_y,work)
             ftmp_y = f(icrm,i,:,k)
             call fft991_crm(ftmp_y,work,trigxj,ifaxj,1,nx2,ny_gl,1,+1)
             f(icrm,i,:,k) = ftmp_y
@@ -264,11 +257,10 @@ contains
         enddo
       enddo
     endif
-    !$acc parallel loop gang vector collapse(3) private(ftmp_x,work) async(asyncid)
+    !$acc parallel loop collapse(3) private(ftmp_x,work) async(asyncid)
     do k=1,nzslab
       do j = 1 , ny_gl
         do icrm = 1 , ncrms
-          !$acc cache(ftmp_x,work)
           ftmp_x = f(icrm,:,j,k)
           call fft991_crm(ftmp_x,work,trigxi,ifaxi,1,nx2,nx_gl,1,+1)
           f(icrm,:,j,k) = ftmp_x

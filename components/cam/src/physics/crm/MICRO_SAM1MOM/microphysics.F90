@@ -587,7 +587,7 @@ CONTAINS
     call prefetch( iwmax   )
     call prefetch( rhofac  )
 
-    !$acc parallel loop gang vector collapse(2) async(asyncid)
+    !$acc parallel loop collapse(2) async(asyncid)
     do k = 1,nzm
       do icrm = 1 , ncrms
         rhofac(icrm,k) = sqrt(1.29/rho(icrm,k))
@@ -600,7 +600,7 @@ CONTAINS
 
     ! 	Add sedimentation of precipitation field to the vert. vel.
     prec_cfl = 0.
-    !$acc parallel loop gang vector collapse(4) reduction(max:prec_cfl) async(asyncid)
+    !$acc parallel loop collapse(4) reduction(max:prec_cfl) async(asyncid)
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -645,7 +645,7 @@ CONTAINS
     ! take more than one advection step to maintain stability.
     if (prec_cfl.gt.0.9) then
       nprec = CEILING(prec_cfl/0.9)
-      !$acc parallel loop gang vector collapse(4) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k = 1,nzm
         do j=1,ny
           do i=1,nx
@@ -663,7 +663,7 @@ CONTAINS
 
     !  loop over iterations
     do iprec = 1,nprec
-      !$acc parallel loop gang vector collapse(4) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k = 1,nzm
         do j=1,ny
           do i=1,nx
@@ -674,7 +674,7 @@ CONTAINS
         enddo
       enddo
 
-      !$acc parallel loop gang vector collapse(4) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -692,7 +692,7 @@ CONTAINS
         enddo
       enddo
 
-      !$acc parallel loop gang vector collapse(4) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -704,7 +704,7 @@ CONTAINS
         enddo
       enddo
 
-      !$acc parallel loop gang vector collapse(4) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -726,7 +726,7 @@ CONTAINS
 
       !---------- non-osscilatory option ---------------
       if(nonos) then
-        !$acc parallel loop gang vector collapse(4) async(asyncid)
+        !$acc parallel loop collapse(4) async(asyncid)
         do k=1,nzm
           do j=1,ny
             do i=1,nx
@@ -742,7 +742,7 @@ CONTAINS
             enddo
           enddo
         enddo
-        !$acc parallel loop gang vector collapse(4) async(asyncid)
+        !$acc parallel loop collapse(4) async(asyncid)
         do k=1,nzm
           do j=1,ny
             do i=1,nx
@@ -759,7 +759,7 @@ CONTAINS
 
       ! Update precipitation mass fraction and liquid-ice static
       ! energy using precipitation fluxes computed in this column.
-      !$acc parallel loop gang vector collapse(4) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
       do j=1,ny
         do i=1,nx
           do k=1,nzm
@@ -791,7 +791,7 @@ CONTAINS
 
       if (iprec.lt.nprec) then
         ! Re-compute precipitation velocity using new value of qp.
-        !$acc parallel loop gang vector collapse(4) async(asyncid)
+        !$acc parallel loop collapse(4) async(asyncid)
         do j=1,ny
           do i=1,nx
             do k=1,nzm

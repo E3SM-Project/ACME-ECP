@@ -14,7 +14,7 @@ contains
 
     if(docolumn) return
 
-    !$acc parallel loop gang vector collapse(4) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k=2,nzm
       do j=1,ny
         do i=1,nx

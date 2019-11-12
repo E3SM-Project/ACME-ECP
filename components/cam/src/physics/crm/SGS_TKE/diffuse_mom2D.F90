@@ -26,7 +26,6 @@ contains
     real(crm_rknd), allocatable :: fu(:,:,:,:)
     real(crm_rknd), allocatable :: fv(:,:,:,:)
     real(crm_rknd), allocatable :: fw(:,:,:,:)
-    integer :: numgangs  !For working around PGI bugs where PGI did not allocate enough gangs
 
     allocate( fu(ncrms,0:nx,1,nz) )
     allocate( fv(ncrms,0:nx,1,nz) )
@@ -41,9 +40,7 @@ contains
     j=1
 
     if( .not. docolumn ) then
-      !For working around PGI bugs where PGI did not allocate enough gangs
-      numgangs = ceiling( ncrms*nzm*nx/128. )
-      !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=0,nx
           do icrm = 1 , ncrms
@@ -61,9 +58,7 @@ contains
           end do
         end do
       end do
-      !For working around PGI bugs where PGI did not allocate enough gangs
-      numgangs = ceiling( ncrms*nzm*nx/128. )
-      !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) async(asyncid)
+      !$acc parallel loop collapse(3) async(asyncid)
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
@@ -87,9 +82,7 @@ contains
       enddo
     enddo
 
-    !For working around PGI bugs where PGI did not allocate enough gangs
-    numgangs = ceiling( ncrms*(nzm-1)*nx/128. )
-    !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) async(asyncid)
+    !$acc parallel loop collapse(3) async(asyncid)
     do k=1,nzm-1
       do i=1,nx
         do icrm = 1 , ncrms

@@ -21,7 +21,6 @@ contains
     real(crm_rknd) tau(ncrms,nzm), tmp
     integer, allocatable :: n_damp(:)
     integer :: i, j, k, icrm
-    integer :: numgangs  !For working around PGI OpenACC bug where it didn't create enough gangs
     ! crjones tests: make changes to u0, v0, t0 local instead of shared with vars
     real(crm_rknd), allocatable :: t0loc(:,:)
     real(crm_rknd), allocatable :: u0loc(:,:)
@@ -90,9 +89,7 @@ contains
       end do
     end do
 
-   !For working around PGI OpenACC bug where it didn't create enough gangs 
-    numgangs = ceiling(ncrms*ny*nx/128.)
-    !$acc parallel loop collapse(4) vector_length(128) num_gangs(numgangs) async(asyncid)
+    !$acc parallel loop collapse(4) async(asyncid)
     do k = 1 , nzm
       do j=1,ny
         do i=1,nx
