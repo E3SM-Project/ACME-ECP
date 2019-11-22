@@ -2687,34 +2687,35 @@ sub write_filepath
        print $fh "$camsrcdir/cam/src/physics/silhs\n";
     }
 
-# Superparameterization
+    # Superparameterization
     if ($crm) {
         print $fh "$camsrcdir/cam/src/physics/crm\n";
+        print $fh "$camsrcdir/cam/src/physics/crm/sam\n";
         if ($SPCAM_microp_scheme eq 'sam1mom') {
-           print $fh "$camsrcdir/cam/src/physics/crm/MICRO_SAM1MOM\n";
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_SAM1MOM\n";
         }
         if ($SPCAM_microp_scheme eq 'm2005') {
           if(defined $opts{'use_crm_cldfrac'}) {
-              print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005FRAC\n"; }
+              print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005FRAC\n"; }
            else {
-              print $fh "$camsrcdir/cam/src/physics/crm/MICRO_M2005\n";
+              print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005\n";
            }
         }
         if ( defined $opts{'clubb_crm'}) {
            print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
-           print $fh "$camsrcdir/cam/src/physics/crm/SGS_CLUBBkvhkvm\n";
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_CLUBBkvhkvm\n";
         }
          else {
-           print $fh "$camsrcdir/cam/src/physics/crm/SGS_TKE\n";
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_TKE\n";
         }
 
         if ( defined $opts{'use_ECPP'}) {
-           print $fh "$camsrcdir/cam/src/physics/cam/ecpp\n";
+           print $fh "$camsrcdir/cam/src/physics/crm/ecpp\n";
         }
         if ($crm_adv eq 'UM5') {
-           print $fh "$camsrcdir/cam/src/physics/crm/ADV_UM5\n"; }
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_UM5\n"; }
         else {
-           print $fh "$camsrcdir/cam/src/physics/crm/ADV_MPDATA\n";
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_MPDATA\n";
            }
 
     }
