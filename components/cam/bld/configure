@@ -2638,6 +2638,57 @@ sub write_filepath
 	print $fh "$camsrcdir/cam/src/physics/carma/base\n";
     }
 
+    # Superparameterization; this code section needs to appear before those
+    # adding the physics and chemistry packages to override versions of files
+    # that appear in both places
+    if ($crm) {
+
+        # interface and base model code
+        print $fh "$camsrcdir/cam/src/physics/crm\n";
+        print $fh "$camsrcdir/cam/src/physics/crm/sam\n";
+
+        # microphysics
+        if ($SPCAM_microp_scheme eq 'sam1mom') {
+            print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_SAM1MOM\n";
+        } elsif ($SPCAM_microp_scheme eq 'm2005') {
+            if(defined $opts{'use_crm_cldfrac'}) {
+                print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005FRAC\n";
+            } else {
+                print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005\n";
+            }
+        }
+
+        # turbulence closure
+        if ( defined $opts{'clubb_crm'}) {
+            print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
+            print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_CLUBBkvhkvm\n";
+        } else {
+            print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_TKE\n";
+        }
+
+        if ( defined $opts{'use_ECPP'}) {
+            print $fh "$camsrcdir/cam/src/physics/crm/ecpp\n";
+        }
+
+        # advection scheme
+        if ($crm_adv eq 'UM5') {
+            print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_UM5\n"; 
+        } else {
+            print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_MPDATA\n";
+        }
+
+        # MMF-specific radiation drivers (overrides default drivers that exist
+        # in each individual radiation package; done this way to avoid
+        # dependency on MMF-specific variables)
+        if ($rad eq 'rrtmg') {
+            print $fh "$camsrcdir/cam/src/physics/crm/rrtmg\n";
+        } elsif ($rad eq 'rrtmgp') {
+            print $fh "$camsrcdir/cam/src/physics/crm/rrtmgp\n";
+        } elsif ($rad eq 'camrt') {
+            print $fh "$camsrcdir/cam/src/physics/crm/camrt\n";
+        }
+    }
+
     # CAM chemistry, dynamics, physics, control and shared utilities.
     if ($chem_proc_src) {
         print $fh "$chem_proc_src\n";
@@ -2681,45 +2732,16 @@ sub write_filepath
         print $fh "$camsrcdir/cam/src/physics/camrt\n";
     }
 
+    # Add CAM physics package
     print $fh "$camsrcdir/cam/src/physics/cam\n";
+
+    # Add CLUBB source code
     if ($clubb_sgs eq '1') {
        print $fh "$camsrcdir/cam/src/physics/clubb\n";
        print $fh "$camsrcdir/cam/src/physics/silhs\n";
     }
 
-    # Superparameterization
-    if ($crm) {
-        print $fh "$camsrcdir/cam/src/physics/crm\n";
-        print $fh "$camsrcdir/cam/src/physics/crm/sam\n";
-        if ($SPCAM_microp_scheme eq 'sam1mom') {
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_SAM1MOM\n";
-        }
-        if ($SPCAM_microp_scheme eq 'm2005') {
-          if(defined $opts{'use_crm_cldfrac'}) {
-              print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005FRAC\n"; }
-           else {
-              print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005\n";
-           }
-        }
-        if ( defined $opts{'clubb_crm'}) {
-           print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_CLUBBkvhkvm\n";
-        }
-         else {
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_TKE\n";
-        }
-
-        if ( defined $opts{'use_ECPP'}) {
-           print $fh "$camsrcdir/cam/src/physics/crm/ecpp\n";
-        }
-        if ($crm_adv eq 'UM5') {
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_UM5\n"; }
-        else {
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_MPDATA\n";
-           }
-
-    }
-
+    # Dynamics
     print $fh "$camsrcdir/cam/src/dynamics/$dyn\n";
     if($dyn eq 'se') {
       print $fh "$camsrcdir/homme/src/share\n";

@@ -45,7 +45,7 @@ use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_r
 
 use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
-use cam_abortutils,       only: endrun
+use cam_abortutils,   only: endrun
 use perf_mod,         only: t_startf, t_stopf
 
 implicit none
@@ -394,13 +394,14 @@ end subroutine microp_aero_readnl
 !=========================================================================================
 
 subroutine microp_aero_run ( &
-   state, ptend, deltatin, pbuf, liqcldfo )
+   state, ptend, deltatin, pbuf, liqcldfo, species_class ) !==Guangxing Lin add species_class
 
    ! input arguments
    type(physics_state), target, intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
    real(r8),                    intent(in)    :: deltatin     ! time step (s)
    real(r8),                    intent(in)    :: liqcldfo(pcols,pver)  ! old liquid cloud fraction
+   integer,                     intent(in)    :: species_class(:) !==Guangxing Lin   
    type(physics_buffer_desc),   pointer       :: pbuf(:)
 
    ! local workspace
@@ -744,7 +745,7 @@ subroutine microp_aero_run ( &
       call t_startf('dropmixnuc')
       call dropmixnuc( &
          state, ptend, deltatin, pbuf, wsub, &
-         lcldn, lcldo, nctend_mixnuc, factnum)
+         lcldn, lcldo, nctend_mixnuc, factnum, species_class) !==Guangxing Lin added species_class
       call t_stopf('dropmixnuc')
 
       npccn(:ncol,:) = nctend_mixnuc(:ncol,:)

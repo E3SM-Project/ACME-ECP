@@ -250,6 +250,7 @@ subroutine rad_cnst_readnl(nlfile)
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
    use mpishorthand
+   use phys_control,    only: phys_getopts
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -258,6 +259,9 @@ subroutine rad_cnst_readnl(nlfile)
    character(len=2) :: suffix
    character(len=1), pointer   :: ctype(:)
    character(len=*), parameter :: subname = 'rad_cnst_readnl'
+
+   logical :: use_SPCAM                      ! SPCAM flag
+   character(len=16) :: SPCAM_microp_scheme  ! SPCAM microphysics scheme
 
    namelist /rad_cnst_nl/ mode_defs,     &
                           rad_climate,   &
@@ -291,6 +295,17 @@ subroutine rad_cnst_readnl(nlfile)
       end if
       close(unitn)
       call freeunit(unitn)
+   end if
+
+   ! whannah - ensure that oldcldoptics=true if using SP 1-mom with RRTMG
+   call phys_getopts( use_SPCAM_out = use_SPCAM )
+   if (use_SPCAM) then
+      call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme )
+      if (SPCAM_microp_scheme .eq. 'sam1mom' .and. (.not. oldcldoptics) ) then
+         ! call endrun(routine//": oldcloudoptics must be true with SP 1-moment and RRTMG")
+         oldcldoptics = .true.
+         if (masterproc) write(iulog,*) 'rad_cnst_readnl: setting oldcldoptics = .true.'
+      end if
    end if
 
 #ifdef SPMD

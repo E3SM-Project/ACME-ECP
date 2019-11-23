@@ -30,6 +30,7 @@
   use cam_abortutils,       only: endrun
   use spmd_utils,       only: masterproc
   use wv_saturation,    only: qsat
+  use shr_sys_mod,      only: shr_sys_flush 
 
   implicit none
   private
@@ -640,7 +641,7 @@
 
        call caleddy( pcols     , pver      , ncol      ,                     &
                      slfd      , qtfd      , qlfd      , slv      ,ufd     , &
-                     vfd       , pi        , z         , zi       ,          &
+                     vfd       , pmid      , pi        , z         , zi    , & 
                      qflx      , shflx     , slslope   , qtslope  ,          &
                      chu       , chs       , cmu       , cms      ,sfuh    , &
                      sflh      , n2        , s2        , ri       ,rrho    , &
@@ -720,7 +721,8 @@
                              zi      , ksrftms  , zero     , fieldlist_wet, fieldlist_molec, &
                              ufd     , vfd      , qtfd     , slfd         ,             &
                              jnk1d   , jnk1d    , jnk2d    , jnk1d        , errstring , &
-                             tauresx , tauresy  , 0        , cpairv(:,:,lchnk), rairi , .false. )
+                             tauresx , tauresy  , 0        , cpairv(:,:,lchnk), rairi , .false. , &
+                             .false. ) ! whannah - added extra optional argument to avoid issues with SP runs with SP_FLUX_BYPASS option 
 
          call handle_errmsg(errstring, subname="compute_vdiff", &
               extra_msg="compute_vdiff called from eddy_diff")
@@ -1366,7 +1368,7 @@
 
     subroutine caleddy( pcols        , pver         , ncol        ,                             &
                         sl           , qt           , ql          , slv        , u            , &
-                        v            , pi           , z           , zi         ,                &
+                        v            , pmid         , pi           , z           , zi         , &
                         qflx         , shflx        , slslope     , qtslope    ,                &
                         chu          , chs          , cmu         , cms        , sfuh         , &
                         sflh         , n2           , s2          , ri         , rrho         , &
@@ -1435,6 +1437,7 @@
     real(r8), intent(in) :: slv(pcols,pver)           ! Liquid water virtual static energy, sl * ( 1 + 0.608 * qt ) [ J/kg ]
     real(r8), intent(in) :: qt(pcols,pver)            ! Total speccific humidity  qv + ql + qi [ kg/kg ] 
     real(r8), intent(in) :: ql(pcols,pver)            ! Liquid water specific humidity [ kg/kg ]
+    real(r8), intent(in) :: pmid(pcols,pver)          ! Layer midpoint pressures [ Pa ] 
     real(r8), intent(in) :: pi(pcols,pver+1)          ! Interface pressures [ Pa ]
     real(r8), intent(in) :: z(pcols,pver)             ! Layer midpoint height above surface [ m ]
     real(r8), intent(in) :: zi(pcols,pver+1)          ! Interface height above surface, i.e., zi(pver+1) = 0 all over the globe
@@ -1816,7 +1819,7 @@
     ! intereface (STL) as shown at the end of 'caleddy'. Even though a 'minpblh' is
     ! passed into 'exacol', it is not used in the 'exacol'.
 
-    call exacol( pcols, pver, ncol, ri, bflxs, minpblh, zi, ktop, kbase, ncvfin )
+    call exacol( pcols, pver, ncol, ri, bflxs, minpblh, pmid, zi, ktop, kbase, ncvfin )
 
     ! Diagnostic output of CL interface indices before performing 'extending-merging'
     ! of CL regimes in 'zisocl'
@@ -3081,7 +3084,7 @@
     !                                                                               !
     !============================================================================== !
 
-    subroutine exacol( pcols, pver, ncol, ri, bflxs, minpblh, zi, ktop, kbase, ncvfin ) 
+    subroutine exacol( pcols, pver, ncol, ri, bflxs, minpblh, pmid, zi, ktop, kbase, ncvfin ) 
 
     ! ---------------------------------------------------------------------------- !
     ! Object : Find unstable CL regimes and determine the indices                  !
@@ -3104,6 +3107,7 @@
     real(r8), intent(in) :: ri(pcols,pver)         ! Moist gradient Richardson no.
     real(r8), intent(in) :: bflxs(pcols)           ! Buoyancy flux at surface
     real(r8), intent(in) :: minpblh(pcols)         ! Minimum PBL height based on surface stress
+    real(r8), intent(in) :: pmid(pcols,pver)       ! Layer midpoint pressure [Pa] 
     real(r8), intent(in) :: zi(pcols,pver+1)       ! Interface heights
 
     ! ---------------- !
@@ -3123,6 +3127,9 @@
     integer              :: ncv
     real(r8)             :: rimaxentr
     real(r8)             :: riex(pver+1)           ! Column Ri profile extended to surface
+
+    integer              :: kbase_max              ! k index of highest allowed CL base
+    real(r8)             :: kbase_p_limit          ! specified pressure limit for kbase_max [Pa]
 
     ! ----------------------- !
     ! Main Computation Begins !
@@ -3151,10 +3158,25 @@
 
        riex(pver+1) = rimaxentr - bflxs(i) 
 
+       ! whannah - Problems were occuring in superparameterized runs where the 
+       ! UW moist turbulence scheme would try to form cloud layers near the top 
+       ! of the stratosphere. I think this was an oversight, because no one expected 
+       ! to use the UW scheme when they extended the model top of E3SM. I added the 
+       ! if statement below to avoid having cloud layers above 50 hPa to fix this.
+
+       kbase_max = ntop_turb + 1
+       kbase_p_limit = 5000.
+       do k = ntop_turb+1,pver
+         if (pmid(i,k)<kbase_p_limit .and. pmid(i,k+1)>=kbase_p_limit) then
+            kbase_max = k
+            exit
+         end if
+       end do
+
        ncv = 0
        k   = pver + 1 ! Work upward from surface interface
 
-       do while ( k .gt. ntop_turb + 1 )
+       do while ( k .gt. kbase_max )
 
         ! Below means that if 'bflxs > 0' (do not contain '=' sign), surface
         ! interface is energetically interior surface. 
@@ -3602,6 +3624,10 @@
           extend_up = .true.
           if( kt .eq. ntop_turb ) then
               write(iulog,*) 'zisocl: Error: Tried to extend CL to the model top'
+              write(iulog,*) 'ncv = ',ncv  ! whannah
+              write(iulog,*) 'kt  = ',kt   ! whannah
+              write(iulog,*) 'kb  = ',kb   ! whannah
+              call shr_sys_flush(iulog)    ! whannah
               call endrun('zisocl: Error: Tried to extend CL to the model top')
           end if
 

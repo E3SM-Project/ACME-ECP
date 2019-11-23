@@ -15,17 +15,18 @@ use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
 use ref_pres,         only: top_lev => clim_modal_aero_top_lev
 use phys_control,     only: phys_getopts
-use cam_abortutils,       only: endrun
-
+use cam_abortutils,   only: endrun
+use crmdims,          only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
 implicit none
 private
 save
 
 public :: &
-   modal_aero_wateruptake_init, &
-   modal_aero_wateruptake_dr
-
-public :: modal_aero_wateruptake_reg
+  modal_aero_wateruptake_reg,   &
+  modal_aero_wateruptake_init,  &
+  modal_aero_wateruptake_dr,    &
+  modal_aero_kohler
+  
 
 real(r8), parameter :: third = 1._r8/3._r8
 real(r8), parameter :: pi43  = pi*4.0_r8/3.0_r8
@@ -134,6 +135,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 !              all the optional args must be present.
 !
 !-----------------------------------------------------------------------
+   use phys_control,    only: phys_getopts
 
    ! Arguments
    type(physics_state), target, intent(in)    :: state          ! Physics state variables
@@ -162,11 +164,22 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    real(r8), pointer :: pmid(:,:)   ! layer pressure (Pa)
    real(r8), pointer :: raer(:,:)   ! aerosol species MRs (kg/kg and #/kg)
 
-   real(r8), pointer :: cldn(:,:)      ! layer cloud fraction (0-1)
-   real(r8), pointer :: dgncur_a(:,:,:)
-   real(r8), pointer :: dgncur_awet(:,:,:)
-   real(r8), pointer :: wetdens(:,:,:)
-   real(r8), pointer :: qaerwat(:,:,:)
+!==Guangxing Lin
+   real(r8), pointer :: h2ommr_crm(:,:,:,:)        ! specfic humidity in CRM domain
+   real(r8), pointer :: t_crm(:,:,:,:)             ! temperature at the CRM domain
+   real(r8), pointer :: qcl_crm(:,:,:,:), qci_crm(:,:,:,:)
+   real(r8), pointer :: qaerwat_crm(:,:,:,:,:)     ! aerosol water at CRM domain
+   real(r8), pointer :: dgncur_awet_crm(:,:,:,:,:) ! wet mode diameter at CRM domain
+   real(r8), allocatable :: wtrvol_grid(:,:,:)     ! single-particle-mean water volume in wet aerosol (m3)
+   real(r8), allocatable :: wetvol_grid(:,:,:)     ! single-particle-mean wet volume (m3)
+   real(r8), allocatable :: ncount_clear(:,:,:)    ! to count the fraction of clear sky part
+!==Guangxing Lin
+
+   real(r8), pointer :: cldn(:,:)            ! layer cloud fraction (0-1)
+   real(r8), pointer :: dgncur_a(:,:,:)      !
+   real(r8), pointer :: dgncur_awet(:,:,:)   !
+   real(r8), pointer :: wetdens(:,:,:)       !
+   real(r8), pointer :: qaerwat(:,:,:)       !
 
    real(r8), allocatable :: maer(:,:,:)      ! aerosol wet mass MR (including water) (kg/kg-air)
    real(r8), allocatable :: hygro(:,:,:)     ! volume-weighted mean hygroscopicity (--)
@@ -201,6 +214,12 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    logical :: history_verbose      ! produce verbose history output
 
    character(len=3) :: trnum       ! used to hold mode number (as characters)
+
+   real(r8) :: cldnt(pcols, pver)     ! Temporary cloud fraction
+   real(r8) :: es_crm_tmp, qs_crm_tmp 
+   logical :: last_column
+   integer :: ii, jj, mm
+   logical :: use_SPCAM
    !-----------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -208,7 +227,20 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    ! determine default variables
    call phys_getopts(history_aerosol_out = history_aerosol, &
-                     history_verbose_out = history_verbose)
+                     history_verbose_out = history_verbose, &
+                     use_SPCAM_out = use_SPCAM)
+   
+   if (use_SPCAM) then
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QV_RAD'), h2ommr_crm)
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_T_RAD' ), t_crm     )
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QC_RAD'), qcl_crm   )
+      call pbuf_get_field(pbuf, pbuf_get_index('CRM_QI_RAD'), qci_crm   )
+#ifdef MODAL_AERO
+      call pbuf_get_field (pbuf, pbuf_get_index('CRM_QAERWAT' ), qaerwat_crm    )
+      call pbuf_get_field (pbuf, pbuf_get_index('CRM_DGNUMWET'), dgncur_awet_crm)
+#endif MODAL_AERO
+   end if
+
 
    list_idx = 0
    if (present(list_idx_in)) then
@@ -242,6 +274,9 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
       wetrad(pcols,pver,nmodes),   &
       wetvol(pcols,pver,nmodes),   &
       wtrvol(pcols,pver,nmodes),   &
+      wtrvol_grid(pcols,pver,nmodes), & !==Guangxing Lin
+      wetvol_grid(pcols,pver,nmodes), & !==Guangxing Lin    
+      ncount_clear(pcols,pver,nmodes), & !==Guangxing Lin
       rhcrystal(nmodes),           &
       rhdeliques(nmodes),          &
       specdens_1(nmodes)           )
@@ -341,52 +376,159 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    itim_old    =  pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
-   do k = top_lev, pver
-      call qsat_water(t(:ncol,k), pmid(:ncol,k), es(:ncol), qs(:ncol))
-      do i = 1, ncol
-         if (qs(i) > h2ommr(i,k)) then
-            rh(i,k) = h2ommr(i,k)/qs(i)
-         else
-            rh(i,k) = 0.98_r8
-         endif
-         rh(i,k) = max(rh(i,k), 0.0_r8)
-         rh(i,k) = min(rh(i,k), 0.98_r8)
-         if(pergro_mods) then
-            cldn_thresh = 0.9998_r8
-         else			
-            cldn_thresh = 1.0_r8 !original code
-         endif
-         if (cldn(i,k) .lt. cldn_thresh) then !BSINGH 
-            rh(i,k) = (rh(i,k) - cldn(i,k)) / (1.0_r8 - cldn(i,k))  ! clear portion
+   ncount_clear  = 0.0_r8
+   wtrvol_grid   = 0.0_r8
+   wetvol_grid   = 0.0_r8
+   qaerwat       = 0.0_r8
+
+   ! Loop over CRM radiative colummns (which may differ from total CRM columns) in case we are using
+   ! super-parameterization. In non-SP configurations, crm_nx_rad = 1 and crm_ny_rad = 1.
+   do jj = 1, crm_ny_rad
+      do ii = 1, crm_nx_rad
+       
+         if (use_SPCAM) then
+            last_column = ii .eq. crm_nx_rad .and. jj .eq. crm_ny_rad
          end if
-         rh(i,k) = max(rh(i,k), 0.0_r8)
-      end do
-   end do
 
-   call modal_aero_wateruptake_sub( &
-      ncol, nmodes, rhcrystal, rhdeliques, dryrad, &
-      hygro, rh, dryvol, wetrad, wetvol,           &
-      wtrvol)
+         do k = top_lev, pver
+            call qsat_water(t(:ncol,k), pmid(:ncol,k), es(:ncol), qs(:ncol))
+            do i = 1, ncol
+               if (qs(i) > h2ommr(i,k)) then
+                  rh(i,k) = h2ommr(i,k)/qs(i)
+               else
+                  rh(i,k) = 0.98_r8
+               endif
+               rh(i,k) = max(rh(i,k), 0.0_r8)
+               rh(i,k) = min(rh(i,k), 0.98_r8)
+               if (cldn(i,k) .lt. 1.0_r8) then
+                  rh(i,k) = (rh(i,k) - cldn(i,k)) / (1.0_r8 - cldn(i,k))  ! clear portion
+               end if
+               rh(i,k) = max(rh(i,k), 0.0_r8)
 
-   do m = 1, nmodes
+               ! Overwrite relative humidity and cloud fraction based on cloud-scale fields from
+               ! the CRM when using super-parameterization (NOTE: much of this looks like it could
+               ! be combined with the above calculation of relative humidity so we are not
+               ! duplicating code)
+               if(use_SPCAM) then
 
-      do k = top_lev, pver
-         do i = 1, ncol
+                  ! Calculate a temporary cloud fraction to check for overcast conditions. This is
+                  ! done following how "CRM_CLD_RAD" used to be re-diagnosed in crm_physics for this
+                  ! purpose. Cloud fraction is set to 0 (clear) or 1 (overcast) by comparing total
+                  ! cloud water against a threshold value. Note that this is inconsistent with how
+                  ! we are diagnosing "cloud" in the radiative transfer now with subcolumn sampling
+                  ! for the CRM columns, and we should probably use the same cloud fraction here in
+                  ! the future.
+                  mm=pver-k+1
+                  if (mm <= crm_nz) then
+                     if (qcl_crm(i,ii,jj,mm) + qci_crm(i,ii,jj,mm) > 1.e-10) then
+                        cldnt(i,k) = 1
+                     else
+                        cldnt(i,k) = 0 
+                     end if
+                  else
+                     cldnt(i,k) = cldn(i,k)
+                  end if
 
-            dgncur_awet(i,k,m) = dgncur_a(i,k,m) * (wetrad(i,k,m)/dryrad(i,k,m))
-            qaerwat(i,k,m)     = rhoh2o*naer(i,k,m)*wtrvol(i,k,m)
+                  ! Re-calculate relative humidity based on CRM temperature and GCM pressure
+                  mm=pver-k+1
+                  if(mm.le.crm_nz) then
+                     call qsat_water(t_crm(i,ii,jj,mm), pmid(i,k), es_crm_tmp, qs_crm_tmp)
+                     rh(i,k) = h2ommr_crm(i,ii,jj,mm)/qs_crm_tmp
+                     rh(i,k) = max(rh(i,k), 0.0_r8)
+                     rh(i,k) = min(rh(i,k), 0.98_r8)
 
-            ! compute aerosol wet density (kg/m3)
-            if (wetvol(i,k,m) > 1.0e-30_r8) then
-               wetdens(i,k,m) = (drymass(i,k,m) + rhoh2o*wtrvol(i,k,m))/wetvol(i,k,m)
-            else
-               wetdens(i,k,m) = specdens_1(m)
-            end if
-         end do
-      end do
+                     ! aerosol water uptake is not calculated for overcast sky in MMF. +++mhwang
+                     if (cldnt(i,k) > 0) then
+                        rh(i,k) = 0.0_r8
+                     end if
+                  end if
 
-   end do    ! modes
+                  ! Count number of clear columns in this level
+                  do m=1,nmodes
+                     ncount_clear(i,k,m) = ncount_clear(i,k,m) + (1._r8 - cldnt(i,k))
+                  end do
 
+               end if  ! use_SPCAM
+
+            end do  ! i = 1,ncol
+         end do  ! k = 1,pver
+
+         call modal_aero_wateruptake_sub( &
+            ncol, nmodes, rhcrystal, rhdeliques, dryrad, &
+            hygro, rh, dryvol, wetrad, wetvol,           &
+            wtrvol)
+
+         do m = 1, nmodes
+
+            do k = top_lev, pver
+               do i = 1, ncol
+
+                  dgncur_awet(i,k,m) = dgncur_a(i,k,m) * (wetrad(i,k,m)/dryrad(i,k,m))
+
+                  !==Guangxing Lin
+                  ! qaerwat(i,k,m)     = rhoh2o*naer(i,k,m)*wtrvol(i,k,m)
+                  if(use_SPCAM) then
+                     wtrvol_grid(i,k,m) = wtrvol_grid(i,k,m) + wtrvol(i,k,m)*(1.-cldnt(i,k))
+                     wetvol_grid(i,k,m) = wetvol_grid(i,k,m) + wetvol(i,k,m)*(1.-cldnt(i,k))
+                  end if
+
+                  if(.not.use_SPCAM) then
+                     qaerwat(i,k,m)     = rhoh2o*naer(i,k,m)*wtrvol(i,k,m)
+                  else  ! use_SPCAM
+                     qaerwat(i,k,m) = qaerwat(i,k,m)+ rhoh2o*naer(i,k,m)*wtrvol(i,k,m) * (1-cldnt(i,k))
+#ifdef MODAL_AERO
+                     if(k.ge.pver-crm_nz+1) then
+                        qaerwat_crm(i,ii,jj,pver-k+1,m) = rhoh2o*naer(i,k,m)*wtrvol(i,k,m)
+                        dgncur_awet_crm(i,ii,jj,pver-k+1,m) = dgncur_awet(i,k,m)
+                     end if
+#endif
+                  end if
+                  !==Guangxing Lin
+
+                
+                  ! compute aerosol wet density (kg/m3)
+                  if (wetvol(i,k,m) > 1.0e-30_r8) then
+                     wetdens(i,k,m) = (drymass(i,k,m) + rhoh2o*wtrvol(i,k,m))/wetvol(i,k,m)
+                  else
+                     wetdens(i,k,m) = specdens_1(m)
+                  end if
+               end do ! i
+            end do ! k 
+
+            !==Guangxing Lin
+            if (use_SPCAM) then
+               if (last_column) then
+                  do k = 1, pver
+                     do i = 1, ncol
+                        if(ncount_clear(i,k,m).gt.1.0e-10) then
+                           qaerwat(i,k,m) = qaerwat(i,k,m)/ncount_clear(i,k,m)
+                           wetvol_grid(i,k,m)=wetvol_grid(i,k,m)/ncount_clear(i,k,m)
+                           wtrvol_grid(i,k,m)=wtrvol_grid(i,k,m)/ncount_clear(i,k,m)
+                           if (wetvol_grid(i,k,m) > 1.0e-30_r8) then
+                              wetdens(i,k,m) = (drymass(i,k,m) + rhoh2o*wtrvol_grid(i,k,m))/wetvol_grid(i,k,m)
+                           else
+                              wetdens(i,k,m) = specdens_1(m)
+                           end if
+                           wetrad(i,k,m) = max(dryrad(i,k,m), (wetvol_grid(i,k,m)/pi43)**third)
+                           dgncur_awet(i,k,m) = dgncur_a(i,k,m)*   &
+                                           (wetrad(i,k,m)/dryrad(i,k,m))
+                        else
+                           dgncur_awet(i,k,m) = dgncur_a(i,k,m)
+                           qaerwat(i,k,m) = 0.0_r8
+                           wetdens(i,k,m) = specdens_1(m)
+                        end if
+                     end do ! pver
+                  end do ! ncol
+               endif ! last_column
+            endif ! use_SPCAM
+            !==Guangxing Lin
+
+         end do ! modes
+
+      end do ! crm_nx_rad
+   end do ! crm_ny_rad
+    
+   
    if (list_idx == 0) then
 
       aerosol_water(:ncol,:) = 0._r8
@@ -407,7 +549,8 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    deallocate( &
       maer,   hygro,  naer,   dryvol,    drymass,    dryrad, &
-      wetrad, wetvol, wtrvol, rhcrystal, rhdeliques, specdens_1)
+      wetrad, wetvol, wtrvol, rhcrystal, rhdeliques, specdens_1, &
+      wtrvol_grid,    wetvol_grid,       ncount_clear)
 
 end subroutine modal_aero_wateruptake_dr
 

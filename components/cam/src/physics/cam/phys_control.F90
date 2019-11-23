@@ -55,24 +55,19 @@ character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion pack
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
 character(len=16) :: macrop_scheme        = unset_str  ! macrophysics package
 character(len=16) :: radiation_scheme     = unset_str  ! radiation package
-!-- mdb spcam
 character(len=16) :: SPCAM_microp_scheme  = unset_str  ! SPCAM microphysics package
-!-- mdb spcam
 integer           :: srf_flux_avg         = unset_int  ! 1 => smooth surface fluxes, 0 otherwise
 integer           :: conv_water_in_rad    = unset_int  ! 0==> No; 1==> Yes-Arithmetic average;
                                                        ! 2==> Yes-Average in emissivity.
 
 logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-columns in microphysics
 
-!-- mdb spcam
 logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
 logical           :: use_MAML             = .false.    ! true => use Multiple Atmosphere and Multtiple Land   
-
 logical           :: use_crm_accel        = .false.    ! true => use crm mean-state acceleration
 real(r8)          :: crm_accel_factor     = 2.D0       ! crm acceleration factor
 logical           :: crm_accel_uv         = .true.     ! true => apply crm mean-state acceleration to momentum fields
-! real(r8)          :: crm_min_tk           = huge(1.0_r8)  ! minimum near-surface eddy viscosity - still hardcoded in crm/SGS_TKE/tke_full.F90
 logical           :: atm_dep_flux         = .true.     ! true => deposition fluxes will be provided
                                                        ! to the coupler
 logical           :: history_amwg         = .true.     ! output the variables used by the AMWG diag package

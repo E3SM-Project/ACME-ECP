@@ -93,6 +93,11 @@ contains
     logical           :: history_amwg          ! output the variables used by the AMWG diag package
     logical           :: history_verbose       ! produce verbose history output
 
+!-- mdb spcam
+    logical :: use_SPCAM
+
+    call phys_getopts(use_SPCAM_out=use_SPCAM)
+!-- mdb spcam
 
     !-----------------------------------------------------------------------
 
@@ -138,14 +143,21 @@ contains
     
     call phys_getopts(conv_water_in_rad_out=conv_water_in_rad)
 
-    if (rk_clouds) then 
-       wpunits = 'gram/m2'
-       sampling_seq='rad_lwsw'
-    else if (mg_clouds) then 
-       wpunits = 'kg/m2'
-       sampling_seq=''
+!-- mdb spcam
+    if (use_SPCAM) then
+          wpunits = 'kg/m2'
+          sampling_seq=''
+    else 
+      if (rk_clouds) then 
+         wpunits = 'gram/m2'
+         sampling_seq='rad_lwsw'
+      else if (mg_clouds) then 
+         wpunits = 'kg/m2'
+         sampling_seq=''
+      endif
     endif
-
+!-- mdb spcam
+    
     call addfld ('ICLDIWP', (/ 'lev' /), 'A', wpunits,'In-cloud ice water path'               , sampling_seq=sampling_seq)
     call addfld ('ICLDTWP', (/ 'lev' /), 'A',wpunits,'In-cloud cloud total water path (liquid and ice)', &
          sampling_seq=sampling_seq)
@@ -208,6 +220,7 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 !-----------------------------------------------------------------------
     use physics_types, only: physics_state    
     use physics_buffer,only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use phys_control,  only: phys_getopts
     use pkg_cldoptics, only: cldovrlap, cldclw,  cldems
     use conv_water,    only: conv_water_4rad
     use radiation,     only: radiation_do
@@ -272,10 +285,16 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
     real(r8) :: effcld(pcols,pver)      ! effective cloud=cld*emis
 
     logical :: dosw,dolw
+!-- mdb spcam
+    logical :: use_SPCAM
+!-- mdb spcam
   
 !-----------------------------------------------------------------------
     if (.not.do_cld_diag) return
 
+!-- mdb spcam
+    call phys_getopts(use_SPCAM_out=use_SPCAM)
+!-- mdb spcam
 
     if(rk_clouds) then
        dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
@@ -475,12 +494,17 @@ subroutine cloud_diagnostics_calc(state,  pbuf)
 
     endif
 
-    call outfld('GCLDLWP' ,gwp    , pcols,lchnk)
-    call outfld('TGCLDCWP',tgwp   , pcols,lchnk)
-    call outfld('TGCLDLWP',tgliqwp, pcols,lchnk)
-    call outfld('TGCLDIWP',tgicewp, pcols,lchnk)
-    call outfld('ICLDTWP' ,cwp    , pcols,lchnk)
-    call outfld('ICLDIWP' ,cicewp , pcols,lchnk)
+!-- mdb spcam
+    if (.not. use_SPCAM) then 
+       ! for SPCAM, these are diagnostics in crm_physics.F90
+       call outfld('GCLDLWP' ,gwp    , pcols,lchnk)
+       call outfld('TGCLDCWP',tgwp   , pcols,lchnk)
+       call outfld('TGCLDLWP',tgliqwp, pcols,lchnk)
+       call outfld('TGCLDIWP',tgicewp, pcols,lchnk)
+       call outfld('ICLDTWP' ,cwp    , pcols,lchnk)
+       call outfld('ICLDIWP' ,cicewp , pcols,lchnk)
+    endif
+!-- mdb spcam
 
 ! Compute total preciptable water in column (in mm)
     tpw(:ncol) = 0.0_r8

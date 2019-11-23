@@ -1091,7 +1091,7 @@ contains
                             u_tmp         , v_tmp              , q_tmp        , s_tmp         ,                 &
                             tautmsx       , tautmsy            , dtk          , topflx        , errstring     , &
                             tauresx       , tauresy            , 1            , cpairv(:,:,state%lchnk), rairi, &
-                            do_molec_diff , compute_molec_diff , vd_lu_qdecomp, kvt )
+                            do_molec_diff , .true.             , compute_molec_diff , vd_lu_qdecomp, kvt )
 
         call handle_errmsg(errstring, subname="compute_vdiff", &
              extra_msg="Error in fieldlist_wet call from vertical_diffusion.")
@@ -1114,7 +1114,7 @@ contains
                             u_tmp         , v_tmp              , q_tmp        , s_tmp         ,                 &
                             tautmsx       , tautmsy            , dtk          , topflx        , errstring     , &
                             tauresx       , tauresy            , 1            , cpairv(:,:,state%lchnk), rairi, &
-                            do_molec_diff , compute_molec_diff , vd_lu_qdecomp )
+                            do_molec_diff , .true.             ,compute_molec_diff , vd_lu_qdecomp )
 
         call handle_errmsg(errstring, subname="compute_vdiff", &
              extra_msg="Error in fieldlist_dry call from vertical_diffusion.")
