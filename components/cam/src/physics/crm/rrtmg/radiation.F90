@@ -430,6 +430,7 @@ end function radiation_nextsw_cday
     use mpishorthand,   only: mpi_integer, mpicom, mpi_comm_world
 #endif
     use crmdims,        only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
+    use rad_constituents, only: oldcldoptics
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
@@ -856,6 +857,13 @@ end function radiation_nextsw_cday
     call addfld('COSZRS', horiz_only, 'I', '1', &
                 'Cosine of solar zenith angle', &
                 sampling_seq='rad_lwsw', flag_xyfill=.true.)
+
+     ! Sanity check on cloud optics specified
+     if (use_SPCAM .and. SPCAM_microp_scheme == 'sam1mom') then
+        if (.not. oldcldoptics) then
+           call endrun('radiation_init: must use oldcldoptics with sam1mom')
+        end if
+     end if
 
   end subroutine radiation_init
 

@@ -3528,6 +3528,12 @@ add_default($nl, 'use_crm_accel');
 add_default($nl, 'crm_accel_uv');
 add_default($nl, 'crm_accel_factor');
 
+# For SPCAM single moment microphysics, we need to use oldcldoptics
+if ($nl->get_value('use_SPCAM') == /$TRUE/io) {
+    if ($nl->get_value('SPCAM_microp_scheme') == 'sam1mom') {
+        add_default($nl, 'oldcldoptics', 'val' => '.true.')
+    }
+}
 
 add_default($nl, 'do_aerocom_ind3');
 my $aerocom_ind3 = $nl->get_value('do_aerocom_ind3');
