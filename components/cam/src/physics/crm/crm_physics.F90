@@ -203,8 +203,8 @@ subroutine crm_physics_init(species_class)
    use ppgrid,          only: pcols, pver, pverp
    use constituents,    only: pcnst, cnst_name
    use cam_history,     only: addfld, add_default, horiz_only
+   use cam_history_support, only: add_hist_coord
    use phys_control,    only: phys_getopts
-
    use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
 #ifdef ECPP
    use module_ecpp_ppdriver2,  only: papampollu_init
@@ -212,11 +212,10 @@ subroutine crm_physics_init(species_class)
 #endif
    use accelerate_crm_mod, only: crm_accel_init
 #ifdef MODAL_AERO
-   use cam_history,   only: fieldname_len
-   use spmd_utils,    only: masterproc
-   use modal_aero_data, only:  cnst_name_cw, &
-                               lmassptr_amode, lmassptrcw_amode, &
-                               nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, ntot_amode
+   use cam_history,     only: fieldname_len
+   use modal_aero_data, only: cnst_name_cw, &
+                              lmassptr_amode, lmassptrcw_amode, &
+                              nspec_amode, ntot_amode, numptr_amode, numptrcw_amode
        
 
    integer :: l, lphase, lspec
@@ -228,7 +227,6 @@ subroutine crm_physics_init(species_class)
     
    ! species_class is defined as input so it needs to be outside of MODAL_AERO condition for 1-moment micro to work
    integer, intent(in) :: species_class(:)
-
 
    ! local variables
    integer :: m
