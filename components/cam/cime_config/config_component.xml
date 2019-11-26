@@ -105,6 +105,8 @@
       <value compset="_CAM5%SP2V1"           >-SPCAM_microp_scheme m2005 -chem linoz_mam4_resus_mom_soag -rain_evap_to_coarse_aero </value>
       <value compset="_CAM5%SP[12]V1_"       >-crm_nx 64 -crm_ny 1 -crm_nx_rad 16 -crm_ny_rad 1 </value>
       <value compset="_CAM5%SP[12]V1-TEST_"  >-crm_nx  8 -crm_ny 1 -crm_nx_rad  1 -crm_ny_rad 1 </value>
+      <value compset="_CAM5%SP1V1-MAML"      >-use_MAML -crm_nx 64 -crm_ny 1 -crm_nx_rad 64 -crm_ny_rad 1</value>
+      <value compset="_CAM5%SP1V1-MAML-TEST" >-crm_nx 8 -crm_nx_rad 8 </value>
       <value compset="_CAM5%SP2V1-ECPP-TEST" >-crm_nx  8 -crm_ny 1 -crm_nx_rad  1 -crm_ny_rad 1 </value>
       <value compset="_CAM5%SP2V1-ECPP"      >-use_ECPP </value>
       <!-- Fast SP compset for development -->
@@ -374,8 +376,10 @@
     <desc compset="CAM[45].*_BGC%B">CAM prognostic CO2 cycle turned on.</desc>
     <!-- Super-Parameterization -->
     <desc compset="_CAM5%SP1V1_"    >Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, 1-moment microphysics and prescribed aerosol</desc>
+    <desc compset="_CAM5%SP1V1-MAML">Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, 1-moment microphysics, prescribed aerosol and MAML </desc>
     <desc compset="_CAM5%SP2V1_"    >Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, and 2-moment microphysics</desc>
     <desc compset="_CAM5%SP1V1-TEST">Super-parameterized E3SM with  8x1km CRM, RRTMG radiation, and 1-moment microphysics</desc>
+    <desc compset="_CAM5%SP1V1-MAML-TEST">Super-parameterized E3SM with  8x1km CRM, RRTMG radiation, 1-moment microphysics, and MAML</desc>
     <desc compset="_CAM5%SP2V1-TEST">Super-parameterized E3SM with  8x1km CRM, RRTMG radiation, and 2-moment microphysics</desc>
     <!--  -->
   </description>
