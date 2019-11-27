@@ -73,11 +73,10 @@ subroutine cloud_rad_props_init()
    use mpishorthand
 #endif
    use constituents,   only: cnst_get_ind
+   use rad_constituents, only: liqcldoptics, icecldoptics
    use slingo,         only: slingo_rad_props_init
    use ebert_curry,    only: ec_rad_props_init, scalefactor
 
-   character(len=256) :: liquidfile 
-   character(len=256) :: icefile 
    character(len=256) :: locfn
 
    integer :: ncid, dimid, f_nlwbands, f_nswbands, ierr
@@ -92,11 +91,9 @@ subroutine cloud_rad_props_init()
 
    integer :: err
 
-   liquidfile = liqopticsfile 
-   icefile = iceopticsfile
 
-   call slingo_rad_props_init
-   call ec_rad_props_init
+   if (trim(liqcldoptics) == 'slingo') call slingo_rad_props_init()
+   if (trim(icecldoptics) == 'ebertcurry') call ec_rad_props_init()
    call oldcloud_init
 
    i_dei    = pbuf_get_index('DEI',errcode=err)
@@ -113,7 +110,7 @@ subroutine cloud_rad_props_init()
 
    ! read liquid cloud optics
    if(masterproc) then
-   call getfil( trim(liquidfile), locfn, 0)
+   call getfil(trim(liqopticsfile), locfn, 0)
    call handle_ncerr( nf90_open(locfn, NF90_NOWRITE, ncid), 'liquid optics file missing')
    write(iulog,*)' reading liquid cloud optics from file ',locfn
 
@@ -192,7 +189,7 @@ subroutine cloud_rad_props_init()
 
    ! read ice cloud optics
    if(masterproc) then
-   call getfil( trim(icefile), locfn, 0)
+   call getfil(trim(iceopticsfile), locfn, 0)
    call handle_ncerr( nf90_open(locfn, NF90_NOWRITE, ncid), 'ice optics file missing')
    write(iulog,*)' reading ice cloud optics from file ',locfn
 

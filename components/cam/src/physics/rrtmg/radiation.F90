@@ -403,6 +403,7 @@ end function radiation_nextsw_cday
 #ifdef SPMD
     use mpishorthand,   only: mpi_integer, mpicom, mpi_comm_world
 #endif
+    use cloud_rad_props, only: cloud_rad_props_init
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
@@ -433,6 +434,8 @@ end function radiation_nextsw_cday
 
     call radsw_init()
     call radlw_init()
+
+    call cloud_rad_props_init()
 
     ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then

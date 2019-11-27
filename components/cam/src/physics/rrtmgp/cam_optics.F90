@@ -67,9 +67,13 @@ contains
       use ppgrid, only: pcols, pver
       use physics_types, only: physics_state
       use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
-      use cloud_rad_props, only: get_ice_optics_sw, &
-                                 get_liquid_optics_sw, &
+      use cloud_rad_props, only: get_mitchell_ice_optics_sw, &
+                                 get_conley_liq_optics_sw, &
                                  get_snow_optics_sw
+      use ebert_curry, only: ec_ice_optics_sw
+      use slingo, only: slingo_liq_optics_sw
+      use rad_constituents, only: liqcldoptics, icecldoptics
+      use cam_abortutils, only: endrun
 
       ! Inputs. Right now, this uses state and pbuf, and passes these along to the
       ! individual get_*_optics routines from cloud_rad_props. This is not very
@@ -110,6 +114,8 @@ contains
       logical :: do_snow_optics = .true.
       integer :: err
 
+      character(len=32) :: subname = 'get_cloud_optics_sw'
+
       integer :: ncol, iband
 
       ! Initialize
@@ -134,18 +140,48 @@ contains
       !call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
       !call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
       ncol = state%ncol
-      call get_ice_optics_sw(state, pbuf, &
-                             ice_tau, ice_tau_ssa, &
-                             ice_tau_ssa_g, ice_tau_ssa_f)
+      if (trim(icecldoptics) == 'mitchell') then
+         call get_mitchell_ice_optics_sw( &
+            state, pbuf,                  &
+            ice_tau, ice_tau_ssa,         &
+            ice_tau_ssa_g, ice_tau_ssa_f  &
+         )
+      else if (trim(icecldoptics) == 'ebertcurry') then
+         call ec_ice_optics_sw(          &
+            state, pbuf,                 &
+            ice_tau, ice_tau_ssa,        &
+            ice_tau_ssa_g, ice_tau_ssa_f &
+         )
+      else
+         call endrun( &
+            trim(subname) // ': icecldoptics ' // &
+            trim(icecldoptics) // ' not recognized.' &
+         )
+      end if
       call assert_range(ice_tau(1:nswbands,1:ncol,1:pver), 0._r8, 1e20_r8, &
-                        'get_cloud_optics_sw: ice_tau')
+                        trim(subname) // ': ice_tau')
       
       ! Get liquid cloud optics
-      call get_liquid_optics_sw(state, pbuf, &
-                                liquid_tau, liquid_tau_ssa, &
-                                liquid_tau_ssa_g, liquid_tau_ssa_f)
+      if (trim(liqcldoptics) == 'gammadist') then
+         call get_conley_liq_optics_sw(        &
+            state, pbuf,                       &
+            liquid_tau, liquid_tau_ssa,        &
+            liquid_tau_ssa_g, liquid_tau_ssa_f &
+         )
+      else if (trim(liqcldoptics) == 'slingo') then
+         call slingo_liq_optics_sw(            &
+            state, pbuf,                       &
+            liquid_tau, liquid_tau_ssa,        &
+            liquid_tau_ssa_g, liquid_tau_ssa_f &
+         )
+      else
+         call endrun( &
+            trim(subname) // ': liqcldoptics ' // &
+            trim(liqcldoptics) // ' not recognized.' &
+         )
+      end if
       call assert_range(liquid_tau(1:nswbands,1:ncol,1:pver), 0._r8, 1e20_r8, &
-                        'get_cloud_optics_sw: liquid_tau')
+                        trim(subname) // ': liquid_tau')
 
       ! Should we do snow optics? Check for existence of "cldfsnow" variable
       ! NOTE: turned off for now...we need to figure out how to adjust the cloud
@@ -239,10 +275,14 @@ contains
       use physics_types, only: physics_state
       use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
                                 pbuf_get_index
-      use cloud_rad_props, only: get_liquid_optics_lw, &
-                                 get_ice_optics_lw, &
+      use cloud_rad_props, only: get_conley_liq_optics_lw, &
+                                 get_mitchell_ice_optics_lw, &
                                  get_snow_optics_lw
+      use ebert_curry, only: ec_ice_optics_lw
+      use slingo, only: slingo_liq_optics_lw
       use radconstants, only: nlwbands
+      use rad_constituents, only: liqcldoptics, icecldoptics
+      use cam_abortutils, only: endrun
 
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
@@ -258,6 +298,8 @@ contains
 
       integer :: iband, ncol
 
+      character(len=32) :: subname = 'get_cloud_optics_lw'
+
       ! Number of columns in this chunk
       ncol = state%ncol
 
@@ -269,13 +311,33 @@ contains
       combined_tau(:,:,:) = 0.0
 
       ! Get ice optics
-      call get_ice_optics_lw(state, pbuf, ice_tau)
+      if (trim(icecldoptics) == 'mitchell') then
+         call get_mitchell_ice_optics_lw(state, pbuf, ice_tau)
+      else if (trim(icecldoptics) == 'ebertcurry') then
+         call ec_ice_optics_lw(state, pbuf, ice_tau)
+      else
+         call endrun( &
+            trim(subname) // ': icecldoptics ' // &
+            trim(icecldoptics) // ' not recognized.' &
+         )
+      end if
 
       ! Get liquid optics
-      call get_liquid_optics_lw(state, pbuf, liq_tau)
+      if (trim(liqcldoptics) == 'gammadist') then
+         call get_conley_liq_optics_lw(state, pbuf, liq_tau)
+      else if (trim(liqcldoptics) == 'slingo') then
+         call slingo_liq_optics_lw(state, pbuf, liq_tau)
+      else
+         call endrun( &
+            trim(subname) // ': liqcldoptics ' // &
+            trim(liqcldoptics) // ' not recognized.' &
+         )
+      end if
 
       ! Get snow optics?
-      call get_snow_optics_lw(state, pbuf, snow_tau)
+      if (trim(icecldoptics) == 'mitchell') then
+         call get_snow_optics_lw(state, pbuf, snow_tau)
+      end if
 
       ! Get cloud and snow fractions. This is used to weight the contribution to
       ! the total lw absorption by the fraction of the column that contains
@@ -394,8 +456,6 @@ contains
       ! Loop variables
       integer :: icol, ilev, igpt, iband, iday, ilev_cam, ilev_rad
 
-      ! Set a name for this subroutine to write to error messages
-      character(len=32) :: subname = 'set_cloud_optics_sw'
 
       ncol = state%ncol
       ngpt = kdist%get_ngpt()
@@ -547,6 +607,9 @@ contains
       ! Loop variables
       integer :: icol, ilev_rad, igpt, iband, ilev_cam
 
+      ! Set a name for this subroutine to write to error messages
+      character(len=32) :: subname = 'set_cloud_optics_lw'
+
       ! Initialize (or reset) output cloud optics object
       optics_out%tau = 0.0
 
@@ -570,7 +633,7 @@ contains
 
       ! Check values
       call assert_range(optics_cam%optical_depth, 0._r8, 1e20_r8, &
-                        'set_cloud_optics_lw: optics_cam%optical_depth')
+                        trim(subname) // ': optics_cam%optical_depth')
 
       ! Send cloud optics to history buffer
       call output_cloud_optics_lw(state, optics_cam)
@@ -630,7 +693,7 @@ contains
 
       ! Check values
       call assert_range(optics_out%tau, 0._r8, 1e20_r8, &
-                        'set_cloud_optics_lw: optics_out%tau')
+                        trim(subname) // ': optics_out%tau')
 
       ! Check cloud optics
       call handle_error(optics_out%validate())

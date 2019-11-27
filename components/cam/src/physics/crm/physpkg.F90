@@ -715,7 +715,6 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use ref_pres,           only: pref_edge, pref_mid
 
     use carma_intr,         only: carma_init
-    use cloud_rad_props,    only: cloud_rad_props_init
     use cam_control_mod,    only: nsrest  ! restart flag
     use check_energy,       only: check_energy_init
     use chemistry,          only: chem_init
@@ -847,7 +846,6 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     ! Initialize rad constituents and their properties
     call rad_cnst_init()
     call aer_rad_props_init()
-    call cloud_rad_props_init()
 
     ! initialize carma
     call carma_init()

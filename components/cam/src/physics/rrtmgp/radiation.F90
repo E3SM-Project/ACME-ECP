@@ -404,7 +404,9 @@ contains
       use cam_history_support, only: add_hist_coord
       use constituents,       only: cnst_get_ind
       use phys_control,       only: phys_getopts
-      use rad_constituents,   only: N_DIAG, rad_cnst_get_call_list, rad_cnst_get_info
+      use rad_constituents,   only: N_DIAG, &
+                                    rad_cnst_get_call_list, rad_cnst_get_info, &
+                                    liqcldoptics, icecldoptics
       use cospsimulator_intr, only: docosp, cospsimulator_intr_init
       use hirsbt,             only: hirsbt_init
       use hirsbtpar,          only: hirsname, msuname
@@ -418,7 +420,9 @@ contains
       use mo_gas_concentrations, only: ty_gas_concs
 
       ! For optics
-      use cloud_rad_props, only: cloud_rad_props_init
+      use cloud_rad_props, only: init_mitchell_ice_optics, init_conley_liq_optics
+      use ebert_curry, only: ec_rad_props_init
+      use slingo, only: slingo_rad_props_init
 
       ! Physics state is going to be needed for perturbation growth tests, but we
       ! have yet to implement this in RRTMGP. It is a vector because at the point
@@ -456,7 +460,20 @@ contains
       !-----------------------------------------------------------------------
 
       ! Initialize cloud optics
-      call cloud_rad_props_init()
+      if (trim(liqcldoptics) == 'gammadist') then
+         call init_conley_liq_optics()
+      else if (trim(liqcldoptics) == 'slingo') then
+         call slingo_rad_props_init()
+      else
+         call endrun(subname // ': liqcldoptics ' // trim(liqcldoptics) // ' not recognized.')
+      end if
+      if (trim(icecldoptics) == 'mitchell') then
+         call init_mitchell_ice_optics()
+      else if (trim(icecldoptics) == 'ebertcurry') then
+         call ec_rad_props_init()
+      else
+         call endrun(subname // ': icecldoptics ' // trim(icecldoptics) //  ' not recognized.')
+      end if
 
       ! Initialize output fields for offline driver.
       ! TODO: do we need to keep this functionality? Where is the offline driver?

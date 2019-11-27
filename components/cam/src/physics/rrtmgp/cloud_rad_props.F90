@@ -22,12 +22,13 @@ private
 save
 
 public :: &
-   cloud_rad_props_init,          &
-   get_ice_optics_sw,             & ! return Mitchell SW ice radiative properties
-   get_ice_optics_lw,             & ! Mitchell LW ice rad props
-   get_liquid_optics_sw,          & ! return Conley SW rad props
-   get_liquid_optics_lw,          & ! return Conley LW rad props
-   get_snow_optics_sw,            &
+   init_mitchell_ice_optics,    &
+   init_conley_liq_optics,      &
+   get_mitchell_ice_optics_sw,  & ! return mitchell sw ice rad props
+   get_mitchell_ice_optics_lw,  & ! return mitchell lw ice rad props
+   get_conley_liq_optics_sw,    & ! return conley sw rad props
+   get_conley_liq_optics_lw,    & ! return conley lw rad props
+   get_snow_optics_sw,          &
    get_snow_optics_lw
 
 integer :: nmu, nlambda
@@ -45,9 +46,9 @@ real(r8), allocatable :: ssa_sw_ice(:,:)
 real(r8), allocatable :: asm_sw_ice(:,:)
 real(r8), allocatable :: abs_lw_ice(:,:)
 
-! 
-! indices into pbuf for optical parameters of MG clouds
-! 
+   ! 
+   ! indices into pbuf for optical parameters of MG clouds
+   ! 
    integer :: i_dei, i_mu, i_lambda, i_iciwp, i_iclwp, i_des, i_icswp
 
 
@@ -55,7 +56,7 @@ real(r8), allocatable :: abs_lw_ice(:,:)
 contains
 !==============================================================================
 
-subroutine cloud_rad_props_init()
+subroutine init_mitchell_ice_optics()
 
    use netcdf
    use spmd_utils,     only: masterproc
@@ -64,26 +65,18 @@ subroutine cloud_rad_props_init()
 #if ( defined SPMD )
    use mpishorthand
 #endif
-   use constituents,   only: cnst_get_ind
-
-   character(len=256) :: liquidfile 
-   character(len=256) :: icefile 
-   character(len=256) :: locfn
-
-   integer :: ncid, dimid, f_nlwbands, f_nswbands, ierr
-   integer :: vdimids(NF90_MAX_VAR_DIMS), ndims, templen
-   ! liquid clouds
-   integer :: mudimid, lambdadimid
-   integer :: mu_id, lambda_id, ext_sw_liq_id, ssa_sw_liq_id, asm_sw_liq_id, abs_lw_liq_id
 
    ! ice clouds
    integer :: d_dimid ! diameters
    integer :: d_id, ext_sw_ice_id, ssa_sw_ice_id, asm_sw_ice_id, abs_lw_ice_id
 
+   ! Working variables
+   integer :: ncid, dimid, f_nlwbands, f_nswbands, ierr
+   integer :: vdimids(NF90_MAX_VAR_DIMS), ndims, templen
+   character(len=256) :: locfn
    integer :: err
 
-   liquidfile = liqopticsfile 
-   icefile = iceopticsfile
+
 
    ! Ice effective diameter?
    i_dei    = pbuf_get_index('DEI',errcode=err)
@@ -91,24 +84,124 @@ subroutine cloud_rad_props_init()
    ! Snow effective diameter?
    i_des    = pbuf_get_index('DES',errcode=err)
 
+   ! In-cloud ice water path
+   i_iciwp  = pbuf_get_index('ICIWP',errcode=err)
+   
+   ! In-cloud snow water path
+   i_icswp  = pbuf_get_index('ICSWP',errcode=err)
+
+   ! read ice cloud optics
+   if(masterproc) then
+      call getfil(trim(iceopticsfile), locfn, 0)
+      call handle_ncerr( nf90_open(locfn, NF90_NOWRITE, ncid), 'ice optics file missing')
+      write(iulog,*)' reading ice cloud optics from file ',locfn
+
+      call handle_ncerr(nf90_inq_dimid( ncid, 'lw_band', dimid), 'getting lw_band dim')
+      call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nlwbands), 'getting n lw bands')
+      if (f_nlwbands /= nlwbands) call endrun('number of lw bands does not match')
+
+      call handle_ncerr(nf90_inq_dimid( ncid, 'sw_band', dimid), 'getting sw_band_dim')
+      call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nswbands), 'getting n sw bands')
+      if (f_nswbands /= nswbands) call endrun('number of sw bands does not match')
+
+      call handle_ncerr(nf90_inq_dimid( ncid, 'd_eff', d_dimid), 'getting deff dim')
+      call handle_ncerr(nf90_inquire_dimension( ncid, d_dimid, len=n_g_d), 'getting n deff samples')
+
+   endif ! if (masterproc)
+
+#if ( defined SPMD )
+   call mpibcast(n_g_d, 1, mpiint, 0, mpicom, ierr)
+!   call mpibcast(nswbands, 1, mpiint, 0, mpicom, ierr)
+!   call mpibcast(nlwbands, 1, mpiint, 0, mpicom, ierr)
+#endif
+
+   if (.not.allocated(g_d_eff)) allocate(g_d_eff(n_g_d))
+   if (.not.allocated(ext_sw_ice)) allocate(ext_sw_ice(n_g_d,nswbands))
+   if (.not.allocated(ssa_sw_ice)) allocate(ssa_sw_ice(n_g_d,nswbands))
+   if (.not.allocated(asm_sw_ice)) allocate(asm_sw_ice(n_g_d,nswbands))
+   if (.not.allocated(abs_lw_ice)) allocate(abs_lw_ice(n_g_d,nlwbands))
+
+   if(masterproc) then
+      call handle_ncerr( nf90_inq_varid(ncid, 'd_eff', d_id),&
+         'cloud optics deff get')
+      call handle_ncerr( nf90_get_var(ncid, d_id, g_d_eff),&
+         'read cloud optics deff values')
+
+      call handle_ncerr( nf90_inq_varid(ncid, 'sw_ext', ext_sw_ice_id),&
+         'cloud optics ext_sw_ice get')
+      call handle_ncerr(nf90_inquire_variable ( ncid, ext_sw_ice_id, ndims=ndims, dimids=vdimids),&
+          'checking dimensions of ext_sw_ice')
+      call handle_ncerr(nf90_inquire_dimension( ncid, vdimids(1), len=templen),&
+          'getting first dimension sw_ext')
+      !write(iulog,*) 'expected length',n_g_d,'actual len',templen
+      call handle_ncerr(nf90_inquire_dimension( ncid, vdimids(2), len=templen),&
+          'getting first dimension sw_ext')
+      !write(iulog,*) 'expected length',nswbands,'actual len',templen
+      call handle_ncerr( nf90_get_var(ncid, ext_sw_ice_id, ext_sw_ice),&
+         'read cloud optics ext_sw_ice values')
+
+      call handle_ncerr( nf90_inq_varid(ncid, 'sw_ssa', ssa_sw_ice_id),&
+         'cloud optics ssa_sw_ice get')
+      call handle_ncerr( nf90_get_var(ncid, ssa_sw_ice_id, ssa_sw_ice),&
+         'read cloud optics ssa_sw_ice values')
+
+      call handle_ncerr( nf90_inq_varid(ncid, 'sw_asm', asm_sw_ice_id),&
+         'cloud optics asm_sw_ice get')
+      call handle_ncerr( nf90_get_var(ncid, asm_sw_ice_id, asm_sw_ice),&
+         'read cloud optics asm_sw_ice values')
+
+      call handle_ncerr( nf90_inq_varid(ncid, 'lw_abs', abs_lw_ice_id),&
+         'cloud optics abs_lw_ice get')
+      call handle_ncerr( nf90_get_var(ncid, abs_lw_ice_id, abs_lw_ice),&
+         'read cloud optics abs_lw_ice values')
+
+      call handle_ncerr( nf90_close(ncid), 'ice optics file missing')
+
+   endif ! if masterproc
+#if ( defined SPMD )
+   call mpibcast(g_d_eff, n_g_d, mpir8, 0, mpicom, ierr)
+   call mpibcast(ext_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
+   call mpibcast(ssa_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
+   call mpibcast(asm_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
+   call mpibcast(abs_lw_ice, n_g_d*nlwbands, mpir8, 0, mpicom, ierr)
+#endif
+
+end subroutine init_mitchell_ice_optics
+
+!==============================================================================
+
+subroutine init_conley_liq_optics()
+
+   use netcdf
+   use spmd_utils,     only: masterproc
+   use ioFileMod,      only: getfil
+   use error_messages, only: handle_ncerr
+#if ( defined SPMD )
+   use mpishorthand
+#endif
+
+   ! liquid clouds
+   integer :: mudimid, lambdadimid
+   integer :: mu_id, lambda_id, ext_sw_liq_id, ssa_sw_liq_id, asm_sw_liq_id, abs_lw_liq_id
+
+   ! Working variables
+   integer :: ncid, dimid, f_nlwbands, f_nswbands, ierr
+   integer :: vdimids(NF90_MAX_VAR_DIMS), ndims, templen
+   integer :: err
+   character(len=256) :: locfn
+
    ! Shape parameter for droplet distrubtion?
    i_mu     = pbuf_get_index('MU',errcode=err)
 
    ! Slope of droplet distribution?
    i_lambda = pbuf_get_index('LAMBDAC',errcode=err)
 
-   ! In-cloud ice water path
-   i_iciwp  = pbuf_get_index('ICIWP',errcode=err)
-   
    ! In-cloud liquid water path
    i_iclwp  = pbuf_get_index('ICLWP',errcode=err)
 
-   ! In-cloud snow water path
-   i_icswp  = pbuf_get_index('ICSWP',errcode=err)
-
    ! read liquid cloud optics
    if(masterproc) then
-      call getfil( trim(liquidfile), locfn, 0)
+      call getfil(trim(liqopticsfile), locfn, 0)
       call handle_ncerr( nf90_open(locfn, NF90_NOWRITE, ncid), 'liquid optics file missing')
       write(iulog,*)' reading liquid cloud optics from file ',locfn
 
@@ -185,89 +278,13 @@ subroutine cloud_rad_props_init()
    ext_sw_liq = ext_sw_liq / 0.9970449e3_r8 
    abs_lw_liq = abs_lw_liq / 0.9970449e3_r8 
 
-   ! read ice cloud optics
-   if(masterproc) then
-      call getfil( trim(icefile), locfn, 0)
-      call handle_ncerr( nf90_open(locfn, NF90_NOWRITE, ncid), 'ice optics file missing')
-      write(iulog,*)' reading ice cloud optics from file ',locfn
-
-      call handle_ncerr(nf90_inq_dimid( ncid, 'lw_band', dimid), 'getting lw_band dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nlwbands), 'getting n lw bands')
-      if (f_nlwbands /= nlwbands) call endrun('number of lw bands does not match')
-
-      call handle_ncerr(nf90_inq_dimid( ncid, 'sw_band', dimid), 'getting sw_band_dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nswbands), 'getting n sw bands')
-      if (f_nswbands /= nswbands) call endrun('number of sw bands does not match')
-
-      call handle_ncerr(nf90_inq_dimid( ncid, 'd_eff', d_dimid), 'getting deff dim')
-      call handle_ncerr(nf90_inquire_dimension( ncid, d_dimid, len=n_g_d), 'getting n deff samples')
-
-   endif ! if (masterproc)
-
-#if ( defined SPMD )
-   call mpibcast(n_g_d, 1, mpiint, 0, mpicom, ierr)
-!   call mpibcast(nswbands, 1, mpiint, 0, mpicom, ierr)
-!   call mpibcast(nlwbands, 1, mpiint, 0, mpicom, ierr)
-#endif
-
-   if (.not.allocated(g_d_eff)) allocate(g_d_eff(n_g_d))
-   if (.not.allocated(ext_sw_ice)) allocate(ext_sw_ice(n_g_d,nswbands))
-   if (.not.allocated(ssa_sw_ice)) allocate(ssa_sw_ice(n_g_d,nswbands))
-   if (.not.allocated(asm_sw_ice)) allocate(asm_sw_ice(n_g_d,nswbands))
-   if (.not.allocated(abs_lw_ice)) allocate(abs_lw_ice(n_g_d,nlwbands))
-
-   if(masterproc) then
-      call handle_ncerr( nf90_inq_varid(ncid, 'd_eff', d_id),&
-         'cloud optics deff get')
-      call handle_ncerr( nf90_get_var(ncid, d_id, g_d_eff),&
-         'read cloud optics deff values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'sw_ext', ext_sw_ice_id),&
-         'cloud optics ext_sw_ice get')
-      call handle_ncerr(nf90_inquire_variable ( ncid, ext_sw_ice_id, ndims=ndims, dimids=vdimids),&
-          'checking dimensions of ext_sw_ice')
-      call handle_ncerr(nf90_inquire_dimension( ncid, vdimids(1), len=templen),&
-          'getting first dimension sw_ext')
-      !write(iulog,*) 'expected length',n_g_d,'actual len',templen
-      call handle_ncerr(nf90_inquire_dimension( ncid, vdimids(2), len=templen),&
-          'getting first dimension sw_ext')
-      !write(iulog,*) 'expected length',nswbands,'actual len',templen
-      call handle_ncerr( nf90_get_var(ncid, ext_sw_ice_id, ext_sw_ice),&
-         'read cloud optics ext_sw_ice values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'sw_ssa', ssa_sw_ice_id),&
-         'cloud optics ssa_sw_ice get')
-      call handle_ncerr( nf90_get_var(ncid, ssa_sw_ice_id, ssa_sw_ice),&
-         'read cloud optics ssa_sw_ice values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'sw_asm', asm_sw_ice_id),&
-         'cloud optics asm_sw_ice get')
-      call handle_ncerr( nf90_get_var(ncid, asm_sw_ice_id, asm_sw_ice),&
-         'read cloud optics asm_sw_ice values')
-
-      call handle_ncerr( nf90_inq_varid(ncid, 'lw_abs', abs_lw_ice_id),&
-         'cloud optics abs_lw_ice get')
-      call handle_ncerr( nf90_get_var(ncid, abs_lw_ice_id, abs_lw_ice),&
-         'read cloud optics abs_lw_ice values')
-
-      call handle_ncerr( nf90_close(ncid), 'ice optics file missing')
-
-   endif ! if masterproc
-#if ( defined SPMD )
-   call mpibcast(g_d_eff, n_g_d, mpir8, 0, mpicom, ierr)
-   call mpibcast(ext_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
-   call mpibcast(ssa_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
-   call mpibcast(asm_sw_ice, n_g_d*nswbands, mpir8, 0, mpicom, ierr)
-   call mpibcast(abs_lw_ice, n_g_d*nlwbands, mpir8, 0, mpicom, ierr)
-#endif
-
    return
 
-end subroutine cloud_rad_props_init
+end subroutine init_conley_liq_optics 
 
 !==============================================================================
 
-subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+subroutine get_mitchell_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    type(physics_state), intent(in)   :: state
    type(physics_buffer_desc),pointer :: pbuf(:)
 
@@ -286,11 +303,11 @@ subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    call interpolate_ice_optics_sw(state%ncol, iciwpth, dei, tau, tau_w, &
                                   tau_w_g, tau_w_f)
 
-end subroutine get_ice_optics_sw
+end subroutine get_mitchell_ice_optics_sw
 
 !==============================================================================
 
-subroutine get_ice_optics_lw(state, pbuf, abs_od)
+subroutine get_mitchell_ice_optics_lw(state, pbuf, abs_od)
    type(physics_state), intent(in)     :: state
    type(physics_buffer_desc), pointer  :: pbuf(:)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
@@ -304,11 +321,11 @@ subroutine get_ice_optics_lw(state, pbuf, abs_od)
 
    call interpolate_ice_optics_lw(state%ncol,iciwpth, dei, abs_od)
 
-end subroutine get_ice_optics_lw
+end subroutine get_mitchell_ice_optics_lw
 
 !==============================================================================
 
-subroutine get_liquid_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+subroutine get_conley_liq_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    type(physics_state), intent(in)   :: state
    type(physics_buffer_desc),pointer :: pbuf(:)
 
@@ -342,11 +359,11 @@ subroutine get_liquid_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
       enddo
    enddo
 
-end subroutine get_liquid_optics_sw
+end subroutine get_conley_liq_optics_sw
 
 !==============================================================================
 
-subroutine get_liquid_optics_lw(state, pbuf, abs_od)
+subroutine get_conley_liq_optics_lw(state, pbuf, abs_od)
    type(physics_state), intent(in)    :: state
    type(physics_buffer_desc),pointer  :: pbuf(:)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
@@ -375,7 +392,7 @@ subroutine get_liquid_optics_lw(state, pbuf, abs_od)
       enddo
    enddo
 
-end subroutine get_liquid_optics_lw
+end subroutine get_conley_liq_optics_lw
 
 !==============================================================================
 
@@ -390,7 +407,7 @@ subroutine get_snow_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 
    real(r8), pointer :: icswpth(:,:), des(:,:)
 
-   ! This does the same thing as get_ice_optics_sw, except with a different
+   ! This does the same thing as get_mitchell_ice_optics_sw, except with a different
    ! water path and effective diameter.
    call pbuf_get_field(pbuf, i_icswp, icswpth)
    call pbuf_get_field(pbuf, i_des,   des)

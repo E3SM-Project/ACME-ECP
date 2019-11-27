@@ -1618,10 +1618,21 @@ if ($nl->get_value('strat_aero_feedback') =~ /$TRUE/io) {
 
 add_default($nl, 'rad_climate', 'val'=>$radval);
 
-# Cloud optics
+# Cloud optics; for SPCAM be specific about which optics package to use
 if ($rad_pkg eq 'rrtmg' or $rad_pkg eq 'rrtmgp') {
-    add_default($nl, 'liqcldoptics');
-    add_default($nl, 'icecldoptics');
+    if ($cfg->get('use_SPCAM')) {
+        if ($cfg->get('SPCAM_microp_scheme') eq 'sam1mom') {
+            add_default($nl, 'oldcldoptics', 'val' => '.true.');
+            add_default($nl, 'liqcldoptics', 'val' => 'slingo');
+            add_default($nl, 'icecldoptics', 'val' => 'ebertcurry');
+        } else {
+            add_default($nl, 'liqcldoptics', 'val' => 'gammadist');
+            add_default($nl, 'icecldoptics', 'val' => 'mitchell');
+        }
+    } else {
+        add_default($nl, 'liqcldoptics');
+        add_default($nl, 'icecldoptics');
+    }
     add_default($nl, 'liqopticsfile');
     add_default($nl, 'iceopticsfile');
 }
@@ -3527,13 +3538,6 @@ add_default($nl, 'use_ECPP');
 add_default($nl, 'use_crm_accel');
 add_default($nl, 'crm_accel_uv');
 add_default($nl, 'crm_accel_factor');
-
-# For SPCAM single moment microphysics, we need to use oldcldoptics
-if ($cfg->get('use_SPCAM')) {
-    if ($cfg->get('SPCAM_microp_scheme') eq 'sam1mom') {
-        add_default($nl, 'oldcldoptics', 'val' => '.true.')
-    }
-}
 
 add_default($nl, 'do_aerocom_ind3');
 my $aerocom_ind3 = $nl->get_value('do_aerocom_ind3');
