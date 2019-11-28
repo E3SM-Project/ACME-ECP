@@ -3,7 +3,7 @@ module restart_physics
   use shr_kind_mod,       only: r8 => shr_kind_r8
   use spmd_utils,         only: masterproc
   use co2_cycle,          only: co2_transport
-  use constituents,       only: pcnst, cnst_name
+  use constituents,       only: pcnst
   use radae,              only: abstot_3d, absnxt_3d, emstot_3d, initialize_radbuffer, ntoplw
   use comsrf,             only: sgh, sgh30, landm, trefmxav, trefmnav, initialize_comsrf 
   use ioFileMod
@@ -19,7 +19,6 @@ module restart_physics
                                 pio_put_var, pio_get_var
   use cospsimulator_intr, only: docosp
   use radiation,          only: cosp_cnt_init, cosp_cnt, rad_randn_seedrst, kiss_seed_num
-  use physics_types,      only: physics_state
 
   implicit none
   private
@@ -52,8 +51,6 @@ module restart_physics
     type(var_desc_t), allocatable :: abstot_desc(:)
 
     type(var_desc_t) :: cospcnt_desc, rad_randn_seedrst_desc
-
-    type(var_desc_t) :: T_desc, U_desc, V_desc, Q_desc(pcnst)
 
   CONTAINS
     subroutine init_restart_physics ( File, pbuf2d)
@@ -203,17 +200,16 @@ module restart_physics
        dimids(hdimcnt+1) = kiss_seed_dim
        ierr = pio_def_var(File, 'rad_randn_seedrst', pio_int, dimids(1:hdimcnt+1), rad_randn_seedrst_desc)
     endif
-
       
   end subroutine init_restart_physics
 
-  subroutine write_restart_physics (File, cam_in, cam_out, pbuf2d, phys_state)
+  subroutine write_restart_physics (File, cam_in, cam_out, pbuf2d)
 
       !-----------------------------------------------------------------------
       use physics_buffer,      only: physics_buffer_desc, pbuf_write_restart
       use phys_grid,           only: phys_decomp
       
-      use ppgrid,              only: begchunk, endchunk, pcols, pverp, pver
+      use ppgrid,              only: begchunk, endchunk, pcols, pverp
       use chemistry,           only: chem_write_restart
       use prescribed_ozone,    only: write_prescribed_ozone_restart
       use prescribed_ghg,      only: write_prescribed_ghg_restart
@@ -238,25 +234,24 @@ module restart_physics
       type(cam_in_t),    intent(in)    :: cam_in(begchunk:endchunk)
       type(cam_out_t),   intent(in)    :: cam_out(begchunk:endchunk)
       type(physics_buffer_desc), pointer        :: pbuf2d(:,:)
-      type(physics_state), pointer     :: phys_state(:)
       !
       ! Local workspace
       !
       type(io_desc_t), pointer :: iodesc
       real(r8):: tmpfield(pcols, begchunk:endchunk)
-      real(r8):: tmpfield3d(pcols, pver, begchunk:endchunk)
 #ifdef MAML
       real(r8) :: tmpfld_crm(pcols*(endchunk-begchunk+1)*num_inst_atm)
       integer :: ii, jj, j
 #endif
       integer :: tmp_seedrst(pcols, kiss_seed_num, begchunk:endchunk)
-      integer :: i, m, iseed, icol, k          ! loop index
+      integer :: i, m, iseed, icol          ! loop index
       integer :: ncol          ! number of vertical columns
       integer :: ierr
       integer :: physgrid
       integer :: dims(3), gdims(3)
       integer :: nhdims
       !-----------------------------------------------------------------------
+
       ! Write grid vars
       call cam_grid_write_var(File, phys_decomp)
 
@@ -475,6 +470,7 @@ module restart_physics
             end do
             call pio_write_darray(File, cflx_desc(m), iodesc, tmpfield, ierr)
          end do
+
 #ifdef MAML
          ii=0
          tmpfld_crm(:) = fillvalue
@@ -583,13 +579,12 @@ module restart_physics
          call cam_grid_write_dist_array(File, physgrid, dims(1:3),             &
               gdims(1:nhdims+1), tmp_seedrst, rad_randn_seedrst_desc)
       endif
-
       
     end subroutine write_restart_physics
 
 !#######################################################################
 
-    subroutine read_restart_physics(File, cam_in, cam_out, pbuf2d, phys_state)
+    subroutine read_restart_physics(File, cam_in, cam_out, pbuf2d)
 
      !-----------------------------------------------------------------------
      use physics_buffer,      only: physics_buffer_desc, pbuf_read_restart
@@ -618,13 +613,11 @@ module restart_physics
      type(cam_in_t),            pointer :: cam_in(:)
      type(cam_out_t),           pointer :: cam_out(:)
      type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-     type(physics_state), pointer       :: phys_state(:)
      !
      ! Local workspace
      !
      real(r8), allocatable :: tmpfield2(:,:)
-     real(r8), allocatable :: tmpfield3(:,:,:)
-     integer :: i, c, m, k       ! loop index
+     integer :: i, c, m          ! loop index
      integer :: ierr             ! I/O status
      type(io_desc_t), pointer :: iodesc
      type(var_desc_t)         :: vardesc
@@ -681,6 +674,7 @@ module restart_physics
 
         allocate(tmpfield2(pcols, begchunk:endchunk))
         tmpfield2 = fillvalue
+
 #ifdef MAML
         allocate(tmpfld_crm(pcols*csize*num_inst_atm))
         tmpfld_crm(:) = fillvalue
@@ -966,6 +960,7 @@ module restart_physics
            end do
         end do
 #endif
+
         deallocate(tmpfield2)
 
      end if
@@ -1046,7 +1041,6 @@ module restart_physics
            call endrun()
         endif
      endif
-
 
    end subroutine read_restart_physics
 

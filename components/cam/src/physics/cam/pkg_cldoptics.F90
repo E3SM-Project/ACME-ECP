@@ -47,7 +47,7 @@ contains
     real(r8), intent(in) :: t(pcols,pver)        ! Temperature
     real(r8), intent(in) :: ps(pcols)            ! Surface pressure
     real(r8), intent(in) :: pmid(pcols,pver)     ! Midpoint pressures
-    real(r8), intent(in) :: landm(pcols)         ! Land fraction ramping to zero over ocean
+    real(r8), intent(in) :: landm(pcols)
     real(r8), intent(in) :: snowh(pcols)         ! Snow depth over land, water equivalent (m)
 !
 ! Output arguments
@@ -294,7 +294,7 @@ contains
 !
 ! Input arguments
 !
-    integer,  intent(in) :: ncol
+    integer, intent(in) :: ncol
     real(r8), intent(in) :: landfrac(pcols)      ! Land fraction
     real(r8), intent(in) :: icefrac(pcols)       ! Ice fraction
     real(r8), intent(in) :: snowh(pcols)         ! Snow depth over land, water equivalent (m)
@@ -397,5 +397,4 @@ contains
     return
   end subroutine reitab
 
-!===============================================================================
 end module pkg_cldoptics

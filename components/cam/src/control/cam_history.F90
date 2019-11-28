@@ -427,7 +427,6 @@ CONTAINS
     ! Define field list information for all history files.  
     !
     call fldlst ()
-
     !
     ! Loop over max. no. of history files permitted  
     !
@@ -436,11 +435,11 @@ CONTAINS
     else
       call get_curr_time(day, sec)  ! elapased time since reference date
     end if
-
     do t=1,ptapes
       nfils(t) = 0            ! no. of time samples in hist. file no. t
 
       ! Time at beginning of current averaging interval.
+
       beg_time(t) = day + sec/86400._r8
     end do
 
@@ -467,11 +466,9 @@ CONTAINS
         tape(t)%hlist(f)%field%zonal_complement = -1
       end do
     end do
-
     ! Setup vector pairs for unstructured grid interpolation
     call setup_interpolation_and_define_vector_complements()
     !  Initialize the sat following history subsystem
-
     call sat_hist_init()
 
     return
@@ -2379,6 +2376,7 @@ CONTAINS
     deallocate(gridsontape)
 
     call print_active_fldlst()
+
     !
     ! Packing density, ndens: With netcdf, only 1 (nf_double) and 2 (pio_real)
     ! are allowed

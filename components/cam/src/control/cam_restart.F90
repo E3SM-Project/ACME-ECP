@@ -14,7 +14,6 @@ module cam_restart
    use camsrfexch,       only: cam_in_t, cam_out_t     
    use dyn_comp,         only: dyn_import_t, dyn_export_t
    use perf_mod,         only: t_startf, t_stopf
-   use physics_types,    only: physics_state, physics_tend 
 
 #ifdef SPMD
    use mpishorthand,     only: mpicom, mpir8, mpiint, mpilog
@@ -142,7 +141,7 @@ end subroutine restart_printopts
 
 !=========================================================================================
 
-   subroutine cam_write_restart( cam_in, cam_out, dyn_out, pbuf2d, phys_state, &
+   subroutine cam_write_restart( cam_in, cam_out, dyn_out, pbuf2d, &
 	                         yr_spec, mon_spec, day_spec, sec_spec )
 
 !----------------------------------------------------------------------- 
@@ -179,7 +178,6 @@ end subroutine restart_printopts
       type(dyn_export_t),  intent(in) :: dyn_out
       
       type(physics_buffer_desc), pointer  :: pbuf2d(:,:)
-      type(physics_state), pointer    :: phys_state(:)
 
       integer            , intent(in), optional :: yr_spec         ! Simulation year
       integer            , intent(in), optional :: mon_spec        ! Simulation month
@@ -243,7 +241,7 @@ end subroutine restart_printopts
       call t_stopf("write_restart_dynamics")
 
       call t_startf("write_restart_physics")
-      call write_restart_physics(File, cam_in, cam_out, pbuf2d, phys_state)
+      call write_restart_physics(File, cam_in, cam_out, pbuf2d)
       call t_stopf("write_restart_physics")
 
       call t_startf("write_restart_history")
@@ -273,8 +271,7 @@ end subroutine restart_printopts
 
 !#######################################################################
 
-   subroutine cam_read_restart( cam_in, cam_out, dyn_in, dyn_out, pbuf2d, &
-                                phys_state, phys_tend, stop_ymd, stop_tod, NLFileName )
+   subroutine cam_read_restart( cam_in, cam_out, dyn_in, dyn_out, pbuf2d, stop_ymd, stop_tod, NLFileName )
 
 !----------------------------------------------------------------------- 
 ! 
@@ -303,15 +300,6 @@ end subroutine restart_printopts
       use time_manager,     only: timemgr_read_restart, timemgr_restart
       use filenames,        only: caseid, brnch_retain_casename
       use ref_pres,         only: ref_pres_init
-      use ppgrid,           only: begchunk, endchunk, pcols
-      use physics_types,    only: physics_type_alloc
-      use cam_initfiles,            only: cam_initfiles_open
-      use cam_initfiles,            only: topo_file_get_id
-      use ncdio_atm,                only: infld
-      use dimensions_mod,           only: nelemd
-      use parallel_mod,             only: par
-      use edge_mod,                 only: edge_g, edgeVpack, edgeVunpack
-      use bndry_mod,                only: bndry_exchangeV
 
 !
 !-----------------------------------------------------------------------
@@ -323,8 +311,6 @@ end subroutine restart_printopts
    type(dyn_import_t), intent(inout) :: dyn_in
    type(dyn_export_t), intent(inout) :: dyn_out
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-   type(physics_state),pointer     :: phys_state(:)
-   type(physics_tend ),pointer     :: phys_tend(:)
    character(len=*),   intent(in)  :: NLFileName
    integer,            intent(IN)  :: stop_ymd       ! Stop date (YYYYMMDD)
    integer,            intent(IN)  :: stop_tod       ! Stop time of day (sec)
@@ -338,11 +324,6 @@ end subroutine restart_printopts
    integer(PIO_OFFSET_KIND) :: slen
    type(file_desc_t) :: File
    logical :: filefound
-
-   integer :: ie, nphys_sq
-   real(r8), allocatable :: phis_tmp(:,:) ! (nphys_sq,nelemd)
-   type(file_desc_t), pointer :: fh_topo
-   logical :: found
 
       ! lbrnch is false for a restart run (nsrest=1), and true for a 
       ! branch run (nsrest=3).  Only read the restart pointer file for
@@ -424,7 +405,7 @@ end subroutine restart_printopts
    ! Initialize physics grid reference pressures (needed by initialize_radbuffer)
    call ref_pres_init()
 
-   call read_restart_physics( File, cam_in, cam_out, pbuf2d, phys_state )
+   call read_restart_physics( File, cam_in, cam_out, pbuf2d )
 
    if (nlres .and. .not.lbrnch) then
       call read_restart_history ( File )

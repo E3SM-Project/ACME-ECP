@@ -644,7 +644,7 @@ subroutine cam_export(state,cam_out,pbuf)
    do i=1,ncol
       umb(i)           = state%u(i,pver)
       vmb(i)           = state%v(i,pver)
-      vmag(i)          = max(1.e-5_r8,sqrt( umb(i)**2._r8 + vmb(i)**2._r8))            
+      vmag(i)          = max(1.e-5_r8,sqrt( umb(i)**2._r8 + vmb(i)**2._r8))
       cam_out%tbot(i)  = state%t(i,pver)
       cam_out%thbot(i) = state%t(i,pver) * state%exner(i,pver)
       cam_out%zbot(i)  = state%zm(i,pver)

@@ -64,7 +64,7 @@ logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-
 
 logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
-logical           :: use_MAML             = .false.    ! true => use Multiple Atmosphere and Multtiple Land   
+logical           :: use_MAML             = .false.    ! true => use Multiple Atmosphere and Multtiple Land
 logical           :: use_crm_accel        = .false.    ! true => use crm mean-state acceleration
 real(r8)          :: crm_accel_factor     = 2.D0       ! crm acceleration factor
 logical           :: crm_accel_uv         = .true.     ! true => apply crm mean-state acceleration to momentum fields
@@ -223,15 +223,13 @@ subroutine phys_ctl_readnl(nlfile)
    call mpibcast(eddy_scheme,      len(eddy_scheme)      , mpichar, 0, mpicom)
    call mpibcast(microp_scheme,    len(microp_scheme)    , mpichar, 0, mpicom)
    call mpibcast(radiation_scheme, len(radiation_scheme) , mpichar, 0, mpicom)
-   ! whannah - does order matter here? I'm gonna move this down...
-   ! call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
    call mpibcast(macrop_scheme,    len(macrop_scheme)    , mpichar, 0, mpicom)
    call mpibcast(srf_flux_avg,                    1 , mpiint,  0, mpicom)
    call mpibcast(use_subcol_microp,               1 , mpilog,  0, mpicom)
-   call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
-   call mpibcast(use_SPCAM,                       1 , mpilog,  0, mpicom) !-- mdb spcam
-   call mpibcast(use_ECPP,                        1 , mpilog,  0, mpicom) !-- mdb spcam
-   call mpibcast(use_MAML,                        1 , mpilog,  0, mpicom) ! 
+   call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)
+   call mpibcast(use_SPCAM,                       1 , mpilog,  0, mpicom)
+   call mpibcast(use_ECPP,                        1 , mpilog,  0, mpicom)
+   call mpibcast(use_MAML,                        1 , mpilog,  0, mpicom)
    call mpibcast(use_crm_accel,                   1 , mpilog,  0, mpicom)
    call mpibcast(crm_accel_factor,                1 , mpir8,   0, mpicom)
    call mpibcast(crm_accel_uv,                    1 , mpilog,  0, mpicom)
@@ -360,14 +358,12 @@ subroutine phys_ctl_readnl(nlfile)
       end if
    end if
 
-!-- mdb spcam
    ! Check settings for SPCAM_microp_scheme
    if ( .not. (SPCAM_microp_scheme .eq. 'm2005' .or. SPCAM_microp_scheme .eq. 'sam1mom' .or. &
                SPCAM_microp_scheme .eq. unset_str )) then
       write(iulog,*)'phys_setopts: illegal value of SPCAM_microp_scheme:', SPCAM_microp_scheme
       call endrun('phys_setopts: illegal value of SPCAM_microp_scheme')
    endif
-!-- mdb spcam
 
    ! prog_modal_aero determines whether prognostic modal aerosols are present in the run.
    prog_modal_aero = (     cam_chempkg_is('trop_mam3') &
@@ -467,7 +463,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    character(len=16), intent(out), optional :: SPCAM_microp_scheme_out
    logical,           intent(out), optional :: use_SPCAM_out
    logical,           intent(out), optional :: use_ECPP_out
-   logical,           intent(out), optional :: use_MAML_out 
+   logical,           intent(out), optional :: use_MAML_out
    logical,           intent(out), optional :: use_crm_accel_out
    real(r8),          intent(out), optional :: crm_accel_factor_out
    logical,           intent(out), optional :: crm_accel_uv_out
@@ -539,7 +535,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
 
    if ( present(use_SPCAM_out           ) ) use_SPCAM_out            = use_SPCAM
    if ( present(use_ECPP_out            ) ) use_ECPP_out             = use_ECPP
-   if ( present(use_MAML_out            ) ) use_MAML_out             = use_MAML 
+   if ( present(use_MAML_out            ) ) use_MAML_out             = use_MAML
    if ( present(use_crm_accel_out       ) ) use_crm_accel_out        = use_crm_accel
    if ( present(crm_accel_factor_out    ) ) crm_accel_factor_out     = crm_accel_factor
    if ( present(crm_accel_uv_out        ) ) crm_accel_uv_out         = crm_accel_uv
