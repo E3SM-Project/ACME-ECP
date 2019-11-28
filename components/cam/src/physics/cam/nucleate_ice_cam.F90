@@ -340,10 +340,8 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in)
       end if
 
       if ( coarse_dust_idx == -1 .or. coarse_nacl_idx == -1) then
-         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:'!, &
-            ! coarse_dust_idx, coarse_nacl_idx
-         write(iulog,*) routine//'      coarse_dust_idx : ',coarse_dust_idx  
-         write(iulog,*) routine//'      coarse_nacl_idx : ',coarse_nacl_idx  
+         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:', &
+            coarse_dust_idx, coarse_nacl_idx
          call endrun(routine//': ERROR required mode-species type not found')
       end if
 
@@ -359,9 +357,8 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in)
 
       ! Check that required mode specie types were found
       if ( coarse_so4_idx == -1) then
-         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:'!, &
-            ! coarse_so4_idx
-         write(iulog,*) routine//'      coarse_so4_idx : ',coarse_so4_idx 
+         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:', &
+            coarse_so4_idx
          call endrun(routine//': ERROR required mode-species type not found')
       end if
 
@@ -377,9 +374,8 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in)
 
       ! Check that required mode specie types were found
       if ( coarse_mom_idx == -1) then
-         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:'!, &
-            ! coarse_mom_idx
-         write(iulog,*) routine//'      coarse_mom_idx : ',coarse_mom_idx 
+         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:', &
+            coarse_mom_idx
          call endrun(routine//': ERROR required mode-species type not found')
       end if
 #endif
@@ -414,11 +410,8 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in)
 
       ! Check that required mode specie types were found
       if ( coarse_bc_idx == -1 .or. coarse_pom_idx == -1 .or. coarse_soa_idx == -1 ) then
-         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:'!, &
-            ! coarse_bc_idx, coarse_pom_idx, coarse_soa_idx 
-         write(iulog,*) routine//'      coarse_bc_idx  : ',coarse_bc_idx 
-         write(iulog,*) routine//'      coarse_pom_idx : ',coarse_pom_idx
-         write(iulog,*) routine//'      coarse_soa_idx : ',coarse_soa_idx
+         write(iulog,*) routine//': ERROR required mode-species type not found - indicies:', &
+            coarse_bc_idx, coarse_pom_idx, coarse_soa_idx 
          call endrun(routine//': ERROR required mode-species type not found')
       end if
 #endif

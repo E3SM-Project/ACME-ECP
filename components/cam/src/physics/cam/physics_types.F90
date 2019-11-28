@@ -992,7 +992,7 @@ end subroutine physics_ptend_copy
   end subroutine physics_ptend_reset
 
 !===============================================================================
-  subroutine physics_ptend_init(ptend, psetcols, name, ls, lu, lv, lq, fromcrm)
+  subroutine physics_ptend_init(ptend, psetcols, name, ls, lu, lv, lq)
 !-----------------------------------------------------------------------
 ! Allocate the fields in the structure which are specified.
 ! Initialize the parameterization tendency structure to "empty"
@@ -1007,7 +1007,6 @@ end subroutine physics_ptend_copy
     logical, optional                   :: lv       ! if true, then fields to support dvdt are allocated
     logical, dimension(pcnst),optional  :: lq       ! if true, then fields to support dqdt are allocated
 
-    logical, optional                   :: fromcrm
     
 !-----------------------------------------------------------------------
 
@@ -1054,15 +1053,10 @@ end subroutine physics_ptend_copy
        ptend%lq(:) = .false.
     end if
 
-    !if (present(fromcrm)) write(*,*) '### call physics_ptend_init: ptend%lu,ptend%ls,ptend%lq = ',ptend%lu,ptend%ls,ptend%lq
     call physics_ptend_alloc(ptend, psetcols)
 
     call physics_ptend_reset(ptend)
 !pw call t_stopf('physics_ptend_init')
-
-    !if (present(fromcrm)) write(*,*) '### BOTTOM physics_ptend_init: shape(ptend%u) = ',shape(ptend%u)
-    !if (present(fromcrm)) write(*,*) '### BOTTOM physics_ptend_init: shape(ptend%s) = ',shape(ptend%s)
-    !if (present(fromcrm)) write(*,*) '### BOTTOM physics_ptend_init: shape(ptend%q) = ',shape(ptend%q)
 
     return
   end subroutine physics_ptend_init
@@ -1369,7 +1363,7 @@ end subroutine physics_ptend_copy
   end subroutine physics_state_copy
 !===============================================================================
 
-  subroutine physics_tend_copy(tend_in, tend_out)    
+  subroutine physics_tend_copy(tend_in, tend_out)
     use ppgrid, only: pcols, pver, pverp
 
     implicit none
@@ -1380,7 +1374,7 @@ end subroutine physics_ptend_copy
 
     ! Allocate tend_out
     call physics_tend_alloc(tend_out,tend_in%psetcols)
-    
+
     tend_out%dtdt    (:pcols,:pver) = tend_in%dtdt    (:pcols,:pver)
     tend_out%dudt    (:pcols,:pver) = tend_in%dudt    (:pcols,:pver)
     tend_out%dvdt    (:pcols,:pver) = tend_in%dvdt    (:pcols,:pver)
@@ -1388,7 +1382,7 @@ end subroutine physics_ptend_copy
     tend_out%tw_tnd  (:pcols)       = tend_in%tw_tnd  (:pcols)
     tend_out%flx_net (:pcols)       = tend_in%flx_net (:pcols)
     tend_out%psetcols               = tend_in%psetcols
-    
+
   end subroutine physics_tend_copy
 
 !===============================================================================
@@ -1925,7 +1919,7 @@ subroutine physics_ptend_alloc(ptend,psetcols)
      if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%tauy_top')
   end if
 
-  if (any(ptend%lq)) then      
+  if (any(ptend%lq)) then
      allocate(ptend%q(psetcols,pver,pcnst), stat=ierr)
      if ( ierr /= 0 ) call endrun('physics_ptend_alloc error: allocation error for ptend%q')
 

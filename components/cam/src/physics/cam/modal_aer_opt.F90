@@ -985,32 +985,23 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, is_cmip6_volc, e
                           &unreasonably high in this layer."
                   end if
 
-                  ! write(iulog,*) 'dopaer(', i, ',', k, ',', m, ',', lchnk, ')=', dopaer(i)
-                  ! ! write(iulog,*) 'itab,jtab,ttab,utab=',itab(i),jtab(i),ttab(i),utab(i)
-                  ! write(iulog,*) 'k=', k, ' pext=', pext(i), ' specext=', specpext(i)
-                  ! write(iulog,*) 'wetvol=', wetvol(i), ' dryvol=', dryvol(i), ' watervol=', watervol(i)
-                  ! ! write(iulog,*) 'cext=',(cext(i,l),l=1,ncoef)
-                  ! ! write(iulog,*) 'crefin=',crefin(i)
-                  ! write(iulog,*) 'nspec=', nspec
-                  ! ! write(iulog,*) 'cheb=', (cheb(nc,m,i,k),nc=2,ncoef)
-
-                  write(iulog,4003) i,k,m,lchnk,dopaer(i)
-                  4003 format('dopaer(i:',i5,',k:',i5,',m:',i5,',lchnk:',i5,')=', f8.2)
-                  ! write(iulog,*) 'dopaer(i:',i,',k:',k,',m:',m,',lchnk:',lchnk,')=', dopaer(i)
-                  ! write(iulog,*) ' wetvol=',wetvol(i)
-                  ! write(iulog,*) ' dryvol=',dryvol(i)
-                  ! write(iulog,*) ' nspec=', nspec
-
-                  ! whannah - commented out below to clean up output for now
-                  ! do l = 1, nspec
-                  !    call rad_cnst_get_aer_mmr(list_idx, m, l, 'a', state, pbuf, specmmr)
-                  !    call rad_cnst_get_aer_props(list_idx, m, l, density_aer=specdens, &
-                  !                                refindex_aer_sw=specrefindex)
-                  !    volf = specmmr(i,k)/specdens
-                  !    write(iulog,*) 'l=', l, 'vol(l)=', volf
-                  !    write(iulog,*) 'isw=', isw, 'specrefindex(isw)=', specrefindex(isw)
-                  !    write(iulog,*) 'specdens=', specdens
-                  ! end do
+                  write(iulog,*) 'dopaer(', i, ',', k, ',', m, ',', lchnk, ')=', dopaer(i)
+                  ! write(iulog,*) 'itab,jtab,ttab,utab=',itab(i),jtab(i),ttab(i),utab(i)
+                  write(iulog,*) 'k=', k, ' pext=', pext(i), ' specext=', specpext(i)
+                  write(iulog,*) 'wetvol=', wetvol(i), ' dryvol=', dryvol(i), ' watervol=', watervol(i)
+                  ! write(iulog,*) 'cext=',(cext(i,l),l=1,ncoef)
+                  ! write(iulog,*) 'crefin=',crefin(i)
+                  write(iulog,*) 'nspec=', nspec
+                  ! write(iulog,*) 'cheb=', (cheb(nc,m,i,k),nc=2,ncoef)
+                  do l = 1, nspec
+                     call rad_cnst_get_aer_mmr(list_idx, m, l, 'a', state, pbuf, specmmr)
+                     call rad_cnst_get_aer_props(list_idx, m, l, density_aer=specdens, &
+                                                 refindex_aer_sw=specrefindex)
+                     volf = specmmr(i,k)/specdens
+                     write(iulog,*) 'l=', l, 'vol(l)=', volf
+                     write(iulog,*) 'isw=', isw, 'specrefindex(isw)=', specrefindex(isw)
+                     write(iulog,*) 'specdens=', specdens
+                  end do
 
                   nerr_dopaer = nerr_dopaer + 1
 !                  if (nerr_dopaer >= nerrmax_dopaer) then
@@ -1381,28 +1372,22 @@ subroutine modal_aero_lw(list_idx, state, pbuf, tauxar)
                           &unreasonably high in this layer."
                   end if
 
-                  write(iulog,4004) i,k,m,lchnk,dopaer(i)
-                  4004 format('dopaer(i:',i5,',k:',i5,',m:',i5,',lchnk:',i5,')=', f8.2)
-                  ! write(iulog,*) 'dopaer(i:',i,',k:',k,',m:',m,',lchnk:',lchnk,')=', dopaer(i)
-                  ! write(iulog,*) ' k=',k
-                  ! write(iulog,*) ' pabs=', pabs(i)
-                  ! write(iulog,*) ' wetvol=',wetvol(i)
-                  ! write(iulog,*) ' dryvol=',dryvol(i)
-                  ! write(iulog,*) ' watervol=',watervol(i)
-                  ! write(iulog,*) ' cabs=', (cabs(i,l),l=1,ncoef)
-                  ! write(iulog,*) ' crefin=', crefin(i)
-                  ! write(iulog,*) ' nspec=', nspec
-
-                  ! whannah - commented out below to clean up output for now
-                  ! do l = 1,nspec
-                  !    call rad_cnst_get_aer_mmr(list_idx, m, l, 'a', state, pbuf, specmmr)
-                  !    call rad_cnst_get_aer_props(list_idx, m, l, density_aer=specdens, &
-                  !                                refindex_aer_lw=specrefindex)
-                  !    volf = specmmr(i,k)/specdens
-                  !    write(iulog,*) 'l=',l,'vol(l)=',volf
-                  !    write(iulog,*) 'ilw=',ilw,' specrefindex(ilw)=',specrefindex(ilw)
-                  !    write(iulog,*) 'specdens=',specdens
-                  ! end do
+                  write(iulog,*) 'dopaer(',i,',',k,',',m,',',lchnk,')=', dopaer(i)
+                  write(iulog,*) 'k=',k,' pabs=', pabs(i)
+                  write(iulog,*) 'wetvol=',wetvol(i),' dryvol=',dryvol(i),     &
+                     ' watervol=',watervol(i)
+                  write(iulog,*) 'cabs=', (cabs(i,l),l=1,ncoef)
+                  write(iulog,*) 'crefin=', crefin(i)
+                  write(iulog,*) 'nspec=', nspec
+                  do l = 1,nspec
+                     call rad_cnst_get_aer_mmr(list_idx, m, l, 'a', state, pbuf, specmmr)
+                     call rad_cnst_get_aer_props(list_idx, m, l, density_aer=specdens, &
+                                                 refindex_aer_lw=specrefindex)
+                     volf = specmmr(i,k)/specdens
+                     write(iulog,*) 'l=',l,'vol(l)=',volf
+                     write(iulog,*) 'ilw=',ilw,' specrefindex(ilw)=',specrefindex(ilw)
+                     write(iulog,*) 'specdens=',specdens
+                  end do
 
                   nerr_dopaer = nerr_dopaer + 1
                   if (nerr_dopaer >= nerrmax_dopaer .or. dopaer(i) < -1.e-10_r8) then

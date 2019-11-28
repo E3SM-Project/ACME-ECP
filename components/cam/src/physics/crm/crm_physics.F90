@@ -773,7 +773,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    logical :: use_ECPP, use_SPCAM
    character(len=16) :: SPCAM_microp_scheme
 
-   logical :: ls, lu, lv, lq(pcnst), fromcrm
+   logical :: ls, lu, lv, lq(pcnst)
 
    real(r8) dp_g   ! = state%pdel / gravit
 
@@ -830,9 +830,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    lv = .true.
    ls = .true.
    lq(:) = .true.
-   fromcrm = .true.
-   call physics_ptend_init(ptend, state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq, fromcrm=fromcrm)
-   fromcrm = .false.
+   call physics_ptend_init(ptend, state%psetcols, 'crm', lu=lu, lv=lv, ls=ls, lq=lq)
    
    !------------------------------------------------------------------------------------------------
    ! Initialize CRM state (nullify pointers, allocate memory, etc)
