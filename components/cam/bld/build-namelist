@@ -1637,6 +1637,12 @@ if ($rad_pkg eq 'rrtmg' or $rad_pkg eq 'rrtmgp') {
     add_default($nl, 'iceopticsfile');
 }
 
+# Radiative frequency for SPCAM
+if ($cfg->get('use_SPCAM')) {
+    add_default($nl, 'iradsw', 'val' => '1');
+    add_default($nl, 'iradlw', 'val' => '1');
+}
+
 # Gaseous absorption coefficients files for RRTMGP
 if ($rad_pkg eq 'rrtmgp') {
     add_default($nl, 'rrtmgp_coefficients_file_sw');

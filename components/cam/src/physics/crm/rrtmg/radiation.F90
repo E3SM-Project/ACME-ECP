@@ -77,24 +77,11 @@ integer :: dei_idx      = 0
 ! Default values for namelist variables
 
 ! Frequency of shortwave and longwave calculations in time steps (positive) or
-! in hours (negative). We wrap this in an ifdef for now, because we want the
-! default to be to run every time step if we are running SP, but keep the
-! default of every hour if not running SP. However, the radiation namelist is
-! read before the other physics namelists are read, so we cannot know if we are
-! running SP before these are set unless we change the order of how things are
-! read. A better option would be to set these defaults in the compset definition
-! probably.
-#ifdef CRM
-integer :: iradsw =  1     ! freq. of shortwave radiation calc in time steps (positive)
-                           ! or hours (negative).
-integer :: iradlw =  1     ! frequency of longwave rad. calc. in time steps (positive)
-                           ! or hours (negative).
-#else
+! in hours (negative).
 integer :: iradsw = -1     ! freq. of shortwave radiation calc in time steps (positive)
                            ! or hours (negative).
 integer :: iradlw = -1     ! frequency of longwave rad. calc. in time steps (positive)
                            ! or hours (negative).
-#endif
 
 integer :: irad_always = 0 ! Specifies length of time in timesteps (positive)
                            ! or hours (negative) SW/LW radiation will be
