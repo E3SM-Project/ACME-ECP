@@ -431,6 +431,7 @@ end function radiation_nextsw_cday
 #endif
     use crmdims,        only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
     use rad_constituents, only: oldcldoptics
+    use cloud_rad_props, only: cloud_rad_props_init
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
@@ -467,6 +468,9 @@ end function radiation_nextsw_cday
 
     call radsw_init()
     call radlw_init()
+
+    ! Initialize cloud optics
+    call cloud_rad_props_init()
 
     ! Set the radiation timestep for cosz calculations if requested using the adjusted iradsw value from radiation
     if (use_rad_dt_cosz)  then
@@ -950,9 +954,7 @@ end function radiation_nextsw_cday
     use physconst,            only: gravit
     use constituents,         only: cnst_get_ind
     use radconstants,         only: idx_sw_diag
-#ifdef CRM
     use crm_physics,          only: m2005_effradius
-#endif
 #ifdef MODAL_AERO
     use modal_aero_data,       only: ntot_amode
 #endif
@@ -1652,7 +1654,6 @@ end function radiation_nextsw_cday
               end do ! i
             end do ! m
 
-#ifdef CRM  
             ! update effective radius
             if (SPCAM_microp_scheme .eq. 'm2005') then 
               do m=1,crm_nz
@@ -1689,7 +1690,6 @@ end function radiation_nextsw_cday
                 dei_crm(:ncol,ii,jj,m) = dei(:ncol,k)
               end do ! m
             end if ! sam1mom
-#endif
           endif ! use_SPCAM
 
           call t_startf('cldoptics')

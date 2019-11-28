@@ -563,13 +563,9 @@ end function radiation_nextsw_cday
     use radiation_data,   only: output_rad_data
     use cloud_cover_diags,only: cloud_cover_diags_out
     use orbit,            only: zenith
-    
-!-- mdb spcam
     use crmdims,          only: crm_nx, crm_ny, crm_nz
     use phys_control,     only: phys_getopts
     use pkg_cldoptics,    only: cldems, cldovrlap, cldefr
-!-- mdb spcam
-
 
 
     ! Arguments
@@ -602,26 +598,22 @@ end function radiation_nextsw_cday
                                                !    1st region,pmxrgn(i,1)->pmxrgn(i,2) for
                                                !    2nd region, etc
 
-!-- mdb spcam
     integer, target :: nmxrgn_loc(pcols)       ! pbuf pointer to Number of maximally overlapped regions - used for SPCAM
     real(r8),target :: pmxrgn_loc(pcols,pverp) ! Maximum values of pressure for each - used for SPCAM
                                                !    maximally overlapped region.
                                                !    0->pmxrgn(i,1) is range of pressure for
                                                !    1st region,pmxrgn(i,1)->pmxrgn(i,2) for
                                                !    2nd region, etc
-!-- mdb spcam
 
     real(r8),pointer :: emis(:,:)              ! Cloud longwave emissivity
     real(r8),pointer :: cldtau(:,:)            ! Cloud longwave optical depth
     real(r8),pointer :: cicewp(:,:)            ! in-cloud cloud ice water path
     real(r8),pointer :: cliqwp(:,:)            ! in-cloud cloud liquid water path
 
-!-- mdb spcam
     real(r8),target :: emis_loc(pcols,pver)    ! Cloud longwave emissivity - used for SPCAM
     real(r8),target :: cldtau_loc(pcols,pver)  ! Cloud longwave optical depth - used for SPCAM
     real(r8),target :: cicewp_loc(pcols,pver)  ! in-cloud cloud ice water path - used for SPCAM
     real(r8),target :: cliqwp_loc(pcols,pver)  ! in-cloud cloud liquid water path - used for SPCAM
-!-- mdb spcam
 
     real(r8) cltot(pcols)                      ! Diagnostic total cloud cover
     real(r8) cllow(pcols)                      !       "     low  cloud cover
@@ -640,14 +632,12 @@ end function radiation_nextsw_cday
     real(r8) :: qrsc(pcols,pver)                    ! clearsky shortwave radiative heating rate 
     real(r8) :: qrlc(pcols,pver)                    ! clearsky longwave  radiative heating rate 
 
-!-- mdb spcam
     real(r8), pointer :: t_rad (:,:,:,:) ! rad temperature
     real(r8), pointer :: qv_rad(:,:,:,:) ! rad vapor
     real(r8), pointer :: qc_rad(:,:,:,:) ! rad cloud water
     real(r8), pointer :: qi_rad(:,:,:,:) ! rad cloud ice
     real(r8), pointer :: crm_qrad(:,:,:,:) ! rad heating
     integer  :: crm_t_rad_idx, crm_qc_rad_idx, crm_qv_rad_idx, crm_qi_rad_idx, crm_qrad_idx
-!-- mdb spcam
 
     integer lchnk, ncol
     real(r8) :: calday                        ! current calendar day
@@ -690,7 +680,6 @@ end function radiation_nextsw_cday
     real(r8) fnl(pcols,pverp)     ! net longwave flux
     real(r8) fcnl(pcols,pverp)    ! net clear-sky longwave flux
 
-!-- mdb spcam
     real(r8) qtot, factor_xy
     real(r8) trad(pcols,pver)
     real(r8) qvrad(pcols,pver)
@@ -765,7 +754,6 @@ end function radiation_nextsw_cday
     logical :: first_column
     logical :: last_column
     integer ii,jj,m,icrm
-!-- mdb spcam
 
     real(r8) pbr(pcols,pver)      ! Model mid-level pressures (dynes/cm2)
     real(r8) pnm(pcols,pverp)     ! Model interface pressures (dynes/cm2)
@@ -801,16 +789,13 @@ end function radiation_nextsw_cday
     integer, dimension(pcols) :: IdxDay  ! Indicies of daylight coumns
     integer, dimension(pcols) :: IdxNite ! Indicies of night coumns
 
-!-- mdb spcam
     logical :: use_SPCAM
-!-- mdb spcam
 
     character(*), parameter :: name = 'radiation_tend'
     
     real(r8), parameter :: rad2deg = 180._r8/pi
 
 !----------------------------------------------------------------------
-!-- mdb spcam
     call phys_getopts(use_SPCAM_out = use_SPCAM)
     first_column = .false.
     last_column  = .false.
@@ -888,7 +873,6 @@ end function radiation_nextsw_cday
        call pbuf_get_field(pbuf, crm_qrad_idx,   crm_qrad)
  
     endif
-!-- mdb spcam
 
     lchnk = state%lchnk
     ncol = state%ncol
@@ -933,7 +917,6 @@ end function radiation_nextsw_cday
        end if
     end do
 
-!-- mdb spcam
     if (use_SPCAM) then 
        dosw = .true. ! do it every timestep
        dolw = .true.
@@ -941,7 +924,6 @@ end function radiation_nextsw_cday
        dosw     = radiation_do('sw')      ! do shortwave heating calc this timestep?
        dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
     endif
-!-- mdb spcam
 
     doabsems = radiation_do('absems')  ! do absorptivity/emissivity calc this timestep?
 
@@ -986,7 +968,6 @@ end function radiation_nextsw_cday
        ! construct cgs unit reps of pmid and pint and get "eccf" - earthsundistancefactor
        call radinp(ncol, state%pmid, state%pint, pbr, pnm, eccf)
 
-!-- mdb spcam
        if (use_SPCAM) then 
           fice(1:ncol,1:pver) = 0.
           cldn(1:ncol,1:pver) = 0.
@@ -1000,7 +981,9 @@ end function radiation_nextsw_cday
           cldn = cld  ! save to restore later
 
           cld(1:ncol,1:pver) = 0.  ! whannah - reset cld fraction - including points above CRM
-
+       else
+          trad(:ncol,:) = state%t(:ncol,:)
+          qvrad(:ncol,:) = sp_hum(:ncol,:)
        end if
        
        do jj=1,crm_ny 
@@ -1050,7 +1033,6 @@ end function radiation_nextsw_cday
 
                 call cldovrlap(lchnk, ncol, state%pint, cld, nmxrgn, pmxrgn)
            endif ! use_SPCAM
-!-- mdb spcam
 
        ! Solar radiation computation
 
@@ -1087,11 +1069,7 @@ end function radiation_nextsw_cday
 !                     E_aer_tau, E_aer_tau_w, E_aer_tau_w_g, E_aer_tau_w_f, tauxcl_out, tauxci_out)
           
           call radcswmx(lchnk, &
-#ifdef CRM
                ncol,       pnm,        pbr,        qvrad,     o3,         &
-#else
-               ncol,       pnm,        pbr,        sp_hum,     o3,         &
-#endif
                o2_col,     cld,        cicewp,     cliqwp,     rel,        &
                rei,        eccf,       coszrs,     solin,      &
                cam_in%asdir, cam_in%asdif, cam_in%aldir, cam_in%aldif, nmxrgn, &
@@ -1388,11 +1366,7 @@ end function radiation_nextsw_cday
           call t_stopf('aero_optics_lw')
 
           call radclwmx(lchnk, ncol, doabsems, &
-#ifdef CRM
-                 lwupcgs, trad, qvrad, o3, pbr, &
-#else
-                 lwupcgs, state%t, sp_hum, o3, pbr, &
-#endif
+             lwupcgs, trad, qvrad, o3, pbr, &
              pnm, state%lnpmid, state%lnpint, n2o, ch4, &
              cfc11, cfc12, cld, emis, pmxrgn, &
              nmxrgn, qrl, qrlc, flns, flnt, flnsc, &

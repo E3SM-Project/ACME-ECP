@@ -4,8 +4,6 @@
 
 module crm_physics
 
-#ifdef CRM
-
 !---------------------------------------------------------------------------------------------------
 ! Purpose: 
 ! 
@@ -81,10 +79,8 @@ subroutine crm_physics_register()
   use physics_buffer,  only: dyn_time_lvls, pbuf_add_field, dtype_r8, pbuf_get_index
   use phys_control,    only: phys_getopts
   use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_dx, crm_dy, crm_dt, nclubbvars, crm_nx_rad, crm_ny_rad
-#ifdef CRM
   use setparm_mod,         only: setparm
   use cam_history_support, only: add_hist_coord
-#endif
 
 
    ! local variables
@@ -110,7 +106,6 @@ subroutine crm_physics_register()
   call pbuf_add_field('CLUBB_BUFFER','global', dtype_r8, (/pcols,crm_nx,crm_ny,crm_nz+1,nclubbvars/), clubb_buffer_idx)
 #endif
 
-#ifdef CRM 
   if (use_SPCAM) then
      call setparm()
   end if
@@ -164,8 +159,6 @@ subroutine crm_physics_register()
     call pbuf_add_field('CRM_QP',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
     call pbuf_add_field('CRM_QN',    'global',  dtype_r8, (/pcols, crm_nx, crm_ny, crm_nz/), idx)
   endif
-#endif
-
    
   call pbuf_add_field('MU_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux up
   call pbuf_add_field('MD_CRM',    'physpkg', dtype_r8, (/pcols,pver/), idx)  ! mass flux down
@@ -644,10 +637,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use crmdims,         only: crm_nx, crm_ny, crm_nz, crm_nx_rad, crm_ny_rad
    use physconst,       only: cpair, latvap, latice, gravit, cappa
    use constituents,    only: pcnst, qmin, cnst_get_ind, cnst_cam_outfld, bpcnst, cnst_name
-#ifdef CRM
    use crm_module,      only: crm
    use params,          only: crm_rknd
-#endif
    use physconst,       only: latvap
    use phys_control,    only: phys_getopts
    use check_energy,    only: check_energy_chng
@@ -665,18 +656,11 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use RNG_MT            ! random number generator for randomly rotating CRM orientation (SP_ORIENT_RAND)
 #endif
 
-#ifdef CRM
    use crm_state_module,       only: crm_state_type
    use crm_rad_module,         only: crm_rad_type, crm_rad_initialize, crm_rad_finalize
    use crm_input_module,       only: crm_input_type
    use crm_output_module,      only: crm_output_type, crm_output_initialize, crm_output_finalize
-#endif /* CRM */
    use crm_ecpp_output_module, only: crm_ecpp_output_type
-
-! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
-#ifndef CRM
-    integer, parameter :: crm_rknd = 8
-#endif
 
    real(r8),                   intent(in   ) :: ztodt            ! global model time increment
    type(physics_state),        intent(in   ) :: state            ! Global model state 
@@ -694,7 +678,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    
    ! real(r8), intent(in) :: dlf(pcols,pver)  ! shallow+deep convective detrainment [kg/kg/s] - used for aerosol_wet_intr - no longer needed
 
-#ifdef CRM
    !------------------------------------------------------------------------------------------------
    ! Local variables 
    !------------------------------------------------------------------------------------------------
@@ -711,7 +694,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(r8), pointer :: prec_sed(:)         ! total precip from cloud sedimentation       [m/s]
    real(r8), pointer :: snow_sed(:)         ! snow from cloud ice sedimentation           [m/s]
    real(r8), pointer :: snow_str(:)         ! snow from stratiform cloud                  [m/s]
-
 
    integer lchnk                    ! chunk identifier
    integer ncol                     ! number of atmospheric columns
@@ -1729,7 +1711,6 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    call crm_input%finalize()
    call crm_output_finalize(crm_output)
 
-#endif /* CRM */
 end subroutine crm_physics_tend
 
 !==================================================================================================
@@ -2178,6 +2159,5 @@ end subroutine m2005_effradius
 
 !==================================================================================================
 !==================================================================================================
-#endif /* CRM */
 
 end module crm_physics

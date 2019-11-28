@@ -146,11 +146,8 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   !----------------------------------------------------------------------------
   !----------------------------------------------------------------------------
 
-#ifdef CRM
-
-  ! In the MMF model, turbulent mixing for tracer species are turned off in tphysac.
-  ! So the turbulent for gas species mixing are added here.
-
+   ! In the MMF model, turbulent mixing for tracer species are turned off in tphysac.
+   ! So the turbulent for gas species mixing are added here.
    do m=1, pcnst
       if(species_class(m).eq.spec_class_gas) then
 #ifdef ECPP
@@ -160,8 +157,6 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 #endif
       end if
    end do
-
-#endif /* CRM */
 
   itim = pbuf_old_tim_idx ()
   ifld = pbuf_get_index ('CLD')
