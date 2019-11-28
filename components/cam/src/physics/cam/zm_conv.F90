@@ -1751,7 +1751,7 @@ subroutine momtran(lchnk, ncol, &
             kp1 = min(pver,k+1)
             do i = il1g,il2g
                ii = ideep(i)
-  
+	
 ! version 1 hard to check for roundoff errors
                dcondt(i,k) =  &
                            +(mu(i,kp1)* (conu(i,kp1)-chat(i,kp1)) &
@@ -2519,7 +2519,7 @@ subroutine cldprp(lchnk   , &
                         hsat(i,k)* (z(i,k-1)-zf(i,k)))/(z(i,k-1)-z(i,k))
          end if
          if ((expdif(i) > 100._r8 .and. expnum(i) > 0._r8) .and. &
-       k1(i,k) > expnum(i)*dz(i,k)) then
+	     k1(i,k) > expnum(i)*dz(i,k)) then
             ftemp(i) = expnum(i)/k1(i,k)
             f(i,k) = ftemp(i) + i2(i,k)/k1(i,k)*ftemp(i)**2 + &
                      (2._r8*i2(i,k)**2-k1(i,k)*i3(i,k))/k1(i,k)**2* &
@@ -2639,8 +2639,8 @@ subroutine cldprp(lchnk   , &
       do i=1,il2g
          if (doit(i) .and. k <= jb(i)-2 .and. k >= lel(i)-1) then
            if(trigmem)then
-         if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
-         .and. mu(i,k) >= 0.02_r8) then
+  	     if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
+	       .and. mu(i,k) >= 0.02_r8) then
                if (hu(i,k)-hsthat(i,k) < -2000._r8) then
                   jt(i) = k + 1
                   doit(i) = .false.
@@ -2662,8 +2662,8 @@ subroutine cldprp(lchnk   , &
                end if
              end if
            else ! not trigmem
-         if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
-         .and. mu(i,k) >= 0.02_r8) then
+  	     if (hu(i,k) <= hsthat(i,k) .and. hu(i,k+1) > hsthat(i,k+1) &
+	       .and. mu(i,k) >= 0.02_r8) then
                if (hu(i,k)-hsthat(i,k) < -2000._r8) then
                   jt(i) = k + 1
                   doit(i) = .false.
@@ -3904,8 +3904,8 @@ SUBROUTINE ientropy (rcall,icol,lchnk,s,p,qt,T,qst,Tfg)
 
   T = Tfg                  ! Better first guess based on Tprofile from conv.
 
-  a = Tfg-10      !low bracket
-  b = Tfg+10      !high bracket
+  a = Tfg-10			!low bracket
+  b = Tfg+10			!high bracket
 
   fa = entropy(a, p, qt) - s
   fb = entropy(b, p, qt) - s
