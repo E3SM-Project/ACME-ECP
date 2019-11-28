@@ -22,8 +22,7 @@ private
 save
 
 public :: &
-   init_mitchell_ice_optics,    &
-   init_conley_liq_optics,      &
+   cloud_rad_props_init,        &
    get_mitchell_ice_optics_sw,  & ! return mitchell sw ice rad props
    get_mitchell_ice_optics_lw,  & ! return mitchell lw ice rad props
    get_conley_liq_optics_sw,    & ! return conley sw rad props
@@ -46,14 +45,41 @@ real(r8), allocatable :: ssa_sw_ice(:,:)
 real(r8), allocatable :: asm_sw_ice(:,:)
 real(r8), allocatable :: abs_lw_ice(:,:)
 
-   ! 
-   ! indices into pbuf for optical parameters of MG clouds
-   ! 
-   integer :: i_dei, i_mu, i_lambda, i_iciwp, i_iclwp, i_des, i_icswp
+!
+! indices into pbuf for optical parameters of MG clouds
+!
+integer :: i_dei, i_mu, i_lambda, i_iciwp, i_iclwp, i_des, i_icswp
 
 
 !==============================================================================
 contains
+!==============================================================================
+
+subroutine cloud_rad_props_init()
+
+   use rad_constituents, only: liqcldoptics, icecldoptics
+   use ebert_curry, only: ec_rad_props_init
+   use slingo, only: slingo_rad_props_init
+
+   character(len=32), parameter :: subname = 'cloud_rad_props_init'
+
+   if (trim(liqcldoptics) == 'gammadist') then
+      call init_conley_liq_optics()
+   else if (trim(liqcldoptics) == 'slingo') then
+      call slingo_rad_props_init()
+   else
+      call endrun(trim(subname) // ': liqcldoptics ' // trim(liqcldoptics) // ' not recognized.')
+   end if
+   if (trim(icecldoptics) == 'mitchell') then
+      call init_mitchell_ice_optics()
+   else if (trim(icecldoptics) == 'ebertcurry') then
+      call ec_rad_props_init()
+   else
+      call endrun(trim(subname) // ': icecldoptics ' // trim(icecldoptics) //  ' not recognized.')
+   end if
+
+end subroutine cloud_rad_props_init
+
 !==============================================================================
 
 subroutine init_mitchell_ice_optics()
@@ -75,7 +101,6 @@ subroutine init_mitchell_ice_optics()
    integer :: vdimids(NF90_MAX_VAR_DIMS), ndims, templen
    character(len=256) :: locfn
    integer :: err
-
 
 
    ! Ice effective diameter?
