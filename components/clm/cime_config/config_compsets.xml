@@ -786,14 +786,7 @@
 	<value grid="a%1x1_urbanc_alpha" >22772</value>
       </values>
     </entry>
-    
-    <entry id="NINST_LND">
-      <values>
-	<value compset="-MAML_CLM45"	    >64</value>
-	<value compset="-MAML-TEST_CLM45" >8</value>
-      </values>
-    </entry>
-
+  
   </entries>
 
 </compsets>

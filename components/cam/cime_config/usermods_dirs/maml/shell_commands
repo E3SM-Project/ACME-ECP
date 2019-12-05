@@ -1,0 +1,4 @@
+./xmlchange  -id NINST_ATM   -val 64
+./xmlchange  -id NINST_ICE   -val 64
+./xmlchange  -id NINST_LND   -val 64
+./xmlchange  -id NINST_LAYOUT_ATM -val sequential
