@@ -394,7 +394,7 @@
     <value compset="DOCN%AQP">$SRCROOT/components/cam/cime_config/usermods_dirs/aquap</value>
     <value compset="DOCN%SOMAQP">$SRCROOT/components/cam/cime_config/usermods_dirs/aquap</value>
     <!-- MAML uses this for setting NINST, NINST_LAYOUT -->
-    <value compset="SP1V1-MAML">$SRCROOT/components/cam/cime_config/usermods_dirs/maml</value>
+    <value compset="SP1V1-MAML_">$SRCROOT/components/cam/cime_config/usermods_dirs/maml</value>
     <value compset="SP1V1-MAML-TEST">$SRCROOT/components/cam/cime_config/usermods_dirs/maml-test</value>
     </values>
     <group>run_component_cam</group>
