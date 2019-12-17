@@ -927,7 +927,7 @@ end function radiation_nextsw_cday
     use radconstants,     only: nlwbands,idx_sw_diag
     use radsw,            only: rad_rrtmg_sw
     use radlw,            only: rad_rrtmg_lw
-    use rad_constituents, only: rad_cnst_get_gas, rad_cnst_out, oldcldoptics, &
+    use rad_constituents, only: rad_cnst_get_gas, rad_cnst_out, &
                                 liqcldoptics, icecldoptics
     use aer_rad_props,    only: aer_rad_props_sw, aer_rad_props_lw
     use interpolate_data, only: vertinterp
@@ -1669,7 +1669,7 @@ end function radiation_nextsw_cday
                 end do ! i
               end do ! m
             else if (SPCAM_microp_scheme .eq. 'sam1mom') then 
-              ! for sam1mom, rel and rei are calcualted above, and are the same for all CRM columns
+              ! for sam1mom, rel and rei are calculated above, and are the same for all CRM columns
               do m=1,crm_nz
                 k = pver-m+1
                 rel_crm(:ncol,ii,jj,m)=rel(:ncol,k)
@@ -1686,27 +1686,22 @@ end function radiation_nextsw_cday
 
           call t_startf('cldoptics')
           if (dosw) then
-            if(oldcldoptics) then
+            select case (icecldoptics)
+            case ('ebertcurry')
               call ec_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f, oldicewp=.false.)
+            case ('mitchell')
+              call get_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f)
+            case default
+              call endrun('iccldoptics must be one either ebertcurry or mitchell')
+            end select
+            select case (liqcldoptics)
+            case ('slingo')
               call slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f, oldliqwp=.false.)
-            else
-              select case (icecldoptics)
-              case ('ebertcurry')
-                call  ec_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f, oldicewp=.true.)
-              case ('mitchell')
-                call get_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f)
-              case default
-                call endrun('iccldoptics must be one either ebertcurry or mitchell')
-              end select
-              select case (liqcldoptics)
-              case ('slingo')
-                call slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f, oldliqwp=.true.)
-              case ('gammadist')
-                call get_liquid_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f)
-              case default
-                call endrun('liqcldoptics must be either slingo or gammadist')
-              end select
-            endif
+            case ('gammadist')
+              call get_liquid_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f)
+            case default
+              call endrun('liqcldoptics must be either slingo or gammadist')
+            end select
             cld_tau    (:,1:ncol,:) = liq_tau    (:,1:ncol,:) + ice_tau    (:,1:ncol,:)
             cld_tau_w  (:,1:ncol,:) = liq_tau_w  (:,1:ncol,:) + ice_tau_w  (:,1:ncol,:)
             cld_tau_w_g(:,1:ncol,:) = liq_tau_w_g(:,1:ncol,:) + ice_tau_w_g(:,1:ncol,:)
@@ -1757,27 +1752,23 @@ end function radiation_nextsw_cday
           endif
 
           if (dolw) then
-            if(oldcldoptics) then
-              call cloud_rad_props_get_lw(state, pbuf, cld_lw_abs, oldcloud=.true.)
-            else  ! oldcldoptics
-              select case (icecldoptics)
-              case ('ebertcurry')
-                call    ec_ice_get_rad_props_lw(state, pbuf, ice_lw_abs, oldicewp=.true.)
-              case ('mitchell')
-                call ice_cloud_get_rad_props_lw(state, pbuf, ice_lw_abs)
-              case default
-                call endrun('iccldoptics must be one either ebertcurry or mitchell')
-              end select
-              select case (liqcldoptics)
-              case ('slingo')
-                call   slingo_liq_get_rad_props_lw(state, pbuf, liq_lw_abs, oldliqwp=.true.)
-              case ('gammadist')
-                call liquid_cloud_get_rad_props_lw(state, pbuf, liq_lw_abs)
-              case default
-                call endrun('liqcldoptics must be either slingo or gammadist')
-              end select
-              cld_lw_abs(:,1:ncol,:) = liq_lw_abs(:,1:ncol,:) + ice_lw_abs(:,1:ncol,:)
-            endif  ! oldcldoptics
+            select case (icecldoptics)
+            case ('ebertcurry')
+              call ec_ice_get_rad_props_lw(state, pbuf, ice_lw_abs, oldicewp=.false.)
+            case ('mitchell')
+              call ice_cloud_get_rad_props_lw(state, pbuf, ice_lw_abs)
+            case default
+              call endrun('iccldoptics must be one either ebertcurry or mitchell')
+            end select
+            select case (liqcldoptics)
+            case ('slingo')
+              call slingo_liq_get_rad_props_lw(state, pbuf, liq_lw_abs, oldliqwp=.false.)
+            case ('gammadist')
+              call liquid_cloud_get_rad_props_lw(state, pbuf, liq_lw_abs)
+            case default
+              call endrun('liqcldoptics must be either slingo or gammadist')
+            end select
+            cld_lw_abs(:,1:ncol,:) = liq_lw_abs(:,1:ncol,:) + ice_lw_abs(:,1:ncol,:)
 
             if (cldfsnow_idx > 0) then
               ! add in snow
