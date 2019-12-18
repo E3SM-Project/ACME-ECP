@@ -20,7 +20,8 @@ submit       = True
 continue_run = True
 
 # stop_opt,stop_n,resub,walltime = 'nmonths',1,4,'5:00'
-stop_opt,stop_n,resub,walltime = 'ndays',45,3,'6:00'
+# stop_opt,stop_n,resub,walltime = 'ndays',90,9,'12:00'
+stop_opt,stop_n,resub,walltime = 'ndays',185,10,'20:00'
 
 ne,npg         = 120,2
 compset        = 'FC5AV1C-H01A' 
