@@ -97,7 +97,7 @@ contains
       ncol = state%ncol
 
       ! Get ice cloud optics
-      if (trim(icecldoptics) == 'conley') then
+      if (trim(icecldoptics) == 'mitchell') then
          call get_ice_optics_sw(state, pbuf, &
                                 ice_tau, ice_tau_ssa, &
                                 ice_tau_ssa_g, ice_tau_ssa_f)
@@ -120,7 +120,7 @@ contains
       end if
       
       ! Get liquid cloud optics
-      if (trim(liqcldoptics) == 'mitchell') then
+      if (trim(liqcldoptics) == 'gammadist') then
          call get_liquid_optics_sw(state, pbuf, &
                                    liq_tau, liq_tau_ssa, &
                                    liq_tau_ssa_g, liq_tau_ssa_f)
@@ -265,7 +265,7 @@ contains
       combined_tau(:,:,:) = 0.0
 
       ! Get ice optics
-      if (trim(icecldoptics) == 'conley') then
+      if (trim(icecldoptics) == 'mitchell') then
          call get_ice_optics_lw(state, pbuf, ice_tau)
       else if (trim(icecldoptics) == 'ebertcurry') then
          call ec_ice_optics_lw(state, pbuf, ice_tau)
@@ -274,7 +274,7 @@ contains
       end if
 
       ! Get liquid optics
-      if (trim(liqcldoptics) == 'mitchell') then
+      if (trim(liqcldoptics) == 'gammadist') then
          call get_liquid_optics_lw(state, pbuf, liq_tau)
       else if (trim(liqcldoptics) == 'slingo') then
          call slingo_liq_optics_lw(state, pbuf, liq_tau)
