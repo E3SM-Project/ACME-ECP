@@ -1026,12 +1026,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          crm_input%fluxt00(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
          crm_input%fluxq00(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
          ! Project surface stress onto CRM orientation
-         crm_input%taux(i)      = cam_in%wsx(i)   *cos(crm_angle(i)) + cam_in%wsy(i)   *sin(crm_angle(i))
-         crm_input%tauy(i)      = cam_in%wsy(i)   *cos(crm_angle(i)) - cam_in%wsx(i)   *sin(crm_angle(i))
+         crm_input%taux(i)      = ( cam_in%wsx(i)   *cos(crm_angle(i)) + cam_in%wsy(i)   *sin(crm_angle(i)) )*0.5
+         crm_input%tauy(i)      = ( cam_in%wsy(i)   *cos(crm_angle(i)) - cam_in%wsx(i)   *sin(crm_angle(i)) )*0.5
          crm_input%ubot_prev(i) = cam_out%ubot(i) *cos(crm_angle(i)) + cam_out%vbot(i) *sin(crm_angle(i))
          crm_input%vbot_prev(i) = cam_out%vbot(i) *cos(crm_angle(i)) - cam_out%ubot(i) *sin(crm_angle(i))
-         ! write(*,*) 'ubot_prev: ',crm_input%ubot_prev(i),'  vbot_prev: ',crm_input%vbot_prev(i)
-         ! write(*,*) 'taux: ',crm_input%taux(i),'  tauy: ',crm_input%tauy(i)
       end do
 #if (defined m2005 && defined MODAL_AERO)
       ! Set aerosol

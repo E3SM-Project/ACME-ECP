@@ -187,6 +187,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
     real(crm_rknd), allocatable :: crm_prev_u_avg(:)
     real(crm_rknd), allocatable :: crm_prev_v_avg(:)
+    
+    real(crm_rknd) :: wind_mag, wind_tmp
+    real(crm_rknd), parameter :: min_wind_tmp = 1e4
+
 
   !-----------------------------------------------------------------------------------------------
   !-----------------------------------------------------------------------------------------------
@@ -583,14 +587,21 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   do icrm = 1 , ncrms
     taux_in(icrm) = crm_input%taux(icrm)
     tauy_in(icrm) = crm_input%tauy(icrm)
-    ! drag_x(icrm) = -1 * taux_in(icrm) / ( max(1e-0, sqrt(crm_prev_u_avg(icrm)**2+crm_prev_v_avg(icrm)**2) * crm_prev_u_avg(icrm) ) )
-    ! drag_y(icrm) = -1 * tauy_in(icrm) / ( max(1e-0, sqrt(crm_prev_u_avg(icrm)**2+crm_prev_v_avg(icrm)**2) * crm_prev_v_avg(icrm) ) )
-    drag_x(icrm) = real(-1,crm_rknd)*taux_in(icrm) / ( max(real(1e-4,crm_rknd), sqrt(crm_input%ubot_prev(icrm)**real(2,crm_rknd)+crm_input%vbot_prev(icrm)**2) * crm_input%ubot_prev(icrm) ) )
-    drag_y(icrm) = real(-1,crm_rknd)*tauy_in(icrm) / ( max(real(1e-4,crm_rknd), sqrt(crm_input%ubot_prev(icrm)**real(2,crm_rknd)+crm_input%vbot_prev(icrm)**2) * crm_input%vbot_prev(icrm) ) )
     
-    write(*,555) icrm,drag_x(icrm), taux_in(icrm), crm_input%ubot_prev(icrm), crm_input%vbot_prev(icrm), sqrt(crm_input%ubot_prev(icrm)**2+crm_input%vbot_prev(icrm)**2)
+    wind_mag = sqrt( crm_input%ubot_prev(icrm)**2 + crm_input%vbot_prev(icrm)**2 )
+    
+    wind_tmp = wind_mag * crm_input%ubot_prev(icrm)
+    if ( wind_tmp>0 .and. wind_tmp< min_wind_tmp ) wind_tmp =  min_wind_tmp
+    if ( wind_tmp<0 .and. wind_tmp>-min_wind_tmp ) wind_tmp = -min_wind_tmp
+    drag_x(icrm) = -1*taux_in(icrm) / wind_tmp
 
-555 format(i6,'  drag_x: ',f8.3,'  taux_in: ',f8.3,'  u-wind: ',f8.3,'  v-wind: ',f8.3,'  wind mag',f8.3 )
+    wind_tmp = wind_mag * crm_input%vbot_prev(icrm)
+    if ( wind_tmp>0 .and. wind_tmp< min_wind_tmp ) wind_tmp =  min_wind_tmp
+    if ( wind_tmp<0 .and. wind_tmp>-min_wind_tmp ) wind_tmp = -min_wind_tmp
+    drag_y(icrm) = -1*tauy_in(icrm) / wind_tmp
+    
+    write(*,555) icrm,drag_x(icrm), taux_in(icrm), crm_input%ubot_prev(icrm), crm_input%vbot_prev(icrm), wind_mag
+555 format(i6,'  drag_x: ',f12.6,'  taux_in: ',f8.3,'  u-wind: ',f8.3,'  v-wind: ',f8.3,'  wind mag',f8.3 )
 
     uhl(icrm) = u0(icrm,1)
     vhl(icrm) = v0(icrm,1)

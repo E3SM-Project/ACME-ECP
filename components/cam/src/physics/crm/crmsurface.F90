@@ -15,13 +15,13 @@ contains
     real(crm_rknd) fluxbu_avg(ncrms)
     real(crm_rknd) fluxbv_avg(ncrms)
 
-    real(crm_rknd) u_avg(ncrms)
-    real(crm_rknd) v_avg(ncrms)
+    ! real(crm_rknd) u_avg(ncrms)
+    ! real(crm_rknd) v_avg(ncrms)
 
 #if defined( SP_CRM_STRESS_SCHEME_HET )
   
-    u_avg(:) = 0
-    v_avg(:) = 0
+    ! u_avg(:) = 0
+    ! v_avg(:) = 0
 
     !$acc parallel loop collapse(3) async(asyncid)
     do j = 1,ny
@@ -35,8 +35,8 @@ contains
           fluxbu(icrm,i,j) = -drag_x(icrm) * wspd * u_tmp 
           fluxbv(icrm,i,j) = -drag_y(icrm) * wspd * v_tmp 
 
-          u_avg(icrm) = u_avg(icrm) + u_tmp/dble(nx*ny)
-          v_avg(icrm) = v_avg(icrm) + v_tmp/dble(nx*ny)
+          ! u_avg(icrm) = u_avg(icrm) + u_tmp/dble(nx*ny)
+          ! v_avg(icrm) = v_avg(icrm) + v_tmp/dble(nx*ny)
 
         end do
       end do
