@@ -279,7 +279,7 @@ contains
       else if (trim(liqcldoptics) == 'slingo') then
          call slingo_liq_optics_lw(state, pbuf, liq_tau)
       else
-         call endrun('Ice optics scheme ' // trim(liqcldoptics) // ' not recognized.')
+         call endrun('Liquid optics scheme ' // trim(liqcldoptics) // ' not recognized.')
       end if
 
       ! Combine liquid and ice
