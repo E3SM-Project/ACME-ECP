@@ -24,6 +24,20 @@ module radiation
    use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
    use mo_rte_kind, only: wp
 
+   ! Added for rte stuff
+   use mo_rte_kind,   only: wp
+   use mo_gas_optics, &
+                         only: ty_gas_optics
+   use mo_gas_concentrations, &
+                         only: ty_gas_concs
+   use mo_optical_props, only: ty_optical_props, &
+                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
+   use mo_source_functions, &
+                         only: ty_source_func_lw
+   use mo_fluxes,        only: ty_fluxes
+   use mo_rte_lw,        only: base_rte_lw => rte_lw
+   use mo_rte_sw,        only: base_rte_sw => rte_sw
+
    ! Use my assertion routines to perform sanity checks
    use assertions, only: assert, assert_valid, assert_range
 
@@ -997,18 +1011,20 @@ contains
    subroutine set_available_gases(gases, gas_concentrations)
 
       use mo_gas_concentrations, only: ty_gas_concs
-      use mo_util_string, only: lower_case
-      use mo_rte_kind, only: wp
+      use mo_rrtmgp_util_string, only: lower_case
 
       type(ty_gas_concs), intent(inout) :: gas_concentrations
       character(len=*), intent(in) :: gases(:)
+      character(len=32), dimension(size(gases)) :: gases_lowercase
       integer :: igas
 
-      ! Use set_vmr method to set gas names. This just sets the vmr to zero, since
-      ! this routine is just used to build a list of available gas names.
+      ! Initialize with lowercase gas names; we should work in lowercase
+      ! whenever possible because we cannot trust string comparisons in RRTMGP
+      ! to be case insensitive
       do igas = 1,size(gases)
-         call handle_error(gas_concentrations%set_vmr(trim(lower_case(gases(igas))), 0._wp))
+         gases_lowercase(igas) = trim(lower_case(gases(igas)))
       end do
+      call handle_error(gas_concentrations%init(gases_lowercase))
 
    end subroutine set_available_gases
 
@@ -1078,13 +1094,12 @@ contains
       use radconstants, only: idx_sw_diag
 
       ! RRTMGP radiation drivers and derived types
-      use mo_rrtmgp_clr_all_sky, only: rte_lw
       use mo_gas_concentrations, only: ty_gas_concs
       use mo_optical_props, only: ty_optical_props, &
                                   ty_optical_props_1scl, &
                                   ty_optical_props_2str
       use mo_fluxes_byband, only: ty_fluxes_byband
-      use mo_util_string, only: lower_case
+      use mo_rrtmgp_util_string, only: lower_case
 
       ! CAM history module provides subroutine to send output data to the history
       ! buffer to be aggregated and written to disk
@@ -1833,11 +1848,10 @@ contains
                                   tsi_scaling)
 
       use perf_mod, only: t_startf, t_stopf
-      use mo_rrtmgp_clr_all_sky, only: rte_sw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_concentrations, only: ty_gas_concs
-      use mo_util_string, only: lower_case
+      use mo_rrtmgp_util_string, only: lower_case
       use cam_optics, only: free_optics_sw
 
       character(len=*), intent(in) :: gas_names(:)
@@ -1861,6 +1875,10 @@ contains
       type(ty_gas_concs) :: gas_concs
       integer :: ncol, nday, nlev, igas, iday, icol
       integer, dimension(size(coszrs)) :: day_indices, night_indices
+
+      ! Character array to hold lowercase gas names
+      character(len=32), allocatable :: gas_names_lower(:)
+
 
       ncol = size(pmid,1)
       nlev = size(pmid,2)
@@ -1916,13 +1934,24 @@ contains
          aer_optics_day%g  (iday,:,:) = aer_optics%g  (icol,:,:)
       end do
 
+      ! Check incoming optical properties
+      call handle_error(cld_optics_day%validate())
+      call handle_error(aer_optics_day%validate())
+
+      ! Initialize gas concentrations with lower case names
+      allocate(gas_names_lower(size(gas_names)))
+      do igas = 1,size(gas_names)
+         gas_names_lower(igas) = trim(lower_case(gas_names(igas)))
+      end do
+      call handle_error(gas_concs%init(gas_names_lower))
+
       ! Populate gas concentrations
-      call gas_concs%reset()
       do igas = 1,size(gas_names)
          call handle_error(gas_concs%set_vmr( &
-            trim(lower_case(gas_names(igas))), gas_vmr_day(igas,1:nday,:) &
+            gas_names_lower(igas), gas_vmr_day(igas,1:nday,:) &
          ))
       end do
+      deallocate(gas_names_lower)
 
       call handle_error(cld_optics_day%validate())
       call handle_error(aer_optics_day%validate())
@@ -1983,7 +2012,7 @@ contains
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_concentrations, only: ty_gas_concs
-      use mo_util_string, only: lower_case
+      use mo_rrtmgp_util_string, only: lower_case
 
       character(len=*), intent(in) :: gas_names(:)
       real(r8), intent(in) :: gas_vmr(:,:,:)
@@ -1995,15 +2024,27 @@ contains
       type(ty_gas_concs) :: gas_concs
       integer :: ncol, nlev, igas
 
+      ! Character array to hold lowercase gas names
+      character(len=32), allocatable :: gas_names_lower(:)
+
       ncol = size(pmid,1)
       nlev = size(pmid,2)
 
-      ! Populate gas concentrations object
+      ! Initialize gas concentrations with lower case names
+      allocate(gas_names_lower(size(gas_names)))
+      do igas = 1,size(gas_names)
+         gas_names_lower(igas) = trim(lower_case(gas_names(igas)))
+      end do
+      call handle_error(gas_concs%init(gas_names_lower))
+
+      ! Populate gas concentrations
       do igas = 1,size(gas_names)
          call handle_error(gas_concs%set_vmr( &
-            trim(lower_case(gas_names(igas))), gas_vmr(igas,:,:)) & 
-         )
+            gas_names_lower(igas), gas_vmr(igas,:,:) &
+         ))
       end do
+      deallocate(gas_names_lower)
+
 
       ! Do longwave radiative transfer calculations
       call t_startf('rad_rte_lw')
@@ -2611,7 +2652,7 @@ contains
       use physics_types, only: physics_state
       use physics_buffer, only: physics_buffer_desc
       use rad_constituents, only: rad_cnst_get_gas
-      use mo_util_string, only: lower_case, string_loc_in_array
+      use mo_rrtmgp_util_string, only: lower_case, string_loc_in_array
 
       integer, intent(in) :: icall
       type(physics_state), intent(in) :: state
@@ -2706,5 +2747,293 @@ contains
 
    end subroutine get_gas_vmr
    
+
+   ! This code is part of
+   ! RRTM for GCM Applications - Parallel (RRTMGP)
+   !
+   ! Eli Mlawer and Robert Pincus
+   ! Andre Wehe and Jennifer Delamere
+   ! email:  rrtmgp@aer.com
+   !
+   ! Copyright 2017,  Atmospheric and Environmental Research and
+   ! Regents of the University of Colorado.  All right reserved.
+   !
+   ! Use and duplication is permitted under the terms of the
+   !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
+   !
+
+   !
+   ! This module provides an interface to RRTMGP for a common use case --
+   !   users want to start from gas concentrations, pressures, and temperatures,
+   !   and compute clear-sky (aerosol plus gases) and all-sky fluxes.
+   ! The routines here have the same names as those in mo_rrtmgp_[ls]w; normally users
+   !   will use either this module or the underling modules, but not both
+   !
+
+  ! --------------------------------------------------
+  !
+  ! Interfaces using clear (gas + aerosol) and all-sky categories, starting from
+  !   pressures, temperatures, and gas amounts for the gas contribution
+  !
+  ! --------------------------------------------------
+  function rte_lw(k_dist, gas_concs, p_lay, t_lay, p_lev,    &
+                     t_sfc, sfc_emis, cloud_props,           &
+                     allsky_fluxes, clrsky_fluxes,           &
+                     aer_props, col_dry, t_lev, inc_flux, n_gauss_angles) result(error_msg)
+    class(ty_gas_optics),              intent(in   ) :: k_dist       !< derived type with spectral information
+    type(ty_gas_concs),                intent(in   ) :: gas_concs    !< derived type encapsulating gas concentrations
+    real(wp), dimension(:,:),          intent(in   ) :: p_lay, t_lay !< pressure [Pa], temperature [K] at layer centers (ncol,nlay)
+    real(wp), dimension(:,:),          intent(in   ) :: p_lev        !< pressure at levels/interfaces [Pa] (ncol,nlay+1)
+    real(wp), dimension(:),            intent(in   ) :: t_sfc     !< surface temperature           [K]  (ncol)
+    real(wp), dimension(:,:),          intent(in   ) :: sfc_emis  !< emissivity at surface         []   (nband, ncol)
+    class(ty_optical_props_arry),      intent(in   ) :: cloud_props !< cloud optical properties (ncol,nlay,ngpt)
+    class(ty_fluxes),                  intent(inout) :: allsky_fluxes, clrsky_fluxes
+
+    ! Optional inputs
+    class(ty_optical_props_arry),  &
+              optional,       intent(in ) :: aer_props   !< aerosol optical properties
+    real(wp), dimension(:,:), &
+              optional,       intent(in ) :: col_dry !< Molecular number density (ncol, nlay)
+    real(wp), dimension(:,:), target, &
+              optional,       intent(in ) :: t_lev     !< temperature at levels [K] (ncol, nlay+1)
+    real(wp), dimension(:,:), target, &
+              optional,       intent(in ) :: inc_flux   !< incident flux at domain top [W/m2] (ncol, ngpts)
+    integer,  optional,       intent(in ) :: n_gauss_angles ! Number of angles used in Gaussian quadrature (no-scattering solution)
+    character(len=128)                    :: error_msg
+    ! --------------------------------
+    ! Local variables
+    !
+    class(ty_optical_props_arry), allocatable :: optical_props
+    type(ty_source_func_lw)                   :: sources
+
+    integer :: ncol, nlay, ngpt, nband, nstr
+    logical :: top_at_1
+    ! --------------------------------
+    ! Problem sizes
+    !
+    error_msg = ""
+
+    ncol  = size(p_lay, 1)
+    nlay  = size(p_lay, 2)
+    ngpt  = k_dist%get_ngpt()
+    nband = k_dist%get_nband()
+
+    top_at_1 = p_lay(1, 1) < p_lay(1, nlay)
+
+    ! ------------------------------------------------------------------------------------
+    !  Error checking
+    !
+    if(present(aer_props)) then
+      if(any([aer_props%get_ncol(), &
+              aer_props%get_nlay()] /= [ncol, nlay])) &
+        error_msg = "rrtmpg_lw: aerosol properties inconsistently sized"
+      if(.not. any(aer_props%get_ngpt() /= [ngpt, nband])) &
+        error_msg = "rrtmpg_lw: aerosol properties inconsistently sized"
+    end if
+
+    if(present(t_lev)) then
+      if(any([size(t_lev, 1), &
+              size(t_lev, 2)] /= [ncol, nlay+1])) &
+        error_msg = "rrtmpg_lw: t_lev inconsistently sized"
+    end if
+
+    if(present(inc_flux)) then
+      if(any([size(inc_flux, 1), &
+              size(inc_flux, 2)] /= [ncol, ngpt])) &
+        error_msg = "rrtmpg_lw: incident flux inconsistently sized"
+    end if
+    if(len_trim(error_msg) > 0) return
+
+    ! ------------------------------------------------------------------------------------
+    ! Optical properties arrays
+    !
+    select type(cloud_props)
+      class is (ty_optical_props_1scl) ! No scattering
+        allocate(ty_optical_props_1scl::optical_props)
+      class is (ty_optical_props_2str)
+        allocate(ty_optical_props_2str::optical_props)
+      class is (ty_optical_props_nstr)
+        allocate(ty_optical_props_nstr::optical_props)
+        nstr = size(cloud_props%tau,1)
+    end select
+
+    error_msg = optical_props%init(k_dist)
+    if(len_trim(error_msg) > 0) return
+    select type (optical_props)
+      class is (ty_optical_props_1scl) ! No scattering
+        error_msg = optical_props%alloc_1scl(ncol, nlay)
+      class is (ty_optical_props_2str)
+        error_msg = optical_props%alloc_2str(ncol, nlay)
+      class is (ty_optical_props_nstr)
+        error_msg = optical_props%alloc_nstr(nstr, ncol, nlay)
+    end select
+    if (error_msg /= '') return
+
+    !
+    ! Source function
+    !
+    error_msg = sources%init(k_dist)
+    error_msg = sources%alloc(ncol, nlay)
+    if (error_msg /= '') return
+    ! ------------------------------------------------------------------------------------
+    ! Clear skies
+    !
+    ! Gas optical depth -- pressure need to be expressed as Pa
+    !
+    error_msg = k_dist%gas_optics(p_lay, p_lev, t_lay, t_sfc, gas_concs, &
+                                  optical_props, sources,                &
+                                  col_dry, t_lev)
+    if (error_msg /= '') return
+    ! ----------------------------------------------------
+    ! Clear sky is gases + aerosols (if they're supplied)
+    !
+    if(present(aer_props)) error_msg = aer_props%increment(optical_props)
+    if(error_msg /= '') return
+
+    error_msg = base_rte_lw(optical_props, top_at_1, sources, &
+                            sfc_emis, clrsky_fluxes,          &
+                            inc_flux, n_gauss_angles)
+    if(error_msg /= '') return
+    ! ------------------------------------------------------------------------------------
+    ! All-sky fluxes = clear skies + clouds
+    !
+    error_msg = cloud_props%increment(optical_props)
+    if(error_msg /= '') return
+
+    error_msg = base_rte_lw(optical_props, top_at_1, sources, &
+                            sfc_emis, allsky_fluxes,          &
+                            inc_flux, n_gauss_angles)
+
+    call sources%finalize()
+  end function rte_lw
+  ! --------------------------------------------------
+  function rte_sw(k_dist, gas_concs, p_lay, t_lay, p_lev, &
+                                 mu0, sfc_alb_dir, sfc_alb_dif, cloud_props, &
+                                 allsky_fluxes, clrsky_fluxes,           &
+                                 aer_props, col_dry, inc_flux, tsi_scaling) result(error_msg)
+    class(ty_gas_optics),              intent(in   ) :: k_dist       !< derived type with spectral information
+    type(ty_gas_concs),                intent(in   ) :: gas_concs    !< derived type encapsulating gas concentrations
+    real(wp), dimension(:,:),          intent(in   ) :: p_lay, t_lay !< pressure [Pa], temperature [K] at layer centers (ncol,nlay)
+    real(wp), dimension(:,:),          intent(in   ) :: p_lev        !< pressure at levels/interfaces [Pa] (ncol,nlay+1)
+    real(wp), dimension(:  ),          intent(in   ) :: mu0          !< cosine of solar zenith angle
+    real(wp), dimension(:,:),          intent(in   ) :: sfc_alb_dir, sfc_alb_dif
+                                                        !  surface albedo for direct and diffuse radiation (band, col)
+    type(ty_optical_props_2str),      intent(in   ) :: cloud_props !< cloud optical properties (ncol,nlay,ngpt)
+    class(ty_fluxes),                  intent(inout) :: allsky_fluxes, clrsky_fluxes
+
+    ! Optional inputs
+    type(ty_optical_props_2str), &
+              optional,       intent(in ) :: aer_props   !< aerosol optical properties
+    real(wp), dimension(:,:), &
+              optional,       intent(in ) :: col_dry, &  !< Molecular number density (ncol, nlay)
+                                             inc_flux    !< incident flux at domain top [W/m2] (ncol, ngpts)
+    real(wp), optional,       intent(in ) :: tsi_scaling !< Optional scaling for total solar irradiance
+
+    character(len=128)                    :: error_msg
+    ! --------------------------------
+    ! Local variables
+    !
+    type(ty_optical_props_2str) :: optical_props
+    real(wp), dimension(:,:), allocatable :: toa_flux
+    integer :: ncol, nlay, ngpt, nband, nstr
+    logical :: top_at_1
+    ! --------------------------------
+    ! Problem sizes
+    !
+    error_msg = ""
+
+    ncol  = size(p_lay, 1)
+    nlay  = size(p_lay, 2)
+    ngpt  = k_dist%get_ngpt()
+    nband = k_dist%get_nband()
+
+    top_at_1 = p_lay(1, 1) < p_lay(1, nlay)
+
+    ! ------------------------------------------------------------------------------------
+    !  Error checking
+    !
+    if(present(inc_flux) .and. present(tsi_scaling)) &
+      error_msg = "rrtmpg_sw: only one of inc_flux, tsi_scaling may be supplied."
+
+    if(present(aer_props)) then
+      if(any([aer_props%get_ncol(), &
+              aer_props%get_nlay()] /= [ncol, nlay])) &
+        error_msg = "rrtmpg_sw: aerosol properties inconsistently sized"
+      if(.not. any(aer_props%get_ngpt() /= [ngpt, nband])) &
+        error_msg = "rrtmpg_sw: aerosol properties inconsistently sized"
+    end if
+
+    if(present(tsi_scaling)) then
+      if(tsi_scaling <= 0._wp) &
+        error_msg = "rrtmpg_sw: tsi_scaling is < 0"
+    end if
+
+    if(present(inc_flux)) then
+      if(any([size(inc_flux, 1), &
+              size(inc_flux, 2)] /= [ncol, ngpt])) &
+        error_msg = "rrtmpg_sw: incident flux inconsistently sized"
+    end if
+    if(len_trim(error_msg) > 0) return
+
+    ! ------------------------------------------------------------------------------------
+    !
+    ! Optical properties arrays
+    !
+    error_msg = optical_props%alloc_2str(ncol, nlay, k_dist, name='gas optics')
+    if (error_msg /= '') return
+
+    allocate(toa_flux(ncol, ngpt))
+    ! ------------------------------------------------------------------------------------
+    ! Clear skies
+    !
+    ! Gas optical depth -- pressure need to be expressed as Pa
+    !
+    error_msg = k_dist%gas_optics(p_lay, p_lev, t_lay, gas_concs, &
+                                  optical_props, toa_flux,        &
+                                  col_dry)
+    if (error_msg /= '') return
+
+    optical_props%name="gas optics"
+
+    error_msg = optical_props%validate()
+    if (error_msg /= '') then
+       print *, 'min/max gas ssa: ', minval(optical_props%ssa), maxval(optical_props%ssa)
+       return
+    end if
+
+    !
+    ! If users have supplied an incident flux, use that
+    !
+    if(present(inc_flux))    toa_flux(:,:) = inc_flux(:,:)
+    if(present(tsi_scaling)) toa_flux(:,:) = toa_flux(:,:) * tsi_scaling
+    ! ----------------------------------------------------
+    ! Clear sky is gases + aerosols (if they're supplied)
+    !
+    if(present(aer_props)) error_msg = aer_props%increment(optical_props)
+    if(error_msg /= '') return
+
+    optical_props%name="gas+aerosol optics"
+    error_msg = optical_props%validate()
+    if (error_msg /= '') return
+
+    error_msg = base_rte_sw(optical_props, top_at_1, &
+                               mu0, toa_flux,                   &
+                               sfc_alb_dir, sfc_alb_dif,        &
+                               clrsky_fluxes)
+
+    if(error_msg /= '') return
+    ! ------------------------------------------------------------------------------------
+    ! All-sky fluxes = clear skies + clouds
+    !
+    error_msg = cloud_props%increment(optical_props)
+    if(error_msg /= '') return
+    optical_props%name="gas+aerosol+cloud optics"
+
+    error_msg = base_rte_sw(optical_props, top_at_1,  &
+                               mu0, toa_flux,                   &
+                               sfc_alb_dir, sfc_alb_dif,        &
+                               allsky_fluxes)
+
+  end function rte_sw
 
 end module radiation
