@@ -44,6 +44,15 @@ module grid
   integer, parameter :: dimy1_s = 1-3*YES3D
   integer, parameter :: dimy2_s = nyp3     
 
+  integer, parameter :: dimx_s = dimx2_s - dimx1_s + 1
+  integer, parameter :: dimy_s = dimy2_s - dimy1_s + 1
+  integer, parameter :: dimx_u = dimx2_u - dimx1_u + 1
+  integer, parameter :: dimy_u = dimy2_u - dimy1_u + 1
+  integer, parameter :: dimx_v = dimx2_v - dimx1_v + 1
+  integer, parameter :: dimy_v = dimy2_v - dimy1_v + 1
+  integer, parameter :: dimx_w = dimx2_w - dimx1_w + 1
+  integer, parameter :: dimy_w = dimy2_w - dimy1_w + 1
+
   integer, parameter :: ncols = nx*ny
   integer, parameter :: nadams = 3
 
