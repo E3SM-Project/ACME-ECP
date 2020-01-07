@@ -1,7 +1,6 @@
 module grid
 
   use domain
-  use advection, only: NADV, NADVS
   use params, only: crm_rknd
 
   implicit none
@@ -28,22 +27,22 @@ module grid
   integer, parameter :: nxp4 = nx + 4
   integer, parameter :: nyp4 = ny + 4 * YES3D
 
-  integer, parameter :: dimx1_u = -1                !!-1        -1        -1        -1
-  integer, parameter :: dimx2_u = nxp3              !!nxp3      nxp3      nxp3      nxp3
-  integer, parameter :: dimy1_u = 1-(2+NADV)*YES3D  !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-2*YES3D
-  integer, parameter :: dimy2_u = nyp2+NADV         !!nyp5      nyp4      nyp3      nyp2
-  integer, parameter :: dimx1_v = -1-NADV           !!-4        -3        -2        -1
-  integer, parameter :: dimx2_v = nxp2+NADV         !!nxp5      nxp4      nxp3      nxp2
-  integer, parameter :: dimy1_v = 1-2*YES3D         !!1-2*YES3D 1-2*YES3D 1-2*YES3D 1-2*YES3D
-  integer, parameter :: dimy2_v = nyp3              !!nyp3       nyp3      nyp3      nyp3
-  integer, parameter :: dimx1_w = -1-NADV           !!-4        -3        -2        -1
-  integer, parameter :: dimx2_w = nxp2+NADV         !!nxp5      nxp4      nxp3      nxp2
-  integer, parameter :: dimy1_w = 1-(2+NADV)*YES3D  !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-2*YES3D
-  integer, parameter :: dimy2_w = nyp2+NADV         !!nyp5      nyp4      nyp3      nyp2
-  integer, parameter :: dimx1_s = -2-NADVS          !!-4        -3        -2        -2
-  integer, parameter :: dimx2_s = nxp3+NADVS        !!nxp5      nxp4      nxp3      nxp3
-  integer, parameter :: dimy1_s = 1-(3+NADVS)*YES3D !!1-5*YES3D 1-4*YES3D 1-3*YES3D 1-3*YES3D
-  integer, parameter :: dimy2_s = nyp3+NADVS        !!nyp5      nyp4      nyp3      nyp3
+  integer, parameter :: dimx1_u = -1       
+  integer, parameter :: dimx2_u = nxp3     
+  integer, parameter :: dimy1_u = 1-2*YES3D
+  integer, parameter :: dimy2_u = nyp2     
+  integer, parameter :: dimx1_v = -1       
+  integer, parameter :: dimx2_v = nxp2     
+  integer, parameter :: dimy1_v = 1-2*YES3D
+  integer, parameter :: dimy2_v = nyp3     
+  integer, parameter :: dimx1_w = -1       
+  integer, parameter :: dimx2_w = nxp2     
+  integer, parameter :: dimy1_w = 1-2*YES3D
+  integer, parameter :: dimy2_w = nyp2     
+  integer, parameter :: dimx1_s = -2       
+  integer, parameter :: dimx2_s = nxp3     
+  integer, parameter :: dimy1_s = 1-3*YES3D
+  integer, parameter :: dimy2_s = nyp3     
 
   integer, parameter :: ncols = nx*ny
   integer, parameter :: nadams = 3
