@@ -16,13 +16,13 @@ contains
 
     implicit none
     integer, intent(in) :: ncrms
-    real(crm_rknd) f(ncrms,dimx_s, dimy_s, nzm)
+    real(crm_rknd) f(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) flux(ncrms,nz), fadv(ncrms,nz)
     real(crm_rknd), allocatable :: f0(:,:,:,:)
     real(crm_rknd) tmp
     integer i,j,k,icrm
 
-    allocate( f0(ncrms,dimx_s, dimy_s, nzm) )
+    allocate( f0(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm) )
     call prefetch(f0)
 
     if(docolumn) then
@@ -40,7 +40,7 @@ contains
       do j = dimy1_s,dimy2_s
         do i = dimx1_s,dimx2_s
           do icrm = 1 , ncrms
-            f0(icrm,i-dimx1_s+1,j-dimy1_s+1,k) = f(icrm,i-dimx1_s+1,j-dimy1_s+1,k)
+            f0(icrm,i,j,k) = f(icrm,i,j,k)
           enddo
         enddo
       enddo
@@ -63,7 +63,7 @@ contains
       do j=1,ny
         do i=1,nx
           do icrm = 1 , ncrms
-            tmp = f(icrm,i-dimx1_s+1,j-dimy1_s+1,k)-f0(icrm,i-dimx1_s+1,j-dimy1_s+1,k)
+            tmp = f(icrm,i,j,k)-f0(icrm,i,j,k)
             !$acc atomic update
             fadv(icrm,k)=fadv(icrm,k)+tmp
           end do
