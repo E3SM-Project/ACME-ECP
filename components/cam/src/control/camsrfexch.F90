@@ -594,9 +594,15 @@ subroutine cam_export(state,cam_out,pbuf)
          !zm will use large-scalel (CAM) value
          cam_out%zbot(i,j)  = state%zm(i,pver)
 
+#ifdef SP_DIR_NS
+         ! u and v swapped to account for CRM orientation in N-S direction (temporary fix)
+         cam_out%ubot(i,j) = -crm_v(i,j,1,1)
+         cam_out%vbot(i,j) =  crm_u(i,j,1,1)
+#else
          !u and v will use CRM value
          cam_out%ubot(i,j)  = crm_u(i,j,1,1)
          cam_out%vbot(i,j)  = crm_v(i,j,1,1)
+#endif
       end do
       psm1(i,lchnk)    = state%ps(i)
       srfrpdel(i,lchnk)= state%rpdel(i,pver)
