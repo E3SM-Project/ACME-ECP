@@ -517,6 +517,15 @@
     <EXEROOT>$ENV{HOME}/projects/acme/scratch/$CASE/bld</EXEROOT>
     <!-- cmake -DCMAKE_Fortran_COMPILER=/opt/local/bin/mpif90-mpich-gcc48 -DHDF5_DIR=/opt/local -DNetcdf_INCLUDE_DIR=/opt/local/include .. -->
     <!--    <GMAKE>make</GMAKE> <- this doesn't actually work! -->
+    <environment_variables>
+      <env name="COMPILER">$COMPILER</env>
+      <env name="MPILIB">$MPILIB</env>
+      <env name="OMP_STACKSIZE">128M</env>
+      <env name="NETCDF_C_PATH">$ENV{NETCDF_PATH}</env>
+      <env name="NETCDF_FORTRAN_PATH">$ENV{NETCDF_PATH}</env>
+      <env name="PNETCDF_PATH">$ENV{PNETCDF_PATH}</env>
+      <env name="NETLIB_LAPACK_PATH">$ENV{LAPACK_PATH}</env>
+    </environment_variables>
   </machine>
 
   <machine MACH="melvin">

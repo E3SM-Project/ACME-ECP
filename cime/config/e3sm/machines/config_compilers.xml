@@ -1389,7 +1389,7 @@ for mct, etc.
   <NETCDF_PATH> $ENV{NETCDF_PATH}</NETCDF_PATH>
   <PNETCDF_PATH> $ENV{PNETCDF_PATH}</PNETCDF_PATH>
   <SLIBS>
-    <append>$SHELL{$NETCDF_PATH/bin/nf-config --flibs} </append>
+    <append>$SHELL{$NETCDF_PATH/bin/nf-config --flibs} $SHELL{$NETCDF_PATH/bin/nc-config --libs} -L$ENV{LAPACK_PATH}/lib -llapack -lblas </append>
   </SLIBS>
 </compiler>
 
