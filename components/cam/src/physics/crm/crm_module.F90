@@ -1802,7 +1802,7 @@ subroutine dump_data(umax, wmin, cwp_threshold, perturb_seed_scale, ncrms, crm_r
     if (rand_num < proportion) then
       ! dmdf_write(dat,rank,fprefix,vname,dnames,first,last) !For array values
       ! dmdf_write(dat,rank,fprefix,vname       ,first,last) !For array values
-      call dmdf_write( epsv                           , myrank , prefix , trim("epsv              ")                                        , .false. , .false. )
+      call dmdf_write( epsv                           , myrank , prefix , trim("epsv              ")                                        , .true.  , .false. )
       call dmdf_write( vrain                          , myrank , prefix , trim("vrain             ")                                        , .false. , .false. )
       call dmdf_write( vsnow                          , myrank , prefix , trim("vsnow             ")                                        , .false. , .false. )
       call dmdf_write( vgrau                          , myrank , prefix , trim("vgrau             ")                                        , .false. , .false. )
