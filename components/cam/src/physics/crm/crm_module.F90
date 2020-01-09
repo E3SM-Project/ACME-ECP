@@ -1793,9 +1793,22 @@ subroutine dump_data(umax, wmin, cwp_threshold, perturb_seed_scale, ncrms, crm_r
   integer :: myrank
   character(len=64) :: prefix = 'crmdump'
   real(8) :: rand_num
-  real(8), parameter :: proportion = 0.05D0
+  real(8), parameter :: proportion = 0.0003D0
+
+  logical :: first = .true.
+  integer :: i, n, clock
+  integer, dimension(:), allocatable :: seed
 
   call MPI_Comm_rank(MPI_COMM_WORLD, myrank, ierr)
+
+  if (first) then
+    call random_seed(size = n)
+    allocate(seed(n))
+    call system_clock(count=clock)
+    seed = clock + myrank + 37 * (/ (i - 1, i = 1, n) /)
+    call random_seed(put=seed)
+    deallocate(seed)
+  endif
 
   do icrm = 1 , ncrms
     call random_number(rand_num)
