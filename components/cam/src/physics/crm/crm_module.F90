@@ -715,6 +715,18 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   crm_run_time  = dt_gl
   icrm_run_time = 1._r8/crm_run_time
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !! DUMP DATA
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  call dump_data(umax, wmin, cwp_threshold, perturb_seed_scale, ncrms, crm_run_time, icrm_run_time, factor_xy, factor_xyt,   &
+                 idt_gl, u2z, v2z, w2z, ptop, nn, icyc, icrm, kx, qsat, omg, colprec, colprecs, ustar, bflx, wnd, qtot,      &
+                 igstep, iseed, crm_nx_rad_fac, crm_ny_rad_fac, i_rad, j_rad, crm_accel_ceaseflag, t00, tln, qln, qccln,     &
+                 qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, cltemp, cmtemp, chtemp, cttemp, dd_crm, mui_crm, mdi_crm, &
+                 dt_gl, plev)
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !! END DUMP DATA
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   if (use_crm_accel) then
     call crm_accel_nstop(nstop)  ! reduce nstop by factor of (1 + crm_accel_factor)
   end if
@@ -1717,4 +1729,278 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
 end subroutine crm
 
+
+
+
+
+subroutine dump_data(umax, wmin, cwp_threshold, perturb_seed_scale, ncrms, crm_run_time, icrm_run_time, factor_xy, factor_xyt,   &
+                     idt_gl, u2z, v2z, w2z, ptop, nn, icyc, icrm, kx, qsat, omg, colprec, colprecs, ustar, bflx, wnd, qtot,      &
+                     igstep, iseed, crm_nx_rad_fac, crm_ny_rad_fac, i_rad, j_rad, crm_accel_ceaseflag, t00, tln, qln, qccln,     &
+                     qiiln, uln, vln, cwp, cwph, cwpm, cwpl, flag_top, cltemp, cmtemp, chtemp, cttemp, dd_crm, mui_crm, mdi_crm, &
+                     dt_gl, plev)
+  use microphysics
+  use sgs
+  use vars
+  use grid
+  use params
+  use mpi
+  use dmdf
+  use shr_kind_mod, only: r8 => shr_kind_r8
+  implicit none
+  real(r8)       :: umax              
+  real(r8)       :: wmin              
+  real(crm_rknd) :: cwp_threshold     
+  integer        :: perturb_seed_scale
+  integer        :: ncrms
+  real(r8)       :: crm_run_time 
+  real(r8)       :: icrm_run_time
+  real(r8)       :: factor_xy, factor_xyt, idt_gl, dt_gl
+  real(crm_rknd) :: u2z,v2z,w2z
+  integer        :: ptop,nn,icyc,icrm
+  integer        :: kx
+  real(crm_rknd) :: qsat, omg
+  real(crm_rknd) :: colprec(:), colprecs(:)
+  real(crm_rknd) :: ustar(:), bflx(:), wnd(:)
+  real(r8)       :: qtot(:,:)
+  integer        :: igstep
+  integer        :: iseed
+  real(crm_rknd) :: crm_nx_rad_fac
+  real(crm_rknd) :: crm_ny_rad_fac
+  integer        :: i_rad
+  integer        :: j_rad
+  logical        :: crm_accel_ceaseflag
+  real(crm_rknd) :: t00     (:,:)
+  real(crm_rknd) :: tln     (:,:)
+  real(crm_rknd) :: qln     (:,:)
+  real(crm_rknd) :: qccln   (:,:)
+  real(crm_rknd) :: qiiln   (:,:)
+  real(crm_rknd) :: uln     (:,:)
+  real(crm_rknd) :: vln     (:,:)
+  real(crm_rknd) :: cwp     (:,:,:)
+  real(crm_rknd) :: cwph    (:,:,:)
+  real(crm_rknd) :: cwpm    (:,:,:)
+  real(crm_rknd) :: cwpl    (:,:,:)
+  logical        :: flag_top(:,:,:)
+  real(crm_rknd) :: cltemp  (:,:,:)
+  real(crm_rknd) :: cmtemp  (:,:,:)
+  real(crm_rknd) :: chtemp  (:,:,:)
+  real(crm_rknd) :: cttemp  (:,:,:)
+  real(r8)       :: dd_crm  (:,:)
+  real(r8)       :: mui_crm (:,:)
+  real(r8)       :: mdi_crm (:,:)
+  integer        :: plev
+
+  integer :: myrank
+  character(len=64) :: prefix = 'crmdump'
+  real(8) :: rand_num
+  real(8), parameter :: proportion = 0.05D0
+
+  call MPI_Comm_rank(MPI_COMM_WORLD, myrank, ierr)
+
+  do icrm = 1 , ncrms
+    call random_number(rand_num)
+    if (rand_num < proportion) then
+      ! dmdf_write(dat,rank,fprefix,vname,dnames,first,last) !For array values
+      ! dmdf_write(dat,rank,fprefix,vname       ,first,last) !For array values
+      call dmdf_write( epsv                           , myrank , prefix , trim("epsv              ")                                        , .false. , .false. )
+      call dmdf_write( vrain                          , myrank , prefix , trim("vrain             ")                                        , .false. , .false. )
+      call dmdf_write( vsnow                          , myrank , prefix , trim("vsnow             ")                                        , .false. , .false. )
+      call dmdf_write( vgrau                          , myrank , prefix , trim("vgrau             ")                                        , .false. , .false. )
+      call dmdf_write( crain                          , myrank , prefix , trim("crain             ")                                        , .false. , .false. )
+      call dmdf_write( csnow                          , myrank , prefix , trim("csnow             ")                                        , .false. , .false. )
+      call dmdf_write( cgrau                          , myrank , prefix , trim("cgrau             ")                                        , .false. , .false. )
+      call dmdf_write( index_water_vapor              , myrank , prefix , trim("index_water_vapor ")                                        , .false. , .false. )
+      call dmdf_write( index_cloud_ice                , myrank , prefix , trim("index_cloud_ice   ")                                        , .false. , .false. )
+      call dmdf_write( dt_gl                          , myrank , prefix , trim("dt_gl             ")                                        , .false. , .false. )
+      call dmdf_write( umax                           , myrank , prefix , trim("umax              ")                                        , .false. , .false. )
+      call dmdf_write( wmin                           , myrank , prefix , trim("wmin              ")                                        , .false. , .false. )
+      call dmdf_write( cwp_threshold                  , myrank , prefix , trim("cwp_threshold     ")                                        , .false. , .false. )
+      call dmdf_write( perturb_seed_scale             , myrank , prefix , trim("perturb_seed_scale")                                        , .false. , .false. )
+      call dmdf_write( crm_run_time                   , myrank , prefix , trim("crm_run_time      ")                                        , .false. , .false. )
+      call dmdf_write( icrm_run_time                  , myrank , prefix , trim("icrm_run_time     ")                                        , .false. , .false. )
+      call dmdf_write( factor_xy                      , myrank , prefix , trim("factor_xy         ")                                        , .false. , .false. )
+      call dmdf_write( factor_xyt                     , myrank , prefix , trim("factor_xyt        ")                                        , .false. , .false. )
+      call dmdf_write( idt_gl                         , myrank , prefix , trim("idt_gl            ")                                        , .false. , .false. )
+      call dmdf_write( u2z                            , myrank , prefix , trim("u2z               ")                                        , .false. , .false. )
+      call dmdf_write( v2z                            , myrank , prefix , trim("v2z               ")                                        , .false. , .false. )
+      call dmdf_write( w2z                            , myrank , prefix , trim("w2z               ")                                        , .false. , .false. )
+      call dmdf_write( ptop                           , myrank , prefix , trim("ptop              ")                                        , .false. , .false. )
+      call dmdf_write( nn                             , myrank , prefix , trim("nn                ")                                        , .false. , .false. )
+      call dmdf_write( icyc                           , myrank , prefix , trim("icyc              ")                                        , .false. , .false. )
+      call dmdf_write( kx                             , myrank , prefix , trim("kx                ")                                        , .false. , .false. )
+      call dmdf_write( qsat                           , myrank , prefix , trim("qsat              ")                                        , .false. , .false. )
+      call dmdf_write( omg                            , myrank , prefix , trim("omg               ")                                        , .false. , .false. )
+      call dmdf_write( crm_nx_rad_fac                 , myrank , prefix , trim("crm_nx_rad_fac    ")                                        , .false. , .false. )
+      call dmdf_write( crm_ny_rad_fac                 , myrank , prefix , trim("crm_ny_rad_fac    ")                                        , .false. , .false. )
+      call dmdf_write( i_rad                          , myrank , prefix , trim("i_rad             ")                                        , .false. , .false. )
+      call dmdf_write( j_rad                          , myrank , prefix , trim("j_rad             ")                                        , .false. , .false. )
+      call dmdf_write( dz              (icrm)         , myrank , prefix , trim("dz                ")                                        , .false. , .false. )
+      call dmdf_write( ustar           (icrm)         , myrank , prefix , trim("ustar             ")                                        , .false. , .false. )
+      call dmdf_write( bflx            (icrm)         , myrank , prefix , trim("bflx              ")                                        , .false. , .false. )
+      call dmdf_write( wnd             (icrm)         , myrank , prefix , trim("wnd               ")                                        , .false. , .false. )
+      call dmdf_write( colprec         (icrm)         , myrank , prefix , trim("colprec           ")                                        , .false. , .false. )
+      call dmdf_write( colprecs        (icrm)         , myrank , prefix , trim("colprecs          ")                                        , .false. , .false. )
+      call dmdf_write( u_max           (icrm)         , myrank , prefix , trim("u_max             ")                                        , .false. , .false. )
+      call dmdf_write( w_max           (icrm)         , myrank , prefix , trim("w_max             ")                                        , .false. , .false. )
+      call dmdf_write( total_water_evap(icrm)         , myrank , prefix , trim("total_water_evap  ")                                        , .false. , .false. )
+      call dmdf_write( total_water_prec(icrm)         , myrank , prefix , trim("total_water_prec  ")                                        , .false. , .false. )
+      call dmdf_write( fcor            (icrm)         , myrank , prefix , trim("fcor              ")                                        , .false. , .false. )
+      call dmdf_write( fcorz           (icrm)         , myrank , prefix , trim("fcorz             ")                                        , .false. , .false. )
+      call dmdf_write( longitude0      (icrm)         , myrank , prefix , trim("longitude0        ")                                        , .false. , .false. )
+      call dmdf_write( latitude0       (icrm)         , myrank , prefix , trim("latitude0         ")                                        , .false. , .false. )
+      call dmdf_write( z0              (icrm)         , myrank , prefix , trim("z0                ")                                        , .false. , .false. )
+      call dmdf_write( ocean           (icrm)         , myrank , prefix , trim("ocean             ")                                        , .false. , .false. )
+      call dmdf_write( land            (icrm)         , myrank , prefix , trim("land              ")                                        , .false. , .false. )
+      call dmdf_write( uhl             (icrm)         , myrank , prefix , trim("uhl               ")                                        , .false. , .false. )
+      call dmdf_write( vhl             (icrm)         , myrank , prefix , trim("vhl               ")                                        , .false. , .false. )
+      call dmdf_write( taux0           (icrm)         , myrank , prefix , trim("taux0             ")                                        , .false. , .false. )
+      call dmdf_write( tauy0           (icrm)         , myrank , prefix , trim("tauy0             ")                                        , .false. , .false. )
+      call dmdf_write( u               (icrm,:,:,:)   , myrank , prefix , trim("u                 ") , (/"dimx_u","dimy_u","nzm   "/)       , .false. , .false. )
+      call dmdf_write( v               (icrm,:,:,:)   , myrank , prefix , trim("v                 ") , (/"dimx_v","dimy_v","nzm   "/)       , .false. , .false. )
+      call dmdf_write( w               (icrm,:,:,:)   , myrank , prefix , trim("w                 ") , (/"dimx_w","dimy_w","nz    "/)       , .false. , .false. )
+      call dmdf_write( t               (icrm,:,:,:)   , myrank , prefix , trim("t                 ") , (/"dimx_s","dimy_s","nzm   "/)       , .false. , .false. )
+      call dmdf_write( p               (icrm,:,:,:)   , myrank , prefix , trim("p                 ") , (/"dimx_p","dimy_p","nzm   "/)       , .false. , .false. )
+      call dmdf_write( tabs            (icrm,:,:,:)   , myrank , prefix , trim("tabs              ") , (/"nx ","ny ","nzm"/)                , .false. , .false. )
+      call dmdf_write( qv              (icrm,:,:,:)   , myrank , prefix , trim("qv                ") , (/"nx ","ny ","nzm"/)                , .false. , .false. )
+      call dmdf_write( qcl             (icrm,:,:,:)   , myrank , prefix , trim("qcl               ") , (/"nx ","ny ","nzm"/)                , .false. , .false. )
+      call dmdf_write( qpl             (icrm,:,:,:)   , myrank , prefix , trim("qpl               ") , (/"nx ","ny ","nzm"/)                , .false. , .false. )
+      call dmdf_write( qci             (icrm,:,:,:)   , myrank , prefix , trim("qci               ") , (/"nx ","ny ","nzm"/)                , .false. , .false. )
+      call dmdf_write( qpi             (icrm,:,:,:)   , myrank , prefix , trim("qpi               ") , (/"nx ","ny ","nzm"/)                , .false. , .false. )
+      call dmdf_write( tke2            (icrm,:,:,:)   , myrank , prefix , trim("tke2              ") , (/"dimx_s","dimy_s","nzm   "/)       , .false. , .false. )
+      call dmdf_write( tk2             (icrm,:,:,:)   , myrank , prefix , trim("tk2               ") , (/"dimx_tk2","dimy_tk2","nzm     "/) , .false. , .false. )
+      call dmdf_write( dudt            (icrm,:,:,:,:) , myrank , prefix , trim("dudt              ") , (/"nxp1 ","ny   ","nzm  ","three"/)  , .false. , .false. )
+      call dmdf_write( dvdt            (icrm,:,:,:,:) , myrank , prefix , trim("dvdt              ") , (/"nx   ","nyp1 ","nzm  ","three"/)  , .false. , .false. )
+      call dmdf_write( dwdt            (icrm,:,:,:,:) , myrank , prefix , trim("dwdt              ") , (/"nx   ","ny   ","nz   ","three"/)  , .false. , .false. )
+      call dmdf_write( misc            (icrm,:,:,:)   , myrank , prefix , trim("misc              ") , (/"nx","ny","nz"/)                   , .false. , .false. )
+      call dmdf_write( fluxbu          (icrm,:,:)     , myrank , prefix , trim("fluxbu            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( fluxbv          (icrm,:,:)     , myrank , prefix , trim("fluxbv            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( fluxbt          (icrm,:,:)     , myrank , prefix , trim("fluxbt            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( fluxbq          (icrm,:,:)     , myrank , prefix , trim("fluxbq            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( fluxtu          (icrm,:,:)     , myrank , prefix , trim("fluxtu            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( fluxtv          (icrm,:,:)     , myrank , prefix , trim("fluxtv            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( fluxtt          (icrm,:,:)     , myrank , prefix , trim("fluxtt            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( fluxtq          (icrm,:,:)     , myrank , prefix , trim("fluxtq            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( fzero           (icrm,:,:)     , myrank , prefix , trim("fzero             ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( precsfc         (icrm,:,:)     , myrank , prefix , trim("precsfc           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( precssfc        (icrm,:,:)     , myrank , prefix , trim("precssfc          ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( t0              (icrm,:)       , myrank , prefix , trim("t0                ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( q0              (icrm,:)       , myrank , prefix , trim("q0                ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( qv0             (icrm,:)       , myrank , prefix , trim("qv0               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( tabs0           (icrm,:)       , myrank , prefix , trim("tabs0             ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( tv0             (icrm,:)       , myrank , prefix , trim("tv0               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( u0              (icrm,:)       , myrank , prefix , trim("u0                ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( v0              (icrm,:)       , myrank , prefix , trim("v0                ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( tg0             (icrm,:)       , myrank , prefix , trim("tg0               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( qg0             (icrm,:)       , myrank , prefix , trim("qg0               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( ug0             (icrm,:)       , myrank , prefix , trim("ug0               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( vg0             (icrm,:)       , myrank , prefix , trim("vg0               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( p0              (icrm,:)       , myrank , prefix , trim("p0                ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( tke0            (icrm,:)       , myrank , prefix , trim("tke0              ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( t01             (icrm,:)       , myrank , prefix , trim("t01               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( q01             (icrm,:)       , myrank , prefix , trim("q01               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( qp0             (icrm,:)       , myrank , prefix , trim("qp0               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( qn0             (icrm,:)       , myrank , prefix , trim("qn0               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( prespot         (icrm,:)       , myrank , prefix , trim("prespot           ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( rho             (icrm,:)       , myrank , prefix , trim("rho               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( rhow            (icrm,:)       , myrank , prefix , trim("rhow              ") , (/"nz "/)                            , .false. , .false. )
+      call dmdf_write( bet             (icrm,:)       , myrank , prefix , trim("bet               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( gamaz           (icrm,:)       , myrank , prefix , trim("gamaz             ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( wsub            (icrm,:)       , myrank , prefix , trim("wsub              ") , (/"nz "/)                            , .false. , .false. )
+      call dmdf_write( qtend           (icrm,:)       , myrank , prefix , trim("qtend             ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( ttend           (icrm,:)       , myrank , prefix , trim("ttend             ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( utend           (icrm,:)       , myrank , prefix , trim("utend             ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( vtend           (icrm,:)       , myrank , prefix , trim("vtend             ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( sstxy           (icrm,:,:)     , myrank , prefix , trim("sstxy             ") , (/"dimx_sst","dimy_sst"/)            , .false. , .false. )
+      call dmdf_write( fcory           (icrm,:)       , myrank , prefix , trim("fcory             ") , (/"dimy_fcory"/)                     , .false. , .false. )
+      call dmdf_write( fcorzy          (icrm,:)       , myrank , prefix , trim("fcorzy            ") , (/"ny"/)                             , .false. , .false. )
+      call dmdf_write( latitude        (icrm,:,:)     , myrank , prefix , trim("latitude          ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( longitude       (icrm,:,:)     , myrank , prefix , trim("longitude         ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( prec_xy         (icrm,:,:)     , myrank , prefix , trim("prec_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( pw_xy           (icrm,:,:)     , myrank , prefix , trim("pw_xy             ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cw_xy           (icrm,:,:)     , myrank , prefix , trim("cw_xy             ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( iw_xy           (icrm,:,:)     , myrank , prefix , trim("iw_xy             ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cld_xy          (icrm,:,:)     , myrank , prefix , trim("cld_xy            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( u200_xy         (icrm,:,:)     , myrank , prefix , trim("u200_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( usfc_xy         (icrm,:,:)     , myrank , prefix , trim("usfc_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( v200_xy         (icrm,:,:)     , myrank , prefix , trim("v200_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( vsfc_xy         (icrm,:,:)     , myrank , prefix , trim("vsfc_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( w500_xy         (icrm,:,:)     , myrank , prefix , trim("w500_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( twsb            (icrm,:)       , myrank , prefix , trim("twsb              ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( precflux        (icrm,:)       , myrank , prefix , trim("precflux          ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( uwle            (icrm,:)       , myrank , prefix , trim("uwle              ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( uwsb            (icrm,:)       , myrank , prefix , trim("uwsb              ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( vwle            (icrm,:)       , myrank , prefix , trim("vwle              ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( vwsb            (icrm,:)       , myrank , prefix , trim("vwsb              ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( tkelediss       (icrm,:)       , myrank , prefix , trim("tkelediss         ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( tdiff           (icrm,:)       , myrank , prefix , trim("tdiff             ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( tlat            (icrm,:)       , myrank , prefix , trim("tlat              ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( tlatqi          (icrm,:)       , myrank , prefix , trim("tlatqi            ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( qifall          (icrm,:)       , myrank , prefix , trim("qifall            ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( qpfall          (icrm,:)       , myrank , prefix , trim("qpfall            ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( cf3d            (icrm,:,:,:)   , myrank , prefix , trim("cf3d              ") , (/"nx ","ny ","nzm"/)                , .false. , .false. )
+      call dmdf_write( u850_xy         (icrm,:,:)     , myrank , prefix , trim("u850_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( v850_xy         (icrm,:,:)     , myrank , prefix , trim("v850_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( psfc_xy         (icrm,:,:)     , myrank , prefix , trim("psfc_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( swvp_xy         (icrm,:,:)     , myrank , prefix , trim("swvp_xy           ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cloudtopheight  (icrm,:,:)     , myrank , prefix , trim("cloudtopheight    ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( echotopheight   (icrm,:,:)     , myrank , prefix , trim("echotopheight     ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cloudtoptemp    (icrm,:,:)     , myrank , prefix , trim("cloudtoptemp      ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( z               (icrm,:)       , myrank , prefix , trim("z                 ") , (/"nz "/)                            , .false. , .false. )
+      call dmdf_write( pres            (icrm,:)       , myrank , prefix , trim("pres              ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( zi              (icrm,:)       , myrank , prefix , trim("zi                ") , (/"nz "/)                            , .false. , .false. )
+      call dmdf_write( presi           (icrm,:)       , myrank , prefix , trim("presi             ") , (/"nz "/)                            , .false. , .false. )
+      call dmdf_write( adz             (icrm,:)       , myrank , prefix , trim("adz               ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( adzw            (icrm,:)       , myrank , prefix , trim("adzw              ") , (/"nz "/)                            , .false. , .false. )
+      call dmdf_write( dt3             (:)            , myrank , prefix , trim("dt3               ") , (/"three"/)                          , .false. , .false. )
+      call dmdf_write( grdf_x          (icrm,:)       , myrank , prefix , trim("grdf_x            ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( grdf_y          (icrm,:)       , myrank , prefix , trim("grdf_y            ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( grdf_z          (icrm,:)       , myrank , prefix , trim("grdf_z            ") , (/"nzm"/)                            , .false. , .false. )
+      call dmdf_write( tkesbbuoy       (icrm,:)       , myrank , prefix , trim("tkesbbuoy         ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( tkesbshear      (icrm,:)       , myrank , prefix , trim("tkesbshear        ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( tkesbdiss       (icrm,:)       , myrank , prefix , trim("tkesbdiss         ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( qn              (icrm,:,:,:)   , myrank , prefix , trim("qn                ") , (/"nx ","ny ","nzm"/)                , .false. , .false. )
+      call dmdf_write( qpsrc           (icrm,:)       , myrank , prefix , trim("qpsrc             ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( qpevp           (icrm,:)       , myrank , prefix , trim("qpevp             ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( t00             (icrm,:)       , myrank , prefix , trim("t00               ") , (/"nz"/)                             , .false. , .false. )
+      call dmdf_write( tln             (icrm,:)       , myrank , prefix , trim("tln               ") , (/"plev"/)                           , .false. , .false. )
+      call dmdf_write( qln             (icrm,:)       , myrank , prefix , trim("qln               ") , (/"plev"/)                           , .false. , .false. )
+      call dmdf_write( qccln           (icrm,:)       , myrank , prefix , trim("qccln             ") , (/"plev"/)                           , .false. , .false. )
+      call dmdf_write( qiiln           (icrm,:)       , myrank , prefix , trim("qiiln             ") , (/"plev"/)                           , .false. , .false. )
+      call dmdf_write( uln             (icrm,:)       , myrank , prefix , trim("uln               ") , (/"plev"/)                           , .false. , .false. )
+      call dmdf_write( vln             (icrm,:)       , myrank , prefix , trim("vln               ") , (/"plev"/)                           , .false. , .false. )
+      call dmdf_write( cwp             (icrm,:,:)     , myrank , prefix , trim("cwp               ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cwph            (icrm,:,:)     , myrank , prefix , trim("cwph              ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cwpm            (icrm,:,:)     , myrank , prefix , trim("cwpm              ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cwpl            (icrm,:,:)     , myrank , prefix , trim("cwpl              ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( flag_top        (icrm,:,:)     , myrank , prefix , trim("flag_top          ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cltemp          (icrm,:,:)     , myrank , prefix , trim("cltemp            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cmtemp          (icrm,:,:)     , myrank , prefix , trim("cmtemp            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( chtemp          (icrm,:,:)     , myrank , prefix , trim("chtemp            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( cttemp          (icrm,:,:)     , myrank , prefix , trim("cttemp            ") , (/"nx","ny"/)                        , .false. , .false. )
+      call dmdf_write( dd_crm          (icrm,:)       , myrank , prefix , trim("dd_crm            ") , (/"plev  "/)                         , .false. , .false. )
+      call dmdf_write( mui_crm         (icrm,:)       , myrank , prefix , trim("mui_crm           ") , (/"plevp1"/)                         , .false. , .false. )
+      call dmdf_write( mdi_crm         (icrm,:)       , myrank , prefix , trim("mdi_crm           ") , (/"plevp1"/)                         , .false. , .false. )
+      call dmdf_write( qtot            (icrm,:)       , myrank , prefix , trim("qtot              ") , (/"twenty"/)                         , .false. , .false. )
+      call dmdf_write( sgs_field       (icrm,:,:,:,:) , myrank , prefix , trim("sgs_field         ") , (/"dimx_s     ","dimy_s     ","nzm        ","nsgs_fields"/)                     , .false. , .false. )
+      call dmdf_write( sgs_field_diag  (icrm,:,:,:,:) , myrank , prefix , trim("sgs_field_diag    ") , (/"dimx_d          ","dimy_d          ","nzm             ","nsgs_fields_diag"/) , .false. , .false. )
+      call dmdf_write( micro_field     (icrm,:,:,:,:) , myrank , prefix , trim("micro_field       ") , (/"dimx_s       ","dimy_s       ","nzm          ","nmicro_fields"/)             , .false. , .false. )
+      call dmdf_write( fluxbmk         (icrm,:,:,:)   , myrank , prefix , trim("fluxbmk           ") , (/"nx           ","ny           ","nmicro_fields"/)                             , .false. , .false. )
+      call dmdf_write( fluxtmk         (icrm,:,:,:)   , myrank , prefix , trim("fluxtmk           ") , (/"nx           ","ny           ","nmicro_fields"/)                             , .false. , .false. )
+      call dmdf_write( mkwle           (icrm,:,:)     , myrank , prefix , trim("mkwle             ") , (/"nz           ","nmicro_fields"/)                                             , .false. , .false. )
+      call dmdf_write( mkwsb           (icrm,:,:)     , myrank , prefix , trim("mkwsb             ") , (/"nz           ","nmicro_fields"/)                                             , .false. , .false. )
+      call dmdf_write( mkadv           (icrm,:,:)     , myrank , prefix , trim("mkadv             ") , (/"nz           ","nmicro_fields"/)                                             , .false. , .false. )
+      call dmdf_write( mkdiff          (icrm,:,:)     , myrank , prefix , trim("mkdiff            ") , (/"nz           ","nmicro_fields"/)                                             , .false. , .true.  )
+    endif  !! if rand_num < proportion
+  enddo  !! icrm
+
+end subroutine dump_data
+
+
+
+
+
+
 end module crm_module
+
+
+
