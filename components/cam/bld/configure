@@ -2671,8 +2671,10 @@ sub write_filepath
     } elsif ($rad eq 'rrtmgp') {
         print $fh "$camsrcdir/cam/src/physics/rrtmgp\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rte\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rte/kernels-openacc\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rte/kernels\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rrtmgp\n";
+        print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rrtmgp/kernels-openacc\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/rrtmgp/kernels\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/extensions\n";
         print $fh "$camsrcdir/cam/src/physics/rrtmgp/external/extensions/rng\n";
