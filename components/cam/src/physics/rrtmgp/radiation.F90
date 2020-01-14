@@ -1953,9 +1953,6 @@ contains
       end do
       deallocate(gas_names_lower)
 
-      call handle_error(cld_optics_day%validate())
-      call handle_error(aer_optics_day%validate())
-        
       ! Compute fluxes
       call t_startf('rad_rte_sw')
       call handle_error(rte_sw(k_dist_sw, gas_concs, &
@@ -2008,7 +2005,6 @@ contains
                                 fluxes_allsky, fluxes_clrsky)
 
       use perf_mod, only: t_startf, t_stopf
-      use mo_rrtmgp_clr_all_sky, only: rte_lw
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_concentrations, only: ty_gas_concs
@@ -2055,7 +2051,7 @@ contains
                                cld_optics, &
                                fluxes_allsky, fluxes_clrsky, &
                                aer_props=aer_optics, &
-                               t_lev=tint(1:ncol,1:nlev+1), &
+                               !t_lev=tint(1:ncol,1:nlev+1), &
                                n_gauss_angles=1))  ! Set to 3 for consistency with RRTMG
       call t_stopf('rad_rte_lw')
 
@@ -2786,11 +2782,11 @@ contains
     real(wp), dimension(:,:),          intent(in   ) :: p_lev        !< pressure at levels/interfaces [Pa] (ncol,nlay+1)
     real(wp), dimension(:),            intent(in   ) :: t_sfc     !< surface temperature           [K]  (ncol)
     real(wp), dimension(:,:),          intent(in   ) :: sfc_emis  !< emissivity at surface         []   (nband, ncol)
-    class(ty_optical_props_arry),      intent(in   ) :: cloud_props !< cloud optical properties (ncol,nlay,ngpt)
+    class(ty_optical_props_1scl),      intent(in   ) :: cloud_props !< cloud optical properties (ncol,nlay,ngpt)
     class(ty_fluxes),                  intent(inout) :: allsky_fluxes, clrsky_fluxes
 
     ! Optional inputs
-    class(ty_optical_props_arry),  &
+    class(ty_optical_props_1scl),  &
               optional,       intent(in ) :: aer_props   !< aerosol optical properties
     real(wp), dimension(:,:), &
               optional,       intent(in ) :: col_dry !< Molecular number density (ncol, nlay)
@@ -2803,8 +2799,8 @@ contains
     ! --------------------------------
     ! Local variables
     !
-    class(ty_optical_props_arry), allocatable :: optical_props
-    type(ty_source_func_lw)                   :: sources
+    type(ty_optical_props_1scl) :: optical_props
+    type(ty_source_func_lw)     :: sources
 
     integer :: ncol, nlay, ngpt, nband, nstr
     logical :: top_at_1
@@ -2844,29 +2840,9 @@ contains
     end if
     if(len_trim(error_msg) > 0) return
 
-    ! ------------------------------------------------------------------------------------
-    ! Optical properties arrays
-    !
-    select type(cloud_props)
-      class is (ty_optical_props_1scl) ! No scattering
-        allocate(ty_optical_props_1scl::optical_props)
-      class is (ty_optical_props_2str)
-        allocate(ty_optical_props_2str::optical_props)
-      class is (ty_optical_props_nstr)
-        allocate(ty_optical_props_nstr::optical_props)
-        nstr = size(cloud_props%tau,1)
-    end select
-
     error_msg = optical_props%init(k_dist)
-    if(len_trim(error_msg) > 0) return
-    select type (optical_props)
-      class is (ty_optical_props_1scl) ! No scattering
-        error_msg = optical_props%alloc_1scl(ncol, nlay)
-      class is (ty_optical_props_2str)
-        error_msg = optical_props%alloc_2str(ncol, nlay)
-      class is (ty_optical_props_nstr)
-        error_msg = optical_props%alloc_nstr(nstr, ncol, nlay)
-    end select
+    if (error_msg /= '') return
+    error_msg = optical_props%alloc_1scl(ncol, nlay)
     if (error_msg /= '') return
 
     !
@@ -2918,7 +2894,7 @@ contains
     real(wp), dimension(:  ),          intent(in   ) :: mu0          !< cosine of solar zenith angle
     real(wp), dimension(:,:),          intent(in   ) :: sfc_alb_dir, sfc_alb_dif
                                                         !  surface albedo for direct and diffuse radiation (band, col)
-    type(ty_optical_props_2str),      intent(in   ) :: cloud_props !< cloud optical properties (ncol,nlay,ngpt)
+    type(ty_optical_props_2str),       intent(in   ) :: cloud_props !< cloud optical properties (ncol,nlay,ngpt)
     class(ty_fluxes),                  intent(inout) :: allsky_fluxes, clrsky_fluxes
 
     ! Optional inputs
