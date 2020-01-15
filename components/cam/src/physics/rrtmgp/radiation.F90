@@ -22,13 +22,6 @@ module radiation
    ! here so that we can make the k_dist objects module data and only load them
    ! once.
    use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
-   use mo_rte_kind, only: wp
-
-   ! Added for rte stuff
-   use mo_rte_kind,   only: wp
-   use mo_gas_concentrations, &
-                         only: ty_gas_concs
-   use mo_optical_props, only: ty_optical_props_1scl, ty_optical_props_2str 
 
    ! Use my assertion routines to perform sanity checks
    use assertions, only: assert, assert_valid, assert_range
