@@ -30,8 +30,6 @@ module crm_input_module
       real(crm_rknd), allocatable :: fluxv00(:)          ! surface momenent fluxes [N/m2]
       real(crm_rknd), allocatable :: fluxt00(:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
       real(crm_rknd), allocatable :: fluxq00(:)          ! surface latent heat fluxes [ kg/(m2 s)]
-      real(crm_rknd), allocatable :: angle(:)            ! CRM orientation angle (rad)
-
 #if defined( m2005 ) && defined( MODAL_AERO )
       real(crm_rknd), allocatable :: naermod (:,:,:)     ! Aerosol number concentration [/m3]
       real(crm_rknd), allocatable :: vaerosol(:,:,:)     ! aerosol volume concentration [m3/m3]
@@ -77,7 +75,6 @@ contains
       if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms))
       if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
       if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
-      if (.not. allocated(this%angle))    allocate(this%angle(ncrms))
 
       call prefetch(this%zmid)
       call prefetch(this%zint)
@@ -137,7 +134,6 @@ contains
       this%fluxv00 = 0
       this%fluxt00 = 0
       this%fluxq00 = 0
-      this%angle = 0
 #if defined( m2005 ) && defined( MODAL_AERO )
       this%naermod  = 0
       this%vaerosol = 0
@@ -175,7 +171,6 @@ contains
       deallocate(this%fluxv00)
       deallocate(this%fluxt00)
       deallocate(this%fluxq00)
-      deallocate(this%angle)
 
 #if defined( m2005 ) && defined( MODAL_AERO )
       deallocate(this%naermod)
