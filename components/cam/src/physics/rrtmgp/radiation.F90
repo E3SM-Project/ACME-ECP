@@ -26,17 +26,9 @@ module radiation
 
    ! Added for rte stuff
    use mo_rte_kind,   only: wp
-   use mo_gas_optics, &
-                         only: ty_gas_optics
    use mo_gas_concentrations, &
                          only: ty_gas_concs
-   use mo_optical_props, only: ty_optical_props, &
-                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
-   use mo_source_functions, &
-                         only: ty_source_func_lw
-   use mo_fluxes,        only: ty_fluxes
-   use mo_rte_lw,        only: base_rte_lw => rte_lw
-   use mo_rte_sw,        only: base_rte_sw => rte_sw
+   use mo_optical_props, only: ty_optical_props_1scl, ty_optical_props_2str 
 
    ! Use my assertion routines to perform sanity checks
    use assertions, only: assert, assert_valid, assert_range
@@ -1095,8 +1087,7 @@ contains
 
       ! RRTMGP radiation drivers and derived types
       use mo_gas_concentrations, only: ty_gas_concs
-      use mo_optical_props, only: ty_optical_props, &
-                                  ty_optical_props_1scl, &
+      use mo_optical_props, only: ty_optical_props_1scl, & 
                                   ty_optical_props_2str
       use mo_fluxes_byband, only: ty_fluxes_byband
       use mo_rrtmgp_util_string, only: lower_case
