@@ -1,3 +1,18 @@
+! Define a macro to index into a 1d array with size nx*ny*nz; used to pack 3D
+! CRM data dimensioned (ncol,crm_nx_rad,crm_ny_rad) into arrays of size
+! (ncol*crm_nx_rad*crm_ny_rad) to expose more parallelism in RRTMGP without
+! refactoring the code. This would be used as follows:
+!
+!    do iy = 1,ny
+!       do ix = 1,nx
+!          do ic = 1,nc
+!             array1d(_IDX1D(ic,ix,iy,nc,nx,ny)) = array3d(ic,ix,iy)
+!          end do
+!       end do
+!    end do
+!
+#define _IDX1D(i1,i2,i3,n1,n2,n3) (i3-1) * (n2 * n1) + (i2 - 1) * n1 + i1
+
 module radiation
 !---------------------------------------------------------------------------------
 ! Purpose:
@@ -1360,6 +1375,82 @@ contains
       call cnst_get_ind('CLDLIQ', ixcldliq)
       call cnst_get_ind('CLDICE', ixcldice)
 
+      ! Set variables that do not change with different diagnostic calls or CRM
+      if (radiation_do('sw') .or. radiation_do('lw')) then
+         ! Calculate effective radius for optics used with single-moment microphysics
+         if (use_SPCAM .and. (trim(SPCAM_microp_scheme) .eq. 'sam1mom')) then 
+            call cldefr( &
+               state%lchnk, ncol, landfrac, state%t, rel, rei, &
+               state%ps, state%pmid, landm, icefrac, snowh &
+            )
+         end if
+
+         ! Get albedo. This uses CAM routines internally and just provides a
+         ! wrapper to improve readability of the code here.
+         call set_albedo(cam_in, albedo_direct_col(1:nswbands,1:ncol), albedo_diffuse_col(1:nswbands,1:ncol))
+
+         ! Send albedos to history buffer (useful for debugging)
+         call outfld('SW_ALBEDO_DIR', transpose(albedo_direct_col(1:nswbands,1:ncol)), ncol, state%lchnk)
+         call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse_col(1:nswbands,1:ncol)), ncol, state%lchnk)
+
+         ! Get cosine solar zenith angle for current time step, and send to
+         ! history buffer
+         call set_cosine_solar_zenith_angle(state, dt_avg, coszrs(1:ncol))
+         call outfld('COSZRS', coszrs(1:ncol), ncol, state%lchnk)
+
+         ! If the swrad_off flag is set, meaning we should not do SW radiation, then 
+         ! we just set coszrs to zero everywhere. TODO: why not just set dosw false 
+         ! and skip the loop?
+         if (swrad_off) coszrs(:) = 0._r8
+
+         ! Gather night/day column indices for subsetting SW inputs; we only want to
+         ! do the shortwave radiative transfer during the daytime to save
+         ! computational cost (and because RRTMGP will fail for cosine solar zenith
+         ! angles less than or equal to zero)
+         call set_daynight_indices(coszrs(1:ncol), day_indices(1:ncol), night_indices(1:ncol))
+         nday = count(day_indices(1:ncol) > 0)
+         nnight = count(night_indices(1:ncol) > 0)
+
+         ! Initialize cloud optics objects
+         call handle_error(cld_optics_sw_col%alloc_2str( &
+            ncol, nlev_rad, k_dist_sw, name='cld_optics_sw' &
+         ))
+         call handle_error(cld_optics_sw_all%alloc_2str( &
+            ncol_tot, nlev_rad, k_dist_sw, name='cld_optics_sw' &
+         ))
+         call handle_error(cld_optics_lw_col%alloc_1scl( &
+            ncol, nlev_rad, k_dist_lw, name='cld_optics_lw' &
+         ))
+         call handle_error(cld_optics_lw_all%alloc_1scl( &
+            ncol_tot, nlev_rad, k_dist_lw, name='cld_optics_lw' &
+         ))
+
+         ! Initialize aerosol optics; passing only the wavenumber bounds for each
+         ! "band" rather than passing the full spectral discretization object, and
+         ! omitting the "g-point" mapping forces the optics to be indexed and
+         ! stored by band rather than by g-point. This is most consistent with our
+         ! treatment of aerosol optics in the model, and prevents us from having to
+         ! map bands to g-points ourselves since that will all be handled by the
+         ! private routines internal to the optics class.
+         call handle_error(aer_optics_sw_all%alloc_2str(              &
+            ncol_tot, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), &
+            name='aer_optics_sw_all'                                  &
+         ))
+         call handle_error(aer_optics_lw_all%alloc_1scl(          &
+            ncol_tot, nlev_rad, k_dist_lw%get_band_lims_wavenumber(), &
+            name='aer_optics_lw_all'                              &
+         ))
+         call handle_error(aer_optics_sw_col%alloc_2str(              &
+            ncol    , nlev_rad, k_dist_sw%get_band_lims_wavenumber(), &
+            name='aer_optics_sw_col'                                  &
+         ))
+         call handle_error(aer_optics_lw_col%alloc_1scl(          &
+            ncol    , nlev_rad, k_dist_lw%get_band_lims_wavenumber(), &
+            name='aer_optics_lw_col'                              &
+         ))
+
+      end if  ! radiation_do('sw') .or. radiation_do('lw')
+
       ! Loop over "diagnostic calls"; these are additional configurations of
       ! gases used to calculate radiative effects for diagnostic purposes only,
       ! without affecting the climate. The only version that affects the
@@ -1374,75 +1465,6 @@ contains
             ! only have to pack/copy data once, rather than once for each of
             ! shortwave and longwave.
             if (radiation_do('sw') .or. radiation_do('lw')) then
-
-               ! Calculate effective radius for optics used with single-moment microphysics
-               if (use_SPCAM .and. (trim(SPCAM_microp_scheme) .eq. 'sam1mom')) then 
-                  call cldefr(state%lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh)
-               end if
-
-               ! Get albedo. This uses CAM routines internally and just provides a
-               ! wrapper to improve readability of the code here.
-               call set_albedo(cam_in, albedo_direct_col(1:nswbands,1:ncol), albedo_diffuse_col(1:nswbands,1:ncol))
-
-               ! Send albedos to history buffer (useful for debugging)
-               call outfld('SW_ALBEDO_DIR', transpose(albedo_direct_col(1:nswbands,1:ncol)), ncol, state%lchnk)
-               call outfld('SW_ALBEDO_DIF', transpose(albedo_diffuse_col(1:nswbands,1:ncol)), ncol, state%lchnk)
-
-               ! Get cosine solar zenith angle for current time step, and send to
-               ! history buffer
-               call set_cosine_solar_zenith_angle(state, dt_avg, coszrs(1:ncol))
-               call outfld('COSZRS', coszrs(1:ncol), ncol, state%lchnk)
-
-               ! If the swrad_off flag is set, meaning we should not do SW radiation, then 
-               ! we just set coszrs to zero everywhere. TODO: why not just set dosw false 
-               ! and skip the loop?
-               if (swrad_off) coszrs(:) = 0._r8
-
-               ! Gather night/day column indices for subsetting SW inputs; we only want to
-               ! do the shortwave radiative transfer during the daytime to save
-               ! computational cost (and because RRTMGP will fail for cosine solar zenith
-               ! angles less than or equal to zero)
-               call set_daynight_indices(coszrs(1:ncol), day_indices(1:ncol), night_indices(1:ncol))
-               nday = count(day_indices(1:ncol) > 0)
-               nnight = count(night_indices(1:ncol) > 0)
-
-               ! Initialize cloud optics objects
-               call handle_error(cld_optics_sw_col%alloc_2str( &
-                  ncol, nlev_rad, k_dist_sw, name='cld_optics_sw' &
-               ))
-               call handle_error(cld_optics_sw_all%alloc_2str( &
-                  ncol_tot, nlev_rad, k_dist_sw, name='cld_optics_sw' &
-               ))
-               call handle_error(cld_optics_lw_col%alloc_1scl( &
-                  ncol, nlev_rad, k_dist_lw, name='cld_optics_lw' &
-               ))
-               call handle_error(cld_optics_lw_all%alloc_1scl( &
-                  ncol_tot, nlev_rad, k_dist_lw, name='cld_optics_lw' &
-               ))
-
-               ! Initialize aerosol optics; passing only the wavenumber bounds for each
-               ! "band" rather than passing the full spectral discretization object, and
-               ! omitting the "g-point" mapping forces the optics to be indexed and
-               ! stored by band rather than by g-point. This is most consistent with our
-               ! treatment of aerosol optics in the model, and prevents us from having to
-               ! map bands to g-points ourselves since that will all be handled by the
-               ! private routines internal to the optics class.
-               call handle_error(aer_optics_sw_all%alloc_2str(              &
-                  ncol_tot, nlev_rad, k_dist_sw%get_band_lims_wavenumber(), &
-                  name='aer_optics_sw_all'                                  &
-               ))
-               call handle_error(aer_optics_lw_all%alloc_1scl(          &
-                  ncol_tot, nlev_rad, k_dist_lw%get_band_lims_wavenumber(), &
-                  name='aer_optics_lw_all'                              &
-               ))
-               call handle_error(aer_optics_sw_col%alloc_2str(              &
-                  ncol    , nlev_rad, k_dist_sw%get_band_lims_wavenumber(), &
-                  name='aer_optics_sw_col'                                  &
-               ))
-               call handle_error(aer_optics_lw_col%alloc_1scl(          &
-                  ncol    , nlev_rad, k_dist_lw%get_band_lims_wavenumber(), &
-                  name='aer_optics_lw_col'                              &
-               ))
 
                ! Loop over CRM columns; call routines designed to work with
                ! pbuf/state over ncol columns for each CRM column index, and pack
@@ -1676,12 +1698,6 @@ contains
                call free_fluxes(fluxes_allsky_all)
                call free_fluxes(fluxes_clrsky_all)
 
-               ! Free optical properties
-               call free_optics_sw(cld_optics_sw_all)
-               call free_optics_sw(aer_optics_sw_all)
-               call free_optics_sw(cld_optics_sw_col)
-               call free_optics_sw(aer_optics_sw_col)
-
             else
 
                ! Conserve energy
@@ -1772,10 +1788,6 @@ contains
                call free_fluxes(fluxes_clrsky)
                call free_fluxes(fluxes_allsky_all)
                call free_fluxes(fluxes_clrsky_all)
-               call free_optics_lw(cld_optics_lw_col)
-               call free_optics_lw(cld_optics_lw_all)
-               call free_optics_lw(aer_optics_lw_col)
-               call free_optics_lw(aer_optics_lw_all)
 
             else
 
@@ -1788,6 +1800,19 @@ contains
 
          end if  ! active calls
       end do  ! loop over diagnostic calls
+
+      if (radiation_do('sw') .or. radiation_do('lw')) then
+         ! Free optical properties
+         call free_optics_sw(cld_optics_sw_all)
+         call free_optics_sw(aer_optics_sw_all)
+         call free_optics_sw(cld_optics_sw_col)
+         call free_optics_sw(aer_optics_sw_col)
+         call free_optics_lw(cld_optics_lw_col)
+         call free_optics_lw(cld_optics_lw_all)
+         call free_optics_lw(aer_optics_lw_col)
+         call free_optics_lw(aer_optics_lw_all)
+      end if
+
 
       ! Restore pbuf fields
       iclwp = iclwp_save
@@ -2051,7 +2076,7 @@ contains
                                cld_optics, &
                                fluxes_allsky, fluxes_clrsky, &
                                aer_props=aer_optics, &
-                               !t_lev=tint(1:ncol,1:nlev+1), &
+                               t_lev=tint(1:ncol,1:nlev+1), &
                                n_gauss_angles=1))  ! Set to 3 for consistency with RRTMG
       call t_stopf('rad_rte_lw')
 
