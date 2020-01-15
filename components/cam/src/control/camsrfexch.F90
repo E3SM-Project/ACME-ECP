@@ -511,12 +511,14 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: crm_v_idx
    integer :: crm_pcp_idx
    integer :: crm_snw_idx
+   integer :: crm_angle_idx
    real(r8), pointer :: crm_t(:,:,:,:)
    real(r8), pointer :: crm_qv(:,:,:,:)
    real(r8), pointer :: crm_u(:,:,:,:)
    real(r8), pointer :: crm_v(:,:,:,:)
    real(r8), pointer :: crm_pcp(:,:,:)
    real(r8), pointer :: crm_snw(:,:,:)
+   real(r8), pointer :: crm_angle(:)
 #endif
 
 
@@ -552,6 +554,7 @@ subroutine cam_export(state,cam_out,pbuf)
    crm_v_idx    = pbuf_get_index('CRM_V')
    crm_pcp_idx  = pbuf_get_index('CRM_PCP')
    crm_snw_idx  = pbuf_get_index('CRM_SNW')
+   crm_angle_idx = pbuf_get_index('CRM_ANGLE')
 #endif
 
    call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
@@ -571,6 +574,7 @@ subroutine cam_export(state,cam_out,pbuf)
    call pbuf_get_field(pbuf, crm_v_idx  , crm_v)
    call pbuf_get_field(pbuf, crm_pcp_idx ,crm_pcp)
    call pbuf_get_field(pbuf, crm_snw_idx ,crm_snw)
+   call pbuf_get_field(pbuf, crm_angle_idx, crm_angle)
 #endif
 
 #ifdef MAML
@@ -594,15 +598,9 @@ subroutine cam_export(state,cam_out,pbuf)
          !zm will use large-scalel (CAM) value
          cam_out%zbot(i,j)  = state%zm(i,pver)
 
-#ifdef SP_DIR_NS
-         ! u and v swapped to account for CRM orientation in N-S direction (temporary fix)
-         cam_out%ubot(i,j) = -crm_v(i,j,1,1)
-         cam_out%vbot(i,j) =  crm_u(i,j,1,1)
-#else
-         !u and v will use CRM value
-         cam_out%ubot(i,j)  = crm_u(i,j,1,1)
-         cam_out%vbot(i,j)  = crm_v(i,j,1,1)
-#endif
+         ! u and v will use CRM value (must transform because of CRM orientation)
+         cam_out%ubot(i,j) = crm_u(i,j,1,1) * cos(crm_angle(i)) - crm_v(i,j,1,1) * sin(crm_angle(i))
+         cam_out%vbot(i,j) = crm_v(i,j,1,1) * cos(crm_angle(i)) + crm_u(i,j,1,1) * sin(crm_angle(i))
       end do
       psm1(i,lchnk)    = state%ps(i)
       srfrpdel(i,lchnk)= state%rpdel(i,pver)
