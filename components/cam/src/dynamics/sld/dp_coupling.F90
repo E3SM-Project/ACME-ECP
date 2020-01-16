@@ -94,7 +94,6 @@ CONTAINS
 !-----------------------------------------------------------------------
     if (local_dp_map) then
 
-!$OMP PARALLEL DO PRIVATE (LCHNK, NCOL, I, K, M, LONS, LATS)
 
        do lchnk = begchunk,endchunk
           ncol = phys_state(lchnk)%ncol
@@ -144,7 +143,6 @@ CONTAINS
           call endrun ('p_d_coupling: communication buffers (spmdbuf_siz) too small')
        endif
 
-!$OMP PARALLEL DO PRIVATE (J, BPTER, I, K, M)
        do j=beglat,endlat
 
           call block_to_chunk_send_pters(j,plon,plev+1,tsize,bpter)
@@ -185,7 +183,6 @@ CONTAINS
        call transpose_block_to_chunk(tsize, buf1, buf2, buf2win)
        call t_stopf  ('block_to_chunk')
 
-!$OMP PARALLEL DO PRIVATE (LCHNK, NCOL, CPTER, I, K, M)
        do lchnk = begchunk,endchunk
           ncol = phys_state(lchnk)%ncol
 
@@ -218,7 +215,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 ! Fill auxilliary arrays in physics data structure
 !-----------------------------------------------------------------------
-!$OMP PARALLEL DO PRIVATE (LCHNK, NCOL, I, K, M, LONS, LATS, ZVIRV, pbuf_chnk)
 
     do lchnk = begchunk,endchunk
        ncol = phys_state(lchnk)%ncol
@@ -325,7 +321,6 @@ CONTAINS
 !-----------------------------------------------------------------------
     if (local_dp_map) then
 
-!$OMP PARALLEL DO PRIVATE (LCHNK, NCOL, I, K, M, LONS, LATS)
 
       do lchnk = begchunk,endchunk
          ncol = get_ncols_p(lchnk)
@@ -377,7 +372,6 @@ CONTAINS
           call endrun ('d_p_coupling: communication buffers (spmdbuf_siz) too small')
        endif
 
-!$OMP PARALLEL DO PRIVATE (LCHNK, NCOL, CPTER, I, K, M)
        do lchnk = begchunk,endchunk
           ncol = get_ncols_p(lchnk)
 
@@ -418,7 +412,6 @@ CONTAINS
        call transpose_chunk_to_block(tsize, buf2, buf1, buf1win)
        call t_stopf  ('chunk_to_block')
 
-!$OMP PARALLEL DO PRIVATE (J, BPTER, I, K, M)
        do j=beglat,endlat
 
           call chunk_to_block_recv_pters(j,plon,plev+1,tsize,bpter)

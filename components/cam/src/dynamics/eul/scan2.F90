@@ -179,7 +179,6 @@ subroutine scan2run (ztodt, cwava, etamid,t2      ,fu      ,fv    )
 
 #if ( defined SPMD )
 
-!$OMP PARALLEL DO PRIVATE (J)
       do j=1,plat/2
          call grcalcs (j, ztodt, grts(1,1,j), grths(1,1,j), grds(1,1,j), &
               grzs(1,1,j), grus(1,1,j), gruhs(1,1,j), grvs(1,1,j), grvhs(1,1,j), &
@@ -192,7 +191,6 @@ subroutine scan2run (ztodt, cwava, etamid,t2      ,fu      ,fv    )
 
 #else
 
-!$OMP PARALLEL DO PRIVATE (LAT, J)
    do lat=beglat,endlat
       if (lat > plat/2) then
          j = plat - lat + 1
@@ -225,7 +223,6 @@ subroutine scan2run (ztodt, cwava, etamid,t2      ,fu      ,fv    )
    call t_stopf('spegrd_alloc')
 !
    call t_startf('spegrd_bft')
-!$OMP PARALLEL DO PRIVATE (LAT, IROW)
    do lat=1,plat
       irow = lat
       if (lat > plat/2) irow = plat - lat + 1
@@ -253,7 +250,6 @@ subroutine scan2run (ztodt, cwava, etamid,t2      ,fu      ,fv    )
                    
    call t_startf('spegrd_aft')
 #ifdef OUTER_OMP
-!$OMP PARALLEL DO PRIVATE (LAT)
 #endif
    do lat=beglat,endlat
       call spegrd_aft (ztodt, lat, nlon(lat), nlon_fft_out, &
@@ -440,7 +436,6 @@ endif ! if not SCAM
    endif
 
 #ifdef OUTER_OMP
-!$OMP PARALLEL DO PRIVATE (LAT)
 #endif
    do lat=beglat,endlat
 
@@ -674,7 +669,6 @@ subroutine realloc5 (hw2al   ,hw2bl   ,hw3al   ,hw3bl   ,tmass    , &
 !
 ! Copy out of message buffers
 !
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_P, ENDLAT_P, NUMLATS_P, BUFPOS, JSTRT_P, I, J, M)
    do step=1,allgather_steps
       procid = allgather_proc(step)
       beglat_p = cut(1,procid)

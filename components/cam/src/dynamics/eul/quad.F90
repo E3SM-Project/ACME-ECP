@@ -102,7 +102,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
 !
 ! Compute constants
 !
-!$OMP PARALLEL DO PRIVATE(J, ZCSJ, ZRCSJ, ZDTRC, ZTDTRC)
    do j=1,plat/2
       zcsj = cs(j)*rearth
       zrcsj = 1._r8/zcsj
@@ -122,7 +121,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
    do n=1,2*nlen(m)
       alps(lmc+n) = 0._r8
    end do
-!$OMP PARALLEL DO PRIVATE(N, J, IR, II, ZWALP)
    do n=1,nlen(m),2
       ir = lmc + 2*n - 1
       ii = ir + 1
@@ -132,7 +130,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
          alps(ii) = alps(ii) + grlps1(2*lm  ,j)*zwalp
       end do
    end do
-!$OMP PARALLEL DO PRIVATE(N, J, IR, II, ZWALP)
    do n=2,nlen(m),2
       ir = lmc + 2*n - 1
       ii = ir + 1
@@ -159,7 +156,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
 !
 ! Rearrange Fourier coefficients to temporal storage
 !
-!$OMP PARALLEL DO PRIVATE(J, K)
    do j = beglatpair(m),plat/2
       do k=1,plev
 
@@ -202,7 +198,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
 !
 ! Accumulate first and second terms
 !
-!$OMP PARALLEL DO PRIVATE(N, J, ZWDALP, ZWALP, KV)
    do n=1,nlen(m),2
       do j=beglatpair(m),plat/2
          zwdalp = ztdtrw(j)*ldalp(lmr+n,j)
@@ -213,7 +208,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
          end do
       end do
    end do
-!$OMP PARALLEL DO PRIVATE(N, J, ZWDALP, ZWALP, KV)
    do n=2,nlen(m),2
       do j=beglatpair(m),plat/2
          zwdalp = ztdtrw(j)*ldalp(lmr+n,j)
@@ -227,7 +221,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
 !
 ! Add additional term for divergence
 !
-!$OMP PARALLEL DO PRIVATE(N, J, SQZWALP, KV)
    do n=1,nlen(m),2
       do j=beglatpair(m),plat/2
          sqzwalp = ztdtsq(n+m-1)*zw(j)*lalp (lmr+n,j)
@@ -236,7 +229,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
          end do
       end do
    end do
-!$OMP PARALLEL DO PRIVATE(N, J, SQZWALP, KV)
    do n=2,nlen(m),2
       do j=beglatpair(m),plat/2
          sqzwalp  = ztdtsq(n+m-1)*zw(j)*lalp (lmr+n,j)
@@ -248,7 +240,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
 !
 ! Save accumulated results 
 !
-!$OMP PARALLEL DO PRIVATE(N, IR, II, K)
    do n=1,nlen(m),2
       ir = lmc+2*n-1
       ii = ir+1
@@ -261,7 +252,6 @@ subroutine quad(lm      ,zdt     ,ztdtsq  ,grlps1  ,grlps2  ,&
          vz(ii,k) = tmpSPEodd(k+plev*5,n)
       end do
    end do
-!$OMP PARALLEL DO PRIVATE(N, IR, II, K)
    do n=2,nlen(m),2
       ir = lmc+2*n-1
       ii = ir+1

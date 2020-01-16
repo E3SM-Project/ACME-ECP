@@ -97,9 +97,6 @@
       it = itot / nxu
       jp = nxu * ( jlast - jfirst + 1 )
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i1, i2, ixj, i, j, k )
 
 !     do 2000 j=jfirst,jlast
       do 2000 ixj=1, jp
@@ -434,9 +431,6 @@
 ! Top down
 
 #if (DSIZE == 16)
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, k)
       do k = kfirst,klast
       do j = jfirst,jlast
       do i = ifirst,ilast
@@ -446,9 +440,6 @@
       enddo
 #endif
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j)
       do j = jfirst,jlast
       do i = ifirst,ilast
         pe16(i,j,kfirst) = DP0_0
@@ -457,9 +448,6 @@
 
 ! compute partial sums
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, k)
       do j = jfirst,jlast
         do k = kfirst+1,klast+1
         do i = ifirst,ilast
@@ -489,9 +477,6 @@
           recvcount(nk) = 0
         enddo
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, nk)
         do nk = myid_z+1, npr_z-1
           do j = jfirst,jlast
           do i = ifirst,ilast
@@ -506,9 +491,6 @@
 
 # endif
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, k, nk)
         do k = kfirst,klast+1
           do nk = 0, myid_z-1
           do j = jfirst,jlast
@@ -522,9 +504,6 @@
       endif
 #endif
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, k)
       do k = kfirst,klast+1
       do j = jfirst,jlast
       do i = ifirst,ilast
@@ -536,9 +515,6 @@
 
 ! Bottom up
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, k)
       do k = kfirst,klast
       do j = jfirst,jlast
       do i = ifirst,ilast
@@ -547,9 +523,6 @@
       enddo
       enddo
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j)
       do j = jfirst,jlast
       do i = ifirst,ilast
         pe16(i,j,klast+1) = DP0_0
@@ -558,9 +531,6 @@
 
 ! compute partial sums
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, k)
       do j = jfirst,jlast
         do k = klast,kfirst,-1
         do i = ifirst,ilast
@@ -586,9 +556,6 @@
           recvcount(nk) = 0
         enddo
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, nk)
         do nk = 0, myid_z-1
           do j = jfirst,jlast
           do i = ifirst,ilast
@@ -603,9 +570,6 @@
 
 # endif
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, k, nk)
         do k = kfirst,klast+1
           do nk = myid_z+1, npr_z-1
           do j = jfirst,jlast
@@ -623,9 +587,6 @@
       endif
 #endif
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(i, j, k)
       do k = kfirst,klast+1
       do j = jfirst,jlast
       do i = ifirst,ilast
@@ -870,9 +831,6 @@
                endif
             endif
 #endif
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(il, jl, k)
             do k = kfirst,klast+1
                do jl = j,jlmax
                   do il = i,ilmax
@@ -941,9 +899,6 @@
 
             block = block + 1
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(il, jl, k)
             do k = kfirst,klast
                do jl=j,jlmax
                   do il = i,ilmax
@@ -990,9 +945,6 @@
             endif
 #endif
 
-!$omp  parallel do      &
-!$omp  default(shared)  &
-!$omp  private(il, jl, k)
             do k = kfirst,klast+1
                do jl=j,jlmax
                   do il = i,ilmax

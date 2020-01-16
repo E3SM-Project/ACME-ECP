@@ -1449,7 +1449,6 @@ end subroutine spmd_vars_clean
                       ifirst, ilast, jfirst-1, jfirst-1, 1, km, usouth )
 #endif
 
-!$omp  parallel do private(i,j,k)
       do k=1,km
         do j=jlast, jfirst+1, -1
           do i=ifirst,ilast
@@ -1460,7 +1459,6 @@ end subroutine spmd_vars_clean
 
 #if defined( SPMD )
       if ( jfirst > 1 ) then
-!$omp  parallel do private(i, k)
          do k=1,km
             do i=ifirst,ilast
               u(i,jfirst,k) = D0_5 * ( u(i,jfirst,k) + usouth(i,k) )
@@ -1470,7 +1468,6 @@ end subroutine spmd_vars_clean
 #endif
 
       if ( jfirst ==  1 ) then
-!$omp  parallel do private(i,k)
          do k=1,km
             do i=ifirst,ilast
                u(i,1,k) = UNDEFINED
@@ -1484,7 +1481,6 @@ end subroutine spmd_vars_clean
 
 ! Pack vwest with wrap-around condition
 
-!$omp  parallel do private(j,k)
       do k = 1,km
          do j=jfirst,jlast
             vwest(j,k) = v(ilast,j,k)
@@ -1508,7 +1504,6 @@ end subroutine spmd_vars_clean
 ! Beware: ilast is en route, don't alter its value
 !
 
-!$omp  parallel do private(i,j,k)
       do k=1,km
          do j=jfirst, jlast
             do i=ilast,ifirst+1,-1
@@ -1520,7 +1515,6 @@ end subroutine spmd_vars_clean
 ! Clean up shop
 !
 
-!$omp  parallel do private(i,j,k)
       do k=1,km
          do j=jfirst, jlast
             v(ifirst,j,k)= D0_5*(vwest(j,k) + v(ifirst,j,k))
@@ -1637,7 +1631,6 @@ end subroutine spmd_vars_clean
                       ifirst, ilast, jlast+1, jlast+1, 1, km, unorth )
 
       if ( jlast .lt. jm ) then
-!$omp  parallel do private(i, k)
 
          do k=1,km
             do i=ifirst,ilast
@@ -1647,7 +1640,6 @@ end subroutine spmd_vars_clean
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
         do j=jfirst, jlast-1
@@ -1659,7 +1651,6 @@ end subroutine spmd_vars_clean
 
 ! Set va on A-grid
 
-!$omp  parallel do private(j,k)
 
       do k = 1,km
          do j=jfirst,jlast
@@ -1680,7 +1671,6 @@ end subroutine spmd_vars_clean
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
          do j=jfirst, jlast
@@ -1691,7 +1681,6 @@ end subroutine spmd_vars_clean
          enddo
       enddo
 
-!$omp  parallel do private(i,ik,k)
 
       do ik=1,4
          do k=1,km
@@ -1702,7 +1691,6 @@ end subroutine spmd_vars_clean
       enddo
 
       if (jfirst .eq. 1) then
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirst,ilast
                uvaloc(i,k,1) = ua(i,2,k)
@@ -1716,7 +1704,6 @@ end subroutine spmd_vars_clean
       endif
 
       if (jlast .eq. jm) then
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirst,ilast
                uvaloc(i,k,3) = ua(i,jm-1,k)
@@ -1741,7 +1728,6 @@ end subroutine spmd_vars_clean
 
       if ( jfirst .eq. 1 ) then
 ! Projection at SP
-!$omp  parallel do private(i,k,uaglob,vaglob)
          do k=1,km
             us(k) = D0_0
             vs(k) = D0_0
@@ -1769,7 +1755,6 @@ end subroutine spmd_vars_clean
 
       if ( jlast .eq. jm ) then
 ! Projection at NP
-!$omp  parallel do private(i,k,uaglob,vaglob)
          do k=1,km
             un(k) = D0_0
             vn(k) = D0_0
@@ -1895,7 +1880,6 @@ end subroutine spmd_vars_clean
                       ifirst, ilast, jlast+1, jlast+1, 1, km, vsouth )
 
       if ( jfirst .gt. 1 ) then
-!$omp  parallel do private(i, k)
 
          do k=1,km
             do i=ifirst,ilast
@@ -1905,7 +1889,6 @@ end subroutine spmd_vars_clean
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
         do j=jfirst+1, jlast
@@ -1917,7 +1900,6 @@ end subroutine spmd_vars_clean
 
 ! Set ub on B-grid
 
-!$omp  parallel do private(j,k)
 
       do k = 1,km
          do j=jfirst,jlast
@@ -1938,7 +1920,6 @@ end subroutine spmd_vars_clean
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
          do j=jfirst, jlast
@@ -1950,7 +1931,6 @@ end subroutine spmd_vars_clean
       enddo
 
       if ( jfirst == 1 ) then
-!$omp  parallel do private(i,k)
          do k=1,km
             do i=ifirst,ilast
                ub(i,1,k) = UNDEFINED
@@ -2059,7 +2039,6 @@ end subroutine spmd_vars_clean
 !
 ! Initial Preparation for Projection at Poles
 !
-!$omp  parallel do private(i,ik,k)
 
       do ik=1,4
          do k=1,km
@@ -2070,7 +2049,6 @@ end subroutine spmd_vars_clean
       enddo
 
       if (jfirst .eq. 1) then
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirst,ilast
                uvbloc(i,k,1) = u(i,2,k)
@@ -2084,7 +2062,6 @@ end subroutine spmd_vars_clean
       endif
 
       if (jlast .eq. jm) then
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirst,ilast
                uvbloc(i,k,3) = u(i,jm,k)
@@ -2121,7 +2098,6 @@ end subroutine spmd_vars_clean
                       ifirst, ilast, jfirst-1, jfirst-1, 1, km, vsouth )
 #endif
 
-!$omp  parallel do private(i,j,k)
       do k=1,km
         do j=jlast, jfirst+1, -1
           do i=ifirst,ilast
@@ -2132,7 +2108,6 @@ end subroutine spmd_vars_clean
 
 #if defined( SPMD )
       if ( jfirst > 1 ) then
-!$omp  parallel do private(i, k)
          do k=1,km
             do i=ifirst,ilast
               v(i,jfirst,k) = D0_5 * ( v(i,jfirst,k) + vsouth(i,k) )
@@ -2147,7 +2122,6 @@ end subroutine spmd_vars_clean
 
 ! Pack uwest with wrap-around condition
 
-!$omp  parallel do private(j,k)
       do k = 1,km
          do j=jfirst,jlast
             uwest(j,k) = v(ilast,j,k)
@@ -2167,7 +2141,6 @@ end subroutine spmd_vars_clean
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
       do k=1,km
          do j=jfirst, jlast
             do i=ilast,ifirst+1,-1
@@ -2176,7 +2149,6 @@ end subroutine spmd_vars_clean
          enddo
       enddo
 
-!$omp  parallel do private(i,j,k)
       do k=1,km
          do j=jfirst, jlast
             u(ifirst,j,k)= D0_5*(uwest(j,k) + u(ifirst,j,k))
@@ -2184,7 +2156,6 @@ end subroutine spmd_vars_clean
       enddo
 
       if ( jfirst ==  1 ) then
-!$omp  parallel do private(i,k)
          do k=1,km
             do i=ifirst,ilast
                u(i,1,k) = UNDEFINED
@@ -2197,7 +2168,6 @@ end subroutine spmd_vars_clean
 !
       if ( jfirst == 1 ) then
 ! Projection at SP
-!$omp  parallel do private(i,k,ubglob,vbglob)
          do k=1,km
             us(k) = D0_0
             vs(k) = D0_0
@@ -2222,7 +2192,6 @@ end subroutine spmd_vars_clean
 
       if ( jlast == jm ) then
 ! Projection at NP
-!$omp  parallel do private(i,k,ubglob,vbglob)
          do k=1,km
             un(k) = D0_0
             vn(k) = D0_0
@@ -2348,7 +2317,6 @@ end subroutine spmd_vars_clean
                       ifirst, ilast, jlast+1, jlast+1, 1, km, vnorth )
 
       if ( jlast .lt. jm ) then
-!$omp  parallel do private(i, k)
 
          do k=1,km
             do i=ifirst,ilast
@@ -2358,7 +2326,6 @@ end subroutine spmd_vars_clean
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
         do j=jfirst, jlast-1
@@ -2370,7 +2337,6 @@ end subroutine spmd_vars_clean
 
 ! Set ua on A-grid
 
-!$omp  parallel do private(j,k)
 
       do k = 1,km
          do j=jfirst,jlast
@@ -2391,7 +2357,6 @@ end subroutine spmd_vars_clean
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
          do j=jfirst, jlast
@@ -2402,7 +2367,6 @@ end subroutine spmd_vars_clean
          enddo
       enddo
 
-!$omp  parallel do private(i,ik,k)
 
       do ik=1,4
          do k=1,km
@@ -2413,7 +2377,6 @@ end subroutine spmd_vars_clean
       enddo
 
       if (jfirst .eq. 1) then
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirst,ilast
                uvaloc(i,k,1) = ua(i,2,k)
@@ -2427,7 +2390,6 @@ end subroutine spmd_vars_clean
       endif
 
       if (jlast .eq. jm) then
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirst,ilast
                uvaloc(i,k,3) = ua(i,jm-1,k)
@@ -2452,7 +2414,6 @@ end subroutine spmd_vars_clean
 
       if ( jfirst .eq. 1 ) then
 ! Projection at SP
-!$omp  parallel do private(i,k,uaglob,vaglob)
          do k=1,km
             us(k) = D0_0
             vs(k) = D0_0
@@ -2480,7 +2441,6 @@ end subroutine spmd_vars_clean
 
       if ( jlast .eq. jm ) then
 ! Projection at NP
-!$omp  parallel do private(i,k,uaglob,vaglob)
          do k=1,km
             un(k) = D0_0
             vn(k) = D0_0

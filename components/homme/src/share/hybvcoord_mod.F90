@@ -56,7 +56,6 @@ contains
     if(vanalytic == 1) return ! exit if setting vertical coordinates analytically
 
 #if (defined HORIZ_OPENMP)
-!$OMP CRITICAL
 #endif
 
     ln=len(trim(hvfile_int))
@@ -147,7 +146,6 @@ contains
     endif
 
 #if (defined HORIZ_OPENMP)
-!$OMP END CRITICAL
 #endif
 
   if(ierr>0) return ! Exit if an error occured

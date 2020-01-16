@@ -338,13 +338,11 @@ contains
     call t_stopf('init_filters')
 
     nclumps = get_proc_clumps()
-    !$OMP PARALLEL DO PRIVATE (nc, bounds_clump)
     do nc = 1, nclumps
        call get_clump_bounds(nc, bounds_clump)
        call reweight_wrapup(bounds_clump, &
             ldomain%glcmask(bounds_clump%begg:bounds_clump%endg)*1._r8)
     end do
-    !$OMP END PARALLEL DO
 
     ! ------------------------------------------------------------------------
     ! Remainder of initialization1
@@ -744,13 +742,11 @@ contains
                'finidat and finidat_interp_source cannot both be non-blank')
        end if
 
-       !$OMP PARALLEL DO PRIVATE (nc, bounds_clump)
        do nc = 1, nclumps
           call get_clump_bounds(nc, bounds_clump)
           call reweight_wrapup(bounds_clump, &
                glc2lnd_vars%icemask_grc(bounds_clump%begg:bounds_clump%endg))
        end do
-       !$OMP END PARALLEL DO
        if(use_betr)then
          call ep_betr%set_active(bounds_proc, col_pp)
        endif
@@ -788,13 +784,11 @@ contains
 
     end if
 
-    !$OMP PARALLEL DO PRIVATE (nc, bounds_clump)
     do nc = 1, nclumps
        call get_clump_bounds(nc, bounds_clump)
        call reweight_wrapup(bounds_clump, &
             glc2lnd_vars%icemask_grc(bounds_clump%begg:bounds_clump%endg))
     end do
-    !$OMP END PARALLEL DO
 
     if(use_betr)then
       call ep_betr%set_active(bounds_proc, col_pp)
@@ -884,7 +878,6 @@ contains
     !------------------------------------------------------------       
 
     if (create_glacier_mec_landunit) then  
-       !$OMP PARALLEL DO PRIVATE (nc, bounds_clump)
        do nc = 1,nclumps
           call get_clump_bounds(nc, bounds_clump)
 
@@ -895,7 +888,6 @@ contains
                init=.true.)
           call t_stopf('init_lnd2glc')
        end do
-       !$OMP END PARALLEL DO
     end if
 
     !------------------------------------------------------------       

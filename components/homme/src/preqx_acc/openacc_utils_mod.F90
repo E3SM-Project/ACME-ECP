@@ -41,13 +41,9 @@ contains
     type(element_t), intent(in) :: elem(:)
     integer        , intent(in) :: tl
     integer :: ie
-    !$omp barrier
-    !$omp master
     do ie = 1 , nelemd
       !$acc update device(state_qdp(:,:,:,:,tl,ie))
     enddo
-    !$omp end master
-    !$omp barrier
   end subroutine copy_qdp_h2d
 
   subroutine copy_qdp_d2h( elem , tl )
@@ -57,13 +53,9 @@ contains
     type(element_t), intent(in) :: elem(:)
     integer        , intent(in) :: tl
     integer :: ie
-    !$omp barrier
-    !$omp master
     do ie = 1 , nelemd
       !$acc update host(state_qdp(:,:,:,:,tl,ie))
     enddo
-    !$omp end master
-    !$omp barrier
   end subroutine copy_qdp_d2h
 
   subroutine copy_ondev(dest,src,len)

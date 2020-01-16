@@ -209,7 +209,6 @@ module grid_class
   type (grid) gr
 
 !   Modification for using CLUBB in a host model (i.e. one grid per column)
-!$omp   threadprivate(gr)
 
   ! Interfaces provided for function overloading
 

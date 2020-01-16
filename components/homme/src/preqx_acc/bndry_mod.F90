@@ -60,7 +60,6 @@ contains
     integer :: nUpdateHost, nSendComp, nRecvComp
     logical :: updateHost(maxCycles), sendComp(maxCycles), recvComp(maxCycles)
     logical :: mpiflag
-    !$OMP BARRIER
     if(hybrid%ithr == 0) then 
       !$acc wait
       pSchedule => Schedule(1)
@@ -160,7 +159,6 @@ contains
       enddo
       !$acc wait
     endif  ! if (hybrid%ithr == 0)
-    !$OMP BARRIER
   end subroutine bndry_exchangeS_simple_overlap
 
   subroutine bndry_exchangeV_timing(hybrid,buffer)
@@ -188,7 +186,6 @@ contains
     logical :: updateHost(maxCycles), sendComp(maxCycles), recvComp(maxCycles), updateDev(maxCycles)
     logical :: mpiflag
     integer :: ithr
-    !$OMP BARRIER
     if(hybrid%ithr == 0) then 
       !$acc wait
       call t_startf('bndry_timing')
@@ -271,7 +268,6 @@ contains
       call t_stopf('bndry_timing_pcie_h2d')
       call t_stopf('bndry_timing')
     endif  ! if (hybrid%ithr == 0)
-    !$OMP BARRIER
   end subroutine bndry_exchangeV_timing
 
   subroutine bndry_exchangeV_simple_overlap(hybrid,buffer)
@@ -298,7 +294,6 @@ contains
     logical :: updateHost(maxCycles), sendComp(maxCycles), recvComp(maxCycles), updateDev(maxCycles)
     logical :: mpiflag
     integer :: ithr
-    !$OMP BARRIER
     if(hybrid%ithr == 0) then 
       !$acc wait
       pSchedule => Schedule(1)
@@ -398,7 +393,6 @@ contains
       enddo
       !$acc wait
     endif  ! if (hybrid%ithr == 0)
-    !$OMP BARRIER
   end subroutine bndry_exchangeV_simple_overlap
 
   subroutine bndry_exchangeV_finer_overlap(hybrid,buffer)
@@ -425,7 +419,6 @@ contains
     logical :: dummy
     integer :: nchunks
     
-    !$OMP BARRIER
     if(hybrid%ithr == 0) then 
       !$acc wait
       pSchedule => Schedule(1)
@@ -503,7 +496,6 @@ contains
       enddo
       !$acc wait
     endif  ! if (hybrid%ithr == 0)
-    !$OMP BARRIER
   end subroutine bndry_exchangeV_finer_overlap
 
   !Consider this to be the inside of a polling loop for sending something over MPI that currently resides on-device in OpenACC

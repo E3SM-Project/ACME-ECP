@@ -312,7 +312,6 @@
 !-----------------------------------------------------------------------
 ! low/midlatitude electric potential - empirical model Scherliess 1999  
 !-----------------------------------------------------------------------
-!$omp parallel do private(ilat, ilon, mlat, pot)
       do ilat = 0,nmlath                        ! Calculate only for one magn. hemisphere
 	mlat = ylatm(ilat)                      ! mag. latitude
         do ilon = 0,nmlon	                ! lon. loop
@@ -328,7 +327,6 @@
 !-----------------------------------------------------------------------
       call prep_weimer                             ! calculate IMF angle & magnitude, tilt
 
-!$omp parallel do private(ilat, ilon, mlat_90, pot)
       do ilat = 0,nmlat_wei 	                   ! Calculate only for one magn. hemisphere
         mlat_90 = 90._r8 - ylatm(ilat)             ! mag. latitude
         do ilon = 0,nmlon
@@ -1054,7 +1052,6 @@
 !        pot(ilon,nmlat-nmlat_wei+idlat:nmlat-idlat) = pot_smo(nmlat-nmlat_wei+idlat:nmlat-idlat)
 !     end do
 
-!$omp parallel do private(ilat)
       do ilat = idlat,nmlat_wei-idlat
          pot_smo(:,ilat) = matmul( pot(:,ilat-idlat:ilat+idlat),w )*wgt
       end do
@@ -1113,7 +1110,6 @@
 !       pot(ilon,idlat:nmlath-idlat) = pot_smo(idlat:nmlath-idlat) ! copy back into pot
 !     end do
 
-!$omp parallel do private(ilat)
       do ilat = idlat,nmlath-idlat
          pot_smo(:,ilat) = matmul( pot(:,ilat-idlat:ilat+idlat),w )*wgt
       end do
@@ -1182,7 +1178,6 @@
 !       end do   
 !     end do
 
-!$omp parallel do private(ilat,ilon,tmp)
       do ilat = 0,nmlath
           tmp(0:nmlon)             = pot(0:nmlon,ilat)
           tmp(-idlon:-1)           = pot(nmlon-idlon:nmlon-1,ilat)
@@ -1221,7 +1216,6 @@
       real(r8) :: mlat, mlt, es, ez, e_tot
 
       ilat_sft_rvs = nmlath - ilat_sft          ! pole =0, equ=90
-!$omp parallel do private(ilat,ilon,mlt,mlat,es,ez,e_tot)
       do ilon = 0,nmlon                         ! long.
 	ihlat_bnd(ilon) = 0
         mlt  = ylonm(ilon)*deg2mlt              ! mag.local time ?
@@ -1383,7 +1377,6 @@
 !----------------------------------------------------------------------------                                                                   
       del = pot_hl - pot60
 
-!$omp parallel do private(ilat,ilon,ilats)
       do ilat = 0,nmlat_wei      ! colatitude
         ilats = nmlat - ilat
         do ilon = 0,nmlon
@@ -1441,7 +1434,6 @@
       real(r8) :: a, b, lat, b1, b2
       real(r8) :: wrk1, wrk2
 
-!$omp parallel do private(ilat,ilon,ibnd,tw)
       do ilon = 0,nmlon
         ibnd = ihlat_bnd(ilon)     ! high latitude boundary index
 	tw   = itrans_width(ilon)  ! width of transition zone (index)
@@ -1469,7 +1461,6 @@
 ! update only southern hemisphere (northern hemisphere is copied
 ! after smoothing)
 !----------------------------------------------------------------------------                                                                   
-!$omp parallel do private(ilat,ilon,ibnd,tw,a,b,b1,b2,hb1,hb2,lat_ind,j1,j2,wrk1,wrk2)
       do ilon = 0,nmlon
         ibnd = ihlat_bnd(ilon)          ! high latitude boundary index
 	tw   = itrans_width(ilon)       ! width of transition zone (index)
@@ -1528,7 +1519,6 @@
 ! geomagnetic grid points (central differencing)
 !-----------------------------------------------------------------------
       fac = .5_r8/(dlatm*dtr*r)
-!$omp parallel do private(j, i, wrk )
       do j = 1,nmlath-1		! southern hemisphere
         wrk = fac/sinIm_mag(j)
         do i = 0,nmlon
@@ -1536,7 +1526,6 @@
         end do
       end do
 
-!$omp parallel do private(j, i, wrk )
       do j = nmlath+1,nmlat-1	! northern hemisphere
         wrk = fac/sinIm_mag(j)
         do i = 0,nmlon
@@ -1560,7 +1549,6 @@
 ! geomagnetic grid points (central differencing)
 !-----------------------------------------------------------------------
       fac = .5_r8/(dlonm*dtr*r)
-!$omp parallel do private(j, i, wrk, coslm )
       do j = 1,nmlat-1
         coslm = ylatm(j) - 90._r8
         coslm = cos( coslm*dtr )

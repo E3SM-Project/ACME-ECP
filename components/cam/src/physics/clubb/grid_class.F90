@@ -207,7 +207,6 @@ module grid_class
   type (grid), target :: gr
 
 !   Modification for using CLUBB in a host model (i.e. one grid per column)
-!$omp threadprivate(gr)
 
   ! Interfaces provided for function overloading
 
@@ -924,7 +923,6 @@ module grid_class
         return
       endif
 
-!$omp critical
       ! Open the file zt_grid_fname.
       open( unit=file_unit, file=zt_grid_fname,  &
             status='old', action='read' )
@@ -947,7 +945,6 @@ module grid_class
 
       ! Close the file zt_grid_fname.
       close( unit=file_unit )
-!$omp end critical
       
       if ( err_code == clubb_fatal_error ) return
 

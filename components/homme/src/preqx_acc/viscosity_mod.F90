@@ -59,20 +59,14 @@ contains
     !so tensor is only used on second call to laplace_sphere_wk
     var_coef1 = .true.
     if(hypervis_scaling > 0) var_coef1 = .false.
-    !$omp barrier
-    !$omp master
     call laplace_sphere_wk_openacc(qtens,grads,deriv,elem,var_coef1,qtens,nlev*qsize,nets,nete,1,1)
     call t_startf('biwksc_PEU')
     call edgeVpack_openacc(edgeq,qtens,qsize*nlev,0,qsize*nlev,nets,nete,1,1)
-    !$omp end master
-    !$omp barrier
 
     call t_startf('biwksc_exch')
     call bndry_exchangeV(hybrid,edgeq)
     call t_stopf('biwksc_exch')
     
-    !$omp barrier
-    !$omp master
     call edgeVunpack_openacc(edgeq,qtens,qsize*nlev,0,qsize*nlev,nets,nete,1,1)
     call t_stopf('biwksc_PEU')
     !$acc parallel loop gang vector collapse(5) present(qtens,elem(:))
@@ -89,8 +83,6 @@ contains
       enddo
     enddo
     call laplace_sphere_wk_openacc(qtens,grads,deriv,elem,.true.,qtens,nlev*qsize,nets,nete,1,1)
-    !$omp end master
-    !$omp barrier
   end subroutine biharmonic_wk_scalar_openacc
 
   subroutine neighbor_minmax_openacc(elem,hybrid,edgeMinMax,nets,nete,min_neigh,max_neigh)
@@ -111,25 +103,17 @@ contains
     ! local
     integer :: ie,k,q,j,i
     ! compute Qmin, Qmax
-    !$omp barrier
-    !$omp master
     call t_startf('nmm_PEU')
     call edgeSpack_openacc(edgeMinMax,min_neigh,nlev*qsize,0         ,2*nlev*qsize,elem(:),nets,nete,1,1)
     call edgeSpack_openacc(edgeMinMax,max_neigh,nlev*qsize,nlev*qsize,2*nlev*qsize,elem(:),nets,nete,1,1)
-    !$omp end master
-    !$omp barrier
 
     call t_startf('nmm_exch')
     call bndry_exchangeS(hybrid,edgeMinMax)
     call t_stopf('nmm_exch')
        
-    !$omp barrier
-    !$omp master
     call edgeSunpackMin_openacc(edgeMinMax,min_neigh,nlev*qsize,0         ,2*nlev*qsize,elem(:),nets,nete,1,1)
     call edgeSunpackMax_openacc(edgeMinMax,max_neigh,nlev*qsize,nlev*qsize,2*nlev*qsize,elem(:),nets,nete,1,1)
     call t_stopf('nmm_PEU')
-    !$omp end master
-    !$omp barrier
   end subroutine neighbor_minmax_openacc
 
 end module viscosity_mod

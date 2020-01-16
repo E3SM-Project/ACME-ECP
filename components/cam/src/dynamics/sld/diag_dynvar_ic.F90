@@ -33,7 +33,6 @@
 !
     if( write_inithist() ) then
 
-!$OMP PARALLEL DO PRIVATE (LAT, M)
        do lat=beglat,endlat
 
           call outfld('PS&IC      ' , ps  (1  ,lat), plon, lat)

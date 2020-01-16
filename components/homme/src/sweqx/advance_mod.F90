@@ -164,7 +164,6 @@ contains
     call t_stopf('advance_nonstag')
 
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
   end subroutine advance_nonstag
 
@@ -459,13 +458,11 @@ contains
        if(Debug) print *,'homme: adv.._rk 2'
 
 #if (defined HORIZ_OPENMP)
-       !$OMP BARRIER
 #endif
 
        call bndry_exchangeV(hybrid,edge3)
 
 #if (defined HORIZ_OPENMP)
-       !$OMP BARRIER
 #endif
        
        do ie=nets,nete
@@ -531,7 +528,6 @@ contains
     tl%n0   = ntmp
 
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
   end subroutine advance_nonstag_rk
 
@@ -1072,11 +1068,9 @@ contains
   
   
 #if (defined HORIZ_OPENMP)
-  !$OMP BARRIER
 #endif
   call bndry_exchangeV(hybrid,edge3)
 #if (defined HORIZ_OPENMP)
-  !$OMP BARRIER
 #endif
   
   do ie=nets,nete

@@ -92,7 +92,6 @@ subroutine limdy(pf      ,fint    ,dy      ,jdp     ,fyb     ,&
    jb = ppdy/2
    jt = jb + 1
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k = 1,plev
       do i = 1,nlon
          rdy(i,k) = 1._r8/dy(jdp(i,k))
@@ -102,7 +101,6 @@ subroutine limdy(pf      ,fint    ,dy      ,jdp     ,fyb     ,&
 ! Loop over fields.
 !
    do m = 1,pf
-!$OMP PARALLEL DO PRIVATE (K, I, DELI, TMP1, TMP2)
       do k = 1,plev
          do i = 1,nlon
             deli(i) = ( fint(i,k,jt,m) - fint(i,k,jb,m) )*rdy(i,k)

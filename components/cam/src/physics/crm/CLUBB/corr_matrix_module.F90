@@ -9,14 +9,12 @@ module corr_matrix_module
     iiLH_s_mellor = -1, &
     iiLH_t_mellor = -1, &
     iiLH_w        = -1
-!$omp threadprivate(iiLH_s_mellor, iiLH_t_mellor, iiLH_w)
 
   integer, public :: &
    iiLH_rrain    = -1, &
    iiLH_rsnow    = -1, &
    iiLH_rice     = -1, &
    iiLH_rgraupel = -1
-!$omp threadprivate(iiLH_rrain, iiLH_rsnow, iiLH_rice, iiLH_rgraupel)
 
   integer, public :: &
    iiLH_Nr       = -1, &
@@ -24,7 +22,6 @@ module corr_matrix_module
    iiLH_Ni       = -1, &
    iiLH_Ngraupel = -1, &
    iiLH_Nc       = -1
-!$omp threadprivate(iiLH_Nr, iiLH_Nsnow, iiLH_Ni, iiLH_Ngraupel, iiLH_Nc)
 
   public :: read_correlation_matrix
 

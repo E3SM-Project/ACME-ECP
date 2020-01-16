@@ -531,7 +531,6 @@ contains
     if (compute_diagnostics) then
        do ie = nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
          do k=1,nlev  !  Loop index added (AAM)
           elem(ie)%accum%DIFF(:,:,:,k)=( elem(ie)%state%v(:,:,:,k,np1) -&
@@ -642,7 +641,6 @@ contains
 
 #if (defined COLUMN_OPENMP)
 ! Not sure about deriv here
-!$omp parallel do private(k,lap_t,lap_v,i,j)
 #endif
            do k=1,nlev
               lap_t=laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),var_coef=.false.)
@@ -678,7 +676,6 @@ contains
 
            ! apply inverse mass matrix
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j)
 #endif
            do k=1,nlev
               do j=1,np
@@ -692,7 +689,6 @@ contains
         enddo
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 #endif
      enddo  ! subcycle
@@ -722,7 +718,6 @@ contains
                    eta_ave_w*dptens(:,:,:,ie)/hypervis_subcycle
            endif
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,lap_t,lap_dp,lap_v,nu_scale_top)
 #endif
            do k=1,nlev
               ! advace in time.
@@ -792,7 +787,6 @@ contains
 
            ! apply inverse mass matrix, accumulate tendencies
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
            do k=1,nlev
               vtens(:,:,1,k,ie)=dt*vtens(:,:,1,k,ie)*elem(ie)%rspheremp(:,:)
@@ -809,7 +803,6 @@ contains
            !      X = (u dot utens) + .5 utens dot utens
            !  alt:  (u+utens) dot utens
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j,v1,v2,heating)
 #endif
            do k=1,nlev
               do j=1,np
@@ -836,7 +829,6 @@ contains
         enddo
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 #endif
      enddo
@@ -957,7 +949,6 @@ contains
      enddo
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j,v1,v2,vtemp)
 #endif
      do k=1,nlev
         grad_p(:,:,:,k) = gradient_sphere(p(:,:,k),deriv,elem(ie)%Dinv)
@@ -996,7 +987,6 @@ contains
      !if ( moisture /= "dry") then
      if (.not. use_moisture ) then
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j)
 #endif
         do k=1,nlev
            do j=1,np
@@ -1008,7 +998,6 @@ contains
         end do
      else
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j,Qt)
 #endif
 
         do k=1,nlev
@@ -1093,7 +1082,6 @@ contains
      ! accumulate mean vertical flux:
      ! ================================
 #if (defined COLUMN_OPENMP)
-     !$omp parallel do private(k)
 #endif
      do k=1,nlev  !  Loop index added (AAM)
         elem(ie)%derived%eta_dot_dpdn(:,:,k) = &
@@ -1112,7 +1100,6 @@ contains
      ! Compute phi + kinetic energy term: 10*nv*nv Flops
      ! ==============================================
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j,v1,v2,E,Ephi,vtemp,vgrad_T,gpterm,glnps1,glnps2)
 #endif
      vertloop: do k=1,nlev
         do j=1,np
@@ -1331,7 +1318,6 @@ contains
      ! apply mass matrix
      ! =========================================================
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
      do k=1,nlev
         elem(ie)%state%v(:,:,1,k,np1) = elem(ie)%spheremp(:,:)*( elem(ie)%state%v(:,:,1,k,nm1) + dt2*vtens1(:,:,k) )
@@ -1386,7 +1372,6 @@ contains
      ! ====================================================
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
      do k=1,nlev
         elem(ie)%state%T(:,:,k,np1)   = elem(ie)%rspheremp(:,:)*elem(ie)%state%T(:,:,k,np1)
@@ -1402,7 +1387,6 @@ contains
 
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 #endif
   call t_stopf('compute_and_apply_rhs')

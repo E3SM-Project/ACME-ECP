@@ -377,7 +377,6 @@ contains
       
       nclumps = get_proc_clumps()
 
-      !$OMP PARALLEL DO PRIVATE (nc,bounds_clump,nmaxcol,s,c,l,g,collist,pi,pf)
       do nc = 1,nclumps
          
          call get_clump_bounds(nc, bounds_clump)
@@ -499,7 +498,6 @@ contains
          end do
 
       end do
-      !$OMP END PARALLEL DO
 
       ! This will initialize all globals associated with the chosen
       ! Plant Allocation and Reactive Transport hypothesis. This includes
@@ -1025,7 +1023,6 @@ contains
          call this%fates_restart%Init(nclumps, fates_bounds)
          
          ! Define the bounds on the first dimension for each thread
-         !$OMP PARALLEL DO PRIVATE (nc,bounds_clump,fates_clump)
          do nc = 1,nclumps
             call get_clump_bounds(nc, bounds_clump)
             
@@ -1033,9 +1030,7 @@ contains
             call hlm_bounds_to_fates_bounds(bounds_clump, fates_clump)
             call this%fates_restart%SetThreadBoundsEach(nc, fates_clump)
          end do
-         !$OMP END PARALLEL DO
          
-         !$OMP PARALLEL DO PRIVATE (nc,s,c,g)
          do nc = 1,nclumps
             
             allocate(this%fates_restart%restart_map(nc)%site_index(this%fates(nc)%nsites))
@@ -1048,7 +1043,6 @@ contains
             end do
             
          end do
-         !$OMP END PARALLEL DO
          
          ! ------------------------------------------------------------------------------------
          ! PART II: USE THE JUST DEFINED DIMENSIONS TO ASSEMBLE THE VALID IO TYPES
@@ -1071,14 +1065,12 @@ contains
       ! ---------------------------------------------------------------------------------
 
       if(flag=='write')then
-         !$OMP PARALLEL DO PRIVATE (nc)
          do nc = 1, nclumps
             if (this%fates(nc)%nsites>0) then
                call this%fates_restart%set_restart_vectors(nc,this%fates(nc)%nsites, &
                                                            this%fates(nc)%sites)
             end if
          end do
-         !$OMP END PARALLEL DO
       end if
 
       ! ---------------------------------------------------------------------------------
@@ -1144,7 +1136,6 @@ contains
 
       if(flag=='read')then
          
-         !$OMP PARALLEL DO PRIVATE (nc,bounds_clump,s)
          do nc = 1, nclumps
             if (this%fates(nc)%nsites>0) then
 
@@ -1211,7 +1202,6 @@ contains
                
             end if
          end do
-         !$OMP END PARALLEL DO
          
       end if
       
@@ -1244,7 +1234,6 @@ contains
 
      nclumps = get_proc_clumps()
 
-     !$OMP PARALLEL DO PRIVATE (nc,bounds_clump,s,c,j,vol_ice,eff_porosity)
      do nc = 1, nclumps
         
         if ( this%fates(nc)%nsites>0 ) then
@@ -1326,7 +1315,6 @@ contains
 
         end if
      end do
-     !$OMP END PARALLEL DO
 
    end subroutine init_coldstart
 
@@ -2040,7 +2028,6 @@ contains
    call this%fates_hist%Init(nclumps, fates_bounds)
 
    ! Define the bounds on the first dimension for each thread
-   !$OMP PARALLEL DO PRIVATE (nc,bounds_clump,fates_clump)
    do nc = 1,nclumps
       
       call get_clump_bounds(nc, bounds_clump)
@@ -2049,13 +2036,11 @@ contains
       call hlm_bounds_to_fates_bounds(bounds_clump, fates_clump)
       call this%fates_hist%SetThreadBoundsEach(nc, fates_clump)
    end do
-   !$OMP END PARALLEL DO
 
    ! ------------------------------------------------------------------------------------
    ! PART I.5: SET SOME INDEX MAPPINGS SPECIFICALLY FOR SITE<->COLUMN AND PATCH 
    ! ------------------------------------------------------------------------------------
    
-   !$OMP PARALLEL DO PRIVATE (nc,s,c)
    do nc = 1,nclumps
       
       allocate(this%fates_hist%iovar_map(nc)%site_index(this%fates(nc)%nsites))
@@ -2068,7 +2053,6 @@ contains
       end do
       
    end do
-   !$OMP END PARALLEL DO
    
    ! ------------------------------------------------------------------------------------
    ! PART II: USE THE JUST DEFINED DIMENSIONS TO ASSEMBLE THE VALID IO TYPES

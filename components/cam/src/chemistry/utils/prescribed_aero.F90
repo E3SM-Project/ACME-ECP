@@ -417,7 +417,6 @@ end subroutine spec_c_to_a
     i_c = 0
     fldloop : do i = 1,number_flds
        
-!$OMP PARALLEL DO PRIVATE (C, NCOL, OUTDATA,PBUF_CHNK)
        do c = begchunk,endchunk
           ncol = state(c)%ncol
           pbuf_chnk => pbuf_get_chunk(pbuf2d, c)

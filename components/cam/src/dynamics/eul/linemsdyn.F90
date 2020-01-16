@@ -190,7 +190,6 @@ subroutine linemsdyn_bft(                                          &
       vtfac = 1._r8
    end if
 
-!$OMP PARALLEL DO PRIVATE (K, I, WIND)
    do k=1,plev
       vmax(k) = 0._r8
       vmaxt(k) = 0._r8
@@ -213,7 +212,6 @@ subroutine linemsdyn_bft(                                          &
 ! Set current time pressure arrays for model levels etc.
 !
    call plevs0(nlon,plon,plev,psm1,pint,pmid,pdel)
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i=1,nlon
          rpmid(i,k) = 1._r8/pmid(i,k)
@@ -228,7 +226,6 @@ subroutine linemsdyn_bft(                                          &
 !
 ! Compute log(surface pressure) for use by grmult and when adding tendency.
 !
-!$OMP PARALLEL DO PRIVATE (I)
    do i=1,nlon
       logpsm1(i) = log(psm1(i))
       logpsm2(i) = log(psm2(i))
@@ -264,7 +261,6 @@ subroutine linemsdyn_bft(                                          &
 ! pressure in bpstr array for transform to spectral space.
 !
    rhypi = 1._r8/hypi(plevp)
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i=1,nlon
          ddivdt(i,k) = ztodt*(0.5_r8*divm2(i,k) - divm1(i,k))
@@ -272,7 +268,6 @@ subroutine linemsdyn_bft(                                          &
       end do
    end do
 
-!$OMP PARALLEL DO PRIVATE (I, K)
    do i=1,nlon
       bpstr(i) = logpsm2(i) - ztodt*(vpdsn(i)+ddpn(i))/psm1(i)
       do k=1,plev
@@ -280,7 +275,6 @@ subroutine linemsdyn_bft(                                          &
       end do
    end do
 
-!$OMP PARALLEL DO PRIVATE (K, KK, I)
    do k=1,plev
       do kk=1,plev
          do i=1,nlon
@@ -294,7 +288,6 @@ subroutine linemsdyn_bft(                                          &
 !
    dtime = get_step_size()/eul_nsplit
    vcour(:) = 0._r8
-!$OMP PARALLEL DO PRIVATE (K, DTDZ, I, LVCOUR)
    do k=2,plev
       dtdz = dtime/detam(k-1)
       do i=1,nlon
@@ -311,7 +304,6 @@ subroutine linemsdyn_bft(                                          &
 !
 ! Apply cos(lat) to momentum terms before fft
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i=1,nlon
          fu(i,k) = coslat*fu(i,k)
@@ -324,7 +316,6 @@ subroutine linemsdyn_bft(                                          &
 !
 ! Copy fields into FFT buffer
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i=1,nlon
 !
@@ -416,11 +407,9 @@ subroutine linemsdyn_fft(nlon_fft,nlon_fft2,fftbuf,fftbuf2)
    inc = 1
    isign = -1
 #ifdef OUTER_OMP
-!$OMP PARALLEL DO PRIVATE (LAT, NTR, K, WORK)
 #endif
    do lat=beglat,endlat
       ntr = 8
-!$OMP PARALLEL DO PRIVATE (K, WORK)
       do k=1,plev
          fftbuf(nlon(lat)+1:nlon_fft,:,k,lat) = 0.0_r8
          call fft991(fftbuf(1,1,k,lat)     ,work    ,trig(1,lat),ifax(1,lat),inc     ,&

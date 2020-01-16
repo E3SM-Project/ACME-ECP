@@ -200,7 +200,6 @@ contains
 
     call t_stopf('implicit header')
 
-    !$OMP BARRIER
 
   end subroutine advance_imp_nonstag
 
@@ -450,17 +449,13 @@ contains
    call t_stopf('FE_implicit_KE_resid_calc')
    !pw--
 
-   !$OMP BARRIER
    !pw++
    call t_startf('FE_implicit_bndry_ex')
    !pw--
-   !$OMP BARRIER
    call bndry_exchangeV(fptr%hybrid,fptr%edge3)
-   !$OMP BARRIER
    !pw++
    call t_stopf('FE_implicit_bndry_ex')
    !pw--
-   !$OMP BARRIER
 
    !pw++
    call t_startf('FE_implicit_bndry_unpack')
@@ -615,7 +610,6 @@ contains
 
     call t_stopf('precon_gmres')
 
-    !$OMP BARRIER
 
   end subroutine precon_gmres
 
@@ -734,7 +728,6 @@ contains
 		end do  !nlev
 	end do !ie
 
-    !$OMP BARRIER
 
     do ie=ns,ne
 
@@ -782,7 +775,6 @@ contains
     end do
 
     call bndry_exchangeV(pptr%cg%hybrid,pptr%edge1)
-    !$OMP BARRIER
 
     do ie=ns,ne
        kptr=0
@@ -801,7 +793,6 @@ contains
     ! ======================================================
 
     !DBG print *,'advance_si: before call to pcg_presolver'
-    !$OMP BARRIER
 
     dp(:,:,:,ns:ne) = pcg_presolver_nonstag(pptr, &
          Rs(:,:,:,ns:ne) )     ! rhs of Helmholtz problem
@@ -835,9 +826,7 @@ contains
        call edgeVpack(pptr%edge2, grad_dp(1,1,1,1,ie),2*nlev,kptr,ie)
     end do
 
-    !$OMP BARRIER
     call bndry_exchangeV(pptr%cg%hybrid,pptr%edge2)
-    !$OMP BARRIER
     do ie=ns,ne
 
        kptr=0      
@@ -897,7 +886,6 @@ contains
 			end do  !nlev
 		end do !ie
    end if
-    !$OMP BARRIER
     call t_stopf('precon_si')
 
   end subroutine precon_si
@@ -1028,9 +1016,7 @@ contains
        call edgeVpack(fptr%edge2, vtens(1,1,1,1,ie),2*nlev,kptr,ie)
     end do !ie
 
-    !$OMP BARRIER
     call bndry_exchangeV(fptr%hybrid,fptr%edge2)
-    !$OMP BARRIER
 
     do ie=ns,ne
 
@@ -1172,9 +1158,7 @@ contains
        call edgeVpack(fptr%edge1, ptens(1,1,1,ie),nlev,kptr,ie)
     end do !ie
 
-    !$OMP BARRIER
     call bndry_exchangeV(fptr%hybrid,fptr%edge1)
-    !$OMP BARRIER
 
     do ie=ns,ne
 
@@ -1323,9 +1307,7 @@ contains
        call edgeVpack(fptr%edge2, vtens(1,1,1,1,ie),2*nlev,kptr, ie)
     end do !ie
 
-    !$OMP BARRIER
     call bndry_exchangeV(fptr%hybrid,fptr%edge2)
-    !$OMP BARRIER
 
     do ie=ns,ne
 
@@ -1546,9 +1528,7 @@ contains
        call edgeVpack(fptr%edge3, vtens(1,1,1,1,ie),2*nlev,kptr,ie)
     end do !ie
 
-    !$OMP BARRIER
     call bndry_exchangeV(fptr%hybrid,fptr%edge3)
-    !$OMP BARRIER
 
     do ie=ns,ne
 
@@ -1737,9 +1717,7 @@ contains
        call edgeVpack(fptr%edge3, ptens(1,1,1,ie),nlev,kptr,ie)
     end do !ie
 
-    !$OMP BARRIER
     call bndry_exchangeV(fptr%hybrid,fptr%edge3)
-    !$OMP BARRIER
 
     do ie=ns,ne
 
@@ -1996,9 +1974,7 @@ contains
        call edgeVpack(fptr%edge3, vtens(1,1,1,1,ie),2*nlev,kptr,ie)
     end do !ie
 
-    !$OMP BARRIER
     call bndry_exchangeV(fptr%hybrid,fptr%edge3)
-    !$OMP BARRIER
 
     do ie=ns,ne
 

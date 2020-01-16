@@ -118,14 +118,12 @@ subroutine grmult(rcoslat ,d       ,qm1     ,tm1     ,um1     ,&
 !
 tv(:nlon,:) = tm1(:nlon,:) * (1.0_r8 + zvir * qm1(:nlon,:))
 
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i=1,nlon
          rtv(i,k) = rair*tv(i,k)
       end do
    end do
 !
-!$OMP PARALLEL DO PRIVATE (I, K, VKDP)
    do i=1,nlon
 !
 ! sum(plev)(d(k)*dp(k))
@@ -165,7 +163,6 @@ tv(:nlon,:) = tm1(:nlon,:) * (1.0_r8 + zvir * qm1(:nlon,:))
 !
 ! Nonlinear advection terms.  u*tm1, v*tm1, kinetic energy first
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i=1,nlon
          ut(i,k) = um1(i,k)*tm1(i,k)
@@ -176,7 +173,6 @@ tv(:nlon,:) = tm1(:nlon,:) * (1.0_r8 + zvir * qm1(:nlon,:))
 !
 ! Compute workspace arrays for delta-u, delta-v, delta-tm1 (k)
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=0,plev-1
       if (k == 0) then
          do i=1,nlon
@@ -193,7 +189,6 @@ tv(:nlon,:) = tm1(:nlon,:) * (1.0_r8 + zvir * qm1(:nlon,:))
       endif
    end do
 !
-!$OMP PARALLEL DO PRIVATE (K, I, TMPK, TMPKP1, TMP)
    do k=1,plev
 !
     if (k < nprlev) then
@@ -266,7 +261,6 @@ tv(:nlon,:) = tm1(:nlon,:) * (1.0_r8 + zvir * qm1(:nlon,:))
 !
    etadot(:,1) = 0._r8
    etadot(:,plevp) = 0._r8
-!$OMP PARALLEL DO PRIVATE (K, TMP, I)
    do k=2,plev
       tmp = etamid(k) - etamid(k-1)
       do i=1,nlon
@@ -284,7 +278,6 @@ tv(:nlon,:) = tm1(:nlon,:) * (1.0_r8 + zvir * qm1(:nlon,:))
 ! since del-square operator will operate on this term.
 ! (Also store some temporary terms.)
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i=1,nlon
          tterm(i,k) = 0.5_r8*tm2(i,k) - tm1(i,k)
@@ -298,7 +291,6 @@ tv(:nlon,:) = tm1(:nlon,:) * (1.0_r8 + zvir * qm1(:nlon,:))
 !
 ! Bottom level term of hydrostatic equation
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev-1
       do i=1,nlon
          drhs(i,k) = drhs(i,k) + rtv(i,plev)* &
@@ -309,7 +301,6 @@ tv(:nlon,:) = tm1(:nlon,:) * (1.0_r8 + zvir * qm1(:nlon,:))
 !
 ! Interior terms of hydrostatic equation
 !
-!$OMP PARALLEL DO PRIVATE (K, KK, I)
    do k=1,plev-2
       do kk=k+1,plev-1
          do i=1,nlon

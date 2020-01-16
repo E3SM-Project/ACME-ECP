@@ -58,7 +58,6 @@ subroutine qmassarun(cwava   ,w       ,q3      ,pdel    ,hw1lat  , &
      hw1lat(m) = 0._r8
   end do
 
-!$OMP PARALLEL DO PRIVATE (M, K, I)
   do m=1,pcnst
      if (m == 1) then
 !

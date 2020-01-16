@@ -347,7 +347,6 @@ OMP_SIMD
         dp(:,:,k) = elem(ie)%derived%dp(:,:,k) - rhs_multiplier*dt*elem(ie)%derived%divdp_proj(:,:,k)
       enddo
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,k) collapse(2)
 #endif
       do q = 1 , qsize
         do k=1,nlev
@@ -384,7 +383,6 @@ OMP_SIMD
       if ( nu_p > 0 ) then
         do ie = nets , nete
 #if (defined COLUMN_OPENMP)
-       !$omp parallel do private(k, q) collapse(2)
 #endif
           do k = 1 , nlev
             do q = 1 , qsize
@@ -408,7 +406,6 @@ OMP_SIMD
       call biharmonic_wk_scalar(elem,qtens_biharmonic,deriv,edge_g,hybrid,nets,nete) 
       do ie = nets , nete
 #if (defined COLUMN_OPENMP_notB4B)
-!$omp parallel do private(k, q)
 #endif
         do q = 1 , qsize
           do k = 1 , nlev    !  Loop inversion (AAM)
@@ -437,7 +434,6 @@ OMP_SIMD
 
     ! Compute velocity used to advance Qdp
 #if (defined COLUMN_OPENMP)
-    !$omp parallel do private(k,q)
 #endif
     do k = 1 , nlev    !  Loop index added (AAM)
       ! derived variable divdp_proj() (DSS'd version of divdp) will only be correct on 2nd and 3rd stage
@@ -471,7 +467,6 @@ OMP_SIMD
 
     ! advance Qdp
 #if (defined COLUMN_OPENMP)
- !$omp parallel do private(q,k,gradQ,dp_star,qtens)
 #endif
     do q = 1 , qsize
       do k = 1 , nlev  !  dp_star used as temporary instead of divdp (AAM)
@@ -531,7 +526,6 @@ OMP_SIMD
     enddo
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,k)
 #endif
     do q = 1 , qsize
       call edgeVunpack_nlyr(edge_g , elem(ie)%desc, elem(ie)%state%Qdp(:,:,:,q,np1_qdp) , nlev , nlev*(q-1), (qsize+1)*nlev)
@@ -542,7 +536,6 @@ OMP_SIMD
   enddo
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 #endif
   call t_stopf('eus_2d_advec')
@@ -656,7 +649,6 @@ OMP_SIMD
 
       if (nu_p>0) then
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,k) collapse(2)
 #endif
         do q = 1 , qsize
           do k = 1 , nlev
@@ -668,7 +660,6 @@ OMP_SIMD
 
       else
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,k) collapse(2)
 #endif
         do q = 1 , qsize
           do k = 1 , nlev
@@ -684,7 +675,6 @@ OMP_SIMD
 
     do ie = nets , nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,k,j,i)
 #endif
       do q = 1 , qsize
         do k = 1 , nlev
@@ -714,7 +704,6 @@ OMP_SIMD
     do ie = nets , nete
       call edgeVunpack_nlyr(edge_g , elem(ie)%desc, elem(ie)%state%Qdp(:,:,:,:,nt_qdp) , qsize*nlev , 0, qsize*nlev)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,k) collapse(2)
 #endif
       do q = 1 , qsize
         ! apply inverse mass matrix
@@ -725,7 +714,6 @@ OMP_SIMD
     enddo ! ie loop
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 #endif
   enddo

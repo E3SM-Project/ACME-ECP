@@ -160,7 +160,6 @@
       call FVstopclock(grid,'---TRAC2D_COMM')
 #endif
 
-!$omp parallel do default(shared) private(i,j,k,cmax)
    do k=kfirst,klast
         cymax(k) = D0_0
        do j=js2g0,jlast
@@ -207,7 +206,6 @@
 !!!    if (max_nsplt /= 1) write(iulog,*) 'trac2d: max_nsplt,k_courant = ', max_nsplt,k_courant
 !!!    write(iulog,*) "max_nsplt", max_nsplt, "k_cour", k_courant, "nsplt", nsplt(:)
 
-!$omp  parallel do default(shared) private(i,j,k,frac) schedule(dynamic,1)
 
 #if !defined(USE_OMP)
 !CSD$ PARALLEL DO PRIVATE (I, J, K, FRAC)
@@ -301,7 +299,6 @@
     call FVstopclock(grid,'---TRAC2D_TRACER_COMM')
 #endif
 
-!$omp parallel do default(shared) private(i,j,k,sum1,sum2)
 
   do 3000 k=kfirst,kend
      if (it <= nsplt(k)) then
@@ -378,8 +375,6 @@
 #endif
 
 #if !defined(INNER_OMP)
-!$omp parallel do default(shared)    &
-!$omp private(i, j, k, kq, fx, fy, a2)
 #endif
 #if (!defined USE_OMP) 
 !CSD$ PARALLEL DO PRIVATE (I, J, K, KQ, FX, FY, A2)
@@ -415,7 +410,6 @@
 
       enddo  ! End of do iq=nlo, nhi
 
-!$omp parallel do private(i, j, k) schedule( dynamic,1 )
       do k=kfirst,kend
          if ( it < nsplt(k) ) then
             do j=jfirst,jlast

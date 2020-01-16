@@ -386,7 +386,6 @@ contains
     js2g0 = max( 2,jfirst )
     jn2g0 = min( jm-1,jlast )
 
-!$omp parallel do private( j, k, sum1 )
     do k = kfirst,klast
 !-----------------------------------------------------------------------
 !       ... north-south component
@@ -413,7 +412,6 @@ contains
           dpi(:,jm,k) = sum1
        end if
     end do
-!$omp end parallel do
 
   end subroutine calc_divergence
 
@@ -540,7 +538,6 @@ contains
 !     note also that fxintegral(im+1) should equal fxintegral(1),
 !     i.e., zero.
 !-----------------------------------------------------------------------
-!$omp parallel do private( i, j, k, fxmean, fxintegral )
     do j = js2g0,jn2g0
        fxintegral(1) = D0_0
        do i = 1,im
@@ -550,12 +547,10 @@ contains
        fxmean              = sum( fxintegral(:im) ) * factor
        xcolmass_fix(:im,j) = fxintegral(:im) - fxmean
     end do
-!$omp end parallel do
 
 !-----------------------------------------------------------------------
 !     	... distribute colmass_fix in vertical
 !-----------------------------------------------------------------------
-!$omp parallel do private( j, k )
     do k = kfirst,klast
        do j = js2g0,jn2g0
           mfx(:,j,k) = mfx(:,j,k) +  met_rlx(k) * xcolmass_fix(:,j) * hybd(k)
@@ -567,7 +562,6 @@ contains
           mfy(:,jm,k) = mfy(:,jm,k) +  met_rlx(k) * mmf(jm) * hybd(k)
        end if
     end do
-!$omp end parallel do
 
   end subroutine do_press_fix_llnl
 

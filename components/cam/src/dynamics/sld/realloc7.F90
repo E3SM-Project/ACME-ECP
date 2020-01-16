@@ -150,7 +150,6 @@ subroutine realloc7 (vmax2d  ,vmax2dt ,vcour   )
 !
 ! Copy out of message buffers
 !
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_P, ENDLAT_P, NUMLATS_P, JSTRT_P, BUFPOS, J, K)
 !DIR$ CONCURRENT
    do step=1,allgather_steps
       procid = allgather_proc(step)

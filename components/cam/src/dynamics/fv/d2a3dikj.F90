@@ -111,7 +111,6 @@
                       ifirstxy, ilastxy, jlastxy+1, jlastxy+1, 1, km, unorth )
 
       if ( jlastxy .lt. jm ) then
-!$omp  parallel do private(i, k)
 
          do k=1,km
             do i=ifirstxy,ilastxy
@@ -121,7 +120,6 @@
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
       do k=1,km
         do j=jfirstxy, jlastxy-1
           do i=ifirstxy,ilastxy
@@ -132,7 +130,6 @@
 
 ! Set va on A-grid
 
-!$omp  parallel do private(j,k)
 
       do k = 1,km
          do j=jfirstxy,jlastxy
@@ -153,7 +150,6 @@
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
          do j=jfirstxy, jlastxy
@@ -173,7 +169,6 @@
 !                     + (uvaglob(i+imh,k,2)-uvaglob(i,k,2))*sinlon(i)
 !            enddo
 
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirstxy,min(imh,ilastxy)
                uva(i,k,1) = -ua(i,k,2)*sinlon(i) + va(i,k,2)*coslon(i)
@@ -221,7 +216,6 @@
             endif
          endif
 
-!$omp  parallel do private(i,k)
          do k = 1,km
             uvs(k,1) = uvs(k,1)/im
             uvs(k,2) = uvs(k,2)/im
@@ -246,7 +240,6 @@
 !                     + (vaglob(i+imh,k,jm-1)-vaglob(i,k,jm-1))*sinlon(i)
 !            enddo
 
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirstxy,min(imh,ilastxy)
                uva(i,k,1) = -ua(i,k,jm-1)*sinlon(i) - va(i,k,jm-1)*coslon(i)
@@ -294,7 +287,6 @@
             endif
          endif
 
-!$omp  parallel do private(i,k)
          do k = 1,km
             uvn(k,1) = uvn(k,1)/im
             uvn(k,2) = uvn(k,2)/im

@@ -45,7 +45,6 @@ subroutine kdpfnd(pkdim   ,pmap    ,sig     ,sigdp   ,kdpmap  , &
   rdel   = real(pmap,r8)/( log(sig(pkdim)) - log(sig(1)) )
   sig1ln = log( sig(1) )
 !
-!$OMP PARALLEL DO PRIVATE (K, I, II)
   do k=1,plev
      do i=1,nlon
 !

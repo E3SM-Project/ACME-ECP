@@ -811,13 +811,11 @@ contains
 
 
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
     if (hybrid%ithr==0) then
        call syncmp(hybrid%par)
     end if
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 
     if (topology /= "cube") then
@@ -866,7 +864,6 @@ contains
     endif !runtype
 
 #endif
-!$OMP MASTER
     if (runtype==2) then
        ! branch run
        ! reset time counters to zero since timestep may have changed
@@ -874,8 +871,6 @@ contains
        tl%nstep=0
     endif
     tl%nstep0=tl%nstep+1       ! compute diagnostics after 1st step
-!$OMP END MASTER
-!$OMP BARRIER
 
 #ifdef CAM
     ! initialize dp3d from ps_v.  CAM IC/restart code reads ps_v, doesn't

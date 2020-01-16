@@ -23,12 +23,10 @@ module parameters_model
   ! host model.
   real( kind = core_rknd ), public :: Lscale_max
 
-!$omp threadprivate(Lscale_max)
 
   ! Maximum magnitude of PDF parameter 'mixt_frac'. 
   real( kind = core_rknd ), public :: mixt_frac_max_mag
 
-!$omp threadprivate(mixt_frac_max_mag)
 
   ! Model parameters and constraints setup in the namelists
   real( kind = core_rknd ), public ::  & 
@@ -41,7 +39,6 @@ module parameters_model
 #endif
 
 
-!$omp threadprivate(T0, ts_nudge)
 
   real( kind = core_rknd), public :: &
     rtm_min, &             ! Value below which rtm will be nudged [kg/kg]
@@ -52,16 +49,13 @@ module parameters_model
     edsclr_dim,      & ! Number of eddy-diff. passive scalars
     hydromet_dim       ! Number of hydrometeor species
 
-!$omp threadprivate(sclr_dim, edsclr_dim, hydromet_dim)
 
   real( kind = core_rknd ), dimension(:), allocatable, public :: & 
     sclr_tol ! Threshold(s) on the passive scalars  [units vary]
 
-!$omp threadprivate(sclr_tol)
 
   real( kind = 4 ), public :: PosInf
 
-!$omp threadprivate(PosInf)
 
   public :: setup_parameters_model 
 

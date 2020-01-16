@@ -243,7 +243,6 @@ contains
           call EM_BETR_Populate_E2L_List(e2l_driver_list(iem))
        enddo
 
-       !$OMP PARALLEL DO PRIVATE (clump_rank, iem, bounds_clump)
        do clump_rank = 1, nclumps
 
           call get_clump_bounds(clump_rank, bounds_clump)
@@ -252,7 +251,6 @@ contains
           call EMI_Setup_Data_List(l2e_driver_list(iem), bounds_clump)
           call EMI_Setup_Data_List(e2l_driver_list(iem), bounds_clump)
        enddo
-       !$OMP END PARALLEL DO
 
     case (EM_ID_FATES)
 
@@ -269,7 +267,6 @@ contains
        enddo
 
 
-       !$OMP PARALLEL DO PRIVATE (clump_rank, iem, bounds_clump)
        do clump_rank = 1, nclumps
 
           call get_clump_bounds(clump_rank, bounds_clump)
@@ -278,7 +275,6 @@ contains
           call EMI_Setup_Data_List(l2e_driver_list(iem), bounds_clump)
           call EMI_Setup_Data_List(e2l_driver_list(iem), bounds_clump)
        enddo
-       !$OMP END PARALLEL DO
 
     case (EM_ID_PFLOTRAN)
 
@@ -308,7 +304,6 @@ contains
           call em_vsfm(clump_rank)%Populate_E2L_List(e2l_driver_list(iem))
        enddo
 
-       !$OMP PARALLEL DO PRIVATE (clump_rank, iem, bounds_clump)
        do clump_rank = 1, nclumps
 
           call get_clump_bounds(clump_rank, bounds_clump)
@@ -410,7 +405,6 @@ contains
           deallocate(tmp_col)
 
        enddo
-       !$OMP END PARALLEL DO
 
 #else
        call endrun('VSFM is on but code was not compiled with -DUSE_PETSC_LIB')
@@ -438,7 +432,6 @@ contains
           call em_ptm(clump_rank)%Populate_E2L_List(e2l_driver_list(iem))
        enddo
 
-       !$OMP PARALLEL DO PRIVATE (clump_rank, iem, bounds_clump)
        do clump_rank = 1, nclumps
 
           call get_clump_bounds(clump_rank, bounds_clump)
@@ -489,7 +482,6 @@ contains
           call l2e_init_list(clump_rank)%Destroy()
 
        enddo
-       !$OMP END PARALLEL DO
 
 #else
        call endrun('PTM is on but code was not compiled with -DUSE_PETSC_LIB')
@@ -527,7 +519,6 @@ contains
 
        write(iulog,*)'  1.2 Exchange variables between ELM and EM during initialization'
 
-       !$OMP PARALLEL DO PRIVATE (clump_rank, iem, bounds_clump)
        do clump_rank = 1, nclumps
 
           call get_clump_bounds(clump_rank, bounds_clump)

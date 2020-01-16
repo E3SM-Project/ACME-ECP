@@ -100,7 +100,6 @@
                       ifirstxy, ilastxy, jlastxy+1, jlastxy+1, 1, km, unorth )
                        
       if ( jlastxy .lt. jm ) then
-!$omp  parallel do private(i, k)
 
          do k=1,km
             do i=ifirstxy,ilastxy
@@ -110,7 +109,6 @@
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
         do j=jfirstxy, jlastxy-1
@@ -122,7 +120,6 @@
 
 ! Set va on A-grid
 
-!$omp  parallel do private(j,k)
 
       do k = 1,km
          do j=jfirstxy,jlastxy
@@ -143,7 +140,6 @@
       endif
 #endif
 
-!$omp  parallel do private(i,j,k)
 
       do k=1,km
          do j=jfirstxy, jlastxy
@@ -154,7 +150,6 @@
          enddo
       enddo
 
-!$omp  parallel do private(i,ik,k)
 
       do ik=1,4
          do k=1,km
@@ -167,7 +162,6 @@
       lbegin = 0
       lend = 0
       if (jfirstxy .eq. 1) then
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirstxy,ilastxy
                uvaloc(i,k,1) = ua(i,2,k)
@@ -181,7 +175,6 @@
       endif
 
       if (jlastxy .eq. jm) then
-!$omp  parallel do private(i,k)
          do k = 1,km
             do i=ifirstxy,ilastxy
                uvaloc(i,k,3) = ua(i,jm-1,k)
@@ -207,7 +200,6 @@
 
       if ( jfirstxy .eq. 1 ) then
 ! Projection at SP
-!$omp  parallel do private(i,k,uaglob,vaglob)
          do k=1,km
             us(k) = D0_0
             vs(k) = D0_0
@@ -235,7 +227,6 @@
 
       if ( jlastxy .eq. jm ) then
 ! Projection at NP
-!$omp  parallel do private(i,k,uaglob,vaglob)
          do k=1,km
             un(k) = D0_0
             vn(k) = D0_0

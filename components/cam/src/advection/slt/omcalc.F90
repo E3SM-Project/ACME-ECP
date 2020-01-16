@@ -59,8 +59,6 @@ subroutine omcalc(rcoslat ,d       ,u       ,v       ,dpsl    , &
   real(r8) tmp              ! vector temporary
 !-----------------------------------------------------------------------
 !
-!$OMP PARALLEL DO PRIVATE (I, SUML, D_I, U_I, V_I, PMID_I, PDEL_I, RPMID_I, &
-!$OMP                      OMGA_I, HKK, VGPK, TMP, HLK)
   do i=1,nlon
 !
 ! Zero partial sum

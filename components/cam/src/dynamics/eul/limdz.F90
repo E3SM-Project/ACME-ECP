@@ -74,7 +74,6 @@ subroutine limdz(f       ,dsig    ,fst     ,fsb     ,nlon    )
 ! Loop over fields.
 !
    do m = 1,pcnst
-!$OMP PARALLEL DO PRIVATE (K, RDSIG, I, DELI, TMP1, TMP2)
       do k = 1,plev-1
          rdsig = 1.0_r8/dsig(k)
          do i = 1,nlon

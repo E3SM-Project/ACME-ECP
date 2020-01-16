@@ -86,7 +86,6 @@ contains
 
     end do
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 
     deallocate(gp%points)
@@ -116,7 +115,6 @@ contains
        end do
     end do
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 
     call FreeEdgeBuffer(edge)

@@ -87,7 +87,6 @@ program prim_main
   ! Begin threaded region so each thread can print info
   ! =====================================
 #if (defined HORIZ_OPENMP)
-  !$OMP PARALLEL NUM_THREADS(hthreads), DEFAULT(SHARED), PRIVATE(ithr,nets,nete,hybrid)
   call omp_set_num_threads(vthreads)
 #endif
   ithr=omp_get_thread_num()
@@ -99,7 +98,6 @@ program prim_main
   !   standard prohibits multiple I/O operations on the same unit.
   ! ================================================
 #if (defined HORIZ_OPENMP)
-  !$OMP CRITICAL
 #endif
   if (par%rank<100) then 
      write(6,9) par%rank,ithr,omp_get_max_threads(),nets,nete 
@@ -107,8 +105,6 @@ program prim_main
 9 format("process: ",i2,1x,"horiz thread id: ",i2,1x,"# vert threads: ",i2,1x,&
        "element limits: ",i5,"-",i5)
 #if (defined HORIZ_OPENMP)
-  !$OMP END CRITICAL
-  !$OMP END PARALLEL
 #endif
   
   ! setup fake threading so we can call routines that require 'hybrid'
@@ -141,7 +137,6 @@ program prim_main
 
   if(par%masterproc) print *,"Primitive Equation Initialization..."
 #if (defined HORIZ_OPENMP)
-  !$OMP PARALLEL NUM_THREADS(hthreads), DEFAULT(SHARED), PRIVATE(ithr,nets,nete,hybrid)
   call omp_set_num_threads(vthreads)
 #endif
   ithr=omp_get_thread_num()
@@ -154,7 +149,6 @@ program prim_main
   call prim_init2(elem, hybrid,nets,nete,tl, hvcoord)
   call t_stopf('prim_init2')
 #if (defined HORIZ_OPENMP)
-  !$OMP END PARALLEL
 #endif
 
 
@@ -212,7 +206,6 @@ program prim_main
   call t_startf('prim_main_loop')
   do while(tl%nstep < nEndStep)
 #if (defined HORIZ_OPENMP)
-     !$OMP PARALLEL NUM_THREADS(hthreads), DEFAULT(SHARED), PRIVATE(ithr,nets,nete,hybrid)
      call omp_set_num_threads(vthreads)
 #endif
      ithr=omp_get_thread_num()
@@ -227,7 +220,6 @@ program prim_main
         call t_stopf('prim_run')
      end do
 #if (defined HORIZ_OPENMP)
-     !$OMP END PARALLEL
 #endif
 
 #if defined PIO_INTERP

@@ -65,7 +65,6 @@ subroutine difcor(klev    ,ztodt   ,delps   ,u       ,v       , &
 ! Compute the pressure surface correction term for horizontal diffusion of
 ! temperature. 
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
   do k=klev,plev
      if (k==1) then
         do i=1,nlon
@@ -87,7 +86,6 @@ subroutine difcor(klev    ,ztodt   ,delps   ,u       ,v       , &
 ! and to the temperature.
 !
   if (.not.adiabatic .and. .not.ideal_phys) then
-!$OMP PARALLEL DO PRIVATE (K, I)
      do k=klev,plev
         do i=1,nlon
            tdif(i,k) = tdif(i,k) + tcor(i,k)/ztodt
@@ -99,7 +97,6 @@ subroutine difcor(klev    ,ztodt   ,delps   ,u       ,v       , &
 ! conserve internal energy. Add the heating to the temperature and to 
 ! diffusive heating term.
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
      do k=1,plev
         do i=1,nlon
            t(i,k) = t(i,k) - ztodt * (u(i,k)*udif(i,k) + v(i,k)*vdif(i,k)) / &

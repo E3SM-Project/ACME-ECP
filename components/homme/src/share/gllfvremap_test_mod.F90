@@ -536,23 +536,19 @@ contains
                 call gfr_init(hybrid%par, elem, nphys, .true., boost_pg1)
                 call init(nphys)
              end if
-             !$omp barrier
 
              call run(hybrid, hvcoord, elem, nets, nete, nphys, .false.)
              call run(hybrid, hvcoord, elem, nets, nete, nphys, .true.)
 
              ! This is meant to be called after threading ends.
-             !$omp barrier
              if (hybrid%ithr == 0) then
                 call gfr_finish()
                 call finish()
              end if
-             !$omp barrier
           end do
        end do
     end do
 
-    !$omp barrier
     if (hybrid%ithr == 0) ftype = ftype_in
   end subroutine gfr_check_api
 end module gllfvremap_test_mod

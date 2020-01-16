@@ -120,7 +120,6 @@ CONTAINS
              xfx, yfx, cosp, id, jfirst, jlast)
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
    do j=js2g0,jn2g0
       do i=1,im-1
@@ -236,7 +235,6 @@ CONTAINS
              jfirst-ng, jlast+ng, jfirst-ng, jlast+ng)
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
     do j=js2gng,jn2gng               !  adx needed on N*ng S*ng
 
@@ -264,7 +262,6 @@ CONTAINS
      call ytp(im,jm,fy, adx,cry,yfx,ng,jord,0,jfirst,jlast)
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,jp)
 #endif
       do j=js2g0,jn2g0
         do i=1,im
@@ -360,7 +357,6 @@ CONTAINS
    imp = im + 1
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,iuw,iue,iu,itmp,isave,tmp,qmax,qmin,dm,rut,ist,al,ar,a6)
 #endif
   do j = jlow, jhigh
 
@@ -1049,7 +1045,6 @@ CONTAINS
      
    if(jord == 1) then
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,jt)
 #endif
         do j=js2g0,jn1g1
           do i=1,im
@@ -1073,7 +1068,6 @@ CONTAINS
 ! JORD can either have the value 2 or -2 at this point
 !
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,jt)
 #endif
           do j=js2g0,jn1g1
             do i=1,im
@@ -1085,7 +1079,6 @@ CONTAINS
    endif
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
       do j=js2g0,jn1g1
         do i=1,im
@@ -1151,7 +1144,6 @@ CONTAINS
     im2 = im / 2
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
       do j=js2gng1,jn2gng1
         do i=1,im
@@ -1226,7 +1218,6 @@ CONTAINS
 ! Applies monotonic slope constraint (off if jord less than zero)
 !
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,qmax,qmin)
 #endif
         do j=js2gng1,jn2gng1
           do i=1,im
@@ -1317,7 +1308,6 @@ CONTAINS
       jn2g1  = min(jm-1,jlast+1)       ! Ghost N*1
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
       do j=js2g1,jn1g2                 ! AL needed N2S
         do i=1,im                      ! P, dm ghosted N2S2 (at least)
@@ -1330,7 +1320,6 @@ CONTAINS
 !                           ng,    q,       al,   dm )
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
       do j=js1g1,jn2g1                 ! AR needed NS
         do i=1,im
@@ -1378,7 +1367,6 @@ CONTAINS
 
    if( jord == 3 .or. jord == 5 ) then
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
       do j=js1g1,jn1g1               ! A6 needed NS
         do i=1,im
@@ -1409,7 +1397,6 @@ CONTAINS
 #endif
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
       do j=js2g0,jn1g1                 ! flux needed N
         do i=1,im
@@ -1513,7 +1500,6 @@ CONTAINS
              jfirst-ng_c, jlast+ng_c, jfirst-1, jlast+2)
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
       do j=js2gs,jn1gn
 
@@ -1557,7 +1543,6 @@ CONTAINS
       endif
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,jp)
 #endif
       do j=js2g0,jn2g0
         do i=1,im
@@ -1646,7 +1631,6 @@ CONTAINS
       
    if(jord == 1) then
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,jt)
 #endif
         do j=js2giv,jn2g0                      ! FY needed on S*iv
           do i=1,im
@@ -1659,7 +1643,6 @@ CONTAINS
    else
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i)
 #endif
         do j=js3giv,jn2g1                      ! dc needed N*1, S*iv
           do i=1,im
@@ -1722,7 +1705,6 @@ CONTAINS
         if( jord > 0 ) then
 ! Monotonic constraint
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,qmax,qmin)
 #endif
           do j=js3giv,jn2g1            ! DC needed N*1, S*iv
             do i=1,im                  ! P ghosted N*2, S*(iv+1)
@@ -1747,7 +1729,6 @@ CONTAINS
         endif
 
 #if defined(INNER_OMP)
-!$omp parallel do default(shared) private(j,i,jt)
 #endif
        do j=js2giv,jn2g0                   ! fy needed S*iv
          do i=1,im                       

@@ -104,7 +104,6 @@ contains
        call t_stopf ('cice_imp_halo')
     endif
 
-    !$OMP PARALLEL DO PRIVATE(iblk,i,j)
     do iblk = 1, nblocks
        do j = 1,ny_block
           do i = 1,nx_block
@@ -126,7 +125,6 @@ contains
           enddo    !i
        enddo    !j
     enddo        !iblk
-    !$OMP END PARALLEL DO
 
     deallocate(aflds)
     allocate(aflds(nx_block,ny_block,nfldv,nblocks))
@@ -160,7 +158,6 @@ contains
        call t_stopf ('cice_imp_halo')
     endif
 
-    !$OMP PARALLEL DO PRIVATE(iblk,i,j)
     do iblk = 1, nblocks
        do j = 1,ny_block
           do i = 1,nx_block
@@ -173,7 +170,6 @@ contains
           enddo    !i
        enddo    !j
     enddo        !iblk
-    !$OMP END PARALLEL DO
 
     deallocate(aflds)
 
@@ -251,7 +247,6 @@ contains
     ! use ANGLET which is on the T grid !
 
     call t_startf ('cice_imp_ocn')
-    !$OMP PARALLEL DO PRIVATE(iblk,i,j,workx,worky)
     do iblk = 1, nblocks
 
        do j = 1,ny_block
@@ -280,7 +275,6 @@ contains
           enddo
        enddo
     enddo
-    !$OMP END PARALLEL DO
     call t_stopf ('cice_imp_ocn')
 
     ! Interpolate ocean dynamics variables from T-cell centers to 
@@ -300,7 +294,6 @@ contains
     ! later as necessary.
 
     call t_startf ('cice_imp_atm')
-    !$OMP PARALLEL DO PRIVATE(iblk,i,j,workx,worky)
     do iblk = 1, nblocks
        do j = 1, ny_block
           do i = 1, nx_block
@@ -319,7 +312,6 @@ contains
           enddo
        enddo
     enddo
-    !$OMP END PARALLEL DO
     call t_stopf ('cice_imp_atm')
 
   end subroutine ice_import
@@ -360,7 +352,6 @@ contains
     !calculate ice thickness from aice and vice. Also
     !create Tsrf from the first tracer (trcr) in ice_state.F
 
-    !$OMP PARALLEL DO PRIVATE(iblk,i,j,workx,worky)
     do iblk = 1, nblocks
        do j = 1, ny_block
           do i = 1, nx_block
@@ -390,7 +381,6 @@ contains
           enddo
        enddo
     enddo
-    !$OMP END PARALLEL DO
 
     do iblk = 1, nblocks
        do j = 1, ny_block

@@ -148,7 +148,6 @@ contains
     do ie = nets, nete
        num_neighbors = elem(ie)%desc%actual_neigh_edges + 1
 #if (defined COLUMN_OPENMP)
-       !$omp parallel do private(k)
 #endif
        do k = 1, nlev
           call ALE_departure_from_gll(dep_points_all(:,:,k,ie), &
@@ -544,11 +543,9 @@ contains
     integer :: ierr
 
 #ifdef HORIZ_OPENMP
-    !$OMP BARRIER
 #endif
     if (hybrid%ithr == 0) call mpi_barrier(hybrid%par%comm, ierr)
 #ifdef HORIZ_OPENMP
-    !$OMP BARRIER
 #endif
   end subroutine perf_barrier
 
@@ -607,7 +604,6 @@ contains
 
           if (nu_p>0) then
 #if (defined COLUMN_OPENMP)
-             !$omp parallel do private(q,k) collapse(2)
 #endif
              do q = 1 , nq
                 do k = 1 , nlev
@@ -619,7 +615,6 @@ contains
 
           else
 #if (defined COLUMN_OPENMP)
-             !$omp parallel do private(q,k) collapse(2)
 #endif
              do q = 1 , nq
                 do k = 1 , nlev
@@ -635,7 +630,6 @@ contains
 
        do ie = nets , nete
 #if (defined COLUMN_OPENMP)
-          !$omp parallel do private(q,k,j,i)
 #endif
           do q = 1 , nq
              do k = 1 , nlev
@@ -660,7 +654,6 @@ contains
        do ie = nets , nete
           call edgeVunpack_nlyr(edge_g , elem(ie)%desc, elem(ie)%state%Qdp(:,:,:,:,nt_qdp) , nq*nlev , 0, nq*nlev)
 #if (defined COLUMN_OPENMP)
-          !$omp parallel do private(q,k) collapse(2)
 #endif
           do q = 1 , nq
              ! apply inverse mass matrix
@@ -671,7 +664,6 @@ contains
        enddo ! ie loop
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-       !$OMP BARRIER
 #endif
 #endif
     enddo
@@ -707,7 +699,6 @@ contains
 
     do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-       !$omp parallel do private(k, q, lap_p)
 #endif
        do q=1,nq
           do k=1,nlev    !  Potential loop inversion (AAM)
@@ -727,7 +718,6 @@ contains
 
        ! apply inverse mass matrix, then apply laplace again
 #if (defined COLUMN_OPENMP)
-       !$omp parallel do private(k, q, lap_p)
 #endif
        do q=1,nq      
           call edgeVunpack_nlyr(edgeq,elem(ie)%desc,qtens(:,:,:,q,ie),nlev,nlev*(q-1),nq*nlev)
@@ -739,7 +729,6 @@ contains
     enddo
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

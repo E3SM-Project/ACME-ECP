@@ -72,7 +72,6 @@ subroutine xqmass(cwava   ,etamid  ,w       ,qo      ,qn      , &
 !
 ! Compute terms involving water vapor mixing ratio
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
   do k = 1,plev
      do i = 1,nlon
         q1 (i,k) = 1._r8 - qn(i,k)
@@ -82,8 +81,6 @@ subroutine xqmass(cwava   ,etamid  ,w       ,qo      ,qn      , &
 !
 ! Compute partial integrals for non-water constituents
 !
-!$OMP PARALLEL DO PRIVATE (M, CNST_TYPE, N, HWALAT, HWBLAT, K, HWAK, HWBK, &
-!$OMP                      I, XNT, XDX, XQ1, XQDQ, XDXQ1, XDXQDQ)
   do m = 2,pcnst
      cnst_type = cnst_get_type_byind(m)
      do n = 1,4

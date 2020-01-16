@@ -109,11 +109,9 @@
 
 !      call ice_timer_start(timer_tmp)  ! temporary timer
 
-      !$OMP PARALLEL DO PRIVATE(iblk)
       do iblk = 1, nblocks
          call step_therm1_iblk(dt, iblk)
       end do
-      !$OMP END PARALLEL DO
 
 !      call ice_timer_stop(timer_tmp)  ! temporary timer
       call ice_timer_stop(timer_thermo) ! thermodynamics

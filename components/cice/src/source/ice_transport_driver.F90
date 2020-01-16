@@ -342,7 +342,6 @@
       call t_barrierf('cice_remap_s2t_BARRIER',MPI_COMM_ICE)
       call t_startf  ('cice_remap_s2t')
 
-      !$OMP PARALLEL DO PRIVATE(iblk)
       do iblk = 1, nblocks
 
     !-------------------------------------------------------------------
@@ -358,7 +357,6 @@
                                aim  (:,:,:,iblk), trm  (:,:,:,:,iblk))
 
       enddo
-      !$OMP END PARALLEL DO
 
       call t_stopf   ('cice_remap_s2t')
       call t_barrierf('cice_remap_check1_BARRIER',MPI_COMM_ICE)
@@ -432,7 +430,6 @@
          tmin(:,:,:,:,:) = c0
          tmax(:,:,:,:,:) = c0
 
-         !$OMP PARALLEL DO PRIVATE(iblk,this_block,ilo,ihi,jlo,jhi,n)
          do iblk = 1, nblocks
             this_block = get_block(blocks_ice(iblk),iblk)         
             ilo = this_block%ilo
@@ -467,7 +464,6 @@
                              aimask(:,:,n,iblk), trmask(:,:,:,n,iblk))
             enddo
          enddo
-         !$OMP END PARALLEL DO
 
          call ice_timer_start(timer_bound)
          call ice_HaloUpdate (tmin,             halo_info,     &
@@ -476,7 +472,6 @@
                               field_loc_center, field_type_scalar)
          call ice_timer_stop(timer_bound)
 
-         !$OMP PARALLEL DO PRIVATE(iblk,this_block,ilo,ihi,jlo,jhi,n)
          do iblk = 1, nblocks
             this_block = get_block(blocks_ice(iblk),iblk)         
             ilo = this_block%ilo
@@ -491,7 +486,6 @@
                                         tmax(:,:,:,n,iblk))
             enddo
          enddo
-         !$OMP END PARALLEL DO
 
       endif                     ! l_monotonicity_check
 
@@ -506,7 +500,6 @@
     !  of the velocity field.  Otherwise, initialize edgearea.
     !-------------------------------------------------------------------
 
-         !$OMP PARALLEL DO PRIVATE(iblk,i,j)
          do iblk = 1, nblocks
          do j = 1, ny_block
          do i = 1, nx_block
@@ -515,11 +508,9 @@
          enddo
          enddo
          enddo
-         !$OMP END PARALLEL DO
 
          if (l_fixed_area) then
 
-            !$OMP PARALLEL DO PRIVATE(iblk,this_block,i,j,ilo,ihi,jlo,jhi)
             do iblk = 1, nblocks
                this_block = get_block(blocks_ice(iblk),iblk)         
                ilo = this_block%ilo
@@ -542,7 +533,6 @@
                enddo
 
             enddo  ! iblk
-            !$OMP END PARALLEL DO
 
          endif
 
@@ -563,7 +553,6 @@
     ! Given new fields, recompute state variables.
     !-------------------------------------------------------------------
 
-      !$OMP PARALLEL DO PRIVATE(iblk)
       do iblk = 1, nblocks
 
          call tracers_to_state (nx_block,          ny_block,            &
@@ -575,7 +564,6 @@
                                 eicen(:,:,:,iblk), esnon(:,:,  :,iblk)) 
 
       enddo                     ! iblk
-      !$OMP END PARALLEL DO
 
       call t_stopf   ('cice_remap_t2s')
       call t_barrierf('cice_remap_bound1_BARRIER',MPI_COMM_ICE)
@@ -801,7 +789,6 @@
     ! Average corner velocities to edges.
     !-------------------------------------------------------------------
       
-      !$OMP PARALLEL DO PRIVATE(iblk,this_block,i,j,ilo,ihi,jlo,jhi)
       do iblk = 1, nblocks
          this_block = get_block(blocks_ice(iblk),iblk)         
          ilo = this_block%ilo
@@ -816,7 +803,6 @@
          enddo
          enddo
       enddo
-      !$OMP END PARALLEL DO
 
       call ice_timer_start(timer_bound)
       call ice_HaloUpdate (uee,             halo_info,     &
@@ -825,7 +811,6 @@
                            field_loc_Nface, field_type_vector)
       call ice_timer_stop(timer_bound)
 
-      !$OMP PARALLEL DO PRIVATE(iblk,this_block,ilo,ihi,jlo,jhi)
       do iblk = 1, nblocks
          this_block = get_block(blocks_ice(iblk),iblk)         
          ilo = this_block%ilo
@@ -885,7 +870,6 @@
                              aice0(:,:,    iblk), works (:,:,  :,iblk)) 
 
       enddo                     ! iblk
-      !$OMP END PARALLEL DO
  
     !-------------------------------------------------------------------
     ! Ghost cell updates for state variables.

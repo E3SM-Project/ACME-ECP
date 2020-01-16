@@ -55,13 +55,11 @@ contains
 
   subroutine nf_advance_frame(ncdf)
     type(nf_handle), intent(inout) :: ncdf
-    !$OMP SINGLE
     ncdf%iframe=ncdf%iframe+1
     !
     ! This call flushs the i/o buffers after a write, it may affect performance
     ! and can be removed if nessesary
     ! Frames are advanced on a per variable basis in pio
-    !$OMP END SINGLE
   end subroutine nf_advance_frame
 
   integer function nf_get_frame(ncdf)
@@ -81,7 +79,6 @@ contains
     type (nf_variable), pointer :: varptr
     real(kind=real_kind) :: vartmp(1)
 
-    !$OMP SINGLE
     if(ncdf%state /= readystate) then
        call abortmp('sanity check failed, bad file handle')
     end if
@@ -95,7 +92,6 @@ contains
     end if
     ierr = PIO_Put_var(ncdf%FileID, varptr%vardesc%varid, int(start), &
          int(count), (/var/))
-    !$OMP END SINGLE
   end subroutine nf_put0DR
 
   subroutine nf_put1DI(ncdf, var, start, count, varid, name)
@@ -106,7 +102,6 @@ contains
     character*(*), intent(in),optional :: name
     integer :: vindex, extent, ierr
     type (nf_variable), pointer :: varptr
-    !$OMP SINGLE
 
     if(ncdf%state /= readystate) then
        call abortmp('sanity check failed, bad file handle')
@@ -123,7 +118,6 @@ contains
     if(varptr%timedependent) call PIO_SetFrame(ncdf%FileID,varptr%vardesc,start(2))
     call PIO_write_darray(ncdf%FileID, varptr%vardesc, iodesct, var, ierr)
 
-    !$OMP END SINGLE
   end subroutine nf_put1DI
   subroutine nf_put1DR(ncdf, var, start, count, varid, name, iodescin)
     type(nf_handle), intent(inout) :: ncdf
@@ -136,7 +130,6 @@ contains
     integer :: vindex, extent, ierr
     type (nf_variable), pointer :: varptr
 
-    !$OMP SINGLE
     if(ncdf%state /= readystate) then
        call abortmp('sanity check failed, bad file handle')
     end if
@@ -158,7 +151,6 @@ contains
        end if
     
 
-    !$OMP END SINGLE
   end subroutine nf_put1DR
 
 
@@ -171,7 +163,6 @@ contains
     type(io_desc_t), intent(inout), optional :: iodescin
     integer :: vindex, extent, ierr, msize
     type (nf_variable), pointer :: varptr
-    !$OMP SINGLE
     if(ncdf%state /= readystate) then
        call abortmp('sanity check failed, bad file handle')
     end if
@@ -190,7 +181,6 @@ contains
     else
        call PIO_write_darray(ncdf%FileID, varptr%vardesc, iodesc3d, reshape(var,(/msize/)), ierr)
     endif
-    !$OMP END SINGLE
   end subroutine nf_put2DI
 
 
@@ -204,7 +194,6 @@ contains
     type(io_desc_t), intent(inout), optional :: iodescin
     integer :: vindex, extent, ierr, msize
     type (nf_variable), pointer :: varptr
-    !$OMP SINGLE
     if(ncdf%state /= readystate) then
        call abortmp('sanity check failed, bad file handle')
     end if
@@ -223,7 +212,6 @@ contains
     else
        call PIO_write_darray(ncdf%FileID, varptr%vardesc, iodesc3d, reshape(var,(/msize/)), ierr)
     endif
-    !$OMP END SINGLE
   end subroutine nf_put2DR
 
 
@@ -262,7 +250,6 @@ contains
 
     ivarid=0
 
-    !$OMP SINGLE
     if(present(varrequired_in)) then
        varrequired=>varrequired_in
     else
@@ -370,7 +357,6 @@ contains
           deallocate(vardims)
        end if
     end do
-    !$OMP END SINGLE
   end subroutine nf_output_register_variables
 
   subroutine nf_global_attribute(ncdf_list,attname, attval)
@@ -408,7 +394,6 @@ contains
     type(nf_handle), pointer :: ncdf
     integer :: vindex, ios, ierr
 
-    !$OMP SINGLE
     do ios = 1, max_output_streams
        ncdf => ncdf_list(ios)
        if(ncdf%state==varsstate) then
@@ -430,7 +415,6 @@ contains
           end if
        end if
     end do
-    !$OMP END SINGLE
 
   end subroutine nf_variable_attributes
 
@@ -458,7 +442,6 @@ contains
     !
     ! Loop through output_streams, identify which will be used and open files for them
     !
-    !$OMP SINGLE
     do ios=1,max_output_streams
        if((output_frequency(ios) .gt. 0) .and. (output_start_time(ios) .le. output_end_time(ios))) then 
           ncdf(ios)%iframe=1
@@ -505,7 +488,6 @@ contains
        nullify(ncdf(ios)%varlist)
        nullify(ncdf(ios)%dimlist)
     end do
-    !$OMP END SINGLE 
   end subroutine nf_output_init_begin
 
   subroutine nf_output_register_dims(ncdf_list,dimcnt, dimname, dsize)
@@ -519,7 +501,6 @@ contains
 
     integer :: i, ierr, ios
     integer :: olddimcnt, newdimcnt
-    !$OMP SINGLE
     do ios=1,max_output_streams
        ncdf=> ncdf_list(ios)
        if((ncdf%ncFileID) >= 0) then
@@ -571,7 +552,6 @@ contains
           end do
        end if
     end do
-    !$OMP END SINGLE
 
   end subroutine nf_output_register_dims
 
@@ -582,7 +562,6 @@ contains
     type(nf_handle), pointer :: ncdf
     integer :: ios, ierr
 
-    !$OMP SINGLE
     do ios=1,max_output_streams
        ncdf=>ncdf_list(ios)
        if((ncdf%ncfileID)>=0) then
@@ -598,7 +577,6 @@ contains
     ! ==========================================
     ! Deallocate the temporary coordinate arrays 
     ! =========================================
-    !$OMP END SINGLE
   end subroutine nf_output_init_complete
 
   subroutine check(status, line)
@@ -637,7 +615,6 @@ contains
     type(nf_handle), intent(inout) :: ncdf
     ! Close netCDF file
 
-    !$OMP SINGLE
     
     if(ncdf%state>0) then              
        call PIO_closeFile(ncdf%FileID)
@@ -645,7 +622,6 @@ contains
        deallocate(ncdf%varlist)
        deallocate(ncdf%dimlist)
     end if
-    !$OMP END SINGLE
   end subroutine nf_close
 
   subroutine nf_open_file(masterproc,nprocs,comm,iam,ios,output_prefix,file_prefix,runtype,ncFileID, FileID)

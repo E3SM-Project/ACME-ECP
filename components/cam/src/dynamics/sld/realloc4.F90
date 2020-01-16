@@ -131,7 +131,6 @@ subroutine realloc4a(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
 !     
 ! Copy local data to new location
    length_l = 2*numm(iam)
-!$omp parallel do private(lat_l, ifld, k, i)
 !DIR$ NEXTSCALAR, NOSTREAM
    do lat_l=beglat,endlat
 !DIR$ STREAM
@@ -152,7 +151,6 @@ subroutine realloc4a(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
    enddo
 !
 ! Fill message buffer
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, LENGTH_R, BPOS, LAT_L, IFLD, K, I)
 #if !defined(USE_OMP)
 !CSD$ PARALLEL DO PRIVATE (STEP, PROCID, LENGTH_R, BPOS, LAT_L, IFLD, K, I)
 #endif
@@ -203,7 +201,6 @@ subroutine realloc4a(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
 !
 ! Copy out of message buffers
 !
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_R, ENDLAT_R, BPOS, LAT_R, IFLD, K, I)
 #if !defined(USE_OMP)
 !CSD$ PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_R, ENDLAT_R, BPOS, LAT_R, IFLD, K, I)
 #endif
@@ -355,7 +352,6 @@ subroutine realloc4b(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
 !
 ! Copy local data to new location
    length_l = 2*numm(iam)
-!$omp parallel do private(lat_l, ifld, k, i)
 !DIR$ NEXTSCALAR, NOSTREAM
    do lat_l=beglat,endlat
 !DIR$ STREAM
@@ -380,7 +376,6 @@ subroutine realloc4b(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
    enddo
 !
 ! Fill message buffer
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_R, ENDLAT_R, BPOS, LAT_R, K, IFLD, I)
 #if !defined(USE_OMP)
 !CSD$ PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_R, ENDLAT_R, BPOS, LAT_R, K, IFLD, I)
 #endif
@@ -434,7 +429,6 @@ subroutine realloc4b(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
 !
 ! Copy out of message buffers
 !
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, LENGTH_R, BPOS, LAT_L, K, IFLD, I)
 #if !defined(USE_OMP)
 !CSD$ PARALLEL DO PRIVATE (STEP, PROCID, LENGTH_R, BPOS, LAT_L, K, IFLD, I)
 #endif

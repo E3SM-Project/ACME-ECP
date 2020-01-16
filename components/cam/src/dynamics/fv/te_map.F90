@@ -306,9 +306,6 @@
                       ifirst, ilast, 1, km+1, jlast, jlast, pe )
 #endif
 
-!$omp  parallel do        &
-!$omp  default(shared)    &
-!$omp  private(i,j, k, u2, v2, t2)
 
 ! Compute cp*T + KE
 
@@ -392,9 +389,6 @@
 
       if ( jfirst == 1 ) then
 
-!$omp  parallel do        &
-!$omp  default(shared)    &
-!$omp  private(i, k)
 
          do k = 1, km
             do i=ifirst,ilast
@@ -404,9 +398,6 @@
 
          call par_xsum( grid, tmpik, km, te_sp)
 
-!$omp  parallel do        &
-!$omp  default(shared)    &
-!$omp  private(i, k)
 
          do k = 1, km
             te_sp(k) = te_sp(k)/real(im,r8)
@@ -418,9 +409,6 @@
 
       if ( jlast == jm ) then
 
-!$omp  parallel do       &
-!$omp  default(shared)   &
-!$omp  private(i, k)
 
          do k = 1, km
             do i=ifirst,ilast
@@ -430,9 +418,6 @@
 
          call par_xsum( grid, tmpik, km, te_np)
 
-!$omp  parallel do       &
-!$omp  default(shared)   &
-!$omp  private(i, k)
 
          do k = 1, km
             te_np(k) = te_np(k)/real(im,r8)
@@ -445,11 +430,6 @@
       it = itot / nxu
       jp = nxu * ( jlast - jfirst + 1 )
 
-!$omp  parallel do           &
-!$omp  default(shared)       &
-!$omp  private(i,j,k,i1w,pe0,pe1,pe2,pe3,ratio)   &
-!$omp  private(dak,bkh,rdt5,phis,krd, ixj,i1,i2) &
-!$omp  private(pe1w, pe2w, omga_ik )
 
 !     do 2000 j=jfirst,jlast
       do 2000 ixj=1,jp
@@ -818,9 +798,6 @@
 ! Recover Final Edge-Pressures and Compute Mid-Level PKZ
 ! ------------------------------------------------------
 
-!$omp  parallel do          &
-!$omp  default(shared)      &
-!$omp  private(i,j,k)
 
       do j=jfirst,jlast
         do k=2,km
@@ -863,9 +840,6 @@
 
       if( consv ) then
 
-!$omp  parallel do         &
-!$omp  default(shared)     &
-!$omp  private(i,j,k)
 
         do k=1,km
           do j=jfirst,jlast
@@ -875,9 +849,6 @@
           enddo
         enddo
 
-!$omp  parallel do        &
-!$omp  default(shared)    &
-!$omp  private(i,j,k,bte)
 
 ! Perform vertical integration
 
@@ -920,9 +891,6 @@
 
         call par_xsum( grid, tmpij, jlast-jfirst+1, xysum)
 
-!$omp  parallel do        &
-!$omp  default(shared)    &
-!$omp  private(j)
 
         do j = max(jfirst,2), min(jlast,jm-1)
            tte(j) = xysum(j,1)*grid%cosp(j)
@@ -938,9 +906,6 @@
 
       if( consv ) then
 
-!$omp  parallel do       &
-!$omp& default(shared)   &
-!$omp& private(i,j)
  
        do j=js2g0, jn2g0
         do i=ifirst,ilast
@@ -951,9 +916,6 @@
 
        call par_xsum( grid, tmpij, 2*(jlast-jfirst+1), xysum)
 
-!$omp  parallel do       &
-!$omp  default(shared)   &
-!$omp  private(j)
  
        do j=js2g0, jn2g0
         tte(j) = cp*grid%cosp(j)*(xysum(j,1) - grid%ptop*real(im,r8) -           &
@@ -979,9 +941,6 @@
 
       endif              ! end consv check
 
-!$omp  parallel do       &
-!$omp  default(shared)   &
-!$omp  private(i,j,k, u2, v2)
 
 ! --------------------------------------------------------------------
 ! ---   Recover Tv from remapped Total Energy and its components   ---
@@ -1044,9 +1003,6 @@
 ! ----------
       if ( jfirst == 1 ) then
 
-!$omp  parallel do       &
-!$omp  default(shared)   &
-!$omp  private(i, k)
 
          do k = 1, km
             do i=ifirst,ilast
@@ -1056,9 +1012,6 @@
 
          call par_xsum( grid, tmpik, km, te_sp)
 
-!$omp  parallel do       &
-!$omp  default(shared)   &
-!$omp  private(i, k)
 
          do k = 1, km
             te_sp(k) = te_sp(k)/real(im,r8)
@@ -1072,9 +1025,6 @@
 ! ----------
       if ( jlast == jm ) then
 
-!$omp  parallel do       &
-!$omp  default(shared)   &
-!$omp  private(i, k)
 
          do k = 1, km
             do i=ifirst,ilast
@@ -1084,9 +1034,6 @@
 
          call par_xsum( grid, tmpik, km, te_np)
 
-!$omp  parallel do       &
-!$omp  default(shared)   &
-!$omp  private(i, k)
 
          do k = 1, km
             te_np(k) = te_np(k)/real(im,r8)
@@ -1096,9 +1043,6 @@
          enddo
       endif
 
-!$omp  parallel do        &
-!$omp  default(shared)    &
-!$omp  private(ixj, i1, i2, i, j, k, rg, gz, tvm, dlnp)
 
 ! Recover Tv from remapped Total Energy and its components
 ! --------------------------------------------------------

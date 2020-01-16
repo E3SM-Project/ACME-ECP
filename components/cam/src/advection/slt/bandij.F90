@@ -66,7 +66,6 @@ subroutine bandij(dlam    ,phib    ,lamp    ,phip    ,iband   , &
 !
 ! Loop over level and longitude
 
-!$OMP PARALLEL DO PRIVATE (K, I)
   do k=1,plev
      do i = 1,nlon
 !

@@ -4706,7 +4706,6 @@ end subroutine print_active_fldlst
           ierr = pio_put_var (tape(t)%File, tape(t)%time_writtenid, startc, countc, (/ctime/))
 
           if(.not. restart) then
-            !$OMP PARALLEL DO PRIVATE (F)
             do f=1,nflds(t)
               ! Normalized averaged fields
               if (tape(t)%hlist(f)%avgflag /= 'I') then
@@ -4737,7 +4736,6 @@ end subroutine print_active_fldlst
             end do
             call cam_pio_closefile(tape(t)%File)
           else
-            !$OMP PARALLEL DO PRIVATE (F)
             do f=1,nflds(t)
               call h_zero (f, t)
             end do

@@ -244,7 +244,6 @@ end subroutine prescribed_ghg_readnl
 
        units_str = trim(to_lower(trim(fields(i)%units(:GLC(fields(i)%units)))))
 
-!$OMP PARALLEL DO PRIVATE (C, NCOL, OUTDATA, TO_MMR, tmpptr, pbuf_chnk)
        do c = begchunk,endchunk
           ncol = state(c)%ncol
 

@@ -78,7 +78,6 @@ program main
   ! Begin threaded region...
   ! =====================================
 #if (defined HORIZ_OPENMP)
-  !$OMP PARALLEL NUM_THREADS(hthreads) DEFAULT(SHARED), PRIVATE(ithr,nets,nete)
 #endif
   ithr=omp_get_thread_num()
   nets=dom_mt(ithr)%start
@@ -99,7 +98,6 @@ program main
   endif
 
 #if (defined HORIZ_OPENMP)
-  !$OMP END PARALLEL
 #endif
   ! ================================================
   ! End distributed memory region

@@ -1756,7 +1756,6 @@ contains
        deltat = file%datatimes(3) - file%datatimes(1)
        fact1 = (file%datatimes(3) - file%datatimem)/deltat
        fact2 = 1._r8-fact1
-!$OMP PARALLEL DO PRIVATE (C, NCOL, F)
        do c = begchunk,endchunk
           ncol = get_ncols_p(c)
           if ( file%has_ps ) then
@@ -1771,7 +1770,6 @@ contains
        fact1 = (file%datatimes(4) - file%datatimep)/deltat
        fact2 = 1._r8-fact1
 
-!$OMP PARALLEL DO PRIVATE (C, NCOL, F)
        do c = begchunk,endchunk
           ncol = get_ncols_p(c)
           if ( file%has_ps ) then
@@ -1822,7 +1820,6 @@ contains
           data_out3d => flds(f)%data(:,:,:)
        endif
 
-!$OMP PARALLEL DO PRIVATE (C, NCOL, PS, I, K, PIN, DATAIN, MODEL_Z, DATA_OUT)
        do c = begchunk,endchunk
           if (flds(f)%pbuf_ndx>0) then
              if(.not.present(pbuf2d)) then                

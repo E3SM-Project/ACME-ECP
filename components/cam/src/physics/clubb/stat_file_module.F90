@@ -21,7 +21,6 @@ module stat_file_module
    ! Set clubb_i and clubb_j according to the column within the host model;
    ! The indices must not exceed nlon (for i) or nlat (for j).
    integer, save, public :: clubb_i = 1, clubb_j = 1
-!$omp threadprivate(clubb_i, clubb_j)
 
    private ! Default scope
 

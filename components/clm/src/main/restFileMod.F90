@@ -597,12 +597,10 @@ contains
     ! The reweight_wrapup call needs to be done inside a clump loop, so we set that up
     ! here.
     nclumps = get_proc_clumps()
-    !$OMP PARALLEL DO PRIVATE (nc, bounds_clump)
     do nc = 1, nclumps
        call get_clump_bounds(nc, bounds_clump)
        call reweight_wrapup(bounds_clump, glc2lnd_vars%icemask_grc(bounds_clump%begg:bounds_clump%endg))
     end do
-    !$OMP END PARALLEL DO
 
     call accumulRest( ncid, flag='read' )
 

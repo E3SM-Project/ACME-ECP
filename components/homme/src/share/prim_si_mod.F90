@@ -33,7 +33,6 @@ contains
     real (kind=real_kind) :: facp, facm
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,j,i,facp,facm)
 #endif
     do j=1,np   !   Loop inversion (AAM)
 
@@ -124,7 +123,6 @@ contains
     ! 1 < k < nlev case:
     ! ===========================================================
 #if (defined COLUMN_OPENMP)
-    !$omp parallel do private(k,nf,facp,facm)
 #endif
     do k=2,nlev-1
        facp(:,:)   = 0.5_real_kind*eta_dot_dp_deta(:,:,k+1)/dp(:,:,k)
@@ -185,7 +183,6 @@ contains
     ! 1 < k < nlev case:
     ! ===========================================================
 #if (defined COLUMN_OPENMP)
-    !$omp parallel do private(k,nf,facp,facm)
 #endif
     do k=2,nlev-1
        facp(:,:)   = 0.5_real_kind*eta_dot_dp_deta(:,:,k+1)/dp(:,:,k)
@@ -251,7 +248,6 @@ contains
     v_i(:,:,:,nlevp)=0
     T_i(:,:,nlevp,:)=0
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,j,i)
 #endif
     do k=2,nlev
     do j=1,np; do i=1,np
@@ -279,7 +275,6 @@ contains
 
     ! finite difference
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,deta_m)
 #endif
     do k=1,nlev
        deta_m(:,:) = eta_dot_dp_deta(:,:,k+1)-eta_dot_dp_deta(:,:,k)
@@ -339,7 +334,6 @@ contains
     !-----------------------------------------------------------------------
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,j,i)
 #endif
        do j=1,np   !   Loop inversion (AAM)
 
@@ -399,7 +393,6 @@ contains
     !-----------------------------------------------------------------------
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,j,i,hkk,hkl)
 #endif
        do j=1,np   !   Loop inversion (AAM)
 
@@ -459,7 +452,6 @@ end subroutine preq_hydrostatic
     !-----------------------------------------------------------------------
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,j,i)
 #endif
     do j=1,np   !   Loop inversion (AAM)
 

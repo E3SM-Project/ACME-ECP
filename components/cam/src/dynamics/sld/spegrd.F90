@@ -275,7 +275,6 @@ subroutine spegrd_ift (nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out)
    isign = +1
    ntr = 11*plev + 4
    fftbuf_out(begtrm:nlon_fft_out,:,:,:) = 0.0_r8
-!$OMP PARALLEL DO PRIVATE (LAT, WORK)
    do lat=beglat,endlat
       call fft991 (fftbuf_out(1,1,1,lat), work, trig(1,lat), ifax(1,lat), inc, &
                    nlon_fft_out, nlon(lat), ntr, isign)

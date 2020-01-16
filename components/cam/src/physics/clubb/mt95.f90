@@ -129,7 +129,6 @@ module mt95
 
   type(genrand_state), private, save  :: state
   ! 23 Feb 2015: Threadprivate statement added by NCAR for CAM
-!$omp threadprivate( state )
 
   interface assignment( = )
     module procedure genrand_load_state

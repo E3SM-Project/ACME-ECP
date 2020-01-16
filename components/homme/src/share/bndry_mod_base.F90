@@ -79,7 +79,6 @@ contains
     nlyr = buffer%nlyr       
 
 
-    !$OMP MASTER
     nSendCycles = pSchedule%nSendCycles
     nRecvCycles = pSchedule%nRecvCycles
 
@@ -141,7 +140,6 @@ contains
     call MPI_Waitall(nSendCycles,buffer%Srequest,buffer%status,ierr)
     call MPI_Waitall(nRecvCycles,buffer%Rrequest,buffer%status,ierr)
 
-    !$OMP END MASTER
 
     ! Copy data that doesn't get messaged from the send buffer to the receive
     ! buffer
@@ -194,7 +192,6 @@ contains
     nlyr = buffer%nlyr       
 
 
-    !$OMP MASTER
     nSendCycles = pSchedule%nSendCycles
     nRecvCycles = pSchedule%nRecvCycles
 
@@ -249,7 +246,6 @@ contains
 
     call MPI_Waitall(nSendCycles,buffer%Srequest,buffer%status,ierr)
     call MPI_Waitall(nRecvCycles,buffer%Rrequest,buffer%status,ierr)
-    !$OMP END MASTER
 
     ! Copy data that doesn't get messaged from the send buffer to the receive
     ! buffer
@@ -301,7 +297,6 @@ contains
     nlyr = buffer%nlyr       
 
 
-    !$OMP MASTER
     nSendCycles = pSchedule%nSendCycles
     nRecvCycles = pSchedule%nRecvCycles
 
@@ -345,7 +340,6 @@ contains
           print *,'bndry_exchangeV: Error after call to MPI_Irecv: ',errorstring
        endif
     end do    ! icycle
-    !$OMP END MASTER
     
   end subroutine bndry_exchangeS_core_start
 
@@ -377,7 +371,6 @@ contains
     nlyr = buffer%nlyr       
 
 
-    !$OMP MASTER
     nSendCycles = pSchedule%nSendCycles
     nRecvCycles = pSchedule%nRecvCycles
 
@@ -392,7 +385,6 @@ contains
     call MPI_Waitall(nSendCycles,buffer%Srequest,buffer%status,ierr)
     call MPI_Waitall(nRecvCycles,buffer%Rrequest,buffer%status,ierr)
 
-    !$OMP END MASTER
 
 
     ! Copy data that doesn't get messaged from the send buffer to the receive
@@ -528,11 +520,9 @@ contains
 !pw call t_adj_detailf(+2)
 !pw call t_startf('bndry_exchangeV')
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
     call bndry_exchangeV_core(hybrid%par,hybrid%ithr,buffer)
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 !pw call t_stopf('bndry_exchangeV')
 !pw call t_adj_detailf(-2)
@@ -550,12 +540,10 @@ contains
 !pw call t_adj_detailf(+2)
 !pw call t_startf('bndry_exchangeV')
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
     ithr=0
     call bndry_exchangeV_core(par,ithr,buffer)
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 !pw call t_stopf('bndry_exchangeV')
 !pw call t_adj_detailf(-2)
@@ -573,11 +561,9 @@ contains
 !pw call t_adj_detailf(+2)
 !pw call t_startf('bndry_exchangeS')
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
     call bndry_exchangeS_core(hybrid%par,hybrid%ithr,buffer)
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 !pw call t_stopf('bndry_exchangeS')
 !pw call t_adj_detailf(-2)
@@ -595,11 +581,9 @@ contains
 !pw call t_adj_detailf(+2)
 !pw call t_startf('bndry_exchangeS_start')
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
     call bndry_exchangeS_core_start(hybrid%par,hybrid%ithr,buffer)
 !#if (defined HORIZ_OPENMP)
-!    !$OMP BARRIER
 !#endif
 !pw call t_stopf('bndry_exchangeS_start')
 !pw call t_adj_detailf(-2)
@@ -617,11 +601,9 @@ contains
 !pw call t_adj_detailf(+2)
 !pw call t_startf('bndry_exchangeS_finish')
 !#if (defined HORIZ_OPENMP)
-!    !$OMP BARRIER
 !#endif
     call bndry_exchangeS_core_finish(hybrid%par,hybrid%ithr,buffer)
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 !pw call t_stopf('bndry_exchangeS_finish')
 !pw call t_adj_detailf(-2)
@@ -639,12 +621,10 @@ contains
 !pw call t_adj_detailf(+2)
 !pw call t_startf('bndry_exchangeS')
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
     ithr=0
     call bndry_exchangeS_core(par,ithr,buffer)
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 !pw call t_stopf('bndry_exchangeS')
 !pw call t_adj_detailf(-2)
@@ -662,12 +642,10 @@ contains
 !pw call t_adj_detailf(+2)
 !pw call t_startf('bndry_exchangeS_start')
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
     ithr=0
     call bndry_exchangeS_core_start(par,ithr,buffer)
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 !pw call t_stopf('bndry_exchangeS_start')
 !pw call t_adj_detailf(-2)
@@ -685,12 +663,10 @@ contains
 !pw call t_adj_detailf(+2)
 !pw call t_startf('bndry_exchangeS_finish')
 !#if (defined HORIZ_OPENMP)
-!    !$OMP BARRIER
 !#endif
     ithr=0
     call bndry_exchangeS_core_finish(par,ithr,buffer)
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 !pw call t_stopf('bndry_exchangeS_finish')
 !pw call t_adj_detailf(-2)
@@ -732,7 +708,6 @@ contains
 
 
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
     if(ithr == 0) then 
 
@@ -803,7 +778,6 @@ contains
 #endif
     endif  ! if (hybrid%ithr == 0)
 #if (defined HORIZ_OPENMP)
-    !$OMP BARRIER
 #endif
 
   end subroutine ghost_exchangeVfull

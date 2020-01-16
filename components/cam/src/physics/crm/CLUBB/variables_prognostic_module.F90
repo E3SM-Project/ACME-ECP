@@ -68,9 +68,6 @@ module variables_prognostic_module
 #endif
 ! <--- h1g, 2010-06-16
 
-!$omp   threadprivate(um, vm, upwp, vpwp, up2, vp2)
-!$omp   threadprivate(thlm, rtm, wprtp, wpthlp, wprcp)
-!$omp   threadprivate(wp2, wp3, rtp2, thlp2, rtpthlp)
 
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     p_in_Pa,         & ! Pressure (Pa) (thermodynamic levels)          [Pa]
@@ -93,17 +90,12 @@ module variables_prognostic_module
     thlp2_forcing,   & ! <th_l'^2> forcing (momentum levels)     [K^2/s]
     rtpthlp_forcing    ! <r_t'th_l'> forcing (momentum levels)   [K*(kg/kg)/s]
 
-!$omp   threadprivate( p_in_Pa, exner, rho, rho_zm, rho_ds_zm, rho_ds_zt, &
-!$omp     invrs_rho_ds_zm, invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, &
-!$omp     thlm_forcing, rtm_forcing, um_forcing, vm_forcing, wprtp_forcing, &
-!$omp     wpthlp_forcing, rtp2_forcing, thlp2_forcing, rtpthlp_forcing )
 
   ! Imposed large scale w
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     wm_zm, & ! w on momentum levels              [m/s]
     wm_zt    ! w on thermodynamic levels         [m/s]
 
-!$omp   threadprivate(wm_zm, wm_zt)
 
   ! Cloud water variables
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
@@ -113,7 +105,6 @@ module variables_prognostic_module
     rcm_in_layer,       & ! Cloud water mixing ratio in cloud layer  [kg/kg]
     cloud_cover           ! Cloud cover                              [-]
 
-!$omp   threadprivate(rcm, cloud_frac, rcm_in_layer, cloud_cover)
 
   ! Surface fluxes
   real( kind = core_rknd ), public ::  & 
@@ -121,14 +112,12 @@ module variables_prognostic_module
     wprtp_sfc,         & ! w'rt'       [m kg/(kg s)]
     upwp_sfc, vpwp_sfc   ! u'w' & v'w' [m^2/s^2]
 
-!$omp   threadprivate(wpthlp_sfc, wprtp_sfc, upwp_sfc, vpwp_sfc)
 
   ! Surface fluxes for passive scalars
   real( kind = core_rknd ), dimension(:), allocatable, public :: & 
     wpsclrp_sfc,     & ! w'sclr' at surface    [units m/s]
     wpedsclrp_sfc      ! w'edsclr' at surface  [units m/s]
 
-!$omp   threadprivate(wpsclrp_sfc, wpedsclrp_sfc)
 
   ! More surface data
   real( kind = core_rknd ), public ::  & 
@@ -137,7 +126,6 @@ module variables_prognostic_module
     sens_ht,    & ! sensible heat flux      [K m/s]
     latent_ht       ! latent heat flux        [m/s]
 
-!$omp   threadprivate(T_sfc, p_sfc, sens_ht, latent_ht)
 
   ! Passive scalars
   real( kind = core_rknd ), target, allocatable, dimension(:,:), public :: & 
@@ -157,20 +145,16 @@ module variables_prognostic_module
 #endif
 !<--- h1g, 2010-06-16
 
-!$omp   threadprivate(sclrm, sclrp2, sclrprtp, sclrpthlp, sclrm_forcing, &
-!$omp     edsclrm, edsclrm_forcing, wpsclrp)
 
   ! PDF parameters
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: &
     sigma_sqd_w    ! PDF width parameter (momentum levels)   [-]
 
-!$omp threadprivate(sigma_sqd_w)
 
   type(pdf_parameter), target, allocatable, dimension(:), public :: &
     pdf_params, &
     pdf_params_frz !for use when l_use_ice_latent = .true.
 
-!$omp threadprivate(pdf_params)
 
   contains
 !-----------------------------------------------------------------------

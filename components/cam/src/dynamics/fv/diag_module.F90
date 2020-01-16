@@ -137,7 +137,6 @@ CONTAINS
   omga => omgaxy
 #endif
 
-!$omp parallel do private(i,j,k,pm,grad, sum1)
   do k=kfirst,klast
 
 ! Compute layer mean p

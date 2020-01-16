@@ -80,12 +80,10 @@ module model_flags
     l_upwind_xpyp_ta = .true.,  &
     l_upwind_xm_ma   = .true.
 
-!$omp threadprivate(l_upwind_wpxp_ta, l_upwind_xpyp_ta, l_upwind_xm_ma)
 
   logical, public :: & 
     l_quintic_poly_interp = .false. ! Use a quintic polynomial in mono_cubic_interp
 
-!$omp threadprivate(l_quintic_poly_interp)
 
 
   logical, public :: & 
@@ -94,13 +92,11 @@ module model_flags
     l_tke_aniso = .true.     ! For anisotropic turbulent kinetic energy, 
                              ! i.e. TKE = 1/2 (u'^2 + v'^2 + w'^2)
 ! OpenMP directives.
-!$omp threadprivate(l_uv_nudge, l_tke_aniso, l_rtm_nudge)
 
   ! Use 2 calls to pdf_closure and the trapezoidal rule to  compute the 
   ! varibles that are output from high order closure
   logical, private :: &
     l_vert_avg_closure  = .true.
-!$omp threadprivate(l_vert_avg_closure)
 
   ! These are currently set based on l_vert_avg_closure
   logical, public :: &
@@ -119,8 +115,6 @@ module model_flags
     ! which belong on momentum levels are interpolated.
     l_single_C2_Skw = .false. ! Use a single Skewness dependent C2 for rtp2, thlp2, and rtpthlp
 
-!$omp threadprivate(l_trapezoidal_rule_zt, l_trapezoidal_rule_zm, &
-!$omp   l_call_pdf_closure_twice, l_single_C2_Skw)
 
   logical, public :: &
     l_standard_term_ta = .false.    ! Use the standard discretization for the
@@ -128,32 +122,27 @@ module model_flags
   ! .false. means that a_1 and a_3 are pulled
   ! outside of the derivative in advance_wp2_wp3_module.F90
   ! and in advance_xp2_xpyp_module.F90.
-!$omp threadprivate(l_standard_term_ta)
 
   ! Use to determine whether a host model has already applied the surface flux,
   ! to avoid double counting.
   logical, public :: &
     l_host_applies_sfc_fluxes = .false.
 
-!$omp threadprivate(l_host_applies_sfc_fluxes)
 
   ! Use cloud_cover and rcm_in_layer to help boost cloud_frac and rcm to help increase cloudiness
   ! at coarser grid resolutions.
   logical, public :: &
     l_use_cloud_cover = .true.
-!$omp threadprivate(l_use_cloud_cover)
 
   integer, public :: &
     saturation_formula = saturation_flatau ! Integer that stores the saturation formula to be used
 
-!$omp threadprivate(saturation_formula)
 
   ! See clubb:ticket:514 for details
   logical, public :: &
     l_diagnose_correlations, & ! Diagnose correlations instead of using fixed ones
     l_calc_w_corr    ! Calculate the correlations between w and the hydrometeors  
  
-!$omp threadprivate(l_diagnose_correlations, l_calc_w_corr)
 
 #ifdef GFDL
   logical, public :: &

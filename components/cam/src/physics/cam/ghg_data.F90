@@ -86,7 +86,6 @@ subroutine ghg_data_timestep_init(pbuf2d, state)
   rmwco2 = mwco2/mwdry      ! ratio of molecular weights of co2 to dry air
 
    do iconst = 1,ncnst
-!$OMP PARALLEL DO PRIVATE (LCHNK,tmpptr,pbuf_chnk)
      do lchnk = begchunk, endchunk
        pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
        call pbuf_get_field(pbuf_chnk, pbuf_idx(iconst), tmpptr) 

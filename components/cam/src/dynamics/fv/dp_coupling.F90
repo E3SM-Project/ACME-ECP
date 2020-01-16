@@ -281,7 +281,6 @@ has_local_map : &
 
 ! This declaration is too long; this parallel section needs some stuff
 ! pulled out into routines.
-!$omp parallel do private (lchnk, ncol, i, k, m, ic, jc, lons, lats, pic, pbuf_chnk, pbuf_uzm, pbuf_frontgf, pbuf_frontga)
 chnk_loop1 : &
        do lchnk = begchunk,endchunk
           ncol = phys_state(lchnk)%ncol
@@ -384,7 +383,6 @@ chnk_loop1 : &
           call block_to_chunk_send_pters(iam+1,blksiz,kmp1,tsize,bpter)
        endif
 
-!$omp parallel do private (j, i, ib, k, m)
 !dir$ concurrent
        do j=jfirstxy,jlastxy
 !dir$ concurrent
@@ -431,7 +429,6 @@ chnk_loop1 : &
        call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
        call t_stopf  ('block_to_chunk')
 
-!$omp parallel do private (lchnk, ncol, i, k, m, cpter, pbuf_chnk, pbuf_uzm, pbuf_frontgf, pbuf_frontga)
 chnk_loop2 : &
        do lchnk = begchunk,endchunk
           ncol = phys_state(lchnk)%ncol
@@ -505,7 +502,6 @@ chnk_loop2 : &
 ! Evaluate derived quantities
 !
     call t_startf ('derived_fields')
-!$omp parallel do private (lchnk, ncol, i, k, m, qmavl, dqreq, qbot, qbotm1, zvirv, pbuf_chnk, mmrSum_O_O2_H)
     do lchnk = begchunk,endchunk
        ncol = phys_state(lchnk)%ncol
        do k=1,km
@@ -780,7 +776,6 @@ chnk_loop2 : &
 
        if (local_dp_map) then
 
-!$omp parallel do private(lchnk, i, k, ncol, m, lons, lats)
 
           do lchnk = begchunk,endchunk
              ncol = get_ncols_p(lchnk)
@@ -816,7 +811,6 @@ chnk_loop2 : &
           allocate(bbuffer(tsize*block_buf_nrecs))
           allocate(cbuffer(tsize*chunk_buf_nrecs))
 
-!$omp parallel do private (lchnk, ncol, i, k, m, cpter)
           do lchnk = begchunk,endchunk
              ncol = get_ncols_p(lchnk)
 
@@ -855,7 +849,6 @@ chnk_loop2 : &
              call chunk_to_block_recv_pters(iam+1,blksiz,km+1,tsize,bpter)
           endif
 
-!$omp parallel do private (j, i, ib, k, m)
 !dir$ concurrent
           do j=jfirstxy,jlastxy
 !dir$ concurrent
@@ -884,7 +877,6 @@ chnk_loop2 : &
        endif
 
 ! WS: 02.08.06: Update t3 to temperature
-!$omp parallel do private(i,j,k)
 !dir$ concurrent
        do k=1,km
           do j = jfirstxy,jlastxy

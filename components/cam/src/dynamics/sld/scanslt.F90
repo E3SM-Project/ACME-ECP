@@ -465,7 +465,6 @@ subroutine slt_run( ztodt   ,detam   ,cwava   ,etamid  ,          &
 ! Fill latitude/longitude extensions of constituents and dynamics terms
 !
   if (beglatex .le. endlatex) then
-!$OMP PARALLEL DO PRIVATE (C)
      do c = 1, pcnst
         call extys(1    ,plev                      ,adv_state%q3(:,:,beglatex:endlatex,c),    1)
      end do
@@ -479,7 +478,6 @@ subroutine slt_run( ztodt   ,detam   ,cwava   ,etamid  ,          &
      call extys(1       ,plev                      ,adv_state%lnpssld(:,:,beglatex:endlatex     ), 1)
      call extys(1       ,plev                      ,adv_state%prhssld(:,:,beglatex:endlatex     ), 1)
 !
-!$OMP PARALLEL DO PRIVATE (C)
      do C = 1, pcnst
         call extx (1    ,plev                      ,adv_state%q3     (:,:,beglatex:endlatex,c),    1)
      end do
@@ -515,7 +513,6 @@ subroutine slt_run( ztodt   ,detam   ,cwava   ,etamid  ,          &
   call t_stopf ('scanslt_alloc')
 
   call t_startf ('scanslt_bft')
-!$OMP PARALLEL DO PRIVATE(LAT)
 
   do lat = beglat,endlat
      call scanslt_bft(ztodt   ,lat      ,dtr     ,iter       ,       &
@@ -532,7 +529,6 @@ subroutine slt_run( ztodt   ,detam   ,cwava   ,etamid  ,          &
   call t_stopf ('scanslt_fft')
 !
   call t_startf ('scanslt_aft')
-!$OMP PARALLEL DO PRIVATE (IROW, LATN, LATS)
 
   do irow=1,plat/2
 
@@ -663,7 +659,6 @@ subroutine da_coupling ( adv_state, cwava, lnpssld, prhssld )
    integer :: irow                    ! latitude pair index
 
    if(is_first_step()) then
-!$OMP PARALLEL DO PRIVATE (I,K,J,JCEN,ICEN)
       do j = beglat, endlat
          jcen = j1 - 1 + j
          do k = 1, plevp
@@ -674,7 +669,6 @@ subroutine da_coupling ( adv_state, cwava, lnpssld, prhssld )
          end do
       end do
    end if
-!$OMP PARALLEL DO PRIVATE (I,K,J,ICEN,JCEN,IROW,PINT,PMID,PDEL)
    do j = beglat, endlat
       jcen = j1 - 1 + j
       if( j <= plat/2 ) then
@@ -710,7 +704,6 @@ subroutine da_coupling ( adv_state, cwava, lnpssld, prhssld )
          end do
       end do
    end do
-!$OMP PARALLEL DO PRIVATE (I,K,J,C,ICEN,JCEN)
    do c = 1, pcnst
       do j = beglat, endlat
          jcen = j1 - 1 + j
@@ -747,7 +740,6 @@ subroutine slt_run_setup( adv_state )
 ! This will be used later for trajectory calculation
 !
 
-!$OMP PARALLEL DO PRIVATE (I,K,J,JCEN,ICEN)
    do j = beglat, endlat
       jcen = j1 - 1 + j
       do k = 1, plev
@@ -759,7 +751,6 @@ subroutine slt_run_setup( adv_state )
       end do
    end do
    if(is_first_restart_step()) then
-!$OMP PARALLEL DO PRIVATE (I,K,J,ICEN,JCEN)
       do j = beglat, endlat
          jcen = j1 - 1 + j
          do k = 1, plevp
@@ -790,7 +781,6 @@ subroutine ad_coupling ( adv_state )
 
    integer :: i, j, k, c, icen, jcen
 
-!$OMP PARALLEL DO PRIVATE (I,K,J,ICEN,JCEN)
    do j = beglat, endlat
       jcen = j1 - 1 + j
       do k = 1, plev
@@ -808,7 +798,6 @@ subroutine ad_coupling ( adv_state )
          end do
       end do
    end do
-!$OMP PARALLEL DO PRIVATE (I,K,J,C,ICEN,JCEN)
    do c = 1, pcnst
       do j = beglat, endlat
          jcen = j1 - 1 + j
@@ -1323,7 +1312,6 @@ subroutine scanslt_fft (nlon_fft,nlon_fft2,fftbuf,fftbuf2)
    inc = 1
    isign = -1
    ntr = 4*plev + 1
-!$OMP PARALLEL DO PRIVATE (LAT,WORK)
    do lat=beglat,endlat
       fftbuf(nlon(lat)+1:nlon_fft,:,:,lat) = 0.0_r8
       call fft991(fftbuf(1,1,1,lat)     ,work    ,trig(1,lat),ifax(1,lat),inc     ,&

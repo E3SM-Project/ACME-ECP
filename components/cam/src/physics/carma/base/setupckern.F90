@@ -206,7 +206,6 @@ subroutine setupckern(carma, cstate, rc)
       ! If we are using Open/MP, we only want one thread to do this
       ! operation once. This is a kludge, and this table should probably
       ! get set up a different way.
-      !$OMP CRITICAL(CARMA_HALL)
       if (.not. init_data) then
         init_data = .TRUE.
         
@@ -217,7 +216,6 @@ subroutine setupckern(carma, cstate, rc)
           enddo
         enddo
       endif
-      !$OMP END CRITICAL(CARMA_HALL)
     endif
    
     ! Loop over the grid

@@ -216,7 +216,6 @@
       call t_barrierf ('cice_evp_prep1_BARRIER',MPI_COMM_ICE)
       call t_startf   ('cice_evp_prep1')
 
-      !$OMP PARALLEL DO PRIVATE(iblk,i,j)
       do iblk = 1, nblocks
 
          do j = 1, ny_block 
@@ -248,7 +247,6 @@
                          tmass   (:,:,iblk), icetmask(:,:,iblk))
 
       enddo                     ! iblk
-      !$OMP END PARALLEL DO
 
       call t_stopf   ('cice_evp_prep1')
       call t_barrierf('cice_evp_bound1_BARRIER',MPI_COMM_ICE)
@@ -289,7 +287,6 @@
      call t_barrierf ('cice_evp_prep2_BARRIER',MPI_COMM_ICE)
      call t_startf ('cice_evp_prep2')
 
-      !$OMP PARALLEL DO PRIVATE(iblk,i,j)
       do iblk = 1, nblocks
 
       !-----------------------------------------------------------------
@@ -345,7 +342,6 @@
                             strength(:,:,  iblk) )
 
       enddo  ! iblk
-      !$OMP END PARALLEL DO
 
       call t_stopf ('cice_evp_prep2')
       call t_barrierf ('cice_evp_bound2_BARRIER',MPI_COMM_ICE)
@@ -353,12 +349,10 @@
 
       allocate(fld2(nx_block,ny_block,2,max_blocks))
 
-      !$OMP PARALLEL DO PRIVATE(iblk)
       do iblk = 1,nblocks
          fld2(1:nx_block,1:ny_block,1,iblk) = uvel(1:nx_block,1:ny_block,iblk)
          fld2(1:nx_block,1:ny_block,2,iblk) = vvel(1:nx_block,1:ny_block,iblk)
       enddo
-      !$OMP END PARALLEL DO
 
       call ice_HaloUpdate (strength,           halo_info, &
                            field_loc_center,   field_type_scalar)
@@ -366,12 +360,10 @@
       call ice_HaloUpdate (fld2,               halo_info, &
                            field_loc_NEcorner, field_type_vector)
 
-      !$OMP PARALLEL DO PRIVATE(iblk)
       do iblk = 1,nblocks
          uvel(1:nx_block,1:ny_block,iblk) = fld2(1:nx_block,1:ny_block,1,iblk)
          vvel(1:nx_block,1:ny_block,iblk) = fld2(1:nx_block,1:ny_block,2,iblk)
       enddo
-      !$OMP END PARALLEL DO
 
      call t_stopf ('cice_evp_bound2')
      if (maskhalo_dyn) then
@@ -396,12 +388,10 @@
 
          if (ksub > 1) then
             call t_startf ('cice_evp_bound3i')
-            !$OMP PARALLEL DO PRIVATE(iblk)
             do iblk = 1,nblocks
                fld2(1:nx_block,1:ny_block,1,iblk) = uvel(1:nx_block,1:ny_block,iblk)
                fld2(1:nx_block,1:ny_block,2,iblk) = vvel(1:nx_block,1:ny_block,iblk)
             enddo
-            !$OMP END PARALLEL DO
             call t_stopf ('cice_evp_bound3i')
             call t_startf ('cice_evp_bound3s')
             if (maskhalo_dyn) then
@@ -418,7 +408,6 @@
          ! stress tensor equation, total surface stress, phase 1 = non edge pts
          !-----------------------------------------------------------------
 
-         !$OMP PARALLEL DO PRIVATE(iblk)
          do iblk = 1, nblocks
             this_block = get_block(blocks_ice(iblk),iblk)         
             ilo = this_block%ilo
@@ -450,7 +439,6 @@
                          str8    (:,:,:,iblk) )
             call t_stopf ('cice_evp_stress1')
          enddo
-         !$OMP END PARALLEL DO
 
          !-----------------------------------------------------------------
          ! recv halo update, skip on first subcycle
@@ -468,12 +456,10 @@
             call t_stopf ('cice_evp_bound3r')
 
             call t_startf ('cice_evp_bound3c')
-            !$OMP PARALLEL DO PRIVATE(iblk)
             do iblk = 1,nblocks
                uvel(1:nx_block,1:ny_block,iblk) = fld2(1:nx_block,1:ny_block,1,iblk)
                vvel(1:nx_block,1:ny_block,iblk) = fld2(1:nx_block,1:ny_block,2,iblk)
             enddo
-            !$OMP END PARALLEL DO
             call t_stopf ('cice_evp_bound3c')
          endif
 
@@ -481,7 +467,6 @@
          ! stress tensor equation, total surface stress, phase 2 = edge points
          !-----------------------------------------------------------------
 
-         !$OMP PARALLEL DO PRIVATE(iblk)
          do iblk = 1, nblocks
             this_block = get_block(blocks_ice(iblk),iblk)         
             ilo = this_block%ilo
@@ -532,7 +517,6 @@
 
             call t_stopf ('cice_evp_stepu')
          enddo
-         !$OMP END PARALLEL DO
 
          call t_stopf ('cice_evp_subcycling')
         
@@ -544,12 +528,10 @@
 
       call t_barrierf ('cice_evp_bound4_BARRIER',MPI_COMM_ICE)
       call t_startf ('cice_evp_bound4')
-      !$OMP PARALLEL DO PRIVATE(iblk)
       do iblk = 1,nblocks
          fld2(1:nx_block,1:ny_block,1,iblk) = uvel(1:nx_block,1:ny_block,iblk)
          fld2(1:nx_block,1:ny_block,2,iblk) = vvel(1:nx_block,1:ny_block,iblk)
       enddo
-      !$OMP END PARALLEL DO
       if (maskhalo_dyn) then
          call ice_HaloUpdate (fld2,               halo_info_mask, &
                               field_loc_NEcorner, field_type_vector)
@@ -557,12 +539,10 @@
          call ice_HaloUpdate (fld2,               halo_info, &
                               field_loc_NEcorner, field_type_vector)
       endif
-      !$OMP PARALLEL DO PRIVATE(iblk)
       do iblk = 1,nblocks
          uvel(1:nx_block,1:ny_block,iblk) = fld2(1:nx_block,1:ny_block,1,iblk)
          vvel(1:nx_block,1:ny_block,iblk) = fld2(1:nx_block,1:ny_block,2,iblk)
       enddo
-      !$OMP END PARALLEL DO
       call t_stopf ('cice_evp_bound4')
 
   else
@@ -576,7 +556,6 @@
          ! stress tensor equation, total surface stress, all gridcells
          !-----------------------------------------------------------------
 
-         !$OMP PARALLEL DO PRIVATE(iblk)
          do iblk = 1, nblocks
             this_block = get_block(blocks_ice(iblk),iblk)         
             ilo = this_block%ilo
@@ -627,19 +606,16 @@
 
             call t_stopf ('cice_evp_stepu')
          enddo
-         !$OMP END PARALLEL DO
 
          !-----------------------------------------------------------------
          ! halo update
          !-----------------------------------------------------------------
 
             call t_startf ('cice_evp_bound3i')
-            !$OMP PARALLEL DO PRIVATE(iblk)
             do iblk = 1,nblocks
                fld2(1:nx_block,1:ny_block,1,iblk) = uvel(1:nx_block,1:ny_block,iblk)
                fld2(1:nx_block,1:ny_block,2,iblk) = vvel(1:nx_block,1:ny_block,iblk)
             enddo
-            !$OMP END PARALLEL DO
             call t_stopf ('cice_evp_bound3i')
             call t_startf ('cice_evp_bound3sr')
             if (maskhalo_dyn) then
@@ -652,12 +628,10 @@
             call t_stopf ('cice_evp_bound3sr')
 
             call t_startf ('cice_evp_bound3c')
-            !$OMP PARALLEL DO PRIVATE(iblk)
             do iblk = 1,nblocks
                uvel(1:nx_block,1:ny_block,iblk) = fld2(1:nx_block,1:ny_block,1,iblk)
                vvel(1:nx_block,1:ny_block,iblk) = fld2(1:nx_block,1:ny_block,2,iblk)
             enddo
-            !$OMP END PARALLEL DO
             call t_stopf ('cice_evp_bound3c')
 
          call t_stopf ('cice_evp_subcycling')
@@ -766,7 +740,6 @@
       ! ice-ocean stress
       !-----------------------------------------------------------------
 
-      !$OMP PARALLEL DO PRIVATE(iblk)
       do iblk = 1, nblocks
 
          call evp_finish                               & 
@@ -780,7 +753,6 @@
                strocnxT(:,:,iblk), strocnyT(:,:,iblk))
 
       enddo
-      !$OMP END PARALLEL DO
 
       call u2tgrid_vector(strocnxT)    ! shift
       call u2tgrid_vector(strocnyT)
@@ -843,7 +815,6 @@
 
       allocate(fcor_blk(nx_block,ny_block,max_blocks))
 
-      !$OMP PARALLEL DO PRIVATE(iblk,i,j)
       do iblk = 1, nblocks
       do j = 1, ny_block
       do i = 1, nx_block
@@ -882,7 +853,6 @@
       enddo                     ! i
       enddo                     ! j
       enddo                     ! iblk
-      !$OMP END PARALLEL DO
 
       end subroutine init_evp
 

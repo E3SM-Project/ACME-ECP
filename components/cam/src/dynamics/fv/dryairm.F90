@@ -103,7 +103,6 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     allocate (psdk(ifirstxy:ilastxy,jfirstxy:jlastxy,km))
     allocate (psdkg(ifirstxy:ilastxy,jfirstxy:jlastxy,km))
 
-!$omp  parallel do private(i,j,k)
     do k=1,km
        do j=jfirstxy,jlastxy
           do i=ifirstxy,ilastxy
@@ -112,7 +111,6 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
        enddo
     enddo
 
-!$omp  parallel do private(i,j,k)
     do k=1,km
        do j=jfirstxy,jlastxy
           do i=ifirstxy,ilastxy
@@ -121,7 +119,6 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
        enddo
     enddo
 
-!$omp  parallel do private(i,j)
        do j=jfirstxy,jlastxy
           do i=ifirstxy,ilastxy
              psdk(i,j,1) = ptop
@@ -129,7 +126,6 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
        enddo
 
     if( nq .ne. 0 ) then
-!$omp  parallel do private(i,j,k)
        do k=1,km
           do j=jfirstxy,jlastxy
              do i=ifirstxy,ilastxy
@@ -140,7 +136,6 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
        enddo
     else
 
-!$omp  parallel do private(i,j,k)
        do k=1,km
           do j=jfirstxy,jlastxy
              do i=ifirstxy,ilastxy
@@ -151,7 +146,6 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
 
     endif
 
-!$omp  parallel do private(i,j,k)
     do k=1,km
        do j=jfirstxy,jlastxy
           do i=ifirstxy,ilastxy
@@ -160,14 +154,12 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
        enddo
     enddo
 
-!$omp  parallel do private(i,j)
     do j=jfirstxy,jlastxy
        do i=ifirstxy,ilastxy
           psd(i,j) = 0._r8
        enddo
     enddo
 
- !$omp  parallel do private(i,j,k)
     do j=jfirstxy,jlastxy
        do k=1,km
           do i=ifirstxy,ilastxy
@@ -193,7 +185,6 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     endif
  CPP_PRT_PREFIX write(iulog,*) 'dry mass to be added =', 0.01_r8*dpd
 
-!$omp  parallel do private(i, j, ic)
 
        do j=jfirstxy,jlastxy
 

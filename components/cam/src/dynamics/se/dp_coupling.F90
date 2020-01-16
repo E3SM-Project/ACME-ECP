@@ -165,7 +165,6 @@ CONTAINS
     call t_startf('dpcopy')
     if (local_dp_map) then
 
-      !$omp parallel do private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
       do lchnk = begchunk,endchunk
         ncols=get_ncols_p(lchnk)
         call get_gcol_all_p(lchnk,pcols,pgcols)
@@ -212,7 +211,6 @@ CONTAINS
 
       if (par%dynproc) then
 
-        !$omp parallel do private (ie, bpter, icol, ilyr, m, ncols)
         do ie = 1,nelemd
           call block_to_chunk_send_pters(elem(ie)%GlobalID,nphys_sq,pver+1,tsize,bpter(1:nphys_sq,:))
           if (fv_nphys > 0) then
@@ -249,7 +247,6 @@ CONTAINS
       call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
       call t_stopf  ('block_to_chunk')
 
-      !$omp parallel do private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
       do lchnk = begchunk,endchunk
         ncols = phys_state(lchnk)%ncol
         pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
@@ -289,7 +286,6 @@ CONTAINS
 
 !for theta there is no need to multiply omega_p by p
 #ifndef MODEL_THETA_L
-    !$omp parallel do private (lchnk, ncols, ilyr, icol)
     do lchnk = begchunk,endchunk
       ncols = get_ncols_p(lchnk)
       do ilyr = 1,pver
@@ -397,7 +393,6 @@ CONTAINS
     call t_startf('pd_copy')
     if(local_dp_map) then
 
-      !$omp parallel do private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m)
       do lchnk = begchunk,endchunk
         ncols = get_ncols_p(lchnk)
         call get_gcol_all_p(lchnk,pcols,pgcols)
@@ -423,7 +418,6 @@ CONTAINS
       allocate( bbuffer(tsize*block_buf_nrecs) )
       allocate( cbuffer(tsize*chunk_buf_nrecs) )
 
-      !$omp parallel do private (lchnk, ncols, cpter, i, icol, ilyr, m)
       do lchnk = begchunk,endchunk
         ncols = get_ncols_p(lchnk)
         call chunk_to_block_send_pters(lchnk,pcols,pver+1,tsize,cpter)
@@ -448,7 +442,6 @@ CONTAINS
       call t_stopf  ('chunk_to_block')
 
       if (par%dynproc) then
-        !$omp parallel do private (ie, bpter, icol, ilyr, m, ncols)
         do ie = 1,nelemd
           if (fv_nphys > 0) then
             ncols = nphys_sq
@@ -542,7 +535,6 @@ CONTAINS
     !---------------------------------------------------------------------------
 
     ! Evaluate derived quantities
-    !$omp parallel do private (lchnk, ncol, k, i, zvirv, pbuf_chnk)
     do lchnk = begchunk,endchunk
       ncol = get_ncols_p(lchnk)
       do k = 1,nlev

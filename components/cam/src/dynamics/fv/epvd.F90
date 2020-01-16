@@ -134,9 +134,6 @@
 
 ! Compute PT at layer edges.
 
-!$omp  parallel do                 &
-!$omp  default(shared)             &
-!$omp  private(i,j,k,t2,delp2,te2)
 
       do 1000 j=jfirstxy,jlastxy
 
@@ -163,9 +160,6 @@
 !
       fx_sp = D0_0
       fx_np = D0_0
-!$omp  parallel do                  &
-!$omp  default(shared)              &
-!$omp  private(i,k)
       do k=1,km
         if ( jfirstxy == 1 ) then  ! SP
           do i=ifirstxy,ilastxy
@@ -205,9 +199,6 @@
       endif
 #endif
 
-!$omp  parallel do                  &
-!$omp  default(shared)              &
-!$omp  private(i,j,k,fx,fy,vort,c1,c2)
 
       do 2000 k=1,km
 ! Compute relative vorticity

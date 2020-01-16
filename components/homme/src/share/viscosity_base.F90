@@ -99,7 +99,6 @@ logical var_coef1
 
    do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k, q, lap_p)
 #endif
       do q=1,qsize      
          do k=1,nlev    !  Potential loop inversion (AAM)
@@ -119,7 +118,6 @@ logical var_coef1
 
       ! apply inverse mass matrix, then apply laplace again
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k, q, lap_p)
 #endif
       do q=1,qsize      
         call edgeVunpack_nlyr(edgeq,elem(ie)%desc,qtens(:,:,:,q,ie),nlev,nlev*(q-1),qsize*nlev)
@@ -131,7 +129,6 @@ logical var_coef1
    enddo
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -379,7 +376,6 @@ call derivinit(deriv)
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
 do k=1,nlev
    !    zeta(:,:,k,ie)=elem(ie)%state%zeta(:,:,k)
@@ -415,7 +411,6 @@ call derivinit(deriv)
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
 do k=1,nlev
    !    zeta(:,:,k,ie)=elem(ie)%state%zeta(:,:,k)
@@ -716,7 +711,6 @@ integer :: ie,k,q
     ! compute p min, max
     do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
        do k=1,nlev
           Qmin(:,:,k)=minval(elem(ie)%state%p(:,:,k,nt))
@@ -737,7 +731,6 @@ integer :: ie,k,q
        
     do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
        do k=1,nlev
           Qmin(:,:,k)=minval(elem(ie)%state%p(:,:,k,nt))
@@ -747,7 +740,6 @@ integer :: ie,k,q
        ! now unpack the min
        if (present(min_var)) then
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
           do k=1,nlev
              Qvar(:,:,k)=Qmax(1,1,k)-Qmin(1,1,k)
@@ -755,7 +747,6 @@ integer :: ie,k,q
 ! WARNING - edgeVunpackMin/Max take second argument as input/ouput
           call edgeVunpackMin(edge3,Qvar,nlev,2*nlev,ie)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
           do k=1,nlev
              min_var(k,ie)=minval(Qvar(:,:,k))
@@ -765,7 +756,6 @@ integer :: ie,k,q
        ! now unpack the max
        if (present(max_var)) then
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
           do k=1,nlev
              Qvar(:,:,k)=Qmax(1,1,k)-Qmin(1,1,k)
@@ -773,7 +763,6 @@ integer :: ie,k,q
 ! WARNING - edgeVunpackMin/Max take second argument as input/ouput
           call edgeVunpackMax(edge3,Qvar,nlev,2*nlev,ie)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
           do k=1,nlev
              max_var(k,ie)=maxval(Qvar(:,:,k))
@@ -785,7 +774,6 @@ integer :: ie,k,q
        call edgeVunpackMax(edge3,Qmax,nlev,0,ie)
        call edgeVunpackMin(edge3,Qmin,nlev,nlev,ie)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
 #endif
        do k=1,nlev
           max_neigh(k,ie)=maxval(Qmax(:,:,k))
@@ -796,7 +784,6 @@ integer :: ie,k,q
 
 #ifdef DEBUGOMP
 #if (defined HORIZ_OPENMP)
-!$OMP BARRIER
 #endif
 #endif
 

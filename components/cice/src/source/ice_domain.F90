@@ -168,9 +168,7 @@
    ns_boundary_type  = 'open'
    maxBlock          = max_blocks
 #if defined(THREADED_OMP)
-!$OMP PARALLEL
    minBlock          = omp_get_num_threads()
-!$OMP END PARALLEL
 #else
    minBlock          = 1
 #endif

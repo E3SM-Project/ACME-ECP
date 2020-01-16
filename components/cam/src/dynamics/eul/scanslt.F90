@@ -380,7 +380,6 @@ subroutine scanslt_run(adv_state, ztodt   ,etadot   ,detam, etamid, cwava )
 !
    call t_startf ('sltb1')
 #ifdef OUTER_OMP
-!$OMP PARALLEL DO PRIVATE (LAT, IROW, JCEN)
 #endif
    do lat=beglat,endlat
       if(lat.le.plat/2) then
@@ -456,10 +455,8 @@ subroutine ad_coupling( adv_state )
    integer :: i, j, k, c   ! Indices
 
 #ifdef OUTER_OMP
-!$OMP PARALLEL DO PRIVATE (J,K,I,C)
 #endif
    do j = beglat, endlat
-!$OMP PARALLEL DO PRIVATE (K,I,C)
       do k = 1, plev
          do i = 1, plon
             u3(i,k,j,n3m1) = adv_state%u3(i+i1-1,k,j+beglatex+numbnd-beglat)
@@ -515,7 +512,6 @@ subroutine da_coupling( cwava, adv_state )
 ! Find moisture mass before SLT
 !
 #ifdef OUTER_OMP
-!$OMP PARALLEL DO PRIVATE (LAT, IROW, PINT, PMID, PDEL)
 #endif
    do lat=beglat,endlat
       if(lat.le.plat/2) then
@@ -538,10 +534,8 @@ subroutine da_coupling( cwava, adv_state )
    end do
 
 #ifdef OUTER_OMP
-!$OMP PARALLEL DO PRIVATE (J,K,I,C)
 #endif
    do j = beglat, endlat
-!$OMP PARALLEL DO PRIVATE (K,I,C)
       do k = 1, plev
          do i = 1, plon
             adv_state%u3(i+i1-1,k,j+beglatex+numbnd-beglat) = u3(i,k,j,n3m1)
@@ -1082,7 +1076,6 @@ subroutine sltb1(pmap      ,jcen    ,jgc     ,dt      ,ra      , &
               nlonex  )
 
      do m = 1,pcnst
-!$OMP PARALLEL DO PRIVATE (K, I)
         do k = 1,plev
            do i = 1,nlon
               hadv(i,k,m,jgc) = (fhr(i,k,m) - adv_state%qminus(i1-1+i,k,m,jcen))/dt
@@ -1223,7 +1216,6 @@ subroutine vrtdep(pmap    ,dt      ,iterdp  ,wb      ,wst     , &
 !
 ! Update estimate of trajectory midpoint.
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
      do k = 1,plev
         do i = 1,nlon
            sigmp(i,k) = sig(k) - .5_r8*dt*wmp(i,k)
@@ -1238,7 +1230,6 @@ subroutine vrtdep(pmap    ,dt      ,iterdp  ,wb      ,wst     , &
 !
 ! Compute trajectory endpoints.
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
   do k = 1,plev
      do i = 1,nlon
         sigdp(i,k) = sig(k) - dt*wmp(i,k)
@@ -1293,7 +1284,6 @@ subroutine vdplim(pkdim   ,sig     ,sigdp   ,nlon    )
   integer i,k                 ! index
 !-----------------------------------------------------------------------
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
   do k=1,plev
      do i = 1,nlon
         if (sigdp(i,k) < sig(1)) then
@@ -1403,11 +1393,9 @@ subroutine sltini(dlam,    sinlam,  coslam,  uxl,     uxr, &
 ! Compute x-derivatives.
 !
 #ifdef OUTER_OMP
-!$OMP  PARALLEL DO PRIVATE (J, NLOND, K, M)
 #endif
    do j = beglatex, endlatex
       nlond = 1 + 2*nxpt + nlonex(j)
-!$OMP  PARALLEL DO PRIVATE (K, M)
       do k=1,plev
          call cubxdr (nlond, 2, nlond-3, dlam(j), adv_state%u3(1:nlond,k,j), &
             uxl(1:nlond,k,j), uxr(1:nlond,k,j))

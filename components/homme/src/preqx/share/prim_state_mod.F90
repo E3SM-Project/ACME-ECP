@@ -735,7 +735,6 @@ subroutine prim_energy_halftimes(elem,hvcoord,tl,n,t_before_advance,nets,nete)
 
        dpt1=elem(ie)%state%dp3d(:,:,:,t1)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j,cp_star1,qval_t1)
 #endif
        do k=1,nlev
           sumlk(:,:,k)=0
@@ -766,7 +765,6 @@ subroutine prim_energy_halftimes(elem,hvcoord,tl,n,t_before_advance,nets,nete)
     
     !   KE   .5 dp/dn U^2
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,E)
 #endif
        do k=1,nlev
           E = (elem(ie)%state%v(:,:,1,k,t1)**2 +  &

@@ -99,29 +99,24 @@ module corr_varnce_module
   real( kind = core_rknd ), public :: &
     Ncnp2_on_Ncnm2 = 1.0_core_rknd   ! Prescribed ratio <N_cn'^2> / <N_cn>^2 [-]
 
-!$omp threadprivate(Ncnp2_on_Ncnm2)
 
   integer, parameter, public :: &
     d_var_total = 12 ! Size of the default correlation arrays
 
   integer, public :: &
     pdf_dim
-!$omp threadprivate(pdf_dim)
 
   real( kind = core_rknd ), dimension(:), allocatable, public :: &
      hmp2_ip_on_hmm2_ip
 
-!$omp threadprivate(hmp2_ip_on_hmm2_ip)
 
   real( kind = core_rknd ), public, dimension(:,:), allocatable :: &
     corr_array_n_cloud, &
     corr_array_n_below
-!$omp threadprivate(corr_array_n_cloud, corr_array_n_below)
 
   real( kind = core_rknd ), public, dimension(:,:), allocatable :: &
       corr_array_n_cloud_def, &
       corr_array_n_below_def
-!$omp threadprivate( corr_array_n_cloud_def, corr_array_n_below_def )
 
   private
 

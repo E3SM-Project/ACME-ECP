@@ -182,7 +182,6 @@ grqla(:,:,:) = nan
 
 #if ( defined SPMD )
 
-!$OMP PARALLEL DO PRIVATE (J)
 
    do j=1,plat/2
       call grcalcs (j, ztodt, grts(1,1,j), grqs(1,1,j), grths(1,1,j), &
@@ -198,7 +197,6 @@ grqla(:,:,:) = nan
 
 #else
 
-!$OMP PARALLEL DO PRIVATE (LAT, J)
 
    do lat=beglat,endlat
       if (lat > plat/2) then
@@ -239,7 +237,6 @@ grqla(:,:,:) = nan
    call t_stopf  ('spegrd_alloc')
 
    call t_startf ('spegrd_bft')
-!$OMP PARALLEL DO PRIVATE (LAT, IROW)
 
    do lat=1,plat
       irow = lat
@@ -271,7 +268,6 @@ grqla(:,:,:) = nan
    call t_stopf  ('spegrd_ift')
                    
    call t_startf ('spegrd_aft')
-!$OMP PARALLEL DO PRIVATE (LAT, J)
 
    do lat=beglat,endlat
       j = lat
@@ -407,7 +403,6 @@ grqla(:,:,:) = nan
 
    call t_startf ('tfilt_massfix')
 
-!$OMP PARALLEL DO PRIVATE (LAT,J)
 
    do lat=beglat,endlat
       j = lat
@@ -639,7 +634,6 @@ subroutine realloc5 (hw2al   ,hw2bl   ,hw3al   ,hw3bl   ,tmass    , &
 !
 ! Copy out of message buffers
 !
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_P, ENDLAT_P, NUMLATS_P, BUFPOS, JSTRT_P, I, J, M)
 #if !defined(USE_OMP)
 !CSD$ PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_P, ENDLAT_P, NUMLATS_P, BUFPOS, JSTRT_P, I, J, M)
 #endif

@@ -77,7 +77,6 @@ subroutine scandyn(ztodt   ,detam   ,cwava   ,etamid  ,          &
   call t_stopf  ('slt_run_setup')
 
   call t_startf ('linemsdyn')
-!$OMP PARALLEL DO PRIVATE (LAT)
 
   do lat=beglat,endlat
      call linemsdyn(lat                     ,ps     (1,lat,n3)   ,u3   (1,1,lat,n3)  , &

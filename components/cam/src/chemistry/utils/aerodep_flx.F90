@@ -353,7 +353,6 @@ end subroutine aerodep_flx_readnl
 
     call advance_trcdata( fields, file, state, pbuf2d  )
 
-!$OMP PARALLEL DO PRIVATE (C, NCOL)
     do c = begchunk, endchunk
        ncol = state(c)%ncol
        call aerodep_flx_set( cam_out(c), ncol, c )

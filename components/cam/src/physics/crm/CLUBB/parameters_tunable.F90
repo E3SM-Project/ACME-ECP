@@ -105,15 +105,6 @@ module parameters_tunable
     nu_r        = 1.500000_core_rknd,& ! Background Coefficient of Eddy Diffusion for hydrometeors.
     nu_hd       = 20000.00_core_rknd    ! Constant coefficient for 4th-order hyper-diffusion.
 
-!$omp   threadprivate(C1, C1b, C1c, C2, C2b, C2c, &
-!$omp     C2rt, C2thl, C2rtthl, C4, C5, C6rt, C6rtb, C6rtc, &
-!$omp     C6thl, C6thlb, C6thlc, &
-!$omp     C7, C7b, C7c, C8, C8b, C10, C11, C11b, C11c, C12, &
-!$omp     C13, C14, C15, &
-!$omp     c_K, c_K1, nu1, c_K2, nu2, c_K6, nu6, &
-!$omp     c_K8, nu8, c_K9, nu9, nu10, c_Krrainm, nu_r, nu_hd, &
-!$omp     gamma_coef, gamma_coefb, gamma_coefc, mult_coef, &
-!$omp     taumin, taumax, mu, lmin, Lscale_mu_coef, Lscale_pert_coef)
 
   real( kind = core_rknd ), public, allocatable, dimension(:) :: & 
     nu1_vert_res_dep,   & ! Background Coefficient of Eddy Diffusion for wp2.
@@ -127,20 +118,15 @@ module parameters_tunable
   real( kind = core_rknd ), public :: &
     nu_hd_vert_res_dep    ! Constant coefficient for 4th-order hyper-diffusion.
 
-!$omp threadprivate(nu1_vert_res_dep, nu2_vert_res_dep, nu6_vert_res_dep, &
-!$omp   nu8_vert_res_dep, nu9_vert_res_dep, nu10_vert_res_dep, nu_r_vert_res_dep,  &
-!$omp   nu_hd_vert_res_dep )
 
   ! Vince Larson added a constant to set plume widths for theta_l and rt
   ! beta should vary between 0 and 3, with 1.5 the standard value
 
   real( kind = core_rknd ), public :: beta         = 1.750000_core_rknd
 
-!$omp threadprivate(beta)
 
   real( kind = core_rknd ), private :: lmin_coef    = 0.500000_core_rknd ! Coefficient of lmin
 
-!$omp threadprivate(lmin_coef)
 
   ! used in adj_low_res_nu. If .true., avg_deltaz = deltaz
 #ifdef GFDL
@@ -149,7 +135,6 @@ module parameters_tunable
   logical, public :: l_prescribed_avg_deltaz = .false.
 #endif
 
-!$omp threadprivate(l_prescribed_avg_deltaz)
 
   ! Since we lack a devious way to do this just once, this namelist
   ! must be changed as well when a new parameter is added.

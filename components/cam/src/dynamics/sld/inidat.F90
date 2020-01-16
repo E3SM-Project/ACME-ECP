@@ -220,7 +220,6 @@ contains
        call mpiscatterv (ps_tmp    ,numsend, displs, mpir8,ps    (1,beglat,1) ,numrecv, mpir8,0,mpicom)
     end if
 #else
-!$omp parallel do private(lat)
     do lat = 1,plat
        ps(:nlon(lat),lat,1) = ps_tmp(:nlon(lat),lat)
     end do
@@ -645,7 +644,6 @@ contains
         deallocate ( gcid )
        end if
 
-!$omp parallel do private(lat)
        do lat = 1,plat
           call qneg3(trim(subname), lat   ,nlon(lat),plon   ,plev    , &
                m_cnst, m_cnst, qmin(m_cnst) ,arr3d_a(1,1,lat))
@@ -774,7 +772,6 @@ contains
           call mpiscatterv (tmp2d_b   ,numsend, displs, mpir8,phism (1,beglat) ,numrecv, mpir8,0,mpicom)
        end if
 #else
-!$omp parallel do private(lat)
        do lat = 1,plat
           phis (:nlon(lat),lat) = phis_tmp(:nlon(lat),lat)
           phisl(:nlon(lat),lat) = tmp2d_a (:nlon(lat),lat)

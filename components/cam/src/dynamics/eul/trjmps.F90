@@ -59,7 +59,6 @@ subroutine trjmps(dt      ,upr     ,vpr     ,phimp   ,lampr   , &
 !
 !-----------------------------------------------------------------------
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i = 1,nlon
          lampr(i,k) = -.5_r8*dt* upr(i,k) / cos( phimp(i,k) )

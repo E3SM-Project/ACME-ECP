@@ -135,7 +135,6 @@ contains
 
     thread_id   = omp_get_thread_num()
 
-!$OMP CRITICAL
     num_threads = omp_get_num_threads()
     if (.not. allocated(sv)) then
        allocate( sv(0:num_threads-1) )
@@ -147,7 +146,6 @@ contains
           call init_seeds_ext(sv(i)%s)
        end do
     endif
-!$OMP END CRITICAL
 
     sv(thread_id)%s(1) = 1234*seed
     sv(thread_id)%s(2) = 2345*seed + 6789

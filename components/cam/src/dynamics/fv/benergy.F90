@@ -172,7 +172,6 @@
                          ilastxy+1, ilastxy+1, jfirstxy, jlastxy, 1, km,     &
                          ilastxy+1, ilastxy+1, jfirstxy, jlastxy, 1, km, veast )
       else
-!$omp parallel do private(j, k)
          do k = 1,km
             do j=jfirstxy,jlastxy
                veast(j,k) = v(1,j,k)
@@ -180,7 +179,6 @@
          enddo
       endif
 #else
-      !$omp parallel do private(j, k)
       do k = 1,km
          do j=1,jm
             veast(j,k) = v(1,j,k)
@@ -192,7 +190,6 @@
 !-----------------------------------------------------------------------------------------------
 
 
-!$omp parallel do private(i, j, k, u2, v2, tm)
   do k=1,km
 !
 ! Check the poles for consistent values
@@ -259,7 +256,6 @@
 
   if ( jfirstxy == 1 ) then
      call par_xsum( grid, te_sp, km, sp_sum )
-!$omp parallel do private(i, k, tmp)
      do k=1,km
         tmp = delp(ifirstxy,1,k) * (D0_5*sp_sum(k)/real(im,r8) +  &
                                     cp*tm_sp(k))
@@ -270,7 +266,6 @@
   endif 
   if ( jlastxy == jm ) then
      call par_xsum( grid, te_np, km, np_sum )
-!$omp parallel do private(i, k, tmp)
      do k=1,km
         tmp = delp(ifirstxy,jm,k) * (D0_5*np_sum(k)/real(im,r8) +& 
                                      cp*tm_np(k))
@@ -281,7 +276,6 @@
   endif
 
   bte = D0_0
-!$omp parallel do private(i,j,k,gztop)
   do j=jfirstxy,jlastxy
 ! Perform vertical integration
      do i=ifirstxy,ilastxy
@@ -324,7 +318,6 @@
 
   call par_xsum(grid, bte, jtot, xsum)
   
-!$omp parallel do private(j)
   do j=js2g0,jn2g0
      tte(j) = xsum(j)*grid%cosp(j)
   enddo

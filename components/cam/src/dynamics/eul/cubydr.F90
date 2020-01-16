@@ -94,7 +94,6 @@ subroutine cubydr(pf      ,fint    ,wdy     ,jdp     ,jcen    , &
 !
   icount = 0
   do jdpval=jcen-2,jcen+1
-!$OMP PARALLEL DO PRIVATE (K, INDX, M, II, I)
      do k=1,plev
         call whenieq(nlon,jdp(1,k),1,jdpval,indx,nval(k))
         do m=1,pf

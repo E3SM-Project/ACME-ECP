@@ -112,7 +112,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
    if (fullgrid) then
       dx (1) = x(nxpt+2,1) - x(nxpt+1,1)
       rdx(1) = 1._r8/dx(1)
-!$OMP PARALLEL DO PRIVATE (K, I, XL, XR)
       do k=1,plev
          do i=1,nlon
             xl = ( x(idp(i,k,1)+1,1) - xdp(i,k) )*rdx(1)
@@ -128,7 +127,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
 ! Once for each field.
 ! 
       do m = 1,pf
-!$OMP PARALLEL DO PRIVATE (N, K, I)
          do n=1,4
             do k = 1,plev
                do i = 1,nlon
@@ -144,13 +142,11 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
 !
    else
 !
-!$OMP PARALLEL DO PRIVATE (J)
       do j = 1,platd
          dx (j) = x(nxpt+2,j) - x(nxpt+1,j)
          rdx(j) = 1._r8/dx(j)
       end do
 !
-!$OMP PARALLEL DO PRIVATE (K, I, XL, XR)
       do k=1,plev
          do i=1,nlon
             xl = ( x(idp(i,k,1)+1,jdp(i,k)-1) - xdp(i,k) )*  &
@@ -167,7 +163,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
 ! Once for each field.
 ! 
       do m = 1,pf
-!$OMP PARALLEL DO PRIVATE (K, I)
          do k = 1,plev
             do i = 1,nlon
                fint(i,k,1,m) = &
@@ -179,7 +174,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
          end do
       end do
 
-!$OMP PARALLEL DO PRIVATE (K, I, XL, XR)
       do k=1,plev
          do i=1,nlon
             xl = ( x(idp(i,k,2)+1,jdp(i,k)) - xdp(i,k) )* rdx(jdp(i,k))
@@ -195,7 +189,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
 ! Once for each field.
 ! 
       do m = 1,pf
-!$OMP PARALLEL DO PRIVATE (K, I)
          do k = 1,plev
             do i = 1,nlon
                fint(i,k,2,m) = &
@@ -207,7 +200,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
          end do
       end do
 
-!$OMP PARALLEL DO PRIVATE (K, I, XL, XR)
       do k=1,plev
          do i=1,nlon
             xl = ( x(idp(i,k,3)+1,jdp(i,k)+1) - xdp(i,k) )* rdx(jdp(i,k)+1)
@@ -223,7 +215,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
 ! Once for each field.
 ! 
       do m = 1,pf
-!$OMP PARALLEL DO PRIVATE (K, I)
          do k = 1,plev
             do i = 1,nlon
                fint(i,k,3,m) = &
@@ -235,7 +226,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
          end do
       end do
 !
-!$OMP PARALLEL DO PRIVATE (K, I, XL, XR)
       do k=1,plev
          do i=1,nlon
             xl = ( x(idp(i,k,4)+1,jdp(i,k)+2) - xdp(i,k) )*rdx(jdp(i,k)+2)
@@ -251,7 +241,6 @@ subroutine herxin(pf      ,pkcnst  ,fb      ,fxl     ,fxr     , &
 ! Once for each field.
 ! 
       do m = 1,pf
-!$OMP PARALLEL DO PRIVATE (K, I)
          do k = 1,plev
             do i = 1,nlon
                fint(i,k,4,m) = &

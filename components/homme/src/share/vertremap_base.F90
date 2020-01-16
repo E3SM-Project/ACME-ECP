@@ -111,10 +111,6 @@ subroutine remap1(Qdp,nx,qsize,dp1,dp2)
 
   call t_startf('remap_Q_noppm')
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,i,j,z1c,z2c,zv,k,dp_np1,dp_star,Qcol,zkr,ilev) &
-!$omp    private(jk,zgam,zhdp,h,zarg,rhs,lower_diag,diag,upper_diag,q_diag,tmp_cal,filter_code) &
-!$omp    private(dy,im1,im2,im3,ip1,t1,t2,t3,za0,za1,za2,xm_d,xm,f_xm,t4,tm,tp,peaks,peaks_min) &
-!$omp    private(peaks_max,ip2,level1,level2,level3,level4,level5,lt1,lt2,lt3,zv1,zv2)
 #endif
   do q=1,qsize
   do i=1,nx
@@ -381,10 +377,6 @@ subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
 !   call t_startf('remap1_nofilter')
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(q,i,j,z1c,z2c,zv,k,dp_np1,dp_star,Qcol,zkr,ilev) &
-!$omp    private(jk,zgam,zhdp,h,zarg,rhs,lower_diag,diag,upper_diag,q_diag,tmp_cal,filter_code) &
-!$omp    private(dy,im1,im2,im3,ip1,t1,t2,t3,za0,za1,za2,xm_d,xm,f_xm,t4,tm,tp,peaks,peaks_min) &
-!$omp    private(peaks_max,ip2,level1,level2,level3,level4,level5,lt1,lt2,lt3,zv1,zv2)
 #endif
   do q=1,qsize
   do i=1,nx

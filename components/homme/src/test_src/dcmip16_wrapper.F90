@@ -55,16 +55,12 @@ contains
 !init routine to call before any dcmip16 inin routines, including restart runs
 subroutine dcmip2016_init()
   implicit none
-!$OMP BARRIER
-!$OMP MASTER
   if (.not.allocated(precl)) then
     allocate(precl(np,np,nelemd))
     precl(:,:,:) = 0.0
   else
     call abortmp('ERROR: in dcmip2016_init() precl has already been allocated') 
   endif
-!$OMP END MASTER
-!$OMP BARRIER
 
 end subroutine dcmip2016_init
 
@@ -171,7 +167,6 @@ subroutine dcmip2016_test1_pg(elem,hybrid,hvcoord,nets,nete,nphys)
           pg_data%omega_p(ncol,nlev,nelemd), pg_data%uv(ncol,2,nlev,nelemd), &
           pg_data%q(ncol,nlev,qsize,nelemd))
   end if
-  !$omp barrier
   call dcmip2016_test1(elem,hybrid,hvcoord,nets,nete)
   sample_period = 3600*24
 end subroutine dcmip2016_test1_pg
@@ -386,11 +381,7 @@ subroutine dcmip2016_append_measurements(max_w,max_precl,min_ps,tl,hybrid)
   endif
   ! append measurements at regular intervals
   if(time .ge. next_sample_time) then
-!$OMP BARRIER
-!$OMP MASTER
     next_sample_time = next_sample_time + sample_period
-!$OMP END MASTER
-!$OMP BARRIER
     pmax_w     = parallelMax(max_w,    hybrid)
     pmax_precl = parallelMax(max_precl,hybrid)
     pmin_ps    = parallelMin(min_ps,   hybrid)

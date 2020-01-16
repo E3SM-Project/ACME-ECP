@@ -550,13 +550,11 @@ contains
 
     if (.not. par%dynproc) return
 #ifdef HORIZ_OPENMP
-    !$omp parallel num_threads(hthreads), default(shared), private(nets,nete,hybrid)
 #endif
     call gfr_hybrid_create(par, dom_mt, hybrid, nets, nete)
     call gfr_dyn_to_fv_phys_hybrid(hybrid, nt, hvcoord, elem, nets, nete, &
          ps, phis, T, uv, omega_p, q)
 #ifdef HORIZ_OPENMP
-    !$omp end parallel
 #endif
   end subroutine gfr_dyn_to_fv_phys_dom_mt
 
@@ -581,12 +579,10 @@ contains
 
     if (.not. par%dynproc) return
 #ifdef HORIZ_OPENMP
-    !$omp parallel num_threads(hthreads), default(shared), private(nets,nete,hybrid)
 #endif
     call gfr_hybrid_create(par, dom_mt, hybrid, nets, nete)
     call gfr_fv_phys_to_dyn_hybrid(hybrid, nt, dt, hvcoord, elem, nets, nete, T, uv, q)
 #ifdef HORIZ_OPENMP
-    !$omp end parallel
 #endif
   end subroutine gfr_fv_phys_to_dyn_dom_mt
 
@@ -607,12 +603,10 @@ contains
 
     if (.not. par%dynproc) return
 #ifdef HORIZ_OPENMP
-    !$omp parallel num_threads(hthreads), default(shared), private(nets,nete,hybrid)
 #endif
     call gfr_hybrid_create(par, dom_mt, hybrid, nets, nete)
     call gfr_dyn_to_fv_phys_topo_hybrid(hybrid, elem, nets, nete, phis)
 #ifdef HORIZ_OPENMP
-    !$omp end parallel
 #endif
   end subroutine gfr_dyn_to_fv_phys_topo_dom_mt
 
@@ -633,12 +627,10 @@ contains
 
     if (.not. par%dynproc) return
 #ifdef HORIZ_OPENMP
-    !$omp parallel num_threads(hthreads), default(shared), private(nets,nete,hybrid)
 #endif
     call gfr_hybrid_create(par, dom_mt, hybrid, nets, nete)
     call gfr_fv_phys_to_dyn_topo_hybrid(hybrid, elem, nets, nete, phis)
 #ifdef HORIZ_OPENMP
-    !$omp end parallel
 #endif
   end subroutine gfr_fv_phys_to_dyn_topo_dom_mt
 
@@ -1723,12 +1715,10 @@ contains
     
     if (.not. par%dynproc) return
 #ifdef HORIZ_OPENMP
-    !$omp parallel num_threads(hthreads), default(shared), private(nets,nete,hybrid)
 #endif
     call gfr_hybrid_create(par, dom_mt, hybrid, nets, nete)
     call gfr_pg1_reconstruct_hybrid(hybrid, nt, dt, hvcoord, elem, nets, nete)
 #ifdef HORIZ_OPENMP
-    !$omp end parallel
 #endif
   end subroutine gfr_pg1_reconstruct_dom_mt
 
@@ -1748,12 +1738,10 @@ contains
     
     if (.not. par%dynproc) return
 #ifdef HORIZ_OPENMP
-    !$omp parallel num_threads(hthreads), default(shared), private(nets,nete,hybrid)
 #endif
     call gfr_hybrid_create(par, dom_mt, hybrid, nets, nete)
     call gfr_pg1_reconstruct_topo_hybrid(hybrid, elem, nets, nete)
 #ifdef HORIZ_OPENMP
-    !$omp end parallel
 #endif
   end subroutine gfr_pg1_reconstruct_topo_dom_mt
 
@@ -2319,14 +2307,11 @@ contains
 
           ! This is meant to be called before threading starts.
           if (hybrid%ithr == 0) call gfr_init(hybrid%par, elem, nphys, .true., boost_pg1)
-          !$omp barrier
 
           call check(hybrid%par, dom_mt, gfr, elem, .false.)
 
           ! This is meant to be called after threading ends.
-          !$omp barrier
           if (hybrid%ithr == 0) call gfr_finish()
-          !$omp barrier
        end do
     end do
   end subroutine gfr_test

@@ -715,9 +715,7 @@
 #if defined(_OPENMP)
 
         integer omp_get_num_threads
-!$omp parallel
         numcpu = omp_get_num_threads()
-!$omp end parallel
 
 #else
         numcpu = 1
@@ -1757,7 +1755,6 @@
 
 ! Begin Non-Blocking Sends
         do iq = nq1, nq2
-!$omp parallel do private(i,j,k,inc,inc1)
           do k = k1, k2
                 inc1 = (win%offset_s) + ((iq-nq1)*ijk_length) &
                        + ((k-k1)*ij_length) -i1+1
@@ -1868,7 +1865,6 @@
       ijk_length = i_length*j_length*k_length
 
         do iq = nq1, nq2
-!$omp parallel do private(i,j,k,inc,inc1)
           do k = k1, k2
                 inc1 = (win%offset_r) + ((iq-nq1)*ijk_length) &
                        + ((k-k1)*ij_length) -i1+1
@@ -1939,7 +1935,6 @@
 
 ! Begin Non-Blocking Sends
         do iq = nq1, nq2
-!$omp parallel do private(i,j,k,inc,inc1)
           do k = k1, k2
                 inc1 = (win%offset_s) + ((iq-nq1)*ijk_length) &
                        + ((k-k1)*ij_length) -i1+1
@@ -2061,7 +2056,6 @@
       ijk_length = i_length*j_length*k_length
 
         do iq = nq1, nq2
-!$omp parallel do private(i,j,k,inc,inc1)
           do k = k1, k2
                 inc1 = (win%offset_r) + ((iq-nq1)*ijk_length) &
                        + ((k-k1)*ij_length) -i1+1
@@ -2127,7 +2121,6 @@
 
 ! Begin Non-Blocking Sends
         do iq = nq1, nq2
-!$omp parallel do private(i,j,k,inc,inc1)
           do k = k1, k2
                 inc1 = (win%offset_s) + ((iq-nq1)*ijk_length) &
                        + ((k-k1)*ij_length) -i1+1
@@ -2237,7 +2230,6 @@
       ijk_length = i_length*j_length*k_length
 
         do iq = nq1, nq2
-!$omp parallel do private(i,j,k,inc,inc1)
           do k = k1, k2
                 inc1 = (win%offset_r) + ((iq-nq1)*ijk_length) &
                        + ((k-k1)*ij_length) -i1+1

@@ -261,18 +261,15 @@ subroutine spegrd_ift (nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out)
    inc = 1
    isign = +1
 #ifdef OUTER_OMP
-!$OMP PARALLEL DO PRIVATE (LAT, NTR, K, IFLD, WORK)
 #endif
    do lat=beglat,endlat
       ntr = 8
-!$OMP PARALLEL DO PRIVATE (K, WORK)
       do k=1,plev
          fftbuf_out(begtrm:nlon_fft_out,:,k,lat) = 0.0_r8
          call fft991 (fftbuf_out(1,1,k,lat), work, trig(1,lat), ifax(1,lat), inc, &
                       nlon_fft_out, nlon(lat), ntr, isign)
       enddo
       ntr = 1
-!$OMP PARALLEL DO PRIVATE (IFLD, WORK)
       do ifld=1,4
          fftbuf_out(begtrm:nlon_fft_out,ifld,plevp,lat) = 0.0_r8
          call fft991 (fftbuf_out(1,ifld,plevp,lat), work, trig(1,lat), ifax(1,lat), inc, &
@@ -399,7 +396,6 @@ subroutine spegrd_aft (ztodt   ,lat     ,nlon    ,nlon_fft, &
 ! Copy 3D fields out of FFT buffer, removing cosine(latitude) from momentum variables
 !
    rcoslat = 1._r8/cos(clat(lat))
-!$OMP PARALLEL DO PRIVATE (K, I)
    do k=1,plev
       do i=1,nlon
          vort(i,k) = fftbuf(i,vortdex,k)
@@ -416,7 +412,6 @@ subroutine spegrd_aft (ztodt   ,lat     ,nlon    ,nlon_fft, &
 ! Copy 2D fields out of FFT buffer, converting
 ! log(ps) to ps.
 !
-!$OMP PARALLEL DO PRIVATE (I)
    do i=1,nlon
       dps(i) = fftbuf(i,dpsdex,plevp)
       dpsl(i) = fftbuf(i,dpsldex,plevp)
@@ -453,7 +448,6 @@ subroutine spegrd_aft (ztodt   ,lat     ,nlon    ,nlon_fft, &
    engy2blat = 0._r8
    difftalat = 0._r8
    difftblat = 0._r8
-!$OMP PARALLEL DO PRIVATE (M, K, DOTPRODA, DOTPRODB, I)
    do m=1,pcnst
       hw2al(m) = 0._r8
       hw2bl(m) = 0._r8
@@ -480,7 +474,6 @@ subroutine spegrd_aft (ztodt   ,lat     ,nlon    ,nlon_fft, &
    end do
 
 ! using do loop and select to enable functional parallelism with OpenMP
-!$OMP PARALLEL DO PRIVATE (I)
    do i=1,6
       select case (i)
       case (1)

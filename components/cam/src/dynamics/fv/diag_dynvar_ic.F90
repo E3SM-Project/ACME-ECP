@@ -66,7 +66,6 @@
 
     if( write_inithist() ) then
 
-!$OMP PARALLEL DO PRIVATE (I, J, K, M, TMP)
        do j = jfirstxy, jlastxy
 
           call outfld ('PS&IC      ', ps  (:,j) , idim, j)

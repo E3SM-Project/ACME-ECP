@@ -175,7 +175,6 @@ contains
 
     ! Loop over clumps on this processor
 
-!$OMP PARALLEL DO PRIVATE (nc,bounds)
     do nc = 1, nclumps
        call get_clump_bounds(nc, bounds)
 
@@ -216,7 +215,6 @@ contains
        allocate(this_filter(nc)%do_smb_c(bounds%endc-bounds%begc+1))       
        
     end do
-!$OMP END PARALLEL DO
 
   end subroutine allocFiltersOneGroup
 

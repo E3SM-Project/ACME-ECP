@@ -79,7 +79,6 @@ subroutine herzin(pkdim   ,pf      ,f       ,fst     ,fsb     , &
 !
 !-----------------------------------------------------------------------
 !
-!$OMP PARALLEL DO PRIVATE (K, I, DZK, ZT, ZB, HT, HB, DHT, DHB, M)
    do k=1,plev
       do i=1,nlon
          dzk = dsig(kdp(i,k))

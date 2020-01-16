@@ -112,7 +112,6 @@ contains
     nclumps = get_proc_clumps()
 
     ! FIX(SPM,032414) add private vars for cohort and perhaps patch dimension
-    !$OMP PARALLEL DO PRIVATE (nc, bounds_clump, ti, li, ci, pi, gdc, topounit)
     do nc = 1, nclumps
 
        call get_clump_bounds(nc, bounds_clump)
@@ -230,7 +229,6 @@ contains
        call compute_higher_order_weights(bounds_clump)
 
     end do
-    !$OMP END PARALLEL DO
 
   end subroutine initGridcells
 

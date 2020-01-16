@@ -147,7 +147,6 @@ endif
       enddo
    enddo
 #ifdef DEBUGOMP
-!$OMP BARRIER
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end subroutine

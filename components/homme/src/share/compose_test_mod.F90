@@ -105,7 +105,6 @@ contains
     call compose_unittest()
 
 #if (defined HORIZ_OPENMP)
-    !$omp parallel num_threads(hthreads), default(SHARED), private(ithr,nets,nete,hybrid)
     call omp_set_num_threads(vthreads)
 #endif
     ithr = omp_get_thread_num()
@@ -117,7 +116,6 @@ contains
     ! correctness test and also as part of a convergence test.
     call compose_stt(hybrid, dom_mt, nets, nete, hvcoord, deriv, elem)
 #if (defined HORIZ_OPENMP)
-    !$omp end parallel
 #endif
 #endif
   end subroutine compose_test

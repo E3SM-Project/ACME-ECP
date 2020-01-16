@@ -962,7 +962,6 @@ contains
 
     call t_startf('MET__transfer_windsToWalls')
 
-!$omp parallel do private (i, j, k)
     do k = kfirst, klast
 
        do j = jfirst+1,jlast
@@ -1274,7 +1273,6 @@ contains
        if ( grid%twod_decomp .eq. 1 ) then
 
 #if defined( SPMD )
-!$omp parallel do private(i,j,k)
           do k=1,grid%npr_z
              do j=grid%jfirstxy,grid%jlastxy
                 do i=grid%ifirstxy,grid%ilastxy

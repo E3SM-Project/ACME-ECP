@@ -68,7 +68,6 @@ module zm_conv
    logical :: trigdcape_ull    = .false. !true to use DCAPE trigger and -ULL 
    integer :: dcapemx(pcols) ! save maxi from 1st call for CAPE calculation and used in 2nd call when DCAPE-ULL active
 !  May need to change to use local variable !  as passed via dummy argument. For now, making it threadprivate as follows,
-!$omp threadprivate (dcapemx)
 
    real(r8) :: ke           ! Tunable evaporation efficiency set from namelist input zmconv_ke
    real(r8) :: c0_lnd       ! set from namelist input zmconv_c0_lnd

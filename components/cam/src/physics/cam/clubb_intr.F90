@@ -577,9 +577,7 @@ end subroutine clubb_init_cnst
 
 
     !----- Begin Code -----
-    !$OMP PARALLEL
     l_do_expldiff_rtm_thlm = do_expldiff
-    !$OMP END PARALLEL
     
     allocate( &
        pdf_params_chnk(pcols,begchunk:endchunk),   &
@@ -697,9 +695,7 @@ end subroutine clubb_init_cnst
     ! ----------------------------------------------------------------- !
     
     !  Read in parameters for CLUBB.  Just read in default values 
-!$OMP PARALLEL
     call read_parameters_api( -99, "", clubb_params )
-!$OMP END PARALLEL
       
     !  Fill in dummy arrays for height.  Note that these are overwrote
     !  at every CLUBB step to physical values.    
@@ -712,7 +708,6 @@ end subroutine clubb_init_cnst
     !  when clubb_tend_cam is called.  The reason is that heights can change
     !  at each time step, which is why dummy arrays are read in here for heights
     !  as they are immediately overwrote.     
-!$OMP PARALLEL
     call setup_clubb_core_api     &
          ( pverp, theta0, ts_nudge, &                                 ! In
            hydromet_dim,  sclr_dim, &                                 ! In
@@ -722,7 +717,6 @@ end subroutine clubb_init_cnst
            l_implemented, grid_type, zi_g(2), zi_g(1), zi_g(pverp), & ! In
            zi_g(1:pverp), zt_g(1:pverp), zi_g(1), &
            err_code )
-!$OMP END PARALLEL
 
     ! ----------------------------------------------------------------- !
     ! Set-up HB diffusion.  Only initialized to diagnose PBL depth      !

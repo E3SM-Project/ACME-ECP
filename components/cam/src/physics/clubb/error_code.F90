@@ -39,7 +39,6 @@ module error_code
 
     character(len=35), public :: err_header
 
-    !$omp threadprivate(clubb_debug_level,err_code,err_header)
 
     ! Error Code Values
     integer, parameter, public :: & 

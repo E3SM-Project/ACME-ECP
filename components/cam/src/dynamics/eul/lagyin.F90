@@ -101,7 +101,6 @@ subroutine lagyin(pf      ,fint    ,wdy     ,ydp     ,jdp     ,  &
    icount = 0
    do jdpval=jcen-2,jcen+1
       if (icount.lt.nlon*plev) then
-!$OMP PARALLEL DO PRIVATE (K, INDX, II, I, YMY3, YMY4, COEF12, YMY2, YMY1, COEF34)
          do k=1,plev
             call whenieq(nlon,jdp(1,k),1,jdpval,indx,nval(k))
 !
@@ -136,7 +135,6 @@ subroutine lagyin(pf      ,fint    ,wdy     ,ydp     ,jdp     ,  &
 ! Loop over fields.
 !
    do m = 1,pf
-!$OMP PARALLEL DO PRIVATE (K, I)
       do k=1,plev
          do i = 1,nlon
             fdp(i,k,m) = fint(i,k,1,m)*term1(i,k) +  &

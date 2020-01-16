@@ -37,7 +37,6 @@ subroutine pdelb0(ps      ,pdelb   ,nlon    )
 !
 ! Compute del P(B)
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
   do k = 1,plev
      do i = 1,nlon
         pdelb(i,k) = hybd(k)*ps(i)

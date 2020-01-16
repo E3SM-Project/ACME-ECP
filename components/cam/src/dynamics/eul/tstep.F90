@@ -60,7 +60,6 @@
       m  = locm(lm,iam)
       lmr = lnstart(lm)
       lmc = 2*lmr
-!$OMP PARALLEL DO PRIVATE (K, HHREF, HBPS, N, IR, II, KK)
       do k=1,plev
 !
 ! Coefficients for diagonal terms
@@ -100,7 +99,6 @@
 !
 ! Multiply right hand side by inverse matrix
 !
-!$OMP PARALLEL DO PRIVATE (K, KK, N, IR, II)
       do k=1,plev
          do kk=1,plev
             do n=1,nlen(m)
@@ -114,7 +112,6 @@
 !
 ! Move solution for divergence to d
 !
-!$OMP PARALLEL DO PRIVATE (K, N, IR, II)
       do k=1,plev
          do n=1,nlen(m)
             ir = lmc + 2*n - 1
@@ -139,7 +136,6 @@
 !
 ! Add semi-implicit part to temperature (matrix multiply)
 !
-!$OMP PARALLEL DO PRIVATE (K, KK, NN)
       do k=1,plev
          do kk=1,plev
             do nn = lmc+1, lmc+2*nlen(m)

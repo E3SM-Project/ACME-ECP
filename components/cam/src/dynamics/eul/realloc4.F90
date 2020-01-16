@@ -134,7 +134,6 @@ subroutine realloc4a(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
 ! Copy local data to new location
    length_l = 2*numm(iam)
    do lat_l=beglat,endlat
-!$OMP PARALLEL DO PRIVATE(K, IFLD, I)
       do k=1,plev
          do ifld=1,8
             do i=1,length_l
@@ -148,7 +147,6 @@ subroutine realloc4a(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
    enddo
 !
 ! Fill message buffer
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, LENGTH_R, BPOS, LAT_L, IFLD, K, I)
    do step=1,realloc4_steps
       procid = realloc4_proc(step)
       length_r = 2*numm(procid)
@@ -188,7 +186,6 @@ subroutine realloc4a(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
 !
 ! Copy out of message buffers
 !
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_R, ENDLAT_R, BPOS, LAT_R, IFLD, K, I)
    do step=1,realloc4_steps
       procid = realloc4_proc(step)
       beglat_r = cut(1,procid)
@@ -330,7 +327,6 @@ subroutine realloc4b(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
 ! Copy local data to new location
    length_l = 2*numm(iam)
    do lat_l=beglat,endlat
-!$OMP PARALLEL DO PRIVATE(K, IFLD, I)
       do k=1,plev
          do ifld=1,8
             do i=1,length_l
@@ -339,7 +335,6 @@ subroutine realloc4b(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
          enddo
       enddo
 !
-!$OMP PARALLEL DO PRIVATE(IFLD, I)
       do ifld=1,4
          do i=1,length_l
             fftbuf_out(locrm(i,iam),ifld,plevp,lat_l) = fftbuf_in(i,ifld,plevp,lat_l)
@@ -348,7 +343,6 @@ subroutine realloc4b(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
    enddo
 !
 ! Fill message buffer
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, BEGLAT_R, ENDLAT_R, BPOS, LAT_R, K, IFLD, I)
    do step=1,realloc4_steps
       procid = realloc4_proc(step)
       beglat_r = cut(1,procid)
@@ -391,7 +385,6 @@ subroutine realloc4b(nlon_fft_in, nlon_fft_out, fftbuf_in, fftbuf_out )
 !
 ! Copy out of message buffers
 !
-!$OMP PARALLEL DO PRIVATE (STEP, PROCID, LENGTH_R, BPOS, LAT_L, K, IFLD, I)
    do step=1,realloc4_steps
       procid = realloc4_proc(step)
       length_r = 2*numm(procid)

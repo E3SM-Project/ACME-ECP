@@ -267,22 +267,16 @@ contains
 
     if (len>red%len) call abortmp('ERROR: threadsafe reduction buffer too small')
 
-    !$OMP BARRIER
     ! the first and fastest thread performs initializing copy
-    !$OMP SINGLE
     red%buf(1:len) = redp(1:len)
     red%ctr = hybrid%ithr
-    !$OMP END SINGLE
 
-    !$OMP CRITICAL (CRITMAXINT)
     if (hybrid%ithr /= red%ctr) then
        do k=1,len
           red%buf(k)=MAX(red%buf(k),redp(k))
        enddo
     end if
-    !$OMP END CRITICAL (CRITMAXINT)
 #ifdef _MPI
-    !$OMP BARRIER
     if (hybrid%ithr==0) then
 
        call MPI_Allreduce(red%buf(1),redp,len,MPIinteger_t, &
@@ -291,7 +285,6 @@ contains
        red%buf(1:len)=redp(1:len)
     end if
 #endif
-    !$OMP BARRIER
   end subroutine pmax_mt_int_1d
 
 
@@ -314,24 +307,18 @@ contains
 
     if (len>red%len) call abortmp('ERROR: threadsafe reduction buffer too small')
 
-    !$OMP BARRIER
     ! the first and fastest thread performs initializing copy
-    !$OMP SINGLE
     red%buf(1:len) = redp(1:len)
     red%ctr = hybrid%ithr
-    !$OMP END SINGLE
 
     ! all other threads now do the max_op wrt the first thread's data
-    !$OMP CRITICAL (CRITMAX)
     if (hybrid%ithr /= red%ctr) then
        do k=1,len
           red%buf(k)=MAX(red%buf(k),redp(k))
        enddo
     end if
-    !$OMP END CRITICAL (CRITMAX)
 
 #ifdef _MPI
-    !$OMP BARRIER
     if (hybrid%ithr==0) then
 
        call MPI_Allreduce(red%buf(1),redp,len,MPIreal_t, &
@@ -340,7 +327,6 @@ contains
        red%buf(1:len)=redp(1:len)
     end if
 #endif
-    !$OMP BARRIER
   end subroutine pmax_mt_r_1d
 
 
@@ -359,23 +345,17 @@ contains
     ! Local variables
     integer ierr, k
 
-    !$OMP BARRIER
     ! the first and fastest thread performs initializing copy
-    !$OMP SINGLE
     red_max_index%buf(1:2) = redp(1:2)
     red_max_index%ctr = hybrid%ithr
-    !$OMP END SINGLE
 
     ! all threads now do the max_op wrt the first thread's data
-    !$OMP CRITICAL (CRITMAXIND)
     if (hybrid%ithr /= red_max_index%ctr) then
        if (red_max_index%buf(1) < redp(1)) then
           red_max_index%buf(1:2) = redp(1:2)
        endif
     end if
-    !$OMP END CRITICAL (CRITMAXIND)
 
-    !$OMP BARRIER
 #ifdef _MPI
     if (hybrid%ithr==0) then
        call MPI_Allreduce(red_max_index%buf(1),redp,1,MPI2real_t, &
@@ -384,7 +364,6 @@ contains
 #else
     redp(1:2) = red_max_index%buf(1:2)
 #endif
-    !$OMP BARRIER
 
   end subroutine ParallelMaxWithIndex
 
@@ -404,23 +383,17 @@ contains
     ! Local variables
     integer ierr, k
 
-    !$OMP BARRIER
     ! the first and fastest thread performs initializing copy
-    !$OMP SINGLE
     red_min_index%buf(1:2) = redp(1:2)
     red_min_index%ctr = hybrid%ithr
-    !$OMP END SINGLE
 
     ! all threads now do the max_op wrt the first thread's data
-    !$OMP CRITICAL (CRITMAXIND)
     if (hybrid%ithr /= red_min_index%ctr) then
        if (red_min_index%buf(1) > redp(1)) then
           red_min_index%buf(1:2) = redp(1:2)
        endif
     end if
-    !$OMP END CRITICAL (CRITMAXIND)
 
-    !$OMP BARRIER
 #ifdef _MPI
     if (hybrid%ithr==0) then
        call MPI_Allreduce(red_min_index%buf(1),redp,1,MPI2real_t, &
@@ -429,7 +402,6 @@ contains
 #else
     redp(1:2) = red_min_index%buf(1:2)
 #endif
-    !$OMP BARRIER
 
   end subroutine ParallelMinWithIndex
 
@@ -458,23 +430,17 @@ contains
 
     if (len>red%len) call abortmp('ERROR: threadsafe reduction buffer too small')
 
-    !$OMP BARRIER
     ! the first and fastest thread performs initializing copy
-    !$OMP SINGLE
     red%buf(1:len) = redp(1:len)
     red%ctr = hybrid%ithr
-    !$OMP END SINGLE
 
-    !$OMP CRITICAL (CRITMIN)
     if (hybrid%ithr /= red%ctr) then
        do k=1,len
           red%buf(k)=MIN(red%buf(k),redp(k))
        enddo
     end if
-    !$OMP END CRITICAL (CRITMIN)
 
 #ifdef _MPI
-    !$OMP BARRIER
     if (hybrid%ithr==0) then
 
        call MPI_Allreduce(red%buf(1),redp,len,MPIreal_t, &
@@ -483,7 +449,6 @@ contains
        red%buf(1:len)=redp(1:len)
     end if
 #endif
-    !$OMP BARRIER
   end subroutine pmin_mt_r_1d
 
 

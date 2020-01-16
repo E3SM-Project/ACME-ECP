@@ -232,7 +232,6 @@ end subroutine prescribed_ozone_readnl
     units_str = trim(to_lower(trim(fields(1)%units(:GLC(fields(1)%units)))))
 
     ! set the correct units and invoke history outfld
-!$OMP PARALLEL DO PRIVATE (C, NCOL, OUTDATA, TO_MMR, TMPPTR, PBUF_CHNK)
     do c = begchunk,endchunk
        ncol = state(c)%ncol
      

@@ -277,7 +277,6 @@ contains
     ! the associated filter updates, too (otherwise we get a carbon balance error)
     ! ==================================================================================
 
-    !$OMP PARALLEL DO PRIVATE (nc,bounds_clump)
     do nc = 1,nclumps
        call get_clump_bounds(nc, bounds_clump)
 
@@ -304,13 +303,11 @@ contains
 
        call t_stopf("decomp_vert")
     end do
-    !$OMP END PARALLEL DO
 
     ! ============================================================================
     ! Zero fluxes for transient land cover
     ! ============================================================================
 
-    !$OMP PARALLEL DO PRIVATE (nc,bounds_clump)
     do nc = 1,nclumps
        call get_clump_bounds(nc, bounds_clump)
 
@@ -380,7 +377,6 @@ contains
        end if
 
     end do
-    !$OMP END PARALLEL DO
 
     ! ============================================================================
     ! Update subgrid weights with dynamic landcover (prescribed transient patches,
@@ -412,7 +408,6 @@ contains
           else
              call t_startf('cnbalchk_at_grid')
 
-             !$OMP PARALLEL DO PRIVATE (nc,bounds_clump)
              do nc = 1,nclumps
                 call get_clump_bounds(nc, bounds_clump)
 
@@ -447,7 +442,6 @@ contains
                      phosphorusstate_vars, phosphorusflux_vars)
 
              end do
-             !$OMP END PARALLEL DO
              call t_stopf('cnbalchk_at_grid')
 
           end if
@@ -469,7 +463,6 @@ contains
     ! changes due to dynamic area adjustments can break column-level conservation
     ! ============================================================================
 
-    !$OMP PARALLEL DO PRIVATE (nc,bounds_clump)
     do nc = 1,nclumps
        call get_clump_bounds(nc, bounds_clump)
 
@@ -522,7 +515,6 @@ contains
        endif
 
     end do
-    !$OMP END PARALLEL DO
 
     ! ============================================================================
     ! Update dynamic N deposition field, on albedo timestep
@@ -562,7 +554,6 @@ contains
     ! snow accumulation exceeds 10 mm.
     ! ============================================================================
 
-    !$OMP PARALLEL DO PRIVATE (nc,l,c, bounds_clump)
     do nc = 1,nclumps
        call get_clump_bounds(nc, bounds_clump)
 
@@ -1329,7 +1320,6 @@ contains
        end if
 
     end do
-    !$OMP END PARALLEL DO
 
     ! ============================================================================
     ! Determine gridcell averaged properties to send to atm
@@ -1353,7 +1343,6 @@ contains
 
     if (create_glacier_mec_landunit) then
        call t_startf('lnd2glc')
-       !$OMP PARALLEL DO PRIVATE (nc, bounds_clump)
        do nc = 1,nclumps
           call get_clump_bounds(nc, bounds_clump)
           call lnd2glc_vars%update_lnd2glc(bounds_clump,       &
@@ -1361,7 +1350,6 @@ contains
                temperature_vars, waterflux_vars,               &
                init=.false.)           
        end do
-       !$OMP END PARALLEL DO
        call t_stopf('lnd2glc')
     end if
 

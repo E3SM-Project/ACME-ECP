@@ -1558,14 +1558,12 @@ contains
         nstep=nstep, nsubstep=nsubstep, nretry=nretry)
       if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_Get failed.')
 
-!$OMP CRITICAL
       step_max_nsubstep = max(step_max_nsubstep, real(max_nsubstep, f))
       step_max_nretry   = max(step_max_nretry, max_nretry)
     
       step_nstep        = step_nstep    + nstep
       step_nsubstep     = step_nsubstep + real(nsubstep, f)
       step_nretry       = step_nretry   + nretry
-!$OMP END CRITICAL
     end if
      
     ! The CARMASTATE object is no longer needed.

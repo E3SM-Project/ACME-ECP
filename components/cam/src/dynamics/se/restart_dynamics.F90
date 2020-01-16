@@ -162,7 +162,6 @@ CONTAINS
     endif
 #endif
 
-!$omp parallel do private(ie, j, i)
     do ie=1,nelemd
        do j=1,np
           do i=1,np
@@ -172,7 +171,6 @@ CONTAINS
     end do
     call PIO_Write_Darray(File,Phisdesc,iodesc2d, var2d,ierr)
 
-!$omp parallel do private(ie, k, j, i)
     do ie=1,nelemd
        do k=1,nlev
           do j=1,np
@@ -190,7 +188,6 @@ CONTAINS
 
     ierr = pio_put_var(File,timedesc%varid, (/int(t)/), time)
 
-!$omp parallel do private(ie, j, i)
     do ie=1,nelemd
        do j=1,np
           do i=1,np
@@ -202,7 +199,6 @@ CONTAINS
     call PIO_Write_Darray(File,PSdesc,iodesc2d, var2d,ierr)
 
     ! Write the U component of Velocity
-!$omp parallel do private(ie, k, j, i)
     do ie=1,nelemd
        do k=1,nlev
           do j=1,np
@@ -219,7 +215,6 @@ CONTAINS
 
 
        ! Write the V component of Velocity
-!$omp parallel do private(ie, k, j, i)
     do ie=1,nelemd
        do k=1,nlev
           do j=1,np
@@ -234,7 +229,6 @@ CONTAINS
     call PIO_Write_Darray(File,Vdesc,iodesc3d,var3d,ierr)
 
     ! Write T
-!$omp parallel do private(ie, k, j, i)
     do ie=1,nelemd
        do k=1,nlev
           do j=1,np
@@ -255,7 +249,6 @@ CONTAINS
 #ifdef MODEL_THETA_L    
     if( .not. theta_hydrostatic_mode )then
     ! Write W
-!$omp parallel do private(ie, k, j, i)
        do ie=1,nelemd
           do k=1,nlevp
              do j=1,np
@@ -269,7 +262,6 @@ CONTAINS
        call PIO_Write_Darray(File,Wdesc,iodesc3dp,var3dp,ierr)
 
     ! Write Phi
-!$omp parallel do private(ie, k, j, i)
        do ie=1,nelemd
           do k=1,nlevp
              do j=1,np
@@ -288,7 +280,6 @@ CONTAINS
     do q=1,qsize_d
 
        ! Write Q
-!$omp parallel do private(ie, k, j, i)
        do ie=1,nelemd
           do k=1,nlev
              do j=1,np
@@ -302,7 +293,6 @@ CONTAINS
        call PIO_Write_Darray(File,Qdesc(q),iodesc3d,var3d,ierr)
 
        ! Write Q
-!$omp parallel do private(ie, k, j, i)
        do ie=1,nelemd
           do k=1,nlev
              do j=1,np

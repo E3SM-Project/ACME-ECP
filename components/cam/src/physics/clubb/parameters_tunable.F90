@@ -116,18 +116,12 @@ module parameters_tunable
     C14     = 1.000000_core_rknd,    & ! Constant for u'^2 and v'^2 terms    [-]
     C15     = 0.4_core_rknd,         & ! Coefficient for the wp3_bp2 term    [-]
     C_wp2_splat = 0.0_core_rknd            ! Coefficient for gustiness near ground [-]
-!$omp threadprivate(C1, C1b, C1c, C2, C2b, C2c, &
-!$omp   C2rt, C2thl, C2rtthl, C4, C5, C6rt, C6rtb, C6rtc, &
-!$omp   C6thl, C6thlb, C6thlc, &
-!$omp   C7, C7b, C7c, C8, C8b, C10, C11, C11b, C11c, C12, &
-!$omp   C13, C14, C15, C_wp2_splat)
 
   real( kind = core_rknd ), public ::    &
     C6rt_Lscale0  = 14.0_core_rknd,      & ! Damp C6rt as a fnct. of Lscale  [-]
     C6thl_Lscale0 = 14.0_core_rknd,      & ! Damp C6thl as a fnct. of Lscale [-]
     C7_Lscale0    = 0.8500000_core_rknd, & ! Damp C7 as a fnct. of Lscale    [-]
     wpxp_L_thresh = huge(1.0_core_rknd)    ! Lscale threshold: damp C6 & C7  [m]
-!$omp threadprivate(C6rt_Lscale0, C6thl_Lscale0, C7_Lscale0, wpxp_L_thresh)
 
   ! Note: DD 1987 is Duynkerke & Driedonks (1987).
   real( kind = core_rknd ), public :: & 
@@ -156,19 +150,14 @@ module parameters_tunable
     taumin      = 90.00000_core_rknd, & ! Min. allow. value: time-scale tau  [s]
     taumax      = 3600.000_core_rknd, & ! Max. allow. value: time-scale tau  [s]
     lmin        = 20.00000_core_rknd    ! Min. value for the length scale    [m]
-!$omp threadprivate(c_K, c_K1, c_K2, c_K6, &
-!$omp   c_K8, c_K9, c_K_hm, c_K_hmb, K_hm_min_coef, gamma_coef, gamma_coefb, gamma_coefc, &
-!$omp   mu, mult_coef, taumin, taumax, lmin)
 
   real( kind = core_rknd ), public :: &
     Lscale_mu_coef   = 2.0_core_rknd, & ! Coef perturb mu: av calc Lscale    [-]
     Lscale_pert_coef = 0.1_core_rknd    ! Coef pert thlm/rtm: av calc Lscale [-]
-!$omp threadprivate(Lscale_mu_coef, Lscale_pert_coef)
 
   real( kind = core_rknd ), public :: &
     alpha_corr = 0.15_core_rknd   ! Coef. for the corr. diagnosis algorithm  [-]
 
-!$omp threadprivate(alpha_corr)
 
   real( kind = core_rknd ), private :: & 
     nu1   = 20.00000_core_rknd, & ! Bg. Coef. Eddy Diffusion: wp2        [m^2/s]
@@ -178,7 +167,6 @@ module parameters_tunable
     nu9   = 20.00000_core_rknd, & ! Bg. Coef. Eddy Diffusion: up2/vp2    [m^2/s]
     nu10  = 0.000000_core_rknd, & ! Bg. Coef. Eddy Diffusion: edsclrm    [m^2/s]
     nu_hm = 1.500000_core_rknd    ! Bg. Coef. Eddy Diffusion: hmm        [m^2/s]
-!$omp threadprivate(nu1, nu2, nu6, nu8, nu9, nu10, nu_hm)
 
 
   real( kind = core_rknd ), public, allocatable, dimension(:) :: & 
@@ -190,8 +178,6 @@ module parameters_tunable
     nu10_vert_res_dep,  & ! Background Coef. of Eddy Diffusion: edsclrm  [m^2/s]
     nu_hm_vert_res_dep    ! Background Coef. of Eddy Diffusion: hydromet [m^2/s]
 
-!$omp threadprivate(nu1_vert_res_dep, nu2_vert_res_dep, nu6_vert_res_dep, &
-!$omp   nu8_vert_res_dep, nu9_vert_res_dep, nu10_vert_res_dep, nu_hm_vert_res_dep)
 
   ! Vince Larson added a constant to set plume widths for theta_l and rt
   ! beta should vary between 0 and 3.
@@ -199,26 +185,21 @@ module parameters_tunable
   real( kind = core_rknd ), public :: &
     beta = 2.400000_core_rknd    ! Beta coefficient     [-]
 
-!$omp threadprivate(beta)
 
   real( kind = core_rknd ), private :: &
     lmin_coef = 0.100000_core_rknd    ! Coefficient of lmin    [-]
 
-!$omp threadprivate(lmin_coef)
 
 
   real( kind = core_rknd ), public :: &
     Skw_max_mag = 4.5_core_rknd     ! Max magnitude of skewness [-]
 
-!$omp threadprivate(Skw_max_mag)
 
   real( kind = core_rknd ), public ::  &   
     C_invrs_tau_bkgnd = 1.0_core_rknd   ,&   ! 
     C_invrs_tau_sfc   = 0.1_core_rknd ,&   !
     C_invrs_tau_shear = 0.02_core_rknd,&   !
     C_invrs_tau_N2    = 0.1_core_rknd      ! 
-!$omp threadprivate(C_invrs_tau_bkgnd,C_invrs_tau_sfc)
-!$omp threadprivate(C_invrs_tau_shear,C_invrs_tau_N2)  
 
   ! Parameters for the new PDF (w, rt, and theta-l).
   !
@@ -264,10 +245,6 @@ module parameters_tunable
     ! Coefficient for the spread between the PDF component means of thl.
     coef_spread_DG_means_thl = 0.8_core_rknd
 
-!$omp threadprivate( slope_coef_spread_DG_means_w, &
-!$omp                pdf_component_stdev_factor_w, &
-!$omp                coef_spread_DG_means_rt,      &
-!$omp                coef_spread_DG_means_thl      )
 
   ! Parameters for the hydrometeor portion of the PDF.
   !
@@ -283,7 +260,6 @@ module parameters_tunable
     omicron        = 0.8_core_rknd, & ! Hydromet width/spread-of-means param [-]
     zeta_vrnce_rat = 0.0_core_rknd    ! Ratio sigma^2/mu^2 comp. 1 / comp. 2 [-]
 
-!$omp threadprivate( omicron, zeta_vrnce_rat )
 
   real( kind = core_rknd ), public :: &
     ! ratio mixt_frac*precip_frac_1/precip_frac (precip_frac_calc_type=2)    [-]
@@ -291,7 +267,6 @@ module parameters_tunable
     ! Intensity of stability correction applied to C1 and C6 [-]
     lambda0_stability_coef = 0.03_core_rknd
 
-!$omp threadprivate( upsilon_precip_frac_rat, lambda0_stability_coef)
 
   ! Factor to decrease sensitivity in the denominator of Skw calculation
   real( kind = core_rknd ), public :: &
@@ -305,31 +280,26 @@ module parameters_tunable
     Skw_denom_coef = 4.0_core_rknd
 #endif
 
-!$omp threadprivate( Skw_denom_coef )
 
   ! Momentum coefficient of Kh_zm
   real( kind = core_rknd ), public :: &
     c_K10 = 0.6_core_rknd
 
-!$omp threadprivate( c_K10 )
 
   ! Thermodynamic coefficient of Kh_zm
   real( kind = core_rknd ), public :: &
     c_K10h = 1.0_core_rknd
 
-!$omp threadprivate( c_K10h )
 
   real( kind = core_rknd ), public :: &
     thlp2_rad_coef = 1.0_core_rknd, &            ! Coefficient of thlp2_rad                   [-]
     thlp2_rad_cloud_frac_thresh = 0.1_core_rknd ! Minimum cloud fraction for computation
                                                  ! of thlp2_rad                               [-]
 
-!$omp threadprivate( thlp2_rad_coef, thlp2_rad_cloud_frac_thresh )
 
   real( kind = core_rknd ), public :: &
     up2_vp2_factor = 2.0_core_rknd               ! Coefficients of up2 and vp2    [-]
 
-!$omp threadprivate( up2_vp2_factor )
 
   ! used in adj_low_res_nu. If .true., avg_deltaz = deltaz
 #ifdef GFDL
@@ -338,7 +308,6 @@ module parameters_tunable
   logical, public :: l_prescribed_avg_deltaz = .false.
 #endif
 
-!$omp threadprivate(l_prescribed_avg_deltaz)
 
   ! Since we lack a devious way to do this just once, this namelist
   ! must be changed as well when a new parameter is added.

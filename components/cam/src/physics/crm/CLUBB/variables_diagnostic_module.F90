@@ -41,19 +41,15 @@ module variables_diagnostic_module
 !!! Important Note !!!
 ! Do not indent the omp comments, they need to be in the first 4 columns
 !!! End Important Note !!!
-!$omp threadprivate(sigma_sqd_w_zt, Skw_zm, Skw_zt, ug, vg, &
-!$omp   um_ref, vm_ref, thlm_ref, rtm_ref, thvm )
 
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     rsat ! Saturation mixing ratio  ! Brian
 
-!$omp threadprivate(rsat)
 
   type(pdf_parameter), allocatable, dimension(:), target, public :: &
     pdf_params_zm, & ! pdf_params on momentum levels  [units vary]
     pdf_params_zm_frz !used when l_use_ice_latent = .true.
 
-!$omp threadprivate(pdf_params_zm)
 
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     Frad,         & ! Radiative flux (momentum point)   [W/m^2]
@@ -63,7 +59,6 @@ module variables_diagnostic_module
     Frad_SW_down, & ! SW radiative downwelling flux     [W/m^2]
     Frad_LW_down ! LW radiative downwelling flux        [W/m^2]
 
-!$omp threadprivate(Frad, radht, Frad_SW_up, Frad_SW_down, Frad_LW_up, Frad_LW_down)
 
 ! Second order moments
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
@@ -71,7 +66,6 @@ module variables_diagnostic_module
     rtprcp,   & ! rt'rc'               [kg^2/kg^2]
     rcp2        ! rc'^2                [kg^2/kg^2]
 
-!$omp threadprivate(thlprcp, rtprcp, rcp2)
 
 ! Third order moments
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
@@ -83,14 +77,11 @@ module variables_diagnostic_module
     wp2rcp,    & ! w'^2 rc'    [m^2 kg/kg s^2]
     wp3_zm       ! w'^3        [m^3/s^3]
 
-!$omp threadprivate(wpthlp2, wp2thlp, wprtp2, wp2rtp, &
-!$omp   wprtpthlp, wp2rcp, wp3_zm )
 
 ! Fourth order moments
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     wp4 ! w'^4      [m^4/s^4]
 
-!$omp threadprivate(wp4)
 
 ! Buoyancy related moments
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
@@ -99,47 +90,39 @@ module variables_diagnostic_module
     wpthvp,   & ! w'thv'      [K m/s]
     wp2thvp     ! w'^2thv'    [K m^2/s^2]
 
-!$omp threadprivate(rtpthvp, thlpthvp, wpthvp, wp2thvp)
 
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: &
     Kh_zt, & ! Eddy diffusivity coefficient on thermodynamic levels   [m^2/s]
     Kh_zm    ! Eddy diffusivity coefficient on momentum levels        [m^2/s]
 
-!$omp threadprivate(Kh_zt, Kh_zm)
 
 ! Mixing lengths
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     Lscale, Lscale_up, Lscale_down ! [m]
 
-!$omp threadprivate(Lscale, Lscale_up, Lscale_down)
 
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     em,     & ! Turbulent Kinetic Energy (TKE)                        [m^2/s^2]
     tau_zm, & ! Eddy dissipation time scale on momentum levels        [s]
     tau_zt    ! Eddy dissipation time scale on thermodynamic levels   [s]
 
-!$omp threadprivate(em, tau_zm, tau_zt)
 
 ! hydrometeors variable array
   real( kind = core_rknd ), allocatable, dimension(:,:), public :: hydromet
-!$omp threadprivate(hydromet)
 
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     Ncnm     ! Cloud nuclei number concentration       [num/m^3]
-!$omp threadprivate(Ncnm)
 
 
 ! Surface data
   real( kind = core_rknd ), public  :: ustar ! Average value of friction velocity [m/s]
 
   real( kind = core_rknd ), public :: soil_heat_flux    ! Soil Heat Flux [W/m^2]
-!$omp threadprivate(ustar, soil_heat_flux)
 
 ! Passive scalar variables
 
   real( kind = core_rknd ), target, allocatable, dimension(:,:), public :: & 
     wpedsclrp   ! w'edsclr'
-!$omp threadprivate(wpedsclrp)
 
   real( kind = core_rknd ), target, allocatable, dimension(:,:), public :: & 
     sclrpthvp,   & ! sclr'th_v'
@@ -149,8 +132,6 @@ module variables_diagnostic_module
     wpsclrprtp,  & ! w'sclr'rt'
     wpsclrpthlp    ! w'sclr'thl'
 
-!$omp threadprivate(sclrpthvp, sclrprcp, &
-!$omp   wp2sclrp, wpsclrp2, wpsclrprtp, wpsclrpthlp )
 
 ! Interpolated variables for tuning
 !
@@ -166,9 +147,6 @@ module variables_diagnostic_module
     upwp_zt,    & ! u'w' on thermo. grid     [m^2/s^2]
     vpwp_zt       ! v'w' on thermo. grid     [m^2/s^2]
 
-!$omp threadprivate(wp2_zt, thlp2_zt, wpthlp_zt, wprtp_zt, &
-!$omp   rtp2_zt, rtpthlp_zt, &
-!$omp   up2_zt, vp2_zt, upwp_zt, vpwp_zt)
 
 
 ! Latin Hypercube arrays.  Vince Larson 22 May 2005
@@ -181,21 +159,17 @@ module variables_diagnostic_module
     AKm_rcm,   & ! Kessler ac based on rcm             [kg/kg/s]
     AKm_rcc      ! Kessler ac based on rcm/cloud_frac  [kg/kg/s]
 
-!$omp threadprivate(lh_AKm, AKm, AKstd, AKstd_cld, lh_rcm_avg, AKm_rcm, &
-!$omp   AKm_rcc)
 
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     Skw_velocity, & ! Skewness velocity    [m/s]
     a3_coef,      & ! The a3 coefficient from CLUBB eqns                [-]
     a3_coef_zt      ! The a3 coefficient interpolated to the zt grid    [-]
 
-!$omp threadprivate(Skw_velocity, a3_coef, a3_coef_zt)
 
   real( kind = core_rknd ), target, allocatable, dimension(:), public :: & 
     wp3_on_wp2,   &  ! w'^3 / w'^2 on the zm grid [m/s]
     wp3_on_wp2_zt    ! w'^3 / w'^2 on the zt grid [m/s]
 
-!$omp threadprivate(wp3_on_wp2, wp3_on_wp2_zt)
 
   contains
 

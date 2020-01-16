@@ -73,9 +73,6 @@
       it = itot / nxu
       jp = nxu * ( jlast - jfirst + 1 )
 
-!$omp  parallel do        &
-!$omp  default(shared)    &
-!$omp  private(ixj, i1, i2, i, j, k, pek, lnp, pk2)
 
 ! WS 99.07.27 : Limited region to jfirst:jlast
 

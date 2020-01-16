@@ -76,7 +76,6 @@ module gravity_waves_sources
 
       psurf_ref = hypi(plev+1)
 
-      !$omp parallel do private (i,j,k,pexf)
       do j = beglatxy, endlatxy
          do k = 1, plev
             do i = beglonxy, endlonxy
@@ -96,7 +95,6 @@ module gravity_waves_sources
       call ghost_array( u3, ug, grid )
       call ghost_array( v3, vg, grid )
 
-      !$omp parallel do private (i,j,k)
       do k=1, plev
          do i=beglonxy, endlonxy
             do j=beglatxy, endlatxy
@@ -119,7 +117,6 @@ module gravity_waves_sources
 
       !++rrg use 1.e-3 floor on cosine terms in the denominator of frontgf
 
-      !$omp parallel do private (i,j,k,im,ip)
       do k=1, plev
          do j=beglatxy, endlatxy
             do i=beglonxy, endlonxy
@@ -143,7 +140,6 @@ module gravity_waves_sources
          end do
       end do
 
-      !$omp parallel do private (i,j,k, tglat)
       do j=beglatxy, endlatxy
 
          tglat = grid%sinp(j) / (grid%cosp(j)+1.e-3_r8)
@@ -163,7 +159,6 @@ module gravity_waves_sources
 
       !--rrg use 1.e-3 floor on cosine terms in the denominator of frontgf
 
-      !$omp parallel do private (i,j,k)
       do j=beglatxy, endlatxy
          do k=1, plev
             do i=beglonxy, endlonxy
@@ -264,7 +259,6 @@ module gravity_waves_sources
 #endif
 
       else
-!$omp parallel do private(j, k)
          do k = 1,km
             do j=jfirstxy,jlastxy
                east(k,j) = x(1, k,j)

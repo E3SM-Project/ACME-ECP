@@ -392,7 +392,6 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out )
             ! FQ =  adjusted Q returned by forcing,  at time  t+dt
             ! tendency = (FQ*dp - Q*dp) / dt 
             ! Convert this to a tendency on Qdp:  CAM physics did not change dp3d
-!$omp parallel do private(k, j, i)
             do k=1,nlev
                do j=1,np
                   do i=1,np
