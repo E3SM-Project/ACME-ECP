@@ -3,7 +3,7 @@
 #---------------------------------------------------------------------------------------------------
 import os
 import subprocess as sp
-newcase,config,build,clean,submit,continue_run = False,False,False,False,False,False
+newcase,config,build,clean,submit,continue_run,interactive = False,False,False,False,False,False,False
 
 project = 'INSERT'
 
@@ -11,12 +11,14 @@ project = 'INSERT'
 case_dir  = '/home1/00993/tg802402/cases-e3sm-ecp/'
 src_dir = '/home1/00993/tg802402/repositories/ACME-ECP/'
 
-# clean        = True
-newcase      = True
-config       = True
-build        = True
-submit       = False # pritch
+#clean        = True
+newcase      = False
+config       = False
+build        = False
+submit       = True
+interactive  = True # pritch
 # continue_run = True
+walltime =  '2:00' 
 
 stop_opt,stop_n,resub = 'ndays',1,0
 arch           = 'KNL' #hardwired as only option for now, pritch
@@ -29,9 +31,12 @@ crm_dx         = 1000
 # pritch tailoring these settings; 
 # ne4pg2 means --> 16 x 6 x 4 = 384 CRMs (from Walter)
 # If I assign 1 task to each CRM, seems like it should fit on 6 KNL nodes exactly. 
-num_nodes      = 6              # 
-tasks_per_node = 64              # KNL=>64 / SKX=>48
-pcols          = 1             
+
+# bypassing -- let pcols go to default, use pecount = 96 as Walter does.
+pecount = 96
+#num_nodes      = 6              # 
+#tasks_per_node = 64              # KNL=>64 / SKX=>48
+#pcols          = 1             
 # pritch TODO add SKX vs KNL arch following olcf template.
 
 if crm_nx==1 : 
@@ -64,7 +69,8 @@ if newcase :
    cmd = cmd + ' -compset '+compset+' -res '+grid
 #   if arch=='CPU' : cmd = cmd + ' -mach summit-cpu -compiler pgi    -pecount '+str(num_nodes*84)+'x1 '
 #   if arch=='GPU' : cmd = cmd + ' -mach summit     -compiler pgigpu -pecount '+str(num_nodes*36)+'x1 '
-   cmd = cmd + ' -mach stampede2-knl -pecount '+str(num_nodes*tasks_per_node)+'x1 '
+#   cmd = cmd + ' -mach stampede2-knl -pecount '+str(num_nodes*tasks_per_node)+'x1 '
+   cmd = cmd + ' -mach stampede2-knl -pecount '+str(pecount)
    cmd = cmd + ' --input-dir /scratch/00993/tg802402/E3SM_inputdata --output-root /scratch/00993/tg802402' #pritch @ stampede2
    os.system(cmd)
 
@@ -97,13 +103,16 @@ if config :
    #----------------------------------------------------------------------------
    #----------------------------------------------------------------------------
    # Change pcols for GPU runs
-   if arch=='GPU' : os.system('./xmlchange --append -file env_build.xml -id CAM_CONFIG_OPTS  -val  \" -pcols '+str(pcols)+' \" ' )
+#   if arch=='GPU' : os.system('./xmlchange --append -file env_build.xml -id CAM_CONFIG_OPTS  -val  \" -pcols '+str(pcols)+' \" ' )
+   # pritch: override default pcols = 16 to get to 1 CRM per CPU limit.
+#   os.system('./xmlchange --append -file env_build.xml -id CAM_CONFIG_OPTS  -val  \" -pcols '+str(pcols)+' \" ' )
 
    # disable threading for SP
    os.system('./xmlchange -file env_mach_pes.xml -id NTHRDS_ATM -val 1 ')
 
    # reduce task count for the non-atmos components
-   ntask_atm = num_nodes*tasks_per_node
+   #ntask_atm = num_nodes*tasks_per_node
+   ntask_atm = pecount
    os.system('./xmlchange -file env_mach_pes.xml NTASKS_OCN='+str(ntask_atm/4)+' ')
    os.system('./xmlchange -file env_mach_pes.xml NTASKS_ICE='+str(ntask_atm/4)+' ')
    os.system('./xmlchange -file env_mach_pes.xml NTASKS_LND='+str(ntask_atm/4)+' ')
@@ -114,6 +123,8 @@ if config :
 
    if clean : os.system('./case.setup --clean')
    os.system('./case.setup --reset')
+
+   
 
 #---------------------------------------------------------------------------------------------------
 # Build
@@ -127,7 +138,7 @@ if build :
 #---------------------------------------------------------------------------------------------------
 if submit : 
    # Change inputdata from default due to permissions issue
-   os.system('./xmlchange -file env_run.xml  DIN_LOC_ROOT=/gpfs/alpine/scratch/hannah6/cli115/inputdata ')
+   os.system('./xmlchange -file env_run.xml  DIN_LOC_ROOT=/scratch/00993/tg802402/E3SM_inputdata ')
    
    #-------------------------------------------------------
    # First query some stuff about the case
@@ -149,6 +160,7 @@ if submit :
    #------------------------------
    file.write(' nhtfrq    = 0,-3 \n') 
    file.write(' mfilt     = 1,8 \n')     
+
    # if npg>0 : file.write(" fincl1    = 'DYN_T','DYN_Q','DYN_U','DYN_OMEGA'")
    file.write(" fincl2    = 'PS','TS'")
    file.write(             ",'PRECT','TMQ'")
@@ -204,6 +216,8 @@ if submit :
    #------------------------------
    # file.write(' srf_flux_avg = 1 \n')              # Sfc flux smoothing (for SP stability)
 
+   num_dyn = ne*ne*6 # dycore can't run on more PEs than there are spectral elements (Walter).
+   file.write(' dyn_npes = '+str(num_dyn)+' \n')
    file.write(' se_fv_phys_remap_alg = 1 \n')
 
    # mean-state acceleration
@@ -244,7 +258,11 @@ if submit :
    #-------------------------------------------------------
    # Submit the run
    #-------------------------------------------------------
-   os.system('./case.submit')
+   if interactive :
+     os.system('./case.submit --no-batch')
+   else:
+     os.system('./case.submit')
+
 
 #---------------------------------------------------------------------------------------------------
 # Done!
