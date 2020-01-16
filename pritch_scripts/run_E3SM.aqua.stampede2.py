@@ -16,7 +16,7 @@ newcase      = False
 config       = False
 build        = False
 submit       = True
-interactive  = True # pritch
+interactive  = True
 # continue_run = True
 walltime =  '2:00' 
 
@@ -32,10 +32,7 @@ crm_dx         = 1000
 # ne4pg2 means --> 16 x 6 x 4 = 384 CRMs (from Walter)
 # If I assign 1 task to each CRM, seems like it should fit on 6 KNL nodes exactly. 
 
-# bypassing -- let pcols go to default, use pecount = 96 as Walter does.
-pecount = 96
-#num_nodes      = 6              # 
-#tasks_per_node = 64              # KNL=>64 / SKX=>48
+pecount = 384
 #pcols          = 1             
 # pritch TODO add SKX vs KNL arch following olcf template.
 
@@ -47,7 +44,7 @@ else:
    phys = f'SP1_{crm_nx}x{crm_ny}_{crm_dx}m'
 res  = f'ne{ne}' if npg==0 else  f'ne{ne}pg{npg}'
 
-case = '.'.join(['SPE3SM-smoketest01',arch,res,compset,phys])
+case = '.'.join(['SPE3SM-smoketest01noload',arch,res,compset,phys,str(pecount)])
 
 # case = case+'.debug-on'
 
@@ -67,9 +64,6 @@ if newcase :
    grid = res+'_'+res
    cmd = src_dir+'cime/scripts/create_newcase -case '+case_dir+case
    cmd = cmd + ' -compset '+compset+' -res '+grid
-#   if arch=='CPU' : cmd = cmd + ' -mach summit-cpu -compiler pgi    -pecount '+str(num_nodes*84)+'x1 '
-#   if arch=='GPU' : cmd = cmd + ' -mach summit     -compiler pgigpu -pecount '+str(num_nodes*36)+'x1 '
-#   cmd = cmd + ' -mach stampede2-knl -pecount '+str(num_nodes*tasks_per_node)+'x1 '
    cmd = cmd + ' -mach stampede2-knl -pecount '+str(pecount)
    cmd = cmd + ' --input-dir /scratch/00993/tg802402/E3SM_inputdata --output-root /scratch/00993/tg802402' #pritch @ stampede2
    os.system(cmd)
@@ -113,6 +107,7 @@ if config :
    # reduce task count for the non-atmos components
    #ntask_atm = num_nodes*tasks_per_node
    ntask_atm = pecount
+#   ntask_other = 24
    os.system('./xmlchange -file env_mach_pes.xml NTASKS_OCN='+str(ntask_atm/4)+' ')
    os.system('./xmlchange -file env_mach_pes.xml NTASKS_ICE='+str(ntask_atm/4)+' ')
    os.system('./xmlchange -file env_mach_pes.xml NTASKS_LND='+str(ntask_atm/4)+' ')
