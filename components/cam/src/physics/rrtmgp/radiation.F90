@@ -1469,7 +1469,6 @@ contains
                ! Loop over CRM columns; call routines designed to work with
                ! pbuf/state over ncol columns for each CRM column index, and pack
                ! into arrays dimensioned ncol_tot = ncol * ncrms
-               j = 1
                do iy = 1,crm_ny_rad
                   do ix = 1,crm_nx_rad
 
@@ -1572,6 +1571,7 @@ contains
                      ! Pack data
                      call t_startf('rad_pack_columns')
                      do ic = 1,ncol
+                        j = _IDX1D(ic,ix,iy,ncol,crm_nx_rad,crm_ny_rad)
                         coszrs_all(j) = coszrs(ic)
                         albedo_direct_all(:,j) = albedo_direct_col(:,ic)
                         albedo_diffuse_all(:,j) = albedo_diffuse_col(:,ic)
@@ -1588,7 +1588,6 @@ contains
                         aer_optics_sw_all%ssa(j,:,:) = aer_optics_sw_col%ssa(ic,:,:)
                         aer_optics_sw_all%g  (j,:,:) = aer_optics_sw_col%g  (ic,:,:)
                         vmr_all(:,j,:) = vmr_col(:,ic,:)
-                        j = j + 1
                      end do  ! ic = 1,ncol
                      call t_stopf('rad_pack_columns')
 
@@ -1669,16 +1668,15 @@ contains
 
                ! Map to CRM columns
                if (use_SPCAM) then
-                  j = 1
                   do iy = 1,crm_ny_rad
                      do ix = 1,crm_nx_rad
                         do ic = 1,ncol
                            do iz = 1,crm_nz
+                              j = _IDX1D(ic,ix,iy,ncol,crm_nx_rad,crm_ny_rad)
                               ilev = pver - iz + 1
                               crm_qrs (ic,ix,iy,iz) = qrs_all(j,ilev)
                               crm_qrsc(ic,ix,iy,iz) = qrsc_all(j,ilev)
                            end do
-                           j = j + 1
                         end do
                      end do
                   end do
@@ -1760,16 +1758,15 @@ contains
 
                ! Map to CRM columns
                if (use_SPCAM) then
-                  j = 1
                   do iy = 1,crm_ny_rad
                      do ix = 1,crm_nx_rad
                         do ic = 1,ncol
                            do iz = 1,crm_nz
                               ilev = pver - iz + 1
+                              j = _IDX1D(ic,ix,iy,ncol,crm_nx_rad,crm_ny_rad)
                               crm_qrl(ic,ix,iy,iz) = qrl_all(j,ilev)
                               crm_qrlc(ic,ix,iy,iz) = qrlc_all(j,ilev)
                            end do
-                           j = j + 1
                         end do
                      end do
                   end do
@@ -2109,12 +2106,11 @@ contains
       call assert(size(array_packed,1) == ncol_tot, 'size(array_packed,1) /= ncol_tot')
       call assert(size(array_packed,2) == size(array_avg,2), 'size(array_packed,2) /= size(array_avg,2)')
       do iz = 1,size(array_packed,2)
-         j = 1
          do iy = 1,crm_ny_rad
             do ix = 1,crm_nx_rad
                do ic = 1,ncol
+                  j = _IDX1D(ic,ix,iy,ncol,crm_nx_rad,crm_ny_rad)
                   array_avg(ic,iz) = array_avg(ic,iz) + array_packed(j,iz) * area_factor
-                  j = j + 1
                end do
             end do
          end do 
