@@ -1718,7 +1718,7 @@ contains
                call initialize_rrtmgp_fluxes(ncol_tot, nlev_rad+1, nlwbands, fluxes_clrsky_all)
 
                ! Calculate longwave fluxes
-               call t_startf('rad_fluxes_lw')
+               call t_startf('rad_calculate_fluxes_lw')
                call calculate_fluxes_lw(                                          &
                   active_gases, vmr_all(:,1:ncol_tot,1:nlev_rad),               &
                   surface_emissivity(1:nlwbands,1:ncol_tot),                    &
@@ -1727,7 +1727,7 @@ contains
                   cld_optics_lw_all            , aer_optics_lw_all,             &
                   fluxes_allsky_all            , fluxes_clrsky_all              &
                )
-               call t_stopf('rad_fluxes_lw')
+               call t_stopf('rad_calculate_fluxes_lw')
 
                ! Calculate heating rates
                call t_startf('rad_heating_lw')
@@ -1895,8 +1895,11 @@ contains
       real(r8), dimension(size(gas_vmr,1),size(gas_vmr,2),size(gas_vmr,3)) :: gas_vmr_day
 
       type(ty_gas_concs) :: gas_concs
-      integer :: ncol, nday, nlev, igas, iday, icol
+      integer :: ncol, nday, nlev, igas, iday, icol, ilev, igpt
       integer, dimension(size(coszrs)) :: day_indices, night_indices
+
+      real(r8), pointer, dimension(:,:,:) :: tau_day, ssa_day, asm_day
+      real(r8), pointer, dimension(:,:,:) :: tau, ssa, asm
 
       ! Character array to hold lowercase gas names
       character(len=32), allocatable :: gas_names_lower(:)
@@ -1931,36 +1934,64 @@ contains
       call handle_error(aer_optics%validate())
 
       ! Compress to day-time only
+      call t_startf('rad_compress_day_columns')
+      ! Compress 1D arrays
+      !$acc parallel loop
       do iday = 1,nday
          icol = day_indices(iday)
-
-         ! Compress state
-         pmid_day(iday,:) = pmid(icol,:)
-         tmid_day(iday,:) = tmid(icol,:)
-         pint_day(iday,:) = pint(icol,:)
-
-         ! Compress coszrs and albedo
          coszrs_day(iday) = coszrs(icol)
-         alb_dir_day(:,iday) = alb_dir(:,icol)
-         alb_dif_day(:,iday) = alb_dif(:,icol)
-
-         ! Compress gases
-         gas_vmr_day(:,iday,:) = gas_vmr(:,icol,:)
-
-         ! Compress optics
-         cld_optics_day%tau(iday,:,:) = cld_optics%tau(icol,:,:)
-         cld_optics_day%ssa(iday,:,:) = cld_optics%ssa(icol,:,:)
-         cld_optics_day%g  (iday,:,:) = cld_optics%g  (icol,:,:)
-         aer_optics_day%tau(iday,:,:) = aer_optics%tau(icol,:,:)
-         aer_optics_day%ssa(iday,:,:) = aer_optics%ssa(icol,:,:)
-         aer_optics_day%g  (iday,:,:) = aer_optics%g  (icol,:,:)
       end do
-
-      ! Check incoming optical properties
-      call handle_error(cld_optics_day%validate())
-      call handle_error(aer_optics_day%validate())
+      ! Compress state arrays
+      !$acc parallel loop collapse(2)
+      do ilev = 1,size(pmid, 2)
+         do iday = 1,nday
+            icol = day_indices(iday)
+            pmid_day(iday,ilev) = pmid(icol,ilev)
+            tmid_day(iday,ilev) = tmid(icol,ilev)
+         end do
+      end do
+      !$acc parallel loop collapse(2)
+      do ilev = 1,size(pint, 2)
+         do iday = 1,nday
+            icol = day_indices(iday)
+            pint_day(iday,ilev) = pint(icol,ilev)
+         end do
+      end do
+      ! Compress albedo
+      !$acc parallel loop collapse(2)
+      do iday = 1,nday
+         do igpt = 1,size(alb_dir_day, 1)
+            icol = day_indices(iday)
+            alb_dir_day(igpt,iday) = alb_dir(igpt,icol)
+            alb_dif_day(igpt,iday) = alb_dif(igpt,icol)
+         end do
+      end do
+      ! Compress gases
+      !$acc parallel loop collapse(3)
+      do ilev = 1,size(gas_vmr,3)
+         do iday = 1,nday
+            do igas = 1,size(gas_vmr,1)
+               icol = day_indices(iday)
+               gas_vmr_day(igas,iday,ilev) = gas_vmr(igas,icol,ilev)
+            end do
+         end do
+      end do
+      ! Compress optics; need to call wrapper routines here so that references
+      ! to the arrays in the class instances work properly on the GPU
+      call compress_optics_sw( &
+         day_indices, &
+         cld_optics%tau    , cld_optics%ssa    , cld_optics%g,    &
+         cld_optics_day%tau, cld_optics_day%ssa, cld_optics_day%g &
+      )
+      call compress_optics_sw( &
+         day_indices, &
+         aer_optics%tau    , aer_optics%ssa    , aer_optics%g,    &
+         aer_optics_day%tau, aer_optics_day%ssa, aer_optics_day%g &
+      )
+      call t_stopf('rad_compress_day_columns')
 
       ! Initialize gas concentrations with lower case names
+      call t_startf('rad_populate_gas_concs_sw')
       allocate(gas_names_lower(size(gas_names)))
       do igas = 1,size(gas_names)
          gas_names_lower(igas) = trim(lower_case(gas_names(igas)))
@@ -1974,6 +2005,7 @@ contains
          ))
       end do
       deallocate(gas_names_lower)
+      call t_stopf('rad_populate_gas_concs_sw')
 
       ! Compute fluxes
       call t_startf('rad_rte_sw')
@@ -1991,6 +2023,7 @@ contains
       call t_stopf('rad_rte_sw')
 
       ! Expand daytime-only fluxes
+      call t_startf('rad_expand_day_columns')
       call reset_fluxes(fluxes_allsky)
       call reset_fluxes(fluxes_clrsky)
       do iday = 1,nday
@@ -2010,6 +2043,7 @@ contains
          fluxes_clrsky%bnd_flux_net(icol,:,:) = fluxes_clrsky_day%bnd_flux_net(iday,:,:)
          fluxes_clrsky%bnd_flux_dn_dir(icol,:,:) = fluxes_clrsky_day%bnd_flux_dn_dir(iday,:,:)
       end do
+      call t_stopf('rad_expand_day_columns')
 
       ! Free memory
       call free_optics_sw(cld_optics_day)
@@ -2018,6 +2052,26 @@ contains
       call free_fluxes(fluxes_clrsky_day)
 
    end subroutine calculate_fluxes_sw
+
+   !----------------------------------------------------------------------------
+
+   subroutine compress_optics_sw(day_indices, tau, ssa, asm, tau_day, ssa_day, asm_day)
+      integer, intent(in), dimension(:) :: day_indices
+      real(r8), intent(in), dimension(:,:,:) :: tau, ssa, asm
+      real(r8), intent(out), dimension(:,:,:) :: tau_day, ssa_day, asm_day
+      integer :: igpt, ilev, iday, icol
+      !$acc parallel loop collapse(3)
+      do igpt = 1,size(tau_day, 3)
+         do ilev = 1,size(tau_day,2)
+            do iday = 1,size(tau_day,1)
+               icol = day_indices(iday)
+               tau_day(iday,ilev,igpt) = tau(icol,ilev,igpt)
+               ssa_day(iday,ilev,igpt) = ssa(icol,ilev,igpt)
+               asm_day(iday,ilev,igpt) = asm(icol,ilev,igpt)
+            end do
+         end do
+      end do
+   end subroutine compress_optics_sw
 
    !----------------------------------------------------------------------------
 
