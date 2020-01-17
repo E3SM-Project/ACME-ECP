@@ -2026,23 +2026,8 @@ contains
       call t_startf('rad_expand_day_columns')
       call reset_fluxes(fluxes_allsky)
       call reset_fluxes(fluxes_clrsky)
-      do iday = 1,nday
-         icol = day_indices(iday)
-         fluxes_allsky%flux_up(icol,:) = fluxes_allsky_day%flux_up(iday,:)
-         fluxes_allsky%flux_dn(icol,:) = fluxes_allsky_day%flux_dn(iday,:)
-         fluxes_allsky%flux_net(icol,:) = fluxes_allsky_day%flux_net(iday,:)
-         fluxes_allsky%bnd_flux_up(icol,:,:) = fluxes_allsky_day%bnd_flux_up(iday,:,:)
-         fluxes_allsky%bnd_flux_dn(icol,:,:) = fluxes_allsky_day%bnd_flux_dn(iday,:,:)
-         fluxes_allsky%bnd_flux_net(icol,:,:) = fluxes_allsky_day%bnd_flux_net(iday,:,:)
-         fluxes_allsky%bnd_flux_dn_dir(icol,:,:) = fluxes_allsky_day%bnd_flux_dn_dir(iday,:,:)
-         fluxes_clrsky%flux_up(icol,:) = fluxes_clrsky_day%flux_up(iday,:)
-         fluxes_clrsky%flux_dn(icol,:) = fluxes_clrsky_day%flux_dn(iday,:)
-         fluxes_clrsky%flux_net(icol,:) = fluxes_clrsky_day%flux_net(iday,:)
-         fluxes_clrsky%bnd_flux_up(icol,:,:) = fluxes_clrsky_day%bnd_flux_up(iday,:,:)
-         fluxes_clrsky%bnd_flux_dn(icol,:,:) = fluxes_clrsky_day%bnd_flux_dn(iday,:,:)
-         fluxes_clrsky%bnd_flux_net(icol,:,:) = fluxes_clrsky_day%bnd_flux_net(iday,:,:)
-         fluxes_clrsky%bnd_flux_dn_dir(icol,:,:) = fluxes_clrsky_day%bnd_flux_dn_dir(iday,:,:)
-      end do
+      call expand_fluxes(day_indices, fluxes_allsky_day, fluxes_allsky)
+      call expand_fluxes(day_indices, fluxes_clrsky_day, fluxes_clrsky)
       call t_stopf('rad_expand_day_columns')
 
       ! Free memory
@@ -2052,6 +2037,54 @@ contains
       call free_fluxes(fluxes_clrsky_day)
 
    end subroutine calculate_fluxes_sw
+
+   !----------------------------------------------------------------------------
+
+   subroutine expand_fluxes(day_indices, fluxes_day, fluxes)
+      use mo_fluxes_byband, only: ty_fluxes_byband
+      integer, intent(in), dimension(:) :: day_indices
+      type(ty_fluxes_byband), intent(in) :: fluxes_day
+      type(ty_fluxes_byband), intent(inout) :: fluxes
+      integer :: iday, icol, ilev, ibnd
+
+      !$acc parallel loop collapse(2) &
+      !$acc& copyin(fluxes, fluxes_day, fluxes_day%flux_up, fluxes_day%flux_dn, fluxes_day%flux_net) &
+      !$acc& copyout(fluxes%flux_up, fluxes%flux_dn, fluxes%flux_net)
+      do ilev = 1,size(fluxes_day%flux_up, 2)
+         do iday = 1,size(fluxes_day%flux_up, 1)
+            icol = day_indices(iday)
+            fluxes%flux_up(icol,ilev) = fluxes_day%flux_up(iday,ilev)
+            fluxes%flux_dn(icol,ilev) = fluxes_day%flux_dn(iday,ilev)
+            fluxes%flux_net(icol,ilev) = fluxes_day%flux_net(iday,ilev)
+         end do
+      end do
+      !$acc parallel loop collapse(3) &
+      !$acc& copyin(fluxes, fluxes_day, fluxes_day%bnd_flux_up, fluxes_day%bnd_flux_dn, fluxes_day%bnd_flux_net) &
+      !$acc& copyout(fluxes%bnd_flux_up, fluxes%bnd_flux_dn, fluxes%bnd_flux_net)
+      do ibnd = 1,size(fluxes_day%bnd_flux_up, 3)
+         do ilev = 1,size(fluxes_day%bnd_flux_up, 2)
+            do iday = 1,size(fluxes_day%bnd_flux_up, 1)
+               icol = day_indices(iday)
+               fluxes%bnd_flux_up(icol,ilev,ibnd) = fluxes_day%bnd_flux_up(iday,ilev,ibnd)
+               fluxes%bnd_flux_dn(icol,ilev,ibnd) = fluxes_day%bnd_flux_dn(iday,ilev,ibnd)
+               fluxes%bnd_flux_net(icol,ilev,ibnd) = fluxes_day%bnd_flux_net(iday,ilev,ibnd)
+            end do
+         end do
+      end do
+      if (allocated(fluxes%bnd_flux_dn_dir)) then
+         !$acc parallel loop collapse(3) &
+         !$acc& copyin(fluxes, fluxes_day, fluxes_day%bnd_flux_dn_dir) &
+         !$acc& copyout(fluxes%bnd_flux_dn_dir)
+         do ibnd = 1,size(fluxes_day%bnd_flux_dn_dir, 3)
+            do ilev = 1,size(fluxes_day%bnd_flux_dn_dir, 2)
+               do iday = 1,size(fluxes_day%bnd_flux_dn_dir, 1)
+                  fluxes%bnd_flux_dn_dir(icol,ilev,ibnd) = fluxes_day%bnd_flux_dn_dir(iday,ilev,ibnd)
+               end do
+            end do
+         end do
+      end if
+
+   end subroutine expand_fluxes
 
    !----------------------------------------------------------------------------
 
