@@ -2048,7 +2048,7 @@ contains
       integer :: iday, icol, ilev, ibnd
 
       !$acc parallel loop collapse(2) &
-      !$acc& copyin(fluxes, fluxes_day, fluxes_day%flux_up, fluxes_day%flux_dn, fluxes_day%flux_net) &
+      !$acc& copyin(day_indices, fluxes, fluxes_day, fluxes_day%flux_up, fluxes_day%flux_dn, fluxes_day%flux_net) &
       !$acc& copyout(fluxes%flux_up, fluxes%flux_dn, fluxes%flux_net)
       do ilev = 1,size(fluxes_day%flux_up, 2)
          do iday = 1,size(fluxes_day%flux_up, 1)
@@ -2059,7 +2059,7 @@ contains
          end do
       end do
       !$acc parallel loop collapse(3) &
-      !$acc& copyin(fluxes, fluxes_day, fluxes_day%bnd_flux_up, fluxes_day%bnd_flux_dn, fluxes_day%bnd_flux_net) &
+      !$acc& copyin(day_indices, fluxes, fluxes_day, fluxes_day%bnd_flux_up, fluxes_day%bnd_flux_dn, fluxes_day%bnd_flux_net) &
       !$acc& copyout(fluxes%bnd_flux_up, fluxes%bnd_flux_dn, fluxes%bnd_flux_net)
       do ibnd = 1,size(fluxes_day%bnd_flux_up, 3)
          do ilev = 1,size(fluxes_day%bnd_flux_up, 2)
@@ -2073,17 +2073,17 @@ contains
       end do
       if (allocated(fluxes%bnd_flux_dn_dir)) then
          !$acc parallel loop collapse(3) &
-         !$acc& copyin(fluxes, fluxes_day, fluxes_day%bnd_flux_dn_dir) &
+         !$acc& copyin(day_indices, fluxes, fluxes_day, fluxes_day%bnd_flux_dn_dir) &
          !$acc& copyout(fluxes%bnd_flux_dn_dir)
          do ibnd = 1,size(fluxes_day%bnd_flux_dn_dir, 3)
             do ilev = 1,size(fluxes_day%bnd_flux_dn_dir, 2)
                do iday = 1,size(fluxes_day%bnd_flux_dn_dir, 1)
+                  icol = day_indices(iday)
                   fluxes%bnd_flux_dn_dir(icol,ilev,ibnd) = fluxes_day%bnd_flux_dn_dir(iday,ilev,ibnd)
                end do
             end do
          end do
       end if
-
    end subroutine expand_fluxes
 
    !----------------------------------------------------------------------------
