@@ -57,8 +57,8 @@ module radiation
    use assertions, only: assert, assert_valid, assert_range
 
    use radiation_state, only: ktop, kbot, nlev_rad
-   use radiation_utils, only: compress_day_columns, expand_day_columns, &
-                              handle_error
+   use radiation_utils, only: handle_error
+                             
 
    ! For SPCAM/MMF
    use crmdims, only: crm_nx_rad, crm_ny_rad, crm_nz
@@ -1888,29 +1888,43 @@ contains
       ! For day-only arrays/objects
       type(ty_optical_props_2str) :: cld_optics_day, aer_optics_day
       type(ty_fluxes_byband) :: fluxes_allsky_day, fluxes_clrsky_day
-      real(r8), dimension(size(pmid,1), size(pmid,2)) :: pmid_day, tmid_day
-      real(r8), dimension(size(pint,1), size(pint,2)) :: pint_day
-      real(r8), dimension(size(coszrs)) :: coszrs_day
-      real(r8), dimension(size(alb_dir,1),size(alb_dir,2)) :: alb_dir_day, alb_dif_day
-      real(r8), dimension(size(gas_vmr,1),size(gas_vmr,2),size(gas_vmr,3)) :: gas_vmr_day
+      real(r8), allocatable, dimension(:,:) :: pmid_day, tmid_day
+      real(r8), allocatable, dimension(:,:) :: pint_day, tint_day
+      real(r8), allocatable, dimension(:) :: coszrs_day
+      real(r8), allocatable, dimension(:,:) :: alb_dir_day, alb_dif_day
+      real(r8), allocatable, dimension(:,:,:) :: gas_vmr_day
 
       type(ty_gas_concs) :: gas_concs
       integer :: ncol, nday, nlev, igas, iday, icol, ilev, igpt
-      integer, dimension(size(coszrs)) :: day_indices, night_indices
+      !integer, dimension(size(coszrs)) :: day_indices, night_indices
+      integer, allocatable, dimension(:) :: day_indices, night_indices
 
       real(r8), pointer, dimension(:,:,:) :: tau_day, ssa_day, asm_day
       real(r8), pointer, dimension(:,:,:) :: tau, ssa, asm
 
       ! Character array to hold lowercase gas names
-      character(len=32), allocatable :: gas_names_lower(:)
+      character(len=32) :: gas_names_lower(size(gas_names))
 
 
       ncol = size(pmid,1)
       nlev = size(pmid,2)
 
+      ! Allocate arrays for daytime-only sampling
+      call t_startf('rad_calculate_fluxes_sw_allocate')
+      nday = count(coszrs > 0)
+      allocate( &
+         coszrs_day(nday), day_indices(size(coszrs)), night_indices(size(coszrs)), &
+         pmid_day(nday,nlev), tmid_day(nday,nlev), &
+         pint_day(nday,nlev+1), tint_day(nday,nlev+1), &
+         alb_dir_day(nswbands,nday), alb_dif_day(nswbands,nday), &
+         gas_vmr_day(size(gas_names),nday,nlev) &
+      )
+      call t_stopf('rad_calculate_fluxes_sw_allocate')
+
       ! Get day-night indices
+      call t_startf('rad_set_daynight_indices')
       call set_daynight_indices(coszrs, day_indices, night_indices)
-      nday = count(day_indices > 0)
+      call t_stopf('rad_set_daynight_indices')
 
       ! If we don't have any daytime indices, zero fluxes and return
       if (nday <= 0) then
@@ -1920,18 +1934,16 @@ contains
       end if
 
       ! Allocate daytime-only optics
+      call t_startf('rad_alloc_optics_day_sw')
       call handle_error(cld_optics_day%alloc_2str(nday, nlev, k_dist_sw, name='sw day-time cloud optics'))
       call handle_error(aer_optics_day%alloc_2str(nday, nlev, k_dist_sw%get_band_lims_wavenumber(), name='sw day-time aerosol optics'))
+      call t_stopf('rad_alloc_optics_day_sw')
 
-      ! Allocate fluxes
-      ! TODO: use pointers to stack arrays to save from allocating/deallocating
-      ! each step
+      ! Allocate daytime fluxes
+      call t_startf('rad_alloc_fluxes_day_sw')
       call initialize_rrtmgp_fluxes(nday, nlev+1, nswbands, fluxes_allsky_day, do_direct=.true.)
       call initialize_rrtmgp_fluxes(nday, nlev+1, nswbands, fluxes_clrsky_day, do_direct=.true.)
-
-      ! Check incoming optical properties
-      call handle_error(cld_optics%validate())
-      call handle_error(aer_optics%validate())
+      call t_stopf('rad_alloc_fluxes_day_sw')
 
       ! Compress to day-time only
       call t_startf('rad_compress_day_columns')
@@ -1977,7 +1989,7 @@ contains
          end do
       end do
       ! Compress optics; need to call wrapper routines here so that references
-      ! to the arrays in the class instances work properly on the GPU
+      ! to the arrays in the class instances work properly on the GPU?
       call compress_optics_sw( &
          day_indices, &
          cld_optics%tau    , cld_optics%ssa    , cld_optics%g,    &
@@ -1991,20 +2003,20 @@ contains
       call t_stopf('rad_compress_day_columns')
 
       ! Initialize gas concentrations with lower case names
-      call t_startf('rad_populate_gas_concs_sw')
-      allocate(gas_names_lower(size(gas_names)))
+      call t_startf('rad_init_gas_concs_sw')
       do igas = 1,size(gas_names)
          gas_names_lower(igas) = trim(lower_case(gas_names(igas)))
       end do
       call handle_error(gas_concs%init(gas_names_lower))
+      call t_stopf('rad_init_gas_concs_sw')
 
       ! Populate gas concentrations
+      call t_startf('rad_populate_gas_concs_sw')
       do igas = 1,size(gas_names)
          call handle_error(gas_concs%set_vmr( &
             gas_names_lower(igas), gas_vmr_day(igas,1:nday,:) &
          ))
       end do
-      deallocate(gas_names_lower)
       call t_stopf('rad_populate_gas_concs_sw')
 
       ! Compute fluxes
@@ -2031,10 +2043,21 @@ contains
       call t_stopf('rad_expand_day_columns')
 
       ! Free memory
+      call t_startf('rad_free_day_sw')
       call free_optics_sw(cld_optics_day)
       call free_optics_sw(aer_optics_day)
       call free_fluxes(fluxes_allsky_day)
       call free_fluxes(fluxes_clrsky_day)
+      deallocate( &
+         coszrs_day, day_indices, night_indices, &
+         pmid_day, tmid_day, &
+         pint_day, tint_day, &
+         alb_dir_day, alb_dif_day, &
+         gas_vmr_day &
+      )
+      call t_stopf('rad_free_day_sw')
+
+      !!$acc exit data delete(fluxes_allsky_day, fluxes_clrsky_day)
 
    end subroutine calculate_fluxes_sw
 
@@ -2046,10 +2069,6 @@ contains
       type(ty_fluxes_byband), intent(in) :: fluxes_day
       type(ty_fluxes_byband), intent(inout) :: fluxes
       integer :: iday, icol, ilev, ibnd
-
-      !$acc parallel loop collapse(2) &
-      !$acc& copyin(day_indices, fluxes, fluxes_day, fluxes_day%flux_up, fluxes_day%flux_dn, fluxes_day%flux_net) &
-      !$acc& copyout(fluxes%flux_up, fluxes%flux_dn, fluxes%flux_net)
       do ilev = 1,size(fluxes_day%flux_up, 2)
          do iday = 1,size(fluxes_day%flux_up, 1)
             icol = day_indices(iday)
@@ -2058,9 +2077,6 @@ contains
             fluxes%flux_net(icol,ilev) = fluxes_day%flux_net(iday,ilev)
          end do
       end do
-      !$acc parallel loop collapse(3) &
-      !$acc& copyin(day_indices, fluxes, fluxes_day, fluxes_day%bnd_flux_up, fluxes_day%bnd_flux_dn, fluxes_day%bnd_flux_net) &
-      !$acc& copyout(fluxes%bnd_flux_up, fluxes%bnd_flux_dn, fluxes%bnd_flux_net)
       do ibnd = 1,size(fluxes_day%bnd_flux_up, 3)
          do ilev = 1,size(fluxes_day%bnd_flux_up, 2)
             do iday = 1,size(fluxes_day%bnd_flux_up, 1)
@@ -2072,9 +2088,6 @@ contains
          end do
       end do
       if (allocated(fluxes%bnd_flux_dn_dir)) then
-         !$acc parallel loop collapse(3) &
-         !$acc& copyin(day_indices, fluxes, fluxes_day, fluxes_day%bnd_flux_dn_dir) &
-         !$acc& copyout(fluxes%bnd_flux_dn_dir)
          do ibnd = 1,size(fluxes_day%bnd_flux_dn_dir, 3)
             do ilev = 1,size(fluxes_day%bnd_flux_dn_dir, 2)
                do iday = 1,size(fluxes_day%bnd_flux_dn_dir, 1)
@@ -2371,7 +2384,7 @@ contains
       iday = 0
       inight = 0
       do icol = 1,size(coszrs)
-         if (coszrs(icol) > 0._r8) then
+         if (coszrs(icol) > 0) then
             iday = iday + 1
             day_indices(iday) = icol
          else
@@ -2737,6 +2750,7 @@ contains
 
    end subroutine initialize_rrtmgp_fluxes
 
+
    subroutine free_fluxes(fluxes)
       use mo_fluxes_byband, only: ty_fluxes_byband
       type(ty_fluxes_byband), intent(inout) :: fluxes
@@ -2866,14 +2880,6 @@ contains
    !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
    !
 
-   !
-   ! This module provides an interface to RRTMGP for a common use case --
-   !   users want to start from gas concentrations, pressures, and temperatures,
-   !   and compute clear-sky (aerosol plus gases) and all-sky fluxes.
-   ! The routines here have the same names as those in mo_rrtmgp_[ls]w; normally users
-   !   will use either this module or the underling modules, but not both
-   !
-
   ! --------------------------------------------------
   !
   ! Interfaces using clear (gas + aerosol) and all-sky categories, starting from
@@ -2964,9 +2970,11 @@ contains
     !
     ! Gas optical depth -- pressure need to be expressed as Pa
     !
+    !$acc enter data copyin(col_dry, t_lev)
     error_msg = k_dist%gas_optics(p_lay, p_lev, t_lay, t_sfc, gas_concs, &
                                   optical_props, sources,                &
-                                  col_dry, t_lev)
+                                  col_dry=col_dry, tlev=t_lev)
+    !$acc exit data delete(col_dry, t_lev)
     if (error_msg /= '') return
     ! ----------------------------------------------------
     ! Clear sky is gases + aerosols (if they're supplied)
