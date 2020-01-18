@@ -6,6 +6,7 @@ module cam_optics
    use radiation_utils, only: handle_error
    use radconstants, only: nswbands, nswgpts, &
                            nlwbands, nlwgpts
+   use perf_mod, only: t_startf, t_stopf
 
    implicit none
    private
@@ -65,14 +66,17 @@ contains
       real(r8), dimension(nswbands,pcols,pver) :: &
             liq_tau, liq_tau_ssa, liq_tau_ssa_g, liq_tau_ssa_f, &
             ice_tau, ice_tau_ssa, ice_tau_ssa_g, ice_tau_ssa_f, &
-            cloud_tau, cloud_tau_ssa, cloud_tau_ssa_g, cloud_tau_ssa_f, &
             snow_tau, snow_tau_ssa, snow_tau_ssa_g, snow_tau_ssa_f, &
-            combined_tau, combined_tau_ssa, combined_tau_ssa_g, combined_tau_ssa_f
+            cloud_tau, cloud_tau_ssa, cloud_tau_ssa_g, cloud_tau_ssa_f, &
+            combined_tau, combined_tau_ssa, combined_tau_ssa_g, combined_tau_ssa_f, &
+            liq_tau_tmp, liq_tau_ssa_tmp, liq_tau_ssa_g_tmp, liq_tau_ssa_f_tmp, &
+            ice_tau_tmp, ice_tau_ssa_tmp, ice_tau_ssa_g_tmp, ice_tau_ssa_f_tmp, &
+            snow_tau_tmp, snow_tau_ssa_tmp, snow_tau_ssa_g_tmp, snow_tau_ssa_f_tmp
 
       ! Pointers to fields on the physics buffer
       real(r8), pointer :: cloud_fraction(:,:), snow_fraction(:,:)
 
-      integer :: ncol, iband, icol, ilev
+      integer :: ncol, ibnd, icol, ilev
 
 
       ! Initialize
@@ -98,16 +102,18 @@ contains
       ! Get ice cloud optics
       if (trim(icecldoptics) == 'mitchell') then
          call get_ice_optics_sw(state, pbuf, &
-                                ice_tau, ice_tau_ssa, &
-                                ice_tau_ssa_g, ice_tau_ssa_f)
+                                ice_tau_tmp, ice_tau_ssa_tmp, &
+                                ice_tau_ssa_g_tmp, ice_tau_ssa_f_tmp)
 
-         ! Conley optics hard-coded for RRTMG band-ordering
-         do ilev = 1,pver
-            do icol = 1,ncol
-               ice_tau      (:,icol,ilev) = reordered(ice_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               ice_tau_ssa  (:,icol,ilev) = reordered(ice_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               ice_tau_ssa_g(:,icol,ilev) = reordered(ice_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               ice_tau_ssa_f(:,icol,ilev) = reordered(ice_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+         ! Mitchell optics hard-coded for RRTMG band-ordering
+         do ibnd = 1,nswbands
+            do ilev = 1,pver
+               do icol = 1,ncol
+                  ice_tau      (ibnd,icol,ilev) = ice_tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  ice_tau_ssa  (ibnd,icol,ilev) = ice_tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  ice_tau_ssa_g(ibnd,icol,ilev) = ice_tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  ice_tau_ssa_f(ibnd,icol,ilev) = ice_tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+               end do
             end do
          end do
       else if (trim(icecldoptics) == 'ebertcurry') then
@@ -121,16 +127,18 @@ contains
       ! Get liquid cloud optics
       if (trim(liqcldoptics) == 'gammadist') then
          call get_liquid_optics_sw(state, pbuf, &
-                                   liq_tau, liq_tau_ssa, &
-                                   liq_tau_ssa_g, liq_tau_ssa_f)
+                                   liq_tau_tmp, liq_tau_ssa_tmp, &
+                                   liq_tau_ssa_g_tmp, liq_tau_ssa_f_tmp)
 
-         ! Mitchell optics hard-coded for RRTMG band-ordering
-         do ilev = 1,pver
-            do icol = 1,ncol
-               liq_tau      (:,icol,ilev) = reordered(liq_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               liq_tau_ssa  (:,icol,ilev) = reordered(liq_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               liq_tau_ssa_g(:,icol,ilev) = reordered(liq_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               liq_tau_ssa_f(:,icol,ilev) = reordered(liq_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+         ! Gammadist optics hard-coded for RRTMG band-ordering
+         do ibnd = 1,nswbands
+            do ilev = 1,pver
+               do icol = 1,ncol
+                  liq_tau      (ibnd,icol,ilev) = liq_tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  liq_tau_ssa  (ibnd,icol,ilev) = liq_tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  liq_tau_ssa_g(ibnd,icol,ilev) = liq_tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  liq_tau_ssa_f(ibnd,icol,ilev) = liq_tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+               end do
             end do
          end do
       else if (trim(liqcldoptics) == 'slingo') then
@@ -150,15 +158,17 @@ contains
       if (do_snow_optics()) then
          ! Doing snow optics; call procedure to get these from CAM state and pbuf
          call get_snow_optics_sw(state, pbuf, &
-                                 snow_tau, snow_tau_ssa, &
-                                 snow_tau_ssa_g, snow_tau_ssa_f)
-         ! Conley optics hard-coded for RRTMG band-ordering
-         do ilev = 1,pver
-            do icol = 1,ncol
-               snow_tau      (:,icol,ilev) = reordered(snow_tau      (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               snow_tau_ssa  (:,icol,ilev) = reordered(snow_tau_ssa  (:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               snow_tau_ssa_g(:,icol,ilev) = reordered(snow_tau_ssa_g(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
-               snow_tau_ssa_f(:,icol,ilev) = reordered(snow_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
+                                 snow_tau_tmp, snow_tau_ssa_tmp, &
+                                 snow_tau_ssa_g_tmp, snow_tau_ssa_f_tmp)
+         ! Mitchell optics hard-coded for RRTMG band-ordering
+         do ibnd = 1,nswbands
+            do ilev = 1,pver
+               do icol = 1,ncol
+                  snow_tau      (ibnd,icol,ilev) = snow_tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  snow_tau_ssa  (ibnd,icol,ilev) = snow_tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  snow_tau_ssa_g(ibnd,icol,ilev) = snow_tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  snow_tau_ssa_f(ibnd,icol,ilev) = snow_tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+               end do
             end do
          end do
 
@@ -202,15 +212,15 @@ contains
       tau_out = 0
       ssa_out = 0
       asm_out = 0
-      do iband = 1,nswbands
+      do ibnd = 1,nswbands
          do ilev = 1,pver
             do icol = 1,ncol
-               tau_out(icol,ilev,iband) = combined_tau(iband,icol,ilev)
-               if (combined_tau(iband,icol,ilev) > 0) then
-                  ssa_out(icol,ilev,iband) = combined_tau_ssa(iband,icol,ilev) / combined_tau(iband,icol,ilev)
+               tau_out(icol,ilev,ibnd) = combined_tau(ibnd,icol,ilev)
+               if (combined_tau(ibnd,icol,ilev) > 0) then
+                  ssa_out(icol,ilev,ibnd) = combined_tau_ssa(ibnd,icol,ilev) / combined_tau(ibnd,icol,ilev)
                end if
-               if (combined_tau_ssa(iband,icol,ilev) > 0) then
-                  asm_out(icol,ilev,iband) = combined_tau_ssa_g(iband,icol,ilev) / combined_tau_ssa(iband,icol,ilev)
+               if (combined_tau_ssa(ibnd,icol,ilev) > 0) then
+                  asm_out(icol,ilev,ibnd) = combined_tau_ssa_g(ibnd,icol,ilev) / combined_tau_ssa(ibnd,icol,ilev)
                end if
             end do
          end do
@@ -249,7 +259,7 @@ contains
       real(r8), dimension(nlwbands,pcols,pver) :: &
             ice_tau, liq_tau, snow_tau, cloud_tau, combined_tau
 
-      integer :: ncol, icol, ilev, iband
+      integer :: ncol, icol, ilev, ibnd
 
 
       ! Number of columns in this chunk
@@ -309,10 +319,10 @@ contains
 
       ! Set output optics
       tau_out = 0
-      do iband = 1,nlwbands
+      do ibnd = 1,nlwbands
          do ilev = 1,pver
             do icol = 1,ncol
-               tau_out(icol,ilev,iband) = combined_tau(iband,icol,ilev)
+               tau_out(icol,ilev,ibnd) = combined_tau(ibnd,icol,ilev)
             end do
          end do
       end do
@@ -346,7 +356,7 @@ contains
       real(r8) :: combined_fraction(ncols,nlevs)
 
       ! Loop variables
-      integer :: iband, icol, ilev
+      integer :: ibnd, icol, ilev
 
       ! Combined fraction
       combined_fraction = max(fraction1, fraction2)
@@ -355,14 +365,14 @@ contains
       combined_property = 0
       do ilev = 1,nlevs
          do icol = 1,ncols
-            do iband = 1,nbands
+            do ibnd = 1,nbands
                if (combined_fraction(icol,ilev) > 0) then
-                  combined_property(iband,icol,ilev) = ( &
-                     fraction1(icol,ilev) * property1(iband,icol,ilev) &
-                   + fraction2(icol,ilev) * property2(iband,icol,ilev) &
+                  combined_property(ibnd,icol,ilev) = ( &
+                     fraction1(icol,ilev) * property1(ibnd,icol,ilev) &
+                   + fraction2(icol,ilev) * property2(ibnd,icol,ilev) &
                   ) / combined_fraction(icol,ilev)
                else
-                  combined_property(iband,icol,ilev) = 0
+                  combined_property(ibnd,icol,ilev) = 0
                end if
             end do
          end do
@@ -404,7 +414,7 @@ contains
       logical :: iscloudy(nswgpts,pcols,pver)
 
       ! Loop variables
-      integer :: icol, ilev, igpt, iband, ilev_cam, ilev_rad
+      integer :: icol, ilev, igpt, ibnd, ilev_cam, ilev_rad
 
       real(r8), dimension(pcols,pver,nswbands) :: tau_bnd, ssa_bnd, asm_bnd
 
@@ -464,10 +474,10 @@ contains
             do igpt = 1,nswgpts
                if (iscloudy(igpt,icol,ilev_cam) .and. &
                    combined_cloud_fraction(icol,ilev_cam) > 0._r8) then
-                  iband = kdist%convert_gpt2band(igpt)
-                  optics_out%tau(icol,ilev_rad,igpt) = tau_bnd(icol,ilev_cam,iband)
-                  optics_out%ssa(icol,ilev_rad,igpt) = ssa_bnd(icol,ilev_cam,iband)
-                  optics_out%g  (icol,ilev_rad,igpt) = asm_bnd(icol,ilev_cam,iband)
+                  ibnd = kdist%convert_gpt2band(igpt)
+                  optics_out%tau(icol,ilev_rad,igpt) = tau_bnd(icol,ilev_cam,ibnd)
+                  optics_out%ssa(icol,ilev_rad,igpt) = ssa_bnd(icol,ilev_cam,ibnd)
+                  optics_out%g  (icol,ilev_rad,igpt) = asm_bnd(icol,ilev_cam,ibnd)
                else
                   optics_out%tau(icol,ilev_rad,igpt) = 0._r8
                   optics_out%ssa(icol,ilev_rad,igpt) = 1._r8
@@ -519,7 +529,7 @@ contains
       logical :: iscloudy(nlwgpts,pcols,pver)
 
       ! Loop variables
-      integer :: icol, ilev_rad, igpt, iband, ilev_cam
+      integer :: icol, ilev_rad, igpt, ibnd, ilev_cam
 
       real(r8), dimension(pcols,pver,nlwbands) :: tau_bnd
 
@@ -570,8 +580,8 @@ contains
          do icol = 1,ncol
             do igpt = 1,nlwgpts
                if (iscloudy(igpt,icol,ilev_cam) .and. (combined_cloud_fraction(icol,ilev_cam) > 0._r8) ) then
-                  iband = kdist%convert_gpt2band(igpt)
-                  optics_out%tau(icol,ilev_rad,igpt) = tau_bnd(icol,ilev_cam,iband)
+                  ibnd = kdist%convert_gpt2band(igpt)
+                  optics_out%tau(icol,ilev_rad,igpt) = tau_bnd(icol,ilev_cam,ibnd)
                else
                   optics_out%tau(icol,ilev_rad,igpt) = 0._r8
                end if
@@ -702,12 +712,14 @@ contains
       ! We need to fix band ordering because the old input files assume RRTMG band
       ! ordering, but this has changed in RRTMGP.
       ! TODO: fix the input files themselves!
-      do icol = 1,ncol
-         do ilev = 1,pver
-            ilev_rad = ilev + (nlev_rad - pver)
-            optics_out%tau(icol,ilev_rad,:) = reordered(tau_out(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
-            optics_out%ssa(icol,ilev_rad,:) = reordered(ssa_out(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
-            optics_out%g  (icol,ilev_rad,:) = reordered(asm_out(icol,ilev,:), map_rrtmg_to_rrtmgp_swbands)
+      do ibnd = 1,nswbands
+         do icol = 1,ncol
+            do ilev = 1,pver
+               ilev_rad = ilev + (nlev_rad - pver)
+               optics_out%tau(icol,ilev_rad,ibnd) = tau_out(icol,ilev,map_rrtmg_to_rrtmgp_swbands(ibnd))
+               optics_out%ssa(icol,ilev_rad,ibnd) = ssa_out(icol,ilev,map_rrtmg_to_rrtmgp_swbands(ibnd))
+               optics_out%g  (icol,ilev_rad,ibnd) = asm_out(icol,ilev,map_rrtmg_to_rrtmgp_swbands(ibnd))
+            end do
          end do
       end do
 
@@ -735,31 +747,6 @@ contains
       if (allocated(optics%tau)) deallocate(optics%tau)
       call optics%finalize()
    end subroutine free_optics_lw
-
-   !----------------------------------------------------------------------------
-
-   ! Utility function to reorder an array given a new indexing
-   function reordered(array_in, new_indexing) result(array_out)
-
-      ! Inputs
-      real(r8), intent(in) :: array_in(:)
-      integer, intent(in) :: new_indexing(:)
-
-      ! Output, reordered array
-      real(r8), dimension(size(array_in)) :: array_out
-
-      ! Loop index
-      integer :: ii
-
-      ! Check inputs
-      call assert(size(array_in) == size(new_indexing), 'reorder_array: sizes inconsistent')
-
-      ! Reorder array based on input index mapping, which maps old indices to new
-      do ii = 1,size(new_indexing)
-         array_out(ii) = array_in(new_indexing(ii))
-      end do
-
-   end function reordered
 
    !----------------------------------------------------------------------------
 
