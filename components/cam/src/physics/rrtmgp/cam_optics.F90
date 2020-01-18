@@ -460,32 +460,11 @@ contains
       optics_out%tau(:,:,:) = 0
       optics_out%ssa(:,:,:) = 1
       optics_out%g(:,:,:) = 0
-      do ilev_cam = 1,pver  ! Loop over indices on the CAM grid
-
-         ! Index to radiation grid
-         ilev_rad = ilev_cam + (nlev_rad - pver)
-
-         ! Loop over columns
-         do icol = 1,ncol
-            ! Loop over g-points and map bands to g-points; each subcolumn
-            ! corresponds to a single g-point. This is how this code implements the
-            ! McICA assumptions: simultaneously sampling over cloud state and
-            ! g-point.
-            do igpt = 1,nswgpts
-               if (iscloudy(igpt,icol,ilev_cam) .and. &
-                   combined_cloud_fraction(icol,ilev_cam) > 0._r8) then
-                  ibnd = kdist%convert_gpt2band(igpt)
-                  optics_out%tau(icol,ilev_rad,igpt) = tau_bnd(icol,ilev_cam,ibnd)
-                  optics_out%ssa(icol,ilev_rad,igpt) = ssa_bnd(icol,ilev_cam,ibnd)
-                  optics_out%g  (icol,ilev_rad,igpt) = asm_bnd(icol,ilev_cam,ibnd)
-               else
-                  optics_out%tau(icol,ilev_rad,igpt) = 0._r8
-                  optics_out%ssa(icol,ilev_rad,igpt) = 1._r8
-                  optics_out%g(icol,ilev_rad,igpt) = 0._r8
-               end if
-            end do  ! igpt
-         end do  ! icol
-      end do  ! ilev_cam
+      call sample_optics_sw( &
+         kdist%get_gpoint_bands(), iscloudy, &
+         tau_bnd, ssa_bnd, asm_bnd, &
+         optics_out%tau, optics_out%ssa, optics_out%g &
+      )
 
       ! Apply delta scaling to account for forward-scattering
       ! TODO: delta_scale takes the forward scattering fraction as an optional
@@ -497,6 +476,44 @@ contains
       call handle_error(optics_out%delta_scale())
 
    end subroutine set_cloud_optics_sw
+
+   !----------------------------------------------------------------------------
+
+   subroutine sample_optics_sw(gpt2bnd, iscloudy, &
+                               tau_bnd, ssa_bnd, asm_bnd, &
+                               tau_gpt, ssa_gpt, asm_gpt)
+      integer, intent(in), dimension(:) :: gpt2bnd
+      logical, intent(in), dimension(:,:,:) :: iscloudy
+      real(r8), intent(in), dimension(:,:,:) :: tau_bnd, ssa_bnd, asm_bnd
+      real(r8), intent(inout), dimension(:,:,:) :: tau_gpt, ssa_gpt, asm_gpt
+      integer :: nlev1, nlev2, ncol, ngpt, igpt, ibnd, icol, ilev1, ilev2
+
+      ! Loop over g-points and map bands to g-points; each subcolumn
+      ! corresponds to a single g-point. This is how this code implements the
+      ! McICA assumptions: simultaneously sampling over cloud state and
+      ! g-point.
+      ncol  = size(tau_gpt, 1)
+      nlev1 = size(tau_bnd, 2)
+      nlev2 = size(tau_gpt, 2)
+      ngpt  = size(tau_gpt, 3)
+      do ilev1 = 1,nlev1
+         do icol = 1,ncol
+            do igpt = 1,ngpt
+               ! Outputs may have larger vertical dimension
+               ilev2 = ilev1 + (nlev2 - nlev1)
+               if (iscloudy(igpt,icol,ilev1)) then
+                  tau_gpt(icol,ilev2,igpt) = tau_bnd(icol,ilev1,gpt2bnd(igpt))
+                  ssa_gpt(icol,ilev2,igpt) = ssa_bnd(icol,ilev1,gpt2bnd(igpt))
+                  asm_gpt(icol,ilev2,igpt) = asm_bnd(icol,ilev1,gpt2bnd(igpt))
+               else
+                  tau_gpt(icol,ilev2,igpt) = 0._r8
+                  ssa_gpt(icol,ilev2,igpt) = 1._r8
+                  asm_gpt(icol,ilev2,igpt) = 0._r8
+               end if  ! iscloudy
+            end do  ! igpt
+         end do  ! icol
+      end do  ! ilev
+   end subroutine sample_optics_sw
 
    !----------------------------------------------------------------------------
 
@@ -566,29 +583,9 @@ contains
       ! g-point. This implementation generates homogeneous clouds, but it would be
       ! straightforward to extend this to handle horizontally heterogeneous clouds
       ! as well.
-      ! NOTE: incoming optics should be in-cloud quantites and not grid-averaged 
-      ! quantities!
       optics_out%tau = 0
-      do ilev_cam = 1,pver
-
-         ! Get level index on CAM grid (i.e., the index that this rad level
-         ! corresponds to in CAM fields). If this index is above the model top
-         ! (index less than 0) then skip setting the optical properties for this
-         ! level (leave set to zero)
-         ilev_rad = ilev_cam + (nlev_rad - pver)
-
-         do icol = 1,ncol
-            do igpt = 1,nlwgpts
-               if (iscloudy(igpt,icol,ilev_cam) .and. (combined_cloud_fraction(icol,ilev_cam) > 0._r8) ) then
-                  ibnd = kdist%convert_gpt2band(igpt)
-                  optics_out%tau(icol,ilev_rad,igpt) = tau_bnd(icol,ilev_cam,ibnd)
-               else
-                  optics_out%tau(icol,ilev_rad,igpt) = 0._r8
-               end if
-            end do
-         end do
-      end do
-
+      call sample_optics_lw(kdist%get_gpoint_bands(), iscloudy, tau_bnd, optics_out%tau)
+     
       ! Apply delta scaling to account for forward-scattering
       ! TODO: delta_scale takes the forward scattering fraction as an optional
       ! parameter. In the current cloud optics_lw scheme, forward scattering is taken
@@ -602,6 +599,38 @@ contains
       call handle_error(optics_out%validate())
 
    end subroutine set_cloud_optics_lw
+
+   !----------------------------------------------------------------------------
+
+   ! Map bands to g-points; each subcolumn corresponds to a single g-point.
+   ! This is how this code implements the McICA assumptions: simultaneously
+   ! sampling over cloud state and g-point.
+   subroutine sample_optics_lw(gpt2bnd, iscloudy, tau_bnd, tau_gpt)
+      integer, intent(in), dimension(:) :: gpt2bnd
+      logical, intent(in), dimension(:,:,:) :: iscloudy
+      real(r8), intent(in), dimension(:,:,:) :: tau_bnd
+      real(r8), intent(inout), dimension(:,:,:) :: tau_gpt
+      integer :: nlev1, nlev2, ncol, ngpt, igpt, ibnd, icol, ilev1, ilev2
+
+      ncol  = size(tau_gpt, 1)
+      nlev1 = size(tau_bnd, 2)
+      nlev2 = size(tau_gpt, 2)
+      ngpt  = size(tau_gpt, 3)
+      do ilev1 = 1,nlev1
+         do icol = 1,ncol
+            do igpt = 1,ngpt
+               ! Outputs may have larger vertical dimension to handle absorption
+               ! above model top
+               ilev2 = ilev1 + (nlev2 - nlev1)
+               if (iscloudy(igpt,icol,ilev1)) then
+                  tau_gpt(icol,ilev2,igpt) = tau_bnd(icol,ilev1,gpt2bnd(igpt))
+               else
+                  tau_gpt(icol,ilev2,igpt) = 0._r8
+               end if  ! iscloudy
+            end do  ! igpt
+         end do  ! icol
+      end do  ! ilev
+   end subroutine sample_optics_lw
 
    !----------------------------------------------------------------------------
 
