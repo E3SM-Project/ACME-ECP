@@ -126,6 +126,7 @@ set(FILES_NEED_OPENACC_RRTMGP_FLAGS
   cam/src/physics/rrtmgp/external/extensions/mo_rrtmgp_clr_all_sky.F90
   cam/src/physics/rrtmgp/radiation.F90
   cam/src/physics/rrtmgp/cam_optics.F90
+  cam/src/physics/rrtmgp/mcica_subcol_gen.F90
   cam/src/physics/rrtmgp/cloud_rad_props.F90
   cam/src/physics/rrtmgp/ebert_curry.F90
   cam/src/physics/rrtmgp/slingo.F90
