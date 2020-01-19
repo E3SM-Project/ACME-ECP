@@ -57,20 +57,18 @@ subroutine mcica_subcol_mask( &
    integer, intent(in) :: pver                      ! number of levels
    integer, intent(in) :: changeseed                ! if the subcolumn generator is called multiple times, 
                                                     ! permute the seed between each call.
-   real(r8), intent(in) :: pmid(ncol,pver)         ! layer pressures (Pa)
-   real(r8), intent(in) :: cldfrac(ncol,pver)      ! layer cloud fraction
+   real(r8), intent(in) :: pmid(ncol,pver)          ! layer pressures (Pa)
+   real(r8), intent(in) :: cldfrac(ncol,pver)       ! layer cloud fraction
    logical, intent(out) :: iscloudy(ngpt,ncol,pver) ! flag that says whether a gridbox is cloudy
 
    ! Local vars
    integer :: i, isubcol, k, n
    real(r8), parameter :: cldmin = 1.0e-80_r8  ! min cloud fraction
-   real(r8) :: cldf(ncol,pver)      ! cloud fraction clipped to cldmin
-
+   real(r8) :: cldf(ncol,pver)       ! cloud fraction clipped to cldmin
    type(ShrKissRandGen) :: kiss_gen  ! KISS RNG object
    integer  :: kiss_seed(ncol,4)
    real(r8) :: rand_num_1d(ncol,1)   ! random number (kissvec)
    real(r8) :: rand_num(ncol,pver)   ! random number (kissvec)
-
    real(r8) :: cdf(ngpt,ncol,pver)   ! random numbers
    character(len=128) :: sub_name = 'mcica_subcol_gen_mask'
    !------------------------------------------------------------------------------------------ 
@@ -79,10 +77,15 @@ subroutine mcica_subcol_mask( &
    call assert(pmid(1,1) < pmid(1,2), trim(sub_name) // ': inputs not TOA to SFC')
 
    ! clip cloud fraction
-   cldf(:,:) = cldfrac(:ncol,:)
-   where (cldf(:,:) < cldmin)
-      cldf(:,:) = 0._r8
-   end where
+   do k = 1,pver
+      do i = 1,ncol
+         if (cldfrac(i,k) >= cldmin) then
+            cldf(i,k) = cldfrac(i,k)
+         else
+            cldf(i,k) = 0
+         end if
+      end do
+   end do
 
    ! Create a seed that depends on the state of the columns.
    ! Use pmid from bottom four layers. 
@@ -102,21 +105,27 @@ subroutine mcica_subcol_mask( &
    end do
 
    ! Generate random numbers in each subcolumn at every level
+   ! NOTE: 3d kiss_gen random number would allow full parallelism here
    do isubcol = 1,ngpt
       call kiss_gen%random(rand_num)
-      cdf(isubcol,:,:) = rand_num(:,:)
-   enddo
+      do k = 1,pver
+         do i = 1,ncol
+            cdf(isubcol,i,k) = rand_num(i,k)
+         end do
+      end do
+   end do
 
    ! Maximum-Random overlap
    ! i) pick a random number for top layer.
    ! ii) walk down the column: 
    !    - if the layer above is cloudy, use the same random number as in the layer above
    !    - if the layer above is clear, use a new random number 
-   do k = 2, pver
-      do i = 1, ncol
-         do isubcol = 1, ngpt
-            if (cdf(isubcol,i,k-1) > 1._r8 - cldf(i,k-1) ) then
-               cdf(isubcol,i,k) = cdf(isubcol,i,k-1) 
+   ! NOTE: loop carried dependence prevents parallelization over pver
+   do k = 2,pver
+      do i = 1,ncol
+         do isubcol = 1,ngpt
+            if (cdf(isubcol,i,k-1) > 1._r8 - cldf(i,k-1)) then
+               cdf(isubcol,i,k) = cdf(isubcol,i,k-1)
             else
                cdf(isubcol,i,k) = cdf(isubcol,i,k) * (1._r8 - cldf(i,k-1))
             end if
@@ -126,7 +135,11 @@ subroutine mcica_subcol_mask( &
  
    ! Set binary cloudy flag
    do k = 1, pver
-      iscloudy(:,:,k) = (cdf(:,:,k) >= 1._r8 - spread(cldf(:,k), dim=1, nCopies=ngpt) )
+      do i = 1,ncol
+         do isubcol = 1,ngpt
+            iscloudy(isubcol,i,k) = (cdf(isubcol,i,k) >= 1._r8 - cldf(i,k))
+         end do
+      end do
    end do
 
    call kiss_gen%finalize()
