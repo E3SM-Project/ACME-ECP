@@ -450,10 +450,12 @@ contains
 
       ! Do MCICA sampling of optics here. This will map bands to gpoints,
       ! while doing stochastic sampling of cloud state
-      call mcica_subcol_mask(nswgpts, ncol, pver, changeseed, &
-                             state%pmid(1:ncol,1:pver), &
-                             combined_cloud_fraction(1:ncol,1:pver), &
-                             iscloudy(1:nswgpts,1:ncol,1:pver))
+      call t_startf('micica_subcol_mask_sw')
+      call mcica_subcol_mask( &
+         nswgpts, ncol, pver, changeseed, &
+         state%pmid, combined_cloud_fraction, iscloudy &
+      )
+      call t_stopf('micica_subcol_mask_sw')
 
       ! -- generate subcolumns for homogeneous clouds -----
       ! where there is a cloud, set the subcolumn cloud properties;
@@ -574,10 +576,12 @@ contains
       ! while doing stochastic sampling of cloud state
       !
       ! First, just get the stochastic subcolumn cloudy mask...
-      call mcica_subcol_mask(nlwgpts, ncol, pver, changeseed, &
-                             state%pmid(1:ncol,1:pver), &
-                             combined_cloud_fraction(1:ncol,1:pver), &
-                             iscloudy(1:nlwgpts,1:ncol,1:pver))
+      call t_startf('mcica_subcol_mask_lw')
+      call mcica_subcol_mask( &
+         nlwgpts, ncol, pver, changeseed, &
+         state%pmid, combined_cloud_fraction, iscloudy &
+      )
+      call t_stopf('mcica_subcol_mask_lw')
 
       ! ... and now map optics to g-points, selecting a single subcolumn for each
       ! g-point. This implementation generates homogeneous clouds, but it would be

@@ -52,14 +52,14 @@ subroutine mcica_subcol_mask( &
    ! number of subcolumns
 
    ! arguments
-   integer, intent(in) :: ngpt                      ! number of subcolumns (g-point intervals)
-   integer, intent(in) :: ncol                      ! number of columns
-   integer, intent(in) :: pver                      ! number of levels
-   integer, intent(in) :: changeseed                ! if the subcolumn generator is called multiple times, 
-                                                    ! permute the seed between each call.
-   real(r8), intent(in) :: pmid(ncol,pver)          ! layer pressures (Pa)
-   real(r8), intent(in) :: cldfrac(ncol,pver)       ! layer cloud fraction
-   logical, intent(out) :: iscloudy(ngpt,ncol,pver) ! flag that says whether a gridbox is cloudy
+   integer, intent(in) :: ngpt              ! number of subcolumns (g-point intervals)
+   integer, intent(in) :: ncol              ! number of columns
+   integer, intent(in) :: pver              ! number of levels
+   integer, intent(in) :: changeseed        ! if the subcolumn generator is called multiple times, 
+                                            ! permute the seed between each call.
+   real(r8), intent(in) :: pmid(:,:)        ! layer pressures (Pa)
+   real(r8), intent(in) :: cldfrac(:,:)     ! layer cloud fraction
+   logical, intent(out) :: iscloudy(:,:,:)  ! flag that says whether a gridbox is cloudy
 
    ! Local vars
    integer :: i, isubcol, k, n
@@ -75,6 +75,7 @@ subroutine mcica_subcol_mask( &
 
    ! Make sure inputs are TOA to surface
    call assert(pmid(1,1) < pmid(1,2), trim(sub_name) // ': inputs not TOA to SFC')
+   call assert(size(iscloudy, 1) == ngpt, trim(sub_name) // ': wrong dimension for iscloudy')
 
    ! clip cloud fraction
    do k = 1,pver
