@@ -27,6 +27,7 @@ module mcica_subcol_gen
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
 use shr_RandNum_mod,  only: ShrKissRandGen
+use kissvec_mod, only: kissvec
 use assertions
 
 implicit none
@@ -62,57 +63,64 @@ subroutine mcica_subcol_mask( &
    logical, intent(out) :: iscloudy(:,:,:)  ! flag that says whether a gridbox is cloudy
 
    ! Local vars
-   integer :: i, isubcol, k, n
+   integer :: iter, icol, ilev, igpt
    real(r8), parameter :: cldmin = 1.0e-80_r8  ! min cloud fraction
-   real(r8) :: cldf(ncol,pver)       ! cloud fraction clipped to cldmin
-   type(ShrKissRandGen) :: kiss_gen  ! KISS RNG object
-   integer  :: kiss_seed(ncol,4)
-   real(r8) :: rand_num_1d(ncol,1)   ! random number (kissvec)
-   real(r8) :: rand_num(ncol,pver)   ! random number (kissvec)
-   real(r8) :: cdf(ngpt,ncol,pver)   ! random numbers
+   !real(r8) :: cldf(ncol,pver)       ! cloud fraction clipped to cldmin
+   !integer  :: kiss_seed(ncol,4)
+   !real(r8) :: rand_num(ncol)   ! random number (kissvec)
+   !real(r8) :: cdf(ngpt,ncol,pver)   ! random numbers
+   real(r8), allocatable :: cldf(:,:)       ! cloud fraction clipped to cldmin
+   integer , allocatable :: kiss_seed(:,:)
+   real(r8), allocatable :: rand_num(:)   ! random number (kissvec)
+   real(r8), allocatable :: cdf(:,:,:)   ! random numbers
+   
    character(len=128) :: sub_name = 'mcica_subcol_gen_mask'
    !------------------------------------------------------------------------------------------ 
 
    ! Make sure inputs are TOA to surface
    call assert(pmid(1,1) < pmid(1,2), trim(sub_name) // ': inputs not TOA to SFC')
-   call assert(size(iscloudy, 1) == ngpt, trim(sub_name) // ': wrong dimension for iscloudy')
+   call assert(size(iscloudy, 3) == ngpt, trim(sub_name) // ': wrong dimension for iscloudy')
+
+   allocate(cldf(ncol,pver), kiss_seed(ncol,4), rand_num(ncol), cdf(ncol,pver,ngpt))
 
    ! clip cloud fraction
-   do k = 1,pver
-      do i = 1,ncol
-         if (cldfrac(i,k) >= cldmin) then
-            cldf(i,k) = cldfrac(i,k)
+   !!$acc parallel loop collapse(2)
+   do ilev = 1,pver
+      do icol = 1,ncol
+         if (cldfrac(icol,ilev) >= cldmin) then
+            cldf(icol,ilev) = cldfrac(icol,ilev)
          else
-            cldf(i,k) = 0
+            cldf(icol,ilev) = 0
          end if
       end do
    end do
 
    ! Create a seed that depends on the state of the columns.
    ! Use pmid from bottom four layers. 
-   do i = 1, ncol
-      kiss_seed(i,1) = (pmid(i,pver)   - int(pmid(i,pver)))    * 1000000000
-      kiss_seed(i,2) = (pmid(i,pver-1) - int(pmid(i,pver-1)))  * 1000000000
-      kiss_seed(i,3) = (pmid(i,pver-2) - int(pmid(i,pver-2)))  * 1000000000
-      kiss_seed(i,4) = (pmid(i,pver-3) - int(pmid(i,pver-3)))  * 1000000000
+   !!$acc parallel loop
+   do icol = 1,ncol
+      kiss_seed(icol,1) = (pmid(icol,pver)   - int(pmid(icol,pver)))    * 1000000000
+      kiss_seed(icol,2) = (pmid(icol,pver-1) - int(pmid(icol,pver-1)))  * 1000000000
+      kiss_seed(icol,3) = (pmid(icol,pver-2) - int(pmid(icol,pver-2)))  * 1000000000
+      kiss_seed(icol,4) = (pmid(icol,pver-3) - int(pmid(icol,pver-3)))  * 1000000000
    end do
 
-   ! create the RNG object
-   kiss_gen = ShrKissRandGen(kiss_seed)
-
-   ! Advance randum number generator by changeseed values
-   do i = 1, changeseed
-      call kiss_gen%random(rand_num_1d)
+   ! Advance random number generator by changeseed values
+   do iter = 1,changeseed
+      call kissvec( &
+         kiss_seed(:,1), kiss_seed(:,2), kiss_seed(:,3), kiss_seed(:,4), &
+         rand_num, ncol &
+      )
    end do
 
-   ! Generate random numbers in each subcolumn at every level
-   ! NOTE: 3d kiss_gen random number would allow full parallelism here
-   do isubcol = 1,ngpt
-      call kiss_gen%random(rand_num)
-      do k = 1,pver
-         do i = 1,ncol
-            cdf(isubcol,i,k) = rand_num(i,k)
-         end do
+   ! Generate random numbers in each subcolumn at every level; this is done on
+   ! the CPU to keep bit for bit reproducibility
+   do igpt = 1,ngpt
+      do ilev = 1,pver
+         call kissvec( &
+            kiss_seed(:,1), kiss_seed(:,2), kiss_seed(:,3), kiss_seed(:,4), &
+            cdf(:,ilev,igpt), ncol &
+         )
       end do
    end do
 
@@ -122,28 +130,30 @@ subroutine mcica_subcol_mask( &
    !    - if the layer above is cloudy, use the same random number as in the layer above
    !    - if the layer above is clear, use a new random number 
    ! NOTE: loop carried dependence prevents parallelization over pver
-   do k = 2,pver
-      do i = 1,ncol
-         do isubcol = 1,ngpt
-            if (cdf(isubcol,i,k-1) > 1._r8 - cldf(i,k-1)) then
-               cdf(isubcol,i,k) = cdf(isubcol,i,k-1)
+   !!$acc parallel loop
+   do igpt = 1,ngpt
+      do ilev = 2,pver
+         do icol = 1,ncol
+            if (cdf(icol,ilev-1,igpt) > 1._r8 - cldf(icol,ilev-1)) then
+               cdf(icol,ilev,igpt) = cdf(icol,ilev-1,igpt)
             else
-               cdf(isubcol,i,k) = cdf(isubcol,i,k) * (1._r8 - cldf(i,k-1))
+               cdf(icol,ilev,igpt) = cdf(icol,ilev,igpt) * (1._r8 - cldf(icol,ilev-1))
             end if
          end do
       end do
    end do
  
    ! Set binary cloudy flag
-   do k = 1, pver
-      do i = 1,ncol
-         do isubcol = 1,ngpt
-            iscloudy(isubcol,i,k) = (cdf(isubcol,i,k) >= 1._r8 - cldf(i,k))
+   !!$acc parallel loop collapse(3)
+   do igpt = 1,ngpt
+      do ilev = 1,pver
+         do icol = 1,ncol
+            iscloudy(icol,ilev,igpt) = (cdf(icol,ilev,igpt) >= 1._r8 - cldf(icol,ilev))
          end do
       end do
    end do
 
-   call kiss_gen%finalize()
+   deallocate(cldf, kiss_seed, rand_num, cdf)
 
 end subroutine mcica_subcol_mask
 
