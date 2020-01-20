@@ -425,13 +425,13 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine set_cloud_optics_lw(state, pbuf, kdist, optics_out)
+   subroutine set_cloud_optics_lw(map_gpt_to_bnd, pmid, cld, cldfsnow, &
+                                  iclwp, iciwp, icswp, rei, dei, des, &
+                                  lambdac, mu, tau_out)
       
-      use ppgrid, only: pcols, pver
       use physics_types, only: physics_state
       use physics_buffer, only: physics_buffer_desc, &
                                 pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
-      use mo_optical_props, only: ty_optical_props_1scl
       use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
       use mcica_subcol_gen, only: mcica_subcol_mask
       use cloud_rad_props, only: gammadist_liquid_optics_lw, &
@@ -442,13 +442,12 @@ contains
       use cam_abortutils, only: endrun
       use rad_constituents, only: icecldoptics, liqcldoptics
 
-      type(physics_state), intent(in) :: state
-      type(physics_buffer_desc), pointer :: pbuf(:)
-      type(ty_gas_optics_rrtmgp), intent(in) :: kdist
-      type(ty_optical_props_1scl), intent(inout) :: optics_out
+      integer, intent(in), dimension(:) :: map_gpt_to_bnd
+      real(r8), intent(in), dimension(:,:) :: &
+         pmid, rei, dei, des, iclwp, iciwp, icswp, cld, cldfsnow, lambdac, mu
 
-      real(r8), pointer :: cloud_fraction(:,:)
-      real(r8), pointer :: snow_fraction(:,:)
+      real(r8), intent(inout), dimension(:,:,:) :: tau_out
+
       real(r8), allocatable :: combined_cloud_fraction(:,:)
 
       ! For MCICA sampling routine
@@ -456,32 +455,31 @@ contains
 
       ! Temporary arrays to hold mcica-sampled cloud optics
       logical, allocatable :: iscloudy(:,:,:)
-      real(r8), allocatable :: pmid(:,:)
 
       real(r8), allocatable, dimension(:,:,:) :: tau_bnd
 
-      ! pbuf variables for cloud properties
-      real(r8), pointer, dimension(:,:) :: &
-         rei, dei, des, iclwp, iciwp, icswp, cld, cldfsnow, lambdac, mu
-
       ! Temporary variables to hold absorption optical depth
-      real(r8), dimension(nlwbands,pcols,pver) :: &
+      real(r8), allocatable, dimension(:,:,:) :: &
             ice_tau, liq_tau, snow_tau, cloud_tau, combined_tau
 
       ! Loop variables
-      integer :: ncol, icol, ilev, igpt, ibnd
+      integer :: ncol, nlev, icol, ilev, igpt, ibnd
 
+      ncol = size(pmid, 1)
+      nlev = size(pmid, 2)
 
-      ! Set dimension size working variables
-      ncol = state%ncol
-
-      allocate(combined_cloud_fraction(ncol,pver), pmid(ncol,pver))
-      allocate(iscloudy(ncol,pver,nlwgpts))
-      allocate(tau_bnd(pcols,pver,nlwbands))
+      allocate(combined_cloud_fraction(ncol,nlev))
+      allocate(iscloudy(ncol,nlev,nlwgpts))
+      allocate(tau_bnd(ncol,nlev,nlwbands))
+      allocate( &
+         ice_tau(nlwbands,ncol,nlev), liq_tau(nlwbands,ncol,nlev), &
+         snow_tau(nlwbands,ncol,nlev), cloud_tau(nlwbands,ncol,nlev), &
+         combined_tau(nlwbands,ncol,nlev) &
+      )
 
       ! initialize
       !$acc parallel loop collapse(3)
-      do ilev = 1,pver
+      do ilev = 1,nlev
          do icol = 1,ncol
             do ibnd = 1,nlwbands
                ice_tau(ibnd,icol,ilev) = 0.0
@@ -492,24 +490,6 @@ contains
             end do
          end do
       end do
-
-      ! Get cloud and snow fractions. This is used to weight the contribution to
-      ! the total lw absorption by the fraction of the column that contains
-      ! cloud vs snow. TODO: is this the right thing to do here?
-      call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld, &
-                          start=(/1,1,pbuf_old_tim_idx()/), &
-                          kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, pbuf_get_index('CLDFSNOW'), cldfsnow, &
-                          start=(/1,1,pbuf_old_tim_idx()/), &
-                          kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
-      call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
-      call pbuf_get_field(pbuf, pbuf_get_index('ICSWP'), icswp)
-      call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
-      call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
-      call pbuf_get_field(pbuf, pbuf_get_index('DES'), des)
-      call pbuf_get_field(pbuf, pbuf_get_index('LAMBDAC'), lambdac)
-      call pbuf_get_field(pbuf, pbuf_get_index('MU'), mu)
 
       ! Get ice optics
       if (trim(icecldoptics) == 'mitchell') then
@@ -531,7 +511,7 @@ contains
 
       ! Combine liquid and ice
       !$acc parallel loop collapse(3)
-      do ilev = 1,pver
+      do ilev = 1,nlev
          do icol = 1,ncol
             do ibnd = 1,nlwbands
                cloud_tau(ibnd,icol,ilev) = liq_tau(ibnd,icol,ilev) + ice_tau(ibnd,icol,ilev)
@@ -545,7 +525,7 @@ contains
          call combine_properties(cld, cloud_tau, cldfsnow, snow_tau, combined_tau)
       else
          !$acc parallel loop collapse(3)
-         do ilev = 1,pver
+         do ilev = 1,nlev
             do icol = 1,ncol
                do ibnd = 1,nlwbands
                   combined_tau(ibnd,icol,ilev) = cloud_tau(ibnd,icol,ilev)
@@ -557,7 +537,7 @@ contains
       ! Re-order array dimensions for outputs
       !$acc parallel loop collapse(3)
       do ibnd = 1,nlwbands
-         do ilev = 1,pver
+         do ilev = 1,nlev
             do icol = 1,ncol
                tau_bnd(icol,ilev,ibnd) = combined_tau(ibnd,icol,ilev)
             end do
@@ -567,26 +547,19 @@ contains
       ! Combine cloud and snow fractions for MCICA sampling
       if (do_snow_optics()) then
          !$acc parallel loop collapse(2)
-         do ilev = 1,pver
+         do ilev = 1,nlev
             do icol = 1,ncol
                combined_cloud_fraction(icol,ilev) = max(cld(icol,ilev), cldfsnow(icol,ilev))
             end do
          end do  
       else
          !$acc parallel loop collapse(2)
-         do ilev = 1,pver
+         do ilev = 1,nlev
             do icol = 1,ncol
                combined_cloud_fraction(icol,ilev) = cld(icol,ilev)
             end do
          end do  
       end if
-
-      !$acc parallel loop collapse(2)
-      do ilev = 1,pver
-         do icol = 1,ncol
-            pmid(icol,ilev) = state%pmid(icol,ilev)
-         end do
-      end do
 
       ! Do MCICA sampling of optics here. This will map bands to gpoints,
       ! while doing stochastic sampling of cloud state
@@ -594,7 +567,7 @@ contains
       ! First, just get the stochastic subcolumn cloudy mask...
       call t_startf('mcica_subcol_mask_lw')
       call mcica_subcol_mask( &
-         nlwgpts, ncol, pver, changeseed, &
+         nlwgpts, ncol, nlev, changeseed, &
          pmid, combined_cloud_fraction, iscloudy &
       )
       call t_stopf('mcica_subcol_mask_lw')
@@ -603,18 +576,12 @@ contains
       ! g-point. This implementation generates homogeneous clouds, but it would be
       ! straightforward to extend this to handle horizontally heterogeneous clouds
       ! as well.
-      call sample_optics_lw(kdist%get_gpoint_bands(), iscloudy, tau_bnd, optics_out%tau)
+      call sample_optics_lw(map_gpt_to_bnd, iscloudy, tau_bnd, tau_out)
      
-      ! Apply delta scaling to account for forward-scattering
-      ! TODO: delta_scale takes the forward scattering fraction as an optional
-      ! parameter. In the current cloud optics_lw scheme, forward scattering is taken
-      ! just as g^2, which delta_scale assumes if forward scattering fraction is
-      ! omitted in the function call. In the future, we should explicitly pass
-      ! this. This just requires modifying the get_cloud_optics_lw procedures to also
-      ! pass the foward scattering fraction that the CAM cloud optics_lw assumes.
-      call handle_error(optics_out%delta_scale())
-
-      deallocate(iscloudy, tau_bnd, combined_cloud_fraction, pmid)
+      deallocate( &
+         iscloudy, tau_bnd, combined_cloud_fraction, &
+         ice_tau, liq_tau, snow_tau, cloud_tau, combined_tau &
+      )
 
    end subroutine set_cloud_optics_lw
 

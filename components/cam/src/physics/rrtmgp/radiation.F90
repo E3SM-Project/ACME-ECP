@@ -1095,8 +1095,8 @@ contains
       use physics_types, only: physics_state, physics_ptend, physics_state_copy
 
       ! Utilities for interacting with the physics buffer
-      use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
-                                pbuf_get_index
+      use physics_buffer, only: physics_buffer_desc, &
+                                pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
 
       ! For calculating radiative heating tendencies
       use radheat, only: radheat_tend
@@ -1235,7 +1235,8 @@ contains
       real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,pver) :: qrl_all, qrlc_all
 
       ! Pointers to CRM fields on physics buffer
-      real(r8), pointer, dimension(:,:) :: iclwp, iciwp, cld
+      real(r8), pointer, dimension(:,:) :: &
+         iclwp, iciwp, icswp, cld, cldfsnow, lambdac, mu, dei, des
       real(r8), pointer, dimension(:,:,:,:) :: crm_t, crm_qv, crm_qc, crm_qi, crm_cld, crm_qrad
       real(r8), pointer, dimension(:,:,:,:,:) :: crm_qaerwat, crm_dgnumwet
       real(r8), dimension(pcols,pver) :: iclwp_save, iciwp_save, cld_save
@@ -1245,7 +1246,6 @@ contains
 #ifdef MODAL_AERO
       real(r8), dimension(pcols,pver,ntot_amode) :: qaerwat_save, dgnumwet_save
 #endif
-      real(r8), pointer :: dei(:,:)
       real(r8), dimension(pcols,pver) :: dei_save, rei_save, rel_save
 
       ! Arrays to hold gas volume mixing ratios
@@ -1274,6 +1274,10 @@ contains
       integer :: nday, nnight     ! Number of daylight columns
       integer :: day_indices(pcols), night_indices(pcols)   ! Indicies of daylight coumns
 
+      ! Working variables
+      real(r8), allocatable, dimension(:,:) :: &
+         pmid_p, cld_p, cldfsnow_p, iclwp_p, iciwp_p, icswp_p, &
+         lambdac_p, mu_p, dei_p, des_p, rel_p, rei_p
 
       ! Scaling factor for total sky irradiance; used to account for orbital
       ! eccentricity, and could be used to scale total sky irradiance for different
@@ -1286,7 +1290,7 @@ contains
          cld_optics_sw_col, cld_optics_sw_all
       type(ty_optical_props_1scl) :: &
          aer_optics_lw_col, aer_optics_lw_all, &
-         cld_optics_lw_col, cld_optics_lw_all
+         cld_optics_lw_all
 
       real(r8), dimension(pcols * crm_nx_rad * crm_ny_rad,pver) :: qrs_all, qrsc_all
 
@@ -1308,6 +1312,15 @@ contains
       ! data together into one call.
       ncol_tot = ncol * crm_nx_rad * crm_ny_rad
 
+      ! Allocate packed arrays
+      allocate( &
+         pmid_p(ncol_tot,pver), cld_p(ncol_tot,pver), cldfsnow_p(ncol_tot,pver), &
+         iclwp_p(ncol_tot,pver), iciwp_p(ncol_tot,pver), icswp_p(ncol_tot,pver), &
+         lambdac_p(ncol_tot,pver), mu_p(ncol_tot,pver), &
+         dei_p(ncol_tot,pver), des_p(ncol_tot,pver), &
+         rel_p(ncol_tot,pver), rei_p(ncol_tot,pver) &
+      )
+
       ! Set flags for MMF/SP
       call phys_getopts(use_SPCAM_out           = use_SPCAM          )
       call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
@@ -1327,14 +1340,24 @@ contains
       ! pbuf fields we need to overwrite with CRM fields to work with optics
       call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
       call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
+      call pbuf_get_field(pbuf, pbuf_get_index('ICSWP'), icswp)
       call pbuf_get_field(pbuf, pbuf_get_index('CLD'  ), cld  )
       call pbuf_get_field(pbuf, pbuf_get_index('DEI'  ), dei  )
       call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
       call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
+      call pbuf_get_field(pbuf, pbuf_get_index('DES'), des)
+      call pbuf_get_field(pbuf, pbuf_get_index('LAMBDAC'), lambdac)
+      call pbuf_get_field(pbuf, pbuf_get_index('MU'), mu)
 #ifdef MODAL_AERO
       call pbuf_get_field(pbuf, pbuf_get_index('QAERWAT'), qaerwat)
       call pbuf_get_field(pbuf, pbuf_get_index('DGNUMWET'), dgnumwet)
 #endif
+      call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld, &
+                          start=(/1,1,pbuf_old_tim_idx()/), &
+                          kount=(/pcols,pver,1/))
+      call pbuf_get_field(pbuf, pbuf_get_index('CLDFSNOW'), cldfsnow, &
+                          start=(/1,1,pbuf_old_tim_idx()/), &
+                          kount=(/pcols,pver,1/))
 
       ! CRM fields
       call phys_getopts(use_SPCAM_out=use_SPCAM)
@@ -1418,9 +1441,6 @@ contains
          call handle_error(cld_optics_sw_all%alloc_2str( &
             ncol_tot, nlev_rad, k_dist_sw, name='cld_optics_sw' &
          ))
-         call handle_error(cld_optics_lw_col%alloc_1scl( &
-            ncol, nlev_rad, k_dist_lw, name='cld_optics_lw' &
-         ))
          call handle_error(cld_optics_lw_all%alloc_1scl( &
             ncol_tot, nlev_rad, k_dist_lw, name='cld_optics_lw' &
          ))
@@ -1465,6 +1485,70 @@ contains
             ! only have to pack/copy data once, rather than once for each of
             ! shortwave and longwave.
             if (radiation_do('sw') .or. radiation_do('lw')) then
+
+               ! Do longwave cloud optics
+               call t_startf('rad_cloud_optics_lw_loop')
+               do iy = 1,crm_ny_rad
+                  do ix = 1,crm_nx_rad
+                     ! Overwrite state and pbuf with CRM
+                     if (use_SPCAM) then
+                        call t_startf('rad_overwrite_state_lw')
+                        do iz = 1,crm_nz
+                           ilev = pver - iz + 1
+                           do ic = 1,ncol
+                              cld(ic,ilev) = crm_cld(ic,ix,iy,iz)
+                              if (cld(ic,ilev) > 0) then
+                                 iclwp(ic,ilev) = crm_qc(ic,ix,iy,iz)          &
+                                                * state%pdel(ic,ilev) / gravit &
+                                                / max(0.01_r8, cld(ic,ilev))
+                                 iciwp(ic,ilev) = crm_qi(ic,ix,iy,iz)          &
+                                                * state%pdel(ic,ilev) / gravit &
+                                                / max(0.01_r8, cld(ic,ilev))
+                              else
+                                 iclwp(ic,ilev) = 0
+                                 iciwp(ic,ilev) = 0
+                              end if
+                           end do
+                        end do
+                        call t_stopf('rad_overwrite_state_lw')
+                     end if
+                     call t_startf('rad_pack_state_lw')
+                     do ilev = 1,pver
+                        do ic = 1,ncol
+                           j = _IDX1D(ic,ix,iy,ncol,crm_nx_rad,crm_ny_rad)
+                           pmid_p(j,ilev) = state%pmid(ic,ilev) 
+                           cld_p(j,ilev) = cld(ic,ilev)
+                           cldfsnow_p(j,ilev) = cldfsnow(ic,ilev)
+                           iclwp_p(j,ilev) = iclwp(ic,ilev)
+                           iciwp_p(j,ilev) = iciwp(ic,ilev)
+                           icswp_p(j,ilev) = icswp(ic,ilev)
+                           lambdac_p(j,ilev) = lambdac(ic,ilev)
+                           mu_p(j,ilev) = mu(ic,ilev)
+                           dei_p(j,ilev) = dei(ic,ilev)
+                           des_p(j,ilev) = des(ic,ilev)
+                           rel_p(j,ilev) = rel(ic,ilev)
+                           rei_p(j,ilev) = rei(ic,ilev)
+                        end do
+                     end do
+                     call t_stopf('rad_pack_state_lw')
+                  end do
+               end do
+               call t_startf('rad_cloud_optics_lw')
+               call set_cloud_optics_lw( &
+                  k_dist_lw%get_gpoint_bands(), pmid_p, cld_p, cldfsnow_p, &
+                  iclwp_p, iciwp_p, icswp_p, rei_p, dei_p, des_p, lambdac_p, mu_p, &
+                  cld_optics_lw_all%tau &
+               )
+               ! Apply delta scaling to account for forward-scattering
+               ! TODO: delta_scale takes the forward scattering fraction as an optional
+               ! parameter. In the current cloud optics_lw scheme, forward scattering is taken
+               ! just as g^2, which delta_scale assumes if forward scattering fraction is
+               ! omitted in the function call. In the future, we should explicitly pass
+               ! this. This just requires modifying the get_cloud_optics_lw procedures to also
+               ! pass the forward scattering fraction that the CAM cloud optics_lw assumes.
+               call handle_error(cld_optics_lw_all%delta_scale())
+               call t_stopf('rad_cloud_optics_lw')
+               call t_stopf('rad_cloud_optics_lw_loop')
 
                ! Loop over CRM columns; call routines designed to work with
                ! pbuf/state over ncol columns for each CRM column index, and pack
@@ -1559,10 +1643,6 @@ contains
 
                      ! Do optics; TODO: refactor to take array arguments?
                      if (radiation_do('lw')) then
-                        call t_startf('rad_cloud_optics_lw')
-                        call set_cloud_optics_lw(state, pbuf, k_dist_lw, cld_optics_lw_col)
-                        call t_stopf('rad_cloud_optics_lw')
-
                         call t_startf('rad_aerosol_optics_lw')
                         call set_aerosol_optics_lw(icall, state, pbuf, is_cmip6_volc, aer_optics_lw_col)
                         call t_stopf('rad_aerosol_optics_lw')
@@ -1579,7 +1659,6 @@ contains
                         tmid(j,:) = tmid_col(ic,:)
                         pint(j,:) = pint_col(ic,:)
                         tint(j,:) = tint_col(ic,:)
-                        cld_optics_lw_all%tau(j,:,:) = cld_optics_lw_col%tau(ic,:,:)
                         aer_optics_lw_all%tau(j,:,:) = aer_optics_lw_col%tau(ic,:,:)
                         cld_optics_sw_all%tau(j,:,:) = cld_optics_sw_col%tau(ic,:,:)
                         cld_optics_sw_all%ssa(j,:,:) = cld_optics_sw_col%ssa(ic,:,:)
@@ -1719,6 +1798,7 @@ contains
 
                ! Calculate longwave fluxes
                call t_startf('rad_calculate_fluxes_lw')
+               print *, 'Calculating lw fluxes...'
                call calculate_fluxes_lw(                                          &
                   active_gases, vmr_all(:,1:ncol_tot,1:nlev_rad),               &
                   surface_emissivity(1:nlwbands,1:ncol_tot),                    &
@@ -1804,7 +1884,6 @@ contains
          call free_optics_sw(aer_optics_sw_all)
          call free_optics_sw(cld_optics_sw_col)
          call free_optics_sw(aer_optics_sw_col)
-         call free_optics_lw(cld_optics_lw_col)
          call free_optics_lw(cld_optics_lw_all)
          call free_optics_lw(aer_optics_lw_col)
          call free_optics_lw(aer_optics_lw_all)
@@ -1858,6 +1937,10 @@ contains
          call t_stopf('rad_update_crm_heating')
       end if  ! use_SPCAM
 
+      deallocate( &
+         pmid_p, cld_p, cldfsnow_p, iclwp_p, iciwp_p, icswp_p, &
+         lambdac_p, mu_p, dei_p, des_p, rel_p, rei_p &
+      )
    end subroutine radiation_tend
 
    !----------------------------------------------------------------------------
