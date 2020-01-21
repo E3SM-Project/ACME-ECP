@@ -1287,7 +1287,7 @@ contains
       ! Cloud and aerosol optics
       type(ty_optical_props_2str) :: &
          aer_optics_sw_col, aer_optics_sw_all, &
-         cld_optics_sw_col, cld_optics_sw_all
+         cld_optics_sw_all
       type(ty_optical_props_1scl) :: &
          aer_optics_lw_col, aer_optics_lw_all, &
          cld_optics_lw_all
@@ -1435,9 +1435,6 @@ contains
          nnight = count(night_indices(1:ncol) > 0)
 
          ! Initialize cloud optics objects
-         call handle_error(cld_optics_sw_col%alloc_2str( &
-            ncol, nlev_rad, k_dist_sw, name='cld_optics_sw' &
-         ))
          call handle_error(cld_optics_sw_all%alloc_2str( &
             ncol_tot, nlev_rad, k_dist_sw, name='cld_optics_sw' &
          ))
@@ -1486,13 +1483,12 @@ contains
             ! shortwave and longwave.
             if (radiation_do('sw') .or. radiation_do('lw')) then
 
-               ! Do longwave cloud optics
-               call t_startf('rad_cloud_optics_lw_loop')
+               ! Pack data for cloud optics
+               call t_startf('rad_pack_cloud_props')
                do iy = 1,crm_ny_rad
                   do ix = 1,crm_nx_rad
                      ! Overwrite state and pbuf with CRM
                      if (use_SPCAM) then
-                        call t_startf('rad_overwrite_state_lw')
                         do iz = 1,crm_nz
                            ilev = pver - iz + 1
                            do ic = 1,ncol
@@ -1510,9 +1506,7 @@ contains
                               end if
                            end do
                         end do
-                        call t_stopf('rad_overwrite_state_lw')
                      end if
-                     call t_startf('rad_pack_state_lw')
                      do ilev = 1,pver
                         do ic = 1,ncol
                            j = _IDX1D(ic,ix,iy,ncol,crm_nx_rad,crm_ny_rad)
@@ -1530,9 +1524,29 @@ contains
                            rei_p(j,ilev) = rei(ic,ilev)
                         end do
                      end do
-                     call t_stopf('rad_pack_state_lw')
                   end do
                end do
+               call t_stopf('rad_pack_cloud_props')
+
+               ! SW cloud optics
+               call t_startf('rad_cloud_optics_sw')
+               call set_cloud_optics_sw( &
+                  k_dist_sw%get_gpoint_bands(), pmid_p, cld_p, cldfsnow_p, &
+                  iclwp_p, iciwp_p, icswp_p, rel_p, rei_p, dei_p, des_p, &
+                  lambdac_p, mu_p, &
+                  cld_optics_sw_all%tau, cld_optics_sw_all%ssa, cld_optics_sw_all%g &
+               )
+               ! Apply delta scaling to account for forward-scattering
+               ! TODO: delta_scale takes the forward scattering fraction as an optional
+               ! parameter. In the current cloud optics_sw scheme, forward scattering is taken
+               ! just as g^2, which delta_scale assumes if forward scattering fraction is
+               ! omitted in the function call. In the future, we should explicitly pass
+               ! this. This just requires modifying the get_cloud_optics_sw procedures to also
+               ! pass the foward scattering fraction that the CAM cloud optics_sw assumes.
+               call handle_error(cld_optics_sw_all%delta_scale())
+               call t_stopf('rad_cloud_optics_sw')
+
+               ! LW cloud optics
                call t_startf('rad_cloud_optics_lw')
                call set_cloud_optics_lw( &
                   k_dist_lw%get_gpoint_bands(), pmid_p, cld_p, cldfsnow_p, &
@@ -1540,15 +1554,8 @@ contains
                   cld_optics_lw_all%tau &
                )
                ! Apply delta scaling to account for forward-scattering
-               ! TODO: delta_scale takes the forward scattering fraction as an optional
-               ! parameter. In the current cloud optics_lw scheme, forward scattering is taken
-               ! just as g^2, which delta_scale assumes if forward scattering fraction is
-               ! omitted in the function call. In the future, we should explicitly pass
-               ! this. This just requires modifying the get_cloud_optics_lw procedures to also
-               ! pass the forward scattering fraction that the CAM cloud optics_lw assumes.
                call handle_error(cld_optics_lw_all%delta_scale())
                call t_stopf('rad_cloud_optics_lw')
-               call t_stopf('rad_cloud_optics_lw_loop')
 
                ! Loop over CRM columns; call routines designed to work with
                ! pbuf/state over ncol columns for each CRM column index, and pack
@@ -1628,10 +1635,6 @@ contains
                      ! simulations...or alternatively add logic within the set_cloud_optics
                      ! routines to handle this.
                      if (radiation_do('sw')) then
-                        call t_startf('rad_cloud_optics_sw')
-                        call set_cloud_optics_sw(state, pbuf, k_dist_sw, cld_optics_sw_col)
-                        call t_stopf('rad_cloud_optics_sw')
-
                         ! Get shortwave aerosol optics
                         call t_startf('rad_aerosol_optics_sw')
                         call set_aerosol_optics_sw(icall, state, pbuf, &
@@ -1660,9 +1663,6 @@ contains
                         pint(j,:) = pint_col(ic,:)
                         tint(j,:) = tint_col(ic,:)
                         aer_optics_lw_all%tau(j,:,:) = aer_optics_lw_col%tau(ic,:,:)
-                        cld_optics_sw_all%tau(j,:,:) = cld_optics_sw_col%tau(ic,:,:)
-                        cld_optics_sw_all%ssa(j,:,:) = cld_optics_sw_col%ssa(ic,:,:)
-                        cld_optics_sw_all%g  (j,:,:) = cld_optics_sw_col%g  (ic,:,:)
                         aer_optics_sw_all%tau(j,:,:) = aer_optics_sw_col%tau(ic,:,:)
                         aer_optics_sw_all%ssa(j,:,:) = aer_optics_sw_col%ssa(ic,:,:)
                         aer_optics_sw_all%g  (j,:,:) = aer_optics_sw_col%g  (ic,:,:)
@@ -1881,12 +1881,11 @@ contains
       if (radiation_do('sw') .or. radiation_do('lw')) then
          ! Free optical properties
          call free_optics_sw(cld_optics_sw_all)
-         call free_optics_sw(aer_optics_sw_all)
-         call free_optics_sw(cld_optics_sw_col)
-         call free_optics_sw(aer_optics_sw_col)
          call free_optics_lw(cld_optics_lw_all)
-         call free_optics_lw(aer_optics_lw_col)
+         call free_optics_sw(aer_optics_sw_all)
          call free_optics_lw(aer_optics_lw_all)
+         call free_optics_sw(aer_optics_sw_col)
+         call free_optics_lw(aer_optics_lw_col)
       end if
 
 

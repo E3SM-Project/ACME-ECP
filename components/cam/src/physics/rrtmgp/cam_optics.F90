@@ -29,9 +29,10 @@ module cam_optics
 
 contains
 
-   subroutine get_cloud_optics_sw(state, pbuf, tau_out, ssa_out, asm_out)
+   subroutine get_cloud_optics_sw(cld, cldfsnow, iclwp, iciwp, icswp, &
+                                  rel, rei, dei, des, lambdac, mu, &
+                                  tau_out, ssa_out, asm_out)
 
-      use ppgrid, only: pcols, pver
       use physics_types, only: physics_state
       use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
                                 pbuf_get_index, pbuf_old_tim_idx
@@ -43,14 +44,9 @@ contains
       use cam_abortutils, only: endrun
       use rad_constituents, only: icecldoptics, liqcldoptics
 
-      ! Inputs. Right now, this uses state and pbuf, and passes these along to the
-      ! individual get_*_optics routines from cloud_rad_props. This is not very
-      ! flexible, in that it would be difficult to use this to get optical
-      ! properties from an SP configuration if wanted. So rather, it might be
-      ! better to adapt this to pass in things like liquid/ice water paths,
-      ! effective drop sizes, etc.
-      type(physics_state), intent(in) :: state
-      type(physics_buffer_desc), pointer :: pbuf(:)
+      ! Pointers to fields on the physics buffer
+      real(r8), intent(in), dimension(:,:) :: &
+         iciwp, iclwp, icswp, rei, rel, dei, des, cld, cldfsnow, lambdac, mu
 
       ! Outputs are shortwave cloud optical properties *by band*. Dimensions should
       ! be ncol,pver,nswbands. Generally, this should be able to handle cases were
@@ -62,21 +58,15 @@ contains
 
       ! Temporary variables to hold cloud optical properties before combining into
       ! output arrays. Same shape as output arrays, so get shapes from output.
-      real(r8), dimension(nswbands,pcols,pver) :: &
+      real(r8), dimension(nswbands,size(cld, 1),size(cld, 2)) :: &
             liq_tau, liq_tau_ssa, liq_tau_ssa_g, liq_tau_ssa_f, &
             ice_tau, ice_tau_ssa, ice_tau_ssa_g, ice_tau_ssa_f, &
             snow_tau, snow_tau_ssa, snow_tau_ssa_g, snow_tau_ssa_f, &
             cloud_tau, cloud_tau_ssa, cloud_tau_ssa_g, cloud_tau_ssa_f, &
             combined_tau, combined_tau_ssa, combined_tau_ssa_g, combined_tau_ssa_f, &
-            liq_tau_tmp, liq_tau_ssa_tmp, liq_tau_ssa_g_tmp, liq_tau_ssa_f_tmp, &
-            ice_tau_tmp, ice_tau_ssa_tmp, ice_tau_ssa_g_tmp, ice_tau_ssa_f_tmp, &
-            snow_tau_tmp, snow_tau_ssa_tmp, snow_tau_ssa_g_tmp, snow_tau_ssa_f_tmp
+            tau_tmp, tau_ssa_tmp, tau_ssa_g_tmp, tau_ssa_f_tmp
 
-      ! Pointers to fields on the physics buffer
-      real(r8), pointer, dimension(:,:) :: &
-         iciwp, iclwp, icswp, rei, rel, dei, des, cld, cldfsnow, lambdac, mu
-
-      integer :: ncol, ibnd, icol, ilev
+      integer :: ncol, nlev, ibnd, icol, ilev
 
 
       ! Initialize
@@ -97,38 +87,23 @@ contains
       combined_tau_ssa_g = 0
       combined_tau_ssa_f = 0
 
-      ncol = state%ncol
-
-      ! Get cloud and snow fractions. This is used to weight the contribution to
-      ! the total lw absorption by the fraction of the column that contains
-      ! cloud vs snow. TODO: is this the right thing to do here?
-      call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cld, &
-                          start=(/1,1,pbuf_old_tim_idx()/), &
-                          kount=(/pcols,pver,1/))
-      call pbuf_get_field(pbuf, pbuf_get_index('ICIWP'), iciwp)
-      call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
-      call pbuf_get_field(pbuf, pbuf_get_index('ICSWP'), icswp)
-      call pbuf_get_field(pbuf, pbuf_get_index('REI'), rei)
-      call pbuf_get_field(pbuf, pbuf_get_index('REL'), rel)
-      call pbuf_get_field(pbuf, pbuf_get_index('DEI'), dei)
-      call pbuf_get_field(pbuf, pbuf_get_index('DES'), des)
-      call pbuf_get_field(pbuf, pbuf_get_index('LAMBDAC'), lambdac)
-      call pbuf_get_field(pbuf, pbuf_get_index('MU'), mu)
+      ncol = size(tau_out, 1)
+      nlev = size(tau_out, 2)
 
       ! Get ice cloud optics
       if (trim(icecldoptics) == 'mitchell') then
          call mitchell_ice_optics_sw(ncol, iciwp, dei, &
-                                ice_tau_tmp, ice_tau_ssa_tmp, &
-                                ice_tau_ssa_g_tmp, ice_tau_ssa_f_tmp)
+                                tau_tmp, tau_ssa_tmp, &
+                                tau_ssa_g_tmp, tau_ssa_f_tmp)
 
          ! Mitchell optics hard-coded for RRTMG band-ordering
          do ibnd = 1,nswbands
-            do ilev = 1,pver
+            do ilev = 1,nlev
                do icol = 1,ncol
-                  ice_tau      (ibnd,icol,ilev) = ice_tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  ice_tau_ssa  (ibnd,icol,ilev) = ice_tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  ice_tau_ssa_g(ibnd,icol,ilev) = ice_tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  ice_tau_ssa_f(ibnd,icol,ilev) = ice_tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  ice_tau      (ibnd,icol,ilev) = tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  ice_tau_ssa  (ibnd,icol,ilev) = tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  ice_tau_ssa_g(ibnd,icol,ilev) = tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  ice_tau_ssa_f(ibnd,icol,ilev) = tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
                end do
             end do
          end do
@@ -146,18 +121,18 @@ contains
       if (trim(liqcldoptics) == 'gammadist') then
          call gammadist_liquid_optics_sw( &
             ncol, iclwp, lambdac, mu, &
-            liq_tau_tmp, liq_tau_ssa_tmp, &
-            liq_tau_ssa_g_tmp, liq_tau_ssa_f_tmp &
+            tau_tmp, tau_ssa_tmp, &
+            tau_ssa_g_tmp, tau_ssa_f_tmp &
          )
 
          ! Gammadist optics hard-coded for RRTMG band-ordering
          do ibnd = 1,nswbands
-            do ilev = 1,pver
+            do ilev = 1,nlev
                do icol = 1,ncol
-                  liq_tau      (ibnd,icol,ilev) = liq_tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  liq_tau_ssa  (ibnd,icol,ilev) = liq_tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  liq_tau_ssa_g(ibnd,icol,ilev) = liq_tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  liq_tau_ssa_f(ibnd,icol,ilev) = liq_tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  liq_tau      (ibnd,icol,ilev) = tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  liq_tau_ssa  (ibnd,icol,ilev) = tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  liq_tau_ssa_g(ibnd,icol,ilev) = tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  liq_tau_ssa_f(ibnd,icol,ilev) = tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
                end do
             end do
          end do
@@ -180,24 +155,21 @@ contains
          ! Doing snow optics; call procedure to get these from CAM state and pbuf
          call mitchell_ice_optics_sw( &
             ncol, icswp, des, &
-            snow_tau_tmp, snow_tau_ssa_tmp, &
-            snow_tau_ssa_g_tmp, snow_tau_ssa_f_tmp &
+            tau_tmp, tau_ssa_tmp, &
+            tau_ssa_g_tmp, tau_ssa_f_tmp &
          )
          ! Mitchell optics hard-coded for RRTMG band-ordering
          do ibnd = 1,nswbands
-            do ilev = 1,pver
+            do ilev = 1,nlev
                do icol = 1,ncol
-                  snow_tau      (ibnd,icol,ilev) = snow_tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  snow_tau_ssa  (ibnd,icol,ilev) = snow_tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  snow_tau_ssa_g(ibnd,icol,ilev) = snow_tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
-                  snow_tau_ssa_f(ibnd,icol,ilev) = snow_tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  snow_tau      (ibnd,icol,ilev) = tau_tmp      (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  snow_tau_ssa  (ibnd,icol,ilev) = tau_ssa_tmp  (map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  snow_tau_ssa_g(ibnd,icol,ilev) = tau_ssa_g_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
+                  snow_tau_ssa_f(ibnd,icol,ilev) = tau_ssa_f_tmp(map_rrtmg_to_rrtmgp_swbands(ibnd),icol,ilev)
                end do
             end do
          end do
 
-         call pbuf_get_field(pbuf, pbuf_get_index('CLDFSNOW'), cldfsnow, &
-                             start=(/1,1,pbuf_old_tim_idx()/), &
-                             kount=(/pcols,pver,1/))
          call combine_properties( &
             cld, cloud_tau, cldfsnow, snow_tau, combined_tau &
          )
@@ -216,12 +188,11 @@ contains
       ! Copy to output arrays, converting to optical depth, single scattering
       ! albedo, and assymmetry parameter from the products that the CAM routines
       ! return. Make sure we do not try to divide by zero.
-      ncol = state%ncol
       tau_out = 0
       ssa_out = 0
       asm_out = 0
       do ibnd = 1,nswbands
-         do ilev = 1,pver
+         do ilev = 1,nlev
             do icol = 1,ncol
                tau_out(icol,ilev,ibnd) = combined_tau(ibnd,icol,ilev)
                if (combined_tau(ibnd,icol,ilev) > 0) then
@@ -287,7 +258,10 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine set_cloud_optics_sw(state, pbuf, kdist, optics_out)
+   subroutine set_cloud_optics_sw(map_gpt_to_bnd, pmid, cld, cldfsnow, &
+                                  iclwp, iciwp, icswp, rel, rei, dei, des, &
+                                  lambdac, mu, &
+                                  tau_gpt, ssa_gpt, asm_gpt)
       
       use ppgrid, only: pcols, pver, pverp
       use physics_types, only: physics_state
@@ -298,89 +272,97 @@ contains
       use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
       use mcica_subcol_gen, only: mcica_subcol_mask
 
-      type(physics_state), intent(in) :: state
-      type(physics_buffer_desc), pointer :: pbuf(:)
-      type(ty_gas_optics_rrtmgp), intent(in) :: kdist
-      type(ty_optical_props_2str), intent(inout) :: optics_out
-
-      ! Pointer to cloud fraction on physics buffer
-      real(r8), pointer :: cloud_fraction(:,:), snow_fraction(:,:)
-
-      ! Combined cloud and snow fraction
-      real(r8) :: combined_cloud_fraction(pcols,pver)
+      integer, intent(in), dimension(:) :: map_gpt_to_bnd
+      real(r8), intent(in), dimension(:,:) :: &
+         pmid, iciwp, iclwp, icswp, rei, rel, dei, des, cld, cldfsnow, lambdac, mu
+      real(r8), intent(inout), dimension(:,:,:) :: tau_gpt, ssa_gpt, asm_gpt
 
       ! For MCICA sampling routine
       integer, parameter :: changeseed = 1
 
       ! Dimension sizes
-      integer :: ncol, nlay
-
-      ! McICA subcolumn cloud flag
-      logical :: iscloudy(pcols,pver,nswgpts)
+      integer :: ncol, nlev
 
       ! Loop variables
       integer :: icol, ilev, igpt, ibnd, ilev_cam, ilev_rad
 
-      real(r8), dimension(pcols,pver,nswbands) :: tau_bnd, ssa_bnd, asm_bnd
+      real(r8), allocatable, dimension(:,:) :: combined_cloud_fraction
+      real(r8), allocatable, dimension(:,:,:) :: tau_bnd, ssa_bnd, asm_bnd
+      logical, allocatable, dimension(:,:,:) :: iscloudy
 
       ! Set a name for this subroutine to write to error messages
       character(len=32) :: subname = 'set_cloud_optics_sw'
 
-      ncol = state%ncol
+      ncol = size(pmid, 1)
+      nlev = size(pmid, 2)
+
+      call t_startf('optics_allocate_sw')
+      allocate( &
+         combined_cloud_fraction(ncol,nlev), &
+         iscloudy(ncol,nlev,nswgpts), &
+         tau_bnd(ncol,nlev,nswbands), &
+         ssa_bnd(ncol,nlev,nswbands), &
+         asm_bnd(ncol,nlev,nswbands) &
+      )
+      call t_stopf('optics_allocate_sw')
 
       ! Get optics by band
-      call get_cloud_optics_sw(state, pbuf, tau_bnd, ssa_bnd, asm_bnd)
+      call t_startf('optics_get_cloud_optics_sw')
+      call get_cloud_optics_sw( &
+         cld, cldfsnow, &
+         iclwp, iciwp, icswp, &
+         rel, rei, dei, des, lambdac, mu, &
+         tau_bnd, ssa_bnd, asm_bnd &
+      )
+      call t_stopf('optics_get_cloud_optics_sw')
 
-      ! Initialize (or reset) output cloud optics object
-      optics_out%tau = 0.0
-      optics_out%ssa = 1.0
-      optics_out%g = 0.0
-
-      ! Get cloud and snow fractions, and combine
-      ! Set pointer to cloud fraction; this is used by McICA routines
-      ! TODO: why the extra arguments to pbuf_get_field here? Are these necessary?
-      call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cloud_fraction, &
-                          start=(/1,1,pbuf_old_tim_idx()/), &
-                          kount=(/pcols,pver,1/))
-      !call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cloud_fraction)
+      ! Get combined cloud fraction (cloud + snow) for MCICA sampling
+      call t_startf('optics_combine_cloud_fraction_sw')
       if (do_snow_optics()) then
-         call pbuf_get_field(pbuf, pbuf_get_index('CLDFSNOW'), snow_fraction, &
-                             start=(/1,1,pbuf_old_tim_idx()/), &
-                             kount=(/pcols,pver,1/))
-         combined_cloud_fraction(1:ncol,1:pver) = max(cloud_fraction(1:ncol,1:pver), &
-                                                      snow_fraction(1:ncol,1:pver))
+         do ilev = 1,nlev
+            do icol = 1,ncol
+               combined_cloud_fraction(icol,ilev) = max(cld(icol,ilev), cldfsnow(icol,ilev))
+            end do
+         end do
       else
-         combined_cloud_fraction = cloud_fraction
+         do ilev = 1,nlev
+            do icol = 1,ncol
+               combined_cloud_fraction(icol,ilev) = cld(icol,ilev)
+            end do
+         end do
       end if
+      call t_stopf('optics_combine_cloud_fraction_sw')
 
       ! Do MCICA sampling of optics here. This will map bands to gpoints,
       ! while doing stochastic sampling of cloud state
-      call t_startf('mcica_subcol_mask_sw')
+      call t_startf('optics_mcica_subcol_mask_sw')
       call mcica_subcol_mask( &
-         nswgpts, ncol, pver, changeseed, &
-         state%pmid, combined_cloud_fraction, iscloudy &
+         nswgpts, ncol, nlev, changeseed, &
+         pmid, combined_cloud_fraction, iscloudy &
       )
-      call t_stopf('mcica_subcol_mask_sw')
+      call t_stopf('optics_mcica_subcol_mask_sw')
 
-      ! -- generate subcolumns for homogeneous clouds -----
-      ! where there is a cloud, set the subcolumn cloud properties;
-      optics_out%tau(:,:,:) = 0
-      optics_out%ssa(:,:,:) = 1
-      optics_out%g(:,:,:) = 0
+      ! Generate subcolumns for clouds
+      call t_startf('optics_sample_optics_sw')
+      do igpt = 1,size(tau_gpt, 3)
+         do ilev = 1,size(tau_gpt, 2)
+            do icol = 1,size(tau_gpt, 1)
+               tau_gpt(icol,ilev,igpt) = 0
+               ssa_gpt(icol,ilev,igpt) = 1
+               asm_gpt(icol,ilev,igpt) = 0
+            end do
+         end do
+      end do
       call sample_optics_sw( &
-         kdist%get_gpoint_bands(), iscloudy, &
+         map_gpt_to_bnd, iscloudy, &
          tau_bnd, ssa_bnd, asm_bnd, &
-         optics_out%tau, optics_out%ssa, optics_out%g &
+         tau_gpt, ssa_gpt, asm_gpt &
       )
+      call t_stopf('optics_sample_optics_sw')
 
-      ! Apply delta scaling to account for forward-scattering
-      ! TODO: delta_scale takes the forward scattering fraction as an optional
-      ! parameter. In the current cloud optics_sw scheme, forward scattering is taken
-      ! just as g^2, which delta_scale assumes if forward scattering fraction is
-      ! omitted in the function call. In the future, we should explicitly pass
-      ! this. This just requires modifying the get_cloud_optics_sw procedures to also
-      ! pass the foward scattering fraction that the CAM cloud optics_sw assumes.
-      call handle_error(optics_out%delta_scale())
+      call t_startf('optics_deallocate_sw')
+      deallocate(combined_cloud_fraction, iscloudy, tau_bnd, ssa_bnd, asm_bnd)
+      call t_stopf('optics_deallocate_sw')
 
    end subroutine set_cloud_optics_sw
 
