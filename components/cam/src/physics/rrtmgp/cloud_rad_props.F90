@@ -243,7 +243,6 @@ subroutine gammadist_liquid_optics_sw(ncol, iclwpth, lamc, pgam, tau, tau_w, tau
    real(r8),intent(out) :: tau_w  (:,:,:) ! single scattering albedo * tau
    real(r8),intent(out) :: tau_w_g(:,:,:) ! asymetry parameter * tau * w
    real(r8),intent(out) :: tau_w_f(:,:,:) ! forward scattered fraction * tau * w
-   real(r8), dimension(:,:) :: kext
    integer i,k,swband
 
    do k = 1,pver
