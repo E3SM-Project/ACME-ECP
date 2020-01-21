@@ -33,9 +33,6 @@ contains
                                   rel, rei, dei, des, lambdac, mu, &
                                   tau_out, ssa_out, asm_out)
 
-      use physics_types, only: physics_state
-      use physics_buffer, only: physics_buffer_desc, pbuf_get_field, &
-                                pbuf_get_index, pbuf_old_tim_idx
       use cloud_rad_props, only: mitchell_ice_optics_sw, &
                                  gammadist_liquid_optics_sw
       use ebert_curry, only: ec_ice_optics_sw
@@ -152,7 +149,6 @@ contains
 
       ! Get snow cloud optics?
       if (do_snow_optics()) then
-         ! Doing snow optics; call procedure to get these from CAM state and pbuf
          call mitchell_ice_optics_sw( &
             ncol, icswp, des, &
             tau_tmp, tau_ssa_tmp, &
@@ -264,10 +260,6 @@ contains
                                   tau_gpt, ssa_gpt, asm_gpt)
       
       use ppgrid, only: pcols, pver, pverp
-      use physics_types, only: physics_state
-      use physics_buffer, only: physics_buffer_desc, &
-                                pbuf_get_field, &
-                                pbuf_get_index, pbuf_old_tim_idx
       use mo_optical_props, only: ty_optical_props_2str
       use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
       use mcica_subcol_gen, only: mcica_subcol_mask
@@ -411,9 +403,6 @@ contains
                                   iclwp, iciwp, icswp, rei, dei, des, &
                                   lambdac, mu, tau_out)
       
-      use physics_types, only: physics_state
-      use physics_buffer, only: physics_buffer_desc, &
-                                pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
       use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
       use mcica_subcol_gen, only: mcica_subcol_mask
       use cloud_rad_props, only: gammadist_liquid_optics_lw, &
