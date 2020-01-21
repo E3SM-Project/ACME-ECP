@@ -1325,17 +1325,17 @@ contains
       call phys_getopts(use_SPCAM_out           = use_SPCAM          )
       call phys_getopts(SPCAM_microp_scheme_out = SPCAM_microp_scheme)
 
-      ! Set pointers to heating rates stored on physics buffer. These will be
-      ! modified in this routine.
-      call pbuf_get_field(pbuf, pbuf_get_index('QRS'), qrs)
-      call pbuf_get_field(pbuf, pbuf_get_index('QRL'), qrl)
-
       ! Set surface emissivity to 1 here. There is a note in the RRTMG
       ! implementation that this is treated in the land model, but the old
       ! RRTMG implementation also sets this to 1. This probably does not make
       ! a lot of difference either way, but if a more intelligent value
       ! exists or is assumed in the model we should use it here as well.
       surface_emissivity = 1.0_r8
+
+      ! Set pointers to heating rates stored on physics buffer. These will be
+      ! modified in this routine.
+      call pbuf_get_field(pbuf, pbuf_get_index('QRS'), qrs)
+      call pbuf_get_field(pbuf, pbuf_get_index('QRL'), qrl)
 
       ! pbuf fields we need to overwrite with CRM fields to work with optics
       call pbuf_get_field(pbuf, pbuf_get_index('ICLWP'), iclwp)
@@ -1798,7 +1798,6 @@ contains
 
                ! Calculate longwave fluxes
                call t_startf('rad_calculate_fluxes_lw')
-               print *, 'Calculating lw fluxes...'
                call calculate_fluxes_lw(                                          &
                   active_gases, vmr_all(:,1:ncol_tot,1:nlev_rad),               &
                   surface_emissivity(1:nlwbands,1:ncol_tot),                    &
@@ -2169,7 +2168,7 @@ contains
             end do
          end do
       end do
-      if (allocated(fluxes%bnd_flux_dn_dir)) then
+      if (associated(fluxes%bnd_flux_dn_dir)) then
          do ibnd = 1,size(fluxes_day%bnd_flux_dn_dir, 3)
             do ilev = 1,size(fluxes_day%bnd_flux_dn_dir, 2)
                do iday = 1,size(fluxes_day%bnd_flux_dn_dir, 1)
