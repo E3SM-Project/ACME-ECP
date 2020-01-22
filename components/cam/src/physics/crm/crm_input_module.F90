@@ -30,7 +30,6 @@ module crm_input_module
       real(crm_rknd), allocatable :: fluxv00(:)          ! surface momenent fluxes [N/m2]
       real(crm_rknd), allocatable :: fluxt00(:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
       real(crm_rknd), allocatable :: fluxq00(:)          ! surface latent heat fluxes [ kg/(m2 s)]
-
 #if defined( m2005 ) && defined( MODAL_AERO )
       real(crm_rknd), allocatable :: naermod (:,:,:)     ! Aerosol number concentration [/m3]
       real(crm_rknd), allocatable :: vaerosol(:,:,:)     ! aerosol volume concentration [m3/m3]

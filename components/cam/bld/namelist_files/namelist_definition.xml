@@ -4204,12 +4204,6 @@ with modal chemistry.
 Default: none
 </entry>
 
-<entry id="oldcldoptics" type="logical"  category="radiation"
-       group="rad_cnst_nl" valid_values="" >
-filepath and name for ice optics data for rrtmg
-Default: none
-</entry>
-
 <entry id="liqcldoptics" type="char*32"  category="radiation"
        group="rad_cnst_nl" valid_values="slingo,gammadist" >
 filepath and name for ice optics data for rrtmg
