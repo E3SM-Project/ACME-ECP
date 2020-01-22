@@ -377,7 +377,7 @@
     <desc compset="CAM[45].*_BGC%B">CAM prognostic CO2 cycle turned on.</desc>
     <!-- Super-Parameterization -->
     <desc compset="_CAM5%SP1V1_"    >Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, 1-moment microphysics and prescribed aerosol</desc>
-    <desc compset="_CAM5%SP1V1-MAML">Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, 1-moment microphysics, prescribed aerosol, MAML, dtime = 5 min for ne30 grid and disabled reduced radiation (the last two are specific changes to enable MAML).</desc>
+    <desc compset="_CAM5%SP1V1-MAML">Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, 1-moment microphysics, prescribed aerosol, MAML, dtime = 5 min (for ne30) and disabled reduced radiation (the last two are specific changes to enable MAML).</desc>
     <desc compset="_CAM5%SP2V1_"    >Super-parameterized E3SM with 64x1km CRM, RRTMG radiation, and 2-moment microphysics</desc>
     <desc compset="_CAM5%SP1V1-TEST">Super-parameterized E3SM with  8x1km CRM, RRTMG radiation, and 1-moment microphysics</desc>
     <desc compset="_CAM5%SP1V1-MAML-TEST">Super-parameterized E3SM with  8x1km CRM, RRTMG radiation, 1-moment microphysics, prescribed aerosol and MAML </desc>
