@@ -713,9 +713,7 @@ end function radiation_nextsw_cday
 
 
     ! Longwave radiation
-
     do icall = 0, N_DIAG
-
        if (active_calls(icall)) then
           call addfld('QRL'//diag(icall),  (/ 'lev' /), 'A',     'K/s', 'Longwave heating rate', sampling_seq='rad_lwsw')
           call addfld('QRLC'//diag(icall),  (/ 'lev' /), 'A',    'K/s', 'Clearsky longwave heating rate', &
@@ -758,17 +756,20 @@ end function radiation_nextsw_cday
             call add_default('LWCF'//diag(icall),  1, ' ')
          endif
 
-         ! Add cloud-scale radiative quantities
-         if (use_SPCAM) then
-            call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'A', 'K/s', 'Radiative heating tendency')
-            call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Shortwave radiative heating rate')
-            call addfld ('CRM_QRSC', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Clearsky shortwave radiative heating rate')
-            call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
-            call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
-            call addfld ('CRM_CLD_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'fraction', 'CRM cloud fraction' )
-         end if
-       end if
-    end do
+       end if  ! active_calls(icall)
+    end do  ! icall = 0,N_DIAG
+
+    ! Add cloud-scale radiative quantities
+    if (use_SPCAM) then
+       call addfld ('CRM_QRAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'A', 'K/s', 'Radiative heating tendency')
+       call addfld ('CRM_QRS ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Shortwave radiative heating rate')
+       call addfld ('CRM_QRSC', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Clearsky shortwave radiative heating rate')
+       call addfld ('CRM_QRL ', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
+       call addfld ('CRM_QRLC', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'K/s', 'CRM Longwave radiative heating rate' )
+       call addfld ('CRM_CLD_RAD', (/'crm_nx_rad','crm_ny_rad','crm_nz    '/), 'I', 'fraction', 'CRM cloud fraction' )
+       call addfld ('CRM_TAU  ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'A', '1', 'CRM cloud optical depth'  )
+       call addfld ('CRM_EMS  ', (/'crm_nx_rad','crm_ny_rad','crm_nz'/), 'A', '1', 'CRM cloud longwave emissivity'  )
+    end if
 
     call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity')
 
@@ -818,7 +819,6 @@ end function radiation_nextsw_cday
        call add_default('FLUT', 2, ' ')
        call add_default('FLUT', 3, ' ')
     end if
-
 
     ! (Almost) net radiative flux at surface, does not have lwup.
     ! call addfld ('SRFRAD  ','W/m2    ',1,    'A','Net radiative flux at surface',phys_decomp)
@@ -927,7 +927,7 @@ end function radiation_nextsw_cday
     use radconstants,     only: nlwbands,idx_sw_diag
     use radsw,            only: rad_rrtmg_sw
     use radlw,            only: rad_rrtmg_lw
-    use rad_constituents, only: rad_cnst_get_gas, rad_cnst_out, oldcldoptics, &
+    use rad_constituents, only: rad_cnst_get_gas, rad_cnst_out, &
                                 liqcldoptics, icecldoptics
     use aer_rad_props,    only: aer_rad_props_sw, aer_rad_props_lw
     use interpolate_data, only: vertinterp
@@ -1009,7 +1009,7 @@ end function radiation_nextsw_cday
                                                !    0->pmxrgn(i,1) is range of pressure for
                                                !    1st region,pmxrgn(i,1)->pmxrgn(i,2) for
                                                !    2nd region, etc
-    real(r8) emis(pcols,pver)                  ! Cloud longwave emissivity
+    real(r8) :: emis(pcols,pver)               ! Cloud longwave emissivity
     real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
 
     ! combined cloud radiative parameters are "in cloud" not "in cell"
@@ -1456,6 +1456,7 @@ end function radiation_nextsw_cday
          solsd_m    = 0.   ; solld_m    = 0.
          qrs_m      = 0.   ; qrl_m      = 0.
          qrsc_m     = 0.   ; qrlc_m     = 0.
+         emis = 0
          qrs_crm    = 0.   ; qrl_crm    = 0.
          qrsc_crm    = 0.  ; qrlc_crm   = 0.
          emis_crm   = 0.   ; cld_tau_crm= 0.
@@ -1669,7 +1670,7 @@ end function radiation_nextsw_cday
                 end do ! i
               end do ! m
             else if (SPCAM_microp_scheme .eq. 'sam1mom') then 
-              ! for sam1mom, rel and rei are calcualted above, and are the same for all CRM columns
+              ! for sam1mom, rel and rei are calculated above, and are the same for all CRM columns
               do m=1,crm_nz
                 k = pver-m+1
                 rel_crm(:ncol,ii,jj,m)=rel(:ncol,k)
@@ -1686,27 +1687,22 @@ end function radiation_nextsw_cday
 
           call t_startf('cldoptics')
           if (dosw) then
-            if(oldcldoptics) then
+            select case (icecldoptics)
+            case ('ebertcurry')
               call ec_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f, oldicewp=.false.)
+            case ('mitchell')
+              call get_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f)
+            case default
+              call endrun('iccldoptics must be one either ebertcurry or mitchell')
+            end select
+            select case (liqcldoptics)
+            case ('slingo')
               call slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f, oldliqwp=.false.)
-            else
-              select case (icecldoptics)
-              case ('ebertcurry')
-                call  ec_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f, oldicewp=.true.)
-              case ('mitchell')
-                call get_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f)
-              case default
-                call endrun('iccldoptics must be one either ebertcurry or mitchell')
-              end select
-              select case (liqcldoptics)
-              case ('slingo')
-                call slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f, oldliqwp=.true.)
-              case ('gammadist')
-                call get_liquid_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f)
-              case default
-                call endrun('liqcldoptics must be either slingo or gammadist')
-              end select
-            endif
+            case ('gammadist')
+              call get_liquid_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f)
+            case default
+              call endrun('liqcldoptics must be either slingo or gammadist')
+            end select
             cld_tau    (:,1:ncol,:) = liq_tau    (:,1:ncol,:) + ice_tau    (:,1:ncol,:)
             cld_tau_w  (:,1:ncol,:) = liq_tau_w  (:,1:ncol,:) + ice_tau_w  (:,1:ncol,:)
             cld_tau_w_g(:,1:ncol,:) = liq_tau_w_g(:,1:ncol,:) + ice_tau_w_g(:,1:ncol,:)
@@ -1735,20 +1731,22 @@ end function radiation_nextsw_cday
                   endif
                 enddo
               enddo
-              if (use_SPCAM) then 
-                do m=1,crm_nz
-                   k = pver-m+1
-                   do i=1,ncol
-                      cld_tau_crm(i,ii,jj,m) =  cld_tau(rrtmg_sw_cloudsim_band,i,k)
-                   end do ! i
-                end do ! m
-              endif 
             else  ! cldfsnow_idx > 0
               c_cld_tau    (1:nbndsw,1:ncol,:) = cld_tau    (:,1:ncol,:)
               c_cld_tau_w  (1:nbndsw,1:ncol,:) = cld_tau_w  (:,1:ncol,:)
               c_cld_tau_w_g(1:nbndsw,1:ncol,:) = cld_tau_w_g(:,1:ncol,:)
               c_cld_tau_w_f(1:nbndsw,1:ncol,:) = cld_tau_w_f(:,1:ncol,:)
             endif  ! cldfsnow_idx > 0
+
+            ! Save cloud optical depth for CRM column to output later
+            if (use_SPCAM) then 
+              do m=1,crm_nz
+                 k = pver-m+1
+                 do i=1,ncol
+                    cld_tau_crm(i,ii,jj,m) =  cld_tau(rrtmg_sw_cloudsim_band,i,k)
+                 end do ! i
+              end do ! m
+            endif 
 
             if(do_aerocom_ind3) then
               call pbuf_set_field(pbuf,cld_tau_idx,cld_tau(rrtmg_sw_cloudsim_band, :, :))                   
@@ -1757,27 +1755,23 @@ end function radiation_nextsw_cday
           endif
 
           if (dolw) then
-            if(oldcldoptics) then
-              call cloud_rad_props_get_lw(state, pbuf, cld_lw_abs, oldcloud=.true.)
-            else  ! oldcldoptics
-              select case (icecldoptics)
-              case ('ebertcurry')
-                call    ec_ice_get_rad_props_lw(state, pbuf, ice_lw_abs, oldicewp=.true.)
-              case ('mitchell')
-                call ice_cloud_get_rad_props_lw(state, pbuf, ice_lw_abs)
-              case default
-                call endrun('iccldoptics must be one either ebertcurry or mitchell')
-              end select
-              select case (liqcldoptics)
-              case ('slingo')
-                call   slingo_liq_get_rad_props_lw(state, pbuf, liq_lw_abs, oldliqwp=.true.)
-              case ('gammadist')
-                call liquid_cloud_get_rad_props_lw(state, pbuf, liq_lw_abs)
-              case default
-                call endrun('liqcldoptics must be either slingo or gammadist')
-              end select
-              cld_lw_abs(:,1:ncol,:) = liq_lw_abs(:,1:ncol,:) + ice_lw_abs(:,1:ncol,:)
-            endif  ! oldcldoptics
+            select case (icecldoptics)
+            case ('ebertcurry')
+              call ec_ice_get_rad_props_lw(state, pbuf, ice_lw_abs, oldicewp=.false.)
+            case ('mitchell')
+              call ice_cloud_get_rad_props_lw(state, pbuf, ice_lw_abs)
+            case default
+              call endrun('iccldoptics must be one either ebertcurry or mitchell')
+            end select
+            select case (liqcldoptics)
+            case ('slingo')
+              call slingo_liq_get_rad_props_lw(state, pbuf, liq_lw_abs, oldliqwp=.false.)
+            case ('gammadist')
+              call liquid_cloud_get_rad_props_lw(state, pbuf, liq_lw_abs)
+            case default
+              call endrun('liqcldoptics must be either slingo or gammadist')
+            end select
+            cld_lw_abs(:,1:ncol,:) = liq_lw_abs(:,1:ncol,:) + ice_lw_abs(:,1:ncol,:)
 
             if (cldfsnow_idx > 0) then
               ! add in snow
@@ -1793,17 +1787,23 @@ end function radiation_nextsw_cday
                    endif
                 enddo
               enddo
-              if (use_SPCAM) then
-                  do m=1,crm_nz
-                     k = pver-m+1
-                     do i=1,ncol
-                        emis_crm(i,ii,jj,m)=1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,i,k))
-                     end do ! i
-                  end do ! m
-              endif  ! use_SPCAM
             else  ! cldfsnow_idx > 0
                c_cld_lw_abs(1:nbndlw,1:ncol,:)=cld_lw_abs(:,1:ncol,:)
             endif  ! cldfsnow_idx > 0
+
+            ! Calculate longwave emissivity
+            emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,:ncol,:))
+
+            ! Save emissivity for CRM
+            if (use_SPCAM) then
+                do m = 1,crm_nz
+                   k = pver-m+1
+                   do i = 1,ncol
+                      emis_crm(i,ii,jj,m) = emis(i,k)
+                   end do ! i
+                end do ! m
+             endif  ! use_SPCAM
+
           endif  ! dolw
 
           if (.not.(cldfsnow_idx > 0)) then
@@ -2458,14 +2458,12 @@ end function radiation_nextsw_cday
 
       end if
 
+      call outfld('EMIS      ',emis    ,pcols   ,lchnk   )
+
       ! Run the CFMIP Observation Simulator Package (COSP)
       ! For the time being, the MMF stuff is not coupled with the COSP
       ! simulator, so bypass this code if we are using SP/MMF (for now)
       if (.not. use_SPCAM) then 
-          !! initialize and calculate emis
-          emis(:,:) = 0._r8
-          emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(rrtmg_lw_cloudsim_band,:ncol,:))
-          call outfld('EMIS      ',emis    ,pcols   ,lchnk   )
 
           !! compute grid-box mean SW and LW snow optical depth for use by COSP
           gb_snow_tau(:,:) = 0._r8
@@ -2506,11 +2504,12 @@ end function radiation_nextsw_cday
           call outfld('CRM_MU    ', mu_crm     , pcols, lchnk)
           call outfld('CRM_DES   ', des_crm    , pcols, lchnk)
           call outfld('CRM_LAMBDA', lambdac_crm, pcols, lchnk)
-          call outfld('CRM_TAU   ', cld_tau_crm, pcols, lchnk)
           deallocate(des_crm, mu_crm, lambdac_crm)
       endif
 
       if (use_SPCAM) then 
+          call outfld('CRM_TAU  ', cld_tau_crm, pcols, lchnk)
+          call outfld('CRM_EMS  ', emis_crm, pcols, lchnk)
           call outfld('CRM_DEI  ', dei_crm, pcols, lchnk)
           deallocate(dei_crm)
           call outfld('CRM_REL  ', rel_crm, pcols, lchnk)

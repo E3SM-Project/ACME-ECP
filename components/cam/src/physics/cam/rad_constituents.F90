@@ -54,7 +54,6 @@ integer, parameter :: cs1 = 256
 integer, public, parameter :: N_DIAG = 10
 character(len=cs1), public :: iceopticsfile, liqopticsfile
 character(len=32),  public :: icecldoptics,liqcldoptics
-logical,            public :: oldcldoptics = .false.
 
 ! Private module data
 
@@ -278,8 +277,7 @@ subroutine rad_cnst_readnl(nlfile)
                           iceopticsfile, &
                           liqopticsfile, &
                           icecldoptics,  &
-                          liqcldoptics,  &
-                          oldcldoptics
+                          liqcldoptics
 
    !-----------------------------------------------------------------------------
 
@@ -295,17 +293,6 @@ subroutine rad_cnst_readnl(nlfile)
       end if
       close(unitn)
       call freeunit(unitn)
-   end if
-
-   ! whannah - ensure that oldcldoptics=true if using SP 1-mom with RRTMG
-   call phys_getopts( use_SPCAM_out = use_SPCAM )
-   if (use_SPCAM) then
-      call phys_getopts( SPCAM_microp_scheme_out = SPCAM_microp_scheme )
-      if (SPCAM_microp_scheme .eq. 'sam1mom' .and. (.not. oldcldoptics) ) then
-         ! call endrun(routine//": oldcloudoptics must be true with SP 1-moment and RRTMG")
-         oldcldoptics = .true.
-         if (masterproc) write(iulog,*) 'rad_cnst_readnl: setting oldcldoptics = .true.'
-      end if
    end if
 
 #ifdef SPMD
@@ -326,7 +313,6 @@ subroutine rad_cnst_readnl(nlfile)
    call mpibcast (liqopticsfile, len(liqopticsfile),               mpichar, 0, mpicom)
    call mpibcast (liqcldoptics,  len(liqcldoptics),                mpichar, 0, mpicom)
    call mpibcast (icecldoptics,  len(icecldoptics),                mpichar, 0, mpicom)
-   call mpibcast (oldcldoptics,  1,                                mpilog , 0, mpicom)
 #endif
 
    ! Parse the namelist input strings

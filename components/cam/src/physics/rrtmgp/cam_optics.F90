@@ -42,6 +42,7 @@ contains
       use phys_control, only: phys_getopts
       use cam_abortutils, only: endrun
       use mo_optical_props, only: ty_optical_props_2str
+      use rad_constituents, only: icecldoptics, liqcldoptics
 
       ! Inputs. Right now, this uses state and pbuf, and passes these along to the
       ! individual get_*_optics routines from cloud_rad_props. This is not very
@@ -60,8 +61,6 @@ contains
       ! assumptions about array sizes.
       type(ty_optical_props_2str), intent(inout) :: optics_out
 
-      character(len=16) :: liq_optics_scheme, ice_optics_scheme
-
       ! Temporary variables to hold cloud optical properties before combining into
       ! output arrays. Same shape as output arrays, so get shapes from output.
       real(r8), dimension(nswbands,pcols,pver) :: &
@@ -76,9 +75,6 @@ contains
 
       integer :: ncol, iband, icol, ilev
 
-      ! For MMF
-      logical :: use_SPCAM
-      character(len=16) :: SPCAM_microp_scheme
 
       ! Initialize
       ice_tau = 0
@@ -100,19 +96,8 @@ contains
 
       ncol = state%ncol
 
-      ! Determine optics scheme
-      call phys_getopts(use_SPCAM_out=use_SPCAM)
-      call phys_getopts(SPCAM_microp_scheme_out=SPCAM_microp_scheme)
-      if (use_SPCAM .and. trim(SPCAM_microp_scheme) == 'sam1mom') then
-         liq_optics_scheme = 'slingo'
-         ice_optics_scheme = 'ebertcurry'
-      else
-         liq_optics_scheme = 'mitchell'
-         ice_optics_scheme = 'conley'
-      end if
-
       ! Get ice cloud optics
-      if (trim(ice_optics_scheme) == 'conley') then
+      if (trim(icecldoptics) == 'mitchell') then
          call get_ice_optics_sw(state, pbuf, &
                                 ice_tau, ice_tau_ssa, &
                                 ice_tau_ssa_g, ice_tau_ssa_f)
@@ -126,16 +111,16 @@ contains
                ice_tau_ssa_f(:,icol,ilev) = reordered(ice_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
             end do
          end do
-      else if (trim(ice_optics_scheme) == 'ebertcurry') then
+      else if (trim(icecldoptics) == 'ebertcurry') then
          call ec_ice_optics_sw (state, pbuf, &
                                 ice_tau, ice_tau_ssa, &
                                 ice_tau_ssa_g, ice_tau_ssa_f)
       else
-         call endrun('Ice optics scheme ' // trim(ice_optics_scheme) // ' not recognized.')
+         call endrun('Ice optics scheme ' // trim(icecldoptics) // ' not recognized.')
       end if
       
       ! Get liquid cloud optics
-      if (trim(liq_optics_scheme) == 'mitchell') then
+      if (trim(liqcldoptics) == 'gammadist') then
          call get_liquid_optics_sw(state, pbuf, &
                                    liq_tau, liq_tau_ssa, &
                                    liq_tau_ssa_g, liq_tau_ssa_f)
@@ -149,12 +134,12 @@ contains
                liq_tau_ssa_f(:,icol,ilev) = reordered(liq_tau_ssa_f(:,icol,ilev), map_rrtmg_to_rrtmgp_swbands)
             end do
          end do
-      else if (trim(liq_optics_scheme) == 'slingo') then
+      else if (trim(liqcldoptics) == 'slingo') then
          call slingo_liq_optics_sw(state, pbuf, &
                                    liq_tau, liq_tau_ssa, &
                                    liq_tau_ssa_g, liq_tau_ssa_f)
       else
-         call endrun('Liquid optics scheme ' // trim(liq_optics_scheme) // ' not recognized.')
+         call endrun('Liquid optics scheme ' // trim(liqcldoptics) // ' not recognized.')
       end if 
 
       ! Combine all cloud optics from CAM routines
@@ -251,12 +236,11 @@ contains
       use radconstants, only: nlwbands
       use cam_abortutils, only: endrun
       use mo_optical_props, only: ty_optical_props_1scl
+      use rad_constituents, only: icecldoptics, liqcldoptics
 
       type(physics_state), intent(in) :: state
       type(physics_buffer_desc), pointer :: pbuf(:)
       type(ty_optical_props_1scl), intent(inout) :: optics_out
-
-      character(len=16) :: liq_optics_scheme, ice_optics_scheme
 
       ! Cloud and snow fractions, used to weight optical properties by
       ! contributions due to cloud vs snow
@@ -269,9 +253,6 @@ contains
 
       integer :: iband, ncol
 
-      ! For MMF
-      logical :: use_SPCAM
-      character(len=16) :: SPCAM_microp_scheme
 
       ! Number of columns in this chunk
       ncol = state%ncol
@@ -283,33 +264,22 @@ contains
       cloud_tau(:,:,:) = 0.0
       combined_tau(:,:,:) = 0.0
 
-      ! Determine optics scheme
-      call phys_getopts(use_SPCAM_out=use_SPCAM)
-      call phys_getopts(SPCAM_microp_scheme_out=SPCAM_microp_scheme)
-      if (use_SPCAM .and. trim(SPCAM_microp_scheme) == 'sam1mom') then
-         liq_optics_scheme = 'slingo'
-         ice_optics_scheme = 'ebertcurry'
-      else
-         liq_optics_scheme = 'mitchell'
-         ice_optics_scheme = 'conley'
-      end if
-
       ! Get ice optics
-      if (trim(ice_optics_scheme) == 'conley') then
+      if (trim(icecldoptics) == 'mitchell') then
          call get_ice_optics_lw(state, pbuf, ice_tau)
-      else if (trim(ice_optics_scheme) == 'ebertcurry') then
+      else if (trim(icecldoptics) == 'ebertcurry') then
          call ec_ice_optics_lw(state, pbuf, ice_tau)
       else
-         call endrun('Ice optics scheme ' // trim(ice_optics_scheme) // ' not recognized.')
+         call endrun('Ice optics scheme ' // trim(icecldoptics) // ' not recognized.')
       end if
 
       ! Get liquid optics
-      if (trim(liq_optics_scheme) == 'mitchell') then
+      if (trim(liqcldoptics) == 'gammadist') then
          call get_liquid_optics_lw(state, pbuf, liq_tau)
-      else if (trim(liq_optics_scheme) == 'slingo') then
+      else if (trim(liqcldoptics) == 'slingo') then
          call slingo_liq_optics_lw(state, pbuf, liq_tau)
       else
-         call endrun('Ice optics scheme ' // trim(liq_optics_scheme) // ' not recognized.')
+         call endrun('Liquid optics scheme ' // trim(liqcldoptics) // ' not recognized.')
       end if
 
       ! Combine liquid and ice
