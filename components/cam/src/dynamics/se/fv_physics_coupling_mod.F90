@@ -152,8 +152,8 @@ contains
     implicit none
     !---------------------------------------------------------------------------
     ! interface arguments
-    type(element_t), intent(inout) :: elem(:)        ! dynamics element structure
-    real(r8),        intent(inout) :: phis_tmp(:,:)  ! temp array to hold PHIS field from file
+    type(element_t),      intent(inout) :: elem(:)        ! dynamics element structure
+    real(kind=real_kind), intent(inout) :: phis_tmp (:,:) ! temp array to hold PHIS field from file
     ! local variables
     integer(i4) :: ie, i, j, icol  ! loop iterators
     integer(i4) :: ii, jj, gi, gj  ! GLL loop iterator and indices for pg2
@@ -248,7 +248,7 @@ contains
                      elem(ie)%state%ps_v(:,:,tl_f),                 &
                      np, fv_nphys, elem(ie)%metdet(:,:) )           &
                      *inv_area , (/ncol/) )
-
+      
       zs_tmp(:,ie) = RESHAPE( fv_physgrid(ie)%topo(:,:), (/ncol/) )
 
       call get_temperature(elem(ie),temperature,hvcoord,tl_f)
