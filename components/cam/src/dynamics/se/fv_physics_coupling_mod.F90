@@ -153,7 +153,7 @@ contains
     !---------------------------------------------------------------------------
     ! interface arguments
     type(element_t),      intent(inout) :: elem(:)        ! dynamics element structure
-    real(kind=real_kind), intent(inout) :: phis_tmp (:,:) ! temp array to hold PHIS field from file
+    real(r8), intent(inout) :: phis_tmp (:,:) ! temp array to hold PHIS field from file
     ! local variables
     integer(i4) :: ie, i, j, icol  ! loop iterators
     integer(i4) :: ii, jj, gi, gj  ! GLL loop iterator and indices for pg2
