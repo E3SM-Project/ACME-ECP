@@ -455,7 +455,7 @@ subroutine dropmixnuc( &
    character*200 fieldnamegas
    !---mhwang
 
-   logical  :: use_SPCAM
+   logical  :: use_MMF
    logical  :: SPCAM_mmf
    logical  :: SPCAM_notmmf
    !-- mdb spcam
@@ -529,9 +529,9 @@ subroutine dropmixnuc( &
    end do
 
 !-- mdb spcam
-   call phys_getopts(use_SPCAM_out=use_SPCAM)
-   SPCAM_mmf    = (use_SPCAM .and. present(do_mmf)) ! SPCAM called from mmf section
-   SPCAM_notmmf = (use_SPCAM .and. .not. present(do_mmf)) ! SPCAM not called from mmf section
+   call phys_getopts(use_MMF_out=use_MMF)
+   SPCAM_mmf    = (use_MMF .and. present(do_mmf)) ! SPCAM called from mmf section
+   SPCAM_notmmf = (use_MMF .and. .not. present(do_mmf)) ! SPCAM not called from mmf section
 
 #if (defined MODAL_AERO)
    if (SPCAM_mmf) then
@@ -1191,7 +1191,7 @@ endif
    !call outfld('NDROPSRC', nsource,  pcols, lchnk)
    !call outfld('NDROPMIX', ndropmix, pcols, lchnk)
    !call outfld('WTKE    ', wtke,     pcols, lchnk)
-   if (SPCAM_notmmf .or. .not. use_SPCAM) then ! called in the cam part.
+   if (SPCAM_notmmf .or. .not. use_MMF) then ! called in the cam part.
         call outfld('NDROPCOL', ndropcol, pcols, lchnk)
         call outfld('NDROPSRC', nsource,  pcols, lchnk)
         call outfld('NDROPMIX', ndropmix, pcols, lchnk)
@@ -1210,7 +1210,7 @@ endif
    call ccncalc(state, pbuf, cs, ccn)
    do l = 1, psat
       !-- mdb spcam
-      if ( (SPCAM_mmf) .or. .not. use_SPCAM) then ! called in the MMF part only or in the standard CAM
+      if ( (SPCAM_mmf) .or. .not. use_MMF) then ! called in the MMF part only or in the standard CAM
         call outfld(ccn_name(l), ccn(1,1,l), pcols, lchnk)
       endif
       !-- mdb spcam
@@ -1255,7 +1255,7 @@ endif
       do m = 1, ntot_amode
          do l = 0, nspec_amode(m)
             mm = mam_idx(m,l)
-            if (SPCAM_notmmf .or. .not. use_SPCAM) then ! called in the cam part.
+            if (SPCAM_notmmf .or. .not. use_MMF) then ! called in the cam part.
               call outfld(fieldname(mm),    coltend(:,mm),    pcols, lchnk)
               call outfld(fieldname_cw(mm), coltend_cw(:,mm), pcols, lchnk)
             else if (SPCAM_mmf) then

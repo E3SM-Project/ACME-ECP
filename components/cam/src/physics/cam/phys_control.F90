@@ -56,7 +56,7 @@ character(len=16) :: microp_scheme        = unset_str  ! microphysics package
 character(len=16) :: macrop_scheme        = unset_str  ! macrophysics package
 character(len=16) :: radiation_scheme     = unset_str  ! radiation package
 !-- mdb spcam
-character(len=16) :: SPCAM_microp_scheme  = unset_str  ! SPCAM microphysics package
+character(len=16) :: MMF_microphysics_scheme  = unset_str  ! SPCAM microphysics package
 !-- mdb spcam
 integer           :: srf_flux_avg         = unset_int  ! 1 => smooth surface fluxes, 0 otherwise
 integer           :: conv_water_in_rad    = unset_int  ! 0==> No; 1==> Yes-Arithmetic average;
@@ -65,7 +65,7 @@ integer           :: conv_water_in_rad    = unset_int  ! 0==> No; 1==> Yes-Arith
 logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-columns in microphysics
 
 !-- mdb spcam
-logical           :: use_SPCAM            = .false.    ! true => use super parameterized CAM
+logical           :: use_MMF            = .false.    ! true => use super parameterized CAM
 logical           :: use_ECPP             = .false.    ! true => use explicit cloud parameterized pollutants`
 logical           :: use_MAML             = .false.    ! true => use Multiple Atmosphere and Multtiple Land   
 
@@ -184,8 +184,8 @@ subroutine phys_ctl_readnl(nlfile)
    character(len=*), parameter :: subname = 'phys_ctl_readnl'
 
    namelist /phys_ctl_nl/ cam_physpkg, cam_chempkg, waccmx_opt, deep_scheme, shallow_scheme, &
-      eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, SPCAM_microp_scheme, srf_flux_avg, &
-      use_subcol_microp, use_SPCAM, use_ECPP, use_MAML, atm_dep_flux, history_amwg, history_verbose, history_vdiag, &
+      eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, MMF_microphysics_scheme, srf_flux_avg, &
+      use_subcol_microp, use_MMF, use_ECPP, use_MAML, atm_dep_flux, history_amwg, history_verbose, history_vdiag, &
       history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
       use_crm_accel, crm_accel_factor, crm_accel_uv, &
@@ -229,12 +229,12 @@ subroutine phys_ctl_readnl(nlfile)
    call mpibcast(microp_scheme,    len(microp_scheme)    , mpichar, 0, mpicom)
    call mpibcast(radiation_scheme, len(radiation_scheme) , mpichar, 0, mpicom)
    ! whannah - does order matter here? I'm gonna move this down...
-   ! call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
+   ! call mpibcast(MMF_microphysics_scheme, len(MMF_microphysics_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
    call mpibcast(macrop_scheme,    len(macrop_scheme)    , mpichar, 0, mpicom)
    call mpibcast(srf_flux_avg,                    1 , mpiint,  0, mpicom)
    call mpibcast(use_subcol_microp,               1 , mpilog,  0, mpicom)
-   call mpibcast(SPCAM_microp_scheme, len(SPCAM_microp_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
-   call mpibcast(use_SPCAM,                       1 , mpilog,  0, mpicom) !-- mdb spcam
+   call mpibcast(MMF_microphysics_scheme, len(MMF_microphysics_scheme) , mpichar, 0, mpicom)  !-- mdb spcam
+   call mpibcast(use_MMF,                       1 , mpilog,  0, mpicom) !-- mdb spcam
    call mpibcast(use_ECPP,                        1 , mpilog,  0, mpicom) !-- mdb spcam
    call mpibcast(use_MAML,                        1 , mpilog,  0, mpicom) ! 
    call mpibcast(use_crm_accel,                   1 , mpilog,  0, mpicom)
@@ -366,11 +366,11 @@ subroutine phys_ctl_readnl(nlfile)
    end if
 
 !-- mdb spcam
-   ! Check settings for SPCAM_microp_scheme
-   if ( .not. (SPCAM_microp_scheme .eq. 'm2005' .or. SPCAM_microp_scheme .eq. 'sam1mom' .or. &
-               SPCAM_microp_scheme .eq. unset_str )) then
-      write(iulog,*)'phys_setopts: illegal value of SPCAM_microp_scheme:', SPCAM_microp_scheme
-      call endrun('phys_setopts: illegal value of SPCAM_microp_scheme')
+   ! Check settings for MMF_microphysics_scheme
+   if ( .not. (MMF_microphysics_scheme .eq. 'm2005' .or. MMF_microphysics_scheme .eq. 'sam1mom' .or. &
+               MMF_microphysics_scheme .eq. unset_str )) then
+      write(iulog,*)'phys_setopts: illegal value of MMF_microphysics_scheme:', MMF_microphysics_scheme
+      call endrun('phys_setopts: illegal value of MMF_microphysics_scheme')
    endif
 !-- mdb spcam
 
@@ -451,7 +451,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
                        ,l_bc_energy_fix_out, l_dry_adj_out, l_st_mac_out, l_st_mic_out, l_rad_out  &
                        ,prc_coef1_out,prc_exp_out,prc_exp1_out, cld_sed_out,mg_prc_coeff_fix_out,rrtmg_temp_fix_out &
                        , use_crm_accel_out, crm_accel_factor_out, crm_accel_uv_out &
-                       ,use_SPCAM_out, use_ECPP_out, SPCAM_microp_scheme_out, use_MAML_out)
+                       ,use_MMF_out, use_ECPP_out, MMF_microphysics_scheme_out, use_MAML_out)
 
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
@@ -460,7 +460,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
 !          eddy_scheme_out   : vertical diffusion scheme
 !          microp_scheme_out : microphysics scheme
 !          radiation_scheme_out : radiation_scheme
-!	       SPCAM_microp_scheme_out : SPCAM microphysics scheme
+!	       MMF_microphysics_scheme_out : SPCAM microphysics scheme
 !-----------------------------------------------------------------------
 
    character(len=16), intent(out), optional :: deep_scheme_out
@@ -469,8 +469,8 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    character(len=16), intent(out), optional :: microp_scheme_out
    character(len=16), intent(out), optional :: radiation_scheme_out
    character(len=16), intent(out), optional :: macrop_scheme_out
-   character(len=16), intent(out), optional :: SPCAM_microp_scheme_out
-   logical,           intent(out), optional :: use_SPCAM_out
+   character(len=16), intent(out), optional :: MMF_microphysics_scheme_out
+   logical,           intent(out), optional :: use_MMF_out
    logical,           intent(out), optional :: use_ECPP_out
    logical,           intent(out), optional :: use_MAML_out 
    logical,           intent(out), optional :: use_crm_accel_out
@@ -540,9 +540,9 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, &
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
    if ( present(radiation_scheme_out    ) ) radiation_scheme_out     = radiation_scheme
 
-   if ( present(SPCAM_microp_scheme_out ) ) SPCAM_microp_scheme_out  = SPCAM_microp_scheme
+   if ( present(MMF_microphysics_scheme_out ) ) MMF_microphysics_scheme_out  = MMF_microphysics_scheme
 
-   if ( present(use_SPCAM_out           ) ) use_SPCAM_out            = use_SPCAM
+   if ( present(use_MMF_out           ) ) use_MMF_out            = use_MMF
    if ( present(use_ECPP_out            ) ) use_ECPP_out             = use_ECPP
    if ( present(use_MAML_out            ) ) use_MAML_out             = use_MAML 
    if ( present(use_crm_accel_out       ) ) use_crm_accel_out        = use_crm_accel

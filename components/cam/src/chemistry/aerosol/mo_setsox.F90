@@ -282,7 +282,7 @@ contains
     type(cldaero_conc_t), pointer :: cldconc
 
 !==Guangxing Lin
-     logical :: use_SPCAM, use_ECPP
+     logical :: use_MMF, use_ECPP
 !==Guangxing Lin
 
     real(r8) :: fact1_hno3, fact2_hno3, fact3_hno3
@@ -296,7 +296,7 @@ contains
 
 
 !==Guangxing Lin
-    call phys_getopts (use_SPCAM_out = use_SPCAM)
+    call phys_getopts (use_MMF_out = use_MMF)
     call phys_getopts (use_ECPP_out  = use_ECPP)
 !==Guangxing Lin
 
@@ -530,7 +530,7 @@ contains
                 ! calc current [H+] from ph
                 xph(i,k) = 10.0_r8**(-yph)
 !==Guangxing Lin
-                    if(use_SPCAM .and. use_ECPP) then
+                    if(use_MMF .and. use_ECPP) then
                        ! in the MMF model, for ECPP, ph value is fixed at 4.5  +++mhwang
                        xph(i,k) = 10.0_r8**(-4.5_r8)    !+++mhwangtest
                     end if

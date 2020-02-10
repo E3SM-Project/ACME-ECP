@@ -173,7 +173,7 @@ subroutine diag_init()
    integer :: ixcldice, ixcldliq ! constituent indices for cloud liquid and ice water.
    integer :: ierr
 !-- mdb spcam
-   logical :: use_SPCAM, use_ECPP
+   logical :: use_MMF, use_ECPP
 !-- mdb spcam
 
    call phys_getopts(prog_modal_aero_out = prog_modal_aero )
@@ -706,10 +706,10 @@ subroutine diag_init()
   end if
 
 !-- mdb spcam
-  call phys_getopts(use_SPCAM_out = use_SPCAM)
+  call phys_getopts(use_MMF_out = use_MMF)
   call phys_getopts(use_ECPP_out  = use_ECPP)
 
-   if (use_SPCAM) then
+   if (use_MMF) then
       call addfld ('PRES    ',(/ 'lev' /), 'A', 'Pa      ','Pressure'                                )
       call addfld ('DPRES   ',(/ 'lev' /), 'A', 'Pa      ','Pressure thickness of layer'             )
       call addfld ('SPDT    ',(/ 'lev' /), 'A', 'K/s     ','T tendency due to CRM'                   )

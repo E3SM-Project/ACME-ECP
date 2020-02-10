@@ -268,7 +268,7 @@ contains
     real (r8) cfnew
     real (r8) xins(pcols)
 
-    logical ::  use_SPCAM  ! whannah
+    logical ::  use_MMF  ! whannah
 
 !     the minmod function 
     real (r8) a, b, c
@@ -286,7 +286,7 @@ contains
     ! medan(a,b,c) is the value of one of the three input arguments which is between minx and maxx
     medan(a,b,c) = a + minmod(b-a,c-a)
 
-    call phys_getopts( use_SPCAM_out  = use_SPCAM) ! whannah
+    call phys_getopts( use_MMF_out  = use_MMF) ! whannah
 
     ! x contains the values of the layer interfaces for each column i
     ! xin(i) contains the "departure point" for column i
@@ -314,7 +314,7 @@ contains
     ! now check to see whether we found it for each column 
     do i = 1,ncol
       if (intz(i).eq.0) then
-          if (use_SPCAM) then  ! whannah
+          if (use_MMF) then  ! whannah
             write(iulog,*) 'whannah - DUST_SEDIMENT_MOD:cfint2 -- interval was not found for col i ', i
             write(iulog,*) 'vel     : ',vel(i,:)
             write(iulog,*) 'xin     : ',xin

@@ -1620,8 +1620,8 @@ add_default($nl, 'rad_climate', 'val'=>$radval);
 
 # Cloud optics; for SPCAM be specific about which optics package to use
 if ($rad_pkg eq 'rrtmg' or $rad_pkg eq 'rrtmgp') {
-    if ($cfg->get('use_SPCAM')) {
-        if ($cfg->get('SPCAM_microp_scheme') eq 'sam1mom') {
+    if ($cfg->get('use_MMF')) {
+        if ($cfg->get('MMF_microphysics_scheme') eq 'sam1mom') {
             add_default($nl, 'liqcldoptics', 'val' => 'slingo');
             add_default($nl, 'icecldoptics', 'val' => 'ebertcurry');
         } else {
@@ -3529,8 +3529,8 @@ if ($clubb_sgs  =~ /$TRUE/io) {
 
 
 # SPCAM Microphysics scheme
-add_default($nl, 'SPCAM_microp_scheme');
-add_default($nl, 'use_SPCAM');
+add_default($nl, 'MMF_microphysics_scheme');
+add_default($nl, 'use_MMF');
 add_default($nl, 'use_ECPP');
 
 # SPCAM CRM mean-state acceleration

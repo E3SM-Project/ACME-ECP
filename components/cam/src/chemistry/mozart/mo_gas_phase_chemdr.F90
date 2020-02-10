@@ -382,8 +382,8 @@ contains
     real(r8) :: del_h2so4_gasprod(ncol,pver)
     real(r8) :: vmr0(ncol,pver,gas_pcnst)
 !==Guangxing Lin
-    logical :: use_SPCAM, use_ECPP
-    call phys_getopts (use_SPCAM_out = use_SPCAM)
+    logical :: use_MMF, use_ECPP
+    call phys_getopts (use_MMF_out = use_MMF)
     call phys_getopts (use_ECPP_out  = use_ECPP )
 
 !==Guangxing Lin
@@ -735,7 +735,7 @@ contains
       het_rates = 0._r8
     else
       !==Guangxing Lin
-      if (use_SPCAM .and. use_ECPP) then
+      if (use_MMF .and. use_ECPP) then
           het_rates (:, :, :) = 0.0
       else
       call sethet( het_rates, pmid, zmid, phis, tfld, &

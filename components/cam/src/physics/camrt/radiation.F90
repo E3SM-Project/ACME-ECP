@@ -802,7 +802,7 @@ end function radiation_nextsw_cday
     integer, dimension(pcols) :: IdxNite ! Indicies of night coumns
 
 !-- mdb spcam
-    logical :: use_SPCAM
+    logical :: use_MMF
 !-- mdb spcam
 
     character(*), parameter :: name = 'radiation_tend'
@@ -811,11 +811,11 @@ end function radiation_nextsw_cday
 
 !----------------------------------------------------------------------
 !-- mdb spcam
-    call phys_getopts(use_SPCAM_out = use_SPCAM)
+    call phys_getopts(use_MMF_out = use_MMF)
     first_column = .false.
     last_column  = .false.
 
-    if (use_SPCAM) then 
+    if (use_MMF) then 
        solin_m =0.
        fsntoa_m =0.
        fsutoa_m =0.
@@ -934,7 +934,7 @@ end function radiation_nextsw_cday
     end do
 
 !-- mdb spcam
-    if (use_SPCAM) then 
+    if (use_MMF) then 
        dosw = .true. ! do it every timestep
        dolw = .true.
     else
@@ -947,7 +947,7 @@ end function radiation_nextsw_cday
 
     if (dosw .or. dolw) then
 
-       if (use_SPCAM) then
+       if (use_MMF) then
           ! Compute effective sizes
           call cldefr(lchnk, ncol, landfrac, state%t, rel, rei, state%ps, state%pmid, landm, icefrac, snowh)
           cicewp => cicewp_loc
@@ -987,7 +987,7 @@ end function radiation_nextsw_cday
        call radinp(ncol, state%pmid, state%pint, pbr, pnm, eccf)
 
 !-- mdb spcam
-       if (use_SPCAM) then 
+       if (use_MMF) then 
           fice(1:ncol,1:pver) = 0.
           cldn(1:ncol,1:pver) = 0.
           cicewp(1:ncol,1:pver) = 0.
@@ -1006,7 +1006,7 @@ end function radiation_nextsw_cday
        do jj=1,crm_ny 
         do ii=1,crm_nx 
 
-           if (use_SPCAM) then
+           if (use_MMF) then
               first_column = ii.eq.1.and.jj.eq.1
               last_column = ii.eq.crm_nx.and.jj.eq.crm_ny
 
@@ -1049,7 +1049,7 @@ end function radiation_nextsw_cday
                 end do ! m
 
                 call cldovrlap(lchnk, ncol, state%pint, cld, nmxrgn, pmxrgn)
-           endif ! use_SPCAM
+           endif ! use_MMF
 !-- mdb spcam
 
        ! Solar radiation computation
@@ -1058,7 +1058,7 @@ end function radiation_nextsw_cday
 
           call t_startf('rad_sw')
 
-          if ( (use_SPCAM .and. first_column) .or. .not.use_SPCAM) then 
+          if ( (use_MMF .and. first_column) .or. .not.use_MMF) then 
 
           ! Get Oxygen mass mixing ratio.
             call rad_cnst_get_gas(0,'O2', state, pbuf,  o2)
@@ -1111,7 +1111,7 @@ end function radiation_nextsw_cday
           !
           ! Convert units of shortwave fields needed by rest of model from CGS to MKS
           !
-              if (use_SPCAM) then
+              if (use_MMF) then
                  do i=1,ncol
                     solin_m(i) = solin_m(i)+solin(i)*cgs2mks*factor_xy
                     fsds_m(i)  = fsds_m(i)+fsds(i)*cgs2mks*factor_xy
@@ -1181,7 +1181,7 @@ end function radiation_nextsw_cday
               endif
 
               ! Dump shortwave radiation information to history buffer (diagnostics)
-              if (use_SPCAM .and. last_column) then
+              if (use_MMF .and. last_column) then
                  cam_out%sols(:ncol) = sols_m(:ncol)     
                  cam_out%soll(:ncol) = soll_m(:ncol)     
                  cam_out%solsd(:ncol) = solsd_m(:ncol)   
@@ -1214,7 +1214,7 @@ end function radiation_nextsw_cday
                  call outfld('CRM_QRS ',qrs_crm        ,pcols   ,lchnk   )
               end if
 
-              if ( (use_SPCAM .and. last_column) .or. .not. use_SPCAM) then
+              if ( (use_MMF .and. last_column) .or. .not. use_MMF) then
                  ftem(:ncol,:pver) = qrs(:ncol,:pver)/cpair
                  call outfld('QRS     ',ftem  ,pcols,lchnk)
                  ftem(:ncol,:pver) = qrsc(:ncol,:pver)/cpair
@@ -1242,7 +1242,7 @@ end function radiation_nextsw_cday
                  call outfld('SWCF    ',swcf  ,pcols,lchnk)
               endif
 
-              if(use_SPCAM .and. last_column) then
+              if(use_MMF .and. last_column) then
                 do i=1, Nday
                   do k=1, pver
                      tot_cld_vistau(IdxDay(i),k) = tot_icld_vistau(IdxDay(i),k) *  factor_xy
@@ -1263,7 +1263,7 @@ end function radiation_nextsw_cday
                      end if
                   end do
                 end do
-              else if (.not.use_SPCAM) then
+              else if (.not.use_MMF) then
 	        !! initialize tau_cld_vistau and tau_icld_vistau as fillvalue, they will stay fillvalue for night columns
                 tot_icld_vistau(1:pcols,1:pver)=fillvalue
                 tot_cld_vistau(1:pcols,1:pver)=fillvalue
@@ -1276,7 +1276,7 @@ end function radiation_nextsw_cday
      	          !! sum wat and ice, multiply by cloud fraction to get grid-box value
                   tot_cld_vistau(IdxDay(i),1:pver)=(liq_icld_vistau(IdxDay(i),1:pver)+ice_icld_vistau(IdxDay(i),1:pver))*cld(IdxDay(i),1:pver)
                 end do
-              end if  ! use_SPCAM
+              end if  ! use_MMF
 
    	     ! add fillvalue for night columns
              do i = 1, Nnite
@@ -1369,7 +1369,7 @@ end function radiation_nextsw_cday
 
           call t_startf("rad_lw")
 
-              if ( (use_SPCAM .and. first_column) .or. .not. use_SPCAM) then
+              if ( (use_MMF .and. first_column) .or. .not. use_MMF) then
                  do i=1,ncol
                     lwupcgs(i) = cam_in%lwup(i)*1000._r8
                     if(single_column.and.scm_crm_mode.and.have_tg) &
@@ -1407,7 +1407,7 @@ end function radiation_nextsw_cday
           !
           ! Convert units of longwave fields needed by rest of model from CGS to MKS
           !
-              if (use_SPCAM) then 
+              if (use_MMF) then 
                  do i=1,ncol
                     flnt_m(i)  = flnt_m(i)+flnt(i)*cgs2mks*factor_xy
                     flut_m(i)  = flut_m(i)+flut(i)*cgs2mks*factor_xy
@@ -1444,7 +1444,7 @@ end function radiation_nextsw_cday
               endif
 
               ! Dump longwave radiation information to history tape buffer (diagnostics)
-              if (use_SPCAM .and. last_column) then
+              if (use_MMF .and. last_column) then
                  do i=1,ncol
                     cam_out%flwds(i) = flds_m(i)  
                     flnt(i)  = flnt_m(i)
@@ -1469,7 +1469,7 @@ end function radiation_nextsw_cday
                  !
                  ! Dump longwave radiation information to history tape buffer (diagnostics)
                  !
-              if ((use_SPCAM .and. last_column) .or. .not.use_SPCAM) then 
+              if ((use_MMF .and. last_column) .or. .not.use_MMF) then 
                  call outfld('QRL     ',qrl (:ncol,:)/cpair,ncol,lchnk)
                  call outfld('QRLC    ',qrlc(:ncol,:)/cpair,ncol,lchnk)
                  call outfld('FLNT    ',flnt  ,pcols,lchnk)
@@ -1492,7 +1492,7 @@ end function radiation_nextsw_cday
        ! Output aerosol mmr
        call rad_cnst_out(0, state, pbuf)
 
-       if (use_SPCAM) then ! SPCAM is not coupled to COSP yet
+       if (use_MMF) then ! SPCAM is not coupled to COSP yet
           cld = cldn   ! restore value of cld used by the standard model
 
           do m=1,crm_nz
@@ -1520,7 +1520,7 @@ end function radiation_nextsw_cday
 	      cosp_cnt(lchnk) = 0  !! reset counter
            end if
        end if
-       end if ! use_SPCAM)
+       end if ! use_MMF)
 
     else   !  if (dosw .or. dolw) then
 

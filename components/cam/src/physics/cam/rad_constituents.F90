@@ -259,8 +259,8 @@ subroutine rad_cnst_readnl(nlfile)
    character(len=1), pointer   :: ctype(:)
    character(len=*), parameter :: subname = 'rad_cnst_readnl'
 
-   logical :: use_SPCAM                      ! SPCAM flag
-   character(len=16) :: SPCAM_microp_scheme  ! SPCAM microphysics scheme
+   logical :: use_MMF                      ! SPCAM flag
+   character(len=16) :: MMF_microphysics_scheme  ! SPCAM microphysics scheme
 
    namelist /rad_cnst_nl/ mode_defs,     &
                           rad_climate,   &
