@@ -2644,6 +2644,42 @@ sub write_filepath
     # offline unit driver (defaults to stub)
     print $fh "$camsrcdir/cam/src/unit_drivers\n";
 
+    # Superparameterization
+	# This directory needs to precede physics/cam/ to replace duplicate files
+    if ($crm) {
+        print $fh "$camsrcdir/cam/src/physics/crm\n";
+        print $fh "$camsrcdir/cam/src/physics/crm/sam\n";
+        if ($rad eq 'rrtmg') {
+            print $fh "$camsrcdir/cam/src/physics/crm/rrtmg\n";
+        } elsif ($rad eq 'rrtmgp') {
+            print $fh "$camsrcdir/cam/src/physics/crm/rrtmgp\n";
+        }
+        if ($MMF_microphysics_scheme eq 'sam1mom') {
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_SAM1MOM\n";
+        }
+        if ($MMF_microphysics_scheme eq 'm2005') {
+          if(defined $opts{'use_crm_cldfrac'}) {
+              print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005FRAC\n";
+          } else {
+              print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005\n";
+          }
+        }
+        if ( defined $opts{'clubb_crm'}) {
+           print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_CLUBBkvhkvm\n";
+        } else {
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_TKE\n";
+        }
+        if ( defined $opts{'use_ECPP'}) {
+           print $fh "$camsrcdir/cam/src/physics/crm/ecpp\n";
+        }
+        if ($crm_adv eq 'UM5') {
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_UM5\n"; 
+        } else {
+           print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_MPDATA\n";
+        }
+    }
+
     if ($carma ne 'none') {
 	# This directory needs to precede physics/cam/ to replace
 	# the CARMA stub package with CARMA. Putting it first allows
@@ -2700,42 +2736,6 @@ sub write_filepath
     if ($clubb_sgs eq '1') {
        print $fh "$camsrcdir/cam/src/physics/clubb\n";
        print $fh "$camsrcdir/cam/src/physics/silhs\n";
-    }
-
-    # Superparameterization
-    if ($crm) {
-        print $fh "$camsrcdir/cam/src/physics/crm\n";
-        print $fh "$camsrcdir/cam/src/physics/crm/sam\n";
-        if ($rad eq 'rrtmg') {
-            print $fh "$camsrcdir/cam/src/physics/crm/rrtmg\n";
-        } elsif ($rad eq 'rrtmgp') {
-            print $fh "$camsrcdir/cam/src/physics/crm/rrtmgp\n";
-        }
-        if ($MMF_microphysics_scheme eq 'sam1mom') {
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_SAM1MOM\n";
-        }
-        if ($MMF_microphysics_scheme eq 'm2005') {
-          if(defined $opts{'use_crm_cldfrac'}) {
-              print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005FRAC\n";
-          } else {
-              print $fh "$camsrcdir/cam/src/physics/crm/sam/MICRO_M2005\n";
-          }
-        }
-        if ( defined $opts{'clubb_crm'}) {
-           print $fh "$camsrcdir/cam/src/physics/CLUBB_core\n";
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_CLUBBkvhkvm\n";
-        } else {
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/SGS_TKE\n";
-        }
-        if ( defined $opts{'use_ECPP'}) {
-           print $fh "$camsrcdir/cam/src/physics/crm/ecpp\n";
-        }
-        if ($crm_adv eq 'UM5') {
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_UM5\n"; 
-        } else {
-           print $fh "$camsrcdir/cam/src/physics/crm/sam/ADV_MPDATA\n";
-        }
-
     }
 
     print $fh "$camsrcdir/cam/src/dynamics/$dyn\n";
