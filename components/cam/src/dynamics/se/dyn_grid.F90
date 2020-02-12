@@ -1542,7 +1542,6 @@ contains
       allocate( fv_physgrid(ie)%topo       (fv_nphys,fv_nphys) )
       allocate( fv_physgrid(ie)%corner_lat(fv_nphys,fv_nphys,4) )
       allocate( fv_physgrid(ie)%corner_lon(fv_nphys,fv_nphys,4) )
-      allocate( fv_physgrid(ie)%topo       (fv_nphys,fv_nphys) )
     end do ! ie
 
     ! allocate subcell integration matrix
