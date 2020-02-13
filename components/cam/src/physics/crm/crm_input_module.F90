@@ -3,6 +3,9 @@ module crm_input_module
 #ifdef MODAL_AERO
    use modal_aero_data, only: ntot_amode
 #endif
+#ifdef MAML
+  use seq_comm_mct,       only : num_inst_atm
+#endif
    use openacc_utils
    implicit none
    private
@@ -23,13 +26,13 @@ module crm_input_module
       real(crm_rknd), allocatable :: ul(:,:)             ! Global grid u (m/s)
       real(crm_rknd), allocatable :: vl(:,:)             ! Global grid v (m/s)
       real(crm_rknd), allocatable :: ocnfrac(:)          ! area fraction of the ocean
-      real(crm_rknd), allocatable :: tau00  (:)          ! large-scale surface stress (N/m2)
+      real(crm_rknd), allocatable :: tau00  (:,:)          ! large-scale surface stress (N/m2)
       real(crm_rknd), allocatable :: wndls  (:)          ! large-scale surface wind (m/s)
-      real(crm_rknd), allocatable :: bflxls (:)          ! large-scale surface buoyancy flux (K m/s)
-      real(crm_rknd), allocatable :: fluxu00(:)          ! surface momenent fluxes [N/m2]
-      real(crm_rknd), allocatable :: fluxv00(:)          ! surface momenent fluxes [N/m2]
-      real(crm_rknd), allocatable :: fluxt00(:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
-      real(crm_rknd), allocatable :: fluxq00(:)          ! surface latent heat fluxes [ kg/(m2 s)]
+      real(crm_rknd), allocatable :: bflxls (:,:)          ! large-scale surface buoyancy flux (K m/s)
+      real(crm_rknd), allocatable :: fluxu00(:,:)          ! surface momenent fluxes [N/m2]
+      real(crm_rknd), allocatable :: fluxv00(:,:)          ! surface momenent fluxes [N/m2]
+      real(crm_rknd), allocatable :: fluxt00(:,:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
+      real(crm_rknd), allocatable :: fluxq00(:,:)          ! surface latent heat fluxes [ kg/(m2 s)]
 #if defined( m2005 ) && defined( MODAL_AERO )
       real(crm_rknd), allocatable :: naermod (:,:,:)     ! Aerosol number concentration [/m3]
       real(crm_rknd), allocatable :: vaerosol(:,:,:)     ! aerosol volume concentration [m3/m3]
@@ -68,13 +71,13 @@ contains
       if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))
       if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
       if (.not. allocated(this%ocnfrac))  allocate(this%ocnfrac(ncrms))
-      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms))
+      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms,num_inst_atm))
       if (.not. allocated(this%wndls))    allocate(this%wndls(ncrms))
-      if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms))
-      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms))
-      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms))
-      if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms))
-      if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms))
+      if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms,num_inst_atm))
+      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms,num_inst_atm))
+      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms,num_inst_atm))
+      if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms,num_inst_atm))
+      if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms,num_inst_atm))
 
       call prefetch(this%zmid)
       call prefetch(this%zint)

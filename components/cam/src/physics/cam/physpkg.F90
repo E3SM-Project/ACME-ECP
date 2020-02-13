@@ -1597,20 +1597,26 @@ subroutine tphysac (ztodt,   cam_in,  &
     !
 #ifdef MAML
     !do the average of cam_in surface fluxes over num_inst_atm land instances
-    factor_xy = 1._r8 / dble(num_inst_atm)
-    shfavg_in = 0._r8
-    lhfavg_in = 0._r8
-    wsxavg_in = 0._r8
-    wsyavg_in = 0._r8
+    ! [lee1046]=> this method makes MAML behaves close to SASL. For 2-way coupling 
+    !between land and atmosphere, surface fluxes need to be
+    ! passed to crm() as it is with the dimension of (ncol/ncrms, num_inst_atm);
+    ! TODO: a certain cam_in fields that are used in MAML will have one extra
+    ! dimension. It will be dimensioned as cam_in%shf(1:ncol,
+    ! 1:crm_nx(or num_inst_atm)). This method will be able to remove #ifdef MAML
+    !factor_xy = 1._r8 / dble(num_inst_atm)
+    !shfavg_in = 0._r8
+    !lhfavg_in = 0._r8
+    !wsxavg_in = 0._r8
+    !wsyavg_in = 0._r8
     do i=1,ncol
        do ii=1,num_inst_atm
           tend%flx_net(i) = tend%flx_net(i) + (( cam_in%shf(i,ii) +               &
              ((cam_out%precc(i,ii)  + cam_out%precl(i,ii) ) * latvap*rhoh2o ) +      &
              ((cam_out%precsc(i,ii) + cam_out%precsl(i,ii)) * latice*rhoh2o )) * factor_xy)
-          shfavg_in(i) = shfavg_in(i) + cam_in%shf(i,ii)*factor_xy
-          lhfavg_in(i) = lhfavg_in(i) + cam_in%lhf(i,ii)*factor_xy
-          wsxavg_in(i) = wsxavg_in(i) + cam_in%wsx(i,ii)*factor_xy
-          wsyavg_in(i) = wsyavg_in(i) + cam_in%wsy(i,ii)*factor_xy
+    !      shfavg_in(i) = shfavg_in(i) + cam_in%shf(i,ii)*factor_xy
+    !      lhfavg_in(i) = lhfavg_in(i) + cam_in%lhf(i,ii)*factor_xy
+    !      wsxavg_in(i) = wsxavg_in(i) + cam_in%wsx(i,ii)*factor_xy
+    !      wsyavg_in(i) = wsyavg_in(i) + cam_in%wsy(i,ii)*factor_xy
        end do
     end do
 #else

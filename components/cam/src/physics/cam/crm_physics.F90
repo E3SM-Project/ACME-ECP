@@ -1046,37 +1046,29 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       crm_input%vl(1:ncol,1:pver) = state%v(1:ncol,1:pver)
       crm_input%ocnfrac(1:ncol) = cam_in%ocnfrac(1:ncol)
       do i = 1,ncol
-#ifdef MAML
-         tau00_avg =0._r8
-         bflxls_avg =0._r8
-         fluxu00_avg =0._r8
-         fluxv00_avg =0._r8
-         fluxt00_avg =0._r8
-         fluxq00_avg =0._r8
-         do ii = 1, crm_nx*crm_ny
+         ! [lee1046] num_inst_atm = crm_nx for MAML
+         !           num_inst_atm = 1 Otherwise
+         do ii = 1, num_inst_atm 
             !seems none of variables below is used, so I don't use the CRM-level
             !input. Later on, they can be changed if needed   
-            tau00_avg = tau00_avg + sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
-            bflxls_avg = bflxls_avg + cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
-            fluxu00_avg = fluxu00_avg + cam_in%wsx(i,ii)     !N/m2
-            fluxv00_avg = fluxv00_avg + cam_in%wsy(i,ii)     !N/m2
-            fluxt00_avg = fluxt00_avg + cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
-            fluxq00_avg = fluxq00_avg + cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
-         end do
-         crm_input%tau00(i) = tau00_avg*factor_xy 
-         crm_input%bflxls(i) = bflxls_avg*factor_xy 
-         crm_input%fluxu00(i) = fluxu00_avg*factor_xy     !N/m2
-         crm_input%fluxv00(i) = fluxv00_avg*factor_xy     !N/m2
-         crm_input%fluxt00(i) = fluxt00_avg*factor_xy  ! K Kg/ (m2 s)
-         crm_input%fluxq00(i) = fluxq00_avg*factor_xy ! Kg/(m2 s)
-
+! [lee1046] below ifdef MAML will be removed once the MAML related cam_in variables
+! are dimensioned as (ncol, num_inst_atm)
+#ifdef MAML          
+         crm_input%tau00(i,ii) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
+         ! [lee1046] when Buoyancy Flux (bflxls) is determined from shf and lhf
+         ! Should state%t  be replaced by CRM temperature?
+         crm_input%bflxls(i,ii) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
+         crm_input%fluxu00(i,ii) = cam_in%wsx(i,ii)     !N/m2
+         crm_input%fluxv00(i,ii) = cam_in%wsy(i,ii)     !N/m2
+         crm_input%fluxt00(i,ii) = cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
+         crm_input%fluxq00(i,ii) = cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
 #else
-         crm_input%tau00(i) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
-         crm_input%bflxls(i) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
-         crm_input%fluxu00(i) = cam_in%wsx(i)     !N/m2
-         crm_input%fluxv00(i) = cam_in%wsy(i)     !N/m2
-         crm_input%fluxt00(i) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
-         crm_input%fluxq00(i) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
+         crm_input%tau00(i,ii) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
+         crm_input%bflxls(i,ii) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
+         crm_input%fluxu00(i,ii) = cam_in%wsx(i)     !N/m2
+         crm_input%fluxv00(i,ii) = cam_in%wsy(i)     !N/m2
+         crm_input%fluxt00(i,ii) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
+         crm_input%fluxq00(i,ii) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
 #endif  
          crm_input%wndls(i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
       end do
