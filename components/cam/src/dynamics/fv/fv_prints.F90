@@ -65,6 +65,7 @@ CONTAINS
     use shr_reprosum_mod, only : shr_reprosum_calc, shr_reprosum_tolExceeded
                               
     use phys_gmean,    only : gmean
+    use seq_comm_mct, only : num_inst_atm ! [lee1046] not going to add #ifdef MAML
 
     implicit none
 
@@ -120,8 +121,8 @@ CONTAINS
     integer i, j, k, ic, nj, lchnk, nck, ncol
     real(r8), dimension(begchunk:endchunk)    :: pmax, tmax, umax, vmax, wmax
     real(r8), dimension(begchunk:endchunk)    :: pmin, tmin, umin, vmin, wmin
-    real(r8), dimension(pcols,begchunk:endchunk,1) :: precc ! convective precip rate
-    real(r8), dimension(pcols,begchunk:endchunk,1) :: precl ! large-scale precip rate
+    real(r8), dimension(pcols,begchunk:endchunk,num_inst_atm) :: precc ! convective precip rate
+    real(r8), dimension(pcols,begchunk:endchunk,num_inst_atm) :: precl ! large-scale precip rate
     real(r8), dimension(begchunk:endchunk)    :: preccmax, preclmax
     real(r8), dimension(begchunk:endchunk)    :: preccmin, preclmin
     real(r8) :: fac, precmax, precmin
@@ -261,12 +262,12 @@ CONTAINS
 !$omp parallel do private(lchnk, ncol)
     do lchnk = begchunk, endchunk
        ncol = get_ncols_p(lchnk)
-       precc(:ncol,lchnk,1) = surf_state(lchnk)%precc(:ncol)
-       precl(:ncol,lchnk,1) = surf_state(lchnk)%precl(:ncol)
-       preccmax(lchnk) = maxval(precc(1:ncol,lchnk,1))
-       preccmin(lchnk) = minval(precc(1:ncol,lchnk,1))
-       preclmax(lchnk) = maxval(precl(1:ncol,lchnk,1))
-       preclmin(lchnk) = minval(precl(1:ncol,lchnk,1))
+       precc(:ncol,lchnk,:) = surf_state(lchnk)%precc(:ncol,:)
+       precl(:ncol,lchnk,:) = surf_state(lchnk)%precl(:ncol,:)
+       preccmax(lchnk) = maxval(precc(1:ncol,lchnk,:))
+       preccmin(lchnk) = minval(precc(1:ncol,lchnk,:))
+       preclmax(lchnk) = maxval(precl(1:ncol,lchnk,:))
+       preclmin(lchnk) = minval(precl(1:ncol,lchnk,:))
     end do
 
 #if defined( SPMD )
