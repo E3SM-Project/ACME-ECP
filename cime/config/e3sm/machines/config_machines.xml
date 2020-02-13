@@ -2899,7 +2899,7 @@
         <command name="load">pgi/19.4</command>
       </modules>
       <modules compiler="pgigpu">
-        <command name="load">pgi/19.4</command>
+        <command name="load">pgi/19.7</command>
         <command name="load">cuda</command>
       </modules>
       <modules compiler="pgi.*">
@@ -2961,7 +2961,7 @@
     <DESC>ORNL Summit. Node: 2x POWER9 + 6x Volta V100, 22 cores/socket, 4 HW threads/core.</DESC>
     <NODENAME_REGEX>.*summit.*</NODENAME_REGEX>
     <OS>LINUX</OS>
-    <COMPILERS>ibm,pgi,pgiacc,gnu</COMPILERS>
+    <COMPILERS>pgigpu,ibm,pgi,pgiacc,gnu</COMPILERS>
     <MPILIBS>spectrum-mpi,mpi-serial</MPILIBS>
     <PROJECT>cli115</PROJECT>
     <CHARGE_ACCOUNT>cli115</CHARGE_ACCOUNT>
@@ -3071,6 +3071,7 @@
       <env name="NETCDF_FORTRAN_PATH">$ENV{OLCF_NETCDF_FORTRAN_ROOT}</env>
       <env name="ESSL_PATH">$ENV{OLCF_ESSL_ROOT}</env>
       <env name="NETLIB_LAPACK_PATH">$ENV{OLCF_NETLIB_LAPACK_ROOT}</env>
+      <env name="PGI_ACC_POOL_ALLOC">0</env> 
     </environment_variables>
     <environment_variables compiler="ibm">
       <env name="OMPI_CC">xlc_r</env>
