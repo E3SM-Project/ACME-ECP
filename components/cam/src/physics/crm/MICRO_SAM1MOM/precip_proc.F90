@@ -1,11 +1,10 @@
 module precip_proc_mod
   use params, only: asyncid
   implicit none
-
+  public :: precip_proc
 contains
 
   subroutine precip_proc(ncrms,qpsrc,qpevp,q,qp,qn)
-
     use vars
     use micro_params
     use params
@@ -32,7 +31,11 @@ contains
     powg1 = (3 + b_grau) / 4.
     powg2 = (5 + b_grau) / 8.
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do k=1,nzm
       do icrm = 1 , ncrms
         qpsrc(icrm,k)=0.
@@ -40,7 +43,11 @@ contains
       enddo
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !!$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=1,ny
         do i=1,nx

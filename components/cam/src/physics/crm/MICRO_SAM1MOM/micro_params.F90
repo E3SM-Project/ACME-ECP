@@ -8,7 +8,7 @@ module micro_params
   !  Microphysics stuff:
 
   ! Densities of hydrometeors
-
+  public
   real(crm_rknd), parameter :: rhor = 1000. ! Density of water, kg/m3
   real(crm_rknd), parameter :: rhos = 100.  ! Density of snow, kg/m3
   real(crm_rknd), parameter :: rhog = 400.  ! Density of graupel, kg/m3
@@ -93,12 +93,16 @@ module micro_params
 
   real(crm_rknd) a_bg, a_pr, a_gr
 
+  public :: allocate_micro_params
+  public :: deallocate_micro_params
 
 contains
 
 
   subroutine allocate_micro_params(ncrms)
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
@@ -115,7 +119,7 @@ contains
     allocate( evapr2(ncrms,nzm) )
     allocate( evapg1(ncrms,nzm) )
     allocate( evapg2(ncrms,nzm) )
-
+#if defined(_OPENACC)
     call prefetch( accrsc  )
     call prefetch( accrsi  )
     call prefetch( accrrc  )
@@ -128,8 +132,22 @@ contains
     call prefetch( evapr2  )
     call prefetch( evapg1  )
     call prefetch( evapg2  )
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: accrsc  )
+    !$omp target enter data map(alloc: accrsi  )
+    !$omp target enter data map(alloc: accrrc  )
+    !$omp target enter data map(alloc: coefice )
+    !$omp target enter data map(alloc: accrgc  )
+    !$omp target enter data map(alloc: accrgi  )
+    !$omp target enter data map(alloc: evaps1  )
+    !$omp target enter data map(alloc: evaps2  )
+    !$omp target enter data map(alloc: evapr1  )
+    !$omp target enter data map(alloc: evapr2  )
+    !$omp target enter data map(alloc: evapg1  )
+    !$omp target enter data map(alloc: evapg2  )
+#endif
 
-    zero = 0
+    zero = 0.0_crm_rknd
 
     accrsc  = zero
     accrsi  = zero
@@ -148,6 +166,20 @@ contains
 
   subroutine deallocate_micro_params()
     implicit none
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: accrsc  )
+    !$omp target exit data map(delete: accrsi  )
+    !$omp target exit data map(delete: accrrc  )
+    !$omp target exit data map(delete: coefice )
+    !$omp target exit data map(delete: accrgc  )
+    !$omp target exit data map(delete: accrgi  )
+    !$omp target exit data map(delete: evaps1  )
+    !$omp target exit data map(delete: evaps2  )
+    !$omp target exit data map(delete: evapr1  )
+    !$omp target exit data map(delete: evapr2  )
+    !$omp target exit data map(delete: evapg1  )
+    !$omp target exit data map(delete: evapg2  )
+#endif
     deallocate( accrsc  )
     deallocate( accrsi  )
     deallocate( accrrc  )
@@ -161,6 +193,4 @@ contains
     deallocate( evapg1  )
     deallocate( evapg2  )
   end subroutine deallocate_micro_params
-
-
 end module micro_params
