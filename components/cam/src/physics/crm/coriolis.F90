@@ -13,7 +13,11 @@ contains
     integer i,j,k,ib,ic,jb,jc,kc,icrm
 
     if(RUN3D) then
+#if defined(_OPENACC)
       !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(4) nowait
+#endif
       do k=1,nzm
         do j=1,ny
           do i=1,nx
@@ -33,7 +37,11 @@ contains
         end do ! k
       end do
     else
+#if defined(_OPENACC)
       !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(4) nowait
+#endif
       do k=1,nzm
         do j=1,ny
           do i=1,nx
