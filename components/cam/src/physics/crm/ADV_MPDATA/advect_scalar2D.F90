@@ -1,6 +1,8 @@
 module advect_scalar2D_mod
   use params, only: asyncid
+#if defined(_OPENACC)
   use openacc_utils
+#endif
   implicit none
 
 contains
@@ -49,7 +51,7 @@ contains
     allocate( iadz(ncrms,nzm) )
     allocate( irho(ncrms,nzm) )
     allocate( irhow(ncrms,nzm) )
-
+#if defined(_OPENACC)
     call prefetch( mx )
     call prefetch( mn )
     call prefetch( uuu )
@@ -57,8 +59,21 @@ contains
     call prefetch( iadz )
     call prefetch( irho )
     call prefetch( irhow )
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: mx )
+    !$omp target enter data map(alloc: mn )
+    !$omp target enter data map(alloc: uuu )
+    !$omp target enter data map(alloc: www )
+    !$omp target enter data map(alloc: iadz )
+    !$omp target enter data map(alloc: irho )
+    !$omp target enter data map(alloc: irhow )
+#endif
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do i = -1 , nxp2
       do icrm = 1 , ncrms
         www(icrm,i,j,nz)=0.
@@ -67,7 +82,11 @@ contains
 
     if (dowallx) then
       if (mod(rank,nsubdomains_x).eq.0) then
+#if defined(_OPENACC)
         !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+        !$omp target teams distribute parallel do collapse(3) nowait
+#endif
         do k=1,nzm
           do i=dimx1_u,1
             do icrm = 1 , ncrms
@@ -77,7 +96,11 @@ contains
         enddo
       endif
       if (mod(rank,nsubdomains_x).eq.nsubdomains_x-1) then
+#if defined(_OPENACC)
         !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+        !$omp target teams distribute parallel do collapse(3) nowait
+#endif
         do k=1,nzm
           do i=nx+1,dimx2_u
             do icrm = 1 , ncrms
@@ -91,7 +114,11 @@ contains
     !-----------------------------------------
 
     if (nonos) then
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do i=0,nxp1
           do icrm = 1 , ncrms
@@ -106,7 +133,11 @@ contains
       enddo
     endif  ! nonos
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do k=1,nzm
       do i=-1,nxp3
         do icrm = 1 , ncrms
@@ -119,7 +150,12 @@ contains
         enddo
       enddo
     enddo
+
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do k=1,nzm
       do icrm = 1 , ncrms
         irho(icrm,k) = 1./rho(icrm,k)
@@ -127,12 +163,21 @@ contains
         irhow(icrm,k)=1./(rhow(icrm,k)*adz(icrm,k))
       enddo
     enddo
+
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do k=1,nzm
       do i=-1,nxp2
         do icrm = 1 , ncrms
           if (i >= 1 .and. i <= nx) then
+#if defined(_OPENACC)
             !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             flux(icrm,k) = flux(icrm,k) + www(icrm,i,j,k)
           endif
           f(icrm,i,j,k) = f(icrm,i,j,k) - (uuu(icrm,i+1,j,k)-uuu(icrm,i,j,k)  + &
@@ -141,7 +186,11 @@ contains
       enddo
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do k=1,nzm
       do i=0,nxp2
         do icrm = 1 , ncrms
@@ -162,7 +211,11 @@ contains
       enddo
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do i = -1 , nxp2
       do icrm = 1 , ncrms
         www(icrm,i,j,1) = 0.
@@ -171,7 +224,11 @@ contains
     !---------- non-osscilatory option ---------------
 
     if (nonos) then
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do i=0,nxp1
           do icrm = 1 , ncrms
@@ -185,7 +242,11 @@ contains
         enddo
       enddo
 
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do i=0,nxp1
           do icrm = 1 , ncrms
@@ -199,7 +260,11 @@ contains
         enddo
       enddo
 
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do i=1,nxp1
           do icrm = 1 , ncrms
@@ -218,7 +283,11 @@ contains
       enddo
     endif ! nonos
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -232,6 +301,16 @@ contains
         enddo
       enddo
     enddo
+
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: mx )
+    !$omp target exit data map(delete: mn )
+    !$omp target exit data map(delete: uuu )
+    !$omp target exit data map(delete: www )
+    !$omp target exit data map(delete: iadz )
+    !$omp target exit data map(delete: irho )
+    !$omp target exit data map(delete: irhow )
+#endif
 
     deallocate( mx )
     deallocate( mn )
