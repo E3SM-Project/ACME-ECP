@@ -1,3 +1,8 @@
+
+#define PRINT(var) \
+    write(*,"(A15,z10,I6)") #var, loc(var), icall
+
+
 module params
   ! use grid, only: nzm
 #ifdef CLUBB_CRM
@@ -15,9 +20,8 @@ module params
 #endif /*CRM*/
 
 #endif
-
   implicit none
-
+  public
 #ifdef CRM_SINGLE_PRECISION
   integer, parameter :: crm_rknd = selected_real_kind( 6) ! 4 byte real
 #else
@@ -41,7 +45,7 @@ module params
   real(crm_rknd), parameter :: cp    = 1004.          ! Specific heat of air, J/kg/K
   real(crm_rknd), parameter :: ggr   = 9.81           ! Gravity acceleration, m/s2
   real(crm_rknd), parameter :: lcond = 2.5104e+06     ! Latent heat of condensation, J/kg
-  real(crm_rknd), parameter :: lfus  = 0.3336e+06   ! Latent heat of fusion, J/kg
+  real(crm_rknd), parameter :: lfus  = 0.3336e+06     ! Latent heat of fusion, J/kg
   real(crm_rknd), parameter :: lsub  = 2.8440e+06     ! Latent heat of sublimation, J/kg
   real(crm_rknd), parameter :: rv    = 461.           ! Gas constant for water vapor, J/kg/K
   real(crm_rknd), parameter :: rgas  = 287.           ! Gas constant for dry air, J/kg/K
@@ -68,9 +72,6 @@ module params
 #else
   real(crm_rknd), parameter ::  pi = 3.141592653589793
 #endif
-
-
-
   !
   ! internally set parameters:
 
@@ -96,39 +97,45 @@ module params
   logical :: sfc_flx_fxd =.false. ! surface sensible flux is fixed
   logical :: sfc_tau_fxd =.false.! surface drag is fixed
 
-  logical:: dodamping = .false.
-  logical:: docloud = .false.
-  logical:: doclubb = .false. ! Enabled the CLUBB parameterization (interactively)
-  logical:: doclubb_sfc_fluxes = .false. ! Apply the surface fluxes within the CLUBB code rather than SAM
-  logical:: doclubbnoninter = .false. ! Enable the CLUBB parameterization (non-interactively)
-  logical:: docam_sfc_fluxes = .false.   ! Apply the surface fluxes within CAM
-  logical:: doprecip = .false.
-  logical:: dosgs = .false.
-  logical:: docoriolis = .false.
-  logical:: dosurface = .false.
-  logical:: dowallx = .false.
-  logical:: dowally = .false.
-  logical:: docolumn = .false.
-  logical:: dotracers = .false.
-  logical:: dosmoke = .false.
+  logical :: dodamping = .false.
+  logical :: docloud = .false.
+  logical :: doclubb = .false. ! Enabled the CLUBB parameterization (interactively)
+  logical :: doclubb_sfc_fluxes = .false. ! Apply the surface fluxes within the CLUBB code rather than SAM
+  logical :: doclubbnoninter = .false. ! Enable the CLUBB parameterization (non-interactively)
+  logical :: docam_sfc_fluxes = .false.   ! Apply the surface fluxes within CAM
+  logical :: doprecip = .false.
+  logical :: dosgs = .false.
+  logical :: docoriolis = .false.
+  logical :: dosurface = .false.
+  logical :: dowallx = .false.
+  logical :: dowally = .false.
+  logical :: docolumn = .false.
+  logical :: dotracers = .false.
+  logical :: dosmoke = .false.
 
   integer, parameter :: asyncid = 1
 
-  integer:: nclubb = 1 ! SAM timesteps per CLUBB timestep
+  integer :: nclubb = 1 ! SAM timesteps per CLUBB timestep
 
   real(crm_rknd), allocatable :: uhl(:)      ! current large-scale velocity in x near sfc
   real(crm_rknd), allocatable :: vhl(:)      ! current large-scale velocity in y near sfc
   real(crm_rknd), allocatable :: taux0(:)    ! surface stress in x, m2/s2
   real(crm_rknd), allocatable :: tauy0(:)    ! surface stress in y, m2/s2
 
-
+  public :: allocate_params
+  public :: deallocate_params  
 contains
-
   
   subroutine allocate_params(ncrms)
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
+    integer :: icrm
+    integer, save :: icall
+    icall = icall + 1
+
     allocate(fcor (ncrms))
     allocate(fcorz(ncrms))
     allocate(longitude0(ncrms))
@@ -140,7 +147,7 @@ contains
     allocate(vhl       (ncrms))
     allocate(taux0     (ncrms))
     allocate(tauy0     (ncrms))
-
+#if defined(_OPENACC)
     call prefetch(fcor )
     call prefetch(fcorz)
     call prefetch(longitude0)
@@ -152,23 +159,53 @@ contains
     call prefetch(vhl)
     call prefetch(taux0)
     call prefetch(tauy0)
-
-    fcor  = 0
-    fcorz = 0
-    longitude0 = 0
-    latitude0  = 0
-    z0 = 0.035
-    ocean = .false.
-    land = .false.
-    uhl = 0
-    vhl = 0
-    taux0 = 0
-    tauy0 = 0
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: fcor)
+    !$omp target enter data map(alloc: fcorz)
+    !$omp target enter data map(alloc: longitude0)
+    !$omp target enter data map(alloc: latitude0)
+    !$omp target enter data map(alloc: z0)
+    !$omp target enter data map(alloc: ocean)
+    !$omp target enter data map(alloc: land)
+    !$omp target enter data map(alloc: uhl)
+    !$omp target enter data map(alloc: vhl)
+    !$omp target enter data map(alloc: taux0)
+    !$omp target enter data map(alloc: tauy0)
+    
+    !$omp target teams distribute parallel do
+    do icrm = 1, ncrms
+      taux0(icrm) = 0.0
+    enddo
+    write(*,*) "params: test omp done!"
+#endif
+    fcor       = 0.0
+    fcorz      = 0.0
+    longitude0 = 0.0
+    latitude0  = 0.0
+    z0         = 0.035
+    ocean      = .false.
+    land       = .false.
+    uhl        = 0.0
+    vhl        = 0.0
+    taux0      = 0.0
+    tauy0      = 0.0
   end subroutine allocate_params
 
-  
   subroutine deallocate_params()
     implicit none
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: fcor )
+    !$omp target exit data map(delete: fcorz)
+    !$omp target exit data map(delete: longitude0)
+    !$omp target exit data map(delete: latitude0 )
+    !$omp target exit data map(delete: z0)
+    !$omp target exit data map(delete: ocean)
+    !$omp target exit data map(delete: land)
+    !$omp target exit data map(delete: uhl)
+    !$omp target exit data map(delete: vhl)
+    !$omp target exit data map(delete: taux0)
+    !$omp target exit data map(delete: tauy0)
+#endif
     deallocate(fcor )
     deallocate(fcorz)
     deallocate(longitude0)
@@ -181,6 +218,4 @@ contains
     deallocate(taux0)
     deallocate(tauy0)
   end subroutine deallocate_params
-
-
 end module params
