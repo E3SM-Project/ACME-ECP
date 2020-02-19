@@ -16,8 +16,11 @@ contains
 
     rdx=1./dx
     rdy=1./dy
-
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -34,7 +37,11 @@ contains
       end do ! k
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=1-YES3D,ny !bloss: 0,n* fixes computation of dp/d* in stats.
         do i=0,nx
@@ -46,8 +53,11 @@ contains
     enddo
 
     if(dowallx.and.mod(rank,nsubdomains_x).eq.0) then
-
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do j=1,ny
             do icrm = 1 , ncrms
@@ -59,8 +69,11 @@ contains
     end if
 
     if(dowally.and.RUN3D.and.rank.lt.nsubdomains_x) then
-
-      !$acc parallel loop collapse(3) async(asyncid)
+#if defined(_OPENACC)
+   !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+   !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms

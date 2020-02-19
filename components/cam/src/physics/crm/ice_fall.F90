@@ -9,7 +9,9 @@ contains
     use microphysics, only: micro_field, index_cloud_ice
     !use micro_params
     use params
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
     integer, allocatable :: kmax(:)
@@ -22,31 +24,57 @@ contains
     allocate( kmax(ncrms) )
     allocate( kmin(ncrms) )
     allocate( fz(ncrms,nx,ny,nz) )
+#if defined(_OPENACC)
     call prefetch( kmax )
     call prefetch( kmin )
     call prefetch( fz )
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: kmax )
+    !$omp target enter data map(alloc: kmin )
+    !$omp target enter data map(alloc: fz )
+#endif
 
+#if defined(_OPENACC)
     !$acc parallel loop async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do nowait
+#endif
     do icrm = 1 , ncrms
       kmax(icrm)=0
       kmin(icrm)=nzm+1
     enddo
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do j = 1, ny
       do i = 1, nx
         do icrm = 1 , ncrms
           do k = 1,nzm
             if(qcl(icrm,i,j,k)+qci(icrm,i,j,k).gt.0..and. tabs(icrm,i,j,k).lt.273.15) then
+#if defined(_OPENACC)
               !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               kmin(icrm) = min(kmin(icrm),k)
+#if defined(_OPENACC)
               !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               kmax(icrm) = max(kmax(icrm),k)
             end if
           end do
         end do
       end do
     end do
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do k = 1,nzm
       do icrm = 1 , ncrms
         qifall(icrm,k) = 0.
@@ -56,7 +84,11 @@ contains
 
     if(index_cloud_ice.eq.-1) return
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k = 1,nz
       do j = 1, ny
         do i = 1, nx
@@ -70,7 +102,11 @@ contains
     ! Compute cloud ice flux (using flux limited advection scheme, as in
     ! chapter 6 of Finite Volume Methods for Hyperbolic Problems by R.J.
     ! LeVeque, Cambridge University Press, 2002).
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k = 1 , nz
       do j = 1,ny
         do i = 1,nx
@@ -113,7 +149,11 @@ contains
         end do
       end do
     enddo
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do j = 1, ny
       do i = 1, nx
         do icrm = 1 , ncrms
@@ -124,7 +164,11 @@ contains
 
     ici = index_cloud_ice
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1, nz
       do j=1,ny
         do i=1,nx
@@ -136,7 +180,11 @@ contains
             ! Add this increment to both non-precipitating and total water.
             micro_field(icrm,i,j,k,ici)  = micro_field(icrm,i,j,k,ici)  + dqi
             ! Include this effect in the total moisture budget.
+#if defined(_OPENACC)
             !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             qifall(icrm,k) = qifall(icrm,k) + dqi
 
             ! The latent heat flux induced by the falling cloud ice enters
@@ -146,7 +194,11 @@ contains
             ! Add divergence of latent heat flux to liquid-ice static energy.
             t(icrm,i,j,k)  = t(icrm,i,j,k)  - lat_heat
             ! Add divergence to liquid-ice static energy budget.
+#if defined(_OPENACC)
             !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             tlatqi(icrm,k) = tlatqi(icrm,k) - lat_heat
             endif
           end do
@@ -154,7 +206,11 @@ contains
       end do
     end do
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -166,6 +222,11 @@ contains
       end do
     end do
 
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: kmax )
+    !$omp target exit data map(delete: kmin )
+    !$omp target exit data map(delete: fz )
+#endif
     deallocate( kmax )
     deallocate( kmin )
     deallocate( fz )

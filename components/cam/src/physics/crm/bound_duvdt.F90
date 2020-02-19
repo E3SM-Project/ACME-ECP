@@ -12,7 +12,11 @@ contains
     integer, intent(in) :: ncrms
     integer i,j,k,icrm
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do k=1,nzm
       do j=1,ny
         do icrm = 1 , ncrms
@@ -22,8 +26,11 @@ contains
     end do
 
     if(RUN3D) then
-
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms

@@ -15,6 +15,7 @@ module crmtracers
   use params, only: crm_rknd
   use utils,  only: lenstr
   implicit none
+  public
 
   real(crm_rknd), allocatable :: tracer  (:,:,:,:,:)
   real(crm_rknd), allocatable :: fluxbtr (:,:,:,:) ! surface flux of tracers
@@ -27,11 +28,19 @@ module crmtracers
   character *4  , allocatable :: tracername  (:)
   character *10 , allocatable :: tracerunits (:)
 
+  public :: allocate_tracers
+  public :: deallocate_tracers
+  public :: tracers_init
+  public :: tracers_flux
+  public :: tracers_physics
+  public :: tracers_hbuf_init
 CONTAINS
 
 
   subroutine allocate_tracers(ncrms)
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) :: zero
@@ -45,7 +54,7 @@ CONTAINS
     allocate( trphys  (nz,0:ntracers,ncrms)  )
     allocate( tracername   (0:ntracers))
     allocate( tracerunits (0:ntracers))
-
+#if defined(_OPENACC)
     call prefetch( tracer    )
     call prefetch( fluxbtr   )
     call prefetch( fluxttr   )
@@ -54,24 +63,44 @@ CONTAINS
     call prefetch( tradv     )
     call prefetch( trdiff    )
     call prefetch( trphys    )
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: tracer  )
+    !$omp target enter data map(alloc: fluxbtr )
+    !$omp target enter data map(alloc: fluxttr )
+    !$omp target enter data map(alloc: trwle   )
+    !$omp target enter data map(alloc: trwsb   )
+    !$omp target enter data map(alloc: tradv   )
+    !$omp target enter data map(alloc: trdiff  )
+    !$omp target enter data map(alloc: trphys  )
+#endif
 
-    zero = 0
+    zero = 0.0_crm_rknd
 
-    !tracer   = zero
-    !fluxbtr  = zero
-    !fluxttr  = zero
-    !trwle    = zero
-    !trwsb    = zero
-    !tradv    = zero
-    !trdiff   = zero
-    !trphys   = zero
-    !tracername  = ''
-    !tracerunits = ''
+    tracer   = zero
+    fluxbtr  = zero
+    fluxttr  = zero
+    trwle    = zero
+    trwsb    = zero
+    tradv    = zero
+    trdiff   = zero
+    trphys   = zero
+    tracername  = ''
+    tracerunits = ''
   end subroutine allocate_tracers
 
 
   subroutine deallocate_tracers()
     implicit none
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: tracer    )
+    !$omp target exit data map(delete: fluxbtr   )
+    !$omp target exit data map(delete: fluxttr   )
+    !$omp target exit data map(delete: trwle     )
+    !$omp target exit data map(delete: trwsb     )
+    !$omp target exit data map(delete: tradv     )
+    !$omp target exit data map(delete: trdiff    )
+    !$omp target exit data map(delete: trphys    )
+#endif
     deallocate( tracer    )
     deallocate( fluxbtr   )
     deallocate( fluxttr   )

@@ -13,8 +13,11 @@ contains
     real(crm_rknd) betu, betd
 
     if(docolumn) return
-
+#if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do  collapse(4) nowait
+#endif
     do k=2,nzm
       do j=1,ny
         do i=1,nx

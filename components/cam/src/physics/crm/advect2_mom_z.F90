@@ -8,7 +8,9 @@ contains
     !       momentum tendency due to the 2nd-order-central vertical advection
     use vars
     use params, only: crm_rknd
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd), allocatable :: fuz(:,:,:,:)
@@ -20,11 +22,21 @@ contains
     allocate( fuz(ncrms,nx,ny,nz ) )
     allocate( fvz(ncrms,nx,ny,nz ) )
     allocate( fwz(ncrms,nx,ny,nzm) )
+#if defined(_OPENACC)
     call prefetch( fuz )
     call prefetch( fvz )
     call prefetch( fwz )
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: fuz )
+    !$omp target enter data map(alloc: fvz )
+    !$omp target enter data map(alloc: fwz )
+#endif
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do k = 1 , nz
       do icrm = 1 , ncrms
         uwle(icrm,k) = 0.
@@ -32,7 +44,11 @@ contains
       enddo
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -48,8 +64,11 @@ contains
     enddo
 
     if(RUN3D) then
-
+#if defined(_OPENACC)
       !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(4) nowait
+#endif
       do k=2,nzm
         do j=1,ny
           do i=1,nx
@@ -59,9 +78,17 @@ contains
               rhoi = dz25 * rhow(icrm,k)
               fuz(icrm,i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j  ,k))*(u(icrm,i,j,k)+u(icrm,i,j,kb))
               fvz(icrm,i,j,k) = rhoi*(w(icrm,i,j,k)+w(icrm,i  ,j-1,k))*(v(icrm,i,j,k)+v(icrm,i,j,kb))
+#if defined(_OPENACC)
               !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               uwle(icrm,k) = uwle(icrm,k)+fuz(icrm,i,j,k)
+#if defined(_OPENACC)
               !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               vwle(icrm,k) = vwle(icrm,k)+fvz(icrm,i,j,k)
             end do
           end do
@@ -70,7 +97,11 @@ contains
 
     else
 
+#if defined(_OPENACC)
       !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(4) nowait
+#endif
       do k=2,nzm
         do j=1,ny
           do i=1,nx
@@ -81,9 +112,17 @@ contains
               www = rhoi*(w(icrm,i,j,k)+w(icrm,i-1,j,k))
               fuz(icrm,i,j,k) = www*(u(icrm,i,j,k)+u(icrm,i,j,kb))
               fvz(icrm,i,j,k) = www*(v(icrm,i,j,k)+v(icrm,i,j,kb))
+#if defined(_OPENACC)
               !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               uwle(icrm,k) = uwle(icrm,k)+fuz(icrm,i,j,k)
+#if defined(_OPENACC)
               !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               vwle(icrm,k) = vwle(icrm,k)+fvz(icrm,i,j,k)
             end do
           end do
@@ -92,7 +131,11 @@ contains
 
     endif
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -108,7 +151,11 @@ contains
       end do
     end do
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait 
+#endif
     do k=2,nzm
       do j=1,ny
         do i=1,nx
@@ -120,6 +167,12 @@ contains
         end do
       end do ! k
     end do
+
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: fuz )
+    !$omp target exit data map(delete: fvz )
+    !$omp target exit data map(delete: fwz )
+#endif
 
     deallocate( fuz )
     deallocate( fvz )

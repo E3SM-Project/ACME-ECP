@@ -28,7 +28,11 @@ contains
       call bound_exchange(ncrms,v,dimx1_v,dimx2_v,dimy1_v,dimy2_v,nzm,1,1,1,1,2)
       ! use w at the top level  - 0s anyway - to exchange the sst boundaries (for
       ! surface fluxes call
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do j = 1 , ny
         do i = 1 , nx
           do icrm = 1 , ncrms
@@ -37,7 +41,11 @@ contains
         enddo
       enddo
       call bound_exchange(ncrms,w,dimx1_w,dimx2_w,dimy1_w,dimy2_w,nz,1,1,1,1,3)
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do j = 1-YES3D , ny+YES3D
         do i = 0 , nx+1
           do icrm = 1 , ncrms
@@ -45,7 +53,11 @@ contains
           enddo
         enddo
       enddo
+#if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do j = 1-YES3D , ny+YES3D
         do i = 0 , nx+1
           do icrm = 1 , ncrms

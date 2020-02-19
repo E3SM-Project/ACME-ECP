@@ -11,7 +11,9 @@ contains
     use vars
     use microphysics, only: micro_field, index_water_vapor
     use params, only: crm_rknd
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
     real(crm_rknd) tau_min    ! minimum damping time-scale (at the top)
@@ -31,17 +33,28 @@ contains
     allocate( t0loc(ncrms,nzm) )
     allocate( u0loc(ncrms,nzm) )
     allocate( v0loc(ncrms,nzm) )
+#if defined(_OPENACC)
     call prefetch( n_damp)
     call prefetch( t0loc )
     call prefetch( u0loc )
     call prefetch( v0loc )
-   
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: n_damp)
+    !$omp target enter data map(alloc: t0loc )
+    !$omp target enter data map(alloc: u0loc )
+    !$omp target enter data map(alloc: v0loc )
+#endif   
+
     if(tau_min.lt.2*dt) then
       print*,'Error: in damping() tau_min is too small!'
       call task_abort()
     end if
 
+#if defined(_OPENACC)
     !$acc parallel loop async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do nowait
+#endif
     do icrm = 1 , ncrms
       do k=nzm,1,-1
         if(z(icrm,nzm)-z(icrm,k).lt.damp_depth*z(icrm,nzm)) then
@@ -50,7 +63,11 @@ contains
       end do
     end do
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do k=1,nzm
       do icrm = 1 , ncrms
         if ( k <= nzm .and. k >= nzm-n_damp(icrm) ) then
@@ -63,7 +80,11 @@ contains
     ! recalculate grid-mean u0, v0, t0 first,
     ! as t has been updated. No need for qv0, as
     ! qv has not been updated yet the calculation of qv0.
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do k=1, nzm
       do icrm = 1 , ncrms
         u0loc(icrm,k)=0.0
@@ -71,19 +92,35 @@ contains
         t0loc(icrm,k)=0.0
       end do
     end do
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1, nzm
       do j=1, ny
         do i=1, nx
           do icrm = 1 , ncrms
             tmp = u(icrm,i,j,k)/(nx*ny)
+#if defined(_OPENACC)
             !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             u0loc(icrm,k) = u0loc(icrm,k) + tmp
             tmp = v(icrm,i,j,k)/(nx*ny)
+#if defined(_OPENACC)
             !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             v0loc(icrm,k) = v0loc(icrm,k) + tmp
             tmp = t(icrm,i,j,k)/(nx*ny)
+#if defined(_OPENACC)
             !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             t0loc(icrm,k) = t0loc(icrm,k) + tmp
           end do
         end do
@@ -92,7 +129,11 @@ contains
 
    !For working around PGI OpenACC bug where it didn't create enough gangs 
     numgangs = ceiling(ncrms*ny*nx/128.)
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) vector_length(128) num_gangs(numgangs) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k = 1 , nzm
       do j=1,ny
         do i=1,nx
@@ -108,6 +149,13 @@ contains
         end do! j
       end do ! k
     end do
+
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: n_damp)
+    !$omp target exit data map(delete: t0loc )
+    !$omp target exit data map(delete: u0loc )
+    !$omp target exit data map(delete: v0loc )
+#endif
 
     deallocate( n_damp )
     deallocate( t0loc )

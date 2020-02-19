@@ -16,7 +16,9 @@ contains
     use params, only: dotracers
 #endif
     use scalar_momentum_mod
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
     integer k,icrm, i, j, kk
@@ -25,8 +27,13 @@ contains
 
     allocate( esmt_offset(ncrms) )
     allocate( dummy(ncrms,nz) )
+#if defined(_OPENACC)
     call prefetch( esmt_offset )
     call prefetch( dummy )
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: esmt_offset )
+    !$omp target enter data map(alloc: dummy )
+#endif
 
     !      advection of scalars :
     call advect_scalar(ncrms,t,dummy,dummy)
@@ -86,6 +93,11 @@ contains
       u_esmt(icrm,:,:,:) = u_esmt(icrm,:,:,:) - esmt_offset(icrm)
       v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) - esmt_offset(icrm)
     enddo
+#endif
+
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: esmt_offset )
+    !$omp target exit data map(delete: dummy )
 #endif
 
     deallocate( esmt_offset )
