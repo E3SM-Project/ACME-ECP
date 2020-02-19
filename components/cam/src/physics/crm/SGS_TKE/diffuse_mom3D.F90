@@ -10,7 +10,9 @@ contains
 
     use vars
     use params, only: docolumn, crm_rknd
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
@@ -30,9 +32,15 @@ contains
     allocate( fu(ncrms,0:nx,0:ny,nz) )
     allocate( fv(ncrms,0:nx,0:ny,nz) )
     allocate( fw(ncrms,0:nx,0:ny,nz) )
+#if defined(_OPENACC)
     call prefetch( fu )
     call prefetch( fv )
     call prefetch( fw )
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: fu )
+    !$omp target enter data map(alloc: fv )
+    !$omp target enter data map(alloc: fw )
+#endif
 
     rdx2=1./(dx*dx)
     rdy2=1./(dy*dy)
@@ -41,7 +49,11 @@ contains
     dxy=dx/dy
     dyx=dy/dx
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=1,ny
         do i=0,nx
@@ -63,7 +75,12 @@ contains
         enddo
       enddo
     enddo
+
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -78,7 +95,11 @@ contains
       enddo
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=0,ny
         do i=1,nx
@@ -100,7 +121,12 @@ contains
         enddo
       enddo
     enddo
+
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -115,7 +141,11 @@ contains
       enddo
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do k = 1 , nzm
       do icrm = 1 , ncrms
         uwsb(icrm,k)=0.
@@ -124,7 +154,11 @@ contains
     enddo
 
     !-------------------------
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm-1
       do j=1,ny
         do i=1,nx
@@ -145,16 +179,28 @@ contains
             fu(icrm,i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(icrm,kc)
             tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,i,jb,k)+tk(icrm,i,j,kc)+tk(icrm,i,jb,kc))
             fv(icrm,i,j,kc)=-tkz*( (v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,i,jb,kc))*dzy)*rhow(icrm,kc)
+#if defined(_OPENACC)
             !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             uwsb(icrm,kc)=uwsb(icrm,kc)+fu(icrm,i,j,kc)
+#if defined(_OPENACC)
             !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             vwsb(icrm,kc)=vwsb(icrm,kc)+fv(icrm,i,j,kc)
           enddo
         enddo
       enddo
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do j=1,ny
       do i=1,nx
         do icrm = 1 , ncrms
@@ -166,15 +212,27 @@ contains
           fv(icrm,i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
           fu(icrm,i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(icrm,nz)
           fv(icrm,i,j,nz)=fluxtv(icrm,i,j) * rdz * rhow(icrm,nz)
+#if defined(_OPENACC)
           !$acc atomic update
+#elif defined(_OPENMP)
+          !$omp atomic update
+#endif
           uwsb(icrm,1) = uwsb(icrm,1) + fu(icrm,i,j,1)
+#if defined(_OPENACC)
           !$acc atomic update
+#elif defined(_OPENMP)
+          !$omp atomic update
+#endif
           vwsb(icrm,1) = vwsb(icrm,1) + fv(icrm,i,j,1)
         enddo
       enddo
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=1,nzm
       do j=1,ny
         do i=1,nx
@@ -188,7 +246,11 @@ contains
       enddo ! k
     enddo
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(4) nowait
+#endif
     do k=2,nzm
       do j=1,ny
         do i=1,nx
@@ -199,6 +261,12 @@ contains
         enddo
       enddo ! k
     enddo
+
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: fu )
+    !$omp target exit data map(delete: fv )
+    !$omp target exit data map(delete: fw )
+#endif
 
     deallocate( fu )
     deallocate( fv )

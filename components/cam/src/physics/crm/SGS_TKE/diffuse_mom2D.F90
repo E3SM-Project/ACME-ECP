@@ -10,7 +10,9 @@ contains
 
     use vars
     use params, only: docolumn, crm_rknd
+#if defined(_OPENACC)
     use openacc_utils
+#endif
     implicit none
     integer, intent(in) :: ncrms
     integer :: dimx1_d, dimx2_d, dimy1_d, dimy2_d
@@ -31,9 +33,15 @@ contains
     allocate( fu(ncrms,0:nx,1,nz) )
     allocate( fv(ncrms,0:nx,1,nz) )
     allocate( fw(ncrms,0:nx,1,nz) )
+#if defined(_OPENACC)
     call prefetch( fu )
     call prefetch( fv )
     call prefetch( fw )
+#elif defined(_OPENMP)
+    !$omp target enter data map(alloc: fu )
+    !$omp target enter data map(alloc: fv )
+    !$omp target enter data map(alloc: fw )
+#endif
 
     rdx2=1./dx/dx
     rdx25=0.25*rdx2
@@ -43,7 +51,11 @@ contains
     if( .not. docolumn ) then
       !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
+#if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do i=0,nx
           do icrm = 1 , ncrms
@@ -63,7 +75,11 @@ contains
       end do
       !For working around PGI bugs where PGI did not allocate enough gangs
       numgangs = ceiling( ncrms*nzm*nx/128. )
+#if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) async(asyncid)
+#elif defined(_OPENMP)
+      !$omp target teams distribute parallel do collapse(3) nowait
+#endif
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
@@ -78,8 +94,11 @@ contains
     end if
 
     !-------------------------
-
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do k = 1 , nzm
       do icrm = 1 , ncrms
         uwsb(icrm,k)=0.
@@ -89,7 +108,11 @@ contains
 
     !For working around PGI bugs where PGI did not allocate enough gangs
     numgangs = ceiling( ncrms*(nzm-1)*nx/128. )
+#if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do k=1,nzm-1
       do i=1,nx
         do icrm = 1 , ncrms
@@ -106,15 +129,27 @@ contains
           tkz=rdz25*(tk(icrm,i,j,k)+tk(icrm,ib,j,k)+tk(icrm,i,j,kc)+tk(icrm,ib,j,kc))
           fu(icrm,i,j,kc)=-tkz*( (u(icrm,i,j,kc)-u(icrm,i,j,k))*iadzw + (w(icrm,i,j,kc)-w(icrm,ib,j,kc))*dzx)*rhow(icrm,kc)
           fv(icrm,i,j,kc)=-tkz*(v(icrm,i,j,kc)-v(icrm,i,j,k))*iadzw*rhow(icrm,kc)
+#if defined(_OPENACC)
           !$acc atomic update
+#elif defined(_OPENMP)
+!!          !$omp atomic update
+#endif
           uwsb(icrm,kc)=uwsb(icrm,kc)+fu(icrm,i,j,kc)
+#if defined(_OPENACC)
           !$acc atomic update
+#elif defined(_OPENMP)
+!!          !$omp atomic update
+#endif
           vwsb(icrm,kc)=vwsb(icrm,kc)+fv(icrm,i,j,kc)
         end do
       end do
     end do
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(2) nowait
+#endif
     do i=1,nx
       do icrm = 1 , ncrms
         rdz=1./dz(icrm)
@@ -125,14 +160,26 @@ contains
         fv(icrm,i,j,1)=fluxbv(icrm,i,j) * rdz * rhow(icrm,1)
         fu(icrm,i,j,nz)=fluxtu(icrm,i,j) * rdz * rhow(icrm,nz)
         fv(icrm,i,j,nz)=fluxtv(icrm,i,j) * rdz * rhow(icrm,nz)
+#if defined(_OPENACC)
         !$acc atomic update
+#elif defined(_OPENMP)
+        !$omp atomic update
+#endif
         uwsb(icrm,1) = uwsb(icrm,1) + fu(icrm,i,j,1)
+#if defined(_OPENACC)
         !$acc atomic update
+#elif defined(_OPENMP)
+        !$omp atomic update
+#endif
         vwsb(icrm,1) = vwsb(icrm,1) + fv(icrm,i,j,1)
       end do
     end do
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -144,7 +191,11 @@ contains
       end do ! k
     end do ! k
 
+#if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
+#elif defined(_OPENMP)
+    !$omp target teams distribute parallel do collapse(3) nowait
+#endif
     do k=2,nzm
       do i=1,nx
         do icrm = 1 , ncrms
@@ -153,6 +204,12 @@ contains
         end do
       end do ! k
     end do ! k
+
+#if defined(_OPENMP)
+    !$omp target exit data map(delete: fu )
+    !$omp target exit data map(delete: fv )
+    !$omp target exit data map(delete: fw )
+#endif
 
     deallocate( fu )
     deallocate( fv )
