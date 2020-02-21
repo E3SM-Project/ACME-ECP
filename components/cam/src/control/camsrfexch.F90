@@ -15,9 +15,8 @@ module camsrfexch
   use infnan,        only: posinf, assignment(=)
   use cam_abortutils,    only: endrun
   use cam_logfile,   only: iulog
-#ifdef MAML
   use seq_comm_mct, only : num_inst_atm
-#endif
+  
   implicit none
 
 !----------------------------------------------------------------------- 
@@ -45,46 +44,26 @@ module camsrfexch
   type cam_out_t 
      integer  :: lchnk               ! chunk index
      integer  :: ncol                ! number of columns in chunk
-#ifdef MAML
-     real(r8) :: tbot(pcols,num_inst_atm)         ! bot level temperature
-     real(r8) :: zbot(pcols,num_inst_atm)         ! bot level height above surface
-     real(r8) :: ubot(pcols,num_inst_atm)         ! bot level u wind
-     real(r8) :: vbot(pcols,num_inst_atm)         ! bot level v wind
-     real(r8) :: qbot(pcols,pcnst,num_inst_atm)   ! bot level specific humidity
-     real(r8) :: pbot(pcols,num_inst_atm)         ! bot level pressure
-     real(r8) :: rho(pcols,num_inst_atm)          ! bot level density  
-     real(r8) :: netsw(pcols,num_inst_atm)        !    
-     real(r8) :: flwds(pcols,num_inst_atm)        ! 
-     real(r8) :: precsc(pcols,num_inst_atm)       !
-     real(r8) :: precsl(pcols,num_inst_atm)       !
-     real(r8) :: precc(pcols,num_inst_atm)        ! 
-     real(r8) :: precl(pcols,num_inst_atm)        ! 
-     real(r8) :: soll(pcols,num_inst_atm)         ! 
-     real(r8) :: sols(pcols,num_inst_atm)         ! 
-     real(r8) :: solld(pcols,num_inst_atm)        !
-     real(r8) :: solsd(pcols,num_inst_atm)        !
-     real(r8) :: thbot(pcols,num_inst_atm)        !  
-#else
-     real(r8) :: tbot(pcols)         ! bot level temperature
-     real(r8) :: zbot(pcols)         ! bot level height above surface
-     real(r8) :: ubot(pcols)         ! bot level u wind
-     real(r8) :: vbot(pcols)         ! bot level v wind
-     real(r8) :: qbot(pcols,pcnst)   ! bot level specific humidity
-     real(r8) :: pbot(pcols)         ! bot level pressure
-     real(r8) :: rho(pcols)          ! bot level density	
-     real(r8) :: netsw(pcols)        !	
-     real(r8) :: flwds(pcols)        ! 
-     real(r8) :: precsc(pcols)       !
-     real(r8) :: precsl(pcols)       !
-     real(r8) :: precc(pcols)        ! 
-     real(r8) :: precl(pcols)        ! 
-     real(r8) :: soll(pcols)         ! 
-     real(r8) :: sols(pcols)         ! 
-     real(r8) :: solld(pcols)        !
-     real(r8) :: solsd(pcols)        !
-     real(r8) :: thbot(pcols)        !
-#endif
-
+      
+     real(r8) :: tbot(pcols,num_inst_atm)         ! bottom level temperature
+     real(r8) :: thbot(pcols,num_inst_atm)        ! bottom level potential temperature 
+     real(r8) :: zbot(pcols,num_inst_atm)         ! bottom level height above surface
+     real(r8) :: ubot(pcols,num_inst_atm)         ! bottom level u wind
+     real(r8) :: vbot(pcols,num_inst_atm)         ! bottom level v wind
+     real(r8) :: qbot(pcols,pcnst,num_inst_atm)   ! bottom level specific humidity
+     real(r8) :: pbot(pcols,num_inst_atm)         ! bottom level pressure
+     real(r8) :: rho(pcols,num_inst_atm)          ! bottom level density  
+     real(r8) :: precsc(pcols,num_inst_atm)       ! convective snow rate (m/sec)
+     real(r8) :: precsl(pcols,num_inst_atm)       ! large-scale (stable) snow rate (m/sec)
+     real(r8) :: precc(pcols,num_inst_atm)        ! convective precipitationrate (m/sec)
+     real(r8) :: precl(pcols,num_inst_atm)        ! large-scale (stable) precipitation rate(m/sec)
+     real(r8) :: soll(pcols,num_inst_atm)         ! solar downward NIR beam (W/m2) 
+     real(r8) :: sols(pcols,num_inst_atm)         ! solar downward VIS beam (W/m2)
+     real(r8) :: solld(pcols,num_inst_atm)        ! solar downward NIR diffuse (W/m2)
+     real(r8) :: solsd(pcols,num_inst_atm)        ! solar downward VIS diffuse (W/m2)
+     real(r8) :: netsw(pcols,num_inst_atm)        ! Surface solar, net absorbed [W/m2]
+     real(r8) :: flwds(pcols,num_inst_atm)        ! longwave down [W/m2]
+     
      real(r8) :: co2prog(pcols)      ! prognostic co2
      real(r8) :: co2diag(pcols)      ! diagnostic co2
      real(r8) :: psl(pcols)
@@ -111,7 +90,7 @@ module camsrfexch
   type cam_in_t    
      integer  :: lchnk                   ! chunk index
      integer  :: ncol                    ! number of active columns
-#ifdef MAML
+     
      !modifying the CLM-input vars to reflect the added CRM columns
      real(r8) :: asdir(pcols,num_inst_atm)            ! albedo: shortwave, direct
      real(r8) :: asdif(pcols,num_inst_atm)            ! albedo: shortwave, diffuse
@@ -124,18 +103,7 @@ module camsrfexch
      real(r8) :: wsy(pcols,num_inst_atm)              ! surface v-stress (N)
      real(r8) :: snowhland(pcols,num_inst_atm)        ! snow depth (liquid water equivalent) over land 
      !modifying the CLM-input vars to reflect the added CRM columns
-#else
-     real(r8) :: asdir(pcols)            ! albedo: shortwave, direct
-     real(r8) :: asdif(pcols)            ! albedo: shortwave, diffuse
-     real(r8) :: aldir(pcols)            ! albedo: longwave, direct
-     real(r8) :: aldif(pcols)            ! albedo: longwave, diffuse
-     real(r8) :: lwup(pcols)             ! longwave up radiative flux
-     real(r8) :: lhf(pcols)              ! latent heat flux
-     real(r8) :: shf(pcols)              ! sensible heat flux
-     real(r8) :: wsx(pcols)              ! surface u-stress (N)
-     real(r8) :: wsy(pcols)              ! surface v-stress (N)
-     real(r8) :: snowhland(pcols)        ! snow depth (liquid water equivalent) over land 
-#endif
+     
      real(r8) :: tref(pcols)             ! ref height surface air temp
      real(r8) :: qref(pcols)             ! ref height specific humidity 
      real(r8) :: u10(pcols)              ! 10m wind speed
@@ -248,7 +216,6 @@ CONTAINS
     do c = begchunk,endchunk
        cam_in(c)%lchnk = c
        cam_in(c)%ncol  = get_ncols_p(c)
-#ifdef MAML
        cam_in(c)%asdir    (:,:) = 0._r8
        cam_in(c)%asdif    (:,:) = 0._r8
        cam_in(c)%aldir    (:,:) = 0._r8
@@ -259,18 +226,6 @@ CONTAINS
        cam_in(c)%wsx      (:,:) = 0._r8
        cam_in(c)%wsy      (:,:) = 0._r8
        cam_in(c)%snowhland(:,:) = 0._r8
-#else
-       cam_in(c)%asdir    (:) = 0._r8
-       cam_in(c)%asdif    (:) = 0._r8
-       cam_in(c)%aldir    (:) = 0._r8
-       cam_in(c)%aldif    (:) = 0._r8
-       cam_in(c)%lwup     (:) = 0._r8
-       cam_in(c)%lhf      (:) = 0._r8
-       cam_in(c)%shf      (:) = 0._r8
-       cam_in(c)%wsx      (:) = 0._r8
-       cam_in(c)%wsy      (:) = 0._r8
-       cam_in(c)%snowhland(:) = 0._r8
-#endif
        cam_in(c)%tref     (:) = 0._r8
        cam_in(c)%qref     (:) = 0._r8
        cam_in(c)%u10      (:) = 0._r8
@@ -351,7 +306,6 @@ CONTAINS
     do c = begchunk,endchunk
        cam_out(c)%lchnk       = c
        cam_out(c)%ncol        = get_ncols_p(c)
-#ifdef MAML
        cam_out(c)%thbot(:,:)    = 0._r8
        cam_out(c)%tbot(:,:)     = 0._r8
        cam_out(c)%zbot(:,:)     = 0._r8
@@ -370,26 +324,6 @@ CONTAINS
        cam_out(c)%solsd(:,:)    = 0._r8
        cam_out(c)%flwds(:,:)    = 0._r8
        cam_out(c)%netsw(:,:)    = 0._r8
-#else
-       cam_out(c)%tbot(:)     = 0._r8
-       cam_out(c)%zbot(:)     = 0._r8
-       cam_out(c)%ubot(:)     = 0._r8
-       cam_out(c)%vbot(:)     = 0._r8
-       cam_out(c)%qbot(:,:)   = 0._r8
-       cam_out(c)%pbot(:)     = 0._r8
-       cam_out(c)%rho(:)      = 0._r8
-       cam_out(c)%netsw(:)    = 0._r8
-       cam_out(c)%flwds(:)    = 0._r8
-       cam_out(c)%precsc(:)   = 0._r8
-       cam_out(c)%precsl(:)   = 0._r8
-       cam_out(c)%precc(:)    = 0._r8
-       cam_out(c)%precl(:)    = 0._r8
-       cam_out(c)%soll(:)     = 0._r8
-       cam_out(c)%sols(:)     = 0._r8
-       cam_out(c)%solld(:)    = 0._r8
-       cam_out(c)%solsd(:)    = 0._r8
-       cam_out(c)%thbot(:)    = 0._r8
-#endif
        cam_out(c)%co2prog(:)  = 0._r8
        cam_out(c)%co2diag(:)  = 0._r8
        cam_out(c)%psl(:)      = 0._r8
@@ -481,6 +415,7 @@ subroutine cam_export(state,cam_out,pbuf)
    use constituents,     only: pcnst
    use cam_control_mod,  only: rair
    use physics_buffer,   only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
+   use phys_control,     only: phys_getopts
    implicit none
 
    !------------------------------Arguments--------------------------------
@@ -502,6 +437,7 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: prec_sed_idx,snow_sed_idx,prec_pcw_idx,snow_pcw_idx
    integer :: vmag_gust_idx
    real(r8) :: umb(pcols), vmb(pcols),vmag(pcols)
+   logical :: use_SPCAM, use_MAML ! flag for MMF and MAML, respectively
 #ifdef MAML
    !CRM-level variables 
    integer :: j
@@ -546,17 +482,7 @@ subroutine cam_export(state,cam_out,pbuf)
    prec_pcw_idx = pbuf_get_index('PREC_PCW')
    snow_pcw_idx = pbuf_get_index('SNOW_PCW')
    vmag_gust_idx = pbuf_get_index('vmag_gust')
-
-#ifdef MAML
-   crm_t_idx    = pbuf_get_index('CRM_T')
-   crm_qv_idx   = pbuf_get_index('CRM_QV_RAD')
-   crm_u_idx    = pbuf_get_index('CRM_U')
-   crm_v_idx    = pbuf_get_index('CRM_V')
-   crm_pcp_idx  = pbuf_get_index('CRM_PCP')
-   crm_snw_idx  = pbuf_get_index('CRM_SNW')
-   crm_angle_idx = pbuf_get_index('CRM_ANGLE')
-#endif
-
+   
    call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
    call pbuf_get_field(pbuf, snow_dp_idx, snow_dp)
    call pbuf_get_field(pbuf, prec_sh_idx, prec_sh)
@@ -566,134 +492,101 @@ subroutine cam_export(state,cam_out,pbuf)
    call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw)
    call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw)
    call pbuf_get_field(pbuf, vmag_gust_idx, vmag_gust)
-
-#ifdef MAML
-   call pbuf_get_field(pbuf, crm_t_idx   , crm_t)
-   call pbuf_get_field(pbuf, crm_qv_idx  , crm_qv)
-   call pbuf_get_field(pbuf, crm_u_idx  , crm_u)
-   call pbuf_get_field(pbuf, crm_v_idx  , crm_v)
-   call pbuf_get_field(pbuf, crm_pcp_idx ,crm_pcp)
-   call pbuf_get_field(pbuf, crm_snw_idx ,crm_snw)
-   call pbuf_get_field(pbuf, crm_angle_idx, crm_angle)
-#endif
-
-#ifdef MAML
-   do j= 1, num_inst_atm
-      do i=1,ncol
-         !crm_t is dimensioned (pcols,crm_nx,crm_ny,crm_nz)
-         cam_out%tbot(i,j) = crm_t(i,j,1,1)
-
-         !use the crm temperature, I don't see a crm-specific exner function anywhere
-         cam_out%thbot(i,j) = crm_t(i,j,1,1) * state%exner(i,pver)
-
-         !I think we're just passing in the large-scale grid value for pressure...
-         cam_out%pbot(i,j)  = state%pmid(i,pver)
-
-         !only using constituent 1 (pcnst=1)
-         cam_out%qbot(i,1,j) = crm_qv(i,j,1,1)
-
-         !density uses large-scale (CAM) pressure, local (CRM) temperature
-         cam_out%rho(i,j) = cam_out%pbot(i,j)/(rair*cam_out%tbot(i,j))
-
-         !zm will use large-scalel (CAM) value
-         cam_out%zbot(i,j)  = state%zm(i,pver)
-
-         ! u and v will use CRM value (must transform because of CRM orientation)
-         cam_out%ubot(i,j) = crm_u(i,j,1,1) * cos(crm_angle(i)) - crm_v(i,j,1,1) * sin(crm_angle(i))
-         cam_out%vbot(i,j) = crm_v(i,j,1,1) * cos(crm_angle(i)) + crm_u(i,j,1,1) * sin(crm_angle(i))
-      end do
-      psm1(i,lchnk)    = state%ps(i)
-      srfrpdel(i,lchnk)= state%rpdel(i,pver)
-   end do
    
-   cam_out%co2diag(:ncol) = chem_surfvals_get('CO2VMR') * 1.0e+6_r8 
-   if (co2_transport()) then
-      do i=1,ncol
-         cam_out%co2prog(i) = state%q(i,pver,c_i(4)) * 1.0e+6_r8 *mwdry/mwco2
-      end do
-   end if
-   do m = 2, pcnst
-     do i = 1, ncol
-      do j= 1, num_inst_atm
-         cam_out%qbot(i,m,j) = state%q(i,pver,m)
-      end do
-     end do
+   do j=1,num_inst_atm
+      cam_out%pbot(1:ncol,j)         = state%pmid(1:ncol,pver)
+      cam_out%zbot(1:ncol,j)         = state%zm  (1:ncol,pver)
+      cam_out%qbot(1:ncol,2:pcnst,j) = state%q   (1:ncol,pver,2:pcnst)
    end do
+   psm1           (1:ncol,lchnk)  = state%ps(1:ncol)
+   srfrpdel       (1:ncol,lchnk)  = state%rpdel(1:ncol,pver)
+   cam_out%co2diag(1:ncol)        = chem_surfvals_get('CO2VMR') * 1.0e+6_r8 
+   if (co2_transport()) then
+      cam_out%co2prog(1:ncol) = state%q(1:ncol,pver,c_i(4)) * 1.0e+6_r8 *mwdry/mwco2
+   end if
 
    !
-   ! Precipation and snow rates from shallow convection, deep convection and stratiform processes.
-   ! Compute total convective and stratiform precipitation and snow rates
+   ! temperature, qv, u, v and precipitation fields in the surface interface
+   ! are assigned from CRM (CAM) in MMF with MAML (non-MMF or MMF without MAML)
    !
-   do i=1,ncol
-      prcsnw(i,lchnk) =0._r8
+   
+   call phys_getopts(use_SPCAM_out = use_SPCAM)
+   call phys_getopts(use_MAML_out  = use_MAML)
+
+   if(use_MMF .and. use_MAML) then
+      crm_t_idx     = pbuf_get_index('CRM_T')
+      crm_qv_idx    = pbuf_get_index('CRM_QV_RAD')
+      crm_u_idx     = pbuf_get_index('CRM_U')
+      crm_v_idx     = pbuf_get_index('CRM_V')
+      crm_pcp_idx   = pbuf_get_index('CRM_PCP')
+      crm_snw_idx   = pbuf_get_index('CRM_SNW')
+      crm_angle_idx = pbuf_get_index('CRM_ANGLE')
+
+      call pbuf_get_field(pbuf, crm_t_idx    , crm_t)
+      call pbuf_get_field(pbuf, crm_qv_idx   , crm_qv)
+      call pbuf_get_field(pbuf, crm_u_idx    , crm_u)
+      call pbuf_get_field(pbuf, crm_v_idx    , crm_v)
+      call pbuf_get_field(pbuf, crm_pcp_idx  , crm_pcp)
+      call pbuf_get_field(pbuf, crm_snw_idx  , crm_snw)
+      call pbuf_get_field(pbuf, crm_angle_idx, crm_angle)
+      
+      cam_out%precl (1:ncol,1:num_inst_atm) = 0._r8     ! large-scale precip set to zero
+      cam_out%precsl(1:ncol,1:num_inst_atm) = 0._r8     ! large-scale precip set to zero
+
       do j=1,num_inst_atm
-         !note assumes that crm_ny =1, crm_nx = num_inst_atm, so if crm_ny is not
-         !equal to 1, the index of crm_pcp and crm_snw should be changed.
+         cam_out%tbot  (1:ncol,j)   = crm_t(1:ncol,j,1,1)
+         cam_out%qbot  (1:ncol,1,j) = crm_qv(1:ncol,j,1,1)
+         ! u and v will use CRM value (must transform because of CRM orientation)
+         cam_out%ubot  (1:ncol,j)   = crm_u(1:ncol,j,1,1) * cos(crm_angle(1:ncol)) - crm_v(1:ncol,j,1,1) * sin(crm_angle(1:ncol))
+         cam_out%vbot  (1:ncol,j)   = crm_v(1:ncol,j,1,1) * cos(crm_angle(1:ncol)) + crm_u(1:ncol,j,1,1) * sin(crm_angle(1:ncol))
+         cam_out%precc (1:ncol,j)   = crm_pcp(1:ncol,j,1)  
+         cam_out%precsc(1:ncol,j)   = crm_snw(1:ncol,j,1)
+      end do 
+   else ! if(use_MMF .and. use_MAML)
+   !
+   ! when use_MAML = .false. => num_inst_atm = 1
+   !
+      cam_out%tbot(1:ncol,1)   = state%t(1:ncol,pver)
+      cam_out%qbot(1:ncol,1,1) = state%q(1:ncol,pver,1) 
+      umb         (1:ncol)     = state%u(1:ncol,pver)
+      vmb         (1:ncol)     = state%v(1:ncol,pver)
+      vmag        (1:ncol)     = max(1.e-5_r8,sqrt( umb(1:ncol)**2._r8 + vmb(1:ncol)**2._r8))            
+      !PMA adds gustiness to surface scheme c20181128
+      cam_out%ubot(1:ncol,1)   = state%u(1:ncol,pver) * ((vmag_gust(1:ncol)+vmag(1:ncol))/vmag(1:ncol))
+      cam_out%vbot(1:ncol,1)   = state%v(1:ncol,pver) * ((vmag_gust(1:ncol)+vmag(1:ncol))/vmag(1:ncol))
+      !
+      ! Precipation and snow rates from shallow convection, deep convection and stratiform processes.
+      ! Compute total convective and stratiform precipitation and snow rates
+      !
+      cam_out%precc (1:ncol,1) = prec_dp (1:ncol) + prec_sh (1:ncol)
+      cam_out%precl (1:ncol,1) = prec_sed(1:ncol) + prec_pcw(1:ncol)
+      cam_out%precsc(1:ncol,1) = snow_dp (1:ncol) + snow_sh (1:ncol)
+      cam_out%precsl(1:ncol,1) = snow_sed(1:ncol) + snow_pcw(1:ncol)
 
-         cam_out%precc(i,j) = crm_pcp(i,j,1)  ! CRM precip
-         cam_out%precl(i,j) = 0._r8     ! large-scale precip set to zero
-
-         cam_out%precsc(i,j) = crm_snw(i,j,1) ! CRM snow
-         cam_out%precsl(i,j) = 0._r8     ! large-scale snow set to zero
-
-         !because we don't have mutiple instance for slab ocean model, we just take the average   
-         prcsnw(i,lchnk) = prcsnw(i,lchnk)+ cam_out%precsc(i,j) + cam_out%precsl(i,j)
-      end do
-      prcsnw(i,lchnk) = prcsnw(i,lchnk)/num_inst_atm 
-   end do
-
-#else   
-!PMA adds gustiness to surface scheme c20181128
-
-   do i=1,ncol
-      umb(i)           = state%u(i,pver)
-      vmb(i)           = state%v(i,pver)
-      vmag(i)          = max(1.e-5_r8,sqrt( umb(i)**2._r8 + vmb(i)**2._r8))            
-      cam_out%tbot(i)  = state%t(i,pver)
-      cam_out%thbot(i) = state%t(i,pver) * state%exner(i,pver)
-      cam_out%zbot(i)  = state%zm(i,pver)
-      cam_out%ubot(i)  = state%u(i,pver) * ((vmag_gust(i)+vmag(i))/vmag(i))
-      cam_out%vbot(i)  = state%v(i,pver) * ((vmag_gust(i)+vmag(i))/vmag(i))
-      cam_out%pbot(i)  = state%pmid(i,pver)
-      cam_out%rho(i)   = cam_out%pbot(i)/(rair*cam_out%tbot(i))
-      psm1(i,lchnk)    = state%ps(i)
-      srfrpdel(i,lchnk)= state%rpdel(i,pver)
-   end do
-   
-   cam_out%co2diag(:ncol) = chem_surfvals_get('CO2VMR') * 1.0e+6_r8 
-   if (co2_transport()) then
+      ! SPCAM says below checks are unnecessary because it is already done in
+      ! the parameterization. Can we delete it?
       do i=1,ncol
-         cam_out%co2prog(i) = state%q(i,pver,c_i(4)) * 1.0e+6_r8 *mwdry/mwco2
+         if (cam_out%precc(i) .lt.0._r8) cam_out%precc(i)  = 0._r8
+         if (cam_out%precl(i) .lt.0._r8) cam_out%precl(i)  = 0._r8
+         if (cam_out%precsc(i).lt.0._r8) cam_out%precsc(i) = 0._r8
+         if (cam_out%precsl(i).lt.0._r8) cam_out%precsl(i) = 0._r8
+         if (cam_out%precsc(i).gt.cam_out%precc(i)) cam_out%precsc(i) = cam_out%precc(i)
+         if (cam_out%precsl(i).gt.cam_out%precl(i)) cam_out%precsl(i) = cam_out%precl(i)
       end do
    end if
-
-   do m = 1, pcnst
-     do i = 1, ncol
-        cam_out%qbot(i,m) = state%q(i,pver,m) 
-     end do
-   end do
-
    !
-   ! Precipation and snow rates from shallow convection, deep convection and stratiform processes.
-   ! Compute total convective and stratiform precipitation and snow rates
-   !
-   do i=1,ncol
-      cam_out%precc (i) = prec_dp(i)  + prec_sh(i)
-      cam_out%precl (i) = prec_sed(i) + prec_pcw(i)
-      cam_out%precsc(i) = snow_dp(i)  + snow_sh(i)
-      cam_out%precsl(i) = snow_sed(i) + snow_pcw(i)
-
-      if (cam_out%precc(i) .lt.0._r8) cam_out%precc(i)=0._r8
-      if (cam_out%precl(i) .lt.0._r8) cam_out%precl(i)=0._r8
-      if (cam_out%precsc(i).lt.0._r8) cam_out%precsc(i)=0._r8
-      if (cam_out%precsl(i).lt.0._r8) cam_out%precsl(i)=0._r8
-      if (cam_out%precsc(i).gt.cam_out%precc(i)) cam_out%precsc(i)=cam_out%precc(i)
-      if (cam_out%precsl(i).gt.cam_out%precl(i)) cam_out%precsl(i)=cam_out%precl(i)
-   end do
-
    ! total snowfall rate: needed by slab ocean model
-   prcsnw(:ncol,lchnk) = cam_out%precsc(:ncol) + cam_out%precsl(:ncol)   
-#endif  !MAML
+   ! for MAML, ocean model is not multi-instance, therefore we average total
+   ! snowfall rate across the instances. This averaging doesn't affect for
+   ! non-MAML case as num_inst_atm = 1
+   !
+   prcsnw(1:ncol,lchnk) = 0._r8
+   do j = 1, num_inst_atm
+      prcsnw       (1:ncol,lchnk) = prcsnw(1:ncol,lchnk) + cam_out%precsc(1:ncol,j) + cam_out%precsl(1:ncol,j)   
+      cam_out%thbot(1:ncol,j)     = cam_out%tbot(1:ncol,j,1,1) * state%exner(1:ncol,pver) ! potential temperature
+      cam_out%rho  (1:ncol,j)     = cam_out%pbot(1:ncol,j)/(rair*cam_out%tbot(1:ncol,j))  ! air density
+   end if
+   prcsnw(1:ncol,lchnk) = prcsnw(1:ncol,lchnk)/num_inst_atm
 
 end subroutine cam_export
 
