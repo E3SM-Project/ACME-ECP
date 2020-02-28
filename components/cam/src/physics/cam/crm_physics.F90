@@ -702,7 +702,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    crm_rotation_std    = 20. * pi/180.                 ! std deviation of normal distribution for CRM rotation [radians]
    crm_rotation_offset = 90. * pi/180. * ztodt/86400.  ! This means that a CRM should rotate 90 deg / day on average
 #endif
-
+   real(r8) :: tmp(pcols) ! pritch, for aggregating TIMINGF to task mean value.
    crm_run_time = ztodt
 
    
@@ -1178,7 +1178,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ! routine call (because we want it to use the clouds simulated from this
       ! CRM call). Thus, comparing this heating rate with CRM_QRS + CRM_QRL
       ! output in radiation_tend will show a time lag.
-      call outfld('CRM_QRAD', crm_rad%qrad(1:ncol,:,:,:), ncol, lchnk)
+      call \('CRM_QRAD', crm_rad%qrad(1:ncol,:,:,:), ncol, lchnk)
 
       ! Convert heating rate to Q*dp to conserve energy across timesteps
       do m=1,crm_nz
@@ -1375,6 +1375,16 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CLOUDTOP',crm_output%cldtop, pcols,lchnk)
 
       call outfld('TIMINGF ',crm_output%timing_factor  ,pcols,lchnk)
+      
+      ! pritch, create version of TIMINGF that measures task-level stats:
+      tmp(:) = 0.
+      do i = 1,ncol
+        tmp(i) = tmp(i) + crm_output%timing_factor(i)
+      end do
+      tmp(:) = tmp(:)/ncol
+      call outfld ('TIMINGFTASKMEAN',tmp,pcols,lchnk)
+      
+
 
       !---------------------------------------------------------------------------------------------
       ! Compute liquid water paths (for diagnostics only)
