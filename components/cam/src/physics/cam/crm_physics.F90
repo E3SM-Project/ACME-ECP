@@ -567,6 +567,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use crm_output_module,      only: crm_output_type, crm_output_initialize, crm_output_finalize
 #endif /* CRM */
    use crm_ecpp_output_module, only: crm_ecpp_output_type
+#ifdef HARDIMABALANCE
+  use spmd_utils,      only: masterproc, iam
+    real(r8) :: clat(pcols), clon(pcols)
+#endif
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
 #ifndef CRM
@@ -717,7 +721,20 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    lchnk = state%lchnk
    ncol  = state%ncol
 
+
    call t_startf ('crm')
+
+#ifdef HARDIMABALANCE
+   call get_rlat_all_p(lchnk, ncol, clat)
+   call get_rlon_all_p(lchnk, ncol, clon)
+   
+   do i=1,ncol
+     if (clat(i)*180./3.14 .ge. 20. .and. clat(i)*180./3.14. .le. 40.) then
+       ! do a bunch of pointless work.
+     endif 
+   end do
+#endif
+
 
    !------------------------------------------------------------------------------------------------
    ! Initialize ptend
