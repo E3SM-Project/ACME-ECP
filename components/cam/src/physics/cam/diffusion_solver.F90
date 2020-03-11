@@ -190,7 +190,7 @@
     real(r8), intent(in)    :: kvh(pcols,pver+1)         ! Eddy diffusivity for heat [ m2/s ]
 
     logical,  intent(in)    :: do_molec_diff             ! Flag indicating multiple constituent diffusivities
-    logical,  intent(in)    :: do_SP_bypass              ! whannah - Flag indicating whether to enforce SP_FLUX_BYPASS - needed for call in eddy_diff.F90
+    logical,  intent(in)    :: do_SP_bypass              ! whannah - Flag indicating whether to enforce SP_FLUX_BYPASS - needs to be false in eddy_diff.F9 to avoid problems with diffusion
 
     integer,  external, optional :: compute_molec_diff   ! Constituent-independent moleculuar diffusivity routine
     integer,  external, optional :: vd_lu_qdecomp        ! Constituent-dependent moleculuar diffusivity routine
@@ -676,7 +676,7 @@
      ! often lead to an error to be thrown in the energy balance check.
      !   SP_FLUX_BYPASS - only sensible and latent heat fluxes are affected
 
-#if defined( SP_FLUX_BYPASS )
+#if defined( SP_FLUX_BYPASS ) || defined( SP_CRM_SFC_FLUX )
       if (do_SP_bypass) then
         dse(:ncol,pver) = dse(:ncol,pver) - tmp1(:ncol) * shflx(:ncol)
       endif
@@ -789,7 +789,7 @@
       q(:ncol,pver,m) = q(:ncol,pver,m) + tmp1(:ncol) * cflx(:ncol,m) 
         
 
-#if defined( SP_FLUX_BYPASS )
+#if defined( SP_FLUX_BYPASS ) || defined( SP_CRM_SFC_FLUX )
         if (do_SP_bypass) then
           if ( m .eq. 1 ) q(:ncol,pver,m) = q(:ncol,pver,m) - tmp1(:ncol) * cflx(:ncol,m) 
         endif

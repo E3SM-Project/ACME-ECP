@@ -29,7 +29,7 @@ module metdata
   use pio, only: file_desc_t, pio_put_att, pio_global, pio_get_att, pio_inq_att, pio_inq_dimid, pio_inq_dimlen, &
        pio_closefile, pio_get_var, pio_inq_varid
   use cam_pio_utils,      only: cam_pio_openfile
-    
+  use seq_comm_mct, only : num_inst_atm  ! for use_MAML = true
 
   implicit none
 
@@ -506,19 +506,25 @@ contains
     if (met_srf_nudge_flux) then
        do c=begchunk,endchunk
           ncol = get_ncols_p(c)
-          cam_in(c)%wsx(:ncol)     = (1._r8-met_rlx(pver)) * cam_in(c)%wsx(:ncol)    + met_rlx(pver) * met_taux(:ncol,c)
-          cam_in(c)%wsy(:ncol)     = (1._r8-met_rlx(pver)) * cam_in(c)%wsy(:ncol)    + met_rlx(pver) * met_tauy(:ncol,c)
-          cam_in(c)%shf(:ncol)     = (1._r8-met_rlx(pver)) * cam_in(c)%shf(:ncol)    + &
-               met_rlx(pver) * (met_shflx(:ncol,c) * met_shflx_factor)
+
+          do i = 1,num_inst_atm
+             cam_in(c)%wsx(:ncol,i)     = (1._r8-met_rlx(pver)) * cam_in(c)%wsx(:ncol,i)    + met_rlx(pver) * met_taux(:ncol,c)
+             cam_in(c)%wsy(:ncol,i)     = (1._r8-met_rlx(pver)) * cam_in(c)%wsy(:ncol,i)    + met_rlx(pver) * met_tauy(:ncol,c)
+             cam_in(c)%shf(:ncol,i)     = (1._r8-met_rlx(pver)) * cam_in(c)%shf(:ncol,i)    + &
+                  met_rlx(pver) * (met_shflx(:ncol,c) * met_shflx_factor)
+          end do        
           cam_in(c)%cflx(:ncol,1)  = (1._r8-met_rlx(pver)) * cam_in(c)%cflx(:ncol,1) + &
                met_rlx(pver) * (met_qflx(:ncol,c)  * met_qflx_factor)
        end do                    ! Chunk loop
     else
        do c=begchunk,endchunk
           ncol = get_ncols_p(c)
-          cam_in(c)%wsx(:ncol)     = met_taux(:ncol,c)
-          cam_in(c)%wsy(:ncol)     = met_tauy(:ncol,c)
-          cam_in(c)%shf(:ncol)     = met_shflx(:ncol,c) * met_shflx_factor
+
+          do i = 1,num_inst_atm
+             cam_in(c)%wsx(:ncol,i)     = met_taux(:ncol,c)
+             cam_in(c)%wsy(:ncol,i)     = met_tauy(:ncol,c)
+             cam_in(c)%shf(:ncol,i)     = met_shflx(:ncol,c) * met_shflx_factor
+          end do
           cam_in(c)%cflx(:ncol,1)  = met_qflx(:ncol,c)  * met_qflx_factor
        end do                    ! Chunk loop
     end if
@@ -564,7 +570,7 @@ contains
        ncol = get_ncols_p(c)
        cam_in(c)%ts(:ncol)     = met_ts(:ncol,c)
        do i = 1,ncol
-          cam_in(c)%snowhland(i) = met_snowh(i,c)*cam_in(c)%landfrac(i) * met_snowh_factor
+          cam_in(c)%snowhland(i,:) = met_snowh(i,c)*cam_in(c)%landfrac(i) * met_snowh_factor
        enddo
     end do ! Chunk loop
 

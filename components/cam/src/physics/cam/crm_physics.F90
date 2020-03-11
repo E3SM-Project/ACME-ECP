@@ -27,7 +27,8 @@ module crm_physics
 #ifdef MODAL_AERO
    use modal_aero_data, only: ntot_amode
 #endif
-
+   use seq_comm_mct, only : num_inst_atm
+   
    implicit none 
    private
    save
@@ -1038,6 +1039,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       crm_input%qccl(1:ncol,1:pver) = state%q(1:ncol,1:pver,ixcldliq)
       crm_input%qiil(1:ncol,1:pver) = state%q(1:ncol,1:pver,ixcldice)
       crm_input%ps(1:ncol) = state%ps(1:ncol)
+      crm_input%ts(1:ncol) = cam_in%ts(1:ncol)
       crm_input%pmid(1:ncol,1:pver) = state%pmid(1:ncol,1:pver)
       crm_input%pint(1:ncol,1:pver+1) = state%pint(1:ncol,1:pver+1)
       crm_input%pdel(1:ncol,1:pver) = state%pdel(1:ncol,1:pver)
@@ -1049,27 +1051,15 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          ! [lee1046] num_inst_atm = crm_nx for MAML
          !           num_inst_atm = 1 Otherwise
          do ii = 1, num_inst_atm 
-            !seems none of variables below is used, so I don't use the CRM-level
-            !input. Later on, they can be changed if needed   
-! [lee1046] below ifdef MAML will be removed once the MAML related cam_in variables
-! are dimensioned as (ncol, num_inst_atm)
-#ifdef MAML          
-         crm_input%tau00(i,ii) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
-         ! [lee1046] when Buoyancy Flux (bflxls) is determined from shf and lhf
-         ! Should state%t  be replaced by CRM temperature?
-         crm_input%bflxls(i,ii) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
-         crm_input%fluxu00(i,ii) = cam_in%wsx(i,ii)     !N/m2
-         crm_input%fluxv00(i,ii) = cam_in%wsy(i,ii)     !N/m2
-         crm_input%fluxt00(i,ii) = cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
-         crm_input%fluxq00(i,ii) = cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
-#else
-         crm_input%tau00(i,ii) = sqrt(cam_in%wsx(i)**2 + cam_in%wsy(i)**2)
-         crm_input%bflxls(i,ii) = cam_in%shf(i)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i)/latvap
-         crm_input%fluxu00(i,ii) = cam_in%wsx(i)     !N/m2
-         crm_input%fluxv00(i,ii) = cam_in%wsy(i)     !N/m2
-         crm_input%fluxt00(i,ii) = cam_in%shf(i)/cpair  ! K Kg/ (m2 s)
-         crm_input%fluxq00(i,ii) = cam_in%lhf(i)/latvap ! Kg/(m2 s)
-#endif  
+            crm_input%tau00(i,ii) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
+            ! [lee1046] when Buoyancy Flux (bflxls) is determined from shf and lhf
+            ! Should state%t  be replaced by CRM temperature?
+            crm_input%bflxls(i,ii) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
+            crm_input%fluxu00(i,ii) = cam_in%wsx(i,ii)     !N/m2
+            crm_input%fluxv00(i,ii) = cam_in%wsy(i,ii)     !N/m2
+            crm_input%fluxt00(i,ii) = cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
+            crm_input%fluxq00(i,ii) = cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
+         end do
          crm_input%wndls(i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
       end do
 #if (defined m2005 && defined MODAL_AERO)

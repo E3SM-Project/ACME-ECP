@@ -759,11 +759,7 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
 
 
 !===============================================================================
-#ifdef MAML
   subroutine check_ieflx_fix(lchnk, ncol, nstep, ncrm, shflx)
-#else
-  subroutine check_ieflx_fix(lchnk, ncol, nstep, shflx)
-#endif
 !!
 !! Add the global mean internal energy flux to the sensible heat flux 
 !!
@@ -777,28 +773,18 @@ subroutine ieflx_gmean(state, tend, pbuf2d, cam_in, cam_out, nstep)
     integer, intent(in   ) :: nstep          ! time step number
     integer, intent(in   ) :: lchnk  
     integer, intent(in   ) :: ncol
-#ifdef MAML
     integer, intent(in   ) :: ncrm
     real(r8),intent(inout) :: shflx(pcols,ncrm)
-    integer :: ii
-#else
-    real(r8),intent(inout) :: shflx(pcols) 
-#endif
-
-    integer :: i
+    integer :: i,ii
 
     call outfld('SHFLXORI', shflx, pcols, lchnk)
 
     if(nstep>1) then 
        do i = 1, ncol
-#ifdef MAML
           !We have ncrm subcolumns, so add 1/ncrm to each subccolumn
           do ii=1, ncrm
              shflx(i,ii) = shflx(i,ii) + ieflx_glob/dble(ncrm)
           end do
-#else
-          shflx(i) = shflx(i) + ieflx_glob
-#endif
        end do
     end if 
 

@@ -126,17 +126,17 @@ contains
   subroutine init_rad_data
     use phys_control,     only: phys_getopts
     use physics_buffer, only: pbuf_get_index
-#ifdef MAML
-    use crmdims,       only: crm_nx,crm_ny
+#ifdef MAML1
+        use crmdims,       only: crm_nx,crm_ny
 #endif
-
+    
     implicit none
     
     integer :: i
     character(len=64) :: name
     character(len=128):: long_name
     character(len=64) :: long_name_description
-    character(len=16)  :: microp_scheme  ! microphysics scheme
+    character(len=16) :: microp_scheme  ! microphysics scheme
 
     if (.not.rad_data_output) return
    
@@ -164,7 +164,10 @@ contains
          'radiation input: ice fraction')
     call addfld (landm_fldn,     horiz_only,    rad_data_avgflag,  'none',&
          'radiation input: land mask: ocean(0), continent(1), transition(0-1)')
-#ifdef MAML
+
+#ifdef MAML1    
+    call addfld (snowh_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, 'm', &
+         'radiation input: water equivalent snow depth',  flag_xyfill=.true.)
     call addfld (asdir_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
          'radiation input: short wave direct albedo',  flag_xyfill=.true.)
     call addfld (asdif_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
@@ -173,6 +176,7 @@ contains
          'radiation input: long wave direct albedo',  flag_xyfill=.true.)
     call addfld (aldif_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
          'radiation input: long wave diffuse albedo',  flag_xyfill=.true.)
+    
     call addfld (asdir_pos_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
          'radiation input: short wave direct albedo weighted by coszen',  flag_xyfill=.true.)
     call addfld (asdif_pos_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
@@ -181,14 +185,13 @@ contains
          'radiation input: long wave direct albedo weighted by coszen',  flag_xyfill=.true.)
     call addfld (aldif_pos_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, '1', &
          'radiation input: long wave diffuse albedo weighted by coszen',  flag_xyfill=.true.)
+    
     call addfld (lwup_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, 'W/m2', &
          'radiation input: long wave up radiation flux',  flag_xyfill=.true.)
-    call addfld (ts_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, 'K', &
-         'radiation input: surface temperature',  flag_xyfill=.true.)
-    call addfld (snowh_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, 'm', &
-         'radiation input: water equivalent snow depth',  flag_xyfill=.true.)
-#else 
-
+    ![lee1046] error. cam_in%ts is not CRM level field (camsrfexch.F90)
+    !call addfld (ts_fldn,    (/'crm_nx','crm_ny'/),    rad_data_avgflag, 'K', &
+    !     'radiation input: surface temperature',  flag_xyfill=.true.)
+#else
     call addfld (snowh_fldn,        horiz_only,    rad_data_avgflag,  'm',&
          'radiation input: water equivalent snow depth')
     call addfld (asdir_fldn,        horiz_only,    rad_data_avgflag,  '1',&
@@ -211,10 +214,10 @@ contains
     
     call addfld (lwup_fldn,     horiz_only,    rad_data_avgflag,   'W/m2',&
          'radiation input: long wave up radiation flux ')
-    call addfld (ts_fldn,        horiz_only,    rad_data_avgflag,     'K',&
-         'radiation input: surface temperature')
 #endif
 
+    call addfld (ts_fldn,        horiz_only,    rad_data_avgflag,     'K',&
+         'radiation input: surface temperature')
     call addfld (coszen_fldn, horiz_only,    rad_data_avgflag,     '1',&
          'radiation input: cosine solar zenith when positive', flag_xyfill=.true.)
     call addfld (temp_fldn,        (/ 'lev' /), rad_data_avgflag,   'K',&
@@ -354,9 +357,7 @@ contains
     
     use constituents,     only: cnst_get_ind
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
-#ifdef MAML
     use seq_comm_mct, only : num_inst_atm
-#endif
     implicit none
     type(physics_buffer_desc), pointer :: pbuf(:)
     
@@ -366,7 +367,7 @@ contains
     real(r8),            intent(in) :: coszen(pcols)
 
     ! Local variables
-    integer :: i
+    integer :: i, j
     character(len=32) :: name
     real(r8), pointer :: mmr(:,:)
 
@@ -378,20 +379,30 @@ contains
 
     ! surface albedoes weighted by (positive cosine zenith angle)
     real(r8):: coszrs_pos(pcols)    ! = max(coszrs,0)
-#ifdef MAML
+#ifdef MAML1
     real(r8):: asdir_pos (pcols,num_inst_atm)    !
     real(r8):: asdif_pos (pcols,num_inst_atm)    !
     real(r8):: aldir_pos (pcols,num_inst_atm)    !
     real(r8):: aldif_pos (pcols,num_inst_atm)    !
     integer :: j
 #else
-    real(r8):: asdir_pos (pcols)    !
+    real(r8):: snowh_avg (pcols)    ! avg of cam_in%snowhland   
+    real(r8):: lwup_avg  (pcols)    ! avg of cam_in%lwup 
+    real(r8):: asdir_avg (pcols)    ! cam_in%albedoes (pcols, num_inst_atm) averaged across num_inst_atm
+    real(r8):: asdif_avg (pcols)    !
+    real(r8):: aldir_avg (pcols)    !
+    real(r8):: aldif_avg (pcols)    !
+    real(r8):: asdir_pos (pcols)    ! averaged albedo (above 4) weighed by cosine of zenith angle
     real(r8):: asdif_pos (pcols)    !
     real(r8):: aldir_pos (pcols)    !
     real(r8):: aldif_pos (pcols)    !
+    real(r8):: avgfac
 #endif
     real(r8), pointer, dimension(:,:)  :: ptr
+    
+    logical           :: use_MAML ! switch to enable MAML
 
+    call phys_getopts(use_MAML_out=use_MAML)
 
     if (.not.rad_data_output) return
 
@@ -402,29 +413,40 @@ contains
     lchnk = state%lchnk
     ncol = state%ncol
 
-#ifdef MAML
+#ifdef MAML1
     do icol = 1, ncol
        coszrs_pos(icol)  = max(coszen(icol),0._r8)
        do j= 1, num_inst_atm
-          asdir_pos(icol,j) = cam_in%asdir(icol,j) * coszrs_pos(i)
-          asdif_pos(icol,j) = cam_in%asdif(icol,j) * coszrs_pos(i)
-          aldir_pos(icol,j) = cam_in%aldir(icol,j) * coszrs_pos(i)
-          aldif_pos(icol,j) = cam_in%aldif(icol,j) * coszrs_pos(i)
+          ![lee1046] coszrs_cos, index error. index i changed to index icol
+          asdir_pos(icol,j) = cam_in%asdir(icol,j) * coszrs_pos(icol)
+          asdif_pos(icol,j) = cam_in%asdif(icol,j) * coszrs_pos(icol)
+          aldir_pos(icol,j) = cam_in%aldir(icol,j) * coszrs_pos(icol)
+          aldif_pos(icol,j) = cam_in%aldif(icol,j) * coszrs_pos(icol)
        enddo
     enddo
 #else 
     do icol = 1, ncol
        coszrs_pos(icol)  = max(coszen(icol),0._r8)
     enddo
-    asdir_pos(:ncol)  = cam_in%asdir(:ncol) * coszrs_pos(:ncol)
-    asdif_pos(:ncol)  = cam_in%asdif(:ncol) * coszrs_pos(:ncol)
-    aldir_pos(:ncol)  = cam_in%aldir(:ncol) * coszrs_pos(:ncol)
-    aldif_pos(:ncol)  = cam_in%aldif(:ncol) * coszrs_pos(:ncol)
+    ! cam_in albedoes have 2 dimensions (pcols, num_inst_atm)
+    ! for output purpose, these albedoes are averaged across num_inst_atm (CRM
+    ! domain mean)
+    avgfac = 1._r8/real(num_inst_atm,r8)
+    snowh_avg(1:ncol)  = sum(cam_in%snowhland(1:ncol,1:num_inst_atm),dim=2)*avgfac
+    lwup_avg (1:ncol)   = sum(cam_in%lwup (1:ncol,1:num_inst_atm),dim=2)*avgfac
+    asdir_avg(1:ncol)  = sum(cam_in%asdir(1:ncol,1:num_inst_atm),dim=2)*avgfac
+    asdif_avg(1:ncol)  = sum(cam_in%asdif(1:ncol,1:num_inst_atm),dim=2)*avgfac
+    aldir_avg(1:ncol)  = sum(cam_in%aldir(1:ncol,1:num_inst_atm),dim=2)*avgfac
+    aldif_avg(1:ncol)  = sum(cam_in%aldif(1:ncol,1:num_inst_atm),dim=2)*avgfac
+    
+    asdir_pos(1:ncol)  = asdir_avg(1:ncol) * coszrs_pos(1:ncol)
+    asdif_pos(1:ncol)  = asdif_avg(1:ncol) * coszrs_pos(1:ncol)
+    aldir_pos(1:ncol)  = aldir_avg(1:ncol) * coszrs_pos(1:ncol)
+    aldif_pos(1:ncol)  = aldif_avg(1:ncol) * coszrs_pos(1:ncol)
 #endif
 
     call outfld(lndfrc_fldn, cam_in%landfrac,  pcols, lchnk)
     call outfld(icefrc_fldn, cam_in%icefrac,   pcols, lchnk)
-    call outfld(snowh_fldn,  cam_in%snowhland, pcols, lchnk)
     call outfld(landm_fldn,  landm,            pcols, lchnk)
     call outfld(temp_fldn,   state%t,               pcols, lchnk   )
     call outfld(pdel_fldn,   state%pdel,            pcols, lchnk   )
@@ -435,20 +457,33 @@ contains
     call outfld(zint_fldn,   state%zi,              pcols, lchnk   )
     call outfld(pint_fldn,   state%pint,            pcols, lchnk   )
     call outfld(pmid_fldn,   state%pmid,            pcols, lchnk   )
+    call outfld(coszen_fldn, coszrs_pos, pcols, lchnk   )
+    call outfld(ts_fldn,    cam_in%ts,    pcols, lchnk   )
 
+#ifdef MAML1
+    ![lee1046] in MAML1, output as CRM-level
+    call outfld(snowh_fldn,  cam_in%snowhland, pcols, lchnk)
     call outfld(asdir_fldn, cam_in%asdir, pcols, lchnk   )
     call outfld(asdif_fldn, cam_in%asdif, pcols, lchnk   )
     call outfld(aldir_fldn, cam_in%aldir, pcols, lchnk   )
     call outfld(aldif_fldn, cam_in%aldif, pcols, lchnk   )
-
-    call outfld(coszen_fldn, coszrs_pos, pcols, lchnk   )
     call outfld(asdir_pos_fldn, asdir_pos, pcols, lchnk   )
     call outfld(asdif_pos_fldn, asdif_pos, pcols, lchnk   )
     call outfld(aldir_pos_fldn, aldir_pos, pcols, lchnk   )
     call outfld(aldif_pos_fldn, aldif_pos, pcols, lchnk   )
-
     call outfld(lwup_fldn,  cam_in%lwup,  pcols, lchnk   )
-    call outfld(ts_fldn,    cam_in%ts,    pcols, lchnk   )
+#else
+    call outfld(snowh_fldn,     snowh_avg, pcols, lchnk)
+    call outfld(asdir_fldn,     asdir_avg, pcols, lchnk   )
+    call outfld(asdif_fldn,     asdif_avg, pcols, lchnk   )
+    call outfld(aldir_fldn,     aldir_avg, pcols, lchnk   )
+    call outfld(aldif_fldn,     aldif_avg, pcols, lchnk   )
+    call outfld(asdir_pos_fldn, asdir_pos, pcols, lchnk   )
+    call outfld(asdif_pos_fldn, asdif_pos, pcols, lchnk   )
+    call outfld(aldir_pos_fldn, aldir_pos, pcols, lchnk   )
+    call outfld(aldif_pos_fldn, aldif_pos, pcols, lchnk   )
+    call outfld(lwup_fldn,      lwup_avg,  pcols, lchnk   )
+#endif
 
     itim_old = pbuf_old_tim_idx()
 

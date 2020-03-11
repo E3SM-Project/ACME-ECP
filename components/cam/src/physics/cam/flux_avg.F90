@@ -66,9 +66,7 @@ end subroutine flux_avg_register
 subroutine flux_avg_init(cam_in,  pbuf2d)
   use physics_buffer, only : physics_buffer_desc, pbuf_set_field, pbuf_get_chunk
    ! Initialize the surface fluxes in the physics buffer using the cam import state
-#ifdef MAML
    use seq_comm_mct,       only : num_inst_atm
-#endif
 
    type(cam_in_t),      intent(in)    :: cam_in(begchunk:endchunk)
    
@@ -77,7 +75,7 @@ subroutine flux_avg_init(cam_in,  pbuf2d)
    integer :: ncol
    type(physics_buffer_desc), pointer :: pbuf2d_chunk(:)
 
-#ifdef MAML
+#ifdef MAML1
    real(r8) :: lhfavg_in(pcols)
    real(r8) :: shfavg_in(pcols)
    real(r8) :: wsxavg_in(pcols)
@@ -90,7 +88,7 @@ subroutine flux_avg_init(cam_in,  pbuf2d)
    do lchnk = begchunk, endchunk
       ncol = get_ncols_p(lchnk)
       pbuf2d_chunk => pbuf_get_chunk(pbuf2d, lchnk)
-#ifdef MAML
+#ifdef MAML1
       lhfavg_in =0._r8
       shfavg_in =0._r8
       wsxavg_in =0._r8
@@ -109,14 +107,19 @@ subroutine flux_avg_init(cam_in,  pbuf2d)
       call pbuf_set_field(pbuf2d_chunk, taux_idx,   wsxavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )
       call pbuf_set_field(pbuf2d_chunk, tauy_idx,   wsyavg_in(:ncol)  , start=(/1/), kount=(/ncol/) )
 #else
-      call pbuf_set_field(pbuf2d_chunk, lhflx_idx,  cam_in(lchnk)%lhf (:ncol)  , start=(/1/), kount=(/ncol/) )
-      call pbuf_set_field(pbuf2d_chunk, shflx_idx,  cam_in(lchnk)%shf (:ncol)  , start=(/1/), kount=(/ncol/) )
-      call pbuf_set_field(pbuf2d_chunk, taux_idx,   cam_in(lchnk)%wsx (:ncol)  , start=(/1/), kount=(/ncol/) )
-      call pbuf_set_field(pbuf2d_chunk, tauy_idx,   cam_in(lchnk)%wsy (:ncol)  , start=(/1/), kount=(/ncol/) )
+      call pbuf_set_field(pbuf2d_chunk, lhflx_idx,  cam_in(lchnk)%lhf(1:ncol,1:num_inst_atm) &
+                         , start=(/1,1/), kount=(/ncol,num_inst_atm/) )
+      call pbuf_set_field(pbuf2d_chunk, shflx_idx,  cam_in(lchnk)%shf(1:ncol,1:num_inst_atm) &
+                         , start=(/1,1/), kount=(/ncol,num_inst_atm/) )
+      call pbuf_set_field(pbuf2d_chunk, taux_idx,   cam_in(lchnk)%wsx(1:ncol,1:num_inst_atm) &
+                         , start=(/1,1/), kount=(/ncol,num_inst_atm/) )
+      call pbuf_set_field(pbuf2d_chunk, tauy_idx,   cam_in(lchnk)%wsy(1:ncol,1:num_inst_atm) &
+                         , start=(/1,1/), kount=(/ncol,num_inst_atm/) )
 #endif
       call pbuf_set_field(pbuf2d_chunk, qflx_idx,   cam_in(lchnk)%cflx(:ncol,1), start=(/1/), kount=(/ncol/) )
-
-      call pbuf_set_field(pbuf2d,       shflx_res_idx, 0.0_r8)
+      ! [lee1406] for shflx_res, shoudln't it be pbuf2d_chunk in the argument
+      ! instead of pbuf2d ?
+      call pbuf_set_field(pbuf2d_chunk, shflx_res_idx, 0.0_r8)
       call pbuf_set_field(pbuf2d_chunk, lhflx_res_idx, 0.0_r8)
       call pbuf_set_field(pbuf2d_chunk, qflx_res_idx,  0.0_r8)
       call pbuf_set_field(pbuf2d_chunk, taux_res_idx,  0.0_r8)

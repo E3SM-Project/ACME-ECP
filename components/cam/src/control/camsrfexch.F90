@@ -15,7 +15,7 @@ module camsrfexch
   use infnan,        only: posinf, assignment(=)
   use cam_abortutils,    only: endrun
   use cam_logfile,   only: iulog
-  use seq_comm_mct, only : num_inst_atm
+  use seq_comm_mct,  only : num_inst_atm
   
   implicit none
 
@@ -438,6 +438,7 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: vmag_gust_idx
    real(r8) :: umb(pcols), vmb(pcols),vmag(pcols)
    logical :: use_SPCAM, use_MAML ! flag for MMF and MAML, respectively
+! [lee1046] TODO: decide whether to keep #ifdef MAML or not
 #ifdef MAML
    !CRM-level variables 
    integer :: j
@@ -513,7 +514,7 @@ subroutine cam_export(state,cam_out,pbuf)
    call phys_getopts(use_SPCAM_out = use_SPCAM)
    call phys_getopts(use_MAML_out  = use_MAML)
 
-   if(use_MMF .and. use_MAML) then
+   if(use_MMF .and. use_MAML) then  ! [lee1046] Or if(num_inst_atm.gt.1)
       crm_t_idx     = pbuf_get_index('CRM_T')
       crm_qv_idx    = pbuf_get_index('CRM_QV_RAD')
       crm_u_idx     = pbuf_get_index('CRM_U')

@@ -50,9 +50,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
                 clubb_tkh, relvar,      &
                 accre_enhan, qclvar,    &
 #endif
-#ifdef MAML
-                crm_pcp,     crm_snw,              &
-#endif
+                crm_pcp,     crm_snw,   &
                 crm_ecpp_output, crm_output )
     !-----------------------------------------------------------------------------------------------
     !-----------------------------------------------------------------------------------------------
@@ -140,7 +138,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     integer         :: kx
     real(crm_rknd)  :: qsat, omg
     real(crm_rknd), allocatable  :: colprec(:), colprecs(:)
-    real(crm_rknd), allocatable  :: ustar(:), bflx(:), wnd(:)
+    real(crm_rknd), allocatable  :: ustar(:,:), bflx(:,:), wnd(:)
+
     real(r8)      , allocatable  :: qtot (:,:)    ! Total water for water conservation check
 
     !!! These should all be inputs
@@ -219,8 +218,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   allocate( dd_crm (ncrms,plev)   )
   allocate( mui_crm(ncrms,plev+1) )
   allocate( mdi_crm(ncrms,plev+1) )
-  allocate( ustar(ncrms) )
-  allocate( bflx(ncrms) )
+  allocate( ustar(ncrms,nx) )
+  allocate( bflx(ncrms,nx) )
   allocate( wnd(ncrms) )
   allocate( qtot (ncrms,20) )
   allocate( colprec (ncrms) )
@@ -691,13 +690,22 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call endrun('crm main')
     end if
   enddo
+    !--------------------------
+    ! lee1046 - sanity check for MAML
+    if(num_inst_atm.ne.crm_nx .or. crm_ny.ne.1) then
+       write(0,*) "For MMF-MAML, CRM must be 2D (crm_ny=1) and a number of instances for LAND, ATM and ICE &
+                   must be equal to crm_nx"
+       call endrun('crm main')
+    end if   
 
-#ifdef MAML
+#ifdef MAML1
   if(crm_nx_rad.NE.crm_nx .or. crm_ny_rad.NE.crm_ny) then 
      write(0,*) "crm_nx_rad and crm_ny_rad have to be equal to crm_nx and crm_ny in the MAML configuration"
      call endrun('crm main')
   end if
 #endif
+    
+
 
 #ifdef ECPP
   call ecpp_crm_init(ncrms,dt_gl)
@@ -1434,12 +1442,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         precsfc(icrm,i,j) = precsfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)     !mm/s/dz --> mm/s
         precssfc(icrm,i,j) = precssfc(icrm,i,j)*dz(icrm)/dt/dble(nstop)   !mm/s/dz --> mm/s
 #endif /* m2005 */
-#ifdef MAML
         !  output CRM level precip  so that individual CRM precip values are passed down
         !  to CLM.
         crm_pcp(icrm,i,j) = precsfc(icrm,i,j)/1000.      ! mm/s --> m/s
         crm_snw(icrm,i,j) = precssfc(icrm,i,j)/1000.     ! mm/s --> m/s
-#endif
         if(precsfc(icrm,i,j).gt.10./86400.) then
            !$acc atomic update
            crm_output%precc (icrm) = crm_output%precc (icrm) + precsfc(icrm,i,j)

@@ -3,9 +3,7 @@ module crm_input_module
 #ifdef MODAL_AERO
    use modal_aero_data, only: ntot_amode
 #endif
-#ifdef MAML
-  use seq_comm_mct,       only : num_inst_atm
-#endif
+   use seq_comm_mct,       only : num_inst_atm
    use openacc_utils
    implicit none
    private
@@ -71,13 +69,16 @@ contains
       if (.not. allocated(this%ul))       allocate(this%ul(ncrms,nlev))
       if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
       if (.not. allocated(this%ocnfrac))  allocate(this%ocnfrac(ncrms))
-      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms,num_inst_atm))
       if (.not. allocated(this%wndls))    allocate(this%wndls(ncrms))
+      ! Modification for the multi-instance MMF functionality. Passing surface
+      ! fluxes directly to CRM as a lower boundary condition to trigger
+      ! turbulence
       if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms,num_inst_atm))
-      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms,num_inst_atm))
-      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms,num_inst_atm))
       if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms,num_inst_atm))
       if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms,num_inst_atm))
+      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms,num_inst_atm))
+      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms,num_inst_atm))
+      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms,num_inst_atm))
 
       call prefetch(this%zmid)
       call prefetch(this%zint)
