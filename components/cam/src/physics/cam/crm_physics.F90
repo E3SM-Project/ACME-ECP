@@ -1085,7 +1085,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ! will not be used inside CRM
       do j = 1, crm_ny
          do i = 1, crm_nx
-            ii = MIN(num_inst_atm, crm_nx) ! [TODO] ii can be changed accordingly when num_inst_atm < crm_nx
+            ii = MIN(num_inst_atm, i) ! [TODO] ii can be changed accordingly when num_inst_atm < crm_nx
             crm_input%tau00  (1:ncol,i,j)  = sqrt(cam_in%wsx(1:ncol,ii)**2 + cam_in%wsy(1:ncol,ii)**2)
             crm_input%bflxls (1:ncol,i,j) = cam_in%shf(1:ncol,ii)/cpair + &
                                           0.61*state%t(1:ncol,pver)*cam_in%lhf(1:ncol,ii)/latvap
@@ -1095,7 +1095,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
             crm_input%fluxq00(1:ncol,i,j) = cam_in%lhf(1:ncol,ii)/latvap ! Kg/(m2 s)
             crm_input%ts     (1:ncol,i,j) = cam_in%ts (1:ncol,ii)
          end do ! i = 1,crm_nx
-      end do j = 1, crm_ny   
+     end do j = 1, crm_ny   
 #endif
       crm_input%wndls(1:ncol) = sqrt(state%u(1:ncol,pver)**2 + state%v(1:ncol,pver)**2)
 ![lee1046]
